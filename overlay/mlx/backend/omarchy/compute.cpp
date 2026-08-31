@@ -17,6 +17,12 @@
 #include "elementwise_bf16.h"
 #include "elementwise_f16.h"
 #include "elementwise_f32.h"
+#include "copy_general_bf16.h"
+#include "copy_general_f16.h"
+#include "copy_general_f32.h"
+#include "fill_bf16.h"
+#include "fill_f16.h"
+#include "fill_f32.h"
 #include "matmul_bf16.h"
 #include "matmul_f16.h"
 #include "matmul_f32.h"
@@ -63,6 +69,18 @@ ShaderBytes shader_bytes(ComputeKernel kernel) {
       return {matmul_f16, matmul_f16_size};
     case ComputeKernel::MatmulBF16:
       return {matmul_bf16, matmul_bf16_size};
+    case ComputeKernel::FillF32:
+      return {fill_f32, fill_f32_size};
+    case ComputeKernel::FillF16:
+      return {fill_f16, fill_f16_size};
+    case ComputeKernel::FillBF16:
+      return {fill_bf16, fill_bf16_size};
+    case ComputeKernel::CopyGeneralF32:
+      return {copy_general_f32, copy_general_f32_size};
+    case ComputeKernel::CopyGeneralF16:
+      return {copy_general_f16, copy_general_f16_size};
+    case ComputeKernel::CopyGeneralBF16:
+      return {copy_general_bf16, copy_general_bf16_size};
     case ComputeKernel::Count:
       break;
   }

@@ -2,8 +2,10 @@
 // SPDX-License-Identifier: MIT
 
 // Buffer-level copy path. Transfer commands handle contiguous same-dtype
-// ranges. Vulkan compute handles contiguous FP16 and FP32 conversions.
-// Strided copies keep the exact compatibility error for this slice.
+// ranges. Vulkan compute handles contiguous FP16 and FP32 conversions,
+// non-zero scalar fills, and same-dtype strided copies.
+// Dtype-converting strided copies keep the exact compatibility error for
+// this slice.
 
 #include "mlx/backend/omarchy/unsupported.h"
 
@@ -12,6 +14,7 @@
 #include <cstring>
 #include <limits>
 #include <optional>
+#include <string>
 
 #include "mlx/backend/common/copy.h"
 #include "mlx/backend/common/utils.h"
@@ -41,16 +44,59 @@ bool scalar_is_zero(const array& in, int64_t item_offset) {
   return true;
 }
 
+// Host-side read of a scalar fill value. Callers must synchronize the
+// stream first so a GPU-produced scalar is visible.
+float scalar_fill_value(const array& in, int64_t item_offset) {
+  const auto* bytes = in.data<char>() + item_offset * in.itemsize();
+  if (in.dtype() == float32) {
+    float value = 0.0f;
+    std::memcpy(&value, bytes, sizeof(value));
+    return value;
+  }
+  uint16_t bits = 0;
+  std::memcpy(&bits, bytes, sizeof(bits));
+  if (in.dtype() == bfloat16) {
+    uint32_t wide = static_cast<uint32_t>(bits) << 16;
+    float value = 0.0f;
+    std::memcpy(&value, &wide, sizeof(value));
+    return value;
+  }
+  // Widen the float16 bit pattern to float32.
+  uint32_t sign = static_cast<uint32_t>(bits & 0x8000u) << 16;
+  uint32_t exponent = (bits >> 10) & 0x1fu;
+  uint32_t mantissa = bits & 0x3ffu;
+  uint32_t wide = sign;
+  if (exponent == 0 && mantissa != 0) {
+    // Renormalize a subnormal into the float32 exponent field.
+    exponent = 113;
+    while ((mantissa & 0x400u) == 0) {
+      mantissa <<= 1;
+      exponent--;
+    }
+    mantissa &= 0x3ffu;
+    wide |= (exponent << 23) | (mantissa << 13);
+  } else if (exponent == 0x1fu) {
+    wide |= 0x7f800000u | (mantissa << 13);
+  } else if (exponent != 0) {
+    wide |= ((exponent + 112u) << 23) | (mantissa << 13);
+  }
+  float value = 0.0f;
+  std::memcpy(&value, &wide, sizeof(value));
+  return value;
+}
+
 // Byte offset of a copy start in the backing VkBuffer: the array's own
 // buffer offset plus an explicit item offset.
 VkDeviceSize byte_offset(const array& arr, int64_t item_offset) {
   return static_cast<VkDeviceSize>(arr.offset() + item_offset * arr.itemsize());
 }
 
-uint32_t checked_u32(size_t value, const array& out) {
+uint32_t checked_u32(
+    size_t value,
+    const std::string& name,
+    const array& out) {
   if (value > std::numeric_limits<uint32_t>::max()) {
-    omarchy::unsupported(
-        "dtype converting copy with more than UINT32_MAX elements", out);
+    omarchy::unsupported(name + " with more than UINT32_MAX elements", out);
   }
   return static_cast<uint32_t>(value);
 }
@@ -58,15 +104,16 @@ uint32_t checked_u32(size_t value, const array& out) {
 uint32_t compute_item_offset(
     const array& value,
     int64_t item_offset,
+    const std::string& name,
     const array& out) {
   if (item_offset < 0 || value.offset() % value.itemsize() != 0) {
-    omarchy::unsupported("dtype converting copy byte offset", out);
+    omarchy::unsupported(name + " byte offset", out);
   }
   uint64_t base = value.offset() / value.itemsize();
   uint64_t delta = static_cast<uint64_t>(item_offset);
   constexpr uint64_t max_index = std::numeric_limits<uint32_t>::max();
   if (base > max_index || delta > max_index - base) {
-    omarchy::unsupported("dtype converting copy index span", out);
+    omarchy::unsupported(name + " index span", out);
   }
   return static_cast<uint32_t>(base + delta);
 }
@@ -105,14 +152,52 @@ void fill_zero(const Stream& s, array& out, int64_t o_offset) {
   }
 }
 
+omarchy::ComputeKernel fill_kernel(Dtype dtype) {
+  if (dtype == float16) {
+    return omarchy::ComputeKernel::FillF16;
+  }
+  if (dtype == bfloat16) {
+    return omarchy::ComputeKernel::FillBF16;
+  }
+  return omarchy::ComputeKernel::FillF32;
+}
+
+omarchy::ComputeKernel copy_general_kernel(Dtype dtype) {
+  if (dtype == float16) {
+    return omarchy::ComputeKernel::CopyGeneralF16;
+  }
+  if (dtype == bfloat16) {
+    return omarchy::ComputeKernel::CopyGeneralBF16;
+  }
+  return omarchy::ComputeKernel::CopyGeneralF32;
+}
+
+// Storage-buffer access requirements for a 16-bit float dtype, shared by
+// the fill and strided-copy kernels.
+void require_float_storage(
+    const std::string& name,
+    Dtype dtype,
+    const array& out,
+    omarchy::CommandEncoder& encoder) {
+  const auto& capabilities = encoder.device().capabilities();
+  if ((dtype == float16 &&
+       (!capabilities.shader_float16 ||
+        !capabilities.storage_buffer_16bit_access)) ||
+      (dtype == bfloat16 &&
+       (!capabilities.storage_buffer_16bit_access ||
+        !capabilities.shader_int16))) {
+    omarchy::unsupported(name + " capability", out);
+  }
+}
+
 } // namespace
 
 void copy_gpu_inplace(
     const array& in,
     array& out,
-    const Shape& /*data_shape*/,
-    const Strides& /*i_strides*/,
-    const Strides& /*o_strides*/,
+    const Shape& data_shape,
+    const Strides& i_strides,
+    const Strides& o_strides,
     int64_t i_offset,
     int64_t o_offset,
     CopyType ctype,
@@ -122,9 +207,6 @@ void copy_gpu_inplace(
   if (dynamic_i_offset || dynamic_o_offset) {
     // The offset tensor would have to be read by a shader.
     omarchy::unsupported("DynamicSlice copy", out);
-  }
-  if (ctype == CopyType::General || ctype == CopyType::GeneralGeneral) {
-    omarchy::unsupported("strided copy", out);
   }
 
   if (out.nbytes() == 0) {
@@ -137,10 +219,87 @@ void copy_gpu_inplace(
       omarchy::unsupported("GPU-in-flight scalar fill", out);
     }
     encoder.synchronize();
-    if (!scalar_is_zero(in, i_offset)) {
+    if (scalar_is_zero(in, i_offset)) {
+      fill_zero(s, out, o_offset);
+      return;
+    }
+    if (in.dtype() != float32 && in.dtype() != float16 &&
+        in.dtype() != bfloat16) {
       omarchy::unsupported("non-zero scalar fill", out);
     }
-    fill_zero(s, out, o_offset);
+    require_float_storage("non-zero scalar fill", in.dtype(), out, encoder);
+    uint32_t count = checked_u32(out.data_size(), "scalar fill", out);
+    omarchy::ComputeParams params;
+    params.count = count;
+    params.output_size = count;
+    params.output_offset =
+        compute_item_offset(out, o_offset, "scalar fill", out);
+    params.alpha = scalar_fill_value(in, i_offset);
+    std::array<omarchy::ComputeBinding, 1> bindings{compute_binding(out)};
+    encoder.dispatch_compute(
+        fill_kernel(in.dtype()),
+        bindings,
+        params,
+        omarchy::compute_dispatch_group_count(count));
+    return;
+  }
+
+  if (ctype == CopyType::General || ctype == CopyType::GeneralGeneral) {
+    if (in.dtype() != out.dtype() ||
+        (in.dtype() != float32 && in.dtype() != float16 &&
+         in.dtype() != bfloat16)) {
+      omarchy::unsupported("strided copy", out);
+    }
+    require_float_storage("strided copy", in.dtype(), out, encoder);
+    for (const auto& strides : {i_strides, o_strides}) {
+      for (int64_t stride : strides) {
+        if (stride < 0) {
+          omarchy::unsupported("negative stride copy", out);
+        }
+      }
+    }
+    auto [collapsed_shape, collapsed_strides] = collapse_contiguous_dims(
+        data_shape, std::vector<Strides>{i_strides, o_strides});
+    size_t rank = collapsed_shape.size();
+    if (rank > 4) {
+      omarchy::unsupported("rank>4 strided copy", out);
+    }
+    size_t total = 1;
+    for (size_t axis = 0; axis < rank; ++axis) {
+      total *= static_cast<size_t>(collapsed_shape[axis]);
+    }
+    uint32_t count = checked_u32(total, "strided copy", out);
+    omarchy::ComputeParams params;
+    params.count = count;
+    params.dims = static_cast<uint32_t>(rank);
+    uint64_t in_span = 0;
+    uint64_t out_span = 0;
+    for (size_t axis = 0; axis < rank; ++axis) {
+      params.shape[axis] = static_cast<uint32_t>(collapsed_shape[axis]);
+      params.in_strides[axis] =
+          static_cast<uint32_t>(collapsed_strides[0][axis]);
+      params.out_strides[axis] =
+          static_cast<uint32_t>(collapsed_strides[1][axis]);
+      uint64_t extent = params.shape[axis] - 1u;
+      in_span += extent * params.in_strides[axis];
+      out_span += extent * params.out_strides[axis];
+    }
+    params.lhs_offset =
+        compute_item_offset(in, i_offset, "strided copy", out);
+    params.output_offset =
+        compute_item_offset(out, o_offset, "strided copy", out);
+    if (!omarchy::compute_index_span_fits(params.lhs_offset, in_span + 1) ||
+        !omarchy::compute_index_span_fits(
+            params.output_offset, out_span + 1)) {
+      omarchy::unsupported("strided copy index span", out);
+    }
+    std::array<omarchy::ComputeBinding, 3> bindings{
+        compute_binding(in), compute_binding(in), compute_binding(out)};
+    encoder.dispatch_compute(
+        copy_general_kernel(in.dtype()),
+        bindings,
+        params,
+        omarchy::compute_dispatch_group_count(count));
     return;
   }
 
@@ -174,14 +333,18 @@ void copy_gpu_inplace(
       omarchy::unsupported("dtype converting copy bfloat16 capability", out);
     }
 
-    uint32_t count = checked_u32(out.data_size(), out);
+    uint32_t count =
+        checked_u32(out.data_size(), "dtype converting copy", out);
     omarchy::ComputeParams params;
     params.count = count;
-    params.lhs_size = checked_u32(in.data_size(), out);
+    params.lhs_size =
+        checked_u32(in.data_size(), "dtype converting copy", out);
     params.rhs_size = params.lhs_size;
     params.output_size = count;
-    params.lhs_offset = compute_item_offset(in, i_offset, out);
-    params.output_offset = compute_item_offset(out, o_offset, out);
+    params.lhs_offset =
+        compute_item_offset(in, i_offset, "dtype converting copy", out);
+    params.output_offset =
+        compute_item_offset(out, o_offset, "dtype converting copy", out);
     if (!omarchy::compute_index_span_fits(params.lhs_offset, count) ||
         !omarchy::compute_index_span_fits(params.output_offset, count)) {
       omarchy::unsupported("dtype converting copy index span", out);

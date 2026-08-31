@@ -10,6 +10,7 @@
 #include <string>
 #include <vector>
 
+#include "mlx/backend/gpu/copy.h"
 #include "mlx/backend/gpu/device_info.h"
 #include "mlx/backend/omarchy/allocator.h"
 #include "mlx/backend/omarchy/compute.h"
@@ -20,6 +21,7 @@
 #include "mlx/linalg.h"
 #include "mlx/ops.h"
 #include "mlx/stream.h"
+#include "mlx/transforms.h"
 
 using namespace mlx::core;
 
@@ -85,6 +87,11 @@ TEST_CASE("FP32 elementwise primitives dispatch through Vulkan compute") {
   check_values(divide(x, y, stream), {0.5f, 0.5f, 2.0f, 2.0f}, stream);
   check_values(maximum(x, y, stream), {2.0f, 4.0f, 4.0f, 8.0f}, stream);
   check_values(add(x, array(1.0f), stream), {2.0f, 3.0f, 5.0f, 9.0f}, stream);
+  check_values(subtract(x, y, stream), {-1.0f, -2.0f, 2.0f, 4.0f}, stream);
+  check_values(
+      subtract(x, array(0.5f), stream), {0.5f, 1.5f, 3.5f, 7.5f}, stream);
+  check_values(
+      subtract(array(1.0f), y, stream), {-1.0f, -3.0f, -1.0f, -3.0f}, stream);
 
   CHECK(counters.vk_compute_dispatches.load() >= compute_before + 5);
   CHECK(counters.gpu_primitive_dispatches.load() >= primitives_before + 5);
@@ -109,6 +116,7 @@ TEST_CASE("FP32 unary primitives dispatch through Vulkan compute") {
   check_values(square(positive, stream), {1.0f, 16.0f, 256.0f}, stream);
   check_values(sqrt(positive, stream), {1.0f, 2.0f, 4.0f}, stream);
   check_values(rsqrt(positive, stream), {1.0f, 0.5f, 0.25f}, stream);
+  check_values(negative(x, stream), {0.0f, -1.0f, -2.0f}, stream);
 }
 
 TEST_CASE("FP16 casts and elementwise primitives use Vulkan compute") {
@@ -311,6 +319,15 @@ TEST_CASE("FP32 and FP16 Matmul support dense and transposed weights") {
       {58.0f, 64.0f, 139.0f, 154.0f},
       stream);
 
+  array stored({1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f}, {3, 2}, float32);
+  check_values(
+      matmul(
+          transpose(stored, {1, 0}, stream),
+          array({7.0f, 10.0f, 8.0f, 11.0f, 9.0f, 12.0f}, {3, 2}, float32),
+          stream),
+      {76.0f, 103.0f, 100.0f, 136.0f},
+      stream);
+
   const auto& capabilities = omarchy::device(0).capabilities();
   if (capabilities.shader_float16 &&
       capabilities.storage_buffer_16bit_access) {
@@ -411,6 +428,24 @@ TEST_CASE("Matmul handles tiled edges, offsets, and empty K") {
       expected,
       stream);
 
+  std::vector<float> transposed_expected(m * n, 0.0f);
+  for (size_t row = 0; row < m; ++row) {
+    for (size_t column = 0; column < n; ++column) {
+      for (size_t inner = 0; inner < k; ++inner) {
+        transposed_expected[row * n + column] +=
+            a_values[inner * m + row] * b_values[inner * n + column];
+      }
+    }
+  }
+  check_values(
+      matmul(
+          transpose(array(a_values.begin(), Shape{k, m}, float32), {1, 0},
+                    stream),
+          array(b_values.begin(), Shape{k, n}, float32),
+          stream),
+      transposed_expected,
+      stream);
+
   array a_base(
       {99.0f, 99.0f, 99.0f, 1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f},
       {3, 3},
@@ -443,6 +478,174 @@ TEST_CASE("Matmul handles tiled edges, offsets, and empty K") {
           stream),
       {2.0f, 4.0f, 6.0f, 2.0f, 4.0f, 6.0f},
       stream);
+}
+
+TEST_CASE("non-zero scalar fills dispatch through Vulkan compute") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  check_values(
+      full({2, 3}, 1.5f, float32, stream),
+      std::vector<float>(6, 1.5f),
+      stream);
+  check_values(full({2}, 0.0f, float32, stream), {0.0f, 0.0f}, stream);
+
+  std::string int_error = evaluation_error(full({2}, 5, int32, stream));
+  CHECK(int_error.find("non-zero scalar fill") != std::string::npos);
+
+  const auto& capabilities = omarchy::device(0).capabilities();
+  if (capabilities.shader_float16 &&
+      capabilities.storage_buffer_16bit_access) {
+    array half_out = zeros({2, 2}, float16, stream);
+    half_out.eval();
+    array half_scalar = array(1.5f, float16);
+    copy_gpu_inplace(
+        half_scalar,
+        half_out,
+        half_out.shape(),
+        half_scalar.strides(),
+        half_out.strides(),
+        0,
+        0,
+        CopyType::Scalar,
+        stream);
+    check_values(
+        astype(half_out, float32, stream),
+        std::vector<float>(4, 1.5f),
+        stream,
+        1e-3);
+  }
+  if (capabilities.storage_buffer_16bit_access &&
+      capabilities.shader_int16) {
+    array bf_out = zeros({3}, bfloat16, stream);
+    bf_out.eval();
+    array bf_scalar = array(2.5f, bfloat16);
+    copy_gpu_inplace(
+        bf_scalar,
+        bf_out,
+        bf_out.shape(),
+        bf_scalar.strides(),
+        bf_out.strides(),
+        0,
+        0,
+        CopyType::Scalar,
+        stream);
+    check_values(
+        astype(bf_out, float32, stream), {2.5f, 2.5f, 2.5f}, stream, 8e-3);
+  }
+}
+
+TEST_CASE("general strided copies materialize through Vulkan compute") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  array base({0.0f, 1.0f, 2.0f, 3.0f, 4.0f, 5.0f}, {2, 3}, float32);
+  check_values(
+      contiguous(transpose(base, stream), false, stream),
+      {0.0f, 3.0f, 1.0f, 4.0f, 2.0f, 5.0f},
+      stream);
+
+  array wide(
+      {0.0f,
+       1.0f,
+       2.0f,
+       3.0f,
+       4.0f,
+       5.0f,
+       6.0f,
+       7.0f,
+       8.0f,
+       9.0f,
+       10.0f,
+       11.0f},
+      {3, 4},
+      float32);
+  check_values(
+      contiguous(slice(wide, {0, 1}, {3, 4}, {2, 1}, stream), false, stream),
+      {1.0f, 2.0f, 3.0f, 9.0f, 10.0f, 11.0f},
+      stream);
+
+  array grid(
+      {1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f, 7.0f, 8.0f},
+      {2, 2, 2},
+      float32);
+  check_values(
+      contiguous(transpose(grid, {2, 0, 1}, stream), false, stream),
+      {1.0f, 3.0f, 5.0f, 7.0f, 2.0f, 4.0f, 6.0f, 8.0f},
+      stream);
+
+  array ints({0, 1, 2, 3}, {2, 2}, int32);
+  std::string int_error =
+      evaluation_error(contiguous(transpose(ints, stream), false, stream));
+  CHECK(int_error.find("strided copy") != std::string::npos);
+}
+
+TEST_CASE("value_and_grad computes matmul and subtract gradients on device") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  array x({0.0f, 0.1f, 0.2f, 0.05f, 0.15f, 0.25f}, {2, 3}, float32);
+  array w({0.1f, -0.2f, 0.3f, 0.05f, -0.1f, 0.2f}, {3, 2}, float32);
+
+  auto fun = [&](const std::vector<array>& inputs) {
+    return sum(exp(matmul(inputs[0], inputs[1], stream), stream), stream);
+  };
+  auto [value, grads] = value_and_grad(fun, std::vector<int>{0, 1})({x, w});
+
+  std::vector<float> xv = {0.0f, 0.1f, 0.2f, 0.05f, 0.15f, 0.25f};
+  std::vector<float> wv = {0.1f, -0.2f, 0.3f, 0.05f, -0.1f, 0.2f};
+  float expected_value = 0.0f;
+  float e[2][2];
+  for (int row = 0; row < 2; ++row) {
+    for (int column = 0; column < 2; ++column) {
+      float y = 0.0f;
+      for (int inner = 0; inner < 3; ++inner) {
+        y += xv[row * 3 + inner] * wv[inner * 2 + column];
+      }
+      e[row][column] = std::exp(y);
+      expected_value += e[row][column];
+    }
+  }
+  std::vector<float> expected_dx(6);
+  for (int row = 0; row < 2; ++row) {
+    for (int inner = 0; inner < 3; ++inner) {
+      float grad = 0.0f;
+      for (int column = 0; column < 2; ++column) {
+        grad += e[row][column] * wv[inner * 2 + column];
+      }
+      expected_dx[row * 3 + inner] = grad;
+    }
+  }
+  std::vector<float> expected_dw(6);
+  for (int inner = 0; inner < 3; ++inner) {
+    for (int column = 0; column < 2; ++column) {
+      float grad = 0.0f;
+      for (int row = 0; row < 2; ++row) {
+        grad += xv[row * 3 + inner] * e[row][column];
+      }
+      expected_dw[inner * 2 + column] = grad;
+    }
+  }
+  check_values(value, {expected_value}, stream, 1e-4);
+  check_values(grads.at(0), expected_dx, stream, 1e-4);
+  check_values(grads.at(1), expected_dw, stream, 1e-4);
+
+  auto sub_fun = [&](const std::vector<array>& inputs) {
+    return sum(subtract(inputs[0], inputs[1], stream), stream);
+  };
+  auto [sub_value, sub_grads] = value_and_grad(sub_fun, std::vector<int>{0, 1})(
+      {x, reshape(w, {2, 3}, stream)});
+  check_values(sub_value, {0.4f}, stream, 1e-5);
+  // The positive cotangent is a broadcast view of the scalar seed, so
+  // materialize it on device before reading linearly.
+  check_values(
+      multiply(sub_grads.at(0), array(1.0f), stream),
+      std::vector<float>(6, 1.0f),
+      stream);
+  check_values(sub_grads.at(1), std::vector<float>(6, -1.0f), stream);
 }
 
 TEST_CASE("unsupported compute shapes and dtypes fail without CPU fallback") {
