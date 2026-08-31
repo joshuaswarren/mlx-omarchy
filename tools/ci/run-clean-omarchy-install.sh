@@ -31,13 +31,25 @@ python3 -m venv "$tmp/venv"
 "$tmp/venv/bin/pip" --quiet install "$wheel"
 
 MLX_OMARCHY_ALLOW_NON_APPLE=1 "$tmp/venv/bin/python" - <<'EOF'
+import json
 import math
+import pathlib
+import subprocess
 
 import mlx.core as mx
 
 dev = mx.default_device()
 assert dev.type == mx.DeviceType.gpu, f"default device is not gpu: {dev}"
-print(f"[receipt] import mlx.core: ok, default device {dev} (development device, not Honeykrisp)")
+label = "device name unavailable"
+tool = pathlib.Path(mx.__file__).resolve().parent / "bin" / "mlx-omarchy-info"
+if tool.exists():
+    probe = subprocess.run([str(tool), "--json"], capture_output=True, text=True)
+    if probe.returncode == 0:
+        info = json.loads(probe.stdout)
+        label = info.get("device_name", label)
+        if not label.startswith("Apple"):
+            label += " (development device, not Honeykrisp)"
+print(f"[receipt] import mlx.core: ok, default device {dev}, {label}")
 
 a = mx.array([1.0, 2.0])
 b = mx.array([3.0, 4.0])
