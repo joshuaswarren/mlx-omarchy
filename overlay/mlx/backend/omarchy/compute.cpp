@@ -23,12 +23,18 @@
 #include "fill_bf16.h"
 #include "fill_f16.h"
 #include "fill_f32.h"
+#include "gather_bf16.h"
+#include "gather_f16.h"
+#include "gather_f32.h"
 #include "matmul_bf16.h"
 #include "matmul_f16.h"
 #include "matmul_f32.h"
 #include "reduce_bf16.h"
 #include "reduce_f16.h"
 #include "reduce_f32.h"
+#include "softmax_bf16.h"
+#include "softmax_f16.h"
+#include "softmax_f32.h"
 
 namespace mlx::core::omarchy {
 
@@ -75,6 +81,18 @@ ShaderBytes shader_bytes(ComputeKernel kernel) {
       return {fill_f16, fill_f16_size};
     case ComputeKernel::FillBF16:
       return {fill_bf16, fill_bf16_size};
+    case ComputeKernel::SoftmaxF32:
+      return {softmax_f32, softmax_f32_size};
+    case ComputeKernel::SoftmaxF16:
+      return {softmax_f16, softmax_f16_size};
+    case ComputeKernel::SoftmaxBF16:
+      return {softmax_bf16, softmax_bf16_size};
+    case ComputeKernel::GatherF32:
+      return {gather_f32, gather_f32_size};
+    case ComputeKernel::GatherF16:
+      return {gather_f16, gather_f16_size};
+    case ComputeKernel::GatherBF16:
+      return {gather_bf16, gather_bf16_size};
     case ComputeKernel::CopyGeneralF32:
       return {copy_general_f32, copy_general_f32_size};
     case ComputeKernel::CopyGeneralF16:

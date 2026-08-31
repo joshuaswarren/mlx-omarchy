@@ -847,3 +847,247 @@ TEST_CASE("unsupported compute shapes and dtypes fail without CPU fallback") {
   CHECK(inv_error.find("[linalg::inv]") != std::string::npos);
   CHECK(inv_error.find("not yet supported on the GPU") != std::string::npos);
 }
+
+// Host reference: numerically stable softmax over the last axis.
+std::vector<float> host_softmax(
+    const std::vector<float>& values, int rows, int row_length) {
+  std::vector<float> expected(values.size());
+  for (int row = 0; row < rows; ++row) {
+    const float* input = values.data() + row * row_length;
+    float* output = expected.data() + row * row_length;
+    float maximum = input[0];
+    for (int index = 1; index < row_length; ++index) {
+      maximum = std::max(maximum, input[index]);
+    }
+    float normalizer = 0.0f;
+    for (int index = 0; index < row_length; ++index) {
+      output[index] = std::exp(input[index] - maximum);
+      normalizer += output[index];
+    }
+    for (int index = 0; index < row_length; ++index) {
+      output[index] /= normalizer;
+    }
+  }
+  return expected;
+}
+
+TEST_CASE("softmax normalizes rows through Vulkan compute") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  std::vector<float> xv = {1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f};
+  array x(xv.begin(), Shape{2, 3}, float32);
+  check_values(
+      softmax(x, std::vector<int>{-1}, false, stream),
+      host_softmax(xv, 2, 3),
+      stream);
+
+  // Rows sum to 1.
+  check_values(
+      sum(softmax(x, std::vector<int>{-1}, false, stream),
+          std::vector<int>{-1},
+          false,
+          stream),
+      {1.0f, 1.0f},
+      stream);
+
+  // Large logits stay finite because the kernel subtracts the row max.
+  std::vector<float> bigv = {80.0f, 81.0f, 80.0f, 79.0f};
+  check_values(
+      softmax(array(bigv.begin(), Shape{2, 2}, float32),
+              std::vector<int>{-1},
+              false,
+              stream),
+      host_softmax(bigv, 2, 2),
+      stream);
+
+  // One flat row longer than one workgroup.
+  std::vector<float> wide_values(300);
+  for (size_t index = 0; index < wide_values.size(); ++index) {
+    wide_values[index] =
+        static_cast<float>(static_cast<int>(index % 7) - 3);
+  }
+  check_values(
+      softmax(array(wide_values.begin(), Shape{1, 300}, float32),
+              std::vector<int>{-1},
+              false,
+              stream),
+      host_softmax(wide_values, 1, 300),
+      stream,
+      2e-5);
+
+  // More rows than one dispatch can name, so workgroups grid-stride.
+  std::vector<float> tall_values(70000, 3.0f);
+  check_values(
+      softmax(array(tall_values.begin(), Shape{70000, 1}, float32),
+              std::vector<int>{-1},
+              false,
+              stream),
+      std::vector<float>(70000, 1.0f),
+      stream);
+
+  // A strided float32 view keeps its layout through softmax and pins the
+  // named layout error.
+  array base(
+      {1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f, 7.0f, 8.0f, 9.0f},
+      {3, 3},
+      float32);
+  array strided = slice(base, {0, 0}, {3, 2}, {1, 1}, stream);
+  std::string layout_error = evaluation_error(
+      softmax(strided, std::vector<int>{-1}, false, stream));
+  CHECK(layout_error.find("non-contiguous Softmax") != std::string::npos);
+
+  // Non-suffix axes never build a Softmax primitive; upstream decomposes
+  // them into reductions, and the reduction pins the named error.
+  array grid(
+      {1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f, 7.0f, 8.0f},
+      {2, 2, 2},
+      float32);
+  std::string suffix_error =
+      evaluation_error(softmax(grid, std::vector<int>{0, 1}, false, stream));
+  CHECK(suffix_error.find("non-suffix Max") != std::string::npos);
+}
+
+TEST_CASE("FP16 and BF16 softmax match host references") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  const auto& capabilities = omarchy::device(0).capabilities();
+  std::vector<float> xv = {0.0f, 1.0f, 2.0f, 1.0f, 3.0f, -1.0f};
+  auto expected = host_softmax(xv, 2, 3);
+  if (capabilities.shader_float16 &&
+      capabilities.storage_buffer_16bit_access) {
+    array half = astype(
+        array(xv.begin(), Shape{2, 3}, float32), float16, stream);
+    check_values(
+        astype(
+            softmax(half, std::vector<int>{-1}, false, stream),
+            float32,
+            stream),
+        expected,
+        stream,
+        1e-3);
+  } else {
+    skip("Vulkan device lacks required FP16 shader and storage features.");
+  }
+  if (capabilities.storage_buffer_16bit_access &&
+      capabilities.shader_int16) {
+    array brain = astype(
+        array(xv.begin(), Shape{2, 3}, float32), bfloat16, stream);
+    check_values(
+        astype(
+            softmax(brain, std::vector<int>{-1}, false, stream),
+            float32,
+            stream),
+        expected,
+        stream,
+        8e-3);
+  } else {
+    skip("Vulkan device lacks required BF16 storage and shader features.");
+  }
+}
+
+
+
+TEST_CASE("take gathers table rows through Vulkan compute") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  std::vector<float> tv = {
+      10.0f, 11.0f, 12.0f, 13.0f, 20.0f, 21.0f, 22.0f, 23.0f,
+      30.0f, 31.0f, 32.0f, 33.0f};
+  array table(tv.begin(), Shape{3, 4}, float32);
+
+  // Exact lookups with a repeated index.
+  array indices({2, 0, 2}, int32);
+  check_values(
+      take(table, indices, 0, stream),
+      {30.0f,
+       31.0f,
+       32.0f,
+       33.0f,
+       10.0f,
+       11.0f,
+       12.0f,
+       13.0f,
+       30.0f,
+       31.0f,
+       32.0f,
+       33.0f},
+      stream);
+
+  // Out-of-range and negative indices write zero rows. This deviates from
+  // upstream negative-index wrapping and is the documented constraint.
+  array bounds({1, 7, -1, 0}, int32);
+  check_values(
+      take(table, bounds, 0, stream),
+      {20.0f,
+       21.0f,
+       22.0f,
+       23.0f,
+       0.0f,
+       0.0f,
+       0.0f,
+       0.0f,
+       0.0f,
+       0.0f,
+       0.0f,
+       0.0f,
+       10.0f,
+       11.0f,
+       12.0f,
+       13.0f},
+      stream);
+
+  // Every other index dtype pins the named error, including upstream-legal
+  // uint32 indices.
+  std::string int64_error =
+      evaluation_error(take(table, array({0}, int64), 0, stream));
+  CHECK(int64_error.find("indexed Take dtype") != std::string::npos);
+  std::string uint32_error =
+      evaluation_error(take(table, array({0}, uint32), 0, stream));
+  CHECK(uint32_error.find("indexed Take dtype") != std::string::npos);
+
+  // Non-zero gather axes pin the named axis error.
+  std::string axis_error =
+      evaluation_error(take(table, array({0}, int32), 1, stream));
+  CHECK(axis_error.find("non-axis-0 Take") != std::string::npos);
+
+  // Higher-rank tables pin the named layout error.
+  array cube(tv.begin(), Shape{1, 3, 4}, float32);
+  std::string rank_error =
+      evaluation_error(take(cube, array({0}, int32), 0, stream));
+  CHECK(rank_error.find("matrix layout Take") != std::string::npos);
+
+  const auto& capabilities = omarchy::device(0).capabilities();
+  std::vector<float> hv = {0.5f, 1.0f, 2.0f, -1.5f, 0.25f, 4.0f};
+  if (capabilities.shader_float16 &&
+      capabilities.storage_buffer_16bit_access) {
+    array half_table = astype(
+        array(hv.begin(), Shape{2, 3}, float32), float16, stream);
+    check_values(
+        astype(
+            take(half_table, array({1, 0, 1}, int32), 0, stream),
+            float32,
+            stream),
+        {-1.5f, 0.25f, 4.0f, 0.5f, 1.0f, 2.0f, -1.5f, 0.25f, 4.0f},
+        stream,
+        1e-3);
+  }
+  if (capabilities.storage_buffer_16bit_access &&
+      capabilities.shader_int16) {
+    array brain_table = astype(
+        array(hv.begin(), Shape{2, 3}, float32), bfloat16, stream);
+    check_values(
+        astype(
+            take(brain_table, array({0, 1}, int32), 0, stream),
+            float32,
+            stream),
+        {0.5f, 1.0f, 2.0f, -1.5f, 0.25f, 4.0f},
+        stream,
+        8e-3);
+  }
+}
