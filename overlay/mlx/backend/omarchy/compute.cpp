@@ -12,6 +12,8 @@
 #include "cast_f32_f16.h"
 #include "elementwise_f16.h"
 #include "elementwise_f32.h"
+#include "matmul_f16.h"
+#include "matmul_f32.h"
 #include "reduce_f16.h"
 #include "reduce_f32.h"
 
@@ -36,6 +38,10 @@ ShaderBytes shader_bytes(ComputeKernel kernel) {
       return {reduce_f32, reduce_f32_size};
     case ComputeKernel::ReduceF16:
       return {reduce_f16, reduce_f16_size};
+    case ComputeKernel::MatmulF32:
+      return {matmul_f32, matmul_f32_size};
+    case ComputeKernel::MatmulF16:
+      return {matmul_f16, matmul_f16_size};
     case ComputeKernel::Count:
       break;
   }
@@ -46,7 +52,7 @@ ShaderBytes shader_bytes(ComputeKernel kernel) {
 
 ComputeRuntime::ComputeRuntime(VkDevice device) : device_(device) {
   auto& dt = vk::device_table();
-  std::array<VkDescriptorSetLayoutBinding, 3> bindings{};
+  std::array<VkDescriptorSetLayoutBinding, kComputeBindingCount> bindings{};
   for (uint32_t index = 0; index < bindings.size(); ++index) {
     bindings[index].binding = index;
     bindings[index].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;

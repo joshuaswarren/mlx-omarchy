@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 #include "mlx/backend/omarchy/encoder.h"
+#include <stdexcept>
 
 #include "mlx/backend/omarchy/allocator.h"
 #include "mlx/backend/omarchy/trace.h"
@@ -100,15 +101,20 @@ void CommandEncoder::fill_buffer(
 
 void CommandEncoder::dispatch_compute(
     ComputeKernel kernel,
-    const std::array<ComputeBinding, 3>& bindings,
+    std::span<const ComputeBinding> bindings,
     const ComputeParams& params,
-    uint32_t group_count) {
-  if (group_count == 0) {
+    uint32_t group_count_x,
+    uint32_t group_count_y,
+    uint32_t group_count_z) {
+  if (group_count_x == 0 || group_count_y == 0 || group_count_z == 0) {
     return;
   }
-  if (group_count > kMaxComputeGroupCountX) {
-    group_count = kMaxComputeGroupCountX;
+  if (bindings.empty() || bindings.size() > kComputeBindingCount) {
+    throw std::invalid_argument("[omarchy] invalid compute binding count.");
   }
+  group_count_x = std::min(group_count_x, kMaxComputeGroupCountX);
+  group_count_y = std::min(group_count_y, kMaxComputeGroupCountX);
+  group_count_z = std::min(group_count_z, kMaxComputeGroupCountX);
 
   auto& dt = vk::device_table();
   auto& compute = device_.compute();
@@ -116,7 +122,7 @@ void CommandEncoder::dispatch_compute(
 
   VkDescriptorPoolSize pool_size{};
   pool_size.type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-  pool_size.descriptorCount = static_cast<uint32_t>(bindings.size());
+  pool_size.descriptorCount = kComputeBindingCount;
   VkDescriptorPoolCreateInfo pool_info{
       VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO};
   pool_info.maxSets = 1;
@@ -142,8 +148,8 @@ void CommandEncoder::dispatch_compute(
   VKX_CHECK(dt.AllocateDescriptorSets(
       device_.handle(), &allocate_info, &descriptor_set));
 
-  std::array<VkDescriptorBufferInfo, 3> buffer_info{};
-  std::array<VkWriteDescriptorSet, 3> writes{};
+  std::array<VkDescriptorBufferInfo, kComputeBindingCount> buffer_info{};
+  std::array<VkWriteDescriptorSet, kComputeBindingCount> writes{};
   for (uint32_t index = 0; index < bindings.size(); ++index) {
     buffer_info[index] = {
         bindings[index].buffer, bindings[index].offset, bindings[index].range};
@@ -155,7 +161,11 @@ void CommandEncoder::dispatch_compute(
     writes[index].pBufferInfo = &buffer_info[index];
   }
   dt.UpdateDescriptorSets(
-      device_.handle(), static_cast<uint32_t>(writes.size()), writes.data(), 0, nullptr);
+      device_.handle(),
+      static_cast<uint32_t>(bindings.size()),
+      writes.data(),
+      0,
+      nullptr);
 
   ensure_recording();
   VkMemoryBarrier before{VK_STRUCTURE_TYPE_MEMORY_BARRIER};
@@ -193,7 +203,7 @@ void CommandEncoder::dispatch_compute(
       0,
       sizeof(params),
       &params);
-  dt.CmdDispatch(cmd_, group_count, 1, 1);
+  dt.CmdDispatch(cmd_, group_count_x, group_count_y, group_count_z);
 
   VkMemoryBarrier after{VK_STRUCTURE_TYPE_MEMORY_BARRIER};
   after.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT;

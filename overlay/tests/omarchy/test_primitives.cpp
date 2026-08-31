@@ -226,6 +226,156 @@ TEST_CASE("compute shaders handle offsets, multiple workgroups, and NaN") {
   CHECK(std::isnan(nan_result.data<float>()[0]));
 }
 
+TEST_CASE("FP32 and FP16 Matmul support dense and transposed weights") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  array a({1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f}, {2, 3}, float32);
+  array b({7.0f, 8.0f, 9.0f, 10.0f, 11.0f, 12.0f}, {3, 2}, float32);
+  array weights(
+      {7.0f, 9.0f, 11.0f, 8.0f, 10.0f, 12.0f}, {2, 3}, float32);
+
+  check_values(matmul(a, b, stream), {58.0f, 64.0f, 139.0f, 154.0f}, stream);
+  check_values(
+      matmul(a, transpose(weights, {1, 0}, stream), stream),
+      {58.0f, 64.0f, 139.0f, 154.0f},
+      stream);
+
+  const auto& capabilities = omarchy::device(0).capabilities();
+  if (capabilities.shader_float16 &&
+      capabilities.storage_buffer_16bit_access) {
+    check_values(
+        astype(
+            matmul(
+                astype(a, float16, stream),
+                astype(b, float16, stream),
+                stream),
+            float32,
+            stream),
+        {58.0f, 64.0f, 139.0f, 154.0f},
+        stream,
+        1e-3);
+    check_values(
+        astype(
+            addmm(
+                astype(array({1.0f, 2.0f}, float32), float16, stream),
+                astype(a, float16, stream),
+                astype(b, float16, stream),
+                2.0f,
+                0.5f,
+                stream),
+            float32,
+            stream),
+        {116.5f, 129.0f, 278.5f, 309.0f},
+        stream,
+        1e-3);
+  }
+}
+
+TEST_CASE("Matmul flattens leading batches and AddMM broadcasts bias") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  array a(
+      {1.0f,
+       2.0f,
+       3.0f,
+       4.0f,
+       5.0f,
+       6.0f,
+       7.0f,
+       8.0f,
+       9.0f,
+       10.0f,
+       11.0f,
+       12.0f},
+      {2, 2, 3},
+      float32);
+  array b({7.0f, 8.0f, 9.0f, 10.0f, 11.0f, 12.0f}, {3, 2}, float32);
+  array product = matmul(a, b, stream);
+  check_values(
+      product,
+      {58.0f, 64.0f, 139.0f, 154.0f, 220.0f, 244.0f, 301.0f, 334.0f},
+      stream);
+  check_values(
+      add(product, array({1.0f, 2.0f}, float32), stream),
+      {59.0f, 66.0f, 140.0f, 156.0f, 221.0f, 246.0f, 302.0f, 336.0f},
+      stream);
+  check_values(
+      addmm(array({1.0f, 2.0f}, float32), a, b, 2.0f, 0.5f, stream),
+      {116.5f, 129.0f, 278.5f, 309.0f, 440.5f, 489.0f, 602.5f, 669.0f},
+      stream);
+}
+
+TEST_CASE("Matmul handles tiled edges, offsets, and empty K") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  constexpr size_t m = 17;
+  constexpr size_t k = 18;
+  constexpr size_t n = 19;
+  std::vector<float> a_values(m * k);
+  std::vector<float> b_values(k * n);
+  std::vector<float> expected(m * n, 0.0f);
+  for (size_t index = 0; index < a_values.size(); ++index) {
+    a_values[index] = static_cast<float>(static_cast<int>(index % 7) - 3);
+  }
+  for (size_t index = 0; index < b_values.size(); ++index) {
+    b_values[index] = static_cast<float>(static_cast<int>(index % 5) - 2);
+  }
+  for (size_t row = 0; row < m; ++row) {
+    for (size_t column = 0; column < n; ++column) {
+      for (size_t inner = 0; inner < k; ++inner) {
+        expected[row * n + column] +=
+            a_values[row * k + inner] * b_values[inner * n + column];
+      }
+    }
+  }
+  check_values(
+      matmul(
+          array(a_values.begin(), Shape{m, k}, float32),
+          array(b_values.begin(), Shape{k, n}, float32),
+          stream),
+      expected,
+      stream);
+
+  array a_base(
+      {99.0f, 99.0f, 99.0f, 1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f},
+      {3, 3},
+      float32);
+  array b_base(
+      {99.0f, 99.0f, 7.0f, 8.0f, 9.0f, 10.0f, 11.0f, 12.0f},
+      {4, 2},
+      float32);
+  array a_offset = slice(a_base, {1, 0}, {3, 3}, {1, 1}, stream);
+  array b_offset = slice(b_base, {1, 0}, {4, 2}, {1, 1}, stream);
+  check_values(
+      matmul(a_offset, b_offset, stream),
+      {58.0f, 64.0f, 139.0f, 154.0f},
+      stream);
+
+  std::vector<float> empty;
+  array empty_a(empty.begin(), Shape{2, 0}, float32);
+  array empty_b(empty.begin(), Shape{0, 3}, float32);
+  check_values(
+      matmul(empty_a, empty_b, stream),
+      {0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f},
+      stream);
+  check_values(
+      addmm(
+          array({1.0f, 2.0f, 3.0f}, float32),
+          empty_a,
+          empty_b,
+          1.0f,
+          2.0f,
+          stream),
+      {2.0f, 4.0f, 6.0f, 2.0f, 4.0f, 6.0f},
+      stream);
+}
+
 TEST_CASE("unsupported compute shapes and dtypes fail without CPU fallback") {
   if (!compute_available()) {
     return;
