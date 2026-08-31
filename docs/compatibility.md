@@ -42,7 +42,8 @@ It also covers dense Matmul and AddMM with tiled kernels, transposed inputs, and
 Transposed-input Matmul now passes the gate for 2D views of either operand.
 Subtract, Negative, non-zero scalar fill, and same-dtype general strided copy pass the gate.
 Dtype-converting strided copy, rank greater than 4, and negative strides stay unsupported with named errors.
-The pinned upstream matrix and M1 receipt remain open.
+The [M1 development gate receipt](../receipts/2026-08-31-m1-development-gates.md) records 17/17 primitive cases on Honeykrisp.
+The pinned upstream matrix remains open.
 
 Dtype work is in progress.
 FP16 and FP32 casts pass the development gate.
@@ -69,12 +70,12 @@ See the [v0.1.0 M1 runtime receipt](https://github.com/joshuaswarren/mlx-omarchy
 
 Explicit exclusions are in progress.
 Named errors now cover unsupported linear algebra, `float64`, and complex dtypes in the development gate.
-The M1 receipt remains open.
+The M1 development gate receipt covers these named errors on Honeykrisp.
 
 Package work is in progress.
 `scripts/build-wheel.sh` builds a `mlx-omarchy` wheel that provides the `mlx` module.
 `tools/ci/run-clean-omarchy-install.sh` verifies a fresh-venv install with add, matmul, and gradient receipts.
-The M1 clean-install receipt remains open.
+The M1 clean-install receipt is recorded: aarch64 wheel installs in a fresh venv and passes add, matmul, and gradient checks on `Apple M1 (G13G B1)`.
 
 ## ANE
 
@@ -99,6 +100,7 @@ The Linux host gate parses `manifest_version: 1` bundles.
 It verifies graph identity, tensor geometry, tile-aligned strides, compiler and firmware identity, and payload sha256 before any mapping.
 A missing bundle directory is the keep-on-Vulkan outcome.
 See `docs/ane-bundles.md`.
+The bundle validation gate also passes on the M1 (12/12 aarch64).
 The macOS export proof and M1 execution of a validated bundle remain open.
 
 MLX graph partitioning has not started.
