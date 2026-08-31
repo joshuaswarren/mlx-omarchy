@@ -10,6 +10,7 @@
 #include <string>
 
 #include "mlx/backend/common/binary.h"
+#include "mlx/backend/common/slicing.h"
 #include "mlx/backend/common/unary.h"
 #include "mlx/backend/omarchy/allocator.h"
 #include "mlx/backend/omarchy/compute.h"
@@ -17,6 +18,7 @@
 #include "mlx/backend/omarchy/encoder.h"
 #include "mlx/distributed/primitives.h"
 #include "mlx/fast_primitives.h"
+#include "mlx/backend/gpu/copy.h"
 #include "mlx/primitives.h"
 
 #define OMARCHY_UNSUPPORTED(func)                                     \
@@ -277,11 +279,14 @@ void dispatch_elementwise(
     omarchy::unsupported("non-contiguous " + name, out);
   }
 
+  // Scalar, suffix-aligned, and full-overlap operands keep the cheap
+  // modulo indexing in the shader; anything else needs shape-aware
+  // stride indexing.
+  bool general_broadcast = binary &&
+      (!is_trailing_broadcast(lhs, out) || !is_trailing_broadcast(rhs, out));
+
   if (binary) {
     auto binary_type = get_binary_op_type(lhs, rhs);
-    if (!is_trailing_broadcast(lhs, out) || !is_trailing_broadcast(rhs, out)) {
-      omarchy::unsupported("broadcast " + name, out);
-    }
     set_binary_op_output_data(
         lhs, rhs, out, binary_type, allocate_omarchy);
   } else {
@@ -302,6 +307,38 @@ void dispatch_elementwise(
   params.lhs_offset = checked_item_offset(lhs, params.lhs_size, name, out);
   params.rhs_offset = checked_item_offset(rhs, params.rhs_size, name, out);
   params.output_offset = checked_item_offset(out, count, name, out);
+  if (general_broadcast) {
+    if (lhs.shape() != out.shape() || rhs.shape() != out.shape()) {
+      omarchy::unsupported("broadcast " + name, out);
+    }
+    // Broadcast views keep the output shape with stride-0 axes, so the
+    // view strides index the source directly. in_strides/out_strides
+    // carry the lhs/rhs strides here; collapse_contiguous_dims merges
+    // the linear runs, and a stride of 0 breaks every merge around a
+    // broadcast axis.
+    auto [collapsed_shape, collapsed_strides] = collapse_contiguous_dims(
+        out.shape(), std::vector<Strides>{lhs.strides(), rhs.strides()});
+    if (collapsed_shape.size() > 4) {
+      omarchy::unsupported("broadcast rank " + name, out);
+    }
+    params.dims = static_cast<uint32_t>(collapsed_shape.size());
+    uint64_t lhs_span = 0;
+    uint64_t rhs_span = 0;
+    for (size_t axis = 0; axis < collapsed_shape.size(); ++axis) {
+      params.shape[axis] = static_cast<uint32_t>(collapsed_shape[axis]);
+      params.in_strides[axis] =
+          static_cast<uint32_t>(collapsed_strides[0][axis]);
+      params.out_strides[axis] =
+          static_cast<uint32_t>(collapsed_strides[1][axis]);
+      uint64_t extent = params.shape[axis] - 1u;
+      lhs_span += extent * params.in_strides[axis];
+      rhs_span += extent * params.out_strides[axis];
+    }
+    if (!omarchy::compute_index_span_fits(params.lhs_offset, lhs_span + 1) ||
+        !omarchy::compute_index_span_fits(params.rhs_offset, rhs_span + 1)) {
+      omarchy::unsupported(name + " index span", out);
+    }
+  }
   std::array<omarchy::ComputeBinding, 3> bindings{
       binding(lhs), binding(rhs), binding(out)};
   auto kernel = select_float_kernel(
@@ -559,7 +596,44 @@ void Softmax::eval_gpu(const std::vector<array>& inputs, array& out) {
       params,
       std::min(output_size, omarchy::kMaxComputeGroupCountX));
 }
-OMARCHY_UNSUPPORTED(SliceUpdate)
+void SliceUpdate::eval_gpu(const std::vector<array>& inputs, array& out) {
+  if (out.size() == 0) {
+    return;
+  }
+
+  const auto& in = inputs[0];
+  const auto& upd = inputs[1];
+
+  if (upd.size() == 0) {
+    out.copy_shared_buffer(in);
+    return;
+  }
+
+  // Only the None reduce mode is a plain paste; every other mode needs
+  // read-modify-write shaders.
+  if (reduce_type_ != SliceUpdate::None) {
+    omarchy::unsupported("SliceUpdate reduce", out);
+  }
+
+  auto ctype = in.flags().contiguous && in.size() == in.data_size()
+      ? CopyType::Vector
+      : CopyType::General;
+  copy_gpu(in, out, in.data_size() == 1 ? CopyType::Scalar : ctype, stream());
+
+  auto [data_offset, out_strides] =
+      prepare_slice(out, start_indices_, strides_);
+
+  copy_gpu_inplace(
+      upd,
+      out,
+      upd.shape(),
+      upd.strides(),
+      out_strides,
+      /* i_offset = */ 0,
+      /* o_offset = */ data_offset,
+      CopyType::GeneralGeneral,
+      stream());
+}
 OMARCHY_UNSUPPORTED(Sort)
 OMARCHY_UNARY(Square, SquareOperation)
 void Sqrt::eval_gpu(const std::vector<array>& inputs, array& out) {

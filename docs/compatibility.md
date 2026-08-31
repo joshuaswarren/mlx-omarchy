@@ -41,6 +41,8 @@ The development gate covers FP32 and FP16 elementwise work, suffix Sum and Max, 
 It also covers dense Matmul and AddMM with tiled kernels, transposed inputs, and trailing-dimension bias broadcast.
 Transposed-input Matmul now passes the gate for 2D views of either operand.
 Subtract, Negative, non-zero scalar fill, and same-dtype general strided copy pass the gate.
+Elementwise binary ops broadcast operands on any axis up to a collapsed rank of 4.
+Trailing broadcasts keep the modulo fast path, and a higher collapsed rank fails with the named `broadcast rank` error.
 Suffix Softmax passes the gate for FP32, FP16, and BF16.
 The Softmax kernel subtracts the row max and accumulates in float32.
 Large logits stay finite, and both precise modes produce the same values.
@@ -49,11 +51,18 @@ Non-contiguous inputs fail with the named layout error.
 Out-of-range and negative indices write zero rows.
 Upstream negative-index wrapping is not provided.
 Other ranks, layouts, and index dtypes fail with named errors.
-Softmax gradient coverage stays open.
-Its vjp multiplies by a keepdims sum, and that inner-axis broadcast has no kernel yet.
+The softmax gradient passes the gate.
+`value_and_grad` of sum(softmax(x) * x) matches a host reference within 1e-4 through the keepdims-sum broadcast views.
 Dtype-converting strided copy, rank greater than 4, and negative strides stay unsupported with named errors.
 The [M1 development gate receipt](../receipts/2026-08-31-m1-development-gates.md) records 20/20 primitive cases on Honeykrisp.
 The pinned upstream matrix remains open.
+`mx.concatenate` and `mx.slice_update` pass the development gate through the shared strided-copy engine.
+Concatenate copies each input into an output window.
+Row-contiguous axis-0 inputs use a plain buffer copy; other layouts use the general strided-copy kernel.
+`mx.slice_update` supports the None reduce mode.
+It copies the source first, then pastes the update into the strided window.
+Other reduce modes fail with the named `SliceUpdate reduce` error.
+The `omarchy_kv_ops_tests` binary covers exact-value 2D and 3D concatenates, fp16, and KV-cache growth.
 
 Dtype work is in progress.
 FP16 and FP32 casts pass the development gate.
