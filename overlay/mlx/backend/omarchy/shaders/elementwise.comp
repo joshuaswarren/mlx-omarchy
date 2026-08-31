@@ -36,8 +36,12 @@ void main() {
   uint index = gl_GlobalInvocationID.x;
   uint stride = gl_NumWorkGroups.x * gl_WorkGroupSize.x;
   while (index < params.count) {
-    uint lhs_index = params.lhs_offset + (params.lhs_size == 1 ? 0 : index);
-    uint rhs_index = params.rhs_offset + (params.rhs_size == 1 ? 0 : index);
+    uint lhs_index = params.lhs_offset + (params.lhs_size == 1
+        ? 0
+        : (params.lhs_size == params.count ? index : index % params.lhs_size));
+    uint rhs_index = params.rhs_offset + (params.rhs_size == 1
+        ? 0
+        : (params.rhs_size == params.count ? index : index % params.rhs_size));
     float lhs = float(input_a.values[lhs_index]);
     float rhs = float(input_b.values[rhs_index]);
     float value;

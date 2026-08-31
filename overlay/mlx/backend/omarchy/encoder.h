@@ -7,6 +7,7 @@
 
 #include <functional>
 #include <memory>
+#include <span>
 #include <unordered_map>
 #include <utility>
 #include <vector>
@@ -59,12 +60,14 @@ class CommandEncoder {
       VkDeviceSize src_offset = 0,
       VkDeviceSize dst_offset = 0);
 
-  // Record one compute dispatch with three storage-buffer bindings.
+  // Record one compute dispatch with up to four storage-buffer bindings.
   void dispatch_compute(
       ComputeKernel kernel,
-      const std::array<ComputeBinding, 3>& bindings,
+      std::span<const ComputeBinding> bindings,
       const ComputeParams& params,
-      uint32_t group_count);
+      uint32_t group_count_x,
+      uint32_t group_count_y = 1,
+      uint32_t group_count_z = 1);
 
   // Record a four-byte-word fill. Size and offset must be multiples of 4.
   void fill_buffer(

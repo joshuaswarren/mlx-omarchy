@@ -38,6 +38,7 @@ See the [v0.2.0 M1 kernel receipt](https://github.com/joshuaswarren/mlx-omarchy/
 
 Primitive operations are in progress.
 The development gate covers FP32 and FP16 elementwise work, suffix Sum and Max, offsets, and grid-stride dispatch.
+It also covers dense Matmul and AddMM with tiled kernels, transposed inputs, and trailing-dimension bias broadcast.
 The pinned upstream matrix and M1 receipt remain open.
 
 Dtype work is in progress.

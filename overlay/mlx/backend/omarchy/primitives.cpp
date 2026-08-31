@@ -100,6 +100,138 @@ omarchy::ComputeBinding binding(const array& value) {
   return {buffer->buffer, 0, buffer->size};
 }
 
+bool is_trailing_broadcast(const array& input, const array& out) {
+  if (input.data_size() == 1) {
+    return true;
+  }
+  if (input.ndim() == out.ndim() && input.shape() == out.shape()) {
+    size_t expected_stride = 1;
+    int axis = input.ndim() - 1;
+    for (; axis >= 0 && input.strides()[axis] != 0; --axis) {
+      if (input.strides()[axis] != expected_stride) {
+        return false;
+      }
+      expected_stride *= input.shape(axis);
+    }
+    for (; axis >= 0; --axis) {
+      if (input.strides()[axis] != 0) {
+        return false;
+      }
+    }
+    return expected_stride == input.data_size();
+  }
+  if (!input.flags().row_contiguous) {
+    return false;
+  }
+  int first_axis = 0;
+  while (first_axis < input.ndim() && input.shape(first_axis) == 1) {
+    first_axis++;
+  }
+  int rank = input.ndim() - first_axis;
+  if (rank > out.ndim()) {
+    return false;
+  }
+  for (int axis = 0; axis < rank; ++axis) {
+    if (input.shape(first_axis + axis) != out.shape(out.ndim() - rank + axis)) {
+      return false;
+    }
+  }
+  return true;
+}
+
+uint32_t matrix_group_count(uint32_t dimension) {
+  constexpr uint32_t tile_size = 16;
+  uint32_t groups = dimension / tile_size + (dimension % tile_size != 0);
+  return std::min(groups, omarchy::kMaxComputeGroupCountX);
+}
+
+void dispatch_matmul(
+    const std::string& name,
+    const std::vector<array>& inputs,
+    array& out,
+    float alpha,
+    float beta,
+    bool use_c) {
+  const array& a = inputs.at(0);
+  const array& b = inputs.at(1);
+  const array& c = use_c ? inputs.at(2) : out;
+  auto& encoder = omarchy::get_command_encoder(out.primitive().stream());
+  require_float_dtype(name, a, out, encoder);
+  require_float_dtype(name, b, out, encoder);
+  if (use_c) {
+    require_float_dtype(name, c, out, encoder);
+  }
+
+  if (a.ndim() < 2 || b.ndim() != 2 || !a.flags().row_contiguous) {
+    omarchy::unsupported("matrix layout " + name, out);
+  }
+  size_t k = a.shape(-1);
+  size_t n = b.shape(-1);
+  if (b.shape(-2) != k) {
+    omarchy::unsupported("matrix dimensions " + name, out);
+  }
+  bool b_transposed =
+      b.strides()[0] == 1 && b.strides()[1] == b.shape(-2);
+  bool b_row_contiguous =
+      b.strides()[0] == b.shape(-1) && b.strides()[1] == 1;
+  if (!b_transposed && !b_row_contiguous) {
+    omarchy::unsupported("matrix layout " + name, out);
+  }
+  if (use_c && !is_trailing_broadcast(c, out)) {
+    omarchy::unsupported("broadcast " + name, out);
+  }
+
+  out.set_data(allocate_omarchy(out.nbytes()));
+  if (out.size() == 0) {
+    return;
+  }
+  if (n == 0 || out.size() % n != 0) {
+    omarchy::unsupported("matrix dimensions " + name, out);
+  }
+  size_t m = out.size() / n;
+  if ((k != 0 && a.size() != m * k) || b.size() != k * n) {
+    omarchy::unsupported("matrix dimensions " + name, out);
+  }
+
+  uint32_t output_size = checked_u32(out.size(), name, out);
+  omarchy::ComputeParams params;
+  params.count = output_size;
+  params.lhs_size = checked_u32(a.size(), name, out);
+  params.rhs_size = checked_u32(b.size(), name, out);
+  params.reduce_size = checked_u32(k, name, out);
+  params.output_size = output_size;
+  params.aux_size = use_c ? checked_u32(c.data_size(), name, out) : 0;
+  params.matrix_m = checked_u32(m, name, out);
+  params.matrix_n = checked_u32(n, name, out);
+  params.matrix_k = params.reduce_size;
+  params.flags = (b_transposed ? 1u : 0u) | (use_c ? 2u : 0u);
+  params.alpha = alpha;
+  params.beta = beta;
+
+  const array& bound_a = a.size() == 0 ? out : a;
+  const array& bound_b = b.size() == 0 ? out : b;
+  const array& bound_c = use_c ? c : out;
+  params.lhs_offset = checked_item_offset(
+      bound_a, bound_a.size(), name, out);
+  params.rhs_offset = checked_item_offset(
+      bound_b, bound_b.size(), name, out);
+  params.aux_offset = checked_item_offset(
+      bound_c, use_c ? params.aux_size : out.size(), name, out);
+  params.output_offset = checked_item_offset(out, out.size(), name, out);
+
+  std::array<omarchy::ComputeBinding, 4> bindings{
+      binding(bound_a), binding(bound_b), binding(bound_c), binding(out)};
+  auto kernel = out.dtype() == float16
+      ? omarchy::ComputeKernel::MatmulF16
+      : omarchy::ComputeKernel::MatmulF32;
+  encoder.dispatch_compute(
+      kernel,
+      bindings,
+      params,
+      matrix_group_count(params.matrix_n),
+      matrix_group_count(params.matrix_m));
+}
+
 void dispatch_elementwise(
     const std::string& name,
     uint32_t operation,
@@ -118,12 +250,7 @@ void dispatch_elementwise(
 
   if (binary) {
     auto binary_type = get_binary_op_type(lhs, rhs);
-    bool lhs_scalar = lhs.data_size() == 1;
-    bool rhs_scalar = rhs.data_size() == 1;
-    bool flat_shape =
-        (lhs_scalar || lhs.size() == out.size()) &&
-        (rhs_scalar || rhs.size() == out.size());
-    if (binary_type == BinaryOpType::General || !flat_shape) {
+    if (!is_trailing_broadcast(lhs, out) || !is_trailing_broadcast(rhs, out)) {
       omarchy::unsupported("broadcast " + name, out);
     }
     set_binary_op_output_data(
@@ -143,10 +270,8 @@ void dispatch_elementwise(
   params.lhs_size = checked_u32(lhs.data_size(), name, out);
   params.rhs_size = checked_u32(rhs.data_size(), name, out);
   params.output_size = count;
-  params.lhs_offset = checked_item_offset(
-      lhs, params.lhs_size == 1 ? 1 : count, name, out);
-  params.rhs_offset = checked_item_offset(
-      rhs, params.rhs_size == 1 ? 1 : count, name, out);
+  params.lhs_offset = checked_item_offset(lhs, params.lhs_size, name, out);
+  params.rhs_offset = checked_item_offset(rhs, params.rhs_size, name, out);
   params.output_offset = checked_item_offset(out, count, name, out);
   std::array<omarchy::ComputeBinding, 3> bindings{
       binding(lhs), binding(rhs), binding(out)};
@@ -171,7 +296,10 @@ void dispatch_elementwise(
 
 OMARCHY_UNSUPPORTED(Abs)
 OMARCHY_BINARY(Add, AddOperation)
-OMARCHY_UNSUPPORTED(AddMM)
+void AddMM::eval_gpu(const std::vector<array>& inputs, array& out) {
+  auto [alpha, beta] = state();
+  dispatch_matmul(name(), inputs, out, alpha, beta, true);
+}
 OMARCHY_UNSUPPORTED(Arange)
 OMARCHY_UNSUPPORTED(ArcCos)
 OMARCHY_UNSUPPORTED(ArcCosh)
@@ -223,7 +351,9 @@ OMARCHY_UNSUPPORTED(LogicalOr)
 OMARCHY_UNSUPPORTED(LogAddExp)
 OMARCHY_UNSUPPORTED(LogSumExp)
 OMARCHY_UNSUPPORTED_MULTI(LUF)
-OMARCHY_UNSUPPORTED(Matmul)
+void Matmul::eval_gpu(const std::vector<array>& inputs, array& out) {
+  dispatch_matmul(name(), inputs, out, 1.0f, 0.0f, false);
+}
 OMARCHY_BINARY(Maximum, MaximumOperation)
 OMARCHY_UNSUPPORTED(MaskedScatter)
 OMARCHY_UNSUPPORTED(Minimum)

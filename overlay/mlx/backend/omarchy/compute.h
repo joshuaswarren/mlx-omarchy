@@ -15,6 +15,7 @@ namespace mlx::core::omarchy {
 
 inline constexpr uint32_t kComputeThreadsPerGroup = 256;
 inline constexpr uint32_t kMaxComputeGroupCountX = 65535;
+inline constexpr uint32_t kComputeBindingCount = 4;
 
 constexpr uint32_t compute_dispatch_group_count(uint32_t count) {
   if (count == 0) {
@@ -37,6 +38,8 @@ enum class ComputeKernel : uint8_t {
   CastF32F16,
   ReduceF32,
   ReduceF16,
+  MatmulF32,
+  MatmulF16,
   Count,
 };
 
@@ -56,6 +59,14 @@ struct ComputeParams {
   uint32_t lhs_offset{0};
   uint32_t rhs_offset{0};
   uint32_t output_offset{0};
+  uint32_t aux_size{0};
+  uint32_t aux_offset{0};
+  uint32_t matrix_m{0};
+  uint32_t matrix_n{0};
+  uint32_t matrix_k{0};
+  uint32_t flags{0};
+  float alpha{1.0f};
+  float beta{0.0f};
 };
 
 class ComputeRuntime {

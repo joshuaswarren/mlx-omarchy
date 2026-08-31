@@ -46,6 +46,8 @@ omarchy_shader(cast_f16_f32 shaders/cast.comp -DSOURCE_FP16=1)
 omarchy_shader(cast_f32_f16 shaders/cast.comp -DDEST_FP16=1)
 omarchy_shader(reduce_f32 shaders/reduce_suffix.comp)
 omarchy_shader(reduce_f16 shaders/reduce_suffix.comp -DUSE_FP16=1)
+omarchy_shader(matmul_f32 shaders/matmul.comp)
+omarchy_shader(matmul_f16 shaders/matmul.comp -DUSE_FP16=1)
 add_custom_target(omarchy_shaders DEPENDS ${OMARCHY_SHADER_HEADERS})
 add_dependencies(mlx omarchy_shaders)
 
