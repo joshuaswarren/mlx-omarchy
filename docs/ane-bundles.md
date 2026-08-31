@@ -103,6 +103,42 @@ payload mapping, and nothing here accesses a device.
 | Any field missing, wrong type, or out of contract | named manifest error |
 | Extra file, missing payload, size mismatch, hash mismatch | named bundle error |
 
+## Check a bundle
+
+`mlx-omarchy-info --check-bundle <dir>` validates one bundle directory and
+prints its parsed contract as `[receipt]` lines: graph name and hash, task
+descriptor count, every tensor, payload names and digests, and the compiler
+and firmware identity. The check runs `load_bundle` only. It opens no Vulkan
+device, so it works on any Linux host.
+
+Exit codes:
+
+| Code | Meaning |
+| --- | --- |
+| 0 | Bundle valid; contract printed. |
+| 1 | Invalid; the loader's named error is printed. |
+| 2 | Directory not found; the region stays on Vulkan. |
+
+```
+./.work/build/tools/mlx-omarchy-info/mlx-omarchy-info \
+  --check-bundle receipts/fixtures/mil-oneop-bundle
+```
+
+The reference example is `receipts/fixtures/mil-oneop-bundle/`, the real
+compiled one-op MIL add artifact from
+`receipts/2026-08-31-mil-oneop-proof.md` ([1, 512] fp16 add, input `t1`,
+output `t2`, const through `weights.bin`). Field derivations:
+
+- `graph_hash` is the sha256 of the MIL program `model.mil`; the payload
+  digests hash the shipped `model-512.anec` and `weights.bin`.
+- `task_descriptors` is 1, the converter's `td-count=1` for this graph.
+- The compiled task stream needs no scratch (`workspace=0x0` in the
+  conversion receipt), so the manifest records the one-tile submit-time
+  scratch: 0x4000 bytes.
+- The compiler identity and firmware range record the compile host:
+  macOS 26.6.2 (25G83), ANECompiler 9.509.0, coremlcompiler 3520.5.1.
+  On-device execution is not yet proven; see the proof receipt.
+
 ## Community submissions
 
 The macOS exporter will be a user-runnable tool (KTD6). A community bundle
