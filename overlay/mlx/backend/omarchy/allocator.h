@@ -92,7 +92,7 @@ class VulkanAllocator : public allocator::Allocator {
   std::vector<VulkanBuffer*> noncoherent_;
 };
 
-VulkanAllocator& allocator();
+MLX_API VulkanAllocator& allocator();
 
 // Round a request to the allocator page so cached buffers can be reused for
 // any smaller request.

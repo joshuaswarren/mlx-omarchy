@@ -11,6 +11,7 @@
 
 #include "mlx/backend/omarchy/device.h"
 #include "mlx/backend/omarchy/vulkan.h"
+#include "mlx/memory.h"
 
 namespace mlx::core {
 
@@ -61,6 +62,10 @@ VulkanAllocator::VulkanAllocator()
 }
 
 Buffer VulkanAllocator::malloc(size_t size) {
+  // The table is empty until the first device exists. A core flow can reach
+  // malloc before anything else touches the device, so initialize here; the
+  // table field would otherwise be read before the lazy init fills it.
+  device();
   auto& dt = vk::device_table();
   if (size == 0) {
     return Buffer{new VulkanBuffer{}};

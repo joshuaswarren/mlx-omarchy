@@ -204,19 +204,19 @@ class Device {
 // failure the reason is recorded and available through init_error().
 bool init();
 
-bool is_available();
-const std::string& init_error();
+MLX_API bool is_available();
+MLX_API const std::string& init_error();
 
 // Number of devices that pass the support policy.
 int device_count();
 
 // Access the live device for a supported index. Initializes on first use and
 // throws std::runtime_error with the discovery reason when unavailable.
-Device& device(uint32_t index = 0);
+MLX_API Device& device(uint32_t index = 0);
 
 // Capability facts for a supported index without creating a VkDevice.
 // Throws std::runtime_error when the index is out of range or discovery
 // failed.
-const CapabilityReport& capability_report(uint32_t index);
+MLX_API const CapabilityReport& capability_report(uint32_t index);
 
 } // namespace mlx::core::omarchy
