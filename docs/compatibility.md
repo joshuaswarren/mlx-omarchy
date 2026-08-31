@@ -39,6 +39,9 @@ See the [v0.2.0 M1 kernel receipt](https://github.com/joshuaswarren/mlx-omarchy/
 Primitive operations are in progress.
 The development gate covers FP32 and FP16 elementwise work, suffix Sum and Max, offsets, and grid-stride dispatch.
 It also covers dense Matmul and AddMM with tiled kernels, transposed inputs, and trailing-dimension bias broadcast.
+Transposed-input Matmul now passes the gate for 2D views of either operand.
+Subtract, Negative, non-zero scalar fill, and same-dtype general strided copy pass the gate.
+Dtype-converting strided copy, rank greater than 4, and negative strides stay unsupported with named errors.
 The pinned upstream matrix and M1 receipt remain open.
 
 Dtype work is in progress.
@@ -48,8 +51,9 @@ BF16 arrays store as 16-bit bit patterns.
 BF16 compute expands to float32 inside the shader.
 Low-bit formats remain open.
 
-Transform work has not started.
-The proof requires `grad`, `vjp`, `jvp`, and `vmap` tests for supported operations.
+Transform work is in progress.
+`grad` and `vjp` pass the development gate for supported operations.
+`jvp` and `vmap` remain open.
 
 Compilation work has not started.
 The proof covers `mx.compile`, pre-fusion ANE partitioning, and cache tests.

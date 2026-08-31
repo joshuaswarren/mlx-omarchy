@@ -47,6 +47,12 @@ enum class ComputeKernel : uint8_t {
   MatmulF32,
   MatmulF16,
   MatmulBF16,
+  FillF32,
+  FillF16,
+  FillBF16,
+  CopyGeneralF32,
+  CopyGeneralF16,
+  CopyGeneralBF16,
   Count,
 };
 
@@ -74,6 +80,10 @@ struct ComputeParams {
   uint32_t flags{0};
   float alpha{1.0f};
   float beta{0.0f};
+  uint32_t dims{0};
+  uint32_t shape[4]{};
+  uint32_t in_strides[4]{};
+  uint32_t out_strides[4]{};
 };
 
 class ComputeRuntime {

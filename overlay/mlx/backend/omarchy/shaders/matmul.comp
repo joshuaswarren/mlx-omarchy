@@ -86,10 +86,12 @@ void main() {
       for (uint tile = 0; tile < k_tiles; ++tile) {
         uint a_column = tile * TILE_SIZE + local_x;
         uint b_row = tile * TILE_SIZE + local_y;
+        uint a_index = (params.flags & 4u) != 0u
+            ? params.lhs_offset + a_column * params.matrix_m + row
+            : params.lhs_offset + row * params.matrix_k + a_column;
         tile_a[local_y][local_x] = row < params.matrix_m &&
                 a_column < params.matrix_k
-            ? LOAD_VALUE(input_a.values[
-                  params.lhs_offset + row * params.matrix_k + a_column])
+            ? LOAD_VALUE(input_a.values[a_index])
             : 0.0;
         uint b_index = (params.flags & 1u) != 0u
             ? params.rhs_offset + column * params.matrix_k + b_row

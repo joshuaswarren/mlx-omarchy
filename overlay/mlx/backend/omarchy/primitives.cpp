@@ -40,6 +40,7 @@ namespace mlx::core {
 
 namespace {
 
+// Keep in lockstep with the switch in shaders/elementwise.comp.
 enum ElementwiseOperation : uint32_t {
   AddOperation,
   MultiplyOperation,
@@ -50,6 +51,8 @@ enum ElementwiseOperation : uint32_t {
   SquareOperation,
   SqrtOperation,
   RsqrtOperation,
+  SubtractOperation,
+  NegativeOperation,
 };
 
 allocator::Buffer allocate_omarchy(size_t size) {
@@ -183,7 +186,10 @@ void dispatch_matmul(
     require_float_dtype(name, c, out, encoder);
   }
 
-  if (a.ndim() < 2 || b.ndim() != 2 || !a.flags().row_contiguous) {
+  bool a_transposed =
+      a.ndim() == 2 && a.strides()[0] == 1 && a.strides()[1] == a.shape(0);
+  if (a.ndim() < 2 || b.ndim() != 2 ||
+      (!a.flags().row_contiguous && !a_transposed)) {
     omarchy::unsupported("matrix layout " + name, out);
   }
   size_t k = a.shape(-1);
@@ -225,10 +231,10 @@ void dispatch_matmul(
   params.matrix_m = checked_u32(m, name, out);
   params.matrix_n = checked_u32(n, name, out);
   params.matrix_k = params.reduce_size;
-  params.flags = (b_transposed ? 1u : 0u) | (use_c ? 2u : 0u);
   params.alpha = alpha;
   params.beta = beta;
-
+  params.flags =
+      (b_transposed ? 1u : 0u) | (use_c ? 2u : 0u) | (a_transposed ? 4u : 0u);
   const array& bound_a = a.size() == 0 ? out : a;
   const array& bound_b = b.size() == 0 ? out : b;
   const array& bound_c = use_c ? c : out;
@@ -383,7 +389,7 @@ OMARCHY_BINARY(Maximum, MaximumOperation)
 OMARCHY_UNSUPPORTED(MaskedScatter)
 OMARCHY_UNSUPPORTED(Minimum)
 OMARCHY_BINARY(Multiply, MultiplyOperation)
-OMARCHY_UNSUPPORTED(Negative)
+OMARCHY_UNARY(Negative, NegativeOperation)
 OMARCHY_UNSUPPORTED(NotEqual)
 OMARCHY_UNSUPPORTED(Partition)
 OMARCHY_UNSUPPORTED(Power)
@@ -471,7 +477,7 @@ void Sqrt::eval_gpu(const std::vector<array>& inputs, array& out) {
   dispatch_elementwise(
       name(), state() ? RsqrtOperation : SqrtOperation, inputs, out);
 }
-OMARCHY_UNSUPPORTED(Subtract)
+OMARCHY_BINARY(Subtract, SubtractOperation)
 OMARCHY_UNSUPPORTED_MULTI(SVD)
 OMARCHY_UNSUPPORTED(Tan)
 OMARCHY_UNSUPPORTED(Tanh)
