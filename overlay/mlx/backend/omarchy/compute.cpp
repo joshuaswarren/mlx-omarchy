@@ -8,12 +8,19 @@
 
 #include "mlx/backend/omarchy/vulkan.h"
 
+#include "cast_bf16_f16.h"
+#include "cast_bf16_f32.h"
 #include "cast_f16_f32.h"
+#include "cast_f16_bf16.h"
+#include "cast_f32_bf16.h"
 #include "cast_f32_f16.h"
+#include "elementwise_bf16.h"
 #include "elementwise_f16.h"
 #include "elementwise_f32.h"
+#include "matmul_bf16.h"
 #include "matmul_f16.h"
 #include "matmul_f32.h"
+#include "reduce_bf16.h"
 #include "reduce_f16.h"
 #include "reduce_f32.h"
 
@@ -30,18 +37,32 @@ ShaderBytes shader_bytes(ComputeKernel kernel) {
       return {elementwise_f32, elementwise_f32_size};
     case ComputeKernel::ElementwiseF16:
       return {elementwise_f16, elementwise_f16_size};
+    case ComputeKernel::ElementwiseBF16:
+      return {elementwise_bf16, elementwise_bf16_size};
     case ComputeKernel::CastF16F32:
       return {cast_f16_f32, cast_f16_f32_size};
     case ComputeKernel::CastF32F16:
       return {cast_f32_f16, cast_f32_f16_size};
+    case ComputeKernel::CastBF16F32:
+      return {cast_bf16_f32, cast_bf16_f32_size};
+    case ComputeKernel::CastF32BF16:
+      return {cast_f32_bf16, cast_f32_bf16_size};
+    case ComputeKernel::CastBF16F16:
+      return {cast_bf16_f16, cast_bf16_f16_size};
+    case ComputeKernel::CastF16BF16:
+      return {cast_f16_bf16, cast_f16_bf16_size};
     case ComputeKernel::ReduceF32:
       return {reduce_f32, reduce_f32_size};
     case ComputeKernel::ReduceF16:
       return {reduce_f16, reduce_f16_size};
+    case ComputeKernel::ReduceBF16:
+      return {reduce_bf16, reduce_bf16_size};
     case ComputeKernel::MatmulF32:
       return {matmul_f32, matmul_f32_size};
     case ComputeKernel::MatmulF16:
       return {matmul_f16, matmul_f16_size};
+    case ComputeKernel::MatmulBF16:
+      return {matmul_bf16, matmul_bf16_size};
     case ComputeKernel::Count:
       break;
   }

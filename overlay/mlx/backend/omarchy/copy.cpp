@@ -150,14 +150,28 @@ void copy_gpu_inplace(
       kernel = omarchy::ComputeKernel::CastF16F32;
     } else if (in.dtype() == float32 && out.dtype() == float16) {
       kernel = omarchy::ComputeKernel::CastF32F16;
+    } else if (in.dtype() == bfloat16 && out.dtype() == float32) {
+      kernel = omarchy::ComputeKernel::CastBF16F32;
+    } else if (in.dtype() == float32 && out.dtype() == bfloat16) {
+      kernel = omarchy::ComputeKernel::CastF32BF16;
+    } else if (in.dtype() == bfloat16 && out.dtype() == float16) {
+      kernel = omarchy::ComputeKernel::CastBF16F16;
+    } else if (in.dtype() == float16 && out.dtype() == bfloat16) {
+      kernel = omarchy::ComputeKernel::CastF16BF16;
     } else {
       omarchy::unsupported("dtype converting copy", out);
     }
 
     const auto& capabilities = encoder.device().capabilities();
-    if (!capabilities.shader_float16 ||
-        !capabilities.storage_buffer_16bit_access) {
+    if ((in.dtype() == float16 || out.dtype() == float16) &&
+        (!capabilities.shader_float16 ||
+         !capabilities.storage_buffer_16bit_access)) {
       omarchy::unsupported("dtype converting copy float16 capability", out);
+    }
+    if ((in.dtype() == bfloat16 || out.dtype() == bfloat16) &&
+        (!capabilities.storage_buffer_16bit_access ||
+         !capabilities.shader_int16)) {
+      omarchy::unsupported("dtype converting copy bfloat16 capability", out);
     }
 
     uint32_t count = checked_u32(out.data_size(), out);

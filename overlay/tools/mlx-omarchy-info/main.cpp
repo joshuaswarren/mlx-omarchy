@@ -121,6 +121,7 @@ void print_json(uint32_t index) {
   num_field("host_visible_coherent", caps.host_visible_coherent ? 1 : 0, true);
   num_field("timeline_semaphore", caps.timeline_semaphore ? 1 : 0, true);
   num_field("shader_float16", caps.shader_float16 ? 1 : 0, true);
+  num_field("shader_int16", caps.shader_int16 ? 1 : 0, true);
   num_field(
       "storage_buffer_16bit_access",
       caps.storage_buffer_16bit_access ? 1 : 0,
@@ -160,6 +161,8 @@ void print_text(uint32_t index) {
   std::cout << "  timeline semaphore:"
             << (caps.timeline_semaphore ? "yes" : "no") << "\n";
   std::cout << "  shader float16:    " << (caps.shader_float16 ? "yes" : "no")
+            << "\n";
+  std::cout << "  shader int16:      " << (caps.shader_int16 ? "yes" : "no")
             << "\n";
   std::cout << "  16-bit storage:    "
             << (caps.storage_buffer_16bit_access ? "yes" : "no") << "\n";

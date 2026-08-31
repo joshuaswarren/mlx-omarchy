@@ -68,15 +68,36 @@ void require_float_dtype(
     const array& input,
     const array& out,
     omarchy::CommandEncoder& encoder) {
-  if ((input.dtype() != float16 && input.dtype() != float32) ||
+  if ((input.dtype() != float16 && input.dtype() != float32 &&
+       input.dtype() != bfloat16) ||
       input.dtype() != out.dtype()) {
     omarchy::unsupported(name + " dtype", out);
   }
+  const auto& capabilities = encoder.device().capabilities();
   if (input.dtype() == float16 &&
-      (!encoder.device().capabilities().shader_float16 ||
-       !encoder.device().capabilities().storage_buffer_16bit_access)) {
+      (!capabilities.shader_float16 ||
+       !capabilities.storage_buffer_16bit_access)) {
     omarchy::unsupported(name + " float16 capability", out);
   }
+  if (input.dtype() == bfloat16 &&
+      (!capabilities.storage_buffer_16bit_access ||
+       !capabilities.shader_int16)) {
+    omarchy::unsupported(name + " bfloat16 capability", out);
+  }
+}
+
+omarchy::ComputeKernel select_float_kernel(
+    Dtype dtype,
+    omarchy::ComputeKernel f32_kernel,
+    omarchy::ComputeKernel f16_kernel,
+    omarchy::ComputeKernel bf16_kernel) {
+  if (dtype == float16) {
+    return f16_kernel;
+  }
+  if (dtype == bfloat16) {
+    return bf16_kernel;
+  }
+  return f32_kernel;
 }
 
 uint32_t checked_item_offset(
@@ -221,9 +242,11 @@ void dispatch_matmul(
 
   std::array<omarchy::ComputeBinding, 4> bindings{
       binding(bound_a), binding(bound_b), binding(bound_c), binding(out)};
-  auto kernel = out.dtype() == float16
-      ? omarchy::ComputeKernel::MatmulF16
-      : omarchy::ComputeKernel::MatmulF32;
+  auto kernel = select_float_kernel(
+      out.dtype(),
+      omarchy::ComputeKernel::MatmulF32,
+      omarchy::ComputeKernel::MatmulF16,
+      omarchy::ComputeKernel::MatmulBF16);
   encoder.dispatch_compute(
       kernel,
       bindings,
@@ -275,9 +298,11 @@ void dispatch_elementwise(
   params.output_offset = checked_item_offset(out, count, name, out);
   std::array<omarchy::ComputeBinding, 3> bindings{
       binding(lhs), binding(rhs), binding(out)};
-  auto kernel = out.dtype() == float16
-      ? omarchy::ComputeKernel::ElementwiseF16
-      : omarchy::ComputeKernel::ElementwiseF32;
+  auto kernel = select_float_kernel(
+      out.dtype(),
+      omarchy::ComputeKernel::ElementwiseF32,
+      omarchy::ComputeKernel::ElementwiseF16,
+      omarchy::ComputeKernel::ElementwiseBF16);
   encoder.dispatch_compute(
       kernel, bindings, params, omarchy::compute_dispatch_group_count(count));
 }
@@ -414,9 +439,11 @@ void Reduce::eval_gpu(const std::vector<array>& inputs, array& out) {
       out, out.size(), operation_name, out);
   std::array<omarchy::ComputeBinding, 3> bindings{
       binding(bound_input), binding(bound_input), binding(out)};
-  auto kernel = out.dtype() == float16
-      ? omarchy::ComputeKernel::ReduceF16
-      : omarchy::ComputeKernel::ReduceF32;
+  auto kernel = select_float_kernel(
+      out.dtype(),
+      omarchy::ComputeKernel::ReduceF32,
+      omarchy::ComputeKernel::ReduceF16,
+      omarchy::ComputeKernel::ReduceBF16);
   encoder.dispatch_compute(
       kernel,
       bindings,

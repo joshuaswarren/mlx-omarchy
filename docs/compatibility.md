@@ -43,7 +43,10 @@ The pinned upstream matrix and M1 receipt remain open.
 
 Dtype work is in progress.
 FP16 and FP32 casts pass the development gate.
-Emulated BF16 and supported low-bit formats remain open.
+Emulated BF16 passes the development gate.
+BF16 arrays store as 16-bit bit patterns.
+BF16 compute expands to float32 inside the shader.
+Low-bit formats remain open.
 
 Transform work has not started.
 The proof requires `grad`, `vjp`, `jvp`, and `vmap` tests for supported operations.

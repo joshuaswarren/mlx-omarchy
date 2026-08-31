@@ -4,8 +4,25 @@
 #extension GL_EXT_shader_16bit_storage : require
 #extension GL_EXT_shader_explicit_arithmetic_types_float16 : require
 #define STORAGE_TYPE float16_t
+#define LOAD_VALUE(x) float(x)
+#define STORE_VALUE(f) STORAGE_TYPE(f)
+#elif defined(USE_BF16)
+#extension GL_EXT_shader_16bit_storage : require
+#extension GL_EXT_shader_explicit_arithmetic_types_int16 : require
+#define STORAGE_TYPE uint16_t
+#define LOAD_VALUE(x) uintBitsToFloat(uint(x) << 16u)
+uint16_t bf16_store(float value) {
+  uint bits = floatBitsToUint(value);
+  if (isnan(value)) {
+    return uint16_t((bits >> 16) | 0x40u);
+  }
+  return uint16_t((bits + 0x7fffu + ((bits >> 16) & 1u)) >> 16);
+}
+#define STORE_VALUE(f) bf16_store(f)
 #else
 #define STORAGE_TYPE float
+#define LOAD_VALUE(x) float(x)
+#define STORE_VALUE(f) STORAGE_TYPE(f)
 #endif
 
 const uint TILE_SIZE = 16u;
@@ -71,7 +88,7 @@ void main() {
         uint b_row = tile * TILE_SIZE + local_y;
         tile_a[local_y][local_x] = row < params.matrix_m &&
                 a_column < params.matrix_k
-            ? float(input_a.values[
+            ? LOAD_VALUE(input_a.values[
                   params.lhs_offset + row * params.matrix_k + a_column])
             : 0.0;
         uint b_index = (params.flags & 1u) != 0u
@@ -79,7 +96,7 @@ void main() {
             : params.rhs_offset + b_row * params.matrix_n + column;
         tile_b[local_y][local_x] = b_row < params.matrix_k &&
                 column < params.matrix_n
-            ? float(input_b.values[b_index])
+            ? LOAD_VALUE(input_b.values[b_index])
             : 0.0;
         barrier();
 
@@ -96,11 +113,11 @@ void main() {
           uint c_index = params.aux_size == 1u
               ? 0u
               : output_index % params.aux_size;
-          value += params.beta * float(
+          value += params.beta * LOAD_VALUE(
               input_c.values[params.aux_offset + c_index]);
         }
         output_data.values[params.output_offset + output_index] =
-            STORAGE_TYPE(value);
+            STORE_VALUE(value);
       }
     }
   }

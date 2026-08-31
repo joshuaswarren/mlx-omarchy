@@ -74,6 +74,7 @@ struct CapabilityReport {
   bool unified_memory{false};
   bool timeline_semaphore{false};
   bool shader_float16{false};
+  bool shader_int16{false};
   bool storage_buffer_16bit_access{false};
   size_t total_memory{0};
   VkDeviceSize max_allocation_size{0};
