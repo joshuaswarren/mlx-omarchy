@@ -92,6 +92,7 @@ struct CapabilityReport {
 inline constexpr uint64_t kSubmitTimeoutNs = 10ull * 1000 * 1000 * 1000;
 
 class CommandEncoder;
+class ComputeRuntime;
 
 // Completion tracking for async submissions on the single Honeykrisp queue.
 // Every encoder submission signals one strictly increasing value on a
@@ -110,52 +111,30 @@ class CompletionDispatcher {
   VkSemaphore semaphore() const {
     return semaphore_;
   }
-  // One submission's completion payload. Released on the dispatcher thread
-  // exactly when the GPU work finishes.
+
   struct Completion {
     uint64_t value;
     std::vector<std::shared_ptr<void>> temporaries;
     std::vector<std::function<void()>> handlers;
   };
 
-  // Reserve the next completion value. Called with the queue mutex held so
-  // values increase in queue execution order (timeline signal values must
-  // be strictly increasing along the queue).
   uint64_t reserve();
-
-  // Publish a reserved submission's completion payload. Call after
-  // vkQueueSubmit returned, still with the queue mutex held: the dispatcher
-  // must never observe (and wait on) a value whose submission has not been
-  // enqueued to the driver yet.
   void enqueue(
       uint64_t value,
       std::vector<std::shared_ptr<void>> temporaries,
       std::vector<std::function<void()>> handlers);
-
-  // Bounded host wait for one submission's completion. Returns only after
-  // the dispatcher has run the handlers of every submission through |value|;
-  // handler-written results are readable on return. Throws the typed
-  // Omarchy error when the submission does not complete in time.
   void wait(uint64_t value);
-
-  // Highest completion value whose handlers have fully run.
   uint64_t drained_value();
-
-  // Stop the dispatcher thread and drain remaining payloads. Must run
-  // while the VkDevice is still alive; idempotent.
   void shutdown();
 
  private:
   void run();
-  // Run ready handlers in submission order. The drain lock stays held during
-  // handlers so concurrent drains cannot invert completion order.
   void drain_through(uint64_t max_value);
 
   VkDevice device_;
   VkSemaphore semaphore_{VK_NULL_HANDLE};
   std::deque<Completion> pending_;
   uint64_t next_value_{0};
-  // Highest completion value whose handlers have fully run.
   uint64_t drained_value_{0};
   std::mutex mutex_;
   std::mutex drain_mutex_;
@@ -192,26 +171,20 @@ class Device {
     return caps_;
   }
 
-  // VkQueue is externally synchronized: hold this around vkQueueSubmit
-  // only. The submit never blocks on completion; completion handlers run
-  // on the dispatcher thread instead (see CompletionDispatcher). Measured
-  // M1 receipt: Mesa Honeykrisp exposes queue_family_index=0 with exactly
-  // one queue, so this lock guards the one real VkQueue.
   std::mutex& queue_mutex() {
     return queue_mutex_;
   }
 
-  // Join the dispatcher's handlers for every submission that has already
-  // completed on the device. Never waits for later queued work.
   void join_completed_handlers();
 
   CompletionDispatcher& completions() {
     return *completions_;
   }
 
-  // Submit a bare timeline-semaphore signal on the device queue. Used when
-  // a CPU stream must signal a GPU event (mirrors the CUDA backend's
-  // signal stream).
+  ComputeRuntime& compute() {
+    return *compute_;
+  }
+
   void signal_timeline(VkSemaphore semaphore, uint64_t value);
 
  private:
@@ -220,8 +193,7 @@ class Device {
   VkDevice device_{VK_NULL_HANDLE};
   VkQueue queue_{VK_NULL_HANDLE};
   std::mutex queue_mutex_;
-  // Declared last so it is destroyed first: pending completion handlers
-  // drain while the VkDevice is still alive.
+  std::unique_ptr<ComputeRuntime> compute_;
   std::unique_ptr<CompletionDispatcher> completions_;
 };
 

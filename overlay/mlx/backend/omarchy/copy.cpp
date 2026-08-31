@@ -1,20 +1,23 @@
 // Copyright © 2026 Joshua Warren / mlx-omarchy contributors.
 // SPDX-License-Identifier: MIT
 
-// Buffer-level copy path. Real device copies (vkCmdCopyBuffer /
-// vkCmdFillBuffer) back the contiguous same-dtype cases; every strided or
-// converting copy needs a shader and returns the exact compatibility error
-// of this slice.
+// Buffer-level copy path. Transfer commands handle contiguous same-dtype
+// ranges. Vulkan compute handles contiguous FP16 and FP32 conversions.
+// Strided copies keep the exact compatibility error for this slice.
 
 #include "mlx/backend/omarchy/unsupported.h"
 
+#include <array>
+#include <cstdint>
 #include <cstring>
+#include <limits>
 #include <optional>
 
 #include "mlx/backend/common/copy.h"
 #include "mlx/backend/common/utils.h"
 #include "mlx/backend/gpu/copy.h"
 #include "mlx/backend/omarchy/allocator.h"
+#include "mlx/backend/omarchy/compute.h"
 #include "mlx/backend/omarchy/encoder.h"
 #include "mlx/backend/omarchy/vulkan.h"
 
@@ -39,10 +42,39 @@ bool scalar_is_zero(const array& in, int64_t item_offset) {
 }
 
 // Byte offset of a copy start in the backing VkBuffer: the array's own
-// buffer offset (bytes) plus an explicit item offset (the shared copy
-// contract passes i_offset / o_offset in items).
+// buffer offset plus an explicit item offset.
 VkDeviceSize byte_offset(const array& arr, int64_t item_offset) {
   return static_cast<VkDeviceSize>(arr.offset() + item_offset * arr.itemsize());
+}
+
+uint32_t checked_u32(size_t value, const array& out) {
+  if (value > std::numeric_limits<uint32_t>::max()) {
+    omarchy::unsupported(
+        "dtype converting copy with more than UINT32_MAX elements", out);
+  }
+  return static_cast<uint32_t>(value);
+}
+
+uint32_t compute_item_offset(
+    const array& value,
+    int64_t item_offset,
+    const array& out) {
+  if (item_offset < 0 || value.offset() % value.itemsize() != 0) {
+    omarchy::unsupported("dtype converting copy byte offset", out);
+  }
+  uint64_t base = value.offset() / value.itemsize();
+  uint64_t delta = static_cast<uint64_t>(item_offset);
+  constexpr uint64_t max_index = std::numeric_limits<uint32_t>::max();
+  if (base > max_index || delta > max_index - base) {
+    omarchy::unsupported("dtype converting copy index span", out);
+  }
+  return static_cast<uint32_t>(base + delta);
+}
+
+omarchy::ComputeBinding compute_binding(const array& value) {
+  auto* buffer =
+      static_cast<const omarchy::VulkanBuffer*>(value.buffer().ptr());
+  return {buffer->buffer, 0, buffer->size};
 }
 
 // Zero an allocated output at its destination offset: whole 4-byte words on
@@ -112,11 +144,44 @@ void copy_gpu_inplace(
     return;
   }
 
-  // Vector: one contiguous, same-dtype byte range at the array's buffer
-  // offset plus the explicit item offsets.
   if (in.dtype() != out.dtype()) {
-    omarchy::unsupported("dtype converting copy", out);
+    omarchy::ComputeKernel kernel;
+    if (in.dtype() == float16 && out.dtype() == float32) {
+      kernel = omarchy::ComputeKernel::CastF16F32;
+    } else if (in.dtype() == float32 && out.dtype() == float16) {
+      kernel = omarchy::ComputeKernel::CastF32F16;
+    } else {
+      omarchy::unsupported("dtype converting copy", out);
+    }
+
+    const auto& capabilities = encoder.device().capabilities();
+    if (!capabilities.shader_float16 ||
+        !capabilities.storage_buffer_16bit_access) {
+      omarchy::unsupported("dtype converting copy float16 capability", out);
+    }
+
+    uint32_t count = checked_u32(out.data_size(), out);
+    omarchy::ComputeParams params;
+    params.count = count;
+    params.lhs_size = checked_u32(in.data_size(), out);
+    params.rhs_size = params.lhs_size;
+    params.output_size = count;
+    params.lhs_offset = compute_item_offset(in, i_offset, out);
+    params.output_offset = compute_item_offset(out, o_offset, out);
+    if (!omarchy::compute_index_span_fits(params.lhs_offset, count) ||
+        !omarchy::compute_index_span_fits(params.output_offset, count)) {
+      omarchy::unsupported("dtype converting copy index span", out);
+    }
+    std::array<omarchy::ComputeBinding, 3> bindings{
+        compute_binding(in), compute_binding(in), compute_binding(out)};
+    encoder.dispatch_compute(
+        kernel,
+        bindings,
+        params,
+        omarchy::compute_dispatch_group_count(count));
+    return;
   }
+
   encoder.copy_buffer(
       buffer_handle(in),
       buffer_handle(out),

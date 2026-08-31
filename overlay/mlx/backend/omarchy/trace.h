@@ -19,6 +19,8 @@ struct Counters {
   std::atomic<uint64_t> vk_buffer_copies{0};
   // Number of recorded vkCmdFillBuffer commands.
   std::atomic<uint64_t> vk_buffer_fills{0};
+  // Number of recorded Vulkan compute dispatches.
+  std::atomic<uint64_t> vk_compute_dispatches{0};
 };
 
 inline Counters& counters() {

@@ -98,6 +98,125 @@ void CommandEncoder::fill_buffer(
   trace::counters().vk_buffer_fills++;
 }
 
+void CommandEncoder::dispatch_compute(
+    ComputeKernel kernel,
+    const std::array<ComputeBinding, 3>& bindings,
+    const ComputeParams& params,
+    uint32_t group_count) {
+  if (group_count == 0) {
+    return;
+  }
+  if (group_count > kMaxComputeGroupCountX) {
+    group_count = kMaxComputeGroupCountX;
+  }
+
+  auto& dt = vk::device_table();
+  auto& compute = device_.compute();
+  VkPipeline pipeline = compute.pipeline(kernel);
+
+  VkDescriptorPoolSize pool_size{};
+  pool_size.type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+  pool_size.descriptorCount = static_cast<uint32_t>(bindings.size());
+  VkDescriptorPoolCreateInfo pool_info{
+      VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO};
+  pool_info.maxSets = 1;
+  pool_info.poolSizeCount = 1;
+  pool_info.pPoolSizes = &pool_size;
+  VkDescriptorPool pool{VK_NULL_HANDLE};
+  VKX_CHECK(dt.CreateDescriptorPool(
+      device_.handle(), &pool_info, nullptr, &pool));
+  auto pool_owner = std::shared_ptr<VkDescriptorPool>(
+      new VkDescriptorPool(pool),
+      [device = device_.handle()](VkDescriptorPool* owned) {
+        vk::device_table().DestroyDescriptorPool(device, *owned, nullptr);
+        delete owned;
+      });
+
+  VkDescriptorSetLayout descriptor_layout = compute.descriptor_layout();
+  VkDescriptorSetAllocateInfo allocate_info{
+      VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO};
+  allocate_info.descriptorPool = pool;
+  allocate_info.descriptorSetCount = 1;
+  allocate_info.pSetLayouts = &descriptor_layout;
+  VkDescriptorSet descriptor_set{VK_NULL_HANDLE};
+  VKX_CHECK(dt.AllocateDescriptorSets(
+      device_.handle(), &allocate_info, &descriptor_set));
+
+  std::array<VkDescriptorBufferInfo, 3> buffer_info{};
+  std::array<VkWriteDescriptorSet, 3> writes{};
+  for (uint32_t index = 0; index < bindings.size(); ++index) {
+    buffer_info[index] = {
+        bindings[index].buffer, bindings[index].offset, bindings[index].range};
+    writes[index].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    writes[index].dstSet = descriptor_set;
+    writes[index].dstBinding = index;
+    writes[index].descriptorCount = 1;
+    writes[index].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    writes[index].pBufferInfo = &buffer_info[index];
+  }
+  dt.UpdateDescriptorSets(
+      device_.handle(), static_cast<uint32_t>(writes.size()), writes.data(), 0, nullptr);
+
+  ensure_recording();
+  VkMemoryBarrier before{VK_STRUCTURE_TYPE_MEMORY_BARRIER};
+  before.srcAccessMask = VK_ACCESS_HOST_WRITE_BIT | VK_ACCESS_TRANSFER_WRITE_BIT |
+      VK_ACCESS_SHADER_WRITE_BIT;
+  before.dstAccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT;
+  dt.CmdPipelineBarrier(
+      cmd_,
+      VK_PIPELINE_STAGE_HOST_BIT | VK_PIPELINE_STAGE_TRANSFER_BIT |
+          VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+      VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+      0,
+      1,
+      &before,
+      0,
+      nullptr,
+      0,
+      nullptr);
+
+  VkPipelineLayout pipeline_layout = compute.pipeline_layout();
+  dt.CmdBindPipeline(cmd_, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline);
+  dt.CmdBindDescriptorSets(
+      cmd_,
+      VK_PIPELINE_BIND_POINT_COMPUTE,
+      pipeline_layout,
+      0,
+      1,
+      &descriptor_set,
+      0,
+      nullptr);
+  dt.CmdPushConstants(
+      cmd_,
+      pipeline_layout,
+      VK_SHADER_STAGE_COMPUTE_BIT,
+      0,
+      sizeof(params),
+      &params);
+  dt.CmdDispatch(cmd_, group_count, 1, 1);
+
+  VkMemoryBarrier after{VK_STRUCTURE_TYPE_MEMORY_BARRIER};
+  after.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
+  after.dstAccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_TRANSFER_READ_BIT |
+      VK_ACCESS_HOST_READ_BIT;
+  dt.CmdPipelineBarrier(
+      cmd_,
+      VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+      VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_TRANSFER_BIT |
+          VK_PIPELINE_STAGE_HOST_BIT,
+      0,
+      1,
+      &after,
+      0,
+      nullptr,
+      0,
+      nullptr);
+
+  temporaries_.push_back(std::move(pool_owner));
+  node_count_++;
+  trace::counters().vk_compute_dispatches++;
+}
+
 void CommandEncoder::commit() {
   // Handler-only commits (no recorded commands, no user semaphores) still
   // submit and signal the completion timeline, so handlers run after prior

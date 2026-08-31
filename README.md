@@ -42,7 +42,10 @@ cmake -S .work/mlx -B .work/build -G Ninja \
   -DMLX_BUILD_PYTHON_BINDINGS=OFF
 
 cmake --build .work/build --target \
-  omarchy_runtime_tests omarchy_copy_offset_tests mlx-omarchy-info
+  omarchy_runtime_tests \
+  omarchy_copy_offset_tests \
+  omarchy_primitive_tests \
+  mlx-omarchy-info
 ```
 
 The prepare script gets MLX `v0.32.2` and puts it in the ignored `.work/` folder.

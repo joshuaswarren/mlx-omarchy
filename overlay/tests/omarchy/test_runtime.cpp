@@ -1006,7 +1006,7 @@ TEST_CASE("a hung submit returns a bounded Omarchy error") {
       r.code == 0, "child bounded_submit scenario failed with code " << r.code);
 }
 
-TEST_CASE("tensor ops fail with the compatibility error and never on CPU") {
+TEST_CASE("tensor ops dispatch on Vulkan and never on CPU") {
   if (cpu::is_available()) {
     skip(
         "requires the release-equivalent build (MLX_BUILD_CPU=OFF);"
@@ -1018,39 +1018,30 @@ TEST_CASE("tensor ops fail with the compatibility error and never on CPU") {
     return;
   }
 
-  // CPU tensor work is compiled out of this build.
   CHECK_FALSE(is_available(Device::cpu));
   CHECK_EQ(device_count(Device::cpu), 0);
   set_default_device(Device::gpu);
 
-  // Any tensor primitive must fail with the exact compatibility error that
-  // names the primitive; it must never route to a CPU kernel.
   auto x = array({1.0f, 2.0f}, float32);
   auto y = array({3.0f, 4.0f}, float32);
   auto z = add(x, y);
   uint64_t gpu_dispatches_before =
       omarchy::trace::counters().gpu_primitive_dispatches.load();
-  bool threw = false;
-  try {
-    z.eval();
-  } catch (const std::exception& ex) {
-    threw = true;
-    std::string msg = ex.what();
-    CHECK(msg.find("[omarchy]") != std::string::npos);
-    CHECK(msg.find("Add") != std::string::npos);
-    CHECK(msg.find("float32") != std::string::npos);
-    CHECK(msg.find("shape=[2]") != std::string::npos);
-  }
-  CHECK(threw);
-  // The dispatch was routed to the GPU evaluator, not a CPU kernel.
+  uint64_t compute_dispatches_before =
+      omarchy::trace::counters().vk_compute_dispatches.load();
+  z.eval();
+  synchronize(default_stream(default_device()));
+  CHECK_EQ(z.data<float>()[0], 4.0f);
+  CHECK_EQ(z.data<float>()[1], 6.0f);
   CHECK(
       omarchy::trace::counters().gpu_primitive_dispatches.load() >
       gpu_dispatches_before);
+  CHECK(
+      omarchy::trace::counters().vk_compute_dispatches.load() >
+      compute_dispatches_before);
 
-  // Zero-fill is real in this slice and must round-trip without error.
   auto zero_array = mlx::core::zeros({2, 3}, float32);
   zero_array.eval();
-  // Commits are asynchronous: block on completion before reading values.
   synchronize(default_stream(default_device()));
   const auto* data = zero_array.data<float>();
   for (int i = 0; i < 6; ++i) {

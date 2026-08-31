@@ -3,6 +3,8 @@
 
 #include "mlx/backend/omarchy/device.h"
 
+#include "mlx/backend/omarchy/compute.h"
+
 #include <algorithm>
 #include <cctype>
 #include <cstdlib>
@@ -504,15 +506,21 @@ Device::Device(uint32_t physical_device_index) {
   VkPhysicalDevice pd = info.handle;
   auto& it = vk::instance_table();
 
+  VkPhysicalDevice16BitStorageFeatures enabled16{
+      VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_16BIT_STORAGE_FEATURES};
+  enabled16.storageBuffer16BitAccess =
+      caps_.storage_buffer_16bit_access ? VK_TRUE : VK_FALSE;
   VkPhysicalDeviceVulkan12Features enabled12{
       VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES};
   enabled12.timelineSemaphore = VK_TRUE;
+  enabled12.shaderFloat16 = caps_.shader_float16 ? VK_TRUE : VK_FALSE;
   VkPhysicalDeviceVulkan13Features enabled13{
       VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES};
   VkPhysicalDeviceFeatures2 enabled2{
       VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2};
+  enabled16.pNext = &enabled12;
   enabled12.pNext = &enabled13;
-  enabled2.pNext = &enabled12;
+  enabled2.pNext = &enabled16;
 
   // M1 receipt: Mesa Honeykrisp exposes one compute queue (family 0,
   // queueCount 1). Request exactly that; never invent additional queues.
@@ -570,6 +578,23 @@ Device::Device(uint32_t physical_device_index) {
   VKX_LOAD_DEVICE_FN(ResetCommandBuffer, vkResetCommandBuffer)
   VKX_LOAD_DEVICE_FN(CmdCopyBuffer, vkCmdCopyBuffer)
   VKX_LOAD_DEVICE_FN(CmdFillBuffer, vkCmdFillBuffer)
+  VKX_LOAD_DEVICE_FN(CreateShaderModule, vkCreateShaderModule)
+  VKX_LOAD_DEVICE_FN(DestroyShaderModule, vkDestroyShaderModule)
+  VKX_LOAD_DEVICE_FN(CreateDescriptorSetLayout, vkCreateDescriptorSetLayout)
+  VKX_LOAD_DEVICE_FN(DestroyDescriptorSetLayout, vkDestroyDescriptorSetLayout)
+  VKX_LOAD_DEVICE_FN(CreateDescriptorPool, vkCreateDescriptorPool)
+  VKX_LOAD_DEVICE_FN(DestroyDescriptorPool, vkDestroyDescriptorPool)
+  VKX_LOAD_DEVICE_FN(AllocateDescriptorSets, vkAllocateDescriptorSets)
+  VKX_LOAD_DEVICE_FN(UpdateDescriptorSets, vkUpdateDescriptorSets)
+  VKX_LOAD_DEVICE_FN(CreatePipelineLayout, vkCreatePipelineLayout)
+  VKX_LOAD_DEVICE_FN(DestroyPipelineLayout, vkDestroyPipelineLayout)
+  VKX_LOAD_DEVICE_FN(CreateComputePipelines, vkCreateComputePipelines)
+  VKX_LOAD_DEVICE_FN(DestroyPipeline, vkDestroyPipeline)
+  VKX_LOAD_DEVICE_FN(CmdBindPipeline, vkCmdBindPipeline)
+  VKX_LOAD_DEVICE_FN(CmdBindDescriptorSets, vkCmdBindDescriptorSets)
+  VKX_LOAD_DEVICE_FN(CmdPushConstants, vkCmdPushConstants)
+  VKX_LOAD_DEVICE_FN(CmdDispatch, vkCmdDispatch)
+  VKX_LOAD_DEVICE_FN(CmdPipelineBarrier, vkCmdPipelineBarrier)
   VKX_LOAD_DEVICE_FN(QueueSubmit, vkQueueSubmit)
   VKX_LOAD_DEVICE_FN(QueueWaitIdle, vkQueueWaitIdle)
   VKX_LOAD_DEVICE_FN(CreateFence, vkCreateFence)
@@ -587,6 +612,7 @@ Device::Device(uint32_t physical_device_index) {
 #undef VKX_LOAD_DEVICE_FN
 
   dt.GetDeviceQueue(device_, caps_.queue_family_index, 0, &queue_);
+  compute_ = std::make_unique<ComputeRuntime>(device_);
   completions_ = std::make_unique<CompletionDispatcher>(device_);
 }
 
@@ -603,6 +629,7 @@ Device::~Device() {
     if (completions_) {
       completions_->shutdown();
     }
+    compute_.reset();
     if (dt.DestroyDevice) {
       dt.DestroyDevice(device_, nullptr);
     }

@@ -36,11 +36,13 @@ Matched kernel speed is verified through `v0.2.0`.
 The gate covers matched prefill, decode, and attention operations against pinned `llama.cpp` Vulkan operations.
 See the [v0.2.0 M1 kernel receipt](https://github.com/joshuaswarren/mlx-omarchy/releases/download/v0.2.0/mlx-omarchy-v0.2.0-m1-kernel.json).
 
-Primitive operations have not started.
-The proof requires the pinned upstream test matrix.
+Primitive operations are in progress.
+The development gate covers FP32 and FP16 elementwise work, suffix Sum and Max, offsets, and grid-stride dispatch.
+The pinned upstream matrix and M1 receipt remain open.
 
-Dtype work has not started.
-The proof requires FP16, emulated BF16, and supported low-bit formats.
+Dtype work is in progress.
+FP16 and FP32 casts pass the development gate.
+Emulated BF16 and supported low-bit formats remain open.
 
 Transform work has not started.
 The proof requires `grad`, `vjp`, `jvp`, and `vmap` tests for supported operations.

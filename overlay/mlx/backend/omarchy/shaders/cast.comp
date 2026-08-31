@@ -1,0 +1,52 @@
+#version 460
+
+#if defined(SOURCE_FP16) || defined(DEST_FP16)
+#extension GL_EXT_shader_16bit_storage : require
+#extension GL_EXT_shader_explicit_arithmetic_types_float16 : require
+#endif
+
+#ifdef SOURCE_FP16
+#define SOURCE_TYPE float16_t
+#else
+#define SOURCE_TYPE float
+#endif
+
+#ifdef DEST_FP16
+#define DEST_TYPE float16_t
+#else
+#define DEST_TYPE float
+#endif
+
+layout(local_size_x = 256) in;
+
+layout(set = 0, binding = 0, std430) readonly buffer Input {
+  SOURCE_TYPE values[];
+} input_data;
+layout(set = 0, binding = 2, std430) writeonly buffer Output {
+  DEST_TYPE values[];
+} output_data;
+
+layout(push_constant) uniform Params {
+  uint count;
+  uint operation;
+  uint lhs_size;
+  uint rhs_size;
+  uint reduce_size;
+  uint output_size;
+  uint lhs_offset;
+  uint rhs_offset;
+  uint output_offset;
+} params;
+
+void main() {
+  uint index = gl_GlobalInvocationID.x;
+  uint stride = gl_NumWorkGroups.x * gl_WorkGroupSize.x;
+  while (index < params.count) {
+    output_data.values[params.output_offset + index] =
+        DEST_TYPE(input_data.values[params.lhs_offset + index]);
+    if (params.count - index <= stride) {
+      break;
+    }
+    index += stride;
+  }
+}
