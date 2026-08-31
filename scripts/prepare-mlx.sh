@@ -1,0 +1,43 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# shellcheck source=/dev/null
+source "$ROOT/mlx.lock"
+
+WORK_DIR="${MLX_OMARCHY_WORK_DIR:-$ROOT/.work}"
+ARCHIVE="$WORK_DIR/mlx-$MLX_VERSION-$MLX_COMMIT.tar.gz"
+SOURCE_DIR="$WORK_DIR/mlx"
+mkdir -p "$WORK_DIR"
+
+if [[ ! -f "$ARCHIVE" ]]; then
+  curl --fail --location --retry 3 --retry-all-errors \
+    --output "$ARCHIVE" "$MLX_ARCHIVE_URL"
+fi
+printf '%s  %s\n' "$MLX_ARCHIVE_SHA256" "$ARCHIVE" | sha256sum --check --status
+
+STAGING_DIR="$(mktemp -d "$WORK_DIR/.mlx.XXXXXX")"
+cleanup() {
+  rm -rf "$STAGING_DIR"
+}
+trap cleanup EXIT
+
+tar --extract --gzip --file "$ARCHIVE" --strip-components=1 \
+  --directory "$STAGING_DIR"
+
+while IFS= read -r -d '' file; do
+  relative="${file#"$ROOT/overlay/"}"
+  if [[ -e "$STAGING_DIR/$relative" ]]; then
+    echo "overlay path already exists upstream: $relative" >&2
+    exit 1
+  fi
+done < <(find "$ROOT/overlay" -type f -print0)
+
+cp -a "$ROOT/overlay/." "$STAGING_DIR/"
+patch --directory="$STAGING_DIR" --strip=1 --forward --fuzz=0 \
+  < "$ROOT/patches/mlx-build.patch"
+
+rm -rf "$SOURCE_DIR"
+mv "$STAGING_DIR" "$SOURCE_DIR"
+trap - EXIT
+printf '%s\n' "$SOURCE_DIR"

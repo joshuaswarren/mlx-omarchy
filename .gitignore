@@ -1,0 +1,7 @@
+.work/
+build/
+build-*/
+.claude/
+THEORY.MD
+.DS_Store
+*.swp
