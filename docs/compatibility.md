@@ -55,8 +55,9 @@ The runtime has no CPU tensor fallback.
 The release build and backend trace prove this state.
 See the [v0.1.0 M1 runtime receipt](https://github.com/joshuaswarren/mlx-omarchy/releases/download/v0.2.0/mlx-omarchy-v0.1.0-m1-runtime.txt).
 
-Explicit exclusions have not started.
-Named errors must cover unsupported linear algebra, `float64`, and complex dtypes.
+Explicit exclusions are in progress.
+Named errors now cover unsupported linear algebra, `float64`, and complex dtypes in the development gate.
+The M1 receipt remains open.
 
 ## ANE
 
