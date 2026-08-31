@@ -799,10 +799,18 @@ TEST_CASE("unsupported compute shapes and dtypes fail without CPU fallback") {
   std::string stride_error = evaluation_error(exp(strided, stream));
   CHECK(stride_error.find("non-contiguous Exp") != std::string::npos);
 
-  array lhs({1.0f, 2.0f}, {2, 1}, float32);
-  array rhs({3.0f, 4.0f}, {1, 2}, float32);
+  // Inner-axis broadcast is supported now; a broadcast pattern whose
+  // stride runs still collapse to rank above 4 pins the named rank
+  // error.
+  array lhs({1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f, 7.0f, 8.0f,
+             9.0f, 10.0f, 11.0f, 12.0f, 13.0f, 14.0f, 15.0f, 16.0f,
+             17.0f, 18.0f, 19.0f, 20.0f, 21.0f, 22.0f, 23.0f, 24.0f,
+             25.0f, 26.0f, 27.0f, 28.0f, 29.0f, 30.0f, 31.0f, 32.0f},
+            {2, 1, 2, 1, 2, 1, 2, 1, 2}, float32);
+  std::vector<float> wide_values(512, 1.0f);
+  array rhs(wide_values.begin(), Shape{2, 2, 2, 2, 2, 2, 2, 2, 2}, float32);
   std::string broadcast_error = evaluation_error(add(lhs, rhs, stream));
-  CHECK(broadcast_error.find("broadcast Add") != std::string::npos);
+  CHECK(broadcast_error.find("broadcast rank Add") != std::string::npos);
 
   array matrix({1.0f, 2.0f, 3.0f, 4.0f}, {2, 2}, float32);
   std::string reduction_error =
@@ -1090,4 +1098,122 @@ TEST_CASE("take gathers table rows through Vulkan compute") {
         stream,
         8e-3);
   }
+}
+
+TEST_CASE("general broadcast elementwise matches host references") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+
+  // (rows,1) * (rows,cols): the broadcast axis is the last lhs axis, so
+  // this pins the shape-aware path.
+  std::vector<float> rv = {1.0f, 2.0f, 3.0f, 4.0f};
+  std::vector<float> mv = {2.0f, 1.0f, 0.5f, 3.0f, -1.0f, 2.0f,
+                           0.5f, 4.0f, -2.0f, 1.5f, 0.25f, -0.5f};
+  array rows(rv.begin(), Shape{4, 1}, float32);
+  array matrix(mv.begin(), Shape{4, 3}, float32);
+  std::vector<float> expected(12);
+  for (int r = 0; r < 4; ++r) {
+    for (int c = 0; c < 3; ++c) {
+      expected[r * 3 + c] = rv[r] * mv[r * 3 + c];
+    }
+  }
+  check_values(multiply(rows, matrix, stream), expected, stream);
+
+  // (1,cols) * (rows,cols): leading-axis broadcast keeps the trailing
+  // modulo fast path.
+  std::vector<float> cv = {0.5f, -1.0f, 2.0f};
+  array cols(cv.begin(), Shape{1, 3}, float32);
+  std::vector<float> expected_leading(12);
+  for (int r = 0; r < 4; ++r) {
+    for (int c = 0; c < 3; ++c) {
+      expected_leading[r * 3 + c] = cv[c] * mv[r * 3 + c];
+    }
+  }
+  check_values(multiply(cols, matrix, stream), expected_leading, stream);
+
+  // Scalar broadcast view.
+  check_values(
+      multiply(matrix, array(2.0f), stream),
+      {4.0f, 2.0f, 1.0f, 6.0f, -2.0f, 4.0f,
+       1.0f, 8.0f, -4.0f, 3.0f, 0.5f, -1.0f},
+      stream);
+
+  // 3D middle-axis broadcast: (2,1,3) * (2,2,3).
+  std::vector<float> tv = {1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f};
+  array middle(tv.begin(), Shape{2, 1, 3}, float32);
+  std::vector<float> bv = {1.0f, 1.0f, 1.0f, 2.0f, 2.0f, 2.0f,
+                           3.0f, 3.0f, 3.0f, 4.0f, 4.0f, 4.0f};
+  array cube(bv.begin(), Shape{2, 2, 3}, float32);
+  std::vector<float> expected_middle(12);
+  for (int i = 0; i < 2; ++i) {
+    for (int j = 0; j < 2; ++j) {
+      for (int k = 0; k < 3; ++k) {
+        expected_middle[(i * 2 + j) * 3 + k] =
+            tv[i * 3 + k] * bv[(i * 2 + j) * 3 + k];
+      }
+    }
+  }
+  check_values(multiply(middle, cube, stream), expected_middle, stream);
+
+  // One bf16 broadcast case through the same shape-aware path.
+  const auto& capabilities = omarchy::device(0).capabilities();
+  if (capabilities.storage_buffer_16bit_access &&
+      capabilities.shader_int16) {
+    array brain_rows = astype(rows, bfloat16, stream);
+    array brain_matrix = astype(matrix, bfloat16, stream);
+    check_values(
+        astype(
+            multiply(brain_rows, brain_matrix, stream), float32, stream),
+        expected,
+        stream,
+        8e-3);
+  } else {
+    skip("Vulkan device lacks required BF16 storage and shader features.");
+  }
+}
+
+TEST_CASE("value_and_grad runs softmax times input through broadcast views") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  std::vector<float> xv = {
+      0.25f, -1.0f, 2.0f, 0.5f, 0.125f, -0.75f, 1.5f, -2.0f};
+  array x(xv.begin(), Shape{2, 4}, float32);
+
+  auto fun = [&](const std::vector<array>& inputs) {
+    array weights = softmax(inputs[0], std::vector<int>{-1}, false, stream);
+    return sum(multiply(weights, inputs[0], stream), stream);
+  };
+  auto [value, grads] = value_and_grad(fun, std::vector<int>{0})({x});
+
+  // d/dx sum_j softmax(x)_j * x_j = s_j * (1 + x_j - dot(s_row, x_row)).
+  float expected_value = 0.0f;
+  std::vector<float> expected_dx(8);
+  for (int row = 0; row < 2; ++row) {
+    const float* xr = xv.data() + row * 4;
+    float maximum = xr[0];
+    for (int j = 1; j < 4; ++j) {
+      maximum = std::max(maximum, xr[j]);
+    }
+    float weights[4];
+    float normalizer = 0.0f;
+    for (int j = 0; j < 4; ++j) {
+      weights[j] = std::exp(xr[j] - maximum);
+      normalizer += weights[j];
+    }
+    float dot = 0.0f;
+    for (int j = 0; j < 4; ++j) {
+      weights[j] /= normalizer;
+      dot += weights[j] * xr[j];
+    }
+    expected_value += dot;
+    for (int j = 0; j < 4; ++j) {
+      expected_dx[row * 4 + j] = weights[j] * (1.0f + xr[j] - dot);
+    }
+  }
+  check_values(value, {expected_value}, stream, 1e-4);
+  check_values(grads.at(0), expected_dx, stream, 1e-4);
 }
