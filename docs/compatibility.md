@@ -41,8 +41,18 @@ The development gate covers FP32 and FP16 elementwise work, suffix Sum and Max, 
 It also covers dense Matmul and AddMM with tiled kernels, transposed inputs, and trailing-dimension bias broadcast.
 Transposed-input Matmul now passes the gate for 2D views of either operand.
 Subtract, Negative, non-zero scalar fill, and same-dtype general strided copy pass the gate.
+Suffix Softmax passes the gate for FP32, FP16, and BF16.
+The Softmax kernel subtracts the row max and accumulates in float32.
+Large logits stay finite, and both precise modes produce the same values.
+Non-contiguous inputs fail with the named layout error.
+`mx.take` passes the gate for an axis-0 lookup in a 2D row-contiguous table with 1D int32 indices.
+Out-of-range and negative indices write zero rows.
+Upstream negative-index wrapping is not provided.
+Other ranks, layouts, and index dtypes fail with named errors.
+Softmax gradient coverage stays open.
+Its vjp multiplies by a keepdims sum, and that inner-axis broadcast has no kernel yet.
 Dtype-converting strided copy, rank greater than 4, and negative strides stay unsupported with named errors.
-The [M1 development gate receipt](../receipts/2026-08-31-m1-development-gates.md) records 17/17 primitive cases on Honeykrisp.
+The [M1 development gate receipt](../receipts/2026-08-31-m1-development-gates.md) records 20/20 primitive cases on Honeykrisp.
 The pinned upstream matrix remains open.
 
 Dtype work is in progress.

@@ -361,7 +361,58 @@ OMARCHY_UNARY(Exp, ExpOperation)
 OMARCHY_UNSUPPORTED(Expm1)
 OMARCHY_UNSUPPORTED(FFT)
 OMARCHY_UNSUPPORTED(Floor)
-OMARCHY_UNSUPPORTED(Gather)
+void Gather::eval_gpu(const std::vector<array>& inputs, array& out) {
+  const array& table = inputs.at(0);
+  auto [axes, slice_sizes] = state();
+  auto& encoder = omarchy::get_command_encoder(out.primitive().stream());
+  require_float_dtype("Take", table, out, encoder);
+  if (inputs.size() != 2 || axes.size() != 1 || axes[0] != 0) {
+    omarchy::unsupported("non-axis-0 Take", out);
+  }
+  if (table.ndim() != 2 || !table.flags().row_contiguous) {
+    omarchy::unsupported("matrix layout Take", out);
+  }
+  if (
+      slice_sizes.size() != 2 || slice_sizes[0] != 1 ||
+      slice_sizes[1] != table.shape(1)) {
+    omarchy::unsupported("slice Take", out);
+  }
+  const array& indices = inputs.at(1);
+  if (indices.dtype() != int32) {
+    omarchy::unsupported("indexed Take dtype", out);
+  }
+  if (indices.ndim() != 1 || !indices.flags().contiguous) {
+    omarchy::unsupported("non-contiguous indexed Take", out);
+  }
+  if (out.size() != indices.size() * table.shape(1)) {
+    omarchy::unsupported("slice Take", out);
+  }
+
+  out.set_data(allocate_omarchy(out.nbytes()));
+  if (out.size() == 0) {
+    return;
+  }
+  uint32_t count = checked_u32(out.size(), "Take", out);
+  omarchy::ComputeParams params;
+  params.count = count;
+  params.lhs_size = checked_u32(table.size(), "Take", out);
+  params.rhs_size = checked_u32(indices.size(), "Take", out);
+  params.reduce_size = checked_u32(table.shape(1), "Take", out);
+  params.output_size = count;
+  params.lhs_offset = checked_item_offset(table, table.size(), "Take", out);
+  params.rhs_offset = checked_item_offset(
+      indices, indices.size(), "Take", out);
+  params.output_offset = checked_item_offset(out, out.size(), "Take", out);
+  std::array<omarchy::ComputeBinding, 3> bindings{
+      binding(table), binding(indices), binding(out)};
+  auto kernel = select_float_kernel(
+      out.dtype(),
+      omarchy::ComputeKernel::GatherF32,
+      omarchy::ComputeKernel::GatherF16,
+      omarchy::ComputeKernel::GatherBF16);
+  encoder.dispatch_compute(
+      kernel, bindings, params, omarchy::compute_dispatch_group_count(count));
+}
 OMARCHY_UNSUPPORTED(GatherAxis)
 OMARCHY_UNSUPPORTED(GatherMM)
 OMARCHY_UNSUPPORTED(GatherQMM)
@@ -469,8 +520,46 @@ OMARCHY_UNARY(Sigmoid, SigmoidOperation)
 OMARCHY_UNSUPPORTED(Sign)
 OMARCHY_UNSUPPORTED(Sin)
 OMARCHY_UNSUPPORTED(Sinh)
+void Softmax::eval_gpu(const std::vector<array>& inputs, array& out) {
+  const array& input = inputs.at(0);
+  auto& encoder = omarchy::get_command_encoder(out.primitive().stream());
+  require_float_dtype("Softmax", input, out, encoder);
+  if (!input.flags().row_contiguous) {
+    omarchy::unsupported("non-contiguous Softmax", out);
+  }
+
+  // The Softmax primitive is only constructed for a last-axis reduction
+  // (mlx/ops.cpp softmax), so no suffix-axis check is needed here. The
+  // shader accumulates in float32 for every dtype, which also covers the
+  // precise flag.
+  size_t row_length = input.shape(-1);
+  size_t rows = input.size() / row_length;
+  out.set_data(allocate_omarchy(out.nbytes()));
+  if (out.size() == 0) {
+    return;
+  }
+  uint32_t output_size = checked_u32(rows, "Softmax", out);
+  omarchy::ComputeParams params;
+  params.count = checked_u32(out.size(), "Softmax", out);
+  params.reduce_size = checked_u32(row_length, "Softmax", out);
+  params.output_size = output_size;
+  params.lhs_offset = checked_item_offset(
+      input, input.size(), "Softmax", out);
+  params.output_offset = checked_item_offset(out, out.size(), "Softmax", out);
+  std::array<omarchy::ComputeBinding, 3> bindings{
+      binding(input), binding(input), binding(out)};
+  auto kernel = select_float_kernel(
+      out.dtype(),
+      omarchy::ComputeKernel::SoftmaxF32,
+      omarchy::ComputeKernel::SoftmaxF16,
+      omarchy::ComputeKernel::SoftmaxBF16);
+  encoder.dispatch_compute(
+      kernel,
+      bindings,
+      params,
+      std::min(output_size, omarchy::kMaxComputeGroupCountX));
+}
 OMARCHY_UNSUPPORTED(SliceUpdate)
-OMARCHY_UNSUPPORTED(Softmax)
 OMARCHY_UNSUPPORTED(Sort)
 OMARCHY_UNARY(Square, SquareOperation)
 void Sqrt::eval_gpu(const std::vector<array>& inputs, array& out) {
