@@ -1,95 +1,78 @@
 # mlx-omarchy
 
-Use `mlx-omarchy` to run MLX on Apple Silicon Linux.
-It uses Honeykrisp Vulkan.
-Model code still uses `import mlx.core as mx` and `mx.gpu`.
-The project does not copy Metal.
+MLX on Apple Silicon Linux.
 
-Release `v0.2.0` supports M1 systems with Omarchy.
-The build handles Vulkan memory, copies, streams, events, and short waits.
-In matched tests, prefill reached more than 92% of the pinned `llama.cpp` Vulkan result.
-Decode reached more than 83%.
-Attention reached more than 80%.
-The [M1 receipt](https://github.com/joshuaswarren/mlx-omarchy/releases/download/v0.2.0/mlx-omarchy-v0.2.0-m1-kernel.json) has 300 samples for each case.
-Work on primitives, transforms, packages, and ANE support is not complete.
+[MLX](https://github.com/ml-explore/mlx) is Apple's array framework for machine learning. It is fast, well designed, and tied to Metal, which means macOS. Meanwhile Mesa now ships Honeykrisp, a conformant Vulkan 1.4 driver for Apple GPUs on Linux. mlx-omarchy connects the two. Your model code still reads `import mlx.core as mx`. It now runs on the Apple GPU under Linux.
 
-## Repository layout
+## Why this exists
 
-This repository has the Linux backend, tests, build patch, and hardware receipts.
-It does not have the MLX source or MLX commit history.
+An M1 MacBook running [Omarchy](https://omarchy.org) is a great Linux machine with a GPU that Linux can finally drive well. [omarchy-mac](https://github.com/omarchy-mac/omarchy-mac) puts Omarchy on Apple Silicon in an afternoon. But no ML framework treats the result as a first-class target. PyTorch sees a CPU. MLX sees nothing at all.
 
-- `mlx.lock` pins the MLX archive and its SHA-256.
-- `overlay/` has new files for the prepared MLX source.
-- `patches/` has small changes to current MLX files.
-- `scripts/prepare-mlx.sh` gets, checks, and prepares the source.
+So the goal here is bigger than a port. Run the full MLX stack, gradients included, on the Apple GPU under Linux. Then bring up the Apple Neural Engine, the most locked-down accelerator Apple ships, as a second backend behind the same API. An Apple Silicon laptop running Omarchy should give up nothing for local ML.
 
-## Prepare and build
+## What makes it different
 
-Install CMake, Ninja, and a C++ compiler.
-Install Vulkan headers, a shader compiler, `curl`, `tar`, and `patch`.
+**A patch set, not a fork.** This repository contains no MLX source and no MLX history. `mlx.lock` pins one upstream release by SHA-256. `overlay/` adds the Vulkan backend beside Metal and CUDA, `patches/` carries a few small diffs, and `scripts/prepare-mlx.sh` assembles the tree. You can read every line this project adds in one sitting. Tracking upstream MLX is a version bump, not a rebase.
+
+**No CPU fallback.** When a program hits an operation the backend does not support, it fails with the operation name, dtype, and shape. It never falls back to CPU silently. A number you measure on this backend is a number the GPU earned.
+
+**Receipts, not claims.** Every capability listed below links to a recorded run on real hardware. The [v0.2.0 kernel receipt](https://github.com/joshuaswarren/mlx-omarchy/releases/download/v0.2.0/mlx-omarchy-v0.2.0-m1-kernel.json) holds 300 samples per case. The [current development receipt](receipts/2026-08-31-m1-development-gates.md) covers the primitive, autograd, and install runs on an M1.
+
+## What works today
+
+- Arrays, elementwise math, suffix reductions, dense and transposed matmul, and addmm on the GPU
+- FP32, FP16, and emulated BF16 storage with rounding-correct conversion kernels
+- Autograd: `value_and_grad`, `vjp`, and `jvp` run end to end on device
+- `vmap` over elementwise closures, and `mx.compile` in `no_fuse` mode
+- An installable wheel: distribution `mlx-omarchy`, module `mlx`
+- Named errors for everything else: unsupported linear algebra, `float64`, complex dtypes
+
+Kernel performance on M1, measured against a pinned `llama.cpp` Vulkan baseline: prefill above 92%, decode above 83%, attention above 80%.
+
+## Quick start
+
+On an M1 running [Omarchy](https://github.com/omarchy-mac/omarchy-mac) with Mesa Honeykrisp:
 
 ```bash
-./scripts/prepare-mlx.sh
-
-cmake -S .work/mlx -B .work/build -G Ninja \
-  -DMLX_BUILD_OMARCHY=ON \
-  -DMLX_BUILD_CPU=OFF \
-  -DMLX_BUILD_METAL=OFF \
-  -DMLX_BUILD_CUDA=OFF \
-  -DMLX_BUILD_TESTS=ON \
-  -DMLX_BUILD_EXAMPLES=OFF \
-  -DMLX_BUILD_BENCHMARKS=OFF \
-  -DMLX_BUILD_PYTHON_BINDINGS=OFF
-
-cmake --build .work/build --target \
-  omarchy_runtime_tests \
-  omarchy_copy_offset_tests \
-  omarchy_primitive_tests \
-  mlx-omarchy-info
+git clone https://github.com/joshuaswarren/mlx-omarchy.git
+cd mlx-omarchy
+./scripts/build-wheel.sh
+python3 -m venv ~/.venvs/mlx && ~/.venvs/mlx/bin/pip install dist/mlx_omarchy-*.whl
 ```
 
-The prepare script gets MLX `v0.32.2` and puts it in the ignored `.work/` folder.
-It checks the archive hash before it adds the project files.
-Run gate scripts from the prepared source under `.work/mlx`.
+Then write MLX like you would anywhere:
 
-## Product rules
+```python
+import mlx.core as mx
 
-- Vulkan runs all tensor work when ANE is off.
-- A failed ANE gate sends that graph part back to Vulkan.
-- The CPU never runs a tensor primitive.
-- A missing primitive fails with its name, dtype, and shape.
-- ANE runs as an internal graph-region accelerator.
-- The first shared path uses host staging buffers.
+x = mx.array([[1.0, 2.0], [3.0, 4.0]])
+w = mx.array([[0.5], [0.25]])
 
-## Roadmap
+def loss(w):
+    return mx.exp(x @ w).sum()
 
-1. Vulkan runtime core
-2. Vulkan kernel performance gate
-3. Vulkan primitives and dtypes
-4. Transforms, compilation, and automatic differentiation
-5. Installable Linux package
-6. ANE graph integration
+value, grad = mx.value_and_grad(loss)(w)
+print(value, grad)
+```
 
-Each release needs an M1 receipt.
-The first ANE release must also pass the full hybrid gate.
+Both the forward pass and the gradient run on the Apple GPU. No Metal, no macOS.
 
-## Project docs
+For the C++ tests and tools, see [docs/install-omarchy.md](docs/install-omarchy.md). Development machines without an Apple GPU can run everything on any Vulkan 1.3 driver, llvmpipe included, with `MLX_OMARCHY_ALLOW_NON_APPLE=1`.
 
-- [System design](docs/architecture.md)
-- [Proof gates](docs/roadmap.md)
-- [Current status](docs/compatibility.md)
-- [Full plan](docs/plans/2026-08-29-mlx-omarchy-ane-compatibility-plan.md)
-- [How to help](CONTRIBUTING.md)
+## The Neural Engine plan
 
-## Upstream projects
+The ANE has no public compiler, so this project splits the work. A macOS machine compiles supported graph regions into versioned bundles: the compiled program, its weights, and a manifest that pins graph identity, tensor contracts, compiler and firmware identity, and payload hashes. Linux validates every field before it maps a single byte, then executes the bundle through the open [eiln/ane](https://github.com/eiln/ane) driver. A region without a valid bundle stays on Vulkan.
 
-[MLX](https://github.com/ml-explore/mlx) supplies the public API and core code.
-`mlx-omarchy` keeps a pinned Linux patch set for MLX.
-`ane-linux-experiments` holds early ANE hardware tests.
-[`eiln/ane`](https://github.com/eiln/ane) owns the Linux ANE driver and `libane` ABI.
+The Linux validation gate is in the tree today; see [docs/ane-bundles.md](docs/ane-bundles.md). The compiler and execution stages are in progress, with groundwork recorded in [ane-linux-experiments](https://github.com/joshuaswarren/ane-linux-experiments).
+
+## Hardware
+
+The supported target is an M1 running Omarchy with Mesa Honeykrisp; [omarchy-mac](https://github.com/omarchy-mac/omarchy-mac) is the installer. Later Apple Silicon generations come after the M1 path is complete. Progress by area lives in [docs/compatibility.md](docs/compatibility.md), and the design in [docs/architecture.md](docs/architecture.md).
+
+## Contributing
+
+Read [CONTRIBUTING.md](CONTRIBUTING.md) and the [roadmap](docs/roadmap.md). The most useful contributions right now are missing primitives, kernel performance work, and hardware receipts from M-series machines.
 
 ## License
 
-The project uses the MIT license.
-The prepared MLX source keeps Apple's MIT license and copyright notices.
-Apple does not sponsor this project.
+MIT. The prepared MLX source keeps Apple's MIT license and copyright notices. Apple is not involved with this project.
