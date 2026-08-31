@@ -7,7 +7,7 @@
 #include <cmath>
 #include <iostream>
 #include <limits>
-#include <string>
+#include <functional>
 #include <vector>
 
 #include "mlx/backend/gpu/copy.h"
@@ -17,6 +17,7 @@
 #include "mlx/backend/omarchy/device.h"
 #include "mlx/backend/omarchy/encoder.h"
 #include "mlx/backend/omarchy/trace.h"
+#include "mlx/compile.h"
 #include "mlx/device.h"
 #include "mlx/linalg.h"
 #include "mlx/ops.h"
@@ -646,6 +647,138 @@ TEST_CASE("value_and_grad computes matmul and subtract gradients on device") {
       std::vector<float>(6, 1.0f),
       stream);
   check_values(sub_grads.at(1), std::vector<float>(6, -1.0f), stream);
+}
+
+TEST_CASE("jvp computes forward-mode tangents through Vulkan compute") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  array x({0.0f, 0.1f, 0.2f}, float32);
+  array tangent({1.0f, -2.0f, 3.0f}, float32);
+
+  auto exp_fun = [&](const array& input) {
+    return sum(exp(input, stream), stream);
+  };
+  auto [exp_value, exp_tangent] = jvp(exp_fun, x, tangent);
+  std::vector<float> ex = {
+      std::exp(0.0f), std::exp(0.1f), std::exp(0.2f)};
+  float expected_value = ex[0] + ex[1] + ex[2];
+  float expected_jvp = ex[0] - 2.0f * ex[1] + 3.0f * ex[2];
+  check_values(exp_value, {expected_value}, stream, 1e-4);
+  check_values(exp_tangent, {expected_jvp}, stream, 1e-4);
+
+  std::vector<float> av = {0.0f, 0.1f, 0.2f, 0.05f, 0.15f, 0.25f};
+  std::vector<float> wv = {0.1f, -0.2f, 0.3f, 0.05f, -0.1f, 0.2f};
+  std::vector<float> tv = {1.0f, 0.5f, -1.0f, 2.0f, 0.25f, -0.5f};
+  array a(av.begin(), Shape{2, 3}, float32);
+  array w(wv.begin(), Shape{3, 2}, float32);
+  array a_tangent(tv.begin(), Shape{2, 3}, float32);
+  auto matmul_fun = [&](const array& input) {
+    return matmul(input, w, stream);
+  };
+  auto [mm_value, mm_tangent] = jvp(matmul_fun, a, a_tangent);
+  std::vector<float> expected_product(4);
+  std::vector<float> expected_mm_jvp(4);
+  for (int row = 0; row < 2; ++row) {
+    for (int column = 0; column < 2; ++column) {
+      for (int inner = 0; inner < 3; ++inner) {
+        expected_product[row * 2 + column] +=
+            av[row * 3 + inner] * wv[inner * 2 + column];
+        expected_mm_jvp[row * 2 + column] +=
+            tv[row * 3 + inner] * wv[inner * 2 + column];
+      }
+    }
+  }
+  check_values(mm_value, expected_product, stream, 1e-4);
+  check_values(mm_tangent, expected_mm_jvp, stream, 1e-4);
+}
+
+TEST_CASE("vmap batches closures over the leading axis through Vulkan compute") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  std::vector<float> xv = {0.0f, 0.1f, 0.2f, 0.3f, 0.4f, 0.5f};
+  array x(xv.begin(), Shape{2, 3}, float32);
+
+  auto batched_exp = vmap(
+      [&](const array& input) { return exp(input, stream); });
+  check_values(
+      batched_exp(x),
+      {std::exp(xv[0]),
+       std::exp(xv[1]),
+       std::exp(xv[2]),
+       std::exp(xv[3]),
+       std::exp(xv[4]),
+       std::exp(xv[5])},
+      stream,
+      1e-4);
+
+  std::vector<float> yv = {1.0f, -0.5f, 2.0f, 0.25f, -1.0f, 0.75f};
+  array y(yv.begin(), Shape{2, 3}, float32);
+  auto batched_add = vmap(
+      [&](const array& lhs, const array& rhs) {
+        return add(lhs, rhs, stream);
+      });
+  std::vector<float> expected_add(6);
+  for (size_t index = 0; index < expected_add.size(); ++index) {
+    expected_add[index] = xv[index] + yv[index];
+  }
+  check_values(batched_add(x, y), expected_add, stream);
+
+  std::vector<float> av = {1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f, 7.0f, 8.0f};
+  std::vector<float> bv = {0.5f, 1.0f, 2.0f, 1.0f, 0.5f, 1.0f, 2.0f, 1.0f};
+  array batched_a(av.begin(), Shape{2, 2, 2}, float32);
+  array batched_b(bv.begin(), Shape{2, 2, 2}, float32);
+  auto batched_matmul = vmap(
+      [&](const array& lhs, const array& rhs) {
+        return matmul(lhs, rhs, stream);
+      });
+  // Batched B is 3D and the backend requires 2D, so eval must fail with
+  // the named layout error instead of producing values.
+  std::string layout_error =
+      evaluation_error(batched_matmul(batched_a, batched_b));
+  CHECK(layout_error.find("matrix layout Matmul") != std::string::npos);
+}
+
+TEST_CASE("mx.compile fuses only with backend support and no_fuse evaluates") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  std::vector<float> xv = {0.0f, 0.1f, 0.2f, 0.3f};
+  std::vector<float> yv = {1.0f, 0.5f, 2.0f, 0.25f};
+  array x(xv.begin(), Shape{4}, float32);
+  array y(yv.begin(), Shape{4}, float32);
+  std::vector<float> expected(4);
+  for (size_t index = 0; index < expected.size(); ++index) {
+    expected[index] = std::exp(xv[index]) * yv[index];
+  }
+  using VectorFn = std::function<std::vector<array>(const std::vector<array>&)>;
+
+  set_compile_mode(CompileMode::enabled);
+  VectorFn fused_fun = [&](const std::vector<array>& inputs) {
+    return std::vector<array>{
+        multiply(exp(inputs[0], stream), inputs[1], stream)};
+  };
+  auto fused = compile(fused_fun);
+  auto fused_outputs = fused({x, y});
+  // compile_available_for_device reports true for the GPU device, so the
+  // fused tape reaches Compiled::eval_gpu and must fail with its name.
+  std::string fused_error = evaluation_error(fused_outputs[0]);
+  CHECK(fused_error.find("[omarchy] Compiled is not implemented") !=
+        std::string::npos);
+
+  set_compile_mode(CompileMode::no_fuse);
+  VectorFn unfused_fun = [&](const std::vector<array>& inputs) {
+    return std::vector<array>{
+        multiply(exp(inputs[0], stream), inputs[1], stream)};
+  };
+  auto unfused = compile(unfused_fun);
+  auto unfused_outputs = unfused({x, y});
+  check_values(unfused_outputs[0], expected, stream, 1e-4);
+  set_compile_mode(CompileMode::enabled);
 }
 
 TEST_CASE("unsupported compute shapes and dtypes fail without CPU fallback") {

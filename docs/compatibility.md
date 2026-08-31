@@ -53,10 +53,15 @@ Low-bit formats remain open.
 
 Transform work is in progress.
 `grad` and `vjp` pass the development gate for supported operations.
-`jvp` and `vmap` remain open.
+`jvp` passes the gate for `sum(exp(x))` and matmul tangents with value checks at `1e-4`.
+`vmap` passes the gate for batched `exp` and `add` with value checks.
+Batched matmul under `vmap` fails with the named layout error because the kernel requires a 2D second operand.
+`mx.compile` fuses `exp` then `multiply` into one `Compiled` primitive and fails with the named `Compiled` error.
+`CompileMode::no_fuse` keeps the tape unfused and matches the uncompiled values.
 
-Compilation work has not started.
-The proof covers `mx.compile`, pre-fusion ANE partitioning, and cache tests.
+Compilation work is in progress.
+The proof covers the fused path, the `no_fuse` fallback, values, and named errors.
+Pre-fusion ANE partitioning and cache tests remain open.
 
 The runtime has no CPU tensor fallback.
 The release build and backend trace prove this state.
