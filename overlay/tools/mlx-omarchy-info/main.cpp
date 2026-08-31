@@ -9,11 +9,16 @@
 //   mlx-omarchy-info --trace-smoke   execute a real Vulkan buffer round trip
 //                                  and print the backend trace counters
 //   mlx-omarchy-info --device N      report device N instead of the default
+//   mlx-omarchy-info --check-bundle D
+//                                  validate the ANE bundle at D and print its
+//                                  parsed contract as [receipt] lines
 //
-// Exit codes: 0 success, 1 the backend or smoke check failed, 2 usage error.
+// Exit codes: 0 success, 1 the backend, smoke, or bundle check failed,
+// 2 usage error or bundle directory not found.
 
 #include <cctype>
 #include <cstdlib>
+#include <filesystem>
 #include <cstring>
 #include <iomanip>
 #include <iostream>
@@ -21,6 +26,7 @@
 #include <vector>
 
 #include "mlx/backend/omarchy/allocator.h"
+#include "mlx/backend/omarchy/ane/bundle.h"
 #include "mlx/backend/omarchy/device.h"
 #include "mlx/backend/omarchy/encoder.h"
 #include "mlx/backend/omarchy/trace.h"
@@ -224,9 +230,77 @@ int trace_smoke(uint32_t index) {
   return 0;
 }
 
+// Prints one tensor list of the parsed bundle contract as [receipt] lines.
+void print_tensor_list(
+    const char* kind,
+    const std::vector<omarchy::ane::AneTensor>& tensors) {
+  if (tensors.empty()) {
+    std::cout << "[receipt] " << kind << ": none\n";
+    return;
+  }
+  for (const auto& tensor : tensors) {
+    std::cout << "[receipt] " << kind << " " << tensor.name << ": index="
+              << tensor.index << " dtype=" << tensor.dtype << " shape=[";
+    for (size_t i = 0; i < tensor.shape.size(); ++i) {
+      if (i > 0) {
+        std::cout << ",";
+      }
+      std::cout << tensor.shape[i];
+    }
+    std::cout << "] byte_size=" << tensor.byte_size
+              << " stride=" << tensor.stride << "\n";
+  }
+}
+
+// Validates one bundle directory and prints its parsed contract. This runs
+// load_bundle only (see mlx/backend/omarchy/ane/bundle.h): no Vulkan device
+// is opened and nothing reaches a descriptor submission.
+// Exit codes: 0 valid, 1 named loader error, 2 directory not found.
+int check_bundle(const std::string& dir_arg) {
+  std::filesystem::path dir(dir_arg);
+  try {
+    omarchy::ane::AneBundle bundle = omarchy::ane::load_bundle(dir);
+    const omarchy::ane::AneManifest& m = bundle.manifest;
+    std::cout << "[receipt] bundle: " << dir.string() << "\n";
+    std::cout << "[receipt] graph: " << m.name << "\n";
+    std::cout << "[receipt] graph_hash: " << m.graph_hash << "\n";
+    std::cout << "[receipt] task_descriptors: " << m.task_descriptors << "\n";
+    print_tensor_list("input", m.inputs);
+    print_tensor_list("output", m.outputs);
+    print_tensor_list("state", m.state);
+    print_tensor_list("workspace", m.workspace);
+    for (const auto& payload : m.payloads) {
+      std::cout << "[receipt] payload " << payload.role << ": " << payload.path
+                << " sha256=" << payload.sha256
+                << " byte_size=" << payload.byte_size << "\n";
+    }
+    std::cout << "[receipt] compiler: macos_build=" << m.compiler.macos_build
+              << " anecompiler=" << m.compiler.anecompiler << "\n";
+    std::cout << "[receipt] firmware: min=" << m.firmware.min
+              << " max=" << m.firmware.max << "\n";
+    std::cout << "[receipt] provenance: repo=" << m.provenance.source_repo
+              << " commit=" << m.provenance.source_commit
+              << " exported_at=" << m.provenance.exported_at << "\n";
+    std::cout << "[receipt] release_asset: model=" << m.release_asset.model
+              << " model_sha256=" << m.release_asset.model_sha256 << "\n";
+    std::cout << "[receipt] OK: bundle valid\n";
+    return 0;
+  } catch (const omarchy::ane::AneBundleNotFound&) {
+    std::cerr << "[mlx-omarchy-info] bundle not found (region stays on "
+                 "Vulkan): "
+              << dir.string() << "\n";
+    return 2;
+  } catch (const std::exception& ex) {
+    std::cerr << "[mlx-omarchy-info] check-bundle failed: " << ex.what()
+              << "\n";
+    return 1;
+  }
+}
+
 void usage() {
   std::cerr
-      << "usage: mlx-omarchy-info [--json] [--trace-smoke] [--device N]\n";
+      << "usage: mlx-omarchy-info [--json] [--trace-smoke] [--device N]\n"
+         "       mlx-omarchy-info --check-bundle <dir>\n";
 }
 
 } // namespace
@@ -235,12 +309,18 @@ int main(int argc, char** argv) {
   uint32_t index = 0;
   bool json = false;
   bool smoke = false;
+  std::string check_bundle_dir;
   for (int i = 1; i < argc; ++i) {
     std::string arg = argv[i];
     if (arg == "--json") {
       json = true;
     } else if (arg == "--trace-smoke") {
       smoke = true;
+    } else if (arg == "--check-bundle" && i + 1 < argc) {
+      check_bundle_dir = argv[++i];
+    } else if (arg == "--check-bundle") {
+      usage();
+      return 2;
     } else if (arg == "--device" && i + 1 < argc) {
       index = static_cast<uint32_t>(std::atoi(argv[++i]));
     } else if (arg == "--help" || arg == "-h") {
@@ -250,6 +330,10 @@ int main(int argc, char** argv) {
       usage();
       return 2;
     }
+  }
+
+  if (!check_bundle_dir.empty()) {
+    return check_bundle(check_bundle_dir);
   }
 
   try {
