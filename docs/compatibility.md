@@ -94,9 +94,16 @@ MLX-to-MIL lowering has not started.
 Known fixtures pass existing compiler stages.
 A hand-authored one-operation MIL proof remains open.
 
+Bundle validation is in progress.
+The Linux host gate parses `manifest_version: 1` bundles.
+It verifies graph identity, tensor geometry, tile-aligned strides, compiler and firmware identity, and payload sha256 before any mapping.
+A missing bundle directory is the keep-on-Vulkan outcome.
+See `docs/ane-bundles.md`.
+The macOS export proof and M1 execution of a validated bundle remain open.
+
 MLX graph partitioning has not started.
 The architecture is defined.
-It still needs a Vulkan baseline, versioned ANE bundles, and a stable worker ABI.
+The Vulkan baseline and Linux bundle validation now exist; it still needs a stable worker ABI.
 
 GPU and ANE shared memory is blocked.
 Honeykrisp supports Linux external memory.
