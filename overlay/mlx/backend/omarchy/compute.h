@@ -34,12 +34,19 @@ constexpr bool compute_index_span_fits(uint64_t offset, uint64_t count) {
 enum class ComputeKernel : uint8_t {
   ElementwiseF32,
   ElementwiseF16,
+  ElementwiseBF16,
   CastF16F32,
   CastF32F16,
+  CastBF16F32,
+  CastF32BF16,
+  CastBF16F16,
+  CastF16BF16,
   ReduceF32,
   ReduceF16,
+  ReduceBF16,
   MatmulF32,
   MatmulF16,
+  MatmulBF16,
   Count,
 };
 

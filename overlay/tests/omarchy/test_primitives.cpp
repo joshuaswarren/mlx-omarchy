@@ -140,6 +140,74 @@ TEST_CASE("FP16 casts and elementwise primitives use Vulkan compute") {
       1e-3);
 }
 
+TEST_CASE("BF16 primitives use emulated conversion through Vulkan compute") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  const auto& capabilities = omarchy::device(0).capabilities();
+  if (!capabilities.storage_buffer_16bit_access ||
+      !capabilities.shader_int16) {
+    skip("Vulkan device lacks required BF16 storage and shader features.");
+    return;
+  }
+
+  array source({0.5f, -2.0f, 7.25f}, float32);
+  array wide = astype(source, bfloat16, stream);
+  CHECK_EQ(wide.dtype(), bfloat16);
+  check_values(astype(wide, float32, stream), {0.5f, -2.0f, 7.25f}, stream, 8e-3);
+
+  array x({1.5f, 2.5f, -3.25f}, float32);
+  array y({0.5f, 1.25f, 0.75f}, float32);
+  check_values(
+      astype(add(astype(x, bfloat16, stream), astype(y, bfloat16, stream),
+                 stream),
+             float32, stream),
+      {2.0f, 3.75f, -2.5f},
+      stream,
+      8e-3);
+
+  array grid(
+      {1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f, 7.0f, 8.0f},
+      {2, 2, 2},
+      float32);
+  check_values(
+      astype(
+          sum(astype(grid, bfloat16, stream), std::vector<int>{1, 2}, false,
+              stream),
+          float32,
+          stream),
+      {10.0f, 26.0f},
+      stream,
+      8e-3);
+
+  array a(
+      {1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f, 7.0f, 8.0f, 9.0f, 10.0f, 11.0f,
+       12.0f},
+      {3, 4},
+      float32);
+  array b({0.5f, 1.0f, 2.0f, 1.0f, 0.5f, 1.0f, 2.0f, 1.0f}, {4, 2}, float32);
+  check_values(
+      astype(
+          matmul(astype(a, bfloat16, stream), astype(b, bfloat16, stream),
+                 stream),
+          float32,
+          stream),
+      {14.0f, 10.0f, 34.0f, 26.0f, 54.0f, 42.0f},
+      stream,
+      8e-3);
+
+  if (!capabilities.shader_float16) {
+    skip("Vulkan device lacks shaderFloat16; skipping the BF16/FP16 cast.");
+    return;
+  }
+  array half = astype(source, float16, stream);
+  array half_round_trip = astype(
+      astype(astype(half, bfloat16, stream), float16, stream), float32,
+      stream);
+  check_values(half_round_trip, {0.5f, -2.0f, 7.25f}, stream, 8e-3);
+}
+
 TEST_CASE("suffix Sum and Max reductions use Vulkan compute") {
   if (!compute_available()) {
     return;

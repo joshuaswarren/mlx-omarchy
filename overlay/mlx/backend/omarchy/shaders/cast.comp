@@ -4,17 +4,48 @@
 #extension GL_EXT_shader_16bit_storage : require
 #extension GL_EXT_shader_explicit_arithmetic_types_float16 : require
 #endif
+#if defined(SOURCE_BF16) || defined(DEST_BF16)
+#extension GL_EXT_shader_16bit_storage : require
+#extension GL_EXT_shader_explicit_arithmetic_types_int16 : require
+#endif
 
 #ifdef SOURCE_FP16
 #define SOURCE_TYPE float16_t
+#elif defined(SOURCE_BF16)
+#define SOURCE_TYPE uint16_t
 #else
 #define SOURCE_TYPE float
 #endif
 
 #ifdef DEST_FP16
 #define DEST_TYPE float16_t
+#elif defined(DEST_BF16)
+#define DEST_TYPE uint16_t
 #else
 #define DEST_TYPE float
+#endif
+
+#if defined(SOURCE_BF16) || defined(DEST_BF16)
+float bf16_load(uint16_t bits) {
+  return uintBitsToFloat(uint(bits) << 16u);
+}
+uint16_t bf16_store(float value) {
+  uint bits = floatBitsToUint(value);
+  if (isnan(value)) {
+    return uint16_t((bits >> 16) | 0x40u);
+  }
+  return uint16_t((bits + 0x7fffu + ((bits >> 16) & 1u)) >> 16);
+}
+#endif
+
+#if defined(SOURCE_BF16) && defined(DEST_BF16)
+#define CONVERT(x) (x)
+#elif defined(SOURCE_BF16)
+#define CONVERT(x) DEST_TYPE(bf16_load(x))
+#elif defined(DEST_BF16)
+#define CONVERT(x) bf16_store(float(x))
+#else
+#define CONVERT(x) DEST_TYPE(x)
 #endif
 
 layout(local_size_x = 256) in;
@@ -43,7 +74,7 @@ void main() {
   uint stride = gl_NumWorkGroups.x * gl_WorkGroupSize.x;
   while (index < params.count) {
     output_data.values[params.output_offset + index] =
-        DEST_TYPE(input_data.values[params.lhs_offset + index]);
+        CONVERT(input_data.values[params.lhs_offset + index]);
     if (params.count - index <= stride) {
       break;
     }

@@ -4,8 +4,25 @@
 #extension GL_EXT_shader_16bit_storage : require
 #extension GL_EXT_shader_explicit_arithmetic_types_float16 : require
 #define STORAGE_TYPE float16_t
+#define LOAD_VALUE(x) float(x)
+#define STORE_VALUE(f) STORAGE_TYPE(f)
+#elif defined(USE_BF16)
+#extension GL_EXT_shader_16bit_storage : require
+#extension GL_EXT_shader_explicit_arithmetic_types_int16 : require
+#define STORAGE_TYPE uint16_t
+#define LOAD_VALUE(x) uintBitsToFloat(uint(x) << 16u)
+uint16_t bf16_store(float value) {
+  uint bits = floatBitsToUint(value);
+  if (isnan(value)) {
+    return uint16_t((bits >> 16) | 0x40u);
+  }
+  return uint16_t((bits + 0x7fffu + ((bits >> 16) & 1u)) >> 16);
+}
+#define STORE_VALUE(f) bf16_store(f)
 #else
 #define STORAGE_TYPE float
+#define LOAD_VALUE(x) float(x)
+#define STORE_VALUE(f) STORAGE_TYPE(f)
 #endif
 
 layout(local_size_x = 256) in;
@@ -42,8 +59,8 @@ void main() {
     uint rhs_index = params.rhs_offset + (params.rhs_size == 1
         ? 0
         : (params.rhs_size == params.count ? index : index % params.rhs_size));
-    float lhs = float(input_a.values[lhs_index]);
-    float rhs = float(input_b.values[rhs_index]);
+    float lhs = LOAD_VALUE(input_a.values[lhs_index]);
+    float rhs = LOAD_VALUE(input_b.values[rhs_index]);
     float value;
     switch (params.operation) {
       case 0:
@@ -78,7 +95,7 @@ void main() {
       default:
         return;
     }
-    output_data.values[params.output_offset + index] = STORAGE_TYPE(value);
+    output_data.values[params.output_offset + index] = STORE_VALUE(value);
     if (params.count - index <= stride) {
       break;
     }
