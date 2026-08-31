@@ -28,7 +28,7 @@ namespace mlx::core::omarchy {
 // waits and signals carried in the submissions; handler-only submissions
 // (no recorded commands) still signal the timeline, so ordering with prior
 // queue work is preserved.
-class CommandEncoder {
+class MLX_API CommandEncoder {
  public:
   explicit CommandEncoder(Device& device);
   ~CommandEncoder();
@@ -143,7 +143,7 @@ class CommandEncoder {
   std::vector<std::function<void()>> completed_handlers_;
 };
 
-CommandEncoder& get_command_encoder(Stream s);
+MLX_API CommandEncoder& get_command_encoder(Stream s);
 std::unordered_map<int, CommandEncoder>& get_command_encoders();
 std::unordered_map<int, CommandEncoder>& get_global_command_encoders();
 

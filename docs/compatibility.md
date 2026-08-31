@@ -71,6 +71,11 @@ Explicit exclusions are in progress.
 Named errors now cover unsupported linear algebra, `float64`, and complex dtypes in the development gate.
 The M1 receipt remains open.
 
+Package work is in progress.
+`scripts/build-wheel.sh` builds a `mlx-omarchy` wheel that provides the `mlx` module.
+`tools/ci/run-clean-omarchy-install.sh` verifies a fresh-venv install with add, matmul, and gradient receipts.
+The M1 clean-install receipt remains open.
+
 ## ANE
 
 Linux descriptor submission is in progress.

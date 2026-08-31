@@ -36,6 +36,8 @@ done < <(find "$ROOT/overlay" -type f -print0)
 cp -a "$ROOT/overlay/." "$STAGING_DIR/"
 patch --directory="$STAGING_DIR" --strip=1 --forward --fuzz=0 \
   < "$ROOT/patches/mlx-build.patch"
+patch --directory="$STAGING_DIR" --strip=1 --forward --fuzz=0 \
+  < "$ROOT/patches/mlx-python-package.patch"
 
 rm -rf "$SOURCE_DIR"
 mv "$STAGING_DIR" "$SOURCE_DIR"
