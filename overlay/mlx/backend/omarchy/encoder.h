@@ -11,6 +11,7 @@
 #include <utility>
 #include <vector>
 #include "mlx/array.h"
+#include "mlx/backend/omarchy/compute.h"
 #include "mlx/backend/omarchy/device.h"
 #include "mlx/stream.h"
 
@@ -57,6 +58,13 @@ class CommandEncoder {
       VkDeviceSize size,
       VkDeviceSize src_offset = 0,
       VkDeviceSize dst_offset = 0);
+
+  // Record one compute dispatch with three storage-buffer bindings.
+  void dispatch_compute(
+      ComputeKernel kernel,
+      const std::array<ComputeBinding, 3>& bindings,
+      const ComputeParams& params,
+      uint32_t group_count);
 
   // Record a four-byte-word fill. Size and offset must be multiples of 4.
   void fill_buffer(

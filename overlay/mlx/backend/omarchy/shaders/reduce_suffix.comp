@@ -1,0 +1,56 @@
+#version 460
+
+#ifdef USE_FP16
+#extension GL_EXT_shader_16bit_storage : require
+#extension GL_EXT_shader_explicit_arithmetic_types_float16 : require
+#define STORAGE_TYPE float16_t
+#else
+#define STORAGE_TYPE float
+#endif
+
+layout(local_size_x = 256) in;
+
+layout(set = 0, binding = 0, std430) readonly buffer Input {
+  STORAGE_TYPE values[];
+} input_data;
+layout(set = 0, binding = 2, std430) writeonly buffer Output {
+  STORAGE_TYPE values[];
+} output_data;
+
+layout(push_constant) uniform Params {
+  uint count;
+  uint operation;
+  uint lhs_size;
+  uint rhs_size;
+  uint reduce_size;
+  uint output_size;
+  uint lhs_offset;
+  uint rhs_offset;
+  uint output_offset;
+} params;
+
+void main() {
+  uint output_index = gl_GlobalInvocationID.x;
+  uint stride = gl_NumWorkGroups.x * gl_WorkGroupSize.x;
+  while (output_index < params.output_size) {
+    uint start = params.lhs_offset + output_index * params.reduce_size;
+    float value =
+        params.operation == 0 ? 0.0 : uintBitsToFloat(0xff800000u);
+    for (uint index = 0; index < params.reduce_size; ++index) {
+      float next = float(input_data.values[start + index]);
+      if (params.operation == 0) {
+        value += next;
+      } else if (isnan(next)) {
+        value = next;
+        break;
+      } else {
+        value = max(value, next);
+      }
+    }
+    output_data.values[params.output_offset + output_index] = STORAGE_TYPE(value);
+    if (params.output_size - output_index <= stride) {
+      break;
+    }
+    output_index += stride;
+  }
+}
