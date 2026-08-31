@@ -17,6 +17,7 @@
 #include "mlx/backend/omarchy/encoder.h"
 #include "mlx/backend/omarchy/trace.h"
 #include "mlx/device.h"
+#include "mlx/linalg.h"
 #include "mlx/ops.h"
 #include "mlx/stream.h"
 
@@ -403,4 +404,42 @@ TEST_CASE("unsupported compute shapes and dtypes fail without CPU fallback") {
   std::string reduction_error =
       evaluation_error(sum(matrix, 0, false, stream));
   CHECK(reduction_error.find("non-suffix Sum") != std::string::npos);
+
+  auto construction_error = [](auto&& build) -> std::string {
+    try {
+      build();
+    } catch (const std::exception& error) {
+      return error.what();
+    }
+    return {};
+  };
+
+  std::string float64_error = construction_error([&] {
+    add(array({1.0, 2.0}, float64), array({3.0, 4.0}, float64), stream);
+  });
+  CHECK(
+      float64_error.find("float64 is not supported on the GPU") !=
+      std::string::npos);
+
+  std::string complex_error = evaluation_error(add(
+      array(complex64_t{1.0f, 2.0f}), array(complex64_t{3.0f, 4.0f}), stream));
+  CHECK(complex_error.find("[omarchy] Add dtype") != std::string::npos);
+  CHECK(complex_error.find("complex64") != std::string::npos);
+
+  array spd({4.0f, 0.0f, 0.0f, 9.0f}, {2, 2}, float32);
+  std::string cholesky_error =
+      construction_error([&] { linalg::cholesky(spd, false, stream); });
+  CHECK(cholesky_error.find("[linalg::cholesky]") != std::string::npos);
+  CHECK(
+      cholesky_error.find("not yet supported on the GPU") != std::string::npos);
+
+  std::string svd_error =
+      construction_error([&] { linalg::svd(spd, true, stream); });
+  CHECK(svd_error.find("[linalg::svd]") != std::string::npos);
+  CHECK(svd_error.find("not yet supported on the GPU") != std::string::npos);
+
+  std::string inv_error =
+      construction_error([&] { linalg::inv(spd, stream); });
+  CHECK(inv_error.find("[linalg::inv]") != std::string::npos);
+  CHECK(inv_error.find("not yet supported on the GPU") != std::string::npos);
 }
