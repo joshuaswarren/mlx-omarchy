@@ -78,6 +78,8 @@ target_sources(
           ${CMAKE_CURRENT_SOURCE_DIR}/primitives.cpp
           ${CMAKE_CURRENT_SOURCE_DIR}/slicing.cpp
           ${CMAKE_CURRENT_SOURCE_DIR}/stream.cpp
+          ${CMAKE_CURRENT_SOURCE_DIR}/ane/manifest.cpp
+          ${CMAKE_CURRENT_SOURCE_DIR}/ane/bundle.cpp
           ${CMAKE_CURRENT_SOURCE_DIR}/vulkan.cpp)
 target_include_directories(mlx PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/shaders")
 
