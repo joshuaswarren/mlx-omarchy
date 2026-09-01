@@ -73,7 +73,14 @@ The `omarchy_kv_ops_tests` binary covers exact-value 2D and 3D concatenates, fp1
 The kernel keeps one (value, index) pair per thread in shared memory and writes uint32 indices.
 Ties keep the first occurrence, and NaN never wins a comparison, which matches the upstream CPU and Metal comparators.
 Non-suffix axes, non-contiguous inputs, and non-float inputs fail with named errors.
-ArgSort, ArgPartition, and full Sort remain unsupported.
+`mx.sort` and `mx.argsort` pass the development gate for a last-axis sort of row-contiguous FP32 and FP16 rows up to 1024 elements.
+The bitonic kernel sorts one row per workgroup in shared memory and pads the row to a power of two with NaN keys.
+The comparator orders NaN after every number and breaks value ties on the smaller source index, which mirrors the upstream CPU `stable_sort` rule.
+ArgSort writes uint32 source indices, and the tie rule makes the index order unique.
+`mx.partition` and `mx.argpartition` route to the same full sort, the redirect the upstream Metal backend makes, so every kth position holds the sorted value.
+Rows beyond 1024, non-suffix axes, non-contiguous inputs, and non-float inputs fail with named errors.
+A 1-D `mx.topk` returns the k largest values in ascending order through the partition path.
+The BF16 sort variants build, but they have no gate receipt yet.
 `mx.cos` and `mx.sin` pass the development gate for FP32 against host references at `1e-5`, including negative inputs.
 `mx.arange` passes the gate for FP32 and FP16 fills of the form start plus step times index.
 Upstream derives the arange length from `ceil((stop - start) / step)`, so a negative step over a descending range is valid.
@@ -82,16 +89,21 @@ Non-float dtypes fail with the named `Arange dtype` error.
 The BF16 arange kernel variant builds, but it has no gate receipt yet.
 The gradient of `sum(sin(x))` matches `cos(x)` at `1e-5`.
 The Sin vjp lowers to Cos and Multiply only, so the gradient stays inside supported operations.
-`mx.fast.rope` composed fallback does not run yet.
-Evaluation stops with the named `dtype converting copy` error.
-The blocked step is the int32 scalar offset cast to float32 before the trig path.
-Cos, Sin, and Arange are in the fallback graph and are not the blockers.
+`mx.fast.rope` composed fallback no longer stops at the offset cast.
+The int32 scalar offset cast to float32 runs as a one-element device kernel.
+Evaluation now reaches the trig path and stops with the named `non-contiguous Multiply` error.
+The blocker is multiply over the half-split slice views `x[..., 0:dims/2]` and `x[..., dims/2:dims]`, which are strided.
 
 Dtype work is in progress.
 FP16 and FP32 casts pass the development gate.
 Emulated BF16 passes the development gate.
 BF16 arrays store as 16-bit bit patterns.
 BF16 compute expands to float32 inside the shader.
+int32 casts to and from float32, float16, and bfloat16 pass the development gate.
+The float-to-int side truncates toward zero, which matches the upstream CPU `static_cast` semantics; upstream pins `-1.7` to `-1` in `mlx/random.cpp`.
+int32 to float16 and int32 to bfloat16 keep the 16-bit storage capability gates; int32 to float32 needs none.
+Scalar data of size one converts through the same kernel, so the RoPE offset cast runs.
+Other int widths, bool, and uint64 casts remain unsupported with the named `dtype converting copy` error.
 Low-bit formats remain open.
 
 Transform work is in progress.

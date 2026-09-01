@@ -13,6 +13,8 @@
 #define SOURCE_TYPE float16_t
 #elif defined(SOURCE_BF16)
 #define SOURCE_TYPE uint16_t
+#elif defined(SOURCE_I32)
+#define SOURCE_TYPE int
 #else
 #define SOURCE_TYPE float
 #endif
@@ -21,6 +23,8 @@
 #define DEST_TYPE float16_t
 #elif defined(DEST_BF16)
 #define DEST_TYPE uint16_t
+#elif defined(DEST_I32)
+#define DEST_TYPE int
 #else
 #define DEST_TYPE float
 #endif

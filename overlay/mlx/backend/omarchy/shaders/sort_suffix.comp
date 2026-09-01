@@ -1,0 +1,140 @@
+// Copyright © 2026 Joshua Warren / mlx-omarchy contributors.
+// SPDX-License-Identifier: MIT
+//
+// Sort/ArgSort over the last axis. One workgroup handles one row: it loads
+// the row into shared memory as (value, index) pairs, pads the row to a
+// power of two with NaN keys, and runs a bitonic sort. The comparator
+// mirrors the upstream CPU stable_sort rule: values compare in float32,
+// NaN sorts after every number, and equal keys order by source index, so
+// both the value variant and the ARGSORT index variant produce the unique
+// stable order. Rows up to 1024 elements fit the shared arrays.
+
+#version 460
+
+#ifdef USE_FP16
+#extension GL_EXT_shader_16bit_storage : require
+#extension GL_EXT_shader_explicit_arithmetic_types_float16 : require
+#define STORAGE_TYPE float16_t
+#define LOAD_VALUE(x) float(x)
+#define STORE_VALUE(f) STORAGE_TYPE(f)
+#elif defined(USE_BF16)
+#extension GL_EXT_shader_16bit_storage : require
+#extension GL_EXT_shader_explicit_arithmetic_types_int16 : require
+#define STORAGE_TYPE uint16_t
+#define LOAD_VALUE(x) uintBitsToFloat(uint(x) << 16u)
+uint16_t bf16_store(float value) {
+  uint bits = floatBitsToUint(value);
+  if (isnan(value)) {
+    return uint16_t((bits >> 16) | 0x40u);
+  }
+  return uint16_t((bits + 0x7fffu + ((bits >> 16) & 1u)) >> 16);
+}
+#define STORE_VALUE(f) bf16_store(f)
+#else
+#define STORAGE_TYPE float
+#define LOAD_VALUE(x) float(x)
+#define STORE_VALUE(f) STORAGE_TYPE(f)
+#endif
+
+layout(local_size_x = 256) in;
+
+layout(set = 0, binding = 0, std430) readonly buffer Input {
+  STORAGE_TYPE values[];
+} input_data;
+#ifdef ARGSORT
+layout(set = 0, binding = 2, std430) writeonly buffer Output {
+  uint values[];
+} output_data;
+#else
+layout(set = 0, binding = 2, std430) writeonly buffer Output {
+  STORAGE_TYPE values[];
+} output_data;
+#endif
+
+layout(push_constant) uniform Params {
+  uint count;
+  uint operation;
+  uint lhs_size;
+  uint rhs_size;
+  uint reduce_size;
+  uint output_size;
+  uint lhs_offset;
+  uint rhs_offset;
+  uint output_offset;
+} params;
+
+shared float row_values[1024];
+shared uint row_indices[1024];
+
+// Strict order on (value, index) keys. A NaN key sorts after every number,
+// and two NaN keys order by source index, which also keeps real NaNs ahead
+// of the NaN padding. Equal values break on the smaller source index, so
+// the network output is the unique stable order.
+bool key_less(float value_a, uint index_a, float value_b, uint index_b) {
+  bool nan_a = isnan(value_a);
+  bool nan_b = isnan(value_b);
+  if (nan_a != nan_b) {
+    return nan_b;
+  }
+  if (nan_a) {
+    return index_a < index_b;
+  }
+  return value_a < value_b || (value_a == value_b && index_a < index_b);
+}
+
+void main() {
+  uint thread = gl_LocalInvocationID.x;
+  uint row_length = params.reduce_size;
+  uint padded = 1u;
+  while (padded < row_length) {
+    padded <<= 1u;
+  }
+  for (uint row = gl_WorkGroupID.x; row < params.output_size;
+       row += gl_NumWorkGroups.x) {
+    uint start = params.lhs_offset + row * row_length;
+    for (uint index = thread; index < padded; index += 256u) {
+      if (index < row_length) {
+        row_values[index] = LOAD_VALUE(input_data.values[start + index]);
+      } else {
+        row_values[index] = uintBitsToFloat(0x7fc00000u);
+      }
+      row_indices[index] = index;
+    }
+    barrier();
+    for (uint k = 2u; k <= padded; k <<= 1u) {
+      for (uint j = k >> 1u; j > 0u; j >>= 1u) {
+        barrier();
+        for (uint index = thread; index < padded; index += 256u) {
+          uint partner = index ^ j;
+          if (partner > index) {
+            float value = row_values[index];
+            uint index_key = row_indices[index];
+            float partner_value = row_values[partner];
+            uint partner_key = row_indices[partner];
+            bool ascending = (index & k) == 0u;
+            bool swap = ascending
+                ? key_less(partner_value, partner_key, value, index_key)
+                : key_less(value, index_key, partner_value, partner_key);
+            if (swap) {
+              row_values[index] = partner_value;
+              row_indices[index] = partner_key;
+              row_values[partner] = value;
+              row_indices[partner] = index_key;
+            }
+          }
+        }
+      }
+    }
+    barrier();
+    for (uint index = thread; index < row_length; index += 256u) {
+#ifdef ARGSORT
+      output_data.values[params.output_offset + row * row_length + index] =
+          row_indices[index];
+#else
+      output_data.values[params.output_offset + row * row_length + index] =
+          STORE_VALUE(row_values[index]);
+#endif
+    }
+    barrier();
+  }
+}

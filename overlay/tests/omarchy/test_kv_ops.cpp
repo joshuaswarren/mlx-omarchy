@@ -8,12 +8,15 @@
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include "doctest/doctest.h"
 
+#include <cmath>
+#include <cstdint>
 #include <iostream>
 #include <vector>
 
 #include "mlx/backend/gpu/device_info.h"
 #include "mlx/backend/omarchy/device.h"
 #include "mlx/backend/omarchy/encoder.h"
+#include "mlx/fast.h"
 #include "mlx/ops.h"
 #include "mlx/stream.h"
 
@@ -211,3 +214,172 @@ TEST_CASE("Unsupported SliceUpdate reduce mode reports a named error") {
   CHECK(reduce_error.find("[omarchy] SliceUpdate reduce") !=
         std::string::npos);
 }
+
+// Exact integer comparison against an evaluated int32 result.
+void check_int32_values(
+    array value,
+    const std::vector<int32_t>& expected,
+    const Stream& stream) {
+  value.eval();
+  omarchy::get_command_encoder(stream).synchronize();
+  REQUIRE_EQ(value.dtype(), int32);
+  REQUIRE_EQ(value.size(), expected.size());
+  const int32_t* values = value.data<int32_t>();
+  for (size_t index = 0; index < expected.size(); ++index) {
+    CHECK_EQ(values[index], expected[index]);
+  }
+}
+
+TEST_CASE("int32 to float32 and back round-trips exactly") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  // |value| <= 2^24 stays exact in float32.
+  std::vector<int32_t> values = {
+      0, 1, -1, 42, -42, 1000000, -999999, 16777216, -16777216};
+  array ints(values.data(), Shape{static_cast<int>(values.size())}, int32);
+
+  array floats = astype(ints, float32, stream);
+  check_values(
+      floats,
+      {0.0f,
+       1.0f,
+       -1.0f,
+       42.0f,
+       -42.0f,
+       1000000.0f,
+       -999999.0f,
+       16777216.0f,
+       -16777216.0f},
+      stream);
+
+  array back = astype(floats, int32, stream);
+  check_int32_values(back, values, stream);
+}
+
+TEST_CASE("float32 to int32 truncates toward zero") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  // Upstream astype float->int truncates: mlx/random.cpp pins
+  // "-1.7 becomes -1" and the CPU kernel applies static_cast.
+  array floats(
+      {-1.7f,
+       1.7f,
+       -0.5f,
+       0.5f,
+       3.999f,
+       -3.999f,
+       2.0f,
+       -2.0f,
+       100.25f,
+       -100.25f},
+      {10},
+      float32);
+
+  array ints = astype(floats, int32, stream);
+  check_int32_values(ints, {-1, 1, 0, 0, 3, -3, 2, -2, 100, -100}, stream);
+}
+
+TEST_CASE("scalar int32 astype to float32") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  // The mx.fast.rope composed fallback casts the int32 scalar offset to
+  // float32 through a data_size-1 converting copy.
+  array positive = astype(array(42, int32), float32, stream);
+  check_values(positive, {42.0f}, stream);
+
+  array negative = astype(array(-7, int32), float32, stream);
+  check_values(negative, {-7.0f}, stream);
+}
+
+TEST_CASE("int32 and float16 casts convert through the 16-bit gates") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  const auto& capabilities = omarchy::device(0).capabilities();
+  if (!capabilities.shader_float16 ||
+      !capabilities.storage_buffer_16bit_access) {
+    skip("Vulkan device lacks required FP16 shader and storage features.");
+    return;
+  }
+  // int32 -> float16 -> int32 round-trips on exact f16 values.
+  array ints({2048, -2048, 7, -7, 0}, {5}, int32);
+  array halves = astype(ints, float16, stream);
+  check_values(astype(halves, float32, stream), {2048, -2048, 7, -7, 0}, stream);
+  check_int32_values(astype(halves, int32, stream), {2048, -2048, 7, -7, 0}, stream);
+
+  // float16 -> int32 truncates toward zero.
+  array halves_frac({1.5f, -1.5f, 2.75f, -2.75f}, {4}, float32);
+  array truncated =
+      astype(astype(halves_frac, float16, stream), int32, stream);
+  check_int32_values(truncated, {1, -1, 2, -2}, stream);
+}
+
+TEST_CASE("int32 and bfloat16 casts convert through the 16-bit gates") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  const auto& capabilities = omarchy::device(0).capabilities();
+  if (!capabilities.storage_buffer_16bit_access || !capabilities.shader_int16) {
+    skip("Vulkan device lacks required BF16 storage features.");
+    return;
+  }
+  // int32 -> bfloat16 -> int32 round-trips on exact bf16 values.
+  array ints({16, -16, 256, -256, 3, -3}, {6}, int32);
+  array brains = astype(ints, bfloat16, stream);
+  check_int32_values(astype(brains, int32, stream), {16, -16, 256, -256, 3, -3}, stream);
+
+  // bfloat16 -> int32 truncates the widened value toward zero.
+  array floats_frac({2.75f, -2.75f}, {2}, float32);
+  array truncated =
+      astype(astype(floats_frac, bfloat16, stream), int32, stream);
+  check_int32_values(truncated, {2, -2}, stream);
+}
+TEST_CASE("mx.fast.rope passes the offset cast and pins the next blocker") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  // The composed fallback used to stop at the int32 scalar -> float32
+  // offset cast ("dtype converting copy"). That cast now runs as a
+  // data_size-1 CastI32F32 kernel. Evaluation now reaches the trig path
+  // and stops at the half-split slices: multiply over the strided views
+  // x[..., 0:4] and x[..., 4:8] hits the named non-contiguous error.
+  array x({0.0f,  1.0f,  2.0f,  3.0f,  4.0f,  5.0f,  6.0f,  7.0f,
+           8.0f,  9.0f,  10.0f, 11.0f, 12.0f, 13.0f, 14.0f, 15.0f,
+           16.0f, 17.0f, 18.0f, 19.0f, 20.0f, 21.0f, 22.0f, 23.0f,
+           24.0f, 25.0f, 26.0f, 27.0f, 28.0f, 29.0f, 30.0f, 31.0f,
+           32.0f, 33.0f, 34.0f, 35.0f, 36.0f, 37.0f, 38.0f, 39.0f,
+           40.0f, 41.0f, 42.0f, 43.0f, 44.0f, 45.0f, 46.0f, 47.0f,
+           48.0f, 49.0f, 50.0f, 51.0f, 52.0f, 53.0f, 54.0f, 55.0f,
+           56.0f, 57.0f, 58.0f, 59.0f, 60.0f, 61.0f, 62.0f, 63.0f,
+           64.0f, 65.0f, 66.0f, 67.0f, 68.0f, 69.0f, 70.0f, 71.0f,
+           72.0f, 73.0f, 74.0f, 75.0f, 76.0f, 77.0f, 78.0f, 79.0f,
+           80.0f, 81.0f, 82.0f, 83.0f, 84.0f, 85.0f, 86.0f, 87.0f,
+           88.0f, 89.0f, 90.0f, 91.0f, 92.0f, 93.0f, 94.0f, 95.0f},
+          {2, 1, 4, 12},
+          float32);
+
+  array out = fast::rope(
+      x,
+      /*dims=*/8,
+      /*traditional=*/false,
+      /*base=*/10000.0f,
+      /*scale=*/1.0f,
+      /*offset=*/0,
+      std::nullopt,
+      stream);
+  std::string rope_error = evaluation_error(out);
+  CHECK(rope_error.find("[omarchy] non-contiguous Multiply") !=
+        std::string::npos);
+  CHECK(rope_error.find("dtype=float32, shape=[2,1,4,4]") !=
+        std::string::npos);
+}
+

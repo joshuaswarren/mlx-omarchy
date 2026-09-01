@@ -5,10 +5,12 @@
 #include "doctest/doctest.h"
 
 #include <cmath>
+#include <algorithm>
 #include <iostream>
 #include <limits>
 #include <functional>
 #include <vector>
+#include <numeric>
 
 #include "mlx/backend/gpu/copy.h"
 #include "mlx/backend/gpu/device_info.h"
@@ -1628,4 +1630,186 @@ TEST_CASE("grad of sum sin matches cos through Vulkan compute") {
   }
   check_values(value, {expected_value}, stream, 1e-5);
   check_values(grads.at(0), expected, stream, 1e-5);
+}
+
+TEST_CASE("sort and argsort order last-axis rows through Vulkan compute") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+
+  // Shuffled rows with duplicates and negatives. Equal keys keep source
+  // order, which the argsort indices pin exactly: row 1 ties on zero at
+  // indices 0, 1, and 4, and row 2 ties on both -3.5 and 2.5.
+  std::vector<float> xv = {
+      3.0f, -1.0f, 2.0f, -1.0f, 0.5f,
+      0.0f, -0.0f, 5.0f, -7.5f, 0.0f,
+      2.5f, -3.5f, 2.5f, -3.5f, 1.0f};
+  array x(xv.begin(), Shape{3, 5}, float32);
+  check_values(
+      sort(x, -1, stream),
+      {-1.0f, -1.0f, 0.5f, 2.0f, 3.0f, -7.5f, 0.0f, -0.0f, 0.0f, 5.0f,
+       -3.5f, -3.5f, 1.0f, 2.5f, 2.5f},
+      stream);
+  check_indices(
+      argsort(x, -1, stream),
+      {1, 3, 4, 2, 0, 3, 0, 1, 4, 2, 1, 3, 4, 0, 2},
+      stream);
+
+  // A 1-D row is its own last axis.
+  array flat({4.0f, -2.0f, 4.0f, 0.0f}, float32);
+  check_values(sort(flat, 0, stream), {-2.0f, 0.0f, 4.0f, 4.0f}, stream);
+  check_indices(argsort(flat, 0, stream), {1, 3, 0, 2}, stream);
+}
+
+TEST_CASE("sort places NaN after every number through Vulkan compute") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+
+  // The kernel mirrors the upstream CPU comparator: NaN sorts after every
+  // number, and two NaN keys order by source index, so the NaN pair at
+  // indices 1 and 3 yields 1 then 3.
+  float nan = std::numeric_limits<float>::quiet_NaN();
+  std::vector<float> xv = {1.0f, nan, -2.0f, nan, 0.0f};
+  array x(xv.begin(), Shape{5}, float32);
+  array order = argsort(x, -1, stream);
+  check_indices(std::move(order), {2, 4, 0, 1, 3}, stream);
+
+  array sorted = sort(x, -1, stream);
+  sorted.eval();
+  omarchy::get_command_encoder(stream).synchronize();
+  REQUIRE_EQ(sorted.size(), 5);
+  const float* values = sorted.data<float>();
+  CHECK_EQ(values[0], -2.0f);
+  CHECK_EQ(values[1], 0.0f);
+  CHECK_EQ(values[2], 1.0f);
+  CHECK(std::isnan(values[3]));
+  CHECK(std::isnan(values[4]));
+}
+
+TEST_CASE("sort and argsort handle wide rows through Vulkan compute") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+
+  // A 1000-wide row pads to 1024 inside the kernel. Each row holds a
+  // different shuffle of the generator, so the host reference runs
+  // stable_sort under the same (value, index) rule once per row.
+  std::vector<float> wide(2000);
+  for (size_t index = 0; index < wide.size(); ++index) {
+    wide[index] =
+        static_cast<float>((static_cast<int>(index * 37) % 101) - 50);
+  }
+  array x(wide.begin(), Shape{2, 1000}, float32);
+  std::vector<float> sorted_expected;
+  std::vector<uint32_t> order_expected;
+  for (int repeat = 0; repeat < 2; ++repeat) {
+    std::vector<float> row(
+        wide.begin() + repeat * 1000, wide.begin() + (repeat + 1) * 1000);
+    std::vector<uint32_t> order(1000);
+    std::iota(order.begin(), order.end(), 0u);
+    std::stable_sort(order.begin(), order.end(), [&](uint32_t a, uint32_t b) {
+      return row[a] < row[b] || (row[a] == row[b] && a < b);
+    });
+    std::stable_sort(row.begin(), row.end());
+    sorted_expected.insert(sorted_expected.end(), row.begin(), row.end());
+    order_expected.insert(order_expected.end(), order.begin(), order.end());
+  }
+  check_values(sort(x, -1, stream), sorted_expected, stream);
+  check_indices(argsort(x, -1, stream), order_expected, stream);
+
+  // An exact 1024-wide descending row skips the padding path.
+  std::vector<float> exact(1024);
+  for (size_t index = 0; index < exact.size(); ++index) {
+    exact[index] = static_cast<float>(1023 - static_cast<int>(index));
+  }
+  array y(exact.begin(), Shape{1, 1024}, float32);
+  std::vector<uint32_t> exact_order(1024);
+  std::iota(exact_order.begin(), exact_order.end(), 0u);
+  std::reverse(exact_order.begin(), exact_order.end());
+  check_indices(argsort(y, -1, stream), exact_order, stream);
+}
+
+TEST_CASE("sort rejects long rows and non-float dtypes with named errors") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+
+  std::vector<float> wide(1025, 1.0f);
+  array x(wide.begin(), Shape{1, 1025}, float32);
+  std::string length_error = evaluation_error(sort(x, -1, stream));
+  CHECK(length_error.find("sort row length Sort") != std::string::npos);
+  CHECK(length_error.find("No CPU fallback") != std::string::npos);
+  std::string index_length_error =
+      evaluation_error(argsort(x, -1, stream));
+  CHECK(
+      index_length_error.find("sort row length ArgSort") != std::string::npos);
+
+  array ints({3, 1, 2}, int32);
+  std::string dtype_error = evaluation_error(sort(ints, -1, stream));
+  CHECK(dtype_error.find("[omarchy] Sort dtype") != std::string::npos);
+
+  array matrix({1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f}, {2, 3}, float32);
+  std::string axis_error = evaluation_error(sort(matrix, 0, stream));
+  CHECK(axis_error.find("non-suffix Sort") != std::string::npos);
+  std::string index_axis_error =
+      evaluation_error(argsort(matrix, 0, stream));
+  CHECK(index_axis_error.find("non-suffix ArgSort") != std::string::npos);
+}
+
+TEST_CASE("partition redirects to sort and topk returns the right set") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  std::vector<float> xv = {3.0f, -1.0f, 2.0f, -1.0f, 0.5f};
+  array x(xv.begin(), Shape{5}, float32);
+
+  // A full sort satisfies the partition contract, so every position holds
+  // the sorted value and argpartition equals argsort exactly.
+  check_values(
+      partition(x, 2, -1, stream), {-1.0f, -1.0f, 0.5f, 2.0f, 3.0f}, stream);
+  check_indices(argpartition(x, 2, -1, stream), {1, 3, 4, 2, 0}, stream);
+
+  // mx.topk lowers to partition plus a tail slice, so a 1-D topk returns
+  // the k largest in ascending order through the same path.
+  check_values(topk(x, 2, -1, stream), {2.0f, 3.0f}, stream);
+
+  // The same full-sort redirect satisfies the partition contract for
+  // several rows at once.
+  array m({5.0f, 1.0f, 4.0f, 2.0f, 3.0f, 0.0f}, {2, 3}, float32);
+  check_values(
+      partition(m, 0, -1, stream),
+      {1.0f, 4.0f, 5.0f, 0.0f, 2.0f, 3.0f},
+      stream);
+
+  std::string axis_error = evaluation_error(partition(m, 0, 0, stream));
+  CHECK(axis_error.find("non-suffix Partition") != std::string::npos);
+}
+
+TEST_CASE("FP16 sort and argsort match host references") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  const auto& capabilities = omarchy::device(0).capabilities();
+  if (!capabilities.shader_float16 ||
+      !capabilities.storage_buffer_16bit_access) {
+    skip("Vulkan device lacks required FP16 shader and storage features.");
+    return;
+  }
+
+  // Row ties on -2 at indices 1 and 3, so argsort keeps 1 then 3.
+  std::vector<float> xv = {1.0f, -2.0f, 0.5f, -2.0f};
+  array x(xv.begin(), Shape{4}, float16);
+  check_values(
+      astype(sort(x, -1, stream), float32, stream),
+      {-2.0f, -2.0f, 0.5f, 1.0f},
+      stream,
+      1e-2);
+  check_indices(argsort(x, -1, stream), {1, 3, 2, 0}, stream);
 }
