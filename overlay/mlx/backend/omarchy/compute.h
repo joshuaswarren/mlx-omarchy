@@ -101,6 +101,9 @@ enum class ComputeKernel : uint8_t {
   SearchSortedBF16,
   SearchSortedI32,
   SearchSortedU32,
+  QmmF32,
+  QmmF16,
+  QmmBF16,
   Count,
 };
 

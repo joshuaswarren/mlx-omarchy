@@ -1129,7 +1129,125 @@ void Partition::eval_gpu(const std::vector<array>& inputs, array& out) {
 }
 OMARCHY_UNSUPPORTED(Power)
 OMARCHY_UNSUPPORTED_MULTI(QRF)
-OMARCHY_UNSUPPORTED(QuantizedMatmul)
+void QuantizedMatmul::eval_gpu(const std::vector<array>& inputs, array& out) {
+  const std::string tag = name();
+  // Non-affine modes pass three inputs, so the mode check must land
+  // before the biases operand is bound.
+  if (mode_ != QuantizationMode::Affine) {
+    omarchy::unsupported(tag + " mode", out);
+  }
+  const array& x = inputs[0];
+  const array& w = inputs[1];
+  const array& scales = inputs[2];
+  const array& biases = inputs[3];
+  // First-class scope: the mlx-lm Linear shape. transpose=true reads the
+  // packed w rows [N, K * bits / 32] as the dequantized matrix [N, K]
+  // and computes x @ w.T; other affine shapes keep the named rejection.
+  if (bits_ != 4 && bits_ != 8) {
+    omarchy::unsupported(tag + " bits", out);
+  }
+  if (group_size_ != 32 && group_size_ != 64) {
+    omarchy::unsupported(tag + " group size", out);
+  }
+  if (!transpose_) {
+    omarchy::unsupported(tag + " transpose", out);
+  }
+  auto& encoder = omarchy::get_command_encoder(out.primitive().stream());
+  require_float_dtype(tag, x, out, encoder);
+  if (w.dtype() != uint32 || w.ndim() != 2) {
+    omarchy::unsupported(tag + " weight layout", out);
+  }
+  if (scales.dtype() != out.dtype() || biases.dtype() != out.dtype()) {
+    // ops.cpp promotes x, scales, and biases to one affine dtype.
+    omarchy::unsupported(tag + " scales dtype", out);
+  }
+  if (scales.ndim() != 2 || scales.shape() != biases.shape() ||
+      scales.shape(0) != w.shape(0)) {
+    omarchy::unsupported(tag + " scales shape", out);
+  }
+  if (!x.flags().row_contiguous || !w.flags().row_contiguous ||
+      !scales.flags().row_contiguous || !biases.flags().row_contiguous) {
+    omarchy::unsupported(tag + " non-contiguous input", out);
+  }
+  int k = x.shape(-1);
+  int n = out.shape(-1);
+  size_t m = x.size() / k;
+  if (w.shape(0) != n ||
+      static_cast<uint64_t>(w.shape(1)) * 32u / bits_ !=
+          static_cast<uint64_t>(k) ||
+      static_cast<uint64_t>(scales.shape(1)) * group_size_ !=
+          static_cast<uint64_t>(k)) {
+    omarchy::unsupported(tag + " shape", out);
+  }
+
+  out.set_data(allocate_omarchy(out.nbytes()));
+  if (out.size() == 0) {
+    return;
+  }
+
+  // Binding 2 packs the group parameters as two halves of one buffer:
+  // [all scales | all biases] with K / group_size values per w row. Two
+  // device copies build it with no extra kernel, and the encoder keeps
+  // the temp alive until the dispatch completes. vkCmdCopyBuffer needs
+  // 4-byte-aligned source offsets, so odd 16-bit views stay named.
+  if (scales.offset() % 4 != 0 || biases.offset() % 4 != 0) {
+    omarchy::unsupported(tag + " scales byte offset", out);
+  }
+  array combined(
+      Shape{static_cast<int>(2 * scales.size())}, scales.dtype(), nullptr, {});
+  array::Flags combined_flags;
+  combined_flags.contiguous = true;
+  combined_flags.row_contiguous = true;
+  combined_flags.col_contiguous = true;
+  combined.set_data(
+      allocate_omarchy(combined.nbytes()),
+      combined.size(),
+      Strides{1},
+      combined_flags,
+      0);
+  encoder.add_temporary(combined);
+  VkDeviceSize scale_bytes = static_cast<VkDeviceSize>(scales.nbytes());
+  encoder.copy_buffer(
+      binding(scales).buffer,
+      binding(combined).buffer,
+      scale_bytes,
+      static_cast<VkDeviceSize>(scales.offset()),
+      0);
+  encoder.copy_buffer(
+      binding(biases).buffer,
+      binding(combined).buffer,
+      scale_bytes,
+      static_cast<VkDeviceSize>(biases.offset()),
+      scale_bytes);
+
+  // Push-constant routing for the qmm shader: operation carries bits,
+  // reduce_size carries the group size (see shaders/qmm.comp).
+  uint64_t total = static_cast<uint64_t>(m) * static_cast<uint64_t>(n);
+  omarchy::ComputeParams params;
+  params.count = checked_u32(total, tag, out);
+  params.operation = static_cast<uint32_t>(bits_);
+  params.reduce_size = static_cast<uint32_t>(group_size_);
+  params.output_size = params.count;
+  params.lhs_offset = checked_item_offset(x, x.size(), tag, out);
+  params.rhs_offset = checked_item_offset(w, w.size(), tag, out);
+  params.aux_size = checked_u32(combined.size(), tag, out);
+  params.matrix_m = checked_u32(m, tag, out);
+  params.matrix_n = checked_u32(n, tag, out);
+  params.matrix_k = checked_u32(k, tag, out);
+  params.output_offset = checked_item_offset(out, out.size(), tag, out);
+  std::array<omarchy::ComputeBinding, 4> bindings{
+      binding(x), binding(w), binding(combined), binding(out)};
+  auto kernel = select_float_kernel(
+      out.dtype(),
+      omarchy::ComputeKernel::QmmF32,
+      omarchy::ComputeKernel::QmmF16,
+      omarchy::ComputeKernel::QmmBF16);
+  encoder.dispatch_compute(
+      kernel,
+      bindings,
+      params,
+      omarchy::compute_dispatch_group_count(params.count));
+}
 OMARCHY_UNSUPPORTED(QQMatmul)
 void RandomBits::eval_gpu(const std::vector<array>& inputs, array& out) {
   const array& keys = inputs.at(0);

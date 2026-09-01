@@ -77,6 +77,9 @@
 #include "searchsorted_i32.h"
 #include "searchsorted_u32.h"
 #include "random_bits_u32.h"
+#include "qmm_bf16.h"
+#include "qmm_f16.h"
+#include "qmm_f32.h"
 
 namespace mlx::core::omarchy {
 
@@ -219,6 +222,12 @@ ShaderBytes shader_bytes(ComputeKernel kernel) {
       return {argsort_bf16, argsort_bf16_size};
     case ComputeKernel::RandomBitsU32:
       return {random_bits_u32, random_bits_u32_size};
+    case ComputeKernel::QmmF32:
+      return {qmm_f32, qmm_f32_size};
+    case ComputeKernel::QmmF16:
+      return {qmm_f16, qmm_f16_size};
+    case ComputeKernel::QmmBF16:
+      return {qmm_bf16, qmm_bf16_size};
     case ComputeKernel::SortF32:
       return {sort_f32, sort_f32_size};
     case ComputeKernel::SortF16:
