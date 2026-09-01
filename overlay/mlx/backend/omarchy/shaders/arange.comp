@@ -1,6 +1,10 @@
 #version 460
 
-#ifdef USE_FP16
+#ifdef USE_I32
+#define STORAGE_TYPE int
+#define LOAD_VALUE(x) (x)
+#define STORE_VALUE(f) (f)
+#elif defined(USE_FP16)
 #extension GL_EXT_shader_16bit_storage : require
 #extension GL_EXT_shader_explicit_arithmetic_types_float16 : require
 #define STORAGE_TYPE float16_t
@@ -55,7 +59,14 @@ void main() {
   uint index = gl_GlobalInvocationID.x;
   uint stride = gl_NumWorkGroups.x * gl_WorkGroupSize.x;
   while (index < params.count) {
+#ifdef USE_I32
+    // The host keeps |start|, |step|, and |start + step * count| below
+    // 2^24, so alpha and beta transport exactly and the int math is
+    // exact for every index.
+    int value = int(params.alpha) + int(index) * int(params.beta);
+#else
     float value = params.alpha + params.beta * float(index);
+#endif
     output_data.values[params.output_offset + index] = STORE_VALUE(value);
     if (params.count - index <= stride) {
       break;

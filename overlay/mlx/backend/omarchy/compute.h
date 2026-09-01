@@ -59,6 +59,10 @@ enum class ComputeKernel : uint8_t {
   SoftmaxF32,
   SoftmaxF16,
   SoftmaxBF16,
+  SelectF32,
+  SelectF16,
+  SelectBF16,
+  GreaterEqualI32,
   GatherF32,
   GatherF16,
   GatherBF16,
@@ -71,6 +75,7 @@ enum class ComputeKernel : uint8_t {
   ArangeF32,
   ArangeF16,
   ArangeBF16,
+  ArangeI32,
   SortF32,
   SortF16,
   SortBF16,
@@ -102,12 +107,15 @@ struct ComputeParams {
   uint32_t matrix_n{0};
   uint32_t matrix_k{0};
   // Matmul flag bits: 1 = rhs transposed, 2 = bias c used,
-  // 4 = lhs transposed, 8 = batched (group_count_z = batch count).
+  // 4 = lhs transposed. Batch routing is data-driven: dims is the batch
+  // axis count, shape[] the batch extents, and in_strides/out_strides[]
+  // the per-operand batch strides in elements (0 = broadcast axis). The
+  // shader unravels workgroup z over shape[] and offsets each operand.
   uint32_t flags{0};
   float alpha{1.0f};
   float beta{0.0f};
-  // Broadcast rank for elementwise kernels; batch count for Matmul
-  // kernels (flag bit 8).
+  // Broadcast rank for elementwise kernels; batch axis count for Matmul
+  // kernels (0 for rank-2).
   uint32_t dims{0};
   uint32_t shape[4]{};
   uint32_t in_strides[4]{};

@@ -60,6 +60,13 @@ layout(push_constant) uniform Params {
   uint flags;
   float alpha;
   float beta;
+  // Matmul batch routing: dims is the batch axis count, shape[] the
+  // batch extents, and in_strides/out_strides[] the per-operand batch
+  // strides in elements (0 = broadcast axis).
+  uint dims;
+  uint shape[4];
+  uint in_strides[4];
+  uint out_strides[4];
 } params;
 
 shared float tile_a[16][16];
@@ -68,11 +75,23 @@ shared float tile_b[16][16];
 void main() {
   uint local_x = gl_LocalInvocationID.x;
   uint local_y = gl_LocalInvocationID.y;
-  // Flag bit 8 marks a batched product: workgroup z is the batch index
-  // and each operand advances by its per-matrix size. Unbatched
-  // dispatches run with z = 1, so batch is 0 and the indices match the
-  // plain 2D path exactly.
-  uint batch = gl_WorkGroupID.z;
+  // Workgroup z is the collapsed batch index. It unravels over shape[]
+  // and each operand advances by its own batch strides, so a stride of
+  // 0 broadcasts the axis. A dense stack keeps the contiguous strides,
+  // which reduces to the plain batch * matrix_size indexing, and dims
+  // == 0 (rank 2) leaves both offsets at zero.
+  uint batch_index = gl_WorkGroupID.z;
+  uint remaining = batch_index;
+  uint a_batch = 0u;
+  uint b_batch = 0u;
+  // Unravel from the last axis so the flat z stays row-major, the same
+  // order the output uses.
+  for (uint axis = params.dims; axis > 0u; --axis) {
+    uint coord = remaining % params.shape[axis - 1u];
+    remaining /= params.shape[axis - 1u];
+    a_batch += coord * params.in_strides[axis - 1u];
+    b_batch += coord * params.out_strides[axis - 1u];
+  }
   uint lhs_matrix = params.matrix_m * params.matrix_k;
   uint rhs_matrix = params.matrix_k * params.matrix_n;
   uint out_matrix = params.matrix_m * params.matrix_n;
@@ -94,7 +113,7 @@ void main() {
       for (uint tile = 0; tile < k_tiles; ++tile) {
         uint a_column = tile * TILE_SIZE + local_x;
         uint b_row = tile * TILE_SIZE + local_y;
-        uint a_index = params.lhs_offset + batch * lhs_matrix +
+        uint a_index = params.lhs_offset + a_batch +
             ((params.flags & 4u) != 0u
                 ? a_column * params.matrix_m + row
                 : row * params.matrix_k + a_column);
@@ -102,7 +121,7 @@ void main() {
                 a_column < params.matrix_k
             ? LOAD_VALUE(input_a.values[a_index])
             : 0.0;
-        uint b_index = params.rhs_offset + batch * rhs_matrix +
+        uint b_index = params.rhs_offset + b_batch +
             ((params.flags & 1u) != 0u
                 ? column * params.matrix_k + b_row
                 : b_row * params.matrix_n + column);
@@ -119,8 +138,8 @@ void main() {
       }
 
       if (row < params.matrix_m && column < params.matrix_n) {
-        uint output_index =
-            batch * out_matrix + row * params.matrix_n + column;
+        uint output_index = batch_index * out_matrix +
+            row * params.matrix_n + column;
         float value = params.alpha * accumulator;
         if ((params.flags & 2u) != 0u) {
           uint c_index = params.aux_size == 1u

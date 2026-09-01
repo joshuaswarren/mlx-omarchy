@@ -40,12 +40,21 @@ Primitive operations are in progress.
 The development gate covers FP32 and FP16 elementwise work, suffix Sum and Max, offsets, and grid-stride dispatch.
 It also covers dense Matmul and AddMM with tiled kernels, transposed inputs, and trailing-dimension bias broadcast.
 Transposed-input Matmul now passes the gate for 2D views of either operand.
-Batched Matmul and AddMM pass the gate for rank-3 and rank-4 operands with equal batch dims.
-Each operand may be row-major or per-matrix transposed, and batch strides must equal the matrix size.
-The batch count rides in the push-constant dims field, and workgroup z selects the batch.
-Batched AddMM keeps the scalar, per-row, and full per-batch bias broadcasts.
-Rank beyond 4 fails with the named `matrix rank` error, broadcast batch strides with the named `matrix layout` error, and batches beyond 65535 with the named `batch count` error.
-`mx.fast.scaled_dot_product_attention` evaluates through the composed fallback and matches a host reference within `1e-3`.
+Batched Matmul and AddMM pass the gate for rank-3, rank-4, and rank-5 operands.
+Each operand may be row-major or per-matrix transposed, and batch axes may
+broadcast: a size-1 axis against a wider axis carries a zero stride through
+the shared-buffer broadcast view and repeats one matrix per batch step.
+The push constants carry the batch axis count, the batch extents, and the
+per-operand batch strides in elements, and workgroup z unravels over the
+batch shape. Batched AddMM keeps the scalar, per-row, and full per-batch
+bias broadcasts.
+Rank beyond 5 fails with the named `matrix rank` error, mismatched batch
+dims with the named `batch dimensions` error, and collapsed batches beyond
+65535 with the named `batch count` error.
+`mx.fast.scaled_dot_product_attention` evaluates through the composed
+fallback and matches a host reference within `1e-3` for float32, including
+grouped-query attention (`n_q_heads != n_kv_heads`, which emits rank-5
+matmuls over stride-0 broadcast batch views) and causal masks.
 Subtract, Negative, non-zero scalar fill, and same-dtype general strided copy pass the gate.
 Elementwise binary ops broadcast operands on any axis up to a collapsed rank of 4.
 Trailing broadcasts keep the modulo fast path, and a higher collapsed rank fails with the named `broadcast rank` error.
@@ -85,10 +94,23 @@ Rows beyond 1024, non-suffix axes, non-contiguous inputs, and non-float inputs f
 `mx.topk` returns the k largest values in ascending order through the partition path, and the strided tail slice now passes for 2-D inputs.
 The BF16 sort variants build, but they have no gate receipt yet.
 `mx.cos` and `mx.sin` pass the development gate for FP32 against host references at `1e-5`, including negative inputs.
-`mx.arange` passes the gate for FP32 and FP16 fills of the form start plus step times index.
-Upstream derives the arange length from `ceil((stop - start) / step)`, so a negative step over a descending range is valid.
-The kernel applies the step as a signed multiplier, so it covers the negative-step case.
-Non-float dtypes fail with the named `Arange dtype` error.
+`mx.arange` passes the gate for FP32 and FP16 fills of the form start plus
+step times index.
+Upstream derives the arange length from `ceil((stop - start) / step)`, so a
+negative step over a descending range is valid.
+The kernel applies the step as a signed multiplier, so it covers the
+negative-step case.
+int32 aranges run through an exact integer kernel: the host keeps `|start|`,
+`|step|`, and `|start + step * count|` below `2^24`, so the float transport
+is exact, and larger ranges fail with the named `Arange range` error.
+Other non-float dtypes fail with the named `Arange dtype` error.
+`mx.greater_equal` passes the gate for two int32 index arrays with
+broadcast views and a bool output; the mask bytes move through 32-bit word
+packing, so no 8-bit storage feature is required.
+`mx.where` serves the composed causal mask: a strided bool condition view
+picks between a row-contiguous value and a scalar floor, for float32,
+float16, and bfloat16. Other comparisons, dtypes, and layouts stay named
+rejections.
 The BF16 arange kernel variant builds, but it has no gate receipt yet.
 The gradient of `sum(sin(x))` matches `cos(x)` at `1e-5`.
 The Sin vjp lowers to Cos and Multiply only, so the gradient stays inside supported operations.

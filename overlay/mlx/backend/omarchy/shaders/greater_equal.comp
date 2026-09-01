@@ -1,0 +1,103 @@
+#version 460
+
+layout(local_size_x = 256) in;
+
+layout(set = 0, binding = 0, std430) readonly buffer InputA {
+  int values[];
+} input_a;
+layout(set = 0, binding = 1, std430) readonly buffer InputB {
+  int values[];
+} input_b;
+// Bool arrays store one byte per element. The interface reads and writes
+// them as little-endian 32-bit words, so no 8-bit storage feature is
+// needed; the omarchy allocator page-rounds every buffer, so the word
+// that contains the last byte is always inside the allocation.
+layout(set = 0, binding = 2, std430) writeonly buffer Output {
+  uint words[];
+} output_data;
+
+layout(push_constant) uniform Params {
+  uint count;
+  uint operation;
+  uint lhs_size;
+  uint rhs_size;
+  uint reduce_size;
+  uint output_size;
+  uint lhs_offset;
+  uint rhs_offset;
+  uint output_offset;
+  uint aux_size;
+  uint aux_offset;
+  uint matrix_m;
+  uint matrix_n;
+  uint matrix_k;
+  uint flags;
+  float alpha;
+  float beta;
+  // dims == 0 selects the modulo fast path below. Otherwise the output
+  // is unraveled over shape[] and lhs_strides/rhs_strides index the
+  // operands; a stride of 0 broadcasts the axis.
+  uint dims;
+  uint shape[4];
+  uint lhs_strides[4];
+  uint rhs_strides[4];
+} params;
+
+uint lhs_index_for(uint index) {
+  if (params.dims == 0u) {
+    return params.lhs_offset + (params.lhs_size == 1u
+        ? 0u
+        : (params.lhs_size == params.count ? index : index % params.lhs_size));
+  }
+  uint rem = index;
+  uint result = params.lhs_offset;
+  for (int dim = int(params.dims) - 1; dim >= 0; --dim) {
+    uint coord = rem % params.shape[dim];
+    rem /= params.shape[dim];
+    result += coord * params.lhs_strides[dim];
+  }
+  return result;
+}
+
+uint rhs_index_for(uint index) {
+  if (params.dims == 0u) {
+    return params.rhs_offset + (params.rhs_size == 1u
+        ? 0u
+        : (params.rhs_size == params.count ? index : index % params.rhs_size));
+  }
+  uint rem = index;
+  uint result = params.rhs_offset;
+  for (int dim = int(params.dims) - 1; dim >= 0; --dim) {
+    uint coord = rem % params.shape[dim];
+    rem /= params.shape[dim];
+    result += coord * params.rhs_strides[dim];
+  }
+  return result;
+}
+
+void main() {
+  uint word_index = gl_GlobalInvocationID.x;
+  uint word_stride = gl_NumWorkGroups.x * gl_WorkGroupSize.x;
+  uint word_count = (params.count + 3u) >> 2u;
+  while (word_index < word_count) {
+    uint base = word_index * 4u;
+    uint word = 0u;
+    for (uint lane = 0u; lane < 4u; ++lane) {
+      uint index = base + lane;
+      if (index >= params.count) {
+        break;
+      }
+      uint bit =
+          input_a.values[lhs_index_for(index)] >=
+              input_b.values[rhs_index_for(index)]
+              ? 1u
+              : 0u;
+      word |= bit << ((index & 3u) * 8u);
+    }
+    output_data.words[word_index] = word;
+    if (word_count - word_index <= word_stride) {
+      break;
+    }
+    word_index += word_stride;
+  }
+}

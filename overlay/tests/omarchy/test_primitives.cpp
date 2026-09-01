@@ -54,6 +54,40 @@ void check_values(
   }
 }
 
+void check_int32_values(
+    array value,
+    const std::vector<int32_t>& expected,
+    const Stream& stream) {
+  value.eval();
+  omarchy::get_command_encoder(stream).synchronize();
+  REQUIRE_EQ(value.size(), expected.size());
+  const int32_t* values = value.data<int32_t>();
+  for (size_t index = 0; index < expected.size(); ++index) {
+    CHECK_EQ(values[index], expected[index]);
+  }
+}
+
+
+// Checks one batch matrix of a rank-5 output against a host vector.
+void check_values(
+    array value,
+    size_t b1,
+    size_t b2,
+    const std::vector<float>& expected,
+    const Stream& stream,
+    double epsilon = 1e-5) {
+  value.eval();
+  omarchy::get_command_encoder(stream).synchronize();
+  REQUIRE(value.size() >= (b1 * 2 + b2 + 1) * expected.size());
+  const float* values = value.data<float>();
+  size_t base = (b1 * 2 + b2) * expected.size();
+  for (size_t index = 0; index < expected.size(); ++index) {
+    CHECK(
+        values[base + index] ==
+        doctest::Approx(expected[index]).epsilon(epsilon));
+  }
+}
+
 std::string evaluation_error(array value) {
   try {
     value.eval();
@@ -1485,18 +1519,98 @@ TEST_CASE("batched Matmul matches host references across layouts") {
       full_bias_expected,
       stream);
 
-  // Broadcast batch dims stay unsupported with the named layout error,
-  // and rank beyond 4 reports the named rank error.
+  // Broadcast batch axes run through the stride-0 views: every batch
+  // step multiplies the same stored matrix, verified against the host
+  // loop. This is the shape the composed GQA attention emits.
   array a3_single(a3_values.begin(), Shape{1, 3, 4}, float32);
   array broadcast_a = broadcast_to(a3_single, {3, 3, 4}, stream);
-  array b3_wide(b3_values.begin(), Shape{3, 4, 5}, float32);
-  std::string layout_error =
-      evaluation_error(matmul(broadcast_a, b3_wide, stream));
-  CHECK(layout_error.find("matrix layout Matmul") != std::string::npos);
-  array a5(a4_values.begin(), Shape{2, 2, 2, 3, 4}, float32);
-  std::vector<float> b5_values(2 * 2 * 2 * 4 * 5, 0.5f);
+  std::vector<float> b3_wide_values(3 * 4 * 5);
+  fill(b3_wide_values, 5, 2);
+  array b3_wide(b3_wide_values.begin(), Shape{3, 4, 5}, float32);
+  std::vector<float> broadcast_expected;
+  for (size_t batch = 0; batch < 3; ++batch) {
+    for (size_t row = 0; row < m3; ++row) {
+      for (size_t column = 0; column < n3; ++column) {
+        float dot = 0.0f;
+        for (size_t inner = 0; inner < k3; ++inner) {
+          dot += a3_values[row * k3 + inner] *
+              b3_wide_values[inner * n3 + column];
+        }
+        broadcast_expected.push_back(dot);
+      }
+    }
+  }
+  check_values(matmul(broadcast_a, b3_wide, stream), broadcast_expected, stream);
+
+  // Rank 5 passes with dense, stride-0 broadcast, and per-matrix
+  // transposed batch operands. Every host reference is computed from
+  // the same vectors that back the arrays.
+  std::vector<float> a5_values(2 * 2 * 2 * 3 * 4);
+  std::vector<float> b5_values(2 * 2 * 2 * 4 * 5);
+  fill(a5_values, 6, 3);
+  fill(b5_values, 4, 2);
+  auto host5 = [&](size_t b1, size_t b2, size_t b2_source) {
+    std::vector<float> out(3 * 5);
+    for (size_t row = 0; row < 3; ++row) {
+      for (size_t column = 0; column < 5; ++column) {
+        float dot = 0.0f;
+        for (size_t inner = 0; inner < 4; ++inner) {
+          dot += a5_values[(b1 * 2 + b2) * 12 + row * 4 + inner] *
+              b5_values[(b1 * 2 + b2_source) * 20 + inner * 5 + column];
+        }
+        out[row * 5 + column] = dot;
+      }
+    }
+    return out;
+  };
+  array a5(a5_values.begin(), Shape{2, 2, 2, 3, 4}, float32);
   array b5(b5_values.begin(), Shape{2, 2, 2, 4, 5}, float32);
-  std::string rank_error = evaluation_error(matmul(a5, b5, stream));
+  for (size_t b1 = 0; b1 < 2; ++b1) {
+    for (size_t b2 = 0; b2 < 2; ++b2) {
+      check_values(matmul(a5, b5, stream), b1, b2, host5(b1, b2, b2), stream);
+    }
+  }
+  // A stride-0 broadcast batch axis repeats one stored matrix per
+  // batch step: batches (b1, 0) and (b1, 1) share the (b1, 0) source.
+  array b5_single(b5_values.begin(), Shape{2, 2, 1, 4, 5}, float32);
+  array b5_broadcast =
+      broadcast_to(b5_single, {2, 2, 2, 4, 5}, stream);
+  for (size_t b1 = 0; b1 < 2; ++b1) {
+    for (size_t b2 = 0; b2 < 2; ++b2) {
+      check_values(
+          matmul(a5, b5_broadcast, stream), b1, b2, host5(b1, b2, 0), stream);
+    }
+  }
+  // A per-matrix transposed stack works at rank 5 as well.
+  std::vector<float> b5_store_values(2 * 2 * 2 * 5 * 4);
+  for (size_t b1 = 0; b1 < 2; ++b1) {
+    for (size_t b2 = 0; b2 < 2; ++b2) {
+      for (size_t row = 0; row < 4; ++row) {
+        for (size_t column = 0; column < 5; ++column) {
+          b5_store_values[(b1 * 2 + b2) * 20 + column * 4 + row] =
+              b5_values[(b1 * 2 + b2) * 20 + row * 5 + column];
+        }
+      }
+    }
+  }
+  array b5_store(b5_store_values.begin(), Shape{2, 2, 2, 5, 4}, float32);
+  for (size_t b1 = 0; b1 < 2; ++b1) {
+    for (size_t b2 = 0; b2 < 2; ++b2) {
+      check_values(
+          matmul(a5, transpose(b5_store, {0, 1, 2, 4, 3}, stream), stream),
+          b1,
+          b2,
+          host5(b1, b2, b2),
+          stream);
+    }
+  }
+
+  // Rank beyond 5 still reports the named rank error. The operands keep
+  // valid matrix dims so the rank check is what rejects them.
+  std::vector<float> a6_values(2 * 2 * 2 * 2 * 3 * 4, 0.5f);
+  array a6(a6_values.begin(), Shape{2, 2, 2, 2, 3, 4}, float32);
+  array b6(a6_values.begin(), Shape{2, 2, 2, 2, 4, 5}, float32);
+  std::string rank_error = evaluation_error(matmul(a6, b6, stream));
   CHECK(rank_error.find("matrix rank Matmul") != std::string::npos);
 }
 
@@ -1564,6 +1678,174 @@ TEST_CASE("scaled_dot_product_attention composes through batched matmul") {
         }
         expected[head * queries_length * head_dim + row * head_dim + inner] =
             sum;
+      }
+    }
+  }
+  check_values(attention, expected, stream, 1e-3);
+}
+
+TEST_CASE(
+    "scaled_dot_product_attention expands kv heads through broadcast matmul") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  constexpr size_t q_heads = 4;
+  constexpr size_t kv_heads = 2;
+  constexpr size_t seq_length = 8;
+  constexpr size_t head_dim = 8;
+  auto pattern = [](size_t index) {
+    return 0.25f * static_cast<float>(static_cast<int>(index % 11) - 5);
+  };
+  std::vector<float> q_values(q_heads * seq_length * head_dim);
+  std::vector<float> kv_values(kv_heads * seq_length * head_dim);
+  for (size_t index = 0; index < q_values.size(); ++index) {
+    q_values[index] = pattern(index);
+  }
+  for (size_t index = 0; index < kv_values.size(); ++index) {
+    kv_values[index] = pattern(index + 5);
+  }
+  array q(q_values.begin(), Shape{1, 4, 8, 8}, float32);
+  array k(kv_values.begin(), Shape{1, 2, 8, 8}, float32);
+  array v(kv_values.begin(), Shape{1, 2, 8, 8}, float32);
+  constexpr float scale = 0.25f;
+
+  // The composed fallback unflattens q to [B, kv_heads, n_rep, L, D]
+  // and broadcasts the kv view, so the scores matmul runs at rank 5
+  // with a stride-0 batch axis.
+  array attention = fast::scaled_dot_product_attention(
+      q, k, v, scale, "", std::nullopt, std::nullopt, false, stream);
+  std::string blocked = evaluation_error(attention);
+  REQUIRE(blocked.empty());
+
+  auto host_reference = [&](const std::vector<float>& qv) {
+    std::vector<float> out(q_heads * seq_length * head_dim, 0.0f);
+    for (size_t head = 0; head < q_heads; ++head) {
+      size_t kv_head = head / (q_heads / kv_heads);
+      for (size_t row = 0; row < seq_length; ++row) {
+        float max_score = -std::numeric_limits<float>::infinity();
+        std::vector<float> scores(seq_length);
+        for (size_t column = 0; column < seq_length; ++column) {
+          float dot_qk = 0.0f;
+          for (size_t inner = 0; inner < head_dim; ++inner) {
+            dot_qk += qv[head * seq_length * head_dim + row * head_dim +
+                         inner] *
+                kv_values[kv_head * seq_length * head_dim + column *
+                              head_dim + inner];
+          }
+          scores[column] = scale * dot_qk;
+          max_score = std::max(max_score, scores[column]);
+        }
+        float normalizer = 0.0f;
+        for (size_t column = 0; column < seq_length; ++column) {
+          scores[column] = std::exp(scores[column] - max_score);
+          normalizer += scores[column];
+        }
+        for (size_t inner = 0; inner < head_dim; ++inner) {
+          float sum = 0.0f;
+          for (size_t column = 0; column < seq_length; ++column) {
+            sum += scores[column] / normalizer *
+                kv_values[kv_head * seq_length * head_dim + column *
+                              head_dim + inner];
+          }
+          out[head * seq_length * head_dim + row * head_dim + inner] = sum;
+        }
+      }
+    }
+    return out;
+  };
+  check_values(attention, host_reference(q_values), stream, 1e-3);
+
+  // The bf16 variant runs the same composition through the bf16
+  // matmul, softmax, and select kernels.
+  const auto& capabilities = omarchy::device(0).capabilities();
+  if (!capabilities.shader_float16 || !capabilities.storage_buffer_16bit_access ||
+      !capabilities.shader_int16) {
+    skip("Vulkan device lacks required BF16 shader and storage features.");
+    return;
+  }
+  array q_bf16 = astype(q, bfloat16, stream);
+  array k_bf16 = astype(k, bfloat16, stream);
+  array v_bf16 = astype(v, bfloat16, stream);
+  array attention_bf16 = fast::scaled_dot_product_attention(
+      q_bf16, k_bf16, v_bf16, scale, "", std::nullopt, std::nullopt, false,
+      stream);
+  std::string blocked_bf16 = evaluation_error(attention_bf16);
+  REQUIRE(blocked_bf16.empty());
+  check_values(
+      astype(attention_bf16, float32, stream),
+      host_reference(q_values),
+      stream,
+      1e-2);
+}
+
+TEST_CASE("causal scaled_dot_product_attention composes through int32 arange") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  constexpr size_t q_heads = 4;
+  constexpr size_t kv_heads = 2;
+  constexpr size_t seq_length = 32;
+  constexpr size_t head_dim = 8;
+  auto pattern = [](size_t index) {
+    return 0.25f * static_cast<float>(static_cast<int>(index % 11) - 5);
+  };
+  std::vector<float> q_values(q_heads * seq_length * head_dim);
+  std::vector<float> kv_values(kv_heads * seq_length * head_dim);
+  for (size_t index = 0; index < q_values.size(); ++index) {
+    q_values[index] = pattern(index);
+  }
+  for (size_t index = 0; index < kv_values.size(); ++index) {
+    kv_values[index] = pattern(index + 5);
+  }
+  array q(q_values.begin(), Shape{1, 4, 32, 8}, float32);
+  array k(kv_values.begin(), Shape{1, 2, 32, 8}, float32);
+  array v(kv_values.begin(), Shape{1, 2, 32, 8}, float32);
+  constexpr float scale = 0.25f;
+
+  // The causal mask materializes int32 aranges (32 > 28 covers the
+  // M1 smoke blocker), a GreaterEqual bool mask, and a Select against
+  // the dtype minimum.
+  array attention = fast::scaled_dot_product_attention(
+      q, k, v, scale, "causal", std::nullopt, std::nullopt, false, stream);
+  std::string blocked = evaluation_error(attention);
+  REQUIRE(blocked.empty());
+
+  std::vector<float> expected(q_heads * seq_length * head_dim, 0.0f);
+  for (size_t head = 0; head < q_heads; ++head) {
+    size_t kv_head = head / (q_heads / kv_heads);
+    for (size_t row = 0; row < seq_length; ++row) {
+      float max_score = -std::numeric_limits<float>::infinity();
+      std::vector<float> scores(seq_length);
+      for (size_t column = 0; column < seq_length; ++column) {
+        if (column > row) {
+          scores[column] = -std::numeric_limits<float>::infinity();
+          continue;
+        }
+        float dot_qk = 0.0f;
+        for (size_t inner = 0; inner < head_dim; ++inner) {
+          dot_qk += q_values[head * seq_length * head_dim + row * head_dim +
+                             inner] *
+              kv_values[kv_head * seq_length * head_dim + column * head_dim +
+                        inner];
+        }
+        scores[column] = scale * dot_qk;
+        max_score = std::max(max_score, scores[column]);
+      }
+      float normalizer = 0.0f;
+      for (size_t column = 0; column <= row; ++column) {
+        scores[column] = std::exp(scores[column] - max_score);
+        normalizer += scores[column];
+      }
+      for (size_t inner = 0; inner < head_dim; ++inner) {
+        float sum = 0.0f;
+        for (size_t column = 0; column <= row; ++column) {
+          sum += scores[column] / normalizer *
+              kv_values[kv_head * seq_length * head_dim + column * head_dim +
+                        inner];
+        }
+        expected[head * seq_length * head_dim + row * head_dim + inner] = sum;
       }
     }
   }
@@ -1704,8 +1986,26 @@ TEST_CASE("Arange fills start plus step times index through Vulkan compute") {
       {2.5f, 2.25f, 2.0f, 1.75f, 1.5f, 1.25f, 1.0f, 0.75f},
       stream);
 
+  // int32 aranges compute int(start) + index * int(step) in exact int
+  // arithmetic; the host guards |start|, |step|, and the one-past-last
+  // value below 2^24 so the float transport stays exact.
+  std::vector<int32_t> int_expected;
+  for (int32_t value = 0; value < 10; ++value) {
+    int_expected.push_back(value);
+  }
+  check_int32_values(arange(0, 10, 1, int32, stream), int_expected, stream);
+  check_int32_values(
+      arange(10, 0, -2, int32, stream), {10, 8, 6, 4, 2}, stream);
+  std::string range_error =
+      evaluation_error(arange(0, 16777217, 1, int32, stream));
+  CHECK(range_error.find("[omarchy] Arange range") != std::string::npos);
+  std::string start_error =
+      evaluation_error(arange(16777216, 0, -1, int32, stream));
+  CHECK(start_error.find("[omarchy] Arange range") != std::string::npos);
+
+  // Other non-float dtypes keep the named dtype error.
   std::string dtype_error =
-      evaluation_error(arange(0, 4, 1, int32, stream));
+      evaluation_error(arange(0, 4, 1, int64, stream));
   CHECK(dtype_error.find("[omarchy] Arange dtype") != std::string::npos);
   CHECK(dtype_error.find("No CPU fallback") != std::string::npos);
 
