@@ -11,6 +11,7 @@
 #include "arange_bf16.h"
 #include "arange_f16.h"
 #include "arange_f32.h"
+#include "arange_i32.h"
 #include "argreduce_bf16.h"
 #include "argreduce_f16.h"
 #include "argreduce_f32.h"
@@ -29,18 +30,22 @@
 #include "elementwise_bf16.h"
 #include "elementwise_f16.h"
 #include "elementwise_f32.h"
+#include "gather_bf16.h"
+#include "gather_f16.h"
+#include "gather_f32.h"
 #include "copy_general_bf16.h"
 #include "copy_general_f16.h"
 #include "copy_general_f32.h"
 #include "fill_bf16.h"
 #include "fill_f16.h"
 #include "fill_f32.h"
-#include "gather_bf16.h"
-#include "gather_f16.h"
-#include "gather_f32.h"
+#include "greater_equal_i32.h"
 #include "matmul_bf16.h"
 #include "matmul_f16.h"
 #include "matmul_f32.h"
+#include "select_bf16.h"
+#include "select_f16.h"
+#include "select_f32.h"
 #include "reduce_bf16.h"
 #include "reduce_f16.h"
 #include "reduce_f32.h"
@@ -105,6 +110,8 @@ ShaderBytes shader_bytes(ComputeKernel kernel) {
       return {arange_f16, arange_f16_size};
     case ComputeKernel::ArangeBF16:
       return {arange_bf16, arange_bf16_size};
+    case ComputeKernel::ArangeI32:
+      return {arange_i32, arange_i32_size};
     case ComputeKernel::ReduceF32:
       return {reduce_f32, reduce_f32_size};
     case ComputeKernel::ReduceF16:
@@ -129,6 +136,14 @@ ShaderBytes shader_bytes(ComputeKernel kernel) {
       return {softmax_f16, softmax_f16_size};
     case ComputeKernel::SoftmaxBF16:
       return {softmax_bf16, softmax_bf16_size};
+    case ComputeKernel::SelectF32:
+      return {select_f32, select_f32_size};
+    case ComputeKernel::SelectF16:
+      return {select_f16, select_f16_size};
+    case ComputeKernel::SelectBF16:
+      return {select_bf16, select_bf16_size};
+    case ComputeKernel::GreaterEqualI32:
+      return {greater_equal_i32, greater_equal_i32_size};
     case ComputeKernel::GatherF32:
       return {gather_f32, gather_f32_size};
     case ComputeKernel::GatherF16:
