@@ -8,6 +8,7 @@
 #include <cmath>
 #include <cstdint>
 #include <limits>
+#include <optional>
 #include <string>
 
 #include "mlx/backend/common/binary.h"
@@ -58,6 +59,7 @@ enum ElementwiseOperation : uint32_t {
   NegativeOperation,
   CosOperation,
   SinOperation,
+  LogOperation,
 };
 
 allocator::Buffer allocate_omarchy(size_t size) {
@@ -224,6 +226,48 @@ bool is_batched_matrix(const array& value, bool transposed) {
   return true;
 }
 
+// Materializes a matmul operand whose batch strides are uniform but not
+// the contiguous layout is_batched_matrix accepts; cache slice views and
+// concatenate results compose this way. The general strided-copy engine
+// writes a standard row-major batch, and the encoder keeps the temp
+// alive until the committed work completes. Engine limits (negative
+// strides, collapsed rank beyond 4, span overflow) keep their named
+// errors.
+array materialize_batched_matrix(
+    const array& value, const std::string& name, array& out) {
+  auto& encoder = omarchy::get_command_encoder(out.primitive().stream());
+  Shape shape = value.shape();
+  Strides strides(shape.size(), 1);
+  for (int axis = static_cast<int>(shape.size()) - 2; axis >= 0; --axis) {
+    strides[axis] = strides[axis + 1] * shape[axis + 1];
+  }
+  array materialized(shape, value.dtype(), nullptr, {});
+  array::Flags flags;
+  flags.contiguous = true;
+  flags.row_contiguous = true;
+  auto max_dim = std::max_element(shape.begin(), shape.end());
+  flags.col_contiguous = materialized.size() <= 1 ||
+      materialized.size() == *max_dim;
+  materialized.set_data(
+      omarchy::allocator().malloc(materialized.nbytes()),
+      materialized.size(),
+      strides,
+      flags,
+      0);
+  copy_gpu_inplace(
+      value,
+      materialized,
+      shape,
+      value.strides(),
+      strides,
+      /*i_offset=*/0,
+      /*o_offset=*/0,
+      CopyType::General,
+      out.primitive().stream());
+  encoder.add_temporary(materialized);
+  return materialized;
+}
+
 void dispatch_matmul(
     const std::string& name,
     const std::vector<array>& inputs,
@@ -231,27 +275,42 @@ void dispatch_matmul(
     float alpha,
     float beta,
     bool use_c) {
-  const array& a = inputs.at(0);
-  const array& b = inputs.at(1);
+  const array& a_in = inputs.at(0);
+  const array& b_in = inputs.at(1);
   const array& c = use_c ? inputs.at(2) : out;
   auto& encoder = omarchy::get_command_encoder(out.primitive().stream());
-  require_float_dtype(name, a, out, encoder);
-  require_float_dtype(name, b, out, encoder);
+  require_float_dtype(name, a_in, out, encoder);
+  require_float_dtype(name, b_in, out, encoder);
   if (use_c) {
     require_float_dtype(name, c, out, encoder);
   }
 
-  if (a.ndim() < 2 || a.ndim() != b.ndim() || a.ndim() > 5) {
+  if (a_in.ndim() < 2 || a_in.ndim() != b_in.ndim() || a_in.ndim() > 5) {
     omarchy::unsupported("matrix rank " + name, out);
   }
-  bool a_transposed = is_batched_matrix(a, true);
-  bool a_row_contiguous = !a_transposed && is_batched_matrix(a, false);
-  bool b_transposed = is_batched_matrix(b, true);
-  bool b_row_contiguous = !b_transposed && is_batched_matrix(b, false);
-  if ((!a_row_contiguous && !a_transposed) ||
-      (!b_row_contiguous && !b_transposed)) {
-    omarchy::unsupported("matrix layout " + name, out);
+  bool a_transposed = is_batched_matrix(a_in, true);
+  bool a_row_contiguous = !a_transposed && is_batched_matrix(a_in, false);
+  bool b_transposed = is_batched_matrix(b_in, true);
+  bool b_row_contiguous = !b_transposed && is_batched_matrix(b_in, false);
+  // An operand composed from cache slices or concatenates can carry
+  // batch strides that are uniform but not the contiguous layout
+  // is_batched_matrix accepts. Materialize that one operand to a
+  // standard row-major batch through the general strided-copy engine and
+  // dispatch normally; conforming operands keep the zero-copy path.
+  std::optional<array> a_materialized;
+  std::optional<array> b_materialized;
+  if (!a_row_contiguous && !a_transposed) {
+    a_materialized = materialize_batched_matrix(a_in, name, out);
+    a_transposed = false;
+    a_row_contiguous = true;
   }
+  if (!b_row_contiguous && !b_transposed) {
+    b_materialized = materialize_batched_matrix(b_in, name, out);
+    b_transposed = false;
+    b_row_contiguous = true;
+  }
+  const array& a = a_materialized ? *a_materialized : a_in;
+  const array& b = b_materialized ? *b_materialized : b_in;
   // Batch axes may broadcast: an operand axis of size 1 against a wider
   // axis carries stride 0 through the shared-buffer broadcast view and
   // repeats its one matrix per batch step. True mismatches stay named.
@@ -824,13 +883,54 @@ void Load::eval_gpu(const std::vector<array>& inputs, array& out) {
     }
   }
 }
-OMARCHY_UNSUPPORTED(Log)
+OMARCHY_UNARY(Log, LogOperation)
 OMARCHY_UNSUPPORTED(Log1p)
 OMARCHY_UNSUPPORTED(LogicalAnd)
 OMARCHY_UNSUPPORTED(LogicalNot)
 OMARCHY_UNSUPPORTED(LogicalOr)
 OMARCHY_UNSUPPORTED(LogAddExp)
-OMARCHY_UNSUPPORTED(LogSumExp)
+void LogSumExp::eval_gpu(const std::vector<array>& inputs, array& out) {
+  const array& input = inputs.at(0);
+  auto& encoder = omarchy::get_command_encoder(out.primitive().stream());
+  require_float_dtype("LogSumExp", input, out, encoder);
+  if (!input.flags().row_contiguous) {
+    omarchy::unsupported("non-contiguous LogSumExp", out);
+  }
+
+  // Upstream mlx/ops.cpp logsumexp builds the LogSumExp primitive only
+  // for a suffix reduce and keeps the reduced axis at size 1 (the
+  // keepdims=False form squeezes on top of this output), so no
+  // suffix-axis check is needed here. The shader accumulates in float32
+  // for every dtype and keeps an infinite row max, matching the
+  // upstream CPU rule.
+  size_t row_length = input.shape(-1);
+  size_t rows = input.size() / row_length;
+  out.set_data(allocate_omarchy(out.nbytes()));
+  if (out.size() == 0) {
+    return;
+  }
+  uint32_t output_size = checked_u32(rows, "LogSumExp", out);
+  omarchy::ComputeParams params;
+  params.count = checked_u32(out.size(), "LogSumExp", out);
+  params.reduce_size = checked_u32(row_length, "LogSumExp", out);
+  params.output_size = output_size;
+  params.lhs_offset = checked_item_offset(
+      input, input.size(), "LogSumExp", out);
+  params.output_offset = checked_item_offset(
+      out, out.size(), "LogSumExp", out);
+  std::array<omarchy::ComputeBinding, 3> bindings{
+      binding(input), binding(input), binding(out)};
+  auto kernel = select_float_kernel(
+      out.dtype(),
+      omarchy::ComputeKernel::LogSumExpF32,
+      omarchy::ComputeKernel::LogSumExpF16,
+      omarchy::ComputeKernel::LogSumExpBF16);
+  encoder.dispatch_compute(
+      kernel,
+      bindings,
+      params,
+      std::min(output_size, omarchy::kMaxComputeGroupCountX));
+}
 OMARCHY_UNSUPPORTED_MULTI(LUF)
 void Matmul::eval_gpu(const std::vector<array>& inputs, array& out) {
   dispatch_matmul(name(), inputs, out, 1.0f, 0.0f, false);

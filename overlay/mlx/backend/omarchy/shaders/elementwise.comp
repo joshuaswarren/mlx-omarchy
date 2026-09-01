@@ -133,6 +133,9 @@ void main() {
       case 12:
         value = sin(lhs);
         break;
+      case 13:
+        value = log(lhs);
+        break;
       default:
         return;
     }
