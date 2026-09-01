@@ -342,30 +342,22 @@ TEST_CASE("int32 and bfloat16 casts convert through the 16-bit gates") {
       astype(astype(floats_frac, bfloat16, stream), int32, stream);
   check_int32_values(truncated, {2, -2}, stream);
 }
-TEST_CASE("mx.fast.rope passes the offset cast and pins the next blocker") {
+
+TEST_CASE("mx.fast.rope matches a host rotation on the composed fallback") {
   if (!compute_available()) {
     return;
   }
   Stream stream = gpu_stream();
   // The composed fallback used to stop at the int32 scalar -> float32
-  // offset cast ("dtype converting copy"). That cast now runs as a
-  // data_size-1 CastI32F32 kernel. Evaluation now reaches the trig path
-  // and stops at the half-split slices: multiply over the strided views
-  // x[..., 0:4] and x[..., 4:8] hits the named non-contiguous error.
-  array x({0.0f,  1.0f,  2.0f,  3.0f,  4.0f,  5.0f,  6.0f,  7.0f,
-           8.0f,  9.0f,  10.0f, 11.0f, 12.0f, 13.0f, 14.0f, 15.0f,
-           16.0f, 17.0f, 18.0f, 19.0f, 20.0f, 21.0f, 22.0f, 23.0f,
-           24.0f, 25.0f, 26.0f, 27.0f, 28.0f, 29.0f, 30.0f, 31.0f,
-           32.0f, 33.0f, 34.0f, 35.0f, 36.0f, 37.0f, 38.0f, 39.0f,
-           40.0f, 41.0f, 42.0f, 43.0f, 44.0f, 45.0f, 46.0f, 47.0f,
-           48.0f, 49.0f, 50.0f, 51.0f, 52.0f, 53.0f, 54.0f, 55.0f,
-           56.0f, 57.0f, 58.0f, 59.0f, 60.0f, 61.0f, 62.0f, 63.0f,
-           64.0f, 65.0f, 66.0f, 67.0f, 68.0f, 69.0f, 70.0f, 71.0f,
-           72.0f, 73.0f, 74.0f, 75.0f, 76.0f, 77.0f, 78.0f, 79.0f,
-           80.0f, 81.0f, 82.0f, 83.0f, 84.0f, 85.0f, 86.0f, 87.0f,
-           88.0f, 89.0f, 90.0f, 91.0f, 92.0f, 93.0f, 94.0f, 95.0f},
-          {2, 1, 4, 12},
-          float32);
+  // offset cast, then at the half-split slice views (the named
+  // "non-contiguous Multiply" blocker). Strided slice views now
+  // materialize at eval, so the full rotation runs and is compared
+  // against a host-computed reference.
+  std::vector<float> x_values(2 * 1 * 4 * 12);
+  for (size_t index = 0; index < x_values.size(); ++index) {
+    x_values[index] = static_cast<float>(index);
+  }
+  array x(x_values.begin(), Shape{2, 1, 4, 12}, float32);
 
   array out = fast::rope(
       x,
@@ -376,10 +368,27 @@ TEST_CASE("mx.fast.rope passes the offset cast and pins the next blocker") {
       /*offset=*/0,
       std::nullopt,
       stream);
-  std::string rope_error = evaluation_error(out);
-  CHECK(rope_error.find("[omarchy] non-contiguous Multiply") !=
-        std::string::npos);
-  CHECK(rope_error.find("dtype=float32, shape=[2,1,4,4]") !=
-        std::string::npos);
-}
 
+  // Host reference: non-traditional half-split rotation of dims 0..7 and
+  // passthrough of dims 8..11.
+  const float inv_log_step = -std::log(10000.0f) / 4.0f;
+  std::vector<float> expected(x_values.size(), 0.0f);
+  for (int batch = 0; batch < 2; ++batch) {
+    for (int token = 0; token < 4; ++token) {
+      for (int i = 0; i < 4; ++i) {
+        float theta =
+            static_cast<float>(token) *
+            std::exp(static_cast<float>(i) * inv_log_step);
+        float cos_v = std::cos(theta);
+        float sin_v = std::sin(theta);
+        size_t row = (batch * 4 + token) * 12;
+        float x1 = x_values[row + i];
+        float x2 = x_values[row + 4 + i];
+        expected[row + i] = x1 * cos_v - x2 * sin_v;
+        expected[row + 4 + i] = x1 * sin_v + x2 * cos_v;
+        expected[row + 8 + i] = x_values[row + 8 + i];
+      }
+    }
+  }
+  check_values(out, expected, stream, 1e-4);
+}

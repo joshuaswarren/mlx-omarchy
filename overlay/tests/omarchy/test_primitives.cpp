@@ -797,10 +797,27 @@ TEST_CASE("unsupported compute shapes and dtypes fail without CPU fallback") {
   CHECK(dtype_error.find("[omarchy] Add dtype") != std::string::npos);
   CHECK(dtype_error.find("No CPU fallback") != std::string::npos);
 
-  array base({1.0f, 2.0f, 3.0f, 4.0f}, float32);
-  array strided = slice(base, {0}, {4}, {2}, stream);
-  std::string stride_error = evaluation_error(exp(strided, stream));
-  CHECK(stride_error.find("non-contiguous Exp") != std::string::npos);
+  // Slice views with gaps materialize at eval, so elementwise work over
+  // them runs. A transpose view keeps its strides and pins the named
+  // layout error.
+  array base({1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f}, {2, 3}, float32);
+  check_values(
+      exp(slice(base, {0, 1}, {2, 3}, {1, 2}, stream), stream),
+      {std::exp(2.0f), std::exp(5.0f)},
+      stream,
+      1e-4);
+  // A transposed view is gapless and keeps its strides, so the
+  // elementwise stride path reads it directly with no copy.
+  check_values(
+      exp(transpose(base, stream), stream),
+      {std::exp(1.0f),
+       std::exp(4.0f),
+       std::exp(2.0f),
+       std::exp(5.0f),
+       std::exp(3.0f),
+       std::exp(6.0f)},
+      stream,
+      1e-4);
 
   // Inner-axis broadcast is supported now; a broadcast pattern whose
   // stride runs still collapse to rank above 4 pins the named rank
@@ -938,15 +955,28 @@ TEST_CASE("softmax normalizes rows through Vulkan compute") {
       std::vector<float>(70000, 1.0f),
       stream);
 
-  // A strided float32 view keeps its layout through softmax and pins the
-  // named layout error.
+  // Slice views with gaps materialize at eval, so softmax over them runs
+  // and normalizes the sliced rows. A transpose view keeps its strides
+  // and pins the named layout error.
   array base(
       {1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f, 7.0f, 8.0f, 9.0f},
       {3, 3},
       float32);
-  array strided = slice(base, {0, 0}, {3, 2}, {1, 1}, stream);
+  check_values(
+      softmax(slice(base, {0, 1}, {3, 3}, {1, 1}, stream),
+              std::vector<int>{-1},
+              false,
+              stream),
+      {0.26894142f,
+       0.73105858f,
+       0.26894142f,
+       0.73105858f,
+       0.26894142f,
+       0.73105858f},
+      stream,
+      1e-5);
   std::string layout_error = evaluation_error(
-      softmax(strided, std::vector<int>{-1}, false, stream));
+      softmax(transpose(base, stream), std::vector<int>{-1}, false, stream));
   CHECK(layout_error.find("non-contiguous Softmax") != std::string::npos);
 
   // Non-suffix axes never build a Softmax primitive; upstream decomposes
@@ -1789,6 +1819,54 @@ TEST_CASE("partition redirects to sort and topk returns the right set") {
 
   std::string axis_error = evaluation_error(partition(m, 0, 0, stream));
   CHECK(axis_error.find("non-suffix Partition") != std::string::npos);
+}
+
+TEST_CASE("strided slice views materialize exact values") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+
+  // Column 2 of each row: the tail-slice shape that mx.topk lowers to.
+  array m({5.0f, 1.0f, 4.0f, 2.0f, 3.0f, 0.0f}, {2, 3}, float32);
+  check_values(slice(m, {0, 2}, {2, 3}, stream), {4.0f, 0.0f}, stream);
+
+  // mx.topk(m, 2, -1) is partition plus a strided tail slice.
+  check_values(topk(m, 2, -1, stream), {4.0f, 5.0f, 2.0f, 3.0f}, stream);
+
+  // Inner-axis slices leave gaps between rows.
+  array p({0.0f, 1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f, 7.0f},
+          {2, 4},
+          float32);
+  check_values(slice(p, {0, 1}, {2, 3}, {1, 1}, stream),
+               {1.0f, 2.0f, 5.0f, 6.0f},
+               stream);
+
+  // A 1-D stride-2 slice gathers every other element.
+  array base({0.0f, 1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f, 7.0f},
+             {8},
+             float32);
+  check_values(
+      slice(base, {0}, {7}, {2}, stream), {0.0f, 2.0f, 4.0f, 6.0f}, stream);
+}
+
+TEST_CASE("elementwise ops over strided slice views match host values") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+
+  // The mx.fast.rope half-split pattern: x[..., 0:2] and x[..., 2:4] are
+  // strided views over the same parent rows.
+  array x({0.0f, 1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f, 7.0f},
+          {2, 4},
+          float32);
+  array x1 = slice(x, {0, 0}, {2, 2}, {1, 1}, stream);
+  array x2 = slice(x, {0, 2}, {2, 4}, {1, 1}, stream);
+
+  check_values(multiply(x1, x2, stream), {0.0f, 3.0f, 24.0f, 35.0f}, stream);
+  check_values(subtract(x2, x1, stream), {2.0f, 2.0f, 2.0f, 2.0f}, stream);
+  check_values(add(x1, x2, stream), {2.0f, 4.0f, 10.0f, 12.0f}, stream);
 }
 
 TEST_CASE("FP16 sort and argsort match host references") {

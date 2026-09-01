@@ -52,7 +52,10 @@ Trailing broadcasts keep the modulo fast path, and a higher collapsed rank fails
 Suffix Softmax passes the gate for FP32, FP16, and BF16.
 The Softmax kernel subtracts the row max and accumulates in float32.
 Large logits stay finite, and both precise modes produce the same values.
-Non-contiguous inputs fail with the named layout error.
+A strided slice view materializes through the general strided-copy engine at eval, so elementwise ops read it as a normal array.
+An offset-only slice keeps sharing the parent buffer.
+Gapless strided views such as transposes run through the elementwise stride path.
+Other layouts fail with the named layout error.
 `mx.take` passes the gate for an axis-0 lookup in a 2D row-contiguous table with 1D int32 indices.
 Out-of-range and negative indices write zero rows.
 Upstream negative-index wrapping is not provided.
@@ -79,7 +82,7 @@ The comparator orders NaN after every number and breaks value ties on the smalle
 ArgSort writes uint32 source indices, and the tie rule makes the index order unique.
 `mx.partition` and `mx.argpartition` route to the same full sort, the redirect the upstream Metal backend makes, so every kth position holds the sorted value.
 Rows beyond 1024, non-suffix axes, non-contiguous inputs, and non-float inputs fail with named errors.
-A 1-D `mx.topk` returns the k largest values in ascending order through the partition path.
+`mx.topk` returns the k largest values in ascending order through the partition path, and the strided tail slice now passes for 2-D inputs.
 The BF16 sort variants build, but they have no gate receipt yet.
 `mx.cos` and `mx.sin` pass the development gate for FP32 against host references at `1e-5`, including negative inputs.
 `mx.arange` passes the gate for FP32 and FP16 fills of the form start plus step times index.
@@ -89,10 +92,10 @@ Non-float dtypes fail with the named `Arange dtype` error.
 The BF16 arange kernel variant builds, but it has no gate receipt yet.
 The gradient of `sum(sin(x))` matches `cos(x)` at `1e-5`.
 The Sin vjp lowers to Cos and Multiply only, so the gradient stays inside supported operations.
-`mx.fast.rope` composed fallback no longer stops at the offset cast.
+`mx.fast.rope` evaluates through the composed fallback on Vulkan.
 The int32 scalar offset cast to float32 runs as a one-element device kernel.
-Evaluation now reaches the trig path and stops with the named `non-contiguous Multiply` error.
-The blocker is multiply over the half-split slice views `x[..., 0:dims/2]` and `x[..., dims/2:dims]`, which are strided.
+The half-split slice views `x[..., 0:dims/2]` and `x[..., dims/2:dims]` materialize at eval, so the trig multiply and subtract run over contiguous data.
+The `{2,1,4,12}` case with `dims=8` and `base=10000` matches a host-computed rotation within `1e-4`.
 
 Dtype work is in progress.
 FP16 and FP32 casts pass the development gate.
