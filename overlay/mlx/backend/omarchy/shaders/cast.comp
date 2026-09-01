@@ -23,12 +23,7 @@
 #define SOURCE_TYPE float
 #endif
 
-#ifdef SOURCE_BOOL
-// Bool arrays store one byte per element; the interface reads them as
-// little-endian 32-bit words, so no 8-bit storage feature is needed.
-#define SOURCE_LOAD(i) \
-  ((input_data.values[(i) >> 2u] >> (((i) & 3u) * 8u)) & 0xFFu)
-#else
+#ifndef SOURCE_BOOL
 #define SOURCE_LOAD(i) input_data.values[(i)]
 #endif
 
@@ -87,6 +82,34 @@ layout(push_constant) uniform Params {
 } params;
 
 void main() {
+#ifdef SOURCE_BOOL
+  // One condition word load per thread, straight-line at the top of the
+  // function, with its address computed as (lhs_offset >> 2) +
+  // word_index. The Honeykrisp driver on Apple M1 returns zero for bool
+  // word loads whose address is recomputed per lane inside a loop; this
+  // straight-line form reads correctly on that driver. mis handles a
+  // source whose first element does not start on a word boundary: the
+  // first word then covers only its trailing bytes.
+  uint word_index = gl_GlobalInvocationID.x;
+  uint word_count = (params.count + 3u) >> 2u;
+  if (word_index >= word_count) {
+    return;
+  }
+  uint word = input_data.values[(params.lhs_offset >> 2u) + word_index];
+  uint mis = params.lhs_offset & 3u;
+  uint first = 4u * word_index - mis;
+  for (uint lane = 0u; lane < 4u; ++lane) {
+    if (word_index == 0u && lane < mis) {
+      continue;
+    }
+    uint index = first + lane;
+    if (index >= params.count) {
+      break;
+    }
+    output_data.values[params.output_offset + index] =
+        CONVERT((word >> (lane * 8u)) & 0xFFu);
+  }
+#else
   uint index = gl_GlobalInvocationID.x;
   uint stride = gl_NumWorkGroups.x * gl_WorkGroupSize.x;
   while (index < params.count) {
@@ -97,4 +120,5 @@ void main() {
     }
     index += stride;
   }
+#endif
 }

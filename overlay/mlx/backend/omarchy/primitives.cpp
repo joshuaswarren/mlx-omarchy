@@ -1373,28 +1373,101 @@ void Select::eval_gpu(const std::vector<array>& inputs, array& out) {
   if (out.size() == 0) {
     return;
   }
+  // The Honeykrisp bool word read only executes correctly in the
+  // straight-line select.comp form, whose condition address requires a
+  // flat condition. A broadcast or strided condition view is
+  // materialized through the logical_or pipeline, whose dual-buffer
+  // word reads are correct on that driver; binding the same buffer as
+  // both inputs makes the OR an identity copy. The encoder keeps the
+  // temporary alive until the committed work completes.
+  std::vector<array> materialized;
+  const array* condition_ptr = &condition;
+  if (!condition.flags().row_contiguous ||
+      condition.data_size() != out.size()) {
+    materialized.push_back(array(out.shape(), bool_, nullptr, {}));
+    array& flat_condition = materialized.back();
+    flat_condition.set_data(allocate_omarchy(flat_condition.nbytes()));
+    uint32_t material_count = checked_u32(flat_condition.size(), name(), out);
+    uint32_t material_words = checked_u32(
+        (static_cast<uint64_t>(material_count) + 3) / 4, name(), out);
+    omarchy::ComputeParams material_params;
+    material_params.count = material_count;
+    material_params.lhs_size =
+        checked_u32(condition.data_size(), name(), out);
+    material_params.rhs_size = material_params.lhs_size;
+    material_params.output_size = material_count;
+    material_params.lhs_offset = checked_item_offset(
+        condition, material_params.lhs_size, name(), out);
+    material_params.rhs_offset = material_params.lhs_offset;
+    material_params.output_offset = checked_item_offset(
+        flat_condition, material_count, name(), out);
+    fill_broadcast_transport(name(), material_params, condition, condition,
+                             flat_condition);
+    std::array<omarchy::ComputeBinding, 3> material_bindings{
+        binding(condition), binding(condition), binding(flat_condition)};
+    encoder.dispatch_compute(
+        omarchy::ComputeKernel::LogicalOrBool,
+        material_bindings,
+        material_params,
+        omarchy::compute_dispatch_group_count(material_words));
+    encoder.add_temporary(flat_condition);
+    condition_ptr = &flat_condition;
+  }
   uint32_t count = checked_u32(out.size(), name(), out);
+  uint32_t word_count = checked_u32(
+      (static_cast<uint64_t>(count) + 3) / 4, name(), out);
   omarchy::ComputeParams params;
   params.count = count;
-  params.lhs_size = checked_u32(condition.data_size(), name(), out);
+  params.lhs_size = checked_u32(condition_ptr->data_size(), name(), out);
   params.rhs_size = checked_u32(truthy.data_size(), name(), out);
   params.output_size = count;
   params.lhs_offset = checked_item_offset(
-      condition, params.lhs_size, name(), out);
+      *condition_ptr, params.lhs_size, name(), out);
   params.rhs_offset = checked_item_offset(truthy, params.rhs_size, name(), out);
   params.aux_size = checked_u32(falsy.data_size(), name(), out);
   params.aux_offset = checked_item_offset(falsy, falsy.data_size(), name(), out);
   params.output_offset = checked_item_offset(out, count, name(), out);
-  fill_broadcast_transport(name(), params, condition, truthy, out);
   std::array<omarchy::ComputeBinding, 4> bindings{
-      binding(condition), binding(truthy), binding(falsy), binding(out)};
+      binding(*condition_ptr), binding(truthy), binding(falsy), binding(out)};
   auto kernel = select_float_kernel(
       out.dtype(),
       omarchy::ComputeKernel::SelectF32,
       omarchy::ComputeKernel::SelectF16,
       omarchy::ComputeKernel::SelectBF16);
-  encoder.dispatch_compute(
-      kernel, bindings, params, omarchy::compute_dispatch_group_count(count));
+  // The kernel processes one output word (four elements) per thread
+  // with no grid-stride loop, so very large outputs dispatch in
+  // back-to-back offset chunks. The aux offset stays absolute: the
+  // shader indexes the false operand by output index.
+  constexpr uint64_t kMaxWordsPerDispatch =
+      static_cast<uint64_t>(omarchy::kMaxComputeGroupCountX) *
+      omarchy::kComputeThreadsPerGroup;
+  uint32_t lhs_base = params.lhs_offset;
+  uint32_t rhs_base = params.rhs_offset;
+  uint32_t output_base = params.output_offset;
+  uint64_t words_done = 0;
+  while (words_done < word_count) {
+    uint32_t chunk_words = static_cast<uint32_t>(
+        std::min<uint64_t>(word_count - words_done, kMaxWordsPerDispatch));
+    uint64_t chunk_elements = 4ull * words_done;
+    if (!omarchy::compute_index_span_fits(
+            lhs_base + chunk_elements, 4ull * chunk_words) ||
+        !omarchy::compute_index_span_fits(
+            rhs_base + chunk_elements, 4ull * chunk_words) ||
+        !omarchy::compute_index_span_fits(
+            output_base + chunk_elements, 4ull * chunk_words)) {
+      omarchy::unsupported("Select index span", out);
+    }
+    params.lhs_offset = checked_u32(lhs_base + chunk_elements, name(), out);
+    params.rhs_offset = checked_u32(rhs_base + chunk_elements, name(), out);
+    params.output_offset =
+        checked_u32(output_base + chunk_elements, name(), out);
+    encoder.dispatch_compute(
+        kernel,
+        bindings,
+        params,
+        omarchy::compute_dispatch_group_count(chunk_words));
+    words_done += chunk_words;
+  }
 }
 OMARCHY_UNSUPPORTED(SegmentedMM)
 OMARCHY_UNARY(Sigmoid, SigmoidOperation)
