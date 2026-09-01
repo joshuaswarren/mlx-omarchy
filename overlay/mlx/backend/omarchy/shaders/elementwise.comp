@@ -136,6 +136,11 @@ void main() {
       case 13:
         value = log(lhs);
         break;
+      case 14:
+        value = isnan(lhs) || isnan(rhs)
+            ? uintBitsToFloat(0x7fc00000u)
+            : min(lhs, rhs);
+        break;
       default:
         return;
     }

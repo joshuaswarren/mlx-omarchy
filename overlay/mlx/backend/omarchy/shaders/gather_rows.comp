@@ -1,10 +1,14 @@
 // Copyright © 2026 Joshua Warren / mlx-omarchy contributors.
 // SPDX-License-Identifier: MIT
 //
-// Row gather for axis-0 takes of a 2D row-contiguous table with 1D int32
-// indices. Output row i copies table row indices[i]. Indices arrive in a
-// storage buffer as plain int32. An index outside [0, table_rows) writes a
-// zero row; upstream negative-index semantics are therefore not provided.
+// Row gather for axis-0 takes of a 2D row-contiguous table with 1D
+// int32, uint32, or int64 indices. Output row i copies table row
+// indices[i]. params.operation selects the index interpretation:
+// 0 = signed 32-bit, 1 = unsigned 32-bit, 2 = signed 64-bit read as two
+// little-endian words. An index outside [0, table_rows) writes a zero
+// row; upstream negative-index semantics are therefore not provided, and
+// an int64 index whose high word is nonzero can never land inside the
+// table, so it takes the same zero-row path.
 
 #version 460
 
@@ -65,12 +69,33 @@ void main() {
   while (output_index < params.count) {
     uint row = output_index / row_length;
     uint column = output_index - row * row_length;
-    int index = indices_data.values[params.rhs_offset + row];
+    // Index words arrive as raw 32-bit values. table_rows doubles as the
+    // out-of-range sentinel: an out-of-range index fails the row bounds
+    // check below and writes the zero row.
+    uint word_row = params.operation == 2u ? row + row : row;
+    uint word = uint(indices_data.values[params.rhs_offset + word_row]);
+    uint index = table_rows;
+    if (params.operation == 0u) {
+      // Signed 32-bit: negative values set the top bit.
+      if (word < 0x80000000u) {
+        index = word;
+      }
+    } else if (params.operation == 1u) {
+      index = word;
+    } else {
+      // Signed 64-bit: a negative value has a nonzero high word, and a
+      // positive value above 2^32-1 does too, so one check covers both.
+      uint high =
+          uint(indices_data.values[params.rhs_offset + word_row + 1u]);
+      if (high == 0u) {
+        index = word;
+      }
+    }
     float value = 0.0;
-    if (index >= 0 && uint(index) < table_rows) {
+    if (index < table_rows) {
       value = LOAD_VALUE(
           input_data
-              .values[params.lhs_offset + uint(index) * row_length + column]);
+              .values[params.lhs_offset + index * row_length + column]);
     }
     output_data.values[params.output_offset + output_index] =
         STORE_VALUE(value);

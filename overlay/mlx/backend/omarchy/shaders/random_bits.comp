@@ -1,0 +1,104 @@
+// Copyright © 2026 Joshua Warren / mlx-omarchy contributors.
+// SPDX-License-Identifier: MIT
+//
+// RandomBits for the width-4 (uint32) case. Each output word is one
+// threefry2x32 hash output. The rotation constants, the 5-round schedule,
+// and the (key, counter) to output word mapping mirror
+// mlx/backend/cpu/threefry.cpp and RandomBits::eval_cpu exactly, so seeded
+// runs reproduce upstream MLX semantics bit for bit. The keys input has
+// shape (N1, ..., NK, 2) as raw uint32 words; the output is the
+// (N1, ..., NK, M1, M2, ...) uint32 bit tensor.
+
+#version 460
+
+layout(local_size_x = 256) in;
+
+layout(set = 0, binding = 0, std430) readonly buffer Keys {
+  uint values[];
+} keys_data;
+layout(set = 0, binding = 1, std430) writeonly buffer Output {
+  uint values[];
+} output_data;
+
+layout(push_constant) uniform Params {
+  uint count;
+  uint operation;
+  uint lhs_size;
+  uint rhs_size;
+  uint reduce_size;
+  uint output_size;
+  uint lhs_offset;
+  uint rhs_offset;
+  uint output_offset;
+} params;
+
+// count carries the total output words, reduce_size the words per key,
+// output_size the key count, lhs_offset the word offset of the keys, and
+// output_offset the word offset of the output.
+
+uvec2 threefry2x32(uvec2 key, uvec2 count) {
+  // Upstream rotations[2][4] flattened: rounds 0,2,4 use {13,15,26,6}
+  // and rounds 1,3 use {17,29,16,24}.
+  const uint rotations[8] = uint[8](
+      13u, 15u, 26u, 6u, 17u, 29u, 16u, 24u);
+  uint ks[3];
+  ks[0] = key.x;
+  ks[1] = key.y;
+  ks[2] = key.x ^ key.y ^ 0x1BD11BDAu;
+
+  count.x += ks[0];
+  count.y += ks[1];
+
+  for (int i = 0; i < 5; ++i) {
+    for (int j = 0; j < 4; ++j) {
+      uint r = rotations[(i & 1) * 4 + j];
+      count.x += count.y;
+      count.y = (count.y << r) | (count.y >> (32u - r));
+      count.y ^= count.x;
+    }
+    count.x += ks[(i + 1) % 3];
+    count.y += ks[(i + 2) % 3] + uint(i) + 1u;
+  }
+  return count;
+}
+
+void main() {
+  uint output_index = gl_GlobalInvocationID.x;
+  uint stride = gl_NumWorkGroups.x * gl_WorkGroupSize.x;
+  while (output_index < params.count) {
+    uint key_index = output_index / params.reduce_size;
+    uint word = output_index - key_index * params.reduce_size;
+
+    uint key_base = params.lhs_offset + key_index + key_index;
+    uvec2 key = uvec2(
+        keys_data.values[key_base], keys_data.values[key_base + 1u]);
+
+    // eval_cpu writes word j of a key's region from counter pairs
+    // (first, second) with count.first walking 0..half-1 and
+    // count.second walking half(+1)..out_skip-1. Words below half take
+    // the .first output and the rest the .second output; an odd word
+    // count leaves one middle word fed by the counter (half, 0).
+    uint half_count = params.reduce_size / 2u;
+    bool even = (params.reduce_size & 1u) == 0u;
+    uvec2 counter;
+    if (word < half_count) {
+      counter = uvec2(word, word + half_count + (even ? 0u : 1u));
+    } else if (even) {
+      counter = uvec2(word - half_count, word);
+    } else if (word == half_count) {
+      counter = uvec2(half_count, 0u);
+    } else {
+      counter = uvec2(word - half_count - 1u, word);
+    }
+
+    uvec2 bits = threefry2x32(key, counter);
+    bool use_first =
+        (word < half_count) || (!even && word == half_count);
+    output_data.values[params.output_offset + output_index] =
+        use_first ? bits.x : bits.y;
+    if (params.count - output_index <= stride) {
+      break;
+    }
+    output_index += stride;
+  }
+}

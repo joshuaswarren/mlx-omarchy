@@ -82,10 +82,29 @@ A strided slice view materializes through the general strided-copy engine at eva
 An offset-only slice keeps sharing the parent buffer.
 Gapless strided views such as transposes run through the elementwise stride path.
 Other layouts fail with the named layout error.
-`mx.take` passes the gate for an axis-0 lookup in a 2D row-contiguous table with row-contiguous int32 indices of any rank.
+`mx.take` passes the gate for an axis-0 lookup in a 2D row-contiguous
+table with row-contiguous int32, uint32, or int64 indices of any rank.
+The dispatch passes an index mode to the kernel, and int64 indices read
+as two little-endian words where a nonzero high word writes the zero row.
 Out-of-range and negative indices write zero rows.
 Upstream negative-index wrapping is not provided.
 Other ranks, layouts, and index dtypes fail with named errors.
+The uint32 path is proven with a real `mx.argmax` output feeding the
+gather at the mlx-lm decode shapes `[1, 1]` and `[2, 3]`, and the int64
+path covers values above 2^31 and negatives.
+`RandomBits` passes the gate for the width-4 uint32 case that mlx-lm
+sampling uses: `mx.random.bits`, the `mx.random.split` key shape, and the
+bits behind `mx.random.uniform` and `mx.random.categorical`.
+The kernel reproduces the upstream threefry2x32 rotation constants and
+5-round key schedule, and the words match a host reference built from
+the upstream constants bit for bit, including the odd word count with
+its middle counter.
+Other widths fail with the named `RandomBits width` error.
+`mx.random.uniform` with a pinned key is deterministic across runs and
+`mx.random.categorical` over uniform four-class logits hits every class
+across 1000 draws.
+The uint32-to-float32 cast and the `Minimum` elementwise op that the
+uniform path composes pass the same gate.
 The softmax gradient passes the gate.
 `value_and_grad` of sum(softmax(x) * x) matches a host reference within 1e-4 through the keepdims-sum broadcast views.
 Dtype-converting strided copy, rank greater than 4, and negative strides stay unsupported with named errors.

@@ -24,6 +24,7 @@
 #include "cast_bf16_i32.h"
 #include "cast_f16_i32.h"
 #include "cast_f32_i32.h"
+#include "cast_u32_f32.h"
 #include "cast_i32_bf16.h"
 #include "cast_i32_f16.h"
 #include "cast_i32_f32.h"
@@ -39,8 +40,8 @@
 #include "fill_bf16.h"
 #include "fill_f16.h"
 #include "fill_f32.h"
-#include "greater_equal_i32.h"
 #include "matmul_bf16.h"
+#include "greater_equal_i32.h"
 #include "matmul_f16.h"
 #include "matmul_f32.h"
 #include "select_bf16.h"
@@ -61,6 +62,7 @@
 #include "argsort_bf16.h"
 #include "argsort_f16.h"
 #include "argsort_f32.h"
+#include "random_bits_u32.h"
 
 namespace mlx::core::omarchy {
 
@@ -101,6 +103,8 @@ ShaderBytes shader_bytes(ComputeKernel kernel) {
       return {cast_i32_bf16, cast_i32_bf16_size};
     case ComputeKernel::CastBF16I32:
       return {cast_bf16_i32, cast_bf16_i32_size};
+    case ComputeKernel::CastU32F32:
+      return {cast_u32_f32, cast_u32_f32_size};
     case ComputeKernel::ArgReduceF32:
       return {argreduce_f32, argreduce_f32_size};
     case ComputeKernel::ArgReduceF16:
@@ -171,6 +175,8 @@ ShaderBytes shader_bytes(ComputeKernel kernel) {
       return {argsort_f16, argsort_f16_size};
     case ComputeKernel::ArgSortBF16:
       return {argsort_bf16, argsort_bf16_size};
+    case ComputeKernel::RandomBitsU32:
+      return {random_bits_u32, random_bits_u32_size};
     case ComputeKernel::SortF32:
       return {sort_f32, sort_f32_size};
     case ComputeKernel::SortF16:
