@@ -59,6 +59,12 @@ enum class ComputeKernel : uint8_t {
   CopyGeneralF32,
   CopyGeneralF16,
   CopyGeneralBF16,
+  ArgReduceF32,
+  ArgReduceF16,
+  ArgReduceBF16,
+  ArangeF32,
+  ArangeF16,
+  ArangeBF16,
   Count,
 };
 
@@ -83,9 +89,13 @@ struct ComputeParams {
   uint32_t matrix_m{0};
   uint32_t matrix_n{0};
   uint32_t matrix_k{0};
+  // Matmul flag bits: 1 = rhs transposed, 2 = bias c used,
+  // 4 = lhs transposed, 8 = batched (group_count_z = batch count).
   uint32_t flags{0};
   float alpha{1.0f};
   float beta{0.0f};
+  // Broadcast rank for elementwise kernels; batch count for Matmul
+  // kernels (flag bit 8).
   uint32_t dims{0};
   uint32_t shape[4]{};
   uint32_t in_strides[4]{};

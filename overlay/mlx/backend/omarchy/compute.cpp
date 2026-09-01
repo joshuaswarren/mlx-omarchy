@@ -8,6 +8,12 @@
 
 #include "mlx/backend/omarchy/vulkan.h"
 
+#include "arange_bf16.h"
+#include "arange_f16.h"
+#include "arange_f32.h"
+#include "argreduce_bf16.h"
+#include "argreduce_f16.h"
+#include "argreduce_f32.h"
 #include "cast_bf16_f16.h"
 #include "cast_bf16_f32.h"
 #include "cast_f16_f32.h"
@@ -63,6 +69,18 @@ ShaderBytes shader_bytes(ComputeKernel kernel) {
       return {cast_bf16_f16, cast_bf16_f16_size};
     case ComputeKernel::CastF16BF16:
       return {cast_f16_bf16, cast_f16_bf16_size};
+    case ComputeKernel::ArgReduceF32:
+      return {argreduce_f32, argreduce_f32_size};
+    case ComputeKernel::ArgReduceF16:
+      return {argreduce_f16, argreduce_f16_size};
+    case ComputeKernel::ArgReduceBF16:
+      return {argreduce_bf16, argreduce_bf16_size};
+    case ComputeKernel::ArangeF32:
+      return {arange_f32, arange_f32_size};
+    case ComputeKernel::ArangeF16:
+      return {arange_f16, arange_f16_size};
+    case ComputeKernel::ArangeBF16:
+      return {arange_bf16, arange_bf16_size};
     case ComputeKernel::ReduceF32:
       return {reduce_f32, reduce_f32_size};
     case ComputeKernel::ReduceF16:

@@ -40,6 +40,12 @@ Primitive operations are in progress.
 The development gate covers FP32 and FP16 elementwise work, suffix Sum and Max, offsets, and grid-stride dispatch.
 It also covers dense Matmul and AddMM with tiled kernels, transposed inputs, and trailing-dimension bias broadcast.
 Transposed-input Matmul now passes the gate for 2D views of either operand.
+Batched Matmul and AddMM pass the gate for rank-3 and rank-4 operands with equal batch dims.
+Each operand may be row-major or per-matrix transposed, and batch strides must equal the matrix size.
+The batch count rides in the push-constant dims field, and workgroup z selects the batch.
+Batched AddMM keeps the scalar, per-row, and full per-batch bias broadcasts.
+Rank beyond 4 fails with the named `matrix rank` error, broadcast batch strides with the named `matrix layout` error, and batches beyond 65535 with the named `batch count` error.
+`mx.fast.scaled_dot_product_attention` evaluates through the composed fallback and matches a host reference within `1e-3`.
 Subtract, Negative, non-zero scalar fill, and same-dtype general strided copy pass the gate.
 Elementwise binary ops broadcast operands on any axis up to a collapsed rank of 4.
 Trailing broadcasts keep the modulo fast path, and a higher collapsed rank fails with the named `broadcast rank` error.
@@ -63,6 +69,23 @@ Row-contiguous axis-0 inputs use a plain buffer copy; other layouts use the gene
 It copies the source first, then pastes the update into the strided window.
 Other reduce modes fail with the named `SliceUpdate reduce` error.
 The `omarchy_kv_ops_tests` binary covers exact-value 2D and 3D concatenates, fp16, and KV-cache growth.
+`mx.argmax` and `mx.argmin` pass the development gate for a last-axis reduce over row-contiguous FP32, FP16, and BF16 inputs.
+The kernel keeps one (value, index) pair per thread in shared memory and writes uint32 indices.
+Ties keep the first occurrence, and NaN never wins a comparison, which matches the upstream CPU and Metal comparators.
+Non-suffix axes, non-contiguous inputs, and non-float inputs fail with named errors.
+ArgSort, ArgPartition, and full Sort remain unsupported.
+`mx.cos` and `mx.sin` pass the development gate for FP32 against host references at `1e-5`, including negative inputs.
+`mx.arange` passes the gate for FP32 and FP16 fills of the form start plus step times index.
+Upstream derives the arange length from `ceil((stop - start) / step)`, so a negative step over a descending range is valid.
+The kernel applies the step as a signed multiplier, so it covers the negative-step case.
+Non-float dtypes fail with the named `Arange dtype` error.
+The BF16 arange kernel variant builds, but it has no gate receipt yet.
+The gradient of `sum(sin(x))` matches `cos(x)` at `1e-5`.
+The Sin vjp lowers to Cos and Multiply only, so the gradient stays inside supported operations.
+`mx.fast.rope` composed fallback does not run yet.
+Evaluation stops with the named `dtype converting copy` error.
+The blocked step is the int32 scalar offset cast to float32 before the trig path.
+Cos, Sin, and Arange are in the fallback graph and are not the blockers.
 
 Dtype work is in progress.
 FP16 and FP32 casts pass the development gate.
@@ -75,7 +98,7 @@ Transform work is in progress.
 `grad` and `vjp` pass the development gate for supported operations.
 `jvp` passes the gate for `sum(exp(x))` and matmul tangents with value checks at `1e-4`.
 `vmap` passes the gate for batched `exp` and `add` with value checks.
-Batched matmul under `vmap` fails with the named layout error because the kernel requires a 2D second operand.
+Batched matmul under `vmap` passes the gate with value checks.
 `mx.compile` fuses `exp` then `multiply` into one `Compiled` primitive and fails with the named `Compiled` error.
 `CompileMode::no_fuse` keeps the tape unfused and matches the uncompiled values.
 

@@ -20,6 +20,7 @@
 #include "mlx/compile.h"
 #include "mlx/device.h"
 #include "mlx/linalg.h"
+#include "mlx/fast.h"
 #include "mlx/ops.h"
 #include "mlx/stream.h"
 #include "mlx/transforms.h"
@@ -735,11 +736,11 @@ TEST_CASE("vmap batches closures over the leading axis through Vulkan compute") 
       [&](const array& lhs, const array& rhs) {
         return matmul(lhs, rhs, stream);
       });
-  // Batched B is 3D and the backend requires 2D, so eval must fail with
-  // the named layout error instead of producing values.
-  std::string layout_error =
-      evaluation_error(batched_matmul(batched_a, batched_b));
-  CHECK(layout_error.find("matrix layout Matmul") != std::string::npos);
+  // Equal leading batch dims dispatch as one batched product now.
+  check_values(
+      batched_matmul(batched_a, batched_b),
+      {4.5f, 3.0f, 9.5f, 7.0f, 14.5f, 11.0f, 19.5f, 15.0f},
+      stream);
 }
 
 TEST_CASE("mx.compile fuses only with backend support and no_fuse evaluates") {
@@ -1216,4 +1217,415 @@ TEST_CASE("value_and_grad runs softmax times input through broadcast views") {
   }
   check_values(value, {expected_value}, stream, 1e-4);
   check_values(grads.at(0), expected_dx, stream, 1e-4);
+}
+
+TEST_CASE("batched Matmul matches host references across layouts") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  auto fill = [](std::vector<float>& values, int modulo, int bias) {
+    for (size_t index = 0; index < values.size(); ++index) {
+      values[index] =
+          static_cast<float>(static_cast<int>(index % modulo) - bias);
+    }
+  };
+
+  // Rank 3: (2, 3, 4) @ (2, 4, 5).
+  constexpr size_t batch3 = 2;
+  constexpr size_t m3 = 3;
+  constexpr size_t k3 = 4;
+  constexpr size_t n3 = 5;
+  std::vector<float> a3_values(batch3 * m3 * k3);
+  std::vector<float> b3_values(batch3 * k3 * n3);
+  fill(a3_values, 7, 3);
+  fill(b3_values, 5, 2);
+  std::vector<float> expected3(batch3 * m3 * n3, 0.0f);
+  for (size_t batch = 0; batch < batch3; ++batch) {
+    for (size_t row = 0; row < m3; ++row) {
+      for (size_t column = 0; column < n3; ++column) {
+        for (size_t inner = 0; inner < k3; ++inner) {
+          expected3[batch * m3 * n3 + row * n3 + column] +=
+              a3_values[batch * m3 * k3 + row * k3 + inner] *
+              b3_values[batch * k3 * n3 + inner * n3 + column];
+        }
+      }
+    }
+  }
+  array a3(a3_values.begin(), Shape{2, 3, 4}, float32);
+  array b3(b3_values.begin(), Shape{2, 4, 5}, float32);
+  check_values(matmul(a3, b3, stream), expected3, stream);
+  // Per-matrix transposed views of both operands. The stores hold the
+  // operands in transposed layout and the transpose views restore the
+  // matmul operand shapes.
+  std::vector<float> b3_store_values(batch3 * k3 * n3);
+  for (size_t batch = 0; batch < batch3; ++batch) {
+    for (size_t row = 0; row < k3; ++row) {
+      for (size_t column = 0; column < n3; ++column) {
+        b3_store_values[batch * n3 * k3 + column * k3 + row] =
+            b3_values[batch * k3 * n3 + row * n3 + column];
+      }
+    }
+  }
+  array b3_store(b3_store_values.begin(), Shape{2, 5, 4}, float32);
+  check_values(
+      matmul(a3, transpose(b3_store, {0, 2, 1}, stream), stream),
+      expected3,
+      stream);
+  std::vector<float> a3_store_values(batch3 * k3 * m3);
+  for (size_t batch = 0; batch < batch3; ++batch) {
+    for (size_t row = 0; row < m3; ++row) {
+      for (size_t inner = 0; inner < k3; ++inner) {
+        a3_store_values[batch * k3 * m3 + inner * m3 + row] =
+            a3_values[batch * m3 * k3 + row * k3 + inner];
+      }
+    }
+  }
+  array a3_store(a3_store_values.begin(), Shape{2, 4, 3}, float32);
+  check_values(
+      matmul(transpose(a3_store, {0, 2, 1}, stream), b3, stream),
+      expected3,
+      stream);
+
+  // Rank 4: (2, 2, 3, 4) @ (2, 2, 4, 5), dense and transposed-view B.
+  constexpr size_t batch4 = 4;
+  constexpr size_t m4 = 3;
+  constexpr size_t k4 = 4;
+  constexpr size_t n4 = 5;
+  std::vector<float> a4_values(batch4 * m4 * k4);
+  std::vector<float> b4_values(batch4 * k4 * n4);
+  fill(a4_values, 6, 3);
+  fill(b4_values, 4, 2);
+  std::vector<float> expected4(batch4 * m4 * n4, 0.0f);
+  for (size_t batch = 0; batch < batch4; ++batch) {
+    for (size_t row = 0; row < m4; ++row) {
+      for (size_t column = 0; column < n4; ++column) {
+        for (size_t inner = 0; inner < k4; ++inner) {
+          expected4[batch * m4 * n4 + row * n4 + column] +=
+              a4_values[batch * m4 * k4 + row * k4 + inner] *
+              b4_values[batch * k4 * n4 + inner * n4 + column];
+        }
+      }
+    }
+  }
+  array a4(a4_values.begin(), Shape{2, 2, 3, 4}, float32);
+  array b4(b4_values.begin(), Shape{2, 2, 4, 5}, float32);
+  check_values(matmul(a4, b4, stream), expected4, stream);
+  std::vector<float> b4_store_values(batch4 * k4 * n4);
+  for (size_t batch = 0; batch < batch4; ++batch) {
+    for (size_t row = 0; row < k4; ++row) {
+      for (size_t column = 0; column < n4; ++column) {
+        b4_store_values[batch * n4 * k4 + column * k4 + row] =
+            b4_values[batch * k4 * n4 + row * n4 + column];
+      }
+    }
+  }
+  array b4_store(b4_store_values.begin(), Shape{2, 2, 5, 4}, float32);
+  check_values(
+      matmul(a4, transpose(b4_store, {0, 1, 3, 2}, stream), stream),
+      expected4,
+      stream);
+
+  // Batched AddMM: scalar, per-row, and full per-batch bias.
+  check_values(
+      addmm(array(1.0f, float32), a3, b3, 2.0f, 0.5f, stream),
+      [&]() {
+        std::vector<float> values;
+        for (float value : expected3) {
+          values.push_back(0.5f + 2.0f * value);
+        }
+        return values;
+      }(),
+      stream);
+  std::vector<float> bias(n3);
+  fill(bias, 3, 1);
+  std::vector<float> row_bias_expected;
+  for (size_t batch = 0; batch < batch3; ++batch) {
+    for (size_t row = 0; row < m3; ++row) {
+      for (size_t column = 0; column < n3; ++column) {
+        row_bias_expected.push_back(
+            2.0f * expected3[batch * m3 * n3 + row * n3 + column] +
+            0.5f * bias[column]);
+      }
+    }
+  }
+  check_values(
+      addmm(array(bias.begin(), Shape{5}, float32), a3, b3, 2.0f, 0.5f, stream),
+      row_bias_expected,
+      stream);
+  std::vector<float> full_bias(batch3 * m3 * n3);
+  fill(full_bias, 8, 4);
+  std::vector<float> full_bias_expected;
+  for (size_t index = 0; index < expected3.size(); ++index) {
+    full_bias_expected.push_back(
+        2.0f * expected3[index] + 0.5f * full_bias[index]);
+  }
+  check_values(
+      addmm(
+          array(full_bias.begin(), Shape{2, 3, 5}, float32),
+          a3,
+          b3,
+          2.0f,
+          0.5f,
+          stream),
+      full_bias_expected,
+      stream);
+
+  // Broadcast batch dims stay unsupported with the named layout error,
+  // and rank beyond 4 reports the named rank error.
+  array a3_single(a3_values.begin(), Shape{1, 3, 4}, float32);
+  array broadcast_a = broadcast_to(a3_single, {3, 3, 4}, stream);
+  array b3_wide(b3_values.begin(), Shape{3, 4, 5}, float32);
+  std::string layout_error =
+      evaluation_error(matmul(broadcast_a, b3_wide, stream));
+  CHECK(layout_error.find("matrix layout Matmul") != std::string::npos);
+  array a5(a4_values.begin(), Shape{2, 2, 2, 3, 4}, float32);
+  std::vector<float> b5_values(2 * 2 * 2 * 4 * 5, 0.5f);
+  array b5(b5_values.begin(), Shape{2, 2, 2, 4, 5}, float32);
+  std::string rank_error = evaluation_error(matmul(a5, b5, stream));
+  CHECK(rank_error.find("matrix rank Matmul") != std::string::npos);
+}
+
+TEST_CASE("scaled_dot_product_attention composes through batched matmul") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  constexpr size_t heads = 2;
+  constexpr size_t queries_length = 4;
+  constexpr size_t keys_length = 8;
+  constexpr size_t head_dim = 8;
+  auto pattern = [](size_t index) {
+    return 0.25f * static_cast<float>(static_cast<int>(index % 11) - 5);
+  };
+  std::vector<float> q_values(heads * queries_length * head_dim);
+  std::vector<float> k_values(heads * keys_length * head_dim);
+  std::vector<float> v_values(heads * keys_length * head_dim);
+  for (size_t index = 0; index < q_values.size(); ++index) {
+    q_values[index] = pattern(index);
+  }
+  for (size_t index = 0; index < k_values.size(); ++index) {
+    k_values[index] = pattern(index + 3);
+  }
+  for (size_t index = 0; index < v_values.size(); ++index) {
+    v_values[index] = pattern(index + 7);
+  }
+  array q(q_values.begin(), Shape{1, 2, 4, 8}, float32);
+  array k(k_values.begin(), Shape{1, 2, 8, 8}, float32);
+  array v(v_values.begin(), Shape{1, 2, 8, 8}, float32);
+  constexpr float scale = 0.25f;
+
+  array attention = fast::scaled_dot_product_attention(
+      q, k, v, scale, "", std::nullopt, std::nullopt, false, stream);
+  std::string blocked = evaluation_error(attention);
+  REQUIRE(blocked.empty());
+
+  std::vector<float> expected(heads * queries_length * head_dim, 0.0f);
+  std::vector<float> scores(keys_length);
+  for (size_t head = 0; head < heads; ++head) {
+    for (size_t row = 0; row < queries_length; ++row) {
+      float max_score = -std::numeric_limits<float>::infinity();
+      for (size_t column = 0; column < keys_length; ++column) {
+        float dot = 0.0f;
+        for (size_t inner = 0; inner < head_dim; ++inner) {
+          dot += q_values[head * queries_length * head_dim + row * head_dim +
+                          inner] *
+              k_values[head * keys_length * head_dim + column * head_dim +
+                       inner];
+        }
+        scores[column] = scale * dot;
+        max_score = std::max(max_score, scores[column]);
+      }
+      float normalizer = 0.0f;
+      for (size_t column = 0; column < keys_length; ++column) {
+        scores[column] = std::exp(scores[column] - max_score);
+        normalizer += scores[column];
+      }
+      for (size_t inner = 0; inner < head_dim; ++inner) {
+        float sum = 0.0f;
+        for (size_t column = 0; column < keys_length; ++column) {
+          sum += scores[column] / normalizer *
+              v_values[head * keys_length * head_dim + column * head_dim +
+                       inner];
+        }
+        expected[head * queries_length * head_dim + row * head_dim + inner] =
+            sum;
+      }
+    }
+  }
+  check_values(attention, expected, stream, 1e-3);
+}
+
+namespace {
+
+void check_indices(
+    array value,
+    const std::vector<uint32_t>& expected,
+    const Stream& stream) {
+  value.eval();
+  omarchy::get_command_encoder(stream).synchronize();
+  REQUIRE_EQ(value.dtype(), uint32);
+  REQUIRE_EQ(value.size(), expected.size());
+  const uint32_t* values = value.data<uint32_t>();
+  for (size_t index = 0; index < expected.size(); ++index) {
+    CHECK_EQ(values[index], expected[index]);
+  }
+}
+
+} // namespace
+
+TEST_CASE("argmax reduces last-axis rows through Vulkan compute") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+
+  // Exact indices, a tie row, negative values, NaN skipping, and the
+  // all-NaN row that falls back to index 0.
+  std::vector<float> xv = {
+      1.0f, 3.0f, 2.0f,
+      3.0f, 3.0f, 1.0f,
+      -5.0f, -1.0f, -3.0f,
+      1.0f, std::numeric_limits<float>::quiet_NaN(), 2.0f,
+      std::numeric_limits<float>::quiet_NaN(),
+      std::numeric_limits<float>::quiet_NaN(),
+      std::numeric_limits<float>::quiet_NaN()};
+  array x(xv.begin(), Shape{5, 3}, float32);
+  check_indices(argmax(x, -1, false, stream), {1, 0, 1, 2, 0}, stream);
+
+  // keepdims keeps the reduced axis with size 1.
+  array kept = argmax(x, -1, true, stream);
+  kept.eval();
+  omarchy::get_command_encoder(stream).synchronize();
+  CHECK_EQ(kept.shape().size(), 2);
+  CHECK_EQ(kept.shape(0), 5);
+  CHECK_EQ(kept.shape(1), 1);
+  check_indices(std::move(kept), {1, 0, 1, 2, 0}, stream);
+
+  // A 1000-wide row crosses several 256-thread blocks. The spike at 512
+  // ties the one at 768, so the first occurrence wins; the low spike at
+  // 257 is the unique row minimum.
+  std::vector<float> wide(1000);
+  for (size_t index = 0; index < wide.size(); ++index) {
+    wide[index] = static_cast<float>(static_cast<int>(index % 7) - 3);
+  }
+  wide[512] = 3.5f;
+  wide[768] = 3.5f;
+  wide[257] = -4.0f;
+  array w(wide.begin(), Shape{1, 1000}, float32);
+  check_indices(argmax(w, -1, false, stream), {512}, stream);
+  check_indices(argmin(w, -1, false, stream), {257}, stream);
+
+  // Non-suffix axes are named rejections, not CPU fallbacks.
+  array matrix({1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f}, {2, 3}, float32);
+  std::string axis_error = evaluation_error(argmax(matrix, 0, false, stream));
+  CHECK(axis_error.find("non-suffix ArgMax") != std::string::npos);
+  CHECK(axis_error.find("No CPU fallback") != std::string::npos);
+}
+
+TEST_CASE("argmin matches first-occurrence ties through Vulkan compute") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  std::vector<float> xv = {
+      1.0f, 3.0f, 2.0f,
+      3.0f, 3.0f, 1.0f,
+      -5.0f, -1.0f, -3.0f,
+      1.0f, std::numeric_limits<float>::quiet_NaN(), 2.0f,
+      std::numeric_limits<float>::quiet_NaN(),
+      std::numeric_limits<float>::quiet_NaN(),
+      std::numeric_limits<float>::quiet_NaN()};
+  array x(xv.begin(), Shape{5, 3}, float32);
+  check_indices(argmin(x, -1, false, stream), {0, 2, 0, 0, 0}, stream);
+
+  // A tie on the minimum keeps the first occurrence.
+  array ties({2.0f, -1.0f, -1.0f, 4.0f}, {4}, float32);
+  check_indices(argmin(ties, -1, false, stream), {1}, stream);
+}
+
+TEST_CASE("FP16 argmax matches host references") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  std::vector<float> xv = {1.0f, 3.0f, 2.0f, -2.0f, -2.0f, -1.0f};
+  array x(xv.begin(), Shape{2, 3}, float16);
+  // Row 1 ties on -2, so argmin keeps the first occurrence.
+  check_indices(argmin(x, -1, false, stream), {0, 0}, stream);
+}
+
+TEST_CASE("Cos and Sin match host references through Vulkan compute") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  std::vector<float> xv = {0.0f, 0.5f, 1.0f, -0.75f, -2.0f, 3.5f};
+  array x(xv.begin(), Shape{static_cast<int>(xv.size())}, float32);
+  std::vector<float> cos_expected;
+  std::vector<float> sin_expected;
+  for (float value : xv) {
+    cos_expected.push_back(std::cos(value));
+    sin_expected.push_back(std::sin(value));
+  }
+  check_values(cos(x, stream), cos_expected, stream);
+  check_values(sin(x, stream), sin_expected, stream);
+}
+
+TEST_CASE("Arange fills start plus step times index through Vulkan compute") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+
+  check_values(
+      arange(0, 10, 1, float32, stream),
+      {0.0f, 1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f, 7.0f, 8.0f, 9.0f},
+      stream);
+
+  // Upstream derives the length from ceil((stop - start) / step), so a
+  // negative step over a descending range is a valid request.
+  check_values(
+      arange(2.5, 0.5, -0.25, float32, stream),
+      {2.5f, 2.25f, 2.0f, 1.75f, 1.5f, 1.25f, 1.0f, 0.75f},
+      stream);
+
+  std::string dtype_error =
+      evaluation_error(arange(0, 4, 1, int32, stream));
+  CHECK(dtype_error.find("[omarchy] Arange dtype") != std::string::npos);
+  CHECK(dtype_error.find("No CPU fallback") != std::string::npos);
+
+  const auto& capabilities = omarchy::device(0).capabilities();
+  if (!capabilities.shader_float16 ||
+      !capabilities.storage_buffer_16bit_access) {
+    skip("Vulkan device lacks required FP16 shader and storage features.");
+    return;
+  }
+  array half = arange(0, 2, 0.5, float16, stream);
+  check_values(
+      astype(half, float32, stream), {0.0f, 0.5f, 1.0f, 1.5f}, stream, 1e-2);
+}
+
+TEST_CASE("grad of sum sin matches cos through Vulkan compute") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  std::vector<float> xv = {0.1f, 0.4f, -0.9f, 1.3f};
+  array x(xv.begin(), Shape{static_cast<int>(xv.size())}, float32);
+
+  // Sin::vjp lowers to Cos and Multiply only, both backend-supported.
+  auto fun = [&](const std::vector<array>& inputs) {
+    return sum(sin(inputs[0], stream), stream);
+  };
+  auto [value, grads] = value_and_grad(fun, std::vector<int>{0})({x});
+
+  std::vector<float> expected(xv.size());
+  float expected_value = 0.0f;
+  for (size_t index = 0; index < xv.size(); ++index) {
+    expected[index] = std::cos(xv[index]);
+    expected_value += std::sin(xv[index]);
+  }
+  check_values(value, {expected_value}, stream, 1e-5);
+  check_values(grads.at(0), expected, stream, 1e-5);
 }
