@@ -9,6 +9,13 @@
 // row; upstream negative-index semantics are therefore not provided, and
 // an int64 index whose high word is nonzero can never land inside the
 // table, so it takes the same zero-row path.
+//
+// USE_U32 selects raw uint32 storage: table words copy with no float
+// conversion, so packed words above 2^31 stay bit-exact. An int32 table
+// shares the kernel unchanged because the copy is bitwise and the zero
+// row is the zero word in both interpretations. The load stays one
+// straight-line per-thread read at a linear address, the shape the
+// Honeykrisp driver reads correctly.
 
 #version 460
 
@@ -31,6 +38,10 @@ uint16_t bf16_store(float value) {
   return uint16_t((bits + 0x7fffu + ((bits >> 16) & 1u)) >> 16);
 }
 #define STORE_VALUE(f) bf16_store(f)
+#elif defined(USE_U32)
+#define STORAGE_TYPE uint
+#define LOAD_VALUE(x) (x)
+#define STORE_VALUE(x) (x)
 #else
 #define STORAGE_TYPE float
 #define LOAD_VALUE(x) float(x)
@@ -91,7 +102,11 @@ void main() {
         index = word;
       }
     }
+#ifdef USE_U32
+    STORAGE_TYPE value = 0u;
+#else
     float value = 0.0;
+#endif
     if (index < table_rows) {
       value = LOAD_VALUE(
           input_data

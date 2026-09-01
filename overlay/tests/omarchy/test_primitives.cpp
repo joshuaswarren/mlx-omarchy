@@ -1593,6 +1593,151 @@ TEST_CASE("take gathers int64 indices and zeroes wide values") {
       stream);
 }
 
+TEST_CASE("take gathers uint32 and int32 tables as raw words") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+
+  // QuantizedEmbedding gathers rows of the packed uint32 weight matrix.
+  // Packed words carry values above 2^31 that a float detour would
+  // corrupt, so the copy must be bitwise.
+  std::vector<uint32_t> tv = {
+      0x00000001u, 0x00000002u, 0x00000003u, 0x00000004u,
+      0x7FFFFFFFu, 0x80000000u, 0x80000001u, 0xDEADBEEFu,
+      0xFFFFFFFFu, 0xFFFFFFFEu, 0x12345678u, 0x9ABCDEF0u,
+      0x00000000u, 0x00000001u, 0x80000000u, 0x7FFFFFFFu,
+      0xCAFEBABEu, 0xFEEDFACEu, 0x0000FFFFu, 0xFFFF0000u};
+  array table(tv.begin(), Shape{5, 4}, uint32);
+  std::vector<uint32_t> uv = {2, 0, 4, 2};
+  array indices(uv.begin(), Shape{4}, uint32);
+  array gathered = take(table, indices, 0, stream);
+  CHECK_EQ(gathered.dtype(), uint32);
+  CHECK_EQ(gathered.shape(0), 4);
+  CHECK_EQ(gathered.shape(1), 4);
+  std::vector<uint32_t> expected;
+  for (uint32_t row : uv) {
+    expected.insert(
+        expected.end(), tv.begin() + row * 4, tv.begin() + row * 4 + 4);
+  }
+  check_uint32_values(gathered, expected, stream);
+
+  // Out-of-range indices still write the zero row on raw-word tables.
+  std::vector<uint32_t> bv = {1, 5, 0};
+  array bounds(bv.begin(), Shape{3}, uint32);
+  check_uint32_values(
+      take(table, bounds, 0, stream),
+      {0x7FFFFFFFu,
+       0x80000000u,
+       0x80000001u,
+       0xDEADBEEFu,
+       0u,
+       0u,
+       0u,
+       0u,
+       0x00000001u,
+       0x00000002u,
+       0x00000003u,
+       0x00000004u},
+      stream);
+
+  // An int32 table shares the raw-word kernel via reinterpret: the copy
+  // is bitwise, so negative words round-trip unchanged.
+  std::vector<int32_t> sv = {
+      -1, -2147483647 - 1, 2147483647, 0, 123456789, -987654321};
+  array signed_table(sv.begin(), Shape{3, 2}, int32);
+  std::vector<int32_t> siv = {2, 0, 1};
+  array signed_indices(siv.begin(), Shape{3}, int32);
+  array signed_gathered = take(signed_table, signed_indices, 0, stream);
+  CHECK_EQ(signed_gathered.dtype(), int32);
+  check_int32_values(
+      signed_gathered,
+      {123456789,
+       -987654321,
+       -1,
+       -2147483647 - 1,
+       2147483647,
+       0},
+      stream);
+
+  // The QuantizedEmbedding shape family: [1, 40, 1] indices over a
+  // [rows, 112] packed table produce [1, 40, 1, 112].
+  const int rows = 8;
+  const int cols = 112;
+  std::vector<uint32_t> wv(rows * cols);
+  for (int r = 0; r < rows; ++r) {
+    for (int c = 0; c < cols; ++c) {
+      wv[r * cols + c] =
+          static_cast<uint32_t>(r * cols + c) * 2654435761u + 0x80000000u;
+    }
+  }
+  array wide_table(wv.begin(), Shape{rows, cols}, uint32);
+  std::vector<int32_t> qv(40);
+  for (int i = 0; i < 40; ++i) {
+    qv[i] = (i * 3 + 1) % rows;
+  }
+  array q_indices(qv.begin(), Shape{1, 40, 1}, int32);
+  array q_gathered = take(wide_table, q_indices, 0, stream);
+  CHECK_EQ(q_gathered.shape().size(), 4);
+  CHECK_EQ(q_gathered.shape(0), 1);
+  CHECK_EQ(q_gathered.shape(1), 40);
+  CHECK_EQ(q_gathered.shape(2), 1);
+  CHECK_EQ(q_gathered.shape(3), 112);
+  std::vector<uint32_t> wide_expected;
+  wide_expected.reserve(40 * cols);
+  for (int row : qv) {
+    wide_expected.insert(
+        wide_expected.end(),
+        wv.begin() + row * cols,
+        wv.begin() + row * cols + cols);
+  }
+  check_uint32_values(q_gathered, wide_expected, stream);
+
+  // The uint32 and int64 index modes stay available over a raw-word
+  // table.
+  std::vector<uint32_t> uiv = {3, 0};
+  array u_indices(uiv.begin(), Shape{2}, uint32);
+  std::vector<uint32_t> mode_expected;
+  for (uint32_t row : uiv) {
+    mode_expected.insert(
+        mode_expected.end(),
+        wv.begin() + row * cols,
+        wv.begin() + row * cols + cols);
+  }
+  check_uint32_values(
+      take(wide_table, u_indices, 0, stream), mode_expected, stream);
+  std::vector<int64_t> liv = {1, 0, 0x100000000LL};
+  array l_indices(liv.begin(), Shape{3}, int64);
+  std::vector<uint32_t> l_expected(
+      wv.begin() + cols, wv.begin() + 2 * cols);
+  l_expected.insert(l_expected.end(), wv.begin(), wv.begin() + cols);
+  l_expected.insert(l_expected.end(), cols, 0u);
+  check_uint32_values(
+      take(wide_table, l_indices, 0, stream), l_expected, stream);
+
+  // Remaining table dtypes keep the named dtype error at the backend
+  // gate; uint16 pins it. A float64 table cannot even hold a GPU
+  // buffer: the core dtype gate rejects it one layer up with its own
+  // named error.
+  std::vector<uint16_t> hv = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10,
+                              11, 12, 13, 14, 15, 16, 17, 18, 19, 20};
+  array u16_table(hv.begin(), Shape{5, 4}, uint16);
+  std::string u16_error =
+      evaluation_error(take(u16_table, indices, 0, stream));
+  CHECK(u16_error.find("Take dtype") != std::string::npos);
+
+  array f64_table(tv.begin(), Shape{5, 4}, float64);
+  std::string f64_error;
+  try {
+    take(f64_table, indices, 0, stream);
+  } catch (const std::exception& error) {
+    f64_error = error.what();
+  }
+  CHECK(
+      f64_error.find("float64 is not supported on the GPU") !=
+      std::string::npos);
+}
+
 TEST_CASE("general broadcast elementwise matches host references") {
   if (!compute_available()) {
     return;

@@ -104,6 +104,14 @@ Other ranks, layouts, and index dtypes fail with named errors.
 The uint32 path is proven with a real `mx.argmax` output feeding the
 gather at the mlx-lm decode shapes `[1, 1]` and `[2, 3]`, and the int64
 path covers values above 2^31 and negatives.
+A uint32 table gathers through a raw word-copy kernel with no float
+conversion, so the packed QuantizedEmbedding weight words keep values
+above 2^31 bit-exact.
+An int32 table shares that kernel unchanged because the copy is bitwise
+and signedness never participates.
+The gather keeps one straight-line per-thread load at a linear address,
+the shape the Honeykrisp driver reads correctly.
+Other table dtypes, such as float64, keep the named dtype error.
 `RandomBits` passes the gate for the width-4 uint32 case that mlx-lm
 sampling uses: `mx.random.bits`, the `mx.random.split` key shape, and the
 bits behind `mx.random.uniform` and `mx.random.categorical`.

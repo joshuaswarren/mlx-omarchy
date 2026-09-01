@@ -36,6 +36,7 @@
 #include "gather_bf16.h"
 #include "gather_f16.h"
 #include "gather_f32.h"
+#include "gather_u32.h"
 #include "copy_general_bf16.h"
 #include "copy_general_f16.h"
 #include "copy_general_f32.h"
@@ -208,6 +209,8 @@ ShaderBytes shader_bytes(ComputeKernel kernel) {
       return {gather_f16, gather_f16_size};
     case ComputeKernel::GatherBF16:
       return {gather_bf16, gather_bf16_size};
+    case ComputeKernel::GatherU32:
+      return {gather_u32, gather_u32_size};
     case ComputeKernel::CopyGeneralF32:
       return {copy_general_f32, copy_general_f32_size};
     case ComputeKernel::CopyGeneralF16:

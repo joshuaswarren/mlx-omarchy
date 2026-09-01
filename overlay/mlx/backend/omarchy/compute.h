@@ -75,6 +75,7 @@ enum class ComputeKernel : uint8_t {
   GatherF32,
   GatherF16,
   GatherBF16,
+  GatherU32,
   CopyGeneralF32,
   CopyGeneralF16,
   CopyGeneralBF16,
