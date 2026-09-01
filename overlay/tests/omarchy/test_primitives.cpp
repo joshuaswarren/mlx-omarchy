@@ -845,7 +845,7 @@ TEST_CASE("vmap batches closures over the leading axis through Vulkan compute") 
       stream);
 }
 
-TEST_CASE("mx.compile fuses only with backend support and no_fuse evaluates") {
+TEST_CASE("mx.compile evaluates the elementwise tape and no_fuse still matches") {
   if (!compute_available()) {
     return;
   }
@@ -860,27 +860,23 @@ TEST_CASE("mx.compile fuses only with backend support and no_fuse evaluates") {
   }
   using VectorFn = std::function<std::vector<array>(const std::vector<array>&)>;
 
+  // The fused tape interprets on the GPU and matches the host reference.
   set_compile_mode(CompileMode::enabled);
   VectorFn fused_fun = [&](const std::vector<array>& inputs) {
     return std::vector<array>{
         multiply(exp(inputs[0], stream), inputs[1], stream)};
   };
   auto fused = compile(fused_fun);
-  auto fused_outputs = fused({x, y});
-  // compile_available_for_device reports true for the GPU device, so the
-  // fused tape reaches Compiled::eval_gpu and must fail with its name.
-  std::string fused_error = evaluation_error(fused_outputs[0]);
-  CHECK(fused_error.find("[omarchy] Compiled is not implemented") !=
-        std::string::npos);
+  check_values(fused({x, y})[0], expected, stream, 1e-5);
 
+  // no_fuse keeps the tape unfused and must stay green.
   set_compile_mode(CompileMode::no_fuse);
   VectorFn unfused_fun = [&](const std::vector<array>& inputs) {
     return std::vector<array>{
         multiply(exp(inputs[0], stream), inputs[1], stream)};
   };
   auto unfused = compile(unfused_fun);
-  auto unfused_outputs = unfused({x, y});
-  check_values(unfused_outputs[0], expected, stream, 1e-4);
+  check_values(unfused({x, y})[0], expected, stream, 1e-5);
   set_compile_mode(CompileMode::enabled);
 }
 
@@ -4338,4 +4334,362 @@ TEST_CASE("dequantize pins named errors outside the affine gate") {
   std::string dtype_error = evaluation_error(
       dequantize(w4, sb_bf16, sb_bf16, 32, 4, "affine", std::nullopt, std::nullopt, stream));
   CHECK(dtype_error.find("Quantize scales dtype") != std::string::npos);
+}
+
+// Host direct convolution reference copied from the upstream CPU path
+// slow_conv_2D for the forward groups==1, flip=false, input_dilation==1
+// case: out[n, oh, ow, o] sums in[n, ih, iw, c] * wt[o, wh, ww, c] over
+// in-bounds taps, with ih = oh*sh - plo_h + wh*dh and iw likewise.
+std::vector<float> host_conv2d_nhwc(
+    const std::vector<float>& input,
+    Shape in_shape,
+    const std::vector<float>& weight,
+    Shape wt_shape,
+    std::pair<int, int> stride,
+    std::pair<int, int> pad_lo,
+    std::pair<int, int> pad_hi,
+    std::pair<int, int> dilation) {
+  int n = in_shape[0], ih = in_shape[1], iw = in_shape[2], c = in_shape[3];
+  int o = wt_shape[0], kh = wt_shape[1], kw = wt_shape[2];
+  int oh = (ih + pad_lo.first + pad_hi.first - dilation.first * (kh - 1) - 1) /
+      stride.first +
+      1;
+  int ow = (iw + pad_lo.second + pad_hi.second - dilation.second * (kw - 1) -
+            1) /
+      stride.second +
+      1;
+  std::vector<float> output(n * oh * ow * o, 0.0f);
+  for (int batch = 0; batch < n; ++batch) {
+    for (int row = 0; row < oh; ++row) {
+      for (int column = 0; column < ow; ++column) {
+        for (int out_channel = 0; out_channel < o; ++out_channel) {
+          float accumulator = 0.0f;
+          for (int ky = 0; ky < kh; ++ky) {
+            int in_row = row * stride.first - pad_lo.first + ky * dilation.first;
+            if (in_row < 0 || in_row >= ih) {
+              continue;
+            }
+            for (int kx = 0; kx < kw; ++kx) {
+              int in_column =
+                  column * stride.second - pad_lo.second + kx * dilation.second;
+              if (in_column < 0 || in_column >= iw) {
+                continue;
+              }
+              for (int channel = 0; channel < c; ++channel) {
+                accumulator += input[((batch * ih + in_row) * iw + in_column) *
+                        c +
+                    channel] *
+                    weight[(
+                               (out_channel * kh + ky) * kw + kx) *
+                        c +
+                        channel];
+              }
+            }
+          }
+          output[((batch * oh + row) * ow + column) * o + out_channel] =
+              accumulator;
+        }
+      }
+    }
+  }
+  return output;
+}
+
+TEST_CASE("Convolution matches host references through Vulkan compute") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  std::mt19937 rng(7);
+  std::uniform_real_distribution<float> dist(-1.0f, 1.0f);
+
+  // 3x3 identity kernel, stride 1, pad 1: the output equals the input.
+  std::vector<float> identity_in(9);
+  for (size_t index = 0; index < identity_in.size(); ++index) {
+    identity_in[index] = dist(rng);
+  }
+  std::vector<float> identity_wt(9, 0.0f);
+  identity_wt[4] = 1.0f;
+  array identity_input(
+      identity_in.begin(), Shape{1, 3, 3, 1}, float32);
+  array identity_weight(identity_wt.begin(), Shape{1, 3, 3, 1}, float32);
+  check_values(
+      conv2d(
+          identity_input,
+          identity_weight,
+          {1, 1},
+          {1, 1},
+          {1, 1},
+          1,
+          stream),
+      identity_in,
+      stream,
+      1e-6);
+
+  // Random 1x1 kernels are per-position channel matmuls.
+  Shape in_shape_1x1 = {2, 5, 5, 3};
+  std::vector<float> in_1x1(2 * 5 * 5 * 3);
+  for (auto& value : in_1x1) {
+    value = dist(rng);
+  }
+  std::vector<float> wt_1x1(4 * 1 * 1 * 3);
+  for (auto& value : wt_1x1) {
+    value = dist(rng);
+  }
+  auto expected_1x1 = host_conv2d_nhwc(
+      in_1x1, in_shape_1x1, wt_1x1, Shape{4, 1, 1, 3}, {1, 1}, {0, 0}, {0, 0}, {1, 1});
+  check_values(
+      conv2d(
+          array(in_1x1.begin(), in_shape_1x1, float32),
+          array(wt_1x1.begin(), Shape{4, 1, 1, 3}, float32),
+          {1, 1},
+          {0, 0},
+          {1, 1},
+          1,
+          stream),
+      expected_1x1,
+      stream,
+      1e-5);
+
+  // Random 3x3 kernel, stride 2, pad 1 exercises the window walk and
+  // zero padding guards.
+  Shape in_shape_3x3 = {1, 7, 7, 2};
+  std::vector<float> in_3x3(1 * 7 * 7 * 2);
+  for (auto& value : in_3x3) {
+    value = dist(rng);
+  }
+  std::vector<float> wt_3x3(3 * 3 * 3 * 2);
+  for (auto& value : wt_3x3) {
+    value = dist(rng);
+  }
+  auto expected_3x3 = host_conv2d_nhwc(
+      in_3x3, in_shape_3x3, wt_3x3, Shape{3, 3, 3, 2}, {2, 2}, {1, 1}, {1, 1}, {1, 1});
+  check_values(
+      conv2d(
+          array(in_3x3.begin(), in_shape_3x3, float32),
+          array(wt_3x3.begin(), Shape{3, 3, 3, 2}, float32),
+          {2, 2},
+          {1, 1},
+          {1, 1},
+          1,
+          stream),
+      expected_3x3,
+      stream,
+      1e-5);
+
+  // Dilation 2 widens the window without touching the output grid.
+  Shape in_shape_dil = {1, 9, 9, 1};
+  std::vector<float> in_dil(1 * 9 * 9 * 1);
+  for (auto& value : in_dil) {
+    value = dist(rng);
+  }
+  std::vector<float> wt_dil(1 * 3 * 3 * 1);
+  for (auto& value : wt_dil) {
+    value = dist(rng);
+  }
+  auto expected_dil = host_conv2d_nhwc(
+      in_dil, in_shape_dil, wt_dil, Shape{1, 3, 3, 1}, {1, 1}, {2, 2}, {2, 2}, {2, 2});
+  check_values(
+      conv2d(
+          array(in_dil.begin(), in_shape_dil, float32),
+          array(wt_dil.begin(), Shape{1, 3, 3, 1}, float32),
+          {1, 1},
+          {2, 2},
+          {2, 2},
+          1,
+          stream),
+      expected_dil,
+      stream,
+      1e-5);
+
+  // Asymmetric padding and a bias add ride conv_general plus a broadcast.
+  Shape in_shape_pad = {1, 4, 4, 2};
+  std::vector<float> in_pad(1 * 4 * 4 * 2);
+  for (auto& value : in_pad) {
+    value = dist(rng);
+  }
+  std::vector<float> wt_pad(2 * 2 * 2 * 2);
+  for (auto& value : wt_pad) {
+    value = dist(rng);
+  }
+  std::vector<float> bias(2);
+  for (auto& value : bias) {
+    value = dist(rng);
+  }
+  auto conv_pad = conv_general(
+      array(in_pad.begin(), in_shape_pad, float32),
+      array(wt_pad.begin(), Shape{2, 2, 2, 2}, float32),
+      {1, 1},
+      {0, 1},
+      {2, 0},
+      {1, 1},
+      {1, 1},
+      1,
+      false,
+      stream);
+  auto expected_pad = host_conv2d_nhwc(
+      in_pad, in_shape_pad, wt_pad, Shape{2, 2, 2, 2}, {1, 1}, {0, 1}, {2, 0}, {1, 1});
+  std::vector<float> expected_bias(expected_pad.size());
+  for (size_t index = 0; index < expected_bias.size(); ++index) {
+    expected_bias[index] = expected_pad[index] + bias[index % 2];
+  }
+  check_values(
+      add(conv_pad, array(bias.begin(), Shape{2}, float32), stream),
+      expected_bias,
+      stream,
+      1e-5);
+}
+
+TEST_CASE("FP16 Convolution matches host references") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  const auto& capabilities = omarchy::device(0).capabilities();
+  if (!capabilities.shader_float16 ||
+      !capabilities.storage_buffer_16bit_access) {
+    skip("Vulkan device lacks required FP16 shader and storage features.");
+    return;
+  }
+  Shape in_shape = {1, 5, 5, 2};
+  std::vector<float> input_values(1 * 5 * 5 * 2);
+  std::mt19937 rng(11);
+  std::uniform_real_distribution<float> dist(-1.0f, 1.0f);
+  for (auto& value : input_values) {
+    value = dist(rng);
+  }
+  std::vector<float> weight_values(2 * 3 * 3 * 2);
+  for (auto& value : weight_values) {
+    value = dist(rng);
+  }
+  auto expected = host_conv2d_nhwc(
+      input_values,
+      in_shape,
+      weight_values,
+      Shape{2, 3, 3, 2},
+      {1, 1},
+      {1, 1},
+      {1, 1},
+      {1, 1});
+  check_values(
+      astype(
+          conv2d(
+              astype(
+                  array(input_values.begin(), in_shape, float32),
+                  float16,
+                  stream),
+              astype(
+                  array(weight_values.begin(), Shape{2, 3, 3, 2}, float32),
+                  float16,
+                  stream),
+              {1, 1},
+              {1, 1},
+              {1, 1},
+              1,
+              stream),
+          float32,
+          stream),
+      expected,
+      stream,
+      1e-3);
+}
+
+TEST_CASE("grouped and transposed Convolution keep named errors") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  std::vector<float> in_values(1 * 4 * 4 * 4, 0.5f);
+  std::vector<float> wt_values(4 * 3 * 3 * 2, 0.25f);
+
+  // Graph construction and eval both run up front on the GPU stream;
+  // either can carry the named rejection, so both ride one catcher.
+  auto error_of = [&](const auto& build) {
+    std::string message;
+    try {
+      array value = build();
+      value.eval();
+    } catch (const std::exception& error) {
+      message = error.what();
+    }
+    return message;
+  };
+  std::string groups_error = error_of([&] {
+    return conv2d(
+        array(in_values.begin(), Shape{1, 4, 4, 4}, float32),
+        array(wt_values.begin(), Shape{4, 3, 3, 2}, float32),
+        {1, 1},
+        {1, 1},
+        {1, 1},
+        /*groups=*/2,
+        stream);
+  });
+  CHECK(groups_error.find("[omarchy] grouped Convolution") != std::string::npos);
+  CHECK(groups_error.find("No CPU fallback") != std::string::npos);
+
+  // flip is conv_transpose semantics and stays named-unsupported.
+  std::string transpose_error = error_of([&] {
+    return conv_general(
+        array(in_values.begin(), Shape{1, 4, 4, 2}, float32),
+        array(wt_values.begin(), Shape{4, 3, 3, 2}, float32),
+        {1, 1},
+        {1, 1},
+        {1, 1},
+        {1, 1},
+        {2, 2},
+        1,
+        true,
+        stream);
+  });
+  CHECK(
+      transpose_error.find("[omarchy] transposed Convolution") !=
+      std::string::npos);
+}
+
+TEST_CASE("mx.compile evaluates a four-op elementwise chain") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  std::vector<float> xv = {-0.4f, 0.0f, 0.3f, 0.9f};
+  array x(xv.begin(), Shape{4}, float32);
+  std::vector<float> expected(4);
+  for (size_t index = 0; index < expected.size(); ++index) {
+    expected[index] = std::sqrt(std::exp(2.0f * xv[index]) + 1.0f);
+  }
+  using VectorFn = std::function<std::vector<array>(const std::vector<array>&)>;
+
+  set_compile_mode(CompileMode::enabled);
+  VectorFn chain_fun = [&](const std::vector<array>& inputs) {
+    auto scaled = multiply(inputs[0], array(2.0f), stream);
+    auto raised = exp(scaled, stream);
+    auto shifted = add(raised, array(1.0f), stream);
+    return std::vector<array>{sqrt(shifted, stream)};
+  };
+  auto chain = compile(chain_fun);
+  check_values(chain({x})[0], expected, stream, 1e-5);
+  set_compile_mode(CompileMode::enabled);
+}
+
+TEST_CASE("mx.compile pins the named error for tape ops outside the subset") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  std::vector<float> xv = {0.0f, 0.1f, 0.2f, 0.3f};
+  array x(xv.begin(), Shape{4}, float32);
+  using VectorFn = std::function<std::vector<array>(const std::vector<array>&)>;
+
+  // Erf is fusable upstream but outside the interpreted subset, so the
+  // tape carries it and eval fails with the named tape-op error.
+  set_compile_mode(CompileMode::enabled);
+  VectorFn mixed_fun = [&](const std::vector<array>& inputs) {
+    return std::vector<array>{
+        multiply(erf(inputs[0], stream), exp(inputs[0], stream), stream)};
+  };
+  auto mixed = compile(mixed_fun);
+  std::string mixed_error = evaluation_error(mixed({x})[0]);
+  CHECK(
+      mixed_error.find("[omarchy] Compiled tape op Erf") != std::string::npos);
+  set_compile_mode(CompileMode::enabled);
 }

@@ -16,6 +16,7 @@
 #include "mlx/backend/common/unary.h"
 #include "mlx/backend/omarchy/allocator.h"
 #include "mlx/backend/omarchy/compute.h"
+#include "mlx/backend/omarchy/compiled.h"
 #include "mlx/backend/omarchy/device.h"
 #include "mlx/backend/omarchy/encoder.h"
 #include "mlx/distributed/primitives.h"
@@ -961,9 +962,106 @@ OMARCHY_UNSUPPORTED(BitwiseInvert)
 OMARCHY_UNSUPPORTED(BlockMaskedMM)
 OMARCHY_UNSUPPORTED(Ceil)
 OMARCHY_UNSUPPORTED(Cholesky)
-OMARCHY_UNSUPPORTED_MULTI(Compiled)
+void Compiled::eval_gpu(
+    const std::vector<array>& inputs,
+    std::vector<array>& outputs) {
+  omarchy::eval_compiled_tape(
+      tape_, inputs_, outputs_, inputs, outputs, stream());
+}
 OMARCHY_UNSUPPORTED(Conjugate)
-OMARCHY_UNSUPPORTED(Convolution)
+void Convolution::eval_gpu(const std::vector<array>& inputs, array& out) {
+  const array& in = inputs.at(0);
+  const array& wt = inputs.at(1);
+  auto& encoder = omarchy::get_command_encoder(out.primitive().stream());
+  require_float_dtype("Convolution", in, out, encoder);
+  require_float_dtype("Convolution", wt, out, encoder);
+  if (in.ndim() != 4 || wt.ndim() != 4) {
+    omarchy::unsupported("non-2D Convolution", out);
+  }
+  if (groups_ != 1) {
+    omarchy::unsupported("grouped Convolution", out);
+  }
+  // flip and input dilation are conv_transpose semantics; neither is
+  // part of the forward 2D convolution this direct kernel runs.
+  if (flip_) {
+    omarchy::unsupported("transposed Convolution", out);
+  }
+  if (input_dilation_[0] != 1 || input_dilation_[1] != 1) {
+    omarchy::unsupported("input-dilated Convolution", out);
+  }
+
+  // Materialize operands whose strides are not the standard NHWC and
+  // O(HKW) row-major layouts; cache slices and transposes compose that
+  // way. The engine keeps each temp alive until the submission lands.
+  std::optional<array> in_materialized;
+  std::optional<array> wt_materialized;
+  if (!in.flags().row_contiguous) {
+    in_materialized = materialize_batched_matrix(
+        in, "Convolution", out, out.primitive().stream());
+  }
+  if (!wt.flags().row_contiguous) {
+    wt_materialized = materialize_batched_matrix(
+        wt, "Convolution", out, out.primitive().stream());
+  }
+  const array& x = in_materialized ? *in_materialized : in;
+  const array& w = wt_materialized ? *wt_materialized : wt;
+
+  int batch = x.shape(0);
+  int in_height = x.shape(1);
+  int in_width = x.shape(2);
+  int in_channels = x.shape(3);
+  int out_channels = w.shape(0);
+  int kernel_height = w.shape(1);
+  int kernel_width = w.shape(2);
+  if (w.shape(3) != in_channels || out.shape(0) != batch ||
+      out.shape(3) != out_channels) {
+    omarchy::unsupported("Convolution shapes", out);
+  }
+
+  out.set_data(allocate_omarchy(out.nbytes()));
+  if (out.size() == 0) {
+    return;
+  }
+  uint32_t total = checked_u32(out.size(), "Convolution", out);
+  omarchy::ComputeParams params;
+  // Push-constant routing mirrors shaders/conv.comp: spatial extents,
+  // kernel window, and the six conv parameters ride the generic dims
+  // fields because the fixed ComputeParams layout has no conv block.
+  params.count = total;
+  params.operation = checked_u32(kernel_width, "Convolution", out);
+  params.reduce_size = checked_u32(in_channels, "Convolution", out);
+  params.lhs_offset = checked_item_offset(x, x.size(), "Convolution", out);
+  params.rhs_offset = checked_item_offset(w, w.size(), "Convolution", out);
+  params.output_offset = checked_item_offset(out, out.size(), "Convolution", out);
+  params.aux_size = checked_u32(in_width, "Convolution", out);
+  params.aux_offset = checked_u32(kernel_height, "Convolution", out);
+  params.matrix_m = checked_u32(batch, "Convolution", out);
+  params.matrix_n = checked_u32(out_channels, "Convolution", out);
+  params.matrix_k = checked_u32(in_height, "Convolution", out);
+  params.dims = 2;
+  params.shape[0] = checked_u32(out.shape(1), "Convolution", out);
+  params.shape[1] = checked_u32(out.shape(2), "Convolution", out);
+  params.shape[2] = checked_u32(padding_lo_[0], "Convolution", out);
+  params.shape[3] = checked_u32(padding_lo_[1], "Convolution", out);
+  params.in_strides[0] = checked_u32(kernel_strides_[0], "Convolution", out);
+  params.in_strides[1] = checked_u32(kernel_strides_[1], "Convolution", out);
+  params.in_strides[2] = checked_u32(kernel_dilation_[0], "Convolution", out);
+  params.in_strides[3] = checked_u32(kernel_dilation_[1], "Convolution", out);
+  params.out_strides[0] = checked_u32(padding_hi_[0], "Convolution", out);
+  params.out_strides[1] = checked_u32(padding_hi_[1], "Convolution", out);
+  std::array<omarchy::ComputeBinding, 4> bindings{
+      binding(x), binding(w), binding(x), binding(out)};
+  auto kernel = select_float_kernel(
+      out.dtype(),
+      omarchy::ComputeKernel::ConvF32,
+      omarchy::ComputeKernel::ConvF16,
+      omarchy::ComputeKernel::ConvBF16);
+  encoder.dispatch_compute(
+      kernel,
+      bindings,
+      params,
+      omarchy::compute_dispatch_group_count(total));
+}
 OMARCHY_UNARY(Cos, CosOperation)
 OMARCHY_UNSUPPORTED(Cosh)
 OMARCHY_BINARY(Divide, DivideOperation)
