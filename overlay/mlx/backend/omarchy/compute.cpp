@@ -40,6 +40,7 @@
 #include "copy_general_bf16.h"
 #include "copy_general_f16.h"
 #include "copy_general_f32.h"
+#include "copy_general_u32.h"
 #include "fill_bf16.h"
 #include "fill_f16.h"
 #include "fill_f32.h"
@@ -219,6 +220,8 @@ ShaderBytes shader_bytes(ComputeKernel kernel) {
       return {copy_general_f16, copy_general_f16_size};
     case ComputeKernel::CopyGeneralBF16:
       return {copy_general_bf16, copy_general_bf16_size};
+    case ComputeKernel::CopyGeneralU32:
+      return {copy_general_u32, copy_general_u32_size};
     case ComputeKernel::ArgSortF32:
       return {argsort_f32, argsort_f32_size};
     case ComputeKernel::ArgSortF16:

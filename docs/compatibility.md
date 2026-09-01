@@ -58,10 +58,19 @@ bias broadcasts.
 Rank beyond 5 fails with the named `matrix rank` error, mismatched batch
 dims with the named `batch dimensions` error, and collapsed batches beyond
 65535 with the named `batch count` error.
-`mx.fast.scaled_dot_product_attention` evaluates through the composed
-fallback and matches a host reference within `1e-3` for float32, including
-grouped-query attention (`n_q_heads != n_kv_heads`, which emits rank-5
-matmuls over stride-0 broadcast batch views) and causal masks.
+`mx.fast.scaled_dot_product_attention` runs the attention primitive directly
+instead of the composed fallback: it casts `q`, `k`, and `v` to float32,
+applies the scale, expresses grouped-query attention through the
+unflatten/expand_dims shapes, adds the causal or array mask as a float32
+additive term, and normalizes with a float32 softmax, so score magnitudes
+far beyond float16 stay finite; only the result narrows back to the output
+dtype. It matches a float64 host reference within `1e-2` relative for
+float16 and bfloat16 inputs whose scores reach ~600, and within `1e-3` for
+float32, including grouped-query attention (`n_q_heads != n_kv_heads`,
+which emits rank-5 matmuls over stride-0 broadcast batch views), causal
+masks, and cache offsets (`k_len > q_len`). Sinks, the training logsumexp
+output, and `force_fused=True` stay named rejections or the composed
+fallback.
 `mx.quantized_matmul` passes the gate for the mlx-lm Linear shape:
 affine mode, 4-bit and 8-bit codes, group sizes 32 and 64, transposed
 packed weights `[N, K * bits / 32]`, and f32, f16, and bf16 activations.

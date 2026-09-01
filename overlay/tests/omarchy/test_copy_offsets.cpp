@@ -347,8 +347,9 @@ TEST_CASE("reshape shares lazily and copies with the source offset") {
   CHECK(sp[0] == 101);
   CHECK(sp[5] == 106);
 
-  // A col-contiguous view cannot reshape lazily; the flat device copy must
-  // start at the view's byte offset.
+  // A col-contiguous view cannot reshape lazily; the general gather must
+  // start at the view's byte offset and read through the view's strides,
+  // so rows interleave exactly as upstream and the CPU backend do.
   array vt = transpose(reshape(v, {2, 3}, s), s);
   vt.eval();
   CHECK(vt.flags().contiguous);
@@ -357,5 +358,5 @@ TEST_CASE("reshape shares lazily and copies with the source offset") {
   r.eval();
   omarchy::get_command_encoder(s).synchronize();
   CHECK(r.buffer().ptr() != x.buffer().ptr());
-  CHECK(values_equal(r, {101, 102, 103, 104, 105, 106}));
+  CHECK(values_equal(r, {101, 104, 102, 105, 103, 106}));
 }
