@@ -933,6 +933,30 @@ std::vector<float> host_softmax(
   return expected;
 }
 
+// Host reference: numerically stable log-sum-exp over the last axis, one
+// value per row. An infinite row max is already the answer.
+std::vector<float> host_logsumexp(
+    const std::vector<float>& values, int rows, int row_length) {
+  std::vector<float> expected(rows);
+  for (int row = 0; row < rows; ++row) {
+    const float* input = values.data() + row * row_length;
+    float maximum = input[0];
+    for (int index = 1; index < row_length; ++index) {
+      maximum = std::max(maximum, input[index]);
+    }
+    if (std::isinf(maximum)) {
+      expected[row] = maximum;
+      continue;
+    }
+    float sum = 0.0f;
+    for (int index = 0; index < row_length; ++index) {
+      sum += std::exp(input[index] - maximum);
+    }
+    expected[row] = maximum + std::log(sum);
+  }
+  return expected;
+}
+
 TEST_CASE("softmax normalizes rows through Vulkan compute") {
   if (!compute_available()) {
     return;
@@ -1056,6 +1080,149 @@ TEST_CASE("FP16 and BF16 softmax match host references") {
             softmax(brain, std::vector<int>{-1}, false, stream),
             float32,
             stream),
+        expected,
+        stream,
+        8e-3);
+  } else {
+    skip("Vulkan device lacks required BF16 storage and shader features.");
+  }
+}
+
+TEST_CASE("logsumexp reduces last-axis rows through Vulkan compute") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+
+  // Multi-row case at the default float32 tolerance.
+  std::vector<float> xv = {0.0f, 1.0f, 2.0f, 3.0f, 4.0f,
+                           -1.0f, -2.0f, -3.0f, -4.0f, -5.0f,
+                           10.0f, 10.0f, 10.0f, 10.0f, 10.0f};
+  array x(xv.begin(), Shape{3, 5}, float32);
+  check_values(
+      logsumexp(x, -1, false, stream),
+      host_logsumexp(xv, 3, 5),
+      stream);
+
+  // The mlx-lm logprobs epilogue: [1, V] logits reduce keepdims to
+  // [1, 1] so a broadcast subtract normalizes every row.
+  std::vector<float> logits_values(16);
+  for (size_t index = 0; index < logits_values.size(); ++index) {
+    logits_values[index] = 0.5f * static_cast<float>(static_cast<int>(index) - 8);
+  }
+  array logits(logits_values.begin(), Shape{1, 16}, float32);
+  array lse = logsumexp(logits, -1, true, stream);
+  REQUIRE_EQ(lse.shape(), Shape{1, 1});
+  check_values(
+      lse,
+      host_logsumexp(logits_values, 1, 16),
+      stream);
+
+  // Large logits stay finite because the kernel subtracts the row max.
+  std::vector<float> bigv = {100.0f, 101.0f, 100.0f, 99.0f,
+                             -100.0f, -101.0f, -100.0f, -99.0f};
+  check_values(
+      logsumexp(array(bigv.begin(), Shape{2, 4}, float32), -1, false, stream),
+      host_logsumexp(bigv, 2, 4),
+      stream);
+
+  // One flat row longer than one workgroup.
+  std::vector<float> wide_values(300);
+  for (size_t index = 0; index < wide_values.size(); ++index) {
+    wide_values[index] =
+        static_cast<float>(static_cast<int>(index % 7) - 3);
+  }
+  check_values(
+      logsumexp(array(wide_values.begin(), Shape{1, 300}, float32),
+                -1,
+                false,
+                stream),
+      host_logsumexp(wide_values, 1, 300),
+      stream,
+      2e-5);
+
+  // An all -inf row keeps -inf instead of a NaN sum; a row that holds
+  // one finite value next to -infs reduces to that value.
+  float neg_inf = -std::numeric_limits<float>::infinity();
+  std::vector<float> infs = {neg_inf, neg_inf, neg_inf,
+                             neg_inf, 3.0f, neg_inf};
+  array inf_result = logsumexp(
+      array(infs.begin(), Shape{2, 3}, float32), -1, false, stream);
+  inf_result.eval();
+  omarchy::get_command_encoder(stream).synchronize();
+  REQUIRE_EQ(inf_result.size(), 2u);
+  const float* inf_values = inf_result.data<float>();
+  CHECK(std::isinf(inf_values[0]));
+  CHECK(inf_values[0] < 0.0f);
+  CHECK_EQ(inf_values[1], 3.0f);
+
+  // A transpose view keeps its strides and pins the named layout error.
+  std::string layout_error = evaluation_error(
+      logsumexp(transpose(x, stream), -1, false, stream));
+  CHECK(layout_error.find("non-contiguous LogSumExp") != std::string::npos);
+
+  // FP16 and BF16 match the float32 host reference at their usual
+  // tolerances.
+  const auto& capabilities = omarchy::device(0).capabilities();
+  if (capabilities.shader_float16 &&
+      capabilities.storage_buffer_16bit_access) {
+    array half = astype(x, float16, stream);
+    check_values(
+        astype(logsumexp(half, -1, false, stream), float32, stream),
+        host_logsumexp(xv, 3, 5),
+        stream,
+        1e-3);
+  } else {
+    skip("Vulkan device lacks required FP16 shader and storage features.");
+  }
+  if (capabilities.storage_buffer_16bit_access &&
+      capabilities.shader_int16) {
+    array brain = astype(logits, bfloat16, stream);
+    check_values(
+        astype(logsumexp(brain, -1, true, stream), float32, stream),
+        host_logsumexp(logits_values, 1, 16),
+        stream,
+        8e-3);
+  } else {
+    skip("Vulkan device lacks required BF16 storage and shader features.");
+  }
+}
+
+TEST_CASE("Log matches host references through Vulkan compute") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  std::vector<float> xv;
+  for (int index = 1; index <= 12; ++index) {
+    xv.push_back(0.25f * static_cast<float>(index));
+  }
+  std::vector<float> expected;
+  for (float value : xv) {
+    expected.push_back(std::log(value));
+  }
+  array x(xv.begin(), Shape{3, 4}, float32);
+  check_values(log(x, stream), expected, stream, 1e-6);
+
+  // Sampling code negates log probabilities before the cumulative sum.
+  check_values(
+      negative(log(x, stream), stream),
+      [&]() {
+        std::vector<float> values;
+        for (float value : expected) {
+          values.push_back(-value);
+        }
+        return values;
+      }(),
+      stream,
+      1e-6);
+
+  // BF16 log feeds the mlx-lm sampling path for brain-float models.
+  const auto& capabilities = omarchy::device(0).capabilities();
+  if (capabilities.storage_buffer_16bit_access &&
+      capabilities.shader_int16) {
+    check_values(
+        astype(log(astype(x, bfloat16, stream), stream), float32, stream),
         expected,
         stream,
         8e-3);
@@ -1777,6 +1944,194 @@ TEST_CASE(
       host_reference(q_values),
       stream,
       1e-2);
+}
+
+
+TEST_CASE("cold-cache GQA decode matmul runs over cache slice views") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  // Qwen2.5-0.5B geometry: 14 query heads = 2 kv heads x 7 repeats. A
+  // fresh cache preallocates, slice_updates one decode step, and reads
+  // the state prefix back as a strided view, so the scores matmul sees
+  // batch strides that are uniform but not contiguous.
+  constexpr size_t kv_heads = 2;
+  constexpr size_t n_rep = 7;
+  constexpr size_t head_dim = 8;
+  constexpr float scale = 0.25f;
+  auto pattern = [](size_t index) {
+    return 0.25f * static_cast<float>(static_cast<int>(index % 11) - 5);
+  };
+  auto new_token = [&](size_t token) {
+    std::vector<float> values(kv_heads * head_dim);
+    for (size_t index = 0; index < values.size(); ++index) {
+      values[index] = pattern(index + token * 17 + 3);
+    }
+    array update(
+        values.begin(),
+        Shape{static_cast<int>(kv_heads), 1, static_cast<int>(head_dim)},
+        float32);
+    return std::pair<array, std::vector<float>>{update, values};
+  };
+
+  array cache = zeros(
+      {1,
+       static_cast<int>(kv_heads),
+       static_cast<int>(16),
+       static_cast<int>(head_dim)},
+      float32,
+      stream);
+
+  // First decode step: state [1, 2, 1, 8] with strides {128, 64, 8, 1}.
+  // The scores matmul output is exactly the [1, 2, 7, 1, 1] shape from
+  // the M1 smoke blocker.
+  auto [update1, k1_values] = new_token(0);
+  cache = slice_update(
+      cache,
+      update1,
+      Shape{0, 0, 0, 0},
+      Shape{1, static_cast<int>(kv_heads), 1, static_cast<int>(head_dim)},
+      stream);
+  array state1 = slice(
+      cache,
+      {0, 0, 0, 0},
+      {1, static_cast<int>(kv_heads), 1, static_cast<int>(head_dim)},
+      stream);
+
+  std::vector<float> q_values(kv_heads * n_rep * head_dim);
+  for (size_t index = 0; index < q_values.size(); ++index) {
+    q_values[index] = pattern(index);
+  }
+  array q(q_values.begin(), Shape{1, 14, 1, 8}, float32);
+  array q5 = unflatten(
+      multiply(array(scale, float32), q, stream),
+      1,
+      Shape{static_cast<int>(kv_heads), static_cast<int>(n_rep)},
+      stream);
+  array scores1 = matmul(
+      q5, swapaxes(expand_dims(state1, 2, stream), -1, -2, stream), stream);
+  const Shape scores1_shape{1, 2, 7, 1, 1};
+  REQUIRE_EQ(scores1.shape(), scores1_shape);
+  std::vector<float> expected_scores1(kv_heads * n_rep, 0.0f);
+  for (size_t kv = 0; kv < kv_heads; ++kv) {
+    for (size_t rep = 0; rep < n_rep; ++rep) {
+      float dot = 0.0f;
+      for (size_t inner = 0; inner < head_dim; ++inner) {
+        dot += scale * q_values[(kv * n_rep + rep) * head_dim + inner] *
+            k1_values[kv * head_dim + inner];
+      }
+      expected_scores1[kv * n_rep + rep] = dot;
+    }
+  }
+  check_values(scores1, expected_scores1, stream, 1e-5);
+
+  // End to end: the composed causal attention over the same cache view
+  // matches the key row (one key makes the softmax trivial). The second
+  // step below checks a real two-key softmax.
+  array attention1 = fast::scaled_dot_product_attention(
+      q,
+      state1,
+      state1,
+      scale,
+      "causal",
+      std::nullopt,
+      std::nullopt,
+      false,
+      stream);
+  std::string blocked1 = evaluation_error(attention1);
+  REQUIRE(blocked1.empty());
+  std::vector<float> expected_attention1(kv_heads * n_rep * head_dim, 0.0f);
+  for (size_t head = 0; head < kv_heads * n_rep; ++head) {
+    size_t kv_head = head / n_rep;
+    for (size_t inner = 0; inner < head_dim; ++inner) {
+      expected_attention1[head * head_dim + inner] =
+          k1_values[kv_head * head_dim + inner];
+    }
+  }
+  check_values(attention1, expected_attention1, stream, 1e-5);
+
+  // Second decode step: two keys, still a strided state view, and a
+  // non-trivial softmax over the two scores.
+  auto [update2, k2_values] = new_token(1);
+  cache = slice_update(
+      cache,
+      update2,
+      Shape{0, 0, 1, 0},
+      Shape{1, static_cast<int>(kv_heads), 2, static_cast<int>(head_dim)},
+      stream);
+  array state2 = slice(
+      cache,
+      {0, 0, 0, 0},
+      {1, static_cast<int>(kv_heads), 2, static_cast<int>(head_dim)},
+      stream);
+  array scores2 = matmul(
+      q5, swapaxes(expand_dims(state2, 2, stream), -1, -2, stream), stream);
+  const Shape scores2_shape{1, 2, 7, 1, 2};
+  REQUIRE_EQ(scores2.shape(), scores2_shape);
+
+  auto host_attention = [&](const std::vector<float>& kv1,
+                            const std::vector<float>& kv2) {
+    std::vector<float> out(kv_heads * n_rep * head_dim, 0.0f);
+    for (size_t kv = 0; kv < kv_heads; ++kv) {
+      for (size_t rep = 0; rep < n_rep; ++rep) {
+        const float* q_row =
+            q_values.data() + (kv * n_rep + rep) * head_dim;
+        float s1 = 0.0f;
+        float s2 = 0.0f;
+        for (size_t inner = 0; inner < head_dim; ++inner) {
+          s1 += scale * q_row[inner] * kv1[kv * head_dim + inner];
+          s2 += scale * q_row[inner] * kv2[kv * head_dim + inner];
+        }
+        float maximum = std::max(s1, s2);
+        float p1 = std::exp(s1 - maximum);
+        float p2 = std::exp(s2 - maximum);
+        float normalizer = p1 + p2;
+        for (size_t inner = 0; inner < head_dim; ++inner) {
+          out[(kv * n_rep + rep) * head_dim + inner] =
+              (p1 * kv1[kv * head_dim + inner] +
+               p2 * kv2[kv * head_dim + inner]) /
+              normalizer;
+        }
+      }
+    }
+    return out;
+  };
+  check_values(
+      fast::scaled_dot_product_attention(
+          q,
+          state2,
+          state2,
+          scale,
+          "causal",
+          std::nullopt,
+          std::nullopt,
+          false,
+          stream),
+      host_attention(k1_values, k2_values),
+      stream,
+      1e-5);
+
+  // The bf16 model path runs the same materialized scores matmul.
+  const auto& capabilities = omarchy::device(0).capabilities();
+  if (capabilities.storage_buffer_16bit_access &&
+      capabilities.shader_int16) {
+    array scores_bf16 = matmul(
+        astype(q5, bfloat16, stream),
+        swapaxes(
+            expand_dims(astype(state1, bfloat16, stream), 2, stream),
+            -1,
+            -2,
+            stream),
+        stream);
+    check_values(
+        astype(scores_bf16, float32, stream),
+        expected_scores1,
+        stream,
+        1e-2);
+  } else {
+    skip("Vulkan device lacks required BF16 storage and shader features.");
+  }
 }
 
 TEST_CASE("causal scaled_dot_product_attention composes through int32 arange") {

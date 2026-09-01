@@ -44,6 +44,13 @@ Batched Matmul and AddMM pass the gate for rank-3, rank-4, and rank-5 operands.
 Each operand may be row-major or per-matrix transposed, and batch axes may
 broadcast: a size-1 axis against a wider axis carries a zero stride through
 the shared-buffer broadcast view and repeats one matrix per batch step.
+An operand whose batch strides are uniform but not contiguous materializes
+to a standard row-major batch through the general strided-copy engine, and
+the dispatch runs normally on the copy. A KV-cache state prefix slice from
+a just-written cache composes this way: the cold-cache GQA decode scores
+matmul of shape `[1, 2, 7, 1, 1]` reads the slice view and matches a host
+reference. The other operand keeps the zero-copy path when its layout
+already conforms.
 The push constants carry the batch axis count, the batch extents, and the
 per-operand batch strides in elements, and workgroup z unravels over the
 batch shape. Batched AddMM keeps the scalar, per-row, and full per-batch
@@ -61,6 +68,16 @@ Trailing broadcasts keep the modulo fast path, and a higher collapsed rank fails
 Suffix Softmax passes the gate for FP32, FP16, and BF16.
 The Softmax kernel subtracts the row max and accumulates in float32.
 Large logits stay finite, and both precise modes produce the same values.
+`mx.logsumexp` passes the gate for a last-axis reduce over row-contiguous
+FP32, FP16, and BF16 inputs.
+The kernel keeps the row max, accumulates `exp(x - max)` in float32, and
+writes one value per row, which is the upstream keepdims contract.
+The `[1, V]` logits epilogue in mlx-lm reduces to `[1, 1]`, large logits
+stay finite, and an infinite row max stays the answer as on the upstream
+CPU.
+Non-contiguous inputs fail with the named layout error.
+`mx.log` passes the gate for FP32, FP16, and BF16 through the elementwise
+kernel.
 A strided slice view materializes through the general strided-copy engine at eval, so elementwise ops read it as a normal array.
 An offset-only slice keeps sharing the parent buffer.
 Gapless strided views such as transposes run through the elementwise stride path.

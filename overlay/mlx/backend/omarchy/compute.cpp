@@ -49,6 +49,9 @@
 #include "reduce_bf16.h"
 #include "reduce_f16.h"
 #include "reduce_f32.h"
+#include "logsumexp_bf16.h"
+#include "logsumexp_f16.h"
+#include "logsumexp_f32.h"
 #include "softmax_bf16.h"
 #include "softmax_f16.h"
 #include "softmax_f32.h"
@@ -136,6 +139,12 @@ ShaderBytes shader_bytes(ComputeKernel kernel) {
       return {softmax_f16, softmax_f16_size};
     case ComputeKernel::SoftmaxBF16:
       return {softmax_bf16, softmax_bf16_size};
+    case ComputeKernel::LogSumExpF32:
+      return {logsumexp_f32, logsumexp_f32_size};
+    case ComputeKernel::LogSumExpF16:
+      return {logsumexp_f16, logsumexp_f16_size};
+    case ComputeKernel::LogSumExpBF16:
+      return {logsumexp_bf16, logsumexp_bf16_size};
     case ComputeKernel::SelectF32:
       return {select_f32, select_f32_size};
     case ComputeKernel::SelectF16:
