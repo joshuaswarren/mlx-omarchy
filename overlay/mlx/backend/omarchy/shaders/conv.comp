@@ -1,0 +1,137 @@
+#version 460
+
+// Direct 2D convolution for channels-last arrays. One thread owns one
+// output element out[n, oh, ow, o] and walks ky, kx, c with a float32
+// accumulator; every load is a straight-line per-thread read at a
+// linear address (Honeykrisp caution: no divergent per-lane word
+// loads). Out-of-range input coordinates contribute zero via index
+// guards, so padding needs no materialized buffer.
+// Push-constant routing: reduce_size carries the input channel count,
+// aux_offset the kernel height, operation the kernel width, matrix_m
+// the batch count, matrix_n the output channel count, matrix_k the
+// input height, aux_size the input width, dims the spatial rank (2),
+// shape[0..1] the output height/width, shape[2..3] the padding low
+// height/width, in_strides[0..1] the stride height/width,
+// in_strides[2..3] the kernel dilation height/width, and
+// out_strides[0..1] the padding high height/width.
+
+#ifdef USE_FP16
+#extension GL_EXT_shader_16bit_storage : require
+#extension GL_EXT_shader_explicit_arithmetic_types_float16 : require
+#define STORAGE_TYPE float16_t
+#define LOAD_VALUE(x) float(x)
+#define STORE_VALUE(f) STORAGE_TYPE(f)
+#elif defined(USE_BF16)
+#extension GL_EXT_shader_16bit_storage : require
+#extension GL_EXT_shader_explicit_arithmetic_types_int16 : require
+#define STORAGE_TYPE uint16_t
+#define LOAD_VALUE(x) uintBitsToFloat(uint(x) << 16u)
+uint16_t bf16_store(float value) {
+  uint bits = floatBitsToUint(value);
+  if (isnan(value)) {
+    return uint16_t((bits >> 16) | 0x40u);
+  }
+  return uint16_t((bits + 0x7fffu + ((bits >> 16) & 1u)) >> 16);
+}
+#define STORE_VALUE(f) bf16_store(f)
+#else
+#define STORAGE_TYPE float
+#define LOAD_VALUE(x) float(x)
+#define STORE_VALUE(f) STORAGE_TYPE(f)
+#endif
+
+layout(local_size_x = 256) in;
+
+layout(set = 0, binding = 0, std430) readonly buffer InputX {
+  STORAGE_TYPE values[];
+} input_x;
+layout(set = 0, binding = 1, std430) readonly buffer Weight {
+  STORAGE_TYPE values[];
+} weight;
+layout(set = 0, binding = 2, std430) readonly buffer Unused {
+  STORAGE_TYPE values[];
+} unused;
+layout(set = 0, binding = 3, std430) writeonly buffer Output {
+  STORAGE_TYPE values[];
+} output_data;
+
+layout(push_constant) uniform Params {
+  uint count;
+  uint operation;
+  uint lhs_size;
+  uint rhs_size;
+  uint reduce_size;
+  uint output_size;
+  uint lhs_offset;
+  uint rhs_offset;
+  uint output_offset;
+  uint aux_size;
+  uint aux_offset;
+  uint matrix_m;
+  uint matrix_n;
+  uint matrix_k;
+  uint flags;
+  float alpha;
+  float beta;
+  uint dims;
+  uint shape[4];
+  uint in_strides[4];
+  uint out_strides[4];
+} params;
+
+void main() {
+  uint out_channels = params.matrix_n;
+  uint out_height = params.shape[0u];
+  uint out_width = params.shape[1u];
+  uint in_height = params.matrix_k;
+  uint in_width = params.aux_size;
+  uint in_channels = params.reduce_size;
+  uint kernel_height = params.aux_offset;
+  uint kernel_width = params.operation;
+  uint pad_lo_height = params.shape[2u];
+  uint pad_lo_width = params.shape[3u];
+  uint pad_hi_height = params.out_strides[0u];
+  uint pad_hi_width = params.out_strides[1u];
+  uint stride_height = params.in_strides[0u];
+  uint stride_width = params.in_strides[1u];
+  uint dilation_height = params.in_strides[2u];
+  uint dilation_width = params.in_strides[3u];
+  uint stride = gl_NumWorkGroups.x * 256u;
+
+  for (uint index = gl_GlobalInvocationID.x; index < params.count;
+       index += stride) {
+    uint batch = index / (out_height * out_width * out_channels);
+    uint remainder = index % (out_height * out_width * out_channels);
+    uint out_row = remainder / (out_width * out_channels);
+    remainder %= out_width * out_channels;
+    uint out_column = remainder / out_channels;
+    uint out_channel = remainder % out_channels;
+    int in_row_base = int(out_row * stride_height) - int(pad_lo_height);
+    int in_column_base = int(out_column * stride_width) - int(pad_lo_width);
+    float accumulator = 0.0;
+
+    for (uint ky = 0u; ky < kernel_height; ++ky) {
+      int in_row = in_row_base + int(ky * dilation_height);
+      if (in_row < 0 || in_row >= int(in_height)) {
+        continue;
+      }
+      for (uint kx = 0u; kx < kernel_width; ++kx) {
+        int in_column = in_column_base + int(kx * dilation_width);
+        if (in_column < 0 || in_column >= int(in_width)) {
+          continue;
+        }
+        uint input_base = params.lhs_offset +
+            (batch * in_height + uint(in_row)) * in_width * in_channels +
+            uint(in_column) * in_channels;
+        uint weight_base = params.rhs_offset +
+            out_channel * kernel_height * kernel_width * in_channels +
+            (ky * kernel_width + kx) * in_channels;
+        for (uint channel = 0u; channel < in_channels; ++channel) {
+          accumulator += LOAD_VALUE(input_x.values[input_base + channel]) *
+              LOAD_VALUE(weight.values[weight_base + channel]);
+        }
+      }
+    }
+    output_data.values[params.output_offset + index] = STORE_VALUE(accumulator);
+  }
+}

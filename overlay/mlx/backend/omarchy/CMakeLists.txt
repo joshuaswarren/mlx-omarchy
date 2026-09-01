@@ -116,12 +116,16 @@ omarchy_shader(qmm_f16 shaders/qmm.comp -DUSE_FP16=1)
 omarchy_shader(qmm_bf16 shaders/qmm.comp -DUSE_BF16=1)
 omarchy_shader(dequant_f32 shaders/dequant.comp)
 omarchy_shader(dequant_f16 shaders/dequant.comp -DUSE_FP16=1)
+omarchy_shader(conv_f32 shaders/conv.comp)
+omarchy_shader(conv_f16 shaders/conv.comp -DUSE_FP16=1)
+omarchy_shader(conv_bf16 shaders/conv.comp -DUSE_BF16=1)
 add_custom_target(omarchy_shaders DEPENDS ${OMARCHY_SHADER_HEADERS})
 add_dependencies(mlx omarchy_shaders)
 
 target_sources(
   mlx
   PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/allocator.cpp
+          ${CMAKE_CURRENT_SOURCE_DIR}/compiled.cpp
           ${CMAKE_CURRENT_SOURCE_DIR}/compute.cpp
           ${CMAKE_CURRENT_SOURCE_DIR}/device.cpp
           ${CMAKE_CURRENT_SOURCE_DIR}/device_info.cpp

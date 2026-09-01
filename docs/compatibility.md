@@ -112,6 +112,20 @@ The `[1, V]` logits epilogue in mlx-lm reduces to `[1, 1]`, large logits
 stay finite, and an infinite row max stays the answer as on the upstream
 CPU.
 Non-contiguous inputs fail with the named layout error.
+`mx.conv2d` passes the gate for the 2D channels-last forward case with
+FP32, FP16, and BF16 inputs: one direct compute kernel runs one thread
+per output element with a float32 accumulator, index-guard zero
+padding, stride, dilation, and a broadcast bias add.
+The gate covers identity, random 1x1, stride-2, dilated, asymmetric
+padding, bias, and FP16 host-reference checks at `1e-3`.
+The case is groups==1; grouped, transposed, input-dilated, and
+non-2D convolutions fail with named errors.
+This MLX version ships no separate quantized conv primitive, so a
+quantized conv composes the affine dequantize kernel with this path.
+This is a correctness slice, not a performance one: the direct kernel
+is far from the tiled im2col and Winograd paths upstream Metal ships,
+and the performance gate stays open.
+`mx.conv1d` and `mx.conv3d` fail with the named non-2D error.
 `mx.log` passes the gate for FP32, FP16, and BF16 through the elementwise
 kernel.
 A strided slice view materializes through the general strided-copy engine at eval, so elementwise ops read it as a normal array.
@@ -255,12 +269,15 @@ Transform work is in progress.
 `jvp` passes the gate for `sum(exp(x))` and matmul tangents with value checks at `1e-4`.
 `vmap` passes the gate for batched `exp` and `add` with value checks.
 Batched matmul under `vmap` passes the gate with value checks.
-`mx.compile` fuses `exp` then `multiply` into one `Compiled` primitive and fails with the named `Compiled` error.
+`mx.compile` interprets the fused tape on the GPU for the elementwise subset: add, multiply, divide, maximum, exp, sigmoid, square, sqrt, subtract, negative, casts, and broadcast.
+Compiled chains evaluate and match the uncompiled values at `1e-5`.
+Each tape node dispatches separately, so no fusion speedup is claimed.
+Tape ops outside the subset fail with the named `Compiled tape op <name>` error.
 `CompileMode::no_fuse` keeps the tape unfused and matches the uncompiled values.
 
 Compilation work is in progress.
-The proof covers the fused path, the `no_fuse` fallback, values, and named errors.
-Pre-fusion ANE partitioning and cache tests remain open.
+The proof covers the interpreted fused path, the `no_fuse` fallback, values, and named errors.
+Pre-fusion ANE partitioning and compiled-cache tests remain open.
 
 The runtime has no CPU tensor fallback.
 The release build and backend trace prove this state.

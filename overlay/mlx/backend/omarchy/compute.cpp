@@ -84,6 +84,9 @@
 #include "qmm_f32.h"
 #include "dequant_f32.h"
 #include "dequant_f16.h"
+#include "conv_bf16.h"
+#include "conv_f16.h"
+#include "conv_f32.h"
 
 namespace mlx::core::omarchy {
 
@@ -240,6 +243,12 @@ ShaderBytes shader_bytes(ComputeKernel kernel) {
       return {dequant_f32, dequant_f32_size};
     case ComputeKernel::DequantF16:
       return {dequant_f16, dequant_f16_size};
+    case ComputeKernel::ConvF32:
+      return {conv_f32, conv_f32_size};
+    case ComputeKernel::ConvF16:
+      return {conv_f16, conv_f16_size};
+    case ComputeKernel::ConvBF16:
+      return {conv_bf16, conv_bf16_size};
     case ComputeKernel::SortF32:
       return {sort_f32, sort_f32_size};
     case ComputeKernel::SortF16:
