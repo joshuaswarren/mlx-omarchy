@@ -127,6 +127,12 @@ void main() {
       case 10:
         value = -lhs;
         break;
+      case 11:
+        value = cos(lhs);
+        break;
+      case 12:
+        value = sin(lhs);
+        break;
       default:
         return;
     }

@@ -68,6 +68,14 @@ shared float tile_b[16][16];
 void main() {
   uint local_x = gl_LocalInvocationID.x;
   uint local_y = gl_LocalInvocationID.y;
+  // Flag bit 8 marks a batched product: workgroup z is the batch index
+  // and each operand advances by its per-matrix size. Unbatched
+  // dispatches run with z = 1, so batch is 0 and the indices match the
+  // plain 2D path exactly.
+  uint batch = gl_WorkGroupID.z;
+  uint lhs_matrix = params.matrix_m * params.matrix_k;
+  uint rhs_matrix = params.matrix_k * params.matrix_n;
+  uint out_matrix = params.matrix_m * params.matrix_n;
   uint tile_rows = params.matrix_m / TILE_SIZE +
       uint(params.matrix_m % TILE_SIZE != 0u);
   uint tile_columns = params.matrix_n / TILE_SIZE +
@@ -86,16 +94,18 @@ void main() {
       for (uint tile = 0; tile < k_tiles; ++tile) {
         uint a_column = tile * TILE_SIZE + local_x;
         uint b_row = tile * TILE_SIZE + local_y;
-        uint a_index = (params.flags & 4u) != 0u
-            ? params.lhs_offset + a_column * params.matrix_m + row
-            : params.lhs_offset + row * params.matrix_k + a_column;
+        uint a_index = params.lhs_offset + batch * lhs_matrix +
+            ((params.flags & 4u) != 0u
+                ? a_column * params.matrix_m + row
+                : row * params.matrix_k + a_column);
         tile_a[local_y][local_x] = row < params.matrix_m &&
                 a_column < params.matrix_k
             ? LOAD_VALUE(input_a.values[a_index])
             : 0.0;
-        uint b_index = (params.flags & 1u) != 0u
-            ? params.rhs_offset + column * params.matrix_k + b_row
-            : params.rhs_offset + b_row * params.matrix_n + column;
+        uint b_index = params.rhs_offset + batch * rhs_matrix +
+            ((params.flags & 1u) != 0u
+                ? column * params.matrix_k + b_row
+                : b_row * params.matrix_n + column);
         tile_b[local_y][local_x] = b_row < params.matrix_k &&
                 column < params.matrix_n
             ? LOAD_VALUE(input_b.values[b_index])
@@ -109,7 +119,8 @@ void main() {
       }
 
       if (row < params.matrix_m && column < params.matrix_n) {
-        uint output_index = row * params.matrix_n + column;
+        uint output_index =
+            batch * out_matrix + row * params.matrix_n + column;
         float value = params.alpha * accumulator;
         if ((params.flags & 2u) != 0u) {
           uint c_index = params.aux_size == 1u

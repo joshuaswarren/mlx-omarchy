@@ -55,6 +55,8 @@ enum ElementwiseOperation : uint32_t {
   RsqrtOperation,
   SubtractOperation,
   NegativeOperation,
+  CosOperation,
+  SinOperation,
 };
 
 allocator::Buffer allocate_omarchy(size_t size) {
@@ -171,6 +173,35 @@ uint32_t matrix_group_count(uint32_t dimension) {
   return std::min(groups, omarchy::kMaxComputeGroupCountX);
 }
 
+// True when the array is a contiguous stack of rank-2 matrices stored
+// row-major (transposed = false) or transposed within each matrix
+// (transposed = true, row stride 1 and column stride = row count).
+// Batch axes must carry the contiguous stack strides; singleton batch
+// axes are never dereferenced, so their strides go unchecked.
+bool is_batched_matrix(const array& value, bool transposed) {
+  int rank = value.ndim();
+  if (rank < 2) {
+    return false;
+  }
+  const auto& strides = value.strides();
+  int64_t row_stride =
+      transposed ? 1 : static_cast<int64_t>(value.shape(rank - 1));
+  int64_t column_stride =
+      transposed ? static_cast<int64_t>(value.shape(rank - 2)) : 1;
+  if (strides[rank - 2] != row_stride || strides[rank - 1] != column_stride) {
+    return false;
+  }
+  int64_t expected =
+      static_cast<int64_t>(value.shape(rank - 2)) * value.shape(rank - 1);
+  for (int axis = rank - 3; axis >= 0; --axis) {
+    if (value.shape(axis) != 1 && strides[axis] != expected) {
+      return false;
+    }
+    expected *= value.shape(axis);
+  }
+  return true;
+}
+
 void dispatch_matmul(
     const std::string& name,
     const std::vector<array>& inputs,
@@ -188,23 +219,26 @@ void dispatch_matmul(
     require_float_dtype(name, c, out, encoder);
   }
 
-  bool a_transposed =
-      a.ndim() == 2 && a.strides()[0] == 1 && a.strides()[1] == a.shape(0);
-  if (a.ndim() < 2 || b.ndim() != 2 ||
-      (!a.flags().row_contiguous && !a_transposed)) {
+  if (a.ndim() < 2 || a.ndim() != b.ndim() || a.ndim() > 4) {
+    omarchy::unsupported("matrix rank " + name, out);
+  }
+  bool a_transposed = is_batched_matrix(a, true);
+  bool a_row_contiguous = !a_transposed && is_batched_matrix(a, false);
+  bool b_transposed = is_batched_matrix(b, true);
+  bool b_row_contiguous = !b_transposed && is_batched_matrix(b, false);
+  if ((!a_row_contiguous && !a_transposed) ||
+      (!b_row_contiguous && !b_transposed)) {
     omarchy::unsupported("matrix layout " + name, out);
+  }
+  for (int axis = 0; axis < a.ndim() - 2; ++axis) {
+    if (a.shape(axis) != b.shape(axis)) {
+      omarchy::unsupported("batch dimensions " + name, out);
+    }
   }
   size_t k = a.shape(-1);
   size_t n = b.shape(-1);
   if (b.shape(-2) != k) {
     omarchy::unsupported("matrix dimensions " + name, out);
-  }
-  bool b_transposed =
-      b.strides()[0] == 1 && b.strides()[1] == b.shape(-2);
-  bool b_row_contiguous =
-      b.strides()[0] == b.shape(-1) && b.strides()[1] == 1;
-  if (!b_transposed && !b_row_contiguous) {
-    omarchy::unsupported("matrix layout " + name, out);
   }
   if (use_c && !is_trailing_broadcast(c, out)) {
     omarchy::unsupported("broadcast " + name, out);
@@ -214,13 +248,11 @@ void dispatch_matmul(
   if (out.size() == 0) {
     return;
   }
-  if (n == 0 || out.size() % n != 0) {
-    omarchy::unsupported("matrix dimensions " + name, out);
+  size_t batch_count = 1;
+  for (int axis = 0; axis < a.ndim() - 2; ++axis) {
+    batch_count *= a.shape(axis);
   }
-  size_t m = out.size() / n;
-  if ((k != 0 && a.size() != m * k) || b.size() != k * n) {
-    omarchy::unsupported("matrix dimensions " + name, out);
-  }
+  size_t m = a.shape(-2);
 
   uint32_t output_size = checked_u32(out.size(), name, out);
   omarchy::ComputeParams params;
@@ -235,8 +267,11 @@ void dispatch_matmul(
   params.matrix_k = params.reduce_size;
   params.alpha = alpha;
   params.beta = beta;
-  params.flags =
-      (b_transposed ? 1u : 0u) | (use_c ? 2u : 0u) | (a_transposed ? 4u : 0u);
+  params.flags = (b_transposed ? 1u : 0u) | (use_c ? 2u : 0u) |
+      (a_transposed ? 4u : 0u) | (batch_count > 1 ? 8u : 0u);
+  // params.dims carries the batch count; the shader derives every batch
+  // stride from matrix_m/matrix_n/matrix_k.
+  params.dims = checked_u32(batch_count, name, out);
   const array& bound_a = a.size() == 0 ? out : a;
   const array& bound_b = b.size() == 0 ? out : b;
   const array& bound_c = use_c ? c : out;
@@ -255,12 +290,16 @@ void dispatch_matmul(
       omarchy::ComputeKernel::MatmulF32,
       omarchy::ComputeKernel::MatmulF16,
       omarchy::ComputeKernel::MatmulBF16);
+  if (batch_count > omarchy::kMaxComputeGroupCountX) {
+    omarchy::unsupported("batch count " + name, out);
+  }
   encoder.dispatch_compute(
       kernel,
       bindings,
       params,
       matrix_group_count(params.matrix_n),
-      matrix_group_count(params.matrix_m));
+      matrix_group_count(params.matrix_m),
+      params.dims);
 }
 
 void dispatch_elementwise(
@@ -368,7 +407,29 @@ void AddMM::eval_gpu(const std::vector<array>& inputs, array& out) {
   auto [alpha, beta] = state();
   dispatch_matmul(name(), inputs, out, alpha, beta, true);
 }
-OMARCHY_UNSUPPORTED(Arange)
+void Arange::eval_gpu(const std::vector<array>& inputs, array& out) {
+  auto& encoder = omarchy::get_command_encoder(out.primitive().stream());
+  require_float_dtype("Arange", out, out, encoder);
+  out.set_data(allocate_omarchy(out.nbytes()));
+  if (out.size() == 0) {
+    return;
+  }
+  uint32_t count = checked_u32(out.size(), "Arange", out);
+  omarchy::ComputeParams params;
+  params.count = count;
+  params.output_size = count;
+  params.output_offset = checked_item_offset(out, count, "Arange", out);
+  params.alpha = static_cast<float>(start_);
+  params.beta = static_cast<float>(step_);
+  std::array<omarchy::ComputeBinding, 1> bindings{binding(out)};
+  auto kernel = select_float_kernel(
+      out.dtype(),
+      omarchy::ComputeKernel::ArangeF32,
+      omarchy::ComputeKernel::ArangeF16,
+      omarchy::ComputeKernel::ArangeBF16);
+  encoder.dispatch_compute(
+      kernel, bindings, params, omarchy::compute_dispatch_group_count(count));
+}
 OMARCHY_UNSUPPORTED(ArcCos)
 OMARCHY_UNSUPPORTED(ArcCosh)
 OMARCHY_UNSUPPORTED(ArcSin)
@@ -377,7 +438,71 @@ OMARCHY_UNSUPPORTED(ArcTan)
 OMARCHY_UNSUPPORTED(ArcTan2)
 OMARCHY_UNSUPPORTED(ArcTanh)
 OMARCHY_UNSUPPORTED(ArgPartition)
-OMARCHY_UNSUPPORTED(ArgReduce)
+void ArgReduce::eval_gpu(const std::vector<array>& inputs, array& out) {
+  const array& input = inputs.at(0);
+  auto [reduce_type, axis] = state();
+  // ArgReduce::name() is "ArgReduce"; errors name the concrete operation
+  // the way the upstream Reduce primitive names Sum and Max.
+  std::string operation_name =
+      reduce_type == ArgReduce::ArgMax ? "ArgMax" : "ArgMin";
+  auto& encoder = omarchy::get_command_encoder(out.primitive().stream());
+
+  // The output carries indices, so the float checks apply to the input
+  // only and the output must be uint32.
+  if (input.dtype() != float16 && input.dtype() != float32 &&
+      input.dtype() != bfloat16) {
+    omarchy::unsupported(operation_name + " dtype", out);
+  }
+  const auto& capabilities = encoder.device().capabilities();
+  if (input.dtype() == float16 &&
+      (!capabilities.shader_float16 ||
+       !capabilities.storage_buffer_16bit_access)) {
+    omarchy::unsupported(operation_name + " float16 capability", out);
+  }
+  if (input.dtype() == bfloat16 &&
+      (!capabilities.storage_buffer_16bit_access ||
+       !capabilities.shader_int16)) {
+    omarchy::unsupported(operation_name + " bfloat16 capability", out);
+  }
+  if (out.dtype() != uint32) {
+    omarchy::unsupported(operation_name + " output dtype", out);
+  }
+  if (!input.flags().row_contiguous) {
+    omarchy::unsupported("non-contiguous " + operation_name, out);
+  }
+  if (axis != input.ndim() - 1) {
+    omarchy::unsupported("non-suffix " + operation_name, out);
+  }
+
+  size_t row_length = input.shape(-1);
+  size_t rows = input.size() / row_length;
+  out.set_data(allocate_omarchy(out.nbytes()));
+  if (out.size() == 0) {
+    return;
+  }
+
+  uint32_t output_size = checked_u32(rows, operation_name, out);
+  omarchy::ComputeParams params;
+  params.count = output_size;
+  params.operation = reduce_type == ArgReduce::ArgMax ? 1u : 0u;
+  params.reduce_size = checked_u32(row_length, operation_name, out);
+  params.output_size = output_size;
+  params.lhs_offset = checked_item_offset(
+      input, input.size(), operation_name, out);
+  params.output_offset = checked_item_offset(out, out.size(), operation_name, out);
+  std::array<omarchy::ComputeBinding, 3> bindings{
+      binding(input), binding(input), binding(out)};
+  auto kernel = select_float_kernel(
+      input.dtype(),
+      omarchy::ComputeKernel::ArgReduceF32,
+      omarchy::ComputeKernel::ArgReduceF16,
+      omarchy::ComputeKernel::ArgReduceBF16);
+  encoder.dispatch_compute(
+      kernel,
+      bindings,
+      params,
+      std::min(output_size, omarchy::kMaxComputeGroupCountX));
+}
 OMARCHY_UNSUPPORTED(ArgSort)
 OMARCHY_UNSUPPORTED(BitwiseBinary)
 OMARCHY_UNSUPPORTED(BitwiseInvert)
@@ -387,7 +512,7 @@ OMARCHY_UNSUPPORTED(Cholesky)
 OMARCHY_UNSUPPORTED_MULTI(Compiled)
 OMARCHY_UNSUPPORTED(Conjugate)
 OMARCHY_UNSUPPORTED(Convolution)
-OMARCHY_UNSUPPORTED(Cos)
+OMARCHY_UNARY(Cos, CosOperation)
 OMARCHY_UNSUPPORTED(Cosh)
 OMARCHY_BINARY(Divide, DivideOperation)
 OMARCHY_UNSUPPORTED_MULTI(DivMod)
@@ -555,7 +680,7 @@ OMARCHY_UNSUPPORTED(Select)
 OMARCHY_UNSUPPORTED(SegmentedMM)
 OMARCHY_UNARY(Sigmoid, SigmoidOperation)
 OMARCHY_UNSUPPORTED(Sign)
-OMARCHY_UNSUPPORTED(Sin)
+OMARCHY_UNARY(Sin, SinOperation)
 OMARCHY_UNSUPPORTED(Sinh)
 void Softmax::eval_gpu(const std::vector<array>& inputs, array& out) {
   const array& input = inputs.at(0);
