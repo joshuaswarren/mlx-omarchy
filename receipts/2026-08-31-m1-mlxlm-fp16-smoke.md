@@ -163,3 +163,82 @@ changes, no sudo/reboot. Left on the M1: `.work/venv-fp16` (venv),
 `~/models/Qwen2.5-0.5B-Instruct-bf16-mlx` (model), `/tmp/*` probe files,
 `wheel2.log`/`dl.log`. Remote commands via single-ssh-call or scp'd
 scripts; ControlMaster disabled throughout.
+## Attempt 6 @ cd510d2 (2026-09-01) — FIRST TOKENS
+
+Repo pulled to `cd510d26c88f3eea3297d6973672678e1f7494d3`
+("feat(vulkan): gather index dtypes, threefry RandomBits, and sampling
+ops"; verified with `git rev-parse HEAD`; `git describe` →
+`v0.2.0-22-gcd510d2`). Repo HEAD was detached at 815c43c on arrival;
+`origin/main` was already cd510d2, so checkout replaced pull. Both
+attempt-5 blockers (uint32 Take indices, RandomBits) are GONE: the
+greedy chat-template path generates tokens end to end.
+
+### Wheel
+
+- `dist/mlx_omarchy-0.32.2.dev20260901+cd510d2-cp314-cp314-linux_aarch64.whl`
+- size 2580946 bytes
+- sha256 `e75025f55a37ec791e7f93718ac18364028ce72646f67623de531e88faaaf2b9`
+- build log `wheel8.log`; build ran ~9.7 min (`ps` etime 09:03 at the
+  last "still running" poll, sha256 receipt line 36.5 s later)
+- receipt line from `wheel8.log` (verbatim):
+  `Created wheel for mlx-omarchy: filename=mlx_omarchy-0.32.2.dev20260901+cd510d2-cp314-cp314-linux_aarch64.whl size=2580946 sha256=e75025f55a37ec791e7f93718ac18364028ce72646f67623de531e88faaaf2b9`
+- force-reinstalled into `.work/venv-fp16` (verbatim:
+  `Successfully uninstalled mlx-omarchy-0.32.2.dev20260901+815c43c` /
+  `Successfully installed mlx-omarchy-0.32.2.dev20260901+cd510d2`)
+- `mx.__version__`: `0.32.2.dev20260901+cd510d2`,
+  default device `Device(gpu, 0)`
+
+### Result: TOKENS. Greedy paths fully working; temp>0 sampling blocked.
+
+All runs: `MLX_DISABLE_COMPILE=1 .work/venv-fp16/bin/python -m mlx_lm
+generate --model /home/joshuawarren/models/Qwen2.5-0.5B-Instruct-bf16-mlx
+--prompt "Hi" ...`.
+
+| # | Flags (beyond base) | Result |
+|---|---|---|
+| 1 | `--max-tokens 8` (chat template default) | OK. Output: `The phrase "The quick brown fox jumps`. `Prompt: 30 tokens, 18.584 tokens-per-sec` / `Generation: 8 tokens, 2.482 tokens-per-sec` / `Peak memory: 0.993 GB` |
+| 2 | `--max-tokens 32` | OK. Output: `The phrase "The quick brown fox jumps over the lazy dog" is a classic nursery rhyme. It's a simple and relatable statement that captures the essence of`. `Prompt: 30 tokens, 18.080 tokens-per-sec` / `Generation: 32 tokens, 2.233 tokens-per-sec` / `Peak memory: 0.993 GB` |
+| 3 | `--max-tokens 32 --temp 0.9` | FAIL (iteration 1): `RuntimeError: [omarchy] Equal is not implemented for the Omarchy Vulkan backend (dtype=bool, shape=[]). No CPU fallback is available in Omarchy builds.` — surfaced at `mx.async_eval(y, logprobs)` (`mlx_lm/generate.py:455`); full trace saved as M1 `iter6_temp09.err` |
+| 4 | iter 3 `+ --top-p 1.0 --min-p 0.0 --top-k 1` | FAIL (iteration 2): failure moves EARLIER to top-k filtering: `RuntimeError: [omarchy] sort row length ArgPartition is not implemented for the Omarchy Vulkan backend (dtype=uint32, shape=[1,151936]). No CPU fallback is available in Omarchy builds.` |
+| 5 | `--max-tokens 32 --ignore-chat-template` | OK. Output (leading blank lines verbatim): `\n\nI am trying to create a simple program that will take a string and return the number of vowels in it. I have tried using a for loop and a`. `Prompt: 1 tokens, 0.973 tokens-per-sec` / `Generation: 32 tokens, 2.209 tokens-per-sec` / `Peak memory: 0.993 GB` |
+
+### Diagnosis (sampling blocker)
+
+Op-probe matrix (real Vulkan device, verbatim): `log`, `exp`,
+`argmax`, `minimum` OK; `mx.equal(scalar, scalar)` FAILS with the exact
+iteration-1 error; `mx.random.categorical` fails identically with
+`num_samples=1` AND default args. Root cause: `categorical_inverse_cdf`
+(`.work/mlx/mlx/random.cpp:405`) unconditionally builds
+`astype(equal(x, m), dtype)` for the isinf branch of a `where`;
+`Equal` is `OMARCHY_UNSUPPORTED(Equal)`
+(`overlay/mlx/backend/omarchy/primitives.cpp:759`). mlx_lm
+`sample_utils.py` `make_sampler`: every `temp > 0` chain ends in
+`categorical_sampling` → `mx.random.categorical` → Equal. No CLI flag
+can avoid that call, and `--top-k` additionally needs unimplemented
+`ArgPartition`. Flag budget: 2 of 5 iterations used; the remaining
+three cannot change either missing kernel (source-verified).
+
+Secondary observation (not on the mlx_lm path): the Python binding
+`mx.random.uniform((4,))` raises
+`Invalid type tuple received in array initialization.` — separate
+binding gap.
+
+### Next ordered blocker
+
+1. `Equal` (bool) unimplemented on the Omarchy Vulkan backend — blocks
+   EVERY `temp > 0` / sampling path via `mx.random.categorical`.
+   Smallest fix: implement `Equal::eval_gpu` for bool (broadcast
+   elementwise), or compose it from implemented ops. The i32
+   `GreaterEqual` kernel (`primitives.cpp:856`) shows the pattern to
+   copy.
+2. `ArgPartition` (uint32, wide shapes) unimplemented — blocks
+   `--top-k` filtering (`apply_top_k` → `mx.argpartition`). Subordinate
+   to blocker 1: plain temp>0 fails on Equal first.
+3. After blocker 1 (and 2 for top-k), rerun the sampling legs:
+   `--temp 0.9` 32-token run for tok/s + peak memory.
+
+### Artifacts left on M1 (`/home/joshuawarren/src/mlx-omarchy/`)
+
+`wheel8.log`, `dist/mlx_omarchy-0.32.2.dev20260901+cd510d2-cp314-cp314-linux_aarch64.whl`,
+`iter6_temp09.err`. Run outputs recorded verbatim above from live
+output. Repo left at cd510d2 (detached), nothing committed.
