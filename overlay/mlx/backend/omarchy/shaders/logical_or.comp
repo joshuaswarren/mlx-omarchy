@@ -2,16 +2,16 @@
 
 layout(local_size_x = 256) in;
 
-layout(set = 0, binding = 0, std430) readonly buffer InputA {
-  int values[];
-} input_a;
-layout(set = 0, binding = 1, std430) readonly buffer InputB {
-  int values[];
-} input_b;
 // Bool arrays store one byte per element. The interface reads and writes
 // them as little-endian 32-bit words, so no 8-bit storage feature is
 // needed; the omarchy allocator page-rounds every buffer, so the word
 // that contains the last byte is always inside the allocation.
+layout(set = 0, binding = 0, std430) readonly buffer InputA {
+  uint words[];
+} input_a;
+layout(set = 0, binding = 1, std430) readonly buffer InputB {
+  uint words[];
+} input_b;
 layout(set = 0, binding = 2, std430) writeonly buffer Output {
   uint words[];
 } output_data;
@@ -43,6 +43,16 @@ layout(push_constant) uniform Params {
   uint rhs_strides[4];
 } params;
 
+uint lhs_byte(uint index) {
+  uint word = input_a.words[index >> 2u];
+  return (word >> ((index & 3u) * 8u)) & 0xFFu;
+}
+
+uint rhs_byte(uint index) {
+  uint word = input_b.words[index >> 2u];
+  return (word >> ((index & 3u) * 8u)) & 0xFFu;
+}
+
 uint lhs_index_for(uint index) {
   if (params.dims == 0u) {
     return params.lhs_offset + (params.lhs_size == 1u
@@ -61,18 +71,18 @@ uint lhs_index_for(uint index) {
 
 uint rhs_index_for(uint index) {
   if (params.dims == 0u) {
-    return params.rhs_offset + (params.rhs_size == 1u
+    return params.rhs_size == 1u
         ? 0u
-        : (params.rhs_size == params.count ? index : index % params.rhs_size));
+        : (params.rhs_size == params.count ? index : index % params.rhs_size);
   }
   uint rem = index;
-  uint result = params.rhs_offset;
+  uint result = 0u;
   for (int dim = int(params.dims) - 1; dim >= 0; --dim) {
     uint coord = rem % params.shape[dim];
     rem /= params.shape[dim];
     result += coord * params.rhs_strides[dim];
   }
-  return result;
+  return params.rhs_offset + result;
 }
 
 void main() {
@@ -87,11 +97,9 @@ void main() {
       if (index >= params.count) {
         break;
       }
-      uint bit =
-          input_a.values[lhs_index_for(index)] >=
-              input_b.values[rhs_index_for(index)]
-              ? 1u
-              : 0u;
+      uint a = lhs_byte(lhs_index_for(index));
+      uint b = rhs_byte(rhs_index_for(index));
+      uint bit = ((a | b) != 0u) ? 1u : 0u;
       word |= bit << ((index & 3u) * 8u);
     }
     output_data.words[word_index] = word;

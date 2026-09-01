@@ -17,8 +17,19 @@
 #define SOURCE_TYPE int
 #elif defined(SOURCE_U32)
 #define SOURCE_TYPE uint
+#elif defined(SOURCE_BOOL)
+#define SOURCE_TYPE uint
 #else
 #define SOURCE_TYPE float
+#endif
+
+#ifdef SOURCE_BOOL
+// Bool arrays store one byte per element; the interface reads them as
+// little-endian 32-bit words, so no 8-bit storage feature is needed.
+#define SOURCE_LOAD(i) \
+  ((input_data.values[(i) >> 2u] >> (((i) & 3u) * 8u)) & 0xFFu)
+#else
+#define SOURCE_LOAD(i) input_data.values[(i)]
 #endif
 
 #ifdef DEST_FP16
@@ -80,7 +91,7 @@ void main() {
   uint stride = gl_NumWorkGroups.x * gl_WorkGroupSize.x;
   while (index < params.count) {
     output_data.values[params.output_offset + index] =
-        CONVERT(input_data.values[params.lhs_offset + index]);
+        CONVERT(SOURCE_LOAD(params.lhs_offset + index));
     if (params.count - index <= stride) {
       break;
     }

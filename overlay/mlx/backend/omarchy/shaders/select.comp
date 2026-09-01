@@ -32,8 +32,9 @@ layout(local_size_x = 256) in;
 // is needed. The omarchy allocator page-rounds every buffer, so the
 // word that contains the last condition byte is inside the allocation.
 // The true operand reads flat because the host requires a
-// row-contiguous value, and the false operand reads flat because the
-// host requires a scalar.
+// row-contiguous value, and the false operand reads scalar or flat
+// through the modulo fast path, the same rule the elementwise kernels
+// apply to a suffix-aligned operand.
 layout(set = 0, binding = 0, std430) readonly buffer Condition {
   uint words[];
 } condition;
@@ -94,6 +95,14 @@ uint condition_index_for(uint index) {
   return result;
 }
 
+uint false_index_for(uint index) {
+  if (params.aux_size == 1u) {
+    return params.aux_offset;
+  }
+  return params.aux_offset +
+      (params.aux_size == params.count ? index : index % params.aux_size);
+}
+
 void main() {
   uint index = gl_GlobalInvocationID.x;
   uint stride = gl_NumWorkGroups.x * gl_WorkGroupSize.x;
@@ -101,7 +110,7 @@ void main() {
     bool truthy = condition_byte(condition_index_for(index)) != 0u;
     float value = truthy
         ? LOAD_VALUE(input_true.values[params.rhs_offset + index])
-        : LOAD_VALUE(input_false.values[params.aux_offset]);
+        : LOAD_VALUE(input_false.values[false_index_for(index)]);
     output_data.values[params.output_offset + index] = STORE_VALUE(value);
     if (params.count - index <= stride) {
       break;

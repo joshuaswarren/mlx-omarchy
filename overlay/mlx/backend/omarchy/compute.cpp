@@ -16,6 +16,7 @@
 #include "argreduce_f16.h"
 #include "argreduce_f32.h"
 #include "cast_bf16_f16.h"
+#include "cast_bool_f32.h"
 #include "cast_bf16_f32.h"
 #include "cast_f16_f32.h"
 #include "cast_f16_bf16.h"
@@ -29,6 +30,7 @@
 #include "cast_i32_f16.h"
 #include "cast_i32_f32.h"
 #include "elementwise_bf16.h"
+#include "elementwise_i32.h"
 #include "elementwise_f16.h"
 #include "elementwise_f32.h"
 #include "gather_bf16.h"
@@ -41,7 +43,10 @@
 #include "fill_f16.h"
 #include "fill_f32.h"
 #include "matmul_bf16.h"
-#include "greater_equal_i32.h"
+#include "compare_bf16.h"
+#include "compare_f16.h"
+#include "compare_f32.h"
+#include "compare_i32.h"
 #include "matmul_f16.h"
 #include "matmul_f32.h"
 #include "select_bf16.h"
@@ -62,6 +67,15 @@
 #include "argsort_bf16.h"
 #include "argsort_f16.h"
 #include "argsort_f32.h"
+#include "logical_or_bool.h"
+#include "scan_bf16.h"
+#include "scan_f16.h"
+#include "scan_f32.h"
+#include "searchsorted_bf16.h"
+#include "searchsorted_f16.h"
+#include "searchsorted_f32.h"
+#include "searchsorted_i32.h"
+#include "searchsorted_u32.h"
 #include "random_bits_u32.h"
 
 namespace mlx::core::omarchy {
@@ -81,6 +95,8 @@ ShaderBytes shader_bytes(ComputeKernel kernel) {
       return {elementwise_bf16, elementwise_bf16_size};
     case ComputeKernel::CastF16F32:
       return {cast_f16_f32, cast_f16_f32_size};
+    case ComputeKernel::CastBoolF32:
+      return {cast_bool_f32, cast_bool_f32_size};
     case ComputeKernel::CastF32F16:
       return {cast_f32_f16, cast_f32_f16_size};
     case ComputeKernel::CastBF16F32:
@@ -155,8 +171,34 @@ ShaderBytes shader_bytes(ComputeKernel kernel) {
       return {select_f16, select_f16_size};
     case ComputeKernel::SelectBF16:
       return {select_bf16, select_bf16_size};
-    case ComputeKernel::GreaterEqualI32:
-      return {greater_equal_i32, greater_equal_i32_size};
+    case ComputeKernel::CompareF32:
+      return {compare_f32, compare_f32_size};
+    case ComputeKernel::CompareF16:
+      return {compare_f16, compare_f16_size};
+    case ComputeKernel::CompareBF16:
+      return {compare_bf16, compare_bf16_size};
+    case ComputeKernel::CompareI32:
+      return {compare_i32, compare_i32_size};
+    case ComputeKernel::LogicalOrBool:
+      return {logical_or_bool, logical_or_bool_size};
+    case ComputeKernel::ElementwiseI32:
+      return {elementwise_i32, elementwise_i32_size};
+    case ComputeKernel::ScanF32:
+      return {scan_f32, scan_f32_size};
+    case ComputeKernel::ScanF16:
+      return {scan_f16, scan_f16_size};
+    case ComputeKernel::ScanBF16:
+      return {scan_bf16, scan_bf16_size};
+    case ComputeKernel::SearchSortedF32:
+      return {searchsorted_f32, searchsorted_f32_size};
+    case ComputeKernel::SearchSortedF16:
+      return {searchsorted_f16, searchsorted_f16_size};
+    case ComputeKernel::SearchSortedBF16:
+      return {searchsorted_bf16, searchsorted_bf16_size};
+    case ComputeKernel::SearchSortedI32:
+      return {searchsorted_i32, searchsorted_i32_size};
+    case ComputeKernel::SearchSortedU32:
+      return {searchsorted_u32, searchsorted_u32_size};
     case ComputeKernel::GatherF32:
       return {gather_f32, gather_f32_size};
     case ComputeKernel::GatherF16:

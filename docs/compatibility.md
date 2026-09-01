@@ -143,10 +143,49 @@ Other non-float dtypes fail with the named `Arange dtype` error.
 `mx.greater_equal` passes the gate for two int32 index arrays with
 broadcast views and a bool output; the mask bytes move through 32-bit word
 packing, so no 8-bit storage feature is required.
+`mx.equal` shares that comparison machinery through one compare kernel
+family and passes the gate for float32, float16, bfloat16, and int32
+operands of one dtype, over scalar, suffix-broadcast, and stride-view
+broadcast shapes, including the scalar-only `shape=[]` case.
+The output stays word-packed bool, and equality with NaN stays false.
+`NotEqual`, `Less`, `LessEqual`, and `Greater` stay named rejections;
+no mlx-lm sampling path needs them yet.
+`mx.logical_or` passes the gate for word-packed bool inputs and outputs
+and serves the `isinf` composition `or(isposinf, isneginf)`.
+`LogicalAnd` and `LogicalNot` stay named rejections.
 `mx.where` serves the composed causal mask: a strided bool condition view
 picks between a row-contiguous value and a scalar floor, for float32,
-float16, and bfloat16. Other comparisons, dtypes, and layouts stay named
-rejections.
+float16, and bfloat16. The false operand now also accepts the same
+suffix-aligned shapes as the true operand, which the sampler's
+`where(isinf(m), eq, exp)` composition needs.
+`astype` of bool to float32 passes the gate and yields exact `0.0` and
+`1.0`; other bool casts stay named rejections.
+Other comparisons, dtypes, and layouts stay named rejections.
+
+Sampling work is in progress.
+`mx.cumsum` passes the gate for float32, float16, and bfloat16 suffix
+scans over row-contiguous rows, in both the inclusive and the exclusive
+form the sampler chain uses, with one invocation per row and a float32
+accumulator. Reverse scans, non-suffix axes, and other reduce types fail
+with named errors.
+`mx.searchsorted` passes the gate for one sorted 1-D row against any
+row-contiguous value array, on both the `left` and `right` sides, in
+float32, float16, bfloat16, int32, and uint32, and writes uint32 indices.
+`Subtract` extends to int32 and uint32 through an integer elementwise
+kernel, so the `searchsorted` minus one epilogue runs on device.
+`mx.random.categorical` over size-equal logits takes the inverse-CDF
+path end to end on Vulkan: over `[1, 32]` float32 class logits with a
+pinned key it draws in-range varied samples deterministically, and every
+draw matches a host searchsorted finished on the same device
+intermediates bit for bit.
+The full mlx-lm temp sampling shape also passes: one `[1, 151936]`
+bfloat16 logprob row scaled by `1/temp` and sampled in range.
+Temp-only sampling needs no `ArgPartition`: with the sampler defaults
+`make_sampler` chains nothing but `categorical_sampling`, so `--temp`
+works while the row-length limit holds.
+Wide-row `ArgPartition` and `top-k` stay unsupported: rows beyond 1024
+fail with the named `sort row length` error, which is the one remaining
+mlx-lm sampler limitation.
 The BF16 arange kernel variant builds, but it has no gate receipt yet.
 The gradient of `sum(sin(x))` matches `cos(x)` at `1e-5`.
 The Sin vjp lowers to Cos and Multiply only, so the gradient stays inside supported operations.
