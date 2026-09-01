@@ -1133,6 +1133,88 @@ TEST_CASE("take gathers table rows through Vulkan compute") {
   }
 }
 
+TEST_CASE("take gathers N-D index arrays as flat row sequences") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  std::vector<float> tv = {
+      10.0f, 11.0f, 12.0f, 13.0f, 20.0f, 21.0f, 22.0f, 23.0f,
+      30.0f, 31.0f, 32.0f, 33.0f, 40.0f, 41.0f, 42.0f, 43.0f,
+      50.0f, 51.0f, 52.0f, 53.0f};
+  array table(tv.begin(), Shape{5, 4}, float32);
+
+  // A 2-D index array gathers rows in its flat row-major order, and the
+  // output shape is indices.shape + [cols].
+  std::vector<int> iv = {4, 0, 3, 1, 2, 0};
+  array indices(iv.begin(), Shape{2, 3}, int32);
+  array gathered = take(table, indices, 0, stream);
+  CHECK_EQ(gathered.shape().size(), 3);
+  CHECK_EQ(gathered.shape(0), 2);
+  CHECK_EQ(gathered.shape(1), 3);
+  CHECK_EQ(gathered.shape(2), 4);
+  check_values(
+      gathered,
+      {50.0f, 51.0f, 52.0f, 53.0f,
+       10.0f, 11.0f, 12.0f, 13.0f,
+       40.0f, 41.0f, 42.0f, 43.0f,
+       20.0f, 21.0f, 22.0f, 23.0f,
+       30.0f, 31.0f, 32.0f, 33.0f,
+       10.0f, 11.0f, 12.0f, 13.0f},
+      stream);
+
+  // The decode-time index shape [1, 1] keeps one row.
+  std::vector<int> dv = {2};
+  array decode(dv.begin(), Shape{1, 1}, int32);
+  array decoded = take(table, decode, 0, stream);
+  CHECK_EQ(decoded.shape().size(), 3);
+  CHECK_EQ(decoded.shape(0), 1);
+  CHECK_EQ(decoded.shape(1), 1);
+  CHECK_EQ(decoded.shape(2), 4);
+  check_values(decoded, {30.0f, 31.0f, 32.0f, 33.0f}, stream);
+
+  // A bf16 table through the mlx-lm embedding shape family with 2-D
+  // indices.
+  const auto& capabilities = omarchy::device(0).capabilities();
+  std::vector<float> hv = {0.5f, 1.0f, 2.0f, -1.5f, 0.25f, 4.0f};
+  if (capabilities.storage_buffer_16bit_access &&
+      capabilities.shader_int16) {
+    array brain_table = astype(
+        array(hv.begin(), Shape{2, 3}, float32), bfloat16, stream);
+    std::vector<int> biv = {1, 0, 0, 1};
+    array brain_indices(biv.begin(), Shape{2, 2}, int32);
+    check_values(
+        astype(
+            take(brain_table, brain_indices, 0, stream),
+            float32,
+            stream),
+        {-1.5f,
+         0.25f,
+         4.0f,
+         0.5f,
+         1.0f,
+         2.0f,
+         0.5f,
+         1.0f,
+         2.0f,
+         -1.5f,
+         0.25f,
+         4.0f},
+        stream,
+        8e-3);
+  } else {
+    skip("Vulkan device lacks required BF16 storage and shader features.");
+  }
+
+  // A transposed index view is gapless but not row-contiguous, so it
+  // still pins the named error.
+  std::vector<int> wv = {1, 2, 3, 4, 5, 6};
+  array wide(wv.begin(), Shape{2, 3}, int32);
+  std::string layout_error = evaluation_error(
+      take(table, transpose(wide, {1, 0}, stream), 0, stream));
+  CHECK(layout_error.find("non-contiguous indexed Take") != std::string::npos);
+}
+
 TEST_CASE("general broadcast elementwise matches host references") {
   if (!compute_available()) {
     return;

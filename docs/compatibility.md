@@ -56,7 +56,7 @@ A strided slice view materializes through the general strided-copy engine at eva
 An offset-only slice keeps sharing the parent buffer.
 Gapless strided views such as transposes run through the elementwise stride path.
 Other layouts fail with the named layout error.
-`mx.take` passes the gate for an axis-0 lookup in a 2D row-contiguous table with 1D int32 indices.
+`mx.take` passes the gate for an axis-0 lookup in a 2D row-contiguous table with row-contiguous int32 indices of any rank.
 Out-of-range and negative indices write zero rows.
 Upstream negative-index wrapping is not provided.
 Other ranks, layouts, and index dtypes fail with named errors.
