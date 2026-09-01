@@ -8,6 +8,8 @@
 #include <string>
 #include <vector>
 
+#include "mlx/api.h"
+
 namespace mlx::core::omarchy::ane {
 
 // ANE DMA rows use 0x4000 tiles. Grounded in ane-linux-experiments:
@@ -80,6 +82,7 @@ struct AneManifest {
 // exception whose message names the field and the reason. Manifest validation
 // performs no payload access; U6 requires every field check to pass before
 // Linux maps or submits a descriptor.
-AneManifest parse_ane_manifest(const std::filesystem::path& manifest_path);
+MLX_API AneManifest
+parse_ane_manifest(const std::filesystem::path& manifest_path);
 
 } // namespace mlx::core::omarchy::ane

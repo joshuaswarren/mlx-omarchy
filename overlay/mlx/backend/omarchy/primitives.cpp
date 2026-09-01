@@ -173,6 +173,22 @@ uint32_t matrix_group_count(uint32_t dimension) {
   return std::min(groups, omarchy::kMaxComputeGroupCountX);
 }
 
+// Byte-swap scalars in place for big-endian source files. Mirrors the
+// shared and CUDA Load implementations.
+template <const uint8_t scalar_size>
+void swap_endianness(uint8_t* data_bytes, size_t n) {
+  struct Elem {
+    uint8_t bytes[scalar_size];
+  };
+
+  Elem* data = reinterpret_cast<Elem*>(data_bytes);
+  for (size_t i = 0; i < n; i++) {
+    for (size_t j = 0; j < (scalar_size / 2); j++) {
+      std::swap(data[i].bytes[j], data[i].bytes[scalar_size - j - 1]);
+    }
+  }
+}
+
 // True when the array is a contiguous stack of rank-2 matrices stored
 // row-major (transposed = false) or transposed within each matrix
 // (transposed = true, row stride 1 and column stride = row count).
@@ -689,7 +705,28 @@ OMARCHY_UNSUPPORTED(Imag)
 OMARCHY_UNSUPPORTED(Inverse)
 OMARCHY_UNSUPPORTED(Less)
 OMARCHY_UNSUPPORTED(LessEqual)
-OMARCHY_UNSUPPORTED(Load)
+void Load::eval_gpu(const std::vector<array>& inputs, array& out) {
+  out.set_data(allocate_omarchy(out.nbytes()));
+  // The allocator is host-visible (coherent where the memory type allows),
+  // so the reader fills the output buffer directly and the data is ready
+  // when this function returns. This mirrors the CUDA Load::eval_gpu, which
+  // also reads synchronously on the calling thread.
+  auto* out_ptr = out.data<char>();
+  reader_->read(out_ptr, out.nbytes(), offset_);
+  if (swap_endianness_) {
+    switch (out.itemsize()) {
+      case 2:
+        swap_endianness<2>(reinterpret_cast<uint8_t*>(out_ptr), out.size());
+        break;
+      case 4:
+        swap_endianness<4>(reinterpret_cast<uint8_t*>(out_ptr), out.size());
+        break;
+      case 8:
+        swap_endianness<8>(reinterpret_cast<uint8_t*>(out_ptr), out.size());
+        break;
+    }
+  }
+}
 OMARCHY_UNSUPPORTED(Log)
 OMARCHY_UNSUPPORTED(Log1p)
 OMARCHY_UNSUPPORTED(LogicalAnd)

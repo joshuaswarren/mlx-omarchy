@@ -12,6 +12,8 @@
 #include <stdexcept>
 #include <string>
 
+#include "mlx/api.h"
+
 namespace mlx::core::omarchy::ane {
 
 // Raised when the bundle directory does not exist. Callers treat this outcome
@@ -38,11 +40,11 @@ struct AneBundle {
 //      payload; anything else is an unknown payload.
 //   4. Each listed payload must exist with the manifest byte size and match
 //      its sha256 digest.
-AneBundle load_bundle(const std::filesystem::path& dir);
+MLX_API AneBundle load_bundle(const std::filesystem::path& dir);
 
 // FIPS 180-4 SHA-256. Used for payload descriptor digests so the Linux
 // validation gate and the fixture tests share one implementation.
-std::string sha256_hex(const uint8_t* data, size_t size);
-std::string sha256_file(const std::filesystem::path& path);
+MLX_API std::string sha256_hex(const uint8_t* data, size_t size);
+MLX_API std::string sha256_file(const std::filesystem::path& path);
 
 } // namespace mlx::core::omarchy::ane
