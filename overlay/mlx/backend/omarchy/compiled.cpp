@@ -34,6 +34,29 @@ bool tape_op_supported(const Primitive& primitive) {
       " is available in Omarchy builds.");
 }
 
+// bf16 compiled tapes corrupt nondeterministically on Honeykrisp: the M1
+// mlx-lm bf16 greedy run returns garbage through the compiled swiglu
+// fragment (2026-09-01 probe; inputs matched, garbage differed across
+// runs), while no_fuse is correct, f16/4-bit tapes are correct, and
+// llvmpipe matches eager exactly. No root cause in the interpreter is
+// pinned yet, so the failing configuration is refused by name instead of
+// silently returning wrong values. See docs/compatibility.md.
+bool tape_has_bfloat16(const std::vector<array>& arrays) {
+  for (const auto& a : arrays) {
+    if (a.dtype() == bfloat16) {
+      return true;
+    }
+  }
+  return false;
+}
+
+[[noreturn]] void unsupported_tape_bfloat16() {
+  throw std::runtime_error(
+      "[omarchy] Compiled tape bfloat16 is refused: bf16 fragments corrupt"
+      " nondeterministically on Honeykrisp. Re-run with MLX_DISABLE_COMPILE=1."
+      " No CPU fallback is available in Omarchy builds.");
+}
+
 } // namespace
 
 void eval_compiled_tape(
@@ -43,6 +66,10 @@ void eval_compiled_tape(
     const std::vector<array>& inputs,
     std::vector<array>& outputs,
     const Stream& stream) {
+  if (tape_has_bfloat16(tape) || tape_has_bfloat16(tape_inputs) ||
+      tape_has_bfloat16(tape_outputs)) {
+    unsupported_tape_bfloat16();
+  }
   // Tape arrays refer to the tracing graph. Substitute the eval-time inputs
   // positionally and key every tape node to its computed temporary.
   std::unordered_map<std::uintptr_t, array> resolved;

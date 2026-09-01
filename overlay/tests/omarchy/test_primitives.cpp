@@ -4693,3 +4693,47 @@ TEST_CASE("mx.compile pins the named error for tape ops outside the subset") {
       mixed_error.find("[omarchy] Compiled tape op Erf") != std::string::npos);
   set_compile_mode(CompileMode::enabled);
 }
+
+TEST_CASE("mx.compile pins the named bfloat16 tape gate") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  std::vector<float> xv = {0.0f, 0.1f, 0.2f, 0.3f};
+  std::vector<float> yv = {1.0f, 0.5f, 2.0f, 0.25f};
+  array x(xv.begin(), Shape{4}, bfloat16);
+  array y(yv.begin(), Shape{4}, bfloat16);
+  using VectorFn = std::function<std::vector<array>(const std::vector<array>&)>;
+
+  // bf16 fragments corrupt nondeterministically on Honeykrisp, so the tape
+  // refuses the dtype by name instead of returning wrong values.
+  set_compile_mode(CompileMode::enabled);
+  VectorFn fused_fun = [&](const std::vector<array>& inputs) {
+    return std::vector<array>{
+        multiply(add(inputs[0], inputs[1], stream), inputs[0], stream)};
+  };
+  auto fused = compile(fused_fun);
+  std::string fused_error = evaluation_error(fused({x, y})[0]);
+  CHECK(
+      fused_error.find("[omarchy] Compiled tape bfloat16") !=
+      std::string::npos);
+
+  // f16 and f32 tapes keep running.
+  std::vector<float> expected(4);
+  for (size_t index = 0; index < expected.size(); ++index) {
+    expected[index] = (xv[index] + yv[index]) * xv[index];
+  }
+  array x16(xv.begin(), Shape{4}, float16);
+  array y16(yv.begin(), Shape{4}, float16);
+  // check_values reads a float32 buffer, so the f16 result is cast first.
+  // F16 arithmetic keeps the host reference within 8e-3.
+  check_values(
+      astype(fused({x16, y16})[0], float32, stream),
+      expected,
+      stream,
+      8e-3);
+  array x32(xv.begin(), Shape{4}, float32);
+  array y32(yv.begin(), Shape{4}, float32);
+  check_values(fused({x32, y32})[0], expected, stream, 1e-5);
+  set_compile_mode(CompileMode::enabled);
+}
