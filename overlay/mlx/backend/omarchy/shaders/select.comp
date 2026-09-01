@@ -29,12 +29,13 @@ layout(local_size_x = 256) in;
 
 // The condition is a bool array (one byte per element); the interface
 // reads it as little-endian 32-bit words, so no 8-bit storage feature
-// is needed. The omarchy allocator page-rounds every buffer, so the
-// word that contains the last condition byte is inside the allocation.
-// The true operand reads flat because the host requires a
-// row-contiguous value, and the false operand reads scalar or flat
-// through the modulo fast path, the same rule the elementwise kernels
-// apply to a suffix-aligned operand.
+// is needed. The host only dispatches this kernel when the condition is
+// row-contiguous with data_size == output count, so the condition
+// element for output index i is lhs_offset + i; broadcast or strided
+// conditions are materialized first. The true operand reads flat
+// because the host requires a row-contiguous value, and the false
+// operand reads scalar or flat through the modulo fast path, the same
+// rule the elementwise kernels apply to a suffix-aligned operand.
 layout(set = 0, binding = 0, std430) readonly buffer Condition {
   uint words[];
 } condition;
@@ -66,34 +67,11 @@ layout(push_constant) uniform Params {
   uint flags;
   float alpha;
   float beta;
-  // dims == 0 selects the modulo fast path below. Otherwise the output
-  // is unraveled over shape[] and lhs_strides indexes the condition; a
-  // stride of 0 broadcasts the axis.
   uint dims;
   uint shape[4];
   uint lhs_strides[4];
   uint rhs_strides[4];
 } params;
-
-uint condition_byte(uint index) {
-  uint word = condition.words[index >> 2u];
-  return (word >> ((index & 3u) * 8u)) & 0xFFu;
-}
-
-uint condition_index_for(uint index) {
-  if (params.dims == 0u) {
-    return params.lhs_offset +
-        (params.lhs_size == 1u ? 0u : index % params.lhs_size);
-  }
-  uint rem = index;
-  uint result = params.lhs_offset;
-  for (int dim = int(params.dims) - 1; dim >= 0; --dim) {
-    uint coord = rem % params.shape[dim];
-    rem /= params.shape[dim];
-    result += coord * params.lhs_strides[dim];
-  }
-  return result;
-}
 
 uint false_index_for(uint index) {
   if (params.aux_size == 1u) {
@@ -104,17 +82,33 @@ uint false_index_for(uint index) {
 }
 
 void main() {
-  uint index = gl_GlobalInvocationID.x;
-  uint stride = gl_NumWorkGroups.x * gl_WorkGroupSize.x;
-  while (index < params.count) {
-    bool truthy = condition_byte(condition_index_for(index)) != 0u;
+  uint word_index = gl_GlobalInvocationID.x;
+  uint word_count = (params.count + 3u) >> 2u;
+  if (word_index >= word_count) {
+    return;
+  }
+  // One condition word load per thread, straight-line at the top of the
+  // function, with its address computed as (lhs_offset >> 2) +
+  // word_index. The Honeykrisp driver on Apple M1 returns zero for bool
+  // word loads whose address is recomputed per lane inside a loop or
+  // derived through broadcast unravel math; probes show this exact
+  // straight-line form reads correctly on that driver, and the loaded
+  // register feeds all four lanes without further SSBO reads.
+  uint word = condition.words[(params.lhs_offset >> 2u) + word_index];
+  uint mis = params.lhs_offset & 3u;
+  uint first = 4u * word_index - mis;
+  for (uint lane = 0u; lane < 4u; ++lane) {
+    if (word_index == 0u && lane < mis) {
+      continue;
+    }
+    uint index = first + lane;
+    if (index >= params.count) {
+      break;
+    }
+    bool truthy = ((word >> (lane * 8u)) & 0xFFu) != 0u;
     float value = truthy
         ? LOAD_VALUE(input_true.values[params.rhs_offset + index])
         : LOAD_VALUE(input_false.values[false_index_for(index)]);
     output_data.values[params.output_offset + index] = STORE_VALUE(value);
-    if (params.count - index <= stride) {
-      break;
-    }
-    index += stride;
   }
 }

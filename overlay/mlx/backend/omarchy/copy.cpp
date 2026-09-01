@@ -367,11 +367,21 @@ void copy_gpu_inplace(
     }
     std::array<omarchy::ComputeBinding, 3> bindings{
         compute_binding(in), compute_binding(in), compute_binding(out)};
+    // CastBoolF32 processes one output word (four elements) per thread
+    // for the same reason as select.comp and compare.comp; every other
+    // cast kernel stays per element.
+    uint32_t dispatch_count =
+        kernel == omarchy::ComputeKernel::CastBoolF32
+        ? checked_u32(
+              (static_cast<uint64_t>(count) + 3) / 4,
+              "dtype converting copy",
+              out)
+        : count;
     encoder.dispatch_compute(
         kernel,
         bindings,
         params,
-        omarchy::compute_dispatch_group_count(count));
+        omarchy::compute_dispatch_group_count(dispatch_count));
     return;
   }
 
