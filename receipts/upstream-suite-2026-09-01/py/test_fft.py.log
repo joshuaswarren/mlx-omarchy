@@ -1,0 +1,5 @@
+============================= test session starts ==============================
+collecting ... collected 20 items / 20 deselected / 0 selected
+
+- generated xml file: /home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-01/py/test_fft.py.xml -
+============================ 20 deselected in 0.13s ============================

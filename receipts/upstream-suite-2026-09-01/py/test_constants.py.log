@@ -1,0 +1,48 @@
+============================= test session starts ==============================
+collecting ... collected 3 items
+
+.work/mlx/python/tests/test_constants.py::TestConstants::test_constants_availability PASSED [ 33%]
+.work/mlx/python/tests/test_constants.py::TestConstants::test_constants_values PASSED [ 66%]
+.work/mlx/python/tests/test_constants.py::TestConstants::test_newaxis_for_reshaping_arrays FAILED [100%]
+
+=================================== FAILURES ===================================
+_______________ TestConstants.test_newaxis_for_reshaping_arrays ________________
+
+self = <test_constants.TestConstants testMethod=test_newaxis_for_reshaping_arrays>
+
+    def test_newaxis_for_reshaping_arrays(self):
+        arr_1d = mx.array([1, 2, 3, 4, 5])
+        arr_2d_column = arr_1d[:, mx.newaxis]
+        expected_result = mx.array([[1], [2], [3], [4], [5]])
+>       self.assertTrue(mx.array_equal(arr_2d_column, expected_result))
+E       RuntimeError: [omarchy] And dtype is not implemented for the Omarchy Vulkan backend (dtype=bool, shape=[1,1]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_constants.py:37: RuntimeError
+- generated xml file: /home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-01/py/test_constants.py.xml -
+=========================== short test summary info ============================
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-01/venv-pytest/lib/python3.11/site-packages/pytest/__main__.py", line 9, in <module>
+    raise SystemExit(_console_main())
+                     ^^^^^^^^^^^^^^^
+  File "/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-01/venv-pytest/lib/python3.11/site-packages/_pytest/config/__init__.py", line 253, in _console_main
+    code = _main(prog=_get_prog_name(sys.argv))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-01/venv-pytest/lib/python3.11/site-packages/_pytest/config/__init__.py", line 229, in _main
+    ret: ExitCode | int = config.hook.pytest_cmdline_main(config=config)
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-01/venv-pytest/lib/python3.11/site-packages/pluggy/_hooks.py", line 512, in __call__
+    return self._hookexec(self.name, self._hookimpls.copy(), kwargs, firstresult)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-01/venv-pytest/lib/python3.11/site-packages/pluggy/_manager.py", line 120, in _hookexec
+    return self._inner_hookexec(hook_name, methods, kwargs, firstresult)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-01/venv-pytest/lib/python3.11/site-packages/pluggy/_callers.py", line 167, in _multicall
+    raise exception
+  File "/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-01/venv-pytest/lib/python3.11/site-packages/pluggy/_callers.py", line 121, in _multicall
+    res = hook_impl.function(*args)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-01/venv-pytest/lib/python3.11/site-packages/_pytest/main.py", line 377, in pytest_cmdline_main
+    return wrap_session(config, _main)
+   

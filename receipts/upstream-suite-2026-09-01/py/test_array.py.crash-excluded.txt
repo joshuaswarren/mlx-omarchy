@@ -1,0 +1,6 @@
+.work/mlx/python/tests/test_array.py::TestArray::test_array_np_dtype_conversion
+.work/mlx/python/tests/test_array.py::TestArray::test_buffer_protocol
+.work/mlx/python/tests/test_array.py::TestArray::test_getitem_with_list
+.work/mlx/python/tests/test_array.py::TestArray::test_indexing
+.work/mlx/python/tests/test_array.py::TestArray::test_setitem_with_list
+.work/mlx/python/tests/test_array.py::TestArray::test_slice_negative_step

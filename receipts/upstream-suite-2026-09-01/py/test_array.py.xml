@@ -1,0 +1,1225 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="36" skipped="18" tests="218" time="20.289" timestamp="2026-09-01T18:04:42.318910-05:00" hostname="omp-studio-local"><testcase classname="python.tests.test_array.TestVersion" name="test_version" time="0.001" /><testcase classname="python.tests.test_array.TestArrayNamespsceInfo" name="test" time="0.001" /><testcase classname="python.tests.test_array.TestDtypes" name="test_can_cast" time="0.009" /><testcase classname="python.tests.test_array.TestDtypes" name="test_dtypes" time="0.001" /><testcase classname="python.tests.test_array.TestDtypes" name="test_finfo" time="0.001" /><testcase classname="python.tests.test_array.TestDtypes" name="test_iinfo" time="0.001" /><testcase classname="python.tests.test_array.TestDtypes" name="test_isdtype" time="0.001" /><testcase classname="python.tests.test_array.TestDtypes" name="test_result_type" time="0.001" /><testcase classname="python.tests.test_array.TestDtypes" name="test_scalar_conversion" time="0.004" /><testcase classname="python.tests.test_array.TestEquality" name="test_array_eq_array" time="0.005"><failure message="RuntimeError: [omarchy] And dtype is not implemented for the Omarchy Vulkan backend (dtype=bool, shape=[1]). No CPU fallback is available in Omarchy builds.">self = &lt;test_array.TestEquality testMethod=test_array_eq_array&gt;
+
+    def test_array_eq_array(self):
+        a = mx.array([1, 2, 3])
+        b = mx.array([1, 2, 3])
+        c = mx.array([1, 2, 4])
+&gt;       self.assertTrue(mx.all(a == b))
+E       RuntimeError: [omarchy] And dtype is not implemented for the Omarchy Vulkan backend (dtype=bool, shape=[1]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_array.py:244: RuntimeError</failure></testcase><testcase classname="python.tests.test_array.TestEquality" name="test_array_eq_scalar" time="0.001"><failure message="RuntimeError: [omarchy] Or dtype is not implemented for the Omarchy Vulkan backend (dtype=bool, shape=[1]). No CPU fallback is available in Omarchy builds.">self = &lt;test_array.TestEquality testMethod=test_array_eq_scalar&gt;
+
+    def test_array_eq_scalar(self):
+        a = mx.array([1, 2, 3])
+        b = 1
+        c = 4
+        d = 2.5
+        e = mx.array([1, 2.5, 3.25])
+&gt;       self.assertTrue(mx.any(a == b))
+E       RuntimeError: [omarchy] Or dtype is not implemented for the Omarchy Vulkan backend (dtype=bool, shape=[1]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_array.py:253: RuntimeError</failure></testcase><testcase classname="python.tests.test_array.TestEquality" name="test_list_equals_array" time="0.001" /><testcase classname="python.tests.test_array.TestEquality" name="test_tuple_equals_array" time="0.000" /><testcase classname="python.tests.test_array.TestInequality" name="test_array_ne_array" time="0.001"><failure message="RuntimeError: [omarchy] NotEqual is not implemented for the Omarchy Vulkan backend (dtype=bool, shape=[3]). No CPU fallback is available in Omarchy builds.">self = &lt;test_array.TestInequality testMethod=test_array_ne_array&gt;
+
+    def test_array_ne_array(self):
+        a = mx.array([1, 2, 3])
+        b = mx.array([1, 2, 3])
+        c = mx.array([1, 2, 4])
+&gt;       self.assertFalse(mx.any(a != b))
+E       RuntimeError: [omarchy] NotEqual is not implemented for the Omarchy Vulkan backend (dtype=bool, shape=[3]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_array.py:284: RuntimeError</failure></testcase><testcase classname="python.tests.test_array.TestInequality" name="test_array_ne_scalar" time="0.001"><failure message="RuntimeError: [omarchy] NotEqual is not implemented for the Omarchy Vulkan backend (dtype=bool, shape=[3]). No CPU fallback is available in Omarchy builds.">self = &lt;test_array.TestInequality testMethod=test_array_ne_scalar&gt;
+
+    def test_array_ne_scalar(self):
+        a = mx.array([1, 2, 3])
+        b = 1
+        c = 4
+        d = 1.5
+        e = 2.5
+        f = mx.array([1, 2.5, 3.25])
+&gt;       self.assertFalse(mx.all(a != b))
+E       RuntimeError: [omarchy] NotEqual is not implemented for the Omarchy Vulkan backend (dtype=bool, shape=[3]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_array.py:294: RuntimeError</failure></testcase><testcase classname="python.tests.test_array.TestInequality" name="test_dlx_device_type" time="0.001" /><testcase classname="python.tests.test_array.TestInequality" name="test_invalid_op_on_array" time="0.001" /><testcase classname="python.tests.test_array.TestInequality" name="test_list_not_equals_array" time="0.000" /><testcase classname="python.tests.test_array.TestInequality" name="test_obj_inequality_array" time="0.001" /><testcase classname="python.tests.test_array.TestInequality" name="test_tuple_not_equals_array" time="0.001" /><testcase classname="python.tests.test_array.TestArray" name="test_add_numpy" time="0.001"><failure message="RuntimeError: [omarchy] Add dtype is not implemented for the Omarchy Vulkan backend (dtype=int32, shape=[]). No CPU fallback is available in Omarchy builds.">self = &lt;test_array.TestArray testMethod=test_add_numpy&gt;
+
+    def test_add_numpy(self):
+        x = mx.array(1)
+        y = np.array(2, dtype=np.int32)
+        z = x + y
+        self.assertEqual(z.dtype, mx.int32)
+&gt;       self.assertEqual(z.item(), 3)
+                         ^^^^^^^^
+E       RuntimeError: [omarchy] Add dtype is not implemented for the Omarchy Vulkan backend (dtype=int32, shape=[]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_array.py:2221: RuntimeError</failure></testcase><testcase classname="python.tests.test_array.TestArray" name="test_api" time="0.019"><failure message="RuntimeError: [omarchy] And dtype is not implemented for the Omarchy Vulkan backend (dtype=bool, shape=[1,1]). No CPU fallback is available in Omarchy builds.">self = &lt;test_array.TestArray testMethod=test_api&gt;
+
+    def test_api(self):
+        x = mx.array(np.random.rand(10, 10, 10))
+        ops = [
+            ("reshape", (100, -1)),
+            "square",
+            "sqrt",
+            "rsqrt",
+            "reciprocal",
+            "exp",
+            "log",
+            "sin",
+            "cos",
+            "log1p",
+            "abs",
+            "log10",
+            "log2",
+            "conj",
+            ("all", 1),
+            ("any", 1),
+            ("transpose", (0, 2, 1)),
+            ("sum", 1),
+            ("prod", 1),
+            ("min", 1),
+            ("max", 1),
+            ("logcumsumexp", 1),
+            ("logsumexp", 1),
+            ("mean", 1),
+            ("var", 1),
+            ("argmin", 1),
+            ("argmax", 1),
+            ("cummax", 1),
+            ("cummin", 1),
+            ("cumprod", 1),
+            ("cumsum", 1),
+            ("diagonal", 0, 0, 1),
+            ("flatten", 0, -1),
+            ("moveaxis", 1, 2),
+            ("round", 2),
+            ("std", 1, True, 0),
+            ("swapaxes", 1, 2),
+        ]
+        for op in ops:
+            if isinstance(op, tuple):
+                op, *args = op
+            else:
+                args = tuple()
+            y1 = getattr(mx, op)(x, *args)
+            y2 = getattr(x, op)(*args)
+            self.assertEqual(y1.dtype, y2.dtype)
+            self.assertEqual(y1.shape, y2.shape)
+&gt;           self.assertTrue(mx.array_equal(y1, y2))
+E           RuntimeError: [omarchy] And dtype is not implemented for the Omarchy Vulkan backend (dtype=bool, shape=[1,1]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_array.py:1893: RuntimeError</failure></testcase><testcase classname="python.tests.test_array.TestArray" name="test_array_at" time="0.001"><failure message="RuntimeError: [omarchy] Add dtype is not implemented for the Omarchy Vulkan backend (dtype=int32, shape=[]). No CPU fallback is available in Omarchy builds.">self = &lt;test_array.TestArray testMethod=test_array_at&gt;
+
+    def test_array_at(self):
+        a = mx.array(1)
+        with self.assertRaises(ValueError):
+            a.at.add(1)
+    
+        a = a.at[None].add(1)
+&gt;       self.assertEqual(a.item(), 2)
+                         ^^^^^^^^
+E       RuntimeError: [omarchy] Add dtype is not implemented for the Omarchy Vulkan backend (dtype=int32, shape=[]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_array.py:1568: RuntimeError</failure></testcase><testcase classname="python.tests.test_array.TestArray" name="test_array_at_complex_add_gpu" time="0.001"><failure message="RuntimeError: [omarchy] non-zero scalar fill is not implemented for the Omarchy Vulkan backend (dtype=complex64, shape=[4096]). No CPU fallback is available in Omarchy builds.">self = &lt;test_array.TestArray testMethod=test_array_at_complex_add_gpu&gt;
+
+    @unittest.skipIf(not mx.is_available(mx.gpu), "No GPU available")
+    def test_array_at_complex_add_gpu(self):
+        n = 4096
+        base = [1 + 10j, 2 + 20j, 3 + 30j, 4 + 40j]
+    
+        with mx.stream(mx.gpu):
+            a = mx.array(base, dtype=mx.complex64)
+            update_indices = mx.full((n,), 3, dtype=mx.int32)
+            updates = mx.full((n,), 1 + 3j, dtype=mx.complex64)
+            out = a.at[update_indices].add(updates)
+&gt;           mx.eval(out)
+E           RuntimeError: [omarchy] non-zero scalar fill is not implemented for the Omarchy Vulkan backend (dtype=complex64, shape=[4096]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_array.py:1650: RuntimeError</failure></testcase><testcase classname="python.tests.test_array.TestArray" name="test_array_at_slice_update_extensive" time="0.003"><failure message="RuntimeError: [omarchy] SliceUpdate reduce is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[4,5]). No CPU fallback is available in Omarchy builds.">self = &lt;test_array.TestArray testMethod=test_array_at_slice_update_extensive&gt;
+
+    def test_array_at_slice_update_extensive(self):
+        # Test with transposed inputs
+        a = mx.zeros((4, 5))
+        update = mx.ones((5, 2)).T  # Shape (2, 5)
+        a = a.at[1:3, :].add(update)
+&gt;       self.assertEqualArray(a[1:3, :], update)
+
+.work/mlx/python/tests/test_array.py:1676: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+.work/mlx/python/tests/mlx_tests.py:86: in assertEqualArray
+    self.assertTrue(mx.allclose(mx_res, expected, rtol=rtol, atol=atol))
+E   RuntimeError: [omarchy] SliceUpdate reduce is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[4,5]). No CPU fallback is available in Omarchy builds.</failure></testcase><testcase classname="python.tests.test_array.TestArray" name="test_array_basics" time="0.001" /><testcase classname="python.tests.test_array.TestArray" name="test_array_comparison" time="0.001"><failure message="RuntimeError: [omarchy] Less is not implemented for the Omarchy Vulkan backend (dtype=bool, shape=[3]). No CPU fallback is available in Omarchy builds.">self = &lt;test_array.TestArray testMethod=test_array_comparison&gt;
+
+    def test_array_comparison(self):
+        a = mx.array([0.0, 1.0, 5.0])
+        b = mx.array([-1.0, 2.0, 5.0])
+    
+&gt;       self.assertEqual((a &lt; b).tolist(), [False, True, False])
+                         ^^^^^^^^^^^^^^^^
+E       RuntimeError: [omarchy] Less is not implemented for the Omarchy Vulkan backend (dtype=bool, shape=[3]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_array.py:1009: RuntimeError</failure></testcase><testcase classname="python.tests.test_array.TestArray" name="test_array_copy" time="0.001"><failure message="RuntimeError: [omarchy] Abs is not implemented for the Omarchy Vulkan backend (dtype=int8, shape=[2,2,2]). No CPU fallback is available in Omarchy builds.">self = &lt;test_array.TestArray testMethod=test_array_copy&gt;
+
+    def test_array_copy(self):
+        dtypes = [
+            mx.int8,
+            mx.int16,
+            mx.int32,
+            mx.int64,
+            mx.uint8,
+            mx.uint16,
+            mx.uint32,
+            mx.uint64,
+            mx.float16,
+            mx.float32,
+            mx.bfloat16,
+            mx.complex64,
+        ]
+    
+        for copy_function in [copy, deepcopy]:
+            for dtype in dtypes:
+                x = mx.array([[[1, 2], [3, 4]], [[5, 6], [7, 8]]], dtype=dtype)
+                y = copy_function(x)
+&gt;               self.assertEqualArray(y, x)
+
+.work/mlx/python/tests/test_array.py:1089: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+.work/mlx/python/tests/mlx_tests.py:86: in assertEqualArray
+    self.assertTrue(mx.allclose(mx_res, expected, rtol=rtol, atol=atol))
+E   RuntimeError: [omarchy] Abs is not implemented for the Omarchy Vulkan backend (dtype=int8, shape=[2,2,2]). No CPU fallback is available in Omarchy builds.</failure></testcase><testcase classname="python.tests.test_array.TestArray" name="test_array_from_noncontiguous_np" time="0.001"><failure message="RuntimeError: [omarchy] Equal dtype is not implemented for the Omarchy Vulkan backend (dtype=bool, shape=[10,10]). No CPU fallback is available in Omarchy builds.">self = &lt;test_array.TestArray testMethod=test_array_from_noncontiguous_np&gt;
+
+    def test_array_from_noncontiguous_np(self):
+        for t in [np.int8, np.int32, np.float16, np.float32, np.complex64]:
+            np_arr = np.random.uniform(size=(10, 10)).astype(np.complex64)
+            np_arr = np_arr.T
+            mx_arr = mx.array(np_arr)
+&gt;           self.assertTrue(mx.array_equal(np_arr, mx_arr))
+E           RuntimeError: [omarchy] Equal dtype is not implemented for the Omarchy Vulkan backend (dtype=bool, shape=[10,10]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_array.py:909: RuntimeError</failure></testcase><testcase classname="python.tests.test_array.TestArray" name="test_array_iteration" time="0.001" /><testcase classname="python.tests.test_array.TestArray" name="test_array_namespace" time="0.000" /><testcase classname="python.tests.test_array.TestArray" name="test_array_namespace_asarray" time="0.000" /><testcase classname="python.tests.test_array.TestArray" name="test_array_neg" time="0.009" /><testcase classname="python.tests.test_array.TestArray" name="test_array_np_conversion" time="0.001" /><testcase classname="python.tests.test_array.TestArray" name="test_array_np_shape_dim_check" time="0.001" /><testcase classname="python.tests.test_array.TestArray" name="test_array_pickle" time="0.001"><failure message="RuntimeError: [omarchy] Abs is not implemented for the Omarchy Vulkan backend (dtype=int8, shape=[2,2,2]). No CPU fallback is available in Omarchy builds.">self = &lt;test_array.TestArray testMethod=test_array_pickle&gt;
+
+    def test_array_pickle(self):
+        dtypes = [
+            mx.int8,
+            mx.int16,
+            mx.int32,
+            mx.int64,
+            mx.uint8,
+            mx.uint16,
+            mx.uint32,
+            mx.uint64,
+            mx.float16,
+            mx.float32,
+            mx.bfloat16,
+            mx.complex64,
+        ]
+    
+        for dtype in dtypes:
+            x = mx.array([[[1, 2], [3, 4]], [[5, 6], [7, 8]]], dtype=dtype)
+            state = pickle.dumps(x)
+            y = pickle.loads(state)
+&gt;           self.assertEqualArray(y, x)
+
+.work/mlx/python/tests/test_array.py:1067: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+.work/mlx/python/tests/mlx_tests.py:86: in assertEqualArray
+    self.assertTrue(mx.allclose(mx_res, expected, rtol=rtol, atol=atol))
+E   RuntimeError: [omarchy] Abs is not implemented for the Omarchy Vulkan backend (dtype=int8, shape=[2,2,2]). No CPU fallback is available in Omarchy builds.</failure></testcase><testcase classname="python.tests.test_array.TestArray" name="test_array_repr" time="0.001" /><testcase classname="python.tests.test_array.TestArray" name="test_array_repr_precision" time="0.001" /><testcase classname="python.tests.test_array.TestArray" name="test_array_to_list" time="0.000" /><testcase classname="python.tests.test_array.TestArray" name="test_array_type_cast" time="0.003" /><testcase classname="python.tests.test_array.TestArray" name="test_array_view_ref_counting" time="0.003" /><testcase classname="python.tests.test_array.TestArray" name="test_asarray" time="0.003" /><testcase classname="python.tests.test_array.TestArray" name="test_asarray_copy" time="0.001" /><testcase classname="python.tests.test_array.TestArray" name="test_bool_conversion" time="0.000" /><testcase classname="python.tests.test_array.TestArray" name="test_construction_from_lists" time="0.001"><failure message="RuntimeError: [omarchy] Equal dtype is not implemented for the Omarchy Vulkan backend (dtype=bool, shape=[2,2]). No CPU fallback is available in Omarchy builds.">self = &lt;test_array.TestArray testMethod=test_construction_from_lists&gt;
+
+    def test_construction_from_lists(self):
+        x = mx.array([])
+        self.assertEqual(x.size, 0)
+        self.assertEqual(x.shape, (0,))
+        self.assertEqual(x.dtype, mx.float32)
+    
+        x = mx.array([[], [], []])
+        self.assertEqual(x.size, 0)
+        self.assertEqual(x.shape, (3, 0))
+        self.assertEqual(x.dtype, mx.float32)
+    
+        x = mx.array([[[], []], [[], []], [[], []]])
+        self.assertEqual(x.size, 0)
+        self.assertEqual(x.shape, (3, 2, 0))
+        self.assertEqual(x.dtype, mx.float32)
+    
+        # Check failure cases
+        with self.assertRaises(ValueError):
+            x = mx.array([[[], []], [[]], [[], []]])
+    
+        with self.assertRaises(ValueError):
+            x = mx.array([[[], []], [[1.0, 2.0], []], [[], []]])
+    
+        with self.assertRaises(ValueError):
+            x = mx.array([[0, 1], [[0, 1], 1]])
+    
+        with self.assertRaises(ValueError):
+            x = mx.array([[0, 1], ["hello", 1]])
+    
+        x = mx.array([True, False, 3])
+        self.assertEqual(x.dtype, mx.int32)
+    
+        x = mx.array([True, False, 3, 4.0])
+        self.assertEqual(x.dtype, mx.float32)
+    
+        x = mx.array([[True, False], [1, 3], [2, 4.0]])
+        self.assertEqual(x.dtype, mx.float32)
+    
+        x = mx.array([[1.0, 2.0], [0.0, 3.9]], mx.bool_)
+        self.assertEqual(x.dtype, mx.bool_)
+&gt;       self.assertTrue(mx.array_equal(x, mx.array([[True, True], [False, True]])))
+E       RuntimeError: [omarchy] Equal dtype is not implemented for the Omarchy Vulkan backend (dtype=bool, shape=[2,2]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_array.py:533: RuntimeError</failure></testcase><testcase classname="python.tests.test_array.TestArray" name="test_construction_from_lists_of_mlx_arrays" time="0.002"><failure message="RuntimeError: [omarchy] dtype converting copy is not implemented for the Omarchy Vulkan backend (dtype=uint8, shape=[1,1]). No CPU fallback is available in Omarchy builds.">self = &lt;test_array.TestArray testMethod=test_construction_from_lists_of_mlx_arrays&gt;
+
+    def test_construction_from_lists_of_mlx_arrays(self):
+        dtypes = [
+            mx.bool_,
+            mx.uint8,
+            mx.uint16,
+            mx.uint32,
+            mx.uint64,
+            mx.int8,
+            mx.int16,
+            mx.int32,
+            mx.int64,
+            mx.float16,
+            mx.float32,
+            mx.bfloat16,
+            mx.complex64,
+        ]
+        for x_t, y_t in permutations(dtypes, 2):
+            # check type promotion and numeric correctness
+            x, y = mx.array([1.0], x_t), mx.array([2.0], y_t)
+            z = mx.array([x, y])
+            expected = mx.stack([x, y], axis=0)
+&gt;           self.assertEqualArray(z, expected)
+
+.work/mlx/python/tests/test_array.py:605: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+.work/mlx/python/tests/mlx_tests.py:86: in assertEqualArray
+    self.assertTrue(mx.allclose(mx_res, expected, rtol=rtol, atol=atol))
+E   RuntimeError: [omarchy] dtype converting copy is not implemented for the Omarchy Vulkan backend (dtype=uint8, shape=[1,1]). No CPU fallback is available in Omarchy builds.</failure></testcase><testcase classname="python.tests.test_array.TestArray" name="test_construction_from_lists_wide_ints" time="0.001"><failure message="RuntimeError: [omarchy] Take dtype is not implemented for the Omarchy Vulkan backend (dtype=int64, shape=[1]). No CPU fallback is available in Omarchy builds.">self = &lt;test_array.TestArray testMethod=test_construction_from_lists_wide_ints&gt;
+
+    def test_construction_from_lists_wide_ints(self):
+        # A python int that does not fit in int32 widens to int64, the same
+        # rule the scalar path already uses. It used to raise std::bad_cast.
+        for value in (2**31, 2**40, -(2**31) - 1, -(2**40)):
+            for make in (
+                lambda v: [v],
+                lambda v: (v,),
+                lambda v: [[v]],
+                lambda v: [v, 1],
+            ):
+                x = mx.array(make(value))
+                self.assertEqual(x.dtype, mx.int64, msg=f"{value} {make(value)}")
+&gt;               self.assertEqual(x.flatten()[0].item(), value)
+                                 ^^^^^^^^^^^^^^^^^^^^^
+E               RuntimeError: [omarchy] Take dtype is not implemented for the Omarchy Vulkan backend (dtype=int64, shape=[1]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_array.py:569: RuntimeError</failure></testcase><testcase classname="python.tests.test_array.TestArray" name="test_create_from_buffer" time="0.001" /><testcase classname="python.tests.test_array.TestArray" name="test_deep_graphs" time="17.041" /><testcase classname="python.tests.test_array.TestArray" name="test_dlpack" time="0.001"><failure message="RuntimeError: [omarchy] And dtype is not implemented for the Omarchy Vulkan backend (dtype=bool, shape=[1,1]). No CPU fallback is available in Omarchy builds.">self = &lt;test_array.TestArray testMethod=test_dlpack&gt;
+
+    def test_dlpack(self):
+        class CpuDLPack:
+            def __init__(self, array):
+                self.array = array
+    
+            def __dlpack_device__(self):
+                return (1, 0)
+    
+            def __dlpack__(self, *args, **kwargs):
+                kwargs["dl_device"] = (1, 0)
+                return self.array.__dlpack__(*args, **kwargs)
+    
+        x = mx.array(1, dtype=mx.int32)
+        y = np.from_dlpack(CpuDLPack(x))
+        self.assertTrue(mx.array_equal(y, x))
+    
+        x = mx.array([[1.0, 2.0], [3.0, 4.0]])
+        y = np.from_dlpack(CpuDLPack(x))
+&gt;       self.assertTrue(mx.array_equal(y, x))
+E       RuntimeError: [omarchy] And dtype is not implemented for the Omarchy Vulkan backend (dtype=bool, shape=[1,1]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_array.py:2241: RuntimeError</failure></testcase><testcase classname="python.tests.test_array.TestArray" name="test_dlpack_cpu_dtype_mapping" time="0.906"><failure message="RuntimeError: [omarchy] non-zero scalar fill is not implemented for the Omarchy Vulkan backend (dtype=bool, shape=[3]). No CPU fallback is available in Omarchy builds.">self = &lt;test_array.TestArray testMethod=test_dlpack_cpu_dtype_mapping&gt;
+
+    def test_dlpack_cpu_dtype_mapping(self):
+        class CpuDLPack:
+            def __init__(self, array):
+                self.array = array
+    
+            def __dlpack_device__(self):
+                return (1, 0)
+    
+            def __dlpack__(self, *args, **kwargs):
+                kwargs["dl_device"] = (1, 0)
+                return self.array.__dlpack__(*args, **kwargs)
+    
+        dlpack_to_mlx = [
+            (np.bool_, mx.bool_),
+            (np.uint8, mx.uint8),
+            (np.uint16, mx.uint16),
+            (np.uint32, mx.uint32),
+            (np.uint64, mx.uint64),
+            (np.int8, mx.int8),
+            (np.int16, mx.int16),
+            (np.int32, mx.int32),
+            (np.int64, mx.int64),
+            (np.float16, mx.float16),
+            (np.float32, mx.float32),
+            (np.float64, mx.float32),
+            (np.complex64, mx.complex64),
+            (np.complex128, mx.complex64),
+        ]
+        for np_dtype, mlx_dtype in dlpack_to_mlx:
+            with self.subTest(direction="import", dtype=np_dtype):
+                x = np.ones(3, dtype=np_dtype)
+                y = mx.from_dlpack(x)
+                self.assertEqual(y.dtype, mlx_dtype)
+    
+        if torch is not None:
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore", UserWarning)
+                x = torch.ones(3, dtype=torch.complex32)
+            with self.assertRaises(ValueError):
+                mx.from_dlpack(x)
+    
+        mlx_to_dlpack = [
+            (mx.bool_, np.bool_),
+            (mx.uint8, np.uint8),
+            (mx.uint16, np.uint16),
+            (mx.uint32, np.uint32),
+            (mx.uint64, np.uint64),
+            (mx.int8, np.int8),
+            (mx.int16, np.int16),
+            (mx.int32, np.int32),
+            (mx.int64, np.int64),
+            (mx.float16, np.float16),
+            (mx.float32, np.float32),
+            (mx.complex64, np.complex64),
+        ]
+        for mlx_dtype, np_dtype in mlx_to_dlpack:
+            with self.subTest(direction="export", dtype=mlx_dtype):
+                x = mx.ones((3,), dtype=mlx_dtype)
+&gt;               y = np.from_dlpack(CpuDLPack(x))
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.work/mlx/python/tests/test_array.py:2330: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = &lt;test_array.TestArray.test_dlpack_cpu_dtype_mapping.&lt;locals&gt;.CpuDLPack object at 0x73012c3babd0&gt;
+args = (), kwargs = {'dl_device': (1, 0), 'copy': None, 'max_version': (1, 0)}
+
+    def __dlpack__(self, *args, **kwargs):
+        kwargs["dl_device"] = (1, 0)
+&gt;       return self.array.__dlpack__(*args, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       RuntimeError: [omarchy] non-zero scalar fill is not implemented for the Omarchy Vulkan backend (dtype=bool, shape=[3]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_array.py:2282: RuntimeError</failure><failure message="RuntimeError: [omarchy] non-zero scalar fill is not implemented for the Omarchy Vulkan backend (dtype=uint8, shape=[3]). No CPU fallback is available in Omarchy builds.">self = &lt;test_array.TestArray testMethod=test_dlpack_cpu_dtype_mapping&gt;
+
+    def test_dlpack_cpu_dtype_mapping(self):
+        class CpuDLPack:
+            def __init__(self, array):
+                self.array = array
+    
+            def __dlpack_device__(self):
+                return (1, 0)
+    
+            def __dlpack__(self, *args, **kwargs):
+                kwargs["dl_device"] = (1, 0)
+                return self.array.__dlpack__(*args, **kwargs)
+    
+        dlpack_to_mlx = [
+            (np.bool_, mx.bool_),
+            (np.uint8, mx.uint8),
+            (np.uint16, mx.uint16),
+            (np.uint32, mx.uint32),
+            (np.uint64, mx.uint64),
+            (np.int8, mx.int8),
+            (np.int16, mx.int16),
+            (np.int32, mx.int32),
+            (np.int64, mx.int64),
+            (np.float16, mx.float16),
+            (np.float32, mx.float32),
+            (np.float64, mx.float32),
+            (np.complex64, mx.complex64),
+            (np.complex128, mx.complex64),
+        ]
+        for np_dtype, mlx_dtype in dlpack_to_mlx:
+            with self.subTest(direction="import", dtype=np_dtype):
+                x = np.ones(3, dtype=np_dtype)
+                y = mx.from_dlpack(x)
+                self.assertEqual(y.dtype, mlx_dtype)
+    
+        if torch is not None:
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore", UserWarning)
+                x = torch.ones(3, dtype=torch.complex32)
+            with self.assertRaises(ValueError):
+                mx.from_dlpack(x)
+    
+        mlx_to_dlpack = [
+            (mx.bool_, np.bool_),
+            (mx.uint8, np.uint8),
+            (mx.uint16, np.uint16),
+            (mx.uint32, np.uint32),
+            (mx.uint64, np.uint64),
+            (mx.int8, np.int8),
+            (mx.int16, np.int16),
+            (mx.int32, np.int32),
+            (mx.int64, np.int64),
+            (mx.float16, np.float16),
+            (mx.float32, np.float32),
+            (mx.complex64, np.complex64),
+        ]
+        for mlx_dtype, np_dtype in mlx_to_dlpack:
+            with self.subTest(direction="export", dtype=mlx_dtype):
+                x = mx.ones((3,), dtype=mlx_dtype)
+&gt;               y = np.from_dlpack(CpuDLPack(x))
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.work/mlx/python/tests/test_array.py:2330: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = &lt;test_array.TestArray.test_dlpack_cpu_dtype_mapping.&lt;locals&gt;.CpuDLPack object at 0x73012c268dd0&gt;
+args = (), kwargs = {'dl_device': (1, 0), 'copy': None, 'max_version': (1, 0)}
+
+    def __dlpack__(self, *args, **kwargs):
+        kwargs["dl_device"] = (1, 0)
+&gt;       return self.array.__dlpack__(*args, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       RuntimeError: [omarchy] non-zero scalar fill is not implemented for the Omarchy Vulkan backend (dtype=uint8, shape=[3]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_array.py:2282: RuntimeError</failure><failure message="RuntimeError: [omarchy] non-zero scalar fill is not implemented for the Omarchy Vulkan backend (dtype=uint16, shape=[3]). No CPU fallback is available in Omarchy builds.">self = &lt;test_array.TestArray testMethod=test_dlpack_cpu_dtype_mapping&gt;
+
+    def test_dlpack_cpu_dtype_mapping(self):
+        class CpuDLPack:
+            def __init__(self, array):
+                self.array = array
+    
+            def __dlpack_device__(self):
+                return (1, 0)
+    
+            def __dlpack__(self, *args, **kwargs):
+                kwargs["dl_device"] = (1, 0)
+                return self.array.__dlpack__(*args, **kwargs)
+    
+        dlpack_to_mlx = [
+            (np.bool_, mx.bool_),
+            (np.uint8, mx.uint8),
+            (np.uint16, mx.uint16),
+            (np.uint32, mx.uint32),
+            (np.uint64, mx.uint64),
+            (np.int8, mx.int8),
+            (np.int16, mx.int16),
+            (np.int32, mx.int32),
+            (np.int64, mx.int64),
+            (np.float16, mx.float16),
+            (np.float32, mx.float32),
+            (np.float64, mx.float32),
+            (np.complex64, mx.complex64),
+            (np.complex128, mx.complex64),
+        ]
+        for np_dtype, mlx_dtype in dlpack_to_mlx:
+            with self.subTest(direction="import", dtype=np_dtype):
+                x = np.ones(3, dtype=np_dtype)
+                y = mx.from_dlpack(x)
+                self.assertEqual(y.dtype, mlx_dtype)
+    
+        if torch is not None:
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore", UserWarning)
+                x = torch.ones(3, dtype=torch.complex32)
+            with self.assertRaises(ValueError):
+                mx.from_dlpack(x)
+    
+        mlx_to_dlpack = [
+            (mx.bool_, np.bool_),
+            (mx.uint8, np.uint8),
+            (mx.uint16, np.uint16),
+            (mx.uint32, np.uint32),
+            (mx.uint64, np.uint64),
+            (mx.int8, np.int8),
+            (mx.int16, np.int16),
+            (mx.int32, np.int32),
+            (mx.int64, np.int64),
+            (mx.float16, np.float16),
+            (mx.float32, np.float32),
+            (mx.complex64, np.complex64),
+        ]
+        for mlx_dtype, np_dtype in mlx_to_dlpack:
+            with self.subTest(direction="export", dtype=mlx_dtype):
+                x = mx.ones((3,), dtype=mlx_dtype)
+&gt;               y = np.from_dlpack(CpuDLPack(x))
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.work/mlx/python/tests/test_array.py:2330: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = &lt;test_array.TestArray.test_dlpack_cpu_dtype_mapping.&lt;locals&gt;.CpuDLPack object at 0x73012c7f0ad0&gt;
+args = (), kwargs = {'dl_device': (1, 0), 'copy': None, 'max_version': (1, 0)}
+
+    def __dlpack__(self, *args, **kwargs):
+        kwargs["dl_device"] = (1, 0)
+&gt;       return self.array.__dlpack__(*args, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       RuntimeError: [omarchy] non-zero scalar fill is not implemented for the Omarchy Vulkan backend (dtype=uint16, shape=[3]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_array.py:2282: RuntimeError</failure><failure message="RuntimeError: [omarchy] non-zero scalar fill is not implemented for the Omarchy Vulkan backend (dtype=uint32, shape=[3]). No CPU fallback is available in Omarchy builds.">self = &lt;test_array.TestArray testMethod=test_dlpack_cpu_dtype_mapping&gt;
+
+    def test_dlpack_cpu_dtype_mapping(self):
+        class CpuDLPack:
+            def __init__(self, array):
+                self.array = array
+    
+            def __dlpack_device__(self):
+                return (1, 0)
+    
+            def __dlpack__(self, *args, **kwargs):
+                kwargs["dl_device"] = (1, 0)
+                return self.array.__dlpack__(*args, **kwargs)
+    
+        dlpack_to_mlx = [
+            (np.bool_, mx.bool_),
+            (np.uint8, mx.uint8),
+            (np.uint16, mx.uint16),
+            (np.uint32, mx.uint32),
+            (np.uint64, mx.uint64),
+            (np.int8, mx.int8),
+            (np.int16, mx.int16),
+            (np.int32, mx.int32),
+            (np.int64, mx.int64),
+            (np.float16, mx.float16),
+            (np.float32, mx.float32),
+            (np.float64, mx.float32),
+            (np.complex64, mx.complex64),
+            (np.complex128, mx.complex64),
+        ]
+        for np_dtype, mlx_dtype in dlpack_to_mlx:
+            with self.subTest(direction="import", dtype=np_dtype):
+                x = np.ones(3, dtype=np_dtype)
+                y = mx.from_dlpack(x)
+                self.assertEqual(y.dtype, mlx_dtype)
+    
+        if torch is not None:
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore", UserWarning)
+                x = torch.ones(3, dtype=torch.complex32)
+            with self.assertRaises(ValueError):
+                mx.from_dlpack(x)
+    
+        mlx_to_dlpack = [
+            (mx.bool_, np.bool_),
+            (mx.uint8, np.uint8),
+            (mx.uint16, np.uint16),
+            (mx.uint32, np.uint32),
+            (mx.uint64, np.uint64),
+            (mx.int8, np.int8),
+            (mx.int16, np.int16),
+            (mx.int32, np.int32),
+            (mx.int64, np.int64),
+            (mx.float16, np.float16),
+            (mx.float32, np.float32),
+            (mx.complex64, np.complex64),
+        ]
+        for mlx_dtype, np_dtype in mlx_to_dlpack:
+            with self.subTest(direction="export", dtype=mlx_dtype):
+                x = mx.ones((3,), dtype=mlx_dtype)
+&gt;               y = np.from_dlpack(CpuDLPack(x))
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.work/mlx/python/tests/test_array.py:2330: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = &lt;test_array.TestArray.test_dlpack_cpu_dtype_mapping.&lt;locals&gt;.CpuDLPack object at 0x73012c7f2310&gt;
+args = (), kwargs = {'dl_device': (1, 0), 'copy': None, 'max_version': (1, 0)}
+
+    def __dlpack__(self, *args, **kwargs):
+        kwargs["dl_device"] = (1, 0)
+&gt;       return self.array.__dlpack__(*args, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       RuntimeError: [omarchy] non-zero scalar fill is not implemented for the Omarchy Vulkan backend (dtype=uint32, shape=[3]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_array.py:2282: RuntimeError</failure><failure message="RuntimeError: [omarchy] non-zero scalar fill is not implemented for the Omarchy Vulkan backend (dtype=uint64, shape=[3]). No CPU fallback is available in Omarchy builds.">self = &lt;test_array.TestArray testMethod=test_dlpack_cpu_dtype_mapping&gt;
+
+    def test_dlpack_cpu_dtype_mapping(self):
+        class CpuDLPack:
+            def __init__(self, array):
+                self.array = array
+    
+            def __dlpack_device__(self):
+                return (1, 0)
+    
+            def __dlpack__(self, *args, **kwargs):
+                kwargs["dl_device"] = (1, 0)
+                return self.array.__dlpack__(*args, **kwargs)
+    
+        dlpack_to_mlx = [
+            (np.bool_, mx.bool_),
+            (np.uint8, mx.uint8),
+            (np.uint16, mx.uint16),
+            (np.uint32, mx.uint32),
+            (np.uint64, mx.uint64),
+            (np.int8, mx.int8),
+            (np.int16, mx.int16),
+            (np.int32, mx.int32),
+            (np.int64, mx.int64),
+            (np.float16, mx.float16),
+            (np.float32, mx.float32),
+            (np.float64, mx.float32),
+            (np.complex64, mx.complex64),
+            (np.complex128, mx.complex64),
+        ]
+        for np_dtype, mlx_dtype in dlpack_to_mlx:
+            with self.subTest(direction="import", dtype=np_dtype):
+                x = np.ones(3, dtype=np_dtype)
+                y = mx.from_dlpack(x)
+                self.assertEqual(y.dtype, mlx_dtype)
+    
+        if torch is not None:
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore", UserWarning)
+                x = torch.ones(3, dtype=torch.complex32)
+            with self.assertRaises(ValueError):
+                mx.from_dlpack(x)
+    
+        mlx_to_dlpack = [
+            (mx.bool_, np.bool_),
+            (mx.uint8, np.uint8),
+            (mx.uint16, np.uint16),
+            (mx.uint32, np.uint32),
+            (mx.uint64, np.uint64),
+            (mx.int8, np.int8),
+            (mx.int16, np.int16),
+            (mx.int32, np.int32),
+            (mx.int64, np.int64),
+            (mx.float16, np.float16),
+            (mx.float32, np.float32),
+            (mx.complex64, np.complex64),
+        ]
+        for mlx_dtype, np_dtype in mlx_to_dlpack:
+            with self.subTest(direction="export", dtype=mlx_dtype):
+                x = mx.ones((3,), dtype=mlx_dtype)
+&gt;               y = np.from_dlpack(CpuDLPack(x))
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.work/mlx/python/tests/test_array.py:2330: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = &lt;test_array.TestArray.test_dlpack_cpu_dtype_mapping.&lt;locals&gt;.CpuDLPack object at 0x73012c670690&gt;
+args = (), kwargs = {'dl_device': (1, 0), 'copy': None, 'max_version': (1, 0)}
+
+    def __dlpack__(self, *args, **kwargs):
+        kwargs["dl_device"] = (1, 0)
+&gt;       return self.array.__dlpack__(*args, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       RuntimeError: [omarchy] non-zero scalar fill is not implemented for the Omarchy Vulkan backend (dtype=uint64, shape=[3]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_array.py:2282: RuntimeError</failure><failure message="RuntimeError: [omarchy] non-zero scalar fill is not implemented for the Omarchy Vulkan backend (dtype=int8, shape=[3]). No CPU fallback is available in Omarchy builds.">self = &lt;test_array.TestArray testMethod=test_dlpack_cpu_dtype_mapping&gt;
+
+    def test_dlpack_cpu_dtype_mapping(self):
+        class CpuDLPack:
+            def __init__(self, array):
+                self.array = array
+    
+            def __dlpack_device__(self):
+                return (1, 0)
+    
+            def __dlpack__(self, *args, **kwargs):
+                kwargs["dl_device"] = (1, 0)
+                return self.array.__dlpack__(*args, **kwargs)
+    
+        dlpack_to_mlx = [
+            (np.bool_, mx.bool_),
+            (np.uint8, mx.uint8),
+            (np.uint16, mx.uint16),
+            (np.uint32, mx.uint32),
+            (np.uint64, mx.uint64),
+            (np.int8, mx.int8),
+            (np.int16, mx.int16),
+            (np.int32, mx.int32),
+            (np.int64, mx.int64),
+            (np.float16, mx.float16),
+            (np.float32, mx.float32),
+            (np.float64, mx.float32),
+            (np.complex64, mx.complex64),
+            (np.complex128, mx.complex64),
+        ]
+        for np_dtype, mlx_dtype in dlpack_to_mlx:
+            with self.subTest(direction="import", dtype=np_dtype):
+                x = np.ones(3, dtype=np_dtype)
+                y = mx.from_dlpack(x)
+                self.assertEqual(y.dtype, mlx_dtype)
+    
+        if torch is not None:
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore", UserWarning)
+                x = torch.ones(3, dtype=torch.complex32)
+            with self.assertRaises(ValueError):
+                mx.from_dlpack(x)
+    
+        mlx_to_dlpack = [
+            (mx.bool_, np.bool_),
+            (mx.uint8, np.uint8),
+            (mx.uint16, np.uint16),
+            (mx.uint32, np.uint32),
+            (mx.uint64, np.uint64),
+            (mx.int8, np.int8),
+            (mx.int16, np.int16),
+            (mx.int32, np.int32),
+            (mx.int64, np.int64),
+            (mx.float16, np.float16),
+            (mx.float32, np.float32),
+            (mx.complex64, np.complex64),
+        ]
+        for mlx_dtype, np_dtype in mlx_to_dlpack:
+            with self.subTest(direction="export", dtype=mlx_dtype):
+                x = mx.ones((3,), dtype=mlx_dtype)
+&gt;               y = np.from_dlpack(CpuDLPack(x))
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.work/mlx/python/tests/test_array.py:2330: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = &lt;test_array.TestArray.test_dlpack_cpu_dtype_mapping.&lt;locals&gt;.CpuDLPack object at 0x730134b5e650&gt;
+args = (), kwargs = {'dl_device': (1, 0), 'copy': None, 'max_version': (1, 0)}
+
+    def __dlpack__(self, *args, **kwargs):
+        kwargs["dl_device"] = (1, 0)
+&gt;       return self.array.__dlpack__(*args, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       RuntimeError: [omarchy] non-zero scalar fill is not implemented for the Omarchy Vulkan backend (dtype=int8, shape=[3]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_array.py:2282: RuntimeError</failure><failure message="RuntimeError: [omarchy] non-zero scalar fill is not implemented for the Omarchy Vulkan backend (dtype=int16, shape=[3]). No CPU fallback is available in Omarchy builds.">self = &lt;test_array.TestArray testMethod=test_dlpack_cpu_dtype_mapping&gt;
+
+    def test_dlpack_cpu_dtype_mapping(self):
+        class CpuDLPack:
+            def __init__(self, array):
+                self.array = array
+    
+            def __dlpack_device__(self):
+                return (1, 0)
+    
+            def __dlpack__(self, *args, **kwargs):
+                kwargs["dl_device"] = (1, 0)
+                return self.array.__dlpack__(*args, **kwargs)
+    
+        dlpack_to_mlx = [
+            (np.bool_, mx.bool_),
+            (np.uint8, mx.uint8),
+            (np.uint16, mx.uint16),
+            (np.uint32, mx.uint32),
+            (np.uint64, mx.uint64),
+            (np.int8, mx.int8),
+            (np.int16, mx.int16),
+            (np.int32, mx.int32),
+            (np.int64, mx.int64),
+            (np.float16, mx.float16),
+            (np.float32, mx.float32),
+            (np.float64, mx.float32),
+            (np.complex64, mx.complex64),
+            (np.complex128, mx.complex64),
+        ]
+        for np_dtype, mlx_dtype in dlpack_to_mlx:
+            with self.subTest(direction="import", dtype=np_dtype):
+                x = np.ones(3, dtype=np_dtype)
+                y = mx.from_dlpack(x)
+                self.assertEqual(y.dtype, mlx_dtype)
+    
+        if torch is not None:
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore", UserWarning)
+                x = torch.ones(3, dtype=torch.complex32)
+            with self.assertRaises(ValueError):
+                mx.from_dlpack(x)
+    
+        mlx_to_dlpack = [
+            (mx.bool_, np.bool_),
+            (mx.uint8, np.uint8),
+            (mx.uint16, np.uint16),
+            (mx.uint32, np.uint32),
+            (mx.uint64, np.uint64),
+            (mx.int8, np.int8),
+            (mx.int16, np.int16),
+            (mx.int32, np.int32),
+            (mx.int64, np.int64),
+            (mx.float16, np.float16),
+            (mx.float32, np.float32),
+            (mx.complex64, np.complex64),
+        ]
+        for mlx_dtype, np_dtype in mlx_to_dlpack:
+            with self.subTest(direction="export", dtype=mlx_dtype):
+                x = mx.ones((3,), dtype=mlx_dtype)
+&gt;               y = np.from_dlpack(CpuDLPack(x))
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.work/mlx/python/tests/test_array.py:2330: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = &lt;test_array.TestArray.test_dlpack_cpu_dtype_mapping.&lt;locals&gt;.CpuDLPack object at 0x73012c670250&gt;
+args = (), kwargs = {'dl_device': (1, 0), 'copy': None, 'max_version': (1, 0)}
+
+    def __dlpack__(self, *args, **kwargs):
+        kwargs["dl_device"] = (1, 0)
+&gt;       return self.array.__dlpack__(*args, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       RuntimeError: [omarchy] non-zero scalar fill is not implemented for the Omarchy Vulkan backend (dtype=int16, shape=[3]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_array.py:2282: RuntimeError</failure><failure message="RuntimeError: [omarchy] non-zero scalar fill is not implemented for the Omarchy Vulkan backend (dtype=int32, shape=[3]). No CPU fallback is available in Omarchy builds.">self = &lt;test_array.TestArray testMethod=test_dlpack_cpu_dtype_mapping&gt;
+
+    def test_dlpack_cpu_dtype_mapping(self):
+        class CpuDLPack:
+            def __init__(self, array):
+                self.array = array
+    
+            def __dlpack_device__(self):
+                return (1, 0)
+    
+            def __dlpack__(self, *args, **kwargs):
+                kwargs["dl_device"] = (1, 0)
+                return self.array.__dlpack__(*args, **kwargs)
+    
+        dlpack_to_mlx = [
+            (np.bool_, mx.bool_),
+            (np.uint8, mx.uint8),
+            (np.uint16, mx.uint16),
+            (np.uint32, mx.uint32),
+            (np.uint64, mx.uint64),
+            (np.int8, mx.int8),
+            (np.int16, mx.int16),
+            (np.int32, mx.int32),
+            (np.int64, mx.int64),
+            (np.float16, mx.float16),
+            (np.float32, mx.float32),
+            (np.float64, mx.float32),
+            (np.complex64, mx.complex64),
+            (np.complex128, mx.complex64),
+        ]
+        for np_dtype, mlx_dtype in dlpack_to_mlx:
+            with self.subTest(direction="import", dtype=np_dtype):
+                x = np.ones(3, dtype=np_dtype)
+                y = mx.from_dlpack(x)
+                self.assertEqual(y.dtype, mlx_dtype)
+    
+        if torch is not None:
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore", UserWarning)
+                x = torch.ones(3, dtype=torch.complex32)
+            with self.assertRaises(ValueError):
+                mx.from_dlpack(x)
+    
+        mlx_to_dlpack = [
+            (mx.bool_, np.bool_),
+            (mx.uint8, np.uint8),
+            (mx.uint16, np.uint16),
+            (mx.uint32, np.uint32),
+            (mx.uint64, np.uint64),
+            (mx.int8, np.int8),
+            (mx.int16, np.int16),
+            (mx.int32, np.int32),
+            (mx.int64, np.int64),
+            (mx.float16, np.float16),
+            (mx.float32, np.float32),
+            (mx.complex64, np.complex64),
+        ]
+        for mlx_dtype, np_dtype in mlx_to_dlpack:
+            with self.subTest(direction="export", dtype=mlx_dtype):
+                x = mx.ones((3,), dtype=mlx_dtype)
+&gt;               y = np.from_dlpack(CpuDLPack(x))
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.work/mlx/python/tests/test_array.py:2330: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = &lt;test_array.TestArray.test_dlpack_cpu_dtype_mapping.&lt;locals&gt;.CpuDLPack object at 0x730134b5e650&gt;
+args = (), kwargs = {'dl_device': (1, 0), 'copy': None, 'max_version': (1, 0)}
+
+    def __dlpack__(self, *args, **kwargs):
+        kwargs["dl_device"] = (1, 0)
+&gt;       return self.array.__dlpack__(*args, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       RuntimeError: [omarchy] non-zero scalar fill is not implemented for the Omarchy Vulkan backend (dtype=int32, shape=[3]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_array.py:2282: RuntimeError</failure><failure message="RuntimeError: [omarchy] non-zero scalar fill is not implemented for the Omarchy Vulkan backend (dtype=int64, shape=[3]). No CPU fallback is available in Omarchy builds.">self = &lt;test_array.TestArray testMethod=test_dlpack_cpu_dtype_mapping&gt;
+
+    def test_dlpack_cpu_dtype_mapping(self):
+        class CpuDLPack:
+            def __init__(self, array):
+                self.array = array
+    
+            def __dlpack_device__(self):
+                return (1, 0)
+    
+            def __dlpack__(self, *args, **kwargs):
+                kwargs["dl_device"] = (1, 0)
+                return self.array.__dlpack__(*args, **kwargs)
+    
+        dlpack_to_mlx = [
+            (np.bool_, mx.bool_),
+            (np.uint8, mx.uint8),
+            (np.uint16, mx.uint16),
+            (np.uint32, mx.uint32),
+            (np.uint64, mx.uint64),
+            (np.int8, mx.int8),
+            (np.int16, mx.int16),
+            (np.int32, mx.int32),
+            (np.int64, mx.int64),
+            (np.float16, mx.float16),
+            (np.float32, mx.float32),
+            (np.float64, mx.float32),
+            (np.complex64, mx.complex64),
+            (np.complex128, mx.complex64),
+        ]
+        for np_dtype, mlx_dtype in dlpack_to_mlx:
+            with self.subTest(direction="import", dtype=np_dtype):
+                x = np.ones(3, dtype=np_dtype)
+                y = mx.from_dlpack(x)
+                self.assertEqual(y.dtype, mlx_dtype)
+    
+        if torch is not None:
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore", UserWarning)
+                x = torch.ones(3, dtype=torch.complex32)
+            with self.assertRaises(ValueError):
+                mx.from_dlpack(x)
+    
+        mlx_to_dlpack = [
+            (mx.bool_, np.bool_),
+            (mx.uint8, np.uint8),
+            (mx.uint16, np.uint16),
+            (mx.uint32, np.uint32),
+            (mx.uint64, np.uint64),
+            (mx.int8, np.int8),
+            (mx.int16, np.int16),
+            (mx.int32, np.int32),
+            (mx.int64, np.int64),
+            (mx.float16, np.float16),
+            (mx.float32, np.float32),
+            (mx.complex64, np.complex64),
+        ]
+        for mlx_dtype, np_dtype in mlx_to_dlpack:
+            with self.subTest(direction="export", dtype=mlx_dtype):
+                x = mx.ones((3,), dtype=mlx_dtype)
+&gt;               y = np.from_dlpack(CpuDLPack(x))
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.work/mlx/python/tests/test_array.py:2330: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = &lt;test_array.TestArray.test_dlpack_cpu_dtype_mapping.&lt;locals&gt;.CpuDLPack object at 0x73015c7a8a10&gt;
+args = (), kwargs = {'dl_device': (1, 0), 'copy': None, 'max_version': (1, 0)}
+
+    def __dlpack__(self, *args, **kwargs):
+        kwargs["dl_device"] = (1, 0)
+&gt;       return self.array.__dlpack__(*args, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       RuntimeError: [omarchy] non-zero scalar fill is not implemented for the Omarchy Vulkan backend (dtype=int64, shape=[3]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_array.py:2282: RuntimeError</failure><failure message="RuntimeError: [omarchy] non-zero scalar fill is not implemented for the Omarchy Vulkan backend (dtype=complex64, shape=[3]). No CPU fallback is available in Omarchy builds.">self = &lt;test_array.TestArray testMethod=test_dlpack_cpu_dtype_mapping&gt;
+
+    def test_dlpack_cpu_dtype_mapping(self):
+        class CpuDLPack:
+            def __init__(self, array):
+                self.array = array
+    
+            def __dlpack_device__(self):
+                return (1, 0)
+    
+            def __dlpack__(self, *args, **kwargs):
+                kwargs["dl_device"] = (1, 0)
+                return self.array.__dlpack__(*args, **kwargs)
+    
+        dlpack_to_mlx = [
+            (np.bool_, mx.bool_),
+            (np.uint8, mx.uint8),
+            (np.uint16, mx.uint16),
+            (np.uint32, mx.uint32),
+            (np.uint64, mx.uint64),
+            (np.int8, mx.int8),
+            (np.int16, mx.int16),
+            (np.int32, mx.int32),
+            (np.int64, mx.int64),
+            (np.float16, mx.float16),
+            (np.float32, mx.float32),
+            (np.float64, mx.float32),
+            (np.complex64, mx.complex64),
+            (np.complex128, mx.complex64),
+        ]
+        for np_dtype, mlx_dtype in dlpack_to_mlx:
+            with self.subTest(direction="import", dtype=np_dtype):
+                x = np.ones(3, dtype=np_dtype)
+                y = mx.from_dlpack(x)
+                self.assertEqual(y.dtype, mlx_dtype)
+    
+        if torch is not None:
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore", UserWarning)
+                x = torch.ones(3, dtype=torch.complex32)
+            with self.assertRaises(ValueError):
+                mx.from_dlpack(x)
+    
+        mlx_to_dlpack = [
+            (mx.bool_, np.bool_),
+            (mx.uint8, np.uint8),
+            (mx.uint16, np.uint16),
+            (mx.uint32, np.uint32),
+            (mx.uint64, np.uint64),
+            (mx.int8, np.int8),
+            (mx.int16, np.int16),
+            (mx.int32, np.int32),
+            (mx.int64, np.int64),
+            (mx.float16, np.float16),
+            (mx.float32, np.float32),
+            (mx.complex64, np.complex64),
+        ]
+        for mlx_dtype, np_dtype in mlx_to_dlpack:
+            with self.subTest(direction="export", dtype=mlx_dtype):
+                x = mx.ones((3,), dtype=mlx_dtype)
+&gt;               y = np.from_dlpack(CpuDLPack(x))
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.work/mlx/python/tests/test_array.py:2330: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = &lt;test_array.TestArray.test_dlpack_cpu_dtype_mapping.&lt;locals&gt;.CpuDLPack object at 0x73015c7a8a10&gt;
+args = (), kwargs = {'dl_device': (1, 0), 'copy': None, 'max_version': (1, 0)}
+
+    def __dlpack__(self, *args, **kwargs):
+        kwargs["dl_device"] = (1, 0)
+&gt;       return self.array.__dlpack__(*args, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       RuntimeError: [omarchy] non-zero scalar fill is not implemented for the Omarchy Vulkan backend (dtype=complex64, shape=[3]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_array.py:2282: RuntimeError</failure></testcase><testcase classname="python.tests.test_array.TestArray" name="test_double_keeps_precision" time="0.001" /><testcase classname="python.tests.test_array.TestArray" name="test_dtype_promotion" time="0.025" /><testcase classname="python.tests.test_array.TestArray" name="test_dtype_python_scalar_promotion" time="0.000" /><testcase classname="python.tests.test_array.TestArray" name="test_format" time="0.001"><failure message="RuntimeError: [omarchy] matrix layout Take is not implemented for the Omarchy Vulkan backend (dtype=int32, shape=[1]). No CPU fallback is available in Omarchy builds.">self = &lt;test_array.TestArray testMethod=test_format&gt;
+
+    def test_format(self):
+        a = mx.arange(3)
+&gt;       self.assertEqual(f"{a[0]:.2f}", "0.00")
+                         ^^^^^^^^^^^^^
+E       RuntimeError: [omarchy] matrix layout Take is not implemented for the Omarchy Vulkan backend (dtype=int32, shape=[1]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_array.py:2816: RuntimeError</failure></testcase><testcase classname="python.tests.test_array.TestArray" name="test_from_dlpack_cpu" time="0.001" /><testcase classname="python.tests.test_array.TestArray" name="test_from_dlpack_cpu_strided" time="0.001" /><testcase classname="python.tests.test_array.TestArray" name="test_from_dlpack_torch_mps_copy_false_shares_updates" time="0.000"><skipped type="pytest.skip" message="PyTorch MPS is required">/home/joshuawarren/src/mlx-omarchy/.work/mlx/python/tests/test_array.py:2591: PyTorch MPS is required</skipped></testcase><testcase classname="python.tests.test_array.TestArray" name="test_from_dlpack_torch_mps_copy_none_shares_updates" time="0.000"><skipped type="pytest.skip" message="PyTorch MPS is required">/home/joshuawarren/src/mlx-omarchy/.work/mlx/python/tests/test_array.py:2576: PyTorch MPS is required</skipped></testcase><testcase classname="python.tests.test_array.TestArray" name="test_from_dlpack_torch_mps_copy_true_copies" time="0.000"><skipped type="pytest.skip" message="PyTorch MPS is required">/home/joshuawarren/src/mlx-omarchy/.work/mlx/python/tests/test_array.py:2602: PyTorch MPS is required</skipped></testcase><testcase classname="python.tests.test_array.TestArray" name="test_init_from_array" time="0.006"><failure message="RuntimeError: [omarchy] dtype converting copy is not implemented for the Omarchy Vulkan backend (dtype=bool, shape=[]). No CPU fallback is available in Omarchy builds.">self = &lt;test_array.TestArray testMethod=test_init_from_array&gt;
+
+    def test_init_from_array(self):
+        x = mx.array(3.0)
+        y = mx.array(x)
+    
+        self.assertTrue(mx.array_equal(x, y))
+    
+        y = mx.array(x, mx.int32)
+        self.assertEqual(y.dtype, mx.int32)
+        self.assertEqual(y.item(), 3)
+    
+        y = mx.array(x, mx.bool_)
+        self.assertEqual(y.dtype, mx.bool_)
+&gt;       self.assertEqual(y.item(), True)
+                         ^^^^^^^^
+E       RuntimeError: [omarchy] dtype converting copy is not implemented for the Omarchy Vulkan backend (dtype=bool, shape=[]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_array.py:656: RuntimeError</failure></testcase><testcase classname="python.tests.test_array.TestArray" name="test_inplace" time="0.001"><failure message="RuntimeError: [omarchy] Add dtype is not implemented for the Omarchy Vulkan backend (dtype=int32, shape=[3]). No CPU fallback is available in Omarchy builds.">self = &lt;test_array.TestArray testMethod=test_inplace&gt;
+
+    def test_inplace(self):
+        iops = [
+            "__iadd__",
+            "__isub__",
+            "__imul__",
+            "__ifloordiv__",
+            "__imod__",
+            "__ipow__",
+            "__ixor__",
+        ]
+    
+        for op in iops:
+            a = mx.array([1, 2, 3])
+            a_np = np.array(a)
+            b = a
+            b = getattr(a, op)(3)
+&gt;           self.assertTrue(mx.array_equal(a, b))
+E           RuntimeError: [omarchy] Add dtype is not implemented for the Omarchy Vulkan backend (dtype=int32, shape=[3]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_array.py:2128: RuntimeError</failure></testcase><testcase classname="python.tests.test_array.TestArray" name="test_inplace_preserves_ids" time="0.001" /><testcase classname="python.tests.test_array.TestArray" name="test_int_type" time="0.001" /><testcase classname="python.tests.test_array.TestArray" name="test_large_indices" time="0.001" /><testcase classname="python.tests.test_array.TestArray" name="test_load_from_pickled_np" time="0.001"><failure message="RuntimeError: [omarchy] And dtype is not implemented for the Omarchy Vulkan backend (dtype=bool, shape=[1]). No CPU fallback is available in Omarchy builds.">self = &lt;test_array.TestArray testMethod=test_load_from_pickled_np&gt;
+
+    def test_load_from_pickled_np(self):
+        a = np.array([1, 2, 3], dtype=np.int32)
+        b = pickle.loads(pickle.dumps(a))
+&gt;       self.assertTrue(mx.array_equal(mx.array(a), mx.array(b)))
+E       RuntimeError: [omarchy] And dtype is not implemented for the Omarchy Vulkan backend (dtype=bool, shape=[1]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_array.py:2182: RuntimeError</failure></testcase><testcase classname="python.tests.test_array.TestArray" name="test_logical_overloads" time="0.001"><failure message="RuntimeError: [omarchy] BitwiseBinary is not implemented for the Omarchy Vulkan backend (dtype=bool, shape=[]). No CPU fallback is available in Omarchy builds.">self = &lt;test_array.TestArray testMethod=test_logical_overloads&gt;
+
+    def test_logical_overloads(self):
+        with self.assertRaises(ValueError):
+            mx.array(1.0) &amp; mx.array(1)
+        with self.assertRaises(ValueError):
+            mx.array(1.0) | mx.array(1)
+    
+&gt;       self.assertEqual((mx.array(True) &amp; True).item(), True)
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       RuntimeError: [omarchy] BitwiseBinary is not implemented for the Omarchy Vulkan backend (dtype=bool, shape=[]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_array.py:2105: RuntimeError</failure></testcase><testcase classname="python.tests.test_array.TestArray" name="test_memoryless_copy" time="0.001" /><testcase classname="python.tests.test_array.TestArray" name="test_mlx_dlpack_export_torch_update_writes_mlx_buffer" time="0.000"><skipped type="pytest.skip" message="PyTorch MPS is required">/home/joshuawarren/src/mlx-omarchy/.work/mlx/python/tests/test_array.py:2561: PyTorch MPS is required</skipped></testcase><testcase classname="python.tests.test_array.TestArray" name="test_mlx_dlpack_exports_mps_tensor_to_torch" time="0.000"><skipped type="pytest.skip" message="PyTorch MPS is required">/home/joshuawarren/src/mlx-omarchy/.work/mlx/python/tests/test_array.py:2537: PyTorch MPS is required</skipped></testcase><testcase classname="python.tests.test_array.TestArray" name="test_mlx_dlpack_exports_mps_tensor_to_torch_tensor" time="0.000"><skipped type="pytest.skip" message="PyTorch MPS is required">/home/joshuawarren/src/mlx-omarchy/.work/mlx/python/tests/test_array.py:2549: PyTorch MPS is required</skipped></testcase><testcase classname="python.tests.test_array.TestArray" name="test_multi_output_leak" time="0.001" /><testcase classname="python.tests.test_array.TestArray" name="test_np_array_conversion_copies_by_default" time="0.001" /><testcase classname="python.tests.test_array.TestArray" name="test_real_imag" time="0.001"><failure message="RuntimeError: [omarchy] Imag is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[1]). No CPU fallback is available in Omarchy builds.">self = &lt;test_array.TestArray testMethod=test_real_imag&gt;
+
+    def test_real_imag(self):
+        x = mx.array([1.0])
+        self.assertEqual(x.real.item(), 1.0)
+        self.assertEqual(x.imag.item(), 0.0)
+    
+        x = mx.array([1.0 + 1.0j])
+&gt;       self.assertEqual(x.imag.item(), 1.0)
+                         ^^^^^^^^^^^^^
+E       RuntimeError: [omarchy] Imag is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[1]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_array.py:2868: RuntimeError</failure></testcase><testcase classname="python.tests.test_array.TestArray" name="test_scalar_integer_conversion_overflow" time="0.001" /><testcase classname="python.tests.test_array.TestArray" name="test_setitem" time="0.005"><failure message="RuntimeError: [omarchy] non-zero scalar fill is not implemented for the Omarchy Vulkan backend (dtype=int32, shape=[3]). No CPU fallback is available in Omarchy builds.">self = &lt;test_array.TestArray testMethod=test_setitem&gt;
+
+    def test_setitem(self):
+        a = mx.array(0)
+        a[None] = 1
+        self.assertEqual(a.item(), 1)
+    
+        a = mx.array([1, 2, 3])
+        a[0] = 2
+        self.assertEqual(a.tolist(), [2, 2, 3])
+    
+        a[-1] = 2
+        self.assertEqual(a.tolist(), [2, 2, 2])
+    
+        a[np.int64(1)] = 9
+        self.assertEqual(a.tolist(), [2, 9, 2])
+    
+        a[0] = mx.array([[[1]]])
+        self.assertEqual(a.tolist(), [1, 9, 2])
+    
+        a[:] = 0
+        self.assertEqual(a.tolist(), [0, 0, 0])
+    
+        a[None] = 1
+        self.assertEqual(a.tolist(), [1, 1, 1])
+    
+        a[0:1] = 2
+&gt;       self.assertEqual(a.tolist(), [2, 1, 1])
+                         ^^^^^^^^^^
+E       RuntimeError: [omarchy] non-zero scalar fill is not implemented for the Omarchy Vulkan backend (dtype=int32, shape=[3]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_array.py:1308: RuntimeError</failure></testcase><testcase classname="python.tests.test_array.TestArray" name="test_setitem_with_boolean_mask" time="0.001"><failure message="RuntimeError: [omarchy] MaskedScatter is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[1,3]). No CPU fallback is available in Omarchy builds.">self = &lt;test_array.TestArray testMethod=test_setitem_with_boolean_mask&gt;
+
+    def test_setitem_with_boolean_mask(self):
+        # Python list mask
+        a = mx.array([1.0, 2.0, 3.0])
+        mask = [True, False, True]
+        src = mx.array([5.0, 6.0])
+        expected = mx.array([5.0, 2.0, 6.0])
+        a[mask] = src
+&gt;       self.assertTrue(mx.array_equal(a, expected))
+E       RuntimeError: [omarchy] MaskedScatter is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[1,3]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_array.py:2682: RuntimeError</failure></testcase><testcase classname="python.tests.test_array.TestArray" name="test_slice_update_contiguous_2d" time="0.014"><failure message="RuntimeError: [omarchy] ErfInv is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[16,16]). No CPU fallback is available in Omarchy builds.">self = &lt;test_array.TestArray testMethod=test_slice_update_contiguous_2d&gt;
+
+    def test_slice_update_contiguous_2d(self):
+        for shape in [(32, 32), (64, 64), (17, 33), (128, 128)]:
+            for upd_shape in [(16, 16), (8, 8), (4, 4)]:
+                if upd_shape[0] &gt; shape[0] or upd_shape[1] &gt; shape[1]:
+                    continue
+                y = mx.zeros(shape)
+                x = mx.random.normal(upd_shape)
+                z = y.at[: upd_shape[0], : upd_shape[1]].add(x)
+                diff = z[: upd_shape[0], : upd_shape[1]] - x
+&gt;               self.assertTrue(mx.allclose(diff, mx.zeros_like(diff)))
+E               RuntimeError: [omarchy] ErfInv is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[16,16]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_array.py:1758: RuntimeError</failure></testcase><testcase classname="python.tests.test_array.TestArray" name="test_to_scalar" time="0.001" /><testcase classname="python.tests.test_array.TestArray" name="test_torch_mps_array_copies_dlpack_input" time="0.000"><skipped type="pytest.skip" message="PyTorch MPS is required">/home/joshuawarren/src/mlx-omarchy/.work/mlx/python/tests/test_array.py:2377: PyTorch MPS is required</skipped></testcase><testcase classname="python.tests.test_array.TestArray" name="test_torch_mps_array_operand" time="0.000"><skipped type="pytest.skip" message="PyTorch MPS is required">/home/joshuawarren/src/mlx-omarchy/.work/mlx/python/tests/test_array.py:2526: PyTorch MPS is required</skipped></testcase><testcase classname="python.tests.test_array.TestArray" name="test_torch_mps_asarray_copy_true_copies_dlpack_input" time="0.000"><skipped type="pytest.skip" message="PyTorch MPS is required">/home/joshuawarren/src/mlx-omarchy/.work/mlx/python/tests/test_array.py:2388: PyTorch MPS is required</skipped></testcase><testcase classname="python.tests.test_array.TestArray" name="test_torch_mps_dlpack_bfloat16" time="0.000"><skipped type="pytest.skip" message="PyTorch MPS is required">/home/joshuawarren/src/mlx-omarchy/.work/mlx/python/tests/test_array.py:2512: PyTorch MPS is required</skipped></testcase><testcase classname="python.tests.test_array.TestArray" name="test_torch_mps_dlpack_broadcast_stride" time="0.000"><skipped type="pytest.skip" message="PyTorch MPS is required">/home/joshuawarren/src/mlx-omarchy/.work/mlx/python/tests/test_array.py:2499: PyTorch MPS is required</skipped></testcase><testcase classname="python.tests.test_array.TestArray" name="test_torch_mps_dlpack_data_offset" time="0.000"><skipped type="pytest.skip" message="PyTorch MPS is required">/home/joshuawarren/src/mlx-omarchy/.work/mlx/python/tests/test_array.py:2444: PyTorch MPS is required</skipped></testcase><testcase classname="python.tests.test_array.TestArray" name="test_torch_mps_dlpack_different_dtype_argument_copies" time="0.000"><skipped type="pytest.skip" message="PyTorch MPS is required">/home/joshuawarren/src/mlx-omarchy/.work/mlx/python/tests/test_array.py:2426: PyTorch MPS is required</skipped></testcase><testcase classname="python.tests.test_array.TestArray" name="test_torch_mps_dlpack_import" time="0.000"><skipped type="pytest.skip" message="PyTorch MPS is required">/home/joshuawarren/src/mlx-omarchy/.work/mlx/python/tests/test_array.py:2363: PyTorch MPS is required</skipped></testcase><testcase classname="python.tests.test_array.TestArray" name="test_torch_mps_dlpack_matching_dtype_argument_shares_updates" time="0.001"><skipped type="pytest.skip" message="PyTorch MPS is required">/home/joshuawarren/src/mlx-omarchy/.work/mlx/python/tests/test_array.py:2414: PyTorch MPS is required</skipped></testcase><testcase classname="python.tests.test_array.TestArray" name="test_torch_mps_dlpack_stepped_view" time="0.000"><skipped type="pytest.skip" message="PyTorch MPS is required">/home/joshuawarren/src/mlx-omarchy/.work/mlx/python/tests/test_array.py:2481: PyTorch MPS is required</skipped></testcase><testcase classname="python.tests.test_array.TestArray" name="test_torch_mps_dlpack_strided_view" time="0.000"><skipped type="pytest.skip" message="PyTorch MPS is required">/home/joshuawarren/src/mlx-omarchy/.work/mlx/python/tests/test_array.py:2452: PyTorch MPS is required</skipped></testcase><testcase classname="python.tests.test_array.TestArray" name="test_torch_mps_dlpack_zero_copy_shares_updates" time="0.000"><skipped type="pytest.skip" message="PyTorch MPS is required">/home/joshuawarren/src/mlx-omarchy/.work/mlx/python/tests/test_array.py:2399: PyTorch MPS is required</skipped></testcase></testsuite></testsuites>

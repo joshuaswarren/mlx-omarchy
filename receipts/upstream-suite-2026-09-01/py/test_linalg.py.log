@@ -1,0 +1,291 @@
+============================= test session starts ==============================
+collecting ... collected 18 items / 3 deselected / 15 selected
+
+.work/mlx/python/tests/test_linalg.py::TestLinalg::test_cholesky FAILED  [  6%]
+.work/mlx/python/tests/test_linalg.py::TestLinalg::test_cholesky_inv FAILED [ 13%]
+.work/mlx/python/tests/test_linalg.py::TestLinalg::test_det FAILED       [ 20%]
+.work/mlx/python/tests/test_linalg.py::TestLinalg::test_eig FAILED       [ 26%]
+.work/mlx/python/tests/test_linalg.py::TestLinalg::test_eigh FAILED      [ 33%]
+.work/mlx/python/tests/test_linalg.py::TestLinalg::test_inverse FAILED   [ 40%]
+.work/mlx/python/tests/test_linalg.py::TestLinalg::test_lu FAILED        [ 46%]
+.work/mlx/python/tests/test_linalg.py::TestLinalg::test_lu_factor FAILED [ 53%]
+.work/mlx/python/tests/test_linalg.py::TestLinalg::test_pseudo_inverse FAILED [ 60%]
+.work/mlx/python/tests/test_linalg.py::TestLinalg::test_qr_factorization FAILED [ 66%]
+.work/mlx/python/tests/test_linalg.py::TestLinalg::test_slogdet FAILED   [ 73%]
+.work/mlx/python/tests/test_linalg.py::TestLinalg::test_solve FAILED     [ 80%]
+.work/mlx/python/tests/test_linalg.py::TestLinalg::test_solve_triangular FAILED [ 86%]
+.work/mlx/python/tests/test_linalg.py::TestLinalg::test_svd_decomposition FAILED [ 93%]
+.work/mlx/python/tests/test_linalg.py::TestLinalg::test_tri_inverse FAILED [100%]
+
+=================================== FAILURES ===================================
+___________________________ TestLinalg.test_cholesky ___________________________
+
+self = <test_linalg.TestLinalg testMethod=test_cholesky>
+
+    def test_cholesky(self):
+        sqrtA = mx.array(
+            [[1.0, 2.0, 3.0], [4.0, 5.0, 6.0], [7.0, 8.0, 9.0]], dtype=mx.float32
+        )
+        A = sqrtA.T @ sqrtA / 81
+>       L = mx.linalg.cholesky(A, stream=mx.cpu)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       IndexError: vector::_M_range_check: __n (which is 0) >= this->size() (which is 0)
+
+.work/mlx/python/tests/test_linalg.py:297: IndexError
+_________________________ TestLinalg.test_cholesky_inv _________________________
+
+self = <test_linalg.TestLinalg testMethod=test_cholesky_inv>
+
+    def test_cholesky_inv(self):
+        mx.random.seed(7)
+    
+        sqrtA = mx.array(
+            [[1.0, 2.0, 3.0], [4.0, 5.0, 6.0], [7.0, 8.0, 9.0]], dtype=mx.float32
+        )
+        A = sqrtA.T @ sqrtA / 81
+    
+        N = 3
+        A = mx.random.uniform(shape=(N, N))
+        A = A @ A.T
+    
+        for upper in (False, True):
+>           L = mx.linalg.cholesky(A, upper=upper, stream=mx.cpu)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           IndexError: vector::_M_range_check: __n (which is 0) >= this->size() (which is 0)
+
+.work/mlx/python/tests/test_linalg.py:346: IndexError
+_____________________________ TestLinalg.test_det ______________________________
+
+self = <test_linalg.TestLinalg testMethod=test_det>
+
+    def test_det(self):
+        # 1x1 fast path
+        A = mx.array([[5.0]])
+>       self.assertTrue(np.allclose(mx.linalg.det(A, stream=mx.cpu), 5.0))
+                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       IndexError: vector::_M_range_check: __n (which is 0) >= this->size() (which is 0)
+
+.work/mlx/python/tests/test_linalg.py:728: IndexError
+_____________________________ TestLinalg.test_eig ______________________________
+
+self = <test_linalg.TestLinalg testMethod=test_eig>
+
+    def test_eig(self):
+        tols = {"atol": 1e-5, "rtol": 1e-5}
+    
+        def check_eigs_and_vecs(A_np, kwargs={}):
+            A = mx.array(A_np)
+            eig_vals, eig_vecs = mx.linalg.eig(A, stream=mx.cpu, **kwargs)
+            self.assertTrue(
+                mx.allclose(A @ eig_vecs, eig_vals[..., None, :] * eig_vecs, **tols)
+            )
+            eig_vals_only = mx.linalg.eigvals(A, stream=mx.cpu, **kwargs)
+            self.assertTrue(mx.allclose(eig_vals, eig_vals_only, **tols))
+    
+        # Test a simple 2x2 matrix
+        A_np = np.array([[1.0, 1.0], [3.0, 4.0]], dtype=np.float32)
+>       check_eigs_and_vecs(A_np)
+
+.work/mlx/python/tests/test_linalg.py:422: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+A_np = array([[1., 1.],
+       [3., 4.]], dtype=float32), kwargs = {}
+
+    def check_eigs_and_vecs(A_np, kwargs={}):
+        A = mx.array(A_np)
+>       eig_vals, eig_vecs = mx.linalg.eig(A, stream=mx.cpu, **kwargs)
+                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       IndexError: vector::_M_range_check: __n (which is 0) >= this->size() (which is 0)
+
+.work/mlx/python/tests/test_linalg.py:413: IndexError
+_____________________________ TestLinalg.test_eigh _____________________________
+
+self = <test_linalg.TestLinalg testMethod=test_eigh>
+
+    def test_eigh(self):
+        tols = {"atol": 1e-5, "rtol": 1e-5}
+    
+        def check_eigs_and_vecs(A_np, kwargs={}):
+            A = mx.array(A_np)
+            eig_vals, eig_vecs = mx.linalg.eigh(A, stream=mx.cpu, **kwargs)
+            eig_vals_np, _ = np.linalg.eigh(A_np, **kwargs)
+            self.assertTrue(np.allclose(eig_vals, eig_vals_np, **tols))
+            self.assertTrue(
+                mx.allclose(A @ eig_vecs, eig_vals[..., None, :] * eig_vecs, **tols)
+            )
+    
+            eig_vals_only = mx.linalg.eigvalsh(A, stream=mx.cpu, **kwargs)
+            self.assertTrue(mx.allclose(eig_vals, eig_vals_only, **tols))
+    
+        # Test a simple 2x2 symmetric matrix
+        A_np = np.array([[1.0, 2.0], [2.0, 4.0]], dtype=np.float32)
+>       check_eigs_and_vecs(A_np)
+
+.work/mlx/python/tests/test_linalg.py:522: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+A_np = array([[1., 2.],
+       [2., 4.]], dtype=float32), kwargs = {}
+
+    def check_eigs_and_vecs(A_np, kwargs={}):
+        A = mx.array(A_np)
+>       eig_vals, eig_vecs = mx.linalg.eigh(A, stream=mx.cpu, **kwargs)
+                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       IndexError: vector::_M_range_check: __n (which is 0) >= this->size() (which is 0)
+
+.work/mlx/python/tests/test_linalg.py:510: IndexError
+___________________________ TestLinalg.test_inverse ____________________________
+
+self = <test_linalg.TestLinalg testMethod=test_inverse>
+
+    def test_inverse(self):
+        A = mx.array([[1, 2, 3], [6, -5, 4], [-9, 8, 7]], dtype=mx.float32)
+>       A_inv = mx.linalg.inv(A, stream=mx.cpu)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       IndexError: vector::_M_range_check: __n (which is 0) >= this->size() (which is 0)
+
+.work/mlx/python/tests/test_linalg.py:259: IndexError
+______________________________ TestLinalg.test_lu ______________________________
+
+self = <test_linalg.TestLinalg testMethod=test_lu>
+
+    def test_lu(self):
+        with self.assertRaises(ValueError):
+>           mx.linalg.lu(mx.array(0.0), stream=mx.cpu)
+E           IndexError: vector::_M_range_check: __n (which is 0) >= this->size() (which is 0)
+
+.work/mlx/python/tests/test_linalg.py:588: IndexError
+__________________________ TestLinalg.test_lu_factor ___________________________
+
+self = <test_linalg.TestLinalg testMethod=test_lu_factor>
+
+    def test_lu_factor(self):
+        mx.random.seed(7)
+    
+        # Test 3x3 matrix
+        a = mx.random.uniform(shape=(5, 5))
+>       LU, pivots = mx.linalg.lu_factor(a, stream=mx.cpu)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       IndexError: vector::_M_range_check: __n (which is 0) >= this->size() (which is 0)
+
+.work/mlx/python/tests/test_linalg.py:634: IndexError
+________________________ TestLinalg.test_pseudo_inverse ________________________
+
+self = <test_linalg.TestLinalg testMethod=test_pseudo_inverse>
+
+    def test_pseudo_inverse(self):
+        A = mx.array([[1, 2, 3], [6, -5, 4], [-9, 8, 7]], dtype=mx.float32)
+>       A_plus = mx.linalg.pinv(A, stream=mx.cpu)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       IndexError: vector::_M_range_check: __n (which is 0) >= this->size() (which is 0)
+
+.work/mlx/python/tests/test_linalg.py:311: IndexError
+_______________________ TestLinalg.test_qr_factorization _______________________
+
+self = <test_linalg.TestLinalg testMethod=test_qr_factorization>
+
+    def test_qr_factorization(self):
+        with self.assertRaises(ValueError):
+            mx.linalg.qr(mx.array(0.0))
+    
+        with self.assertRaises(ValueError):
+            mx.linalg.qr(mx.array([0.0, 1.0]))
+    
+        with self.assertRaises(ValueError):
+            mx.linalg.qr(mx.array([[0, 1], [1, 0]]))
+    
+        A = mx.array([[2.0, 3.0], [1.0, 2.0]])
+>       Q, R = mx.linalg.qr(A, stream=mx.cpu)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       IndexError: vector::_M_range_check: __n (which is 0) >= this->size() (which is 0)
+
+.work/mlx/python/tests/test_linalg.py:129: IndexError
+___________________________ TestLinalg.test_slogdet ____________________________
+
+self = <test_linalg.TestLinalg testMethod=test_slogdet>
+
+    def test_slogdet(self):
+        # 2x2: det = -2 => sign = -1, logabsdet = log(2)
+        A = mx.array([[1.0, 2.0], [3.0, 4.0]])
+>       sign, logabsdet = mx.linalg.slogdet(A, stream=mx.cpu)
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       IndexError: vector::_M_range_check: __n (which is 0) >= this->size() (which is 0)
+
+.work/mlx/python/tests/test_linalg.py:839: IndexError
+____________________________ TestLinalg.test_solve _____________________________
+
+self = <test_linalg.TestLinalg testMethod=test_solve>
+
+    def test_solve(self):
+        mx.random.seed(7)
+    
+        # Test 3x3 matrix with 1D rhs
+        a = mx.array([[3.0, 1.0, 2.0], [1.0, 8.0, 6.0], [9.0, 2.0, 5.0]])
+        b = mx.array([11.0, 35.0, 28.0])
+    
+>       result = mx.linalg.solve(a, b, stream=mx.cpu)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       IndexError: vector::_M_range_check: __n (which is 0) >= this->size() (which is 0)
+
+.work/mlx/python/tests/test_linalg.py:653: IndexError
+_______________________ TestLinalg.test_solve_triangular _______________________
+
+self = <test_linalg.TestLinalg testMethod=test_solve_triangular>
+
+    def test_solve_triangular(self):
+        # Test lower triangular matrix
+        a = mx.array([[4.0, 0.0, 0.0], [2.0, 3.0, 0.0], [1.0, -2.0, 5.0]])
+        b = mx.array([8.0, 14.0, 3.0])
+    
+>       result = mx.linalg.solve_triangular(a, b, upper=False, stream=mx.cpu)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       IndexError: vector::_M_range_check: __n (which is 0) >= this->size() (which is 0)
+
+.work/mlx/python/tests/test_linalg.py:705: IndexError
+______________________ TestLinalg.test_svd_decomposition _______________________
+
+self = <test_linalg.TestLinalg testMethod=test_svd_decomposition>
+
+    def test_svd_decomposition(self):
+        A = mx.array([[1, 2, 3], [4, 5, 6], [7, 8, 9], [10, 11, 12]], dtype=mx.float32)
+>       U, S, Vt = mx.linalg.svd(A, compute_uv=True, stream=mx.cpu)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       IndexError: vector::_M_range_check: __n (which is 0) >= this->size() (which is 0)
+
+.work/mlx/python/tests/test_linalg.py:172: IndexError
+_________________________ TestLinalg.test_tri_inverse __________________________
+
+self = <test_linalg.TestLinalg testMethod=test_tri_inverse>
+
+    def test_tri_inverse(self):
+        for upper in (False, True):
+            A = mx.array([[1, 0, 0], [6, -5, 0], [-9, 8, 7]], dtype=mx.float32)
+            B = mx.array([[7, 0, 0], [3, -2, 0], [1, 8, 3]], dtype=mx.float32)
+            if upper:
+                A = A.T
+                B = B.T
+            AB = mx.stack([A, B])
+>           invs = mx.linalg.tri_inv(AB, upper=upper, stream=mx.cpu)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           IndexError: vector::_M_range_check: __n (which is 0) >= this->size() (which is 0)
+
+.work/mlx/python/tests/test_linalg.py:279: IndexError
+- generated xml file: /home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-01/py/test_linalg.py.xml -
+=========================== short test summary info ============================
+FAILED .work/mlx/python/tests/test_linalg.py::TestLinalg::test_cholesky - IndexError: vector::_M_range_check: __n (which is 0) >= this->size() (which is 0)
+FAILED .work/mlx/python/tests/test_linalg.py::TestLinalg::test_cholesky_inv - IndexError: vector::_M_range_check: __n (which is 0) >= this->size() (which is 0)
+FAILED .work/mlx/python/tests/test_linalg.py::TestLinalg::test_det - IndexError: vector::_M_range_check: __n (which is 0) >= this->size() (which is 0)
+FAILED .work/mlx/python/tests/test_linalg.py::TestLinalg::test_eig - IndexError: vector::_M_range_check: __n (which is 0) >= this->size() (which is 0)
+FAILED .work/mlx/python/tests/test_linalg.py::TestLinalg::test_eigh - IndexError: vector::_M_range_check: __n (which is 0) >= this->size() (which is 0)
+FAILED .work/mlx/python/tests/test_linalg.py::TestLinalg::test_inverse - IndexError: vector::_M_range_check: __n (which is 0) >= this->size() (which is 0)
+FAILED .work/mlx/python/tests/test_linalg.py::TestLinalg::test_lu - IndexError: vector::_M_range_check: __n (which is 0) >= this->size() (which is 0)
+FAILED .work/mlx/python/tests/test_linalg.py::TestLinalg::test_lu_factor - IndexError: vector::_M_range_check: __n (which is 0) >= this->size() (which is 0)
+FAILED .work/mlx/python/tests/test_linalg.py::TestLinalg::test_pseudo_inverse - IndexError: vector::_M_range_check: __n (which is 0) >= this->size() (which is 0)
+FAILED .work/mlx/python/tests/test_linalg.py::TestLinalg::test_qr_factorization - IndexError: vector::_M_range_check: __n (which is 0) >= this->size() (which is 0)
+FAILED .work/mlx/python/tests/test_linalg.py::TestLinalg::test_slogdet - IndexError: vector::_M_range_check: __n (which is 0) >= this->size() (which is 0)
+FAILED .work/mlx/python/tests/test_linalg.py::TestLinalg::test_solve - IndexError: vector::_M_range_check: __n (which is 0) >= this->size() (which is 0)
+FAILED .work/mlx/python/tests/test_linalg.py::TestLinalg::test_solve_triangular - IndexError: vector::_M_range_check: __n (which is 0) >= this->size() (which is 0)
+FAILED .work/mlx/python/tests/test_linalg.py::TestLinalg::test_svd_decomposition - IndexError: vector::_M_range_check: __n (which is 0) >= this->size() (which is 0)
+FAILED .work/mlx/python/tests/test_linalg.py::TestLinalg::test_tri_inverse - IndexError: vector::_M_range_check: __n (which is 0) >= this->size() (which is 0)
+======================= 15 failed, 3 deselected in 0.47s =======================

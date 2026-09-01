@@ -1,0 +1,79 @@
+============================= test session starts ==============================
+collecting ... collected 6 items
+
+.work/mlx/python/tests/test_tree.py::TestTreeUtils::test_empty_subtree_merge PASSED [ 16%]
+.work/mlx/python/tests/test_tree.py::TestTreeUtils::test_merge FAILED    [ 33%]
+.work/mlx/python/tests/test_tree.py::TestTreeUtils::test_supported_trees FAILED [ 50%]
+.work/mlx/python/tests/test_tree.py::TestTreeUtils::test_tree_flatten PASSED [ 66%]
+.work/mlx/python/tests/test_tree.py::TestTreeUtils::test_tree_map PASSED [ 83%]
+.work/mlx/python/tests/test_tree.py::TestTreeUtils::test_tree_unflatten_integer_key_collision PASSED [100%]
+
+=================================== FAILURES ===================================
+___________________________ TestTreeUtils.test_merge ___________________________
+
+self = <test_tree.TestTreeUtils testMethod=test_merge>
+
+    def test_merge(self):
+        t1 = {"a": 0}
+        t2 = {"b": 1}
+        t = mlx.utils.tree_merge(t1, t2)
+        self.assertEqual({"a": 0, "b": 1}, t)
+        with self.assertRaises(ValueError):
+            mlx.utils.tree_merge(t1, t1)
+        with self.assertRaises(ValueError):
+            mlx.utils.tree_merge(t, t1)
+    
+        mod1 = nn.Sequential(nn.Linear(2, 2), nn.Linear(2, 2))
+        mod2 = nn.Sequential(nn.Linear(2, 2), nn.Linear(2, 2))
+        mod = nn.Sequential(mod1, mod2)
+    
+        params1 = {"layers": [mod1.parameters()]}
+        params2 = {"layers": [None, mod2.parameters()]}
+        params = mlx.utils.tree_merge(params1, params2)
+        for (k1, v1), (k2, v2) in zip(
+            mlx.utils.tree_flatten(params), mlx.utils.tree_flatten(mod.parameters())
+        ):
+            self.assertEqual(k1, k2)
+>           self.assertTrue(mx.array_equal(v1, v2))
+E           RuntimeError: [omarchy] And dtype is not implemented for the Omarchy Vulkan backend (dtype=bool, shape=[1,1]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_tree.py:47: RuntimeError
+______________________ TestTreeUtils.test_supported_trees ______________________
+
+self = <test_tree.TestTreeUtils testMethod=test_supported_trees>
+
+    def test_supported_trees(self):
+    
+        from typing import NamedTuple
+    
+        class Vector(tuple):
+            pass
+    
+        class Params(NamedTuple):
+            m: mx.array
+            b: mx.array
+    
+        list1 = [mx.array([0, 1]), mx.array(2)]
+        tuple1 = (mx.array([0, 1]), mx.array(2))
+        vector1 = Vector([mx.array([0, 1]), mx.array(2)])
+        params1 = Params(m=mx.array([0, 1]), b=mx.array(2))
+        dict1 = {"m": mx.array([0, 1]), "b": mx.array(2)}
+    
+        add_one = lambda x: x + 1
+    
+        list2 = mlx.utils.tree_map(add_one, list1)
+        tuple2 = mlx.utils.tree_map(add_one, tuple1)
+        vector2 = mlx.utils.tree_map(add_one, vector1)
+        params2 = mlx.utils.tree_map(add_one, params1)
+        dict2 = mlx.utils.tree_map(add_one, dict1)
+    
+        self.assertTrue(isinstance(list2, list))
+>       self.assertTrue(mx.array_equal(list2[0], mx.array([1, 2])))
+E       RuntimeError: [omarchy] Add dtype is not implemented for the Omarchy Vulkan backend (dtype=int32, shape=[2]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_tree.py:109: RuntimeError
+- generated xml file: /home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-01/py/test_tree.py.xml -
+=========================== short test summary info ============================
+FAILED .work/mlx/python/tests/test_tree.py::TestTreeUtils::test_merge - RuntimeError: [omarchy] And dtype is not implemented for the Omarchy Vulkan backend (dtype=bool, shape=[1,1]). No CPU fallback is available in Omarchy builds.
+FAILED .work/mlx/python/tests/test_tree.py::TestTreeUtils::test_supported_trees - RuntimeError: [omarchy] Add dtype is not implemented for the Omarchy Vulkan backend (dtype=int32, shape=[2]). No CPU fallback is available in Omarchy builds.
+========================= 2 failed, 4 passed in 0.28s ==========================

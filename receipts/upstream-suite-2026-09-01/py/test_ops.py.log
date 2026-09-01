@@ -1,0 +1,90 @@
+============================= test session starts ==============================
+collecting ... collected 162 items / 15 deselected / 147 selected
+
+.work/mlx/python/tests/test_ops.py::TestOps::test_add FAILED             [  0%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_all FAILED             [  1%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_allclose FAILED        [  2%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_along_axis_invalid_axis PASSED [  2%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_any FAILED             [  3%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_arange_corner_cases_cast FAILED [  4%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_arange_inferred_dtype FAILED [  4%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_arange_overload_dispatch PASSED [  5%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_argmin_argmax FAILED   [  6%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_argpartition FAILED    [  6%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_argsort_nan 
+.work/mlx/python/tests/test_ops.py::TestOps::test_argsort_nan PASSED     [  7%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_array_equal FAILED     [  8%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_as_strided FAILED      [  8%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_atleast_1d FAILED      [  9%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_atleast_2d FAILED      [ 10%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_atleast_3d FAILED      [ 10%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_binary_ops 
+.work/mlx/python/tests/test_ops.py::TestOps::test_binary_ops PASSED      [ 11%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_blackman_general PASSED [ 12%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_broadcast PASSED       [ 12%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_broadcast_arrays PASSED [ 13%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_broadcast_shapes PASSED [ 14%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_ceil FAILED            [ 14%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_comparisons FAILED     [ 15%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_complex_power FAILED   [ 16%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_concatenate FAILED     [ 17%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_cos PASSED             [ 17%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_count_nonzero FAILED   [ 18%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_cross_invalid_axis PASSED [ 19%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_degrees PASSED         [ 19%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_depends FAILED         [ 20%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_diag FAILED            [ 21%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_diagonal FAILED        [ 21%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_diff PASSED            [ 22%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_divide FAILED          [ 23%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_dynamic_slicing FAILED [ 23%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_empty_matmuls FAILED   [ 24%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_exp PASSED             [ 25%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_eye FAILED             [ 25%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_flatten PASSED         [ 26%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_floor FAILED           [ 27%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_full_ones_zeros FAILED [ 27%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_hadamard SKIPPED (...) [ 28%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_hadamard_m_only SKIPPED [ 29%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_hamming_general PASSED [ 29%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_hanning_general PASSED [ 30%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_inner Fatal Python error: Aborted
+
+Current thread 0x00007d2d76118040 (most recent call first):
+  File "/home/joshuawarren/src/mlx-omarchy/.work/mlx/python/tests/mlx_tests.py", line 58 in <listcomp>
+  File "/home/joshuawarren/src/mlx-omarchy/.work/mlx/python/tests/mlx_tests.py", line 58 in assertCmpNumpy
+  File "/home/joshuawarren/src/mlx-omarchy/.work/mlx/python/tests/test_ops.py", line 3331 in test_inner
+  File "/usr/lib/python3.11/unittest/case.py", line 579 in _callTestMethod
+  File "/usr/lib/python3.11/unittest/case.py", line 623 in run
+  File "/usr/lib/python3.11/unittest/case.py", line 678 in __call__
+  File "/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-01/venv-pytest/lib/python3.11/site-packages/_pytest/unittest.py", line 410 in runtest
+  File "/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-01/venv-pytest/lib/python3.11/site-packages/_pytest/runner.py", line 184 in pytest_runtest_call
+  File "/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-01/venv-pytest/lib/python3.11/site-packages/pluggy/_callers.py", line 121 in _multicall
+  File "/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-01/venv-pytest/lib/python3.11/site-packages/pluggy/_manager.py", line 120 in _hookexec
+  File "/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-01/venv-pytest/lib/python3.11/site-packages/pluggy/_hooks.py", line 512 in __call__
+  File "/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-01/venv-pytest/lib/python3.11/site-packages/_pytest/runner.py", line 250 in <lambda>
+  File "/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-01/venv-pytest/lib/python3.11/site-packages/_pytest/runner.py", line 361 in from_call
+  File "/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-01/venv-pytest/lib/python3.11/site-packages/_pytest/runner.py", line 249 in call_and_report
+  File "/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-01/venv-pytest/lib/python3.11/site-packages/_pytest/runner.py", line 139 in runtestprotocol
+  File "/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-01/venv-pytest/lib/python3.11/site-packages/_pytest/runner.py", line 118 in pytest_runtest_protocol
+  File "/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-01/venv-pytest/lib/python3.11/site-packages/pluggy/_callers.py", line 121 in _multicall
+  File "/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-01/venv-pytest/lib/python3.11/site-packages/pluggy/_manager.py", line 120 in _hookexec
+  File "/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-01/venv-pytest/lib/python3.11/site-packages/pluggy/_hooks.py", line 512 in __call__
+  File "/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-01/venv-pytest/lib/python3.11/site-packages/_pytest/main.py", line 408 in pytest_runtestloop
+  File "/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-01/venv-pytest/lib/python3.11/site-packages/pluggy/_callers.py", line 121 in _multicall
+  File "/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-01/venv-pytest/lib/python3.11/site-packages/pluggy/_manager.py", line 120 in _hookexec
+  File "/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-01/venv-pytest/lib/python3.11/site-packages/pluggy/_hooks.py", line 512 in __call__
+  File "/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-01/venv-pytest/lib/python3.11/site-packages/_pytest/main.py", line 384 in _main
+  File "/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-01/venv-pytest/lib/python3.11/site-packages/_pytest/main.py", line 330 in wrap_session
+  File "/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-01/venv-pytest/lib/python3.11/site-packages/_pytest/main.py", line 377 in pytest_cmdline_main
+  File "/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-01/venv-pytest/lib/python3.11/site-packages/pluggy/_callers.py", line 121 in _multicall
+  File "/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-01/venv-pytest/lib/python3.11/site-packages/pluggy/_manager.py", line 120 in _hookexec
+  File "/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-01/venv-pytest/lib/python3.11/site-packages/pluggy/_hooks.py", line 512 in __call__
+  File "/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-01/venv-pytest/lib/python3.11/site-packages/_pytest/config/__init__.py", line 229 in _main
+  File "/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-01/venv-pytest/lib/python3.11/site-packages/_pytest/config/__init__.py", line 253 in _console_main
+  File "/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-01/venv-pytest/lib/python3.11/site-packages/pytest/__main__.py", line 9 in <module>
+  File "<frozen runpy>", line 88 in _run_code
+  File "<frozen runpy>", line 198 in _run_module_as_main
+
+Extension modules: numpy._core._multiarray_umath, numpy.linalg._umath_linalg, numpy.random._common, numpy.random.bit_generator, numpy.random._bounded_integers, numpy.random._pcg64, numpy.random._generator, numpy.random._mt19937, numpy.random._philox, numpy.random._sfc64, numpy.random.mtrand (total: 11)
+timeout: the monitored command dumped core

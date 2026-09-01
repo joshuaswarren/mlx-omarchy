@@ -1,0 +1,3 @@
+.work/mlx/python/tests/test_reduce.py::TestReduce::test_long_column
+.work/mlx/python/tests/test_reduce.py::TestReduce::test_nan_propagation
+.work/mlx/python/tests/test_reduce.py::TestReduce::test_row_reduce_negative_stride

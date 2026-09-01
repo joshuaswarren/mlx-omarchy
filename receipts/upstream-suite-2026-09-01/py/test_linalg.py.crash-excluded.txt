@@ -1,0 +1,3 @@
+.work/mlx/python/tests/test_linalg.py::TestLinalg::test_complex_norm
+.work/mlx/python/tests/test_linalg.py::TestLinalg::test_cross_product
+.work/mlx/python/tests/test_linalg.py::TestLinalg::test_norm

@@ -1,0 +1,231 @@
+============================= test session starts ==============================
+collecting ... collected 14 items
+
+.work/mlx/python/tests/test_random.py::TestRandom::test_bernoulli FAILED [  7%]
+.work/mlx/python/tests/test_random.py::TestRandom::test_broadcastable_scale_loc FAILED [ 14%]
+.work/mlx/python/tests/test_random.py::TestRandom::test_categorical FAILED [ 21%]
+.work/mlx/python/tests/test_random.py::TestRandom::test_complex_normal PASSED [ 28%]
+.work/mlx/python/tests/test_random.py::TestRandom::test_global_rng PASSED [ 35%]
+.work/mlx/python/tests/test_random.py::TestRandom::test_gumbel FAILED    [ 42%]
+.work/mlx/python/tests/test_random.py::TestRandom::test_key FAILED       [ 50%]
+.work/mlx/python/tests/test_random.py::TestRandom::test_key_split FAILED [ 57%]
+.work/mlx/python/tests/test_random.py::TestRandom::test_multivariate_normal FAILED [ 64%]
+.work/mlx/python/tests/test_random.py::TestRandom::test_normal_and_laplace FAILED [ 71%]
+.work/mlx/python/tests/test_random.py::TestRandom::test_permutation FAILED [ 78%]
+.work/mlx/python/tests/test_random.py::TestRandom::test_randint FAILED   [ 85%]
+.work/mlx/python/tests/test_random.py::TestRandom::test_truncated_normal FAILED [ 92%]
+.work/mlx/python/tests/test_random.py::TestRandom::test_uniform FAILED   [100%]
+
+=================================== FAILURES ===================================
+__________________________ TestRandom.test_bernoulli ___________________________
+
+self = <test_random.TestRandom testMethod=test_bernoulli>
+
+    def test_bernoulli(self):
+        a = mx.random.bernoulli()
+        self.assertEqual(a.shape, ())
+        self.assertEqual(a.dtype, mx.bool_)
+    
+        a = mx.random.bernoulli(mx.array(0.5), [5])
+        self.assertEqual(a.shape, (5,))
+    
+        a = mx.random.bernoulli(mx.array([2.0, -2.0]))
+>       self.assertEqual(a.tolist(), [True, False])
+                         ^^^^^^^^^^
+E       RuntimeError: [omarchy] Less is not implemented for the Omarchy Vulkan backend (dtype=bool, shape=[2]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_random.py:269: RuntimeError
+___________________ TestRandom.test_broadcastable_scale_loc ____________________
+
+self = <test_random.TestRandom testMethod=test_broadcastable_scale_loc>
+
+    def test_broadcastable_scale_loc(self):
+        b = mx.random.normal((10, 2))
+        sample = mx.random.normal((2, 10, 2), loc=b, scale=b)
+>       mx.eval(sample)
+E       RuntimeError: [omarchy] ErfInv is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[10,2]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_random.py:415: RuntimeError
+_________________________ TestRandom.test_categorical __________________________
+
+self = <test_random.TestRandom testMethod=test_categorical>
+
+    def test_categorical(self):
+        logits = mx.zeros((10, 20))
+        self.assertEqual(mx.random.categorical(logits, -1).shape, (10,))
+        self.assertEqual(mx.random.categorical(logits, 0).shape, (20,))
+        self.assertEqual(mx.random.categorical(logits, 1).shape, (10,))
+    
+        out = mx.random.categorical(logits)
+        self.assertEqual(out.shape, (10,))
+        self.assertEqual(out.dtype, mx.uint32)
+>       self.assertTrue(mx.max(out).item() < 20)
+                        ^^^^^^^^^^^^^^^^^^
+E       RuntimeError: [omarchy] Max dtype is not implemented for the Omarchy Vulkan backend (dtype=uint32, shape=[1]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_random.py:337: RuntimeError
+____________________________ TestRandom.test_gumbel ____________________________
+
+self = <test_random.TestRandom testMethod=test_gumbel>
+
+    def test_gumbel(self):
+        samples = mx.random.gumbel(shape=(100, 100))
+        self.assertEqual(samples.shape, (100, 100))
+        self.assertEqual(samples.dtype, mx.float32)
+        mean = 0.5772
+        # Std deviation of the sample mean is small (<0.02),
+        # so this test is pretty conservative
+>       self.assertTrue(mx.abs(mx.mean(samples) - mean) < 0.2)
+E       RuntimeError: [omarchy] Abs is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_random.py:322: RuntimeError
+_____________________________ TestRandom.test_key ______________________________
+
+self = <test_random.TestRandom testMethod=test_key>
+
+    def test_key(self):
+        k1 = mx.random.key(0)
+        k2 = mx.random.key(0)
+>       self.assertTrue(mx.array_equal(k1, k2))
+E       RuntimeError: [omarchy] Equal dtype is not implemented for the Omarchy Vulkan backend (dtype=bool, shape=[2]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_random.py:26: RuntimeError
+__________________________ TestRandom.test_key_split ___________________________
+
+self = <test_random.TestRandom testMethod=test_key_split>
+
+    def test_key_split(self):
+        key = mx.random.key(0)
+    
+        k1, k2 = mx.random.split(key)
+>       self.assertFalse(mx.array_equal(k1, k2))
+E       RuntimeError: [omarchy] Equal dtype is not implemented for the Omarchy Vulkan backend (dtype=bool, shape=[2]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_random.py:35: RuntimeError
+_____________________ TestRandom.test_multivariate_normal ______________________
+
+self = <test_random.TestRandom testMethod=test_multivariate_normal>
+
+    def test_multivariate_normal(self):
+        key = mx.random.key(0)
+        mean = mx.array([0, 0])
+        cov = mx.array([[1, 0], [0, 1]])
+    
+>       a = mx.random.multivariate_normal(mean, cov, key=key, stream=mx.cpu)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       IndexError: vector::_M_range_check: __n (which is 0) >= this->size() (which is 0)
+
+.work/mlx/python/tests/test_random.py:120: IndexError
+______________________ TestRandom.test_normal_and_laplace ______________________
+
+self = <test_random.TestRandom testMethod=test_normal_and_laplace>
+
+    def test_normal_and_laplace(self):
+        # Same tests for normal and laplace.
+        for distribution_sampler in [mx.random.normal, mx.random.laplace]:
+            key = mx.random.key(0)
+            a = distribution_sampler(key=key)
+            self.assertEqual(a.shape, ())
+            self.assertEqual(a.dtype, mx.float32)
+    
+            b = distribution_sampler(key=key)
+>           self.assertEqual(a.item(), b.item())
+                             ^^^^^^^^
+E           RuntimeError: [omarchy] ErfInv is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_random.py:79: RuntimeError
+_________________________ TestRandom.test_permutation __________________________
+
+self = <test_random.TestRandom testMethod=test_permutation>
+
+    def test_permutation(self):
+>       x = sorted(mx.random.permutation(4).tolist())
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       RuntimeError: [omarchy] ArgSort dtype is not implemented for the Omarchy Vulkan backend (dtype=uint32, shape=[4]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_random.py:367: RuntimeError
+___________________________ TestRandom.test_randint ____________________________
+
+self = <test_random.TestRandom testMethod=test_randint>
+
+    def test_randint(self):
+        a = mx.random.randint(0, 1, [])
+        self.assertEqual(a.shape, ())
+        self.assertEqual(a.dtype, mx.int32)
+    
+        shape = (88,)
+        low = mx.array(3)
+        high = mx.array(15)
+    
+        key = mx.random.key(0)
+        a = mx.random.randint(low, high, shape, key=key)
+        self.assertEqual(a.shape, shape)
+        self.assertEqual(a.dtype, mx.int32)
+    
+        # Check using the same key yields the same value
+        b = mx.random.randint(low, high, shape, key=key)
+>       self.assertListEqual(a.tolist(), b.tolist())
+                             ^^^^^^^^^^
+E       RuntimeError: [omarchy] Floor is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[88]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_random.py:221: RuntimeError
+_______________________ TestRandom.test_truncated_normal _______________________
+
+self = <test_random.TestRandom testMethod=test_truncated_normal>
+
+    def test_truncated_normal(self):
+        a = mx.random.truncated_normal(-2.0, 2.0)
+        self.assertEqual(a.size, 1)
+        self.assertEqual(a.dtype, mx.float32)
+    
+        a = mx.random.truncated_normal(mx.array([]), mx.array([]))
+        self.assertEqual(a.dtype, mx.float32)
+        self.assertEqual(a.size, 0)
+    
+        lower = mx.reshape(mx.array([-2.0, 0.0]), [1, 2])
+        upper = mx.reshape(mx.array([0.0, 1.0, 2.0]), [3, 1])
+        a = mx.random.truncated_normal(lower, upper)
+    
+        self.assertEqual(a.shape, (3, 2))
+>       self.assertTrue(mx.all(lower <= a).item() and mx.all(a <= upper).item())
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^
+E       RuntimeError: [omarchy] Erf is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[1,2]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_random.py:297: RuntimeError
+___________________________ TestRandom.test_uniform ____________________________
+
+self = <test_random.TestRandom testMethod=test_uniform>
+
+    def test_uniform(self):
+        key = mx.random.key(0)
+        a = mx.random.uniform(key=key)
+        self.assertEqual(a.shape, ())
+        self.assertEqual(a.dtype, mx.float32)
+    
+        b = mx.random.uniform(key=key)
+        self.assertEqual(a.item(), b.item())
+    
+        a = mx.random.uniform(shape=(2, 3))
+        self.assertEqual(a.shape, (2, 3))
+    
+        a = mx.random.uniform(shape=(1000,), low=-1, high=5)
+>       self.assertTrue(mx.all((a > -1) < 5).item())
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       RuntimeError: [omarchy] Greater is not implemented for the Omarchy Vulkan backend (dtype=bool, shape=[1000]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_random.py:57: RuntimeError
+- generated xml file: /home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-01/py/test_random.py.xml -
+=========================== short test summary info ============================
+FAILED .work/mlx/python/tests/test_random.py::TestRandom::test_bernoulli - RuntimeError: [omarchy] Less is not implemented for the Omarchy Vulkan backend (dtype=bool, shape=[2]). No CPU fallback is available in Omarchy builds.
+FAILED .work/mlx/python/tests/test_random.py::TestRandom::test_broadcastable_scale_loc - RuntimeError: [omarchy] ErfInv is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[10,2]). No CPU fallback is available in Omarchy builds.
+FAILED .work/mlx/python/tests/test_random.py::TestRandom::test_categorical - RuntimeError: [omarchy] Max dtype is not implemented for the Omarchy Vulkan backend (dtype=uint32, shape=[1]). No CPU fallback is available in Omarchy builds.
+FAILED .work/mlx/python/tests/test_random.py::TestRandom::test_gumbel - RuntimeError: [omarchy] Abs is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[]). No CPU fallback is available in Omarchy builds.
+FAILED .work/mlx/python/tests/test_random.py::TestRandom::test_key - RuntimeError: [omarchy] Equal dtype is not implemented for the Omarchy Vulkan backend (dtype=bool, shape=[2]). No CPU fallback is available in Omarchy builds.
+FAILED .work/mlx/python/tests/test_random.py::TestRandom::test_key_split - RuntimeError: [omarchy] Equal dtype is not implemented for the Omarchy Vulkan backend (dtype=bool, shape=[2]). No CPU fallback is available in Omarchy builds.
+FAILED .work/mlx/python/tests/test_random.py::TestRandom::test_multivariate_normal - IndexError: vector::_M_range_check: __n (which is 0) >= this->size() (which is 0)
+FAILED .work/mlx/python/tests/test_random.py::TestRandom::test_normal_and_laplace - RuntimeError: [omarchy] ErfInv is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[]). No CPU fallback is available in Omarchy builds.
+FAILED .work/mlx/python/tests/test_random.py::TestRandom::test_permutation - RuntimeError: [omarchy] ArgSort dtype is not implemented for the Omarchy Vulkan backend (dtype=uint32, shape=[4]). No CPU fallback is available in Omarchy builds.
+FAILED .work/mlx/python/tests/test_random.py::TestRandom::test_randint - RuntimeError: [omarchy] Floor is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[88]). No CPU fallback is available in Omarchy builds.
+FAILED .work/mlx/python/tests/test_random.py::TestRandom::test_truncated_normal - RuntimeError: [omarchy] Erf is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[1,2]). No CPU fallback is available in Omarchy builds.
+FAILED .work/mlx/python/tests/test_random.py::TestRandom::test_uniform - RuntimeError: [omarchy] Greater is not implemented for the Omarchy Vulkan backend (dtype=bool, shape=[1000]). No CPU fallback is available in Omarchy builds.
+========================= 12 failed, 2 passed in 0.40s =========================

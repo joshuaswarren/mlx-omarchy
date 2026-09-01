@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="2" time="2.846" timestamp="2026-09-01T18:35:10.230136-05:00" hostname="omp-studio-local"><testcase classname="python.tests.test_threads.TestThreads" name="test_concurrent_transforms" time="2.577" /><testcase classname="python.tests.test_threads.TestThreads" name="test_threadlocal_stream" time="0.007"><failure message="AssertionError: False is not true">self = &lt;test_threads.TestThreads testMethod=test_threadlocal_stream&gt;
+
+    def test_threadlocal_stream(self):
+        raised = [False, False]
+        test_stream = mx.new_stream(mx.default_device())
+    
+        def test_failure(i):
+            with self.assertRaises(RuntimeError):
+                with mx.stream(test_stream):
+                    x = mx.arange(10)
+                    mx.eval(2 * x)
+            mx.clear_streams()
+            raised[i] = True
+    
+        t1 = threading.Thread(target=test_failure, args=(0,))
+        t2 = threading.Thread(target=test_failure, args=(1,))
+        t1.start()
+        t2.start()
+        t1.join()
+        t2.join()
+&gt;       self.assertTrue(all(raised))
+E       AssertionError: False is not true
+
+.work/mlx/python/tests/test_threads.py:29: AssertionError</failure></testcase></testsuite></testsuites>

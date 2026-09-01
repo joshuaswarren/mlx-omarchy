@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="1" failures="0" skipped="0" tests="1" time="0.481" timestamp="2026-09-01T16:58:31.246548-05:00" hostname="omp-studio-local"><testcase classname="" name="python.tests.test_ops" time="0.000"><error message="collection failure">ImportError while importing test module '/home/joshuawarren/src/mlx-omarchy/.work/mlx/python/tests/test_ops.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/usr/lib/python3.11/importlib/__init__.py:126: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.work/mlx/python/tests/test_ops.py:9: in &lt;module&gt;
+    import mlx_tests
+.work/mlx/python/tests/mlx_tests.py:10: in &lt;module&gt;
+    import numpy as np
+E   ModuleNotFoundError: No module named 'numpy'</error></testcase></testsuite></testsuites>

@@ -1,0 +1,7 @@
+============================= test session starts ==============================
+collecting ... collected 1 item
+
+.work/mlx/python/tests/test_graph.py::TestGraph::test_to_dot PASSED      [100%]
+
+- generated xml file: /home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-01/py/test_graph.py.xml -
+============================== 1 passed in 0.13s ===============================

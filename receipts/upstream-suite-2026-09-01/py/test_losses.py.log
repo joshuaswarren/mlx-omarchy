@@ -1,0 +1,315 @@
+============================= test session starts ==============================
+collecting ... collected 14 items
+
+.work/mlx/python/tests/test_losses.py::TestLosses::test_binary_cross_entropy FAILED [  7%]
+.work/mlx/python/tests/test_losses.py::TestLosses::test_cosine_similarity_loss FAILED [ 14%]
+.work/mlx/python/tests/test_losses.py::TestLosses::test_cross_entropy FAILED [ 21%]
+.work/mlx/python/tests/test_losses.py::TestLosses::test_gaussian_nll_loss FAILED [ 28%]
+.work/mlx/python/tests/test_losses.py::TestLosses::test_hinge_loss PASSED [ 35%]
+.work/mlx/python/tests/test_losses.py::TestLosses::test_huber_loss FAILED [ 42%]
+.work/mlx/python/tests/test_losses.py::TestLosses::test_kl_div_loss FAILED [ 50%]
+.work/mlx/python/tests/test_losses.py::TestLosses::test_l1_loss FAILED   [ 57%]
+.work/mlx/python/tests/test_losses.py::TestLosses::test_log_cosh_loss FAILED [ 64%]
+.work/mlx/python/tests/test_losses.py::TestLosses::test_margin_ranking_loss FAILED [ 71%]
+.work/mlx/python/tests/test_losses.py::TestLosses::test_mse_loss PASSED  [ 78%]
+.work/mlx/python/tests/test_losses.py::TestLosses::test_nll_loss FAILED  [ 85%]
+.work/mlx/python/tests/test_losses.py::TestLosses::test_smooth_l1_loss FAILED [ 92%]
+.work/mlx/python/tests/test_losses.py::TestLosses::test_triplet_loss FAILED [100%]
+
+=================================== FAILURES ===================================
+_____________________ TestLosses.test_binary_cross_entropy _____________________
+
+self = <test_losses.TestLosses testMethod=test_binary_cross_entropy>
+
+    def test_binary_cross_entropy(self):
+        def _test_logits_as_inputs():
+            logits = mx.array([0.105361, 0.223144, 1.20397, 0.916291])
+            targets = mx.array([0, 0, 1, 1])
+    
+            # Test with reduction 'none'
+            losses_none = nn.losses.binary_cross_entropy(
+                logits, targets, reduction="none"
+            )
+            expected_none = mx.array([0.747215, 0.810930, 0.262365, 0.336472])
+            self.assertTrue(mx.allclose(losses_none, expected_none))
+    
+            # Test with reduction 'mean'
+            losses_mean = nn.losses.binary_cross_entropy(
+                logits, targets, reduction="mean"
+            )
+            expected_mean = mx.mean(expected_none)
+            self.assertTrue(mx.allclose(losses_mean, expected_mean))
+    
+            # Test with reduction 'sum'
+            losses_sum = nn.losses.binary_cross_entropy(
+                logits, targets, reduction="sum"
+            )
+            expected_sum = mx.sum(expected_none)
+            self.assertTrue(mx.allclose(losses_sum, expected_sum))
+    
+            # With weights, no label smoothing
+            weights = mx.array([1.0, 2.0, 1.0, 2.0])
+            expected = mx.array([0.747215, 1.62186, 0.262365, 0.672944])
+            loss = nn.losses.binary_cross_entropy(
+                logits, targets, weights=weights, reduction="none"
+            )
+            self.assertTrue(mx.allclose(loss, expected))
+    
+        def _test_probs_as_inputs():
+            probs = mx.array([0.5, 0.6, 0.7, 0.8])
+            targets = mx.array([0, 0, 1, 1])
+    
+            # Test with reduction 'none'
+            losses_none = nn.losses.binary_cross_entropy(
+                probs, targets, with_logits=False, reduction="none"
+            )
+            expected_none = mx.array([0.693147, 0.916291, 0.356675, 0.223144])
+            self.assertTrue(mx.allclose(losses_none, expected_none))
+    
+            # Test with reduction 'mean'
+            losses_mean = nn.losses.binary_cross_entropy(
+                probs, targets, with_logits=False, reduction="mean"
+            )
+            expected_mean = mx.mean(expected_none)
+            self.assertTrue(mx.allclose(losses_mean, expected_mean))
+    
+            # Test with reduction 'sum'
+            losses_sum = nn.losses.binary_cross_entropy(
+                probs, targets, with_logits=False, reduction="sum"
+            )
+            expected_sum = mx.sum(expected_none)
+            self.assertTrue(mx.allclose(losses_sum, expected_sum))
+    
+        def _test_tiny_probs_as_inputs():
+            TINY_PROB = 1e-59
+            probs = mx.array([0, TINY_PROB, 1 - TINY_PROB, 1])
+            targets = mx.array([0, 0, 1, 1])
+    
+            losses_none = nn.losses.binary_cross_entropy(
+                probs, targets, with_logits=False, reduction="none"
+            )
+            expected_none = mx.array([0.0, TINY_PROB, TINY_PROB, 0.0])
+            self.assertTrue(mx.allclose(losses_none, expected_none))
+    
+            # Test with reduction 'mean'
+            losses_mean = nn.losses.binary_cross_entropy(
+                probs, targets, with_logits=False, reduction="mean"
+            )
+            expected_mean = mx.mean(expected_none)
+            self.assertTrue(mx.allclose(losses_mean, expected_mean))
+    
+            # Test with reduction 'sum'
+            losses_sum = nn.losses.binary_cross_entropy(
+                probs, targets, with_logits=False, reduction="sum"
+            )
+            expected_sum = mx.sum(expected_none)
+            self.assertTrue(mx.allclose(losses_sum, expected_sum))
+    
+>       _test_logits_as_inputs()
+
+.work/mlx/python/tests/test_losses.py:179: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+.work/mlx/python/tests/test_losses.py:105: in _test_logits_as_inputs
+    self.assertTrue(mx.allclose(losses_none, expected_none))
+E   RuntimeError: [omarchy] LogAddExp is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[4]). No CPU fallback is available in Omarchy builds.
+____________________ TestLosses.test_cosine_similarity_loss ____________________
+
+self = <test_losses.TestLosses testMethod=test_cosine_similarity_loss>
+
+    def test_cosine_similarity_loss(self):
+        embeddings1 = mx.array([[0.5, 0.5, 0.2, 0.9], [0.1, 0.3, 0.5, 0.5]])
+        embeddings2 = mx.array([[0.6, 0.4, 0.3, 0.8], [0.2, 0.5, 0.6, 0.4]])
+    
+        # Test with reduction 'none'
+        losses_none = nn.losses.cosine_similarity_loss(
+            embeddings1, embeddings2, reduction="none"
+        )
+        expected_none = mx.array([0.985344, 0.961074])
+>       self.assertTrue(mx.allclose(losses_none, expected_none))
+E       RuntimeError: [omarchy] Abs is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[2]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_losses.py:455: RuntimeError
+________________________ TestLosses.test_cross_entropy _________________________
+
+self = <test_losses.TestLosses testMethod=test_cross_entropy>
+
+    def test_cross_entropy(self):
+        # No weights, no label smoothing
+        logits = mx.array([[0.0, -float("inf")], [-float("inf"), 0.0]])
+        indices = mx.array([0, 1])
+        expected = mx.array([0.0, 0.0])
+        loss = nn.losses.cross_entropy(logits, indices, reduction="none")
+>       self.assertTrue(mx.allclose(loss, expected))
+E       RuntimeError: [omarchy] GatherAxis is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[2,1]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_losses.py:18: RuntimeError
+______________________ TestLosses.test_gaussian_nll_loss _______________________
+
+self = <test_losses.TestLosses testMethod=test_gaussian_nll_loss>
+
+    def test_gaussian_nll_loss(self):
+        inputs = mx.array([[0.1, 0.2], [0.3, 0.4]])
+        targets = mx.array([[0.2, 0.1], [0.1, 0.2]])
+        vars = mx.array([[0.1, 0.2], [0.3, 0.4]])
+    
+        # Test with reduction 'none', full=False
+        losses_none = nn.losses.gaussian_nll_loss(
+            inputs, targets, vars, reduction="none"
+        )
+        expected_none = mx.array([[-1.101293, -0.779719], [-0.535320, -0.408145]])
+>       self.assertTrue(mx.allclose(losses_none, expected_none))
+E       RuntimeError: [omarchy] Abs is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[2,2]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_losses.py:319: RuntimeError
+__________________________ TestLosses.test_huber_loss __________________________
+
+self = <test_losses.TestLosses testMethod=test_huber_loss>
+
+    def test_huber_loss(self):
+        inputs = mx.ones((2, 4))
+        targets = mx.zeros((2, 4))
+        loss = nn.losses.huber_loss(inputs, targets, reduction="mean")
+>       self.assertEqual(loss, 0.5)
+E       RuntimeError: [omarchy] Abs is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[2,4]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_losses.py:438: RuntimeError
+_________________________ TestLosses.test_kl_div_loss __________________________
+
+self = <test_losses.TestLosses testMethod=test_kl_div_loss>
+
+    def test_kl_div_loss(self):
+        p_logits = mx.log(mx.array([[0.5, 0.5], [0.8, 0.2]]))
+        q_logits = mx.log(mx.array([[0.5, 0.5], [0.2, 0.8]]))
+    
+        # Test with reduction 'none'
+        losses_none = nn.losses.kl_div_loss(p_logits, q_logits, reduction="none")
+        expected_none = mx.array([0.0, 0.831777])
+>       self.assertTrue(mx.allclose(losses_none, expected_none))
+E       RuntimeError: [omarchy] Abs is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[2]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_losses.py:367: RuntimeError
+___________________________ TestLosses.test_l1_loss ____________________________
+
+self = <test_losses.TestLosses testMethod=test_l1_loss>
+
+    def test_l1_loss(self):
+        predictions = mx.array([0.5, 0.2, 0.9, 0.0])
+        targets = mx.array([0.5, 0.2, 0.9, 0.0])
+    
+        # Expected result
+        expected_none = mx.array([0, 0, 0, 0]).astype(mx.float32)
+        expected_sum = mx.sum(expected_none)
+        expected_mean = mx.mean(expected_none)
+    
+        losses = nn.losses.l1_loss(predictions, targets, reduction="none")
+>       self.assertTrue(
+            mx.array_equal(losses, expected_none),
+            "Test failed for l1_loss --reduction='none'",
+        )
+E       RuntimeError: [omarchy] Abs is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[4]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_losses.py:193: RuntimeError
+________________________ TestLosses.test_log_cosh_loss _________________________
+
+self = <test_losses.TestLosses testMethod=test_log_cosh_loss>
+
+    def test_log_cosh_loss(self):
+        inputs = mx.ones((2, 4))
+        targets = mx.zeros((2, 4))
+        loss = nn.losses.log_cosh_loss(inputs, targets, reduction="mean")
+>       self.assertAlmostEqual(loss.item(), 0.433781, places=6)
+                               ^^^^^^^^^^^
+E       RuntimeError: [omarchy] LogAddExp is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[2,4]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_losses.py:444: RuntimeError
+_____________________ TestLosses.test_margin_ranking_loss ______________________
+
+self = <test_losses.TestLosses testMethod=test_margin_ranking_loss>
+
+    def test_margin_ranking_loss(self):
+        inputs1 = mx.array([-0.573409, -0.765166, -0.0638])
+        inputs2 = mx.array([0.75596, 0.225763, 0.256995])
+        targets = mx.array([1, 1, -1])
+    
+        # Test with no margin
+        losses = nn.losses.margin_ranking_loss(
+            inputs1, inputs2, targets, reduction="none"
+        )
+        expected = mx.array([1.329369, 0.990929, 0.0])
+>       self.assertTrue(mx.allclose(losses, expected))
+E       RuntimeError: [omarchy] Negative dtype is not implemented for the Omarchy Vulkan backend (dtype=int32, shape=[3]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_losses.py:481: RuntimeError
+___________________________ TestLosses.test_nll_loss ___________________________
+
+self = <test_losses.TestLosses testMethod=test_nll_loss>
+
+    def test_nll_loss(self):
+        logits = mx.array([[0.0, -float("inf")], [-float("inf"), 0.0]])
+        targets = mx.array([0, 1])
+    
+        # Test with reduction 'none'
+        losses_none = nn.losses.nll_loss(logits, targets, reduction="none")
+        expected_none = mx.array([0.0, 0.0])
+>       self.assertTrue(mx.array_equal(losses_none, expected_none))
+E       RuntimeError: [omarchy] GatherAxis is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[2,1]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_losses.py:277: RuntimeError
+________________________ TestLosses.test_smooth_l1_loss ________________________
+
+self = <test_losses.TestLosses testMethod=test_smooth_l1_loss>
+
+    def test_smooth_l1_loss(self):
+        predictions = mx.array([1.5, 2.5, 0.5, 3.5])
+        targets = mx.array([1.0, 2.0, 0.5, 2.5])
+        beta = 1.0
+    
+        # Expected results
+        expected_none = mx.array([0.125, 0.125, 0.0, 0.5])
+        expected_sum = mx.sum(expected_none)
+        expected_mean = mx.mean(expected_none)
+    
+        # Test with reduction 'none'
+        loss_none = nn.losses.smooth_l1_loss(
+            predictions, targets, beta, reduction="none"
+        )
+>       self.assertTrue(
+            mx.array_equal(loss_none, expected_none),
+            "Test case failed for smooth_l1_loss --reduction='none'",
+        )
+E       RuntimeError: [omarchy] Abs is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[4]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_losses.py:247: RuntimeError
+_________________________ TestLosses.test_triplet_loss _________________________
+
+self = <test_losses.TestLosses testMethod=test_triplet_loss>
+
+    def test_triplet_loss(self):
+        anchors = mx.array([[1, 2, 3], [1, 2, 3]])
+        positives = mx.array([[4, 5, 6], [0, -1, 2]])
+        negatives = mx.array([[7, 8, 9], [3, 2, 3]])
+    
+        # Test with reduction 'none'
+        losses_none = nn.losses.triplet_loss(
+            anchors, positives, negatives, reduction="none"
+        )
+        expected_none = mx.array([0, 2.31662])
+>       self.assertTrue(mx.allclose(losses_none, expected_none))
+E       RuntimeError: [omarchy] Abs is not implemented for the Omarchy Vulkan backend (dtype=int32, shape=[2,3]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_losses.py:395: RuntimeError
+- generated xml file: /home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-01/py/test_losses.py.xml -
+=========================== short test summary info ============================
+FAILED .work/mlx/python/tests/test_losses.py::TestLosses::test_binary_cross_entropy - RuntimeError: [omarchy] LogAddExp is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[4]). No CPU fallback is available in Omarchy builds.
+FAILED .work/mlx/python/tests/test_losses.py::TestLosses::test_cosine_similarity_loss - RuntimeError: [omarchy] Abs is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[2]). No CPU fallback is available in Omarchy builds.
+FAILED .work/mlx/python/tests/test_losses.py::TestLosses::test_cross_entropy - RuntimeError: [omarchy] GatherAxis is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[2,1]). No CPU fallback is available in Omarchy builds.
+FAILED .work/mlx/python/tests/test_losses.py::TestLosses::test_gaussian_nll_loss - RuntimeError: [omarchy] Abs is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[2,2]). No CPU fallback is available in Omarchy builds.
+FAILED .work/mlx/python/tests/test_losses.py::TestLosses::test_huber_loss - RuntimeError: [omarchy] Abs is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[2,4]). No CPU fallback is available in Omarchy builds.
+FAILED .work/mlx/python/tests/test_losses.py::TestLosses::test_kl_div_loss - RuntimeError: [omarchy] Abs is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[2]). No CPU fallback is available in Omarchy builds.
+FAILED .work/mlx/python/tests/test_losses.py::TestLosses::test_l1_loss - RuntimeError: [omarchy] Abs is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[4]). No CPU fallback is available in Omarchy builds.
+FAILED .work/mlx/python/tests/test_losses.py::TestLosses::test_log_cosh_loss - RuntimeError: [omarchy] LogAddExp is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[2,4]). No CPU fallback is available in Omarchy builds.
+FAILED .work/mlx/python/tests/test_losses.py::TestLosses::test_margin_ranking_loss - RuntimeError: [omarchy] Negative dtype is not implemented for the Omarchy Vulkan backend (dtype=int32, shape=[3]). No CPU fallback is available in Omarchy builds.
+FAILED .work/mlx/python/tests/test_losses.py::TestLosses::test_nll_loss - RuntimeError: [omarchy] GatherAxis is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[2,1]). No CPU fallback is available in Omarchy builds.
+FAILED .work/mlx/python/tests/test_losses.py::TestLosses::test_smooth_l1_loss - RuntimeError: [omarchy] Abs is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[4]). No CPU fallback is available in Omarchy builds.
+FAILED .work/mlx/python/tests/test_losses.py::TestLosses::test_triplet_loss - RuntimeError: [omarchy] Abs is not implemented for the Omarchy Vulkan backend (dtype=int32, shape=[2,3]). No CPU fallback is available in Omarchy builds.
+========================= 12 failed, 2 passed in 0.86s =========================

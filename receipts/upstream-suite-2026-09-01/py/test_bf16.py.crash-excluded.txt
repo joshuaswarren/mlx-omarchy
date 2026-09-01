@@ -1,0 +1,2 @@
+.work/mlx/python/tests/test_bf16.py::TestBF16::test_reduction_ops
+.work/mlx/python/tests/test_bf16.py::TestBF16::test_unary_ops

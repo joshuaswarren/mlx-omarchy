@@ -1,0 +1,71 @@
+============================= test session starts ==============================
+collecting ... collected 2 items
+
+.work/mlx/python/tests/test_threads.py::TestThreads::test_concurrent_transforms PASSED [ 50%]
+.work/mlx/python/tests/test_threads.py::TestThreads::test_threadlocal_stream FAILED [100%]
+
+=================================== FAILURES ===================================
+_____________________ TestThreads.test_threadlocal_stream ______________________
+
+self = <test_threads.TestThreads testMethod=test_threadlocal_stream>
+
+    def test_threadlocal_stream(self):
+        raised = [False, False]
+        test_stream = mx.new_stream(mx.default_device())
+    
+        def test_failure(i):
+            with self.assertRaises(RuntimeError):
+                with mx.stream(test_stream):
+                    x = mx.arange(10)
+                    mx.eval(2 * x)
+            mx.clear_streams()
+            raised[i] = True
+    
+        t1 = threading.Thread(target=test_failure, args=(0,))
+        t2 = threading.Thread(target=test_failure, args=(1,))
+        t1.start()
+        t2.start()
+        t1.join()
+        t2.join()
+>       self.assertTrue(all(raised))
+E       AssertionError: False is not true
+
+.work/mlx/python/tests/test_threads.py:29: AssertionError
+=============================== warnings summary ===============================
+python/tests/test_threads.py::TestThreads::test_threadlocal_stream
+  /home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-01/venv-pytest/lib/python3.11/site-packages/_pytest/threadexception.py:58: PytestUnhandledThreadExceptionWarning: Exception in thread Thread-11 (test_failure)
+  
+  Traceback (most recent call last):
+    File "/usr/lib/python3.11/threading.py", line 1038, in _bootstrap_inner
+      self.run()
+    File "/usr/lib/python3.11/threading.py", line 975, in run
+      self._target(*self._args, **self._kwargs)
+    File "/home/joshuawarren/src/mlx-omarchy/.work/mlx/python/tests/test_threads.py", line 19, in test_failure
+      mx.eval(2 * x)
+  IndexError: unordered_map::at
+  
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+    warnings.warn(pytest.PytestUnhandledThreadExceptionWarning(msg))
+
+python/tests/test_threads.py::TestThreads::test_threadlocal_stream
+  /home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-01/venv-pytest/lib/python3.11/site-packages/_pytest/threadexception.py:58: PytestUnhandledThreadExceptionWarning: Exception in thread Thread-10 (test_failure)
+  
+  Traceback (most recent call last):
+    File "/usr/lib/python3.11/threading.py", line 1038, in _bootstrap_inner
+      self.run()
+    File "/usr/lib/python3.11/threading.py", line 975, in run
+      self._target(*self._args, **self._kwargs)
+    File "/home/joshuawarren/src/mlx-omarchy/.work/mlx/python/tests/test_threads.py", line 19, in test_failure
+      mx.eval(2 * x)
+  IndexError: unordered_map::at
+  
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+    warnings.warn(pytest.PytestUnhandledThreadExceptionWarning(msg))
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+- generated xml file: /home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-01/py/test_threads.py.xml -
+=========================== short test summary info ============================
+FAILED .work/mlx/python/tests/test_threads.py::TestThreads::test_threadlocal_stream - AssertionError: False is not true
+=================== 1 failed, 1 passed, 2 warnings in 2.84s ====================

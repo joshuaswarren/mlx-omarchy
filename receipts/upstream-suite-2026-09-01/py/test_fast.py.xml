@@ -1,0 +1,598 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="22" skipped="6" tests="31" time="1.329" timestamp="2026-09-01T18:24:38.213382-05:00" hostname="omp-studio-local"><testcase classname="python.tests.test_fast.TestFast" name="test_cross_entropy" time="0.035"><failure message="RuntimeError: [omarchy] Floor is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[4,7]). No CPU fallback is available in Omarchy builds.">self = &lt;test_fast.TestFast testMethod=test_cross_entropy&gt;
+
+    def test_cross_entropy(self):
+        def cross_entropy_ref(logits, targets):
+            score = mx.take_along_axis(logits, mx.expand_dims(targets, -1), -1).squeeze(
+                -1
+            )
+            return mx.logsumexp(logits.astype(mx.float32), axis=-1) - score.astype(
+                mx.float32
+            )
+    
+        tolerances = {mx.float32: 1e-5, mx.float16: 3e-2, mx.bfloat16: 3e-1}
+    
+        for V in [7, 32, 128, 255, 256, 1000, 4096, 8192]:
+            for dtype in [mx.float32, mx.float16, mx.bfloat16]:
+                logits = (mx.random.normal(shape=(4, 7, V), scale=3.0) * 2).astype(
+                    dtype
+                )
+                targets = mx.random.randint(0, V, shape=(4, 7))
+                expected = cross_entropy_ref(logits, targets)
+                out = mx.fast.cross_entropy(logits, targets)
+                self.assertEqual(out.dtype, mx.float32)
+                self.assertEqual(out.shape, targets.shape)
+&gt;               self.assertLess(mx.abs(out - expected).max().item(), tolerances[dtype])
+                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E               RuntimeError: [omarchy] Floor is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[4,7]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_fast.py:549: RuntimeError</failure></testcase><testcase classname="python.tests.test_fast.TestFast" name="test_cross_entropy_grad" time="0.004"><failure message="RuntimeError: [omarchy] Floor is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[4,7]). No CPU fallback is available in Omarchy builds.">self = &lt;test_fast.TestFast testMethod=test_cross_entropy_grad&gt;
+
+    def test_cross_entropy_grad(self):
+        def ref(logits, targets):
+            score = mx.take_along_axis(logits, mx.expand_dims(targets, -1), -1).squeeze(
+                -1
+            )
+            return mx.logsumexp(logits, axis=-1) - score
+    
+        f1 = lambda x, y: ref(x, y).mean()
+        f2 = lambda x, y: mx.fast.cross_entropy(x, y).mean()
+    
+        for V in [7, 128, 1000, 4096]:
+            logits = mx.random.normal(shape=(4, 7, V), scale=2.0)
+            targets = mx.random.randint(0, V, shape=(4, 7))
+            g1 = mx.grad(f1, argnums=0)(logits, targets)
+            g2 = mx.grad(f2, argnums=0)(logits, targets)
+            self.assertEqual(g2.shape, logits.shape)
+&gt;           self.assertLess(mx.abs(g1 - g2).max().item(), 1e-6)
+                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           RuntimeError: [omarchy] Floor is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[4,7]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_fast.py:577: RuntimeError</failure></testcase><testcase classname="python.tests.test_fast.TestFast" name="test_cross_entropy_shape_checks" time="0.001" /><testcase classname="python.tests.test_fast.TestFast" name="test_cuda_kernel_same_name_different_source" time="0.000"><skipped type="pytest.skip" message="CUDA is not available">/home/joshuawarren/src/mlx-omarchy/.work/mlx/python/tests/test_fast.py:1122: CUDA is not available</skipped></testcase><testcase classname="python.tests.test_fast.TestFast" name="test_custom_kernel_args" time="0.001"><failure message="UnboundLocalError: cannot access local variable 'custom_kernel' where it is not associated with a value">self = &lt;test_fast.TestFast testMethod=test_custom_kernel_args&gt;
+
+    @unittest.skipIf(not mx.is_available(mx.gpu), "No GPU available")
+    def test_custom_kernel_args(self):
+        if mx.metal.is_available():
+            source = """
+                uint elem = thread_position_in_grid.x;
+                T tmp = a[0];
+                if (e) {
+                    out1[elem] = a[1] + b[2] + c[3] + d + f;
+                } else {
+                    out1[elem] = 1;
+                }
+                out2[elem] = a[1] + b[2] + c[1] - d;
+            """
+            custom_kernel = mx.fast.metal_kernel
+        elif mx.cuda.is_available():
+            source = """
+                auto elem = cooperative_groups::this_grid().thread_rank();
+                T tmp = a[0];
+                if (e) {
+                    out1[elem] = a[1] + b[2] + static_cast&lt;float&gt;(c[3]) + d[0] + f;
+                } else {
+                    out1[elem] = 1;
+                }
+                out2[elem] = a[1] + b[2] + static_cast&lt;float&gt;(c[1]) - d[0];
+            """
+            custom_kernel = mx.fast.cuda_kernel
+    
+        mx.random.seed(7)
+        a = mx.random.normal(shape=(3, 6))
+        c = mx.random.normal(shape=(2, 2)).astype(mx.bfloat16)
+    
+&gt;       kernel = custom_kernel(
+                 ^^^^^^^^^^^^^
+            name="arg_test",
+            input_names=["a", "b", "c", "d"],
+            output_names=["out1", "out2"],
+            source=source,
+        )
+E       UnboundLocalError: cannot access local variable 'custom_kernel' where it is not associated with a value
+
+.work/mlx/python/tests/test_fast.py:901: UnboundLocalError</failure></testcase><testcase classname="python.tests.test_fast.TestFast" name="test_custom_kernel_attributes" time="0.001"><failure message="UnboundLocalError: cannot access local variable 'custom_kernel' where it is not associated with a value">self = &lt;test_fast.TestFast testMethod=test_custom_kernel_attributes&gt;
+
+    @unittest.skipIf(not mx.is_available(mx.gpu), "No GPU available")
+    def test_custom_kernel_attributes(self):
+        if mx.metal.is_available():
+            source = "out[0] = threads_per_threadgroup.x;"
+            custom_kernel = mx.fast.metal_kernel
+        elif mx.cuda.is_available():
+            source = "out[0] = blockDim.x;"
+            custom_kernel = mx.fast.cuda_kernel
+    
+        a = mx.zeros(shape=(1, 1))
+&gt;       kernel = custom_kernel(
+                 ^^^^^^^^^^^^^
+            name="test_fun",
+            input_names=["a"],
+            output_names=["out"],
+            source=source,
+        )
+E       UnboundLocalError: cannot access local variable 'custom_kernel' where it is not associated with a value
+
+.work/mlx/python/tests/test_fast.py:1039: UnboundLocalError</failure></testcase><testcase classname="python.tests.test_fast.TestFast" name="test_custom_kernel_basic" time="0.001"><failure message="UnboundLocalError: cannot access local variable 'custom_kernel' where it is not associated with a value">self = &lt;test_fast.TestFast testMethod=test_custom_kernel_basic&gt;
+
+    @unittest.skipIf(not mx.is_available(mx.gpu), "No GPU available")
+    def test_custom_kernel_basic(self):
+        if mx.metal.is_available():
+            source = """
+                uint elem = thread_position_in_grid.x;
+                out1[elem] = a[elem];
+            """
+            custom_kernel = mx.fast.metal_kernel
+        elif mx.cuda.is_available():
+            source = """
+                auto elem = cooperative_groups::this_grid().thread_rank();
+                out1[elem] = a[elem];
+            """
+            custom_kernel = mx.fast.cuda_kernel
+    
+        mx.random.seed(7)
+        a = mx.random.normal(shape=(2, 2))
+&gt;       kernel = custom_kernel(
+                 ^^^^^^^^^^^^^
+            name="basic",
+            input_names=["a"],
+            output_names=["out1"],
+            source=source,
+        )
+E       UnboundLocalError: cannot access local variable 'custom_kernel' where it is not associated with a value
+
+.work/mlx/python/tests/test_fast.py:854: UnboundLocalError</failure></testcase><testcase classname="python.tests.test_fast.TestFast" name="test_custom_kernel_caching" time="0.001"><skipped type="pytest.skip" message="Metal is not available">/home/joshuawarren/src/mlx-omarchy/.work/mlx/python/tests/test_fast.py:1055: Metal is not available</skipped></testcase><testcase classname="python.tests.test_fast.TestFast" name="test_custom_kernel_helper" time="0.001"><failure message="UnboundLocalError: cannot access local variable 'custom_kernel' where it is not associated with a value">self = &lt;test_fast.TestFast testMethod=test_custom_kernel_helper&gt;
+
+    @unittest.skipIf(not mx.is_available(mx.gpu), "No GPU available")
+    def test_custom_kernel_helper(self):
+        if mx.metal.is_available():
+            header = """
+            template &lt;typename T&gt;
+            T do_exp(T x) {
+                return metal::precise::exp(x);
+            }
+            """
+            source = """
+                uint elem = thread_position_in_grid.x;
+                out1[elem] = do_exp(a[elem]);
+            """
+            custom_kernel = mx.fast.metal_kernel
+        elif mx.cuda.is_available():
+            header = """
+            template &lt;typename T&gt;
+            __device__ T do_exp(T x) {
+                return exp(x);
+            }
+            """
+            source = """
+                auto elem = cooperative_groups::this_grid().thread_rank();
+                out1[elem] = do_exp(a[elem]);
+            """
+            custom_kernel = mx.fast.cuda_kernel
+    
+        mx.random.seed(7)
+        a = mx.random.normal(shape=(2, 2))
+&gt;       kernel = custom_kernel(
+                 ^^^^^^^^^^^^^
+            name="helper",
+            input_names=["a"],
+            output_names=["out1"],
+            header=header,
+            source=source,
+        )
+E       UnboundLocalError: cannot access local variable 'custom_kernel' where it is not associated with a value
+
+.work/mlx/python/tests/test_fast.py:1012: UnboundLocalError</failure></testcase><testcase classname="python.tests.test_fast.TestFast" name="test_custom_kernel_mixed_dtypes" time="0.001"><skipped type="pytest.skip" message="Metal is not available">/home/joshuawarren/src/mlx-omarchy/.work/mlx/python/tests/test_fast.py:1212: Metal is not available</skipped></testcase><testcase classname="python.tests.test_fast.TestFast" name="test_custom_kernel_same_name_different_source_one_eval" time="0.001"><skipped type="pytest.skip" message="Metal is not available">/home/joshuawarren/src/mlx-omarchy/.work/mlx/python/tests/test_fast.py:1090: Metal is not available</skipped></testcase><testcase classname="python.tests.test_fast.TestFast" name="test_custom_kernel_strides" time="0.001"><failure message="UnboundLocalError: cannot access local variable 'custom_kernel' where it is not associated with a value">self = &lt;test_fast.TestFast testMethod=test_custom_kernel_strides&gt;
+
+    @unittest.skipIf(not mx.is_available(mx.gpu), "No GPU available")
+    def test_custom_kernel_strides(self):
+        if mx.metal.is_available():
+            source = """
+                uint elem = thread_position_in_grid.x;
+                uint loc = elem_to_loc(elem, inp_shape, inp_strides, inp_ndim);
+                T tmp = inp[loc];
+                out[elem] = metal::precise::exp(tmp) * threads_per_simdgroup;
+            """
+            source_contig = """
+                uint elem = thread_position_in_grid.x;
+                T tmp = inp[elem];
+                out[elem] = metal::precise::exp(tmp) * threads_per_simdgroup;
+            """
+            custom_kernel = mx.fast.metal_kernel
+        elif mx.cuda.is_available():
+            source = """
+                auto elem = cooperative_groups::this_grid().thread_rank();
+                auto loc = elem_to_loc(elem, inp_shape.data(), inp_strides.data(), inp_ndim);
+                T tmp = inp[loc];
+                out[elem] = exp(tmp) * WARP_SIZE;
+            """
+            source_contig = """
+                auto elem = cooperative_groups::this_grid().thread_rank();
+                T tmp = inp[elem];
+                out[elem] = exp(tmp) * WARP_SIZE;
+            """
+            custom_kernel = mx.fast.cuda_kernel
+    
+        mx.random.seed(7)
+        a = mx.random.normal(shape=(3, 6))
+    
+        # non contiguous
+        a = mx.tile(a[::2], [4, 1])
+    
+        for contig in [True, False]:
+&gt;           kernel = custom_kernel(
+                     ^^^^^^^^^^^^^
+                name="myexp" + str(contig),
+                input_names=["inp"],
+                output_names=["out"],
+                source=source_contig if contig else source,
+                ensure_row_contiguous=contig,
+            )
+E           UnboundLocalError: cannot access local variable 'custom_kernel' where it is not associated with a value
+
+.work/mlx/python/tests/test_fast.py:965: UnboundLocalError</failure></testcase><testcase classname="python.tests.test_fast.TestFast" name="test_custom_metal_kernel_math_mode" time="0.001"><skipped type="pytest.skip" message="Metal is not available">/home/joshuawarren/src/mlx-omarchy/.work/mlx/python/tests/test_fast.py:1151: Metal is not available</skipped></testcase><testcase classname="python.tests.test_fast.TestFast" name="test_fast_transforms" time="0.034"><failure message="RuntimeError: [omarchy] Abs is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[2,2,8]). No CPU fallback is available in Omarchy builds.">self = &lt;test_fast.TestFast testMethod=test_fast_transforms&gt;
+
+    def test_fast_transforms(self):
+        x = mx.random.uniform(shape=(2, 2, 8))
+    
+        defaults = (8, False, 10000.0, 1.0, 0)
+        dims, traditional, base, scale, offset = defaults
+    
+        # VJP
+        _, vjp_out = mx.vjp(lambda x: rope_orig(x, *defaults), (x,), (mx.ones_like(x),))
+        _, vjp_fast_out = mx.vjp(
+            lambda x: mx.fast.rope(
+                x, dims, traditional=traditional, base=base, scale=scale, offset=offset
+            ),
+            (x,),
+            (mx.ones_like(x),),
+        )
+&gt;       self.assertTrue(mx.allclose(vjp_out[0], vjp_fast_out[0]))
+E       RuntimeError: [omarchy] Abs is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[2,2,8]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_fast.py:814: RuntimeError</failure></testcase><testcase classname="python.tests.test_fast.TestFast" name="test_layer_norm" time="0.021"><failure message="RuntimeError: [omarchy] Abs is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[2,32]). No CPU fallback is available in Omarchy builds.">self = &lt;test_fast.TestFast testMethod=test_layer_norm&gt;
+
+    def test_layer_norm(self):
+        # Per dtype absolute tolerance
+        tolerances = {mx.float32: 1e-5, mx.float16: 5e-3, mx.bfloat16: 5e-2}
+    
+        dtypes = [mx.float32, mx.float16, mx.bfloat16]
+        epss = [1e-3, 1e-5]
+        dimss = [31, 32, 33]
+        defaults = (mx.float32, 1e-5, 32)
+    
+        for dtype in dtypes:
+            _, eps, dims = defaults
+            x = mx.random.uniform(
+                shape=(
+                    2,
+                    dims,
+                )
+            ).astype(dtype)
+            weight = mx.random.uniform(shape=(dims,)).astype(dtype)
+            bias = mx.random.uniform(shape=(dims,)).astype(dtype)
+            rx = layer_norm(x, weight, bias, eps)
+            rx_fast = mx.fast.layer_norm(x, weight, bias, eps)
+&gt;           self.assertLess(mx.abs(rx - rx_fast).max(), tolerances[dtype])
+E           RuntimeError: [omarchy] Abs is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[2,32]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_fast.py:621: RuntimeError</failure></testcase><testcase classname="python.tests.test_fast.TestFast" name="test_layer_norm_dim_check" time="0.001" /><testcase classname="python.tests.test_fast.TestFast" name="test_layer_norm_grad" time="0.072"><failure message="RuntimeError: [omarchy] Abs is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[8,100,32]). No CPU fallback is available in Omarchy builds.">self = &lt;test_fast.TestFast testMethod=test_layer_norm_grad&gt;
+
+    def test_layer_norm_grad(self):
+        D = 32
+        eps = 1e-5
+        f1 = lambda x, w, b, y: (layer_norm(x, w, b, eps) * y).sum()
+        f2 = lambda x, w, b, y: (mx.fast.layer_norm(x, w, b, eps) * y).sum()
+    
+        x = mx.random.uniform(shape=(8, 100, D))
+        w = mx.random.uniform(shape=(D,))
+        b = mx.random.uniform(shape=(D,))
+        y = mx.random.uniform(shape=(8, 100, D))
+    
+        gx1, gw1, gb1 = mx.grad(f1, argnums=(0, 1, 2))(x, w, b, y)
+        gx2, gw2, gb2 = mx.grad(f2, argnums=(0, 1, 2))(x, w, b, y)
+&gt;       self.assertLess(mx.abs(gx1 - gx2).max(), 1e-5)
+E       RuntimeError: [omarchy] Abs is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[8,100,32]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_fast.py:707: RuntimeError</failure></testcase><testcase classname="python.tests.test_fast.TestFast" name="test_layer_norm_grad_no_bias" time="0.013"><failure message="RuntimeError: [omarchy] Abs is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[2,4,8]). No CPU fallback is available in Omarchy builds.">self = &lt;test_fast.TestFast testMethod=test_layer_norm_grad_no_bias&gt;
+
+    def test_layer_norm_grad_no_bias(self):
+        # Second-order gradient through layer_norm with weight but no bias.
+        # Regression test: the VJP fallback had zeros_like(w) instead of
+        # zeros_like(b) for the bias placeholder gradient, causing a shape
+        # mismatch that crashes on higher-order differentiation.
+        D = 8
+        eps = 1e-5
+        x = mx.random.uniform(shape=(2, 4, D))
+        w = mx.random.uniform(shape=(D,))
+        y = mx.random.uniform(shape=(2, 4, D))
+        mx.eval(x, w, y)
+    
+        f_ref = lambda x, w, y: (layer_norm(x, w, None, eps) * y).sum()
+        f_fast = lambda x, w, y: (mx.fast.layer_norm(x, w, None, eps) * y).sum()
+    
+        # First order should match reference
+        gx1, gw1 = mx.grad(f_ref, argnums=(0, 1))(x, w, y)
+        gx2, gw2 = mx.grad(f_fast, argnums=(0, 1))(x, w, y)
+&gt;       self.assertLess(mx.abs(gx1 - gx2).max(), 1e-5)
+E       RuntimeError: [omarchy] Abs is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[2,4,8]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_fast.py:755: RuntimeError</failure></testcase><testcase classname="python.tests.test_fast.TestFast" name="test_layer_norm_grad_no_params" time="0.003"><failure message="RuntimeError: [omarchy] ErfInv is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[2,2,8]). No CPU fallback is available in Omarchy builds.">self = &lt;test_fast.TestFast testMethod=test_layer_norm_grad_no_params&gt;
+
+    def test_layer_norm_grad_no_params(self):
+        eps = 1e-5
+        f1 = lambda x: layer_norm(x, None, None, eps).sum()
+        f2 = lambda x: mx.fast.layer_norm(x, None, None, eps).sum()
+        x = mx.random.normal(shape=(2, 2, 8))
+&gt;       mx.eval(x)
+E       RuntimeError: [omarchy] ErfInv is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[2,2,8]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_fast.py:778: RuntimeError</failure></testcase><testcase classname="python.tests.test_fast.TestFast" name="test_layer_norm_grad_params" time="0.002"><failure message="RuntimeError: [omarchy] ErfInv is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[2,2,8]). No CPU fallback is available in Omarchy builds.">self = &lt;test_fast.TestFast testMethod=test_layer_norm_grad_params&gt;
+
+    def test_layer_norm_grad_params(self):
+        eps = 1e-5
+        f1 = lambda params, x: (layer_norm(x, params[0], params[1], eps)).sum()
+        f2 = lambda params, x: (mx.fast.layer_norm(x, params[0], params[1], eps)).sum()
+    
+        w = mx.ones((8,))
+        b = mx.zeros((8,))
+        x = mx.random.normal(shape=(2, 2, 8))
+&gt;       mx.eval(x, w, b)
+E       RuntimeError: [omarchy] ErfInv is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[2,2,8]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_fast.py:792: RuntimeError</failure></testcase><testcase classname="python.tests.test_fast.TestFast" name="test_rms_norm" time="0.015"><failure message="RuntimeError: [omarchy] Abs is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[2,32]). No CPU fallback is available in Omarchy builds.">self = &lt;test_fast.TestFast testMethod=test_rms_norm&gt;
+
+    def test_rms_norm(self):
+        # Per dtype absolute tolerance
+        tolerances = {mx.float32: 1e-6, mx.float16: 1e-3, mx.bfloat16: 1e-2}
+    
+        dtypes = [mx.float32, mx.float16, mx.bfloat16]
+        epss = [1e-3, 1e-5]
+        dimss = [31, 32, 33, 256, 512]
+        defaults = (mx.float32, 1e-5, 32)
+    
+        for dtype in dtypes:
+            _, eps, dims = defaults
+            x = mx.random.uniform(
+                shape=(
+                    2,
+                    dims,
+                )
+            ).astype(dtype)
+            weight = mx.random.uniform(shape=(dims,)).astype(dtype)
+            rx = rms_norm(x, weight, eps)
+            rx_fast = mx.fast.rms_norm(x, weight, eps)
+&gt;           self.assertLess(mx.abs(rx - rx_fast).max(), tolerances[dtype])
+E           RuntimeError: [omarchy] Abs is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[2,32]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_fast.py:445: RuntimeError</failure></testcase><testcase classname="python.tests.test_fast.TestFast" name="test_rms_norm_grad" time="0.066"><failure message="RuntimeError: [omarchy] Abs is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[8,100,32]). No CPU fallback is available in Omarchy builds.">self = &lt;test_fast.TestFast testMethod=test_rms_norm_grad&gt;
+
+    def test_rms_norm_grad(self):
+        eps = 1e-5
+        f1 = lambda x, w, y: (rms_norm(x, w, eps) * y).sum()
+        f2 = lambda x, w, y: (mx.fast.rms_norm(x, w, eps) * y).sum()
+        f3 = lambda x, y: (rms_norm(x, mx.ones((x.shape[-1],)), eps) * y).sum()
+        f4 = lambda x, y: (mx.fast.rms_norm(x, None, eps) * y).sum()
+    
+        for D in [32, 256]:
+            x = mx.random.uniform(shape=(8, 100, D))
+            w = mx.random.uniform(shape=(D,))
+            y = mx.random.uniform(shape=(8, 100, D))
+            gx1, gw1 = mx.grad(f1, argnums=(0, 1))(x, w, y)
+            gx2, gw2 = mx.grad(f2, argnums=(0, 1))(x, w, y)
+&gt;           self.assertLess(mx.abs(gx1 - gx2).max(), 1e-5)
+E           RuntimeError: [omarchy] Abs is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[8,100,32]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_fast.py:498: RuntimeError</failure></testcase><testcase classname="python.tests.test_fast.TestFast" name="test_rope" time="0.010"><failure message="RuntimeError: [omarchy] Abs is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[2,4,8]). No CPU fallback is available in Omarchy builds.">self = &lt;test_fast.TestFast testMethod=test_rope&gt;
+
+    def test_rope(self):
+        T = 4
+    
+        # Defaults: dims, dtype, base, scale, offset, traditional
+        defaults = (8, mx.float32, 10000.0, 1.0, 0, False)
+    
+        # Per dtype absolute tolerance
+        tolerances = {mx.float32: 1e-6, mx.float16: 1e-3, mx.bfloat16: 1e-2}
+    
+        # Test cases:
+        dtypes = [mx.float32, mx.float16, mx.bfloat16]
+        bases = [10000.0, 1000000.0]
+        scales = [1.0, 2.0]
+        offsets = [0, 3, mx.array(3)]
+        traditional = [True, False]
+    
+        for traditional in [True, False]:
+            dims, dtype, _, scale, offset, _ = defaults
+            for base in bases:
+                x = mx.random.uniform(shape=(2, T, dims)).astype(dtype)
+                rx = rope_orig(x, dims, traditional, base, scale, offset)
+                rx_fast = mx.fast.rope(
+                    x,
+                    dims,
+                    traditional=traditional,
+                    base=base,
+                    scale=scale,
+                    offset=offset,
+                )
+&gt;               self.assertLess(mx.abs(rx - rx_fast).max(), tolerances[dtype])
+E               RuntimeError: [omarchy] Abs is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[2,4,8]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_fast.py:102: RuntimeError</failure></testcase><testcase classname="python.tests.test_fast.TestFast" name="test_rope_batch" time="0.014"><failure message="RuntimeError: [omarchy] Abs is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[3,1,4,32]). No CPU fallback is available in Omarchy builds.">self = &lt;test_fast.TestFast testMethod=test_rope_batch&gt;
+
+    def test_rope_batch(self):
+        T = 4
+        base = 10000.0
+        scale = 1.0
+        traditional = True
+        batch_sizes = [3, 8, 11]
+        num_heads = [1, 3, 5]
+        dims = 32
+    
+        x = mx.random.uniform(shape=(8, 4, T, dims))
+    
+        offset = mx.array([1, 2, 3])
+        with self.assertRaises(ValueError):
+            mx.fast.rope(
+                x,
+                dims,
+                traditional=traditional,
+                base=base,
+                scale=scale,
+                offset=offset,
+            )
+    
+        for batch_size in batch_sizes:
+            for n_head in num_heads:
+                x = mx.random.uniform(shape=(batch_size, n_head, T, dims))
+                offset = mx.arange(batch_size)
+                rx = rope_orig(x, dims, traditional, base, scale, offset)
+                rx_fast = mx.fast.rope(
+                    x,
+                    dims,
+                    traditional=traditional,
+                    base=base,
+                    scale=scale,
+                    offset=offset,
+                )
+&gt;               self.assertLess(mx.abs(rx - rx_fast).max(), 1e-5)
+E               RuntimeError: [omarchy] Abs is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[3,1,4,32]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_fast.py:369: RuntimeError</failure></testcase><testcase classname="python.tests.test_fast.TestFast" name="test_rope_dims_validation" time="0.001" /><testcase classname="python.tests.test_fast.TestFast" name="test_rope_grad" time="0.011"><failure message="RuntimeError: [omarchy] Abs is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[2,100,32]). No CPU fallback is available in Omarchy builds.">self = &lt;test_fast.TestFast testMethod=test_rope_grad&gt;
+
+    def test_rope_grad(self):
+        D = 32
+        defaults = (D, 10000.0, 1.0, 0, False)
+        for dims in (D, D // 2):
+            for traditional in (True, False):
+                _, base, scale, offset, _ = defaults
+                f1 = lambda x, y: (
+                    rope_orig(x, dims, traditional, base, scale, offset) * y
+                ).sum()
+                f2 = lambda x, y: (
+                    mx.fast.rope(
+                        x,
+                        dims,
+                        traditional=traditional,
+                        base=base,
+                        scale=scale,
+                        offset=offset,
+                    )
+                    * y
+                ).sum()
+    
+                x = mx.random.uniform(shape=(2, 100, D))
+                y = mx.random.uniform(shape=(2, 100, D))
+                g1 = mx.grad(f1)(x, y)
+                g2 = mx.grad(f2)(x, y)
+&gt;               self.assertLess(mx.abs(g1 - g2).max(), 1e-5)
+E               RuntimeError: [omarchy] Abs is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[2,100,32]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_fast.py:332: RuntimeError</failure></testcase><testcase classname="python.tests.test_fast.TestFast" name="test_rope_large_input" time="0.001"><skipped type="pytest.skip" message="Allocates too much memory for CI">/home/joshuawarren/src/mlx-omarchy/.work/mlx/python/tests/test_fast.py:173: Allocates too much memory for CI</skipped></testcase><testcase classname="python.tests.test_fast.TestFast" name="test_rope_single_batch" time="0.007"><failure message="RuntimeError: [omarchy] Abs is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[2,1,1,64]). No CPU fallback is available in Omarchy builds.">self = &lt;test_fast.TestFast testMethod=test_rope_single_batch&gt;
+
+    def test_rope_single_batch(self):
+        base = 10000.0
+        scale = 1.0
+        offset = 5
+    
+        for traditional in [True, False]:
+            for B in [2, 4, 8]:
+                for n_head in [1, 4, 7]:
+                    for dims in [64, 128]:
+                        x = mx.random.uniform(shape=(B, n_head, 1, dims))
+                        mx.eval(x)
+                        rx_fast = mx.fast.rope(
+                            x,
+                            dims,
+                            traditional=traditional,
+                            base=base,
+                            scale=scale,
+                            offset=offset,
+                        )
+                        rx = rope_orig(x, dims, traditional, base, scale, offset)
+&gt;                       self.assertLess(mx.abs(rx - rx_fast).max(), 1e-5)
+E                       RuntimeError: [omarchy] Abs is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[2,1,1,64]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_fast.py:403: RuntimeError</failure></testcase><testcase classname="python.tests.test_fast.TestFast" name="test_rope_with_freqs" time="0.011"><failure message="RuntimeError: [omarchy] Abs is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[2,4,8]). No CPU fallback is available in Omarchy builds.">self = &lt;test_fast.TestFast testMethod=test_rope_with_freqs&gt;
+
+    def test_rope_with_freqs(self):
+        mx.random.seed(0)
+    
+        # Check throws
+        T = 4
+        dims = 8
+        x = mx.random.uniform(shape=(2, T, dims))
+    
+        with self.assertRaises(ValueError):
+            freqs = mx.random.uniform(shape=(dims - 1,))
+            mx.fast.rope(
+                x,
+                dims,
+                traditional=False,
+                base=None,
+                scale=1.0,
+                offset=0,
+                freqs=freqs,
+            )
+        with self.assertRaises(ValueError):
+            freqs = mx.random.uniform(shape=(1, dims))
+            mx.fast.rope(
+                x,
+                dims,
+                traditional=False,
+                base=None,
+                scale=1.0,
+                offset=0,
+                freqs=freqs,
+            )
+    
+        freqs = mx.random.uniform(shape=(dims // 2,))
+    
+        tolerances = {mx.float32: 1e-5, mx.float16: 1e-2}
+        for dtype in [mx.float32, mx.float16]:
+            x_ = x.astype(dtype)
+            rx = rope_orig(x_, dims, False, None, 1.0, 0, freqs)
+            rx_fast = mx.fast.rope(
+                x_,
+                dims,
+                traditional=False,
+                base=None,
+                scale=1.0,
+                offset=0,
+                freqs=freqs,
+            )
+            self.assertEqual(dtype, rx.dtype)
+&gt;           self.assertLess(mx.abs(rx - rx_fast).max(), tolerances[dtype])
+E           RuntimeError: [omarchy] Abs is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[2,4,8]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_fast.py:269: RuntimeError</failure></testcase><testcase classname="python.tests.test_fast.TestFast" name="test_rope_with_large_offset" time="0.007"><failure message="RuntimeError: [omarchy] ErfInv is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[1,1,1024,32]). No CPU fallback is available in Omarchy builds.">self = &lt;test_fast.TestFast testMethod=test_rope_with_large_offset&gt;
+
+    def test_rope_with_large_offset(self):
+        x = mx.random.normal(shape=(1, 1, 1024, 32))
+        rx_fp32 = mx.fast.rope(
+            x,
+            32,
+            traditional=False,
+            scale=1.0,
+            base=10000,
+            offset=4000,
+        )
+        rx_bf16 = mx.fast.rope(
+            x.astype(mx.bfloat16),
+            32,
+            traditional=False,
+            scale=1.0,
+            base=10000,
+            offset=4000,
+        )
+&gt;       self.assertLess((rx_fp32 - rx_bf16).abs().max(), 1e-1)
+E       RuntimeError: [omarchy] ErfInv is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[1,1,1024,32]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_fast.py:423: RuntimeError</failure></testcase><testcase classname="python.tests.test_fast.TestFast" name="test_slice_into_layer_norm" time="0.033"><failure message="RuntimeError: [omarchy] Abs is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[8,1,128]). No CPU fallback is available in Omarchy builds.">self = &lt;test_fast.TestFast testMethod=test_slice_into_layer_norm&gt;
+
+    def test_slice_into_layer_norm(self):
+        dim = 128
+        eps = 1e-5
+        x = mx.random.uniform(shape=(8, 100, 128))[:, 99:]
+        rx_fast = mx.fast.layer_norm(x, weight=None, bias=None, eps=eps)
+        rx = layer_norm(x, None, None, eps)
+&gt;       self.assertLess(mx.abs(rx - rx_fast).max(), 1e-4)
+E       RuntimeError: [omarchy] Abs is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[8,1,128]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_fast.py:692: RuntimeError</failure></testcase></testsuite></testsuites>

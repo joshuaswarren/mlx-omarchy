@@ -1,0 +1,351 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="1" failures="17" skipped="0" tests="23" time="65.669" timestamp="2026-09-01T18:14:33.862734-05:00" hostname="omp-studio-local"><testcase classname="python.tests.test_compile.TestCompile" name="test_compile_abs_unsigned" time="0.584"><failure message="RuntimeError: [omarchy] Abs is not implemented for the Omarchy Vulkan backend (dtype=uint8, shape=[3]). No CPU fallback is available in Omarchy builds.">self = &lt;test_compile.TestCompile testMethod=test_compile_abs_unsigned&gt;
+
+    def test_compile_abs_unsigned(self):
+        # abs has to compile for the wider unsigned types too
+        fun = lambda x: mx.abs(x) + 1
+        for dtype in [mx.uint8, mx.uint16, mx.uint32, mx.uint64]:
+            x = mx.array([1, 2, 3], dtype)
+&gt;           self.assertTrue(mx.array_equal(mx.compile(fun)(x), fun(x)))
+E           RuntimeError: [omarchy] Abs is not implemented for the Omarchy Vulkan backend (dtype=uint8, shape=[3]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_compile.py:1624: RuntimeError</failure></testcase><testcase classname="python.tests.test_compile.TestCompile" name="test_compile_broadcast_only" time="0.301" /><testcase classname="python.tests.test_compile.TestCompile" name="test_compile_capture" time="0.364"><failure message="RuntimeError: [omarchy] Add dtype is not implemented for the Omarchy Vulkan backend (dtype=int32, shape=[]). No CPU fallback is available in Omarchy builds.">self = &lt;test_compile.TestCompile testMethod=test_compile_capture&gt;
+
+    def test_compile_capture(self):
+        # Test update captured state outside compiled function
+        state = {"y": mx.array(2)}
+    
+        @partial(mx.compile, inputs=state)
+        def test_state(x):
+            x = x + state["y"]
+            return x
+    
+        test_state(mx.array(1))
+        # Check the state is unchanged
+        self.assertEqual(state["y"], 2)
+    
+        # Check the updated state is used
+        state["y"] = mx.array(3)
+        out = test_state(mx.array(1))
+&gt;       self.assertEqual(out.item(), 4)
+                         ^^^^^^^^^^
+E       RuntimeError: [omarchy] Add dtype is not implemented for the Omarchy Vulkan backend (dtype=int32, shape=[]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_compile.py:424: RuntimeError</failure></testcase><testcase classname="python.tests.test_compile.TestCompile" name="test_compile_changing_outputs" time="0.428" /><testcase classname="python.tests.test_compile.TestCompile" name="test_compile_changing_outputs_with_state" time="0.350" /><testcase classname="python.tests.test_compile.TestCompile" name="test_compile_create_list" time="0.330" /><testcase classname="python.tests.test_compile.TestCompile" name="test_compile_donates_input_buffer" time="0.475"><failure message="IndexError: vector::_M_range_check: __n (which is 0) &gt;= this-&gt;size() (which is 0)">self = &lt;test_compile.TestCompile testMethod=test_compile_donates_input_buffer&gt;
+
+    def test_compile_donates_input_buffer(self):
+        mx.set_default_device(mx.cpu)
+    
+        def fun(x):
+            return mx.sin(x) + 1
+    
+        compiled_fn = mx.compile(fun)
+    
+&gt;       input = mx.arange(16, dtype=mx.float32)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       IndexError: vector::_M_range_check: __n (which is 0) &gt;= this-&gt;size() (which is 0)
+
+.work/mlx/python/tests/test_compile.py:1560: IndexError</failure></testcase><testcase classname="python.tests.test_compile.TestCompile" name="test_compile_dynamic_dims" time="1.118"><failure message="RuntimeError: [omarchy] broadcast rank Add is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[2,2,2,2,2,2,2,2,2,2]). No CPU fallback is available in Omarchy builds.">self = &lt;test_compile.TestCompile testMethod=test_compile_dynamic_dims&gt;
+
+    def test_compile_dynamic_dims(self):
+        a = mx.random.uniform(shape=(2,) * 10)
+        b = mx.random.uniform(shape=(2,) * 10)
+        a = a.T
+        mx.eval(a, b)
+    
+        def fn(a, b):
+            return mx.abs(a + b)
+    
+        out = mx.compile(fn)(a, b)
+        expected = fn(a, b)
+&gt;       self.assertTrue(mx.allclose(out, expected))
+E       RuntimeError: [omarchy] broadcast rank Add is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[2,2,2,2,2,2,2,2,2,2]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_compile.py:1032: RuntimeError</failure></testcase><testcase classname="python.tests.test_compile.TestCompile" name="test_compile_equal_nan" time="0.467"><failure message="RuntimeError: [omarchy] And dtype is not implemented for the Omarchy Vulkan backend (dtype=bool, shape=[1]). No CPU fallback is available in Omarchy builds.">self = &lt;test_compile.TestCompile testMethod=test_compile_equal_nan&gt;
+
+    def test_compile_equal_nan(self):
+        def fun(x):
+            return mx.stack(
+                [mx.array_equal(x, x), mx.array_equal(x, x, equal_nan=True)]
+            )
+    
+        x = mx.array([1.0, float("nan"), 3.0])
+&gt;       self.assertTrue(mx.array_equal(mx.compile(fun)(x), mx.array([False, True])))
+E       RuntimeError: [omarchy] And dtype is not implemented for the Omarchy Vulkan backend (dtype=bool, shape=[1]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_compile.py:1657: RuntimeError</failure></testcase><testcase classname="python.tests.test_compile.TestCompile" name="test_compile_grad" time="0.644"><failure message="RuntimeError: [omarchy] Abs is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[3]). No CPU fallback is available in Omarchy builds.">self = &lt;test_compile.TestCompile testMethod=test_compile_grad&gt;
+
+    def test_compile_grad(self):
+        def loss_fn(x):
+            return mx.exp(x).sum()
+    
+        grad_fn = mx.grad(loss_fn)
+    
+        x = mx.array([0.5, -0.5, 1.2])
+        dfdx = grad_fn(x)
+        compile_grad_fn = mx.compile(grad_fn)
+        c_dfdx = grad_fn(x)
+    
+&gt;       self.assertTrue(mx.allclose(c_dfdx, dfdx))
+E       RuntimeError: [omarchy] Abs is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[3]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_compile.py:157: RuntimeError</failure></testcase><testcase classname="python.tests.test_compile.TestCompile" name="test_compile_inf" time="0.712"><failure message="RuntimeError: [omarchy] Compiled tape op Equal is not implemented for the Omarchy Vulkan backend. No CPU fallback is available in Omarchy builds.">self = &lt;test_compile.TestCompile testMethod=test_compile_inf&gt;
+
+    def test_compile_inf(self):
+        @mx.compile
+        def fun(x):
+            return mx.isinf(x + 2)
+    
+        out = fun(mx.array([0.0]))
+&gt;       self.assertEqual(out.item(), False)
+                         ^^^^^^^^^^
+E       RuntimeError: [omarchy] Compiled tape op Equal is not implemented for the Omarchy Vulkan backend. No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_compile.py:844: RuntimeError</failure></testcase><testcase classname="python.tests.test_compile.TestCompile" name="test_compile_inputs_with_primitives" time="0.930"><failure message="RuntimeError: [omarchy] Add dtype is not implemented for the Omarchy Vulkan backend (dtype=int32, shape=[3]). No CPU fallback is available in Omarchy builds.">self = &lt;test_compile.TestCompile testMethod=test_compile_inputs_with_primitives&gt;
+
+    def test_compile_inputs_with_primitives(self):
+        x = mx.array([1, 2, 3])
+        y = mx.array([1, 2, 3])
+        for _ in range(5):
+            x = x + y
+            y = y + 1
+    
+        def fun(x, y):
+            return x * y
+    
+        out = fun(x, y)
+    
+        x = mx.array([1, 2, 3])
+        y = mx.array([1, 2, 3])
+        for _ in range(5):
+            x = x + y
+            y = y + 1
+    
+        c_out = mx.compile(fun)(x, y)
+&gt;       self.assertTrue(mx.array_equal(out, c_out))
+E       RuntimeError: [omarchy] Add dtype is not implemented for the Omarchy Vulkan backend (dtype=int32, shape=[3]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_compile.py:198: RuntimeError</failure></testcase><testcase classname="python.tests.test_compile.TestCompile" name="test_compile_kwargs" time="3.025"><failure message="RuntimeError: [omarchy] Add dtype is not implemented for the Omarchy Vulkan backend (dtype=int32, shape=[]). No CPU fallback is available in Omarchy builds.">self = &lt;test_compile.TestCompile testMethod=test_compile_kwargs&gt;
+
+    def test_compile_kwargs(self):
+        @mx.compile
+        def fun(x, y, z):
+            return x + y + z
+    
+        x = mx.array(1)
+        y = mx.array(2)
+        z = mx.array(3)
+        out = fun(x, y=y, z=z)
+&gt;       self.assertEqual(out.item(), 6)
+                         ^^^^^^^^^^
+E       RuntimeError: [omarchy] Add dtype is not implemented for the Omarchy Vulkan backend (dtype=int32, shape=[]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_compile.py:566: RuntimeError</failure></testcase><testcase classname="python.tests.test_compile.TestCompile" name="test_compile_large_graph_with_broadcasts" time="0.768"><failure message="RuntimeError: [omarchy] ErfInv is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[2,2]). No CPU fallback is available in Omarchy builds.">self = &lt;test_compile.TestCompile testMethod=test_compile_large_graph_with_broadcasts&gt;
+
+    def test_compile_large_graph_with_broadcasts(self):
+        N = 20
+        _as = [mx.array(2 * i, dtype=mx.float32) for i in range(N)]
+        _bs = [mx.array(i, dtype=mx.float32) for i in range(N)]
+        _c = mx.array(0.0)
+        x = mx.random.normal((2, 2))
+    
+        def f(x):
+            y = 0
+            for i in range(N):
+                y = y + _as[i] * x * _bs[i] * _c
+            return y
+    
+        ref = f(x)
+&gt;       mx.eval(ref)
+E       RuntimeError: [omarchy] ErfInv is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[2,2]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_compile.py:1341: RuntimeError</failure></testcase><testcase classname="python.tests.test_compile.TestCompile" name="test_compile_many_inputs" time="0.775"><failure message="RuntimeError: [omarchy] non-zero scalar fill is not implemented for the Omarchy Vulkan backend (dtype=int32, shape=[2,2]). No CPU fallback is available in Omarchy builds.">self = &lt;test_compile.TestCompile testMethod=test_compile_many_inputs&gt;
+
+    def test_compile_many_inputs(self):
+        inputs = [mx.ones((2, 2, 2, 2)) for _ in range(20)]
+        inputs[0] = inputs[0].T
+    
+        @mx.compile
+        def fun(*inputs):
+            x = inputs[0]
+            for y in inputs[1:10]:
+                x = x + y
+            a = inputs[10]
+            for b in inputs[11:]:
+                a = a + b
+            return x + a
+    
+        out = fun(*inputs)
+&gt;       self.assertTrue(mx.allclose(out, mx.full((2, 2), 20)))
+E       RuntimeError: [omarchy] non-zero scalar fill is not implemented for the Omarchy Vulkan backend (dtype=int32, shape=[2,2]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_compile.py:1049: RuntimeError</failure></testcase><testcase classname="python.tests.test_compile.TestCompile" name="test_compile_many_outputs" time="0.516"><failure message="RuntimeError: [omarchy] Abs is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[2]). No CPU fallback is available in Omarchy builds.">self = &lt;test_compile.TestCompile testMethod=test_compile_many_outputs&gt;
+
+    def test_compile_many_outputs(self):
+        @mx.compile
+        def fun(arr):
+            arrs = [arr] * 64
+            first_arrs = None
+            for _ in range(6):
+                arrs = [x + y for x, y in zip(arrs[::2], arrs[1::2])]
+                if first_arrs is None:
+                    first_arrs = arrs
+            return arrs[0], first_arrs
+    
+        out = fun(mx.array([1.0, 2.0]))
+&gt;       self.assertTrue(mx.allclose(out[0], mx.array([64.0, 128.0])))
+E       RuntimeError: [omarchy] Abs is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[2]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_compile.py:1086: RuntimeError</failure></testcase><testcase classname="python.tests.test_compile.TestCompile" name="test_compile_multi_output" time="0.999"><failure message="RuntimeError: [omarchy] non-zero scalar fill is not implemented for the Omarchy Vulkan backend (dtype=int32, shape=[1]). No CPU fallback is available in Omarchy builds.">self = &lt;test_compile.TestCompile testMethod=test_compile_multi_output&gt;
+
+    def test_compile_multi_output(self):
+        def fn(x):
+            ys = [x]
+            for i in range(5):
+                ys.append(ys[-1] + x)
+            return ys, mx.sum(ys[-1])
+    
+        x = mx.ones(1, dtype=mx.int32)
+        y1 = mx.compile(fn)(x)[1]
+        y2 = fn(x)[1]
+&gt;       self.assertEqual(y1.item(), y2.item())
+                         ^^^^^^^^^
+E       RuntimeError: [omarchy] non-zero scalar fill is not implemented for the Omarchy Vulkan backend (dtype=int32, shape=[1]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_compile.py:960: RuntimeError</failure></testcase><testcase classname="python.tests.test_compile.TestCompile" name="test_compile_negative_strides" time="0.229"><failure message="RuntimeError: [omarchy] negative stride copy is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[8]). No CPU fallback is available in Omarchy builds.">self = &lt;test_compile.TestCompile testMethod=test_compile_negative_strides&gt;
+
+    def test_compile_negative_strides(self):
+        # 1D negative stride with elementwise expression
+        @mx.compile
+        def f(x):
+            return 2.0 * x[::-1]
+    
+        x = mx.arange(8, dtype=mx.float32)
+        expected = 2.0 * x[::-1]
+&gt;       self.assertTrue(mx.array_equal(f(x), expected))
+E       RuntimeError: [omarchy] negative stride copy is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[8]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_compile.py:1580: RuntimeError</failure></testcase><testcase classname="python.tests.test_compile.TestCompile" name="test_compile_nonfinite_constants" time="0.467"><failure message="RuntimeError: [omarchy] Compiled tape op Greater is not implemented for the Omarchy Vulkan backend. No CPU fallback is available in Omarchy builds.">self = &lt;test_compile.TestCompile testMethod=test_compile_nonfinite_constants&gt;
+
+    def test_compile_nonfinite_constants(self):
+        # Regression test: a non-finite scalar constant (NaN / infinity) baked
+        # into a fused compiled kernel used to stream a bare token (e.g. `nan`)
+        # into the generated kernel source, which is not a valid identifier and
+        # broke compilation (notably on the Metal backend).
+        x = mx.array([1.0, -1.0])
+    
+        for dtype in (mx.float32, mx.float16, mx.bfloat16):
+            xd = x.astype(dtype)
+    
+            nan_fn = mx.compile(
+                lambda a: mx.where(a &gt; 0, a, mx.array(float("nan"), dtype=a.dtype))
+            )
+            out = nan_fn(xd)
+&gt;           mx.eval(out)
+E           RuntimeError: [omarchy] Compiled tape op Greater is not implemented for the Omarchy Vulkan backend. No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_compile.py:62: RuntimeError</failure></testcase><testcase classname="python.tests.test_compile.TestCompile" name="test_compile_output_with_siblings" time="0.984"><failure message="RuntimeError: [omarchy] Abs is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[]). No CPU fallback is available in Omarchy builds.">self = &lt;test_compile.TestCompile testMethod=test_compile_output_with_siblings&gt;
+
+    def test_compile_output_with_siblings(self):
+        @mx.compile
+        def fun(x, y):
+            return mx.divmod(mx.abs(x), mx.abs(y))[0]
+    
+        out = fun(mx.array(1.0), mx.array(1.0))
+&gt;       self.assertEqual(out.item(), 1.0)
+                         ^^^^^^^^^^
+E       RuntimeError: [omarchy] Abs is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_compile.py:1529: RuntimeError</failure></testcase><testcase classname="python.tests.test_compile.TestCompile" name="test_compile_release_on_another_thread" time="0.895" /><testcase classname="python.tests.test_compile.TestCompile" name="test_compile_rng" time="1.690"><failure message="RuntimeError: [omarchy] Compiled tape op Minimum is not implemented for the Omarchy Vulkan backend. No CPU fallback is available in Omarchy builds.">self = &lt;test_compile.TestCompile testMethod=test_compile_rng&gt;
+
+    def test_compile_rng(self):
+        @partial(mx.compile, inputs=mx.random.state, outputs=mx.random.state)
+        def fun():
+            return mx.random.uniform(shape=(10, 10))
+    
+&gt;       self.assertFalse(mx.allclose(fun(), fun(), 1e-2, 1e-2))
+E       RuntimeError: [omarchy] Compiled tape op Minimum is not implemented for the Omarchy Vulkan backend. No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_compile.py:485: RuntimeError</failure></testcase><testcase classname="pytest" name="internal" time="0.000"><error message="internal error">Traceback (most recent call last):
+  File "/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-01/venv-pytest/lib/python3.11/site-packages/_pytest/main.py", line 330, in wrap_session
+    session.exitstatus = doit(config, session) or 0
+                         ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-01/venv-pytest/lib/python3.11/site-packages/_pytest/main.py", line 384, in _main
+    config.hook.pytest_runtestloop(session=session)
+  File "/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-01/venv-pytest/lib/python3.11/site-packages/pluggy/_hooks.py", line 512, in __call__
+    return self._hookexec(self.name, self._hookimpls.copy(), kwargs, firstresult)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-01/venv-pytest/lib/python3.11/site-packages/pluggy/_manager.py", line 120, in _hookexec
+    return self._inner_hookexec(hook_name, methods, kwargs, firstresult)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-01/venv-pytest/lib/python3.11/site-packages/pluggy/_callers.py", line 167, in _multicall
+    raise exception
+  File "/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-01/venv-pytest/lib/python3.11/site-packages/pluggy/_callers.py", line 139, in _multicall
+    teardown.throw(exception)
+  File "/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-01/venv-pytest/lib/python3.11/site-packages/_pytest/logging.py", line 816, in pytest_runtestloop
+    return (yield)  # Run all the tests.
+            ^^^^^
+  File "/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-01/venv-pytest/lib/python3.11/site-packages/pluggy/_callers.py", line 139, in _multicall
+    teardown.throw(exception)
+  File "/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-01/venv-pytest/lib/python3.11/site-packages/_pytest/terminal.py", line 708, in pytest_runtestloop
+    result = yield
+             ^^^^^
+  File "/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-01/venv-pytest/lib/python3.11/site-packages/pluggy/_callers.py", line 121, in _multicall
+    res = hook_impl.function(*args)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-01/venv-pytest/lib/python3.11/site-packages/_pytest/main.py", line 408, in pytest_runtestloop
+    item.config.hook.pytest_runtest_protocol(item=item, nextitem=nextitem)
+  File "/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-01/venv-pytest/lib/python3.11/site-packages/pluggy/_hooks.py", line 512, in __call__
+    return self._hookexec(self.name, self._hookimpls.copy(), kwargs, firstresult)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-01/venv-pytest/lib/python3.11/site-packages/pluggy/_manager.py", line 120, in _hookexec
+    return self._inner_hookexec(hook_name, methods, kwargs, firstresult)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-01/venv-pytest/lib/python3.11/site-packages/pluggy/_callers.py", line 167, in _multicall
+    raise exception
+  File "/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-01/venv-pytest/lib/python3.11/site-packages/pluggy/_callers.py", line 139, in _multicall
+    teardown.throw(exception)
+  File "/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-01/venv-pytest/lib/python3.11/site-packages/_pytest/warnings.py", line 90, in pytest_runtest_protocol
+    return (yield)
+            ^^^^^
+  File "/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-01/venv-pytest/lib/python3.11/site-packages/pluggy/_callers.py", line 139, in _multicall
+    teardown.throw(exception)
+  File "/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-01/venv-pytest/lib/python3.11/site-packages/_pytest/assertion/__init__.py", line 205, in pytest_runtest_protocol
+    return (yield)
+            ^^^^^
+  File "/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-01/venv-pytest/lib/python3.11/site-packages/pluggy/_callers.py", line 139, in _multicall
+    teardown.throw(exception)
+  File "/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-01/venv-pytest/lib/python3.11/site-packages/_pytest/unittest.py", line 612, in pytest_runtest_protocol
+    return (yield)
+            ^^^^^
+  File "/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-01/venv-pytest/lib/python3.11/site-packages/pluggy/_callers.py", line 139, in _multicall
+    teardown.throw(exception)
+  File "/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-01/venv-pytest/lib/python3.11/site-packages/_pytest/faulthandler.py", line 102, in pytest_runtest_protocol
+    return (yield)
+            ^^^^^
+  File "/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-01/venv-pytest/lib/python3.11/site-packages/pluggy/_callers.py", line 121, in _multicall
+    res = hook_impl.function(*args)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-01/venv-pytest/lib/python3.11/site-packages/_pytest/runner.py", line 117, in pytest_runtest_protocol
+    ihook.pytest_runtest_logstart(nodeid=item.nodeid, location=item.location)
+  File "/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-01/venv-pytest/lib/python3.11/site-packages/pluggy/_hooks.py", line 512, in __call__
+    return self._hookexec(self.name, self._hookimpls.copy(), kwargs, firstresult)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-01/venv-pytest/lib/python3.11/site-packages/pluggy/_manager.py", line 120, in _hookexec
+    return self._inner_hookexec(hook_name, methods, kwargs, firstresult)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-01/venv-pytest/lib/python3.11/site-packages/pluggy/_callers.py", line 167, in _multicall
+    raise exception
+  File "/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-01/venv-pytest/lib/python3.11/site-packages/pluggy/_callers.py", line 121, in _multicall
+    res = hook_impl.function(*args)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-01/venv-pytest/lib/python3.11/site-packages/_pytest/terminal.py", line 619, in pytest_runtest_logstart
+    self.write_ensure_prefix(line, "")
+  File "/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-01/venv-pytest/lib/python3.11/site-packages/_pytest/terminal.py", line 491, in write_ensure_prefix
+    self._tw.line()
+  File "/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-01/venv-pytest/lib/python3.11/site-packages/_pytest/_io/terminalwriter.py", line 184, in line
+    self.write("\n")
+  File "/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-01/venv-pytest/lib/python3.11/site-packages/_pytest/_io/terminalwriter.py", line 164, in write
+    self.write_raw(msg, flush=flush)
+  File "/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-01/venv-pytest/lib/python3.11/site-packages/_pytest/_io/terminalwriter.py", line 168, in write_raw
+    self._file.write(msg)
+OSError: [Errno 122] Disk quota exceeded</error></testcase></testsuite></testsuites>

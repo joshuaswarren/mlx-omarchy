@@ -1,0 +1,5 @@
+.work/mlx/python/tests/test_nn.py::TestLayers::test_gelu
+.work/mlx/python/tests/test_nn.py::TestLayers::test_group_norm
+.work/mlx/python/tests/test_nn.py::TestLayers::test_instance_norm
+.work/mlx/python/tests/test_nn.py::TestLayers::test_pooling
+.work/mlx/python/tests/test_nn.py::TestLayers::test_upsample

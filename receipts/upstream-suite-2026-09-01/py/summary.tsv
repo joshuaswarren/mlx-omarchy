@@ -1,0 +1,34 @@
+file	rc	result
+test_array.py	1	EXIT rc=1; executed=200 passed=164 failed=36 skipped=18 crash-excluded=6:.work/mlx/python/tests/test_array.py::TestArray::test_array_np_dtype_conversion;.work/mlx/python/tests/test_array.py::TestArray::test_buffer_protocol;.work/mlx/python/tests/test_array.py::TestArray::test_getitem_with_list;.work/mlx/python/tests/test_array.py::TestArray::test_indexing;.work/mlx/python/tests/test_array.py::TestArray::test_setitem_with_list;.work/mlx/python/tests/test_array.py::TestArray::test_slice_negative_step
+test_autograd.py	1	EXIT rc=1; executed=53 passed=14 failed=39 skipped=1
+test_bf16.py	1	EXIT rc=1; executed=35 passed=34 failed=1 skipped=2 crash-excluded=2:.work/mlx/python/tests/test_bf16.py::TestBF16::test_reduction_ops;.work/mlx/python/tests/test_bf16.py::TestBF16::test_unary_ops
+test_blas.py	1	EXIT rc=1; executed=970 passed=955 failed=15 skipped=0 crash-excluded=8:.work/mlx/python/tests/test_blas.py::TestBlas::test_addmm;.work/mlx/python/tests/test_blas.py::TestBlas::test_block_masked_matmul;.work/mlx/python/tests/test_blas.py::TestBlas::test_complex_gemm;.work/mlx/python/tests/test_blas.py::TestBlas::test_complex_gemv;.work/mlx/python/tests/test_blas.py::TestBlas::test_gather_matmul;.work/mlx/python/tests/test_blas.py::TestBlas::test_gather_mm_blocks;.work/mlx/python/tests/test_blas.py::TestBlas::test_matrix_vector_attn;.work/mlx/python/tests/test_blas.py::TestBlas::test_matrix_vector_batched
+test_compile.py	3	EXIT rc=3; executed=23 passed=5 failed=18 skipped=0 crash-excluded=1:.work/mlx/python/tests/test_compile.py::TestCompile::test_compile_different_log_bases
+test_constants.py	1	EXIT rc=1; executed=3 passed=2 failed=1 skipped=0
+test_conv.py	3	EXIT rc=3; executed=10 passed=1 failed=9 skipped=3 crash-excluded=1:.work/mlx/python/tests/test_conv.py::TestConv::test_numpy_conv
+test_conv_transpose.py	0	executed=0 passed=0 failed=0 skipped=10
+test_device.py	1	EXIT rc=1; executed=10 passed=4 failed=6 skipped=0
+test_double.py	1	EXIT rc=1; executed=11 passed=1 failed=10 skipped=0
+test_einsum.py	0	EXIT rc=0; executed=4 passed=4 failed=0 skipped=0 crash-excluded=7:.work/mlx/python/tests/test_einsum.py::TestEinsum::test_broadcasting;.work/mlx/python/tests/test_einsum.py::TestEinsum::test_ellipses;.work/mlx/python/tests/test_einsum.py::TestEinsum::test_multi_input_einsum;.work/mlx/python/tests/test_einsum.py::TestEinsum::test_opt_einsum_test_cases;.work/mlx/python/tests/test_einsum.py::TestEinsum::test_simple_einsum;.work/mlx/python/tests/test_einsum.py::TestEinsum::test_sum_first;.work/mlx/python/tests/test_einsum.py::TestEinsum::test_two_input_einsum
+test_eval.py	1	EXIT rc=1; executed=14 passed=4 failed=10 skipped=1
+test_export_import.py	1	EXIT rc=1; executed=28 passed=7 failed=21 skipped=0
+test_fast.py	1	EXIT rc=1; executed=25 passed=3 failed=22 skipped=6
+test_fast_sdpa.py	1	EXIT rc=1; executed=486 passed=7 failed=479 skipped=3
+test_fft.py	5	EXIT rc=5; executed=0 passed=0 failed=0 skipped=0 crash-excluded=1:.work/mlx/python/tests/test_fft.py::TestFFT::test_fft
+test_graph.py	0	executed=1 passed=1 failed=0 skipped=0
+test_init.py	1	EXIT rc=1; executed=54 passed=37 failed=17 skipped=0
+test_linalg.py	1	EXIT rc=1; executed=15 passed=0 failed=15 skipped=0 crash-excluded=3:.work/mlx/python/tests/test_linalg.py::TestLinalg::test_complex_norm;.work/mlx/python/tests/test_linalg.py::TestLinalg::test_cross_product;.work/mlx/python/tests/test_linalg.py::TestLinalg::test_norm
+test_load.py	1	EXIT rc=1; executed=185 passed=14 failed=171 skipped=0 crash-excluded=1:.work/mlx/python/tests/test_load.py::TestLoad::test_save_and_load_empty
+test_losses.py	1	EXIT rc=1; executed=14 passed=2 failed=12 skipped=0
+test_memory.py	0	executed=2 passed=2 failed=0 skipped=1
+test_nn.py	1	EXIT rc=1; executed=66 passed=35 failed=31 skipped=1 crash-excluded=5:.work/mlx/python/tests/test_nn.py::TestLayers::test_gelu;.work/mlx/python/tests/test_nn.py::TestLayers::test_group_norm;.work/mlx/python/tests/test_nn.py::TestLayers::test_instance_norm;.work/mlx/python/tests/test_nn.py::TestLayers::test_pooling;.work/mlx/python/tests/test_nn.py::TestLayers::test_upsample
+test_ops.py	134	EXIT rc=134; executed=1 passed=0 failed=1 skipped=0 crash-excluded=15:.work/mlx/python/tests/test_ops.py::TestOps::test_abs;.work/mlx/python/tests/test_ops.py::TestOps::test_bartlett_general;.work/mlx/python/tests/test_ops.py::TestOps::test_bitwise_grad;.work/mlx/python/tests/test_ops.py::TestOps::test_bitwise_ops;.work/mlx/python/tests/test_ops.py::TestOps::test_clip;.work/mlx/python/tests/test_ops.py::TestOps::test_complex_ops;.work/mlx/python/tests/test_ops.py::TestOps::test_conjugate;.work/mlx/python/tests/test_ops.py::TestOps::test_cummax_cummin_nan;.work/mlx/python/tests/test_ops.py::TestOps::test_diag_zero_size;.work/mlx/python/tests/test_ops.py::TestOps::test_divmod;.work/mlx/python/tests/test_ops.py::TestOps::test_erf;.work/mlx/python/tests/test_ops.py::TestOps::test_expm1;.work/mlx/python/tests/test_ops.py::TestOps::test_flip;.work/mlx/python/tests/test_ops.py::TestOps::test_hadamard_grad_vmap;.work/mlx/python/tests/test_ops.py::TestOps::test_inner
+test_optimizers.py	1	EXIT rc=1; executed=25 passed=7 failed=18 skipped=1
+test_quantized.py	1	EXIT rc=1; executed=3062 passed=165 failed=2897 skipped=1
+test_random.py	1	EXIT rc=1; executed=14 passed=2 failed=12 skipped=0
+test_reduce.py	1	EXIT rc=1; executed=4863 passed=156 failed=4707 skipped=0 crash-excluded=3:.work/mlx/python/tests/test_reduce.py::TestReduce::test_long_column;.work/mlx/python/tests/test_reduce.py::TestReduce::test_nan_propagation;.work/mlx/python/tests/test_reduce.py::TestReduce::test_row_reduce_negative_stride
+test_threads.py	1	EXIT rc=1; executed=2 passed=1 failed=1 skipped=0
+test_tree.py	1	EXIT rc=1; executed=6 passed=4 failed=2 skipped=0
+test_upsample.py	1	EXIT rc=1; executed=12 passed=2 failed=10 skipped=4
+test_vmap.py	1	EXIT rc=1; executed=65 passed=9 failed=56 skipped=0
+test_zero_copy.py	1	EXIT rc=1; executed=4 passed=3 failed=1 skipped=2

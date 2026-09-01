@@ -1,0 +1,1 @@
+.work/mlx/python/tests/test_conv.py::TestConv::test_numpy_conv

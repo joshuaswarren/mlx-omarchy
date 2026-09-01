@@ -1,0 +1,29 @@
+============================= test session starts ==============================
+collecting ... collected 6 items
+
+.work/mlx/python/tests/test_zero_copy.py::TestZeroCopy::test_adopt_in_loop_not_recycled SKIPPED [ 16%]
+.work/mlx/python/tests/test_zero_copy.py::TestZeroCopy::test_copy_false PASSED [ 33%]
+.work/mlx/python/tests/test_zero_copy.py::TestZeroCopy::test_copy_false_dtype_conversion_raises PASSED [ 50%]
+.work/mlx/python/tests/test_zero_copy.py::TestZeroCopy::test_copy_true_copies FAILED [ 66%]
+.work/mlx/python/tests/test_zero_copy.py::TestZeroCopy::test_default_shares_or_copies PASSED [ 83%]
+.work/mlx/python/tests/test_zero_copy.py::TestZeroCopy::test_source_lifetime SKIPPED [100%]
+
+=================================== FAILURES ===================================
+______________________ TestZeroCopy.test_copy_true_copies ______________________
+
+self = <test_zero_copy.TestZeroCopy testMethod=test_copy_true_copies>
+
+    def test_copy_true_copies(self):
+        a = np.arange(1_000_000, dtype=np.int32)
+        x = mx.asarray(a, copy=True)
+        a[0] = 12345
+        mx.eval(x)
+>       self.assertNotEqual(int(x[0]), 12345)
+                            ^^^^^^^^^
+E       RuntimeError: [omarchy] matrix layout Take is not implemented for the Omarchy Vulkan backend (dtype=int32, shape=[1]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_zero_copy.py:32: RuntimeError
+- generated xml file: /home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-01/py/test_zero_copy.py.xml -
+=========================== short test summary info ============================
+FAILED .work/mlx/python/tests/test_zero_copy.py::TestZeroCopy::test_copy_true_copies - RuntimeError: [omarchy] matrix layout Take is not implemented for the Omarchy Vulkan backend (dtype=int32, shape=[1]). No CPU fallback is available in Omarchy builds.
+==================== 1 failed, 3 passed, 2 skipped in 0.17s ====================

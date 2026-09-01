@@ -1,0 +1,15 @@
+.work/mlx/python/tests/test_ops.py::TestOps::test_abs
+.work/mlx/python/tests/test_ops.py::TestOps::test_bartlett_general
+.work/mlx/python/tests/test_ops.py::TestOps::test_bitwise_grad
+.work/mlx/python/tests/test_ops.py::TestOps::test_bitwise_ops
+.work/mlx/python/tests/test_ops.py::TestOps::test_clip
+.work/mlx/python/tests/test_ops.py::TestOps::test_complex_ops
+.work/mlx/python/tests/test_ops.py::TestOps::test_conjugate
+.work/mlx/python/tests/test_ops.py::TestOps::test_cummax_cummin_nan
+.work/mlx/python/tests/test_ops.py::TestOps::test_diag_zero_size
+.work/mlx/python/tests/test_ops.py::TestOps::test_divmod
+.work/mlx/python/tests/test_ops.py::TestOps::test_erf
+.work/mlx/python/tests/test_ops.py::TestOps::test_expm1
+.work/mlx/python/tests/test_ops.py::TestOps::test_flip
+.work/mlx/python/tests/test_ops.py::TestOps::test_hadamard_grad_vmap
+.work/mlx/python/tests/test_ops.py::TestOps::test_inner

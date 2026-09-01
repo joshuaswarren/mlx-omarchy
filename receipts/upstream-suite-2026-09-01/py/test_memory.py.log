@@ -1,0 +1,9 @@
+============================= test session starts ==============================
+collecting ... collected 3 items
+
+.work/mlx/python/tests/test_memory.py::TestMemory::test_active_memory_count PASSED [ 33%]
+.work/mlx/python/tests/test_memory.py::TestMemory::test_memory_info PASSED [ 66%]
+.work/mlx/python/tests/test_memory.py::TestMemory::test_wired_memory SKIPPED [100%]
+
+- generated xml file: /home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-01/py/test_memory.py.xml -
+========================= 2 passed, 1 skipped in 0.21s =========================

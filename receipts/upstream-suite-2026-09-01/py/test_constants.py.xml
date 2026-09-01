@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="3" time="6.816" timestamp="2026-09-01T18:15:47.352463-05:00" hostname="omp-studio-local"><testcase classname="python.tests.test_constants.TestConstants" name="test_constants_availability" time="0.316" /><testcase classname="python.tests.test_constants.TestConstants" name="test_constants_values" time="0.383" /><testcase classname="python.tests.test_constants.TestConstants" name="test_newaxis_for_reshaping_arrays" time="0.568"><failure message="RuntimeError: [omarchy] And dtype is not implemented for the Omarchy Vulkan backend (dtype=bool, shape=[1,1]). No CPU fallback is available in Omarchy builds.">self = &lt;test_constants.TestConstants testMethod=test_newaxis_for_reshaping_arrays&gt;
+
+    def test_newaxis_for_reshaping_arrays(self):
+        arr_1d = mx.array([1, 2, 3, 4, 5])
+        arr_2d_column = arr_1d[:, mx.newaxis]
+        expected_result = mx.array([[1], [2], [3], [4], [5]])
+&gt;       self.assertTrue(mx.array_equal(arr_2d_column, expected_result))
+E       RuntimeError: [omarchy] And dtype is not implemented for the Omarchy Vulkan backend (dtype=bool, shape=[1,1]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_constants.py:37: RuntimeError</failure></testcase></testsuite></testsuites>

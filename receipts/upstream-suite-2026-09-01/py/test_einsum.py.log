@@ -1,0 +1,10 @@
+============================= test session starts ==============================
+collecting ... collected 12 items / 8 deselected / 4 selected
+
+.work/mlx/python/tests/test_einsum.py::TestEinsum::test_attention PASSED [ 25%]
+.work/mlx/python/tests/test_einsum.py::TestEinsum::test_longer_paths PASSED [ 50%]
+.work/mlx/python/tests/test_einsum.py::TestEinsum::test_scalar_operands PASSED [ 75%]
+.work/mlx/python/tests/test_einsum.py::TestEinsum::test_simple_path PASSED [100%]
+
+- generated xml file: /home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-01/py/test_einsum.py.xml -
+======================= 4 passed, 8 deselected in 0.23s ========================

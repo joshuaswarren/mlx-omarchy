@@ -1,0 +1,8 @@
+.work/mlx/python/tests/test_blas.py::TestBlas::test_addmm
+.work/mlx/python/tests/test_blas.py::TestBlas::test_block_masked_matmul
+.work/mlx/python/tests/test_blas.py::TestBlas::test_complex_gemm
+.work/mlx/python/tests/test_blas.py::TestBlas::test_complex_gemv
+.work/mlx/python/tests/test_blas.py::TestBlas::test_gather_matmul
+.work/mlx/python/tests/test_blas.py::TestBlas::test_gather_mm_blocks
+.work/mlx/python/tests/test_blas.py::TestBlas::test_matrix_vector_attn
+.work/mlx/python/tests/test_blas.py::TestBlas::test_matrix_vector_batched

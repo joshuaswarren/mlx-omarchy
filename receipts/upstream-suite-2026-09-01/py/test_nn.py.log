@@ -1,0 +1,574 @@
+============================= test session starts ==============================
+collecting ... collected 73 items / 6 deselected / 67 selected
+
+.work/mlx/python/tests/test_nn.py::TestBase::test_chaining PASSED        [  1%]
+.work/mlx/python/tests/test_nn.py::TestBase::test_circular_leaks PASSED  [  2%]
+.work/mlx/python/tests/test_nn.py::TestBase::test_freeze_strict_keys PASSED [  4%]
+.work/mlx/python/tests/test_nn.py::TestBase::test_grad_of_module PASSED  [  5%]
+.work/mlx/python/tests/test_nn.py::TestBase::test_load_from_weights FAILED [  7%]
+.work/mlx/python/tests/test_nn.py::TestBase::test_model_with_dict FAILED [  8%]
+.work/mlx/python/tests/test_nn.py::TestBase::test_module_attributes PASSED [ 10%]
+.work/mlx/python/tests/test_nn.py::TestBase::test_module_state PASSED    [ 11%]
+.work/mlx/python/tests/test_nn.py::TestBase::test_module_utilities PASSED [ 13%]
+.work/mlx/python/tests/test_nn.py::TestBase::test_parameter_deletion PASSED [ 14%]
+.work/mlx/python/tests/test_nn.py::TestBase::test_quantize PASSED        [ 16%]
+.work/mlx/python/tests/test_nn.py::TestBase::test_quantize_freeze PASSED [ 17%]
+.work/mlx/python/tests/test_nn.py::TestBase::test_quantized_sharded_linear_construction PASSED [ 19%]
+.work/mlx/python/tests/test_nn.py::TestBase::test_save_npz_weights PASSED [ 20%]
+.work/mlx/python/tests/test_nn.py::TestBase::test_save_safetensors_weights PASSED [ 22%]
+.work/mlx/python/tests/test_nn.py::TestBase::test_update PASSED          [ 23%]
+.work/mlx/python/tests/test_nn.py::TestBase::test_update_modules PASSED  [ 25%]
+.work/mlx/python/tests/test_nn.py::TestLayers::test_alibi PASSED         [ 26%]
+.work/mlx/python/tests/test_nn.py::TestLayers::test_attention PASSED     [ 28%]
+.work/mlx/python/tests/test_nn.py::TestLayers::test_batch_norm FAILED    [ 29%]
+.work/mlx/python/tests/test_nn.py::TestLayers::test_batch_norm_matches_torch SKIPPED [ 31%]
+.work/mlx/python/tests/test_nn.py::TestLayers::test_batch_norm_stats FAILED [ 32%]
+.work/mlx/python/tests/test_nn.py::TestLayers::test_bilinear PASSED      [ 34%]
+.work/mlx/python/tests/test_nn.py::TestLayers::test_causal_mask FAILED   [ 35%]
+.work/mlx/python/tests/test_nn.py::TestLayers::test_celu FAILED          [ 37%]
+.work/mlx/python/tests/test_nn.py::TestLayers::test_conv1d FAILED        [ 38%]
+.work/mlx/python/tests/test_nn.py::TestLayers::test_conv2d FAILED        [ 40%]
+.work/mlx/python/tests/test_nn.py::TestLayers::test_conv_transpose_extra_repr PASSED [ 41%]
+.work/mlx/python/tests/test_nn.py::TestLayers::test_dropout PASSED       [ 43%]
+.work/mlx/python/tests/test_nn.py::TestLayers::test_dropout2d PASSED     [ 44%]
+.work/mlx/python/tests/test_nn.py::TestLayers::test_dropout3d PASSED     [ 46%]
+.work/mlx/python/tests/test_nn.py::TestLayers::test_elu FAILED           [ 47%]
+.work/mlx/python/tests/test_nn.py::TestLayers::test_glu FAILED           [ 49%]
+.work/mlx/python/tests/test_nn.py::TestLayers::test_gru FAILED           [ 50%]
+.work/mlx/python/tests/test_nn.py::TestLayers::test_hard_shrink FAILED   [ 52%]
+.work/mlx/python/tests/test_nn.py::TestLayers::test_hard_tanh FAILED     [ 53%]
+.work/mlx/python/tests/test_nn.py::TestLayers::test_hardswish FAILED     [ 55%]
+.work/mlx/python/tests/test_nn.py::TestLayers::test_identity PASSED      [ 56%]
+.work/mlx/python/tests/test_nn.py::TestLayers::test_leaky_relu FAILED    [ 58%]
+.work/mlx/python/tests/test_nn.py::TestLayers::test_linear PASSED        [ 59%]
+.work/mlx/python/tests/test_nn.py::TestLayers::test_log_sigmoid FAILED   [ 61%]
+.work/mlx/python/tests/test_nn.py::TestLayers::test_log_softmax FAILED   [ 62%]
+.work/mlx/python/tests/test_nn.py::TestLayers::test_lstm PASSED          [ 64%]
+.work/mlx/python/tests/test_nn.py::TestLayers::test_mish FAILED          [ 65%]
+.work/mlx/python/tests/test_nn.py::TestLayers::test_norm_eps_validation PASSED [ 67%]
+.work/mlx/python/tests/test_nn.py::TestLayers::test_prelu FAILED         [ 68%]
+.work/mlx/python/tests/test_nn.py::TestLayers::test_quantized_embedding FAILED [ 70%]
+.work/mlx/python/tests/test_nn.py::TestLayers::test_relu FAILED          [ 71%]
+.work/mlx/python/tests/test_nn.py::TestLayers::test_relu6 FAILED         [ 73%]
+.work/mlx/python/tests/test_nn.py::TestLayers::test_rnn PASSED           [ 74%]
+.work/mlx/python/tests/test_nn.py::TestLayers::test_rope PASSED          [ 76%]
+.work/mlx/python/tests/test_nn.py::TestLayers::test_sequential FAILED    [ 77%]
+.work/mlx/python/tests/test_nn.py::TestLayers::test_set_dtype PASSED     [ 79%]
+.work/mlx/python/tests/test_nn.py::TestLayers::test_sigmoid FAILED       [ 80%]
+.work/mlx/python/tests/test_nn.py::TestLayers::test_sin_pe FAILED        [ 82%]
+.work/mlx/python/tests/test_nn.py::TestLayers::test_softmax FAILED       [ 83%]
+.work/mlx/python/tests/test_nn.py::TestLayers::test_softmin FAILED       [ 85%]
+.work/mlx/python/tests/test_nn.py::TestLayers::test_softplus FAILED      [ 86%]
+.work/mlx/python/tests/test_nn.py::TestLayers::test_softshrink FAILED    [ 88%]
+.work/mlx/python/tests/test_nn.py::TestLayers::test_softsign FAILED      [ 89%]
+.work/mlx/python/tests/test_nn.py::TestLayers::test_step FAILED          [ 91%]
+.work/mlx/python/tests/test_nn.py::TestLayers::test_transformer PASSED   [ 92%]
+.work/mlx/python/tests/test_nn.py::TestLayers::test_transformer_custom_modules PASSED [ 94%]
+.work/mlx/python/tests/test_nn.py::TestLayers::test_transformer_decoder PASSED [ 95%]
+.work/mlx/python/tests/test_nn.py::TestLayers::test_transformer_decoder_layer PASSED [ 97%]
+.work/mlx/python/tests/test_nn.py::TestLayers::test_transformer_encoder PASSED [ 98%]
+.work/mlx/python/tests/test_nn.py::TestLayers::test_transformer_encoder_layer PASSED [100%]
+
+=================================== FAILURES ===================================
+_______________________ TestBase.test_load_from_weights ________________________
+
+self = <test_nn.TestBase testMethod=test_load_from_weights>
+
+    def test_load_from_weights(self):
+        m = nn.Linear(2, 2)
+    
+        # Too few weights
+        weights = [("weight", mx.ones((2, 2)))]
+        with self.assertRaises(ValueError):
+            m.load_weights(weights)
+    
+        m.load_weights(weights, strict=False)
+>       self.assertTrue(mx.array_equal(m.weight, weights[0][1]))
+E       RuntimeError: [omarchy] And dtype is not implemented for the Omarchy Vulkan backend (dtype=bool, shape=[1,1]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_nn.py:140: RuntimeError
+________________________ TestBase.test_model_with_dict _________________________
+
+self = <test_nn.TestBase testMethod=test_model_with_dict>
+
+    def test_model_with_dict(self):
+        class DictModule(nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.weights = {"w1": mx.zeros((2, 2)), "w2": mx.ones((2, 2))}
+    
+        model = DictModule()
+        params = tree_flatten(model.parameters(), destination={})
+        self.assertEqual(len(params), 2)
+>       self.assertTrue(mx.array_equal(params["weights.w1"], mx.zeros((2, 2))))
+E       RuntimeError: [omarchy] And dtype is not implemented for the Omarchy Vulkan backend (dtype=bool, shape=[1,1]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_nn.py:92: RuntimeError
+__________________________ TestLayers.test_batch_norm __________________________
+
+self = <test_nn.TestLayers testMethod=test_batch_norm>
+
+    def test_batch_norm(self):
+        mx.random.seed(42)
+        x = mx.random.normal((5, 4), dtype=mx.float32)
+    
+        # Batch norm
+        bn = nn.BatchNorm(num_features=4, affine=True)
+>       self.assertTrue(mx.allclose(bn.running_mean, mx.zeros_like(bn.running_mean)))
+E       RuntimeError: [omarchy] Abs is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[4]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_nn.py:723: RuntimeError
+_______________________ TestLayers.test_batch_norm_stats _______________________
+
+self = <test_nn.TestLayers testMethod=test_batch_norm_stats>
+
+    def test_batch_norm_stats(self):
+        batch_size = 2
+        num_features = 4
+        h = 3
+        w = 3
+    
+        batch_norm = nn.BatchNorm(num_features)
+        batch_norm.train()
+        data = mx.random.normal((batch_size, h, w, num_features))
+    
+        normalized_data = batch_norm(data)
+>       self.assertTrue(
+            mx.allclose(
+                mx.mean(normalized_data, axis=(0, 1, 2)), mx.zeros((4,)), atol=1e-5
+            )
+        )
+E       RuntimeError: [omarchy] ErfInv is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[2,3,3,4]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_nn.py:923: RuntimeError
+_________________________ TestLayers.test_causal_mask __________________________
+
+self = <test_nn.TestLayers testMethod=test_causal_mask>
+
+    def test_causal_mask(self):
+        mask = nn.MultiHeadAttention.create_additive_causal_mask(4, mx.float16)
+>       self.assertFalse(mx.any(mx.isnan(mask)))
+E       RuntimeError: [omarchy] Less is not implemented for the Omarchy Vulkan backend (dtype=bool, shape=[4,4]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_nn.py:2239: RuntimeError
+_____________________________ TestLayers.test_celu _____________________________
+
+self = <test_nn.TestLayers testMethod=test_celu>
+
+    def test_celu(self):
+        x = mx.array([1.0, -1.0, 0.0])
+        y = nn.celu(x)
+        epsilon = 1e-4
+        expected_y = mx.array([1.0, -0.6321, 0.0])
+>       self.assertTrue(mx.all(mx.abs(y - expected_y) < epsilon))
+E       RuntimeError: [omarchy] Compiled tape op Minimum is not implemented for the Omarchy Vulkan backend. No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_nn.py:1237: RuntimeError
+____________________________ TestLayers.test_conv1d ____________________________
+
+self = <test_nn.TestLayers testMethod=test_conv1d>
+
+    def test_conv1d(self):
+        N = 5
+        L = 12
+        ks = 3
+        C_in = 2
+        C_out = 4
+        x = mx.ones((N, L, C_in))
+        c = nn.Conv1d(in_channels=C_in, out_channels=C_out, kernel_size=ks)
+        c.weight = mx.ones_like(c.weight)
+        y = c(x)
+        self.assertEqual(y.shape, (N, L - ks + 1, C_out))
+>       self.assertTrue(mx.allclose(y, mx.full(y.shape, ks * C_in, mx.float32)))
+E       RuntimeError: [omarchy] non-2D Convolution is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[5,10,4]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_nn.py:954: RuntimeError
+____________________________ TestLayers.test_conv2d ____________________________
+
+self = <test_nn.TestLayers testMethod=test_conv2d>
+
+    def test_conv2d(self):
+        x = mx.ones((4, 8, 8, 3))
+        c = nn.Conv2d(3, 1, 8)
+        y = c(x)
+        self.assertEqual(y.shape, (4, 1, 1, 1))
+        c.weight = mx.ones_like(c.weight) / 8 / 8 / 3
+        y = c(x)
+        self.assertTrue(np.allclose(y[:, 0, 0, 0], x.mean(axis=(1, 2, 3))))
+    
+        # 3x3 conv no padding stride 1
+        c = nn.Conv2d(3, 8, 3)
+        y = c(x)
+        self.assertEqual(y.shape, (4, 6, 6, 8))
+>       self.assertLess(mx.abs(y - c.weight.sum((1, 2, 3))).max(), 1e-4)
+E       RuntimeError: [omarchy] Abs is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[4,6,6,8]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_nn.py:992: RuntimeError
+_____________________________ TestLayers.test_elu ______________________________
+
+self = <test_nn.TestLayers testMethod=test_elu>
+
+    def test_elu(self):
+        x = mx.array([1.0, -1.0, 0.0])
+        y = nn.elu(x)
+        epsilon = 1e-4
+        expected_y = mx.array([1.0, -0.6321, 0.0])
+>       self.assertTrue(mx.all(mx.abs(y - expected_y) < epsilon))
+E       RuntimeError: [omarchy] Compiled tape op Greater is not implemented for the Omarchy Vulkan backend. No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_nn.py:1163: RuntimeError
+_____________________________ TestLayers.test_glu ______________________________
+
+self = <test_nn.TestLayers testMethod=test_glu>
+
+    def test_glu(self):
+        x = mx.array([[[1.0, 2.0, 3.0, 4.0]]], dtype=mx.float32)
+        y = mx.array([[[0.952574, 1.96403]]], dtype=mx.float32)
+        out = nn.glu(x)
+>       self.assertEqualArray(out, y)
+
+.work/mlx/python/tests/test_nn.py:1295: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+.work/mlx/python/tests/mlx_tests.py:86: in assertEqualArray
+    self.assertTrue(mx.allclose(mx_res, expected, rtol=rtol, atol=atol))
+E   RuntimeError: [omarchy] Abs is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[1,1,2]). No CPU fallback is available in Omarchy builds.
+_____________________________ TestLayers.test_gru ______________________________
+
+self = <test_nn.TestLayers testMethod=test_gru>
+
+    def test_gru(self):
+        layer = nn.GRU(5, 12, bias=True)
+        inp = mx.random.normal((2, 25, 5))
+    
+        h_out = layer(inp)
+        self.assertEqual(h_out.shape, (2, 25, 12))
+    
+        h_out = layer(inp, hidden=h_out[:, -1, :])
+        self.assertEqual(h_out.shape, (2, 25, 12))
+    
+        inp = mx.random.normal((44, 5))
+        h_out = layer(inp)
+        self.assertEqual(h_out.shape, (44, 12))
+    
+        h_out = layer(inp, h_out[-1, :])
+        self.assertEqual(h_out.shape, (44, 12))
+    
+        # hidden=None should be equivalent to hidden=zeros (issue #3249)
+        for bias in [True, False]:
+            layer = nn.GRU(5, 12, bias=bias)
+            inp = mx.random.normal((2, 25, 5))
+            h_none = layer(inp)
+            h_zeros = layer(inp, hidden=mx.zeros((2, 12)))
+>           self.assertTrue(mx.allclose(h_none, h_zeros).item())
+                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           RuntimeError: [omarchy] ErfInv is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[2,25,5]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_nn.py:2193: RuntimeError
+_________________________ TestLayers.test_hard_shrink __________________________
+
+self = <test_nn.TestLayers testMethod=test_hard_shrink>
+
+    def test_hard_shrink(self):
+        x = mx.array([1.0, -0.5, 0.0, 0.5, -1.5])
+        y = nn.hard_shrink(x)
+        expected_y = mx.array([1.0, 0.0, 0.0, 0.0, -1.5])
+>       self.assertTrue(mx.array_equal(y, expected_y))
+E       RuntimeError: [omarchy] Compiled tape op Abs is not implemented for the Omarchy Vulkan backend. No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_nn.py:1309: RuntimeError
+__________________________ TestLayers.test_hard_tanh ___________________________
+
+self = <test_nn.TestLayers testMethod=test_hard_tanh>
+
+    def test_hard_tanh(self):
+        x = mx.array([1.0, -2.0, 0.0, 0.5, 2.0])
+        y = nn.hard_tanh(x)
+        expected_y = mx.array([1.0, -1.0, 0.0, 0.5, 1.0])
+>       self.assertTrue(mx.array_equal(y, expected_y))
+E       RuntimeError: [omarchy] Compiled tape op Minimum is not implemented for the Omarchy Vulkan backend. No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_nn.py:1301: RuntimeError
+__________________________ TestLayers.test_hardswish ___________________________
+
+self = <test_nn.TestLayers testMethod=test_hardswish>
+
+    def test_hardswish(self):
+        x = mx.array([-3.0, -1.5, 0.0, 1.5, 3.0])
+        y = nn.hardswish(x)
+        epsilon = 1e-4
+        expected_y = mx.array([0.0, -0.375, 0.0, 1.125, 3.0])
+>       self.assertTrue(mx.all(mx.abs(y - expected_y) < epsilon))
+E       RuntimeError: [omarchy] Compiled tape op Minimum is not implemented for the Omarchy Vulkan backend. No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_nn.py:1287: RuntimeError
+__________________________ TestLayers.test_leaky_relu __________________________
+
+self = <test_nn.TestLayers testMethod=test_leaky_relu>
+
+    def test_leaky_relu(self):
+        x = mx.array([1.0, -1.0, 0.0])
+        y = nn.leaky_relu(x)
+>       self.assertTrue(mx.array_equal(y, mx.array([1.0, -0.01, 0.0])))
+E       RuntimeError: [omarchy] And dtype is not implemented for the Omarchy Vulkan backend (dtype=bool, shape=[1]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_nn.py:1149: RuntimeError
+_________________________ TestLayers.test_log_sigmoid __________________________
+
+self = <test_nn.TestLayers testMethod=test_log_sigmoid>
+
+    def test_log_sigmoid(self):
+        x = mx.array([1.0, -1.0, 0.0])
+        y = nn.log_sigmoid(x)
+        epsilon = 1e-4
+        expected_y = mx.array([-0.3133, -1.3133, -0.6931])
+>       self.assertTrue(mx.all(mx.abs(y - expected_y) < epsilon))
+E       RuntimeError: [omarchy] Compiled tape op LogAddExp is not implemented for the Omarchy Vulkan backend. No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_nn.py:1266: RuntimeError
+_________________________ TestLayers.test_log_softmax __________________________
+
+self = <test_nn.TestLayers testMethod=test_log_softmax>
+
+    def test_log_softmax(self):
+        x = mx.array([1.0, 2.0, 3.0])
+        y = nn.log_softmax(x)
+        epsilon = 1e-4
+        expected_y = mx.array([-2.4076, -1.4076, -0.4076])
+>       self.assertTrue(mx.all(mx.abs(y - expected_y) < epsilon))
+E       RuntimeError: [omarchy] Abs is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[3]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_nn.py:1252: RuntimeError
+_____________________________ TestLayers.test_mish _____________________________
+
+self = <test_nn.TestLayers testMethod=test_mish>
+
+    def test_mish(self):
+>       self.assertEqualArray(
+            nn.Mish()(mx.array([1.0, -1.0, 0.0, 0.5])),
+            mx.array([0.8651, -0.3034, 0.0000, 0.3752]),
+        )
+
+.work/mlx/python/tests/test_nn.py:1277: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+.work/mlx/python/tests/mlx_tests.py:86: in assertEqualArray
+    self.assertTrue(mx.allclose(mx_res, expected, rtol=rtol, atol=atol))
+E   RuntimeError: [omarchy] Compiled tape op LogAddExp is not implemented for the Omarchy Vulkan backend. No CPU fallback is available in Omarchy builds.
+____________________________ TestLayers.test_prelu _____________________________
+
+self = <test_nn.TestLayers testMethod=test_prelu>
+
+    def test_prelu(self):
+>       self.assertEqualArray(
+            nn.PReLU()(mx.array([1.0, -1.0, 0.0, 0.5])),
+            mx.array([1.0, -0.25, 0.0, 0.5]),
+        )
+
+.work/mlx/python/tests/test_nn.py:1271: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+.work/mlx/python/tests/mlx_tests.py:86: in assertEqualArray
+    self.assertTrue(mx.allclose(mx_res, expected, rtol=rtol, atol=atol))
+E   RuntimeError: [omarchy] Compiled tape op Minimum is not implemented for the Omarchy Vulkan backend. No CPU fallback is available in Omarchy builds.
+_____________________ TestLayers.test_quantized_embedding ______________________
+
+self = <test_nn.TestLayers testMethod=test_quantized_embedding>
+
+    def test_quantized_embedding(self):
+        emb = nn.Embedding(32, 256)
+        qemb = nn.QuantizedEmbedding.from_embedding(emb, bits=8)
+        x = mx.array([2, 6, 9, 3, 0, 3])
+        y = emb(x)
+        yq = qemb(x)
+>       self.assertLess((y - yq).abs().max(), qemb.scales.max())
+E       RuntimeError: [omarchy] ErfInv is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[32,256]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_nn.py:2223: RuntimeError
+_____________________________ TestLayers.test_relu _____________________________
+
+self = <test_nn.TestLayers testMethod=test_relu>
+
+    def test_relu(self):
+        x = mx.array([1.0, -1.0, 0.0])
+        y = nn.relu(x)
+>       self.assertTrue(mx.array_equal(y, mx.array([1.0, 0.0, 0.0])))
+E       RuntimeError: [omarchy] And dtype is not implemented for the Omarchy Vulkan backend (dtype=bool, shape=[1]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_nn.py:1130: RuntimeError
+____________________________ TestLayers.test_relu6 _____________________________
+
+self = <test_nn.TestLayers testMethod=test_relu6>
+
+    def test_relu6(self):
+        x = mx.array([1.0, -1.0, 0.0, 7.0, -7.0])
+        y = nn.relu6(x)
+>       self.assertTrue(mx.array_equal(y, mx.array([1.0, 0.0, 0.0, 6.0, 0.0])))
+E       RuntimeError: [omarchy] Compiled tape op Minimum is not implemented for the Omarchy Vulkan backend. No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_nn.py:1177: RuntimeError
+__________________________ TestLayers.test_sequential __________________________
+
+self = <test_nn.TestLayers testMethod=test_sequential>
+
+    def test_sequential(self):
+        x = mx.ones((10, 2))
+        m = nn.Sequential(nn.Linear(2, 10), nn.ReLU(), nn.Linear(10, 1))
+        y = m(x)
+        self.assertEqual(y.shape, (10, 1))
+        params = m.parameters()
+        self.assertTrue("layers" in params)
+        self.assertEqual(len(params["layers"]), 3)
+        self.assertTrue("weight" in params["layers"][0])
+        self.assertEqual(len(params["layers"][1]), 0)
+        self.assertTrue("weight" in params["layers"][2])
+    
+        m.layers[1] = nn.relu
+        y2 = m(x)
+>       self.assertTrue(mx.array_equal(y, y2))
+E       RuntimeError: [omarchy] And dtype is not implemented for the Omarchy Vulkan backend (dtype=bool, shape=[1,1]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_nn.py:1057: RuntimeError
+___________________________ TestLayers.test_sigmoid ____________________________
+
+self = <test_nn.TestLayers testMethod=test_sigmoid>
+
+    def test_sigmoid(self):
+        x = mx.array([1.0, 0.0, -1.0])
+        y1 = mx.sigmoid(x)
+        y2 = nn.activations.sigmoid(x)
+        y3 = nn.Sigmoid()(x)
+    
+>       self.assertEqualArray(y1, y2, atol=0, rtol=0)
+
+.work/mlx/python/tests/test_nn.py:1124: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+.work/mlx/python/tests/mlx_tests.py:86: in assertEqualArray
+    self.assertTrue(mx.allclose(mx_res, expected, rtol=rtol, atol=atol))
+E   RuntimeError: [omarchy] Abs is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[3]). No CPU fallback is available in Omarchy builds.
+____________________________ TestLayers.test_sin_pe ____________________________
+
+self = <test_nn.TestLayers testMethod=test_sin_pe>
+
+    def test_sin_pe(self):
+        m = nn.SinusoidalPositionalEncoding(16, min_freq=0.01)
+        x = mx.arange(10)
+        y = m(x)
+    
+        self.assertEqual(y.shape, (10, 16))
+        similarities = y @ y.T
+>       self.assertLess(
+            mx.abs(similarities[mx.arange(10), mx.arange(10)] - 1).max(), 1e-5
+        )
+E       RuntimeError: [omarchy] non-axis-0 Take is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[10,1,1]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_nn.py:1096: RuntimeError
+___________________________ TestLayers.test_softmax ____________________________
+
+self = <test_nn.TestLayers testMethod=test_softmax>
+
+    def test_softmax(self):
+        x = mx.array([1.0, -1.0, 0.0])
+        y = nn.softmax(x)
+        epsilon = 1e-4
+        expected_y = mx.array([0.6652, 0.0900, 0.2447])
+>       self.assertTrue(mx.all(mx.abs(y - expected_y) < epsilon))
+E       RuntimeError: [omarchy] Abs is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[3]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_nn.py:1186: RuntimeError
+___________________________ TestLayers.test_softmin ____________________________
+
+self = <test_nn.TestLayers testMethod=test_softmin>
+
+    def test_softmin(self):
+        x = mx.array([1.0, 2.0, 3.0])
+        y = nn.softmin(x)
+        epsilon = 1e-4
+        expected_y = mx.array([0.6652, 0.2447, 0.0900])
+>       self.assertTrue(mx.all(mx.abs(y - expected_y) < epsilon))
+E       RuntimeError: [omarchy] Abs is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[3]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_nn.py:1195: RuntimeError
+___________________________ TestLayers.test_softplus ___________________________
+
+self = <test_nn.TestLayers testMethod=test_softplus>
+
+    def test_softplus(self):
+        x = mx.array([1.0, -1.0, 0.0])
+        y = nn.softplus(x)
+        epsilon = 1e-4
+        expected_y = mx.array([1.3133, 0.3133, 0.6931])
+>       self.assertTrue(mx.all(mx.abs(y - expected_y) < epsilon))
+E       RuntimeError: [omarchy] Compiled tape op LogAddExp is not implemented for the Omarchy Vulkan backend. No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_nn.py:1204: RuntimeError
+__________________________ TestLayers.test_softshrink __________________________
+
+self = <test_nn.TestLayers testMethod=test_softshrink>
+
+    def test_softshrink(self):
+        x = mx.array([1.0, -1.0, 0.0])
+        y = nn.softshrink(x)
+        epsilon = 1e-4
+        expected_y = mx.array([0.5, -0.5, 0.0])
+>       self.assertTrue(mx.all(mx.abs(y - expected_y) < epsilon))
+E       RuntimeError: [omarchy] Compiled tape op Abs is not implemented for the Omarchy Vulkan backend. No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_nn.py:1222: RuntimeError
+___________________________ TestLayers.test_softsign ___________________________
+
+self = <test_nn.TestLayers testMethod=test_softsign>
+
+    def test_softsign(self):
+        x = mx.array([1.0, -1.0, 0.0])
+        y = nn.softsign(x)
+        epsilon = 1e-4
+        expected_y = mx.array([0.5, -0.5, 0.0])
+>       self.assertTrue(mx.all(mx.abs(y - expected_y) < epsilon))
+E       RuntimeError: [omarchy] Compiled tape op Abs is not implemented for the Omarchy Vulkan backend. No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_nn.py:1213: RuntimeError
+_____________________________ TestLayers.test_step _____________________________
+
+self = <test_nn.TestLayers testMethod=test_step>
+
+    def test_step(self):
+        x = mx.array([-1.0, 0.0, 1.0])
+    
+        # Default threshold of 0: the boundary value is included
+        y = nn.step(x)
+>       self.assertTrue(mx.array_equal(y, mx.array([0, 1, 1])))
+E       RuntimeError: [omarchy] Compiled tape op GreaterEqual is not implemented for the Omarchy Vulkan backend. No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_nn.py:1139: RuntimeError
+- generated xml file: /home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-01/py/test_nn.py.xml -
+=========================== short test summary info ============================
+FAILED .work/mlx/python/tests/test_nn.py::TestBase::test_load_from_weights - RuntimeError: [omarchy] And dtype is not implemented for the Omarchy Vulkan backend (dtype=bool, shape=[1,1]). No CPU fallback is available in Omarchy builds.
+FAILED .work/mlx/python/tests/test_nn.py::TestBase::test_model_with_dict - RuntimeError: [omarchy] And dtype is not implemented for the Omarchy Vulkan backend (dtype=bool, shape=[1,1]). No CPU fallback is available in Omarchy builds.
+FAILED .work/mlx/python/tests/test_nn.py::TestLayers::test_batch_norm - RuntimeError: [omarchy] Abs is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[4]). No CPU fallback is available in Omarchy builds.
+FAILED .work/mlx/python/tests/test_nn.py::TestLayers::test_batch_norm_stats - RuntimeError: [omarchy] ErfInv is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[2,3,3,4]). No CPU fallback is available in Omarchy builds.
+FAILED .work/mlx/python/tests/test_nn.py::TestLayers::test_causal_mask - RuntimeError: [omarchy] Less is not implemented for the Omarchy Vulkan backend (dtype=bool, shape=[4,4]). No CPU fallback is available in Omarchy builds.
+FAILED .work/mlx/python/tests/test_nn.py::TestLayers::test_celu - RuntimeError: [omarchy] Compiled tape op Minimum is not implemented for the Omarchy Vulkan backend. No CPU fallback is available in Omarchy builds.
+FAILED .work/mlx/python/tests/test_nn.py::TestLayers::test_conv1d - RuntimeError: [omarchy] non-2D Convolution is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[5,10,4]). No CPU fallback is available in Omarchy builds.
+FAILED .work/mlx/python/tests/test_nn.py::TestLayers::test_conv2d - RuntimeError: [omarchy] Abs is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[4,6,6,8]). No CPU fallback is available in Omarchy builds.
+FAILED .work/mlx/python/tests/test_nn.py::TestLayers::test_elu - RuntimeError: [omarchy] Compiled tape op Greater is not implemented for the Omarchy Vulkan backend. No CPU fallback is available in Omarchy builds.
+FAILED .work/mlx/python/tests/test_nn.py::TestLayers::test_glu - RuntimeError: [omarchy] Abs is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[1,1,2]). No CPU fallback is available in Omarchy builds.
+FAILED .work/mlx/python/tests/test_nn.py::TestLayers::test_gru - RuntimeError: [omarchy] ErfInv is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[2,25,5]). No CPU fallback is available in Omarchy builds.
+FAILED .work/mlx/python/tests/test_nn.py::TestLayers::test_hard_shrink - RuntimeError: [omarchy] Compiled tape op Abs is not implemented for the Omarchy Vulkan backend. No CPU fallback is available in Omarchy builds.
+FAILED .work/mlx/python/tests/test_nn.py::TestLayers::test_hard_tanh - RuntimeError: [omarchy] Compiled tape op Minimum is not implemented for the Omarchy Vulkan backend. No CPU fallback is available in Omarchy builds.
+FAILED .work/mlx/python/tests/test_nn.py::TestLayers::test_hardswish - RuntimeError: [omarchy] Compiled tape op Minimum is not implemented for the Omarchy Vulkan backend. No CPU fallback is available in Omarchy builds.
+FAILED .work/mlx/python/tests/test_nn.py::TestLayers::test_leaky_relu - RuntimeError: [omarchy] And dtype is not implemented for the Omarchy Vulkan backend (dtype=bool, shape=[1]). No CPU fallback is available in Omarchy builds.
+FAILED .work/mlx/python/tests/test_nn.py::TestLayers::test_log_sigmoid - RuntimeError: [omarchy] Compiled tape op LogAddExp is not implemented for the Omarchy Vulkan backend. No CPU fallback is available in Omarchy builds.
+FAILED .work/mlx/python/tests/test_nn.py::TestLayers::test_log_softmax - RuntimeError: [omarchy] Abs is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[3]). No CPU fallback is available in Omarchy builds.
+FAILED .work/mlx/python/tests/test_nn.py::TestLayers::test_mish - RuntimeError: [omarchy] Compiled tape op LogAddExp is not implemented for the Omarchy Vulkan backend. No CPU fallback is available in Omarchy builds.
+FAILED .work/mlx/python/tests/test_nn.py::TestLayers::test_prelu - RuntimeError: [omarchy] Compiled tape op Minimum is not implemented for the Omarchy Vulkan backend. No CPU fallback is available in Omarchy builds.
+FAILED .work/mlx/python/tests/test_nn.py::TestLayers::test_quantized_embedding - RuntimeError: [omarchy] ErfInv is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[32,256]). No CPU fallback is available in Omarchy builds.
+FAILED .work/mlx/python/tests/test_nn.py::TestLayers::test_relu - RuntimeError: [omarchy] And dtype is not implemented for the Omarchy Vulkan backend (dtype=bool, shape=[1]). No CPU fallback is available in Omarchy builds.
+FAILED .work/mlx/python/tests/test_nn.py::TestLayers::test_relu6 - RuntimeError: [omarchy] Compiled tape op Minimum is not implemented for the Omarchy Vulkan backend. No CPU fallback is available in Omarchy builds.
+FAILED .work/mlx/python/tests/test_nn.py::TestLayers::test_sequential - RuntimeError: [omarchy] And dtype is not implemented for the Omarchy Vulkan backend (dtype=bool, shape=[1,1]). No CPU fallback is available in Omarchy builds.
+FAILED .work/mlx/python/tests/test_nn.py::TestLayers::test_sigmoid - RuntimeError: [omarchy] Abs is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[3]). No CPU fallback is available in Omarchy builds.
+FAILED .work/mlx/python/tests/test_nn.py::TestLayers::test_sin_pe - RuntimeError: [omarchy] non-axis-0 Take is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[10,1,1]). No CPU fallback is available in Omarchy builds.
+FAILED .work/mlx/python/tests/test_nn.py::TestLayers::test_softmax - RuntimeError: [omarchy] Abs is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[3]). No CPU fallback is available in Omarchy builds.
+FAILED .work/mlx/python/tests/test_nn.py::TestLayers::test_softmin - RuntimeError: [omarchy] Abs is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[3]). No CPU fallback is available in Omarchy builds.
+FAILED .work/mlx/python/tests/test_nn.py::TestLayers::test_softplus - RuntimeError: [omarchy] Compiled tape op LogAddExp is not implemented for the Omarchy Vulkan backend. No CPU fallback is available in Omarchy builds.
+FAILED .work/mlx/python/tests/test_nn.py::TestLayers::test_softshrink - RuntimeError: [omarchy] Compiled tape op Abs is not implemented for the Omarchy Vulkan backend. No CPU fallback is available in Omarchy builds.
+FAILED .work/mlx/python/tests/test_nn.py::TestLayers::test_softsign - RuntimeError: [omarchy] Compiled tape op Abs is not implemented for the Omarchy Vulkan backend. No CPU fallback is available in Omarchy builds.
+FAILED .work/mlx/python/tests/test_nn.py::TestLayers::test_step - RuntimeError: [omarchy] Compiled tape op GreaterEqual is not implemented for the Omarchy Vulkan backend. No CPU fallback is available in Omarchy builds.
+============ 31 failed, 35 passed, 1 skipped, 6 deselected in 2.05s ============

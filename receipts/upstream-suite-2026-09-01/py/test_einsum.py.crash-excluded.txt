@@ -1,0 +1,7 @@
+.work/mlx/python/tests/test_einsum.py::TestEinsum::test_broadcasting
+.work/mlx/python/tests/test_einsum.py::TestEinsum::test_ellipses
+.work/mlx/python/tests/test_einsum.py::TestEinsum::test_multi_input_einsum
+.work/mlx/python/tests/test_einsum.py::TestEinsum::test_opt_einsum_test_cases
+.work/mlx/python/tests/test_einsum.py::TestEinsum::test_simple_einsum
+.work/mlx/python/tests/test_einsum.py::TestEinsum::test_sum_first
+.work/mlx/python/tests/test_einsum.py::TestEinsum::test_two_input_einsum
