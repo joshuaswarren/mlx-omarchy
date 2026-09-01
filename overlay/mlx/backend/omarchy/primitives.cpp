@@ -932,7 +932,20 @@ void Gather::eval_gpu(const std::vector<array>& inputs, array& out) {
   const array& table = inputs.at(0);
   auto [axes, slice_sizes] = state();
   auto& encoder = omarchy::get_command_encoder(out.primitive().stream());
-  require_float_dtype("Take", table, out, encoder);
+  // QuantizedEmbedding gathers rows of a packed uint32 weight matrix.
+  // The u32 kernel copies raw 32-bit words with no float conversion, so
+  // words above 2^31 stay bit-exact. An int32 table shares that kernel
+  // unchanged: the copy is bitwise and signedness never participates.
+  // Float tables keep the float kernels and the float dtype gate;
+  // remaining dtypes keep the named error.
+  bool raw_word_table = table.dtype() == uint32 || table.dtype() == int32;
+  if (raw_word_table) {
+    if (out.dtype() != table.dtype()) {
+      omarchy::unsupported("Take dtype", out);
+    }
+  } else {
+    require_float_dtype("Take", table, out, encoder);
+  }
   if (inputs.size() != 2 || axes.size() != 1 || axes[0] != 0) {
     omarchy::unsupported("non-axis-0 Take", out);
   }
@@ -1001,11 +1014,13 @@ void Gather::eval_gpu(const std::vector<array>& inputs, array& out) {
   params.output_offset = checked_item_offset(out, out.size(), "Take", out);
   std::array<omarchy::ComputeBinding, 3> bindings{
       binding(table), binding(indices), binding(out)};
-  auto kernel = select_float_kernel(
-      out.dtype(),
-      omarchy::ComputeKernel::GatherF32,
-      omarchy::ComputeKernel::GatherF16,
-      omarchy::ComputeKernel::GatherBF16);
+  auto kernel = raw_word_table
+      ? omarchy::ComputeKernel::GatherU32
+      : select_float_kernel(
+            out.dtype(),
+            omarchy::ComputeKernel::GatherF32,
+            omarchy::ComputeKernel::GatherF16,
+            omarchy::ComputeKernel::GatherBF16);
   encoder.dispatch_compute(
       kernel, bindings, params, omarchy::compute_dispatch_group_count(count));
 }
