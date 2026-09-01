@@ -134,6 +134,12 @@ Package work is in progress.
 `tools/ci/run-clean-omarchy-install.sh` verifies a fresh-venv install with add, matmul, and gradient receipts.
 The M1 clean-install receipt is recorded: aarch64 wheel installs in a fresh venv and passes add, matmul, and gradient checks on `Apple M1 (G13G B1)`.
 
+Model file io is in progress.
+`mx.save_safetensors` and `mx.load` of a safetensors file pass the development gate for FP32 and BF16 arrays with exact-value round trips.
+The io stream selection uses the default stream when the CPU backend is absent, and the Load primitive reads file bytes straight into host-visible output buffers.
+The `.npy` loader follows the same stream rule but has no gate receipt yet.
+GGUF load has no stream selection to fix and no receipt.
+
 ## ANE
 
 Linux descriptor submission is in progress.

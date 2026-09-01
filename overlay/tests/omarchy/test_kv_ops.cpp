@@ -10,13 +10,17 @@
 
 #include <cmath>
 #include <cstdint>
+#include <cstdio>
+#include <filesystem>
 #include <iostream>
+#include <unordered_map>
 #include <vector>
 
 #include "mlx/backend/gpu/device_info.h"
 #include "mlx/backend/omarchy/device.h"
 #include "mlx/backend/omarchy/encoder.h"
 #include "mlx/fast.h"
+#include "mlx/io.h"
 #include "mlx/ops.h"
 #include "mlx/stream.h"
 
@@ -391,4 +395,72 @@ TEST_CASE("mx.fast.rope matches a host rotation on the composed fallback") {
     }
   }
   check_values(out, expected, stream, 1e-4);
+}
+
+TEST_CASE("safetensors load round-trips float32 through the gpu stream") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  const std::string path =
+      (std::filesystem::temp_directory_path() /
+       "mlx_omarchy_kv_roundtrip_f32.safetensors")
+          .string();
+
+  // save_safetensors evals through the default stream; gpu_stream() has
+  // already set the default device to the gpu.
+  std::unordered_map<std::string, array> weights;
+  weights.insert({"w", array({0.25f, -3.5f, 1000.0f, 1.0f}, {2, 2}, float32)});
+  save_safetensors(path, std::move(weights));
+
+  // The load must pick a stream that exists. The cpu backend is compiled
+  // out (MLX_BUILD_CPU=OFF), so the upstream forced Device::cpu stream
+  // crashed in default_stream before any byte was read.
+  auto loaded = load_safetensors(path, stream);
+  array out = loaded.first.at("w");
+  out.eval();
+  omarchy::get_command_encoder(stream).synchronize();
+  REQUIRE_EQ(out.shape(), Shape{2, 2});
+  const float* values = out.data<float>();
+  CHECK_EQ(values[0], 0.25f);
+  CHECK_EQ(values[1], -3.5f);
+  CHECK_EQ(values[2], 1000.0f);
+  CHECK_EQ(values[3], 1.0f);
+  std::remove(path.c_str());
+}
+
+TEST_CASE("safetensors load round-trips bf16 bit patterns") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  const auto& capabilities = omarchy::device(0).capabilities();
+  if (!capabilities.storage_buffer_16bit_access || !capabilities.shader_int16) {
+    skip("Vulkan device lacks required BF16 storage features.");
+    return;
+  }
+  const std::string path =
+      (std::filesystem::temp_directory_path() /
+       "mlx_omarchy_kv_roundtrip_bf16.safetensors")
+          .string();
+
+  array brains =
+      astype(array({1.0f, 2.0f, 0.5f, -4.0f}, {4}, float32), bfloat16, stream);
+  std::unordered_map<std::string, array> weights;
+  weights.insert({"b", brains});
+  save_safetensors(path, std::move(weights));
+
+  auto loaded = load_safetensors(path, stream);
+  array out = loaded.first.at("b");
+  CHECK_EQ(out.dtype(), bfloat16);
+  array widened = astype(out, float32, stream);
+  widened.eval();
+  omarchy::get_command_encoder(stream).synchronize();
+  REQUIRE_EQ(widened.size(), 4u);
+  const float* values = widened.data<float>();
+  CHECK_EQ(values[0], 1.0f);
+  CHECK_EQ(values[1], 2.0f);
+  CHECK_EQ(values[2], 0.5f);
+  CHECK_EQ(values[3], -4.0f);
+  std::remove(path.c_str());
 }
