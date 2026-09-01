@@ -11,6 +11,7 @@
 #include <functional>
 #include <vector>
 #include <numeric>
+#include <random>
 
 #include "mlx/backend/gpu/copy.h"
 #include "mlx/backend/gpu/device_info.h"
@@ -2906,4 +2907,338 @@ TEST_CASE("FP16 sort and argsort match host references") {
       stream,
       1e-2);
   check_indices(argsort(x, -1, stream), {1, 3, 2, 0}, stream);
+}
+
+TEST_CASE("Equal matches host references across dtypes and broadcast shapes") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+
+  // The scalar-only shape=[] case that the sampler chain hits.
+  array scalar_equal = equal(array(2.0f), array(3.0f), stream);
+  scalar_equal.eval();
+  omarchy::get_command_encoder(stream).synchronize();
+  REQUIRE_EQ(scalar_equal.shape().size(), 0u);
+  CHECK_EQ(scalar_equal.data<bool>()[0], false);
+  scalar_equal = equal(array(4.0f), array(4.0f), stream);
+  scalar_equal.eval();
+  omarchy::get_command_encoder(stream).synchronize();
+  CHECK_EQ(scalar_equal.data<bool>()[0], true);
+
+  // Row against a scalar and row against a row, float32 and int32.
+  std::vector<float> xv = {1.0f, 2.0f, 3.0f, 4.0f};
+  array x(xv.begin(), Shape{4}, float32);
+  std::vector<bool> expected = {false, true, false, false};
+  array row_equal = equal(x, array(2.0f), stream);
+  row_equal.eval();
+  omarchy::get_command_encoder(stream).synchronize();
+  for (size_t index = 0; index < 4; ++index) {
+    CHECK_EQ(row_equal.data<bool>()[index], expected[index]);
+  }
+  std::vector<int32_t> iv = {7, 0, -3, 7};
+  array i(iv.begin(), Shape{4}, int32);
+  std::vector<bool> iexpected = {true, false, false, true};
+  array i_equal = equal(i, array(7, int32), stream);
+  i_equal.eval();
+  omarchy::get_command_encoder(stream).synchronize();
+  for (size_t index = 0; index < 4; ++index) {
+    CHECK_EQ(i_equal.data<bool>()[index], iexpected[index]);
+  }
+
+  // A general broadcast over the leading axis uses the stride transport.
+  array wide(xv.begin(), Shape{1, 4}, float32);
+  std::vector<float> yv = {1.0f, 9.0f, 9.0f, 9.0f, 9.0f, 2.0f, 9.0f, 9.0f};
+  array y(yv.begin(), Shape{2, 4}, float32);
+  array broadcast_equal = equal(y, wide, stream);
+  broadcast_equal.eval();
+  omarchy::get_command_encoder(stream).synchronize();
+  const bool* broadcast_bits = broadcast_equal.data<bool>();
+  CHECK_EQ(broadcast_bits[0], true);
+  CHECK_EQ(broadcast_bits[1], false);
+  CHECK_EQ(broadcast_bits[4], false);
+  CHECK_EQ(broadcast_bits[5], true);
+
+  // Float16 and bfloat16 compare through the 16-bit storage variants.
+  std::vector<float> hv = {0.5f, 1.5f, -2.0f, 0.25f};
+  array h(hv.begin(), Shape{4}, float16);
+  array h_equal = equal(h, array(0.5f, float16), stream);
+  h_equal.eval();
+  omarchy::get_command_encoder(stream).synchronize();
+  CHECK_EQ(h_equal.data<bool>()[0], true);
+  CHECK_EQ(h_equal.data<bool>()[1], false);
+  array b(hv.begin(), Shape{4}, bfloat16);
+  array b_equal = equal(b, array(-2.0f, bfloat16), stream);
+  b_equal.eval();
+  omarchy::get_command_encoder(stream).synchronize();
+  CHECK_EQ(b_equal.data<bool>()[2], true);
+  CHECK_EQ(b_equal.data<bool>()[3], false);
+
+  // Equality with NaN stays false, matching the upstream comparator.
+  std::vector<float> nv = {std::nanf("")};
+  array n(nv.begin(), Shape{1}, float32);
+  array nan_equal = equal(n, n, stream);
+  nan_equal.eval();
+  omarchy::get_command_encoder(stream).synchronize();
+  CHECK_EQ(nan_equal.data<bool>()[0], false);
+}
+
+TEST_CASE("isinf composes Equal and LogicalOr through Vulkan compute") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  std::vector<float> xv = {
+      0.0f,
+      std::numeric_limits<float>::infinity(),
+      -std::numeric_limits<float>::infinity(),
+      1.5f,
+      std::nanf("")};
+  array x(xv.begin(), Shape{5}, float32);
+  array flags = isinf(x, stream);
+  flags.eval();
+  omarchy::get_command_encoder(stream).synchronize();
+  CHECK_EQ(flags.data<bool>()[0], false);
+  CHECK_EQ(flags.data<bool>()[1], true);
+  CHECK_EQ(flags.data<bool>()[2], true);
+  CHECK_EQ(flags.data<bool>()[3], false);
+  CHECK_EQ(flags.data<bool>()[4], false);
+
+  // The sampler calls isinf on the scalar row max.
+  array scalar_flags = isinf(
+      array(std::numeric_limits<float>::infinity()), stream);
+  scalar_flags.eval();
+  omarchy::get_command_encoder(stream).synchronize();
+  CHECK_EQ(scalar_flags.data<bool>()[0], true);
+}
+
+TEST_CASE("Select picks between two row-contiguous values under a scalar condition") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  std::vector<float> tv = {1.0f, 2.0f, 3.0f, 4.0f};
+  std::vector<float> fv = {10.0f, 20.0f, 30.0f, 40.0f};
+  array t(tv.begin(), Shape{4}, float32);
+  array f(fv.begin(), Shape{4}, float32);
+  // False everywhere, so the result is the whole false operand.
+  check_values(where(array(false), t, f, stream), fv, stream);
+  // True everywhere, so the result is the whole true operand.
+  check_values(where(array(true), t, f, stream), tv, stream);
+  // A row condition mixes both operands through the broadcast views.
+  std::vector<float> cv = {1.0f, 0.0f, 1.0f, 0.0f};
+  array row_condition(cv.begin(), Shape{4}, bool_);
+  check_values(
+      where(row_condition, t, f, stream), {1.0f, 20.0f, 3.0f, 40.0f}, stream);
+}
+
+TEST_CASE("bool to float32 casts exact zero and one through Vulkan compute") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  std::vector<float> xv = {1.0f, 2.0f, 2.0f, 0.0f};
+  array x(xv.begin(), Shape{4}, float32);
+  array mask = astype(equal(x, array(2.0f), stream), float32, stream);
+  check_values(mask, {0.0f, 1.0f, 1.0f, 0.0f}, stream);
+}
+
+TEST_CASE("CumSum scans suffix rows against host references") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  std::vector<float> xv = {1.0f, 2.0f, 3.0f, 4.0f, 5.0f};
+  array x(xv.begin(), Shape{5}, float32);
+  // Exclusive scan, the form categorical_inverse_cdf uses.
+  check_values(cumsum(x, 0, false, false, stream), {0, 1, 3, 6, 10}, stream);
+  // Inclusive scan.
+  check_values(cumsum(x, 0, false, true, stream), {1, 3, 6, 10, 15}, stream);
+
+  // A row longer than one workgroup: one invocation owns the whole row.
+  std::vector<float> lv(5000);
+  float running = 0.0f;
+  for (size_t index = 0; index < lv.size(); ++index) {
+    lv[index] = static_cast<float>(index % 7);
+    running += lv[index];
+  }
+  std::vector<float> lexclusive(lv.size());
+  running = 0.0f;
+  for (size_t index = 0; index < lv.size(); ++index) {
+    lexclusive[index] = running;
+    running += lv[index];
+  }
+  array long_row(lv.begin(), Shape{5000}, float32);
+  check_values(cumsum(long_row, 0, false, false, stream), lexclusive, stream);
+
+  // Multiple rows scan independently.
+  std::vector<float> mv = {1.0f, 10.0f, 100.0f, 2.0f, 20.0f, 200.0f};
+  array rows(mv.begin(), Shape{2, 3}, float32);
+  check_values(
+      cumsum(rows, -1, false, false, stream),
+      {0.0f, 1.0f, 11.0f, 0.0f, 2.0f, 22.0f},
+      stream);
+
+  // Reverse scans and non-suffix axes stay named rejections.
+  std::string reverse_error =
+      evaluation_error(cumsum(x, 0, true, false, stream));
+  CHECK(reverse_error.find("reverse Scan") != std::string::npos);
+  std::string axis_error = evaluation_error(cumsum(rows, 0, false, true, stream));
+  CHECK(axis_error.find("non-suffix Scan") != std::string::npos);
+}
+
+TEST_CASE("searchsorted matches the upstream binary search on both sides") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  std::vector<float> sv = {1.0f, 3.0f, 3.0f, 5.0f, 7.0f, 9.0f};
+  array sorted(sv.begin(), Shape{6}, float32);
+
+  // Duplicates make left and right differ, so both sides are pinned.
+  std::vector<float> vv = {1.5f, 1.0f, 3.0f, 4.0f, 9.0f, 10.0f};
+  array values(vv.begin(), Shape{6}, float32);
+  array left = searchsorted(sorted, values, "left", stream);
+  check_indices(left, {1, 0, 1, 3, 5, 6}, stream);
+  array right = searchsorted(sorted, values, "right", stream);
+  check_indices(right, {1, 1, 3, 3, 6, 6}, stream);
+
+  // uint32 indices minus one, the exact epilogue random.cpp composes.
+  check_uint32_values(
+      subtract(right, array(1u, uint32), stream),
+      {0, 0, 2, 2, 5, 5},
+      stream);
+  check_int32_values(
+      subtract(array(5, int32), array(7, int32), stream),
+      {-2},
+      stream);
+}
+
+TEST_CASE("categorical samples in range with a pinned key over 32 classes") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  // Near-flat logits in a permuted order: every class holds a few
+  // percent of the mass, so 200 draws land in every class with slack.
+  std::vector<float> lv(32);
+  for (size_t index = 0; index < lv.size(); ++index) {
+    lv[index] = (static_cast<float>((index * 7) % 32) - 15.5f) * 0.02f;
+  }
+  array logits(lv.begin(), Shape{1, 32}, float32);
+  array key = random::key(0xc0ffeeu);
+  constexpr int draws = 200;
+  array samples =
+      random::categorical(logits, -1, Shape{draws}, key, stream);
+  samples.eval();
+  omarchy::get_command_encoder(stream).synchronize();
+  REQUIRE_EQ(samples.size(), static_cast<size_t>(draws));
+  CHECK_EQ(samples.dtype(), uint32);
+  std::vector<size_t> counts(32, 0);
+  for (size_t index = 0; index < samples.size(); ++index) {
+    uint32_t drawn = samples.data<uint32_t>()[index];
+    REQUIRE(drawn < 32u);
+    counts[drawn]++;
+  }
+  // The strongest logit must win some draws and weak classes some too,
+  // so the samples are varied, not a constant.
+  CHECK(counts[0] > 0);
+  CHECK(counts[31] > 0);
+  CHECK(std::any_of(counts.begin(), counts.end(), [](size_t c) {
+    return c > 1;
+  }));
+
+  // Same key, same draws: deterministic.
+  array repeat = random::categorical(logits, -1, Shape{draws}, key, stream);
+  repeat.eval();
+  omarchy::get_command_encoder(stream).synchronize();
+  for (size_t index = 0; index < samples.size(); ++index) {
+    CHECK_EQ(repeat.data<uint32_t>()[index], samples.data<uint32_t>()[index]);
+  }
+
+  // Mirror the inverse-CDF graph with public ops, pull the intermediates,
+  // and finish on the host: every draw must match bit for bit.
+  array w = where(
+      isinf(max(logits, stream), stream),
+      astype(equal(logits, max(logits, stream), stream), float32, stream),
+      exp(subtract(logits, max(logits, stream), stream), stream),
+      stream);
+  array cdf = cumsum(w, -1, false, false, stream);
+  array u = multiply(
+      random::uniform(Shape{draws}, float32, key, stream),
+      sum(w, stream),
+      stream);
+  cdf.eval();
+  u.eval();
+  omarchy::get_command_encoder(stream).synchronize();
+  const float* cdf_host = cdf.data<float>();
+  const float* u_host = u.data<float>();
+  for (int draw = 0; draw < draws; ++draw) {
+    uint32_t low = 0;
+    uint32_t high = 32;
+    while (low < high) {
+      uint32_t mid = low + (high - low) / 2;
+      if (!(u_host[draw] < cdf_host[mid])) {
+        low = mid + 1;
+      } else {
+        high = mid;
+      }
+    }
+    uint32_t expected = low == 0 ? 0 : low - 1;
+    CHECK_EQ(samples.data<uint32_t>()[draw], expected);
+  }
+}
+
+TEST_CASE("temp sampling chain runs the vocab-wide categorical on device") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  // The mlx-lm decode shape: one vocab-wide logprob row in bf16, scaled
+  // by 1/temp exactly as categorical_sampling does, then sampled.
+  constexpr int vocab = 151936;
+  std::vector<float> hv(vocab);
+  std::mt19937 host_rng(1234);
+  std::uniform_real_distribution<float> host_uniform(-20.0f, -0.1f);
+  for (size_t index = 0; index < hv.size(); ++index) {
+    hv[index] = host_uniform(host_rng);
+  }
+  array logprobs(hv.begin(), Shape{1, vocab}, bfloat16);
+  array key = random::key(0x5eed1234u);
+  array token = random::categorical(
+      multiply(logprobs, array(1.0f / 0.9f), stream), -1, key, stream);
+  token.eval();
+  omarchy::get_command_encoder(stream).synchronize();
+  CHECK(token.data<uint32_t>()[0] < static_cast<uint32_t>(vocab));
+
+  // Deterministic per key and still in range for other keys.
+  array repeat = random::categorical(
+      multiply(logprobs, array(1.0f / 0.9f), stream), -1, key, stream);
+  repeat.eval();
+  omarchy::get_command_encoder(stream).synchronize();
+  CHECK_EQ(repeat.data<uint32_t>()[0], token.data<uint32_t>()[0]);
+  array other = random::categorical(
+      multiply(logprobs, array(1.0f / 0.9f), stream),
+      -1,
+      random::key(0xabcdefu),
+      stream);
+  other.eval();
+  omarchy::get_command_encoder(stream).synchronize();
+  CHECK(other.data<uint32_t>()[0] < static_cast<uint32_t>(vocab));
+}
+
+TEST_CASE("wide-row ArgPartition keeps the named top-k rejection") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  std::vector<float> hv(151936, -1.0f);
+  array logits(hv.begin(), Shape{1, 151936}, float32);
+  std::string wide_error =
+      evaluation_error(argpartition(logits, 0, -1, stream));
+  CHECK(wide_error.find("sort row length ArgPartition") != std::string::npos);
+  std::vector<float> mv(4096, -1.0f);
+  array mid(mv.begin(), Shape{1, 4096}, float32);
+  std::string mid_error = evaluation_error(argpartition(mid, 0, -1, stream));
+  CHECK(mid_error.find("sort row length ArgPartition") != std::string::npos);
 }

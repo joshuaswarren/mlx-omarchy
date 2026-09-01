@@ -516,6 +516,169 @@ void dispatch_elementwise(
       kernel, bindings, params, omarchy::compute_dispatch_group_count(count));
 }
 
+// The comparison family shares one shape: a bool output from two
+// broadcast views of one input dtype, word-packed through the 32-bit
+// bool transport. Equal serves the categorical sampler chain (isinf,
+// mx.random.categorical); GreaterEqual keeps its int32 causal-mask
+// contract.
+enum ComparisonOperation : uint32_t {
+  CompareEqual,
+  CompareGreaterEqual,
+};
+
+void dispatch_comparison(
+    const std::string& name,
+    uint32_t operation,
+    const std::vector<array>& inputs,
+    array& out) {
+  const array& lhs = inputs.at(0);
+  const array& rhs = inputs.at(1);
+  auto& encoder = omarchy::get_command_encoder(out.primitive().stream());
+  if (out.dtype() != bool_) {
+    omarchy::unsupported(name + " output dtype", out);
+  }
+  if (lhs.dtype() != rhs.dtype() ||
+      (lhs.dtype() != float32 && lhs.dtype() != float16 &&
+       lhs.dtype() != bfloat16 && lhs.dtype() != int32)) {
+    omarchy::unsupported(name + " dtype", out);
+  }
+  const auto& capabilities = encoder.device().capabilities();
+  if (lhs.dtype() == float16 &&
+      (!capabilities.shader_float16 ||
+       !capabilities.storage_buffer_16bit_access)) {
+    omarchy::unsupported(name + " float16 capability", out);
+  }
+  if (lhs.dtype() == bfloat16 &&
+      (!capabilities.storage_buffer_16bit_access ||
+       !capabilities.shader_int16)) {
+    omarchy::unsupported(name + " bfloat16 capability", out);
+  }
+
+  out.set_data(allocate_omarchy(out.nbytes()));
+  if (out.size() == 0) {
+    return;
+  }
+  uint32_t count = checked_u32(out.size(), name, out);
+  uint32_t word_count = checked_u32(
+      (static_cast<uint64_t>(count) + 3) / 4, name, out);
+  omarchy::ComputeParams params;
+  params.count = count;
+  params.operation = operation;
+  params.lhs_size = checked_u32(lhs.data_size(), name, out);
+  params.rhs_size = checked_u32(rhs.data_size(), name, out);
+  params.output_size = count;
+  params.lhs_offset = checked_item_offset(lhs, params.lhs_size, name, out);
+  params.rhs_offset = checked_item_offset(rhs, params.rhs_size, name, out);
+  params.output_offset = checked_item_offset(out, count, name, out);
+  bool general_broadcast =
+      !is_trailing_broadcast(lhs, out) || !is_trailing_broadcast(rhs, out);
+  if (general_broadcast) {
+    fill_broadcast_transport(name, params, lhs, rhs, out);
+  }
+  std::array<omarchy::ComputeBinding, 3> bindings{
+      binding(lhs), binding(rhs), binding(out)};
+  auto kernel = lhs.dtype() == float16
+      ? omarchy::ComputeKernel::CompareF16
+      : lhs.dtype() == bfloat16 ? omarchy::ComputeKernel::CompareBF16
+                                : lhs.dtype() == int32
+          ? omarchy::ComputeKernel::CompareI32
+          : omarchy::ComputeKernel::CompareF32;
+  encoder.dispatch_compute(
+      kernel,
+      bindings,
+      params,
+      omarchy::compute_dispatch_group_count(word_count));
+}
+
+// LogicalOr serves the isinf composition: bool inputs, a bool output,
+// and the same 32-bit word transport the comparisons use.
+void dispatch_logical_or(
+    const std::string& name,
+    const std::vector<array>& inputs,
+    array& out) {
+  const array& lhs = inputs.at(0);
+  const array& rhs = inputs.at(1);
+  auto& encoder = omarchy::get_command_encoder(out.primitive().stream());
+  if (lhs.dtype() != bool_ || rhs.dtype() != bool_ || out.dtype() != bool_) {
+    omarchy::unsupported(name + " dtype", out);
+  }
+  out.set_data(allocate_omarchy(out.nbytes()));
+  if (out.size() == 0) {
+    return;
+  }
+  uint32_t count = checked_u32(out.size(), name, out);
+  uint32_t word_count = checked_u32(
+      (static_cast<uint64_t>(count) + 3) / 4, name, out);
+  omarchy::ComputeParams params;
+  params.count = count;
+  params.lhs_size = checked_u32(lhs.data_size(), name, out);
+  params.rhs_size = checked_u32(rhs.data_size(), name, out);
+  params.output_size = count;
+  params.lhs_offset = checked_item_offset(lhs, params.lhs_size, name, out);
+  params.rhs_offset = checked_item_offset(rhs, params.rhs_size, name, out);
+  params.output_offset = checked_item_offset(out, count, name, out);
+  bool general_broadcast =
+      !is_trailing_broadcast(lhs, out) || !is_trailing_broadcast(rhs, out);
+  if (general_broadcast) {
+    fill_broadcast_transport(name, params, lhs, rhs, out);
+  }
+  std::array<omarchy::ComputeBinding, 3> bindings{
+      binding(lhs), binding(rhs), binding(out)};
+  encoder.dispatch_compute(
+      omarchy::ComputeKernel::LogicalOrBool,
+      bindings,
+      params,
+      omarchy::compute_dispatch_group_count(word_count));
+}
+
+// Integer twin of the binary elementwise path. The shader carries the
+// same modulo fast path and broadcast transport; only the storage type
+// differs, so int32 and uint32 share one SPIR-V variant.
+void dispatch_int_elementwise(
+    const std::string& name,
+    uint32_t operation,
+    const std::vector<array>& inputs,
+    array& out) {
+  const array& lhs = inputs.at(0);
+  const array& rhs = inputs.at(1);
+  auto& encoder = omarchy::get_command_encoder(out.primitive().stream());
+  auto is_int_dtype = [](Dtype dtype) {
+    return dtype == int32 || dtype == uint32;
+  };
+  if (!is_int_dtype(lhs.dtype()) || !is_int_dtype(rhs.dtype()) ||
+      !is_int_dtype(out.dtype())) {
+    omarchy::unsupported(name + " dtype", out);
+  }
+  if (!lhs.flags().contiguous || !rhs.flags().contiguous) {
+    omarchy::unsupported("non-contiguous " + name, out);
+  }
+  auto binary_type = get_binary_op_type(lhs, rhs);
+  set_binary_op_output_data(lhs, rhs, out, binary_type, allocate_omarchy);
+  if (out.size() == 0) {
+    return;
+  }
+  uint32_t count = checked_u32(out.size(), name, out);
+  omarchy::ComputeParams params;
+  params.count = count;
+  params.operation = operation;
+  params.lhs_size = checked_u32(lhs.data_size(), name, out);
+  params.rhs_size = checked_u32(rhs.data_size(), name, out);
+  params.output_size = count;
+  params.lhs_offset = checked_item_offset(lhs, params.lhs_size, name, out);
+  params.rhs_offset = checked_item_offset(rhs, params.rhs_size, name, out);
+  params.output_offset = checked_item_offset(out, count, name, out);
+  if (!is_trailing_broadcast(lhs, out) || !is_trailing_broadcast(rhs, out)) {
+    fill_broadcast_transport(name, params, lhs, rhs, out);
+  }
+  std::array<omarchy::ComputeBinding, 3> bindings{
+      binding(lhs), binding(rhs), binding(out)};
+  encoder.dispatch_compute(
+      omarchy::ComputeKernel::ElementwiseI32,
+      bindings,
+      params,
+      omarchy::compute_dispatch_group_count(count));
+}
+
 // ArgSort and ArgPartition emit uint32 indices, so the float checks apply
 // to the input only, the way ArgReduce checks its input.
 void require_index_source_dtype(
@@ -756,7 +919,9 @@ OMARCHY_UNARY(Cos, CosOperation)
 OMARCHY_UNSUPPORTED(Cosh)
 OMARCHY_BINARY(Divide, DivideOperation)
 OMARCHY_UNSUPPORTED_MULTI(DivMod)
-OMARCHY_UNSUPPORTED(Equal)
+void Equal::eval_gpu(const std::vector<array>& inputs, array& out) {
+  dispatch_comparison(name(), CompareEqual, inputs, out);
+}
 OMARCHY_UNSUPPORTED(Erf)
 OMARCHY_UNSUPPORTED(ErfInv)
 OMARCHY_UNARY(Exp, ExpOperation)
@@ -851,40 +1016,17 @@ OMARCHY_UNSUPPORTED(GatherQQMM)
 OMARCHY_UNSUPPORTED(Greater)
 // GreaterEqual serves the composed causal mask: two int32 index arrays
 // (broadcast views with stride-0 axes) produce a bool mask. Other dtypes
-// stay named rejections. The shader packs the bytes into 32-bit words,
-// so the dispatch covers words.
+// stay named rejections. The comparison kernel packs the bytes into
+// 32-bit words, so the dispatch covers words.
 void GreaterEqual::eval_gpu(
     const std::vector<array>& inputs,
     array& out) {
   const array& a = inputs.at(0);
   const array& b = inputs.at(1);
-  auto& encoder = omarchy::get_command_encoder(out.primitive().stream());
-  if (a.dtype() != int32 || b.dtype() != int32 || out.dtype() != bool_) {
+  if (a.dtype() != int32 || b.dtype() != int32) {
     omarchy::unsupported("GreaterEqual dtype", out);
   }
-  out.set_data(allocate_omarchy(out.nbytes()));
-  if (out.size() == 0) {
-    return;
-  }
-  uint32_t count = checked_u32(out.size(), name(), out);
-  uint32_t word_count = checked_u32(
-      (static_cast<uint64_t>(count) + 3) / 4, name(), out);
-  omarchy::ComputeParams params;
-  params.count = count;
-  params.lhs_size = checked_u32(a.data_size(), name(), out);
-  params.rhs_size = checked_u32(b.data_size(), name(), out);
-  params.output_size = count;
-  params.lhs_offset = checked_item_offset(a, params.lhs_size, name(), out);
-  params.rhs_offset = checked_item_offset(b, params.rhs_size, name(), out);
-  params.output_offset = checked_item_offset(out, count, name(), out);
-  fill_broadcast_transport(name(), params, a, b, out);
-  std::array<omarchy::ComputeBinding, 3> bindings{
-      binding(a), binding(b), binding(out)};
-  encoder.dispatch_compute(
-      omarchy::ComputeKernel::GreaterEqualI32,
-      bindings,
-      params,
-      omarchy::compute_dispatch_group_count(word_count));
+  dispatch_comparison(name(), CompareGreaterEqual, inputs, out);
 }
 OMARCHY_UNSUPPORTED(Hadamard)
 OMARCHY_UNSUPPORTED(Imag)
@@ -917,7 +1059,9 @@ OMARCHY_UNARY(Log, LogOperation)
 OMARCHY_UNSUPPORTED(Log1p)
 OMARCHY_UNSUPPORTED(LogicalAnd)
 OMARCHY_UNSUPPORTED(LogicalNot)
-OMARCHY_UNSUPPORTED(LogicalOr)
+void LogicalOr::eval_gpu(const std::vector<array>& inputs, array& out) {
+  dispatch_logical_or(name(), inputs, out);
+}
 OMARCHY_UNSUPPORTED(LogAddExp)
 void LogSumExp::eval_gpu(const std::vector<array>& inputs, array& out) {
   const array& input = inputs.at(0);
@@ -1092,12 +1236,125 @@ void Reduce::eval_gpu(const std::vector<array>& inputs, array& out) {
 
 OMARCHY_UNSUPPORTED(Remainder)
 OMARCHY_UNSUPPORTED(Round)
-OMARCHY_UNSUPPORTED(Scan)
+// Scan serves the categorical sampler's exclusive cdf prefix sums: a
+// float suffix scan over row-contiguous rows. Sum is the only reduce
+// type, reverse scans stay named rejections, and one invocation owns a
+// whole row in a serial pass, which keeps the shared-buffer transport
+// simple. The accumulator stays float32 for every dtype.
+void Scan::eval_gpu(const std::vector<array>& inputs, array& out) {
+  auto [reduce_type, axis, reverse, inclusive] = state();
+  const array& input = inputs.at(0);
+  auto& encoder = omarchy::get_command_encoder(out.primitive().stream());
+  require_float_dtype("Scan", input, out, encoder);
+  if (reduce_type != Scan::Sum) {
+    omarchy::unsupported("Scan reduce", out);
+  }
+  if (reverse) {
+    omarchy::unsupported("reverse Scan", out);
+  }
+  if (!input.flags().row_contiguous) {
+    omarchy::unsupported("non-contiguous Scan", out);
+  }
+  if (axis != input.ndim() - 1) {
+    omarchy::unsupported("non-suffix Scan", out);
+  }
+  size_t row_length = input.shape(-1);
+  size_t rows = row_length == 0 ? 0 : input.size() / row_length;
+  out.set_data(allocate_omarchy(out.nbytes()));
+  if (out.size() == 0) {
+    return;
+  }
+  uint32_t output_size = checked_u32(rows, "Scan", out);
+  if (output_size > omarchy::kMaxComputeGroupCountX) {
+    omarchy::unsupported("Scan row count", out);
+  }
+  omarchy::ComputeParams params;
+  params.count = checked_u32(out.size(), "Scan", out);
+  params.operation = inclusive ? 0u : 1u;
+  params.reduce_size = checked_u32(row_length, "Scan", out);
+  params.output_size = output_size;
+  params.lhs_offset = checked_item_offset(input, input.size(), "Scan", out);
+  params.output_offset = checked_item_offset(out, out.size(), "Scan", out);
+  std::array<omarchy::ComputeBinding, 3> bindings{
+      binding(input), binding(input), binding(out)};
+  auto kernel = select_float_kernel(
+      out.dtype(),
+      omarchy::ComputeKernel::ScanF32,
+      omarchy::ComputeKernel::ScanF16,
+      omarchy::ComputeKernel::ScanBF16);
+  encoder.dispatch_compute(kernel, bindings, params, output_size);
+}
 OMARCHY_UNSUPPORTED(Scatter)
 OMARCHY_UNSUPPORTED(ScatterAxis)
-OMARCHY_UNSUPPORTED(SearchSorted)
+// SearchSorted serves the categorical sampler: one binary search over
+// a sorted 1-D row per value, with both operands already promoted to
+// the same dtype by the op layer. The right flag picks between the
+// first index at or after the value (left) and the first index after
+// it (right), matching the upstream CPU comparator.
+void SearchSorted::eval_gpu(const std::vector<array>& inputs, array& out) {
+  const array& sequence = inputs.at(0);
+  const array& values = inputs.at(1);
+  bool right = state();
+  auto& encoder = omarchy::get_command_encoder(out.primitive().stream());
+  if (out.dtype() != uint32 || sequence.dtype() != values.dtype()) {
+    omarchy::unsupported("SearchSorted dtype", out);
+  }
+  if (sequence.dtype() != float32 && sequence.dtype() != float16 &&
+      sequence.dtype() != bfloat16 && sequence.dtype() != int32 &&
+      sequence.dtype() != uint32) {
+    omarchy::unsupported("SearchSorted dtype", out);
+  }
+  const auto& capabilities = encoder.device().capabilities();
+  if (sequence.dtype() == float16 &&
+      (!capabilities.shader_float16 ||
+       !capabilities.storage_buffer_16bit_access)) {
+    omarchy::unsupported("SearchSorted float16 capability", out);
+  }
+  if (sequence.dtype() == bfloat16 &&
+      (!capabilities.storage_buffer_16bit_access ||
+       !capabilities.shader_int16)) {
+    omarchy::unsupported("SearchSorted bfloat16 capability", out);
+  }
+  if (sequence.ndim() != 1 || !sequence.flags().row_contiguous ||
+      !values.flags().row_contiguous) {
+    omarchy::unsupported("non-contiguous SearchSorted", out);
+  }
+  out.set_data(allocate_omarchy(out.nbytes()));
+  if (out.size() == 0) {
+    return;
+  }
+  omarchy::ComputeParams params;
+  params.count = checked_u32(values.size(), "SearchSorted", out);
+  params.operation = right ? 1u : 0u;
+  params.reduce_size = checked_u32(sequence.size(), "SearchSorted", out);
+  params.output_size = params.count;
+  params.lhs_offset = checked_item_offset(
+      sequence, sequence.size(), "SearchSorted", out);
+  params.rhs_offset = checked_item_offset(
+      values, values.size(), "SearchSorted", out);
+  params.output_offset = checked_item_offset(out, out.size(), "SearchSorted", out);
+  std::array<omarchy::ComputeBinding, 3> bindings{
+      binding(sequence), binding(values), binding(out)};
+  auto kernel = sequence.dtype() == float16
+      ? omarchy::ComputeKernel::SearchSortedF16
+      : sequence.dtype() == bfloat16
+      ? omarchy::ComputeKernel::SearchSortedBF16
+      : sequence.dtype() == int32 ? omarchy::ComputeKernel::SearchSortedI32
+                                  : sequence.dtype() == uint32
+          ? omarchy::ComputeKernel::SearchSortedU32
+          : omarchy::ComputeKernel::SearchSortedF32;
+  encoder.dispatch_compute(
+      kernel,
+      bindings,
+      params,
+      omarchy::compute_dispatch_group_count(params.count));
+}
+
 // Select serves the composed causal mask: a strided bool condition view
-// picks between a row-contiguous value and a scalar floor. Other layouts
+// picks between a row-contiguous value and a scalar floor. The sampler
+// chain also selects between two row-contiguous values under a scalar
+// condition (where(isinf(m), eq, exp)), so the false operand accepts
+// the same suffix-aligned shapes as the true operand. Other layouts
 // stay named rejections.
 void Select::eval_gpu(const std::vector<array>& inputs, array& out) {
   const array& condition = inputs.at(0);
@@ -1109,7 +1366,7 @@ void Select::eval_gpu(const std::vector<array>& inputs, array& out) {
   }
   require_float_dtype(name(), truthy, out, encoder);
   require_float_dtype(name(), falsy, out, encoder);
-  if (!truthy.flags().row_contiguous || falsy.data_size() != 1) {
+  if (!truthy.flags().row_contiguous || !is_trailing_broadcast(falsy, out)) {
     omarchy::unsupported("Select layout", out);
   }
   out.set_data(allocate_omarchy(out.nbytes()));
@@ -1125,7 +1382,8 @@ void Select::eval_gpu(const std::vector<array>& inputs, array& out) {
   params.lhs_offset = checked_item_offset(
       condition, params.lhs_size, name(), out);
   params.rhs_offset = checked_item_offset(truthy, params.rhs_size, name(), out);
-  params.aux_offset = checked_item_offset(falsy, 1, name(), out);
+  params.aux_size = checked_u32(falsy.data_size(), name(), out);
+  params.aux_offset = checked_item_offset(falsy, falsy.data_size(), name(), out);
   params.output_offset = checked_item_offset(out, count, name(), out);
   fill_broadcast_transport(name(), params, condition, truthy, out);
   std::array<omarchy::ComputeBinding, 4> bindings{
@@ -1237,7 +1495,17 @@ void Sqrt::eval_gpu(const std::vector<array>& inputs, array& out) {
   dispatch_elementwise(
       name(), state() ? RsqrtOperation : SqrtOperation, inputs, out);
 }
-OMARCHY_BINARY(Subtract, SubtractOperation)
+// The categorical sampler subtracts one from uint32 searchsorted
+// indices, so the subtract family also covers int32 and uint32 through
+// the integer elementwise kernel. Other integer operations stay named
+// rejections.
+void Subtract::eval_gpu(const std::vector<array>& inputs, array& out) {
+  if (out.dtype() == int32 || out.dtype() == uint32) {
+    dispatch_int_elementwise(name(), SubtractOperation, inputs, out);
+    return;
+  }
+  dispatch_elementwise(name(), SubtractOperation, inputs, out);
+}
 OMARCHY_UNSUPPORTED_MULTI(SVD)
 OMARCHY_UNSUPPORTED(Tan)
 OMARCHY_UNSUPPORTED(Tanh)
