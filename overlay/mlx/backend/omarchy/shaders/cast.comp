@@ -15,6 +15,8 @@
 #define SOURCE_TYPE uint16_t
 #elif defined(SOURCE_I32)
 #define SOURCE_TYPE int
+#elif defined(SOURCE_U32)
+#define SOURCE_TYPE uint
 #else
 #define SOURCE_TYPE float
 #endif

@@ -329,6 +329,8 @@ void copy_gpu_inplace(
       kernel = omarchy::ComputeKernel::CastI32BF16;
     } else if (in.dtype() == bfloat16 && out.dtype() == int32) {
       kernel = omarchy::ComputeKernel::CastBF16I32;
+    } else if (in.dtype() == uint32 && out.dtype() == float32) {
+      kernel = omarchy::ComputeKernel::CastU32F32;
     } else {
       omarchy::unsupported("dtype converting copy", out);
     }

@@ -24,6 +24,7 @@
 #include "mlx/linalg.h"
 #include "mlx/fast.h"
 #include "mlx/ops.h"
+#include "mlx/random.h"
 #include "mlx/stream.h"
 #include "mlx/transforms.h"
 
@@ -67,6 +68,19 @@ void check_int32_values(
   }
 }
 
+void check_uint32_values(
+    array value,
+    const std::vector<uint32_t>& expected,
+    const Stream& stream) {
+  value.eval();
+  omarchy::get_command_encoder(stream).synchronize();
+  REQUIRE_EQ(value.size(), expected.size());
+  const uint32_t* values = value.data<uint32_t>();
+  for (size_t index = 0; index < expected.size(); ++index) {
+    CHECK_EQ(values[index], expected[index]);
+  }
+}
+
 
 // Checks one batch matrix of a rank-5 output against a host vector.
 void check_values(
@@ -95,6 +109,56 @@ std::string evaluation_error(array value) {
     return error.what();
   }
   return {};
+}
+
+// Host threefry2x32 copied from the upstream CPU reference
+// mlx/backend/cpu/threefry.cpp: the same rotation constants and 5-round
+// key schedule, so GPU words must match bit for bit.
+std::pair<uint32_t, uint32_t> host_threefry(
+    std::pair<uint32_t, uint32_t> key,
+    std::pair<uint32_t, uint32_t> count) {
+  constexpr static uint32_t rotations[2][4] = {
+      {13, 15, 26, 6}, {17, 29, 16, 24}};
+
+  uint32_t ks[3] = {key.first, key.second, key.first ^ key.second ^ 0x1BD11BDA};
+
+  count.first += ks[0];
+  count.second += ks[1];
+
+  for (int i = 0; i < 5; ++i) {
+    for (auto r : rotations[i % 2]) {
+      count.first += count.second;
+      count.second = (count.second << r) | (count.second >> (32 - r));
+      count.second ^= count.first;
+    }
+    count.first += ks[(i + 1) % 3];
+    count.second += ks[(i + 2) % 3] + i + 1;
+  }
+
+  return count;
+}
+
+// Word j of one key's region under the width-4 RandomBits layout, per
+// upstream RandomBits::eval_cpu: counters walk (first, second) pairs and
+// an odd word count leaves a middle word fed by counter (half, 0).
+uint32_t host_random_word(
+    std::pair<uint32_t, uint32_t> key,
+    uint32_t words,
+    uint32_t word) {
+  uint32_t half = words / 2;
+  bool even = words % 2 == 0;
+  std::pair<uint32_t, uint32_t> counter;
+  if (word < half) {
+    counter = {word, word + half + (even ? 0u : 1u)};
+  } else if (even) {
+    counter = {word - half, word};
+  } else if (word == half) {
+    counter = {half, 0u};
+  } else {
+    counter = {word - half - 1u, word};
+  }
+  auto bits = host_threefry(key, counter);
+  return (word < half || (!even && word == half)) ? bits.first : bits.second;
 }
 
 bool compute_available() {
@@ -1284,15 +1348,30 @@ TEST_CASE("take gathers table rows through Vulkan compute") {
        13.0f},
       stream);
 
-  // Every other index dtype pins the named error, including upstream-legal
-  // uint32 indices.
-  std::string int64_error =
-      evaluation_error(take(table, array({0}, int64), 0, stream));
-  CHECK(int64_error.find("indexed Take dtype") != std::string::npos);
-  std::string uint32_error =
-      evaluation_error(take(table, array({0}, uint32), 0, stream));
-  CHECK(uint32_error.find("indexed Take dtype") != std::string::npos);
-
+  // Every integral index dtype outside int32, uint32, and int64 pins the
+  // named backend error. Boolean and float indices are rejected one
+  // layer up by the shared gather op itself.
+  for (Dtype dtype : {int16, uint16, int8, uint8}) {
+    std::string error =
+        evaluation_error(take(table, array({0}, dtype), 0, stream));
+    CHECK(error.find("indexed Take dtype") != std::string::npos);
+  }
+  // Boolean and float indices are rejected one layer up by the shared
+  // gather op itself, at graph build time.
+  std::string float_error;
+  try {
+    take(table, array({0}, float32), 0, stream);
+  } catch (const std::exception& error) {
+    float_error = error.what();
+  }
+  CHECK(float_error.find("Indices must be integral") != std::string::npos);
+  std::string bool_error;
+  try {
+    take(table, array({0}, bool_), 0, stream);
+  } catch (const std::exception& error) {
+    bool_error = error.what();
+  }
+  CHECK(bool_error.find("Boolean indices") != std::string::npos);
   // Non-zero gather axes pin the named axis error.
   std::string axis_error =
       evaluation_error(take(table, array({0}, int32), 1, stream));
@@ -1414,6 +1493,103 @@ TEST_CASE("take gathers N-D index arrays as flat row sequences") {
   std::string layout_error = evaluation_error(
       take(table, transpose(wide, {1, 0}, stream), 0, stream));
   CHECK(layout_error.find("non-contiguous indexed Take") != std::string::npos);
+}
+
+
+TEST_CASE("take gathers uint32 argmax indices through Vulkan compute") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  std::vector<float> tv = {
+      10.0f, 11.0f, 12.0f,
+      20.0f, 21.0f, 22.0f,
+      30.0f, 31.0f, 32.0f,
+      40.0f, 41.0f, 42.0f};
+  array table(tv.begin(), Shape{4, 3}, float32);
+
+  // The mlx-lm greedy decode shape: argmax over [1, V] logits feeds a
+  // [1, 1] index array into the embedding take.
+  std::vector<float> dv = {0.1f, 3.0f, 0.2f, 0.3f};
+  array decode_logits(dv.begin(), Shape{1, 4}, float32);
+  array decode_ids = expand_dims(
+      argmax(decode_logits, -1, false, stream), 1, stream);
+  CHECK_EQ(decode_ids.dtype(), uint32);
+  check_values(
+      take(table, decode_ids, 0, stream),
+      {20.0f, 21.0f, 22.0f},
+      stream);
+
+  // A [2, 3, V] batch reduces to [2, 3] uint32 indices, one gather per
+  // batch element.
+  std::vector<float> lv = {
+      0.1f, 0.2f, 0.3f, 2.0f,
+      1.5f, 0.2f, 0.1f, 0.4f,
+      0.3f, 0.1f, 1.7f, 0.2f,
+      0.1f, 2.2f, 0.3f, 0.1f,
+      0.0f, 1.9f, 0.5f, 0.2f,
+      0.4f, 0.2f, 0.1f, 1.3f};
+  array logits(lv.begin(), Shape{2, 3, 4}, float32);
+  array ids = argmax(logits, -1, false, stream);
+  CHECK_EQ(ids.dtype(), uint32);
+  check_uint32_values(ids, {3, 0, 2, 1, 1, 3}, stream);
+  check_values(
+      take(table, ids, 0, stream),
+      {40.0f, 41.0f, 42.0f,
+       10.0f, 11.0f, 12.0f,
+       30.0f, 31.0f, 32.0f,
+       20.0f, 21.0f, 22.0f,
+       20.0f, 21.0f, 22.0f,
+       40.0f, 41.0f, 42.0f},
+      stream);
+
+  // Plain uint32 indices gather directly, and one above the row count
+  // writes the zero row.
+  std::vector<uint32_t> uv = {0, 2, 2, 9};
+  array raw(uv.begin(), Shape{4}, uint32);
+  check_values(
+      take(table, raw, 0, stream),
+      {10.0f, 11.0f, 12.0f,
+       30.0f, 31.0f, 32.0f,
+       30.0f, 31.0f, 32.0f,
+       0.0f, 0.0f, 0.0f},
+      stream);
+}
+
+TEST_CASE("take gathers int64 indices and zeroes wide values") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  std::vector<float> tv = {10.0f, 11.0f, 20.0f, 21.0f, 30.0f, 31.0f};
+  array table(tv.begin(), Shape{3, 2}, float32);
+
+  // Two little-endian words per index: a value above 2^32 and a negative
+  // value both have a nonzero high word, so both write the zero row.
+  std::vector<int64_t> iv = {2, 0, 5000000000LL, -1};
+  array indices(iv.begin(), Shape{4}, int64);
+  check_values(
+      take(table, indices, 0, stream),
+      {30.0f, 31.0f,
+       10.0f, 11.0f,
+       0.0f, 0.0f,
+       0.0f, 0.0f},
+      stream);
+
+  // A [2, 2] batch of int64 indices keeps its flat row-major order.
+  std::vector<int64_t> bv = {1, 2, 0, 1};
+  array batch(bv.begin(), Shape{2, 2}, int64);
+  array gathered = take(table, batch, 0, stream);
+  CHECK_EQ(gathered.shape().size(), 3);
+  CHECK_EQ(gathered.shape(0), 2);
+  CHECK_EQ(gathered.shape(1), 2);
+  check_values(
+      gathered,
+      {20.0f, 21.0f,
+       30.0f, 31.0f,
+       10.0f, 11.0f,
+       20.0f, 21.0f},
+      stream);
 }
 
 TEST_CASE("general broadcast elementwise matches host references") {
@@ -2293,6 +2469,109 @@ TEST_CASE("argmin matches first-occurrence ties through Vulkan compute") {
   // A tie on the minimum keeps the first occurrence.
   array ties({2.0f, -1.0f, -1.0f, 4.0f}, {4}, float32);
   check_indices(argmin(ties, -1, false, stream), {1}, stream);
+}
+
+TEST_CASE("RandomBits matches the host threefry reference bit for bit") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  std::vector<std::pair<uint32_t, uint32_t>> key_vectors = {
+      {0x01234567u, 0x89abcdefu},
+      {0x00000000u, 0x00000000u},
+      {0xffffffffu, 0xffffffffu},
+      {0xdeadbeefu, 0x12345678u}};
+  // Word counts cover the even layout, the odd layout with its middle
+  // word, and the single-word case.
+  for (const auto& shape : {Shape{5}, Shape{4}, Shape{1}, Shape{3}}) {
+    for (const auto& key_pair : key_vectors) {
+      array key({key_pair.first, key_pair.second}, uint32);
+      array bits = random::bits(shape, 4, key, stream);
+      bits.eval();
+      omarchy::get_command_encoder(stream).synchronize();
+      REQUIRE_EQ(bits.size(), shape[0]);
+      const uint32_t* words = bits.data<uint32_t>();
+      for (uint32_t word = 0; word < bits.size(); ++word) {
+        CHECK_EQ(
+            words[word],
+            host_random_word(key_pair, bits.size(), word));
+      }
+    }
+  }
+
+  // The mx.random.split key shape: one {2} key filling a {2, 2} output,
+  // four words through the even layout.
+  std::vector<uint32_t> kv = {0x01234567u, 0x89abcdefu};
+  array split_key(kv.begin(), Shape{2}, uint32);
+  array split_bits = random::bits(Shape{2, 2}, 4, split_key, stream);
+  split_bits.eval();
+  omarchy::get_command_encoder(stream).synchronize();
+  REQUIRE_EQ(split_bits.size(), 4u);
+  const uint32_t* words = split_bits.data<uint32_t>();
+  for (uint32_t word = 0; word < 4; ++word) {
+    CHECK_EQ(
+        words[word],
+        host_random_word({kv[0], kv[1]}, 4, word));
+  }
+}
+
+TEST_CASE("uniform with a pinned key is deterministic through Vulkan") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  array key = random::key(0x5eed1234u);
+  auto first = random::uniform(Shape{257}, float32, key, stream);
+  auto second = random::uniform(Shape{257}, float32, key, stream);
+  first.eval();
+  second.eval();
+  omarchy::get_command_encoder(stream).synchronize();
+  REQUIRE_EQ(first.size(), 257u);
+  const float* a = first.data<float>();
+  const float* b = second.data<float>();
+  for (size_t index = 0; index < first.size(); ++index) {
+    CHECK_EQ(a[index], b[index]);
+    CHECK(a[index] >= 0.0f);
+    CHECK(a[index] < 1.0f);
+  }
+}
+
+TEST_CASE("categorical samples every class through Vulkan compute") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  // Uniform logits over four classes: 1000 draws must hit every class.
+  array logits = zeros({1000, 4}, float32, stream);
+  array samples = random::categorical(logits, -1, std::nullopt, stream);
+  samples.eval();
+  omarchy::get_command_encoder(stream).synchronize();
+  REQUIRE_EQ(samples.size(), 1000u);
+  CHECK_EQ(samples.dtype(), uint32);
+  std::vector<size_t> counts(4, 0);
+  const uint32_t* drawn = samples.data<uint32_t>();
+  for (size_t index = 0; index < samples.size(); ++index) {
+    REQUIRE(drawn[index] < 4u);
+    counts[drawn[index]]++;
+  }
+  for (size_t class_index = 0; class_index < 4; ++class_index) {
+    CHECK(counts[class_index] >= 10);
+    CHECK(counts[class_index] <= 500);
+  }
+}
+
+TEST_CASE("RandomBits pins named errors outside the uint32 width") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  array key({1u, 2u}, uint32);
+  std::string width_error =
+      evaluation_error(random::bits(Shape{4}, 2, key, stream));
+  CHECK(width_error.find("RandomBits width") != std::string::npos);
+  std::string byte_error =
+      evaluation_error(random::bits(Shape{4}, 1, key, stream));
+  CHECK(byte_error.find("RandomBits width") != std::string::npos);
 }
 
 TEST_CASE("FP16 argmax matches host references") {

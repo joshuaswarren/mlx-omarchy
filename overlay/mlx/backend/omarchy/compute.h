@@ -42,6 +42,7 @@ enum class ComputeKernel : uint8_t {
   CastBF16F16,
   CastF16BF16,
   CastI32F32,
+  CastU32F32,
   CastF32I32,
   CastI32F16,
   CastF16I32,
@@ -85,6 +86,7 @@ enum class ComputeKernel : uint8_t {
   ArgSortF32,
   ArgSortF16,
   ArgSortBF16,
+  RandomBitsU32,
   Count,
 };
 

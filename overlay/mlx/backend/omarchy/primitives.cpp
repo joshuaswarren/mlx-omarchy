@@ -60,6 +60,7 @@ enum ElementwiseOperation : uint32_t {
   CosOperation,
   SinOperation,
   LogOperation,
+  MinimumOperation,
 };
 
 allocator::Buffer allocate_omarchy(size_t size) {
@@ -779,8 +780,27 @@ void Gather::eval_gpu(const std::vector<array>& inputs, array& out) {
     omarchy::unsupported("slice Take", out);
   }
   const array& indices = inputs.at(1);
-  if (indices.dtype() != int32) {
-    omarchy::unsupported("indexed Take dtype", out);
+  // gather_rows.comp reads index words selected by params.operation:
+  // 0 = int32, 1 = uint32, 2 = int64 as two little-endian words. The
+  // int64 element offset doubles into word units. Other index dtypes
+  // keep the named rejection.
+  uint32_t index_mode;
+  uint64_t index_words;
+  switch (indices.dtype()) {
+    case int32:
+      index_mode = 0;
+      index_words = indices.size();
+      break;
+    case uint32:
+      index_mode = 1;
+      index_words = indices.size();
+      break;
+    case int64:
+      index_mode = 2;
+      index_words = indices.size() * 2;
+      break;
+    default:
+      omarchy::unsupported("indexed Take dtype", out);
   }
   if (!indices.flags().row_contiguous) {
     omarchy::unsupported("non-contiguous indexed Take", out);
@@ -796,13 +816,23 @@ void Gather::eval_gpu(const std::vector<array>& inputs, array& out) {
   uint32_t count = checked_u32(out.size(), "Take", out);
   omarchy::ComputeParams params;
   params.count = count;
+  params.operation = index_mode;
   params.lhs_size = checked_u32(table.size(), "Take", out);
-  params.rhs_size = checked_u32(indices.size(), "Take", out);
+  params.rhs_size = checked_u32(index_words, "Take", out);
   params.reduce_size = checked_u32(table.shape(1), "Take", out);
   params.output_size = count;
   params.lhs_offset = checked_item_offset(table, table.size(), "Take", out);
-  params.rhs_offset = checked_item_offset(
+  // The shader indexes 32-bit words, so the int64 element offset
+  // doubles into word units.
+  uint32_t index_offset = checked_item_offset(
       indices, indices.size(), "Take", out);
+  if (index_mode == 2) {
+    if (index_offset > std::numeric_limits<uint32_t>::max() / 2) {
+      omarchy::unsupported("indexed Take index span", out);
+    }
+    index_offset *= 2;
+  }
+  params.rhs_offset = index_offset;
   params.output_offset = checked_item_offset(out, out.size(), "Take", out);
   std::array<omarchy::ComputeBinding, 3> bindings{
       binding(table), binding(indices), binding(out)};
@@ -937,7 +967,7 @@ void Matmul::eval_gpu(const std::vector<array>& inputs, array& out) {
 }
 OMARCHY_BINARY(Maximum, MaximumOperation)
 OMARCHY_UNSUPPORTED(MaskedScatter)
-OMARCHY_UNSUPPORTED(Minimum)
+OMARCHY_BINARY(Minimum, MinimumOperation)
 OMARCHY_BINARY(Multiply, MultiplyOperation)
 OMARCHY_UNARY(Negative, NegativeOperation)
 OMARCHY_UNSUPPORTED(NotEqual)
@@ -957,7 +987,49 @@ OMARCHY_UNSUPPORTED(Power)
 OMARCHY_UNSUPPORTED_MULTI(QRF)
 OMARCHY_UNSUPPORTED(QuantizedMatmul)
 OMARCHY_UNSUPPORTED(QQMatmul)
-OMARCHY_UNSUPPORTED(RandomBits)
+void RandomBits::eval_gpu(const std::vector<array>& inputs, array& out) {
+  const array& keys = inputs.at(0);
+  auto& encoder = omarchy::get_command_encoder(out.primitive().stream());
+  // mlx-lm sampling only consumes width 4 (uniform, gumbel, categorical,
+  // and key splits all create RandomBits with width 4), so the shader
+  // implements the uint32 case and other widths keep the named rejection.
+  if (width_ != 4 || out.dtype() != uint32) {
+    omarchy::unsupported("RandomBits width", out);
+  }
+  if (keys.dtype() != uint32) {
+    omarchy::unsupported("RandomBits key dtype", out);
+  }
+  if (!keys.flags().row_contiguous) {
+    omarchy::unsupported("non-contiguous RandomBits keys", out);
+  }
+  out.set_data(allocate_omarchy(out.nbytes()));
+  if (out.size() == 0 || keys.size() == 0) {
+    return;
+  }
+  // Upstream layout: keys (N1, ..., NK, 2) and out
+  // (N1, ..., NK, M1, M2, ...), so every key owns an equal number of
+  // output words.
+  size_t num_keys = keys.size() / 2;
+  if (keys.size() % 2 != 0 || out.size() % num_keys != 0) {
+    omarchy::unsupported("RandomBits shape", out);
+  }
+  size_t words_per_key = out.size() / num_keys;
+  uint32_t count = checked_u32(out.size(), "RandomBits", out);
+  omarchy::ComputeParams params;
+  params.count = count;
+  params.lhs_size = checked_u32(keys.size(), "RandomBits", out);
+  params.reduce_size = checked_u32(words_per_key, "RandomBits", out);
+  params.output_size = checked_u32(num_keys, "RandomBits", out);
+  params.lhs_offset = checked_item_offset(keys, keys.size(), "RandomBits", out);
+  params.output_offset = checked_item_offset(out, out.size(), "RandomBits", out);
+  std::array<omarchy::ComputeBinding, 2> bindings{
+      binding(keys), binding(out)};
+  encoder.dispatch_compute(
+      omarchy::ComputeKernel::RandomBitsU32,
+      bindings,
+      params,
+      omarchy::compute_dispatch_group_count(count));
+}
 OMARCHY_UNSUPPORTED(Real)
 
 void Reduce::eval_gpu(const std::vector<array>& inputs, array& out) {
