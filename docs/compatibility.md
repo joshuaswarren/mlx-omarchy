@@ -62,6 +62,18 @@ dims with the named `batch dimensions` error, and collapsed batches beyond
 fallback and matches a host reference within `1e-3` for float32, including
 grouped-query attention (`n_q_heads != n_kv_heads`, which emits rank-5
 matmuls over stride-0 broadcast batch views) and causal masks.
+`mx.quantized_matmul` passes the gate for the mlx-lm Linear shape:
+affine mode, 4-bit and 8-bit codes, group sizes 32 and 64, transposed
+packed weights `[N, K * bits / 32]`, and f32, f16, and bf16 activations.
+The kernel dequantizes in registers with per-group scale and bias,
+accumulates in float32, and matches a double-precision host reference
+and a dequantized dense matmul on the same device within `2e-4` for
+float32. Leading x dims flatten into M when x is row-contiguous.
+Scales and biases pack as two halves of one buffer binding, built by
+two device copies. Other modes, other bits and group sizes,
+non-transposed weights, rank-3 weights, and non-row-contiguous operands
+fail with the named `QuantizedMatmul mode`, `bits`, `group size`,
+`transpose`, `weight layout`, and `non-contiguous input` errors.
 Subtract, Negative, non-zero scalar fill, and same-dtype general strided copy pass the gate.
 Elementwise binary ops broadcast operands on any axis up to a collapsed rank of 4.
 Trailing broadcasts keep the modulo fast path, and a higher collapsed rank fails with the named `broadcast rank` error.

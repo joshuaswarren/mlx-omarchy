@@ -3242,3 +3242,360 @@ TEST_CASE("wide-row ArgPartition keeps the named top-k rejection") {
   std::string mid_error = evaluation_error(argpartition(mid, 0, -1, stream));
   CHECK(mid_error.find("sort row length ArgPartition") != std::string::npos);
 }
+
+// Host copy of the upstream affine quantizer (mlx/ops.cpp
+// affine_quantize + pack_and_quantize): per group the abs-dominant sign
+// picks the scale sign, the q0 refinement pins one endpoint exactly, and
+// clipped rounded codes pack LSB-first into uint32 words, 32 / bits
+// values per word.
+struct HostQuantizedWeights {
+  std::vector<uint32_t> words;
+  std::vector<float> scales;
+  std::vector<float> biases;
+};
+
+HostQuantizedWeights host_affine_quantize(
+    const std::vector<float>& matrix,
+    int rows,
+    int cols,
+    int group_size,
+    int bits) {
+  HostQuantizedWeights result;
+  int groups = cols / group_size;
+  int pack = 32 / bits;
+  int words_per_row = cols / pack;
+  float n_bins = static_cast<float>((1 << bits) - 1);
+  result.words.assign(static_cast<size_t>(rows) * words_per_row, 0);
+  result.scales.resize(static_cast<size_t>(rows) * groups);
+  result.biases.resize(static_cast<size_t>(rows) * groups);
+  for (int row = 0; row < rows; ++row) {
+    for (int group = 0; group < groups; ++group) {
+      float w_max = -std::numeric_limits<float>::infinity();
+      float w_min = std::numeric_limits<float>::infinity();
+      for (int i = 0; i < group_size; ++i) {
+        float value = matrix[row * cols + group * group_size + i];
+        w_max = std::max(w_max, value);
+        w_min = std::min(w_min, value);
+      }
+      // Upstream keeps the scale positive when the abs-dominant
+      // endpoint is w_min (where(mask, scale, -scale)) and pins that
+      // endpoint as the edge.
+      bool min_dominant = std::abs(w_min) > std::abs(w_max);
+      float scale = std::max((w_max - w_min) / n_bins, 1e-7f);
+      if (!min_dominant) {
+        scale = -scale;
+      }
+      float edge = min_dominant ? w_min : w_max;
+      float q0 = std::round(edge / scale);
+      if (q0 != 0.0f) {
+        scale = edge / q0;
+      }
+      float bias = (q0 == 0.0f) ? 0.0f : edge;
+      result.scales[row * groups + group] = scale;
+      result.biases[row * groups + group] = bias;
+      for (int i = 0; i < group_size; ++i) {
+        float value = matrix[row * cols + group * group_size + i];
+        float q =
+            std::clamp(std::round((value - bias) / scale), 0.0f, n_bins);
+        uint32_t code = static_cast<uint32_t>(q);
+        int col = group * group_size + i;
+        result.words[row * words_per_row + col / pack] |=
+            code << ((col % pack) * bits);
+      }
+    }
+  }
+  return result;
+}
+
+// Host dequant dot in double precision: the truth the device dot must
+// reproduce from the same packed words, scales, and biases.
+std::vector<float> host_quantized_matmul(
+    const HostQuantizedWeights& w,
+    const std::vector<float>& x,
+    int m,
+    int n,
+    int k,
+    int group_size,
+    int bits) {
+  int pack = 32 / bits;
+  int words_per_row = k / pack;
+  int groups = k / group_size;
+  uint32_t mask = (1u << bits) - 1u;
+  std::vector<float> out(static_cast<size_t>(m) * n);
+  for (int row = 0; row < m; ++row) {
+    for (int column = 0; column < n; ++column) {
+      double acc = 0.0;
+      for (int inner = 0; inner < k; ++inner) {
+        uint32_t code =
+            (w.words[column * words_per_row + inner / pack] >>
+             ((inner % pack) * bits)) &
+            mask;
+        double dequant = static_cast<double>(code) *
+                w.scales[column * groups + inner / group_size] +
+            w.biases[column * groups + inner / group_size];
+        acc += static_cast<double>(x[row * k + inner]) * dequant;
+      }
+      out[row * n + column] = static_cast<float>(acc);
+    }
+  }
+  return out;
+}
+
+std::vector<float> readback_f32(const Stream& stream, array value) {
+  value = astype(value, float32, stream);
+  value.eval();
+  omarchy::get_command_encoder(stream).synchronize();
+  const float* data = value.data<float>();
+  return std::vector<float>(data, data + value.size());
+}
+
+TEST_CASE("quantized matmul matches dequant and host references") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  std::mt19937 gen(7);
+  std::uniform_real_distribution<float> dist(-2.0f, 2.0f);
+
+  auto run_case = [&](int m, int n, int k, int group_size, int bits) {
+    CAPTURE(m);
+    CAPTURE(n);
+    CAPTURE(k);
+    CAPTURE(group_size);
+    CAPTURE(bits);
+    int groups = k / group_size;
+    int pack = 32 / bits;
+    int words_per_row = k / pack;
+    std::vector<float> w_values(static_cast<size_t>(n) * k);
+    std::vector<float> x_values(static_cast<size_t>(m) * k);
+    for (auto& value : w_values) {
+      value = dist(gen);
+    }
+    for (auto& value : x_values) {
+      value = dist(gen);
+    }
+    HostQuantizedWeights host =
+        host_affine_quantize(w_values, n, k, group_size, bits);
+
+    array w_words(
+        host.words.begin(), Shape{n, words_per_row}, uint32);
+    array w_scales(
+        host.scales.begin(), Shape{n, groups}, float32);
+    array w_biases(
+        host.biases.begin(), Shape{n, groups}, float32);
+    array x(x_values.begin(), Shape{m, k}, float32);
+
+    // Reference (a): the dequantized dense matmul on the same device.
+    // Independent kernel, identical dequant values.
+    std::vector<float> dense_values;
+    dense_values.reserve(w_values.size());
+    uint32_t mask = (1u << bits) - 1u;
+    for (int column = 0; column < n; ++column) {
+      for (int inner = 0; inner < k; ++inner) {
+        uint32_t code = (host.words[column * words_per_row + inner / pack] >>
+                         ((inner % pack) * bits)) &
+            mask;
+        dense_values.push_back(
+            static_cast<float>(code) *
+                host.scales[column * groups + inner / group_size] +
+            host.biases[column * groups + inner / group_size]);
+      }
+    }
+    array w_dense(dense_values.begin(), Shape{n, k}, float32);
+    array dense_out = matmul(x, transpose(w_dense), stream);
+
+    // Reference (b): the double-precision host dot over the same words.
+    std::vector<float> expected =
+        host_quantized_matmul(host, x_values, m, n, k, group_size, bits);
+
+    array out = quantized_matmul(
+        x,
+        w_words,
+        w_scales,
+        w_biases,
+        /*transpose=*/true,
+        group_size,
+        bits,
+        "affine",
+        stream);
+    std::string blocked = evaluation_error(out);
+    REQUIRE(blocked.empty());
+    std::vector<float> device_values = readback_f32(stream, out);
+    REQUIRE_EQ(device_values.size(), expected.size());
+    std::vector<float> dense_out_values = readback_f32(stream, dense_out);
+    REQUIRE_EQ(dense_out_values.size(), expected.size());
+    for (size_t index = 0; index < expected.size(); ++index) {
+      CHECK(
+          device_values[index] ==
+          doctest::Approx(expected[index]).epsilon(2e-4));
+      CHECK(
+          device_values[index] ==
+          doctest::Approx(dense_out_values[index]).epsilon(2e-4));
+    }
+  };
+
+  // Multiple groups per row, N off the 16-wide tile edge, and the two
+  // decode shapes M=1 (one row) and M=7 (a short prefill).
+  for (int bits : {4, 8}) {
+    for (int group_size : {32, 64}) {
+      run_case(1, 37, 128, group_size, bits);
+      run_case(7, 37, 128, group_size, bits);
+    }
+  }
+  // An exact-tile N and a K whose group count never lands on the
+  // smaller group size word boundary.
+  run_case(7, 16, 192, 32, 4);
+  run_case(1, 16, 192, 64, 8);
+}
+
+TEST_CASE("quantized matmul runs f16 and bf16 activations") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  const auto& capabilities = omarchy::device(0).capabilities();
+  if (!capabilities.shader_float16 ||
+      !capabilities.storage_buffer_16bit_access) {
+    skip("Vulkan device lacks required FP16 shader and storage features.");
+    return;
+  }
+  constexpr int m = 7;
+  constexpr int n = 20;
+  constexpr int k = 128;
+  constexpr int group_size = 64;
+  constexpr int bits = 4;
+  constexpr int groups = k / group_size;
+  constexpr int words_per_row = k / 8;
+  std::mt19937 gen(11);
+  std::uniform_real_distribution<float> dist(-2.0f, 2.0f);
+  std::vector<float> w_values(static_cast<size_t>(n) * k);
+  std::vector<float> x_values(static_cast<size_t>(m) * k);
+  for (auto& value : w_values) {
+    value = dist(gen);
+  }
+  for (auto& value : x_values) {
+    value = dist(gen);
+  }
+  HostQuantizedWeights host =
+      host_affine_quantize(w_values, n, k, group_size, bits);
+
+  // Round x and the group parameters through the 16-bit dtype on the
+  // device, then read the exact 16-bit values back so the host
+  // reference sees what the kernel sees.
+  auto round_trip = [&](const std::vector<float>& values, Dtype dtype) {
+    array device(
+        values.begin(),
+        Shape{static_cast<int>(values.size())},
+        float32);
+    return readback_f32(
+        stream, astype(astype(device, dtype, stream), float32, stream));
+  };
+
+  for (Dtype dtype : {float16, bfloat16}) {
+    if (dtype == bfloat16 && !capabilities.shader_int16) {
+      skip("Vulkan device lacks required BF16 storage features.");
+      continue;
+    }
+    CAPTURE(dtype);
+    std::vector<float> x_rounded = round_trip(x_values, dtype);
+    std::vector<float> scales_rounded = round_trip(host.scales, dtype);
+    std::vector<float> biases_rounded = round_trip(host.biases, dtype);
+    HostQuantizedWeights rounded_host = host;
+    rounded_host.scales = scales_rounded;
+    rounded_host.biases = biases_rounded;
+    std::vector<float> expected = host_quantized_matmul(
+        rounded_host, x_rounded, m, n, k, group_size, bits);
+
+    array w_words(
+        host.words.begin(), Shape{n, words_per_row}, uint32);
+    array w_scales(
+        scales_rounded.begin(), Shape{n, groups}, float32);
+    array w_biases(
+        biases_rounded.begin(), Shape{n, groups}, float32);
+    array x(x_rounded.begin(), Shape{m, k}, float32);
+    array out = quantized_matmul(
+        astype(x, dtype, stream),
+        w_words,
+        astype(w_scales, dtype, stream),
+        astype(w_biases, dtype, stream),
+        /*transpose=*/true,
+        group_size,
+        bits,
+        "affine",
+        stream);
+    std::string blocked = evaluation_error(out);
+    REQUIRE(blocked.empty());
+    CHECK_EQ(out.dtype(), dtype);
+    std::vector<float> device_values = readback_f32(stream, out);
+    REQUIRE_EQ(device_values.size(), expected.size());
+    double epsilon = (dtype == float16) ? 4e-3 : 2e-2;
+    for (size_t index = 0; index < expected.size(); ++index) {
+      CHECK(
+          device_values[index] ==
+          doctest::Approx(expected[index]).epsilon(epsilon));
+    }
+  }
+}
+
+TEST_CASE("quantized matmul pins named errors outside the linear shape") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  std::vector<float> x_values(2 * 128, 0.5f);
+  array x(x_values.begin(), Shape{2, 128}, float32);
+  std::vector<uint32_t> words(4 * 16, 0x33221100u);
+  std::vector<float> group_params(4 * 4, 0.03125f);
+  array w4(words.begin(), Shape{4, 16}, uint32);
+  array sb4(group_params.begin(), Shape{4, 4}, float32);
+  array w2(words.begin(), Shape{4, 8}, uint32);
+  array sb1(group_params.begin(), Shape{4, 1}, float32);
+  std::vector<uint8_t> u8_params(4 * 4, 100);
+  array sb_u8(u8_params.begin(), Shape{4, 4}, uint8);
+
+  // Non-affine modes reach the primitive only with uint8 scales.
+  std::string mode_error = evaluation_error(quantized_matmul(
+      x, w4, sb_u8, std::nullopt, true, 32, 4, "mxfp4", stream));
+  CHECK(mode_error.find("QuantizedMatmul mode") != std::string::npos);
+
+  std::string bits_error = evaluation_error(
+      quantized_matmul(x, w2, sb4, sb4, true, 32, 2, "affine", stream));
+  CHECK(bits_error.find("QuantizedMatmul bits") != std::string::npos);
+
+  std::string group_error = evaluation_error(
+      quantized_matmul(x, w4, sb1, sb1, true, 128, 4, "affine", stream));
+  CHECK(group_error.find("QuantizedMatmul group size") != std::string::npos);
+
+  // transpose=false quantizes w as [K, N]: words [128, 4], params [128, 1].
+  std::vector<uint32_t> nt_words(128 * 4, 0x33221100u);
+  std::vector<float> nt_params(128, 0.03125f);
+  array w_nt(nt_words.begin(), Shape{128, 4}, uint32);
+  array sb_nt(nt_params.begin(), Shape{128, 1}, float32);
+  std::string transpose_error = evaluation_error(quantized_matmul(
+      x, w_nt, sb_nt, sb_nt, false, 32, 4, "affine", stream));
+  CHECK(
+      transpose_error.find("QuantizedMatmul transpose") !=
+      std::string::npos);
+
+  // Batched weights stay rejected: rank-3 w never matches the 2D Linear.
+  array xb(x_values.begin(), Shape{2, 2, 128}, float32);
+  std::vector<uint32_t> batched_words(2 * 4 * 16, 0x33221100u);
+  std::vector<float> batched_params(2 * 4 * 4, 0.03125f);
+  array wb(batched_words.begin(), Shape{2, 4, 16}, uint32);
+  array sbb(batched_params.begin(), Shape{2, 4, 4}, float32);
+  std::string batched_error = evaluation_error(quantized_matmul(
+      xb, wb, sbb, sbb, true, 32, 4, "affine", stream));
+  CHECK(
+      batched_error.find("QuantizedMatmul weight layout") !=
+      std::string::npos);
+
+  // A transposed x view is not row-contiguous and keeps its named error.
+  std::vector<float> wide_values(128 * 4, 0.5f);
+  array wide(wide_values.begin(), Shape{128, 4}, float32);
+  array x_view = transpose(wide);
+  std::string view_error = evaluation_error(quantized_matmul(
+      x_view, w4, sb4, sb4, true, 32, 4, "affine", stream));
+  CHECK(
+      view_error.find("QuantizedMatmul non-contiguous input") !=
+      std::string::npos);
+}
