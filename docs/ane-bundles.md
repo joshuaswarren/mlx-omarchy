@@ -11,6 +11,8 @@ Status: the Linux validation layer, its tests, and the macOS exporter
 (`tools/ane-export/`) are in place. Lowering general MLX graphs to the
 exporter's descriptors and M1 execution remain open work; see
 `docs/compatibility.md`.
+See `docs/ane-hwx-format-notes.md` for the HWX container and task-descriptor
+format reference (external guide evaluation).
 
 ## Layout
 

@@ -6,20 +6,22 @@
 Reads the backend sources and the test suite, derives one row per
 primitive entry in overlay/mlx/backend/omarchy/primitives.cpp, and
 writes a markdown document to stdout. Redirect into
-docs/compatibility-matrix.md.
+docs/compatibility-matrix.md. `--json-out PATH` also writes the
+coverage badge data in shields.io endpoint format (docs/coverage.json).
 
 Sources (read-only):
   overlay/mlx/backend/omarchy/primitives.cpp  primitive entries and gates
   overlay/mlx/backend/omarchy/compute.h       ComputeKernel variants
   overlay/mlx/backend/omarchy/copy.cpp        engine kernels behind copies
   overlay/tests/omarchy/**/*.cpp              TEST_CASE anchors
-
-The generator is deterministic: the same tree produces the same bytes.
-`--date` pins the generation date in the header (default: today).
+  .work/mlx/mlx/primitives.h                  upstream primitive classes
+  .work/mlx/mlx/fast_primitives.h             upstream fast:: primitives
+  .work/mlx/mlx/distributed/primitives.h      upstream distributed:: primitives
 """
 
 import argparse
 import datetime
+import json
 import pathlib
 import re
 import subprocess
@@ -31,6 +33,17 @@ PRIMITIVES = ROOT / "overlay/mlx/backend/omarchy/primitives.cpp"
 COMPUTE_H = ROOT / "overlay/mlx/backend/omarchy/compute.h"
 COPY_CPP = ROOT / "overlay/mlx/backend/omarchy/copy.cpp"
 TEST_GLOB = "overlay/tests/omarchy/**/*.cpp"
+
+UPSTREAM_H = ROOT / ".work/mlx/mlx/primitives.h"
+UPSTREAM_FAST_H = ROOT / ".work/mlx/mlx/fast_primitives.h"
+UPSTREAM_DIST_H = ROOT / ".work/mlx/mlx/distributed/primitives.h"
+
+# Classes in the upstream headers that are dispatch bases, not
+# primitives themselves.
+UPSTREAM_BASES = {"Primitive", "UnaryPrimitive", "Custom", "DistPrimitive"}
+
+UPSTREAM_CLASS = re.compile(
+    r"^class (?:MLX_API\s+)?(\w+) : public (\w+) \{", re.M)
 
 # Helpers whose fragments are generic engine limits, not per-primitive
 # constraints. They appear once in the footnote instead of every row.
@@ -382,6 +395,38 @@ def parse_primitives():
     return text, entries
 
 
+def parse_upstream_primitives():
+    """Concrete primitive classes upstream MLX defines, as (ns, name).
+
+    The coverage denominator is upstream's total primitive list, not
+    the entries the omarchy backend happens to enumerate.
+    """
+    out = []
+    for path, ns in [
+        (UPSTREAM_H, ""),
+        (UPSTREAM_FAST_H, "fast"),
+        (UPSTREAM_DIST_H, "distributed"),
+    ]:
+        try:
+            text = path.read_text()
+        except OSError as exc:
+            raise SystemExit(
+                f"cannot read upstream header {path}: {exc}\n"
+                "The coverage denominator needs the upstream MLX sources "
+                "under .work/mlx; sync them and rerun.")
+        for match in UPSTREAM_CLASS.finditer(text):
+            name, base = match.groups()
+            if name in UPSTREAM_BASES:
+                continue
+            if base not in UPSTREAM_BASES:
+                raise SystemExit(
+                    f"unrecognized base class {base!r} for upstream "
+                    f"primitive {name!r} in {path}; extend UPSTREAM_BASES "
+                    "before trusting the denominator.")
+            out.append((ns, name))
+    return out
+
+
 HELPER_FAMILY = {
     "dispatch_elementwise": ["Elementwise"],
     "dispatch_int_elementwise": ["Elementwise"],
@@ -577,6 +622,12 @@ def main():
         "--date",
         default=datetime.date.today().isoformat(),
         help="generation date recorded in the header (YYYY-MM-DD)")
+    parser.add_argument(
+        "--json-out",
+        default=None,
+        metavar="PATH",
+        help="also write the coverage badge in shields.io endpoint "
+             "format (docs/coverage.json)")
     args = parser.parse_args()
 
     primitives_text, entries = parse_primitives()
@@ -631,18 +682,121 @@ def main():
     rows = [rows_by_key[(entry["ns"], entry["name"])]
             for entry in entries]
 
+    upstream = parse_upstream_primitives()
+    backend_keys = {(entry["ns"], entry["name"]) for entry in entries}
+    phantom = backend_keys - set(upstream)
+    if phantom:
+        raise SystemExit(
+            "backend entries absent from upstream MLX: "
+            + ", ".join(
+                f"{ns}::{name}" if ns else name
+                for ns, name in sorted(phantom)))
+    no_entry = sorted(set(upstream) - backend_keys)
+    total = len(upstream)
+
+    def is_anchored(row):
+        return row["anchor"] != "—"
+
+    def share(count):
+        return f"{count / total * 100:.1f}%"
+
+    native_hit = sum(
+        1 for row in rows
+        if row["status"] == "native" and is_anchored(row))
+    native_miss = sum(
+        1 for row in rows
+        if row["status"] == "native" and not is_anchored(row))
+    composed_hit = sum(
+        1 for row in rows
+        if row["status"].startswith("composed") and is_anchored(row))
+    composed_miss = sum(
+        1 for row in rows
+        if row["status"].startswith("composed") and not is_anchored(row))
+    named_error = sum(
+        1 for row in rows if row["status"] == "named-error")
+    named_error_anchored = sum(
+        1 for row in rows
+        if row["status"] == "named-error" and is_anchored(row))
+    buckets = [
+        ("native, test-anchored", native_hit),
+        ("native, untested", native_miss),
+        ("composed, test-anchored", composed_hit),
+        ("composed, untested", composed_miss),
+        ("named-error (backend entry raises unsupported)", named_error),
+        ("not implemented (no backend entry)", len(no_entry)),
+    ]
+    covered = native_hit + composed_hit
+    implemented = covered + native_miss + composed_miss
+    coverage_pct = covered / total * 100
+
+    def badge_color(pct):
+        if pct < 34:
+            return "red"
+        if pct < 67:
+            return "orange"
+        if pct < 90:
+            return "yellow"
+        return "green"
+
+    if args.json_out:
+        payload = {
+            "schemaVersion": 1,
+            "label": "MLX coverage",
+            "message":
+                f"{coverage_pct:.1f}% ({covered}/{total} primitives)",
+            "color": badge_color(coverage_pct),
+        }
+        pathlib.Path(args.json_out).write_text(
+            json.dumps(payload) + "\n")
+
     out = []
     out.append("# Compatibility matrix")
     out.append("")
     sha = git("rev-parse", "--short", "HEAD")
     branch = git("branch", "--show-current")
+    # The header records the canonical invocation so the document is
+    # byte-identical no matter where --json-out pointed.
+    command = (
+        "python3 tools/gen-compat-matrix.py"
+        " --json-out docs/coverage.json > docs/compatibility-matrix.md")
     out.append(
-        f"Generated by `python3 tools/gen-compat-matrix.py "
-        f"> docs/compatibility-matrix.md` on {args.date} "
+        f"Generated by `{command}` on {args.date} "
         f"from the working tree at commit `{sha}` on branch `{branch}`.")
     out.append(
         "Regenerate after backend changes; the generator is the source "
         "of truth and the same tree produces the same bytes.")
+    out.append("")
+    out.append("## Coverage")
+    out.append("")
+    out.append(
+        f"**MLX primitive coverage: {coverage_pct:.1f}% — {covered} of "
+        f"{total} upstream primitives.**")
+    out.append("")
+    out.append(
+        "Coverage counts a primitive only when the omarchy backend "
+        "dispatches or composes it (native or composed) and a resolved "
+        "TEST_CASE anchors it in `overlay/tests/omarchy/`. "
+        "Native-but-untested primitives keep their own buckets below "
+        "and are not counted as covered.")
+    out.append("")
+    out.append(
+        "The denominator is every concrete primitive class upstream "
+        "MLX defines — parsed from `.work/mlx/mlx/primitives.h`, "
+        "`.work/mlx/mlx/fast_primitives.h`, and "
+        "`.work/mlx/mlx/distributed/primitives.h` — not only the "
+        f"{len(rows)} entries the omarchy backend enumerates.")
+    out.append("")
+    out.append("| Bucket | Count | Share of upstream |")
+    out.append("|---|---|---|")
+    for label, count in buckets:
+        out.append(f"| {label} | {count} | {share(count)} |")
+    out.append(f"| upstream total | {total} | 100.0% |")
+    out.append("")
+    out.append(
+        "Implementation-path coverage without the test requirement: "
+        f"{implemented}/{total} = {implemented / total * 100:.1f}%. "
+        f"{named_error_anchored} named-error primitives pin their "
+        "unsupported error with a test; a pinned error is not coverage.")
     out.append("")
     out.append("## Status terms")
     out.append("")
@@ -656,6 +810,10 @@ def main():
     out.append(
         "- named-error: eval_gpu raises `omarchy::unsupported` and the "
         "run stops with that qualifier.")
+    out.append(
+        "- not implemented (no backend entry): upstream MLX defines the "
+        "primitive and `overlay/mlx/backend/omarchy/primitives.cpp` has "
+        "no entry for it, so no omarchy code runs for an eval.")
     out.append(
         "- Dtypes marked `*` pass the capability gates listed under the "
         "kernel families.")
@@ -689,6 +847,20 @@ def main():
         "Every dispatch path also bounds element counts, item offsets, "
         "and index spans to `uint32` and raises a named error beyond. "
         "No primitive falls back to CPU tensors.")
+    out.append("")
+    out.append(
+        f"## Not implemented (no backend entry) — {len(no_entry)} "
+        "primitives")
+    out.append("")
+    out.append(
+        "Upstream MLX defines these primitives, but the omarchy backend "
+        "has no entry for them. They count in the coverage denominator.")
+    out.append("")
+    out.append("| Primitive | Status |")
+    out.append("|---|---|")
+    for ns, name in no_entry:
+        display = f"{ns}::{name}" if ns else name
+        out.append(f"| {display} | not implemented (no backend entry) |")
     out.append("")
     sys.stdout.write("\n".join(out))
 

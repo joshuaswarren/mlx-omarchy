@@ -24,6 +24,22 @@ Vulkan, ANE, and install gates are not qualified on those systems.
 
 ## MLX core
 
+### Compiled tape bfloat16
+
+Compiled bfloat16 tapes are refused with the named
+`[omarchy] Compiled tape bfloat16` error.
+The M1 mlx-lm greedy run of `Qwen2.5-0.5B-Instruct-bf16` returned garbage
+tokens through the compiled `swiglu` fragment at commit `fbdd5ed` (2026-09-01).
+`MLX_DISABLE_COMPILE=1` returned the correct text on the same host and wheel.
+The 4-bit run through f16 tapes is correct.
+On llvmpipe the same fragment matches eager exactly, and the per-stage
+snapshot bisect shows matching inputs at the first diverging fragment.
+Two compiled runs returned different garbage, so the defect is a
+nondeterministic memory hazard, not a fixed arithmetic error.
+The interpreter root cause is not pinned yet.
+The gate keeps the silent wrong-result path closed until it is.
+Re-run bf16 workloads with `MLX_DISABLE_COMPILE=1`.
+
 Arrays and memory are runtime verified.
 The tests cover allocation, copies, views, aliases, and lifetime.
 See the [v0.1.0 M1 runtime receipt](https://github.com/joshuaswarren/mlx-omarchy/releases/download/v0.2.0/mlx-omarchy-v0.1.0-m1-runtime.txt).
