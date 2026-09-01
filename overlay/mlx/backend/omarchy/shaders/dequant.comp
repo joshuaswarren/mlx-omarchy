@@ -1,0 +1,94 @@
+#version 460
+
+// Quantize (affine dequantize direction): out[...] = q * scale + bias,
+// where packed uint32 words hold 32 / bits quantized values along the
+// last axis in the low bits first and each group of group_size values
+// shares one scale and one bias. One thread owns one packed word: the
+// word load is a straight-line per-thread read at the thread's own
+// linear address, the group-parameter loads reuse one address for every
+// lane in the word, and the pack_factor stores are consecutive
+// (Honeykrisp caution: no per-lane divergent word loads, no
+// broadcast-unravel addressing).
+// Push-constant routing: operation carries bits (4 or 8), reduce_size
+// carries the group size, matrix_n carries words per row, matrix_k
+// carries groups per row.
+
+#ifdef USE_FP16
+#extension GL_EXT_shader_16bit_storage : require
+#extension GL_EXT_shader_explicit_arithmetic_types_float16 : require
+#define STORAGE_TYPE float16_t
+#define LOAD_VALUE(x) float(x)
+#define STORE_VALUE(f) STORAGE_TYPE(f)
+#else
+#define STORAGE_TYPE float
+#define LOAD_VALUE(x) float(x)
+#define STORE_VALUE(f) STORAGE_TYPE(f)
+#endif
+
+layout(local_size_x = 256) in;
+
+layout(set = 0, binding = 0, std430) readonly buffer InputW {
+  uint values[];
+} input_w;
+layout(set = 0, binding = 1, std430) readonly buffer Scales {
+  STORAGE_TYPE values[];
+} scales_data;
+layout(set = 0, binding = 2, std430) readonly buffer Biases {
+  STORAGE_TYPE values[];
+} biases_data;
+layout(set = 0, binding = 3, std430) writeonly buffer Output {
+  STORAGE_TYPE values[];
+} output_data;
+
+layout(push_constant) uniform Params {
+  uint count;
+  uint operation;
+  uint lhs_size;
+  uint rhs_size;
+  uint reduce_size;
+  uint output_size;
+  uint lhs_offset;
+  uint rhs_offset;
+  uint output_offset;
+  uint aux_size;
+  uint aux_offset;
+  uint matrix_m;
+  uint matrix_n;
+  uint matrix_k;
+  uint flags;
+  float alpha;
+  float beta;
+  uint dims;
+  uint shape[4];
+  uint in_strides[4];
+  uint out_strides[4];
+} params;
+
+void main() {
+  uint bits = params.operation;
+  uint group_size = params.reduce_size;
+  uint pack_factor = 32u / bits;
+  uint value_mask = (1u << bits) - 1u;
+  uint words_per_group = group_size / pack_factor;
+  uint stride = gl_NumWorkGroups.x * 256u;
+
+  for (uint word_index = gl_GlobalInvocationID.x; word_index < params.count;
+       word_index += stride) {
+    uint word = input_w.values[params.lhs_offset + word_index];
+    uint row = word_index / params.matrix_n;
+    uint word_column = word_index % params.matrix_n;
+    uint group = word_column / words_per_group;
+    float scale = LOAD_VALUE(
+        scales_data.values[params.rhs_offset + row * params.matrix_k +
+            group]);
+    float bias = LOAD_VALUE(
+        biases_data.values[params.aux_offset + row * params.matrix_k +
+            group]);
+    uint value_base = params.output_offset + word_index * pack_factor;
+    for (uint lane = 0u; lane < pack_factor; ++lane) {
+      uint q = (word >> (lane * bits)) & value_mask;
+      output_data.values[value_base + lane] =
+          STORE_VALUE(scale * float(q) + bias);
+    }
+  }
+}

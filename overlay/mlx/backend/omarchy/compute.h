@@ -105,6 +105,8 @@ enum class ComputeKernel : uint8_t {
   QmmF32,
   QmmF16,
   QmmBF16,
+  DequantF32,
+  DequantF16,
   Count,
 };
 
