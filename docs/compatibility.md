@@ -74,6 +74,21 @@ two device copies. Other modes, other bits and group sizes,
 non-transposed weights, rank-3 weights, and non-row-contiguous operands
 fail with the named `QuantizedMatmul mode`, `bits`, `group size`,
 `transpose`, `weight layout`, and `non-contiguous input` errors.
+`mx.dequantize` passes the gate for the affine mode that QuantizedEmbedding
+feeds: 4-bit and 8-bit codes, group sizes 32 and 64, packed uint32 words,
+and f16 or f32 scales and biases. One kernel thread owns one packed word,
+reads the word at its own linear address, and writes the `32 / bits`
+dequantized values `q * scale + bias` consecutively, so the shape the
+Honeykrisp driver reads correctly is preserved. Output dtype follows the
+promoted scales dtype, and a `[1, 40, 112]` word block dequantizes to the
+`[1, 40, 896]` embedding shape. Device values match a host unpack of the
+same packed words bit for bit with dyadic group parameters, and the
+quantizer's own parameters round-trip within float32 rounding noise.
+The quantize direction and non-affine modes such as mxfp4 fail with the
+named `Quantize direction` and `Quantize mode` errors; other bits, other
+group sizes, non-row-contiguous operands, and bfloat16 parameters fail
+with the named `Quantize bits`, `Quantize group size`,
+`non-contiguous input`, and `Quantize scales dtype` errors.
 Subtract, Negative, non-zero scalar fill, and same-dtype general strided copy pass the gate.
 Elementwise binary ops broadcast operands on any axis up to a collapsed rank of 4.
 Trailing broadcasts keep the modulo fast path, and a higher collapsed rank fails with the named `broadcast rank` error.

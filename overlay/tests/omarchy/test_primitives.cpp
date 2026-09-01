@@ -3744,3 +3744,215 @@ TEST_CASE("quantized matmul pins named errors outside the linear shape") {
       view_error.find("QuantizedMatmul non-contiguous input") !=
       std::string::npos);
 }
+
+// Host unpack of hand-packed affine words: LSB-first codes, 32 / bits
+// values per word, one scale and one bias per group. The mirror of the
+// upstream affine_dequantize fallback and of the qmm.comp packing read.
+std::vector<double> host_affine_dequantize(
+    const std::vector<uint32_t>& words,
+    const std::vector<float>& scales,
+    const std::vector<float>& biases,
+    int rows,
+    int out_columns,
+    int group_size,
+    int bits) {
+  int pack = 32 / bits;
+  int words_per_row = out_columns / pack;
+  int groups = out_columns / group_size;
+  uint32_t mask = (1u << bits) - 1u;
+  std::vector<double> out(static_cast<size_t>(rows) * out_columns);
+  for (int row = 0; row < rows; ++row) {
+    for (int column = 0; column < out_columns; ++column) {
+      uint32_t code =
+          (words[row * words_per_row + column / pack] >>
+           ((column % pack) * bits)) &
+          mask;
+      out[static_cast<size_t>(row) * out_columns + column] =
+          static_cast<double>(code) *
+              scales[row * groups + column / group_size] +
+          biases[row * groups + column / group_size];
+    }
+  }
+  return out;
+}
+
+TEST_CASE("dequantize reproduces hand-packed affine words") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  const auto& capabilities = omarchy::device(0).capabilities();
+  const bool f16_ok =
+      capabilities.shader_float16 && capabilities.storage_buffer_16bit_access;
+
+  // The QuantizedEmbedding shape family: a gathered [1, 40, words]
+  // uint32 block dequantizes to a [1, 40, 896] fp16 embedding row.
+  // Words come from the same upstream pack reference the quantized
+  // matmul test uses; scales and biases stay dyadic so every q * scale
+  // + bias step is exactly representable and the device words must
+  // equal the host words bit for bit, independent of FMA contraction
+  // on either side.
+  constexpr int rows = 40;
+  constexpr int columns = 896;
+  std::mt19937 gen(13);
+  std::uniform_real_distribution<float> dist(-2.0f, 2.0f);
+  std::vector<float> matrix(static_cast<size_t>(rows) * columns);
+  for (auto& value : matrix) {
+    value = dist(gen);
+  }
+  std::vector<int> groups_list;
+  for (int bits : {4, 8}) {
+    for (int group_size : {32, 64}) {
+      CAPTURE(bits);
+      CAPTURE(group_size);
+      HostQuantizedWeights host =
+          host_affine_quantize(matrix, rows, columns, group_size, bits);
+      int words_per_row = columns / (32 / bits);
+      int groups = columns / group_size;
+
+      // Dyadic group parameters: k * 2^-5 scales and k * 2^-6 biases
+      // with tiny integer k keep every product and sum exact in f32
+      // and in f16. The largest mantissa, 2 * 255 * 3 + 2 = 1532 for
+      // 8-bit codes, stays inside the 11-bit f16 significand, so the
+      // exactness claim holds for the f16 output too.
+      std::vector<float> scales(static_cast<size_t>(rows) * groups);
+      std::vector<float> biases(static_cast<size_t>(rows) * groups);
+      for (int row = 0; row < rows; ++row) {
+        for (int group = 0; group < groups; ++group) {
+          size_t index = static_cast<size_t>(row) * groups + group;
+          scales[index] = 0.03125f * (1.0f + static_cast<float>(index % 3));
+          biases[index] =
+              0.015625f * (static_cast<float>(index % 5) - 2.0f);
+        }
+      }
+      std::vector<double> expected = host_affine_dequantize(
+          host.words, scales, biases, rows, columns, group_size, bits);
+
+      for (Dtype dtype : {float32, float16}) {
+        if (dtype == float16 && !f16_ok) {
+          skip("Vulkan device lacks required FP16 shader and storage "
+               "features.");
+          continue;
+        }
+        CAPTURE(dtype);
+        array words(
+            host.words.begin(),
+            Shape{1, rows, words_per_row},
+            uint32);
+        array scales_f32(scales.begin(), Shape{1, rows, groups}, float32);
+        array biases_f32(biases.begin(), Shape{1, rows, groups}, float32);
+        array out = dequantize(
+            words,
+            astype(scales_f32, dtype, stream),
+            astype(biases_f32, dtype, stream),
+            group_size,
+            bits,
+            "affine",
+            std::nullopt,
+            std::nullopt,
+            stream);
+        std::string blocked = evaluation_error(out);
+        REQUIRE(blocked.empty());
+        CHECK_EQ(out.dtype(), dtype);
+        CHECK_EQ(out.shape(0), 1);
+        CHECK_EQ(out.shape(1), rows);
+        CHECK_EQ(out.shape(2), columns);
+        std::vector<float> device_values = readback_f32(stream, out);
+        REQUIRE_EQ(device_values.size(), expected.size());
+        for (size_t index = 0; index < expected.size(); ++index) {
+          // Exact: the true value is dyadic, so the device value and
+          // the correctly rounded host value must be the same float.
+          CHECK_EQ(
+              device_values[index],
+              static_cast<float>(expected[index]));
+        }
+      }
+
+      // Round trip with the quantizer's own group parameters: the
+      // decode of the packed words must land on the host unpack within
+      // f32 rounding noise (FMA contraction differs by at most one
+      // ulp of the result).
+      std::vector<double> round_expected = host_affine_dequantize(
+          host.words,
+          host.scales,
+          host.biases,
+          rows,
+          columns,
+          group_size,
+          bits);
+      array words(
+          host.words.begin(), Shape{1, rows, words_per_row}, uint32);
+      array scales_f32(host.scales.begin(), Shape{1, rows, groups}, float32);
+      array biases_f32(host.biases.begin(), Shape{1, rows, groups}, float32);
+      array round_out =
+          dequantize(
+              words,
+              scales_f32,
+              biases_f32,
+              group_size,
+              bits,
+              "affine",
+              std::nullopt,
+              std::nullopt,
+              stream);
+      std::string round_blocked = evaluation_error(round_out);
+      REQUIRE(round_blocked.empty());
+      std::vector<float> round_values = readback_f32(stream, round_out);
+      REQUIRE_EQ(round_values.size(), round_expected.size());
+      for (size_t index = 0; index < round_expected.size(); ++index) {
+        double tolerance =
+            1e-6 + 2e-7 * std::abs(round_expected[index]);
+        CHECK(std::abs(round_values[index] - round_expected[index]) <=
+              tolerance);
+      }
+    }
+  }
+}
+
+TEST_CASE("dequantize pins named errors outside the affine gate") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  std::vector<float> matrix(4 * 128, 0.5f);
+  array x(matrix.begin(), Shape{4, 128}, float32);
+
+  // The quantize direction stays a named rejection.
+  std::vector<array> packed = quantize(x, 32, 4, "affine", std::nullopt, stream);
+  std::string direction_error = evaluation_error(packed[0]);
+  CHECK(
+      direction_error.find("Quantize direction") != std::string::npos);
+
+  // mxfp4 keeps its mode rejection: two inputs, uint8 scales.
+  std::vector<uint32_t> words4(4 * 16, 0x33221100u);
+  std::vector<uint8_t> scales_u8(4 * 4, 100);
+  array w4(words4.begin(), Shape{4, 16}, uint32);
+  array s8(scales_u8.begin(), Shape{4, 4}, uint8);
+  std::string mode_error = evaluation_error(
+      dequantize(w4, s8, std::nullopt, 32, 4, "mxfp4", std::nullopt, std::nullopt, stream));
+  CHECK(mode_error.find("Quantize mode") != std::string::npos);
+
+  // Non-affine bits and group sizes keep their named rejections. The
+  // word and parameter shapes stay consistent with the requested
+  // parameters so the ops-level shape validation passes and the
+  // backend gate is what rejects them.
+  std::vector<float> params4(4 * 4, 0.03125f);
+  std::vector<float> params8(4 * 8, 0.03125f);
+  std::vector<float> params1(4 * 1, 0.03125f);
+  array sb4(params4.begin(), Shape{4, 4}, float32);
+  array sb8(params8.begin(), Shape{4, 8}, float32);
+  array sb1(params1.begin(), Shape{4, 1}, float32);
+  std::string bits_error = evaluation_error(
+      dequantize(w4, sb8, sb8, 32, 2, "affine", std::nullopt, std::nullopt, stream));
+  CHECK(bits_error.find("Quantize bits") != std::string::npos);
+  std::string group_error = evaluation_error(
+      dequantize(w4, sb1, sb1, 128, 4, "affine", std::nullopt, std::nullopt, stream));
+  CHECK(group_error.find("Quantize group size") != std::string::npos);
+
+  // bfloat16 group parameters keep the named dtype rejection: the
+  // dequant kernels ship f32 and f16 variants only.
+  array sb_bf16 = astype(sb4, bfloat16, stream);
+  std::string dtype_error = evaluation_error(
+      dequantize(w4, sb_bf16, sb_bf16, 32, 4, "affine", std::nullopt, std::nullopt, stream));
+  CHECK(dtype_error.find("Quantize scales dtype") != std::string::npos);
+}

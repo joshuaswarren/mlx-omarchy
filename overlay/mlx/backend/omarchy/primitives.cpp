@@ -1757,9 +1757,104 @@ OMARCHY_USE_FALLBACK(RoPE)
 OMARCHY_UNSUPPORTED_MULTI(ScaledDotProductAttention)
 OMARCHY_UNSUPPORTED_MULTI(ScaledDotProductAttentionVJP)
 OMARCHY_UNSUPPORTED_MULTI(ConvertFP8)
-OMARCHY_UNSUPPORTED_MULTI(Quantize)
-OMARCHY_UNSUPPORTED_MULTI(CustomKernel)
+void Quantize::eval_gpu(
+    const std::vector<array>& inputs,
+    std::vector<array>& outputs) {
+  const std::string tag = name();
+  array& out = outputs.at(0);
+  // One primitive serves both directions; only the dequantize side is
+  // implemented. The quantize direction and every non-affine mode keep
+  // the named rejection.
+  if (!dequantize_) {
+    omarchy::unsupported(tag + " direction", out);
+  }
+  if (mode_ != QuantizationMode::Affine) {
+    omarchy::unsupported(tag + " mode", out);
+  }
+  if (bits_ != 4 && bits_ != 8) {
+    omarchy::unsupported(tag + " bits", out);
+  }
+  if (group_size_ != 32 && group_size_ != 64) {
+    omarchy::unsupported(tag + " group size", out);
+  }
+  const array& w = inputs.at(0);
+  const array& scales = inputs.at(1);
+  const array& biases = inputs.at(2);
+  auto& encoder = omarchy::get_command_encoder(out.primitive().stream());
+  // The output dtype is the promoted scales dtype (ops.cpp), and the
+  // kernel reads the group parameters in that dtype, so mixed dtypes
+  // stay a named rejection. The dequant kernels ship f32 and f16
+  // variants only: bfloat16 and float64 parameters keep the named
+  // error.
+  if (
+      scales.dtype() != out.dtype() || biases.dtype() != out.dtype() ||
+      (scales.dtype() != float16 && scales.dtype() != float32)) {
+    omarchy::unsupported(tag + " scales dtype", out);
+  }
+  require_float_dtype(tag, scales, out, encoder);
+  if (w.dtype() != uint32) {
+    omarchy::unsupported(tag + " weight dtype", out);
+  }
+  if (
+      w.shape().size() != scales.shape().size() ||
+      scales.shape() != biases.shape()) {
+    omarchy::unsupported(tag + " scales shape", out);
+  }
+  size_t words_per_row = w.shape(-1);
+  uint64_t out_columns =
+      static_cast<uint64_t>(words_per_row) * 32u / bits_;
+  uint64_t groups_per_row =
+      static_cast<uint64_t>(scales.shape(-1));
+  if (
+      groups_per_row * group_size_ != out_columns ||
+      !std::equal(
+          w.shape().begin(),
+          w.shape().end() - 1,
+          scales.shape().begin())) {
+    omarchy::unsupported(tag + " shape", out);
+  }
+  if (
+      !w.flags().row_contiguous || !scales.flags().row_contiguous ||
+      !biases.flags().row_contiguous) {
+    omarchy::unsupported(tag + " non-contiguous input", out);
+  }
+  out.set_data(allocate_omarchy(out.nbytes()));
+  if (out.size() == 0 || w.size() == 0) {
+    return;
+  }
+  // One thread owns one packed word. Every word in a row-contiguous
+  // weight maps to a unique output span, so the word load is linear in
+  // the thread index and the group parameters reuse one address for
+  // the whole word.
+  omarchy::ComputeParams params;
+  params.count = checked_u32(w.size(), tag, out);
+  params.operation = static_cast<uint32_t>(bits_);
+  params.lhs_size = params.count;
+  params.rhs_size = checked_u32(scales.size(), tag, out);
+  params.reduce_size = static_cast<uint32_t>(group_size_);
+  params.output_size = checked_u32(out.size(), tag, out);
+  params.lhs_offset = checked_item_offset(w, w.size(), tag, out);
+  params.rhs_offset = checked_item_offset(scales, scales.size(), tag, out);
+  params.aux_size = checked_u32(biases.size(), tag, out);
+  params.aux_offset = checked_item_offset(biases, biases.size(), tag, out);
+  params.output_offset = checked_item_offset(out, out.size(), tag, out);
+  params.matrix_n = checked_u32(words_per_row, tag, out);
+  params.matrix_k = checked_u32(groups_per_row, tag, out);
+  std::array<omarchy::ComputeBinding, 4> bindings{
+      binding(w), binding(scales), binding(biases), binding(out)};
+  auto kernel = select_float_kernel(
+      out.dtype(),
+      omarchy::ComputeKernel::DequantF32,
+      omarchy::ComputeKernel::DequantF16,
+      omarchy::ComputeKernel::DequantF32);
+  encoder.dispatch_compute(
+      kernel,
+      bindings,
+      params,
+      omarchy::compute_dispatch_group_count(params.count));
+}
 
+OMARCHY_UNSUPPORTED_MULTI(CustomKernel)
 } // namespace fast
 
 namespace distributed {
