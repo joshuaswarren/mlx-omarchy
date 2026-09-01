@@ -662,7 +662,7 @@ void Gather::eval_gpu(const std::vector<array>& inputs, array& out) {
   if (indices.dtype() != int32) {
     omarchy::unsupported("indexed Take dtype", out);
   }
-  if (indices.ndim() != 1 || !indices.flags().contiguous) {
+  if (!indices.flags().row_contiguous) {
     omarchy::unsupported("non-contiguous indexed Take", out);
   }
   if (out.size() != indices.size() * table.shape(1)) {
