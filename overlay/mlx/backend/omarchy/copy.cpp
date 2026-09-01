@@ -317,6 +317,18 @@ void copy_gpu_inplace(
       kernel = omarchy::ComputeKernel::CastBF16F16;
     } else if (in.dtype() == float16 && out.dtype() == bfloat16) {
       kernel = omarchy::ComputeKernel::CastF16BF16;
+    } else if (in.dtype() == int32 && out.dtype() == float32) {
+      kernel = omarchy::ComputeKernel::CastI32F32;
+    } else if (in.dtype() == float32 && out.dtype() == int32) {
+      kernel = omarchy::ComputeKernel::CastF32I32;
+    } else if (in.dtype() == int32 && out.dtype() == float16) {
+      kernel = omarchy::ComputeKernel::CastI32F16;
+    } else if (in.dtype() == float16 && out.dtype() == int32) {
+      kernel = omarchy::ComputeKernel::CastF16I32;
+    } else if (in.dtype() == int32 && out.dtype() == bfloat16) {
+      kernel = omarchy::ComputeKernel::CastI32BF16;
+    } else if (in.dtype() == bfloat16 && out.dtype() == int32) {
+      kernel = omarchy::ComputeKernel::CastBF16I32;
     } else {
       omarchy::unsupported("dtype converting copy", out);
     }

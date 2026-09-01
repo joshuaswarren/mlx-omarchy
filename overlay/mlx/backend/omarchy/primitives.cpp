@@ -389,6 +389,80 @@ void dispatch_elementwise(
       kernel, bindings, params, omarchy::compute_dispatch_group_count(count));
 }
 
+// ArgSort and ArgPartition emit uint32 indices, so the float checks apply
+// to the input only, the way ArgReduce checks its input.
+void require_index_source_dtype(
+    const std::string& name,
+    const array& input,
+    const array& out,
+    omarchy::CommandEncoder& encoder) {
+  if (input.dtype() != float16 && input.dtype() != float32 &&
+      input.dtype() != bfloat16) {
+    omarchy::unsupported(name + " dtype", out);
+  }
+  const auto& capabilities = encoder.device().capabilities();
+  if (input.dtype() == float16 &&
+      (!capabilities.shader_float16 ||
+       !capabilities.storage_buffer_16bit_access)) {
+    omarchy::unsupported(name + " float16 capability", out);
+  }
+  if (input.dtype() == bfloat16 &&
+      (!capabilities.storage_buffer_16bit_access ||
+       !capabilities.shader_int16)) {
+    omarchy::unsupported(name + " bfloat16 capability", out);
+  }
+  if (out.dtype() != uint32) {
+    omarchy::unsupported(name + " output dtype", out);
+  }
+}
+
+// One workgroup bitonic-sorts one row of up to 1024 elements.
+// Partition and ArgPartition route here too: a full sort satisfies the
+// partition contract, the same redirect the upstream Metal backend makes.
+constexpr size_t kSortMaxRowLength = 1024;
+
+void dispatch_sort(
+    const std::string& name,
+    const array& input,
+    array& out,
+    bool argsort,
+    omarchy::CommandEncoder& encoder) {
+  size_t row_length = input.shape(-1);
+  if (row_length > kSortMaxRowLength) {
+    omarchy::unsupported("sort row length " + name, out);
+  }
+  out.set_data(allocate_omarchy(out.nbytes()));
+  if (out.size() == 0) {
+    return;
+  }
+  size_t rows = input.size() / row_length;
+  uint32_t output_size = checked_u32(rows, name, out);
+  omarchy::ComputeParams params;
+  params.count = checked_u32(out.size(), name, out);
+  params.reduce_size = checked_u32(row_length, name, out);
+  params.output_size = output_size;
+  params.lhs_offset = checked_item_offset(input, input.size(), name, out);
+  params.output_offset = checked_item_offset(out, out.size(), name, out);
+  std::array<omarchy::ComputeBinding, 3> bindings{
+      binding(input), binding(input), binding(out)};
+  auto kernel = argsort
+      ? select_float_kernel(
+            input.dtype(),
+            omarchy::ComputeKernel::ArgSortF32,
+            omarchy::ComputeKernel::ArgSortF16,
+            omarchy::ComputeKernel::ArgSortBF16)
+      : select_float_kernel(
+            input.dtype(),
+            omarchy::ComputeKernel::SortF32,
+            omarchy::ComputeKernel::SortF16,
+            omarchy::ComputeKernel::SortBF16);
+  encoder.dispatch_compute(
+      kernel,
+      bindings,
+      params,
+      std::min(output_size, omarchy::kMaxComputeGroupCountX));
+}
+
 } // namespace
 
 #define OMARCHY_BINARY(func, operation)                               \
@@ -437,7 +511,18 @@ OMARCHY_UNSUPPORTED(ArcSinh)
 OMARCHY_UNSUPPORTED(ArcTan)
 OMARCHY_UNSUPPORTED(ArcTan2)
 OMARCHY_UNSUPPORTED(ArcTanh)
-OMARCHY_UNSUPPORTED(ArgPartition)
+void ArgPartition::eval_gpu(const std::vector<array>& inputs, array& out) {
+  const array& input = inputs.at(0);
+  auto& encoder = omarchy::get_command_encoder(out.primitive().stream());
+  require_index_source_dtype("ArgPartition", input, out, encoder);
+  if (!input.flags().row_contiguous) {
+    omarchy::unsupported("non-contiguous ArgPartition", out);
+  }
+  if (state().second != input.ndim() - 1) {
+    omarchy::unsupported("non-suffix ArgPartition", out);
+  }
+  dispatch_sort("ArgPartition", input, out, true, encoder);
+}
 void ArgReduce::eval_gpu(const std::vector<array>& inputs, array& out) {
   const array& input = inputs.at(0);
   auto [reduce_type, axis] = state();
@@ -503,7 +588,18 @@ void ArgReduce::eval_gpu(const std::vector<array>& inputs, array& out) {
       params,
       std::min(output_size, omarchy::kMaxComputeGroupCountX));
 }
-OMARCHY_UNSUPPORTED(ArgSort)
+void ArgSort::eval_gpu(const std::vector<array>& inputs, array& out) {
+  const array& input = inputs.at(0);
+  auto& encoder = omarchy::get_command_encoder(out.primitive().stream());
+  require_index_source_dtype("ArgSort", input, out, encoder);
+  if (!input.flags().row_contiguous) {
+    omarchy::unsupported("non-contiguous ArgSort", out);
+  }
+  if (state() != input.ndim() - 1) {
+    omarchy::unsupported("non-suffix ArgSort", out);
+  }
+  dispatch_sort("ArgSort", input, out, true, encoder);
+}
 OMARCHY_UNSUPPORTED(BitwiseBinary)
 OMARCHY_UNSUPPORTED(BitwiseInvert)
 OMARCHY_UNSUPPORTED(BlockMaskedMM)
@@ -604,7 +700,18 @@ OMARCHY_UNSUPPORTED(Minimum)
 OMARCHY_BINARY(Multiply, MultiplyOperation)
 OMARCHY_UNARY(Negative, NegativeOperation)
 OMARCHY_UNSUPPORTED(NotEqual)
-OMARCHY_UNSUPPORTED(Partition)
+void Partition::eval_gpu(const std::vector<array>& inputs, array& out) {
+  const array& input = inputs.at(0);
+  auto& encoder = omarchy::get_command_encoder(out.primitive().stream());
+  require_float_dtype("Partition", input, out, encoder);
+  if (!input.flags().row_contiguous) {
+    omarchy::unsupported("non-contiguous Partition", out);
+  }
+  if (state().second != input.ndim() - 1) {
+    omarchy::unsupported("non-suffix Partition", out);
+  }
+  dispatch_sort("Partition", input, out, false, encoder);
+}
 OMARCHY_UNSUPPORTED(Power)
 OMARCHY_UNSUPPORTED_MULTI(QRF)
 OMARCHY_UNSUPPORTED(QuantizedMatmul)
@@ -759,7 +866,18 @@ void SliceUpdate::eval_gpu(const std::vector<array>& inputs, array& out) {
       CopyType::GeneralGeneral,
       stream());
 }
-OMARCHY_UNSUPPORTED(Sort)
+void Sort::eval_gpu(const std::vector<array>& inputs, array& out) {
+  const array& input = inputs.at(0);
+  auto& encoder = omarchy::get_command_encoder(out.primitive().stream());
+  require_float_dtype("Sort", input, out, encoder);
+  if (!input.flags().row_contiguous) {
+    omarchy::unsupported("non-contiguous Sort", out);
+  }
+  if (state() != input.ndim() - 1) {
+    omarchy::unsupported("non-suffix Sort", out);
+  }
+  dispatch_sort("Sort", input, out, false, encoder);
+}
 OMARCHY_UNARY(Square, SquareOperation)
 void Sqrt::eval_gpu(const std::vector<array>& inputs, array& out) {
   dispatch_elementwise(

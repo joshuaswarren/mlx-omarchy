@@ -20,6 +20,12 @@
 #include "cast_f16_bf16.h"
 #include "cast_f32_bf16.h"
 #include "cast_f32_f16.h"
+#include "cast_bf16_i32.h"
+#include "cast_f16_i32.h"
+#include "cast_f32_i32.h"
+#include "cast_i32_bf16.h"
+#include "cast_i32_f16.h"
+#include "cast_i32_f32.h"
 #include "elementwise_bf16.h"
 #include "elementwise_f16.h"
 #include "elementwise_f32.h"
@@ -41,6 +47,12 @@
 #include "softmax_bf16.h"
 #include "softmax_f16.h"
 #include "softmax_f32.h"
+#include "sort_bf16.h"
+#include "sort_f16.h"
+#include "sort_f32.h"
+#include "argsort_bf16.h"
+#include "argsort_f16.h"
+#include "argsort_f32.h"
 
 namespace mlx::core::omarchy {
 
@@ -69,6 +81,18 @@ ShaderBytes shader_bytes(ComputeKernel kernel) {
       return {cast_bf16_f16, cast_bf16_f16_size};
     case ComputeKernel::CastF16BF16:
       return {cast_f16_bf16, cast_f16_bf16_size};
+    case ComputeKernel::CastI32F32:
+      return {cast_i32_f32, cast_i32_f32_size};
+    case ComputeKernel::CastF32I32:
+      return {cast_f32_i32, cast_f32_i32_size};
+    case ComputeKernel::CastI32F16:
+      return {cast_i32_f16, cast_i32_f16_size};
+    case ComputeKernel::CastF16I32:
+      return {cast_f16_i32, cast_f16_i32_size};
+    case ComputeKernel::CastI32BF16:
+      return {cast_i32_bf16, cast_i32_bf16_size};
+    case ComputeKernel::CastBF16I32:
+      return {cast_bf16_i32, cast_bf16_i32_size};
     case ComputeKernel::ArgReduceF32:
       return {argreduce_f32, argreduce_f32_size};
     case ComputeKernel::ArgReduceF16:
@@ -117,6 +141,18 @@ ShaderBytes shader_bytes(ComputeKernel kernel) {
       return {copy_general_f16, copy_general_f16_size};
     case ComputeKernel::CopyGeneralBF16:
       return {copy_general_bf16, copy_general_bf16_size};
+    case ComputeKernel::ArgSortF32:
+      return {argsort_f32, argsort_f32_size};
+    case ComputeKernel::ArgSortF16:
+      return {argsort_f16, argsort_f16_size};
+    case ComputeKernel::ArgSortBF16:
+      return {argsort_bf16, argsort_bf16_size};
+    case ComputeKernel::SortF32:
+      return {sort_f32, sort_f32_size};
+    case ComputeKernel::SortF16:
+      return {sort_f16, sort_f16_size};
+    case ComputeKernel::SortBF16:
+      return {sort_bf16, sort_bf16_size};
     case ComputeKernel::Count:
       break;
   }
