@@ -320,14 +320,21 @@ void dispatch_elementwise(
 
   // Scalar, suffix-aligned, and full-overlap operands keep the cheap
   // modulo indexing in the shader; anything else needs shape-aware
-  // stride indexing.
-  bool general_broadcast = binary &&
-      (!is_trailing_broadcast(lhs, out) || !is_trailing_broadcast(rhs, out));
+  // stride indexing. Gapless strided views (transposes) keep
+  // flags().contiguous, so unary ops route through the stride path the
+  // same way binary broadcasts do.
+  bool general_broadcast = binary
+      ? (!is_trailing_broadcast(lhs, out) || !is_trailing_broadcast(rhs, out))
+      : !is_trailing_broadcast(lhs, out);
 
   if (binary) {
     auto binary_type = get_binary_op_type(lhs, rhs);
     set_binary_op_output_data(
         lhs, rhs, out, binary_type, allocate_omarchy);
+  } else if (general_broadcast) {
+    // The stride gather must not donate: it reads and writes the same
+    // buffer at different indices.
+    out.set_data(allocate_omarchy(out.nbytes()));
   } else {
     set_unary_output_data(lhs, out, allocate_omarchy);
   }
