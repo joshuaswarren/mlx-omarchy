@@ -1,3 +1,8 @@
+// Strided general copy. USE_U32 selects raw uint32 storage: words copy
+// with no float conversion, so int32 and uint32 stay bit-exact including
+// packed words above 2^31. The load stays one straight-line per-thread
+// read at a linear address, the shape the Honeykrisp driver reads
+// correctly (see gather_rows.comp).
 #version 460
 
 #ifdef USE_FP16
@@ -6,6 +11,10 @@
 #define STORAGE_TYPE float16_t
 #define LOAD_VALUE(x) float(x)
 #define STORE_VALUE(f) STORAGE_TYPE(f)
+#elif defined(USE_U32)
+#define STORAGE_TYPE uint
+#define LOAD_VALUE(x) (x)
+#define STORE_VALUE(x) (x)
 #elif defined(USE_BF16)
 #extension GL_EXT_shader_16bit_storage : require
 #extension GL_EXT_shader_explicit_arithmetic_types_int16 : require

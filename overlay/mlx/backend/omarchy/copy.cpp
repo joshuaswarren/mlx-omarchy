@@ -169,6 +169,11 @@ omarchy::ComputeKernel copy_general_kernel(Dtype dtype) {
   if (dtype == bfloat16) {
     return omarchy::ComputeKernel::CopyGeneralBF16;
   }
+  if (dtype == int32 || dtype == uint32) {
+    // Raw-word copies: the same 4-byte stride math as float32 with no
+    // float conversion, so packed words stay bit-exact.
+    return omarchy::ComputeKernel::CopyGeneralU32;
+  }
   return omarchy::ComputeKernel::CopyGeneralF32;
 }
 
@@ -247,7 +252,8 @@ void copy_gpu_inplace(
   if (ctype == CopyType::General || ctype == CopyType::GeneralGeneral) {
     if (in.dtype() != out.dtype() ||
         (in.dtype() != float32 && in.dtype() != float16 &&
-         in.dtype() != bfloat16)) {
+         in.dtype() != bfloat16 && in.dtype() != int32 &&
+         in.dtype() != uint32)) {
       omarchy::unsupported("strided copy", out);
     }
     require_float_storage("strided copy", in.dtype(), out, encoder);
@@ -419,27 +425,39 @@ void fill_gpu(const array& val, array& out, const Stream& s) {
   fill_zero(s, out, 0);
 }
 
+
 void reshape_gpu(const array& in, array& out, Stream s) {
   auto [copy_necessary, out_strides] = prepare_reshape(in, out);
-  if (copy_necessary) {
-    // Only a contiguous source reshapes as a flat device copy; strided
-    // reshapes need a gather shader.
-    if (!in.flags().contiguous || in.dtype() != out.dtype()) {
-      omarchy::unsupported("strided reshape", out);
-    }
-    if (out.nbytes() > 0) {
-      out.set_data(omarchy::allocator().malloc(out.nbytes()));
-    }
-    auto& encoder = omarchy::get_command_encoder(s);
-    encoder.copy_buffer(
-        buffer_handle(in),
-        buffer_handle(out),
-        out.nbytes(),
-        byte_offset(in, 0),
-        byte_offset(out, 0));
-  } else {
+  if (!copy_necessary) {
     shared_buffer_reshape(in, out_strides, out);
+    return;
   }
+  // A strided reshape is a general gather. Broadcast views from
+  // mx.repeat and mx.tile carry stride-0 axes, and transposed views
+  // permute strides; both report flags().contiguous under the
+  // span-based definition while size() exceeds data_size(), so the
+  // old flat buffer copy here read past the source allocation. The
+  // strided-copy engine expresses both shapes for 4-byte words (floats
+  // converted, int32/uint32 raw); rank limits and non-4-byte dtypes
+  // keep the named error for the rest.
+  if (
+      in.dtype() != float32 && in.dtype() != float16 &&
+      in.dtype() != bfloat16 && in.dtype() != int32 &&
+      in.dtype() != uint32) {
+    omarchy::unsupported("strided reshape", out);
+  }
+  if (out.nbytes() > 0) {
+    out.set_data(omarchy::allocator().malloc(out.nbytes()));
+  }
+  copy_gpu_inplace(
+      in,
+      out,
+      in.shape(),
+      in.strides(),
+      make_contiguous_strides(in.shape()),
+      /*i_offset=*/0,
+      /*o_offset=*/0,
+      CopyType::General,
+      s);
 }
-
 } // namespace mlx::core

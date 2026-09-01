@@ -680,9 +680,10 @@ TEST_CASE("general strided copies materialize through Vulkan compute") {
       stream);
 
   array ints({0, 1, 2, 3}, {2, 2}, int32);
-  std::string int_error =
-      evaluation_error(contiguous(transpose(ints, stream), false, stream));
-  CHECK(int_error.find("strided copy") != std::string::npos);
+  check_int32_values(
+      contiguous(transpose(ints, stream), false, stream),
+      {0, 2, 1, 3},
+      stream);
 }
 
 TEST_CASE("value_and_grad computes matmul and subtract gradients on device") {
@@ -2103,7 +2104,7 @@ TEST_CASE("batched Matmul matches host references across layouts") {
   CHECK(rank_error.find("matrix rank Matmul") != std::string::npos);
 }
 
-TEST_CASE("scaled_dot_product_attention composes through batched matmul") {
+TEST_CASE("scaled_dot_product_attention matches a batched matmul reference") {
   if (!compute_available()) {
     return;
   }
@@ -2174,7 +2175,7 @@ TEST_CASE("scaled_dot_product_attention composes through batched matmul") {
 }
 
 TEST_CASE(
-    "scaled_dot_product_attention expands kv heads through broadcast matmul") {
+    "scaled_dot_product_attention expands kv heads through a rank-5 score matmul") {
   if (!compute_available()) {
     return;
   }
@@ -2199,9 +2200,9 @@ TEST_CASE(
   array v(kv_values.begin(), Shape{1, 2, 8, 8}, float32);
   constexpr float scale = 0.25f;
 
-  // The composed fallback unflattens q to [B, kv_heads, n_rep, L, D]
-  // and broadcasts the kv view, so the scores matmul runs at rank 5
-  // with a stride-0 batch axis.
+  // The primitive unflattens q to [B, kv_heads, n_rep, L, D] and
+  // broadcasts the kv view, so the scores matmul runs at rank 5 with a
+  // stride-0 batch axis.
   array attention = fast::scaled_dot_product_attention(
       q, k, v, scale, "", std::nullopt, std::nullopt, false, stream);
   std::string blocked = evaluation_error(attention);
@@ -2456,7 +2457,7 @@ TEST_CASE("cold-cache GQA decode matmul runs over cache slice views") {
   }
 }
 
-TEST_CASE("causal scaled_dot_product_attention composes through int32 arange") {
+TEST_CASE("causal scaled_dot_product_attention masks future keys") {
   if (!compute_available()) {
     return;
   }
@@ -2481,9 +2482,9 @@ TEST_CASE("causal scaled_dot_product_attention composes through int32 arange") {
   array v(kv_values.begin(), Shape{1, 2, 32, 8}, float32);
   constexpr float scale = 0.25f;
 
-  // The causal mask materializes int32 aranges (32 > 28 covers the
-  // M1 smoke blocker), a GreaterEqual bool mask, and a Select against
-  // the dtype minimum.
+  // The causal mask enters the primitive as an additive float32 term:
+  // 0 for attended positions and -1e30 for future keys, with no Select
+  // against the dtype minimum.
   array attention = fast::scaled_dot_product_attention(
       q, k, v, scale, "causal", std::nullopt, std::nullopt, false, stream);
   std::string blocked = evaluation_error(attention);
@@ -2527,6 +2528,388 @@ TEST_CASE("causal scaled_dot_product_attention composes through int32 arange") {
     }
   }
   check_values(attention, expected, stream, 1e-3);
+}
+
+// Host float64 attention over f16-representable inputs. The inputs use
+// 0.25-step values, so the float16/bfloat16 device tensors are exact
+// and the reference sees the same numbers.
+std::vector<float> host_attention_f64(
+    const std::vector<float>& q_values,
+    const std::vector<float>& kv_values,
+    const std::vector<float>& v_values,
+    size_t q_heads,
+    size_t kv_heads,
+    size_t q_len,
+    size_t k_len,
+    size_t head_dim,
+    double scale,
+    bool causal) {
+  size_t v_dim = v_values.size() /
+      (kv_heads * k_len * head_dim) * head_dim;
+  std::vector<float> out(q_heads * q_len * v_dim, 0.0f);
+  for (size_t head = 0; head < q_heads; ++head) {
+    size_t kv_head = head / (q_heads / kv_heads);
+    for (size_t row = 0; row < q_len; ++row) {
+      double max_score = -std::numeric_limits<double>::infinity();
+      std::vector<double> scores(k_len);
+      for (size_t column = 0; column < k_len; ++column) {
+        if (causal && column > k_len - q_len + row) {
+          scores[column] = 0.0;
+          continue;
+        }
+        double dot = 0.0;
+        for (size_t inner = 0; inner < head_dim; ++inner) {
+          dot += (double)q_values[head * q_len * head_dim + row * head_dim +
+                                  inner] *
+              (double)kv_values[kv_head * k_len * head_dim + column *
+                                head_dim + inner];
+        }
+        scores[column] = scale * dot;
+        max_score = std::max(max_score, scores[column]);
+      }
+      double normalizer = 0.0;
+      for (size_t column = 0; column < k_len; ++column) {
+        if (causal && column > k_len - q_len + row) {
+          continue;
+        }
+        scores[column] = std::exp(scores[column] - max_score);
+        normalizer += scores[column];
+      }
+      for (size_t dim = 0; dim < v_dim; ++dim) {
+        double sum = 0.0;
+        for (size_t column = 0; column < k_len; ++column) {
+          if (causal && column > k_len - q_len + row) {
+            continue;
+          }
+          sum += scores[column] / normalizer *
+              (double)v_values[kv_head * k_len * head_dim + column *
+                               head_dim + dim];
+        }
+        out[head * q_len * v_dim + row * v_dim + dim] = (float)sum;
+      }
+    }
+  }
+  return out;
+}
+void check_attention_deviation(
+    array attention,
+    const std::vector<float>& expected,
+    const Stream& stream,
+    double relative_tolerance) {
+  attention.eval();
+  omarchy::get_command_encoder(stream).synchronize();
+  REQUIRE_EQ(attention.size(), expected.size());
+  const float* values = attention.data<float>();
+  double max_deviation = 0.0;
+  double reference_magnitude = 0.0;
+  for (size_t index = 0; index < expected.size(); ++index) {
+    max_deviation =
+        std::max(max_deviation, std::abs((double)values[index] - expected[index]));
+    reference_magnitude =
+        std::max(reference_magnitude, std::abs((double)expected[index]));
+  }
+  CHECK(max_deviation <= relative_tolerance * reference_magnitude);
+}
+
+TEST_CASE(
+    "scaled_dot_product_attention keeps ~600-magnitude float16 scores exact") {
+  if (!compute_available()) {
+    return;
+  }
+  const auto& capabilities = omarchy::device(0).capabilities();
+  if (!capabilities.shader_float16 || !capabilities.storage_buffer_16bit_access) {
+    skip("Vulkan device lacks required Float16 shader and storage features.");
+    return;
+  }
+  Stream stream = gpu_stream();
+  // Qwen2.5-0.5B geometry and the qdiag18/qdiag19b prefill length: the
+  // f16 composed fallback materialized scores of absmax ~647 in f16
+  // (ulp 0.5) and flipped softmax winners; 59.8% of causal rows had a
+  // top1-top2 gap below 1.0.
+  constexpr size_t q_heads = 14;
+  constexpr size_t kv_heads = 2;
+  constexpr size_t q_len = 41;
+  constexpr size_t k_len = 41;
+  constexpr size_t head_dim = 64;
+  auto pattern = [](size_t index) {
+    return 0.25f * static_cast<float>(static_cast<int>(index % 11) - 5);
+  };
+  std::vector<float> q_values(q_heads * q_len * head_dim);
+  std::vector<float> kv_values(kv_heads * k_len * head_dim);
+  std::vector<float> v_values(kv_heads * k_len * head_dim);
+  for (size_t index = 0; index < q_values.size(); ++index) {
+    q_values[index] = pattern(index);
+  }
+  for (size_t index = 0; index < kv_values.size(); ++index) {
+    kv_values[index] = pattern(index + 5);
+    v_values[index] = 0.25f * static_cast<float>(static_cast<int>(index % 9) - 4);
+  }
+  // Pin the failure mode: the scale is tuned so the largest score
+  // reaches ~600, far beyond exact float16 addition at that magnitude.
+  double dot_absmax = 0.0;
+  for (size_t head = 0; head < q_heads; ++head) {
+    size_t kv_head = head / (q_heads / kv_heads);
+    for (size_t row = 0; row < q_len; ++row) {
+      for (size_t column = 0; column < k_len; ++column) {
+        double dot = 0.0;
+        for (size_t inner = 0; inner < head_dim; ++inner) {
+          dot += (double)q_values[head * q_len * head_dim + row * head_dim +
+                                  inner] *
+              (double)kv_values[kv_head * k_len * head_dim + column *
+                                head_dim + inner];
+        }
+        dot_absmax = std::max(dot_absmax, std::abs(dot));
+      }
+    }
+  }
+  float scale = static_cast<float>(600.0 / dot_absmax);
+  REQUIRE(std::abs((double)scale * dot_absmax - 600.0) < 1.0);
+
+  array q = astype(
+      array(q_values.begin(), Shape{1, 14, 41, 64}, float32), float16, stream);
+  array k = astype(
+      array(kv_values.begin(), Shape{1, 2, 41, 64}, float32), float16, stream);
+  array v = astype(
+      array(v_values.begin(), Shape{1, 2, 41, 64}, float32), float16, stream);
+
+  array attention = fast::scaled_dot_product_attention(
+      q, k, v, scale, "", std::nullopt, std::nullopt, false, stream);
+  std::string blocked = evaluation_error(attention);
+  REQUIRE(blocked.empty());
+  auto expected = host_attention_f64(
+      q_values,
+      kv_values,
+      v_values,
+      q_heads,
+      kv_heads,
+      q_len,
+      k_len,
+      head_dim,
+      (double)scale,
+      false);
+  // The reference mixes v rows of magnitude ~1, so outputs carry
+  // magnitude ~0.3; the old f16-score path deviated by ~0.44 here
+  // (the doc measured 0.4429 against 0.17-magnitude outputs).
+  check_attention_deviation(
+      astype(attention, float32, stream), expected, stream, 1e-2);
+}
+
+TEST_CASE(
+    "causal scaled_dot_product_attention keeps large float16 scores exact across a cache offset") {
+  if (!compute_available()) {
+    return;
+  }
+  const auto& capabilities = omarchy::device(0).capabilities();
+  if (!capabilities.shader_float16 || !capabilities.storage_buffer_16bit_access) {
+    skip("Vulkan device lacks required Float16 shader and storage features.");
+    return;
+  }
+  Stream stream = gpu_stream();
+  constexpr size_t q_heads = 14;
+  constexpr size_t kv_heads = 2;
+  constexpr size_t q_len = 8;
+  constexpr size_t k_len = 41;
+  constexpr size_t head_dim = 64;
+  auto pattern = [](size_t index) {
+    return 0.25f * static_cast<float>(static_cast<int>(index % 11) - 5);
+  };
+  std::vector<float> q_values(q_heads * q_len * head_dim);
+  std::vector<float> kv_values(kv_heads * k_len * head_dim);
+  std::vector<float> v_values(kv_heads * k_len * head_dim);
+  for (size_t index = 0; index < q_values.size(); ++index) {
+    q_values[index] = pattern(index + 1);
+  }
+  for (size_t index = 0; index < kv_values.size(); ++index) {
+    kv_values[index] = pattern(index + 7);
+    v_values[index] = 0.25f * static_cast<float>(static_cast<int>(index % 9) - 4);
+  }
+  double dot_absmax = 0.0;
+  for (size_t head = 0; head < q_heads; ++head) {
+    size_t kv_head = head / (q_heads / kv_heads);
+    for (size_t row = 0; row < q_len; ++row) {
+      for (size_t column = 0; column <= k_len - q_len + row; ++column) {
+        double dot = 0.0;
+        for (size_t inner = 0; inner < head_dim; ++inner) {
+          dot += (double)q_values[head * q_len * head_dim + row * head_dim +
+                                  inner] *
+              (double)kv_values[kv_head * k_len * head_dim + column *
+                                head_dim + inner];
+        }
+        dot_absmax = std::max(dot_absmax, std::abs(dot));
+      }
+    }
+  }
+  float scale = static_cast<float>(600.0 / dot_absmax);
+
+  array q = astype(
+      array(q_values.begin(), Shape{1, 14, 8, 64}, float32), float16, stream);
+  array k = astype(
+      array(kv_values.begin(), Shape{1, 2, 41, 64}, float32), float16, stream);
+  array v = astype(
+      array(v_values.begin(), Shape{1, 2, 41, 64}, float32), float16, stream);
+  array attention = fast::scaled_dot_product_attention(
+      q, k, v, scale, "causal", std::nullopt, std::nullopt, false, stream);
+  std::string blocked = evaluation_error(attention);
+  REQUIRE(blocked.empty());
+  auto expected = host_attention_f64(
+      q_values,
+      kv_values,
+      v_values,
+      q_heads,
+      kv_heads,
+      q_len,
+      k_len,
+      head_dim,
+      (double)scale,
+      true);
+  check_attention_deviation(
+      astype(attention, float32, stream), expected, stream, 1e-2);
+}
+
+TEST_CASE(
+    "scaled_dot_product_attention keeps ~600-magnitude bfloat16 scores exact") {
+  if (!compute_available()) {
+    return;
+  }
+  const auto& capabilities = omarchy::device(0).capabilities();
+  if (!capabilities.storage_buffer_16bit_access ||
+      !capabilities.shader_int16) {
+    skip("Vulkan device lacks required BF16 storage and shader features.");
+    return;
+  }
+  Stream stream = gpu_stream();
+  constexpr size_t q_heads = 4;
+  constexpr size_t kv_heads = 2;
+  constexpr size_t q_len = 41;
+  constexpr size_t k_len = 41;
+  constexpr size_t head_dim = 64;
+  auto pattern = [](size_t index) {
+    return 0.25f * static_cast<float>(static_cast<int>(index % 11) - 5);
+  };
+  std::vector<float> q_values(q_heads * q_len * head_dim);
+  std::vector<float> kv_values(kv_heads * k_len * head_dim);
+  std::vector<float> v_values(kv_heads * k_len * head_dim);
+  for (size_t index = 0; index < q_values.size(); ++index) {
+    q_values[index] = pattern(index + 2);
+  }
+  for (size_t index = 0; index < kv_values.size(); ++index) {
+    kv_values[index] = pattern(index + 6);
+    v_values[index] = 0.25f * static_cast<float>(static_cast<int>(index % 9) - 4);
+  }
+  double dot_absmax = 0.0;
+  for (size_t head = 0; head < q_heads; ++head) {
+    size_t kv_head = head / (q_heads / kv_heads);
+    for (size_t row = 0; row < q_len; ++row) {
+      for (size_t column = 0; column < k_len; ++column) {
+        double dot = 0.0;
+        for (size_t inner = 0; inner < head_dim; ++inner) {
+          dot += (double)q_values[head * q_len * head_dim + row * head_dim +
+                                  inner] *
+              (double)kv_values[kv_head * k_len * head_dim + column *
+                                head_dim + inner];
+        }
+        dot_absmax = std::max(dot_absmax, std::abs(dot));
+      }
+    }
+  }
+  float scale = static_cast<float>(600.0 / dot_absmax);
+
+  array q = astype(
+      array(q_values.begin(), Shape{1, 4, 41, 64}, float32), bfloat16, stream);
+  array k = astype(
+      array(kv_values.begin(), Shape{1, 2, 41, 64}, float32), bfloat16, stream);
+  array v = astype(
+      array(v_values.begin(), Shape{1, 2, 41, 64}, float32), bfloat16, stream);
+  array attention = fast::scaled_dot_product_attention(
+      q, k, v, scale, "", std::nullopt, std::nullopt, false, stream);
+  std::string blocked = evaluation_error(attention);
+  REQUIRE(blocked.empty());
+  auto expected = host_attention_f64(
+      q_values,
+      kv_values,
+      v_values,
+      q_heads,
+      kv_heads,
+      q_len,
+      k_len,
+      head_dim,
+      (double)scale,
+      false);
+  check_attention_deviation(
+      astype(attention, float32, stream), expected, stream, 1e-2);
+}
+
+TEST_CASE("repeat materializes broadcast reshapes through the strided copy engine") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  // The GQA repeat shape from qdiag19: the reshape of the broadcast
+  // view flat-copied past the source allocation and produced values
+  // near 2e27 and NaN on the tail rows.
+  constexpr size_t kv_heads = 2;
+  constexpr size_t seq_length = 41;
+  constexpr size_t head_dim = 64;
+  constexpr size_t repeats = 7;
+  auto pattern = [](size_t index) {
+    return 0.25f * static_cast<float>(static_cast<int>(index % 11) - 5);
+  };
+  std::vector<float> kv_values(kv_heads * seq_length * head_dim);
+  for (size_t index = 0; index < kv_values.size(); ++index) {
+    kv_values[index] = pattern(index + 3);
+  }
+  array source(
+      kv_values.begin(),
+      Shape{1, 2, 41, 64},
+      float32);
+  array expanded = repeat(source, repeats, 1, stream);
+  REQUIRE_EQ(expanded.shape(), Shape{1, 14, 41, 64});
+
+  std::vector<float> expected(14 * seq_length * head_dim, 0.0f);
+  for (size_t head = 0; head < 14; ++head) {
+    size_t kv_head = head / repeats;
+    for (size_t index = 0; index < seq_length * head_dim; ++index) {
+      expected[head * seq_length * head_dim + index] =
+          kv_values[kv_head * seq_length * head_dim + index];
+    }
+  }
+  check_values(expanded, expected, stream, 1e-5);
+
+  // Integer broadcast reshapes ride the same engine as raw words: the
+  // int32 copy is bitwise, so repeated rows must match the source
+  // exactly, negative values included (their words sit above 2^31).
+  std::vector<int32_t> int_values(kv_heads * seq_length * head_dim);
+  for (size_t index = 0; index < int_values.size(); ++index) {
+    int_values[index] = static_cast<int32_t>(index % 17) - 8;
+  }
+  array int_source(int_values.begin(), Shape{1, 2, 41, 64}, int32);
+  array int_expanded = repeat(int_source, repeats, 1, stream);
+  REQUIRE_EQ(int_expanded.shape(), Shape{1, 14, 41, 64});
+  std::vector<int32_t> int_expected;
+  int_expected.reserve(14 * seq_length * head_dim);
+  for (size_t head = 0; head < 14; ++head) {
+    size_t kv_head = head / repeats;
+    int_expected.insert(
+        int_expected.end(),
+        int_values.begin() + kv_head * seq_length * head_dim,
+        int_values.begin() + (kv_head + 1) * seq_length * head_dim);
+  }
+  check_int32_values(int_expanded, int_expected, stream);
+
+  // Words outside one uint32 slot keep the named rejection: int64
+  // needs two-word loads and 8-bit dtypes need sub-word packing.
+  std::vector<int64_t> wide_values(kv_heads * seq_length * head_dim, 5);
+  array wide_source(wide_values.begin(), Shape{1, 2, 41, 64}, int64);
+  array wide_expanded = repeat(wide_source, repeats, 1, stream);
+  std::string wide_error = evaluation_error(wide_expanded);
+  CHECK(wide_error.find("strided reshape") != std::string::npos);
+  CHECK(wide_error.find("No CPU fallback") != std::string::npos);
+
+  std::vector<uint8_t> byte_values(kv_heads * seq_length * head_dim, 7);
+  array byte_source(byte_values.begin(), Shape{1, 2, 41, 64}, uint8);
+  array byte_expanded = repeat(byte_source, repeats, 1, stream);
+  std::string byte_error = evaluation_error(byte_expanded);
+  CHECK(byte_error.find("strided reshape") != std::string::npos);
 }
 
 namespace {

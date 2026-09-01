@@ -79,6 +79,7 @@ enum class ComputeKernel : uint8_t {
   CopyGeneralF32,
   CopyGeneralF16,
   CopyGeneralBF16,
+  CopyGeneralU32,
   ArgReduceF32,
   ArgReduceF16,
   ArgReduceBF16,

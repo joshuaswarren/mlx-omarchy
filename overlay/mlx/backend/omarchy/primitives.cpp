@@ -235,8 +235,11 @@ bool is_batched_matrix(const array& value, bool transposed) {
 // strides, collapsed rank beyond 4, span overflow) keep their named
 // errors.
 array materialize_batched_matrix(
-    const array& value, const std::string& name, array& out) {
-  auto& encoder = omarchy::get_command_encoder(out.primitive().stream());
+    const array& value,
+    const std::string& name,
+    array& out,
+    const Stream& s) {
+  auto& encoder = omarchy::get_command_encoder(s);
   Shape shape = value.shape();
   Strides strides(shape.size(), 1);
   for (int axis = static_cast<int>(shape.size()) - 2; axis >= 0; --axis) {
@@ -275,11 +278,12 @@ void dispatch_matmul(
     array& out,
     float alpha,
     float beta,
-    bool use_c) {
+    bool use_c,
+    const Stream& s) {
   const array& a_in = inputs.at(0);
   const array& b_in = inputs.at(1);
   const array& c = use_c ? inputs.at(2) : out;
-  auto& encoder = omarchy::get_command_encoder(out.primitive().stream());
+  auto& encoder = omarchy::get_command_encoder(s);
   require_float_dtype(name, a_in, out, encoder);
   require_float_dtype(name, b_in, out, encoder);
   if (use_c) {
@@ -301,12 +305,12 @@ void dispatch_matmul(
   std::optional<array> a_materialized;
   std::optional<array> b_materialized;
   if (!a_row_contiguous && !a_transposed) {
-    a_materialized = materialize_batched_matrix(a_in, name, out);
+    a_materialized = materialize_batched_matrix(a_in, name, out, s);
     a_transposed = false;
     a_row_contiguous = true;
   }
   if (!b_row_contiguous && !b_transposed) {
-    b_materialized = materialize_batched_matrix(b_in, name, out);
+    b_materialized = materialize_batched_matrix(b_in, name, out, s);
     b_transposed = false;
     b_row_contiguous = true;
   }
@@ -455,11 +459,12 @@ void dispatch_elementwise(
     const std::string& name,
     uint32_t operation,
     const std::vector<array>& inputs,
-    array& out) {
+    array& out,
+    const Stream& s) {
   const array& lhs = inputs.at(0);
   const bool binary = inputs.size() == 2;
   const array& rhs = binary ? inputs.at(1) : lhs;
-  auto& encoder = omarchy::get_command_encoder(out.primitive().stream());
+  auto& encoder = omarchy::get_command_encoder(s);
   require_float_dtype(name, lhs, out, encoder);
   require_float_dtype(name, rhs, out, encoder);
 
@@ -753,23 +758,67 @@ void dispatch_sort(
       std::min(output_size, omarchy::kMaxComputeGroupCountX));
 }
 
-} // namespace
 
+// Last-axis softmax. The Softmax primitive is only constructed for a
+// last-axis reduction (mlx/ops.cpp softmax), so no suffix-axis check is
+// needed here. The shader accumulates in float32 for every dtype, which
+// also covers the precise flag. ScaledDotProductAttention shares this
+// dispatch for its float32 score normalization.
+void dispatch_softmax(
+    const std::string& name,
+    const array& input,
+    array& out,
+    const Stream& s) {
+  auto& encoder = omarchy::get_command_encoder(s);
+  require_float_dtype(name, input, out, encoder);
+  if (!input.flags().row_contiguous) {
+    omarchy::unsupported("non-contiguous " + name, out);
+  }
+  size_t row_length = input.shape(-1);
+  size_t rows = input.size() / row_length;
+  out.set_data(allocate_omarchy(out.nbytes()));
+  if (out.size() == 0) {
+    return;
+  }
+  uint32_t output_size = checked_u32(rows, name, out);
+  omarchy::ComputeParams params;
+  params.count = checked_u32(out.size(), name, out);
+  params.reduce_size = checked_u32(row_length, name, out);
+  params.output_size = output_size;
+  params.lhs_offset = checked_item_offset(input, input.size(), name, out);
+  params.output_offset = checked_item_offset(out, out.size(), name, out);
+  std::array<omarchy::ComputeBinding, 3> bindings{
+      binding(input), binding(input), binding(out)};
+  auto kernel = select_float_kernel(
+      out.dtype(),
+      omarchy::ComputeKernel::SoftmaxF32,
+      omarchy::ComputeKernel::SoftmaxF16,
+      omarchy::ComputeKernel::SoftmaxBF16);
+  encoder.dispatch_compute(
+      kernel,
+      bindings,
+      params,
+      std::min(output_size, omarchy::kMaxComputeGroupCountX));
+}
+
+} // namespace
 #define OMARCHY_BINARY(func, operation)                               \
   void func::eval_gpu(const std::vector<array>& inputs, array& out) { \
-    dispatch_elementwise(#func, operation, inputs, out);              \
+    dispatch_elementwise(                                             \
+        #func, operation, inputs, out, out.primitive().stream());     \
   }
 
 #define OMARCHY_UNARY(func, operation)                                \
   void func::eval_gpu(const std::vector<array>& inputs, array& out) { \
-    dispatch_elementwise(#func, operation, inputs, out);              \
+    dispatch_elementwise(                                             \
+        #func, operation, inputs, out, out.primitive().stream());     \
   }
 
 OMARCHY_UNSUPPORTED(Abs)
 OMARCHY_BINARY(Add, AddOperation)
 void AddMM::eval_gpu(const std::vector<array>& inputs, array& out) {
   auto [alpha, beta] = state();
-  dispatch_matmul(name(), inputs, out, alpha, beta, true);
+  dispatch_matmul(name(), inputs, out, alpha, beta, true, out.primitive().stream());
 }
 void Arange::eval_gpu(const std::vector<array>& inputs, array& out) {
   auto& encoder = omarchy::get_command_encoder(out.primitive().stream());
@@ -1122,7 +1171,8 @@ void LogSumExp::eval_gpu(const std::vector<array>& inputs, array& out) {
 }
 OMARCHY_UNSUPPORTED_MULTI(LUF)
 void Matmul::eval_gpu(const std::vector<array>& inputs, array& out) {
-  dispatch_matmul(name(), inputs, out, 1.0f, 0.0f, false);
+  dispatch_matmul(
+      name(), inputs, out, 1.0f, 0.0f, false, out.primitive().stream());
 }
 OMARCHY_BINARY(Maximum, MaximumOperation)
 OMARCHY_UNSUPPORTED(MaskedScatter)
@@ -1608,43 +1658,7 @@ OMARCHY_UNSUPPORTED(Sign)
 OMARCHY_UNARY(Sin, SinOperation)
 OMARCHY_UNSUPPORTED(Sinh)
 void Softmax::eval_gpu(const std::vector<array>& inputs, array& out) {
-  const array& input = inputs.at(0);
-  auto& encoder = omarchy::get_command_encoder(out.primitive().stream());
-  require_float_dtype("Softmax", input, out, encoder);
-  if (!input.flags().row_contiguous) {
-    omarchy::unsupported("non-contiguous Softmax", out);
-  }
-
-  // The Softmax primitive is only constructed for a last-axis reduction
-  // (mlx/ops.cpp softmax), so no suffix-axis check is needed here. The
-  // shader accumulates in float32 for every dtype, which also covers the
-  // precise flag.
-  size_t row_length = input.shape(-1);
-  size_t rows = input.size() / row_length;
-  out.set_data(allocate_omarchy(out.nbytes()));
-  if (out.size() == 0) {
-    return;
-  }
-  uint32_t output_size = checked_u32(rows, "Softmax", out);
-  omarchy::ComputeParams params;
-  params.count = checked_u32(out.size(), "Softmax", out);
-  params.reduce_size = checked_u32(row_length, "Softmax", out);
-  params.output_size = output_size;
-  params.lhs_offset = checked_item_offset(
-      input, input.size(), "Softmax", out);
-  params.output_offset = checked_item_offset(out, out.size(), "Softmax", out);
-  std::array<omarchy::ComputeBinding, 3> bindings{
-      binding(input), binding(input), binding(out)};
-  auto kernel = select_float_kernel(
-      out.dtype(),
-      omarchy::ComputeKernel::SoftmaxF32,
-      omarchy::ComputeKernel::SoftmaxF16,
-      omarchy::ComputeKernel::SoftmaxBF16);
-  encoder.dispatch_compute(
-      kernel,
-      bindings,
-      params,
-      std::min(output_size, omarchy::kMaxComputeGroupCountX));
+  dispatch_softmax(name(), inputs.at(0), out, stream());
 }
 void SliceUpdate::eval_gpu(const std::vector<array>& inputs, array& out) {
   if (out.size() == 0) {
@@ -1699,7 +1713,11 @@ void Sort::eval_gpu(const std::vector<array>& inputs, array& out) {
 OMARCHY_UNARY(Square, SquareOperation)
 void Sqrt::eval_gpu(const std::vector<array>& inputs, array& out) {
   dispatch_elementwise(
-      name(), state() ? RsqrtOperation : SqrtOperation, inputs, out);
+      name(),
+      state() ? RsqrtOperation : SqrtOperation,
+      inputs,
+      out,
+      out.primitive().stream());
 }
 // The categorical sampler subtracts one from uint32 searchsorted
 // indices, so the subtract family also covers int32 and uint32 through
@@ -1710,7 +1728,8 @@ void Subtract::eval_gpu(const std::vector<array>& inputs, array& out) {
     dispatch_int_elementwise(name(), SubtractOperation, inputs, out);
     return;
   }
-  dispatch_elementwise(name(), SubtractOperation, inputs, out);
+  dispatch_elementwise(
+      name(), SubtractOperation, inputs, out, out.primitive().stream());
 }
 OMARCHY_UNSUPPORTED_MULTI(SVD)
 OMARCHY_UNSUPPORTED(Tan)
@@ -1736,7 +1755,9 @@ bool ScaledDotProductAttention::use_fallback(
         "[scaled_dot_product_attention] force_fused=True but no fused "
         "kernel is available in the Omarchy backend.");
   }
-  return true;
+  // Training with a logsumexp output needs the VJP, which stays a
+  // named rejection, so that one case keeps the composed graph.
+  return output_logsumexp;
 }
 
 bool ScaledDotProductAttentionVJP::use_fallback(const array& q, Stream s) {
@@ -1754,7 +1775,173 @@ OMARCHY_UNSUPPORTED_MULTI(LayerNormVJP)
 OMARCHY_USE_FALLBACK(RMSNorm)
 OMARCHY_UNSUPPORTED_MULTI(RMSNormVJP)
 OMARCHY_USE_FALLBACK(RoPE)
-OMARCHY_UNSUPPORTED_MULTI(ScaledDotProductAttention)
+void ScaledDotProductAttention::eval_gpu(
+    const std::vector<array>& inputs,
+    std::vector<array>& outputs) {
+  const std::string tag = name();
+  array& out = outputs.at(0);
+  if (outputs.size() != 1) {
+    omarchy::unsupported(tag + " logsumexp output", out);
+  }
+  if (has_sinks_ || inputs.size() > 4) {
+    omarchy::unsupported(tag + " sinks", out);
+  }
+  if (inputs.size() == 4 && do_causal_) {
+    omarchy::unsupported(tag + " causal mask with array mask", out);
+  }
+  const array& q = inputs.at(0);
+  const array& k = inputs.at(1);
+  const array& v = inputs.at(2);
+  auto s = stream();
+  auto& encoder = omarchy::get_command_encoder(s);
+  require_float_dtype(tag, q, out, encoder);
+  require_float_dtype(tag, k, out, encoder);
+  require_float_dtype(tag, v, out, encoder);
+  if (q.ndim() != 4 || k.ndim() != 4 || v.ndim() != 4) {
+    omarchy::unsupported("attention rank " + tag, out);
+  }
+  int batch = q.shape(0);
+  int heads = q.shape(1);
+  int q_len = q.shape(2);
+  int head_dim = q.shape(3);
+  int kv_heads = k.shape(1);
+  int k_len = k.shape(2);
+  int v_dim = v.shape(3);
+  if (
+      k.shape(0) != batch || v.shape(0) != batch || k.shape(3) != head_dim ||
+      v.shape(1) != kv_heads || v.shape(2) != k_len ||
+      out.shape() != Shape{batch, heads, q_len, v_dim}) {
+    omarchy::unsupported("attention shapes " + tag, out);
+  }
+  if (kv_heads == 0 || heads % kv_heads != 0) {
+    omarchy::unsupported("attention head split " + tag, out);
+  }
+  int repeats = heads / kv_heads;
+  if (out.size() == 0) {
+    out.set_data(allocate_omarchy(out.nbytes()));
+    return;
+  }
+
+  // The validated f32-score composition (the M1 4-bit degeneracy fix,
+  // docs/2026-09-01-m1-4bit-greedy-sdpa-f16-scores.md): cast to
+  // float32, scale, express GQA through the unflatten/expand_dims
+  // shapes instead of mx.repeat, add the mask as a float32 additive
+  // term, and keep every intermediate in float32 so score magnitudes
+  // far beyond float16 stay finite. Only the result narrows back to
+  // the output dtype.
+
+  // The backend allocator is host-visible, so constants and the causal
+  // mask are written straight into fresh allocations (the Load idiom)
+  // before any command references them.
+  auto to_f32 = [&](const array& x) {
+    array wide(x.shape(), float32, nullptr, {});
+    if (x.flags().row_contiguous) {
+      copy_gpu(x, wide, CopyType::Vector, s);
+    } else {
+      array dense = contiguous_copy_gpu(x, s);
+      encoder.add_temporary(dense);
+      copy_gpu(dense, wide, CopyType::Vector, s);
+    }
+    encoder.add_temporary(wide);
+    return wide;
+  };
+  auto broadcast_view = [&](const array& base, Shape shape) {
+    array view(std::move(shape), base.dtype(), nullptr, {});
+    view.copy_shared_buffer(base, Strides(view.ndim(), 0), {true, false, false}, base.size());
+    encoder.add_temporary(view);
+    return view;
+  };
+
+  array q32 = to_f32(q);
+  array scale_arr(scale_);
+  scale_arr.set_data(allocate_omarchy(scale_arr.nbytes()));
+  scale_arr.data<float>()[0] = scale_;
+  encoder.add_temporary(scale_arr);
+  array qs(q32.shape(), float32, nullptr, {});
+  dispatch_elementwise(
+      tag,
+      MultiplyOperation,
+      {q32, broadcast_view(scale_arr, q32.shape())},
+      qs,
+      s);
+  encoder.add_temporary(qs);
+
+  array k32 = to_f32(k);
+  array v32 = to_f32(v);
+  if (repeats > 1) {
+    qs = reshape_in_eval(
+        qs, Shape{batch, kv_heads, repeats, q_len, head_dim}, s);
+    k32 = reshape_in_eval(k32, Shape{batch, kv_heads, 1, k_len, head_dim}, s);
+    v32 = reshape_in_eval(v32, Shape{batch, kv_heads, 1, k_len, v_dim}, s);
+    encoder.add_temporary(qs);
+    encoder.add_temporary(k32);
+    encoder.add_temporary(v32);
+  }
+
+  Shape score_shape = qs.shape();
+  score_shape.back() = k_len;
+  array scores(score_shape, float32, nullptr, {});
+  array keys_t = swapaxes_in_eval(k32, -1, -2);
+  encoder.add_temporary(keys_t);
+  dispatch_matmul(tag, {qs, keys_t}, scores, 1.0f, 0.0f, false, s);
+  encoder.add_temporary(scores);
+
+  std::optional<array> masked;
+  if (do_causal_) {
+    if (k_len < q_len) {
+      omarchy::unsupported("causal offset " + tag, out);
+    }
+    // The additive causal mask holds 0 for attended positions and
+    // -1e30 elsewhere: the same float32 tensor the validated
+    // composition built from arange/greater_equal and
+    // (1 - cast) * -1e30, without Select or repeat.
+    array mask(Shape{q_len, k_len}, float32, nullptr, {});
+    mask.set_data(allocate_omarchy(mask.nbytes()));
+    float* values = mask.data<float>();
+    int offset = k_len - q_len;
+    for (int row = 0; row < q_len; ++row) {
+      for (int col = 0; col < k_len; ++col) {
+        values[row * k_len + col] = offset + row >= col ? 0.0f : -1e30f;
+      }
+    }
+    encoder.add_temporary(mask);
+    masked = array(scores.shape(), float32, nullptr, {});
+    dispatch_elementwise(tag, AddOperation, {scores, mask}, *masked, s);
+  } else if (inputs.size() == 4) {
+    // Upstream pre-broadcasts an array mask to
+    // [B, heads, q_len, k_len] in the output dtype and converts bool
+    // masks to additive values before the primitive runs.
+    array mask = to_f32(inputs.at(3));
+    if (repeats > 1) {
+      mask = reshape_in_eval(
+          mask, Shape{batch, kv_heads, repeats, q_len, k_len}, s);
+      encoder.add_temporary(mask);
+    }
+    if (mask.shape() != scores.shape()) {
+      omarchy::unsupported("attention mask shape " + tag, out);
+    }
+    masked = array(scores.shape(), float32, nullptr, {});
+    dispatch_elementwise(tag, AddOperation, {scores, mask}, *masked, s);
+  }
+  const array& logits = masked ? *masked : scores;
+  encoder.add_temporary(logits);
+
+  array probs(logits.shape(), float32, nullptr, {});
+  dispatch_softmax(tag, logits, probs, s);
+  encoder.add_temporary(probs);
+
+  Shape result_shape = probs.shape();
+  result_shape.back() = v_dim;
+  array result(result_shape, float32, nullptr, {});
+  dispatch_matmul(tag, {probs, v32}, result, 1.0f, 0.0f, false, s);
+  encoder.add_temporary(result);
+  if (result.dtype() == out.dtype()) {
+    out.copy_shared_buffer(result);
+  } else {
+    copy_gpu(result, out, CopyType::Vector, s);
+  }
+}
+
 OMARCHY_UNSUPPORTED_MULTI(ScaledDotProductAttentionVJP)
 OMARCHY_UNSUPPORTED_MULTI(ConvertFP8)
 void Quantize::eval_gpu(
