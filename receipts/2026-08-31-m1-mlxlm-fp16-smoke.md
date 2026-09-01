@@ -380,3 +380,43 @@ byte-identical), M1 full `m1-full-fixed.log` (59/59, 87181 assertions),
 llvmpipe: 59/59 + 87181, runtime 22/22 + 6188, copy_offset 7/7 + 68.
 Probe `probe_bisect1.cpp` cases A-E: 0 mismatches on both devices post-fix.
 `minprobe.c/.comp` deleted (dead harness). Nothing committed.
+
+## Attempt 10 @ f61f3cf (4-bit) — 2026-09-01
+
+jwm1-linux, repo `/home/joshuawarren/src/mlx-omarchy` detached at
+`f61f3cf062b20ce315cf9f4389596792dc1994ff` ("feat(vulkan): affine
+dequantize"). First 4-bit attempt to produce tokens: the QuantizedEmbedding
+chain (dequantize landed in this commit) runs end to end.
+
+Build: `scripts/build-wheel.sh` -> `wheel12.log`. Wheel
+`dist/mlx_omarchy-0.32.2.dev20260901+f61f3cf-cp314-cp314-linux_aarch64.whl`,
+2602712 bytes, sha256
+`54e2993a3ab118b7f397786f19f59104deb88ffddf3a7e7216581675e96acfaf`.
+Force-reinstalled into `.work/venv-fp16` (replaced
+`0.32.2.dev20260901+be0b86f`). All runs `MLX_DISABLE_COMPILE=1`, model
+`/home/joshuawarren/models/Qwen2.5-0.5B-Instruct-4bit-mlx`, prompt
+`What is the capital of France? Answer in one word.`
+
+1. Greedy 8 (`--max-tokens 8 --temp 0.0`): output `1.000000`;
+   prompt 41 tok, 18.822 tok/s; generation 8 tok, 2.419 tok/s;
+   peak memory 0.292 GB.
+2. Greedy 32 (`--max-tokens 32 --temp 0.0`): output
+   `1.000000000000000000000000000000`; prompt 41 tok, 18.946 tok/s;
+   generation 32 tok, 2.136 tok/s; peak memory 0.292 GB.
+3. Temp 0.9 (`--max-tokens 32 --temp 0.9 --seed 0`): output
+   `【spreadsheets. blue __ in blue， blue in red 请将以上句子补充完整。 这是一种独特的文化象征，因其独特的布局和`;
+   prompt 41 tok, 18.649 tok/s; generation 32 tok, 2.330 tok/s;
+   peak memory 0.292 GB.
+
+vs bf16 (18.6 prefill / 2.0-2.5 decode / 0.99 GB): prefill 18.6-18.9
+tok/s (parity), decode 2.14-2.42 tok/s (in band), peak 0.292 GB
+(~3.4x below). No named errors, no flag iterations.
+
+Observation, not a blocker: greedy text is degenerate — `1.000000`
+instead of `Paris`, repeating `.000000`; temp 0.9 output is
+unrelated multilingual text. Tokens and perf are in band, so the
+pipeline runs, but greedy numerics on the 4-bit path are wrong.
+Next lead: compare a single logits row / argmax chain against the
+Metal reference for the quantized-embedding path.
+
+No commits, no M1 config changes, no sudo.

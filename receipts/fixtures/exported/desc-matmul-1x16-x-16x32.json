@@ -1,0 +1,1 @@
+{"op": "matmul", "input_shape": [1, 16], "weight_shape": [16, 32], "const_value": 0.25}

@@ -7,9 +7,10 @@ descriptor. A bundle that fails any check never reaches the device. This is
 the U6 validation layer in
 `docs/plans/2026-08-29-mlx-omarchy-ane-compatibility-plan.md`.
 
-Status: the Linux validation layer and its tests are the scope of this
-document. The macOS exporter, MIL lowering, and M1 execution remain open
-work; see `docs/compatibility.md`.
+Status: the Linux validation layer, its tests, and the macOS exporter
+(`tools/ane-export/`) are in place. Lowering general MLX graphs to the
+exporter's descriptors and M1 execution remain open work; see
+`docs/compatibility.md`.
 
 ## Layout
 
@@ -139,10 +140,17 @@ output `t2`, const through `weights.bin`). Field derivations:
   macOS 26.6.2 (25G83), ANECompiler 9.509.0, coremlcompiler 3520.5.1.
   On-device execution is not yet proven; see the proof receipt.
 
+New bundles are produced with the macOS exporter, `tools/ane-export/`
+(runs on macOS with Xcode + ANECompiler; Linux validates only). It turns a
+JSON descriptor into the MIL program, `weights.bin`, the compiled `hwx`,
+the converted `.anec`, and a manifest in this schema.
+`receipts/fixtures/exported/` carries its output for add [1, 512],
+add [1, 896], and mul [1, 512]; see `receipts/2026-09-01-ane-exporter.md`.
+
 ## Community submissions
 
-The macOS exporter will be a user-runnable tool (KTD6). A community bundle
-submission must reproduce through that public exporter and pass exactly these
+The exporter is that user-runnable tool (KTD6): `tools/ane-export/`. A
+community bundle submission must reproduce through it and pass exactly these
 checks on Linux, with no private Apple frameworks, compiler binaries,
 firmware, or model weights in the bundle (R18). Release assets carry bundles
 keyed by exact model, shapes, compiler, firmware, and graph hash (KTD10); a

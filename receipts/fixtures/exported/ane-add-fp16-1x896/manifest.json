@@ -1,0 +1,76 @@
+{
+  "manifest_version": 1,
+  "name": "ane-add-fp16-1x896",
+  "graph_hash": "9048326d6335b6bec29296d0ce521fa528c09c4558d93e15bf1830d7ec777da1",
+  "task_descriptors": 1,
+  "inputs": [
+    {
+      "name": "t1",
+      "index": 0,
+      "dtype": "float16",
+      "shape": [
+        1,
+        896
+      ],
+      "byte_size": 1792,
+      "stride": 16384
+    }
+  ],
+  "outputs": [
+    {
+      "name": "t2",
+      "index": 1,
+      "dtype": "float16",
+      "shape": [
+        1,
+        896
+      ],
+      "byte_size": 1792,
+      "stride": 16384
+    }
+  ],
+  "state": [],
+  "workspace": [
+    {
+      "name": "workspace",
+      "index": 0,
+      "dtype": "uint8",
+      "shape": [
+        16384
+      ],
+      "byte_size": 16384,
+      "stride": 16384
+    }
+  ],
+  "payloads": [
+    {
+      "role": "anec",
+      "path": "model.anec",
+      "sha256": "79d307207318285d9e2aa8a52b9ac06a3460c09c6628c26dfa14a9acd01a8271",
+      "byte_size": 20480
+    },
+    {
+      "role": "weights",
+      "path": "weights.bin",
+      "sha256": "41aa2b92c429c8790c55c37015e02d719c28eb7aa4ca26064fec95fae40dc0bb",
+      "byte_size": 1920
+    }
+  ],
+  "compiler": {
+    "macos_build": "25G83",
+    "anecompiler": "ANECompiler 9.509.0 (macOS 26.6.2, coremlcompiler 3520.5.1)"
+  },
+  "firmware": {
+    "min": "26.0",
+    "max": "26.6"
+  },
+  "provenance": {
+    "source_repo": "joshuaswarren/mlx-omarchy",
+    "source_commit": "c17bb1b82490b661ef6a3acd1fa008265383802b",
+    "exported_at": "2026-09-01"
+  },
+  "release_asset": {
+    "model": "ane-add-fp16-1x896",
+    "model_sha256": "79d307207318285d9e2aa8a52b9ac06a3460c09c6628c26dfa14a9acd01a8271"
+  }
+}

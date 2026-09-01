@@ -1,0 +1,1 @@
+{"op": "add", "input_shape": [1, 512], "const_value": 0.25}
