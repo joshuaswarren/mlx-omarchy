@@ -133,9 +133,21 @@ Today the exporter and the Linux validation gate both work. `tools/ane-export` c
 
 The supported target is an M1 running Omarchy with Mesa Honeykrisp; [omarchy-mac](https://github.com/omarchy-mac/omarchy-mac) is the installer. Later Apple Silicon generations come after the M1 path is complete. Progress by area lives in [docs/compatibility.md](docs/compatibility.md), and the design in [docs/architecture.md](docs/architecture.md).
 
+Honeykrisp is not a separate project. It is the Apple GPU Vulkan driver inside [Mesa](https://gitlab.freedesktop.org/mesa/mesa), under `src/asahi/vulkan/` (the `hk_` prefixed files), and it shares the AGX shader compiler in `src/asahi/compiler/` with the OpenGL driver. There is a [GitHub mirror](https://github.com/Mesa3D/mesa). Anyone reading our driver-defect receipts will want those two directories: all three miscompiles this project isolated live in the compiler rather than the Vulkan layer.
+
 ## Contributing
 
-Read [CONTRIBUTING.md](CONTRIBUTING.md) and the [roadmap](docs/roadmap.md). The most useful work right now is the missing primitives in the matrix. Kernel performance against the 20-69x gap comes next. Hardware receipts from M-series machines always help.
+Read [CONTRIBUTING.md](CONTRIBUTING.md) and the [roadmap](docs/roadmap.md). The most useful work right now is kernel performance against the 20-69x gap. Hardware receipts from M-series machines always help.
+
+### A gap that needs a project of its own
+
+`fast::CustomKernel` is the one primitive this backend cannot implement, and the reason is worth stating plainly for anyone looking for a substantial problem to solve.
+
+It compiles user-supplied Metal Shading Language source at runtime. Running that same source here needs an MSL front-end that targets SPIR-V, and no such compiler exists. The traffic all goes the other way: SPIRV-Cross translates SPIR-V into MSL, clspv handles OpenCL C, DXC handles HLSL. Apple's own Metal compiler does not run on Linux.
+
+An MSL-to-SPIR-V compiler would unblock this, and it would unblock a great deal more than this project. Every Metal shader in every application becomes portable to Vulkan the day it exists. That work belongs in its own repository, not here. Anyone who takes it on should know at least one backend is waiting to use it.
+
+A narrower option stays open to us, and it is not the same thing. Accepting GLSL or SPIR-V source through the same entry point would give Linux users custom kernels. It would not run a Mac user's Metal source, so it closes a usability gap rather than a parity gap, and the compatibility matrix would still count the primitive as unimplemented.
 
 ## License
 
