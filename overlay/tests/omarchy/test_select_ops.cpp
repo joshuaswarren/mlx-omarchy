@@ -669,118 +669,6 @@ TEST_CASE("composed solve computes A x == b through the uint32 ArgSort chain") {
   }
 }
 
-TEST_CASE("TEMP wide svd reconstruct probe") {
-  if (!compute_available()) {
-    return;
-  }
-  auto stream = gpu_stream();
-  int m = 4;
-  int n = 6;
-  std::mt19937 gen(31);
-  std::uniform_real_distribution<double> dist(-1.0, 1.0);
-  std::vector<double> a_host(m * n);
-  for (auto& value : a_host) {
-    value = dist(gen);
-  }
-  array a = device_values(stream, a_host, Shape{m, n}, float32);
-  auto outs = linalg::svd(a, true, stream);
-  auto u_flat = readback_f32(stream, outs[0]);
-  auto s_flat = readback_f32(stream, outs[1]);
-  auto vt_flat = readback_f32(stream, outs[2]);
-  std::vector<double> u(u_flat.begin(), u_flat.end());
-  std::vector<double> s(s_flat.begin(), s_flat.end());
-  std::vector<double> vt(vt_flat.begin(), vt_flat.end());
-  std::vector<double> sm(m * m, 0.0);
-  for (int i = 0; i < m; ++i) {
-    sm[i * m + i] = s[i];
-  }
-  std::vector<double> usm = host_matmul(u, sm, m, m, m);
-  std::vector<double> product = host_matmul(usm, vt, m, m, n);
-  double rec = 0.0;
-  for (int i = 0; i < m * n; ++i) {
-    rec = std::max(rec, std::abs(product[i] - a_host[i]));
-  }
-  std::vector<double> vt_t(n * n, 0.0);
-  for (int i = 0; i < n; ++i) {
-    for (int j = 0; j < n; ++j) {
-      vt_t[j * n + i] = vt[i * n + j];
-    }
-  }
-  std::vector<double> vvt = host_matmul(vt_t, vt, n, n, n);
-  double uorth = 0.0;
-  for (int i = 0; i < m; ++i) {
-    for (int j = 0; j < m; ++j) {
-      double dot = 0.0;
-      for (int t = 0; t < m; ++t) {
-        dot += u[t * m + i] * u[t * m + j];
-      }
-      uorth = std::max(uorth, std::abs(dot - (i == j ? 1.0 : 0.0)));
-    }
-  }
-  double orth = 0.0;
-  for (int i = 0; i < n; ++i) {
-    for (int j = 0; j < n; ++j) {
-      orth = std::max(orth, std::abs(vvt[i * n + j] - (i == j ? 1.0 : 0.0)));
-    }
-  }
-  std::cout << "WIDE_SVD rec=" << rec << " orth=" << orth
-            << " uorth=" << uorth << "\n";
-  std::cout << "DEV_S:";
-  for (int i = 0; i < m; ++i) {
-    std::cout << " " << s[i];
-  }
-  std::cout << "\nDEV_U:";
-  for (int i = 0; i < m * m; ++i) {
-    std::cout << " " << u[i];
-  }
-  std::cout << "\nDEV_VT:";
-  for (int i = 0; i < n * n; ++i) {
-    std::cout << " " << vt[i];
-  }
-  std::cout << "\n";
-}
-
-TEST_CASE("TEMP bracket svd shapes probe") {
-  if (!compute_available()) {
-    return;
-  }
-  auto stream = gpu_stream();
-  std::mt19937 gen(31);
-  std::uniform_real_distribution<double> dist(-1.0, 1.0);
-  std::vector<double> a_host(24);
-  for (auto& value : a_host) {
-    value = dist(gen);
-  }
-  std::vector<double> sq_host(a_host.begin(), a_host.begin() + 16);
-  // (a) square 4x4 on the first block.
-  {
-    array a = device_values(stream, sq_host, Shape{4, 4}, float32);
-    auto outs = linalg::svd(a, true, stream);
-    auto s_flat = readback_f32(stream, outs[1]);
-    auto vt_flat = readback_f32(stream, outs[2]);
-    std::cout << "SQ_S:";
-    for (auto v : s_flat) {
-      std::cout << " " << v;
-    }
-    std::cout << "\nSQ_VT:";
-    for (auto v : vt_flat) {
-      std::cout << " " << v;
-    }
-    std::cout << "\n";
-  }
-  // (b) tall 6x4 svd of the mlx-transposed A^T (transposed-source copy).
-  {
-    array a = device_values(stream, a_host, Shape{4, 6}, float32);
-    array at = transpose(a, std::vector<int>{1, 0}, stream);
-    auto outs = linalg::svd(at, true, stream);
-    auto s_flat = readback_f32(stream, outs[1]);
-    std::cout << "AT_TALL_S:";
-    for (auto v : s_flat) {
-      std::cout << " " << v;
-    }
-    std::cout << "\n";
-  }
-}
 
 TEST_CASE("composed pinv satisfies the Moore-Penrose conditions") {
   if (!compute_available()) {
@@ -829,11 +717,15 @@ TEST_CASE("composed pinv satisfies the Moore-Penrose conditions") {
         xax[i]);
   }
   // X*A must be symmetric (Moore-Penrose condition three). This wide
-  // shape carried the k-boundary defect: the SVD finalize completion
-  // walked columns where the wide vt factor stores vectors as rows, so
-  // it read never-written cells at rows >= k and seeded X's tail rows
-  // with allocator garbage that varied run to run. The completion now
-  // indexes rows for wide inputs; this check pins that fix.
+  // shape carried two stacked k-boundary defects. First, the wide SVD
+  // work copy walked the source with the transposed shape (m, n) over
+  // transposed strides, reading past the input buffer, so work rows
+  // >= k held recycled-page values that varied run to run - the
+  // nondeterminism. Second, the SVD finalize completion walked columns
+  // where the wide vt factor stores vectors as rows, reading
+  // never-written cells and corrupting exactly the vt rows pinv slices.
+  // The copy now walks the work shape and the completion indexes rows
+  // for wide inputs; this check pins both.
   for (int i = 0; i < n; ++i) {
     for (int j = 0; j < n; ++j) {
       CHECK_MESSAGE(
