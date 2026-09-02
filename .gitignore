@@ -9,3 +9,7 @@ dist/
 core.*
 core
 receipts/**/venv-pytest/
+
+# Python bytecode from tools/
+__pycache__/
+*.pyc
