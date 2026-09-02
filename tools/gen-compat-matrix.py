@@ -1647,7 +1647,13 @@ def main():
             "Metal refuses these and upstream's CPU backend has no "
             "`eval_cpu` for them, so no Mac user can execute them on "
             "any stream. They are outside the Mac denominator and "
-            "stay in the full-upstream denominator.")
+            "stay in the full-upstream denominator. Note what this "
+            "does to the score: this backend implements and "
+            "value-tests all of them, and Metal does not, so the "
+            "redefinition removes covered primitives from the "
+            "numerator and denominator alike. It lowers this "
+            "backend's number. The denominator was not curated to "
+            "flatter anyone.")
         out.append("")
         out.append("| Primitive | Why | Citation |")
         out.append("|---|---|---|")
