@@ -13,9 +13,10 @@ Sources (read-only):
   overlay/mlx/backend/omarchy/primitives.cpp  primitive entries and gates
   overlay/mlx/backend/omarchy/compute.h       ComputeKernel variants
   overlay/mlx/backend/omarchy/copy.cpp        engine kernels behind copies
-  overlay/tests/omarchy/**/*.cpp              TEST_CASE anchors
+  overlay/tests/omarchy/**/*.cpp              TEST_CASE bodies (anchor evidence)
   .work/mlx/mlx/primitives.h                  upstream primitive classes
   .work/mlx/mlx/fast_primitives.h             upstream fast:: primitives
+  .work/mlx/mlx/{,io/,distributed/}*.cpp      op -> primitive construction map
   .work/mlx/mlx/distributed/primitives.h      upstream distributed:: primitives
   .work/mlx/mlx/backend/gpu/primitives.cpp    shared GPU eval_gpu definitions
 """
@@ -71,86 +72,15 @@ VARIANT_TOKENS = {
     "Bool": "bool",
 }
 
-# Covering TEST_CASE patterns per primitive, tried in order. The anchor
-# resolves against the actual TEST_CASE names by grep, so a stale
-# pattern degrades to "—" instead of inventing a case.
-TEST_ANCHORS = {
-    "Add": ["FP32 elementwise primitives"],
-    "AddMM": ["AddMM broadcasts bias"],
-    "Arange": ["Arange fills"],
-    "ArgPartition": ["partition redirects to sort"],
-    "ArgReduce": ["argmax reduces last-axis", "argmin matches"],
-    "ArgSort": ["sort and argsort order"],
-    "Cholesky": ["unsupported compute shapes and dtypes"],
-    "Compiled": [
-        "mx.compile evaluates the elementwise tape",
-        "mx.compile pins the named error for tape ops",
-    ],
-    "Cos": ["Cos and Sin match"],
-    "Divide": ["FP32 elementwise primitives"],
-    "Equal": ["Equal matches host references"],
-    "Exp": ["FP32 elementwise primitives"],
-    "Gather": ["take gathers table rows"],
-    "Convolution": ["Convolution matches host references"],
-    "Inverse": ["unsupported compute shapes and dtypes"],
-    "Load": ["safetensors load round-trips float32"],
-    "Log": ["Log matches host"],
-    "LogicalOr": ["isinf composes"],
-    "LogSumExp": ["logsumexp reduces last-axis"],
-    "Matmul": ["FP32 and FP16 Matmul support dense"],
-    "Maximum": ["FP32 elementwise primitives"],
-    "Minimum": ["FP32 elementwise primitives"],
-    "Multiply": ["FP32 elementwise primitives"],
-    "Negative": ["FP32 elementwise primitives"],
-    "Partition": ["partition redirects to sort"],
-    "QuantizedMatmul": ["quantized matmul matches dequant"],
-    "fast::Quantize": ["dequantize reproduces hand-packed"],
-    "RandomBits": ["RandomBits matches the host threefry"],
-    "Reduce": ["suffix Sum and Max reductions"],
-    "SVD": ["unsupported compute shapes and dtypes"],
-    "Scan": ["CumSum scans suffix rows"],
-    "fast::ScaledDotProductAttention": [
-        "scaled_dot_product_attention matches a batched matmul reference",
-    ],
-    "SearchSorted": ["searchsorted matches the upstream"],
-    "Select": ["Select picks between two row-contiguous"],
-    "Sigmoid": ["FP32 elementwise primitives"],
-    "Sin": ["Cos and Sin match"],
-    "SliceUpdate": ["SliceUpdate row window"],
-    "Softmax": ["softmax normalizes rows"],
-    "Sort": ["sort and argsort order"],
-    "Square": ["FP32 elementwise primitives"],
-    "Sqrt": ["FP32 elementwise primitives"],
-    "Subtract": ["FP32 elementwise primitives"],
-    "fast::RoPE": ["rope matches a host rotation"],
-    # Wave 1 shape and layout primitives. Upstream resolves these in
-    # backend/gpu/primitives.cpp through zero-copy buffer views or the
-    # omarchy copy engine; each anchor pins exact values.
-    "AsStrided": ["AsStrided shares a row-contiguous buffer"],
-    "AsType": ["AsType casts values exactly"],
-    "Broadcast": ["Broadcast expands zero-stride views"],
-    "BroadcastAxes": ["BroadcastAxes aligns arrays"],
-    "Concatenate": ["Concatenate joins arrays"],
-    "Contiguous": ["Contiguous materializes a strided view"],
-    "Copy": ["Copy clones the buffer"],
-    "CustomTransforms": ["CustomTransforms redefines the transform"],
-    "Depends": ["Depends forces evaluation"],
-    "ExpandDims": ["ExpandDims inserts length-one axes"],
-    "Flatten": ["Flatten collapses axes"],
-    "Full": ["Full fills exact scalar values"],
-    "NumberOfElements": [
-        "NumberOfElements evaluates inside a shapeless compile",
-    ],
-    "Pad": ["Pad zero-fills boundaries"],
-    "Reshape": ["Reshape shares buffers and copies strided views"],
-    "Slice": ["Slice cuts exact windows"],
-    "Split": ["Split returns exact per-part views"],
-    "Squeeze": ["Squeeze drops length-one axes"],
-    "StopGradient": ["StopGradient passes values and detaches"],
-    "Transpose": ["Transpose permutes strides"],
-    "Unflatten": ["Unflatten splits one axis"],
-    "View": ["View reinterprets the buffer"],
-}
+# Upstream sources whose function bodies construct primitives. Anchor
+# resolution maps every op call in a TEST_CASE body through these
+# bodies (see parse_op_constructions), so op-to-primitive resolution
+# is derived from the sources instead of a hand-maintained table.
+CONSTRUCTION_GLOBS = [
+    ".work/mlx/mlx/*.cpp",
+    ".work/mlx/mlx/io/*.cpp",
+    ".work/mlx/mlx/distributed/*.cpp",
+]
 
 DTYPE_ORDER = ["f32", "f16", "bf16", "i32", "u32", "i64", "bool"]
 
@@ -219,34 +149,310 @@ def git(*args):
         return "unknown"
 
 
-def parse_test_cases():
+def mask_noncode(text):
+    """Blank comments and string/char literal contents, keeping length.
+
+    Offsets in the result address the original text, so structural
+    parsing never trips over braces or parens inside literals, and
+    line numbers survive. Quote characters themselves stay.
+    """
+    out = list(text)
+    length = len(text)
+    index = 0
+    while index < length:
+        if text.startswith("//", index):
+            end = text.find("\n", index)
+            end = length if end == -1 else end
+        elif text.startswith("/*", index):
+            end = text.find("*/", index + 2)
+            end = length if end == -1 else end + 2
+        elif text[index] in "\"'":
+            quote = text[index]
+            end = index + 1
+            while end < length and text[end] != quote:
+                end += 2 if text[end] == "\\" else 1
+            end = min(end + 1, length)
+            for offset in range(index + 1, end - 1):
+                if out[offset] != "\n":
+                    out[offset] = " "
+            index = end
+            continue
+        else:
+            index += 1
+            continue
+        for offset in range(index, end):
+            if out[offset] != "\n":
+                out[offset] = " "
+        index = end
+    return "".join(out)
+
+
+def block_end(masked, open_index):
+    """Index of the brace closing the block opened at open_index."""
+    depth = 0
+    for index in range(open_index, len(masked)):
+        char = masked[index]
+        if char == "{":
+            depth += 1
+        elif char == "}":
+            depth -= 1
+            if depth == 0:
+                return index
+    return len(masked) - 1
+
+
+NAMESPACE_TAIL = re.compile(r"\bnamespace\s+([A-Za-z_][\w:]*)\s*$")
+NAMESPACE_ANON = re.compile(r"\bnamespace\s*$")
+SCOPE_KEYWORD = re.compile(r"\b(struct|class|enum|union)\b")
+CALL_SITE = re.compile(r"([A-Za-z_]\w*)\s*\(")
+MAKE_SHARED = re.compile(r"make_shared<([A-Za-z_][\w:]*)>\s*\(")
+
+
+def function_name(header):
+    """Name before the balanced trailing parameter list of a definition.
+
+    The last ')' in a definition header closes the parameter list, and
+    its matching '(' is found by scanning back, so parens inside return
+    types and parameters (std::function<...>) cannot hijack the name.
+    Member methods keep their class prefix (Add::vjp), so upstream rule
+    methods never merge with the free op functions the tests call.
+    """
+    close = header.rfind(")")
+    if close == -1:
+        return None
+    depth = 0
+    for index in range(close, -1, -1):
+        char = header[index]
+        if char == ")":
+            depth += 1
+        elif char == "(":
+            depth -= 1
+            if depth == 0:
+                member = re.search(
+                    r"([A-Za-z_]\w*)\s*::\s*([A-Za-z_]\w*)\s*$",
+                    header[:index])
+                if member:
+                    return "::".join(member.groups())
+                match = re.search(r"([A-Za-z_]\w*)\s*$", header[:index])
+                return match.group(1) if match else None
+    return None
+
+
+MAKE_SHARED = re.compile(r"make_shared<([A-Za-z_][\w:]*)>\s*\(")
+
+# Primitives live in mlx::core (no namespace in the matrix rows),
+# mlx::core::fast, and mlx::core::distributed; the namespace walk only
+# sees the tail, so the tail maps to the matrix namespace.
+NAMESPACE_ALIAS = {"core": ""}
+
+
+def next_block(masked, start, end):
+    """First '{' outside any parenthesis in masked[start:end].
+
+    A brace inside a parameter list (a default argument such as
+    StreamOrDevice s = {}) is not the function body opener.
+    """
+    depth = 0
+    for index in range(start, end):
+        char = masked[index]
+        if char == "(":
+            depth += 1
+        elif char == ")":
+            depth -= 1
+        elif char == "{" and depth == 0:
+            return index
+    return -1
+
+
+def attribute_functions(masked):
+    """(namespace, function name, body) for every function-definition block."""
+    out = []
+
+    def walk(start, end, ns):
+        index = start
+        while index < end:
+            brace = next_block(masked, index, end)
+            if brace == -1:
+                return
+            header = masked[index:brace].rstrip()
+            close = block_end(masked, brace)
+            tail = NAMESPACE_TAIL.search(header)
+            if tail:
+                tail_ns = tail.group(1).rpartition("::")[2]
+                walk(brace + 1, close, NAMESPACE_ALIAS.get(tail_ns, tail_ns))
+            else:
+                name = function_name(header)
+                if name:
+                    out.append((ns, name, masked[brace + 1:close]))
+            index = close + 1
+
+    walk(0, len(masked), "")
+    return out
+
+
+def parse_op_constructions(upstream_keys):
+    """Map every upstream op function name to the primitives it builds.
+
+    Derived from the upstream sources in two passes. Pass one
+    attributes each function body its own std::make_shared<Primitive>
+    types and the functions it calls; an unqualified primitive name
+    built inside an inner namespace (random::bits building RandomBits)
+    falls back to its unique upstream namespace. Pass two walks the
+    name-level call graph two hops out, so ops that build primitives
+    through one helper (bitwise_and -> in_binary, compile ->
+    compile_fuse, the linalg wrappers) still resolve, with no curated
+    list anywhere.
+    """
+    direct = {}
+    calls = {}
+    for pattern in CONSTRUCTION_GLOBS:
+        for path in sorted(ROOT.glob(pattern)):
+            masked = mask_noncode(path.read_text())
+            for ns, op, body in attribute_functions(masked):
+                key = (ns, op)
+                prims = direct.setdefault(key, set())
+                edges = calls.setdefault(key, set())
+                for match in MAKE_SHARED.finditer(body):
+                    prim_ns, _, prim = match.group(1).rpartition("::")
+                    if prim_ns and prim_ns not in ("fast", "distributed"):
+                        continue
+                    constructed = (prim_ns or ns, prim)
+                    if constructed not in upstream_keys and not prim_ns:
+                        owners = {
+                            owner for owner, up in upstream_keys
+                            if up == prim}
+                        if len(owners) == 1:
+                            constructed = (owners.pop(), prim)
+                    if constructed in upstream_keys:
+                        prims.add(constructed)
+                for call in CALL_SITE.finditer(body):
+                    qualifier = body[max(0, call.start() - 6):call.start()]
+                    if (qualifier.endswith("std::")
+                            or qualifier.endswith(".")
+                            or qualifier.endswith("->")):
+                        continue
+                    edges.add(call.group(1))
+    by_name = {}
+    for key in direct:
+        by_name.setdefault(key[1], []).append(key)
+    op_map = {}
+    for name in by_name:
+        built = set()
+        seen = set()
+        frontier = {name}
+        for _ in range(3):
+            following = set()
+            for entry in sorted(frontier):
+                if entry in seen:
+                    continue
+                seen.add(entry)
+                for key in by_name.get(entry, ()):
+                    built |= direct[key]
+                    following |= calls[key]
+            frontier = following - seen
+        for constructed in built:
+            op_map.setdefault(name, set()).add(constructed)
+    return op_map
+
+
+def parse_test_cases(op_map, upstream_keys, upstream_names):
+    """TEST_CASEs with the primitives each body provably exercises.
+
+    Evidence is content-derived from the case body:
+    - ops: primitives reached by a direct op call. A call is the
+      maximal identifier before '('; std::-qualified host references
+      and method calls do not count, other qualifiers such as fast::
+      do.
+    - exclusive: the subset of ops reached by calls whose whole
+      construction map is one primitive, plus primitives the body
+      builds itself with std::make_shared (the contract tests build
+      primitives no public op constructs).
+    - mentions: upstream class names inside body string literals, the
+      named-error qualifiers the case expects.
+    """
     cases = []
     order = {}
     for path in sorted(ROOT.glob(TEST_GLOB)):
-        text = path.read_text()
+        raw = path.read_text()
+        masked = mask_noncode(raw)
         rel = path.relative_to(ROOT)
         if rel not in order:
             order[rel] = len(order)
-        for match in re.finditer(
-                r'TEST_CASE\(\s*"((?:[^"\\]|\\.)*)"', text, re.S):
-            line = text[:match.start()].count("\n") + 1
-            cases.append((order[rel], str(rel), line, match.group(1)))
+        for match in re.finditer(r"TEST_CASE\s*\(", masked):
+            line = masked[:match.start()].count("\n") + 1
+            title = re.match(
+                r'TEST_CASE\s*\(\s*"((?:[^"\\]|\\.)*)"',
+                raw[match.start():]).group(1)
+            args = balanced(masked, match.end() - 1)
+            brace = masked.find("{", match.end() + len(args) + 1)
+            close = block_end(masked, brace)
+            body = masked[brace + 1:close]
+            raw_body = raw[brace + 1:close]
+            ops = set()
+            exclusive = set()
+            for call in CALL_SITE.finditer(body):
+                qualifier = body[max(0, call.start() - 6):call.start()]
+                if (qualifier.endswith("std::")
+                        or qualifier.endswith(".")
+                        or qualifier.endswith("->")):
+                    continue
+                mapped = op_map.get(call.group(1), set())
+                ops |= mapped
+                if len(mapped) == 1:
+                    exclusive |= mapped
+            for built in MAKE_SHARED.finditer(raw_body):
+                prim = built.group(1)
+                matches = {
+                    up_ns for up_ns, up_prim in upstream_keys
+                    if up_prim == prim}
+                if len(matches) == 1:
+                    constructed = (next(iter(matches)), prim)
+                    ops.add(constructed)
+                    exclusive.add(constructed)
+            literals = " ".join(
+                re.findall(r'"((?:[^"\\]|\\.)*)"', raw_body))
+            mentions = {
+                name for name in upstream_names
+                if re.search(rf"\b{re.escape(name)}\b", literals)}
+            cases.append({
+                "order": order[rel],
+                "rel": str(rel),
+                "line": line,
+                "name": title,
+                "ops": ops,
+                "exclusive": exclusive,
+                "mentions": mentions,
+            })
     return cases
 
 
-def anchor_for(name, cases):
-    for pattern in TEST_ANCHORS.get(name, []):
-        regex = re.compile(pattern, re.I)
+
+def anchor_for(display, cases):
+    """Anchor link for one primitive, resolved from case bodies.
+
+    Evidence tiers, strongest first: a case calling an op whose
+    construction map is exactly this primitive, then any case calling
+    an op that constructs it (composite paths such as dequantize count,
+    but yield to dedicated tests), then a case naming the primitive in
+    an expected-error string. Within a tier the earliest case in file
+    order wins.
+    """
+    ns, _, name = display.rpartition("::")
+    key = (ns, name)
+    for tier in ("exclusive", "ops", "mentions"):
         best = None
-        for order, rel, line, case_name in cases:
-            if regex.search(case_name):
-                if best is None or (order, line) < (best[0], best[2]):
-                    best = (order, rel, line, case_name)
+        for case in cases:
+            if tier == "mentions":
+                hit = name in case["mentions"]
+            else:
+                hit = key in case[tier]
+            if not hit:
+                continue
+            if best is None or (case["order"], case["line"]) < (
+                    best["order"], best["line"]):
+                best = case
         if best is not None:
-            _, rel, line, case_name = best
-            return (
-                f"[`{case_name}`](../{rel}#L{line})"
-            )
+            return f"[`{best['name']}`](../{best['rel']}#L{best['line']})"
     return "—"
 
 
@@ -680,7 +886,10 @@ def main():
     gates = parse_capability_gates(primitives_text)
     helpers, fragments, called, helper_dtype_map = parse_helpers(
         primitives_text, variant_dtypes)
-    cases = parse_test_cases()
+    upstream = parse_upstream_primitives()
+    op_map = parse_op_constructions(set(upstream))
+    upstream_names = sorted({name for _, name in upstream})
+    cases = parse_test_cases(op_map, set(upstream), upstream_names)
     bool_out_helpers = {
         helper
         for helper, body in helpers.items()
@@ -727,7 +936,6 @@ def main():
     rows = [rows_by_key[(entry["ns"], entry["name"])]
             for entry in entries]
 
-    upstream = parse_upstream_primitives()
     backend_keys = {(entry["ns"], entry["name"]) for entry in entries}
     phantom = backend_keys - set(upstream)
     if phantom:
@@ -830,10 +1038,12 @@ def main():
     out.append("")
     out.append(
         "Coverage counts a primitive only when the omarchy backend "
-        "dispatches or composes it (native or composed) and a resolved "
-        "TEST_CASE anchors it in `overlay/tests/omarchy/`. "
-        "Native-but-untested primitives keep their own buckets below "
-        "and are not counted as covered.")
+        "dispatches or composes it (native or composed) and a TEST_CASE "
+        "in `overlay/tests/omarchy/` anchors it: the case body calls an "
+        "op that constructs the primitive, constructs the primitive "
+        "itself, or names the primitive in an expected-error string. "
+        "Native-but-untested primitives keep "
+        "their own buckets below and are not counted as covered.")
     out.append("")
     out.append(
         "The denominator is every concrete primitive class upstream "
