@@ -1,0 +1,162 @@
+// General-axis scan (cumulative sum, product, min, and max): any axis in
+// any position, forward or reverse, inclusive or exclusive, over float and
+// 32-bit integer storage. One invocation owns one line along the scan axis
+// and walks it serially, the shape the suffix scan kernel uses; the
+// accumulator stays float32 for every float dtype.
+//
+// Push-constant routing: dims is the input rank, shape[] the extents,
+// in_strides[] the input strides, out_strides[] the output strides, matrix_m
+// the scan axis, reduce_size the operation selector (0 Sum, 1 Prod, 2 Min,
+// 3 Max), flags bit 0 the reverse flag, and operation the inclusive flag
+// (0 inclusive, 1 exclusive) exactly as scan_suffix.comp defines it.
+#version 460
+
+#ifdef USE_FP16
+#extension GL_EXT_shader_16bit_storage : require
+#extension GL_EXT_shader_explicit_arithmetic_types_float16 : require
+#define STORAGE_TYPE float16_t
+#define LOAD_VALUE(x) float(x)
+#define STORE_VALUE(f) STORAGE_TYPE(f)
+#define ACC_TYPE float
+#elif defined(USE_BF16)
+#extension GL_EXT_shader_16bit_storage : require
+#extension GL_EXT_shader_explicit_arithmetic_types_int16 : require
+#define STORAGE_TYPE uint16_t
+#define LOAD_VALUE(x) uintBitsToFloat(uint(x) << 16u)
+uint16_t bf16_store(float value) {
+  uint bits = floatBitsToUint(value);
+  if (isnan(value)) {
+    return uint16_t((bits >> 16) | 0x40u);
+  }
+  return uint16_t((bits + 0x7fffu + ((bits >> 16) & 1u)) >> 16);
+}
+#define STORE_VALUE(f) bf16_store(f)
+#define ACC_TYPE float
+#elif defined(USE_I32)
+#define STORAGE_TYPE int
+#define LOAD_VALUE(x) STORAGE_TYPE(x)
+#define STORE_VALUE(f) STORAGE_TYPE(f)
+#define ACC_TYPE int
+#elif defined(USE_U32)
+#define STORAGE_TYPE uint
+#define LOAD_VALUE(x) STORAGE_TYPE(x)
+#define STORE_VALUE(f) STORAGE_TYPE(f)
+#define ACC_TYPE uint
+#else
+#define STORAGE_TYPE float
+#define LOAD_VALUE(x) float(x)
+#define STORE_VALUE(f) STORAGE_TYPE(f)
+#define ACC_TYPE float
+#endif
+
+layout(local_size_x = 1) in;
+
+layout(set = 0, binding = 0, std430) readonly buffer Input {
+  STORAGE_TYPE values[];
+} input_data;
+layout(set = 0, binding = 2, std430) writeonly buffer Output {
+  STORAGE_TYPE values[];
+} output_data;
+
+layout(push_constant) uniform Params {
+  uint count;
+  uint operation;
+  uint lhs_size;
+  uint rhs_size;
+  uint reduce_size;
+  uint output_size;
+  uint lhs_offset;
+  uint rhs_offset;
+  uint output_offset;
+  uint aux_size;
+  uint aux_offset;
+  uint matrix_m;
+  uint matrix_n;
+  uint matrix_k;
+  uint flags;
+  float alpha;
+  float beta;
+  uint dims;
+  uint shape[4];
+  uint in_strides[4];
+  uint out_strides[4];
+} params;
+
+#ifdef USE_I32
+// -2147483648 has no direct GLSL literal; the C-style two-step avoids the
+// unary-minus-parses-first trap.
+#define MAX_SENTINEL 2147483647
+#define MIN_SENTINEL (-2147483647 - 1)
+#elif defined(USE_U32)
+#define MAX_SENTINEL 0xffffffffu
+#define MIN_SENTINEL 0u
+#else
+#define MAX_SENTINEL uintBitsToFloat(0x7f800000u)
+#define MIN_SENTINEL uintBitsToFloat(0xff800000u)
+#endif
+
+ACC_TYPE init_value(uint operation) {
+  if (operation == 0u) {
+    return ACC_TYPE(0);
+  }
+  if (operation == 1u) {
+    return ACC_TYPE(1);
+  }
+  if (operation == 2u) {
+    return ACC_TYPE(MAX_SENTINEL);
+  }
+  return ACC_TYPE(MIN_SENTINEL);
+}
+
+ACC_TYPE combine(ACC_TYPE acc, ACC_TYPE next, uint operation) {
+  if (operation == 0u) {
+    return acc + next;
+  }
+  if (operation == 1u) {
+    return acc * next;
+  }
+  if (operation == 2u) {
+    return acc < next ? acc : next;
+  }
+  return acc > next ? acc : next;
+}
+
+void main() {
+  uint line = gl_GlobalInvocationID.x;
+  if (line >= params.output_size) {
+    return;
+  }
+  uint axis = params.matrix_m;
+  uint rem = line;
+  uint in_off = params.lhs_offset;
+  uint out_off = params.output_offset;
+  for (int d = int(params.dims) - 1; d >= 0; --d) {
+    if (d == int(axis)) {
+      // The scan-axis coordinate stays zero in the base offset; the walk
+      // below adds it in per element.
+      continue;
+    }
+    uint coord = rem % params.shape[d];
+    rem /= params.shape[d];
+    in_off += coord * params.in_strides[d];
+    out_off += coord * params.out_strides[d];
+  }
+  uint length = params.shape[axis];
+  uint in_step = params.in_strides[axis];
+  uint out_step = params.out_strides[axis];
+  bool reverse = (params.flags & 1u) != 0u;
+  ACC_TYPE value = init_value(params.reduce_size);
+  for (uint t = 0u; t < length; ++t) {
+    uint j = reverse ? length - 1u - t : t;
+    ACC_TYPE next = ACC_TYPE(LOAD_VALUE(input_data.values[in_off + j * in_step]));
+    if (params.operation == 0u) {
+      // Inclusive: the running value covers the current element.
+      value = combine(value, next, params.reduce_size);
+      output_data.values[out_off + j * out_step] = STORE_VALUE(value);
+    } else {
+      // Exclusive: the running value covers only earlier elements.
+      output_data.values[out_off + j * out_step] = STORE_VALUE(value);
+      value = combine(value, next, params.reduce_size);
+    }
+  }
+}

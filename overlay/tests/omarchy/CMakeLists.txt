@@ -67,3 +67,35 @@ target_link_options(omarchy_shape_ops_tests PRIVATE ${SANITIZER_LINK_FLAGS})
 
 doctest_discover_tests(omarchy_shape_ops_tests)
 add_test(NAME omarchy_shape_ops_tests COMMAND omarchy_shape_ops_tests)
+
+add_executable(omarchy_reduce_ops_tests
+               ${CMAKE_CURRENT_SOURCE_DIR}/test_reduce_ops.cpp)
+target_link_libraries(omarchy_reduce_ops_tests PRIVATE mlx doctest)
+target_compile_options(omarchy_reduce_ops_tests
+                       PRIVATE ${SANITIZER_COMPILE_FLAGS})
+target_link_options(omarchy_reduce_ops_tests PRIVATE ${SANITIZER_LINK_FLAGS})
+
+doctest_discover_tests(omarchy_reduce_ops_tests)
+add_test(NAME omarchy_reduce_ops_tests COMMAND omarchy_reduce_ops_tests)
+
+add_executable(omarchy_indexing_ops_tests
+               ${CMAKE_CURRENT_SOURCE_DIR}/test_indexing_ops.cpp)
+target_link_libraries(omarchy_indexing_ops_tests PRIVATE mlx doctest)
+target_compile_options(omarchy_indexing_ops_tests
+                       PRIVATE ${SANITIZER_COMPILE_FLAGS})
+target_link_options(omarchy_indexing_ops_tests PRIVATE ${SANITIZER_LINK_FLAGS})
+
+doctest_discover_tests(omarchy_indexing_ops_tests)
+add_test(NAME omarchy_indexing_ops_tests COMMAND omarchy_indexing_ops_tests)
+
+add_executable(omarchy_matmul_family_tests
+               ${CMAKE_CURRENT_SOURCE_DIR}/test_matmul_family.cpp)
+target_link_libraries(omarchy_matmul_family_tests PRIVATE mlx doctest)
+target_compile_options(omarchy_matmul_family_tests
+                       PRIVATE ${SANITIZER_COMPILE_FLAGS})
+target_link_options(omarchy_matmul_family_tests
+                    PRIVATE ${SANITIZER_LINK_FLAGS})
+
+doctest_discover_tests(omarchy_matmul_family_tests)
+add_test(NAME omarchy_matmul_family_tests
+         COMMAND omarchy_matmul_family_tests)

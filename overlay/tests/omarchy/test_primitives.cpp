@@ -442,11 +442,11 @@ TEST_CASE("elementwise on broadcast-expanded views matches host values") {
        4, 4},
       stream);
 
-  // A real reduce over the non-row-contiguous view stays a named error,
-  // never a silent wrong value.
+  // A real reduce over a view above the push-constant rank cap stays a
+  // named error, never a silent wrong value.
   CHECK(
       evaluation_error(sum(view, std::vector<int>{0}, false, stream))
-          .find("non-contiguous Sum") != std::string::npos);
+          .find("Sum rank above 4") != std::string::npos);
 }
 
 TEST_CASE("compute indexing stays inside Vulkan and uint32 limits") {
@@ -1041,10 +1041,9 @@ TEST_CASE("unsupported compute shapes and dtypes fail without CPU fallback") {
   std::string broadcast_error = evaluation_error(add(lhs, rhs, stream));
   CHECK(broadcast_error.find("broadcast rank Add") != std::string::npos);
 
+  // Leading-axis reduction now computes through the general kernel.
   array matrix({1.0f, 2.0f, 3.0f, 4.0f}, {2, 2}, float32);
-  std::string reduction_error =
-      evaluation_error(sum(matrix, 0, false, stream));
-  CHECK(reduction_error.find("non-suffix Sum") != std::string::npos);
+  check_values(sum(matrix, 0, false, stream), {4.0f, 6.0f}, stream);
 
   auto construction_error = [](auto&& build) -> std::string {
     try {
@@ -1212,15 +1211,31 @@ TEST_CASE("softmax normalizes rows through Vulkan compute") {
       softmax(transpose(base, stream), std::vector<int>{-1}, false, stream));
   CHECK(layout_error.find("non-contiguous Softmax") != std::string::npos);
 
-  // Non-suffix axes never build a Softmax primitive; upstream decomposes
-  // them into reductions, and the reduction pins the named error.
+  // Non-suffix axes decompose softmax into general reductions, which now
+  // compute; the result matches a host softmax over those axes.
   array grid(
       {1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f, 7.0f, 8.0f},
       {2, 2, 2},
       float32);
-  std::string suffix_error =
-      evaluation_error(softmax(grid, std::vector<int>{0, 1}, false, stream));
-  CHECK(suffix_error.find("non-suffix Max") != std::string::npos);
+  array wide_softmax = softmax(grid, std::vector<int>{0, 1}, false, stream);
+  std::vector<float> softmax_expected;
+  for (int i = 0; i < 2; ++i) {
+    for (int j = 0; j < 2; ++j) {
+      for (int k = 0; k < 2; ++k) {
+        float value = static_cast<float>(i * 4 + j * 2 + k + 1);
+        float peak = k == 0 ? 7.0f : 8.0f;
+        float total = 0.0f;
+        for (int a = 0; a < 2; ++a) {
+          for (int b = 0; b < 2; ++b) {
+            total +=
+                std::exp(static_cast<float>(a * 4 + b * 2 + k + 1) - peak);
+          }
+        }
+        softmax_expected.push_back(std::exp(value - peak) / total);
+      }
+    }
+  }
+  check_values(wide_softmax, softmax_expected, stream, 1e-5);
 }
 
 TEST_CASE("FP16 and BF16 softmax match host references") {
@@ -3716,12 +3731,16 @@ TEST_CASE("CumSum scans suffix rows against host references") {
       {0.0f, 1.0f, 11.0f, 0.0f, 2.0f, 22.0f},
       stream);
 
-  // Reverse scans and non-suffix axes stay named rejections.
-  std::string reverse_error =
-      evaluation_error(cumsum(x, 0, true, false, stream));
-  CHECK(reverse_error.find("reverse Scan") != std::string::npos);
-  std::string axis_error = evaluation_error(cumsum(rows, 0, false, true, stream));
-  CHECK(axis_error.find("non-suffix Scan") != std::string::npos);
+  // Reverse scans and leading-axis scans now compute through the general
+  // kernel.
+  check_values(
+      cumsum(x, 0, true, false, stream),
+      {14.0f, 12.0f, 9.0f, 5.0f, 0.0f},
+      stream);
+  check_values(
+      cumsum(rows, 0, false, true, stream),
+      {1.0f, 10.0f, 100.0f, 3.0f, 30.0f, 300.0f},
+      stream);
 }
 
 TEST_CASE("searchsorted matches the upstream binary search on both sides") {

@@ -1,0 +1,152 @@
+// Copyright © 2026 Joshua Warren / mlx-omarchy contributors.
+// SPDX-License-Identifier: MIT
+//
+// ScatterAxis (put_along_axis and scatter_add_axis; upstream defines
+// only the None and Sum reduce modes for this primitive). out holds the
+// copied src; each slot resolves one axis coordinate:
+//   0 NONE pass 1: atomicMax the slot rank into scratch[target]
+//   1 NONE pass 2: the winning slot copies its update, so duplicate
+//     indices resolve to the highest slot exactly like the CPU loop;
+//     deterministic for every dtype
+//   6 SUM: atomicAdd of the update word; deterministic for int32 and
+//     uint32 (integer addition is associative). Float Sum has no
+//     deterministic implementation here and is rejected by the host
+//     before any dispatch.
+// An index outside [0, src axis extent) after negative wrap skips the
+// slot; upstream leaves such writes undefined.
+//
+// The index array is dense and its flat index is the slot t; updates
+// may be a broadcast view and address through out_strides plus the
+// matrix_n axis stride. src addresses through in_strides plus the
+// matrix_m axis stride. shape[0..flags) are the non-axis extents,
+// pre-axis dims first; matrix_k is the pre-axis dim count. USE_U32
+// covers float32 (bitwise NONE copy) plus int32/uint32.
+
+#version 460
+
+#ifdef USE_FP16
+#extension GL_EXT_shader_16bit_storage : require
+#extension GL_EXT_shader_explicit_arithmetic_types_float16 : require
+#define STORAGE_TYPE float16_t
+#elif defined(USE_BF16)
+#extension GL_EXT_shader_16bit_storage : require
+#extension GL_EXT_shader_explicit_arithmetic_types_int16 : require
+#define STORAGE_TYPE uint16_t
+#elif defined(USE_U32)
+#define STORAGE_TYPE uint
+#else
+#define STORAGE_TYPE float
+#endif
+
+layout(local_size_x = 256) in;
+
+layout(set = 0, binding = 0, std430) buffer Output {
+  STORAGE_TYPE values[];
+} out_data;
+layout(set = 0, binding = 1, std430) readonly buffer Indices {
+  int values[];
+} indices_data;
+layout(set = 0, binding = 2, std430) readonly buffer Updates {
+  STORAGE_TYPE values[];
+} upd_data;
+layout(set = 0, binding = 3, std430) buffer Scratch {
+  uint values[];
+} scratch_data;
+
+layout(push_constant) uniform Params {
+  uint count;
+  uint operation;
+  uint lhs_size;
+  uint rhs_size;
+  uint reduce_size;
+  uint output_size;
+  uint lhs_offset;
+  uint rhs_offset;
+  uint output_offset;
+  uint aux_size;
+  uint aux_offset;
+  uint matrix_m;
+  uint matrix_n;
+  uint matrix_k;
+  uint flags;
+  float alpha;
+  float beta;
+  uint dims;
+  uint shape[4];
+  uint in_strides[4];
+  uint out_strides[4];
+} params;
+
+void main() {
+  uint t = gl_GlobalInvocationID.x;
+  uint stride = gl_NumWorkGroups.x * gl_WorkGroupSize.x;
+  uint op = params.operation;
+  uint m_axis = params.aux_size;
+  uint post_size = params.output_size;
+  while (t < params.count) {
+    uint slot = t / (m_axis * post_size);
+    uint rem = t - slot * m_axis;
+    uint ax = rem / post_size;
+    uint post = rem - ax * post_size;
+    uint word_slot = params.aux_offset == 2u ? t + t : t;
+    uint word = uint(
+        indices_data.values[params.rhs_offset + word_slot]);
+    uint index = params.reduce_size;
+    if (params.aux_offset == 0u) {
+      if (word < 0x80000000u) {
+        index = word;
+      }
+    } else if (params.aux_offset == 1u) {
+      index = word;
+    } else {
+      uint high =
+          uint(indices_data.values[params.rhs_offset + word_slot + 1u]);
+      if (high == 0u) {
+        index = word;
+      }
+    }
+    if (index < params.reduce_size) {
+      // Non-axis source/update offsets: pre dims walk slot, post dims
+      // walk post.
+      uint src_elem = 0u;
+      uint upd_elem = 0u;
+      uint coord_scale = 1u;
+      for (uint i = params.flags; i > params.matrix_k; --i) {
+        uint dim = params.shape[i - 1u];
+        uint coord = (post / coord_scale) % dim;
+        src_elem += coord * params.in_strides[i - 1u];
+        upd_elem += coord * params.out_strides[i - 1u];
+        coord_scale *= dim;
+      }
+      coord_scale = 1u;
+      for (uint i = params.matrix_k; i > 0u; --i) {
+        uint dim = params.shape[i - 1u];
+        uint coord = (slot / coord_scale) % dim;
+        src_elem += coord * params.in_strides[i - 1u];
+        upd_elem += coord * params.out_strides[i - 1u];
+        coord_scale *= dim;
+      }
+      uint target = params.output_offset + src_elem +
+          index * params.matrix_m;
+      if (op == 0u) {
+        atomicMax(scratch_data.values[target], t + 1u);
+      } else if (op == 1u) {
+        if (scratch_data.values[target] == t + 1u) {
+          out_data.values[target] = upd_data
+              .values[params.lhs_offset + upd_elem + ax * params.matrix_n];
+        }
+#ifdef USE_U32
+      } else if (op == 6u) {
+        atomicAdd(
+            out_data.values[target],
+            upd_data
+                .values[params.lhs_offset + upd_elem + ax * params.matrix_n]);
+#endif
+      }
+    }
+    if (params.count - t <= stride) {
+      break;
+    }
+    t += stride;
+  }
+}

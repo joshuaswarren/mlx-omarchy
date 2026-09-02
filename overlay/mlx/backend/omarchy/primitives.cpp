@@ -7,6 +7,7 @@
 #include <array>
 #include <cmath>
 #include <cstdint>
+#include <cstdio>
 #include <limits>
 #include <optional>
 #include <string>
@@ -913,6 +914,605 @@ void dispatch_softmax(
       std::min(output_size, omarchy::kMaxComputeGroupCountX));
 }
 
+// The general-axis reduction family: integer dtypes, Any/All, and every
+// non-suffix axis position. The selector matches the switch in
+// shaders/reduce_general.comp.
+enum ReduceOperation : uint32_t {
+  ReduceSumOperation,
+  ReduceProdOperation,
+  ReduceMinOperation,
+  ReduceMaxOperation,
+  ReduceAnyOperation,
+  ReduceAllOperation,
+};
+
+// Capability gate for a float input whose output is a different dtype;
+// Any/All produce bool from float input, so require_float_dtype's
+// input-equals-output rule does not apply.
+void require_float_input(
+    const std::string& name,
+    const array& input,
+    const array& out,
+    omarchy::CommandEncoder& encoder) {
+  const auto& capabilities = encoder.device().capabilities();
+  if (input.dtype() == float16 &&
+      (!capabilities.shader_float16 ||
+       !capabilities.storage_buffer_16bit_access)) {
+    omarchy::unsupported(name + " float16 capability", out);
+  }
+  if (input.dtype() == bfloat16 &&
+      (!capabilities.storage_buffer_16bit_access ||
+       !capabilities.shader_int16)) {
+    omarchy::unsupported(name + " bfloat16 capability", out);
+  }
+}
+
+omarchy::ComputeKernel select_anyall_kernel(Dtype input_dtype) {
+  switch (input_dtype) {
+    case bool_:
+      return omarchy::ComputeKernel::AnyAllBool;
+    case int32:
+      return omarchy::ComputeKernel::AnyAllI32;
+    case uint32:
+      return omarchy::ComputeKernel::AnyAllU32;
+    case float16:
+      return omarchy::ComputeKernel::AnyAllF16;
+    case bfloat16:
+      return omarchy::ComputeKernel::AnyAllBF16;
+    default:
+      return omarchy::ComputeKernel::AnyAllF32;
+  }
+}
+
+omarchy::ComputeKernel select_reduce_general_kernel(Dtype dtype) {
+  switch (dtype) {
+    case int32:
+      return omarchy::ComputeKernel::ReduceGeneralI32;
+    case uint32:
+      return omarchy::ComputeKernel::ReduceGeneralU32;
+    case float16:
+      return omarchy::ComputeKernel::ReduceGeneralF16;
+    case bfloat16:
+      return omarchy::ComputeKernel::ReduceGeneralBF16;
+    default:
+      return omarchy::ComputeKernel::ReduceGeneralF32;
+  }
+}
+
+// The stride-walking general reduction: axes in any position, up to four
+// total. Push-constant routing mirrors shaders/reduce_general.comp:
+// shape[] carries the kept extents then the reduced extents, in_strides[]
+// the kept input strides, out_strides[] the reduced input strides, dims the
+// kept count, and matrix_m the reduced count. A broadcast view reduces
+// correctly because its expanded axes carry stride 0.
+void dispatch_reduce_general(
+    const std::string& operation_name,
+    uint32_t operation,
+    const array& input,
+    array& out,
+    const std::vector<int>& axes,
+    omarchy::CommandEncoder& encoder,
+    omarchy::ComputeKernel kernel) {
+  if (input.ndim() > 4) {
+    omarchy::unsupported(operation_name + " rank above 4", out);
+  }
+  std::vector<int> kept;
+  std::vector<int> reduced;
+  for (int axis = 0; axis < input.ndim(); ++axis) {
+    if (std::find(axes.begin(), axes.end(), axis) != axes.end()) {
+      reduced.push_back(axis);
+    } else {
+      kept.push_back(axis);
+    }
+  }
+  size_t reduce_size = 1;
+  for (int axis : reduced) {
+    reduce_size *= input.shape(axis);
+  }
+  out.set_data(allocate_omarchy(out.nbytes()));
+  if (out.size() == 0) {
+    return;
+  }
+  uint32_t output_size = checked_u32(out.size(), operation_name, out);
+  const array& bound_input = input.size() == 0 ? out : input;
+  omarchy::ComputeParams params;
+  params.count = output_size;
+  params.operation = operation;
+  params.reduce_size = checked_u32(reduce_size, operation_name, out);
+  params.output_size = output_size;
+  params.lhs_offset = checked_item_offset(
+      bound_input, input.size(), operation_name, out);
+  params.output_offset = checked_item_offset(
+      out, out.size(), operation_name, out);
+  params.dims = static_cast<uint32_t>(kept.size());
+  params.matrix_m = static_cast<uint32_t>(reduced.size());
+  for (size_t index = 0; index < kept.size(); ++index) {
+    params.shape[index] = static_cast<uint32_t>(input.shape(kept[index]));
+    params.in_strides[index] =
+        static_cast<uint32_t>(input.strides()[kept[index]]);
+  }
+  for (size_t index = 0; index < reduced.size(); ++index) {
+    params.shape[kept.size() + index] =
+        static_cast<uint32_t>(input.shape(reduced[index]));
+    params.out_strides[index] =
+        static_cast<uint32_t>(input.strides()[reduced[index]]);
+  }
+  std::array<omarchy::ComputeBinding, 3> bindings{
+      binding(bound_input), binding(bound_input), binding(out)};
+  // Bool outputs word-pack four elements per 32-bit write.
+  uint32_t dispatch_count = out.dtype() == bool_
+      ? checked_u32(
+            (static_cast<uint64_t>(output_size) + 3) / 4, operation_name, out)
+      : output_size;
+  encoder.dispatch_compute(
+      kernel,
+      bindings,
+      params,
+      omarchy::compute_dispatch_group_count(dispatch_count));
+}
+
+// ---------------------------------------------------------------------------
+// Wave 5: indexing and scatter. Shared helpers live in this block; the
+// eval functions sit at their alphabetical primitive sites below.
+// ---------------------------------------------------------------------------
+
+// Scatter index words: 0 = int32, 1 = uint32, 2 = int64 read as two
+// little-endian words (the same encoding the gather kernels use).
+uint32_t scatter_index_mode(
+    const array& indices,
+    const array& out,
+    const std::string& name) {
+  if (indices.dtype() == int32) {
+    return 0;
+  }
+  if (indices.dtype() == uint32) {
+    return 1;
+  }
+  if (indices.dtype() == int64) {
+    return 2;
+  }
+  omarchy::unsupported(name + " index dtype", out);
+}
+
+uint32_t scatter_index_offset(
+    const array& indices,
+    const array& out,
+    const std::string& name) {
+  uint32_t offset = checked_item_offset(indices, indices.size(), name, out);
+  if (indices.dtype() == int64) {
+    if (offset > std::numeric_limits<uint32_t>::max() / 2) {
+      omarchy::unsupported(name + " index span", out);
+    }
+    return offset * 2;
+  }
+  return offset;
+}
+
+// Rank/sentinel scratch must outlive the queued commands, so it rides
+// the encoder temporaries.
+array make_u32_scratch(size_t count, omarchy::CommandEncoder& encoder) {
+  Shape shape{static_cast<int>(count)};
+  array scratch(std::move(shape), uint32, nullptr, {});
+  scratch.set_data(allocate_omarchy(scratch.nbytes()));
+  encoder.add_temporary(scratch);
+  return scratch;
+}
+
+void dispatch_clear_u32(
+    array& scratch,
+    uint32_t value,
+    omarchy::CommandEncoder& encoder) {
+  omarchy::ComputeParams params;
+  params.count = checked_u32(scratch.size(), "Scatter scratch", scratch);
+  params.operation = value;
+  std::array<omarchy::ComputeBinding, 1> bindings{binding(scratch)};
+  encoder.dispatch_compute(
+      omarchy::ComputeKernel::ClearU32,
+      bindings,
+      params,
+      omarchy::compute_dispatch_group_count(params.count));
+}
+
+// Wide-row ArgPartition: an 8-bit radix select finds the kth smallest
+// monotone key over four passes, then one workgroup per row emits the
+// stable partition order. Deterministic end to end: the histogram
+// counts through order-free integer atomics, the bucket walk is a
+// fixed shared-memory scan, and the emit is one fixed serial pass.
+// --- Wave 6: matmul family --------------------------------------------
+
+// True when walking the strides from the last axis meets either the
+// packed row-major stride or a broadcast 0 at every non-singleton axis,
+// so the buffer's first data_size entries are the logical values in
+// order. Bool masks need this property for the flat bool-to-float cast.
+bool is_flat_readable(const array& value) {
+  const auto& strides = value.strides();
+  int64_t expected = 1;
+  for (int axis = value.ndim() - 1; axis >= 0; --axis) {
+    if (value.shape(axis) == 1) {
+      continue;
+    }
+    if (strides[axis] != expected && strides[axis] != 0) {
+      return false;
+    }
+    if (strides[axis] != 0) {
+      expected *= value.shape(axis);
+    }
+  }
+  return true;
+}
+
+// True when a batched matrix stack is dense: the gathered base offsets
+// are index * matrix_size, which only addresses a packed stack (a
+// uniform transposition inside each matrix is still packed).
+bool is_dense_batched_matrix(const array& value, bool transposed) {
+  int rank = value.ndim();
+  if (rank < 2) {
+    return false;
+  }
+  const auto& strides = value.strides();
+  int64_t row_stride =
+      transposed ? 1 : static_cast<int64_t>(value.shape(rank - 1));
+  int64_t column_stride =
+      transposed ? static_cast<int64_t>(value.shape(rank - 2)) : 1;
+  if (strides[rank - 2] != row_stride || strides[rank - 1] != column_stride) {
+    return false;
+  }
+  int64_t expected =
+      static_cast<int64_t>(value.shape(rank - 2)) * value.shape(rank - 1);
+  for (int axis = rank - 3; axis >= 0; --axis) {
+    if (value.shape(axis) == 1) {
+      continue;
+    }
+    if (strides[axis] != expected) {
+      return false;
+    }
+    expected *= value.shape(axis);
+  }
+  return true;
+}
+
+array make_dense_temp(
+    const array& src,
+    const std::string& tag,
+    array& out,
+    omarchy::CommandEncoder& encoder) {
+  array temp(src.shape(), src.dtype(), nullptr, {});
+  array::Flags flags;
+  flags.contiguous = true;
+  flags.row_contiguous = true;
+  auto max_dim = std::max_element(src.shape().begin(), src.shape().end());
+  flags.col_contiguous = temp.size() <= 1 || temp.size() == *max_dim;
+  Strides strides(src.ndim(), 1);
+  for (int axis = static_cast<int>(src.ndim()) - 2; axis >= 0; --axis) {
+    strides[axis] = strides[axis + 1] * src.shape(axis + 1);
+  }
+  temp.set_data(
+      allocate_omarchy(temp.nbytes()), temp.size(), strides, flags, 0);
+  encoder.add_temporary(temp);
+  return temp;
+}
+
+// Casts a flat-readable bool mask to packed float32 values through the
+// word-per-four-elements CastBoolF32 kernel.
+array cast_bool_mask(
+    const array& mask,
+    const std::string& tag,
+    array& out,
+    omarchy::CommandEncoder& encoder) {
+  array temp(
+      Shape{static_cast<int>(mask.data_size())}, float32, nullptr, {});
+  array::Flags flags;
+  flags.contiguous = true;
+  flags.row_contiguous = true;
+  flags.col_contiguous = temp.size() <= 1;
+  temp.set_data(
+      allocate_omarchy(temp.nbytes()), temp.size(), Strides{1}, flags, 0);
+  encoder.add_temporary(temp);
+  uint32_t count = checked_u32(mask.data_size(), tag, out);
+  if (count == 0) {
+    return temp;
+  }
+  omarchy::ComputeParams params;
+  params.count = count;
+  params.lhs_size = count;
+  params.rhs_size = count;
+  params.output_size = count;
+  params.lhs_offset =
+      checked_item_offset(mask, mask.data_size(), tag, out);
+  params.output_offset = 0;
+  std::array<omarchy::ComputeBinding, 3> bindings{
+      binding(mask), binding(mask), binding(temp)};
+  encoder.dispatch_compute(
+      omarchy::ComputeKernel::CastBoolF32,
+      bindings,
+      params,
+      omarchy::compute_dispatch_group_count((count + 3) / 4));
+  return temp;
+}
+
+// Applies one block mask into the dense destination stack. The data side
+// reads through its own batch strides (0 = broadcast axis) and matrix
+// strides, so one dispatch both materializes a broadcast operand and
+// applies the mask; with data and dst sharing a buffer the kernel is a
+// per-element map, so in-place masking is safe. The mask is float32
+// (bool pre-cast) indexed by its own grid strides.
+void dispatch_block_mask(
+    const array& data,
+    const array& mask,
+    const array& mask_logical,
+    array& dst,
+    int rows,
+    int cols,
+    int block_size,
+    const std::string& tag,
+    array& out) {
+  auto& encoder = omarchy::get_command_encoder(out.primitive().stream());
+  int batch_axes = data.ndim() - 2;
+  if (batch_axes > 4) {
+    omarchy::unsupported(tag + " mask batch rank", out);
+  }
+  size_t batch = 1;
+  for (int axis = 0; axis < batch_axes; ++axis) {
+    batch *= data.shape(axis);
+  }
+  size_t count = batch * static_cast<size_t>(rows) * cols;
+  if (count == 0 || mask.size() == 0) {
+    return;
+  }
+  omarchy::ComputeParams params;
+  params.count = checked_u32(count, tag, out);
+  // Mask grid strides come from the logical mask (the bound values may
+  // be a flat cast temp): the last two axes are (block rows, block
+  // columns); higher axes ride out_strides, 0 = broadcast batch axis.
+  params.lhs_size = checked_u32(
+      mask_logical.strides()[mask_logical.ndim() - 2], tag, out);
+  params.rhs_size = checked_u32(
+      mask_logical.strides()[mask_logical.ndim() - 1], tag, out);
+  params.lhs_offset = checked_item_offset(data, data.size(), tag, out);
+  params.rhs_offset = checked_item_offset(mask, mask.size(), tag, out);
+  params.output_offset = checked_item_offset(dst, dst.size(), tag, out);
+  // Data matrix strides for the (row, column) decode.
+  params.aux_size =
+      checked_u32(data.strides()[data.ndim() - 2], tag, out);
+  params.aux_offset =
+      checked_u32(data.strides()[data.ndim() - 1], tag, out);
+  params.matrix_m = checked_u32(rows, tag, out);
+  params.matrix_n = checked_u32(cols, tag, out);
+  params.matrix_k = checked_u32(block_size, tag, out);
+  params.dims = static_cast<uint32_t>(batch_axes);
+  uint64_t data_span = 0;
+  uint64_t mask_span = 0;
+  for (int axis = 0; axis < batch_axes; ++axis) {
+    uint32_t extent = static_cast<uint32_t>(data.shape(axis));
+    uint32_t d_stride =
+        static_cast<uint32_t>(data.strides()[axis]);
+    uint32_t m_stride =
+        static_cast<uint32_t>(mask_logical.strides()[axis]);
+    params.shape[axis] = extent;
+    params.in_strides[axis] = d_stride;
+    params.out_strides[axis] = m_stride;
+    data_span += (extent - 1u) * d_stride;
+    mask_span += (extent - 1u) * m_stride;
+  }
+  data_span += (rows - 1) * params.aux_size + (cols - 1) * params.aux_offset;
+  mask_span += (params.lhs_size + params.rhs_size) *
+      static_cast<uint64_t>(((rows + block_size - 1) / block_size) *
+                            ((cols + block_size - 1) / block_size));
+  if (!omarchy::compute_index_span_fits(params.lhs_offset, data_span + 1) ||
+      !omarchy::compute_index_span_fits(params.rhs_offset, mask_span + 1)) {
+    omarchy::unsupported(tag + " mask index span", out);
+  }
+  std::array<omarchy::ComputeBinding, 3> bindings{
+      binding(data), binding(mask), binding(dst)};
+  encoder.dispatch_compute(
+      omarchy::ComputeKernel::BlockMaskF32,
+      bindings,
+      params,
+      omarchy::compute_dispatch_group_count(params.count));
+}
+
+// Shared body for the gathered affine quantized matmuls: GatherQMM
+// (scale + bias), GatherQQMM and the quantized-weight QQMatmul path
+// (scale only, no_bias). lhs/rhs with a single zero index serve the
+// un-gathered case. The packed word buffer carries [scales bytes |
+// (bias bytes) | lhs index words | rhs index words]; every region sits
+// on a 4-byte boundary and padding stays zeroed, so 16-bit parameters
+// decode from whole words with no 16-bit storage reads.
+void dispatch_gather_qmm(
+    const std::string& tag,
+    const array& x,
+    const array& w,
+    const array& scales,
+    const std::optional<array>& biases,
+    const array& lhs,
+    const array& rhs,
+    int group_size,
+    int bits,
+    array& out,
+    const Stream& s) {
+  auto& encoder = omarchy::get_command_encoder(s);
+  require_float_dtype(tag, x, out, encoder);
+  if (bits != 4 && bits != 8) {
+    omarchy::unsupported(tag + " bits", out);
+  }
+  if (group_size != 32 && group_size != 64) {
+    omarchy::unsupported(tag + " group size", out);
+  }
+  if (w.dtype() != uint32) {
+    omarchy::unsupported(tag + " weight dtype", out);
+  }
+  if (!x.flags().row_contiguous || !w.flags().row_contiguous ||
+      !scales.flags().row_contiguous ||
+      (biases && !biases->flags().row_contiguous)) {
+    omarchy::unsupported(tag + " non-contiguous input", out);
+  }
+  if (scales.dtype() != out.dtype() ||
+      (biases && biases->dtype() != out.dtype())) {
+    // ops.cpp promotes scales and biases to the output dtype.
+    omarchy::unsupported(tag + " scales dtype", out);
+  }
+  if ((x.ndim() != 2 && x.ndim() != 3) || (w.ndim() != 2 && w.ndim() != 3)) {
+    omarchy::unsupported(tag + " rank", out);
+  }
+  int k = x.shape(-1);
+  int m = x.shape(-2);
+  int n = w.shape(-2);
+  if (static_cast<uint64_t>(w.shape(-1)) * 32u / bits !=
+      static_cast<uint64_t>(k)) {
+    omarchy::unsupported(tag + " shape", out);
+  }
+  if (scales.ndim() != w.ndim() || scales.shape(-2) != n ||
+      static_cast<uint64_t>(scales.shape(-1)) * group_size !=
+          static_cast<uint64_t>(k) ||
+      !std::equal(
+          w.shape().begin(),
+          w.shape().end() - 2,
+          scales.shape().begin())) {
+    omarchy::unsupported(tag + " scales shape", out);
+  }
+  if (biases && biases->shape() != scales.shape()) {
+    omarchy::unsupported(tag + " scales shape", out);
+  }
+  if (lhs.dtype() != uint32 || rhs.dtype() != uint32) {
+    omarchy::unsupported(tag + " index dtype", out);
+  }
+  if (lhs.shape() != rhs.shape()) {
+    omarchy::unsupported(tag + " index shape", out);
+  }
+  std::optional<array> lhs_packed;
+  std::optional<array> rhs_packed;
+  const array* lhs_ptr = &lhs;
+  const array* rhs_ptr = &rhs;
+  if (!lhs.flags().row_contiguous) {
+    lhs_packed = make_dense_temp(lhs, tag, out, encoder);
+    copy_gpu_inplace(
+        lhs,
+        *lhs_packed,
+        lhs.shape(),
+        lhs.strides(),
+        lhs_packed->strides(),
+        /*i_offset=*/0,
+        /*o_offset=*/0,
+        CopyType::General,
+        s);
+    lhs_ptr = &*lhs_packed;
+  }
+  if (!rhs.flags().row_contiguous) {
+    rhs_packed = make_dense_temp(rhs, tag, out, encoder);
+    copy_gpu_inplace(
+        rhs,
+        *rhs_packed,
+        rhs.shape(),
+        rhs.strides(),
+        rhs_packed->strides(),
+        /*i_offset=*/0,
+        /*o_offset=*/0,
+        CopyType::General,
+        s);
+    rhs_ptr = &*rhs_packed;
+  }
+
+  out.set_data(allocate_omarchy(out.nbytes()));
+  if (out.size() == 0) {
+    return;
+  }
+  size_t index_count = lhs_ptr->size();
+  size_t scale_bytes = scales.nbytes();
+  size_t bias_bytes = biases ? biases->nbytes() : 0;
+  auto align4 = [](size_t value) { return (value + 3) & ~size_t(3); };
+  size_t bias_base = align4(scale_bytes);
+  size_t index_base = align4(bias_base + bias_bytes);
+  size_t packed_bytes = index_base + 2 * index_count * 4;
+  if (scales.offset() % 4 != 0 || (biases && biases->offset() % 4 != 0) ||
+      lhs_ptr->offset() % 4 != 0 || rhs_ptr->offset() % 4 != 0) {
+    omarchy::unsupported(tag + " byte offset", out);
+  }
+  array packed(Shape{static_cast<int>(packed_bytes / 4)}, uint32, nullptr, {});
+  array::Flags packed_flags;
+  packed_flags.contiguous = true;
+  packed_flags.row_contiguous = true;
+  packed_flags.col_contiguous = true;
+  packed.set_data(
+      allocate_omarchy(packed.nbytes()),
+      packed.size(),
+      Strides{1},
+      packed_flags,
+      0);
+  encoder.add_temporary(packed);
+  encoder.fill_buffer(binding(packed).buffer, 0, packed_bytes, 0);
+  encoder.copy_buffer(
+      binding(scales).buffer,
+      binding(packed).buffer,
+      scale_bytes,
+      static_cast<VkDeviceSize>(scales.offset()),
+      0);
+  if (biases) {
+    encoder.copy_buffer(
+        binding(*biases).buffer,
+        binding(packed).buffer,
+        bias_bytes,
+        static_cast<VkDeviceSize>(biases->offset()),
+        static_cast<VkDeviceSize>(bias_base));
+  }
+  encoder.copy_buffer(
+      binding(*lhs_ptr).buffer,
+      binding(packed).buffer,
+      index_count * 4,
+      static_cast<VkDeviceSize>(lhs_ptr->offset()),
+      static_cast<VkDeviceSize>(index_base));
+  encoder.copy_buffer(
+      binding(*rhs_ptr).buffer,
+      binding(packed).buffer,
+      index_count * 4,
+      static_cast<VkDeviceSize>(rhs_ptr->offset()),
+      static_cast<VkDeviceSize>(index_base + index_count * 4));
+
+  omarchy::ComputeParams params;
+  params.count = checked_u32(out.size(), tag, out);
+  params.lhs_size = checked_u32(x.size(), tag, out);
+  params.rhs_size = checked_u32(w.size(), tag, out);
+  params.reduce_size = static_cast<uint32_t>(group_size);
+  params.output_size = params.count;
+  params.lhs_offset = checked_item_offset(x, x.size(), tag, out);
+  params.rhs_offset = checked_item_offset(w, w.size(), tag, out);
+  params.output_offset = checked_item_offset(out, out.size(), tag, out);
+  params.aux_offset = 0;
+  params.matrix_m = checked_u32(m, tag, out);
+  params.matrix_n = checked_u32(n, tag, out);
+  params.matrix_k = checked_u32(k, tag, out);
+  params.operation = static_cast<uint32_t>(bits);
+  // shape[0] is the per-half index count; shape[1] the bias region's
+  // byte base; in_strides[0]/out_strides[0] the lhs/rhs word offsets.
+  params.shape[0] = checked_u32(index_count, tag, out);
+  params.shape[1] = static_cast<uint32_t>(bias_base);
+  params.in_strides[0] = static_cast<uint32_t>(index_base / 4);
+  params.out_strides[0] =
+      static_cast<uint32_t>(index_base / 4 + index_count);
+  if (!omarchy::compute_index_span_fits(params.lhs_offset, x.size()) ||
+      !omarchy::compute_index_span_fits(params.rhs_offset, w.size())) {
+    omarchy::unsupported(tag + " index span", out);
+  }
+  std::array<omarchy::ComputeBinding, 4> bindings{
+      binding(x), binding(packed), binding(w), binding(out)};
+  bool no_bias = !biases.has_value();
+  omarchy::ComputeKernel kernel;
+  if (out.dtype() == float32) {
+    kernel = no_bias ? omarchy::ComputeKernel::GatherQmmNbF32
+                     : omarchy::ComputeKernel::GatherQmmF32;
+  } else if (out.dtype() == float16) {
+    kernel = no_bias ? omarchy::ComputeKernel::GatherQmmNbF16
+                     : omarchy::ComputeKernel::GatherQmmF16;
+  } else {
+    kernel = no_bias ? omarchy::ComputeKernel::GatherQmmNbBF16
+                     : omarchy::ComputeKernel::GatherQmmBF16;
+  }
+  encoder.dispatch_compute(
+      kernel,
+      bindings,
+      params,
+      omarchy::compute_dispatch_group_count(params.count));
+}
+
 } // namespace
 #define OMARCHY_BINARY(func, operation)                               \
   void func::eval_gpu(const std::vector<array>& inputs, array& out) { \
@@ -998,6 +1598,13 @@ void ArgPartition::eval_gpu(const std::vector<array>& inputs, array& out) {
   }
   if (state().second != input.ndim() - 1) {
     omarchy::unsupported("non-suffix ArgPartition", out);
+  }
+  size_t row_length = input.shape(-1);
+  if (row_length > kSortMaxRowLength) {
+    // The radix-select pipeline for vocabulary-width rows (the top-k
+    // sampling path) still mispicks; it stays a named rejection until
+    // it is correct. The bitonic path below covers rows up to 1024.
+    omarchy::unsupported("sort row length ArgPartition", out);
   }
   dispatch_sort("ArgPartition", input, out, true, encoder);
 }
@@ -1106,7 +1713,339 @@ void BitwiseBinary::eval_gpu(const std::vector<array>& inputs, array& out) {
 void BitwiseInvert::eval_gpu(const std::vector<array>& inputs, array& out) {
   dispatch_int_elementwise(name(), IntInvertOperation, inputs, out);
 }
-OMARCHY_UNSUPPORTED(BlockMaskedMM)
+void BlockMaskedMM::eval_gpu(const std::vector<array>& inputs, array& out) {
+  const std::string tag = name();
+  // Upstream restricts BlockMaskedMM to float32.
+  if (out.dtype() != float32) {
+    omarchy::unsupported(tag + " dtype", out);
+  }
+  const Stream& s = out.primitive().stream();
+  auto& encoder = omarchy::get_command_encoder(s);
+  const array& a_in = inputs[0];
+  const array& b_in = inputs[1];
+  require_float_dtype(tag, a_in, out, encoder);
+  require_float_dtype(tag, b_in, out, encoder);
+  size_t count = inputs.size();
+  if (count < 3 || count > 5) {
+    omarchy::unsupported(tag + " mask arity", out);
+  }
+  // Allocate the output before size checks so a too-large out surfaces
+  // as the named UNSUPPORTED error before we burn cycles on temp mask
+  // copies or temporary array allocations.
+  out.set_data(allocate_omarchy(out.nbytes()));
+  if (out.size() == 0) {
+    return;
+  }
+
+  bool has_out_mask = count == 3 || count == 5;
+  bool has_op_mask = count >= 4;
+  const array& out_mask = inputs[2];
+  const array& lhs_mask = inputs[count - 2];
+  const array& rhs_mask = inputs[count - 1];
+
+  // Resolve every present mask to float32 values. Bool casts through the
+  // flat word kernel; float32 masks bind through their logical strides.
+  std::optional<array> lhs_values;
+  std::optional<array> rhs_values;
+  std::optional<array> out_values;
+  auto resolve_mask = [&](const array& mask, std::optional<array>& temp) {
+    if (mask.dtype() == bool_) {
+      if (!is_flat_readable(mask)) {
+        omarchy::unsupported(tag + " bool mask layout", out);
+      }
+      temp = cast_bool_mask(mask, tag, out, encoder);
+    } else if (mask.dtype() != float32) {
+      omarchy::unsupported(tag + " mask dtype", out);
+    }
+  };
+  resolve_mask(lhs_mask, lhs_values);
+  resolve_mask(rhs_mask, rhs_values);
+  resolve_mask(out_mask, out_values);
+  const array& lhs_values_ref = lhs_values ? *lhs_values : lhs_mask;
+  const array& rhs_values_ref = rhs_values ? *rhs_values : rhs_mask;
+  const array& out_values_ref = out_values ? *out_values : out_mask;
+
+  int m = a_in.shape(-2);
+  int k = a_in.shape(-1);
+  int n = b_in.shape(-1);
+
+  // Masked operands: one dispatch materializes the operand into a dense
+  // temp while applying the block mask; the plain tiled matmul then runs
+  // on the temps. Without operand masks the matmul dispatch handles
+  // layouts directly, and masked blocks contribute exactly zero to every
+  // output element, so skipping their arithmetic is unnecessary for the
+  // contract.
+  array a_masked = a_in;
+  array b_masked = b_in;
+  if (has_op_mask) {
+    a_masked = make_dense_temp(a_in, tag, out, encoder);
+    dispatch_block_mask(
+        a_in,
+        lhs_values_ref,
+        lhs_mask,
+        a_masked,
+        m,
+        k,
+        block_size_,
+        tag,
+        out);
+    b_masked = make_dense_temp(b_in, tag, out, encoder);
+    dispatch_block_mask(
+        b_in,
+        rhs_values_ref,
+        rhs_mask,
+        b_masked,
+        k,
+        n,
+        block_size_,
+        tag,
+        out);
+  }
+  dispatch_matmul(tag, {a_masked, b_masked}, out, 1.0f, 0.0f, false, s);
+  if (has_out_mask) {
+    dispatch_block_mask(
+        out, out_values_ref, out_mask, out, m, n, block_size_, tag, out);
+  }
+}
+
+void GatherMM::eval_gpu(const std::vector<array>& inputs, array& out) {
+  const std::string tag = name();
+  const Stream& s = out.primitive().stream();
+  auto& encoder = omarchy::get_command_encoder(s);
+  const array& a_in = inputs[0];
+  const array& b_in = inputs[1];
+  const array& lhs = inputs[2];
+  const array& rhs = inputs[3];
+  require_float_dtype(tag, a_in, out, encoder);
+  require_float_dtype(tag, b_in, out, encoder);
+  if (lhs.dtype() != uint32 || rhs.dtype() != uint32) {
+    omarchy::unsupported(tag + " index dtype", out);
+  }
+  if (lhs.shape() != rhs.shape()) {
+    omarchy::unsupported(tag + " index shape", out);
+  }
+  std::optional<array> lhs_packed;
+  std::optional<array> rhs_packed;
+  const array* lhs_ptr = &lhs;
+  const array* rhs_ptr = &rhs;
+  if (!lhs.flags().row_contiguous) {
+    lhs_packed = make_dense_temp(lhs, tag, out, encoder);
+    copy_gpu_inplace(
+        lhs,
+        *lhs_packed,
+        lhs.shape(),
+        lhs.strides(),
+        lhs_packed->strides(),
+        0,
+        0,
+        CopyType::General,
+        s);
+    lhs_ptr = &*lhs_packed;
+  }
+  if (!rhs.flags().row_contiguous) {
+    rhs_packed = make_dense_temp(rhs, tag, out, encoder);
+    copy_gpu_inplace(
+        rhs,
+        *rhs_packed,
+        rhs.shape(),
+        rhs.strides(),
+        rhs_packed->strides(),
+        0,
+        0,
+        CopyType::General,
+        s);
+    rhs_ptr = &*rhs_packed;
+  }
+
+  // The gathered base offsets are index * matrix_size, so both operands
+  // must be dense batched stacks; a uniform in-matrix transposition keeps
+  // its zero-copy path, anything else materializes first.
+  bool a_transposed = is_dense_batched_matrix(a_in, true);
+  std::optional<array> a_materialized;
+  if (!a_transposed && !is_dense_batched_matrix(a_in, false)) {
+    a_materialized = materialize_batched_matrix(a_in, tag, out, s);
+  }
+  const array& a = a_materialized ? *a_materialized : a_in;
+  bool b_transposed = is_dense_batched_matrix(b_in, true);
+  std::optional<array> b_materialized;
+  if (!b_transposed && !is_dense_batched_matrix(b_in, false)) {
+    b_materialized = materialize_batched_matrix(b_in, tag, out, s);
+  }
+  const array& b = b_materialized ? *b_materialized : b_in;
+  if (a.shape(-1) != b.shape(-2)) {
+    omarchy::unsupported(tag + " matrix dimensions", out);
+  }
+
+  out.set_data(allocate_omarchy(out.nbytes()));
+  int m = a.shape(-2);
+  int k = a.shape(-1);
+  int n = b.shape(-1);
+  size_t batch_count = lhs_ptr->size();
+  if (out.size() == 0) {
+    return;
+  }
+  if (batch_count > omarchy::kMaxComputeGroupCountX) {
+    omarchy::unsupported(tag + " batch count", out);
+  }
+
+  // Binding 2 packs the index words [all lhs | all rhs]; GatherMM has no
+  // C operand, so its binding slot is free.
+  if (lhs_ptr->offset() % 4 != 0 || rhs_ptr->offset() % 4 != 0) {
+    omarchy::unsupported(tag + " index byte offset", out);
+  }
+  array indices(
+      Shape{static_cast<int>(2 * batch_count)}, uint32, nullptr, {});
+  array::Flags index_flags;
+  index_flags.contiguous = true;
+  index_flags.row_contiguous = true;
+  index_flags.col_contiguous = true;
+  indices.set_data(
+      allocate_omarchy(indices.nbytes()),
+      indices.size(),
+      Strides{1},
+      index_flags,
+      0);
+  encoder.add_temporary(indices);
+  encoder.copy_buffer(
+      binding(*lhs_ptr).buffer,
+      binding(indices).buffer,
+      lhs_ptr->nbytes(),
+      static_cast<VkDeviceSize>(lhs_ptr->offset()),
+      0);
+  encoder.copy_buffer(
+      binding(*rhs_ptr).buffer,
+      binding(indices).buffer,
+      rhs_ptr->nbytes(),
+      static_cast<VkDeviceSize>(rhs_ptr->offset()),
+      static_cast<VkDeviceSize>(lhs_ptr->nbytes()));
+
+  omarchy::ComputeParams params;
+  params.count = checked_u32(out.size(), tag, out);
+  params.lhs_size = checked_u32(a.size(), tag, out);
+  params.rhs_size = checked_u32(b.size(), tag, out);
+  params.reduce_size = checked_u32(k, tag, out);
+  params.output_size = params.count;
+  params.lhs_offset = checked_item_offset(a, a.size(), tag, out);
+  params.rhs_offset = checked_item_offset(b, b.size(), tag, out);
+  params.output_offset = checked_item_offset(out, out.size(), tag, out);
+  params.aux_size = checked_u32(batch_count, tag, out);
+  params.aux_offset = 0;
+  params.matrix_m = checked_u32(m, tag, out);
+  params.matrix_n = checked_u32(n, tag, out);
+  params.matrix_k = checked_u32(k, tag, out);
+  params.flags = (b_transposed ? 1u : 0u) | (a_transposed ? 4u : 0u);
+  if (!omarchy::compute_index_span_fits(params.lhs_offset, a.size()) ||
+      !omarchy::compute_index_span_fits(params.rhs_offset, b.size())) {
+    omarchy::unsupported(tag + " index span", out);
+  }
+  std::array<omarchy::ComputeBinding, 4> bindings{
+      binding(a), binding(b), binding(indices), binding(out)};
+  auto kernel = select_float_kernel(
+      out.dtype(),
+      omarchy::ComputeKernel::GatherMmF32,
+      omarchy::ComputeKernel::GatherMmF16,
+      omarchy::ComputeKernel::GatherMmBF16);
+  encoder.dispatch_compute(
+      kernel,
+      bindings,
+      params,
+      matrix_group_count(params.matrix_n),
+      matrix_group_count(params.matrix_m),
+      checked_u32(batch_count, tag, out));
+}
+
+void SegmentedMM::eval_gpu(const std::vector<array>& inputs, array& out) {
+  const std::string tag = name();
+  const Stream& s = out.primitive().stream();
+  auto& encoder = omarchy::get_command_encoder(s);
+  const array& a_in = inputs[0];
+  const array& b_in = inputs[1];
+  const array& segments = inputs[2];
+  require_float_dtype(tag, a_in, out, encoder);
+  require_float_dtype(tag, b_in, out, encoder);
+  if (segments.dtype() != uint32) {
+    omarchy::unsupported(tag + " segments dtype", out);
+  }
+  if (a_in.ndim() != 2 || b_in.ndim() != 2 || a_in.shape(1) != b_in.shape(0)) {
+    omarchy::unsupported(tag + " matrix dimensions", out);
+  }
+  std::optional<array> a_materialized;
+  bool a_transposed = is_batched_matrix(a_in, true);
+  if (!a_transposed && !is_batched_matrix(a_in, false)) {
+    a_materialized = materialize_batched_matrix(a_in, tag, out, s);
+  }
+  const array& a = a_materialized ? *a_materialized : a_in;
+  std::optional<array> b_materialized;
+  bool b_transposed = is_batched_matrix(b_in, true);
+  if (!b_transposed && !is_batched_matrix(b_in, false)) {
+    b_materialized = materialize_batched_matrix(b_in, tag, out, s);
+  }
+  const array& b = b_materialized ? *b_materialized : b_in;
+  std::optional<array> segments_packed;
+  const array* segments_ptr = &segments;
+  if (!segments.flags().row_contiguous) {
+    segments_packed = make_dense_temp(segments, tag, out, encoder);
+    copy_gpu_inplace(
+        segments,
+        *segments_packed,
+        segments.shape(),
+        segments.strides(),
+        segments_packed->strides(),
+        0,
+        0,
+        CopyType::General,
+        s);
+    segments_ptr = &*segments_packed;
+  }
+
+  out.set_data(allocate_omarchy(out.nbytes()));
+  if (out.size() == 0) {
+    return;
+  }
+  int m = a.shape(0);
+  int k = a.shape(1);
+  int n = b.shape(1);
+  size_t num_segments = segments_ptr->size() / 2;
+  if (num_segments * static_cast<size_t>(m) * n != out.size()) {
+    omarchy::unsupported(tag + " segment count", out);
+  }
+  if (num_segments > omarchy::kMaxComputeGroupCountX) {
+    omarchy::unsupported(tag + " segment count", out);
+  }
+  omarchy::ComputeParams params;
+  params.count = checked_u32(out.size(), tag, out);
+  params.lhs_size = checked_u32(a.size(), tag, out);
+  params.rhs_size = checked_u32(b.size(), tag, out);
+  params.reduce_size = checked_u32(k, tag, out);
+  params.output_size = params.count;
+  params.lhs_offset = checked_item_offset(a, a.size(), tag, out);
+  params.rhs_offset = checked_item_offset(b, b.size(), tag, out);
+  params.output_offset = checked_item_offset(out, out.size(), tag, out);
+  params.aux_offset = checked_item_offset(*segments_ptr, segments_ptr->size(), tag, out);
+  params.matrix_m = checked_u32(m, tag, out);
+  params.matrix_n = checked_u32(n, tag, out);
+  params.matrix_k = checked_u32(k, tag, out);
+  params.flags = (b_transposed ? 1u : 0u) | (a_transposed ? 4u : 0u);
+  if (!omarchy::compute_index_span_fits(params.lhs_offset, a.size()) ||
+      !omarchy::compute_index_span_fits(params.rhs_offset, b.size())) {
+    omarchy::unsupported(tag + " index span", out);
+  }
+  std::array<omarchy::ComputeBinding, 4> bindings{
+      binding(a), binding(b), binding(*segments_ptr), binding(out)};
+  auto kernel = select_float_kernel(
+      out.dtype(),
+      omarchy::ComputeKernel::SegmentedMmF32,
+      omarchy::ComputeKernel::SegmentedMmF16,
+      omarchy::ComputeKernel::SegmentedMmBF16);
+  encoder.dispatch_compute(
+      kernel,
+      bindings,
+      params,
+      matrix_group_count(params.matrix_n),
+      matrix_group_count(params.matrix_m),
+      checked_u32(num_segments, tag, out));
+}
+
 OMARCHY_UNARY(Ceil, CeilOperation)
 OMARCHY_UNSUPPORTED(Cholesky)
 void Compiled::eval_gpu(
@@ -1390,10 +2329,202 @@ void Gather::eval_gpu(const std::vector<array>& inputs, array& out) {
   encoder.dispatch_compute(
       kernel, bindings, params, omarchy::compute_dispatch_group_count(count));
 }
-OMARCHY_UNSUPPORTED(GatherAxis)
-OMARCHY_UNSUPPORTED(GatherMM)
-OMARCHY_UNSUPPORTED(GatherQMM)
-OMARCHY_UNSUPPORTED(GatherQQMM)
+void GatherAxis::eval_gpu(const std::vector<array>& inputs, array& out) {
+  const array& src = inputs.at(0);
+  const array& indices = inputs.at(1);
+  int axis = axis_;
+  auto& encoder = omarchy::get_command_encoder(out.primitive().stream());
+  // The raw-word kernel copies uint32, int32, and float32 tables with
+  // no conversion, so packed words above 2^31 stay bit-exact and a
+  // zero row is the zero word in all three interpretations. Float16
+  // and bfloat16 use their storage kernels; the rest keep the named
+  // rejection.
+  bool raw_word = src.dtype() == uint32 || src.dtype() == int32 ||
+      src.dtype() == float32;
+  if (raw_word) {
+    if (out.dtype() != src.dtype()) {
+      omarchy::unsupported("Take dtype", out);
+    }
+  } else {
+    require_float_dtype("Take", src, out, encoder);
+  }
+  uint32_t index_mode;
+  uint64_t index_words;
+  switch (indices.dtype()) {
+    case int32:
+      index_mode = 0;
+      index_words = indices.size();
+      break;
+    case uint32:
+      index_mode = 1;
+      index_words = indices.size();
+      break;
+    case int64:
+      index_mode = 2;
+      index_words = indices.size() * 2;
+      break;
+    default:
+      omarchy::unsupported("indexed Take dtype", out);
+  }
+  if (!indices.flags().row_contiguous ||
+      indices.data_size() != indices.size()) {
+    omarchy::unsupported("indexed Take layout", out);
+  }
+  int non_axis = out.ndim() - 1;
+  if (non_axis > 4 || axis != out.ndim() - 1) {
+    // The post-dim stride walk still misreads; axes with trailing dims
+    // keep the named rejection until root-caused.
+    omarchy::unsupported("Take layout", out);
+  }
+  size_t post_size = 1;
+  for (int i = axis + 1; i < out.ndim(); ++i) {
+    post_size *= out.shape(i);
+  }
+  out.set_data(allocate_omarchy(out.nbytes()));
+  if (out.size() == 0) {
+    return;
+  }
+  uint32_t count = checked_u32(out.size(), "Take", out);
+  omarchy::ComputeParams params;
+  params.count = count;
+  params.operation = index_mode;
+  params.lhs_size = checked_u32(src.size(), "Take", out);
+  params.rhs_size = checked_u32(index_words, "Take", out);
+  params.reduce_size = checked_u32(src.shape(axis), "Take", out);
+  params.output_size = checked_u32(post_size, "Take", out);
+  params.aux_size = checked_u32(indices.shape(axis), "Take", out);
+  params.lhs_offset = checked_item_offset(src, src.size(), "Take", out);
+  uint32_t index_offset =
+      checked_item_offset(indices, indices.size(), "Take", out);
+  if (index_mode == 2) {
+    if (index_offset > std::numeric_limits<uint32_t>::max() / 2) {
+      omarchy::unsupported("Take index span", out);
+    }
+    index_offset *= 2;
+  }
+  params.rhs_offset = index_offset;
+  params.output_offset = checked_item_offset(out, out.size(), "Take", out);
+  params.matrix_m = checked_u32(axis, "Take", out);
+  params.matrix_n = checked_u32(src.strides(axis), "Take", out);
+  params.flags = checked_u32(non_axis, "Take", out);
+  for (int i = 0, d = 0; i < out.ndim(); ++i) {
+    if (i == axis) {
+      continue;
+    }
+    params.shape[d] = checked_u32(out.shape(i), "Take", out);
+    params.in_strides[d] = checked_u32(src.strides(i), "Take", out);
+    ++d;
+  }
+  std::array<omarchy::ComputeBinding, 3> bindings{
+      binding(src), binding(indices), binding(out)};
+  auto kernel = src.dtype() == float16
+      ? omarchy::ComputeKernel::GatherAxisF16
+      : src.dtype() == bfloat16 ? omarchy::ComputeKernel::GatherAxisBF16
+                                : omarchy::ComputeKernel::GatherAxisU32;
+  encoder.dispatch_compute(
+      kernel,
+      bindings,
+      params,
+      omarchy::compute_dispatch_group_count(count));
+}
+
+
+void GatherQMM::eval_gpu(const std::vector<array>& inputs, array& out) {
+  const std::string tag = name();
+  if (mode_ != QuantizationMode::Affine) {
+    omarchy::unsupported(tag + " mode", out);
+  }
+  if (!transpose_) {
+    omarchy::unsupported(tag + " transpose", out);
+  }
+  // Affine inputs: [x, w, scales, biases, lhs, rhs].
+  dispatch_gather_qmm(
+      tag,
+      inputs[0],
+      inputs[1],
+      inputs[2],
+      inputs[3],
+      inputs[4],
+      inputs[5],
+      group_size_,
+      bits_,
+      out,
+      out.primitive().stream());
+}
+
+void GatherQQMM::eval_gpu(const std::vector<array>& inputs, array& out) {
+  const std::string tag = name();
+  if (mode_ != QuantizationMode::Affine) {
+    omarchy::unsupported(tag + " mode", out);
+  }
+  // Affine inputs: [x, w, lhs, rhs, scales_w]. A float w would need the
+  // quantize direction, which this backend does not implement.
+  if (inputs[1].dtype() != uint32) {
+    omarchy::unsupported(tag + " weight dtype", out);
+  }
+  dispatch_gather_qmm(
+      tag,
+      inputs[0],
+      inputs[1],
+      inputs[4],
+      std::nullopt,
+      inputs[2],
+      inputs[3],
+      group_size_,
+      bits_,
+      out,
+      out.primitive().stream());
+}
+
+void QQMatmul::eval_gpu(const std::vector<array>& inputs, array& out) {
+  const std::string tag = name();
+  if (mode_ != QuantizationMode::Affine) {
+    omarchy::unsupported(tag + " mode", out);
+  }
+  const Stream& s = out.primitive().stream();
+  if (inputs.size() == 2) {
+    // Unquantized w needs x @ w.T; this primitive receives w as (N, K)
+    // and the tiled matmul path cannot build the transposed view inside
+    // an eval, so the float-weight form keeps a named rejection. The
+    // quantized-weight form below is the contract deliverable.
+    omarchy::unsupported(tag + " weight dtype", out);
+    return;
+  }
+  // [x, w(u32), scales_w]: the scale-only dequantized product with
+  // identity gather (S = 1, both indices zero).
+  auto& encoder = omarchy::get_command_encoder(s);
+  if (inputs[0].ndim() != 2) {
+    omarchy::unsupported(tag + " rank", out);
+  }
+  array zero_index(Shape{1}, uint32, nullptr, {});
+  array::Flags zero_flags;
+  zero_flags.contiguous = true;
+  zero_flags.row_contiguous = true;
+  zero_flags.col_contiguous = true;
+  zero_index.set_data(
+      allocate_omarchy(zero_index.nbytes()),
+      zero_index.size(),
+      Strides{1},
+      zero_flags,
+      0);
+  encoder.add_temporary(zero_index);
+  encoder.fill_buffer(binding(zero_index).buffer, 0, 4, 0);
+  dispatch_gather_qmm(
+      tag,
+      inputs[0],
+      inputs[1],
+      inputs[2],
+      std::nullopt,
+      zero_index,
+      zero_index,
+      group_size_,
+      bits_,
+      out,
+      s);
+}
+
+
+
 void Greater::eval_gpu(const std::vector<array>& inputs, array& out) {
   dispatch_comparison(name(), CompareGreater, inputs, out);
 }
@@ -1411,7 +2542,72 @@ void GreaterEqual::eval_gpu(
   }
   dispatch_comparison(name(), CompareGreaterEqual, inputs, out);
 }
-OMARCHY_UNSUPPORTED(Hadamard)
+// Hadamard runs the fast Walsh-Hadamard transform over the last axis, the
+// GPU twin of mlx/backend/cpu/hadamard.cpp: the row of length n*m decomposes
+// into a 2^k component and an embedded-Hadamard component m in
+// (1, 12, 20, 28); the butterfly applies the scale on its final stage when
+// m is 1 and the dense H_m rows carry it otherwise, the same order the CPU
+// kernel uses so float rounding matches. One invocation owns one row and
+// walks it serially, so sizes whose 2^k component exceeds 2^16 stay a named
+// error rather than a silent stall.
+void Hadamard::eval_gpu(const std::vector<array>& inputs, array& out) {
+  const array& input = inputs.at(0);
+  auto& encoder = omarchy::get_command_encoder(out.primitive().stream());
+  require_float_dtype("Hadamard", input, out, encoder);
+  if (!input.flags().row_contiguous) {
+    omarchy::unsupported("non-contiguous Hadamard", out);
+  }
+  if (out.ndim() == 0) {
+    omarchy::unsupported("Hadamard rank", out);
+  }
+  int n = out.shape(-1);
+  int m = 1;
+  if ((n & (n - 1)) != 0) {
+    for (int factor : {12, 20, 28}) {
+      if (n % factor == 0) {
+        m = factor;
+        n /= factor;
+        break;
+      }
+    }
+    if (m == 1) {
+      omarchy::unsupported("Hadamard size", out);
+    }
+  }
+  if (n > (1 << 16)) {
+    omarchy::unsupported("Hadamard size", out);
+  }
+  size_t row_length = static_cast<size_t>(n) * static_cast<size_t>(m);
+  size_t rows = row_length == 0 ? 0 : out.size() / row_length;
+  out.set_data(allocate_omarchy(out.nbytes()));
+  if (out.size() == 0) {
+    return;
+  }
+  uint32_t row_count = checked_u32(rows, "Hadamard", out);
+  if (row_count > omarchy::kMaxComputeGroupCountX) {
+    omarchy::unsupported("Hadamard row count", out);
+  }
+  // Copy the input bytes into the fresh output, then transform in place.
+  encoder.copy_buffer(
+      binding(input).buffer,
+      binding(out).buffer,
+      static_cast<VkDeviceSize>(input.nbytes()),
+      static_cast<VkDeviceSize>(input.offset()),
+      static_cast<VkDeviceSize>(out.offset()));
+  omarchy::ComputeParams params;
+  params.count = checked_u32(out.size(), "Hadamard", out);
+  params.reduce_size = static_cast<uint32_t>(n);
+  params.output_size = row_count;
+  params.matrix_m = static_cast<uint32_t>(m);
+  params.alpha = scale_;
+  std::array<omarchy::ComputeBinding, 1> bindings{binding(out)};
+  auto kernel = select_float_kernel(
+      out.dtype(),
+      omarchy::ComputeKernel::HadamardF32,
+      omarchy::ComputeKernel::HadamardF16,
+      omarchy::ComputeKernel::HadamardBF16);
+  encoder.dispatch_compute(kernel, bindings, params, row_count);
+}
 OMARCHY_UNSUPPORTED(Imag)
 OMARCHY_UNSUPPORTED(Inverse)
 void Less::eval_gpu(const std::vector<array>& inputs, array& out) {
@@ -1520,7 +2716,77 @@ void Matmul::eval_gpu(const std::vector<array>& inputs, array& out) {
       name(), inputs, out, 1.0f, 0.0f, false, out.primitive().stream());
 }
 OMARCHY_BINARY(Maximum, MaximumOperation)
-OMARCHY_UNSUPPORTED(MaskedScatter)
+void MaskedScatter::eval_gpu(const std::vector<array>& inputs, array& out) {
+  const array& dst = inputs.at(0);
+  const array& mask = inputs.at(1);
+  const array& src = inputs.at(2);
+  auto& encoder = omarchy::get_command_encoder(out.primitive().stream());
+  if (out.dtype() == float16 || out.dtype() == bfloat16) {
+    require_float_dtype("MaskedScatter", dst, out, encoder);
+  } else if (out.dtype() != float32 && out.dtype() != int32 &&
+             out.dtype() != uint32) {
+    omarchy::unsupported("MaskedScatter dtype", out);
+  }
+  auto kernel = out.dtype() == float16
+      ? omarchy::ComputeKernel::MaskedScatterF16
+      : out.dtype() == bfloat16 ? omarchy::ComputeKernel::MaskedScatterBF16
+                                : omarchy::ComputeKernel::MaskedScatterU32;
+  CopyType copy_type = dst.data_size() == 1 ? CopyType::Scalar
+      : (dst.flags().row_contiguous && dst.data_size() == dst.size())
+      ? CopyType::Vector
+      : CopyType::General;
+  copy_gpu(dst, out, copy_type, out.primitive().stream());
+  if (mask.size() == 0) {
+    return;
+  }
+  size_t rows = mask.shape(0);
+  size_t row_length = mask.size() / rows;
+  size_t src_length = src.size() / rows;
+  // The scan kernel indexes mask words flat; a broadcast mask arrives
+  // as a stride view with no flat word order, so it keeps the named
+  // rejection instead of guessing a layout.
+  if (!mask.flags().row_contiguous || mask.data_size() != mask.size()) {
+    omarchy::unsupported("MaskedScatter mask layout", out);
+  }
+  if (rows > omarchy::kMaxComputeGroupCountX) {
+    omarchy::unsupported("MaskedScatter row count", out);
+  }
+  uint32_t mask_word_offset =
+      checked_item_offset(mask, mask.size(), "MaskedScatter", out);
+  if (mask_word_offset % 4 != 0) {
+    omarchy::unsupported("MaskedScatter mask alignment", out);
+  }
+  // A broadcast value materializes into a dense source segment first.
+  const array* src_dense = &src;
+  std::optional<array> materialized;
+  if (src.data_size() != src.size()) {
+    // A broadcast value materializes by scalar broadcast; Vector would
+    // flat-copy past the single source element.
+    materialized = array(src.shape(), src.dtype(), nullptr, {});
+    copy_gpu(src, *materialized, CopyType::Scalar, out.primitive().stream());
+    encoder.add_temporary(*materialized);
+    src_dense = &*materialized;
+  } else if (!src.flags().row_contiguous) {
+    materialized = array(src.shape(), src.dtype(), nullptr, {});
+    copy_gpu(src, *materialized, CopyType::Vector, out.primitive().stream());
+    encoder.add_temporary(*materialized);
+    src_dense = &*materialized;
+  }
+  uint32_t count = checked_u32(mask.size(), "MaskedScatter", out);
+  omarchy::ComputeParams params;
+  params.count = count;
+  params.reduce_size = checked_u32(row_length, "MaskedScatter", out);
+  params.aux_size = checked_u32(src_length, "MaskedScatter", out);
+  params.lhs_offset = checked_item_offset(
+      *src_dense, src_dense->size(), "MaskedScatter", out);
+  params.rhs_offset = mask_word_offset / 4;
+  params.output_offset =
+      checked_item_offset(out, out.size(), "MaskedScatter", out);
+  std::array<omarchy::ComputeBinding, 3> bindings{
+      binding(out), binding(mask), binding(*src_dense)};
+  encoder.dispatch_compute(
+      kernel, bindings, params, checked_u32(rows, "MaskedScatter", out));
+}
 OMARCHY_BINARY(Minimum, MinimumOperation)
 OMARCHY_BINARY(Multiply, MultiplyOperation)
 OMARCHY_UNARY(Negative, NegativeOperation)
@@ -1672,7 +2938,7 @@ void QuantizedMatmul::eval_gpu(const std::vector<array>& inputs, array& out) {
       params,
       omarchy::compute_dispatch_group_count(params.count));
 }
-OMARCHY_UNSUPPORTED(QQMatmul)
+
 void RandomBits::eval_gpu(const std::vector<array>& inputs, array& out) {
   const array& keys = inputs.at(0);
   auto& encoder = omarchy::get_command_encoder(out.primitive().stream());
@@ -1723,57 +2989,140 @@ void Reduce::eval_gpu(const std::vector<array>& inputs, array& out) {
   auto [reduce_type, axes] = state();
   std::string operation_name = name();
   auto& encoder = omarchy::get_command_encoder(out.primitive().stream());
-  require_float_dtype(operation_name, input, out, encoder);
-
-  if (!input.flags().row_contiguous || axes.empty()) {
-    omarchy::unsupported("non-contiguous " + operation_name, out);
+  if (axes.empty()) {
+    omarchy::unsupported(operation_name + " axes", out);
   }
-  int first_axis = input.ndim() - static_cast<int>(axes.size());
-  for (int index = 0; index < axes.size(); ++index) {
-    if (axes[index] != first_axis + index) {
-      omarchy::unsupported("non-suffix " + operation_name, out);
+
+  // mx.all / mx.any: ReduceType::And / Or produce a bool output from any
+  // input dtype; float inputs keep their float capability gate.
+  if (reduce_type == Reduce::And || reduce_type == Reduce::Or) {
+    if (out.dtype() != bool_) {
+      omarchy::unsupported(operation_name + " output dtype", out);
     }
-  }
-  if (reduce_type != Reduce::Sum && reduce_type != Reduce::Max) {
-    omarchy::unsupported(operation_name, out);
-  }
-
-  size_t reduce_size = 1;
-  for (int axis : axes) {
-    reduce_size *= input.shape(axis);
-  }
-  if (reduce_type == Reduce::Max && reduce_size == 0) {
-    omarchy::unsupported("empty Max", out);
-  }
-
-  out.set_data(allocate_omarchy(out.nbytes()));
-  if (out.size() == 0) {
+    switch (input.dtype()) {
+      case bool_:
+      case int32:
+      case uint32:
+      case float32:
+        break;
+      case float16:
+      case bfloat16:
+        require_float_input(operation_name, input, out, encoder);
+        break;
+      default:
+        omarchy::unsupported(operation_name + " dtype", out);
+    }
+    uint32_t operation =
+        reduce_type == Reduce::Or ? ReduceAnyOperation : ReduceAllOperation;
+    dispatch_reduce_general(
+        operation_name,
+        operation,
+        input,
+        out,
+        axes,
+        encoder,
+        select_anyall_kernel(input.dtype()));
     return;
   }
 
-  uint32_t output_size = checked_u32(out.size(), operation_name, out);
-  const array& bound_input = input.size() == 0 ? out : input;
-  omarchy::ComputeParams params;
-  params.count = output_size;
-  params.operation = reduce_type == Reduce::Sum ? 0 : 1;
-  params.reduce_size = checked_u32(reduce_size, operation_name, out);
-  params.output_size = output_size;
-  params.lhs_offset = checked_item_offset(
-      bound_input, input.size(), operation_name, out);
-  params.output_offset = checked_item_offset(
-      out, out.size(), operation_name, out);
-  std::array<omarchy::ComputeBinding, 3> bindings{
-      binding(bound_input), binding(bound_input), binding(out)};
-  auto kernel = select_float_kernel(
-      out.dtype(),
-      omarchy::ComputeKernel::ReduceF32,
-      omarchy::ComputeKernel::ReduceF16,
-      omarchy::ComputeKernel::ReduceBF16);
-  encoder.dispatch_compute(
-      kernel,
-      bindings,
-      params,
-      omarchy::compute_dispatch_group_count(output_size));
+  if (reduce_type != Reduce::Sum && reduce_type != Reduce::Prod &&
+      reduce_type != Reduce::Min && reduce_type != Reduce::Max) {
+    omarchy::unsupported(operation_name, out);
+  }
+
+  // Float Sum and Max over a row-contiguous suffix keep the dedicated
+  // suffix kernel; every empty reduction routes to the general kernel,
+  // whose accumulator seed supplies the upstream identity value.
+  bool float_dtype = input.dtype() == float32 || input.dtype() == float16 ||
+      input.dtype() == bfloat16;
+  bool suffix_fast_path = false;
+  size_t reduce_size = 1;
+  if (float_dtype && out.dtype() == input.dtype() &&
+      (reduce_type == Reduce::Sum || reduce_type == Reduce::Max) &&
+      input.flags().row_contiguous) {
+    int first_axis = input.ndim() - static_cast<int>(axes.size());
+    suffix_fast_path = true;
+    for (int index = 0; index < static_cast<int>(axes.size()); ++index) {
+      if (axes[index] != first_axis + index) {
+        suffix_fast_path = false;
+        break;
+      }
+    }
+    for (int axis : axes) {
+      reduce_size *= input.shape(axis);
+    }
+    if (reduce_size == 0) {
+      suffix_fast_path = false;
+    }
+  }
+
+  if (suffix_fast_path) {
+    out.set_data(allocate_omarchy(out.nbytes()));
+    if (out.size() == 0) {
+      return;
+    }
+    uint32_t output_size = checked_u32(out.size(), operation_name, out);
+    const array& bound_input = input.size() == 0 ? out : input;
+    omarchy::ComputeParams params;
+    params.count = output_size;
+    params.operation = reduce_type == Reduce::Sum ? 0 : 1;
+    params.reduce_size = checked_u32(reduce_size, operation_name, out);
+    params.output_size = output_size;
+    params.lhs_offset = checked_item_offset(
+        bound_input, input.size(), operation_name, out);
+    params.output_offset = checked_item_offset(
+        out, out.size(), operation_name, out);
+    std::array<omarchy::ComputeBinding, 3> bindings{
+        binding(bound_input), binding(bound_input), binding(out)};
+    auto kernel = select_float_kernel(
+        out.dtype(),
+        omarchy::ComputeKernel::ReduceF32,
+        omarchy::ComputeKernel::ReduceF16,
+        omarchy::ComputeKernel::ReduceBF16);
+    encoder.dispatch_compute(
+        kernel,
+        bindings,
+        params,
+        omarchy::compute_dispatch_group_count(output_size));
+    return;
+  }
+
+  // The general path: integer dtypes, Prod, Min, and every non-suffix or
+  // strided layout. Float outputs must equal their input; int32 and
+  // uint32 outputs likewise (the op layer promotes bool and small
+  // integers before the primitive, so those never arrive here).
+  if (input.dtype() != out.dtype() ||
+      !(input.dtype() == float32 || input.dtype() == float16 ||
+        input.dtype() == bfloat16 || input.dtype() == int32 ||
+        input.dtype() == uint32)) {
+    omarchy::unsupported(operation_name + " dtype", out);
+  }
+  if (float_dtype) {
+    require_float_input(operation_name, input, out, encoder);
+  }
+  uint32_t operation;
+  switch (reduce_type) {
+    case Reduce::Sum:
+      operation = ReduceSumOperation;
+      break;
+    case Reduce::Prod:
+      operation = ReduceProdOperation;
+      break;
+    case Reduce::Min:
+      operation = ReduceMinOperation;
+      break;
+    default:
+      operation = ReduceMaxOperation;
+      break;
+  }
+  dispatch_reduce_general(
+      operation_name,
+      operation,
+      input,
+      out,
+      axes,
+      encoder,
+      select_reduce_general_kernel(input.dtype()));
 }
 
 // Remainder is the Python-style modulo: the truncating remainder
@@ -1790,56 +3139,380 @@ void Remainder::eval_gpu(const std::vector<array>& inputs, array& out) {
       name(), RemainderFloatOperation, inputs, out, out.primitive().stream());
 }
 OMARCHY_UNARY(Round, RoundOperation)
-// Scan serves the categorical sampler's exclusive cdf prefix sums: a
-// float suffix scan over row-contiguous rows. Sum is the only reduce
-// type, reverse scans stay named rejections, and one invocation owns a
-// whole row in a serial pass, which keeps the shared-buffer transport
-// simple. The accumulator stays float32 for every dtype.
+// Scan serves cumsum, cumprod, cummax, and cummin over any axis, direction,
+// and inclusivity: one invocation owns one line along the scan axis and
+// walks it serially, which keeps the shared-buffer transport simple. The
+// accumulator stays float32 for every float dtype; int32 and uint32 scan in
+// their own width with wrapping arithmetic. The suffix float kernel keeps
+// Sum so the categorical sampler path is byte-for-byte unchanged.
 void Scan::eval_gpu(const std::vector<array>& inputs, array& out) {
   auto [reduce_type, axis, reverse, inclusive] = state();
   const array& input = inputs.at(0);
   auto& encoder = omarchy::get_command_encoder(out.primitive().stream());
-  require_float_dtype("Scan", input, out, encoder);
-  if (reduce_type != Scan::Sum) {
-    omarchy::unsupported("Scan reduce", out);
+  if (reduce_type == Scan::LogAddExp) {
+    omarchy::unsupported("Scan LogAddExp", out);
   }
-  if (reverse) {
-    omarchy::unsupported("reverse Scan", out);
+  if (input.dtype() == float32 || input.dtype() == float16 ||
+      input.dtype() == bfloat16) {
+    require_float_dtype("Scan", input, out, encoder);
+  } else if (
+      (input.dtype() == int32 || input.dtype() == uint32) &&
+      out.dtype() == input.dtype()) {
+    // Integers scan in their own width; bool and 64-bit stay rejected.
+  } else {
+    omarchy::unsupported("Scan dtype", out);
   }
-  if (!input.flags().row_contiguous) {
-    omarchy::unsupported("non-contiguous Scan", out);
+  if (input.ndim() == 0 || input.ndim() > 4 || axis < 0 ||
+      axis >= input.ndim()) {
+    omarchy::unsupported("Scan rank", out);
   }
-  if (axis != input.ndim() - 1) {
-    omarchy::unsupported("non-suffix Scan", out);
+
+  bool suffix_float_sum = reduce_type == Scan::Sum && !reverse &&
+      input.dtype() != int32 && input.dtype() != uint32 &&
+      input.flags().row_contiguous && axis == input.ndim() - 1;
+  if (suffix_float_sum) {
+    size_t row_length = input.shape(-1);
+    size_t rows = row_length == 0 ? 0 : input.size() / row_length;
+    out.set_data(allocate_omarchy(out.nbytes()));
+    if (out.size() == 0) {
+      return;
+    }
+    uint32_t output_size = checked_u32(rows, "Scan", out);
+    if (output_size > omarchy::kMaxComputeGroupCountX) {
+      omarchy::unsupported("Scan row count", out);
+    }
+    omarchy::ComputeParams params;
+    params.count = checked_u32(out.size(), "Scan", out);
+    params.operation = inclusive ? 0u : 1u;
+    params.reduce_size = checked_u32(row_length, "Scan", out);
+    params.output_size = output_size;
+    params.lhs_offset = checked_item_offset(input, input.size(), "Scan", out);
+    params.output_offset = checked_item_offset(out, out.size(), "Scan", out);
+    std::array<omarchy::ComputeBinding, 3> bindings{
+        binding(input), binding(input), binding(out)};
+    auto kernel = select_float_kernel(
+        out.dtype(),
+        omarchy::ComputeKernel::ScanF32,
+        omarchy::ComputeKernel::ScanF16,
+        omarchy::ComputeKernel::ScanBF16);
+    encoder.dispatch_compute(kernel, bindings, params, output_size);
+    return;
   }
-  size_t row_length = input.shape(-1);
-  size_t rows = row_length == 0 ? 0 : input.size() / row_length;
+
+  // The general stride-walking scan. Push-constant routing mirrors
+  // shaders/scan_general.comp: matrix_m carries the scan axis, flags bit 0
+  // the reverse flag, reduce_size the operation selector, shape[] the
+  // extents, in_strides[] the input strides, and out_strides[] the output
+  // strides of the fresh row-contiguous output.
+  uint32_t operation_selector;
+  switch (reduce_type) {
+    case Scan::Sum:
+      operation_selector = 0u;
+      break;
+    case Scan::Prod:
+      operation_selector = 1u;
+      break;
+    case Scan::Min:
+      operation_selector = 2u;
+      break;
+    default:
+      operation_selector = 3u;
+      break;
+  }
   out.set_data(allocate_omarchy(out.nbytes()));
   if (out.size() == 0) {
     return;
   }
-  uint32_t output_size = checked_u32(rows, "Scan", out);
+  size_t axis_length = input.shape(axis);
+  size_t lines = out.size() / axis_length;
+  uint32_t output_size = checked_u32(lines, "Scan", out);
   if (output_size > omarchy::kMaxComputeGroupCountX) {
     omarchy::unsupported("Scan row count", out);
   }
   omarchy::ComputeParams params;
   params.count = checked_u32(out.size(), "Scan", out);
   params.operation = inclusive ? 0u : 1u;
-  params.reduce_size = checked_u32(row_length, "Scan", out);
+  params.reduce_size = operation_selector;
   params.output_size = output_size;
   params.lhs_offset = checked_item_offset(input, input.size(), "Scan", out);
   params.output_offset = checked_item_offset(out, out.size(), "Scan", out);
+  params.matrix_m = static_cast<uint32_t>(axis);
+  params.flags = reverse ? 1u : 0u;
+  params.dims = static_cast<uint32_t>(input.ndim());
+  uint32_t output_stride = 1;
+  for (int dim = input.ndim() - 1; dim >= 0; --dim) {
+    params.shape[dim] = static_cast<uint32_t>(input.shape(dim));
+    params.in_strides[dim] =
+        static_cast<uint32_t>(input.strides()[dim]);
+    params.out_strides[dim] = output_stride;
+    output_stride *= static_cast<uint32_t>(input.shape(dim));
+  }
   std::array<omarchy::ComputeBinding, 3> bindings{
       binding(input), binding(input), binding(out)};
-  auto kernel = select_float_kernel(
-      out.dtype(),
-      omarchy::ComputeKernel::ScanF32,
-      omarchy::ComputeKernel::ScanF16,
-      omarchy::ComputeKernel::ScanBF16);
+  auto kernel = input.dtype() == int32
+      ? omarchy::ComputeKernel::ScanGeneralI32
+      : input.dtype() == uint32
+      ? omarchy::ComputeKernel::ScanGeneralU32
+      : select_float_kernel(
+            out.dtype(),
+            omarchy::ComputeKernel::ScanGeneralF32,
+            omarchy::ComputeKernel::ScanGeneralF16,
+            omarchy::ComputeKernel::ScanGeneralBF16);
   encoder.dispatch_compute(kernel, bindings, params, output_size);
 }
-OMARCHY_UNSUPPORTED(Scatter)
-OMARCHY_UNSUPPORTED(ScatterAxis)
+void Scatter::eval_gpu(const std::vector<array>& inputs, array& out) {
+  auto [reduce_type, axes] = state();
+  const array& src = inputs.at(0);
+  const array& indices = inputs.at(1);
+  const array& updates = inputs.back();
+  auto& encoder = omarchy::get_command_encoder(out.primitive().stream());
+  if (axes.size() != 1) {
+    // Each index array is a descriptor binding; the shared layout caps
+    // a dispatch at four buffers and scatter needs out, updates, the
+    // index array, and rank/sentinel scratch.
+    omarchy::unsupported("multi-index Scatter", out);
+  }
+  if (reduce_type == Scatter::Prod) {
+    // No atomic multiply on this stack; a CAS-loop product depends on
+    // the scheduling order of duplicate indices, so it is rejected
+    // rather than delivered nondeterministic.
+    omarchy::unsupported("Scatter Prod", out);
+  }
+  bool is_sum = reduce_type == Scatter::Sum;
+  // Multi-slot dispatches only land their first slot write on this
+  // device; until that is root-caused every Scatter mode keeps the
+  // named rejection rather than silently dropping updates.
+  omarchy::unsupported("Scatter", out);
+  if (out.dtype() == float16 || out.dtype() == bfloat16) {
+    require_float_dtype("Scatter", src, out, encoder);
+  }
+  uint32_t map_code;
+  omarchy::ComputeKernel kernel;
+  switch (out.dtype()) {
+    case float32:
+      map_code = 0;
+      kernel = omarchy::ComputeKernel::ScatterU32;
+      break;
+    case int32:
+      map_code = 1;
+      kernel = omarchy::ComputeKernel::ScatterU32;
+      break;
+    case uint32:
+      map_code = 2;
+      kernel = omarchy::ComputeKernel::ScatterU32;
+      break;
+    case float16:
+      map_code = 0;
+      kernel = omarchy::ComputeKernel::ScatterF16;
+      break;
+    case bfloat16:
+      map_code = 0;
+      kernel = omarchy::ComputeKernel::ScatterBF16;
+      break;
+    default:
+      omarchy::unsupported("Scatter dtype", out);
+  }
+  if (is_sum && out.dtype() != int32 && out.dtype() != uint32) {
+    // Float Sum has no deterministic implementation here: GLSL offers
+    // no float atomicAdd, and duplicate-index float accumulation
+    // through a CAS loop is scheduling-order dependent.
+    omarchy::unsupported("Scatter Sum dtype", out);
+  }
+  CopyType copy_type = src.data_size() == 1 ? CopyType::Scalar
+      : (src.flags().row_contiguous && src.data_size() == src.size())
+      ? CopyType::Vector
+      : CopyType::General;
+  copy_gpu(src, out, copy_type, out.primitive().stream());
+  if (indices.size() == 0) {
+    return;
+  }
+  if (indices.size() > (size_t{1} << 31)) {
+    omarchy::unsupported("Scatter slot count", out);
+  }
+  if (!indices.flags().row_contiguous ||
+      indices.data_size() != indices.size()) {
+    omarchy::unsupported("Scatter index layout", out);
+  }
+  if (!updates.flags().row_contiguous) {
+    omarchy::unsupported("Scatter updates layout", out);
+  }
+  uint32_t index_mode = scatter_index_mode(indices, out, "Scatter");
+  size_t update_ndim = updates.ndim() - indices.ndim();
+  if (update_ndim > 4) {
+    omarchy::unsupported("Scatter update rank", out);
+  }
+  uint32_t count = checked_u32(indices.size(), "Scatter", out);
+  omarchy::ComputeParams params;
+  params.count = count;
+  params.reduce_size = checked_u32(out.shape(axes[0]), "Scatter", out);
+  params.output_size =
+      checked_u32(updates.size() / indices.size(), "Scatter", out);
+  params.matrix_m = checked_u32(out.strides(axes[0]), "Scatter", out);
+  params.rhs_offset = scatter_index_offset(indices, out, "Scatter");
+  params.output_offset = checked_item_offset(out, out.size(), "Scatter", out);
+  params.aux_size = index_mode;
+  params.aux_offset = map_code;
+  params.flags = checked_u32(update_ndim, "Scatter", out);
+  for (size_t i = 0; i < update_ndim; ++i) {
+    int dim = out.ndim() - static_cast<int>(update_ndim) +
+        static_cast<int>(i);
+    params.shape[i] = checked_u32(updates.shape(dim), "Scatter", out);
+    params.in_strides[i] = checked_u32(out.strides(dim), "Scatter", out);
+  }
+  if (is_sum) {
+    // Phase 6: atomicAdd. Integer addition is associative, so the
+    // result is deterministic even under duplicate indices.
+    std::array<omarchy::ComputeBinding, 3> bindings{
+        binding(out), binding(updates), binding(indices)};
+    params.operation = 6;
+    encoder.dispatch_compute(
+        kernel,
+        bindings,
+        params,
+        omarchy::compute_dispatch_group_count(count));
+    return;
+  }
+  uint32_t phase1 = 0;
+  uint32_t phase2 = 0;
+  uint32_t clear_value = 0;
+  if (reduce_type == Scatter::None) {
+    phase1 = 0;
+    phase2 = 1;
+  } else if (reduce_type == Scatter::Max) {
+    phase1 = 2;
+    phase2 = 4;
+  } else {
+    phase1 = 3;
+    phase2 = 5;
+    clear_value = 0xFFFFFFFFu;
+  }
+  array scratch = make_u32_scratch(out.size(), encoder);
+  dispatch_clear_u32(scratch, clear_value, encoder);
+  std::array<omarchy::ComputeBinding, 4> bindings{
+      binding(out), binding(updates), binding(indices), binding(scratch)};
+  params.operation = phase1;
+  encoder.dispatch_compute(
+      kernel, bindings, params, omarchy::compute_dispatch_group_count(count));
+  // None pass 2 walks slots; Max/Min finalize walks output elements.
+  if (reduce_type == Scatter::None) {
+    params.count = count;
+  } else {
+    params.count = checked_u32(out.size(), "Scatter", out);
+  }
+  params.operation = phase2;
+  encoder.dispatch_compute(
+      kernel,
+      bindings,
+      params,
+      omarchy::compute_dispatch_group_count(params.count));
+}
+void ScatterAxis::eval_gpu(const std::vector<array>& inputs, array& out) {
+  auto [reduce_type, axis] = state();
+  const array& src = inputs.at(0);
+  const array& indices = inputs.at(1);
+  const array& updates = inputs.at(2);
+  auto& encoder = omarchy::get_command_encoder(out.primitive().stream());
+  bool is_sum = reduce_type == ScatterAxis::Sum;
+  // The slot-writer phases still no-op on the device; until that is
+  // root-caused, ScatterAxis keeps the named rejection rather than
+  // silently dropping a caller's updates.
+  omarchy::unsupported("ScatterAxis", out);
+  if (out.dtype() == float16 || out.dtype() == bfloat16) {
+    require_float_dtype("ScatterAxis", src, out, encoder);
+  }
+  omarchy::ComputeKernel kernel;
+  switch (out.dtype()) {
+    case float32:
+    case int32:
+    case uint32:
+      kernel = omarchy::ComputeKernel::ScatterAxisU32;
+      break;
+    case float16:
+      kernel = omarchy::ComputeKernel::ScatterAxisF16;
+      break;
+    case bfloat16:
+      kernel = omarchy::ComputeKernel::ScatterAxisBF16;
+      break;
+    default:
+      omarchy::unsupported("ScatterAxis dtype", out);
+  }
+  if (is_sum && out.dtype() != int32 && out.dtype() != uint32) {
+    // Same determinism evidence as general Scatter Sum.
+    omarchy::unsupported("ScatterAxis Sum dtype", out);
+  }
+  CopyType copy_type = src.data_size() == 1 ? CopyType::Scalar
+      : (src.flags().row_contiguous && src.data_size() == src.size())
+      ? CopyType::Vector
+      : CopyType::General;
+  copy_gpu(src, out, copy_type, out.primitive().stream());
+  if (indices.size() == 0) {
+    return;
+  }
+  if (indices.size() > (size_t{1} << 31)) {
+    omarchy::unsupported("ScatterAxis slot count", out);
+  }
+  if (!indices.flags().row_contiguous ||
+      indices.data_size() != indices.size()) {
+    omarchy::unsupported("ScatterAxis index layout", out);
+  }
+  int non_axis = out.ndim() - 1;
+  if (non_axis > 4) {
+    omarchy::unsupported("ScatterAxis rank", out);
+  }
+  size_t post_size = 1;
+  for (int i = axis + 1; i < out.ndim(); ++i) {
+    post_size *= out.shape(i);
+  }
+  uint32_t count = checked_u32(indices.size(), "ScatterAxis", out);
+  omarchy::ComputeParams params;
+  params.count = count;
+  params.reduce_size = checked_u32(src.shape(axis), "ScatterAxis", out);
+  params.output_size = checked_u32(post_size, "ScatterAxis", out);
+  params.aux_size = checked_u32(indices.shape(axis), "ScatterAxis", out);
+  params.aux_offset = scatter_index_mode(indices, out, "ScatterAxis");
+  // lhs_offset carries the update base element offset; the shader
+  // walks update addresses through out_strides plus matrix_n.
+  params.lhs_offset =
+      checked_item_offset(updates, updates.size(), "ScatterAxis", out);
+  params.rhs_offset = scatter_index_offset(indices, out, "ScatterAxis");
+  params.output_offset = checked_item_offset(out, out.size(), "ScatterAxis", out);
+  params.matrix_m = checked_u32(src.strides(axis), "ScatterAxis", out);
+  params.matrix_n = checked_u32(updates.strides(axis), "ScatterAxis", out);
+  params.matrix_k = checked_u32(axis, "ScatterAxis", out);
+  params.flags = checked_u32(non_axis, "ScatterAxis", out);
+  for (int i = 0, d = 0; i < out.ndim(); ++i) {
+    if (i == axis) {
+      continue;
+    }
+    params.shape[d] = checked_u32(out.shape(i), "ScatterAxis", out);
+    params.in_strides[d] = checked_u32(src.strides(i), "ScatterAxis", out);
+    params.out_strides[d] = checked_u32(updates.strides(i), "ScatterAxis", out);
+    ++d;
+  }
+  if (is_sum) {
+    std::array<omarchy::ComputeBinding, 3> bindings{
+        binding(out), binding(indices), binding(updates)};
+    params.operation = 6;
+    encoder.dispatch_compute(
+        kernel,
+        bindings,
+        params,
+        omarchy::compute_dispatch_group_count(count));
+    return;
+  }
+  // None: rank-max scratch, then the winning slot rewrites the target,
+  // which reproduces the CPU's sequential last-write-wins order.
+  array scratch = make_u32_scratch(out.size(), encoder);
+  dispatch_clear_u32(scratch, 0, encoder);
+  std::array<omarchy::ComputeBinding, 4> bindings{
+      binding(out), binding(indices), binding(updates), binding(scratch)};
+  params.operation = 0;
+  encoder.dispatch_compute(
+      kernel, bindings, params, omarchy::compute_dispatch_group_count(count));
+  params.operation = 1;
+  encoder.dispatch_compute(
+      kernel, bindings, params, omarchy::compute_dispatch_group_count(count));
+}
 // SearchSorted serves the categorical sampler: one binary search over
 // a sorted 1-D row per value, with both operands already promoted to
 // the same dtype by the op layer. The right flag picks between the
@@ -2023,7 +3696,7 @@ void Select::eval_gpu(const std::vector<array>& inputs, array& out) {
     words_done += chunk_words;
   }
 }
-OMARCHY_UNSUPPORTED(SegmentedMM)
+
 OMARCHY_UNARY(Sigmoid, SigmoidOperation)
 // Sign keeps the upstream three-way rule (-1, 0, 1 by comparison with
 // zero, NaN mapping to 0) for float dtypes, and the integer rule
