@@ -5139,9 +5139,6 @@ void Scatter::eval_gpu(const std::vector<array>& inputs, array& out) {
     phase2 = 5;
     clear_value = 0xFFFFFFFFu;
   }
-  fprintf(stderr, "[PHASEDBG] rt=%d sum=%d prod=%d p1=%u p2=%u clr=%u\n",
-          (int)reduce_type, (int)is_sum, (int)is_prod, phase1, phase2,
-          clear_value);
   array scratch = make_u32_scratch(out.size(), encoder);
   dispatch_clear_u32(scratch, clear_value, encoder);
   // The multi-index kernel moves scratch to binding 4 and binds the
@@ -5162,17 +5159,25 @@ void Scatter::eval_gpu(const std::vector<array>& inputs, array& out) {
     bindings[3] = binding(scratch);
   }
   uint32_t bound = multi_index ? 5u : 4u;
+  params.operation = phase1;
   encoder.dispatch_compute(
       kernel,
       std::span<const omarchy::ComputeBinding>(bindings.data(), bound),
       params,
       omarchy::compute_dispatch_group_count(elements));
-  // DEBUG: dump scratch between phases (temporary).
-  copy_gpu(scratch, out, CopyType::Vector, out.primitive().stream());
   // None pass 2 walks update elements; Max/Min finalize walks output
   // elements.
-  // DEBUG: dump scratch after phase 2 (temporary).
-  copy_gpu(scratch, out, CopyType::Vector, out.primitive().stream());
+  if (reduce_type == Scatter::None) {
+    params.count = elements;
+  } else {
+    params.count = checked_u32(out.size(), "Scatter", out);
+  }
+  params.operation = phase2;
+  encoder.dispatch_compute(
+      kernel,
+      std::span<const omarchy::ComputeBinding>(bindings.data(), bound),
+      params,
+      omarchy::compute_dispatch_group_count(params.count));
 }
 void ScatterAxis::eval_gpu(const std::vector<array>& inputs, array& out) {
   auto [reduce_type, axis] = state();

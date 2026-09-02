@@ -69,10 +69,12 @@ vec2 chirp(float direction, uint k, uint n) {
   return vec2(cos(angle), sin(angle));
 }
 
-// Address of sample j of transform t in a dense row-major buffer whose axis
-// extent is n with sample stride `stride`.
+// Address of sample j of transform t in a dense row-major buffer whose
+// axis extent is n with sample stride `stride`. Transforms interleave:
+// t splits as (outer row, inner q) with q in [0, stride), matching the
+// radix-2 pass kernel's base formula.
 uint dense_address(uint t, uint j, uint n, uint stride) {
-  return (t / stride) * n * stride + (t % stride) * stride + j * stride;
+  return (t / stride) * n * stride + (t % stride) + j * stride;
 }
 
 void main() {
@@ -109,9 +111,11 @@ void main() {
         // Half-spectrum source: synthesize the full Hermitian input.
         uint half_bins = n / 2u + 1u;
         if (j <= n / 2u) {
-          x = fft_in_complex.values[params.lhs_offset + t * half_bins + j];
+          x = fft_in_complex.values[params.lhs_offset +
+                                    dense_address(t, j, half_bins, stride)];
         } else {
-          x = fft_in_complex.values[params.lhs_offset + t * half_bins + (n - j)];
+          x = fft_in_complex.values[params.lhs_offset +
+                                    dense_address(t, n - j, half_bins, stride)];
           x.y = -x.y;
         }
       } else {
@@ -140,7 +144,7 @@ void main() {
     vec2 a = fft_in_complex.values[params.lhs_offset + p];
     vec2 b = fft_out_complex.values[params.output_offset + p];
     fft_out_complex.values[params.output_offset + p] = cmul(a, b);
-  } else {
+  } else if (mode == 4u) {
     // Bluestein epilogue: p enumerates t*n + j over the n-point results.
     uint conv_len = params.output_size;
     uint j = p % n;
@@ -154,8 +158,63 @@ void main() {
     float scale = inverse ? float(conv_len) / float(n) : 1.0;
     value *= scale;
     uint at = (params.operation & 8u) != 0u
-        ? params.output_offset + t * (n / 2u + 1u) + j
+        ? params.output_offset +
+              dense_address(t, j, n / 2u + 1u, stride)
         : params.output_offset + dense_address(t, j, n, stride);
     fft_out_complex.values[at] = value;
+  } else if (mode == 6u) {
+    // Real-variant edge kernels between the packed half-spectrum layout
+    // and the full dense spectrum. Flag bit 1 promotes a real input to
+    // complex (rfft head); bit 2 synthesizes the full Hermitian spectrum
+    // from a packed half-spectrum input (irfft head); with neither flag
+    // the kernel truncates a full spectrum to its packed half (rfft
+    // tail). Promotion and synthesis read every sample of the packed
+    // input exactly once; truncation writes every packed bin exactly
+    // once.
+    bool input_real = (params.operation & 2u) != 0u;
+    bool input_half = (params.operation & 4u) != 0u;
+    uint half_bins = n / 2u + 1u;
+    uint t;
+    uint j;
+    if (input_real || input_half) {
+      t = p / n;
+      j = p % n;
+    } else {
+      t = p / half_bins;
+      j = p % half_bins;
+    }
+    if (input_real) {
+      vec2 value = vec2(
+          fft_in_real.values[params.lhs_offset + dense_address(t, j, n, stride)],
+          0.0);
+      fft_out_complex.values[params.output_offset +
+                             dense_address(t, j, n, stride)] = value;
+    } else if (input_half) {
+      uint bin = j <= n / 2u ? j : n - j;
+      vec2 value = fft_in_complex.values[params.lhs_offset +
+                                         dense_address(t, bin, half_bins, stride)];
+      if (j > n / 2u) {
+        value.y = -value.y;
+      }
+      fft_out_complex.values[params.output_offset +
+                             dense_address(t, j, n, stride)] = value;
+    } else {
+      vec2 value = fft_in_complex.values[params.lhs_offset +
+                                         dense_address(t, j, n, stride)];
+      fft_out_complex.values[params.output_offset +
+                             dense_address(t, j, half_bins, stride)] = value;
+    }
+  } else {
+    // Mode 5: factor-transpose permute. The Cooley-Tukey decomposition
+    // leaves each level's output transposed: slot j = j1 + M*k0 holds the
+    // bin that belongs at k0 + (n/M)*j1. Scatter src[j] to dst[pi(j)].
+    uint trailing = params.output_size;
+    uint t = p / n;
+    uint j = p % n;
+    uint permuted = (j / trailing) + (n / trailing) * (j % trailing);
+    vec2 value =
+        fft_in_complex.values[params.lhs_offset + dense_address(t, j, n, stride)];
+    fft_out_complex.values[params.output_offset +
+                           dense_address(t, permuted, n, stride)] = value;
   }
 }

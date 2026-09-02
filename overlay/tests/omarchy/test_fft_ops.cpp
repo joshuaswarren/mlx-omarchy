@@ -542,38 +542,50 @@ TEST_CASE("fft2 and ifft2 route through the same primitive") {
   auto back = read_complex(ifft2(spec, {0, 1}, FFTNorm::Backward, stream), stream);
 }
 
-TEST_CASE("non-power-of-two and oversized lengths keep the named error") {
+TEST_CASE("lengths beyond the general-length bounds keep the named error") {
   if (!compute_available()) {
     return;
   }
   Stream stream = gpu_stream();
   std::mt19937 gen(79);
 
-  auto x12 = random_complex(12, gen);
-  std::string length_error = evaluation_error([&] {
-    auto y = fftn(complex_array(x12, Shape{12}), FFTNorm::Backward, stream);
+  // The wave-12 general-length work lifted the old power-of-two-only
+  // gate: composites decompose into radix-2 passes (12 and 4096 now
+  // transform correctly) and prime-class lengths embed in a Bluestein
+  // chirp-z convolution (see omarchy_fft_general_tests for their value
+  // tests). What still refuses, by name:
+  //   - a length with no divisor in 2..2048 (a prime, in practice)
+  //     above 32768: the Bluestein chirp reduces k*k mod 2n in u32,
+  //     which is exact only while the padded convolution length
+  //     next_pow2(2n-1) stays at or under 65536;
+  //   - any length above 2^24, where Cooley-Tukey twiddle phase
+  //     products would stop being exactly representable in float32.
+  auto x65537 = random_complex(65537, gen);
+  std::string prime_error = evaluation_error([&] {
+    auto y = fftn(
+        complex_array(x65537, Shape{65537}), FFTNorm::Backward, stream);
     y.eval();
     sync(stream);
   });
-  CHECK(length_error.find("[omarchy] FFT") != std::string::npos);
-  CHECK(length_error.find("transform length 12") != std::string::npos);
-  CHECK(length_error.find("Bluestein") != std::string::npos);
+  CHECK(prime_error.find("[omarchy] FFT") != std::string::npos);
+  CHECK(prime_error.find("transform length 65537") != std::string::npos);
+  CHECK(prime_error.find("Bluestein") != std::string::npos);
 
-  auto x4096 = random_complex(4096, gen);
-  std::string oversized_error = evaluation_error([&] {
-    auto y = fftn(complex_array(x4096, Shape{4096}), FFTNorm::Backward, stream);
+  // 2053 * 2053 = 4214809: both factors are primes above 2048, so the
+  // composite path has no divisor to split on and the length is far
+  // past the chirp bound.
+  auto x4214809 = random_complex(4214809, gen);
+  std::string big_prime_error = evaluation_error([&] {
+    auto y = fftn(
+        complex_array(x4214809, Shape{4214809}),
+        FFTNorm::Backward,
+        stream);
     y.eval();
     sync(stream);
   });
-  CHECK(oversized_error.find("transform length 4096") != std::string::npos);
-
-  auto r12 = random_real(12, gen);
-  std::string rfft_error = evaluation_error([&] {
-    auto y = rfftn(real_array(r12, Shape{12}), Shape{12}, {0}, FFTNorm::Backward, stream);
-    y.eval();
-    sync(stream);
-  });
-  CHECK(rfft_error.find("transform length 12") != std::string::npos);
+  CHECK(
+      big_prime_error.find("transform length 4214809") !=
+      std::string::npos);
 }
 
 TEST_CASE("explicit n pads with zeros or slices the input") {
@@ -616,30 +628,67 @@ TEST_CASE("explicit n pads with zeros or slices the input") {
   require_close(truncated, trunc_ref);
 }
 
-TEST_CASE("rfft on a non-trailing axis keeps its named error") {
+TEST_CASE("rfft and irfft work on a non-trailing axis") {
   if (!compute_available()) {
     return;
   }
   Stream stream = gpu_stream();
   std::mt19937 gen(89);
-  auto x = random_real(64, gen);
 
-  std::string axis_error = evaluation_error([&] {
-    auto y = rfftn(real_array(x, Shape{4, 4, 4}), {0, 1}, FFTNorm::Backward, stream);
-    y.eval();
-    sync(stream);
-  });
-  CHECK(axis_error.find("[omarchy] FFT") != std::string::npos);
-  CHECK(axis_error.find("rfft on a non-trailing axis") != std::string::npos);
-  // irfftn mirrors the same gate: axes {0,1} on a (4,5,4) half spectrum
-  // (n = 8 on the middle axis) makes the real axis non-trailing.
-  std::mt19937 gen_irfft(97);
-  auto spectrum = random_complex(4 * 5 * 4, gen_irfft);
-  std::string irfft_error = evaluation_error([&] {
-    auto y = irfftn(complex_array(spectrum, Shape{4, 5, 4}), {0, 1}, FFTNorm::Backward, stream);
-    y.eval();
-    sync(stream);
-  });
-  CHECK(irfft_error.find("[omarchy] FFT") != std::string::npos);
-  CHECK(irfft_error.find("irfft on a non-trailing axis") != std::string::npos);
+  // Wave 8 gated these by name; wave 12 lifted the gate (the half-
+  // spectrum load/store paths index packed rows with step 1 while
+  // everything else keeps the axis stride). Value-check the forward
+  // direction against a two-axis naive reference, then the round-trip.
+  auto x = random_real(4 * 8 * 4, gen);
+  auto spectrum = read_complex(
+      rfftn(real_array(x, Shape{4, 8, 4}), {0, 1}, FFTNorm::Backward, stream),
+      stream);
+  // Shape (4, 8, 4) with real axes {0, 1}: bins (4, 5, 4). Axis 2 is
+  // untouched, so it keeps its full extent of 4.
+  REQUIRE_EQ(spectrum.size(), size_t(4 * 5 * 4));
+
+  // Reference: forward DFT along axis 0 (length 4, real promoted), then
+  // along axis 1 (length 8), keeping bins 0..4. Output flat index for
+  // dims (k0, k1, k2) is (k0 * 5 + k1) * 4 + k2.
+  std::vector<cdouble> intermediate(4 * 8 * 4, {0.0, 0.0});
+  for (size_t j1 = 0; j1 < 8; ++j1) {
+    for (size_t j2 = 0; j2 < 4; ++j2) {
+      std::vector<cdouble> col(4);
+      for (size_t j0 = 0; j0 < 4; ++j0) {
+        col[j0] = {x[(j0 * 8 + j1) * 4 + j2], 0.0};
+      }
+      auto t0 = naive_dft(col, false);
+      for (size_t k0 = 0; k0 < 4; ++k0) {
+        intermediate[((j1 * 4 + k0) * 4) + j2] = t0[k0];
+      }
+    }
+  }
+  std::vector<cdouble> ref(spectrum.size(), {0.0, 0.0});
+  for (size_t k0 = 0; k0 < 4; ++k0) {
+    for (size_t j2 = 0; j2 < 4; ++j2) {
+      std::vector<cdouble> col(8);
+      for (size_t j1 = 0; j1 < 8; ++j1) {
+        col[j1] = intermediate[((j1 * 4 + k0) * 4) + j2];
+      }
+      auto t1 = naive_dft(col, false);
+      for (size_t k1 = 0; k1 < 5; ++k1) {
+        ref[((k0 * 5 + k1) * 4) + j2] = t1[k1];
+      }
+    }
+  }
+  require_close(spectrum, ref, 5e-4);
+
+  // Round-trip: irfftn over the same axes restores the real input.
+  auto spec_array = rfftn(
+      real_array(x, Shape{4, 8, 4}), {0, 1}, FFTNorm::Backward, stream);
+  auto back = read_real(
+      irfftn(spec_array, Shape{4, 8}, {0, 1}, FFTNorm::Backward, stream),
+      stream);
+  double diff = 0.0;
+  for (size_t i = 0; i < x.size(); ++i) {
+    diff = std::max(diff, std::abs(back[i] - double(x[i])));
+  }
+  REQUIRE_MESSAGE(
+      diff <= 1e-3,
+      "non-trailing rfft/irfft round-trip: max abs diff " << diff);
 }

@@ -162,10 +162,15 @@ target_link_options(omarchy_take_fill_tests PRIVATE ${SANITIZER_LINK_FLAGS})
 doctest_discover_tests(omarchy_take_fill_tests)
 add_test(NAME omarchy_take_fill_tests COMMAND omarchy_take_fill_tests)
 # test_eq_math and test_sdpa_norm_regression are still owned by their
-# respective authors. WideRowTopK's test_topk_ops.cpp is now in place.
-# Placeholder stubs that assert nothing are forbidden: unregister the
-# target instead. See hub IRC Main 2026-09-02 for the no-placeholder
-# rule.
+# respective authors. omarchy_topk_ops_tests is UNREGISTERED (2026-09-02,
+# IndexingTopkRepair): its single case only exercised WideRowTopK's
+# reverted wide-row kernel, and the kernel's shader source was lost in
+# the stash sweep, so the suite had nothing real to test. The wide-row
+# capability gap is pinned by the refusal test in test_indexing_ops.cpp
+# ("argpartition wide rows keep the named refusal..."), which flips to a
+# value test when a correct selection kernel lands. Placeholder stubs
+# that assert nothing are forbidden: unregister the target instead.
+# See hub IRC Main 2026-09-02 for the no-placeholder rule.
 
 add_executable(omarchy_conv_tests
                ${CMAKE_CURRENT_SOURCE_DIR}/test_conv_general.cpp)
@@ -252,9 +257,6 @@ target_link_options(omarchy_eq_math_tests PRIVATE ${SANITIZER_LINK_FLAGS})
 
 doctest_discover_tests(omarchy_eq_math_tests)
 add_test(NAME omarchy_eq_math_tests COMMAND omarchy_eq_math_tests)
-
-# Temporary probe (IndexingTopkRepair): scratch clear/atomic visibility.
-# Deleted before yield.
-add_executable(omarchy_probe_clear_scratch
-               ${CMAKE_CURRENT_SOURCE_DIR}/probe_clear_scratch.cpp)
-target_link_libraries(omarchy_probe_clear_scratch PRIVATE mlx)
+add_executable(omarchy_probe_bool
+               ${CMAKE_CURRENT_SOURCE_DIR}/probe_bool.cpp)
+target_link_libraries(omarchy_probe_bool PRIVATE mlx)
