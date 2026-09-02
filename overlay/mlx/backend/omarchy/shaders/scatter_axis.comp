@@ -129,12 +129,11 @@ void main() {
 #endif
     } else if (op == 14u) {
 #ifdef USE_BOOL
-      // Bool Sum/Max finalize: write the accumulated OR bit into the
-      // packed byte; the clear/set atomic pair touches disjoint bits,
-      // so concurrent byte writes to one word commute.
+      // Bool Sum/Max finalize: set the lane to the accumulated OR bit;
+      // out already holds src and OR never clears a set src bit, so a
+      // plain bit-set leaves sibling lanes untouched.
       uint element = params.output_offset + t;
       uint lane = (element & 3u) * 8u;
-      atomicAnd(out_data.values[element >> 2u], ~(1u << lane));
       atomicOr(
           out_data.values[element >> 2u],
           (scratch_data.values[element] & 1u) << lane);
@@ -224,7 +223,8 @@ void main() {
             ax * params.matrix_n;
         atomicOr(
             scratch_data.values[target],
-            (upd_data.values[ue6 >> 2u] >> ((ue6 & 3u) * 8u)) != 0u
+            ((upd_data.values[ue6 >> 2u] >> ((ue6 & 3u) * 8u)) & 0xFFu) !=
+                    0u
                 ? 1u
                 : 0u);
 #endif
