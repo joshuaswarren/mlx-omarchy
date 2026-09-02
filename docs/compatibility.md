@@ -314,6 +314,76 @@ The io stream selection uses the default stream when the CPU backend is absent, 
 The `.npy` loader follows the same stream rule but has no gate receipt yet.
 GGUF load has no stream selection to fix and no receipt.
 
+### Crash contract: named errors, zero-size save, and cross-thread streams
+
+Backend errors stay named and catchable through every conversion path.
+`np.array` and `memoryview` on an array whose backend error fires during
+evaluation now raise the Python `RuntimeError` with the named
+`[omarchy] ...` message and fail the buffer request.
+Before the fix, the C `getbuffer` slot let the C++ exception cross the
+PEP 3118 callback boundary, which called `std::terminate` and killed the
+interpreter.
+The fix is the binding patch `patches/mlx-python-buffer.patch`, wired in
+`scripts/prepare-mlx.sh` (2026-09-01).
+
+`mx.save` and `mx.load` round-trip a zero-size array instead of segfaulting.
+The copy path skipped output allocation for zero-size outputs, so the
+evaluated array held no buffer, and `Contiguous::eval_gpu` dereferenced null
+through `buffer_size()`.
+`copy_gpu` now always sets the output buffer, which matches the upstream
+`set_copy_output_data` contract; `malloc(0)` returns a valid empty buffer.
+
+Evaluating a stream created on another thread raises the upstream
+`std::runtime_error` contract: `There is no Stream(gpu, N) in current
+thread.`.
+The omarchy encoder lookup threw `std::out_of_range` from
+`unordered_map::at`, which escaped `catch(std::runtime_error)` handlers and
+aborted the process.
+The lookup now mirrors the CUDA backend: thread-local table, then the
+global thread-unsafe table, then the contract error.
+
+CPU-less builds keep `cpu::device_count` at `0` and an empty
+`cpu::device_info`.
+Reporting a CPU device that cannot run primitives would break the
+no-CPU-dispatch contract, so the absence stays observable through the
+device metadata while the GPU device reports normally.
+
+Regression coverage lives in
+`overlay/tests/omarchy/test_error_contract.cpp`
+(`omarchy_error_contract_tests`, 3 cases).
+
+### Log bases and broadcast-view elementwise
+
+`log2` and `log10` returned natural-log values. Upstream maps both to the
+`Log` primitive with `Log::Base` two or ten; the omarchy dispatch ignored
+the base and the shader computed `log(lhs)`. The dispatch now selects the
+case from the base: GLSL `log2` for base two, `log(lhs) / ln(10)` for
+base ten. Anchors: `log2(1024)` is `10.0`, `log10(1000)` is `3.0` within
+one float32 ulp of rounding, `log(1000)` is unchanged. The rest of the
+15-case elementwise switch was audited against upstream semantics: exp,
+sigmoid, square, sqrt, rsqrt, add, multiply, divide, subtract, negative,
+cos, sin, and the NaN-propagating minimum and maximum all match. No other
+case carried a wrong value. Ops outside the switch (expm1, log1p, erf,
+tan, tanh, cosh, sinh, and inverses) stay named rejections.
+
+`mx.sum` over a broadcast-expanded view returned silently wrong values
+(upstream `test_reduce.py::test_expand_sums`, 11 subtests). Root cause:
+a broadcast view inherits `contiguous == true` from its base while
+`data_size < size`. The elementwise output-data setup trusted that flag,
+so a view operand made the output mirror the view's undersized buffer or
+donate it; the stride-walk reads were correct but the writes landed out
+of bounds. `mx.sum(y, axis=3) / 1000` on a `(5,5,5,1,5,1)` view wrote
+470 of 625 elements wrong. Binary and int elementwise dispatch now forces
+dense output storage whenever an operand has `data_size != size`, and the
+unary path no longer mirrors a scalar-view buffer. Reduce itself rejects
+non-row-contiguous views by name; those layouts stay named rejections,
+never wrong numbers.
+
+Regression coverage lives in
+`overlay/tests/omarchy/test_primitives.cpp`: "Log bases match host
+references at several magnitudes" and "elementwise on broadcast-expanded
+views matches host values" (`omarchy_primitive_tests`, 77 cases).
+
 ## ANE
 
 Linux descriptor submission is in progress.

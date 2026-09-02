@@ -352,7 +352,23 @@ void CommandEncoder::submit() {
 }
 
 CommandEncoder& get_command_encoder(Stream s) {
-  return get_command_encoders().at(s.index);
+  // Mirrors the CUDA backend: the per-thread table misses for a stream
+  // created on another thread, so fall back to the global thread-unsafe
+  // table and finally raise the upstream std::runtime_error contract.
+  // unordered_map::at would throw std::out_of_range, which escapes the
+  // caller's catch(std::runtime_error) and terminates the process.
+  auto& encoders = get_command_encoders();
+  auto it = encoders.find(s.index);
+  if (it == encoders.end()) {
+    auto& global_encoders = get_global_command_encoders();
+    it = global_encoders.find(s.index);
+    if (it == global_encoders.end()) {
+      throw std::runtime_error(
+          "There is no Stream(gpu, " + std::to_string(s.index) +
+          ") in current thread.");
+    }
+  }
+  return it->second;
 }
 
 std::unordered_map<int, CommandEncoder>& get_command_encoders() {

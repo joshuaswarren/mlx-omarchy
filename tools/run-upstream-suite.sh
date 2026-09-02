@@ -154,7 +154,7 @@ if [[ $RUN_PY -eq 1 ]]; then
     not_expr=""
     crash_excluded=()
     rc=0
-    for attempt in $(seq 1 15); do
+    for attempt in $(seq 1 60); do
       alog="$OUT_DIR/py/$base.a${attempt}.log"
       MLX_OMARCHY_ALLOW_NON_APPLE=1 MLX_ENABLE_TF32=0 \
         timeout "$PY_TIMEOUT" "$VENV_DIR/bin/python" -m pytest "$f" \

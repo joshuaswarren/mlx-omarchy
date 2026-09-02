@@ -6,3 +6,5 @@ THEORY.MD
 .DS_Store
 *.swp
 dist/
+core.*
+core
