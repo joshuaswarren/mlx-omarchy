@@ -8,8 +8,8 @@ This project's contract is to refuse by name rather than return a wrong number. 
 
 ## Does this hit me?
 
-- Transformer inference: `mx.fast.scaled_dot_product_attention` is wrong at every head dim except 64 and 128. `nn.gelu_approx` produced values up to 1.47e13 under test conditions.
-- Training: the `mx.fast.layer_norm` gradient returns NaN, deterministically.
+- Transformer inference: `mx.fast.scaled_dot_product_attention` is wrong whenever the key and value head count differs from the query head count. That is grouped-query attention, which current Llama, Qwen, and Mistral models all use. `nn.gelu_approx` produced values up to 1.47e13 under test conditions.
+- Training: the `mx.fast.layer_norm` weight gradient is wrong when the normalized dimension exceeds 512 columns, returning NaN at 1024 and worse above.
 - NaN-handling code: first-axis reductions drop NaN. `cummax` and `cummin` stop carrying NaN. `array_equal(equal_nan=True)` returns False for equal arrays.
 - Integer multi-axis sums: `mx.sum` over three or more axes of a rank-4 int array returns wrong totals with sign flips.
 - Indexing, filling, and math: negative-axis `take` fills zeros. Dtype-converting `full_like` fills one element. `mx.sin` saturates at about 1e9. `log10` is one ulp low everywhere.
@@ -18,13 +18,13 @@ If none of these matches your use, this page names no defect for it. Everything 
 
 ## Attention and transformer inference
 
-### `mx.fast.scaled_dot_product_attention` at head dims other than 64 and 128
+### `mx.fast.scaled_dot_product_attention` with grouped-query attention
 
-Wrong for any head dim outside {64, 128}. Upstream's `test_sdpa_head_dim_72` and `test_sdpa_head_dim_96` failed 48 subtests. Errors reached 8.5e5, `inf`, and 2.30e+31. A D=64 control passes.
+Corrected on 2026-09-02. This was first recorded as a head-dimension defect, because upstream's `test_sdpa_head_dim_72` and `test_sdpa_head_dim_96` were the failing tests. Root-causing it found a broader and more serious cause: the defect is **grouped-query attention**, not head dimension. When the key and value heads are fewer than the query heads, the backend produces a 5-D result and then installs those 5-D strides on a 4-D output array. Head dim 64 and 128 appeared safe only because the tests that exercise them use equal head counts.
 
-Every mask form is affected: additive, bool, causal, None. All of float16, bfloat16, and float32 are affected. One failing shape is B=1, D=72, 8 query heads, 2 key heads. Upstream Metal passes the same tests.
+This is worse than the original description. Grouped-query attention is standard in current language models - Llama, Qwen, and Mistral families all use it - so this affects mainstream inference, not an unusual head size. Errors reached 8.5e5, `inf`, and 2.30e+31. Every mask form is affected: additive, bool, causal, and None. All of float16, bfloat16, and float32 are affected. One failing shape is B=1, D=72, 8 query heads, 2 key heads. Upstream Metal passes the same tests.
 
-Do not trust SDPA at a head dim other than 64 or 128 in this release. Both of those compute correctly.
+Do not trust SDPA in this release for any model whose key and value head count differs from its query head count. Equal-head-count attention computes correctly at every head dim tested, including 72 and 96.
 
 ### The fast SDPA vector path disagrees with its own decomposition
 
@@ -45,11 +45,13 @@ A fresh-process smoke test does not clear this defect. Do not trust `gelu_approx
 
 ## Training and gradients
 
-### `mx.fast.layer_norm`'s gradient returns NaN
+### `mx.fast.layer_norm`'s weight gradient is wrong above 512 columns
 
-Upstream's `test_fast.py::TestFast::test_layer_norm_grad` pins this at line 720. The fast gradient must match the composed gradient within 5e-5. The `mx.fast.layer_norm` VJP path returned `nan`. The failure reproduces deterministically in a fresh process, with both sides evaluated.
+Upstream's `test_fast.py::TestFast::test_layer_norm_grad` pins this at line 720. The fast gradient must match the composed gradient within 5e-5. The `mx.fast.layer_norm` VJP path returned `nan`.
 
-Do not train through `mx.fast.layer_norm` in this release. A silent NaN gradient reaches every parameter it touches.
+Root-caused on 2026-09-02, with a scope worth stating precisely: the weight-gradient kernel did not reset its accumulator per 256-column tile, so it summed the wrong columns. Rows of 512 columns or fewer are correct. At 1024 columns the result is `nan`. At 8192 columns the relative error reached 4.94. That threshold is why the kernel's own unit tests passed - they used 32 columns.
+
+Do not train through `mx.fast.layer_norm` in this release when the normalized dimension exceeds 512. A silent NaN gradient reaches every parameter it touches, and a loss curve keeps looking healthy while the model stops learning.
 
 ### One vjp path is one ulp off
 
@@ -171,7 +173,7 @@ The cause is the range-reduction stage. The outputs still lie in [-1, 1], so not
 
 Treat every operation on this page as untrusted in v0.3.0-alpha.1. None of them raises, so error handling and exception tests pass anyway.
 
-Some safe paths exist, and this page names them: head dims 64 and 128, flat negative `take`, same-dtype `full_like`, one- and two-axis integer sums, suffix-axis and whole-array NaN reductions, and `mx.log` or `mx.log2`.
+Some safe paths exist, and this page names them: attention with equal query and key head counts, flat negative `take`, same-dtype `full_like`, one- and two-axis integer sums, suffix-axis and whole-array NaN reductions, and `mx.log` or `mx.log2`.
 
 Fixes are in progress on `feat/vulkan-primitives`. Prefer a later release, or a fresh wheel from that branch once the fixes land.
 
