@@ -956,5 +956,5 @@ TEST_CASE("CustomKernel reports the Metal-source incompatibility") {
   auto message = caught_message([&] { out.eval(); });
   CHECK(message.find("fast::CustomKernel") != std::string::npos);
   CHECK(message.find("Metal") != std::string::npos);
-  CHECK(message.find("No CPU fallback") != std::string::npos);
+  CHECK(message.find("no silent CPU fallback") != std::string::npos);
 }

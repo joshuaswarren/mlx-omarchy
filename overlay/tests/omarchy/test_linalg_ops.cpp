@@ -1052,7 +1052,7 @@ TEST_CASE("eigh rejects complex64 input") {
   auto error =
       evaluation_error(linalg::eigh(complex_input, "L", stream).first);
   CHECK_MESSAGE(
-      contains_all(error, {"Eigh", "not implemented", "No CPU fallback"}),
+      contains_all(error, {"Eigh", "not implemented", "no silent CPU fallback"}),
       "unexpected error: ",
       error);
 }
@@ -1193,7 +1193,7 @@ TEST_CASE("eig values path moved to test_eig_ops.cpp; gate stays dtype-only") {
   auto error = evaluation_error(linalg::eigvals(complex_input, stream));
   CHECK_MESSAGE(
       contains_all(
-          error, {"[omarchy] Eig dtype is not implemented", "No CPU fallback"}),
+          error, {"[omarchy] Eig dtype is not implemented", "no silent CPU fallback"}),
       "unexpected error: ",
       error);
 }

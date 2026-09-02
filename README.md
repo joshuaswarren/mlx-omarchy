@@ -49,7 +49,7 @@ One caveat on the macOS column. That slice runs macOS 13.7.8. MLX dropped macOS 
 
 **A patch set, not a fork.** This repository contains no MLX source and no MLX history. `mlx.lock` pins one upstream release by SHA-256. `overlay/` adds the Vulkan backend beside Metal and CUDA, `patches/` carries a few small diffs, and `scripts/prepare-mlx.sh` assembles the tree. You can read every line this project adds in one sitting. Tracking upstream MLX is a version bump, not a rebase.
 
-**No CPU fallback.** When a program hits an operation the backend does not support, it fails with the operation name, dtype, and shape. It never falls back to CPU silently. A number you measure on this backend is a number the GPU earned.
+**No silent CPU fallback.** When a program hits an operation the backend does not support, it fails with the operation name, dtype, and shape. Nothing reroutes GPU work to CPU silently; run the operation on an explicit CPU stream to use the CPU implementation. A number you measure on a GPU stream is a number the GPU earned.
 
 **Receipts, not claims.** Every number above comes from a recorded run on real hardware, stored in [receipts/](receipts/). The [M1 development gate](receipts/2026-08-31-m1-development-gates.md), the [MLX-LM generation attempts](receipts/2026-08-31-m1-mlxlm-fp16-smoke.md), the [same-chip parity run](receipts/2026-09-01-m1-same-chip-parity.md), and the [M1 qualification of the coverage waves](receipts/2026-09-02-m1-qualification.md) all record the exact commands and their output.
 

@@ -238,7 +238,16 @@ void Event::signal(Stream s) {
       encoder.commit();
       return;
     }
-    event.host->signal(value());
+    // Enqueue the signal on the producer stream's queue. CPU primitives
+    // dispatch their work as scheduler tasks on this same queue (cpu
+    // encoder dispatch), so a signal issued inline on the caller's thread
+    // can overtake work that is still queued and let a waiter read
+    // half-finished buffers. The queue ordering mirrors the Metal
+    // backend's cpu-stream signal path.
+    uint64_t target_value = value();
+    scheduler::signal_event(s, *this, [target_value](Event& self) {
+      self.cast<EventImpl>().host->signal(target_value);
+    });
   }
 }
 

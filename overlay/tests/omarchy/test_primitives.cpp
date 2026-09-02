@@ -993,18 +993,21 @@ TEST_CASE("mx.compile evaluates the elementwise tape and no_fuse still matches")
   set_compile_mode(CompileMode::enabled);
 }
 
-TEST_CASE("unsupported compute shapes and dtypes fail without CPU fallback") {
+TEST_CASE("unsupported compute shapes and dtypes refuse by name") {
   if (!compute_available()) {
     return;
   }
-  CHECK_FALSE(is_available(Device::cpu));
-  CHECK_EQ(device_count(Device::cpu), 0);
+  if (!is_available(Device::cpu)) {
+    // No CPU backend in this build: the CPU device does not exist at all.
+    CHECK_FALSE(is_available(Device::cpu));
+    CHECK_EQ(device_count(Device::cpu), 0);
+  }
   Stream stream = gpu_stream();
 
   std::string dtype_error = evaluation_error(add(
       array({1, 2}, int32), array({3, 4}, int32), stream));
   CHECK(dtype_error.find("[omarchy] Add dtype") != std::string::npos);
-  CHECK(dtype_error.find("No CPU fallback") != std::string::npos);
+  CHECK(dtype_error.find("no silent CPU fallback") != std::string::npos);
 
   // Slice views with gaps materialize at eval, so elementwise work over
   // them runs. A transpose view keeps its strides and pins the named
@@ -3042,7 +3045,7 @@ TEST_CASE("repeat materializes broadcast reshapes through the strided copy engin
   array wide_expanded = repeat(wide_source, repeats, 1, stream);
   std::string wide_error = evaluation_error(wide_expanded);
   CHECK(wide_error.find("strided reshape") != std::string::npos);
-  CHECK(wide_error.find("No CPU fallback") != std::string::npos);
+  CHECK(wide_error.find("no silent CPU fallback") != std::string::npos);
 
   std::vector<uint8_t> byte_values(kv_heads * seq_length * head_dim, 7);
   array byte_source(byte_values.begin(), Shape{1, 2, 41, 64}, uint8);
@@ -3115,7 +3118,7 @@ TEST_CASE("argmax reduces last-axis rows through Vulkan compute") {
   array matrix({1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f}, {2, 3}, float32);
   std::string axis_error = evaluation_error(argmax(matrix, 0, false, stream));
   CHECK(axis_error.find("non-suffix ArgMax") != std::string::npos);
-  CHECK(axis_error.find("No CPU fallback") != std::string::npos);
+  CHECK(axis_error.find("no silent CPU fallback") != std::string::npos);
 }
 
 TEST_CASE("argmin matches first-occurrence ties through Vulkan compute") {
@@ -3309,7 +3312,7 @@ TEST_CASE("Arange fills start plus step times index through Vulkan compute") {
   std::string dtype_error =
       evaluation_error(arange(0, 4, 1, int64, stream));
   CHECK(dtype_error.find("[omarchy] Arange dtype") != std::string::npos);
-  CHECK(dtype_error.find("No CPU fallback") != std::string::npos);
+  CHECK(dtype_error.find("no silent CPU fallback") != std::string::npos);
 
   const auto& capabilities = omarchy::device(0).capabilities();
   if (!capabilities.shader_float16 ||
@@ -3457,7 +3460,7 @@ TEST_CASE("sort rejects long rows and non-float dtypes with named errors") {
   array x(wide.begin(), Shape{1, 1025}, float32);
   std::string length_error = evaluation_error(sort(x, -1, stream));
   CHECK(length_error.find("sort row length Sort") != std::string::npos);
-  CHECK(length_error.find("No CPU fallback") != std::string::npos);
+  CHECK(length_error.find("no silent CPU fallback") != std::string::npos);
   std::string index_length_error =
       evaluation_error(argsort(x, -1, stream));
   CHECK(

@@ -54,7 +54,7 @@ if [[ $RUN_CPP -eq 1 ]]; then
   fi
   echo "== [cpp] configure $BUILD_DIR =="
   cmake -S "$WORK_DIR/mlx" -B "$BUILD_DIR" -G Ninja \
-    -DMLX_BUILD_OMARCHY=ON -DMLX_BUILD_CPU=OFF \
+    -DMLX_BUILD_OMARCHY=ON -DMLX_BUILD_CPU=ON \
     -DMLX_BUILD_METAL=OFF -DMLX_BUILD_CUDA=OFF \
     -DMLX_BUILD_TESTS=ON -DMLX_BUILD_EXAMPLES=OFF -DMLX_BUILD_BENCHMARKS=OFF \
     "${DOCTEST_PIN_ARGS[@]}" || { echo "[cpp] configure FAILED"; exit 1; }

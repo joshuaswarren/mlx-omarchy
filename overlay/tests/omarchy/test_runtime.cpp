@@ -108,7 +108,7 @@ int run_child_scenario(const std::string& mode) {
   if (mode == "bounded_submit") {
     // Queue a wait that can never be satisfied, then block on completion.
     // The submit must return control with a typed Omarchy error instead of
-    // hanging forever (plan R16). No CPU fallback exists.
+    // hanging forever (plan R16). No CPU rescue is attempted for a hung GPU.
     Stream a = new_stream(Device::gpu);
     Stream b = new_stream(Device::gpu);
     Event e{a};
@@ -836,12 +836,14 @@ TEST_CASE("host event bridges a GPU-stream signal") {
   Stream gs = new_stream(Device::gpu);
   Event e{cs};
   e.set_value(1);
-  e.signal(cs); // host counter path
+  e.signal(cs); // host counter path: queued behind cpu-stream work
+  e.wait(); // bounded host wait; joins the queue behind the signal
   CHECK(e.is_signaled());
 
   e.set_value(2);
   e.signal(gs); // GPU stream: the host counter advances at completion
-  CHECK_FALSE(e.is_signaled());
+  // No negative check here: the submission may already have completed by
+  // the time this thread looks, so "not yet signaled" is unobservable.
   e.wait(); // bounded host wait; joins the completion handler
   CHECK(e.is_signaled());
 }
@@ -1006,22 +1008,17 @@ TEST_CASE("a hung submit returns a bounded Omarchy error") {
       r.code == 0, "child bounded_submit scenario failed with code " << r.code);
 }
 
-TEST_CASE("tensor ops dispatch on Vulkan and never on CPU") {
-  if (cpu::is_available()) {
-    skip(
-        "requires the release-equivalent build (MLX_BUILD_CPU=OFF);"
-        " a CPU tensor backend is present.");
-    return;
-  }
+TEST_CASE("tensor ops dispatch on Vulkan and never silently on CPU") {
   if (!gpu::is_available()) {
     skip("no qualifying Vulkan device.");
     return;
   }
 
-  CHECK_FALSE(is_available(Device::cpu));
-  CHECK_EQ(device_count(Device::cpu), 0);
   set_default_device(Device::gpu);
 
+  // Default-device work must land on the Vulkan stream. The GPU counters
+  // prove the kernel ran there; a silent CPU substitution would leave
+  // them flat.
   auto x = array({1.0f, 2.0f}, float32);
   auto y = array({3.0f, 4.0f}, float32);
   auto z = add(x, y);
@@ -1039,6 +1036,32 @@ TEST_CASE("tensor ops dispatch on Vulkan and never on CPU") {
   CHECK(
       omarchy::trace::counters().vk_compute_dispatches.load() >
       compute_dispatches_before);
+
+  if (cpu::is_available()) {
+    // This build carries a CPU tensor backend. The stream boundary is the
+    // contract: an op created on an explicit CPU stream runs there and
+    // leaves the GPU counters flat. Nothing else may move work onto CPU.
+    uint64_t gpu_dispatches_before_cpu =
+        omarchy::trace::counters().gpu_primitive_dispatches.load();
+    uint64_t compute_dispatches_before_cpu =
+        omarchy::trace::counters().vk_compute_dispatches.load();
+    Stream cpu_stream = new_stream(Device::cpu);
+    auto c = add(x, y, cpu_stream);
+    c.eval();
+    synchronize(cpu_stream);
+    CHECK_EQ(c.data<float>()[0], 4.0f);
+    CHECK_EQ(c.data<float>()[1], 6.0f);
+    CHECK_EQ(
+        omarchy::trace::counters().gpu_primitive_dispatches.load(),
+        gpu_dispatches_before_cpu);
+    CHECK_EQ(
+        omarchy::trace::counters().vk_compute_dispatches.load(),
+        compute_dispatches_before_cpu);
+  } else {
+    // No CPU backend in this build: the CPU device does not exist at all.
+    CHECK_FALSE(is_available(Device::cpu));
+    CHECK_EQ(device_count(Device::cpu), 0);
+  }
 
   auto zero_array = mlx::core::zeros({2, 3}, float32);
   zero_array.eval();

@@ -56,7 +56,7 @@ TEST_CASE("unsupported primitive raises a catchable named error") {
   REQUIRE(caught);
   CHECK(message.find("[omarchy]") != std::string::npos);
   CHECK(message.find("is not implemented") != std::string::npos);
-  CHECK(message.find("No CPU fallback") != std::string::npos);
+  CHECK(message.find("no silent CPU fallback") != std::string::npos);
 }
 
 TEST_CASE("zero-size array saves and loads round-trip") {
