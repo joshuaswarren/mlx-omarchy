@@ -15,16 +15,44 @@
 namespace mlx::core::omarchy {
 namespace {
 
-// The elementwise subset the tape interpreter supports. Everything else
-// keeps the named-error contract.
+// Upstream compile_fuse (mlx/compile.cpp is_fusable) only ever places
+// unary, binary, ternary (Select), and Broadcast primitives inside a
+// Compiled tape; reductions and everything else stay eager outside it.
+// Every class in that set has an Omarchy eval_gpu implementation except
+// Conjugate, Real, and Imag (complex), which keep the named-error
+// contract here because their backend path is unsupported.
 bool tape_op_supported(const Primitive& primitive) {
   const auto& p = primitive;
-  return typeid(p) == typeid(Add) || typeid(p) == typeid(Multiply) ||
-      typeid(p) == typeid(Divide) || typeid(p) == typeid(Maximum) ||
-      typeid(p) == typeid(Exp) || typeid(p) == typeid(Sigmoid) ||
+  // Upstream is_unary: everything fusable the backend implements, minus
+  // the complex-only Conjugate/Real/Imag which stay refused below.
+  return typeid(p) == typeid(Abs) || typeid(p) == typeid(ArcCos) ||
+      typeid(p) == typeid(ArcCosh) || typeid(p) == typeid(ArcSin) ||
+      typeid(p) == typeid(ArcSinh) || typeid(p) == typeid(ArcTan) ||
+      typeid(p) == typeid(ArcTanh) || typeid(p) == typeid(AsType) ||
+      typeid(p) == typeid(BitwiseInvert) || typeid(p) == typeid(Ceil) ||
+      typeid(p) == typeid(Cos) || typeid(p) == typeid(Cosh) ||
+      typeid(p) == typeid(Erf) || typeid(p) == typeid(ErfInv) ||
+      typeid(p) == typeid(Exp) || typeid(p) == typeid(Expm1) ||
+      typeid(p) == typeid(Floor) || typeid(p) == typeid(Log) ||
+      typeid(p) == typeid(Log1p) || typeid(p) == typeid(LogicalNot) ||
+      typeid(p) == typeid(Negative) || typeid(p) == typeid(Round) ||
+      typeid(p) == typeid(Sigmoid) || typeid(p) == typeid(Sign) ||
+      typeid(p) == typeid(Sin) || typeid(p) == typeid(Sinh) ||
       typeid(p) == typeid(Square) || typeid(p) == typeid(Sqrt) ||
-      typeid(p) == typeid(Subtract) || typeid(p) == typeid(Negative) ||
-      typeid(p) == typeid(AsType) || typeid(p) == typeid(Broadcast);
+      typeid(p) == typeid(Tan) || typeid(p) == typeid(Tanh) ||
+      // Upstream is_binary.
+      typeid(p) == typeid(Add) || typeid(p) == typeid(ArcTan2) ||
+      typeid(p) == typeid(BitwiseBinary) || typeid(p) == typeid(Divide) ||
+      typeid(p) == typeid(Equal) || typeid(p) == typeid(Greater) ||
+      typeid(p) == typeid(GreaterEqual) || typeid(p) == typeid(Less) ||
+      typeid(p) == typeid(LessEqual) || typeid(p) == typeid(LogAddExp) ||
+      typeid(p) == typeid(LogicalAnd) || typeid(p) == typeid(LogicalOr) ||
+      typeid(p) == typeid(Maximum) || typeid(p) == typeid(Minimum) ||
+      typeid(p) == typeid(Multiply) || typeid(p) == typeid(NotEqual) ||
+      typeid(p) == typeid(Power) || typeid(p) == typeid(Remainder) ||
+      typeid(p) == typeid(Subtract) ||
+      // Upstream is_ternary and is_broadcast.
+      typeid(p) == typeid(Select) || typeid(p) == typeid(Broadcast);
 }
 
 [[noreturn]] void unsupported_tape_op(const Primitive& primitive) {

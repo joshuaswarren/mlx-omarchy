@@ -1,0 +1,138 @@
+// Copyright © 2026 Joshua Warren / mlx-omarchy contributors.
+// SPDX-License-Identifier: MIT
+//
+// Weight-gradient (dw) kernel for RMSNorm/LayerNorm backward, matching the
+// reduction in RMSNorm::vjp and LayerNorm::vjp (mlx/fast.cpp):
+//
+//   RMS:   dw = sum_rows(g * x * n_row),  n_row = rsqrt(mean(x^2) + eps)
+//   Layer: dw = sum_rows(g * (x - mu_row) * n_row)
+//
+// One workgroup owns the whole output: every thread accumulates one column
+// tile in registers while grid-striding over rows, recomputing the row
+// statistics in shared memory. A single workgroup keeps the column
+// accumulators race-free without atomics or a partial-sum temporary.
+// ponytail: one workgroup is a known bandwidth ceiling for very large row
+// counts; split into partial-sum + reduction kernels if dw shows up in a
+// training profile.
+
+#version 460
+
+#ifdef USE_FP16
+#extension GL_EXT_shader_16bit_storage : require
+#extension GL_EXT_shader_explicit_arithmetic_types_float16 : require
+#define STORAGE_TYPE float16_t
+#define LOAD_VALUE(x) float(x)
+#elif defined(USE_BF16)
+#extension GL_EXT_shader_16bit_storage : require
+#extension GL_EXT_shader_explicit_arithmetic_types_int16 : require
+#define STORAGE_TYPE uint16_t
+#define LOAD_VALUE(x) uintBitsToFloat(uint(x) << 16u)
+#else
+#define STORAGE_TYPE float
+#define LOAD_VALUE(x) float(x)
+#endif
+
+layout(local_size_x = 256) in;
+
+layout(set = 0, binding = 0, std430) readonly buffer Input {
+  STORAGE_TYPE values[];
+} input_data;
+layout(set = 0, binding = 1, std430) readonly buffer Grad {
+  STORAGE_TYPE values[];
+} grad_data;
+layout(set = 0, binding = 2, std430) writeonly buffer Output {
+  float values[];
+} output_data;
+
+layout(push_constant) uniform Params {
+  uint count;
+  uint operation;
+  uint lhs_size;
+  uint rhs_size;
+  uint reduce_size;
+  uint output_size;
+  uint lhs_offset;
+  uint rhs_offset;
+  uint output_offset;
+  uint aux_size;
+  uint aux_offset;
+  uint matrix_m;
+  uint matrix_n;
+  uint matrix_k;
+  uint flags;
+  float alpha;
+  float beta;
+} params;
+
+shared float block_values[256];
+
+void main() {
+  uint thread = gl_LocalInvocationID.x;
+  uint row_length = params.reduce_size;
+  float eps = params.alpha;
+  uint rows = params.output_size;
+  uint threads = 256u;
+
+  // Column tiles of 256; each thread reduces one column across all rows.
+  for (uint tile = 0u; tile < row_length; tile += threads) {
+    uint column = tile + thread;
+    float accumulator = 0.0;
+    for (uint row = 0u; row < rows; ++row) {
+      uint start = params.lhs_offset + row * row_length;
+      uint grad_start = params.rhs_offset + row * row_length;
+
+#ifdef LAYER_NORM
+      float local_sum = 0.0;
+      for (uint index = thread; index < row_length; index += threads) {
+        local_sum += LOAD_VALUE(input_data.values[start + index]);
+      }
+      block_values[thread] = local_sum;
+      barrier();
+      for (uint stride = 128u; stride > 0u; stride >>= 1u) {
+        if (thread < stride) {
+          block_values[thread] += block_values[thread + stride];
+        }
+        barrier();
+      }
+      float mu = block_values[0] / float(row_length);
+      barrier();
+#endif
+
+      float local_sq = 0.0;
+      for (uint index = thread; index < row_length; index += threads) {
+        float value = LOAD_VALUE(input_data.values[start + index]);
+        local_sq += value * value;
+      }
+      block_values[thread] = local_sq;
+      barrier();
+      for (uint stride = 128u; stride > 0u; stride >>= 1u) {
+        if (thread < stride) {
+          block_values[thread] += block_values[thread + stride];
+        }
+        barrier();
+      }
+      float mean_square = block_values[0] / float(row_length);
+      barrier();
+#ifdef LAYER_NORM
+      float variance = mean_square - mu * mu;
+#else
+      float variance = mean_square;
+#endif
+      float norm = inversesqrt(variance + eps);
+
+      if (column < row_length) {
+        float value = LOAD_VALUE(input_data.values[start + column]);
+        float grad = LOAD_VALUE(grad_data.values[grad_start + column]);
+#ifdef LAYER_NORM
+        accumulator += grad * (value - mu) * norm;
+#else
+        accumulator += grad * value * norm;
+#endif
+      }
+      barrier();
+    }
+    if (column < row_length) {
+      output_data.values[params.output_offset + column] = accumulator;
+    }
+  }
+}

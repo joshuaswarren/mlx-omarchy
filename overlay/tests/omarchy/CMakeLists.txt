@@ -111,3 +111,43 @@ target_link_options(omarchy_distributed_tests
 doctest_discover_tests(omarchy_distributed_tests)
 add_test(NAME omarchy_distributed_tests
          COMMAND omarchy_distributed_tests)
+
+add_executable(omarchy_compiled_tape_tests
+               ${CMAKE_CURRENT_SOURCE_DIR}/test_compiled_tape.cpp)
+target_link_libraries(omarchy_compiled_tape_tests PRIVATE mlx doctest)
+target_compile_options(omarchy_compiled_tape_tests
+                       PRIVATE ${SANITIZER_COMPILE_FLAGS})
+target_link_options(omarchy_compiled_tape_tests
+                    PRIVATE ${SANITIZER_LINK_FLAGS})
+
+doctest_discover_tests(omarchy_compiled_tape_tests)
+add_test(NAME omarchy_compiled_tape_tests
+         COMMAND omarchy_compiled_tape_tests)
+
+add_executable(omarchy_fft_ops_tests
+               ${CMAKE_CURRENT_SOURCE_DIR}/test_fft_ops.cpp)
+target_link_libraries(omarchy_fft_ops_tests PRIVATE mlx doctest)
+target_compile_options(omarchy_fft_ops_tests PRIVATE ${SANITIZER_COMPILE_FLAGS})
+target_link_options(omarchy_fft_ops_tests PRIVATE ${SANITIZER_LINK_FLAGS})
+
+doctest_discover_tests(omarchy_fft_ops_tests)
+add_test(NAME omarchy_fft_ops_tests COMMAND omarchy_fft_ops_tests)
+
+add_executable(omarchy_fast_ops_tests
+               ${CMAKE_CURRENT_SOURCE_DIR}/test_fast_ops.cpp)
+target_link_libraries(omarchy_fast_ops_tests PRIVATE mlx doctest)
+target_compile_options(omarchy_fast_ops_tests PRIVATE ${SANITIZER_COMPILE_FLAGS})
+target_link_options(omarchy_fast_ops_tests PRIVATE ${SANITIZER_LINK_FLAGS})
+
+doctest_discover_tests(omarchy_fast_ops_tests)
+add_test(NAME omarchy_fast_ops_tests COMMAND omarchy_fast_ops_tests)
+
+add_executable(omarchy_linalg_ops_tests
+               ${CMAKE_CURRENT_SOURCE_DIR}/test_linalg_ops.cpp)
+target_link_libraries(omarchy_linalg_ops_tests PRIVATE mlx doctest)
+target_compile_options(omarchy_linalg_ops_tests
+                       PRIVATE ${SANITIZER_COMPILE_FLAGS})
+target_link_options(omarchy_linalg_ops_tests PRIVATE ${SANITIZER_LINK_FLAGS})
+
+doctest_discover_tests(omarchy_linalg_ops_tests)
+add_test(NAME omarchy_linalg_ops_tests COMMAND omarchy_linalg_ops_tests)

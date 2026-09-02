@@ -133,6 +133,45 @@
 #include "gather_qmm_nb_f32.h"
 #include "gather_qmm_nb_f16.h"
 #include "gather_qmm_nb_bf16.h"
+#include "fft_f32.h"
+#include "fft_real_f32.h"
+#include "fast_rms_norm_f32.h"
+#include "fast_rms_norm_f16.h"
+#include "fast_rms_norm_bf16.h"
+#include "fast_layer_norm_f32.h"
+#include "fast_layer_norm_f16.h"
+#include "fast_layer_norm_bf16.h"
+#include "fast_rms_norm_vjp_dx_f32.h"
+#include "fast_rms_norm_vjp_dx_f16.h"
+#include "fast_rms_norm_vjp_dx_bf16.h"
+#include "fast_layer_norm_vjp_dx_f32.h"
+#include "fast_layer_norm_vjp_dx_f16.h"
+#include "fast_layer_norm_vjp_dx_bf16.h"
+#include "fast_rms_norm_vjp_dw_f32.h"
+#include "fast_rms_norm_vjp_dw_f16.h"
+#include "fast_rms_norm_vjp_dw_bf16.h"
+#include "fast_layer_norm_vjp_dw_f32.h"
+#include "fast_layer_norm_vjp_dw_f16.h"
+#include "fast_layer_norm_vjp_dw_bf16.h"
+#include "fast_cross_entropy_vjp_f32.h"
+#include "fast_cross_entropy_vjp_f16.h"
+#include "fast_cross_entropy_vjp_bf16.h"
+#include "fast_cross_entropy_f32.h"
+#include "fast_cross_entropy_f16.h"
+#include "fast_cross_entropy_bf16.h"
+#include "fp8_to_f32.h"
+#include "fp8_to_f16.h"
+#include "fp8_to_bf16.h"
+#include "fp8_from_f32.h"
+#include "fp8_from_f16.h"
+#include "fp8_from_bf16.h"
+#include "linalg_cholesky_f32.h"
+#include "linalg_inverse_f32.h"
+#include "linalg_lu_f32.h"
+#include "linalg_qr_f32.h"
+#include "linalg_eigh_f32.h"
+#include "linalg_svd_f32.h"
+#include "linalg_svd_finalize_f32.h"
 
 namespace mlx::core::omarchy {
 
@@ -391,8 +430,87 @@ ShaderBytes shader_bytes(ComputeKernel kernel) {
       return {gather_qmm_nb_f32, gather_qmm_nb_f32_size};
     case ComputeKernel::GatherQmmNbF16:
       return {gather_qmm_nb_f16, gather_qmm_nb_f16_size};
+    case ComputeKernel::FftF32:
+      return {fft_f32, fft_f32_size};
+    case ComputeKernel::FftRealF32:
+      return {fft_real_f32, fft_real_f32_size};
     case ComputeKernel::GatherQmmNbBF16:
       return {gather_qmm_nb_bf16, gather_qmm_nb_bf16_size};
+    case ComputeKernel::FastRmsNormF32:
+      return {fast_rms_norm_f32, fast_rms_norm_f32_size};
+    case ComputeKernel::FastRmsNormF16:
+      return {fast_rms_norm_f16, fast_rms_norm_f16_size};
+    case ComputeKernel::FastRmsNormBF16:
+      return {fast_rms_norm_bf16, fast_rms_norm_bf16_size};
+    case ComputeKernel::FastLayerNormF32:
+      return {fast_layer_norm_f32, fast_layer_norm_f32_size};
+    case ComputeKernel::FastLayerNormF16:
+      return {fast_layer_norm_f16, fast_layer_norm_f16_size};
+    case ComputeKernel::FastLayerNormBF16:
+      return {fast_layer_norm_bf16, fast_layer_norm_bf16_size};
+    case ComputeKernel::FastRmsNormVjpDxF32:
+      return {fast_rms_norm_vjp_dx_f32, fast_rms_norm_vjp_dx_f32_size};
+    case ComputeKernel::FastRmsNormVjpDxF16:
+      return {fast_rms_norm_vjp_dx_f16, fast_rms_norm_vjp_dx_f16_size};
+    case ComputeKernel::FastRmsNormVjpDxBF16:
+      return {fast_rms_norm_vjp_dx_bf16, fast_rms_norm_vjp_dx_bf16_size};
+    case ComputeKernel::FastLayerNormVjpDxF32:
+      return {fast_layer_norm_vjp_dx_f32, fast_layer_norm_vjp_dx_f32_size};
+    case ComputeKernel::FastLayerNormVjpDxF16:
+      return {fast_layer_norm_vjp_dx_f16, fast_layer_norm_vjp_dx_f16_size};
+    case ComputeKernel::FastLayerNormVjpDxBF16:
+      return {fast_layer_norm_vjp_dx_bf16, fast_layer_norm_vjp_dx_bf16_size};
+    case ComputeKernel::FastRmsNormVjpDwF32:
+      return {fast_rms_norm_vjp_dw_f32, fast_rms_norm_vjp_dw_f32_size};
+    case ComputeKernel::FastRmsNormVjpDwF16:
+      return {fast_rms_norm_vjp_dw_f16, fast_rms_norm_vjp_dw_f16_size};
+    case ComputeKernel::FastRmsNormVjpDwBF16:
+      return {fast_rms_norm_vjp_dw_bf16, fast_rms_norm_vjp_dw_bf16_size};
+    case ComputeKernel::FastLayerNormVjpDwF32:
+      return {fast_layer_norm_vjp_dw_f32, fast_layer_norm_vjp_dw_f32_size};
+    case ComputeKernel::FastLayerNormVjpDwF16:
+      return {fast_layer_norm_vjp_dw_f16, fast_layer_norm_vjp_dw_f16_size};
+    case ComputeKernel::FastLayerNormVjpDwBF16:
+      return {fast_layer_norm_vjp_dw_bf16, fast_layer_norm_vjp_dw_bf16_size};
+    case ComputeKernel::CrossEntropyVjpF32:
+      return {fast_cross_entropy_vjp_f32, fast_cross_entropy_vjp_f32_size};
+    case ComputeKernel::CrossEntropyVjpF16:
+      return {fast_cross_entropy_vjp_f16, fast_cross_entropy_vjp_f16_size};
+    case ComputeKernel::CrossEntropyVjpBF16:
+      return {fast_cross_entropy_vjp_bf16, fast_cross_entropy_vjp_bf16_size};
+    case ComputeKernel::CrossEntropyF32:
+      return {fast_cross_entropy_f32, fast_cross_entropy_f32_size};
+    case ComputeKernel::CrossEntropyF16:
+      return {fast_cross_entropy_f16, fast_cross_entropy_f16_size};
+    case ComputeKernel::CrossEntropyBF16:
+      return {fast_cross_entropy_bf16, fast_cross_entropy_bf16_size};
+    case ComputeKernel::Fp8ToF32:
+      return {fp8_to_f32, fp8_to_f32_size};
+    case ComputeKernel::Fp8ToF16:
+      return {fp8_to_f16, fp8_to_f16_size};
+    case ComputeKernel::Fp8ToBF16:
+      return {fp8_to_bf16, fp8_to_bf16_size};
+    case ComputeKernel::Fp8FromF32:
+      return {fp8_from_f32, fp8_from_f32_size};
+    case ComputeKernel::Fp8FromF16:
+      return {fp8_from_f16, fp8_from_f16_size};
+    case ComputeKernel::Fp8FromBF16:
+      return {fp8_from_bf16, fp8_from_bf16_size};
+    // Wave 7: linear algebra kernels.
+    case ComputeKernel::LinalgCholeskyF32:
+      return {linalg_cholesky_f32, linalg_cholesky_f32_size};
+    case ComputeKernel::LinalgInverseF32:
+      return {linalg_inverse_f32, linalg_inverse_f32_size};
+    case ComputeKernel::LinalgLuF32:
+      return {linalg_lu_f32, linalg_lu_f32_size};
+    case ComputeKernel::LinalgQrF32:
+      return {linalg_qr_f32, linalg_qr_f32_size};
+    case ComputeKernel::LinalgEighF32:
+      return {linalg_eigh_f32, linalg_eigh_f32_size};
+    case ComputeKernel::LinalgSvdF32:
+      return {linalg_svd_f32, linalg_svd_f32_size};
+    case ComputeKernel::LinalgSvdFinalizeF32:
+      return {linalg_svd_finalize_f32, linalg_svd_finalize_f32_size};
     case ComputeKernel::Count:
       break;
   }

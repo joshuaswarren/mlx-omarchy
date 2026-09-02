@@ -40,6 +40,28 @@ The interpreter root cause is not pinned yet.
 The gate keeps the silent wrong-result path closed until it is.
 Re-run bf16 workloads with `MLX_DISABLE_COMPILE=1`.
 
+Wave 11 audited the four suspect hazard classes in the interpreter
+(`compiled.cpp`, `encoder.cpp`, `allocator.cpp`) and found no defect:
+
+1. Temporary lifetime: every intermediate buffer is registered with
+   `encoder.add_temporary`, which holds the backing until the submission's
+   completion handler runs. Tape outputs live with the caller's graph.
+2. Stage ordering: each `dispatch_compute` records a full memory barrier
+   before and after, so every tape node sees the previous node's bytes
+   inside one submission.
+3. Submission order: `ensure_recording` host-joins the stream's previous
+   submission before re-recording, so two tapes or a tape and an eager op
+   on one stream never overlap on the device.
+4. Aliasing and reuse: tape node outputs are freshly allocated per node,
+   and the allocator frees a buffer only after the last reference drops,
+   which is after completion releases the temporaries.
+
+The machinery is dtype-blind, so a defect in it cannot explain why f16
+tapes are correct while bf16 tapes corrupt. The suspicion moves below the
+interpreter, to the bf16 kernel variants or the Honeykrisp driver's
+handling of them on M1 hardware, which the x86_64 llvmpipe dev box
+cannot exercise. The gate stays until M1 evidence lands.
+
 Arrays and memory are runtime verified.
 The tests cover allocation, copies, views, aliases, and lifetime.
 See the [v0.1.0 M1 runtime receipt](https://github.com/joshuaswarren/mlx-omarchy/releases/download/v0.2.0/mlx-omarchy-v0.1.0-m1-runtime.txt).
