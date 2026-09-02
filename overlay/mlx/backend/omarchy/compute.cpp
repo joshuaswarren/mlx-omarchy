@@ -87,6 +87,7 @@
 #include "argsort_f16.h"
 #include "argsort_f32.h"
 #include "logical_or_bool.h"
+#include "compare_bool.h"
 #include "scan_bf16.h"
 #include "scan_f16.h"
 #include "scan_f32.h"
@@ -191,9 +192,6 @@
 #include "linalg_eigh_f32.h"
 #include "linalg_svd_f32.h"
 #include "linalg_svd_finalize_f32.h"
-#include "argpartition_wide_f32.h"
-#include "argpartition_wide_f16.h"
-#include "argpartition_wide_bf16.h"
 #include "complex_elementwise.h"
 #include "complex_real.h"
 #include "complex_imag.h"
@@ -314,6 +312,8 @@ ShaderBytes shader_bytes(ComputeKernel kernel) {
       return {compare_i32, compare_i32_size};
     case ComputeKernel::LogicalOrBool:
       return {logical_or_bool, logical_or_bool_size};
+    case ComputeKernel::CompareBool:
+      return {compare_bool, compare_bool_size};
     case ComputeKernel::ElementwiseI32:
       return {elementwise_i32, elementwise_i32_size};
     case ComputeKernel::ElementwiseU32:
@@ -569,12 +569,6 @@ ShaderBytes shader_bytes(ComputeKernel kernel) {
       return {linalg_svd_f32, linalg_svd_f32_size};
     case ComputeKernel::LinalgSvdFinalizeF32:
       return {linalg_svd_finalize_f32, linalg_svd_finalize_f32_size};
-    case ComputeKernel::ArgPartitionWideF32:
-      return {argpartition_wide_f32, argpartition_wide_f32_size};
-    case ComputeKernel::ArgPartitionWideF16:
-      return {argpartition_wide_f16, argpartition_wide_f16_size};
-    case ComputeKernel::ArgPartitionWideBF16:
-      return {argpartition_wide_bf16, argpartition_wide_bf16_size};
     // Complex64Transport: complex64 transport and elementwise. See
     // the enum comment in compute.h for the vec2 element layout.
     case ComputeKernel::ComplexElementwise:

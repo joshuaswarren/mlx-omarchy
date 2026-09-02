@@ -1061,10 +1061,18 @@ TEST_CASE("unsupported compute shapes and dtypes fail without CPU fallback") {
       float64_error.find("float64 is not supported on the GPU") !=
       std::string::npos);
 
-  std::string complex_error = evaluation_error(add(
-      array(complex64_t{1.0f, 2.0f}), array(complex64_t{3.0f, 4.0f}), stream));
-  CHECK(complex_error.find("[omarchy] Add dtype") != std::string::npos);
-  CHECK(complex_error.find("complex64") != std::string::npos);
+  // complex64 Add computed as of 2026-09-02, when complex64 transport
+  // landed, so this no longer pins a refusal. It stays as a value check
+  // because an unsupported-dtype case is exactly where a regression to
+  // "refuses again" would otherwise pass unnoticed.
+  array complex_sum =
+      add(array(complex64_t{1.0f, 2.0f}), array(complex64_t{3.0f, 4.0f}),
+          stream);
+  complex_sum.eval();
+  CHECK(complex_sum.dtype() == complex64);
+  complex64_t complex_value = complex_sum.data<complex64_t>()[0];
+  CHECK(complex_value.real() == doctest::Approx(4.0f));
+  CHECK(complex_value.imag() == doctest::Approx(6.0f));
 
   // The linalg family now dispatches to the Omarchy GPU backend. These
   // pins ride float64, which the API layer admits and this backend will
@@ -5228,7 +5236,7 @@ TEST_CASE("Wave3 Ceil Floor Round and LogAddExp match host references") {
   CHECK(std::isnan(lae_at(nan_v, five)));
 }
 
-TEST_CASE("Wave3 Conjugate Real Imag mirror upstream real dtypes and keep named errors") {
+TEST_CASE("Wave3 Conjugate Real Imag mirror upstream on real dtypes and compute on complex") {
   if (!compute_available()) {
     return;
   }
@@ -5244,16 +5252,27 @@ TEST_CASE("Wave3 Conjugate Real Imag mirror upstream real dtypes and keep named 
   check_wave3_close(real(x, stream), xv, stream);
   check_wave3_close(imag(x, stream), {0.0f, 0.0f, 0.0f}, stream);
 
-  // Complex input reaches the backend primitives, which keep the named
-  // rejection: this backend supports no complex dtype.
+  // Complex input reaches the backend primitives, and they compute now:
+  // complex64 transport landed on 2026-09-02, so conjugate flips the
+  // imaginary sign, real and imag project the components, and none of
+  // the three refuses. This case previously pinned those refusals; the
+  // pin went stale the moment the primitives were implemented, which is
+  // the same rot that had already hit the error-contract suite twice.
   array c = array(complex64_t{1.0f, 2.0f});
-  std::string conjugate_error = evaluation_error(conjugate(c, stream));
-  CHECK(
-      conjugate_error.find("[omarchy] Conjugate") != std::string::npos);
-  std::string real_error = evaluation_error(real(c, stream));
-  CHECK(real_error.find("[omarchy] Real") != std::string::npos);
-  std::string imag_error = evaluation_error(imag(c, stream));
-  CHECK(imag_error.find("[omarchy] Imag") != std::string::npos);
+  array conj_c = conjugate(c, stream);
+  array real_c = real(c, stream);
+  array imag_c = imag(c, stream);
+  conj_c.eval();
+  real_c.eval();
+  imag_c.eval();
+  CHECK(conj_c.dtype() == complex64);
+  CHECK(real_c.dtype() == float32);
+  CHECK(imag_c.dtype() == float32);
+  complex64_t conj_value = conj_c.data<complex64_t>()[0];
+  CHECK(conj_value.real() == doctest::Approx(1.0f));
+  CHECK(conj_value.imag() == doctest::Approx(-2.0f));
+  CHECK(real_c.data<float>()[0] == doctest::Approx(1.0f));
+  CHECK(imag_c.data<float>()[0] == doctest::Approx(2.0f));
 }
 
 TEST_CASE("Wave3 Conjugate Real Imag mirror is exact for real dtypes across views and broadcasts") {

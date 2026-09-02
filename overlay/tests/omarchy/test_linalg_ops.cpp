@@ -1043,14 +1043,16 @@ TEST_CASE("eigh rejects complex64 input") {
   auto stream = gpu_stream();
   array value = astype(
       array({1.0f, 0.0f, 0.0f, 1.0f}, Shape{2, 2}, float32), float32, stream);
-  // Complex storage has no Omarchy transport at all, so the converting
-  // copy refuses before linalg is reached; either named refusal is the
-  // contract, never a silent value.
+  // Complex storage now has a transport (astype succeeds), so eigh
+  // reaches the primitive and the f32-only gate refuses. The contract
+  // message names the OUTPUT dtype (R7: name + dtype + shape), so pin
+  // the contract shape rather than a dtype that moves as transports
+  // land. The invariant that matters: a named refusal, never a value.
   array complex_input = astype(value, complex64, stream);
   auto error =
       evaluation_error(linalg::eigh(complex_input, "L", stream).first);
   CHECK_MESSAGE(
-      contains_all(error, {"not implemented", "complex64"}),
+      contains_all(error, {"Eigh", "not implemented", "No CPU fallback"}),
       "unexpected error: ",
       error);
 }

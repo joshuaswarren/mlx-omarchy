@@ -222,3 +222,39 @@ target_link_options(omarchy_fast_regression_tests
 
 doctest_discover_tests(omarchy_fast_regression_tests)
 add_test(NAME omarchy_fast_regression_tests COMMAND omarchy_fast_regression_tests)
+
+# ScatterDeterminism: float scatter reductions (hardware fp32 atomicAdd
+# for Sum, CAS fp32 multiply for Prod, fp32 scratch for half types),
+# bool Scatter (packed-byte deterministic RMW), and non-dense layout
+# materialization for indices and updates.
+add_executable(omarchy_scatter_determinism_tests
+               ${CMAKE_CURRENT_SOURCE_DIR}/test_scatter_determinism.cpp)
+target_link_libraries(omarchy_scatter_determinism_tests PRIVATE mlx doctest)
+target_compile_options(omarchy_scatter_determinism_tests
+                       PRIVATE ${SANITIZER_COMPILE_FLAGS})
+target_link_options(omarchy_scatter_determinism_tests
+                    PRIVATE ${SANITIZER_LINK_FLAGS})
+
+doctest_discover_tests(omarchy_scatter_determinism_tests)
+add_test(NAME omarchy_scatter_determinism_tests
+         COMMAND omarchy_scatter_determinism_tests)
+
+# FixEqualNanAndMath: W2 equal_nan flag plumbing on Equal + the bool
+# comparison sextet through logical_or.comp, W5 log10 exactness
+# (f32-exact powers of ten), and W8 sin/cos/tan on the common and
+# full-magnitude paths.
+add_executable(omarchy_eq_math_tests
+               ${CMAKE_CURRENT_SOURCE_DIR}/test_eq_math.cpp)
+target_link_libraries(omarchy_eq_math_tests PRIVATE mlx doctest)
+target_compile_options(omarchy_eq_math_tests
+                       PRIVATE ${SANITIZER_COMPILE_FLAGS})
+target_link_options(omarchy_eq_math_tests PRIVATE ${SANITIZER_LINK_FLAGS})
+
+doctest_discover_tests(omarchy_eq_math_tests)
+add_test(NAME omarchy_eq_math_tests COMMAND omarchy_eq_math_tests)
+
+# Temporary probe (IndexingTopkRepair): scratch clear/atomic visibility.
+# Deleted before yield.
+add_executable(omarchy_probe_clear_scratch
+               ${CMAKE_CURRENT_SOURCE_DIR}/probe_clear_scratch.cpp)
+target_link_libraries(omarchy_probe_clear_scratch PRIVATE mlx)
