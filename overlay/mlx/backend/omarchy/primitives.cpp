@@ -877,15 +877,20 @@ void dispatch_int_elementwise(
   dispatch_int_elementwise_to(name, operation, lhs, rhs, out);
 }
 
-// ArgSort and ArgPartition emit uint32 indices, so the float checks apply
-// to the input only, the way ArgReduce checks its input.
-void require_index_source_dtype(
+// Sort and ArgSort accept float32/float16/bfloat16 plus int32/uint32.
+// ArgSort and ArgPartition emit uint32 indices, so the output must be
+// uint32 and the dtype checks apply to the input only, the way ArgReduce
+// checks its input. The value variants Sort and Partition keep the input
+// dtype in the output.
+void require_sort_dtype(
     const std::string& name,
     const array& input,
     const array& out,
+    bool argsort,
     omarchy::CommandEncoder& encoder) {
   if (input.dtype() != float16 && input.dtype() != float32 &&
-      input.dtype() != bfloat16) {
+      input.dtype() != bfloat16 && input.dtype() != int32 &&
+      input.dtype() != uint32) {
     omarchy::unsupported(name + " dtype", out);
   }
   const auto& capabilities = encoder.device().capabilities();
@@ -899,8 +904,12 @@ void require_index_source_dtype(
        !capabilities.shader_int16)) {
     omarchy::unsupported(name + " bfloat16 capability", out);
   }
-  if (out.dtype() != uint32) {
-    omarchy::unsupported(name + " output dtype", out);
+  if (argsort) {
+    if (out.dtype() != uint32) {
+      omarchy::unsupported(name + " output dtype", out);
+    }
+  } else if (input.dtype() != out.dtype()) {
+    omarchy::unsupported(name + " dtype", out);
   }
 }
 
@@ -933,24 +942,34 @@ void dispatch_sort(
   params.output_offset = checked_item_offset(out, out.size(), name, out);
   std::array<omarchy::ComputeBinding, 3> bindings{
       binding(input), binding(input), binding(out)};
-  auto kernel = argsort
-      ? select_float_kernel(
-            input.dtype(),
-            omarchy::ComputeKernel::ArgSortF32,
-            omarchy::ComputeKernel::ArgSortF16,
-            omarchy::ComputeKernel::ArgSortBF16)
-      : select_float_kernel(
-            input.dtype(),
-            omarchy::ComputeKernel::SortF32,
-            omarchy::ComputeKernel::SortF16,
-            omarchy::ComputeKernel::SortBF16);
+  omarchy::ComputeKernel kernel;
+  if (input.dtype() == int32 || input.dtype() == uint32) {
+    // 32-bit integer storage buffers need no capability extension.
+    kernel = argsort ? (input.dtype() == int32
+                            ? omarchy::ComputeKernel::ArgSortI32
+                            : omarchy::ComputeKernel::ArgSortU32)
+                     : (input.dtype() == int32
+                            ? omarchy::ComputeKernel::SortI32
+                            : omarchy::ComputeKernel::SortU32);
+  } else if (argsort) {
+    kernel = select_float_kernel(
+        input.dtype(),
+        omarchy::ComputeKernel::ArgSortF32,
+        omarchy::ComputeKernel::ArgSortF16,
+        omarchy::ComputeKernel::ArgSortBF16);
+  } else {
+    kernel = select_float_kernel(
+        input.dtype(),
+        omarchy::ComputeKernel::SortF32,
+        omarchy::ComputeKernel::SortF16,
+        omarchy::ComputeKernel::SortBF16);
+  }
   encoder.dispatch_compute(
       kernel,
       bindings,
       params,
       std::min(output_size, omarchy::kMaxComputeGroupCountX));
 }
-
 // Wide-row ArgPartition. One workgroup per row runs a binary search over
 // the monotone unsigned key (with canonical -0.0 and NaN handling) and
 // serially emits the indices. The shader handles any row length; the
@@ -1873,7 +1892,7 @@ void ArgPartition::eval_gpu(const std::vector<array>& inputs, array& out) {
   const array& input = inputs.at(0);
   auto [kth, axis] = state();
   auto& encoder = omarchy::get_command_encoder(out.primitive().stream());
-  require_index_source_dtype("ArgPartition", input, out, encoder);
+  require_sort_dtype("ArgPartition", input, out, true, encoder);
   if (!input.flags().row_contiguous) {
     omarchy::unsupported("non-contiguous ArgPartition", out);
   }
@@ -1961,7 +1980,7 @@ void ArgReduce::eval_gpu(const std::vector<array>& inputs, array& out) {
 void ArgSort::eval_gpu(const std::vector<array>& inputs, array& out) {
   const array& input = inputs.at(0);
   auto& encoder = omarchy::get_command_encoder(out.primitive().stream());
-  require_index_source_dtype("ArgSort", input, out, encoder);
+  require_sort_dtype("ArgSort", input, out, true, encoder);
   if (!input.flags().row_contiguous) {
     omarchy::unsupported("non-contiguous ArgSort", out);
   }
@@ -4160,7 +4179,7 @@ void NotEqual::eval_gpu(const std::vector<array>& inputs, array& out) {
 void Partition::eval_gpu(const std::vector<array>& inputs, array& out) {
   const array& input = inputs.at(0);
   auto& encoder = omarchy::get_command_encoder(out.primitive().stream());
-  require_float_dtype("Partition", input, out, encoder);
+  require_sort_dtype("Partition", input, out, false, encoder);
   if (!input.flags().row_contiguous) {
     omarchy::unsupported("non-contiguous Partition", out);
   }
@@ -5044,8 +5063,16 @@ void Scatter::eval_gpu(const std::vector<array>& inputs, array& out) {
       binding(*idx),
       binding(*idx_b),
       binding(scratch)};
+  // The single-index shader keeps the rank scratch at binding 3 (the
+  // multi-index variant moves it to 4 for the second index array).
+  // Without this rebind, binding 3 carries the indices buffer: pass 1
+  // atomically maxes rank words into the indices and pass 2 reads its
+  // ranks back out of them, so updates land only where an index value
+  // collides with a rank and the indices array is corrupted.
+  if (!multi_index) {
+    bindings[3] = binding(scratch);
+  }
   uint32_t bound = multi_index ? 5u : 4u;
-  params.operation = phase1;
   encoder.dispatch_compute(
       kernel,
       std::span<const omarchy::ComputeBinding>(bindings.data(), bound),
@@ -5636,7 +5663,7 @@ void SliceUpdate::eval_gpu(const std::vector<array>& inputs, array& out) {
 void Sort::eval_gpu(const std::vector<array>& inputs, array& out) {
   const array& input = inputs.at(0);
   auto& encoder = omarchy::get_command_encoder(out.primitive().stream());
-  require_float_dtype("Sort", input, out, encoder);
+  require_sort_dtype("Sort", input, out, false, encoder);
   if (!input.flags().row_contiguous) {
     omarchy::unsupported("non-contiguous Sort", out);
   }
