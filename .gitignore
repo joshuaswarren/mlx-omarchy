@@ -8,3 +8,4 @@ THEORY.MD
 dist/
 core.*
 core
+receipts/**/venv-pytest/
