@@ -498,7 +498,7 @@ TEST_CASE(
   CHECK(
       two_d_error.find("[omarchy] transposed (flip) Convolution") !=
       std::string::npos);
-  CHECK(two_d_error.find("No CPU fallback") != std::string::npos);
+  CHECK(two_d_error.find("no silent CPU fallback") != std::string::npos);
 
   // The grouped transposed combination identifies the same gate.
   std::string grouped_error = evaluation_error(conv_transpose2d(
@@ -703,5 +703,5 @@ TEST_CASE(
       stream));
   CHECK(
       three_d_error.find("[omarchy] 3-D Convolution") != std::string::npos);
-  CHECK(three_d_error.find("No CPU fallback") != std::string::npos);
+  CHECK(three_d_error.find("no silent CPU fallback") != std::string::npos);
 }

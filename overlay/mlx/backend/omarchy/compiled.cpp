@@ -58,8 +58,9 @@ bool tape_op_supported(const Primitive& primitive) {
 [[noreturn]] void unsupported_tape_op(const Primitive& primitive) {
   throw std::runtime_error(
       "[omarchy] Compiled tape op " + std::string(primitive.name()) +
-      " is not implemented for the Omarchy Vulkan backend. No CPU fallback"
-      " is available in Omarchy builds.");
+      " is not implemented for the Omarchy Vulkan backend. No GPU kernel"
+      " exists for it; no silent CPU fallback occurs. Run it on an explicit"
+      " CPU stream to use the CPU implementation.");
 }
 
 // bf16 compiled tapes corrupt nondeterministically on Honeykrisp: the M1
@@ -82,7 +83,7 @@ bool tape_has_bfloat16(const std::vector<array>& arrays) {
   throw std::runtime_error(
       "[omarchy] Compiled tape bfloat16 is refused: bf16 fragments corrupt"
       " nondeterministically on Honeykrisp. Re-run with MLX_DISABLE_COMPILE=1."
-      " No CPU fallback is available in Omarchy builds.");
+      " No GPU kernel exists for it; no silent CPU fallback occurs.");
 }
 
 } // namespace

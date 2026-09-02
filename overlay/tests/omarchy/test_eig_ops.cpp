@@ -756,7 +756,7 @@ TEST_CASE("eig rejects non-float32 dtypes with the contract error") {
   CHECK_MESSAGE(
       contains_all(
           error,
-          {"[omarchy] Eig dtype is not implemented", "No CPU fallback"}),
+          {"[omarchy] Eig dtype is not implemented", "no silent CPU fallback"}),
       "unexpected error: ",
       error);
 }

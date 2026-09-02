@@ -6828,14 +6828,15 @@ void CustomKernel::eval_gpu(
   // backend dispatches SPIR-V to Vulkan, and no Metal-to-SPIR-V translator
   // exists in this stack, so arbitrary user kernel source cannot be
   // validated or executed here. Upstream also refuses CPU execution
-  // ("Custom kernels only run on GPU"), so there is no fallback anywhere.
+  // ("Custom kernels only run on GPU"), so a CPU stream cannot rescue it.
   throw std::runtime_error(
       "[omarchy] fast::CustomKernel is not supported on the Omarchy Vulkan "
       "backend: custom kernels ship Metal shading-language source that only "
       "the Metal backend can compile and load, and this stack has no "
       "Metal-to-SPIR-V translator. Port the kernel to GLSL as a native "
-      "Omarchy compute shader instead. No CPU fallback is available in "
-      "Omarchy builds.");
+      "Omarchy compute shader instead. No GPU kernel exists for it and"
+      " custom kernels cannot run on a CPU stream; no silent CPU fallback"
+      " occurs.");
 }
 
 } // namespace fast

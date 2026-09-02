@@ -413,9 +413,9 @@ TEST_CASE("safetensors load round-trips float32 through the gpu stream") {
   weights.insert({"w", array({0.25f, -3.5f, 1000.0f, 1.0f}, {2, 2}, float32)});
   save_safetensors(path, std::move(weights));
 
-  // The load must pick a stream that exists. The cpu backend is compiled
-  // out (MLX_BUILD_CPU=OFF), so the upstream forced Device::cpu stream
-  // crashed in default_stream before any byte was read.
+  // The load pins an explicit gpu stream. The io layer resolves a default
+  // stream to Device::cpu when a CPU backend exists (mlx-io-device.patch),
+  // so the explicit stream keeps the round-trip on the gpu in every build.
   auto loaded = load_safetensors(path, stream);
   array out = loaded.first.at("w");
   out.eval();

@@ -97,11 +97,11 @@ PY
   fi
 fi
 
-echo "== build mlx runtime (release-equivalent, no CPU backend) =="
+echo "== build mlx runtime (release-equivalent, CPU backend for explicit CPU streams) =="
 if [ ! -f "$BUILD_DIR/CMakeCache.txt" ]; then
   cmake -S "$ROOT" -B "$BUILD_DIR" \
     -DMLX_BUILD_OMARCHY=ON \
-    -DMLX_BUILD_CPU=OFF \
+    -DMLX_BUILD_CPU=ON \
     -DMLX_BUILD_METAL=OFF \
     -DMLX_BUILD_CUDA=OFF \
     -DMLX_BUILD_TESTS=ON \

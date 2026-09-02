@@ -12,8 +12,8 @@
 
 // The exact compatibility error contract for the Omarchy backend (plan R7,
 // AE2): a primitive the accelerators cannot run fails with its name, dtype,
-// and shape. The CPU never runs tensor work in Omarchy builds, so there is no
-// fallback path behind this error.
+// and shape. Nothing reroutes that GPU work to CPU silently; a CPU
+// implementation runs only on an explicit CPU stream.
 namespace mlx::core::omarchy {
 
 [[noreturn]] inline void unsupported(
@@ -30,7 +30,8 @@ namespace mlx::core::omarchy {
     }
     msg << shape[i];
   }
-  msg << "]). No CPU fallback is available in Omarchy builds.";
+  msg << "]). No GPU kernel exists for it; no silent CPU fallback occurs."
+      << " Run it on an explicit CPU stream to use the CPU implementation.";
   throw std::runtime_error(msg.str());
 }
 
