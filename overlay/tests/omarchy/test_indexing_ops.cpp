@@ -3,9 +3,18 @@
 
 // Wave 5 indexing and scatter: GatherAxis (take_along_axis), Scatter and
 // ScatterAxis (put_along_axis / scatter_add_axis), MaskedScatter, and the
-// wide-row ArgPartition selection path that unblocks vocabulary-width
-// top-k sampling. Every implemented mode checks exact host-computed
+// ArgPartition paths. Every implemented mode checks exact host-computed
 // values; deliberately unsupported paths pin their named errors.
+//
+// The wave-5 gates on these paths cited a device defect ("multi-slot
+// dispatches only land the first slot write"). Root-caused 2026-09-02:
+// the defect was our own address math (the host update-dim table read
+// the index-prefix dims of updates, and the axis shaders decomposed t
+// with a remainder taken against the wrong extent). The value tests
+// below on 3-D axis-1 tensors fail if EITHER half of the shader slot
+// decomposition (slot divisor or remainder) is reverted, and the
+// multi-slot and update-block scatter tests fail if the host table
+// reverts, so the pair cannot silently drift apart again.
 
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include "doctest/doctest.h"
@@ -94,17 +103,6 @@ float lcg(uint64_t& state) {
       static_cast<float>(0x1000000);
 }
 
-// Host reference: the count smallest values of one row, sorted.
-std::vector<float> smallest_values(
-    const std::vector<float>& row,
-    size_t count) {
-  std::vector<float> copy = row;
-  std::nth_element(copy.begin(), copy.begin() + count - 1, copy.end());
-  copy.resize(count);
-  std::sort(copy.begin(), copy.end());
-  return copy;
-}
-
 } // namespace
 
 // ---------------------------------------------------------------------------
@@ -129,7 +127,6 @@ TEST_CASE("take_along_axis gathers along axis 1 with int32 indices") {
   check_floats(out, {13, 10, 21, 21, 32, 30}, stream);
 }
 
-
 TEST_CASE("take_along_axis wraps negative indices") {
   if (!compute_available()) {
     return;
@@ -141,18 +138,32 @@ TEST_CASE("take_along_axis wraps negative indices") {
   check_floats(out, {3, 2, 1}, stream);
 }
 
-TEST_CASE("take_along_axis keeps a named error for axis 0 gathers") {
+TEST_CASE("take_along_axis gathers along axis 0 with trailing dims") {
   if (!compute_available()) {
     return;
   }
   Stream stream = gpu_stream();
-  // Axis-0 gathers carry trailing dims, which the stride walk does not
-  // cover yet; they keep the named rejection like the 3-D case.
+  // The axis-0 case has pre dims of zero and post dims of three, the
+  // mirror of the axis-1 3-D case below; together they pin both walks
+  // of the non-axis stride tables.
   array src = array({1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f}, {2, 3}, float32);
   array indices = array({1, 0, 1}, {1, 3}, uint32);
-  std::string error =
-      evaluation_error(take_along_axis(src, indices, 0, stream));
-  CHECK(error.find("[omarchy] Take") != std::string::npos);
+  array out = take_along_axis(src, indices, 0, stream);
+  CHECK_EQ(out.dtype(), float32);
+  check_floats(out, {4, 2, 6}, stream);
+}
+
+TEST_CASE("take_along_axis gathers int64 indices along axis 0") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  // int64 indices arrive as two little-endian index words per slot;
+  // the axis-0 walk must stride the word buffer, not the slot buffer.
+  array src = array({5.0f, 6.0f, 7.0f, 8.0f}, {2, 2}, float32);
+  array indices = array({int64_t(0), int64_t(1)}, {1, 2}, int64);
+  array out = take_along_axis(src, indices, 0, stream);
+  check_floats(out, {5, 8}, stream);
 }
 
 TEST_CASE("take_along_axis out-of-range indices read zero (documented)") {
@@ -191,18 +202,6 @@ TEST_CASE("take_along_axis handles float16 and bfloat16 sources") {
   check_floats(astype(bf16, float32, stream), {2, 1, 3, 4}, stream, 1e-2);
 }
 
-TEST_CASE("take_along_axis keeps a named error for int64 axis-0 gathers") {
-  if (!compute_available()) {
-    return;
-  }
-  Stream stream = gpu_stream();
-  array src = array({5.0f, 6.0f, 7.0f, 8.0f}, {2, 2}, float32);
-  array indices = array({int64_t(0), int64_t(1)}, {1, 2}, int64);
-  std::string error =
-      evaluation_error(take_along_axis(src, indices, 0, stream));
-  CHECK(error.find("[omarchy] Take") != std::string::npos);
-}
-
 TEST_CASE("take_along_axis broadcasts the source on non-axis dims") {
   if (!compute_available()) {
     return;
@@ -217,59 +216,117 @@ TEST_CASE("take_along_axis broadcasts the source on non-axis dims") {
   check_floats(out, {1, 1, 1, 2, 2, 2, 3, 3, 3, 4, 4, 4}, stream);
 }
 
-TEST_CASE("take_along_axis keeps a named error for trailing-dim axes") {
+TEST_CASE("take_along_axis gathers 3-D axis 1 with trailing dims") {
   if (!compute_available()) {
     return;
   }
   Stream stream = gpu_stream();
-  // Axes with trailing dims misread the post-dim strides; they keep
-  // the named rejection until the walk is root-caused. Last-axis
-  // gathers (the vocabulary and segment use) are verified above.
+  // This is the shape class the wave-5 gate refused: a nonzero axis
+  // with trailing dims. It fails if either half of the shader slot
+  // decomposition reverts (see the file comment).
   array src = array(
-      {1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f, 7.0f, 8.0f}, {2, 2, 2}, float32);
-  array indices = array({1, 0, 0, 1}, {2, 1, 2}, int32);
+      {100.0f, 101.0f, 102.0f, 103.0f, 110.0f, 111.0f, 112.0f, 113.0f,
+       120.0f, 121.0f, 122.0f, 123.0f, 200.0f, 201.0f, 202.0f, 203.0f,
+       210.0f, 211.0f, 212.0f, 213.0f, 220.0f, 221.0f, 222.0f, 223.0f},
+      {2, 3, 4},
+      float32);
+  array indices = array(
+      {0, 1, 2, 1, 2, 2, 1, 0, 1, 1, 0, 0, 0, 0, 1, 1}, {2, 2, 4}, int32);
+  array out = take_along_axis(src, indices, 1, stream);
+  // out[i][ax][p] = src[i][indices[i][ax][p]][p].
+  check_floats(
+      out,
+      {100, 111, 122, 113, 120, 121, 112, 103,
+       210, 211, 202, 203, 200, 201, 212, 213},
+      stream);
+}
+
+TEST_CASE("take_along_axis rejects rank beyond the four-slot table") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  // The non-axis stride tables cap at four entries; a 6-D gather has
+  // five non-axis dims and keeps the named rejection.
+  std::vector<float> raw(64, 1.0f);
+  array src = array(raw.data(), Shape({2, 2, 2, 2, 2, 2}), float32);
+  std::vector<int32_t> idx(32, 0);
+  array indices = array(idx.data(), Shape({2, 2, 2, 2, 2, 1}), int32);
   std::string error =
-      evaluation_error(take_along_axis(src, indices, 1, stream));
+      evaluation_error(take_along_axis(src, indices, 5, stream));
   CHECK(error.find("[omarchy] Take") != std::string::npos);
 }
 
-TEST_CASE("scatter None keeps a named rejection while slot replay is broken") {
+// ---------------------------------------------------------------------------
+// Scatter: None / Sum / Prod / Max / Min over one index array
+// ---------------------------------------------------------------------------
+
+TEST_CASE("scatter none writes every slot of an eight-slot permutation") {
   if (!compute_available()) {
     return;
   }
   Stream stream = gpu_stream();
-  // The None rank-replay writes misroute on the device; until
-  // root-caused it is a named rejection rather than silent data loss.
-  array src = array({10.0f, 20.0f, 30.0f, 40.0f}, {4}, float32);
-  array indices = array({1, 3}, {2}, int32);
-  array updates = array({-1.0f, -3.0f}, {2, 1}, float32);
-  std::string error = evaluation_error(
-      scatter(src, std::vector<array>{indices}, updates, {0}, stream));
-  CHECK(error.find("[omarchy] Scatter") != std::string::npos);
+  // Eight slots, distinct in-range indices, updates as [8, 1] blocks.
+  // The wave-5 misroute landed slot t at index[t] + t; every slot must
+  // land at index[t] instead.
+  array src = zeros({16}, float32, stream);
+  array indices = array({3, 7, 0, 5, 1, 6, 2, 4}, {8}, int32);
+  array updates = array(
+      {100.0f, 101.0f, 102.0f, 103.0f, 104.0f, 105.0f, 106.0f, 107.0f},
+      {8, 1},
+      float32);
+  array out = scatter(src, std::vector<array>{indices}, updates, {0}, stream);
+  check_floats(
+      out,
+      {102, 104, 106, 100, 107, 103, 105, 101, 0, 0, 0, 0, 0, 0, 0, 0},
+      stream);
 }
 
-TEST_CASE("scatter keeps named rejections for integer data and Sum") {
+TEST_CASE("scatter none resolves duplicate indices last-write-wins") {
   if (!compute_available()) {
     return;
   }
   Stream stream = gpu_stream();
-  // Integer paths and integer Sum route through kernel paths that
-  // still misroute slot writes; both keep named rejections for now.
+  // The two-phase rank replay must carry phase 0 ranks into phase 1
+  // (the encoder inserts a memory barrier between dispatches) and the
+  // highest slot wins, matching the sequential CPU loop.
+  array src = zeros({4}, float32, stream);
+  array indices = array({2, 2, 2}, {3}, int32);
+  array updates = array({10.0f, 20.0f, 30.0f}, {3, 1}, float32);
+  array out = scatter(src, std::vector<array>{indices}, updates, {0}, stream);
+  check_floats(out, {0, 0, 30, 0}, stream);
+}
+
+TEST_CASE("scatter none writes integer data") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
   array src = array({1, 2, 3, 4}, {4}, int32);
   array indices = array({0, 2}, {2}, uint32);
   array updates = array({9, 8}, {2, 1}, int32);
-  std::string error = evaluation_error(
-      scatter(src, std::vector<array>{indices}, updates, {0}, stream));
-  CHECK(error.find("[omarchy] Scatter") != std::string::npos);
-
-  array f32src = astype(src, float32, stream);
-  array f32upd = astype(updates, float32, stream);
-  error = evaluation_error(
-      scatter_add(f32src, std::vector<array>{indices}, f32upd, {0}, stream));
-  CHECK(error.find("[omarchy] Scatter") != std::string::npos);
+  array out = scatter(src, std::vector<array>{indices}, updates, {0}, stream);
+  check_ints(out, {9, 2, 8, 4}, stream);
 }
 
-TEST_CASE("scatter keeps a named rejection for 16-bit float copy") {
+TEST_CASE("scatter none writes update blocks across every element") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  // Two slots, each carrying a [1, 2] update block onto a [3, 2]
+  // output: the kernel dispatches over update elements, so both
+  // elements of both blocks land. A slot-only dispatch would drop the
+  // second element of each block.
+  array src = array({1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f}, {3, 2}, float32);
+  array indices = array({2, 0}, {2}, int32);
+  array updates = array({-1.0f, -2.0f, -3.0f, -4.0f}, {2, 1, 2}, float32);
+  array out = scatter(src, std::vector<array>{indices}, updates, {0}, stream);
+  // Row 1 keeps its source values {3, 4}: neither slot targets it.
+  check_floats(out, {-3, -4, 3, 4, -1, -2}, stream);
+}
+
+TEST_CASE("scatter none writes 16-bit float copies") {
   if (!compute_available()) {
     return;
   }
@@ -280,20 +337,27 @@ TEST_CASE("scatter keeps a named rejection for 16-bit float copy") {
     return;
   }
   Stream stream = gpu_stream();
-  array src = array({1.0f, 2.0f, 3.0f}, {3}, float32);
-  array indices = array({1}, {1}, int32);
-  array updates = array({-2.5f}, {1, 1}, float32);
-  std::string error = evaluation_error(
-      scatter(
-          astype(src, float16, stream),
-          std::vector<array>{indices},
-          astype(updates, float16, stream),
-          {0},
-          stream));
-  CHECK(error.find("[omarchy] Scatter") != std::string::npos);
+  array src = array({10.0f, 20.0f, 30.0f, 40.0f}, {4}, float32);
+  array indices = array({1, 3}, {2}, int32);
+  array updates = array({-1.0f, -3.0f}, {2, 1}, float32);
+  array f16 = scatter(
+      astype(src, float16, stream),
+      std::vector<array>{indices},
+      astype(updates, float16, stream),
+      {0},
+      stream);
+  CHECK_EQ(f16.dtype(), float16);
+  check_floats(astype(f16, float32, stream), {10, -1, 30, -3}, stream);
+  array bf16 = scatter(
+      astype(src, bfloat16, stream),
+      std::vector<array>{indices},
+      astype(updates, bfloat16, stream),
+      {0},
+      stream);
+  check_floats(astype(bf16, float32, stream), {10, -1, 30, -3}, stream, 1e-2);
 }
 
-TEST_CASE("scatter Max keeps a named rejection for duplicate indices") {
+TEST_CASE("scatter max keeps the largest update across duplicates") {
   if (!compute_available()) {
     return;
   }
@@ -301,12 +365,26 @@ TEST_CASE("scatter Max keeps a named rejection for duplicate indices") {
   array src = array({5.0f, 1.0f, 5.0f}, {3}, float32);
   array indices = array({1, 1, 2}, {3}, int32);
   array updates = array({7.0f, 3.0f, 2.0f}, {3, 1}, float32);
-  std::string error = evaluation_error(
-      scatter_max(src, std::vector<array>{indices}, updates, {0}, stream));
-  CHECK(error.find("[omarchy] Scatter") != std::string::npos);
+  array out =
+      scatter_max(src, std::vector<array>{indices}, updates, {0}, stream);
+  check_floats(out, {5, 7, 5}, stream);
 }
 
-TEST_CASE("scatter Min keeps a named rejection") {
+TEST_CASE("scatter max keys negative values correctly") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  // All-negative keys exercise the biased monotone key map.
+  array src = array({5.0f, -1.0f, 5.0f}, {3}, float32);
+  array indices = array({1, 1}, {2}, int32);
+  array updates = array({-7.0f, -3.0f}, {2, 1}, float32);
+  array out =
+      scatter_max(src, std::vector<array>{indices}, updates, {0}, stream);
+  check_floats(out, {5, -1, 5}, stream);
+}
+
+TEST_CASE("scatter min keeps the smallest update across duplicates") {
   if (!compute_available()) {
     return;
   }
@@ -314,12 +392,12 @@ TEST_CASE("scatter Min keeps a named rejection") {
   array src = array({5.0f, 9.0f, 5.0f}, {3}, float32);
   array indices = array({1, 1, 2}, {3}, int32);
   array updates = array({2.0f, 8.0f, 7.0f}, {3, 1}, float32);
-  std::string error = evaluation_error(
-      scatter_min(src, std::vector<array>{indices}, updates, {0}, stream));
-  CHECK(error.find("[omarchy] Scatter") != std::string::npos);
+  array out =
+      scatter_min(src, std::vector<array>{indices}, updates, {0}, stream);
+  check_floats(out, {5, 2, 5}, stream);
 }
 
-TEST_CASE("scatter Max keeps a named rejection for integer data") {
+TEST_CASE("scatter max handles integer data with duplicates") {
   if (!compute_available()) {
     return;
   }
@@ -327,51 +405,57 @@ TEST_CASE("scatter Max keeps a named rejection for integer data") {
   array src = array({-5, 1, -5}, {3}, int32);
   array indices = array({0, 0, 2}, {3}, int32);
   array updates = array({3, -9, 7}, {3, 1}, int32);
-  std::string error = evaluation_error(
-      scatter_max(src, std::vector<array>{indices}, updates, {0}, stream));
-  CHECK(error.find("[omarchy] Scatter") != std::string::npos);
+  array out =
+      scatter_max(src, std::vector<array>{indices}, updates, {0}, stream);
+  check_ints(out, {3, 1, 7}, stream);
 }
 
-TEST_CASE("scatter Max keeps a named rejection for negative indices") {
+TEST_CASE("scatter skips out-of-range indices (documented)") {
   if (!compute_available()) {
     return;
   }
   Stream stream = gpu_stream();
+  // Upstream leaves out-of-range scatter writes undefined; this
+  // backend documents the skip, matching ScatterAxis. Negative indices
+  // are out of range here; gather wraps them, scatter does not.
   array src = array({1.0f, 2.0f, 3.0f}, {3}, float32);
   array indices = array({-1, -3}, {2}, int32);
   array updates = array({-1.0f, -3.0f}, {2, 1}, float32);
-  std::string error = evaluation_error(
-      scatter_max(src, std::vector<array>{indices}, updates, {0}, stream));
-  CHECK(error.find("[omarchy] Scatter") != std::string::npos);
+  array out =
+      scatter_max(src, std::vector<array>{indices}, updates, {0}, stream);
+  check_floats(out, {1, 2, 3}, stream);
 }
 
-TEST_CASE("scatter Max keeps a named rejection across mixed slots") {
+TEST_CASE("scatter max drops out-of-range slots in mixed updates") {
   if (!compute_available()) {
     return;
   }
   Stream stream = gpu_stream();
+  // Slot 1 targets index 3 of a 3-wide axis: out of range, skipped.
   array src = array({1.0f, 2.0f, 3.0f}, {3}, float32);
   array indices = array({1, 3, 1}, {3}, int32);
   array updates = array({5.0f, -2.0f, 6.0f}, {3, 1}, float32);
-  std::string error = evaluation_error(
-      scatter_max(src, std::vector<array>{indices}, updates, {0}, stream));
-  CHECK(error.find("[omarchy] Scatter") != std::string::npos);
+  array out =
+      scatter_max(src, std::vector<array>{indices}, updates, {0}, stream);
+  check_floats(out, {1, 6, 3}, stream);
 }
 
-TEST_CASE("scatter Max keeps a named rejection for update blocks") {
+TEST_CASE("scatter prod multiplies integer updates exactly") {
   if (!compute_available()) {
     return;
   }
   Stream stream = gpu_stream();
-  array src = array({1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f}, {3, 2}, float32);
-  array indices = array({2, 0}, {2}, int32);
-  array updates = array({-1.0f, -2.0f, -3.0f, -4.0f}, {2, 1, 2}, float32);
-  std::string error = evaluation_error(
-      scatter_max(src, std::vector<array>{indices}, updates, {0}, stream));
-  CHECK(error.find("[omarchy] Scatter") != std::string::npos);
+  // Wrap-around integer multiply is associative and commutative, so
+  // the CAS-mul replay is deterministic under any interleaving.
+  array src = array({1, 2, 3, 4}, {4}, int32);
+  array indices = array({1, 1, 3}, {3}, int32);
+  array updates = array({5, 6, 7}, {3, 1}, int32);
+  array out =
+      scatter_prod(src, std::vector<array>{indices}, updates, {0}, stream);
+  check_ints(out, {1, 60, 3, 28}, stream);
 }
 
-TEST_CASE("scatter unsupported modes and layouts keep named errors") {
+TEST_CASE("scatter keeps named rejections for the unsupported modes") {
   if (!compute_available()) {
     return;
   }
@@ -380,19 +464,26 @@ TEST_CASE("scatter unsupported modes and layouts keep named errors") {
   array indices = array({0, 1}, {2}, int32);
   array updates = array({5.0f, 6.0f}, {2, 1}, float32);
 
-  // Float Sum has no deterministic implementation on this stack: GLSL
-  // offers no float atomicAdd here, and a CAS-loop accumulation depends
-  // on the scheduling order of duplicate indices. Rejected outright.
+  // Float Sum: GLSL offers no float atomicAdd here, and CAS-loop
+  // accumulation rounds in scheduling order, so duplicates could
+  // differ run to run. Rejected outright.
   CHECK(evaluation_error(scatter_add(
             src, std::vector<array>{indices}, updates, {0}, stream))
-            .find("[omarchy] Scatter") != std::string::npos);
+            .find("Scatter Sum dtype") != std::string::npos);
 
-  // Prod is rejected for every dtype (same reasoning; no atomicMul).
+  // Float Prod: a float product rounds in scheduling order. Integer
+  // Prod is implemented and covered above.
   array isrc = array({1, 2, 3}, {3}, int32);
-  array iupd = array({5, 6}, {2, 1}, int32);
   CHECK(evaluation_error(scatter_prod(
-            isrc, std::vector<array>{indices}, iupd, {0}, stream))
-            .find("[omarchy] Scatter") != std::string::npos);
+            src, std::vector<array>{indices}, updates, {0}, stream))
+            .find("Scatter Prod dtype") != std::string::npos);
+  CHECK(evaluation_error(scatter_prod(
+            astype(src, float16, stream),
+            std::vector<array>{indices},
+            astype(updates, float16, stream),
+            {0},
+            stream))
+            .find("Scatter Prod dtype") != std::string::npos);
 
   // More than one index array exceeds the 4-binding dispatch budget.
   array src2d = array({1.0f, 2.0f, 3.0f, 4.0f}, {2, 2}, float32);
@@ -426,26 +517,67 @@ TEST_CASE("scatter unsupported modes and layouts keep named errors") {
   array f16upd = astype(updates, float16, stream);
   CHECK(evaluation_error(scatter_add(
             f16src, std::vector<array>{indices}, f16upd, {0}, stream))
-            .find("[omarchy] Scatter") != std::string::npos);
+            .find("Scatter Sum dtype") != std::string::npos);
 }
 
 // ---------------------------------------------------------------------------
 // ScatterAxis: put_along_axis and scatter_add_axis
 // ---------------------------------------------------------------------------
 
-TEST_CASE("put_along_axis keeps a named rejection while writes no-op") {
+TEST_CASE("put_along_axis writes 2-D axis 1 slots") {
   if (!compute_available()) {
     return;
   }
   Stream stream = gpu_stream();
-  // ScatterAxis slot writes still no-op on the device; until
-  // root-caused the primitive raises instead of dropping updates.
-  array src = array({0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f}, {2, 3}, float32);
-  array indices = array({1, 2, 1, 0, 0, 0}, {2, 3}, int32);
-  array values = array({1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f}, {2, 3}, float32);
-  std::string error =
-      evaluation_error(put_along_axis(src, indices, values, 1, stream));
-  CHECK(error.find("[omarchy] ScatterAxis") != std::string::npos);
+  array src = zeros({2, 3}, float32, stream);
+  array indices = array({0, 1, 2, 2, 0, 1}, {2, 3}, int32);
+  array values = array({10.0f, 11.0f, 12.0f, 20.0f, 21.0f, 22.0f}, {2, 3},
+                       float32);
+  array out = put_along_axis(src, indices, values, 1, stream);
+  check_floats(out, {10, 11, 12, 21, 22, 20}, stream);
+}
+
+TEST_CASE("put_along_axis writes 3-D axis 1 with duplicates and skips") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  // Nonzero axis with pre dims, multiple index rows, and trailing
+  // dims: this is the shape class the wave-5 gate refused and it fails
+  // if either half of the shader slot decomposition reverts (see the
+  // file comment). Negative indices are out of range and skip.
+  array src = zeros({2, 3, 4}, float32, stream);
+  array indices = array(
+      {0, -1, 2, 1, 2, 2, 0, 0, 1, 1, 0, 0, 0, 0, 1, 1}, {2, 2, 4}, int32);
+  array values = array(
+      {10.0f, 11.0f, 12.0f, 13.0f, 20.0f, 21.0f, 22.0f, 23.0f,
+       30.0f, 31.0f, 32.0f, 33.0f, 40.0f, 41.0f, 42.0f, 43.0f},
+      {2, 2, 4},
+      float32);
+  array out = put_along_axis(src, indices, values, 1, stream);
+  // Duplicates resolve to the highest flat slot (the rank replay);
+  // [0][2][1] keeps 21 (slot 5) over the skipped -1 slot, and row 1's
+  // collisions land on the later writer.
+  check_floats(
+      out,
+      {10, 0, 22, 23, 0, 0, 0, 13, 20, 21, 12, 0,
+       40, 41, 32, 33, 30, 31, 42, 43, 0, 0, 0, 0},
+      stream);
+}
+
+TEST_CASE("scatter_add_axis accumulates integer duplicates") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  // atomicAdd across duplicate indices: row 0 index 1 receives both 2
+  // and 3; the result is deterministic because integer addition is
+  // associative.
+  array src = zeros({2, 3}, int32, stream);
+  array indices = array({0, 1, 1, 2, 0, 1}, {2, 3}, int32);
+  array values = array({1, 2, 3, 4, 5, 6}, {2, 3}, int32);
+  array out = scatter_add_axis(src, indices, values, 1, stream);
+  check_ints(out, {1, 5, 0, 5, 6, 4}, stream);
 }
 
 TEST_CASE("scatter_add_axis rejects float with a named error") {
@@ -460,7 +592,7 @@ TEST_CASE("scatter_add_axis rejects float with a named error") {
   array values = array({1.0f, 2.0f}, {2}, float32);
   std::string error =
       evaluation_error(scatter_add_axis(src, indices, values, 0, stream));
-  CHECK(error.find("[omarchy] ScatterAxis") != std::string::npos);
+  CHECK(error.find("ScatterAxis Sum dtype") != std::string::npos);
 }
 
 // ---------------------------------------------------------------------------
@@ -519,6 +651,42 @@ TEST_CASE("masked_scatter skips writes when the source runs out") {
   array src = array({-1.0f, -2.0f}, {2}, float32);
   array out = masked_scatter(dst, mask, src, stream);
   check_floats(out, {-1, -2, 3}, stream);
+}
+
+TEST_CASE("masked_scatter carries the scan across chunks and rows") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  // Two rows of 600 elements (three 256-wide chunks each) with every
+  // other position true: 300 writes per row must chain through the
+  // shared-memory carry across chunk boundaries without dropping or
+  // reordering a single assignment.
+  const int rows = 2;
+  const int cols = 600;
+  std::vector<float> dst_data(rows * cols, 0.0f);
+  array dst = array(dst_data.data(), Shape({rows, cols}), float32);
+  std::vector<unsigned char> bytes(rows * cols, 0);
+  for (int r = 0; r < rows; ++r) {
+    for (int c = 0; c < cols; c += 2) {
+      bytes[r * cols + c] = 1;
+    }
+  }
+  array mask = array(bytes.data(), Shape({rows, cols}), bool_);
+  // With a 2-D mask the op layer supplies a 1-D value and expands a
+  // leading batch dim, so the primitive sees ONE row: the j-th true
+  // position in flat mask order consumes value[j].
+  std::vector<float> value_data(rows * cols, 0.0f);
+  for (int k = 0; k < rows * cols; ++k) {
+    value_data[k] = -static_cast<float>(k);
+  }
+  array value = array(value_data.data(), Shape({rows * cols}), float32);
+  array out = masked_scatter(dst, mask, value, stream);
+  std::vector<float> expected(rows * cols, 0.0f);
+  for (int k = 0; k < rows * cols / 2; ++k) {
+    expected[2 * k] = -static_cast<float>(k);
+  }
+  check_floats(out, expected, stream);
 }
 
 TEST_CASE("masked_scatter supports int32 and float16 data") {

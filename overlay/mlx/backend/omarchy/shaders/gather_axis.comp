@@ -92,8 +92,11 @@ void main() {
   uint dims = params.flags;
   uint pre_dims = params.matrix_m;
   while (t < params.count) {
+    // t decomposes as slot * (m_axis * post_size) + ax * post_size +
+    // post; the remainder must strip the full slot prefix, not just
+    // slot * m_axis, or every slot past the first misreads post.
     uint slot = t / (m_axis * post_size);
-    uint rem = t - slot * m_axis;
+    uint rem = t - slot * (m_axis * post_size);
     uint ax = rem / post_size;
     uint post = rem - ax * post_size;
     // Walk the non-axis dims: coordinates come from slot for the pre

@@ -159,6 +159,55 @@ enum class ComputeKernel : uint8_t {
   GatherQmmNbF32,
   GatherQmmNbF16,
   GatherQmmNbBF16,
+  // Wave 8: FFT. FftF32 is the radix-2 Cooley-Tukey pass (complex64 pairs
+  // in shared memory); FftRealF32 strips the real part of a complex64
+  // buffer into float32 for the irfft tail.
+  FftF32,
+  FftRealF32,
+  // Wave 9: fused and custom kernels. Norm forward and VJP kernels run one
+  // workgroup per row with float32 arithmetic; the dw kernel runs a single
+  // workgroup with per-column accumulators. ConvertFP8 pairs travel as
+  // little-endian uint32 word packs of four E4M3 bytes.
+  FastRmsNormF32,
+  FastRmsNormF16,
+  FastRmsNormBF16,
+  FastLayerNormF32,
+  FastLayerNormF16,
+  FastLayerNormBF16,
+  FastRmsNormVjpDxF32,
+  FastRmsNormVjpDxF16,
+  FastRmsNormVjpDxBF16,
+  FastLayerNormVjpDxF32,
+  FastLayerNormVjpDxF16,
+  FastLayerNormVjpDxBF16,
+  FastRmsNormVjpDwF32,
+  FastRmsNormVjpDwF16,
+  FastRmsNormVjpDwBF16,
+  FastLayerNormVjpDwF32,
+  FastLayerNormVjpDwF16,
+  FastLayerNormVjpDwBF16,
+  CrossEntropyVjpF32,
+  CrossEntropyVjpF16,
+  CrossEntropyVjpBF16,
+  CrossEntropyF32,
+  CrossEntropyF16,
+  CrossEntropyBF16,
+  Fp8ToF32,
+  Fp8ToF16,
+  Fp8ToBF16,
+  Fp8FromF32,
+  Fp8FromF16,
+  Fp8FromBF16,
+  // Wave 7: linear algebra. One workgroup per batch matrix, float32
+  // only, matching the upstream CPU dtype contract; SVD runs as a
+  // sweeps kernel plus a separate finalize kernel.
+  LinalgCholeskyF32,
+  LinalgInverseF32,
+  LinalgLuF32,
+  LinalgQrF32,
+  LinalgEighF32,
+  LinalgSvdF32,
+  LinalgSvdFinalizeF32,
   Count,
 };
 

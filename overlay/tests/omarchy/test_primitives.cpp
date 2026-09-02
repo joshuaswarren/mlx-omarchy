@@ -1066,22 +1066,25 @@ TEST_CASE("unsupported compute shapes and dtypes fail without CPU fallback") {
   CHECK(complex_error.find("[omarchy] Add dtype") != std::string::npos);
   CHECK(complex_error.find("complex64") != std::string::npos);
 
-  array spd({4.0f, 0.0f, 0.0f, 9.0f}, {2, 2}, float32);
-  std::string cholesky_error =
-      construction_error([&] { linalg::cholesky(spd, false, stream); });
-  CHECK(cholesky_error.find("[linalg::cholesky]") != std::string::npos);
-  CHECK(
-      cholesky_error.find("not yet supported on the GPU") != std::string::npos);
+  // The linalg family now dispatches to the Omarchy GPU backend. These
+  // pins ride float64, which the API layer admits and this backend will
+  // never carry, so the named dtype refusal holds even as the linalg
+  // implementations land.
+  array spd64({4.0, 0.0, 0.0, 9.0}, {2, 2}, float64);
+  std::string cholesky_error = construction_error([&] {
+    linalg::cholesky(spd64, false, stream).eval();
+  });
+  CHECK(cholesky_error.find("float64") != std::string::npos);
 
-  std::string svd_error =
-      construction_error([&] { linalg::svd(spd, true, stream); });
-  CHECK(svd_error.find("[linalg::svd]") != std::string::npos);
-  CHECK(svd_error.find("not yet supported on the GPU") != std::string::npos);
+  std::string svd_error = construction_error([&] {
+    linalg::svd(spd64, true, stream).at(0).eval();
+  });
+  CHECK(svd_error.find("float64") != std::string::npos);
 
-  std::string inv_error =
-      construction_error([&] { linalg::inv(spd, stream); });
-  CHECK(inv_error.find("[linalg::inv]") != std::string::npos);
-  CHECK(inv_error.find("not yet supported on the GPU") != std::string::npos);
+  std::string inv_error = construction_error([&] {
+    linalg::inv(spd64, stream).eval();
+  });
+  CHECK(inv_error.find("float64") != std::string::npos);
 }
 
 // Host reference: numerically stable softmax over the last axis.
@@ -4808,21 +4811,25 @@ TEST_CASE("mx.compile pins the named error for tape ops outside the subset") {
     return;
   }
   Stream stream = gpu_stream();
-  std::vector<float> xv = {0.0f, 0.1f, 0.2f, 0.3f};
-  array x(xv.begin(), Shape{4}, float32);
+  // Wave 11 admitted the whole upstream-fusable set except the
+  // complex-only trio, so the surviving tape-level refusal is Real: the
+  // tracer fuses it, the interpreter refuses it by name.
+
+  // The pinned upstream header cannot build complex arrays from host
+  // iterators, so use the explicit scalar overload; content never
+  // matters because the tape refuses Real before any dispatch.
+  array z = array(complex64_t{1.0f, 0.5f});
   using VectorFn = std::function<std::vector<array>(const std::vector<array>&)>;
 
-  // Erf is fusable upstream but outside the interpreted subset, so the
-  // tape carries it and eval fails with the named tape-op error.
   set_compile_mode(CompileMode::enabled);
   VectorFn mixed_fun = [&](const std::vector<array>& inputs) {
     return std::vector<array>{
-        multiply(erf(inputs[0], stream), exp(inputs[0], stream), stream)};
+        add(real(inputs[0], stream), array(1.0f), stream)};
   };
   auto mixed = compile(mixed_fun);
-  std::string mixed_error = evaluation_error(mixed({x})[0]);
+  std::string mixed_error = evaluation_error(mixed({z})[0]);
   CHECK(
-      mixed_error.find("[omarchy] Compiled tape op Erf") != std::string::npos);
+      mixed_error.find("[omarchy] Compiled tape op Real") != std::string::npos);
   set_compile_mode(CompileMode::enabled);
 }
 

@@ -8,6 +8,12 @@ primitive entry in overlay/mlx/backend/omarchy/primitives.cpp, and
 writes a markdown document to stdout. Redirect into
 docs/compatibility-matrix.md. `--json-out PATH` also writes the
 coverage badge data in shields.io endpoint format (docs/coverage.json).
+Coverage counts a primitive only when its eval path really dispatches
+compute and a TEST_CASE verifies values against host references. An
+eval body whose only reachable outcome is `omarchy::unsupported` is a
+refusal; cases that only pin refusals, only assert no-error smoke, or
+carry a loud SKIP marker do not anchor coverage. See parse_test_cases
+and build_row.
 
 Sources (read-only):
   overlay/mlx/backend/omarchy/primitives.cpp  primitive entries and gates
@@ -53,6 +59,24 @@ GENERIC_HELPERS = {"checked_u32", "checked_item_offset"}
 
 NAME_VARS = {"name", "tag", "operation_name", "error_name"}
 
+# Test-side evidence. A case anchors coverage only by asserting
+# values; refusal pins, no-error smoke checks, and loud SKIP markers
+# do not. The suite expresses refusal pins by asserting on
+# evaluation_error() results or on variables bound to them, so
+# assertion classification tracks those variables through the body.
+ASSERT_THROW = re.compile(r"\b(?:CHECK|REQUIRE)_THROWS\w*\s*\(")
+ASSERT_PLAIN = re.compile(
+    r"\b(?:CHECK|REQUIRE)"
+    r"(?:_(?:FALSE|EQ|NE|GT|GE|LT|LE|UNARY_FALSE|UNARY|MESSAGE))?\s*\(")
+DOCTEST_SKIP = re.compile(r"\bSKIP\s*\(")
+SKIP_LITERAL = re.compile(r'"SKIP\b')
+ERROR_VAR_DECL = re.compile(
+    r"(?:const\s+)?(?:std::string|bool|auto)\s+(\w+)\s*=\s*([^;]+);")
+CATCH_BLOCK = re.compile(r"catch\s*\(")
+ASSIGNMENT = re.compile(r"\b(\w+)\s*=(?![=])")
+UNSUPPORTED_CALL = re.compile(r"\bomarchy::unsupported\s*\(")
+THROW_CALL = re.compile(r"\bthrow\s+std::\w*\s*\(")
+
 DTYPE_LABELS = {
     "float32": "f32",
     "float16": "f16",
@@ -85,6 +109,40 @@ CONSTRUCTION_GLOBS = [
 DTYPE_ORDER = ["f32", "f16", "bf16", "i32", "u32", "i64", "bool"]
 
 UPSTREAM_GPU_PRIMITIVES = ROOT / ".work/mlx/mlx/backend/gpu/primitives.cpp"
+METAL_DIST_CPP = ROOT / ".work/mlx/mlx/backend/metal/distributed.cpp"
+DIST_OPS_CPP = ROOT / ".work/mlx/mlx/distributed/ops.cpp"
+
+
+def parse_upstream_metal_refusals(names):
+    """Upstream primitive names upstream's own Metal backend refuses.
+
+    The evidence file is upstream's Metal distributed backend: a
+    throw naming the primitive means Metal does not implement it
+    either. A missing file or a file without throws yields an empty
+    set and the matrix omits the annotation; the annotation can never
+    change the covered count or the denominator.
+    """
+    try:
+        text = strip_comments(METAL_DIST_CPP.read_text())
+    except OSError:
+        return set()
+    if "throw" not in text:
+        return set()
+    return {name for name in names if re.search(rf"\b{name}\b", text)}
+
+
+def parse_distributed_singleton_guard():
+    """Whether upstream's op layer short-circuits at group.size()==1.
+
+    True means the distributed primitive is never constructed in a
+    single-rank run, so a backend eval_gpu for it is unreachable by
+    upstream design.
+    """
+    try:
+        text = strip_comments(DIST_OPS_CPP.read_text())
+    except OSError:
+        return False
+    return bool(re.search(r"size\(\)\s*==\s*1", text))
 
 
 def parse_shared_gpu_primitives():
@@ -355,6 +413,140 @@ def parse_op_constructions(upstream_keys):
     return op_map
 
 
+def attribute_functions_anon(masked):
+    """attribute_functions, also recursing into anonymous namespaces.
+
+    Test helpers live in `namespace { ... }` blocks, which the
+    construction-map walk skips; helper classification needs them.
+    """
+    out = []
+
+    def walk(start, end, ns):
+        index = start
+        while index < end:
+            brace = next_block(masked, index, end)
+            if brace == -1:
+                return
+            header = masked[index:brace].rstrip()
+            close = block_end(masked, brace)
+            tail = NAMESPACE_TAIL.search(header)
+            if tail:
+                tail_ns = tail.group(1).rpartition("::")[2]
+                walk(brace + 1, close,
+                     NAMESPACE_ALIAS.get(tail_ns, tail_ns))
+            elif NAMESPACE_ANON.search(header):
+                walk(brace + 1, close, ns)
+            else:
+                name = function_name(header)
+                if name:
+                    out.append((ns, name, masked[brace + 1:close]))
+            index = close + 1
+
+    walk(0, len(masked), "")
+    return out
+
+
+def error_variable_names(body):
+    """Names bound to refusal text in one test body.
+
+    A name is refusal-bound when it is assigned inside a catch block,
+    initialized from evaluation_error(...), or initialized from an
+    expression mentioning an already refusal-bound name (the fixpoint
+    follows bool flags derived from error strings).
+    """
+    names = set()
+    for match in CATCH_BLOCK.finditer(body):
+        args = balanced(body, match.end() - 1)
+        brace = body.find("{", match.end() + len(args))
+        if brace == -1:
+            continue
+        close = block_end(body, brace)
+        for assign in ASSIGNMENT.finditer(body[brace + 1:close]):
+            names.add(assign.group(1))
+    changed = True
+    while changed:
+        changed = False
+        for match in ERROR_VAR_DECL.finditer(body):
+            name, rhs = match.group(1), match.group(2)
+            if name in names:
+                continue
+            if "evaluation_error" in rhs or any(
+                    re.search(rf"\b{re.escape(v)}\b", rhs)
+                    for v in names):
+                names.add(name)
+                changed = True
+    return names
+
+
+def classify_assertions(body, error_vars):
+    """(has value assertion, has refusal or no-error pin) for a body.
+
+    CHECK/REQUIRE family macros carry the evidence. A *_THROWS* form,
+    an argument reading evaluation_error() or a refusal-bound
+    variable, or an argument asserting on a caught message pins a
+    refusal; any other CHECK/REQUIRE asserts a computed value. WARN_*
+    and MESSAGE record without failing and are not evidence.
+    """
+    value = pin = False
+    if ASSERT_THROW.search(body):
+        pin = True
+    for match in ASSERT_PLAIN.finditer(body):
+        args = balanced(body, match.end() - 1)
+        if "evaluation_error" in args or any(
+                re.search(rf"\b{re.escape(v)}\b", args)
+                for v in error_vars):
+            pin = True
+        else:
+            value = True
+    return value, pin
+
+
+def value_verify_helpers(masked):
+    """File-local helper names whose bodies compare values.
+
+    A helper verifies values when any of its definitions runs a value
+    assertion itself or calls another verifying helper (check_floats
+    ends in CHECK...). Overloads accumulate: the linalg suite defines
+    expect_close twice, and dropping the asserting overload to a
+    same-name shim would hide the verification. Helpers that format,
+    quantize on the host, or only return refusal strings never
+    verify.
+    """
+    bodies = {}
+    for ns, name, body in attribute_functions_anon(masked):
+        if name not in ("TEST_CASE", "SUBCASE") and ns == "":
+            bodies.setdefault(name, []).append(body)
+    calls = {
+        name: {
+            hit for hit in (
+                match.group(1)
+                for body in bodies[name]
+                for match in CALL_SITE.finditer(body))
+            if hit in bodies
+        }
+        for name in bodies
+    }
+    memo = {}
+
+    def verify(name, seen):
+        if name in memo:
+            return memo[name]
+        if name in seen:
+            return False
+        seen.add(name)
+        value = any(
+            classify_assertions(
+                body, error_variable_names(body))[0]
+            for body in bodies[name])
+        result = value or any(
+            verify(child, seen) for child in sorted(calls[name]))
+        memo[name] = result
+        return result
+
+    for name in sorted(bodies):
+        verify(name, set())
+    return {name for name, ok in memo.items() if ok}
+
 def parse_test_cases(op_map, upstream_keys, upstream_names):
     """TEST_CASEs with the primitives each body provably exercises.
 
@@ -369,6 +561,11 @@ def parse_test_cases(op_map, upstream_keys, upstream_names):
       primitives no public op constructs).
     - mentions: upstream class names inside body string literals, the
       named-error qualifiers the case expects.
+    - value / pin / skipped: whether the body verifies values (its
+      own assertions or file-local value helpers), only pins refusals
+      or no-error smoke, or carries a loud SKIP marker. A SKIP marker
+      withdraws value credit for the whole case; a value anchor also
+      requires a real call path, never a bare string mention.
     """
     cases = []
     order = {}
@@ -378,6 +575,7 @@ def parse_test_cases(op_map, upstream_keys, upstream_names):
         rel = path.relative_to(ROOT)
         if rel not in order:
             order[rel] = len(order)
+        helpers = value_verify_helpers(masked)
         for match in re.finditer(r"TEST_CASE\s*\(", masked):
             line = masked[:match.start()].count("\n") + 1
             title = re.match(
@@ -414,6 +612,17 @@ def parse_test_cases(op_map, upstream_keys, upstream_names):
             mentions = {
                 name for name in upstream_names
                 if re.search(rf"\b{re.escape(name)}\b", literals)}
+            error_vars = error_variable_names(body)
+            value, pin = classify_assertions(body, error_vars)
+            skipped = bool(
+                DOCTEST_SKIP.search(body)
+                or SKIP_LITERAL.search(raw_body))
+            if skipped:
+                value = False
+            if not value and not skipped:
+                value = any(
+                    hit.group(1) in helpers
+                    for hit in CALL_SITE.finditer(body))
             cases.append({
                 "order": order[rel],
                 "rel": str(rel),
@@ -422,38 +631,61 @@ def parse_test_cases(op_map, upstream_keys, upstream_names):
                 "ops": ops,
                 "exclusive": exclusive,
                 "mentions": mentions,
+                "value": value,
+                "pin": pin,
+                "skipped": skipped,
             })
     return cases
 
 
 
 def anchor_for(display, cases):
-    """Anchor link for one primitive, resolved from case bodies.
+    """(anchor link, anchor kind) for one primitive.
 
-    Evidence tiers, strongest first: a case calling an op whose
-    construction map is exactly this primitive, then any case calling
-    an op that constructs it (composite paths such as dequantize count,
-    but yield to dedicated tests), then a case naming the primitive in
+    Kind 'value': a case that reaches the primitive through a call
+    (its own op, a composite op, or a direct std::make_shared) and
+    asserts values. Kind 'pin': a case that reaches the primitive but
+    only asserts refusal messages or no-error smoke. Tiers within a
+    kind, strongest first: exclusive op, any constructing op, name in
     an expected-error string. Within a tier the earliest case in file
-    order wins.
+    order wins. A bare string mention can only anchor a pin.
     """
     ns, _, name = display.rpartition("::")
     key = (ns, name)
+    best = {"value": None, "pin": None}
     for tier in ("exclusive", "ops", "mentions"):
-        best = None
         for case in cases:
             if tier == "mentions":
                 hit = name in case["mentions"]
+                kind = "pin"
+                if not hit:
+                    continue
             else:
                 hit = key in case[tier]
-            if not hit:
-                continue
-            if best is None or (case["order"], case["line"]) < (
-                    best["order"], best["line"]):
-                best = case
-        if best is not None:
-            return f"[`{best['name']}`](../{best['rel']}#L{best['line']})"
-    return "—"
+                if not hit:
+                    continue
+                if case["value"]:
+                    kind = "value"
+                elif case["pin"]:
+                    kind = "pin"
+                else:
+                    continue
+            current = best[kind]
+            if current is None or (case["order"], case["line"]) < (
+                    current["order"], current["line"]):
+                best[kind] = case
+    if best["value"] is not None:
+        case = best["value"]
+        return (
+            f"[`{case['name']}`](../{case['rel']}#L{case['line']})",
+            "value")
+    if best["pin"] is not None:
+        case = best["pin"]
+        return (
+            f"[`{case['name']}`](../{case['rel']}#L{case['line']})"
+            " pins refusal, no values",
+            "pin")
+    return "—", None
 
 
 def parse_kernel_families():
@@ -574,7 +806,38 @@ def extract_fragments(body):
         fragment = render_expr(args[:split])
         if fragment not in fragments:
             fragments.append(fragment)
+    for match in re.finditer(r"\bthrow\s+std::\w+\s*\(", body):
+        args = balanced(body, match.end() - 1)
+        fragment = render_expr(args)
+        if fragment not in fragments:
+            fragments.append(fragment)
     return fragments
+
+
+def kernel_reaching_helpers(helpers, called):
+    """Helpers whose dispatch chain ends in a compute kernel launch.
+
+    An eval body that only calls such helpers still computes; without
+    this transitive check a body delegating to a dispatch helper
+    outside HELPER_FAMILY would read as refusing everything.
+    """
+    direct = {
+        name
+        for name, body in helpers.items()
+        if "omarchy::ComputeKernel::" in body
+        or COPY_EVIDENCE.search(body)
+    }
+    reaching = set(direct)
+    changed = True
+    while changed:
+        changed = False
+        for name, children in called.items():
+            if name in reaching:
+                continue
+            if any(child in reaching for child in children):
+                reaching.add(name)
+                changed = True
+    return reaching
 
 
 def helper_fragments(helper, fragments, called, seen=None):
@@ -612,7 +875,7 @@ def parse_primitives():
     for number, line in enumerate(lines):
         if re.match(r"^namespace (fast|distributed) \{", line):
             namespace = re.match(r"^namespace (\w+) \{", line).group(1)
-        elif re.match(r"^\} // namespace", line):
+        elif re.match(r"^\} // namespace (fast|distributed)\s*$", line):
             namespace = ""
         macro = re.match(
             r"^OMARCHY_(UNSUPPORTED|UNSUPPORTED_MULTI|USE_FALLBACK|BINARY|"
@@ -726,7 +989,7 @@ def parse_delegate_info(entries):
 
 
 def build_row(entry, families, variant_dtypes, fragments, called, dtypes,
-              bool_out_helpers, cases, delegate=None):
+              bool_out_helpers, kernel_helpers, cases, delegate=None):
     name = entry["name"]
     display = f"{entry['ns']}::{name}" if entry["ns"] else name
     kinds = set(entry["kinds"])
@@ -754,6 +1017,23 @@ def build_row(entry, families, variant_dtypes, fragments, called, dtypes,
         row_dtypes = set()
     else:
         body = strip_comments(impl_body)
+        # An omarchy::unsupported call at statement scope (not nested
+        # in any conditional block) is [[noreturn]]: every execution
+        # path hits it, so any kernels below are dead code and the
+        # primitive refuses all inputs however the body reads.
+        depth = 0
+        refuses_all = False
+        for index in range(len(body)):
+            char = body[index]
+            if char == "{":
+                depth += 1
+            elif char == "}":
+                depth -= 1
+            elif (depth == 0
+                    and (UNSUPPORTED_CALL.match(body, index)
+                         or THROW_CALL.match(body, index))):
+                refuses_all = True
+                break
         tokens = re.findall(r"omarchy::ComputeKernel::(\w+)", body)
         helpers_called = re.findall(
             r"\b(dispatch_\w+|fill_broadcast_transport)\(", body)
@@ -805,10 +1085,34 @@ def build_row(entry, families, variant_dtypes, fragments, called, dtypes,
             if base not in kernel_names:
                 kernel_names.append(base)
         copy_evidence = bool(COPY_EVIDENCE.search(body))
-        if tokens:
-            status = "native"
-        elif delegate or len(set(kernel_names)) > 1 or copy_evidence:
-            status = "composed"
+        dispatches = (
+            bool(tokens)
+            or bool(kernel_names)
+            or copy_evidence
+            or delegate is not None
+            or any(
+                helper in kernel_helpers
+                for helper in helpers_called))
+        # Gates the entry's own eval body places above the dispatch
+        # (modes, layouts, ranks) make the implementation genuinely
+        # partial. Refusals that live only in shared engine helpers
+        # (contiguity transport, uint32 spans, capability gates) stay
+        # row constraints, not partial markers.
+        own_gates = bool(extract_fragments(body))
+        delegate_gates = bool(delegate and delegate.get("fragments"))
+        if refuses_all:
+            status = "named-error"
+            kernel_names = []
+            row_dtypes = set()
+        elif dispatches:
+            if own_gates or delegate_gates:
+                status = "partial"
+            elif delegate or len(set(kernel_names)) > 1 or copy_evidence:
+                status = "composed"
+            else:
+                status = "native"
+        elif own_gates:
+            status = "named-error"
         else:
             status = "native"
         constraint_frags = (
@@ -826,13 +1130,15 @@ def build_row(entry, families, variant_dtypes, fragments, called, dtypes,
         for dtype in DTYPE_ORDER
         if dtype in row_dtypes
     ]
+    anchor_link, anchor_kind = anchor_for(display, cases)
     return {
         "display": display,
         "status": status,
         "kernels": kernel_names,
         "dtypes": ordered,
         "constraints": constraint_frags,
-        "anchor": anchor_for(display, cases),
+        "anchor": anchor_link,
+        "anchor_kind": anchor_kind,
         "line": entry.get("impl_line", entry["line"]),
     }
 
@@ -886,6 +1192,7 @@ def main():
     gates = parse_capability_gates(primitives_text)
     helpers, fragments, called, helper_dtype_map = parse_helpers(
         primitives_text, variant_dtypes)
+    kernel_helpers = kernel_reaching_helpers(helpers, called)
     upstream = parse_upstream_primitives()
     op_map = parse_op_constructions(set(upstream))
     upstream_names = sorted({name for _, name in upstream})
@@ -908,7 +1215,7 @@ def main():
     def build(entry, delegate=None):
         return build_row(entry, families, variant_dtypes, fragments,
                          called, helper_dtype_map, bool_out_helpers,
-                         cases, delegate)
+                         kernel_helpers, cases, delegate)
 
     core_rows = {}
     rows_by_key = {}
@@ -950,48 +1257,79 @@ def main():
     nothing_runs = [key for key in no_entry if key[1] not in shared_gpu_names]
     total = len(upstream)
 
-    def is_anchored(row):
-        return row["anchor"] != "—"
-
     def share(count):
         return f"{count / total * 100:.1f}%"
 
-    native_hit = sum(
-        1 for row in rows
-        if row["status"] == "native" and is_anchored(row))
-    native_miss = sum(
-        1 for row in rows
-        if row["status"] == "native" and not is_anchored(row))
-    composed_hit = sum(
-        1 for row in rows
-        if row["status"].startswith("composed") and is_anchored(row))
-    composed_miss = sum(
-        1 for row in rows
-        if row["status"].startswith("composed") and not is_anchored(row))
+    shared_links = {
+        key: anchor_for(
+            f"{key[0]}::{key[1]}" if key[0] else key[1], cases)
+        for key in shared_gpu
+    }
+    shared_counts = {"value": 0, "pin": 0, None: 0}
+    for _, kind in shared_links.values():
+        shared_counts[kind] += 1
+
+    status_families = (
+        ("native", lambda row: row["status"] == "native"),
+        ("composed", lambda row: row["status"].startswith("composed")),
+        ("partial", lambda row: row["status"] == "partial"),
+    )
+    anchor_kinds = (
+        ("value-tested", "value"),
+        ("error-pins only", "pin"),
+        ("untested", None),
+    )
+    buckets = []
+    covered = 0
+    computing_uncovered = 0
+    for family_name, pred in status_families:
+        for label, kind in anchor_kinds:
+            count = sum(
+                1 for row in rows
+                if pred(row) and row["anchor_kind"] == kind)
+            buckets.append((f"{family_name}, {label}", count))
+            if kind == "value":
+                covered += count
+            else:
+                computing_uncovered += count
+    for label, kind in (
+            ("shared-gpu, value-tested", "value"),
+            ("shared-gpu, error-pins only", "pin"),
+            ("shared-gpu, untested", None)):
+        buckets.append((label, shared_counts[kind]))
+        if kind == "value":
+            covered += shared_counts[kind]
+        else:
+            computing_uncovered += shared_counts[kind]
     named_error = sum(
         1 for row in rows if row["status"] == "named-error")
-    named_error_anchored = sum(
+    named_error_pinned = sum(
         1 for row in rows
-        if row["status"] == "named-error" and is_anchored(row))
-    shared_hit = sum(
-        1 for key in shared_gpu
-        if anchor_for(f"{key[0]}::{key[1]}" if key[0] else key[1], cases)
-        != "—")
-    shared_miss = len(shared_gpu) - shared_hit
-    buckets = [
-        ("native, test-anchored", native_hit),
-        ("native, untested", native_miss),
-        ("composed, test-anchored", composed_hit),
-        ("composed, untested", composed_miss),
-        ("shared-gpu, test-anchored", shared_hit),
-        ("shared-gpu, untested", shared_miss),
-        ("named-error (backend entry raises unsupported)", named_error),
-        ("not implemented (nothing runs)", len(nothing_runs)),
-    ]
-    covered = native_hit + composed_hit + shared_hit
-    implemented = (
-        covered + native_miss + composed_miss + shared_miss)
+        if row["status"] == "named-error"
+        and row["anchor_kind"] is not None)
+    buckets.append(
+        ("named-error (refuses all inputs)", named_error))
+    buckets.append(
+        ("not implemented (nothing runs)", len(nothing_runs)))
+    implemented = covered + computing_uncovered
     coverage_pct = covered / total * 100
+
+    # Upstream's own refusals, display-only. The Metal backend throws
+    # for these primitives too, so the gap is not omarchy-specific;
+    # the annotation never changes the covered count or denominator.
+    metal_refusals = parse_upstream_metal_refusals(
+        {name for _, name in upstream})
+    upstream_refused = [
+        (row["display"], row["status"])
+        for row in rows
+        if row["display"].rpartition("::")[2] in metal_refusals
+        and row["status"] == "named-error"]
+    upstream_refused.extend(
+        (f"{ns}::{name}" if ns else name,
+         "not implemented (nothing runs)")
+        for ns, name in nothing_runs
+        if name in metal_refusals)
+    singleton_short_circuit = parse_distributed_singleton_guard()
 
     def badge_color(pct):
         if pct < 34:
@@ -1037,13 +1375,29 @@ def main():
         f"{total} upstream primitives.**")
     out.append("")
     out.append(
-        "Coverage counts a primitive only when the omarchy backend "
-        "dispatches or composes it (native or composed) and a TEST_CASE "
-        "in `overlay/tests/omarchy/` anchors it: the case body calls an "
-        "op that constructs the primitive, constructs the primitive "
-        "itself, or names the primitive in an expected-error string. "
-        "Native-but-untested primitives keep "
-        "their own buckets below and are not counted as covered.")
+        "Coverage counts a primitive only when the omarchy backend has "
+        "a real computing path for it — native kernels, a composition, "
+        "or the fallback path; an eval body whose only reachable "
+        "outcome is `omarchy::unsupported` is a refusal, not a path — "
+        "and a TEST_CASE in `overlay/tests/omarchy/` verifies values "
+        "for it: the case reaches the primitive through an op call or "
+        "a direct construction and asserts results against "
+        "host-computed references. Cases that only pin refusal "
+        "messages, only assert an eval raised nothing, or carry a "
+        "loud SKIP marker anchor nothing and are bucketed separately "
+        "below.")
+    out.append("")
+    out.append(
+        "One thing that number does not mean: a `partial` primitive "
+        "counts toward it. Partial means the primitive computes real "
+        "results for the dtypes, layouts, and modes it implements and "
+        "raises a named error for the rest, so a counted primitive is "
+        "not necessarily a primitive that handles every input upstream "
+        "accepts. The per-primitive rows below carry each row's own "
+        "named errors, which is where the real limits live. Read "
+        f"{coverage_pct:.1f}% as \"this share of upstream primitives "
+        "does something correct and proven, and refuses the rest by "
+        "name\" — never as \"this share is complete.\"")
     out.append("")
     out.append(
         "The denominator is every concrete primitive class upstream "
@@ -1059,10 +1413,19 @@ def main():
     out.append(f"| upstream total | {total} | 100.0% |")
     out.append("")
     out.append(
-        "Implementation-path coverage without the test requirement: "
-        f"{implemented}/{total} = {implemented / total * 100:.1f}%. "
-        f"{named_error_anchored} named-error primitives pin their "
-        "unsupported error with a test; a pinned error is not coverage.")
+        "Implementation-path coverage without the value-test "
+        f"requirement: {implemented}/{total} = "
+        f"{implemented / total * 100:.1f}%. "
+        f"{named_error_pinned} named-error primitives pin their "
+        "unsupported error with a test; a pinned error is not "
+        "coverage.")
+    if upstream_refused:
+        out.append("")
+        out.append(
+            f"Of the {total - covered} primitives outside coverage, "
+            f"{len(upstream_refused)} are also unimplemented in "
+            "upstream's own Metal backend (listed at the end of this "
+            "document).")
     out.append("")
     out.append("## Status terms")
     out.append("")
@@ -1070,26 +1433,40 @@ def main():
         "- native: one omarchy kernel or engine path dispatches the "
         "operation.")
     out.append(
-        "- composed: the operation assembles on the device from several "
-        "dispatched kernels, or mlx composes core ops because "
+        "- composed: the operation assembles on the device from "
+        "several dispatched kernels, or mlx composes core ops because "
         "use_fallback returns true.")
     out.append(
-        "- named-error: eval_gpu raises `omarchy::unsupported` and the "
-        "run stops with that qualifier.")
+        "- partial: a real kernel path computes for the dtypes and "
+        "shapes in the row, while other caller-reachable inputs — "
+        "modes, layouts, ranks, row lengths — hit the named refusals "
+        "listed in the row. A partial primitive counts as covered "
+        "only through a value-tested case.")
     out.append(
-        "- shared-gpu: the primitive has no omarchy entry, and upstream's "
-        "shared `backend/gpu/primitives.cpp` resolves it generically — "
-        "zero-copy buffer views or the omarchy copy engine. It counts as "
-        "covered only when a TEST_CASE anchors it.")
+        "- named-error: every input refuses; eval_gpu raises "
+        "`omarchy::unsupported` and the run stops with that "
+        "qualifier. This includes eval bodies that keep kernels below "
+        "an unconditional refusal statement — those kernels are dead "
+        "code.")
+    out.append(
+        "- shared-gpu: the primitive has no omarchy entry, and "
+        "upstream's shared `backend/gpu/primitives.cpp` resolves it "
+        "generically — zero-copy buffer views or the omarchy copy "
+        "engine. It counts as covered only when a TEST_CASE "
+        "value-anchors it.")
     out.append(
         "- not implemented (nothing runs): upstream MLX defines the "
         "primitive, the omarchy backend has no entry for it, and the "
         "shared GPU layer has no eval_gpu for it either.")
     out.append(
-        "- Dtypes marked `*` pass the capability gates listed under the "
-        "kernel families.")
+        "- Test anchor kinds: a value-tested case compares results "
+        "against host-computed references; a case marked `pins "
+        "refusal, no values` asserts refusal messages or no-error "
+        "smoke only; a loud SKIP marker in a case withdraws its value "
+        "credit.")
     out.append(
-        "- `{name}` in a constraint stands for the dispatched "
+        "- Dtypes marked `*` pass the capability gates listed under "
+        "the kernel families. Refusal fragments show the resolved "
         "operation name.")
     out.append("")
     out.extend(format_families(families, copy_families, gates))
@@ -1107,8 +1484,11 @@ def main():
         kernels = (
             ", ".join(row["kernels"]) if row["kernels"] else "—")
         dtypes = ", ".join(row["dtypes"]) if row["dtypes"] else "—"
+        row_name = row["display"].rpartition("::")[2]
         constraints = (
-            "; ".join(f"`{fragment}`" for fragment in row["constraints"])
+            "; ".join(
+                f"`{fragment.replace('{name}', row_name)}`"
+                for fragment in row["constraints"])
             if row["constraints"] else "—")
         out.append(
             f"| {row['display']} | {row['status']} | {kernels} | "
@@ -1133,12 +1513,34 @@ def main():
         display = f"{ns}::{name}" if ns else name
         if (ns, name) in shared_gpu:
             status = "shared-gpu"
-            anchor = anchor_for(display, cases)
+            anchor = shared_links[(ns, name)][0]
         else:
             status = "not implemented (nothing runs)"
             anchor = "—"
         out.append(f"| {display} | {status} | {anchor} |")
     out.append("")
+    if upstream_refused:
+        out.append(
+            f"## Also unimplemented upstream — "
+            f"{len(upstream_refused)} primitives")
+        out.append("")
+        out.append(
+            "Upstream's Metal backend throws for these primitives in "
+            "`.work/mlx/mlx/backend/metal/distributed.cpp`"
+            + ("; the distributed op layer also short-circuits each "
+               "at group.size() == 1 in "
+               "`.work/mlx/mlx/distributed/ops.cpp`, so the primitive "
+               "is never constructed in a single-rank run"
+               if singleton_short_circuit else "")
+            + ". The omarchy named errors match upstream's own "
+              "refusal. These rows stay in the denominator and count "
+              "zero toward coverage.")
+        out.append("")
+        out.append("| Primitive | Omarchy status |")
+        out.append("|---|---|")
+        for display, status in upstream_refused:
+            out.append(f"| {display} | {status} |")
+        out.append("")
     sys.stdout.write("\n".join(out))
 
 
