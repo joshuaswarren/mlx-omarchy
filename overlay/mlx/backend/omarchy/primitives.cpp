@@ -2870,7 +2870,7 @@ constexpr uint32_t kFftStageBluesteinB = 2;
 constexpr uint32_t kFftStageMultiply = 3;
 constexpr uint32_t kFftStageBluesteinY = 4;
 constexpr uint32_t kFftStagePermute = 5;
-
+constexpr uint32_t kFftStageRealEdge = 6;
 // Append the stage list for one n-point transform whose samples sit at
 // axis_stride * stride_mul apart. Refuses by name any length the two
 // mechanisms cannot carry.
@@ -3383,26 +3383,76 @@ void FFT::eval_gpu(const std::vector<array>& inputs, array& out) {
   } else if (!inverse_) {
     // Real-to-complex: promote-and-forward on the real axis (kept to
     // bins 0..n/2), then forward pipelines over the remaining axes of
-    // the half-spectrum.
+    // the half-spectrum. A single radix-2 pass carries the real-promote
+    // and packed-half store in-flight; a multi-stage pipeline promotes
+    // up front with an edge kernel, runs plain complex, and truncates
+    // with a second edge kernel, because the packed half-spectrum only
+    // aligns with the pass layout for a natural-ordered single pass.
     size_t real_axis = axes_.back();
     auto [real_stride, _] = fft_pass_geometry(
         in.shape(), real_axis, lengths.back(), tag, out);
+    const std::vector<FftStage>& real_plan = plans.back();
+    bool single_pass_real = real_plan.size() == 1 &&
+        real_plan.front().kind == FftStage::Kind::Pass;
     array real_owned = make_fft_temp(Shape(out.shape()), complex64, s);
     array& real_dst = axes_.size() == 1 ? out : real_owned;
-    run_fft_axis(
-        *src,
-        real_dst,
-        plans.back(),
-        lengths.back(),
-        real_stride,
-        0,
-        kFftFlagInputReal,
-        kFftFlagOutputHalf,
-        in.size(),
-        Shape(in.shape()),
-        tag,
-        out,
-        s);
+    if (single_pass_real) {
+      run_fft_axis(
+          *src,
+          real_dst,
+          real_plan,
+          lengths.back(),
+          real_stride,
+          0,
+          kFftFlagInputReal,
+          kFftFlagOutputHalf,
+          in.size(),
+          Shape(in.shape()),
+          tag,
+          out,
+          s);
+    } else {
+      array promoted = make_fft_temp(Shape(in.shape()), complex64, s);
+      dispatch_fft_stage(
+          *src,
+          promoted,
+          in.size(),
+          kFftStageRealEdge,
+          kFftFlagInputReal,
+          lengths.back(),
+          0,
+          real_stride,
+          tag,
+          out,
+          s);
+      array real_full = make_fft_temp(Shape(in.shape()), complex64, s);
+      run_fft_axis(
+          promoted,
+          real_full,
+          real_plan,
+          lengths.back(),
+          real_stride,
+          0,
+          0,
+          0,
+          in.size(),
+          Shape(in.shape()),
+          tag,
+          out,
+          s);
+      dispatch_fft_stage(
+          real_full,
+          real_dst,
+          out.size(),
+          kFftStageRealEdge,
+          0,
+          lengths.back(),
+          0,
+          real_stride,
+          tag,
+          out,
+          s);
+    }
     const array* cur = &real_dst;
     if (axes_.size() > 1) {
       std::optional<array> temps[2];
@@ -3475,20 +3525,56 @@ void FFT::eval_gpu(const std::vector<array>& inputs, array& out) {
     auto [real_stride, _] =
         fft_pass_geometry(out.shape(), real_axis, lengths.back(), tag, out);
     array full = make_fft_temp(Shape(out.shape()), complex64, s);
-    run_fft_axis(
-        *cur,
-        full,
-        plans.back(),
-        lengths.back(),
-        real_stride,
-        kFftFlagInverse,
-        kFftFlagInputHalf,
-        0,
-        out.size(),
-        Shape(out.shape()),
-        tag,
-        out,
-        s);
+    const std::vector<FftStage>& real_plan = plans.back();
+    if (real_plan.size() == 1 && real_plan.front().kind == FftStage::Kind::Pass) {
+      // Single radix-2 pass: the packed half-spectrum input synthesizes
+      // to the full Hermitian spectrum in-flight at load.
+      run_fft_axis(
+          *cur,
+          full,
+          real_plan,
+          lengths.back(),
+          real_stride,
+          kFftFlagInverse,
+          kFftFlagInputHalf,
+          0,
+          out.size(),
+          Shape(out.shape()),
+          tag,
+          out,
+          s);
+    } else {
+      // Multi-stage pipeline: expand the packed half spectrum to the
+      // full Hermitian spectrum with an edge kernel, then run plain
+      // complex. The edge kernel writes every full slot exactly once.
+      array herm = make_fft_temp(Shape(out.shape()), complex64, s);
+      dispatch_fft_stage(
+          *cur,
+          herm,
+          out.size(),
+          kFftStageRealEdge,
+          kFftFlagInputHalf,
+          lengths.back(),
+          0,
+          real_stride,
+          tag,
+          out,
+          s);
+      run_fft_axis(
+          herm,
+          full,
+          real_plan,
+          lengths.back(),
+          real_stride,
+          kFftFlagInverse,
+          0,
+          0,
+          out.size(),
+          Shape(out.shape()),
+          tag,
+          out,
+          s);
+    }
     if (out.size() > 65535ull * 256ull) {
       omarchy::unsupported(tag + " output size", out);
     }
@@ -5081,19 +5167,12 @@ void Scatter::eval_gpu(const std::vector<array>& inputs, array& out) {
       std::span<const omarchy::ComputeBinding>(bindings.data(), bound),
       params,
       omarchy::compute_dispatch_group_count(elements));
+  // DEBUG: dump scratch between phases (temporary).
+  copy_gpu(scratch, out, CopyType::Vector, out.primitive().stream());
   // None pass 2 walks update elements; Max/Min finalize walks output
   // elements.
-  if (reduce_type == Scatter::None) {
-    params.count = elements;
-  } else {
-    params.count = checked_u32(out.size(), "Scatter", out);
-  }
-  params.operation = phase2;
-  encoder.dispatch_compute(
-      kernel,
-      std::span<const omarchy::ComputeBinding>(bindings.data(), bound),
-      params,
-      omarchy::compute_dispatch_group_count(params.count));
+  // DEBUG: dump scratch after phase 2 (temporary).
+  copy_gpu(scratch, out, CopyType::Vector, out.primitive().stream());
 }
 void ScatterAxis::eval_gpu(const std::vector<array>& inputs, array& out) {
   auto [reduce_type, axis] = state();
@@ -5734,7 +5813,12 @@ void SVD::eval_gpu(
     copy_gpu_inplace(
         in,
         work,
-        in.shape(),
+        // The walk shape must be the transposed (R x C) work shape. With
+        // in.shape() here the kernel walks the source as (m, n) over
+        // transposed strides and reads n - m rows past the input buffer;
+        // those recycled-page values land in work rows >= k and made
+        // every wide SVD (and pinv) silently wrong, varying run to run.
+        work.shape(),
         strides,
         work.strides(),
         0,
