@@ -64,6 +64,32 @@ enum ElementwiseOperation : uint32_t {
   MinimumOperation,
   Log2Operation,
   Log10Operation,
+  ArcCosOperation,
+  ArcCoshOperation,
+  ArcSinOperation,
+  ArcSinhOperation,
+  ArcTanOperation,
+  ArcTan2Operation,
+  ArcTanhOperation,
+  CoshOperation,
+  SinhOperation,
+  TanOperation,
+  TanhOperation,
+  ErfOperation,
+  ErfInvOperation,
+  Expm1Operation,
+  Log1pOperation,
+  LogAddExpOperation,
+  CeilOperation,
+  FloorOperation,
+  RoundOperation,
+  // Wave-2 float ops. The codes continue the wave-3 block and match
+  // elementwise.comp cases 36-40.
+  RemainderFloatOperation,
+  PowerFloatOperation,
+  SignFloatOperation,
+  AbsFloatOperation,
+  DivQuotientFloatOperation,
 };
 
 allocator::Buffer allocate_omarchy(size_t size) {
@@ -458,6 +484,41 @@ void fill_broadcast_transport(
   }
 }
 
+// The params fill and dispatch behind dispatch_elementwise, callable
+// with a caller-allocated output so multi-output primitives (DivMod)
+// can target each output in turn.
+void dispatch_float_elementwise_to(
+    const std::string& name,
+    uint32_t operation,
+    const array& lhs,
+    const array& rhs,
+    array& out,
+    bool general_broadcast,
+    omarchy::CommandEncoder& encoder) {
+  uint32_t count = checked_u32(out.size(), name, out);
+  omarchy::ComputeParams params;
+  params.count = count;
+  params.operation = operation;
+  params.lhs_size = checked_u32(lhs.data_size(), name, out);
+  params.rhs_size = checked_u32(rhs.data_size(), name, out);
+  params.output_size = count;
+  params.lhs_offset = checked_item_offset(lhs, params.lhs_size, name, out);
+  params.rhs_offset = checked_item_offset(rhs, params.rhs_size, name, out);
+  params.output_offset = checked_item_offset(out, count, name, out);
+  if (general_broadcast) {
+    fill_broadcast_transport(name, params, lhs, rhs, out);
+  }
+  std::array<omarchy::ComputeBinding, 3> bindings{
+      binding(lhs), binding(rhs), binding(out)};
+  auto kernel = select_float_kernel(
+      out.dtype(),
+      omarchy::ComputeKernel::ElementwiseF32,
+      omarchy::ComputeKernel::ElementwiseF16,
+      omarchy::ComputeKernel::ElementwiseBF16);
+  encoder.dispatch_compute(
+      kernel, bindings, params, omarchy::compute_dispatch_group_count(count));
+}
+
 void dispatch_elementwise(
     const std::string& name,
     uint32_t operation,
@@ -511,39 +572,23 @@ void dispatch_elementwise(
   if (out.size() == 0) {
     return;
   }
-
-  uint32_t count = checked_u32(out.size(), name, out);
-  omarchy::ComputeParams params;
-  params.count = count;
-  params.operation = operation;
-  params.lhs_size = checked_u32(lhs.data_size(), name, out);
-  params.rhs_size = checked_u32(rhs.data_size(), name, out);
-  params.output_size = count;
-  params.lhs_offset = checked_item_offset(lhs, params.lhs_size, name, out);
-  params.rhs_offset = checked_item_offset(rhs, params.rhs_size, name, out);
-  params.output_offset = checked_item_offset(out, count, name, out);
-  if (general_broadcast) {
-    fill_broadcast_transport(name, params, lhs, rhs, out);
-  }
-  std::array<omarchy::ComputeBinding, 3> bindings{
-      binding(lhs), binding(rhs), binding(out)};
-  auto kernel = select_float_kernel(
-      out.dtype(),
-      omarchy::ComputeKernel::ElementwiseF32,
-      omarchy::ComputeKernel::ElementwiseF16,
-      omarchy::ComputeKernel::ElementwiseBF16);
-  encoder.dispatch_compute(
-      kernel, bindings, params, omarchy::compute_dispatch_group_count(count));
+  dispatch_float_elementwise_to(
+      name, operation, lhs, rhs, out, general_broadcast, encoder);
 }
 
 // The comparison family shares one shape: a bool output from two
 // broadcast views of one input dtype, word-packed through the 32-bit
-// bool transport. Equal serves the categorical sampler chain (isinf,
+// bool transport. The codes match the selector in compare.comp.
+// Equal serves the categorical sampler chain (isinf,
 // mx.random.categorical); GreaterEqual keeps its int32 causal-mask
 // contract.
 enum ComparisonOperation : uint32_t {
   CompareEqual,
   CompareGreaterEqual,
+  CompareGreater,
+  CompareLess,
+  CompareLessEqual,
+  CompareNotEqual,
 };
 
 void dispatch_comparison(
@@ -610,14 +655,24 @@ void dispatch_comparison(
       omarchy::compute_dispatch_group_count(word_count));
 }
 
-// LogicalOr serves the isinf composition: bool inputs, a bool output,
-// and the same 32-bit word transport the comparisons use.
-void dispatch_logical_or(
+// The logical family serves the isinf composition (Or) and now And and
+// Not: bool inputs, a bool output, and the same 32-bit word transport
+// the comparisons use. The operation selector matches logical_or.comp;
+// Not is unary and binds its single input to both operand slots.
+enum LogicalOperation : uint32_t {
+  LogicalOrOperation,
+  LogicalAndOperation,
+  LogicalNotOperation,
+};
+
+void dispatch_logical(
     const std::string& name,
+    uint32_t operation,
     const std::vector<array>& inputs,
     array& out) {
   const array& lhs = inputs.at(0);
-  const array& rhs = inputs.at(1);
+  const bool binary = inputs.size() == 2;
+  const array& rhs = binary ? inputs.at(1) : lhs;
   auto& encoder = omarchy::get_command_encoder(out.primitive().stream());
   if (lhs.dtype() != bool_ || rhs.dtype() != bool_ || out.dtype() != bool_) {
     omarchy::unsupported(name + " dtype", out);
@@ -631,6 +686,7 @@ void dispatch_logical_or(
       (static_cast<uint64_t>(count) + 3) / 4, name, out);
   omarchy::ComputeParams params;
   params.count = count;
+  params.operation = operation;
   params.lhs_size = checked_u32(lhs.data_size(), name, out);
   params.rhs_size = checked_u32(rhs.data_size(), name, out);
   params.output_size = count;
@@ -653,15 +709,69 @@ void dispatch_logical_or(
 
 // Integer twin of the binary elementwise path. The shader carries the
 // same modulo fast path and broadcast transport; only the storage type
-// differs, so int32 and uint32 share one SPIR-V variant.
+// differs, so int32 and uint32 share one SPIR-V variant. The selector
+// matches IntElementwiseOperation; subtract, bitwise logic, shifts,
+// invert, DivMod, Remainder, Power, Sign, and Abs all route here.
+enum IntElementwiseOperation : uint32_t {
+  IntSubtractOperation,
+  IntBitwiseAndOperation,
+  IntBitwiseOrOperation,
+  IntBitwiseXorOperation,
+  IntLeftShiftOperation,
+  IntRightShiftOperation,
+  IntInvertOperation,
+  IntDivModQuotientOperation,
+  IntModuloOperation,
+  IntPowerOperation,
+  IntSignOperation,
+  IntAbsOperation,
+};
+
+// The params fill and dispatch behind dispatch_int_elementwise,
+// callable with a caller-allocated output so the two-output DivMod can
+// target quotient and remainder in turn.
+void dispatch_int_elementwise_to(
+    const std::string& name,
+    uint32_t operation,
+    const array& lhs,
+    const array& rhs,
+    array& out) {
+  auto& encoder = omarchy::get_command_encoder(out.primitive().stream());
+  uint32_t count = checked_u32(out.size(), name, out);
+  omarchy::ComputeParams params;
+  params.count = count;
+  params.operation = operation;
+  params.lhs_size = checked_u32(lhs.data_size(), name, out);
+  params.rhs_size = checked_u32(rhs.data_size(), name, out);
+  params.output_size = count;
+  params.lhs_offset = checked_item_offset(lhs, params.lhs_size, name, out);
+  params.rhs_offset = checked_item_offset(rhs, params.rhs_size, name, out);
+  params.output_offset = checked_item_offset(out, count, name, out);
+  if (!is_trailing_broadcast(lhs, out) || !is_trailing_broadcast(rhs, out)) {
+    fill_broadcast_transport(name, params, lhs, rhs, out);
+  }
+  std::array<omarchy::ComputeBinding, 3> bindings{
+      binding(lhs), binding(rhs), binding(out)};
+  // Signed and unsigned run separate SPIR-V variants: `>>` arithmetic
+  // versus logical, and the sign fixups compare against a signed zero.
+  auto kernel = out.dtype() == uint32
+      ? omarchy::ComputeKernel::ElementwiseU32
+      : omarchy::ComputeKernel::ElementwiseI32;
+  encoder.dispatch_compute(
+      kernel,
+      bindings,
+      params,
+      omarchy::compute_dispatch_group_count(count));
+}
+
 void dispatch_int_elementwise(
     const std::string& name,
     uint32_t operation,
     const std::vector<array>& inputs,
     array& out) {
   const array& lhs = inputs.at(0);
-  const array& rhs = inputs.at(1);
-  auto& encoder = omarchy::get_command_encoder(out.primitive().stream());
+  const bool binary = inputs.size() == 2;
+  const array& rhs = binary ? inputs.at(1) : lhs;
   auto is_int_dtype = [](Dtype dtype) {
     return dtype == int32 || dtype == uint32;
   };
@@ -683,26 +793,7 @@ void dispatch_int_elementwise(
   if (out.size() == 0) {
     return;
   }
-  uint32_t count = checked_u32(out.size(), name, out);
-  omarchy::ComputeParams params;
-  params.count = count;
-  params.operation = operation;
-  params.lhs_size = checked_u32(lhs.data_size(), name, out);
-  params.rhs_size = checked_u32(rhs.data_size(), name, out);
-  params.output_size = count;
-  params.lhs_offset = checked_item_offset(lhs, params.lhs_size, name, out);
-  params.rhs_offset = checked_item_offset(rhs, params.rhs_size, name, out);
-  params.output_offset = checked_item_offset(out, count, name, out);
-  if (!is_trailing_broadcast(lhs, out) || !is_trailing_broadcast(rhs, out)) {
-    fill_broadcast_transport(name, params, lhs, rhs, out);
-  }
-  std::array<omarchy::ComputeBinding, 3> bindings{
-      binding(lhs), binding(rhs), binding(out)};
-  encoder.dispatch_compute(
-      omarchy::ComputeKernel::ElementwiseI32,
-      bindings,
-      params,
-      omarchy::compute_dispatch_group_count(count));
+  dispatch_int_elementwise_to(name, operation, lhs, rhs, out);
 }
 
 // ArgSort and ArgPartition emit uint32 indices, so the float checks apply
@@ -835,7 +926,17 @@ void dispatch_softmax(
         #func, operation, inputs, out, out.primitive().stream());     \
   }
 
-OMARCHY_UNSUPPORTED(Abs)
+// Abs negates negatives for every signed dtype; uint32 is the
+// upstream no-op and INT_MIN wraps to itself the way upstream's C++
+// negation does on this platform. bool keeps the named rejection.
+void Abs::eval_gpu(const std::vector<array>& inputs, array& out) {
+  if (out.dtype() == int32 || out.dtype() == uint32) {
+    dispatch_int_elementwise(name(), IntAbsOperation, inputs, out);
+    return;
+  }
+  dispatch_elementwise(
+      name(), AbsFloatOperation, inputs, out, out.primitive().stream());
+}
 OMARCHY_BINARY(Add, AddOperation)
 void AddMM::eval_gpu(const std::vector<array>& inputs, array& out) {
   auto [alpha, beta] = state();
@@ -881,13 +982,13 @@ void Arange::eval_gpu(const std::vector<array>& inputs, array& out) {
   encoder.dispatch_compute(
       kernel, bindings, params, omarchy::compute_dispatch_group_count(count));
 }
-OMARCHY_UNSUPPORTED(ArcCos)
-OMARCHY_UNSUPPORTED(ArcCosh)
-OMARCHY_UNSUPPORTED(ArcSin)
-OMARCHY_UNSUPPORTED(ArcSinh)
-OMARCHY_UNSUPPORTED(ArcTan)
-OMARCHY_UNSUPPORTED(ArcTan2)
-OMARCHY_UNSUPPORTED(ArcTanh)
+OMARCHY_UNARY(ArcCos, ArcCosOperation)
+OMARCHY_UNARY(ArcCosh, ArcCoshOperation)
+OMARCHY_UNARY(ArcSin, ArcSinOperation)
+OMARCHY_UNARY(ArcSinh, ArcSinhOperation)
+OMARCHY_UNARY(ArcTan, ArcTanOperation)
+OMARCHY_BINARY(ArcTan2, ArcTan2Operation)
+OMARCHY_UNARY(ArcTanh, ArcTanhOperation)
 void ArgPartition::eval_gpu(const std::vector<array>& inputs, array& out) {
   const array& input = inputs.at(0);
   auto& encoder = omarchy::get_command_encoder(out.primitive().stream());
@@ -977,10 +1078,36 @@ void ArgSort::eval_gpu(const std::vector<array>& inputs, array& out) {
   }
   dispatch_sort("ArgSort", input, out, true, encoder);
 }
-OMARCHY_UNSUPPORTED(BitwiseBinary)
-OMARCHY_UNSUPPORTED(BitwiseInvert)
+// BitwiseBinary carries the upstream op enum (and/or/xor and both
+// shifts). int32 and uint32 run through the integer kernel, where `>>`
+// follows the operand signedness the way the upstream C++ operators
+// do; other widths keep the named rejection.
+void BitwiseBinary::eval_gpu(const std::vector<array>& inputs, array& out) {
+  uint32_t operation;
+  switch (state()) {
+    case BitwiseBinary::And:
+      operation = IntBitwiseAndOperation;
+      break;
+    case BitwiseBinary::Or:
+      operation = IntBitwiseOrOperation;
+      break;
+    case BitwiseBinary::Xor:
+      operation = IntBitwiseXorOperation;
+      break;
+    case BitwiseBinary::LeftShift:
+      operation = IntLeftShiftOperation;
+      break;
+    default:
+      operation = IntRightShiftOperation;
+      break;
+  }
+  dispatch_int_elementwise(name(), operation, inputs, out);
+}
+void BitwiseInvert::eval_gpu(const std::vector<array>& inputs, array& out) {
+  dispatch_int_elementwise(name(), IntInvertOperation, inputs, out);
+}
 OMARCHY_UNSUPPORTED(BlockMaskedMM)
-OMARCHY_UNSUPPORTED(Ceil)
+OMARCHY_UNARY(Ceil, CeilOperation)
 OMARCHY_UNSUPPORTED(Cholesky)
 void Compiled::eval_gpu(
     const std::vector<array>& inputs,
@@ -1083,18 +1210,90 @@ void Convolution::eval_gpu(const std::vector<array>& inputs, array& out) {
       omarchy::compute_dispatch_group_count(total));
 }
 OMARCHY_UNARY(Cos, CosOperation)
-OMARCHY_UNSUPPORTED(Cosh)
+OMARCHY_UNARY(Cosh, CoshOperation)
 OMARCHY_BINARY(Divide, DivideOperation)
-OMARCHY_UNSUPPORTED_MULTI(DivMod)
+// DivMod produces the Python floor-division quotient and remainder as
+// two same-shaped outputs (upstream DivMod: integral_op applies the
+// floor fixup to the truncating quotient, float_op pairs floor(x/y)
+// with the adjusted fmod). One kernel dispatch per output; the
+// per-element index mapping is 1:1, so a donated input buffer stays
+// safe to read and write within one invocation.
+void DivMod::eval_gpu(
+    const std::vector<array>& inputs,
+    std::vector<array>& outputs) {
+  const array& lhs = inputs.at(0);
+  const array& rhs = inputs.at(1);
+  array& quotient = outputs.at(0);
+  array& remainder = outputs.at(1);
+  auto& encoder = omarchy::get_command_encoder(quotient.primitive().stream());
+  auto is_int_dtype = [](Dtype dtype) {
+    return dtype == int32 || dtype == uint32;
+  };
+  if (is_int_dtype(lhs.dtype()) && is_int_dtype(rhs.dtype()) &&
+      is_int_dtype(quotient.dtype()) && is_int_dtype(remainder.dtype())) {
+    if (!lhs.flags().contiguous || !rhs.flags().contiguous) {
+      omarchy::unsupported("non-contiguous DivMod", quotient);
+    }
+    auto binary_type = get_binary_op_type(lhs, rhs);
+    if (lhs.data_size() != lhs.size() || rhs.data_size() != rhs.size()) {
+      binary_type = BinaryOpType::General;
+    }
+    set_binary_op_output_data(lhs, rhs, quotient, binary_type, allocate_omarchy);
+    set_binary_op_output_data(
+        lhs, rhs, remainder, binary_type, allocate_omarchy);
+    if (quotient.size() == 0) {
+      return;
+    }
+    dispatch_int_elementwise_to(
+        "DivMod", IntDivModQuotientOperation, lhs, rhs, quotient);
+    dispatch_int_elementwise_to(
+        "DivMod", IntModuloOperation, lhs, rhs, remainder);
+    return;
+  }
+  require_float_dtype("DivMod", lhs, quotient, encoder);
+  require_float_dtype("DivMod", rhs, quotient, encoder);
+  if (!lhs.flags().contiguous || !rhs.flags().contiguous) {
+    omarchy::unsupported("non-contiguous DivMod", quotient);
+  }
+  bool general_broadcast =
+      !is_trailing_broadcast(lhs, quotient) ||
+      !is_trailing_broadcast(rhs, quotient);
+  auto binary_type = get_binary_op_type(lhs, rhs);
+  if (lhs.data_size() != lhs.size() || rhs.data_size() != rhs.size()) {
+    binary_type = BinaryOpType::General;
+  }
+  set_binary_op_output_data(lhs, rhs, quotient, binary_type, allocate_omarchy);
+  set_binary_op_output_data(
+      lhs, rhs, remainder, binary_type, allocate_omarchy);
+  if (quotient.size() == 0) {
+    return;
+  }
+  dispatch_float_elementwise_to(
+      "DivMod",
+      DivQuotientFloatOperation,
+      lhs,
+      rhs,
+      quotient,
+      general_broadcast,
+      encoder);
+  dispatch_float_elementwise_to(
+      "DivMod",
+      RemainderFloatOperation,
+      lhs,
+      rhs,
+      remainder,
+      general_broadcast,
+      encoder);
+}
 void Equal::eval_gpu(const std::vector<array>& inputs, array& out) {
   dispatch_comparison(name(), CompareEqual, inputs, out);
 }
-OMARCHY_UNSUPPORTED(Erf)
-OMARCHY_UNSUPPORTED(ErfInv)
+OMARCHY_UNARY(Erf, ErfOperation)
+OMARCHY_UNARY(ErfInv, ErfInvOperation)
 OMARCHY_UNARY(Exp, ExpOperation)
-OMARCHY_UNSUPPORTED(Expm1)
+OMARCHY_UNARY(Expm1, Expm1Operation)
 OMARCHY_UNSUPPORTED(FFT)
-OMARCHY_UNSUPPORTED(Floor)
+OMARCHY_UNARY(Floor, FloorOperation)
 void Gather::eval_gpu(const std::vector<array>& inputs, array& out) {
   const array& table = inputs.at(0);
   auto [axes, slice_sizes] = state();
@@ -1195,7 +1394,9 @@ OMARCHY_UNSUPPORTED(GatherAxis)
 OMARCHY_UNSUPPORTED(GatherMM)
 OMARCHY_UNSUPPORTED(GatherQMM)
 OMARCHY_UNSUPPORTED(GatherQQMM)
-OMARCHY_UNSUPPORTED(Greater)
+void Greater::eval_gpu(const std::vector<array>& inputs, array& out) {
+  dispatch_comparison(name(), CompareGreater, inputs, out);
+}
 // GreaterEqual serves the composed causal mask: two int32 index arrays
 // (broadcast views with stride-0 axes) produce a bool mask. Other dtypes
 // stay named rejections. The comparison kernel packs the bytes into
@@ -1213,8 +1414,12 @@ void GreaterEqual::eval_gpu(
 OMARCHY_UNSUPPORTED(Hadamard)
 OMARCHY_UNSUPPORTED(Imag)
 OMARCHY_UNSUPPORTED(Inverse)
-OMARCHY_UNSUPPORTED(Less)
-OMARCHY_UNSUPPORTED(LessEqual)
+void Less::eval_gpu(const std::vector<array>& inputs, array& out) {
+  dispatch_comparison(name(), CompareLess, inputs, out);
+}
+void LessEqual::eval_gpu(const std::vector<array>& inputs, array& out) {
+  dispatch_comparison(name(), CompareLessEqual, inputs, out);
+}
 void Load::eval_gpu(const std::vector<array>& inputs, array& out) {
   out.set_data(allocate_omarchy(out.nbytes()));
   // The allocator is host-visible (coherent where the memory type allows),
@@ -1256,13 +1461,17 @@ void Log::eval_gpu(const std::vector<array>& inputs, array& out) {
   }
   dispatch_elementwise(name(), operation, inputs, out, stream());
 }
-OMARCHY_UNSUPPORTED(Log1p)
-OMARCHY_UNSUPPORTED(LogicalAnd)
-OMARCHY_UNSUPPORTED(LogicalNot)
-void LogicalOr::eval_gpu(const std::vector<array>& inputs, array& out) {
-  dispatch_logical_or(name(), inputs, out);
+OMARCHY_UNARY(Log1p, Log1pOperation)
+void LogicalAnd::eval_gpu(const std::vector<array>& inputs, array& out) {
+  dispatch_logical(name(), LogicalAndOperation, inputs, out);
 }
-OMARCHY_UNSUPPORTED(LogAddExp)
+void LogicalNot::eval_gpu(const std::vector<array>& inputs, array& out) {
+  dispatch_logical(name(), LogicalNotOperation, inputs, out);
+}
+void LogicalOr::eval_gpu(const std::vector<array>& inputs, array& out) {
+  dispatch_logical(name(), LogicalOrOperation, inputs, out);
+}
+OMARCHY_BINARY(LogAddExp, LogAddExpOperation)
 void LogSumExp::eval_gpu(const std::vector<array>& inputs, array& out) {
   const array& input = inputs.at(0);
   auto& encoder = omarchy::get_command_encoder(out.primitive().stream());
@@ -1315,7 +1524,9 @@ OMARCHY_UNSUPPORTED(MaskedScatter)
 OMARCHY_BINARY(Minimum, MinimumOperation)
 OMARCHY_BINARY(Multiply, MultiplyOperation)
 OMARCHY_UNARY(Negative, NegativeOperation)
-OMARCHY_UNSUPPORTED(NotEqual)
+void NotEqual::eval_gpu(const std::vector<array>& inputs, array& out) {
+  dispatch_comparison(name(), CompareNotEqual, inputs, out);
+}
 void Partition::eval_gpu(const std::vector<array>& inputs, array& out) {
   const array& input = inputs.at(0);
   auto& encoder = omarchy::get_command_encoder(out.primitive().stream());
@@ -1328,7 +1539,19 @@ void Partition::eval_gpu(const std::vector<array>& inputs, array& out) {
   }
   dispatch_sort("Partition", input, out, false, encoder);
 }
-OMARCHY_UNSUPPORTED(Power)
+// Power promotes base and exponent to one dtype upstream, so a float
+// dtype runs the float pow and an integer dtype runs the upstream
+// exponentiation-by-squaring (negative signed exponent yields 0).
+// Float bases below zero need the sign handling GLSL's pow refuses:
+// non-integer exponents produce NaN, odd integer exponents negate.
+void Power::eval_gpu(const std::vector<array>& inputs, array& out) {
+  if (out.dtype() == int32 || out.dtype() == uint32) {
+    dispatch_int_elementwise(name(), IntPowerOperation, inputs, out);
+    return;
+  }
+  dispatch_elementwise(
+      name(), PowerFloatOperation, inputs, out, out.primitive().stream());
+}
 OMARCHY_UNSUPPORTED_MULTI(QRF)
 void QuantizedMatmul::eval_gpu(const std::vector<array>& inputs, array& out) {
   const std::string tag = name();
@@ -1553,8 +1776,20 @@ void Reduce::eval_gpu(const std::vector<array>& inputs, array& out) {
       omarchy::compute_dispatch_group_count(output_size));
 }
 
-OMARCHY_UNSUPPORTED(Remainder)
-OMARCHY_UNSUPPORTED(Round)
+// Remainder is the Python-style modulo: the truncating remainder
+// adjusted by one divisor when its sign differs from the divisor's.
+// The integer kernel and the float kernel carry the same fixup, which
+// reproduces the upstream integral_op / remainder value contract
+// (result takes the divisor's sign) for both operand orders.
+void Remainder::eval_gpu(const std::vector<array>& inputs, array& out) {
+  if (out.dtype() == int32 || out.dtype() == uint32) {
+    dispatch_int_elementwise(name(), IntModuloOperation, inputs, out);
+    return;
+  }
+  dispatch_elementwise(
+      name(), RemainderFloatOperation, inputs, out, out.primitive().stream());
+}
+OMARCHY_UNARY(Round, RoundOperation)
 // Scan serves the categorical sampler's exclusive cdf prefix sums: a
 // float suffix scan over row-contiguous rows. Sum is the only reduce
 // type, reverse scans stay named rejections, and one invocation owns a
@@ -1790,9 +2025,20 @@ void Select::eval_gpu(const std::vector<array>& inputs, array& out) {
 }
 OMARCHY_UNSUPPORTED(SegmentedMM)
 OMARCHY_UNARY(Sigmoid, SigmoidOperation)
-OMARCHY_UNSUPPORTED(Sign)
+// Sign keeps the upstream three-way rule (-1, 0, 1 by comparison with
+// zero, NaN mapping to 0) for float dtypes, and the integer rule
+// (unsigned 0/1) through the integer kernel. Everything else keeps the
+// named float-dtype rejection from dispatch_elementwise.
+void Sign::eval_gpu(const std::vector<array>& inputs, array& out) {
+  if (out.dtype() == int32 || out.dtype() == uint32) {
+    dispatch_int_elementwise(name(), IntSignOperation, inputs, out);
+    return;
+  }
+  dispatch_elementwise(
+      name(), SignFloatOperation, inputs, out, out.primitive().stream());
+}
 OMARCHY_UNARY(Sin, SinOperation)
-OMARCHY_UNSUPPORTED(Sinh)
+OMARCHY_UNARY(Sinh, SinhOperation)
 void Softmax::eval_gpu(const std::vector<array>& inputs, array& out) {
   dispatch_softmax(name(), inputs.at(0), out, stream());
 }
@@ -1861,15 +2107,15 @@ void Sqrt::eval_gpu(const std::vector<array>& inputs, array& out) {
 // rejections.
 void Subtract::eval_gpu(const std::vector<array>& inputs, array& out) {
   if (out.dtype() == int32 || out.dtype() == uint32) {
-    dispatch_int_elementwise(name(), SubtractOperation, inputs, out);
+    dispatch_int_elementwise(name(), IntSubtractOperation, inputs, out);
     return;
   }
   dispatch_elementwise(
       name(), SubtractOperation, inputs, out, out.primitive().stream());
 }
 OMARCHY_UNSUPPORTED_MULTI(SVD)
-OMARCHY_UNSUPPORTED(Tan)
-OMARCHY_UNSUPPORTED(Tanh)
+OMARCHY_UNARY(Tan, TanOperation)
+OMARCHY_UNARY(Tanh, TanhOperation)
 OMARCHY_UNSUPPORTED_MULTI(Eig)
 OMARCHY_UNSUPPORTED_MULTI(Eigh)
 

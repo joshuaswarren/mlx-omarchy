@@ -99,7 +99,14 @@ void main() {
       }
       uint a = lhs_byte(lhs_index_for(index));
       uint b = rhs_byte(rhs_index_for(index));
-      uint bit = ((a | b) != 0u) ? 1u : 0u;
+      // The operation selector matches LogicalOperation in
+      // primitives.cpp: 0 = Or, 1 = And, 2 = Not. Bytes are bool
+      // 0/1 words, but any nonzero byte stays truthy the way the
+      // upstream bool casts make them.
+      bool result = params.operation == 2u ? (a == 0u)
+          : params.operation == 1u ? (a != 0u && b != 0u)
+          : (a != 0u || b != 0u);
+      uint bit = result ? 1u : 0u;
       word |= bit << ((index & 3u) * 8u);
     }
     output_data.words[word_index] = word;

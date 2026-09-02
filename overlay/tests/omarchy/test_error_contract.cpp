@@ -39,7 +39,10 @@ TEST_CASE("unsupported primitive raises a catchable named error") {
   }
   set_default_device(Device::gpu);
 
-  array a = abs(array({1.0f, -2.0f}));
+  // Abs used to be the exemplar here; wave 2 implemented it, so the
+  // pin moved to Hadamard, which stays a named rejection until its
+  // wave lands and needs no dtype conversion on the way in.
+  array a = hadamard_transform(array({1.0f, -2.0f, 3.0f, -4.0f}));
   bool caught = false;
   std::string message;
   try {
@@ -49,7 +52,7 @@ TEST_CASE("unsupported primitive raises a catchable named error") {
     message = e.what();
   }
   REQUIRE(caught);
-  CHECK(message.find("[omarchy] Abs is not implemented") !=
+  CHECK(message.find("[omarchy] Hadamard is not implemented") !=
         std::string::npos);
 }
 

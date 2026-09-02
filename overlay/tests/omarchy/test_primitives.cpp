@@ -4850,3 +4850,845 @@ TEST_CASE("mx.compile pins the named bfloat16 tape gate") {
   check_values(fused({x32, y32})[0], expected, stream, 1e-5);
   set_compile_mode(CompileMode::enabled);
 }
+
+// ---------------------------------------------------------------------------
+// Wave 3: inverse trig, hyperbolic, expm1/log1p, the erf family,
+// rounding, the binary ArcTan2 / LogAddExp, and the complex-only trio.
+// ---------------------------------------------------------------------------
+
+namespace {
+
+// Combined absolute + relative check against a host double reference.
+// doctest::Approx is purely relative and cannot express a tolerance at
+// expected values at or near zero (sin(0), log1p(-1e-7), ...).
+void check_wave3_close(
+    array value,
+    const std::vector<float>& expected,
+    const Stream& stream,
+    double abs_tolerance = 1e-6,
+    double rel_tolerance = 1e-6) {
+  value.eval();
+  omarchy::get_command_encoder(stream).synchronize();
+  REQUIRE_EQ(value.size(), expected.size());
+  const float* values = value.data<float>();
+  for (size_t index = 0; index < expected.size(); ++index) {
+    const double got = values[index];
+    const double want = expected[index];
+    const double tolerance = abs_tolerance + rel_tolerance * std::abs(want);
+    CHECK_MESSAGE(
+        std::abs(got - want) <= tolerance,
+        "index " << index << " got " << got << " want " << want);
+  }
+}
+
+void check_wave3_all_nan(array value, const Stream& stream) {
+  value.eval();
+  omarchy::get_command_encoder(stream).synchronize();
+  const float* values = value.data<float>();
+  for (size_t index = 0; index < value.size(); ++index) {
+    CHECK_MESSAGE(
+        std::isnan(values[index]), "index " << index << " is not NaN");
+  }
+}
+
+// std::erfinv is missing from libstdc++; bracketing std::erf in double
+// serves as the host reference. Two hundred halvings of [-40, 40]
+// exhaust double precision, so the result is deterministic.
+double host_erfinv(double a) {
+  double low = -40.0;
+  double high = 40.0;
+  for (int step = 0; step < 200; ++step) {
+    double mid = 0.5 * (low + high);
+    if (std::erf(mid) < a) {
+      low = mid;
+    } else {
+      high = mid;
+    }
+  }
+  return 0.5 * (low + high);
+}
+
+} // namespace
+
+TEST_CASE("Wave3 ArcCos ArcSin ArcTan ArcTan2 and hyperbolic match host references") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+
+  // acos / asin: domain edges at +/-1, negatives, near zero.
+  std::vector<float> domain = {
+      -1.0f,
+      -0.99999f,
+      -0.75f,
+      -0.25f,
+      0.0f,
+      0.25f,
+      0.75f,
+      0.99999f,
+      1.0f};
+  std::vector<float> acos_expected;
+  std::vector<float> asin_expected;
+  for (float value : domain) {
+    acos_expected.push_back((float)std::acos((double)value));
+    asin_expected.push_back((float)std::asin((double)value));
+  }
+  array x(domain.begin(), Shape{static_cast<int>(domain.size())}, float32);
+  check_wave3_close(arccos(x, stream), acos_expected, stream);
+  check_wave3_close(arcsin(x, stream), asin_expected, stream);
+  // Outside the domain the host keeps NaN.
+  array outside({-2.0f, 1.5f}, float32);
+  check_wave3_all_nan(arccos(outside, stream), stream);
+  check_wave3_all_nan(arcsin(outside, stream), stream);
+
+  std::vector<float> wide = {-8.0f, -1.0f, -0.25f, 0.0f, 0.25f, 1.0f, 8.0f};
+  std::vector<float> atan_expected;
+  for (float value : wide) {
+    atan_expected.push_back((float)std::atan((double)value));
+  }
+  array w(wide.begin(), Shape{static_cast<int>(wide.size())}, float32);
+  check_wave3_close(arctan(w, stream), atan_expected, stream);
+
+  // ArcTan2 quadrant anchors; upstream is atan2(lhs, rhs) with the
+  // first operand as y, matching std::atan2 and np.arctan2.
+  std::vector<float> yv = {
+      1.0f,
+      -1.0f,
+      -1.0f,
+      1.0f,
+      0.0f,
+      1.0f,
+      0.0f,
+      -1.0f,
+      3.0f,
+      -3.0f};
+  std::vector<float> xv = {
+      1.0f,
+      1.0f,
+      -1.0f,
+      -1.0f,
+      1.0f,
+      0.0f,
+      -1.0f,
+      0.0f,
+      -4.0f,
+      -4.0f};
+  std::vector<float> atan2_expected;
+  for (size_t index = 0; index < yv.size(); ++index) {
+    atan2_expected.push_back(
+        (float)std::atan2((double)yv[index], (double)xv[index]));
+  }
+  array y(yv.begin(), Shape{static_cast<int>(yv.size())}, float32);
+  array x2(xv.begin(), Shape{static_cast<int>(xv.size())}, float32);
+  check_wave3_close(arctan2(y, x2, stream), atan2_expected, stream);
+
+  // acosh: domain edge at 1, NaN below 1.
+  std::vector<float> positive = {1.0f, 1.0001f, 1.5f, 3.0f, 42.0f};
+  std::vector<float> acosh_expected;
+  for (float value : positive) {
+    acosh_expected.push_back((float)std::acosh((double)value));
+  }
+  array p(positive.begin(), Shape{static_cast<int>(positive.size())}, float32);
+  check_wave3_close(arccosh(p, stream), acosh_expected, stream);
+  array below({0.5f}, float32);
+  check_wave3_all_nan(arccosh(below, stream), stream);
+
+  std::vector<float> spread = {
+      -42.0f,
+      -4.0f,
+      -1.0f,
+      -0.25f,
+      0.0f,
+      0.25f,
+      1.0f,
+      4.0f,
+      42.0f};
+  std::vector<float> asinh_expected;
+  std::vector<float> cosh_expected;
+  std::vector<float> sinh_expected;
+  std::vector<float> tanh_expected;
+  for (float value : spread) {
+    asinh_expected.push_back((float)std::asinh((double)value));
+    cosh_expected.push_back((float)std::cosh((double)value));
+    sinh_expected.push_back((float)std::sinh((double)value));
+    tanh_expected.push_back((float)std::tanh((double)value));
+  }
+  array s(spread.begin(), Shape{static_cast<int>(spread.size())}, float32);
+  check_wave3_close(arcsinh(s, stream), asinh_expected, stream);
+  // cosh(42) is 8.7e17: one float32 ulp there is 6.4e10, so the
+  // relative tolerance widens to two ulps of the largest value.
+  check_wave3_close(cosh(s, stream), cosh_expected, stream, 1e-6, 2e-6);
+  // sinh(-42) and sinh(42) sit at -/+8.7e17 like cosh and carry the
+  // same widened two-ulp relative bound.
+  check_wave3_close(sinh(s, stream), sinh_expected, stream, 1e-6, 2e-6);
+  check_wave3_close(tanh(s, stream), tanh_expected, stream);
+
+  std::vector<float> tan_domain = {
+      -3.0f,
+      -0.5f,
+      -0.25f,
+      0.0f,
+      0.25f,
+      0.5f,
+      3.0f};
+  std::vector<float> tan_expected;
+  for (float value : tan_domain) {
+    tan_expected.push_back((float)std::tan((double)value));
+  }
+  array t(tan_domain.begin(), Shape{static_cast<int>(tan_domain.size())}, float32);
+  check_wave3_close(tan(t, stream), tan_expected, stream);
+}
+
+TEST_CASE("Wave3 Expm1 Log1p Erf ErfInv match host references") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+
+  // expm1: near-zero cancellation, negatives, and large positives.
+  std::vector<float> xv = {
+      -88.0f,
+      -20.0f,
+      -1.0f,
+      -1e-7f,
+      -0.25f,
+      0.0f,
+      1e-7f,
+      0.25f,
+      1.0f,
+      3.5f,
+      20.0f,
+      80.0f};
+  std::vector<float> expm1_expected;
+  for (float value : xv) {
+    expm1_expected.push_back((float)std::expm1((double)value));
+  }
+  array x(xv.begin(), Shape{static_cast<int>(xv.size())}, float32);
+  check_wave3_close(expm1(x, stream), expm1_expected, stream);
+
+  // log1p: near -1 cancellation and near zero.
+  std::vector<float> lv = {
+      -0.99999f,
+      -0.999f,
+      -0.5f,
+      -1e-7f,
+      0.0f,
+      1e-7f,
+      0.5f,
+      1.0f,
+      20.0f};
+  std::vector<float> log1p_expected;
+  for (float value : lv) {
+    log1p_expected.push_back((float)std::log1p((double)value));
+  }
+  array l(lv.begin(), Shape{static_cast<int>(lv.size())}, float32);
+  check_wave3_close(log1p(l, stream), log1p_expected, stream);
+  // -1 keeps -inf and below -1 keeps NaN, matching the host.
+  array edge({-1.0f}, float32);
+  array edge_out = log1p(edge, stream);
+  edge_out.eval();
+  omarchy::get_command_encoder(stream).synchronize();
+  CHECK(std::isinf(edge_out.data<float>()[0]));
+  CHECK(edge_out.data<float>()[0] < 0.0f);
+  array below({-1.5f}, float32);
+  check_wave3_all_nan(log1p(below, stream), stream);
+
+  // erf: dense grid across the central and tail branches.
+  std::vector<float> grid;
+  for (float value = -6.0f; value <= 6.0f; value += 0.1f) {
+    grid.push_back(value);
+  }
+  std::vector<float> erf_expected;
+  for (float value : grid) {
+    erf_expected.push_back((float)std::erf((double)value));
+  }
+  array g(grid.begin(), Shape{static_cast<int>(grid.size())}, float32);
+  check_wave3_close(erf(g, stream), erf_expected, stream);
+
+  // erfinv against the double bracketing reference.
+  std::vector<float> av = {
+      -0.9999f,
+      -0.999f,
+      -0.99f,
+      -0.9f,
+      -0.5f,
+      -1e-7f,
+      0.0f,
+      1e-7f,
+      0.5f,
+      0.9f,
+      0.99f,
+      0.999f,
+      0.9999f};
+  std::vector<float> erfinv_expected;
+  for (float value : av) {
+    erfinv_expected.push_back((float)host_erfinv((double)value));
+  }
+  array a(av.begin(), Shape{static_cast<int>(av.size())}, float32);
+  // The erfinv argument transform squares the input; the software
+  // pipeline's log accuracy in log(1 - a^2) lands the tail (a = +/-0.9999,
+  // y = +/-2.75) at 3.2e-6 relative on this device, so the tolerance
+  // carries the measured bound.
+  check_wave3_close(erfinv(a, stream), erfinv_expected, stream, 1e-6, 5e-6);
+  array sat({-1.0f, 1.0f}, float32);
+  array sat_out = erfinv(sat, stream);
+  sat_out.eval();
+  omarchy::get_command_encoder(stream).synchronize();
+  CHECK(std::isinf(sat_out.data<float>()[0]));
+  CHECK(sat_out.data<float>()[0] < 0.0f);
+  CHECK(std::isinf(sat_out.data<float>()[1]));
+  CHECK(sat_out.data<float>()[1] > 0.0f);
+  check_wave3_all_nan(erfinv(array({1.5f}, float32), stream), stream);
+
+  // Upstream anchor: the erfinv(erf(x)) round trip. The kernel erf
+  // holds about 1e-7 absolute, and d erfinv / d erf =
+  // (sqrt(pi)/2) exp(x^2), so the round-trip error grows with x^2;
+  // 1e-5 covers |x| <= 2 with margin.
+  std::vector<float> rv = {
+      -2.0f,
+      -1.5f,
+      -1.0f,
+      -0.75f,
+      -0.25f,
+      0.0f,
+      0.25f,
+      0.75f,
+      1.0f,
+      1.5f,
+      2.0f};
+  std::vector<float> roundtrip;
+  for (float value : rv) {
+    roundtrip.push_back(value);
+  }
+  array r(rv.begin(), Shape{static_cast<int>(rv.size())}, float32);
+  check_wave3_close(erfinv(erf(r, stream), stream), roundtrip, stream, 1e-5);
+
+  // The dispatch is dtype-generic: float16 keeps the same kernel with
+  // float32 arithmetic and a looser storage grid.
+  const auto& capabilities = omarchy::device(0).capabilities();
+  if (!capabilities.shader_float16 ||
+      !capabilities.storage_buffer_16bit_access) {
+    skip("Vulkan device lacks required FP16 shader and storage features.");
+    return;
+  }
+  std::vector<float> hv = {-1.0f, -0.5f, 0.0f, 0.5f, 1.0f};
+  std::vector<float> htanh;
+  std::vector<float> herf;
+  for (float value : hv) {
+    htanh.push_back((float)std::tanh((double)value));
+    herf.push_back((float)std::erf((double)value));
+  }
+  array h(hv.begin(), Shape{static_cast<int>(hv.size())}, float16);
+  check_wave3_close(
+      astype(tanh(h, stream), float32, stream), htanh, stream, 8e-3);
+  check_wave3_close(
+      astype(erf(h, stream), float32, stream), herf, stream, 8e-3);
+}
+
+TEST_CASE("Wave3 Ceil Floor Round and LogAddExp match host references") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+
+  std::vector<float> xv = {
+      -2.5f,
+      -1.5f,
+      -1.25f,
+      -0.5f,
+      0.0f,
+      0.5f,
+      1.25f,
+      1.5f,
+      2.5f,
+      3.75f};
+  std::vector<float> ceil_expected;
+  std::vector<float> floor_expected;
+  std::vector<float> round_expected;
+  for (float value : xv) {
+    ceil_expected.push_back(std::ceil(value));
+    floor_expected.push_back(std::floor(value));
+    // Upstream Round is rint on CPU and Metal: halfway cases round to
+    // the nearest even integer, which is the default nearbyint mode.
+    round_expected.push_back(std::nearbyint((double)value));
+  }
+  array x(xv.begin(), Shape{static_cast<int>(xv.size())}, float32);
+  check_wave3_close(ceil(x, stream), ceil_expected, stream);
+  check_wave3_close(floor(x, stream), floor_expected, stream);
+  check_wave3_close(round(x, stream), round_expected, stream);
+
+  // Half-even anchors: +/-0.5 stays at zero, +/-1.5 and +/-2.5 go to
+  // the even neighbor.
+  std::vector<float> halves = {0.5f, 1.5f, 2.5f, -0.5f, -1.5f, -2.5f};
+  std::vector<float> half_expected;
+  for (float value : halves) {
+    half_expected.push_back(std::nearbyint((double)value));
+  }
+  array h(halves.begin(), Shape{static_cast<int>(halves.size())}, float32);
+  check_wave3_close(round(h, stream), half_expected, stream);
+
+  // LogAddExp: max + log1p(exp(-|a-b|)) in double on the host.
+  std::vector<float> av = {
+      1.0f, -1.0f, 1000.0f, 1000.0f, 70000.0f, -745.0f};
+  std::vector<float> bv = {
+      2.0f, 2.0f, 1000.0f, -1000.0f, 69999.5f, -746.0f};
+  std::vector<float> lae_expected;
+  for (size_t index = 0; index < av.size(); ++index) {
+    double m = std::max((double)av[index], (double)bv[index]);
+    lae_expected.push_back(
+        (float)(m + std::log1p(std::exp(-std::abs((double)av[index] -
+                                                   (double)bv[index])))));
+  }
+  array a(av.begin(), Shape{static_cast<int>(av.size())}, float32);
+  array b(bv.begin(), Shape{static_cast<int>(bv.size())}, float32);
+  check_wave3_close(logaddexp(a, b, stream), lae_expected, stream);
+
+  // Special values: one -inf keeps the other side, both -inf keep
+  // -inf, +inf wins over any finite, and NaN propagates.
+  std::vector<float> ninf_v{-std::numeric_limits<float>::infinity()};
+  std::vector<float> pinf_v{std::numeric_limits<float>::infinity()};
+  array ninf(ninf_v.begin(), Shape{1}, float32);
+  array pinf(pinf_v.begin(), Shape{1}, float32);
+  array five({5.0f}, float32);
+  auto lae_at = [&](array lhs, array rhs) {
+    array value = logaddexp(lhs, rhs, stream);
+    value.eval();
+    omarchy::get_command_encoder(stream).synchronize();
+    return value.data<float>()[0];
+  };
+  CHECK_EQ(lae_at(ninf, five), 5.0f);
+  CHECK_EQ(lae_at(five, ninf), 5.0f);
+  CHECK(std::isinf(lae_at(ninf, ninf)));
+  CHECK(lae_at(ninf, ninf) < 0.0f);
+  CHECK(std::isinf(lae_at(pinf, ninf)));
+  CHECK(lae_at(pinf, ninf) > 0.0f);
+  array nan_v(std::numeric_limits<float>::quiet_NaN());
+  CHECK(std::isnan(lae_at(nan_v, five)));
+}
+
+TEST_CASE("Wave3 Conjugate Real Imag mirror upstream real dtypes and keep named errors") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+
+  // Upstream never constructs the Conjugate, Real, or Imag primitives
+  // for real dtypes: conjugate() and real() return the input array
+  // itself and imag() returns zeros_like (mlx/ops.cpp:6527, :6743,
+  // :6751). The API-level mirror is identity, identity, zeros.
+  std::vector<float> xv = {1.0f, -2.0f, 3.5f};
+  array x(xv.begin(), Shape{3}, float32);
+  check_wave3_close(conjugate(x, stream), xv, stream);
+  check_wave3_close(real(x, stream), xv, stream);
+  check_wave3_close(imag(x, stream), {0.0f, 0.0f, 0.0f}, stream);
+
+  // Complex input reaches the backend primitives, which keep the named
+  // rejection: this backend supports no complex dtype.
+  array c = array(complex64_t{1.0f, 2.0f});
+  std::string conjugate_error = evaluation_error(conjugate(c, stream));
+  CHECK(
+      conjugate_error.find("[omarchy] Conjugate") != std::string::npos);
+  std::string real_error = evaluation_error(real(c, stream));
+  CHECK(real_error.find("[omarchy] Real") != std::string::npos);
+  std::string imag_error = evaluation_error(imag(c, stream));
+  CHECK(imag_error.find("[omarchy] Imag") != std::string::npos);
+}
+
+namespace {
+
+// Host references for the wave-2 family, mirroring the upstream CPU
+// functors (mlx/backend/cpu/simd/base_simd.h and binary.cpp) one
+// formula at a time.
+int host_python_mod(int a, int b) {
+  int r = a % b;
+  if (r != 0 && (r < 0) != (b < 0)) {
+    r += b;
+  }
+  return r;
+}
+
+int host_floor_div(int a, int b) {
+  int q = a / b;
+  int r = a % b;
+  if (r != 0 && (r < 0) != (b < 0)) {
+    q -= 1;
+  }
+  return q;
+}
+
+float host_float_mod(float a, float b) {
+  float r = std::fmod(a, b);
+  if (r != 0.0f && (r < 0.0f) != (b < 0.0f)) {
+    r += b;
+  }
+  return r;
+}
+
+void check_bool(
+    array value,
+    const std::vector<bool>& expected,
+    const Stream& stream) {
+  value.eval();
+  omarchy::get_command_encoder(stream).synchronize();
+  REQUIRE_EQ(value.size(), expected.size());
+  for (size_t index = 0; index < expected.size(); ++index) {
+    CHECK_EQ(value.data<bool>()[index], expected[index]);
+  }
+}
+
+float host_sign(float x) {
+  return (x > 0.0f) ? 1.0f : ((x < 0.0f) ? -1.0f : 0.0f);
+}
+
+} // namespace
+
+TEST_CASE("Less, LessEqual, Greater, and NotEqual match host references and the NaN matrix") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+
+  // Float32 rows mixing negatives, zero, and NaN against one host
+  // comparator loop. C++ semantics: ordered comparisons of NaN are
+  // false and NaN != x is true.
+  std::vector<float> xv = {-3.0f, 0.5f, 2.0f, std::nanf("")};
+  std::vector<float> yv = {0.0f, 0.5f, -1.5f, 1.0f};
+  array x(xv.begin(), Shape{4}, float32);
+  array y(yv.begin(), Shape{4}, float32);
+  std::vector<bool> lt(4), le(4), gt(4), ne(4);
+  for (size_t i = 0; i < 4; ++i) {
+    lt[i] = xv[i] < yv[i];
+    le[i] = xv[i] <= yv[i];
+    gt[i] = xv[i] > yv[i];
+    ne[i] = xv[i] != yv[i];
+  }
+  check_bool(less(x, y, stream), lt, stream);
+  check_bool(less_equal(x, y, stream), le, stream);
+  check_bool(greater(x, y, stream), gt, stream);
+  check_bool(not_equal(x, y, stream), ne, stream);
+
+  // The NaN matrix: NaN against NaN and NaN against one. Every
+  // ordered comparison and Equal stay false, NotEqual alone is true.
+  std::vector<float> nav = {std::nanf(""), std::nanf(""), 1.0f};
+  std::vector<float> nbv = {std::nanf(""), 1.0f, std::nanf("")};
+  array na(nav.begin(), Shape{3}, float32);
+  array nb(nbv.begin(), Shape{3}, float32);
+  check_bool(less(na, nb, stream), {false, false, false}, stream);
+  check_bool(less_equal(na, nb, stream), {false, false, false}, stream);
+  check_bool(greater(na, nb, stream), {false, false, false}, stream);
+  // GreaterEqual keeps its pre-wave int32-only causal-mask contract,
+  // so the float NaN row raises its named dtype rejection.
+  CHECK(
+      evaluation_error(greater_equal(na, nb, stream))
+          .find("[omarchy] GreaterEqual dtype") != std::string::npos);
+  check_bool(equal(na, nb, stream), {false, false, false}, stream);
+  check_bool(not_equal(na, nb, stream), {true, true, true}, stream);
+  std::vector<int32_t> iv = {-2, 0, 7};
+  std::vector<int32_t> jv = {-1, 0, 3};
+  array i(iv.begin(), Shape{3}, int32);
+  array j(jv.begin(), Shape{3}, int32);
+  check_bool(greater(i, j, stream), {false, false, true}, stream);
+  check_bool(less_equal(i, j, stream), {true, true, false}, stream);
+  check_bool(not_equal(i, j, stream), {true, false, true}, stream);
+
+  // Row against scalar and a leading-axis broadcast go through the
+  // modulo and stride transports.
+  check_bool(less(x, array(0.5f), stream), {true, false, false, false}, stream);
+  std::vector<float> wide_v = {1.0f, 3.0f, 3.0f, 3.0f};
+  std::vector<float> tall_v = {2.0f, 3.0f, 4.0f, 1.0f, 3.0f, 4.0f, 1.0f, 5.0f};
+  array wide(wide_v.begin(), Shape{1, 4}, float32);
+  array tall(tall_v.begin(), Shape{2, 4}, float32);
+  check_bool(greater(tall, wide, stream),
+      {true, false, true, false, true, true, false, true},
+      stream);
+
+  // Float16 and bfloat16 keep their storage variants.
+  std::vector<float> hv = {0.5f, -2.0f};
+  array h(hv.begin(), Shape{2}, float16);
+  check_bool(greater(h, array(0.5f, float16), stream), {false, false}, stream);
+  check_bool(not_equal(h, array(0.5f, float16), stream), {false, true}, stream);
+  check_bool(less(h, array(-1.0f, float16), stream), {false, true}, stream);
+  array bf(hv.begin(), Shape{2}, bfloat16);
+  check_bool(not_equal(bf, array(0.5f, bfloat16), stream), {false, true}, stream);
+
+  // Unsigned comparisons keep the named dtype rejection: the shader
+  // compares signed, so uint32 stays unsupported rather than wrong.
+  std::vector<uint32_t> uv = {3u, 0u};
+  array u(uv.begin(), Shape{2}, uint32);
+  CHECK(
+      evaluation_error(less(u, u, stream))
+          .find("[omarchy] Less dtype") != std::string::npos);
+}
+
+TEST_CASE("LogicalAnd and LogicalNot match host references") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+
+  // 33 elements cross the 32-bit word packing boundary.
+  std::vector<bool> xv(33), yv(33), and_expected(33);
+  for (size_t i = 0; i < 33; ++i) {
+    xv[i] = (i % 3) != 0;
+    yv[i] = (i % 5) != 0;
+    and_expected[i] = xv[i] && yv[i];
+  }
+  array x(xv.begin(), Shape{33}, bool_);
+  array y(yv.begin(), Shape{33}, bool_);
+  array landed = logical_and(x, y, stream);
+  landed.eval();
+  omarchy::get_command_encoder(stream).synchronize();
+  for (size_t i = 0; i < 33; ++i) {
+    CHECK_EQ(landed.data<bool>()[i], and_expected[i]);
+  }
+
+  // A broadcast row against a scalar condition.
+  array scalar_true = logical_and(x, array(true), stream);
+  scalar_true.eval();
+  omarchy::get_command_encoder(stream).synchronize();
+  for (size_t i = 0; i < 33; ++i) {
+    CHECK_EQ(scalar_true.data<bool>()[i], xv[i]);
+  }
+
+  // LogicalNot is unary: single input, same word transport.
+  std::vector<bool> nv = {true, false, true, true, false};
+  array n(nv.begin(), Shape{5}, bool_);
+  array flipped = logical_not(n, stream);
+  flipped.eval();
+  omarchy::get_command_encoder(stream).synchronize();
+  for (size_t i = 0; i < 5; ++i) {
+    CHECK_EQ(flipped.data<bool>()[i], !nv[i]);
+  }
+  array scalar_flip = logical_not(array(false), stream);
+  scalar_flip.eval();
+  omarchy::get_command_encoder(stream).synchronize();
+  CHECK_EQ(scalar_flip.data<bool>()[0], true);
+}
+
+TEST_CASE("BitwiseBinary and BitwiseInvert match host references") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+
+  // Signed values, including negatives for the arithmetic shift.
+  std::vector<int32_t> av = {-1, 12, 5, -8};
+  std::vector<int32_t> bv = {10, 6, -3, 3};
+  array a(av.begin(), Shape{4}, int32);
+  array b(bv.begin(), Shape{4}, int32);
+  check_int32_values(bitwise_and(a, b, stream), {av[0] & bv[0], av[1] & bv[1], av[2] & bv[2], av[3] & bv[3]}, stream);
+  check_int32_values(bitwise_or(a, b, stream), {av[0] | bv[0], av[1] | bv[1], av[2] | bv[2], av[3] | bv[3]}, stream);
+  check_int32_values(bitwise_xor(a, b, stream), {av[0] ^ bv[0], av[1] ^ bv[1], av[2] ^ bv[2], av[3] ^ bv[3]}, stream);
+
+  // Shifts: signed right shift is arithmetic, matching the upstream
+  // C++ operator on this platform.
+  std::vector<int32_t> sv = {1, 2, -8};
+  std::vector<int32_t> cv = {2, 1, 1};
+  array s(sv.begin(), Shape{3}, int32);
+  array c(cv.begin(), Shape{3}, int32);
+  check_int32_values(left_shift(s, c, stream), {4, 4, -16}, stream);
+  std::vector<int32_t> rv = {-8, -1, 64};
+  std::vector<int32_t> dv = {1, 1, 3};
+  array r(rv.begin(), Shape{3}, int32);
+  array d(dv.begin(), Shape{3}, int32);
+  check_int32_values(right_shift(r, d, stream), {-4, -1, 8}, stream);
+
+  // Unsigned: large magnitudes and a logical right shift.
+  std::vector<uint32_t> uv = {0xFFFFFFFFu, 0x80000000u, 0xF0F0F0F0u};
+  std::vector<uint32_t> vv = {0x0F0F0F0Fu, 1u, 4u};
+  array u(uv.begin(), Shape{3}, uint32);
+  array v(vv.begin(), Shape{3}, uint32);
+  check_uint32_values(
+      bitwise_or(u, v, stream), {uv[0] | vv[0], uv[1] | vv[1], uv[2] | vv[2]}, stream);
+  // Shift counts stay inside the width: counts at or above it are as
+  // undefined here as they are in the upstream C++ reference.
+  std::vector<uint32_t> suv = {0xFFFFFFFFu, 0x80000000u, 0xF0F0F0F0u};
+  std::vector<uint32_t> scv = {20u, 1u, 4u};
+  array s32(suv.begin(), Shape{3}, uint32);
+  array c32(scv.begin(), Shape{3}, uint32);
+  check_uint32_values(
+      right_shift(s32, c32, stream), {4095u, 1073741824u, 252645135u}, stream);
+  check_uint32_values(left_shift(v, array(4u, uint32), stream), {0xF0F0F0F0u, 16u, 64u}, stream);
+  // Invert covers both signednesses.
+  check_int32_values(bitwise_invert(a, stream), {~av[0], ~av[1], ~av[2], ~av[3]}, stream);
+  check_uint32_values(bitwise_invert(u, stream), {~uv[0], ~uv[1], ~uv[2]}, stream);
+
+  // Boolean inputs reach the primitive and keep the named rejection;
+  // float inputs are rejected one level up by the upstream op gate.
+  array t = array(true);
+  CHECK(
+      evaluation_error(bitwise_and(t, t, stream))
+          .find("[omarchy] BitwiseAnd dtype") != std::string::npos);
+  // Float inputs are rejected one level up by the upstream op gate,
+  // which throws at graph-build time rather than eval time.
+  REQUIRE_THROWS_AS(
+      bitwise_xor(array(1.0f), array(2.0f), stream), std::runtime_error);
+}
+TEST_CASE("integer Remainder, DivMod, Power, Sign, and Abs match host references") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+
+  // Remainder takes the divisor's sign: negatives both ways.
+  std::vector<int32_t> av = {7, -7, 7, -7, 5, 0};
+  std::vector<int32_t> bv = {3, 3, -3, -3, 5, 3};
+  array a(av.begin(), Shape{6}, int32);
+  array b(bv.begin(), Shape{6}, int32);
+  std::vector<int32_t> mod_expected(6);
+  std::vector<int32_t> quot_expected(6);
+  for (size_t i = 0; i < 6; ++i) {
+    mod_expected[i] = host_python_mod(av[i], bv[i]);
+    quot_expected[i] = host_floor_div(av[i], bv[i]);
+  }
+  check_int32_values(remainder(a, b, stream), mod_expected, stream);
+
+  // DivMod returns the floor-division quotient and remainder as two
+  // outputs sharing one evaluation.
+  auto quot_and_rem = divmod(a, b, stream);
+  REQUIRE_EQ(quot_and_rem.size(), 2u);
+  check_int32_values(quot_and_rem[0], quot_expected, stream);
+  check_int32_values(quot_and_rem[1], mod_expected, stream);
+
+  // Unsigned remainder and divmod.
+  std::vector<uint32_t> uv = {7u, 0xFFFFFFFFu};
+  std::vector<uint32_t> vv = {3u, 16u};
+  array u(uv.begin(), Shape{2}, uint32);
+  array v(vv.begin(), Shape{2}, uint32);
+  check_uint32_values(remainder(u, v, stream), {1u, 15u}, stream);
+  auto udivmod = divmod(u, v, stream);
+  check_uint32_values(udivmod[0], {2u, 0x0FFFFFFFu}, stream);
+  check_uint32_values(udivmod[1], {1u, 15u}, stream);
+
+  // Power: squaring loop, negative base, zero exponent, and the
+  // negative-signed-exponent yields-zero rule.
+  std::vector<int32_t> pv = {2, -2, -2, 5, 2, 0};
+  std::vector<int32_t> qv = {10, 3, 2, 0, -1, 0};
+  array p(pv.begin(), Shape{6}, int32);
+  array q(qv.begin(), Shape{6}, int32);
+  check_int32_values(
+      power(p, q, stream), {1024, -8, 4, 1, 0, 1}, stream);
+  std::vector<uint32_t> pvu = {3, 7};
+  std::vector<uint32_t> qvu = {4, 2};
+  array pu(pvu.begin(), Shape{2}, uint32);
+  array qu(qvu.begin(), Shape{2}, uint32);
+  check_uint32_values(power(pu, qu, stream), {81u, 49u}, stream);
+
+  // Sign: three-way for signed, 0/1 for unsigned.
+  std::vector<int32_t> sv = {-5, 0, 7};
+  array s(sv.begin(), Shape{3}, int32);
+  check_int32_values(sign(s, stream), {-1, 0, 1}, stream);
+  check_uint32_values(sign(u, stream), {1u, 1u}, stream);
+
+  // Abs over signed values and the INT_MIN edge: upstream never
+  // special-cases it, so the negation wraps to itself exactly as the
+  // C++ reference does on this platform.
+  std::vector<int32_t> wv = {-5, 5, 0,
+      std::numeric_limits<int32_t>::min()};
+  array w(wv.begin(), Shape{4}, int32);
+  check_int32_values(
+      abs(w, stream),
+      {5, 5, 0, std::numeric_limits<int32_t>::min()},
+      stream);
+  check_uint32_values(abs(u, stream), uv, stream);
+
+  // Widths outside the integer kernel keep the named rejection.
+  std::vector<int64_t> lv = {7};
+  array l(lv.begin(), Shape{1}, int64);
+  CHECK(
+      evaluation_error(remainder(l, l, stream))
+          .find("[omarchy] Remainder dtype") != std::string::npos);
+  CHECK(
+      evaluation_error(divmod(l, l, stream)[0])
+          .find("[omarchy] DivMod dtype") != std::string::npos);
+}
+
+TEST_CASE("float Remainder, Power, Sign, Abs, and DivMod match host references") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+
+  // Remainder takes the divisor's sign; values are exactly
+  // representable so the host fmod reference is bit-comparable.
+  std::vector<float> av = {5.5f, -5.5f, 5.5f, -5.5f, 7.25f};
+  std::vector<float> bv = {2.0f, 2.0f, -2.0f, -2.0f, 1.0f};
+  array a(av.begin(), Shape{5}, float32);
+  array b(bv.begin(), Shape{5}, float32);
+  std::vector<float> mod_expected(5);
+  std::vector<float> quot_expected(5);
+  for (size_t i = 0; i < 5; ++i) {
+    mod_expected[i] = host_float_mod(av[i], bv[i]);
+    quot_expected[i] = std::floor(av[i] / bv[i]);
+  }
+  check_values(remainder(a, b, stream), mod_expected, stream, 1e-6);
+
+  // Float divmod: floor-division quotient plus Python-style remainder.
+  auto quot_and_rem = divmod(a, b, stream);
+  REQUIRE_EQ(quot_and_rem.size(), 2u);
+  check_values(quot_and_rem[0], quot_expected, stream, 1e-6);
+  check_values(quot_and_rem[1], mod_expected, stream, 1e-6);
+
+  // Power: positive bases against std::pow, negative bases with
+  // integer and non-integer exponents, and a negative exponent.
+  std::vector<float> pv = {2.0f, 3.0f, -2.0f, -2.0f, -8.0f, 0.5f};
+  std::vector<float> qv = {0.5f, 4.0f, 3.0f, 2.0f, 1.0f / 3.0f, -2.0f};
+  array p(pv.begin(), Shape{6}, float32);
+  array q(qv.begin(), Shape{6}, float32);
+  array pow_out = power(p, q, stream);
+  pow_out.eval();
+  omarchy::get_command_encoder(stream).synchronize();
+  const float* pow_values = pow_out.data<float>();
+  CHECK(pow_values[0] == doctest::Approx(std::pow(2.0f, 0.5f)).epsilon(1e-5));
+  CHECK(pow_values[1] == doctest::Approx(81.0f).epsilon(1e-5));
+  CHECK_EQ(pow_values[2], -8.0f);
+  CHECK_EQ(pow_values[3], 4.0f);
+  // A negative base with a non-integer exponent is NaN, the way the
+  // upstream std::pow reference is.
+  CHECK(std::isnan(pow_values[4]));
+  CHECK(pow_values[5] == doctest::Approx(4.0f).epsilon(1e-5));
+
+  // Sign: NaN compares false on both sides and maps to zero, exactly
+  // like the host comparator formula.
+  std::vector<float> sv = {-3.5f, 0.0f, 2.5f, std::nanf("")};
+  array s(sv.begin(), Shape{4}, float32);
+  std::vector<float> sign_expected(4);
+  for (size_t i = 0; i < 4; ++i) {
+    sign_expected[i] = host_sign(sv[i]);
+  }
+  check_values(sign(s, stream), sign_expected, stream, 1e-6);
+
+  // Abs clears the sign bit: negative zero flips to positive and NaN
+  // stays NaN.
+  std::vector<float> wv = {-2.5f, 0.0f, -0.0f, std::nanf("")};
+  array w(wv.begin(), Shape{4}, float32);
+  array abs_out = abs(w, stream);
+  abs_out.eval();
+  omarchy::get_command_encoder(stream).synchronize();
+  const float* abs_values = abs_out.data<float>();
+  CHECK_EQ(abs_values[0], 2.5f);
+  CHECK_EQ(abs_values[1], 0.0f);
+  CHECK_EQ(abs_values[2], 0.0f);
+  CHECK(std::signbit(abs_values[2]) == false);
+  CHECK(std::isnan(abs_values[3]));
+
+
+  // Half-precision storage keeps its variant; checks read back through
+  // a float32 cast the way the existing FP16 tests do.
+  std::vector<float> hv = {1.5f, -2.0f};
+  array h(hv.begin(), Shape{2}, float16);
+  check_values(
+      astype(remainder(h, array(1.0f, float16), stream), float32, stream),
+      {0.5f, 0.0f},
+      stream,
+      1e-6);
+  check_values(
+      astype(power(array(2.0f, float16), array(3.0f, float16), stream), float32, stream),
+      {8.0f},
+      stream,
+      1e-6);
+  check_values(
+      astype(sign(h, stream), float32, stream), {1.0f, -1.0f}, stream, 1e-6);
+  array bf(hv.begin(), Shape{2}, bfloat16);
+  check_values(astype(abs(bf, stream), float32, stream), {1.5f, 2.0f}, stream, 1e-6);
+}

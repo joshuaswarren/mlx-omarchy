@@ -399,14 +399,42 @@ void copy_gpu_inplace(
       byte_offset(out, o_offset));
 }
 
-void copy_gpu(const array& in, array& out, CopyType ctype, const Stream& s) {
+void copy_gpu(const array& input, array& out, CopyType ctype, const Stream& s) {
+  // Vector and dtype-converting copies read the source flat, in storage
+  // order. That is only the logical order for row-contiguous inputs: a
+  // transposed view of a contiguous array inherits contiguous=true under
+  // the span-based definition, and a flat copy of it would silently
+  // return storage order (astype of a transpose returned the source
+  // order, not the logical order). Materialize such inputs through a
+  // same-dtype strided copy first; the flat op then reads a dense buffer
+  // whose storage order is the logical order.
+  std::optional<array> dense;
+  const array* in = &input;
+  bool flat_only =
+      (ctype == CopyType::Vector || input.dtype() != out.dtype()) &&
+      input.data_size() > 1 && !input.flags().row_contiguous;
+  if (flat_only) {
+    dense = array(input.shape(), input.dtype(), nullptr, {});
+    dense->set_data(omarchy::allocator().malloc(dense->nbytes()));
+    copy_gpu_inplace(
+        input,
+        *dense,
+        input.shape(),
+        input.strides(),
+        make_contiguous_strides(input.shape()),
+        /*i_offset=*/0,
+        /*o_offset=*/0,
+        CopyType::GeneralGeneral,
+        s);
+    in = &*dense;
+  }
   // Upstream's set_copy_output_data always gives the output a buffer, even
   // for zero-size outputs (malloc(0) yields a valid empty VulkanBuffer).
   // Skipping set_data left array_desc_->data null, and any later
   // buffer_size()/data() access on the eval'd array segfaulted.
   out.set_data(omarchy::allocator().malloc(out.nbytes()));
   copy_gpu_inplace(
-      in, out, in.shape(), in.strides(), out.strides(), 0, 0, ctype, s);
+      *in, out, in->shape(), in->strides(), out.strides(), 0, 0, ctype, s);
 }
 
 void fill_gpu(const array& val, array& out, const Stream& s) {
