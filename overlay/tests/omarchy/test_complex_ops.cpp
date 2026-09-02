@@ -104,17 +104,20 @@ std::vector<double> read_real(array a, const Stream& stream) {
   return std::vector<double>(data, data + a.size());
 }
 
-// Exact component comparison: transport carries float32 words
-// unchanged, so any difference is a defect.
+// Exact component comparison at float32 precision: transport carries
+// float32 words unchanged, so the reference quantized through float32
+// must equal the readback bit for bit.
 void check_exact(
     const std::vector<cdouble>& got,
     const std::vector<cdouble>& ref) {
   REQUIRE_EQ(got.size(), ref.size());
   for (size_t i = 0; i < ref.size(); ++i) {
+    float want_re = float(ref[i].real());
+    float want_im = float(ref[i].imag());
     INFO("index ", i, " got (", got[i].real(), ", ", got[i].imag(),
-         ") ref (", ref[i].real(), ", ", ref[i].imag(), ")");
-    CHECK_EQ(got[i].real(), ref[i].real());
-    CHECK_EQ(got[i].imag(), ref[i].imag());
+         ") ref (", want_re, ", ", want_im, ")");
+    CHECK_EQ(got[i].real(), want_re);
+    CHECK_EQ(got[i].imag(), want_im);
   }
 }
 
@@ -123,8 +126,9 @@ void check_exact_real(
     const std::vector<double>& ref) {
   REQUIRE_EQ(got.size(), ref.size());
   for (size_t i = 0; i < ref.size(); ++i) {
-    INFO("index ", i, " got ", got[i], " ref ", ref[i]);
-    CHECK_EQ(got[i], ref[i]);
+    float want = float(ref[i]);
+    INFO("index ", i, " got ", got[i], " ref ", want);
+    CHECK_EQ(got[i], want);
   }
 }
 
@@ -343,12 +347,17 @@ TEST_CASE("complex add subtract and negate are componentwise") {
   auto b = complex_array(b_ref, Shape{9});
   std::vector<cdouble> sum_expect(9), diff_expect(9), neg_expect(9);
   for (size_t i = 0; i < 9; ++i) {
-    // Componentwise float32 sums of small floats stay exact.
-    sum_expect[i] = {a_ref[i].real() + b_ref[i].real(),
-                     a_ref[i].imag() + b_ref[i].imag()};
-    diff_expect[i] = {a_ref[i].real() - b_ref[i].real(),
-                      a_ref[i].imag() - b_ref[i].imag()};
-    neg_expect[i] = {-a_ref[i].real(), -a_ref[i].imag()};
+    // The device computes in float32 on float32-quantized inputs, so
+    // the reference must run the same single-precision arithmetic:
+    // rounding a double-precision sum once more into float32 can sit
+    // one ulp away from the correctly rounded float32 result.
+    float ar = float(a_ref[i].real());
+    float ai = float(a_ref[i].imag());
+    float br = float(b_ref[i].real());
+    float bi = float(b_ref[i].imag());
+    sum_expect[i] = {double(ar + br), double(ai + bi)};
+    diff_expect[i] = {double(ar - br), double(ai - bi)};
+    neg_expect[i] = {double(-ar), double(-ai)};
   }
   check_exact(read_complex(a + b, stream), sum_expect);
   check_exact(read_complex(a - b, stream), diff_expect);

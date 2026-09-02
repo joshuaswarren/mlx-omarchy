@@ -864,7 +864,12 @@ TEST_CASE("gather qmm gathers experts with scales and biases") {
     int pack = 32 / bits;
     int words_per_row = k / pack;
     std::vector<HostQuantizedWeights> host_w;
-    std::vector<float> w_all;
+    // uint32, not float: these are raw packed code words. Held in a
+    // float vector, every word >= 2^24 is silently rounded by the
+    // element conversion (low eight bits destroyed, rounding carry into
+    // bit 8), and the uint32 array constructor copies the rounded
+    // values verbatim - the kernel then decodes wrong codes.
+    std::vector<uint32_t> w_all;
     std::vector<float> scales_all;
     std::vector<float> biases_all;
     for (int e = 0; e < experts; ++e) {
@@ -882,12 +887,7 @@ TEST_CASE("gather qmm gathers experts with scales and biases") {
                         host.biases.end());
     }
     std::vector<std::vector<float>> x_batches;
-    // uint32, not float: these are raw packed code words. Held in a
-    // float vector, every word >= 2^24 is silently rounded by the
-    // element conversion (low eight bits destroyed, rounding carry into
-    // bit 8), and the uint32 array constructor copies the rounded
-    // values verbatim - the kernel then decodes wrong codes.
-    std::vector<uint32_t> w_all;
+    std::vector<float> x_all;
     for (int b = 0; b < x_batch; ++b) {
       std::vector<float> matrix(static_cast<size_t>(m) * k);
       for (auto& value : matrix) {
@@ -971,7 +971,10 @@ TEST_CASE("gather qmm gathers experts with scales and biases") {
     for (size_t p = 0; p < lhs_v.size(); ++p) {
       std::vector<float> piece = host_quantized_matmul(
           host_w[rhs_v[p]],
-          x_batches[lhs_v[p]],
+          // The non-lhs branch passes an all-zero index container to
+          // the device (x-side broadcast), so the reference must
+          // contract row 0 there too - not the drawn lhs_v[p].
+          x_batches[with_lhs ? lhs_v[p] : 0u],
           m,
           n,
           k,
@@ -1108,7 +1111,8 @@ TEST_CASE("gather qqmm dequants with scales only") {
     int pack = 32 / bits;
     int words_per_row = k / pack;
     std::vector<HostQuantizedWeights> host_w;
-    std::vector<float> w_all;
+    // uint32, not float - same packed-words hazard as gather_qmm above.
+    std::vector<uint32_t> w_all;
     std::vector<float> scales_all;
     for (int e = 0; e < experts; ++e) {
       std::vector<float> matrix(static_cast<size_t>(n) * k);
