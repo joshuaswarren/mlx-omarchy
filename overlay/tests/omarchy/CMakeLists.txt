@@ -99,3 +99,15 @@ target_link_options(omarchy_matmul_family_tests
 doctest_discover_tests(omarchy_matmul_family_tests)
 add_test(NAME omarchy_matmul_family_tests
          COMMAND omarchy_matmul_family_tests)
+
+add_executable(omarchy_distributed_tests
+               ${CMAKE_CURRENT_SOURCE_DIR}/test_distributed_ops.cpp)
+target_link_libraries(omarchy_distributed_tests PRIVATE mlx doctest)
+target_compile_options(omarchy_distributed_tests
+                       PRIVATE ${SANITIZER_COMPILE_FLAGS})
+target_link_options(omarchy_distributed_tests
+                    PRIVATE ${SANITIZER_LINK_FLAGS})
+
+doctest_discover_tests(omarchy_distributed_tests)
+add_test(NAME omarchy_distributed_tests
+         COMMAND omarchy_distributed_tests)
