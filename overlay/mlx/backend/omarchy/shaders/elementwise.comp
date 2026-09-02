@@ -64,6 +64,208 @@ layout(push_constant) uniform Params {
   uint rhs_strides[4];
 } params;
 
+// Natural log of 1 + x through the Goldberg correction
+// log1p(x) = log(u) * x / (u - 1) with u = 1 + x: the ratio recovers
+// the low bits the addition rounds away. Tiny arguments stay the
+// identity, x = -1 keeps -inf, and x < -1 keeps NaN.
+float log1p_impl(float x) {
+  float u = 1.0f + x;
+  if (u == 1.0f) {
+    return x;
+  }
+  return log(u) * (x / (u - 1.0f));
+}
+
+float copysignf(float magnitude, float sign) {
+  return uintBitsToFloat(
+      (floatBitsToUint(magnitude) & 0x7fffffffu) |
+      (floatBitsToUint(sign) & 0x80000000u));
+}
+
+// The inverse trigonometric and inverse hyperbolic functions are
+// computed in software: the software-rasterizer pipelines carry
+// low-accuracy ext-instruction implementations (Acos near 1.5e-4 and
+// Atan near 3e-6 absolute), while this degree-9 odd minimax fit for
+// atan holds 1.2e-7 absolute in float32 on [0, 1] and through the
+// reciprocal reduction on [1, inf).
+float atan_impl(float x) {
+  float z = abs(x);
+  float t = z > 1.0f ? 1.0f / z : z;
+  float u = t * t;
+  float q = -0.0018917238f;
+  q = q * u + 0.011302481f;
+  q = q * u - 0.03179674f;
+  q = q * u + 0.05846257f;
+  q = q * u - 0.08425107f;
+  q = q * u + 0.10956332f;
+  q = q * u - 0.14264207f;
+  q = q * u + 0.19998424f;
+  q = q * u - 0.33333287f;
+  q = q * u + 1.0f;
+  float r = t * q;
+  if (z > 1.0f) {
+    r = 1.5707963719367981f - r;
+  }
+  return x < 0.0f ? -r : r;
+}
+
+float asin_impl(float x) {
+  return atan_impl(x / sqrt(1.0f - x * x));
+}
+
+float acos_impl(float x) {
+  return 1.5707963719367981f - asin_impl(x);
+}
+
+// Quadrant-aware two-argument arctangent, matching the upstream
+// atan2(y, x): NaN operands stay NaN, (0, 0) keeps the signed zero,
+// and the second and third quadrants shift by +/- pi.
+float atan2_impl(float y, float x) {
+  if (isnan(x) || isnan(y)) {
+    return x + y;
+  }
+  if (x == 0.0f && y == 0.0f) {
+    return y;
+  }
+  if (x > 0.0f) {
+    return atan_impl(y / x);
+  }
+  if (x < 0.0f) {
+    return y >= 0.0f
+        ? atan_impl(y / x) + 3.1415927410125732f
+        : atan_impl(y / x) - 3.1415927410125732f;
+  }
+  return y > 0.0f ? 1.5707963719367981f : -1.5707963719367981f;
+}
+
+// atanh(x) = (log1p(x) - log1p(-x)) / 2: both terms are stable at the
+// domain edges, -1 keeps -inf, +1 keeps +inf, and |x| > 1 keeps NaN.
+float atanh_impl(float x) {
+  return 0.5f * (log1p_impl(x) - log1p_impl(-x));
+}
+
+// acosh(x) = log(x + sqrt((x - 1)(x + 1))): the factored product avoids
+// the x*x - 1 cancellation near the domain edge at 1.
+float acosh_impl(float x) {
+  return log(x + sqrt((x - 1.0f) * (x + 1.0f)));
+}
+
+// asinh(x) = sign(x) * log1p(|x| + x^2 / (1 + sqrt(1 + x^2))): the
+// log1p form keeps tiny arguments exact and x*x overflow degrades to
+// log1p(|x|), the right limit.
+float asinh_impl(float x) {
+  float scaled = x * x / (1.0f + sqrt(1.0f + x * x));
+  return copysignf(log1p_impl(abs(x) + scaled), x);
+}
+// The erf and erfinv helpers follow the Metal MLX kernels: Norbert
+// Juffa's faithfully rounded rational approximations (about 1 ulp for
+// erf, 2.36 ulp for erfinv), the same ones
+// mlx/backend/metal/kernels/erf.h ships.
+
+
+// expm1: the Horner series holds |a| < 0.5, where exp(a) - 1 would
+// cancel the leading terms, and exp(a) - 1 serves beyond it, where the
+// subtraction is benign. This replaces the Metal MLX exponent-split
+// reduction, whose magic-number rounding does not survive pipelines
+// that contract multiplies and adds into one wide unrounded fma.
+float expm1f_impl(float a) {
+  if (abs(a) < 0.5f) {
+    return a * (1.0f
+        + a * (0.5f
+        + a * (1.0f / 6.0f
+        + a * (1.0f / 24.0f
+        + a * (1.0f / 120.0f
+        + a * (1.0f / 720.0f
+        + a * (1.0f / 5040.0f)))))));
+  }
+  return exp(a) - 1.0f;
+}
+
+float erf_impl(float a) {
+  float r, s, t, u;
+  t = abs(a);
+  s = a * a;
+  if (t > 0.927734375f) {
+    // erfc(t) = -expm1(r) on the tail, evaluated through expm1f_impl.
+    r = fma(-1.72853470e-5f, t, 3.83197126e-4f);
+    u = fma(-3.88396438e-3f, t, 2.42546219e-2f);
+    r = fma(r, s, u);
+    r = fma(r, t, -1.06777877e-1f);
+    r = fma(r, t, -6.34846687e-1f);
+    r = fma(r, t, -1.28717512e-1f);
+    r = fma(r, t, -t);
+    r = -expm1f_impl(r);
+    r = copysignf(r, a);
+  } else {
+    r = -5.96761703e-4f;
+    r = fma(r, s, 4.99119423e-3f);
+    r = fma(r, s, -2.67681349e-2f);
+    r = fma(r, s, 1.12819925e-1f);
+    r = fma(r, s, -3.76125336e-1f);
+    r = fma(r, s, 1.28379166e-1f);
+    r = fma(r, a, a);
+  }
+  return r;
+}
+
+float erfinv_impl(float a) {
+  float t = fma(a, 0.0f - a, 1.0f);
+  t = log(t);
+  float p;
+  if (abs(t) > 6.125f) {
+    p = 3.03697567e-10f;
+    p = fma(p, t, 2.93243101e-8f);
+    p = fma(p, t, 1.22150334e-6f);
+    p = fma(p, t, 2.84108955e-5f);
+    p = fma(p, t, 3.93552968e-4f);
+    p = fma(p, t, 3.02698812e-3f);
+    p = fma(p, t, 4.83185798e-3f);
+    p = fma(p, t, -2.64646143e-1f);
+    p = fma(p, t, 8.40016484e-1f);
+  } else {
+    p = 5.43877832e-9f;
+    p = fma(p, t, 1.43285448e-7f);
+    p = fma(p, t, 1.22774793e-6f);
+    p = fma(p, t, 1.12963626e-7f);
+    p = fma(p, t, -5.61530760e-5f);
+    p = fma(p, t, -1.47697632e-4f);
+    p = fma(p, t, 2.31468678e-3f);
+    p = fma(p, t, 1.15392581e-2f);
+    p = fma(p, t, -2.32015476e-1f);
+    p = fma(p, t, 8.86226892e-1f);
+  }
+  return a * p;
+}
+
+// Python-style modulo (the upstream Remainder/DivMod float contract):
+// the truncation remainder adjusted by one divisor when its sign
+// differs from the divisor's. A zero divisor is NaN the way the
+// upstream C fmod is.
+float float_modulo(float a, float b) {
+  if (b == 0.0) {
+    return uintBitsToFloat(0x7fc00000u);
+  }
+  float r = a - b * trunc(a / b);
+  if (r != 0.0 && (r < 0.0) != (b < 0.0)) {
+    r += b;
+  }
+  return r;
+}
+
+// std::pow semantics for negative bases, which raw GLSL pow leaves
+// undefined: a non-integer exponent produces NaN and an odd integer
+// exponent negates. Signed zero inputs behave as for positive bases.
+float float_power(float base, float exp) {
+  if (base < 0.0) {
+    if (exp != floor(exp)) {
+      return uintBitsToFloat(0x7fc00000u);
+    }
+    float p = pow(-base, exp);
+    return (mod(exp, 2.0) != 0.0) ? -p : p;
+  }
+  return pow(base, exp);
+}
+
 void main() {
   uint index = gl_GlobalInvocationID.x;
   uint stride = gl_NumWorkGroups.x * gl_WorkGroupSize.x;
@@ -146,6 +348,98 @@ void main() {
         break;
       case 16:
         value = log(lhs) / 2.302585092994046f;
+        break;
+      // Operations 17 and above are appended wave-3 cases; the enum in
+      // ../primitives.cpp carries the same order.
+      case 17:
+        value = acos_impl(lhs);
+        break;
+      case 18:
+        value = acosh_impl(lhs);
+        break;
+      case 19:
+        value = asin_impl(lhs);
+        break;
+      case 20:
+        value = asinh_impl(lhs);
+        break;
+      case 21:
+        value = atan_impl(lhs);
+        break;
+      case 22:
+        // atan(y, x) is the quadrant-aware atan2 with y first, matching
+        // the ArcTan2 operand order (lhs = y, rhs = x).
+        value = atan2_impl(lhs, rhs);
+        break;
+      case 23:
+        value = atanh_impl(lhs);
+        break;
+      case 24:
+        value = cosh(lhs);
+        break;
+      case 25:
+        value = sinh(lhs);
+        break;
+      case 26:
+        value = tan(lhs);
+        break;
+      case 27:
+        value = tanh(lhs);
+        break;
+      case 28:
+        value = erf_impl(lhs);
+        break;
+      case 29:
+        value = erfinv_impl(lhs);
+        break;
+      case 30:
+        value = expm1f_impl(lhs);
+        break;
+      case 31:
+        value = log1p_impl(lhs);
+        break;
+      case 32:
+        // max(a, b) + log1p(exp(-|a - b|)) never overflows and keeps
+        // one -inf operand at the other's value; matching the min/max
+        // cases, a NaN operand keeps a NaN.
+        value = isnan(lhs) || isnan(rhs)
+            ? uintBitsToFloat(0x7fc00000u)
+            : max(lhs, rhs);
+        if (!isnan(value) && !isinf(value)) {
+          value += log1p_impl(exp(-abs(lhs - rhs)));
+        }
+        break;
+      case 33:
+        value = ceil(lhs);
+        break;
+      case 34:
+        value = floor(lhs);
+        break;
+      case 35:
+        // Upstream Round is rint on both CPU and Metal: halfway cases
+        // round to the nearest even integer.
+        value = roundEven(lhs);
+        break;
+      // Wave-2 float ops (36-40); the enum in ../primitives.cpp
+      // carries the same order.
+      case 36:
+        value = float_modulo(lhs, rhs);
+        break;
+      case 37:
+        value = float_power(lhs, rhs);
+        break;
+      case 38:
+        // Upstream Sign compares against zero, so NaN falls through
+        // both comparisons and maps to 0.
+        value = lhs > 0.0 ? 1.0 : (lhs < 0.0 ? -1.0 : 0.0);
+        break;
+      case 39:
+        // The abs builtin clears the sign bit, so -0.0 flips to +0.0
+        // the way the upstream std::abs reference does.
+        value = abs(lhs);
+        break;
+      case 40:
+        value = floor(lhs / rhs);
         break;
       default:
         return;

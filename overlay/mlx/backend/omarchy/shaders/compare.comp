@@ -111,7 +111,17 @@ void main() {
       }
       VALUE_TYPE a = LOAD_VALUE(input_a.values[lhs_index_for(index)]);
       VALUE_TYPE b = LOAD_VALUE(input_b.values[rhs_index_for(index)]);
-      bool result = params.operation == 0u ? a == b : a >= b;
+      // Upstream float comparators use C++ semantics: every ordered
+      // comparison of a NaN is false, and NaN != x is true. GLSL's
+      // operators carry the same IEEE ordering, so one selector serves
+      // both the float and the int32 variants. The codes match
+      // ComparisonOperation in primitives.cpp.
+      bool result = params.operation == 0u ? a == b
+          : params.operation == 1u ? a >= b
+          : params.operation == 2u ? a > b
+          : params.operation == 3u ? a < b
+          : params.operation == 4u ? a <= b
+          : a != b;
       uint bit = result ? 1u : 0u;
       word |= bit << ((index & 3u) * 8u);
     }

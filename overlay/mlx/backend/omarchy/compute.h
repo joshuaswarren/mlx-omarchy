@@ -95,6 +95,7 @@ enum class ComputeKernel : uint8_t {
   ArgSortBF16,
   RandomBitsU32,
   ElementwiseI32,
+  ElementwiseU32,
   ScanF32,
   ScanF16,
   ScanBF16,

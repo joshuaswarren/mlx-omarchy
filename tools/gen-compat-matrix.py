@@ -17,6 +17,7 @@ Sources (read-only):
   .work/mlx/mlx/primitives.h                  upstream primitive classes
   .work/mlx/mlx/fast_primitives.h             upstream fast:: primitives
   .work/mlx/mlx/distributed/primitives.h      upstream distributed:: primitives
+  .work/mlx/mlx/backend/gpu/primitives.cpp    shared GPU eval_gpu definitions
 """
 
 import argparse
@@ -122,9 +123,53 @@ TEST_ANCHORS = {
     "Sqrt": ["FP32 elementwise primitives"],
     "Subtract": ["FP32 elementwise primitives"],
     "fast::RoPE": ["rope matches a host rotation"],
+    # Wave 1 shape and layout primitives. Upstream resolves these in
+    # backend/gpu/primitives.cpp through zero-copy buffer views or the
+    # omarchy copy engine; each anchor pins exact values.
+    "AsStrided": ["AsStrided shares a row-contiguous buffer"],
+    "AsType": ["AsType casts values exactly"],
+    "Broadcast": ["Broadcast expands zero-stride views"],
+    "BroadcastAxes": ["BroadcastAxes aligns arrays"],
+    "Concatenate": ["Concatenate joins arrays"],
+    "Contiguous": ["Contiguous materializes a strided view"],
+    "Copy": ["Copy clones the buffer"],
+    "CustomTransforms": ["CustomTransforms redefines the transform"],
+    "Depends": ["Depends forces evaluation"],
+    "ExpandDims": ["ExpandDims inserts length-one axes"],
+    "Flatten": ["Flatten collapses axes"],
+    "Full": ["Full fills exact scalar values"],
+    "NumberOfElements": [
+        "NumberOfElements evaluates inside a shapeless compile",
+    ],
+    "Pad": ["Pad zero-fills boundaries"],
+    "Reshape": ["Reshape shares buffers and copies strided views"],
+    "Slice": ["Slice cuts exact windows"],
+    "Split": ["Split returns exact per-part views"],
+    "Squeeze": ["Squeeze drops length-one axes"],
+    "StopGradient": ["StopGradient passes values and detaches"],
+    "Transpose": ["Transpose permutes strides"],
+    "Unflatten": ["Unflatten splits one axis"],
+    "View": ["View reinterprets the buffer"],
 }
 
 DTYPE_ORDER = ["f32", "f16", "bf16", "i32", "u32", "i64", "bool"]
+
+UPSTREAM_GPU_PRIMITIVES = ROOT / ".work/mlx/mlx/backend/gpu/primitives.cpp"
+
+
+def parse_shared_gpu_primitives():
+    """Names upstream's shared backend/gpu layer gives an eval_gpu to.
+
+    A primitive with no omarchy entry resolves through this shared layer,
+    which drives the omarchy copy engine via copy_gpu / fill_gpu /
+    reshape_gpu / concatenate_gpu. If the layer is missing an eval_gpu the
+    omarchy build would not link, so presence here is the honest signal
+    that upstream handles the primitive generically on this backend.
+    """
+    text = strip_comments(UPSTREAM_GPU_PRIMITIVES.read_text())
+    return set(re.findall(r"void (\w+)::eval_gpu\(", text))
+
+
 
 
 def strip_comments(text):
@@ -692,6 +737,9 @@ def main():
                 f"{ns}::{name}" if ns else name
                 for ns, name in sorted(phantom)))
     no_entry = sorted(set(upstream) - backend_keys)
+    shared_gpu_names = parse_shared_gpu_primitives()
+    shared_gpu = [key for key in no_entry if key[1] in shared_gpu_names]
+    nothing_runs = [key for key in no_entry if key[1] not in shared_gpu_names]
     total = len(upstream)
 
     def is_anchored(row):
@@ -717,16 +765,24 @@ def main():
     named_error_anchored = sum(
         1 for row in rows
         if row["status"] == "named-error" and is_anchored(row))
+    shared_hit = sum(
+        1 for key in shared_gpu
+        if anchor_for(f"{key[0]}::{key[1]}" if key[0] else key[1], cases)
+        != "—")
+    shared_miss = len(shared_gpu) - shared_hit
     buckets = [
         ("native, test-anchored", native_hit),
         ("native, untested", native_miss),
         ("composed, test-anchored", composed_hit),
         ("composed, untested", composed_miss),
+        ("shared-gpu, test-anchored", shared_hit),
+        ("shared-gpu, untested", shared_miss),
         ("named-error (backend entry raises unsupported)", named_error),
-        ("not implemented (no backend entry)", len(no_entry)),
+        ("not implemented (nothing runs)", len(nothing_runs)),
     ]
-    covered = native_hit + composed_hit
-    implemented = covered + native_miss + composed_miss
+    covered = native_hit + composed_hit + shared_hit
+    implemented = (
+        covered + native_miss + composed_miss + shared_miss)
     coverage_pct = covered / total * 100
 
     def badge_color(pct):
@@ -811,9 +867,14 @@ def main():
         "- named-error: eval_gpu raises `omarchy::unsupported` and the "
         "run stops with that qualifier.")
     out.append(
-        "- not implemented (no backend entry): upstream MLX defines the "
-        "primitive and `overlay/mlx/backend/omarchy/primitives.cpp` has "
-        "no entry for it, so no omarchy code runs for an eval.")
+        "- shared-gpu: the primitive has no omarchy entry, and upstream's "
+        "shared `backend/gpu/primitives.cpp` resolves it generically — "
+        "zero-copy buffer views or the omarchy copy engine. It counts as "
+        "covered only when a TEST_CASE anchors it.")
+    out.append(
+        "- not implemented (nothing runs): upstream MLX defines the "
+        "primitive, the omarchy backend has no entry for it, and the "
+        "shared GPU layer has no eval_gpu for it either.")
     out.append(
         "- Dtypes marked `*` pass the capability gates listed under the "
         "kernel families.")
@@ -849,18 +910,24 @@ def main():
         "No primitive falls back to CPU tensors.")
     out.append("")
     out.append(
-        f"## Not implemented (no backend entry) — {len(no_entry)} "
-        "primitives")
+        f"## No omarchy entry — {len(no_entry)} primitives")
     out.append("")
     out.append(
-        "Upstream MLX defines these primitives, but the omarchy backend "
-        "has no entry for them. They count in the coverage denominator.")
+        "Upstream MLX defines these primitives, but "
+        "`overlay/mlx/backend/omarchy/primitives.cpp` has no entry for "
+        "them. They count in the coverage denominator.")
     out.append("")
-    out.append("| Primitive | Status |")
-    out.append("|---|---|")
+    out.append("| Primitive | Status | Test anchor |")
+    out.append("|---|---|---|")
     for ns, name in no_entry:
         display = f"{ns}::{name}" if ns else name
-        out.append(f"| {display} | not implemented (no backend entry) |")
+        if (ns, name) in shared_gpu:
+            status = "shared-gpu"
+            anchor = anchor_for(display, cases)
+        else:
+            status = "not implemented (nothing runs)"
+            anchor = "—"
+        out.append(f"| {display} | {status} | {anchor} |")
     out.append("")
     sys.stdout.write("\n".join(out))
 

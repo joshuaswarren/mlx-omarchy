@@ -77,15 +77,116 @@ uint rhs_index_for(uint index) {
   return result;
 }
 
-// Integer elementwise kernel. Wraparound subtraction is identical for
-// int32 and uint32, so one SPIR-V variant serves both dtypes.
+// Integer elementwise kernel. The selector matches
+// IntElementwiseOperation in primitives.cpp. Wraparound subtraction,
+// bitwise logic, and shifts are identical for int32 and uint32, so one
+// SPIR-V variant serves both dtypes; `>>` follows the operand
+// signedness (arithmetic for int32, logical for uint32), which is the
+// upstream C++ behavior. The signed fixups compile for uint32 too and
+// are constant-false there, matching upstream's unsigned no-ops.
+
+// Python-style floor division: the C++ quotient adjusted so the
+// remainder takes the divisor's sign (upstream DivMod integral_op).
+STORAGE_TYPE floor_quotient(STORAGE_TYPE a, STORAGE_TYPE b) {
+  STORAGE_TYPE q = a / b;
+  STORAGE_TYPE r = a % b;
+  if (r != STORAGE_TYPE(0) && (r < STORAGE_TYPE(0)) != (b < STORAGE_TYPE(0))) {
+    q -= STORAGE_TYPE(1);
+  }
+  return q;
+}
+
+// Python-style modulo: truncating remainder adjusted by one divisor
+// when the signs of remainder and divisor differ. Unsigned stays the
+// raw remainder, which is already the upstream unsigned result.
+STORAGE_TYPE python_modulo(STORAGE_TYPE a, STORAGE_TYPE b) {
+  STORAGE_TYPE r = a % b;
+  if (r != STORAGE_TYPE(0) && (r < STORAGE_TYPE(0)) != (b < STORAGE_TYPE(0))) {
+    r += b;
+  }
+  return r;
+}
+
+// Exponentiation by squaring with wraparound, mirroring the upstream
+// integer pow. A signed negative exponent yields 0; the unsigned
+// guard is constant-false.
+STORAGE_TYPE integer_power(STORAGE_TYPE base, STORAGE_TYPE exp) {
+  STORAGE_TYPE res = STORAGE_TYPE(1);
+  if (exp < STORAGE_TYPE(0)) {
+    return STORAGE_TYPE(0);
+  }
+  while (exp != STORAGE_TYPE(0)) {
+    if ((exp & STORAGE_TYPE(1)) != STORAGE_TYPE(0)) {
+      res *= base;
+    }
+    exp >>= 1;
+    base *= base;
+  }
+  return res;
+}
+
+// Upstream Sign: -1, 0, or 1 by comparison with zero; unsigned is
+// 0 or 1 (comparison with a negative constant is constant-false).
+STORAGE_TYPE integer_sign(STORAGE_TYPE a) {
+  if (a > STORAGE_TYPE(0)) {
+    return STORAGE_TYPE(1);
+  }
+  if (a < STORAGE_TYPE(0)) {
+    return STORAGE_TYPE(-1);
+  }
+  return STORAGE_TYPE(0);
+}
+
 void main() {
   uint index = gl_GlobalInvocationID.x;
   uint stride = gl_NumWorkGroups.x * gl_WorkGroupSize.x;
   while (index < params.count) {
     STORAGE_TYPE a = input_a.values[lhs_index_for(index)];
     STORAGE_TYPE b = input_b.values[rhs_index_for(index)];
-    output_data.values[params.output_offset + index] = a - b;
+    STORAGE_TYPE value;
+    switch (params.operation) {
+      case 0:
+        value = a - b;
+        break;
+      case 1:
+        value = a & b;
+        break;
+      case 2:
+        value = a | b;
+        break;
+      case 3:
+        value = a ^ b;
+        break;
+      case 4:
+        value = a << b;
+        break;
+      case 5:
+        value = a >> b;
+        break;
+      case 6:
+        value = ~a;
+        break;
+      case 7:
+        value = floor_quotient(a, b);
+        break;
+      case 8:
+        value = python_modulo(a, b);
+        break;
+      case 9:
+        value = integer_power(a, b);
+        break;
+      case 10:
+        value = integer_sign(a);
+        break;
+      case 11:
+        // Upstream Abs negates negatives; INT_MIN wraps to itself the
+        // way upstream's C++ negation does on this platform.
+        value = a < STORAGE_TYPE(0) ? -a : a;
+        break;
+      default:
+        return;
+    }
+    output_data.values[params.output_offset + index] = value;
     if (params.count - index <= stride) {
       break;
     }
