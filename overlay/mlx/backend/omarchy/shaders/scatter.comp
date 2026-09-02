@@ -245,10 +245,14 @@ void main() {
       }
     } else if (op == 12u) {
 #ifdef USE_FADD
-      // FADD Sum finalize: one thread per output element stores the
-      // fp32 accumulation converted once to the output dtype.
+      // FADD Sum finalize: one thread per output element adds the fp32
+      // accumulation into the copied src word, rounding once to the
+      // output dtype. The output buffer already holds src from the
+      // host copy, so the combine must add, not overwrite.
       uint element = params.output_offset + t;
-      out_data.values[element] = STORE_VALUE(scratch_f_data.values[element]);
+      out_data.values[element] = STORE_VALUE(
+          scratch_f_data.values[element] +
+          LOAD_VALUE(out_data.values[element]));
 #endif
     } else if (op == 16u) {
 #ifdef USE_FADD
@@ -261,17 +265,22 @@ void main() {
 #endif
     } else if (op == 14u || op == 15u) {
 #ifdef USE_BOOL
-      // Bool Sum/Max (14, OR) and Prod/Min (15, AND) finalize: write
-      // the accumulated bit into the packed byte. The atomicAnd clears
-      // the lane and the atomicOr sets it; the two touch disjoint bits,
-      // so concurrent byte writes to one word commute under any
-      // interleaving and no lane is lost.
+      // Bool Sum/Max (14, OR) and Prod/Min (15, AND) finalize: fold
+      // the accumulated updates bit into the copied src byte. Out
+      // already holds src, so op 14 sets the lane (src OR bit) with a
+      // plain bit-set and op 15 masks it (src AND bit) with a
+      // lane-preserving clear; sibling lanes stay untouched either way.
       uint element = params.output_offset + t;
       uint word = element >> 2u;
       uint shift = (element & 3u) * 8u;
       uint bit = scratch_data.values[element] & 1u;
-      atomicAnd(out_data.values[word], ~(1u << shift));
-      atomicOr(out_data.values[word], bit << shift);
+      if (op == 14u) {
+        atomicOr(out_data.values[word], bit << shift);
+      } else {
+        atomicAnd(
+            out_data.values[word],
+            (bit << shift) | ~(1u << shift));
+      }
 #endif
     } else {
       // Slot phases: t addresses one update element; slot selects the
@@ -330,6 +339,11 @@ void main() {
         }
         uint target = params.output_offset + index * params.matrix_m +
             axis_b_offset + out_tail;
+        // An update block whose trailing dims overflow the output writes
+        // out of range under upstream's undefined behavior; skip instead
+        // of corrupting adjacent storage. params.dims is the output
+        // element count, set by the host on every dispatch.
+        if (target < params.dims) {
         if (op == 0u) {
           atomicMax(scratch_data.values[target], slot + 1u);
         } else if (op == 1u) {
@@ -421,7 +435,8 @@ void main() {
           uint ue6 = params.lhs_offset + t;
           atomicOr(
               scratch_data.values[target],
-              (upd_data.values[ue6 >> 2u] >> ((ue6 & 3u) * 8u)) != 0u
+              ((upd_data.values[ue6 >> 2u] >> ((ue6 & 3u) * 8u)) &
+                0xFFu) != 0u
                   ? 1u
                   : 0u);
         } else if (op == 7u) {
@@ -431,10 +446,12 @@ void main() {
           uint ue7 = params.lhs_offset + t;
           atomicAnd(
               scratch_data.values[target],
-              (upd_data.values[ue7 >> 2u] >> ((ue7 & 3u) * 8u)) != 0u
+              ((upd_data.values[ue7 >> 2u] >> ((ue7 & 3u) * 8u)) &
+                0xFFu) != 0u
                   ? 1u
                   : 0u);
 #endif
+        }
         }
       }
     }

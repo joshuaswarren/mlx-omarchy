@@ -86,6 +86,10 @@ struct CapabilityReport {
   VkDeviceSize max_buffer_size{0};
   VkDeviceSize max_storage_buffer_range{0};
   bool host_visible_coherent{false};
+  // Storage-buffer descriptor limits reported by the physical device. These
+  // bound the compute binding budget (compute.h kComputeBindingBudget).
+  uint32_t max_per_stage_descriptor_storage_buffers{0};
+  uint32_t max_descriptor_set_storage_buffers{0};
   uint32_t max_compute_work_group_invocations{0};
   uint32_t max_compute_shared_memory_size{0};
   std::array<uint32_t, 3> max_compute_work_group_size{0, 0, 0};
