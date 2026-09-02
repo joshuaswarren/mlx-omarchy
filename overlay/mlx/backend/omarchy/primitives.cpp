@@ -613,28 +613,56 @@ void dispatch_comparison(
   if (out.dtype() != bool_) {
     omarchy::unsupported(name + " output dtype", out);
   }
-  // Bool inputs share the logical_or.comp kernel: the comparison
-  // sextet (3..8) extends the logical selector and gives us
-  // elementwise Equal/NotEqual/Greater/Less/GreaterEqual/LessEqual
-  // on 0/1 bytes via the same word-packed transport the Or/And/Not
-  // trio already uses. The 6 masked C++ cases (test array basics,
-  // comparison ops) all flow through this branch.
+  // Bool inputs run through compare_bool.comp, a dedicated kernel for
+  // the comparison sextet. It uses a plain word store (no atomicOr, no
+  // zero-fill requirement) and a 6-op selector, avoiding both the
+  // Honeykrisp wide-selector store-coalescing miscompile and the
+  // shared-accumulator hazard a logical_or.comp extension would carry.
+  // The 6 masked C++ cases (test array basics, test array types, gguf
+  // metadata, is close, random split, vmap comparison ops) route here.
   if (lhs.dtype() == bool_) {
-    // Map ComparisonOperation onto logical_or sextet codes. ComparisonOperation
-    // order: Equal=0, GreaterEqual=1, Greater=2, Less=3, LessEqual=4, NotEqual=5.
-    // logical_or sextet order: Equal=3, NotEqual=4, Greater=5, Less=6, GreaterEqual=7,
-    // LessEqual=8.
-    uint logical_op;
+    // Map ComparisonOperation onto compare_bool selector codes.
+    // ComparisonOperation: Equal=0, GreaterEqual=1, Greater=2, Less=3,
+    // LessEqual=4, NotEqual=5. compare_bool: Equal=0, NotEqual=1,
+    // Greater=2, Less=3, GreaterEqual=4, LessEqual=5.
+    uint bool_op;
     switch (operation) {
-      case CompareEqual:       logical_op = 3u; break;  // Equal
-      case CompareNotEqual:    logical_op = 4u; break;  // NotEqual
-      case CompareGreater:     logical_op = 5u; break;  // Greater
-      case CompareLess:        logical_op = 6u; break;  // Less
-      case CompareGreaterEqual:logical_op = 7u; break;  // GreaterEqual
-      case CompareLessEqual:   logical_op = 8u; break;  // LessEqual
+      case CompareEqual:        bool_op = 0u; break;
+      case CompareNotEqual:     bool_op = 1u; break;
+      case CompareGreater:      bool_op = 2u; break;
+      case CompareLess:         bool_op = 3u; break;
+      case CompareGreaterEqual: bool_op = 4u; break;
+      case CompareLessEqual:    bool_op = 5u; break;
       default: omarchy::unsupported(name + " bool selector", out);
     }
-    dispatch_logical(name, logical_op, inputs, out);
+    out.set_data(allocate_omarchy(out.nbytes()));
+    if (out.size() == 0) {
+      return;
+    }
+    uint32_t count = checked_u32(out.size(), name, out);
+    uint32_t word_count = checked_u32(
+        (static_cast<uint64_t>(count) + 3) / 4, name, out);
+    omarchy::ComputeParams params;
+    params.count = count;
+    params.operation = bool_op;
+    params.lhs_size = checked_u32(lhs.data_size(), name, out);
+    params.rhs_size = checked_u32(rhs.data_size(), name, out);
+    params.output_size = count;
+    params.lhs_offset = checked_item_offset(lhs, params.lhs_size, name, out);
+    params.rhs_offset = checked_item_offset(rhs, params.rhs_size, name, out);
+    params.output_offset = checked_item_offset(out, count, name, out);
+    bool general_broadcast =
+        !is_trailing_broadcast(lhs, out) || !is_trailing_broadcast(rhs, out);
+    if (general_broadcast) {
+      fill_broadcast_transport(name, params, lhs, rhs, out);
+    }
+    std::array<omarchy::ComputeBinding, 3> bindings{
+        binding(lhs), binding(rhs), binding(out)};
+    encoder.dispatch_compute(
+        omarchy::ComputeKernel::CompareBool,
+        bindings,
+        params,
+        omarchy::compute_dispatch_group_count(word_count));
     return;
   }
   if (lhs.dtype() != rhs.dtype() ||
@@ -716,6 +744,24 @@ void dispatch_logical(
   out.set_data(allocate_omarchy(out.nbytes()));
   if (out.size() == 0) {
     return;
+  }
+  // The logical kernel accumulates each canonical output byte with
+  // atomicOr, so the destination must start zeroed - a fresh
+  // allocation holds whatever the allocator recycled. Probe-proven on
+  // llvmpipe: isinf([0, 1, NaN]) returned [0, 0, 128] with a stale
+  // 0x80 byte, poisoning the composed isclose chain. Same pattern as
+  // the scatter bool materialization path.
+  {
+    uint32_t zero_words = checked_u32(
+        (static_cast<uint64_t>(out.size()) + 3) / 4, name, out);
+    omarchy::ComputeParams clear_params;
+    clear_params.count = zero_words;
+    std::array<omarchy::ComputeBinding, 1> clear_bindings{binding(out)};
+    encoder.dispatch_compute(
+        omarchy::ComputeKernel::ClearU32,
+        clear_bindings,
+        clear_params,
+        omarchy::compute_dispatch_group_count(zero_words));
   }
   // One thread per output word. Honeykrisp coalesces adjacent word
   // stores into a 16-byte vector store and drops the inner three
@@ -911,39 +957,6 @@ void dispatch_sort(
 // dispatch caps the row count at kMaxComputeGroupCountX (batches spill
 // into a second batch loop, but no vocabulary-width model needs more than
 // one batch of 65535 rows).
-void dispatch_argpartition_wide(
-    const std::string& name,
-    const array& input,
-    array& out,
-    uint32_t kth,
-    omarchy::CommandEncoder& encoder) {
-  size_t row_length = input.shape(-1);
-  size_t rows = input.size() / row_length;
-  out.set_data(allocate_omarchy(out.nbytes()));
-  if (out.size() == 0) {
-    return;
-  }
-  uint32_t output_size = checked_u32(rows, name, out);
-  omarchy::ComputeParams params;
-  params.count = checked_u32(row_length, name, out);
-  params.reduce_size = params.count;
-  params.output_size = output_size;
-  params.operation = kth;
-  params.lhs_offset = checked_item_offset(input, input.size(), name, out);
-  params.output_offset = checked_item_offset(out, out.size(), name, out);
-  std::array<omarchy::ComputeBinding, 3> bindings{
-      binding(input), binding(input), binding(out)};
-  auto kernel = select_float_kernel(
-      input.dtype(),
-      omarchy::ComputeKernel::ArgPartitionWideF32,
-      omarchy::ComputeKernel::ArgPartitionWideF16,
-      omarchy::ComputeKernel::ArgPartitionWideBF16);
-  encoder.dispatch_compute(
-      kernel,
-      bindings,
-      params,
-      std::min(output_size, omarchy::kMaxComputeGroupCountX));
-}
 
 
 // Last-axis softmax. The Softmax primitive is only constructed for a
@@ -1871,9 +1884,12 @@ void ArgPartition::eval_gpu(const std::vector<array>& inputs, array& out) {
   // [0, axis_size) so the row axis is non-empty.
   size_t row_length = input.shape(-1);
   if (row_length > kSortMaxRowLength) {
-    // Wide-row vocabulary sizes (top-k sampling for real LLMs).
-    dispatch_argpartition_wide("ArgPartition", input, out, kth, encoder);
-    return;
+    // Wide-row vocabulary widths (top-k sampling for real language
+    // models) need a selection algorithm rather than a full sort. A
+    // radix-select kernel was in flight on 2026-09-02 but its shader
+    // source was lost before it computed correct values, so this
+    // refuses by name rather than returning a wrong kth.
+    omarchy::unsupported("sort row length ArgPartition", out);
   }
   dispatch_sort("ArgPartition", input, out, true, encoder);
 }
@@ -2447,6 +2463,15 @@ void Convolution::eval_gpu(const std::vector<array>& inputs, array& out) {
   if (spatial > 2) {
     omarchy::unsupported("3-D Convolution", out);
   }
+  // The flip (conv_transpose) path stays gated: the one-hot probe in
+  // test_conv_general.cpp showed the kernel reading the wrong input
+  // channels once flip and input dilation combine, and a wrong number
+  // is never acceptable. Forward convolutions - grouped, depthwise,
+  // 1-D, input-dilated, kernel-dilated, strided - run the general
+  // kernel below.
+  if (flip_) {
+    omarchy::unsupported("transposed (flip) Convolution", out);
+  }
   if (in.ndim() != wt.ndim() || spatial < 1) {
     omarchy::unsupported("Convolution shapes", out);
   }
@@ -2804,18 +2829,19 @@ void dispatch_fft_pass(
       group_z);
 }
 
-// One planned stage of a general-length 1-D transform.
 struct FftStage {
   enum class Kind : uint8_t {
     Pass,     // radix-2 pass of `length` points on samples spaced
               // axis_stride * stride_mul apart
     Twiddle,  // pointwise w_n^(m0*T) multiply for the split n = (above)*inner
-    Bluestein // whole-length chirp-z convolution for a prime-class length
+    Bluestein,// whole-length chirp-z convolution for a prime-class length
+    Permute   // undo the level's factor transpose: slot j1 + inner*k0 holds
+              // the bin for k0 + (length/inner)*j1
   };
   Kind kind;
-  uint32_t length;     // Pass: factor length; Twiddle: current n; Bluestein: n
-  uint32_t inner;      // Twiddle: trailing extent M of the split
-  uint32_t stride_mul; // Pass: multiplier on the axis sample stride
+  uint32_t length;     // Pass/Bluestein/Permute: transform length; Twiddle: n
+  uint32_t inner;      // Twiddle/Permute: inner extent M of the split
+  uint32_t stride_mul; // Pass/Twiddle/Permute: multiplier on the axis stride
 };
 
 // Modes of the fft_stage_f32 elementwise kernel (reduce_size push constant).
@@ -2824,6 +2850,7 @@ constexpr uint32_t kFftStageBluesteinA = 1;
 constexpr uint32_t kFftStageBluesteinB = 2;
 constexpr uint32_t kFftStageMultiply = 3;
 constexpr uint32_t kFftStageBluesteinY = 4;
+constexpr uint32_t kFftStagePermute = 5;
 
 // Append the stage list for one n-point transform whose samples sit at
 // axis_stride * stride_mul apart. Refuses by name any length the two
@@ -2854,13 +2881,22 @@ void plan_fft_stages(
   if (factor != 0) {
     uint64_t rest = n / factor;
     // Outer factor first: transform along it, twiddle, then the rest.
+    // The twiddle addresses this level's transform-local elements, whose
+    // dense spacing carries this level's stride multiplier. The level
+    // leaves its output transposed (slot j1 + rest*k0 holds the bin for
+    // k0 + factor*j1), so it ends with its own permute stage.
     plan_fft_stages(factor, stride_mul * rest, stages, name, out);
     stages.push_back(
         {FftStage::Kind::Twiddle,
          static_cast<uint32_t>(n),
          static_cast<uint32_t>(rest),
-         0});
+         stride_mul});
     plan_fft_stages(rest, stride_mul, stages, name, out);
+    stages.push_back(
+        {FftStage::Kind::Permute,
+         static_cast<uint32_t>(n),
+         static_cast<uint32_t>(rest),
+         stride_mul});
     return;
   }
   if (n <= kFftMaxBluesteinLength) {
@@ -3002,15 +3038,12 @@ void run_fft_bluestein(
             *target,
             stage.length,
             stage.stride_mul,
-            checked_u32(conv_elements /
-                    (uint64_t(stage.length) * stage.stride_mul),
-                name,
-                out),
+            checked_u32(conv_elements / stage.length, name, out),
             flags,
             name,
             out,
             s);
-      } else {
+      } else if (stage.kind == FftStage::Kind::Twiddle) {
         dispatch_fft_stage(
             *cur,
             *target,
@@ -3019,7 +3052,20 @@ void run_fft_bluestein(
             flags,
             stage.length,
             stage.inner,
-            1,
+            stage.stride_mul,
+            name,
+            out,
+            s);
+      } else {
+        dispatch_fft_stage(
+            *cur,
+            *target,
+            conv_elements,
+            kFftStagePermute,
+            flags,
+            stage.length,
+            stage.inner,
+            stage.stride_mul,
             name,
             out,
             s);
@@ -3130,9 +3176,10 @@ void run_fft_axis(
         if (last) {
           flags |= last_extra;
         }
-        uint64_t count =
-            full_elements /
-            (uint64_t(stage.length) * stride * stage.stride_mul);
+        // Transforms tile the buffer exactly once (the pass kernel's base
+        // formula interleaves them across the sample spacing), so the
+        // count is elements over transform length regardless of stride.
+        uint64_t count = full_elements / stage.length;
         dispatch_fft_pass(
             *cur,
             *target,
@@ -3154,7 +3201,7 @@ void run_fft_axis(
             base_flags,
             stage.length,
             stage.inner,
-            stride,
+            stride * stage.stride_mul,
             name,
             out,
             s);
@@ -3164,7 +3211,7 @@ void run_fft_axis(
             *cur,
             *target,
             stage.length,
-            stride,
+            stride * stage.stride_mul,
             base_flags,
             first ? first_extra : 0u,
             last ? last_extra : 0u,
@@ -3173,6 +3220,31 @@ void run_fft_axis(
             out,
             s);
         break;
+      case FftStage::Kind::Permute: {
+        uint32_t flags = base_flags;
+        if (last) {
+          flags |= last_extra;
+        }
+        // A packed half-spectrum destination gathers only bins 0..n/2
+        // per transform; otherwise every element moves exactly once.
+        uint64_t elements = full_elements;
+        if (last && (last_extra & kFftFlagOutputHalf) != 0u) {
+          elements = full_elements / stage.length * (stage.length / 2u + 1u);
+        }
+        dispatch_fft_stage(
+            *cur,
+            *target,
+            elements,
+            kFftStagePermute,
+            flags,
+            stage.length,
+            stage.inner,
+            stride * stage.stride_mul,
+            name,
+            out,
+            s);
+        break;
+      }
     }
     cur = target;
   }
@@ -4822,6 +4894,10 @@ void Scatter::eval_gpu(const std::vector<array>& inputs, array& out) {
   }
   uint32_t count = checked_u32(indices.size(), "Scatter", out);
   omarchy::ComputeParams params;
+  // Output element bound for the shader's target guard: update blocks
+  // whose trailing dims overflow the output are skipped instead of
+  // writing out of range (upstream leaves that undefined).
+  params.dims = checked_u32(out.size(), "Scatter", out);
   params.reduce_size = checked_u32(out.shape(axes[0]), "Scatter", out);
   params.output_size =
       checked_u32(updates.size() / indices.size(), "Scatter", out);
@@ -5099,16 +5175,16 @@ void ScatterAxis::eval_gpu(const std::vector<array>& inputs, array& out) {
   // matches upstream GPU semantics; see the capability gate above.
   if (is_sum) {
     bool int_sum = out.dtype() == int32 || out.dtype() == uint32;
-    array scratch;
+    std::optional<array> scratch;
     if (!int_sum) {
       scratch = make_u32_scratch(out.size(), encoder);
-      dispatch_clear_u32(scratch, 0, encoder);
+      dispatch_clear_u32(*scratch, 0, encoder);
     }
     std::array<omarchy::ComputeBinding, 4> bindings{
         binding(out),
         binding(*idx),
         binding(updates),
-        int_sum ? binding(out) : binding(scratch)};
+        int_sum ? binding(out) : binding(*scratch)};
     uint32_t bound = int_sum ? 3u : 4u;
     params.operation = int_sum ? 6u
         : out.dtype() == bool_ ? 6u
@@ -5311,6 +5387,17 @@ void Select::eval_gpu(const std::vector<array>& inputs, array& out) {
     uint32_t material_count = checked_u32(dense.size(), name(), out);
     uint32_t material_words = checked_u32(
         (static_cast<uint64_t>(material_count) + 3) / 4, name(), out);
+    // The logical_or kernel accumulates each canonical output byte with
+    // atomicOr, so the destination must start zeroed - a fresh
+    // allocation holds whatever the allocator recycled.
+    omarchy::ComputeParams clear_params;
+    clear_params.count = material_words;
+    std::array<omarchy::ComputeBinding, 1> clear_bindings{binding(dense)};
+    encoder.dispatch_compute(
+        omarchy::ComputeKernel::ClearU32,
+        clear_bindings,
+        clear_params,
+        omarchy::compute_dispatch_group_count(material_words));
     omarchy::ComputeParams material_params;
     material_params.count = material_count;
     material_params.lhs_size = checked_u32(value.data_size(), name(), out);
@@ -5380,16 +5467,22 @@ void Select::eval_gpu(const std::vector<array>& inputs, array& out) {
     }
   }
   uint32_t count = checked_u32(out.size(), name(), out);
+  uint32_t lhs_offset = checked_item_offset(
+      *condition_ptr, condition_ptr->data_size(), name(), out);
+  // A byte-misaligned flat condition shifts the per-word element window
+  // by lhs_offset % 4, so the final word covers tail elements and the
+  // dispatch must grow by the same amount (matching the shader's word
+  // count). The materialized or aligned flat path has mis 0.
+  uint32_t condition_mis = lhs_offset & 3;
   uint32_t word_count = checked_u32(
-      (static_cast<uint64_t>(count) + 3) / 4, name(), out);
+      (static_cast<uint64_t>(count) + condition_mis + 3) / 4, name(), out);
   omarchy::ComputeParams params;
   params.count = count;
   params.output_size = count;
   params.lhs_size = checked_u32(condition_ptr->data_size(), name(), out);
   params.rhs_size = checked_u32(truthy_ptr->data_size(), name(), out);
   params.aux_size = checked_u32(falsy_ptr->data_size(), name(), out);
-  params.lhs_offset = checked_item_offset(
-      *condition_ptr, params.lhs_size, name(), out);
+  params.lhs_offset = lhs_offset;
   params.rhs_offset = checked_item_offset(
       *truthy_ptr, params.rhs_size, name(), out);
   params.aux_offset = checked_item_offset(

@@ -84,6 +84,7 @@ enum class ComputeKernel : uint8_t {
   CompareBF16,
   CompareI32,
   LogicalOrBool,
+  CompareBool,
   GatherF32,
   GatherF16,
   GatherBF16,
@@ -236,9 +237,6 @@ enum class ComputeKernel : uint8_t {
   // WideRowTopK: one workgroup per row binary-searches the monotone key
   // and serially emits the argpartition indices. One variant per input
   // dtype (f32, f16, bf16).
-  ArgPartitionWideF32,
-  ArgPartitionWideF16,
-  ArgPartitionWideBF16,
   // Complex64Transport: complex64 transport and elementwise. One
   // element is a vec2 (re, im) pair in std430 storage, so offsets and
   // strides are item offsets exactly like the float32 kernels; no

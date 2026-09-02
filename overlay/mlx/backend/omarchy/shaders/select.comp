@@ -141,7 +141,11 @@ uint false_index_for(uint index) {
 
 void main() {
   uint word_index = gl_GlobalInvocationID.x;
-  uint word_count = (params.count + 3u) >> 2u;
+  // With a byte-misaligned condition the last word covers elements past
+  // count - mis, so the word count must grow by mis; the lane loop
+  // clamps at params.count.
+  uint mis = params.lhs_offset & 3u;
+  uint word_count = (params.count + mis + 3u) >> 2u;
   if (word_index >= word_count) {
     return;
   }
@@ -153,7 +157,6 @@ void main() {
   // straight-line form reads correctly on that driver, and the loaded
   // register feeds all four lanes without further SSBO reads.
   uint word = condition.words[(params.lhs_offset >> 2u) + word_index];
-  uint mis = params.lhs_offset & 3u;
   uint first = 4u * word_index - mis;
   for (uint lane = 0u; lane < 4u; ++lane) {
     if (word_index == 0u && lane < mis) {

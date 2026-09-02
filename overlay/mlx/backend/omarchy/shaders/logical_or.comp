@@ -1,5 +1,5 @@
-// Logical/compare shader (Or/And/Not/Equal/NotEqual/Greater/Less/
-// GreaterEqual/LessEqual) on bool inputs.
+// Logical shader (Or/And/Not) on bool inputs. The bool comparison
+// sextet lives in compare_bool.comp.
 //
 // Original shape: one invocation per output word; per-lane loop packs
 // four bytes into one word, one strided word store at the end. Honeykrisp
@@ -91,31 +91,21 @@ void main() {
   uint av = (aw >> ((li & 3u) * 8u)) & 0xFFu;
   uint bw = input_b.words[ri >> 2u];
   uint bv = (bw >> ((ri & 3u) * 8u)) & 0xFFu;
-  // Selector codes (kept consistent with ComparisonOperation in
-  // primitives.cpp; the logical trio sits at 0-2, the comparison
-  // sextet at 3-8 in the same order as upstream's Comparison enum):
-  //   0 = Or, 1 = And, 2 = Not (unary on a; the host sets rhs to a)
-  //   3 = Equal, 4 = NotEqual, 5 = Greater, 6 = Less,
-  //   7 = GreaterEqual, 8 = LessEqual
+  // Selector codes match LogicalOperation in primitives.cpp:
+  //   0 = Or, 1 = And, 2 = Not (unary on a; the host sets rhs to a).
+  // The bool comparison sextet (Equal, NotEqual, Greater, Less,
+  // GreaterEqual, LessEqual) lives in compare_bool.comp, not here:
+  // a wider if/else chain re-triggers the Honeykrisp store-coalescing
+  // miscompile that FixM1BoolAndInt isolated on hardware, and this
+  // kernel's atomicOr accumulate path needs a zero-filled destination
+  // that the comparison path does not want to require.
   bool result;
-  if (params.operation == 0u) {
-    result = (av != 0u) || (bv != 0u);
+  if (params.operation == 2u) {
+    result = av == 0u;
   } else if (params.operation == 1u) {
     result = (av != 0u) && (bv != 0u);
-  } else if (params.operation == 2u) {
-    result = av == 0u;
-  } else if (params.operation == 3u) {
-    result = av == bv;
-  } else if (params.operation == 4u) {
-    result = av != bv;
-  } else if (params.operation == 5u) {
-    result = av > bv;
-  } else if (params.operation == 6u) {
-    result = av < bv;
-  } else if (params.operation == 7u) {
-    result = av >= bv;
   } else {
-    result = av <= bv;
+    result = (av != 0u) || (bv != 0u);
   }
   uint bit = result ? 1u : 0u;
   uint word_index = (params.output_offset + index) >> 2u;
