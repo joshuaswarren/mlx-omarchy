@@ -86,6 +86,10 @@
 #include "argsort_bf16.h"
 #include "argsort_f16.h"
 #include "argsort_f32.h"
+#include "sort_i32.h"
+#include "sort_u32.h"
+#include "argsort_i32.h"
+#include "argsort_u32.h"
 #include "logical_or_bool.h"
 #include "compare_bool.h"
 #include "scan_bf16.h"
@@ -394,6 +398,14 @@ ShaderBytes shader_bytes(ComputeKernel kernel) {
       return {argsort_f16, argsort_f16_size};
     case ComputeKernel::ArgSortBF16:
       return {argsort_bf16, argsort_bf16_size};
+    case ComputeKernel::SortI32:
+      return {sort_i32, sort_i32_size};
+    case ComputeKernel::SortU32:
+      return {sort_u32, sort_u32_size};
+    case ComputeKernel::ArgSortI32:
+      return {argsort_i32, argsort_i32_size};
+    case ComputeKernel::ArgSortU32:
+      return {argsort_u32, argsort_u32_size};
     case ComputeKernel::RandomBitsU32:
       return {random_bits_u32, random_bits_u32_size};
     case ComputeKernel::QmmF32:
