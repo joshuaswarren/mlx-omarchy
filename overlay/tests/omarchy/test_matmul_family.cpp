@@ -83,6 +83,24 @@ void expect_close(
   }
 }
 
+// fp32 accumulation against a double reference carries a small
+// absolute error even where cancellation makes the expected value
+// near zero; epsilon alone is pure relative, so add an atol floor.
+// Any wrong scale, code, or index misses by O(1) and still fails.
+void expect_close_tol(
+    const std::vector<float>& device,
+    const std::vector<float>& expected,
+    double atol,
+    double rtol) {
+  REQUIRE_EQ(device.size(), expected.size());
+  for (size_t index = 0; index < expected.size(); ++index) {
+    // This doctest's rule is |a - b| <= eps * (scale + max(|a|, |b|)),
+    // so scale(atol / rtol) makes the tolerance atol + rtol * max.
+    CHECK(device[index] ==
+        doctest::Approx(expected[index]).epsilon(rtol).scale(atol / rtol));
+  }
+}
+
 double host_at(const std::vector<float>& values, size_t index) {
   return static_cast<double>(values[index]);
 }
@@ -936,20 +954,31 @@ TEST_CASE("gather qmm gathers experts with scales and biases") {
           stream);
     }
     array out = *out_holder;
-    std::string eval_err = evaluation_error(out);
-    if (!eval_err.empty()) {
-      // Named gate: the gathered-quantized configs hit an in-binary
-      // value divergence (kernels verified against host references in
-      // isolation to 2.7e-5). Surface the underlying rejection and skip
-      // the value checks rather than fail the wave red.
-      std::printf(
-          "SKIP gather_qmm config (experts=%d xb=%d m=%d k=%d n=%d"
-          " gs=%d bits=%d lhs=%d): %s\n",
-          experts, x_batch, m, k, n, group_size, bits,
-          (int)with_lhs, eval_err.c_str());
-      std::fflush(stdout);
-      return;
+    REQUIRE(evaluation_error(out).empty());
+    REQUIRE_EQ(out.shape(-2), m);
+    REQUIRE_EQ(out.shape(-1), n);
+    // Reference: per position p, x[lhs[p]] contracted against the
+    // affine dequant of the packed codes of expert rhs[p], in double
+    // precision over the exact host words, scales, and biases the
+    // device buffers carry.
+    std::vector<float> expected(
+        static_cast<size_t>(lhs_v.size()) * m * n, 0.0f);
+    for (size_t p = 0; p < lhs_v.size(); ++p) {
+      std::vector<float> piece = host_quantized_matmul(
+          host_w[rhs_v[p]],
+          x_batches[lhs_v[p]],
+          m,
+          n,
+          k,
+          group_size,
+          bits);
+      std::copy(
+          piece.begin(),
+          piece.end(),
+          expected.begin() +
+              static_cast<ptrdiff_t>(p) * static_cast<ptrdiff_t>(m) * n);
     }
+    expect_close_tol(readback_f32(stream, out), expected, 1e-4, 1e-3);
   };
 
   run_case(3, 2, 5, 192, 37, 64, 4, true);
@@ -1120,10 +1149,27 @@ TEST_CASE("gather qqmm dequants with scales only") {
         false,
         stream);
     REQUIRE(evaluation_error(out).empty());
-    // Named gate: same gather-quantized divergence as GatherQMM.
-    std::printf(
-        "SKIP value checks: gather-quantized in-binary divergence"
-        " (kernels verified in isolation)\n");
+    REQUIRE_EQ(out.shape(-2), m);
+    REQUIRE_EQ(out.shape(-1), n);
+    // Reference: same contraction as GatherQMM but the GatherQQMM
+    // affine contract drops the bias, so dequant is q * scale only.
+    std::vector<float> expected(4 * static_cast<size_t>(m) * n, 0.0f);
+    for (size_t p = 0; p < lhs_v.size(); ++p) {
+      std::vector<float> piece = host_scale_only_quantized_matmul(
+          host_w[rhs_v[p]],
+          x_batches[lhs_v[p]],
+          m,
+          n,
+          k,
+          group_size,
+          bits);
+      std::copy(
+          piece.begin(),
+          piece.end(),
+          expected.begin() +
+              static_cast<ptrdiff_t>(p) * static_cast<ptrdiff_t>(m) * n);
+    }
+    expect_close_tol(readback_f32(stream, out), expected, 1e-4, 1e-3);
   };
 
   run_case(5, 192, 37, 64, 4);

@@ -158,6 +158,7 @@ CapabilityReport collect_capabilities(
     const VkPhysicalDeviceFeatures2& feats2,
     const VkPhysicalDeviceVulkan12Features& f12,
     const VkPhysicalDeviceVulkan13Features& f13,
+    const VkPhysicalDeviceShaderAtomicFloatFeaturesEXT& fa,
     const VkPhysicalDevice16BitStorageFeatures& f16,
     const VkPhysicalDeviceMaintenance3Properties& m3,
     const VkPhysicalDeviceMaintenance4Properties& m4) {
@@ -210,6 +211,10 @@ CapabilityReport collect_capabilities(
   caps.max_allocation_size = m3.maxMemoryAllocationSize;
   caps.max_buffer_size = m4.maxBufferSize;
   caps.max_storage_buffer_range = limits.maxStorageBufferRange;
+  caps.max_per_stage_descriptor_storage_buffers =
+      limits.maxPerStageDescriptorStorageBuffers;
+  caps.max_descriptor_set_storage_buffers =
+      limits.maxDescriptorSetStorageBuffers;
   caps.max_compute_work_group_invocations =
       limits.maxComputeWorkGroupInvocations;
   caps.max_compute_shared_memory_size = limits.maxComputeSharedMemorySize;
@@ -227,6 +232,30 @@ CapabilityReport collect_capabilities(
       caps.queue_family_index = f;
       caps.queue_count = families[f].queueCount;
       break;
+    }
+  }
+  // The extension must be present AND the buffer float32 atomic-add
+  // feature must be enabled; llvmpipe advertises the extension name and
+  // clears the feature bit only when the device truly supports it.
+  caps.shader_atomic_float_add = false;
+  {
+    uint32_t ext_count = 0;
+    if (it.EnumerateDeviceExtensionProperties &&
+        it.EnumerateDeviceExtensionProperties(pd, nullptr, &ext_count,
+                                              nullptr) == VK_SUCCESS &&
+        ext_count > 0) {
+      std::vector<VkExtensionProperties> exts(ext_count);
+      if (it.EnumerateDeviceExtensionProperties(
+              pd, nullptr, &ext_count, exts.data()) == VK_SUCCESS) {
+        for (const auto& e : exts) {
+          if (std::strcmp(e.extensionName, "VK_EXT_shader_atomic_float") ==
+              0) {
+            caps.shader_atomic_float_add =
+                fa.shaderBufferFloat32AtomicAdd == VK_TRUE;
+            break;
+          }
+        }
+      }
     }
   }
   return caps;
@@ -271,6 +300,10 @@ bool Runtime::init_impl() {
   it.GetPhysicalDeviceProperties2 =
       reinterpret_cast<PFN_vkGetPhysicalDeviceProperties2>(
           vk::GetInstanceProcAddr(instance, "vkGetPhysicalDeviceProperties2"));
+  it.EnumerateDeviceExtensionProperties =
+      reinterpret_cast<PFN_vkEnumerateDeviceExtensionProperties>(
+          vk::GetInstanceProcAddr(
+              instance, "vkEnumerateDeviceExtensionProperties"));
   it.GetPhysicalDeviceFeatures2 =
       reinterpret_cast<PFN_vkGetPhysicalDeviceFeatures2>(
           vk::GetInstanceProcAddr(instance, "vkGetPhysicalDeviceFeatures2"));
@@ -290,7 +323,7 @@ bool Runtime::init_impl() {
       !it.GetPhysicalDeviceFeatures2 ||
       !it.GetPhysicalDeviceMemoryProperties2 ||
       !it.GetPhysicalDeviceQueueFamilyProperties || !it.CreateDevice ||
-      !it.DestroyInstance) {
+      !it.DestroyInstance || !it.EnumerateDeviceExtensionProperties) {
     error = "[omarchy] Vulkan instance does not expose required 1.3 functions.";
     return false;
   }
@@ -337,10 +370,13 @@ bool Runtime::init_impl() {
         VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES};
     VkPhysicalDeviceVulkan13Features f13{
         VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES};
+    VkPhysicalDeviceShaderAtomicFloatFeaturesEXT fa{
+        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_ATOMIC_FLOAT_FEATURES_EXT};
     VkPhysicalDeviceFeatures2 feats2{
         VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2};
     f16.pNext = &f12;
     f12.pNext = &f13;
+    f13.pNext = &fa;
     feats2.pNext = &f16;
     it.GetPhysicalDeviceFeatures2(pd, &feats2);
 
@@ -363,7 +399,18 @@ bool Runtime::init_impl() {
     info.handle = pd;
     info.support = std::move(support);
     info.caps = collect_capabilities(
-        it, pd, info.support, props2, mem2, feats2, f12, f13, f16, m3, m4);
+        it,
+        pd,
+        info.support,
+        props2,
+        mem2,
+        feats2,
+        f12,
+        f13,
+        fa,
+        f16,
+        m3,
+        m4);
     if (info.caps.queue_count == 0) {
       if (first_refusal.empty()) {
         first_refusal = "[omarchy] device '" + info.caps.device_name +
@@ -507,6 +554,10 @@ Device::Device(uint32_t physical_device_index) {
   VkPhysicalDevice pd = info.handle;
   auto& it = vk::instance_table();
 
+  VkPhysicalDeviceShaderAtomicFloatFeaturesEXT enabled_fa{
+      VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_ATOMIC_FLOAT_FEATURES_EXT};
+  enabled_fa.shaderBufferFloat32AtomicAdd =
+      caps_.shader_atomic_float_add ? VK_TRUE : VK_FALSE;
   VkPhysicalDevice16BitStorageFeatures enabled16{
       VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_16BIT_STORAGE_FEATURES};
   enabled16.storageBuffer16BitAccess =
@@ -522,6 +573,7 @@ Device::Device(uint32_t physical_device_index) {
   enabled2.features.shaderInt16 = caps_.shader_int16 ? VK_TRUE : VK_FALSE;
   enabled16.pNext = &enabled12;
   enabled12.pNext = &enabled13;
+  enabled13.pNext = &enabled_fa;
   enabled2.pNext = &enabled16;
 
   // M1 receipt: Mesa Honeykrisp exposes one compute queue (family 0,
@@ -536,6 +588,15 @@ Device::Device(uint32_t physical_device_index) {
   dci.pNext = &enabled2;
   dci.queueCreateInfoCount = 1;
   dci.pQueueCreateInfos = &qci;
+  // The float-atomic extension is enabled only when the capability
+  // query saw the extension and the buffer-add feature bit; the
+  // scatter float Sum/Prod kernels are dispatched only behind that
+  // same flag.
+  const char* atomic_float_ext = "VK_EXT_shader_atomic_float";
+  if (caps_.shader_atomic_float_add) {
+    dci.enabledExtensionCount = 1;
+    dci.ppEnabledExtensionNames = &atomic_float_ext;
+  }
   VKX_CHECK(it.CreateDevice(pd, &dci, nullptr, &device_));
 
   auto& dt = vk::device_table();
@@ -614,7 +675,15 @@ Device::Device(uint32_t physical_device_index) {
 #undef VKX_LOAD_DEVICE_FN
 
   dt.GetDeviceQueue(device_, caps_.queue_family_index, 0, &queue_);
-  compute_ = std::make_unique<ComputeRuntime>(device_);
+  // The live binding budget: what the backend wants, clamped by what this
+  // physical device actually reports. The spec floor (4) always passes
+  // through; larger kernels check compute().binding_limit() at eval time.
+  uint32_t binding_limit = std::min(
+      kComputeBindingBudget,
+      std::min(
+          caps_.max_per_stage_descriptor_storage_buffers,
+          caps_.max_descriptor_set_storage_buffers));
+  compute_ = std::make_unique<ComputeRuntime>(device_, binding_limit);
   completions_ = std::make_unique<CompletionDispatcher>(device_);
 }
 

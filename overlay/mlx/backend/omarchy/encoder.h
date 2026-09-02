@@ -60,7 +60,9 @@ class MLX_API CommandEncoder {
       VkDeviceSize src_offset = 0,
       VkDeviceSize dst_offset = 0);
 
-  // Record one compute dispatch with up to four storage-buffer bindings.
+  // Record one compute dispatch. The binding count must not exceed the
+  // device's runtime budget (ComputeRuntime::binding_limit()); kernels
+  // needing more refuse by name at the primitive that builds them.
   void dispatch_compute(
       ComputeKernel kernel,
       std::span<const ComputeBinding> bindings,

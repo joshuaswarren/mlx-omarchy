@@ -76,6 +76,11 @@ struct CapabilityReport {
   bool shader_float16{false};
   bool shader_int16{false};
   bool storage_buffer_16bit_access{false};
+  // True when the device exposes VK_EXT_shader_atomic_float with the
+  // shaderBufferFloat32AtomicAdd feature (measured true on llvmpipe and
+  // on the M1 G13G B1 Honeykrisp target). Gates the float scatter
+  // Sum/Prod kernels, which need OpAtomicFAddEXT on storage buffers.
+  bool shader_atomic_float_add{false};
   size_t total_memory{0};
   VkDeviceSize max_allocation_size{0};
   VkDeviceSize max_buffer_size{0};

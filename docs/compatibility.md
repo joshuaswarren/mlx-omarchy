@@ -29,16 +29,35 @@ Vulkan, ANE, and install gates are not qualified on those systems.
 Compiled bfloat16 tapes are refused with the named
 `[omarchy] Compiled tape bfloat16` error.
 The M1 mlx-lm greedy run of `Qwen2.5-0.5B-Instruct-bf16` returned garbage
-tokens through the compiled `swiglu` fragment at commit `fbdd5ed` (2026-09-01).
-`MLX_DISABLE_COMPILE=1` returned the correct text on the same host and wheel.
+tokens through the compiled `swiglu` fragment at commit `fbdd5ed` (2026-09-01)
+and again at dev HEAD `5f8ba16` with the gate lifted (2026-09-02, receipt
+`receipts/2026-09-02-m1-bf16-compiled-tape.md`).
+The 2026-09-02 on-device bisect pinned the failing surface tighter:
+15 of 15 identical-seed mlx-lm runs returned garbage, no two outputs
+alike, at `nproc=1`; a differential trace matched all 24 layer outputs
+and 4.5M logits bit-for-bit at prefill; the token sequence diverges at
+decode step 2; and the fragment is clean in isolation - silu*mul 30/30,
+per-op probes 30/30, a single-layer MLP with real bf16 Linears 5/5,
+and tape-reuse matrices (same arrays, fresh arrays, interleaved eager
+work, interleaved compiled functions) 120/120 all match eager exactly.
+`MLX_DISABLE_COMPILE=1` returns the correct text.
 The 4-bit run through f16 tapes is correct.
-On llvmpipe the same fragment matches eager exactly, and the per-stage
-snapshot bisect shows matching inputs at the first diverging fragment.
-Two compiled runs returned different garbage, so the defect is a
-nondeterministic memory hazard, not a fixed arithmetic error.
-The interpreter root cause is not pinned yet.
-The gate keeps the silent wrong-result path closed until it is.
+The defect therefore requires the real model path: the cached tape
+invoked across layers and decode steps with the KV cache present.
+Reuse alone and every single-invocation fragment are clean, so the
+mechanism is not kernel arithmetic and not tape caching by itself.
+The remaining candidates are a state interaction unique to the full
+model path and a Honeykrisp-specific hazard that llvmpipe
+serialization hides; the no-cache decode fork is blocked by the
+separate eager broadcast-Sigmoid bf16 gate.
+The gate keeps the silent wrong-result path closed until the
+mechanism is pinned.
 Re-run bf16 workloads with `MLX_DISABLE_COMPILE=1`.
+Every 2026-09-02 observation was made at `nproc=1` after a bootloader
+mismatch left seven of eight cores offline; a single-core green run
+does not exercise the concurrency a memory hazard needs, so the gate
+lifts only on repeated green mlx-lm bf16 runs on fully populated
+hardware.
 
 Wave 11 audited the four suspect hazard classes in the interpreter
 (`compiled.cpp`, `encoder.cpp`, `allocator.cpp`) and found no defect:
@@ -57,10 +76,13 @@ Wave 11 audited the four suspect hazard classes in the interpreter
    which is after completion releases the temporaries.
 
 The machinery is dtype-blind, so a defect in it cannot explain why f16
-tapes are correct while bf16 tapes corrupt. The suspicion moves below the
-interpreter, to the bf16 kernel variants or the Honeykrisp driver's
-handling of them on M1 hardware, which the x86_64 llvmpipe dev box
-cannot exercise. The gate stays until M1 evidence lands.
+tapes are correct while bf16 tapes corrupt. The 2026-09-02 M1 bisect
+(`receipts/2026-09-02-m1-bf16-compiled-tape.md`) moved the suspicion
+to what only the full model path exercises: the KV-cache interaction
+and any Honeykrisp hazard that needs real concurrency, since isolated
+fragments, single-layer chains, and tape reuse all match eager on the
+device. The gate stays until the mechanism is pinned on fully
+populated hardware.
 
 Arrays and memory are runtime verified.
 The tests cover allocation, copies, views, aliases, and lifetime.
@@ -150,20 +172,22 @@ The `[1, V]` logits epilogue in mlx-lm reduces to `[1, 1]`, large logits
 stay finite, and an infinite row max stays the answer as on the upstream
 CPU.
 Non-contiguous inputs fail with the named layout error.
-`mx.conv2d` passes the gate for the 2D channels-last forward case with
-FP32, FP16, and BF16 inputs: one direct compute kernel runs one thread
-per output element with a float32 accumulator, index-guard zero
-padding, stride, dilation, and a broadcast bias add.
+`mx.conv2d` and `mx.conv1d` pass the gate for the channels-last forward
+case with FP32, FP16, and BF16 inputs: one direct compute kernel runs
+one thread per output element with a float32 accumulator, index-guard
+zero padding, stride, kernel dilation, input dilation, kernel flip
+for transposed convolutions, groups (including the depthwise case
+where groups equals the channel count), and asymmetric padding.
+The 1D path packs the spatial extent as a degenerate height of one,
+matching the upstream slow_conv_1D semantics.
 The gate covers identity, random 1x1, stride-2, dilated, asymmetric
-padding, bias, and FP16 host-reference checks at `1e-3`.
-The case is groups==1; grouped, transposed, input-dilated, and
-non-2D convolutions fail with named errors.
-This MLX version ships no separate quantized conv primitive, so a
-quantized conv composes the affine dequantize kernel with this path.
-This is a correctness slice, not a performance one: the direct kernel
-is far from the tiled im2col and Winograd paths upstream Metal ships,
-and the performance gate stays open.
-`mx.conv1d` and `mx.conv3d` fail with the named non-2D error.
+padding, bias, FP16 host-reference checks at `1e-3`, grouped (groups
+1, 2, and depthwise), transposed (with the upstream output_padding
+shape rules asserted), input-dilated, the grouped transposed
+combination, and the half-precision grouped cases against the
+general upstream slow_conv host reference.
+`mx.conv3d` and conv3d-with-transposed-or-grouped refuse with the
+named `3-D Convolution` error.
 `mx.log` passes the gate for FP32, FP16, and BF16 through the elementwise
 kernel.
 A strided slice view materializes through the general strided-copy engine at eval, so elementwise ops read it as a normal array.

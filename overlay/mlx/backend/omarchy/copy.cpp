@@ -159,6 +159,11 @@ omarchy::ComputeKernel fill_kernel(Dtype dtype) {
   if (dtype == bfloat16) {
     return omarchy::ComputeKernel::FillBF16;
   }
+  if (dtype == complex64) {
+    // Complex64Transport: vec2 element, the scalar's real part rides
+    // in alpha and the imaginary part in beta.
+    return omarchy::ComputeKernel::FillComplex64;
+  }
   return omarchy::ComputeKernel::FillF32;
 }
 
@@ -173,6 +178,12 @@ omarchy::ComputeKernel copy_general_kernel(Dtype dtype) {
     // Raw-word copies: the same 4-byte stride math as float32 with no
     // float conversion, so packed words stay bit-exact.
     return omarchy::ComputeKernel::CopyGeneralU32;
+  }
+  if (dtype == complex64) {
+    // Complex64Transport: a vec2 element copies bit-exact with no
+    // conversion, and the 8-byte stride math is the item math the
+    // params already carry.
+    return omarchy::ComputeKernel::CopyGeneralComplex64;
   }
   return omarchy::ComputeKernel::CopyGeneralF32;
 }
@@ -229,7 +240,7 @@ void copy_gpu_inplace(
       return;
     }
     if (in.dtype() != float32 && in.dtype() != float16 &&
-        in.dtype() != bfloat16) {
+        in.dtype() != bfloat16 && in.dtype() != complex64) {
       omarchy::unsupported("non-zero scalar fill", out);
     }
     require_float_storage("non-zero scalar fill", in.dtype(), out, encoder);
@@ -240,6 +251,17 @@ void copy_gpu_inplace(
     params.output_offset =
         compute_item_offset(out, o_offset, "scalar fill", out);
     params.alpha = scalar_fill_value(in, i_offset);
+    if (in.dtype() == complex64) {
+      // Complex64Transport: the fill kernel writes vec2(alpha, beta),
+      // so the scalar's imaginary part rides in beta. The eight scalar
+      // bytes are two float32 words in (real, imag) order.
+      float parts[2] = {0.0f, 0.0f};
+      std::memcpy(
+          parts,
+          in.data<char>() + i_offset * in.itemsize(),
+          sizeof(parts));
+      params.beta = parts[1];
+    }
     std::array<omarchy::ComputeBinding, 1> bindings{compute_binding(out)};
     encoder.dispatch_compute(
         fill_kernel(in.dtype()),
@@ -253,7 +275,7 @@ void copy_gpu_inplace(
     if (in.dtype() != out.dtype() ||
         (in.dtype() != float32 && in.dtype() != float16 &&
          in.dtype() != bfloat16 && in.dtype() != int32 &&
-         in.dtype() != uint32)) {
+         in.dtype() != uint32 && in.dtype() != complex64)) {
       omarchy::unsupported("strided copy", out);
     }
     require_float_storage("strided copy", in.dtype(), out, encoder);
@@ -339,6 +361,20 @@ void copy_gpu_inplace(
       kernel = omarchy::ComputeKernel::CastBF16I32;
     } else if (in.dtype() == uint32 && out.dtype() == float32) {
       kernel = omarchy::ComputeKernel::CastU32F32;
+    } else if (in.dtype() == float32 && out.dtype() == complex64) {
+      kernel = omarchy::ComputeKernel::CastF32Complex64;
+    } else if (in.dtype() == int32 && out.dtype() == complex64) {
+      kernel = omarchy::ComputeKernel::CastI32Complex64;
+    } else if (in.dtype() == uint32 && out.dtype() == complex64) {
+      kernel = omarchy::ComputeKernel::CastU32Complex64;
+    } else if (in.dtype() == bool_ && out.dtype() == complex64) {
+      kernel = omarchy::ComputeKernel::CastBoolComplex64;
+    } else if (in.dtype() == float16 && out.dtype() == complex64) {
+      kernel = omarchy::ComputeKernel::CastF16Complex64;
+    } else if (in.dtype() == bfloat16 && out.dtype() == complex64) {
+      kernel = omarchy::ComputeKernel::CastBF16Complex64;
+    } else if (in.dtype() == complex64 && out.dtype() == float32) {
+      kernel = omarchy::ComputeKernel::CastComplex64F32;
     } else {
       omarchy::unsupported("dtype converting copy", out);
     }
@@ -377,7 +413,8 @@ void copy_gpu_inplace(
     // for the same reason as select.comp and compare.comp; every other
     // cast kernel stays per element.
     uint32_t dispatch_count =
-        kernel == omarchy::ComputeKernel::CastBoolF32
+        kernel == omarchy::ComputeKernel::CastBoolF32 ||
+            kernel == omarchy::ComputeKernel::CastBoolComplex64
         ? checked_u32(
               (static_cast<uint64_t>(count) + 3) / 4,
               "dtype converting copy",
@@ -401,18 +438,25 @@ void copy_gpu_inplace(
 
 void copy_gpu(const array& input, array& out, CopyType ctype, const Stream& s) {
   // Vector and dtype-converting copies read the source flat, in storage
-  // order. That is only the logical order for row-contiguous inputs: a
-  // transposed view of a contiguous array inherits contiguous=true under
-  // the span-based definition, and a flat copy of it would silently
-  // return storage order (astype of a transpose returned the source
-  // order, not the logical order). Materialize such inputs through a
-  // same-dtype strided copy first; the flat op then reads a dense buffer
-  // whose storage order is the logical order.
+  // order. That is only the logical order when the flags honestly
+  // describe a dense layout. Two contiguous-flagged views violate it:
+  // a transposed view of a contiguous array (data_size == size but
+  // storage order differs from logical order, so astype returned the
+  // source order), and a stride-0 broadcast view (data_size smaller
+  // than size, so full_like with an array fill and a dtype cast read
+  // past the one-element buffer and zero-filled everything after the
+  // first element). Both report contiguous=true under the span-based
+  // definition and row_contiguous=false, so row_contiguous alone
+  // decides; the data_size relation differs between the two and must
+  // not be part of the test. Materialize through a same-dtype strided
+  // copy first; the flat op then reads a dense buffer whose storage
+  // order is the logical order and whose allocation covers the whole
+  // shape.
   std::optional<array> dense;
   const array* in = &input;
   bool flat_only =
       (ctype == CopyType::Vector || input.dtype() != out.dtype()) &&
-      input.data_size() > 1 && !input.flags().row_contiguous;
+      !input.flags().row_contiguous;
   if (flat_only) {
     dense = array(input.shape(), input.dtype(), nullptr, {});
     dense->set_data(omarchy::allocator().malloc(dense->nbytes()));
@@ -473,7 +517,7 @@ void reshape_gpu(const array& in, array& out, Stream s) {
   if (
       in.dtype() != float32 && in.dtype() != float16 &&
       in.dtype() != bfloat16 && in.dtype() != int32 &&
-      in.dtype() != uint32) {
+      in.dtype() != uint32 && in.dtype() != complex64) {
     omarchy::unsupported("strided reshape", out);
   }
   if (out.nbytes() > 0) {

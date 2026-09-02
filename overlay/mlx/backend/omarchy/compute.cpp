@@ -55,6 +55,8 @@
 #include "select_bf16.h"
 #include "select_f16.h"
 #include "select_f32.h"
+#include "select_i32.h"
+#include "select_bool.h"
 #include "reduce_bf16.h"
 #include "reduce_f16.h"
 #include "reduce_f32.h"
@@ -117,6 +119,19 @@
 #include "scatter_axis_u32.h"
 #include "scatter_bf16.h"
 #include "scatter_f16.h"
+#include "scatter_multi_bf16.h"
+#include "scatter_multi_f16.h"
+#include "scatter_bool.h"
+#include "scatter_bool_multi.h"
+#include "scatter_fadd_bf16.h"
+#include "scatter_fadd_f16.h"
+#include "scatter_fadd_f32.h"
+#include "scatter_fadd_multi_f32.h"
+#include "scatter_axis_bool.h"
+#include "scatter_axis_fadd_bf16.h"
+#include "scatter_axis_fadd_f16.h"
+#include "scatter_axis_fadd_f32.h"
+#include "scatter_multi_u32.h"
 #include "scatter_u32.h"
 #include "conv_f16.h"
 #include "conv_f32.h"
@@ -135,6 +150,7 @@
 #include "gather_qmm_nb_bf16.h"
 #include "fft_f32.h"
 #include "fft_real_f32.h"
+#include "fft_stage_f32.h"
 #include "fast_rms_norm_f32.h"
 #include "fast_rms_norm_f16.h"
 #include "fast_rms_norm_bf16.h"
@@ -153,6 +169,9 @@
 #include "fast_layer_norm_vjp_dw_f32.h"
 #include "fast_layer_norm_vjp_dw_f16.h"
 #include "fast_layer_norm_vjp_dw_bf16.h"
+#include "fast_rms_norm_vjp_dw_reduce_f32.h"
+#include "fast_rms_norm_vjp_dw_reduce_f16.h"
+#include "fast_rms_norm_vjp_dw_reduce_bf16.h"
 #include "fast_cross_entropy_vjp_f32.h"
 #include "fast_cross_entropy_vjp_f16.h"
 #include "fast_cross_entropy_vjp_bf16.h"
@@ -172,6 +191,21 @@
 #include "linalg_eigh_f32.h"
 #include "linalg_svd_f32.h"
 #include "linalg_svd_finalize_f32.h"
+#include "argpartition_wide_f32.h"
+#include "argpartition_wide_f16.h"
+#include "argpartition_wide_bf16.h"
+#include "complex_elementwise.h"
+#include "complex_real.h"
+#include "complex_imag.h"
+#include "cast_f32_c64.h"
+#include "cast_i32_c64.h"
+#include "cast_u32_c64.h"
+#include "cast_bool_c64.h"
+#include "cast_f16_c64.h"
+#include "cast_bf16_c64.h"
+#include "cast_c64_f32.h"
+#include "fill_c64.h"
+#include "copy_general_c64.h"
 
 namespace mlx::core::omarchy {
 
@@ -266,6 +300,10 @@ ShaderBytes shader_bytes(ComputeKernel kernel) {
       return {select_f16, select_f16_size};
     case ComputeKernel::SelectBF16:
       return {select_bf16, select_bf16_size};
+    case ComputeKernel::SelectI32:
+      return {select_i32, select_i32_size};
+    case ComputeKernel::SelectBool:
+      return {select_bool, select_bool_size};
     case ComputeKernel::CompareF32:
       return {compare_f32, compare_f32_size};
     case ComputeKernel::CompareF16:
@@ -372,6 +410,12 @@ ShaderBytes shader_bytes(ComputeKernel kernel) {
       return {scatter_f16, scatter_f16_size};
     case ComputeKernel::ScatterBF16:
       return {scatter_bf16, scatter_bf16_size};
+    case ComputeKernel::ScatterMultiU32:
+      return {scatter_multi_u32, scatter_multi_u32_size};
+    case ComputeKernel::ScatterMultiF16:
+      return {scatter_multi_f16, scatter_multi_f16_size};
+    case ComputeKernel::ScatterMultiBF16:
+      return {scatter_multi_bf16, scatter_multi_bf16_size};
     case ComputeKernel::ScatterAxisU32:
       return {scatter_axis_u32, scatter_axis_u32_size};
     case ComputeKernel::ScatterAxisF16:
@@ -434,6 +478,8 @@ ShaderBytes shader_bytes(ComputeKernel kernel) {
       return {fft_f32, fft_f32_size};
     case ComputeKernel::FftRealF32:
       return {fft_real_f32, fft_real_f32_size};
+    case ComputeKernel::FftStageF32:
+      return {fft_stage_f32, fft_stage_f32_size};
     case ComputeKernel::GatherQmmNbBF16:
       return {gather_qmm_nb_bf16, gather_qmm_nb_bf16_size};
     case ComputeKernel::FastRmsNormF32:
@@ -472,6 +518,18 @@ ShaderBytes shader_bytes(ComputeKernel kernel) {
       return {fast_layer_norm_vjp_dw_f16, fast_layer_norm_vjp_dw_f16_size};
     case ComputeKernel::FastLayerNormVjpDwBF16:
       return {fast_layer_norm_vjp_dw_bf16, fast_layer_norm_vjp_dw_bf16_size};
+    case ComputeKernel::FastRmsNormVjpDwReduceF32:
+      return {
+          fast_rms_norm_vjp_dw_reduce_f32,
+          fast_rms_norm_vjp_dw_reduce_f32_size};
+    case ComputeKernel::FastRmsNormVjpDwReduceF16:
+      return {
+          fast_rms_norm_vjp_dw_reduce_f16,
+          fast_rms_norm_vjp_dw_reduce_f16_size};
+    case ComputeKernel::FastRmsNormVjpDwReduceBF16:
+      return {
+          fast_rms_norm_vjp_dw_reduce_bf16,
+          fast_rms_norm_vjp_dw_reduce_bf16_size};
     case ComputeKernel::CrossEntropyVjpF32:
       return {fast_cross_entropy_vjp_f32, fast_cross_entropy_vjp_f32_size};
     case ComputeKernel::CrossEntropyVjpF16:
@@ -511,6 +569,58 @@ ShaderBytes shader_bytes(ComputeKernel kernel) {
       return {linalg_svd_f32, linalg_svd_f32_size};
     case ComputeKernel::LinalgSvdFinalizeF32:
       return {linalg_svd_finalize_f32, linalg_svd_finalize_f32_size};
+    case ComputeKernel::ArgPartitionWideF32:
+      return {argpartition_wide_f32, argpartition_wide_f32_size};
+    case ComputeKernel::ArgPartitionWideF16:
+      return {argpartition_wide_f16, argpartition_wide_f16_size};
+    case ComputeKernel::ArgPartitionWideBF16:
+      return {argpartition_wide_bf16, argpartition_wide_bf16_size};
+    // Complex64Transport: complex64 transport and elementwise. See
+    // the enum comment in compute.h for the vec2 element layout.
+    case ComputeKernel::ComplexElementwise:
+      return {complex_elementwise, complex_elementwise_size};
+    case ComputeKernel::ComplexReal:
+      return {complex_real, complex_real_size};
+    case ComputeKernel::ComplexImag:
+      return {complex_imag, complex_imag_size};
+    case ComputeKernel::CastF32Complex64:
+      return {cast_f32_c64, cast_f32_c64_size};
+    case ComputeKernel::CastI32Complex64:
+      return {cast_i32_c64, cast_i32_c64_size};
+    case ComputeKernel::CastU32Complex64:
+      return {cast_u32_c64, cast_u32_c64_size};
+    case ComputeKernel::CastBoolComplex64:
+      return {cast_bool_c64, cast_bool_c64_size};
+    case ComputeKernel::CastF16Complex64:
+      return {cast_f16_c64, cast_f16_c64_size};
+    case ComputeKernel::CastBF16Complex64:
+      return {cast_bf16_c64, cast_bf16_c64_size};
+    case ComputeKernel::CastComplex64F32:
+      return {cast_c64_f32, cast_c64_f32_size};
+    case ComputeKernel::FillComplex64:
+      return {fill_c64, fill_c64_size};
+    case ComputeKernel::CopyGeneralComplex64:
+      return {copy_general_c64, copy_general_c64_size};
+    case ComputeKernel::ScatterFAddF32:
+      return {scatter_fadd_f32, scatter_fadd_f32_size};
+    case ComputeKernel::ScatterFAddF16:
+      return {scatter_fadd_f16, scatter_fadd_f16_size};
+    case ComputeKernel::ScatterFAddBF16:
+      return {scatter_fadd_bf16, scatter_fadd_bf16_size};
+    case ComputeKernel::ScatterFAddMultiF32:
+      return {scatter_fadd_multi_f32, scatter_fadd_multi_f32_size};
+    case ComputeKernel::ScatterBool:
+      return {scatter_bool, scatter_bool_size};
+    case ComputeKernel::ScatterBoolMulti:
+      return {scatter_bool_multi, scatter_bool_multi_size};
+    case ComputeKernel::ScatterAxisFAddF32:
+      return {scatter_axis_fadd_f32, scatter_axis_fadd_f32_size};
+    case ComputeKernel::ScatterAxisFAddF16:
+      return {scatter_axis_fadd_f16, scatter_axis_fadd_f16_size};
+    case ComputeKernel::ScatterAxisFAddBF16:
+      return {scatter_axis_fadd_bf16, scatter_axis_fadd_bf16_size};
+    case ComputeKernel::ScatterAxisBool:
+      return {scatter_axis_bool, scatter_axis_bool_size};
     case ComputeKernel::Count:
       break;
   }
@@ -519,10 +629,14 @@ ShaderBytes shader_bytes(ComputeKernel kernel) {
 
 } // namespace
 
-ComputeRuntime::ComputeRuntime(VkDevice device) : device_(device) {
+ComputeRuntime::ComputeRuntime(VkDevice device, uint32_t binding_limit)
+    : device_(device), binding_limit_(binding_limit) {
   auto& dt = vk::device_table();
-  std::array<VkDescriptorSetLayoutBinding, kComputeBindingCount> bindings{};
-  for (uint32_t index = 0; index < bindings.size(); ++index) {
+  if (binding_limit_ == 0 || binding_limit_ > kComputeBindingBudget) {
+    throw std::invalid_argument("[omarchy] invalid compute binding budget.");
+  }
+  std::array<VkDescriptorSetLayoutBinding, kComputeBindingBudget> bindings{};
+  for (uint32_t index = 0; index < binding_limit_; ++index) {
     bindings[index].binding = index;
     bindings[index].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
     bindings[index].descriptorCount = 1;
@@ -531,7 +645,7 @@ ComputeRuntime::ComputeRuntime(VkDevice device) : device_(device) {
 
   VkDescriptorSetLayoutCreateInfo descriptor_info{
       VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO};
-  descriptor_info.bindingCount = static_cast<uint32_t>(bindings.size());
+  descriptor_info.bindingCount = binding_limit_;
   descriptor_info.pBindings = bindings.data();
   VKX_CHECK(dt.CreateDescriptorSetLayout(
       device_, &descriptor_info, nullptr, &descriptor_layout_));

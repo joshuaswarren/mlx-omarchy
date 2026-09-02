@@ -122,6 +122,17 @@ void main() {
           : params.operation == 3u ? a < b
           : params.operation == 4u ? a <= b
           : a != b;
+      // NaNEqual carries the equal_nan flag (params.flags bit 0): when
+      // both operands are NaN, the equal result is true the way the
+      // upstream mx.array_equal(..., equal_nan=True) and
+      // mx.allclose(..., equal_nan=True) contracts require. The flag
+      // only ever rides on the float paths; upstream ops.cpp masks
+      // equal_nan off when dtype is not inexact, and the int32/bool
+      // compare kernels never set bit 0.
+      if ((params.operation == 0u) && ((params.flags & 1u) != 0u)
+          && isnan(a) && isnan(b)) {
+        result = true;
+      }
       uint bit = result ? 1u : 0u;
       word |= bit << ((index & 3u) * 8u);
     }

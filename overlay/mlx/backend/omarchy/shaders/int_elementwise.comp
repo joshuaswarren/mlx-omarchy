@@ -85,16 +85,19 @@ uint rhs_index_for(uint index) {
 // upstream C++ behavior. The signed fixups compile for uint32 too and
 // are constant-false there, matching upstream's unsigned no-ops.
 
-// Python-style floor division: the C++ quotient adjusted so the
+// Python-style floor division. The C++ quotient adjusted so the
 // remainder takes the divisor's sign (upstream DivMod integral_op).
-STORAGE_TYPE floor_quotient(STORAGE_TYPE a, STORAGE_TYPE b) {
-  STORAGE_TYPE q = a / b;
-  STORAGE_TYPE r = a % b;
-  if (r != STORAGE_TYPE(0) && (r < STORAGE_TYPE(0)) != (b < STORAGE_TYPE(0))) {
-    q -= STORAGE_TYPE(1);
-  }
-  return q;
-}
+// Uses only SDiv (truncating, sign-of-dividend) plus signs of a and b:
+// r = a - q*b is exact in modular arithmetic and carries the same
+// sign information as a % b regardless of how the driver maps SRem.
+ STORAGE_TYPE floor_quotient(STORAGE_TYPE a, STORAGE_TYPE b) {
+   STORAGE_TYPE q = a / b;
+  STORAGE_TYPE r = a - q * b;
+  if (r != STORAGE_TYPE(0) && (a < STORAGE_TYPE(0)) != (b < STORAGE_TYPE(0))) {
+     q -= STORAGE_TYPE(1);
+   }
+   return q;
+ }
 
 // Python-style modulo: truncating remainder adjusted by one divisor
 // when the signs of remainder and divisor differ. Unsigned stays the

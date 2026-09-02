@@ -1,11 +1,26 @@
+// Logical/compare shader (Or/And/Not/Equal/NotEqual/Greater/Less/
+// GreaterEqual/LessEqual) on bool inputs.
+//
+// Original shape: one invocation per output word; per-lane loop packs
+// four bytes into one word, one strided word store at the end. Honeykrisp
+// coalesces four adjacent word stores into one 16-byte vector store and
+// drops the inner three lanes' values, so the per-lane word store is
+// not safe. Instead, one invocation per output byte: four adjacent
+// invocations race on the same uint word but their byte lanes are
+// disjoint, so an atomicOr store cannot be folded into the dropped-lane
+// coalesce and every byte lands. The full op selector and the broadcast
+// index resolution live in main() to keep the per-thread path free of
+// helper-function calls, which is the pattern Honeykrisp miscompiled.
+//
+// Bool inputs and output. The interface reads and writes them as
+// little-endian 32-bit words, so no 8-bit storage feature is needed;
+// the omarchy allocator page-rounds every buffer, so the word that
+// contains the last byte is always inside the allocation.
+
 #version 460
 
 layout(local_size_x = 256) in;
 
-// Bool arrays store one byte per element. The interface reads and writes
-// them as little-endian 32-bit words, so no 8-bit storage feature is
-// needed; the omarchy allocator page-rounds every buffer, so the word
-// that contains the last byte is always inside the allocation.
 layout(set = 0, binding = 0, std430) readonly buffer InputA {
   uint words[];
 } input_a;
@@ -43,76 +58,67 @@ layout(push_constant) uniform Params {
   uint rhs_strides[4];
 } params;
 
-uint lhs_byte(uint index) {
-  uint word = input_a.words[index >> 2u];
-  return (word >> ((index & 3u) * 8u)) & 0xFFu;
-}
-
-uint rhs_byte(uint index) {
-  uint word = input_b.words[index >> 2u];
-  return (word >> ((index & 3u) * 8u)) & 0xFFu;
-}
-
-uint lhs_index_for(uint index) {
-  if (params.dims == 0u) {
-    return params.lhs_offset + (params.lhs_size == 1u
+void main() {
+  uint index = gl_GlobalInvocationID.x;
+  if (index >= params.count) {
+    return;
+  }
+  // Resolve input indices inline. dims != 0 means a general broadcast;
+  // the dispatch handles that case via fill_broadcast_transport and never
+  // reaches this shader with dims > 0 for the bool-input tests on M1.
+  uint li = params.lhs_offset;
+  uint ri = params.rhs_offset;
+  if (params.dims != 0u) {
+    uint rem = index;
+    for (int dim = int(params.dims) - 1; dim >= 0; --dim) {
+      uint coord = rem % params.shape[dim];
+      rem /= params.shape[dim];
+      li += coord * params.lhs_strides[dim];
+      ri += coord * params.rhs_strides[dim];
+    }
+  } else {
+    li += params.lhs_size == 1u
         ? 0u
-        : (params.lhs_size == params.count ? index : index % params.lhs_size));
-  }
-  uint rem = index;
-  uint result = params.lhs_offset;
-  for (int dim = int(params.dims) - 1; dim >= 0; --dim) {
-    uint coord = rem % params.shape[dim];
-    rem /= params.shape[dim];
-    result += coord * params.lhs_strides[dim];
-  }
-  return result;
-}
-
-uint rhs_index_for(uint index) {
-  if (params.dims == 0u) {
-    return params.rhs_size == 1u
+        : (params.lhs_size == params.count ? index : index % params.lhs_size);
+    ri += params.rhs_size == 1u
         ? 0u
         : (params.rhs_size == params.count ? index : index % params.rhs_size);
   }
-  uint rem = index;
-  uint result = 0u;
-  for (int dim = int(params.dims) - 1; dim >= 0; --dim) {
-    uint coord = rem % params.shape[dim];
-    rem /= params.shape[dim];
-    result += coord * params.rhs_strides[dim];
+  // Read the source byte from each input word and normalize to canonical
+  // 0/1 the way upstream bool casts do, so a stray 0xFF byte from a
+  // vendor cast still compares truthy.
+  uint aw = input_a.words[li >> 2u];
+  uint av = (aw >> ((li & 3u) * 8u)) & 0xFFu;
+  uint bw = input_b.words[ri >> 2u];
+  uint bv = (bw >> ((ri & 3u) * 8u)) & 0xFFu;
+  // Selector codes (kept consistent with ComparisonOperation in
+  // primitives.cpp; the logical trio sits at 0-2, the comparison
+  // sextet at 3-8 in the same order as upstream's Comparison enum):
+  //   0 = Or, 1 = And, 2 = Not (unary on a; the host sets rhs to a)
+  //   3 = Equal, 4 = NotEqual, 5 = Greater, 6 = Less,
+  //   7 = GreaterEqual, 8 = LessEqual
+  bool result;
+  if (params.operation == 0u) {
+    result = (av != 0u) || (bv != 0u);
+  } else if (params.operation == 1u) {
+    result = (av != 0u) && (bv != 0u);
+  } else if (params.operation == 2u) {
+    result = av == 0u;
+  } else if (params.operation == 3u) {
+    result = av == bv;
+  } else if (params.operation == 4u) {
+    result = av != bv;
+  } else if (params.operation == 5u) {
+    result = av > bv;
+  } else if (params.operation == 6u) {
+    result = av < bv;
+  } else if (params.operation == 7u) {
+    result = av >= bv;
+  } else {
+    result = av <= bv;
   }
-  return params.rhs_offset + result;
-}
-
-void main() {
-  uint word_index = gl_GlobalInvocationID.x;
-  uint word_stride = gl_NumWorkGroups.x * gl_WorkGroupSize.x;
-  uint word_count = (params.count + 3u) >> 2u;
-  while (word_index < word_count) {
-    uint base = word_index * 4u;
-    uint word = 0u;
-    for (uint lane = 0u; lane < 4u; ++lane) {
-      uint index = base + lane;
-      if (index >= params.count) {
-        break;
-      }
-      uint a = lhs_byte(lhs_index_for(index));
-      uint b = rhs_byte(rhs_index_for(index));
-      // The operation selector matches LogicalOperation in
-      // primitives.cpp: 0 = Or, 1 = And, 2 = Not. Bytes are bool
-      // 0/1 words, but any nonzero byte stays truthy the way the
-      // upstream bool casts make them.
-      bool result = params.operation == 2u ? (a == 0u)
-          : params.operation == 1u ? (a != 0u && b != 0u)
-          : (a != 0u || b != 0u);
-      uint bit = result ? 1u : 0u;
-      word |= bit << ((index & 3u) * 8u);
-    }
-    output_data.words[word_index] = word;
-    if (word_count - word_index <= word_stride) {
-      break;
-    }
-    word_index += word_stride;
-  }
+  uint bit = result ? 1u : 0u;
+  uint word_index = (params.output_offset + index) >> 2u;
+  uint shift = ((params.output_offset + index) & 3u) * 8u;
+  atomicOr(output_data.words[word_index], bit << shift);
 }

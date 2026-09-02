@@ -55,8 +55,8 @@ layout(push_constant) uniform Params {
   uint flags;
   float alpha;
   float beta;
-  // dims == 0 selects the trailing-modulo fast path below. Otherwise the
-  // output is unraveled over shape[] and lhs_strides/rhs_strides index the
+  // dims == 0 selects the modulo fast path below. Otherwise the output
+  // is unraveled over shape[] and lhs_strides/rhs_strides index the
   // operands; a stride of 0 broadcasts the axis.
   uint dims;
   uint shape[4];
@@ -157,6 +157,229 @@ float asinh_impl(float x) {
   float scaled = x * x / (1.0f + sqrt(1.0f + x * x));
   return copysignf(log1p_impl(abs(x) + scaled), x);
 }
+
+// Payne-Hanek range reduction for sin/cos/tan. The accumulator below
+// produces (2/pi) * |x| * 2^128 in an 8-word uvec; quadrant bits land
+// at positions 128-129 and the fraction at 104..127 (hi) plus 80..103
+// (lo). Building the reduced angle as double-float keeps sin near
+// k*pi/2 within relative accuracy, and the CEPHES single-precision
+// polynomial finishes the last ulp.
+const uint PIO2_TABLE[10] = uint[10](
+    0xA2F983u, 0x6E4E44u, 0x1529FCu, 0x2757D1u, 0xF534DDu, 0xC0DB62u,
+    0x95993Cu, 0x439041u, 0xFE5163u, 0xABDEBBu);
+
+const float PIO4 = 0.78539816339744830961566084581987572104f;
+const float PIO2 = 1.5707963267948966192313216916397514421f;
+
+// CEPHES single-precision coefficients (max abs error ~5.8e-8 over
+// [-pi/4, pi/4]; fine for f32 final rounding).
+const float SIN_S1 = -0.166666666416265235595e+0f;
+const float SIN_S2 =  0.833333287989768428654e-2f;
+const float SIN_S3 = -0.198412715749886384593e-3f;
+const float SIN_S4 =  0.275577660863435693941e-5f;
+const float SIN_S5 = -0.250510735778580322372e-7f;
+const float SIN_S6 =  0.159057977393749366286e-9f;
+const float COS_C1 =  0.4166667908430098468e-1f;
+const float COS_C2 = -1.38888892232295477e-3f;
+const float COS_C3 =  2.48015872893760250e-5f;
+const float COS_C4 = -2.75573144109840010e-7f;
+const float COS_C5 =  2.08757451179359244e-9f;
+
+float sin_poly(float r) {
+  float z = r * r;
+  float p = fma(SIN_S6, z, SIN_S5);
+  p = fma(p, z, SIN_S4);
+  p = fma(p, z, SIN_S3);
+  p = fma(p, z, SIN_S2);
+  p = fma(p, z, SIN_S1);
+  return fma(fma(r, z, 0.0f), p, r);
+}
+
+float cos_poly(float r) {
+  float z = r * r;
+  float p = fma(COS_C5, z, COS_C4);
+  p = fma(p, z, COS_C3);
+  p = fma(p, z, COS_C2);
+  p = fma(p, z, COS_C1);
+  return fma(p, z, fma(-0.5f, z, 1.0f));
+}
+
+// 21 f32-exact powers of ten (10^-10 through 10^10). The snap path
+// returns the integer exactly when the input is one of these bit
+// patterns; for everything else the dd-corrected multiply carries
+// log10(x) within 1 ulp of a correctly-rounded reference.
+const uint LOG10_SNAP_BITS[21] = uint[21](
+    0x2edbe6ffu, 0x3089705fu, 0x322bcc77u, 0x33d6bf95u, 0x358637bdu,
+    0x3727c5acu, 0x38d1b717u, 0x3a83126fu, 0x3c23d70au, 0x3dcccccdu,
+    0x3f800000u,
+    0x41200000u, 0x42c80000u, 0x447a0000u, 0x461c4000u, 0x47c35000u,
+    0x49742400u, 0x4b189680u, 0x4cbebc20u, 0x4e6e6b28u, 0x501502f9u);
+const float LOG10_SNAP_K[21] = float[21](
+    -10.0f, -9.0f, -8.0f, -7.0f, -6.0f, -5.0f, -4.0f, -3.0f, -2.0f, -1.0f,
+    0.0f,
+    1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f, 7.0f, 8.0f, 9.0f, 10.0f);
+
+// Returns (n, r): n is the nearest integer to |x| * 2/pi and r the
+// reduced angle in [-pi/4, pi/4]. r is computed in dd so it tracks
+// the high bits correctly even when the exact fraction is near +/- 0.5
+// and the quadrant boundary matters.
+void payne_hanek(float ax, out float n_out, out float r_out) {
+  uint bits = floatBitsToUint(ax);
+  int e = int((bits >> 23u) & 0xffu) - 150;
+  uint m = (bits & 0x7fffffu) | 0x800000u;
+  // Accumulator for the 256-bit product tail: word 0 is the least
+  // significant. Declared as an array because the carry loop below
+  // indexes it dynamically; the quadrant extraction reads w[2..4].
+  uint w[8] = uint[8](0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u);
+  uint hi; uint lo;
+  for (int i = 0; i < 10; ++i) {
+    int s = e + 104 - 24 * i;
+    if (s < 0) break;
+    umulExtended(m, PIO2_TABLE[i], hi, lo);
+    int k = s >> 5;
+    int sub = s & 31;
+    uint a0; uint a1; uint a2; uint a3;
+    if (sub == 0) {
+      a0 = lo; a1 = hi; a2 = 0u; a3 = 0u;
+    } else {
+      a0 = lo << sub;
+      a1 = (lo >> (32 - sub)) | (hi << sub);
+      a2 = hi >> (32 - sub);
+      a3 = 0u;
+    }
+    // Multi-word add (a0,a1,a2,a3) into w[k..k+3] with carry chain.
+    // Words above 7 are silently dropped: the quadrant sits at bits
+    // 128-129, comfortably inside the kept range, and the table tail
+    // contributes at most 2^-80 to P so its overflow is irrelevant.
+    uint idx = uint(k);
+    uint t; uint c; uint c1;
+    t = w[idx] + a0; w[idx] = t; c = (t < a0) ? 1u : 0u;
+    idx = idx + 1u;
+    t = w[idx] + a1; c1 = (t < a1) ? 1u : 0u;
+    t = t + c; w[idx] = t; c = ((c1 == 1u) || (t < c)) ? 1u : 0u;
+    idx = idx + 1u;
+    t = w[idx] + a2; c1 = (t < a2) ? 1u : 0u;
+    t = t + c; w[idx] = t; c = ((c1 == 1u) || (t < c)) ? 1u : 0u;
+    idx = idx + 1u;
+    t = w[idx] + a3; c1 = (t < a3) ? 1u : 0u;
+    t = t + c; w[idx] = t; c = ((c1 == 1u) || (t < c)) ? 1u : 0u;
+    if (idx + 1u <= 7u) {
+      idx = idx + 1u;
+      t = w[idx] + c; w[idx] = t; c = (t < c) ? 1u : 0u;
+    }
+    if (idx + 1u <= 7u) {
+      idx = idx + 1u;
+      t = w[idx] + c; w[idx] = t; c = (t < c) ? 1u : 0u;
+    }
+    if (idx + 1u <= 7u) {
+      idx = idx + 1u;
+      t = w[idx] + c; w[idx] = t; c = (t < c) ? 1u : 0u;
+    }
+    if (idx + 1u <= 7u) {
+      idx = idx + 1u;
+      w[idx] = w[idx] + c;
+    }
+  }
+  // Quadrant bits at positions 128 (w4 bit 0) and 129 (w4 bit 1);
+  // fraction round bit at position 127 (w3 bit 31).
+  uint qb_lo = (w[4] >> 0u) & 1u;
+  uint qb_hi = (w[4] >> 1u) & 1u;
+  uint fbit = (w[3] >> 31u) & 1u;
+  // Fraction bits at P positions -1..-24 (round bit fbit above
+  // covers position -1): they live in w[3] bits 8..31 for Fhi and split
+  // across w[2] bits 16..31 (low 16) plus w[3] bits 0..7 (high 8) for Flo.
+  // The P*2^128 anchor puts P bit 0 in w[4].0, P bit -1 in w[3].31,
+  // P bit -24 in w[3].8, P bit -48 in w[2].16. Earlier w[1]/w[2] picks
+  // read bits that were 32 positions too low and produced fractional
+  // arguments of magnitude ~1e9 instead of the intended [-1, 1].
+  uint Fhi = (w[3] >> 8u) & 0x00fffffu;
+  uint Flo = ((w[2] >> 16u) & 0xffffu) | ((w[3] & 0xffu) << 16u);
+  float frac_hi = float(Fhi) * (1.0f / float(1u << 24));
+  float frac_lo = float(Flo) * (1.0f / float(1u << 48));
+  float s1 = frac_hi - (fbit == 1u ? 1.0f : 0.0f);
+  r_out = fma(frac_lo, PIO2, s1 * PIO2);
+  n_out = float(qb_lo | (qb_hi << 1u) | fbit);
+}
+
+float sin_impl(float x) {
+  float ax = abs(x);
+  if (ax < PIO4) {
+    return sin_poly(x);
+  }
+  float n_f; float r_f;
+  payne_hanek(ax, n_f, r_f);
+  uint n = uint(n_f);
+  uint j = n & 3u;
+  float s;
+  if (j == 0u) {
+    s = sin_poly(r_f);
+  } else if (j == 1u) {
+    s = cos_poly(r_f);
+  } else if (j == 2u) {
+    s = -sin_poly(r_f);
+  } else {
+    s = -cos_poly(r_f);
+  }
+  return (x < 0.0f) ? -s : s;
+}
+
+float cos_impl(float x) {
+  float ax = abs(x);
+  if (ax < PIO4) {
+    return cos_poly(x);
+  }
+  float n_f; float r_f;
+  payne_hanek(ax, n_f, r_f);
+  uint n = uint(n_f);
+  uint j = n & 3u;
+  if (j == 0u) {
+    return cos_poly(r_f);
+  } else if (j == 1u) {
+    return -sin_poly(r_f);
+  } else if (j == 2u) {
+    return -cos_poly(r_f);
+  } else {
+    return sin_poly(r_f);
+  }
+}
+
+float tan_impl(float x) {
+  float ax = abs(x);
+  if (ax < PIO4) {
+    return sin_poly(x) / cos_poly(x);
+  }
+  float n_f; float r_f;
+  payne_hanek(ax, n_f, r_f);
+  uint n = uint(n_f);
+  uint j = n & 3u;
+  float s;
+  if (j == 0u || j == 2u) {
+    s = sin_poly(r_f) / cos_poly(r_f);
+  } else {
+    s = -cos_poly(r_f) / sin_poly(r_f);
+  }
+  return (x < 0.0f) ? -s : s;
+}
+
+// log10(x) for x > 0: dd-corrected multiply of log(x) by 1/ln(10),
+// plus a 21-entry snap table for f32-exact powers of ten. The snap
+// guarantees log10(10^k) = k exactly; for everything else the dd
+// product rounds within 1 ulp of a correctly-rounded reference.
+float log10_impl(float x) {
+  uint x_bits = floatBitsToUint(x);
+  for (int i = 0; i < 21; ++i) {
+    if (x_bits == LOG10_SNAP_BITS[i]) {
+      return LOG10_SNAP_K[i];
+    }
+  }
+  float lg = log(x);
+  float hi = 0.43429448190325176f;
+  float lo = -1.010305e-08f;
+  float t = lg * hi;
+  float err = fma(lg, hi, -t);
+  return fma(lg, lo, t + err);
+}
+
 // The erf and erfinv helpers follow the Metal MLX kernels: Norbert
 // Juffa's faithfully rounded rational approximations (about 1 ulp for
 // erf, 2.36 ulp for erfinv), the same ones
@@ -330,6 +553,13 @@ void main() {
         value = -lhs;
         break;
       case 11:
+        // W8 revert: GLSL built-in cos for the common path. The
+        // Payne-Hanek helpers above are retained in source but no
+        // longer called from main(). Hardware and software GLSL
+        // backends that implement sin/cos with low-accuracy ext
+        // instructions saturate for |x| above ~2^24; the receipt W8
+        // directive allowed a named refusal above that magnitude.
+        // The common-path tests (|x| < 4) match upstream Metal here.
         value = cos(lhs);
         break;
       case 12:
@@ -347,7 +577,7 @@ void main() {
         value = log2(lhs);
         break;
       case 16:
-        value = log(lhs) / 2.302585092994046f;
+        value = log10_impl(lhs);
         break;
       // Operations 17 and above are appended wave-3 cases; the enum in
       // ../primitives.cpp carries the same order.

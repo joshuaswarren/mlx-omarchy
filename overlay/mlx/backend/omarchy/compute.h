@@ -15,7 +15,17 @@ namespace mlx::core::omarchy {
 
 inline constexpr uint32_t kComputeThreadsPerGroup = 256;
 inline constexpr uint32_t kMaxComputeGroupCountX = 65535;
-inline constexpr uint32_t kComputeBindingCount = 4;
+// Vulkan's guaranteed floor for storage-buffer descriptors in one compute
+// descriptor set layout. Any kernel may assume this many binding slots.
+inline constexpr uint32_t kComputeBindingFloor = 4;
+// Binding slots the backend wants when every shipped kernel gets its full
+// workspace (multi-index scatter needs five). The live budget is fixed once
+// per device at initialization: min(kComputeBindingBudget, the device's
+// reported storage-buffer descriptor limits), and kernels needing more than
+// that budget refuse by name instead of dispatching. The spec floor is why
+// the pre-2026-09-02 four-slot constant was portable, not a device ceiling:
+// real drivers report orders of magnitude more.
+inline constexpr uint32_t kComputeBindingBudget = 5;
 
 constexpr uint32_t compute_dispatch_group_count(uint32_t count) {
   if (count == 0) {
@@ -67,6 +77,8 @@ enum class ComputeKernel : uint8_t {
   SelectF32,
   SelectF16,
   SelectBF16,
+  SelectI32,
+  SelectBool,
   CompareF32,
   CompareF16,
   CompareBF16,
@@ -145,6 +157,9 @@ enum class ComputeKernel : uint8_t {
   MaskedScatterU32,
   MaskedScatterF16,
   MaskedScatterBF16,
+  ScatterMultiU32,
+  ScatterMultiF16,
+  ScatterMultiBF16,
   ClearU32,
   BlockMaskF32,
   GatherMmF32,
@@ -161,9 +176,13 @@ enum class ComputeKernel : uint8_t {
   GatherQmmNbBF16,
   // Wave 8: FFT. FftF32 is the radix-2 Cooley-Tukey pass (complex64 pairs
   // in shared memory); FftRealF32 strips the real part of a complex64
-  // buffer into float32 for the irfft tail.
+  // buffer into float32 for the irfft tail; FftStageF32 runs the
+  // elementwise general-length stages (Cooley-Tukey twiddle multiply,
+  // Bluestein chirp multiply, b-table build, pointwise FFT multiply, and
+  // the Bluestein epilogue), one thread per element.
   FftF32,
   FftRealF32,
+  FftStageF32,
   // Wave 9: fused and custom kernels. Norm forward and VJP kernels run one
   // workgroup per row with float32 arithmetic; the dw kernel runs a single
   // workgroup with per-column accumulators. ConvertFP8 pairs travel as
@@ -208,6 +227,55 @@ enum class ComputeKernel : uint8_t {
   LinalgEighF32,
   LinalgSvdF32,
   LinalgSvdFinalizeF32,
+  // FixFastSdpaAndNorm (W9): dw stage 2 - column sum of the per-row
+  // partials from the VjpDw kernels. The VjpDw enums above are the
+  // partial stage; this one sums rows into the gradient dtype.
+  FastRmsNormVjpDwReduceF32,
+  FastRmsNormVjpDwReduceF16,
+  FastRmsNormVjpDwReduceBF16,
+  // WideRowTopK: one workgroup per row binary-searches the monotone key
+  // and serially emits the argpartition indices. One variant per input
+  // dtype (f32, f16, bf16).
+  ArgPartitionWideF32,
+  ArgPartitionWideF16,
+  ArgPartitionWideBF16,
+  // Complex64Transport: complex64 transport and elementwise. One
+  // element is a vec2 (re, im) pair in std430 storage, so offsets and
+  // strides are item offsets exactly like the float32 kernels; no
+  // 16-bit storage features are involved. ComplexElementwise carries
+  // the operation code (conjugate/add/sub/mul/div/negate) in
+  // params.operation; ComplexReal and ComplexImag extract one
+  // component to float32; the Cast* pairs mirror the upstream
+  // static_cast rules (real source promotes to (x, 0), complex64
+  // source reads real()).
+  ComplexElementwise,
+  ComplexReal,
+  ComplexImag,
+  CastF32Complex64,
+  CastI32Complex64,
+  CastU32Complex64,
+  CastBoolComplex64,
+  CastF16Complex64,
+  CastBF16Complex64,
+  CastComplex64F32,
+  FillComplex64,
+  CopyGeneralComplex64,
+  // ScatterDeterminism: float scatter reductions ride hardware fp32
+  // atomic add (VK_EXT_shader_atomic_float; both llvmpipe and the M1
+  // Honeykrisp target report shaderBufferFloat32AtomicAdd). The FADD
+  // variants accumulate Sum/Prod in an fp32 per-element scratch and
+  // the Bool variants carry packed-word byte read-modify-write; the
+  // f16/bf16 FADD blobs also serve Prod for those dtypes.
+  ScatterFAddF32,
+  ScatterFAddF16,
+  ScatterFAddBF16,
+  ScatterFAddMultiF32,
+  ScatterBool,
+  ScatterBoolMulti,
+  ScatterAxisFAddF32,
+  ScatterAxisFAddF16,
+  ScatterAxisFAddBF16,
+  ScatterAxisBool,
   Count,
 };
 
@@ -250,7 +318,7 @@ struct ComputeParams {
 
 class ComputeRuntime {
  public:
-  explicit ComputeRuntime(VkDevice device);
+  explicit ComputeRuntime(VkDevice device, uint32_t binding_limit);
   ~ComputeRuntime();
 
   ComputeRuntime(const ComputeRuntime&) = delete;
@@ -260,12 +328,21 @@ class ComputeRuntime {
   VkPipelineLayout pipeline_layout() const {
     return pipeline_layout_;
   }
+  // Storage-buffer binding slots available to any dispatch on this device:
+  // the backend budget clamped by what the physical device reports. A kernel
+  // needing more must refuse by name; kComputeBindingFloor is the minimum a
+  // spec-conformant device reports, so slots up to the floor always exist.
+  uint32_t binding_limit() const {
+    return binding_limit_;
+  }
   VkDescriptorSetLayout descriptor_layout() const {
     return descriptor_layout_;
   }
 
  private:
   VkPipeline create_pipeline(ComputeKernel kernel);
+
+  uint32_t binding_limit_{0};
 
   VkDevice device_;
   VkDescriptorSetLayout descriptor_layout_{VK_NULL_HANDLE};

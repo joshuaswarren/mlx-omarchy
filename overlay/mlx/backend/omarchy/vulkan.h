@@ -28,6 +28,8 @@ struct InstanceTable {
   PFN_vkCreateInstance CreateInstance{nullptr};
   PFN_vkEnumerateInstanceVersion EnumerateInstanceVersion{nullptr};
   PFN_vkEnumeratePhysicalDevices EnumeratePhysicalDevices{nullptr};
+  PFN_vkEnumerateDeviceExtensionProperties EnumerateDeviceExtensionProperties{
+      nullptr};
   PFN_vkGetPhysicalDeviceProperties2 GetPhysicalDeviceProperties2{nullptr};
   PFN_vkGetPhysicalDeviceFeatures2 GetPhysicalDeviceFeatures2{nullptr};
   PFN_vkGetPhysicalDeviceMemoryProperties2 GetPhysicalDeviceMemoryProperties2{

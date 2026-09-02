@@ -1454,8 +1454,10 @@ TEST_CASE("take gathers table rows through Vulkan compute") {
        33.0f},
       stream);
 
-  // Out-of-range and negative indices write zero rows. This deviates from
-  // upstream negative-index wrapping and is the documented constraint.
+  // Negative indices wrap like upstream offset_neg_idx (-1 reads the
+  // last row); a genuinely out-of-range index such as 7 still writes
+  // the documented zero row because upstream leaves such reads
+  // undefined.
   array bounds({1, 7, -1, 0}, int32);
   check_values(
       take(table, bounds, 0, stream),
@@ -1467,10 +1469,10 @@ TEST_CASE("take gathers table rows through Vulkan compute") {
        0.0f,
        0.0f,
        0.0f,
-       0.0f,
-       0.0f,
-       0.0f,
-       0.0f,
+       30.0f,
+       31.0f,
+       32.0f,
+       33.0f,
        10.0f,
        11.0f,
        12.0f,
@@ -1693,8 +1695,10 @@ TEST_CASE("take gathers int64 indices and zeroes wide values") {
   std::vector<float> tv = {10.0f, 11.0f, 20.0f, 21.0f, 30.0f, 31.0f};
   array table(tv.begin(), Shape{3, 2}, float32);
 
-  // Two little-endian words per index: a value above 2^32 and a negative
-  // value both have a nonzero high word, so both write the zero row.
+  // Two little-endian words per index. A negative value has high word
+  // 0xFFFFFFFF and wraps like upstream offset_neg_idx (-1 reads the
+  // last row). A value above 2^32 has a high word that is neither 0
+  // nor 0xFFFFFFFF, stays out of range, and writes the zero row.
   std::vector<int64_t> iv = {2, 0, 5000000000LL, -1};
   array indices(iv.begin(), Shape{4}, int64);
   check_values(
@@ -1702,7 +1706,7 @@ TEST_CASE("take gathers int64 indices and zeroes wide values") {
       {30.0f, 31.0f,
        10.0f, 11.0f,
        0.0f, 0.0f,
-       0.0f, 0.0f},
+       30.0f, 31.0f},
       stream);
 
   // A [2, 2] batch of int64 indices keeps its flat row-major order.
@@ -3886,21 +3890,6 @@ TEST_CASE("temp sampling chain runs the vocab-wide categorical on device") {
   CHECK(other.data<uint32_t>()[0] < static_cast<uint32_t>(vocab));
 }
 
-TEST_CASE("wide-row ArgPartition keeps the named top-k rejection") {
-  if (!compute_available()) {
-    return;
-  }
-  Stream stream = gpu_stream();
-  std::vector<float> hv(151936, -1.0f);
-  array logits(hv.begin(), Shape{1, 151936}, float32);
-  std::string wide_error =
-      evaluation_error(argpartition(logits, 0, -1, stream));
-  CHECK(wide_error.find("sort row length ArgPartition") != std::string::npos);
-  std::vector<float> mv(4096, -1.0f);
-  array mid(mv.begin(), Shape{1, 4096}, float32);
-  std::string mid_error = evaluation_error(argpartition(mid, 0, -1, stream));
-  CHECK(mid_error.find("sort row length ArgPartition") != std::string::npos);
-}
 
 // Host copy of the upstream affine quantizer (mlx/ops.cpp
 // affine_quantize + pack_and_quantize): per group the abs-dominant sign
@@ -4728,59 +4717,6 @@ TEST_CASE("FP16 Convolution matches host references") {
       stream,
       1e-3);
 }
-
-TEST_CASE("grouped and transposed Convolution keep named errors") {
-  if (!compute_available()) {
-    return;
-  }
-  Stream stream = gpu_stream();
-  std::vector<float> in_values(1 * 4 * 4 * 4, 0.5f);
-  std::vector<float> wt_values(4 * 3 * 3 * 2, 0.25f);
-
-  // Graph construction and eval both run up front on the GPU stream;
-  // either can carry the named rejection, so both ride one catcher.
-  auto error_of = [&](const auto& build) {
-    std::string message;
-    try {
-      array value = build();
-      value.eval();
-    } catch (const std::exception& error) {
-      message = error.what();
-    }
-    return message;
-  };
-  std::string groups_error = error_of([&] {
-    return conv2d(
-        array(in_values.begin(), Shape{1, 4, 4, 4}, float32),
-        array(wt_values.begin(), Shape{4, 3, 3, 2}, float32),
-        {1, 1},
-        {1, 1},
-        {1, 1},
-        /*groups=*/2,
-        stream);
-  });
-  CHECK(groups_error.find("[omarchy] grouped Convolution") != std::string::npos);
-  CHECK(groups_error.find("No CPU fallback") != std::string::npos);
-
-  // flip is conv_transpose semantics and stays named-unsupported.
-  std::string transpose_error = error_of([&] {
-    return conv_general(
-        array(in_values.begin(), Shape{1, 4, 4, 2}, float32),
-        array(wt_values.begin(), Shape{4, 3, 3, 2}, float32),
-        {1, 1},
-        {1, 1},
-        {1, 1},
-        {1, 1},
-        {2, 2},
-        1,
-        true,
-        stream);
-  });
-  CHECK(
-      transpose_error.find("[omarchy] transposed Convolution") !=
-      std::string::npos);
-}
-
 TEST_CASE("mx.compile evaluates a four-op elementwise chain") {
   if (!compute_available()) {
     return;
@@ -5318,6 +5254,134 @@ TEST_CASE("Wave3 Conjugate Real Imag mirror upstream real dtypes and keep named 
   CHECK(real_error.find("[omarchy] Real") != std::string::npos);
   std::string imag_error = evaluation_error(imag(c, stream));
   CHECK(imag_error.find("[omarchy] Imag") != std::string::npos);
+}
+
+TEST_CASE("Wave3 Conjugate Real Imag mirror is exact for real dtypes across views and broadcasts") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  const auto& capabilities = omarchy::device(0).capabilities();
+
+  // Upstream builds Conjugate, Real, and Imag only on the complex64
+  // side of their op gates (mlx/ops.cpp:6529, :6744, :6751): real
+  // dtypes return the input array for conjugate() and real() and
+  // full_like zeros for imag(). No real-dtype path constructs the
+  // primitive, so the backend refusals stay, and the observable
+  // contract is the exact mirror pinned here. Identity results share
+  // the input storage, so the identity checks read both arrays over
+  // the base buffer span and compare exactly.
+  auto eval_and_sync = [&](array value) {
+    value.eval();
+    omarchy::get_command_encoder(stream).synchronize();
+  };
+  auto check_mirror_identity = [&](array base, array result, auto tag) {
+    using T = decltype(tag);
+    eval_and_sync(result);
+    CHECK_EQ(result.dtype(), base.dtype());
+    const T* got = result.data<T>();
+    const T* want = base.data<T>();
+    for (size_t index = 0; index < base.size(); ++index) {
+      CHECK_EQ(got[index], want[index]);
+    }
+  };
+  auto check_mirror_zeros = [&](array result, Dtype dtype, auto tag, int count) {
+    using T = decltype(tag);
+    eval_and_sync(result);
+    CHECK_EQ(result.dtype(), dtype);
+    CHECK_EQ(result.size(), static_cast<size_t>(count));
+    const T* got = result.data<T>();
+    for (int index = 0; index < count; ++index) {
+      CHECK_EQ(got[index], T(0));
+    }
+  };
+
+  // float32: identity, identity, exact zeros.
+  std::vector<float> fv = {1.0f, -2.0f, 3.5f, 0.25f};
+  array f(fv.begin(), Shape{4}, float32);
+  array f_conjugate = conjugate(f, stream);
+  check_mirror_identity(f, f_conjugate, float{});
+  CHECK_EQ(f_conjugate.size(), 4);
+  array f_real = real(f, stream);
+  check_mirror_identity(f, f_real, float{});
+  CHECK_EQ(f_real.size(), 4);
+  array f_imag = imag(f, stream);
+  check_mirror_zeros(f_imag, float32, float{}, 4);
+
+  // int32 and uint32: the same mirror through the typed buffers.
+  std::vector<int32_t> iv = {5, -7, 0, 123456};
+  array i(iv.begin(), Shape{4}, int32);
+  check_mirror_identity(i, conjugate(i, stream), int32_t{});
+  check_mirror_identity(i, real(i, stream), int32_t{});
+  check_mirror_zeros(imag(i, stream), int32, int32_t{}, 4);
+
+  std::vector<uint32_t> uv = {9u, 4294967290u, 0u, 123456u};
+  array u(uv.begin(), Shape{4}, uint32);
+  check_mirror_identity(u, conjugate(u, stream), uint32_t{});
+  check_mirror_identity(u, real(u, stream), uint32_t{});
+  check_mirror_zeros(imag(u, stream), uint32, uint32_t{}, 4);
+
+  // float16 and bfloat16 behind the shader and 16-bit storage gates;
+  // bfloat16 adds the int16 storage requirement. The chosen values are
+  // exact in both formats, so the f32 readback is bit-exact.
+  if (capabilities.shader_float16 && capabilities.storage_buffer_16bit_access) {
+    std::vector<float> hv = {1.0f, -2.0f, 3.5f, 0.25f};
+    for (Dtype dtype : {float16, bfloat16}) {
+      if (dtype == bfloat16 && !capabilities.shader_int16) {
+        continue;
+      }
+      array h(hv.begin(), Shape{4}, dtype);
+      auto check_cast_exact = [&](array result, const std::vector<float>& want) {
+        array wide = astype(result, float32, stream);
+        eval_and_sync(wide);
+        CHECK_EQ(wide.dtype(), float32);
+        const float* got = wide.data<float>();
+        for (size_t index = 0; index < want.size(); ++index) {
+          CHECK_EQ(got[index], want[index]);
+        }
+      };
+      check_cast_exact(conjugate(h, stream), hv);
+      check_cast_exact(real(h, stream), hv);
+      check_cast_exact(imag(h, stream), std::vector<float>(hv.size(), 0.0f));
+    }
+  }
+
+  // Transposed view: identity returns the same strided view (shape
+  // {3, 2}, base storage equal); imag() fills exact zeros of the view
+  // shape.
+  std::vector<float> tv = {1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f};
+  array t(tv.begin(), Shape{2, 3}, float32);
+  array t_view = transpose(t, stream);
+  array vt_conjugate = conjugate(t_view, stream);
+  check_mirror_identity(t, vt_conjugate, float{});
+  CHECK_EQ(vt_conjugate.shape(0), 3);
+  CHECK_EQ(vt_conjugate.shape(1), 2);
+  array vt_real = real(t_view, stream);
+  check_mirror_identity(t, vt_real, float{});
+  CHECK_EQ(vt_real.shape(0), 3);
+  CHECK_EQ(vt_real.shape(1), 2);
+  array vt_imag = imag(t_view, stream);
+  check_mirror_zeros(vt_imag, float32, float{}, 6);
+  CHECK_EQ(vt_imag.shape(0), 3);
+  CHECK_EQ(vt_imag.shape(1), 2);
+
+  // Broadcast view: identity keeps the stride-0 view over the same
+  // base storage; imag() fills broadcast-shaped zeros without reading
+  // the view data.
+  array bc_base(fv.begin(), Shape{4}, float32);
+  array bc = broadcast_to(bc_base, Shape{2, 4}, stream);
+  array bc_conjugate = conjugate(bc, stream);
+  check_mirror_identity(bc_base, bc_conjugate, float{});
+  CHECK_EQ(bc_conjugate.shape(0), 2);
+  CHECK_EQ(bc_conjugate.shape(1), 4);
+  array bc_real = real(bc, stream);
+  check_mirror_identity(bc_base, bc_real, float{});
+  CHECK_EQ(bc_real.shape(0), 2);
+  CHECK_EQ(bc_real.shape(1), 4);
+  array bc_imag = imag(bc, stream);
+  check_mirror_zeros(bc_imag, float32, float{}, 8);
+  CHECK_EQ(bc_imag.shape(0), 2);
+  CHECK_EQ(bc_imag.shape(1), 4);
 }
 
 namespace {

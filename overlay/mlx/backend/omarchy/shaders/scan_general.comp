@@ -115,6 +115,18 @@ ACC_TYPE combine(ACC_TYPE acc, ACC_TYPE next, uint operation) {
   if (operation == 1u) {
     return acc * next;
   }
+#if !defined(USE_I32) && !defined(USE_U32)
+  // Min and Max follow the upstream NaN convention: any NaN in the scan
+  // poisons every later element. A plain ordered compare silently drops
+  // a NaN carried in the running value, so the poison is held once it
+  // enters.
+  if (isnan(acc)) {
+    return acc;
+  }
+  if (isnan(next)) {
+    return next;
+  }
+#endif
   if (operation == 2u) {
     return acc < next ? acc : next;
   }

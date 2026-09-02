@@ -109,20 +109,25 @@ void CommandEncoder::dispatch_compute(
   if (group_count_x == 0 || group_count_y == 0 || group_count_z == 0) {
     return;
   }
-  if (bindings.empty() || bindings.size() > kComputeBindingCount) {
-    throw std::invalid_argument("[omarchy] invalid compute binding count.");
+  auto& compute = device_.compute();
+  uint32_t binding_limit = compute.binding_limit();
+  if (bindings.empty() || bindings.size() > binding_limit) {
+    throw std::invalid_argument(
+        "[omarchy] compute dispatch needs " +
+        std::to_string(bindings.size()) +
+        " storage-buffer bindings; this device allows " +
+        std::to_string(binding_limit) + ".");
   }
   group_count_x = std::min(group_count_x, kMaxComputeGroupCountX);
   group_count_y = std::min(group_count_y, kMaxComputeGroupCountX);
   group_count_z = std::min(group_count_z, kMaxComputeGroupCountX);
 
   auto& dt = vk::device_table();
-  auto& compute = device_.compute();
   VkPipeline pipeline = compute.pipeline(kernel);
 
   VkDescriptorPoolSize pool_size{};
   pool_size.type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-  pool_size.descriptorCount = kComputeBindingCount;
+  pool_size.descriptorCount = binding_limit;
   VkDescriptorPoolCreateInfo pool_info{
       VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO};
   pool_info.maxSets = 1;
@@ -148,8 +153,8 @@ void CommandEncoder::dispatch_compute(
   VKX_CHECK(dt.AllocateDescriptorSets(
       device_.handle(), &allocate_info, &descriptor_set));
 
-  std::array<VkDescriptorBufferInfo, kComputeBindingCount> buffer_info{};
-  std::array<VkWriteDescriptorSet, kComputeBindingCount> writes{};
+  std::array<VkDescriptorBufferInfo, kComputeBindingBudget> buffer_info{};
+  std::array<VkWriteDescriptorSet, kComputeBindingBudget> writes{};
   for (uint32_t index = 0; index < bindings.size(); ++index) {
     buffer_info[index] = {
         bindings[index].buffer, bindings[index].offset, bindings[index].range};

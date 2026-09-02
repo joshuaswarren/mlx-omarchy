@@ -15,12 +15,14 @@
 #include <cstdio>
 #include <iostream>
 #include <limits>
+#include <random>
 #include <vector>
 
 #include "mlx/backend/gpu/device_info.h"
 #include "mlx/backend/omarchy/device.h"
 #include "mlx/backend/omarchy/encoder.h"
 #include "mlx/ops.h"
+#include "mlx/transforms.h"
 #include "mlx/stream.h"
 
 using namespace mlx::core;
@@ -875,4 +877,296 @@ TEST_CASE("out-of-scope dtypes and shapes keep their named errors") {
   array grid5(deep.begin(), Shape{2, 2, 2, 2, 2}, int32);
   CHECK(evaluation_error(sum(grid5, std::vector<int>{0}, false, stream))
             .find("Sum rank above 4") != std::string::npos);
+}
+
+
+TEST_CASE("int32 multi-axis sum visits every reduced element") {
+  if (!compute_available()) return;
+  auto stream = gpu_stream();
+  // Shape (65,65,1,65): the kept axis 2 contributes one output cell per
+  // combination of reduced axes. The reduction span is 65*65*65 = 274625
+  // which exceeds the per-invocation serial-loop trip cap that the old
+  // single-pass shader hit silently; the tiled two-phase reduction must
+  // visit every element regardless of the trip-cap boundary.
+  const int N0 = 65, N1 = 65, N2 = 1, N3 = 65;
+  std::vector<int32_t> ones(N0 * N1 * N2 * N3, 1);
+  array x(ones.begin(), Shape{N0, N1, N2, N3}, int32);
+
+  // Three-axis sum over (0,1,3) keeps axis 2 (size 1 -> one output cell).
+  array g013 = sum(x, std::vector<int>{0, 1, 3});
+  g013.eval();
+  sync(stream);
+  REQUIRE_EQ(g013.size(), 1);
+  CHECK_EQ(g013.data<int32_t>()[0], int32_t(N0 * N1 * N2 * N3));
+
+  // Two-axis (0,1) keeps (2,3) - 65 cells, each summing 65*65 = 4225 ones.
+  array g01 = sum(x, std::vector<int>{0, 1});
+  g01.eval();
+  sync(stream);
+  REQUIRE_EQ(g01.size(), 65);
+  const int32_t* g01p = g01.data<int32_t>();
+  for (int i = 0; i < 65; ++i) {
+    CHECK_EQ(g01p[i], 4225);
+  }
+
+  // Single-axis over axis 0 keeps (1,2,3), giving 65*1*65 = 4225 cells,
+  // each summing the 65 reduced elements in axis 0. Per cell = 65.
+  array g0 = sum(x, std::vector<int>{0});
+  g0.eval();
+  sync(stream);
+  CHECK_EQ(g0.size(), N1 * N2 * N3);
+  const int32_t* g0p = g0.data<int32_t>();
+  for (int i = 0; i < g0.size(); ++i) {
+    CHECK_EQ(g0p[i], 65);
+  }
+}
+
+TEST_CASE("int multi-axis sum agrees with int64 reference across ranks") {
+  if (!compute_available()) return;
+  auto stream = gpu_stream();
+  std::mt19937 gen(42);
+  std::normal_distribution<float> dist(0.0f, 128.0f);
+  for (int axis_subset_bits : {0b0111, 0b1011, 0b1101, 0b1110, 0b1111}) {
+    Shape shape{8, 7, 5, 4};
+    std::vector<int32_t> data(8 * 7 * 5 * 4);
+    for (auto& v : data) v = int32_t(std::lround(dist(gen)));
+    array x(data.begin(), shape, int32);
+    std::vector<int> axes;
+    for (int bit = 0; bit < 4; ++bit) {
+      if (axis_subset_bits & (1 << bit)) axes.push_back(bit);
+    }
+    std::vector<int> kept;
+    for (int d = 0; d < 4; ++d) {
+      if (!(axis_subset_bits & (1 << d))) kept.push_back(d);
+    }
+    Shape kept_shape;
+    for (int d : kept) kept_shape.push_back(shape[d]);
+    if (kept_shape.empty()) kept_shape.push_back(1);
+    size_t ksize = 1;
+    for (int v : kept_shape) ksize *= v;
+    std::vector<int64_t> want(ksize, 0);
+    for (int i0 = 0; i0 < shape[0]; ++i0)
+      for (int i1 = 0; i1 < shape[1]; ++i1)
+        for (int i2 = 0; i2 < shape[2]; ++i2)
+          for (int i3 = 0; i3 < shape[3]; ++i3) {
+            std::vector<int> kc;
+            for (int d : kept)
+              kc.push_back(d == 0 ? i0 : d == 1 ? i1 : d == 2 ? i2 : i3);
+            size_t kf = 0;
+            for (int i = (int)kept.size() - 1; i >= 0; --i) {
+              kf = kf * kept_shape[i] + kc[i];
+            }
+            want[kf] +=
+                data[((i0 * shape[1] + i1) * shape[2] + i2) * shape[3] + i3];
+          }
+    auto got = sum(x, axes);
+    got.eval();
+    sync(stream);
+    REQUIRE_EQ(got.size(), ksize);
+    const int32_t* gp = got.data<int32_t>();
+    for (size_t k = 0; k < ksize; ++k) {
+      int64_t w = want[k];
+      int32_t expected = int32_t(w);
+      CHECK_EQ(gp[k], expected);
+    }
+  }
+}
+
+TEST_CASE("uint32 multi-axis sum covers the trip-cap boundary") {
+  if (!compute_available()) return;
+  auto stream = gpu_stream();
+  std::vector<uint32_t> ones(32768, 1);
+  array x(ones.begin(), Shape{32768, 1, 1, 1}, uint32);
+  auto g = sum(x, std::vector<int>{0, 1, 2, 3});
+  g.eval();
+  sync(stream);
+  REQUIRE_EQ(g.size(), 1);
+  CHECK_EQ(g.data<uint32_t>()[0], 32768u);
+
+  std::vector<uint32_t> big(65536, 1);
+  array y(big.begin(), Shape{65536, 1, 1, 1}, uint32);
+  auto gy = sum(y, std::vector<int>{0, 1, 2, 3});
+  gy.eval();
+  sync(stream);
+  CHECK_EQ(gy.data<uint32_t>()[0], 65536u);
+}
+
+TEST_CASE("float non-suffix reductions propagate NaN through Min and Max") {
+  if (!compute_available()) return;
+  auto stream = gpu_stream();
+  // Shape (2,3) with NaN at (0,1). Column-wise reduce along axis 0:
+  //   col 0 = [1, 4]            -> max = 4    (no NaN)
+  //   col 1 = [NaN, 5]          -> max = NaN  (NaN poisons)
+  //   col 2 = [3, 6]            -> max = 6    (no NaN)
+  // Row-wise reduce along axis 1: row 0 contains NaN -> NaN; row 1
+  //   [4, 5, 6] -> max = 6.
+  std::vector<float> data = {1.0f, NAN, 3.0f, 4.0f, 5.0f, 6.0f};
+  array x(data.begin(), Shape{2, 3}, float32);
+
+  auto m0 = max(x, 0);
+  m0.eval();
+  sync(stream);
+  REQUIRE_EQ(m0.size(), 3);
+  CHECK_EQ(m0.data<float>()[0], 4.0f);
+  CHECK(std::isnan(m0.data<float>()[1]));
+  CHECK_EQ(m0.data<float>()[2], 6.0f);
+
+  auto mn0 = min(x, 0);
+  mn0.eval();
+  sync(stream);
+  CHECK_EQ(mn0.data<float>()[0], 1.0f);
+  CHECK(std::isnan(mn0.data<float>()[1]));
+  CHECK_EQ(mn0.data<float>()[2], 3.0f);
+
+  auto m1 = max(x, 1);
+  m1.eval();
+  sync(stream);
+  REQUIRE_EQ(m1.size(), 2);
+  CHECK(std::isnan(m1.data<float>()[0]));
+  CHECK_EQ(m1.data<float>()[1], 6.0f);
+
+  auto mn1 = min(x, 1);
+  mn1.eval();
+  sync(stream);
+  CHECK(std::isnan(mn1.data<float>()[0]));
+  CHECK_EQ(mn1.data<float>()[1], 4.0f);
+
+}
+
+TEST_CASE("cummax and cummin hold NaN once it appears") {
+  if (!compute_available()) return;
+  auto stream = gpu_stream();
+
+  // Forward cummax: [1, 3, NaN, 5, 4] -> [1, 3, NaN, NaN, NaN] (sticky).
+  std::vector<float> a = {1.0f, 3.0f, NAN, 5.0f, 4.0f};
+  array xa(a.begin(), Shape{5}, float32);
+  auto cm = cummax(xa);
+  cm.eval();
+  sync(stream);
+  const float* p = cm.data<float>();
+  CHECK_EQ(p[0], 1.0f);
+  CHECK_EQ(p[1], 3.0f);
+  CHECK(std::isnan(p[2]));
+  CHECK(std::isnan(p[3]));
+  CHECK(std::isnan(p[4]));
+
+  // Reverse cummax: walks the line from the right. With NaN at position
+  // 2, positions 2..0 hold NaN and positions 3 and 4 stay clean.
+  auto cmr = cummax(xa, true);
+  cmr.eval();
+  sync(stream);
+  const float* pr = cmr.data<float>();
+  CHECK(std::isnan(pr[0]));
+  CHECK(std::isnan(pr[1]));
+  CHECK(std::isnan(pr[2]));
+  CHECK_EQ(pr[3], 5.0f);
+  CHECK_EQ(pr[4], 4.0f);
+
+  // Cummin: [5, 4, NaN, 2, 3] -> [5, 4, NaN, NaN, NaN] (sticky).
+  std::vector<float> b = {5.0f, 4.0f, NAN, 2.0f, 3.0f};
+  array xb(b.begin(), Shape{5}, float32);
+  auto mi = cummin(xb);
+  mi.eval();
+  sync(stream);
+  const float* q = mi.data<float>();
+  CHECK_EQ(q[0], 5.0f);
+  CHECK_EQ(q[1], 4.0f);
+  CHECK(std::isnan(q[2]));
+  CHECK(std::isnan(q[3]));
+  CHECK(std::isnan(q[4]));
+
+  // NaN at the FIRST position: poison enters immediately.
+  std::vector<float> first = {NAN, 1.0f, 2.0f};
+  array xf(first.begin(), Shape{3}, float32);
+  auto cmf = cummax(xf);
+  cmf.eval();
+  sync(stream);
+  const float* pf = cmf.data<float>();
+  CHECK(std::isnan(pf[0]));
+  CHECK(std::isnan(pf[1]));
+  CHECK(std::isnan(pf[2]));
+
+  // NaN at the LAST position: the prior running max is unaffected.
+  std::vector<float> last = {2.0f, 5.0f, 1.0f, NAN};
+  array xl(last.begin(), Shape{4}, float32);
+  auto cml = cummax(xl);
+  cml.eval();
+  sync(stream);
+  const float* pl = cml.data<float>();
+  CHECK_EQ(pl[0], 2.0f);
+  CHECK_EQ(pl[1], 5.0f);
+  CHECK_EQ(pl[2], 5.0f);
+  CHECK(std::isnan(pl[3]));
+}
+
+TEST_CASE("Prod, Any, and All cover the full reduction span") {
+  if (!compute_available()) return;
+  auto stream = gpu_stream();
+  // Prod over (65536,1,1,1) with a non-trivial 2 at position 40000
+  // catches silent truncation: any visit-skip leaves the product at 1.
+  std::vector<int32_t> data(65536, 1);
+  data[40000] = 2;
+  array x(data.begin(), Shape{65536, 1, 1, 1}, int32);
+  auto g = prod(x, std::vector<int>{0, 1, 2, 3});
+  g.eval();
+  sync(stream);
+  CHECK_EQ(g.data<int32_t>()[0], 2);
+
+  // Any/All over (50000,1,1,1) with a single zero at position 30000.
+  std::vector<uint8_t> bool_data(50000, 1);
+  bool_data[30000] = 0;
+  array xb(bool_data.begin(), Shape{50000, 1, 1, 1}, bool_);
+  auto ga = any(xb, std::vector<int>{0, 1, 2, 3});
+  ga.eval();
+  sync(stream);
+  REQUIRE_EQ(ga.dtype(), bool_);
+  CHECK_EQ(ga.data<bool>()[0], true);
+  auto gl = all(xb, std::vector<int>{0, 1, 2, 3});
+  gl.eval();
+  sync(stream);
+  CHECK_EQ(gl.data<bool>()[0], false);
+}
+
+TEST_CASE("suffix reductions cover rows larger than the driver trip cap") {
+  if (!compute_available()) return;
+  auto stream = gpu_stream();
+  // Rows that exceed the suffix kernel's per-invocation serial-loop
+  // trip cap (roughly 2^16 on lavapipe) used to silently truncate; the
+  // chunked two-phase dispatch now visits every element.
+  std::vector<float> f32_ones(200000, 1.0f);
+  array xf(f32_ones.begin(), Shape{200000}, float32);
+  auto sf = sum(xf);
+  eval(sf);
+  sync(stream);
+  REQUIRE_EQ(sf.size(), 1);
+  CHECK_EQ(sf.data<float>()[0], 200000.0f);
+
+  std::vector<int32_t> i32_ones(200000, 1);
+  array xi(i32_ones.begin(), Shape{200000}, int32);
+  auto si = sum(xi);
+  eval(si);
+  sync(stream);
+  REQUIRE_EQ(si.size(), 1);
+  CHECK_EQ(si.data<int32_t>()[0], 200000);
+
+  // Sum of (64,64,64,1) full reduce over 262144 elements - well past the
+  // old 65535 cap.
+  size_t big = 64 * 64 * 64;
+  std::vector<float> big_ones(big, 1.0f);
+  array xb(big_ones.begin(), Shape{64, 64, 64, 1}, float32);
+  auto sb = sum(xb);
+  eval(sb);
+  sync(stream);
+  REQUIRE_EQ(sb.size(), 1);
+  CHECK_EQ(sb.data<float>()[0], float(big));
+
+  // Suffix Max NaN propagation across the chunked path: a NaN at index
+ // 50000 in a 100000-long row poisons the entire row.
+  std::vector<float> with_nan(100000, 5.0f);
+  with_nan[50000] = NAN;
+  array xm(with_nan.begin(), Shape{100000}, float32);
+  auto mm = max(xm);
+  eval(mm);
+  sync(stream);
+  CHECK(std::isnan(mm.data<float>()[0]));
 }

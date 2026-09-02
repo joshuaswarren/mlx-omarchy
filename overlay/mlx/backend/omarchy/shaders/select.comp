@@ -4,12 +4,14 @@
 #extension GL_EXT_shader_16bit_storage : require
 #extension GL_EXT_shader_explicit_arithmetic_types_float16 : require
 #define STORAGE_TYPE float16_t
+#define VALUE_TYPE float
 #define LOAD_VALUE(x) float(x)
 #define STORE_VALUE(f) STORAGE_TYPE(f)
 #elif defined(USE_BF16)
 #extension GL_EXT_shader_16bit_storage : require
 #extension GL_EXT_shader_explicit_arithmetic_types_int16 : require
 #define STORAGE_TYPE uint16_t
+#define VALUE_TYPE float
 #define LOAD_VALUE(x) uintBitsToFloat(uint(x) << 16u)
 uint16_t bf16_store(float value) {
   uint bits = floatBitsToUint(value);
@@ -19,8 +21,20 @@ uint16_t bf16_store(float value) {
   return uint16_t((bits + 0x7fffu + ((bits >> 16) & 1u)) >> 16);
 }
 #define STORE_VALUE(f) bf16_store(f)
+#elif defined(USE_I32)
+// Raw 32-bit word storage. A select copies bits without interpreting
+// them, so int32 and uint32 share one SPIR-V variant.
+#define STORAGE_TYPE uint
+#define VALUE_TYPE uint
+#define LOAD_VALUE(x) (x)
+#define STORE_VALUE(f) (f)
+#elif defined(USE_BOOL)
+// The packed-bool variant is defined below main: it keeps every bool
+// word load straight-line, the one form the M1 Honeykrisp driver reads
+// reliably.
 #else
 #define STORAGE_TYPE float
+#define VALUE_TYPE float
 #define LOAD_VALUE(x) float(x)
 #define STORE_VALUE(f) STORAGE_TYPE(f)
 #endif
@@ -29,13 +43,28 @@ layout(local_size_x = 256) in;
 
 // The condition is a bool array (one byte per element); the interface
 // reads it as little-endian 32-bit words, so no 8-bit storage feature
-// is needed. The host only dispatches this kernel when the condition is
-// row-contiguous with data_size == output count, so the condition
-// element for output index i is lhs_offset + i; broadcast or strided
-// conditions are materialized first. The true operand reads flat
-// because the host requires a row-contiguous value, and the false
-// operand reads scalar or flat through the modulo fast path, the same
-// rule the elementwise kernels apply to a suffix-aligned operand.
+// is needed. The host materializes broadcast or strided conditions to a
+// dense row-major temp first, so the condition element for output index
+// i is lhs_offset + i. The value variants pick each element from the
+// true or false operand through true_index_for/false_index_for below:
+// with dims == 0 both operands are flat (dense row-major or scalar),
+// with dims > 0 the output coordinate is unraveled over the collapsed
+// shape and each operand indexes through its own strides, where a
+// stride of 0 broadcasts the axis.
+#ifdef USE_BOOL
+layout(set = 0, binding = 0, std430) readonly buffer Condition {
+  uint words[];
+} condition;
+layout(set = 0, binding = 1, std430) readonly buffer InputTrue {
+  uint words[];
+} input_true;
+layout(set = 0, binding = 2, std430) readonly buffer InputFalse {
+  uint words[];
+} input_false;
+layout(set = 0, binding = 3, std430) writeonly buffer Output {
+  uint words[];
+} output_data;
+#else
 layout(set = 0, binding = 0, std430) readonly buffer Condition {
   uint words[];
 } condition;
@@ -48,6 +77,7 @@ layout(set = 0, binding = 2, std430) readonly buffer InputFalse {
 layout(set = 0, binding = 3, std430) writeonly buffer Output {
   STORAGE_TYPE values[];
 } output_data;
+#endif
 
 layout(push_constant) uniform Params {
   uint count;
@@ -73,12 +103,40 @@ layout(push_constant) uniform Params {
   uint rhs_strides[4];
 } params;
 
+#ifndef USE_BOOL
+uint true_index_for(uint index) {
+  if (params.dims == 0u) {
+    return params.rhs_offset + index;
+  }
+  // Chunked dispatches pass the chunk's first output element in
+  // matrix_m, so the unravel always sees global coordinates; the
+  // flat rhs_offset/output_offset advances stay chunk-relative.
+  uint rem = index + params.matrix_m;
+  uint result = params.rhs_offset;
+  for (int dim = int(params.dims) - 1; dim >= 0; --dim) {
+    uint coord = rem % params.shape[dim];
+    rem /= params.shape[dim];
+    result += coord * params.rhs_strides[dim];
+  }
+  return result;
+}
+
 uint false_index_for(uint index) {
   if (params.aux_size == 1u) {
     return params.aux_offset;
   }
-  return params.aux_offset +
-      (params.aux_size == params.count ? index : index % params.aux_size);
+  if (params.dims == 0u) {
+    return params.aux_offset +
+        (params.aux_size == params.count ? index : index % params.aux_size);
+  }
+  uint rem = index + params.matrix_m;
+  uint result = params.aux_offset;
+  for (int dim = int(params.dims) - 1; dim >= 0; --dim) {
+    uint coord = rem % params.shape[dim];
+    rem /= params.shape[dim];
+    result += coord * params.lhs_strides[dim];
+  }
+  return result;
 }
 
 void main() {
@@ -106,9 +164,47 @@ void main() {
       break;
     }
     bool truthy = ((word >> (lane * 8u)) & 0xFFu) != 0u;
-    float value = truthy
-        ? LOAD_VALUE(input_true.values[params.rhs_offset + index])
+    VALUE_TYPE value = truthy
+        ? LOAD_VALUE(input_true.values[true_index_for(index)])
         : LOAD_VALUE(input_false.values[false_index_for(index)]);
     output_data.values[params.output_offset + index] = STORE_VALUE(value);
   }
 }
+#else  // USE_BOOL
+// Packed-bool select. Contract enforced by the host: the condition, the
+// true operand, and the false operand are dense row-major, cover the
+// full output count (a scalar false operand is materialized to the full
+// shape), and carry byte offsets that are whole 32-bit words. The
+// qualification suite found that the M1 Honeykrisp driver misreads
+// packed-bool words loaded at per-lane computed addresses (the
+// LogicalAnd/LogicalNot word-boundary failures), so all three operand
+// words are loaded straight-line at the top of main, exactly the shape
+// of the condition read above, and each thread assembles one output
+// word from the loaded registers.
+uint byte_at(uint word, uint index) {
+  return (word >> ((index & 3u) * 8u)) & 0xFFu;
+}
+
+void main() {
+  uint word_index = gl_GlobalInvocationID.x;
+  uint word_count = (params.count + 3u) >> 2u;
+  if (word_index >= word_count) {
+    return;
+  }
+  uint cond_word = condition.words[(params.lhs_offset >> 2u) + word_index];
+  uint true_word = input_true.words[(params.rhs_offset >> 2u) + word_index];
+  uint false_word = input_false.words[(params.aux_offset >> 2u) + word_index];
+  uint out_word = 0u;
+  for (uint lane = 0u; lane < 4u; ++lane) {
+    uint index = 4u * word_index + lane;
+    if (index >= params.count) {
+      break;
+    }
+    bool truthy = ((cond_word >> (lane * 8u)) & 0xFFu) != 0u;
+    uint selected = truthy ? byte_at(true_word, index)
+                           : byte_at(false_word, index);
+    out_word |= (selected != 0u ? 1u : 0u) << (lane * 8u);
+  }
+  output_data.words[(params.output_offset >> 2u) + word_index] = out_word;
+}
+#endif

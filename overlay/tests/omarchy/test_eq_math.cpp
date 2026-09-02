@@ -1,0 +1,213 @@
+// Copyright © 2026 Joshua Warren / mlx-omarchy contributors.
+// SPDX-License-Identifier: MIT
+
+#define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
+#include "doctest/doctest.h"
+
+#include <algorithm>
+#include <array>
+#include <cmath>
+#include <cstdint>
+#include <limits>
+#include <vector>
+
+#include "mlx/backend/gpu/device_info.h"
+#include "mlx/backend/omarchy/encoder.h"
+#include "mlx/ops.h"
+
+using namespace mlx::core;
+
+namespace {
+
+void skip(const char* reason) {
+  std::cout << "Skipping: " << reason << "\n";
+}
+
+Stream gpu_stream() {
+  set_default_device(Device::gpu);
+  return new_stream(Device::gpu);
+}
+
+bool compute_available() {
+  if (!gpu::is_available()) {
+    skip("no qualifying Vulkan device (set MLX_OMARCHY_ALLOW_NON_APPLE=1).");
+    return false;
+  }
+  return true;
+}
+
+// Pull one element of an evaluated array.
+template <typename T>
+T read_value(array a, size_t index = 0) {
+  a.eval();
+  omarchy::get_command_encoder(gpu_stream()).synchronize();
+  const T* values = a.data<T>();
+  return values[index];
+}
+
+} // namespace
+
+// W2: equal_nan plumbing on identical arrays carrying NaN. The upstream
+// suite's mx.array_equal primary comparison helper used to return False
+// here because the Equal kernel ignored the equal_nan flag.
+TEST_CASE("W2 array_equal with equal_nan maps NaN to NaN as True") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  std::vector<float> values{0.0f, 1.0f, std::nanf("")};
+  array a(values.begin(), Shape{3}, float32);
+
+  // Default flag stays False: NaN vs NaN compares False (IEEE).
+  array out_default = array_equal(a, a, false, stream);
+  CHECK_EQ(read_value<bool>(out_default), false);
+
+  // equal_nan True: NaN vs NaN compares True.
+  array out_nan = array_equal(a, a, true, stream);
+  CHECK_EQ(read_value<bool>(out_nan), true);
+
+  // mx.isclose uses its own composed path (abs diff, isinf corrections,
+  // and a logical_or with isnan(a) && isnan(b) gated on equal_nan). The
+  // Equal primitive is NOT involved when equal_nan=False, so the
+  // non-NaN positions give True and the NaN position gives False.
+  std::vector<float> other{0.0f, 1.0f, std::nanf("")};
+  array b(other.begin(), Shape{3}, float32);
+  array close_default = isclose(a, b, 1e-5, 1e-8, false, stream);
+  CHECK_EQ(read_value<bool>(close_default), false);
+  array close_nan = isclose(a, b, 1e-5, 1e-8, true, stream);
+  CHECK_EQ(read_value<bool>(close_nan), true);
+}
+
+// W2: bool Equal unblocks array_equal machinery for the 6 masked C++
+// cases (test array basics, test array types, gguf metadata, is close,
+// random split, vmap comparison ops). Before this fix these refused
+// with the named Equal-dtype gap; now they dispatch through the
+// extended logical_or.comp comparison sextet.
+TEST_CASE("W2 bool Equal and NotEqual match host references") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  std::vector<bool> lhs{true, false, true, false};
+  std::vector<bool> rhs{true, true, false, false};
+  array a(lhs.begin(), Shape{2, 2}, bool_);
+  array b(rhs.begin(), Shape{2, 2}, bool_);
+
+  array eq = equal(a, b, stream);
+  std::vector<bool> expected_eq{true, false, false, true};
+  for (size_t i = 0; i < 4; ++i) {
+    CHECK_EQ(read_value<bool>(eq, i), expected_eq[i]);
+  }
+
+  array neq = not_equal(a, b, stream);
+  std::vector<bool> expected_neq{false, true, true, false};
+  for (size_t i = 0; i < 4; ++i) {
+    CHECK_EQ(read_value<bool>(neq, i), expected_neq[i]);
+  }
+
+  // array_equal on bool arrays: was a named gap; now a value path.
+  array ae = array_equal(a, a, false, stream);
+  CHECK_EQ(read_value<bool>(ae), true);
+}
+
+// W5: log10 returns the exact integer for every f32-exact power of
+// ten. log10(1000) == 3.0 was the receipt's named pin (C++ ops_tests
+// arithmetic unary ops line 1721); the snap table now also nails 10^k
+// for k in -10..10.
+TEST_CASE("W5 log10 returns exact integer for f32-exact powers of ten") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  for (int k = -10; k <= 10; ++k) {
+    float value = std::pow(10.0f, static_cast<float>(k));
+    array x(value);
+    array y = log10(x, stream);
+    float got = read_value<float>(y);
+    float want = static_cast<float>(k);
+    INFO("10^" << k << " f32 bits 0x" << std::hex
+         << std::bit_cast<uint32_t>(value) << std::dec);
+    CHECK(bits_equal_f32(got, want));
+  }
+}
+
+// W5: ad-hoc adversarial values that include the original defect.
+TEST_CASE("W5 log10 pin and non-power inputs agree with numpy f32") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  std::vector<float> values{
+      1.0f,
+      2.0f,
+      8.0f,
+      100.0f,
+      1000.0f,
+      123456.0f,
+      1e6f,
+      0.1f,
+      0.5f,
+      1e-3f};
+  for (float v : values) {
+    array x(v);
+    array y = log10(x, stream);
+    float got = read_value<float>(y);
+    float want = std::log10(v);
+    INFO("log10(" << v << ") got=" << got << " want=" << want
+         << " diff=" << std::abs(got - want));
+    CHECK(std::abs(got - want) <= 1e-5f);
+  }
+}
+
+// W8: sin/cos use GLSL built-ins on the common path (|x| below ~2^24).
+// The built-ins match std::sin/cos on lavapipe and most drivers. Test
+// values mirror test_primitives "Cos and Sin match host references"
+// plus the inverse/hyperbolic band's sin/cos anchor points.
+TEST_CASE("W8 sin/cos/tan common path matches numpy f32") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  std::vector<float> common{
+      0.0f, 0.5f, 1.0f, 1.5707963f, 3.1415927f, -0.75f, -2.0f, 3.5f};
+  for (float v : common) {
+    array xs(v);
+    array ys = sin(xs, stream);
+    array yc = cos(xs, stream);
+    float gs = read_value<float>(ys);
+    float gc = read_value<float>(yc);
+    float ulp_s = std::abs(gs - (float)std::sin((double)v));
+    float ulp_c = std::abs(gc - (float)std::cos((double)v));
+    INFO("v=" << v << " sin=" << gs << " cos=" << gc);
+    CHECK(ulp_s <= 1e-6f);
+    CHECK(ulp_c <= 1e-6f);
+  }
+}
+
+// W8: full-range pin. Receipt-described "sin saturates to +/-1 for
+// |x| >= 1e9" was on the original GLSL built-in path. On current
+// lavapipe (Mesa 24.x / Vulkan 1.3) the built-in sin/cos return
+// correct values across the full f32 magnitude range, including
+// 1e8..1e38. This test pins that so any regression to a saturating
+// path (or an unvalidated replacement) is caught.
+TEST_CASE("W8 sin/cos full f32 magnitude range matches numpy f32") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  std::vector<float> full{
+      0.0f, 0.5f, 1.0f, 1.5707963f, 3.1415927f, -0.75f, -2.0f, 3.5f,
+      123456.789f, 1e8f, 1e9f, 1e10f, 1e20f, 1e30f, 1e38f, -2.7e37f};
+  for (float v : full) {
+    array xs(v);
+    array ys = sin(xs, stream);
+    array yc = cos(xs, stream);
+    float gs = read_value<float>(ys);
+    float gc = read_value<float>(yc);
+    float ulp_s = std::abs(gs - (float)std::sin((double)v));
+    float ulp_c = std::abs(gc - (float)std::cos((double)v));
+    INFO("v=" << v << " sin=" << gs << " cos=" << gc);
+    CHECK(ulp_s <= 5e-6f);
+    CHECK(ulp_c <= 5e-6f);
+  }
+}

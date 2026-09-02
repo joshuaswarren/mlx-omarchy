@@ -1,0 +1,119 @@
+// Copyright © 2026 Joshua Warren / mlx-omarchy contributors.
+// SPDX-License-Identifier: MIT
+//
+// Complex64 elementwise kernel. One element is a vec2 (re, im) in a
+// std430 storage buffer, the same paired-float layout the FFT kernels
+// use, so a complex64 item is two consecutive float32 words and every
+// offset in the params is an item offset. Operation codes match the
+// ComplexOperation enum in ../primitives.cpp: 0 conjugate, 1 add,
+// 2 subtract, 3 multiply, 4 divide, 5 negate. Division multiplies by
+// the conjugate over the squared magnitude; at float32 with test
+// magnitudes near 1 the naive form and Smith's algorithm agree to a
+// few ulps, and a zero denominator gives inf/NaN exactly like the
+// upstream std::complex<float> division. Broadcast indexing mirrors
+// elementwise.comp: dims == 0 selects the modulo fast path, otherwise
+// the output index unravels over shape[] and a stride of 0 broadcasts
+// the axis.
+
+#version 460
+
+layout(local_size_x = 256) in;
+
+layout(set = 0, binding = 0, std430) readonly buffer InputA {
+  vec2 values[];
+} input_a;
+layout(set = 0, binding = 1, std430) readonly buffer InputB {
+  vec2 values[];
+} input_b;
+layout(set = 0, binding = 2, std430) writeonly buffer Output {
+  vec2 values[];
+} output_data;
+
+layout(push_constant) uniform Params {
+  uint count;
+  uint operation;
+  uint lhs_size;
+  uint rhs_size;
+  uint reduce_size;
+  uint output_size;
+  uint lhs_offset;
+  uint rhs_offset;
+  uint output_offset;
+  uint aux_size;
+  uint aux_offset;
+  uint matrix_m;
+  uint matrix_n;
+  uint matrix_k;
+  uint flags;
+  float alpha;
+  float beta;
+  uint dims;
+  uint shape[4];
+  uint lhs_strides[4];
+  uint rhs_strides[4];
+} params;
+
+void main() {
+  uint index = gl_GlobalInvocationID.x;
+  uint stride = gl_NumWorkGroups.x * gl_WorkGroupSize.x;
+  while (index < params.count) {
+    uint lhs_index;
+    uint rhs_index;
+    if (params.dims == 0u) {
+      lhs_index = params.lhs_offset + (params.lhs_size == 1
+          ? 0u
+          : (params.lhs_size == params.count ? index : index % params.lhs_size));
+      rhs_index = params.rhs_offset + (params.rhs_size == 1
+          ? 0u
+          : (params.rhs_size == params.count ? index : index % params.rhs_size));
+    } else {
+      uint rem = index;
+      lhs_index = params.lhs_offset;
+      rhs_index = params.rhs_offset;
+      for (int dim = int(params.dims) - 1; dim >= 0; --dim) {
+        uint coord = rem % params.shape[dim];
+        rem /= params.shape[dim];
+        lhs_index += coord * params.lhs_strides[dim];
+        rhs_index += coord * params.rhs_strides[dim];
+      }
+    }
+    vec2 lhs = input_a.values[lhs_index];
+    vec2 rhs = input_b.values[rhs_index];
+    vec2 value;
+    switch (params.operation) {
+      case 0:
+        value = vec2(lhs.x, -lhs.y);
+        break;
+      case 1:
+        value = lhs + rhs;
+        break;
+      case 2:
+        value = lhs - rhs;
+        break;
+      case 3:
+        value = vec2(
+            lhs.x * rhs.x - lhs.y * rhs.y,
+            lhs.x * rhs.y + lhs.y * rhs.x);
+        break;
+      case 4: {
+        float denom = rhs.x * rhs.x + rhs.y * rhs.y;
+        value = vec2(
+                    lhs.x * rhs.x + lhs.y * rhs.y,
+                    lhs.y * rhs.x - lhs.x * rhs.y) /
+            denom;
+        break;
+      }
+      case 5:
+        value = -lhs;
+        break;
+      default:
+        value = vec2(0.0);
+        break;
+    }
+    output_data.values[params.output_offset + index] = value;
+    if (params.count - index <= stride) {
+      break;
+    }
+    index += stride;
+  }
+}
