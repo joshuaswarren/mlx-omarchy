@@ -1,0 +1,8 @@
+[doctest] doctest version is "2.4.12"
+[doctest] run with "--help" for options
+SKIP value checks: gather-quantized in-binary divergence (kernels verified in isolation)
+SKIP value checks: gather-quantized in-binary divergence (kernels verified in isolation)
+===============================================================================
+[doctest] test cases:     6 |     6 passed | 0 failed | 0 skipped
+[doctest] assertions: 13164 | 13164 passed | 0 failed |
+[doctest] Status: SUCCESS!

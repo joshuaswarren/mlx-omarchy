@@ -1,0 +1,45 @@
+WHEEL_START 1788362730
+== prepare upstream tree ==
+patching file CMakeLists.txt
+patching file mlx/CMakeLists.txt
+patching file tests/CMakeLists.txt
+patching file setup.py
+patching file mlx/io/safetensors.cpp
+patching file mlx/io/load.cpp
+patching file mlx/linalg.cpp
+patching file python/src/buffer.h
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx
+== build venv (/home/joshuawarren/src/mlx-omarchy-qual/.work/venv-build) ==
+Traceback (most recent call last):
+  File "<stdin>", line 1, in <module>
+ModuleNotFoundError: No module named 'setuptools'
+Collecting setuptools>=80
+  Using cached setuptools-84.0.0-py3-none-any.whl.metadata (6.6 kB)
+Requirement already satisfied: typing_extensions in /usr/lib/python3.14/site-packages (4.16.0)
+Using cached setuptools-84.0.0-py3-none-any.whl (818 kB)
+Installing collected packages: setuptools
+Successfully installed setuptools-84.0.0
+== wheel build ==
+Processing ./.work/mlx
+  Preparing metadata (pyproject.toml): started
+  Preparing metadata (pyproject.toml): finished with status 'done'
+Building wheels for collected packages: mlx-omarchy
+  Building wheel for mlx-omarchy (pyproject.toml): started
+  Building wheel for mlx-omarchy (pyproject.toml): still running...
+  Building wheel for mlx-omarchy (pyproject.toml): still running...
+  Building wheel for mlx-omarchy (pyproject.toml): still running...
+  Building wheel for mlx-omarchy (pyproject.toml): still running...
+  Building wheel for mlx-omarchy (pyproject.toml): still running...
+  Building wheel for mlx-omarchy (pyproject.toml): still running...
+  Building wheel for mlx-omarchy (pyproject.toml): still running...
+  Building wheel for mlx-omarchy (pyproject.toml): still running...
+  Building wheel for mlx-omarchy (pyproject.toml): still running...
+  Building wheel for mlx-omarchy (pyproject.toml): finished with status 'done'
+  Created wheel for mlx-omarchy: filename=mlx_omarchy-0.32.2.dev20260902+5f8ba16-cp314-cp314-linux_aarch64.whl size=2799362 sha256=2a52423699c61517ffba9cc84eec7598fb573cef61bbf3ff38a239d8cbe9f9de
+  Stored in directory: /tmp/pip-ephem-wheel-cache-_7sa1qtz/wheels/e8/82/ae/df734596af1eee266764ed2a190fd269bc8393169888c69760
+Successfully built mlx-omarchy
+== receipt ==
+[receipt] wheel: /home/joshuawarren/src/mlx-omarchy-qual/dist/mlx_omarchy-0.32.2.dev20260902+5f8ba16-cp314-cp314-linux_aarch64.whl
+[receipt] size: 2799362 bytes
+[receipt] sha256: 2a52423699c61517ffba9cc84eec7598fb573cef61bbf3ff38a239d8cbe9f9de
+WHEEL_END 1788363409

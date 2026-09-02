@@ -1,0 +1,1811 @@
+[doctest] doctest version is "2.4.12"
+[doctest] run with "--help" for options
+===============================================================================
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:602:
+TEST CASE:  masked_scatter fills true positions from the source in order
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 5 == Approx( -3 ) )
+
+===============================================================================
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:656:
+TEST CASE:  masked_scatter carries the scan across chunks and rows
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -2 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -3 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -4 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -5 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -6 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -7 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( -2 == Approx( -8 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( -3 == Approx( -9 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -10 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -11 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -12 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -13 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -14 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -15 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( -4 == Approx( -16 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( -5 == Approx( -17 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -18 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -19 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -20 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -21 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -22 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -23 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( -6 == Approx( -24 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( -7 == Approx( -25 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -26 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -27 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -28 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -29 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -30 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -31 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( -8 == Approx( -32 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( -9 == Approx( -33 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -34 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -35 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -36 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -37 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -38 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -39 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( -10 == Approx( -40 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( -11 == Approx( -41 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -42 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -43 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -44 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -45 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -46 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -47 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( -12 == Approx( -48 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( -13 == Approx( -49 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -50 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -51 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -52 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -53 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -54 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -55 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( -14 == Approx( -56 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( -15 == Approx( -57 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -58 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -59 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -60 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -61 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -62 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -63 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( -16 == Approx( -64 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( -17 == Approx( -65 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -66 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -67 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -68 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -69 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -70 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -71 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( -18 == Approx( -72 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( -19 == Approx( -73 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -74 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -75 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -76 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -77 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -78 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -79 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( -20 == Approx( -80 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( -21 == Approx( -81 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -82 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -83 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -84 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -85 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -86 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -87 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( -22 == Approx( -88 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( -23 == Approx( -89 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -90 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -91 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -92 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -93 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -94 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -95 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( -24 == Approx( -96 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( -25 == Approx( -97 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -98 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -99 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -100 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -101 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -102 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -103 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( -26 == Approx( -104 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( -27 == Approx( -105 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -106 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -107 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -108 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -109 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -110 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -111 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( -28 == Approx( -112 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( -29 == Approx( -113 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -114 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -115 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -116 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -117 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -118 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -119 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( -30 == Approx( -120 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( -31 == Approx( -121 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -122 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -123 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -124 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -125 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -126 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -127 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( -32 == Approx( -128 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( -33 == Approx( -129 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -130 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -131 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -132 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -133 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -134 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -135 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( -34 == Approx( -136 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( -35 == Approx( -137 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -138 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -139 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -140 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -141 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -142 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -143 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( -36 == Approx( -144 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( -37 == Approx( -145 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -146 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -147 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -148 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -149 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -150 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -151 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( -38 == Approx( -152 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( -39 == Approx( -153 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -154 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -155 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -156 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -157 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -158 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -159 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( -40 == Approx( -160 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( -41 == Approx( -161 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -162 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -163 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -164 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -165 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -166 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -167 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( -42 == Approx( -168 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( -43 == Approx( -169 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -170 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -171 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -172 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -173 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -174 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -175 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( -44 == Approx( -176 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( -45 == Approx( -177 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -178 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -179 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -180 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -181 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -182 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -183 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( -46 == Approx( -184 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( -47 == Approx( -185 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -186 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -187 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -188 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -189 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -190 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -191 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( -48 == Approx( -192 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( -49 == Approx( -193 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -194 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -195 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -196 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -197 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -198 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -199 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( -50 == Approx( -200 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( -51 == Approx( -201 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -202 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -203 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -204 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -205 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -206 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -207 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( -52 == Approx( -208 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( -53 == Approx( -209 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -210 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -211 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -212 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -213 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -214 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -215 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( -54 == Approx( -216 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( -55 == Approx( -217 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -218 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -219 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -220 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -221 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -222 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -223 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( -56 == Approx( -224 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( -57 == Approx( -225 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -226 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -227 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -228 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -229 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -230 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -231 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( -58 == Approx( -232 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( -59 == Approx( -233 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -234 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -235 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -236 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -237 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -238 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -239 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( -60 == Approx( -240 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( -61 == Approx( -241 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -242 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -243 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -244 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -245 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -246 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -247 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( -62 == Approx( -248 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( -63 == Approx( -249 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -250 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -251 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -252 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -253 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -254 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -255 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( -64 == Approx( -256 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( -65 == Approx( -257 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -258 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -259 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -260 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -261 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -262 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -263 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( -66 == Approx( -264 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( -67 == Approx( -265 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -266 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -267 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -268 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -269 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -270 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -271 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( -68 == Approx( -272 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( -69 == Approx( -273 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -274 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -275 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -276 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -277 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -278 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -279 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( -70 == Approx( -280 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( -71 == Approx( -281 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -282 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -283 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -284 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -285 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -286 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -287 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( -72 == Approx( -288 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( -73 == Approx( -289 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -290 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -291 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -292 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -293 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -294 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -295 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( -74 == Approx( -296 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( -75 == Approx( -297 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -298 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -299 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -300 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -301 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -302 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -303 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( -76 == Approx( -304 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( -77 == Approx( -305 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -306 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -307 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -308 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -309 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -310 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -311 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( -78 == Approx( -312 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( -79 == Approx( -313 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -314 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -315 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -316 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -317 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -318 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -319 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( -80 == Approx( -320 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( -81 == Approx( -321 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -322 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -323 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -324 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -325 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -326 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -327 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( -82 == Approx( -328 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( -83 == Approx( -329 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -330 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -331 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -332 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -333 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -334 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -335 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( -84 == Approx( -336 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( -85 == Approx( -337 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -338 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -339 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -340 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -341 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -342 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -343 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( -86 == Approx( -344 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( -87 == Approx( -345 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -346 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -347 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -348 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -349 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -350 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -351 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( -88 == Approx( -352 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( -89 == Approx( -353 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -354 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -355 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -356 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -357 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -358 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -359 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( -90 == Approx( -360 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( -91 == Approx( -361 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -362 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -363 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -364 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -365 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -366 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -367 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( -92 == Approx( -368 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( -93 == Approx( -369 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -370 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -371 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -372 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -373 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -374 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -375 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( -94 == Approx( -376 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( -95 == Approx( -377 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -378 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -379 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -380 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -381 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -382 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -383 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( -96 == Approx( -384 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( -97 == Approx( -385 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -386 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -387 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -388 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -389 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -390 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -391 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( -98 == Approx( -392 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( -99 == Approx( -393 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -394 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -395 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -396 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -397 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -398 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -399 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( -100 == Approx( -400 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( -101 == Approx( -401 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -402 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -403 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -404 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -405 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -406 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -407 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( -102 == Approx( -408 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( -103 == Approx( -409 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -410 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -411 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -412 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -413 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -414 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -415 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( -104 == Approx( -416 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( -105 == Approx( -417 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -418 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -419 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -420 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -421 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -422 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -423 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( -106 == Approx( -424 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( -107 == Approx( -425 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -426 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -427 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -428 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -429 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -430 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -431 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( -108 == Approx( -432 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( -109 == Approx( -433 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -434 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -435 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -436 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -437 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -438 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -439 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( -110 == Approx( -440 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( -111 == Approx( -441 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -442 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -443 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -444 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -445 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -446 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -447 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( -112 == Approx( -448 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( -113 == Approx( -449 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -450 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -451 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -452 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -453 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -454 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -455 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( -114 == Approx( -456 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( -115 == Approx( -457 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -458 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -459 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -460 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -461 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -462 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -463 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( -116 == Approx( -464 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( -117 == Approx( -465 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -466 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -467 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -468 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -469 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -470 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -471 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( -118 == Approx( -472 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( -119 == Approx( -473 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -474 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -475 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -476 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -477 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -478 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -479 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( -120 == Approx( -480 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( -121 == Approx( -481 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -482 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -483 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -484 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -485 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -486 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -487 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( -122 == Approx( -488 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( -123 == Approx( -489 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -490 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -491 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -492 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -493 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -494 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -495 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( -124 == Approx( -496 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( -125 == Approx( -497 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -498 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -499 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -500 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -501 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -502 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -503 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( -126 == Approx( -504 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( -127 == Approx( -505 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -506 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -507 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -508 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -509 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -510 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -511 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( -128 == Approx( -512 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( -129 == Approx( -513 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -514 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -515 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -516 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -517 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -518 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -519 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( -130 == Approx( -520 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( -131 == Approx( -521 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -522 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -523 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -524 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -525 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -526 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -527 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( -132 == Approx( -528 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( -133 == Approx( -529 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -530 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -531 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -532 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -533 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -534 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -535 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( -134 == Approx( -536 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( -135 == Approx( -537 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -538 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -539 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -540 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -541 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -542 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -543 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( -136 == Approx( -544 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( -137 == Approx( -545 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -546 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -547 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -548 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -549 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -550 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -551 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( -138 == Approx( -552 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( -139 == Approx( -553 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -554 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -555 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -556 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -557 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -558 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -559 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( -140 == Approx( -560 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( -141 == Approx( -561 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -562 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -563 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -564 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -565 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -566 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -567 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( -142 == Approx( -568 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( -143 == Approx( -569 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -570 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -571 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -572 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -573 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -574 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -575 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( -144 == Approx( -576 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( -145 == Approx( -577 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -578 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -579 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -580 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -581 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -582 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -583 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( -146 == Approx( -584 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( -147 == Approx( -585 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -586 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -587 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -588 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -589 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -590 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -591 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( -148 == Approx( -592 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( -149 == Approx( -593 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -594 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -595 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -596 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -597 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -598 ) )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:73: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0 == Approx( -599 ) )
+
+===============================================================================
+[doctest] test cases:   36 |   34 passed |   2 failed | 0 skipped
+[doctest] assertions: 1723 | 1124 passed | 599 failed |
+[doctest] Status: FAILURE!

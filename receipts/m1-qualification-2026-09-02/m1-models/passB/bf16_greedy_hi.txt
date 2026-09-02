@@ -1,0 +1,6 @@
+==========
+Hello! How can I assist you today?
+==========
+Prompt: 30 tokens, 22.096 tokens-per-sec
+Generation: 10 tokens, 2.913 tokens-per-sec
+Peak memory: 0.993 GB

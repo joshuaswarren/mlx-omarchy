@@ -1,0 +1,12 @@
+[child/reopen] fresh process device reopen ok
+[doctest] doctest version is "2.4.12"
+[doctest] run with "--help" for options
+Skipping: a qualifying GPU is present; the refusal path is exercised by the classification tests and this test is meaningless there.
+[receipt] compute queue families expose 1 queue(s)
+Skipping: requires a development build with the CPU backend enabled.
+[receipt] device exposes 1 queue(s); measuring overlap on one VkQueue
+[receipt] iters=400 serialized_median=0.442115s concurrent_median=0.354591s ratio=1.24683
+===============================================================================
+[doctest] test cases:   22 |   22 passed | 0 failed | 0 skipped
+[doctest] assertions: 6189 | 6189 passed | 0 failed |
+[doctest] Status: SUCCESS!

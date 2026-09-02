@@ -1,0 +1,6 @@
+==========
+Paris
+==========
+Prompt: 41 tokens, 21.192 tokens-per-sec
+Generation: 2 tokens, 5.057 tokens-per-sec
+Peak memory: 0.292 GB

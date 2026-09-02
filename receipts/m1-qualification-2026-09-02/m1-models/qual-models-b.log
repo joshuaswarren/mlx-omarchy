@@ -1,0 +1,51 @@
+/home/joshuawarren/models/Qwen2.5-0.5B-Instruct-4bit-mlx
+/home/joshuawarren/models/Qwen2.5-0.5B-Instruct-bf16-mlx
+=== bf16_greedy_hi ===
+rc=0
+==========
+Hello! How can I assist you today?
+==========
+Prompt: 30 tokens, 22.096 tokens-per-sec
+Generation: 10 tokens, 2.913 tokens-per-sec
+Peak memory: 0.993 GB
+=== bf16_greedy_france ===
+rc=0
+==========
+Paris
+==========
+Prompt: 41 tokens, 29.548 tokens-per-sec
+Generation: 2 tokens, 5.123 tokens-per-sec
+Peak memory: 0.993 GB
+=== bf16_temp09_hi ===
+rc=0
+==========
+Hello! How can I assist you today?
+==========
+Prompt: 30 tokens, 20.513 tokens-per-sec
+Generation: 10 tokens, 2.654 tokens-per-sec
+Peak memory: 0.995 GB
+=== q4_greedy_hi ===
+rc=0
+==========
+Hello! How can I assist you today?
+==========
+Prompt: 30 tokens, 17.842 tokens-per-sec
+Generation: 10 tokens, 2.882 tokens-per-sec
+Peak memory: 0.292 GB
+=== q4_greedy_france ===
+rc=0
+==========
+Paris
+==========
+Prompt: 41 tokens, 21.206 tokens-per-sec
+Generation: 2 tokens, 5.005 tokens-per-sec
+Peak memory: 0.292 GB
+=== q4_temp09_hi ===
+rc=0
+==========
+Hello! How can I assist you today?
+==========
+Prompt: 30 tokens, 17.540 tokens-per-sec
+Generation: 10 tokens, 3.045 tokens-per-sec
+Peak memory: 0.292 GB
+QUAL_MODELS_OK

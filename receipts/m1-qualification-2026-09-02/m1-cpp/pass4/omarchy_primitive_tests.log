@@ -1,0 +1,104 @@
+[doctest] doctest version is "2.4.12"
+[doctest] run with "--help" for options
+===============================================================================
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_primitives.cpp:5449:
+TEST CASE:  LogicalAnd and LogicalNot match host references
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_primitives.cpp:5468: ERROR: CHECK_EQ( landed.data<bool>()[i], and_expected[i] ) is NOT correct!
+  values: CHECK_EQ( false, {?} )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_primitives.cpp:5468: ERROR: CHECK_EQ( landed.data<bool>()[i], and_expected[i] ) is NOT correct!
+  values: CHECK_EQ( false, {?} )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_primitives.cpp:5468: ERROR: CHECK_EQ( landed.data<bool>()[i], and_expected[i] ) is NOT correct!
+  values: CHECK_EQ( false, {?} )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_primitives.cpp:5468: ERROR: CHECK_EQ( landed.data<bool>()[i], and_expected[i] ) is NOT correct!
+  values: CHECK_EQ( false, {?} )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_primitives.cpp:5468: ERROR: CHECK_EQ( landed.data<bool>()[i], and_expected[i] ) is NOT correct!
+  values: CHECK_EQ( false, {?} )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_primitives.cpp:5468: ERROR: CHECK_EQ( landed.data<bool>()[i], and_expected[i] ) is NOT correct!
+  values: CHECK_EQ( false, {?} )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_primitives.cpp:5468: ERROR: CHECK_EQ( landed.data<bool>()[i], and_expected[i] ) is NOT correct!
+  values: CHECK_EQ( false, {?} )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_primitives.cpp:5468: ERROR: CHECK_EQ( landed.data<bool>()[i], and_expected[i] ) is NOT correct!
+  values: CHECK_EQ( false, {?} )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_primitives.cpp:5468: ERROR: CHECK_EQ( landed.data<bool>()[i], and_expected[i] ) is NOT correct!
+  values: CHECK_EQ( false, {?} )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_primitives.cpp:5468: ERROR: CHECK_EQ( landed.data<bool>()[i], and_expected[i] ) is NOT correct!
+  values: CHECK_EQ( false, {?} )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_primitives.cpp:5468: ERROR: CHECK_EQ( landed.data<bool>()[i], and_expected[i] ) is NOT correct!
+  values: CHECK_EQ( false, {?} )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_primitives.cpp:5468: ERROR: CHECK_EQ( landed.data<bool>()[i], and_expected[i] ) is NOT correct!
+  values: CHECK_EQ( false, {?} )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_primitives.cpp:5476: ERROR: CHECK_EQ( scalar_true.data<bool>()[i], xv[i] ) is NOT correct!
+  values: CHECK_EQ( false, {?} )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_primitives.cpp:5476: ERROR: CHECK_EQ( scalar_true.data<bool>()[i], xv[i] ) is NOT correct!
+  values: CHECK_EQ( false, {?} )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_primitives.cpp:5476: ERROR: CHECK_EQ( scalar_true.data<bool>()[i], xv[i] ) is NOT correct!
+  values: CHECK_EQ( false, {?} )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_primitives.cpp:5476: ERROR: CHECK_EQ( scalar_true.data<bool>()[i], xv[i] ) is NOT correct!
+  values: CHECK_EQ( false, {?} )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_primitives.cpp:5476: ERROR: CHECK_EQ( scalar_true.data<bool>()[i], xv[i] ) is NOT correct!
+  values: CHECK_EQ( false, {?} )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_primitives.cpp:5476: ERROR: CHECK_EQ( scalar_true.data<bool>()[i], xv[i] ) is NOT correct!
+  values: CHECK_EQ( false, {?} )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_primitives.cpp:5476: ERROR: CHECK_EQ( scalar_true.data<bool>()[i], xv[i] ) is NOT correct!
+  values: CHECK_EQ( false, {?} )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_primitives.cpp:5476: ERROR: CHECK_EQ( scalar_true.data<bool>()[i], xv[i] ) is NOT correct!
+  values: CHECK_EQ( false, {?} )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_primitives.cpp:5476: ERROR: CHECK_EQ( scalar_true.data<bool>()[i], xv[i] ) is NOT correct!
+  values: CHECK_EQ( false, {?} )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_primitives.cpp:5476: ERROR: CHECK_EQ( scalar_true.data<bool>()[i], xv[i] ) is NOT correct!
+  values: CHECK_EQ( false, {?} )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_primitives.cpp:5476: ERROR: CHECK_EQ( scalar_true.data<bool>()[i], xv[i] ) is NOT correct!
+  values: CHECK_EQ( false, {?} )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_primitives.cpp:5476: ERROR: CHECK_EQ( scalar_true.data<bool>()[i], xv[i] ) is NOT correct!
+  values: CHECK_EQ( false, {?} )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_primitives.cpp:5476: ERROR: CHECK_EQ( scalar_true.data<bool>()[i], xv[i] ) is NOT correct!
+  values: CHECK_EQ( false, {?} )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_primitives.cpp:5476: ERROR: CHECK_EQ( scalar_true.data<bool>()[i], xv[i] ) is NOT correct!
+  values: CHECK_EQ( false, {?} )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_primitives.cpp:5476: ERROR: CHECK_EQ( scalar_true.data<bool>()[i], xv[i] ) is NOT correct!
+  values: CHECK_EQ( false, {?} )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_primitives.cpp:5476: ERROR: CHECK_EQ( scalar_true.data<bool>()[i], xv[i] ) is NOT correct!
+  values: CHECK_EQ( false, {?} )
+
+===============================================================================
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_primitives.cpp:5553:
+TEST CASE:  integer Remainder, DivMod, Power, Sign, and Abs match host references
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_primitives.cpp:68: ERROR: CHECK_EQ( values[index], expected[index] ) is NOT correct!
+  values: CHECK_EQ( -2, -3 )
+
+/home/joshuawarren/src/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_primitives.cpp:68: ERROR: CHECK_EQ( values[index], expected[index] ) is NOT correct!
+  values: CHECK_EQ( -2, -3 )
+
+===============================================================================
+[doctest] test cases:     86 |     84 passed |  2 failed | 0 skipped
+[doctest] assertions: 602555 | 602525 passed | 30 failed |
+[doctest] Status: FAILURE!
