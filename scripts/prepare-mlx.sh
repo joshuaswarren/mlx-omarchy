@@ -33,7 +33,15 @@ while IFS= read -r -d '' file; do
   fi
 done < <(find "$ROOT/overlay" -type f -print0)
 
-cp -a "$ROOT/overlay/." "$STAGING_DIR/"
+# Copy modes and contents but NOT timestamps. `cp -a` preserved overlay
+# mtimes, which silently dropped edits from builds: a freshly edited
+# overlay file could land in the staging tree older than an existing
+# object file, so ninja considered the object up to date and never
+# recompiled it. That produced green suites testing code that was not in
+# the binary, and cost several hours of misattributed failures on
+# 2026-09-02. Staged files must always look newer than prior build output.
+cp -r --preserve=mode "$ROOT/overlay/." "$STAGING_DIR/"
+find "$STAGING_DIR" -newermt '@0' -exec touch {} +
 patch --directory="$STAGING_DIR" --strip=1 --forward --fuzz=0 \
   < "$ROOT/patches/mlx-build.patch"
 patch --directory="$STAGING_DIR" --strip=1 --forward --fuzz=0 \
