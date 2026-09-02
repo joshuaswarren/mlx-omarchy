@@ -151,7 +151,7 @@ void main() {
         uint column = uint(in_column) / input_dilation_width;
         uint input_base = params.lhs_offset +
             (batch * in_height + row) * in_width * in_channels +
-            column * in_channels;
+            column * in_channels + group * in_channels_per_group;
         uint weight_base = params.rhs_offset +
             out_channel * kernel_height * kernel_width *
                 in_channels_per_group +
