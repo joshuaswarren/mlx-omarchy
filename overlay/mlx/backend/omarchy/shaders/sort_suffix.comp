@@ -2,26 +2,29 @@
 // SPDX-License-Identifier: MIT
 //
 // Sort/ArgSort over the last axis. One workgroup handles one row: it loads
-// the row into shared memory as (value, index) pairs, pads the row to a
-// power of two with NaN keys, and runs a bitonic sort. The comparator
-// mirrors the upstream CPU stable_sort rule: values compare in float32,
-// NaN sorts after every number, and equal keys order by source index, so
-// both the value variant and the ARGSORT index variant produce the unique
-// stable order. Rows up to 1024 elements fit the shared arrays.
+// the row into shared memory as (key, index) pairs, pads the row to a
+// power of two with a key that sorts after every real element, and runs a
+// bitonic sort. Float modes keep float keys: NaN sorts after every number,
+// mirroring the upstream CPU stable_sort rule. Integer modes sort as
+// unsigned keys: uint32 compares by magnitude, and int32 reinterprets its
+// bits into an order-preserving key by flipping the sign bit. Equal keys
+// order by source index, so both the value variant and the ARGSORT index
+// variant produce the unique stable order. Rows up to 1024 elements fit
+// the shared arrays.
 
 #version 460
 
-#ifdef USE_FP16
+#if defined(USE_FP16)
 #extension GL_EXT_shader_16bit_storage : require
 #extension GL_EXT_shader_explicit_arithmetic_types_float16 : require
 #define STORAGE_TYPE float16_t
-#define LOAD_VALUE(x) float(x)
-#define STORE_VALUE(f) STORAGE_TYPE(f)
+#define LOAD_KEY(x) float(x)
+#define STORE_KEY(k) STORAGE_TYPE(k)
 #elif defined(USE_BF16)
 #extension GL_EXT_shader_16bit_storage : require
 #extension GL_EXT_shader_explicit_arithmetic_types_int16 : require
 #define STORAGE_TYPE uint16_t
-#define LOAD_VALUE(x) uintBitsToFloat(uint(x) << 16u)
+#define LOAD_KEY(x) uintBitsToFloat(uint(x) << 16u)
 uint16_t bf16_store(float value) {
   uint bits = floatBitsToUint(value);
   if (isnan(value)) {
@@ -29,11 +32,33 @@ uint16_t bf16_store(float value) {
   }
   return uint16_t((bits + 0x7fffu + ((bits >> 16) & 1u)) >> 16);
 }
-#define STORE_VALUE(f) bf16_store(f)
+#define STORE_KEY(k) bf16_store(k)
+#elif defined(USE_I32)
+#define STORAGE_TYPE int
+#define KEY_TYPE uint
+// Order-preserving map from int32 to uint32: flip the sign bit. Negative
+// words map below non-negative words, and the mapping is monotone.
+#define LOAD_KEY(x) (uint(x) ^ 0x80000000u)
+#define STORE_KEY(k) int((k) ^ 0x80000000u)
+#define PAD_KEY 0xFFFFFFFFu
+#elif defined(USE_U32)
+#define STORAGE_TYPE uint
+#define KEY_TYPE uint
+#define LOAD_KEY(x) (x)
+#define STORE_KEY(k) (k)
+#define PAD_KEY 0xFFFFFFFFu
 #else
 #define STORAGE_TYPE float
-#define LOAD_VALUE(x) float(x)
-#define STORE_VALUE(f) STORAGE_TYPE(f)
+#define LOAD_KEY(x) float(x)
+#define STORE_KEY(k) STORAGE_TYPE(k)
+#endif
+
+#ifndef KEY_TYPE
+#define KEY_TYPE float
+#endif
+
+#ifndef PAD_KEY
+#define PAD_KEY uintBitsToFloat(0x7fc00000u)
 #endif
 
 layout(local_size_x = 256) in;
@@ -63,13 +88,19 @@ layout(push_constant) uniform Params {
   uint output_offset;
 } params;
 
-shared float row_values[1024];
+shared KEY_TYPE row_keys[1024];
 shared uint row_indices[1024];
 
+#if defined(USE_I32) || defined(USE_U32)
+// Strict order on (key, index). Equal keys break on the smaller source
+// index, so duplicates keep the unique stable order.
+bool key_less(KEY_TYPE key_a, uint index_a, KEY_TYPE key_b, uint index_b) {
+  return key_a < key_b || (key_a == key_b && index_a < index_b);
+}
+#else
 // Strict order on (value, index) keys. A NaN key sorts after every number,
 // and two NaN keys order by source index, which also keeps real NaNs ahead
-// of the NaN padding. Equal values break on the smaller source index, so
-// the network output is the unique stable order.
+// of the NaN padding.
 bool key_less(float value_a, uint index_a, float value_b, uint index_b) {
   bool nan_a = isnan(value_a);
   bool nan_b = isnan(value_b);
@@ -81,6 +112,7 @@ bool key_less(float value_a, uint index_a, float value_b, uint index_b) {
   }
   return value_a < value_b || (value_a == value_b && index_a < index_b);
 }
+#endif
 
 void main() {
   uint thread = gl_LocalInvocationID.x;
@@ -94,9 +126,9 @@ void main() {
     uint start = params.lhs_offset + row * row_length;
     for (uint index = thread; index < padded; index += 256u) {
       if (index < row_length) {
-        row_values[index] = LOAD_VALUE(input_data.values[start + index]);
+        row_keys[index] = LOAD_KEY(input_data.values[start + index]);
       } else {
-        row_values[index] = uintBitsToFloat(0x7fc00000u);
+        row_keys[index] = PAD_KEY;
       }
       row_indices[index] = index;
     }
@@ -107,18 +139,18 @@ void main() {
         for (uint index = thread; index < padded; index += 256u) {
           uint partner = index ^ j;
           if (partner > index) {
-            float value = row_values[index];
+            KEY_TYPE key = row_keys[index];
             uint index_key = row_indices[index];
-            float partner_value = row_values[partner];
-            uint partner_key = row_indices[partner];
+            KEY_TYPE partner_key = row_keys[partner];
+            uint partner_index_key = row_indices[partner];
             bool ascending = (index & k) == 0u;
             bool swap = ascending
-                ? key_less(partner_value, partner_key, value, index_key)
-                : key_less(value, index_key, partner_value, partner_key);
+                ? key_less(partner_key, partner_index_key, key, index_key)
+                : key_less(key, index_key, partner_key, partner_index_key);
             if (swap) {
-              row_values[index] = partner_value;
-              row_indices[index] = partner_key;
-              row_values[partner] = value;
+              row_keys[index] = partner_key;
+              row_indices[index] = partner_index_key;
+              row_keys[partner] = key;
               row_indices[partner] = index_key;
             }
           }
@@ -132,7 +164,7 @@ void main() {
           row_indices[index];
 #else
       output_data.values[params.output_offset + row * row_length + index] =
-          STORE_VALUE(row_values[index]);
+          STORE_KEY(row_keys[index]);
 #endif
     }
     barrier();

@@ -328,13 +328,6 @@ TEST_CASE("where with a strided condition") {
           stream),
       std::vector<int>{1, 0},
       stream);
-  array decoded = where(cond_t, array(7, int32), array(3, int32), stream);
-  auto decoded_back = readback_f32(stream, decoded);
-  std::cout << "decoded cond:";
-  for (int i = 0; i < m * n; ++i) {
-    std::cout << " " << decoded_back[i];
-  }
-  std::cout << "\n";
   std::vector<double> x_host(m * n);
   std::vector<double> y_host(m * n);
   for (auto& value : x_host) {
@@ -601,7 +594,7 @@ TEST_CASE("composed lu computes and reconstructs the input") {
   }
 }
 
-TEST_CASE("composed solve progression pins the uint32 ArgSort gate") {
+TEST_CASE("composed solve computes A x == b through the uint32 ArgSort chain") {
   if (!compute_available()) {
     return;
   }
@@ -612,26 +605,181 @@ TEST_CASE("composed solve progression pins the uint32 ArgSort gate") {
   std::vector<double> b_host{3.0, -1.0, 4.0, 1.5, 5.0};
   array a = device_values(stream, a_host, Shape{n, n}, float32);
   array b = device_values(stream, b_host, Shape{n}, float32);
-  // solve = lu + argsort(pivots) + take_along_axis + triangular solves.
-  // The Select half of the chain computes; the remaining refusal is the
-  // backend's float-only ArgSort gate meeting upstream's uint32 pivot
-  // permutation. This case switches to the A*x == b value check the
-  // moment uint32 ArgSort lands.
-  std::string solve_error;
+  // solve = lu + argsort(uint32 pivots) + take_along_axis + triangular
+  // solves. The uint32 ArgSort link is implemented, so the whole chain
+  // must compute, and the result must satisfy A*x == b.
+  std::vector<float> x_flat;
   try {
-    readback_f32(stream, linalg::solve(a, b, stream));
+    array x = linalg::solve(a, b, stream);
+    CHECK_EQ(x.shape(), Shape{n});
+    x_flat = readback_f32(stream, std::move(x));
   } catch (const std::exception& caught) {
-    solve_error = caught.what();
+    FAIL("composed solve refused: ", std::string(caught.what()));
   }
-  REQUIRE_FALSE(solve_error.empty());
-  CHECK_MESSAGE(
-      solve_error.find("ArgSort") != std::string::npos,
-      "unexpected solve error: ",
-      solve_error);
-  CHECK_MESSAGE(
-      solve_error.find("not implemented") != std::string::npos,
-      "unexpected solve error: ",
-      solve_error);
+  std::vector<double> x_double(x_flat.begin(), x_flat.end());
+  std::vector<double> ax = host_matmul(a_host, x_double, n, n, 1);
+  double tol = 1e-3;
+  for (int i = 0; i < n; ++i) {
+    CHECK_MESSAGE(
+        std::abs(ax[i] - b_host[i]) <= tol,
+        "solve residual mismatch at row ",
+        i,
+        ": A*x = ",
+        ax[i],
+        " b = ",
+        b_host[i]);
+  }
+
+  // A second matrix whose LU factorization must swap rows (zero in the
+  // leading pivot slot), so the uint32 argsort link sorts a pivot
+  // vector that is not already sorted.
+  int m2 = 5;
+  std::vector<double> a2_host(m2 * m2, 0.0);
+  for (int i = 0; i < m2; ++i) {
+    a2_host[i * m2 + i] = 4.0;
+    if (i > 0) {
+      a2_host[i * m2 + i - 1] = 1.0;
+    }
+  }
+  a2_host[0] = 0.0;
+  a2_host[1] = 2.0;
+  std::vector<double> b2_host{1.0, 2.0, 3.0, 4.0, 5.0};
+  array a2 = device_values(stream, a2_host, Shape{m2, m2}, float32);
+  array b2 = device_values(stream, b2_host, Shape{m2}, float32);
+  std::vector<float> x2_flat;
+  try {
+    array x2 = linalg::solve(a2, b2, stream);
+    CHECK_EQ(x2.shape(), Shape{m2});
+    x2_flat = readback_f32(stream, std::move(x2));
+  } catch (const std::exception& caught) {
+    FAIL("composed solve with pivot swap refused: ",
+         std::string(caught.what()));
+  }
+  std::vector<double> x2_double(x2_flat.begin(), x2_flat.end());
+  std::vector<double> a2x2 = host_matmul(a2_host, x2_double, m2, m2, 1);
+  for (int i = 0; i < m2; ++i) {
+    CHECK_MESSAGE(
+        std::abs(a2x2[i] - b2_host[i]) <= tol,
+        "swapped-pivot solve residual mismatch at row ",
+        i,
+        ": A*x = ",
+        a2x2[i],
+        " b = ",
+        b2_host[i]);
+  }
+}
+
+TEST_CASE("TEMP wide svd reconstruct probe") {
+  if (!compute_available()) {
+    return;
+  }
+  auto stream = gpu_stream();
+  int m = 4;
+  int n = 6;
+  std::mt19937 gen(31);
+  std::uniform_real_distribution<double> dist(-1.0, 1.0);
+  std::vector<double> a_host(m * n);
+  for (auto& value : a_host) {
+    value = dist(gen);
+  }
+  array a = device_values(stream, a_host, Shape{m, n}, float32);
+  auto outs = linalg::svd(a, true, stream);
+  auto u_flat = readback_f32(stream, outs[0]);
+  auto s_flat = readback_f32(stream, outs[1]);
+  auto vt_flat = readback_f32(stream, outs[2]);
+  std::vector<double> u(u_flat.begin(), u_flat.end());
+  std::vector<double> s(s_flat.begin(), s_flat.end());
+  std::vector<double> vt(vt_flat.begin(), vt_flat.end());
+  std::vector<double> sm(m * m, 0.0);
+  for (int i = 0; i < m; ++i) {
+    sm[i * m + i] = s[i];
+  }
+  std::vector<double> usm = host_matmul(u, sm, m, m, m);
+  std::vector<double> product = host_matmul(usm, vt, m, m, n);
+  double rec = 0.0;
+  for (int i = 0; i < m * n; ++i) {
+    rec = std::max(rec, std::abs(product[i] - a_host[i]));
+  }
+  std::vector<double> vt_t(n * n, 0.0);
+  for (int i = 0; i < n; ++i) {
+    for (int j = 0; j < n; ++j) {
+      vt_t[j * n + i] = vt[i * n + j];
+    }
+  }
+  std::vector<double> vvt = host_matmul(vt_t, vt, n, n, n);
+  double uorth = 0.0;
+  for (int i = 0; i < m; ++i) {
+    for (int j = 0; j < m; ++j) {
+      double dot = 0.0;
+      for (int t = 0; t < m; ++t) {
+        dot += u[t * m + i] * u[t * m + j];
+      }
+      uorth = std::max(uorth, std::abs(dot - (i == j ? 1.0 : 0.0)));
+    }
+  }
+  double orth = 0.0;
+  for (int i = 0; i < n; ++i) {
+    for (int j = 0; j < n; ++j) {
+      orth = std::max(orth, std::abs(vvt[i * n + j] - (i == j ? 1.0 : 0.0)));
+    }
+  }
+  std::cout << "WIDE_SVD rec=" << rec << " orth=" << orth
+            << " uorth=" << uorth << "\n";
+  std::cout << "DEV_S:";
+  for (int i = 0; i < m; ++i) {
+    std::cout << " " << s[i];
+  }
+  std::cout << "\nDEV_U:";
+  for (int i = 0; i < m * m; ++i) {
+    std::cout << " " << u[i];
+  }
+  std::cout << "\nDEV_VT:";
+  for (int i = 0; i < n * n; ++i) {
+    std::cout << " " << vt[i];
+  }
+  std::cout << "\n";
+}
+
+TEST_CASE("TEMP bracket svd shapes probe") {
+  if (!compute_available()) {
+    return;
+  }
+  auto stream = gpu_stream();
+  std::mt19937 gen(31);
+  std::uniform_real_distribution<double> dist(-1.0, 1.0);
+  std::vector<double> a_host(24);
+  for (auto& value : a_host) {
+    value = dist(gen);
+  }
+  std::vector<double> sq_host(a_host.begin(), a_host.begin() + 16);
+  // (a) square 4x4 on the first block.
+  {
+    array a = device_values(stream, sq_host, Shape{4, 4}, float32);
+    auto outs = linalg::svd(a, true, stream);
+    auto s_flat = readback_f32(stream, outs[1]);
+    auto vt_flat = readback_f32(stream, outs[2]);
+    std::cout << "SQ_S:";
+    for (auto v : s_flat) {
+      std::cout << " " << v;
+    }
+    std::cout << "\nSQ_VT:";
+    for (auto v : vt_flat) {
+      std::cout << " " << v;
+    }
+    std::cout << "\n";
+  }
+  // (b) tall 6x4 svd of the mlx-transposed A^T (transposed-source copy).
+  {
+    array a = device_values(stream, a_host, Shape{4, 6}, float32);
+    array at = transpose(a, std::vector<int>{1, 0}, stream);
+    auto outs = linalg::svd(at, true, stream);
+    auto s_flat = readback_f32(stream, outs[1]);
+    std::cout << "AT_TALL_S:";
+    for (auto v : s_flat) {
+      std::cout << " " << v;
+    }
+    std::cout << "\n";
+  }
 }
 
 TEST_CASE("composed pinv satisfies the Moore-Penrose conditions") {
@@ -680,15 +828,26 @@ TEST_CASE("composed pinv satisfies the Moore-Penrose conditions") {
         ": got ",
         xax[i]);
   }
-  // OPEN DEFECT (documented; the Select half of the chain is not
-  // involved): for this wide input the X*A projector loses symmetry
-  // beyond float error exactly at the k-boundary rows/cols - xa
-  // entries at (r,c) with r or c >= k read up to 3.55 where exact math
-  // says symmetric - so the wrong values live in the composed svd +
-  // slice/swapaxes chain, not in Select. The two projector identities
-  // above pass; the symmetry checks here stay out until the
-  // k-boundary defect is fixed, then return with the wide shape.
+  // X*A must be symmetric (Moore-Penrose condition three). This wide
+  // shape carried the k-boundary defect: the SVD finalize completion
+  // walked columns where the wide vt factor stores vectors as rows, so
+  // it read never-written cells at rows >= k and seeded X's tail rows
+  // with allocator garbage that varied run to run. The completion now
+  // indexes rows for wide inputs; this check pins that fix.
+  for (int i = 0; i < n; ++i) {
+    for (int j = 0; j < n; ++j) {
+      CHECK_MESSAGE(
+          std::abs(xa[i * n + j] - xa[j * n + i]) <= 1e-3,
+          "pinv X*A symmetry at (",
+          i,
+          ",",
+          j,
+          "): got ",
+          xa[i * n + j] - xa[j * n + i]);
+    }
+  }
 }
+
 
 
 } // namespace

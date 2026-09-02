@@ -3463,9 +3463,15 @@ TEST_CASE("sort rejects long rows and non-float dtypes with named errors") {
   CHECK(
       index_length_error.find("sort row length ArgSort") != std::string::npos);
 
-  array ints({3, 1, 2}, int32);
+  // int32 and uint32 sort through Vulkan compute now; int64 still
+  // refuses by name.
+  array ints({3, 1, 2}, int64);
   std::string dtype_error = evaluation_error(sort(ints, -1, stream));
   CHECK(dtype_error.find("[omarchy] Sort dtype") != std::string::npos);
+  std::string index_dtype_error =
+      evaluation_error(argsort(ints, -1, stream));
+  CHECK(
+      index_dtype_error.find("[omarchy] ArgSort dtype") != std::string::npos);
 
   array matrix({1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f}, {2, 3}, float32);
   std::string axis_error = evaluation_error(sort(matrix, 0, stream));
@@ -3473,6 +3479,101 @@ TEST_CASE("sort rejects long rows and non-float dtypes with named errors") {
   std::string index_axis_error =
       evaluation_error(argsort(matrix, 0, stream));
   CHECK(index_axis_error.find("non-suffix ArgSort") != std::string::npos);
+}
+
+TEST_CASE(
+    "integer sort and argsort match the host stable order through Vulkan "
+    "compute") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+
+  // int32: negatives, mixed signs, duplicates, zero, INT32_MIN and
+  // INT32_MAX. Equal keys order by source index, so the argsort pins
+  // the unique stable order the float path gives.
+  std::vector<int32_t> iv = {
+      7, -7, 0, 7, -7,
+      0, std::numeric_limits<int32_t>::min(),
+      std::numeric_limits<int32_t>::max(), 0, -1};
+  array xi(iv.begin(), Shape{2, 5}, int32);
+  std::vector<int32_t> sorted_iv;
+  std::vector<uint32_t> order_iv;
+  for (int repeat = 0; repeat < 2; ++repeat) {
+    std::vector<int32_t> row(
+        iv.begin() + repeat * 5, iv.begin() + (repeat + 1) * 5);
+    std::vector<uint32_t> order(5);
+    std::iota(order.begin(), order.end(), 0u);
+    std::stable_sort(order.begin(), order.end(), [&](uint32_t a, uint32_t b) {
+      return row[a] < row[b] || (row[a] == row[b] && a < b);
+    });
+    std::stable_sort(row.begin(), row.end());
+    sorted_iv.insert(sorted_iv.end(), row.begin(), row.end());
+    order_iv.insert(order_iv.end(), order.begin(), order.end());
+  }
+  array sorted_xi = sort(xi, -1, stream);
+  sorted_xi.eval();
+  omarchy::get_command_encoder(stream).synchronize();
+  REQUIRE_EQ(sorted_xi.size(), sorted_iv.size());
+  const int32_t* got_ints = sorted_xi.data<int32_t>();
+  for (size_t index = 0; index < sorted_iv.size(); ++index) {
+    CHECK_EQ(got_ints[index], sorted_iv[index]);
+  }
+  check_indices(argsort(xi, -1, stream), order_iv, stream);
+
+  // uint32: straight magnitude order, duplicates, zero, UINT32_MAX,
+  // across two batched rows.
+  std::vector<uint32_t> uv = {
+      5u, 0u, std::numeric_limits<uint32_t>::max(), 5u,
+      0u, 1u, std::numeric_limits<uint32_t>::max(), 3u};
+  array xu(uv.begin(), Shape{2, 4}, uint32);
+  std::vector<uint32_t> sorted_uv;
+  std::vector<uint32_t> order_uv;
+  for (int repeat = 0; repeat < 2; ++repeat) {
+    std::vector<uint32_t> row(
+        uv.begin() + repeat * 4, uv.begin() + (repeat + 1) * 4);
+    std::vector<uint32_t> order(4);
+    std::iota(order.begin(), order.end(), 0u);
+    std::stable_sort(order.begin(), order.end(), [&](uint32_t a, uint32_t b) {
+      return row[a] < row[b] || (row[a] == row[b] && a < b);
+    });
+    std::stable_sort(row.begin(), row.end());
+    sorted_uv.insert(sorted_uv.end(), row.begin(), row.end());
+    order_uv.insert(order_uv.end(), order.begin(), order.end());
+  }
+  check_indices(argsort(xu, -1, stream), order_uv, stream);
+  array sorted_xu = sort(xu, -1, stream);
+  sorted_xu.eval();
+  omarchy::get_command_encoder(stream).synchronize();
+  const uint32_t* got_uints = sorted_xu.data<uint32_t>();
+  for (size_t index = 0; index < sorted_uv.size(); ++index) {
+    CHECK_EQ(got_uints[index], sorted_uv[index]);
+  }
+
+  // A 1000-wide int32 row pads to 1024 inside the kernel; the signed
+  // transform must stay monotone across the whole padded width.
+  std::vector<int32_t> wide(1000);
+  for (size_t index = 0; index < wide.size(); ++index) {
+    wide[index] = static_cast<int32_t>((static_cast<int>(index) * 37) % 201) -
+        100;
+  }
+  array xw(wide.begin(), Shape{1, 1000}, int32);
+  std::vector<uint32_t> wide_order(1000);
+  std::iota(wide_order.begin(), wide_order.end(), 0u);
+  std::stable_sort(
+      wide_order.begin(), wide_order.end(), [&](uint32_t a, uint32_t b) {
+        return wide[a] < wide[b] || (wide[a] == wide[b] && a < b);
+      });
+  check_indices(argsort(xw, -1, stream), wide_order, stream);
+  std::vector<int32_t> wide_sorted(wide);
+  std::stable_sort(wide_sorted.begin(), wide_sorted.end());
+  array sorted_xw = sort(xw, -1, stream);
+  sorted_xw.eval();
+  omarchy::get_command_encoder(stream).synchronize();
+  const int32_t* got_wide = sorted_xw.data<int32_t>();
+  for (size_t index = 0; index < wide_sorted.size(); ++index) {
+    CHECK_EQ(got_wide[index], wide_sorted[index]);
+  }
 }
 
 TEST_CASE("partition redirects to sort and topk returns the right set") {
