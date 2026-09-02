@@ -22,6 +22,10 @@ So the goal here is bigger than a port. Run the full MLX stack, gradients includ
 python3 tools/gen-compat-matrix.py --json-out docs/coverage.json > docs/compatibility-matrix.md
 ```
 
+**Upstream MLX's own test suite, run against this backend.** The C++ suite executed 251 cases: 62 passed, 189 failed. The python suite executed 10,500: 1,730 passed, 8,770 failed, 56 skipped. Almost every failure is a named `[omarchy] ... is not implemented` error, led by integer-dtype Sum, ErfInv, Abs, and Scatter. The first sweep also found five real defects, all now fixed: `log2` and `log10` returned the natural log, sums over expanded axes wrote out of bounds, a backend error crossing numpy's buffer protocol killed the interpreter, cross-thread stream lookup aborted, and saving a zero-size array segfaulted.
+
+Two caveats keep that honest. The suite's own `array_equal` helper cannot run yet (a bool And/Equal gap), so many passing cases are unverified rather than proven correct. And 72 python tests were excluded because they crashed the interpreter before the buffer-protocol fix landed. Re-run the whole sweep with `tools/run-upstream-suite.sh`; raw logs are in [receipts/](receipts/2026-09-01-upstream-suite-coverage.md).
+
 **Performance against native MLX, same chip.** Both columns are the same Apple M1 (T8103, 8 GPU cores, 16 GB), same model revisions, same prompts, `--max-tokens 32 --temp 0 --seed 0`, warm run, Qwen2.5-0.5B-Instruct:
 
 | Measurement | macOS 13.7.8, MLX on Metal | Omarchy Linux, mlx-omarchy on Vulkan | Ratio |
