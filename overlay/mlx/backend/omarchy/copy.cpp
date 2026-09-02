@@ -250,17 +250,20 @@ void copy_gpu_inplace(
     params.output_size = count;
     params.output_offset =
         compute_item_offset(out, o_offset, "scalar fill", out);
-    params.alpha = scalar_fill_value(in, i_offset);
     if (in.dtype() == complex64) {
       // Complex64Transport: the fill kernel writes vec2(alpha, beta),
-      // so the scalar's imaginary part rides in beta. The eight scalar
-      // bytes are two float32 words in (real, imag) order.
+      // so the scalar's two float32 words ride in alpha and beta.
+      // scalar_fill_value would decode the real part as float16 bits,
+      // so both components come from the raw 8 bytes instead.
       float parts[2] = {0.0f, 0.0f};
       std::memcpy(
           parts,
           in.data<char>() + i_offset * in.itemsize(),
           sizeof(parts));
+      params.alpha = parts[0];
       params.beta = parts[1];
+    } else {
+      params.alpha = scalar_fill_value(in, i_offset);
     }
     std::array<omarchy::ComputeBinding, 1> bindings{compute_binding(out)};
     encoder.dispatch_compute(
