@@ -194,6 +194,7 @@
 #include "linalg_lu_f32.h"
 #include "linalg_qr_f32.h"
 #include "linalg_eigh_f32.h"
+#include "linalg_eig_f32.h"
 #include "linalg_svd_f32.h"
 #include "linalg_svd_finalize_f32.h"
 #include "complex_elementwise.h"
@@ -579,6 +580,8 @@ ShaderBytes shader_bytes(ComputeKernel kernel) {
       return {linalg_eigh_f32, linalg_eigh_f32_size};
     case ComputeKernel::LinalgSvdF32:
       return {linalg_svd_f32, linalg_svd_f32_size};
+    case ComputeKernel::LinalgEigF32:
+      return {linalg_eig_f32, linalg_eig_f32_size};
     case ComputeKernel::LinalgSvdFinalizeF32:
       return {linalg_svd_finalize_f32, linalg_svd_finalize_f32_size};
     // Complex64Transport: complex64 transport and elementwise. See

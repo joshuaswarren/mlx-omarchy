@@ -230,6 +230,7 @@ enum class ComputeKernel : uint8_t {
   LinalgLuF32,
   LinalgQrF32,
   LinalgEighF32,
+  LinalgEigF32,
   LinalgSvdF32,
   LinalgSvdFinalizeF32,
   // FixFastSdpaAndNorm (W9): dw stage 2 - column sum of the per-row

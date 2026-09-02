@@ -5893,7 +5893,74 @@ void SVD::eval_gpu(
 }
 OMARCHY_UNARY(Tan, TanOperation)
 OMARCHY_UNARY(Tanh, TanhOperation)
-OMARCHY_UNSUPPORTED_MULTI(Eig)
+void Eig::eval_gpu(
+    const std::vector<array>& inputs,
+    std::vector<array>& outputs) {
+  const array& in = inputs.at(0);
+  auto& encoder =
+      omarchy::get_command_encoder(outputs.at(0).primitive().stream());
+  linalg_require_f32(name(), in, outputs.at(0));
+  const int n = in.shape(-1);
+  if (in.shape(-2) != n) {
+    omarchy::unsupported(std::string("non-square ") + name(), outputs.at(0));
+  }
+  if (n > 1024) {
+    omarchy::unsupported(std::string(name()) + " matrix size", outputs.at(0));
+  }
+  const uint32_t batch =
+      checked_u32(linalg_batch_count(in.shape()), name(), outputs.at(0));
+  auto& values = outputs.at(0);
+  values.set_data(allocate_omarchy(values.nbytes()));
+  if (values.size() == 0) {
+    return;
+  }
+  array work(in.shape(), in.dtype(), nullptr, {});
+  work.set_data(allocate_omarchy(work.nbytes()));
+  encoder.add_temporary(work);
+  linalg_copy_dense(in, work, outputs.at(0).primitive().stream());
+  const bool compute_ev = state();
+  if (compute_ev) {
+    auto& vectors = outputs.at(1);
+    vectors.set_data(allocate_omarchy(vectors.nbytes()));
+  }
+  // Dense per-matrix accumulation matrix V. The complex64 vectors output
+  // spans twice the floats of a dense n*n matrix, so it cannot double as
+  // the accumulator; the kernel writes it once in the final interleave.
+  // Values-only mode leaves it unused and binds `work` as the dummy.
+  array vacc(
+      Shape{static_cast<int>(compute_ev ? n * n * batch : 1)},
+      float32,
+      nullptr,
+      {});
+  vacc.set_data(allocate_omarchy(vacc.nbytes()));
+  if (compute_ev) {
+    encoder.add_temporary(vacc);
+  }
+  auto scratch = make_u32_scratch(std::max<size_t>(batch, 1u), encoder);
+  dispatch_clear_u32(scratch, 0, encoder);
+  omarchy::ComputeParams params;
+  params.operation = compute_ev ? 1u : 0u;
+  params.matrix_n = checked_u32(n, name(), values);
+  params.output_size = batch;
+  // Kernel binding order: 0 work H, 1 vectors output, 2 values output,
+  // 3 status, 4 dense V accumulator. Values-only mode binds `work` as
+  // the dummy for the unwritten slots.
+  std::array<omarchy::ComputeBinding, 5> bindings{
+      binding(work),
+      compute_ev ? binding(outputs.at(1)) : binding(work),
+      binding(values),
+      binding(scratch),
+      compute_ev ? binding(vacc) : binding(work)};
+  encoder.dispatch_compute(
+      omarchy::ComputeKernel::LinalgEigF32, bindings, params, batch);
+  linalg_check_status(
+      scratch,
+      encoder,
+      "[Eig::eval_gpu] QR iteration limit (40) exceeded without"
+      " convergence.",
+      values);
+}
+
 void Eigh::eval_gpu(
     const std::vector<array>& inputs,
     std::vector<array>& outputs) {
