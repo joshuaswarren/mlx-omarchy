@@ -1,0 +1,40 @@
+============================= test session starts ==============================
+collecting ... collected 7 items
+
+.work/mlx/python/tests/test_bf16.py::TestBF16::test_arg_reduction_ops FAILED [ 14%]
+.work/mlx/python/tests/test_bf16.py::TestBF16::test_binary_ops 
+.work/mlx/python/tests/test_bf16.py::TestBF16::test_binary_ops PASSED    [ 28%]
+.work/mlx/python/tests/test_bf16.py::TestBF16::test_blas_ops 
+.work/mlx/python/tests/test_bf16.py::TestBF16::test_blas_ops PASSED      [ 42%]
+.work/mlx/python/tests/test_bf16.py::TestBF16::test_conversion SKIPPED   [ 57%]
+.work/mlx/python/tests/test_bf16.py::TestBF16::test_conversion_ml_dtypes SKIPPED [ 71%]
+.work/mlx/python/tests/test_bf16.py::TestBF16::test_reduction_ops 
+.work/mlx/python/tests/test_bf16.py::TestBF16::test_reduction_ops PASSED [ 85%]
+.work/mlx/python/tests/test_bf16.py::TestBF16::test_unary_ops 
+.work/mlx/python/tests/test_bf16.py::TestBF16::test_unary_ops PASSED     [100%]
+
+=================================== FAILURES ===================================
+_______________________ TestBF16.test_arg_reduction_ops ________________________
+
+self = <test_bf16.TestBF16 testMethod=test_arg_reduction_ops>
+
+    def test_arg_reduction_ops(self):
+        data = np.random.rand(10, 12, 13).astype(np.float32)
+        x = mx.array(data).astype(mx.bfloat16)
+        data = np.asarray(x.astype(mx.float32))
+    
+        for op in ["argmin", "argmax"]:
+            for axis in range(3):
+                for kd in [True, False]:
+                    a = getattr(mx, op)(x, axis, kd)
+                    b = getattr(np, op)(data, axis, keepdims=kd)
+                    a = a.astype(mx.float32)
+>                   self.assertEqual(a.tolist(), b.tolist())
+                                     ^^^^^^^^^^
+E                   RuntimeError: [omarchy] non-suffix ArgMin is not implemented for the Omarchy Vulkan backend (dtype=uint32, shape=[1,12,13]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_bf16.py:155: RuntimeError
+- generated xml file: /home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/py/test_bf16.py.xml -
+=========================== short test summary info ============================
+FAILED .work/mlx/python/tests/test_bf16.py::TestBF16::test_arg_reduction_ops - RuntimeError: [omarchy] non-suffix ArgMin is not implemented for the Omarchy Vulkan backend (dtype=uint32, shape=[1,12,13]). No CPU fallback is available in Omarchy builds.
+========== 1 failed, 4 passed, 2 skipped, 72 subtests passed in 0.42s ==========

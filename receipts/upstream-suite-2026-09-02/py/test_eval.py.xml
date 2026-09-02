@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="8" skipped="1" tests="15" time="10.622" timestamp="2026-09-02T08:57:14.642894-05:00" hostname="omp-studio-local"><testcase classname="python.tests.test_eval.TestEval" name="test_async_eval" time="0.019"><failure message="RuntimeError: [omarchy] Add dtype is not implemented for the Omarchy Vulkan backend (dtype=int32, shape=[]). No CPU fallback is available in Omarchy builds.">self = &lt;test_eval.TestEval testMethod=test_async_eval&gt;
+
+    def test_async_eval(self):
+        x = mx.array(1) + mx.array(1) + mx.array(1)
+&gt;       mx.async_eval(x)
+E       RuntimeError: [omarchy] Add dtype is not implemented for the Omarchy Vulkan backend (dtype=int32, shape=[]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_eval.py:37: RuntimeError</failure></testcase><testcase classname="python.tests.test_eval.TestEval" name="test_async_eval_error_in_synchronize" time="0.003"><failure message="IndexError: vector::_M_range_check: __n (which is 0) &gt;= this-&gt;size() (which is 0)">self = &lt;test_eval.TestEval testMethod=test_async_eval_error_in_synchronize&gt;
+
+    @unittest.skipIf(
+        mx.cuda.is_available(), "CUDA backend waits cpu stream synchronously"
+    )
+    def test_async_eval_error_in_synchronize(self):
+&gt;       a = mx.linalg.inv(mx.array([[1.0, 2.0], [2.0, 4.0]]), stream=mx.cpu)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       IndexError: vector::_M_range_check: __n (which is 0) &gt;= this-&gt;size() (which is 0)
+
+.work/mlx/python/tests/test_eval.py:234: IndexError</failure></testcase><testcase classname="python.tests.test_eval.TestEval" name="test_async_eval_in_trace" time="0.001" /><testcase classname="python.tests.test_eval.TestEval" name="test_async_eval_into_eval" time="0.001"><failure message="RuntimeError: [omarchy] Add dtype is not implemented for the Omarchy Vulkan backend (dtype=int32, shape=[]). No CPU fallback is available in Omarchy builds.">self = &lt;test_eval.TestEval testMethod=test_async_eval_into_eval&gt;
+
+    def test_async_eval_into_eval(self):
+        x = mx.array(1)
+        y = x + 1
+&gt;       mx.async_eval(y)
+E       RuntimeError: [omarchy] Add dtype is not implemented for the Omarchy Vulkan backend (dtype=int32, shape=[]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_eval.py:79: RuntimeError</failure></testcase><testcase classname="python.tests.test_eval.TestEval" name="test_async_eval_into_eval_diff_stream" time="0.007"><failure message="RuntimeError: Abs has no CPU implementation.">self = &lt;test_eval.TestEval testMethod=test_async_eval_into_eval_diff_stream&gt;
+
+    def test_async_eval_into_eval_diff_stream(self):
+        s = mx.new_stream(mx.cpu)
+        x = mx.array(0)
+        y = x - 5
+        mx.async_eval(y)
+        z = mx.abs(y, stream=s)
+&gt;       self.assertEqual(z.item(), 5)
+                         ^^^^^^^^
+E       RuntimeError: Abs has no CPU implementation.
+
+.work/mlx/python/tests/test_eval.py:90: RuntimeError</failure></testcase><testcase classname="python.tests.test_eval.TestEval" name="test_async_eval_twice" time="0.001"><failure message="RuntimeError: [omarchy] Add dtype is not implemented for the Omarchy Vulkan backend (dtype=int32, shape=[]). No CPU fallback is available in Omarchy builds.">self = &lt;test_eval.TestEval testMethod=test_async_eval_twice&gt;
+
+    def test_async_eval_twice(self):
+        for _ in range(1000):
+            x = mx.array(1) + mx.array(1) + mx.array(1)
+&gt;           mx.async_eval(x)
+E           RuntimeError: [omarchy] Add dtype is not implemented for the Omarchy Vulkan backend (dtype=int32, shape=[]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_eval.py:56: RuntimeError</failure></testcase><testcase classname="python.tests.test_eval.TestEval" name="test_async_eval_with_multiple_streams" time="0.096" /><testcase classname="python.tests.test_eval.TestEval" name="test_donation_for_noops" time="1.926"><failure message="AssertionError: 67133440 != 201347072">self = &lt;test_eval.TestEval testMethod=test_donation_for_noops&gt;
+
+    def test_donation_for_noops(self):
+        def fun(x):
+            s = x.shape
+            for _ in range(10):
+                x = mx.abs(x)
+                x = mx.reshape(x, (-1,))
+                x = x.T.T
+                x = mx.stop_gradient(x)
+                x = mx.abs(x)
+            return x
+    
+        x = mx.zeros((4096, 4096))
+        mx.eval(x)
+        pre = mx.get_peak_memory()
+        out = fun(x)
+        del x
+        mx.eval(out)
+        post = mx.get_peak_memory()
+&gt;       self.assertEqual(pre, post)
+E       AssertionError: 67133440 != 201347072
+
+.work/mlx/python/tests/test_eval.py:157: AssertionError</failure></testcase><testcase classname="python.tests.test_eval.TestEval" name="test_eval" time="0.002" /><testcase classname="python.tests.test_eval.TestEval" name="test_eval_exception_does_not_corrupt_state" time="0.000"><skipped type="pytest.skip" message="Metal is not available">/tmp/upstream-sweep/.work/mlx/python/tests/test_eval.py:198: Metal is not available</skipped></testcase><testcase classname="python.tests.test_eval.TestEval" name="test_eval_mixed" time="0.001"><failure message="RuntimeError: [omarchy] Add dtype is not implemented for the Omarchy Vulkan backend (dtype=int32, shape=[]). No CPU fallback is available in Omarchy builds.">self = &lt;test_eval.TestEval testMethod=test_eval_mixed&gt;
+
+    def test_eval_mixed(self):
+        x = mx.array(1) + 1 + 1
+        y = 0
+        z = "hello"
+        state = [x, y, z]
+&gt;       mx.eval(state)
+E       RuntimeError: [omarchy] Add dtype is not implemented for the Omarchy Vulkan backend (dtype=int32, shape=[]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_eval.py:32: RuntimeError</failure></testcase><testcase classname="python.tests.test_eval.TestEval" name="test_eval_slow_fast_multi_stream" time="0.002"><failure message="IndexError: vector::_M_range_check: __n (which is 0) &gt;= this-&gt;size() (which is 0)">self = &lt;test_eval.TestEval testMethod=test_eval_slow_fast_multi_stream&gt;
+
+    def test_eval_slow_fast_multi_stream(self):
+        x = mx.ones((8000,))
+        y = mx.abs(mx.array(-1.0))
+        for _ in range(20):
+            x = x + mx.array(1.0)
+&gt;       z = mx.add(x, y, stream=mx.cpu)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       IndexError: vector::_M_range_check: __n (which is 0) &gt;= this-&gt;size() (which is 0)
+
+.work/mlx/python/tests/test_eval.py:97: IndexError</failure></testcase><testcase classname="python.tests.test_eval.TestEval" name="test_multi_output_eval_during_transform" time="0.006" /><testcase classname="python.tests.test_eval.TestEval" name="test_multistream_deadlock" time="8.385" /><testcase classname="python.tests.test_eval.TestEval" name="test_retain_graph" time="0.001" /></testsuite></testsuites>

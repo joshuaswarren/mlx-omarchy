@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="2" tests="79" time="0.425" timestamp="2026-09-02T08:55:33.871622-05:00" hostname="omp-studio-local"><testcase classname="python.tests.test_bf16.TestBF16" name="test_arg_reduction_ops" time="0.026"><failure message="RuntimeError: [omarchy] non-suffix ArgMin is not implemented for the Omarchy Vulkan backend (dtype=uint32, shape=[1,12,13]). No CPU fallback is available in Omarchy builds.">self = &lt;test_bf16.TestBF16 testMethod=test_arg_reduction_ops&gt;
+
+    def test_arg_reduction_ops(self):
+        data = np.random.rand(10, 12, 13).astype(np.float32)
+        x = mx.array(data).astype(mx.bfloat16)
+        data = np.asarray(x.astype(mx.float32))
+    
+        for op in ["argmin", "argmax"]:
+            for axis in range(3):
+                for kd in [True, False]:
+                    a = getattr(mx, op)(x, axis, kd)
+                    b = getattr(np, op)(data, axis, keepdims=kd)
+                    a = a.astype(mx.float32)
+&gt;                   self.assertEqual(a.tolist(), b.tolist())
+                                     ^^^^^^^^^^
+E                   RuntimeError: [omarchy] non-suffix ArgMin is not implemented for the Omarchy Vulkan backend (dtype=uint32, shape=[1,12,13]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_bf16.py:155: RuntimeError</failure></testcase><testcase classname="python.tests.test_bf16.TestBF16" name="test_binary_ops" time="0.054" /><testcase classname="python.tests.test_bf16.TestBF16" name="test_blas_ops" time="0.081" /><testcase classname="python.tests.test_bf16.TestBF16" name="test_conversion" time="0.000"><skipped type="pytest.skip" message="requires PyTorch">/tmp/upstream-sweep/.work/mlx/python/tests/test_bf16.py:193: requires PyTorch</skipped></testcase><testcase classname="python.tests.test_bf16.TestBF16" name="test_conversion_ml_dtypes" time="0.000"><skipped type="pytest.skip" message="requires ml_dtypes">/tmp/upstream-sweep/.work/mlx/python/tests/test_bf16.py:201: requires ml_dtypes</skipped></testcase><testcase classname="python.tests.test_bf16.TestBF16" name="test_reduction_ops" time="0.086" /><testcase classname="python.tests.test_bf16.TestBF16" name="test_unary_ops" time="0.012" /></testsuite></testsuites>

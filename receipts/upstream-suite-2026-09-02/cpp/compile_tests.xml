@@ -1,0 +1,420 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<doctest binary="/tmp/upstream-sweep/.work/build-upstream/tests/tests" version="2.4.12">
+  <Options order_by="file" rand_seed="0" first="0" last="4294967295" abort_after="0" subcase_filter_levels="2147483647" case_sensitive="false" no_throw="false" no_skip="false"/>
+  <TestSuite>
+    <TestCase name="test simple allocations" filename="/tmp/upstream-sweep/.work/mlx/tests/allocator_tests.cpp" line="19" skipped="true"/>
+    <TestCase name="test large allocations" filename="/tmp/upstream-sweep/.work/mlx/tests/allocator_tests.cpp" line="43" skipped="true"/>
+    <TestCase name="test cached allocation keeps capacity" filename="/tmp/upstream-sweep/.work/mlx/tests/allocator_tests.cpp" line="51" skipped="true"/>
+    <TestCase name="test clear cache synchronizes cpu streams" filename="/tmp/upstream-sweep/.work/mlx/tests/allocator_tests.cpp" line="69" skipped="true"/>
+    <TestCase name="test arg reduce small" filename="/tmp/upstream-sweep/.work/mlx/tests/arg_reduce_tests.cpp" line="47" skipped="true"/>
+    <TestCase name="test arg reduce against cpu" filename="/tmp/upstream-sweep/.work/mlx/tests/arg_reduce_tests.cpp" line="104" skipped="true"/>
+    <TestCase name="test arg reduce bool" filename="/tmp/upstream-sweep/.work/mlx/tests/arg_reduce_tests.cpp" line="146" skipped="true"/>
+    <TestCase name="test arg reduce edge cases" filename="/tmp/upstream-sweep/.work/mlx/tests/arg_reduce_tests.cpp" line="181" skipped="true"/>
+    <TestCase name="test arg reduce irregular strides" filename="/tmp/upstream-sweep/.work/mlx/tests/arg_reduce_tests.cpp" line="190" skipped="true"/>
+    <TestCase name="test array basics" filename="/tmp/upstream-sweep/.work/mlx/tests/array_tests.cpp" line="13" skipped="true"/>
+    <TestCase name="test array types" filename="/tmp/upstream-sweep/.work/mlx/tests/array_tests.cpp" line="120" skipped="true"/>
+    <TestCase name="test array metadata" filename="/tmp/upstream-sweep/.work/mlx/tests/array_tests.cpp" line="274" skipped="true"/>
+    <TestCase name="test array iteration" filename="/tmp/upstream-sweep/.work/mlx/tests/array_tests.cpp" line="558" skipped="true"/>
+    <TestCase name="test array shared buffer" filename="/tmp/upstream-sweep/.work/mlx/tests/array_tests.cpp" line="580" skipped="true"/>
+    <TestCase name="test make empty array" filename="/tmp/upstream-sweep/.work/mlx/tests/array_tests.cpp" line="606" skipped="true"/>
+    <TestCase name="test make array from user buffer" filename="/tmp/upstream-sweep/.work/mlx/tests/array_tests.cpp" line="624" skipped="true"/>
+    <TestCase name="test negative indexing for shape/strides" filename="/tmp/upstream-sweep/.work/mlx/tests/array_tests.cpp" line="650" skipped="true"/>
+    <TestCase name="test siblings circular references without eval" filename="/tmp/upstream-sweep/.work/mlx/tests/array_tests.cpp" line="676" skipped="true"/>
+    <TestCase name="test stop gradient" filename="/tmp/upstream-sweep/.work/mlx/tests/autograd_tests.cpp" line="38" skipped="true"/>
+    <TestCase name="test jvp" filename="/tmp/upstream-sweep/.work/mlx/tests/autograd_tests.cpp" line="109" skipped="true"/>
+    <TestCase name="test vjp" filename="/tmp/upstream-sweep/.work/mlx/tests/autograd_tests.cpp" line="174" skipped="true"/>
+    <TestCase name="test grad" filename="/tmp/upstream-sweep/.work/mlx/tests/autograd_tests.cpp" line="239" skipped="true"/>
+    <TestCase name="test transform container reuse does not accumulate stale wrappers" filename="/tmp/upstream-sweep/.work/mlx/tests/autograd_tests.cpp" line="349" skipped="true"/>
+    <TestCase name="test creation grads" filename="/tmp/upstream-sweep/.work/mlx/tests/autograd_tests.cpp" line="385" skipped="true"/>
+    <TestCase name="test op vjps" filename="/tmp/upstream-sweep/.work/mlx/tests/autograd_tests.cpp" line="411" skipped="true"/>
+    <TestCase name="test gather and take grads" filename="/tmp/upstream-sweep/.work/mlx/tests/autograd_tests.cpp" line="749" skipped="true"/>
+    <TestCase name="test slice grads" filename="/tmp/upstream-sweep/.work/mlx/tests/autograd_tests.cpp" line="802" skipped="true"/>
+    <TestCase name="test slice update jvp with one tangent" filename="/tmp/upstream-sweep/.work/mlx/tests/autograd_tests.cpp" line="852" skipped="true"/>
+    <TestCase name="test min and max vjp" filename="/tmp/upstream-sweep/.work/mlx/tests/autograd_tests.cpp" line="876" skipped="true"/>
+    <TestCase name="test reshape and transpose grads" filename="/tmp/upstream-sweep/.work/mlx/tests/autograd_tests.cpp" line="942" skipped="true"/>
+    <TestCase name="test copy grads" filename="/tmp/upstream-sweep/.work/mlx/tests/autograd_tests.cpp" line="966" skipped="true"/>
+    <TestCase name="test matmul vjp" filename="/tmp/upstream-sweep/.work/mlx/tests/autograd_tests.cpp" line="978" skipped="true"/>
+    <TestCase name="test concatenate grads" filename="/tmp/upstream-sweep/.work/mlx/tests/autograd_tests.cpp" line="1005" skipped="true"/>
+    <TestCase name="test split grads" filename="/tmp/upstream-sweep/.work/mlx/tests/autograd_tests.cpp" line="1027" skipped="true"/>
+    <TestCase name="test comparison grads" filename="/tmp/upstream-sweep/.work/mlx/tests/autograd_tests.cpp" line="1056" skipped="true"/>
+    <TestCase name="test as_strided grads" filename="/tmp/upstream-sweep/.work/mlx/tests/autograd_tests.cpp" line="1082" skipped="true"/>
+    <TestCase name="test jvp from vjp" filename="/tmp/upstream-sweep/.work/mlx/tests/autograd_tests.cpp" line="1116" skipped="true"/>
+    <TestCase name="test complex gradients" filename="/tmp/upstream-sweep/.work/mlx/tests/autograd_tests.cpp" line="1213" skipped="true"/>
+    <TestCase name="test scan grads" filename="/tmp/upstream-sweep/.work/mlx/tests/autograd_tests.cpp" line="1280" skipped="true"/>
+    <TestCase name="test update state" filename="/tmp/upstream-sweep/.work/mlx/tests/autograd_tests.cpp" line="1436" skipped="true"/>
+    <TestCase name="test grad types" filename="/tmp/upstream-sweep/.work/mlx/tests/autograd_tests.cpp" line="1452" skipped="true"/>
+    <TestCase name="test grad dynamic slices" filename="/tmp/upstream-sweep/.work/mlx/tests/autograd_tests.cpp" line="1478" skipped="true"/>
+    <TestCase name="test masked_scatter autograd" filename="/tmp/upstream-sweep/.work/mlx/tests/autograd_tests.cpp" line="1499" skipped="true"/>
+    <TestCase name="test matmul" filename="/tmp/upstream-sweep/.work/mlx/tests/blas_tests.cpp" line="11" skipped="true"/>
+    <TestCase name="test simple compile" filename="/tmp/upstream-sweep/.work/mlx/tests/compile_tests.cpp" line="20">
+      <OverallResultsAsserts successes="6" failures="0" test_case_success="true" duration="0.023097"/>
+    </TestCase>
+    <TestCase name="test compile with grad" filename="/tmp/upstream-sweep/.work/mlx/tests/compile_tests.cpp" line="48">
+      <OverallResultsAsserts successes="2" failures="0" test_case_success="true" duration="0.006937"/>
+    </TestCase>
+    <TestCase name="test compile inputs with primitive" filename="/tmp/upstream-sweep/.work/mlx/tests/compile_tests.cpp" line="57">
+      <OverallResultsAsserts successes="2" failures="0" test_case_success="true" duration="0.007144"/>
+    </TestCase>
+    <TestCase name="test compile with created array" filename="/tmp/upstream-sweep/.work/mlx/tests/compile_tests.cpp" line="77">
+      <OverallResultsAsserts successes="2" failures="0" test_case_success="true" duration="0.00033"/>
+    </TestCase>
+    <TestCase name="test nested compile" filename="/tmp/upstream-sweep/.work/mlx/tests/compile_tests.cpp" line="97">
+      <Expression success="false" type="CHECK_EQ" filename="/tmp/upstream-sweep/.work/mlx/tests/compile_tests.cpp" line="100">
+        <Original>
+          out.item&lt;int>(), 9
+        </Original>
+        <Exception>
+          "[omarchy] Add dtype is not implemented for the Omarchy Vulkan backend (dtype=int32, shape=[]). No CPU fallback is available in Omarchy builds."
+        </Exception>
+      </Expression>
+      <Expression success="false" type="CHECK_EQ" filename="/tmp/upstream-sweep/.work/mlx/tests/compile_tests.cpp" line="104">
+        <Original>
+          out.item&lt;int>(), 9
+        </Original>
+        <Exception>
+          "[omarchy] Add dtype is not implemented for the Omarchy Vulkan backend (dtype=int32, shape=[]). No CPU fallback is available in Omarchy builds."
+        </Exception>
+      </Expression>
+      <OverallResultsAsserts successes="0" failures="2" test_case_success="false" duration="0.00113"/>
+    </TestCase>
+    <TestCase name="test enable and disable compile" filename="/tmp/upstream-sweep/.work/mlx/tests/compile_tests.cpp" line="107">
+      <OverallResultsAsserts successes="2" failures="0" test_case_success="true" duration="6.3e-05"/>
+    </TestCase>
+    <TestCase name="test compile with non-finite constants" filename="/tmp/upstream-sweep/.work/mlx/tests/compile_tests.cpp" line="125">
+      <OverallResultsAsserts successes="6" failures="0" test_case_success="true" duration="0.001716"/>
+    </TestCase>
+    <TestCase name="test simplify scalars" filename="/tmp/upstream-sweep/.work/mlx/tests/compile_tests.cpp" line="157">
+      <OverallResultsAsserts successes="2" failures="0" test_case_success="true" duration="0.000295"/>
+    </TestCase>
+    <TestCase name="test simplify" filename="/tmp/upstream-sweep/.work/mlx/tests/compile_tests.cpp" line="183">
+      <OverallResultsAsserts successes="1" failures="0" test_case_success="true" duration="0.00015"/>
+    </TestCase>
+    <TestCase name="test simplify noops" filename="/tmp/upstream-sweep/.work/mlx/tests/compile_tests.cpp" line="191">
+      <OverallResultsAsserts successes="1" failures="0" test_case_success="true" duration="0.000124"/>
+    </TestCase>
+    <TestCase name="test no simplify" filename="/tmp/upstream-sweep/.work/mlx/tests/compile_tests.cpp" line="207">
+      <OverallResultsAsserts successes="1" failures="0" test_case_success="true" duration="0.000138"/>
+    </TestCase>
+    <TestCase name="test simplify multi output" filename="/tmp/upstream-sweep/.work/mlx/tests/compile_tests.cpp" line="240">
+      <OverallResultsAsserts successes="9" failures="0" test_case_success="true" duration="0.002838"/>
+    </TestCase>
+    <TestCase name="test compile unary fused" filename="/tmp/upstream-sweep/.work/mlx/tests/compile_tests.cpp" line="297">
+      <OverallResultsAsserts successes="15" failures="0" test_case_success="true" duration="0.003565"/>
+    </TestCase>
+    <TestCase name="test compile binary fused" filename="/tmp/upstream-sweep/.work/mlx/tests/compile_tests.cpp" line="384">
+      <OverallResultsAsserts successes="13" failures="0" test_case_success="true" duration="0.000832"/>
+    </TestCase>
+    <TestCase name="test compile gelu" filename="/tmp/upstream-sweep/.work/mlx/tests/compile_tests.cpp" line="446">
+      <OverallResultsAsserts successes="14" failures="0" test_case_success="true" duration="0.006966"/>
+    </TestCase>
+    <TestCase name="test compile tape with outside parents" filename="/tmp/upstream-sweep/.work/mlx/tests/compile_tests.cpp" line="495">
+      <OverallResultsAsserts successes="12" failures="0" test_case_success="true" duration="0.015175"/>
+    </TestCase>
+    <TestCase name="test compile across streams" filename="/tmp/upstream-sweep/.work/mlx/tests/compile_tests.cpp" line="549">
+      <OverallResultsAsserts successes="4" failures="0" test_case_success="true" duration="0.000173"/>
+    </TestCase>
+    <TestCase name="test compile internal output" filename="/tmp/upstream-sweep/.work/mlx/tests/compile_tests.cpp" line="576">
+      <Expression success="false" type="CHECK" filename="/tmp/upstream-sweep/.work/mlx/tests/compile_tests.cpp" line="587">
+        <Original>
+          array_equal(outs[0], expected_outs[0]).item&lt;bool>()
+        </Original>
+        <Exception>
+          "[omarchy] Square dtype is not implemented for the Omarchy Vulkan backend (dtype=int32, shape=[2]). No CPU fallback is available in Omarchy builds."
+        </Exception>
+      </Expression>
+      <Expression success="false" type="CHECK" filename="/tmp/upstream-sweep/.work/mlx/tests/compile_tests.cpp" line="588">
+        <Original>
+          array_equal(outs[1], expected_outs[1]).item&lt;bool>()
+        </Original>
+        <Exception>
+          "[omarchy] Square dtype is not implemented for the Omarchy Vulkan backend (dtype=int32, shape=[2]). No CPU fallback is available in Omarchy builds."
+        </Exception>
+      </Expression>
+      <Expression success="false" type="CHECK" filename="/tmp/upstream-sweep/.work/mlx/tests/compile_tests.cpp" line="601">
+        <Original>
+          array_equal(outs[0], expected_outs[0]).item&lt;bool>()
+        </Original>
+        <Exception>
+          "[omarchy] Add dtype is not implemented for the Omarchy Vulkan backend (dtype=int32, shape=[2]). No CPU fallback is available in Omarchy builds."
+        </Exception>
+      </Expression>
+      <Expression success="false" type="CHECK" filename="/tmp/upstream-sweep/.work/mlx/tests/compile_tests.cpp" line="602">
+        <Original>
+          array_equal(outs[1], expected_outs[1]).item&lt;bool>()
+        </Original>
+        <Exception>
+          "[omarchy] Add dtype is not implemented for the Omarchy Vulkan backend (dtype=int32, shape=[2]). No CPU fallback is available in Omarchy builds."
+        </Exception>
+      </Expression>
+      <OverallResultsAsserts successes="5" failures="4" test_case_success="false" duration="0.004865"/>
+    </TestCase>
+    <TestCase name="test compile deep graph" filename="/tmp/upstream-sweep/.work/mlx/tests/compile_tests.cpp" line="614">
+      <OverallResultsAsserts successes="1" failures="0" test_case_success="true" duration="0.006175"/>
+    </TestCase>
+    <TestCase name="test compile repeat input" filename="/tmp/upstream-sweep/.work/mlx/tests/compile_tests.cpp" line="628">
+      <OverallResultsAsserts successes="1" failures="0" test_case_success="true" duration="0.002901"/>
+    </TestCase>
+    <TestCase name="test compile compiled function" filename="/tmp/upstream-sweep/.work/mlx/tests/compile_tests.cpp" line="646">
+      <OverallResultsAsserts successes="2" failures="0" test_case_success="true" duration="0.000154"/>
+    </TestCase>
+    <TestCase name="test transform compiled function" filename="/tmp/upstream-sweep/.work/mlx/tests/compile_tests.cpp" line="661">
+      <OverallResultsAsserts successes="4" failures="0" test_case_success="true" duration="0.000213"/>
+    </TestCase>
+    <TestCase name="test fusion kernel reuse" filename="/tmp/upstream-sweep/.work/mlx/tests/compile_tests.cpp" line="672">
+      <OverallResultsAsserts successes="3" failures="0" test_case_success="true" duration="0.002261"/>
+    </TestCase>
+    <TestCase name="test fusion types" filename="/tmp/upstream-sweep/.work/mlx/tests/compile_tests.cpp" line="697">
+      <Exception crash="false">
+        [omarchy] Add dtype is not implemented for the Omarchy Vulkan backend (dtype=int32, shape=[2]). No CPU fallback is available in Omarchy builds.
+      </Exception>
+      <OverallResultsAsserts successes="1" failures="0" test_case_success="false" duration="0.000808"/>
+    </TestCase>
+    <TestCase name="test shapeless compile" filename="/tmp/upstream-sweep/.work/mlx/tests/compile_tests.cpp" line="726">
+      <Expression success="false" type="CHECK" filename="/tmp/upstream-sweep/.work/mlx/tests/compile_tests.cpp" line="741">
+        <Original>
+          array_equal(out2, array({3, 4, 5, 6})).item&lt;bool>()
+        </Original>
+        <Exception>
+          "[omarchy] Add dtype is not implemented for the Omarchy Vulkan backend (dtype=int32, shape=[2]). No CPU fallback is available in Omarchy builds."
+        </Exception>
+      </Expression>
+      <OverallResultsAsserts successes="4" failures="1" test_case_success="false" duration="0.004831"/>
+    </TestCase>
+    <TestCase name="test compile strides" filename="/tmp/upstream-sweep/.work/mlx/tests/compile_tests.cpp" line="758">
+      <OverallResultsAsserts successes="1" failures="0" test_case_success="true" duration="0.000386"/>
+    </TestCase>
+    <TestCase name="test compile change streams" filename="/tmp/upstream-sweep/.work/mlx/tests/compile_tests.cpp" line="768">
+      <OverallResultsAsserts successes="2" failures="0" test_case_success="true" duration="0.000108"/>
+    </TestCase>
+    <TestCase name="test compile lambda" filename="/tmp/upstream-sweep/.work/mlx/tests/compile_tests.cpp" line="779">
+      <Expression success="false" type="CHECK_EQ" filename="/tmp/upstream-sweep/.work/mlx/tests/compile_tests.cpp" line="808">
+        <Original>
+          out[0].item&lt;int>(), 2
+        </Original>
+        <Exception>
+          "[omarchy] Add dtype is not implemented for the Omarchy Vulkan backend (dtype=int32, shape=[]). No CPU fallback is available in Omarchy builds."
+        </Exception>
+      </Expression>
+      <Expression success="false" type="CHECK_EQ" filename="/tmp/upstream-sweep/.work/mlx/tests/compile_tests.cpp" line="816">
+        <Original>
+          out[0].item&lt;int>(), 2
+        </Original>
+        <Exception>
+          "[omarchy] Add dtype is not implemented for the Omarchy Vulkan backend (dtype=int32, shape=[]). No CPU fallback is available in Omarchy builds."
+        </Exception>
+      </Expression>
+      <Expression success="false" type="CHECK_EQ" filename="/tmp/upstream-sweep/.work/mlx/tests/compile_tests.cpp" line="821">
+        <Original>
+          out[0].item&lt;int>(), 2
+        </Original>
+        <Exception>
+          "[omarchy] Add dtype is not implemented for the Omarchy Vulkan backend (dtype=int32, shape=[]). No CPU fallback is available in Omarchy builds."
+        </Exception>
+      </Expression>
+      <Expression success="false" type="CHECK_EQ" filename="/tmp/upstream-sweep/.work/mlx/tests/compile_tests.cpp" line="826">
+        <Original>
+          out[0].item&lt;int>(), 3
+        </Original>
+        <Exception>
+          "[omarchy] Add dtype is not implemented for the Omarchy Vulkan backend (dtype=int32, shape=[]). No CPU fallback is available in Omarchy builds."
+        </Exception>
+      </Expression>
+      <OverallResultsAsserts successes="2" failures="4" test_case_success="false" duration="0.002242"/>
+    </TestCase>
+    <TestCase name="test compile with no-ops" filename="/tmp/upstream-sweep/.work/mlx/tests/compile_tests.cpp" line="829">
+      <OverallResultsAsserts successes="1" failures="0" test_case_success="true" duration="0.000115"/>
+    </TestCase>
+    <TestCase name="test compile random bits" filename="/tmp/upstream-sweep/.work/mlx/tests/compile_tests.cpp" line="838">
+      <Expression success="false" type="CHECK" filename="/tmp/upstream-sweep/.work/mlx/tests/compile_tests.cpp" line="848">
+        <Original>
+          array_equal(out, expected).item&lt;bool>()
+        </Original>
+        <Exception>
+          "[omarchy] RandomBits width is not implemented for the Omarchy Vulkan backend (dtype=uint16, shape=[32,32]). No CPU fallback is available in Omarchy builds."
+        </Exception>
+      </Expression>
+      <OverallResultsAsserts successes="0" failures="1" test_case_success="false" duration="0.000543"/>
+    </TestCase>
+    <TestCase name="test compile throwing first trace does not poison cache" filename="/tmp/upstream-sweep/.work/mlx/tests/compile_tests.cpp" line="851">
+      <OverallResultsAsserts successes="4" failures="0" test_case_success="true" duration="0.000291"/>
+    </TestCase>
+    <TestCase name="test arange" filename="/tmp/upstream-sweep/.work/mlx/tests/creations_tests.cpp" line="9" skipped="true"/>
+    <TestCase name="test astype" filename="/tmp/upstream-sweep/.work/mlx/tests/creations_tests.cpp" line="126" skipped="true"/>
+    <TestCase name="test full" filename="/tmp/upstream-sweep/.work/mlx/tests/creations_tests.cpp" line="145" skipped="true"/>
+    <TestCase name="test simple custom vjp" filename="/tmp/upstream-sweep/.work/mlx/tests/custom_vjp_tests.cpp" line="9" skipped="true"/>
+    <TestCase name="test checkpointing" filename="/tmp/upstream-sweep/.work/mlx/tests/custom_vjp_tests.cpp" line="36" skipped="true"/>
+    <TestCase name="test device and stream ordering" filename="/tmp/upstream-sweep/.work/mlx/tests/device_tests.cpp" line="38" skipped="true"/>
+    <TestCase name="test device placement" filename="/tmp/upstream-sweep/.work/mlx/tests/device_tests.cpp" line="56" skipped="true"/>
+    <TestCase name="test einsum path" filename="/tmp/upstream-sweep/.work/mlx/tests/einsum_tests.cpp" line="17" skipped="true"/>
+    <TestCase name="test einsum" filename="/tmp/upstream-sweep/.work/mlx/tests/einsum_tests.cpp" line="62" skipped="true"/>
+    <TestCase name="test eval" filename="/tmp/upstream-sweep/.work/mlx/tests/eval_tests.cpp" line="9" skipped="true"/>
+    <TestCase name="test eval multiple" filename="/tmp/upstream-sweep/.work/mlx/tests/eval_tests.cpp" line="27" skipped="true"/>
+    <TestCase name="test eval with tracer when not tracing" filename="/tmp/upstream-sweep/.work/mlx/tests/eval_tests.cpp" line="51" skipped="true"/>
+    <TestCase name="test eval graph retention when not tracing" filename="/tmp/upstream-sweep/.work/mlx/tests/eval_tests.cpp" line="68" skipped="true"/>
+    <TestCase name="test export basic functions" filename="/tmp/upstream-sweep/.work/mlx/tests/export_import_tests.cpp" line="20" skipped="true"/>
+    <TestCase name="test export function with no inputs" filename="/tmp/upstream-sweep/.work/mlx/tests/export_import_tests.cpp" line="46" skipped="true"/>
+    <TestCase name="test export multi output primitives" filename="/tmp/upstream-sweep/.work/mlx/tests/export_import_tests.cpp" line="62" skipped="true"/>
+    <TestCase name="test export primitives with state" filename="/tmp/upstream-sweep/.work/mlx/tests/export_import_tests.cpp" line="80" skipped="true"/>
+    <TestCase name="test export functions with kwargs" filename="/tmp/upstream-sweep/.work/mlx/tests/export_import_tests.cpp" line="97" skipped="true"/>
+    <TestCase name="test export function with variable inputs" filename="/tmp/upstream-sweep/.work/mlx/tests/export_import_tests.cpp" line="123" skipped="true"/>
+    <TestCase name="test export function on different stream" filename="/tmp/upstream-sweep/.work/mlx/tests/export_import_tests.cpp" line="152" skipped="true"/>
+    <TestCase name="test export import with metadata" filename="/tmp/upstream-sweep/.work/mlx/tests/export_import_tests.cpp" line="165" skipped="true"/>
+    <TestCase name="test fft basics" filename="/tmp/upstream-sweep/.work/mlx/tests/fft_tests.cpp" line="9" skipped="true"/>
+    <TestCase name="test real ffts" filename="/tmp/upstream-sweep/.work/mlx/tests/fft_tests.cpp" line="108" skipped="true"/>
+    <TestCase name="test fftn" filename="/tmp/upstream-sweep/.work/mlx/tests/fft_tests.cpp" line="134" skipped="true"/>
+    <TestCase name="test fft with provided shape" filename="/tmp/upstream-sweep/.work/mlx/tests/fft_tests.cpp" line="227" skipped="true"/>
+    <TestCase name="test fft vmap" filename="/tmp/upstream-sweep/.work/mlx/tests/fft_tests.cpp" line="252" skipped="true"/>
+    <TestCase name="test fft grads" filename="/tmp/upstream-sweep/.work/mlx/tests/fft_tests.cpp" line="270" skipped="true"/>
+    <TestCase name="test fftshift and ifftshift" filename="/tmp/upstream-sweep/.work/mlx/tests/fft_tests.cpp" line="339" skipped="true"/>
+    <TestCase name="[mlx.core.linalg.norm] no ord" filename="/tmp/upstream-sweep/.work/mlx/tests/linalg_tests.cpp" line="14" skipped="true"/>
+    <TestCase name="[mlx.core.linalg.norm] double ord" filename="/tmp/upstream-sweep/.work/mlx/tests/linalg_tests.cpp" line="78" skipped="true"/>
+    <TestCase name="[mlx.core.linalg.norm] string ord" filename="/tmp/upstream-sweep/.work/mlx/tests/linalg_tests.cpp" line="303" skipped="true"/>
+    <TestCase name="test QR factorization" filename="/tmp/upstream-sweep/.work/mlx/tests/linalg_tests.cpp" line="359" skipped="true"/>
+    <TestCase name="test SVD factorization" filename="/tmp/upstream-sweep/.work/mlx/tests/linalg_tests.cpp" line="378" skipped="true"/>
+    <TestCase name="test matrix inversion" filename="/tmp/upstream-sweep/.work/mlx/tests/linalg_tests.cpp" line="419" skipped="true"/>
+    <TestCase name="test matrix cholesky" filename="/tmp/upstream-sweep/.work/mlx/tests/linalg_tests.cpp" line="441" skipped="true"/>
+    <TestCase name="test matrix pseudo-inverse" filename="/tmp/upstream-sweep/.work/mlx/tests/linalg_tests.cpp" line="469" skipped="true"/>
+    <TestCase name="test cross product" filename="/tmp/upstream-sweep/.work/mlx/tests/linalg_tests.cpp" line="517" skipped="true"/>
+    <TestCase name="test matrix eigh" filename="/tmp/upstream-sweep/.work/mlx/tests/linalg_tests.cpp" line="562" skipped="true"/>
+    <TestCase name="test lu" filename="/tmp/upstream-sweep/.work/mlx/tests/linalg_tests.cpp" line="600" skipped="true"/>
+    <TestCase name="test solve" filename="/tmp/upstream-sweep/.work/mlx/tests/linalg_tests.cpp" line="623" skipped="true"/>
+    <TestCase name="test solve_triangluar" filename="/tmp/upstream-sweep/.work/mlx/tests/linalg_tests.cpp" line="673" skipped="true"/>
+    <TestCase name="test det" filename="/tmp/upstream-sweep/.work/mlx/tests/linalg_tests.cpp" line="692" skipped="true"/>
+    <TestCase name="test slogdet" filename="/tmp/upstream-sweep/.work/mlx/tests/linalg_tests.cpp" line="730" skipped="true"/>
+    <TestCase name="test save_safetensors" filename="/tmp/upstream-sweep/.work/mlx/tests/load_tests.cpp" line="18" skipped="true"/>
+    <TestCase name="test safetensors file boundary validation" filename="/tmp/upstream-sweep/.work/mlx/tests/load_tests.cpp" line="56" skipped="true"/>
+    <TestCase name="test gguf" filename="/tmp/upstream-sweep/.work/mlx/tests/load_tests.cpp" line="117" skipped="true"/>
+    <TestCase name="test gguf tensor data offset validation" filename="/tmp/upstream-sweep/.work/mlx/tests/load_tests.cpp" line="202" skipped="true"/>
+    <TestCase name="test gguf metadata value validation" filename="/tmp/upstream-sweep/.work/mlx/tests/load_tests.cpp" line="282" skipped="true"/>
+    <TestCase name="test gguf metadata" filename="/tmp/upstream-sweep/.work/mlx/tests/load_tests.cpp" line="374" skipped="true"/>
+    <TestCase name="test single array serialization" filename="/tmp/upstream-sweep/.work/mlx/tests/load_tests.cpp" line="492" skipped="true"/>
+    <TestCase name="test copy" filename="/tmp/upstream-sweep/.work/mlx/tests/ops_tests.cpp" line="15" skipped="true"/>
+    <TestCase name="test reshape" filename="/tmp/upstream-sweep/.work/mlx/tests/ops_tests.cpp" line="30" skipped="true"/>
+    <TestCase name="test flatten" filename="/tmp/upstream-sweep/.work/mlx/tests/ops_tests.cpp" line="139" skipped="true"/>
+    <TestCase name="test unflatten" filename="/tmp/upstream-sweep/.work/mlx/tests/ops_tests.cpp" line="166" skipped="true"/>
+    <TestCase name="test squeeze and expand" filename="/tmp/upstream-sweep/.work/mlx/tests/ops_tests.cpp" line="183" skipped="true"/>
+    <TestCase name="test slice" filename="/tmp/upstream-sweep/.work/mlx/tests/ops_tests.cpp" line="229" skipped="true"/>
+    <TestCase name="test slice update" filename="/tmp/upstream-sweep/.work/mlx/tests/ops_tests.cpp" line="363" skipped="true"/>
+    <TestCase name="test slice update add" filename="/tmp/upstream-sweep/.work/mlx/tests/ops_tests.cpp" line="388" skipped="true"/>
+    <TestCase name="test dynamic slice" filename="/tmp/upstream-sweep/.work/mlx/tests/ops_tests.cpp" line="486" skipped="true"/>
+    <TestCase name="test dynamic slice update" filename="/tmp/upstream-sweep/.work/mlx/tests/ops_tests.cpp" line="505" skipped="true"/>
+    <TestCase name="test split" filename="/tmp/upstream-sweep/.work/mlx/tests/ops_tests.cpp" line="530" skipped="true"/>
+    <TestCase name="test flip" filename="/tmp/upstream-sweep/.work/mlx/tests/ops_tests.cpp" line="611" skipped="true"/>
+    <TestCase name="test unstack" filename="/tmp/upstream-sweep/.work/mlx/tests/ops_tests.cpp" line="631" skipped="true"/>
+    <TestCase name="test swap and move axes" filename="/tmp/upstream-sweep/.work/mlx/tests/ops_tests.cpp" line="651" skipped="true"/>
+    <TestCase name="test transpose" filename="/tmp/upstream-sweep/.work/mlx/tests/ops_tests.cpp" line="691" skipped="true"/>
+    <TestCase name="test comparison ops" filename="/tmp/upstream-sweep/.work/mlx/tests/ops_tests.cpp" line="773" skipped="true"/>
+    <TestCase name="test is nan" filename="/tmp/upstream-sweep/.work/mlx/tests/ops_tests.cpp" line="899" skipped="true"/>
+    <TestCase name="test is inf" filename="/tmp/upstream-sweep/.work/mlx/tests/ops_tests.cpp" line="925" skipped="true"/>
+    <TestCase name="test all close" filename="/tmp/upstream-sweep/.work/mlx/tests/ops_tests.cpp" line="956" skipped="true"/>
+    <TestCase name="test is close" filename="/tmp/upstream-sweep/.work/mlx/tests/ops_tests.cpp" line="968" skipped="true"/>
+    <TestCase name="test reduction ops" filename="/tmp/upstream-sweep/.work/mlx/tests/ops_tests.cpp" line="998" skipped="true"/>
+    <TestCase name="test irregular binary ops" filename="/tmp/upstream-sweep/.work/mlx/tests/ops_tests.cpp" line="1328" skipped="true"/>
+    <TestCase name="test arithmetic unary ops" filename="/tmp/upstream-sweep/.work/mlx/tests/ops_tests.cpp" line="1349" skipped="true"/>
+    <TestCase name="test error functions" filename="/tmp/upstream-sweep/.work/mlx/tests/ops_tests.cpp" line="1805" skipped="true"/>
+    <TestCase name="test arithmetic binary ops" filename="/tmp/upstream-sweep/.work/mlx/tests/ops_tests.cpp" line="1894" skipped="true"/>
+    <TestCase name="test broadcast" filename="/tmp/upstream-sweep/.work/mlx/tests/ops_tests.cpp" line="2050" skipped="true"/>
+    <TestCase name="test gather" filename="/tmp/upstream-sweep/.work/mlx/tests/ops_tests.cpp" line="2161" skipped="true"/>
+    <TestCase name="test take" filename="/tmp/upstream-sweep/.work/mlx/tests/ops_tests.cpp" line="2239" skipped="true"/>
+    <TestCase name="test gather contiguity" filename="/tmp/upstream-sweep/.work/mlx/tests/ops_tests.cpp" line="2325" skipped="true"/>
+    <TestCase name="test take along axis" filename="/tmp/upstream-sweep/.work/mlx/tests/ops_tests.cpp" line="2377" skipped="true"/>
+    <TestCase name="test put along axis" filename="/tmp/upstream-sweep/.work/mlx/tests/ops_tests.cpp" line="2443" skipped="true"/>
+    <TestCase name="test scatter" filename="/tmp/upstream-sweep/.work/mlx/tests/ops_tests.cpp" line="2485" skipped="true"/>
+    <TestCase name="test masked_scatter" filename="/tmp/upstream-sweep/.work/mlx/tests/ops_tests.cpp" line="2651" skipped="true"/>
+    <TestCase name="test is positive infinity" filename="/tmp/upstream-sweep/.work/mlx/tests/ops_tests.cpp" line="2689" skipped="true"/>
+    <TestCase name="test is negative infinity" filename="/tmp/upstream-sweep/.work/mlx/tests/ops_tests.cpp" line="2712" skipped="true"/>
+    <TestCase name="test scatter types" filename="/tmp/upstream-sweep/.work/mlx/tests/ops_tests.cpp" line="2735" skipped="true"/>
+    <TestCase name="test complex ops" filename="/tmp/upstream-sweep/.work/mlx/tests/ops_tests.cpp" line="2757" skipped="true"/>
+    <TestCase name="test as_strided op" filename="/tmp/upstream-sweep/.work/mlx/tests/ops_tests.cpp" line="2846" skipped="true"/>
+    <TestCase name="test scan op" filename="/tmp/upstream-sweep/.work/mlx/tests/ops_tests.cpp" line="2893" skipped="true"/>
+    <TestCase name="test pad" filename="/tmp/upstream-sweep/.work/mlx/tests/ops_tests.cpp" line="2954" skipped="true"/>
+    <TestCase name="test power" filename="/tmp/upstream-sweep/.work/mlx/tests/ops_tests.cpp" line="3026" skipped="true"/>
+    <TestCase name="test where" filename="/tmp/upstream-sweep/.work/mlx/tests/ops_tests.cpp" line="3059" skipped="true"/>
+    <TestCase name="test stack" filename="/tmp/upstream-sweep/.work/mlx/tests/ops_tests.cpp" line="3138" skipped="true"/>
+    <TestCase name="test full_like" filename="/tmp/upstream-sweep/.work/mlx/tests/ops_tests.cpp" line="3167" skipped="true"/>
+    <TestCase name="test eye" filename="/tmp/upstream-sweep/.work/mlx/tests/ops_tests.cpp" line="3193" skipped="true"/>
+    <TestCase name="test tri" filename="/tmp/upstream-sweep/.work/mlx/tests/ops_tests.cpp" line="3211" skipped="true"/>
+    <TestCase name="test tril" filename="/tmp/upstream-sweep/.work/mlx/tests/ops_tests.cpp" line="3235" skipped="true"/>
+    <TestCase name="test triu" filename="/tmp/upstream-sweep/.work/mlx/tests/ops_tests.cpp" line="3259" skipped="true"/>
+    <TestCase name="test identity" filename="/tmp/upstream-sweep/.work/mlx/tests/ops_tests.cpp" line="3283" skipped="true"/>
+    <TestCase name="test eye with positive k offset" filename="/tmp/upstream-sweep/.work/mlx/tests/ops_tests.cpp" line="3307" skipped="true"/>
+    <TestCase name="test eye with negative k offset" filename="/tmp/upstream-sweep/.work/mlx/tests/ops_tests.cpp" line="3316" skipped="true"/>
+    <TestCase name="test basic clipping" filename="/tmp/upstream-sweep/.work/mlx/tests/ops_tests.cpp" line="3325" skipped="true"/>
+    <TestCase name="test clipping with only min" filename="/tmp/upstream-sweep/.work/mlx/tests/ops_tests.cpp" line="3332" skipped="true"/>
+    <TestCase name="test clipping with only max" filename="/tmp/upstream-sweep/.work/mlx/tests/ops_tests.cpp" line="3339" skipped="true"/>
+    <TestCase name="test linspace" filename="/tmp/upstream-sweep/.work/mlx/tests/ops_tests.cpp" line="3346" skipped="true"/>
+    <TestCase name="test quantize dequantize" filename="/tmp/upstream-sweep/.work/mlx/tests/ops_tests.cpp" line="3376" skipped="true"/>
+    <TestCase name="test repeat" filename="/tmp/upstream-sweep/.work/mlx/tests/ops_tests.cpp" line="3397" skipped="true"/>
+    <TestCase name="tile" filename="/tmp/upstream-sweep/.work/mlx/tests/ops_tests.cpp" line="3446" skipped="true"/>
+    <TestCase name="tensordot" filename="/tmp/upstream-sweep/.work/mlx/tests/ops_tests.cpp" line="3472" skipped="true"/>
+    <TestCase name="outer" filename="/tmp/upstream-sweep/.work/mlx/tests/ops_tests.cpp" line="3508" skipped="true"/>
+    <TestCase name="inner" filename="/tmp/upstream-sweep/.work/mlx/tests/ops_tests.cpp" line="3526" skipped="true"/>
+    <TestCase name="test divmod" filename="/tmp/upstream-sweep/.work/mlx/tests/ops_tests.cpp" line="3552" skipped="true"/>
+    <TestCase name="test diagonal" filename="/tmp/upstream-sweep/.work/mlx/tests/ops_tests.cpp" line="3611" skipped="true"/>
+    <TestCase name="test diag" filename="/tmp/upstream-sweep/.work/mlx/tests/ops_tests.cpp" line="3651" skipped="true"/>
+    <TestCase name="test issubdtype" filename="/tmp/upstream-sweep/.work/mlx/tests/ops_tests.cpp" line="3694" skipped="true"/>
+    <TestCase name="test atleast_1d" filename="/tmp/upstream-sweep/.work/mlx/tests/ops_tests.cpp" line="3880" skipped="true"/>
+    <TestCase name="test atleast_1d vector" filename="/tmp/upstream-sweep/.work/mlx/tests/ops_tests.cpp" line="3897" skipped="true"/>
+    <TestCase name="test atleast_2d" filename="/tmp/upstream-sweep/.work/mlx/tests/ops_tests.cpp" line="3910" skipped="true"/>
+    <TestCase name="test atleast_2d vector" filename="/tmp/upstream-sweep/.work/mlx/tests/ops_tests.cpp" line="3927" skipped="true"/>
+    <TestCase name="test atleast_3d" filename="/tmp/upstream-sweep/.work/mlx/tests/ops_tests.cpp" line="3940" skipped="true"/>
+    <TestCase name="test atleast_3d vector" filename="/tmp/upstream-sweep/.work/mlx/tests/ops_tests.cpp" line="3957" skipped="true"/>
+    <TestCase name="test topk" filename="/tmp/upstream-sweep/.work/mlx/tests/ops_tests.cpp" line="3970" skipped="true"/>
+    <TestCase name="test meshgrid" filename="/tmp/upstream-sweep/.work/mlx/tests/ops_tests.cpp" line="3989" skipped="true"/>
+    <TestCase name="test conv1d" filename="/tmp/upstream-sweep/.work/mlx/tests/ops_tests.cpp" line="4014" skipped="true"/>
+    <TestCase name="test conv2d" filename="/tmp/upstream-sweep/.work/mlx/tests/ops_tests.cpp" line="4112" skipped="true"/>
+    <TestCase name="test trace" filename="/tmp/upstream-sweep/.work/mlx/tests/ops_tests.cpp" line="4240" skipped="true"/>
+    <TestCase name="test view" filename="/tmp/upstream-sweep/.work/mlx/tests/ops_tests.cpp" line="4257" skipped="true"/>
+    <TestCase name="test roll" filename="/tmp/upstream-sweep/.work/mlx/tests/ops_tests.cpp" line="4269" skipped="true"/>
+    <TestCase name="test contiguous" filename="/tmp/upstream-sweep/.work/mlx/tests/ops_tests.cpp" line="4304" skipped="true"/>
+    <TestCase name="test bitwise shift operations" filename="/tmp/upstream-sweep/.work/mlx/tests/ops_tests.cpp" line="4318" skipped="true"/>
+    <TestCase name="test conv_transpose1d with output_padding" filename="/tmp/upstream-sweep/.work/mlx/tests/ops_tests.cpp" line="4356" skipped="true"/>
+    <TestCase name="test conv_transpose2d with output_padding" filename="/tmp/upstream-sweep/.work/mlx/tests/ops_tests.cpp" line="4371" skipped="true"/>
+    <TestCase name="test conv_transpose3d with output_padding" filename="/tmp/upstream-sweep/.work/mlx/tests/ops_tests.cpp" line="4403" skipped="true"/>
+    <TestCase name="test conv shape overflow" filename="/tmp/upstream-sweep/.work/mlx/tests/ops_tests.cpp" line="4422" skipped="true"/>
+    <TestCase name="test pad shape overflow" filename="/tmp/upstream-sweep/.work/mlx/tests/ops_tests.cpp" line="4494" skipped="true"/>
+    <TestCase name="test fp8 conversion" filename="/tmp/upstream-sweep/.work/mlx/tests/ops_tests.cpp" line="4502" skipped="true"/>
+    <TestCase name="test max min with nan" filename="/tmp/upstream-sweep/.work/mlx/tests/ops_tests.cpp" line="4525" skipped="true"/>
+    <TestCase name="roll and tile shape overflow" filename="/tmp/upstream-sweep/.work/mlx/tests/ops_tests.cpp" line="4546" skipped="true"/>
+    <TestCase name="test random key" filename="/tmp/upstream-sweep/.work/mlx/tests/random_tests.cpp" line="11" skipped="true"/>
+    <TestCase name="test global rng" filename="/tmp/upstream-sweep/.work/mlx/tests/random_tests.cpp" line="26" skipped="true"/>
+    <TestCase name="test random split" filename="/tmp/upstream-sweep/.work/mlx/tests/random_tests.cpp" line="39" skipped="true"/>
+    <TestCase name="test random bits" filename="/tmp/upstream-sweep/.work/mlx/tests/random_tests.cpp" line="56" skipped="true"/>
+    <TestCase name="test random uniform" filename="/tmp/upstream-sweep/.work/mlx/tests/random_tests.cpp" line="244" skipped="true"/>
+    <TestCase name="test random normal" filename="/tmp/upstream-sweep/.work/mlx/tests/random_tests.cpp" line="372" skipped="true"/>
+    <TestCase name="test random multivariate_normal" filename="/tmp/upstream-sweep/.work/mlx/tests/random_tests.cpp" line="423" skipped="true"/>
+    <TestCase name="test random randint" filename="/tmp/upstream-sweep/.work/mlx/tests/random_tests.cpp" line="483" skipped="true"/>
+    <TestCase name="test random bernoulli" filename="/tmp/upstream-sweep/.work/mlx/tests/random_tests.cpp" line="521" skipped="true"/>
+    <TestCase name="Test truncated normal" filename="/tmp/upstream-sweep/.work/mlx/tests/random_tests.cpp" line="566" skipped="true"/>
+    <TestCase name="test categorical" filename="/tmp/upstream-sweep/.work/mlx/tests/random_tests.cpp" line="607" skipped="true"/>
+    <TestCase name="test laplace" filename="/tmp/upstream-sweep/.work/mlx/tests/random_tests.cpp" line="660" skipped="true"/>
+    <TestCase name="test stream management" filename="/tmp/upstream-sweep/.work/mlx/tests/scheduler_tests.cpp" line="10" skipped="true"/>
+    <TestCase name="test default stream in threads" filename="/tmp/upstream-sweep/.work/mlx/tests/scheduler_tests.cpp" line="39" skipped="true"/>
+    <TestCase name="test access stream in other thread" filename="/tmp/upstream-sweep/.work/mlx/tests/scheduler_tests.cpp" line="71" skipped="true"/>
+    <TestCase name="test new stream in threads" filename="/tmp/upstream-sweep/.work/mlx/tests/scheduler_tests.cpp" line="89" skipped="true"/>
+    <TestCase name="test thread unsafe stream" filename="/tmp/upstream-sweep/.work/mlx/tests/scheduler_tests.cpp" line="103" skipped="true"/>
+    <TestCase name="test thread local stream" filename="/tmp/upstream-sweep/.work/mlx/tests/scheduler_tests.cpp" line="117" skipped="true"/>
+    <TestCase name="test get streams" filename="/tmp/upstream-sweep/.work/mlx/tests/scheduler_tests.cpp" line="139" skipped="true"/>
+    <TestCase name="test asynchronous launch" filename="/tmp/upstream-sweep/.work/mlx/tests/scheduler_tests.cpp" line="169" skipped="true"/>
+    <TestCase name="test stream placement" filename="/tmp/upstream-sweep/.work/mlx/tests/scheduler_tests.cpp" line="199" skipped="true"/>
+    <TestCase name="test scheduler races" filename="/tmp/upstream-sweep/.work/mlx/tests/scheduler_tests.cpp" line="240" skipped="true"/>
+    <TestCase name="test type promotion" filename="/tmp/upstream-sweep/.work/mlx/tests/utils_tests.cpp" line="9" skipped="true"/>
+    <TestCase name="test normalize axis" filename="/tmp/upstream-sweep/.work/mlx/tests/utils_tests.cpp" line="29" skipped="true"/>
+    <TestCase name="test finfo" filename="/tmp/upstream-sweep/.work/mlx/tests/utils_tests.cpp" line="47" skipped="true"/>
+    <TestCase name="test iinfo" filename="/tmp/upstream-sweep/.work/mlx/tests/utils_tests.cpp" line="59" skipped="true"/>
+    <TestCase name="test simple vmap" filename="/tmp/upstream-sweep/.work/mlx/tests/vmap_tests.cpp" line="9" skipped="true"/>
+    <TestCase name="test vmap with eval" filename="/tmp/upstream-sweep/.work/mlx/tests/vmap_tests.cpp" line="209" skipped="true"/>
+    <TestCase name="test vmap comparison ops" filename="/tmp/upstream-sweep/.work/mlx/tests/vmap_tests.cpp" line="240" skipped="true"/>
+    <TestCase name="test vmap creation ops" filename="/tmp/upstream-sweep/.work/mlx/tests/vmap_tests.cpp" line="267" skipped="true"/>
+    <TestCase name="test vmap slice" filename="/tmp/upstream-sweep/.work/mlx/tests/vmap_tests.cpp" line="298" skipped="true"/>
+    <TestCase name="test vmap concatenate" filename="/tmp/upstream-sweep/.work/mlx/tests/vmap_tests.cpp" line="316" skipped="true"/>
+    <TestCase name="test vmap gather" filename="/tmp/upstream-sweep/.work/mlx/tests/vmap_tests.cpp" line="333" skipped="true"/>
+    <TestCase name="test vmap take_along_axis with unmapped input and mapped index" filename="/tmp/upstream-sweep/.work/mlx/tests/vmap_tests.cpp" line="395" skipped="true"/>
+    <TestCase name="test vmap scatter" filename="/tmp/upstream-sweep/.work/mlx/tests/vmap_tests.cpp" line="407" skipped="true"/>
+    <TestCase name="test vmap SVD" filename="/tmp/upstream-sweep/.work/mlx/tests/vmap_tests.cpp" line="480" skipped="true"/>
+    <TestCase name="test vmap dynamic slices" filename="/tmp/upstream-sweep/.work/mlx/tests/vmap_tests.cpp" line="531" skipped="true"/>
+    <TestCase name="test vmap floor_divide integer" filename="/tmp/upstream-sweep/.work/mlx/tests/vmap_tests.cpp" line="561" skipped="true"/>
+  </TestSuite>
+  <OverallResultsAsserts successes="123" failures="12"/>
+  <OverallResultsTestCases successes="25" failures="6" skipped="220"/>
+</doctest>

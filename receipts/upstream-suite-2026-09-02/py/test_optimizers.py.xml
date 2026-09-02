@@ -1,0 +1,134 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="8" skipped="1" tests="26" time="0.403" timestamp="2026-09-02T09:04:02.629005-05:00" hostname="omp-studio-local"><testcase classname="python.tests.test_optimizers.TestOptimizers" name="test_adadelta" time="0.023" /><testcase classname="python.tests.test_optimizers.TestOptimizers" name="test_adafactor" time="0.002"><failure message="RuntimeError: [omarchy] Add dtype is not implemented for the Omarchy Vulkan backend (dtype=uint64, shape=[]). No CPU fallback is available in Omarchy builds.">self = &lt;test_optimizers.TestOptimizers testMethod=test_adafactor&gt;
+
+    def test_adafactor(self):
+        x = mx.zeros((5, 5))
+        params = {"x": x}
+        grad = {"x": mx.ones_like(x)}
+        optimizer = opt.Adafactor()
+        for _ in range(2):
+            xp = optimizer.apply_gradients(grad, params)
+            self.assertEqual(xp["x"].dtype, x.dtype)
+            self.assertEqual(xp["x"].shape, x.shape)
+    
+        x = mx.zeros((5, 5), mx.float16)
+        params = {"x": x}
+        grad = {"x": mx.ones_like(x)}
+        optimizer = opt.Adafactor()
+        for _ in range(2):
+            xp = optimizer.apply_gradients(grad, params)
+            self.assertEqual(xp["x"].dtype, x.dtype)
+            self.assertEqual(xp["x"].shape, x.shape)
+&gt;       self.assertEqual(optimizer.state["step"], 2)
+E       RuntimeError: [omarchy] Add dtype is not implemented for the Omarchy Vulkan backend (dtype=uint64, shape=[]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_optimizers.py:297: RuntimeError</failure></testcase><testcase classname="python.tests.test_optimizers.TestOptimizers" name="test_adagrad" time="0.002" /><testcase classname="python.tests.test_optimizers.TestOptimizers" name="test_adam" time="0.005" /><testcase classname="python.tests.test_optimizers.TestOptimizers" name="test_adamw_matches_pytorch" time="0.000"><skipped type="pytest.skip" message="requires Torch">/tmp/upstream-sweep/.work/mlx/python/tests/test_optimizers.py:216: requires Torch</skipped></testcase><testcase classname="python.tests.test_optimizers.TestOptimizers" name="test_compiled_optimizer" time="0.034" /><testcase classname="python.tests.test_optimizers.TestOptimizers" name="test_epsilon_validation" time="0.001" /><testcase classname="python.tests.test_optimizers.TestOptimizers" name="test_lion" time="0.001" /><testcase classname="python.tests.test_optimizers.TestOptimizers" name="test_muon" time="0.010" /><testcase classname="python.tests.test_optimizers.TestOptimizers" name="test_optimizer_state" time="0.000" /><testcase classname="python.tests.test_optimizers.TestOptimizers" name="test_optimizers" time="0.004"><failure message="RuntimeError: [omarchy] Add dtype is not implemented for the Omarchy Vulkan backend (dtype=uint64, shape=[]). No CPU fallback is available in Omarchy builds.">self = &lt;test_optimizers.TestOptimizers testMethod=test_optimizers&gt;
+
+    def test_optimizers(self):
+        params = {
+            "first": [mx.zeros((10,)), mx.zeros((1,))],
+            "second": mx.zeros((1,)),
+        }
+        grads = tree_map(lambda x: mx.ones_like(x), params)
+    
+        for optim_class in optimizers_dict.values():
+            optim = optim_class(0.1)
+            update = optim.apply_gradients(grads, params)
+&gt;           mx.eval(update)
+E           RuntimeError: [omarchy] Add dtype is not implemented for the Omarchy Vulkan backend (dtype=uint64, shape=[]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_optimizers.py:64: RuntimeError</failure></testcase><testcase classname="python.tests.test_optimizers.TestOptimizers" name="test_rmsprop" time="0.008" /><testcase classname="python.tests.test_optimizers.TestOptimizers" name="test_sgd" time="0.002" /><testcase classname="python.tests.test_optimizers.TestOptimizers" name="test_types_conserved" time="0.001" /><testcase classname="python.tests.test_optimizers.TestOptimizers" name="test_update_lr_compiled" time="0.004" /><testcase classname="python.tests.test_optimizers.TestSchedulers" name="test_clip_grad_norm" time="0.002"><failure message="RuntimeError: [omarchy] Square dtype is not implemented for the Omarchy Vulkan backend (dtype=int32, shape=[2]). No CPU fallback is available in Omarchy builds.">self = &lt;test_optimizers.TestSchedulers testMethod=test_clip_grad_norm&gt;
+
+    def test_clip_grad_norm(self):
+        # Test with small gradients that do not require clipping
+        small_grads = {
+            "first": [mx.array([0.1, 0.2]), mx.array([0.1])],
+            "second": mx.array([0.3]),
+        }
+        max_norm = 10.0  # A large max_norm that shouldn't trigger clipping
+        clipped_grads, total_norm = opt.clip_grad_norm(small_grads, max_norm)
+        self.assertTrue(
+            tree_equal(lambda x, y: mx.array_equal(x, y), small_grads, clipped_grads),
+            "Gradients should not be modified when clipping is not necessary.",
+        )
+    
+        # Test with large gradients that require clipping
+        large_grads = {
+            "first": [mx.array([10, 20]), mx.array([10])],
+            "second": mx.array([30]),
+        }
+        max_norm = 1.0  # A small max_norm that should trigger clipping
+        clipped_grads, total_norm = opt.clip_grad_norm(large_grads, max_norm)
+        # Correctly extract only the gradient values for norm calculation
+        clipped_values = [value for _, value in tree_flatten(clipped_grads)]
+        norm_of_clipped = mx.sqrt(
+            sum(mx.square(g).sum() for g in clipped_values)
+&gt;       ).item()
+          ^^^^^^
+E       RuntimeError: [omarchy] Square dtype is not implemented for the Omarchy Vulkan backend (dtype=int32, shape=[2]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_optimizers.py:547: RuntimeError</failure></testcase><testcase classname="python.tests.test_optimizers.TestSchedulers" name="test_compile_with_schedule" time="0.001"><failure message="RuntimeError: [omarchy] dtype converting copy is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[]). No CPU fallback is available in Omarchy builds.">self = &lt;test_optimizers.TestSchedulers testMethod=test_compile_with_schedule&gt;
+
+    def test_compile_with_schedule(self):
+        lr_schedule = opt.exponential_decay(1e-1, 0.9)
+        optimizer = opt.SGD(learning_rate=lr_schedule)
+    
+        @partial(mx.compile, inputs=optimizer.state, outputs=optimizer.state)
+        def update():
+            optimizer.update({}, {})
+    
+        for step in range(5):
+            update()
+&gt;           self.assertAlmostEqual(lr_schedule(step), optimizer.learning_rate.item())
+                                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           RuntimeError: [omarchy] dtype converting copy is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_optimizers.py:521: RuntimeError</failure></testcase><testcase classname="python.tests.test_optimizers.TestSchedulers" name="test_cosine_decay" time="0.001"><failure message="RuntimeError: [omarchy] Minimum dtype is not implemented for the Omarchy Vulkan backend (dtype=int32, shape=[]). No CPU fallback is available in Omarchy builds.">self = &lt;test_optimizers.TestSchedulers testMethod=test_cosine_decay&gt;
+
+    def test_cosine_decay(self):
+        lr_schedule = opt.cosine_decay(0.1, 10)
+        lr = lr_schedule(4)
+        expected_lr = 0.1 * 0.5 * (1.0 + math.cos(math.pi * 4 / 10))
+&gt;       self.assertAlmostEqual(lr, expected_lr, delta=1e-7)
+E       RuntimeError: [omarchy] Minimum dtype is not implemented for the Omarchy Vulkan backend (dtype=int32, shape=[]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_optimizers.py:471: RuntimeError</failure></testcase><testcase classname="python.tests.test_optimizers.TestSchedulers" name="test_decay_lr" time="0.001"><failure message="RuntimeError: [omarchy] Divide dtype is not implemented for the Omarchy Vulkan backend (dtype=uint64, shape=[]). No CPU fallback is available in Omarchy builds.">self = &lt;test_optimizers.TestSchedulers testMethod=test_decay_lr&gt;
+
+    def test_decay_lr(self):
+        for optim_class in optimizers_dict.values():
+            lr_schedule = opt.step_decay(1e-1, 0.9, 1)
+            optimizer = optim_class(learning_rate=lr_schedule)
+    
+            params = {"w": mx.ones((5, 5))}
+            grads = tree_map(lambda x: mx.ones_like(x), params)
+    
+            for it in range(10):
+                optimizer.apply_gradients(grads, params)
+                expected_lr = 0.1 * (0.9**it)
+&gt;               self.assertAlmostEqual(optimizer.learning_rate, expected_lr, delta=1e-7)
+E               RuntimeError: [omarchy] Divide dtype is not implemented for the Omarchy Vulkan backend (dtype=uint64, shape=[]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_optimizers.py:453: RuntimeError</failure></testcase><testcase classname="python.tests.test_optimizers.TestSchedulers" name="test_exponential_decay" time="0.000" /><testcase classname="python.tests.test_optimizers.TestSchedulers" name="test_init_from_state" time="0.001" /><testcase classname="python.tests.test_optimizers.TestSchedulers" name="test_linear_warmup_with_cosine_decay" time="0.001"><failure message="RuntimeError: [omarchy] Minimum dtype is not implemented for the Omarchy Vulkan backend (dtype=int32, shape=[]). No CPU fallback is available in Omarchy builds.">self = &lt;test_optimizers.TestSchedulers testMethod=test_linear_warmup_with_cosine_decay&gt;
+
+    def test_linear_warmup_with_cosine_decay(self):
+        warmup_schedule = opt.schedulers.linear_schedule(0.0, 1e-5, 100)
+        cosine_schedule = opt.schedulers.cosine_decay(1e-5, 100)
+        cos_with_warmup = opt.schedulers.join_schedules(
+            [warmup_schedule, cosine_schedule], [101]
+        )
+&gt;       self.assertEqual(cos_with_warmup(0), 0.0)
+E       RuntimeError: [omarchy] Minimum dtype is not implemented for the Omarchy Vulkan backend (dtype=int32, shape=[]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_optimizers.py:500: RuntimeError</failure></testcase><testcase classname="python.tests.test_optimizers.TestSchedulers" name="test_multi_optimizer" time="0.001" /><testcase classname="python.tests.test_optimizers.TestSchedulers" name="test_multi_optimizer_with_parameterless_layers" time="0.033" /><testcase classname="python.tests.test_optimizers.TestSchedulers" name="test_schedule_joiner" time="0.001"><failure message="RuntimeError: [omarchy] Select dtype is not implemented for the Omarchy Vulkan backend (dtype=int32, shape=[]). No CPU fallback is available in Omarchy builds.">self = &lt;test_optimizers.TestSchedulers testMethod=test_schedule_joiner&gt;
+
+    def test_schedule_joiner(self):
+        boundaries = [2, 3, 4]
+        schedules = [lambda _: 3, lambda _: 4, lambda _: 5]
+        with self.assertRaises(ValueError):
+            opt.schedulers.join_schedules(schedules, boundaries)
+        boundaries = [2, 4]
+        schedule = opt.schedulers.join_schedules(schedules, boundaries)
+&gt;       self.assertEqual(schedule(0).item(), 3)
+                         ^^^^^^^^^^^^^^^^^^
+E       RuntimeError: [omarchy] Select dtype is not implemented for the Omarchy Vulkan backend (dtype=int32, shape=[]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_optimizers.py:487: RuntimeError</failure></testcase><testcase classname="python.tests.test_optimizers.TestSchedulers" name="test_step_decay" time="0.000" /></testsuite></testsuites>

@@ -1,0 +1,121 @@
+============================= test session starts ==============================
+collecting ... collected 10 items
+
+.work/mlx/python/tests/test_device.py::TestDefaultDevice::test_mlx_default_device PASSED [ 10%]
+.work/mlx/python/tests/test_device.py::TestDevice::test_device PASSED    [ 20%]
+.work/mlx/python/tests/test_device.py::TestDevice::test_device_context FAILED [ 30%]
+.work/mlx/python/tests/test_device.py::TestDevice::test_op_on_device FAILED [ 40%]
+.work/mlx/python/tests/test_device.py::TestStream::test_op_on_stream FAILED [ 50%]
+.work/mlx/python/tests/test_device.py::TestStream::test_stream FAILED    [ 60%]
+.work/mlx/python/tests/test_device.py::TestDeviceInfo::test_device_count FAILED [ 70%]
+.work/mlx/python/tests/test_device.py::TestDeviceInfo::test_device_info_cpu FAILED [ 80%]
+.work/mlx/python/tests/test_device.py::TestDeviceInfo::test_device_info_default PASSED [ 90%]
+.work/mlx/python/tests/test_device.py::TestDeviceInfo::test_device_info_gpu PASSED [100%]
+
+=================================== FAILURES ===================================
+________________________ TestDevice.test_device_context ________________________
+
+self = <test_device.TestDevice testMethod=test_device_context>
+
+    @unittest.skipIf(not mx.is_available(mx.gpu), "GPU is not available")
+    def test_device_context(self):
+        default = mx.default_device()
+        diff = mx.cpu if default == mx.gpu else mx.gpu
+        self.assertNotEqual(default, diff)
+>       with mx.stream(diff):
+E       IndexError: vector::_M_range_check: __n (which is 0) >= this->size() (which is 0)
+
+.work/mlx/python/tests/test_device.py:46: IndexError
+_________________________ TestDevice.test_op_on_device _________________________
+
+self = <test_device.TestDevice testMethod=test_op_on_device>
+
+    def test_op_on_device(self):
+        x = mx.array(1.0)
+        y = mx.array(1.0)
+    
+        a = mx.add(x, y, stream=None)
+        b = mx.add(x, y, stream=mx.default_device())
+        self.assertEqual(a.item(), b.item())
+>       b = mx.add(x, y, stream=mx.cpu)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       IndexError: vector::_M_range_check: __n (which is 0) >= this->size() (which is 0)
+
+.work/mlx/python/tests/test_device.py:59: IndexError
+_________________________ TestStream.test_op_on_stream _________________________
+
+self = <test_device.TestStream testMethod=test_op_on_stream>
+
+    def test_op_on_stream(self):
+        x = mx.array(1.0)
+        y = mx.array(1.0)
+    
+        a = mx.add(x, y, stream=mx.default_stream(mx.default_device()))
+    
+        if mx.is_available(mx.gpu):
+            b = mx.add(x, y, stream=mx.default_stream(mx.gpu))
+            self.assertEqual(a.item(), b.item())
+            s_gpu = mx.new_stream(mx.gpu)
+            b = mx.add(x, y, stream=s_gpu)
+            self.assertEqual(a.item(), b.item())
+    
+>       b = mx.add(x, y, stream=mx.default_stream(mx.cpu))
+                                ^^^^^^^^^^^^^^^^^^^^^^^^^
+E       IndexError: vector::_M_range_check: __n (which is 0) >= this->size() (which is 0)
+
+.work/mlx/python/tests/test_device.py:109: IndexError
+____________________________ TestStream.test_stream ____________________________
+
+self = <test_device.TestStream testMethod=test_stream>
+
+    def test_stream(self):
+        s1 = mx.default_stream(mx.default_device())
+        self.assertEqual(s1.device, mx.default_device())
+    
+        s2 = mx.new_stream(mx.default_device())
+        self.assertEqual(s2.device, mx.default_device())
+        self.assertNotEqual(s1, s2)
+    
+        if mx.is_available(mx.gpu):
+            s_gpu = mx.default_stream(mx.gpu)
+            self.assertEqual(s_gpu.device, mx.gpu)
+        else:
+            with self.assertRaises(ValueError):
+                mx.default_stream(mx.gpu)
+    
+>       s_cpu = mx.default_stream(mx.cpu)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^
+E       IndexError: vector::_M_range_check: __n (which is 0) >= this->size() (which is 0)
+
+.work/mlx/python/tests/test_device.py:83: IndexError
+_______________________ TestDeviceInfo.test_device_count _______________________
+
+self = <test_device.TestDeviceInfo testMethod=test_device_count>
+
+    def test_device_count(self):
+        cpu_count = mx.device_count(mx.cpu)
+        self.assertIsInstance(cpu_count, int)
+>       self.assertEqual(cpu_count, 1)
+E       AssertionError: 0 != 1
+
+.work/mlx/python/tests/test_device.py:120: AssertionError
+_____________________ TestDeviceInfo.test_device_info_cpu ______________________
+
+self = <test_device.TestDeviceInfo testMethod=test_device_info_cpu>
+
+    def test_device_info_cpu(self):
+        info = mx.device_info(mx.cpu)
+        self.assertIsInstance(info, dict)
+>       self.assertIn("device_name", info)
+E       AssertionError: 'device_name' not found in {}
+
+.work/mlx/python/tests/test_device.py:129: AssertionError
+- generated xml file: /home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/py/test_device.py.xml -
+=========================== short test summary info ============================
+FAILED .work/mlx/python/tests/test_device.py::TestDevice::test_device_context - IndexError: vector::_M_range_check: __n (which is 0) >= this->size() (which is 0)
+FAILED .work/mlx/python/tests/test_device.py::TestDevice::test_op_on_device - IndexError: vector::_M_range_check: __n (which is 0) >= this->size() (which is 0)
+FAILED .work/mlx/python/tests/test_device.py::TestStream::test_op_on_stream - IndexError: vector::_M_range_check: __n (which is 0) >= this->size() (which is 0)
+FAILED .work/mlx/python/tests/test_device.py::TestStream::test_stream - IndexError: vector::_M_range_check: __n (which is 0) >= this->size() (which is 0)
+FAILED .work/mlx/python/tests/test_device.py::TestDeviceInfo::test_device_count - AssertionError: 0 != 1
+FAILED .work/mlx/python/tests/test_device.py::TestDeviceInfo::test_device_info_cpu - AssertionError: 'device_name' not found in {}
+========================= 6 failed, 4 passed in 0.19s ==========================

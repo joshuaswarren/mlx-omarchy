@@ -1,0 +1,481 @@
+============================= test session starts ==============================
+collecting ... collected 31 items
+
+.work/mlx/python/tests/test_fast.py::TestFast::test_cross_entropy FAILED [  3%]
+.work/mlx/python/tests/test_fast.py::TestFast::test_cross_entropy_grad FAILED [  6%]
+.work/mlx/python/tests/test_fast.py::TestFast::test_cross_entropy_shape_checks PASSED [  9%]
+.work/mlx/python/tests/test_fast.py::TestFast::test_cuda_kernel_same_name_different_source SKIPPED [ 12%]
+.work/mlx/python/tests/test_fast.py::TestFast::test_custom_kernel_args FAILED [ 16%]
+.work/mlx/python/tests/test_fast.py::TestFast::test_custom_kernel_attributes FAILED [ 19%]
+.work/mlx/python/tests/test_fast.py::TestFast::test_custom_kernel_basic FAILED [ 22%]
+.work/mlx/python/tests/test_fast.py::TestFast::test_custom_kernel_caching SKIPPED [ 25%]
+.work/mlx/python/tests/test_fast.py::TestFast::test_custom_kernel_helper FAILED [ 29%]
+.work/mlx/python/tests/test_fast.py::TestFast::test_custom_kernel_mixed_dtypes SKIPPED [ 32%]
+.work/mlx/python/tests/test_fast.py::TestFast::test_custom_kernel_same_name_different_source_one_eval SKIPPED [ 35%]
+.work/mlx/python/tests/test_fast.py::TestFast::test_custom_kernel_strides FAILED [ 38%]
+.work/mlx/python/tests/test_fast.py::TestFast::test_custom_metal_kernel_math_mode SKIPPED [ 41%]
+.work/mlx/python/tests/test_fast.py::TestFast::test_fast_transforms PASSED [ 45%]
+.work/mlx/python/tests/test_fast.py::TestFast::test_layer_norm PASSED    [ 48%]
+.work/mlx/python/tests/test_fast.py::TestFast::test_layer_norm_dim_check PASSED [ 51%]
+.work/mlx/python/tests/test_fast.py::TestFast::test_layer_norm_grad FAILED [ 54%]
+.work/mlx/python/tests/test_fast.py::TestFast::test_layer_norm_grad_no_bias PASSED [ 58%]
+.work/mlx/python/tests/test_fast.py::TestFast::test_layer_norm_grad_no_params FAILED [ 61%]
+.work/mlx/python/tests/test_fast.py::TestFast::test_layer_norm_grad_params FAILED [ 64%]
+.work/mlx/python/tests/test_fast.py::TestFast::test_rms_norm FAILED      [ 67%]
+.work/mlx/python/tests/test_fast.py::TestFast::test_rms_norm_grad FAILED [ 70%]
+.work/mlx/python/tests/test_fast.py::TestFast::test_rope PASSED          [ 74%]
+.work/mlx/python/tests/test_fast.py::TestFast::test_rope_batch PASSED    [ 77%]
+.work/mlx/python/tests/test_fast.py::TestFast::test_rope_dims_validation PASSED [ 80%]
+.work/mlx/python/tests/test_fast.py::TestFast::test_rope_grad PASSED     [ 83%]
+.work/mlx/python/tests/test_fast.py::TestFast::test_rope_large_input SKIPPED [ 87%]
+.work/mlx/python/tests/test_fast.py::TestFast::test_rope_single_batch PASSED [ 90%]
+.work/mlx/python/tests/test_fast.py::TestFast::test_rope_with_freqs PASSED [ 93%]
+.work/mlx/python/tests/test_fast.py::TestFast::test_rope_with_large_offset PASSED [ 96%]
+.work/mlx/python/tests/test_fast.py::TestFast::test_slice_into_layer_norm PASSED [100%]
+
+=================================== FAILURES ===================================
+_________________________ TestFast.test_cross_entropy __________________________
+
+self = <test_fast.TestFast testMethod=test_cross_entropy>
+
+    def test_cross_entropy(self):
+        def cross_entropy_ref(logits, targets):
+            score = mx.take_along_axis(logits, mx.expand_dims(targets, -1), -1).squeeze(
+                -1
+            )
+            return mx.logsumexp(logits.astype(mx.float32), axis=-1) - score.astype(
+                mx.float32
+            )
+    
+        tolerances = {mx.float32: 1e-5, mx.float16: 3e-2, mx.bfloat16: 3e-1}
+    
+        for V in [7, 32, 128, 255, 256, 1000, 4096, 8192]:
+            for dtype in [mx.float32, mx.float16, mx.bfloat16]:
+                logits = (mx.random.normal(shape=(4, 7, V), scale=3.0) * 2).astype(
+                    dtype
+                )
+                targets = mx.random.randint(0, V, shape=(4, 7))
+                expected = cross_entropy_ref(logits, targets)
+                out = mx.fast.cross_entropy(logits, targets)
+                self.assertEqual(out.dtype, mx.float32)
+                self.assertEqual(out.shape, targets.shape)
+>               self.assertLess(mx.abs(out - expected).max().item(), tolerances[dtype])
+                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E               RuntimeError: [omarchy] Minimum dtype is not implemented for the Omarchy Vulkan backend (dtype=int32, shape=[4,7]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_fast.py:549: RuntimeError
+_______________________ TestFast.test_cross_entropy_grad _______________________
+
+self = <test_fast.TestFast testMethod=test_cross_entropy_grad>
+
+    def test_cross_entropy_grad(self):
+        def ref(logits, targets):
+            score = mx.take_along_axis(logits, mx.expand_dims(targets, -1), -1).squeeze(
+                -1
+            )
+            return mx.logsumexp(logits, axis=-1) - score
+    
+        f1 = lambda x, y: ref(x, y).mean()
+        f2 = lambda x, y: mx.fast.cross_entropy(x, y).mean()
+    
+        for V in [7, 128, 1000, 4096]:
+            logits = mx.random.normal(shape=(4, 7, V), scale=2.0)
+            targets = mx.random.randint(0, V, shape=(4, 7))
+            g1 = mx.grad(f1, argnums=0)(logits, targets)
+            g2 = mx.grad(f2, argnums=0)(logits, targets)
+            self.assertEqual(g2.shape, logits.shape)
+>           self.assertLess(mx.abs(g1 - g2).max().item(), 1e-6)
+                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           RuntimeError: [omarchy] Minimum dtype is not implemented for the Omarchy Vulkan backend (dtype=int32, shape=[4,7]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_fast.py:577: RuntimeError
+_______________________ TestFast.test_custom_kernel_args _______________________
+
+self = <test_fast.TestFast testMethod=test_custom_kernel_args>
+
+    @unittest.skipIf(not mx.is_available(mx.gpu), "No GPU available")
+    def test_custom_kernel_args(self):
+        if mx.metal.is_available():
+            source = """
+                uint elem = thread_position_in_grid.x;
+                T tmp = a[0];
+                if (e) {
+                    out1[elem] = a[1] + b[2] + c[3] + d + f;
+                } else {
+                    out1[elem] = 1;
+                }
+                out2[elem] = a[1] + b[2] + c[1] - d;
+            """
+            custom_kernel = mx.fast.metal_kernel
+        elif mx.cuda.is_available():
+            source = """
+                auto elem = cooperative_groups::this_grid().thread_rank();
+                T tmp = a[0];
+                if (e) {
+                    out1[elem] = a[1] + b[2] + static_cast<float>(c[3]) + d[0] + f;
+                } else {
+                    out1[elem] = 1;
+                }
+                out2[elem] = a[1] + b[2] + static_cast<float>(c[1]) - d[0];
+            """
+            custom_kernel = mx.fast.cuda_kernel
+    
+        mx.random.seed(7)
+        a = mx.random.normal(shape=(3, 6))
+        c = mx.random.normal(shape=(2, 2)).astype(mx.bfloat16)
+    
+>       kernel = custom_kernel(
+                 ^^^^^^^^^^^^^
+            name="arg_test",
+            input_names=["a", "b", "c", "d"],
+            output_names=["out1", "out2"],
+            source=source,
+        )
+E       UnboundLocalError: cannot access local variable 'custom_kernel' where it is not associated with a value
+
+.work/mlx/python/tests/test_fast.py:901: UnboundLocalError
+____________________ TestFast.test_custom_kernel_attributes ____________________
+
+self = <test_fast.TestFast testMethod=test_custom_kernel_attributes>
+
+    @unittest.skipIf(not mx.is_available(mx.gpu), "No GPU available")
+    def test_custom_kernel_attributes(self):
+        if mx.metal.is_available():
+            source = "out[0] = threads_per_threadgroup.x;"
+            custom_kernel = mx.fast.metal_kernel
+        elif mx.cuda.is_available():
+            source = "out[0] = blockDim.x;"
+            custom_kernel = mx.fast.cuda_kernel
+    
+        a = mx.zeros(shape=(1, 1))
+>       kernel = custom_kernel(
+                 ^^^^^^^^^^^^^
+            name="test_fun",
+            input_names=["a"],
+            output_names=["out"],
+            source=source,
+        )
+E       UnboundLocalError: cannot access local variable 'custom_kernel' where it is not associated with a value
+
+.work/mlx/python/tests/test_fast.py:1039: UnboundLocalError
+______________________ TestFast.test_custom_kernel_basic _______________________
+
+self = <test_fast.TestFast testMethod=test_custom_kernel_basic>
+
+    @unittest.skipIf(not mx.is_available(mx.gpu), "No GPU available")
+    def test_custom_kernel_basic(self):
+        if mx.metal.is_available():
+            source = """
+                uint elem = thread_position_in_grid.x;
+                out1[elem] = a[elem];
+            """
+            custom_kernel = mx.fast.metal_kernel
+        elif mx.cuda.is_available():
+            source = """
+                auto elem = cooperative_groups::this_grid().thread_rank();
+                out1[elem] = a[elem];
+            """
+            custom_kernel = mx.fast.cuda_kernel
+    
+        mx.random.seed(7)
+        a = mx.random.normal(shape=(2, 2))
+>       kernel = custom_kernel(
+                 ^^^^^^^^^^^^^
+            name="basic",
+            input_names=["a"],
+            output_names=["out1"],
+            source=source,
+        )
+E       UnboundLocalError: cannot access local variable 'custom_kernel' where it is not associated with a value
+
+.work/mlx/python/tests/test_fast.py:854: UnboundLocalError
+______________________ TestFast.test_custom_kernel_helper ______________________
+
+self = <test_fast.TestFast testMethod=test_custom_kernel_helper>
+
+    @unittest.skipIf(not mx.is_available(mx.gpu), "No GPU available")
+    def test_custom_kernel_helper(self):
+        if mx.metal.is_available():
+            header = """
+            template <typename T>
+            T do_exp(T x) {
+                return metal::precise::exp(x);
+            }
+            """
+            source = """
+                uint elem = thread_position_in_grid.x;
+                out1[elem] = do_exp(a[elem]);
+            """
+            custom_kernel = mx.fast.metal_kernel
+        elif mx.cuda.is_available():
+            header = """
+            template <typename T>
+            __device__ T do_exp(T x) {
+                return exp(x);
+            }
+            """
+            source = """
+                auto elem = cooperative_groups::this_grid().thread_rank();
+                out1[elem] = do_exp(a[elem]);
+            """
+            custom_kernel = mx.fast.cuda_kernel
+    
+        mx.random.seed(7)
+        a = mx.random.normal(shape=(2, 2))
+>       kernel = custom_kernel(
+                 ^^^^^^^^^^^^^
+            name="helper",
+            input_names=["a"],
+            output_names=["out1"],
+            header=header,
+            source=source,
+        )
+E       UnboundLocalError: cannot access local variable 'custom_kernel' where it is not associated with a value
+
+.work/mlx/python/tests/test_fast.py:1012: UnboundLocalError
+_____________________ TestFast.test_custom_kernel_strides ______________________
+
+self = <test_fast.TestFast testMethod=test_custom_kernel_strides>
+
+    @unittest.skipIf(not mx.is_available(mx.gpu), "No GPU available")
+    def test_custom_kernel_strides(self):
+        if mx.metal.is_available():
+            source = """
+                uint elem = thread_position_in_grid.x;
+                uint loc = elem_to_loc(elem, inp_shape, inp_strides, inp_ndim);
+                T tmp = inp[loc];
+                out[elem] = metal::precise::exp(tmp) * threads_per_simdgroup;
+            """
+            source_contig = """
+                uint elem = thread_position_in_grid.x;
+                T tmp = inp[elem];
+                out[elem] = metal::precise::exp(tmp) * threads_per_simdgroup;
+            """
+            custom_kernel = mx.fast.metal_kernel
+        elif mx.cuda.is_available():
+            source = """
+                auto elem = cooperative_groups::this_grid().thread_rank();
+                auto loc = elem_to_loc(elem, inp_shape.data(), inp_strides.data(), inp_ndim);
+                T tmp = inp[loc];
+                out[elem] = exp(tmp) * WARP_SIZE;
+            """
+            source_contig = """
+                auto elem = cooperative_groups::this_grid().thread_rank();
+                T tmp = inp[elem];
+                out[elem] = exp(tmp) * WARP_SIZE;
+            """
+            custom_kernel = mx.fast.cuda_kernel
+    
+        mx.random.seed(7)
+        a = mx.random.normal(shape=(3, 6))
+    
+        # non contiguous
+        a = mx.tile(a[::2], [4, 1])
+    
+        for contig in [True, False]:
+>           kernel = custom_kernel(
+                     ^^^^^^^^^^^^^
+                name="myexp" + str(contig),
+                input_names=["inp"],
+                output_names=["out"],
+                source=source_contig if contig else source,
+                ensure_row_contiguous=contig,
+            )
+E           UnboundLocalError: cannot access local variable 'custom_kernel' where it is not associated with a value
+
+.work/mlx/python/tests/test_fast.py:965: UnboundLocalError
+________________________ TestFast.test_layer_norm_grad _________________________
+
+self = <test_fast.TestFast testMethod=test_layer_norm_grad>
+
+    def test_layer_norm_grad(self):
+        D = 32
+        eps = 1e-5
+        f1 = lambda x, w, b, y: (layer_norm(x, w, b, eps) * y).sum()
+        f2 = lambda x, w, b, y: (mx.fast.layer_norm(x, w, b, eps) * y).sum()
+    
+        x = mx.random.uniform(shape=(8, 100, D))
+        w = mx.random.uniform(shape=(D,))
+        b = mx.random.uniform(shape=(D,))
+        y = mx.random.uniform(shape=(8, 100, D))
+    
+        gx1, gw1, gb1 = mx.grad(f1, argnums=(0, 1, 2))(x, w, b, y)
+        gx2, gw2, gb2 = mx.grad(f2, argnums=(0, 1, 2))(x, w, b, y)
+        self.assertLess(mx.abs(gx1 - gx2).max(), 1e-5)
+        self.assertLess(mx.abs(gw1 - gw2).max() / mx.abs(gw1).mean(), 1e-5)
+        self.assertLess(mx.abs(gb1 - gb2).max() / mx.abs(gb1).mean(), 1e-5)
+    
+        D = 8192
+        x = mx.random.uniform(shape=(8, 100, D))
+        w = mx.random.uniform(shape=(D,))
+        b = mx.random.uniform(shape=(D,))
+        y = mx.random.uniform(shape=(8, 100, D))
+    
+        gx1, gw1, gb1 = mx.grad(f1, argnums=(0, 1, 2))(x, w, b, y)
+        gx2, gw2, gb2 = mx.grad(f2, argnums=(0, 1, 2))(x, w, b, y)
+        self.assertLess(mx.abs(gx1 - gx2).max(), 5e-5)
+>       self.assertLess(mx.abs(gw1 - gw2).max() / mx.abs(gw1).mean(), 5e-5)
+E       AssertionError: array(nan, dtype=float32) not less than 5e-05
+
+.work/mlx/python/tests/test_fast.py:720: AssertionError
+___________________ TestFast.test_layer_norm_grad_no_params ____________________
+
+self = <test_fast.TestFast testMethod=test_layer_norm_grad_no_params>
+
+    def test_layer_norm_grad_no_params(self):
+        eps = 1e-5
+        f1 = lambda x: layer_norm(x, None, None, eps).sum()
+        f2 = lambda x: mx.fast.layer_norm(x, None, None, eps).sum()
+        x = mx.random.normal(shape=(2, 2, 8))
+        mx.eval(x)
+    
+        gx1 = mx.grad(f1)(x)
+        gx2 = mx.grad(f2)(x)
+>       self.assertTrue(mx.allclose(gx1, gx2, atol=1e-6))
+E       RuntimeError: [omarchy] non-contiguous LayerNormVJP is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[2,2,8]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_fast.py:782: RuntimeError
+_____________________ TestFast.test_layer_norm_grad_params _____________________
+
+self = <test_fast.TestFast testMethod=test_layer_norm_grad_params>
+
+    def test_layer_norm_grad_params(self):
+        eps = 1e-5
+        f1 = lambda params, x: (layer_norm(x, params[0], params[1], eps)).sum()
+        f2 = lambda params, x: (mx.fast.layer_norm(x, params[0], params[1], eps)).sum()
+    
+        w = mx.ones((8,))
+        b = mx.zeros((8,))
+        x = mx.random.normal(shape=(2, 2, 8))
+        mx.eval(x, w, b)
+    
+        gw1, gb1 = mx.grad(f1)((w, b), x)
+        gw2, gb2 = mx.grad(f2)((w, b), x)
+>       self.assertLess(mx.abs(gw1 - gw2).max() / mx.abs(gw1).mean(), 1e-5)
+E       RuntimeError: [omarchy] non-contiguous LayerNormVJP is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[2,2,8]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_fast.py:796: RuntimeError
+____________________________ TestFast.test_rms_norm ____________________________
+
+self = <test_fast.TestFast testMethod=test_rms_norm>
+
+    def test_rms_norm(self):
+        # Per dtype absolute tolerance
+        tolerances = {mx.float32: 1e-6, mx.float16: 1e-3, mx.bfloat16: 1e-2}
+    
+        dtypes = [mx.float32, mx.float16, mx.bfloat16]
+        epss = [1e-3, 1e-5]
+        dimss = [31, 32, 33, 256, 512]
+        defaults = (mx.float32, 1e-5, 32)
+    
+        for dtype in dtypes:
+            _, eps, dims = defaults
+            x = mx.random.uniform(
+                shape=(
+                    2,
+                    dims,
+                )
+            ).astype(dtype)
+            weight = mx.random.uniform(shape=(dims,)).astype(dtype)
+            rx = rms_norm(x, weight, eps)
+            rx_fast = mx.fast.rms_norm(x, weight, eps)
+            self.assertLess(mx.abs(rx - rx_fast).max(), tolerances[dtype])
+            rx = rms_norm(x, mx.ones_like(weight), eps)
+            rx_fast = mx.fast.rms_norm(x, None, eps)
+            self.assertLess(mx.abs(rx - rx_fast).max(), tolerances[dtype])
+    
+        for eps in epss:
+            dtype, _, dims = defaults
+            x = mx.random.uniform(shape=(2, dims)).astype(dtype)
+            weight = mx.random.uniform(shape=(dims,)).astype(dtype)
+            rx = rms_norm(x, weight, eps)
+            rx_fast = mx.fast.rms_norm(x, weight, eps)
+            self.assertLess(mx.abs(rx - rx_fast).max(), tolerances[dtype])
+            rx = rms_norm(x, mx.ones_like(weight), eps)
+            rx_fast = mx.fast.rms_norm(x, None, eps)
+            self.assertLess(mx.abs(rx - rx_fast).max(), tolerances[dtype])
+    
+        for dims in dimss:
+            dtype, eps, _ = defaults
+            x = mx.random.uniform(shape=(2, dims)).astype(dtype)
+            weight = mx.random.uniform(shape=(dims,)).astype(dtype)
+            rx = rms_norm(x, weight, eps)
+            rx_fast = mx.fast.rms_norm(x, weight, eps)
+            self.assertLess(mx.abs(rx - rx_fast).max(), tolerances[dtype])
+            rx = rms_norm(x, mx.ones_like(weight), eps)
+            rx_fast = mx.fast.rms_norm(x, None, eps)
+            self.assertLess(mx.abs(rx - rx_fast).max(), tolerances[dtype])
+    
+        # Test > 4096
+        dims, dtype, eps = 4099, mx.float32, 1e-5
+        x = mx.random.uniform(shape=(dims,)).astype(dtype)
+        weight = mx.random.uniform(shape=(dims,)).astype(dtype)
+        rx = rms_norm(x, weight, eps)
+        rx_fast = mx.fast.rms_norm(x, weight, eps)
+>       self.assertLess(mx.abs(rx - rx_fast).max(), 1e-6)
+E       AssertionError: array(1.19209e-06, dtype=float32) not less than 1e-06
+
+.work/mlx/python/tests/test_fast.py:478: AssertionError
+_________________________ TestFast.test_rms_norm_grad __________________________
+
+self = <test_fast.TestFast testMethod=test_rms_norm_grad>
+
+    def test_rms_norm_grad(self):
+        eps = 1e-5
+        f1 = lambda x, w, y: (rms_norm(x, w, eps) * y).sum()
+        f2 = lambda x, w, y: (mx.fast.rms_norm(x, w, eps) * y).sum()
+        f3 = lambda x, y: (rms_norm(x, mx.ones((x.shape[-1],)), eps) * y).sum()
+        f4 = lambda x, y: (mx.fast.rms_norm(x, None, eps) * y).sum()
+    
+        for D in [32, 256]:
+            x = mx.random.uniform(shape=(8, 100, D))
+            w = mx.random.uniform(shape=(D,))
+            y = mx.random.uniform(shape=(8, 100, D))
+            gx1, gw1 = mx.grad(f1, argnums=(0, 1))(x, w, y)
+            gx2, gw2 = mx.grad(f2, argnums=(0, 1))(x, w, y)
+            self.assertLess(mx.abs(gx1 - gx2).max(), 1e-5)
+            self.assertLess(mx.abs(gw1 - gw2).max() / mx.abs(gw1).mean(), 1e-5)
+            gx1 = mx.grad(f3, argnums=(0,))(x, y)
+            gx2 = mx.grad(f4, argnums=(0,))(x, y)
+            self.assertLess(mx.abs(gx1 - gx2).max(), 1e-5)
+    
+        D = 8192
+        x = mx.random.uniform(shape=(2, 2, D))
+        w = mx.random.uniform(shape=(D,))
+        y = mx.random.uniform(shape=(2, 2, D))
+        gx1, gw1 = mx.grad(f1, argnums=(0, 1))(x, w, y)
+        gx2, gw2 = mx.grad(f2, argnums=(0, 1))(x, w, y)
+        self.assertLess(mx.abs(gx1 - gx2).max(), 1e-5)
+        self.assertLess(mx.abs(gw1 - gw2).max() / mx.abs(gw1).mean(), 1e-5)
+        gx1 = mx.grad(f3, argnums=(0,))(x, y)
+        gx2 = mx.grad(f4, argnums=(0,))(x, y)
+        self.assertLess(mx.abs(gx1 - gx2).max(), 1e-5)
+    
+        def gf(f):
+            def inner(x, w, y):
+                gx, gw = mx.grad(f, argnums=(0, 1))(x, w, y)
+                return (gx + gw).sum()
+    
+            return inner
+    
+        gx1, gw1 = mx.grad(gf(f1), argnums=(0, 1))(x, w, y)
+        gx2, gw2 = mx.grad(gf(f2), argnums=(0, 1))(x, w, y)
+>       self.assertLess(mx.abs(gx1 - gx2).max(), 1e-5)
+E       AssertionError: array(1.7643e-05, dtype=float32) not less than 1e-05
+
+.work/mlx/python/tests/test_fast.py:525: AssertionError
+- generated xml file: /home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/py/test_fast.py.xml -
+=========================== short test summary info ============================
+FAILED .work/mlx/python/tests/test_fast.py::TestFast::test_cross_entropy - RuntimeError: [omarchy] Minimum dtype is not implemented for the Omarchy Vulkan backend (dtype=int32, shape=[4,7]). No CPU fallback is available in Omarchy builds.
+FAILED .work/mlx/python/tests/test_fast.py::TestFast::test_cross_entropy_grad - RuntimeError: [omarchy] Minimum dtype is not implemented for the Omarchy Vulkan backend (dtype=int32, shape=[4,7]). No CPU fallback is available in Omarchy builds.
+FAILED .work/mlx/python/tests/test_fast.py::TestFast::test_custom_kernel_args - UnboundLocalError: cannot access local variable 'custom_kernel' where it is not associated with a value
+FAILED .work/mlx/python/tests/test_fast.py::TestFast::test_custom_kernel_attributes - UnboundLocalError: cannot access local variable 'custom_kernel' where it is not associated with a value
+FAILED .work/mlx/python/tests/test_fast.py::TestFast::test_custom_kernel_basic - UnboundLocalError: cannot access local variable 'custom_kernel' where it is not associated with a value
+FAILED .work/mlx/python/tests/test_fast.py::TestFast::test_custom_kernel_helper - UnboundLocalError: cannot access local variable 'custom_kernel' where it is not associated with a value
+FAILED .work/mlx/python/tests/test_fast.py::TestFast::test_custom_kernel_strides - UnboundLocalError: cannot access local variable 'custom_kernel' where it is not associated with a value
+FAILED .work/mlx/python/tests/test_fast.py::TestFast::test_layer_norm_grad - AssertionError: array(nan, dtype=float32) not less than 5e-05
+FAILED .work/mlx/python/tests/test_fast.py::TestFast::test_layer_norm_grad_no_params - RuntimeError: [omarchy] non-contiguous LayerNormVJP is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[2,2,8]). No CPU fallback is available in Omarchy builds.
+FAILED .work/mlx/python/tests/test_fast.py::TestFast::test_layer_norm_grad_params - RuntimeError: [omarchy] non-contiguous LayerNormVJP is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[2,2,8]). No CPU fallback is available in Omarchy builds.
+FAILED .work/mlx/python/tests/test_fast.py::TestFast::test_rms_norm - AssertionError: array(1.19209e-06, dtype=float32) not less than 1e-06
+FAILED .work/mlx/python/tests/test_fast.py::TestFast::test_rms_norm_grad - AssertionError: array(1.7643e-05, dtype=float32) not less than 1e-05
+=================== 12 failed, 13 passed, 6 skipped in 3.17s ===================

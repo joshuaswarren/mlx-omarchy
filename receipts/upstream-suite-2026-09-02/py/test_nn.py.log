@@ -1,0 +1,498 @@
+============================= test session starts ==============================
+collecting ... collected 73 items
+
+.work/mlx/python/tests/test_nn.py::TestBase::test_chaining PASSED        [  1%]
+.work/mlx/python/tests/test_nn.py::TestBase::test_circular_leaks PASSED  [  2%]
+.work/mlx/python/tests/test_nn.py::TestBase::test_freeze_strict_keys PASSED [  4%]
+.work/mlx/python/tests/test_nn.py::TestBase::test_grad_of_module PASSED  [  5%]
+.work/mlx/python/tests/test_nn.py::TestBase::test_load_from_weights PASSED [  6%]
+.work/mlx/python/tests/test_nn.py::TestBase::test_model_with_dict PASSED [  8%]
+.work/mlx/python/tests/test_nn.py::TestBase::test_module_attributes PASSED [  9%]
+.work/mlx/python/tests/test_nn.py::TestBase::test_module_state PASSED    [ 10%]
+.work/mlx/python/tests/test_nn.py::TestBase::test_module_utilities PASSED [ 12%]
+.work/mlx/python/tests/test_nn.py::TestBase::test_parameter_deletion PASSED [ 13%]
+.work/mlx/python/tests/test_nn.py::TestBase::test_quantize PASSED        [ 15%]
+.work/mlx/python/tests/test_nn.py::TestBase::test_quantize_freeze PASSED [ 16%]
+.work/mlx/python/tests/test_nn.py::TestBase::test_quantized_sharded_linear_construction PASSED [ 17%]
+.work/mlx/python/tests/test_nn.py::TestBase::test_save_npz_weights PASSED [ 19%]
+.work/mlx/python/tests/test_nn.py::TestBase::test_save_safetensors_weights PASSED [ 20%]
+.work/mlx/python/tests/test_nn.py::TestBase::test_update PASSED          [ 21%]
+.work/mlx/python/tests/test_nn.py::TestBase::test_update_modules PASSED  [ 23%]
+.work/mlx/python/tests/test_nn.py::TestLayers::test_alibi PASSED         [ 24%]
+.work/mlx/python/tests/test_nn.py::TestLayers::test_attention PASSED     [ 26%]
+.work/mlx/python/tests/test_nn.py::TestLayers::test_batch_norm PASSED    [ 27%]
+.work/mlx/python/tests/test_nn.py::TestLayers::test_batch_norm_matches_torch SKIPPED [ 28%]
+.work/mlx/python/tests/test_nn.py::TestLayers::test_batch_norm_stats PASSED [ 30%]
+.work/mlx/python/tests/test_nn.py::TestLayers::test_bilinear PASSED      [ 31%]
+.work/mlx/python/tests/test_nn.py::TestLayers::test_causal_mask FAILED   [ 32%]
+.work/mlx/python/tests/test_nn.py::TestLayers::test_celu PASSED          [ 34%]
+.work/mlx/python/tests/test_nn.py::TestLayers::test_conv1d FAILED        [ 35%]
+.work/mlx/python/tests/test_nn.py::TestLayers::test_conv2d PASSED        [ 36%]
+.work/mlx/python/tests/test_nn.py::TestLayers::test_conv_transpose_extra_repr PASSED [ 38%]
+.work/mlx/python/tests/test_nn.py::TestLayers::test_dropout PASSED       [ 39%]
+.work/mlx/python/tests/test_nn.py::TestLayers::test_dropout2d PASSED     [ 41%]
+.work/mlx/python/tests/test_nn.py::TestLayers::test_dropout3d PASSED     [ 42%]
+.work/mlx/python/tests/test_nn.py::TestLayers::test_elu PASSED           [ 43%]
+.work/mlx/python/tests/test_nn.py::TestLayers::test_gelu FAILED          [ 45%]
+.work/mlx/python/tests/test_nn.py::TestLayers::test_glu PASSED           [ 46%]
+.work/mlx/python/tests/test_nn.py::TestLayers::test_group_norm PASSED    [ 47%]
+.work/mlx/python/tests/test_nn.py::TestLayers::test_gru FAILED           [ 49%]
+.work/mlx/python/tests/test_nn.py::TestLayers::test_hard_shrink PASSED   [ 50%]
+.work/mlx/python/tests/test_nn.py::TestLayers::test_hard_tanh PASSED     [ 52%]
+.work/mlx/python/tests/test_nn.py::TestLayers::test_hardswish PASSED     [ 53%]
+.work/mlx/python/tests/test_nn.py::TestLayers::test_identity PASSED      [ 54%]
+.work/mlx/python/tests/test_nn.py::TestLayers::test_instance_norm FAILED [ 56%]
+.work/mlx/python/tests/test_nn.py::TestLayers::test_leaky_relu PASSED    [ 57%]
+.work/mlx/python/tests/test_nn.py::TestLayers::test_linear PASSED        [ 58%]
+.work/mlx/python/tests/test_nn.py::TestLayers::test_log_sigmoid PASSED   [ 60%]
+.work/mlx/python/tests/test_nn.py::TestLayers::test_log_softmax PASSED   [ 61%]
+.work/mlx/python/tests/test_nn.py::TestLayers::test_lstm PASSED          [ 63%]
+.work/mlx/python/tests/test_nn.py::TestLayers::test_mish PASSED          [ 64%]
+.work/mlx/python/tests/test_nn.py::TestLayers::test_norm_eps_validation PASSED [ 65%]
+.work/mlx/python/tests/test_nn.py::TestLayers::test_pooling FAILED       [ 67%]
+.work/mlx/python/tests/test_nn.py::TestLayers::test_prelu PASSED         [ 68%]
+.work/mlx/python/tests/test_nn.py::TestLayers::test_quantized_embedding FAILED [ 69%]
+.work/mlx/python/tests/test_nn.py::TestLayers::test_relu PASSED          [ 71%]
+.work/mlx/python/tests/test_nn.py::TestLayers::test_relu6 PASSED         [ 72%]
+.work/mlx/python/tests/test_nn.py::TestLayers::test_rnn PASSED           [ 73%]
+.work/mlx/python/tests/test_nn.py::TestLayers::test_rope PASSED          [ 75%]
+.work/mlx/python/tests/test_nn.py::TestLayers::test_sequential PASSED    [ 76%]
+.work/mlx/python/tests/test_nn.py::TestLayers::test_set_dtype PASSED     [ 78%]
+.work/mlx/python/tests/test_nn.py::TestLayers::test_sigmoid PASSED       [ 79%]
+.work/mlx/python/tests/test_nn.py::TestLayers::test_sin_pe FAILED        [ 80%]
+.work/mlx/python/tests/test_nn.py::TestLayers::test_softmax PASSED       [ 82%]
+.work/mlx/python/tests/test_nn.py::TestLayers::test_softmin PASSED       [ 83%]
+.work/mlx/python/tests/test_nn.py::TestLayers::test_softplus PASSED      [ 84%]
+.work/mlx/python/tests/test_nn.py::TestLayers::test_softshrink PASSED    [ 86%]
+.work/mlx/python/tests/test_nn.py::TestLayers::test_softsign PASSED      [ 87%]
+.work/mlx/python/tests/test_nn.py::TestLayers::test_step FAILED          [ 89%]
+.work/mlx/python/tests/test_nn.py::TestLayers::test_transformer PASSED   [ 90%]
+.work/mlx/python/tests/test_nn.py::TestLayers::test_transformer_custom_modules PASSED [ 91%]
+.work/mlx/python/tests/test_nn.py::TestLayers::test_transformer_decoder PASSED [ 93%]
+.work/mlx/python/tests/test_nn.py::TestLayers::test_transformer_decoder_layer PASSED [ 94%]
+.work/mlx/python/tests/test_nn.py::TestLayers::test_transformer_encoder PASSED [ 95%]
+.work/mlx/python/tests/test_nn.py::TestLayers::test_transformer_encoder_layer PASSED [ 97%]
+.work/mlx/python/tests/test_nn.py::TestLayers::test_upsample FAILED      [ 98%]
+.work/mlx/python/tests/test_nn.py::TestLayers::test_upsample_align_corners_one_dim FAILED [100%]
+
+=================================== FAILURES ===================================
+_________________________ TestLayers.test_causal_mask __________________________
+
+self = <test_nn.TestLayers testMethod=test_causal_mask>
+
+    def test_causal_mask(self):
+        mask = nn.MultiHeadAttention.create_additive_causal_mask(4, mx.float16)
+>       self.assertFalse(mx.any(mx.isnan(mask)))
+E       RuntimeError: [omarchy] dtype converting copy is not implemented for the Omarchy Vulkan backend (dtype=float16, shape=[4,4]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_nn.py:2239: RuntimeError
+____________________________ TestLayers.test_conv1d ____________________________
+
+self = <test_nn.TestLayers testMethod=test_conv1d>
+
+    def test_conv1d(self):
+        N = 5
+        L = 12
+        ks = 3
+        C_in = 2
+        C_out = 4
+        x = mx.ones((N, L, C_in))
+        c = nn.Conv1d(in_channels=C_in, out_channels=C_out, kernel_size=ks)
+        c.weight = mx.ones_like(c.weight)
+        y = c(x)
+        self.assertEqual(y.shape, (N, L - ks + 1, C_out))
+>       self.assertTrue(mx.allclose(y, mx.full(y.shape, ks * C_in, mx.float32)))
+E       RuntimeError: [omarchy] non-2D Convolution is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[5,10,4]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_nn.py:954: RuntimeError
+_____________________________ TestLayers.test_gelu _____________________________
+
+self = <test_nn.TestLayers testMethod=test_gelu>
+
+    def test_gelu(self):
+        inputs = [1.15286231, -0.81037411, 0.35816911, 0.77484438, 0.66276414]
+    
+        # From: jax.nn.gelu(np.array(inputs), approximate=False)
+        expected = np.array(
+            [1.0093501, -0.16925684, 0.22918941, 0.60498625, 0.49459383]
+        )
+        # From: jax.nn.gelu(np.array(inputs), approximate=True)
+        expected_approx = np.array(
+            [1.0091482, -0.1693441, 0.22918446, 0.60491, 0.4945476]
+        )
+    
+        out = nn.GELU()(mx.array(inputs))
+        self.assertTrue(np.allclose(out, expected))
+    
+        # Test the precise/tanh approximation
+        out_approx = nn.GELU(approx="precise")(mx.array(inputs))
+        out_approx_tanh = nn.GELU(approx="tanh")(mx.array(inputs))
+        self.assertTrue(np.allclose(out_approx, expected_approx))
+        self.assertTrue(np.allclose(out_approx_tanh, expected_approx))
+        self.assertTrue(np.allclose(out_approx, out_approx_tanh))
+    
+        # Crudely check the approximations
+        x = mx.arange(-6.0, 6.0, 12 / 100)
+        y = nn.gelu(x)
+        y_hat1 = nn.gelu_approx(x)
+        y_hat2 = nn.gelu_fast_approx(x)
+        self.assertLess(mx.abs(y - y_hat1).max(), 0.0005)
+>       self.assertLess(mx.abs(y - y_hat2).max(), 0.025)
+E       AssertionError: array(5.87973, dtype=float32) not less than 0.025
+
+.work/mlx/python/tests/test_nn.py:1087: AssertionError
+_____________________________ TestLayers.test_gru ______________________________
+
+self = <test_nn.TestLayers testMethod=test_gru>
+
+    def test_gru(self):
+        layer = nn.GRU(5, 12, bias=True)
+        inp = mx.random.normal((2, 25, 5))
+    
+        h_out = layer(inp)
+        self.assertEqual(h_out.shape, (2, 25, 12))
+    
+        h_out = layer(inp, hidden=h_out[:, -1, :])
+        self.assertEqual(h_out.shape, (2, 25, 12))
+    
+        inp = mx.random.normal((44, 5))
+        h_out = layer(inp)
+        self.assertEqual(h_out.shape, (44, 12))
+    
+        h_out = layer(inp, h_out[-1, :])
+        self.assertEqual(h_out.shape, (44, 12))
+    
+        # hidden=None should be equivalent to hidden=zeros (issue #3249)
+        for bias in [True, False]:
+            layer = nn.GRU(5, 12, bias=bias)
+            inp = mx.random.normal((2, 25, 5))
+            h_none = layer(inp)
+            h_zeros = layer(inp, hidden=mx.zeros((2, 12)))
+>           self.assertTrue(mx.allclose(h_none, h_zeros).item())
+                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           RuntimeError: [omarchy] non-contiguous Multiply is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[2,12]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_nn.py:2193: RuntimeError
+________________________ TestLayers.test_instance_norm _________________________
+
+self = <test_nn.TestLayers testMethod=test_instance_norm>
+
+    def test_instance_norm(self):
+        # Test InstanceNorm1d
+        x = mx.array(
+            [
+                [
+                    [-0.0119524, 1.1263, 2.02223],
+                    [-0.500331, 0.517899, -1.21143],
+                    [1.12958, -0.21413, -2.48738],
+                    [1.39955, 0.891329, 1.63289],
+                ],
+                [
+                    [0.241417, -0.619157, -0.77484],
+                    [-1.42512, 0.970817, -1.31352],
+                    [2.739, -1.2506, 1.56844],
+                    [-1.23175, 0.32756, 1.13969],
+                ],
+            ]
+        )
+        inorm = nn.InstanceNorm(dims=3)
+        y = inorm(x)
+        expected_y = [
+            [
+                [-0.657082, 1.07593, 1.0712],
+                [-1.27879, -0.123074, -0.632505],
+                [0.796101, -1.56572, -1.30476],
+                [1.13978, 0.612862, 0.866067],
+            ],
+            [
+                [0.0964426, -0.557906, -0.759885],
+                [-0.904772, 1.30444, -1.20013],
+                [1.59693, -1.29752, 1.15521],
+                [-0.7886, 0.550987, 0.804807],
+            ],
+        ]
+        self.assertTrue(x.shape == y.shape)
+>       self.assertTrue(np.allclose(y, expected_y, atol=1e-5))
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.work/mlx/python/tests/test_nn.py:516: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/numpy/_core/numeric.py:2376: in allclose
+    res = all(isclose(a, b, rtol=rtol, atol=atol, equal_nan=equal_nan))
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/numpy/_core/numeric.py:2476: in isclose
+    x, y, atol, rtol = (
+    ^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+.0 = <tuple_iterator object at 0x7dbe6cf74460>
+
+    x, y, atol, rtol = (
+>       a if isinstance(a, (int, float, complex)) else asanyarray(a)
+                                                       ^^^^^^^^^^^^^
+        for a in (a, b, atol, rtol))
+E   RuntimeError: [omarchy] non-contiguous LayerNorm is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[2,3,4]). No CPU fallback is available in Omarchy builds.
+
+/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/numpy/_core/numeric.py:2477: RuntimeError
+___________________________ TestLayers.test_pooling ____________________________
+
+self = <test_nn.TestLayers testMethod=test_pooling>
+
+    def test_pooling(self):
+        # Test 1d pooling
+        x = mx.array(
+            [
+                [[0, 1, 2], [3, 4, 5], [6, 7, 8], [9, 10, 11]],
+                [[12, 13, 14], [15, 16, 17], [18, 19, 20], [21, 22, 23]],
+            ]
+        )
+        expected_max_pool_output_no_padding_stride_1 = [
+            [[3.0, 4.0, 5.0], [6.0, 7.0, 8.0], [9.0, 10.0, 11.0]],
+            [[15.0, 16.0, 17.0], [18.0, 19.0, 20.0], [21.0, 22.0, 23.0]],
+        ]
+        expected_max_pool_output_no_padding_stride_2 = [
+            [[3.0, 4.0, 5.0], [9.0, 10.0, 11.0]],
+            [[15.0, 16.0, 17.0], [21.0, 22.0, 23.0]],
+        ]
+        expected_max_pool_output_padding_1_stride_2 = [
+            [[0.0, 1.0, 2.0], [6.0, 7.0, 8.0], [9.0, 10.0, 11.0]],
+            [[12.0, 13.0, 14.0], [18.0, 19.0, 20.0], [21.0, 22.0, 23.0]],
+        ]
+        expected_max_pool_output_padding_1_stride_2_kernel_3 = [
+            [[3.0, 4.0, 5.0], [9.0, 10.0, 11.0]],
+            [[15.0, 16.0, 17.0], [21.0, 22.0, 23.0]],
+        ]
+        expected_avg_pool_output_no_padding_stride_1 = [
+            [
+                [1.5000, 2.5000, 3.5000],
+                [4.5000, 5.5000, 6.5000],
+                [7.5000, 8.5000, 9.5000],
+            ],
+            [
+                [13.5000, 14.5000, 15.5000],
+                [16.5000, 17.5000, 18.5000],
+                [19.5000, 20.5000, 21.5000],
+            ],
+        ]
+        expected_avg_pool_output_no_padding_stride_2 = [
+            [[1.5000, 2.5000, 3.5000], [7.5000, 8.5000, 9.5000]],
+            [[13.5000, 14.5000, 15.5000], [19.5000, 20.5000, 21.5000]],
+        ]
+        expected_avg_pool_output_padding_1_stride_2 = [
+            [
+                [0.0000, 0.5000, 1.0000],
+                [4.5000, 5.5000, 6.5000],
+                [4.5000, 5.0000, 5.5000],
+            ],
+            [
+                [6.0000, 6.5000, 7.0000],
+                [16.5000, 17.5000, 18.5000],
+                [10.5000, 11.0000, 11.5000],
+            ],
+        ]
+        expected_avg_pool_output_padding_1_kernel_3 = [
+            [[1, 1.66667, 2.33333], [6, 7, 8]],
+            [[9, 9.66667, 10.3333], [18, 19, 20]],
+        ]
+        self.assertTrue(
+            np.array_equal(
+                nn.MaxPool1d(kernel_size=2, stride=1, padding=0)(x),
+                expected_max_pool_output_no_padding_stride_1,
+            )
+        )
+        self.assertTrue(
+            np.array_equal(
+                nn.MaxPool1d(kernel_size=2, stride=2, padding=0)(x),
+                expected_max_pool_output_no_padding_stride_2,
+            )
+        )
+>       self.assertTrue(
+            np.array_equal(
+                nn.MaxPool1d(kernel_size=2, stride=2, padding=1)(x),
+                expected_max_pool_output_padding_1_stride_2,
+            )
+        )
+E       AssertionError: False is not true
+
+.work/mlx/python/tests/test_nn.py:1726: AssertionError
+_____________________ TestLayers.test_quantized_embedding ______________________
+
+self = <test_nn.TestLayers testMethod=test_quantized_embedding>
+
+    def test_quantized_embedding(self):
+        emb = nn.Embedding(32, 256)
+        qemb = nn.QuantizedEmbedding.from_embedding(emb, bits=8)
+        x = mx.array([2, 6, 9, 3, 0, 3])
+        y = emb(x)
+        yq = qemb(x)
+>       self.assertLess((y - yq).abs().max(), qemb.scales.max())
+E       RuntimeError: [omarchy] Quantize direction is not implemented for the Omarchy Vulkan backend (dtype=uint32, shape=[32,64]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_nn.py:2223: RuntimeError
+____________________________ TestLayers.test_sin_pe ____________________________
+
+self = <test_nn.TestLayers testMethod=test_sin_pe>
+
+    def test_sin_pe(self):
+        m = nn.SinusoidalPositionalEncoding(16, min_freq=0.01)
+        x = mx.arange(10)
+        y = m(x)
+    
+        self.assertEqual(y.shape, (10, 16))
+        similarities = y @ y.T
+>       self.assertLess(
+            mx.abs(similarities[mx.arange(10), mx.arange(10)] - 1).max(), 1e-5
+        )
+E       RuntimeError: [omarchy] non-axis-0 Take is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[10,1,1]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_nn.py:1096: RuntimeError
+_____________________________ TestLayers.test_step _____________________________
+
+self = <test_nn.TestLayers testMethod=test_step>
+
+    def test_step(self):
+        x = mx.array([-1.0, 0.0, 1.0])
+    
+        # Default threshold of 0: the boundary value is included
+        y = nn.step(x)
+>       self.assertTrue(mx.array_equal(y, mx.array([0, 1, 1])))
+E       RuntimeError: [omarchy] GreaterEqual dtype is not implemented for the Omarchy Vulkan backend (dtype=bool, shape=[3]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_nn.py:1139: RuntimeError
+___________________________ TestLayers.test_upsample ___________________________
+
+self = <test_nn.TestLayers testMethod=test_upsample>
+
+    def test_upsample(self):
+        b, h, w, c = 1, 2, 2, 1
+        scale_factor = 2
+        upsample_nearest = nn.Upsample(
+            scale_factor=scale_factor, mode="nearest", align_corners=True
+        )
+        upsample_bilinear = nn.Upsample(
+            scale_factor=scale_factor, mode="linear", align_corners=True
+        )
+        upsample_nearest = nn.Upsample(
+            scale_factor=scale_factor, mode="nearest", align_corners=True
+        )
+        upsample_bilinear_no_align_corners = nn.Upsample(
+            scale_factor=scale_factor, mode="linear", align_corners=False
+        )
+        upsample_nearest_no_align_corners = nn.Upsample(
+            scale_factor=scale_factor, mode="nearest", align_corners=False
+        )
+        # Test single feature map, align corners
+        x = mx.arange(b * h * w * c).reshape((b, c, h, w)).transpose((0, 2, 3, 1))
+        expected_nearest = mx.array(
+            [[[[0, 0, 1, 1], [0, 0, 1, 1], [2, 2, 3, 3], [2, 2, 3, 3]]]]
+        ).transpose((0, 2, 3, 1))
+        expected_bilinear = mx.array(
+            [
+                [
+                    [
+                        [0, 0.333333, 0.666667, 1],
+                        [0.666667, 1, 1.33333, 1.66667],
+                        [1.33333, 1.66667, 2, 2.33333],
+                        [2, 2.33333, 2.66667, 3],
+                    ]
+                ]
+            ]
+        ).transpose((0, 2, 3, 1))
+        # Test single feature map, no align corners
+        x = (
+            mx.arange(1, b * h * w * c + 1)
+            .reshape((b, c, h, w))
+            .transpose((0, 2, 3, 1))
+        )
+        expected_bilinear_no_align_corners = mx.array(
+            [
+                [
+                    [
+                        [1.0000, 1.2500, 1.7500, 2.0000],
+                        [1.5000, 1.7500, 2.2500, 2.5000],
+                        [2.5000, 2.7500, 3.2500, 3.5000],
+                        [3.0000, 3.2500, 3.7500, 4.0000],
+                    ]
+                ]
+            ]
+        ).transpose((0, 2, 3, 1))
+        expected_nearest_no_align_corners = mx.array(
+            [[[[1, 1, 2, 2], [1, 1, 2, 2], [3, 3, 4, 4], [3, 3, 4, 4]]]]
+        ).transpose((0, 2, 3, 1))
+        self.assertTrue(
+            np.allclose(
+                upsample_nearest_no_align_corners(x), expected_nearest_no_align_corners
+            )
+        )
+        self.assertTrue(
+>           np.allclose(
+                upsample_bilinear_no_align_corners(x),
+                expected_bilinear_no_align_corners,
+            )
+        )
+
+.work/mlx/python/tests/test_nn.py:1467: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/numpy/_core/numeric.py:2376: in allclose
+    res = all(isclose(a, b, rtol=rtol, atol=atol, equal_nan=equal_nan))
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/numpy/_core/numeric.py:2476: in isclose
+    x, y, atol, rtol = (
+    ^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+.0 = <tuple_iterator object at 0x7dbe6d039690>
+
+    x, y, atol, rtol = (
+>       a if isinstance(a, (int, float, complex)) else asanyarray(a)
+                                                       ^^^^^^^^^^^^^
+        for a in (a, b, atol, rtol))
+E   RuntimeError: [omarchy] Arange dtype is not implemented for the Omarchy Vulkan backend (dtype=uint32, shape=[1]). No CPU fallback is available in Omarchy builds.
+
+/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/numpy/_core/numeric.py:2477: RuntimeError
+________________ TestLayers.test_upsample_align_corners_one_dim ________________
+
+self = <test_nn.TestLayers testMethod=test_upsample_align_corners_one_dim>
+
+    def test_upsample_align_corners_one_dim(self):
+        x = mx.arange(1, 5).reshape((1, 2, 2, 1))
+    
+        up = nn.Upsample(scale_factor=0.5, mode="linear", align_corners=True)
+        out = up(x)
+        self.assertEqual(out.shape, (1, 1, 1, 1))
+>       self.assertTrue(np.allclose(out, x[:, :1, :1, :]))
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.work/mlx/python/tests/test_nn.py:1633: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/numpy/_core/numeric.py:2376: in allclose
+    res = all(isclose(a, b, rtol=rtol, atol=atol, equal_nan=equal_nan))
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/numpy/_core/numeric.py:2476: in isclose
+    x, y, atol, rtol = (
+    ^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+.0 = <tuple_iterator object at 0x7dbe6d447a30>
+
+    x, y, atol, rtol = (
+>       a if isinstance(a, (int, float, complex)) else asanyarray(a)
+                                                       ^^^^^^^^^^^^^
+        for a in (a, b, atol, rtol))
+E   RuntimeError: [omarchy] dtype converting copy is not implemented for the Omarchy Vulkan backend (dtype=uint32, shape=[1,1]). No CPU fallback is available in Omarchy builds.
+
+/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/numpy/_core/numeric.py:2477: RuntimeError
+- generated xml file: /home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/py/test_nn.py.xml -
+=========================== short test summary info ============================
+FAILED .work/mlx/python/tests/test_nn.py::TestLayers::test_causal_mask - RuntimeError: [omarchy] dtype converting copy is not implemented for the Omarchy Vulkan backend (dtype=float16, shape=[4,4]). No CPU fallback is available in Omarchy builds.
+FAILED .work/mlx/python/tests/test_nn.py::TestLayers::test_conv1d - RuntimeError: [omarchy] non-2D Convolution is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[5,10,4]). No CPU fallback is available in Omarchy builds.
+FAILED .work/mlx/python/tests/test_nn.py::TestLayers::test_gelu - AssertionError: array(5.87973, dtype=float32) not less than 0.025
+FAILED .work/mlx/python/tests/test_nn.py::TestLayers::test_gru - RuntimeError: [omarchy] non-contiguous Multiply is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[2,12]). No CPU fallback is available in Omarchy builds.
+FAILED .work/mlx/python/tests/test_nn.py::TestLayers::test_instance_norm - RuntimeError: [omarchy] non-contiguous LayerNorm is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[2,3,4]). No CPU fallback is available in Omarchy builds.
+FAILED .work/mlx/python/tests/test_nn.py::TestLayers::test_pooling - AssertionError: False is not true
+FAILED .work/mlx/python/tests/test_nn.py::TestLayers::test_quantized_embedding - RuntimeError: [omarchy] Quantize direction is not implemented for the Omarchy Vulkan backend (dtype=uint32, shape=[32,64]). No CPU fallback is available in Omarchy builds.
+FAILED .work/mlx/python/tests/test_nn.py::TestLayers::test_sin_pe - RuntimeError: [omarchy] non-axis-0 Take is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[10,1,1]). No CPU fallback is available in Omarchy builds.
+FAILED .work/mlx/python/tests/test_nn.py::TestLayers::test_step - RuntimeError: [omarchy] GreaterEqual dtype is not implemented for the Omarchy Vulkan backend (dtype=bool, shape=[3]). No CPU fallback is available in Omarchy builds.
+FAILED .work/mlx/python/tests/test_nn.py::TestLayers::test_upsample - RuntimeError: [omarchy] Arange dtype is not implemented for the Omarchy Vulkan backend (dtype=uint32, shape=[1]). No CPU fallback is available in Omarchy builds.
+FAILED .work/mlx/python/tests/test_nn.py::TestLayers::test_upsample_align_corners_one_dim - RuntimeError: [omarchy] dtype converting copy is not implemented for the Omarchy Vulkan backend (dtype=uint32, shape=[1,1]). No CPU fallback is available in Omarchy builds.
+=================== 11 failed, 61 passed, 1 skipped in 0.91s ===================

@@ -1,0 +1,9 @@
+============================= test session starts ==============================
+collecting ... collected 3 items
+
+.work/mlx/python/tests/test_constants.py::TestConstants::test_constants_availability PASSED [ 33%]
+.work/mlx/python/tests/test_constants.py::TestConstants::test_constants_values PASSED [ 66%]
+.work/mlx/python/tests/test_constants.py::TestConstants::test_newaxis_for_reshaping_arrays PASSED [100%]
+
+- generated xml file: /home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/py/test_constants.py.xml -
+============================== 3 passed in 0.21s ===============================

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="14" time="0.361" timestamp="2026-09-02T09:03:40.632700-05:00" hostname="omp-studio-local"><testcase classname="python.tests.test_losses.TestLosses" name="test_binary_cross_entropy" time="0.084" /><testcase classname="python.tests.test_losses.TestLosses" name="test_cosine_similarity_loss" time="0.014" /><testcase classname="python.tests.test_losses.TestLosses" name="test_cross_entropy" time="0.042" /><testcase classname="python.tests.test_losses.TestLosses" name="test_gaussian_nll_loss" time="0.016" /><testcase classname="python.tests.test_losses.TestLosses" name="test_hinge_loss" time="0.002" /><testcase classname="python.tests.test_losses.TestLosses" name="test_huber_loss" time="0.001" /><testcase classname="python.tests.test_losses.TestLosses" name="test_kl_div_loss" time="0.008" /><testcase classname="python.tests.test_losses.TestLosses" name="test_l1_loss" time="0.002" /><testcase classname="python.tests.test_losses.TestLosses" name="test_log_cosh_loss" time="0.001" /><testcase classname="python.tests.test_losses.TestLosses" name="test_margin_ranking_loss" time="0.001"><failure message="RuntimeError: [omarchy] Negative dtype is not implemented for the Omarchy Vulkan backend (dtype=int32, shape=[3]). No CPU fallback is available in Omarchy builds.">self = &lt;test_losses.TestLosses testMethod=test_margin_ranking_loss&gt;
+
+    def test_margin_ranking_loss(self):
+        inputs1 = mx.array([-0.573409, -0.765166, -0.0638])
+        inputs2 = mx.array([0.75596, 0.225763, 0.256995])
+        targets = mx.array([1, 1, -1])
+    
+        # Test with no margin
+        losses = nn.losses.margin_ranking_loss(
+            inputs1, inputs2, targets, reduction="none"
+        )
+        expected = mx.array([1.329369, 0.990929, 0.0])
+&gt;       self.assertTrue(mx.allclose(losses, expected))
+E       RuntimeError: [omarchy] Negative dtype is not implemented for the Omarchy Vulkan backend (dtype=int32, shape=[3]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_losses.py:481: RuntimeError</failure></testcase><testcase classname="python.tests.test_losses.TestLosses" name="test_mse_loss" time="0.002" /><testcase classname="python.tests.test_losses.TestLosses" name="test_nll_loss" time="0.008" /><testcase classname="python.tests.test_losses.TestLosses" name="test_smooth_l1_loss" time="0.003" /><testcase classname="python.tests.test_losses.TestLosses" name="test_triplet_loss" time="0.019" /></testsuite></testsuites>

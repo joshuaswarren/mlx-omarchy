@@ -1,0 +1,558 @@
+============================= test session starts ==============================
+collecting ... collected 20 items
+
+.work/mlx/python/tests/test_fft.py::TestFFT::test_batched_bluestein_twiddle_table SKIPPED [  5%]
+.work/mlx/python/tests/test_fft.py::TestFFT::test_fft FAILED             [ 10%]
+.work/mlx/python/tests/test_fft.py::TestFFT::test_fft_big_powers_of_two FAILED [ 15%]
+.work/mlx/python/tests/test_fft.py::TestFFT::test_fft_contiguity FAILED  [ 20%]
+.work/mlx/python/tests/test_fft.py::TestFFT::test_fft_exhaustive SKIPPED [ 25%]
+.work/mlx/python/tests/test_fft.py::TestFFT::test_fft_grads SKIPPED      [ 30%]
+.work/mlx/python/tests/test_fft.py::TestFFT::test_fft_into_ifft FAILED   [ 35%]
+.work/mlx/python/tests/test_fft.py::TestFFT::test_fft_jvp FAILED         [ 40%]
+.work/mlx/python/tests/test_fft.py::TestFFT::test_fft_large_numbers FAILED [ 45%]
+.work/mlx/python/tests/test_fft.py::TestFFT::test_fft_norm FAILED        [ 50%]
+.work/mlx/python/tests/test_fft.py::TestFFT::test_fft_shared_mem FAILED  [ 55%]
+.work/mlx/python/tests/test_fft.py::TestFFT::test_fft_throws PASSED      [ 60%]
+.work/mlx/python/tests/test_fft.py::TestFFT::test_fft_too_large SKIPPED  [ 65%]
+.work/mlx/python/tests/test_fft.py::TestFFT::test_fft_vmap FAILED        [ 70%]
+.work/mlx/python/tests/test_fft.py::TestFFT::test_fftfreq PASSED         [ 75%]
+.work/mlx/python/tests/test_fft.py::TestFFT::test_fftn FAILED            [ 80%]
+.work/mlx/python/tests/test_fft.py::TestFFT::test_fftshift FAILED        [ 85%]
+.work/mlx/python/tests/test_fft.py::TestFFT::test_fftshift_errors PASSED [ 90%]
+.work/mlx/python/tests/test_fft.py::TestFFT::test_ifftshift FAILED       [ 95%]
+.work/mlx/python/tests/test_fft.py::TestFFT::test_rfftfreq PASSED        [100%]
+
+=================================== FAILURES ===================================
+_______________________________ TestFFT.test_fft _______________________________
+
+self = <test_fft.TestFFT testMethod=test_fft>
+
+    def test_fft(self):
+        r = np.random.rand(100).astype(np.float32)
+        i = np.random.rand(100).astype(np.float32)
+        a_np = r + 1j * i
+>       self.check_mx_np(mx.fft.fft, np.fft.fft, a_np)
+
+.work/mlx/python/tests/test_fft.py:29: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <test_fft.TestFFT testMethod=test_fft>
+op_mx = <nanobind.nb_func object at 0x7b70a2e26e60>
+op_np = <function fft at 0x7b706aeb8430>
+a_np = array([0.57647985+0.2094768j , 0.6567992 +0.59920114j,
+       0.22534774+0.8624187j , 0.37630066+0.99249434j,
+       0....60131615+0.514135j  , 0.2309128 +0.38117477j,
+       0.79863155+0.4236575j , 0.4074496 +0.7402328j ], dtype=complex64)
+atol = 1e-05, rtol = 1e-06, kwargs = {}
+
+    def check_mx_np(self, op_mx, op_np, a_np, atol=1e-5, rtol=1e-6, **kwargs):
+        out_np = op_np(a_np, **kwargs)
+        a_mx = mx.array(a_np)
+        out_mx = op_mx(a_mx, **kwargs)
+>       np.testing.assert_allclose(out_np, out_mx, atol=atol, rtol=rtol)
+E       RuntimeError: [omarchy] FFT transform length 100 (power-of-two lengths 2 to 2048 are implemented; other lengths need Bluestein or mixed-radix stages, which are not landed) is not implemented for the Omarchy Vulkan backend (dtype=complex64, shape=[100]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_fft.py:23: RuntimeError
+______________________ TestFFT.test_fft_big_powers_of_two ______________________
+
+self = <test_fft.TestFFT testMethod=test_fft_big_powers_of_two>
+
+    def test_fft_big_powers_of_two(self):
+        # TODO: improve precision on big powers of two on GPU
+        for k in range(12, 17):
+>           self._run_ffts((3, 2**k), atol=1e-3)
+
+.work/mlx/python/tests/test_fft.py:206: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+.work/mlx/python/tests/test_fft.py:138: in _run_ffts
+    self.check_mx_np(mx.fft.fft, np.fft.fft, a_np, atol=atol, rtol=rtol)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <test_fft.TestFFT testMethod=test_fft_big_powers_of_two>
+op_mx = <nanobind.nb_func object at 0x7b70a2e26e60>
+op_np = <function fft at 0x7b706aeb8430>
+a_np = array([[0.01037415+0.12210452j, 0.50187457+0.13735175j,
+        0.4957733 +0.40635884j, ..., 0.8414749 +0.61844754j,
+ ...7904359 +0.15626913j,
+        0.32666466+0.48572764j, 0.52946144+0.9425751j ]],
+      shape=(3, 4096), dtype=complex64)
+atol = 0.001, rtol = 0.0001, kwargs = {}
+
+    def check_mx_np(self, op_mx, op_np, a_np, atol=1e-5, rtol=1e-6, **kwargs):
+        out_np = op_np(a_np, **kwargs)
+        a_mx = mx.array(a_np)
+        out_mx = op_mx(a_mx, **kwargs)
+>       np.testing.assert_allclose(out_np, out_mx, atol=atol, rtol=rtol)
+E       RuntimeError: [omarchy] FFT transform length 4096 (power-of-two lengths 2 to 2048 are implemented; other lengths need Bluestein or mixed-radix stages, which are not landed) is not implemented for the Omarchy Vulkan backend (dtype=complex64, shape=[3,4096]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_fft.py:23: RuntimeError
+_________________________ TestFFT.test_fft_contiguity __________________________
+
+self = <test_fft.TestFFT testMethod=test_fft_contiguity>
+
+    def test_fft_contiguity(self):
+        r = np.random.rand(4, 8).astype(np.float32)
+        i = np.random.rand(4, 8).astype(np.float32)
+        a_np = r + 1j * i
+        a_mx = mx.array(a_np)
+    
+        # non-contiguous in the FFT dim
+        out_mx = mx.fft.fft(a_mx[:, ::2])
+        out_np = np.fft.fft(a_np[:, ::2])
+>       np.testing.assert_allclose(out_np, out_mx, atol=1e-5, rtol=1e-5)
+E       RuntimeError: [omarchy] strided copy is not implemented for the Omarchy Vulkan backend (dtype=complex64, shape=[4,4]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_fft.py:248: RuntimeError
+__________________________ TestFFT.test_fft_into_ifft __________________________
+
+self = <test_fft.TestFFT testMethod=test_fft_into_ifft>
+
+    def test_fft_into_ifft(self):
+        n_fft = 8193
+        mx.random.seed(0)
+    
+        segment = mx.random.normal(shape=[1, n_fft]) + 1j * mx.random.normal(
+            shape=(1, n_fft)
+        )
+        segment = mx.fft.fft(segment, n=n_fft)
+        r = mx.fft.ifft(segment, n=n_fft)
+>       r_np = np.fft.ifft(segment, n=n_fft)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.work/mlx/python/tests/test_fft.py:277: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+a = <[RuntimeError('[omarchy] dtype converting copy is not implemented for the Omarchy Vulkan backend (dtype=complex64, shape=[1,8193]). No CPU fallback is available in Omarchy builds.') raised in repr()] array object at 0x7b70a2ddb300>
+n = 8193, axis = -1, norm = None, out = None
+
+    @array_function_dispatch(_fft_dispatcher)
+    def ifft(a, n=None, axis=-1, norm=None, out=None):
+        """
+        Compute the one-dimensional inverse discrete Fourier Transform.
+    
+        This function computes the inverse of the one-dimensional *n*-point
+        discrete Fourier transform computed by `fft`.  In other words,
+        ``ifft(fft(a)) == a`` to within numerical accuracy.
+        For a general description of the algorithm and definitions,
+        see `numpy.fft`.
+    
+        The input should be ordered in the same way as is returned by `fft`,
+        i.e.,
+    
+        * ``a[0]`` should contain the zero frequency term,
+        * ``a[1:n//2]`` should contain the positive-frequency terms,
+        * ``a[n//2 + 1:]`` should contain the negative-frequency terms, in
+          increasing order starting from the most negative frequency.
+    
+        For an even number of input points, ``A[n//2]`` represents the sum of
+        the values at the positive and negative Nyquist frequencies, as the two
+        are aliased together. See `numpy.fft` for details.
+    
+        Parameters
+        ----------
+        a : array_like
+            Input array, can be complex.
+        n : int, optional
+            Length of the transformed axis of the output.
+            If `n` is smaller than the length of the input, the input is cropped.
+            If it is larger, the input is padded with zeros.  If `n` is not given,
+            the length of the input along the axis specified by `axis` is used.
+            See notes about padding issues.
+        axis : int, optional
+            Axis over which to compute the inverse DFT.  If not given, the last
+            axis is used.
+        norm : {"backward", "ortho", "forward"}, optional
+            Normalization mode (see `numpy.fft`). Default is "backward".
+            Indicates which direction of the forward/backward pair of transforms
+            is scaled and with what normalization factor.
+    
+            .. versionadded:: 1.20.0
+    
+                The "backward", "forward" values were added.
+    
+        out : complex ndarray, optional
+            If provided, the result will be placed in this array. It should be
+            of the appropriate shape and dtype.
+    
+            .. versionadded:: 2.0.0
+    
+        Returns
+        -------
+        out : complex ndarray
+            The truncated or zero-padded input, transformed along the axis
+            indicated by `axis`, or the last one if `axis` is not specified.
+    
+        Raises
+        ------
+        IndexError
+            If `axis` is not a valid axis of `a`.
+    
+        See Also
+        --------
+        numpy.fft : An introduction, with definitions and general explanations.
+        fft : The one-dimensional (forward) FFT, of which `ifft` is the inverse
+        ifft2 : The two-dimensional inverse FFT.
+        ifftn : The n-dimensional inverse FFT.
+    
+        Notes
+        -----
+        If the input parameter `n` is larger than the size of the input, the input
+        is padded by appending zeros at the end.  Even though this is the common
+        approach, it might lead to surprising results.  If a different padding is
+        desired, it must be performed before calling `ifft`.
+    
+        Examples
+        --------
+        >>> import numpy as np
+        >>> np.fft.ifft([0, 4, 0, 0])
+        array([ 1.+0.j,  0.+1.j, -1.+0.j,  0.-1.j]) # may vary
+    
+        Create and plot a band-limited signal with random phases:
+    
+        >>> import matplotlib.pyplot as plt
+        >>> t = np.arange(400)
+        >>> n = np.zeros((400,), dtype=complex)
+        >>> n[40:60] = np.exp(1j*np.random.uniform(0, 2*np.pi, (20,)))
+        >>> s = np.fft.ifft(n)
+        >>> plt.plot(t, s.real, label='real')
+        [<matplotlib.lines.Line2D object at ...>]
+        >>> plt.plot(t, s.imag, '--', label='imaginary')
+        [<matplotlib.lines.Line2D object at ...>]
+        >>> plt.legend()
+        <matplotlib.legend.Legend object at ...>
+        >>> plt.show()
+    
+        """
+>       a = asarray(a)
+            ^^^^^^^^^^
+E       RuntimeError: [omarchy] dtype converting copy is not implemented for the Omarchy Vulkan backend (dtype=complex64, shape=[1,8193]). No CPU fallback is available in Omarchy builds.
+
+/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/numpy/fft/_pocketfft.py:317: RuntimeError
+_____________________________ TestFFT.test_fft_jvp _____________________________
+
+self = <test_fft.TestFFT testMethod=test_fft_jvp>
+
+    def test_fft_jvp(self):
+        # The fft is linear so the jvp is the fft of the tangent
+        for fftn, a_np, axes in self.make_ffts():
+            a = mx.array(a_np)
+            t = mx.array(np.random.rand(*a_np.shape).astype(a_np.dtype))
+            f = lambda x: fftn(x, axes=axes)
+            expected = f(t)
+            out = mx.jvp(f, [a], [t])[1][0]
+            self.assertEqual(tuple(out.shape), tuple(expected.shape))
+>           np.testing.assert_allclose(out, expected, atol=1e-5, rtol=1e-5)
+E           RuntimeError: [omarchy] FFT transform length 10 (power-of-two lengths 2 to 2048 are implemented; other lengths need Bluestein or mixed-radix stages, which are not landed) is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[3,8,10]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_fft.py:482: RuntimeError
+________________________ TestFFT.test_fft_large_numbers ________________________
+
+self = <test_fft.TestFFT testMethod=test_fft_large_numbers>
+
+    def test_fft_large_numbers(self):
+        numbers = [
+            1037,  # prime > 2048
+            18247,  # medium size prime factors
+            1259 * 11,  # large prime factors
+            7883,  # large prime
+            3**8,  # large stockham decomposable
+            3109,  # bluestein
+            4006,  # large rader
+        ]
+        for large_num in numbers:
+>           self._run_ffts((1, large_num), atol=1e-3)
+
+.work/mlx/python/tests/test_fft.py:237: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+.work/mlx/python/tests/test_fft.py:138: in _run_ffts
+    self.check_mx_np(mx.fft.fft, np.fft.fft, a_np, atol=atol, rtol=rtol)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <test_fft.TestFFT testMethod=test_fft_large_numbers>
+op_mx = <nanobind.nb_func object at 0x7b70a2e26e60>
+op_np = <function fft at 0x7b706aeb8430>
+a_np = array([[0.01037415+0.01249928j, 0.50187457+0.9284196j ,
+        0.4957733 +0.6240297j , ..., 0.31357953+0.26778594j,
+        0.36518824+0.6551328j , 0.7190585 +0.01554625j]],
+      shape=(1, 1037), dtype=complex64)
+atol = 0.001, rtol = 0.0001, kwargs = {}
+
+    def check_mx_np(self, op_mx, op_np, a_np, atol=1e-5, rtol=1e-6, **kwargs):
+        out_np = op_np(a_np, **kwargs)
+        a_mx = mx.array(a_np)
+        out_mx = op_mx(a_mx, **kwargs)
+>       np.testing.assert_allclose(out_np, out_mx, atol=atol, rtol=rtol)
+E       RuntimeError: [omarchy] FFT transform length 1037 (power-of-two lengths 2 to 2048 are implemented; other lengths need Bluestein or mixed-radix stages, which are not landed) is not implemented for the Omarchy Vulkan backend (dtype=complex64, shape=[1,1037]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_fft.py:23: RuntimeError
+____________________________ TestFFT.test_fft_norm _____________________________
+
+self = <test_fft.TestFFT testMethod=test_fft_norm>
+
+    def test_fft_norm(self):
+        norms = ["backward", "ortho", "forward"]
+    
+        r = np.random.randn(8, 6).astype(np.float32)
+        i = np.random.randn(8, 6).astype(np.float32)
+        c = r + 1j * i
+    
+        for norm in norms:
+>           self.check_mx_np(mx.fft.fft, np.fft.fft, c, axis=1, norm=norm)
+
+.work/mlx/python/tests/test_fft.py:113: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <test_fft.TestFFT testMethod=test_fft_norm>
+op_mx = <nanobind.nb_func object at 0x7b70a2e26e60>
+op_np = <function fft at 0x7b706aeb8430>
+a_np = array([[ 2.1054476e-01+4.7773859e-01j,  2.5249031e-01+1.4741962e-01j,
+        -1.0276711e+00-1.8612815e-03j,  5.456718...6655e+00+1.4666356e+00j,
+         3.3996988e-02+1.0957068e+00j,  5.9577358e-01-1.4958055e+00j]],
+      dtype=complex64)
+atol = 1e-05, rtol = 1e-06, kwargs = {'axis': 1, 'norm': 'backward'}
+
+    def check_mx_np(self, op_mx, op_np, a_np, atol=1e-5, rtol=1e-6, **kwargs):
+        out_np = op_np(a_np, **kwargs)
+        a_mx = mx.array(a_np)
+        out_mx = op_mx(a_mx, **kwargs)
+>       np.testing.assert_allclose(out_np, out_mx, atol=atol, rtol=rtol)
+E       RuntimeError: [omarchy] FFT transform length 6 (power-of-two lengths 2 to 2048 are implemented; other lengths need Bluestein or mixed-radix stages, which are not landed) is not implemented for the Omarchy Vulkan backend (dtype=complex64, shape=[8,6]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_fft.py:23: RuntimeError
+_________________________ TestFFT.test_fft_shared_mem __________________________
+
+self = <test_fft.TestFFT testMethod=test_fft_shared_mem>
+
+    def test_fft_shared_mem(self):
+        nums = np.concatenate(
+            [
+                # small radix
+                np.arange(2, 14),
+                # powers of 2
+                [2**k for k in range(4, 13)],
+                # stockham
+                [3 * 3 * 3, 3 * 11, 11 * 13 * 2, 7 * 4 * 13 * 11, 13 * 13 * 11],
+                # rader
+                [17, 23, 29, 17 * 8 * 3, 23 * 2, 1153, 1982],
+                # bluestein
+                [47, 83, 17 * 17],
+                # large stockham
+                [3159, 3645, 3969, 4004],
+            ]
+        )
+        for batch_size in (1, 3, 32):
+            for num in nums:
+                atol = 1e-4 if num < 1025 else 1e-3
+>               self._run_ffts((batch_size, num), atol=atol)
+
+.work/mlx/python/tests/test_fft.py:169: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+.work/mlx/python/tests/test_fft.py:138: in _run_ffts
+    self.check_mx_np(mx.fft.fft, np.fft.fft, a_np, atol=atol, rtol=rtol)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <test_fft.TestFFT testMethod=test_fft_shared_mem>
+op_mx = <nanobind.nb_func object at 0x7b70a2e26e60>
+op_np = <function fft at 0x7b706aeb8430>
+a_np = array([[0.01037415+0.13382953j, 0.50187457+0.1421111j ,
+        0.4957733 +0.21855867j]], dtype=complex64)
+atol = 0.0001, rtol = 0.0001, kwargs = {}
+
+    def check_mx_np(self, op_mx, op_np, a_np, atol=1e-5, rtol=1e-6, **kwargs):
+        out_np = op_np(a_np, **kwargs)
+        a_mx = mx.array(a_np)
+        out_mx = op_mx(a_mx, **kwargs)
+>       np.testing.assert_allclose(out_np, out_mx, atol=atol, rtol=rtol)
+E       RuntimeError: [omarchy] FFT transform length 3 (power-of-two lengths 2 to 2048 are implemented; other lengths need Bluestein or mixed-radix stages, which are not landed) is not implemented for the Omarchy Vulkan backend (dtype=complex64, shape=[1,3]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_fft.py:23: RuntimeError
+____________________________ TestFFT.test_fft_vmap _____________________________
+
+self = <test_fft.TestFFT testMethod=test_fft_vmap>
+
+    def test_fft_vmap(self):
+        for fftn, a_np, axes in self.make_ffts():
+            a = mx.array(a_np)
+            f = lambda x: fftn(x, axes=axes)
+            expected = mx.stack([f(a[i]) for i in range(a.shape[0])])
+            out = mx.vmap(f)(a)
+            self.assertEqual(tuple(out.shape), tuple(expected.shape))
+>           np.testing.assert_allclose(out, expected, atol=1e-5, rtol=1e-5)
+E           RuntimeError: [omarchy] FFT transform length 10 (power-of-two lengths 2 to 2048 are implemented; other lengths need Bluestein or mixed-radix stages, which are not landed) is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[3,8,10]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_fft.py:471: RuntimeError
+______________________________ TestFFT.test_fftn _______________________________
+
+self = <test_fft.TestFFT testMethod=test_fftn>
+
+    def test_fftn(self):
+        r = np.random.randn(8, 8, 8).astype(np.float32)
+        i = np.random.randn(8, 8, 8).astype(np.float32)
+        a = r + 1j * i
+    
+        axes = [None, (1, 2), (2, 1), (0, 2)]
+        shapes = [None, (10, 5), (5, 10)]
+        ops = [
+            "fft2",
+            "ifft2",
+            "rfft2",
+            "irfft2",
+            "fftn",
+            "ifftn",
+            "rfftn",
+            "irfftn",
+        ]
+    
+        for op, ax, s in itertools.product(ops, axes, shapes):
+            if ax is None and s is not None:
+                continue
+            x = a
+            if op in ["rfft2", "rfftn"]:
+                x = r
+            elif op == "irfft2":
+                x = np.ascontiguousarray(np.fft.rfft2(r, axes=ax, s=s))
+            elif op == "irfftn":
+                x = np.ascontiguousarray(np.fft.rfftn(r, axes=ax, s=s))
+            mx_op = getattr(mx.fft, op)
+            np_op = getattr(np.fft, op)
+>           self.check_mx_np(mx_op, np_op, x, axes=ax, s=s)
+
+.work/mlx/python/tests/test_fft.py:92: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <test_fft.TestFFT testMethod=test_fftn>
+op_mx = <nanobind.nb_func object at 0x7b70a2e270a0>
+op_np = <function fft2 at 0x7b706aeb9df0>
+a_np = array([[[-1.485933  -9.02015209e-01j, -1.0768923 +1.86421216e+00j,
+          1.5845803 +7.66943514e-01j,  0.38806054-2....26271698-7.94019043e-01j,
+          0.14140798-1.41535950e+00j,  1.6151273 +1.61281252e+00j]]],
+      dtype=complex64)
+atol = 1e-05, rtol = 1e-06, kwargs = {'axes': (1, 2), 's': (10, 5)}
+
+    def check_mx_np(self, op_mx, op_np, a_np, atol=1e-5, rtol=1e-6, **kwargs):
+        out_np = op_np(a_np, **kwargs)
+        a_mx = mx.array(a_np)
+        out_mx = op_mx(a_mx, **kwargs)
+>       np.testing.assert_allclose(out_np, out_mx, atol=atol, rtol=rtol)
+E       RuntimeError: [omarchy] strided copy is not implemented for the Omarchy Vulkan backend (dtype=complex64, shape=[8,8,5]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_fft.py:23: RuntimeError
+____________________________ TestFFT.test_fftshift _____________________________
+
+self = <test_fft.TestFFT testMethod=test_fftshift>
+
+    def test_fftshift(self):
+        # Test 1D arrays
+        r = np.random.rand(100).astype(np.float32)
+        self.check_mx_np(mx.fft.fftshift, np.fft.fftshift, r)
+    
+        # Test with specific axis
+        r = np.random.rand(4, 6).astype(np.float32)
+        self.check_mx_np(mx.fft.fftshift, np.fft.fftshift, r, axes=0)
+        self.check_mx_np(mx.fft.fftshift, np.fft.fftshift, r, axes=1)
+        self.check_mx_np(mx.fft.fftshift, np.fft.fftshift, r, axes=[0])
+        self.check_mx_np(mx.fft.fftshift, np.fft.fftshift, r, axes=[1])
+        self.check_mx_np(mx.fft.fftshift, np.fft.fftshift, r, axes=[0, 1])
+    
+        # Test with negative axes
+        self.check_mx_np(mx.fft.fftshift, np.fft.fftshift, r, axes=-1)
+        self.check_mx_np(mx.fft.fftshift, np.fft.fftshift, r, axes=[-1])
+    
+        # Test with odd lengths
+        r = np.random.rand(5, 7).astype(np.float32)
+        self.check_mx_np(mx.fft.fftshift, np.fft.fftshift, r)
+        self.check_mx_np(mx.fft.fftshift, np.fft.fftshift, r, axes=[0])
+    
+        # Test with complex input
+        r = np.random.rand(8, 8).astype(np.float32)
+        i = np.random.rand(8, 8).astype(np.float32)
+        c = r + 1j * i
+>       self.check_mx_np(mx.fft.fftshift, np.fft.fftshift, c)
+
+.work/mlx/python/tests/test_fft.py:355: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <test_fft.TestFFT testMethod=test_fftshift>
+op_mx = <nanobind.nb_func object at 0x7b70a2e27e20>
+op_np = <function fftshift at 0x7b706aea3530>
+a_np = array([[0.11970903+0.7202226j , 0.6263161 +0.35726798j,
+        0.79119587+0.21840064j, 0.8188178 +0.286248j  ,
+      ...554176 +0.6776963j , 0.4747669 +0.05953172j,
+        0.5465309 +0.17845553j, 0.1984173 +0.06710509j]], dtype=complex64)
+atol = 1e-05, rtol = 1e-06, kwargs = {}
+
+    def check_mx_np(self, op_mx, op_np, a_np, atol=1e-5, rtol=1e-6, **kwargs):
+        out_np = op_np(a_np, **kwargs)
+        a_mx = mx.array(a_np)
+        out_mx = op_mx(a_mx, **kwargs)
+>       np.testing.assert_allclose(out_np, out_mx, atol=atol, rtol=rtol)
+E       RuntimeError: [omarchy] strided copy is not implemented for the Omarchy Vulkan backend (dtype=complex64, shape=[8,4]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_fft.py:23: RuntimeError
+____________________________ TestFFT.test_ifftshift ____________________________
+
+self = <test_fft.TestFFT testMethod=test_ifftshift>
+
+    def test_ifftshift(self):
+        # Test 1D arrays
+        r = np.random.rand(100).astype(np.float32)
+        self.check_mx_np(mx.fft.ifftshift, np.fft.ifftshift, r)
+    
+        # Test with specific axis
+        r = np.random.rand(4, 6).astype(np.float32)
+        self.check_mx_np(mx.fft.ifftshift, np.fft.ifftshift, r, axes=0)
+        self.check_mx_np(mx.fft.ifftshift, np.fft.ifftshift, r, axes=1)
+        self.check_mx_np(mx.fft.ifftshift, np.fft.ifftshift, r, axes=[0])
+        self.check_mx_np(mx.fft.ifftshift, np.fft.ifftshift, r, axes=[1])
+        self.check_mx_np(mx.fft.ifftshift, np.fft.ifftshift, r, axes=[0, 1])
+    
+        # Test with negative axes
+        self.check_mx_np(mx.fft.ifftshift, np.fft.ifftshift, r, axes=-1)
+        self.check_mx_np(mx.fft.ifftshift, np.fft.ifftshift, r, axes=[-1])
+    
+        # Test with odd lengths
+        r = np.random.rand(5, 7).astype(np.float32)
+        self.check_mx_np(mx.fft.ifftshift, np.fft.ifftshift, r)
+        self.check_mx_np(mx.fft.ifftshift, np.fft.ifftshift, r, axes=[0])
+    
+        # Test with complex input
+        r = np.random.rand(8, 8).astype(np.float32)
+        i = np.random.rand(8, 8).astype(np.float32)
+        c = r + 1j * i
+>       self.check_mx_np(mx.fft.ifftshift, np.fft.ifftshift, c)
+
+.work/mlx/python/tests/test_fft.py:383: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <test_fft.TestFFT testMethod=test_ifftshift>
+op_mx = <nanobind.nb_func object at 0x7b70a2e1c040>
+op_np = <function ifftshift at 0x7b706aea3770>
+a_np = array([[0.8573548 +0.8772679j , 0.40334505+0.19347095j,
+        0.8748585 +0.70703864j, 0.8267119 +0.84829915j,
+      ...896088 +0.6564851j , 0.45021445+0.6530849j ,
+        0.36484125+0.9518124j , 0.5768527 +0.6047835j ]], dtype=complex64)
+atol = 1e-05, rtol = 1e-06, kwargs = {}
+
+    def check_mx_np(self, op_mx, op_np, a_np, atol=1e-5, rtol=1e-6, **kwargs):
+        out_np = op_np(a_np, **kwargs)
+        a_mx = mx.array(a_np)
+        out_mx = op_mx(a_mx, **kwargs)
+>       np.testing.assert_allclose(out_np, out_mx, atol=atol, rtol=rtol)
+E       RuntimeError: [omarchy] strided copy is not implemented for the Omarchy Vulkan backend (dtype=complex64, shape=[8,4]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_fft.py:23: RuntimeError
+- generated xml file: /home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/py/test_fft.py.xml -
+=========================== short test summary info ============================
+FAILED .work/mlx/python/tests/test_fft.py::TestFFT::test_fft - RuntimeError: [omarchy] FFT transform length 100 (power-of-two lengths 2 to 2048 are implemented; other lengths need Bluestein or mixed-radix stages, which are not landed) is not implemented for the Omarchy Vulkan backend (dtype=complex64, shape=[100]). No CPU fallback is available in Omarchy builds.
+FAILED .work/mlx/python/tests/test_fft.py::TestFFT::test_fft_big_powers_of_two - RuntimeError: [omarchy] FFT transform length 4096 (power-of-two lengths 2 to 2048 are implemented; other lengths need Bluestein or mixed-radix stages, which are not landed) is not implemented for the Omarchy Vulkan backend (dtype=complex64, shape=[3,4096]). No CPU fallback is available in Omarchy builds.
+FAILED .work/mlx/python/tests/test_fft.py::TestFFT::test_fft_contiguity - RuntimeError: [omarchy] strided copy is not implemented for the Omarchy Vulkan backend (dtype=complex64, shape=[4,4]). No CPU fallback is available in Omarchy builds.
+FAILED .work/mlx/python/tests/test_fft.py::TestFFT::test_fft_into_ifft - RuntimeError: [omarchy] dtype converting copy is not implemented for the Omarchy Vulkan backend (dtype=complex64, shape=[1,8193]). No CPU fallback is available in Omarchy builds.
+FAILED .work/mlx/python/tests/test_fft.py::TestFFT::test_fft_jvp - RuntimeError: [omarchy] FFT transform length 10 (power-of-two lengths 2 to 2048 are implemented; other lengths need Bluestein or mixed-radix stages, which are not landed) is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[3,8,10]). No CPU fallback is available in Omarchy builds.
+FAILED .work/mlx/python/tests/test_fft.py::TestFFT::test_fft_large_numbers - RuntimeError: [omarchy] FFT transform length 1037 (power-of-two lengths 2 to 2048 are implemented; other lengths need Bluestein or mixed-radix stages, which are not landed) is not implemented for the Omarchy Vulkan backend (dtype=complex64, shape=[1,1037]). No CPU fallback is available in Omarchy builds.
+FAILED .work/mlx/python/tests/test_fft.py::TestFFT::test_fft_norm - RuntimeError: [omarchy] FFT transform length 6 (power-of-two lengths 2 to 2048 are implemented; other lengths need Bluestein or mixed-radix stages, which are not landed) is not implemented for the Omarchy Vulkan backend (dtype=complex64, shape=[8,6]). No CPU fallback is available in Omarchy builds.
+FAILED .work/mlx/python/tests/test_fft.py::TestFFT::test_fft_shared_mem - RuntimeError: [omarchy] FFT transform length 3 (power-of-two lengths 2 to 2048 are implemented; other lengths need Bluestein or mixed-radix stages, which are not landed) is not implemented for the Omarchy Vulkan backend (dtype=complex64, shape=[1,3]). No CPU fallback is available in Omarchy builds.
+FAILED .work/mlx/python/tests/test_fft.py::TestFFT::test_fft_vmap - RuntimeError: [omarchy] FFT transform length 10 (power-of-two lengths 2 to 2048 are implemented; other lengths need Bluestein or mixed-radix stages, which are not landed) is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[3,8,10]). No CPU fallback is available in Omarchy builds.
+FAILED .work/mlx/python/tests/test_fft.py::TestFFT::test_fftn - RuntimeError: [omarchy] strided copy is not implemented for the Omarchy Vulkan backend (dtype=complex64, shape=[8,8,5]). No CPU fallback is available in Omarchy builds.
+FAILED .work/mlx/python/tests/test_fft.py::TestFFT::test_fftshift - RuntimeError: [omarchy] strided copy is not implemented for the Omarchy Vulkan backend (dtype=complex64, shape=[8,4]). No CPU fallback is available in Omarchy builds.
+FAILED .work/mlx/python/tests/test_fft.py::TestFFT::test_ifftshift - RuntimeError: [omarchy] strided copy is not implemented for the Omarchy Vulkan backend (dtype=complex64, shape=[8,4]). No CPU fallback is available in Omarchy builds.
+=================== 12 failed, 4 passed, 4 skipped in 0.48s ====================

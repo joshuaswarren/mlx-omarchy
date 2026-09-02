@@ -1,0 +1,1 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="0" skipped="0" tests="1" time="0.105" timestamp="2026-09-02T09:03:35.676432-05:00" hostname="omp-studio-local"><testcase classname="python.tests.test_graph.TestGraph" name="test_to_dot" time="0.008" /></testsuite></testsuites>

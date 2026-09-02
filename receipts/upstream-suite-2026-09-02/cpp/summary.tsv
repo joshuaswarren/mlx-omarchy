@@ -1,0 +1,21 @@
+file	rc	result
+allocator_tests	0	executed=4 passed=4 failed=0 cases=
+array_tests	1	executed=9 passed=5 failed=4 cases=test array basics,test array types,test array metadata,test make array from user buffer
+arg_reduce_tests	1	executed=5 passed=3 failed=2 cases=test arg reduce small,test arg reduce irregular strides
+autograd_tests	1	executed=25 passed=14 failed=11 cases=test creation grads,test op vjps,test gather and take grads,test slice update jvp with one tangent,test min and max vjp,test as_strided grads,test jvp from vjp,test complex gradients,test scan grads,test grad dynamic slices,test masked_scatter autograd
+blas_tests	1	executed=1 passed=0 failed=1 cases=test matmul
+compile_tests	1	executed=31 passed=25 failed=6 cases=test nested compile,test compile internal output,test fusion types,test shapeless compile,test compile lambda,test compile random bits
+custom_vjp_tests	0	executed=2 passed=2 failed=0 cases=
+creations_tests	1	executed=3 passed=2 failed=1 cases=test full
+device_tests	0	executed=2 passed=2 failed=0 cases=
+einsum_tests	0	executed=2 passed=2 failed=0 cases=
+export_import_tests	1	executed=8 passed=3 failed=5 cases=test export function with no inputs,test export primitives with state,test export functions with kwargs,test export function with variable inputs,test export function on different stream
+eval_tests	1	executed=4 passed=3 failed=1 cases=test eval graph retention when not tracing
+fft_tests	1	executed=7 passed=2 failed=5 cases=test fft basics,test real ffts,test fftn,test fft vmap,test fft grads
+load_tests	1	executed=7 passed=4 failed=3 cases=test gguf,test gguf metadata,test single array serialization
+linalg_tests	1	executed=15 passed=0 failed=15 cases=[mlx.core.linalg.norm] no ord,[mlx.core.linalg.norm] double ord,[mlx.core.linalg.norm] string ord,test QR factorization,test SVD factorization,test matrix inversion,test matrix cholesky,test matrix pseudo-inverse,test cross product,test matrix eigh,test lu,test solve,test solve_triangluar,test det,test slogdet
+ops_tests	1	executed=88 passed=42 failed=46 cases=test slice,test slice update,test slice update add,test dynamic slice,test dynamic slice update,test flip,test comparison ops,test is nan,test is inf,test is close,test reduction ops,test arithmetic unary ops,test arithmetic binary ops,test gather,test take,test gather contiguity,test take along axis,test scatter,test masked_scatter,test is positive infinity,test is negative infinity,test scatter types,test complex ops,test as_strided op,test pad,test power,test where,test full_like,test eye,test triu,test identity,test eye with positive k offset,test eye with negative k offset,test quantize dequantize,inner,test diagonal,test diag,test topk,test conv1d,test conv2d,test trace,test bitwise shift operations,test conv_transpose1d with output_padding,test conv_transpose2d with output_padding,test conv_transpose3d with output_padding,test max min with nan
+random_tests	1	executed=12 passed=4 failed=8 cases=test random key,test random split,test random bits,test random uniform,test random multivariate_normal,test random randint,test categorical,test laplace
+scheduler_tests	1	executed=10 passed=6 failed=4 cases=test stream management,test get streams,test asynchronous launch,test stream placement
+utils_tests	0	executed=4 passed=4 failed=0 cases=
+vmap_tests	1	executed=12 passed=6 failed=6 cases=test simple vmap,test vmap comparison ops,test vmap scatter,test vmap SVD,test vmap dynamic slices,test vmap floor_divide integer

@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="10" skipped="0" tests="11" time="0.231" timestamp="2026-09-02T08:57:13.677216-05:00" hostname="omp-studio-local"><testcase classname="python.tests.test_double.TestDouble" name="test_binary_ops" time="0.029"><failure message="IndexError: vector::_M_range_check: __n (which is 0) &gt;= this-&gt;size() (which is 0)">self = &lt;test_double.TestDouble testMethod=test_binary_ops&gt;
+
+    def test_binary_ops(self):
+        shape = (3, 3)
+        a = mx.random.normal(shape=shape)
+        b = mx.random.normal(shape=shape)
+    
+&gt;       a_double = a.astype(mx.float64, stream=mx.cpu)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       IndexError: vector::_M_range_check: __n (which is 0) &gt;= this-&gt;size() (which is 0)
+
+.work/mlx/python/tests/test_double.py:64: IndexError</failure></testcase><testcase classname="python.tests.test_double.TestDouble" name="test_conversion" time="0.001" /><testcase classname="python.tests.test_double.TestDouble" name="test_gemm" time="0.001"><failure message="IndexError: vector::_M_range_check: __n (which is 0) &gt;= this-&gt;size() (which is 0)">self = &lt;test_double.TestDouble testMethod=test_gemm&gt;
+
+    def test_gemm(self):
+        shape = (8, 8)
+        a = mx.random.normal(shape=shape)
+        b = mx.random.normal(shape=shape)
+    
+&gt;       a_double = a.astype(mx.float64, stream=mx.cpu)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       IndexError: vector::_M_range_check: __n (which is 0) &gt;= this-&gt;size() (which is 0)
+
+.work/mlx/python/tests/test_double.py:163: IndexError</failure></testcase><testcase classname="python.tests.test_double.TestDouble" name="test_get_and_set_item" time="0.000"><failure message="IndexError: vector::_M_range_check: __n (which is 0) &gt;= this-&gt;size() (which is 0)">self = &lt;test_double.TestDouble testMethod=test_get_and_set_item&gt;
+
+    def test_get_and_set_item(self):
+        shape = (3, 3)
+        a = mx.random.normal(shape=shape)
+        b = mx.random.normal(shape=(2,))
+&gt;       a_double = a.astype(mx.float64, stream=mx.cpu)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       IndexError: vector::_M_range_check: __n (which is 0) &gt;= this-&gt;size() (which is 0)
+
+.work/mlx/python/tests/test_double.py:137: IndexError</failure></testcase><testcase classname="python.tests.test_double.TestDouble" name="test_lapack" time="0.000"><failure message="IndexError: vector::_M_range_check: __n (which is 0) &gt;= this-&gt;size() (which is 0)">self = &lt;test_double.TestDouble testMethod=test_lapack&gt;
+
+    def test_lapack(self):
+&gt;       with mx.stream(mx.cpu):
+E       IndexError: vector::_M_range_check: __n (which is 0) &gt;= this-&gt;size() (which is 0)
+
+.work/mlx/python/tests/test_double.py:187: IndexError</failure></testcase><testcase classname="python.tests.test_double.TestDouble" name="test_linspace" time="0.000"><failure message="IndexError: vector::_M_range_check: __n (which is 0) &gt;= this-&gt;size() (which is 0)">self = &lt;test_double.TestDouble testMethod=test_linspace&gt;
+
+    def test_linspace(self):
+&gt;       with mx.stream(mx.cpu):
+E       IndexError: vector::_M_range_check: __n (which is 0) &gt;= this-&gt;size() (which is 0)
+
+.work/mlx/python/tests/test_double.py:338: IndexError</failure></testcase><testcase classname="python.tests.test_double.TestDouble" name="test_python_float_keeps_double_precision" time="0.000"><failure message="IndexError: vector::_M_range_check: __n (which is 0) &gt;= this-&gt;size() (which is 0)">self = &lt;test_double.TestDouble testMethod=test_python_float_keeps_double_precision&gt;
+
+    def test_python_float_keeps_double_precision(self):
+&gt;       with mx.stream(mx.cpu):
+E       IndexError: vector::_M_range_check: __n (which is 0) &gt;= this-&gt;size() (which is 0)
+
+.work/mlx/python/tests/test_double.py:300: IndexError</failure></testcase><testcase classname="python.tests.test_double.TestDouble" name="test_reductions" time="0.000"><failure message="IndexError: vector::_M_range_check: __n (which is 0) &gt;= this-&gt;size() (which is 0)">self = &lt;test_double.TestDouble testMethod=test_reductions&gt;
+
+    def test_reductions(self):
+        shape = (32, 32)
+        a = mx.random.normal(shape=shape)
+&gt;       a_double = a.astype(mx.float64, stream=mx.cpu)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       IndexError: vector::_M_range_check: __n (which is 0) &gt;= this-&gt;size() (which is 0)
+
+.work/mlx/python/tests/test_double.py:118: IndexError</failure></testcase><testcase classname="python.tests.test_double.TestDouble" name="test_type_promotion" time="0.000"><failure message="IndexError: vector::_M_range_check: __n (which is 0) &gt;= this-&gt;size() (which is 0)">self = &lt;test_double.TestDouble testMethod=test_type_promotion&gt;
+
+    def test_type_promotion(self):
+        import mlx.core as mx
+    
+        a = mx.array([4, 8], mx.float64)
+        b = mx.array([4, 8], mx.int32)
+    
+&gt;       with mx.stream(mx.cpu):
+E       IndexError: vector::_M_range_check: __n (which is 0) &gt;= this-&gt;size() (which is 0)
+
+.work/mlx/python/tests/test_double.py:182: IndexError</failure></testcase><testcase classname="python.tests.test_double.TestDouble" name="test_unary_ops" time="0.002"><failure message="IndexError: vector::_M_range_check: __n (which is 0) &gt;= this-&gt;size() (which is 0)">self = &lt;test_double.TestDouble testMethod=test_unary_ops&gt;
+
+    def test_unary_ops(self):
+        shape = (3, 3)
+        x = mx.random.normal(shape=shape)
+    
+        if mx.default_device() == mx.gpu:
+            with self.assertRaises(ValueError):
+                x.astype(mx.float64)
+    
+&gt;       x_double = x.astype(mx.float64, stream=mx.cpu)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       IndexError: vector::_M_range_check: __n (which is 0) &gt;= this-&gt;size() (which is 0)
+
+.work/mlx/python/tests/test_double.py:21: IndexError</failure></testcase><testcase classname="python.tests.test_double.TestDouble" name="test_where" time="0.000"><failure message="IndexError: vector::_M_range_check: __n (which is 0) &gt;= this-&gt;size() (which is 0)">self = &lt;test_double.TestDouble testMethod=test_where&gt;
+
+    def test_where(self):
+        shape = (3, 3)
+        cond = mx.random.uniform(shape=shape) &gt; 0.5
+        a = mx.random.normal(shape=shape)
+        b = mx.random.normal(shape=shape)
+    
+&gt;       a_double = a.astype(mx.float64, stream=mx.cpu)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       IndexError: vector::_M_range_check: __n (which is 0) &gt;= this-&gt;size() (which is 0)
+
+.work/mlx/python/tests/test_double.py:104: IndexError</failure></testcase></testsuite></testsuites>

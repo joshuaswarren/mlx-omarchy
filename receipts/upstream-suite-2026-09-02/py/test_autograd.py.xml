@@ -1,0 +1,494 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="28" skipped="1" tests="54" time="1.460" timestamp="2026-09-02T08:55:32.203138-05:00" hostname="omp-studio-local"><testcase classname="python.tests.test_autograd.TestAutograd" name="test_autograd_types" time="0.017"><failure message="AssertionError: array(False, dtype=bool) is not true">self = &lt;test_autograd.TestAutograd testMethod=test_autograd_types&gt;
+
+    def test_autograd_types(self):
+        from typing import NamedTuple
+    
+        class Vector(tuple):
+            pass
+    
+        class State(NamedTuple):
+            a: mx.array
+            b: mx.array
+    
+        def transform(x: State):
+            return State(x.a + 10, x.b * 10)
+    
+        def transform_tuple(t):
+            return (t[0] + 10, t[1] * 10)
+    
+        def transform_vector(t):
+            return Vector([t[0] + 10, t[1] * 10])
+    
+        def loss_fn(x):
+            out = transform(x)
+            return out.a.sum() + out.b.sum()
+    
+        def loss_fn_tuple(x):
+            out = transform_tuple(x)
+            return out[0].sum() + out[1].sum()
+    
+        def loss_fn_vector(x):
+            out = transform_vector(x)
+            return out[0].sum() + out[1].sum()
+    
+        x_batch = State(mx.array([1, 2, 3]), mx.array([4, 5, 6]))
+        grads = mx.grad(loss_fn)(x_batch)
+        self.assertTrue(isinstance(grads, State))
+&gt;       self.assertTrue(mx.array_equal(grads.a, mx.ones(3)))
+E       AssertionError: array(False, dtype=bool) is not true
+
+.work/mlx/python/tests/test_autograd.py:1370: AssertionError</failure></testcase><testcase classname="python.tests.test_autograd.TestAutograd" name="test_auxiliary_values" time="0.017" /><testcase classname="python.tests.test_autograd.TestAutograd" name="test_captured" time="0.001" /><testcase classname="python.tests.test_autograd.TestAutograd" name="test_complex_abs_grad" time="0.008"><failure message="RuntimeError: [omarchy] Abs dtype is not implemented for the Omarchy Vulkan backend (dtype=complex64, shape=[3,4,5]). No CPU fallback is available in Omarchy builds.">self = &lt;test_autograd.TestAutograd testMethod=test_complex_abs_grad&gt;
+
+    def test_complex_abs_grad(self):
+        mx.random.seed(0)
+        primal = mx.random.normal((3, 4, 5), dtype=mx.complex64)
+        # guard against values too close to the origin where |z| is not smooth
+        primal = mx.where(abs(primal) &lt; 1e-3, 1e-3 + 0j, primal)
+    
+        # |z| is real-valued, so its jvp is real:
+        #   d|z| = Re(conj(z) * t) / |z|
+        tangent = mx.random.normal(primal.shape, dtype=mx.complex64)
+        _, (jvp,) = mx.jvp(mx.abs, [primal], [tangent])
+        expected = mx.real(mx.conj(primal) * tangent) / mx.abs(primal)
+        self.assertEqual(jvp.dtype, mx.float32)
+&gt;       self.assertTrue(mx.allclose(jvp, expected, atol=1e-5))
+E       RuntimeError: [omarchy] Abs dtype is not implemented for the Omarchy Vulkan backend (dtype=complex64, shape=[3,4,5]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_autograd.py:1495: RuntimeError</failure></testcase><testcase classname="python.tests.test_autograd.TestAutograd" name="test_complex_exp_vjp" time="0.003"><failure message="RuntimeError: [omarchy] Exp dtype is not implemented for the Omarchy Vulkan backend (dtype=complex64, shape=[3,4,5]). No CPU fallback is available in Omarchy builds.">self = &lt;test_autograd.TestAutograd testMethod=test_complex_exp_vjp&gt;
+
+    def test_complex_exp_vjp(self):
+        primal = mx.random.normal((3, 4, 5), dtype=mx.complex64)
+        cotangent = mx.random.normal(
+            (
+                3,
+                4,
+                5,
+            ),
+            dtype=mx.complex64,
+        )
+    
+        _, vjps = mx.vjp(mx.exp, [primal], [cotangent])
+    
+        expected = cotangent * mx.conj(mx.exp(primal))
+    
+        # Check against hand-computed vjps
+&gt;       self.assertTrue(mx.allclose(vjps[0], expected))
+E       RuntimeError: [omarchy] Exp dtype is not implemented for the Omarchy Vulkan backend (dtype=complex64, shape=[3,4,5]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_autograd.py:1438: RuntimeError</failure></testcase><testcase classname="python.tests.test_autograd.TestAutograd" name="test_complex_log_vjp" time="0.002"><failure message="RuntimeError: [omarchy] Abs dtype is not implemented for the Omarchy Vulkan backend (dtype=complex64, shape=[3,4,5]). No CPU fallback is available in Omarchy builds.">self = &lt;test_autograd.TestAutograd testMethod=test_complex_log_vjp&gt;
+
+    def test_complex_log_vjp(self):
+        primal = mx.random.normal((3, 4, 5), dtype=mx.complex64)
+        cotangent = mx.random.normal(
+            (
+                3,
+                4,
+                5,
+            ),
+            dtype=mx.complex64,
+        )
+    
+        # guard against values too close to the origin
+        primal = mx.where(abs(primal) &lt; 1e-3, 1e-3, primal)
+    
+        _, vjps = mx.vjp(mx.log, [primal], [cotangent])
+    
+        expected = cotangent * mx.conj(1 / primal)
+    
+        # Check against hand-computed vjps
+&gt;       self.assertTrue(mx.allclose(vjps[0], expected))
+E       RuntimeError: [omarchy] Abs dtype is not implemented for the Omarchy Vulkan backend (dtype=complex64, shape=[3,4,5]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_autograd.py:1459: RuntimeError</failure></testcase><testcase classname="python.tests.test_autograd.TestAutograd" name="test_complex_prod_vjp" time="0.002"><failure message="RuntimeError: [omarchy] Take dtype is not implemented for the Omarchy Vulkan backend (dtype=complex64, shape=[1,20]). No CPU fallback is available in Omarchy builds.">self = &lt;test_autograd.TestAutograd testMethod=test_complex_prod_vjp&gt;
+
+    def test_complex_prod_vjp(self):
+        def prod(x):
+            return x.prod(axis=0)
+    
+        primal = mx.random.normal((2, 20), dtype=mx.complex64)
+        cotangent = mx.random.normal((20,), dtype=mx.complex64)
+    
+        _, vjps = mx.vjp(prod, [primal], [cotangent])
+    
+        expected = mx.stack(
+            [mx.conj(primal[1]) * cotangent, mx.conj(primal[0]) * cotangent]
+        )
+    
+        # Check against hand-computed vjps
+&gt;       self.assertTrue(mx.array_equal(vjps[0], expected))
+E       RuntimeError: [omarchy] Take dtype is not implemented for the Omarchy Vulkan backend (dtype=complex64, shape=[1,20]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_autograd.py:1415: RuntimeError</failure></testcase><testcase classname="python.tests.test_autograd.TestAutograd" name="test_complex_unary_vjps" time="0.002"><failure message="RuntimeError: [omarchy] Abs dtype is not implemented for the Omarchy Vulkan backend (dtype=complex64, shape=[3,4,5]). No CPU fallback is available in Omarchy builds.">self = &lt;test_autograd.TestAutograd testMethod=test_complex_unary_vjps&gt;
+
+    def test_complex_unary_vjps(self):
+        # For a holomorphic f the vjp is cotangent * conj(f'(z)); these ops used
+        # to delegate to their jvp and drop the conjugate for complex inputs.
+        mx.random.seed(0)
+        z = mx.random.normal((3, 4, 5), dtype=mx.complex64)
+        cotangent = mx.random.normal((3, 4, 5), dtype=mx.complex64)
+        z = mx.where(abs(z) &lt; 1e-3, 1e-3 + 0j, z)
+    
+        ops = {
+            mx.square: lambda x: 2 * x,
+            mx.sin: mx.cos,
+            mx.sinh: mx.cosh,
+            mx.cosh: mx.sinh,
+            mx.tan: lambda x: 1 / mx.cos(x) ** 2,
+            mx.tanh: lambda x: 1 - mx.tanh(x) ** 2,
+            mx.log1p: lambda x: 1 / (1 + x),
+        }
+        for fn, deriv in ops.items():
+            _, (vjp,) = mx.vjp(fn, [z], [cotangent])
+            expected = cotangent * mx.conj(deriv(z))
+&gt;           self.assertTrue(mx.allclose(vjp, expected, atol=1e-5), msg=str(fn))
+E           RuntimeError: [omarchy] Abs dtype is not implemented for the Omarchy Vulkan backend (dtype=complex64, shape=[3,4,5]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_autograd.py:1481: RuntimeError</failure></testcase><testcase classname="python.tests.test_autograd.TestAutograd" name="test_complex_vjps" time="0.001"><failure message="RuntimeError: [omarchy] non-zero scalar fill is not implemented for the Omarchy Vulkan backend (dtype=complex64, shape=[3]). No CPU fallback is available in Omarchy builds.">self = &lt;test_autograd.TestAutograd testMethod=test_complex_vjps&gt;
+
+    def test_complex_vjps(self):
+        def fun(x):
+            return (2.0 * mx.real(x)).sum()
+    
+        x = mx.array([0.0 + 1j, 1.0 + 0.0j, 0.5 + 0.5j])
+        dfdx = mx.grad(fun)(x)
+&gt;       self.assertTrue(mx.allclose(dfdx, 2 * mx.ones_like(x)))
+E       RuntimeError: [omarchy] non-zero scalar fill is not implemented for the Omarchy Vulkan backend (dtype=complex64, shape=[3]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_autograd.py:1125: RuntimeError</failure></testcase><testcase classname="python.tests.test_autograd.TestAutograd" name="test_concatenate_vjps" time="0.014" /><testcase classname="python.tests.test_autograd.TestAutograd" name="test_cummax_cummin_grad_vs_torch" time="0.001"><skipped type="pytest.skip" message="requires Torch">/tmp/upstream-sweep/.work/mlx/python/tests/test_autograd.py:914: requires Torch</skipped></testcase><testcase classname="python.tests.test_autograd.TestAutograd" name="test_cummax_grad" time="0.007"><failure message="RuntimeError: [omarchy] Select dtype is not implemented for the Omarchy Vulkan backend (dtype=int32, shape=[5]). No CPU fallback is available in Omarchy builds.">self = &lt;test_autograd.TestAutograd testMethod=test_cummax_grad&gt;
+
+    def test_cummax_grad(self):
+        # Ties route to the latest occurrence, matching the cummax indices.
+        a = mx.array([3.0, 3.0, 1.0, 5.0, 5.0])
+    
+        def fun(y):
+            return mx.cummax(y).sum()
+    
+&gt;       self.assertTrue(
+            mx.allclose(mx.grad(fun)(a), mx.array([1.0, 2.0, 0.0, 1.0, 1.0]))
+        )
+E       RuntimeError: [omarchy] Select dtype is not implemented for the Omarchy Vulkan backend (dtype=int32, shape=[5]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_autograd.py:822: RuntimeError</failure></testcase><testcase classname="python.tests.test_autograd.TestAutograd" name="test_cummin_grad" time="0.002"><failure message="RuntimeError: [omarchy] Select dtype is not implemented for the Omarchy Vulkan backend (dtype=int32, shape=[5]). No CPU fallback is available in Omarchy builds.">self = &lt;test_autograd.TestAutograd testMethod=test_cummin_grad&gt;
+
+    def test_cummin_grad(self):
+        a = mx.array([3.0, 3.0, 1.0, 5.0, 5.0])
+    
+        def fun(y):
+            return mx.cummin(y).sum()
+    
+&gt;       self.assertTrue(
+            mx.allclose(mx.grad(fun)(a), mx.array([1.0, 1.0, 3.0, 0.0, 0.0]))
+        )
+E       RuntimeError: [omarchy] Select dtype is not implemented for the Omarchy Vulkan backend (dtype=int32, shape=[5]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_autograd.py:875: RuntimeError</failure></testcase><testcase classname="python.tests.test_autograd.TestAutograd" name="test_cumprod_grad" time="0.001"><failure message="RuntimeError: [omarchy] Select layout is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[5]). No CPU fallback is available in Omarchy builds.">self = &lt;test_autograd.TestAutograd testMethod=test_cumprod_grad&gt;
+
+    def test_cumprod_grad(self):
+        def fun(y):
+            return mx.cumprod(y).sum()
+    
+        y = mx.array([2.0, 1.0, 2.0, 2.0, 3.0])
+        out = mx.grad(fun)(y)
+        expected = mx.array([20.0, 38.0, 18.0, 16.0, 8.0])
+&gt;       self.assertTrue(mx.allclose(out, expected))
+E       RuntimeError: [omarchy] Select layout is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[5]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_autograd.py:749: RuntimeError</failure></testcase><testcase classname="python.tests.test_autograd.TestAutograd" name="test_custom_function" time="0.035" /><testcase classname="python.tests.test_autograd.TestAutograd" name="test_eval_in_grad" time="0.001"><failure message="AssertionError: 12.000000953674316 != 12.0">self = &lt;test_autograd.TestAutograd testMethod=test_eval_in_grad&gt;
+
+    def test_eval_in_grad(self):
+        arr = mx.array([1.0])
+        cotan = mx.array([1.0, 1.0])
+        y = mx.array([2.0, 2.0])
+    
+        def func(x):
+            x = x + y
+            cond = x &lt; 1
+            cond.tolist()
+            return x**2
+    
+        _, vjps = mx.vjp(func, (arr,), (cotan,))
+&gt;       self.assertEqual(vjps[0].item(), 12.0)
+E       AssertionError: 12.000000953674316 != 12.0
+
+.work/mlx/python/tests/test_autograd.py:724: AssertionError</failure></testcase><testcase classname="python.tests.test_autograd.TestAutograd" name="test_flatten_unflatten_vjps" time="0.001" /><testcase classname="python.tests.test_autograd.TestAutograd" name="test_grad" time="0.002" /><testcase classname="python.tests.test_autograd.TestAutograd" name="test_grad_ids_pre_post" time="0.000" /><testcase classname="python.tests.test_autograd.TestAutograd" name="test_grad_kwargs" time="0.002" /><testcase classname="python.tests.test_autograd.TestAutograd" name="test_grad_trees" time="0.002" /><testcase classname="python.tests.test_autograd.TestAutograd" name="test_grad_with_copies" time="0.000" /><testcase classname="python.tests.test_autograd.TestAutograd" name="test_grad_with_inplace_update" time="0.000" /><testcase classname="python.tests.test_autograd.TestAutograd" name="test_index_vjp_requires_stop_gradient" time="0.001" /><testcase classname="python.tests.test_autograd.TestAutograd" name="test_jvp" time="0.001" /><testcase classname="python.tests.test_autograd.TestAutograd" name="test_jvp_comparison_tangent_dtype" time="0.001" /><testcase classname="python.tests.test_autograd.TestAutograd" name="test_jvp_through_bitwise_ops" time="0.001"><failure message="RuntimeError: [omarchy] BitwiseOr dtype is not implemented for the Omarchy Vulkan backend (dtype=bool, shape=[3]). No CPU fallback is available in Omarchy builds.">self = &lt;test_autograd.TestAutograd testMethod=test_jvp_through_bitwise_ops&gt;
+
+    def test_jvp_through_bitwise_ops(self):
+        # JVPs of bitwise ops returned one tangent per traced input instead
+        # of one per output which corrupted the tangents of downstream
+        # outputs (issue #3629). The corruption is out-of-bounds UB that can
+        # go unnoticed in release builds; the assert in the jvp transform
+        # catches it deterministically in debug builds.
+        def fun(x):
+            b = (x == 0) &amp; (x &gt; -1)
+            return x + b.astype(mx.float32)
+    
+        x = mx.array([0.0, 1.0, 2.0])
+        _, (dout,) = mx.jvp(fun, [x], [mx.ones_like(x)])
+        self.assertTrue(mx.array_equal(dout, mx.ones_like(x)))
+    
+        def fun(x):
+            b = (x == 0) | (x &gt; 1)
+            return x * b.astype(mx.float32)
+    
+        _, (dout,) = mx.jvp(fun, [x], [mx.ones_like(x)])
+&gt;       self.assertTrue(mx.array_equal(dout, mx.array([1.0, 0.0, 1.0])))
+E       RuntimeError: [omarchy] BitwiseOr dtype is not implemented for the Omarchy Vulkan backend (dtype=bool, shape=[3]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_autograd.py:135: RuntimeError</failure></testcase><testcase classname="python.tests.test_autograd.TestAutograd" name="test_jvp_with_constant_inputs" time="0.008" /><testcase classname="python.tests.test_autograd.TestAutograd" name="test_jvp_with_partly_traced_inputs" time="0.001"><failure message="RuntimeError: [omarchy] dtype converting copy is not implemented for the Omarchy Vulkan backend (dtype=bool, shape=[]). No CPU fallback is available in Omarchy builds.">self = &lt;test_autograd.TestAutograd testMethod=test_jvp_with_partly_traced_inputs&gt;
+
+    def test_jvp_with_partly_traced_inputs(self):
+        # power: each traced input must use its own tangent (issue #3634)
+        fun = lambda a, b: a**b
+        primals = [mx.array(2.0), mx.array(3.0)]
+        dyda = 12.0  # d/da a^b = b * a^(b - 1)
+        dydb = math.log(2.0) * 8.0  # d/db a^b = ln(a) * a^b
+        _, (j,) = mx.jvp(fun, primals, [mx.array(1.0), mx.array(0.0)])
+&gt;       self.assertAlmostEqual(j.item(), dyda, places=4)
+                               ^^^^^^^^
+E       RuntimeError: [omarchy] dtype converting copy is not implemented for the Omarchy Vulkan backend (dtype=bool, shape=[]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_autograd.py:166: RuntimeError</failure></testcase><testcase classname="python.tests.test_autograd.TestAutograd" name="test_leaks" time="0.082" /><testcase classname="python.tests.test_autograd.TestAutograd" name="test_logsumexp_grad" time="0.011" /><testcase classname="python.tests.test_autograd.TestAutograd" name="test_matmul_jvps" time="0.021" /><testcase classname="python.tests.test_autograd.TestAutograd" name="test_power_grad" time="0.001"><failure message="RuntimeError: [omarchy] dtype converting copy is not implemented for the Omarchy Vulkan backend (dtype=bool, shape=[]). No CPU fallback is available in Omarchy builds.">self = &lt;test_autograd.TestAutograd testMethod=test_power_grad&gt;
+
+    def test_power_grad(self):
+        def fun(x, y):
+            res = x - y
+            return res**x
+    
+        grad = mx.grad(fun)(mx.array(1.0), mx.array(1.0))
+&gt;       self.assertEqual(grad.item(), 1.0)
+                         ^^^^^^^^^^^
+E       RuntimeError: [omarchy] dtype converting copy is not implemented for the Omarchy Vulkan backend (dtype=bool, shape=[]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_autograd.py:740: RuntimeError</failure></testcase><testcase classname="python.tests.test_autograd.TestAutograd" name="test_put_along_axis_grads" time="0.015" /><testcase classname="python.tests.test_autograd.TestAutograd" name="test_reduce_jvp" time="0.006"><failure message="RuntimeError: [omarchy] Multiply dtype is not implemented for the Omarchy Vulkan backend (dtype=int32, shape=[4]). No CPU fallback is available in Omarchy builds.">self = &lt;test_autograd.TestAutograd testMethod=test_reduce_jvp&gt;
+
+    def test_reduce_jvp(self):
+        a = mx.arange(4)
+        b = mx.array([3, 2, 1, 0])
+    
+        out, jout = mx.jvp(mx.sum, primals=(a,), tangents=(b,))
+        self.assertEqual(jout[0].item(), 6)
+    
+        out, jout = mx.jvp(mx.prod, primals=(a,), tangents=(b,))
+&gt;       self.assertEqual(jout[0].item(), 18)
+                         ^^^^^^^^^^^^^^
+E       RuntimeError: [omarchy] Multiply dtype is not implemented for the Omarchy Vulkan backend (dtype=int32, shape=[4]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_autograd.py:1393: RuntimeError</failure></testcase><testcase classname="python.tests.test_autograd.TestAutograd" name="test_scatter_add_vjp" time="0.001"><failure message="RuntimeError: [omarchy] matrix layout Take is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[2,1]). No CPU fallback is available in Omarchy builds.">self = &lt;test_autograd.TestAutograd testMethod=test_scatter_add_vjp&gt;
+
+    def test_scatter_add_vjp(self):
+        def fun(src, updates):
+            x = src.at[mx.array([1, 3])].add(updates)
+            return x
+    
+        cotan = mx.array([4.0, 5.0, 6.0, 7.0])
+        updates = mx.array([1.0, 2.0])
+        _, vjps = mx.vjp(fun, [mx.array([1.0, 2.0, 3.0, 4.0]), updates], [cotan])
+&gt;       mx.eval(vjps)
+E       RuntimeError: [omarchy] matrix layout Take is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[2,1]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_autograd.py:547: RuntimeError</failure></testcase><testcase classname="python.tests.test_autograd.TestAutograd" name="test_scatter_max_vjp" time="0.004"><failure message="RuntimeError: [omarchy] matrix layout Take is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[2,1]). No CPU fallback is available in Omarchy builds.">self = &lt;test_autograd.TestAutograd testMethod=test_scatter_max_vjp&gt;
+
+    def test_scatter_max_vjp(self):
+        def fun(src, updates):
+            x = src.at[mx.array([1, 3])].maximum(updates)
+            return x
+    
+        cotan = mx.array([4.0, 5.0, 6.0, 7.0])
+        updates = mx.array([1.0, 2.0])
+        _, vjps = mx.vjp(fun, [mx.array([1.0, 2.0, 3.0, 4.0]), updates], [cotan])
+&gt;       mx.eval(vjps)
+E       RuntimeError: [omarchy] matrix layout Take is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[2,1]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_autograd.py:560: RuntimeError</failure></testcase><testcase classname="python.tests.test_autograd.TestAutograd" name="test_scatter_min_vjp" time="0.001"><failure message="RuntimeError: [omarchy] matrix layout Take is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[2,1]). No CPU fallback is available in Omarchy builds.">self = &lt;test_autograd.TestAutograd testMethod=test_scatter_min_vjp&gt;
+
+    def test_scatter_min_vjp(self):
+        def fun(src, updates):
+            x = src.at[mx.array([1, 3])].minimum(updates)
+            return x
+    
+        cotan = mx.array([4.0, 5.0, 6.0, 7.0])
+        updates = mx.array([5.0, 6.0])
+        _, vjps = mx.vjp(fun, [mx.array([1.0, 2.0, 3.0, 4.0]), updates], [cotan])
+&gt;       mx.eval(vjps)
+E       RuntimeError: [omarchy] matrix layout Take is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[2,1]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_autograd.py:580: RuntimeError</failure></testcase><testcase classname="python.tests.test_autograd.TestAutograd" name="test_scatter_vjp" time="0.001"><failure message="RuntimeError: [omarchy] matrix layout Take is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[2,1]). No CPU fallback is available in Omarchy builds.">self = &lt;test_autograd.TestAutograd testMethod=test_scatter_vjp&gt;
+
+    def test_scatter_vjp(self):
+        def fun(x, idx):
+            x[idx] = 2.0
+            return x.sum()
+    
+        dfdx = mx.grad(fun)(mx.array([1.0, 2.0, 3.0, 4.0]), mx.array([1, 3]))
+        self.assertTrue(mx.array_equal(dfdx, mx.array([1.0, 0.0, 1.0, 0.0])))
+        self.assertEqual(dfdx.dtype, mx.float32)
+    
+        y = mx.array([0.0, 1.0, 2.0, 3.0])
+    
+        def fun(x, idx):
+            y[idx] = x
+            return y.sum()
+    
+        dfdx = mx.grad(fun)(mx.array([2.0, 3.0]), mx.array([1, 3]))
+&gt;       self.assertTrue(mx.array_equal(dfdx, mx.array([1.0, 1.0])))
+E       RuntimeError: [omarchy] matrix layout Take is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[2,1]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_autograd.py:444: RuntimeError</failure></testcase><testcase classname="python.tests.test_autograd.TestAutograd" name="test_second_order_permutation_ops" time="0.029"><failure message="RuntimeError: [omarchy] Select dtype is not implemented for the Omarchy Vulkan backend (dtype=int32, shape=[4]). No CPU fallback is available in Omarchy builds.">self = &lt;test_autograd.TestAutograd testMethod=test_second_order_permutation_ops&gt;
+
+    def test_second_order_permutation_ops(self):
+        # The permutation these ops apply is locally constant in the input, so
+        # the indices must not carry a gradient. Otherwise differentiating the
+        # vjp a second time fails with "Cannot calculate VJP with respect to
+        # indices".
+        def hvp(f, x, v):
+            return mx.grad(lambda a: mx.sum(mx.grad(f)(a) * v))(x)
+    
+        def numerical_hvp(f, x, v, eps=1e-3):
+            # The values below are well separated, so the permutation does not
+            # change over this step and the difference is exact enough.
+            return (mx.grad(f)(x + eps * v) - mx.grad(f)(x - eps * v)) / (2 * eps)
+    
+        x = mx.array([3.0, 1.0, 2.0, 5.0])
+        v = mx.array([1.0, -2.0, 0.5, 1.5])
+    
+        for fn in (
+            lambda a: mx.sort(a),
+            lambda a: mx.partition(a, 2),
+            lambda a: mx.topk(a, 2),
+            lambda a: mx.cummax(a, axis=0),
+            lambda a: mx.cummin(a, axis=0),
+            lambda a: mx.cummax(a, axis=0, reverse=True),
+            lambda a: mx.cummax(a, axis=0, inclusive=False),
+            lambda a: mx.cummin(a, axis=0, reverse=True, inclusive=False),
+        ):
+            f = lambda a: mx.sum(fn(a) ** 2)
+&gt;           self.assertTrue(
+                mx.allclose(hvp(f, x, v), numerical_hvp(f, x, v), atol=1e-3)
+            )
+E           RuntimeError: [omarchy] Select dtype is not implemented for the Omarchy Vulkan backend (dtype=int32, shape=[4]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_autograd.py:1538: RuntimeError</failure></testcase><testcase classname="python.tests.test_autograd.TestAutograd" name="test_slice_grads" time="0.002"><failure message="RuntimeError: [omarchy] negative stride copy is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[5]). No CPU fallback is available in Omarchy builds.">self = &lt;test_autograd.TestAutograd testMethod=test_slice_grads&gt;
+
+    def test_slice_grads(self):
+        # Slice
+        def fun(a):
+            return a[5:-6:-1]
+    
+        a = mx.ones(shape=(5,))
+        cotan = mx.random.uniform(shape=(5,))
+        _, (grad,) = mx.vjp(fun, (a,), (cotan,))
+&gt;       self.assertTrue(mx.allclose(grad, cotan[::-1]))
+E       RuntimeError: [omarchy] negative stride copy is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[5]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_autograd.py:1235: RuntimeError</failure></testcase><testcase classname="python.tests.test_autograd.TestAutograd" name="test_slice_update_add_vjp" time="0.004" /><testcase classname="python.tests.test_autograd.TestAutograd" name="test_slice_update_max_vjp" time="0.001"><failure message="RuntimeError: [omarchy] SliceUpdate reduce is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[4]). No CPU fallback is available in Omarchy builds.">self = &lt;test_autograd.TestAutograd testMethod=test_slice_update_max_vjp&gt;
+
+    def test_slice_update_max_vjp(self):
+        def fun(src, updates):
+            x = src.at[1:3].maximum(updates)
+            return x
+    
+        cotan = mx.array([4.0, 5.0, 6.0, 7.0])
+        updates = mx.array([[1.0, 2.0]])
+        _, vjps = mx.vjp(fun, [mx.array([1.0, 2.0, 3.0, 4.0]), updates], [cotan])
+&gt;       mx.eval(vjps)
+E       RuntimeError: [omarchy] SliceUpdate reduce is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[4]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_autograd.py:600: RuntimeError</failure></testcase><testcase classname="python.tests.test_autograd.TestAutograd" name="test_slice_update_min_vjp" time="0.001"><failure message="RuntimeError: [omarchy] SliceUpdate reduce is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[4]). No CPU fallback is available in Omarchy builds.">self = &lt;test_autograd.TestAutograd testMethod=test_slice_update_min_vjp&gt;
+
+    def test_slice_update_min_vjp(self):
+        def fun(src, updates):
+            x = src.at[1:3].minimum(updates)
+            return x
+    
+        cotan = mx.array([4.0, 5.0, 6.0, 7.0])
+        updates = mx.array([[5.0, 6.0]])
+        _, vjps = mx.vjp(fun, [mx.array([1.0, 2.0, 3.0, 4.0]), updates], [cotan])
+&gt;       mx.eval(vjps)
+E       RuntimeError: [omarchy] SliceUpdate reduce is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[4]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_autograd.py:620: RuntimeError</failure></testcase><testcase classname="python.tests.test_autograd.TestAutograd" name="test_slice_update_multiply_vjp" time="0.001"><failure message="RuntimeError: [omarchy] SliceUpdate reduce is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[4]). No CPU fallback is available in Omarchy builds.">self = &lt;test_autograd.TestAutograd testMethod=test_slice_update_multiply_vjp&gt;
+
+    def test_slice_update_multiply_vjp(self):
+        def fun(src, updates):
+            x = src.at[1:3].multiply(updates)
+            return x
+    
+        cotan = mx.array([4.0, 5.0, 6.0, 7.0])
+        updates = mx.array([[2.0, 3.0]])
+        _, vjps = mx.vjp(fun, [mx.array([1.0, 2.0, 3.0, 4.0]), updates], [cotan])
+&gt;       mx.eval(vjps)
+E       RuntimeError: [omarchy] SliceUpdate reduce is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[4]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_autograd.py:653: RuntimeError</failure></testcase><testcase classname="python.tests.test_autograd.TestAutograd" name="test_sort_grad" time="0.004"><failure message="RuntimeError: [omarchy] non-suffix ArgSort is not implemented for the Omarchy Vulkan backend (dtype=uint32, shape=[4,6]). No CPU fallback is available in Omarchy builds.">self = &lt;test_autograd.TestAutograd testMethod=test_sort_grad&gt;
+
+    def test_sort_grad(self):
+        # Sort permutes the input, so its vjp must scatter the cotangents back
+        # to the original positions (the transpose of the permutation), not
+        # gather them forward. A non-involutive permutation exposes the bug.
+        x = mx.array([3.0, 1.0, 2.0, 5.0, 4.0])
+        cotan = mx.array([10.0, 20.0, 30.0, 40.0, 50.0])
+        grad = mx.vjp(lambda a: mx.sort(a), (x,), (cotan,))[1][0]
+        self.assertTrue(mx.array_equal(grad, mx.array([30.0, 10.0, 20.0, 50.0, 40.0])))
+    
+        # vjp must be the transpose of the jvp (adjoint test) along each axis.
+        mx.random.seed(0)
+        for axis in (0, 1, -1):
+            a = mx.random.normal((4, 6))
+            v = mx.random.normal(a.shape)
+            w = mx.random.normal(a.shape)
+            jv = mx.jvp(lambda z: mx.sort(z, axis=axis), (a,), (v,))[1][0]
+            jtw = mx.vjp(lambda z: mx.sort(z, axis=axis), (a,), (w,))[1][0]
+            self.assertAlmostEqual(
+&gt;               mx.sum(w * jv).item(), mx.sum(v * jtw).item(), places=4
+                ^^^^^^^^^^^^^^^^^^^^^
+            )
+E           RuntimeError: [omarchy] non-suffix ArgSort is not implemented for the Omarchy Vulkan backend (dtype=uint32, shape=[4,6]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_autograd.py:1005: RuntimeError</failure></testcase><testcase classname="python.tests.test_autograd.TestAutograd" name="test_split_against_slice" time="0.004"><failure message="RuntimeError: [omarchy] non-contiguous Multiply is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[100,100]). No CPU fallback is available in Omarchy builds.">self = &lt;test_autograd.TestAutograd testMethod=test_split_against_slice&gt;
+
+    def test_split_against_slice(self):
+        def f_split(x):
+            a, _, b = x.split(3, -1)
+            return (a * b).sum()
+    
+        def f_slice(x):
+            step = x.shape[-1] // 3
+            a = x[..., :step]
+            b = x[..., -step:]
+            return (a * b).sum()
+    
+        x = mx.random.uniform(shape=(100, 300))
+        mx.eval(x)
+    
+        df1 = mx.grad(f_split)
+        df2 = mx.grad(f_slice)
+    
+&gt;       self.assertTrue(mx.allclose(df1(x), df2(x)))
+E       RuntimeError: [omarchy] non-contiguous Multiply is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[100,100]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_autograd.py:675: RuntimeError</failure></testcase><testcase classname="python.tests.test_autograd.TestAutograd" name="test_stop_gradient" time="0.006" /><testcase classname="python.tests.test_autograd.TestAutograd" name="test_stop_gradient_computed_indices" time="0.002"><failure message="RuntimeError: [omarchy] Scatter Sum dtype is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[4]). No CPU fallback is available in Omarchy builds.">self = &lt;test_autograd.TestAutograd testMethod=test_stop_gradient_computed_indices&gt;
+
+    def test_stop_gradient_computed_indices(self):
+        def gather_fun(w):
+            idx = mx.stop_gradient(mx.argsort(w)[:2])
+            return mx.take(w, idx).sum()
+    
+        grad = mx.grad(gather_fun)(mx.array([4.0, 3.0, 2.0, 1.0]))
+&gt;       self.assertTrue(mx.array_equal(grad, mx.array([0.0, 0.0, 1.0, 1.0])))
+E       RuntimeError: [omarchy] Scatter Sum dtype is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[4]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_autograd.py:490: RuntimeError</failure></testcase><testcase classname="python.tests.test_autograd.TestAutograd" name="test_take_along_axis_complex_vjp" time="0.001"><failure message="RuntimeError: [omarchy] ScatterAxis dtype is not implemented for the Omarchy Vulkan backend (dtype=complex64, shape=[4]). No CPU fallback is available in Omarchy builds.">self = &lt;test_autograd.TestAutograd testMethod=test_take_along_axis_complex_vjp&gt;
+
+    def test_take_along_axis_complex_vjp(self):
+        x = mx.zeros((4,), dtype=mx.complex64)
+        indices = mx.array([3, 3], dtype=mx.int32)
+        cotangent = mx.array([1 + 2j, 3 + 4j], dtype=mx.complex64)
+        _, (gradient,) = mx.vjp(
+            lambda z: mx.take_along_axis(z, indices, axis=0),
+            [x],
+            [cotangent],
+        )
+&gt;       mx.eval(gradient)
+E       RuntimeError: [omarchy] ScatterAxis dtype is not implemented for the Omarchy Vulkan backend (dtype=complex64, shape=[4]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_autograd.py:531: RuntimeError</failure></testcase><testcase classname="python.tests.test_autograd.TestAutograd" name="test_topk_grad" time="0.001" /><testcase classname="python.tests.test_autograd.TestAutograd" name="test_update_state" time="0.002" /><testcase classname="python.tests.test_autograd.TestAutograd" name="test_vjp" time="0.003" /><testcase classname="python.tests.test_autograd.TestAutograd" name="test_vjp_types" time="0.001" /></testsuite></testsuites>

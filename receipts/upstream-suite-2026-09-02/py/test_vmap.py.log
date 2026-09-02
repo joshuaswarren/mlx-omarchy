@@ -1,0 +1,884 @@
+============================= test session starts ==============================
+collecting ... collected 30 items
+
+.work/mlx/python/tests/test_vmap.py::TestVmap::test_basics PASSED        [  3%]
+.work/mlx/python/tests/test_vmap.py::TestVmap::test_binary 
+.work/mlx/python/tests/test_vmap.py::TestVmap::test_binary PASSED        [  6%]
+.work/mlx/python/tests/test_vmap.py::TestVmap::test_broadcast_axes_vmap FAILED [ 10%]
+.work/mlx/python/tests/test_vmap.py::TestVmap::test_leaks PASSED         [ 13%]
+.work/mlx/python/tests/test_vmap.py::TestVmap::test_mismatch_input_sizes PASSED [ 16%]
+.work/mlx/python/tests/test_vmap.py::TestVmap::test_tree PASSED          [ 20%]
+.work/mlx/python/tests/test_vmap.py::TestVmap::test_unary 
+.work/mlx/python/tests/test_vmap.py::TestVmap::test_unary PASSED         [ 23%]
+.work/mlx/python/tests/test_vmap.py::TestVmap::test_vmap_argreduce FAILED [ 26%]
+.work/mlx/python/tests/test_vmap.py::TestVmap::test_vmap_argsort FAILED  [ 30%]
+.work/mlx/python/tests/test_vmap.py::TestVmap::test_vmap_concatenate FAILED [ 33%]
+.work/mlx/python/tests/test_vmap.py::TestVmap::test_vmap_const_func FAILED [ 36%]
+.work/mlx/python/tests/test_vmap.py::TestVmap::test_vmap_conv FAILED     [ 40%]
+.work/mlx/python/tests/test_vmap.py::TestVmap::test_vmap_flatten PASSED  [ 43%]
+.work/mlx/python/tests/test_vmap.py::TestVmap::test_vmap_gather FAILED   [ 46%]
+.work/mlx/python/tests/test_vmap.py::TestVmap::test_vmap_indexing FAILED [ 50%]
+.work/mlx/python/tests/test_vmap.py::TestVmap::test_vmap_inverse FAILED  [ 53%]
+.work/mlx/python/tests/test_vmap.py::TestVmap::test_vmap_masked_scatter FAILED [ 56%]
+.work/mlx/python/tests/test_vmap.py::TestVmap::test_vmap_matmul FAILED   [ 60%]
+.work/mlx/python/tests/test_vmap.py::TestVmap::test_vmap_mean PASSED     [ 63%]
+.work/mlx/python/tests/test_vmap.py::TestVmap::test_vmap_pad FAILED      [ 66%]
+.work/mlx/python/tests/test_vmap.py::TestVmap::test_vmap_partition FAILED [ 70%]
+.work/mlx/python/tests/test_vmap.py::TestVmap::test_vmap_put_along_axis PASSED [ 73%]
+.work/mlx/python/tests/test_vmap.py::TestVmap::test_vmap_reduce FAILED   [ 76%]
+.work/mlx/python/tests/test_vmap.py::TestVmap::test_vmap_scatter FAILED  [ 80%]
+.work/mlx/python/tests/test_vmap.py::TestVmap::test_vmap_sort FAILED     [ 83%]
+.work/mlx/python/tests/test_vmap.py::TestVmap::test_vmap_split_vmap PASSED [ 86%]
+.work/mlx/python/tests/test_vmap.py::TestVmap::test_vmap_svd FAILED      [ 90%]
+.work/mlx/python/tests/test_vmap.py::TestVmap::test_vmap_take_along_axis PASSED [ 93%]
+.work/mlx/python/tests/test_vmap.py::TestVmap::test_vmap_topk FAILED     [ 96%]
+.work/mlx/python/tests/test_vmap.py::TestVmap::test_vmap_types FAILED    [100%]
+
+=================================== FAILURES ===================================
+______________________ TestVmap.test_binary (op='equal') _______________________
+
+self = <test_vmap.TestVmap testMethod=test_binary>
+
+    def test_binary(self):
+        ops = [
+            "add",
+            "divide",
+            "equal",
+            "greater",
+            "greater_equal",
+            "less",
+            "less_equal",
+            "logaddexp",
+            "maximum",
+            "minimum",
+            "multiply",
+            "power",
+            "subtract",
+            "logical_or",
+            "logical_and",
+        ]
+        for opname in ops:
+            with self.subTest(op=opname):
+                op = getattr(mx, opname)
+                x = mx.random.uniform(shape=(5,))
+                y = mx.random.uniform(shape=(5,))
+                out = mx.vmap(op)(x, y)
+>               self.assertTrue(mx.array_equal(out, op(x, y)))
+E               RuntimeError: [omarchy] Equal dtype is not implemented for the Omarchy Vulkan backend (dtype=bool, shape=[5]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_vmap.py:94: RuntimeError
+_____________________ TestVmap.test_binary (op='greater') ______________________
+
+self = <test_vmap.TestVmap testMethod=test_binary>
+
+    def test_binary(self):
+        ops = [
+            "add",
+            "divide",
+            "equal",
+            "greater",
+            "greater_equal",
+            "less",
+            "less_equal",
+            "logaddexp",
+            "maximum",
+            "minimum",
+            "multiply",
+            "power",
+            "subtract",
+            "logical_or",
+            "logical_and",
+        ]
+        for opname in ops:
+            with self.subTest(op=opname):
+                op = getattr(mx, opname)
+                x = mx.random.uniform(shape=(5,))
+                y = mx.random.uniform(shape=(5,))
+                out = mx.vmap(op)(x, y)
+>               self.assertTrue(mx.array_equal(out, op(x, y)))
+E               RuntimeError: [omarchy] Equal dtype is not implemented for the Omarchy Vulkan backend (dtype=bool, shape=[5]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_vmap.py:94: RuntimeError
+__________________ TestVmap.test_binary (op='greater_equal') ___________________
+
+self = <test_vmap.TestVmap testMethod=test_binary>
+
+    def test_binary(self):
+        ops = [
+            "add",
+            "divide",
+            "equal",
+            "greater",
+            "greater_equal",
+            "less",
+            "less_equal",
+            "logaddexp",
+            "maximum",
+            "minimum",
+            "multiply",
+            "power",
+            "subtract",
+            "logical_or",
+            "logical_and",
+        ]
+        for opname in ops:
+            with self.subTest(op=opname):
+                op = getattr(mx, opname)
+                x = mx.random.uniform(shape=(5,))
+                y = mx.random.uniform(shape=(5,))
+                out = mx.vmap(op)(x, y)
+>               self.assertTrue(mx.array_equal(out, op(x, y)))
+E               RuntimeError: [omarchy] GreaterEqual dtype is not implemented for the Omarchy Vulkan backend (dtype=bool, shape=[5]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_vmap.py:94: RuntimeError
+_______________________ TestVmap.test_binary (op='less') _______________________
+
+self = <test_vmap.TestVmap testMethod=test_binary>
+
+    def test_binary(self):
+        ops = [
+            "add",
+            "divide",
+            "equal",
+            "greater",
+            "greater_equal",
+            "less",
+            "less_equal",
+            "logaddexp",
+            "maximum",
+            "minimum",
+            "multiply",
+            "power",
+            "subtract",
+            "logical_or",
+            "logical_and",
+        ]
+        for opname in ops:
+            with self.subTest(op=opname):
+                op = getattr(mx, opname)
+                x = mx.random.uniform(shape=(5,))
+                y = mx.random.uniform(shape=(5,))
+                out = mx.vmap(op)(x, y)
+>               self.assertTrue(mx.array_equal(out, op(x, y)))
+E               RuntimeError: [omarchy] Equal dtype is not implemented for the Omarchy Vulkan backend (dtype=bool, shape=[5]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_vmap.py:94: RuntimeError
+____________________ TestVmap.test_binary (op='less_equal') ____________________
+
+self = <test_vmap.TestVmap testMethod=test_binary>
+
+    def test_binary(self):
+        ops = [
+            "add",
+            "divide",
+            "equal",
+            "greater",
+            "greater_equal",
+            "less",
+            "less_equal",
+            "logaddexp",
+            "maximum",
+            "minimum",
+            "multiply",
+            "power",
+            "subtract",
+            "logical_or",
+            "logical_and",
+        ]
+        for opname in ops:
+            with self.subTest(op=opname):
+                op = getattr(mx, opname)
+                x = mx.random.uniform(shape=(5,))
+                y = mx.random.uniform(shape=(5,))
+                out = mx.vmap(op)(x, y)
+>               self.assertTrue(mx.array_equal(out, op(x, y)))
+E               RuntimeError: [omarchy] Equal dtype is not implemented for the Omarchy Vulkan backend (dtype=bool, shape=[5]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_vmap.py:94: RuntimeError
+____________________ TestVmap.test_binary (op='logical_or') ____________________
+
+self = <test_vmap.TestVmap testMethod=test_binary>
+
+    def test_binary(self):
+        ops = [
+            "add",
+            "divide",
+            "equal",
+            "greater",
+            "greater_equal",
+            "less",
+            "less_equal",
+            "logaddexp",
+            "maximum",
+            "minimum",
+            "multiply",
+            "power",
+            "subtract",
+            "logical_or",
+            "logical_and",
+        ]
+        for opname in ops:
+            with self.subTest(op=opname):
+                op = getattr(mx, opname)
+                x = mx.random.uniform(shape=(5,))
+                y = mx.random.uniform(shape=(5,))
+                out = mx.vmap(op)(x, y)
+>               self.assertTrue(mx.array_equal(out, op(x, y)))
+E               RuntimeError: [omarchy] dtype converting copy is not implemented for the Omarchy Vulkan backend (dtype=bool, shape=[5]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_vmap.py:94: RuntimeError
+___________________ TestVmap.test_binary (op='logical_and') ____________________
+
+self = <test_vmap.TestVmap testMethod=test_binary>
+
+    def test_binary(self):
+        ops = [
+            "add",
+            "divide",
+            "equal",
+            "greater",
+            "greater_equal",
+            "less",
+            "less_equal",
+            "logaddexp",
+            "maximum",
+            "minimum",
+            "multiply",
+            "power",
+            "subtract",
+            "logical_or",
+            "logical_and",
+        ]
+        for opname in ops:
+            with self.subTest(op=opname):
+                op = getattr(mx, opname)
+                x = mx.random.uniform(shape=(5,))
+                y = mx.random.uniform(shape=(5,))
+                out = mx.vmap(op)(x, y)
+>               self.assertTrue(mx.array_equal(out, op(x, y)))
+E               RuntimeError: [omarchy] dtype converting copy is not implemented for the Omarchy Vulkan backend (dtype=bool, shape=[5]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_vmap.py:94: RuntimeError
+______________________ TestVmap.test_broadcast_axes_vmap _______________________
+
+self = <test_vmap.TestVmap testMethod=test_broadcast_axes_vmap>
+
+    def test_broadcast_axes_vmap(self):
+        # Broadcast axes requires shapeless compile to properly test
+    
+        counter = [0]
+    
+        def fn(x, y):
+            counter[0] += 1
+            return mx.matmul(x, y)
+    
+        x = mx.random.normal((2, 3, 1, 4, 5))
+        y = mx.random.normal((1, 2, 5, 6))
+        z = mx.random.normal((3, 2, 1, 4, 5))
+        w = mx.random.normal((2, 3, 5, 6))
+    
+        vmap_fn = mx.vmap(fn, in_axes=(0, 1))
+        cvmap_fn = mx.compile(vmap_fn, shapeless=True)
+    
+        expected = vmap_fn(x, y)
+        out = cvmap_fn(x, y)
+>       self.assertTrue(mx.array_equal(expected, out))
+E       RuntimeError: [omarchy] And rank above 4 is not implemented for the Omarchy Vulkan backend (dtype=bool, shape=[1,1,1,1,1]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_vmap.py:1000: RuntimeError
+______________________ TestVmap.test_unary (op='erfinv') _______________________
+
+self = <test_vmap.TestVmap testMethod=test_unary>
+
+    def test_unary(self):
+        ops = [
+            "abs",
+            "cos",
+            "erf",
+            "erfinv",
+            "exp",
+            "log",
+            "log1p",
+            "log2",
+            "log10",
+            "logical_not",
+            "negative",
+            "reciprocal",
+            "rsqrt",
+            "sigmoid",
+            "sign",
+            "sin",
+            "sqrt",
+            "square",
+            "degrees",
+            "radians",
+        ]
+        for opname in ops:
+            with self.subTest(op=opname):
+                op = getattr(mx, opname)
+                x = mx.arange(5)
+                y = mx.vmap(op)(x)
+>               self.assertTrue(mx.array_equal(y, op(x), equal_nan=True))
+E               AssertionError: array(False, dtype=bool) is not true
+
+.work/mlx/python/tests/test_vmap.py:61: AssertionError
+____________________ TestVmap.test_unary (op='logical_not') ____________________
+
+self = <test_vmap.TestVmap testMethod=test_unary>
+
+    def test_unary(self):
+        ops = [
+            "abs",
+            "cos",
+            "erf",
+            "erfinv",
+            "exp",
+            "log",
+            "log1p",
+            "log2",
+            "log10",
+            "logical_not",
+            "negative",
+            "reciprocal",
+            "rsqrt",
+            "sigmoid",
+            "sign",
+            "sin",
+            "sqrt",
+            "square",
+            "degrees",
+            "radians",
+        ]
+        for opname in ops:
+            with self.subTest(op=opname):
+                op = getattr(mx, opname)
+                x = mx.arange(5)
+                y = mx.vmap(op)(x)
+>               self.assertTrue(mx.array_equal(y, op(x), equal_nan=True))
+E               RuntimeError: [omarchy] dtype converting copy is not implemented for the Omarchy Vulkan backend (dtype=bool, shape=[5]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_vmap.py:61: RuntimeError
+_____________________ TestVmap.test_unary (op='negative') ______________________
+
+self = <test_vmap.TestVmap testMethod=test_unary>
+
+    def test_unary(self):
+        ops = [
+            "abs",
+            "cos",
+            "erf",
+            "erfinv",
+            "exp",
+            "log",
+            "log1p",
+            "log2",
+            "log10",
+            "logical_not",
+            "negative",
+            "reciprocal",
+            "rsqrt",
+            "sigmoid",
+            "sign",
+            "sin",
+            "sqrt",
+            "square",
+            "degrees",
+            "radians",
+        ]
+        for opname in ops:
+            with self.subTest(op=opname):
+                op = getattr(mx, opname)
+                x = mx.arange(5)
+                y = mx.vmap(op)(x)
+>               self.assertTrue(mx.array_equal(y, op(x), equal_nan=True))
+E               RuntimeError: [omarchy] Negative dtype is not implemented for the Omarchy Vulkan backend (dtype=int32, shape=[5]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_vmap.py:61: RuntimeError
+______________________ TestVmap.test_unary (op='square') _______________________
+
+self = <test_vmap.TestVmap testMethod=test_unary>
+
+    def test_unary(self):
+        ops = [
+            "abs",
+            "cos",
+            "erf",
+            "erfinv",
+            "exp",
+            "log",
+            "log1p",
+            "log2",
+            "log10",
+            "logical_not",
+            "negative",
+            "reciprocal",
+            "rsqrt",
+            "sigmoid",
+            "sign",
+            "sin",
+            "sqrt",
+            "square",
+            "degrees",
+            "radians",
+        ]
+        for opname in ops:
+            with self.subTest(op=opname):
+                op = getattr(mx, opname)
+                x = mx.arange(5)
+                y = mx.vmap(op)(x)
+>               self.assertTrue(mx.array_equal(y, op(x), equal_nan=True))
+E               RuntimeError: [omarchy] Square dtype is not implemented for the Omarchy Vulkan backend (dtype=int32, shape=[5]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_vmap.py:61: RuntimeError
+_________________________ TestVmap.test_vmap_argreduce _________________________
+
+self = <test_vmap.TestVmap testMethod=test_vmap_argreduce>
+
+    def test_vmap_argreduce(self):
+        a = mx.array([[1, 2, 3], [2, 3, 1]])
+        out = mx.vmap(lambda x: mx.argmin(x))(a)
+        expected = mx.array([0, 2])
+>       self.assertTrue(mx.array_equal(out, expected))
+E       RuntimeError: [omarchy] ArgMin dtype is not implemented for the Omarchy Vulkan backend (dtype=uint32, shape=[2,1]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_vmap.py:249: RuntimeError
+__________________________ TestVmap.test_vmap_argsort __________________________
+
+self = <test_vmap.TestVmap testMethod=test_vmap_argsort>
+
+    def test_vmap_argsort(self):
+        a = mx.random.uniform(shape=(3, 5))
+        expected = mx.stack([mx.argsort(a[:, i]) for i in range(a.shape[1])], axis=1)
+        for axis in (0, -1):
+            out = mx.vmap(lambda x: mx.argsort(x, axis=axis), in_axes=1, out_axes=1)(a)
+>           self.assertTrue(mx.array_equal(out, expected))
+E           RuntimeError: [omarchy] non-suffix ArgSort is not implemented for the Omarchy Vulkan backend (dtype=uint32, shape=[3,5]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_vmap.py:1038: RuntimeError
+________________________ TestVmap.test_vmap_concatenate ________________________
+
+self = <test_vmap.TestVmap testMethod=test_vmap_concatenate>
+
+    def test_vmap_concatenate(self):
+        x = mx.random.uniform(shape=(2, 2, 2))
+    
+        def cat_fun(x, y):
+            return mx.concatenate([x, y], axis=1)
+    
+        def cat_constant(x):
+            y = mx.ones((2, 1))
+            return mx.concatenate([x, y], 1)
+    
+        out = mx.vmap(cat_fun, in_axes=(0, 2))(x, x)
+        target = mx.stack(
+            [mx.concatenate([x[i], x[:, :, i]], axis=1) for i in range(2)]
+        )
+>       self.assertTrue(mx.array_equal(out, target))
+E       RuntimeError: [omarchy] matrix layout Take is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[1,2,2]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_vmap.py:650: RuntimeError
+________________________ TestVmap.test_vmap_const_func _________________________
+
+self = <test_vmap.TestVmap testMethod=test_vmap_const_func>
+
+    def test_vmap_const_func(self):
+        a = mx.random.uniform(shape=(2, 3, 4))
+        b = mx.random.uniform(shape=(4, 3))
+    
+        def const_func(a, b):
+            return mx.array(2)
+    
+        out = mx.vmap(const_func, in_axes=(0, None))(a, b)
+>       self.assertTrue(mx.array_equal(mx.full((2,), 2), out))
+E       RuntimeError: [omarchy] non-zero scalar fill is not implemented for the Omarchy Vulkan backend (dtype=int32, shape=[2]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_vmap.py:624: RuntimeError
+___________________________ TestVmap.test_vmap_conv ____________________________
+
+self = <test_vmap.TestVmap testMethod=test_vmap_conv>
+
+    def test_vmap_conv(self):
+        # vmap input only
+        x = mx.random.uniform(shape=(2, 2, 5, 4))
+        w = mx.random.uniform(shape=(8, 3, 4))
+    
+        expected = mx.stack([mx.conv1d(xi, w) for xi in x])
+        out = mx.vmap(mx.conv1d, in_axes=(0, None))(x, w)
+>       self.assertTrue(mx.allclose(expected, out))
+E       RuntimeError: [omarchy] non-2D Convolution is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[2,3,8]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_vmap.py:767: RuntimeError
+__________________________ TestVmap.test_vmap_gather ___________________________
+
+self = <test_vmap.TestVmap testMethod=test_vmap_gather>
+
+    def test_vmap_gather(self):
+        def gather(a, idx):
+            return a[idx]
+    
+        a = mx.array([[1, 2], [3, 4]])
+        idx = mx.array(0)
+        out = mx.vmap(gather, (0, None))(a, idx)
+>       self.assertTrue(mx.array_equal(out, mx.array([1, 3])))
+E       RuntimeError: [omarchy] non-axis-0 Take is not implemented for the Omarchy Vulkan backend (dtype=int32, shape=[2,1]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_vmap.py:486: RuntimeError
+_________________________ TestVmap.test_vmap_indexing __________________________
+
+self = <test_vmap.TestVmap testMethod=test_vmap_indexing>
+
+    def test_vmap_indexing(self):
+        x = mx.arange(16).reshape(2, 2, 2, 2)
+        inds = mx.array([[0, 1, 0], [1, 1, 0]])
+    
+        out = mx.vmap(lambda x, y: x[y], in_axes=(0, 0))(x, inds)
+        expected = mx.array(
+            [
+                [[[0, 1], [2, 3]], [[4, 5], [6, 7]], [[0, 1], [2, 3]]],
+                [[[12, 13], [14, 15]], [[12, 13], [14, 15]], [[8, 9], [10, 11]]],
+            ]
+        )
+>       self.assertTrue(mx.array_equal(out, expected))
+E       RuntimeError: [omarchy] non-axis-0 Take is not implemented for the Omarchy Vulkan backend (dtype=int32, shape=[2,3,1,1,2,2]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_vmap.py:178: RuntimeError
+__________________________ TestVmap.test_vmap_inverse __________________________
+
+self = <test_vmap.TestVmap testMethod=test_vmap_inverse>
+
+    def test_vmap_inverse(self):
+        mx.random.seed(42)
+        a = mx.random.uniform(shape=(3, 4, 4))
+    
+        cpu_inv = lambda x: mx.linalg.inv(x, stream=mx.cpu)
+    
+        # Vmap over the first axis (this is already supported natively by the primitive).
+>       invs = mx.vmap(cpu_inv, in_axes=(0,))(a)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.work/mlx/python/tests/test_vmap.py:456: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+x = <[RuntimeError('[eval] Attempting to eval an array without a primitive.\nIf you are compiling a function, make sure al...ease file an issue here:\nhttps://github.com/ml-explore/mlx/issues.') raised in repr()] array object at 0x7e0a30745540>
+
+>   cpu_inv = lambda x: mx.linalg.inv(x, stream=mx.cpu)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   IndexError: vector::_M_range_check: __n (which is 0) >= this->size() (which is 0)
+
+.work/mlx/python/tests/test_vmap.py:453: IndexError
+______________________ TestVmap.test_vmap_masked_scatter _______________________
+
+self = <test_vmap.TestVmap testMethod=test_vmap_masked_scatter>
+
+    def test_vmap_masked_scatter(self):
+        def scatter_fn(x, m, src):
+            x[m] = src
+            return x
+    
+        # Batched sources
+        a = mx.array([[10, 20, 30, 40], [50, 60, 70, 80]])
+        mask = mx.array([[False, True, True, True], [True, False, True, True]])
+        src = mx.array([[1, 2, 3], [4, 5, 6]])
+    
+        expected = mx.array([[10, 1, 2, 3], [4, 60, 5, 6]])
+        vmap_scatter = mx.vmap(scatter_fn, in_axes=(0, 0, 0))
+        out = vmap_scatter(a, mask, src)
+        self.assertTrue(mx.array_equal(expected, out))
+    
+        # Shared source across batch (matching mask populations)
+        a = mx.array([[0, 0, 0], [5, 5, 5]])
+        mask = mx.array([[True, False, True], [False, True, True]])
+        src = mx.array([9, 8])
+    
+        expected = mx.array([[9, 0, 8], [5, 9, 8]])
+        vmap_scatter = mx.vmap(scatter_fn, in_axes=(0, 0, None))
+        out = vmap_scatter(a, mask, src)
+>       self.assertTrue(mx.array_equal(expected, out))
+E       RuntimeError: [omarchy] non-zero scalar fill is not implemented for the Omarchy Vulkan backend (dtype=int32, shape=[2,2]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_vmap.py:917: RuntimeError
+__________________________ TestVmap.test_vmap_matmul ___________________________
+
+self = <test_vmap.TestVmap testMethod=test_vmap_matmul>
+
+    def test_vmap_matmul(self):
+        a = mx.random.uniform(shape=(2, 3, 4))
+        b = mx.random.uniform(shape=(4, 3))
+    
+        # matmul
+        out = mx.vmap(mx.matmul, in_axes=(0, None))(a, b)
+        self.assertTrue(mx.allclose(out, a @ b))
+    
+        # addmm
+        c = mx.random.uniform(shape=(3,))
+        out = mx.vmap(mx.addmm, in_axes=(None, 0, None))(c, a, b)
+        self.assertTrue(mx.allclose(out, mx.addmm(c, a, b)))
+    
+        b = mx.random.uniform(shape=(4, 2))
+    
+        # matmul
+        out = mx.vmap(mx.matmul, in_axes=(1, None), out_axes=(1,))(a, b)
+        expected = mx.moveaxis(mx.moveaxis(a, 1, 0) @ b, 0, 1)
+        self.assertTrue(mx.allclose(out, expected))
+    
+        # addmm
+        c = mx.random.uniform(shape=(2,))
+        out = mx.vmap(mx.addmm, in_axes=(None, 1, None))(c, a, b)
+        self.assertTrue(mx.allclose(out, mx.addmm(c, mx.moveaxis(a, 1, 0), b)))
+    
+        a = mx.random.uniform(shape=(2, 3, 4))
+        b = mx.random.uniform(shape=(4, 2, 3))
+    
+        # matmul
+        out = mx.vmap(mx.matmul, in_axes=(0, 1))(a, b)
+        expected = a @ mx.moveaxis(b, 1, 0)
+        self.assertTrue(mx.allclose(out, expected))
+    
+        # addmm
+        c = mx.random.uniform(shape=(3, 3, 2))
+        out = mx.vmap(mx.addmm, in_axes=(2, 0, 1))(c, a, b)
+        expected = mx.addmm(mx.moveaxis(c, 2, 0), a, mx.moveaxis(b, 1, 0))
+>       self.assertTrue(mx.allclose(out, expected))
+E       RuntimeError: [omarchy] broadcast AddMM is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[2,3,3]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_vmap.py:393: RuntimeError
+____________________________ TestVmap.test_vmap_pad ____________________________
+
+self = <test_vmap.TestVmap testMethod=test_vmap_pad>
+
+    def test_vmap_pad(self):
+        def pad2d(x, value=0.0):
+            return mx.pad(x, ((1, 2), (0, 1)), constant_values=value)
+    
+        x = mx.arange(24, dtype=mx.float32).reshape(2, 3, 4)
+    
+        expected = mx.stack([pad2d(xi) for xi in x])
+        out = mx.vmap(pad2d, in_axes=0)(x)
+        self.assertTrue(mx.array_equal(out, expected))
+    
+        expected = mx.stack([pad2d(x[:, i, :]) for i in range(x.shape[1])])
+        out = mx.vmap(pad2d, in_axes=1)(x)
+        self.assertTrue(mx.array_equal(out, expected))
+    
+        expected = mx.stack([pad2d(x[:, :, i]) for i in range(x.shape[2])], axis=2)
+        out = mx.vmap(pad2d, in_axes=-1, out_axes=-1)(x)
+        self.assertTrue(mx.array_equal(out, expected))
+    
+        nested = mx.vmap(mx.vmap(lambda y: mx.pad(y, (1, 1))))
+        out = nested(x)
+        expected = mx.pad(x, ((0, 0), (0, 0), (1, 1)))
+        self.assertTrue(mx.array_equal(out, expected))
+    
+        out = mx.vmap(
+            lambda a, v: mx.pad(a, ((1, 1), (1, 1)), constant_values=v),
+            in_axes=(0, None),
+        )(x, mx.array(5.0))
+        expected = mx.stack(
+            [mx.pad(xi, ((1, 1), (1, 1)), constant_values=mx.array(5.0)) for xi in x]
+        )
+>       self.assertTrue(mx.array_equal(out, expected))
+E       RuntimeError: [omarchy] non-zero fill is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[5,6]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_vmap.py:841: RuntimeError
+_________________________ TestVmap.test_vmap_partition _________________________
+
+self = <test_vmap.TestVmap testMethod=test_vmap_partition>
+
+    def test_vmap_partition(self):
+        # Distinct values so each lane has a single valid kth element
+        a = mx.random.permutation(2 * 3 * 4).reshape(2, 3, 4).astype(mx.float32)
+    
+        for in_axis in (0, 1, 2):
+            slices = self._unstack(a, in_axis)
+            # Axis of the batched output that the inner axis maps onto
+            out_axes_map = [d for d in range(a.ndim) if d != in_axis]
+            for axis in (0, 1, -1):
+                oaxis = out_axes_map[axis if axis >= 0 else axis + 2]
+                for kth in range(slices[0].shape[axis]):
+                    expected = mx.stack(
+                        [mx.partition(x, kth, axis=axis) for x in slices],
+                        axis=in_axis,
+                    )
+                    pivot = mx.take(expected, mx.array([kth]), axis=oaxis)
+    
+                    out = mx.vmap(
+                        lambda x: mx.partition(x, kth, axis=axis),
+                        in_axes=in_axis,
+                        out_axes=in_axis,
+                    )(a)
+                    self.assertEqual(out.shape, expected.shape)
+                    # partition only pins the kth element; the two sides are
+                    # an arbitrary permutation, so compare against the sorted
+                    # input rather than element-wise.
+>                   self.assertTrue(
+                        mx.array_equal(mx.sort(out, axis=oaxis), mx.sort(a, axis=oaxis))
+                    )
+E                   RuntimeError: [omarchy] ArgSort dtype is not implemented for the Omarchy Vulkan backend (dtype=uint32, shape=[24]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_vmap.py:284: RuntimeError
+__________________________ TestVmap.test_vmap_reduce ___________________________
+
+self = <test_vmap.TestVmap testMethod=test_vmap_reduce>
+
+    def test_vmap_reduce(self):
+        a = mx.ones((5, 5), mx.int32)
+        out = mx.vmap(lambda x: x.sum())(a)
+>       self.assertTrue(mx.array_equal(out, mx.full((5,), 5)))
+E       RuntimeError: [omarchy] non-zero scalar fill is not implemented for the Omarchy Vulkan backend (dtype=int32, shape=[5,5]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_vmap.py:225: RuntimeError
+__________________________ TestVmap.test_vmap_scatter __________________________
+
+self = <test_vmap.TestVmap testMethod=test_vmap_scatter>
+
+    def test_vmap_scatter(self):
+        def scatter(a):
+            a[mx.array(0)] = mx.array(0.0)
+            return a
+    
+        a = mx.array([[1.0, 2.0, 3.0], [2.0, 3.0, 4.0]])
+        out = mx.vmap(scatter)(a)
+        expected = mx.array([[0.0, 2.0, 3.0], [0.0, 3.0, 4.0]])
+>       self.assertTrue(mx.allclose(out, expected))
+E       RuntimeError: [omarchy] multi-index Scatter is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[2,3]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_vmap.py:532: RuntimeError
+___________________________ TestVmap.test_vmap_sort ____________________________
+
+self = <test_vmap.TestVmap testMethod=test_vmap_sort>
+
+    def test_vmap_sort(self):
+        a = mx.random.uniform(shape=(3, 5))
+        expected = mx.stack([mx.sort(a[:, i]) for i in range(a.shape[1])], axis=1)
+        for axis in (0, -1):
+            out = mx.vmap(lambda x: mx.sort(x, axis=axis), in_axes=1, out_axes=1)(a)
+>           self.assertTrue(mx.array_equal(out, expected))
+E           RuntimeError: [omarchy] non-suffix Sort is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[3,5]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_vmap.py:1031: RuntimeError
+____________________________ TestVmap.test_vmap_svd ____________________________
+
+self = <test_vmap.TestVmap testMethod=test_vmap_svd>
+
+    def test_vmap_svd(self):
+        a = mx.random.uniform(shape=(3, 4, 2))
+    
+        cpu_svd_full = lambda x: mx.linalg.svd(x, compute_uv=True, stream=mx.cpu)
+        cpu_svd_singular = lambda x: mx.linalg.svd(x, compute_uv=False, stream=mx.cpu)
+    
+        # Vmap over the first axis (this is already supported natively by the primitive).
+>       Us, Ss, Vts = mx.vmap(cpu_svd_full, in_axes=(0,))(a)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.work/mlx/python/tests/test_vmap.py:402: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+x = <[RuntimeError('[eval] Attempting to eval an array without a primitive.\nIf you are compiling a function, make sure al...ease file an issue here:\nhttps://github.com/ml-explore/mlx/issues.') raised in repr()] array object at 0x7e0a62fbcd80>
+
+>   cpu_svd_full = lambda x: mx.linalg.svd(x, compute_uv=True, stream=mx.cpu)
+                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   IndexError: vector::_M_range_check: __n (which is 0) >= this->size() (which is 0)
+
+.work/mlx/python/tests/test_vmap.py:398: IndexError
+___________________________ TestVmap.test_vmap_topk ____________________________
+
+self = <test_vmap.TestVmap testMethod=test_vmap_topk>
+
+    def test_vmap_topk(self):
+        a = mx.random.permutation(2 * 3 * 4).reshape(2, 3, 4).astype(mx.float32)
+    
+        for in_axis in (0, 1, 2):
+            slices = self._unstack(a, in_axis)
+            out_axes_map = [d for d in range(a.ndim) if d != in_axis]
+            for axis in (0, 1, -1):
+                oaxis = out_axes_map[axis if axis >= 0 else axis + 2]
+                for k in range(1, slices[0].shape[axis] + 1):
+                    out = mx.vmap(
+                        lambda x: mx.topk(x, k, axis=axis),
+                        in_axes=in_axis,
+                        out_axes=in_axis,
+                    )(a)
+                    expected = mx.stack(
+                        [mx.topk(x, k, axis=axis) for x in slices], axis=in_axis
+                    )
+                    self.assertEqual(out.shape, expected.shape)
+                    # topk does not promise an order within the k elements
+>                   self.assertTrue(
+                        mx.array_equal(
+                            mx.sort(out, axis=oaxis), mx.sort(expected, axis=oaxis)
+                        )
+                    )
+E                   RuntimeError: [omarchy] ArgSort dtype is not implemented for the Omarchy Vulkan backend (dtype=uint32, shape=[24]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_vmap.py:328: RuntimeError
+___________________________ TestVmap.test_vmap_types ___________________________
+
+self = <test_vmap.TestVmap testMethod=test_vmap_types>
+
+    def test_vmap_types(self):
+    
+        from typing import NamedTuple
+    
+        class Vector(tuple):
+            pass
+    
+        class State(NamedTuple):
+            a: mx.array
+            b: mx.array
+    
+        def transform(x: State):
+            return State(x.a + 10, x.b * 10)
+    
+        def transform_tuple(t):
+            return (t[0] + 10, t[1] * 10)
+    
+        def transform_vector(t):
+            return Vector([t[0] + 10, t[1] * 10])
+    
+        x = State(mx.array(1), mx.array(2))
+    
+        vmap_transform = mx.vmap(transform)
+        vmap_transform_tuple = mx.vmap(transform_tuple)
+        vmap_transform_vector = mx.vmap(transform_vector)
+    
+        x_batch_tuple = (mx.array([1, 2, 3]), mx.array([4, 5, 6]))
+        out1 = vmap_transform_tuple(x_batch_tuple)
+    
+        self.assertTrue(isinstance(out1, tuple))
+>       self.assertTrue(mx.array_equal(out1[0], mx.array([11, 12, 13])))
+E       RuntimeError: [omarchy] Add dtype is not implemented for the Omarchy Vulkan backend (dtype=int32, shape=[3]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_vmap.py:879: RuntimeError
+- generated xml file: /home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/py/test_vmap.py.xml -
+=========================== short test summary info ============================
+SUBFAILED(op='equal') .work/mlx/python/tests/test_vmap.py::TestVmap::test_binary - RuntimeError: [omarchy] Equal dtype is not implemented for the Omarchy Vulkan backend (dtype=bool, shape=[5]). No CPU fallback is available in Omarchy builds.
+SUBFAILED(op='greater') .work/mlx/python/tests/test_vmap.py::TestVmap::test_binary - RuntimeError: [omarchy] Equal dtype is not implemented for the Omarchy Vulkan backend (dtype=bool, shape=[5]). No CPU fallback is available in Omarchy builds.
+SUBFAILED(op='greater_equal') .work/mlx/python/tests/test_vmap.py::TestVmap::test_binary - RuntimeError: [omarchy] GreaterEqual dtype is not implemented for the Omarchy Vulkan backend (dtype=bool, shape=[5]). No CPU fallback is available in Omarchy builds.
+SUBFAILED(op='less') .work/mlx/python/tests/test_vmap.py::TestVmap::test_binary - RuntimeError: [omarchy] Equal dtype is not implemented for the Omarchy Vulkan backend (dtype=bool, shape=[5]). No CPU fallback is available in Omarchy builds.
+SUBFAILED(op='less_equal') .work/mlx/python/tests/test_vmap.py::TestVmap::test_binary - RuntimeError: [omarchy] Equal dtype is not implemented for the Omarchy Vulkan backend (dtype=bool, shape=[5]). No CPU fallback is available in Omarchy builds.
+SUBFAILED(op='logical_or') .work/mlx/python/tests/test_vmap.py::TestVmap::test_binary - RuntimeError: [omarchy] dtype converting copy is not implemented for the Omarchy Vulkan backend (dtype=bool, shape=[5]). No CPU fallback is available in Omarchy builds.
+SUBFAILED(op='logical_and') .work/mlx/python/tests/test_vmap.py::TestVmap::test_binary - RuntimeError: [omarchy] dtype converting copy is not implemented for the Omarchy Vulkan backend (dtype=bool, shape=[5]). No CPU fallback is available in Omarchy builds.
+FAILED .work/mlx/python/tests/test_vmap.py::TestVmap::test_broadcast_axes_vmap - RuntimeError: [omarchy] And rank above 4 is not implemented for the Omarchy Vulkan backend (dtype=bool, shape=[1,1,1,1,1]). No CPU fallback is available in Omarchy builds.
+SUBFAILED(op='erfinv') .work/mlx/python/tests/test_vmap.py::TestVmap::test_unary - AssertionError: array(False, dtype=bool) is not true
+SUBFAILED(op='logical_not') .work/mlx/python/tests/test_vmap.py::TestVmap::test_unary - RuntimeError: [omarchy] dtype converting copy is not implemented for the Omarchy Vulkan backend (dtype=bool, shape=[5]). No CPU fallback is available in Omarchy builds.
+SUBFAILED(op='negative') .work/mlx/python/tests/test_vmap.py::TestVmap::test_unary - RuntimeError: [omarchy] Negative dtype is not implemented for the Omarchy Vulkan backend (dtype=int32, shape=[5]). No CPU fallback is available in Omarchy builds.
+SUBFAILED(op='square') .work/mlx/python/tests/test_vmap.py::TestVmap::test_unary - RuntimeError: [omarchy] Square dtype is not implemented for the Omarchy Vulkan backend (dtype=int32, shape=[5]). No CPU fallback is available in Omarchy builds.
+FAILED .work/mlx/python/tests/test_vmap.py::TestVmap::test_vmap_argreduce - RuntimeError: [omarchy] ArgMin dtype is not implemented for the Omarchy Vulkan backend (dtype=uint32, shape=[2,1]). No CPU fallback is available in Omarchy builds.
+FAILED .work/mlx/python/tests/test_vmap.py::TestVmap::test_vmap_argsort - RuntimeError: [omarchy] non-suffix ArgSort is not implemented for the Omarchy Vulkan backend (dtype=uint32, shape=[3,5]). No CPU fallback is available in Omarchy builds.
+FAILED .work/mlx/python/tests/test_vmap.py::TestVmap::test_vmap_concatenate - RuntimeError: [omarchy] matrix layout Take is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[1,2,2]). No CPU fallback is available in Omarchy builds.
+FAILED .work/mlx/python/tests/test_vmap.py::TestVmap::test_vmap_const_func - RuntimeError: [omarchy] non-zero scalar fill is not implemented for the Omarchy Vulkan backend (dtype=int32, shape=[2]). No CPU fallback is available in Omarchy builds.
+FAILED .work/mlx/python/tests/test_vmap.py::TestVmap::test_vmap_conv - RuntimeError: [omarchy] non-2D Convolution is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[2,3,8]). No CPU fallback is available in Omarchy builds.
+FAILED .work/mlx/python/tests/test_vmap.py::TestVmap::test_vmap_gather - RuntimeError: [omarchy] non-axis-0 Take is not implemented for the Omarchy Vulkan backend (dtype=int32, shape=[2,1]). No CPU fallback is available in Omarchy builds.
+FAILED .work/mlx/python/tests/test_vmap.py::TestVmap::test_vmap_indexing - RuntimeError: [omarchy] non-axis-0 Take is not implemented for the Omarchy Vulkan backend (dtype=int32, shape=[2,3,1,1,2,2]). No CPU fallback is available in Omarchy builds.
+FAILED .work/mlx/python/tests/test_vmap.py::TestVmap::test_vmap_inverse - IndexError: vector::_M_range_check: __n (which is 0) >= this->size() (which is 0)
+FAILED .work/mlx/python/tests/test_vmap.py::TestVmap::test_vmap_masked_scatter - RuntimeError: [omarchy] non-zero scalar fill is not implemented for the Omarchy Vulkan backend (dtype=int32, shape=[2,2]). No CPU fallback is available in Omarchy builds.
+FAILED .work/mlx/python/tests/test_vmap.py::TestVmap::test_vmap_matmul - RuntimeError: [omarchy] broadcast AddMM is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[2,3,3]). No CPU fallback is available in Omarchy builds.
+FAILED .work/mlx/python/tests/test_vmap.py::TestVmap::test_vmap_pad - RuntimeError: [omarchy] non-zero fill is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[5,6]). No CPU fallback is available in Omarchy builds.
+FAILED .work/mlx/python/tests/test_vmap.py::TestVmap::test_vmap_partition - RuntimeError: [omarchy] ArgSort dtype is not implemented for the Omarchy Vulkan backend (dtype=uint32, shape=[24]). No CPU fallback is available in Omarchy builds.
+FAILED .work/mlx/python/tests/test_vmap.py::TestVmap::test_vmap_reduce - RuntimeError: [omarchy] non-zero scalar fill is not implemented for the Omarchy Vulkan backend (dtype=int32, shape=[5,5]). No CPU fallback is available in Omarchy builds.
+FAILED .work/mlx/python/tests/test_vmap.py::TestVmap::test_vmap_scatter - RuntimeError: [omarchy] multi-index Scatter is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[2,3]). No CPU fallback is available in Omarchy builds.
+FAILED .work/mlx/python/tests/test_vmap.py::TestVmap::test_vmap_sort - RuntimeError: [omarchy] non-suffix Sort is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[3,5]). No CPU fallback is available in Omarchy builds.
+FAILED .work/mlx/python/tests/test_vmap.py::TestVmap::test_vmap_svd - IndexError: vector::_M_range_check: __n (which is 0) >= this->size() (which is 0)
+FAILED .work/mlx/python/tests/test_vmap.py::TestVmap::test_vmap_topk - RuntimeError: [omarchy] ArgSort dtype is not implemented for the Omarchy Vulkan backend (dtype=uint32, shape=[24]). No CPU fallback is available in Omarchy builds.
+FAILED .work/mlx/python/tests/test_vmap.py::TestVmap::test_vmap_types - RuntimeError: [omarchy] Add dtype is not implemented for the Omarchy Vulkan backend (dtype=int32, shape=[3]). No CPU fallback is available in Omarchy builds.
+============== 30 failed, 11 passed, 24 subtests passed in 1.16s ===============

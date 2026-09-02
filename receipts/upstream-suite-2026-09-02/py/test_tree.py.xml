@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="6" time="0.211" timestamp="2026-09-02T09:06:40.714277-05:00" hostname="omp-studio-local"><testcase classname="python.tests.test_tree.TestTreeUtils" name="test_empty_subtree_merge" time="0.001" /><testcase classname="python.tests.test_tree.TestTreeUtils" name="test_merge" time="0.050" /><testcase classname="python.tests.test_tree.TestTreeUtils" name="test_supported_trees" time="0.001"><failure message="RuntimeError: [omarchy] Add dtype is not implemented for the Omarchy Vulkan backend (dtype=int32, shape=[2]). No CPU fallback is available in Omarchy builds.">self = &lt;test_tree.TestTreeUtils testMethod=test_supported_trees&gt;
+
+    def test_supported_trees(self):
+    
+        from typing import NamedTuple
+    
+        class Vector(tuple):
+            pass
+    
+        class Params(NamedTuple):
+            m: mx.array
+            b: mx.array
+    
+        list1 = [mx.array([0, 1]), mx.array(2)]
+        tuple1 = (mx.array([0, 1]), mx.array(2))
+        vector1 = Vector([mx.array([0, 1]), mx.array(2)])
+        params1 = Params(m=mx.array([0, 1]), b=mx.array(2))
+        dict1 = {"m": mx.array([0, 1]), "b": mx.array(2)}
+    
+        add_one = lambda x: x + 1
+    
+        list2 = mlx.utils.tree_map(add_one, list1)
+        tuple2 = mlx.utils.tree_map(add_one, tuple1)
+        vector2 = mlx.utils.tree_map(add_one, vector1)
+        params2 = mlx.utils.tree_map(add_one, params1)
+        dict2 = mlx.utils.tree_map(add_one, dict1)
+    
+        self.assertTrue(isinstance(list2, list))
+&gt;       self.assertTrue(mx.array_equal(list2[0], mx.array([1, 2])))
+E       RuntimeError: [omarchy] Add dtype is not implemented for the Omarchy Vulkan backend (dtype=int32, shape=[2]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_tree.py:109: RuntimeError</failure></testcase><testcase classname="python.tests.test_tree.TestTreeUtils" name="test_tree_flatten" time="0.001" /><testcase classname="python.tests.test_tree.TestTreeUtils" name="test_tree_map" time="0.000" /><testcase classname="python.tests.test_tree.TestTreeUtils" name="test_tree_unflatten_integer_key_collision" time="0.000" /></testsuite></testsuites>

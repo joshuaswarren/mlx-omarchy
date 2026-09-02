@@ -1,0 +1,241 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="10" skipped="4" tests="16" time="0.337" timestamp="2026-09-02T09:06:41.129932-05:00" hostname="omp-studio-local"><testcase classname="python.tests.test_upsample.TestUpsample" name="test_antialias_1d_smoke" time="0.143"><failure message="RuntimeError: [omarchy] GreaterEqual dtype is not implemented for the Omarchy Vulkan backend (dtype=bool, shape=[8]). No CPU fallback is available in Omarchy builds.">self = &lt;test_upsample.TestUpsample testMethod=test_antialias_1d_smoke&gt;
+
+    def test_antialias_1d_smoke(self):
+        """Test that antialias works on 1D spatial input (3D tensor).
+    
+        PyTorch does not support antialias on 1D tensors, so this is a
+        smoke test only (correct shape, non-trivial, smoother than non-AA).
+        """
+        np.random.seed(0)
+        for length, scale in ((16, 0.5), (32, 0.25)):
+            for mode in ("linear", "cubic"):
+                with self.subTest(length=length, scale=scale, mode=mode):
+                    in_np = np.random.normal(0, 1, (1, length, 3)).astype(np.float32)
+                    in_mx = mx.array(in_np)
+    
+                    out_aa = nn.Upsample(
+                        scale_factor=scale,
+                        mode=mode,
+                        align_corners=False,
+                        antialias=True,
+                    )(in_mx)
+                    out_no = nn.Upsample(
+                        scale_factor=scale,
+                        mode=mode,
+                        align_corners=False,
+                        antialias=False,
+                    )(in_mx)
+&gt;                   mx.eval(out_aa, out_no)
+E                   RuntimeError: [omarchy] GreaterEqual dtype is not implemented for the Omarchy Vulkan backend (dtype=bool, shape=[8]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_upsample.py:305: RuntimeError</failure><failure message="RuntimeError: [omarchy] GreaterEqual dtype is not implemented for the Omarchy Vulkan backend (dtype=bool, shape=[8]). No CPU fallback is available in Omarchy builds.">self = &lt;test_upsample.TestUpsample testMethod=test_antialias_1d_smoke&gt;
+
+    def test_antialias_1d_smoke(self):
+        """Test that antialias works on 1D spatial input (3D tensor).
+    
+        PyTorch does not support antialias on 1D tensors, so this is a
+        smoke test only (correct shape, non-trivial, smoother than non-AA).
+        """
+        np.random.seed(0)
+        for length, scale in ((16, 0.5), (32, 0.25)):
+            for mode in ("linear", "cubic"):
+                with self.subTest(length=length, scale=scale, mode=mode):
+                    in_np = np.random.normal(0, 1, (1, length, 3)).astype(np.float32)
+                    in_mx = mx.array(in_np)
+    
+                    out_aa = nn.Upsample(
+                        scale_factor=scale,
+                        mode=mode,
+                        align_corners=False,
+                        antialias=True,
+                    )(in_mx)
+                    out_no = nn.Upsample(
+                        scale_factor=scale,
+                        mode=mode,
+                        align_corners=False,
+                        antialias=False,
+                    )(in_mx)
+&gt;                   mx.eval(out_aa, out_no)
+E                   RuntimeError: [omarchy] GreaterEqual dtype is not implemented for the Omarchy Vulkan backend (dtype=bool, shape=[8]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_upsample.py:305: RuntimeError</failure><failure message="RuntimeError: [omarchy] GreaterEqual dtype is not implemented for the Omarchy Vulkan backend (dtype=bool, shape=[8]). No CPU fallback is available in Omarchy builds.">self = &lt;test_upsample.TestUpsample testMethod=test_antialias_1d_smoke&gt;
+
+    def test_antialias_1d_smoke(self):
+        """Test that antialias works on 1D spatial input (3D tensor).
+    
+        PyTorch does not support antialias on 1D tensors, so this is a
+        smoke test only (correct shape, non-trivial, smoother than non-AA).
+        """
+        np.random.seed(0)
+        for length, scale in ((16, 0.5), (32, 0.25)):
+            for mode in ("linear", "cubic"):
+                with self.subTest(length=length, scale=scale, mode=mode):
+                    in_np = np.random.normal(0, 1, (1, length, 3)).astype(np.float32)
+                    in_mx = mx.array(in_np)
+    
+                    out_aa = nn.Upsample(
+                        scale_factor=scale,
+                        mode=mode,
+                        align_corners=False,
+                        antialias=True,
+                    )(in_mx)
+                    out_no = nn.Upsample(
+                        scale_factor=scale,
+                        mode=mode,
+                        align_corners=False,
+                        antialias=False,
+                    )(in_mx)
+&gt;                   mx.eval(out_aa, out_no)
+E                   RuntimeError: [omarchy] GreaterEqual dtype is not implemented for the Omarchy Vulkan backend (dtype=bool, shape=[8]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_upsample.py:305: RuntimeError</failure><failure message="RuntimeError: [omarchy] GreaterEqual dtype is not implemented for the Omarchy Vulkan backend (dtype=bool, shape=[8]). No CPU fallback is available in Omarchy builds.">self = &lt;test_upsample.TestUpsample testMethod=test_antialias_1d_smoke&gt;
+
+    def test_antialias_1d_smoke(self):
+        """Test that antialias works on 1D spatial input (3D tensor).
+    
+        PyTorch does not support antialias on 1D tensors, so this is a
+        smoke test only (correct shape, non-trivial, smoother than non-AA).
+        """
+        np.random.seed(0)
+        for length, scale in ((16, 0.5), (32, 0.25)):
+            for mode in ("linear", "cubic"):
+                with self.subTest(length=length, scale=scale, mode=mode):
+                    in_np = np.random.normal(0, 1, (1, length, 3)).astype(np.float32)
+                    in_mx = mx.array(in_np)
+    
+                    out_aa = nn.Upsample(
+                        scale_factor=scale,
+                        mode=mode,
+                        align_corners=False,
+                        antialias=True,
+                    )(in_mx)
+                    out_no = nn.Upsample(
+                        scale_factor=scale,
+                        mode=mode,
+                        align_corners=False,
+                        antialias=False,
+                    )(in_mx)
+&gt;                   mx.eval(out_aa, out_no)
+E                   RuntimeError: [omarchy] GreaterEqual dtype is not implemented for the Omarchy Vulkan backend (dtype=bool, shape=[8]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_upsample.py:305: RuntimeError</failure></testcase><testcase classname="python.tests.test_upsample.TestUpsample" name="test_antialias_non_integer_scale_smoke" time="0.080"><failure message="RuntimeError: [omarchy] GreaterEqual dtype is not implemented for the Omarchy Vulkan backend (dtype=bool, shape=[9,1]). No CPU fallback is available in Omarchy builds.">self = &lt;test_upsample.TestUpsample testMethod=test_antialias_non_integer_scale_smoke&gt;
+
+    def test_antialias_non_integer_scale_smoke(self):
+        """Smoke test for non-integer scale factors (no PyTorch comparison)."""
+        np.random.seed(42)
+        in_np = np.random.normal(0, 1, (1, 32, 32, 3)).astype(np.float32)
+        in_mx = mx.array(in_np)
+    
+        for scale in (0.3, 0.7, 0.6):
+            for mode in ("linear", "cubic"):
+                with self.subTest(scale=scale, mode=mode):
+                    out = nn.Upsample(
+                        scale_factor=scale,
+                        mode=mode,
+                        align_corners=False,
+                        antialias=True,
+                    )(in_mx)
+&gt;                   mx.eval(out)
+E                   RuntimeError: [omarchy] GreaterEqual dtype is not implemented for the Omarchy Vulkan backend (dtype=bool, shape=[9,1]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_upsample.py:257: RuntimeError</failure><failure message="RuntimeError: [omarchy] GreaterEqual dtype is not implemented for the Omarchy Vulkan backend (dtype=bool, shape=[9,1]). No CPU fallback is available in Omarchy builds.">self = &lt;test_upsample.TestUpsample testMethod=test_antialias_non_integer_scale_smoke&gt;
+
+    def test_antialias_non_integer_scale_smoke(self):
+        """Smoke test for non-integer scale factors (no PyTorch comparison)."""
+        np.random.seed(42)
+        in_np = np.random.normal(0, 1, (1, 32, 32, 3)).astype(np.float32)
+        in_mx = mx.array(in_np)
+    
+        for scale in (0.3, 0.7, 0.6):
+            for mode in ("linear", "cubic"):
+                with self.subTest(scale=scale, mode=mode):
+                    out = nn.Upsample(
+                        scale_factor=scale,
+                        mode=mode,
+                        align_corners=False,
+                        antialias=True,
+                    )(in_mx)
+&gt;                   mx.eval(out)
+E                   RuntimeError: [omarchy] GreaterEqual dtype is not implemented for the Omarchy Vulkan backend (dtype=bool, shape=[9,1]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_upsample.py:257: RuntimeError</failure><failure message="RuntimeError: [omarchy] GreaterEqual dtype is not implemented for the Omarchy Vulkan backend (dtype=bool, shape=[22,1]). No CPU fallback is available in Omarchy builds.">self = &lt;test_upsample.TestUpsample testMethod=test_antialias_non_integer_scale_smoke&gt;
+
+    def test_antialias_non_integer_scale_smoke(self):
+        """Smoke test for non-integer scale factors (no PyTorch comparison)."""
+        np.random.seed(42)
+        in_np = np.random.normal(0, 1, (1, 32, 32, 3)).astype(np.float32)
+        in_mx = mx.array(in_np)
+    
+        for scale in (0.3, 0.7, 0.6):
+            for mode in ("linear", "cubic"):
+                with self.subTest(scale=scale, mode=mode):
+                    out = nn.Upsample(
+                        scale_factor=scale,
+                        mode=mode,
+                        align_corners=False,
+                        antialias=True,
+                    )(in_mx)
+&gt;                   mx.eval(out)
+E                   RuntimeError: [omarchy] GreaterEqual dtype is not implemented for the Omarchy Vulkan backend (dtype=bool, shape=[22,1]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_upsample.py:257: RuntimeError</failure><failure message="RuntimeError: [omarchy] GreaterEqual dtype is not implemented for the Omarchy Vulkan backend (dtype=bool, shape=[22,1]). No CPU fallback is available in Omarchy builds.">self = &lt;test_upsample.TestUpsample testMethod=test_antialias_non_integer_scale_smoke&gt;
+
+    def test_antialias_non_integer_scale_smoke(self):
+        """Smoke test for non-integer scale factors (no PyTorch comparison)."""
+        np.random.seed(42)
+        in_np = np.random.normal(0, 1, (1, 32, 32, 3)).astype(np.float32)
+        in_mx = mx.array(in_np)
+    
+        for scale in (0.3, 0.7, 0.6):
+            for mode in ("linear", "cubic"):
+                with self.subTest(scale=scale, mode=mode):
+                    out = nn.Upsample(
+                        scale_factor=scale,
+                        mode=mode,
+                        align_corners=False,
+                        antialias=True,
+                    )(in_mx)
+&gt;                   mx.eval(out)
+E                   RuntimeError: [omarchy] GreaterEqual dtype is not implemented for the Omarchy Vulkan backend (dtype=bool, shape=[22,1]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_upsample.py:257: RuntimeError</failure><failure message="RuntimeError: [omarchy] GreaterEqual dtype is not implemented for the Omarchy Vulkan backend (dtype=bool, shape=[19,1]). No CPU fallback is available in Omarchy builds.">self = &lt;test_upsample.TestUpsample testMethod=test_antialias_non_integer_scale_smoke&gt;
+
+    def test_antialias_non_integer_scale_smoke(self):
+        """Smoke test for non-integer scale factors (no PyTorch comparison)."""
+        np.random.seed(42)
+        in_np = np.random.normal(0, 1, (1, 32, 32, 3)).astype(np.float32)
+        in_mx = mx.array(in_np)
+    
+        for scale in (0.3, 0.7, 0.6):
+            for mode in ("linear", "cubic"):
+                with self.subTest(scale=scale, mode=mode):
+                    out = nn.Upsample(
+                        scale_factor=scale,
+                        mode=mode,
+                        align_corners=False,
+                        antialias=True,
+                    )(in_mx)
+&gt;                   mx.eval(out)
+E                   RuntimeError: [omarchy] GreaterEqual dtype is not implemented for the Omarchy Vulkan backend (dtype=bool, shape=[19,1]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_upsample.py:257: RuntimeError</failure><failure message="RuntimeError: [omarchy] GreaterEqual dtype is not implemented for the Omarchy Vulkan backend (dtype=bool, shape=[19,1]). No CPU fallback is available in Omarchy builds.">self = &lt;test_upsample.TestUpsample testMethod=test_antialias_non_integer_scale_smoke&gt;
+
+    def test_antialias_non_integer_scale_smoke(self):
+        """Smoke test for non-integer scale factors (no PyTorch comparison)."""
+        np.random.seed(42)
+        in_np = np.random.normal(0, 1, (1, 32, 32, 3)).astype(np.float32)
+        in_mx = mx.array(in_np)
+    
+        for scale in (0.3, 0.7, 0.6):
+            for mode in ("linear", "cubic"):
+                with self.subTest(scale=scale, mode=mode):
+                    out = nn.Upsample(
+                        scale_factor=scale,
+                        mode=mode,
+                        align_corners=False,
+                        antialias=True,
+                    )(in_mx)
+&gt;                   mx.eval(out)
+E                   RuntimeError: [omarchy] GreaterEqual dtype is not implemented for the Omarchy Vulkan backend (dtype=bool, shape=[19,1]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_upsample.py:257: RuntimeError</failure></testcase><testcase classname="python.tests.test_upsample.TestUpsample" name="test_antialias_upscale_cubic_matches_pytorch" time="0.000"><skipped type="pytest.skip" message="requires Torch">/tmp/upstream-sweep/.work/mlx/python/tests/test_upsample.py:212: requires Torch</skipped></testcase><testcase classname="python.tests.test_upsample.TestUpsample" name="test_antialias_upscale_linear_is_noop" time="0.000"><skipped type="pytest.skip" message="requires Torch">/tmp/upstream-sweep/.work/mlx/python/tests/test_upsample.py:186: requires Torch</skipped></testcase><testcase classname="python.tests.test_upsample.TestUpsample" name="test_torch_upsample" time="0.000"><skipped type="pytest.skip" message="requires Torch">/tmp/upstream-sweep/.work/mlx/python/tests/test_upsample.py:20: requires Torch</skipped></testcase><testcase classname="python.tests.test_upsample.TestUpsample" name="test_torch_upsample_antialias" time="0.000"><skipped type="pytest.skip" message="requires Torch">/tmp/upstream-sweep/.work/mlx/python/tests/test_upsample.py:98: requires Torch</skipped></testcase></testsuite></testsuites>

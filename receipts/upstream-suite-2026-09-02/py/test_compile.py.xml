@@ -1,0 +1,522 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="27" skipped="0" tests="67" time="1.339" timestamp="2026-09-02T08:57:08.960764-05:00" hostname="omp-studio-local"><testcase classname="python.tests.test_compile.TestCompile" name="test_compile_abs_unsigned" time="0.017"><failure message="RuntimeError: [omarchy] Abs dtype is not implemented for the Omarchy Vulkan backend (dtype=uint8, shape=[3]). No CPU fallback is available in Omarchy builds.">self = &lt;test_compile.TestCompile testMethod=test_compile_abs_unsigned&gt;
+
+    def test_compile_abs_unsigned(self):
+        # abs has to compile for the wider unsigned types too
+        fun = lambda x: mx.abs(x) + 1
+        for dtype in [mx.uint8, mx.uint16, mx.uint32, mx.uint64]:
+            x = mx.array([1, 2, 3], dtype)
+&gt;           self.assertTrue(mx.array_equal(mx.compile(fun)(x), fun(x)))
+E           RuntimeError: [omarchy] Abs dtype is not implemented for the Omarchy Vulkan backend (dtype=uint8, shape=[3]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_compile.py:1624: RuntimeError</failure></testcase><testcase classname="python.tests.test_compile.TestCompile" name="test_compile_broadcast_only" time="0.021" /><testcase classname="python.tests.test_compile.TestCompile" name="test_compile_capture" time="0.003"><failure message="RuntimeError: [omarchy] Add dtype is not implemented for the Omarchy Vulkan backend (dtype=int32, shape=[]). No CPU fallback is available in Omarchy builds.">self = &lt;test_compile.TestCompile testMethod=test_compile_capture&gt;
+
+    def test_compile_capture(self):
+        # Test update captured state outside compiled function
+        state = {"y": mx.array(2)}
+    
+        @partial(mx.compile, inputs=state)
+        def test_state(x):
+            x = x + state["y"]
+            return x
+    
+        test_state(mx.array(1))
+        # Check the state is unchanged
+        self.assertEqual(state["y"], 2)
+    
+        # Check the updated state is used
+        state["y"] = mx.array(3)
+        out = test_state(mx.array(1))
+&gt;       self.assertEqual(out.item(), 4)
+                         ^^^^^^^^^^
+E       RuntimeError: [omarchy] Add dtype is not implemented for the Omarchy Vulkan backend (dtype=int32, shape=[]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_compile.py:424: RuntimeError</failure></testcase><testcase classname="python.tests.test_compile.TestCompile" name="test_compile_changing_outputs" time="0.003" /><testcase classname="python.tests.test_compile.TestCompile" name="test_compile_changing_outputs_with_state" time="0.003" /><testcase classname="python.tests.test_compile.TestCompile" name="test_compile_create_list" time="0.001" /><testcase classname="python.tests.test_compile.TestCompile" name="test_compile_different_log_bases" time="0.006" /><testcase classname="python.tests.test_compile.TestCompile" name="test_compile_donates_input_buffer" time="0.004"><failure message="IndexError: vector::_M_range_check: __n (which is 0) &gt;= this-&gt;size() (which is 0)">self = &lt;test_compile.TestCompile testMethod=test_compile_donates_input_buffer&gt;
+
+    def test_compile_donates_input_buffer(self):
+        mx.set_default_device(mx.cpu)
+    
+        def fun(x):
+            return mx.sin(x) + 1
+    
+        compiled_fn = mx.compile(fun)
+    
+&gt;       input = mx.arange(16, dtype=mx.float32)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       IndexError: vector::_M_range_check: __n (which is 0) &gt;= this-&gt;size() (which is 0)
+
+.work/mlx/python/tests/test_compile.py:1560: IndexError</failure></testcase><testcase classname="python.tests.test_compile.TestCompile" name="test_compile_dynamic_dims" time="0.007"><failure message="RuntimeError: [omarchy] broadcast rank Add is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[2,2,2,2,2,2,2,2,2,2]). No CPU fallback is available in Omarchy builds.">self = &lt;test_compile.TestCompile testMethod=test_compile_dynamic_dims&gt;
+
+    def test_compile_dynamic_dims(self):
+        a = mx.random.uniform(shape=(2,) * 10)
+        b = mx.random.uniform(shape=(2,) * 10)
+        a = a.T
+        mx.eval(a, b)
+    
+        def fn(a, b):
+            return mx.abs(a + b)
+    
+        out = mx.compile(fn)(a, b)
+        expected = fn(a, b)
+&gt;       self.assertTrue(mx.allclose(out, expected))
+E       RuntimeError: [omarchy] broadcast rank Add is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[2,2,2,2,2,2,2,2,2,2]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_compile.py:1032: RuntimeError</failure></testcase><testcase classname="python.tests.test_compile.TestCompile" name="test_compile_equal_nan" time="0.005"><failure message="RuntimeError: [omarchy] Equal dtype is not implemented for the Omarchy Vulkan backend (dtype=bool, shape=[2]). No CPU fallback is available in Omarchy builds.">self = &lt;test_compile.TestCompile testMethod=test_compile_equal_nan&gt;
+
+    def test_compile_equal_nan(self):
+        def fun(x):
+            return mx.stack(
+                [mx.array_equal(x, x), mx.array_equal(x, x, equal_nan=True)]
+            )
+    
+        x = mx.array([1.0, float("nan"), 3.0])
+&gt;       self.assertTrue(mx.array_equal(mx.compile(fun)(x), mx.array([False, True])))
+E       RuntimeError: [omarchy] Equal dtype is not implemented for the Omarchy Vulkan backend (dtype=bool, shape=[2]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_compile.py:1657: RuntimeError</failure></testcase><testcase classname="python.tests.test_compile.TestCompile" name="test_compile_grad" time="0.016" /><testcase classname="python.tests.test_compile.TestCompile" name="test_compile_inf" time="0.001" /><testcase classname="python.tests.test_compile.TestCompile" name="test_compile_inputs_with_primitives" time="0.001"><failure message="RuntimeError: [omarchy] Add dtype is not implemented for the Omarchy Vulkan backend (dtype=int32, shape=[3]). No CPU fallback is available in Omarchy builds.">self = &lt;test_compile.TestCompile testMethod=test_compile_inputs_with_primitives&gt;
+
+    def test_compile_inputs_with_primitives(self):
+        x = mx.array([1, 2, 3])
+        y = mx.array([1, 2, 3])
+        for _ in range(5):
+            x = x + y
+            y = y + 1
+    
+        def fun(x, y):
+            return x * y
+    
+        out = fun(x, y)
+    
+        x = mx.array([1, 2, 3])
+        y = mx.array([1, 2, 3])
+        for _ in range(5):
+            x = x + y
+            y = y + 1
+    
+        c_out = mx.compile(fun)(x, y)
+&gt;       self.assertTrue(mx.array_equal(out, c_out))
+E       RuntimeError: [omarchy] Add dtype is not implemented for the Omarchy Vulkan backend (dtype=int32, shape=[3]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_compile.py:198: RuntimeError</failure></testcase><testcase classname="python.tests.test_compile.TestCompile" name="test_compile_kwargs" time="0.003"><failure message="RuntimeError: [omarchy] Add dtype is not implemented for the Omarchy Vulkan backend (dtype=int32, shape=[]). No CPU fallback is available in Omarchy builds.">self = &lt;test_compile.TestCompile testMethod=test_compile_kwargs&gt;
+
+    def test_compile_kwargs(self):
+        @mx.compile
+        def fun(x, y, z):
+            return x + y + z
+    
+        x = mx.array(1)
+        y = mx.array(2)
+        z = mx.array(3)
+        out = fun(x, y=y, z=z)
+&gt;       self.assertEqual(out.item(), 6)
+                         ^^^^^^^^^^
+E       RuntimeError: [omarchy] Add dtype is not implemented for the Omarchy Vulkan backend (dtype=int32, shape=[]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_compile.py:566: RuntimeError</failure></testcase><testcase classname="python.tests.test_compile.TestCompile" name="test_compile_large_graph_with_broadcasts" time="0.021" /><testcase classname="python.tests.test_compile.TestCompile" name="test_compile_many_inputs" time="0.005"><failure message="RuntimeError: [omarchy] non-zero scalar fill is not implemented for the Omarchy Vulkan backend (dtype=int32, shape=[2,2]). No CPU fallback is available in Omarchy builds.">self = &lt;test_compile.TestCompile testMethod=test_compile_many_inputs&gt;
+
+    def test_compile_many_inputs(self):
+        inputs = [mx.ones((2, 2, 2, 2)) for _ in range(20)]
+        inputs[0] = inputs[0].T
+    
+        @mx.compile
+        def fun(*inputs):
+            x = inputs[0]
+            for y in inputs[1:10]:
+                x = x + y
+            a = inputs[10]
+            for b in inputs[11:]:
+                a = a + b
+            return x + a
+    
+        out = fun(*inputs)
+&gt;       self.assertTrue(mx.allclose(out, mx.full((2, 2), 20)))
+E       RuntimeError: [omarchy] non-zero scalar fill is not implemented for the Omarchy Vulkan backend (dtype=int32, shape=[2,2]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_compile.py:1049: RuntimeError</failure></testcase><testcase classname="python.tests.test_compile.TestCompile" name="test_compile_many_outputs" time="0.007" /><testcase classname="python.tests.test_compile.TestCompile" name="test_compile_multi_output" time="0.001"><failure message="RuntimeError: [omarchy] non-zero scalar fill is not implemented for the Omarchy Vulkan backend (dtype=int32, shape=[1]). No CPU fallback is available in Omarchy builds.">self = &lt;test_compile.TestCompile testMethod=test_compile_multi_output&gt;
+
+    def test_compile_multi_output(self):
+        def fn(x):
+            ys = [x]
+            for i in range(5):
+                ys.append(ys[-1] + x)
+            return ys, mx.sum(ys[-1])
+    
+        x = mx.ones(1, dtype=mx.int32)
+        y1 = mx.compile(fn)(x)[1]
+        y2 = fn(x)[1]
+&gt;       self.assertEqual(y1.item(), y2.item())
+                         ^^^^^^^^^
+E       RuntimeError: [omarchy] non-zero scalar fill is not implemented for the Omarchy Vulkan backend (dtype=int32, shape=[1]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_compile.py:960: RuntimeError</failure></testcase><testcase classname="python.tests.test_compile.TestCompile" name="test_compile_negative_strides" time="0.003"><failure message="RuntimeError: [omarchy] negative stride copy is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[8]). No CPU fallback is available in Omarchy builds.">self = &lt;test_compile.TestCompile testMethod=test_compile_negative_strides&gt;
+
+    def test_compile_negative_strides(self):
+        # 1D negative stride with elementwise expression
+        @mx.compile
+        def f(x):
+            return 2.0 * x[::-1]
+    
+        x = mx.arange(8, dtype=mx.float32)
+        expected = 2.0 * x[::-1]
+&gt;       self.assertTrue(mx.array_equal(f(x), expected))
+E       RuntimeError: [omarchy] negative stride copy is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[8]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_compile.py:1580: RuntimeError</failure></testcase><testcase classname="python.tests.test_compile.TestCompile" name="test_compile_nonfinite_constants" time="0.004"><failure message="RuntimeError: [omarchy] matrix layout Take is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[1]). No CPU fallback is available in Omarchy builds.">self = &lt;test_compile.TestCompile testMethod=test_compile_nonfinite_constants&gt;
+
+    def test_compile_nonfinite_constants(self):
+        # Regression test: a non-finite scalar constant (NaN / infinity) baked
+        # into a fused compiled kernel used to stream a bare token (e.g. `nan`)
+        # into the generated kernel source, which is not a valid identifier and
+        # broke compilation (notably on the Metal backend).
+        x = mx.array([1.0, -1.0])
+    
+        for dtype in (mx.float32, mx.float16, mx.bfloat16):
+            xd = x.astype(dtype)
+    
+            nan_fn = mx.compile(
+                lambda a: mx.where(a &gt; 0, a, mx.array(float("nan"), dtype=a.dtype))
+            )
+            out = nan_fn(xd)
+            mx.eval(out)
+&gt;           self.assertEqual(out[0].item(), 1.0)
+                             ^^^^^^^^^^^^^
+E           RuntimeError: [omarchy] matrix layout Take is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[1]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_compile.py:63: RuntimeError</failure></testcase><testcase classname="python.tests.test_compile.TestCompile" name="test_compile_output_with_siblings" time="0.007"><failure message="RuntimeError: [omarchy] non-contiguous LayerNormVJP is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[4,32,32]). No CPU fallback is available in Omarchy builds.">self = &lt;test_compile.TestCompile testMethod=test_compile_output_with_siblings&gt;
+
+    def test_compile_output_with_siblings(self):
+        @mx.compile
+        def fun(x, y):
+            return mx.divmod(mx.abs(x), mx.abs(y))[0]
+    
+        out = fun(mx.array(1.0), mx.array(1.0))
+        self.assertEqual(out.item(), 1.0)
+    
+        # Make sure the following compiles without issue
+        def loss_fn(params, x):
+            emb, w = params
+            return mx.fast.layer_norm(emb[x], w, None, 1e-4).sum()
+    
+        emb = mx.zeros((10, 32))
+        w = mx.zeros((32,))
+    
+        loss_and_grad_fn = mx.value_and_grad(loss_fn)
+    
+        x = mx.zeros(shape=(4, 32), dtype=mx.int32)
+        mx.eval(x, emb, w)
+    
+        @mx.compile
+        def step(emb, w, x):
+            loss, grads = loss_and_grad_fn((emb, w), x)
+            return loss, grads
+    
+        loss, grads = step(emb, w, x)
+&gt;       mx.eval(loss, grads)
+E       RuntimeError: [omarchy] non-contiguous LayerNormVJP is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[4,32,32]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_compile.py:1550: RuntimeError</failure></testcase><testcase classname="python.tests.test_compile.TestCompile" name="test_compile_release_on_another_thread" time="0.014" /><testcase classname="python.tests.test_compile.TestCompile" name="test_compile_rng" time="0.004" /><testcase classname="python.tests.test_compile.TestCompile" name="test_compile_rng_across_threads" time="0.006"><failure message="KeyError: 'advances'">self = &lt;test_compile.TestCompile testMethod=test_compile_rng_across_threads&gt;
+
+    def test_compile_rng_across_threads(self):
+        # A function compiled with inputs/outputs=mx.random.state on one thread
+        # must still use (and advance/seed) the calling thread's RNG state when
+        # invoked from another thread, whether captured directly or nested.
+    
+        # The state sentinel is a single global object shared across threads.
+        state_from_thread = {}
+    
+        def grab():
+            state_from_thread["s"] = mx.random.state
+            mx.clear_streams()
+    
+        t = threading.Thread(target=grab)
+        t.start()
+        t.join()
+        self.assertIs(mx.random.state, state_from_thread["s"])
+    
+        direct = partial(mx.compile, inputs=mx.random.state, outputs=mx.random.state)(
+            lambda: mx.random.uniform(shape=(10, 10))
+        )
+    
+        nested_state = [{"unused": mx.array(0.0)}, mx.random.state]
+        nested = partial(mx.compile, inputs=nested_state, outputs=nested_state)(
+            lambda: mx.random.uniform(shape=(10, 10))
+        )
+    
+        for fun in (direct, nested):
+            results = {}
+    
+            def worker():
+                with mx.stream(mx.cpu):
+                    a = fun()
+                    b = fun()
+                    results["advances"] = not bool(mx.allclose(a, b, 1e-2, 1e-2).item())
+                    mx.random.seed(42)
+                    c = fun()
+                    mx.random.seed(42)
+                    d = fun()
+                    results["seed_reproducible"] = bool(mx.allclose(c, d).item())
+                    mx.random.seed(1234)
+                    e = fun()
+                    results["seed_changes"] = not bool(
+                        mx.allclose(c, e, 1e-2, 1e-2).item()
+                    )
+                mx.clear_streams()
+    
+            t = threading.Thread(target=worker)
+            t.start()
+            t.join()
+    
+&gt;           self.assertTrue(results["advances"])
+                            ^^^^^^^^^^^^^^^^^^^
+E           KeyError: 'advances'
+
+.work/mlx/python/tests/test_compile.py:537: KeyError</failure></testcase><testcase classname="python.tests.test_compile.TestCompile" name="test_compile_shapeless_with_broadcast" time="0.004" /><testcase classname="python.tests.test_compile.TestCompile" name="test_compile_state_capture_with_rng_updates_in_place" time="0.001" /><testcase classname="python.tests.test_compile.TestCompile" name="test_compile_tuple_output_in_thread" time="0.017" /><testcase classname="python.tests.test_compile.TestCompile" name="test_compile_two_input_grad" time="0.003" /><testcase classname="python.tests.test_compile.TestCompile" name="test_compile_types" time="0.001"><failure message="RuntimeError: [omarchy] Add dtype is not implemented for the Omarchy Vulkan backend (dtype=int32, shape=[3]). No CPU fallback is available in Omarchy builds.">self = &lt;test_compile.TestCompile testMethod=test_compile_types&gt;
+
+    def test_compile_types(self):
+        from typing import NamedTuple
+    
+        class Vector(tuple):
+            pass
+    
+        class State(NamedTuple):
+            a: mx.array
+            b: mx.array
+    
+        def transform(x: State):
+            return State(x.a + 10, x.b * 10)
+    
+        def transform_tuple(t):
+            return (t[0] + 10, t[1] * 10)
+    
+        def transform_vector(t):
+            return Vector([t[0] + 10, t[1] * 10])
+    
+        x = State(mx.array(1), mx.array(2))
+    
+        compiled_transform = mx.compile(transform)
+        compiled_transform_tuple = mx.compile(transform_tuple)
+        compiled_transform_vector = mx.compile(transform_vector)
+    
+        x_batch_tuple = (mx.array([1, 2, 3]), mx.array([4, 5, 6]))
+        out1 = compiled_transform_tuple(x_batch_tuple)
+    
+        self.assertTrue(isinstance(out1, tuple))
+&gt;       self.assertTrue(mx.array_equal(out1[0], mx.array([11, 12, 13])))
+E       RuntimeError: [omarchy] Add dtype is not implemented for the Omarchy Vulkan backend (dtype=int32, shape=[3]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_compile.py:1508: RuntimeError</failure></testcase><testcase classname="python.tests.test_compile.TestCompile" name="test_compile_vjp" time="0.039" /><testcase classname="python.tests.test_compile.TestCompile" name="test_compile_with_closure" time="0.001"><failure message="RuntimeError: [omarchy] Add dtype is not implemented for the Omarchy Vulkan backend (dtype=int32, shape=[]). No CPU fallback is available in Omarchy builds.">self = &lt;test_compile.TestCompile testMethod=test_compile_with_closure&gt;
+
+    def test_compile_with_closure(self):
+        x = mx.array(1)
+    
+        def closure(y):
+            return x + y
+    
+        compiled = mx.compile(closure)
+        out = compiled(mx.array(1))
+&gt;       self.assertEqual(out.item(), 2)
+                         ^^^^^^^^^^
+E       RuntimeError: [omarchy] Add dtype is not implemented for the Omarchy Vulkan backend (dtype=int32, shape=[]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_compile.py:212: RuntimeError</failure></testcase><testcase classname="python.tests.test_compile.TestCompile" name="test_compile_with_constant" time="0.001"><failure message="RuntimeError: [omarchy] Add dtype is not implemented for the Omarchy Vulkan backend (dtype=int32, shape=[]). No CPU fallback is available in Omarchy builds.">self = &lt;test_compile.TestCompile testMethod=test_compile_with_constant&gt;
+
+    def test_compile_with_constant(self):
+        # Test float
+        @partial(mx.compile)
+        def fun(x, y):
+            return x + y
+    
+        z = fun(mx.array(1.0), 1.0)
+        self.assertEqual(z.item(), 2.0)
+    
+        z = fun(mx.array(1.0), 2.0)
+        self.assertEqual(z.item(), 3.0)
+    
+        z = fun(mx.array(1.0), y=1.0)
+        self.assertEqual(z.item(), 2.0)
+    
+        z = fun(mx.array(1.0), y=3.0)
+        self.assertEqual(z.item(), 4.0)
+    
+        # Test tuple
+        @partial(mx.compile)
+        def fun(x, y=(1, 2)):
+            return x + y[0] + y[1]
+    
+        z = fun(mx.array(1))
+&gt;       self.assertEqual(z.item(), 4)
+                         ^^^^^^^^
+E       RuntimeError: [omarchy] Add dtype is not implemented for the Omarchy Vulkan backend (dtype=int32, shape=[]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_compile.py:739: RuntimeError</failure></testcase><testcase classname="python.tests.test_compile.TestCompile" name="test_compile_with_long_name" time="0.002" /><testcase classname="python.tests.test_compile.TestCompile" name="test_compile_with_none" time="0.001" /><testcase classname="python.tests.test_compile.TestCompile" name="test_compile_without_captured_inputs" time="0.001" /><testcase classname="python.tests.test_compile.TestCompile" name="test_compiled_preserves_attributes" time="0.001" /><testcase classname="python.tests.test_compile.TestCompile" name="test_compiled_subnormal_bool_cast" time="0.011"><failure message="RuntimeError: [omarchy] dtype converting copy is not implemented for the Omarchy Vulkan backend (dtype=bool, shape=[2,4]). No CPU fallback is available in Omarchy builds.">self = &lt;test_compile.TestCompile testMethod=test_compiled_subnormal_bool_cast&gt;
+
+    def test_compiled_subnormal_bool_cast(self):
+        f32_sub = mx.array(np.array([0x00000001] * 4, dtype=np.uint32)).view(mx.float32)
+        f16_sub = mx.array(np.array([0x0001] * 4, dtype=np.uint16)).view(mx.float16)
+        bf16_sub = mx.array(np.array([0x0001] * 4, dtype=np.uint16)).view(mx.bfloat16)
+    
+        # A single-op compile does not fuse; the fused path needs &gt;= 2 ops.
+        fn = mx.compile(lambda x: mx.broadcast_to(x, (2, 4)).astype(mx.bool_))
+        for sub in (f32_sub, f16_sub, bf16_sub):
+&gt;           self.assertTrue(mx.all(fn(sub)).item())
+                            ^^^^^^^^^^^^^^^^^^^^^^
+E           RuntimeError: [omarchy] dtype converting copy is not implemented for the Omarchy Vulkan backend (dtype=bool, shape=[2,4]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_compile.py:1634: RuntimeError</failure></testcase><testcase classname="python.tests.test_compile.TestCompile" name="test_double_constant" time="0.001"><failure message="IndexError: vector::_M_range_check: __n (which is 0) &gt;= this-&gt;size() (which is 0)">self = &lt;test_compile.TestCompile testMethod=test_double_constant&gt;
+
+    def test_double_constant(self):
+&gt;       with mx.stream(mx.cpu):
+E       IndexError: vector::_M_range_check: __n (which is 0) &gt;= this-&gt;size() (which is 0)
+
+.work/mlx/python/tests/test_compile.py:1295: IndexError</failure></testcase><testcase classname="python.tests.test_compile.TestCompile" name="test_dtypes" time="0.001"><failure message="RuntimeError: [omarchy] dtype converting copy is not implemented for the Omarchy Vulkan backend (dtype=bool, shape=[4]). No CPU fallback is available in Omarchy builds.">self = &lt;test_compile.TestCompile testMethod=test_dtypes&gt;
+
+    def test_dtypes(self):
+        x = mx.array([0, 1, 2, 3])
+        dtypes = [mx.bool_, mx.int8, mx.uint8, mx.int16, mx.uint16]
+        for dtype in dtypes:
+            x = x.astype(dtype)
+&gt;           mx.eval(x)
+E           RuntimeError: [omarchy] dtype converting copy is not implemented for the Omarchy Vulkan backend (dtype=bool, shape=[4]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_compile.py:987: RuntimeError</failure></testcase><testcase classname="python.tests.test_compile.TestCompile" name="test_enable_disable" time="0.003" /><testcase classname="python.tests.test_compile.TestCompile" name="test_function_creates_array" time="0.001"><failure message="RuntimeError: [omarchy] Add dtype is not implemented for the Omarchy Vulkan backend (dtype=int32, shape=[]). No CPU fallback is available in Omarchy builds.">self = &lt;test_compile.TestCompile testMethod=test_function_creates_array&gt;
+
+    def test_function_creates_array(self):
+        def fun(x):
+            return x + mx.array(1)
+    
+        cfun = mx.compile(fun)
+        out = cfun(mx.array(3))
+&gt;       self.assertEqual(out.item(), 4)
+                         ^^^^^^^^^^
+E       RuntimeError: [omarchy] Add dtype is not implemented for the Omarchy Vulkan backend (dtype=int32, shape=[]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_compile.py:265: RuntimeError</failure></testcase><testcase classname="python.tests.test_compile.TestCompile" name="test_inf_constant" time="0.007"><failure message="RuntimeError: [omarchy] Select dtype is not implemented for the Omarchy Vulkan backend (dtype=int32, shape=[3]). No CPU fallback is available in Omarchy builds.">self = &lt;test_compile.TestCompile testMethod=test_inf_constant&gt;
+
+    def test_inf_constant(self):
+        def fn(x):
+            return mx.where(mx.isinf(x), 0, 1)
+    
+        x = mx.array([0, float("inf"), 1], dtype=mx.bfloat16)
+&gt;       self.assertTrue(mx.array_equal(mx.compile(fn)(x), fn(x)))
+E       RuntimeError: [omarchy] Select dtype is not implemented for the Omarchy Vulkan backend (dtype=int32, shape=[3]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_compile.py:968: RuntimeError</failure></testcase><testcase classname="python.tests.test_compile.TestCompile" name="test_leaks" time="0.026" /><testcase classname="python.tests.test_compile.TestCompile" name="test_max_into_equal" time="0.003"><failure message="RuntimeError: [omarchy] Equal dtype is not implemented for the Omarchy Vulkan backend (dtype=bool, shape=[1,2,2]). No CPU fallback is available in Omarchy builds.">self = &lt;test_compile.TestCompile testMethod=test_max_into_equal&gt;
+
+    def test_max_into_equal(self):
+        x = mx.random.uniform(shape=(1, 2, 2))
+        mx.eval(x)
+    
+        def fn():
+            maxes = mx.max(x, axis=(1, 2), keepdims=True)
+            return x == maxes
+    
+        out = mx.compile(fn)()
+        expected = fn()
+&gt;       self.assertTrue(mx.array_equal(expected, out))
+E       RuntimeError: [omarchy] Equal dtype is not implemented for the Omarchy Vulkan backend (dtype=bool, shape=[1,2,2]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_compile.py:980: RuntimeError</failure></testcase><testcase classname="python.tests.test_compile.TestCompile" name="test_multiple_compile_same_capture" time="0.005" /><testcase classname="python.tests.test_compile.TestCompile" name="test_outputs_changing" time="0.001" /><testcase classname="python.tests.test_compile.TestCompile" name="test_shapeless_compile" time="0.001"><failure message="RuntimeError: [omarchy] Add dtype is not implemented for the Omarchy Vulkan backend (dtype=int32, shape=[2]). No CPU fallback is available in Omarchy builds.">self = &lt;test_compile.TestCompile testMethod=test_shapeless_compile&gt;
+
+    def test_shapeless_compile(self):
+        y = 1
+    
+        @partial(mx.compile, shapeless=True)
+        def fun(x):
+            return x + y
+    
+        x = mx.array([1, 2])
+&gt;       self.assertTrue(mx.array_equal(fun(x), mx.array([2, 3])))
+E       RuntimeError: [omarchy] Add dtype is not implemented for the Omarchy Vulkan backend (dtype=int32, shape=[2]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_compile.py:576: RuntimeError</failure></testcase><testcase classname="python.tests.test_compile.TestCompile" name="test_shapeless_compile_addmm" time="0.009" /><testcase classname="python.tests.test_compile.TestCompile" name="test_shapeless_compile_full_like" time="0.000" /><testcase classname="python.tests.test_compile.TestCompile" name="test_shapeless_compile_gather" time="0.000" /><testcase classname="python.tests.test_compile.TestCompile" name="test_shapeless_compile_gather_mm" time="0.001" /><testcase classname="python.tests.test_compile.TestCompile" name="test_shapeless_compile_gather_qmm" time="0.001"><failure message="RuntimeError: [omarchy] Quantize direction is not implemented for the Omarchy Vulkan backend (dtype=uint32, shape=[4,32,8]). No CPU fallback is available in Omarchy builds.">self = &lt;test_compile.TestCompile testMethod=test_shapeless_compile_gather_qmm&gt;
+
+    def test_shapeless_compile_gather_qmm(self):
+        K, N, num_experts = 64, 32, 4
+    
+        w = mx.random.normal((num_experts, N, K))
+        qw, s, b = mx.quantize(w)
+&gt;       mx.eval(qw, s, b)
+E       RuntimeError: [omarchy] Quantize direction is not implemented for the Omarchy Vulkan backend (dtype=uint32, shape=[4,32,8]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_compile.py:681: RuntimeError</failure></testcase><testcase classname="python.tests.test_compile.TestCompile" name="test_shapeless_compile_matmul" time="0.002" /><testcase classname="python.tests.test_compile.TestCompile" name="test_shapeless_compile_reduce_after_gather" time="0.003"><failure message="RuntimeError: [omarchy] matrix layout Take is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[1,1]). No CPU fallback is available in Omarchy builds.">self = &lt;test_compile.TestCompile testMethod=test_shapeless_compile_reduce_after_gather&gt;
+
+    def test_shapeless_compile_reduce_after_gather(self):
+        # Reductions over dimensions that happen to have size 1 at trace time
+        # used to be elided from the graph, so replays with larger dynamic
+        # shapes returned stale values (issue #3201)
+        buf = mx.array([10.0, 20.0, 30.0, 40.0, 50.0])
+        reductions = [
+            mx.sum,
+            mx.mean,
+            mx.prod,
+            mx.min,
+            mx.max,
+            mx.all,
+            mx.any,
+            mx.argmin,
+            mx.argmax,
+        ]
+        for reduction in reductions:
+    
+            def fun(buf, idx):
+                return reduction(mx.take(buf, idx, axis=0))
+    
+            # Trace with a size-1 reduction and replay with larger sizes
+            cfun = mx.compile(fun, shapeless=True)
+            for n in [1, 2, 3, 4]:
+                idx = mx.arange(n)
+&gt;               self.assertTrue(
+                    mx.array_equal(cfun(buf, idx), fun(buf, idx)),
+                    f"{reduction.__name__} failed for n={n}",
+                )
+E               RuntimeError: [omarchy] matrix layout Take is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[1,1]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_compile.py:1253: RuntimeError</failure></testcase><testcase classname="python.tests.test_compile.TestCompile" name="test_shapeless_compile_slice_update" time="0.004" /><testcase classname="python.tests.test_compile.TestCompile" name="test_shapeless_compile_unflatten" time="0.000" /><testcase classname="python.tests.test_compile.TestCompile" name="test_shapeless_compile_with_broadcasts" time="0.002" /><testcase classname="python.tests.test_compile.TestCompile" name="test_shapeless_compile_with_reduction" time="0.001"><failure message="RuntimeError: [omarchy] non-zero scalar fill is not implemented for the Omarchy Vulkan backend (dtype=int32, shape=[2,2]). No CPU fallback is available in Omarchy builds.">self = &lt;test_compile.TestCompile testMethod=test_shapeless_compile_with_reduction&gt;
+
+    def test_shapeless_compile_with_reduction(self):
+        # Test shapeless compile with a reduction
+        z = 1
+    
+        @partial(mx.compile, shapeless=True)
+        def fun(x, y):
+            return x + y.sum(0, keepdims=True) + z
+    
+        x = mx.ones((2, 2), mx.int32)
+        y = mx.ones((2, 2), mx.int32)
+&gt;       self.assertTrue(mx.array_equal(fun(x, y), mx.full(shape=(2, 2), vals=4)))
+E       RuntimeError: [omarchy] non-zero scalar fill is not implemented for the Omarchy Vulkan backend (dtype=int32, shape=[2,2]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_compile.py:616: RuntimeError</failure></testcase><testcase classname="python.tests.test_compile.TestCompile" name="test_shapeless_compile_with_reshape" time="0.001" /><testcase classname="python.tests.test_compile.TestCompile" name="test_shapeless_mean" time="0.009" /><testcase classname="python.tests.test_compile.TestCompile" name="test_shared_broadcast" time="0.010" /><testcase classname="python.tests.test_compile.TestCompile" name="test_simple_compile" time="0.001"><failure message="RuntimeError: [omarchy] Add dtype is not implemented for the Omarchy Vulkan backend (dtype=int32, shape=[2]). No CPU fallback is available in Omarchy builds.">self = &lt;test_compile.TestCompile testMethod=test_simple_compile&gt;
+
+    def test_simple_compile(self):
+        def fun(x, y):
+            return x + y
+    
+        compiled_fn = mx.compile(fun)
+        compiled_fn = mx.compile(fun)
+        x = mx.array(1.0)
+        y = mx.array(1.0)
+        out = compiled_fn(x, y)
+        self.assertEqual(out.item(), 2.0)
+    
+        # Try again
+        out = compiled_fn(x, y)
+        self.assertEqual(out.item(), 2.0)
+    
+        # Change sizes
+        x = mx.array([1.0, 2.0])
+        out = compiled_fn(x, y)
+        self.assertTrue(mx.array_equal(out, mx.array([2.0, 3.0])))
+    
+        y = mx.array([1.0, 2.0])
+        out = compiled_fn(x, y)
+        self.assertTrue(mx.array_equal(out, mx.array([2.0, 4.0])))
+    
+        # Change types
+        x = mx.array([1, 2], mx.int32)
+        y = mx.array([1, 2], mx.int32)
+        out = compiled_fn(x, y)
+        self.assertEqual(out.dtype, mx.int32)
+&gt;       self.assertTrue(mx.array_equal(out, mx.array([2, 4])))
+E       RuntimeError: [omarchy] Add dtype is not implemented for the Omarchy Vulkan backend (dtype=int32, shape=[2]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_compile.py:46: RuntimeError</failure></testcase><testcase classname="python.tests.test_compile.TestCompile" name="test_transform_over_eval_compiled" time="0.004" /><testcase classname="python.tests.test_compile.TestCompile" name="test_unsupported_input_types" time="0.000" /><testcase classname="python.tests.test_compile.TestCompile" name="test_vjp_vjp_compiled" time="0.016" /><testcase classname="python.tests.test_compile.TestCompile" name="test_vmap_compiled" time="0.012" /><testcase classname="python.tests.test_compile.TestCompile" name="test_wrap_compiled" time="0.001" /></testsuite></testsuites>

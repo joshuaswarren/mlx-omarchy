@@ -1,0 +1,486 @@
+============================= test session starts ==============================
+collecting ... collected 22 items
+
+.work/mlx/python/tests/test_export_import.py::TestExportImport::test_basic_export_import FAILED [  4%]
+.work/mlx/python/tests/test_export_import.py::TestExportImport::test_export_control_flow 
+.work/mlx/python/tests/test_export_import.py::TestExportImport::test_export_control_flow PASSED [  9%]
+.work/mlx/python/tests/test_export_import.py::TestExportImport::test_export_conv FAILED [ 13%]
+.work/mlx/python/tests/test_export_import.py::TestExportImport::test_export_conv_shapeless FAILED [ 18%]
+.work/mlx/python/tests/test_export_import.py::TestExportImport::test_export_custom_metal_kernel_with_math_mode PASSED [ 22%]
+.work/mlx/python/tests/test_export_import.py::TestExportImport::test_export_custom_metal_kernel_without_evaluation PASSED [ 27%]
+.work/mlx/python/tests/test_export_import.py::TestExportImport::test_export_import_custom_kernel FAILED [ 31%]
+.work/mlx/python/tests/test_export_import.py::TestExportImport::test_export_import_metadata PASSED [ 36%]
+.work/mlx/python/tests/test_export_import.py::TestExportImport::test_export_import_multi_with_constants FAILED [ 40%]
+.work/mlx/python/tests/test_export_import.py::TestExportImport::test_export_import_scatter_sum PASSED [ 45%]
+.work/mlx/python/tests/test_export_import.py::TestExportImport::test_export_import_shapeless FAILED [ 50%]
+.work/mlx/python/tests/test_export_import.py::TestExportImport::test_export_kwarg_ordering PASSED [ 54%]
+.work/mlx/python/tests/test_export_import.py::TestExportImport::test_export_matmul_shapeless_batch_and_mid_dim FAILED [ 59%]
+.work/mlx/python/tests/test_export_import.py::TestExportImport::test_export_matmul_shapeless_mid_dim FAILED [ 63%]
+.work/mlx/python/tests/test_export_import.py::TestExportImport::test_export_quantized_model 
+.work/mlx/python/tests/test_export_import.py::TestExportImport::test_export_quantized_model PASSED [ 68%]
+.work/mlx/python/tests/test_export_import.py::TestExportImport::test_export_random_sample FAILED [ 72%]
+.work/mlx/python/tests/test_export_import.py::TestExportImport::test_export_scatter_gather PASSED [ 77%]
+.work/mlx/python/tests/test_export_import.py::TestExportImport::test_export_searchsorted FAILED [ 81%]
+.work/mlx/python/tests/test_export_import.py::TestExportImport::test_export_variable_inputs FAILED [ 86%]
+.work/mlx/python/tests/test_export_import.py::TestExportImport::test_export_with_callback PASSED [ 90%]
+.work/mlx/python/tests/test_export_import.py::TestExportImport::test_export_with_kwargs FAILED [ 95%]
+.work/mlx/python/tests/test_export_import.py::TestExportImport::test_leaks PASSED [100%]
+
+=================================== FAILURES ===================================
+__________________ TestExportImport.test_basic_export_import ___________________
+
+self = <test_export_import.TestExportImport testMethod=test_basic_export_import>
+
+    def test_basic_export_import(self):
+        path = os.path.join(self.test_dir, "fn.mlxfn")
+    
+        # Function with no inputs
+        def fun():
+            return mx.zeros((3, 3))
+    
+        mx.export_function(path, fun)
+>       imported = mx.import_function(path)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^
+E       IndexError: vector::_M_range_check: __n (which is 0) >= this->size() (which is 0)
+
+.work/mlx/python/tests/test_export_import.py:35: IndexError
+_ TestExportImport.test_export_control_flow (y=array([1, 2, 3], dtype=int32), shapeless=True) _
+
+self = <test_export_import.TestExportImport testMethod=test_export_control_flow>
+
+    def test_export_control_flow(self):
+    
+        def fun(x, y):
+            if y.shape[0] <= 2:
+                return x + y
+            else:
+                return x + 2 * y
+    
+        for y in (mx.array([1, 2, 3]), mx.array([1, 2])):
+            for shapeless in (True, False):
+                with self.subTest(y=y, shapeless=shapeless):
+                    x = mx.array(1)
+                    export_path = os.path.join(self.test_dir, "control_flow.mlxfn")
+                    mx.export_function(export_path, fun, x, y, shapeless=shapeless)
+    
+>                   imported_fn = mx.import_function(export_path)
+                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E                   IndexError: vector::_M_range_check: __n (which is 0) >= this->size() (which is 0)
+
+.work/mlx/python/tests/test_export_import.py:482: IndexError
+_ TestExportImport.test_export_control_flow (y=array([1, 2, 3], dtype=int32), shapeless=False) _
+
+self = <test_export_import.TestExportImport testMethod=test_export_control_flow>
+
+    def test_export_control_flow(self):
+    
+        def fun(x, y):
+            if y.shape[0] <= 2:
+                return x + y
+            else:
+                return x + 2 * y
+    
+        for y in (mx.array([1, 2, 3]), mx.array([1, 2])):
+            for shapeless in (True, False):
+                with self.subTest(y=y, shapeless=shapeless):
+                    x = mx.array(1)
+                    export_path = os.path.join(self.test_dir, "control_flow.mlxfn")
+                    mx.export_function(export_path, fun, x, y, shapeless=shapeless)
+    
+>                   imported_fn = mx.import_function(export_path)
+                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E                   IndexError: vector::_M_range_check: __n (which is 0) >= this->size() (which is 0)
+
+.work/mlx/python/tests/test_export_import.py:482: IndexError
+_ TestExportImport.test_export_control_flow (y=array([1, 2], dtype=int32), shapeless=True) _
+
+self = <test_export_import.TestExportImport testMethod=test_export_control_flow>
+
+    def test_export_control_flow(self):
+    
+        def fun(x, y):
+            if y.shape[0] <= 2:
+                return x + y
+            else:
+                return x + 2 * y
+    
+        for y in (mx.array([1, 2, 3]), mx.array([1, 2])):
+            for shapeless in (True, False):
+                with self.subTest(y=y, shapeless=shapeless):
+                    x = mx.array(1)
+                    export_path = os.path.join(self.test_dir, "control_flow.mlxfn")
+                    mx.export_function(export_path, fun, x, y, shapeless=shapeless)
+    
+                    imported_fn = mx.import_function(export_path)
+>                   self.assertTrue(mx.array_equal(imported_fn(x, y)[0], fun(x, y)))
+E                   RuntimeError: [omarchy] Add dtype is not implemented for the Omarchy Vulkan backend (dtype=int32, shape=[2]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_export_import.py:483: RuntimeError
+_ TestExportImport.test_export_control_flow (y=array([1, 2], dtype=int32), shapeless=False) _
+
+self = <test_export_import.TestExportImport testMethod=test_export_control_flow>
+
+    def test_export_control_flow(self):
+    
+        def fun(x, y):
+            if y.shape[0] <= 2:
+                return x + y
+            else:
+                return x + 2 * y
+    
+        for y in (mx.array([1, 2, 3]), mx.array([1, 2])):
+            for shapeless in (True, False):
+                with self.subTest(y=y, shapeless=shapeless):
+                    x = mx.array(1)
+                    export_path = os.path.join(self.test_dir, "control_flow.mlxfn")
+                    mx.export_function(export_path, fun, x, y, shapeless=shapeless)
+    
+                    imported_fn = mx.import_function(export_path)
+>                   self.assertTrue(mx.array_equal(imported_fn(x, y)[0], fun(x, y)))
+E                   RuntimeError: [omarchy] Add dtype is not implemented for the Omarchy Vulkan backend (dtype=int32, shape=[2]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_export_import.py:483: RuntimeError
+______________________ TestExportImport.test_export_conv _______________________
+
+self = <test_export_import.TestExportImport testMethod=test_export_conv>
+
+    def test_export_conv(self):
+        path = os.path.join(self.test_dir, "fn.mlxfn")
+    
+        class Model(nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.c1 = nn.Conv2d(
+                    3, 16, kernel_size=3, stride=1, padding=1, bias=False
+                )
+                self.c2 = nn.Conv2d(
+                    16, 16, kernel_size=3, stride=2, padding=1, bias=False
+                )
+                self.c3 = nn.Conv2d(
+                    16, 16, kernel_size=3, stride=1, padding=2, bias=False
+                )
+    
+            def __call__(self, x):
+                return self.c3(self.c2(self.c1(x)))
+    
+        model = Model()
+        mx.eval(model.parameters())
+    
+        def forward(x):
+            return model(x)
+    
+        input_data = mx.random.normal(shape=(4, 32, 32, 3))
+        mx.export_function(path, forward, input_data)
+    
+>       imported_fn = mx.import_function(path)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^
+E       IndexError: vector::_M_range_check: __n (which is 0) >= this->size() (which is 0)
+
+.work/mlx/python/tests/test_export_import.py:363: IndexError
+_________________ TestExportImport.test_export_conv_shapeless __________________
+
+self = <test_export_import.TestExportImport testMethod=test_export_conv_shapeless>
+
+    def test_export_conv_shapeless(self):
+        # Conv1d (NLC)
+        path = os.path.join(self.test_dir, "conv1d.mlxfn")
+    
+        class M1(nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.c = nn.Conv1d(3, 8, kernel_size=3, stride=2, padding=1, bias=False)
+    
+            def __call__(self, x):
+                return self.c(x)
+    
+        m1 = M1()
+        mx.eval(m1.parameters())
+    
+        def f1(x):
+            return m1(x)
+    
+        x = mx.random.normal(shape=(4, 64, 3))
+        mx.export_function(path, f1, x, shapeless=True)
+>       f1_imp = mx.import_function(path)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^
+E       IndexError: vector::_M_range_check: __n (which is 0) >= this->size() (which is 0)
+
+.work/mlx/python/tests/test_export_import.py:388: IndexError
+______________ TestExportImport.test_export_import_custom_kernel _______________
+
+self = <test_export_import.TestExportImport testMethod=test_export_import_custom_kernel>
+
+    @unittest.skipIf(not mx.is_available(mx.gpu), "No GPU available")
+    def test_export_import_custom_kernel(self):
+        if mx.metal.is_available():
+            source = """
+                uint elem = thread_position_in_grid.x;
+                out1[elem] = a[elem];
+            """
+            custom_kernel = mx.fast.metal_kernel
+        elif mx.cuda.is_available():
+            source = """
+                auto elem = cooperative_groups::this_grid().thread_rank();
+                out1[elem] = a[elem];
+            """
+            custom_kernel = mx.fast.cuda_kernel
+    
+>       kernel = custom_kernel(
+                 ^^^^^^^^^^^^^
+            name="basic",
+            input_names=["a"],
+            output_names=["out1"],
+            source=source,
+        )
+E       UnboundLocalError: cannot access local variable 'custom_kernel' where it is not associated with a value
+
+.work/mlx/python/tests/test_export_import.py:574: UnboundLocalError
+___________ TestExportImport.test_export_import_multi_with_constants ___________
+
+self = <test_export_import.TestExportImport testMethod=test_export_import_multi_with_constants>
+
+    def test_export_import_multi_with_constants(self):
+    
+        path = os.path.join(self.test_dir, "fn.mlxfn")
+    
+        def fun(y):
+            i = y.shape[0]
+            x = mx.array(i)
+            for j in range(10):
+                x = x + mx.array(i + j)
+            return x * y.sum()
+    
+        ys = [mx.array([1]), mx.array([1, 1]), mx.array([1, 1, 1])]
+    
+        with mx.exporter(path, fun) as exporter:
+            for y in ys:
+                exporter(y)
+    
+>       imported = mx.import_function(path)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^
+E       IndexError: vector::_M_range_check: __n (which is 0) >= this->size() (which is 0)
+
+.work/mlx/python/tests/test_export_import.py:709: IndexError
+________________ TestExportImport.test_export_import_shapeless _________________
+
+self = <test_export_import.TestExportImport testMethod=test_export_import_shapeless>
+
+    def test_export_import_shapeless(self):
+        path = os.path.join(self.test_dir, "fn.mlxfn")
+    
+        def fun(*args):
+            return sum(args)
+    
+        with mx.exporter(path, fun, shapeless=True) as exporter:
+            exporter(mx.array(1))
+            exporter(mx.array(1), mx.array(2))
+            exporter(mx.array(1), mx.array(2), mx.array(3))
+    
+>       f2 = mx.import_function(path)
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+E       IndexError: vector::_M_range_check: __n (which is 0) >= this->size() (which is 0)
+
+.work/mlx/python/tests/test_export_import.py:284: IndexError
+_______ TestExportImport.test_export_matmul_shapeless_batch_and_mid_dim ________
+
+self = <test_export_import.TestExportImport testMethod=test_export_matmul_shapeless_batch_and_mid_dim>
+
+    def test_export_matmul_shapeless_batch_and_mid_dim(self):
+        path = os.path.join(self.test_dir, "matmul_shapeless_batch.mlxfn")
+    
+        B, E, H = 2, 32, 8
+        arr = mx.arange(E * H, dtype=mx.float32).reshape((E, H)) * (1.0 / (E * H))
+    
+        def fn(x):
+            return mx.matmul(x, arr)
+    
+        sample = mx.zeros((B, 10, E), dtype=mx.float32)
+        mx.export_function(path, fn, sample, shapeless=True)
+>       imported = mx.import_function(path)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^
+E       IndexError: vector::_M_range_check: __n (which is 0) >= this->size() (which is 0)
+
+.work/mlx/python/tests/test_export_import.py:758: IndexError
+____________ TestExportImport.test_export_matmul_shapeless_mid_dim _____________
+
+self = <test_export_import.TestExportImport testMethod=test_export_matmul_shapeless_mid_dim>
+
+    def test_export_matmul_shapeless_mid_dim(self):
+        path = os.path.join(self.test_dir, "matmul_shapeless.mlxfn")
+    
+        E, H = 64, 17
+        arr = mx.arange(E * H, dtype=mx.float32).reshape((E, H)) * (1.0 / (E * H))
+    
+        def fn(x):
+            return mx.matmul(x, arr)
+    
+        sample = mx.zeros((1, 40, E), dtype=mx.float32)
+        mx.export_function(path, fn, sample, shapeless=True)
+>       imported = mx.import_function(path)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^
+E       IndexError: vector::_M_range_check: __n (which is 0) >= this->size() (which is 0)
+
+.work/mlx/python/tests/test_export_import.py:737: IndexError
+________ TestExportImport.test_export_quantized_model (shapeless=True) _________
+
+self = <test_export_import.TestExportImport testMethod=test_export_quantized_model>
+
+    def test_export_quantized_model(self):
+        for shapeless in (True, False):
+            with self.subTest(shapeless=shapeless):
+                model = nn.Sequential(
+                    nn.Linear(1024, 512), nn.ReLU(), nn.Linear(512, 1024)
+                )
+                model.eval()
+                mx.eval(model.parameters())
+                input_data = mx.ones(shape=(512, 1024))
+                nn.quantize(model)
+                self.assertTrue(isinstance(model.layers[0], nn.QuantizedLinear))
+                self.assertTrue(isinstance(model.layers[2], nn.QuantizedLinear))
+>               mx.eval(model.parameters())
+E               RuntimeError: [omarchy] Quantize direction is not implemented for the Omarchy Vulkan backend (dtype=uint32, shape=[1024,64]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_export_import.py:497: RuntimeError
+________ TestExportImport.test_export_quantized_model (shapeless=False) ________
+
+self = <test_export_import.TestExportImport testMethod=test_export_quantized_model>
+
+    def test_export_quantized_model(self):
+        for shapeless in (True, False):
+            with self.subTest(shapeless=shapeless):
+                model = nn.Sequential(
+                    nn.Linear(1024, 512), nn.ReLU(), nn.Linear(512, 1024)
+                )
+                model.eval()
+                mx.eval(model.parameters())
+                input_data = mx.ones(shape=(512, 1024))
+                nn.quantize(model)
+                self.assertTrue(isinstance(model.layers[0], nn.QuantizedLinear))
+                self.assertTrue(isinstance(model.layers[2], nn.QuantizedLinear))
+>               mx.eval(model.parameters())
+E               RuntimeError: [omarchy] Quantize direction is not implemented for the Omarchy Vulkan backend (dtype=uint32, shape=[1024,64]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_export_import.py:497: RuntimeError
+__________________ TestExportImport.test_export_random_sample __________________
+
+self = <test_export_import.TestExportImport testMethod=test_export_random_sample>
+
+    def test_export_random_sample(self):
+        path = os.path.join(self.test_dir, "fn.mlxfn")
+    
+        mx.random.seed(5)
+    
+        def fun():
+            return mx.random.uniform(shape=(3,))
+    
+        mx.export_function(path, fun)
+>       imported = mx.import_function(path)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^
+E       IndexError: vector::_M_range_check: __n (which is 0) >= this->size() (which is 0)
+
+.work/mlx/python/tests/test_export_import.py:144: IndexError
+__________________ TestExportImport.test_export_searchsorted ___________________
+
+self = <test_export_import.TestExportImport testMethod=test_export_searchsorted>
+
+    def test_export_searchsorted(self):
+        path = os.path.join(self.test_dir, "fn.mlxfn")
+    
+        # both sides, since the side is the primitive's only state and a lost
+        # state would still round trip for the default
+        for side in ("left", "right"):
+    
+            def fun(a, v):
+                return mx.searchsorted(a, v, side=side)
+    
+            x = mx.sort(mx.random.uniform(shape=(32,)))
+            y = mx.random.uniform(shape=(3, 5))
+            mx.export_function(path, fun, (x, y))
+            imported_fun = mx.import_function(path)
+            expected = fun(x, y)
+            out = imported_fun(x, y)[0]
+>           self.assertTrue(mx.array_equal(expected, out))
+E           RuntimeError: [omarchy] Equal dtype is not implemented for the Omarchy Vulkan backend (dtype=bool, shape=[3,5]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_export_import.py:333: RuntimeError
+_________________ TestExportImport.test_export_variable_inputs _________________
+
+self = <test_export_import.TestExportImport testMethod=test_export_variable_inputs>
+
+    def test_export_variable_inputs(self):
+        path = os.path.join(self.test_dir, "fn.mlxfn")
+    
+        def fun(x, y, z=None):
+            out = x + y
+            if z is not None:
+                out += z
+            return out
+    
+        with mx.exporter(path, fun) as exporter:
+            exporter(mx.array([1, 2, 3]), mx.array([1, 1, 1]))
+            exporter(mx.array([1, 2, 3]), mx.array([1, 1, 1]), z=mx.array([2]))
+    
+        with self.assertRaises(RuntimeError):
+            exporter(mx.array([1, 2, 3, 4]), mx.array([1, 1, 1, 1]))
+    
+        imported_fun = mx.import_function(path)
+        out = imported_fun(mx.array([1, 2, 3]), mx.array([1, 1, 1]))[0]
+>       self.assertTrue(mx.array_equal(out, mx.array([2, 3, 4])))
+E       RuntimeError: [omarchy] Add dtype is not implemented for the Omarchy Vulkan backend (dtype=int32, shape=[3]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_export_import.py:222: RuntimeError
+___________________ TestExportImport.test_export_with_kwargs ___________________
+
+self = <test_export_import.TestExportImport testMethod=test_export_with_kwargs>
+
+    def test_export_with_kwargs(self):
+        path = os.path.join(self.test_dir, "fn.mlxfn")
+    
+        def fun(x, z=None):
+            out = x
+            if z is not None:
+                out += z
+            return out
+    
+        x = mx.array([1, 2, 3])
+        y = mx.array([1, 1, 0])
+        z = mx.array([2, 2, 2])
+    
+        mx.export_function(path, fun, (x,), {"z": z})
+        imported_fun = mx.import_function(path)
+    
+        with self.assertRaises(ValueError):
+            imported_fun(x, z)
+    
+        with self.assertRaises(ValueError):
+            imported_fun(x, y=z)
+    
+        with self.assertRaises(ValueError):
+            imported_fun((x,), {"y": z})
+    
+        out = imported_fun(x, z=z)[0]
+>       self.assertTrue(mx.array_equal(out, mx.array([3, 4, 5])))
+E       RuntimeError: [omarchy] Add dtype is not implemented for the Omarchy Vulkan backend (dtype=int32, shape=[3]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_export_import.py:179: RuntimeError
+- generated xml file: /home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/py/test_export_import.py.xml -
+=========================== short test summary info ============================
+FAILED .work/mlx/python/tests/test_export_import.py::TestExportImport::test_basic_export_import - IndexError: vector::_M_range_check: __n (which is 0) >= this->size() (which is 0)
+SUBFAILED(y=array([1, 2, 3], dtype=int32), shapeless=True) .work/mlx/python/tests/test_export_import.py::TestExportImport::test_export_control_flow - IndexError: vector::_M_range_check: __n (which is 0) >= this->size() (which is 0)
+SUBFAILED(y=array([1, 2, 3], dtype=int32), shapeless=False) .work/mlx/python/tests/test_export_import.py::TestExportImport::test_export_control_flow - IndexError: vector::_M_range_check: __n (which is 0) >= this->size() (which is 0)
+SUBFAILED(y=array([1, 2], dtype=int32), shapeless=True) .work/mlx/python/tests/test_export_import.py::TestExportImport::test_export_control_flow - RuntimeError: [omarchy] Add dtype is not implemented for the Omarchy Vulkan backend (dtype=int32, shape=[2]). No CPU fallback is available in Omarchy builds.
+SUBFAILED(y=array([1, 2], dtype=int32), shapeless=False) .work/mlx/python/tests/test_export_import.py::TestExportImport::test_export_control_flow - RuntimeError: [omarchy] Add dtype is not implemented for the Omarchy Vulkan backend (dtype=int32, shape=[2]). No CPU fallback is available in Omarchy builds.
+FAILED .work/mlx/python/tests/test_export_import.py::TestExportImport::test_export_conv - IndexError: vector::_M_range_check: __n (which is 0) >= this->size() (which is 0)
+FAILED .work/mlx/python/tests/test_export_import.py::TestExportImport::test_export_conv_shapeless - IndexError: vector::_M_range_check: __n (which is 0) >= this->size() (which is 0)
+FAILED .work/mlx/python/tests/test_export_import.py::TestExportImport::test_export_import_custom_kernel - UnboundLocalError: cannot access local variable 'custom_kernel' where it is not associated with a value
+FAILED .work/mlx/python/tests/test_export_import.py::TestExportImport::test_export_import_multi_with_constants - IndexError: vector::_M_range_check: __n (which is 0) >= this->size() (which is 0)
+FAILED .work/mlx/python/tests/test_export_import.py::TestExportImport::test_export_import_shapeless - IndexError: vector::_M_range_check: __n (which is 0) >= this->size() (which is 0)
+FAILED .work/mlx/python/tests/test_export_import.py::TestExportImport::test_export_matmul_shapeless_batch_and_mid_dim - IndexError: vector::_M_range_check: __n (which is 0) >= this->size() (which is 0)
+FAILED .work/mlx/python/tests/test_export_import.py::TestExportImport::test_export_matmul_shapeless_mid_dim - IndexError: vector::_M_range_check: __n (which is 0) >= this->size() (which is 0)
+SUBFAILED(shapeless=True) .work/mlx/python/tests/test_export_import.py::TestExportImport::test_export_quantized_model - RuntimeError: [omarchy] Quantize direction is not implemented for the Omarchy Vulkan backend (dtype=uint32, shape=[1024,64]). No CPU fallback is available in Omarchy builds.
+SUBFAILED(shapeless=False) .work/mlx/python/tests/test_export_import.py::TestExportImport::test_export_quantized_model - RuntimeError: [omarchy] Quantize direction is not implemented for the Omarchy Vulkan backend (dtype=uint32, shape=[1024,64]). No CPU fallback is available in Omarchy builds.
+FAILED .work/mlx/python/tests/test_export_import.py::TestExportImport::test_export_random_sample - IndexError: vector::_M_range_check: __n (which is 0) >= this->size() (which is 0)
+FAILED .work/mlx/python/tests/test_export_import.py::TestExportImport::test_export_searchsorted - RuntimeError: [omarchy] Equal dtype is not implemented for the Omarchy Vulkan backend (dtype=bool, shape=[3,5]). No CPU fallback is available in Omarchy builds.
+FAILED .work/mlx/python/tests/test_export_import.py::TestExportImport::test_export_variable_inputs - RuntimeError: [omarchy] Add dtype is not implemented for the Omarchy Vulkan backend (dtype=int32, shape=[3]). No CPU fallback is available in Omarchy builds.
+FAILED .work/mlx/python/tests/test_export_import.py::TestExportImport::test_export_with_kwargs - RuntimeError: [omarchy] Add dtype is not implemented for the Omarchy Vulkan backend (dtype=int32, shape=[3]). No CPU fallback is available in Omarchy builds.
+======================== 18 failed, 10 passed in 0.77s =========================

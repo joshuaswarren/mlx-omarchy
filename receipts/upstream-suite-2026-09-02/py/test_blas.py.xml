@@ -1,0 +1,3172 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="52" skipped="0" tests="1047" time="93.825" timestamp="2026-09-02T08:55:34.506401-05:00" hostname="omp-studio-local"><testcase classname="python.tests.test_blas.TestBlas" name="test_addmm" time="0.052"><failure message="RuntimeError: [omarchy] broadcast AddMM is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[32,128,16]). No CPU fallback is available in Omarchy builds.">self = &lt;test_blas.TestBlas testMethod=test_addmm&gt;
+
+    def test_addmm(self):
+        np.random.seed(0)
+        # Batched matmul
+        alpha = 0.5
+        for beta in (1.0, 2.0):
+            # c must broadcast to the output shape
+            with self.assertRaises(ValueError):
+                mx.addmm(mx.zeros((2, 2, 2)), mx.zeros((2, 2)), mx.zeros((2, 2)))
+    
+            # Regular batched case
+            a_npy = np.random.normal(0.0, 1.0 / 128, (32, 128, 16)).astype(np.float32)
+            b_npy = np.random.normal(0.0, 1.0 / 128, (32, 16, 16)).astype(np.float32)
+    
+            a_mlx = mx.array(a_npy)
+            b_mlx = mx.array(b_npy)
+    
+            for c_shape in ((1,), (1, 16), (32, 1, 16), (1, 128, 16)):
+                c_npy = np.ones(c_shape).astype(np.float32)
+                c_mlx = mx.array(c_npy)
+    
+                d_npy = alpha * (a_npy @ b_npy) + beta * c_npy
+                d_mlx = mx.addmm(c_mlx, a_mlx, b_mlx, alpha, beta)
+    
+                self.assertListEqual(list(d_npy.shape), list(d_mlx.shape))
+&gt;               self.assertTrue(np.allclose(d_mlx, d_npy, atol=1e-5))
+                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.work/mlx/python/tests/test_blas.py:748: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/numpy/_core/numeric.py:2376: in allclose
+    res = all(isclose(a, b, rtol=rtol, atol=atol, equal_nan=equal_nan))
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/numpy/_core/numeric.py:2476: in isclose
+    x, y, atol, rtol = (
+    ^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+.0 = &lt;tuple_iterator object at 0x777379d55b40&gt;
+
+    x, y, atol, rtol = (
+&gt;       a if isinstance(a, (int, float, complex)) else asanyarray(a)
+                                                       ^^^^^^^^^^^^^
+        for a in (a, b, atol, rtol))
+E   RuntimeError: [omarchy] broadcast AddMM is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[32,128,16]). No CPU fallback is available in Omarchy builds.
+
+/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/numpy/_core/numeric.py:2477: RuntimeError</failure></testcase><testcase classname="python.tests.test_blas.TestBlas" name="test_addmm_grad" time="0.159" /><testcase classname="python.tests.test_blas.TestBlas" name="test_block_masked_matmul" time="0.343"><failure message="RuntimeError: [omarchy] strided copy is not implemented for the Omarchy Vulkan backend (dtype=bool, shape=[16,16]). No CPU fallback is available in Omarchy builds.">M = 16, N = 16, K = 16, block_size = 32, transpose = False
+np_dtype = &lt;class 'numpy.float32'&gt;, batch_A = (), batch_B = ()
+
+    def test_shape(
+        M,
+        N,
+        K,
+        block_size,
+        transpose=False,
+        np_dtype=np.float32,
+        batch_A=(),
+        batch_B=(),
+    ):
+        with self.subTest(
+            M=M,
+            N=N,
+            K=K,
+            block_size=block_size,
+            np_dtype=np_dtype,
+            transpose=transpose,
+            batch_A=batch_A,
+            batch_B=batch_B,
+        ):
+            batch_out = np.broadcast_shapes(batch_A, batch_B)
+            cotan = mx.ones(batch_out + (M, N))
+    
+            a_np = np.random.normal(size=batch_A + (M, K)).astype(np_dtype)
+            b_np = np.random.normal(size=batch_B + (K, N)).astype(np_dtype)
+    
+            a_mx = mx.array(a_np)
+            b_mx = mx.array(b_np)
+    
+            tm = (M + block_size - 1) // block_size
+            tn = (N + block_size - 1) // block_size
+            tk = (K + block_size - 1) // block_size
+    
+            a_mx_bool_mask, a_mx_mask = make_mask(tm, tk, batch_A, np_dtype)
+            b_mx_bool_mask, b_mx_mask = make_mask(tk, tn, batch_B, np_dtype)
+            out_mx_bool_mask, out_mx_mask = make_mask(tm, tn, batch_out, np_dtype)
+    
+            # Boolean block masks
+&gt;           run_test(
+                a_mx,
+                b_mx,
+                block_size,
+                out_mx_bool_mask,
+                a_mx_bool_mask,
+                b_mx_bool_mask,
+                cotan,
+            )
+
+.work/mlx/python/tests/test_blas.py:1139: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+a = array([[-1.02348, 0.892468, 0.979886, ..., -0.54002, 0.456977, -0.165779],
+       [0.554183, 1.01316, 1.17741, ..., 0.... 0.423135, -1.50161, 0.588419],
+       [-0.875687, 0.596454, 1.5746, ..., 1.20349, 0.0602938, 1.50435]], dtype=float32)
+b = array([[-0.453117, -1.39946, 0.995996, ..., 0.446602, -0.011853, 0.724492],
+       [-1.6667, 0.0236609, -0.463095, ......5946, -0.537927, 0.0852746],
+       [-0.120522, 1.14579, -0.642257, ..., -0.165423, 0.675684, 1.02628]], dtype=float32)
+block_size = 32, out_mask = array([[True]], dtype=bool)
+a_mask = array([[True]], dtype=bool), b_mask = array([[True]], dtype=bool)
+cotan = array([[1, 1, 1, ..., 1, 1, 1],
+       [1, 1, 1, ..., 1, 1, 1],
+       [1, 1, 1, ..., 1, 1, 1],
+       ...,
+       [1, 1, 1, ..., 1, 1, 1],
+       [1, 1, 1, ..., 1, 1, 1],
+       [1, 1, 1, ..., 1, 1, 1]], dtype=float32)
+
+    def run_test(a, b, block_size, out_mask, a_mask, b_mask, cotan):
+        def f_ref(a_, b_):
+            return ref_block_masked_mm(a_, b_, block_size, out_mask, a_mask, b_mask)
+    
+        def f_test(a_, b_):
+            return mx.block_masked_mm(a_, b_, block_size, out_mask, a_mask, b_mask)
+    
+        out_ref, dout_ref = mx.vjp(f_ref, [a, b], [cotan])
+        out_test, dout_test = mx.vjp(f_test, [a, b], [cotan])
+    
+&gt;       self.assertTrue(mx.allclose(out_ref[0], out_test[0], atol=1e-5).item())
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       RuntimeError: [omarchy] strided copy is not implemented for the Omarchy Vulkan backend (dtype=bool, shape=[16,16]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_blas.py:1066: RuntimeError</failure><failure message="RuntimeError: [omarchy] strided reshape is not implemented for the Omarchy Vulkan backend (dtype=bool, shape=[32,64]). No CPU fallback is available in Omarchy builds.">M = 64, N = 64, K = 16, block_size = 32, transpose = False
+np_dtype = &lt;class 'numpy.float32'&gt;, batch_A = (), batch_B = ()
+
+    def test_shape(
+        M,
+        N,
+        K,
+        block_size,
+        transpose=False,
+        np_dtype=np.float32,
+        batch_A=(),
+        batch_B=(),
+    ):
+        with self.subTest(
+            M=M,
+            N=N,
+            K=K,
+            block_size=block_size,
+            np_dtype=np_dtype,
+            transpose=transpose,
+            batch_A=batch_A,
+            batch_B=batch_B,
+        ):
+            batch_out = np.broadcast_shapes(batch_A, batch_B)
+            cotan = mx.ones(batch_out + (M, N))
+    
+            a_np = np.random.normal(size=batch_A + (M, K)).astype(np_dtype)
+            b_np = np.random.normal(size=batch_B + (K, N)).astype(np_dtype)
+    
+            a_mx = mx.array(a_np)
+            b_mx = mx.array(b_np)
+    
+            tm = (M + block_size - 1) // block_size
+            tn = (N + block_size - 1) // block_size
+            tk = (K + block_size - 1) // block_size
+    
+            a_mx_bool_mask, a_mx_mask = make_mask(tm, tk, batch_A, np_dtype)
+            b_mx_bool_mask, b_mx_mask = make_mask(tk, tn, batch_B, np_dtype)
+            out_mx_bool_mask, out_mx_mask = make_mask(tm, tn, batch_out, np_dtype)
+    
+            # Boolean block masks
+&gt;           run_test(
+                a_mx,
+                b_mx,
+                block_size,
+                out_mx_bool_mask,
+                a_mx_bool_mask,
+                b_mx_bool_mask,
+                cotan,
+            )
+
+.work/mlx/python/tests/test_blas.py:1139: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+a = array([[-1.30481, 0.748048, -0.162462, ..., -0.220516, -0.363295, 0.999316],
+       [-1.12507, 0.227395, -1.68065, .......541544, 0.0697142, -1.32644],
+       [-0.231962, 1.27766, 1.81053, ..., -0.739802, 0.658448, 1.12946]], dtype=float32)
+b = array([[-2.48159, -0.862487, 1.33505, ..., 0.606806, 0.844669, -0.633224],
+       [0.542549, 0.713917, -0.0305936, .......142457, 0.266447, -1.33393],
+       [-0.517721, -1.32083, 0.349694, ..., -0.170053, 1.61997, 1.28857]], dtype=float32)
+block_size = 32
+out_mask = array([[True, False],
+       [False, False]], dtype=bool)
+a_mask = array([[True],
+       [False]], dtype=bool)
+b_mask = array([[False, True]], dtype=bool)
+cotan = array([[1, 1, 1, ..., 1, 1, 1],
+       [1, 1, 1, ..., 1, 1, 1],
+       [1, 1, 1, ..., 1, 1, 1],
+       ...,
+       [1, 1, 1, ..., 1, 1, 1],
+       [1, 1, 1, ..., 1, 1, 1],
+       [1, 1, 1, ..., 1, 1, 1]], dtype=float32)
+
+    def run_test(a, b, block_size, out_mask, a_mask, b_mask, cotan):
+        def f_ref(a_, b_):
+            return ref_block_masked_mm(a_, b_, block_size, out_mask, a_mask, b_mask)
+    
+        def f_test(a_, b_):
+            return mx.block_masked_mm(a_, b_, block_size, out_mask, a_mask, b_mask)
+    
+        out_ref, dout_ref = mx.vjp(f_ref, [a, b], [cotan])
+        out_test, dout_test = mx.vjp(f_test, [a, b], [cotan])
+    
+&gt;       self.assertTrue(mx.allclose(out_ref[0], out_test[0], atol=1e-5).item())
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       RuntimeError: [omarchy] strided reshape is not implemented for the Omarchy Vulkan backend (dtype=bool, shape=[32,64]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_blas.py:1066: RuntimeError</failure><failure message="RuntimeError: [omarchy] strided reshape is not implemented for the Omarchy Vulkan backend (dtype=bool, shape=[128,128]). No CPU fallback is available in Omarchy builds.">M = 128, N = 128, K = 128, block_size = 32, transpose = False
+np_dtype = &lt;class 'numpy.float32'&gt;, batch_A = (), batch_B = ()
+
+    def test_shape(
+        M,
+        N,
+        K,
+        block_size,
+        transpose=False,
+        np_dtype=np.float32,
+        batch_A=(),
+        batch_B=(),
+    ):
+        with self.subTest(
+            M=M,
+            N=N,
+            K=K,
+            block_size=block_size,
+            np_dtype=np_dtype,
+            transpose=transpose,
+            batch_A=batch_A,
+            batch_B=batch_B,
+        ):
+            batch_out = np.broadcast_shapes(batch_A, batch_B)
+            cotan = mx.ones(batch_out + (M, N))
+    
+            a_np = np.random.normal(size=batch_A + (M, K)).astype(np_dtype)
+            b_np = np.random.normal(size=batch_B + (K, N)).astype(np_dtype)
+    
+            a_mx = mx.array(a_np)
+            b_mx = mx.array(b_np)
+    
+            tm = (M + block_size - 1) // block_size
+            tn = (N + block_size - 1) // block_size
+            tk = (K + block_size - 1) // block_size
+    
+            a_mx_bool_mask, a_mx_mask = make_mask(tm, tk, batch_A, np_dtype)
+            b_mx_bool_mask, b_mx_mask = make_mask(tk, tn, batch_B, np_dtype)
+            out_mx_bool_mask, out_mx_mask = make_mask(tm, tn, batch_out, np_dtype)
+    
+            # Boolean block masks
+&gt;           run_test(
+                a_mx,
+                b_mx,
+                block_size,
+                out_mx_bool_mask,
+                a_mx_bool_mask,
+                b_mx_bool_mask,
+                cotan,
+            )
+
+.work/mlx/python/tests/test_blas.py:1139: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+a = array([[1.23665, 2.38878, 0.266963, ..., 0.711809, 0.296264, 3.00888],
+       [-0.417844, 1.54813, 0.445933, ..., -0.0...179, 0.178089, -0.0656738],
+       [-1.88323, -0.787037, 0.22588, ..., -0.180368, -0.501155, -1.00098]], dtype=float32)
+b = array([[0.186823, -0.602901, -0.854789, ..., 0.0690178, 0.166249, 0.398818],
+       [0.168403, 1.88215, -0.588248, ......31142, 0.72944, -0.701391],
+       [-0.91806, -1.50187, -0.219804, ..., 0.0179698, 0.660302, -1.22493]], dtype=float32)
+block_size = 32
+out_mask = array([[True, False, False, False],
+       [False, True, False, True],
+       [False, False, False, True],
+       [True, False, False, True]], dtype=bool)
+a_mask = array([[False, False, True, False],
+       [False, False, False, False],
+       [False, True, False, True],
+       [True, False, False, True]], dtype=bool)
+b_mask = array([[True, False, False, True],
+       [True, False, False, True],
+       [True, False, True, False],
+       [False, False, True, True]], dtype=bool)
+cotan = array([[1, 1, 1, ..., 1, 1, 1],
+       [1, 1, 1, ..., 1, 1, 1],
+       [1, 1, 1, ..., 1, 1, 1],
+       ...,
+       [1, 1, 1, ..., 1, 1, 1],
+       [1, 1, 1, ..., 1, 1, 1],
+       [1, 1, 1, ..., 1, 1, 1]], dtype=float32)
+
+    def run_test(a, b, block_size, out_mask, a_mask, b_mask, cotan):
+        def f_ref(a_, b_):
+            return ref_block_masked_mm(a_, b_, block_size, out_mask, a_mask, b_mask)
+    
+        def f_test(a_, b_):
+            return mx.block_masked_mm(a_, b_, block_size, out_mask, a_mask, b_mask)
+    
+        out_ref, dout_ref = mx.vjp(f_ref, [a, b], [cotan])
+        out_test, dout_test = mx.vjp(f_test, [a, b], [cotan])
+    
+&gt;       self.assertTrue(mx.allclose(out_ref[0], out_test[0], atol=1e-5).item())
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       RuntimeError: [omarchy] strided reshape is not implemented for the Omarchy Vulkan backend (dtype=bool, shape=[128,128]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_blas.py:1066: RuntimeError</failure><failure message="RuntimeError: [omarchy] strided reshape is not implemented for the Omarchy Vulkan backend (dtype=bool, shape=[128,256]). No CPU fallback is available in Omarchy builds.">M = 256, N = 256, K = 128, block_size = 64, transpose = False
+np_dtype = &lt;class 'numpy.float32'&gt;, batch_A = (), batch_B = ()
+
+    def test_shape(
+        M,
+        N,
+        K,
+        block_size,
+        transpose=False,
+        np_dtype=np.float32,
+        batch_A=(),
+        batch_B=(),
+    ):
+        with self.subTest(
+            M=M,
+            N=N,
+            K=K,
+            block_size=block_size,
+            np_dtype=np_dtype,
+            transpose=transpose,
+            batch_A=batch_A,
+            batch_B=batch_B,
+        ):
+            batch_out = np.broadcast_shapes(batch_A, batch_B)
+            cotan = mx.ones(batch_out + (M, N))
+    
+            a_np = np.random.normal(size=batch_A + (M, K)).astype(np_dtype)
+            b_np = np.random.normal(size=batch_B + (K, N)).astype(np_dtype)
+    
+            a_mx = mx.array(a_np)
+            b_mx = mx.array(b_np)
+    
+            tm = (M + block_size - 1) // block_size
+            tn = (N + block_size - 1) // block_size
+            tk = (K + block_size - 1) // block_size
+    
+            a_mx_bool_mask, a_mx_mask = make_mask(tm, tk, batch_A, np_dtype)
+            b_mx_bool_mask, b_mx_mask = make_mask(tk, tn, batch_B, np_dtype)
+            out_mx_bool_mask, out_mx_mask = make_mask(tm, tn, batch_out, np_dtype)
+    
+            # Boolean block masks
+&gt;           run_test(
+                a_mx,
+                b_mx,
+                block_size,
+                out_mx_bool_mask,
+                a_mx_bool_mask,
+                b_mx_bool_mask,
+                cotan,
+            )
+
+.work/mlx/python/tests/test_blas.py:1139: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+a = array([[0.338022, 1.86243, -0.185972, ..., 0.225519, 0.477527, 0.980098],
+       [0.0695612, -0.16363, 0.73255, ..., 0...145003, -1.07909, 0.639492],
+       [-0.748442, -0.0812486, -2.32386, ..., 0.2403, -0.842683, -1.2005]], dtype=float32)
+b = array([[0.713118, -0.636424, 2.00072, ..., 0.654452, 0.368284, 1.90405],
+       [0.476501, 1.16545, 0.730754, ..., 0.8...22439, 0.944381, -1.23696],
+       [1.58771, -1.53094, 0.392455, ..., -0.214304, -0.740921, -0.756068]], dtype=float32)
+block_size = 64
+out_mask = array([[True, False, False, True],
+       [False, False, False, False],
+       [False, True, True, False],
+       [False, False, True, False]], dtype=bool)
+a_mask = array([[True, True],
+       [True, False],
+       [True, False],
+       [True, False]], dtype=bool)
+b_mask = array([[False, False, False, True],
+       [False, True, True, True]], dtype=bool)
+cotan = array([[1, 1, 1, ..., 1, 1, 1],
+       [1, 1, 1, ..., 1, 1, 1],
+       [1, 1, 1, ..., 1, 1, 1],
+       ...,
+       [1, 1, 1, ..., 1, 1, 1],
+       [1, 1, 1, ..., 1, 1, 1],
+       [1, 1, 1, ..., 1, 1, 1]], dtype=float32)
+
+    def run_test(a, b, block_size, out_mask, a_mask, b_mask, cotan):
+        def f_ref(a_, b_):
+            return ref_block_masked_mm(a_, b_, block_size, out_mask, a_mask, b_mask)
+    
+        def f_test(a_, b_):
+            return mx.block_masked_mm(a_, b_, block_size, out_mask, a_mask, b_mask)
+    
+        out_ref, dout_ref = mx.vjp(f_ref, [a, b], [cotan])
+        out_test, dout_test = mx.vjp(f_test, [a, b], [cotan])
+    
+&gt;       self.assertTrue(mx.allclose(out_ref[0], out_test[0], atol=1e-5).item())
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       RuntimeError: [omarchy] strided reshape is not implemented for the Omarchy Vulkan backend (dtype=bool, shape=[128,256]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_blas.py:1066: RuntimeError</failure><failure message="RuntimeError: [omarchy] strided reshape is not implemented for the Omarchy Vulkan backend (dtype=bool, shape=[32,128]). No CPU fallback is available in Omarchy builds.">M = 1, N = 128, K = 128, block_size = 32, transpose = False
+np_dtype = &lt;class 'numpy.float32'&gt;, batch_A = (), batch_B = ()
+
+    def test_shape(
+        M,
+        N,
+        K,
+        block_size,
+        transpose=False,
+        np_dtype=np.float32,
+        batch_A=(),
+        batch_B=(),
+    ):
+        with self.subTest(
+            M=M,
+            N=N,
+            K=K,
+            block_size=block_size,
+            np_dtype=np_dtype,
+            transpose=transpose,
+            batch_A=batch_A,
+            batch_B=batch_B,
+        ):
+            batch_out = np.broadcast_shapes(batch_A, batch_B)
+            cotan = mx.ones(batch_out + (M, N))
+    
+            a_np = np.random.normal(size=batch_A + (M, K)).astype(np_dtype)
+            b_np = np.random.normal(size=batch_B + (K, N)).astype(np_dtype)
+    
+            a_mx = mx.array(a_np)
+            b_mx = mx.array(b_np)
+    
+            tm = (M + block_size - 1) // block_size
+            tn = (N + block_size - 1) // block_size
+            tk = (K + block_size - 1) // block_size
+    
+            a_mx_bool_mask, a_mx_mask = make_mask(tm, tk, batch_A, np_dtype)
+            b_mx_bool_mask, b_mx_mask = make_mask(tk, tn, batch_B, np_dtype)
+            out_mx_bool_mask, out_mx_mask = make_mask(tm, tn, batch_out, np_dtype)
+    
+            # Boolean block masks
+&gt;           run_test(
+                a_mx,
+                b_mx,
+                block_size,
+                out_mx_bool_mask,
+                a_mx_bool_mask,
+                b_mx_bool_mask,
+                cotan,
+            )
+
+.work/mlx/python/tests/test_blas.py:1139: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+a = array([[-1.91663, 0.611704, 2.20496, ..., 1.20195, -0.371257, -0.166616]], dtype=float32)
+b = array([[1.01723, -0.593642, 0.800892, ..., -0.567117, 0.056471, 1.1334],
+       [0.954202, 1.61939, 1.14784, ..., -1.1....95473, 0.036312, -1.5066],
+       [-0.836631, -0.432946, -1.15562, ..., -1.07198, -0.239274, 1.04983]], dtype=float32)
+block_size = 32, out_mask = array([[False, True, False, True]], dtype=bool)
+a_mask = array([[True, True, True, False]], dtype=bool)
+b_mask = array([[True, True, True, False],
+       [True, False, False, True],
+       [False, False, True, False],
+       [True, True, True, False]], dtype=bool)
+cotan = array([[1, 1, 1, ..., 1, 1, 1]], dtype=float32)
+
+    def run_test(a, b, block_size, out_mask, a_mask, b_mask, cotan):
+        def f_ref(a_, b_):
+            return ref_block_masked_mm(a_, b_, block_size, out_mask, a_mask, b_mask)
+    
+        def f_test(a_, b_):
+            return mx.block_masked_mm(a_, b_, block_size, out_mask, a_mask, b_mask)
+    
+        out_ref, dout_ref = mx.vjp(f_ref, [a, b], [cotan])
+        out_test, dout_test = mx.vjp(f_test, [a, b], [cotan])
+    
+&gt;       self.assertTrue(mx.allclose(out_ref[0], out_test[0], atol=1e-5).item())
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       RuntimeError: [omarchy] strided reshape is not implemented for the Omarchy Vulkan backend (dtype=bool, shape=[32,128]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_blas.py:1066: RuntimeError</failure><failure message="RuntimeError: [omarchy] strided reshape is not implemented for the Omarchy Vulkan backend (dtype=bool, shape=[128,64]). No CPU fallback is available in Omarchy builds.">M = 256, N = 1, K = 128, block_size = 64, transpose = False
+np_dtype = &lt;class 'numpy.float32'&gt;, batch_A = (), batch_B = ()
+
+    def test_shape(
+        M,
+        N,
+        K,
+        block_size,
+        transpose=False,
+        np_dtype=np.float32,
+        batch_A=(),
+        batch_B=(),
+    ):
+        with self.subTest(
+            M=M,
+            N=N,
+            K=K,
+            block_size=block_size,
+            np_dtype=np_dtype,
+            transpose=transpose,
+            batch_A=batch_A,
+            batch_B=batch_B,
+        ):
+            batch_out = np.broadcast_shapes(batch_A, batch_B)
+            cotan = mx.ones(batch_out + (M, N))
+    
+            a_np = np.random.normal(size=batch_A + (M, K)).astype(np_dtype)
+            b_np = np.random.normal(size=batch_B + (K, N)).astype(np_dtype)
+    
+            a_mx = mx.array(a_np)
+            b_mx = mx.array(b_np)
+    
+            tm = (M + block_size - 1) // block_size
+            tn = (N + block_size - 1) // block_size
+            tk = (K + block_size - 1) // block_size
+    
+            a_mx_bool_mask, a_mx_mask = make_mask(tm, tk, batch_A, np_dtype)
+            b_mx_bool_mask, b_mx_mask = make_mask(tk, tn, batch_B, np_dtype)
+            out_mx_bool_mask, out_mx_mask = make_mask(tm, tn, batch_out, np_dtype)
+    
+            # Boolean block masks
+&gt;           run_test(
+                a_mx,
+                b_mx,
+                block_size,
+                out_mx_bool_mask,
+                a_mx_bool_mask,
+                b_mx_bool_mask,
+                cotan,
+            )
+
+.work/mlx/python/tests/test_blas.py:1139: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+a = array([[0.415424, 1.58588, -0.309308, ..., -0.0677808, -0.956521, 0.962247],
+       [-0.725795, 1.30466, -0.890285, .....822, 0.782441, -0.038743],
+       [-0.950654, -0.740153, 0.209209, ..., 0.447786, 0.672938, 0.0829622]], dtype=float32)
+b = array([[0.236192],
+       [-2.78997],
+       [1.97275],
+       ...,
+       [0.0396608],
+       [-1.7612],
+       [-0.568886]], dtype=float32)
+block_size = 64
+out_mask = array([[True],
+       [False],
+       [True],
+       [True]], dtype=bool)
+a_mask = array([[True, True],
+       [True, True],
+       [True, True],
+       [False, False]], dtype=bool)
+b_mask = array([[False],
+       [True]], dtype=bool)
+cotan = array([[1],
+       [1],
+       [1],
+       ...,
+       [1],
+       [1],
+       [1]], dtype=float32)
+
+    def run_test(a, b, block_size, out_mask, a_mask, b_mask, cotan):
+        def f_ref(a_, b_):
+            return ref_block_masked_mm(a_, b_, block_size, out_mask, a_mask, b_mask)
+    
+        def f_test(a_, b_):
+            return mx.block_masked_mm(a_, b_, block_size, out_mask, a_mask, b_mask)
+    
+        out_ref, dout_ref = mx.vjp(f_ref, [a, b], [cotan])
+        out_test, dout_test = mx.vjp(f_test, [a, b], [cotan])
+    
+&gt;       self.assertTrue(mx.allclose(out_ref[0], out_test[0], atol=1e-5).item())
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       RuntimeError: [omarchy] strided reshape is not implemented for the Omarchy Vulkan backend (dtype=bool, shape=[128,64]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_blas.py:1066: RuntimeError</failure><failure message="RuntimeError: [omarchy] strided reshape is not implemented for the Omarchy Vulkan backend (dtype=bool, shape=[2,2,64,64]). No CPU fallback is available in Omarchy builds.">M = 64, N = 64, K = 64, block_size = 32, transpose = False
+np_dtype = &lt;class 'numpy.float32'&gt;, batch_A = (1, 2), batch_B = (2, 2)
+
+    def test_shape(
+        M,
+        N,
+        K,
+        block_size,
+        transpose=False,
+        np_dtype=np.float32,
+        batch_A=(),
+        batch_B=(),
+    ):
+        with self.subTest(
+            M=M,
+            N=N,
+            K=K,
+            block_size=block_size,
+            np_dtype=np_dtype,
+            transpose=transpose,
+            batch_A=batch_A,
+            batch_B=batch_B,
+        ):
+            batch_out = np.broadcast_shapes(batch_A, batch_B)
+            cotan = mx.ones(batch_out + (M, N))
+    
+            a_np = np.random.normal(size=batch_A + (M, K)).astype(np_dtype)
+            b_np = np.random.normal(size=batch_B + (K, N)).astype(np_dtype)
+    
+            a_mx = mx.array(a_np)
+            b_mx = mx.array(b_np)
+    
+            tm = (M + block_size - 1) // block_size
+            tn = (N + block_size - 1) // block_size
+            tk = (K + block_size - 1) // block_size
+    
+            a_mx_bool_mask, a_mx_mask = make_mask(tm, tk, batch_A, np_dtype)
+            b_mx_bool_mask, b_mx_mask = make_mask(tk, tn, batch_B, np_dtype)
+            out_mx_bool_mask, out_mx_mask = make_mask(tm, tn, batch_out, np_dtype)
+    
+            # Boolean block masks
+&gt;           run_test(
+                a_mx,
+                b_mx,
+                block_size,
+                out_mx_bool_mask,
+                a_mx_bool_mask,
+                b_mx_bool_mask,
+                cotan,
+            )
+
+.work/mlx/python/tests/test_blas.py:1139: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+a = array([[[[0.0539924, -1.66729, -1.86367, ..., 1.38378, 1.01737, 0.866455],
+         [1.63069, -0.676701, -0.389591, .....31, -2.6543, -0.839047],
+         [-0.707414, -1.88646, -0.98511, ..., -0.433477, 0.81119, 0.180479]]]], dtype=float32)
+b = array([[[[0.183715, -0.173058, -0.686974, ..., 0.925323, 0.811049, -1.61113],
+         [-0.345462, 0.00457852, 0.37233...0.713261, -0.749568],
+         [-0.493606, -0.200725, 0.169341, ..., 0.0960859, -0.237081, 0.286187]]]], dtype=float32)
+block_size = 32
+out_mask = array([[[[False, True],
+         [False, False]],
+        [[False, True],
+         [True, True]]],
+       [[[False, False],
+         [False, False]],
+        [[False, True],
+         [False, True]]]], dtype=bool)
+a_mask = array([[[[False, True],
+         [True, False]],
+        [[False, True],
+         [False, True]]]], dtype=bool)
+b_mask = array([[[[False, False],
+         [True, True]],
+        [[True, True],
+         [True, False]]],
+       [[[False, False],
+         [False, False]],
+        [[False, False],
+         [False, False]]]], dtype=bool)
+cotan = array([[[[1, 1, 1, ..., 1, 1, 1],
+         [1, 1, 1, ..., 1, 1, 1],
+         [1, 1, 1, ..., 1, 1, 1],
+         ...,
+  ...         [1, 1, 1, ..., 1, 1, 1],
+         [1, 1, 1, ..., 1, 1, 1],
+         [1, 1, 1, ..., 1, 1, 1]]]], dtype=float32)
+
+    def run_test(a, b, block_size, out_mask, a_mask, b_mask, cotan):
+        def f_ref(a_, b_):
+            return ref_block_masked_mm(a_, b_, block_size, out_mask, a_mask, b_mask)
+    
+        def f_test(a_, b_):
+            return mx.block_masked_mm(a_, b_, block_size, out_mask, a_mask, b_mask)
+    
+        out_ref, dout_ref = mx.vjp(f_ref, [a, b], [cotan])
+        out_test, dout_test = mx.vjp(f_test, [a, b], [cotan])
+    
+&gt;       self.assertTrue(mx.allclose(out_ref[0], out_test[0], atol=1e-5).item())
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       RuntimeError: [omarchy] strided reshape is not implemented for the Omarchy Vulkan backend (dtype=bool, shape=[2,2,64,64]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_blas.py:1066: RuntimeError</failure><failure message="RuntimeError: [omarchy] strided reshape is not implemented for the Omarchy Vulkan backend (dtype=bool, shape=[2,2,32,128]). No CPU fallback is available in Omarchy builds.">M = 1, N = 128, K = 128, block_size = 32, transpose = False
+np_dtype = &lt;class 'numpy.float32'&gt;, batch_A = (1, 2), batch_B = (2, 2)
+
+    def test_shape(
+        M,
+        N,
+        K,
+        block_size,
+        transpose=False,
+        np_dtype=np.float32,
+        batch_A=(),
+        batch_B=(),
+    ):
+        with self.subTest(
+            M=M,
+            N=N,
+            K=K,
+            block_size=block_size,
+            np_dtype=np_dtype,
+            transpose=transpose,
+            batch_A=batch_A,
+            batch_B=batch_B,
+        ):
+            batch_out = np.broadcast_shapes(batch_A, batch_B)
+            cotan = mx.ones(batch_out + (M, N))
+    
+            a_np = np.random.normal(size=batch_A + (M, K)).astype(np_dtype)
+            b_np = np.random.normal(size=batch_B + (K, N)).astype(np_dtype)
+    
+            a_mx = mx.array(a_np)
+            b_mx = mx.array(b_np)
+    
+            tm = (M + block_size - 1) // block_size
+            tn = (N + block_size - 1) // block_size
+            tk = (K + block_size - 1) // block_size
+    
+            a_mx_bool_mask, a_mx_mask = make_mask(tm, tk, batch_A, np_dtype)
+            b_mx_bool_mask, b_mx_mask = make_mask(tk, tn, batch_B, np_dtype)
+            out_mx_bool_mask, out_mx_mask = make_mask(tm, tn, batch_out, np_dtype)
+    
+            # Boolean block masks
+&gt;           run_test(
+                a_mx,
+                b_mx,
+                block_size,
+                out_mx_bool_mask,
+                a_mx_bool_mask,
+                b_mx_bool_mask,
+                cotan,
+            )
+
+.work/mlx/python/tests/test_blas.py:1139: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+a = array([[[[-0.538397, -1.42029, 0.75385, ..., -0.441461, 1.0796, 0.549779]],
+        [[1.75332, -0.389542, 1.76862, ..., -0.221167, 0.415935, -1.23163]]]], dtype=float32)
+b = array([[[[-0.512215, 0.12511, 1.193, ..., -0.756649, 0.0468668, 0.0742103],
+         [0.327609, 1.05471, -1.06402, ......1081, 0.567609, 1.21249],
+         [0.708873, -0.412053, 0.619861, ..., 0.239143, -0.68096, -1.2746]]]], dtype=float32)
+block_size = 32
+out_mask = array([[[[True, False, False, True]],
+        [[True, True, False, False]]],
+       [[[True, True, True, False]],
+        [[True, True, False, False]]]], dtype=bool)
+a_mask = array([[[[True, True, False, False]],
+        [[False, True, False, False]]]], dtype=bool)
+b_mask = array([[[[False, False, True, False],
+         [True, True, True, False],
+         [False, False, True, True],
+       ...    [True, True, False, False],
+         [True, True, False, True],
+         [False, False, True, True]]]], dtype=bool)
+cotan = array([[[[1, 1, 1, ..., 1, 1, 1]],
+        [[1, 1, 1, ..., 1, 1, 1]]],
+       [[[1, 1, 1, ..., 1, 1, 1]],
+        [[1, 1, 1, ..., 1, 1, 1]]]], dtype=float32)
+
+    def run_test(a, b, block_size, out_mask, a_mask, b_mask, cotan):
+        def f_ref(a_, b_):
+            return ref_block_masked_mm(a_, b_, block_size, out_mask, a_mask, b_mask)
+    
+        def f_test(a_, b_):
+            return mx.block_masked_mm(a_, b_, block_size, out_mask, a_mask, b_mask)
+    
+        out_ref, dout_ref = mx.vjp(f_ref, [a, b], [cotan])
+        out_test, dout_test = mx.vjp(f_test, [a, b], [cotan])
+    
+&gt;       self.assertTrue(mx.allclose(out_ref[0], out_test[0], atol=1e-5).item())
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       RuntimeError: [omarchy] strided reshape is not implemented for the Omarchy Vulkan backend (dtype=bool, shape=[2,2,32,128]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_blas.py:1066: RuntimeError</failure><failure message="RuntimeError: [omarchy] strided reshape is not implemented for the Omarchy Vulkan backend (dtype=bool, shape=[2,2,128,32]). No CPU fallback is available in Omarchy builds.">M = 128, N = 1, K = 128, block_size = 32, transpose = False
+np_dtype = &lt;class 'numpy.float32'&gt;, batch_A = (1, 2), batch_B = (2, 2)
+
+    def test_shape(
+        M,
+        N,
+        K,
+        block_size,
+        transpose=False,
+        np_dtype=np.float32,
+        batch_A=(),
+        batch_B=(),
+    ):
+        with self.subTest(
+            M=M,
+            N=N,
+            K=K,
+            block_size=block_size,
+            np_dtype=np_dtype,
+            transpose=transpose,
+            batch_A=batch_A,
+            batch_B=batch_B,
+        ):
+            batch_out = np.broadcast_shapes(batch_A, batch_B)
+            cotan = mx.ones(batch_out + (M, N))
+    
+            a_np = np.random.normal(size=batch_A + (M, K)).astype(np_dtype)
+            b_np = np.random.normal(size=batch_B + (K, N)).astype(np_dtype)
+    
+            a_mx = mx.array(a_np)
+            b_mx = mx.array(b_np)
+    
+            tm = (M + block_size - 1) // block_size
+            tn = (N + block_size - 1) // block_size
+            tk = (K + block_size - 1) // block_size
+    
+            a_mx_bool_mask, a_mx_mask = make_mask(tm, tk, batch_A, np_dtype)
+            b_mx_bool_mask, b_mx_mask = make_mask(tk, tn, batch_B, np_dtype)
+            out_mx_bool_mask, out_mx_mask = make_mask(tm, tn, batch_out, np_dtype)
+    
+            # Boolean block masks
+&gt;           run_test(
+                a_mx,
+                b_mx,
+                block_size,
+                out_mx_bool_mask,
+                a_mx_bool_mask,
+                b_mx_bool_mask,
+                cotan,
+            )
+
+.work/mlx/python/tests/test_blas.py:1139: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+a = array([[[[-0.158474, 0.125422, -1.55749, ..., 1.17066, -0.526053, 0.379609],
+         [0.441675, -0.914207, -0.148028,...8136, -1.03298, 0.192895],
+         [-1.42722, -0.899429, 1.91749, ..., -1.57758, 0.622398, -2.4509]]]], dtype=float32)
+b = array([[[[1.31716],
+         [-0.279321],
+         [0.310608],
+         ...,
+         [-0.243272],
+         [-0.831669...71],
+         [0.928977],
+         ...,
+         [0.916595],
+         [1.68876],
+         [0.263218]]]], dtype=float32)
+block_size = 32
+out_mask = array([[[[True],
+         [True],
+         [True],
+         [True]],
+        [[True],
+         [True],
+         [False...       [False],
+         [False]],
+        [[False],
+         [True],
+         [False],
+         [True]]]], dtype=bool)
+a_mask = array([[[[False, True, True, True],
+         [False, False, False, False],
+         [False, False, True, True],
+      ... [False, True, False, False],
+         [True, False, True, False],
+         [False, False, True, False]]]], dtype=bool)
+b_mask = array([[[[True],
+         [False],
+         [False],
+         [False]],
+        [[True],
+         [True],
+         [Fa...       [True],
+         [False]],
+        [[True],
+         [False],
+         [False],
+         [False]]]], dtype=bool)
+cotan = array([[[[1],
+         [1],
+         [1],
+         ...,
+         [1],
+         [1],
+         [1]],
+        [[1],
+     ...]],
+        [[1],
+         [1],
+         [1],
+         ...,
+         [1],
+         [1],
+         [1]]]], dtype=float32)
+
+    def run_test(a, b, block_size, out_mask, a_mask, b_mask, cotan):
+        def f_ref(a_, b_):
+            return ref_block_masked_mm(a_, b_, block_size, out_mask, a_mask, b_mask)
+    
+        def f_test(a_, b_):
+            return mx.block_masked_mm(a_, b_, block_size, out_mask, a_mask, b_mask)
+    
+        out_ref, dout_ref = mx.vjp(f_ref, [a, b], [cotan])
+        out_test, dout_test = mx.vjp(f_test, [a, b], [cotan])
+    
+&gt;       self.assertTrue(mx.allclose(out_ref[0], out_test[0], atol=1e-5).item())
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       RuntimeError: [omarchy] strided reshape is not implemented for the Omarchy Vulkan backend (dtype=bool, shape=[2,2,128,32]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_blas.py:1066: RuntimeError</failure></testcase><testcase classname="python.tests.test_blas.TestBlas" name="test_complex_gemm" time="0.005"><failure message="RuntimeError: [omarchy] dtype converting copy is not implemented for the Omarchy Vulkan backend (dtype=complex64, shape=[16,50]). No CPU fallback is available in Omarchy builds.">self = &lt;test_blas.TestBlas testMethod=test_complex_gemm&gt;
+
+    def test_complex_gemm(self):
+        M = 16
+        K = 50
+        N = 32
+    
+        def rand(shape):
+            return mx.random.uniform(shape=shape) + 1j * mx.random.uniform(shape=shape)
+    
+        a = rand((M, K))
+        b = rand((K, N))
+        c = mx.matmul(a, b)
+&gt;       c_np = np.matmul(a, b)
+               ^^^^^^^^^^^^^^^
+E       RuntimeError: [omarchy] dtype converting copy is not implemented for the Omarchy Vulkan backend (dtype=complex64, shape=[16,50]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_blas.py:1665: RuntimeError</failure></testcase><testcase classname="python.tests.test_blas.TestBlas" name="test_complex_gemv" time="0.004"><failure message="RuntimeError: [omarchy] dtype converting copy is not implemented for the Omarchy Vulkan backend (dtype=complex64, shape=[16,50]). No CPU fallback is available in Omarchy builds.">self = &lt;test_blas.TestBlas testMethod=test_complex_gemv&gt;
+
+    def test_complex_gemv(self):
+        M = 16
+        N = 50
+    
+        def rand(shape):
+            return mx.random.uniform(shape=shape) + 1j * mx.random.uniform(shape=shape)
+    
+        a = rand((M, N))
+        b = rand((N, 1))
+        c = mx.matmul(a, b)
+&gt;       c_np = np.matmul(a, b)
+               ^^^^^^^^^^^^^^^
+E       RuntimeError: [omarchy] dtype converting copy is not implemented for the Omarchy Vulkan backend (dtype=complex64, shape=[16,50]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_blas.py:1634: RuntimeError</failure></testcase><testcase classname="python.tests.test_blas.TestBlas" name="test_dot_product" time="33.186" /><testcase classname="python.tests.test_blas.TestBlas" name="test_empty_matmul" time="0.022" /><testcase classname="python.tests.test_blas.TestBlas" name="test_gather_matmul" time="0.551"><failure message="RuntimeError: [omarchy] dtype converting copy is not implemented for the Omarchy Vulkan backend (dtype=uint32, shape=[1]). No CPU fallback is available in Omarchy builds.">M = 32, N = 32, K = 32, np_dtype = &lt;class 'numpy.float32'&gt;, batch_A = (1,)
+batch_B = (3,), lhs_indices = (0,), rhs_indices = (2, 1)
+
+    def test_shape(
+        M,
+        N,
+        K,
+        np_dtype=np.float32,
+        batch_A=(),
+        batch_B=(),
+        lhs_indices=None,
+        rhs_indices=None,
+    ):
+        with self.subTest(
+            M=M,
+            N=N,
+            K=K,
+            np_dtype=np_dtype,
+            batch_A=batch_A,
+            batch_B=batch_B,
+            lhs_indices=lhs_indices,
+            rhs_indices=rhs_indices,
+        ):
+            a_np = np.random.normal(size=batch_A + (M, K)).astype(np_dtype)
+            b_np = np.random.normal(size=batch_B + (K, N)).astype(np_dtype)
+    
+            a_mx = mx.array(a_np)
+            b_mx = mx.array(b_np)
+    
+            out_np = np_gather_mm(a_np, b_np, lhs_indices, rhs_indices)
+    
+            lhs_indices_mx = None if lhs_indices is None else mx.array(lhs_indices)
+            rhs_indices_mx = None if rhs_indices is None else mx.array(rhs_indices)
+    
+            out_mx = mx.gather_mm(a_mx, b_mx, lhs_indices_mx, rhs_indices_mx)
+    
+&gt;           self.assertTrue(np.allclose(out_np, out_mx, atol=1e-5))
+                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.work/mlx/python/tests/test_blas.py:1269: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/numpy/_core/numeric.py:2376: in allclose
+    res = all(isclose(a, b, rtol=rtol, atol=atol, equal_nan=equal_nan))
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/numpy/_core/numeric.py:2476: in isclose
+    x, y, atol, rtol = (
+    ^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+.0 = &lt;tuple_iterator object at 0x777340112f80&gt;
+
+    x, y, atol, rtol = (
+&gt;       a if isinstance(a, (int, float, complex)) else asanyarray(a)
+                                                       ^^^^^^^^^^^^^
+        for a in (a, b, atol, rtol))
+E   RuntimeError: [omarchy] dtype converting copy is not implemented for the Omarchy Vulkan backend (dtype=uint32, shape=[1]). No CPU fallback is available in Omarchy builds.
+
+/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/numpy/_core/numeric.py:2477: RuntimeError</failure><failure message="RuntimeError: [omarchy] dtype converting copy is not implemented for the Omarchy Vulkan backend (dtype=uint32, shape=[1]). No CPU fallback is available in Omarchy builds.">M = 16, N = 1, K = 16, np_dtype = &lt;class 'numpy.float32'&gt;, batch_A = (1,)
+batch_B = (3,), lhs_indices = (0,), rhs_indices = (2, 1)
+
+    def test_shape(
+        M,
+        N,
+        K,
+        np_dtype=np.float32,
+        batch_A=(),
+        batch_B=(),
+        lhs_indices=None,
+        rhs_indices=None,
+    ):
+        with self.subTest(
+            M=M,
+            N=N,
+            K=K,
+            np_dtype=np_dtype,
+            batch_A=batch_A,
+            batch_B=batch_B,
+            lhs_indices=lhs_indices,
+            rhs_indices=rhs_indices,
+        ):
+            a_np = np.random.normal(size=batch_A + (M, K)).astype(np_dtype)
+            b_np = np.random.normal(size=batch_B + (K, N)).astype(np_dtype)
+    
+            a_mx = mx.array(a_np)
+            b_mx = mx.array(b_np)
+    
+            out_np = np_gather_mm(a_np, b_np, lhs_indices, rhs_indices)
+    
+            lhs_indices_mx = None if lhs_indices is None else mx.array(lhs_indices)
+            rhs_indices_mx = None if rhs_indices is None else mx.array(rhs_indices)
+    
+            out_mx = mx.gather_mm(a_mx, b_mx, lhs_indices_mx, rhs_indices_mx)
+    
+&gt;           self.assertTrue(np.allclose(out_np, out_mx, atol=1e-5))
+                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.work/mlx/python/tests/test_blas.py:1269: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/numpy/_core/numeric.py:2376: in allclose
+    res = all(isclose(a, b, rtol=rtol, atol=atol, equal_nan=equal_nan))
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/numpy/_core/numeric.py:2476: in isclose
+    x, y, atol, rtol = (
+    ^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+.0 = &lt;tuple_iterator object at 0x77737a0ffb20&gt;
+
+    x, y, atol, rtol = (
+&gt;       a if isinstance(a, (int, float, complex)) else asanyarray(a)
+                                                       ^^^^^^^^^^^^^
+        for a in (a, b, atol, rtol))
+E   RuntimeError: [omarchy] dtype converting copy is not implemented for the Omarchy Vulkan backend (dtype=uint32, shape=[1]). No CPU fallback is available in Omarchy builds.
+
+/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/numpy/_core/numeric.py:2477: RuntimeError</failure><failure message="RuntimeError: [omarchy] Arange dtype is not implemented for the Omarchy Vulkan backend (dtype=uint32, shape=[1]). No CPU fallback is available in Omarchy builds.">M = 32, N = 32, K = 32, np_dtype = &lt;class 'numpy.float32'&gt;, batch_A = (1,)
+batch_B = (3,), lhs_indices = None, rhs_indices = (2, 1)
+
+    def test_shape(
+        M,
+        N,
+        K,
+        np_dtype=np.float32,
+        batch_A=(),
+        batch_B=(),
+        lhs_indices=None,
+        rhs_indices=None,
+    ):
+        with self.subTest(
+            M=M,
+            N=N,
+            K=K,
+            np_dtype=np_dtype,
+            batch_A=batch_A,
+            batch_B=batch_B,
+            lhs_indices=lhs_indices,
+            rhs_indices=rhs_indices,
+        ):
+            a_np = np.random.normal(size=batch_A + (M, K)).astype(np_dtype)
+            b_np = np.random.normal(size=batch_B + (K, N)).astype(np_dtype)
+    
+            a_mx = mx.array(a_np)
+            b_mx = mx.array(b_np)
+    
+            out_np = np_gather_mm(a_np, b_np, lhs_indices, rhs_indices)
+    
+            lhs_indices_mx = None if lhs_indices is None else mx.array(lhs_indices)
+            rhs_indices_mx = None if rhs_indices is None else mx.array(rhs_indices)
+    
+            out_mx = mx.gather_mm(a_mx, b_mx, lhs_indices_mx, rhs_indices_mx)
+    
+&gt;           self.assertTrue(np.allclose(out_np, out_mx, atol=1e-5))
+                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.work/mlx/python/tests/test_blas.py:1269: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/numpy/_core/numeric.py:2376: in allclose
+    res = all(isclose(a, b, rtol=rtol, atol=atol, equal_nan=equal_nan))
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/numpy/_core/numeric.py:2476: in isclose
+    x, y, atol, rtol = (
+    ^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+.0 = &lt;tuple_iterator object at 0x77737a0ffb20&gt;
+
+    x, y, atol, rtol = (
+&gt;       a if isinstance(a, (int, float, complex)) else asanyarray(a)
+                                                       ^^^^^^^^^^^^^
+        for a in (a, b, atol, rtol))
+E   RuntimeError: [omarchy] Arange dtype is not implemented for the Omarchy Vulkan backend (dtype=uint32, shape=[1]). No CPU fallback is available in Omarchy builds.
+
+/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/numpy/_core/numeric.py:2477: RuntimeError</failure><failure message="RuntimeError: [omarchy] Arange dtype is not implemented for the Omarchy Vulkan backend (dtype=uint32, shape=[1]). No CPU fallback is available in Omarchy builds.">M = 16, N = 1, K = 16, np_dtype = &lt;class 'numpy.float32'&gt;, batch_A = (1,)
+batch_B = (3,), lhs_indices = None, rhs_indices = (2, 1)
+
+    def test_shape(
+        M,
+        N,
+        K,
+        np_dtype=np.float32,
+        batch_A=(),
+        batch_B=(),
+        lhs_indices=None,
+        rhs_indices=None,
+    ):
+        with self.subTest(
+            M=M,
+            N=N,
+            K=K,
+            np_dtype=np_dtype,
+            batch_A=batch_A,
+            batch_B=batch_B,
+            lhs_indices=lhs_indices,
+            rhs_indices=rhs_indices,
+        ):
+            a_np = np.random.normal(size=batch_A + (M, K)).astype(np_dtype)
+            b_np = np.random.normal(size=batch_B + (K, N)).astype(np_dtype)
+    
+            a_mx = mx.array(a_np)
+            b_mx = mx.array(b_np)
+    
+            out_np = np_gather_mm(a_np, b_np, lhs_indices, rhs_indices)
+    
+            lhs_indices_mx = None if lhs_indices is None else mx.array(lhs_indices)
+            rhs_indices_mx = None if rhs_indices is None else mx.array(rhs_indices)
+    
+            out_mx = mx.gather_mm(a_mx, b_mx, lhs_indices_mx, rhs_indices_mx)
+    
+&gt;           self.assertTrue(np.allclose(out_np, out_mx, atol=1e-5))
+                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.work/mlx/python/tests/test_blas.py:1269: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/numpy/_core/numeric.py:2376: in allclose
+    res = all(isclose(a, b, rtol=rtol, atol=atol, equal_nan=equal_nan))
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/numpy/_core/numeric.py:2476: in isclose
+    x, y, atol, rtol = (
+    ^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+.0 = &lt;tuple_iterator object at 0x777379d56d40&gt;
+
+    x, y, atol, rtol = (
+&gt;       a if isinstance(a, (int, float, complex)) else asanyarray(a)
+                                                       ^^^^^^^^^^^^^
+        for a in (a, b, atol, rtol))
+E   RuntimeError: [omarchy] Arange dtype is not implemented for the Omarchy Vulkan backend (dtype=uint32, shape=[1]). No CPU fallback is available in Omarchy builds.
+
+/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/numpy/_core/numeric.py:2477: RuntimeError</failure><failure message="RuntimeError: [omarchy] dtype converting copy is not implemented for the Omarchy Vulkan backend (dtype=uint32, shape=[2]). No CPU fallback is available in Omarchy builds.">M = 32, N = 32, K = 32, np_dtype = &lt;class 'numpy.float32'&gt;, batch_A = (2,)
+batch_B = (3,), lhs_indices = None, rhs_indices = (2, 1)
+
+    def test_shape(
+        M,
+        N,
+        K,
+        np_dtype=np.float32,
+        batch_A=(),
+        batch_B=(),
+        lhs_indices=None,
+        rhs_indices=None,
+    ):
+        with self.subTest(
+            M=M,
+            N=N,
+            K=K,
+            np_dtype=np_dtype,
+            batch_A=batch_A,
+            batch_B=batch_B,
+            lhs_indices=lhs_indices,
+            rhs_indices=rhs_indices,
+        ):
+            a_np = np.random.normal(size=batch_A + (M, K)).astype(np_dtype)
+            b_np = np.random.normal(size=batch_B + (K, N)).astype(np_dtype)
+    
+            a_mx = mx.array(a_np)
+            b_mx = mx.array(b_np)
+    
+            out_np = np_gather_mm(a_np, b_np, lhs_indices, rhs_indices)
+    
+            lhs_indices_mx = None if lhs_indices is None else mx.array(lhs_indices)
+            rhs_indices_mx = None if rhs_indices is None else mx.array(rhs_indices)
+    
+            out_mx = mx.gather_mm(a_mx, b_mx, lhs_indices_mx, rhs_indices_mx)
+    
+&gt;           self.assertTrue(np.allclose(out_np, out_mx, atol=1e-5))
+                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.work/mlx/python/tests/test_blas.py:1269: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/numpy/_core/numeric.py:2376: in allclose
+    res = all(isclose(a, b, rtol=rtol, atol=atol, equal_nan=equal_nan))
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/numpy/_core/numeric.py:2476: in isclose
+    x, y, atol, rtol = (
+    ^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+.0 = &lt;tuple_iterator object at 0x7773400daa40&gt;
+
+    x, y, atol, rtol = (
+&gt;       a if isinstance(a, (int, float, complex)) else asanyarray(a)
+                                                       ^^^^^^^^^^^^^
+        for a in (a, b, atol, rtol))
+E   RuntimeError: [omarchy] dtype converting copy is not implemented for the Omarchy Vulkan backend (dtype=uint32, shape=[2]). No CPU fallback is available in Omarchy builds.
+
+/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/numpy/_core/numeric.py:2477: RuntimeError</failure><failure message="RuntimeError: [omarchy] dtype converting copy is not implemented for the Omarchy Vulkan backend (dtype=uint32, shape=[2]). No CPU fallback is available in Omarchy builds.">M = 16, N = 1, K = 16, np_dtype = &lt;class 'numpy.float32'&gt;, batch_A = (2,)
+batch_B = (3,), lhs_indices = None, rhs_indices = (2, 1)
+
+    def test_shape(
+        M,
+        N,
+        K,
+        np_dtype=np.float32,
+        batch_A=(),
+        batch_B=(),
+        lhs_indices=None,
+        rhs_indices=None,
+    ):
+        with self.subTest(
+            M=M,
+            N=N,
+            K=K,
+            np_dtype=np_dtype,
+            batch_A=batch_A,
+            batch_B=batch_B,
+            lhs_indices=lhs_indices,
+            rhs_indices=rhs_indices,
+        ):
+            a_np = np.random.normal(size=batch_A + (M, K)).astype(np_dtype)
+            b_np = np.random.normal(size=batch_B + (K, N)).astype(np_dtype)
+    
+            a_mx = mx.array(a_np)
+            b_mx = mx.array(b_np)
+    
+            out_np = np_gather_mm(a_np, b_np, lhs_indices, rhs_indices)
+    
+            lhs_indices_mx = None if lhs_indices is None else mx.array(lhs_indices)
+            rhs_indices_mx = None if rhs_indices is None else mx.array(rhs_indices)
+    
+            out_mx = mx.gather_mm(a_mx, b_mx, lhs_indices_mx, rhs_indices_mx)
+    
+&gt;           self.assertTrue(np.allclose(out_np, out_mx, atol=1e-5))
+                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.work/mlx/python/tests/test_blas.py:1269: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/numpy/_core/numeric.py:2376: in allclose
+    res = all(isclose(a, b, rtol=rtol, atol=atol, equal_nan=equal_nan))
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/numpy/_core/numeric.py:2476: in isclose
+    x, y, atol, rtol = (
+    ^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+.0 = &lt;tuple_iterator object at 0x777379d57160&gt;
+
+    x, y, atol, rtol = (
+&gt;       a if isinstance(a, (int, float, complex)) else asanyarray(a)
+                                                       ^^^^^^^^^^^^^
+        for a in (a, b, atol, rtol))
+E   RuntimeError: [omarchy] dtype converting copy is not implemented for the Omarchy Vulkan backend (dtype=uint32, shape=[2]). No CPU fallback is available in Omarchy builds.
+
+/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/numpy/_core/numeric.py:2477: RuntimeError</failure><failure message="RuntimeError: [omarchy] dtype converting copy is not implemented for the Omarchy Vulkan backend (dtype=uint32, shape=[1]). No CPU fallback is available in Omarchy builds.">M = 32, N = 32, K = 32, np_dtype = &lt;class 'numpy.float32'&gt;, batch_A = (3,)
+batch_B = (1,), lhs_indices = (0, 2), rhs_indices = (0,)
+
+    def test_shape(
+        M,
+        N,
+        K,
+        np_dtype=np.float32,
+        batch_A=(),
+        batch_B=(),
+        lhs_indices=None,
+        rhs_indices=None,
+    ):
+        with self.subTest(
+            M=M,
+            N=N,
+            K=K,
+            np_dtype=np_dtype,
+            batch_A=batch_A,
+            batch_B=batch_B,
+            lhs_indices=lhs_indices,
+            rhs_indices=rhs_indices,
+        ):
+            a_np = np.random.normal(size=batch_A + (M, K)).astype(np_dtype)
+            b_np = np.random.normal(size=batch_B + (K, N)).astype(np_dtype)
+    
+            a_mx = mx.array(a_np)
+            b_mx = mx.array(b_np)
+    
+            out_np = np_gather_mm(a_np, b_np, lhs_indices, rhs_indices)
+    
+            lhs_indices_mx = None if lhs_indices is None else mx.array(lhs_indices)
+            rhs_indices_mx = None if rhs_indices is None else mx.array(rhs_indices)
+    
+            out_mx = mx.gather_mm(a_mx, b_mx, lhs_indices_mx, rhs_indices_mx)
+    
+&gt;           self.assertTrue(np.allclose(out_np, out_mx, atol=1e-5))
+                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.work/mlx/python/tests/test_blas.py:1269: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/numpy/_core/numeric.py:2376: in allclose
+    res = all(isclose(a, b, rtol=rtol, atol=atol, equal_nan=equal_nan))
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/numpy/_core/numeric.py:2476: in isclose
+    x, y, atol, rtol = (
+    ^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+.0 = &lt;tuple_iterator object at 0x77737a13ce50&gt;
+
+    x, y, atol, rtol = (
+&gt;       a if isinstance(a, (int, float, complex)) else asanyarray(a)
+                                                       ^^^^^^^^^^^^^
+        for a in (a, b, atol, rtol))
+E   RuntimeError: [omarchy] dtype converting copy is not implemented for the Omarchy Vulkan backend (dtype=uint32, shape=[1]). No CPU fallback is available in Omarchy builds.
+
+/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/numpy/_core/numeric.py:2477: RuntimeError</failure><failure message="RuntimeError: [omarchy] dtype converting copy is not implemented for the Omarchy Vulkan backend (dtype=uint32, shape=[1]). No CPU fallback is available in Omarchy builds.">M = 16, N = 1, K = 16, np_dtype = &lt;class 'numpy.float32'&gt;, batch_A = (3,)
+batch_B = (1,), lhs_indices = (0, 2), rhs_indices = (0,)
+
+    def test_shape(
+        M,
+        N,
+        K,
+        np_dtype=np.float32,
+        batch_A=(),
+        batch_B=(),
+        lhs_indices=None,
+        rhs_indices=None,
+    ):
+        with self.subTest(
+            M=M,
+            N=N,
+            K=K,
+            np_dtype=np_dtype,
+            batch_A=batch_A,
+            batch_B=batch_B,
+            lhs_indices=lhs_indices,
+            rhs_indices=rhs_indices,
+        ):
+            a_np = np.random.normal(size=batch_A + (M, K)).astype(np_dtype)
+            b_np = np.random.normal(size=batch_B + (K, N)).astype(np_dtype)
+    
+            a_mx = mx.array(a_np)
+            b_mx = mx.array(b_np)
+    
+            out_np = np_gather_mm(a_np, b_np, lhs_indices, rhs_indices)
+    
+            lhs_indices_mx = None if lhs_indices is None else mx.array(lhs_indices)
+            rhs_indices_mx = None if rhs_indices is None else mx.array(rhs_indices)
+    
+            out_mx = mx.gather_mm(a_mx, b_mx, lhs_indices_mx, rhs_indices_mx)
+    
+&gt;           self.assertTrue(np.allclose(out_np, out_mx, atol=1e-5))
+                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.work/mlx/python/tests/test_blas.py:1269: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/numpy/_core/numeric.py:2376: in allclose
+    res = all(isclose(a, b, rtol=rtol, atol=atol, equal_nan=equal_nan))
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/numpy/_core/numeric.py:2476: in isclose
+    x, y, atol, rtol = (
+    ^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+.0 = &lt;tuple_iterator object at 0x77737a0ffac0&gt;
+
+    x, y, atol, rtol = (
+&gt;       a if isinstance(a, (int, float, complex)) else asanyarray(a)
+                                                       ^^^^^^^^^^^^^
+        for a in (a, b, atol, rtol))
+E   RuntimeError: [omarchy] dtype converting copy is not implemented for the Omarchy Vulkan backend (dtype=uint32, shape=[1]). No CPU fallback is available in Omarchy builds.
+
+/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/numpy/_core/numeric.py:2477: RuntimeError</failure><failure message="RuntimeError: [omarchy] dtype converting copy is not implemented for the Omarchy Vulkan backend (dtype=uint32, shape=[2]). No CPU fallback is available in Omarchy builds.">M = 32, N = 32, K = 32, np_dtype = &lt;class 'numpy.float32'&gt;, batch_A = (5,)
+batch_B = (3,), lhs_indices = (0, 2), rhs_indices = (2, 1)
+
+    def test_shape(
+        M,
+        N,
+        K,
+        np_dtype=np.float32,
+        batch_A=(),
+        batch_B=(),
+        lhs_indices=None,
+        rhs_indices=None,
+    ):
+        with self.subTest(
+            M=M,
+            N=N,
+            K=K,
+            np_dtype=np_dtype,
+            batch_A=batch_A,
+            batch_B=batch_B,
+            lhs_indices=lhs_indices,
+            rhs_indices=rhs_indices,
+        ):
+            a_np = np.random.normal(size=batch_A + (M, K)).astype(np_dtype)
+            b_np = np.random.normal(size=batch_B + (K, N)).astype(np_dtype)
+    
+            a_mx = mx.array(a_np)
+            b_mx = mx.array(b_np)
+    
+            out_np = np_gather_mm(a_np, b_np, lhs_indices, rhs_indices)
+    
+            lhs_indices_mx = None if lhs_indices is None else mx.array(lhs_indices)
+            rhs_indices_mx = None if rhs_indices is None else mx.array(rhs_indices)
+    
+            out_mx = mx.gather_mm(a_mx, b_mx, lhs_indices_mx, rhs_indices_mx)
+    
+&gt;           self.assertTrue(np.allclose(out_np, out_mx, atol=1e-5))
+                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.work/mlx/python/tests/test_blas.py:1269: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/numpy/_core/numeric.py:2376: in allclose
+    res = all(isclose(a, b, rtol=rtol, atol=atol, equal_nan=equal_nan))
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/numpy/_core/numeric.py:2476: in isclose
+    x, y, atol, rtol = (
+    ^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+.0 = &lt;tuple_iterator object at 0x77737a13ce50&gt;
+
+    x, y, atol, rtol = (
+&gt;       a if isinstance(a, (int, float, complex)) else asanyarray(a)
+                                                       ^^^^^^^^^^^^^
+        for a in (a, b, atol, rtol))
+E   RuntimeError: [omarchy] dtype converting copy is not implemented for the Omarchy Vulkan backend (dtype=uint32, shape=[2]). No CPU fallback is available in Omarchy builds.
+
+/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/numpy/_core/numeric.py:2477: RuntimeError</failure><failure message="RuntimeError: [omarchy] dtype converting copy is not implemented for the Omarchy Vulkan backend (dtype=uint32, shape=[2]). No CPU fallback is available in Omarchy builds.">M = 16, N = 1, K = 16, np_dtype = &lt;class 'numpy.float32'&gt;, batch_A = (5,)
+batch_B = (3,), lhs_indices = (0, 2), rhs_indices = (2, 1)
+
+    def test_shape(
+        M,
+        N,
+        K,
+        np_dtype=np.float32,
+        batch_A=(),
+        batch_B=(),
+        lhs_indices=None,
+        rhs_indices=None,
+    ):
+        with self.subTest(
+            M=M,
+            N=N,
+            K=K,
+            np_dtype=np_dtype,
+            batch_A=batch_A,
+            batch_B=batch_B,
+            lhs_indices=lhs_indices,
+            rhs_indices=rhs_indices,
+        ):
+            a_np = np.random.normal(size=batch_A + (M, K)).astype(np_dtype)
+            b_np = np.random.normal(size=batch_B + (K, N)).astype(np_dtype)
+    
+            a_mx = mx.array(a_np)
+            b_mx = mx.array(b_np)
+    
+            out_np = np_gather_mm(a_np, b_np, lhs_indices, rhs_indices)
+    
+            lhs_indices_mx = None if lhs_indices is None else mx.array(lhs_indices)
+            rhs_indices_mx = None if rhs_indices is None else mx.array(rhs_indices)
+    
+            out_mx = mx.gather_mm(a_mx, b_mx, lhs_indices_mx, rhs_indices_mx)
+    
+&gt;           self.assertTrue(np.allclose(out_np, out_mx, atol=1e-5))
+                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.work/mlx/python/tests/test_blas.py:1269: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/numpy/_core/numeric.py:2376: in allclose
+    res = all(isclose(a, b, rtol=rtol, atol=atol, equal_nan=equal_nan))
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/numpy/_core/numeric.py:2476: in isclose
+    x, y, atol, rtol = (
+    ^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+.0 = &lt;tuple_iterator object at 0x77737a13ce50&gt;
+
+    x, y, atol, rtol = (
+&gt;       a if isinstance(a, (int, float, complex)) else asanyarray(a)
+                                                       ^^^^^^^^^^^^^
+        for a in (a, b, atol, rtol))
+E   RuntimeError: [omarchy] dtype converting copy is not implemented for the Omarchy Vulkan backend (dtype=uint32, shape=[2]). No CPU fallback is available in Omarchy builds.
+
+/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/numpy/_core/numeric.py:2477: RuntimeError</failure><failure message="RuntimeError: [omarchy] dtype converting copy is not implemented for the Omarchy Vulkan backend (dtype=uint32, shape=[3,1]). No CPU fallback is available in Omarchy builds.">M = 32, N = 32, K = 32, np_dtype = &lt;class 'numpy.float32'&gt;, batch_A = (4, 2)
+batch_B = (4, 1), lhs_indices = ((7, 6), (5, 4), (1, 2))
+rhs_indices = ((2,), (0,), (1,))
+
+    def test_shape(
+        M,
+        N,
+        K,
+        np_dtype=np.float32,
+        batch_A=(),
+        batch_B=(),
+        lhs_indices=None,
+        rhs_indices=None,
+    ):
+        with self.subTest(
+            M=M,
+            N=N,
+            K=K,
+            np_dtype=np_dtype,
+            batch_A=batch_A,
+            batch_B=batch_B,
+            lhs_indices=lhs_indices,
+            rhs_indices=rhs_indices,
+        ):
+            a_np = np.random.normal(size=batch_A + (M, K)).astype(np_dtype)
+            b_np = np.random.normal(size=batch_B + (K, N)).astype(np_dtype)
+    
+            a_mx = mx.array(a_np)
+            b_mx = mx.array(b_np)
+    
+            out_np = np_gather_mm(a_np, b_np, lhs_indices, rhs_indices)
+    
+            lhs_indices_mx = None if lhs_indices is None else mx.array(lhs_indices)
+            rhs_indices_mx = None if rhs_indices is None else mx.array(rhs_indices)
+    
+            out_mx = mx.gather_mm(a_mx, b_mx, lhs_indices_mx, rhs_indices_mx)
+    
+&gt;           self.assertTrue(np.allclose(out_np, out_mx, atol=1e-5))
+                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.work/mlx/python/tests/test_blas.py:1269: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/numpy/_core/numeric.py:2376: in allclose
+    res = all(isclose(a, b, rtol=rtol, atol=atol, equal_nan=equal_nan))
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/numpy/_core/numeric.py:2476: in isclose
+    x, y, atol, rtol = (
+    ^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+.0 = &lt;tuple_iterator object at 0x77737a13ce50&gt;
+
+    x, y, atol, rtol = (
+&gt;       a if isinstance(a, (int, float, complex)) else asanyarray(a)
+                                                       ^^^^^^^^^^^^^
+        for a in (a, b, atol, rtol))
+E   RuntimeError: [omarchy] dtype converting copy is not implemented for the Omarchy Vulkan backend (dtype=uint32, shape=[3,1]). No CPU fallback is available in Omarchy builds.
+
+/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/numpy/_core/numeric.py:2477: RuntimeError</failure><failure message="RuntimeError: [omarchy] dtype converting copy is not implemented for the Omarchy Vulkan backend (dtype=uint32, shape=[3,1]). No CPU fallback is available in Omarchy builds.">M = 16, N = 1, K = 16, np_dtype = &lt;class 'numpy.float32'&gt;, batch_A = (4, 2)
+batch_B = (4, 1), lhs_indices = ((7, 6), (5, 4), (1, 2))
+rhs_indices = ((2,), (0,), (1,))
+
+    def test_shape(
+        M,
+        N,
+        K,
+        np_dtype=np.float32,
+        batch_A=(),
+        batch_B=(),
+        lhs_indices=None,
+        rhs_indices=None,
+    ):
+        with self.subTest(
+            M=M,
+            N=N,
+            K=K,
+            np_dtype=np_dtype,
+            batch_A=batch_A,
+            batch_B=batch_B,
+            lhs_indices=lhs_indices,
+            rhs_indices=rhs_indices,
+        ):
+            a_np = np.random.normal(size=batch_A + (M, K)).astype(np_dtype)
+            b_np = np.random.normal(size=batch_B + (K, N)).astype(np_dtype)
+    
+            a_mx = mx.array(a_np)
+            b_mx = mx.array(b_np)
+    
+            out_np = np_gather_mm(a_np, b_np, lhs_indices, rhs_indices)
+    
+            lhs_indices_mx = None if lhs_indices is None else mx.array(lhs_indices)
+            rhs_indices_mx = None if rhs_indices is None else mx.array(rhs_indices)
+    
+            out_mx = mx.gather_mm(a_mx, b_mx, lhs_indices_mx, rhs_indices_mx)
+    
+&gt;           self.assertTrue(np.allclose(out_np, out_mx, atol=1e-5))
+                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.work/mlx/python/tests/test_blas.py:1269: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/numpy/_core/numeric.py:2376: in allclose
+    res = all(isclose(a, b, rtol=rtol, atol=atol, equal_nan=equal_nan))
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/numpy/_core/numeric.py:2476: in isclose
+    x, y, atol, rtol = (
+    ^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+.0 = &lt;tuple_iterator object at 0x77737a13ce50&gt;
+
+    x, y, atol, rtol = (
+&gt;       a if isinstance(a, (int, float, complex)) else asanyarray(a)
+                                                       ^^^^^^^^^^^^^
+        for a in (a, b, atol, rtol))
+E   RuntimeError: [omarchy] dtype converting copy is not implemented for the Omarchy Vulkan backend (dtype=uint32, shape=[3,1]). No CPU fallback is available in Omarchy builds.
+
+/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/numpy/_core/numeric.py:2477: RuntimeError</failure><failure message="RuntimeError: [omarchy] dtype converting copy is not implemented for the Omarchy Vulkan backend (dtype=uint32, shape=[3]). No CPU fallback is available in Omarchy builds.">self = &lt;test_blas.TestBlas testMethod=test_gather_matmul&gt;
+
+    def test_gather_matmul(self):
+        def np_gather_mm(a, b, lhs_indices=None, rhs_indices=None):
+            a = a.reshape((-1, a.shape[-2], a.shape[-1]))
+            b = b.reshape((-1, b.shape[-2], b.shape[-1]))
+            lhs_indices = lhs_indices or np.arange(a.shape[0])
+            rhs_indices = rhs_indices or np.arange(b.shape[0])
+            a = a[lhs_indices, :, :]
+            b = b[rhs_indices, :, :]
+            out = a @ b
+            return out
+    
+        def test_shape(
+            M,
+            N,
+            K,
+            np_dtype=np.float32,
+            batch_A=(),
+            batch_B=(),
+            lhs_indices=None,
+            rhs_indices=None,
+        ):
+            with self.subTest(
+                M=M,
+                N=N,
+                K=K,
+                np_dtype=np_dtype,
+                batch_A=batch_A,
+                batch_B=batch_B,
+                lhs_indices=lhs_indices,
+                rhs_indices=rhs_indices,
+            ):
+                a_np = np.random.normal(size=batch_A + (M, K)).astype(np_dtype)
+                b_np = np.random.normal(size=batch_B + (K, N)).astype(np_dtype)
+    
+                a_mx = mx.array(a_np)
+                b_mx = mx.array(b_np)
+    
+                out_np = np_gather_mm(a_np, b_np, lhs_indices, rhs_indices)
+    
+                lhs_indices_mx = None if lhs_indices is None else mx.array(lhs_indices)
+                rhs_indices_mx = None if rhs_indices is None else mx.array(rhs_indices)
+    
+                out_mx = mx.gather_mm(a_mx, b_mx, lhs_indices_mx, rhs_indices_mx)
+    
+                self.assertTrue(np.allclose(out_np, out_mx, atol=1e-5))
+    
+        inputs = (
+            {
+                "batch_A": (1,),
+                "lhs_indices": (0,),
+                "batch_B": (3,),
+                "rhs_indices": (2, 1),
+            },
+            {
+                "batch_A": (1,),
+                "lhs_indices": None,
+                "batch_B": (3,),
+                "rhs_indices": (2, 1),
+            },
+            {
+                "batch_A": (2,),
+                "lhs_indices": None,
+                "batch_B": (3,),
+                "rhs_indices": (2, 1),
+            },
+            {
+                "batch_A": (3,),
+                "lhs_indices": (0, 2),
+                "batch_B": (1,),
+                "rhs_indices": (0,),
+            },
+            {
+                "batch_A": (5,),
+                "lhs_indices": (0, 2),
+                "batch_B": (3,),
+                "rhs_indices": (2, 1),
+            },
+            {
+                "batch_A": (4, 2),
+                "lhs_indices": (
+                    (7, 6),
+                    (5, 4),
+                    (1, 2),
+                ),
+                "batch_B": (4, 1),
+                "rhs_indices": ((2,), (0,), (1,)),
+            },
+        )
+    
+        for kwargs in inputs:
+            test_shape(32, 32, 32, **kwargs)
+            test_shape(16, 1, 16, **kwargs)
+    
+        # Add tests for broadcasting
+        a_np = np.random.normal(size=(5, 32, 32)).astype(np.float32)
+        b_np = np.random.normal(size=(3, 32, 32)).astype(np.float32)
+        a_mx = mx.array(a_np)
+        b_mx = mx.array(b_np)
+    
+        # Numpy
+        a_np = a_np.reshape((5, 1, 32, 32))
+        b_np = b_np.reshape((1, 3, 32, 32))
+    
+        a_np = np.broadcast_to(a_np, (5, 4, 32, 32))
+        b_np = np.broadcast_to(b_np, (2, 3, 32, 32)).swapaxes(1, 0)
+    
+        lhs_indices = [0, 13, 12]
+        rhs_indices = [0, 3, 5]
+    
+        out_np = np_gather_mm(a_np, b_np, lhs_indices, rhs_indices)
+    
+        # MLX
+        a_mx = a_mx.reshape((5, 1, 32, 32))
+        b_mx = b_mx.reshape((1, 3, 32, 32))
+    
+        a_mx = mx.broadcast_to(a_mx, (5, 4, 32, 32))
+        b_mx = mx.broadcast_to(b_mx, (2, 3, 32, 32)).swapaxes(1, 0)
+    
+        lhs_indices_mx = mx.array(lhs_indices)
+        rhs_indices_mx = mx.array(rhs_indices)
+    
+        out_mx = mx.gather_mm(a_mx, b_mx, lhs_indices_mx, rhs_indices_mx)
+    
+&gt;       self.assertTrue(np.allclose(out_np, out_mx, atol=1e-5))
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.work/mlx/python/tests/test_blas.py:1348: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/numpy/_core/numeric.py:2376: in allclose
+    res = all(isclose(a, b, rtol=rtol, atol=atol, equal_nan=equal_nan))
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/numpy/_core/numeric.py:2476: in isclose
+    x, y, atol, rtol = (
+    ^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+.0 = &lt;tuple_iterator object at 0x77737a13ce50&gt;
+
+    x, y, atol, rtol = (
+&gt;       a if isinstance(a, (int, float, complex)) else asanyarray(a)
+                                                       ^^^^^^^^^^^^^
+        for a in (a, b, atol, rtol))
+E   RuntimeError: [omarchy] dtype converting copy is not implemented for the Omarchy Vulkan backend (dtype=uint32, shape=[3]). No CPU fallback is available in Omarchy builds.
+
+/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/numpy/_core/numeric.py:2477: RuntimeError</failure></testcase><testcase classname="python.tests.test_blas.TestBlas" name="test_gather_matmul_grad" time="0.005"><failure message="RuntimeError: [omarchy] matrix layout Take is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[3,2,1,32,32]). No CPU fallback is available in Omarchy builds.">self = &lt;test_blas.TestBlas testMethod=test_gather_matmul_grad&gt;
+
+    def test_gather_matmul_grad(self):
+        lhs_indices = mx.array([[7, 6], [4, 1], [0, 2]], dtype=mx.uint32)
+        rhs_indices = mx.array([[2], [0], [1]], dtype=mx.uint32)
+    
+        def f_ref(a, b):
+            lhs_indices_ = mx.broadcast_to(lhs_indices, (3, 2))
+            rhs_indices_ = mx.broadcast_to(rhs_indices, (3, 2))
+            M = a.shape[-2]
+            N = b.shape[-1]
+            K = a.shape[-1]
+    
+            a = a.reshape((-1, M, K))
+            b = b.reshape((-1, K, N))
+    
+            a = mx.take(a, lhs_indices_, 0)
+            b = mx.take(b, rhs_indices_, 0)
+    
+            return a @ b
+    
+        def f_test(a, b):
+            return mx.gather_mm(a, b, lhs_indices, rhs_indices)
+    
+        a_mx = mx.random.normal((4, 2, 32, 32))
+        b_mx = mx.random.normal((4, 1, 32, 32))
+    
+        out_test = f_test(a_mx, b_mx)
+        out_ref = f_ref(a_mx, b_mx)
+    
+&gt;       self.assertTrue(mx.allclose(out_test, out_ref, atol=1e-5))
+E       RuntimeError: [omarchy] matrix layout Take is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[3,2,1,32,32]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_blas.py:1459: RuntimeError</failure></testcase><testcase classname="python.tests.test_blas.TestBlas" name="test_gather_matmul_index_vjp_requires_stop_gradient" time="0.004" /><testcase classname="python.tests.test_blas.TestBlas" name="test_gather_mm_blocks" time="10.715"><failure message="RuntimeError: [omarchy] Arange dtype is not implemented for the Omarchy Vulkan backend (dtype=uint32, shape=[6]). No CPU fallback is available in Omarchy builds.">dtype = mlx.core.float32, G = 6, M = 2, K = 2048, N = 1024, E = 8
+idx_shape = (6,)
+
+    def run_test(dtype, G, M, K, N, E, idx_shape):
+        with self.subTest(dtype=str(dtype), G=G, M=M, idx=idx_shape):
+            np.random.seed(11)
+            scale = K**-0.5
+            a_mx = mx.array(
+                np.random.normal(0.0, scale, (G, M, K)).astype(np.float32)
+            ).astype(dtype)
+            w_mx = mx.array(
+                np.random.normal(0.0, scale, (E, N, K)).astype(np.float32)
+            ).astype(dtype)
+            a_np = np.array(a_mx.astype(mx.float32))
+            w_np = np.array(w_mx.astype(mx.float32))
+            rhs = np.random.randint(0, E, size=idx_shape).astype(np.uint32)
+    
+            out_np = np.stack(
+                [a_np[i % G] @ w_np[r].T for i, r in enumerate(rhs.reshape(-1))]
+            ).reshape(*idx_shape, M, N)
+            out_mx = mx.gather_mm(
+                a_mx.reshape(*idx_shape, M, K),
+                mx.swapaxes(w_mx, -1, -2),
+                None,
+                mx.array(rhs),
+            ).astype(mx.float32)
+    
+            self.assertListEqual(list(out_np.shape), list(out_mx.shape))
+&gt;           self.assertTrue(np.allclose(out_mx, out_np, atol=0.05 * scale))
+                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.work/mlx/python/tests/test_blas.py:1401: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/numpy/_core/numeric.py:2376: in allclose
+    res = all(isclose(a, b, rtol=rtol, atol=atol, equal_nan=equal_nan))
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/numpy/_core/numeric.py:2476: in isclose
+    x, y, atol, rtol = (
+    ^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+.0 = &lt;tuple_iterator object at 0x7773400d9930&gt;
+
+    x, y, atol, rtol = (
+&gt;       a if isinstance(a, (int, float, complex)) else asanyarray(a)
+                                                       ^^^^^^^^^^^^^
+        for a in (a, b, atol, rtol))
+E   RuntimeError: [omarchy] Arange dtype is not implemented for the Omarchy Vulkan backend (dtype=uint32, shape=[6]). No CPU fallback is available in Omarchy builds.
+
+/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/numpy/_core/numeric.py:2477: RuntimeError</failure><failure message="RuntimeError: [omarchy] Arange dtype is not implemented for the Omarchy Vulkan backend (dtype=uint32, shape=[6]). No CPU fallback is available in Omarchy builds.">dtype = mlx.core.float32, G = 6, M = 4, K = 2048, N = 1024, E = 8
+idx_shape = (6,)
+
+    def run_test(dtype, G, M, K, N, E, idx_shape):
+        with self.subTest(dtype=str(dtype), G=G, M=M, idx=idx_shape):
+            np.random.seed(11)
+            scale = K**-0.5
+            a_mx = mx.array(
+                np.random.normal(0.0, scale, (G, M, K)).astype(np.float32)
+            ).astype(dtype)
+            w_mx = mx.array(
+                np.random.normal(0.0, scale, (E, N, K)).astype(np.float32)
+            ).astype(dtype)
+            a_np = np.array(a_mx.astype(mx.float32))
+            w_np = np.array(w_mx.astype(mx.float32))
+            rhs = np.random.randint(0, E, size=idx_shape).astype(np.uint32)
+    
+            out_np = np.stack(
+                [a_np[i % G] @ w_np[r].T for i, r in enumerate(rhs.reshape(-1))]
+            ).reshape(*idx_shape, M, N)
+            out_mx = mx.gather_mm(
+                a_mx.reshape(*idx_shape, M, K),
+                mx.swapaxes(w_mx, -1, -2),
+                None,
+                mx.array(rhs),
+            ).astype(mx.float32)
+    
+            self.assertListEqual(list(out_np.shape), list(out_mx.shape))
+&gt;           self.assertTrue(np.allclose(out_mx, out_np, atol=0.05 * scale))
+                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.work/mlx/python/tests/test_blas.py:1401: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/numpy/_core/numeric.py:2376: in allclose
+    res = all(isclose(a, b, rtol=rtol, atol=atol, equal_nan=equal_nan))
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/numpy/_core/numeric.py:2476: in isclose
+    x, y, atol, rtol = (
+    ^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+.0 = &lt;tuple_iterator object at 0x777379d57e80&gt;
+
+    x, y, atol, rtol = (
+&gt;       a if isinstance(a, (int, float, complex)) else asanyarray(a)
+                                                       ^^^^^^^^^^^^^
+        for a in (a, b, atol, rtol))
+E   RuntimeError: [omarchy] Arange dtype is not implemented for the Omarchy Vulkan backend (dtype=uint32, shape=[6]). No CPU fallback is available in Omarchy builds.
+
+/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/numpy/_core/numeric.py:2477: RuntimeError</failure><failure message="RuntimeError: [omarchy] Arange dtype is not implemented for the Omarchy Vulkan backend (dtype=uint32, shape=[6]). No CPU fallback is available in Omarchy builds.">dtype = mlx.core.float32, G = 6, M = 5, K = 2048, N = 1024, E = 8
+idx_shape = (6,)
+
+    def run_test(dtype, G, M, K, N, E, idx_shape):
+        with self.subTest(dtype=str(dtype), G=G, M=M, idx=idx_shape):
+            np.random.seed(11)
+            scale = K**-0.5
+            a_mx = mx.array(
+                np.random.normal(0.0, scale, (G, M, K)).astype(np.float32)
+            ).astype(dtype)
+            w_mx = mx.array(
+                np.random.normal(0.0, scale, (E, N, K)).astype(np.float32)
+            ).astype(dtype)
+            a_np = np.array(a_mx.astype(mx.float32))
+            w_np = np.array(w_mx.astype(mx.float32))
+            rhs = np.random.randint(0, E, size=idx_shape).astype(np.uint32)
+    
+            out_np = np.stack(
+                [a_np[i % G] @ w_np[r].T for i, r in enumerate(rhs.reshape(-1))]
+            ).reshape(*idx_shape, M, N)
+            out_mx = mx.gather_mm(
+                a_mx.reshape(*idx_shape, M, K),
+                mx.swapaxes(w_mx, -1, -2),
+                None,
+                mx.array(rhs),
+            ).astype(mx.float32)
+    
+            self.assertListEqual(list(out_np.shape), list(out_mx.shape))
+&gt;           self.assertTrue(np.allclose(out_mx, out_np, atol=0.05 * scale))
+                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.work/mlx/python/tests/test_blas.py:1401: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/numpy/_core/numeric.py:2376: in allclose
+    res = all(isclose(a, b, rtol=rtol, atol=atol, equal_nan=equal_nan))
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/numpy/_core/numeric.py:2476: in isclose
+    x, y, atol, rtol = (
+    ^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+.0 = &lt;tuple_iterator object at 0x7773400dbb50&gt;
+
+    x, y, atol, rtol = (
+&gt;       a if isinstance(a, (int, float, complex)) else asanyarray(a)
+                                                       ^^^^^^^^^^^^^
+        for a in (a, b, atol, rtol))
+E   RuntimeError: [omarchy] Arange dtype is not implemented for the Omarchy Vulkan backend (dtype=uint32, shape=[6]). No CPU fallback is available in Omarchy builds.
+
+/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/numpy/_core/numeric.py:2477: RuntimeError</failure><failure message="RuntimeError: [omarchy] Arange dtype is not implemented for the Omarchy Vulkan backend (dtype=uint32, shape=[6]). No CPU fallback is available in Omarchy builds.">dtype = mlx.core.float32, G = 6, M = 11, K = 2048, N = 1024, E = 8
+idx_shape = (6,)
+
+    def run_test(dtype, G, M, K, N, E, idx_shape):
+        with self.subTest(dtype=str(dtype), G=G, M=M, idx=idx_shape):
+            np.random.seed(11)
+            scale = K**-0.5
+            a_mx = mx.array(
+                np.random.normal(0.0, scale, (G, M, K)).astype(np.float32)
+            ).astype(dtype)
+            w_mx = mx.array(
+                np.random.normal(0.0, scale, (E, N, K)).astype(np.float32)
+            ).astype(dtype)
+            a_np = np.array(a_mx.astype(mx.float32))
+            w_np = np.array(w_mx.astype(mx.float32))
+            rhs = np.random.randint(0, E, size=idx_shape).astype(np.uint32)
+    
+            out_np = np.stack(
+                [a_np[i % G] @ w_np[r].T for i, r in enumerate(rhs.reshape(-1))]
+            ).reshape(*idx_shape, M, N)
+            out_mx = mx.gather_mm(
+                a_mx.reshape(*idx_shape, M, K),
+                mx.swapaxes(w_mx, -1, -2),
+                None,
+                mx.array(rhs),
+            ).astype(mx.float32)
+    
+            self.assertListEqual(list(out_np.shape), list(out_mx.shape))
+&gt;           self.assertTrue(np.allclose(out_mx, out_np, atol=0.05 * scale))
+                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.work/mlx/python/tests/test_blas.py:1401: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/numpy/_core/numeric.py:2376: in allclose
+    res = all(isclose(a, b, rtol=rtol, atol=atol, equal_nan=equal_nan))
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/numpy/_core/numeric.py:2476: in isclose
+    x, y, atol, rtol = (
+    ^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+.0 = &lt;tuple_iterator object at 0x777379d572b0&gt;
+
+    x, y, atol, rtol = (
+&gt;       a if isinstance(a, (int, float, complex)) else asanyarray(a)
+                                                       ^^^^^^^^^^^^^
+        for a in (a, b, atol, rtol))
+E   RuntimeError: [omarchy] Arange dtype is not implemented for the Omarchy Vulkan backend (dtype=uint32, shape=[6]). No CPU fallback is available in Omarchy builds.
+
+/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/numpy/_core/numeric.py:2477: RuntimeError</failure><failure message="RuntimeError: [omarchy] Arange dtype is not implemented for the Omarchy Vulkan backend (dtype=uint32, shape=[6]). No CPU fallback is available in Omarchy builds.">dtype = mlx.core.float32, G = 6, M = 3, K = 2048, N = 1024, E = 8
+idx_shape = (2, 3)
+
+    def run_test(dtype, G, M, K, N, E, idx_shape):
+        with self.subTest(dtype=str(dtype), G=G, M=M, idx=idx_shape):
+            np.random.seed(11)
+            scale = K**-0.5
+            a_mx = mx.array(
+                np.random.normal(0.0, scale, (G, M, K)).astype(np.float32)
+            ).astype(dtype)
+            w_mx = mx.array(
+                np.random.normal(0.0, scale, (E, N, K)).astype(np.float32)
+            ).astype(dtype)
+            a_np = np.array(a_mx.astype(mx.float32))
+            w_np = np.array(w_mx.astype(mx.float32))
+            rhs = np.random.randint(0, E, size=idx_shape).astype(np.uint32)
+    
+            out_np = np.stack(
+                [a_np[i % G] @ w_np[r].T for i, r in enumerate(rhs.reshape(-1))]
+            ).reshape(*idx_shape, M, N)
+            out_mx = mx.gather_mm(
+                a_mx.reshape(*idx_shape, M, K),
+                mx.swapaxes(w_mx, -1, -2),
+                None,
+                mx.array(rhs),
+            ).astype(mx.float32)
+    
+            self.assertListEqual(list(out_np.shape), list(out_mx.shape))
+&gt;           self.assertTrue(np.allclose(out_mx, out_np, atol=0.05 * scale))
+                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.work/mlx/python/tests/test_blas.py:1401: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/numpy/_core/numeric.py:2376: in allclose
+    res = all(isclose(a, b, rtol=rtol, atol=atol, equal_nan=equal_nan))
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/numpy/_core/numeric.py:2476: in isclose
+    x, y, atol, rtol = (
+    ^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+.0 = &lt;tuple_iterator object at 0x7773400d62f0&gt;
+
+    x, y, atol, rtol = (
+&gt;       a if isinstance(a, (int, float, complex)) else asanyarray(a)
+                                                       ^^^^^^^^^^^^^
+        for a in (a, b, atol, rtol))
+E   RuntimeError: [omarchy] Arange dtype is not implemented for the Omarchy Vulkan backend (dtype=uint32, shape=[6]). No CPU fallback is available in Omarchy builds.
+
+/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/numpy/_core/numeric.py:2477: RuntimeError</failure><failure message="RuntimeError: [omarchy] matrix layout Take is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[1,129,512]). No CPU fallback is available in Omarchy builds.">self = &lt;test_blas.TestBlas testMethod=test_gather_mm_blocks&gt;
+
+    def test_gather_mm_blocks(self):
+        if mx.default_device() == mx.cpu:
+            self.skipTest("requires GPU")
+    
+        # Eligible gathered products with few-row blocks route to the wide
+        # gather on metal; check block indexing against a per-entry reference.
+        def run_test(dtype, G, M, K, N, E, idx_shape):
+            with self.subTest(dtype=str(dtype), G=G, M=M, idx=idx_shape):
+                np.random.seed(11)
+                scale = K**-0.5
+                a_mx = mx.array(
+                    np.random.normal(0.0, scale, (G, M, K)).astype(np.float32)
+                ).astype(dtype)
+                w_mx = mx.array(
+                    np.random.normal(0.0, scale, (E, N, K)).astype(np.float32)
+                ).astype(dtype)
+                a_np = np.array(a_mx.astype(mx.float32))
+                w_np = np.array(w_mx.astype(mx.float32))
+                rhs = np.random.randint(0, E, size=idx_shape).astype(np.uint32)
+    
+                out_np = np.stack(
+                    [a_np[i % G] @ w_np[r].T for i, r in enumerate(rhs.reshape(-1))]
+                ).reshape(*idx_shape, M, N)
+                out_mx = mx.gather_mm(
+                    a_mx.reshape(*idx_shape, M, K),
+                    mx.swapaxes(w_mx, -1, -2),
+                    None,
+                    mx.array(rhs),
+                ).astype(mx.float32)
+    
+                self.assertListEqual(list(out_np.shape), list(out_mx.shape))
+                self.assertTrue(np.allclose(out_mx, out_np, atol=0.05 * scale))
+    
+        for dtype in (mx.float32, mx.float16, mx.bfloat16):
+            for M in (2, 4, 5, 11):
+                run_test(dtype, 6, M, 2048, 1024, 8, (6,))
+            run_test(dtype, 6, 3, 2048, 1024, 8, (2, 3))
+    
+            # scalar indices: batch_ndim == 0 must still bind index strides
+            with self.subTest(dtype=str(dtype), idx="scalar"):
+                np.random.seed(11)
+                scale = 512**-0.5
+                a_mx = mx.array(
+                    np.random.normal(0.0, scale, (4, 512)).astype(np.float32)
+                ).astype(dtype)
+                w_mx = mx.array(
+                    np.random.normal(0.0, scale, (8, 129, 512)).astype(np.float32)
+                ).astype(dtype)
+                out_np = (
+                    np.array(a_mx.astype(mx.float32))
+&gt;                   @ np.array(w_mx[3].astype(mx.float32)).T
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                )
+E               RuntimeError: [omarchy] matrix layout Take is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[1,129,512]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_blas.py:1420: RuntimeError</failure><failure message="RuntimeError: [omarchy] Arange dtype is not implemented for the Omarchy Vulkan backend (dtype=uint32, shape=[6]). No CPU fallback is available in Omarchy builds.">dtype = mlx.core.float16, G = 6, M = 2, K = 2048, N = 1024, E = 8
+idx_shape = (6,)
+
+    def run_test(dtype, G, M, K, N, E, idx_shape):
+        with self.subTest(dtype=str(dtype), G=G, M=M, idx=idx_shape):
+            np.random.seed(11)
+            scale = K**-0.5
+            a_mx = mx.array(
+                np.random.normal(0.0, scale, (G, M, K)).astype(np.float32)
+            ).astype(dtype)
+            w_mx = mx.array(
+                np.random.normal(0.0, scale, (E, N, K)).astype(np.float32)
+            ).astype(dtype)
+            a_np = np.array(a_mx.astype(mx.float32))
+            w_np = np.array(w_mx.astype(mx.float32))
+            rhs = np.random.randint(0, E, size=idx_shape).astype(np.uint32)
+    
+            out_np = np.stack(
+                [a_np[i % G] @ w_np[r].T for i, r in enumerate(rhs.reshape(-1))]
+            ).reshape(*idx_shape, M, N)
+            out_mx = mx.gather_mm(
+                a_mx.reshape(*idx_shape, M, K),
+                mx.swapaxes(w_mx, -1, -2),
+                None,
+                mx.array(rhs),
+            ).astype(mx.float32)
+    
+            self.assertListEqual(list(out_np.shape), list(out_mx.shape))
+&gt;           self.assertTrue(np.allclose(out_mx, out_np, atol=0.05 * scale))
+                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.work/mlx/python/tests/test_blas.py:1401: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/numpy/_core/numeric.py:2376: in allclose
+    res = all(isclose(a, b, rtol=rtol, atol=atol, equal_nan=equal_nan))
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/numpy/_core/numeric.py:2476: in isclose
+    x, y, atol, rtol = (
+    ^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+.0 = &lt;tuple_iterator object at 0x7773400d4d60&gt;
+
+    x, y, atol, rtol = (
+&gt;       a if isinstance(a, (int, float, complex)) else asanyarray(a)
+                                                       ^^^^^^^^^^^^^
+        for a in (a, b, atol, rtol))
+E   RuntimeError: [omarchy] Arange dtype is not implemented for the Omarchy Vulkan backend (dtype=uint32, shape=[6]). No CPU fallback is available in Omarchy builds.
+
+/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/numpy/_core/numeric.py:2477: RuntimeError</failure><failure message="RuntimeError: [omarchy] Arange dtype is not implemented for the Omarchy Vulkan backend (dtype=uint32, shape=[6]). No CPU fallback is available in Omarchy builds.">dtype = mlx.core.float16, G = 6, M = 4, K = 2048, N = 1024, E = 8
+idx_shape = (6,)
+
+    def run_test(dtype, G, M, K, N, E, idx_shape):
+        with self.subTest(dtype=str(dtype), G=G, M=M, idx=idx_shape):
+            np.random.seed(11)
+            scale = K**-0.5
+            a_mx = mx.array(
+                np.random.normal(0.0, scale, (G, M, K)).astype(np.float32)
+            ).astype(dtype)
+            w_mx = mx.array(
+                np.random.normal(0.0, scale, (E, N, K)).astype(np.float32)
+            ).astype(dtype)
+            a_np = np.array(a_mx.astype(mx.float32))
+            w_np = np.array(w_mx.astype(mx.float32))
+            rhs = np.random.randint(0, E, size=idx_shape).astype(np.uint32)
+    
+            out_np = np.stack(
+                [a_np[i % G] @ w_np[r].T for i, r in enumerate(rhs.reshape(-1))]
+            ).reshape(*idx_shape, M, N)
+            out_mx = mx.gather_mm(
+                a_mx.reshape(*idx_shape, M, K),
+                mx.swapaxes(w_mx, -1, -2),
+                None,
+                mx.array(rhs),
+            ).astype(mx.float32)
+    
+            self.assertListEqual(list(out_np.shape), list(out_mx.shape))
+&gt;           self.assertTrue(np.allclose(out_mx, out_np, atol=0.05 * scale))
+                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.work/mlx/python/tests/test_blas.py:1401: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/numpy/_core/numeric.py:2376: in allclose
+    res = all(isclose(a, b, rtol=rtol, atol=atol, equal_nan=equal_nan))
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/numpy/_core/numeric.py:2476: in isclose
+    x, y, atol, rtol = (
+    ^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+.0 = &lt;tuple_iterator object at 0x777379d56e60&gt;
+
+    x, y, atol, rtol = (
+&gt;       a if isinstance(a, (int, float, complex)) else asanyarray(a)
+                                                       ^^^^^^^^^^^^^
+        for a in (a, b, atol, rtol))
+E   RuntimeError: [omarchy] Arange dtype is not implemented for the Omarchy Vulkan backend (dtype=uint32, shape=[6]). No CPU fallback is available in Omarchy builds.
+
+/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/numpy/_core/numeric.py:2477: RuntimeError</failure><failure message="RuntimeError: [omarchy] Arange dtype is not implemented for the Omarchy Vulkan backend (dtype=uint32, shape=[6]). No CPU fallback is available in Omarchy builds.">dtype = mlx.core.float16, G = 6, M = 5, K = 2048, N = 1024, E = 8
+idx_shape = (6,)
+
+    def run_test(dtype, G, M, K, N, E, idx_shape):
+        with self.subTest(dtype=str(dtype), G=G, M=M, idx=idx_shape):
+            np.random.seed(11)
+            scale = K**-0.5
+            a_mx = mx.array(
+                np.random.normal(0.0, scale, (G, M, K)).astype(np.float32)
+            ).astype(dtype)
+            w_mx = mx.array(
+                np.random.normal(0.0, scale, (E, N, K)).astype(np.float32)
+            ).astype(dtype)
+            a_np = np.array(a_mx.astype(mx.float32))
+            w_np = np.array(w_mx.astype(mx.float32))
+            rhs = np.random.randint(0, E, size=idx_shape).astype(np.uint32)
+    
+            out_np = np.stack(
+                [a_np[i % G] @ w_np[r].T for i, r in enumerate(rhs.reshape(-1))]
+            ).reshape(*idx_shape, M, N)
+            out_mx = mx.gather_mm(
+                a_mx.reshape(*idx_shape, M, K),
+                mx.swapaxes(w_mx, -1, -2),
+                None,
+                mx.array(rhs),
+            ).astype(mx.float32)
+    
+            self.assertListEqual(list(out_np.shape), list(out_mx.shape))
+&gt;           self.assertTrue(np.allclose(out_mx, out_np, atol=0.05 * scale))
+                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.work/mlx/python/tests/test_blas.py:1401: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/numpy/_core/numeric.py:2376: in allclose
+    res = all(isclose(a, b, rtol=rtol, atol=atol, equal_nan=equal_nan))
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/numpy/_core/numeric.py:2476: in isclose
+    x, y, atol, rtol = (
+    ^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+.0 = &lt;tuple_iterator object at 0x7773400d6680&gt;
+
+    x, y, atol, rtol = (
+&gt;       a if isinstance(a, (int, float, complex)) else asanyarray(a)
+                                                       ^^^^^^^^^^^^^
+        for a in (a, b, atol, rtol))
+E   RuntimeError: [omarchy] Arange dtype is not implemented for the Omarchy Vulkan backend (dtype=uint32, shape=[6]). No CPU fallback is available in Omarchy builds.
+
+/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/numpy/_core/numeric.py:2477: RuntimeError</failure><failure message="RuntimeError: [omarchy] Arange dtype is not implemented for the Omarchy Vulkan backend (dtype=uint32, shape=[6]). No CPU fallback is available in Omarchy builds.">dtype = mlx.core.float16, G = 6, M = 11, K = 2048, N = 1024, E = 8
+idx_shape = (6,)
+
+    def run_test(dtype, G, M, K, N, E, idx_shape):
+        with self.subTest(dtype=str(dtype), G=G, M=M, idx=idx_shape):
+            np.random.seed(11)
+            scale = K**-0.5
+            a_mx = mx.array(
+                np.random.normal(0.0, scale, (G, M, K)).astype(np.float32)
+            ).astype(dtype)
+            w_mx = mx.array(
+                np.random.normal(0.0, scale, (E, N, K)).astype(np.float32)
+            ).astype(dtype)
+            a_np = np.array(a_mx.astype(mx.float32))
+            w_np = np.array(w_mx.astype(mx.float32))
+            rhs = np.random.randint(0, E, size=idx_shape).astype(np.uint32)
+    
+            out_np = np.stack(
+                [a_np[i % G] @ w_np[r].T for i, r in enumerate(rhs.reshape(-1))]
+            ).reshape(*idx_shape, M, N)
+            out_mx = mx.gather_mm(
+                a_mx.reshape(*idx_shape, M, K),
+                mx.swapaxes(w_mx, -1, -2),
+                None,
+                mx.array(rhs),
+            ).astype(mx.float32)
+    
+            self.assertListEqual(list(out_np.shape), list(out_mx.shape))
+&gt;           self.assertTrue(np.allclose(out_mx, out_np, atol=0.05 * scale))
+                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.work/mlx/python/tests/test_blas.py:1401: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/numpy/_core/numeric.py:2376: in allclose
+    res = all(isclose(a, b, rtol=rtol, atol=atol, equal_nan=equal_nan))
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/numpy/_core/numeric.py:2476: in isclose
+    x, y, atol, rtol = (
+    ^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+.0 = &lt;tuple_iterator object at 0x777379d56e00&gt;
+
+    x, y, atol, rtol = (
+&gt;       a if isinstance(a, (int, float, complex)) else asanyarray(a)
+                                                       ^^^^^^^^^^^^^
+        for a in (a, b, atol, rtol))
+E   RuntimeError: [omarchy] Arange dtype is not implemented for the Omarchy Vulkan backend (dtype=uint32, shape=[6]). No CPU fallback is available in Omarchy builds.
+
+/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/numpy/_core/numeric.py:2477: RuntimeError</failure><failure message="RuntimeError: [omarchy] Arange dtype is not implemented for the Omarchy Vulkan backend (dtype=uint32, shape=[6]). No CPU fallback is available in Omarchy builds.">dtype = mlx.core.float16, G = 6, M = 3, K = 2048, N = 1024, E = 8
+idx_shape = (2, 3)
+
+    def run_test(dtype, G, M, K, N, E, idx_shape):
+        with self.subTest(dtype=str(dtype), G=G, M=M, idx=idx_shape):
+            np.random.seed(11)
+            scale = K**-0.5
+            a_mx = mx.array(
+                np.random.normal(0.0, scale, (G, M, K)).astype(np.float32)
+            ).astype(dtype)
+            w_mx = mx.array(
+                np.random.normal(0.0, scale, (E, N, K)).astype(np.float32)
+            ).astype(dtype)
+            a_np = np.array(a_mx.astype(mx.float32))
+            w_np = np.array(w_mx.astype(mx.float32))
+            rhs = np.random.randint(0, E, size=idx_shape).astype(np.uint32)
+    
+            out_np = np.stack(
+                [a_np[i % G] @ w_np[r].T for i, r in enumerate(rhs.reshape(-1))]
+            ).reshape(*idx_shape, M, N)
+            out_mx = mx.gather_mm(
+                a_mx.reshape(*idx_shape, M, K),
+                mx.swapaxes(w_mx, -1, -2),
+                None,
+                mx.array(rhs),
+            ).astype(mx.float32)
+    
+            self.assertListEqual(list(out_np.shape), list(out_mx.shape))
+&gt;           self.assertTrue(np.allclose(out_mx, out_np, atol=0.05 * scale))
+                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.work/mlx/python/tests/test_blas.py:1401: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/numpy/_core/numeric.py:2376: in allclose
+    res = all(isclose(a, b, rtol=rtol, atol=atol, equal_nan=equal_nan))
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/numpy/_core/numeric.py:2476: in isclose
+    x, y, atol, rtol = (
+    ^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+.0 = &lt;tuple_iterator object at 0x7773400dbb80&gt;
+
+    x, y, atol, rtol = (
+&gt;       a if isinstance(a, (int, float, complex)) else asanyarray(a)
+                                                       ^^^^^^^^^^^^^
+        for a in (a, b, atol, rtol))
+E   RuntimeError: [omarchy] Arange dtype is not implemented for the Omarchy Vulkan backend (dtype=uint32, shape=[6]). No CPU fallback is available in Omarchy builds.
+
+/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/numpy/_core/numeric.py:2477: RuntimeError</failure><failure message="RuntimeError: [omarchy] matrix layout Take is not implemented for the Omarchy Vulkan backend (dtype=float16, shape=[1,129,512]). No CPU fallback is available in Omarchy builds.">self = &lt;test_blas.TestBlas testMethod=test_gather_mm_blocks&gt;
+
+    def test_gather_mm_blocks(self):
+        if mx.default_device() == mx.cpu:
+            self.skipTest("requires GPU")
+    
+        # Eligible gathered products with few-row blocks route to the wide
+        # gather on metal; check block indexing against a per-entry reference.
+        def run_test(dtype, G, M, K, N, E, idx_shape):
+            with self.subTest(dtype=str(dtype), G=G, M=M, idx=idx_shape):
+                np.random.seed(11)
+                scale = K**-0.5
+                a_mx = mx.array(
+                    np.random.normal(0.0, scale, (G, M, K)).astype(np.float32)
+                ).astype(dtype)
+                w_mx = mx.array(
+                    np.random.normal(0.0, scale, (E, N, K)).astype(np.float32)
+                ).astype(dtype)
+                a_np = np.array(a_mx.astype(mx.float32))
+                w_np = np.array(w_mx.astype(mx.float32))
+                rhs = np.random.randint(0, E, size=idx_shape).astype(np.uint32)
+    
+                out_np = np.stack(
+                    [a_np[i % G] @ w_np[r].T for i, r in enumerate(rhs.reshape(-1))]
+                ).reshape(*idx_shape, M, N)
+                out_mx = mx.gather_mm(
+                    a_mx.reshape(*idx_shape, M, K),
+                    mx.swapaxes(w_mx, -1, -2),
+                    None,
+                    mx.array(rhs),
+                ).astype(mx.float32)
+    
+                self.assertListEqual(list(out_np.shape), list(out_mx.shape))
+                self.assertTrue(np.allclose(out_mx, out_np, atol=0.05 * scale))
+    
+        for dtype in (mx.float32, mx.float16, mx.bfloat16):
+            for M in (2, 4, 5, 11):
+                run_test(dtype, 6, M, 2048, 1024, 8, (6,))
+            run_test(dtype, 6, 3, 2048, 1024, 8, (2, 3))
+    
+            # scalar indices: batch_ndim == 0 must still bind index strides
+            with self.subTest(dtype=str(dtype), idx="scalar"):
+                np.random.seed(11)
+                scale = 512**-0.5
+                a_mx = mx.array(
+                    np.random.normal(0.0, scale, (4, 512)).astype(np.float32)
+                ).astype(dtype)
+                w_mx = mx.array(
+                    np.random.normal(0.0, scale, (8, 129, 512)).astype(np.float32)
+                ).astype(dtype)
+                out_np = (
+                    np.array(a_mx.astype(mx.float32))
+&gt;                   @ np.array(w_mx[3].astype(mx.float32)).T
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                )
+E               RuntimeError: [omarchy] matrix layout Take is not implemented for the Omarchy Vulkan backend (dtype=float16, shape=[1,129,512]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_blas.py:1420: RuntimeError</failure><failure message="RuntimeError: [omarchy] Arange dtype is not implemented for the Omarchy Vulkan backend (dtype=uint32, shape=[6]). No CPU fallback is available in Omarchy builds.">dtype = mlx.core.bfloat16, G = 6, M = 2, K = 2048, N = 1024, E = 8
+idx_shape = (6,)
+
+    def run_test(dtype, G, M, K, N, E, idx_shape):
+        with self.subTest(dtype=str(dtype), G=G, M=M, idx=idx_shape):
+            np.random.seed(11)
+            scale = K**-0.5
+            a_mx = mx.array(
+                np.random.normal(0.0, scale, (G, M, K)).astype(np.float32)
+            ).astype(dtype)
+            w_mx = mx.array(
+                np.random.normal(0.0, scale, (E, N, K)).astype(np.float32)
+            ).astype(dtype)
+            a_np = np.array(a_mx.astype(mx.float32))
+            w_np = np.array(w_mx.astype(mx.float32))
+            rhs = np.random.randint(0, E, size=idx_shape).astype(np.uint32)
+    
+            out_np = np.stack(
+                [a_np[i % G] @ w_np[r].T for i, r in enumerate(rhs.reshape(-1))]
+            ).reshape(*idx_shape, M, N)
+            out_mx = mx.gather_mm(
+                a_mx.reshape(*idx_shape, M, K),
+                mx.swapaxes(w_mx, -1, -2),
+                None,
+                mx.array(rhs),
+            ).astype(mx.float32)
+    
+            self.assertListEqual(list(out_np.shape), list(out_mx.shape))
+&gt;           self.assertTrue(np.allclose(out_mx, out_np, atol=0.05 * scale))
+                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.work/mlx/python/tests/test_blas.py:1401: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/numpy/_core/numeric.py:2376: in allclose
+    res = all(isclose(a, b, rtol=rtol, atol=atol, equal_nan=equal_nan))
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/numpy/_core/numeric.py:2476: in isclose
+    x, y, atol, rtol = (
+    ^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+.0 = &lt;tuple_iterator object at 0x77737a13d240&gt;
+
+    x, y, atol, rtol = (
+&gt;       a if isinstance(a, (int, float, complex)) else asanyarray(a)
+                                                       ^^^^^^^^^^^^^
+        for a in (a, b, atol, rtol))
+E   RuntimeError: [omarchy] Arange dtype is not implemented for the Omarchy Vulkan backend (dtype=uint32, shape=[6]). No CPU fallback is available in Omarchy builds.
+
+/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/numpy/_core/numeric.py:2477: RuntimeError</failure><failure message="RuntimeError: [omarchy] Arange dtype is not implemented for the Omarchy Vulkan backend (dtype=uint32, shape=[6]). No CPU fallback is available in Omarchy builds.">dtype = mlx.core.bfloat16, G = 6, M = 4, K = 2048, N = 1024, E = 8
+idx_shape = (6,)
+
+    def run_test(dtype, G, M, K, N, E, idx_shape):
+        with self.subTest(dtype=str(dtype), G=G, M=M, idx=idx_shape):
+            np.random.seed(11)
+            scale = K**-0.5
+            a_mx = mx.array(
+                np.random.normal(0.0, scale, (G, M, K)).astype(np.float32)
+            ).astype(dtype)
+            w_mx = mx.array(
+                np.random.normal(0.0, scale, (E, N, K)).astype(np.float32)
+            ).astype(dtype)
+            a_np = np.array(a_mx.astype(mx.float32))
+            w_np = np.array(w_mx.astype(mx.float32))
+            rhs = np.random.randint(0, E, size=idx_shape).astype(np.uint32)
+    
+            out_np = np.stack(
+                [a_np[i % G] @ w_np[r].T for i, r in enumerate(rhs.reshape(-1))]
+            ).reshape(*idx_shape, M, N)
+            out_mx = mx.gather_mm(
+                a_mx.reshape(*idx_shape, M, K),
+                mx.swapaxes(w_mx, -1, -2),
+                None,
+                mx.array(rhs),
+            ).astype(mx.float32)
+    
+            self.assertListEqual(list(out_np.shape), list(out_mx.shape))
+&gt;           self.assertTrue(np.allclose(out_mx, out_np, atol=0.05 * scale))
+                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.work/mlx/python/tests/test_blas.py:1401: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/numpy/_core/numeric.py:2376: in allclose
+    res = all(isclose(a, b, rtol=rtol, atol=atol, equal_nan=equal_nan))
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/numpy/_core/numeric.py:2476: in isclose
+    x, y, atol, rtol = (
+    ^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+.0 = &lt;tuple_iterator object at 0x77737a13c1f0&gt;
+
+    x, y, atol, rtol = (
+&gt;       a if isinstance(a, (int, float, complex)) else asanyarray(a)
+                                                       ^^^^^^^^^^^^^
+        for a in (a, b, atol, rtol))
+E   RuntimeError: [omarchy] Arange dtype is not implemented for the Omarchy Vulkan backend (dtype=uint32, shape=[6]). No CPU fallback is available in Omarchy builds.
+
+/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/numpy/_core/numeric.py:2477: RuntimeError</failure><failure message="RuntimeError: [omarchy] Arange dtype is not implemented for the Omarchy Vulkan backend (dtype=uint32, shape=[6]). No CPU fallback is available in Omarchy builds.">dtype = mlx.core.bfloat16, G = 6, M = 5, K = 2048, N = 1024, E = 8
+idx_shape = (6,)
+
+    def run_test(dtype, G, M, K, N, E, idx_shape):
+        with self.subTest(dtype=str(dtype), G=G, M=M, idx=idx_shape):
+            np.random.seed(11)
+            scale = K**-0.5
+            a_mx = mx.array(
+                np.random.normal(0.0, scale, (G, M, K)).astype(np.float32)
+            ).astype(dtype)
+            w_mx = mx.array(
+                np.random.normal(0.0, scale, (E, N, K)).astype(np.float32)
+            ).astype(dtype)
+            a_np = np.array(a_mx.astype(mx.float32))
+            w_np = np.array(w_mx.astype(mx.float32))
+            rhs = np.random.randint(0, E, size=idx_shape).astype(np.uint32)
+    
+            out_np = np.stack(
+                [a_np[i % G] @ w_np[r].T for i, r in enumerate(rhs.reshape(-1))]
+            ).reshape(*idx_shape, M, N)
+            out_mx = mx.gather_mm(
+                a_mx.reshape(*idx_shape, M, K),
+                mx.swapaxes(w_mx, -1, -2),
+                None,
+                mx.array(rhs),
+            ).astype(mx.float32)
+    
+            self.assertListEqual(list(out_np.shape), list(out_mx.shape))
+&gt;           self.assertTrue(np.allclose(out_mx, out_np, atol=0.05 * scale))
+                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.work/mlx/python/tests/test_blas.py:1401: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/numpy/_core/numeric.py:2376: in allclose
+    res = all(isclose(a, b, rtol=rtol, atol=atol, equal_nan=equal_nan))
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/numpy/_core/numeric.py:2476: in isclose
+    x, y, atol, rtol = (
+    ^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+.0 = &lt;tuple_iterator object at 0x77737a13d240&gt;
+
+    x, y, atol, rtol = (
+&gt;       a if isinstance(a, (int, float, complex)) else asanyarray(a)
+                                                       ^^^^^^^^^^^^^
+        for a in (a, b, atol, rtol))
+E   RuntimeError: [omarchy] Arange dtype is not implemented for the Omarchy Vulkan backend (dtype=uint32, shape=[6]). No CPU fallback is available in Omarchy builds.
+
+/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/numpy/_core/numeric.py:2477: RuntimeError</failure><failure message="RuntimeError: [omarchy] Arange dtype is not implemented for the Omarchy Vulkan backend (dtype=uint32, shape=[6]). No CPU fallback is available in Omarchy builds.">dtype = mlx.core.bfloat16, G = 6, M = 11, K = 2048, N = 1024, E = 8
+idx_shape = (6,)
+
+    def run_test(dtype, G, M, K, N, E, idx_shape):
+        with self.subTest(dtype=str(dtype), G=G, M=M, idx=idx_shape):
+            np.random.seed(11)
+            scale = K**-0.5
+            a_mx = mx.array(
+                np.random.normal(0.0, scale, (G, M, K)).astype(np.float32)
+            ).astype(dtype)
+            w_mx = mx.array(
+                np.random.normal(0.0, scale, (E, N, K)).astype(np.float32)
+            ).astype(dtype)
+            a_np = np.array(a_mx.astype(mx.float32))
+            w_np = np.array(w_mx.astype(mx.float32))
+            rhs = np.random.randint(0, E, size=idx_shape).astype(np.uint32)
+    
+            out_np = np.stack(
+                [a_np[i % G] @ w_np[r].T for i, r in enumerate(rhs.reshape(-1))]
+            ).reshape(*idx_shape, M, N)
+            out_mx = mx.gather_mm(
+                a_mx.reshape(*idx_shape, M, K),
+                mx.swapaxes(w_mx, -1, -2),
+                None,
+                mx.array(rhs),
+            ).astype(mx.float32)
+    
+            self.assertListEqual(list(out_np.shape), list(out_mx.shape))
+&gt;           self.assertTrue(np.allclose(out_mx, out_np, atol=0.05 * scale))
+                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.work/mlx/python/tests/test_blas.py:1401: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/numpy/_core/numeric.py:2376: in allclose
+    res = all(isclose(a, b, rtol=rtol, atol=atol, equal_nan=equal_nan))
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/numpy/_core/numeric.py:2476: in isclose
+    x, y, atol, rtol = (
+    ^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+.0 = &lt;tuple_iterator object at 0x77737a13c1f0&gt;
+
+    x, y, atol, rtol = (
+&gt;       a if isinstance(a, (int, float, complex)) else asanyarray(a)
+                                                       ^^^^^^^^^^^^^
+        for a in (a, b, atol, rtol))
+E   RuntimeError: [omarchy] Arange dtype is not implemented for the Omarchy Vulkan backend (dtype=uint32, shape=[6]). No CPU fallback is available in Omarchy builds.
+
+/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/numpy/_core/numeric.py:2477: RuntimeError</failure><failure message="RuntimeError: [omarchy] Arange dtype is not implemented for the Omarchy Vulkan backend (dtype=uint32, shape=[6]). No CPU fallback is available in Omarchy builds.">dtype = mlx.core.bfloat16, G = 6, M = 3, K = 2048, N = 1024, E = 8
+idx_shape = (2, 3)
+
+    def run_test(dtype, G, M, K, N, E, idx_shape):
+        with self.subTest(dtype=str(dtype), G=G, M=M, idx=idx_shape):
+            np.random.seed(11)
+            scale = K**-0.5
+            a_mx = mx.array(
+                np.random.normal(0.0, scale, (G, M, K)).astype(np.float32)
+            ).astype(dtype)
+            w_mx = mx.array(
+                np.random.normal(0.0, scale, (E, N, K)).astype(np.float32)
+            ).astype(dtype)
+            a_np = np.array(a_mx.astype(mx.float32))
+            w_np = np.array(w_mx.astype(mx.float32))
+            rhs = np.random.randint(0, E, size=idx_shape).astype(np.uint32)
+    
+            out_np = np.stack(
+                [a_np[i % G] @ w_np[r].T for i, r in enumerate(rhs.reshape(-1))]
+            ).reshape(*idx_shape, M, N)
+            out_mx = mx.gather_mm(
+                a_mx.reshape(*idx_shape, M, K),
+                mx.swapaxes(w_mx, -1, -2),
+                None,
+                mx.array(rhs),
+            ).astype(mx.float32)
+    
+            self.assertListEqual(list(out_np.shape), list(out_mx.shape))
+&gt;           self.assertTrue(np.allclose(out_mx, out_np, atol=0.05 * scale))
+                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.work/mlx/python/tests/test_blas.py:1401: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/numpy/_core/numeric.py:2376: in allclose
+    res = all(isclose(a, b, rtol=rtol, atol=atol, equal_nan=equal_nan))
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/numpy/_core/numeric.py:2476: in isclose
+    x, y, atol, rtol = (
+    ^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+.0 = &lt;tuple_iterator object at 0x77737a13c1f0&gt;
+
+    x, y, atol, rtol = (
+&gt;       a if isinstance(a, (int, float, complex)) else asanyarray(a)
+                                                       ^^^^^^^^^^^^^
+        for a in (a, b, atol, rtol))
+E   RuntimeError: [omarchy] Arange dtype is not implemented for the Omarchy Vulkan backend (dtype=uint32, shape=[6]). No CPU fallback is available in Omarchy builds.
+
+/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/numpy/_core/numeric.py:2477: RuntimeError</failure><failure message="RuntimeError: [omarchy] matrix layout Take is not implemented for the Omarchy Vulkan backend (dtype=bfloat16, shape=[1,129,512]). No CPU fallback is available in Omarchy builds.">self = &lt;test_blas.TestBlas testMethod=test_gather_mm_blocks&gt;
+
+    def test_gather_mm_blocks(self):
+        if mx.default_device() == mx.cpu:
+            self.skipTest("requires GPU")
+    
+        # Eligible gathered products with few-row blocks route to the wide
+        # gather on metal; check block indexing against a per-entry reference.
+        def run_test(dtype, G, M, K, N, E, idx_shape):
+            with self.subTest(dtype=str(dtype), G=G, M=M, idx=idx_shape):
+                np.random.seed(11)
+                scale = K**-0.5
+                a_mx = mx.array(
+                    np.random.normal(0.0, scale, (G, M, K)).astype(np.float32)
+                ).astype(dtype)
+                w_mx = mx.array(
+                    np.random.normal(0.0, scale, (E, N, K)).astype(np.float32)
+                ).astype(dtype)
+                a_np = np.array(a_mx.astype(mx.float32))
+                w_np = np.array(w_mx.astype(mx.float32))
+                rhs = np.random.randint(0, E, size=idx_shape).astype(np.uint32)
+    
+                out_np = np.stack(
+                    [a_np[i % G] @ w_np[r].T for i, r in enumerate(rhs.reshape(-1))]
+                ).reshape(*idx_shape, M, N)
+                out_mx = mx.gather_mm(
+                    a_mx.reshape(*idx_shape, M, K),
+                    mx.swapaxes(w_mx, -1, -2),
+                    None,
+                    mx.array(rhs),
+                ).astype(mx.float32)
+    
+                self.assertListEqual(list(out_np.shape), list(out_mx.shape))
+                self.assertTrue(np.allclose(out_mx, out_np, atol=0.05 * scale))
+    
+        for dtype in (mx.float32, mx.float16, mx.bfloat16):
+            for M in (2, 4, 5, 11):
+                run_test(dtype, 6, M, 2048, 1024, 8, (6,))
+            run_test(dtype, 6, 3, 2048, 1024, 8, (2, 3))
+    
+            # scalar indices: batch_ndim == 0 must still bind index strides
+            with self.subTest(dtype=str(dtype), idx="scalar"):
+                np.random.seed(11)
+                scale = 512**-0.5
+                a_mx = mx.array(
+                    np.random.normal(0.0, scale, (4, 512)).astype(np.float32)
+                ).astype(dtype)
+                w_mx = mx.array(
+                    np.random.normal(0.0, scale, (8, 129, 512)).astype(np.float32)
+                ).astype(dtype)
+                out_np = (
+                    np.array(a_mx.astype(mx.float32))
+&gt;                   @ np.array(w_mx[3].astype(mx.float32)).T
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                )
+E               RuntimeError: [omarchy] matrix layout Take is not implemented for the Omarchy Vulkan backend (dtype=bfloat16, shape=[1,129,512]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_blas.py:1420: RuntimeError</failure></testcase><testcase classname="python.tests.test_blas.TestBlas" name="test_gather_mm_sorted" time="0.082"><failure message="RuntimeError: [omarchy] Minimum dtype is not implemented for the Omarchy Vulkan backend (dtype=int32, shape=[100]). No CPU fallback is available in Omarchy builds.">self = &lt;test_blas.TestBlas testMethod=test_gather_mm_sorted&gt;
+
+    def test_gather_mm_sorted(self):
+        def gather_mm_ref(a, b, rhs):
+            b = b[rhs]
+            return a @ b
+    
+        def gather_mm_test(a, b, rhs):
+            return mx.gather_mm(a, b, rhs_indices=rhs, sorted_indices=True)
+    
+        dtypes = [(mx.float32, 1e-4)]
+        if mx.cuda.is_available():
+            dtypes += [
+                (mx.float16, 1e-3),
+                (mx.bfloat16, 1e-2),
+            ]
+    
+        for b_transposed in (True, False):
+            for dtype, tol in dtypes:
+                with self.subTest(b_transposed=b_transposed, dtype=dtype):
+                    a = mx.random.normal((100, 1, 100), dtype=dtype)
+                    b = mx.random.normal((8, 100, 100), dtype=dtype)
+                    if b_transposed:
+                        b = b.swapaxes(-1, -2)
+                    rhs = mx.sort(mx.random.randint(0, 8, shape=(100,)))
+    
+                    c1 = gather_mm_ref(a, b, rhs)
+                    c2 = gather_mm_test(a, b, rhs)
+&gt;                   self.assertTrue(mx.allclose(c1, c2, rtol=tol, atol=tol))
+E                   RuntimeError: [omarchy] Minimum dtype is not implemented for the Omarchy Vulkan backend (dtype=int32, shape=[100]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_blas.py:1521: RuntimeError</failure><failure message="RuntimeError: [omarchy] Minimum dtype is not implemented for the Omarchy Vulkan backend (dtype=int32, shape=[100]). No CPU fallback is available in Omarchy builds.">self = &lt;test_blas.TestBlas testMethod=test_gather_mm_sorted&gt;
+
+    def test_gather_mm_sorted(self):
+        def gather_mm_ref(a, b, rhs):
+            b = b[rhs]
+            return a @ b
+    
+        def gather_mm_test(a, b, rhs):
+            return mx.gather_mm(a, b, rhs_indices=rhs, sorted_indices=True)
+    
+        dtypes = [(mx.float32, 1e-4)]
+        if mx.cuda.is_available():
+            dtypes += [
+                (mx.float16, 1e-3),
+                (mx.bfloat16, 1e-2),
+            ]
+    
+        for b_transposed in (True, False):
+            for dtype, tol in dtypes:
+                with self.subTest(b_transposed=b_transposed, dtype=dtype):
+                    a = mx.random.normal((100, 1, 100), dtype=dtype)
+                    b = mx.random.normal((8, 100, 100), dtype=dtype)
+                    if b_transposed:
+                        b = b.swapaxes(-1, -2)
+                    rhs = mx.sort(mx.random.randint(0, 8, shape=(100,)))
+    
+                    c1 = gather_mm_ref(a, b, rhs)
+                    c2 = gather_mm_test(a, b, rhs)
+&gt;                   self.assertTrue(mx.allclose(c1, c2, rtol=tol, atol=tol))
+E                   RuntimeError: [omarchy] Minimum dtype is not implemented for the Omarchy Vulkan backend (dtype=int32, shape=[100]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_blas.py:1521: RuntimeError</failure></testcase><testcase classname="python.tests.test_blas.TestBlas" name="test_gather_mm_sorted_vjp" time="0.010"><failure message="RuntimeError: [omarchy] Minimum dtype is not implemented for the Omarchy Vulkan backend (dtype=int32, shape=[100]). No CPU fallback is available in Omarchy builds.">self = &lt;test_blas.TestBlas testMethod=test_gather_mm_sorted_vjp&gt;
+
+    def test_gather_mm_sorted_vjp(self):
+        def gather_mm_ref(a, b, rhs):
+            b = b[rhs]
+            return a @ b
+    
+        def gather_mm_test(a, b, rhs):
+            return mx.gather_mm(a, b, rhs_indices=rhs, sorted_indices=True)
+    
+        a = mx.random.normal((100, 1, 100))
+        b = mx.random.normal((8, 100, 100))
+        rhs = mx.sort(mx.random.randint(0, 8, shape=(100,)))
+    
+        cotan = mx.random.normal((100, 1, 100))
+        c1, dc1 = mx.vjp(
+            lambda a, b: gather_mm_ref(a, b, rhs),
+            [a, b],
+            [cotan],
+        )
+        c2, dc2 = mx.vjp(
+            lambda a, b: gather_mm_test(a, b, rhs),
+            [a, b],
+            [cotan],
+        )
+&gt;       self.assertTrue(mx.allclose(c1[0], c2[0], atol=1e-4))
+E       RuntimeError: [omarchy] Minimum dtype is not implemented for the Omarchy Vulkan backend (dtype=int32, shape=[100]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_blas.py:1546: RuntimeError</failure></testcase><testcase classname="python.tests.test_blas.TestBlas" name="test_gemv_gemm_same_precision" time="0.026" /><testcase classname="python.tests.test_blas.TestBlas" name="test_matmul" time="0.005" /><testcase classname="python.tests.test_blas.TestBlas" name="test_matmul_batched" time="0.125" /><testcase classname="python.tests.test_blas.TestBlas" name="test_matmul_dtypes" time="0.004" /><testcase classname="python.tests.test_blas.TestBlas" name="test_matmul_shapes" time="27.658" /><testcase classname="python.tests.test_blas.TestBlas" name="test_matmul_unaligned" time="0.229" /><testcase classname="python.tests.test_blas.TestBlas" name="test_matrix_vector" time="10.502" /><testcase classname="python.tests.test_blas.TestBlas" name="test_matrix_vector_attn" time="0.644"><failure message="RuntimeError: [omarchy] rank&gt;4 strided copy is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[4,8,4,16,256]). No CPU fallback is available in Omarchy builds.">self = &lt;test_blas.TestBlas testMethod=test_matrix_vector_attn&gt;
+
+    def test_matrix_vector_attn(self):
+        # Multi-query style attention check
+        for dtype in self.dtypes:
+            # fmt: off
+            for (B,  D, n_kv_heads, factor,  qsl,  ksl) in (
+                (1, 16,          8,      4,    1,  256),
+                (1, 16,          8,      4,   32,  256),
+                (1, 16,          8,      4,  256,    1),
+                (4, 16,          8,      4,    1,  256),
+                (4, 16,          8,      4,  256,    1),
+            ):
+            # fmt: on
+                with self.subTest(
+                        B=B, # Batch size
+                        D=D, # Dimension of mm
+                        n_kv_heads=n_kv_heads, # key-value heads
+                        factor=factor, # factor to get query heads
+                        qsl=qsl, # Query sequence length
+                        ksl=ksl, # Key sequence length
+                        dtype=dtype # Data type
+                    ):
+    
+                    np_dtype = getattr(np, dtype)
+    
+                    # Fix shapes for kqv
+                    n_q_heads = n_kv_heads * factor
+                    Dk = D * n_kv_heads
+                    Dq = D * n_q_heads
+                    scale = 1. / math.sqrt(Dk)
+    
+                    shape_queries = (B, qsl, Dq)
+                    shape_keys = (B, ksl, Dk)
+                    shape_values = (B, ksl, Dk)
+    
+                    # Prepare numpy arrays
+                    q_np = np.random.uniform(-scale, scale, size=shape_queries).astype(np_dtype)
+                    k_np = np.random.uniform(-scale, scale, size=shape_keys).astype(np_dtype)
+                    v_np = np.random.uniform(-scale, scale, size=shape_values).astype(np_dtype)
+    
+                    # Rearrange to move heads up
+                    q_np_reshape = q_np.reshape(B, qsl, n_kv_heads, factor, -1).transpose(0, 2, 3, 1, 4)
+                    k_np_reshape = k_np.reshape(B, ksl, n_kv_heads, 1, -1).transpose(0, 2, 3, 4, 1)
+                    v_np_reshape = v_np.reshape(B, ksl, n_kv_heads, 1, -1).transpose(0, 2, 3, 1, 4)
+    
+                    # Do attn style matmul
+                    s_np = q_np_reshape @ k_np_reshape
+                    o_np = s_np @ v_np_reshape
+                    o_np = o_np.transpose(0, 3, 1, 2, 4).reshape(B, qsl, -1)
+    
+                    # Test mlx
+                    q_mx = mx.array(q_np)
+                    k_mx = mx.array(k_np)
+                    v_mx = mx.array(v_np)
+    
+                    # Rearrange to move heads up
+                    q_mx_reshape = q_mx.reshape(B, qsl, n_kv_heads, factor, -1).transpose(0, 2, 3, 1, 4)
+                    k_mx_reshape = k_mx.reshape(B, ksl, n_kv_heads, 1, -1).transpose(0, 2, 3, 4, 1)
+                    v_mx_reshape = v_mx.reshape(B, ksl, n_kv_heads, 1, -1).transpose(0, 2, 3, 1, 4)
+    
+                    # Do attn style matmul
+                    s_mx = q_mx_reshape @ k_mx_reshape
+                    o_mx = (s_mx @ v_mx_reshape)
+                    o_mx = o_mx.transpose(0, 3, 1, 2, 4).reshape(B, qsl, -1)
+    
+                    # Check against np
+                    self.assertListEqual(list(s_np.shape), list(s_mx.shape))
+&gt;                   self.assertTrue(np.allclose(s_np, s_mx, atol=1e-4))
+                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.work/mlx/python/tests/test_blas.py:483: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/numpy/_core/numeric.py:2376: in allclose
+    res = all(isclose(a, b, rtol=rtol, atol=atol, equal_nan=equal_nan))
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/numpy/_core/numeric.py:2476: in isclose
+    x, y, atol, rtol = (
+    ^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+.0 = &lt;tuple_iterator object at 0x777340110b50&gt;
+
+    x, y, atol, rtol = (
+&gt;       a if isinstance(a, (int, float, complex)) else asanyarray(a)
+                                                       ^^^^^^^^^^^^^
+        for a in (a, b, atol, rtol))
+E   RuntimeError: [omarchy] rank&gt;4 strided copy is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[4,8,4,16,256]). No CPU fallback is available in Omarchy builds.
+
+/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/numpy/_core/numeric.py:2477: RuntimeError</failure><failure message="RuntimeError: [omarchy] rank&gt;4 strided copy is not implemented for the Omarchy Vulkan backend (dtype=float16, shape=[4,8,4,16,256]). No CPU fallback is available in Omarchy builds.">self = &lt;test_blas.TestBlas testMethod=test_matrix_vector_attn&gt;
+
+    def test_matrix_vector_attn(self):
+        # Multi-query style attention check
+        for dtype in self.dtypes:
+            # fmt: off
+            for (B,  D, n_kv_heads, factor,  qsl,  ksl) in (
+                (1, 16,          8,      4,    1,  256),
+                (1, 16,          8,      4,   32,  256),
+                (1, 16,          8,      4,  256,    1),
+                (4, 16,          8,      4,    1,  256),
+                (4, 16,          8,      4,  256,    1),
+            ):
+            # fmt: on
+                with self.subTest(
+                        B=B, # Batch size
+                        D=D, # Dimension of mm
+                        n_kv_heads=n_kv_heads, # key-value heads
+                        factor=factor, # factor to get query heads
+                        qsl=qsl, # Query sequence length
+                        ksl=ksl, # Key sequence length
+                        dtype=dtype # Data type
+                    ):
+    
+                    np_dtype = getattr(np, dtype)
+    
+                    # Fix shapes for kqv
+                    n_q_heads = n_kv_heads * factor
+                    Dk = D * n_kv_heads
+                    Dq = D * n_q_heads
+                    scale = 1. / math.sqrt(Dk)
+    
+                    shape_queries = (B, qsl, Dq)
+                    shape_keys = (B, ksl, Dk)
+                    shape_values = (B, ksl, Dk)
+    
+                    # Prepare numpy arrays
+                    q_np = np.random.uniform(-scale, scale, size=shape_queries).astype(np_dtype)
+                    k_np = np.random.uniform(-scale, scale, size=shape_keys).astype(np_dtype)
+                    v_np = np.random.uniform(-scale, scale, size=shape_values).astype(np_dtype)
+    
+                    # Rearrange to move heads up
+                    q_np_reshape = q_np.reshape(B, qsl, n_kv_heads, factor, -1).transpose(0, 2, 3, 1, 4)
+                    k_np_reshape = k_np.reshape(B, ksl, n_kv_heads, 1, -1).transpose(0, 2, 3, 4, 1)
+                    v_np_reshape = v_np.reshape(B, ksl, n_kv_heads, 1, -1).transpose(0, 2, 3, 1, 4)
+    
+                    # Do attn style matmul
+                    s_np = q_np_reshape @ k_np_reshape
+                    o_np = s_np @ v_np_reshape
+                    o_np = o_np.transpose(0, 3, 1, 2, 4).reshape(B, qsl, -1)
+    
+                    # Test mlx
+                    q_mx = mx.array(q_np)
+                    k_mx = mx.array(k_np)
+                    v_mx = mx.array(v_np)
+    
+                    # Rearrange to move heads up
+                    q_mx_reshape = q_mx.reshape(B, qsl, n_kv_heads, factor, -1).transpose(0, 2, 3, 1, 4)
+                    k_mx_reshape = k_mx.reshape(B, ksl, n_kv_heads, 1, -1).transpose(0, 2, 3, 4, 1)
+                    v_mx_reshape = v_mx.reshape(B, ksl, n_kv_heads, 1, -1).transpose(0, 2, 3, 1, 4)
+    
+                    # Do attn style matmul
+                    s_mx = q_mx_reshape @ k_mx_reshape
+                    o_mx = (s_mx @ v_mx_reshape)
+                    o_mx = o_mx.transpose(0, 3, 1, 2, 4).reshape(B, qsl, -1)
+    
+                    # Check against np
+                    self.assertListEqual(list(s_np.shape), list(s_mx.shape))
+&gt;                   self.assertTrue(np.allclose(s_np, s_mx, atol=1e-4))
+                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.work/mlx/python/tests/test_blas.py:483: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/numpy/_core/numeric.py:2376: in allclose
+    res = all(isclose(a, b, rtol=rtol, atol=atol, equal_nan=equal_nan))
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/numpy/_core/numeric.py:2476: in isclose
+    x, y, atol, rtol = (
+    ^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+.0 = &lt;tuple_iterator object at 0x777340101210&gt;
+
+    x, y, atol, rtol = (
+&gt;       a if isinstance(a, (int, float, complex)) else asanyarray(a)
+                                                       ^^^^^^^^^^^^^
+        for a in (a, b, atol, rtol))
+E   RuntimeError: [omarchy] rank&gt;4 strided copy is not implemented for the Omarchy Vulkan backend (dtype=float16, shape=[4,8,4,16,256]). No CPU fallback is available in Omarchy builds.
+
+/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/numpy/_core/numeric.py:2477: RuntimeError</failure></testcase><testcase classname="python.tests.test_blas.TestBlas" name="test_matrix_vector_batched" time="0.257"><failure message="RuntimeError: [omarchy] matrix rank Matmul is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[2,1,8,4,6,1]). No CPU fallback is available in Omarchy builds.">self = &lt;test_blas.TestBlas testMethod=test_matrix_vector_batched&gt;
+shape_mat = (2, 1, 8, 1, 6, 128), shape_vec = (2, 1, 8, 4, 128, 1)
+np_dtype = &lt;class 'numpy.float32'&gt;, mat_first = True
+np_mat_f = &lt;function TestBlas.&lt;lambda&gt; at 0x777379cfff60&gt;
+np_vec_f = &lt;function TestBlas.&lt;lambda&gt; at 0x777379d20040&gt;
+mlx_mat_f = &lt;function TestBlas.&lt;lambda&gt; at 0x777379d200e0&gt;
+mlx_vec_f = &lt;function TestBlas.&lt;lambda&gt; at 0x777379d20180&gt;
+
+    def __gemv_test(
+        self,
+        shape_mat,
+        shape_vec,
+        np_dtype=np.float32,
+        mat_first=True,
+        np_mat_f=lambda x: x,
+        np_vec_f=lambda x: x,
+        mlx_mat_f=lambda x: x,
+        mlx_vec_f=lambda x: x,
+    ):
+        with self.subTest(
+            shape_mat=shape_mat, shape_vec=shape_vec, mat_first=mat_first
+        ):
+            np.random.seed(42)
+            scale = max(np.sum(shape_mat), 32)
+            mat_npy = np.random.normal(0.0, 1.0 / scale, shape_mat).astype(np_dtype)
+            vec_npy = np.random.normal(0.0, 1.0 / scale, shape_vec).astype(np_dtype)
+    
+            mat_mlx = mx.array(mat_npy)
+            vec_mlx = mx.array(vec_npy)
+    
+            mat_npy = np_mat_f(mat_npy)
+            vec_npy = np_vec_f(vec_npy)
+            mat_mlx = mlx_mat_f(mat_mlx)
+            vec_mlx = mlx_vec_f(vec_mlx)
+    
+            if mat_first:
+                out_npy = mat_npy @ vec_npy
+                out_mlx = mat_mlx @ vec_mlx
+            else:
+                out_npy = vec_npy @ mat_npy
+                out_mlx = vec_mlx @ mat_mlx
+    
+            # Due to some bug, numpy sometimes has NaNs on macOS
+            # See https://github.com/ml-explore/mlx/pull/3063
+            nans = np.isnan(out_npy)
+            if np.any(nans):
+                nan_ids = np.where(nans)
+                mlx_nan_ids = tuple(mx.array(n) for n in nan_ids)
+                out_npy[nan_ids] = 0.0
+                out_mlx[mlx_nan_ids] = 0.0
+    
+            self.assertListEqual(list(out_npy.shape), list(out_mlx.shape))
+&gt;           self.assertTrue(np.allclose(out_mlx, out_npy, atol=1e-5))
+                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.work/mlx/python/tests/test_blas.py:309: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/numpy/_core/numeric.py:2376: in allclose
+    res = all(isclose(a, b, rtol=rtol, atol=atol, equal_nan=equal_nan))
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/numpy/_core/numeric.py:2476: in isclose
+    x, y, atol, rtol = (
+    ^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+.0 = &lt;tuple_iterator object at 0x777340113e50&gt;
+
+    x, y, atol, rtol = (
+&gt;       a if isinstance(a, (int, float, complex)) else asanyarray(a)
+                                                       ^^^^^^^^^^^^^
+        for a in (a, b, atol, rtol))
+E   RuntimeError: [omarchy] matrix rank Matmul is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[2,1,8,4,6,1]). No CPU fallback is available in Omarchy builds.
+
+/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/numpy/_core/numeric.py:2477: RuntimeError</failure><failure message="RuntimeError: [omarchy] matrix rank Matmul is not implemented for the Omarchy Vulkan backend (dtype=float16, shape=[2,1,8,4,6,1]). No CPU fallback is available in Omarchy builds.">self = &lt;test_blas.TestBlas testMethod=test_matrix_vector_batched&gt;
+shape_mat = (2, 1, 8, 1, 6, 128), shape_vec = (2, 1, 8, 4, 128, 1)
+np_dtype = &lt;class 'numpy.float16'&gt;, mat_first = True
+np_mat_f = &lt;function TestBlas.&lt;lambda&gt; at 0x777379cfff60&gt;
+np_vec_f = &lt;function TestBlas.&lt;lambda&gt; at 0x777379d20040&gt;
+mlx_mat_f = &lt;function TestBlas.&lt;lambda&gt; at 0x777379d200e0&gt;
+mlx_vec_f = &lt;function TestBlas.&lt;lambda&gt; at 0x777379d20180&gt;
+
+    def __gemv_test(
+        self,
+        shape_mat,
+        shape_vec,
+        np_dtype=np.float32,
+        mat_first=True,
+        np_mat_f=lambda x: x,
+        np_vec_f=lambda x: x,
+        mlx_mat_f=lambda x: x,
+        mlx_vec_f=lambda x: x,
+    ):
+        with self.subTest(
+            shape_mat=shape_mat, shape_vec=shape_vec, mat_first=mat_first
+        ):
+            np.random.seed(42)
+            scale = max(np.sum(shape_mat), 32)
+            mat_npy = np.random.normal(0.0, 1.0 / scale, shape_mat).astype(np_dtype)
+            vec_npy = np.random.normal(0.0, 1.0 / scale, shape_vec).astype(np_dtype)
+    
+            mat_mlx = mx.array(mat_npy)
+            vec_mlx = mx.array(vec_npy)
+    
+            mat_npy = np_mat_f(mat_npy)
+            vec_npy = np_vec_f(vec_npy)
+            mat_mlx = mlx_mat_f(mat_mlx)
+            vec_mlx = mlx_vec_f(vec_mlx)
+    
+            if mat_first:
+                out_npy = mat_npy @ vec_npy
+                out_mlx = mat_mlx @ vec_mlx
+            else:
+                out_npy = vec_npy @ mat_npy
+                out_mlx = vec_mlx @ mat_mlx
+    
+            # Due to some bug, numpy sometimes has NaNs on macOS
+            # See https://github.com/ml-explore/mlx/pull/3063
+            nans = np.isnan(out_npy)
+            if np.any(nans):
+                nan_ids = np.where(nans)
+                mlx_nan_ids = tuple(mx.array(n) for n in nan_ids)
+                out_npy[nan_ids] = 0.0
+                out_mlx[mlx_nan_ids] = 0.0
+    
+            self.assertListEqual(list(out_npy.shape), list(out_mlx.shape))
+&gt;           self.assertTrue(np.allclose(out_mlx, out_npy, atol=1e-5))
+                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.work/mlx/python/tests/test_blas.py:309: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/numpy/_core/numeric.py:2376: in allclose
+    res = all(isclose(a, b, rtol=rtol, atol=atol, equal_nan=equal_nan))
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/numpy/_core/numeric.py:2476: in isclose
+    x, y, atol, rtol = (
+    ^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+.0 = &lt;tuple_iterator object at 0x7773401001c0&gt;
+
+    x, y, atol, rtol = (
+&gt;       a if isinstance(a, (int, float, complex)) else asanyarray(a)
+                                                       ^^^^^^^^^^^^^
+        for a in (a, b, atol, rtol))
+E   RuntimeError: [omarchy] matrix rank Matmul is not implemented for the Omarchy Vulkan backend (dtype=float16, shape=[2,1,8,4,6,1]). No CPU fallback is available in Omarchy builds.
+
+/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/numpy/_core/numeric.py:2477: RuntimeError</failure></testcase><testcase classname="python.tests.test_blas.TestBlas" name="test_matrix_vector_broadcast" time="0.081" /><testcase classname="python.tests.test_blas.TestBlas" name="test_matrix_vector_edgecases" time="0.186" /><testcase classname="python.tests.test_blas.TestBlas" name="test_matvec_unaligned" time="0.003" /><testcase classname="python.tests.test_blas.TestBlas" name="test_mismatch_stride_mm" time="0.006" /><testcase classname="python.tests.test_blas.TestBlas" name="test_segmented_mm" time="0.001"><failure message="RuntimeError: [omarchy] dtype converting copy is not implemented for the Omarchy Vulkan backend (dtype=uint32, shape=[2,2]). No CPU fallback is available in Omarchy builds.">self = &lt;test_blas.TestBlas testMethod=test_segmented_mm&gt;
+
+    def test_segmented_mm(self):
+        def segmented_mm_ref(a, b, s):
+            s = s.tolist()
+            c = []
+            for s1, s2 in s:
+                c.append(a[:, s1:s2] @ b[s1:s2, :])
+            return mx.stack(c, axis=0)
+    
+        shapes = [
+            (10, 10, 10),
+            (10, 10, 1000),
+            (1000, 1000, 1000),
+        ]
+        all_segments = [[0, 0, 1.0], [0, 0.5, 1.0], [r / 9 for r in range(10)]]
+    
+        for M, N, K in shapes:
+            for s in all_segments:
+                segments = []
+                for i in range(len(s) - 1):
+                    segments.append([s[i], s[i + 1]])
+                segments = mx.array(segments)
+                segments = mx.minimum(K - 1, (K * segments).astype(mx.uint32))
+                a = mx.random.normal((M, K))
+                b = mx.random.normal((K, N))
+&gt;               c1 = segmented_mm_ref(a, b, segments)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.work/mlx/python/tests/test_blas.py:1574: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+a = array([[0.976578, 1.00358, 0.186631, ..., -1.30309, 0.448998, 1.93629],
+       [-2.45291, -0.999409, 0.687652, ..., 0....9, -0.0419362, -0.683486],
+       [-0.637662, -1.95865, -1.19291, ..., -0.123228, 0.436675, -0.361159]], dtype=float32)
+b = array([[-0.480879, -1.2733, -0.155564, ..., 0.45422, 0.355445, -2.86024],
+       [-0.777118, 0.203433, -1.4554, ..., 1... 1.61356, 0.210525, -2.01879],
+       [-0.783813, 0.8373, 0.843526, ..., -0.939998, -0.75295, 1.16389]], dtype=float32)
+s = &lt;[RuntimeError('[omarchy] dtype converting copy is not implemented for the Omarchy Vulkan backend (dtype=uint32, shape=[2,2]). No CPU fallback is available in Omarchy builds.') raised in repr()] array object at 0x77737a1277c0&gt;
+
+    def segmented_mm_ref(a, b, s):
+&gt;       s = s.tolist()
+            ^^^^^^^^^^
+E       RuntimeError: [omarchy] dtype converting copy is not implemented for the Omarchy Vulkan backend (dtype=uint32, shape=[2,2]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_blas.py:1552: RuntimeError</failure></testcase><testcase classname="python.tests.test_blas.TestBlas" name="test_wide_addmm" time="1.214" /><testcase classname="python.tests.test_blas.TestBlas" name="test_wide_matmul" time="7.327" /></testsuite></testsuites>

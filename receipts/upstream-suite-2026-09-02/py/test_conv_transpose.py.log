@@ -1,0 +1,16 @@
+============================= test session starts ==============================
+collecting ... collected 10 items
+
+.work/mlx/python/tests/test_conv_transpose.py::TestConvTranspose::test_conv_transpose_unfold_tiling SKIPPED [ 10%]
+.work/mlx/python/tests/test_conv_transpose.py::TestConvTranspose::test_torch_conv_tranpose_1d_output_padding SKIPPED [ 20%]
+.work/mlx/python/tests/test_conv_transpose.py::TestConvTranspose::test_torch_conv_transpose_1D SKIPPED [ 30%]
+.work/mlx/python/tests/test_conv_transpose.py::TestConvTranspose::test_torch_conv_transpose_1D_grad SKIPPED [ 40%]
+.work/mlx/python/tests/test_conv_transpose.py::TestConvTranspose::test_torch_conv_transpose_2D SKIPPED [ 50%]
+.work/mlx/python/tests/test_conv_transpose.py::TestConvTranspose::test_torch_conv_transpose_2D_grad SKIPPED [ 60%]
+.work/mlx/python/tests/test_conv_transpose.py::TestConvTranspose::test_torch_conv_transpose_2d_output_padding SKIPPED [ 70%]
+.work/mlx/python/tests/test_conv_transpose.py::TestConvTranspose::test_torch_conv_transpose_3D SKIPPED [ 80%]
+.work/mlx/python/tests/test_conv_transpose.py::TestConvTranspose::test_torch_conv_transpose_3D_grad SKIPPED [ 90%]
+.work/mlx/python/tests/test_conv_transpose.py::TestConvTranspose::test_torch_conv_transpose_3d_output_padding SKIPPED [100%]
+
+- generated xml file: /home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/py/test_conv_transpose.py.xml -
+============================= 10 skipped in 0.14s ==============================

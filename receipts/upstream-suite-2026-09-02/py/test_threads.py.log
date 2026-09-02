@@ -1,0 +1,90 @@
+============================= test session starts ==============================
+collecting ... collected 2 items
+
+.work/mlx/python/tests/test_threads.py::TestThreads::test_concurrent_transforms PASSED [ 50%]
+.work/mlx/python/tests/test_threads.py::TestThreads::test_threadlocal_stream FAILED [100%]
+
+=================================== FAILURES ===================================
+_____________________ TestThreads.test_threadlocal_stream ______________________
+
+self = <test_threads.TestThreads testMethod=test_threadlocal_stream>
+
+    def test_threadlocal_stream(self):
+        raised = [False, False]
+        test_stream = mx.new_stream(mx.default_device())
+    
+        def test_failure(i):
+            with self.assertRaises(RuntimeError):
+                with mx.stream(test_stream):
+                    x = mx.arange(10)
+                    mx.eval(2 * x)
+            mx.clear_streams()
+            raised[i] = True
+    
+        t1 = threading.Thread(target=test_failure, args=(0,))
+        t2 = threading.Thread(target=test_failure, args=(1,))
+        t1.start()
+        t2.start()
+        t1.join()
+        t2.join()
+        self.assertTrue(all(raised))
+    
+        raised = [True, True]
+        test_stream = mx.new_thread_local_stream(mx.default_device())
+    
+        def test_success(i):
+            with mx.stream(test_stream):
+                x = mx.arange(10)
+                mx.eval(2 * x)
+                self.assertEqual(x.tolist(), list(range(10)))
+            mx.clear_streams()
+            raised[i] = False
+    
+        t1 = threading.Thread(target=test_success, args=(0,))
+        t2 = threading.Thread(target=test_success, args=(1,))
+        t1.start()
+        t2.start()
+        t1.join()
+        t2.join()
+>       self.assertFalse(any(raised))
+E       AssertionError: True is not false
+
+.work/mlx/python/tests/test_threads.py:48: AssertionError
+=============================== warnings summary ===============================
+python/tests/test_threads.py::TestThreads::test_threadlocal_stream
+  /home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/_pytest/threadexception.py:58: PytestUnhandledThreadExceptionWarning: Exception in thread Thread-13 (test_success)
+  
+  Traceback (most recent call last):
+    File "/usr/lib/python3.11/threading.py", line 1038, in _bootstrap_inner
+      self.run()
+    File "/usr/lib/python3.11/threading.py", line 975, in run
+      self._target(*self._args, **self._kwargs)
+    File "/tmp/upstream-sweep/.work/mlx/python/tests/test_threads.py", line 37, in test_success
+      mx.eval(2 * x)
+  RuntimeError: [omarchy] Multiply dtype is not implemented for the Omarchy Vulkan backend (dtype=int32, shape=[10]). No CPU fallback is available in Omarchy builds.
+  
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+    warnings.warn(pytest.PytestUnhandledThreadExceptionWarning(msg))
+
+python/tests/test_threads.py::TestThreads::test_threadlocal_stream
+  /home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/_pytest/threadexception.py:58: PytestUnhandledThreadExceptionWarning: Exception in thread Thread-12 (test_success)
+  
+  Traceback (most recent call last):
+    File "/usr/lib/python3.11/threading.py", line 1038, in _bootstrap_inner
+      self.run()
+    File "/usr/lib/python3.11/threading.py", line 975, in run
+      self._target(*self._args, **self._kwargs)
+    File "/tmp/upstream-sweep/.work/mlx/python/tests/test_threads.py", line 37, in test_success
+      mx.eval(2 * x)
+  RuntimeError: [omarchy] Multiply dtype is not implemented for the Omarchy Vulkan backend (dtype=int32, shape=[10]). No CPU fallback is available in Omarchy builds.
+  
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+    warnings.warn(pytest.PytestUnhandledThreadExceptionWarning(msg))
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+- generated xml file: /home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/py/test_threads.py.xml -
+=========================== short test summary info ============================
+FAILED .work/mlx/python/tests/test_threads.py::TestThreads::test_threadlocal_stream - AssertionError: True is not false
+=================== 1 failed, 1 passed, 2 warnings in 3.08s ====================

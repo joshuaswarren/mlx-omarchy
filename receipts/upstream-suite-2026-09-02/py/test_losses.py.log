@@ -1,0 +1,41 @@
+============================= test session starts ==============================
+collecting ... collected 14 items
+
+.work/mlx/python/tests/test_losses.py::TestLosses::test_binary_cross_entropy PASSED [  7%]
+.work/mlx/python/tests/test_losses.py::TestLosses::test_cosine_similarity_loss PASSED [ 14%]
+.work/mlx/python/tests/test_losses.py::TestLosses::test_cross_entropy PASSED [ 21%]
+.work/mlx/python/tests/test_losses.py::TestLosses::test_gaussian_nll_loss PASSED [ 28%]
+.work/mlx/python/tests/test_losses.py::TestLosses::test_hinge_loss PASSED [ 35%]
+.work/mlx/python/tests/test_losses.py::TestLosses::test_huber_loss PASSED [ 42%]
+.work/mlx/python/tests/test_losses.py::TestLosses::test_kl_div_loss PASSED [ 50%]
+.work/mlx/python/tests/test_losses.py::TestLosses::test_l1_loss PASSED   [ 57%]
+.work/mlx/python/tests/test_losses.py::TestLosses::test_log_cosh_loss PASSED [ 64%]
+.work/mlx/python/tests/test_losses.py::TestLosses::test_margin_ranking_loss FAILED [ 71%]
+.work/mlx/python/tests/test_losses.py::TestLosses::test_mse_loss PASSED  [ 78%]
+.work/mlx/python/tests/test_losses.py::TestLosses::test_nll_loss PASSED  [ 85%]
+.work/mlx/python/tests/test_losses.py::TestLosses::test_smooth_l1_loss PASSED [ 92%]
+.work/mlx/python/tests/test_losses.py::TestLosses::test_triplet_loss PASSED [100%]
+
+=================================== FAILURES ===================================
+_____________________ TestLosses.test_margin_ranking_loss ______________________
+
+self = <test_losses.TestLosses testMethod=test_margin_ranking_loss>
+
+    def test_margin_ranking_loss(self):
+        inputs1 = mx.array([-0.573409, -0.765166, -0.0638])
+        inputs2 = mx.array([0.75596, 0.225763, 0.256995])
+        targets = mx.array([1, 1, -1])
+    
+        # Test with no margin
+        losses = nn.losses.margin_ranking_loss(
+            inputs1, inputs2, targets, reduction="none"
+        )
+        expected = mx.array([1.329369, 0.990929, 0.0])
+>       self.assertTrue(mx.allclose(losses, expected))
+E       RuntimeError: [omarchy] Negative dtype is not implemented for the Omarchy Vulkan backend (dtype=int32, shape=[3]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_losses.py:481: RuntimeError
+- generated xml file: /home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/py/test_losses.py.xml -
+=========================== short test summary info ============================
+FAILED .work/mlx/python/tests/test_losses.py::TestLosses::test_margin_ranking_loss - RuntimeError: [omarchy] Negative dtype is not implemented for the Omarchy Vulkan backend (dtype=int32, shape=[3]). No CPU fallback is available in Omarchy builds.
+========================= 1 failed, 13 passed in 0.36s =========================

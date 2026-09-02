@@ -1,0 +1,185 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="3" skipped="0" tests="12" time="0.316" timestamp="2026-09-02T08:57:14.096720-05:00" hostname="omp-studio-local"><testcase classname="python.tests.test_einsum.TestEinsum" name="test_attention" time="0.052" /><testcase classname="python.tests.test_einsum.TestEinsum" name="test_broadcasting" time="0.008" /><testcase classname="python.tests.test_einsum.TestEinsum" name="test_ellipses" time="0.013"><failure message="RuntimeError: [omarchy] non-axis-0 Take is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[5,2,3,1,1]). No CPU fallback is available in Omarchy builds.">self = &lt;test_einsum.TestEinsum testMethod=test_ellipses&gt;
+
+    def test_ellipses(self):
+        size_dict = dict(zip("abcdefghij", [2, 3, 4, 5, 2, 3, 4, 5, 2, 3]))
+    
+        def inputs_for_case(test_case):
+            inputs = test_case.split("-&gt;")[0].split(",")
+            return [
+                mx.random.uniform(shape=tuple(size_dict[c] for c in inp))
+                for inp in inputs
+            ]
+    
+        tests = [
+            ("abc-&gt;ab", "...c-&gt;..."),
+            ("abcd-&gt;ad", "a...d-&gt;..."),
+            ("abij,abgj-&gt;abig", "...ij,...gj-&gt;...ig"),
+            ("abij,abgj-&gt;abig", "...ij,...gj-&gt;..."),
+            ("abhh-&gt;abh", "...hh-&gt;...h"),
+            ("abhh-&gt;abh", "...hh-&gt;...h"),
+            ("bch,abcj-&gt;abchj", "...h,...j-&gt;...hj"),
+            ("bc,cd-&gt;bd", "...c,cd"),
+            ("abc,acd-&gt;bd", "...bc,...cd"),
+            ("abcd,c-&gt;abd", "...cd,c"),
+            ("abcd,c-&gt;abd", "...cd,c..."),
+            ("abcd,c-&gt;abd", "...cd,c...-&gt;d..."),
+            ("abc,b-&gt;abc", "ab...,b...-&gt;ab..."),
+            ("abc,b-&gt;abc", "ab...,...b-&gt;ab..."),
+            ("abc,b-&gt;abc", "ab...,b-&gt;ab..."),
+            ("ab,bc-&gt;ac", "ab...,b...-&gt;a..."),
+            ("ab,bc-&gt;ac", "ab...,...bc-&gt;a...c"),
+            ("ab,bc-&gt;ac", "ab,b...-&gt;a..."),
+            ("abcdef,defg-&gt;abcg", "...def,defg-&gt;...g"),
+        ]
+        for test_case in tests:
+            inputs = inputs_for_case(test_case[0])
+            np_out = np.einsum(test_case[1], *inputs)
+            mx_out = mx.einsum(test_case[1], *inputs)
+&gt;           self.assertTrue(np.allclose(mx_out, np_out, rtol=1e-4, atol=1e-4))
+                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.work/mlx/python/tests/test_einsum.py:383: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/numpy/_core/numeric.py:2376: in allclose
+    res = all(isclose(a, b, rtol=rtol, atol=atol, equal_nan=equal_nan))
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/numpy/_core/numeric.py:2476: in isclose
+    x, y, atol, rtol = (
+    ^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+.0 = &lt;tuple_iterator object at 0x724dbe71fbe0&gt;
+
+    x, y, atol, rtol = (
+&gt;       a if isinstance(a, (int, float, complex)) else asanyarray(a)
+                                                       ^^^^^^^^^^^^^
+        for a in (a, b, atol, rtol))
+E   RuntimeError: [omarchy] non-axis-0 Take is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[5,2,3,1,1]). No CPU fallback is available in Omarchy builds.
+
+/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/numpy/_core/numeric.py:2477: RuntimeError</failure></testcase><testcase classname="python.tests.test_einsum.TestEinsum" name="test_ellipses_broadcast" time="0.014" /><testcase classname="python.tests.test_einsum.TestEinsum" name="test_longer_paths" time="0.001" /><testcase classname="python.tests.test_einsum.TestEinsum" name="test_multi_input_einsum" time="0.001" /><testcase classname="python.tests.test_einsum.TestEinsum" name="test_opt_einsum_test_cases" time="0.030"><failure message="RuntimeError: [omarchy] broadcast rank Multiply is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[4,3,2,4,2,3]). No CPU fallback is available in Omarchy builds.">self = &lt;test_einsum.TestEinsum testMethod=test_opt_einsum_test_cases&gt;
+
+    def test_opt_einsum_test_cases(self):
+        # Test cases from
+        # https://github.com/dgasmith/opt_einsum/blob/c826bb7df16f470a69f7bf90598fc27586209d11/opt_einsum/tests/test_contract.py#L11
+        tests = [
+            # Test hadamard-like products
+            "a,ab,abc-&gt;abc",
+            "a,b,ab-&gt;ab",
+            # Test index-transformations
+            "ea,fb,gc,hd,abcd-&gt;efgh",
+            "ea,fb,abcd,gc,hd-&gt;efgh",
+            "abcd,ea,fb,gc,hd-&gt;efgh",
+            # Test complex contractions
+            "acdf,jbje,gihb,hfac,gfac,gifabc,hfac",
+            "cd,bdhe,aidb,hgca,gc,hgibcd,hgac",
+            "abhe,hidj,jgba,hiab,gab",
+            "bde,cdh,agdb,hica,ibd,hgicd,hiac",
+            "chd,bde,agbc,hiad,hgc,hgi,hiad",
+            "chd,bde,agbc,hiad,bdi,cgh,agdb",
+            "bdhe,acad,hiab,agac,hibd",
+            # Test collapse
+            "ab,ab,c-&gt;",
+            "ab,ab,c-&gt;c",
+            "ab,ab,cd,cd-&gt;",
+            "ab,ab,cd,cd-&gt;ac",
+            "ab,ab,cd,cd-&gt;cd",
+            "ab,ab,cd,cd,ef,ef-&gt;",
+            # Test outer prodcuts
+            "ab,cd,ef-&gt;abcdef",
+            "ab,cd,ef-&gt;acdf",
+            "ab,cd,de-&gt;abcde",
+            "ab,cd,de-&gt;be",
+            "ab,bcd,cd-&gt;abcd",
+            "ab,bcd,cd-&gt;abd",
+            # Random test cases that have previously failed
+            "eb,cb,fb-&gt;cef",
+            "dd,fb,be,cdb-&gt;cef",
+            "bca,cdb,dbf,afc-&gt;",
+            "dcc,fce,ea,dbf-&gt;ab",
+            "fdf,cdd,ccd,afe-&gt;ae",
+            "abcd,ad",
+            "ed,fcd,ff,bcf-&gt;be",
+            "baa,dcf,af,cde-&gt;be",
+            "bd,db,eac-&gt;ace",
+            "fff,fae,bef,def-&gt;abd",
+            "efc,dbc,acf,fd-&gt;abe",
+            # Inner products
+            "ab,ab",
+            "ab,ba",
+            "abc,abc",
+            "abc,bac",
+            "abc,cba",
+            # GEMM test cases
+            "ab,bc",
+            "ab,cb",
+            "ba,bc",
+            "ba,cb",
+            "abcd,cd",
+            "abcd,ab",
+            "abcd,cdef",
+            "abcd,cdef-&gt;feba",
+            "abcd,efdc",
+            # Inner then dot
+            "aab,bc-&gt;ac",
+            "ab,bcc-&gt;ac",
+            "aab,bcc-&gt;ac",
+            "baa,bcc-&gt;ac",
+            "aab,ccb-&gt;ac",
+            # Randomly build test caes
+            "aab,fa,df,ecc-&gt;bde",
+            "ecb,fef,bad,ed-&gt;ac",
+            "bcf,bbb,fbf,fc-&gt;",
+            "bb,ff,be-&gt;e",
+            "bcb,bb,fc,fff-&gt;",
+            "fbb,dfd,fc,fc-&gt;",
+            "afd,ba,cc,dc-&gt;bf",
+            "adb,bc,fa,cfc-&gt;d",
+            "bbd,bda,fc,db-&gt;acf",
+            "dba,ead,cad-&gt;bce",
+            "aef,fbc,dca-&gt;bde",
+        ]
+    
+        size_dict = dict(zip("abcdefghij", [2, 3, 4, 5, 2, 3, 4, 5, 2, 3]))
+    
+        def inputs_for_case(test_case):
+            inputs = test_case.split("-&gt;")[0].split(",")
+            return [
+                mx.random.uniform(shape=tuple(size_dict[c] for c in inp))
+                for inp in inputs
+            ]
+    
+        for test_case in tests:
+            inputs = inputs_for_case(test_case)
+            np_out = np.einsum(test_case, *inputs)
+            mx_out = mx.einsum(test_case, *inputs)
+&gt;           self.assertTrue(np.allclose(mx_out, np_out, rtol=1e-4, atol=1e-4))
+                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.work/mlx/python/tests/test_einsum.py:346: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/numpy/_core/numeric.py:2376: in allclose
+    res = all(isclose(a, b, rtol=rtol, atol=atol, equal_nan=equal_nan))
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/numpy/_core/numeric.py:2476: in isclose
+    x, y, atol, rtol = (
+    ^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+.0 = &lt;tuple_iterator object at 0x724dbe78b130&gt;
+
+    x, y, atol, rtol = (
+&gt;       a if isinstance(a, (int, float, complex)) else asanyarray(a)
+                                                       ^^^^^^^^^^^^^
+        for a in (a, b, atol, rtol))
+E   RuntimeError: [omarchy] broadcast rank Multiply is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[4,3,2,4,2,3]). No CPU fallback is available in Omarchy builds.
+
+/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/numpy/_core/numeric.py:2477: RuntimeError</failure></testcase><testcase classname="python.tests.test_einsum.TestEinsum" name="test_scalar_operands" time="0.004" /><testcase classname="python.tests.test_einsum.TestEinsum" name="test_simple_einsum" time="0.001"><failure message="AssertionError: False is not true">self = &lt;test_einsum.TestEinsum testMethod=test_simple_einsum&gt;
+
+    def test_simple_einsum(self):
+        a = mx.arange(4 * 4).reshape(4, 4)
+        a_mx = mx.einsum("ii-&gt;i", a)
+        a_np = np.einsum("ii-&gt;i", a)
+&gt;       self.assertTrue(np.array_equal(a_mx, a_np))
+E       AssertionError: False is not true
+
+.work/mlx/python/tests/test_einsum.py:105: AssertionError</failure></testcase><testcase classname="python.tests.test_einsum.TestEinsum" name="test_simple_path" time="0.000" /><testcase classname="python.tests.test_einsum.TestEinsum" name="test_sum_first" time="0.001" /><testcase classname="python.tests.test_einsum.TestEinsum" name="test_two_input_einsum" time="0.003" /></testsuite></testsuites>

@@ -1,0 +1,800 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="30" skipped="0" tests="33" time="0.996" timestamp="2026-09-02T09:03:36.501853-05:00" hostname="omp-studio-local"><testcase classname="python.tests.test_linalg.TestLinalg" name="test_cholesky" time="0.013"><failure message="IndexError: vector::_M_range_check: __n (which is 0) &gt;= this-&gt;size() (which is 0)">self = &lt;test_linalg.TestLinalg testMethod=test_cholesky&gt;
+
+    def test_cholesky(self):
+        sqrtA = mx.array(
+            [[1.0, 2.0, 3.0], [4.0, 5.0, 6.0], [7.0, 8.0, 9.0]], dtype=mx.float32
+        )
+        A = sqrtA.T @ sqrtA / 81
+&gt;       L = mx.linalg.cholesky(A, stream=mx.cpu)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       IndexError: vector::_M_range_check: __n (which is 0) &gt;= this-&gt;size() (which is 0)
+
+.work/mlx/python/tests/test_linalg.py:297: IndexError</failure></testcase><testcase classname="python.tests.test_linalg.TestLinalg" name="test_cholesky_inv" time="0.001"><failure message="IndexError: vector::_M_range_check: __n (which is 0) &gt;= this-&gt;size() (which is 0)">self = &lt;test_linalg.TestLinalg testMethod=test_cholesky_inv&gt;
+
+    def test_cholesky_inv(self):
+        mx.random.seed(7)
+    
+        sqrtA = mx.array(
+            [[1.0, 2.0, 3.0], [4.0, 5.0, 6.0], [7.0, 8.0, 9.0]], dtype=mx.float32
+        )
+        A = sqrtA.T @ sqrtA / 81
+    
+        N = 3
+        A = mx.random.uniform(shape=(N, N))
+        A = A @ A.T
+    
+        for upper in (False, True):
+&gt;           L = mx.linalg.cholesky(A, upper=upper, stream=mx.cpu)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           IndexError: vector::_M_range_check: __n (which is 0) &gt;= this-&gt;size() (which is 0)
+
+.work/mlx/python/tests/test_linalg.py:346: IndexError</failure></testcase><testcase classname="python.tests.test_linalg.TestLinalg" name="test_complex_norm" time="0.399"><failure message="RuntimeError: [omarchy] Abs dtype is not implemented for the Omarchy Vulkan backend (dtype=complex64, shape=[3]). No CPU fallback is available in Omarchy builds.">self = &lt;test_linalg.TestLinalg testMethod=test_complex_norm&gt;
+
+    def test_complex_norm(self):
+        for shape in [(3,), (2, 3), (2, 3, 3)]:
+            x_np = np.random.uniform(size=shape).astype(
+                np.float32
+            ) + 1j * np.random.uniform(size=shape).astype(np.float32)
+            x_mx = mx.array(x_np)
+            out_np = np.linalg.norm(x_np)
+            out_mx = mx.linalg.norm(x_mx)
+            with self.subTest(shape=shape):
+&gt;               self.assertTrue(np.allclose(out_np, out_mx, atol=1e-5, rtol=1e-6))
+                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.work/mlx/python/tests/test_linalg.py:100: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/numpy/_core/numeric.py:2376: in allclose
+    res = all(isclose(a, b, rtol=rtol, atol=atol, equal_nan=equal_nan))
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/numpy/_core/numeric.py:2476: in isclose
+    x, y, atol, rtol = (
+    ^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+.0 = &lt;tuple_iterator object at 0x773bd9acffd0&gt;
+
+    x, y, atol, rtol = (
+&gt;       a if isinstance(a, (int, float, complex)) else asanyarray(a)
+                                                       ^^^^^^^^^^^^^
+        for a in (a, b, atol, rtol))
+E   RuntimeError: [omarchy] Abs dtype is not implemented for the Omarchy Vulkan backend (dtype=complex64, shape=[3]). No CPU fallback is available in Omarchy builds.
+
+/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/numpy/_core/numeric.py:2477: RuntimeError</failure><failure message="RuntimeError: [omarchy] Abs dtype is not implemented for the Omarchy Vulkan backend (dtype=complex64, shape=[6]). No CPU fallback is available in Omarchy builds.">self = &lt;test_linalg.TestLinalg testMethod=test_complex_norm&gt;
+
+    def test_complex_norm(self):
+        for shape in [(3,), (2, 3), (2, 3, 3)]:
+            x_np = np.random.uniform(size=shape).astype(
+                np.float32
+            ) + 1j * np.random.uniform(size=shape).astype(np.float32)
+            x_mx = mx.array(x_np)
+            out_np = np.linalg.norm(x_np)
+            out_mx = mx.linalg.norm(x_mx)
+            with self.subTest(shape=shape):
+&gt;               self.assertTrue(np.allclose(out_np, out_mx, atol=1e-5, rtol=1e-6))
+                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.work/mlx/python/tests/test_linalg.py:100: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/numpy/_core/numeric.py:2376: in allclose
+    res = all(isclose(a, b, rtol=rtol, atol=atol, equal_nan=equal_nan))
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/numpy/_core/numeric.py:2476: in isclose
+    x, y, atol, rtol = (
+    ^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+.0 = &lt;tuple_iterator object at 0x773bd9acffd0&gt;
+
+    x, y, atol, rtol = (
+&gt;       a if isinstance(a, (int, float, complex)) else asanyarray(a)
+                                                       ^^^^^^^^^^^^^
+        for a in (a, b, atol, rtol))
+E   RuntimeError: [omarchy] Abs dtype is not implemented for the Omarchy Vulkan backend (dtype=complex64, shape=[6]). No CPU fallback is available in Omarchy builds.
+
+/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/numpy/_core/numeric.py:2477: RuntimeError</failure><failure message="RuntimeError: [omarchy] Abs dtype is not implemented for the Omarchy Vulkan backend (dtype=complex64, shape=[2,3]). No CPU fallback is available in Omarchy builds.">self = &lt;test_linalg.TestLinalg testMethod=test_complex_norm&gt;
+
+    def test_complex_norm(self):
+        for shape in [(3,), (2, 3), (2, 3, 3)]:
+            x_np = np.random.uniform(size=shape).astype(
+                np.float32
+            ) + 1j * np.random.uniform(size=shape).astype(np.float32)
+            x_mx = mx.array(x_np)
+            out_np = np.linalg.norm(x_np)
+            out_mx = mx.linalg.norm(x_mx)
+            with self.subTest(shape=shape):
+                self.assertTrue(np.allclose(out_np, out_mx, atol=1e-5, rtol=1e-6))
+            for num_axes in range(1, len(shape)):
+                for axis in itertools.combinations(range(len(shape)), num_axes):
+                    out_np = np.linalg.norm(x_np, axis=axis)
+                    out_mx = mx.linalg.norm(x_mx, axis=axis)
+                    with self.subTest(shape=shape, axis=axis):
+                        self.assertTrue(
+&gt;                           np.allclose(out_np, out_mx, atol=1e-5, rtol=1e-6)
+                        )
+
+.work/mlx/python/tests/test_linalg.py:107: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/numpy/_core/numeric.py:2376: in allclose
+    res = all(isclose(a, b, rtol=rtol, atol=atol, equal_nan=equal_nan))
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/numpy/_core/numeric.py:2476: in isclose
+    x, y, atol, rtol = (
+    ^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+.0 = &lt;tuple_iterator object at 0x773bd9acffd0&gt;
+
+    x, y, atol, rtol = (
+&gt;       a if isinstance(a, (int, float, complex)) else asanyarray(a)
+                                                       ^^^^^^^^^^^^^
+        for a in (a, b, atol, rtol))
+E   RuntimeError: [omarchy] Abs dtype is not implemented for the Omarchy Vulkan backend (dtype=complex64, shape=[2,3]). No CPU fallback is available in Omarchy builds.
+
+/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/numpy/_core/numeric.py:2477: RuntimeError</failure><failure message="RuntimeError: [omarchy] Abs dtype is not implemented for the Omarchy Vulkan backend (dtype=complex64, shape=[2,3]). No CPU fallback is available in Omarchy builds.">self = &lt;test_linalg.TestLinalg testMethod=test_complex_norm&gt;
+
+    def test_complex_norm(self):
+        for shape in [(3,), (2, 3), (2, 3, 3)]:
+            x_np = np.random.uniform(size=shape).astype(
+                np.float32
+            ) + 1j * np.random.uniform(size=shape).astype(np.float32)
+            x_mx = mx.array(x_np)
+            out_np = np.linalg.norm(x_np)
+            out_mx = mx.linalg.norm(x_mx)
+            with self.subTest(shape=shape):
+                self.assertTrue(np.allclose(out_np, out_mx, atol=1e-5, rtol=1e-6))
+            for num_axes in range(1, len(shape)):
+                for axis in itertools.combinations(range(len(shape)), num_axes):
+                    out_np = np.linalg.norm(x_np, axis=axis)
+                    out_mx = mx.linalg.norm(x_mx, axis=axis)
+                    with self.subTest(shape=shape, axis=axis):
+                        self.assertTrue(
+&gt;                           np.allclose(out_np, out_mx, atol=1e-5, rtol=1e-6)
+                        )
+
+.work/mlx/python/tests/test_linalg.py:107: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/numpy/_core/numeric.py:2376: in allclose
+    res = all(isclose(a, b, rtol=rtol, atol=atol, equal_nan=equal_nan))
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/numpy/_core/numeric.py:2476: in isclose
+    x, y, atol, rtol = (
+    ^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+.0 = &lt;tuple_iterator object at 0x773bd9acffd0&gt;
+
+    x, y, atol, rtol = (
+&gt;       a if isinstance(a, (int, float, complex)) else asanyarray(a)
+                                                       ^^^^^^^^^^^^^
+        for a in (a, b, atol, rtol))
+E   RuntimeError: [omarchy] Abs dtype is not implemented for the Omarchy Vulkan backend (dtype=complex64, shape=[2,3]). No CPU fallback is available in Omarchy builds.
+
+/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/numpy/_core/numeric.py:2477: RuntimeError</failure><failure message="RuntimeError: [omarchy] Abs dtype is not implemented for the Omarchy Vulkan backend (dtype=complex64, shape=[18]). No CPU fallback is available in Omarchy builds.">self = &lt;test_linalg.TestLinalg testMethod=test_complex_norm&gt;
+
+    def test_complex_norm(self):
+        for shape in [(3,), (2, 3), (2, 3, 3)]:
+            x_np = np.random.uniform(size=shape).astype(
+                np.float32
+            ) + 1j * np.random.uniform(size=shape).astype(np.float32)
+            x_mx = mx.array(x_np)
+            out_np = np.linalg.norm(x_np)
+            out_mx = mx.linalg.norm(x_mx)
+            with self.subTest(shape=shape):
+&gt;               self.assertTrue(np.allclose(out_np, out_mx, atol=1e-5, rtol=1e-6))
+                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.work/mlx/python/tests/test_linalg.py:100: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/numpy/_core/numeric.py:2376: in allclose
+    res = all(isclose(a, b, rtol=rtol, atol=atol, equal_nan=equal_nan))
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/numpy/_core/numeric.py:2476: in isclose
+    x, y, atol, rtol = (
+    ^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+.0 = &lt;tuple_iterator object at 0x773bd9b1acb0&gt;
+
+    x, y, atol, rtol = (
+&gt;       a if isinstance(a, (int, float, complex)) else asanyarray(a)
+                                                       ^^^^^^^^^^^^^
+        for a in (a, b, atol, rtol))
+E   RuntimeError: [omarchy] Abs dtype is not implemented for the Omarchy Vulkan backend (dtype=complex64, shape=[18]). No CPU fallback is available in Omarchy builds.
+
+/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/numpy/_core/numeric.py:2477: RuntimeError</failure><failure message="RuntimeError: [omarchy] Abs dtype is not implemented for the Omarchy Vulkan backend (dtype=complex64, shape=[2,3,3]). No CPU fallback is available in Omarchy builds.">self = &lt;test_linalg.TestLinalg testMethod=test_complex_norm&gt;
+
+    def test_complex_norm(self):
+        for shape in [(3,), (2, 3), (2, 3, 3)]:
+            x_np = np.random.uniform(size=shape).astype(
+                np.float32
+            ) + 1j * np.random.uniform(size=shape).astype(np.float32)
+            x_mx = mx.array(x_np)
+            out_np = np.linalg.norm(x_np)
+            out_mx = mx.linalg.norm(x_mx)
+            with self.subTest(shape=shape):
+                self.assertTrue(np.allclose(out_np, out_mx, atol=1e-5, rtol=1e-6))
+            for num_axes in range(1, len(shape)):
+                for axis in itertools.combinations(range(len(shape)), num_axes):
+                    out_np = np.linalg.norm(x_np, axis=axis)
+                    out_mx = mx.linalg.norm(x_mx, axis=axis)
+                    with self.subTest(shape=shape, axis=axis):
+                        self.assertTrue(
+&gt;                           np.allclose(out_np, out_mx, atol=1e-5, rtol=1e-6)
+                        )
+
+.work/mlx/python/tests/test_linalg.py:107: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/numpy/_core/numeric.py:2376: in allclose
+    res = all(isclose(a, b, rtol=rtol, atol=atol, equal_nan=equal_nan))
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/numpy/_core/numeric.py:2476: in isclose
+    x, y, atol, rtol = (
+    ^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+.0 = &lt;tuple_iterator object at 0x773bd9b1acb0&gt;
+
+    x, y, atol, rtol = (
+&gt;       a if isinstance(a, (int, float, complex)) else asanyarray(a)
+                                                       ^^^^^^^^^^^^^
+        for a in (a, b, atol, rtol))
+E   RuntimeError: [omarchy] Abs dtype is not implemented for the Omarchy Vulkan backend (dtype=complex64, shape=[2,3,3]). No CPU fallback is available in Omarchy builds.
+
+/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/numpy/_core/numeric.py:2477: RuntimeError</failure><failure message="RuntimeError: [omarchy] Abs dtype is not implemented for the Omarchy Vulkan backend (dtype=complex64, shape=[2,3,3]). No CPU fallback is available in Omarchy builds.">self = &lt;test_linalg.TestLinalg testMethod=test_complex_norm&gt;
+
+    def test_complex_norm(self):
+        for shape in [(3,), (2, 3), (2, 3, 3)]:
+            x_np = np.random.uniform(size=shape).astype(
+                np.float32
+            ) + 1j * np.random.uniform(size=shape).astype(np.float32)
+            x_mx = mx.array(x_np)
+            out_np = np.linalg.norm(x_np)
+            out_mx = mx.linalg.norm(x_mx)
+            with self.subTest(shape=shape):
+                self.assertTrue(np.allclose(out_np, out_mx, atol=1e-5, rtol=1e-6))
+            for num_axes in range(1, len(shape)):
+                for axis in itertools.combinations(range(len(shape)), num_axes):
+                    out_np = np.linalg.norm(x_np, axis=axis)
+                    out_mx = mx.linalg.norm(x_mx, axis=axis)
+                    with self.subTest(shape=shape, axis=axis):
+                        self.assertTrue(
+&gt;                           np.allclose(out_np, out_mx, atol=1e-5, rtol=1e-6)
+                        )
+
+.work/mlx/python/tests/test_linalg.py:107: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/numpy/_core/numeric.py:2376: in allclose
+    res = all(isclose(a, b, rtol=rtol, atol=atol, equal_nan=equal_nan))
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/numpy/_core/numeric.py:2476: in isclose
+    x, y, atol, rtol = (
+    ^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+.0 = &lt;tuple_iterator object at 0x773bd9b1acb0&gt;
+
+    x, y, atol, rtol = (
+&gt;       a if isinstance(a, (int, float, complex)) else asanyarray(a)
+                                                       ^^^^^^^^^^^^^
+        for a in (a, b, atol, rtol))
+E   RuntimeError: [omarchy] Abs dtype is not implemented for the Omarchy Vulkan backend (dtype=complex64, shape=[2,3,3]). No CPU fallback is available in Omarchy builds.
+
+/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/numpy/_core/numeric.py:2477: RuntimeError</failure><failure message="RuntimeError: [omarchy] Abs dtype is not implemented for the Omarchy Vulkan backend (dtype=complex64, shape=[2,3,3]). No CPU fallback is available in Omarchy builds.">self = &lt;test_linalg.TestLinalg testMethod=test_complex_norm&gt;
+
+    def test_complex_norm(self):
+        for shape in [(3,), (2, 3), (2, 3, 3)]:
+            x_np = np.random.uniform(size=shape).astype(
+                np.float32
+            ) + 1j * np.random.uniform(size=shape).astype(np.float32)
+            x_mx = mx.array(x_np)
+            out_np = np.linalg.norm(x_np)
+            out_mx = mx.linalg.norm(x_mx)
+            with self.subTest(shape=shape):
+                self.assertTrue(np.allclose(out_np, out_mx, atol=1e-5, rtol=1e-6))
+            for num_axes in range(1, len(shape)):
+                for axis in itertools.combinations(range(len(shape)), num_axes):
+                    out_np = np.linalg.norm(x_np, axis=axis)
+                    out_mx = mx.linalg.norm(x_mx, axis=axis)
+                    with self.subTest(shape=shape, axis=axis):
+                        self.assertTrue(
+&gt;                           np.allclose(out_np, out_mx, atol=1e-5, rtol=1e-6)
+                        )
+
+.work/mlx/python/tests/test_linalg.py:107: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/numpy/_core/numeric.py:2376: in allclose
+    res = all(isclose(a, b, rtol=rtol, atol=atol, equal_nan=equal_nan))
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/numpy/_core/numeric.py:2476: in isclose
+    x, y, atol, rtol = (
+    ^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+.0 = &lt;tuple_iterator object at 0x773bd9b1acb0&gt;
+
+    x, y, atol, rtol = (
+&gt;       a if isinstance(a, (int, float, complex)) else asanyarray(a)
+                                                       ^^^^^^^^^^^^^
+        for a in (a, b, atol, rtol))
+E   RuntimeError: [omarchy] Abs dtype is not implemented for the Omarchy Vulkan backend (dtype=complex64, shape=[2,3,3]). No CPU fallback is available in Omarchy builds.
+
+/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/numpy/_core/numeric.py:2477: RuntimeError</failure><failure message="RuntimeError: [omarchy] Abs dtype is not implemented for the Omarchy Vulkan backend (dtype=complex64, shape=[2,3,3]). No CPU fallback is available in Omarchy builds.">self = &lt;test_linalg.TestLinalg testMethod=test_complex_norm&gt;
+
+    def test_complex_norm(self):
+        for shape in [(3,), (2, 3), (2, 3, 3)]:
+            x_np = np.random.uniform(size=shape).astype(
+                np.float32
+            ) + 1j * np.random.uniform(size=shape).astype(np.float32)
+            x_mx = mx.array(x_np)
+            out_np = np.linalg.norm(x_np)
+            out_mx = mx.linalg.norm(x_mx)
+            with self.subTest(shape=shape):
+                self.assertTrue(np.allclose(out_np, out_mx, atol=1e-5, rtol=1e-6))
+            for num_axes in range(1, len(shape)):
+                for axis in itertools.combinations(range(len(shape)), num_axes):
+                    out_np = np.linalg.norm(x_np, axis=axis)
+                    out_mx = mx.linalg.norm(x_mx, axis=axis)
+                    with self.subTest(shape=shape, axis=axis):
+                        self.assertTrue(
+&gt;                           np.allclose(out_np, out_mx, atol=1e-5, rtol=1e-6)
+                        )
+
+.work/mlx/python/tests/test_linalg.py:107: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/numpy/_core/numeric.py:2376: in allclose
+    res = all(isclose(a, b, rtol=rtol, atol=atol, equal_nan=equal_nan))
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/numpy/_core/numeric.py:2476: in isclose
+    x, y, atol, rtol = (
+    ^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+.0 = &lt;tuple_iterator object at 0x773bd9b1acb0&gt;
+
+    x, y, atol, rtol = (
+&gt;       a if isinstance(a, (int, float, complex)) else asanyarray(a)
+                                                       ^^^^^^^^^^^^^
+        for a in (a, b, atol, rtol))
+E   RuntimeError: [omarchy] Abs dtype is not implemented for the Omarchy Vulkan backend (dtype=complex64, shape=[2,3,3]). No CPU fallback is available in Omarchy builds.
+
+/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/numpy/_core/numeric.py:2477: RuntimeError</failure><failure message="RuntimeError: [omarchy] Abs dtype is not implemented for the Omarchy Vulkan backend (dtype=complex64, shape=[2,3,3]). No CPU fallback is available in Omarchy builds.">self = &lt;test_linalg.TestLinalg testMethod=test_complex_norm&gt;
+
+    def test_complex_norm(self):
+        for shape in [(3,), (2, 3), (2, 3, 3)]:
+            x_np = np.random.uniform(size=shape).astype(
+                np.float32
+            ) + 1j * np.random.uniform(size=shape).astype(np.float32)
+            x_mx = mx.array(x_np)
+            out_np = np.linalg.norm(x_np)
+            out_mx = mx.linalg.norm(x_mx)
+            with self.subTest(shape=shape):
+                self.assertTrue(np.allclose(out_np, out_mx, atol=1e-5, rtol=1e-6))
+            for num_axes in range(1, len(shape)):
+                for axis in itertools.combinations(range(len(shape)), num_axes):
+                    out_np = np.linalg.norm(x_np, axis=axis)
+                    out_mx = mx.linalg.norm(x_mx, axis=axis)
+                    with self.subTest(shape=shape, axis=axis):
+                        self.assertTrue(
+&gt;                           np.allclose(out_np, out_mx, atol=1e-5, rtol=1e-6)
+                        )
+
+.work/mlx/python/tests/test_linalg.py:107: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/numpy/_core/numeric.py:2376: in allclose
+    res = all(isclose(a, b, rtol=rtol, atol=atol, equal_nan=equal_nan))
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/numpy/_core/numeric.py:2476: in isclose
+    x, y, atol, rtol = (
+    ^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+.0 = &lt;tuple_iterator object at 0x773bd9b1acb0&gt;
+
+    x, y, atol, rtol = (
+&gt;       a if isinstance(a, (int, float, complex)) else asanyarray(a)
+                                                       ^^^^^^^^^^^^^
+        for a in (a, b, atol, rtol))
+E   RuntimeError: [omarchy] Abs dtype is not implemented for the Omarchy Vulkan backend (dtype=complex64, shape=[2,3,3]). No CPU fallback is available in Omarchy builds.
+
+/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/numpy/_core/numeric.py:2477: RuntimeError</failure><failure message="RuntimeError: [omarchy] Abs dtype is not implemented for the Omarchy Vulkan backend (dtype=complex64, shape=[2,3,3]). No CPU fallback is available in Omarchy builds.">self = &lt;test_linalg.TestLinalg testMethod=test_complex_norm&gt;
+
+    def test_complex_norm(self):
+        for shape in [(3,), (2, 3), (2, 3, 3)]:
+            x_np = np.random.uniform(size=shape).astype(
+                np.float32
+            ) + 1j * np.random.uniform(size=shape).astype(np.float32)
+            x_mx = mx.array(x_np)
+            out_np = np.linalg.norm(x_np)
+            out_mx = mx.linalg.norm(x_mx)
+            with self.subTest(shape=shape):
+                self.assertTrue(np.allclose(out_np, out_mx, atol=1e-5, rtol=1e-6))
+            for num_axes in range(1, len(shape)):
+                for axis in itertools.combinations(range(len(shape)), num_axes):
+                    out_np = np.linalg.norm(x_np, axis=axis)
+                    out_mx = mx.linalg.norm(x_mx, axis=axis)
+                    with self.subTest(shape=shape, axis=axis):
+                        self.assertTrue(
+&gt;                           np.allclose(out_np, out_mx, atol=1e-5, rtol=1e-6)
+                        )
+
+.work/mlx/python/tests/test_linalg.py:107: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/numpy/_core/numeric.py:2376: in allclose
+    res = all(isclose(a, b, rtol=rtol, atol=atol, equal_nan=equal_nan))
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/numpy/_core/numeric.py:2476: in isclose
+    x, y, atol, rtol = (
+    ^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+.0 = &lt;tuple_iterator object at 0x773bd9b1acb0&gt;
+
+    x, y, atol, rtol = (
+&gt;       a if isinstance(a, (int, float, complex)) else asanyarray(a)
+                                                       ^^^^^^^^^^^^^
+        for a in (a, b, atol, rtol))
+E   RuntimeError: [omarchy] Abs dtype is not implemented for the Omarchy Vulkan backend (dtype=complex64, shape=[2,3,3]). No CPU fallback is available in Omarchy builds.
+
+/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/numpy/_core/numeric.py:2477: RuntimeError</failure><failure message="RuntimeError: [omarchy] Abs dtype is not implemented for the Omarchy Vulkan backend (dtype=complex64, shape=[4,4]). No CPU fallback is available in Omarchy builds.">self = &lt;test_linalg.TestLinalg testMethod=test_complex_norm&gt;
+
+    def test_complex_norm(self):
+        for shape in [(3,), (2, 3), (2, 3, 3)]:
+            x_np = np.random.uniform(size=shape).astype(
+                np.float32
+            ) + 1j * np.random.uniform(size=shape).astype(np.float32)
+            x_mx = mx.array(x_np)
+            out_np = np.linalg.norm(x_np)
+            out_mx = mx.linalg.norm(x_mx)
+            with self.subTest(shape=shape):
+                self.assertTrue(np.allclose(out_np, out_mx, atol=1e-5, rtol=1e-6))
+            for num_axes in range(1, len(shape)):
+                for axis in itertools.combinations(range(len(shape)), num_axes):
+                    out_np = np.linalg.norm(x_np, axis=axis)
+                    out_mx = mx.linalg.norm(x_mx, axis=axis)
+                    with self.subTest(shape=shape, axis=axis):
+                        self.assertTrue(
+                            np.allclose(out_np, out_mx, atol=1e-5, rtol=1e-6)
+                        )
+    
+        x_np = np.random.uniform(size=(4, 4)).astype(
+            np.float32
+        ) + 1j * np.random.uniform(size=(4, 4)).astype(np.float32)
+        x_mx = mx.array(x_np)
+        out_np = np.linalg.norm(x_np, ord="fro")
+        out_mx = mx.linalg.norm(x_mx, ord="fro")
+&gt;       self.assertTrue(np.allclose(out_np, out_mx, atol=1e-5, rtol=1e-6))
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.work/mlx/python/tests/test_linalg.py:116: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/numpy/_core/numeric.py:2376: in allclose
+    res = all(isclose(a, b, rtol=rtol, atol=atol, equal_nan=equal_nan))
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/numpy/_core/numeric.py:2476: in isclose
+    x, y, atol, rtol = (
+    ^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+.0 = &lt;tuple_iterator object at 0x773bd9b1acb0&gt;
+
+    x, y, atol, rtol = (
+&gt;       a if isinstance(a, (int, float, complex)) else asanyarray(a)
+                                                       ^^^^^^^^^^^^^
+        for a in (a, b, atol, rtol))
+E   RuntimeError: [omarchy] Abs dtype is not implemented for the Omarchy Vulkan backend (dtype=complex64, shape=[4,4]). No CPU fallback is available in Omarchy builds.
+
+/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/numpy/_core/numeric.py:2477: RuntimeError</failure></testcase><testcase classname="python.tests.test_linalg.TestLinalg" name="test_cross_product" time="0.014"><failure message="RuntimeError: [omarchy] Multiply dtype is not implemented for the Omarchy Vulkan backend (dtype=int32, shape=[1]). No CPU fallback is available in Omarchy builds.">self = &lt;test_linalg.TestLinalg testMethod=test_cross_product&gt;
+
+    def test_cross_product(self):
+        a = mx.array([1.0, 2.0, 3.0])
+        b = mx.array([4.0, 5.0, 6.0])
+        result = mx.linalg.cross(a, b)
+        expected = np.cross(a, b)
+        self.assertTrue(np.allclose(result, expected))
+    
+        # Test with negative values
+        a = mx.array([-1.0, -2.0, -3.0])
+        b = mx.array([4.0, -5.0, 6.0])
+        result = mx.linalg.cross(a, b)
+        expected = np.cross(a, b)
+        self.assertTrue(np.allclose(result, expected))
+    
+        # Test with integer values
+        a = mx.array([1, 2, 3])
+        b = mx.array([4, 5, 6])
+        result = mx.linalg.cross(a, b)
+        expected = np.cross(a, b)
+&gt;       self.assertTrue(np.allclose(result, expected))
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.work/mlx/python/tests/test_linalg.py:379: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/numpy/_core/numeric.py:2376: in allclose
+    res = all(isclose(a, b, rtol=rtol, atol=atol, equal_nan=equal_nan))
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/numpy/_core/numeric.py:2476: in isclose
+    x, y, atol, rtol = (
+    ^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+.0 = &lt;tuple_iterator object at 0x773bd809b3a0&gt;
+
+    x, y, atol, rtol = (
+&gt;       a if isinstance(a, (int, float, complex)) else asanyarray(a)
+                                                       ^^^^^^^^^^^^^
+        for a in (a, b, atol, rtol))
+E   RuntimeError: [omarchy] Multiply dtype is not implemented for the Omarchy Vulkan backend (dtype=int32, shape=[1]). No CPU fallback is available in Omarchy builds.
+
+/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/numpy/_core/numeric.py:2477: RuntimeError</failure></testcase><testcase classname="python.tests.test_linalg.TestLinalg" name="test_det" time="0.002"><failure message="IndexError: vector::_M_range_check: __n (which is 0) &gt;= this-&gt;size() (which is 0)">self = &lt;test_linalg.TestLinalg testMethod=test_det&gt;
+
+    def test_det(self):
+        # 1x1 fast path
+        A = mx.array([[5.0]])
+&gt;       self.assertTrue(np.allclose(mx.linalg.det(A, stream=mx.cpu), 5.0))
+                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       IndexError: vector::_M_range_check: __n (which is 0) &gt;= this-&gt;size() (which is 0)
+
+.work/mlx/python/tests/test_linalg.py:728: IndexError</failure></testcase><testcase classname="python.tests.test_linalg.TestLinalg" name="test_eig" time="0.001"><failure message="IndexError: vector::_M_range_check: __n (which is 0) &gt;= this-&gt;size() (which is 0)">self = &lt;test_linalg.TestLinalg testMethod=test_eig&gt;
+
+    def test_eig(self):
+        tols = {"atol": 1e-5, "rtol": 1e-5}
+    
+        def check_eigs_and_vecs(A_np, kwargs={}):
+            A = mx.array(A_np)
+            eig_vals, eig_vecs = mx.linalg.eig(A, stream=mx.cpu, **kwargs)
+            self.assertTrue(
+                mx.allclose(A @ eig_vecs, eig_vals[..., None, :] * eig_vecs, **tols)
+            )
+            eig_vals_only = mx.linalg.eigvals(A, stream=mx.cpu, **kwargs)
+            self.assertTrue(mx.allclose(eig_vals, eig_vals_only, **tols))
+    
+        # Test a simple 2x2 matrix
+        A_np = np.array([[1.0, 1.0], [3.0, 4.0]], dtype=np.float32)
+&gt;       check_eigs_and_vecs(A_np)
+
+.work/mlx/python/tests/test_linalg.py:422: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+A_np = array([[1., 1.],
+       [3., 4.]], dtype=float32), kwargs = {}
+
+    def check_eigs_and_vecs(A_np, kwargs={}):
+        A = mx.array(A_np)
+&gt;       eig_vals, eig_vecs = mx.linalg.eig(A, stream=mx.cpu, **kwargs)
+                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       IndexError: vector::_M_range_check: __n (which is 0) &gt;= this-&gt;size() (which is 0)
+
+.work/mlx/python/tests/test_linalg.py:413: IndexError</failure></testcase><testcase classname="python.tests.test_linalg.TestLinalg" name="test_eigh" time="0.001"><failure message="IndexError: vector::_M_range_check: __n (which is 0) &gt;= this-&gt;size() (which is 0)">self = &lt;test_linalg.TestLinalg testMethod=test_eigh&gt;
+
+    def test_eigh(self):
+        tols = {"atol": 1e-5, "rtol": 1e-5}
+    
+        def check_eigs_and_vecs(A_np, kwargs={}):
+            A = mx.array(A_np)
+            eig_vals, eig_vecs = mx.linalg.eigh(A, stream=mx.cpu, **kwargs)
+            eig_vals_np, _ = np.linalg.eigh(A_np, **kwargs)
+            self.assertTrue(np.allclose(eig_vals, eig_vals_np, **tols))
+            self.assertTrue(
+                mx.allclose(A @ eig_vecs, eig_vals[..., None, :] * eig_vecs, **tols)
+            )
+    
+            eig_vals_only = mx.linalg.eigvalsh(A, stream=mx.cpu, **kwargs)
+            self.assertTrue(mx.allclose(eig_vals, eig_vals_only, **tols))
+    
+        # Test a simple 2x2 symmetric matrix
+        A_np = np.array([[1.0, 2.0], [2.0, 4.0]], dtype=np.float32)
+&gt;       check_eigs_and_vecs(A_np)
+
+.work/mlx/python/tests/test_linalg.py:522: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+A_np = array([[1., 2.],
+       [2., 4.]], dtype=float32), kwargs = {}
+
+    def check_eigs_and_vecs(A_np, kwargs={}):
+        A = mx.array(A_np)
+&gt;       eig_vals, eig_vecs = mx.linalg.eigh(A, stream=mx.cpu, **kwargs)
+                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       IndexError: vector::_M_range_check: __n (which is 0) &gt;= this-&gt;size() (which is 0)
+
+.work/mlx/python/tests/test_linalg.py:510: IndexError</failure></testcase><testcase classname="python.tests.test_linalg.TestLinalg" name="test_inverse" time="0.001"><failure message="IndexError: vector::_M_range_check: __n (which is 0) &gt;= this-&gt;size() (which is 0)">self = &lt;test_linalg.TestLinalg testMethod=test_inverse&gt;
+
+    def test_inverse(self):
+        A = mx.array([[1, 2, 3], [6, -5, 4], [-9, 8, 7]], dtype=mx.float32)
+&gt;       A_inv = mx.linalg.inv(A, stream=mx.cpu)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       IndexError: vector::_M_range_check: __n (which is 0) &gt;= this-&gt;size() (which is 0)
+
+.work/mlx/python/tests/test_linalg.py:259: IndexError</failure></testcase><testcase classname="python.tests.test_linalg.TestLinalg" name="test_lu" time="0.001"><failure message="IndexError: vector::_M_range_check: __n (which is 0) &gt;= this-&gt;size() (which is 0)">self = &lt;test_linalg.TestLinalg testMethod=test_lu&gt;
+
+    def test_lu(self):
+        with self.assertRaises(ValueError):
+            mx.linalg.lu(mx.array(0.0), stream=mx.cpu)
+    
+        with self.assertRaises(ValueError):
+            mx.linalg.lu(mx.array([0.0, 1.0]), stream=mx.cpu)
+    
+        with self.assertRaises(ValueError):
+            mx.linalg.lu(mx.array([[0, 1], [1, 0]]), stream=mx.cpu)
+    
+        # Test 3x3 matrix
+        a = mx.array([[3.0, 1.0, 2.0], [1.0, 8.0, 6.0], [9.0, 2.0, 5.0]])
+&gt;       P, L, U = mx.linalg.lu(a, stream=mx.cpu)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       IndexError: vector::_M_range_check: __n (which is 0) &gt;= this-&gt;size() (which is 0)
+
+.work/mlx/python/tests/test_linalg.py:598: IndexError</failure></testcase><testcase classname="python.tests.test_linalg.TestLinalg" name="test_lu_factor" time="0.001"><failure message="IndexError: vector::_M_range_check: __n (which is 0) &gt;= this-&gt;size() (which is 0)">self = &lt;test_linalg.TestLinalg testMethod=test_lu_factor&gt;
+
+    def test_lu_factor(self):
+        mx.random.seed(7)
+    
+        # Test 3x3 matrix
+        a = mx.random.uniform(shape=(5, 5))
+&gt;       LU, pivots = mx.linalg.lu_factor(a, stream=mx.cpu)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       IndexError: vector::_M_range_check: __n (which is 0) &gt;= this-&gt;size() (which is 0)
+
+.work/mlx/python/tests/test_linalg.py:634: IndexError</failure></testcase><testcase classname="python.tests.test_linalg.TestLinalg" name="test_norm" time="0.045"><failure message="RuntimeError: [omarchy] Sum dtype is not implemented for the Omarchy Vulkan backend (dtype=int32, shape=[1,3]). No CPU fallback is available in Omarchy builds.">self = &lt;test_linalg.TestLinalg testMethod=test_norm&gt;
+
+    def test_norm(self):
+        vector_ords = [None, 0.5, 0, 1, 2, 3, -1, float("inf"), -float("inf")]
+        matrix_ords = [None, "fro", "nuc", -1, 1, -2, 2, float("inf"), -float("inf")]
+    
+        for shape in [(3,), (2, 3), (2, 3, 3)]:
+            x_mx = mx.arange(1, math.prod(shape) + 1, dtype=mx.float32).reshape(shape)
+            x_np = np.arange(1, math.prod(shape) + 1, dtype=np.float32).reshape(shape)
+            # Test when at least one axis is provided
+            for num_axes in range(1, len(shape)):
+                if num_axes == 1:
+                    ords = vector_ords
+                else:
+                    ords = matrix_ords
+                for axis in itertools.combinations(range(len(shape)), num_axes):
+                    for keepdims in [True, False]:
+                        for o in ords:
+                            stream = (
+                                mx.cpu if o in ["nuc", -2, 2] else mx.default_device()
+                            )
+                            out_np = np.linalg.norm(
+                                x_np, ord=o, axis=axis, keepdims=keepdims
+                            )
+                            out_mx = mx.linalg.norm(
+                                x_mx, ord=o, axis=axis, keepdims=keepdims, stream=stream
+                            )
+                            with self.subTest(
+                                shape=shape, ord=o, axis=axis, keepdims=keepdims
+                            ):
+                                self.assertEqual(out_mx.shape, out_np.shape)
+                                self.assertTrue(
+&gt;                                   np.allclose(out_np, out_mx, atol=1e-5, rtol=1e-6)
+                                )
+
+.work/mlx/python/tests/test_linalg.py:43: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/numpy/_core/numeric.py:2376: in allclose
+    res = all(isclose(a, b, rtol=rtol, atol=atol, equal_nan=equal_nan))
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/numpy/_core/numeric.py:2476: in isclose
+    x, y, atol, rtol = (
+    ^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+.0 = &lt;tuple_iterator object at 0x773bd810efb0&gt;
+
+    x, y, atol, rtol = (
+&gt;       a if isinstance(a, (int, float, complex)) else asanyarray(a)
+                                                       ^^^^^^^^^^^^^
+        for a in (a, b, atol, rtol))
+E   RuntimeError: [omarchy] Sum dtype is not implemented for the Omarchy Vulkan backend (dtype=int32, shape=[1,3]). No CPU fallback is available in Omarchy builds.
+
+/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/numpy/_core/numeric.py:2477: RuntimeError</failure><failure message="IndexError: vector::_M_range_check: __n (which is 0) &gt;= this-&gt;size() (which is 0)">self = &lt;test_linalg.TestLinalg testMethod=test_norm&gt;
+
+    def test_norm(self):
+        vector_ords = [None, 0.5, 0, 1, 2, 3, -1, float("inf"), -float("inf")]
+        matrix_ords = [None, "fro", "nuc", -1, 1, -2, 2, float("inf"), -float("inf")]
+    
+        for shape in [(3,), (2, 3), (2, 3, 3)]:
+            x_mx = mx.arange(1, math.prod(shape) + 1, dtype=mx.float32).reshape(shape)
+            x_np = np.arange(1, math.prod(shape) + 1, dtype=np.float32).reshape(shape)
+            # Test when at least one axis is provided
+            for num_axes in range(1, len(shape)):
+                if num_axes == 1:
+                    ords = vector_ords
+                else:
+                    ords = matrix_ords
+                for axis in itertools.combinations(range(len(shape)), num_axes):
+                    for keepdims in [True, False]:
+                        for o in ords:
+                            stream = (
+                                mx.cpu if o in ["nuc", -2, 2] else mx.default_device()
+                            )
+                            out_np = np.linalg.norm(
+                                x_np, ord=o, axis=axis, keepdims=keepdims
+                            )
+&gt;                           out_mx = mx.linalg.norm(
+                                x_mx, ord=o, axis=axis, keepdims=keepdims, stream=stream
+                            )
+E                           IndexError: vector::_M_range_check: __n (which is 0) &gt;= this-&gt;size() (which is 0)
+
+.work/mlx/python/tests/test_linalg.py:35: IndexError</failure></testcase><testcase classname="python.tests.test_linalg.TestLinalg" name="test_pseudo_inverse" time="0.001"><failure message="IndexError: vector::_M_range_check: __n (which is 0) &gt;= this-&gt;size() (which is 0)">self = &lt;test_linalg.TestLinalg testMethod=test_pseudo_inverse&gt;
+
+    def test_pseudo_inverse(self):
+        A = mx.array([[1, 2, 3], [6, -5, 4], [-9, 8, 7]], dtype=mx.float32)
+&gt;       A_plus = mx.linalg.pinv(A, stream=mx.cpu)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       IndexError: vector::_M_range_check: __n (which is 0) &gt;= this-&gt;size() (which is 0)
+
+.work/mlx/python/tests/test_linalg.py:311: IndexError</failure></testcase><testcase classname="python.tests.test_linalg.TestLinalg" name="test_qr_factorization" time="0.001"><failure message="IndexError: vector::_M_range_check: __n (which is 0) &gt;= this-&gt;size() (which is 0)">self = &lt;test_linalg.TestLinalg testMethod=test_qr_factorization&gt;
+
+    def test_qr_factorization(self):
+        with self.assertRaises(ValueError):
+            mx.linalg.qr(mx.array(0.0))
+    
+        with self.assertRaises(ValueError):
+            mx.linalg.qr(mx.array([0.0, 1.0]))
+    
+        with self.assertRaises(ValueError):
+            mx.linalg.qr(mx.array([[0, 1], [1, 0]]))
+    
+        A = mx.array([[2.0, 3.0], [1.0, 2.0]])
+&gt;       Q, R = mx.linalg.qr(A, stream=mx.cpu)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       IndexError: vector::_M_range_check: __n (which is 0) &gt;= this-&gt;size() (which is 0)
+
+.work/mlx/python/tests/test_linalg.py:129: IndexError</failure></testcase><testcase classname="python.tests.test_linalg.TestLinalg" name="test_slogdet" time="0.000"><failure message="IndexError: vector::_M_range_check: __n (which is 0) &gt;= this-&gt;size() (which is 0)">self = &lt;test_linalg.TestLinalg testMethod=test_slogdet&gt;
+
+    def test_slogdet(self):
+        # 2x2: det = -2 =&gt; sign = -1, logabsdet = log(2)
+        A = mx.array([[1.0, 2.0], [3.0, 4.0]])
+&gt;       sign, logabsdet = mx.linalg.slogdet(A, stream=mx.cpu)
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       IndexError: vector::_M_range_check: __n (which is 0) &gt;= this-&gt;size() (which is 0)
+
+.work/mlx/python/tests/test_linalg.py:839: IndexError</failure></testcase><testcase classname="python.tests.test_linalg.TestLinalg" name="test_solve" time="0.000"><failure message="IndexError: vector::_M_range_check: __n (which is 0) &gt;= this-&gt;size() (which is 0)">self = &lt;test_linalg.TestLinalg testMethod=test_solve&gt;
+
+    def test_solve(self):
+        mx.random.seed(7)
+    
+        # Test 3x3 matrix with 1D rhs
+        a = mx.array([[3.0, 1.0, 2.0], [1.0, 8.0, 6.0], [9.0, 2.0, 5.0]])
+        b = mx.array([11.0, 35.0, 28.0])
+    
+&gt;       result = mx.linalg.solve(a, b, stream=mx.cpu)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       IndexError: vector::_M_range_check: __n (which is 0) &gt;= this-&gt;size() (which is 0)
+
+.work/mlx/python/tests/test_linalg.py:653: IndexError</failure></testcase><testcase classname="python.tests.test_linalg.TestLinalg" name="test_solve_triangular" time="0.000"><failure message="IndexError: vector::_M_range_check: __n (which is 0) &gt;= this-&gt;size() (which is 0)">self = &lt;test_linalg.TestLinalg testMethod=test_solve_triangular&gt;
+
+    def test_solve_triangular(self):
+        # Test lower triangular matrix
+        a = mx.array([[4.0, 0.0, 0.0], [2.0, 3.0, 0.0], [1.0, -2.0, 5.0]])
+        b = mx.array([8.0, 14.0, 3.0])
+    
+&gt;       result = mx.linalg.solve_triangular(a, b, upper=False, stream=mx.cpu)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       IndexError: vector::_M_range_check: __n (which is 0) &gt;= this-&gt;size() (which is 0)
+
+.work/mlx/python/tests/test_linalg.py:705: IndexError</failure></testcase><testcase classname="python.tests.test_linalg.TestLinalg" name="test_svd_decomposition" time="0.000"><failure message="IndexError: vector::_M_range_check: __n (which is 0) &gt;= this-&gt;size() (which is 0)">self = &lt;test_linalg.TestLinalg testMethod=test_svd_decomposition&gt;
+
+    def test_svd_decomposition(self):
+        A = mx.array([[1, 2, 3], [4, 5, 6], [7, 8, 9], [10, 11, 12]], dtype=mx.float32)
+&gt;       U, S, Vt = mx.linalg.svd(A, compute_uv=True, stream=mx.cpu)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       IndexError: vector::_M_range_check: __n (which is 0) &gt;= this-&gt;size() (which is 0)
+
+.work/mlx/python/tests/test_linalg.py:172: IndexError</failure></testcase><testcase classname="python.tests.test_linalg.TestLinalg" name="test_tri_inverse" time="0.001"><failure message="IndexError: vector::_M_range_check: __n (which is 0) &gt;= this-&gt;size() (which is 0)">self = &lt;test_linalg.TestLinalg testMethod=test_tri_inverse&gt;
+
+    def test_tri_inverse(self):
+        for upper in (False, True):
+            A = mx.array([[1, 0, 0], [6, -5, 0], [-9, 8, 7]], dtype=mx.float32)
+            B = mx.array([[7, 0, 0], [3, -2, 0], [1, 8, 3]], dtype=mx.float32)
+            if upper:
+                A = A.T
+                B = B.T
+            AB = mx.stack([A, B])
+&gt;           invs = mx.linalg.tri_inv(AB, upper=upper, stream=mx.cpu)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           IndexError: vector::_M_range_check: __n (which is 0) &gt;= this-&gt;size() (which is 0)
+
+.work/mlx/python/tests/test_linalg.py:279: IndexError</failure></testcase></testsuite></testsuites>

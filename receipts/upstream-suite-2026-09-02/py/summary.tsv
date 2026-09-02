@@ -1,0 +1,34 @@
+file	rc	result
+test_array.py	1	EXIT rc=1; executed=208 passed=171 failed=37 skipped=19
+test_autograd.py	1	EXIT rc=1; executed=53 passed=25 failed=28 skipped=1
+test_bf16.py	1	EXIT rc=1; executed=77 passed=76 failed=1 skipped=2
+test_blas.py	1	EXIT rc=1; executed=1047 passed=995 failed=52 skipped=0
+test_compile.py	1	EXIT rc=1; executed=67 passed=40 failed=27 skipped=0
+test_constants.py	0	executed=3 passed=3 failed=0 skipped=0
+test_conv.py	1	EXIT rc=1; executed=26 passed=3 failed=23 skipped=10
+test_conv_transpose.py	0	executed=0 passed=0 failed=0 skipped=10
+test_device.py	1	EXIT rc=1; executed=10 passed=4 failed=6 skipped=0
+test_double.py	1	EXIT rc=1; executed=11 passed=1 failed=10 skipped=0
+test_einsum.py	1	EXIT rc=1; executed=12 passed=9 failed=3 skipped=0
+test_eval.py	1	EXIT rc=1; executed=14 passed=6 failed=8 skipped=1
+test_export_import.py	1	EXIT rc=1; executed=28 passed=10 failed=18 skipped=0
+test_fast.py	1	EXIT rc=1; executed=25 passed=13 failed=12 skipped=6
+test_fast_sdpa.py	1	EXIT rc=1; executed=481 passed=284 failed=197 skipped=3 crash-excluded=1:.work/mlx/python/tests/test_fast_sdpa.py::TestFastSDPA::test_sdpa_long_masked_sequence
+test_fft.py	1	EXIT rc=1; executed=16 passed=4 failed=12 skipped=4
+test_graph.py	0	executed=1 passed=1 failed=0 skipped=0
+test_init.py	1	EXIT rc=1; executed=54 passed=37 failed=17 skipped=0
+test_linalg.py	1	EXIT rc=1; executed=33 passed=3 failed=30 skipped=0
+test_load.py	1	EXIT rc=1; executed=190 passed=49 failed=141 skipped=0
+test_losses.py	1	EXIT rc=1; executed=14 passed=13 failed=1 skipped=0
+test_memory.py	0	executed=2 passed=2 failed=0 skipped=1
+test_nn.py	1	EXIT rc=1; executed=72 passed=61 failed=11 skipped=1
+test_ops.py	1	EXIT rc=1; executed=403 passed=215 failed=188 skipped=2
+test_optimizers.py	1	EXIT rc=1; executed=25 passed=17 failed=8 skipped=1
+test_quantized.py	1	EXIT rc=1; executed=3062 passed=165 failed=2897 skipped=1
+test_random.py	1	EXIT rc=1; executed=14 passed=7 failed=7 skipped=0
+test_reduce.py	1	EXIT rc=1; executed=4895 passed=567 failed=4328 skipped=0
+test_threads.py	1	EXIT rc=1; executed=2 passed=1 failed=1 skipped=0
+test_tree.py	1	EXIT rc=1; executed=6 passed=5 failed=1 skipped=0
+test_upsample.py	1	EXIT rc=1; executed=12 passed=2 failed=10 skipped=4
+test_vmap.py	1	EXIT rc=1; executed=65 passed=35 failed=30 skipped=0
+test_zero_copy.py	1	EXIT rc=1; executed=4 passed=3 failed=1 skipped=2

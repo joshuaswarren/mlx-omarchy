@@ -1,0 +1,307 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="17" skipped="0" tests="54" time="0.322" timestamp="2026-09-02T09:03:35.973040-05:00" hostname="omp-studio-local"><testcase classname="python.tests.test_init.TestInit" name="test_constant" time="0.014" /><testcase classname="python.tests.test_init.TestInit" name="test_glorot_normal" time="0.001" /><testcase classname="python.tests.test_init.TestInit" name="test_glorot_uniform" time="0.007" /><testcase classname="python.tests.test_init.TestInit" name="test_he_normal" time="0.008" /><testcase classname="python.tests.test_init.TestInit" name="test_he_uniform" time="0.001" /><testcase classname="python.tests.test_init.TestInit" name="test_identity" time="0.005"><failure message="RuntimeError: [omarchy] multi-index Scatter is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[3,3]). No CPU fallback is available in Omarchy builds.">self = &lt;test_init.TestInit testMethod=test_identity&gt;
+
+    def test_identity(self):
+        for dtype in [mx.float32, mx.float16]:
+            initializer = init.identity(dtype)
+            for shape in [(3,), (3, 3), (3, 3, 3)]:
+                result = initializer(mx.zeros((3, 3)))
+&gt;               self.assertTrue(mx.array_equal(result, mx.eye(3)))
+E               RuntimeError: [omarchy] multi-index Scatter is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[3,3]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_init.py:52: RuntimeError</failure></testcase><testcase classname="python.tests.test_init.TestInit" name="test_normal" time="0.002" /><testcase classname="python.tests.test_init.TestInit" name="test_orthogonal" time="0.004"><failure message="IndexError: vector::_M_range_check: __n (which is 0) &gt;= this-&gt;size() (which is 0)">self = &lt;test_init.TestInit testMethod=test_orthogonal&gt;
+
+    def test_orthogonal(self):
+        initializer = init.orthogonal(gain=1.0, dtype=mx.float32)
+    
+        # Test with a square matrix
+        shape = (4, 4)
+&gt;       result = initializer(mx.zeros(shape, dtype=mx.float32))
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.work/mlx/python/tests/test_init.py:128: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+a = array([[0, 0, 0, 0],
+       [0, 0, 0, 0],
+       [0, 0, 0, 0],
+       [0, 0, 0, 0]], dtype=float32)
+
+    def initializer(a: mx.array) -&gt; mx.array:
+        if a.ndim != 2:
+            raise ValueError(
+                "Orthogonal initialization requires a 2D array but got"
+                f" a {a.ndim}D array."
+            )
+    
+        rows, cols = a.shape
+        n = max(rows, cols)
+    
+        rmat = mx.random.normal(shape=(n, n))
+    
+        # Perform QR decomposition on CPU
+&gt;       q, r = mx.linalg.qr(rmat, stream=mx.cpu)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       IndexError: vector::_M_range_check: __n (which is 0) &gt;= this-&gt;size() (which is 0)
+
+/home/joshuawarren/src/mlx-omarchy/receipts/upstream-suite-2026-09-02/venv-pytest/lib/python3.11/site-packages/mlx/nn/init.py:440: IndexError</failure></testcase><testcase classname="python.tests.test_init.TestInit" name="test_sparse" time="0.073"><failure message="RuntimeError: [omarchy] dtype converting copy is not implemented for the Omarchy Vulkan backend (dtype=int64, shape=[3,1]). No CPU fallback is available in Omarchy builds.">self = &lt;test_init.TestInit testMethod=test_sparse&gt;
+
+    def test_sparse(self):
+        mean = 0.0
+        std = 1.0
+        sparsity = 0.5
+        for dtype in [mx.float32, mx.float16]:
+            initializer = init.sparse(sparsity, mean, std, dtype=dtype)
+            for shape in [(3, 2), (2, 2), (4, 3)]:
+                result = initializer(mx.array(np.empty(shape)))
+                with self.subTest(shape=shape):
+                    self.assertEqual(result.shape, shape)
+                    self.assertEqual(result.dtype, dtype)
+&gt;                   self.assertEqual(
+                        (mx.sum(result == 0) &gt;= 0.5 * shape[0] * shape[1]), True
+                    )
+E                   RuntimeError: [omarchy] dtype converting copy is not implemented for the Omarchy Vulkan backend (dtype=int64, shape=[3,1]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_init.py:104: RuntimeError</failure><failure message="RuntimeError: [omarchy] dtype converting copy is not implemented for the Omarchy Vulkan backend (dtype=int64, shape=[2,1]). No CPU fallback is available in Omarchy builds.">self = &lt;test_init.TestInit testMethod=test_sparse&gt;
+
+    def test_sparse(self):
+        mean = 0.0
+        std = 1.0
+        sparsity = 0.5
+        for dtype in [mx.float32, mx.float16]:
+            initializer = init.sparse(sparsity, mean, std, dtype=dtype)
+            for shape in [(3, 2), (2, 2), (4, 3)]:
+                result = initializer(mx.array(np.empty(shape)))
+                with self.subTest(shape=shape):
+                    self.assertEqual(result.shape, shape)
+                    self.assertEqual(result.dtype, dtype)
+&gt;                   self.assertEqual(
+                        (mx.sum(result == 0) &gt;= 0.5 * shape[0] * shape[1]), True
+                    )
+E                   RuntimeError: [omarchy] dtype converting copy is not implemented for the Omarchy Vulkan backend (dtype=int64, shape=[2,1]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_init.py:104: RuntimeError</failure><failure message="RuntimeError: [omarchy] dtype converting copy is not implemented for the Omarchy Vulkan backend (dtype=int64, shape=[4,2]). No CPU fallback is available in Omarchy builds.">self = &lt;test_init.TestInit testMethod=test_sparse&gt;
+
+    def test_sparse(self):
+        mean = 0.0
+        std = 1.0
+        sparsity = 0.5
+        for dtype in [mx.float32, mx.float16]:
+            initializer = init.sparse(sparsity, mean, std, dtype=dtype)
+            for shape in [(3, 2), (2, 2), (4, 3)]:
+                result = initializer(mx.array(np.empty(shape)))
+                with self.subTest(shape=shape):
+                    self.assertEqual(result.shape, shape)
+                    self.assertEqual(result.dtype, dtype)
+&gt;                   self.assertEqual(
+                        (mx.sum(result == 0) &gt;= 0.5 * shape[0] * shape[1]), True
+                    )
+E                   RuntimeError: [omarchy] dtype converting copy is not implemented for the Omarchy Vulkan backend (dtype=int64, shape=[4,2]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_init.py:104: RuntimeError</failure><failure message="RuntimeError: [omarchy] dtype converting copy is not implemented for the Omarchy Vulkan backend (dtype=int64, shape=[3,1]). No CPU fallback is available in Omarchy builds.">self = &lt;test_init.TestInit testMethod=test_sparse&gt;
+
+    def test_sparse(self):
+        mean = 0.0
+        std = 1.0
+        sparsity = 0.5
+        for dtype in [mx.float32, mx.float16]:
+            initializer = init.sparse(sparsity, mean, std, dtype=dtype)
+            for shape in [(3, 2), (2, 2), (4, 3)]:
+                result = initializer(mx.array(np.empty(shape)))
+                with self.subTest(shape=shape):
+                    self.assertEqual(result.shape, shape)
+                    self.assertEqual(result.dtype, dtype)
+&gt;                   self.assertEqual(
+                        (mx.sum(result == 0) &gt;= 0.5 * shape[0] * shape[1]), True
+                    )
+E                   RuntimeError: [omarchy] dtype converting copy is not implemented for the Omarchy Vulkan backend (dtype=int64, shape=[3,1]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_init.py:104: RuntimeError</failure><failure message="RuntimeError: [omarchy] dtype converting copy is not implemented for the Omarchy Vulkan backend (dtype=int64, shape=[2,1]). No CPU fallback is available in Omarchy builds.">self = &lt;test_init.TestInit testMethod=test_sparse&gt;
+
+    def test_sparse(self):
+        mean = 0.0
+        std = 1.0
+        sparsity = 0.5
+        for dtype in [mx.float32, mx.float16]:
+            initializer = init.sparse(sparsity, mean, std, dtype=dtype)
+            for shape in [(3, 2), (2, 2), (4, 3)]:
+                result = initializer(mx.array(np.empty(shape)))
+                with self.subTest(shape=shape):
+                    self.assertEqual(result.shape, shape)
+                    self.assertEqual(result.dtype, dtype)
+&gt;                   self.assertEqual(
+                        (mx.sum(result == 0) &gt;= 0.5 * shape[0] * shape[1]), True
+                    )
+E                   RuntimeError: [omarchy] dtype converting copy is not implemented for the Omarchy Vulkan backend (dtype=int64, shape=[2,1]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_init.py:104: RuntimeError</failure><failure message="RuntimeError: [omarchy] dtype converting copy is not implemented for the Omarchy Vulkan backend (dtype=int64, shape=[4,2]). No CPU fallback is available in Omarchy builds.">self = &lt;test_init.TestInit testMethod=test_sparse&gt;
+
+    def test_sparse(self):
+        mean = 0.0
+        std = 1.0
+        sparsity = 0.5
+        for dtype in [mx.float32, mx.float16]:
+            initializer = init.sparse(sparsity, mean, std, dtype=dtype)
+            for shape in [(3, 2), (2, 2), (4, 3)]:
+                result = initializer(mx.array(np.empty(shape)))
+                with self.subTest(shape=shape):
+                    self.assertEqual(result.shape, shape)
+                    self.assertEqual(result.dtype, dtype)
+&gt;                   self.assertEqual(
+                        (mx.sum(result == 0) &gt;= 0.5 * shape[0] * shape[1]), True
+                    )
+E                   RuntimeError: [omarchy] dtype converting copy is not implemented for the Omarchy Vulkan backend (dtype=int64, shape=[4,2]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_init.py:104: RuntimeError</failure></testcase><testcase classname="python.tests.test_init.TestInit" name="test_sparse_zeros_per_row" time="0.015"><failure message="RuntimeError: [omarchy] dtype converting copy is not implemented for the Omarchy Vulkan backend (dtype=int64, shape=[4,5]). No CPU fallback is available in Omarchy builds.">self = &lt;test_init.TestInit testMethod=test_sparse_zeros_per_row&gt;
+
+    def test_sparse_zeros_per_row(self):
+        # Sparsity is applied along each row: every row drops exactly
+        # ceil(sparsity * cols) of its entries, independent of matrix shape, so
+        # each output feature (a row of `w` used as `x @ w.T`) keeps the same
+        # number of input connections.
+        for sparsity, shape in [(0.5, (4, 10)), (0.3, (5, 10)), (0.5, (2, 2))]:
+            _, cols = shape
+            expected = int(math.ceil(sparsity * cols))
+            result = init.sparse(sparsity)(mx.zeros(shape))
+            zeros_per_row = mx.sum(result == 0, axis=1)
+            with self.subTest(shape=shape, sparsity=sparsity):
+&gt;               self.assertTrue(mx.all(zeros_per_row == expected).item())
+                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E               RuntimeError: [omarchy] dtype converting copy is not implemented for the Omarchy Vulkan backend (dtype=int64, shape=[4,5]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_init.py:121: RuntimeError</failure><failure message="RuntimeError: [omarchy] dtype converting copy is not implemented for the Omarchy Vulkan backend (dtype=int64, shape=[5,3]). No CPU fallback is available in Omarchy builds.">self = &lt;test_init.TestInit testMethod=test_sparse_zeros_per_row&gt;
+
+    def test_sparse_zeros_per_row(self):
+        # Sparsity is applied along each row: every row drops exactly
+        # ceil(sparsity * cols) of its entries, independent of matrix shape, so
+        # each output feature (a row of `w` used as `x @ w.T`) keeps the same
+        # number of input connections.
+        for sparsity, shape in [(0.5, (4, 10)), (0.3, (5, 10)), (0.5, (2, 2))]:
+            _, cols = shape
+            expected = int(math.ceil(sparsity * cols))
+            result = init.sparse(sparsity)(mx.zeros(shape))
+            zeros_per_row = mx.sum(result == 0, axis=1)
+            with self.subTest(shape=shape, sparsity=sparsity):
+&gt;               self.assertTrue(mx.all(zeros_per_row == expected).item())
+                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E               RuntimeError: [omarchy] dtype converting copy is not implemented for the Omarchy Vulkan backend (dtype=int64, shape=[5,3]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_init.py:121: RuntimeError</failure><failure message="RuntimeError: [omarchy] dtype converting copy is not implemented for the Omarchy Vulkan backend (dtype=int64, shape=[2,1]). No CPU fallback is available in Omarchy builds.">self = &lt;test_init.TestInit testMethod=test_sparse_zeros_per_row&gt;
+
+    def test_sparse_zeros_per_row(self):
+        # Sparsity is applied along each row: every row drops exactly
+        # ceil(sparsity * cols) of its entries, independent of matrix shape, so
+        # each output feature (a row of `w` used as `x @ w.T`) keeps the same
+        # number of input connections.
+        for sparsity, shape in [(0.5, (4, 10)), (0.3, (5, 10)), (0.5, (2, 2))]:
+            _, cols = shape
+            expected = int(math.ceil(sparsity * cols))
+            result = init.sparse(sparsity)(mx.zeros(shape))
+            zeros_per_row = mx.sum(result == 0, axis=1)
+            with self.subTest(shape=shape, sparsity=sparsity):
+&gt;               self.assertTrue(mx.all(zeros_per_row == expected).item())
+                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E               RuntimeError: [omarchy] dtype converting copy is not implemented for the Omarchy Vulkan backend (dtype=int64, shape=[2,1]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_init.py:121: RuntimeError</failure></testcase><testcase classname="python.tests.test_init.TestInit" name="test_uniform" time="0.022"><failure message="RuntimeError: [omarchy] GreaterEqual dtype is not implemented for the Omarchy Vulkan backend (dtype=bool, shape=[3]). No CPU fallback is available in Omarchy builds.">self = &lt;test_init.TestInit testMethod=test_uniform&gt;
+
+    def test_uniform(self):
+        low = -1.0
+        high = 1.0
+    
+        for dtype in [mx.float32, mx.float16]:
+            initializer = init.uniform(low, high, dtype)
+            for shape in [(3,), (3, 3), (3, 3, 3)]:
+                result = initializer(mx.array(np.empty(shape)))
+                with self.subTest(shape=shape):
+                    self.assertEqual(result.shape, shape)
+                    self.assertEqual(result.dtype, dtype)
+&gt;                   self.assertTrue(mx.all(result &gt;= low) and mx.all(result &lt;= high))
+                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E                   RuntimeError: [omarchy] GreaterEqual dtype is not implemented for the Omarchy Vulkan backend (dtype=bool, shape=[3]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_init.py:45: RuntimeError</failure><failure message="RuntimeError: [omarchy] GreaterEqual dtype is not implemented for the Omarchy Vulkan backend (dtype=bool, shape=[3,3]). No CPU fallback is available in Omarchy builds.">self = &lt;test_init.TestInit testMethod=test_uniform&gt;
+
+    def test_uniform(self):
+        low = -1.0
+        high = 1.0
+    
+        for dtype in [mx.float32, mx.float16]:
+            initializer = init.uniform(low, high, dtype)
+            for shape in [(3,), (3, 3), (3, 3, 3)]:
+                result = initializer(mx.array(np.empty(shape)))
+                with self.subTest(shape=shape):
+                    self.assertEqual(result.shape, shape)
+                    self.assertEqual(result.dtype, dtype)
+&gt;                   self.assertTrue(mx.all(result &gt;= low) and mx.all(result &lt;= high))
+                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E                   RuntimeError: [omarchy] GreaterEqual dtype is not implemented for the Omarchy Vulkan backend (dtype=bool, shape=[3,3]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_init.py:45: RuntimeError</failure><failure message="RuntimeError: [omarchy] GreaterEqual dtype is not implemented for the Omarchy Vulkan backend (dtype=bool, shape=[3,3,3]). No CPU fallback is available in Omarchy builds.">self = &lt;test_init.TestInit testMethod=test_uniform&gt;
+
+    def test_uniform(self):
+        low = -1.0
+        high = 1.0
+    
+        for dtype in [mx.float32, mx.float16]:
+            initializer = init.uniform(low, high, dtype)
+            for shape in [(3,), (3, 3), (3, 3, 3)]:
+                result = initializer(mx.array(np.empty(shape)))
+                with self.subTest(shape=shape):
+                    self.assertEqual(result.shape, shape)
+                    self.assertEqual(result.dtype, dtype)
+&gt;                   self.assertTrue(mx.all(result &gt;= low) and mx.all(result &lt;= high))
+                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E                   RuntimeError: [omarchy] GreaterEqual dtype is not implemented for the Omarchy Vulkan backend (dtype=bool, shape=[3,3,3]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_init.py:45: RuntimeError</failure><failure message="RuntimeError: [omarchy] GreaterEqual dtype is not implemented for the Omarchy Vulkan backend (dtype=bool, shape=[3]). No CPU fallback is available in Omarchy builds.">self = &lt;test_init.TestInit testMethod=test_uniform&gt;
+
+    def test_uniform(self):
+        low = -1.0
+        high = 1.0
+    
+        for dtype in [mx.float32, mx.float16]:
+            initializer = init.uniform(low, high, dtype)
+            for shape in [(3,), (3, 3), (3, 3, 3)]:
+                result = initializer(mx.array(np.empty(shape)))
+                with self.subTest(shape=shape):
+                    self.assertEqual(result.shape, shape)
+                    self.assertEqual(result.dtype, dtype)
+&gt;                   self.assertTrue(mx.all(result &gt;= low) and mx.all(result &lt;= high))
+                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E                   RuntimeError: [omarchy] GreaterEqual dtype is not implemented for the Omarchy Vulkan backend (dtype=bool, shape=[3]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_init.py:45: RuntimeError</failure><failure message="RuntimeError: [omarchy] GreaterEqual dtype is not implemented for the Omarchy Vulkan backend (dtype=bool, shape=[3,3]). No CPU fallback is available in Omarchy builds.">self = &lt;test_init.TestInit testMethod=test_uniform&gt;
+
+    def test_uniform(self):
+        low = -1.0
+        high = 1.0
+    
+        for dtype in [mx.float32, mx.float16]:
+            initializer = init.uniform(low, high, dtype)
+            for shape in [(3,), (3, 3), (3, 3, 3)]:
+                result = initializer(mx.array(np.empty(shape)))
+                with self.subTest(shape=shape):
+                    self.assertEqual(result.shape, shape)
+                    self.assertEqual(result.dtype, dtype)
+&gt;                   self.assertTrue(mx.all(result &gt;= low) and mx.all(result &lt;= high))
+                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E                   RuntimeError: [omarchy] GreaterEqual dtype is not implemented for the Omarchy Vulkan backend (dtype=bool, shape=[3,3]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_init.py:45: RuntimeError</failure><failure message="RuntimeError: [omarchy] GreaterEqual dtype is not implemented for the Omarchy Vulkan backend (dtype=bool, shape=[3,3,3]). No CPU fallback is available in Omarchy builds.">self = &lt;test_init.TestInit testMethod=test_uniform&gt;
+
+    def test_uniform(self):
+        low = -1.0
+        high = 1.0
+    
+        for dtype in [mx.float32, mx.float16]:
+            initializer = init.uniform(low, high, dtype)
+            for shape in [(3,), (3, 3), (3, 3, 3)]:
+                result = initializer(mx.array(np.empty(shape)))
+                with self.subTest(shape=shape):
+                    self.assertEqual(result.shape, shape)
+                    self.assertEqual(result.dtype, dtype)
+&gt;                   self.assertTrue(mx.all(result &gt;= low) and mx.all(result &lt;= high))
+                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E                   RuntimeError: [omarchy] GreaterEqual dtype is not implemented for the Omarchy Vulkan backend (dtype=bool, shape=[3,3,3]). No CPU fallback is available in Omarchy builds.
+
+.work/mlx/python/tests/test_init.py:45: RuntimeError</failure></testcase></testsuite></testsuites>
