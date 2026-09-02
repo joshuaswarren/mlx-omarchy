@@ -400,9 +400,11 @@ void copy_gpu_inplace(
 }
 
 void copy_gpu(const array& in, array& out, CopyType ctype, const Stream& s) {
-  if (out.nbytes() > 0) {
-    out.set_data(omarchy::allocator().malloc(out.nbytes()));
-  }
+  // Upstream's set_copy_output_data always gives the output a buffer, even
+  // for zero-size outputs (malloc(0) yields a valid empty VulkanBuffer).
+  // Skipping set_data left array_desc_->data null, and any later
+  // buffer_size()/data() access on the eval'd array segfaulted.
+  out.set_data(omarchy::allocator().malloc(out.nbytes()));
   copy_gpu_inplace(
       in, out, in.shape(), in.strides(), out.strides(), 0, 0, ctype, s);
 }

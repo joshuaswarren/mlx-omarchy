@@ -1,0 +1,11 @@
+test_ops.py extended recovery run (2026-09-01)
+
+The in-suite retry cap was 15 attempts at run time, which exhausted before
+test_ops.py stopped crashing, so test_ops.py was re-run separately with the
+same -k crash-exclusion loop and a 60-attempt cap.
+
+Result: attempts=34, final rc=1, crash-excluded=34, final junit:
+  executed=238 passed=85 failed=153 skipped=2
+
+Every crash-excluded test died with "Fatal Python error: Aborted" — the C2
+terminate path (backend RuntimeError crossing the numpy buffer boundary).

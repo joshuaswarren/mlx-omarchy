@@ -141,6 +141,12 @@ void main() {
             ? uintBitsToFloat(0x7fc00000u)
             : min(lhs, rhs);
         break;
+      case 15:
+        value = log2(lhs);
+        break;
+      case 16:
+        value = log(lhs) / 2.302585092994046f;
+        break;
       default:
         return;
     }

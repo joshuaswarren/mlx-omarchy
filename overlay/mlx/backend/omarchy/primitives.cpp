@@ -62,6 +62,8 @@ enum ElementwiseOperation : uint32_t {
   SinOperation,
   LogOperation,
   MinimumOperation,
+  Log2Operation,
+  Log10Operation,
 };
 
 allocator::Buffer allocate_omarchy(size_t size) {
@@ -484,11 +486,23 @@ void dispatch_elementwise(
 
   if (binary) {
     auto binary_type = get_binary_op_type(lhs, rhs);
+    // Broadcast views inherit contiguous=true while data_size < size, so
+    // the Scalar/Vector output branches mirror the view's undersized
+    // buffer or donate it. General always allocates dense output storage
+    // and never donates a non-row-contiguous view.
+    if (lhs.data_size() != lhs.size() || rhs.data_size() != rhs.size()) {
+      binary_type = BinaryOpType::General;
+    }
     set_binary_op_output_data(
         lhs, rhs, out, binary_type, allocate_omarchy);
   } else if (general_broadcast) {
     // The stride gather must not donate: it reads and writes the same
     // buffer at different indices.
+    out.set_data(allocate_omarchy(out.nbytes()));
+  } else if (lhs.data_size() != lhs.size()) {
+    // A scalar broadcast view passes is_trailing_broadcast, but
+    // set_unary_output_data would mirror its one-element buffer; the
+    // output needs dense storage for all count writes.
     out.set_data(allocate_omarchy(out.nbytes()));
   } else {
     set_unary_output_data(lhs, out, allocate_omarchy);
@@ -659,6 +673,12 @@ void dispatch_int_elementwise(
     omarchy::unsupported("non-contiguous " + name, out);
   }
   auto binary_type = get_binary_op_type(lhs, rhs);
+  // Broadcast views inherit contiguous=true while data_size < size; the
+  // Scalar/Vector output branches would mirror the view's undersized
+  // buffer or donate it. General always allocates dense output storage.
+  if (lhs.data_size() != lhs.size() || rhs.data_size() != rhs.size()) {
+    binary_type = BinaryOpType::General;
+  }
   set_binary_op_output_data(lhs, rhs, out, binary_type, allocate_omarchy);
   if (out.size() == 0) {
     return;
@@ -1217,7 +1237,25 @@ void Load::eval_gpu(const std::vector<array>& inputs, array& out) {
     }
   }
 }
-OMARCHY_UNARY(Log, LogOperation)
+
+void Log::eval_gpu(const std::vector<array>& inputs, array& out) {
+  // Upstream log2/log10 are the Log primitive carrying Log::Base; the
+  // base picks the shader case (GLSL log2 for base two, log scaled by
+  // 1/ln(10) for base ten).
+  uint32_t operation;
+  switch (state()) {
+    case Log::Base::two:
+      operation = Log2Operation;
+      break;
+    case Log::Base::ten:
+      operation = Log10Operation;
+      break;
+    default:
+      operation = LogOperation;
+      break;
+  }
+  dispatch_elementwise(name(), operation, inputs, out, stream());
+}
 OMARCHY_UNSUPPORTED(Log1p)
 OMARCHY_UNSUPPORTED(LogicalAnd)
 OMARCHY_UNSUPPORTED(LogicalNot)

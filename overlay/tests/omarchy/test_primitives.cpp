@@ -222,6 +222,37 @@ TEST_CASE("FP32 unary primitives dispatch through Vulkan compute") {
   check_values(negative(x, stream), {0.0f, -1.0f, -2.0f}, stream);
 }
 
+TEST_CASE("Log bases match host references at several magnitudes") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  // Magnitudes spanning 1e-3 to 1e5 so a natural-log alias for either
+  // base cannot pass. Found by upstream ops_tests.cpp:1709 and :1721:
+  // log2/log10 kernels omitted the 1/ln(base) scaling.
+  std::vector<float> values{
+      1.0e-3f, 0.5f, 1.0f, 2.0f, 10.0f, 1024.0f, 1000.0f, 123456.0f};
+  array x(values.begin(), Shape{static_cast<int>(values.size())}, float32);
+
+  std::vector<float> log_expected;
+  std::vector<float> log2_expected;
+  std::vector<float> log10_expected;
+  for (float value : values) {
+    log_expected.push_back(std::log(value));
+    log2_expected.push_back(std::log2(value));
+    log10_expected.push_back(std::log10(value));
+  }
+  check_values(log(x, stream), log_expected, stream, 1e-6);
+  check_values(log2(x, stream), log2_expected, stream, 1e-6);
+  check_values(log10(x, stream), log10_expected, stream, 1e-6);
+
+  // Upstream anchors: log2(1024) is exactly 10, log10(1000) is exactly 3.
+  check_values(
+      log2(array(1024.0f), stream), {10.0f}, stream, 1e-6);
+  check_values(
+      log10(array(1000.0f), stream), {3.0f}, stream, 1e-6);
+}
+
 TEST_CASE("FP16 casts and elementwise primitives use Vulkan compute") {
   if (!compute_available()) {
     return;
@@ -334,6 +365,88 @@ TEST_CASE("suffix Sum and Max reductions use Vulkan compute") {
       max(x, std::vector<int>{2}, false, stream),
       {2.0f, 4.0f, 6.0f, 8.0f},
       stream);
+}
+
+TEST_CASE("elementwise on broadcast-expanded views matches host values") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  // Upstream test_reduce.py::test_expand_sums shapes: (5,1,5,1,5,1)
+  // broadcast with axes {1,3,5} grown to 5. Broadcast views keep
+  // contiguous=true while data_size < size, so every dense consumer must
+  // stride-walk the view and write dense output storage.
+  std::vector<float> base_values(125);
+  std::iota(base_values.begin(), base_values.end(), 1.0f);
+  array base(base_values.begin(), Shape{5, 1, 5, 1, 5, 1}, float32);
+  array view = broadcast_to(base, Shape{5, 5, 5, 1, 5, 1}, stream);
+
+  std::vector<float> scaled_expected;
+  for (int a = 0; a < 5; ++a) {
+    for (int b = 0; b < 5; ++b) {
+      for (int c = 0; c < 5; ++c) {
+        for (int e = 0; e < 5; ++e) {
+          scaled_expected.push_back(base_values[a * 25 + c * 5 + e] / 1000.0f);
+        }
+      }
+    }
+  }
+  // The exact upstream failing expression: sum over the expanded-axis
+  // size-1 axes is a graph no-op returning the view, and the divide
+  // consumed it as dense (470/625 elements wrong before the fix).
+  check_values(
+      divide(sum(view, std::vector<int>{3}, false, stream),
+             array(1000.0f),
+             stream),
+      scaled_expected,
+      stream,
+      1e-6);
+  check_values(
+      divide(sum(view, std::vector<int>{5}, false, stream),
+             array(1000.0f),
+             stream),
+      scaled_expected,
+      stream,
+      1e-6);
+  check_values(
+      divide(sum(view, std::vector<int>{3, 5}, false, stream),
+             array(1000.0f),
+             stream),
+      scaled_expected,
+      stream,
+      1e-6);
+  // The view straight into elementwise, no reduction on top.
+  check_values(divide(view, array(1000.0f), stream), scaled_expected, stream, 1e-6);
+
+  // A scalar broadcast view through a unary op: output must be dense,
+  // not a mirror of the one-element source buffer.
+  array scalar_view =
+      broadcast_to(array(2.0f), Shape{4}, stream);
+  check_values(
+      exp(scalar_view, stream),
+      {std::exp(2.0f),
+       std::exp(2.0f),
+       std::exp(2.0f),
+       std::exp(2.0f)},
+      stream,
+      1e-5);
+
+  // The int elementwise twin shares the output-data setup.
+  std::vector<int32_t> int_base_values(5);
+  std::iota(int_base_values.begin(), int_base_values.end(), 1);
+  array int_base(int_base_values.begin(), Shape{5, 1}, int32);
+  array int_view = broadcast_to(int_base, Shape{5, 5}, stream);
+  check_int32_values(
+      subtract(int_view, array(1, int32), stream),
+      {0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 4, 4, 4,
+       4, 4},
+      stream);
+
+  // A real reduce over the non-row-contiguous view stays a named error,
+  // never a silent wrong value.
+  CHECK(
+      evaluation_error(sum(view, std::vector<int>{0}, false, stream))
+          .find("non-contiguous Sum") != std::string::npos);
 }
 
 TEST_CASE("compute indexing stays inside Vulkan and uint32 limits") {

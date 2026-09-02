@@ -4,9 +4,10 @@ Question: what is the TRUE coverage of the omarchy (Honeykrisp Vulkan) backend
 when measured by upstream MLX's own test suites, not our hand-written tests?
 
 Answer in one line: the upstream C++ suite ran 251 test cases — 62 passed,
-189 failed. Exactly ONE case failed on wrong values (log2/log10 compute the
-natural log). Everything else failed on a named `[omarchy] ... is not
-implemented` error, on CPU-backend absence, on out-of-scope modules, or on a
+189 failed — and exactly ONE C++ case failed on wrong values (log2/log10
+compute the natural log; a second python-only wrong-value defect, D2, is
+below). Everything else failed on a named `[omarchy] ... is not implemented`
+error, on CPU-backend absence, on out-of-scope modules, or on a
 process-killing crash. Python numbers below.
 
 ## How the numbers were produced (repeatable)
@@ -149,7 +150,27 @@ are silently wrong.**
   `mx.log2(mx.array(1024.0)).item()` = 6.931471824645996;
   `mx.log10(mx.array(1000.0)).item()` = 6.907755374908447.
 - Impact: silent wrong numbers for any log2/log10 user. Not caught by our
-  generated compatibility matrix.
+  generated compatibility matrix. Root cause: upstream log2/log10 are the
+  Log primitive with Log::Base two/ten (mlx/ops.cpp:3370,3382); the
+  backend maps OMARCHY_UNARY(Log, LogOperation) (primitives.cpp:1220) and
+  the shader does `value = log(lhs)` (shaders/elementwise.comp:137) — the
+  base never reaches the kernel.
+
+**D2. `mx.sum` over an expanded (broadcast) axis returns silently wrong
+values. No named error for the failing layouts; 11 upstream python subtests
+fail on values.**
+
+- Found in: test_reduce.py::test_expand_sums (11 AssertionError subTests).
+- Python repro (venv-pytest, seed 7):
+  `x = mx.array(np.random.randn(5,1,5,1,5,1).astype(np.float32))`,
+  `y = mx.broadcast_to(x, (5,5,5,1,5,1))`, `mx.sum(y, axis=3)` compared to
+  `np.sum(broadcast, axis=3)`: 470/625 elements differ, max diff 3.45e-3
+  vs atol 1e-4, no NaN. Failing combos include axis (3,), (5,), (3,5).
+  Deterministic.
+- Note: other expanded layouts ARE refused cleanly — e.g. sum over axis 1
+  of a (5,5,5) broadcast raises
+  `[omarchy] non-contiguous Sum is not implemented` — so the guard exists
+  but does not catch the layouts above, which compute wrong numbers instead.
 
 ### Non-value contract divergences (NOT (d); listed for honesty)
 
@@ -186,12 +207,118 @@ Values are correct in all of these; view metadata semantics differ.
 - C3. `mx.save('<file>.npy', mx.zeros((0,)))` segfaults (rc 139). Repro'd
   standalone in the venv. Truncates upstream test_load.py.
 
-## Python suite (upstream python/tests, pytest per file)
+### Python results (33 upstream files; distributed files excluded by scope)
 
-PY_TABLE
+| file | executed | passed | failed | skipped | crash-excluded |
+|---|---|---|---|---|---|
+| test_array.py | 200 | 164 | 36 | 18 | 6 |
+| test_autograd.py | 53 | 14 | 39 | 1 | 0 |
+| test_bf16.py | 35 | 34 | 1 | 2 | 2 |
+| test_blas.py | 970 | 955 | 15 | 0 | 8 |
+| test_compile.py | 23 | 5 | 18 | 0 | 1 |
+| test_constants.py | 3 | 2 | 1 | 0 | 0 |
+| test_conv.py | 10 | 1 | 9 | 3 | 1 |
+| test_conv_transpose.py | 0 | 0 | 0 | 10 | 0 |
+| test_device.py | 10 | 4 | 6 | 0 | 0 |
+| test_double.py | 11 | 1 | 10 | 0 | 0 |
+| test_einsum.py | 4 | 4 | 0 | 0 | 7 |
+| test_eval.py | 14 | 4 | 10 | 1 | 0 |
+| test_export_import.py | 28 | 7 | 21 | 0 | 0 |
+| test_fast.py | 25 | 3 | 22 | 6 | 0 |
+| test_fast_sdpa.py | 486 | 7 | 479 | 3 | 0 |
+| test_fft.py | 0 | 0 | 0 | 0 | 1 |
+| test_graph.py | 1 | 1 | 0 | 0 | 0 |
+| test_init.py | 54 | 37 | 17 | 0 | 0 |
+| test_linalg.py | 15 | 0 | 15 | 0 | 3 |
+| test_load.py | 185 | 14 | 171 | 0 | 1 |
+| test_losses.py | 14 | 2 | 12 | 0 | 0 |
+| test_memory.py | 2 | 2 | 0 | 1 | 0 |
+| test_nn.py | 66 | 35 | 31 | 1 | 5 |
+| test_ops.py | 238 | 85 | 153 | 2 | 34 |
+| test_optimizers.py | 25 | 7 | 18 | 1 | 0 |
+| test_quantized.py | 3062 | 165 | 2897 | 1 | 0 |
+| test_random.py | 14 | 2 | 12 | 0 | 0 |
+| test_reduce.py | 4863 | 156 | 4707 | 0 | 3 |
+| test_threads.py | 2 | 1 | 1 | 0 | 0 |
+| test_tree.py | 6 | 4 | 2 | 0 | 0 |
+| test_upsample.py | 12 | 2 | 10 | 4 | 0 |
+| test_vmap.py | 65 | 9 | 56 | 0 | 0 |
+| test_zero_copy.py | 4 | 3 | 1 | 2 | 0 |
+| **total** | **10500** | **1730** | **8770** | **56** | **72** |
 
-PY_NARRATIVE
+- test_ops.py ran under an extended 60-attempt recovery (the in-suite cap
+  was 15 at run time and exhausted first); see py/test_ops.recovered.txt.
+  34 of its tests crash the interpreter and are excluded from the executed
+  count.
+- Total outcomes: 10500 executed + 56 skipped + 72 crash-excluded. Every
+  crash-excluded test is a C2-family interpreter abort, except one C3
+  segfault (test_load empty-save) and one test_fft.py first-test abort
+  (module out of scope anyway).
 
-## Honest coverage statement (README-ready)
+### Python failure kinds
 
-README_PARAGRAPH
+8,615 junit failure messages parsed — 98.2% of the 8,770 counted failures;
+the rest are retry-attempt bookkeeping in crash-heavy files.
+
+| kind | count | bucket |
+|---|---|---|
+| `RuntimeError: [omarchy] ... is not implemented` | 8,543 | (a) |
+| `IndexError: vector::_M_range_check` (cpu stream table) | 51 | (b) |
+| `AssertionError` | 14 | see breakdown |
+| `UnboundLocalError: custom_kernel` (upstream harness artifact) | 6 | n/a |
+| `RuntimeError: Abs has no CPU implementation` | 1 | (b) |
+
+The python named-gap histogram is dominated by three items:
+
+- Sum on INTEGER dtypes — 4,011 asserts (dtype=int32 and friends; float
+  sums work). This alone is most of test_reduce.py's 4,707 failures.
+- ErfInv — 3,085 asserts (dtype=float32). This single primitive blocks the
+  whole test_quantized.py calibration path (2,897 failures).
+- non-contiguous Sum — 429 asserts (named error, correct refusal).
+
+Then: Abs 225, Add dtype 103, Less 89, Equal dtype 78, Max dtype 73,
+Prod dtype 72, Min dtype 72, And dtype 67, non-zero scalar fill 67,
+Floor 20, ArgMin 9, dtype converting copy 8, Scatter 7, and smaller
+counts. mx.array_equal hits the same bool And/Equal machinery gap as C++,
+so python value checks are masked in exactly the same way.
+
+The 14 AssertionErrors:
+
+- 11 are defect **D2** below (test_reduce.py::test_expand_sums subTests —
+  wrong values).
+- 2 are device-info metadata gaps: test_device_count reports `0 != 1`,
+  test_device_info_cpu finds no 'device_name' key.
+- 1 is the scheduler cross-thread stream contract (C1 family):
+  test_threads.py::test_threadlocal_stream expects RuntimeError inside
+  another thread and never sees it.
+
+## README-ready coverage statement
+
+Upstream MLX's own test suites ran against the omarchy backend (Mesa
+lavapipe, MLX_OMARCHY_ALLOW_NON_APPLE=1) on 2026-09-01. The C++ suite
+executed 251 cases: 62 passed, 189 failed. The python suite executed 10,500
+cases: 1,730 passed, 8,770 failed, 56 skipped, plus 72 tests excluded
+because they crash the interpreter. Of all failures, exactly one C++ case
+and 11 python subtests failed on wrong VALUES; everything else failed on a
+named `[omarchy] ... is not implemented` error (integer-dtype Sum, ErfInv,
+Abs, Scatter, bool And/Equal being the largest), on the deliberately absent
+CPU backend, or in modules the roadmap excludes (fft, linalg,
+export/import). Two caveats keep this honest: the suite's own
+array_equal comparison cannot run (bool And/Equal gap), so most passing
+values are unverified rather than proven, and 72 python tests abort the
+interpreter because backend errors cross the numpy conversion boundary as
+std::terminate instead of returning a Python exception. Full breakdown,
+reproduction commands, and raw logs: receipts/2026-09-01-upstream-suite-coverage.md;
+re-run with tools/run-upstream-suite.sh.
+
+## Addendum: known measurement caveats
+
+- Host load averaged 60+ during the runs. A parallel probe on this host
+  showed llvmpipe can crash value_and_grad nondeterministically under that
+  load, so a SIGSEGV seen in-suite should be treated as probable host
+  noise rather than a backend defect. The three crashes reported above
+  (C1, C2, C3) are exempt: each reproduced in isolation, deterministically
+  (C3: 3/3 runs), away from the suite.
+- The wheel predates the working tree's bf16-tape refusal (see How).
+- .work/build-upstream remains in place (64 MB) so the tests binary can be
+  re-run; tools/run-upstream-suite.sh rebuilds it identically if removed.

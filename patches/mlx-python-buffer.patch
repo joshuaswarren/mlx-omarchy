@@ -1,0 +1,86 @@
+--- a/python/src/buffer.h
++++ b/python/src/buffer.h
+@@ -86,37 +86,56 @@
+ 
+ extern "C" inline int getbuffer(PyObject* obj, Py_buffer* view, int flags) {
+   std::memset(view, 0, sizeof(Py_buffer));
+-  auto a = nb::cast<mx::array>(nb::handle(obj));
++  buffer_info* info = nullptr;
++  try {
++    auto a = nb::cast<mx::array>(nb::handle(obj));
+ 
+-  {
+-    nb::gil_scoped_release nogil;
+-    a.eval();
+-  }
++    {
++      nb::gil_scoped_release nogil;
++      a.eval();
++    }
+ 
+-  std::vector<Py_ssize_t> shape(a.shape().begin(), a.shape().end());
+-  std::vector<Py_ssize_t> strides(a.strides().begin(), a.strides().end());
+-  for (auto& s : strides) {
+-    s *= a.itemsize();
+-  }
+-  buffer_info* info =
+-      new buffer_info(buffer_format(a), std::move(shape), std::move(strides));
++    std::vector<Py_ssize_t> shape(a.shape().begin(), a.shape().end());
++    std::vector<Py_ssize_t> strides(a.strides().begin(), a.strides().end());
++    for (auto& s : strides) {
++      s *= a.itemsize();
++    }
++    info =
++        new buffer_info(buffer_format(a), std::move(shape), std::move(strides));
+ 
+-  view->obj = obj;
+-  view->ndim = a.ndim();
+-  view->internal = info;
+-  view->buf = a.data<void>();
+-  view->itemsize = a.itemsize();
+-  view->len = a.nbytes();
+-  view->readonly = false;
+-  if ((flags & PyBUF_FORMAT) == PyBUF_FORMAT) {
+-    view->format = const_cast<char*>(info->format.c_str());
+-  }
+-  if ((flags & PyBUF_STRIDES) == PyBUF_STRIDES) {
+-    view->strides = info->strides.data();
+-    view->shape = info->shape.data();
++    view->obj = obj;
++    view->ndim = a.ndim();
++    view->internal = info;
++    view->buf = a.data<void>();
++    view->itemsize = a.itemsize();
++    view->len = a.nbytes();
++    view->readonly = false;
++    if ((flags & PyBUF_FORMAT) == PyBUF_FORMAT) {
++      view->format = const_cast<char*>(info->format.c_str());
++    }
++    if ((flags & PyBUF_STRIDES) == PyBUF_STRIDES) {
++      view->strides = info->strides.data();
++      view->shape = info->shape.data();
++    }
++    Py_INCREF(view->obj);
++    return 0;
++  } catch (const std::exception& e) {
++    // getbuffer runs as a C callback (PEP 3118 bf_getbuffer slot). A C++
++    // exception escaping it calls std::terminate and kills the interpreter,
++    // so translate a backend named error into a Python exception and fail
++    // the buffer request instead.
++    delete info;
++    if (!PyErr_Occurred()) {
++      PyErr_SetString(PyExc_RuntimeError, e.what());
++    }
++    return -1;
++  } catch (...) {
++    delete info;
++    if (!PyErr_Occurred()) {
++      PyErr_SetString(PyExc_RuntimeError, "Unknown error during buffer export");
++    }
++    return -1;
+   }
+-  Py_INCREF(view->obj);
+-  return 0;
+ }
+ 
+ extern "C" inline void releasebuffer(PyObject*, Py_buffer* view) {
