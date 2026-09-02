@@ -333,6 +333,18 @@ through `buffer_size()`.
 `copy_gpu` now always sets the output buffer, which matches the upstream
 `set_copy_output_data` contract; `malloc(0)` returns a valid empty buffer.
 
+`mx.save` writes only the `.npy` format. It appends `.npy` to any name that
+lacks the suffix and never dispatches on the extension, so
+`mx.save("x.safetensors", a)` writes `x.safetensors.npy` for arrays of any
+size. A later `mx.load("x.safetensors")` then fails with
+`[load_safetensors] Failed to open file`. This is upstream behavior, not an
+omarchy defect: the save binding is byte-identical to pinned upstream
+`1f8e74e`, and upstream `main` carries the same code (2026-09-01). The
+correct API for the safetensors format is `mx.save_safetensors("x.safetensors", {"w": a})`,
+which also round-trips zero-size arrays. A silent-rename fix would diverge
+from upstream, so none was made. The upstream report draft is
+[`upstream-report-mx-save-npy-suffix.md`](upstream-report-mx-save-npy-suffix.md).
+
 Evaluating a stream created on another thread raises the upstream
 `std::runtime_error` contract: `There is no Stream(gpu, N) in current
 thread.`.
