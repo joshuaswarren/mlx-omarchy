@@ -16,7 +16,7 @@ So the goal here is bigger than a port. Run the full MLX stack, gradients includ
 
 ## Where it actually stands
 
-**Coverage: 30.1% of MLX primitives (40 of 133).** A primitive counts only when the backend implements or composes it and a test anchors it. The full breakdown is generated from source into [docs/compatibility-matrix.md](docs/compatibility-matrix.md). It lists the 64 primitives that raise a named error and the 24 with no backend entry. Regenerate it with:
+**Coverage: 80.5% of MLX primitives (107 of 133), up from 30.1% on 2026-09-01.** A primitive counts only when the backend implements or composes it and a test anchors it. The full breakdown is generated from source into [docs/compatibility-matrix.md](docs/compatibility-matrix.md). It lists the 21 primitives that still raise a named error; every upstream primitive now has a backend entry. Regenerate it with:
 
 ```bash
 python3 tools/gen-compat-matrix.py --json-out docs/coverage.json > docs/compatibility-matrix.md
