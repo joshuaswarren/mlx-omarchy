@@ -39,10 +39,12 @@ TEST_CASE("unsupported primitive raises a catchable named error") {
   }
   set_default_device(Device::gpu);
 
-  // Abs used to be the exemplar here; wave 2 implemented it, so the
-  // pin moved to Hadamard, which stays a named rejection until its
-  // wave lands and needs no dtype conversion on the way in.
-  array a = hadamard_transform(array({1.0f, -2.0f, 3.0f, -4.0f}));
+  // This case asserts the CONTRACT, not one primitive. Pinning a specific
+  // unsupported operation goes stale every time a coverage wave implements
+  // it: the pin moved from Abs to Hadamard, then broke again when wave 4
+  // landed Hadamard. Reject on a dtype this backend does not carry, which
+  // stays true, and check the message shape every rejection promises.
+  array a = sum(array({int64_t{1}, int64_t{2}}, int64), false);
   bool caught = false;
   std::string message;
   try {
@@ -52,8 +54,9 @@ TEST_CASE("unsupported primitive raises a catchable named error") {
     message = e.what();
   }
   REQUIRE(caught);
-  CHECK(message.find("[omarchy] Hadamard is not implemented") !=
-        std::string::npos);
+  CHECK(message.find("[omarchy]") != std::string::npos);
+  CHECK(message.find("is not implemented") != std::string::npos);
+  CHECK(message.find("No CPU fallback") != std::string::npos);
 }
 
 TEST_CASE("zero-size array saves and loads round-trip") {

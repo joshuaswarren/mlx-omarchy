@@ -58,6 +58,20 @@
 #include "reduce_bf16.h"
 #include "reduce_f16.h"
 #include "reduce_f32.h"
+#include "hadamard_bf16.h"
+#include "hadamard_f16.h"
+#include "hadamard_f32.h"
+#include "anyall_bf16.h"
+#include "anyall_f16.h"
+#include "anyall_f32.h"
+#include "anyall_i32.h"
+#include "anyall_u32.h"
+#include "anyall_bool.h"
+#include "reduce_general_bf16.h"
+#include "reduce_general_f16.h"
+#include "reduce_general_f32.h"
+#include "reduce_general_i32.h"
+#include "reduce_general_u32.h"
 #include "logsumexp_bf16.h"
 #include "logsumexp_f16.h"
 #include "logsumexp_f32.h"
@@ -74,6 +88,11 @@
 #include "scan_bf16.h"
 #include "scan_f16.h"
 #include "scan_f32.h"
+#include "scan_general_bf16.h"
+#include "scan_general_f16.h"
+#include "scan_general_f32.h"
+#include "scan_general_i32.h"
+#include "scan_general_u32.h"
 #include "searchsorted_bf16.h"
 #include "searchsorted_f16.h"
 #include "searchsorted_f32.h"
@@ -86,8 +105,34 @@
 #include "dequant_f32.h"
 #include "dequant_f16.h"
 #include "conv_bf16.h"
+#include "clear_u32.h"
+#include "gather_axis_bf16.h"
+#include "gather_axis_f16.h"
+#include "gather_axis_u32.h"
+#include "masked_scatter_bf16.h"
+#include "masked_scatter_f16.h"
+#include "masked_scatter_u32.h"
+#include "scatter_axis_bf16.h"
+#include "scatter_axis_f16.h"
+#include "scatter_axis_u32.h"
+#include "scatter_bf16.h"
+#include "scatter_f16.h"
+#include "scatter_u32.h"
 #include "conv_f16.h"
 #include "conv_f32.h"
+#include "block_mask_f32.h"
+#include "gather_mm_f32.h"
+#include "gather_mm_f16.h"
+#include "gather_mm_bf16.h"
+#include "segmented_mm_f32.h"
+#include "segmented_mm_f16.h"
+#include "segmented_mm_bf16.h"
+#include "gather_qmm_f32.h"
+#include "gather_qmm_f16.h"
+#include "gather_qmm_bf16.h"
+#include "gather_qmm_nb_f32.h"
+#include "gather_qmm_nb_f16.h"
+#include "gather_qmm_nb_bf16.h"
 
 namespace mlx::core::omarchy {
 
@@ -212,6 +257,44 @@ ShaderBytes shader_bytes(ComputeKernel kernel) {
       return {searchsorted_i32, searchsorted_i32_size};
     case ComputeKernel::SearchSortedU32:
       return {searchsorted_u32, searchsorted_u32_size};
+    case ComputeKernel::ReduceGeneralF32:
+      return {reduce_general_f32, reduce_general_f32_size};
+    case ComputeKernel::ReduceGeneralF16:
+      return {reduce_general_f16, reduce_general_f16_size};
+    case ComputeKernel::ReduceGeneralBF16:
+      return {reduce_general_bf16, reduce_general_bf16_size};
+    case ComputeKernel::ReduceGeneralI32:
+      return {reduce_general_i32, reduce_general_i32_size};
+    case ComputeKernel::ReduceGeneralU32:
+      return {reduce_general_u32, reduce_general_u32_size};
+    case ComputeKernel::AnyAllF32:
+      return {anyall_f32, anyall_f32_size};
+    case ComputeKernel::AnyAllF16:
+      return {anyall_f16, anyall_f16_size};
+    case ComputeKernel::AnyAllBF16:
+      return {anyall_bf16, anyall_bf16_size};
+    case ComputeKernel::AnyAllI32:
+      return {anyall_i32, anyall_i32_size};
+    case ComputeKernel::AnyAllU32:
+      return {anyall_u32, anyall_u32_size};
+    case ComputeKernel::AnyAllBool:
+      return {anyall_bool, anyall_bool_size};
+    case ComputeKernel::ScanGeneralF32:
+      return {scan_general_f32, scan_general_f32_size};
+    case ComputeKernel::ScanGeneralF16:
+      return {scan_general_f16, scan_general_f16_size};
+    case ComputeKernel::ScanGeneralBF16:
+      return {scan_general_bf16, scan_general_bf16_size};
+    case ComputeKernel::ScanGeneralI32:
+      return {scan_general_i32, scan_general_i32_size};
+    case ComputeKernel::ScanGeneralU32:
+      return {scan_general_u32, scan_general_u32_size};
+    case ComputeKernel::HadamardF32:
+      return {hadamard_f32, hadamard_f32_size};
+    case ComputeKernel::HadamardF16:
+      return {hadamard_f16, hadamard_f16_size};
+    case ComputeKernel::HadamardBF16:
+      return {hadamard_bf16, hadamard_bf16_size};
     case ComputeKernel::GatherF32:
       return {gather_f32, gather_f32_size};
     case ComputeKernel::GatherF16:
@@ -238,6 +321,32 @@ ShaderBytes shader_bytes(ComputeKernel kernel) {
       return {random_bits_u32, random_bits_u32_size};
     case ComputeKernel::QmmF32:
       return {qmm_f32, qmm_f32_size};
+    case ComputeKernel::GatherAxisU32:
+      return {gather_axis_u32, gather_axis_u32_size};
+    case ComputeKernel::GatherAxisF16:
+      return {gather_axis_f16, gather_axis_f16_size};
+    case ComputeKernel::GatherAxisBF16:
+      return {gather_axis_bf16, gather_axis_bf16_size};
+    case ComputeKernel::ScatterU32:
+      return {scatter_u32, scatter_u32_size};
+    case ComputeKernel::ScatterF16:
+      return {scatter_f16, scatter_f16_size};
+    case ComputeKernel::ScatterBF16:
+      return {scatter_bf16, scatter_bf16_size};
+    case ComputeKernel::ScatterAxisU32:
+      return {scatter_axis_u32, scatter_axis_u32_size};
+    case ComputeKernel::ScatterAxisF16:
+      return {scatter_axis_f16, scatter_axis_f16_size};
+    case ComputeKernel::ScatterAxisBF16:
+      return {scatter_axis_bf16, scatter_axis_bf16_size};
+    case ComputeKernel::MaskedScatterU32:
+      return {masked_scatter_u32, masked_scatter_u32_size};
+    case ComputeKernel::MaskedScatterF16:
+      return {masked_scatter_f16, masked_scatter_f16_size};
+    case ComputeKernel::MaskedScatterBF16:
+      return {masked_scatter_bf16, masked_scatter_bf16_size};
+    case ComputeKernel::ClearU32:
+      return {clear_u32, clear_u32_size};
     case ComputeKernel::QmmF16:
       return {qmm_f16, qmm_f16_size};
     case ComputeKernel::QmmBF16:
@@ -258,6 +367,32 @@ ShaderBytes shader_bytes(ComputeKernel kernel) {
       return {sort_f16, sort_f16_size};
     case ComputeKernel::SortBF16:
       return {sort_bf16, sort_bf16_size};
+    case ComputeKernel::BlockMaskF32:
+      return {block_mask_f32, block_mask_f32_size};
+    case ComputeKernel::GatherMmF32:
+      return {gather_mm_f32, gather_mm_f32_size};
+    case ComputeKernel::GatherMmF16:
+      return {gather_mm_f16, gather_mm_f16_size};
+    case ComputeKernel::GatherMmBF16:
+      return {gather_mm_bf16, gather_mm_bf16_size};
+    case ComputeKernel::SegmentedMmF32:
+      return {segmented_mm_f32, segmented_mm_f32_size};
+    case ComputeKernel::SegmentedMmF16:
+      return {segmented_mm_f16, segmented_mm_f16_size};
+    case ComputeKernel::SegmentedMmBF16:
+      return {segmented_mm_bf16, segmented_mm_bf16_size};
+    case ComputeKernel::GatherQmmF32:
+      return {gather_qmm_f32, gather_qmm_f32_size};
+    case ComputeKernel::GatherQmmF16:
+      return {gather_qmm_f16, gather_qmm_f16_size};
+    case ComputeKernel::GatherQmmBF16:
+      return {gather_qmm_bf16, gather_qmm_bf16_size};
+    case ComputeKernel::GatherQmmNbF32:
+      return {gather_qmm_nb_f32, gather_qmm_nb_f32_size};
+    case ComputeKernel::GatherQmmNbF16:
+      return {gather_qmm_nb_f16, gather_qmm_nb_f16_size};
+    case ComputeKernel::GatherQmmNbBF16:
+      return {gather_qmm_nb_bf16, gather_qmm_nb_bf16_size};
     case ComputeKernel::Count:
       break;
   }
