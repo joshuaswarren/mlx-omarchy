@@ -882,7 +882,12 @@ TEST_CASE("gather qmm gathers experts with scales and biases") {
                         host.biases.end());
     }
     std::vector<std::vector<float>> x_batches;
-    std::vector<float> x_all;
+    // uint32, not float: these are raw packed code words. Held in a
+    // float vector, every word >= 2^24 is silently rounded by the
+    // element conversion (low eight bits destroyed, rounding carry into
+    // bit 8), and the uint32 array constructor copies the rounded
+    // values verbatim - the kernel then decodes wrong codes.
+    std::vector<uint32_t> w_all;
     for (int b = 0; b < x_batch; ++b) {
       std::vector<float> matrix(static_cast<size_t>(m) * k);
       for (auto& value : matrix) {
