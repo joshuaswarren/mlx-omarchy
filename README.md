@@ -67,6 +67,7 @@ One caveat on the macOS column. That slice runs macOS 13.7.8. MLX dropped macOS 
 
 Honest list. Each one fails loudly with a named error rather than returning wrong numbers, except where noted.
 
+- **v0.3.0-alpha.1 ships known silent wrong-value defects.** Ten operations, including attention at head dims outside {64, 128}, return confidently wrong numbers and raise nothing. Watching for errors cannot catch them. Item-by-item repros and affected-use groups sit in [docs/known-defects-v0.3.0-alpha.1.md](docs/known-defects-v0.3.0-alpha.1.md). Fixes are in progress.
 - **bfloat16 through `mx.compile` is refused.** The tape corrupts bf16 fragments nondeterministically on Honeykrisp and the root cause is not found yet. Run bf16 with `MLX_DISABLE_COMPILE=1`; fp16 and 4-bit are unaffected. See [docs/compatibility.md](docs/compatibility.md).
 - Top-k sampling needs argpartition over vocabulary-width rows; the bitonic sort caps at 1024 elements. Temperature sampling works.
 - No training. Optimizers, LoRA, and full backward coverage are untested.
