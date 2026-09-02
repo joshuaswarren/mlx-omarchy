@@ -1178,19 +1178,22 @@ TEST_CASE("svd rejects complex64 and float16") {
       half_error);
 }
 
-TEST_CASE("eig stays gated with the named error") {
+TEST_CASE("eig values path moved to test_eig_ops.cpp; gate stays dtype-only") {
   if (!compute_available()) {
     return;
   }
+  // Eig is implemented for float32 (LinalgEigF32). The remaining refusal
+  // is the dtype gate; its value tests live in test_eig_ops.cpp.
   auto stream = gpu_stream();
-  std::mt19937 gen(19);
-  int n = 3;
-  HostMatrix a = host_diag_dominant(gen, n);
-  array device = device_matrix(stream, a, Shape{n, n});
-  auto values = linalg::eigvals(device, stream);
-  auto error = evaluation_error(values);
+  array real = astype(
+      array({1.0f, 0.0f, 0.0f, 1.0f}, Shape{2, 2}, float32),
+      float32,
+      stream);
+  array complex_input = astype(real, complex64, stream);
+  auto error = evaluation_error(linalg::eigvals(complex_input, stream));
   CHECK_MESSAGE(
-      contains_all(error, {"[omarchy] Eig is not implemented", "No CPU fallback"}),
+      contains_all(
+          error, {"[omarchy] Eig dtype is not implemented", "No CPU fallback"}),
       "unexpected error: ",
       error);
 }
