@@ -1,3 +1,0 @@
-[console_scripts]
-mlx.distributed_config = mlx._distributed_utils.config:main
-mlx.launch = mlx._distributed_utils.launch:main
