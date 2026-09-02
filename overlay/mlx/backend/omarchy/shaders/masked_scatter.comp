@@ -107,6 +107,12 @@ void main() {
       uint byte = (idx == 0u) ? b0 : (idx == 1u) ? b1 : (idx == 2u) ? b2 : b3;
       bit = byte != 0u ? 1u : 0u;
     }
+    // Seed the scan input for this chunk; every lane writes its own
+    // slot (bit is 0 for non-live positions) so the Hillis-Steele scan
+    // below never runs over uninitialized shared memory. Without this
+    // seed the scan returns zeros, every rank underflows past src_len,
+    // and no scattered value lands on any device.
+    s_scan[lane] = bit;
     barrier();
     // Inclusive Hillis-Steele scan over the chunk.
     for (uint offset = 1u; offset < 256u; offset <<= 1u) {

@@ -257,6 +257,3 @@ target_link_options(omarchy_eq_math_tests PRIVATE ${SANITIZER_LINK_FLAGS})
 
 doctest_discover_tests(omarchy_eq_math_tests)
 add_test(NAME omarchy_eq_math_tests COMMAND omarchy_eq_math_tests)
-add_executable(omarchy_probe_bool
-               ${CMAKE_CURRENT_SOURCE_DIR}/probe_bool.cpp)
-target_link_libraries(omarchy_probe_bool PRIVATE mlx)
