@@ -19,6 +19,14 @@ uint16_t bf16_store(float value) {
   return uint16_t((bits + 0x7fffu + ((bits >> 16) & 1u)) >> 16);
 }
 #define STORE_VALUE(f) bf16_store(f)
+#elif defined(USE_COMPLEX64)
+// Complex64 fill: one element is a vec2 (re, im). The host packs the
+// scalar's real part into alpha and the imaginary part into beta; a
+// zero scalar never reaches this branch because copy.cpp byte-fills
+// it with vkCmdFillBuffer instead.
+#define STORAGE_TYPE vec2
+#define LOAD_VALUE(x) (x)
+#define STORE_VALUE(f) vec2(params.alpha, params.beta)
 #else
 #define STORAGE_TYPE float
 #define LOAD_VALUE(x) float(x)

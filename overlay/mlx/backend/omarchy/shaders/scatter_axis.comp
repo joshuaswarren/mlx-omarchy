@@ -8,10 +8,19 @@
 //   1 NONE pass 2: the winning slot copies its update, so duplicate
 //     indices resolve to the highest slot exactly like the CPU loop;
 //     deterministic for every dtype
-//   6 SUM: atomicAdd of the update word; deterministic for int32 and
-//     uint32 (integer addition is associative). Float Sum has no
-//     deterministic implementation here and is rejected by the host
-//     before any dispatch.
+//   6 SUM: USE_U32 atomicAdd of the update word; deterministic for
+//     int32 and uint32 (integer addition is associative). USE_BOOL
+//     atomicOr of the canonical update bit into scratch (saturating,
+//     so exact). USE_FADD hardware fp32 atomicAdd into the fp32
+//     scratch: duplicates accumulate in device order, matching
+//     upstream Metal's nondeterministic float add, and the fp32
+//     accumulation rounds once at the op-12 finalize.
+//  11 FADD Sum pass: fp32 atomicAdd of the decoded update into the
+//     fp32 per-element scratch.
+//  12 FADD Sum finalize (one thread per output element): store the
+//     fp32 accumulation converted once to the output dtype.
+//  14 BOOL Sum/Max finalize: write the OR bit into the packed byte
+//     with a commuting atomicAnd/Or pair.
 // An index outside [0, src axis extent) after negative wrap skips the
 // slot; upstream leaves such writes undefined.
 //
@@ -24,18 +33,38 @@
 
 #version 460
 
+#if defined(USE_FADD)
+#extension GL_EXT_shader_atomic_float : require
+#endif
+
 #ifdef USE_FP16
 #extension GL_EXT_shader_16bit_storage : require
 #extension GL_EXT_shader_explicit_arithmetic_types_float16 : require
 #define STORAGE_TYPE float16_t
+#define LOAD_VALUE(x) float(x)
+#define STORE_VALUE(f) STORAGE_TYPE(f)
 #elif defined(USE_BF16)
 #extension GL_EXT_shader_16bit_storage : require
 #extension GL_EXT_shader_explicit_arithmetic_types_int16 : require
 #define STORAGE_TYPE uint16_t
+#define LOAD_VALUE(x) uintBitsToFloat(uint(x) << 16u)
+uint16_t bf16_store(float value) {
+  uint bits = floatBitsToUint(value);
+  if (isnan(value)) {
+    return uint16_t((bits >> 16) | 0x40u);
+  }
+  return uint16_t((bits + 0x7fffu + ((bits >> 16) & 1u)) >> 16);
+}
+#define STORE_VALUE(f) bf16_store(f)
 #elif defined(USE_U32)
+#define STORAGE_TYPE uint
+#elif defined(USE_BOOL)
+// Packed word transport: uint32 words, 4 bools per word.
 #define STORAGE_TYPE uint
 #else
 #define STORAGE_TYPE float
+#define LOAD_VALUE(x) (x)
+#define STORE_VALUE(f) (f)
 #endif
 
 layout(local_size_x = 256) in;
@@ -52,6 +81,13 @@ layout(set = 0, binding = 2, std430) readonly buffer Updates {
 layout(set = 0, binding = 3, std430) buffer Scratch {
   uint values[];
 } scratch_data;
+#if defined(USE_FADD)
+// fp32 view of the accumulation scratch, aliased on binding 3; the
+// uint view stays for the rank phases and bool bit accumulation.
+layout(set = 0, binding = 3, std430) buffer ScratchF {
+  float values[];
+} scratch_f_data;
+#endif
 
 layout(push_constant) uniform Params {
   uint count;
@@ -84,6 +120,26 @@ void main() {
   uint m_axis = params.aux_size;
   uint post_size = params.output_size;
   while (t < params.count) {
+    if (op == 12u) {
+#ifdef USE_FADD
+      // FADD Sum finalize: one thread per output element stores the
+      // fp32 accumulation converted once to the output dtype.
+      out_data.values[params.output_offset + t] =
+          STORE_VALUE(scratch_f_data.values[params.output_offset + t]);
+#endif
+    } else if (op == 14u) {
+#ifdef USE_BOOL
+      // Bool Sum/Max finalize: write the accumulated OR bit into the
+      // packed byte; the clear/set atomic pair touches disjoint bits,
+      // so concurrent byte writes to one word commute.
+      uint element = params.output_offset + t;
+      uint lane = (element & 3u) * 8u;
+      atomicAnd(out_data.values[element >> 2u], ~(1u << lane));
+      atomicOr(
+          out_data.values[element >> 2u],
+          (scratch_data.values[element] & 1u) << lane);
+#endif
+    } else {
     // t decomposes as slot * (m_axis * post_size) + ax * post_size +
     // post; the remainder must strip the full slot prefix, not just
     // slot * m_axis, or every slot past the first misreads ax and post.
@@ -135,8 +191,23 @@ void main() {
         atomicMax(scratch_data.values[target], t + 1u);
       } else if (op == 1u) {
         if (scratch_data.values[target] == t + 1u) {
+#ifdef USE_BOOL
+          // Winner writes its packed byte: clear the lane, then set
+          // the canonical update bit; commuting atomics keep sibling
+          // lanes intact.
+          uint ue = params.lhs_offset + upd_elem +
+              ax * params.matrix_n;
+          uint ubyte =
+              (upd_data.values[ue >> 2u] >> ((ue & 3u) * 8u)) & 0xFFu;
+          uint lane1 = (target & 3u) * 8u;
+          atomicAnd(out_data.values[target >> 2u], ~(0xFFu << lane1));
+          atomicOr(
+              out_data.values[target >> 2u],
+              (ubyte != 0u ? 1u : 0u) << lane1);
+#else
           out_data.values[target] = upd_data
               .values[params.lhs_offset + upd_elem + ax * params.matrix_n];
+#endif
         }
 #ifdef USE_U32
       } else if (op == 6u) {
@@ -145,7 +216,32 @@ void main() {
             upd_data
                 .values[params.lhs_offset + upd_elem + ax * params.matrix_n]);
 #endif
+#ifdef USE_BOOL
+      } else if (op == 6u) {
+        // Bool Sum/Max: OR the canonical update bit into the
+        // per-element scratch; saturating, so duplicates are exact.
+        uint ue6 = params.lhs_offset + upd_elem +
+            ax * params.matrix_n;
+        atomicOr(
+            scratch_data.values[target],
+            (upd_data.values[ue6 >> 2u] >> ((ue6 & 3u) * 8u)) != 0u
+                ? 1u
+                : 0u);
+#endif
+#ifdef USE_FADD
+      } else if (op == 11u) {
+        // FADD Sum: hardware fp32 atomicAdd into the fp32 scratch;
+        // duplicates accumulate in device order, matching upstream
+        // Metal's nondeterministic float add, rounded once at the
+        // op-12 finalize.
+        atomicAdd(
+            scratch_f_data.values[target],
+            LOAD_VALUE(upd_data
+                           .values[params.lhs_offset + upd_elem +
+                                   ax * params.matrix_n]));
+#endif
       }
+    }
     }
     if (params.count - t <= stride) {
       break;

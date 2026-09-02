@@ -116,7 +116,6 @@ void main() {
   uint group_size = params.reduce_size;
   uint pack_factor = 32u / bits;
   uint value_mask = (1u << bits) - 1u;
-  uint words_per_group = group_size / pack_factor;
   uint words_per_row = params.matrix_k / pack_factor;
   uint groups_per_row = params.matrix_k / group_size;
   uint matrix = params.matrix_m * params.matrix_n;
@@ -145,10 +144,22 @@ void main() {
     uint w_base = params.rhs_offset + rhs * w_row_words +
         column * words_per_row;
     uint scale_base = rhs * scale_row_words + column * groups_per_row;
+    // Flat k loop with every index derived from k. A nested group/word/
+    // lane structure carrying a word_base induction variable miscompiles
+    // on older Lavapipe (Mesa 22.3): the accumulated word offset pairs x
+    // columns with the wrong packed words from the third word of a group
+    // on, silently, for sub-byte codes. Derived indices keep the compiled
+    // form straight-line and identical math everywhere.
     float accumulator = 0.0;
-    uint group = 0u;
-    uint word_base = w_base;
-    for (uint k = 0u; k < params.matrix_k; k += group_size) {
+    for (uint k = 0u; k < params.matrix_k; ++k) {
+      uint group = k / group_size;
+      uint word = input_w.values[w_base + k / pack_factor];
+      uint lane = k - (k / pack_factor) * pack_factor;
+      // bitfieldExtract compiles to OpBitFieldUExtract; the equivalent
+      // shift+mask misdecodes lanes 1..2 (reading the next lane's nibble,
+      // lane 0 reading zero) on llvmpipe Mesa 22.3 when the lane comes
+      // from a division-derived index.
+      uint q = bitfieldExtract(word, int(lane * bits), int(bits));
       float scale = decode_param(scale_base * param_bytes +
           group * param_bytes);
       float bias = 0.0;
@@ -158,19 +169,8 @@ void main() {
       bias = decode_param(params.shape[1] + scale_base * param_bytes +
           group * param_bytes);
 #endif
-      ++group;
-      for (uint word_index = 0u; word_index < words_per_group;
-           ++word_index) {
-        uint word = input_w.values[word_base + word_index];
-        uint k_base = k + word_index * pack_factor;
-        for (uint lane = 0u; lane < pack_factor; ++lane) {
-          uint q = (word >> (lane * bits)) & value_mask;
-          float x_value = LOAD_VALUE(
-              input_x.values[x_base + k_base + lane]);
-          accumulator += x_value * (scale * float(q) + bias);
-        }
-      }
-      word_base += words_per_group;
+      float x_value = LOAD_VALUE(input_x.values[x_base + k]);
+      accumulator += x_value * (scale * float(q) + bias);
     }
     output_data.values[params.output_offset + index] =
         STORE_VALUE(accumulator);

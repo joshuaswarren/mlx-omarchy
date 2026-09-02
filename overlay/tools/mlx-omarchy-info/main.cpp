@@ -132,6 +132,14 @@ void print_json(uint32_t index) {
       "storage_buffer_16bit_access",
       caps.storage_buffer_16bit_access ? 1 : 0,
       true);
+  num_field(
+      "max_per_stage_descriptor_storage_buffers",
+      caps.max_per_stage_descriptor_storage_buffers,
+      true);
+  num_field(
+      "max_descriptor_set_storage_buffers",
+      caps.max_descriptor_set_storage_buffers,
+      true);
   num_field("non_apple_dev_override", non_apple ? 1 : 0, true);
   std::cout << "  \"trace\": {\n";
   num_field(
@@ -176,6 +184,9 @@ void print_text(uint32_t index) {
             << " B\n";
   std::cout << "  max wg invocations:"
             << caps.max_compute_work_group_invocations << "\n";
+  std::cout << "  storage buffer bindings (per stage / per set): "
+            << caps.max_per_stage_descriptor_storage_buffers << " / "
+            << caps.max_descriptor_set_storage_buffers << "\n";
   if (env_flag("MLX_OMARCHY_ALLOW_NON_APPLE")) {
     std::cout << "  NOTE: MLX_OMARCHY_ALLOW_NON_APPLE=1; this is a"
                  " development-only device, not Omarchy Honeykrisp.\n";

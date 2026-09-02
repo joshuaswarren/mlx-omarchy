@@ -1,0 +1,46 @@
+// Copyright © 2026 Joshua Warren / mlx-omarchy contributors.
+// SPDX-License-Identifier: MIT
+//
+// Complex64 component extraction: operation 0 takes the real part,
+// 1 the imaginary part. This is exactly the upstream real()/imag()
+// semantics on a complex64 array (mlx/backend/cpu/unary.cpp routes
+// both through unary_complex_to_float); the op layer only constructs
+// the primitives for complex input, real input short-circuits before
+// a backend is reached.
+
+#version 460
+
+layout(local_size_x = 256) in;
+
+layout(set = 0, binding = 0, std430) readonly buffer InComplex {
+  vec2 values[];
+} input_data;
+layout(set = 0, binding = 2, std430) writeonly buffer Output {
+  float values[];
+} output_data;
+
+layout(push_constant) uniform Params {
+  uint count;
+  uint operation;
+  uint lhs_size;
+  uint rhs_size;
+  uint reduce_size;
+  uint output_size;
+  uint lhs_offset;
+  uint rhs_offset;
+  uint output_offset;
+} params;
+
+void main() {
+  uint index = gl_GlobalInvocationID.x;
+  uint stride = gl_NumWorkGroups.x * gl_WorkGroupSize.x;
+  while (index < params.count) {
+    vec2 value = input_data.values[params.lhs_offset + index];
+    output_data.values[params.output_offset + index] =
+        params.operation == 0u ? value.x : value.y;
+    if (params.count - index <= stride) {
+      break;
+    }
+    index += stride;
+  }
+}

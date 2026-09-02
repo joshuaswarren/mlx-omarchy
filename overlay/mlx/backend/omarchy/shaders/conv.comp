@@ -1,19 +1,28 @@
 #version 460
 
-// Direct 2D convolution for channels-last arrays. One thread owns one
-// output element out[n, oh, ow, o] and walks ky, kx, c with a float32
+// Direct convolution for channels-last arrays. One thread owns one
+// output element out[n, oh, ow, o] and walks ky, kx with a float32
 // accumulator; every load is a straight-line per-thread read at a
 // linear address (Honeykrisp caution: no divergent per-lane word
 // loads). Out-of-range input coordinates contribute zero via index
 // guards, so padding needs no materialized buffer.
-// Push-constant routing: reduce_size carries the input channel count,
-// aux_offset the kernel height, operation the kernel width, matrix_m
-// the batch count, matrix_n the output channel count, matrix_k the
-// input height, aux_size the input width, dims the spatial rank (2),
-// shape[0..1] the output height/width, shape[2..3] the padding low
-// height/width, in_strides[0..1] the stride height/width,
-// in_strides[2..3] the kernel dilation height/width, and
-// out_strides[0..1] the padding high height/width.
+// The kernel is the general upstream Convolution semantics: groups
+// (each output channel reads its group's channel slice and weight
+// last axis), the kernel flip conv_transpose uses, input dilation
+// (taps off the dilated grid contribute zero), kernel dilation,
+// strides, and asymmetric padding. 1D convolutions ride this kernel
+// as a degenerate height of one.
+// Push-constant routing: reduce_size carries the PER-GROUP input
+// channel count, aux_offset the kernel height, operation the kernel
+// width, matrix_m the batch count, matrix_n the total output channel
+// count, matrix_k the input height, aux_size the input width,
+// lhs_size/rhs_size the input dilation height/width, flags the kernel
+// flip (1 = flip), out_strides[2] the group count, dims the spatial
+// rank (always packed as 2; 1D uses height 1), shape[0..1] the output
+// height/width, shape[2..3] the padding low height/width,
+// in_strides[0..1] the stride height/width, in_strides[2..3] the
+// kernel dilation height/width, and out_strides[0..1] the padding
+// high height/width.
 
 #ifdef USE_FP16
 #extension GL_EXT_shader_16bit_storage : require
@@ -85,7 +94,15 @@ void main() {
   uint out_width = params.shape[1u];
   uint in_height = params.matrix_k;
   uint in_width = params.aux_size;
-  uint in_channels = params.reduce_size;
+  // reduce_size is the per-group channel count; the input buffer
+  // strides with the total channel count.
+  uint in_channels_per_group = params.reduce_size;
+  uint groups = params.out_strides[2u];
+  uint in_channels = in_channels_per_group * groups;
+  uint out_channels_per_group = out_channels / groups;
+  uint flip = params.flags;
+  uint input_dilation_height = params.lhs_size;
+  uint input_dilation_width = params.rhs_size;
   uint kernel_height = params.aux_offset;
   uint kernel_width = params.operation;
   uint pad_lo_height = params.shape[2u];
@@ -106,28 +123,42 @@ void main() {
     remainder %= out_width * out_channels;
     uint out_column = remainder / out_channels;
     uint out_channel = remainder % out_channels;
+    uint group = out_channel / out_channels_per_group;
     int in_row_base = int(out_row * stride_height) - int(pad_lo_height);
     int in_column_base = int(out_column * stride_width) - int(pad_lo_width);
     float accumulator = 0.0;
 
     for (uint ky = 0u; ky < kernel_height; ++ky) {
-      int in_row = in_row_base + int(ky * dilation_height);
-      if (in_row < 0 || in_row >= int(in_height)) {
+      uint ky_window = flip != 0u ? (kernel_height - 1u - ky) : ky;
+      int in_row = in_row_base + int(ky_window * dilation_height);
+      if (in_row < 0 || in_row >= int(in_height * input_dilation_height)) {
         continue;
       }
+      if (in_row % int(input_dilation_height) != 0) {
+        continue;
+      }
+      uint row = uint(in_row) / input_dilation_height;
       for (uint kx = 0u; kx < kernel_width; ++kx) {
-        int in_column = in_column_base + int(kx * dilation_width);
-        if (in_column < 0 || in_column >= int(in_width)) {
+        uint kx_window = flip != 0u ? (kernel_width - 1u - kx) : kx;
+        int in_column = in_column_base + int(kx_window * dilation_width);
+        if (in_column < 0 ||
+            in_column >= int(in_width * input_dilation_width)) {
           continue;
         }
+        if (in_column % int(input_dilation_width) != 0) {
+          continue;
+        }
+        uint column = uint(in_column) / input_dilation_width;
         uint input_base = params.lhs_offset +
-            (batch * in_height + uint(in_row)) * in_width * in_channels +
-            uint(in_column) * in_channels;
+            (batch * in_height + row) * in_width * in_channels +
+            column * in_channels;
         uint weight_base = params.rhs_offset +
-            out_channel * kernel_height * kernel_width * in_channels +
-            (ky * kernel_width + kx) * in_channels;
-        for (uint channel = 0u; channel < in_channels; ++channel) {
-          accumulator += LOAD_VALUE(input_x.values[input_base + channel]) *
+            out_channel * kernel_height * kernel_width *
+                in_channels_per_group +
+            (ky * kernel_width + kx) * in_channels_per_group;
+        for (uint channel = 0u; channel < in_channels_per_group; ++channel) {
+          accumulator +=
+              LOAD_VALUE(input_x.values[input_base + channel]) *
               LOAD_VALUE(weight.values[weight_base + channel]);
         }
       }

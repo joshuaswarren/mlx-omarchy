@@ -5,11 +5,12 @@
 // valued against host double-precision references and reconstruction
 // identities computed in this file (L L^T = A, A A^-1 = I, QR = A,
 // A V = V diag(w), U diag(S) Vt = A), batched and wide/tall shapes
-// included, plus named-error pins for the gated paths: non-PD Cholesky,
-// singular Inverse/LUF, complex64, and the Eig gate. The eigvalsh,
-// pinv, and svd value tests pin the 2026-09-02 fixes for the values-only
-// identity clobber, the uninitialized V accumulator, and the Jacobi
-// rotation skip that stalled pairs whose cosine rounded to 1.0f.
+// included, plus named-error pins for the refusal paths: non-PD
+// Cholesky, singular Inverse, singular LUF, complex64, and the Eig
+// gate. The eigvalsh, pinv, and svd value tests pin the 2026-09-02
+// fixes for the values-only identity clobber, the uninitialized V
+// accumulator, and the Jacobi rotation skip that stalled pairs whose
+// cosine rounded to 1.0f.
 
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include "doctest/doctest.h"
@@ -486,55 +487,275 @@ TEST_CASE("inverse rejects a singular matrix") {
       error);
 }
 
-TEST_CASE("luf stays gated pending numeric verification") {
+// Host LU with partial pivoting, first-max ties, 0-based pivots: the
+// independent getrf reference for the device kernel.
+struct HostLU {
+  HostMatrix packed;            // m x n row-major
+  std::vector<int> pivots;      // k entries: row swapped with j at step j
+  std::vector<int> row_indices; // m entries, upstream scatter convention
+};
+
+HostLU host_lu(HostMatrix a, int m, int n) {
+  HostLU out;
+  int k = std::min(m, n);
+  out.packed = std::move(a);
+  out.pivots.assign(k, 0);
+  for (int j = 0; j < k; ++j) {
+    int best = j;
+    double best_v = std::abs(out.packed[j * n + j]);
+    for (int i = j + 1; i < m; ++i) {
+      double v = std::abs(out.packed[i * n + j]);
+      if (v > best_v) {
+        best_v = v;
+        best = i;
+      }
+    }
+    out.pivots[j] = best;
+    if (best != j) {
+      for (int c = 0; c < n; ++c) {
+        std::swap(out.packed[j * n + c], out.packed[best * n + c]);
+      }
+    }
+    if (best_v == 0.0) {
+      continue;
+    }
+    for (int i = j + 1; i < m; ++i) {
+      double f = out.packed[i * n + j] / out.packed[j * n + j];
+      out.packed[i * n + j] = f;
+      for (int c = j + 1; c < n; ++c) {
+        out.packed[i * n + c] -= f * out.packed[j * n + c];
+      }
+    }
+  }
+  // Upstream replays the swaps in reverse order on the identity, so
+  // row_indices[i] is where original row i ended up and P with
+  // P[row_indices[i]][i] = 1 satisfies P L U = A.
+  out.row_indices.resize(m);
+  for (int i = 0; i < m; ++i) {
+    out.row_indices[i] = i;
+  }
+  for (int j = k - 1; j >= 0; --j) {
+    std::swap(out.row_indices[out.pivots[j]], out.row_indices[j]);
+  }
+  return out;
+}
+
+// P (L@U) - A for a packed factor under the scatter-permutation
+// convention. Residual must be zero.
+HostMatrix host_plu_residual(
+    const HostMatrix& packed,
+    const std::vector<int>& row_indices,
+    const HostMatrix& a,
+    int m,
+    int n) {
+  int k = std::min(m, n);
+  HostMatrix l(m * k, 0.0);
+  HostMatrix u(k * n, 0.0);
+  for (int i = 0; i < m; ++i) {
+    for (int j = 0; j < k; ++j) {
+      l[i * k + j] = j < i ? packed[i * n + j] : (j == i ? 1.0 : 0.0);
+    }
+  }
+  for (int i = 0; i < k; ++i) {
+    for (int j = i; j < n; ++j) {
+      u[i * n + j] = packed[i * n + j];
+    }
+  }
+  HostMatrix lu_product = host_matmul(l, u, m, k, n);
+  HostMatrix residual(m * n, 0.0);
+  for (int i = 0; i < m; ++i) {
+    int dest = row_indices[i];
+    for (int j = 0; j < n; ++j) {
+      residual[dest * n + j] = lu_product[dest * n + j] - a[i * n + j];
+    }
+  }
+  return residual;
+}
+
+void expect_zero(
+    const HostMatrix& values,
+    double tol,
+    const std::string& label) {
+  for (size_t i = 0; i < values.size(); ++i) {
+    CHECK_MESSAGE(
+        std::abs(values[i]) <= tol,
+        label,
+        " index ",
+        i,
+        ": residual ",
+        values[i]);
+  }
+}
+
+HostMatrix host_random_matrix(std::mt19937& gen, int m, int n) {
+  std::uniform_real_distribution<double> dist(-1.0, 1.0);
+  HostMatrix a(m * n);
+  for (auto& value : a) {
+    value = dist(gen);
+  }
+  for (int i = 0; i < std::min(m, n); ++i) {
+    a[i * n + i] += static_cast<double>(m + n);
+  }
+  return a;
+}
+
+// Full per-matrix contract: exact pivots against the host reference,
+// packed factor within tolerance, and the P L U = A reconstruction.
+void expect_luf_matches(
+    const Stream& stream,
+    const HostMatrix& a,
+    int m,
+    int n,
+    double tol,
+    const std::string& label) {
+  array device = device_matrix(stream, a, Shape{m, n});
+  auto [packed_value, pivots_value] = linalg::lu_factor(device, stream);
+  packed_value.eval();
+  pivots_value.eval();
+  omarchy::get_command_encoder(stream).synchronize();
+  const float* packed_data = packed_value.data<float>();
+  std::vector<float> packed(packed_data, packed_data + packed_value.size());
+  const uint32_t* pivot_data = pivots_value.data<uint32_t>();
+  std::vector<float> pivots(pivot_data, pivot_data + pivots_value.size());
+  HostLU ref = host_lu(a, m, n);
+  REQUIRE_EQ(pivots.size(), ref.pivots.size());
+  for (size_t i = 0; i < ref.pivots.size(); ++i) {
+    CHECK_MESSAGE(
+        static_cast<int>(pivots[i]) == ref.pivots[i],
+        label,
+        " pivot ",
+        i,
+        ": device ",
+        pivots[i],
+        " host ",
+        ref.pivots[i]);
+  }
+  expect_close(packed, ref.packed, tol, label + " packed");
+  expect_zero(
+      host_plu_residual(reshape(packed, 0, m, n), ref.row_indices, a, m, n),
+      tol,
+      label + " reconstruction");
+}
+
+TEST_CASE("luf packed factor matches host getrf reference") {
   if (!compute_available()) {
     return;
   }
   auto stream = gpu_stream();
-  std::mt19937 gen(5);
-  HostMatrix a(9);
-  std::uniform_real_distribution<double> dist(-1.0, 1.0);
-  for (auto& value : a) {
-    value = dist(gen);
+  std::mt19937 gen(11);
+  struct Case {
+    int m;
+    int n;
+  };
+  for (auto [m, n] : {Case{4, 4}, Case{5, 3}, Case{3, 5}, Case{1, 1}}) {
+    expect_luf_matches(
+        stream,
+        host_random_matrix(gen, m, n),
+        m,
+        n,
+        1e-4,
+        "luf " + std::to_string(m) + "x" + std::to_string(n));
   }
-  array device = device_matrix(stream, a, Shape{3, 3});
-  std::string error;
-  try {
-    linalg::lu_factor(device, stream).first.eval();
-  } catch (const std::exception& caught) {
-    error = caught.what();
-  }
-  CHECK_MESSAGE(
-      contains_all(error, {"[LUF]", "gated"}),
-      "unexpected error: ",
-      error);
 }
 
-TEST_CASE("luf batched stays gated") {
+TEST_CASE("luf batched matches host reference per matrix") {
   if (!compute_available()) {
     return;
   }
   auto stream = gpu_stream();
   std::mt19937 gen(23);
-  int n = 3;
-  HostMatrix a0 = host_diag_dominant(gen, n);
-  HostMatrix a1 = host_diag_dominant(gen, n);
-  HostMatrix both(a0);
-  both.insert(both.end(), a1.begin(), a1.end());
-  array device = device_matrix(stream, both, Shape{2, n, n});
-  std::string error;
-  try {
-    linalg::lu_factor(device, stream).first.eval();
-  } catch (const std::exception& caught) {
-    error = caught.what();
+  struct Case {
+    int batch;
+    int m;
+    int n;
+  };
+  for (auto [batch, m, n] : {Case{3, 4, 4}, Case{2, 3, 5}}) {
+    HostMatrix all;
+    for (int b = 0; b < batch; ++b) {
+      HostMatrix matrix = host_random_matrix(gen, m, n);
+      all.insert(all.end(), matrix.begin(), matrix.end());
+    }
+    array device = device_matrix(stream, all, Shape{batch, m, n});
+    auto [packed_value, pivots_value] = linalg::lu_factor(device, stream);
+    packed_value.eval();
+    pivots_value.eval();
+    omarchy::get_command_encoder(stream).synchronize();
+    const float* packed_data = packed_value.data<float>();
+    std::vector<float> packed(
+        packed_data, packed_data + packed_value.size());
+    const uint32_t* pivot_data = pivots_value.data<uint32_t>();
+    std::vector<float> pivots(
+        pivot_data, pivot_data + pivots_value.size());
+    int k = std::min(m, n);
+    for (int b = 0; b < batch; ++b) {
+      std::string label =
+          "luf batch " + std::to_string(b) + " of " +
+          std::to_string(batch);
+      HostMatrix matrix(
+          all.begin() + b * m * n, all.begin() + (b + 1) * m * n);
+      HostLU ref = host_lu(matrix, m, n);
+      for (int j = 0; j < k; ++j) {
+        CHECK_MESSAGE(
+            static_cast<int>(pivots[b * k + j]) == ref.pivots[j],
+            label,
+            " pivot ",
+            j,
+            ": device ",
+            pivots[b * k + j],
+            " host ",
+            ref.pivots[j]);
+      }
+      expect_close(
+          std::vector<float>(
+              packed.begin() + b * m * n, packed.begin() + (b + 1) * m * n),
+          ref.packed,
+          1e-4,
+          label + " packed");
+      expect_zero(
+          host_plu_residual(
+              reshape(packed, b * m * n, m, n),
+              ref.row_indices,
+              matrix,
+              m,
+              n),
+          1e-4,
+          label + " reconstruction");
+    }
   }
-  CHECK_MESSAGE(
-      contains_all(error, {"[LUF]", "gated"}),
-      "unexpected error: ",
-      error);
 }
 
-TEST_CASE("luf gate fires before the singular check") {
+TEST_CASE("luf is deterministic across repeated evaluation") {
+  if (!compute_available()) {
+    return;
+  }
+  auto stream = gpu_stream();
+  std::mt19937 gen(31);
+  HostMatrix a = host_diag_dominant(gen, 6);
+  array device = device_matrix(stream, a, Shape{6, 6});
+  std::vector<float> first_packed;
+  std::vector<float> first_pivots;
+  for (int run = 0; run < 3; ++run) {
+    auto [packed_value, pivots_value] = linalg::lu_factor(device, stream);
+    packed_value.eval();
+    pivots_value.eval();
+    omarchy::get_command_encoder(stream).synchronize();
+    const float* packed_data = packed_value.data<float>();
+    std::vector<float> packed(
+        packed_data, packed_data + packed_value.size());
+    const uint32_t* pivot_data = pivots_value.data<uint32_t>();
+    std::vector<float> pivots(
+        pivot_data, pivot_data + pivots_value.size());
+    if (run == 0) {
+      first_packed = packed;
+      first_pivots = pivots;
+      continue;
+    }
+    bool same = packed == first_packed && pivots == first_pivots;
+    CHECK_MESSAGE(same, "luf run ", run, " diverged from run 0");
+  }
+}
+
+TEST_CASE("luf rejects a singular matrix by name") {
   if (!compute_available()) {
     return;
   }
@@ -548,9 +769,80 @@ TEST_CASE("luf gate fires before the singular check") {
     error = caught.what();
   }
   CHECK_MESSAGE(
-      contains_all(error, {"[LUF]", "gated"}),
+      contains_all(error, {"[LUF::eval_gpu]", "zero pivot"}),
       "unexpected error: ",
       error);
+}
+
+TEST_CASE("luf pivot search holds past one workgroup stride") {
+  // Before the pivot-search sentinel fix, the thread owning row k kept
+  // overwriting its candidate once its stride loop ran twice, so any
+  // m > 256 silently lost the true maximum pivot. 300x300 pins the fix.
+  if (!compute_available()) {
+    return;
+  }
+  auto stream = gpu_stream();
+  std::mt19937 gen(41);
+  expect_luf_matches(
+      stream, host_diag_dominant(gen, 300), 300, 300, 2e-2, "luf 300");
+}
+
+TEST_CASE("composed lu exposes the upstream scatter permutation") {
+  if (!compute_available()) {
+    return;
+  }
+  auto stream = gpu_stream();
+  std::mt19937 gen(47);
+  int n = 5;
+  HostMatrix a = host_diag_dominant(gen, n);
+  array device = device_matrix(stream, a, Shape{n, n});
+  std::vector<array> parts;
+  std::string compose_error;
+  try {
+    parts = linalg::lu(device, stream);
+    CHECK_EQ(parts.size(), 3u);
+    parts.at(0).eval();
+    parts.at(1).eval();
+    parts.at(2).eval();
+    omarchy::get_command_encoder(stream).synchronize();
+  } catch (const std::exception& caught) {
+    compose_error = caught.what();
+  }
+  if (!compose_error.empty()) {
+    // Multi-index Scatter (the eye() permutation gather) is implemented
+    // now; the composed chain progresses past it and refuses at the
+    // next backend gap: tril/triu lower to where(), whose general-layout
+    // Select variant is not implemented. Pin that named refusal so the
+    // remaining gap stays loud; this case switches to the value checks
+    // below the moment Select layout lands.
+    CHECK_MESSAGE(
+        contains_all(compose_error, {"Select layout", "not implemented"}),
+        "unexpected error: ",
+        compose_error);
+    return;
+  }
+  array permutation = parts.at(0);
+  const uint32_t* row_data = permutation.data<uint32_t>();
+  std::vector<float> row_indices(row_data, row_data + permutation.size());
+  HostLU ref = host_lu(a, n, n);
+  HostMatrix l = reshape(readback_f32(stream, parts.at(1)), 0, n, n);
+  HostMatrix u = reshape(readback_f32(stream, parts.at(2)), 0, n, n);
+  std::vector<int> device_rows(row_indices.size());
+  for (size_t i = 0; i < row_indices.size(); ++i) {
+    device_rows[i] = static_cast<int>(row_indices[i]);
+  }
+  CHECK_MESSAGE(
+      device_rows == ref.row_indices,
+      "composed lu row_indices differs from the host reference");
+  HostMatrix lu_product = host_matmul(l, u, n, n, n);
+  HostMatrix residual(n * n, 0.0);
+  for (int i = 0; i < n; ++i) {
+    int dest = ref.row_indices[i];
+    for (int j = 0; j < n; ++j) {
+      residual[dest * n + j] = lu_product[dest * n + j] - a[i * n + j];
+    }
+  }
+  expect_zero(residual, 1e-4, "composed lu reconstruction");
 }
 
 TEST_CASE("qr reconstruction tall square and wide") {

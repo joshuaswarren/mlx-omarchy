@@ -151,3 +151,74 @@ target_link_options(omarchy_linalg_ops_tests PRIVATE ${SANITIZER_LINK_FLAGS})
 
 doctest_discover_tests(omarchy_linalg_ops_tests)
 add_test(NAME omarchy_linalg_ops_tests COMMAND omarchy_linalg_ops_tests)
+
+add_executable(omarchy_take_fill_tests
+               ${CMAKE_CURRENT_SOURCE_DIR}/test_take_negative_fill.cpp)
+target_link_libraries(omarchy_take_fill_tests PRIVATE mlx doctest)
+target_compile_options(omarchy_take_fill_tests
+                       PRIVATE ${SANITIZER_COMPILE_FLAGS})
+target_link_options(omarchy_take_fill_tests PRIVATE ${SANITIZER_LINK_FLAGS})
+
+doctest_discover_tests(omarchy_take_fill_tests)
+add_test(NAME omarchy_take_fill_tests COMMAND omarchy_take_fill_tests)
+# test_eq_math and test_sdpa_norm_regression are still owned by their
+# respective authors. WideRowTopK's test_topk_ops.cpp is now in place.
+# Placeholder stubs that assert nothing are forbidden: unregister the
+# target instead. See hub IRC Main 2026-09-02 for the no-placeholder
+# rule.
+
+add_executable(omarchy_conv_tests
+               ${CMAKE_CURRENT_SOURCE_DIR}/test_conv_general.cpp)
+target_link_libraries(omarchy_conv_tests PRIVATE mlx doctest)
+target_compile_options(omarchy_conv_tests
+                       PRIVATE ${SANITIZER_COMPILE_FLAGS})
+target_link_options(omarchy_conv_tests PRIVATE ${SANITIZER_LINK_FLAGS})
+
+doctest_discover_tests(omarchy_conv_tests)
+add_test(NAME omarchy_conv_tests COMMAND omarchy_conv_tests)
+
+add_executable(omarchy_complex_ops_tests
+               ${CMAKE_CURRENT_SOURCE_DIR}/test_complex_ops.cpp)
+target_link_libraries(omarchy_complex_ops_tests PRIVATE mlx doctest)
+target_compile_options(omarchy_complex_ops_tests
+                       PRIVATE ${SANITIZER_COMPILE_FLAGS})
+target_link_options(omarchy_complex_ops_tests
+                    PRIVATE ${SANITIZER_LINK_FLAGS})
+
+doctest_discover_tests(omarchy_complex_ops_tests)
+add_test(NAME omarchy_complex_ops_tests
+         COMMAND omarchy_complex_ops_tests)
+
+add_executable(omarchy_select_layout_tests
+               ${CMAKE_CURRENT_SOURCE_DIR}/test_select_ops.cpp)
+target_link_libraries(omarchy_select_layout_tests PRIVATE mlx doctest)
+target_compile_options(omarchy_select_layout_tests
+                       PRIVATE ${SANITIZER_COMPILE_FLAGS})
+target_link_options(omarchy_select_layout_tests
+                    PRIVATE ${SANITIZER_LINK_FLAGS})
+
+doctest_discover_tests(omarchy_select_layout_tests)
+add_test(NAME omarchy_select_layout_tests
+         COMMAND omarchy_select_layout_tests)
+
+add_executable(omarchy_fft_general_tests
+               ${CMAKE_CURRENT_SOURCE_DIR}/test_fft_general.cpp)
+target_link_libraries(omarchy_fft_general_tests PRIVATE mlx doctest)
+target_compile_options(omarchy_fft_general_tests
+                       PRIVATE ${SANITIZER_COMPILE_FLAGS})
+target_link_options(omarchy_fft_general_tests
+                    PRIVATE ${SANITIZER_LINK_FLAGS})
+
+doctest_discover_tests(omarchy_fft_general_tests)
+add_test(NAME omarchy_fft_general_tests COMMAND omarchy_fft_general_tests)
+
+add_executable(omarchy_fast_regression_tests
+               ${CMAKE_CURRENT_SOURCE_DIR}/test_sdpa_norm_regression.cpp)
+target_link_libraries(omarchy_fast_regression_tests PRIVATE mlx doctest)
+target_compile_options(omarchy_fast_regression_tests
+                       PRIVATE ${SANITIZER_COMPILE_FLAGS})
+target_link_options(omarchy_fast_regression_tests
+                    PRIVATE ${SANITIZER_LINK_FLAGS})
+
+doctest_discover_tests(omarchy_fast_regression_tests)
+add_test(NAME omarchy_fast_regression_tests COMMAND omarchy_fast_regression_tests)

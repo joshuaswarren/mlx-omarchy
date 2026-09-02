@@ -90,12 +90,23 @@ void main() {
     uint bit = 0u;
     if (live) {
       uint flat_pos = row_begin + pos_in_row;
-      bit = (mask_data
-                 .values[params.rhs_offset + (flat_pos >> 2u)] >>
-             ((flat_pos & 3u) * 8u)) &
-          0xFFu;
+      // Honeykrisp miscompiles the Hillis-Steele scan below when the
+      // bit is produced by a single dynamic shift
+      // (word >> ((index & 3u) * 8u)) & 0xFFu: scan sums undercount as
+      // if later iterations dropped (measured s_scan[255]=32 where 128
+      // is correct). Extract the byte with CONSTANT shifts and pick the
+      // lane by select; the data is identical and the scan is correct.
+      // Normalize the byte to 0/1 the way upstream bool casts do, so a
+      // stray non-0/1 true byte still counts as true.
+      uint word = mask_data.values[params.rhs_offset + (flat_pos >> 2u)];
+      uint b0 = word & 0xFFu;
+      uint b1 = (word >> 8u) & 0xFFu;
+      uint b2 = (word >> 16u) & 0xFFu;
+      uint b3 = word >> 24u;
+      uint idx = flat_pos & 3u;
+      uint byte = (idx == 0u) ? b0 : (idx == 1u) ? b1 : (idx == 2u) ? b2 : b3;
+      bit = byte != 0u ? 1u : 0u;
     }
-    s_scan[lane] = bit;
     barrier();
     // Inclusive Hillis-Steele scan over the chunk.
     for (uint offset = 1u; offset < 256u; offset <<= 1u) {

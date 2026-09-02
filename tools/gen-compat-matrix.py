@@ -25,6 +25,8 @@ Sources (read-only):
   .work/mlx/mlx/{,io/,distributed/}*.cpp      op -> primitive construction map
   .work/mlx/mlx/distributed/primitives.h      upstream distributed:: primitives
   .work/mlx/mlx/backend/gpu/primitives.cpp    shared GPU eval_gpu definitions
+  .work/mlx/mlx/backend/metal/*.cpp           Mac-usable signal (eval_gpu)
+  .work/mlx/mlx/backend/{cpu,common}/*.cpp    Mac-usable signal (eval_cpu)
 """
 
 import argparse
@@ -109,6 +111,61 @@ CONSTRUCTION_GLOBS = [
 DTYPE_ORDER = ["f32", "f16", "bf16", "i32", "u32", "i64", "bool"]
 
 UPSTREAM_GPU_PRIMITIVES = ROOT / ".work/mlx/mlx/backend/gpu/primitives.cpp"
+METAL_BACKEND = ROOT / ".work/mlx/mlx/backend/metal"
+CPU_BACKEND = ROOT / ".work/mlx/mlx/backend/cpu"
+COMMON_BACKEND = ROOT / ".work/mlx/mlx/backend/common"
+
+# A primitive Metal implements only by compiling user-supplied Metal
+# shading-language source. No Metal-to-SPIR-V translator exists in this
+# stack, so even perfect parity cannot close it. This bounds the
+# achievable Mac-parity ceiling below 100 percent.
+UNCLOSABLE_ON_VULKAN = {"CustomKernel"}
+
+QUALIFIED_EVAL = re.compile(r"void (?:[\w:]+::)?(\w+)::eval_(gpu|cpu)\s*\(")
+
+# Upstream declaration sites, for citations when a primitive has no
+# eval_gpu and no eval_cpu anywhere.
+UPSTREAM_DECL = {}
+
+
+def brace_body(text, open_brace):
+    """Brace-balanced body text starting at the '{' at open_brace."""
+    depth = 0
+    for index in range(open_brace, len(text)):
+        if text[index] == "{":
+            depth += 1
+        elif text[index] == "}":
+            depth -= 1
+            if depth == 0:
+                return text[open_brace:index + 1]
+    return ""
+
+
+def parse_backend_eval_impls(directory, kind):
+    """Primitive names the backend defines eval_<kind> for.
+
+    Returns (real, throws): real maps name to "file:line"; throws maps
+    name to "file:line" of an eval whose body is one unconditional
+    throw. A body that checks arguments first and throws conditionally
+    is real: it computes for the inputs it accepts.
+    """
+    real, throws = {}, {}
+    for path in sorted(directory.glob("*.cpp")):
+        text = strip_comments(path.read_text())
+        for match in QUALIFIED_EVAL.finditer(text):
+            name, seen_kind = match.group(1), match.group(2)
+            if seen_kind != kind or name in real:
+                continue
+            line = text[:match.start()].count("\n") + 1
+            cite = f"{path.relative_to(ROOT)}:{line}"
+            body = brace_body(text, text.index("{", match.end()))
+            if body[1:].lstrip().startswith("throw"):
+                throws.setdefault(name, cite)
+            else:
+                real[name] = cite
+    return real, throws
+
+
 METAL_DIST_CPP = ROOT / ".work/mlx/mlx/backend/metal/distributed.cpp"
 DIST_OPS_CPP = ROOT / ".work/mlx/mlx/distributed/ops.cpp"
 
@@ -360,9 +417,19 @@ def parse_op_constructions(upstream_keys):
     through one helper (bitwise_and -> in_binary, compile ->
     compile_fuse, the linalg wrappers) still resolve, with no curated
     list anywhere.
+
+    Also derived: the VJP rule map, forward primitive class -> the
+    rule primitives its X::vjp member builds (fast.cpp RMSNorm::vjp
+    building RMSNormVJP), and the tracing entry ops, op functions
+    whose call graph reaches the free vjp machinery. The tape
+    backward dispatches primitive->vjp virtually, a call shape the
+    name-level graph skips, so rule primitives are otherwise
+    unreachable from any test call; parse_test_cases joins both maps
+    at the case level instead.
     """
     direct = {}
     calls = {}
+    vjp_rules = {}
     for pattern in CONSTRUCTION_GLOBS:
         for path in sorted(ROOT.glob(pattern)):
             masked = mask_noncode(path.read_text())
@@ -383,6 +450,10 @@ def parse_op_constructions(upstream_keys):
                             constructed = (owners.pop(), prim)
                     if constructed in upstream_keys:
                         prims.add(constructed)
+                        if op.endswith("::vjp"):
+                            vjp_rules.setdefault(
+                                op.rpartition("::")[0], set()).add(
+                                    constructed)
                 for call in CALL_SITE.finditer(body):
                     qualifier = body[max(0, call.start() - 6):call.start()]
                     if (qualifier.endswith("std::")
@@ -394,6 +465,7 @@ def parse_op_constructions(upstream_keys):
     for key in direct:
         by_name.setdefault(key[1], []).append(key)
     op_map = {}
+    trace_ops = set()
     for name in by_name:
         built = set()
         seen = set()
@@ -410,7 +482,9 @@ def parse_op_constructions(upstream_keys):
             frontier = following - seen
         for constructed in built:
             op_map.setdefault(name, set()).add(constructed)
-    return op_map
+        if "vjp" in seen:
+            trace_ops.add(name)
+    return op_map, vjp_rules, trace_ops
 
 
 def attribute_functions_anon(masked):
@@ -547,7 +621,66 @@ def value_verify_helpers(masked):
         verify(name, set())
     return {name for name, ok in memo.items() if ok}
 
-def parse_test_cases(op_map, upstream_keys, upstream_names):
+
+LAMBDA_ARG = re.compile(r"\]\s*\([^()]*\)\s*(?:->\s*[\w:<>]+)?\{")
+
+
+def mapped_calls(text, op_map):
+    """Primitives the op calls in text construct.
+
+    Same call-site filter as the case loop: std::-qualified host
+    references and method calls are not op calls.
+    """
+    out = set()
+    for call in CALL_SITE.finditer(text):
+        qualifier = text[max(0, call.start() - 6):call.start()]
+        if qualifier.endswith(("std::", ".", "->")):
+            continue
+        out |= op_map.get(call.group(1), set())
+    return out
+
+
+def traced_regions(body, trace_ops):
+    """Body sub-ranges of the callables passed to tracing entry ops.
+
+    A vjp/value_and_grad call traces exactly its callable argument,
+    so only op calls inside that callable land on the tape. Two
+    shapes occur in the suite: an inline lambda in the argument
+    list, and a named lambda bound earlier with auto name =
+    [...](...) { ... }. Any other callable (a free function, a
+    functor) resolves to no region, and the case earns no rule
+    attribution from it.
+    """
+    regions = []
+    for match in CALL_SITE.finditer(body):
+        if match.group(1) not in trace_ops:
+            continue
+        args = balanced(body, match.end() - 1)
+        lam = LAMBDA_ARG.search(args)
+        if lam:
+            brace = lam.end() - 1
+            close = block_end(args, brace)
+            regions.append(args[brace + 1:close])
+            continue
+        ident = re.match(r"\s*([A-Za-z_]\w*)", args)
+        if not ident:
+            continue
+        decl_end = None
+        for decl in re.finditer(
+                rf"\bauto\s+{re.escape(ident.group(1))}\s*=",
+                body[:match.start()]):
+            decl_end = decl.end()
+        if decl_end is None:
+            continue
+        brace = next_block(body, decl_end, match.start())
+        if brace == -1 or brace >= match.start():
+            continue
+        regions.append(body[brace + 1:block_end(body, brace)])
+    return regions
+
+
+def parse_test_cases(op_map, upstream_keys, upstream_names, vjp_rules,
+                     trace_ops):
     """TEST_CASEs with the primitives each body provably exercises.
 
     Evidence is content-derived from the case body:
@@ -566,6 +699,14 @@ def parse_test_cases(op_map, upstream_keys, upstream_names):
       or no-error smoke, or carries a loud SKIP marker. A SKIP marker
       withdraws value credit for the whole case; a value anchor also
       requires a real call path, never a bare string mention.
+    - trace: a case that calls a tracing entry op (vjp,
+      value_and_grad, ...) provably runs the tape backward for the
+      op calls inside the callable it passes: the virtual
+      primitive->vjp dispatch builds each forward primitive's VJP
+      rule primitive there. traced_regions resolves that callable,
+      so calls outside it (setup, composed references) earn no rule;
+      the rule joins ops, never exclusive, since one trace can
+      carry many forward primitives.
     """
     cases = []
     order = {}
@@ -607,6 +748,11 @@ def parse_test_cases(op_map, upstream_keys, upstream_names):
                     constructed = (next(iter(matches)), prim)
                     ops.add(constructed)
                     exclusive.add(constructed)
+            tape = set()
+            for region in traced_regions(body, trace_ops):
+                tape |= mapped_calls(region, op_map)
+            for _, prim in sorted(tape):
+                ops |= vjp_rules.get(prim, set())
             literals = " ".join(
                 re.findall(r'"((?:[^"\\]|\\.)*)"', raw_body))
             mentions = {
@@ -938,6 +1084,10 @@ def parse_upstream_primitives():
                     f"primitive {name!r} in {path}; extend UPSTREAM_BASES "
                     "before trusting the denominator.")
             out.append((ns, name))
+            UPSTREAM_DECL[(ns, name)] = (
+                ".work/mlx/mlx/"
+                + path.relative_to(ROOT / ".work/mlx/mlx").as_posix()
+                + f":{text[:match.start()].count(chr(10)) + 1}")
     return out
 
 
@@ -1194,9 +1344,10 @@ def main():
         primitives_text, variant_dtypes)
     kernel_helpers = kernel_reaching_helpers(helpers, called)
     upstream = parse_upstream_primitives()
-    op_map = parse_op_constructions(set(upstream))
+    op_map, vjp_rules, trace_ops = parse_op_constructions(set(upstream))
     upstream_names = sorted({name for _, name in upstream})
-    cases = parse_test_cases(op_map, set(upstream), upstream_names)
+    cases = parse_test_cases(
+        op_map, set(upstream), upstream_names, vjp_rules, trace_ops)
     bool_out_helpers = {
         helper
         for helper, body in helpers.items()
@@ -1269,6 +1420,20 @@ def main():
     for _, kind in shared_links.values():
         shared_counts[kind] += 1
 
+    # Per-upstream-key coverage, so the Mac denominator can reuse the
+    # same evidence the bucket loop counts.
+    def covered_upstream_key(key):
+        if key in rows_by_key:
+            row = rows_by_key[key]
+            return row["anchor_kind"] == "value" and (
+                row["status"] in ("native", "partial")
+                or row["status"].startswith("composed"))
+        if key in shared_gpu:
+            return shared_links[key][1] == "value"
+        return False
+
+    covered_keys = {key for key in upstream if covered_upstream_key(key)}
+
     status_families = (
         ("native", lambda row: row["status"] == "native"),
         ("composed", lambda row: row["status"].startswith("composed")),
@@ -1313,6 +1478,44 @@ def main():
         ("not implemented (nothing runs)", len(nothing_runs)))
     implemented = covered + computing_uncovered
     coverage_pct = covered / total * 100
+    if len(covered_keys) != covered:
+        raise SystemExit(
+            f"internal: bucket coverage {covered} != per-key coverage "
+            f"{len(covered_keys)}; the Mac denominator would drift from "
+            "the reported buckets.")
+    metal_gpu_real, metal_gpu_throws = parse_backend_eval_impls(
+        METAL_BACKEND, "gpu")
+    mac_impl_cite = {**metal_gpu_real}
+    for directory in (CPU_BACKEND, COMMON_BACKEND):
+        cpu_real, _ = parse_backend_eval_impls(directory, "cpu")
+        mac_impl_cite.update(cpu_real)
+    # Mac-usable rule: a primitive is in the Mac denominator when
+    # upstream's Metal backend gives it a real eval_gpu, or when
+    # upstream's CPU backend (which ships on macOS) gives it a real
+    # eval_cpu. Otherwise a Mac user cannot execute it on any stream.
+    # An op-layer short-circuit excludes nothing by itself: it only
+    # changes how the user reaches the primitive, unless no
+    # Mac-reachable input constructs it at all.
+    mac_excluded = {}
+    for key in upstream:
+        if key[1] in mac_impl_cite:
+            continue
+        mac_excluded[key] = (
+            metal_gpu_throws.get(key[1]) or UPSTREAM_DECL[key])
+    mac_total = total - len(mac_excluded)
+    mac_covered = len(covered_keys - set(mac_excluded))
+    mac_pct = mac_covered / mac_total * 100
+    mac_unclosable = sorted(
+        name for name in UNCLOSABLE_ON_VULKAN if name in mac_impl_cite)
+    mac_ceiling_count = mac_total - len(mac_unclosable)
+
+    def mac_marker(display):
+        ns, _, name = display.rpartition("::")
+        key = (ns, name)
+        if key in mac_excluded:
+            return f"no (`{mac_excluded[key]}`)"
+        return "yes"
+
 
     # Upstream's own refusals, display-only. The Metal backend throws
     # for these primitives too, so the gap is not omarchy-specific;
@@ -1343,10 +1546,11 @@ def main():
     if args.json_out:
         payload = {
             "schemaVersion": 1,
-            "label": "MLX coverage",
+            "label": "Mac parity",
             "message":
-                f"{coverage_pct:.1f}% ({covered}/{total} primitives)",
-            "color": badge_color(coverage_pct),
+                f"{mac_pct:.1f}% ({mac_covered}/{mac_total} "
+                "Mac-usable primitives)",
+            "color": badge_color(mac_pct),
         }
         pathlib.Path(args.json_out).write_text(
             json.dumps(payload) + "\n")
@@ -1369,10 +1573,15 @@ def main():
         "of truth and the same tree produces the same bytes.")
     out.append("")
     out.append("## Coverage")
+    out.append(
+        f"**Mac parity: {mac_pct:.1f}% — {mac_covered} of {mac_total} "
+        "primitives MLX implements and a Mac user can actually use.**")
     out.append("")
     out.append(
-        f"**MLX primitive coverage: {coverage_pct:.1f}% — {covered} of "
-        f"{total} upstream primitives.**")
+        f"Against the full upstream primitive list: {coverage_pct:.1f}% "
+        f"— {covered} of {total} upstream primitives. Both numbers "
+        "come from the same coverage evidence below; only the "
+        "denominators differ.")
     out.append("")
     out.append(
         "Coverage counts a primitive only when the omarchy backend has "
@@ -1400,17 +1609,77 @@ def main():
         "name\" — never as \"this share is complete.\"")
     out.append("")
     out.append(
-        "The denominator is every concrete primitive class upstream "
-        "MLX defines — parsed from `.work/mlx/mlx/primitives.h`, "
-        "`.work/mlx/mlx/fast_primitives.h`, and "
-        "`.work/mlx/mlx/distributed/primitives.h` — not only the "
+        "The full-upstream denominator is every concrete primitive "
+        "class upstream MLX defines — parsed from "
+        "`.work/mlx/mlx/primitives.h`, `.work/mlx/mlx/fast_primitives.h`,"
+        " and `.work/mlx/mlx/distributed/primitives.h` — not only the "
         f"{len(rows)} entries the omarchy backend enumerates.")
     out.append("")
-    out.append("| Bucket | Count | Share of upstream |")
-    out.append("|---|---|---|")
+    out.append(
+        "The Mac denominator is derived mechanically from upstream's "
+        "own sources, never from a hand-maintained list. A primitive "
+        "is Mac-usable when upstream's Metal backend gives it a real "
+        "`eval_gpu` body, or when upstream's CPU backend (which ships "
+        "on macOS) gives it a real `eval_cpu` body. An `eval_gpu` "
+        "whose body is one unconditional throw is a refusal, not an "
+        "implementation. A body that checks arguments first and then "
+        "computes is real. Every exclusion below cites the exact file "
+        "and line; no citation, no exclusion.")
+    out.append("")
+    out.append(
+        "Op-layer short-circuits exclude nothing by themselves. The "
+        "rule: a short-circuit only changes how a user reaches the "
+        "primitive, unless no Mac-reachable input constructs it at "
+        "all. The distributed ops return the input unchanged at "
+        "`group.size() == 1` (`.work/mlx/mlx/distributed/ops.cpp`), "
+        "but a Mac user can form larger groups and "
+        "`.work/mlx/mlx/backend/cpu/distributed.cpp` implements all "
+        "five `eval_cpu` paths, so they stay. Conjugate, Real, and "
+        "Imag are constructed only for complex input "
+        "(`.work/mlx/mlx/ops.cpp:6529`, `:6744`, `:6751`), and "
+        "complex dtypes are Mac-reachable, so they stay too.")
+    if mac_excluded:
+        out.append("")
+        out.append(
+            f"### Not Mac-usable — {len(mac_excluded)} primitives")
+        out.append("")
+        out.append(
+            "Metal refuses these and upstream's CPU backend has no "
+            "`eval_cpu` for them, so no Mac user can execute them on "
+            "any stream. They are outside the Mac denominator and "
+            "stay in the full-upstream denominator.")
+        out.append("")
+        out.append("| Primitive | Why | Citation |")
+        out.append("|---|---|---|")
+        for key in sorted(mac_excluded):
+            ns, name = key
+            display = f"{ns}::{name}" if ns else name
+            out.append(
+                f"| {display} | Metal `eval_gpu` throws and no CPU "
+                f"`eval_cpu` exists | `{mac_excluded[key]}` |")
+    out.append("")
+    out.append(
+        "The achievable ceiling: "
+        + ", ".join(f"`fast::{name}`" for name in mac_unclosable)
+        + " compiles user-supplied Metal shading-language source "
+        f"(`{mac_impl_cite.get(next(iter(mac_unclosable)), '')}`), and "
+        "no Metal-to-SPIR-V translator exists in this stack. This "
+        "backend can never implement it. Perfect achievable Mac "
+        f"parity is therefore {mac_ceiling_count}/{mac_total} = "
+        f"{mac_ceiling_count / mac_total * 100:.1f}%.")
+    out.append("")
+    out.append("| Bucket | Count | Share of upstream | Share of Mac-usable |")
+    out.append("|---|---|---|---|")
     for label, count in buckets:
-        out.append(f"| {label} | {count} | {share(count)} |")
-    out.append(f"| upstream total | {total} | 100.0% |")
+        out.append(
+            f"| {label} | {count} | {share(count)} | "
+            f"{count / mac_total * 100:.1f}% |")
+    out.append(
+        f"| upstream total | {total} | 100.0% | "
+        f"{total / mac_total * 100:.1f}% |")
+    out.append(
+        f"| Mac-usable total | {mac_total} | "
+        f"{mac_total / total * 100:.1f}% | 100.0% |")
     out.append("")
     out.append(
         "Implementation-path coverage without the value-test "
@@ -1478,8 +1747,8 @@ def main():
     out.append("")
     out.append(
         "| Primitive | Status | Kernels | Dtypes | Named-error "
-        "constraints | Test anchor |")
-    out.append("|---|---|---|---|---|---|")
+        "constraints | Test anchor | Mac |")
+    out.append("|---|---|---|---|---|---|---|")
     for row in rows:
         kernels = (
             ", ".join(row["kernels"]) if row["kernels"] else "—")
@@ -1492,7 +1761,8 @@ def main():
             if row["constraints"] else "—")
         out.append(
             f"| {row['display']} | {row['status']} | {kernels} | "
-            f"{dtypes} | {constraints} | {row['anchor']} |")
+            f"{dtypes} | {constraints} | {row['anchor']} | "
+            f"{mac_marker(row['display'])} |")
     out.append("")
     out.append(
         "Every dispatch path also bounds element counts, item offsets, "
@@ -1505,10 +1775,11 @@ def main():
     out.append(
         "Upstream MLX defines these primitives, but "
         "`overlay/mlx/backend/omarchy/primitives.cpp` has no entry for "
-        "them. They count in the coverage denominator.")
+        "them. They count in both denominators unless marked not "
+        "Mac-usable.")
     out.append("")
-    out.append("| Primitive | Status | Test anchor |")
-    out.append("|---|---|---|")
+    out.append("| Primitive | Status | Test anchor | Mac |")
+    out.append("|---|---|---|---|")
     for ns, name in no_entry:
         display = f"{ns}::{name}" if ns else name
         if (ns, name) in shared_gpu:
@@ -1517,7 +1788,9 @@ def main():
         else:
             status = "not implemented (nothing runs)"
             anchor = "—"
-        out.append(f"| {display} | {status} | {anchor} |")
+        out.append(
+            f"| {display} | {status} | {anchor} | "
+            f"{mac_marker(display)} |")
     out.append("")
     if upstream_refused:
         out.append(
@@ -1534,7 +1807,9 @@ def main():
                if singleton_short_circuit else "")
             + ". The omarchy named errors match upstream's own "
               "refusal. These rows stay in the denominator and count "
-              "zero toward coverage.")
+              "zero toward coverage. Upstream's CPU backend implements "
+              "each `eval_cpu`, so a Mac user still reaches them and "
+              "they stay in the Mac denominator.")
         out.append("")
         out.append("| Primitive | Omarchy status |")
         out.append("|---|---|")

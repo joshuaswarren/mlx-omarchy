@@ -72,11 +72,15 @@ void main() {
   for (uint k = 0u; k < k_count; ++k) {
     // Partial pivot over column k, rows [k, m), reduced as (value, index)
     // pairs with a strictly-greater compare so ties keep the smaller row.
-    float best = 0.0;
+    // The sentinel -1.0 must be distinct from every real |value| >= 0: a
+    // 0.0 sentinel let the thread that owns row k overwrite its candidate
+    // on every later stride step (its best_i legitimately stays k), so
+    // m > 256 silently lost the true maximum.
+    float best = -1.0;
     uint best_i = k;
     for (uint i = k + tid; i < m; i += 256u) {
       float v = abs(work.values[base + i * n + k]);
-      if (best_i == k || v > best) {
+      if (best < 0.0 || v > best) {
         best = v;
         best_i = i;
       }

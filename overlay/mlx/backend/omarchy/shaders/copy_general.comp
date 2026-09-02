@@ -28,6 +28,14 @@ uint16_t bf16_store(float value) {
   return uint16_t((bits + 0x7fffu + ((bits >> 16) & 1u)) >> 16);
 }
 #define STORE_VALUE(f) bf16_store(f)
+#elif defined(USE_COMPLEX64)
+// Complex64 same-dtype strided copy: one element is a vec2 (re, im)
+// and the words copy bit-exact with no conversion, the same raw
+// transport USE_U32 gives 4-byte words. Strides and offsets are item
+// offsets, so an 8-byte item strides like a float32 item does.
+#define STORAGE_TYPE vec2
+#define LOAD_VALUE(x) (x)
+#define STORE_VALUE(f) STORAGE_TYPE(f)
 #else
 #define STORAGE_TYPE float
 #define LOAD_VALUE(x) float(x)

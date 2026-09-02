@@ -13,15 +13,39 @@
 //   4 MAX finalize (one thread per output element): combine src with
 //     the winning key in key space
 //   5 MIN finalize
-//   6 SUM: atomicAdd the update word into the output; integer addition
-//     is associative, so this is deterministic. Dispatched only for
-//     int32/uint32 through the USE_U32 variant.
-//   7 PROD pass: CAS-multiply the raw update word into scratch[target].
-//     Wrap-around integer multiply is associative and commutative, so
-//     the CAS order never changes the product. Dispatched only for
-//     int32/uint32; scratch is pre-cleared to 1.
+//   6 SUM: USE_U32 atomicAdd of the update word into the output;
+//     integer addition is associative, so this is deterministic.
+//     USE_BOOL atomicOr of the canonical update bit into scratch
+//     (bool add saturates at 1, so duplicates are exact).
+//   7 PROD pass: USE_U32 CAS-multiply of the raw update word into
+//     scratch[target]; wrap-around integer multiply is associative and
+//     commutative, so the CAS order never changes the product.
+//     USE_BOOL atomicAnd of the canonical update bit into scratch
+//     (bool multiply is AND, so duplicates are exact).
 //   8 PROD finalize (one thread per output element): multiply the
 //     copied src word by the accumulated product.
+//  11 FADD Sum pass: hardware fp32 atomicAdd (VK_EXT_shader_atomic_
+//     float) of the decoded update into the fp32 per-element scratch.
+//     Duplicate indices accumulate in device order: the total matches
+//     upstream Metal, which uses native float atomics for float32 and
+//     a packed CAS loop for float16/bfloat16, so reordering between
+//     runs can change the last rounding bits. Accumulating in fp32 and
+//     rounding once at the end keeps half-precision Sum at least as
+//     accurate as upstream's per-add rounding.
+//  12 FADD Sum finalize (one thread per output element): store the
+//     fp32 accumulation converted once to the output dtype.
+//  13 FADD Prod pass: CAS-multiply the fp32 scratch through its uint
+//     view (the float-atomic extension has no compare-exchange). Each
+//     step rounds in device order, the same nondeterminism class as
+//     upstream Metal's CAS-multiply float Prod.
+//  14 BOOL Sum/Max finalize (one thread per output element): write the
+//     accumulated OR bit into the packed byte with an atomicAnd/atomicOr
+//     pair; the two ops touch disjoint bits, so concurrent byte writes
+//     to one word commute and no write is lost.
+//  15 BOOL Prod/Min finalize: same byte write with the AND bit.
+// Bool storage is the packed word transport (4 bools per uint32 word,
+// one byte lane each); the rank scratch stays one uint32 per element,
+// so every order-sensitive accumulation runs on unpadded words.
 // The monotone key maps every value to a uint32 whose unsigned order
 // matches the value order, with canonical NaN above +inf (the rule the
 // sort kernel uses). Integer keys use the biased two's-complement map.
@@ -29,6 +53,14 @@
 // every dtype.
 // Index updates whose value is outside [0, dim) after negative wrap are
 // skipped; upstream leaves them undefined.
+// With USE_MULTI_INDEX the kernel scatters through TWO index arrays, one
+// per scatter axis (upstream's multi-axis mx.scatter; the host passes one
+// pre-broadcast array per axis). Binding 3 becomes the second index array
+// and scratch moves to binding 4, so the dispatch needs five storage-buffer
+// bindings. A slot lands only when BOTH axis indices are in range after the
+// same decode rule as the single-array path; the axis-0 pair is unchanged
+// (reduce_size/matrix_m) and the axis-1 dim/stride ride matrix_n/matrix_k
+// with the second array's word offset in lhs_size.
 //
 // t addresses one update element: slot = t / output_size selects the
 // index row, and t mod output_size is the element's position inside
@@ -39,8 +71,11 @@
 // selects the key mapping: 0 = float32 bits, 1 = int32 biased,
 // 2 = uint32 identity. aux_size carries the index word mode:
 // 0 = int32, 1 = uint32, 2 = int64.
-
 #version 460
+#if defined(USE_FADD)
+#extension GL_EXT_shader_atomic_float : require
+#endif
+
 
 #ifdef USE_FP16
 #extension GL_EXT_shader_16bit_storage : require
@@ -65,6 +100,12 @@ uint16_t bf16_store(float value) {
 #define STORAGE_TYPE uint
 #define LOAD_VALUE(x) (x)
 #define STORE_VALUE(x) (x)
+#elif defined(USE_BOOL)
+// Bool rides the packed word transport: uint32 words, 4 bools per
+// word, one byte lane each, same as the logical kernels.
+#define STORAGE_TYPE uint
+#define LOAD_VALUE(x) (x)
+#define STORE_VALUE(x) (x)
 #else
 #define STORAGE_TYPE float
 #define LOAD_VALUE(x) float(x)
@@ -73,6 +114,23 @@ uint16_t bf16_store(float value) {
 
 layout(local_size_x = 256) in;
 
+#ifdef USE_MULTI_INDEX
+layout(set = 0, binding = 0, std430) buffer Output {
+  STORAGE_TYPE values[];
+} out_data;
+layout(set = 0, binding = 1, std430) readonly buffer Updates {
+  STORAGE_TYPE values[];
+} upd_data;
+layout(set = 0, binding = 2, std430) readonly buffer Indices {
+  int values[];
+} indices_data;
+layout(set = 0, binding = 3, std430) readonly buffer IndicesB {
+  int values[];
+} indices_b_data;
+layout(set = 0, binding = 4, std430) buffer Scratch {
+  uint values[];
+} scratch_data;
+#else
 layout(set = 0, binding = 0, std430) buffer Output {
   STORAGE_TYPE values[];
 } out_data;
@@ -85,6 +143,20 @@ layout(set = 0, binding = 2, std430) readonly buffer Indices {
 layout(set = 0, binding = 3, std430) buffer Scratch {
   uint values[];
 } scratch_data;
+#endif
+#if defined(USE_FADD) && defined(USE_MULTI_INDEX)
+// fp32 view of the multi-index accumulation scratch, aliased on the
+// same binding as the uint rank view; ops 11-13 address it per output
+// element. The uint view stays available for the op-13 compare-exchange,
+// which the float-atomic extension does not provide on float storage.
+layout(set = 0, binding = 4, std430) buffer ScratchF {
+  float values[];
+} scratch_f_data;
+#elif defined(USE_FADD)
+layout(set = 0, binding = 3, std430) buffer ScratchF {
+  float values[];
+} scratch_f_data;
+#endif
 
 layout(push_constant) uniform Params {
   uint count;
@@ -110,7 +182,7 @@ layout(push_constant) uniform Params {
   uint out_strides[4];
 } params;
 
-#ifdef USE_U32
+#if defined(USE_U32) || defined(USE_BOOL)
 
 uint key_of(uint raw) {
   if (params.aux_offset == 0u) {
@@ -171,6 +243,36 @@ void main() {
           out_data.values[element] = value_of_key(key);
         }
       }
+    } else if (op == 12u) {
+#ifdef USE_FADD
+      // FADD Sum finalize: one thread per output element stores the
+      // fp32 accumulation converted once to the output dtype.
+      uint element = params.output_offset + t;
+      out_data.values[element] = STORE_VALUE(scratch_f_data.values[element]);
+#endif
+    } else if (op == 16u) {
+#ifdef USE_FADD
+      // FADD Prod finalize: one thread per output element multiplies
+      // the copied src by the fp32 product and stores once.
+      uint element = params.output_offset + t;
+      out_data.values[element] = STORE_VALUE(
+          LOAD_VALUE(out_data.values[element]) *
+          scratch_f_data.values[element]);
+#endif
+    } else if (op == 14u || op == 15u) {
+#ifdef USE_BOOL
+      // Bool Sum/Max (14, OR) and Prod/Min (15, AND) finalize: write
+      // the accumulated bit into the packed byte. The atomicAnd clears
+      // the lane and the atomicOr sets it; the two touch disjoint bits,
+      // so concurrent byte writes to one word commute under any
+      // interleaving and no lane is lost.
+      uint element = params.output_offset + t;
+      uint word = element >> 2u;
+      uint shift = (element & 3u) * 8u;
+      uint bit = scratch_data.values[element] & 1u;
+      atomicAnd(out_data.values[word], ~(1u << shift));
+      atomicOr(out_data.values[word], bit << shift);
+#endif
     } else {
       // Slot phases: t addresses one update element; slot selects the
       // index row and block is the element's offset inside the row's
@@ -193,7 +295,31 @@ void main() {
           index = word;
         }
       }
-      if (index < params.reduce_size) {
+      bool in_range = index < params.reduce_size;
+      uint axis_b_offset = 0u;
+#ifdef USE_MULTI_INDEX
+      // Second axis: same decode rule against the second index array,
+      // the axis dim in matrix_n, and the axis stride in matrix_k. A
+      // slot lands only when both axes decode in range.
+      uint index_b = params.matrix_n;
+      uint word_b = uint(indices_b_data.values[params.lhs_size + word_slot]);
+      if (params.aux_size == 0u) {
+        if (word_b < 0x80000000u) {
+          index_b = word_b;
+        }
+      } else if (params.aux_size == 1u) {
+        index_b = word_b;
+      } else {
+        uint high_b =
+            uint(indices_b_data.values[params.lhs_size + word_slot + 1u]);
+        if (high_b == 0u) {
+          index_b = word_b;
+        }
+      }
+      in_range = in_range && index_b < params.matrix_n;
+      axis_b_offset = index_b * params.matrix_k;
+#endif
+      if (in_range) {
         uint out_tail = 0u;
         uint scale = 1u;
         for (uint i = params.flags; i > 0u; --i) {
@@ -203,13 +329,27 @@ void main() {
           scale *= dim;
         }
         uint target = params.output_offset + index * params.matrix_m +
-            out_tail;
+            axis_b_offset + out_tail;
         if (op == 0u) {
           atomicMax(scratch_data.values[target], slot + 1u);
         } else if (op == 1u) {
           if (scratch_data.values[target] == slot + 1u) {
+#ifdef USE_BOOL
+            // Winner writes its packed byte: clear the lane, then set
+            // the canonical update bit. Commuting atomics, so two
+            // winners in one word cannot lose either lane.
+            uint ue = params.lhs_offset + t;
+            uint ubyte =
+                (upd_data.values[ue >> 2u] >> ((ue & 3u) * 8u)) & 0xFFu;
+            uint lane = (target & 3u) * 8u;
+            atomicAnd(out_data.values[target >> 2u], ~(0xFFu << lane));
+            atomicOr(
+                out_data.values[target >> 2u],
+                (ubyte != 0u ? 1u : 0u) << lane);
+#else
             out_data.values[target] =
                 upd_data.values[params.lhs_offset + t];
+#endif
           }
         } else if (op == 2u) {
           atomicMax(
@@ -239,6 +379,61 @@ void main() {
             }
             assumed = prev;
           }
+#endif
+#if defined(USE_FADD)
+        } else if (op == 11u) {
+          // FADD Sum: hardware fp32 atomicAdd of the decoded update
+          // into the fp32 per-element scratch. Duplicate indices
+          // accumulate in device order; the total matches upstream
+          // Metal, whose float32 scatter add is a native atomic fetch
+          // add and whose float16/bfloat16 path is a packed CAS loop,
+          // so reordering between runs can change the last rounding
+          // bits. fp32 accumulation rounds once at the op-12 finalize,
+          // at least as accurate as upstream's per-add rounding.
+          atomicAdd(
+              scratch_f_data.values[target],
+              LOAD_VALUE(upd_data.values[params.lhs_offset + t]));
+        } else if (op == 13u) {
+          // FADD Prod: CAS-multiply through the uint view of the fp32
+          // scratch (the extension provides no compare-exchange on
+          // float). Each step rounds in device order: the same
+          // nondeterminism class as upstream Metal's float CAS
+          // multiply, with fp32 partial products exact for fp16 inputs.
+          uint mul_bits = floatBitsToUint(
+              LOAD_VALUE(upd_data.values[params.lhs_offset + t]));
+          uint assumed = scratch_data.values[target];
+          for (;;) {
+            uint next = floatBitsToUint(
+                uintBitsToFloat(assumed) * uintBitsToFloat(mul_bits));
+            uint prev =
+                atomicCompSwap(scratch_data.values[target], assumed, next);
+            if (prev == assumed) {
+              break;
+            }
+            assumed = prev;
+          }
+#endif
+#ifdef USE_BOOL
+        } else if (op == 6u) {
+          // Bool Sum/Max: OR the canonical update bit into the
+          // per-element scratch. Saturating and associative, so
+          // duplicate indices are exact regardless of order.
+          uint ue6 = params.lhs_offset + t;
+          atomicOr(
+              scratch_data.values[target],
+              (upd_data.values[ue6 >> 2u] >> ((ue6 & 3u) * 8u)) != 0u
+                  ? 1u
+                  : 0u);
+        } else if (op == 7u) {
+          // Bool Prod/Min: AND the canonical update bit. Scratch is
+          // pre-cleared to all ones; the AND bit pattern makes
+          // duplicates exact.
+          uint ue7 = params.lhs_offset + t;
+          atomicAnd(
+              scratch_data.values[target],
+              (upd_data.values[ue7 >> 2u] >> ((ue7 & 3u) * 8u)) != 0u
+                  ? 1u
+                  : 0u);
 #endif
         }
       }

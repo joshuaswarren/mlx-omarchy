@@ -4,18 +4,32 @@
 // shape[0..K) the kept extents, shape[K..K+R) the reduced extents, matrix_m
 // the reduced-axis count R, in_strides[0..K) the input strides of the kept
 // axes, out_strides[0..R) the input strides of the reduced axes, reduce_size
-// the reduced element count, and operation the selector below. Broadcast
-// views work for free: an expanded axis has stride 0.
+// the reduced element count, and operation the selector below. matrix_n is
+// the chunk count: one invocation covers at most chunk-trip reduced elements,
+// because serial per-invocation loops beyond a driver-dependent cap
+// (2^15-1 trips on lavapipe for this kernel shape) silently stop early.
+// Broadcast views work for free: an expanded axis has stride 0.
+//
+// flags bit 0 selects the phase. Bit 0 clear: the invocation owns one
+// (output element, chunk) pair and writes its partial accumulator to the
+// scratch buffer at binding 1 (layout scratch[out_index * matrix_n + chunk]).
+// Bit 0 set: the invocation owns one output element and combines its
+// matrix_n partials from scratch into the final output at binding 2.
+// flags bit 1 (only meaningful with bit 0 clear) marks the single-pass
+// layout: reduce_size fits in one chunk, so the accumulator is stored
+// straight to the output and scratch goes untouched.
 //
 // The selector matches ReduceOperation in primitives.cpp: 0 Sum, 1 Prod,
 // 2 Min, 3 Max, 4 Any, 5 All.
 //
-// BOOL_OUT selects the Any/All transport: a bool output (one byte per
-// element) written through little-endian 32-bit words, the same word packing
-// compare.comp and logical_or.comp use. USE_I32 / USE_U32 select raw 32-bit
-// integer storage; USE_FP16 / USE_BF16 select 16-bit float storage with a
-// float32 accumulator, the rule the suffix reduce and scan kernels follow;
-// USE_BOOL_INPUT reads a bool input through the same word packing.
+// Scratch (binding 1) holds one accumulator per (output element, chunk).
+// Float variants accumulate in float32 and store float32 partials, the rule
+// the suffix reduce and scan kernels follow; 16-bit storage never narrows a
+// partial. USE_I32 / USE_U32 scratch their own width. BOOL_OUT variants
+// scratch one 0/1 uint per partial and word-pack four outputs per 32-bit
+// write in the combine phase, the same packing compare.comp and
+// logical_or.comp use. USE_BOOL_INPUT reads a bool input through that
+// word packing.
 #version 460
 
 #ifdef USE_FP16
@@ -47,14 +61,23 @@
 // unary-minus-parses-first trap.
 #define MAX_SENTINEL 2147483647
 #define MIN_SENTINEL (-2147483647 - 1)
+#define SCRATCH_TYPE int
 #elif defined(USE_U32)
 #define ACC_TYPE uint
 #define MAX_SENTINEL 0xffffffffu
 #define MIN_SENTINEL 0u
+#define SCRATCH_TYPE uint
 #else
 #define ACC_TYPE float
 #define MAX_SENTINEL uintBitsToFloat(0x7f800000u)
 #define MIN_SENTINEL uintBitsToFloat(0xff800000u)
+#define SCRATCH_TYPE float
+#endif
+#ifdef BOOL_OUT
+// Any/All partials are always 0/1 uints; override the typed scratch width
+// when an AnyAll variant shares a dtype define with a typed kernel.
+#undef SCRATCH_TYPE
+#define SCRATCH_TYPE uint
 #endif
 
 #ifdef USE_BF16
@@ -81,6 +104,9 @@ layout(local_size_x = 256) in;
 layout(set = 0, binding = 0, std430) readonly buffer Input {
   STORAGE_TYPE values[];
 } input_data;
+layout(set = 0, binding = 1, std430) buffer Scratch {
+  SCRATCH_TYPE values[];
+} scratch_data;
 layout(set = 0, binding = 2, std430) writeonly buffer Output {
   OUT_TYPE values[];
 } output_data;
@@ -147,57 +173,36 @@ bool load_truthy(uint index) {
   return LOAD_VALUE(input_data.values[params.lhs_offset + index]) != 0.0;
 #endif
 }
+#endif
 
-bool reduce_element(uint index) {
-  uint rem = index;
+// The kept-axis decode of one output element: its input base offset.
+uint decode_kept_offset(uint output_index) {
+  uint rem = output_index;
   uint in_off = 0u;
   for (int d = int(params.dims) - 1; d >= 0; --d) {
     uint coord = rem % params.shape[d];
     rem /= params.shape[d];
     in_off += coord * params.in_strides[d];
   }
-  bool value = params.operation == 4u ? false : true;
-  for (uint j = 0u; j < params.reduce_size; ++j) {
-    uint rrem = j;
-    uint r_off = 0u;
-    for (uint r = 0u; r < params.matrix_m; ++r) {
-      uint coord = rrem % params.shape[params.dims + r];
-      rrem /= params.shape[params.dims + r];
-      r_off += coord * params.out_strides[r];
-    }
-    bool truthy = load_truthy(in_off + r_off);
-    if (params.operation == 4u) {
-      value = value || truthy;
-    } else {
-      value = value && truthy;
-    }
-  }
-  return value;
+  return in_off;
 }
 
-void main() {
-  uint word_index = gl_GlobalInvocationID.x;
-  uint word_stride = gl_NumWorkGroups.x * gl_WorkGroupSize.x;
-  uint word_count = (params.count + 3u) >> 2u;
-  while (word_index < word_count) {
-    uint word = 0u;
-    for (uint lane = 0u; lane < 4u; ++lane) {
-      uint index = word_index * 4u + lane;
-      if (index >= params.count) {
-        continue;
-      }
-      uint bit = reduce_element(index) ? 1u : 0u;
-      word |= bit << ((index & 3u) * 8u);
-    }
-    output_data.values[word_index] = word;
-    if (word_count - word_index <= word_stride) {
-      break;
-    }
-    word_index += word_stride;
+// The reduced-axis decode of one reduced position: its input offset.
+uint decode_reduced_offset(uint j) {
+  uint rrem = j;
+  uint r_off = 0u;
+  for (uint r = 0u; r < params.matrix_m; ++r) {
+    uint coord = rrem % params.shape[params.dims + r];
+    rrem /= params.shape[params.dims + r];
+    r_off += coord * params.out_strides[r];
   }
+  return r_off;
 }
-#else
-// Typed output: one invocation computes one output element.
+
+#ifndef BOOL_OUT
+// Min and Max follow the upstream NaN convention: any NaN in the reduced
+// set poisons the result. A plain ordered compare silently drops a NaN
+// carried in the accumulator, so the poison is held once it enters.
 ACC_TYPE combine(ACC_TYPE acc, ACC_TYPE next, uint operation) {
   if (operation == 0u) {
     return acc + next;
@@ -205,55 +210,156 @@ ACC_TYPE combine(ACC_TYPE acc, ACC_TYPE next, uint operation) {
   if (operation == 1u) {
     return acc * next;
   }
-#if defined(USE_I32) || defined(USE_U32)
-  if (operation == 2u) {
-    return acc < next ? acc : next;
+#if !defined(USE_I32) && !defined(USE_U32)
+  if (isnan(acc)) {
+    return acc;
   }
-  return acc > next ? acc : next;
-#else
-  // NaN beats every number, the convention the suffix Max kernel follows.
   if (isnan(next)) {
     return next;
   }
+#endif
   if (operation == 2u) {
     return acc < next ? acc : next;
   }
   return acc > next ? acc : next;
-#endif
 }
+#endif
 
+#ifdef BOOL_OUT
 void main() {
-  uint output_index = gl_GlobalInvocationID.x;
-  uint stride = gl_NumWorkGroups.x * gl_WorkGroupSize.x;
-  while (output_index < params.output_size) {
-    uint rem = output_index;
-    uint in_off = 0u;
-    for (int d = int(params.dims) - 1; d >= 0; --d) {
-      uint coord = rem % params.shape[d];
-      rem /= params.shape[d];
-      in_off += coord * params.in_strides[d];
-    }
-    ACC_TYPE value = init_value(params.operation);
-    for (uint j = 0u; j < params.reduce_size; ++j) {
-      uint rrem = j;
-      uint r_off = 0u;
-      for (uint r = 0u; r < params.matrix_m; ++r) {
-        uint coord = rrem % params.shape[params.dims + r];
-        rrem /= params.shape[params.dims + r];
-        r_off += coord * params.out_strides[r];
+  uint word_stride = gl_NumWorkGroups.x * gl_WorkGroupSize.x;
+  if ((params.flags & 1u) != 0u) {
+    // Combine phase: one output word per invocation, four output elements.
+    uint word_count = (params.output_size + 3u) >> 2u;
+    uint word_index = gl_GlobalInvocationID.x;
+    while (word_index < word_count) {
+      uint word = 0u;
+      for (uint lane = 0u; lane < 4u; ++lane) {
+        uint output_index = word_index * 4u + lane;
+        if (output_index >= params.output_size) {
+          continue;
+        }
+        uint base = output_index * params.matrix_n;
+        bool value = params.operation == 4u ? false : true;
+        for (uint c = 0u; c < params.matrix_n; ++c) {
+          bool partial = scratch_data.values[base + c] != 0u;
+          value = params.operation == 4u ? (value || partial)
+                                         : (value && partial);
+        }
+        word |= (value ? 1u : 0u) << ((output_index & 3u) * 8u);
       }
-      value = combine(
-          value,
-          ACC_TYPE(LOAD_VALUE(input_data.values[params.lhs_offset + in_off +
-                              r_off])),
-          params.operation);
+      output_data.values[word_index] = word;
+      if (word_count - word_index <= word_stride) {
+        break;
+      }
+      word_index += word_stride;
     }
-    output_data.values[params.output_offset + output_index] =
-        STORE_VALUE(value);
-    if (params.output_size - output_index <= stride) {
+    return;
+  }
+  // Single pass (bit 1 set): the reduce fits in one chunk, so the
+  // invocation owns one packed output word over the full reduced range,
+  // exactly the original layout. Otherwise the invocation owns one
+  // (output element, chunk) pair and stores a 0/1 partial.
+  if ((params.flags & 2u) != 0u) {
+    uint word_count = (params.output_size + 3u) >> 2u;
+    uint word_index = gl_GlobalInvocationID.x;
+    while (word_index < word_count) {
+      uint word = 0u;
+      for (uint lane = 0u; lane < 4u; ++lane) {
+        uint output_index = word_index * 4u + lane;
+        if (output_index >= params.output_size) {
+          continue;
+        }
+        uint in_off = decode_kept_offset(output_index);
+        bool value = params.operation == 4u ? false : true;
+        for (uint j = 0u; j < params.reduce_size; ++j) {
+          bool truthy = load_truthy(in_off + decode_reduced_offset(j));
+          value = params.operation == 4u ? (value || truthy)
+                                         : (value && truthy);
+        }
+        word |= (value ? 1u : 0u) << ((output_index & 3u) * 8u);
+      }
+      output_data.values[word_index] = word;
+      if (word_count - word_index <= word_stride) {
+        break;
+      }
+      word_index += word_stride;
+    }
+    return;
+  }
+  uint pairs = params.output_size * params.matrix_n;
+  uint id = gl_GlobalInvocationID.x;
+  while (id < pairs) {
+    uint output_index = id / params.matrix_n;
+    uint chunk = id - output_index * params.matrix_n;
+    uint trips = (params.reduce_size + params.matrix_n - 1u) / params.matrix_n;
+    uint lo = chunk * trips;
+    uint hi = min(lo + trips, params.reduce_size);
+    uint in_off = decode_kept_offset(output_index);
+    bool value = params.operation == 4u ? false : true;
+    for (uint j = lo; j < hi; ++j) {
+      bool truthy = load_truthy(in_off + decode_reduced_offset(j));
+      value = params.operation == 4u ? (value || truthy) : (value && truthy);
+    }
+    scratch_data.values[id] = value ? 1u : 0u;
+    if (pairs - id <= word_stride) {
       break;
     }
-    output_index += stride;
+    id += word_stride;
+  }
+}
+#else
+void main() {
+  uint grid = gl_NumWorkGroups.x * gl_WorkGroupSize.x;
+  if ((params.flags & 1u) != 0u) {
+    // Combine phase: one output element per invocation.
+    uint output_index = gl_GlobalInvocationID.x;
+    while (output_index < params.output_size) {
+      ACC_TYPE value = init_value(params.operation);
+      uint base = output_index * params.matrix_n;
+      for (uint c = 0u; c < params.matrix_n; ++c) {
+        value = combine(value, ACC_TYPE(scratch_data.values[base + c]),
+                        params.operation);
+      }
+      output_data.values[params.output_offset + output_index] =
+          STORE_VALUE(value);
+      if (params.output_size - output_index <= grid) {
+        break;
+      }
+      output_index += grid;
+    }
+    return;
+  }
+  // Partial phase: one (output element, chunk) pair per invocation. With
+  // bit 1 set the chunk covers the whole reduced range and the accumulator
+  // is the final element.
+  uint id = gl_GlobalInvocationID.x;
+  while (id < params.output_size * params.matrix_n) {
+    uint output_index = id / params.matrix_n;
+    uint chunk = id - output_index * params.matrix_n;
+    uint trips = (params.reduce_size + params.matrix_n - 1u) / params.matrix_n;
+    uint lo = chunk * trips;
+    uint hi = min(lo + trips, params.reduce_size);
+    uint in_off = decode_kept_offset(output_index);
+    ACC_TYPE value = init_value(params.operation);
+    for (uint j = lo; j < hi; ++j) {
+      value = combine(
+          value,
+          ACC_TYPE(LOAD_VALUE(
+              input_data.values[params.lhs_offset + in_off +
+                                decode_reduced_offset(j)])),
+          params.operation);
+    }
+    if ((params.flags & 2u) != 0u) {
+      output_data.values[params.output_offset + output_index] =
+          STORE_VALUE(value);
+    } else {
+      scratch_data.values[id] = SCRATCH_TYPE(value);
+    }
+    if (params.output_size * params.matrix_n - id <= grid) {
+      break;
+    }
+    id += grid;
   }
 }
 #endif

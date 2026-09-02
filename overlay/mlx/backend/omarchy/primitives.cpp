@@ -593,16 +593,49 @@ enum ComparisonOperation : uint32_t {
   CompareNotEqual,
 };
 
+// Forward declaration: dispatch_logical is defined after this function but
+// must be callable from the bool-input branch below.
+void dispatch_logical(
+    const std::string& name,
+    uint32_t operation,
+    const std::vector<array>& inputs,
+    array& out);
+
 void dispatch_comparison(
     const std::string& name,
     uint32_t operation,
     const std::vector<array>& inputs,
-    array& out) {
+    array& out,
+    uint32_t flags = 0) {
   const array& lhs = inputs.at(0);
   const array& rhs = inputs.at(1);
   auto& encoder = omarchy::get_command_encoder(out.primitive().stream());
   if (out.dtype() != bool_) {
     omarchy::unsupported(name + " output dtype", out);
+  }
+  // Bool inputs share the logical_or.comp kernel: the comparison
+  // sextet (3..8) extends the logical selector and gives us
+  // elementwise Equal/NotEqual/Greater/Less/GreaterEqual/LessEqual
+  // on 0/1 bytes via the same word-packed transport the Or/And/Not
+  // trio already uses. The 6 masked C++ cases (test array basics,
+  // comparison ops) all flow through this branch.
+  if (lhs.dtype() == bool_) {
+    // Map ComparisonOperation onto logical_or sextet codes. ComparisonOperation
+    // order: Equal=0, GreaterEqual=1, Greater=2, Less=3, LessEqual=4, NotEqual=5.
+    // logical_or sextet order: Equal=3, NotEqual=4, Greater=5, Less=6, GreaterEqual=7,
+    // LessEqual=8.
+    uint logical_op;
+    switch (operation) {
+      case CompareEqual:       logical_op = 3u; break;  // Equal
+      case CompareNotEqual:    logical_op = 4u; break;  // NotEqual
+      case CompareGreater:     logical_op = 5u; break;  // Greater
+      case CompareLess:        logical_op = 6u; break;  // Less
+      case CompareGreaterEqual:logical_op = 7u; break;  // GreaterEqual
+      case CompareLessEqual:   logical_op = 8u; break;  // LessEqual
+      default: omarchy::unsupported(name + " bool selector", out);
+    }
+    dispatch_logical(name, logical_op, inputs, out);
+    return;
   }
   if (lhs.dtype() != rhs.dtype() ||
       (lhs.dtype() != float32 && lhs.dtype() != float16 &&
@@ -631,6 +664,7 @@ void dispatch_comparison(
   omarchy::ComputeParams params;
   params.count = count;
   params.operation = operation;
+  params.flags = flags;
   params.lhs_size = checked_u32(lhs.data_size(), name, out);
   params.rhs_size = checked_u32(rhs.data_size(), name, out);
   params.output_size = count;
@@ -683,6 +717,9 @@ void dispatch_logical(
   if (out.size() == 0) {
     return;
   }
+  // One thread per output word. Honeykrisp coalesces adjacent word
+  // stores into a 16-byte vector store and drops the inner three
+  // lanes' values; atomicOr on the output word bypasses that path.
   uint32_t count = checked_u32(out.size(), name, out);
   uint32_t word_count = checked_u32(
       (static_cast<uint64_t>(count) + 3) / 4, name, out);
@@ -710,10 +747,6 @@ void dispatch_logical(
 }
 
 // Integer twin of the binary elementwise path. The shader carries the
-// same modulo fast path and broadcast transport; only the storage type
-// differs, so int32 and uint32 share one SPIR-V variant. The selector
-// matches IntElementwiseOperation; subtract, bitwise logic, shifts,
-// invert, DivMod, Remainder, Power, Sign, and Abs all route here.
 enum IntElementwiseOperation : uint32_t {
   IntSubtractOperation,
   IntBitwiseAndOperation,
@@ -872,6 +905,46 @@ void dispatch_sort(
       std::min(output_size, omarchy::kMaxComputeGroupCountX));
 }
 
+// Wide-row ArgPartition. One workgroup per row runs a binary search over
+// the monotone unsigned key (with canonical -0.0 and NaN handling) and
+// serially emits the indices. The shader handles any row length; the
+// dispatch caps the row count at kMaxComputeGroupCountX (batches spill
+// into a second batch loop, but no vocabulary-width model needs more than
+// one batch of 65535 rows).
+void dispatch_argpartition_wide(
+    const std::string& name,
+    const array& input,
+    array& out,
+    uint32_t kth,
+    omarchy::CommandEncoder& encoder) {
+  size_t row_length = input.shape(-1);
+  size_t rows = input.size() / row_length;
+  out.set_data(allocate_omarchy(out.nbytes()));
+  if (out.size() == 0) {
+    return;
+  }
+  uint32_t output_size = checked_u32(rows, name, out);
+  omarchy::ComputeParams params;
+  params.count = checked_u32(row_length, name, out);
+  params.reduce_size = params.count;
+  params.output_size = output_size;
+  params.operation = kth;
+  params.lhs_offset = checked_item_offset(input, input.size(), name, out);
+  params.output_offset = checked_item_offset(out, out.size(), name, out);
+  std::array<omarchy::ComputeBinding, 3> bindings{
+      binding(input), binding(input), binding(out)};
+  auto kernel = select_float_kernel(
+      input.dtype(),
+      omarchy::ComputeKernel::ArgPartitionWideF32,
+      omarchy::ComputeKernel::ArgPartitionWideF16,
+      omarchy::ComputeKernel::ArgPartitionWideBF16);
+  encoder.dispatch_compute(
+      kernel,
+      bindings,
+      params,
+      std::min(output_size, omarchy::kMaxComputeGroupCountX));
+}
+
 
 // Last-axis softmax. The Softmax primitive is only constructed for a
 // last-axis reduction (mlx/ops.cpp softmax), so no suffix-axis check is
@@ -983,9 +1056,20 @@ omarchy::ComputeKernel select_reduce_general_kernel(Dtype dtype) {
 // The stride-walking general reduction: axes in any position, up to four
 // total. Push-constant routing mirrors shaders/reduce_general.comp:
 // shape[] carries the kept extents then the reduced extents, in_strides[]
-// the kept input strides, out_strides[] the reduced input strides, dims the
-// kept count, and matrix_m the reduced count. A broadcast view reduces
-// correctly because its expanded axes carry stride 0.
+// the kept input strides, out_strides[] the reduced input strides, dims
+// the kept count, and matrix_m the reduced count. A broadcast view
+// reduces correctly because its expanded axes carry stride 0.
+//
+// Single-invocation serial loops in the shader are bounded by the driver
+// (the lavapipe runtime stops after roughly 2^15 trips for this kernel
+// shape, depending on local size), so reduce_size is split across chunks
+// when it exceeds kReduceGeneralChunkTrips. The kernel runs in two
+// phases: the partial phase writes one accumulator per (output element,
+// chunk) to a scratch buffer at binding 1; the combine phase reads that
+// scratch and emits the final typed output (or word-packed bool output).
+// When the whole reduce fits in a single chunk the partial phase skips
+// scratch and writes the accumulator straight to the output, matching the
+// pre-tiling behaviour for small reductions.
 void dispatch_reduce_general(
     const std::string& operation_name,
     uint32_t operation,
@@ -1016,10 +1100,40 @@ void dispatch_reduce_general(
   }
   uint32_t output_size = checked_u32(out.size(), operation_name, out);
   const array& bound_input = input.size() == 0 ? out : input;
+  uint32_t reduce_size_u32 =
+      checked_u32(reduce_size, operation_name, out);
+  constexpr uint32_t kReduceGeneralChunkTrips = 4096;
+  uint32_t chunks = reduce_size_u32 == 0
+      ? 1u
+      : (reduce_size_u32 + kReduceGeneralChunkTrips - 1u) /
+          kReduceGeneralChunkTrips;
+  if (chunks == 0) {
+    chunks = 1;
+  }
+  // The scratch buffer holds one partial per (output element, chunk);
+  // the bool AnyAll variant uses 0/1 uints, every other variant uses
+  // the input width (with float variants accumulating in float32, the
+  // rule the suffix reduce and scan kernels follow).
+  bool bool_out = out.dtype() == bool_;
+  Dtype scratch_dtype = bool_out ? uint32 : input.dtype();
+  uint64_t scratch_elems =
+      static_cast<uint64_t>(output_size) * chunks;
+  // 64 MiB partials cap keeps any single dispatch's working memory
+  // within the device's reachable resident set on lavapipe; shapes that
+  // demand more are refused by name so the failure is loud.
+  if (scratch_elems > (1ull << 25)) {
+    omarchy::unsupported(
+        operation_name + " reduction split exceeds scratch budget", out);
+  }
+  array scratch(
+      Shape{static_cast<int>(scratch_elems)}, scratch_dtype, nullptr, {});
+  scratch.set_data(allocate_omarchy(scratch.nbytes()));
+  encoder.add_temporary(scratch);
+
   omarchy::ComputeParams params;
   params.count = output_size;
   params.operation = operation;
-  params.reduce_size = checked_u32(reduce_size, operation_name, out);
+  params.reduce_size = reduce_size_u32;
   params.output_size = output_size;
   params.lhs_offset = checked_item_offset(
       bound_input, input.size(), operation_name, out);
@@ -1027,6 +1141,7 @@ void dispatch_reduce_general(
       out, out.size(), operation_name, out);
   params.dims = static_cast<uint32_t>(kept.size());
   params.matrix_m = static_cast<uint32_t>(reduced.size());
+  params.matrix_n = chunks;
   for (size_t index = 0; index < kept.size(); ++index) {
     params.shape[index] = static_cast<uint32_t>(input.shape(kept[index]));
     params.in_strides[index] =
@@ -1038,18 +1153,38 @@ void dispatch_reduce_general(
     params.out_strides[index] =
         static_cast<uint32_t>(input.strides()[reduced[index]]);
   }
-  std::array<omarchy::ComputeBinding, 3> bindings{
-      binding(bound_input), binding(bound_input), binding(out)};
-  // Bool outputs word-pack four elements per 32-bit write.
-  uint32_t dispatch_count = out.dtype() == bool_
-      ? checked_u32(
-            (static_cast<uint64_t>(output_size) + 3) / 4, operation_name, out)
-      : output_size;
-  encoder.dispatch_compute(
-      kernel,
-      bindings,
-      params,
-      omarchy::compute_dispatch_group_count(dispatch_count));
+
+  auto run_phase = [&](uint32_t flags, uint32_t dispatch_count) {
+    params.flags = flags;
+    std::array<omarchy::ComputeBinding, 3> bindings{
+        binding(bound_input), binding(scratch), binding(out)};
+    encoder.dispatch_compute(
+        kernel,
+        bindings,
+        params,
+        omarchy::compute_dispatch_group_count(dispatch_count));
+  };
+
+  // Bool AnyAll combines partials in a second phase so the output words
+  // pack correctly; every other dtype combines per-element typed output.
+  if (bool_out) {
+    uint32_t word_count =
+        checked_u32(
+            (static_cast<uint64_t>(output_size) + 3) / 4, operation_name, out);
+    if (chunks == 1) {
+      run_phase(0u | 2u, word_count);
+    } else {
+      run_phase(0u, checked_u32(scratch_elems, operation_name, out));
+      run_phase(1u, word_count);
+    }
+  } else {
+    if (chunks == 1) {
+      run_phase(0u | 2u, output_size);
+    } else {
+      run_phase(0u, checked_u32(scratch_elems, operation_name, out));
+      run_phase(1u, output_size);
+    }
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -1514,6 +1649,129 @@ void dispatch_gather_qmm(
       omarchy::compute_dispatch_group_count(params.count));
 }
 
+// Complex64Transport. Keep in lockstep with the switch in
+// shaders/complex_elementwise.comp.
+enum ComplexOperation : uint32_t {
+  ComplexConjugate,
+  ComplexAdd,
+  ComplexSubtract,
+  ComplexMultiply,
+  ComplexDivide,
+  ComplexNegative,
+};
+
+// The params fill and dispatch behind the complex64 elementwise
+// kernel, mirroring dispatch_float_elementwise_to: a vec2 element per
+// item, the same broadcast transport, and the same contiguity rule.
+// Unary callers alias lhs and rhs; the shader's lhs_size/rhs_size
+// handling then keeps the modulo fast path honest.
+void dispatch_complex_elementwise_to(
+    const std::string& name,
+    uint32_t operation,
+    const array& lhs,
+    const array& rhs,
+    array& out,
+    bool general_broadcast,
+    omarchy::CommandEncoder& encoder) {
+  uint32_t count = checked_u32(out.size(), name, out);
+  omarchy::ComputeParams params;
+  params.count = count;
+  params.operation = operation;
+  params.lhs_size = checked_u32(lhs.data_size(), name, out);
+  params.rhs_size = checked_u32(rhs.data_size(), name, out);
+  params.output_size = count;
+  params.lhs_offset = checked_item_offset(lhs, params.lhs_size, name, out);
+  params.rhs_offset = checked_item_offset(rhs, params.rhs_size, name, out);
+  params.output_offset = checked_item_offset(out, count, name, out);
+  if (general_broadcast) {
+    fill_broadcast_transport(name, params, lhs, rhs, out);
+  }
+  std::array<omarchy::ComputeBinding, 3> bindings{
+      binding(lhs), binding(rhs), binding(out)};
+  encoder.dispatch_compute(
+      omarchy::ComputeKernel::ComplexElementwise,
+      bindings,
+      params,
+      omarchy::compute_dispatch_group_count(count));
+}
+
+void dispatch_complex(
+    const std::string& name,
+    uint32_t operation,
+    const std::vector<array>& inputs,
+    array& out,
+    const Stream& s) {
+  const array& lhs = inputs.at(0);
+  const bool binary = inputs.size() == 2;
+  const array& rhs = binary ? inputs.at(1) : lhs;
+  auto& encoder = omarchy::get_command_encoder(s);
+  if (lhs.dtype() != complex64 || rhs.dtype() != complex64 ||
+      out.dtype() != complex64) {
+    omarchy::unsupported(name + " complex64 dtype", out);
+  }
+  if (!lhs.flags().contiguous || !rhs.flags().contiguous) {
+    omarchy::unsupported("non-contiguous " + name, out);
+  }
+  bool general_broadcast = binary
+      ? (!is_trailing_broadcast(lhs, out) || !is_trailing_broadcast(rhs, out))
+      : !is_trailing_broadcast(lhs, out);
+  if (binary) {
+    auto binary_type = get_binary_op_type(lhs, rhs);
+    if (lhs.data_size() != lhs.size() || rhs.data_size() != rhs.size()) {
+      binary_type = BinaryOpType::General;
+    }
+    set_binary_op_output_data(
+        lhs, rhs, out, binary_type, allocate_omarchy);
+  } else if (general_broadcast) {
+    out.set_data(allocate_omarchy(out.nbytes()));
+  } else if (lhs.data_size() != lhs.size()) {
+    out.set_data(allocate_omarchy(out.nbytes()));
+  } else {
+    set_unary_output_data(lhs, out, allocate_omarchy);
+  }
+  if (out.size() == 0) {
+    return;
+  }
+  dispatch_complex_elementwise_to(
+      name, operation, lhs, rhs, out, general_broadcast, encoder);
+}
+
+// Complex64 component extraction to float32 (ComplexReal and
+// ComplexImag kernels; operation 0 keeps the real part, 1 the
+// imaginary part). The input offset is a complex64 item offset and
+// the output offset a float32 item offset, which is what the
+// per-array checked_item_offset calls already produce.
+void dispatch_complex_extract(
+    const std::string& name,
+    uint32_t operation,
+    const std::vector<array>& inputs,
+    array& out,
+    const Stream& s) {
+  const array& in = inputs.at(0);
+  auto& encoder = omarchy::get_command_encoder(s);
+  if (in.dtype() != complex64 || out.dtype() != float32) {
+    omarchy::unsupported(name + " dtype", out);
+  }
+  uint32_t count = checked_u32(out.size(), name, out);
+  omarchy::ComputeParams params;
+  params.count = count;
+  params.operation = operation;
+  params.output_size = count;
+  params.lhs_offset = checked_item_offset(in, in.data_size(), name, out);
+  params.output_offset = checked_item_offset(out, count, name, out);
+  out.set_data(allocate_omarchy(out.nbytes()));
+  if (out.size() == 0) {
+    return;
+  }
+  std::array<omarchy::ComputeBinding, 3> bindings{
+      binding(in), binding(in), binding(out)};
+  auto kernel = operation == 0
+      ? omarchy::ComputeKernel::ComplexReal
+      : omarchy::ComputeKernel::ComplexImag;
+  encoder.dispatch_compute(
+      kernel, bindings, params, omarchy::compute_dispatch_group_count(count));
+}
+
 } // namespace
 #define OMARCHY_BINARY(func, operation)                               \
   void func::eval_gpu(const std::vector<array>& inputs, array& out) { \
@@ -1538,7 +1796,15 @@ void Abs::eval_gpu(const std::vector<array>& inputs, array& out) {
   dispatch_elementwise(
       name(), AbsFloatOperation, inputs, out, out.primitive().stream());
 }
-OMARCHY_BINARY(Add, AddOperation)
+void Add::eval_gpu(const std::vector<array>& inputs, array& out) {
+  if (out.dtype() == complex64) {
+    dispatch_complex(
+        name(), ComplexAdd, inputs, out, out.primitive().stream());
+    return;
+  }
+  dispatch_elementwise(
+      name(), AddOperation, inputs, out, out.primitive().stream());
+}
 void AddMM::eval_gpu(const std::vector<array>& inputs, array& out) {
   auto [alpha, beta] = state();
   dispatch_matmul(name(), inputs, out, alpha, beta, true, out.primitive().stream());
@@ -1592,20 +1858,22 @@ OMARCHY_BINARY(ArcTan2, ArcTan2Operation)
 OMARCHY_UNARY(ArcTanh, ArcTanhOperation)
 void ArgPartition::eval_gpu(const std::vector<array>& inputs, array& out) {
   const array& input = inputs.at(0);
+  auto [kth, axis] = state();
   auto& encoder = omarchy::get_command_encoder(out.primitive().stream());
   require_index_source_dtype("ArgPartition", input, out, encoder);
   if (!input.flags().row_contiguous) {
     omarchy::unsupported("non-contiguous ArgPartition", out);
   }
-  if (state().second != input.ndim() - 1) {
+  if (axis != input.ndim() - 1) {
     omarchy::unsupported("non-suffix ArgPartition", out);
   }
+  // Ops layer (mlx/ops.cpp argpartition) already validated kth in
+  // [0, axis_size) so the row axis is non-empty.
   size_t row_length = input.shape(-1);
   if (row_length > kSortMaxRowLength) {
-    // The radix-select pipeline for vocabulary-width rows (the top-k
-    // sampling path) still mispicks; it stays a named rejection until
-    // it is correct. The bitonic path below covers rows up to 1024.
-    omarchy::unsupported("sort row length ArgPartition", out);
+    // Wide-row vocabulary sizes (top-k sampling for real LLMs).
+    dispatch_argpartition_wide("ArgPartition", input, out, kth, encoder);
+    return;
   }
   dispatch_sort("ArgPartition", input, out, true, encoder);
 }
@@ -2147,31 +2415,49 @@ void Compiled::eval_gpu(
   omarchy::eval_compiled_tape(
       tape_, inputs_, outputs_, inputs, outputs, stream());
 }
-OMARCHY_UNSUPPORTED(Conjugate)
+void Conjugate::eval_gpu(const std::vector<array>& inputs, array& out) {
+  // Upstream conjugate() returns real input unchanged before a
+  // primitive is built (mlx/ops.cpp), so eval only ever sees
+  // complex64 here. The op negates the imaginary component.
+  dispatch_complex(
+      name(),
+      ComplexConjugate,
+      inputs,
+      out,
+      out.primitive().stream());
+}
+// General direct convolution for the channels-last layouts upstream
+// hands this primitive: input [N, (H,) W, C] and weight
+// [O, (kH,) kW, C_per_group], both row-major. One thread owns one
+// output element; a float32 accumulator walks the kernel window and
+// index guards contribute zero for padding. The kernel covers every
+// combination the public ops build: groups including the depthwise
+// case, the flip that conv_transpose uses, input dilation, kernel
+// dilation, strides, and asymmetric padding, over 1D and 2D spatial
+// ranks. 1D rides the same kernel as a degenerate height of one,
+// matching the upstream CPU reference where slow_conv_1D is
+// slow_conv_2D with an extent-one height axis.
 void Convolution::eval_gpu(const std::vector<array>& inputs, array& out) {
   const array& in = inputs.at(0);
   const array& wt = inputs.at(1);
   auto& encoder = omarchy::get_command_encoder(out.primitive().stream());
   require_float_dtype("Convolution", in, out, encoder);
   require_float_dtype("Convolution", wt, out, encoder);
-  if (in.ndim() != 4 || wt.ndim() != 4) {
-    omarchy::unsupported("non-2D Convolution", out);
+  const int spatial = in.ndim() - 2;
+  if (spatial > 2) {
+    omarchy::unsupported("3-D Convolution", out);
   }
-  if (groups_ != 1) {
-    omarchy::unsupported("grouped Convolution", out);
+  if (in.ndim() != wt.ndim() || spatial < 1) {
+    omarchy::unsupported("Convolution shapes", out);
   }
-  // flip and input dilation are conv_transpose semantics; neither is
-  // part of the forward 2D convolution this direct kernel runs.
-  if (flip_) {
-    omarchy::unsupported("transposed Convolution", out);
-  }
-  if (input_dilation_[0] != 1 || input_dilation_[1] != 1) {
-    omarchy::unsupported("input-dilated Convolution", out);
-  }
+  const bool one_d = spatial == 1;
+  const int width_axis = one_d ? 1 : 2;
+  const int channel_axis = one_d ? 2 : 3;
 
-  // Materialize operands whose strides are not the standard NHWC and
-  // O(HKW) row-major layouts; cache slices and transposes compose that
-  // way. The engine keeps each temp alive until the submission lands.
+  // Materialize operands whose strides are not the standard
+  // channels-last and O(HKW) row-major layouts; cache slices and
+  // transposes compose that way. The engine keeps each temp alive
+  // until the submission lands.
   std::optional<array> in_materialized;
   std::optional<array> wt_materialized;
   if (!in.flags().row_contiguous) {
@@ -2185,15 +2471,17 @@ void Convolution::eval_gpu(const std::vector<array>& inputs, array& out) {
   const array& x = in_materialized ? *in_materialized : in;
   const array& w = wt_materialized ? *wt_materialized : wt;
 
-  int batch = x.shape(0);
-  int in_height = x.shape(1);
-  int in_width = x.shape(2);
-  int in_channels = x.shape(3);
-  int out_channels = w.shape(0);
-  int kernel_height = w.shape(1);
-  int kernel_width = w.shape(2);
-  if (w.shape(3) != in_channels || out.shape(0) != batch ||
-      out.shape(3) != out_channels) {
+  const int batch = x.shape(0);
+  const int in_height = one_d ? 1 : x.shape(1);
+  const int in_width = x.shape(width_axis);
+  const int in_channels = x.shape(channel_axis);
+  const int out_channels = w.shape(0);
+  const int kernel_height = one_d ? 1 : w.shape(1);
+  const int kernel_width = w.shape(width_axis);
+  const int in_channels_per_group = w.shape(channel_axis);
+  if (groups_ <= 0 || in_channels_per_group * groups_ != in_channels ||
+      out_channels % groups_ != 0 || out.shape(0) != batch ||
+      out.shape(channel_axis) != out_channels) {
     omarchy::unsupported("Convolution shapes", out);
   }
 
@@ -2204,30 +2492,49 @@ void Convolution::eval_gpu(const std::vector<array>& inputs, array& out) {
   uint32_t total = checked_u32(out.size(), "Convolution", out);
   omarchy::ComputeParams params;
   // Push-constant routing mirrors shaders/conv.comp: spatial extents,
-  // kernel window, and the six conv parameters ride the generic dims
+  // kernel window, and the conv parameters ride the generic dims
   // fields because the fixed ComputeParams layout has no conv block.
+  // 1D packs a degenerate height of one, so every axis stays 2D.
   params.count = total;
   params.operation = checked_u32(kernel_width, "Convolution", out);
-  params.reduce_size = checked_u32(in_channels, "Convolution", out);
+  params.reduce_size = checked_u32(in_channels_per_group, "Convolution", out);
   params.lhs_offset = checked_item_offset(x, x.size(), "Convolution", out);
   params.rhs_offset = checked_item_offset(w, w.size(), "Convolution", out);
-  params.output_offset = checked_item_offset(out, out.size(), "Convolution", out);
+  params.output_offset =
+      checked_item_offset(out, out.size(), "Convolution", out);
   params.aux_size = checked_u32(in_width, "Convolution", out);
   params.aux_offset = checked_u32(kernel_height, "Convolution", out);
   params.matrix_m = checked_u32(batch, "Convolution", out);
   params.matrix_n = checked_u32(out_channels, "Convolution", out);
   params.matrix_k = checked_u32(in_height, "Convolution", out);
+  // lhs_size/rhs_size carry the input dilation (transposed convs
+  // express their stride this way), flags the kernel flip, and
+  // out_strides[2] the group count.
+  params.lhs_size =
+      checked_u32(one_d ? 1 : input_dilation_[0], "Convolution", out);
+  params.rhs_size = checked_u32(
+      one_d ? input_dilation_[0] : input_dilation_[1], "Convolution", out);
+  params.flags = flip_ ? 1u : 0u;
   params.dims = 2;
-  params.shape[0] = checked_u32(out.shape(1), "Convolution", out);
-  params.shape[1] = checked_u32(out.shape(2), "Convolution", out);
-  params.shape[2] = checked_u32(padding_lo_[0], "Convolution", out);
-  params.shape[3] = checked_u32(padding_lo_[1], "Convolution", out);
-  params.in_strides[0] = checked_u32(kernel_strides_[0], "Convolution", out);
-  params.in_strides[1] = checked_u32(kernel_strides_[1], "Convolution", out);
-  params.in_strides[2] = checked_u32(kernel_dilation_[0], "Convolution", out);
-  params.in_strides[3] = checked_u32(kernel_dilation_[1], "Convolution", out);
-  params.out_strides[0] = checked_u32(padding_hi_[0], "Convolution", out);
-  params.out_strides[1] = checked_u32(padding_hi_[1], "Convolution", out);
+  params.shape[0] = checked_u32(one_d ? 1 : out.shape(1), "Convolution", out);
+  params.shape[1] =
+      checked_u32(one_d ? out.shape(1) : out.shape(2), "Convolution", out);
+  params.shape[2] = checked_u32(one_d ? 0 : padding_lo_[0], "Convolution", out);
+  params.shape[3] =
+      checked_u32(one_d ? padding_lo_[0] : padding_lo_[1], "Convolution", out);
+  params.in_strides[0] =
+      checked_u32(one_d ? 1 : kernel_strides_[0], "Convolution", out);
+  params.in_strides[1] = checked_u32(
+      one_d ? kernel_strides_[0] : kernel_strides_[1], "Convolution", out);
+  params.in_strides[2] =
+      checked_u32(one_d ? 1 : kernel_dilation_[0], "Convolution", out);
+  params.in_strides[3] = checked_u32(
+      one_d ? kernel_dilation_[0] : kernel_dilation_[1], "Convolution", out);
+  params.out_strides[0] =
+      checked_u32(one_d ? 0 : padding_hi_[0], "Convolution", out);
+  params.out_strides[1] = checked_u32(
+      one_d ? padding_hi_[0] : padding_hi_[1], "Convolution", out);
+  params.out_strides[2] = checked_u32(groups_, "Convolution", out);
   std::array<omarchy::ComputeBinding, 4> bindings{
       binding(x), binding(w), binding(x), binding(out)};
   auto kernel = select_float_kernel(
@@ -2243,7 +2550,15 @@ void Convolution::eval_gpu(const std::vector<array>& inputs, array& out) {
 }
 OMARCHY_UNARY(Cos, CosOperation)
 OMARCHY_UNARY(Cosh, CoshOperation)
-OMARCHY_BINARY(Divide, DivideOperation)
+void Divide::eval_gpu(const std::vector<array>& inputs, array& out) {
+  if (out.dtype() == complex64) {
+    dispatch_complex(
+        name(), ComplexDivide, inputs, out, out.primitive().stream());
+    return;
+  }
+  dispatch_elementwise(
+      name(), DivideOperation, inputs, out, out.primitive().stream());
+}
 // DivMod produces the Python floor-division quotient and remainder as
 // two same-shaped outputs (upstream DivMod: integral_op applies the
 // floor fixup to the truncating quotient, float_op pairs floor(x/y)
@@ -2318,7 +2633,11 @@ void DivMod::eval_gpu(
       encoder);
 }
 void Equal::eval_gpu(const std::vector<array>& inputs, array& out) {
-  dispatch_comparison(name(), CompareEqual, inputs, out);
+  // equal_nan_ lives on the Equal primitive; ops.cpp sets it from
+  // mx.array_equal(..., equal_nan=True) and mx.allclose(..., equal_nan=True),
+  // and clears it whenever the dtype is not inexact. The kernel honors
+  // params.flags bit 0 in compare.comp.
+  dispatch_comparison(name(), CompareEqual, inputs, out, equal_nan_ ? 1u : 0u);
 }
 OMARCHY_UNARY(Erf, ErfOperation)
 OMARCHY_UNARY(ErfInv, ErfInvOperation)
@@ -2326,18 +2645,35 @@ OMARCHY_UNARY(Exp, ExpOperation)
 OMARCHY_UNARY(Expm1, Expm1Operation)
 namespace {
 
-// Wave 8 FFT. The FftF32 kernel runs a radix-2 Cooley-Tukey
-// decimation-in-time pass over shared memory: one workgroup computes one
-// 1-D transform of a power-of-two length up to 2048 (16 KiB of shared
-// state, the Vulkan minimum guarantee). Pass flags mirror what the CPU
-// primitive does per call (mlx/backend/cpu/fft.cpp): every inverse pass
-// divides by its own axis length, so a multi-axis inverse accumulates
-// 1/(n0*n1*...) exactly like the upstream scale = 1/nelem.
+// Wave 8 FFT, extended to general lengths. The FftF32 kernel runs a radix-2
+// Cooley-Tukey decimation-in-time pass over shared memory: one workgroup
+// computes one 1-D transform of a power-of-two length up to 2048 (16 KiB of
+// shared state, the Vulkan minimum guarantee). Longer and non-power-of-two
+// lengths decompose at the C++ level:
+//   - a composite n factors into stages of the radix-2 pass, Cooley-Tukey
+//     style (strided pass, twiddle multiply, recurse), which lifts the old
+//     shared-memory cap without any larger footprint; and
+//   - a length with no divisor in 2..2048 (a prime, in practice) embeds in a
+//     power-of-two circular convolution, Bluestein's chirp-z transform,
+//     built from the same radix-2 pass plus elementwise stage kernels.
+// Pass flags mirror what the CPU primitive does per call
+// (mlx/backend/cpu/fft.cpp): every inverse pass divides by its own axis
+// length, so a multi-axis inverse accumulates 1/(n0*n1*...) exactly like the
+// upstream scale = 1/nelem.
 constexpr uint32_t kFftFlagInverse = 1u;
 constexpr uint32_t kFftFlagInputReal = 2u;
 constexpr uint32_t kFftFlagInputHalf = 4u;
 constexpr uint32_t kFftFlagOutputHalf = 8u;
-constexpr size_t kFftMaxTransformLength = 2048;
+// Longest single radix-2 pass: bounded by the 16 KiB shared-memory floor,
+// not by workgroup size (the kernel strides threads over any length).
+constexpr uint32_t kFftMaxDirectLength = 2048;
+// Longest Bluestein length: the chirp reduces k*k mod 2n in u32, which
+// stays exact only while k < 65536, i.e. while the padded convolution
+// length next_pow2(2n-1) stays at or under 65536.
+constexpr uint32_t kFftMaxBluesteinLength = 32768;
+// Longest decomposed length: Cooley-Tukey twiddle phases are products
+// m0*T < n, which must stay exactly representable in float32.
+constexpr uint64_t kFftMaxTotalLength = 1ull << 24;
 
 // (sample stride, transform count) of one axis pass over a dense
 // row-major buffer of the given shape.
@@ -2468,6 +2804,380 @@ void dispatch_fft_pass(
       group_z);
 }
 
+// One planned stage of a general-length 1-D transform.
+struct FftStage {
+  enum class Kind : uint8_t {
+    Pass,     // radix-2 pass of `length` points on samples spaced
+              // axis_stride * stride_mul apart
+    Twiddle,  // pointwise w_n^(m0*T) multiply for the split n = (above)*inner
+    Bluestein // whole-length chirp-z convolution for a prime-class length
+  };
+  Kind kind;
+  uint32_t length;     // Pass: factor length; Twiddle: current n; Bluestein: n
+  uint32_t inner;      // Twiddle: trailing extent M of the split
+  uint32_t stride_mul; // Pass: multiplier on the axis sample stride
+};
+
+// Modes of the fft_stage_f32 elementwise kernel (reduce_size push constant).
+constexpr uint32_t kFftStageTwiddle = 0;
+constexpr uint32_t kFftStageBluesteinA = 1;
+constexpr uint32_t kFftStageBluesteinB = 2;
+constexpr uint32_t kFftStageMultiply = 3;
+constexpr uint32_t kFftStageBluesteinY = 4;
+
+// Append the stage list for one n-point transform whose samples sit at
+// axis_stride * stride_mul apart. Refuses by name any length the two
+// mechanisms cannot carry.
+void plan_fft_stages(
+    uint64_t n,
+    uint32_t stride_mul,
+    std::vector<FftStage>& stages,
+    const std::string& name,
+    array& out) {
+  if (n <= kFftMaxDirectLength && (n & (n - 1)) == 0) {
+    stages.push_back(
+        {FftStage::Kind::Pass,
+         static_cast<uint32_t>(n),
+         0,
+         stride_mul});
+    return;
+  }
+  // Largest factor that splits n into two strictly smaller transforms.
+  uint64_t factor = 0;
+  uint64_t limit = std::min<uint64_t>(kFftMaxDirectLength, n / 2);
+  for (uint64_t d = limit; d >= 2; --d) {
+    if (n % d == 0) {
+      factor = d;
+      break;
+    }
+  }
+  if (factor != 0) {
+    uint64_t rest = n / factor;
+    // Outer factor first: transform along it, twiddle, then the rest.
+    plan_fft_stages(factor, stride_mul * rest, stages, name, out);
+    stages.push_back(
+        {FftStage::Kind::Twiddle,
+         static_cast<uint32_t>(n),
+         static_cast<uint32_t>(rest),
+         0});
+    plan_fft_stages(rest, stride_mul, stages, name, out);
+    return;
+  }
+  if (n <= kFftMaxBluesteinLength) {
+    stages.push_back(
+        {FftStage::Kind::Bluestein,
+         static_cast<uint32_t>(n),
+         0,
+         stride_mul});
+    return;
+  }
+  omarchy::unsupported(
+      name + " transform length " + std::to_string(n) +
+          " (composite lengths to 2^24 decompose into radix-2 passes;"
+          " prime-class lengths to 32768 embed in a Bluestein chirp-z"
+          " convolution; this length has neither a divisor in 2..2048 nor"
+          " Bluestein chirp headroom)",
+      out);
+}
+
+std::vector<FftStage> plan_fft_axis(uint64_t n, const std::string& name, array& out) {
+  std::vector<FftStage> stages;
+  if (n == 0) {
+    return stages;
+  }
+  if (n > kFftMaxTotalLength) {
+    omarchy::unsupported(
+        name + " transform length " + std::to_string(n) +
+            " (decomposed Cooley-Tukey twiddle phases need lengths of at"
+            " most 2^24 to stay exact in float32)",
+        out);
+  }
+  plan_fft_stages(n, 1, stages, name, out);
+  return stages;
+}
+
+// One elementwise fft_stage_f32 dispatch: one thread per element.
+void dispatch_fft_stage(
+    const array& src,
+    array& dst,
+    uint64_t elements,
+    uint32_t mode,
+    uint32_t flags,
+    uint32_t n,
+    uint32_t aux,
+    uint32_t stride,
+    const std::string& name,
+    array& out,
+    const Stream& s) {
+  auto& encoder = omarchy::get_command_encoder(s);
+  omarchy::ComputeParams params;
+  params.count = checked_u32(elements, name, out);
+  params.operation = flags;
+  params.lhs_size = n;
+  params.rhs_size = stride;
+  params.reduce_size = mode;
+  params.output_size = aux;
+  params.lhs_offset = checked_item_offset(src, 0, name, out);
+  params.output_offset = checked_item_offset(dst, 0, name, out);
+  uint32_t workgroups = checked_u32((elements + 255) / 256, name, out);
+  uint32_t group_x =
+      std::min<uint32_t>(workgroups, omarchy::kMaxComputeGroupCountX);
+  uint32_t remaining = (workgroups + group_x - 1) / group_x;
+  uint32_t group_y =
+      std::min<uint32_t>(remaining, omarchy::kMaxComputeGroupCountX);
+  uint32_t group_z = (remaining + group_y - 1) / group_y;
+  if (group_z > omarchy::kMaxComputeGroupCountX) {
+    omarchy::unsupported(name + " stage element count", out);
+  }
+  std::array<omarchy::ComputeBinding, 4> bindings{
+      binding(src),
+      omarchy::ComputeBinding{},
+      binding(dst),
+      omarchy::ComputeBinding{}};
+  encoder.dispatch_compute(
+      omarchy::ComputeKernel::FftStageF32,
+      bindings,
+      params,
+      group_x,
+      group_y,
+      group_z);
+}
+
+// Bluestein chirp-z: embeds the n-point transform in a circular
+// convolution of power-of-two length m = next_pow2(2n-1) built from the
+// radix-2 pass. X = w * IDFT(DFT(a) * DFT(b)) with a = x*w and b the
+// conjugate chirp; the epilogue applies w and the direction scale. The
+// convolution buffers are packed, one m-row per transform.
+void run_fft_bluestein(
+    const array& src,
+    array& dst,
+    uint32_t n,
+    uint32_t stride,
+    uint32_t base_flags,
+    uint32_t first_extra,
+    uint32_t last_extra,
+    uint64_t full_elements,
+    const std::string& name,
+    array& out,
+    const Stream& s) {
+  uint64_t transforms = full_elements / n;
+  uint64_t m = 1;
+  while (m < 2 * uint64_t(n) - 1) {
+    m <<= 1;
+  }
+  uint64_t conv_elements = transforms * m;
+  // Shape is int-backed, so refuse batches whose padding outgrows it.
+  if (conv_elements > 0x7ffffffull) {
+    omarchy::unsupported(name + " Bluestein batch", out);
+  }
+  Shape conv_shape{static_cast<int>(conv_elements)};
+  std::vector<FftStage> conv_plan;
+  plan_fft_stages(m, 1, conv_plan, name, out);
+
+  array chirped = make_fft_temp(conv_shape, complex64, s);
+  array chirp_kernel = make_fft_temp(conv_shape, complex64, s);
+  array spectrum = make_fft_temp(conv_shape, complex64, s);
+  array conv = make_fft_temp(conv_shape, complex64, s);
+
+  // One full m-point pipeline (pass/twiddle stages on a packed buffer,
+  // axis stride 1) from `from` into `to` under `flags`.
+  auto run_conv_pipeline = [&](const array& from, array& to, uint32_t flags) {
+    const array* cur = &from;
+    std::optional<array> ping;
+    for (size_t i = 0; i < conv_plan.size(); ++i) {
+      const FftStage& stage = conv_plan[i];
+      bool last = i + 1 == conv_plan.size();
+      array* target;
+      if (last) {
+        target = &to;
+      } else {
+        if (!ping) {
+          ping = make_fft_temp(conv_shape, complex64, s);
+        }
+        target = &*ping;
+      }
+      if (stage.kind == FftStage::Kind::Pass) {
+        dispatch_fft_pass(
+            *cur,
+            *target,
+            stage.length,
+            stage.stride_mul,
+            checked_u32(conv_elements /
+                    (uint64_t(stage.length) * stage.stride_mul),
+                name,
+                out),
+            flags,
+            name,
+            out,
+            s);
+      } else {
+        dispatch_fft_stage(
+            *cur,
+            *target,
+            conv_elements,
+            kFftStageTwiddle,
+            flags,
+            stage.length,
+            stage.inner,
+            1,
+            name,
+            out,
+            s);
+      }
+      cur = target;
+    }
+  };
+
+  dispatch_fft_stage(
+      src,
+      chirped,
+      conv_elements,
+      kFftStageBluesteinA,
+      base_flags | first_extra,
+      n,
+      static_cast<uint32_t>(m),
+      stride,
+      name,
+      out,
+      s);
+  dispatch_fft_stage(
+      chirped,
+      chirp_kernel,
+      conv_elements,
+      kFftStageBluesteinB,
+      base_flags,
+      n,
+      static_cast<uint32_t>(m),
+      stride,
+      name,
+      out,
+      s);
+  run_conv_pipeline(chirped, spectrum, base_flags);
+  run_conv_pipeline(chirp_kernel, chirped, base_flags);
+  // Multiply the spectra in place (per-element read-then-write): the
+  // product lands in `chirped`.
+  dispatch_fft_stage(
+      spectrum,
+      chirped,
+      conv_elements,
+      kFftStageMultiply,
+      base_flags,
+      n,
+      static_cast<uint32_t>(m),
+      stride,
+      name,
+      out,
+      s);
+  // Inverse of the transform direction: flip the direction/scale bit.
+  // Forward pipelines need the scaled inverse pass (total 1/m); inverse
+  // pipelines need the unscaled forward pass, with the m/n folding left
+  // for the epilogue.
+  run_conv_pipeline(chirped, conv, base_flags ^ kFftFlagInverse);
+  dispatch_fft_stage(
+      conv,
+      dst,
+      transforms * n,
+      kFftStageBluesteinY,
+      base_flags | last_extra,
+      n,
+      static_cast<uint32_t>(m),
+      stride,
+      name,
+      out,
+      s);
+}
+
+// Run one planned axis pipeline from src into dst. first_extra flags the
+// pipeline's first dispatch (a real or half-spectrum input side), last_extra
+// its last (a packed half-spectrum output side). full_elements is the dense
+// geometry the stages address; scratch ping buffers take scratch_shape.
+void run_fft_axis(
+    const array& src,
+    array& dst,
+    const std::vector<FftStage>& stages,
+    uint32_t n,
+    uint32_t stride,
+    uint32_t base_flags,
+    uint32_t first_extra,
+    uint32_t last_extra,
+    uint64_t full_elements,
+    const Shape& scratch_shape,
+    const std::string& name,
+    array& out,
+    const Stream& s) {
+  const array* cur = &src;
+  std::optional<array> ping[2];
+  for (size_t i = 0; i < stages.size(); ++i) {
+    const FftStage& stage = stages[i];
+    bool first = i == 0;
+    bool last = i + 1 == stages.size();
+    array* target;
+    if (last) {
+      target = &dst;
+    } else {
+      auto& slot = ping[i % 2];
+      if (!slot) {
+        slot = make_fft_temp(scratch_shape, complex64, s);
+      }
+      target = &*slot;
+    }
+    switch (stage.kind) {
+      case FftStage::Kind::Pass: {
+        uint32_t flags = base_flags;
+        if (first) {
+          flags |= first_extra;
+        }
+        if (last) {
+          flags |= last_extra;
+        }
+        uint64_t count =
+            full_elements /
+            (uint64_t(stage.length) * stride * stage.stride_mul);
+        dispatch_fft_pass(
+            *cur,
+            *target,
+            stage.length,
+            stride * stage.stride_mul,
+            checked_u32(count, name, out),
+            flags,
+            name,
+            out,
+            s);
+        break;
+      }
+      case FftStage::Kind::Twiddle:
+        dispatch_fft_stage(
+            *cur,
+            *target,
+            full_elements,
+            kFftStageTwiddle,
+            base_flags,
+            stage.length,
+            stage.inner,
+            stride,
+            name,
+            out,
+            s);
+        break;
+      case FftStage::Kind::Bluestein:
+        run_fft_bluestein(
+            *cur,
+            *target,
+            stage.length,
+            stride,
+            base_flags,
+            first ? first_extra : 0u,
+            last ? last_extra : 0u,
+            full_elements,
+            name,
+            out,
+            s);
+        break;
+    }
+    cur = target;
+  }
+}
+
 } // namespace
 
 void FFT::eval_gpu(const std::vector<array>& inputs, array& out) {
@@ -2520,21 +3230,12 @@ void FFT::eval_gpu(const std::vector<array>& inputs, array& out) {
       }
     }
   }
-
-  // Radix-2 shared-memory pass: power-of-two lengths up to 2048. Longer
-  // power-of-two lengths and non-power-of-two lengths need a larger
-  // shared footprint or Bluestein/mixed-radix stages; they keep the named
-  // error rather than risk a plausible wrong number.
+  // Plan every axis before touching memory: a length class this backend
+  // refuses must fail here, by name, before any allocation.
+  std::vector<std::vector<FftStage>> plans;
+  plans.reserve(lengths.size());
   for (uint32_t length : lengths) {
-    if (length < 2 || length > kFftMaxTransformLength ||
-        (length & (length - 1)) != 0) {
-      omarchy::unsupported(
-          tag + " transform length " + std::to_string(length) +
-              " (power-of-two lengths 2 to 2048 are implemented; other"
-              " lengths need Bluestein or mixed-radix stages, which are"
-              " not landed)",
-          out);
-    }
+    plans.push_back(plan_fft_axis(length, tag, out));
   }
 
   out.set_data(allocate_omarchy(out.nbytes()));
@@ -2543,130 +3244,157 @@ void FFT::eval_gpu(const std::vector<array>& inputs, array& out) {
   }
 
   // The kernels address dense row-major buffers. Sliced or transposed
-  // float32 inputs materialize through the strided copy engine; complex64
-  // views keep their named error.
+  // inputs of either dtype materialize through the strided copy
+  // engine, which now carries complex64 (Complex64Transport).
   const array* src = &in;
   std::optional<array> dense_input;
   if (!(in.flags().row_contiguous && in.data_size() == in.size())) {
-    if (in.dtype() != float32) {
-      omarchy::unsupported(
-          tag + " non-contiguous complex64 input (the strided copy"
-              " engine has no complex64 path)",
-          out);
-    }
     dense_input = make_fft_input_dense(in, tag, out, s);
     src = &*dense_input;
   }
 
   if (!real_) {
-    // Complex-to-complex: one pass per axis, ping-ponging between two
-    // temp buffers with the last pass landing in the output.
+    // Complex-to-complex: one planned pipeline per axis, with the last
+    // pipeline landing in the output.
+    const array* cur = src;
     std::optional<array> temps[2];
     for (size_t i = 0; i < axes_.size(); ++i) {
       size_t axis = axes_[i];
       auto [stride, count] =
           fft_pass_geometry(in.shape(), axis, lengths[i], tag, out);
+      (void)count;
       array* dst;
       if (i + 1 == axes_.size()) {
         dst = &out;
       } else {
         auto& slot = temps[i % 2];
         if (!slot) {
-          slot = make_fft_temp(Shape(out.shape()), complex64, s);
+          slot = make_fft_temp(Shape(in.shape()), complex64, s);
         }
         dst = &*slot;
       }
-      uint32_t pass_flags = inverse_ ? kFftFlagInverse : 0u;
-      dispatch_fft_pass(
-          *src, *dst, lengths[i], stride, count, pass_flags, tag, out, s);
-      src = &*dst;
+      run_fft_axis(
+          *cur,
+          *dst,
+          plans[i],
+          lengths[i],
+          stride,
+          inverse_ ? kFftFlagInverse : 0u,
+          0,
+          0,
+          in.size(),
+          Shape(in.shape()),
+          tag,
+          out,
+          s);
+      cur = dst;
     }
   } else if (!inverse_) {
-    // Real-to-complex: promote-and-forward on the real axis first (kept
-    // to bins 0..n/2), then forward complex passes over the remaining
-    // axes of the half-spectrum.
+    // Real-to-complex: promote-and-forward on the real axis (kept to
+    // bins 0..n/2), then forward pipelines over the remaining axes of
+    // the half-spectrum.
     size_t real_axis = axes_.back();
-    auto [real_stride, real_count] = fft_pass_geometry(
+    auto [real_stride, _] = fft_pass_geometry(
         in.shape(), real_axis, lengths.back(), tag, out);
-    if (real_stride != 1) {
-      omarchy::unsupported(tag + " rfft on a non-trailing axis", out);
-    }
-    std::optional<array> temps[2];
-    const array* cur = src;
-    for (size_t i = 0; i < axes_.size(); ++i) {
-      bool real_pass = i == 0;
-      bool final_pass = i + 1 == axes_.size();
-      array* dst;
-      if (final_pass) {
-        dst = &out;
-      } else {
-        auto& slot = temps[i % 2];
-        if (!slot) {
-          slot = make_fft_temp(Shape(out.shape()), complex64, s);
+    array real_owned = make_fft_temp(Shape(out.shape()), complex64, s);
+    array& real_dst = axes_.size() == 1 ? out : real_owned;
+    run_fft_axis(
+        *src,
+        real_dst,
+        plans.back(),
+        lengths.back(),
+        real_stride,
+        0,
+        kFftFlagInputReal,
+        kFftFlagOutputHalf,
+        in.size(),
+        Shape(in.shape()),
+        tag,
+        out,
+        s);
+    const array* cur = &real_dst;
+    if (axes_.size() > 1) {
+      std::optional<array> temps[2];
+      for (size_t i = 0; i + 1 < axes_.size(); ++i) {
+        size_t axis = axes_[i];
+        auto [stride, count] =
+            fft_pass_geometry(out.shape(), axis, lengths[i], tag, out);
+        (void)count;
+        array* dst;
+        bool final_axis = i + 2 == axes_.size();
+        if (final_axis) {
+          dst = &out;
+        } else {
+          auto& slot = temps[i % 2];
+          if (!slot) {
+            slot = make_fft_temp(Shape(out.shape()), complex64, s);
+          }
+          dst = &*slot;
         }
-        dst = &*slot;
-      }
-      if (real_pass) {
-        dispatch_fft_pass(
+        run_fft_axis(
             *cur,
             *dst,
-            lengths.back(),
-            1,
-            real_count,
-            kFftFlagInputReal | kFftFlagOutputHalf,
+            plans[i],
+            lengths[i],
+            stride,
+            0,
+            0,
+            0,
+            out.size(),
+            Shape(out.shape()),
             tag,
             out,
             s);
-      } else {
-        size_t axis = axes_[i - 1];
-        auto [stride, count] =
-            fft_pass_geometry(out.shape(), axis, lengths[i - 1], tag, out);
-        dispatch_fft_pass(
-            *cur, *dst, lengths[i - 1], stride, count, 0, tag, out, s);
+        cur = dst;
       }
-      cur = &*dst;
     }
   } else {
-    // Complex-to-real: inverse complex passes on the non-real axes over
-    // the half-spectrum shape, then the real-axis pass synthesizes the
-    // full Hermitian spectrum (INPUT_HALF) and inverts it; the real part
-    // of the result is extracted to the float32 output.
-    size_t real_axis = axes_.back();
-    auto [real_stride, real_count] = fft_pass_geometry(
-        out.shape(), real_axis, lengths.back(), tag, out);
-    if (real_stride != 1) {
-      omarchy::unsupported(tag + " irfft on a non-trailing axis", out);
-    }
-    std::optional<array> temps[2];
+    // Complex-to-real: inverse pipelines on the non-real axes over the
+    // half-spectrum shape, then the real-axis pipeline synthesizes the
+    // full Hermitian spectrum (INPUT_HALF) and inverts it; the real
+    // part of the result is extracted to the float32 output.
     const array* cur = src;
+    std::optional<array> temps[2];
     for (size_t i = 0; i + 1 < axes_.size(); ++i) {
       size_t axis = axes_[i];
       auto [stride, count] =
           fft_pass_geometry(in.shape(), axis, lengths[i], tag, out);
+      (void)count;
       auto& slot = temps[i % 2];
       if (!slot) {
         slot = make_fft_temp(Shape(in.shape()), complex64, s);
       }
-      dispatch_fft_pass(
+      run_fft_axis(
           *cur,
           *slot,
+          plans[i],
           lengths[i],
           stride,
-          count,
           kFftFlagInverse,
+          0,
+          0,
+          in.size(),
+          Shape(in.shape()),
           tag,
           out,
           s);
       cur = &*slot;
     }
+    size_t real_axis = axes_.back();
+    auto [real_stride, _] =
+        fft_pass_geometry(out.shape(), real_axis, lengths.back(), tag, out);
     array full = make_fft_temp(Shape(out.shape()), complex64, s);
-    dispatch_fft_pass(
+    run_fft_axis(
         *cur,
         full,
+        plans.back(),
         lengths.back(),
-        1,
-        real_count,
-        kFftFlagInputHalf | kFftFlagInverse,
+        real_stride,
+        kFftFlagInverse,
+        kFftFlagInputHalf,
+        0,
+        out.size(),
+        Shape(out.shape()),
         tag,
         out,
         s);
@@ -3065,7 +3793,12 @@ void Hadamard::eval_gpu(const std::vector<array>& inputs, array& out) {
       omarchy::ComputeKernel::HadamardBF16);
   encoder.dispatch_compute(kernel, bindings, params, row_count);
 }
-OMARCHY_UNSUPPORTED(Imag)
+void Imag::eval_gpu(const std::vector<array>& inputs, array& out) {
+  // Upstream imag() returns zeros_like for real input before a
+  // primitive is built (mlx/ops.cpp), so eval only ever sees
+  // complex64 here; the op extracts the imaginary component.
+  dispatch_complex_extract(name(), 1, inputs, out, out.primitive().stream());
+}
 void Inverse::eval_gpu(const std::vector<array>& inputs, array& out) {
   const array& in = inputs.at(0);
   auto& encoder = omarchy::get_command_encoder(out.primitive().stream());
@@ -3210,12 +3943,49 @@ void LogSumExp::eval_gpu(const std::vector<array>& inputs, array& out) {
 void LUF::eval_gpu(
     const std::vector<array>& inputs,
     std::vector<array>& outputs) {
-  // Gated: the packed factor reads back as zeros or NaNs after the
-  // factorization dispatch, so a silent wrong factorization is possible.
-  // The kernel (shaders/linalg_lu.comp) stays registered for the
-  // follow-up that root-causes the defect; until then this path refuses
-  // by name instead of returning factors that never factored.
-  omarchy::unsupported("[LUF] gated pending numeric verification", outputs.at(0));
+  const array& in = inputs.at(0);
+  auto& lu = outputs.at(0);
+  auto& pivots = outputs.at(1);
+  auto& row_indices = outputs.at(2);
+  auto& encoder = omarchy::get_command_encoder(lu.primitive().stream());
+  linalg_require_f32(name(), in, lu);
+  const int m = in.shape(-2);
+  const int n = in.shape(-1);
+  const int k_count = std::min(m, n);
+  const uint32_t batch =
+      checked_u32(linalg_batch_count(in.shape()), name(), lu);
+  lu.set_data(allocate_omarchy(lu.nbytes()));
+  pivots.set_data(allocate_omarchy(pivots.nbytes()));
+  row_indices.set_data(allocate_omarchy(row_indices.nbytes()));
+  if (m == 0 || n == 0 || batch == 0) {
+    // Nothing to factorize; upstream leaves the empty outputs.
+    return;
+  }
+  // Factorize in place: the packed-LU output starts as a dense copy of
+  // A, exactly like the CPU path copies A into lu before getrf.
+  linalg_copy_dense(in, lu, lu.primitive().stream());
+  auto scratch = make_u32_scratch(std::max<size_t>(batch, 1u), encoder);
+  dispatch_clear_u32(scratch, 0, encoder);
+  omarchy::ComputeParams params;
+  params.matrix_m = checked_u32(m, name(), lu);
+  params.matrix_n = checked_u32(n, name(), lu);
+  params.matrix_k = checked_u32(k_count, name(), lu);
+  params.output_size = batch;
+  // Kernel binding order: 0 packed LU, 1 pivots, 2 row_indices, 3 status.
+  std::array<omarchy::ComputeBinding, 4> bindings{
+      binding(lu),
+      binding(pivots),
+      binding(row_indices),
+      binding(scratch)};
+  encoder.dispatch_compute(
+      omarchy::ComputeKernel::LinalgLuF32, bindings, params, batch);
+  linalg_check_status(
+      scratch,
+      encoder,
+      "[LUF::eval_gpu] LU factorization encountered a zero pivot"
+      " (singular matrix); refusing rather than returning a partial"
+      " factorization.",
+      lu);
 }
 void Matmul::eval_gpu(const std::vector<array>& inputs, array& out) {
   dispatch_matmul(
@@ -3294,8 +4064,24 @@ void MaskedScatter::eval_gpu(const std::vector<array>& inputs, array& out) {
       kernel, bindings, params, checked_u32(rows, "MaskedScatter", out));
 }
 OMARCHY_BINARY(Minimum, MinimumOperation)
-OMARCHY_BINARY(Multiply, MultiplyOperation)
-OMARCHY_UNARY(Negative, NegativeOperation)
+void Multiply::eval_gpu(const std::vector<array>& inputs, array& out) {
+  if (out.dtype() == complex64) {
+    dispatch_complex(
+        name(), ComplexMultiply, inputs, out, out.primitive().stream());
+    return;
+  }
+  dispatch_elementwise(
+      name(), MultiplyOperation, inputs, out, out.primitive().stream());
+}
+void Negative::eval_gpu(const std::vector<array>& inputs, array& out) {
+  if (out.dtype() == complex64) {
+    dispatch_complex(
+        name(), ComplexNegative, inputs, out, out.primitive().stream());
+    return;
+  }
+  dispatch_elementwise(
+      name(), NegativeOperation, inputs, out, out.primitive().stream());
+}
 void NotEqual::eval_gpu(const std::vector<array>& inputs, array& out) {
   dispatch_comparison(name(), CompareNotEqual, inputs, out);
 }
@@ -3527,7 +4313,13 @@ void RandomBits::eval_gpu(const std::vector<array>& inputs, array& out) {
       params,
       omarchy::compute_dispatch_group_count(count));
 }
-OMARCHY_UNSUPPORTED(Real)
+void Real::eval_gpu(const std::vector<array>& inputs, array& out) {
+  // Upstream real() returns its input for real dtypes before a
+  // primitive is built (mlx/ops.cpp), so eval only ever sees
+  // complex64 here; the op extracts the real component, matching
+  // complex64_t::operator float().
+  dispatch_complex_extract(name(), 0, inputs, out, out.primitive().stream());
+}
 
 void Reduce::eval_gpu(const std::vector<array>& inputs, array& out) {
   const array& input = inputs.at(0);
@@ -3607,28 +4399,66 @@ void Reduce::eval_gpu(const std::vector<array>& inputs, array& out) {
       return;
     }
     uint32_t output_size = checked_u32(out.size(), operation_name, out);
+    uint32_t reduce_size_u32 =
+        checked_u32(reduce_size, operation_name, out);
     const array& bound_input = input.size() == 0 ? out : input;
+    // The suffix kernel runs the reduction as a single per-invocation
+    // serial loop; the driver caps that loop at a few thousand trips
+    // (roughly 2^16 on lavapipe for local_size_x = 256), so reduce_size
+    // is split across chunks when it exceeds the chunk-trip threshold.
+    constexpr uint32_t kReduceSuffixChunkTrips = 4096;
+    uint32_t chunks = reduce_size_u32 == 0
+        ? 1u
+        : (reduce_size_u32 + kReduceSuffixChunkTrips - 1u) /
+            kReduceSuffixChunkTrips;
+    if (chunks == 0) {
+      chunks = 1;
+    }
+    bool bool_out = out.dtype() == bool_;
+    Dtype scratch_dtype = bool_out ? uint32 : input.dtype();
+    array scratch(
+        Shape{static_cast<int>(static_cast<uint64_t>(output_size) * chunks)},
+        scratch_dtype,
+        nullptr,
+        {});
+    scratch.set_data(allocate_omarchy(scratch.nbytes()));
+    encoder.add_temporary(scratch);
     omarchy::ComputeParams params;
     params.count = output_size;
-    params.operation = reduce_type == Reduce::Sum ? 0 : 1;
-    params.reduce_size = checked_u32(reduce_size, operation_name, out);
+    params.operation = reduce_type == Reduce::Sum ? 0u : 3u;
+    params.reduce_size = reduce_size_u32;
     params.output_size = output_size;
     params.lhs_offset = checked_item_offset(
         bound_input, input.size(), operation_name, out);
-    params.output_offset = checked_item_offset(
-        out, out.size(), operation_name, out);
-    std::array<omarchy::ComputeBinding, 3> bindings{
-        binding(bound_input), binding(bound_input), binding(out)};
+    params.output_offset =
+        checked_item_offset(out, out.size(), operation_name, out);
+    params.matrix_n = chunks;
     auto kernel = select_float_kernel(
         out.dtype(),
         omarchy::ComputeKernel::ReduceF32,
         omarchy::ComputeKernel::ReduceF16,
         omarchy::ComputeKernel::ReduceBF16);
-    encoder.dispatch_compute(
-        kernel,
-        bindings,
-        params,
-        omarchy::compute_dispatch_group_count(output_size));
+    std::array<omarchy::ComputeBinding, 3> bindings{
+        binding(bound_input), binding(scratch), binding(out)};
+    auto run_phase = [&](uint32_t flags, uint32_t dispatch_count) {
+      params.flags = flags;
+      encoder.dispatch_compute(
+          kernel,
+          bindings,
+          params,
+          omarchy::compute_dispatch_group_count(dispatch_count));
+    };
+    if (chunks == 1) {
+      run_phase(0u | 2u, output_size);
+    } else {
+      run_phase(
+          0u,
+          checked_u32(
+              static_cast<uint64_t>(output_size) * chunks,
+              operation_name,
+              out));
+      run_phase(1u, output_size);
+    }
     return;
   }
 
@@ -3811,22 +4641,61 @@ void Scatter::eval_gpu(const std::vector<array>& inputs, array& out) {
   const array& indices = inputs.at(1);
   const array& updates = inputs.back();
   auto& encoder = omarchy::get_command_encoder(out.primitive().stream());
-  if (axes.size() != 1) {
-    // Each index array is a descriptor binding; the shared layout caps
-    // a dispatch at four buffers and scatter needs out, updates, the
-    // index array, and rank/sentinel scratch.
-    omarchy::unsupported("multi-index Scatter", out);
+  if (axes.size() > 2) {
+    omarchy::unsupported(
+        "multi-index Scatter with " + std::to_string(axes.size()) +
+            " index arrays",
+        out);
   }
-  if (reduce_type == Scatter::Prod &&
-      out.dtype() != int32 && out.dtype() != uint32) {
-    // Integer Prod replays through a CAS-multiply in exact wrap-around
-    // arithmetic, which is associative and commutative, so duplicate
-    // interleavings cannot change the result. A float product rounds
-    // in scheduling order and there is no atomicMul to replace it, so
-    // float Prod keeps this named rejection.
-    omarchy::unsupported("Scatter Prod dtype", out);
-  }
+  const bool multi_index = axes.size() == 2;
   bool is_sum = reduce_type == Scatter::Sum;
+  bool is_prod = reduce_type == Scatter::Prod;
+  const bool float_reduce =
+      out.dtype() == float32 || out.dtype() == float16 ||
+      out.dtype() == bfloat16;
+  if (multi_index) {
+    // The two-index kernel binds out, updates, both index arrays, and
+    // the rank/key or accumulation scratch (only integer Sum drops the
+    // scratch): four or five slots against the budget the device
+    // reported at initialization.
+    uint32_t needed = (is_sum && !float_reduce && out.dtype() != bool_)
+        ? 4u
+        : 5u;
+    uint32_t allowed = encoder.device().compute().binding_limit();
+    if (needed > allowed) {
+      omarchy::unsupported(
+          "multi-index Scatter needs " + std::to_string(needed) +
+              " storage-buffer bindings; this device allows " +
+              std::to_string(allowed),
+          out);
+    }
+  }
+  // Upstream grounds the float Sum/Prod path: the Metal backend
+  // scatters float32 through native float atomics (is_metal_atomic
+  // includes float) and float16/bfloat16 through a packed CAS loop, so
+  // duplicate-index accumulation order is nondeterministic upstream
+  // too and no ordering contract exists to preserve. The kernels here
+  // need OpAtomicFAddEXT on storage buffers, which only devices
+  // reporting shaderBufferFloat32AtomicAdd provide (measured true on
+  // llvmpipe and on the M1 G13G B1 Honeykrisp target).
+  if ((is_sum || is_prod) && float_reduce &&
+      !encoder.device().capabilities().shader_atomic_float_add) {
+    omarchy::unsupported(
+        "Scatter float Sum/Prod without VK_EXT_shader_atomic_float"
+        " shaderBufferFloat32AtomicAdd on this device",
+        out);
+  }
+  if (multi_index && (is_sum || is_prod) &&
+      (out.dtype() == float16 || out.dtype() == bfloat16)) {
+    // Only fp32 has a multi-index FADD blob; fp16/bf16 accumulation
+    // rides the single-index kernel.
+    omarchy::unsupported(
+        "multi-index Scatter float16/bfloat16 Sum/Prod dtype",
+        out);
+  }
+  // The second index array in the multi-index case; upstream's op layer
+  // broadcasts and dtype-promotes every index array to one shape.
+  const array& indices_b = multi_index ? inputs.at(2) : indices;
   if (out.dtype() == float16 || out.dtype() == bfloat16) {
     require_float_dtype("Scatter", src, out, encoder);
   }
@@ -3835,32 +4704,49 @@ void Scatter::eval_gpu(const std::vector<array>& inputs, array& out) {
   switch (out.dtype()) {
     case float32:
       map_code = 0;
-      kernel = omarchy::ComputeKernel::ScatterU32;
+      if (is_sum || is_prod) {
+        kernel = multi_index ? omarchy::ComputeKernel::ScatterFAddMultiF32
+                             : omarchy::ComputeKernel::ScatterFAddF32;
+      } else {
+        kernel = multi_index ? omarchy::ComputeKernel::ScatterMultiU32
+                             : omarchy::ComputeKernel::ScatterU32;
+      }
       break;
     case int32:
       map_code = 1;
-      kernel = omarchy::ComputeKernel::ScatterU32;
+      kernel = multi_index ? omarchy::ComputeKernel::ScatterMultiU32
+                           : omarchy::ComputeKernel::ScatterU32;
       break;
     case uint32:
       map_code = 2;
-      kernel = omarchy::ComputeKernel::ScatterU32;
+      kernel = multi_index ? omarchy::ComputeKernel::ScatterMultiU32
+                           : omarchy::ComputeKernel::ScatterU32;
       break;
     case float16:
       map_code = 0;
-      kernel = omarchy::ComputeKernel::ScatterF16;
+      if (is_sum || is_prod) {
+        kernel = omarchy::ComputeKernel::ScatterFAddF16;
+      } else {
+        kernel = multi_index ? omarchy::ComputeKernel::ScatterMultiF16
+                             : omarchy::ComputeKernel::ScatterF16;
+      }
       break;
     case bfloat16:
       map_code = 0;
-      kernel = omarchy::ComputeKernel::ScatterBF16;
+      if (is_sum || is_prod) {
+        kernel = omarchy::ComputeKernel::ScatterFAddBF16;
+      } else {
+        kernel = multi_index ? omarchy::ComputeKernel::ScatterMultiBF16
+                             : omarchy::ComputeKernel::ScatterBF16;
+      }
+      break;
+    case bool_:
+      map_code = 1;
+      kernel = multi_index ? omarchy::ComputeKernel::ScatterBoolMulti
+                           : omarchy::ComputeKernel::ScatterBool;
       break;
     default:
       omarchy::unsupported("Scatter dtype", out);
-  }
-  if (is_sum && out.dtype() != int32 && out.dtype() != uint32) {
-    // Float Sum has no deterministic implementation here: GLSL offers
-    // no float atomicAdd, and duplicate-index float accumulation
-    // through a CAS loop is scheduling-order dependent.
-    omarchy::unsupported("Scatter Sum dtype", out);
   }
   CopyType copy_type = src.data_size() == 1 ? CopyType::Scalar
       : (src.flags().row_contiguous && src.data_size() == src.size())
@@ -3873,17 +4759,63 @@ void Scatter::eval_gpu(const std::vector<array>& inputs, array& out) {
   if (indices.size() > (size_t{1} << 31)) {
     omarchy::unsupported("Scatter slot count", out);
   }
+  // Materialize non-dense index and update views. Test data_size
+  // against size rather than trusting the flags: a broadcast view can
+  // carry a contiguous flag while holding fewer elements than the
+  // shape names (the lying-contiguous-flag defect family).
+  const array* idx = &indices;
+  std::optional<array> idx_mat;
   if (!indices.flags().row_contiguous ||
       indices.data_size() != indices.size()) {
-    omarchy::unsupported("Scatter index layout", out);
+    idx_mat = array(indices.shape(), indices.dtype(), nullptr, {});
+    copy_gpu(indices, *idx_mat, CopyType::General, out.primitive().stream());
+    encoder.add_temporary(*idx_mat);
+    idx = &*idx_mat;
   }
-  if (!updates.flags().row_contiguous ||
-      updates.data_size() != updates.size()) {
-    // The kernel addresses updates as one dense buffer; broadcast or
-    // strided views keep the named rejection.
-    omarchy::unsupported("Scatter updates layout", out);
+  if (multi_index) {
+    // Upstream promotes all index arrays together before the primitive
+    // sees them, so the second array shares the first's dtype and
+    // shape; its layout is materialized like the first.
+    if (indices_b.size() != indices.size()) {
+      omarchy::unsupported("Scatter index shape", out);
+    }
+    if (indices_b.dtype() != indices.dtype()) {
+      omarchy::unsupported("Scatter index dtype", out);
+    }
   }
-  uint32_t index_mode = scatter_index_mode(indices, out, "Scatter");
+  const array* idx_b = &indices_b;
+  std::optional<array> idx_b_mat;
+  if (multi_index &&
+      (!indices_b.flags().row_contiguous ||
+       indices_b.data_size() != indices_b.size())) {
+    idx_b_mat =
+        array(indices_b.shape(), indices_b.dtype(), nullptr, {});
+    copy_gpu(
+        indices_b, *idx_b_mat, CopyType::General, out.primitive().stream());
+    encoder.add_temporary(*idx_b_mat);
+    idx_b = &*idx_b_mat;
+  }
+  const array* upd = &updates;
+  std::optional<array> upd_mat;
+  if (updates.data_size() != updates.size()) {
+    // Broadcast update: Scalar for the single-source form, General for
+    // the strided multi-source form; Vector would flat-copy past the
+    // source elements.
+    upd_mat = array(updates.shape(), updates.dtype(), nullptr, {});
+    copy_gpu(
+        updates,
+        *upd_mat,
+        updates.data_size() == 1 ? CopyType::Scalar : CopyType::General,
+        out.primitive().stream());
+    encoder.add_temporary(*upd_mat);
+    upd = &*upd_mat;
+  } else if (!updates.flags().row_contiguous) {
+    upd_mat = array(updates.shape(), updates.dtype(), nullptr, {});
+    copy_gpu(updates, *upd_mat, CopyType::Vector, out.primitive().stream());
+    encoder.add_temporary(*upd_mat);
+    upd = &*upd_mat;
+  }
+  uint32_t index_mode = scatter_index_mode(*idx, out, "Scatter");
   size_t update_ndim = updates.ndim() - indices.ndim();
   if (update_ndim > 4) {
     omarchy::unsupported("Scatter update rank", out);
@@ -3893,8 +4825,16 @@ void Scatter::eval_gpu(const std::vector<array>& inputs, array& out) {
   params.reduce_size = checked_u32(out.shape(axes[0]), "Scatter", out);
   params.output_size =
       checked_u32(updates.size() / indices.size(), "Scatter", out);
+  if (multi_index) {
+    // Axis-1 addressing rides fields the single-index kernel never
+    // reads: the axis dim in matrix_n, the axis stride in matrix_k,
+    // and the second array's word offset in lhs_size.
+    params.matrix_n = checked_u32(out.shape(axes[1]), "Scatter", out);
+    params.matrix_k = checked_u32(out.strides(axes[1]), "Scatter", out);
+    params.lhs_size = scatter_index_offset(*idx_b, out, "Scatter");
+  }
   params.matrix_m = checked_u32(out.strides(axes[0]), "Scatter", out);
-  params.rhs_offset = scatter_index_offset(indices, out, "Scatter");
+  params.rhs_offset = scatter_index_offset(*idx, out, "Scatter");
   params.output_offset = checked_item_offset(out, out.size(), "Scatter", out);
   params.aux_size = index_mode;
   params.aux_offset = map_code;
@@ -3911,7 +4851,7 @@ void Scatter::eval_gpu(const std::vector<array>& inputs, array& out) {
   // The kernel walks update elements: slot = t / output_size. The
   // update base offset matters for sliced views.
   params.lhs_offset =
-      checked_item_offset(updates, updates.size(), "Scatter", out);
+      checked_item_offset(*upd, upd->size(), "Scatter", out);
   if (static_cast<uint64_t>(count) * params.output_size > 0xFFFFFFFFull) {
     omarchy::unsupported("Scatter update span", out);
   }
@@ -3921,17 +4861,83 @@ void Scatter::eval_gpu(const std::vector<array>& inputs, array& out) {
   // count: with multi-element update blocks, slot-count would drop
   // every element past the first block.
   params.count = elements;
-  if (is_sum) {
-    // Phase 6: atomicAdd. Integer addition is associative, so the
-    // result is deterministic even under duplicate indices.
-    std::array<omarchy::ComputeBinding, 3> bindings{
-        binding(out), binding(updates), binding(indices)};
+  if (is_sum && (out.dtype() == int32 || out.dtype() == uint32)) {
+    // Phase 6: integer atomicAdd. Integer addition is associative, so
+    // the result is deterministic even under duplicate indices. The
+    // multi-index kernel binds both index arrays; the fourth slot of
+    // the array stays unbound for the single-index path.
+    std::array<omarchy::ComputeBinding, 4> bindings{
+        binding(out), binding(*upd), binding(*idx)};
+    if (multi_index) {
+      bindings[3] = binding(*idx_b);
+    }
     params.operation = 6;
     encoder.dispatch_compute(
         kernel,
-        bindings,
+        std::span<const omarchy::ComputeBinding>(
+            bindings.data(), multi_index ? 4u : 3u),
         params,
         omarchy::compute_dispatch_group_count(elements));
+    return;
+  }
+  const bool bool_word = out.dtype() == bool_;
+  if ((float_reduce && (is_sum || is_prod)) ||
+      (bool_word &&
+       (is_sum || is_prod || reduce_type == Scatter::Max ||
+        reduce_type == Scatter::Min))) {
+    // Scratch accumulation paths: float Sum/Prod and bool Sum/Prod/
+    // Max/Min. Float Sum runs op 11 (fp32 hardware atomicAdd) and
+    // stores at op 12; float Prod runs op 13 (CAS fp32 multiply) and
+    // multiplies into the copied src at op 16. Bool Sum/Max OR the
+    // canonical update bit (op 6) and byte-write at op 14; Prod/Min
+    // AND (op 7) and byte-write at op 15.
+    bool float_sum = float_reduce && is_sum;
+    bool float_prod = float_reduce && is_prod;
+    bool bool_or = bool_word && (is_sum || reduce_type == Scatter::Max);
+    bool bool_and = bool_word && (is_prod || reduce_type == Scatter::Min);
+    uint32_t clear_value = float_prod ? 0x3F800000u
+        : bool_and ? 0xFFFFFFFFu
+        : 0u;
+    array scratch = make_u32_scratch(out.size(), encoder);
+    dispatch_clear_u32(scratch, clear_value, encoder);
+    std::array<omarchy::ComputeBinding, 5> bindings{
+        binding(out),
+        binding(*upd),
+        binding(*idx),
+        binding(*idx_b),
+        binding(scratch)};
+    if (!multi_index) {
+      bindings[3] = binding(scratch);
+    }
+    uint32_t bound = multi_index ? 5u : 4u;
+    uint32_t accumulate;
+    uint32_t finalize;
+    if (float_sum) {
+      accumulate = 11;
+      finalize = 12;
+    } else if (float_prod) {
+      accumulate = 13;
+      finalize = 16;
+    } else if (bool_or) {
+      accumulate = 6;
+      finalize = 14;
+    } else {
+      accumulate = 7;
+      finalize = 15;
+    }
+    params.operation = accumulate;
+    encoder.dispatch_compute(
+        kernel,
+        std::span<const omarchy::ComputeBinding>(bindings.data(), bound),
+        params,
+        omarchy::compute_dispatch_group_count(elements));
+    params.count = checked_u32(out.size(), "Scatter", out);
+    params.operation = finalize;
+    encoder.dispatch_compute(
+        kernel,
+        std::span<const omarchy::ComputeBinding>(bindings.data(), bound),
+        params,
+        omarchy::compute_dispatch_group_count(params.count));
     return;
   }
   uint32_t phase1 = 0;
@@ -3954,12 +4960,19 @@ void Scatter::eval_gpu(const std::vector<array>& inputs, array& out) {
   }
   array scratch = make_u32_scratch(out.size(), encoder);
   dispatch_clear_u32(scratch, clear_value, encoder);
-  std::array<omarchy::ComputeBinding, 4> bindings{
-      binding(out), binding(updates), binding(indices), binding(scratch)};
+  // The multi-index kernel moves scratch to binding 4 and binds the
+  // second index array at binding 3; the span width follows the case.
+  std::array<omarchy::ComputeBinding, 5> bindings{
+      binding(out),
+      binding(*upd),
+      binding(*idx),
+      binding(*idx_b),
+      binding(scratch)};
+  uint32_t bound = multi_index ? 5u : 4u;
   params.operation = phase1;
   encoder.dispatch_compute(
       kernel,
-      bindings,
+      std::span<const omarchy::ComputeBinding>(bindings.data(), bound),
       params,
       omarchy::compute_dispatch_group_count(elements));
   // None pass 2 walks update elements; Max/Min finalize walks output
@@ -3972,7 +4985,7 @@ void Scatter::eval_gpu(const std::vector<array>& inputs, array& out) {
   params.operation = phase2;
   encoder.dispatch_compute(
       kernel,
-      bindings,
+      std::span<const omarchy::ComputeBinding>(bindings.data(), bound),
       params,
       omarchy::compute_dispatch_group_count(params.count));
 }
@@ -3986,25 +4999,43 @@ void ScatterAxis::eval_gpu(const std::vector<array>& inputs, array& out) {
   if (out.dtype() == float16 || out.dtype() == bfloat16) {
     require_float_dtype("ScatterAxis", src, out, encoder);
   }
+  const bool float_reduce =
+      out.dtype() == float32 || out.dtype() == float16 ||
+      out.dtype() == bfloat16;
+  if ((is_sum && float_reduce) &&
+      !encoder.device().capabilities().shader_atomic_float_add) {
+    // Same upstream grounding as general Scatter: Metal's float axis
+    // scatter add is a native atomic fetch add, so duplicate order is
+    // nondeterministic upstream and the only hard requirement here is
+    // the fp32 atomic-add feature.
+    omarchy::unsupported(
+        "ScatterAxis float Sum without VK_EXT_shader_atomic_float"
+        " shaderBufferFloat32AtomicAdd on this device",
+        out);
+  }
   omarchy::ComputeKernel kernel;
   switch (out.dtype()) {
     case float32:
+      kernel = is_sum ? omarchy::ComputeKernel::ScatterAxisFAddF32
+                      : omarchy::ComputeKernel::ScatterAxisU32;
+      break;
     case int32:
     case uint32:
       kernel = omarchy::ComputeKernel::ScatterAxisU32;
       break;
     case float16:
-      kernel = omarchy::ComputeKernel::ScatterAxisF16;
+      kernel = is_sum ? omarchy::ComputeKernel::ScatterAxisFAddF16
+                      : omarchy::ComputeKernel::ScatterAxisF16;
       break;
     case bfloat16:
-      kernel = omarchy::ComputeKernel::ScatterAxisBF16;
+      kernel = is_sum ? omarchy::ComputeKernel::ScatterAxisFAddBF16
+                      : omarchy::ComputeKernel::ScatterAxisBF16;
+      break;
+    case bool_:
+      kernel = omarchy::ComputeKernel::ScatterAxisBool;
       break;
     default:
       omarchy::unsupported("ScatterAxis dtype", out);
-  }
-  if (is_sum && out.dtype() != int32 && out.dtype() != uint32) {
-    // Same determinism evidence as general Scatter Sum.
-    omarchy::unsupported("ScatterAxis Sum dtype", out);
   }
   CopyType copy_type = src.data_size() == 1 ? CopyType::Scalar
       : (src.flags().row_contiguous && src.data_size() == src.size())
@@ -4017,9 +5048,16 @@ void ScatterAxis::eval_gpu(const std::vector<array>& inputs, array& out) {
   if (indices.size() > (size_t{1} << 31)) {
     omarchy::unsupported("ScatterAxis slot count", out);
   }
+  // Materialize non-dense index views; test data_size against size
+  // rather than trusting the flags (lying-contiguous-flag family).
+  const array* idx = &indices;
+  std::optional<array> idx_mat;
   if (!indices.flags().row_contiguous ||
       indices.data_size() != indices.size()) {
-    omarchy::unsupported("ScatterAxis index layout", out);
+    idx_mat = array(indices.shape(), indices.dtype(), nullptr, {});
+    copy_gpu(indices, *idx_mat, CopyType::General, out.primitive().stream());
+    encoder.add_temporary(*idx_mat);
+    idx = &*idx_mat;
   }
   int non_axis = out.ndim() - 1;
   if (non_axis > 4) {
@@ -4035,12 +5073,12 @@ void ScatterAxis::eval_gpu(const std::vector<array>& inputs, array& out) {
   params.reduce_size = checked_u32(src.shape(axis), "ScatterAxis", out);
   params.output_size = checked_u32(post_size, "ScatterAxis", out);
   params.aux_size = checked_u32(indices.shape(axis), "ScatterAxis", out);
-  params.aux_offset = scatter_index_mode(indices, out, "ScatterAxis");
+  params.aux_offset = scatter_index_mode(*idx, out, "ScatterAxis");
   // lhs_offset carries the update base element offset; the shader
   // walks update addresses through out_strides plus matrix_n.
   params.lhs_offset =
       checked_item_offset(updates, updates.size(), "ScatterAxis", out);
-  params.rhs_offset = scatter_index_offset(indices, out, "ScatterAxis");
+  params.rhs_offset = scatter_index_offset(*idx, out, "ScatterAxis");
   params.output_offset = checked_item_offset(out, out.size(), "ScatterAxis", out);
   params.matrix_m = checked_u32(src.strides(axis), "ScatterAxis", out);
   params.matrix_n = checked_u32(updates.strides(axis), "ScatterAxis", out);
@@ -4055,29 +5093,61 @@ void ScatterAxis::eval_gpu(const std::vector<array>& inputs, array& out) {
     params.out_strides[d] = checked_u32(updates.strides(i), "ScatterAxis", out);
     ++d;
   }
+  // Sum: int rides the direct atomicAdd (op 6); float accumulates in
+  // the fp32 scratch (op 11) and stores once (op 12); bool ORs the
+  // canonical bit (op 6) and byte-writes (op 14). Duplicate order
+  // matches upstream GPU semantics; see the capability gate above.
   if (is_sum) {
-    std::array<omarchy::ComputeBinding, 3> bindings{
-        binding(out), binding(indices), binding(updates)};
-    params.operation = 6;
+    bool int_sum = out.dtype() == int32 || out.dtype() == uint32;
+    array scratch;
+    if (!int_sum) {
+      scratch = make_u32_scratch(out.size(), encoder);
+      dispatch_clear_u32(scratch, 0, encoder);
+    }
+    std::array<omarchy::ComputeBinding, 4> bindings{
+        binding(out),
+        binding(*idx),
+        binding(updates),
+        int_sum ? binding(out) : binding(scratch)};
+    uint32_t bound = int_sum ? 3u : 4u;
+    params.operation = int_sum ? 6u
+        : out.dtype() == bool_ ? 6u
+        : 11u;
     encoder.dispatch_compute(
         kernel,
-        bindings,
+        std::span<const omarchy::ComputeBinding>(bindings.data(), bound),
         params,
         omarchy::compute_dispatch_group_count(count));
+    if (!int_sum) {
+      params.count = checked_u32(out.size(), "ScatterAxis", out);
+      params.operation = out.dtype() == bool_ ? 14u : 12u;
+      encoder.dispatch_compute(
+          kernel,
+          std::span<const omarchy::ComputeBinding>(bindings.data(), bound),
+          params,
+          omarchy::compute_dispatch_group_count(params.count));
+    }
     return;
   }
-  // None: rank-max scratch, then the winning slot rewrites the target,
-  // which reproduces the CPU's sequential last-write-wins order.
+  // None: rank-max scratch, then the winning slot rewrites the target
+  // byte/word, which reproduces the CPU's sequential last-write-wins
+  // order.
   array scratch = make_u32_scratch(out.size(), encoder);
   dispatch_clear_u32(scratch, 0, encoder);
   std::array<omarchy::ComputeBinding, 4> bindings{
-      binding(out), binding(indices), binding(updates), binding(scratch)};
+      binding(out), binding(*idx), binding(updates), binding(scratch)};
   params.operation = 0;
   encoder.dispatch_compute(
-      kernel, bindings, params, omarchy::compute_dispatch_group_count(count));
+      kernel,
+      std::span<const omarchy::ComputeBinding>(bindings.data(), 4u),
+      params,
+      omarchy::compute_dispatch_group_count(count));
   params.operation = 1;
   encoder.dispatch_compute(
-      kernel, bindings, params, omarchy::compute_dispatch_group_count(count));
+      kernel,
+      std::span<const omarchy::ComputeBinding>(bindings.data(), 4u),
+      params,
+      omarchy::compute_dispatch_group_count(count));
 }
 // SearchSorted serves the categorical sampler: one binary search over
 // a sorted 1-D row per value, with both operands already promoted to
@@ -4143,117 +5213,268 @@ void SearchSorted::eval_gpu(const std::vector<array>& inputs, array& out) {
       omarchy::compute_dispatch_group_count(params.count));
 }
 
-// Select serves the composed causal mask: a strided bool condition view
-// picks between a row-contiguous value and a scalar floor. The sampler
-// chain also selects between two row-contiguous values under a scalar
-// condition (where(isinf(m), eq, exp)), so the false operand accepts
-// the same suffix-aligned shapes as the true operand. Other layouts
-// stay named rejections.
+// Select serves tril/triu (the where() pair behind composed lu), the
+// sampler chain's scalar selects, and the composed causal mask. Value
+// dtypes are float32, float16, bfloat16, int32, uint32, and bool, and
+// every operand layout routes through one of two transports in
+// select.comp. The flat transport keeps the modulo fast path for dense
+// operands. The general transport unravels the output coordinate over
+// the collapsed broadcast shape and indexes the true and false operands
+// through their own strides, where a stride of 0 broadcasts an axis -
+// the same transport the compare and elementwise kernels use. Layout
+// gates consult data_size and strides directly and never the contiguous
+// flags: this session found five arrays whose flags claimed dense while
+// data_size was smaller than size, so a flag-trusting gate would read
+// out of bounds.
 void Select::eval_gpu(const std::vector<array>& inputs, array& out) {
   const array& condition = inputs.at(0);
   const array& truthy = inputs.at(1);
   const array& falsy = inputs.at(2);
   auto& encoder = omarchy::get_command_encoder(out.primitive().stream());
-  if (condition.dtype() != bool_) {
+  if (condition.dtype() != bool_ || truthy.dtype() != out.dtype() ||
+      falsy.dtype() != out.dtype()) {
     omarchy::unsupported("Select dtype", out);
   }
-  require_float_dtype(name(), truthy, out, encoder);
-  require_float_dtype(name(), falsy, out, encoder);
-  if (!truthy.flags().row_contiguous || !is_trailing_broadcast(falsy, out)) {
-    omarchy::unsupported("Select layout", out);
+  omarchy::ComputeKernel kernel;
+  switch (out.dtype()) {
+    case float32:
+      kernel = omarchy::ComputeKernel::SelectF32;
+      break;
+    case float16:
+      kernel = omarchy::ComputeKernel::SelectF16;
+      break;
+    case bfloat16:
+      kernel = omarchy::ComputeKernel::SelectBF16;
+      break;
+    case int32:
+    case uint32:
+      kernel = omarchy::ComputeKernel::SelectI32;
+      break;
+    case bool_:
+      kernel = omarchy::ComputeKernel::SelectBool;
+      break;
+    default:
+      omarchy::unsupported("Select dtype", out);
   }
-  out.set_data(allocate_omarchy(out.nbytes()));
-  if (out.size() == 0) {
-    return;
-  }
+  // Dense row-major means the flat element index is the memory index:
+  // data_size equals size and the strides are the exact suffix products.
+  // Broadcast views carry a stride of 0 and transposed or sliced views
+  // permute the strides, so all of them fail this check and route to
+  // the general transport or a materialization.
+  auto dense_row_major = [](const array& value) {
+    if (value.data_size() != value.size()) {
+      return false;
+    }
+    int64_t expected = 1;
+    for (int axis = value.ndim() - 1; axis >= 0; --axis) {
+      if (value.strides()[axis] != expected) {
+        return false;
+      }
+      expected *= static_cast<int64_t>(value.shape(axis));
+    }
+    return true;
+  };
+  auto is_suffix_shape = [](const Shape& small, const Shape& big) {
+    if (small.size() > big.size()) {
+      return false;
+    }
+    size_t offset = big.size() - small.size();
+    for (size_t axis = 0; axis < small.size(); ++axis) {
+      if (small[axis] != big[offset + axis]) {
+        return false;
+      }
+    }
+    return true;
+  };
+  bool condition_flat =
+      dense_row_major(condition) && condition.data_size() == out.size();
+  bool truthy_flat = dense_row_major(truthy) && truthy.shape() == out.shape();
+  bool falsy_scalar = falsy.data_size() == 1;
+  bool falsy_flat = falsy_scalar ||
+      (dense_row_major(falsy) &&
+       (falsy.shape() == out.shape() ||
+        is_suffix_shape(falsy.shape(), out.shape())));
   // The Honeykrisp bool word read only executes correctly in the
   // straight-line select.comp form, whose condition address requires a
   // flat condition. A broadcast or strided condition view is
   // materialized through the logical_or pipeline, whose dual-buffer
   // word reads are correct on that driver; binding the same buffer as
-  // both inputs makes the OR an identity copy. The encoder keeps the
-  // temporary alive until the committed work completes.
-  std::vector<array> materialized;
-  const array* condition_ptr = &condition;
-  if (!condition.flags().row_contiguous ||
-      condition.data_size() != out.size()) {
-    materialized.push_back(array(out.shape(), bool_, nullptr, {}));
-    array& flat_condition = materialized.back();
-    flat_condition.set_data(allocate_omarchy(flat_condition.nbytes()));
-    uint32_t material_count = checked_u32(flat_condition.size(), name(), out);
+  // both inputs makes the OR an identity copy. The packed-bool output
+  // kernel keeps every bool word load in that same straight-line form,
+  // so it additionally requires its value operands dense over the full
+  // output count and word-aligned; anything else is materialized the
+  // same way. The encoder keeps the temporaries alive until the
+  // committed work completes.
+  auto materialize_bool_operand = [&](const array& value) {
+    array dense(value.shape(), bool_, nullptr, {});
+    dense.set_data(allocate_omarchy(dense.nbytes()));
+    uint32_t material_count = checked_u32(dense.size(), name(), out);
     uint32_t material_words = checked_u32(
         (static_cast<uint64_t>(material_count) + 3) / 4, name(), out);
     omarchy::ComputeParams material_params;
     material_params.count = material_count;
-    material_params.lhs_size =
-        checked_u32(condition.data_size(), name(), out);
+    material_params.lhs_size = checked_u32(value.data_size(), name(), out);
     material_params.rhs_size = material_params.lhs_size;
     material_params.output_size = material_count;
     material_params.lhs_offset = checked_item_offset(
-        condition, material_params.lhs_size, name(), out);
+        value, material_params.lhs_size, name(), out);
     material_params.rhs_offset = material_params.lhs_offset;
     material_params.output_offset = checked_item_offset(
-        flat_condition, material_count, name(), out);
-    fill_broadcast_transport(name(), material_params, condition, condition,
-                             flat_condition);
+        dense, material_count, name(), out);
+    fill_broadcast_transport(name(), material_params, value, value, dense);
     std::array<omarchy::ComputeBinding, 3> material_bindings{
-        binding(condition), binding(condition), binding(flat_condition)};
+        binding(value), binding(value), binding(dense)};
     encoder.dispatch_compute(
         omarchy::ComputeKernel::LogicalOrBool,
         material_bindings,
         material_params,
         omarchy::compute_dispatch_group_count(material_words));
-    encoder.add_temporary(flat_condition);
-    condition_ptr = &flat_condition;
+    encoder.add_temporary(dense);
+    return dense;
+  };
+  auto word_aligned = [](const array& value) {
+    return value.offset() % value.itemsize() == 0 &&
+        (value.offset() / value.itemsize()) % 4 == 0;
+  };
+  auto bool_kernel_ready = [&](const array& value) {
+    return dense_row_major(value) && value.data_size() == out.size() &&
+        word_aligned(value);
+  };
+  out.set_data(allocate_omarchy(out.nbytes()));
+  if (out.size() == 0) {
+    return;
+  }
+  std::vector<array> materialized;
+  // Up to three operand materializations (bool output); reserving keeps
+  // the .back() pointers below valid across pushes.
+  materialized.reserve(3);
+  const array* condition_ptr = &condition;
+  const array* truthy_ptr = &truthy;
+  const array* falsy_ptr = &falsy;
+  bool general = false;
+  if (out.dtype() == bool_) {
+    if (truthy.shape() != out.shape() || falsy.shape() != out.shape()) {
+      omarchy::unsupported("Select layout", out);
+    }
+    if (!condition_flat || !word_aligned(condition)) {
+      materialized.push_back(materialize_bool_operand(condition));
+      condition_ptr = &materialized.back();
+    }
+    if (!bool_kernel_ready(truthy)) {
+      materialized.push_back(materialize_bool_operand(truthy));
+      truthy_ptr = &materialized.back();
+    }
+    if (!bool_kernel_ready(falsy)) {
+      materialized.push_back(materialize_bool_operand(falsy));
+      falsy_ptr = &materialized.back();
+    }
+  } else {
+    if (!condition_flat) {
+      materialized.push_back(materialize_bool_operand(condition));
+      condition_ptr = &materialized.back();
+    }
+    general = !truthy_flat || !falsy_flat;
+    if (general &&
+        (truthy.shape() != out.shape() || falsy.shape() != out.shape())) {
+      omarchy::unsupported("Select layout", out);
+    }
   }
   uint32_t count = checked_u32(out.size(), name(), out);
   uint32_t word_count = checked_u32(
       (static_cast<uint64_t>(count) + 3) / 4, name(), out);
   omarchy::ComputeParams params;
   params.count = count;
-  params.lhs_size = checked_u32(condition_ptr->data_size(), name(), out);
-  params.rhs_size = checked_u32(truthy.data_size(), name(), out);
   params.output_size = count;
+  params.lhs_size = checked_u32(condition_ptr->data_size(), name(), out);
+  params.rhs_size = checked_u32(truthy_ptr->data_size(), name(), out);
+  params.aux_size = checked_u32(falsy_ptr->data_size(), name(), out);
   params.lhs_offset = checked_item_offset(
       *condition_ptr, params.lhs_size, name(), out);
-  params.rhs_offset = checked_item_offset(truthy, params.rhs_size, name(), out);
-  params.aux_size = checked_u32(falsy.data_size(), name(), out);
-  params.aux_offset = checked_item_offset(falsy, falsy.data_size(), name(), out);
+  params.rhs_offset = checked_item_offset(
+      *truthy_ptr, params.rhs_size, name(), out);
+  params.aux_offset = checked_item_offset(
+      *falsy_ptr, params.aux_size, name(), out);
   params.output_offset = checked_item_offset(out, count, name(), out);
+  if (general) {
+    // Collapse contiguous runs once for both strided operands; a stride
+    // of 0 breaks every merge around a broadcast axis, and collapsed
+    // rank beyond 4 stays a named refusal exactly like the elementwise
+    // kernels.
+    auto [collapsed_shape, collapsed_strides] = collapse_contiguous_dims(
+        out.shape(),
+        std::vector<Strides>{truthy_ptr->strides(), falsy_ptr->strides()});
+    if (collapsed_shape.size() > 4) {
+      omarchy::unsupported("Select layout", out);
+    }
+    params.dims = static_cast<uint32_t>(collapsed_shape.size());
+    uint64_t true_span = 0;
+    uint64_t false_span = 0;
+    for (size_t axis = 0; axis < collapsed_shape.size(); ++axis) {
+      params.shape[axis] = static_cast<uint32_t>(collapsed_shape[axis]);
+      params.out_strides[axis] =
+          static_cast<uint32_t>(collapsed_strides[0][axis]);
+      params.in_strides[axis] =
+          static_cast<uint32_t>(collapsed_strides[1][axis]);
+      uint64_t extent = params.shape[axis] - 1u;
+      true_span += extent * params.out_strides[axis];
+      false_span += extent * params.in_strides[axis];
+    }
+    if (!omarchy::compute_index_span_fits(params.rhs_offset, true_span + 1) ||
+        !omarchy::compute_index_span_fits(
+            params.aux_offset, false_span + 1)) {
+      omarchy::unsupported("Select index span", out);
+    }
+  }
   std::array<omarchy::ComputeBinding, 4> bindings{
-      binding(*condition_ptr), binding(truthy), binding(falsy), binding(out)};
-  auto kernel = select_float_kernel(
-      out.dtype(),
-      omarchy::ComputeKernel::SelectF32,
-      omarchy::ComputeKernel::SelectF16,
-      omarchy::ComputeKernel::SelectBF16);
+      binding(*condition_ptr),
+      binding(*truthy_ptr),
+      binding(*falsy_ptr),
+      binding(out)};
   // The kernel processes one output word (four elements) per thread
   // with no grid-stride loop, so very large outputs dispatch in
-  // back-to-back offset chunks. The aux offset stays absolute: the
-  // shader indexes the false operand by output index.
+  // back-to-back offset chunks.
   constexpr uint64_t kMaxWordsPerDispatch =
       static_cast<uint64_t>(omarchy::kMaxComputeGroupCountX) *
       omarchy::kComputeThreadsPerGroup;
   uint32_t lhs_base = params.lhs_offset;
   uint32_t rhs_base = params.rhs_offset;
+  uint32_t aux_base = params.aux_offset;
   uint32_t output_base = params.output_offset;
   uint64_t words_done = 0;
   while (words_done < word_count) {
     uint32_t chunk_words = static_cast<uint32_t>(
         std::min<uint64_t>(word_count - words_done, kMaxWordsPerDispatch));
     uint64_t chunk_elements = 4ull * words_done;
+    // Condition and output stay flat across chunks. In the flat
+    // transport the true operand advances linearly with them and the
+    // false operand does too whenever it covers the full count; a
+    // scalar false operand reads one absolute element. In the general
+    // transport the strided operands were span-checked once above, and
+    // the shader receives the chunk's first output element in matrix_m.
     if (!omarchy::compute_index_span_fits(
             lhs_base + chunk_elements, 4ull * chunk_words) ||
         !omarchy::compute_index_span_fits(
-            rhs_base + chunk_elements, 4ull * chunk_words) ||
-        !omarchy::compute_index_span_fits(
-            output_base + chunk_elements, 4ull * chunk_words)) {
+            output_base + chunk_elements, 4ull * chunk_words) ||
+        (!general &&
+            (!omarchy::compute_index_span_fits(
+                 rhs_base + chunk_elements, 4ull * chunk_words) ||
+             (params.aux_size == count &&
+              !omarchy::compute_index_span_fits(
+                  aux_base + chunk_elements, 4ull * chunk_words))))) {
       omarchy::unsupported("Select index span", out);
     }
     params.lhs_offset = checked_u32(lhs_base + chunk_elements, name(), out);
-    params.rhs_offset = checked_u32(rhs_base + chunk_elements, name(), out);
     params.output_offset =
         checked_u32(output_base + chunk_elements, name(), out);
+    if (general) {
+      params.matrix_m = checked_u32(chunk_elements, name(), out);
+    } else {
+      params.rhs_offset = checked_u32(rhs_base + chunk_elements, name(), out);
+      if (params.aux_size == count) {
+        params.aux_offset =
+            checked_u32(aux_base + chunk_elements, name(), out);
+      }
+    }
     encoder.dispatch_compute(
         kernel,
         bindings,
@@ -4345,6 +5566,11 @@ void Sqrt::eval_gpu(const std::vector<array>& inputs, array& out) {
 // the integer elementwise kernel. Other integer operations stay named
 // rejections.
 void Subtract::eval_gpu(const std::vector<array>& inputs, array& out) {
+  if (out.dtype() == complex64) {
+    dispatch_complex(
+        name(), ComplexSubtract, inputs, out, out.primitive().stream());
+    return;
+  }
   if (out.dtype() == int32 || out.dtype() == uint32) {
     dispatch_int_elementwise(name(), IntSubtractOperation, inputs, out);
     return;
@@ -4772,17 +5998,47 @@ void RMSNormVJP::eval_gpu(
     return;
   }
   dw.set_data(allocate_omarchy(dw.nbytes()));
-  auto dw_params = norm_params(x, row_length, eps_, tag, dw);
+  // Stage 1 scatters one row's per-column contributions per workgroup;
+  // stage 2 sums the rows. A single workgroup used to loop all rows with
+  // a barrier per tile, and llvmpipe stops honoring those barriers past
+  // roughly a thousand row iterations (NaN dw at 8x100x1024 and up).
+  array dw_partial(Shape{static_cast<int>(x.size())}, float32, nullptr, {});
+  dw_partial.set_data(allocate_omarchy(dw_partial.nbytes()));
+  encoder.add_temporary(dw_partial);
+  auto dw_params = norm_params(x, row_length, eps_, tag, dw_partial);
   dw_params.rhs_offset = checked_item_offset(g, g.size(), tag, dw);
-  dw_params.output_offset = checked_item_offset(dw, dw.size(), tag, dw);
+  dw_params.output_offset = 0;
   std::array<omarchy::ComputeBinding, 3> dw_bindings{
-      binding(x), binding(g), binding(dw)};
+      binding(x), binding(g), binding(dw_partial)};
   auto dw_kernel = select_float_kernel(
       dw.dtype(),
       omarchy::ComputeKernel::FastRmsNormVjpDwF32,
       omarchy::ComputeKernel::FastRmsNormVjpDwF16,
       omarchy::ComputeKernel::FastRmsNormVjpDwBF16);
-  encoder.dispatch_compute(dw_kernel, dw_bindings, dw_params, 1);
+  encoder.dispatch_compute(
+      dw_kernel,
+      dw_bindings,
+      dw_params,
+      std::min(dw_params.output_size, omarchy::kMaxComputeGroupCountX));
+  omarchy::ComputeParams reduce_params = dw_params;
+  reduce_params.lhs_offset = 0;
+  reduce_params.reduce_size = dw_params.output_size;
+  reduce_params.output_size = checked_u32(row_length, tag, dw);
+  reduce_params.output_offset = checked_item_offset(dw, dw.size(), tag, dw);
+  std::array<omarchy::ComputeBinding, 2> reduce_bindings{
+      binding(dw_partial), binding(dw)};
+  auto reduce_kernel = select_float_kernel(
+      dw.dtype(),
+      omarchy::ComputeKernel::FastRmsNormVjpDwReduceF32,
+      omarchy::ComputeKernel::FastRmsNormVjpDwReduceF16,
+      omarchy::ComputeKernel::FastRmsNormVjpDwReduceBF16);
+  encoder.dispatch_compute(
+      reduce_kernel,
+      reduce_bindings,
+      reduce_params,
+      std::min(
+          (reduce_params.output_size + 255u) / 256u,
+          omarchy::kMaxComputeGroupCountX));
 }
 
 void LayerNormVJP::eval_gpu(
@@ -4834,17 +6090,47 @@ void LayerNormVJP::eval_gpu(
   // reduction. Scalar parameters keep the upstream zeros_like form.
   if (w.ndim() != 0) {
     dw.set_data(allocate_omarchy(dw.nbytes()));
-    auto dw_params = norm_params(x, row_length, eps_, tag, dw);
+    // Stage 1 scatters one row's per-column contributions per workgroup;
+    // stage 2 sums the rows. A single workgroup used to loop all rows with
+    // a barrier per tile, and llvmpipe stops honoring those barriers past
+    // roughly a thousand row iterations (NaN dw at 8x100x1024 and up).
+    array dw_partial(Shape{static_cast<int>(x.size())}, float32, nullptr, {});
+    dw_partial.set_data(allocate_omarchy(dw_partial.nbytes()));
+    encoder.add_temporary(dw_partial);
+    auto dw_params = norm_params(x, row_length, eps_, tag, dw_partial);
     dw_params.rhs_offset = checked_item_offset(g, g.size(), tag, dw);
-    dw_params.output_offset = checked_item_offset(dw, dw.size(), tag, dw);
+    dw_params.output_offset = 0;
     std::array<omarchy::ComputeBinding, 3> dw_bindings{
-        binding(x), binding(g), binding(dw)};
+        binding(x), binding(g), binding(dw_partial)};
     auto dw_kernel = select_float_kernel(
         dw.dtype(),
         omarchy::ComputeKernel::FastLayerNormVjpDwF32,
         omarchy::ComputeKernel::FastLayerNormVjpDwF16,
         omarchy::ComputeKernel::FastLayerNormVjpDwBF16);
-    encoder.dispatch_compute(dw_kernel, dw_bindings, dw_params, 1);
+    encoder.dispatch_compute(
+        dw_kernel,
+        dw_bindings,
+        dw_params,
+        std::min(dw_params.output_size, omarchy::kMaxComputeGroupCountX));
+    omarchy::ComputeParams reduce_params = dw_params;
+    reduce_params.lhs_offset = 0;
+    reduce_params.reduce_size = dw_params.output_size;
+    reduce_params.output_size = checked_u32(row_length, tag, dw);
+    reduce_params.output_offset = checked_item_offset(dw, dw.size(), tag, dw);
+    std::array<omarchy::ComputeBinding, 2> reduce_bindings{
+        binding(dw_partial), binding(dw)};
+    auto reduce_kernel = select_float_kernel(
+        dw.dtype(),
+        omarchy::ComputeKernel::FastRmsNormVjpDwReduceF32,
+        omarchy::ComputeKernel::FastRmsNormVjpDwReduceF16,
+        omarchy::ComputeKernel::FastRmsNormVjpDwReduceBF16);
+    encoder.dispatch_compute(
+        reduce_kernel,
+        reduce_bindings,
+        reduce_params,
+        std::min(
+            (reduce_params.output_size + 255u) / 256u,
+            omarchy::kMaxComputeGroupCountX));
   } else {
     zero_fill(dw);
   }
@@ -5073,7 +6359,26 @@ void ScaledDotProductAttention::eval_gpu(
   dispatch_matmul(tag, {probs, v32}, result, 1.0f, 0.0f, false, s);
   encoder.add_temporary(result);
   if (result.dtype() == out.dtype()) {
-    out.copy_shared_buffer(result);
+    if (repeats > 1) {
+      // With GQA the result is 5-D (kv, repeat) while out is 4-D (heads).
+      // The flat row-major layouts match, so share the buffer under out's
+      // own strides: copy_shared_buffer(result) alone would install 5-D
+      // strides and a 5-element stride vector on a 4-D array, and every
+      // later reader would walk wrong addresses (the upstream fallback
+      // flattens axes 1-2 here).
+      Strides out_strides(out.ndim(), 1);
+      for (int axis = out.ndim() - 2; axis >= 0; --axis) {
+        out_strides[axis] = out_strides[axis + 1] * out.shape(axis + 1);
+      }
+      array::Flags flags;
+      flags.contiguous = true;
+      flags.row_contiguous = true;
+      auto max_dim = std::max_element(out.shape().begin(), out.shape().end());
+      flags.col_contiguous = out.size() <= 1 || out.size() == *max_dim;
+      out.copy_shared_buffer(result, out_strides, flags, result.data_size());
+    } else {
+      out.copy_shared_buffer(result);
+    }
   } else {
     copy_gpu(result, out, CopyType::Vector, s);
   }

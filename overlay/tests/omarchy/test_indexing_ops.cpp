@@ -485,19 +485,24 @@ TEST_CASE("scatter keeps named rejections for the unsupported modes") {
             stream))
             .find("Scatter Prod dtype") != std::string::npos);
 
-  // More than one index array exceeds the 4-binding dispatch budget.
-  array src2d = array({1.0f, 2.0f, 3.0f, 4.0f}, {2, 2}, float32);
-  array idx_a = array({0}, {1}, int32);
-  array idx_b = array({0}, {1}, int32);
-  array one = array({9.0f, 9.0f}, {1, 1, 2}, float32);
+  // Three index arrays exceed the implemented two-index kernel; the
+  // named refusal states the array count. The two-index case is now
+  // implemented and value-tested in its own cases below.
+  array src3d = array(
+      {1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f, 7.0f, 8.0f}, {2, 2, 2}, float32);
+  array i0 = array({0}, {1}, int32);
+  array i1 = array({0}, {1}, int32);
+  array i2 = array({0}, {1}, int32);
+  array one3 = array({9.0f, 9.0f}, {1, 1, 1, 2}, float32);
   CHECK(evaluation_error(
             scatter(
-                src2d,
-                std::vector<array>{idx_a, idx_b},
-                one,
-                {0, 1},
+                src3d,
+                std::vector<array>{i0, i1, i2},
+                one3,
+                {0, 1, 2},
                 stream))
-            .find("multi-index Scatter") != std::string::npos);
+            .find("multi-index Scatter with 3 index arrays") !=
+        std::string::npos);
 
   // bool data has no scatter path (packed-bool storage would need its
   // own read-modify-write kernel).
@@ -519,6 +524,123 @@ TEST_CASE("scatter keeps named rejections for the unsupported modes") {
             f16src, std::vector<array>{indices}, f16upd, {0}, stream))
             .find("Scatter Sum dtype") != std::string::npos);
 }
+
+// ---------------------------------------------------------------------------
+// Scatter with two index arrays (multi-index): one index array per axis,
+// None / Sum / Max / Min, against hand-computed host references.
+// ---------------------------------------------------------------------------
+
+TEST_CASE("multi-index scatter none addresses two axes with update blocks") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  // 3x4 output; slots target (2,1) and (0,2); each carries a [1,2]
+  // update block that walks the output's trailing-dim strides.
+  array src = zeros({3, 4}, float32, stream);
+  array rows = array({2, 0}, {2}, int32);
+  array cols = array({1, 2}, {2}, int32);
+  array updates = array({10.0f, 11.0f, 20.0f, 21.0f}, {2, 1, 2}, float32);
+  array out = scatter(src, std::vector<array>{rows, cols}, updates, {0, 1}, stream);
+  check_floats(
+      out,
+      {0, 0, 20, 21, 0, 0, 0, 0, 0, 10, 11, 0},
+      stream);
+}
+
+TEST_CASE("multi-index scatter none resolves duplicates last write wins") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  // Slots 0 and 1 both target (1,2); the highest slot must win, and
+  // slot 2 lands at (0,3).
+  array src = zeros({2, 4}, float32, stream);
+  array rows = array({1, 1, 0}, {3}, int32);
+  array cols = array({2, 2, 3}, {3}, int32);
+  array updates = array({10.0f, 20.0f, 30.0f}, {3, 1, 1}, float32);
+  array out = scatter(src, std::vector<array>{rows, cols}, updates, {0, 1}, stream);
+  check_floats(out, {0, 0, 0, 30, 0, 0, 20, 0}, stream);
+}
+
+TEST_CASE("multi-index scatter max and min keep extreme updates") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  // Duplicate target (1,1) twice, plus one clean slot at (0,1): pins
+  // the src-combine step of the key finalize for both extremes.
+  array src = array({3.0f, 1.0f, 5.0f, 7.0f}, {2, 2}, float32);
+  array rows = array({0, 1, 1}, {3}, int32);
+  array cols = array({1, 1, 1}, {3}, int32);
+  array max_upd = array({5.0f, 9.0f, 2.0f}, {3, 1, 1}, float32);
+  array max_out =
+      scatter_max(src, std::vector<array>{rows, cols}, max_upd, {0, 1}, stream);
+  // Duplicate target (1,1): max{7,9,2} = 9; clean slot keeps src * update max.
+  check_floats(max_out, {3, 5, 5, 9}, stream);
+  array min_out =
+      scatter_min(src, std::vector<array>{rows, cols}, max_upd, {0, 1}, stream);
+  // Same slots under min: min{7,9,2} = 2; (0,1) keeps src 1.
+  check_floats(min_out, {3, 1, 5, 2}, stream);
+}
+
+TEST_CASE("multi-index scatter add accumulates integer duplicates") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  array src = zeros({2, 3}, int32, stream);
+  array rows = array({0, 1, 1}, {3}, int32);
+  array cols = array({1, 1, 0}, {3}, int32);
+  array updates = array({10, 20, 30}, {3, 1, 1}, int32);
+  array out =
+      scatter_add(src, std::vector<array>{rows, cols}, updates, {0, 1}, stream);
+  check_ints(out, {0, 10, 0, 30, 20, 0}, stream);
+}
+
+TEST_CASE("multi-index scatter skips slots with any out-of-range axis") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  // Slot 1 names column 9 of a 4-wide axis: the whole slot is skipped,
+  // no partial write from its in-range row index.
+  array src = array({1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f, 7.0f, 8.0f}, {2, 4}, float32);
+  array rows = array({0, 1, 1}, {3}, int32);
+  array cols = array({1, 9, 3}, {3}, int32);
+  array updates = array({-1.0f, -2.0f, -3.0f}, {3, 1, 1}, float32);
+  array out = scatter(src, std::vector<array>{rows, cols}, updates, {0, 1}, stream);
+  check_floats(out, {1, -1, 3, 4, 5, 6, 7, -3}, stream);
+}
+
+TEST_CASE("multi-index scatter writes int32 data through uint32 words") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  array src = array({1, 2, 3, 4, 5, 6}, {2, 3}, int32);
+  array rows = array({1, 0}, {2}, int32);
+  array cols = array({2, 0}, {2}, int32);
+  array updates = array({-7, -8}, {2, 1, 1}, int32);
+  array out = scatter(src, std::vector<array>{rows, cols}, updates, {0, 1}, stream);
+  check_ints(out, {-8, 2, 3, 4, 5, -7}, stream);
+}
+
+TEST_CASE("multi-index scatter decodes int64 index pairs per axis") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  // int64 indices read as two little-endian words per slot, for both
+  // arrays independently.
+  array src = zeros({3, 3}, float32, stream);
+  array rows = array({0, 2, 1}, {3}, int64);
+  array cols = array({1, 0, 2}, {3}, int64);
+  array updates = array({10.0f, 20.0f, 30.0f}, {3, 1, 1}, float32);
+  array out = scatter(src, std::vector<array>{rows, cols}, updates, {0, 1}, stream);
+  check_floats(out, {0, 10, 0, 0, 0, 30, 20, 0, 0}, stream);
+}
+
 
 // ---------------------------------------------------------------------------
 // ScatterAxis: put_along_axis and scatter_add_axis
@@ -733,24 +855,6 @@ TEST_CASE("masked_scatter rejects broadcast masks with a named error") {
 // Wide-row ArgPartition
 // ---------------------------------------------------------------------------
 
-TEST_CASE("argpartition wide rows keep a named rejection for now") {
-  if (!compute_available()) {
-    return;
-  }
-  Stream stream = gpu_stream();
-  // The bitonic path caps at 1024. The radix-select replacement for
-  // vocabulary-width rows (the top-k sampling path) still mispicks, so
-  // wide rows stay a named rejection instead of returning wrong
-  // indices; the bitonic route below 1024 is unchanged and verified.
-  uint64_t seed = 0x5eed1234;
-  std::vector<float> logits(151936);
-  for (int i = 0; i < 151936; ++i) {
-    logits[i] = lcg(seed) * 20.0f - 10.0f;
-  }
-  array a = array(logits.data(), Shape({1, 151936}), float32);
-  std::string error = evaluation_error(argpartition(a, 4, -1, stream));
-  CHECK(error.find("sort row length ArgPartition") != std::string::npos);
-}
 
 TEST_CASE("argpartition small rows partition exactly on the bitonic path") {
   if (!compute_available()) {
