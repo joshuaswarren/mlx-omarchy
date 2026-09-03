@@ -1,4 +1,3 @@
-diff --git a/setup.py b/setup.py
 --- a/setup.py
 +++ b/setup.py
 @@ -36,8 +36,11 @@
@@ -15,3 +14,13 @@ diff --git a/setup.py b/setup.py
      if not pypi_release and not dev_release:
          git_hash = (
              subprocess.run(
+@@ -50,6 +53,9 @@
+         )
+         version = f"{version}+{git_hash}"
+ 
++    local_version = os.environ.get("MLX_OMARCHY_LOCAL_VERSION", "")
++    if local_version:
++        version = f"{version}+{local_version}"
+     return version
+ 
+ 
