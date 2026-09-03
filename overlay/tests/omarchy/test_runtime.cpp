@@ -986,15 +986,22 @@ TEST_CASE("independent streams measure against the serialized sum") {
             << " serialized_median=" << serialized_median
             << "s concurrent_median=" << concurrent_median
             << "s ratio=" << ratio << "\n";
-  // Batched-submission contract: each stream records into its own open
-  // batch and the single queue executes the batches back to back, so the
-  // serialized pattern is already GPU-bound and the old per-op overlap
-  // win (ratio > 1.05) is structurally subsumed. What must still hold is
-  // stream independence: interleaving two streams' batches costs nothing
-  // versus running them alone (a global serialization lock would push
-  // the ratio well below 1).
+  // Stream independence: interleaving two streams' batches must not cost
+  // more than running them alone; a global serialization lock would push
+  // the ratio well below 1, and that is what the lower bound guards. On
+  // real async hardware the interleaved run can legitimately FINISH
+  // FASTER than serialized: the serialized pattern exposes a host-GPU
+  // sync round trip between its two loops that interleaving hides
+  // (measured ratio 1.21 on the M1/Honeykrisp device; llvmpipe's
+  // synchronous QueueSubmit lands at ratio ~1, which is why this upper
+  // direction passed there). The old `ratio < 1.10` upper bound asserted
+  // that the overlap win was structurally subsumed, and that assumption
+  // is false on the hardware we ship for, so it is not asserted here.
+  // Interleaved being faster is only legitimate if every copy actually
+  // ran, so the destination buffers are verified byte-for-byte instead.
   CHECK(ratio > 0.95);
-  CHECK(ratio < 1.10);
+  CHECK(std::memcmp(y1->data, x1->data, kBytes) == 0);
+  CHECK(std::memcmp(y2->data, x2->data, kBytes) == 0);
 
   omarchy::allocator().free(a1);
   omarchy::allocator().free(b1);
