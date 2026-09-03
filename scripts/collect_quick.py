@@ -27,7 +27,8 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from collect_common import SCHEMA_VERSION, Redactor, dump_json, json_bytes, run_tool
+from collect_common import (SCHEMA_VERSION, Redactor, build_payload,
+                            dump_json, json_bytes, run_tool)
 
 DT_BASE = "/sys/firmware/devicetree/base"
 
@@ -267,6 +268,9 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--out", metavar="FILE",
                     help="also write the JSON report to FILE")
+    ap.add_argument("--submit", metavar="URL", default=None,
+                    help="publish this report to the community endpoint "
+                         "after printing it")
     args = ap.parse_args()
     report = collect()
     text = dump_json(report)
@@ -275,6 +279,36 @@ def main():
             fh.write(json_bytes(report))
         print(f"[receipt] wrote {args.out} ({len(json_bytes(report))} bytes)")
     print(text, end="" if text.endswith("\n") else "\n")
+    raise SystemExit(maybe_submit(args, report))
+
+
+def maybe_submit(args, report):
+    """Publish only after the report was shown and consent was given.
+
+    The import is local so that a plain run of this script loads no
+    network module at all.
+    """
+    import collect_submit
+
+    endpoint = collect_submit.endpoint_from_args(args)
+    if endpoint is None:
+        return 0
+    payload = build_payload("quick", report, {})
+    digest = collect_submit.sha256_hex(
+        json.dumps(payload, sort_keys=True, separators=(",", ":")).encode())
+    if not args.submit and not collect_submit.confirm_interactive(
+            endpoint, "quick report", digest):
+        print("[submit] declined; nothing was uploaded")
+        return 0
+    try:
+        receipt = collect_submit.submit_payload(
+            endpoint, payload, token=collect_submit.token_from_env())
+    except collect_submit.SubmitError as exc:
+        print(f"[submit] FAILED: {exc}", file=sys.stderr)
+        return 4
+    print(f"[receipt] public URL: {receipt['url']} "
+          f"(deduplicated={receipt['deduplicated']})")
+    return 0
 
 
 if __name__ == "__main__":

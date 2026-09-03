@@ -572,5 +572,92 @@ class PrimaryGpuSelection(unittest.TestCase):
         self.assertEqual(cq._primary_device([]), {})
 
 
+class SocGrouping(unittest.TestCase):
+    """Submissions group by SoC, not by board model."""
+
+    def test_soc_compatible_wins(self):
+        quick = {"host": {"devicetree": {
+            "model": "Apple MacBook Pro (13-inch, M1, 2020)",
+            "compatible": ["apple,j293", "apple,t8103", "apple,arm-platform"],
+        }}}
+        payload = cc.build_payload("quick", quick, {})
+        self.assertEqual(payload["chip"], "apple,t8103")
+        self.assertEqual(payload["model"],
+                         "Apple MacBook Pro (13-inch, M1, 2020)")
+
+    def test_first_entry_used_when_no_soc_present(self):
+        quick = {"host": {"devicetree": {"compatible": ["vendor,board"]}}}
+        self.assertEqual(cc.build_payload("quick", quick, {})["chip"],
+                         "vendor,board")
+
+    def test_missing_devicetree_is_null_not_an_error(self):
+        self.assertIsNone(cc.build_payload("quick", {}, {})["chip"])
+
+
+class PayloadOnlySubmit(unittest.TestCase):
+    """The quick report publishes without an archive, in one round trip."""
+
+    class Fake:
+        def __init__(self, probe=(404, {}), initiate=None):
+            self.probe = probe
+            self.initiate = initiate or (200, {
+                "status": "stored", "receipt_url": "http://r/q"})
+            self.requests = []
+
+        def open(self, req, timeout=None):
+            self.requests.append(req)
+            if req.get_method() == "GET":
+                status, body = self.probe
+            else:
+                status, body = self.initiate
+            return SubmitProtocol.FakeResponse(status, body)
+
+    PAYLOAD = {"schema_version": 1, "kind": "quick",
+               "generated_at": "2026-09-03T16:40:00Z", "chip": "apple,t8103"}
+
+    def test_initiate_sends_null_archive_and_quick_kind(self):
+        import collect_submit as cs
+        fake = self.Fake()
+        receipt = cs.submit_payload("http://e.example", self.PAYLOAD,
+                                    urlopen=fake.open)
+        posts = [r for r in fake.requests if r.get_method() == "POST"]
+        self.assertEqual(len(posts), 1)
+        body = json.loads(posts[0].data.decode("utf-8"))
+        self.assertIsNone(body["archive"])
+        self.assertEqual(body["kind"], "quick")
+        self.assertEqual(body["payload"], self.PAYLOAD)
+        self.assertIn("nonce", body["pow"])
+        self.assertEqual(receipt["url"], "http://r/q")
+        self.assertFalse(receipt["deduplicated"])
+
+    def test_content_hash_is_the_canonical_payload(self):
+        import collect_submit as cs
+        fake = self.Fake()
+        cs.submit_payload("http://e.example", self.PAYLOAD, urlopen=fake.open)
+        body = json.loads(
+            [r for r in fake.requests
+             if r.get_method() == "POST"][0].data.decode("utf-8"))
+        expected = cs.sha256_hex(json.dumps(
+            self.PAYLOAD, sort_keys=True, separators=(",", ":")).encode())
+        self.assertEqual(body["content_sha256"], expected)
+
+    def test_dedup_hit_sends_no_post(self):
+        import collect_submit as cs
+        fake = self.Fake(probe=(200, {"status": "duplicate",
+                                      "receipt_url": "http://r/dup"}))
+        receipt = cs.submit_payload("http://e.example", self.PAYLOAD,
+                                    urlopen=fake.open)
+        self.assertTrue(receipt["deduplicated"])
+        self.assertEqual([r.get_method() for r in fake.requests], ["GET"])
+
+    def test_oversize_report_refused_before_any_request(self):
+        import collect_submit as cs
+        fake = self.Fake()
+        big = dict(self.PAYLOAD, model="M" * (cs.MAX_PAYLOAD_BYTES + 10))
+        with self.assertRaises(cs.SubmitError):
+            cs.submit_payload("http://e.example", big, urlopen=fake.open)
+        self.assertEqual(fake.requests, [])
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
