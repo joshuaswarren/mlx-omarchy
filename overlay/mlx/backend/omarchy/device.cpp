@@ -747,6 +747,19 @@ namespace {
 // shutdown and handler dispatch by at most one interval, never forever.
 constexpr uint64_t kCompletionPollNs = 100ull * 1000 * 1000;
 
+// Cadence while a submission is in flight. The throttled evaluator is
+// released only by a completion handler (eval.cpp registers
+// notify_task_completion as a handler; the scheduler blocks in
+// wait_for_one), and handlers run in drain_through — so once the queue is
+// busy this interval is the added latency per decode step. Measured decode
+// paid 258-490 ms/token against tens of microseconds of GPU work per step:
+// almost all of it this sleep, because enqueue()'s notify cannot satisfy
+// the pending_.empty() predicate below and GPU completion wakes nothing.
+// 1 ms bounds that overhead to ~0.4% of a step; the cost is at most ~1000
+// GetSemaphoreCounterValue host queries per second, and only while
+// pending_ is non-empty. The idle interval above stays 100 ms.
+constexpr uint64_t kInFlightPollNs = 1ull * 1000 * 1000;
+
 } // namespace
 
 CompletionDispatcher::CompletionDispatcher(VkDevice device) : device_(device) {
@@ -939,7 +952,7 @@ void CompletionDispatcher::run() {
     if (stop_) {
       return;
     }
-    cv_.wait_for(lk, std::chrono::nanoseconds(kCompletionPollNs), [this] {
+    cv_.wait_for(lk, std::chrono::nanoseconds(kInFlightPollNs), [this] {
       return stop_ || pending_.empty();
     });
   }
