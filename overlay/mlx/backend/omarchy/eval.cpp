@@ -91,6 +91,11 @@ void init() {
 void eval(array& arr) {
   omarchy::trace::counters().gpu_primitive_dispatches++;
   auto outputs = arr.outputs();
+  auto& stream = arr.primitive().stream();
+  auto& encoder = omarchy::get_command_encoder(stream);
+  // Open-batch state BEFORE this op records: a batch spans every op
+  // recorded between commits.
+  bool batch_open = encoder.needs_commit();
   {
     // If the array is a tracer hold a reference
     // to its inputs so they don't get donated
@@ -106,24 +111,43 @@ void eval(array& arr) {
     }
   }
 
-  auto& stream = arr.primitive().stream();
-  auto& encoder = omarchy::get_command_encoder(stream);
-  // Keep used buffers alive until the submitted work completes. The output
-  // is retained too (covers donated storage, where the output reuses an
-  // input's buffer): with asynchronous commits every backing buffer of the
-  // submitted commands must outlive the caller's references.
-  for (auto& in : arr.inputs()) {
-    encoder.add_temporary(in);
-  }
-  for (auto& s : arr.siblings()) {
-    encoder.add_temporary(s);
-  }
-  encoder.add_temporary(arr);
+  // Temporaries flush contract. A buffer must be pinned against
+  // incomplete GPU work if and only if some recorded dispatch references
+  // it. The eval that records work pins its inputs, outputs, and
+  // siblings here; the batch carries those pins to its submission, and
+  // the dispatcher releases them one completion after that submission.
+  // An eval whose primitive records nothing (host-materialized scalars,
+  // view rearrangements) pins nothing: no in-flight dispatch can
+  // reference its buffers, and every consumer that reads them records
+  // its own eval, which pins them as inputs. Without this rule the
+  // temporaries of workless evals would accumulate until an unrelated
+  // submission flushed them.
   if (encoder.needs_commit()) {
-    scheduler::notify_new_task(stream);
-    encoder.add_completed_handler(
-        [stream]() { scheduler::notify_task_completion(stream); });
-    encoder.commit();
+    if (!batch_open) {
+      // One scheduler task and one completion notification per batch,
+      // attached when the batch opens so that every close path
+      // (finalize, event flush contract, node budget, host read sync)
+      // carries the pairing exactly once.
+      scheduler::notify_new_task(stream);
+      encoder.add_completed_handler(
+          [stream]() { scheduler::notify_task_completion(stream); });
+    }
+    // Keep used buffers alive until the submitted work completes. The
+    // output is retained too (covers donated storage, where the output
+    // reuses an input's buffer): every backing buffer of the submitted
+    // commands must outlive the caller's references.
+    for (auto& in : arr.inputs()) {
+      encoder.add_temporary(in);
+    }
+    for (auto& s : arr.siblings()) {
+      encoder.add_temporary(s);
+    }
+    encoder.add_temporary(arr);
+    // Node budget: flush the batch so a long graph cannot pin unbounded
+    // temporaries behind one open command buffer.
+    if (encoder.nodes() >= omarchy::kBatchNodeBudget) {
+      encoder.commit();
+    }
   }
 }
 
