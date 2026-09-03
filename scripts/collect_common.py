@@ -60,6 +60,20 @@ class Redactor:
             return repl
         return fn
 
+    # A dotted quad is not always an address: Vulkan reports
+    # `conformanceVersion = 1.4.0.0`, and redacting that destroys real
+    # hardware data. Keep the quad when the text right before it is a
+    # version assignment; redact every other dotted quad.
+    _VERSION_CONTEXT = re.compile(r"(?i)version\s*[:=]\s*$")
+
+    def _ipv4_sub(self, match):
+        line_start = match.string.rfind("\n", 0, match.start()) + 1
+        prefix = match.string[line_start:match.start()]
+        if self._VERSION_CONTEXT.search(prefix):
+            return match.group(0)
+        self._note("ipv4")
+        return "[redacted-ip4]"
+
     def _build_rules(self):
         rules = []
 
@@ -96,7 +110,10 @@ class Redactor:
            r"(?:%\w+)?\b", "ipv6", "[redacted-ip6]", re.IGNORECASE)
         rx(r"\b(?:[0-9A-Fa-f]{1,4}:){7}[0-9A-Fa-f]{1,4}\b",
            "ipv6", "[redacted-ip6]")
-        rx(r"\b\d{1,3}(?:\.\d{1,3}){3}(?:/\d{1,3})?\b", "ipv4", "[redacted-ip4]")
+        rules.append((
+            re.compile(r"\b\d{1,3}(?:\.\d{1,3}){3}(?:/\d{1,3})?\b"),
+            self._ipv4_sub,
+        ))
         # Home paths: this user's home first, then any user's.
         if self.home and self.home != "/" and self.home != "":
             rules.append((
