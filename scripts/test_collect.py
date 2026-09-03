@@ -481,5 +481,96 @@ class NoNetworkImports(unittest.TestCase):
         self.assertEqual(hits, [])
 
 
+class VersionQuadSurvivesRedaction(unittest.TestCase):
+    """A dotted version is data; a dotted address is not.
+
+    Measured on jwm1-linux 2026-09-03: `conformanceVersion = 1.4.0.0`
+    came back as `[redacted-ip4]`, destroying real Vulkan data in every
+    submission from Apple hardware.
+    """
+
+    def test_conformance_version_is_kept(self):
+        red = cc.Redactor()
+        text = "\tconformanceVersion = 1.4.0.0"
+        self.assertIn("1.4.0.0", red.apply(text))
+        self.assertEqual(red.counts.get("ipv4", 0), 0)
+
+    def test_lowercase_and_colon_version_forms_are_kept(self):
+        red = cc.Redactor()
+        self.assertIn("10.0.0.1", red.apply("driver version: 10.0.0.1"))
+        self.assertEqual(red.counts.get("ipv4", 0), 0)
+
+    def test_real_address_is_still_redacted(self):
+        red = cc.Redactor()
+        out = red.apply("inet 192.168.3.66 netmask 255.255.254.0")
+        self.assertNotIn("192.168.3.66", out)
+        self.assertNotIn("255.255.254.0", out)
+        self.assertEqual(red.counts.get("ipv4", 0), 2)
+
+    def test_address_on_a_later_line_is_still_redacted(self):
+        red = cc.Redactor()
+        out = red.apply("conformanceVersion = 1.4.0.0\ninet 10.1.2.3\n")
+        self.assertIn("1.4.0.0", out)
+        self.assertNotIn("10.1.2.3", out)
+
+
+class PrimaryGpuSelection(unittest.TestCase):
+    """Honeykrisp must win over llvmpipe.
+
+    `vulkaninfo --summary` on an Apple host lists the real GPU as GPU0
+    and llvmpipe as GPU1. Keeping the last block reported llvmpipe as
+    the machine's GPU, which makes the submission useless for driver
+    work. Sample text is verbatim jwm1-linux output.
+    """
+
+    SUMMARY = (
+        "Devices:\n"
+        "========\n"
+        "GPU0:\n"
+        "\tapiVersion         = 1.4.354\n"
+        "\tdriverVersion      = 26.1.7\n"
+        "\tdeviceType         = PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU\n"
+        "\tdeviceName         = Apple M1 (G13G B1)\n"
+        "\tdriverID           = DRIVER_ID_MESA_HONEYKRISP\n"
+        "\tdriverName         = Honeykrisp\n"
+        "\tconformanceVersion = 1.4.0.0\n"
+        "GPU1:\n"
+        "\tapiVersion         = 1.4.354\n"
+        "\tdeviceType         = PHYSICAL_DEVICE_TYPE_CPU\n"
+        "\tdeviceName         = llvmpipe (LLVM 22.1.8, 128 bits)\n"
+        "\tdriverID           = DRIVER_ID_MESA_LLVMPIPE\n"
+        "\tdriverName         = llvmpipe\n"
+    )
+
+    def test_both_devices_are_parsed(self):
+        devices = cq._device_blocks(self.SUMMARY)
+        self.assertEqual(len(devices), 2)
+        self.assertEqual(devices[0]["driverName"], "Honeykrisp")
+        self.assertEqual(devices[1]["driverName"], "llvmpipe")
+
+    def test_honeykrisp_is_primary(self):
+        primary = cq._primary_device(
+            cq._device_blocks(self.SUMMARY))
+        self.assertEqual(primary["driverName"], "Honeykrisp")
+        self.assertEqual(primary["deviceName"], "Apple M1 (G13G B1)")
+
+    def test_non_cpu_wins_when_driver_is_unknown(self):
+        devices = [
+            {"driverName": "llvmpipe",
+             "deviceType": "PHYSICAL_DEVICE_TYPE_CPU"},
+            {"driverName": "futurevk",
+             "deviceType": "PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU"},
+        ]
+        self.assertEqual(
+            cq._primary_device(devices)["driverName"], "futurevk")
+
+    def test_cpu_only_host_still_reports_something(self):
+        devices = [{"driverName": "llvmpipe",
+                    "deviceType": "PHYSICAL_DEVICE_TYPE_CPU"}]
+        self.assertEqual(
+            cq._primary_device(devices)["driverName"], "llvmpipe")
+        self.assertEqual(cq._primary_device([]), {})
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

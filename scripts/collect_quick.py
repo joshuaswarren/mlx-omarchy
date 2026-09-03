@@ -22,6 +22,7 @@ script exits 0 when the report was produced, 1 on an internal failure.
 import argparse
 import json
 import os
+import re
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -82,6 +83,43 @@ def _read_dt_file(name):
         return None
 
 
+def _device_blocks(text):
+    """Split `vulkaninfo --summary` into one dict per GPUn: block."""
+    devices = []
+    current = None
+    for line in text.splitlines():
+        if re.match(r"^GPU\d+:$", line.strip()):
+            current = {}
+            devices.append(current)
+            continue
+        if current is None or "=" not in line:
+            continue
+        key, _, value = line.partition("=")
+        key = key.strip()
+        if key and " " not in key:
+            current[key] = value.strip()
+    return devices
+
+
+def _primary_device(devices):
+    """The device that actually matters for this project.
+
+    A host with Honeykrisp also enumerates llvmpipe, and llvmpipe is
+    listed last. Reporting it would make every submission useless for
+    driver work, so prefer the real GPU: Honeykrisp first, then any
+    non-CPU device, and only then whatever came first.
+    """
+    if not devices:
+        return {}
+    for dev in devices:
+        if "HONEYKRISP" in dev.get("driverID", "").upper():
+            return dev
+    for dev in devices:
+        if dev.get("deviceType", "") != "PHYSICAL_DEVICE_TYPE_CPU":
+            return dev
+    return devices[0]
+
+
 def probe_mesa(redactor):
     """Vulkan stack identity from `vulkaninfo --summary`."""
     out = {"available": False, "properties": {}, "summary": None}
@@ -90,17 +128,15 @@ def probe_mesa(redactor):
     out["vulkaninfo"] = rec
     if not rec["available"] or rec["exit_code"] != 0:
         return out
-    props = {}
-    for line in rec["stdout"].splitlines():
-        if "=" in line:
-            key, _, value = line.partition("=")
-            key = key.strip()
-            if key and " " not in key:
-                props[key] = value.strip()
-    out["properties"] = props
+    devices = _device_blocks(rec["stdout"])
+    primary = _primary_device(devices)
+    out["devices"] = devices
+    out["device_count"] = len(devices)
+    out["properties"] = primary
     known = ("deviceName", "driverName", "driverVersion", "apiVersion",
-             "vendorID", "deviceID", "deviceType", "conformanceVersion")
-    out["gpu"] = {k: props[k] for k in known if k in props}
+             "vendorID", "deviceID", "deviceType", "conformanceVersion",
+             "driverID", "driverInfo")
+    out["gpu"] = {k: primary[k] for k in known if k in primary}
     out["available"] = bool(out["gpu"])
     return out
 
