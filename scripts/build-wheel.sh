@@ -43,7 +43,10 @@ mkdir -p "$DIST_DIR"
 # setup.py appends CMAKE_ARGS to its cmake invocation; it splits the value on
 # spaces, so keep each -D flag space separated.
 export CMAKE_ARGS="-DMLX_BUILD_OMARCHY=ON -DMLX_BUILD_CPU=ON -DMLX_BUILD_METAL=OFF -DMLX_BUILD_CUDA=OFF -DMLX_BUILD_TESTS=OFF -DMLX_BUILD_EXAMPLES=OFF -DMLX_BUILD_BENCHMARKS=OFF"
-export CMAKE_BUILD_PARALLEL_LEVEL=16
+# Honor an explicit override, else the machine's actual core count. A
+# hardcoded 16 on the single-core M1 queues 96 compiler processes on one
+# CPU (cmake+ninja+cc1plus fan-out) and thrashes 16 GB into the OOM zone.
+export CMAKE_BUILD_PARALLEL_LEVEL="${CMAKE_BUILD_PARALLEL_LEVEL:-$(nproc)}"
 export PATH="$VENV_DIR/bin:$PATH"
 
 "$venv_python" -m pip wheel --no-build-isolation --no-deps \

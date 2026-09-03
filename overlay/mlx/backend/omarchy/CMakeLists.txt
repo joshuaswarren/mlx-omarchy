@@ -1,3 +1,12 @@
+# Env-gated GPU profiling harness (gpu_profiler.h). Compiled OUT by
+# default: release builds carry zero profiling code. Turn on only for
+# diagnostic builds (MLX_OMARCHY_GPU_PROFILE env var selects the output).
+option(MLX_OMARCHY_GPU_PROFILING
+       "Compile in the env-gated GPU profiling harness" OFF)
+if(MLX_OMARCHY_GPU_PROFILING)
+  target_compile_definitions(mlx PRIVATE MLX_OMARCHY_GPU_PROFILING)
+endif()
+
 find_program(OMARCHY_GLSLC glslc)
 find_program(OMARCHY_GLSLANG glslangValidator)
 if(NOT OMARCHY_GLSLC AND NOT OMARCHY_GLSLANG)

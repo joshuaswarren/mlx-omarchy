@@ -14,6 +14,7 @@
 #include <algorithm>
 #include <condition_variable>
 #include <mutex>
+#include <thread>
 
 #include "mlx/backend/omarchy/allocator.h"
 #include "mlx/backend/omarchy/device.h"
@@ -90,6 +91,11 @@ struct EventImpl {
   std::atomic<Error*> error{nullptr};
   std::unique_ptr<TimelineSemaphore> gpu;
   std::unique_ptr<HostCounter> host;
+  // Completion timeline generation that carried the latest GPU-stream
+  // signal (0 = none captured, e.g. CPU-stream producer). Waiting threads
+  // join this generation so the signal's completion handlers have run
+  // before the waiter proceeds.
+  std::atomic<uint64_t> signaled_completion{0};
 
   bool is_created() const {
     return gpu || host;
@@ -138,6 +144,26 @@ void Event::wait() {
     // Host reads may follow immediately: join the dispatcher handlers of
     // every already-completed submission (handler-written bytes, task
     // accounting). Later queued work is not awaited.
+    //
+    // The generation that carried this event's signal is joined exactly:
+    // completions().wait() publishes drained_value_ only after that
+    // generation's handlers ran, so handler-written state is visible
+    // here. The signaler records the generation right after QueueSubmit
+    // returns, which can trail the driver's semaphore signal this wait
+    // just observed, so re-check the recorded generation after each
+    // drain and join again if it moved.
+    for (int join_attempt = 0; join_attempt < 8; ++join_attempt) {
+      uint64_t generation =
+          event.signaled_completion.load(std::memory_order_acquire);
+      if (generation != 0) {
+        event.gpu->device.completions().wait(generation);
+      }
+      if (event.signaled_completion.load(std::memory_order_acquire) ==
+          generation) {
+        break;
+      }
+      std::this_thread::yield();
+    }
     event.gpu->device.join_completed_handlers();
     omarchy::allocator().invalidate_noncoherent(event.gpu->device.handle());
   } else if (event.host) {
@@ -218,7 +244,17 @@ void Event::signal(Stream s) {
       // Same ownership rule as waits: the signal is owned by the encoder
       // until its submission completes.
       encoder.add_semaphore_signal(event.gpu->semaphore, value(), event_);
+      // Signal ordering is a flush contract: the semaphore must be on the
+      // queue now, submitted immediately (flush contract).
       encoder.commit();
+      // Record the generation that carries this signal so waiters can
+      // join its handler boundary (see Event::wait).
+      uint64_t generation = encoder.last_submitted_completion();
+      uint64_t prior = event.signaled_completion.load(std::memory_order_relaxed);
+      while (generation > prior &&
+             !event.signaled_completion.compare_exchange_weak(
+                 prior, generation, std::memory_order_release)) {
+      }
     } else {
       // Signal from a CPU stream by submitting the signal on the device
       // queue (mirrors the CUDA backend's dedicated signal stream).
@@ -235,6 +271,8 @@ void Event::signal(Stream s) {
       auto& encoder = omarchy::get_command_encoder(s);
       encoder.add_completed_handler(
           [host, target_value, keepalive]() { host->signal(target_value); });
+      // Host-counter advance is a flush contract: a waiter may block on
+      // this handler, so the submission must be enqueued immediately.
       encoder.commit();
       return;
     }

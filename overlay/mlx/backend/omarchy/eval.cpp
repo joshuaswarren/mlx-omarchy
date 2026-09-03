@@ -128,8 +128,14 @@ void eval(array& arr) {
 }
 
 void finalize(Stream s) {
+  // Flush contract: the evaluator calls finalize at task-throttle points
+  // and at graph end, and then waits on task-completion handlers. The
+  // open batch must reach the queue here or those waits never complete.
+  // Batching still happens: every dispatch recorded between finalizes
+  // (one whole graph evaluation) shares one open command buffer.
   omarchy::get_command_encoder(s).commit();
 }
+
 
 void synchronize(Stream s) {
   omarchy::get_command_encoder(s).synchronize();

@@ -97,6 +97,9 @@ struct CapabilityReport {
   uint32_t max_compute_shared_memory_size{0};
   std::array<uint32_t, 3> max_compute_work_group_size{0, 0, 0};
   float timestamp_period{0.0f};
+  // Timestamp valid bits of the compute queue family; 0 when the queue
+  // reports no timestamp query support. Read by the GPU profiling harness.
+  uint32_t queue_timestamp_valid_bits{0};
 };
 
 // Bounded wait for any submission or completion (plan R16): a hung
