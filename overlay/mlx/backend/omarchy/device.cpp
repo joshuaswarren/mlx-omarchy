@@ -547,12 +547,22 @@ const CapabilityReport& capability_report(uint32_t index) {
   return rt.supported[index].caps;
 }
 
+bool compiled_tapes_refused(const Device& device) {
+  if (env_flag("MLX_OMARCHY_ALLOW_UNSAFE_COMPILE")) {
+    return false;
+  }
+  // Real Apple GPU targets corrupt compiled tape values; development
+  // devices accepted through MLX_OMARCHY_ALLOW_NON_APPLE do not.
+  return !device.non_apple_dev();
+}
+
 // --- Device ---------------------------------------------------------------
 
 Device::Device(uint32_t physical_device_index) {
   auto& rt = runtime();
   auto& info = rt.supported.at(physical_device_index);
   caps_ = info.caps;
+  non_apple_dev_ = info.support.non_apple_dev;
   VkPhysicalDevice pd = info.handle;
   auto& it = vk::instance_table();
 

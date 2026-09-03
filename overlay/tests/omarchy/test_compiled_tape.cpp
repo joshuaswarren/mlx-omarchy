@@ -12,11 +12,13 @@
 
 #include <cmath>
 #include <complex>
+#include <cstdlib>
 #include <functional>
 #include <string>
 #include <vector>
 
 #include "mlx/backend/gpu/device_info.h"
+#include "mlx/backend/omarchy/device.h"
 #include "mlx/backend/omarchy/encoder.h"
 #include "mlx/compile.h"
 #include "mlx/device.h"
@@ -600,4 +602,71 @@ TEST_CASE("complex tape ops stay refused by name") {
   CHECK(
       real_error.find("[omarchy] Compiled tape op Real") != std::string::npos);
   set_compile_mode(CompileMode::disabled);
+}
+
+// A tiny fusable tape used by the fail-closed cases below: two nodes, so
+// the tracer builds a real tape and eval_compiled_tape runs.
+auto square_plus_one_fn(const Stream& stream) {
+  return [&stream](const std::vector<array>& inputs) {
+    return std::vector<array>{
+        add(multiply(inputs[0], inputs[0], stream), array(1.0f), stream)};
+  };
+}
+
+TEST_CASE("compiled tapes refuse by default on real Apple GPUs") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  auto& dev = omarchy::device(stream.device.index);
+  bool refused_default = omarchy::compiled_tapes_refused(dev);
+
+  // The policy is keyed to the device: refusal on real Apple GPU targets
+  // only, where the corruption is observed (docs/known-defects.md);
+  // development devices accepted through MLX_OMARCHY_ALLOW_NON_APPLE
+  // keep running compiled tapes for the batteries and the harness.
+  CHECK_EQ(refused_default, !dev.non_apple_dev());
+
+  std::vector<float> xv = {0.5f, -1.5f, 2.0f, 0.0f};
+  array x(xv.begin(), Shape{4}, float32);
+  set_compile_mode(CompileMode::enabled);
+  auto fused = compile(square_plus_one_fn(stream));
+  std::string error = evaluation_error(fused({x})[0]);
+  if (refused_default) {
+    CHECK(
+        error.find("[omarchy] Compiled tapes are refused") !=
+        std::string::npos);
+    CHECK(error.find("MLX_DISABLE_COMPILE=1") != std::string::npos);
+    CHECK(
+        error.find("MLX_OMARCHY_ALLOW_UNSAFE_COMPILE=1") !=
+        std::string::npos);
+  } else {
+    // Development device: the corruption class is not observed here, so
+    // the default run must still execute the tape.
+    CHECK(error.empty());
+  }
+  set_compile_mode(CompileMode::disabled);
+}
+
+TEST_CASE("MLX_OMARCHY_ALLOW_UNSAFE_COMPILE=1 re-enables compiled tapes") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  auto& dev = omarchy::device(stream.device.index);
+  setenv("MLX_OMARCHY_ALLOW_UNSAFE_COMPILE", "1", 1);
+  CHECK_FALSE(omarchy::compiled_tapes_refused(dev));
+
+  std::vector<float> xv = {0.5f, -1.5f, 2.0f, 0.0f};
+  array x(xv.begin(), Shape{4}, float32);
+  set_compile_mode(CompileMode::enabled);
+  auto fused = compile(square_plus_one_fn(stream));
+  // The override must let the tape run. Output correctness is asserted
+  // only where it holds: on the Apple target the override exists so the
+  // differential harness can reproduce the defect, not to promise
+  // correct values.
+  std::string error = evaluation_error(fused({x})[0]);
+  CHECK(error.empty());
+  set_compile_mode(CompileMode::disabled);
+  unsetenv("MLX_OMARCHY_ALLOW_UNSAFE_COMPILE");
 }

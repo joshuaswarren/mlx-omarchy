@@ -12,6 +12,48 @@ Two of the worst v0.3.0 defects never appeared on a Linux development box. They 
 
 These are open in the current release. Each fails silently or crashes, so watching for errors cannot catch them.
 
+### Compiled tapes return wrong values on real Apple GPUs - refused by default since the fail-closed gate
+
+Affected: observed at commit `ff4b05a` on the mlx-lm decode path; the same
+family was measured for bf16 at `fbdd5ed` and `5f8ba16` (see
+`receipts/2026-09-02-m1-bf16-compiled-tape.md`). Observed on: real M1
+(Honeykrisp). Not observed on llvmpipe, where the differential harness and
+the compiled-tape battery match eager exactly.
+
+The measurement that forced this entry: a greedy 4-bit
+`Qwen2.5-0.5B-Instruct-4bit` run at `temp 0 seed 0` answered "The capital of
+France is Paris." with `MLX_DISABLE_COMPILE=1` and returned `<|endoftext|>`
+repeats, CJK fragments, and unrelated English with compilation at its
+default - exit code 0, all 32 tokens, normal speed, nothing raised. Commit
+`ff4b05a` (each submission waits on its stream's previous submission)
+removed an earlier abort at the trigonometric domain gate on this path and
+left the wrong answers behind, converting a loud failure into a silent one.
+Full conditions and numbers: `receipts/2026-09-03-dispatcher-compile-and-column-replace.md`.
+Later provenance work attributed one earlier corruption report to a stale
+wheel generation, so whether the silent corruption still reproduces at
+current main is unproven in both directions
+([docs/differential-harness.md](differential-harness.md)). An unpinned
+wrong-value defect on the product target fails closed regardless.
+
+**The gate.** The tape runner `eval_compiled_tape` is the only place the
+backend executes a compiled tape, and its single caller is
+`Compiled::eval_gpu`, so the refusal sits where no outer layer can bypass
+it. On a real Apple GPU it raises:
+```
+[omarchy] Compiled tapes are refused on real Apple GPUs: the tape interpreter returns wrong values on Honeykrisp and the defect is unfixed (docs/known-defects.md; receipts/2026-09-03-dispatcher-compile-and-column-replace.md). Re-run with MLX_DISABLE_COMPILE=1. Set MLX_OMARCHY_ALLOW_UNSAFE_COMPILE=1 only to investigate the defect deliberately; it permits wrong values.
+```
+
+Scope is device-conditional, not global: the corruption is observed only on
+Apple GPUs, development boxes run their compiled-tape batteries and the
+differential harness on llvmpipe, and a global refusal would train every
+developer and x86 user to set the override reflexively. The override is
+therefore deliberate opt-in, and `scripts/differential_compile.py` and
+`scripts/probe_tape_eager.py` set it for themselves so hardware
+investigation keeps working. Two protections are unchanged: the bf16 tape
+gate (it still names bf16 on development devices; on Apple GPUs the device
+gate fires first) and the trigonometric domain gate (tape nodes dispatch
+through their own `eval_gpu`, which carries it).
+
 ### `nn.gelu_approx` and `gelu_fast_approx` return values up to 1.47e13 under pytest process context
 
 Affected: v0.3.0-alpha.1 through v0.3.1. Observed on: dev box, Mesa llvmpipe, upstream suite context only.
@@ -218,7 +260,7 @@ On v0.3.0-alpha.1: treat every operation in the alpha section as untrusted. Upgr
 
 On v0.3.0: the semaphore crash can kill any workload, and on a real M1 the scatter, LogicalAnd, select, and sin/cos defects return wrong values or refuse operations your dev box runs fine. Upgrade to v0.3.1.
 
-On v0.3.1, published: the release ships the boolean-reduction defect above on Apple Silicon - both `mx.all` and `mx.any`, positional past the first word, disclosed in a prominent warning at the top of the release page - and a verified fix ships in v0.3.2. The three M1 verification reds resolved to test-side causes before the tag landed ("What the M1 verification reds turned out to be" above). The long-standing live entries remain: `gelu_approx` under test runners and bf16 compiled tapes in mlx-lm. Large-argument trig refuses by name, eagerly and inside `mx.compile` alike.
+On v0.3.1, published: the release ships the boolean-reduction defect above on Apple Silicon - both `mx.all` and `mx.any`, positional past the first word, disclosed in a prominent warning at the top of the release page - and a verified fix ships in v0.3.2. The three M1 verification reds resolved to test-side causes before the tag landed ("What the M1 verification reds turned out to be" above). The long-standing live entries remain: `gelu_approx` under test runners and bf16 compiled tapes in mlx-lm; compiled tapes on real Apple GPUs now refuse by default (fail-closed gate, first live entry above), so the bf16 tape exposure is fenced behind `MLX_OMARCHY_ALLOW_UNSAFE_COMPILE=1`. Large-argument trig refuses by name, eagerly and inside `mx.compile` alike.
 
 
 Named `[omarchy] ... is not implemented` errors remain the honest failure mode. The defects on this page are dangerous because they do not fail that way.

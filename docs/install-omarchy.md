@@ -15,6 +15,14 @@ for example llvmpipe, on a development machine. Do not set it on a supported
 machine. Receipts from a development run must record that the device is a
 development device, not Honeykrisp.
 
+`MLX_OMARCHY_ALLOW_UNSAFE_COMPILE=1` lets compiled tapes run on a real
+Apple GPU. The default refuses them: the tape interpreter has produced
+silently wrong values there and the defect is unpinned
+([docs/known-defects.md](known-defects.md)). Set it only to investigate
+that defect deliberately; it permits wrong values. The differential
+harness (`scripts/differential_compile.py`,
+`scripts/probe_tape_eager.py`) sets it for itself.
+
 ## Build the wheel
 
 1. Install the build tools: Python 3.10 or newer with `venv`, `cmake` 3.25 or

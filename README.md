@@ -76,10 +76,15 @@ commit that self-reported +9% tokens/s, landed. Pinning: bf16 prefill
 recovers to 21.8 tok/s under `taskset -c 0` (+25% vs unpinned), the win
 disappears with two pinned cores, 4-bit prefill does not improve pinned
 (-2.5% on one core), and decode is affinity-insensitive. Pin for bf16
-prefill measurement, not as a runtime default. Compilation stays gated off
-on this platform: with the ordering fix in, the compiled path no longer
-aborts but returns corrupted text
-(`receipts/2026-09-03-dispatcher-compile-and-column-replace.md`).
+prefill measurement, not as a runtime default. Compiled tapes refuse to run
+on real Apple GPUs: the tape interpreter has produced silently wrong values
+on Honeykrisp, so the backend now fails closed with a named error instead of
+returning them (`receipts/2026-09-03-dispatcher-compile-and-column-replace.md`,
+[docs/known-defects.md](docs/known-defects.md)). `MLX_DISABLE_COMPILE=1`
+remains the user-facing switch and now changes an error into silence; the
+only way past the refusal is the explicit investigation override
+`MLX_OMARCHY_ALLOW_UNSAFE_COMPILE=1`, which the differential harness sets
+for itself.
 
 Generated text is identical on both platforms: `Hello! How can I assist you today?` for bf16, `Paris` for 4-bit, matching token counts and stop positions. Numerical correctness is there. Speed is not.
 
@@ -88,6 +93,17 @@ The Vulkan tok/s column was measured on commit `ceae628`. It moved a long way fr
 Two things about the Vulkan column are not like-for-like, and both are the product's fault rather than the benchmark's. The Vulkan legs run `MLX_DISABLE_COMPILE=1`. Compiled bf16 tapes corrupt nondeterministically on this driver, and the gate that catches them is deliberately kept. So a bf16 leg with compile at its default cannot be measured here at all. The macOS column ran compile at its default, where it works.
 
 4-bit with compile enabled is now measured, and it is worse than unmeasured: it is silently wrong. A greedy 4-bit run on the M1 at `temp 0 seed 0` that answers "The capital of France is Paris." with compilation disabled instead returned `<|endoftext|>` repeats, CJK fragments and unrelated English words with compilation at its default, exit code 0, all 32 tokens, at normal speed. Nothing raised, and no gate fired. Two facts bound the defect. It is not fixed by submission ordering: commit `ff4b05a` made every submission wait on the previous one on its stream, which removed an earlier abort on this path and left the wrong answers behind. And it needs a real graph: `omarchy_compiled_tape_tests` passes 8 of 8 cases and 343 of 343 assertions on that same machine and driver. Until this is understood, run the Vulkan backend with `MLX_DISABLE_COMPILE=1` for 4-bit as well as bf16.
+
+The runtime now refuses this path. Since the fail-closed gate, compiled
+tape execution on a real Apple GPU raises
+`[omarchy] Compiled tapes are refused` by default - naming the defect,
+the `MLX_DISABLE_COMPILE=1` workaround, and the
+`MLX_OMARCHY_ALLOW_UNSAFE_COMPILE=1` investigation override - instead of
+returning plausible wrong text. Development devices (llvmpipe under
+`MLX_OMARCHY_ALLOW_NON_APPLE=1`) keep running compiled tapes, the
+bf16 tape gate and the trigonometric domain gate are unchanged, and the
+differential harness opts into the override so it can keep hunting the
+defect on hardware ([docs/known-defects.md](docs/known-defects.md)).
 
 **Where the remaining time goes**, measured on the M1 over 7,853 dispatches of a profiled 4-bit run. A ranked list beats an apology. Recording a dispatch is 0.3% of host wall. A per-pipeline descriptor cache took that from 160-260 microseconds to under one, so per-dispatch cost is not a driver-side wall. Submitting is 14.3%, joining 0.4%. Waiting for a free submission slot is 45.4%. That is the GPU-backlog signature: the host blocks because the GPU is the slower side in those windows, so more slots would not help. The remaining 39.6% sits outside the encoder, in MLX's evaluator throttle and Python.
 
