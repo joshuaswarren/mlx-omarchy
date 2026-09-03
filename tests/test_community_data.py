@@ -355,5 +355,58 @@ class WorkflowYamlTests(unittest.TestCase):
         self.assertIn("scripts/mirror_community_data.py", self.text)
 
 
+class ReadApiSummaryShape(unittest.TestCase):
+    """The read API serves FLAT fields; extraction must use them.
+
+    Verbatim shape of one record from GET /v1/results on 2026-09-03,
+    submitted by jwm1-linux. Reading only the nested archive payload
+    printed "mesa=unknown mlx-omarchy=unknown" for a record that plainly
+    carried Honeykrisp and the wheel version.
+    """
+
+    RECORD = {
+        "content_sha256": "75ab0797" + "9" * 56,
+        "schema_version": 1,
+        "kind": "quick",
+        "generated_at": "2026-09-03T16:44:00Z",
+        "arch": "aarch64",
+        "model": "Apple MacBook Pro (13-inch, M1, 2020)",
+        "chip": "apple,t8103",
+        "kernel": "7.1.6-1-1-ARCH",
+        "mesa_driver": "Honeykrisp",
+        "mesa_device": "Apple M1 (G13G B1)",
+        "mlx_version": "0.32.2.dev202609030512",
+        "mlx_device": "Device(gpu, 0)",
+    }
+
+    def test_mesa_driver_is_reported(self):
+        self.assertEqual(query.record_mesa(self.RECORD), "Honeykrisp")
+
+    def test_mlx_version_is_reported(self):
+        self.assertEqual(query.record_mlx_version(self.RECORD),
+                         "0.32.2.dev202609030512")
+
+    def test_chip_and_kernel_are_reported(self):
+        self.assertEqual(query.record_chip(self.RECORD), "apple,t8103")
+        self.assertEqual(query.record_kernel(self.RECORD), "7.1.6-1-1-ARCH")
+
+    def test_mesa_filter_matches_driver_and_device(self):
+        blob = query.record_mesa_blob(self.RECORD)
+        self.assertIn("honeykrisp", blob)
+        self.assertIn("apple m1", blob)
+
+    def test_nested_payload_still_works(self):
+        nested = {
+            "content_sha256": "b7e34c02" + "a" * 56,
+            "payload": {"mesa": {"gpu": {"driverName": "Honeykrisp",
+                                         "driverVersion": "26.1.7"}},
+                        "mlx": {"distributions": {"mlx-omarchy": "0.3.2"}}},
+        }
+        self.assertEqual(query.record_mesa(nested), "Honeykrisp 26.1.7")
+        self.assertEqual(query.record_mlx_version(nested), "0.3.2")
+
+
+
+
 if __name__ == "__main__":
     unittest.main()
