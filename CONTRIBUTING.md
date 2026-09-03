@@ -60,13 +60,22 @@ Do not claim M1 results for a different Apple Silicon model.
 
 You can share a hardware result without write access and without a pull
 request. The collector runs on your machine, redacts before it writes,
-and uploads nothing until you type `SUBMIT`.
+and uploads nothing until you type `SUBMIT` or pass `--submit`. The
+default run uploads nothing; you always see the full preview first.
 
-Both scripts run on Python 3 alone, need no build, and download no
-models. The default run uploads nothing; you always see the full preview
-first.
+Clone this repository first; both scripts live in `scripts/`:
 
-Report a machine in minutes:
+```bash
+git clone https://github.com/joshuaswarren/mlx-omarchy.git
+cd mlx-omarchy
+```
+
+Two paths exist. They need different setups.
+
+### Path 1: quick capability report, zero install
+
+One command. It runs on your system `python3`. It needs no install, no
+build, no mlx-omarchy wheel, and downloads no models:
 
 ```bash
 python3 scripts/collect_quick.py
@@ -82,23 +91,71 @@ the installed mlx-omarchy wheel with its capability dump. The JSON is
 small and carries no personal data; paste it wherever you discuss the
 project.
 
-Report a performance or correctness problem in depth:
+### Path 2: full report, needs the released wheel
 
-```bash
-python3 scripts/collect_deep.py                  # preview only, writes nothing
-python3 scripts/collect_deep.py --out mlx-omarchy-deep.tar.gz
-```
+`scripts/collect_deep.py` runs five sections: `quick`, `environment`,
+`correctness`, `benchmark`, and `profile`. The `correctness` and
+`benchmark` sections import `mlx`, so they report `available: false`
+when no wheel is installed for the interpreter that runs the collector.
+
+Prerequisites, in order:
+
+1. Python 3.14. The aarch64 wheel asset is `cp314` only, so Python 3.13
+   refuses it with `is not a supported wheel on this platform`. Check
+   yours with `python3 --version`; if it is not 3.14.x, install a 3.14
+   interpreter and use its name in the commands below.
+2. The aarch64 wheel asset from a stable release at
+   [github.com/joshuaswarren/mlx-omarchy/releases](https://github.com/joshuaswarren/mlx-omarchy/releases).
+   The name pattern is `mlx_omarchy-*-cp314-cp314-linux_aarch64.whl`;
+   v0.3.2 ships
+   `mlx_omarchy-0.32.2.dev202609030512-cp314-cp314-linux_aarch64.whl`.
+   Use a stable wheel, not the diagnostics prerelease below; the
+   prerelease slows every dispatch on purpose, so its benchmark
+   numbers are not comparable.
+3. Install that wheel into one interpreter, and always run the
+   collector with that same interpreter. A venv pins the pair:
+
+   ```bash
+   python3.14 -m venv ~/.venvs/mlx-collect
+   ~/.venvs/mlx-collect/bin/pip install \
+     mlx_omarchy-*-cp314-cp314-linux_aarch64.whl
+   ```
+
+4. Run the collector with that interpreter:
+
+   ```bash
+   # preview only, writes nothing:
+   ~/.venvs/mlx-collect/bin/python scripts/collect_deep.py
+
+   # archive plus paste-ready .submission.md cover text:
+   ~/.venvs/mlx-collect/bin/python scripts/collect_deep.py \
+     --out mlx-omarchy-deep.tar.gz
+
+   # publish in the same command (--submit requires --out):
+   ~/.venvs/mlx-collect/bin/python scripts/collect_deep.py \
+     --out mlx-omarchy-deep.tar.gz \
+     --submit https://mlx-omarchy-community-data.joshua-s-warren.workers.dev
+   ```
 
 The archive is deterministic: the same workspace produces the same bytes
 as the previewed manifest, and each member carries a SHA-256 there. A
 missing precondition, such as an unbuilt benchmark binary, is recorded
 as `available: false` instead of failing the run, and a timeout keeps
 the sections that finished. The run also writes a paste-ready
-`mlx-omarchy-deep.submission.md` cover text.
+`mlx-omarchy-deep.submission.md` cover text. No section downloads a
+model; the probes generate their own data.
 
-The matmul benchmark works from the released wheel and its numbers ride
-in the published summary, so results are comparable across machines
-without downloading anyone's archive.
+What each section contributes:
+
+- `quick`: the Path 1 capability report. Needs no wheel.
+- `environment`: Python, kernel, and tool versions. Needs no wheel.
+- `correctness`: value probes of the installed wheel's operations.
+  Needs the wheel.
+- `benchmark`: the matmul and attention sweep. Works on the released
+  wheel, and its numbers ride in the published summary, so results are
+  comparable across machines without downloading anyone's archive.
+- `profile`: the GPU dispatch profile. Reports `available: false` on a
+  released install; see the profile section below.
 
 The GPU profile section needs more than the wheel, and it reports
 `available: false` on a released install. Release wheels are compiled
@@ -141,7 +198,7 @@ To publish a result:
 
 ```bash
 export MLX_OMARCHY_SUBMIT_URL=https://mlx-omarchy-community-data.joshua-s-warren.workers.dev
-python3 scripts/collect_deep.py --out mlx-omarchy-deep.tar.gz
+~/.venvs/mlx-collect/bin/python scripts/collect_deep.py --out mlx-omarchy-deep.tar.gz
 # type SUBMIT at the prompt, or pass --submit "$MLX_OMARCHY_SUBMIT_URL"
 ```
 
@@ -149,6 +206,41 @@ Only the already-redacted archive is sent. The endpoint deduplicates by
 content SHA-256 and answers with a public receipt URL, which the script
 prints. Keep that URL: it is the stable public link to your result. A
 failed upload keeps the local archive and submission file.
+
+### Troubleshooting
+
+- `pip install` fails with `is not a supported wheel on this platform`:
+  the interpreter is not Python 3.14. The aarch64 wheel is `cp314`
+  only. Run the install with a 3.14 interpreter.
+- The report shows `"mlx": {"available": false}`, or `correctness` and
+  `benchmark` both say `available: false`: the collector ran under a
+  Python without the mlx-omarchy wheel. Test the exact interpreter you
+  invoke with `.../bin/python -c "import mlx"`; a wheel installed into
+  a different `python3` does not count.
+- `profile` says `available: false` on a released wheel: expected, not
+  a fault. Release wheels compile the profiling harness off and do not
+  ship `mlx-omarchy-info`; see the profile section above.
+- The upload fails with a route error: you passed the API route in the
+  URL. `--submit` and `MLX_OMARCHY_SUBMIT_URL` take the origin only,
+  for example
+  `https://mlx-omarchy-community-data.joshua-s-warren.workers.dev`.
+  The collector appends `/v1/submit/<sha256>` itself.
+
+### Check your core count before you benchmark
+
+A machine that silently runs fewer cores than it has produces
+misleading host-bound numbers. One line shows your situation:
+
+```bash
+nproc && cat /sys/devices/system/cpu/present
+```
+
+If `nproc` prints fewer cores than the `present` range covers, fix the
+boot before you benchmark. The collector records the same facts in
+every report: `host.cpu_online` counts the cores your process may use,
+`host.cpu.present` and `host.cpu.online` come from sysfs, and
+`host.core_shortfall` is set only when fewer cores are online than
+present and no `maxcpus=` or `nosmp` boot clamp explains the gap.
 
 Privacy rules that hold for every submission:
 
