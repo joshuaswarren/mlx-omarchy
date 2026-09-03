@@ -70,6 +70,10 @@ Report a machine in minutes:
 
 ```bash
 python3 scripts/collect_quick.py
+
+# or print it and publish it in one command:
+python3 scripts/collect_quick.py \
+  --submit https://mlx-omarchy-community-data.joshua-s-warren.workers.dev
 ```
 
 The command prints one JSON report: CPU and memory, kernel, Apple

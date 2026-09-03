@@ -288,6 +288,11 @@ def build_payload(kind, quick, manifest, generated_at=None):
     mlx = quick.get("mlx") or {}
     distributions = mlx.get("distributions") or {}
     compatible = dt.get("compatible") or []
+    # Group by SoC, not by board: an M1 MacBook Pro reports
+    # ["apple,j293", "apple,t8103", "apple,arm-platform"], and only
+    # apple,t8103 identifies the chip that every other M1 machine shares.
+    soc = next((c for c in compatible
+                if re.match(r"^apple,t\d{4}", c)), None)
     return {
         "schema_version": SCHEMA_VERSION,
         "kind": kind,
@@ -295,7 +300,7 @@ def build_payload(kind, quick, manifest, generated_at=None):
             "%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         "arch": host.get("arch"),
         "model": dt.get("model"),
-        "chip": compatible[0] if compatible else None,
+        "chip": soc or (compatible[0] if compatible else None),
         "kernel": host.get("kernel_release"),
         "mesa_driver": gpu.get("driverName"),
         "mesa_device": gpu.get("deviceName"),

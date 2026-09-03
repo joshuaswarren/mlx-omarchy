@@ -47,6 +47,7 @@ DEFAULT_TIMEOUT = 60
 # Must mirror services/community-data/src/caps.ts.
 CHUNK_BYTES = 768 * 1024
 MAX_ARCHIVE_BYTES = 8 * 1024 * 1024
+MAX_PAYLOAD_BYTES = 256 * 1024
 POW_DIFFICULTY = 18
 
 USER_AGENT = "mlx-omarchy-collector/1"
@@ -229,6 +230,75 @@ def submit(endpoint, data, payload, timeout=DEFAULT_TIMEOUT, urlopen=None,
         raise SubmitError(
             f"complete failed with HTTP {fstatus}: {fdecoded.get('error')}")
     return _receipt(fdecoded, deduplicated=False, status=fstatus)
+
+
+def submit_payload(endpoint, payload, timeout=DEFAULT_TIMEOUT, urlopen=None,
+                   token=None):
+    """Publish a payload-only report: no archive, one round trip.
+
+    The quick report is small and self-describing, so the endpoint takes
+    `archive: null` and publishes at initiate. Content is addressed by
+    the sha256 of the canonical payload bytes, so re-running an unchanged
+    machine deduplicates instead of adding a row.
+    """
+    if urlopen is None:
+        opener = urllib.request.build_opener()
+        urlopen = opener.open
+    base = endpoint.rstrip("/")
+    body = json.dumps(payload, sort_keys=True,
+                      separators=(",", ":")).encode("utf-8")
+    if len(body) > MAX_PAYLOAD_BYTES:
+        raise SubmitError(
+            f"report too large for the public endpoint: {len(body)} > "
+            f"{MAX_PAYLOAD_BYTES} bytes; it stays local")
+    digest = sha256_hex(body)
+
+    status, raw = _request(
+        urlopen,
+        urllib.request.Request(
+            f"{base}/v1/submit/{digest}", headers=_headers(token)),
+        timeout)
+    if status == 200:
+        return _receipt(_decode(raw), deduplicated=True, status=status)
+    if status != 404:
+        raise SubmitError(f"dedup probe failed with HTTP {status}")
+
+    difficulty = POW_DIFFICULTY
+    decoded = {}
+    for _attempt in range(2):
+        initiate = {
+            "schema_version": payload.get("schema_version", 1),
+            "kind": payload.get("kind", "quick"),
+            "content_sha256": digest,
+            "payload": payload,
+            "archive": None,
+            "pow": {
+                "nonce": solve_pow(digest, difficulty),
+                "difficulty": difficulty,
+            },
+        }
+        status, raw = _request(
+            urlopen,
+            urllib.request.Request(
+                f"{base}/v1/submit",
+                data=json.dumps(initiate).encode("utf-8"),
+                headers=_headers(token, {"Content-Type": "application/json"}),
+                method="POST"),
+            timeout)
+        decoded = _decode(raw)
+        if status == 403 and decoded.get("error") == "pow_invalid":
+            wanted = (decoded.get("detail") or {}).get("min_difficulty")
+            if isinstance(wanted, int) and wanted > difficulty:
+                difficulty = wanted
+                continue
+        break
+
+    if status != 200:
+        raise SubmitError(
+            f"submit failed with HTTP {status}: {decoded.get('error')}")
+    return _receipt(decoded,
+                    deduplicated=decoded.get("status") == "duplicate",
+                    status=status)
 
 
 def _receipt(body, deduplicated, status):
