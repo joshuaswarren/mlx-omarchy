@@ -159,12 +159,22 @@ ACC_TYPE init_value(uint operation) {
 }
 
 #ifdef BOOL_OUT
-// Any/All: only the truthiness of each element participates. A float -0.0
-// compares equal to zero, matching the upstream float-domain test.
+// Honeykrisp miscompiles shift-then-mask byte extraction with a
+// data-dependent shift amount (receipt 2026-09-02-masked-scatter-m1-fix,
+// diag68); on the M1 the bool AnyAll read falsy bytes past the first
+// input word, so All over all-true input returned false from size 5 up.
+// Four constant shifts picked by a select chain are the receipt-proven
+// equivalent (the same macro compare_bool.comp uses).
+#define BYTE_AT(word, lane)                                                  \
+  ((lane) == 0u ? ((word) & 0xFFu)                                           \
+       : (lane) == 1u ? (((word) >> 8u) & 0xFFu)                             \
+       : (lane) == 2u ? (((word) >> 16u) & 0xFFu)                            \
+                      : (((word) >> 24u) & 0xFFu))
 bool load_truthy(uint index) {
 #ifdef USE_BOOL_INPUT
-  uint word = input_data.values[(params.lhs_offset + index) >> 2u];
-  return ((word >> (((params.lhs_offset + index) & 3u) * 8u)) & 0xFFu) != 0u;
+  uint position = params.lhs_offset + index;
+  uint word = input_data.values[position >> 2u];
+  return BYTE_AT(word, position & 3u) != 0u;
 #elif defined(USE_I32)
   return input_data.values[params.lhs_offset + index] != 0;
 #elif defined(USE_U32)
