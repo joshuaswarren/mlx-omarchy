@@ -42,6 +42,19 @@ python3 tools/gen-compat-matrix.py --json-out docs/coverage.json > docs/compatib
 
 The 8-core column used the same model revisions, prompts, and sampling as the original runs, on the released `dev20260903` wheel (`receipts/2026-09-03-eight-core-remeasure.md` for the wheel caveat and the full run lists).
 
+Two 2026-09-03 follow-ups are in
+[`receipts/2026-09-03-decode-ab-and-affinity-jwm1.md`](receipts/2026-09-03-decode-ab-and-affinity-jwm1.md).
+Attribution: a fresh rebuild of `ceae628` is byte-identical to the
+`dev20260903` wheel this table's 8-core column used, so the decode drop from
+the 1-core column is not a code regression between those revisions, and the
+old 1-core decode figures are not reproducible from any surviving build. The
+published v0.3.2 aarch64 asset (`dev202609030512`) measures 5-11% below this
+8-core column on every row (bf16 decode 1.84 vs 2.00 tok/s). Pinning: bf16
+prefill recovers to 21.8 tok/s under `taskset -c 0` (+25%), the win
+disappears with two pinned cores, 4-bit prefill does not improve pinned
+(-2.5% on one core), and decode is affinity-insensitive. Pin for bf16
+prefill measurement, not as a runtime default.
+
 Generated text is identical on both platforms: `Hello! How can I assist you today?` for bf16, `Paris` for 4-bit, matching token counts and stop positions. Numerical correctness is there. Speed is not.
 
 The Vulkan tok/s column was measured on commit `ceae628`. It moved a long way from the previous revision, on the same machine in the same session: 4-bit prefill up 35.5%, 4-bit decode up 58.6%, bf16 prefill up 45.8%, bf16 decode up 71.2%. The memory rows carry over from the earlier revision and were not re-measured.
