@@ -29,16 +29,18 @@ python3 tools/gen-compat-matrix.py --json-out docs/coverage.json > docs/compatib
 **Upstream MLX's own test suites, run against this backend.** The 2026-09-02 sweep executed 251 C++ cases: 133 passed, 118 failed. It executed 10,932 python cases: 2,827 passed, 8,105 failed, 68 skipped, and one crash-excluded. The C++ pass count more than doubled since the 2026-09-01 sweep, and python passing grew by 1,097 cases. Most of that gain is measurement honesty: the bool Equal and buffer-protocol holes that masked or killed cases are closed, so a pass now carries real signal. Almost every failure is still a named `[omarchy] ... is not implemented` refusal: 7,909 of the 8,105 python failures. Five C++ cases and six python test functions exposed silent wrong-value defects, twelve distinct root causes in all. Most are fixed on this branch now; the still-open ones are listed below. The sweep ran at pinned commit `5f8ba16`, before the day's final coverage commits, so it understates this tree. Re-run it with `tools/run-upstream-suite.sh`. The defect ledger and raw logs sit in [receipts/](receipts/2026-09-02-upstream-suite-coverage.md); the 2026-09-01 sweep is in [receipts/](receipts/2026-09-01-upstream-suite-coverage.md).
 
 **Performance against native MLX, same chip.** Both columns are the same Apple M1 (T8103, 8 GPU cores, 16 GB), same model revisions, same prompts, `--max-tokens 32 --temp 0 --seed 0`, warm run, Qwen2.5-0.5B-Instruct:
-**Measurement condition (added 2026-09-03):** every jwm1-linux timing on this page was taken between 2026-08-25 and 2026-09-03 with only 1 of 8 CPU cores online. The default GRUB entry was `Omarchy ANE test`, which supplies a static device tree and left cores 1-7 offline (see "Boot-entry cause" below). The machine now boots all 8 cores. GPU-bound figures were materially unaffected (matmul TFLOP/s median 0.1556 -> 0.1576). Host-bound figures (tok/s, wall-clock stage timings) are the suspect numbers and may improve on re-measurement.
+**Measurement condition (added 2026-09-03):** every jwm1-linux timing on this page was taken between 2026-08-25 and 2026-09-03 with only 1 of 8 CPU cores online. The default GRUB entry was `Omarchy ANE test`, which supplies a static device tree and left cores 1-7 offline (see "Boot-entry cause" below). The machine now boots all 8 cores. GPU-bound figures were materially unaffected (matmul TFLOP/s median 0.1556 -> 0.1576). The tok/s rows were re-measured on 8 cores the same day (`receipts/2026-09-03-eight-core-remeasure.md`): all four came out 27-43% **lower** than the 1-core figures, so the one-core window was not hiding speed.
 
-| Measurement | macOS 13.7.8, MLX on Metal | Omarchy Linux, mlx-omarchy on Vulkan | Ratio |
-|---|---|---|---|
-| bf16 prefill | 377.9 tok/s | 23.9 tok/s | 15.8x slower |
-| bf16 decode | 61.5 tok/s | 3.56 tok/s | 17.3x slower |
-| bf16 peak memory | 1.025 GB | 0.993 GB | about equal |
-| 4-bit prefill | 705.6 tok/s | 25.3 tok/s | 27.9x slower |
-| 4-bit decode | 290.3 tok/s | 6.46 tok/s | 44.9x slower |
-| 4-bit peak memory | 0.320 GB | 0.292 GB | about equal |
+| Measurement | macOS 13.7.8, MLX on Metal | Linux, 1 of 8 cores (prior, ceae628) | Linux, 8 cores (2026-09-03 re-measure) | Ratio, 8-core |
+|---|---|---|---|---|
+| bf16 prefill | 377.9 tok/s | 23.9 tok/s | 17.1 tok/s | 22.1x slower |
+| bf16 decode | 61.5 tok/s | 3.56 tok/s | 2.04 tok/s | 30.1x slower |
+| bf16 peak memory | 1.025 GB | 0.993 GB | 0.993 GB | about equal |
+| 4-bit prefill | 705.6 tok/s | 25.3 tok/s | 18.4 tok/s | 38.3x slower |
+| 4-bit decode | 290.3 tok/s | 6.46 tok/s | 3.88 tok/s | 74.8x slower |
+| 4-bit peak memory | 0.320 GB | 0.292 GB | 0.292 GB | about equal |
+
+The 8-core column used the same model revisions, prompts, and sampling as the original runs, on the released `dev20260903` wheel (`receipts/2026-09-03-eight-core-remeasure.md` for the wheel caveat and the full run lists).
 
 Generated text is identical on both platforms: `Hello! How can I assist you today?` for bf16, `Paris` for 4-bit, matching token counts and stop positions. Numerical correctness is there. Speed is not.
 
