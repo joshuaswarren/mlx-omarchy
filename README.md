@@ -41,33 +41,45 @@ across machines or wheels, which defeats the purpose of this table
 history only. Their replacement is a pinned-length decode rate with a
 token-count assertion, measured by `scripts/bench_decode.py` with EOS
 suppressed, reported as "decode X tok/s over Y tokens" with prompt
-processing excluded. Until those rows exist, treat every decode figure
-below as a short-burst rate.
+processing excluded. Those rows now exist in the 8-core column below
+(decode X tok/s over Y tokens); the 1-core decode cells remain historical
+short-burst rates and are not comparable to them.
 
 
-| Measurement | macOS 13.7.8, MLX on Metal | Linux, 1 of 8 cores (prior, ceae628) | Linux, 8 cores (2026-09-03 re-measure) | Ratio, 8-core |
+| Measurement | macOS 13.7.8, MLX on Metal | Linux, 1 of 8 cores (prior, ceae628) | Linux, 8 cores (2026-09-03, current main, pinned decode) | Ratio, 8-core |
 |---|---|---|---|---|
-| bf16 prefill | 377.9 tok/s | 23.9 tok/s | 17.1 tok/s | 22.1x slower |
-| bf16 decode | 61.5 tok/s | 3.56 tok/s | 2.04 tok/s | 30.1x slower |
+| bf16 prefill | 377.9 tok/s | 23.9 tok/s | 18.5 tok/s | 20.4x slower |
+| bf16 decode | 61.5 tok/s | 3.56 tok/s | 1.85 tok/s over 63 tokens | 33.2x slower |
 | bf16 peak memory | 1.025 GB | 0.993 GB | 0.993 GB | about equal |
-| 4-bit prefill | 705.6 tok/s | 25.3 tok/s | 18.4 tok/s | 38.3x slower |
-| 4-bit decode | 290.3 tok/s | 6.46 tok/s | 3.88 tok/s | 74.8x slower |
+| 4-bit prefill | 705.6 tok/s | 25.3 tok/s | 15.5 tok/s | 45.5x slower |
+| 4-bit decode | 290.3 tok/s | 6.46 tok/s | 1.97 tok/s over 63 tokens | 147.3x slower |
 | 4-bit peak memory | 0.320 GB | 0.292 GB | 0.292 GB | about equal |
 
-The 8-core column used the same model revisions, prompts, and sampling as the original runs, on the released `dev20260903` wheel (`receipts/2026-09-03-eight-core-remeasure.md` for the wheel caveat and the full run lists).
+The 8-core column was re-measured on 2026-09-03 on a wheel built from
+current main (`e7a6542`), 8 cores online, compile off, same model revisions
+and prompts. Prefill is the 36-token prompt. Decode is pinned at 64
+requested tokens with EOS suppressed and prompt processing excluded
+(`receipts/2026-09-03-dispatcher-compile-and-column-replace.md` for the
+wheel hash, run pairs, and full conditions). The morning 8-core figures
+(17.1 / 2.04 / 18.4 / 3.88) were taken on a stale-generation wheel and, for
+decode, are short-burst rates; they are superseded and kept in the linked
+receipts.
 
-Two 2026-09-03 follow-ups are in
-[`receipts/2026-09-03-decode-ab-and-affinity-jwm1.md`](receipts/2026-09-03-decode-ab-and-affinity-jwm1.md).
-Attribution: a fresh rebuild of `ceae628` is byte-identical to the
-`dev20260903` wheel this table's 8-core column used, so the decode drop from
-the 1-core column is not a code regression between those revisions, and the
-old 1-core decode figures are not reproducible from any surviving build. The
-published v0.3.2 aarch64 asset (`dev202609030512`) measures 5-11% below this
-8-core column on every row (bf16 decode 1.84 vs 2.00 tok/s). Pinning: bf16
-prefill recovers to 21.8 tok/s under `taskset -c 0` (+25%), the win
+History and attribution. The 2026-09-03 8-core column first shipped on a
+`dev20260903` wheel that proved to be a stale generation (5.3 MB
+`libmlx.so` against 20.9 MB in current builds), and its decode cells were
+short bursts; the re-measure above replaces both defects
+(`receipts/2026-09-03-decode-ab-and-affinity-jwm1.md` holds the correction
+record). The published v0.3.2 aarch64 asset measures 5-11% below current
+main on every row: tag v0.3.2 was cut 16 minutes before `ceae628`, a
+commit that self-reported +9% tokens/s, landed. Pinning: bf16 prefill
+recovers to 21.8 tok/s under `taskset -c 0` (+25% vs unpinned), the win
 disappears with two pinned cores, 4-bit prefill does not improve pinned
 (-2.5% on one core), and decode is affinity-insensitive. Pin for bf16
-prefill measurement, not as a runtime default.
+prefill measurement, not as a runtime default. Compilation stays gated off
+on this platform: with the ordering fix in, the compiled path no longer
+aborts but returns corrupted text
+(`receipts/2026-09-03-dispatcher-compile-and-column-replace.md`).
 
 Generated text is identical on both platforms: `Hello! How can I assist you today?` for bf16, `Paris` for 4-bit, matching token counts and stop positions. Numerical correctness is there. Speed is not.
 
