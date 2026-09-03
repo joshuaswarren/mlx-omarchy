@@ -171,5 +171,33 @@ generation (see the bakeoff section above).
 Never provision a measurement venv from a freeze that contains `@`
 direct-URL pins for the package under test; exclude by name prefix, and
 gate every run on installed-`libmlx.so` == wheel-member hashes. A
-harness-level gate in `scripts/bench_decode.py` is expected from
-ReleaseAssetGate; adopt it when it lands.
+
+
+## Release gate (0a2e4fc) - PASS
+
+Wheel from main `0a2e4fc` (6798522 bytes,
+`2c28c0dc27f5b5c5a7b8c8d357aa823c5a58ff86e8a6f68692b5f579493cc5bd`),
+provenance gate green (loaded libmlx.so `a6e31927…` == wheel member). The
+plain-user command with NO environment variables set:
+
+```
+python -m mlx_lm generate --model <Qwen2.5-0.5B-Instruct-4bit snapshot> \
+  --prompt "What is the capital of France? Answer in one word." \
+  --max-tokens 32 --temp 0 --seed 0
+```
+
+Output: `Paris`, exactly ONE stderr warning
+(`[omarchy] Compiled tapes are disabled on this Apple GPU: the tape
+interpreter has produced silently wrong values on Honeykrisp …`), no
+exception, exit 0. That is the exact command that returned 32 tokens of
+garbage this morning.
+
+Supporting checks: the compile-ordering probe reports all four scenarios
+(compile-first, array-first, forced-eager, pre-armed-then-disable) on the
+eager path; the `mx.enable_compile()` backstop refuses with
+`[omarchy] Compiled tapes are refused on real Apple GPUs`; eager with
+`MLX_DISABLE_COMPILE=1` is clean. Open item: with the override,
+`omarchy_compiled_tape_tests` is 9/10 on the M1 - the failing case is the
+policy assertion `CHECK_EQ(refused_default, !dev.non_apple_dev())`
+(test_compiled_tape.cpp:628), which the auto-eager redesign makes stale;
+without the override the battery is 2/10 for the same reason.
