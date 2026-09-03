@@ -55,14 +55,23 @@ layout(push_constant) uniform Params {
   uint rhs_strides[4];
 } params;
 
+// Honeykrisp miscompiles shift-then-mask byte extraction with a
+// data-dependent shift amount (receipt 2026-09-02-masked-scatter-m1-fix,
+// diag68); four constant shifts picked by a select chain are the
+// receipt-proven equivalent.
+#define BYTE_AT(word, lane)                                                  \
+  ((lane) == 0u ? ((word) & 0xFFu)                                           \
+       : (lane) == 1u ? (((word) >> 8u) & 0xFFu)                             \
+       : (lane) == 2u ? (((word) >> 16u) & 0xFFu)                            \
+                      : (((word) >> 24u) & 0xFFu))
 uint lhs_byte(uint index) {
   uint word = input_a.words[index >> 2u];
-  return (word >> ((index & 3u) * 8u)) & 0xFFu;
+  return BYTE_AT(word, index & 3u);
 }
 
 uint rhs_byte(uint index) {
   uint word = input_b.words[index >> 2u];
-  return (word >> ((index & 3u) * 8u)) & 0xFFu;
+  return BYTE_AT(word, index & 3u);
 }
 
 uint lhs_index_for(uint index) {

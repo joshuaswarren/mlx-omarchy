@@ -77,9 +77,12 @@ struct CapabilityReport {
   bool shader_int16{false};
   bool storage_buffer_16bit_access{false};
   // True when the device exposes VK_EXT_shader_atomic_float with the
-  // shaderBufferFloat32AtomicAdd feature (measured true on llvmpipe and
-  // on the M1 G13G B1 Honeykrisp target). Gates the float scatter
-  // Sum/Prod kernels, which need OpAtomicFAddEXT on storage buffers.
+  // shaderBufferFloat32AtomicAdd feature: measured true on llvmpipe;
+  // the M1 G13G B1 Honeykrisp does not advertise the extension at all
+  // (an earlier "measured on both" note had read llvmpipe's feature
+  // list on a box exposing both devices). Selects between the float
+  // scatter Sum hardware-atomicAdd kernels and the FCAS
+  // compare-exchange twins.
   bool shader_atomic_float_add{false};
   size_t total_memory{0};
   VkDeviceSize max_allocation_size{0};

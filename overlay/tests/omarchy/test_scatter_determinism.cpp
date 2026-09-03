@@ -475,24 +475,26 @@ TEST_CASE("multi index bool scatter add works") {
   check_bools(out, {0, 0, 1, 1, 0, 0}, stream);
 }
 
-TEST_CASE("float scatter without atomic float keeps named error") {
+TEST_CASE("float scatter without atomic float takes the CAS path") {
   if (!compute_available()) {
     return;
   }
   Stream stream = gpu_stream();
   const auto& caps = omarchy::capability_report(0);
   if (caps.shader_atomic_float_add) {
-    // The path is implemented on this device; nothing to pin.
+    // The hardware atomicAdd path is the one the cases above already
+    // pin; nothing further to pin here.
     return;
   }
+  // No shaderBufferFloat32AtomicAdd (the M1 Honeykrisp does not
+  // advertise VK_EXT_shader_atomic_float): the op must still compute,
+  // through the FCAS compare-exchange add, and the integer-valued
+  // total stays exact. The updates shape follows the op-layer contract
+  // (src dims + one row per index array) that a single index array
+  // requires.
   array src = zeros({2}, float32, stream);
-  array indices = array({0, 1}, {2}, int32);
-  array updates = array({1.0f, 2.0f}, {2}, float32);
+  array indices = array({0, 1, 0}, {3}, int32);
+  array updates = array({1.0f, 2.0f, 4.0f}, {3, 1}, float32);
   array out = scatter_add(src, indices, updates, 0, stream);
-  std::string error = evaluation_error(out);
-  bool refused = !error.empty();
-  CHECK(refused);
-  bool named = error.find("atomic_float") != std::string::npos ||
-      error.find("shaderBufferFloat32AtomicAdd") != std::string::npos;
-  CHECK(named);
+  check_floats(out, {5.0f, 2.0f}, stream);
 }

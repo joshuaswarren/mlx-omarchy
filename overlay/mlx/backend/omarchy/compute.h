@@ -264,20 +264,32 @@ enum class ComputeKernel : uint8_t {
   FillComplex64,
   CopyGeneralComplex64,
   // ScatterDeterminism: float scatter reductions ride hardware fp32
-  // atomic add (VK_EXT_shader_atomic_float; both llvmpipe and the M1
-  // Honeykrisp target report shaderBufferFloat32AtomicAdd). The FADD
-  // variants accumulate Sum/Prod in an fp32 per-element scratch and
-  // the Bool variants carry packed-word byte read-modify-write; the
-  // f16/bf16 FADD blobs also serve Prod for those dtypes.
+  // atomic add where VK_EXT_shader_atomic_float reports
+  // shaderBufferFloat32AtomicAdd (llvmpipe does; the M1 Honeykrisp
+  // does NOT advertise the extension at all - the pre-2026-09-02
+  // "measured on both" note was a misread of llvmpipe's feature list
+  // on a box exposing both devices). The FADD variants accumulate
+  // Sum/Prod in an fp32 per-element scratch and the Bool variants
+  // carry packed-word byte read-modify-write; the f16/bf16 FADD blobs
+  // also serve Prod for those dtypes. The FCAS variants are the
+  // no-extension twins: op 11 is replaced by the op-17 compare-
+  // exchange add, Prod's op 13 CAS is unchanged.
   ScatterFAddF32,
   ScatterFAddF16,
   ScatterFAddBF16,
   ScatterFAddMultiF32,
+  ScatterFCasF32,
+  ScatterFCasF16,
+  ScatterFCasBF16,
+  ScatterFCasMultiF32,
   ScatterBool,
   ScatterBoolMulti,
   ScatterAxisFAddF32,
   ScatterAxisFAddF16,
   ScatterAxisFAddBF16,
+  ScatterAxisFCasF32,
+  ScatterAxisFCasF16,
+  ScatterAxisFCasBF16,
   ScatterAxisBool,
   Count,
 };

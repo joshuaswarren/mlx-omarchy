@@ -58,6 +58,17 @@ layout(push_constant) uniform Params {
   uint rhs_strides[4];
 } params;
 
+// Honeykrisp miscompiles shift-then-mask byte extraction with a
+// data-dependent shift amount (receipt 2026-09-02-masked-scatter-m1-fix,
+// diag68); four constant shifts picked by a select chain are the
+// receipt-proven equivalent. A macro, not a helper function: the same
+// receipt keeps per-thread helper calls out of the hot path on this
+// driver.
+#define BYTE_AT(word, lane)                                                  \
+  ((lane) == 0u ? ((word) & 0xFFu)                                           \
+       : (lane) == 1u ? (((word) >> 8u) & 0xFFu)                             \
+       : (lane) == 2u ? (((word) >> 16u) & 0xFFu)                            \
+                      : (((word) >> 24u) & 0xFFu))
 void main() {
   uint index = gl_GlobalInvocationID.x;
   if (index >= params.count) {
@@ -88,9 +99,9 @@ void main() {
   // 0/1 the way upstream bool casts do, so a stray 0xFF byte from a
   // vendor cast still compares truthy.
   uint aw = input_a.words[li >> 2u];
-  uint av = (aw >> ((li & 3u) * 8u)) & 0xFFu;
+  uint av = BYTE_AT(aw, li & 3u);
   uint bw = input_b.words[ri >> 2u];
-  uint bv = (bw >> ((ri & 3u) * 8u)) & 0xFFu;
+  uint bv = BYTE_AT(bw, ri & 3u);
   // Selector codes match LogicalOperation in primitives.cpp:
   //   0 = Or, 1 = And, 2 = Not (unary on a; the host sets rhs to a).
   // The bool comparison sextet (Equal, NotEqual, Greater, Less,

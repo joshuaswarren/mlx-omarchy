@@ -19,6 +19,8 @@
 //     fp32 per-element scratch.
 //  12 FADD Sum finalize (one thread per output element): store the
 //     fp32 accumulation converted once to the output dtype.
+//  17 FCAS Sum pass: the no-hardware-atomic-float twin of op 11, a
+//     compare-exchange add through the uint view of the fp32 scratch.
 //  14 BOOL Sum/Max finalize: write the OR bit into the packed byte
 //     with a commuting atomicAnd/Or pair.
 // An index outside [0, src axis extent) after negative wrap skips the
@@ -33,7 +35,11 @@
 
 #version 460
 
-#if defined(USE_FADD)
+// Hardware fp32 atomicAdd (op 11) exists only in the USE_HW_ATOMIC
+// variants; the FCAS variants replace it with the op-17 compare-
+// exchange add for devices that do not advertise
+// VK_EXT_shader_atomic_float (the M1 Honeykrisp).
+#if defined(USE_FADD) && defined(USE_HW_ATOMIC)
 #extension GL_EXT_shader_atomic_float : require
 #endif
 
@@ -67,6 +73,14 @@ uint16_t bf16_store(float value) {
 #define STORE_VALUE(f) (f)
 #endif
 
+// Receipt-proven replacement for shift-then-mask byte extraction with
+// a data-dependent shift amount, which Honeykrisp miscompiles (see
+// scatter.comp); a macro, not a helper function, for the same reason.
+#define BYTE_AT(word, lane)                                                  \
+  ((lane) == 0u ? ((word) & 0xFFu)                                           \
+       : (lane) == 1u ? (((word) >> 8u) & 0xFFu)                             \
+       : (lane) == 2u ? (((word) >> 16u) & 0xFFu)                            \
+                      : (((word) >> 24u) & 0xFFu))
 layout(local_size_x = 256) in;
 
 layout(set = 0, binding = 0, std430) buffer Output {
@@ -196,8 +210,7 @@ void main() {
           // lanes intact.
           uint ue = params.lhs_offset + upd_elem +
               ax * params.matrix_n;
-          uint ubyte =
-              (upd_data.values[ue >> 2u] >> ((ue & 3u) * 8u)) & 0xFFu;
+          uint ubyte = BYTE_AT(upd_data.values[ue >> 2u], ue & 3u);
           uint lane1 = (target & 3u) * 8u;
           atomicAnd(out_data.values[target >> 2u], ~(0xFFu << lane1));
           atomicOr(
@@ -223,12 +236,11 @@ void main() {
             ax * params.matrix_n;
         atomicOr(
             scratch_data.values[target],
-            ((upd_data.values[ue6 >> 2u] >> ((ue6 & 3u) * 8u)) & 0xFFu) !=
-                    0u
+            BYTE_AT(upd_data.values[ue6 >> 2u], ue6 & 3u) != 0u
                 ? 1u
                 : 0u);
 #endif
-#ifdef USE_FADD
+#if defined(USE_FADD) && defined(USE_HW_ATOMIC)
       } else if (op == 11u) {
         // FADD Sum: hardware fp32 atomicAdd into the fp32 scratch;
         // duplicates accumulate in device order, matching upstream
@@ -239,6 +251,25 @@ void main() {
             LOAD_VALUE(upd_data
                            .values[params.lhs_offset + upd_elem +
                                    ax * params.matrix_n]));
+#elif defined(USE_FADD)
+      } else if (op == 17u) {
+        // FCAS Sum: compare-exchange add through the uint view of the
+        // fp32 scratch, the twin of op 11 for devices without hardware
+        // float atomics; rounded once at the op-12 finalize.
+        uint add_bits = floatBitsToUint(LOAD_VALUE(
+            upd_data
+                .values[params.lhs_offset + upd_elem + ax * params.matrix_n]));
+        uint assumed = scratch_data.values[target];
+        for (;;) {
+          uint next = floatBitsToUint(
+              uintBitsToFloat(assumed) + uintBitsToFloat(add_bits));
+          uint prev =
+              atomicCompSwap(scratch_data.values[target], assumed, next);
+          if (prev == assumed) {
+            break;
+          }
+          assumed = prev;
+        }
 #endif
       }
     }
