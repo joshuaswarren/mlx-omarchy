@@ -102,17 +102,40 @@ without downloading anyone's archive.
 
 The GPU profile section needs more than the wheel, and it reports
 `available: false` on a released install. Release wheels are compiled
-with the profiling harness OFF on purpose, and the released wheel does
-not ship `mlx-omarchy-info`. To contribute profiling data, build from
-source with the harness on:
+with the profiling harness OFF on purpose, so the dispatch path
+carries zero profiling code. Two ways to turn it on:
+
+Easiest: install the dev diagnostics prerelease from GitHub Releases
+at <https://github.com/joshuaswarren/mlx-omarchy/releases/tag/v0.3.3-diag.1>.
+It carries the profiling harness compiled IN and the `mlx-omarchy-info`
+tool. The harness slows every dispatch down, so use this build to
+collect profiles only; it is not for production work. Attach the dev
+wheel to a venv:
+
+```bash
+python3 -m venv ~/venv-mlx-diag
+~/venv-mlx-diag/bin/pip install <the .whl asset from the release page>
+```
+
+Set the env var to a file path and run your workload. The runtime
+appends one NDJSON event stream to that path for the life of the
+process:
+
+```bash
+export MLX_OMARCHY_GPU_PROFILE=$HOME/mlx-profile.jsonl
+python3 your_workload.py
+```
+
+Or build from source with the harness on:
 
 ```bash
 cmake -B build -DMLX_OMARCHY_GPU_PROFILING=ON   # plus your usual flags
 ```
 
-Then run the deep collector against that build. Hardware, kernel, Mesa,
-Vulkan, ANE visibility, correctness probes and the benchmark sweep all
-work from the plain wheel, so a wheel-only report is still useful.
+Then run the deep collector against that venv or build. Hardware,
+kernel, Mesa, Vulkan, ANE visibility, correctness probes and the
+benchmark sweep all work from the plain wheel, so a wheel-only report
+is still useful.
 
 To publish a result:
 
