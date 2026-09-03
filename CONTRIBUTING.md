@@ -95,7 +95,7 @@ the sections that finished. The run also writes a paste-ready
 To publish a result:
 
 ```bash
-export MLX_OMARCHY_SUBMIT_URL=https://mlx-omarchy-community-data.joshua-s-warren.workers.dev/v1/submit
+export MLX_OMARCHY_SUBMIT_URL=https://mlx-omarchy-community-data.joshua-s-warren.workers.dev
 python3 scripts/collect_deep.py --out mlx-omarchy-deep.tar.gz
 # type SUBMIT at the prompt, or pass --submit "$MLX_OMARCHY_SUBMIT_URL"
 ```

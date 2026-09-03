@@ -588,7 +588,7 @@ def main():
         redaction[kind] = redaction.get(kind, 0) + count
     archive_name = os.path.basename(args.out) if args.out \
         else "mlx-omarchy-deep.tar.gz"
-    manifest, data, payload = finalize(work, unavailable, redaction,
+    manifest, data, payload = finalize(files, unavailable, redaction,
                                        archive_name, os.path.abspath(args.repo))
     print_preview(manifest, data, archive_name)
     if args.out:
@@ -599,7 +599,7 @@ def main():
             else os.path.splitext(args.out)[0]
         submission = base + ".submission.md"
         with open(submission, "wb") as fh:
-            fh.write(work["submission.md"])
+            fh.write(files["submission.md"])
         print(f"[receipt] wrote {args.out} ({len(data)} bytes, "
               f"sha256={hashlib.sha256(data).hexdigest()})")
         print(f"[receipt] wrote {submission} (paste-ready cover text)")

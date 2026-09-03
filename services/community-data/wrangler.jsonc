@@ -17,7 +17,7 @@
     {
       "binding": "DB",
       "database_name": "mlx-omarchy-community",
-      "database_id": "OWNER_FILL_ME_after_wrangler_d1_create",
+      "database_id": "4d3b499f-fc37-444c-b6fc-9f424b675652",
       "migrations_dir": "migrations"
     }
   ],
