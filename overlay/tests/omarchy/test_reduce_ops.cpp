@@ -618,6 +618,113 @@ TEST_CASE("any and all reduce bool, integer, and float truthiness") {
       any(grid, std::vector<int>{1}, true, stream), {true, true}, stream);
 }
 
+TEST_CASE("bool Any and All stay exact across word and chunk boundaries") {
+  if (!compute_available()) {
+    return;
+  }
+  auto stream = gpu_stream();
+
+  // Sizes straddle every packed-bool word boundary: 4/5 is the first
+  // second-word read, 8/9 and 32/33 the next two, 64/65 and 256/257
+  // later words, 4096/4097 the chunk split into the scratch and
+  // combine phases. All-true All and single-true Any past word 0 are
+  // the discriminating polarities: a kernel that reads a falsy byte
+  // past word 0 flips All and drops Any exactly here, while sizes
+  // 1-4 still pass.
+  const std::vector<size_t> sizes = {
+      4, 5, 8, 9, 32, 33, 64, 65, 256, 257, 4096, 4097};
+  auto host_all = [](const std::vector<bool>& values) {
+    bool result = true;
+    for (bool value : values) {
+      result = result && value;
+    }
+    return result;
+  };
+  auto host_any = [](const std::vector<bool>& values) {
+    bool result = false;
+    for (bool value : values) {
+      result = result || value;
+    }
+    return result;
+  };
+  for (size_t n : sizes) {
+    int dim = static_cast<int>(n);
+    std::vector<bool> ones(n, true);
+    std::vector<bool> zeros(n, false);
+    // One false inside the first word must always be honoured.
+    std::vector<bool> false_in_word0(n, true);
+    false_in_word0[1] = false;
+    // One false in the first byte of the second and third words: the
+    // exact reads that miscompiles drop.
+    std::vector<bool> false_outside(n, true);
+    if (n >= 5) {
+      false_outside[4] = false;
+    }
+    if (n >= 9) {
+      false_outside[8] = false;
+    }
+    // Single true in the first byte of the second word: Any must find
+    // it; a falsy read past word 0 turns this false.
+    std::vector<bool> true_outside(n, false);
+    if (n >= 5) {
+      true_outside[4] = true;
+    }
+
+    array on(ones.begin(), Shape{dim}, bool_);
+    check_bool_values(all(on, std::vector<int>{0}, false, stream), {true}, stream);
+    check_bool_values(any(on, std::vector<int>{0}, false, stream), {true}, stream);
+    array off(zeros.begin(), Shape{dim}, bool_);
+    check_bool_values(all(off, std::vector<int>{0}, false, stream), {false}, stream);
+    check_bool_values(any(off, std::vector<int>{0}, false, stream), {false}, stream);
+
+    array in_word0(false_in_word0.begin(), Shape{dim}, bool_);
+    check_bool_values(
+        all(in_word0, std::vector<int>{0}, false, stream),
+        {host_all(false_in_word0)}, stream);
+    check_bool_values(
+        any(in_word0, std::vector<int>{0}, false, stream),
+        {host_any(false_in_word0)}, stream);
+    array outside(false_outside.begin(), Shape{dim}, bool_);
+    check_bool_values(
+        all(outside, std::vector<int>{0}, false, stream),
+        {host_all(false_outside)}, stream);
+    check_bool_values(
+        any(outside, std::vector<int>{0}, false, stream),
+        {host_any(false_outside)}, stream);
+    array lone(true_outside.begin(), Shape{dim}, bool_);
+    check_bool_values(
+        any(lone, std::vector<int>{0}, false, stream),
+        {host_any(true_outside)}, stream);
+    check_bool_values(
+        all(lone, std::vector<int>{0}, false, stream),
+        {host_all(true_outside)}, stream);
+
+    // The same sizes through the axis reduce: two rows of a (2, n)
+    // array reduce along axis 1. For odd n the second row starts
+    // mid-word, so the kernel decodes a nonzero kept offset plus a
+    // packed input index.
+    std::vector<bool> row0(n, true);
+    std::vector<bool> row1 = false_outside;
+    std::vector<bool> grid_values = row0;
+    grid_values.insert(grid_values.end(), row1.begin(), row1.end());
+    array grid(grid_values.begin(), Shape{2, dim}, bool_);
+    std::vector<bool> grid_all = {host_all(row0), host_all(row1)};
+    std::vector<bool> grid_any = {host_any(row0), host_any(row1)};
+    check_bool_values(all(grid, std::vector<int>{1}, false, stream), grid_all, stream);
+    check_bool_values(any(grid, std::vector<int>{1}, false, stream), grid_any, stream);
+
+    // Typed control: the int32 AnyAll variants carry one element per
+    // word, no packing, so a regression here is bool-specific.
+    std::vector<int32_t> int_values(n, 7);
+    int_values[0] = 0;
+    array ints(int_values.begin(), Shape{dim}, int32);
+    check_bool_values(
+        all(ints, std::vector<int>{0}, false, stream), {false}, stream);
+    check_bool_values(
+        any(ints, std::vector<int>{0}, false, stream), {true}, stream);
+  }
+}
+
 TEST_CASE("float scans match host references across all flag combinations") {
   if (!compute_available()) {
     return;

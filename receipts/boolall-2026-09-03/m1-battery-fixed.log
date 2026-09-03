@@ -1,0 +1,91 @@
+[boolall] phase=fixed start Thu Sep  3 04:31:47 CDT 2026
+[boolall] device:
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+    import mlx.core as mx; print(' ', mx.device_info)
+    ^^^^^^^^^^^^^^^^^^^^^
+ModuleNotFoundError: No module named 'mlx'
+[boolall] probe table
+[boolall] probe rc=1 -> /tmp/boolall-table-fixed.txt
+ModuleNotFoundError: No module named 'mlx'
+[boolall] reduce suite
+[boolall] reduce rc=0 secs=0
+[doctest] test cases:   22 |   22 passed | 0 failed | 0 skipped [doctest] assertions: 6834 | 6834 passed | 0 failed | 
+[boolall] full battery Thu Sep  3 04:31:48 CDT 2026
+[boolall] binaries: 24
+pass1 omarchy_ane_bundle_tests rc=0 secs=0
+pass1 omarchy_compiled_tape_tests rc=0 secs=0
+pass1 omarchy_complex_ops_tests rc=0 secs=0
+pass1 omarchy_conv_tests rc=0 secs=0
+pass1 omarchy_copy_offset_tests rc=0 secs=0
+pass1 omarchy_distributed_tests rc=0 secs=0
+pass1 omarchy_eig_ops_tests rc=0 secs=0
+pass1 omarchy_eq_math_tests rc=0 secs=0
+pass1 omarchy_error_contract_tests rc=0 secs=0
+pass1 omarchy_fast_ops_tests rc=0 secs=0
+pass1 omarchy_fast_regression_tests rc=0 secs=2
+pass1 omarchy_fft_general_tests rc=0 secs=22
+pass1 omarchy_fft_ops_tests rc=0 secs=4
+pass1 omarchy_indexing_ops_tests rc=0 secs=0
+pass1 omarchy_kv_ops_tests rc=0 secs=0
+pass1 omarchy_linalg_ops_tests rc=0 secs=1
+pass1 omarchy_matmul_family_tests rc=0 secs=1
+pass1 omarchy_primitive_tests rc=0 secs=0
+pass1 omarchy_reduce_ops_tests rc=0 secs=1
+pass1 omarchy_runtime_tests rc=0 secs=18
+pass1 omarchy_scatter_determinism_tests rc=0 secs=0
+pass1 omarchy_select_layout_tests rc=0 secs=0
+pass1 omarchy_shape_ops_tests rc=0 secs=0
+pass1 omarchy_take_fill_tests rc=0 secs=0
+[boolall] pass1 done FAIL=0 Thu Sep  3 04:32:37 CDT 2026
+pass2 omarchy_ane_bundle_tests rc=0 secs=0
+pass2 omarchy_compiled_tape_tests rc=0 secs=0
+pass2 omarchy_complex_ops_tests rc=0 secs=0
+pass2 omarchy_conv_tests rc=0 secs=0
+pass2 omarchy_copy_offset_tests rc=0 secs=0
+pass2 omarchy_distributed_tests rc=0 secs=0
+pass2 omarchy_eig_ops_tests rc=0 secs=0
+pass2 omarchy_eq_math_tests rc=0 secs=0
+pass2 omarchy_error_contract_tests rc=0 secs=0
+pass2 omarchy_fast_ops_tests rc=0 secs=0
+pass2 omarchy_fast_regression_tests rc=0 secs=2
+pass2 omarchy_fft_general_tests rc=0 secs=22
+pass2 omarchy_fft_ops_tests rc=0 secs=4
+pass2 omarchy_indexing_ops_tests rc=0 secs=1
+pass2 omarchy_kv_ops_tests rc=0 secs=0
+pass2 omarchy_linalg_ops_tests rc=0 secs=1
+pass2 omarchy_matmul_family_tests rc=0 secs=0
+pass2 omarchy_primitive_tests rc=0 secs=0
+pass2 omarchy_reduce_ops_tests rc=0 secs=1
+pass2 omarchy_runtime_tests rc=0 secs=18
+pass2 omarchy_scatter_determinism_tests rc=0 secs=0
+pass2 omarchy_select_layout_tests rc=0 secs=0
+pass2 omarchy_shape_ops_tests rc=0 secs=0
+pass2 omarchy_take_fill_tests rc=0 secs=0
+[boolall] pass2 done FAIL=0 Thu Sep  3 04:33:26 CDT 2026
+[boolall] counts (pass2)
+omarchy_ane_bundle_tests: [doctest] test cases:  12 |  12 passed | 0 failed | 0 skipped [doctest] assertions: 131 | 131 passed | 0 failed | 
+omarchy_compiled_tape_tests: [doctest] test cases:   8 |   8 passed | 0 failed | 0 skipped [doctest] assertions: 343 | 343 passed | 0 failed | 
+omarchy_complex_ops_tests: [doctest] test cases:  16 |  16 passed | 0 failed | 0 skipped [doctest] assertions: 519 | 519 passed | 0 failed | 
+omarchy_conv_tests: [doctest] test cases:   7 |   7 passed | 0 failed | 0 skipped [doctest] assertions: 720 | 720 passed | 0 failed | 
+omarchy_copy_offset_tests: [doctest] test cases:  7 |  7 passed | 0 failed | 0 skipped [doctest] assertions: 68 | 68 passed | 0 failed | 
+omarchy_distributed_tests: [doctest] test cases:  9 |  9 passed | 0 failed | 0 skipped [doctest] assertions: 36 | 36 passed | 0 failed | 
+omarchy_eig_ops_tests: [doctest] test cases:   9 |   9 passed | 0 failed | 0 skipped [doctest] assertions: 264 | 264 passed | 0 failed | 
+omarchy_eq_math_tests: [doctest] test cases:   6 |   6 passed | 0 failed | 0 skipped [doctest] assertions: 112 | 112 passed | 0 failed | 
+omarchy_error_contract_tests: [doctest] test cases:  3 |  3 passed | 0 failed | 0 skipped [doctest] assertions: 14 | 14 passed | 0 failed | 
+omarchy_fast_ops_tests: [doctest] test cases:  11 |  11 passed | 0 failed | 0 skipped [doctest] assertions: 375 | 375 passed | 0 failed | 
+omarchy_fast_regression_tests: [doctest] test cases:  2 |  2 passed | 0 failed | 0 skipped [doctest] assertions: 16 | 16 passed | 0 failed | 
+omarchy_fft_general_tests: [doctest] test cases:   14 |   14 passed | 0 failed | 0 skipped [doctest] assertions: 4245 | 4245 passed | 0 failed | 
+omarchy_fft_ops_tests: [doctest] test cases:   17 |   17 passed | 0 failed | 0 skipped [doctest] assertions: 1374 | 1374 passed | 0 failed | 
+omarchy_indexing_ops_tests: [doctest] test cases:   43 |   43 passed | 0 failed | 0 skipped [doctest] assertions: 1793 | 1793 passed | 0 failed | 
+omarchy_kv_ops_tests: [doctest] test cases:  14 |  14 passed | 0 failed | 0 skipped [doctest] assertions: 407 | 407 passed | 0 failed | 
+omarchy_linalg_ops_tests: [doctest] test cases:     30 |     30 passed | 0 failed | 0 skipped [doctest] assertions: 181118 | 181118 passed | 0 failed | 
+omarchy_matmul_family_tests: [doctest] test cases:     6 |     6 passed | 0 failed | 0 skipped [doctest] assertions: 17120 | 17120 passed | 0 failed | 
+omarchy_primitive_tests: [doctest] test cases:     86 |     86 passed | 0 failed | 0 skipped [doctest] assertions: 604731 | 604731 passed | 0 failed | 
+omarchy_reduce_ops_tests: [doctest] test cases:   22 |   22 passed | 0 failed | 0 skipped [doctest] assertions: 6834 | 6834 passed | 0 failed | 
+omarchy_runtime_tests: [doctest] test cases:   22 |   22 passed | 0 failed | 0 skipped [doctest] assertions: 6194 | 6194 passed | 0 failed | 
+omarchy_scatter_determinism_tests: [doctest] test cases:  21 |  21 passed | 0 failed | 0 skipped [doctest] assertions: 127 | 127 passed | 0 failed | 
+omarchy_select_layout_tests: [doctest] test cases:  11 |  11 passed | 0 failed | 0 skipped [doctest] assertions: 768 | 768 passed | 0 failed | 
+omarchy_shape_ops_tests: [doctest] test cases:  24 |  24 passed | 0 failed | 0 skipped [doctest] assertions: 266 | 266 passed | 0 failed | 
+omarchy_take_fill_tests: [doctest] test cases:    8 |    8 passed | 0 failed | 0 skipped [doctest] assertions: 1104 | 1104 passed | 0 failed | 
+[boolall] fixed phase done Thu Sep  3 04:33:26 CDT 2026

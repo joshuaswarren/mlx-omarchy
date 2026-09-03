@@ -1,0 +1,374 @@
+== bool Any/All boundary probe ==
+n=1 all(ones)                      got=1          exp=1          ok
+n=1 any(ones)                      got=1          exp=1          ok
+n=1 all(zeros)                     got=0          exp=0          ok
+n=1 any(zeros)                     got=0          exp=0          ok
+n=1 all(false@1)                   got=1          exp=1          ok
+n=1 any(false@1)                   got=1          exp=1          ok
+n=1 all(false@4,8)                 got=1          exp=1          ok
+n=1 any(false@4,8)                 got=1          exp=1          ok
+n=1 all(true@4only)                got=0          exp=0          ok
+n=1 any(true@4only)                got=0          exp=0          ok
+n=1 axis1 all                      got=11         exp=11         ok
+n=1 axis1 any                      got=11         exp=11         ok
+n=2 all(ones)                      got=1          exp=1          ok
+n=2 any(ones)                      got=1          exp=1          ok
+n=2 all(zeros)                     got=0          exp=0          ok
+n=2 any(zeros)                     got=0          exp=0          ok
+n=2 all(false@1)                   got=0          exp=0          ok
+n=2 any(false@1)                   got=1          exp=1          ok
+n=2 all(false@4,8)                 got=1          exp=1          ok
+n=2 any(false@4,8)                 got=1          exp=1          ok
+n=2 all(true@4only)                got=0          exp=0          ok
+n=2 any(true@4only)                got=0          exp=0          ok
+n=2 axis1 all                      got=11         exp=11         ok
+n=2 axis1 any                      got=11         exp=11         ok
+n=3 all(ones)                      got=1          exp=1          ok
+n=3 any(ones)                      got=1          exp=1          ok
+n=3 all(zeros)                     got=0          exp=0          ok
+n=3 any(zeros)                     got=0          exp=0          ok
+n=3 all(false@1)                   got=0          exp=0          ok
+n=3 any(false@1)                   got=1          exp=1          ok
+n=3 all(false@4,8)                 got=1          exp=1          ok
+n=3 any(false@4,8)                 got=1          exp=1          ok
+n=3 all(true@4only)                got=0          exp=0          ok
+n=3 any(true@4only)                got=0          exp=0          ok
+n=3 axis1 all                      got=11         exp=11         ok
+n=3 axis1 any                      got=11         exp=11         ok
+n=4 all(ones)                      got=1          exp=1          ok
+n=4 any(ones)                      got=1          exp=1          ok
+n=4 all(zeros)                     got=0          exp=0          ok
+n=4 any(zeros)                     got=0          exp=0          ok
+n=4 all(false@1)                   got=0          exp=0          ok
+n=4 any(false@1)                   got=1          exp=1          ok
+n=4 all(false@4,8)                 got=1          exp=1          ok
+n=4 any(false@4,8)                 got=1          exp=1          ok
+n=4 all(true@4only)                got=0          exp=0          ok
+n=4 any(true@4only)                got=0          exp=0          ok
+n=4 axis1 all                      got=11         exp=11         ok
+n=4 axis1 any                      got=11         exp=11         ok
+n=5 all(ones)                      got=1          exp=1          ok
+n=5 any(ones)                      got=1          exp=1          ok
+n=5 all(zeros)                     got=0          exp=0          ok
+n=5 any(zeros)                     got=0          exp=0          ok
+n=5 all(false@1)                   got=0          exp=0          ok
+n=5 any(false@1)                   got=1          exp=1          ok
+n=5 all(false@4,8)                 got=0          exp=0          ok
+n=5 any(false@4,8)                 got=1          exp=1          ok
+n=5 all(true@4only)                got=0          exp=0          ok
+n=5 any(true@4only)                got=1          exp=1          ok
+n=5 axis1 all                      got=10         exp=10         ok
+n=5 axis1 any                      got=11         exp=11         ok
+n=6 all(ones)                      got=1          exp=1          ok
+n=6 any(ones)                      got=1          exp=1          ok
+n=6 all(zeros)                     got=0          exp=0          ok
+n=6 any(zeros)                     got=0          exp=0          ok
+n=6 all(false@1)                   got=0          exp=0          ok
+n=6 any(false@1)                   got=1          exp=1          ok
+n=6 all(false@4,8)                 got=0          exp=0          ok
+n=6 any(false@4,8)                 got=1          exp=1          ok
+n=6 all(true@4only)                got=0          exp=0          ok
+n=6 any(true@4only)                got=1          exp=1          ok
+n=6 axis1 all                      got=10         exp=10         ok
+n=6 axis1 any                      got=11         exp=11         ok
+n=7 all(ones)                      got=1          exp=1          ok
+n=7 any(ones)                      got=1          exp=1          ok
+n=7 all(zeros)                     got=0          exp=0          ok
+n=7 any(zeros)                     got=0          exp=0          ok
+n=7 all(false@1)                   got=0          exp=0          ok
+n=7 any(false@1)                   got=1          exp=1          ok
+n=7 all(false@4,8)                 got=0          exp=0          ok
+n=7 any(false@4,8)                 got=1          exp=1          ok
+n=7 all(true@4only)                got=0          exp=0          ok
+n=7 any(true@4only)                got=1          exp=1          ok
+n=7 axis1 all                      got=10         exp=10         ok
+n=7 axis1 any                      got=11         exp=11         ok
+n=8 all(ones)                      got=1          exp=1          ok
+n=8 any(ones)                      got=1          exp=1          ok
+n=8 all(zeros)                     got=0          exp=0          ok
+n=8 any(zeros)                     got=0          exp=0          ok
+n=8 all(false@1)                   got=0          exp=0          ok
+n=8 any(false@1)                   got=1          exp=1          ok
+n=8 all(false@4,8)                 got=0          exp=0          ok
+n=8 any(false@4,8)                 got=1          exp=1          ok
+n=8 all(true@4only)                got=0          exp=0          ok
+n=8 any(true@4only)                got=1          exp=1          ok
+n=8 axis1 all                      got=10         exp=10         ok
+n=8 axis1 any                      got=11         exp=11         ok
+n=9 all(ones)                      got=1          exp=1          ok
+n=9 any(ones)                      got=1          exp=1          ok
+n=9 all(zeros)                     got=0          exp=0          ok
+n=9 any(zeros)                     got=0          exp=0          ok
+n=9 all(false@1)                   got=0          exp=0          ok
+n=9 any(false@1)                   got=1          exp=1          ok
+n=9 all(false@4,8)                 got=0          exp=0          ok
+n=9 any(false@4,8)                 got=1          exp=1          ok
+n=9 all(true@4only)                got=0          exp=0          ok
+n=9 any(true@4only)                got=1          exp=1          ok
+n=9 axis1 all                      got=10         exp=10         ok
+n=9 axis1 any                      got=11         exp=11         ok
+n=9 All(F@k) read-true at k=[]
+n=9 Any(T@k) read-false at k=[]
+n=16 all(ones)                     got=1          exp=1          ok
+n=16 any(ones)                     got=1          exp=1          ok
+n=16 all(zeros)                    got=0          exp=0          ok
+n=16 any(zeros)                    got=0          exp=0          ok
+n=16 all(false@1)                  got=0          exp=0          ok
+n=16 any(false@1)                  got=1          exp=1          ok
+n=16 all(false@4,8)                got=0          exp=0          ok
+n=16 any(false@4,8)                got=1          exp=1          ok
+n=16 all(true@4only)               got=0          exp=0          ok
+n=16 any(true@4only)               got=1          exp=1          ok
+n=16 axis1 all                     got=10         exp=10         ok
+n=16 axis1 any                     got=11         exp=11         ok
+n=17 all(ones)                     got=1          exp=1          ok
+n=17 any(ones)                     got=1          exp=1          ok
+n=17 all(zeros)                    got=0          exp=0          ok
+n=17 any(zeros)                    got=0          exp=0          ok
+n=17 all(false@1)                  got=0          exp=0          ok
+n=17 any(false@1)                  got=1          exp=1          ok
+n=17 all(false@4,8)                got=0          exp=0          ok
+n=17 any(false@4,8)                got=1          exp=1          ok
+n=17 all(true@4only)               got=0          exp=0          ok
+n=17 any(true@4only)               got=1          exp=1          ok
+n=17 axis1 all                     got=10         exp=10         ok
+n=17 axis1 any                     got=11         exp=11         ok
+n=31 all(ones)                     got=1          exp=1          ok
+n=31 any(ones)                     got=1          exp=1          ok
+n=31 all(zeros)                    got=0          exp=0          ok
+n=31 any(zeros)                    got=0          exp=0          ok
+n=31 all(false@1)                  got=0          exp=0          ok
+n=31 any(false@1)                  got=1          exp=1          ok
+n=31 all(false@4,8)                got=0          exp=0          ok
+n=31 any(false@4,8)                got=1          exp=1          ok
+n=31 all(true@4only)               got=0          exp=0          ok
+n=31 any(true@4only)               got=1          exp=1          ok
+n=31 axis1 all                     got=10         exp=10         ok
+n=31 axis1 any                     got=11         exp=11         ok
+n=32 all(ones)                     got=1          exp=1          ok
+n=32 any(ones)                     got=1          exp=1          ok
+n=32 all(zeros)                    got=0          exp=0          ok
+n=32 any(zeros)                    got=0          exp=0          ok
+n=32 all(false@1)                  got=0          exp=0          ok
+n=32 any(false@1)                  got=1          exp=1          ok
+n=32 all(false@4,8)                got=0          exp=0          ok
+n=32 any(false@4,8)                got=1          exp=1          ok
+n=32 all(true@4only)               got=0          exp=0          ok
+n=32 any(true@4only)               got=1          exp=1          ok
+n=32 axis1 all                     got=10         exp=10         ok
+n=32 axis1 any                     got=11         exp=11         ok
+n=33 all(ones)                     got=1          exp=1          ok
+n=33 any(ones)                     got=1          exp=1          ok
+n=33 all(zeros)                    got=0          exp=0          ok
+n=33 any(zeros)                    got=0          exp=0          ok
+n=33 all(false@1)                  got=0          exp=0          ok
+n=33 any(false@1)                  got=1          exp=1          ok
+n=33 all(false@4,8)                got=0          exp=0          ok
+n=33 any(false@4,8)                got=1          exp=1          ok
+n=33 all(true@4only)               got=0          exp=0          ok
+n=33 any(true@4only)               got=1          exp=1          ok
+n=33 axis1 all                     got=10         exp=10         ok
+n=33 axis1 any                     got=11         exp=11         ok
+n=33 i32 all                       got=0          exp=0          ok
+n=33 i32 any                       got=1          exp=1          ok
+n=33 All(F@k) read-true at k=[]
+n=33 Any(T@k) read-false at k=[]
+n=33 logical_and(ones,ones) wrong at []
+n=34 all(ones)                     got=1          exp=1          ok
+n=34 any(ones)                     got=1          exp=1          ok
+n=34 all(zeros)                    got=0          exp=0          ok
+n=34 any(zeros)                    got=0          exp=0          ok
+n=34 all(false@1)                  got=0          exp=0          ok
+n=34 any(false@1)                  got=1          exp=1          ok
+n=34 all(false@4,8)                got=0          exp=0          ok
+n=34 any(false@4,8)                got=1          exp=1          ok
+n=34 all(true@4only)               got=0          exp=0          ok
+n=34 any(true@4only)               got=1          exp=1          ok
+n=34 axis1 all                     got=10         exp=10         ok
+n=34 axis1 any                     got=11         exp=11         ok
+n=63 all(ones)                     got=1          exp=1          ok
+n=63 any(ones)                     got=1          exp=1          ok
+n=63 all(zeros)                    got=0          exp=0          ok
+n=63 any(zeros)                    got=0          exp=0          ok
+n=63 all(false@1)                  got=0          exp=0          ok
+n=63 any(false@1)                  got=1          exp=1          ok
+n=63 all(false@4,8)                got=0          exp=0          ok
+n=63 any(false@4,8)                got=1          exp=1          ok
+n=63 all(true@4only)               got=0          exp=0          ok
+n=63 any(true@4only)               got=1          exp=1          ok
+n=63 axis1 all                     got=10         exp=10         ok
+n=63 axis1 any                     got=11         exp=11         ok
+n=64 all(ones)                     got=1          exp=1          ok
+n=64 any(ones)                     got=1          exp=1          ok
+n=64 all(zeros)                    got=0          exp=0          ok
+n=64 any(zeros)                    got=0          exp=0          ok
+n=64 all(false@1)                  got=0          exp=0          ok
+n=64 any(false@1)                  got=1          exp=1          ok
+n=64 all(false@4,8)                got=0          exp=0          ok
+n=64 any(false@4,8)                got=1          exp=1          ok
+n=64 all(true@4only)               got=0          exp=0          ok
+n=64 any(true@4only)               got=1          exp=1          ok
+n=64 axis1 all                     got=10         exp=10         ok
+n=64 axis1 any                     got=11         exp=11         ok
+n=65 all(ones)                     got=1          exp=1          ok
+n=65 any(ones)                     got=1          exp=1          ok
+n=65 all(zeros)                    got=0          exp=0          ok
+n=65 any(zeros)                    got=0          exp=0          ok
+n=65 all(false@1)                  got=0          exp=0          ok
+n=65 any(false@1)                  got=1          exp=1          ok
+n=65 all(false@4,8)                got=0          exp=0          ok
+n=65 any(false@4,8)                got=1          exp=1          ok
+n=65 all(true@4only)               got=0          exp=0          ok
+n=65 any(true@4only)               got=1          exp=1          ok
+n=65 axis1 all                     got=10         exp=10         ok
+n=65 axis1 any                     got=11         exp=11         ok
+n=65 logical_and(ones,ones) wrong at []
+n=127 all(ones)                    got=1          exp=1          ok
+n=127 any(ones)                    got=1          exp=1          ok
+n=127 all(zeros)                   got=0          exp=0          ok
+n=127 any(zeros)                   got=0          exp=0          ok
+n=127 all(false@1)                 got=0          exp=0          ok
+n=127 any(false@1)                 got=1          exp=1          ok
+n=127 all(false@4,8)               got=0          exp=0          ok
+n=127 any(false@4,8)               got=1          exp=1          ok
+n=127 all(true@4only)              got=0          exp=0          ok
+n=127 any(true@4only)              got=1          exp=1          ok
+n=127 axis1 all                    got=10         exp=10         ok
+n=127 axis1 any                    got=11         exp=11         ok
+n=128 all(ones)                    got=1          exp=1          ok
+n=128 any(ones)                    got=1          exp=1          ok
+n=128 all(zeros)                   got=0          exp=0          ok
+n=128 any(zeros)                   got=0          exp=0          ok
+n=128 all(false@1)                 got=0          exp=0          ok
+n=128 any(false@1)                 got=1          exp=1          ok
+n=128 all(false@4,8)               got=0          exp=0          ok
+n=128 any(false@4,8)               got=1          exp=1          ok
+n=128 all(true@4only)              got=0          exp=0          ok
+n=128 any(true@4only)              got=1          exp=1          ok
+n=128 axis1 all                    got=10         exp=10         ok
+n=128 axis1 any                    got=11         exp=11         ok
+n=129 all(ones)                    got=1          exp=1          ok
+n=129 any(ones)                    got=1          exp=1          ok
+n=129 all(zeros)                   got=0          exp=0          ok
+n=129 any(zeros)                   got=0          exp=0          ok
+n=129 all(false@1)                 got=0          exp=0          ok
+n=129 any(false@1)                 got=1          exp=1          ok
+n=129 all(false@4,8)               got=0          exp=0          ok
+n=129 any(false@4,8)               got=1          exp=1          ok
+n=129 all(true@4only)              got=0          exp=0          ok
+n=129 any(true@4only)              got=1          exp=1          ok
+n=129 axis1 all                    got=10         exp=10         ok
+n=129 axis1 any                    got=11         exp=11         ok
+n=255 all(ones)                    got=1          exp=1          ok
+n=255 any(ones)                    got=1          exp=1          ok
+n=255 all(zeros)                   got=0          exp=0          ok
+n=255 any(zeros)                   got=0          exp=0          ok
+n=255 all(false@1)                 got=0          exp=0          ok
+n=255 any(false@1)                 got=1          exp=1          ok
+n=255 all(false@4,8)               got=0          exp=0          ok
+n=255 any(false@4,8)               got=1          exp=1          ok
+n=255 all(true@4only)              got=0          exp=0          ok
+n=255 any(true@4only)              got=1          exp=1          ok
+n=255 axis1 all                    got=10         exp=10         ok
+n=255 axis1 any                    got=11         exp=11         ok
+n=256 all(ones)                    got=1          exp=1          ok
+n=256 any(ones)                    got=1          exp=1          ok
+n=256 all(zeros)                   got=0          exp=0          ok
+n=256 any(zeros)                   got=0          exp=0          ok
+n=256 all(false@1)                 got=0          exp=0          ok
+n=256 any(false@1)                 got=1          exp=1          ok
+n=256 all(false@4,8)               got=0          exp=0          ok
+n=256 any(false@4,8)               got=1          exp=1          ok
+n=256 all(true@4only)              got=0          exp=0          ok
+n=256 any(true@4only)              got=1          exp=1          ok
+n=256 axis1 all                    got=10         exp=10         ok
+n=256 axis1 any                    got=11         exp=11         ok
+n=257 all(ones)                    got=1          exp=1          ok
+n=257 any(ones)                    got=1          exp=1          ok
+n=257 all(zeros)                   got=0          exp=0          ok
+n=257 any(zeros)                   got=0          exp=0          ok
+n=257 all(false@1)                 got=0          exp=0          ok
+n=257 any(false@1)                 got=1          exp=1          ok
+n=257 all(false@4,8)               got=0          exp=0          ok
+n=257 any(false@4,8)               got=1          exp=1          ok
+n=257 all(true@4only)              got=0          exp=0          ok
+n=257 any(true@4only)              got=1          exp=1          ok
+n=257 axis1 all                    got=10         exp=10         ok
+n=257 axis1 any                    got=11         exp=11         ok
+n=257 i32 all                      got=0          exp=0          ok
+n=257 i32 any                      got=1          exp=1          ok
+n=511 all(ones)                    got=1          exp=1          ok
+n=511 any(ones)                    got=1          exp=1          ok
+n=511 all(zeros)                   got=0          exp=0          ok
+n=511 any(zeros)                   got=0          exp=0          ok
+n=511 all(false@1)                 got=0          exp=0          ok
+n=511 any(false@1)                 got=1          exp=1          ok
+n=511 all(false@4,8)               got=0          exp=0          ok
+n=511 any(false@4,8)               got=1          exp=1          ok
+n=511 all(true@4only)              got=0          exp=0          ok
+n=511 any(true@4only)              got=1          exp=1          ok
+n=511 axis1 all                    got=10         exp=10         ok
+n=511 axis1 any                    got=11         exp=11         ok
+n=512 all(ones)                    got=1          exp=1          ok
+n=512 any(ones)                    got=1          exp=1          ok
+n=512 all(zeros)                   got=0          exp=0          ok
+n=512 any(zeros)                   got=0          exp=0          ok
+n=512 all(false@1)                 got=0          exp=0          ok
+n=512 any(false@1)                 got=1          exp=1          ok
+n=512 all(false@4,8)               got=0          exp=0          ok
+n=512 any(false@4,8)               got=1          exp=1          ok
+n=512 all(true@4only)              got=0          exp=0          ok
+n=512 any(true@4only)              got=1          exp=1          ok
+n=512 axis1 all                    got=10         exp=10         ok
+n=512 axis1 any                    got=11         exp=11         ok
+n=1000 all(ones)                   got=1          exp=1          ok
+n=1000 any(ones)                   got=1          exp=1          ok
+n=1000 all(zeros)                  got=0          exp=0          ok
+n=1000 any(zeros)                  got=0          exp=0          ok
+n=1000 all(false@1)                got=0          exp=0          ok
+n=1000 any(false@1)                got=1          exp=1          ok
+n=1000 all(false@4,8)              got=0          exp=0          ok
+n=1000 any(false@4,8)              got=1          exp=1          ok
+n=1000 all(true@4only)             got=0          exp=0          ok
+n=1000 any(true@4only)             got=1          exp=1          ok
+n=1000 axis1 all                   got=10         exp=10         ok
+n=1000 axis1 any                   got=11         exp=11         ok
+n=4095 all(ones)                   got=1          exp=1          ok
+n=4095 any(ones)                   got=1          exp=1          ok
+n=4095 all(zeros)                  got=0          exp=0          ok
+n=4095 any(zeros)                  got=0          exp=0          ok
+n=4095 all(false@1)                got=0          exp=0          ok
+n=4095 any(false@1)                got=1          exp=1          ok
+n=4095 all(false@4,8)              got=0          exp=0          ok
+n=4095 any(false@4,8)              got=1          exp=1          ok
+n=4095 all(true@4only)             got=0          exp=0          ok
+n=4095 any(true@4only)             got=1          exp=1          ok
+n=4095 axis1 all                   got=10         exp=10         ok
+n=4095 axis1 any                   got=11         exp=11         ok
+n=4096 all(ones)                   got=1          exp=1          ok
+n=4096 any(ones)                   got=1          exp=1          ok
+n=4096 all(zeros)                  got=0          exp=0          ok
+n=4096 any(zeros)                  got=0          exp=0          ok
+n=4096 all(false@1)                got=0          exp=0          ok
+n=4096 any(false@1)                got=1          exp=1          ok
+n=4096 all(false@4,8)              got=0          exp=0          ok
+n=4096 any(false@4,8)              got=1          exp=1          ok
+n=4096 all(true@4only)             got=0          exp=0          ok
+n=4096 any(true@4only)             got=1          exp=1          ok
+n=4096 axis1 all                   got=10         exp=10         ok
+n=4096 axis1 any                   got=11         exp=11         ok
+n=4097 all(ones)                   got=1          exp=1          ok
+n=4097 any(ones)                   got=1          exp=1          ok
+n=4097 all(zeros)                  got=0          exp=0          ok
+n=4097 any(zeros)                  got=0          exp=0          ok
+n=4097 all(false@1)                got=0          exp=0          ok
+n=4097 any(false@1)                got=1          exp=1          ok
+n=4097 all(false@4,8)              got=0          exp=0          ok
+n=4097 any(false@4,8)              got=1          exp=1          ok
+n=4097 all(true@4only)             got=0          exp=0          ok
+n=4097 any(true@4only)             got=1          exp=1          ok
+n=4097 axis1 all                   got=10         exp=10         ok
+n=4097 axis1 any                   got=11         exp=11         ok
+n=4097 i32 all                     got=0          exp=0          ok
+n=4097 i32 any                     got=1          exp=1          ok
+== 366 checks, 0 failed ==
