@@ -39,7 +39,7 @@ Affected: v0.3.0-alpha.1 through v0.3.1. Observed on: dev box, Mesa llvmpipe.
 
 Upstream's `test_autograd.py::TestAutograd::test_eval_in_grad` got `vjp = 12.000000953674316`. The exact value is `12.0`. This is one ulp of float32 accumulation. Upstream Metal is exact here. Severity is low. It surfaces only where code pins exact equality.
 
-### Boolean reductions (`mx.all` AND `mx.any`) return wrong results once data crosses the first 32-bit word
+### Boolean reductions (`mx.all` AND `mx.any`) returned wrong results once data crossed the first 32-bit word - fixed in v0.3.2
 
 Affected: confirmed in the published v0.3.0 and v0.3.1 aarch64 wheels; v0.3.0 predates the byte-extraction work, so this is a long-standing gap, not a regression. Observed on: real M1 (Honeykrisp), fresh process, deterministic. On llvmpipe the same code is correct, which is why every dev-box battery stayed green.
 
@@ -52,7 +52,8 @@ Both `mx.all` and `mx.any` are affected, for whole-array reductions and axis red
 
 The cause is pinned: `reduce_general.comp`'s `load_truthy` uses a dynamic shift-then-mask byte extraction, which this driver miscompiles - the fifth confirmed site of the same dynamic byte-extraction family as the masked-scatter defect and the four sites fixed in `959c7a0`. `mx.logical_and` is green on the same buffers, which proves the input layout is fine and isolates the defect to the reduction's load. Workaround: `mx.logical_and` substitutes for some uses, or reduce on an explicit CPU stream; the dtype-converting `mx.sum(a.astype(mx.int32))` path refuses by name on the GPU (named gap).
 
-Found by the v0.3.1 published-artifact probe on the real target - a post-publish check, not the in-tree suite: the entire C++ battery, 828,139 assertions, never exercised a boolean reduction wider than one word on Apple hardware, and nobody had written one. The lesson recorded: coverage shape beats coverage count - the probe's device-side reduction caught in one check what the assertion count never reached. Disclosed in a prominent warning on the v0.3.1 release page; verified fix in progress for v0.3.2.
+**Fixed in v0.3.2** (commit `cf68e7d`): `load_truthy`'s dynamic byte extraction replaced with the proven constant-shift select chain - device-probed on the M1 rather than trusted by analogy, because `select.comp` had proven the macro form is context-sensitive on this driver. Verification on Honeykrisp: the boundary probe went from 85 of 366 checks failing to 0 of 366, `reduce_ops` from 21/22 to 22/22, and the full battery is green across two passes at 408 cases and 828,679 assertions. A user on a v0.3.0 or v0.3.1 wheel still needs the warning above.
+
 
 
 ## What the M1 verification reds turned out to be
