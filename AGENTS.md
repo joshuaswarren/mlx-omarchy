@@ -127,3 +127,51 @@ Update `docs/architecture.md` when a backend or memory boundary changes.
 Update `docs/roadmap.md` only when a proof gate changes.
 Update `docs/compatibility.md` from evidence, not intent.
 Delete stale paths and replaced design text in the same change.
+
+## Community hardware data
+
+Contributors submit redacted hardware reports to the public dataset.
+Submissions never create pull requests, issues, or discussions, and the
+mirror commits snapshots as `github-actions[bot]`, so the contributor
+graph stays clean. Query other people's machines before you guess at
+hardware behavior.
+
+Query with the stdlib CLI (no install, no network needed for local
+mode):
+
+```bash
+python3 scripts/query_community_data.py list
+python3 scripts/query_community_data.py --json --kind deep --chip M1 list
+python3 scripts/query_community_data.py --kernel 7.1.6 --json list
+python3 scripts/query_community_data.py --mesa honeykrisp list
+python3 scripts/query_community_data.py --mlx-version 0.3.2 list
+python3 scripts/query_community_data.py show <sha256-prefix>
+python3 scripts/query_community_data.py compare --metric tflops
+python3 scripts/query_community_data.py compare --metric median_ms --size 512
+```
+
+`--json` prints machine-readable output for agents. Filters take
+case-insensitive substrings and combine. Sources:
+
+- `--source auto` (default): local snapshot when present, else the live
+  public endpoint.
+- `--source local`: the mirrored snapshot only. The ladder is
+  `--snapshot DIR`, then `$MLX_OMARCHY_DATA_DIR`, then
+  `community-data/snapshot/latest.jsonl` in this checkout, then the
+  fetched `origin/community-data` ref read through `git show`, so
+  `git fetch origin community-data` is enough; no worktree needed.
+- `--source remote`: the live public endpoints, base URL from the
+  repository variable `COMMUNITY_DATA_BASE_URL`, default
+  `https://community-data.joshuaswarren.workers.dev`:
+  - `GET /v1/results` - index: generated_at, schema_version, count
+  - `GET /v1/results/<sha256>` - one full record
+  - `GET /v1/results/<sha256>/archive` - original redacted archive
+  - `GET /v1/dataset/latest.jsonl` - one JSON object per line
+
+The scheduled `.github/workflows/community-data.yml` mirrors summaries
+(never archive blobs) to the `community-data` branch under `snapshot/`:
+`latest.jsonl`, `index.json`, and a generated `SUMMARY.md`.
+
+Treat the data for what it is: redacted, self-reported, one machine per
+record. Compare performance only within the same model, quantization,
+and measurement procedure, and name the records a claim rests on.
