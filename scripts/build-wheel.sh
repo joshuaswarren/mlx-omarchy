@@ -28,6 +28,42 @@ for arg in "$@"; do
     *) echo "unknown option: $arg (supported: --diagnostics)" >&2; exit 2 ;;
   esac
 done
+
+# Stamp the source commit into the version's local segment so every
+# artifact is traceable to the exact commit that built it. v0.3.2
+# recorded no commit anywhere in its wheel, and proving what it did or
+# did not contain took a static-diff investigation
+# (receipts/2026-09-03-wheel-delta-v0.3.2-vs-local.md). No
+# byte-reproducibility requirement exists for these wheels - the dev
+# segment already carries minute-level timestamps - so the stamp adds no
+# new nondeterminism. DEV_RELEASE=1 (operator-exported for release
+# builds) suppresses setup.py's own git-hash suffix, which is why the
+# release path must stamp explicitly. Default dev builds keep setup.py's
+# behavior untouched.
+resolve_commit() {
+  if [[ -n "${MLX_OMARCHY_SOURCE_COMMIT:-}" ]]; then
+    printf '%s' "$MLX_OMARCHY_SOURCE_COMMIT"
+    return
+  fi
+  git -C "$ROOT" rev-parse --short=7 HEAD 2>/dev/null || true
+}
+
+if [[ $DIAGNOSTICS -eq 1 ]]; then
+  commit="$(resolve_commit)"
+  if [[ -z "$commit" ]]; then
+    echo "ERROR: cannot stamp the source commit: build from a git checkout or set MLX_OMARCHY_SOURCE_COMMIT" >&2
+    exit 2
+  fi
+  export MLX_OMARCHY_LOCAL_VERSION="diag.$commit"
+elif [[ "${DEV_RELEASE:-0}" == 1 && -z "${MLX_OMARCHY_LOCAL_VERSION:-}" ]]; then
+  commit="$(resolve_commit)"
+  if [[ -z "$commit" ]]; then
+    echo "ERROR: cannot stamp the source commit: build from a git checkout or set MLX_OMARCHY_SOURCE_COMMIT" >&2
+    exit 2
+  fi
+  export MLX_OMARCHY_LOCAL_VERSION="$commit"
+fi
+
 echo "== prepare upstream tree =="
 "$ROOT/scripts/prepare-mlx.sh"
 
@@ -61,14 +97,12 @@ mkdir -p "$DIST_DIR"
 # spaces, so keep each -D flag space separated.
 export CMAKE_ARGS="-DMLX_BUILD_OMARCHY=ON -DMLX_BUILD_CPU=ON -DMLX_BUILD_METAL=OFF -DMLX_BUILD_CUDA=OFF -DMLX_BUILD_TESTS=OFF -DMLX_BUILD_EXAMPLES=OFF -DMLX_BUILD_BENCHMARKS=OFF"
 if [[ $DIAGNOSTICS -eq 1 ]]; then
-  # Diagnostics wheel: compile in the env-gated GPU profiling harness and
-  # stamp the version so the artifact cannot be mistaken for a release
-  # wheel. DEV_RELEASE=1 keeps setup.py from appending its own git-hash
-  # local segment; patches/mlx-version-time.patch appends
-  # "+$MLX_OMARCHY_LOCAL_VERSION" instead.
+  # Diagnostics wheel: compile in the env-gated GPU profiling harness.
+  # DEV_RELEASE=1 keeps setup.py from appending its own git-hash local
+  # segment; the MLX_OMARCHY_LOCAL_VERSION stamped above (diag.<commit>)
+  # reaches the version through patches/mlx-version-time.patch instead.
   export CMAKE_ARGS="$CMAKE_ARGS -DMLX_OMARCHY_GPU_PROFILING=ON"
   export DEV_RELEASE=1
-  export MLX_OMARCHY_LOCAL_VERSION=diag
 fi
 
 # Honor an explicit override, else the machine's actual core count. A
@@ -123,3 +157,12 @@ echo "== receipt =="
 echo "[receipt] wheel: $wheel"
 echo "[receipt] size: $(stat -c '%s' "$wheel") bytes"
 echo "[receipt] sha256: $(sha256sum "$wheel" | cut -d' ' -f1)"
+echo "[receipt] source commit: $(git -C "$ROOT" rev-parse --short=7 HEAD 2>/dev/null || echo unknown)"
+cat <<'GATE'
+[receipt] NEXT STEP - do not skip: after you upload this wheel to a
+[receipt] release, verify the UPLOADED asset with
+[receipt]   python3 scripts/verify-release-assets.py <tag>
+[receipt] It must print VERIFIED before the release is announced as
+[receipt] usable. See docs/release.md. A local build check does not
+[receipt] verify what users download.
+GATE

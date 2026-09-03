@@ -43,6 +43,7 @@ import tempfile
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import collect_quick
+SCRIPTS_DIR = os.path.dirname(os.path.abspath(__file__))
 from collect_common import (
     SCHEMA_VERSION,
     Redactor,
@@ -80,6 +81,18 @@ except Exception as exc:
 res["available"] = True
 res["device"] = str(mx.default_device())
 res["mlx_version"] = getattr(mx, "__version__", None)
+
+import sys as _sys
+_sys.path.insert(0, __SCRIPTS_DIR__)
+from mlx_provenance import installed_provenance
+
+res["provenance"] = installed_provenance()
+if res["provenance"].get("verified") == "mismatch":
+    res["available"] = False
+    res["error"] = ("refusing to emit correctness numbers: "
+                    + res["provenance"]["mismatch"])
+    print(json.dumps(res))
+    raise SystemExit(0)
 
 def close(a, b, tol=1e-5):
     if isinstance(a, list) and isinstance(b, list):
@@ -133,6 +146,18 @@ try:
     import mlx.core as mx
     res["available"] = True
     res["device"] = str(mx.default_device())
+
+    import sys as _sys
+    _sys.path.insert(0, __SCRIPTS_DIR__)
+    from mlx_provenance import installed_provenance
+
+    res["provenance"] = installed_provenance()
+    if res["provenance"].get("verified") == "mismatch":
+        res["available"] = False
+        res["error"] = ("refusing to emit timing numbers: "
+                        + res["provenance"]["mismatch"])
+        print(json.dumps(res))
+        raise SystemExit(0)
     sync = getattr(mx, "synchronize", None)
     for n in (256, 512, 1024):
         a = mx.random.normal((n, n))
@@ -210,7 +235,8 @@ def section_environment(redactor, repo):
 
 
 def section_correctness(redactor):
-    rec = run_tool([sys.executable, "-c", CORRECTNESS_PROBE], redactor,
+    rec = run_tool([sys.executable, "-c", CORRECTNESS_PROBE.replace(
+        "__SCRIPTS_DIR__", json.dumps(SCRIPTS_DIR))], redactor,
                    label="correctness probe", timeout=240)
     out = {"available": False, "probe": rec, "ops": []}
     if not rec["available"] or rec["exit_code"] != 0:
@@ -224,6 +250,8 @@ def section_correctness(redactor):
     out["device"] = found.get("device")
     out["mlx_version"] = found.get("mlx_version")
     out["import_error"] = found.get("import_error")
+    out["provenance"] = found.get("provenance")
+    out["error"] = found.get("error")
     out["ops"] = found.get("ops", [])
     out["ops_passed"] = sum(1 for op in out["ops"] if op.get("pass"))
     return out
@@ -244,7 +272,8 @@ def find_spike_binary(repo):
 
 def section_benchmark(redactor, repo):
     out = {"available": False, "python": None, "kernel_spike": None}
-    rec = run_tool([sys.executable, "-c", BENCH_PROBE], redactor,
+    rec = run_tool([sys.executable, "-c", BENCH_PROBE.replace(
+        "__SCRIPTS_DIR__", json.dumps(SCRIPTS_DIR))], redactor,
                    label="python microbench", timeout=300)
     out["python_probe"] = rec
     if rec["available"] and rec["exit_code"] == 0:
