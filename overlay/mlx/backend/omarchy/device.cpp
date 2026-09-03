@@ -783,6 +783,11 @@ void CompletionDispatcher::shutdown() {
         std::make_move_iterator(completion.temporaries.begin()),
         std::make_move_iterator(completion.temporaries.end()));
   }
+  leaked_temporaries->insert(
+      leaked_temporaries->end(),
+      std::make_move_iterator(retired_temporaries_.begin()),
+      std::make_move_iterator(retired_temporaries_.end()));
+  retired_temporaries_.clear();
   if (semaphore_ != VK_NULL_HANDLE) {
     vk::device_table().DestroySemaphore(device_, semaphore_, nullptr);
     semaphore_ = VK_NULL_HANDLE;
@@ -864,10 +869,27 @@ void CompletionDispatcher::drain_through(uint64_t max_value) {
       handler();
     }
   }
+  // Mesa's queue thread signals a submission's semaphores (including the
+  // completion timeline read above) BEFORE the submit-final cleanup
+  // releases that submission's timeline points, so observing this
+  // timeline does not prove the driver finished the submission. Retire
+  // payloads one generation late: submits execute serially in value
+  // order, so once completion V+1 is observable, cleanup for V has run.
+  std::vector<std::shared_ptr<void>> retired;
+  for (auto& completion : ready) {
+    retired.insert(
+        retired.end(),
+        std::make_move_iterator(completion.temporaries.begin()),
+        std::make_move_iterator(completion.temporaries.end()));
+  }
   ready.clear();
+  std::vector<std::shared_ptr<void>> release = std::move(retired_temporaries_);
+  retired_temporaries_ = std::move(retired);
   std::lock_guard<std::mutex> lk(mutex_);
   drained_value_ = std::max(drained_value_, ready_value);
   cv_.notify_all();
+  // |release| frees when this function returns: by then drained_value_
+  // names a later generation, so the previous one is provably finished.
 }
 
 uint64_t CompletionDispatcher::drained_value() {
