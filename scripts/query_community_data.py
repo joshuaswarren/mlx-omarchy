@@ -37,7 +37,7 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
-DEFAULT_BASE_URL = "https://community-data.joshuaswarren.workers.dev"
+DEFAULT_BASE_URL = "https://mlx-omarchy-community-data.joshua-s-warren.workers.dev"
 # Cloudflare bot protection 403s default Python user agents on workers.dev.
 USER_AGENT = ("mlx-omarchy-community-data/1.0 "
               "(+https://github.com/joshuaswarren/mlx-omarchy)")
