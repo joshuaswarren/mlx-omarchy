@@ -11,6 +11,9 @@ Usage:
   query_community_data.py show SHA256_PREFIX
   query_community_data.py [filters] compare [--metric tflops] [--size N]
 
+Fleet-gap filters: --cpu-present N, --hotplug yes|no, --ane yes|no,
+--shortfall yes|no, --boot SUBSTR, --cmdline SUBSTR. list lines show
+cores=online/present, ane=dt|- markers, and core-shortfall when set.
 Sources (--source):
   auto    local snapshot when present, else the live endpoint (default)
   local   mirrored snapshot only
@@ -30,8 +33,8 @@ lines are skipped and counted.
 import argparse
 import json
 import os
+import re
 import statistics
-import subprocess
 import sys
 import urllib.error
 import urllib.request
@@ -187,6 +190,70 @@ def record_mlx_version(record):
     return str(value) if value else None
 
 
+def record_cpu_online(record):
+    value = _first(record, [("cpu_online",), ("host", "cpu_online"),
+                            ("host", "cpu", "online")])
+    return value if isinstance(value, int) else None
+
+
+def record_cpu_present(record):
+    value = _first(record, [("cpu_present",), ("host", "cpu", "present")])
+    return value if isinstance(value, int) else None
+
+
+def record_hotplug(record):
+    value = _first(record, [("hotplug_control",),
+                            ("host", "cpu", "hotplug_control")])
+    return value if isinstance(value, bool) else None
+
+
+def record_core_shortfall(record):
+    """True/False for the unexplained fewer-cores-than-present fact."""
+    nested = _walk(_payload(record), "host", "core_shortfall")
+    if isinstance(nested, dict):
+        return True
+    value = _first(record, [("core_shortfall",)])
+    if isinstance(value, bool):
+        return value
+    # Older nested reports carry only the counts: derive, still
+    # respecting a maxcpus/nosmp clamp in the nested command line.
+    cpu = _dig_dict(_payload(record), "host", "cpu")
+    present, online = cpu.get("present"), cpu.get("online")
+    if isinstance(present, int) and isinstance(online, int) \
+            and present > online:
+        cmdline = _dig(_payload(record), "host", "cmdline") or ""
+        if not re.search(r"\bmaxcpus=\d+\b|\bnosmp\b", cmdline):
+            return True
+    return None
+
+
+def record_ane_dt(record):
+    """(node_present, compatible_blob) across flat and nested shapes."""
+    node = _first(record, [("ane_dt_node",), ("ane", "devicetree", "node")])
+    compat = _first(record, [("ane_dt_compatible",)])
+    if compat is None:
+        nested = _walk(_payload(record), "ane", "devicetree", "compatible")
+        if isinstance(nested, list):
+            compat = " ".join(str(t) for t in nested)
+    return (node if isinstance(node, bool) else None,
+            str(compat) if compat else None)
+
+
+def record_boot_chain(record):
+    value = _first(record, [("boot_chain",)])
+    if value:
+        return str(value)
+    boot = _dig_dict(_payload(record), "host", "boot")
+    chain = " ".join(f"{key}={boot[key]}" for key in sorted(boot)
+                     if isinstance(boot.get(key), str) and boot[key])
+    return chain or None
+
+
+def record_cmdline(record):
+    value = _first(record, [("cmdline",), ("host", "cmdline")])
+    return str(value) if value else None
+
+
 def record_benchmarks(record):
     """[(label, metric, size, value)] from known benchmark locations.
 
@@ -328,6 +395,12 @@ def load_dataset(args, repo_root):
 # filtering and commands
 # ---------------------------------------------------------------------------
 
+
+def _tri(value):
+    """--flag yes/no/absent to True/False/None."""
+    return None if value is None else value == "yes"
+
+
 def record_matches(record, filters):
     chip_blob = " ".join(
         x for x in (record_chip(record),
@@ -343,6 +416,26 @@ def record_matches(record, filters):
     for attr, haystack in checks:
         needle = getattr(filters, attr)
         if needle and needle.lower() not in haystack:
+            return False
+    present = getattr(filters, "cpu_present", None)
+    if present is not None and record_cpu_present(record) != present:
+        return False
+    hotplug = _tri(getattr(filters, "hotplug", None))
+    if hotplug is not None and record_hotplug(record) is not hotplug:
+        return False
+    ane = _tri(getattr(filters, "ane", None))
+    if ane is not None:
+        node, _compat = record_ane_dt(record)
+        if node is not ane:
+            return False
+    shortfall = _tri(getattr(filters, "shortfall", None))
+    if shortfall is not None \
+            and record_core_shortfall(record) is not shortfall:
+        return False
+    for attr, value in (("boot", record_boot_chain(record)),
+                        ("cmdline", record_cmdline(record))):
+        needle = getattr(filters, attr, None)
+        if needle and needle.lower() not in (value or "").lower():
             return False
     return True
 
@@ -361,6 +454,14 @@ def one_line(record):
         f"mesa={record_mesa(record) or 'unknown'}",
         f"mlx-omarchy={record_mlx_version(record) or 'unknown'}",
         f"bench={len(benches)}" if benches else "",
+        f"cores={record_cpu_online(record) or '?'}/"
+        f"{record_cpu_present(record) or '?'}"
+        if record_cpu_present(record) is not None else "",
+        "ane=dt" if record_ane_dt(record)[0] is True
+        else "ane=-" if record_ane_dt(record)[0] is False else "",
+        "core-shortfall" if record_core_shortfall(record) is True else "",
+        f"boot={record_boot_chain(record)}" if record_boot_chain(record)
+        else "",
     )))
 
 
@@ -467,6 +568,18 @@ def build_parser():
                         help="substring: Apple M1, M2, ...")
     parser.add_argument("--kernel", default=None,
                         help="substring of the kernel release")
+    parser.add_argument("--cpu-present", type=int, default=None,
+                        help="exact count of present cores")
+    parser.add_argument("--hotplug", choices=("yes", "no"), default=None,
+                        help="per-cpu hotplug control (cpuN/online) present")
+    parser.add_argument("--ane", choices=("yes", "no"), default=None,
+                        help="ANE node in the booted devicetree")
+    parser.add_argument("--shortfall", choices=("yes", "no"), default=None,
+                        help="running fewer cores than present, unexplained")
+    parser.add_argument("--boot", default=None,
+                        help="substring of the boot chain: m1n1, iBoot, fw")
+    parser.add_argument("--cmdline", default=None,
+                        help="substring of the kernel command line")
     parser.add_argument("--mesa", default=None,
                         help="substring of driver name, API or package")
     parser.add_argument("--mlx-version", default=None,

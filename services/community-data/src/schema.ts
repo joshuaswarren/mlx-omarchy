@@ -1,7 +1,7 @@
 // Minimal JSON Schema validator covering exactly the keywords the
 // payload schema uses: type (incl. unions), const, enum, required,
 // properties, additionalProperties (false | schema), items, maxItems,
-// maxLength, minimum, pattern. One source of truth lives in
+// maxLength, minimum, maximum, pattern. One source of truth lives in
 // schema/payload-v1.schema.json; this validator interprets it.
 
 export type SchemaNode = {
@@ -15,6 +15,7 @@ export type SchemaNode = {
   maxItems?: number;
   maxLength?: number;
   minimum?: number;
+  maximum?: number;
   pattern?: string;
 };
 
@@ -112,6 +113,9 @@ export function validateSchema(
   }
   if (typeof value === "number" && schema.minimum !== undefined && value < schema.minimum) {
     errors.push(`${path}: less than ${schema.minimum}`);
+  }
+  if (typeof value === "number" && schema.maximum !== undefined && value > schema.maximum) {
+    errors.push(`${path}: greater than ${schema.maximum}`);
   }
 }
 
