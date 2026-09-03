@@ -145,20 +145,34 @@ def _mesa_package_version(record):
 
 
 def record_mesa(record):
-    """Display string: driver name plus the freshest version we can find."""
+    """Display string: driver name plus the freshest version we can find.
+
+    The read API returns flat summary fields (mesa_driver, mesa_device),
+    while a local archive payload nests them under mesa.gpu. Check the
+    flat fields first: they are what /v1/results serves.
+    """
     gpu = _dig_dict(_payload(record), "mesa", "gpu")
-    driver = gpu.get("driverName") or _first(record, [("mesa", "driver")])
+    driver = _first(record, [("mesa_driver",), ("mesa", "driver")]) \
+        or gpu.get("driverName")
+    device = _first(record, [("mesa_device",)]) or gpu.get("deviceName")
     version = _mesa_package_version(record) or gpu.get("driverVersion")
     if driver and version:
         return f"{driver} {version}"
-    return str(driver or version) if (driver or version) else None
+    for value in (driver, version, device):
+        if value:
+            return str(value)
+    return None
 
 
 def record_mesa_blob(record):
-    """Lowercased searchable text for --mesa: driver, API and package."""
+    """Lowercased searchable text for --mesa: driver, device, API, package."""
     gpu = _dig_dict(_payload(record), "mesa", "gpu")
-    parts = [str(gpu.get(k)) for k in ("driverName", "apiVersion")
-             if gpu.get(k)]
+    parts = [str(gpu.get(k)) for k in ("driverName", "deviceName",
+                                       "apiVersion") if gpu.get(k)]
+    for path in (("mesa_driver",), ("mesa_device",)):
+        value = _first(record, [path])
+        if value:
+            parts.append(str(value))
     package = _mesa_package_version(record)
     if package:
         parts.append(package)
@@ -166,7 +180,7 @@ def record_mesa_blob(record):
 
 
 def record_mlx_version(record):
-    value = _first(_payload(record), [
+    value = _first(record, [("mlx_version",)]) or _first(_payload(record), [
         ("mlx", "distributions", "mlx-omarchy"), ("mlx", "version"),
         ("mlx_omarchy_version",), ("version",),
     ])
