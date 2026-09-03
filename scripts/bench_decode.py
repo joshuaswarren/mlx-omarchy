@@ -30,7 +30,7 @@ assertion behavior is verified.
 import argparse
 import sys
 import time
-
+from pathlib import Path
 
 def run_generation(gen_iter):
     """Consume a token iterator, returning (token_times_ns, n_tokens).
@@ -109,7 +109,11 @@ def main():
     ap.add_argument("--prompt", default=None)
     ap.add_argument("--tokens", type=int, default=64,
                     help="pinned number of generated tokens (not a cap)")
-    ap.add_argument("--temp", type=float, default=0.0)
+    ap.add_argument("--wheel", default=None,
+                    help="wheel file this run claims to be testing; the "
+                         "loaded libmlx.so and core extension are "
+                         "hash-compared against it and any mismatch "
+                         "refuses to emit a rate")
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--warmup-tokens", type=int, default=4,
                     help="untimed tokens generated first")
@@ -122,6 +126,28 @@ def main():
         self_test()
         return
 
+    if args.wheel and not Path(args.wheel).is_file():
+        print(f"ERROR: --wheel {args.wheel} does not exist", file=sys.stderr)
+        sys.exit(2)
+    # Provenance gate: no number leaves this process without the identity
+    # of the binary that produced it. Runs BEFORE any mlx import so a
+    # lying environment refuses instead of measuring.
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    from mlx_provenance import (ProvenanceRefusal, installed_provenance,
+                                provenance_line)
+    try:
+        prov = installed_provenance(
+            expect_wheel=Path(args.wheel) if args.wheel else None)
+        if prov["verified"] == "mismatch":
+            raise ProvenanceRefusal(prov["mismatch"])
+    except ProvenanceRefusal as exc:
+        print(f"REFUSING TO EMIT NUMBERS: {exc}", file=sys.stderr)
+        sys.exit(3)
+    print(provenance_line(prov))
+    if prov["verified"] == "no-mlx":
+        print("mlx is not importable in this interpreter; cannot benchmark.",
+              file=sys.stderr)
+        sys.exit(2)
     from mlx_lm.utils import load
     from mlx_lm.generate import stream_generate
 
