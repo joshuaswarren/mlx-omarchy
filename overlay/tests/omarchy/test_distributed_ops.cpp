@@ -42,9 +42,20 @@ TEST_CASE("ring links; nccl and jaccl do not; init is the singleton") {
   // ring.cpp, so is_available("ring") is true on any host. A multi-rank
   // group forms only with MLX_HOSTFILE and MLX_RANK; without them init()
   // yields the singleton EmptyGroup and every collective short-circuits.
-  CHECK(distributed::is_available());
-  CHECK(distributed::is_available("any"));
-  CHECK(distributed::is_available("ring"));
+  // Three agents in one night mistook these three bare failures for a
+  // device defect, so they name the cause: the only way for them to
+  // fail is a tree configured with MLX_BUILD_CPU=OFF, which leaves
+  // ring.cpp uncompiled. Every build script here pins the flag ON.
+  // std::string, not const char*: doctest stringifies a raw pointer as
+  // its address, so the hint would print as 0x... and help nobody.
+  const std::string ring_hint =
+      "ring is unavailable, so this tree was configured with"
+      " MLX_BUILD_CPU=OFF and ring.cpp was never compiled. This is a"
+      " build-configuration mismatch, not a device defect: pass"
+      " -DMLX_BUILD_CPU=ON, as every build script in scripts/ does.";
+  CHECK_MESSAGE(distributed::is_available(), ring_hint);
+  CHECK_MESSAGE(distributed::is_available("any"), ring_hint);
+  CHECK_MESSAGE(distributed::is_available("ring"), ring_hint);
   // nccl is gated on MLX_BUILD_CUDA (OFF here); jaccl on Darwin with
   // SDK >= 26.2. Both remain compile-time stubs (no_nccl.cpp:7-9,
   // no_jaccl.cpp:7-9).
