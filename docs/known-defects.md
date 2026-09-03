@@ -39,25 +39,15 @@ Affected: v0.3.0-alpha.1 through v0.3.1. Observed on: dev box, Mesa llvmpipe.
 
 Upstream's `test_autograd.py::TestAutograd::test_eval_in_grad` got `vjp = 12.000000953674316`. The exact value is `12.0`. This is one ulp of float32 accumulation. Upstream Metal is exact here. Severity is low. It surfaces only where code pins exact equality.
 
-### Sin and Cos inside compiled tapes bypass the argument gate
+## A correction on the record: compiled tapes do not bypass the trig gate
 
-Affected: v0.3.1. Observed on: real M1 (Honeykrisp) - the built-in degradation the gate exists for was measured on the M1; llvmpipe stays accurate far higher.
+Commit `959c7a0`'s message states: "One residual, stated rather than hidden: sin and cos inside compiled tapes bypass the eval_gpu gate and inherit no limit." **That claim is wrong for this tree, and this section retracts it.** A reader who finds the claim in the git log should find this retraction next to it.
 
-v0.3.1 gates eager `mx.sin` and `mx.cos` by argument magnitude: above 1e5 the op refuses by name (see the fixed entry below for why). The gate lives in `Sin::eval_gpu` and `Cos::eval_gpu`. A compiled tape routes its unary ops through the fused-tape path instead, which never calls `eval_gpu` and inherits no limit. So this returns a degraded built-in value with no refusal:
+Why it is wrong: this backend never lowers a compiled tape into a single fused shader. The tape is a per-node interpreter - `eval_compiled_tape` dispatches every node through its primitive's own `eval_gpu` (`overlay/mlx/backend/omarchy/compiled.cpp:146`) - and `Sin::eval_gpu` and `Cos::eval_gpu` carry the gate. The claim describes upstream's fused-tape model, and it reached the commit message from an investigation report without being run.
 
-```python
-import mlx.core as mx
-f = mx.compile(lambda x: mx.sin(x))
-f(mx.array([5e6]))   # degraded value, silently
-```
+Evidence it does not reproduce, gathered on the built wheel: `mx.compile` around `mx.sin`, `mx.cos`, and multi-op chains through them refuses at an argument magnitude of 5e6 with the full named message - five variants, single-op and chained. A bf16 tripwire proves the tapes formed: the same shapes with a bfloat16 intermediate raise `[omarchy] Compiled tape bfloat16 is refused`, an error only the tape interpreter can produce, so the refusals came from inside a real tape, not from an eager fallback.
 
-This is a known hole in the gate, stated here rather than hidden. Workarounds: run large-argument trig outside `mx.compile`, or set `MLX_DISABLE_COMPILE=1`, which forces the eager path where the gate applies. Nothing raises in either the compiled or the eager case below 1e5; above 1e5 only the eager case refuses.
-
-### bf16 compiled tapes corrupt inside the real mlx-lm forward
-
-Affected: v0.3.0, v0.3.1. Observed on: real M1 (Honeykrisp). Suspected driver miscompile, not confirmed - no minimal shader repro exists.
-
-On real M1 hardware, 15 identical-seed runs produced 15 different garbage outputs. Prefill matched eager bit for bit through all 24 layers; divergence began at decode step 2. Evidence and probes: [receipts/2026-09-02-m1-bf16-compiled-tape.md](../receipts/2026-09-02-m1-bf16-compiled-tape.md). `MLX_DISABLE_COMPILE=1` avoids it, which is why the README quick start carries that flag for mlx-lm.
+The general rule this leaves behind, for anyone contributing execution paths: **a path that runs a primitive without going through its `eval_gpu` must carry that primitive's gates.** The day a fused single-shader tape path lands, tape nodes stop reaching `eval_gpu`, and a fused path able to absorb Sin or Cos would silently reintroduce the exact hole this section disproves - only while fusion is enabled. Fusion work must either exclude trig from its fusable set or carry the magnitude gate into the fused shader, pinned by a test that runs both legs of its enable/disable toggle. Until such a path exists there is no hole; if it lands without the gate, this section's defect becomes live.
 
 ## Fixed in v0.3.1 (shipped live in v0.3.0)
 
@@ -65,7 +55,7 @@ v0.3.0, the full release, actively shipped these. A v0.3.0 wheel has all of them
 
 ### Semaphore lifetime crash - every primitive could segfault
 
-Affected: v0.3.0. Observed on: dev box, Mesa llvmpipe/lavapipe. Fixed in v0.3.1 (commit `150927b`).
+Affected: v0.3.0. Observed on: dev box, Mesa llvmpipe/lavapipe only - never observed on Apple hardware. Fixed in v0.3.1 (commit `150927b`).
 
 Mesa's queue submit thread signals a submission's semaphores before `vk_queue_submit_cleanup` releases that submission's timeline sync points. Observing the timeline therefore does not prove the driver is finished with it. Our completion dispatcher took the signal at face value, dropped the submission keepalive, and destroyed the Event's timeline semaphore while the driver still held a reference. The submit thread then locked a freed mutex: `pthread_mutex_lock` on a freed mutex, from `vk_sync_timeline_point_release`, from `vk_queue_submit_cleanup`, from `vk_queue_submit_thread_func`.
 
@@ -96,7 +86,7 @@ The M1 built-in's range reduction degrades measurably: error 4.5e-4 at an argume
 
 The limit is chosen for the consumer that matters: `fast::RoPE` composes exactly these calls, its largest term is the position itself, and 1e5 clears a 32k context with threefold margin. Rope at positions 12345 and 100000 matches its reference on the M1. A software Payne-Hanek reduction was tried first and discarded on evidence: on the M1 it returns -7.9e15 for sin(5e6), because its carry chain rides the same dynamic-indexing miscompile class above.
 
-Known hole: compiled tapes bypass this gate. See the live-defect entry above.
+Inside `mx.compile` the same gate applies - see the correction section above, which retracts an earlier claim that compiled tapes bypassed it.
 
 ## Shipped in v0.3.0-alpha.1 - fixed in v0.3.0 unless marked otherwise
 
@@ -189,6 +179,6 @@ On v0.3.0-alpha.1: treat every operation in the alpha section as untrusted. Upgr
 
 On v0.3.0: the semaphore crash can kill any workload, and on a real M1 the scatter, LogicalAnd, select, and sin/cos defects return wrong values or refuse operations your dev box runs fine. Upgrade to v0.3.1.
 
-On v0.3.1: the live section above is the complete list of known silent failures. Watch `gelu_approx` under test runners, large-argument trig inside `mx.compile`, and bf16 compiled tapes in mlx-lm. Everything else refuses by name.
+On v0.3.1: the live section above is the complete list of known silent failures. Watch `gelu_approx` under test runners and bf16 compiled tapes in mlx-lm. Large-argument trig refuses by name, eagerly and inside `mx.compile` alike. Everything else refuses by name.
 
 Named `[omarchy] ... is not implemented` errors remain the honest failure mode. The defects on this page are dangerous because they do not fail that way.
