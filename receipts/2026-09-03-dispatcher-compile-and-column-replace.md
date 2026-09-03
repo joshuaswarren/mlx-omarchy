@@ -1,104 +1,175 @@
-# 2026-09-03 — dispatcher-poll and ordering bakeoff, compiled-path corruption proof, README column replacement (jwm1, 8 cores)
+# 2026-09-03 — poll-interval and ordering bakeoff, compiled-path gates, README column re-measure (jwm1, 8 cores)
 
-Same machine and session as
-`receipts/2026-09-03-decode-ab-and-affinity-jwm1.md`; read that receipt for
-the wheel-generation correction and the EOS-truncation caveat that motivated
-this work. All runs on jwm1-linux, M1 T8103, real Honeykrisp device,
-`MLX_OMARCHY_ALLOW_NON_APPLE` unset.
+Second follow-up to `receipts/2026-09-03-decode-ab-and-affinity-jwm1.md`,
+after that receipt's provisioning bug was found and fixed. Read the
+provisioning section first: it changes the meaning of every number taken
+before it.
 
-## Legs 1 and 2: one-constant bakeoff, eager mode
+## Provisioning bug and redo discipline (important)
 
-Protocol per TinyWriteFix: both sides built on the box with
-`scripts/build-wheel.sh`, each wheel into its own fresh venv, prompt
-"What is the capital of France?" for every leg, `MLX_DISABLE_COMPILE=1`,
-`--max-tokens 32 --temp 0 --seed 0`, 5 runs, median.
+The shared support-requirements file used to provision every fresh venv
+contained a direct-URL pin,
+`mlx-omarchy @ file:///…/mlx_omarchy-0.32.2.dev20260903-…whl#sha256=6e54ab2b…`,
+emitted by `pip freeze` for a wheel-installed distribution. The exclusion
+filter only removed `==`-form lines, so this line survived, and pip
+silently reinstalled the stale 06:06 wheel (5,300,664-byte `libmlx.so`,
+`bb90d191…`) AFTER the wheel under test in every fresh venv. Three venvs
+used earlier in this session were poisoned this way; measurements taken in
+them measured the stale binary while claiming to test other commits.
 
-| leg | wheel sha256 | bf16 decode | 4-bit decode |
-|---|---|---|---|
-| base `3fdcc20` | `5d2e185e1d2253626768028bcd17a6ca2ac57305bcd0243b5d66bc9a0c8545f1` | 2.045 | 2.225 |
-| fix `4ea2f47` (1 ms in-flight poll) | `061dfd36ddae74285ff920b8f14d58013e75945cd433d12a85793a940d566dd5` | 2.065 | 2.222 |
-| ordering `ff4b05a` (device-side timeline wait) | `f8e35d7b12f0c33fa56b861dc7b9e915afbab9ec48a5cae6b8ccc9961f2b366c` | 2.134 | 2.217 |
+Redo discipline for every number below: fresh venv, wheel installed first,
+then `mlx-lm==0.31.3 --no-deps`, then a requirements file with both
+`mlx-omarchy` lines removed, then a provenance gate — the sha256 of the
+installed `mlx/lib/libmlx.so` must equal the sha256 of that member inside
+the wheel under test. All failures loud.
 
-- Leg 1 verdict: the dispatcher wakeup is **not** on the decode critical
-  path. bf16 +1.0%, 4-bit -0.1% — noise. The hypothesis died cleanly.
-- Leg 2 verdict: the ordering fix is **free** in eager mode. bf16 +3.3%
-  (inside run spread), 4-bit -0.2%.
-- Caveat carried from the decode-metric fix: these are EOS-truncated
-  short-burst rates (8-10 generated tokens) and are comparable only within
-  the table, which holds prompt and length fixed.
+## Bakeoff redo (wheels unchanged; provisioning fixed)
 
-## Leg 3: compiled path at `ff4b05a` — silently corrupt, not an abort
+Same protocol as before: prompt "What is the capital of France?" for every
+leg, `MLX_DISABLE_COMPILE=1`, `--max-tokens 32 --temp 0 --seed 0`, 5 runs,
+median. These are EOS-truncated short-burst rates and are comparable only
+within the table.
 
-`env -u MLX_DISABLE_COMPILE`, 4-bit snapshot
-`a5339a4131f135d0fdc6a5c8b5bbed2753bbe0f3`, same prompt, 20 runs requested.
-Run 1 failed and the leg stopped per protocol. Verbatim output
-(`jwm1:~/benchq/logs/ABORT.run1.log`):
+| leg | loaded libmlx.so (prefix) | bf16 prefill | bf16 decode | 4-bit prefill | 4-bit decode |
+|---|---|---|---|---|---|
+| base `3fdcc20` | (gate green, wheel `5d2e185e…`) | 46.298 | 5.417 | 28.788 | 5.605 |
+| fix `4ea2f47` (1 ms in-flight poll) | (gate green, wheel `061dfd36…`) | 46.114 | 5.280 | 29.063 | 5.622 |
+| ordering `ff4b05a` (single commit: each submission waits for the stream's previous one) | (gate green, wheel `f8e35d7b…`) | 34.468 | 3.831 | 22.503 | 3.417 |
 
-```
-==========
-<|endoftext|><|endoftext|><|endoftext|>avs<|endoftext|>StrictEqual identical胬逐111! .  :      !  的帮助  auditing
-==========
-Prompt: 36 tokens, 16.307 tokens-per-sec
-Generation: 32 tokens, 1.977 tokens-per-sec
-Peak memory: 0.292 GB
-```
+- Leg 1 verdict (unchanged in direction, now measured honestly): the 1 ms
+  in-flight poll does not move decode (bf16 -2.5%, 4-bit +0.3% — noise).
+  The dispatcher-wakeup hypothesis stays dead.
+- Leg 2 verdict (REVERSED by the redo): the ordering fix is **not free**
+  on hardware. It costs **-25.3% bf16 prefill, -22.6% 4-bit prefill,
+  -27.5% bf16 decode, -39.2% 4-bit decode** versus its parent `4ea2f47`.
+  The contaminated leg-2 run had measured the stale binary on both sides,
+  which is exactly the failure mode the provenance gate now prevents.
+  This prices the correctness fix: it is a real regression that ships to
+  every eager user, on the table alongside its correctness benefit.
 
-rc=0, all 32 tokens generated at normal speed. Every eager run at the same
-seed produced clean `The capital of France is Paris.`. Two observations are
-recorded WITHOUT asserting a shared cause: (a) the compiled path previously
-aborted hard at a trigonometric gate on a value near 9.1e8; (b) with
-`ff4b05a` it no longer aborts and instead returns wrong values. Leg 4
-(compiled speed) is cancelled: the speed of a wrong answer is meaningless.
+## Compiled path: two gates, two generations
 
-## C++ batteries on real hardware (ff4b05a tree)
+- Clean `ff4b05a` venv, compile genuinely ON (`env -u
+  MLX_DISABLE_COMPILE`), 4-bit snapshot
+  `a5339a4131f135d0fdc6a5c8b5bbed2753bbe0f3`, France prompt: **aborts
+  loudly at run 1** with
+  `RuntimeError: [omarchy] Cos argument magnitude 808400896.000000
+  exceeds the built-in accuracy limit 100000.000000` raised from
+  `mx.async_eval` inside `mlx_lm`'s generate step. The earlier
+  silent-corruption run is now attributable: it happened on the stale
+  generation (which lacked this gate's behaviour on this input), not on
+  `ff4b05a`.
+- Current main (`d1a6bfd`, provenance-gated wheel `064a58ee…`,
+  libmlx.so `a84080c4…`): the differential harness
+  (`scripts/differential_compile.py --mode realpath`) refuses before
+  executing with `[omarchy] broadcast Sigmoid is not implemented …
+  shape=[1,36,…]` at a 36-token prompt AND `shape=[1,30,4864]` at a
+  2-token prompt; llvmpipe shows the same class of refusal
+  (trace-history-dependent, shapeless-fragment retrace).
+- Isolated fragment pin on hardware (`qwen2.swiglu`, f16, shape
+  (1,7,4864)): compiled fragment PASSES, eager PASSES — the gap needs the
+  model-graph tape context, matching the bisection on llvmpipe.
+- Both observations stand WITHOUT a shared-cause claim: stale generation
+  silently corrupted; `ff4b05a` aborts at the Cos accuracy gate; current
+  main refuses at the broadcast-Sigmoid gate. The compiled path is fenced
+  on current main, not proven fixed.
+- C++ batteries on hardware at the `ff4b05a` tree (built from source,
+  `-DMLX_BUILD_TESTS=ON -DMLX_BUILD_OMARCHY=ON`; venv contamination does
+  not apply to these binaries): `omarchy_compiled_tape_tests` 8/8 (343
+  assertions), `omarchy_eq_math_tests` 7/7 (116), `omarchy_runtime_tests`
+  22/23 — the one failure is the stream-overlap timing assertion
+  (`ratio 1.20867 < 1.10`, serialized 0.380567 s vs concurrent 0.314865 s,
+  400 iters), fixed on main by `81613a1`, which replaces the upper timing
+  bound with byte-for-byte output verification of both copies and keeps
+  the anti-lock lower bound.
 
-Built with `-DMLX_BUILD_TESTS=ON -DMLX_BUILD_OMARCHY=ON` and run on the
-Honeykrisp device. Logs: `jwm1:~/benchq/logs/battery-omarchy_*.log`.
+## README 8-core column: clean re-measure
 
-| battery | result |
+Wheel from main `e7a6542` (6797038 bytes, `ba0afdb788e1e023c449f286b4d6f7831c1f4ca1d3a238008a03725875f6cf55`),
+provenance gate green, `scripts/bench_decode.py`, 36-token prompt,
+`--tokens 64`, EOS suppressed, load excluded:
+
+| row | value |
 |---|---|
-| `omarchy_compiled_tape_tests` | rc=0, 8/8 cases, 343/343 assertions |
-| `omarchy_eq_math_tests` | rc=0, 7/7 cases, 116/116 assertions |
-| `omarchy_runtime_tests` | rc=1, 22/23 cases, 6179/6181 assertions |
+| bf16 prefill | 28.6 tok/s (1.259 s for the 36-token prompt) |
+| bf16 decode | 3.29 tok/s over 63 tokens (mean 304.0 ms/token) |
+| 4-bit prefill | 21.2 tok/s (1.695 s) |
+| 4-bit decode | 2.96 tok/s over 63 tokens (mean 337.8 ms/token) |
 
-The one runtime failure, verbatim: TEST CASE "independent streams measure
-against the serialized sum" (`test_runtime.cpp:896`, CHECK at `:997`):
-`[receipt] iters=400 serialized_median=0.380567s concurrent_median=0.314865s
-ratio=1.20867` / `CHECK( ratio < 1.10 ) is NOT correct! values:
-CHECK( 1.20867 < 1.1 )`. That is a stream-overlap timing assertion on a
-single-queue device, not a values test. The compiled-tape battery passing
-8/8 on the hardware that corrupts means the model-level defect needs a
-graph larger than the unit tests build; the differential harness against
-the model is the reproducer path.
+These supersede both the morning column (stale wheel, short bursts) and
+the intermediate re-measure taken in the contaminated venv (which was
+this stale wheel's speed, not current main's). Note current main contains
+the `ff4b05a` ordering wait, so this column already carries its cost.
 
-## README 8-core column replacement (current main, pinned-length decode)
+## Submissions per decode token (profiling wheel, clean venv)
 
-Wheel built from main `e7a6542e2162c6e0f9b5a58cf40630ab1e9bbfb5`:
-`mlx_omarchy-0.32.2.dev202609031509+e7a6542-cp314-cp314-linux_aarch64.whl`,
-6797038 bytes, sha256
-`ba0afdb788e1e023c449f286b4d6f7831c1f4ca1d3a238008a03725875f6cf55`.
-`scripts/bench_decode.py`, prompt "What is the capital of France? Answer in
-one word." (36 prompt tokens), `--tokens 64` with EOS suppressed and the
-token count asserted, load excluded from decode, two passes on a settled
-box, medians:
+Built the `--diagnostics` wheel from main (6803461 bytes,
+`e073c10b7044f0cf13487e9c6862baeb376bd2783f146568f5ba7bd72e246653`),
+provenance-gated, prompt "Count from 1 to 100." (the profiler path has no
+EOS suppression, so a long greedy generation is required), 96-token cap,
+`MLX_DISABLE_COMPILE=1`:
 
-| row | value | condition |
+| metric | bf16 (96 tokens) | 4-bit (54 tokens) |
 |---|---|---|
-| bf16 prefill | 18.5 tok/s (36-token prompt; 1.946/1.943 s) | current-main wheel, compile off, 8 cores |
-| bf16 decode | 1.85 tok/s over 63 tokens (steady-state, EOS suppressed) | same |
-| 4-bit prefill | 15.5 tok/s (36-token prompt; 2.333/2.319 s) | same |
-| 4-bit decode | 1.97 tok/s over 63 tokens | same |
+| dispatches per decode token | **95.0** | **94.2** |
+| submissions per decode token | **1740.7** | **1800.0** |
+| GPU busy per decode token | 1.55 ms | ~1.4 ms |
+| join wait per decode token | 240 us | 232 us |
 
-The old 8-core decode rows (2.04 / 3.88 "tok/s") were EOS-truncated 2-10
-token bursts and are not comparable; DecodeMetricFix's receipt
-(`receipts/2026-09-03-decode-metric-fix.md`) annotates them. The old
-prefill rows were taken on the stale-generation wheel (5.3 MB `libmlx.so`)
-and are superseded by this re-measure.
+Whole-stream context (bf16): 184086 dispatches, 172456 submissions, GPU
+busy 8.57% of wall; inter-submission host round-trip gaps total 37.4 s of
+the 42.0 s span (p50 146.9 us); host `submit()` p50 66.5 us over 172456
+calls.
 
-## Not done here
+**Verdict: the per-submission-overhead theory is SUPPORTED.** A decode
+token is ~95 dispatches wrapped in ~1800 submissions, does ~1.5 ms of GPU
+work, and takes ~500 ms of wall: ~99.7% of decode wall is host-side, and
+inter-submission host round trips alone account for ~89% of the span.
+Committing less often in eager mode is the validated lever and ships
+without the compiled path.
 
-- Compiled-path performance numbers: withheld by order until the corruption
-  is fixed and the output is right.
-- Profiling-wheel submissions-per-token counts (DecodeMetricFix protocol):
-  parked by the parent; the v0.3.3-diag.1 asset and protocol are documented
-  in `scripts/profile_generate.py` when it is re-queued.
+The published v0.3.3-diag.1 asset was not used for this measurement: at
+the time the shared freeze was still contaminated, so its payload looked
+broken in my venv. Direct wheel inspection shows the asset itself is
+correctly built (3 profiler literals in libmlx.so).
+
+## Compiled-path gates on hardware (7cf5e9f wheel, `1176dad7…`, gate green)
+
+- Sync-val (Khronos layer, settings-file mechanism): **no hazard named.**
+  The compiled run aborts at the Cos accuracy gate before any GPU-side
+  hazard appears. Baseline and sync-val abort identically, with
+  nondeterministic Cos magnitudes across runs (808400896, 899036608,
+  953366592, 959657664), and generated text degrades ("Parisse",
+  "udes!") before the abort.
+- GPU-assisted validation: **the same compiled run produced the correct
+  "Paris"**, clean exit. GPU-AV's serialization removes the wrong-value
+  behaviour - behavioural confirmation that the defect is an
+  asynchronous execution race, not a resource hazard.
+- Fail-closed gate (`7cf5e9f`): eager unaffected (clean "Paris");
+  override permits compiled execution (tiny broadcast-sigmoid tape runs
+  with correct values). **The default refusal does not fire on the M1:**
+  `compiled_tapes_refused()` returns false on the real Honeykrisp device,
+  so `CHECK_EQ(refused_default, !dev.non_apple_dev())` fails
+  (test_compiled_tape.cpp:628); without the override the battery is 2/10
+  (compiled tapes still execute and return wrong values) and with the
+  override it is 9/10 for the same policy check. Reported to
+  CompiledFailClosed - the gate is inert on the exact device it targets.
+
+## Differential harness on hardware (d1a6bfd wheel, `064a58ee…`, gate green)
+
+`probe_tape_eager.py` rc=0: all variants bitwise-clean over 32 iterations
+on the real device. `differential_compile.py --mode realpath` refuses
+before executing at both prompt lengths with `[omarchy] broadcast Sigmoid
+is not implemented for the Omarchy Vulkan backend` (`shape=[1,36,…]` and
+`shape=[1,30,4864]`). The isolated `qwen2.swiglu` fragment call passes
+compiled and eager. On current main the compiled path is fenced by the
+loud refusal; the silent corruption is only observed on the stale
+generation (see the bakeoff section above).
+
+## Provisioning rule going forward
+
+Never provision a measurement venv from a freeze that contains `@`
+direct-URL pins for the package under test; exclude by name prefix, and
+gate every run on installed-`libmlx.so` == wheel-member hashes. A
+harness-level gate in `scripts/bench_decode.py` is expected from
+ReleaseAssetGate; adopt it when it lands.
