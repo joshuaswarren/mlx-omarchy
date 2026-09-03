@@ -63,6 +63,14 @@ real Apple GPU it raises:
 [omarchy] Compiled tapes are refused on real Apple GPUs: the tape interpreter returns wrong values on Honeykrisp and the defect is unfixed (docs/known-defects.md; receipts/2026-09-03-dispatcher-compile-and-column-replace.md). Re-run with MLX_DISABLE_COMPILE=1. Set MLX_OMARCHY_ALLOW_UNSAFE_COMPILE=1 only to investigate the defect deliberately; it permits wrong values.
 ```
 
+The C++-only edge - a `std::function` armed before discovery keeps its
+trace-time fusion and lands here - was reviewed and left as a refusal on
+purpose: Python is the product surface and is fully covered by the
+auto-eager hook, the edge fails loudly rather than silently, and a
+per-node eager fallback for it would be speculative machinery for a case
+no user has hit. It is a decision, not an oversight; do not reopen it
+without a user who has hit it.
+
 Scope is device-conditional, not global: the corruption is observed only on
 Apple GPUs, development boxes run their compiled-tape batteries and the
 differential harness on llvmpipe, and a global refusal would train every
