@@ -231,6 +231,8 @@ CapabilityReport collect_capabilities(
     if (families[f].queueFlags & VK_QUEUE_COMPUTE_BIT) {
       caps.queue_family_index = f;
       caps.queue_count = families[f].queueCount;
+      caps.queue_timestamp_valid_bits = families[f].timestampValidBits;
+      caps.queue_timestamp_valid_bits = families[f].timestampValidBits;
       break;
     }
   }
@@ -658,6 +660,10 @@ Device::Device(uint32_t physical_device_index) {
   VKX_LOAD_DEVICE_FN(CmdPushConstants, vkCmdPushConstants)
   VKX_LOAD_DEVICE_FN(CmdDispatch, vkCmdDispatch)
   VKX_LOAD_DEVICE_FN(CmdPipelineBarrier, vkCmdPipelineBarrier)
+  VKX_LOAD_DEVICE_FN(CreateQueryPool, vkCreateQueryPool)
+  VKX_LOAD_DEVICE_FN(GetQueryPoolResults, vkGetQueryPoolResults)
+  VKX_LOAD_DEVICE_FN(CmdResetQueryPool, vkCmdResetQueryPool)
+  VKX_LOAD_DEVICE_FN(CmdWriteTimestamp, vkCmdWriteTimestamp)
   VKX_LOAD_DEVICE_FN(QueueSubmit, vkQueueSubmit)
   VKX_LOAD_DEVICE_FN(QueueWaitIdle, vkQueueWaitIdle)
   VKX_LOAD_DEVICE_FN(CreateFence, vkCreateFence)

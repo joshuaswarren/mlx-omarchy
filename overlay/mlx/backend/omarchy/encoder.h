@@ -5,6 +5,8 @@
 
 #include <vulkan/vulkan.h>
 
+#include <array>
+#include <cstdint>
 #include <functional>
 #include <memory>
 #include <span>
@@ -18,16 +20,29 @@
 
 namespace mlx::core::omarchy {
 
-// Per-stream command recorder over the device's single VkQueue. Commits
-// are asynchronous: a commit ends the command buffer, submits it under the
-// queue's external-synchronization lock, and returns without waiting. Every
-// submission signals a strictly increasing value on the device completion
-// timeline; the device's CompletionDispatcher runs this submission's
-// handlers and releases its temporaries and queued-semaphore ownership when
-// the GPU work finishes. Cross-stream order comes from timeline semaphore
-// waits and signals carried in the submissions; handler-only submissions
-// (no recorded commands) still signal the timeline, so ordering with prior
-// queue work is preserved.
+// Per-stream command recorder over the device's single VkQueue. Recording
+// is BATCHED: primitive evals append to an open command buffer and the
+// buffer is submitted when a node/work budget is reached, a flush is
+// demanded (semaphore operation, host read), or the in-flight ring is
+// exhausted. Batching is order-safe because every dispatch already records
+// a full pre+post pipeline barrier, and cross-submission waits used
+// ALL_COMMANDS stage masks, so merging submissions weakens no dependency;
+// it removes the per-eval host join between them. Temporaries and
+// completion handlers released per submission still release exactly when
+// that submission's GPU work finishes, via the device completion timeline.
+//
+// Command buffers come from a small ring so the device can execute one
+// batch while the host records the next; the host blocks only when every
+// ring slot is in flight (then it joins just the oldest) or when a host
+// read demands it (synchronize()).
+//
+// Every submission signals a strictly increasing value on the device
+// completion timeline; the device's CompletionDispatcher runs this
+// submission's handlers and releases its temporaries and queued-semaphore
+// ownership when the GPU work finishes. Cross-stream order comes from
+// timeline semaphore waits and signals carried in the submissions;
+// handler-only submissions (no recorded commands) still signal the
+// timeline, so ordering with prior queue work is preserved.
 class MLX_API CommandEncoder {
  public:
   explicit CommandEncoder(Device& device);
@@ -98,18 +113,34 @@ class MLX_API CommandEncoder {
   }
 
   // Submit recorded work, semaphore operations, and completion handlers.
-  // Asynchronous: returns when the work is queued, not when it completes.
-  // Safe to call repeatedly; a no-op when nothing is pending.
+  // Eager: every finalize flushes, one op-granular submission. Deeper
+  // batching was measured (2026-09-03) and made generation 4.5x SLOWER:
+  // the evaluator throttles at MAX_ACTIVE_TASKS with finalize plus
+  // wait_for_one, so any flush granularity coarser than one op converts
+  // its pipelined wait into a stop-and-wait proportional to batch
+  // execution time — worse with deeper batches and longer models, never
+  // better. A future attempt must flush when the scheduler would block,
+  // not on a node budget (upstream-shape work). Safe to call repeatedly;
+  // a no-op when nothing is pending.
   void commit();
 
   // Submit pending work and block (bounded) until it completes.
   void synchronize();
 
   // True when every submission queued through this encoder has completed
-  // and its handlers have run. Host reads of input bytes are then sound.
+  // and its handlers have run, and no batch is open with un-submitted
+  // work. Host reads of input bytes are then sound.
   bool synchronized() const {
-    return last_completion_ == 0 ||
-        device_.completions().drained_value() >= last_completion_;
+    return node_count_ == 0 &&
+        (last_completion_ == 0 ||
+         device_.completions().drained_value() >= last_completion_);
+  }
+
+  // Completion timeline value of the newest submission this encoder has
+  // on the queue (0 when none). Event signal paths capture it so waiters
+  // can join the handler boundary of the generation that signaled them.
+  uint64_t last_submitted_completion() const {
+    return last_completion_;
   }
 
   Device& device() {
@@ -125,20 +156,43 @@ class MLX_API CommandEncoder {
     std::shared_ptr<void> keepalive;
   };
 
+  // One command buffer of the in-flight ring. in_flight is the completion
+  // timeline value of the submission currently executing it (0 = free).
+  static constexpr int kInFlightCommandBuffers = 4;
+  struct Slot {
+    VkCommandBuffer cmd{VK_NULL_HANDLE};
+    uint64_t in_flight{0};
+  };
+
+  // Descriptor-set pool cache: sets are allocated from a large pool that
+  // is created once per kDescriptorSetsPerPool dispatches instead of a
+  // pool create/destroy per dispatch. A retired pool is kept alive until
+  // the submission recording at retirement time completes, which is after
+  // every submission whose batches allocated from it (timeline order).
+  static constexpr uint32_t kDescriptorSetsPerPool = 2048;
+  VkDescriptorSet acquire_descriptor_set(ComputeRuntime& compute);
+
+  // Pick a completed ring slot (joining the oldest only when all are in
+  // flight) and begin recording into it.
+  void ensure_recording();
+
   // Join this encoder's newest in-flight submission (if any) through the
   // CompletionDispatcher, clear last_completion_, and invalidate
-  // noncoherent host mappings. Guarantees cmd_ has left the pending
-  // state before the next BeginCommandBuffer.
+  // noncoherent host mappings. Guarantees the newest command buffer has
+  // left the pending state.
   void join_last_completion();
-  void ensure_recording();
   void submit();
 
   Device& device_;
   VkCommandPool pool_{VK_NULL_HANDLE};
+  std::array<Slot, kInFlightCommandBuffers> slots_{};
+  int current_slot_{0};
   VkCommandBuffer cmd_{VK_NULL_HANDLE};
   bool recording_{false};
   int node_count_{0};
   uint64_t last_completion_{0};
+  VkDescriptorPool desc_pool_{VK_NULL_HANDLE};
+  uint32_t desc_pool_remaining_{0};
   std::vector<PendingSemaphore> wait_semaphores_;
   std::vector<PendingSemaphore> signal_semaphores_;
   std::vector<std::shared_ptr<void>> temporaries_;

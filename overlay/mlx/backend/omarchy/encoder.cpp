@@ -6,7 +6,7 @@
 
 #include "mlx/backend/omarchy/allocator.h"
 #include "mlx/backend/omarchy/trace.h"
-
+#include "mlx/backend/omarchy/gpu_profiler.h"
 #include "mlx/backend/omarchy/vulkan.h"
 #include "mlx/scheduler.h"
 #include "mlx/utils.h"
@@ -21,12 +21,17 @@ CommandEncoder::CommandEncoder(Device& device) : device_(device) {
   pci.queueFamilyIndex = device_.queue_family();
   VKX_CHECK(dt.CreateCommandPool(device_.handle(), &pci, nullptr, &pool_));
 
+  std::array<VkCommandBuffer, kInFlightCommandBuffers> buffers{};
   VkCommandBufferAllocateInfo ai{
       VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO};
   ai.commandPool = pool_;
   ai.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-  ai.commandBufferCount = 1;
-  VKX_CHECK(dt.AllocateCommandBuffers(device_.handle(), &ai, &cmd_));
+  ai.commandBufferCount = kInFlightCommandBuffers;
+  VKX_CHECK(dt.AllocateCommandBuffers(device_.handle(), &ai, buffers.data()));
+  for (int i = 0; i < kInFlightCommandBuffers; ++i) {
+    slots_[i].cmd = buffers[i];
+  }
+  prof::get().attach(this, device_);
 }
 
 CommandEncoder::~CommandEncoder() {
@@ -38,37 +43,72 @@ CommandEncoder::~CommandEncoder() {
   } catch (const std::exception&) {
   }
   auto& dt = vk::device_table();
+  if (desc_pool_ != VK_NULL_HANDLE) {
+    dt.DestroyDescriptorPool(device_.handle(), desc_pool_, nullptr);
+    desc_pool_ = VK_NULL_HANDLE;
+  }
   if (pool_ != VK_NULL_HANDLE) {
     dt.DestroyCommandPool(device_.handle(), pool_, nullptr);
   }
 }
 
 // Join this encoder's newest in-flight submission, if any, and refresh
-// host mappings. After this, the command buffer is guaranteed to have
-// left the pending state, so it can legally be begun again, and host
-// reads see the submission's final bytes.
+// host mappings. After this, every command buffer this encoder submitted
+// has left the pending state (the completion timeline is strictly
+// ordered), so they can legally be begun again, and host reads see the
+// submissions' final bytes.
 void CommandEncoder::join_last_completion() {
   if (last_completion_ == 0) {
     return;
   }
-  device_.completions().wait(last_completion_);
+  uint64_t value = last_completion_;
+  uint64_t join_t0 = prof::get().profiling() ? prof::host_ns() : 0;
+  device_.completions().wait(value);
+  uint64_t wait_t1 = prof::get().profiling() ? prof::host_ns() : 0;
   last_completion_ = 0;
   omarchy::allocator().invalidate_noncoherent(device_.handle());
+  uint64_t inval_t2 = prof::get().profiling() ? prof::host_ns() : 0;
+  prof::get().on_join(this, value, join_t0, wait_t1, inval_t2);
 }
 
 void CommandEncoder::ensure_recording() {
   if (recording_) {
     return;
   }
-  // A prior commit on this stream can still be executing: beginning a
-  // pending command buffer is invalid usage
-  // (VUID-vkBeginCommandBuffer-commandBuffer-00048). Join the previous
-  // submission before reusing cmd_. Commits stay asynchronous; only the
-  // next record on the same stream pays the wait.
-  join_last_completion();
+  uint64_t begin_t0 = prof::get().profiling() ? prof::host_ns() : 0;
+  // Acquire a ring slot whose submission has completed. Newer submissions
+  // keep executing on the device while this batch records; only when all
+  // slots are in flight does the host join the oldest. The profiler's
+  // begin cost includes this wait: it is the residual host-side stall the
+  // 2026-09-02 profile attributed to per-record joins.
+  auto& completions = device_.completions();
+  int chosen = -1;
+  uint64_t oldest_value = UINT64_MAX;
+  int oldest = -1;
+  for (int i = 0; i < kInFlightCommandBuffers; ++i) {
+    uint64_t value = slots_[i].in_flight;
+    if (value == 0 || completions.drained_value() >= value) {
+      slots_[i].in_flight = 0;
+      chosen = i;
+      break;
+    }
+    if (value < oldest_value) {
+      oldest_value = value;
+      oldest = i;
+    }
+  }
+  if (chosen < 0) {
+    completions.wait(oldest_value);
+    slots_[oldest].in_flight = 0;
+    chosen = oldest;
+  }
+  current_slot_ = chosen;
+  cmd_ = slots_[chosen].cmd;
   VkCommandBufferBeginInfo bi{VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
   bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
   VKX_CHECK(vk::device_table().BeginCommandBuffer(cmd_, &bi));
+  prof::get().on_begin(
+      this, chosen, cmd_, begin_t0 != 0 ? prof::host_ns() - begin_t0 : 0);
   recording_ = true;
 }
 
@@ -99,6 +139,51 @@ void CommandEncoder::fill_buffer(
   trace::counters().vk_buffer_fills++;
 }
 
+// Allocate one descriptor set from the cached pool. A pool serves up to
+// kDescriptorSetsPerPool dispatches; on exhaustion it is retired into the
+// currently-recording submission's temporaries, so it is destroyed only
+// after that submission completes — which is strictly after every earlier
+// submission whose batches allocated sets from it (completion timeline
+// values increase along the queue).
+VkDescriptorSet CommandEncoder::acquire_descriptor_set(
+    ComputeRuntime& compute) {
+  auto& dt = vk::device_table();
+  if (desc_pool_ == VK_NULL_HANDLE || desc_pool_remaining_ == 0) {
+    if (desc_pool_ != VK_NULL_HANDLE) {
+      temporaries_.push_back(std::shared_ptr<VkDescriptorPool>(
+          new VkDescriptorPool(desc_pool_),
+          [device = device_.handle()](VkDescriptorPool* owned) {
+            vk::device_table().DestroyDescriptorPool(device, *owned, nullptr);
+            delete owned;
+          }));
+      desc_pool_ = VK_NULL_HANDLE;
+    }
+    VkDescriptorPoolSize pool_size{};
+    pool_size.type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    pool_size.descriptorCount =
+        kDescriptorSetsPerPool * compute.binding_limit();
+    VkDescriptorPoolCreateInfo pool_info{
+        VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO};
+    pool_info.maxSets = kDescriptorSetsPerPool;
+    pool_info.poolSizeCount = 1;
+    pool_info.pPoolSizes = &pool_size;
+    VKX_CHECK(dt.CreateDescriptorPool(
+        device_.handle(), &pool_info, nullptr, &desc_pool_));
+    desc_pool_remaining_ = kDescriptorSetsPerPool;
+  }
+  VkDescriptorSetLayout descriptor_layout = compute.descriptor_layout();
+  VkDescriptorSetAllocateInfo allocate_info{
+      VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO};
+  allocate_info.descriptorPool = desc_pool_;
+  allocate_info.descriptorSetCount = 1;
+  allocate_info.pSetLayouts = &descriptor_layout;
+  VkDescriptorSet descriptor_set{VK_NULL_HANDLE};
+  VKX_CHECK(dt.AllocateDescriptorSets(
+      device_.handle(), &allocate_info, &descriptor_set));
+  desc_pool_remaining_--;
+  return descriptor_set;
+}
+
 void CommandEncoder::dispatch_compute(
     ComputeKernel kernel,
     std::span<const ComputeBinding> bindings,
@@ -125,33 +210,7 @@ void CommandEncoder::dispatch_compute(
   auto& dt = vk::device_table();
   VkPipeline pipeline = compute.pipeline(kernel);
 
-  VkDescriptorPoolSize pool_size{};
-  pool_size.type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-  pool_size.descriptorCount = binding_limit;
-  VkDescriptorPoolCreateInfo pool_info{
-      VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO};
-  pool_info.maxSets = 1;
-  pool_info.poolSizeCount = 1;
-  pool_info.pPoolSizes = &pool_size;
-  VkDescriptorPool pool{VK_NULL_HANDLE};
-  VKX_CHECK(dt.CreateDescriptorPool(
-      device_.handle(), &pool_info, nullptr, &pool));
-  auto pool_owner = std::shared_ptr<VkDescriptorPool>(
-      new VkDescriptorPool(pool),
-      [device = device_.handle()](VkDescriptorPool* owned) {
-        vk::device_table().DestroyDescriptorPool(device, *owned, nullptr);
-        delete owned;
-      });
-
-  VkDescriptorSetLayout descriptor_layout = compute.descriptor_layout();
-  VkDescriptorSetAllocateInfo allocate_info{
-      VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO};
-  allocate_info.descriptorPool = pool;
-  allocate_info.descriptorSetCount = 1;
-  allocate_info.pSetLayouts = &descriptor_layout;
-  VkDescriptorSet descriptor_set{VK_NULL_HANDLE};
-  VKX_CHECK(dt.AllocateDescriptorSets(
-      device_.handle(), &allocate_info, &descriptor_set));
+  VkDescriptorSet descriptor_set = acquire_descriptor_set(compute);
 
   std::array<VkDescriptorBufferInfo, kComputeBindingBudget> buffer_info{};
   std::array<VkWriteDescriptorSet, kComputeBindingBudget> writes{};
@@ -173,6 +232,7 @@ void CommandEncoder::dispatch_compute(
       nullptr);
 
   ensure_recording();
+  uint64_t host_t0 = prof::get().profiling() ? prof::host_ns() : 0;
   VkMemoryBarrier before{VK_STRUCTURE_TYPE_MEMORY_BARRIER};
   before.srcAccessMask = VK_ACCESS_HOST_WRITE_BIT | VK_ACCESS_TRANSFER_WRITE_BIT |
       VK_ACCESS_SHADER_WRITE_BIT;
@@ -189,6 +249,7 @@ void CommandEncoder::dispatch_compute(
       nullptr,
       0,
       nullptr);
+  prof::get().before_dispatch(this, current_slot_, cmd_);
 
   VkPipelineLayout pipeline_layout = compute.pipeline_layout();
   dt.CmdBindPipeline(cmd_, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline);
@@ -209,6 +270,17 @@ void CommandEncoder::dispatch_compute(
       sizeof(params),
       &params);
   dt.CmdDispatch(cmd_, group_count_x, group_count_y, group_count_z);
+  prof::get().after_dispatch(
+      this,
+      current_slot_,
+      cmd_,
+      kernel,
+      params,
+      bindings,
+      group_count_x,
+      group_count_y,
+      group_count_z,
+      host_t0 != 0 ? prof::host_ns() - host_t0 : 0);
 
   VkMemoryBarrier after{VK_STRUCTURE_TYPE_MEMORY_BARRIER};
   after.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
@@ -227,15 +299,11 @@ void CommandEncoder::dispatch_compute(
       0,
       nullptr);
 
-  temporaries_.push_back(std::move(pool_owner));
   node_count_++;
   trace::counters().vk_compute_dispatches++;
 }
 
 void CommandEncoder::commit() {
-  // Handler-only commits (no recorded commands, no user semaphores) still
-  // submit and signal the completion timeline, so handlers run after prior
-  // queue work and nothing enqueued is ever dropped.
   if (!recording_ && wait_semaphores_.empty() && signal_semaphores_.empty() &&
       completed_handlers_.empty()) {
     return;
@@ -250,6 +318,9 @@ void CommandEncoder::synchronize() {
 
 void CommandEncoder::submit() {
   auto& dt = vk::device_table();
+  bool was_recording = recording_;
+  uint64_t submit_t0 = prof::get().profiling() ? prof::host_ns() : 0;
+  uint64_t submitted = 0;
 
   if (recording_) {
     VKX_CHECK(dt.EndCommandBuffer(cmd_));
@@ -341,6 +412,10 @@ void CommandEncoder::submit() {
     device_.completions().enqueue(
         completion_value, std::move(keepalive), std::move(completed_handlers_));
     last_completion_ = completion_value;
+    submitted = completion_value;
+    if (was_recording) {
+      slots_[current_slot_].in_flight = completion_value;
+    }
     trace::counters().vk_submissions++;
   }
 
@@ -349,11 +424,17 @@ void CommandEncoder::submit() {
   wait_semaphores_.clear();
   signal_semaphores_.clear();
   completed_handlers_.clear();
+  prof::get().on_submit_end(
+      this,
+      submitted,
+      submit_t0 != 0 ? prof::host_ns() - submit_t0 : 0,
+      current_slot_);
 
-  // No vkResetCommandBuffer: the buffer may still be executing.
-  // ensure_recording() joins last_completion_ before the next
-  // BeginCommandBuffer, which then resets the buffer implicitly (the
-  // pool was created with RESET_COMMAND_BUFFER_BIT).
+  // No vkResetCommandBuffer: the buffer may still be executing. The ring
+  // slot is marked in flight above; ensure_recording() only reuses a slot
+  // whose submission completed (or joins the oldest), and BeginCommandBuffer
+  // then resets the buffer implicitly (the pool was created with
+  // RESET_COMMAND_BUFFER_BIT).
 }
 
 CommandEncoder& get_command_encoder(Stream s) {
@@ -382,8 +463,8 @@ std::unordered_map<int, CommandEncoder>& get_command_encoders() {
 }
 
 std::unordered_map<int, CommandEncoder>& get_global_command_encoders() {
-  static std::unordered_map<int, CommandEncoder> encoders;
-  return encoders;
+  static std::unordered_map<int, CommandEncoder> global_encoders;
+  return global_encoders;
 }
 
 } // namespace mlx::core::omarchy
