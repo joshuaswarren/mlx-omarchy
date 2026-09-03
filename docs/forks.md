@@ -1,7 +1,7 @@
 # Forks and the backport flow
 
-mlx-omarchy patches three upstream repositories. Each upstream has a fork under
-`joshuaswarren` with an `omarchy` branch. Work lands in the fork first.
+mlx-omarchy patches two upstream lineages. Each has a fork under
+`joshuaswarren` carrying our work on branches. Work lands in the fork first.
 Upstreaming a change is a separate, later decision.
 
 ## Upstream to fork map
@@ -9,24 +9,26 @@ Upstreaming a change is a separate, later decision.
 | Upstream | Fork | Branch | Base and carried work |
 | --- | --- | --- | --- |
 | `ml-explore/mlx` | `joshuaswarren/omarchy-mlx` | `omarchy` | MLX 0.32.2 commit `1f8e74e3f12f31365464a6867c6579f0e9b29d85`, the `mlx.lock` pin, plus the six patches from `patches/`, one commit per patch |
-| `eiln/ane` | `joshuaswarren/omarchy-ane` | `omarchy` | upstream `main` tip at fork time, `0dcea99`, plus the six-commit libane series applied with `git am` |
-| `allbilly/libane` | `joshuaswarren/omarchy-libane` | `omarchy` | upstream head `1e0afd8` plus `local-kmd-changes.patch` as one commit |
+| `eiln/ane` and `allbilly/libane` | `joshuaswarren/omarchy-ane` | `omarchy`, `omarchy-kmd` | `omarchy`: eiln/ane tip `0dcea99` plus the six-commit libane series from `~/keep/eiln-ane-series/`, applied with `git am`. `omarchy-kmd`: allbilly/libane head `1e0afd8` plus the jwm1 debug instrumentation from `~/keep/ane-kmd-local/local-kmd-changes.patch` |
+
+`eiln/ane` and `allbilly/libane` are one lineage. `allbilly/libane` is a fork
+of `eiln/ane` that stays ahead of it, and it carries both the kernel module in
+`ane/` and the userspace library in `libane/`. GitHub allows one repository
+per account per fork network, so one fork serves both. The clone carries two
+upstream remotes: `upstream` for `eiln/ane` and `allbilly` for
+`allbilly/libane`. Do not try to fork `allbilly/libane` separately; GitHub
+refuses a second repository in the same network.
+
+The instrumentation on `omarchy-kmd` is captured from an uncommitted working
+tree on jwm1. It is not a finished fix, and the module currently resets the
+machine when loaded.
 
 `allbilly/ane` is documentation and register research with examples. We depend
 on it as an upstream reference. We do not patch it, so it has no fork.
 
-## omarchy-libane is not a GitHub fork object
-
-GitHub allows one repository per account per fork network. `eiln/ane` and
-`allbilly/libane` share one network, and `joshuaswarren/omarchy-ane` occupies
-the slot. GitHub refused a second fork and a transfer with:
-`joshuaswarren already has a repository in the eiln/ane network`.
-
-`joshuaswarren/omarchy-libane` is therefore a plain repository with the same
-history and remotes as a fork. `DeckardAndFriends/omarchy-libane` is a real
-fork whose recorded parent is `allbilly/libane`. If GitHub lifts the limit, or
-one of the two network repositories is later deleted or detached, transfer that
-fork to `joshuaswarren` and it becomes the canonical one.
+The former `joshuaswarren/omarchy-libane` and
+`DeckardAndFriends/omarchy-libane` repositories are archived. Each README
+points at `joshuaswarren/omarchy-ane` as the live repository for this lineage.
 
 ## Why we fork
 
@@ -37,18 +39,18 @@ never push to an upstream remote, and never force-push.
 
 ## Backport flow
 
-Example for `omarchy-mlx`. The same steps work in every fork clone:
+Example for `omarchy-ane`. The same steps work in every fork clone:
 
-1. `git fetch upstream`
-2. `git checkout omarchy`
-3. `git merge upstream/main` for a full sync, or `git cherry-pick <commit>` for a targeted backport
-4. `git push origin omarchy`
+1. `git fetch upstream` for `eiln/ane`, or `git fetch allbilly` for `allbilly/libane`
+2. `git checkout <branch>`
+3. `git merge <remote>/main` for a full sync, or `git cherry-pick <commit>` for a targeted backport
+4. `git push origin <branch>`
 
 Rules:
 
-- Upstream history is never rewritten. Merge or cherry-pick. Never rebase the shared `omarchy` branch onto upstream, because that would demand a force-push.
+- Upstream history is never rewritten. Merge or cherry-pick. Never rebase a shared branch onto upstream, because that would demand a force-push.
 - Never force-push.
-- All pushes go to `origin`. `upstream` is read-only in practice.
+- All pushes go to `origin`. The upstream remotes are read-only in practice.
 
 `omarchy-mlx` starts at the `mlx.lock` pin, not at the upstream tip. A merge of
 `upstream/main` also brings everything after the pin. To ride one upstream fix
