@@ -28,6 +28,7 @@
 #include "mlx/backend/gpu/device_info.h"
 #include "mlx/backend/omarchy/device.h"
 #include "mlx/backend/omarchy/encoder.h"
+#include "mlx/backend/omarchy/trace.h"
 #include "mlx/compile.h"
 #include "mlx/device.h"
 #include "mlx/ops.h"
@@ -703,4 +704,70 @@ TEST_CASE("MLX_OMARCHY_ALLOW_UNSAFE_COMPILE=1 re-enables compiled tapes") {
   CHECK(error.empty());
   set_compile_mode(CompileMode::disabled);
   unsetenv("MLX_OMARCHY_ALLOW_UNSAFE_COMPILE");
+}
+
+// The tape debug switches (docs/install-omarchy.md) are diagnostics for
+// the Honeykrisp layer isolation. Defaults must stay inert: with no env
+// var set the scoped switch state is false and every other case in this
+// battery exercises the unswitched path. Each switch, once set, must
+// leave the tape matching eager on a development device. On a real Apple
+// GPU the case skips with the rest: there the switches exist so the
+// hardware protocol can bisect the defect, not to promise correct
+// values.
+TEST_CASE(
+    "compiled-tape debug switches stay inert by default and correct when set") {
+  CHECK_FALSE(omarchy::tape_full_barriers());
+  CHECK_FALSE(omarchy::tape_no_reuse());
+  if (!compiled_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+
+  // A swiglu-shaped tape: sigmoid, broadcast multiply, broadcast scalar
+  // add - the node mix the differential harness localised the Honeykrisp
+  // failure to, at a size the battery can run on llvmpipe.
+  auto swiglu = [&stream](const std::vector<array>& inputs) {
+    array gate = sigmoid(inputs[0], stream);
+    return std::vector<array>{
+        multiply(inputs[0], gate, stream),
+        add(gate, array(1.0f), stream)};
+  };
+
+  std::vector<float> xv(64);
+  for (size_t i = 0; i < xv.size(); ++i) {
+    xv[i] = static_cast<float>(i) * 0.125f - 4.0f;
+  }
+  array x(xv.begin(), Shape{2, 32}, float32);
+  std::vector<array> inputs = {x};
+
+  const char* switches[] = {
+      "MLX_OMARCHY_TAPE_PER_NODE_SUBMIT",
+      "MLX_OMARCHY_TAPE_FULL_BARRIERS",
+      "MLX_OMARCHY_TAPE_NO_REUSE"};
+
+  for (const char* name : switches) {
+    INFO("switch ", name);
+    setenv(name, "1", 1);
+    check_compiled_matches_eager(swiglu, inputs, float32, stream, 1e-6);
+    if (std::string(name) == "MLX_OMARCHY_TAPE_PER_NODE_SUBMIT") {
+      // The decisive-bisector property: the switched tape must actually
+      // change submission shape. The swiglu tape has 3 nodes (sigmoid,
+      // multiply, add); per-node submission queues at least one
+      // submission per node where the default path queues one.
+      set_compile_mode(CompileMode::enabled);
+      auto fused = compile(swiglu);
+      uint64_t before =
+          omarchy::trace::counters().vk_submissions.load();
+      auto outputs = fused(inputs);
+      for (auto& out : outputs) {
+        out.eval();
+      }
+      sync_stream(stream);
+      uint64_t delta =
+          omarchy::trace::counters().vk_submissions.load() - before;
+      set_compile_mode(CompileMode::disabled);
+      CHECK(delta >= 3);
+    }
+    unsetenv(name);
+  }
 }

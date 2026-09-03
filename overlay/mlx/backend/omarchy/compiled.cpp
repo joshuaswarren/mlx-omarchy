@@ -3,6 +3,8 @@
 
 #include "mlx/backend/omarchy/compiled.h"
 
+#include <atomic>
+#include <cstdio>
 #include <stdexcept>
 #include <string>
 #include <typeinfo>
@@ -137,6 +139,30 @@ void eval_compiled_tape(
     output_ids.insert(out.id());
   }
 
+  // Compiled-tape debug switches (docs/install-omarchy.md). All three
+  // default off; with none set this function runs exactly the batching
+  // path it ran before they existed. The scope publishes the barrier and
+  // reuse switches to the encoder and the allocator for this recording;
+  // per-node submission is applied inline in the loop below. Recording
+  // happens inside this scope, so every recorded command already carries
+  // the switched shape; the eventual submission needs no switch state.
+  TapeDebugScope debug_scope(
+      env_flag("MLX_OMARCHY_TAPE_FULL_BARRIERS"),
+      env_flag("MLX_OMARCHY_TAPE_NO_REUSE"));
+  const bool per_node_submit = env_flag("MLX_OMARCHY_TAPE_PER_NODE_SUBMIT");
+  static std::atomic<bool> announced{false};
+  if (!announced.load(std::memory_order_relaxed) &&
+      (per_node_submit || tape_full_barriers() || tape_no_reuse()) &&
+      !announced.exchange(true, std::memory_order_relaxed)) {
+    std::fprintf(
+        stderr,
+        "[omarchy] compiled-tape debug switches active (diagnostics only,"
+        " not product configuration; docs/install-omarchy.md):%s%s%s\n",
+        per_node_submit ? " MLX_OMARCHY_TAPE_PER_NODE_SUBMIT" : "",
+        tape_full_barriers() ? " MLX_OMARCHY_TAPE_FULL_BARRIERS" : "",
+        tape_no_reuse() ? " MLX_OMARCHY_TAPE_NO_REUSE" : "");
+  }
+
   auto& encoder = get_command_encoder(stream);
   for (const auto& node : tape) {
     if (!node.has_primitive()) {
@@ -176,6 +202,17 @@ void eval_compiled_tape(
       // outputs; keep intermediate buffers alive until the submission
       // completes. Output buffers live with the graph instead.
       encoder.add_temporary(outs[0]);
+    }
+    if (per_node_submit) {
+      // MLX_OMARCHY_TAPE_PER_NODE_SUBMIT (diagnostic): submit after every
+      // node, matching eager's op-granular command-buffer shape while
+      // running the tape's own code path. Each submission waits on this
+      // stream's previous completion, so the tape serializes exactly as
+      // an eager chain would. If the Honeykrisp corruption disappears
+      // under this switch, the defect lives in many-dispatches-per-
+      // command-buffer; if it persists, the command buffer is innocent
+      // and the tape's resource handling stays suspect.
+      encoder.commit();
     }
   }
 

@@ -10,6 +10,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <atomic>
 #include <memory>
 #include <mutex>
 #include <stdexcept>
@@ -66,18 +67,6 @@ const char* driver_id_name(int32_t id) {
     default:
       return nullptr;
   }
-}
-
-bool env_flag(const char* name) {
-  const char* v = std::getenv(name);
-  if (!v) {
-    return false;
-  }
-  std::string s = v;
-  std::transform(s.begin(), s.end(), s.begin(), [](unsigned char c) {
-    return static_cast<char>(std::tolower(c));
-  });
-  return s == "1" || s == "on" || s == "true" || s == "yes";
 }
 
 int env_index(const char* name) {
@@ -470,6 +459,47 @@ bool Runtime::init_impl() {
 }
 
 } // namespace
+
+// Compiled-tape debug switch plumbing (device.h). At omarchy scope, not
+// in the anonymous namespace above: the encoder and allocator call these
+// through the header declarations.
+bool env_flag(const char* name) {
+  const char* v = std::getenv(name);
+  if (!v) {
+    return false;
+  }
+  std::string s = v;
+  std::transform(s.begin(), s.end(), s.begin(), [](unsigned char c) {
+    return static_cast<char>(std::tolower(c));
+  });
+  return s == "1" || s == "on" || s == "true" || s == "yes";
+}
+// Scoped compiled-tape diagnostic state (device.h). Plain atomics: the
+// encoder and the allocator poll these per dispatch or per allocation,
+// so the unset path must stay cheaper than an environment lookup.
+namespace {
+std::atomic<bool> g_tape_full_barriers{false};
+std::atomic<bool> g_tape_no_reuse{false};
+} // namespace
+
+TapeDebugScope::TapeDebugScope(bool full_barriers, bool no_reuse)
+    : full_barriers_(full_barriers), no_reuse_(no_reuse) {
+  g_tape_full_barriers.store(full_barriers, std::memory_order_relaxed);
+  g_tape_no_reuse.store(no_reuse, std::memory_order_relaxed);
+}
+
+TapeDebugScope::~TapeDebugScope() {
+  g_tape_full_barriers.store(false, std::memory_order_relaxed);
+  g_tape_no_reuse.store(false, std::memory_order_relaxed);
+}
+
+bool tape_full_barriers() {
+  return g_tape_full_barriers.load(std::memory_order_relaxed);
+}
+
+bool tape_no_reuse() {
+  return g_tape_no_reuse.load(std::memory_order_relaxed);
+}
 
 DeviceSupport classify_physical_device(
     const VkPhysicalDeviceProperties& props,

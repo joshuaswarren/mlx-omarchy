@@ -5,6 +5,7 @@
 #include <stdexcept>
 
 #include "mlx/backend/omarchy/allocator.h"
+#include "mlx/backend/omarchy/device.h"
 #include "mlx/backend/omarchy/trace.h"
 #include "mlx/backend/omarchy/gpu_profiler.h"
 #include "mlx/backend/omarchy/vulkan.h"
@@ -148,6 +149,40 @@ void CommandEncoder::fill_buffer(
 VkDescriptorSet CommandEncoder::acquire_descriptor_set(
     ComputeRuntime& compute) {
   auto& dt = vk::device_table();
+  // MLX_OMARCHY_TAPE_NO_REUSE (diagnostic, docs/install-omarchy.md):
+  // every dispatch gets its own descriptor pool with exactly one set, so
+  // no pool - and therefore no set - is shared with any other dispatch.
+  // The pool retires into the current submission's temporaries with the
+  // same lifetime rule as a retired cached pool below.
+  if (tape_no_reuse()) {
+    VkDescriptorPoolSize pool_size{};
+    pool_size.type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    pool_size.descriptorCount = compute.binding_limit();
+    VkDescriptorPoolCreateInfo pool_info{
+        VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO};
+    pool_info.maxSets = 1;
+    pool_info.poolSizeCount = 1;
+    pool_info.pPoolSizes = &pool_size;
+    VkDescriptorPool pool{VK_NULL_HANDLE};
+    VKX_CHECK(dt.CreateDescriptorPool(
+        device_.handle(), &pool_info, nullptr, &pool));
+    temporaries_.push_back(std::shared_ptr<VkDescriptorPool>(
+        new VkDescriptorPool(pool),
+        [device = device_.handle()](VkDescriptorPool* owned) {
+          vk::device_table().DestroyDescriptorPool(device, *owned, nullptr);
+          delete owned;
+        }));
+    VkDescriptorSetLayout descriptor_layout = compute.descriptor_layout();
+    VkDescriptorSetAllocateInfo allocate_info{
+        VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO};
+    allocate_info.descriptorPool = pool;
+    allocate_info.descriptorSetCount = 1;
+    allocate_info.pSetLayouts = &descriptor_layout;
+    VkDescriptorSet descriptor_set{VK_NULL_HANDLE};
+    VKX_CHECK(dt.AllocateDescriptorSets(
+        device_.handle(), &allocate_info, &descriptor_set));
+    return descriptor_set;
+  }
   if (desc_pool_ == VK_NULL_HANDLE || desc_pool_remaining_ == 0) {
     if (desc_pool_ != VK_NULL_HANDLE) {
       temporaries_.push_back(std::shared_ptr<VkDescriptorPool>(
@@ -233,6 +268,29 @@ void CommandEncoder::dispatch_compute(
 
   ensure_recording();
   uint64_t host_t0 = prof::get().profiling() ? prof::host_ns() : 0;
+  // MLX_OMARCHY_TAPE_FULL_BARRIERS (diagnostic, docs/install-omarchy.md):
+  // the heaviest correct dependency - all commands, all memory access,
+  // both directions - ahead of every dispatch, on top of the regular
+  // barriers below. Probes whether the driver drops an in-buffer
+  // dependency the regular barriers already express.
+  if (tape_full_barriers()) {
+    VkMemoryBarrier full{VK_STRUCTURE_TYPE_MEMORY_BARRIER};
+    full.srcAccessMask =
+        VK_ACCESS_MEMORY_READ_BIT | VK_ACCESS_MEMORY_WRITE_BIT;
+    full.dstAccessMask =
+        VK_ACCESS_MEMORY_READ_BIT | VK_ACCESS_MEMORY_WRITE_BIT;
+    dt.CmdPipelineBarrier(
+        cmd_,
+        VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
+        VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
+        0,
+        1,
+        &full,
+        0,
+        nullptr,
+        0,
+        nullptr);
+  }
   VkMemoryBarrier before{VK_STRUCTURE_TYPE_MEMORY_BARRIER};
   before.srcAccessMask = VK_ACCESS_HOST_WRITE_BIT | VK_ACCESS_TRANSFER_WRITE_BIT |
       VK_ACCESS_SHADER_WRITE_BIT;
@@ -298,6 +356,27 @@ void CommandEncoder::dispatch_compute(
       nullptr,
       0,
       nullptr);
+  if (tape_full_barriers()) {
+    // Diagnostic: matching full barrier out of this dispatch, so every
+    // dependency between two dispatches is the heaviest form (see the
+    // pre-dispatch barrier above).
+    VkMemoryBarrier full{VK_STRUCTURE_TYPE_MEMORY_BARRIER};
+    full.srcAccessMask =
+        VK_ACCESS_MEMORY_READ_BIT | VK_ACCESS_MEMORY_WRITE_BIT;
+    full.dstAccessMask =
+        VK_ACCESS_MEMORY_READ_BIT | VK_ACCESS_MEMORY_WRITE_BIT;
+    dt.CmdPipelineBarrier(
+        cmd_,
+        VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
+        VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
+        0,
+        1,
+        &full,
+        0,
+        nullptr,
+        0,
+        nullptr);
+  }
 
   node_count_++;
   trace::counters().vk_compute_dispatches++;
