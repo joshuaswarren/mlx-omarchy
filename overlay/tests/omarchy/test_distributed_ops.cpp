@@ -1,22 +1,28 @@
 // Copyright © 2026 Joshua Warren / mlx-omarchy contributors.
 // SPDX-License-Identifier: MIT
 
-// Distributed primitives verdict: AllReduce, AllGather, Send, Recv,
-// ReduceScatter are UNREACHABLE at this backend. Upstream
-// mlx/distributed/ops.cpp short-circuits every one of them at
-// group.size() == 1 BEFORE constructing the primitive (all_reduce line 29,
-// all_gather line 69, send line 94, recv line 118, sum_scatter line 149),
-// and this build compiles no communication backend that could make a group
-// larger than one: ring and mpi are gated on MLX_BUILD_CPU itself
-// (distributed/ring/CMakeLists.txt:1-3, mpi/CMakeLists.txt:1-3), the same
-// flag that compiles the forbidden CPU fallback backend, and ring.cpp:21
-// needs backend/cpu/encoder.h which backend/no_cpu does not build. nccl is
-// gated on MLX_BUILD_CUDA; jaccl on Darwin SDK >= 26.2. So
-// distributed::is_available() is false and init() returns EmptyGroup of
-// size 1. The honest deliverable is a pinned contract at the
-// mlx.distributed ops level, not a backend implementation. The
-// OMARCHY_UNSUPPORTED_MULTI entries in primitives.cpp stay as defensive
-// parity with upstream Metal; dead code at one rank by upstream design.
+// Distributed contract after the MLX_BUILD_CPU=ON unlock (f449ed2). The
+// ring transport is compiled and linked: MLX_BUILD_CPU compiles
+// mlx/distributed/ring/ring.cpp and the upstream CPU backend whose
+// backend/cpu/distributed.cpp implements real eval_cpu bodies for all five
+// primitives (AllReduce, AllGather, Send, Recv, ReduceScatter). Ring pins
+// the communication stream to the CPU device
+// (ring.cpp RingGroup::communication_stream -> to_stream(s, Device::cpu)),
+// so these primitives can never dispatch on an omarchy stream; no eval_gpu
+// exists for them and none should.
+//
+// A single-process run forms NO multi-rank group: without MLX_HOSTFILE and
+// MLX_RANK, init() yields the singleton EmptyGroup (size 1), upstream's op
+// layer short-circuits every collective at group.size() == 1
+// (mlx/distributed/ops.cpp: all_reduce line 29, all_gather line 69,
+// sum_scatter line 149) and throws invalid_argument for send (line 94) and
+// recv (line 118). THIS suite pins that singleton contract only.
+//
+// The primitives themselves are value-proven at two ranks by
+// distributed/test_two_rank.cpp, driven by
+// distributed/run-two-rank.sh: every case there asserts a real two-rank
+// group first, so a lone run fails instead of passing vacuously. The
+// identity checks below are deliberately NOT primitive coverage.
 
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include "doctest/doctest.h"
@@ -31,27 +37,34 @@
 
 using namespace mlx::core;
 
-TEST_CASE("distributed group of one stays a no-op singleton") {
-  // Ring availability is a build property: compiled in once MLX_BUILD_CPU=ON
-  // builds mlx/distributed/ring, stubbed out otherwise. A multi-rank group
-  // forms only with MLX_HOSTFILE and MLX_RANK; without them init() yields
-  // the singleton EmptyGroup and every collective is an identity.
-  if (distributed::is_available("ring")) {
-    CHECK(distributed::is_available());
-    CHECK(distributed::is_available("any"));
-  } else {
-    CHECK_UNARY_FALSE(distributed::is_available());
-    CHECK_FALSE(distributed::is_available("any"));
-  }
-  CHECK_FALSE(distributed::is_available("mpi"));
+TEST_CASE("ring links; nccl and jaccl do not; init is the singleton") {
+  // Ring availability is a build property: MLX_BUILD_CPU=ON compiles
+  // ring.cpp, so is_available("ring") is true on any host. A multi-rank
+  // group forms only with MLX_HOSTFILE and MLX_RANK; without them init()
+  // yields the singleton EmptyGroup and every collective short-circuits.
+  CHECK(distributed::is_available());
+  CHECK(distributed::is_available("any"));
+  CHECK(distributed::is_available("ring"));
+  // nccl is gated on MLX_BUILD_CUDA (OFF here); jaccl on Darwin with
+  // SDK >= 26.2. Both remain compile-time stubs (no_nccl.cpp:7-9,
+  // no_jaccl.cpp:7-9).
   CHECK_FALSE(distributed::is_available("nccl"));
   CHECK_FALSE(distributed::is_available("jaccl"));
+  // mpi.cpp is also compiled under MLX_BUILD_CPU, but availability is
+  // runtime dlopen("libmpi.so") (mpi.cpp MPIWrapper). This box has no
+  // OpenMPI; if this check ever fails, a libmpi appeared on the host and
+  // the mpi rows of the contract must be re-derived.
+  CHECK_FALSE(distributed::is_available("mpi"));
   auto group = distributed::init();
   CHECK_EQ(group.size(), 1);
   CHECK_EQ(group.rank(), 0);
 }
 
-TEST_CASE("all_sum is identity at one rank") {
+TEST_CASE("all_sum is identity at one rank (op-layer short-circuit)") {
+  // ops.cpp line 29 returns the input before any primitive is
+  // constructed. This pins the SINGLETON contract, not AllReduce; the
+  // primitive's sum semantics are proven at two ranks in
+  // distributed/test_two_rank.cpp.
   std::vector<float> data = {1.0f, -2.0f, 3.5f, 0.25f};
   array x = array(data.data(), {2, 2}, float32);
   eval(x);
@@ -78,33 +91,36 @@ TEST_CASE("all_max and all_min are identity at one rank") {
            data);
 }
 
-TEST_CASE("all_gather is identity at one rank") {
+TEST_CASE("all_gather is identity at one rank (shape stays rank-one)") {
+  // ops.cpp line 69 returns x unchanged, so the first dim does NOT grow
+  // by the group size; the rank-ordered concatenation is proven at two
+  // ranks in distributed/test_two_rank.cpp.
   std::vector<float> data = {1.0f, 2.0f, 3.0f, 4.0f};
   array x = array(data.data(), {4}, float32);
   eval(x);
   array y = distributed::all_gather(x);
   eval(y);
-  // Upstream ops.cpp line 69 returns x unchanged; the shape does NOT get the
-  // rank-multiplied first dim because the short-circuit precedes it.
   CHECK_EQ(y.shape(), x.shape());
   CHECK_EQ(y.dtype(), x.dtype());
   CHECK_EQ(std::vector<float>(y.data<float>(), y.data<float>() + 4), data);
 }
 
-TEST_CASE("sum_scatter is identity at one rank") {
+TEST_CASE("sum_scatter is identity at one rank (shape stays whole)") {
+  // ops.cpp line 149 returns x unchanged; the first dim is NOT divided
+  // at one rank.
   std::vector<float> data = {1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f};
   array x = array(data.data(), {2, 3}, float32);
   eval(x);
   array y = distributed::sum_scatter(x);
   eval(y);
-  // Upstream ops.cpp line 149 returns x unchanged; the first dim is NOT
-  // divided because the short-circuit precedes it.
   CHECK_EQ(y.shape(), x.shape());
   CHECK_EQ(y.dtype(), x.dtype());
   CHECK_EQ(std::vector<float>(y.data<float>(), y.data<float>() + 6), data);
 }
 
 TEST_CASE("send to a singleton group throws invalid_argument") {
+  // ops.cpp line 94: the guard fires before the Send primitive exists.
+  // Real delivery is proven at two ranks in distributed/test_two_rank.cpp.
   array x = array({1.0f, 2.0f}, {2}, float32);
   CHECK_THROWS_AS(distributed::send(x, 0), std::invalid_argument);
 }
@@ -113,30 +129,34 @@ TEST_CASE("recv from a singleton group throws invalid_argument") {
   CHECK_THROWS_AS(distributed::recv({2}, float32, 0), std::invalid_argument);
 }
 
-TEST_CASE("strict init refuses ring, mpi and nccl (stub contract)") {
-  // Each stub throws under strict init and returns nullptr under non-strict
-  // init (no_ring.cpp:11-17, no_mpi.cpp:11-17, no_nccl.cpp:11-17). These
-  // checks are the canary for the denominator classification: if any of them
-  // stops throwing, a communication backend was compiled into this build and
-  // the config-unreachable exclusion of the five distributed primitives must
-  // be re-derived.
-  //
+TEST_CASE(
+    "strict init: ring demands env, mpi and nccl still refuse, jaccl quirks") {
+  // ring strict init without MLX_RANK/MLX_HOSTFILE throws the env guard
+  // at ring.cpp:829-837 ("[ring] You need to provide...") -- a real
+  // transport demanding a hostfile, NOT a stub refusal. A two-rank group
+  // forms when the launcher sets both variables.
+  CHECK_THROWS_AS(distributed::init(true, "ring"), std::runtime_error);
+  // nccl remains a stub (no_nccl.cpp:11-17): strict throws.
+  CHECK_THROWS_AS(distributed::init(true, "nccl"), std::runtime_error);
+  // mpi strict init throws while libmpi.so is absent; the same canary as
+  // the is_available("mpi") check above.
+  CHECK_THROWS_AS(distributed::init(true, "mpi"), std::runtime_error);
   // jaccl is the one exception and this is upstream behavior on a Mac too:
   // the any-branch of init() reassigns bk_ to "jaccl" unconditionally
-  // (distributed.cpp:197) even when jaccl::init returns nullptr, so
+  // (distributed.cpp) even when jaccl::init returns nullptr, so
   // register_group caches the EmptyGroup under the key "jaccl" and every
   // later init(true, "jaccl") cache-hits instead of throwing. A
   // fresh-process init(true, "jaccl") does throw (no_jaccl.cpp:11-19); we
   // pin the post-init() state a caller in this process actually sees.
-  CHECK_THROWS_AS(distributed::init(true, "ring"), std::runtime_error);
-  CHECK_THROWS_AS(distributed::init(true, "mpi"), std::runtime_error);
-  CHECK_THROWS_AS(distributed::init(true, "nccl"), std::runtime_error);
   auto jaccl = distributed::init(true, "jaccl");
   CHECK_EQ(jaccl.size(), 1);
   CHECK_EQ(jaccl.rank(), 0);
 }
 
-TEST_CASE("non-strict init of each stubbed backend yields a one-rank group") {
+TEST_CASE("non-strict init of ungrouped backends yields a one-rank group") {
+  // Without MLX_RANK/MLX_HOSTFILE: ring::init returns nullptr
+  // (ring.cpp:838), mpi and nccl stubs return nullptr, and every key
+  // resolves to the shared EmptyGroup of size 1.
   for (auto bk : {"ring", "mpi", "nccl", "jaccl"}) {
     auto group = distributed::init(false, bk);
     CHECK_EQ(group.size(), 1);

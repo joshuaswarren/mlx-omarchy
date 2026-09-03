@@ -267,3 +267,20 @@ target_link_options(omarchy_eq_math_tests PRIVATE ${SANITIZER_LINK_FLAGS})
 
 doctest_discover_tests(omarchy_eq_math_tests)
 add_test(NAME omarchy_eq_math_tests COMMAND omarchy_eq_math_tests)
+
+# TwoRankDistributed: the five distributed primitives value-proven on a
+# real two-rank ring group over loopback. The doctest binary is ONE rank's
+# process and fails its own group-size guards when run alone, so the
+# registered test is the launcher script, which runs ranks 0 and 1 against
+# a localhost hostfile and requires both green. No
+# doctest_discover_tests here: discovery would run the binary without
+# MLX_RANK/MLX_HOSTFILE and fail by design.
+add_executable(omarchy_two_rank_harness
+               ${CMAKE_CURRENT_SOURCE_DIR}/distributed/test_two_rank.cpp)
+target_link_libraries(omarchy_two_rank_harness PRIVATE mlx doctest)
+target_compile_options(omarchy_two_rank_harness
+                       PRIVATE ${SANITIZER_COMPILE_FLAGS})
+target_link_options(omarchy_two_rank_harness PRIVATE ${SANITIZER_LINK_FLAGS})
+
+add_test(NAME omarchy_two_rank_harness
+         COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/distributed/run-two-rank.sh)
