@@ -50,12 +50,17 @@ debugging.
    - On a non-Apple Vulkan device (llvmpipe dev box): export
      `MLX_OMARCHY_ALLOW_NON_APPLE=1`.
 
-4. Compiled-tape override. The runtime refuses compiled tapes on real
-   Apple GPUs by default (docs/known-defects.md), and this harness exists
-   to reproduce that defect on hardware. Both tools set
-   `MLX_OMARCHY_ALLOW_UNSAFE_COMPILE=1` for themselves before mlx is
-   imported; run them as-is. Set it manually only for hand-written
-   probes, and never ship a workload that depends on it.
+4. Compiled-tape override. The runtime disables compilation at device
+   discovery on real Apple GPUs and runs eager instead
+   (docs/known-defects.md), and this harness exists to reproduce that
+   defect on hardware. `differential_compile.py` and
+   `probe_tape_eager.py` set `MLX_OMARCHY_ALLOW_UNSAFE_COMPILE=1` for
+   themselves before mlx is imported - it both skips the auto-disable
+   and passes the tape-runner backstop; run them as-is. Set it manually
+   only for hand-written probes, and never ship a workload that depends
+   on it. `probe_compile_ordering.py` does the opposite: it measures the
+   default path, so it must run with no override and no
+   `MLX_DISABLE_COMPILE`.
 
 Exit codes for both tools: `0` match, `3` divergence (or injected
 divergence detected), `2` usage or environment error.

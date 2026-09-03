@@ -6,6 +6,14 @@
 // tolerances are stated per case: float32 compares compiled against eager
 // at 1e-6, float16 at 2e-3 after both sides are widened to float32, and
 // integer, bitwise, boolean, and select classes compare exactly.
+//
+// On a real Apple GPU the runtime auto-disables compilation at device
+// discovery (docs/known-defects.md), and the device gate refuses any tape
+// that still arrives. This battery therefore needs
+// MLX_OMARCHY_ALLOW_UNSAFE_COMPILE=1 to exercise compiled tapes there;
+// without it the fail-closed case asserts the refusal and the equivalence
+// cases hit the backstop. On development devices compilation stays armed
+// and the battery runs as is.
 
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include "doctest/doctest.h"
@@ -621,10 +629,12 @@ TEST_CASE("compiled tapes refuse by default on real Apple GPUs") {
   auto& dev = omarchy::device(stream.device.index);
   bool refused_default = omarchy::compiled_tapes_refused(dev);
 
-  // The policy is keyed to the device: refusal on real Apple GPU targets
-  // only, where the corruption is observed (docs/known-defects.md);
-  // development devices accepted through MLX_OMARCHY_ALLOW_NON_APPLE
-  // keep running compiled tapes for the batteries and the harness.
+  // The policy is keyed to the device: on a real Apple GPU the runtime
+  // auto-disables compilation at discovery and the device gate refuses
+  // any tape that still arrives (docs/known-defects.md); on development
+  // devices accepted through MLX_OMARCHY_ALLOW_NON_APPLE the hook does
+  // not fire and compiled tapes keep running for the batteries and the
+  // harness.
   CHECK_EQ(refused_default, !dev.non_apple_dev());
 
   std::vector<float> xv = {0.5f, -1.5f, 2.0f, 0.0f};
@@ -641,8 +651,8 @@ TEST_CASE("compiled tapes refuse by default on real Apple GPUs") {
         error.find("MLX_OMARCHY_ALLOW_UNSAFE_COMPILE=1") !=
         std::string::npos);
   } else {
-    // Development device: the corruption class is not observed here, so
-    // the default run must still execute the tape.
+    // Development device: compilation stays armed and the default run
+    // must still execute the tape.
     CHECK(error.empty());
   }
   set_compile_mode(CompileMode::disabled);

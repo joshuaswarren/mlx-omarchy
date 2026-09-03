@@ -12,7 +12,7 @@ Two of the worst v0.3.0 defects never appeared on a Linux development box. They 
 
 These are open in the current release. Each fails silently or crashes, so watching for errors cannot catch them.
 
-### Compiled tapes return wrong values on real Apple GPUs - refused by default since the fail-closed gate
+### Compiled tapes return wrong values on real Apple GPUs - run eager by default since the auto-eager gate
 
 Affected: observed at commit `ff4b05a` on the mlx-lm decode path; the same
 family was measured for bf16 at `fbdd5ed` and `5f8ba16` (see
@@ -33,12 +33,32 @@ Later provenance work attributed one earlier corruption report to a stale
 wheel generation, so whether the silent corruption still reproduces at
 current main is unproven in both directions
 ([docs/differential-harness.md](differential-harness.md)). An unpinned
-wrong-value defect on the product target fails closed regardless.
+wrong-value defect on the product target is fenced off regardless.
 
-**The gate.** The tape runner `eval_compiled_tape` is the only place the
-backend executes a compiled tape, and its single caller is
-`Compiled::eval_gpu`, so the refusal sits where no outer layer can bypass
-it. On a real Apple GPU it raises:
+**The gate, part 1 - auto-eager.** At device discovery the runtime calls
+upstream's own `disable_compile()` switch (`mlx/compile.cpp`) and prints
+one warning naming the defect, the receipt, and the override. Compilation
+is defined as an optimization: eager computes the same values, only
+slower, so the default trades speed for correctness instead of refusing.
+Users get correct output with no env var and no exception. The point is
+early enough because Python reaches it before any compiled call can run:
+device discovery happens at the first array creation, or inside the first
+`mx.compile` statement itself (`skip_compile()` resolves the default
+device), and the Python compiled-function wrapper re-checks the switch on
+every call. Measured with `scripts/probe_compile_ordering.py` on the bf16
+discriminator: `compile-first`, `array-first`, `forced-eager`, and
+`pre-armed-then-disable` all resolve to the eager path once the switch is
+off, including the ordering where the function was armed before the
+disable. The C++ API has one narrower edge: a `std::function` armed
+before discovery keeps its trace-time fusion, which is what the backstop
+below is for.
+
+**The gate, part 2 - the backstop.** The tape runner `eval_compiled_tape`
+is the only place the backend executes a compiled tape, and its single
+caller is `Compiled::eval_gpu`, so the refusal sits where no outer layer
+can bypass it. It is unreachable in normal use and stays for tapes that
+still arrive - for example after an explicit `mx.enable_compile()`. On a
+real Apple GPU it raises:
 ```
 [omarchy] Compiled tapes are refused on real Apple GPUs: the tape interpreter returns wrong values on Honeykrisp and the defect is unfixed (docs/known-defects.md; receipts/2026-09-03-dispatcher-compile-and-column-replace.md). Re-run with MLX_DISABLE_COMPILE=1. Set MLX_OMARCHY_ALLOW_UNSAFE_COMPILE=1 only to investigate the defect deliberately; it permits wrong values.
 ```
@@ -46,13 +66,15 @@ it. On a real Apple GPU it raises:
 Scope is device-conditional, not global: the corruption is observed only on
 Apple GPUs, development boxes run their compiled-tape batteries and the
 differential harness on llvmpipe, and a global refusal would train every
-developer and x86 user to set the override reflexively. The override is
-therefore deliberate opt-in, and `scripts/differential_compile.py` and
-`scripts/probe_tape_eager.py` set it for themselves so hardware
-investigation keeps working. Two protections are unchanged: the bf16 tape
-gate (it still names bf16 on development devices; on Apple GPUs the device
-gate fires first) and the trigonometric domain gate (tape nodes dispatch
-through their own `eval_gpu`, which carries it).
+developer and x86 user to set the override reflexively. The override
+(`MLX_OMARCHY_ALLOW_UNSAFE_COMPILE=1`) both skips the auto-disable and
+passes the backstop, and `scripts/differential_compile.py`,
+`scripts/probe_tape_eager.py`, and `scripts/probe_compile_ordering.py`
+set it for themselves so hardware investigation keeps working. Two
+protections are unchanged: the bf16 tape gate (it still names bf16 on
+development devices; on Apple GPUs the device backstop fires first) and
+the trigonometric domain gate (tape nodes dispatch through their own
+`eval_gpu`, which carries it).
 
 ### `nn.gelu_approx` and `gelu_fast_approx` return values up to 1.47e13 under pytest process context
 
