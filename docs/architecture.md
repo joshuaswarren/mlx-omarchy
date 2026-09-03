@@ -121,11 +121,19 @@ verification commands that prove a node reached the kernel.
 Do not copy driver code into `mlx-omarchy`.
 Prove a driver change in the experiment repository first.
 
-Owner decision, 2026-09-03: driver and `libane` changes are **not** sent
-upstream to `eiln/ane`. Omarchy may fork that project instead, and the
-ANE driver currently resets the machine when the module loads, so no
-upstream change would be usable yet. A prepared six-commit `libane`
-series is kept as patches at `~/keep/eiln-ane-series/` and inlined in
-`receipts/2026-09-01-libane-upstream-prep.md`; it is not to be opened as
-a pull request.
+Owner decision, 2026-09-03: driver, `libane`, and MLX changes are **not**
+sent upstream. We maintain our own forks, backport upstream into them,
+and add our fixes there, so no work waits on upstream review. Whether to
+offer any of it upstream later is a separate, deferred decision.
+
+The forks are `joshuaswarren/omarchy-mlx` (upstream `ml-explore/mlx`) and
+`joshuaswarren/omarchy-ane`, which carries both the driver and `libane`
+because `allbilly/libane` is a fork ahead of `eiln/ane` and GitHub allows
+one repository per account per fork network. A prepared six-commit
+`libane` series is kept as patches at `~/keep/eiln-ane-series/` and
+inlined in `receipts/2026-09-01-libane-upstream-prep.md`; it is not to be
+opened as a pull request.
+
+Forking does not relax the rule above: driver code lives in the fork, not
+vendored into this repository.
 The fork map and the backport flow are in [`forks.md`](forks.md).
