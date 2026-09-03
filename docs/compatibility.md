@@ -61,21 +61,23 @@ does not exercise the concurrency a memory hazard needs, so the gate
 lifts only on repeated green mlx-lm bf16 runs on fully populated
 hardware.
 
-### Compiled tapes on Apple GPUs - fail closed
+### Compiled tapes on Apple GPUs - eager by default
 
-Compiled tape execution is refused on real Apple GPUs. The tape runner
-`eval_compiled_tape` raises the named
-`[omarchy] Compiled tapes are refused` error by default, because the
-4-bit mlx-lm corruption measured at commit `ff4b05a`
-(`receipts/2026-09-03-dispatcher-compile-and-column-replace.md`) left
-the defect unpinned on the product target. `MLX_DISABLE_COMPILE=1` is
-the user workaround. `MLX_OMARCHY_ALLOW_UNSAFE_COMPILE=1` is the
-investigation override; the differential harness and the mechanism
-probe set it for themselves. The scope is device-conditional: on
-development devices accepted through `MLX_OMARCHY_ALLOW_NON_APPLE=1`
-(llvmpipe and other software drivers) compiled tapes still run, match
-eager, and carry the batteries. The bf16 tape gate above and the
-trigonometric domain gate are unchanged.
+Compiled tape execution is switched off on real Apple GPUs. At device
+discovery the runtime calls upstream's `disable_compile()` and prints one
+warning, because the 4-bit mlx-lm corruption measured at commit `ff4b05a`
+(`receipts/2026-09-03-dispatcher-compile-and-column-replace.md`) left the
+defect unpinned on the product target. Users get correct output at eager
+speed with no env var and no exception. `MLX_OMARCHY_ALLOW_UNSAFE_COMPILE=1`
+re-enables compiled tapes for deliberate investigation; the differential
+harness and the mechanism probe set it for themselves. A tape that still
+reaches the interpreter (an explicit `mx.enable_compile()`, or a C++
+function armed before discovery) is refused by name by the tape runner -
+the refusal is the backstop, not the default. The scope is
+device-conditional: on development devices accepted through
+`MLX_OMARCHY_ALLOW_NON_APPLE=1` (llvmpipe and other software drivers)
+compiled tapes still run, match eager, and carry the batteries. The bf16
+tape gate above and the trigonometric domain gate are unchanged.
 See [known-defects.md](known-defects.md) for the full entry.
 
 Wave 11 audited the four suspect hazard classes in the interpreter

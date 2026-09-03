@@ -76,15 +76,16 @@ commit that self-reported +9% tokens/s, landed. Pinning: bf16 prefill
 recovers to 21.8 tok/s under `taskset -c 0` (+25% vs unpinned), the win
 disappears with two pinned cores, 4-bit prefill does not improve pinned
 (-2.5% on one core), and decode is affinity-insensitive. Pin for bf16
-prefill measurement, not as a runtime default. Compiled tapes refuse to run
-on real Apple GPUs: the tape interpreter has produced silently wrong values
-on Honeykrisp, so the backend now fails closed with a named error instead of
-returning them (`receipts/2026-09-03-dispatcher-compile-and-column-replace.md`,
-[docs/known-defects.md](docs/known-defects.md)). `MLX_DISABLE_COMPILE=1`
-remains the user-facing switch and now changes an error into silence; the
-only way past the refusal is the explicit investigation override
-`MLX_OMARCHY_ALLOW_UNSAFE_COMPILE=1`, which the differential harness sets
-for itself.
+prefill measurement, not as a runtime default. Compiled tapes run eager
+automatically on this platform: the tape interpreter has produced silently
+wrong values on Honeykrisp, so at device discovery the backend disables
+compilation for the process and prints one warning naming the defect and
+the override (`receipts/2026-09-03-dispatcher-compile-and-column-replace.md`,
+[docs/known-defects.md](docs/known-defects.md)). You get correct output at
+eager speed with no env var and no exception; `MLX_DISABLE_COMPILE=1` is no
+longer needed. Set `MLX_OMARCHY_ALLOW_UNSAFE_COMPILE=1` to re-enable
+compiled tapes on purpose - the differential harness does exactly that to
+hunt the defect on hardware.
 
 Generated text is identical on both platforms: `Hello! How can I assist you today?` for bf16, `Paris` for 4-bit, matching token counts and stop positions. Numerical correctness is there. Speed is not.
 
@@ -92,18 +93,19 @@ The Vulkan tok/s column was measured on commit `ceae628`. It moved a long way fr
 
 Two things about the Vulkan column are not like-for-like, and both are the product's fault rather than the benchmark's. The Vulkan legs run `MLX_DISABLE_COMPILE=1`. Compiled bf16 tapes corrupt nondeterministically on this driver, and the gate that catches them is deliberately kept. So a bf16 leg with compile at its default cannot be measured here at all. The macOS column ran compile at its default, where it works.
 
-4-bit with compile enabled is now measured, and it is worse than unmeasured: it is silently wrong. A greedy 4-bit run on the M1 at `temp 0 seed 0` that answers "The capital of France is Paris." with compilation disabled instead returned `<|endoftext|>` repeats, CJK fragments and unrelated English words with compilation at its default, exit code 0, all 32 tokens, at normal speed. Nothing raised, and no gate fired. Two facts bound the defect. It is not fixed by submission ordering: commit `ff4b05a` made every submission wait on the previous one on its stream, which removed an earlier abort on this path and left the wrong answers behind. And it needs a real graph: `omarchy_compiled_tape_tests` passes 8 of 8 cases and 343 of 343 assertions on that same machine and driver. Until this is understood, run the Vulkan backend with `MLX_DISABLE_COMPILE=1` for 4-bit as well as bf16.
+4-bit with compile enabled is now measured, and it is worse than unmeasured: it is silently wrong. A greedy 4-bit run on the M1 at `temp 0 seed 0` that answers "The capital of France is Paris." with compilation disabled instead returned `<|endoftext|>` repeats, CJK fragments and unrelated English words with compilation at its default, exit code 0, all 32 tokens, at normal speed. Nothing raised, and no gate fired. Two facts bound the defect. It is not fixed by submission ordering: commit `ff4b05a` made every submission wait on the previous one on its stream, which removed an earlier abort on this path and left the wrong answers behind. And it needs a real graph: `omarchy_compiled_tape_tests` passes 8 of 8 cases and 343 of 343 assertions on that same machine and driver.
 
-The runtime now refuses this path. Since the fail-closed gate, compiled
-tape execution on a real Apple GPU raises
-`[omarchy] Compiled tapes are refused` by default - naming the defect,
-the `MLX_DISABLE_COMPILE=1` workaround, and the
-`MLX_OMARCHY_ALLOW_UNSAFE_COMPILE=1` investigation override - instead of
-returning plausible wrong text. Development devices (llvmpipe under
-`MLX_OMARCHY_ALLOW_NON_APPLE=1`) keep running compiled tapes, the
-bf16 tape gate and the trigonometric domain gate are unchanged, and the
-differential harness opts into the override so it can keep hunting the
-defect on hardware ([docs/known-defects.md](docs/known-defects.md)).
+The runtime now fails safe on this path. At device discovery the backend
+calls upstream's own `disable_compile()` switch, so `mx.compile` resolves
+to its eager function for the rest of the process: same values, slower,
+no env var to remember. One warning names the defect, the receipt, and
+the override. Should a tape still reach the interpreter - for example
+after an explicit `mx.enable_compile()` - the tape runner refuses it by
+name rather than compute with it. Development devices (llvmpipe under
+`MLX_OMARCHY_ALLOW_NON_APPLE=1`) are not affected: compilation stays
+armed there because the corruption class has never been observed on a
+software driver, and the differential harness sets the override so it
+can keep hunting the defect on hardware
 
 **Where the remaining time goes**, measured on the M1 over 7,853 dispatches of a profiled 4-bit run. A ranked list beats an apology. Recording a dispatch is 0.3% of host wall. A per-pipeline descriptor cache took that from 160-260 microseconds to under one, so per-dispatch cost is not a driver-side wall. Submitting is 14.3%, joining 0.4%. Waiting for a free submission slot is 45.4%. That is the GPU-backlog signature: the host blocks because the GPU is the slower side in those windows, so more slots would not help. The remaining 39.6% sits outside the encoder, in MLX's evaluator throttle and Python.
 
@@ -157,7 +159,7 @@ Honest list. Each one fails loudly with a named error rather than returning wron
 - Performance is 16-45x behind Metal, as measured above, down from 20-69x.
 - ANE export works: it exports and validates bundles but does not execute them yet; see below.
 
-Five Honeykrisp driver miscompiles are isolated with minimal reproducing shaders, and all five are fixed or worked around in this repo. Bool-word loads inside divergent lane loops read zero except at 16-byte-aligned words ([receipt](receipts/2026-08-31-m1-mlxlm-fp16-smoke.md)). A data-dependent shift-and-mask feeding a shared-memory scan stops propagating mid-scan ([receipt](receipts/2026-09-02-masked-scatter-m1-fix.md)). A wide op selector over a per-byte path miscompiles bool comparisons, so they live in their own shader (commit `3c7d257`). Shift-then-mask byte extraction with a data-dependent shift amount drops bool scatter writes and corrupts `LogicalAnd` and `select` on the M1, and the workaround is per-site: neither byte-extraction form is safe by default on this hardware, so an eight-variant device probe pins every site (commit `959c7a0`, [receipt](receipts/2026-09-02-m1-red-suites-root-cause.md)). The same dynamic shift-then-mask inside `reduce_general.comp`'s `load_truthy` misreduced boolean results past the first 32-bit word - `mx.all` and `mx.any` both - and the fix replaced it with the constant-shift chain, device-probed at every boundary rather than trusted by analogy (commit `cf68e7d`). Anyone building compute on this driver should read those five first. A sixth defect stays open and gated: bf16 compiled tapes corrupt inside the real mlx-lm forward. On real M1 hardware, 15 identical-seed runs produced 15 different garbage outputs, prefill matched eager bit for bit through all 24 layers, and divergence began at decode step 2 ([receipt](receipts/2026-09-02-m1-bf16-compiled-tape.md)). No minimal shader repro exists, so it is suspected but not confirmed as a miscompile. `MLX_DISABLE_COMPILE=1` avoids it.
+Five Honeykrisp driver miscompiles are isolated with minimal reproducing shaders, and all five are fixed or worked around in this repo. Bool-word loads inside divergent lane loops read zero except at 16-byte-aligned words ([receipt](receipts/2026-08-31-m1-mlxlm-fp16-smoke.md)). A data-dependent shift-and-mask feeding a shared-memory scan stops propagating mid-scan ([receipt](receipts/2026-09-02-masked-scatter-m1-fix.md)). A wide op selector over a per-byte path miscompiles bool comparisons, so they live in their own shader (commit `3c7d257`). Shift-then-mask byte extraction with a data-dependent shift amount drops bool scatter writes and corrupts `LogicalAnd` and `select` on the M1, and the workaround is per-site: neither byte-extraction form is safe by default on this hardware, so an eight-variant device probe pins every site (commit `959c7a0`, [receipt](receipts/2026-09-02-m1-red-suites-root-cause.md)). The same dynamic shift-then-mask inside `reduce_general.comp`'s `load_truthy` misreduced boolean results past the first 32-bit word - `mx.all` and `mx.any` both - and the fix replaced it with the constant-shift chain, device-probed at every boundary rather than trusted by analogy (commit `cf68e7d`). Anyone building compute on this driver should read those five first. A sixth defect stays open and gated: bf16 compiled tapes corrupt inside the real mlx-lm forward. On real M1 hardware, 15 identical-seed runs produced 15 different garbage outputs, prefill matched eager bit for bit through all 24 layers, and divergence began at decode step 2 ([receipt](receipts/2026-09-02-m1-bf16-compiled-tape.md)). No minimal shader repro exists, so it is suspected but not confirmed as a miscompile. The runtime runs these tapes eager automatically on Apple GPUs.
 
 ## Quick start
 
@@ -189,11 +191,13 @@ print(value, grad)
 
 Both the forward pass and the gradient run on the Apple GPU. No Metal, no macOS.
 
-Running a language model needs `mlx-lm` and one flag while the bf16 tape defect is open:
+Running a language model needs `mlx-lm`. Compilation runs eager
+automatically on Apple GPUs (see the performance section above), so no
+flag is needed:
 
 ```bash
 pip install mlx-lm
-MLX_DISABLE_COMPILE=1 python -m mlx_lm generate \
+python -m mlx_lm generate \
   --model mlx-community/Qwen2.5-0.5B-Instruct-4bit \
   --prompt "What is the capital of France? Answer in one word." \
   --max-tokens 32
@@ -204,7 +208,7 @@ Steady-state decode benchmarks use the pinned-length harness instead of
 first):
 
 ```bash
-MLX_DISABLE_COMPILE=1 python3 scripts/bench_decode.py \
+python3 scripts/bench_decode.py \
   --model mlx-community/Qwen2.5-0.5B-Instruct-4bit \
   --prompt "What is the capital of France? Answer in one word." \
   --tokens 64

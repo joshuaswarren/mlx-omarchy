@@ -16,12 +16,15 @@ machine. Receipts from a development run must record that the device is a
 development device, not Honeykrisp.
 
 `MLX_OMARCHY_ALLOW_UNSAFE_COMPILE=1` lets compiled tapes run on a real
-Apple GPU. The default refuses them: the tape interpreter has produced
-silently wrong values there and the defect is unpinned
-([docs/known-defects.md](known-defects.md)). Set it only to investigate
-that defect deliberately; it permits wrong values. The differential
-harness (`scripts/differential_compile.py`,
-`scripts/probe_tape_eager.py`) sets it for itself.
+Apple GPU. The default runs them eager: at device discovery the runtime
+disables compilation and prints one warning, because the tape
+interpreter has produced silently wrong values there and the defect is
+unpinned ([docs/known-defects.md](known-defects.md)). Eager output is
+identical, only slower. Set the override only to investigate that defect
+deliberately; it permits wrong values. The differential harness
+(`scripts/differential_compile.py`, `scripts/probe_tape_eager.py`) sets
+it for itself; `scripts/probe_compile_ordering.py` measures the default
+path and runs without it.
 
 ## Build the wheel
 
