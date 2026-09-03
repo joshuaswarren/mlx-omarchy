@@ -255,3 +255,5 @@ ssh -o BatchMode=yes joshuawarren@100.67.134.6 \
    --model $HOME/src/mlx-bench-samechip/models/q4 --prompt "What is the capital of France? Answer in one word." \
    --max-tokens 32 --temp 0 --seed 0'
 ```
+> **Annotation 2026-09-03:** the decode tok/s figures in this document are EOS-truncated short-burst rates, not steady-state decode (generation stopped after 2-10 tokens under `--max-tokens 32`). They are not comparable across machines or wheels. See `receipts/2026-09-03-decode-metric-fix.md`; replacement protocol: `scripts/bench_decode.py` (pinned length, token-count assertion).
+

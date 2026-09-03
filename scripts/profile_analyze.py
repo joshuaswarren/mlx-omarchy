@@ -286,7 +286,7 @@ def main():
             by_phase.setdefault(d["phase"], []).append(d)
         say("")
         say("== per phase")
-        for ph in sorted(by_phase):
+        for ph in sorted(by_phase, key=lambda p: (p is None, p or "")):
             ds = by_phase[ph]
             dur = sum((d["t1"] - d["t0"]) * period
                       for d in ds if "t0" in d)
@@ -296,9 +296,14 @@ def main():
                 f"{fmt_ns(sum(j['wait'] for j in joins_ph))}")
         n_tok = sum(1 for m in markers if m["p"] == "tok")
         decode_ds = len(by_phase.get("decode", by_phase.get("tok", [])))
+        decode_subs = [s for s in submits
+                       if phase_of_host(s["t"]) in ("decode", "tok")]
         if n_tok:
             say(f"   dispatches/decode-token: {decode_ds / n_tok:.1f} "
                 f"({decode_ds} over {n_tok} tokens)")
+            say(f"   submissions/decode-token: "
+                f"{len(decode_subs) / n_tok:.1f} "
+                f"({len(decode_subs)} over {n_tok} tokens)")
             jw = sum(j["wait"] for j in joins
                      if phase_of_host(j["t"]) in ("decode", "tok"))
             say(f"   join wait per decode-token: {fmt_ns(jw / n_tok)}")

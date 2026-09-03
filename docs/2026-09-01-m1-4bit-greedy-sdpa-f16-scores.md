@@ -174,3 +174,5 @@ M1 Honeykrisp (jwm1-linux, `.work/venv-fp16`):
 All three owed verifications above are green. Nothing committed; the
 M1 tracked tree stays clean (fixes live in `.work/mlx` copies and the
 dist-wip wheel).
+> **Annotation 2026-09-03:** the decode tok/s figures in this document are EOS-truncated short-burst rates, not steady-state decode (generation stopped after 2-10 tokens under `--max-tokens 32`). They are not comparable across machines or wheels. See `receipts/2026-09-03-decode-metric-fix.md`; replacement protocol: `scripts/bench_decode.py` (pinned length, token-count assertion).
+

@@ -311,3 +311,5 @@ MLX_DISABLE_COMPILE=1 .work/venv-qual/bin/python -m mlx_lm generate \
 No commits on either machine. Receipt only.
 
 
+> **Annotation 2026-09-03:** the decode tok/s figures in this document are EOS-truncated short-burst rates, not steady-state decode (generation stopped after 2-10 tokens under `--max-tokens 32`). They are not comparable across machines or wheels. See `receipts/2026-09-03-decode-metric-fix.md`; replacement protocol: `scripts/bench_decode.py` (pinned length, token-count assertion).
+

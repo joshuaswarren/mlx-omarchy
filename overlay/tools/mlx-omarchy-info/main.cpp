@@ -147,6 +147,8 @@ void print_json(uint32_t index) {
   num_field("vk_submissions", trace.vk_submissions.load(), true);
   num_field("vk_buffer_copies", trace.vk_buffer_copies.load(), true);
   num_field("vk_buffer_fills", trace.vk_buffer_fills.load(), false);
+  num_field("vk_compute_dispatches", trace.vk_compute_dispatches.load(),
+            false);
   std::cout << "  }\n";
   std::cout << "}\n";
 }
@@ -236,6 +238,8 @@ int trace_smoke(uint32_t index) {
   std::cout << "trace: vk_submissions=" << trace.vk_submissions.load()
             << " vk_buffer_copies=" << trace.vk_buffer_copies.load()
             << " vk_buffer_fills=" << trace.vk_buffer_fills.load()
+            << " vk_compute_dispatches="
+            << trace.vk_compute_dispatches.load()
             << " gpu_primitive_dispatches="
             << trace.gpu_primitive_dispatches.load() << "\n";
   return 0;
@@ -290,10 +294,7 @@ int check_bundle(const std::string& dir_arg) {
     std::cout << "[receipt] firmware: min=" << m.firmware.min
               << " max=" << m.firmware.max << "\n";
     std::cout << "[receipt] provenance: repo=" << m.provenance.source_repo
-              << " commit=" << m.provenance.source_commit
-              << " exported_at=" << m.provenance.exported_at << "\n";
-    std::cout << "[receipt] release_asset: model=" << m.release_asset.model
-              << " model_sha256=" << m.release_asset.model_sha256 << "\n";
+              << " commit=" << m.provenance.source_commit << "\n";
     std::cout << "[receipt] OK: bundle valid\n";
     return 0;
   } catch (const omarchy::ane::AneBundleNotFound&) {

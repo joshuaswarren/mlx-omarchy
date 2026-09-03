@@ -151,3 +151,5 @@ wheel), model snapshots under `~/.cache/huggingface/hub`. jwm1:
 `/tmp/fin-*.log`), wheel build stopped at Main's box lock. Profiles:
 `/tmp/nobatch.jsonl` (host-timestamped), `/tmp/slow-final.jsonl` (budget-16
 evidence). No commits. Main commits.
+> **Annotation 2026-09-03:** the decode tok/s figures in this document are EOS-truncated short-burst rates, not steady-state decode (generation stopped after 2-10 tokens under `--max-tokens 32`). They are not comparable across machines or wheels. See `receipts/2026-09-03-decode-metric-fix.md`; replacement protocol: `scripts/bench_decode.py` (pinned length, token-count assertion).
+

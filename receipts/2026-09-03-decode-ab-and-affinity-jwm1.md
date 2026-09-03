@@ -169,3 +169,5 @@ MLX_DISABLE_COMPILE=1 taskset -c <SPEC> <venv>/bin/python -m mlx_lm generate \
   by any surviving build; they stay in the README with their condition
   named, and the build that produced them is no longer recoverable from
   surviving artifacts.
+> **Annotation 2026-09-03:** the decode tok/s figures in this document are EOS-truncated short-burst rates, not steady-state decode (generation stopped after 2-10 tokens under `--max-tokens 32`). They are not comparable across machines or wheels. See `receipts/2026-09-03-decode-metric-fix.md`; replacement protocol: `scripts/bench_decode.py` (pinned length, token-count assertion).
+

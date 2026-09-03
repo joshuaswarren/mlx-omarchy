@@ -30,6 +30,20 @@ python3 tools/gen-compat-matrix.py --json-out docs/coverage.json > docs/compatib
 
 **Performance against native MLX, same chip.** Both columns are the same Apple M1 (T8103, 8 GPU cores, 16 GB), same model revisions, same prompts, `--max-tokens 32 --temp 0 --seed 0`, warm run, Qwen2.5-0.5B-Instruct:
 **Measurement condition (added 2026-09-03):** every jwm1-linux timing on this page was taken between 2026-08-25 and 2026-09-03 with only 1 of 8 CPU cores online. The default GRUB entry was `Omarchy ANE test`, which supplies a static device tree and left cores 1-7 offline (see "Boot-entry cause" below). The machine now boots all 8 cores. GPU-bound figures were materially unaffected (matmul TFLOP/s median 0.1556 -> 0.1576). The tok/s rows were re-measured on 8 cores the same day (`receipts/2026-09-03-eight-core-remeasure.md`): all four came out 27-43% **lower** than the 1-core figures, so the one-core window was not hiding speed.
+**Decode rows are invalid (annotated 2026-09-03).** Every decode tok/s
+number in this table and in the linked receipts is an EOS-truncated
+short-burst rate, not steady-state decode: with `--max-tokens 32` the
+model stopped after 2-10 tokens, so each figure measures load, prompt
+processing, startup, and a couple of decode steps. One recorded
+"3.85 tok/s" was a 2-token rate. Short-burst rates are not comparable
+across machines or wheels, which defeats the purpose of this table
+(`receipts/2026-09-03-decode-metric-fix.md`). They are kept here for
+history only. Their replacement is a pinned-length decode rate with a
+token-count assertion, measured by `scripts/bench_decode.py` with EOS
+suppressed, reported as "decode X tok/s over Y tokens" with prompt
+processing excluded. Until those rows exist, treat every decode figure
+below as a short-burst rate.
+
 
 | Measurement | macOS 13.7.8, MLX on Metal | Linux, 1 of 8 cores (prior, ceae628) | Linux, 8 cores (2026-09-03 re-measure) | Ratio, 8-core |
 |---|---|---|---|---|
@@ -154,6 +168,26 @@ MLX_DISABLE_COMPILE=1 python -m mlx_lm generate \
   --prompt "What is the capital of France? Answer in one word." \
   --max-tokens 32
 ```
+
+Steady-state decode benchmarks use the pinned-length harness instead of
+`--max-tokens` (which is only a cap; generation usually stops at EOS
+first):
+
+```bash
+MLX_DISABLE_COMPILE=1 python3 scripts/bench_decode.py \
+  --model mlx-community/Qwen2.5-0.5B-Instruct-4bit \
+  --prompt "What is the capital of France? Answer in one word." \
+  --tokens 64
+```
+
+It suppresses EOS, asserts the produced token count, and prints
+"decode X tok/s over Y tokens" with prefill reported separately. A
+submissions-per-token measurement (eager vs compiled) needs the
+profiling wheel (e.g. `v0.3.3-diag.1`); the default wheel compiles the
+profiling harness out. Run generation with
+`MLX_OMARCHY_GPU_PROFILE=<path>` plus `scripts/profile_generate.py
+--max-tokens 64`, then `scripts/profile_analyze.py` reports
+submissions/decode-token and dispatches/decode-token.
 
 For the C++ tests and tools, see [docs/install-omarchy.md](docs/install-omarchy.md). Development machines without an Apple GPU can run everything on any Vulkan 1.3 driver, llvmpipe included, with `MLX_OMARCHY_ALLOW_NON_APPLE=1`.
 

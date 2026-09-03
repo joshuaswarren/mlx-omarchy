@@ -127,3 +127,5 @@ dispatch before it can ship. One jwm1 build + bench leg answers it.
 - `overlay/tests/omarchy/test_matmul_family.cpp` (+269 lines, 2 test cases)
 - `receipts/2026-09-02-gemv-decode/` (this receipt, both scripts, the A/B
   variant shader)
+> **Annotation 2026-09-03:** the decode tok/s figures in this document are EOS-truncated short-burst rates, not steady-state decode (generation stopped after 2-10 tokens under `--max-tokens 32`). They are not comparable across machines or wheels. See `receipts/2026-09-03-decode-metric-fix.md`; replacement protocol: `scripts/bench_decode.py` (pinned length, token-count assertion).
+
