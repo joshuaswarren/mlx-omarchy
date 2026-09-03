@@ -39,23 +39,27 @@ Affected: v0.3.0-alpha.1 through v0.3.1. Observed on: dev box, Mesa llvmpipe.
 
 Upstream's `test_autograd.py::TestAutograd::test_eval_in_grad` got `vjp = 12.000000953674316`. The exact value is `12.0`. This is one ulp of float32 accumulation. Upstream Metal is exact here. Severity is low. It surfaces only where code pins exact equality.
 
-### Ordered comparison against NaN returns true on the M1
+## What the M1 verification reds turned out to be
 
-Affected: the v0.3.1 release candidate (tree at `959c7a0`; not yet tagged). Observed on: real M1 (Honeykrisp), three of three runs.
+The first M1 run of the v0.3.1 release candidate (tree at `959c7a0`) reported three findings. All three were real; none of them is a device defect. They are recorded because each one carries a lesson that outlives this release, and because a red suite that gets explained away instead of root-caused is how real defects get missed later.
 
-`omarchy_primitive_tests` fails one assertion per run: an ordered comparison against NaN returns true where the host reference says false, at `test_primitives.cpp:5548`. IEEE says every ordered comparison with NaN is false. The same case passes on the dev box. The tag is held on this finding.
+### The NaN ordered comparison: the test's own reference was miscompiled
 
-### Indexing operations succeed where a named refusal was expected on the M1
+`omarchy_primitive_tests` failed one assertion in three of three M1 runs: an ordered comparison against NaN returned true where the host reference said false, at `test_primitives.cpp:5548`. IEEE says every ordered comparison with NaN is false. The device returned the correct answer; the reference was wrong, because the reference was computed into a `std::vector<bool>`.
 
-Affected: the v0.3.1 release candidate (tree at `959c7a0`; not yet tagged). Observed on: real M1 (Honeykrisp).
+`std::vector<bool>` is bit-packed, and every assignment goes through a read-modify-write proxy. That proxy is itself compiled code, and g++ 16.1.1 20260430 aarch64 miscompiles it. The isolated trigger, verified independently on jwm1: four interleaved `vector<bool>` writes in one loop, then `ne = {x != 1.0 ...}` over `{1, NaN, 3, NaN}` gives `ne[3] = false` for `NaN != 1.0` at `-O1` and `-O2` (`ne = {1,0,1,0}`, should be `{1,0,1,1}`), while `-O0` is correct. The same comparison written against plain bool arrays is correct at every optimisation level, and a single-comparison loop is correct too - which is what pins the bit-packed proxy, not the comparison, as the trigger.
 
-`omarchy_indexing_ops_tests` fails three assertions that expect a named `[omarchy]` refusal and instead see the operation succeed with an empty error. An operation that was supposed to refuse and did not is a silent-success defect, and the seriousness depends on the mechanism, which is being determined. If the operation succeeded because the newly enabled CPU backend picked up work that has no GPU kernel, that is silent CPU fallback - the one thing this project promises never happens, in so many words that our own error text prints it. If the GPU kernel simply exists on Honeykrisp but not on llvmpipe, the finding is a dev-box capability gap instead. The two outcomes lead to different fixes and different coverage-matrix corrections, so the ledger waits for the determination rather than guessing.
+The durable rule for anyone writing device-versus-host comparisons on aarch64: **a reference computed into `std::vector<bool>` is not a reference.** Keep references in plain arrays.
 
-### `fast::rope` diverges from its host reference on the M1 at position 12345
+This is the fifth distinct miscompile this project has isolated, and the first that is not in the Vulkan driver: three Honeykrisp shader miscompiles, the context-dependent byte-extraction inversion above, and now a host-compiler bug in the test harness. The pattern behind all five is the same, and it is the sentence this ledger keeps earning: **on this platform, disagreement between device and host is not evidence about the device until the host side is verified independently.**
 
-Affected: the v0.3.1 release candidate (tree at `959c7a0`; not yet tagged). Observed on: real M1 (Honeykrisp).
+### The indexing refusals that stopped refusing: stale test expectations
 
-A standalone probe shows `fast::rope` diverging from its host reference by 13.6 at position 12345. This contradicts the `959c7a0` commit message, which states that rope at positions 12345 and 100000 matches its reference. The pre-merge verification ran in the investigating agent's own worktree, not the merged artifact; the merged tree differs in a way that matters here, and the discrepancy is under investigation. Recorded as the second commit-message claim on this page that the merged artifact did not reproduce.
+`omarchy_indexing_ops_tests` failed three assertions that expected a named `[omarchy]` refusal and saw the operation succeed. The serious version of this finding would be silent CPU fallback: the CPU backend shipped in this same release, and an op succeeding where no GPU kernel exists is the one thing the contract forbids. It is not that. The three assertions sit inside `if (!capabilities.shader_atomic_float_add)` guards that still expect the old named refusal, and `959c7a0` turned those paths into working compare-exchange kernels - it updated `test_scatter_determinism`'s expectations and missed these. The runtime had no CPU device, and the values came back correct from the GPU FCAS path. Test bugs, now fixed in the test files; the guarded refusals are gone because the capability gap is gone.
+
+### The rope divergence: the probe, not the primitive
+
+A standalone probe reported `fast::rope` diverging from its host reference by 13.6 at position 12345, contradicting the `959c7a0` claim that rope matches its reference there. The probe hardcoded `offset=0` while computing its reference at the target position, so the two never computed the same function. With the offset set, rope is bit-exact at position 4 and within the documented trig band at 12345 and 100000 on Honeykrisp. The `959c7a0` claim stands.
 
 ## A correction on the record: compiled tapes do not bypass the trig gate
 
@@ -197,6 +201,6 @@ On v0.3.0-alpha.1: treat every operation in the alpha section as untrusted. Upgr
 
 On v0.3.0: the semaphore crash can kill any workload, and on a real M1 the scatter, LogicalAnd, select, and sin/cos defects return wrong values or refuse operations your dev box runs fine. Upgrade to v0.3.1.
 
-On the v0.3.1 release candidate: three findings against the merged tree on real M1 hardware sit in the live section above (ordered NaN comparison, indexing ops that stopped refusing, and a rope divergence). The tag is held until they are resolved; this paragraph will say exactly what shipped once it ships. The long-standing live entries remain: `gelu_approx` under test runners and bf16 compiled tapes in mlx-lm. Large-argument trig refuses by name, eagerly and inside `mx.compile` alike.
+On the v0.3.1 release candidate: the first M1 verification reported three findings against the merged tree; all three resolved to test-side causes, not device defects (see "What the M1 verification reds turned out to be" above). The tag stays held until Main's test-file fixes land and the battery is green on both platforms, because green is the signal everyone relies on and a documented exception is a thing people forget to re-check. The long-standing live entries remain: `gelu_approx` under test runners and bf16 compiled tapes in mlx-lm. Large-argument trig refuses by name, eagerly and inside `mx.compile` alike.
 
 Named `[omarchy] ... is not implemented` errors remain the honest failure mode. The defects on this page are dangerous because they do not fail that way.
