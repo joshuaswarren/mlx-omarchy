@@ -424,9 +424,41 @@ class BuildPayload(unittest.TestCase):
         self.assertEqual(sorted(payload), sorted([
             "schema_version", "kind", "generated_at", "arch", "model",
             "chip", "kernel", "mesa_driver", "mesa_device", "mlx_version",
-            "mlx_device", "source_commit", "repo_dirty",
-            "redaction_summary", "files",
+            "mlx_device", "source_commit", "repo_dirty", "cpu_online",
+            "benchmark", "redaction_summary", "files",
         ]))
+
+    def test_benchmark_rows_ride_in_the_summary(self):
+        rows = [{"n": 512, "tflops": 0.157, "median_ms": 1.71,
+                 "reps": 8, "min_ms": 1.597}]
+        payload = cc.build_payload("deep", self.QUICK, self.MANIFEST,
+                                   benchmark=rows)
+        self.assertEqual(payload["benchmark"],
+                         [{"n": 512, "tflops": 0.157, "median_ms": 1.71}])
+
+    def test_benchmark_defaults_to_empty_and_drops_junk(self):
+        self.assertEqual(
+            cc.build_payload("quick", self.QUICK, self.MANIFEST)["benchmark"],
+            [])
+        junk = ["nope", {"tflops": 1.0}, {"n": "512"}]
+        self.assertEqual(
+            cc.build_payload("deep", self.QUICK, self.MANIFEST,
+                             benchmark=junk)["benchmark"], [])
+
+    def test_benchmark_is_capped(self):
+        rows = [{"n": i + 1, "tflops": 1.0, "median_ms": 1.0}
+                for i in range(40)]
+        payload = cc.build_payload("deep", self.QUICK, self.MANIFEST,
+                                   benchmark=rows)
+        self.assertEqual(len(payload["benchmark"]), 16)
+
+    def test_cpu_online_is_carried(self):
+        quick = json.loads(json.dumps(self.QUICK))
+        quick["host"]["cpu_online"] = 1
+        payload = cc.build_payload("deep", quick, self.MANIFEST)
+        self.assertEqual(payload["cpu_online"], 1)
+        self.assertIsNone(
+            cc.build_payload("deep", self.QUICK, self.MANIFEST)["cpu_online"])
 
     def test_values_extracted_from_report(self):
         payload = cc.build_payload("deep", self.QUICK, self.MANIFEST)

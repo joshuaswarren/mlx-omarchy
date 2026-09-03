@@ -279,12 +279,19 @@ class QueryCliTests(SnapshotTestCase):
         self.assertNotIn("Traceback", err)
 
     def test_missing_dataset_message(self):
+        """An explicit --snapshot that holds nothing fails there.
+
+        It must NOT fall through to the mirrored community-data branch:
+        answering from a different dataset than the one named is worse
+        than an error, and it made this test pass or fail depending on
+        whether the data branch happened to be fetched.
+        """
         missing = self.snapshot / "does-not-exist"
         rc, out, err = self.run_cli("--source", "local",
                                     "--snapshot", str(missing), "list")
         self.assertEqual(rc, 1)
-        self.assertIn("no local dataset", err)
-        self.assertIn("--snapshot", err)
+        self.assertIn("no dataset at the requested --snapshot", err)
+        self.assertIn(str(missing), err)
         self.assertNotIn("Traceback", err)
 
     def test_auto_uses_local_snapshot_without_network(self):

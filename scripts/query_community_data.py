@@ -188,10 +188,19 @@ def record_mlx_version(record):
 
 
 def record_benchmarks(record):
-    """[(label, metric, size, value)] from known benchmark locations."""
-    benchmark = _dig_dict(_payload(record), "benchmark")
+    """[(label, metric, size, value)] from known benchmark locations.
+
+    Two shapes: the read API serves a flat list of rows on the record,
+    while a deep archive payload nests them under benchmark.matmul.
+    Without the flat shape, comparing devices over the public dataset
+    returns nothing, which is the whole point of the dataset.
+    """
+    entries = record.get("benchmark")
+    if not isinstance(entries, list):
+        benchmark = _dig_dict(_payload(record), "benchmark")
+        entries = benchmark.get("matmul") if isinstance(benchmark, dict) \
+            else None
     out = []
-    entries = benchmark.get("matmul") if isinstance(benchmark, dict) else None
     if not isinstance(entries, list):
         return out
     for entry in entries:
@@ -233,11 +242,28 @@ def snapshot_file(snapshot_dir):
 
 
 def load_local(args, repo_root):
-    """Return (records, skipped, source_label) from the local ladder."""
+    """Return (records, skipped, source_label) from the local ladder.
+
+    An explicit --snapshot is exact: if that directory holds no dataset
+    the call fails there. Falling through to the mirrored branch would
+    silently answer from a DIFFERENT dataset than the one named, which
+    is worse than an error.
+    """
     tried = []
-    candidates = []
     if args.snapshot:
-        candidates.append(Path(args.snapshot))
+        path = snapshot_file(Path(args.snapshot))
+        tried.append(str(path))
+        if path.is_file():
+            records, skipped = parse_jsonl(
+                path.read_text(encoding="utf-8", errors="replace"))
+            return records, skipped, str(path)
+        raise DatasetError(
+            "no dataset at the requested --snapshot. Looked at: " +
+            ", ".join(tried) + ". Point --snapshot at a directory holding "
+            "latest.jsonl, drop it to search the repository and the "
+            "mirrored community-data branch, or use --source remote.")
+
+    candidates = []
     env_dir = os.environ.get("MLX_OMARCHY_DATA_DIR")
     if env_dir:
         candidates.append(Path(env_dir))
