@@ -132,6 +132,16 @@ run.
   **https://mlx-omarchy-community-data.joshua-s-warren.workers.dev/v1/results/8c083d2dc77af5b21e89b1764172dfe219cd3162d03a6977d52856e27044e7cc**
   (deduplicated=false, verified serving, `source_commit` recorded,
   `repo_dirty=false`, `cpu_online=8`).
+- The worker was redeployed from main (`8a42261`) the same day and the run
+  was repeated from the clean clone at main exactly:
+  archive `deep-main-2026-09-03.tar.gz`, 5982 bytes,
+  sha256 `d087d0ade1451319215b2d2afcd23ca5ed02baf1903e0aafb872435336065489`,
+  public receipt:
+  **https://mlx-omarchy-community-data.joshua-s-warren.workers.dev/v1/results/d087d0ade1451319215b2d2afcd23ca5ed02baf1903e0aafb872435336065489**
+  (deduplicated=false). This is the canonical end-to-end proof: main's
+  collector, main's worker, the released `dev20260903` wheel, correctness
+  and benchmark sections populated. The `115ea2c` submission above stands
+  as the record of the redeploy-window workaround.
 
 ## Exact commands
 
