@@ -455,7 +455,7 @@ TEST_CASE("scatter prod multiplies integer updates exactly") {
   check_ints(out, {1, 60, 3, 28}, stream);
 }
 
-TEST_CASE("scatter keeps named rejections for the unsupported modes") {
+TEST_CASE("scatter float Sum and Prod compute without atomic float; multi-index stays rejected") {
   if (!compute_available()) {
     return;
   }
@@ -464,19 +464,19 @@ TEST_CASE("scatter keeps named rejections for the unsupported modes") {
   array indices = array({0, 1}, {2}, int32);
   array updates = array({5.0f, 6.0f}, {2, 1}, float32);
 
-  // Float Sum and Prod now ride VK_EXT_shader_atomic_float where the
-  // device reports shaderBufferFloat32AtomicAdd (llvmpipe and the M1
-  // both do; value coverage lives in omarchy_scatter_determinism_tests,
-  // which owns the float and bool scatter suites). On a device without
-  // the extension the named refusal must stay.
+  // Float Sum and Prod compute even without VK_EXT_shader_atomic_float:
+  // the FCAS compare-exchange replay landed in 959c7a0. A device that
+  // lacks the extension (the M1 Honeykrisp) gets the integer-exact
+  // values instead of a refusal; this guard engages only there. The
+  // atomic-float value coverage lives in omarchy_scatter_determinism_tests.
   const auto& capabilities = omarchy::device(0).capabilities();
   if (!capabilities.shader_atomic_float_add) {
-    CHECK(evaluation_error(scatter_add(
-              src, std::vector<array>{indices}, updates, {0}, stream))
-              .find("VK_EXT_shader_atomic_float") != std::string::npos);
-    CHECK(evaluation_error(scatter_prod(
-              src, std::vector<array>{indices}, updates, {0}, stream))
-              .find("VK_EXT_shader_atomic_float") != std::string::npos);
+    array added =
+        scatter_add(src, std::vector<array>{indices}, updates, {0}, stream);
+    check_floats(added, {6.0f, 8.0f, 3.0f}, stream);
+    array product =
+        scatter_prod(src, std::vector<array>{indices}, updates, {0}, stream);
+    check_floats(product, {5.0f, 12.0f, 3.0f}, stream);
   }
 
   // Three index arrays exceed the implemented two-index kernel; the
@@ -680,25 +680,20 @@ TEST_CASE("scatter_add_axis accumulates integer duplicates") {
   check_ints(out, {1, 5, 0, 5, 6, 4}, stream);
 }
 
-TEST_CASE("scatter_add_axis float Sum tracks the device atomic-add feature") {
+TEST_CASE("scatter_add_axis float Sum computes on the atomic and CAS paths") {
   if (!compute_available()) {
     return;
   }
   Stream stream = gpu_stream();
-  // With shaderBufferFloat32AtomicAdd the axis Sum is implemented
-  // (value check); without it the named refusal stays.
+  // The axis Sum computes with shaderBufferFloat32AtomicAdd and, since
+  // 959c7a0, also through the FCAS compare-exchange replay on devices
+  // without the extension (the M1 Honeykrisp). Both paths reach the
+  // integer-exact duplicate-index total.
   array src = array({0.0f, 0.0f}, {2}, float32);
   array indices = array({0, 0}, {2}, int32);
   array values = array({1.0f, 2.0f}, {2}, float32);
-  const auto& capabilities = omarchy::device(0).capabilities();
-  if (!capabilities.shader_atomic_float_add) {
-    std::string error =
-        evaluation_error(scatter_add_axis(src, indices, values, 0, stream));
-    CHECK(error.find("VK_EXT_shader_atomic_float") != std::string::npos);
-  } else {
-    array out = scatter_add_axis(src, indices, values, 0, stream);
-    check_floats(out, {3.0f, 0.0f}, stream);
-  }
+  array out = scatter_add_axis(src, indices, values, 0, stream);
+  check_floats(out, {3.0f, 0.0f}, stream);
 }
 
 // ---------------------------------------------------------------------------

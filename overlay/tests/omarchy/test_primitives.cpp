@@ -4,6 +4,7 @@
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include "doctest/doctest.h"
 
+#include <array>
 #include <cmath>
 #include <algorithm>
 #include <iostream>
@@ -5568,17 +5569,22 @@ TEST_CASE("Less, LessEqual, Greater, and NotEqual match host references and the 
   std::vector<float> yv = {0.0f, 0.5f, -1.5f, 1.0f};
   array x(xv.begin(), Shape{4}, float32);
   array y(yv.begin(), Shape{4}, float32);
-  std::vector<bool> lt(4), le(4), gt(4), ne(4);
+  // Reference comparisons land in plain bool storage. std::vector<bool>
+  // is bit-packed: every write goes through a read-modify-write proxy,
+  // and GCC at -O1 and above on aarch64 miscompiled four interleaved
+  // comparisons through it (NaN != 1.0f folded to false). The proxy is
+  // rebuilt from the plain values only at the call.
+  std::array<bool, 4> lt{}, le{}, gt{}, ne{};
   for (size_t i = 0; i < 4; ++i) {
     lt[i] = xv[i] < yv[i];
     le[i] = xv[i] <= yv[i];
     gt[i] = xv[i] > yv[i];
     ne[i] = xv[i] != yv[i];
   }
-  check_bool(less(x, y, stream), lt, stream);
-  check_bool(less_equal(x, y, stream), le, stream);
-  check_bool(greater(x, y, stream), gt, stream);
-  check_bool(not_equal(x, y, stream), ne, stream);
+  check_bool(less(x, y, stream), std::vector<bool>(lt.begin(), lt.end()), stream);
+  check_bool(less_equal(x, y, stream), std::vector<bool>(le.begin(), le.end()), stream);
+  check_bool(greater(x, y, stream), std::vector<bool>(gt.begin(), gt.end()), stream);
+  check_bool(not_equal(x, y, stream), std::vector<bool>(ne.begin(), ne.end()), stream);
 
   // The NaN matrix: NaN against NaN and NaN against one. Every
   // ordered comparison and Equal stay false, NotEqual alone is true.
@@ -5639,8 +5645,11 @@ TEST_CASE("LogicalAnd and LogicalNot match host references") {
   }
   Stream stream = gpu_stream();
 
-  // 33 elements cross the 32-bit word packing boundary.
-  std::vector<bool> xv(33), yv(33), and_expected(33);
+  // 33 elements cross the 32-bit word packing boundary. The pattern and
+  // reference land in plain bool storage: interleaved writes through the
+  // bit-packed std::vector<bool> proxy are a known aarch64 miscompile
+  // shape at -O1 and above (see the comparison test above).
+  std::array<bool, 33> xv{}, yv{}, and_expected{};
   for (size_t i = 0; i < 33; ++i) {
     xv[i] = (i % 3) != 0;
     yv[i] = (i % 5) != 0;
