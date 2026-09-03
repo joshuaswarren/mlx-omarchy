@@ -1,0 +1,127 @@
+#version 460
+
+// A/B VARIANT (temporary benchmark flavor, DecodeGemv): identical to
+// shaders/matmul_vec.comp except the per-column reduction. This flavor
+// uses hardware-style subgroupAdd over each 32-lane slot instead of the
+// shared-memory tree, trading five barrier-synchronized shared-memory
+// rounds for one software-lowered float subgroup reduction (Honeykrisp
+// hardware scan/reduce are integer-only, so subgroupAdd on floats
+// lowers to a shuffle chain). It is correct ONLY when the real
+// subgroup size is 32, so that one synthetic 32-lane slot coincides
+// with one hardware subgroup; any dispatch of this flavor must check
+// the device subgroup size first. The shipped flavor needs no such
+// check, which is why it is the default.
+
+#ifdef USE_FP16
+#extension GL_EXT_shader_16bit_storage : require
+#extension GL_EXT_shader_explicit_arithmetic_types_float16 : require
+#define STORAGE_TYPE float16_t
+#define LOAD_VALUE(x) float(x)
+#define STORE_VALUE(f) STORAGE_TYPE(f)
+#elif defined(USE_BF16)
+#extension GL_EXT_shader_16bit_storage : require
+#extension GL_EXT_shader_explicit_arithmetic_types_int16 : require
+#define STORAGE_TYPE uint16_t
+#define LOAD_VALUE(x) uintBitsToFloat(uint(x) << 16u)
+uint16_t bf16_store(float value) {
+  uint bits = floatBitsToUint(value);
+  if (isnan(value)) {
+    return uint16_t((bits >> 16) | 0x40u);
+  }
+  return uint16_t((bits + 0x7fffu + ((bits >> 16) & 1u)) >> 16);
+}
+#define STORE_VALUE(f) bf16_store(f)
+#else
+#define STORAGE_TYPE float
+#define LOAD_VALUE(x) float(x)
+#define STORE_VALUE(f) STORAGE_TYPE(f)
+#endif
+
+#extension GL_KHR_shader_subgroup_basic : require
+#extension GL_KHR_shader_subgroup_arithmetic : require
+
+const uint COLUMNS_PER_GROUP = 8u;
+const uint LANES = 32u;
+
+layout(local_size_x = 256) in;
+
+layout(set = 0, binding = 0, std430) readonly buffer InputA {
+  STORAGE_TYPE values[];
+} input_a;
+layout(set = 0, binding = 1, std430) readonly buffer InputB {
+  STORAGE_TYPE values[];
+} input_b;
+layout(set = 0, binding = 2, std430) readonly buffer InputC {
+  STORAGE_TYPE values[];
+} input_c;
+layout(set = 0, binding = 3, std430) writeonly buffer Output {
+  STORAGE_TYPE values[];
+} output_data;
+
+layout(push_constant) uniform Params {
+  uint count;
+  uint operation;
+  uint lhs_size;
+  uint rhs_size;
+  uint reduce_size;
+  uint output_size;
+  uint lhs_offset;
+  uint rhs_offset;
+  uint output_offset;
+  uint aux_size;
+  uint aux_offset;
+  uint matrix_m;
+  uint matrix_n;
+  uint matrix_k;
+  uint flags;
+  float alpha;
+  float beta;
+  uint dims;
+  uint shape[4];
+  uint in_strides[4];
+  uint out_strides[4];
+} params;
+
+void main() {
+  uint lane = gl_LocalInvocationID.x;
+  uint column_slot = lane / LANES;
+  uint lane_in_slot = lane % LANES;
+  uint batch_index = gl_WorkGroupID.z;
+  uint remaining = batch_index;
+  uint a_batch = 0u;
+  uint b_batch = 0u;
+  for (uint axis = params.dims; axis > 0u; --axis) {
+    uint coord = remaining % params.shape[axis - 1u];
+    remaining /= params.shape[axis - 1u];
+    a_batch += coord * params.in_strides[axis - 1u];
+    b_batch += coord * params.out_strides[axis - 1u];
+  }
+  uint column = gl_WorkGroupID.x * COLUMNS_PER_GROUP + column_slot;
+  bool column_active = column < params.matrix_n;
+  bool b_transposed = (params.flags & 1u) != 0u;
+  float accumulator = 0.0;
+  if (column_active) {
+    uint a_base = params.lhs_offset + a_batch;
+    uint b_base = params.rhs_offset + b_batch +
+        (b_transposed ? column * params.matrix_k : 0u);
+    for (uint k = lane_in_slot; k < params.matrix_k; k += LANES) {
+      float b_value = LOAD_VALUE(input_b.values[b_base +
+          (b_transposed ? k : k * params.matrix_n + column)]);
+      accumulator += LOAD_VALUE(input_a.values[a_base + k]) * b_value;
+    }
+  }
+  float total = subgroupAdd(accumulator);
+  if (lane_in_slot == 0u && column_active) {
+    float value = params.alpha * total;
+    if ((params.flags & 2u) != 0u) {
+      uint output_index = batch_index * params.matrix_n + column;
+      uint c_index = params.aux_size == 1u
+          ? 0u
+          : output_index % params.aux_size;
+      value += params.beta * LOAD_VALUE(
+          input_c.values[params.aux_offset + c_index]);
+    }
+    output_data.values[params.output_offset +
+        batch_index * params.matrix_n + column] = STORE_VALUE(value);
+  }
+}

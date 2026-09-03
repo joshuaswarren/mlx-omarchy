@@ -154,7 +154,10 @@ M1 Honeykrisp (jwm1-linux, `.work/venv-fp16`):
   0.187) and also answers `Paris`.
 - Greedy 4-bit, prompt `What is the capital of France? Answer in one
   word.` (`MLX_DISABLE_COMPILE=1`): output `Paris` + EOS at both 8
-  and 32 max tokens (prompt 41 tok ~19.2 tok/s, peak 0.292 GB). The
+  and 32 max tokens (prompt 41 tok ~19.2 tok/s, peak 0.292 GB; the tok/s
+  figure was measured on jwm1-linux with 1 of 8 CPU cores online, boot
+  entry `Omarchy ANE test`, so it may improve on 8-core re-measurement).
+  The
   Attempt 10 `1.000000` degeneracy is gone.
 - Python level on Honeykrisp: fused sdpa finite at scale 6.0 with f16
   GQA inputs; `mx.repeat` heads 5 and 12 exact vs source.

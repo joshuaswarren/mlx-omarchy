@@ -4,6 +4,8 @@ Outcome: **blocked, no tokens generated.** Two precise blockers found, both
 root-caused. Generation never reached decode: blocker 2 kills `mx.load`
 before any tensor is read.
 
+**Measurement condition (added 2026-09-03):** all jwm1-linux timings in this document were taken with only 1 of 8 CPU cores online (GRUB entry `Omarchy ANE test`, which supplies a static device tree and left cores 1-7 offline). The machine now boots all 8 cores. GPU-bound figures were materially unaffected (matmul TFLOP/s median 0.1556 -> 0.1576); these host-bound figures (prompt/gen tok/s) may improve on re-measurement.
+
 ## Host identity
 
 - Host: `jwm1-linux` (192.168.3.66), Apple M1, Omarchy, Mesa Honeykrisp

@@ -29,6 +29,7 @@ python3 tools/gen-compat-matrix.py --json-out docs/coverage.json > docs/compatib
 **Upstream MLX's own test suites, run against this backend.** The 2026-09-02 sweep executed 251 C++ cases: 133 passed, 118 failed. It executed 10,932 python cases: 2,827 passed, 8,105 failed, 68 skipped, and one crash-excluded. The C++ pass count more than doubled since the 2026-09-01 sweep, and python passing grew by 1,097 cases. Most of that gain is measurement honesty: the bool Equal and buffer-protocol holes that masked or killed cases are closed, so a pass now carries real signal. Almost every failure is still a named `[omarchy] ... is not implemented` refusal: 7,909 of the 8,105 python failures. Five C++ cases and six python test functions exposed silent wrong-value defects, twelve distinct root causes in all. Most are fixed on this branch now; the still-open ones are listed below. The sweep ran at pinned commit `5f8ba16`, before the day's final coverage commits, so it understates this tree. Re-run it with `tools/run-upstream-suite.sh`. The defect ledger and raw logs sit in [receipts/](receipts/2026-09-02-upstream-suite-coverage.md); the 2026-09-01 sweep is in [receipts/](receipts/2026-09-01-upstream-suite-coverage.md).
 
 **Performance against native MLX, same chip.** Both columns are the same Apple M1 (T8103, 8 GPU cores, 16 GB), same model revisions, same prompts, `--max-tokens 32 --temp 0 --seed 0`, warm run, Qwen2.5-0.5B-Instruct:
+**Measurement condition (added 2026-09-03):** every jwm1-linux timing on this page was taken between 2026-08-25 and 2026-09-03 with only 1 of 8 CPU cores online. The default GRUB entry was `Omarchy ANE test`, which supplies a static device tree and left cores 1-7 offline (see "Boot-entry cause" below). The machine now boots all 8 cores. GPU-bound figures were materially unaffected (matmul TFLOP/s median 0.1556 -> 0.1576). Host-bound figures (tok/s, wall-clock stage timings) are the suspect numbers and may improve on re-measurement.
 
 | Measurement | macOS 13.7.8, MLX on Metal | Omarchy Linux, mlx-omarchy on Vulkan | Ratio |
 |---|---|---|---|
@@ -50,6 +51,11 @@ Two things about the Vulkan column are not like-for-like, and both are the produ
 So the encoder's controllable overhead is now about 15% of wall, and that lever is close to spent. The next wins are kernel time and upstream's evaluation model. Elementwise and copies alone are 64% of GPU busy. Submission batching was tried and deleted: it fights the evaluator's own throttle and measured 4.5x slower. The v0.2.0 microbenchmarks reached [more than 80% of a pinned llama.cpp Vulkan build](https://github.com/joshuaswarren/mlx-omarchy/releases/download/v0.2.0/mlx-omarchy-v0.2.0-m1-kernel.json) on matmul and attention, so the hardware path was never the problem.
 
 One caveat on the macOS column. That slice runs macOS 13.7.8. MLX dropped macOS 13 wheels after 0.29.3, so it measured mlx 0.29.3 and mlx-lm 0.30.2 against mlx-lm 0.31.3 on Linux.
+
+
+### Boot-entry cause of the one-core window
+
+Between 2026-08-25 and 2026-09-03, jwm1-linux booted the GRUB entry `Omarchy ANE test` by default. That entry supplies a static `/boot/ane.dtb` instead of the per-boot device tree, and under it the kernel logs `CPU1..CPU7: failed to come online` and `nproc` reports 1. The proven fact is the A/B: that entry yields 1 core, the normal entry yields 8. The leading hypothesis for the mechanism is that the frozen device tree carries per-boot values (cpu-release-addr, kaslr-seed) that no longer match a fresh boot; that part is not proven. The entry is renamed `Omarchy ANE test (STALE DT: boots 1 core only)` and the machine now boots all 8 cores. GPU-bound numbers barely moved across the switch (matmul TFLOP/s median 0.1556 -> 0.1576), which is why only host-bound figures carry this caveat. 8-core re-measurements are recorded in `receipts/2026-09-03-eight-core-remeasure.md`.
 
 ## What makes it different
 

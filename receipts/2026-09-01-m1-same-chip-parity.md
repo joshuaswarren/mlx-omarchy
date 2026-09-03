@@ -5,6 +5,8 @@ Purpose: replace the invalid M1-Max comparison in
 baseline. Run upstream MLX (Metal) via `mlx-lm` on the same Apple M1 (T8103)
 that produced the Linux receipts, then return the box to Asahi/Omarchy.
 
+**Measurement condition (added 2026-09-03):** the Linux column of this document was measured on jwm1-linux with only 1 of 8 CPU cores online (GRUB entry `Omarchy ANE test`, which supplies a static device tree and left cores 1-7 offline). The machine now boots all 8 cores. GPU-bound figures were materially unaffected (matmul TFLOP/s median 0.1556 -> 0.1576); the Linux tok/s figures are host-bound and may improve on re-measurement. The macOS MLX slice ran on the same box booted into macOS and is not affected.
+
 ## Host identity (chip match)
 
 | Field | Value |

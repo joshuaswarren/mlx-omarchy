@@ -5,6 +5,8 @@ Implements the top two host-cost opportunities from
 defect the work exposed. Base: main `959c7a0e14d11cb81b1888ad2215f920ce02a3f0`,
 uncommitted diff (Main commits).
 
+**Measurement condition (added 2026-09-03):** all jwm1-linux timings in this document were taken with only 1 of 8 CPU cores online (GRUB entry `Omarchy ANE test`, which supplies a static device tree and left cores 1-7 offline). The machine now boots all 8 cores. GPU-bound figures were materially unaffected (matmul TFLOP/s median 0.1556 -> 0.1576); these host-bound figures (wall shares, tok/s) may improve on re-measurement.
+
 ## What shipped
 
 POST-REVIEW CHANGE (Main's question, answered with a build): the profiler
