@@ -2619,6 +2619,15 @@ void trig_argument_gate(
   array magnitude = astype(
       max(abs(inputs.at(0), stream), stream), float32, stream);
   magnitude.eval();
+  // The magnitude is read on the host, so the stream must be ordered
+  // here: array::item() is eval() plus an immediate mapped read with no
+  // completion wait, and an unordered read races this gate's own
+  // submission — on hardware it returned recycled-page garbage
+  // (~1e9) instead of the real magnitude, aborting compiled 4-bit
+  // generation (observed 2026-09-03, first hardware run of the compiled
+  // path; llvmpipe executes synchronously and masked it). Same pattern
+  // as the reduce host checks: host reads behind a synchronize.
+  omarchy::get_command_encoder(stream).synchronize();
   float worst = magnitude.item<float>();
   if (worst > kTrigArgumentLimit) {
     throw std::runtime_error(

@@ -177,6 +177,39 @@ TEST_CASE("W5 log10 pin and non-power inputs agree with numpy f32") {
 // The built-ins match std::sin/cos on lavapipe and most drivers. Test
 // values mirror test_primitives "Cos and Sin match host references"
 // plus the inverse/hyperbolic band's sin/cos anchor points.
+TEST_CASE("trig gate refuses huge arguments by name with the true magnitude") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  // The gate reads its ReduceMax+Cast magnitude on the host. The read is
+  // ordered behind a stream synchronize; an unordered read races the
+  // submission and reports recycled-page garbage (observed as ~9.7e8 on
+  // Honeykrisp in compiled 4-bit generation, 2026-09-03), silently
+  // passing in-range arguments. Pin both halves of the contract: the
+  // refusal names the operation and carries the TRUE magnitude, and
+  // in-range arguments still compute through the gate.
+  array x({2.0e5f, 1.0f, 2.0f});
+  bool refused = false;
+  std::string msg;
+  try {
+    array y = cos(x, stream);
+    y.eval();
+    FAIL("expected the trig argument gate to refuse");
+  } catch (const std::exception& e) {
+    refused = true;
+    msg = e.what();
+  }
+  CHECK(refused);
+  CHECK(msg.find("Cos argument magnitude") != std::string::npos);
+  CHECK(msg.find("200000.000000") != std::string::npos);
+
+  array small({0.5f, 1.0f, 2.0f});
+  array y = cos(small, stream);
+  float c1 = read_value<float>(y, 1);
+  CHECK(std::abs(c1 - (float)std::cos(1.0)) < 1e-4f);
+}
+
 TEST_CASE("W8 sin/cos/tan common path matches numpy f32") {
   if (!compute_available()) {
     return;
