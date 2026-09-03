@@ -26,39 +26,46 @@ exists on the box for either of the other two local wheels; their provenance
 is the build directories themselves (`mlx-omarchy-decomp` HEAD is
 `ceae628`; the `dist/` files carry the hashes above from today).
 
-Byte-identity finding: the installed `mlx/` trees of the local `dev20260903`
-wheel and the ceae628-era `dev202609030928` wheel are **identical in all 332
-non-pyc files** (same `lib/libmlx.so`, same `core*.so`; only `__pycache__`
-mtime artifacts differ; the wheel files differ in packaging size, 2.87 MB vs
-6.80 MB, not in payload). The wheel the 8-core README column measured IS a
-ceae628 build.
+CORRECTION (same day, after peer review): my earlier claim that the two
+local wheels were byte-identical is **wrong**. Verified by `unzip -l` on
+the wheel files: `libmlx.so` is 5,300,664 bytes in `dev20260903` (no
+`gpu_profiler.h`; a stale pre-CPU-backend generation), 20,923,440 bytes in
+the current `dev202609030928` file (`gpu_profiler.h` present), and
+20,924,000 bytes in the v0.3.2 asset. Both of my A/B venvs ended up with
+the SAME 5.3 MB stale payload (libmlx.so `bb90d191…` in both): the
+`0928`-named file I installed in the morning carried `dev20260903`
+internal metadata and that stale payload, and the `mlx-omarchy-decomp`
+dist file was since replaced by an afternoon rebuild (internal mtimes
+14:28/14:46). See Verdict 1.
 
 ## Verdict 1: decode regression (ceae628-era vs released `dev20260903`)
 
-**No.** A third leg was added because the two assigned wheels turned out to
-be byte-identical; the published v0.3.2 asset is the only wheel with
-different code. 8 cores, unpinned, medians:
+**RETRACTED as a wheel-vs-wheel claim; the question is reopened.** The
+timed legs below did not compare the two wheels: both venvs held the same
+stale `dev20260903` binary (see the correction above), so rows 1 and 2 are
+a same-binary reproducibility check, not an A/B. 8 cores, unpinned,
+medians; all decode rows are EOS-truncated short-burst rates (2-10
+generated tokens; `--max-tokens 32` is only a cap):
 
 | leg | bf16 prefill | bf16 decode | 4-bit prefill | 4-bit decode |
 |---|---|---|---|---|
 | `dev20260903` local (README wheel) | 17.420 | 2.002 | 18.666 | 3.847 |
-| `dev202609030928` ceae628-era | 16.838 | 2.072 | 18.319 | 3.864 |
-| v0.3.2 asset `dev202609030512` | 15.461 | 1.837 | 17.498 | 3.529 |
+| morning `0928`-named wheel (same stale payload) | 16.838 | 2.072 | 18.319 | 3.864 |
+| v0.3.2 asset `dev202609030512` (different generation) | 15.461 | 1.837 | 17.498 | 3.529 |
 
-- `dev20260903` vs ceae628-era decode: bf16 **-3.4%**, 4-bit **-0.4%** —
-  noise, as the byte identity predicts. There is no decode regression
-  between the ceae628-era wheel and the released-as-used `dev20260903`
-  wheel.
-- The recorded 1-core decode figures (3.56 / 6.46) are therefore not
-  reproducible from any surviving ceae628 artifact: today's rebuild of
-  `ceae628` matches the 8-core re-measure (2.0 / 3.9), not the old numbers.
-  Whatever produced the recorded rows was a build (flags, toolchain, or
-  driver state) that no longer exists. The 40% "decode regression" is
-  retired as a wheel-vs-wheel claim.
-- The **published v0.3.2 asset is the real mover**: decode bf16
-  **-11.3%** and 4-bit **-8.7%** against the ceae628-era binary; prefill
-  bf16 -8.2%, 4-bit -4.5%. Anyone reproducing the README table from the
-  GitHub release gets 5-11% less than the table says, on both rows.
+- What survives: the two `dev20260903`-payload rows reproduce each other
+  and the eight-core receipt (bf16 decode 2.00-2.07, 4-bit 3.85-3.86), and
+  the v0.3.2 asset measures 5-11% below the stale wheel on every row.
+- What does not: any statement about a decode regression or its absence
+  between ceae628-era code and current code. The genuine current-generation
+  ceae628 rebuild (20.9 MB `libmlx.so`) was never timed here.
+- Attribution for the v0.3.2 delta, from the release history: tag v0.3.2
+  was cut at `b17cc86`; `ceae628` (self-reported +9% tokens/s) landed 16
+  minutes later and missed the release. A release cut from current main
+  ships that win. Not a build-flag defect.
+- The README 8-core column inherits both defects (stale binary, EOS-
+  truncated decode rates). It will be re-measured on a current-main wheel
+  with a pinned-length protocol and replaced wholesale, not patched.
 
 ## Verdict 2: affinity sweep (released-as-used `dev20260903` wheel)
 
