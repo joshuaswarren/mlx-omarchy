@@ -48,7 +48,7 @@ import mlx.core as mx, numpy as np
 mx.all(mx.array(np.array([True] * 33))).item()   # False; must be True
 ```
 
-Sizes 1 to 4 are correct; every size from 5 upward returns False for all-True input. `mx.any` is unaffected at both polarities, and all-False input correctly returns False - the reduction sees only the first word of the input. THE HYPOTHESIS, labelled as such because only the wrong values are verified: the bool All kernel reads a one-word extent. The dtype-converting `mx.sum(a.astype(mx.int32))` workaround refuses by name on the GPU (named gap), so use `bool(np.array(a).all())` or an explicit CPU stream.
+Sizes 1 to 4 are correct; every size from 5 upward returns False for all-True input. `mx.any` is unaffected at both polarities, and all-False input correctly returns False. Note the signature rules out the obvious guess: a kernel that merely read the first word would return True here (word 0 of packed all-True bytes is nonzero), so the reads beyond index 3 must be returning falsy bytes - out-of-range or zero-filled - rather than being ignored. Mechanism under pinning; the wrong values and their size threshold are the verified facts. The dtype-converting `mx.sum(a.astype(mx.int32))` workaround refuses by name on the GPU (named gap), so use `bool(np.array(a).all())` or an explicit CPU stream.
 
 Found by the v0.3.1 published-artifact verification on the real target: the download check ran a device-side `mx.all`, and the entire C++ battery - 828,139 assertions - never exercised a bool All-reduction wider than one word on Apple hardware. Disclosed in a prominent warning on the v0.3.1 release page; fix in progress for v0.3.2.
 
