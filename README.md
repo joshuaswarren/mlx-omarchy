@@ -67,7 +67,7 @@ Between 2026-08-25 and 2026-09-03, jwm1-linux booted the GRUB entry `Omarchy ANE
 
 **Receipts, not claims.** Every number above comes from a recorded run on real hardware, stored in [receipts/](receipts/). The [M1 development gate](receipts/2026-08-31-m1-development-gates.md), the [MLX-LM generation attempts](receipts/2026-08-31-m1-mlxlm-fp16-smoke.md), the [same-chip parity run](receipts/2026-09-01-m1-same-chip-parity.md), and the [M1 qualification of the coverage waves](receipts/2026-09-02-m1-qualification.md) all record the exact commands and their output.
 
-Your machine can join that table. Run `python3 scripts/collect_quick.py` for a fast, privacy-safe capability report, and `python3 scripts/collect_deep.py` for the full correctness, benchmark, and profile archive. [CONTRIBUTING.md](CONTRIBUTING.md) explains how to read the preview and share the result.
+Your machine can join that table. Run `python3 scripts/collect_quick.py` for a fast, privacy-safe capability report: one command, no install, runs on system `python3`. The full report from `python3 scripts/collect_deep.py` additionally needs the released aarch64 wheel, which is `cp314`, so Python 3.14 exactly. [CONTRIBUTING.md](CONTRIBUTING.md) has both copy-paste blocks, the wheel prerequisites, and a troubleshooting list.
 
 ## What works today
 
