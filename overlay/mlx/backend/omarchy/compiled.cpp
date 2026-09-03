@@ -9,6 +9,7 @@
 #include <unordered_map>
 #include <unordered_set>
 
+#include "mlx/backend/omarchy/device.h"
 #include "mlx/backend/omarchy/encoder.h"
 #include "mlx/primitives.h"
 
@@ -86,6 +87,27 @@ bool tape_has_bfloat16(const std::vector<array>& arrays) {
       " No GPU kernel exists for it; no silent CPU fallback occurs.");
 }
 
+// Compiled tapes return wrong values on real Apple GPU targets, and the
+// defect is unfixed: a 4-bit mlx-lm greedy run emits garbage at normal
+// speed with exit code 0
+// (receipts/2026-09-03-dispatcher-compile-and-column-replace.md,
+// docs/known-defects.md). This is the refusal point for the whole
+// compiled path: eval_compiled_tape is the only tape runner in the
+// backend and its single caller is Compiled::eval_gpu, so every
+// compiled execution passes through this gate and no outer layer can
+// bypass it. The trigonometric domain gate stays: tape nodes still
+// dispatch through their own eval_gpu, which carries it.
+[[noreturn]] void unsupported_tape_compilation() {
+  throw std::runtime_error(
+      "[omarchy] Compiled tapes are refused on real Apple GPUs: the tape"
+      " interpreter returns wrong values on Honeykrisp and the defect is"
+      " unfixed (docs/known-defects.md;"
+      " receipts/2026-09-03-dispatcher-compile-and-column-replace.md)."
+      " Re-run with MLX_DISABLE_COMPILE=1. Set"
+      " MLX_OMARCHY_ALLOW_UNSAFE_COMPILE=1 only to investigate the defect"
+      " deliberately; it permits wrong values.");
+}
+
 } // namespace
 
 void eval_compiled_tape(
@@ -95,6 +117,9 @@ void eval_compiled_tape(
     const std::vector<array>& inputs,
     std::vector<array>& outputs,
     const Stream& stream) {
+  if (compiled_tapes_refused(device(stream.device.index))) {
+    unsupported_tape_compilation();
+  }
   if (tape_has_bfloat16(tape) || tape_has_bfloat16(tape_inputs) ||
       tape_has_bfloat16(tape_outputs)) {
     unsupported_tape_bfloat16();

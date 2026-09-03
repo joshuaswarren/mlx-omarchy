@@ -32,6 +32,8 @@ The M1 mlx-lm greedy run of `Qwen2.5-0.5B-Instruct-bf16` returned garbage
 tokens through the compiled `swiglu` fragment at commit `fbdd5ed` (2026-09-01)
 and again at dev HEAD `5f8ba16` with the gate lifted (2026-09-02, receipt
 `receipts/2026-09-02-m1-bf16-compiled-tape.md`).
+The 4-bit run through f16 tapes was correct at the 2026-09-02 bisect;
+the 2026-09-03 ff4b05a measurement below supersedes that claim.
 The 2026-09-02 on-device bisect pinned the failing surface tighter:
 15 of 15 identical-seed mlx-lm runs returned garbage, no two outputs
 alike, at `nproc=1`; a differential trace matched all 24 layer outputs
@@ -58,6 +60,23 @@ mismatch left seven of eight cores offline; a single-core green run
 does not exercise the concurrency a memory hazard needs, so the gate
 lifts only on repeated green mlx-lm bf16 runs on fully populated
 hardware.
+
+### Compiled tapes on Apple GPUs - fail closed
+
+Compiled tape execution is refused on real Apple GPUs. The tape runner
+`eval_compiled_tape` raises the named
+`[omarchy] Compiled tapes are refused` error by default, because the
+4-bit mlx-lm corruption measured at commit `ff4b05a`
+(`receipts/2026-09-03-dispatcher-compile-and-column-replace.md`) left
+the defect unpinned on the product target. `MLX_DISABLE_COMPILE=1` is
+the user workaround. `MLX_OMARCHY_ALLOW_UNSAFE_COMPILE=1` is the
+investigation override; the differential harness and the mechanism
+probe set it for themselves. The scope is device-conditional: on
+development devices accepted through `MLX_OMARCHY_ALLOW_NON_APPLE=1`
+(llvmpipe and other software drivers) compiled tapes still run, match
+eager, and carry the batteries. The bf16 tape gate above and the
+trigonometric domain gate are unchanged.
+See [known-defects.md](known-defects.md) for the full entry.
 
 Wave 11 audited the four suspect hazard classes in the interpreter
 (`compiled.cpp`, `encoder.cpp`, `allocator.cpp`) and found no defect:

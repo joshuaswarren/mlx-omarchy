@@ -33,6 +33,7 @@ Self-test (no mlx, no GPU): python3 probe_tape_eager.py --self-test
 """
 
 import argparse
+import os
 import sys
 
 import numpy as np
@@ -136,6 +137,11 @@ def self_test():
 
 
 def main():
+    # The runtime refuses compiled tapes on real Apple GPUs by default
+    # (docs/known-defects.md); this probe runs compiled tapes
+    # deliberately, so it opts in through the documented override before
+    # mlx is imported.
+    os.environ.setdefault("MLX_OMARCHY_ALLOW_UNSAFE_COMPILE", "1")
     p = argparse.ArgumentParser(description="compiled-tape vs eager-op mechanism probe")
     p.add_argument("--size", type=int, default=64)
     p.add_argument("--iters", type=int, default=32)
