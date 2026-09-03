@@ -188,7 +188,7 @@ reproduce, the emitted repro says so and the harness reports
 native tape structure will not survive shrinking to one op; the mechanism
 probe is the tool for that class.
 
-## llvmpipe limits - read before trusting a green run
+## Software-driver limits and the shapeless-retrace refusal - read before trusting a green run
 
 llvmpipe executes submissions synchronously inside `vkQueueSubmit`, so it
 cannot expose asynchronous or cross-submission corruption at all. The
@@ -196,10 +196,28 @@ entire class of defect this harness hunts is invisible to it. A clean
 llvmpipe run proves the harness logic and the detectors only. The defect
 reproduction, the localization, and the shrink all must come from the M1.
 
-llvmpipe finding, recorded 2026-09-03 at commit `e7a6542` (wheel
-`0.32.2.dev202609031517+e7a6542`, Mesa lavapipe, x86-64): with compilation
-enabled, an mlx-lm Qwen2 forward refuses at shapes that retrace the
-shapeless fragments:
+Shapeless-retrace refusal, recorded 2026-09-03 and CONFIRMED ON BOTH
+DEVICES - this is not an llvmpipe quirk:
+
+- llvmpipe x86-64, commit `e7a6542`, wheel
+  `0.32.2.dev202609031517+e7a6542`, Mesa lavapipe: with compilation
+  enabled, an mlx-lm Qwen2 forward refuses at shapes that retrace the
+  shapeless fragments. A 7-token prompt passes; a 16/36/64-token prompt
+  refuses at the OLD shape `[1,7,...]`; a first trace at 36 tokens refuses
+  immediately at `[1,36,...]`. An unquantized tiny f16 Qwen2 refuses
+  identically, so quantization is not a factor. Standalone `nn.silu`,
+  `mx.compile(a * mx.sigmoid(a))`, and eager sigmoid on a broadcast view
+  all pass in a fresh process, so the gap needs the shapeless-fragment
+  tape context (`mlx_lm.models.qwen2.swiglu` is the decorated fragment to
+  interrogate), not the Sigmoid kernel in isolation.
+
+- Honeykrisp, Apple M1 (jwm1), commit `d1a6bfd`, provenance-gated wheel
+  `0.32.2.dev202609031604+d1a6bfd` (installed `libmlx.so` sha256 equal to
+  the wheel member): the France-prompt realpath (36 tokens) refuses with
+  the same error at `[1,36,...]`, and a 30-token "Hi" prompt refuses at
+  `[1,30,4864]`. No silent execution window was reachable through this
+  harness on current main. The mechanism probe ran bitwise-clean on the
+  same device.
 
 ```
 RuntimeError: [omarchy] broadcast Sigmoid is not implemented for the Omarchy
@@ -207,14 +225,15 @@ Vulkan backend (dtype=float16, shape=[1,7,172]). No GPU kernel exists for it;
 no silent CPU fallback occurs.
 ```
 
-A 7-token prompt passes; a 16/36/64-token prompt (or a chat-template
-prompt, 36 tokens) refuses at the OLD shape `[1,7,...]`. The same refusal
-appears at first trace for a 36-token prompt. This is why the llvmpipe
-verification sweep below uses `--no-chat-template` and `--steps 0` /
-`--steps 1` (single compile trace, no retrace). On Honeykrisp the same
-model ran 32 compiled tokens at `ff4b05a`, so treat this as
-device-dependent behavior and hand it to the hardware owner with the
-commands above.
+This refusal is the backend contract working: a loud named gap instead of
+wrong numbers. Provenance context from the same hardware run: the silent
+corruption reported earlier on 2026-09-03 was produced by a STALE
+`dev20260903` wheel generation (contaminated venv, pre-CPU-backend
+`libmlx`), not by current main. Whether the silent corruption still exists
+at current main is unproven in both directions; it is fenced behind this
+refusal on the mlx-lm native path. This is why the llvmpipe verification
+sweep below uses `--no-chat-template` and `--steps 0` / `--steps 1`
+(single compile trace, no retrace).
 
 ## llvmpipe verification sweep (2026-09-03, commit e7a6542)
 
@@ -238,6 +257,22 @@ the tiny f16 Qwen2 fixture and the real 4-bit snapshot:
 Both self-tests (`--self-test`) pass without mlx: comparator bitwise
 semantics, NaN payloads, first-index search, and injected-divergence
 detection.
+
+## On-device results (Honeykrisp, jwm1, 2026-09-03, commit d1a6bfd)
+
+Provenance-gated run by the hardware owner (installed `libmlx.so` sha256
+equal to the wheel member; upstream `mlx` absent):
+
+- Mechanism probe: rc=0, all three variants bitwise-clean over 32
+  iterations (float16, 64x64). The isolated tape->eager loop with
+  one-element writes is clean on real hardware at this commit.
+- Realpath, France prompt (36 tokens): compiled child refuses with the
+  shapeless-retrace Sigmoid error at `[1,36,...]`; a 30-token prompt
+  refuses at `[1,30,4864]`. Reproduction of the earlier silent garbage is
+  not reachable on current main through the native mlx-lm path; it was
+  last observed on a stale `dev20260903` wheel generation.
+- Localization next targets the refusal, not divergence: pin it with a
+  direct `q2.swiglu` fragment call, no model, per the constraints above.
 
 ## File map
 
