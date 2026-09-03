@@ -100,6 +100,18 @@ It replaces selected regions with opaque `AneRegion` primitives and fuses the re
 - A failed ANE submit must not corrupt its source Vulkan buffers.
 - Hardware testing stops until the ANE self-test passes after recovery.
 
+## Boot and device tree
+
+The kernel does not read a device tree out of `/boot`.
+m1n1 patches the packaged dtb with per-boot values, and `update-m1n1`
+bakes the dtbs into the ESP payload.
+Replacing the whole tree discards those live values, and on this project's
+M1 that left seven of eight cores offline.
+
+See [`boot-and-kernel.md`](boot-and-kernel.md) for the chain, the
+requirements for an Omarchy kernel that carries the ANE node, and the
+verification commands that prove a node reached the kernel.
+
 ## Repository ownership
 
 - `mlx-omarchy` owns the downstream MLX patch set, Omarchy backend, ANE partitioner, packaging, tests, and releases.
