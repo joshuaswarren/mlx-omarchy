@@ -32,16 +32,22 @@ python3 tools/gen-compat-matrix.py --json-out docs/coverage.json > docs/compatib
 
 | Measurement | macOS 13.7.8, MLX on Metal | Omarchy Linux, mlx-omarchy on Vulkan | Ratio |
 |---|---|---|---|
-| bf16 prefill | 377.9 tok/s | 18.3 tok/s | 20.6x slower |
-| bf16 decode | 61.5 tok/s | 2.5 tok/s | 24.9x slower |
+| bf16 prefill | 377.9 tok/s | 23.9 tok/s | 15.8x slower |
+| bf16 decode | 61.5 tok/s | 3.56 tok/s | 17.3x slower |
 | bf16 peak memory | 1.025 GB | 0.993 GB | about equal |
-| 4-bit prefill | 705.6 tok/s | 19.2 tok/s | 36.8x slower |
-| 4-bit decode | 290.3 tok/s | 4.2 tok/s | 68.7x slower |
+| 4-bit prefill | 705.6 tok/s | 25.3 tok/s | 27.9x slower |
+| 4-bit decode | 290.3 tok/s | 6.46 tok/s | 44.9x slower |
 | 4-bit peak memory | 0.320 GB | 0.292 GB | about equal |
 
 Generated text is identical on both platforms: `Hello! How can I assist you today?` for bf16, `Paris` for 4-bit, matching token counts and stop positions. Numerical correctness is there. Speed is not.
 
-The gap is expected and unfixed. Every kernel is written for correctness first. There is no fusion, no tuning, and no fused attention kernel. The v0.2.0 microbenchmarks reached [more than 80% of a pinned llama.cpp Vulkan build](https://github.com/joshuaswarren/mlx-omarchy/releases/download/v0.2.0/mlx-omarchy-v0.2.0-m1-kernel.json) on matmul and attention. The hardware path is not the problem. Full decode runs are where the work remains.
+The Vulkan tok/s column was measured on commit `ceae628`. It moved a long way from the previous revision, on the same machine in the same session: 4-bit prefill up 35.5%, 4-bit decode up 58.6%, bf16 prefill up 45.8%, bf16 decode up 71.2%. The memory rows carry over from the earlier revision and were not re-measured.
+
+Two things about the Vulkan column are not like-for-like, and both are the product's fault rather than the benchmark's. The Vulkan legs run `MLX_DISABLE_COMPILE=1`. Compiled bf16 tapes corrupt nondeterministically on this driver, and the gate that catches them is deliberately kept. So a bf16 leg with compile at its default cannot be measured here at all. The macOS column ran compile at its default, where it works. 4-bit with compile enabled is unmeasured on Vulkan so far.
+
+**Where the remaining time goes**, measured on the M1 over 7,853 dispatches of a profiled 4-bit run. A ranked list beats an apology. Recording a dispatch is 0.3% of host wall. A per-pipeline descriptor cache took that from 160-260 microseconds to under one, so per-dispatch cost is not a driver-side wall. Submitting is 14.3%, joining 0.4%. Waiting for a free submission slot is 45.4%. That is the GPU-backlog signature: the host blocks because the GPU is the slower side in those windows, so more slots would not help. The remaining 39.6% sits outside the encoder, in MLX's evaluator throttle and Python.
+
+So the encoder's controllable overhead is now about 15% of wall, and that lever is close to spent. The next wins are kernel time and upstream's evaluation model. Elementwise and copies alone are 64% of GPU busy. Submission batching was tried and deleted: it fights the evaluator's own throttle and measured 4.5x slower. The v0.2.0 microbenchmarks reached [more than 80% of a pinned llama.cpp Vulkan build](https://github.com/joshuaswarren/mlx-omarchy/releases/download/v0.2.0/mlx-omarchy-v0.2.0-m1-kernel.json) on matmul and attention, so the hardware path was never the problem.
 
 One caveat on the macOS column. That slice runs macOS 13.7.8. MLX dropped macOS 13 wheels after 0.29.3, so it measured mlx 0.29.3 and mlx-lm 0.30.2 against mlx-lm 0.31.3 on Linux.
 
@@ -81,7 +87,7 @@ Honest list. Each one fails loudly with a named error rather than returning wron
 - No training story yet. Optimizers, LoRA, and full backward coverage are unproven here, and upstream's optimizer tests still hit named gaps.
 - Linear algebra and FFT compute but not everywhere. QR refuses batches pending numeric verification, and complex and float64 linalg refuse. Eigh and SVD refuse rather than return unconverged factors when the Jacobi sweep limit trips. Prime FFT lengths above 32768 refuse, because the chirp needs k squared exact in u32. Float64 raises named errors throughout.
 - Three silent wrong-value defects were found and fixed on 2026-09-02, all in paths that had just become reachable: `eigvalsh` returned `[1, 1]` for a matrix whose spectrum is (7 ± √5)/2, `pinv` returned all zeros, and SVD returned an all-zero `Vt`. None of them raised. They are the reason the linalg suite now checks values against analytic references instead of properties like positivity and sortedness, which the identity matrix happens to satisfy.
-- Performance is 20-69x behind Metal, as measured above.
+- Performance is 16-45x behind Metal, as measured above, down from 20-69x.
 - ANE export works: it exports and validates bundles but does not execute them yet; see below.
 
 Five Honeykrisp driver miscompiles are isolated with minimal reproducing shaders, and all five are fixed or worked around in this repo. Bool-word loads inside divergent lane loops read zero except at 16-byte-aligned words ([receipt](receipts/2026-08-31-m1-mlxlm-fp16-smoke.md)). A data-dependent shift-and-mask feeding a shared-memory scan stops propagating mid-scan ([receipt](receipts/2026-09-02-masked-scatter-m1-fix.md)). A wide op selector over a per-byte path miscompiles bool comparisons, so they live in their own shader (commit `3c7d257`). Shift-then-mask byte extraction with a data-dependent shift amount drops bool scatter writes and corrupts `LogicalAnd` and `select` on the M1, and the workaround is per-site: neither byte-extraction form is safe by default on this hardware, so an eight-variant device probe pins every site (commit `959c7a0`, [receipt](receipts/2026-09-02-m1-red-suites-root-cause.md)). The same dynamic shift-then-mask inside `reduce_general.comp`'s `load_truthy` misreduced boolean results past the first 32-bit word - `mx.all` and `mx.any` both - and the fix replaced it with the constant-shift chain, device-probed at every boundary rather than trusted by analogy (commit `cf68e7d`). Anyone building compute on this driver should read those five first. A sixth defect stays open and gated: bf16 compiled tapes corrupt inside the real mlx-lm forward. On real M1 hardware, 15 identical-seed runs produced 15 different garbage outputs, prefill matched eager bit for bit through all 24 layers, and divergence began at decode step 2 ([receipt](receipts/2026-09-02-m1-bf16-compiled-tape.md)). No minimal shader repro exists, so it is suspected but not confirmed as a miscompile. `MLX_DISABLE_COMPILE=1` avoids it.
@@ -142,7 +148,7 @@ Honeykrisp is not a separate project. It is the Apple GPU Vulkan driver inside [
 
 ## Contributing
 
-Read [CONTRIBUTING.md](CONTRIBUTING.md) and the [roadmap](docs/roadmap.md). The most useful work right now is kernel performance against the 20-69x gap. Hardware receipts from M-series machines always help.
+Read [CONTRIBUTING.md](CONTRIBUTING.md) and the [roadmap](docs/roadmap.md). The most useful work right now is kernel time against the 16-45x gap - elementwise and copies are 64% of GPU busy, and the host encoder is already down to about 15% of wall, so kernels are where the remaining wins are. Hardware receipts from M-series machines always help.
 
 ### A gap that needs a project of its own
 
