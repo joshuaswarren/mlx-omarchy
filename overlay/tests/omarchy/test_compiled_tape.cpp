@@ -56,6 +56,25 @@ bool compute_available() {
   return true;
 }
 
+// compute_available() plus the compiled-tape policy: on a real Apple GPU
+// without the override the backstop refuses every tape, so the tape
+// equivalence and dtype-gate cases skip with the actionable instruction
+// instead of failing on refusals. The fail-closed and override cases
+// deliberately stay on compute_available(): they assert the refusal and
+// the override themselves.
+bool compiled_available() {
+  if (!compute_available()) {
+    return false;
+  }
+  if (omarchy::compiled_tapes_refused(omarchy::device(0))) {
+    skip(
+        "compiled tapes are refused on this device (set"
+        " MLX_OMARCHY_ALLOW_UNSAFE_COMPILE=1 to exercise them).");
+    return false;
+  }
+  return true;
+}
+
 void sync_stream(const Stream& stream) {
   omarchy::get_command_encoder(stream).synchronize();
 }
@@ -177,7 +196,7 @@ using BinaryFn =
 } // namespace
 
 TEST_CASE("compiled tape matches eager for every float unary class") {
-  if (!compute_available()) {
+  if (!compiled_available()) {
     return;
   }
   Stream stream = gpu_stream();
@@ -284,7 +303,7 @@ TEST_CASE("compiled tape matches eager for every float unary class") {
 }
 
 TEST_CASE("compiled tape matches eager for every float binary class") {
-  if (!compute_available()) {
+  if (!compiled_available()) {
     return;
   }
   Stream stream = gpu_stream();
@@ -372,7 +391,7 @@ TEST_CASE("compiled tape matches eager for every float binary class") {
 }
 
 TEST_CASE("compiled tape matches eager for integer and bitwise classes") {
-  if (!compute_available()) {
+  if (!compiled_available()) {
     return;
   }
   Stream stream = gpu_stream();
@@ -446,7 +465,7 @@ TEST_CASE("compiled tape matches eager for integer and bitwise classes") {
 TEST_CASE(
     "compiled tape matches eager for comparison, logical, select, and"
     " cast classes") {
-  if (!compute_available()) {
+  if (!compiled_available()) {
     return;
   }
   Stream stream = gpu_stream();
@@ -525,7 +544,7 @@ TEST_CASE(
 }
 
 TEST_CASE("compiled tape returns multiple outputs exactly") {
-  if (!compute_available()) {
+  if (!compiled_available()) {
     return;
   }
   Stream stream = gpu_stream();
@@ -543,7 +562,7 @@ TEST_CASE("compiled tape returns multiple outputs exactly") {
 }
 
 TEST_CASE("compiled tape interleaves proven and widened classes in f16") {
-  if (!compute_available()) {
+  if (!compiled_available()) {
     return;
   }
   Stream stream = gpu_stream();
@@ -566,7 +585,7 @@ TEST_CASE("compiled tape interleaves proven and widened classes in f16") {
 }
 
 TEST_CASE("bf16 tapes stay gated for the widened op set") {
-  if (!compute_available()) {
+  if (!compiled_available()) {
     return;
   }
   Stream stream = gpu_stream();
@@ -589,7 +608,7 @@ TEST_CASE("bf16 tapes stay gated for the widened op set") {
 }
 
 TEST_CASE("complex tape ops stay refused by name") {
-  if (!compute_available()) {
+  if (!compiled_available()) {
     return;
   }
   Stream stream = gpu_stream();
@@ -629,13 +648,18 @@ TEST_CASE("compiled tapes refuse by default on real Apple GPUs") {
   auto& dev = omarchy::device(stream.device.index);
   bool refused_default = omarchy::compiled_tapes_refused(dev);
 
-  // The policy is keyed to the device: on a real Apple GPU the runtime
-  // auto-disables compilation at discovery and the device gate refuses
-  // any tape that still arrives (docs/known-defects.md); on development
-  // devices accepted through MLX_OMARCHY_ALLOW_NON_APPLE the hook does
-  // not fire and compiled tapes keep running for the batteries and the
-  // harness.
-  CHECK_EQ(refused_default, !dev.non_apple_dev());
+  // The policy is keyed to the device AND the override: refusal iff a
+  // real Apple GPU runs without MLX_OMARCHY_ALLOW_UNSAFE_COMPILE. On a
+  // real Apple GPU the runtime auto-disables compilation at discovery
+  // and the device gate refuses any tape that still arrives
+  // (docs/known-defects.md); on development devices accepted through
+  // MLX_OMARCHY_ALLOW_NON_APPLE the hook does not fire and compiled
+  // tapes keep running for the batteries and the harness. Stale
+  // assertion in e600ad6 said refused == !non_apple_dev, which broke
+  // the override battery on the M1 (caught by hardware verification).
+  const bool override_set =
+      std::getenv("MLX_OMARCHY_ALLOW_UNSAFE_COMPILE") != nullptr;
+  CHECK_EQ(refused_default, !dev.non_apple_dev() && !override_set);
 
   std::vector<float> xv = {0.5f, -1.5f, 2.0f, 0.0f};
   array x(xv.begin(), Shape{4}, float32);
