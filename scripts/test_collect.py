@@ -265,8 +265,9 @@ class SubmitProtocol(unittest.TestCase):
             "kind": "deep",
             "generated_at": "2026-09-03T12:00:00Z",
         })
+        # Production takes a urlopen CALLABLE, not an opener object.
         result = cs.submit("http://endpoint.example", server.archive,
-                           payload, urlopen=server)
+                           payload, urlopen=server.open)
         return result, server
 
     def initiate_bodies(self, server):

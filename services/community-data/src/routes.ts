@@ -154,6 +154,11 @@ async function handleInitiate(request: Request, env: Env): Promise<Response> {
     archive: init.archive,
     powDifficulty: pow.difficulty,
   });
+  if (row.published === 1) {
+    // A published row must be visible to readers immediately; the hourly
+    // cron is only the safety net.
+    await store.rebuildCaches(env.DB, now);
+  }
   const missing = row.published === 1
     ? []
     : await store.missingChunks(env.DB, init.content_sha256, init.archive?.chunk_count ?? 0);
@@ -222,6 +227,9 @@ async function handleComplete(sha: string, request: Request, env: Env): Promise<
     }
     return errorResponse(422, "chunk_hash_mismatch", { idx: outcome.idx });
   }
+  // Publishing changed the result set, so the cached index and dataset
+  // must be rebuilt now rather than at the next cron tick.
+  await store.rebuildCaches(env.DB, Math.floor(Date.now() / 1000));
   return jsonResponse(200, {
     status: outcome.status,
     content_sha256: sha,

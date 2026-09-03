@@ -56,9 +56,9 @@ class SubmitError(RuntimeError):
     pass
 
 
-def _request(opener, req, timeout):
+def _request(urlopen, req, timeout):
     try:
-        with opener.open(req, timeout=timeout) as resp:
+        with urlopen(req, timeout=timeout) as resp:
             body = resp.read()
             return resp.status, body
     except urllib.error.HTTPError as exc:
