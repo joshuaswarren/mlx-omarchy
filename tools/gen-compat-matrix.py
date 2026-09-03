@@ -78,6 +78,18 @@ CATCH_BLOCK = re.compile(r"catch\s*\(")
 ASSIGNMENT = re.compile(r"\b(\w+)\s*=(?![=])")
 UNSUPPORTED_CALL = re.compile(r"\bomarchy::unsupported\s*\(")
 THROW_CALL = re.compile(r"\bthrow\s+std::\w*\s*\(")
+MULTIRANK_GROUP = re.compile(
+    r"group\.size\(\)\s*(?:,\s*2|==\s*2|>=\s*2|>\s*1|!=\s*1|!=\s*2)")
+
+# Upstream short-circuits every distributed op at group.size() == 1
+# (.work/mlx/mlx/distributed/ops.cpp), so a value assertion in a
+# single-process run verifies the short-circuit, never the primitive. A
+# value anchor for a distributed:: primitive is accepted only from a case
+# whose body carries a group.size() proof (assertion or FAIL guard); the
+# two-rank harness expresses its guard as FAIL control flow so the guard
+# cannot read as a value assertion, keeping value credit for the data
+# comparisons alone.
+DISTRIBUTED_NS = "distributed"
 
 DTYPE_LABELS = {
     "float32": "f32",
@@ -409,14 +421,16 @@ def parse_op_constructions(upstream_keys):
     """Map every upstream op function name to the primitives it builds.
 
     Derived from the upstream sources in two passes. Pass one
-    attributes each function body its own std::make_shared<Primitive>
-    types and the functions it calls; an unqualified primitive name
-    built inside an inner namespace (random::bits building RandomBits)
-    falls back to its unique upstream namespace. Pass two walks the
-    name-level call graph two hops out, so ops that build primitives
-    through one helper (bitwise_and -> in_binary, compile ->
-    compile_fuse, the linalg wrappers) still resolve, with no curated
-    list anywhere.
+    attributes each function body — including helpers inside
+    anonymous namespaces, attributed to their enclosing named
+    namespace — its own std::make_shared<Primitive> types and the
+    functions it calls; an unqualified primitive name built inside an
+    inner namespace (random::bits building RandomBits) falls back to
+    its unique upstream namespace. Pass two walks the name-level call
+    graph three hops out, so ops that build primitives through
+    helpers (all_sum -> the internal all_reduce, bitwise_and ->
+    in_binary, compile -> compile_fuse, the linalg wrappers) still
+    resolve, with no curated list anywhere.
 
     Also derived: the VJP rule map, forward primitive class -> the
     rule primitives its X::vjp member builds (fast.cpp RMSNorm::vjp
@@ -433,7 +447,7 @@ def parse_op_constructions(upstream_keys):
     for pattern in CONSTRUCTION_GLOBS:
         for path in sorted(ROOT.glob(pattern)):
             masked = mask_noncode(path.read_text())
-            for ns, op, body in attribute_functions(masked):
+            for ns, op, body in attribute_functions_anon(masked):
                 key = (ns, op)
                 prims = direct.setdefault(key, set())
                 edges = calls.setdefault(key, set())
@@ -780,9 +794,9 @@ def parse_test_cases(op_map, upstream_keys, upstream_names, vjp_rules,
                 "value": value,
                 "pin": pin,
                 "skipped": skipped,
+                "multirank": bool(MULTIRANK_GROUP.search(body)),
             })
     return cases
-
 
 
 def anchor_for(display, cases):
@@ -795,12 +809,19 @@ def anchor_for(display, cases):
     kind, strongest first: exclusive op, any constructing op, name in
     an expected-error string. Within a tier the earliest case in file
     order wins. A bare string mention can only anchor a pin.
+
+    A distributed:: primitive anchors only from a case whose body
+    proves a multi-rank group (see MULTIRANK_GROUP): at one rank
+    upstream never constructs the primitive, so an unguarded case
+    anchors nothing — not a value, and not a pin either.
     """
     ns, _, name = display.rpartition("::")
     key = (ns, name)
     best = {"value": None, "pin": None}
     for tier in ("exclusive", "ops", "mentions"):
         for case in cases:
+            if ns == DISTRIBUTED_NS and not case["multirank"]:
+                continue
             if tier == "mentions":
                 hit = name in case["mentions"]
                 kind = "pin"
@@ -1391,6 +1412,24 @@ def main():
         entry = next(entry for entry in entries
                      if (entry["ns"], entry["name"]) == key)
         rows_by_key[key] = build(entry, delegate=info)
+    # A distributed named-error row becomes a real computing path when
+    # upstream's CPU backend implements the eval AND a two-rank harness
+    # case value-anchors it. The omarchy backend has and needs no eval_gpu
+    # for these: ring pins the communication stream to the CPU device
+    # (.work/mlx/mlx/distributed/ring/ring.cpp
+    # RingGroup::communication_stream), so the transport path through
+    # upstream backend/cpu IS the implementation, on a Mac and here alike.
+    # No multi-rank value anchor, no flip: the named-error row stays.
+    transport_cpu_real, _ = parse_backend_eval_impls(CPU_BACKEND, "cpu")
+    for key, row in rows_by_key.items():
+        if (key[0] == DISTRIBUTED_NS
+                and row["status"] == "named-error"
+                and key[1] in transport_cpu_real
+                and row["anchor_kind"] == "value"):
+            row["status"] = "composed (cpu transport)"
+            row["constraints"] = [
+                "runs on the ring CPU communication stream through "
+                "upstream backend/cpu; never dispatches an omarchy kernel"]
     rows = [rows_by_key[(entry["ns"], entry["name"])]
             for entry in entries]
 
@@ -1594,7 +1633,12 @@ def main():
         "host-computed references. Cases that only pin refusal "
         "messages, only assert an eval raised nothing, or carry a "
         "loud SKIP marker anchor nothing and are bucketed separately "
-        "below.")
+        "below. One namespace-specific bar: a `distributed::` "
+        "primitive anchors only from a case whose own body asserts a "
+        "multi-rank group (`group.size() == 2`), because upstream "
+        "short-circuits every distributed op at `group.size() == 1` "
+        "and a value assertion in a single-process run verifies that "
+        "short-circuit, never the primitive.")
     out.append("")
     out.append(
         "One thing that number does not mean: a `partial` primitive "
@@ -1638,6 +1682,24 @@ def main():
         "Imag are constructed only for complex input "
         "(`.work/mlx/mlx/ops.cpp:6529`, `:6744`, `:6751`), and "
         "complex dtypes are Mac-reachable, so they stay too.")
+    out.append("")
+    out.append(
+        "Distributed primitives count only through the two-rank "
+        "harness. The harness lives in "
+        "`overlay/tests/omarchy/distributed/`: `test_two_rank.cpp` is "
+        "one rank's doctest process, and `run-two-rank.sh` launches it "
+        "twice with `MLX_RANK=0` and `MLX_RANK=1` against a generated "
+        "localhost hostfile and requires both processes green. Every "
+        "case in the harness asserts the two-rank group inside its own "
+        "body, so a lone run of the binary fails its group-size guards "
+        "instead of passing vacuously — that in-body assertion is the "
+        "mechanical line between a two-rank anchor and a single-rank "
+        "case that proves nothing. Their rows read `composed (cpu "
+        "transport)`: ring pins the communication stream to the CPU "
+        "device, so these primitives evaluate through upstream's "
+        "`backend/cpu` on a Mac and here alike and never dispatch an "
+        "omarchy kernel — the transport is the implementation, and the "
+        "harness is the proof.")
     if mac_excluded:
         out.append("")
         out.append(
@@ -1711,6 +1773,13 @@ def main():
         "- composed: the operation assembles on the device from "
         "several dispatched kernels, or mlx composes core ops because "
         "use_fallback returns true.")
+    out.append(
+        "- composed (cpu transport): the primitive computes on the "
+        "ring group's CPU communication stream through upstream's own "
+        "`backend/cpu/distributed.cpp`, with GPU tensors shuttled by "
+        "the scheduler's cross-stream copies — the same path a Mac "
+        "user runs. It never dispatches an omarchy kernel, and it "
+        "counts as covered only through the two-rank harness.")
     out.append(
         "- partial: a real kernel path computes for the dtypes and "
         "shapes in the row, while other caller-reachable inputs — "
