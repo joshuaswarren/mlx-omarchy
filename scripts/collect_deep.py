@@ -48,6 +48,7 @@ from collect_common import (
     Redactor,
     archive_bytes,
     build_manifest,
+    build_payload,
     json_bytes,
     read_text,
     run_tool,
@@ -494,10 +495,13 @@ def finalize(files, unavailable, redaction, archive_name, repo):
                        "exit code, capped redacted output; the schema does "
                        "not change with the sharing path",
     })
+    quick = json.loads(files.get("quick.json", b"{}").decode("utf-8")
+                       or "{}")
+    payload = build_payload("deep", quick, manifest)
     files["manifest.json"] = json_bytes(manifest)
     files["submission.md"] = build_submission(
         manifest, files, archive_name).encode("utf-8")
-    return manifest, archive_bytes(files)
+    return manifest, archive_bytes(files), payload
 
 
 def print_preview(manifest, data, archive_name):
@@ -584,9 +588,8 @@ def main():
         redaction[kind] = redaction.get(kind, 0) + count
     archive_name = os.path.basename(args.out) if args.out \
         else "mlx-omarchy-deep.tar.gz"
-    work = dict(files)
-    manifest, data = finalize(work, unavailable, redaction,
-                              archive_name, os.path.abspath(args.repo))
+    manifest, data, payload = finalize(work, unavailable, redaction,
+                                       archive_name, os.path.abspath(args.repo))
     print_preview(manifest, data, archive_name)
     if args.out:
         with open(args.out, "wb") as fh:
@@ -600,13 +603,13 @@ def main():
         print(f"[receipt] wrote {args.out} ({len(data)} bytes, "
               f"sha256={hashlib.sha256(data).hexdigest()})")
         print(f"[receipt] wrote {submission} (paste-ready cover text)")
-    exit_code = maybe_submit(args, data, archive_name, args.out)
+    exit_code = maybe_submit(args, data, archive_name, args.out, payload)
     if not keep:
         shutil.rmtree(ws, ignore_errors=True)
     raise SystemExit(exit_code)
 
 
-def maybe_submit(args, data, archive_name, out_path):
+def maybe_submit(args, data, archive_name, out_path, payload):
     """Upload only after explicit consent; never without a local copy."""
     import collect_submit
     endpoint = collect_submit.endpoint_from_args(args)
@@ -622,7 +625,7 @@ def maybe_submit(args, data, archive_name, out_path):
         print(f"[submit] declined; {out_path} stays local")
         return 0
     try:
-        receipt = collect_submit.submit(endpoint, data,
+        receipt = collect_submit.submit(endpoint, data, payload,
                                         token=collect_submit.token_from_env())
     except collect_submit.SubmitError as exc:
         print(f"[submit] FAILED: {exc}", file=sys.stderr)
@@ -631,8 +634,6 @@ def maybe_submit(args, data, archive_name, out_path):
     print(f"[receipt] public URL: {receipt['url']} "
           f"(deduplicated={receipt['deduplicated']})")
     return 0
-    if not keep:
-        shutil.rmtree(ws, ignore_errors=True)
 
 
 if __name__ == "__main__":

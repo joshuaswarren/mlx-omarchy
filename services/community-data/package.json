@@ -1,0 +1,12 @@
+{
+  "name": "mlx-omarchy-community-data",
+  "private": true,
+  "scripts": {
+    "test": "bun test test/unit",
+    "smoke": "bun test/smoke.ts"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20260831.1",
+    "wrangler": "^4.38.0"
+  }
+}

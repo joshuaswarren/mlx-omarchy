@@ -258,6 +258,44 @@ def build_manifest(archive_name, files, extra=None):
     return manifest
 
 
+def build_payload(kind, quick, manifest, generated_at=None):
+    """Build the strict-schema JSON summary sent with the upload.
+
+    Must match schema/payload-v1.schema.json in services/community-data:
+    fixed key set, schema_version pinned, every identity field nullable.
+    All values come from already-redacted data.
+    """
+    host = quick.get("host") or {}
+    dt = host.get("devicetree") or {}
+    gpu = (quick.get("mesa") or {}).get("gpu") or {}
+    mlx = quick.get("mlx") or {}
+    distributions = mlx.get("distributions") or {}
+    compatible = dt.get("compatible") or []
+    return {
+        "schema_version": SCHEMA_VERSION,
+        "kind": kind,
+        "generated_at": generated_at or time.strftime(
+            "%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+        "arch": host.get("arch"),
+        "model": dt.get("model"),
+        "chip": compatible[0] if compatible else None,
+        "kernel": host.get("kernel_release"),
+        "mesa_driver": gpu.get("driverName"),
+        "mesa_device": gpu.get("deviceName"),
+        "mlx_version": distributions.get("mlx-omarchy")
+            or mlx.get("mlx_version"),
+        "mlx_device": mlx.get("default_device"),
+        "source_commit": manifest.get("source_commit"),
+        "repo_dirty": manifest.get("repo_dirty"),
+        "redaction_summary": dict(
+            manifest.get("redaction_summary") or {}),
+        "files": [
+            {key: entry[key] for key in ("path", "bytes", "sha256")}
+            for entry in manifest.get("files", [])
+        ],
+    }
+
+
 def read_text(path):
     try:
         with open(path, "r", encoding="utf-8", errors="replace") as fh:

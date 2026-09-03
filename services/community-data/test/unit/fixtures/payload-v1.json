@@ -1,0 +1,31 @@
+{
+  "arch": "aarch64",
+  "chip": "apple,t8103",
+  "files": [
+    {
+      "bytes": 1234,
+      "path": "manifest.json",
+      "sha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+    },
+    {
+      "bytes": 5678,
+      "path": "quick.json",
+      "sha256": "fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210"
+    }
+  ],
+  "generated_at": "2026-09-03T12:00:00Z",
+  "kernel": "6.9.1-asahi",
+  "kind": "deep",
+  "mesa_device": "Apple M1 (G13G B0)",
+  "mesa_driver": "Asahi Vulkan",
+  "mlx_device": "gpu",
+  "mlx_version": "0.3.2",
+  "model": "Apple Mac mini (M1, 2020)",
+  "redaction_summary": {
+    "home_path": 3,
+    "mac": 2
+  },
+  "repo_dirty": false,
+  "schema_version": 1,
+  "source_commit": "f7169fcb7c2df1713ee635ec5cdc57462292d90e"
+}

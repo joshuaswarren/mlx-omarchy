@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "mlx-omarchy community submission payload, schema v1",
+  "description": "The JSON summary the collector sends alongside the chunked archive. The Worker validates this strictly; unknown fields are rejected.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "kind", "generated_at"],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "kind": { "enum": ["quick", "deep"] },
+    "generated_at": {
+      "type": "string",
+      "maxLength": 20,
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"
+    },
+    "arch": { "type": ["string", "null"], "maxLength": 512 },
+    "model": { "type": ["string", "null"], "maxLength": 512 },
+    "chip": { "type": ["string", "null"], "maxLength": 512 },
+    "kernel": { "type": ["string", "null"], "maxLength": 512 },
+    "mesa_driver": { "type": ["string", "null"], "maxLength": 512 },
+    "mesa_device": { "type": ["string", "null"], "maxLength": 512 },
+    "mlx_version": { "type": ["string", "null"], "maxLength": 512 },
+    "mlx_device": { "type": ["string", "null"], "maxLength": 512 },
+    "source_commit": { "type": ["string", "null"], "maxLength": 64 },
+    "repo_dirty": { "type": ["boolean", "null"] },
+    "redaction_summary": {
+      "type": "object",
+      "additionalProperties": { "type": "integer" }
+    },
+    "files": {
+      "type": "array",
+      "maxItems": 64,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["path", "bytes", "sha256"],
+        "properties": {
+          "path": { "type": "string", "maxLength": 256 },
+          "bytes": { "type": "integer", "minimum": 0 },
+          "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+        }
+      }
+    }
+  }
+}

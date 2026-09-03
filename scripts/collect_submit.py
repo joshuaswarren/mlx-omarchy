@@ -1,29 +1,38 @@
 #!/usr/bin/env python3
-"""Upload path for the mlx-omarchy deep diagnostics archive.
+"""Upload path for the mlx-omarchy contributor diagnostics archive.
 
 The only network code in the collectors lives here. `collect_quick.py`
-and `collect_deep.py` never import this module at collection time; the
-deep script imports it lazily, only after the user has seen the preview
-and asked to submit explicitly.
+never imports this module; `collect_deep.py` imports it lazily, only
+after the user has seen the preview and asked to submit explicitly.
 
-Protocol (boring HTTP JSON):
+Wire protocol (the Cloudflare Worker in services/community-data/):
 
-  GET  <endpoint>/<archive sha256>   dedup probe
-       200 -> {"url": ...}           already present; nothing is sent
-       404 -> continue
-  POST <endpoint>                    body: the redacted .tar.gz bytes
-       headers: Content-Sha256, Content-Type
-       200/201 -> {"url": ...}       the public receipt URL
+  POST <base>/v1/submit
+       body: {"schema_version", "kind", "content_sha256", "payload",
+              "archive": {"total_bytes", "chunk_bytes", "chunk_count",
+                          "chunk_sha256": [<hex>...]} | null,
+              "pow": {"nonce", "difficulty"}}
+       200 -> {"status": "awaiting_chunks"|"stored"|"duplicate",
+               "content_sha256", "missing_chunks": [...], "receipt_url"}
+  POST <base>/v1/submit/<sha>/chunk/<idx>   body: one raw chunk
+       200 -> {"status": "stored"|"duplicate", "idx",
+               "missing_chunks": [...]}
+  POST <base>/v1/submit/<sha>/complete
+       200 -> {"status": "stored"|"duplicate", "receipt_url"}
+       409 -> {"error": "incomplete", "missing_chunks": [...]}
+  GET  <base>/v1/submit/<sha>               dedup probe
+       200 -> {"status": "duplicate"}; 404 -> not present
 
-Only the already-redacted archive and its hashes are sent. The endpoint
-is caller-supplied (--submit URL or MLX_OMARCHY_SUBMIT_URL); there are no
-embedded endpoints and no embedded secrets. If a deployment needs a
-bearer token, the caller sets MLX_OMARCHY_SUBMIT_TOKEN in its own
-environment; the token is never written to disk or logged.
+Only the already-redacted payload and archive are sent. Uploads are
+resumable: a re-run repeats the initiate call and uploads only the
+chunks the server reports as missing. The proof-of-work nonce is bound
+to the archive hash, so a token cannot be reused for other content.
 
-Every failure raises SubmitError. The caller keeps the local archive and
-submission file and prints the error; a failed submit never destroys
-local output.
+A custom User-Agent is required: workers.dev fronting 403s the default
+Python-urllib user agent.
+
+Every failure raises SubmitError. The caller keeps the local archive
+and prints the error; a failed submit never destroys local output.
 """
 
 import hashlib
@@ -34,6 +43,13 @@ import urllib.error
 import urllib.request
 
 DEFAULT_TIMEOUT = 60
+
+# Must mirror services/community-data/src/caps.ts.
+CHUNK_BYTES = 768 * 1024
+MAX_ARCHIVE_BYTES = 8 * 1024 * 1024
+POW_DIFFICULTY = 18
+
+USER_AGENT = "mlx-omarchy-collector/1"
 
 
 class SubmitError(RuntimeError):
@@ -51,48 +67,174 @@ def _request(opener, req, timeout):
         raise SubmitError(f"endpoint unreachable: {exc}") from exc
 
 
-def submit(endpoint, archive_bytes, timeout=DEFAULT_TIMEOUT, urlopen=None,
+def sha256_hex(data):
+    return hashlib.sha256(data).hexdigest()
+
+
+def leading_zero_bits(hex_digest):
+    bits = 0
+    for ch in hex_digest:
+        nibble = int(ch, 16)
+        if nibble == 0:
+            bits += 4
+            continue
+        if nibble < 2:
+            bits += 3
+        elif nibble < 4:
+            bits += 2
+        elif nibble < 8:
+            bits += 1
+        break
+    return bits
+
+
+def solve_pow(content_sha256, difficulty=POW_DIFFICULTY):
+    """Find a nonce so sha256("<sha>:<nonce>") has >= difficulty zero bits."""
+    nonce = 0
+    while True:
+        digest = hashlib.sha256(f"{content_sha256}:{nonce}".encode()).hexdigest()
+        if leading_zero_bits(digest) >= difficulty:
+            return str(nonce)
+        nonce += 1
+
+
+def chunk_archive(data, chunk_bytes=CHUNK_BYTES):
+    """Deterministic split; returns [(idx, bytes, sha256), ...]."""
+    chunks = []
+    for idx, off in enumerate(range(0, len(data), chunk_bytes)):
+        piece = data[off:off + chunk_bytes]
+        chunks.append((idx, piece, sha256_hex(piece)))
+    return chunks
+
+
+def _decode(body):
+    try:
+        return json.loads(body.decode("utf-8"))
+    except (ValueError, UnicodeDecodeError):
+        return {}
+
+
+def _headers(token, extra=None):
+    headers = {
+        "User-Agent": USER_AGENT,
+        "Authorization": f"Bearer {token}",
+    } if token else {"User-Agent": USER_AGENT}
+    if extra:
+        headers.update(extra)
+    return headers
+
+
+def submit(endpoint, data, payload, timeout=DEFAULT_TIMEOUT, urlopen=None,
            token=None):
     """Submit one archive; returns {"url", "deduplicated", "status"}.
 
-    `urlopen` is injectable for tests. The default opener is urllib's.
+    `urlopen` is injectable for tests. Resumable: re-invoking after a
+    mid-upload failure re-initiates and sends only the missing chunks.
     """
+    if len(data) > MAX_ARCHIVE_BYTES:
+        raise SubmitError(
+            f"archive too large for the public endpoint: {len(data)} > "
+            f"{MAX_ARCHIVE_BYTES} bytes; it stays local")
     if urlopen is None:
         opener = urllib.request.build_opener()
         urlopen = opener.open
-    digest = hashlib.sha256(archive_bytes).hexdigest()
     base = endpoint.rstrip("/")
-    headers = {
-        "Content-Type": "application/octet-stream",
-        "Content-Sha256": digest,
-    }
-    if token:
-        headers["Authorization"] = f"Bearer {token}"
-
-    status, body = _request(
-        urlopen, urllib.request.Request(f"{base}/{digest}", headers=headers),
-        timeout)
-    if status == 200:
-        return _receipt(body, deduplicated=True, status=status)
-    if status != 404:
-        raise SubmitError(f"dedup probe failed with HTTP {status}")
+    digest = sha256_hex(data)
+    chunks = chunk_archive(data)
 
     status, body = _request(
         urlopen,
-        urllib.request.Request(base, data=archive_bytes, headers=headers,
-                               method="POST"),
+        urllib.request.Request(
+            f"{base}/v1/submit/{digest}", headers=_headers(token)),
         timeout)
-    if status not in (200, 201):
-        raise SubmitError(f"upload failed with HTTP {status}")
-    return _receipt(body, deduplicated=False, status=status)
+    if status == 200:
+        return _receipt(_decode(body), deduplicated=True, status=status)
+    if status != 404:
+        raise SubmitError(f"dedup probe failed with HTTP {status}")
+
+    difficulty = POW_DIFFICULTY
+    for attempt in range(2):
+        initiate = {
+            "schema_version": payload.get("schema_version", 1),
+            "kind": payload.get("kind", "deep"),
+            "content_sha256": digest,
+            "payload": payload,
+            "archive": {
+                "total_bytes": len(data),
+                "chunk_bytes": CHUNK_BYTES,
+                "chunk_count": len(chunks),
+                "chunk_sha256": [c[2] for c in chunks],
+            },
+            "pow": {
+                "nonce": solve_pow(digest, difficulty),
+                "difficulty": difficulty,
+            },
+        }
+        status, body = _request(
+            urlopen,
+            urllib.request.Request(
+                f"{base}/v1/submit",
+                data=json.dumps(initiate).encode("utf-8"),
+                headers=_headers(token, {"Content-Type": "application/json"}),
+                method="POST"),
+            timeout)
+        decoded = _decode(body)
+        if status == 403 and decoded.get("error") == "pow_invalid":
+            wanted = (decoded.get("detail") or {}).get("min_difficulty")
+            if isinstance(wanted, int) and wanted > difficulty:
+                difficulty = wanted
+                continue
+        break
+
+    if status != 200:
+        raise SubmitError(
+            f"initiate failed with HTTP {status}: {decoded.get('error')}")
+
+    if decoded.get("status") == "duplicate":
+        return _receipt(decoded, deduplicated=True, status=status)
+    if decoded.get("status") == "stored":
+        return _receipt(decoded, deduplicated=False, status=status)
+
+    for idx in decoded.get("missing_chunks", []):
+        piece = chunks[idx][1]
+        cstatus, cbody = _request(
+            urlopen,
+            urllib.request.Request(
+                f"{base}/v1/submit/{digest}/chunk/{idx}",
+                data=piece,
+                headers=_headers(token,
+                                 {"Content-Type": "application/octet-stream"}),
+                method="POST"),
+            timeout)
+        cdecoded = _decode(cbody)
+        if cstatus != 200:
+            raise SubmitError(
+                f"chunk {idx} failed with HTTP {cstatus}: "
+                f"{cdecoded.get('error')}; re-run to resume")
+
+    fstatus, fbody = _request(
+        urlopen,
+        urllib.request.Request(
+            f"{base}/v1/submit/{digest}/complete",
+            data=b"",
+            headers=_headers(token),
+            method="POST"),
+        timeout)
+    fdecoded = _decode(fbody)
+    if fstatus == 409 and fdecoded.get("error") == "incomplete":
+        raise SubmitError(
+            f"server still misses chunks {fdecoded.get('missing_chunks')}; "
+            f"re-run to resume")
+    if fstatus != 200:
+        raise SubmitError(
+            f"complete failed with HTTP {fstatus}: {fdecoded.get('error')}")
+    return _receipt(fdecoded, deduplicated=False, status=fstatus)
 
 
 def _receipt(body, deduplicated, status):
-    try:
-        payload = json.loads(body.decode("utf-8"))
-        url = payload["url"]
-    except (ValueError, KeyError, UnicodeDecodeError) as exc:
-        raise SubmitError(f"endpoint returned no receipt URL: {exc}") from exc
+    url = body.get("receipt_url")
+    if not url:
+        raise SubmitError("endpoint returned no receipt URL")
     return {"url": url, "deduplicated": deduplicated, "status": status}
 
 
