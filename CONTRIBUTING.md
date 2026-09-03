@@ -96,6 +96,24 @@ as `available: false` instead of failing the run, and a timeout keeps
 the sections that finished. The run also writes a paste-ready
 `mlx-omarchy-deep.submission.md` cover text.
 
+The matmul benchmark works from the released wheel and its numbers ride
+in the published summary, so results are comparable across machines
+without downloading anyone's archive.
+
+The GPU profile section needs more than the wheel, and it reports
+`available: false` on a released install. Release wheels are compiled
+with the profiling harness OFF on purpose, and the released wheel does
+not ship `mlx-omarchy-info`. To contribute profiling data, build from
+source with the harness on:
+
+```bash
+cmake -B build -DMLX_OMARCHY_GPU_PROFILING=ON   # plus your usual flags
+```
+
+Then run the deep collector against that build. Hardware, kernel, Mesa,
+Vulkan, ANE visibility, correctness probes and the benchmark sweep all
+work from the plain wheel, so a wheel-only report is still useful.
+
 To publish a result:
 
 ```bash

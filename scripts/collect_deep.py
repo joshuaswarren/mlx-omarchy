@@ -497,7 +497,11 @@ def finalize(files, unavailable, redaction, archive_name, repo):
     })
     quick = json.loads(files.get("quick.json", b"{}").decode("utf-8")
                        or "{}")
-    payload = build_payload("deep", quick, manifest)
+    bench = json.loads(files.get("benchmark.json", b"{}").decode("utf-8")
+                       or "{}")
+    matmul = ((bench.get("python") or {}).get("matmul") or []) \
+        if isinstance(bench, dict) else []
+    payload = build_payload("deep", quick, manifest, benchmark=matmul)
     files["manifest.json"] = json_bytes(manifest)
     files["submission.md"] = build_submission(
         manifest, files, archive_name).encode("utf-8")

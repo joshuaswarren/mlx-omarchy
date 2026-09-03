@@ -23,6 +23,21 @@
     "mlx_device": { "type": ["string", "null"], "maxLength": 512 },
     "source_commit": { "type": ["string", "null"], "maxLength": 64 },
     "repo_dirty": { "type": ["boolean", "null"] },
+    "cpu_online": { "type": ["integer", "null"], "minimum": 0 },
+    "benchmark": {
+      "type": "array",
+      "maxItems": 16,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["n"],
+        "properties": {
+          "n": { "type": "integer", "minimum": 1 },
+          "tflops": { "type": ["number", "null"] },
+          "median_ms": { "type": ["number", "null"] }
+        }
+      }
+    },
     "redaction_summary": {
       "type": "object",
       "additionalProperties": { "type": "integer" }

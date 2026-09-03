@@ -275,7 +275,7 @@ def build_manifest(archive_name, files, extra=None):
     return manifest
 
 
-def build_payload(kind, quick, manifest, generated_at=None):
+def build_payload(kind, quick, manifest, generated_at=None, benchmark=None):
     """Build the strict-schema JSON summary sent with the upload.
 
     Must match schema/payload-v1.schema.json in services/community-data:
@@ -293,6 +293,19 @@ def build_payload(kind, quick, manifest, generated_at=None):
     # apple,t8103 identifies the chip that every other M1 machine shares.
     soc = next((c for c in compatible
                 if re.match(r"^apple,t\d{4}", c)), None)
+    host_cpu = host.get("cpu_online")
+    # The benchmark numbers must ride in the summary, not only inside the
+    # archive: the read API serves summaries, so cross-machine comparison
+    # is impossible unless the numbers travel with them.
+    rows = []
+    for row in (benchmark or [])[:16]:
+        if not isinstance(row, dict) or not isinstance(row.get("n"), int):
+            continue
+        rows.append({
+            "n": row["n"],
+            "tflops": row.get("tflops"),
+            "median_ms": row.get("median_ms"),
+        })
     return {
         "schema_version": SCHEMA_VERSION,
         "kind": kind,
@@ -309,6 +322,8 @@ def build_payload(kind, quick, manifest, generated_at=None):
         "mlx_device": mlx.get("default_device"),
         "source_commit": manifest.get("source_commit"),
         "repo_dirty": manifest.get("repo_dirty"),
+        "cpu_online": host_cpu if isinstance(host_cpu, int) else None,
+        "benchmark": rows,
         "redaction_summary": dict(
             manifest.get("redaction_summary") or {}),
         "files": [
