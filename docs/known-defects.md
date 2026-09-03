@@ -39,6 +39,24 @@ Affected: v0.3.0-alpha.1 through v0.3.1. Observed on: dev box, Mesa llvmpipe.
 
 Upstream's `test_autograd.py::TestAutograd::test_eval_in_grad` got `vjp = 12.000000953674316`. The exact value is `12.0`. This is one ulp of float32 accumulation. Upstream Metal is exact here. Severity is low. It surfaces only where code pins exact equality.
 
+### Ordered comparison against NaN returns true on the M1
+
+Affected: the v0.3.1 release candidate (tree at `959c7a0`; not yet tagged). Observed on: real M1 (Honeykrisp), three of three runs.
+
+`omarchy_primitive_tests` fails one assertion per run: an ordered comparison against NaN returns true where the host reference says false, at `test_primitives.cpp:5548`. IEEE says every ordered comparison with NaN is false. The same case passes on the dev box. The tag is held on this finding.
+
+### Indexing operations succeed where a named refusal was expected on the M1
+
+Affected: the v0.3.1 release candidate (tree at `959c7a0`; not yet tagged). Observed on: real M1 (Honeykrisp).
+
+`omarchy_indexing_ops_tests` fails three assertions that expect a named `[omarchy]` refusal and instead see the operation succeed with an empty error. An operation that was supposed to refuse and did not is a silent-success defect, and the seriousness depends on the mechanism, which is being determined. If the operation succeeded because the newly enabled CPU backend picked up work that has no GPU kernel, that is silent CPU fallback - the one thing this project promises never happens, in so many words that our own error text prints it. If the GPU kernel simply exists on Honeykrisp but not on llvmpipe, the finding is a dev-box capability gap instead. The two outcomes lead to different fixes and different coverage-matrix corrections, so the ledger waits for the determination rather than guessing.
+
+### `fast::rope` diverges from its host reference on the M1 at position 12345
+
+Affected: the v0.3.1 release candidate (tree at `959c7a0`; not yet tagged). Observed on: real M1 (Honeykrisp).
+
+A standalone probe shows `fast::rope` diverging from its host reference by 13.6 at position 12345. This contradicts the `959c7a0` commit message, which states that rope at positions 12345 and 100000 matches its reference. The pre-merge verification ran in the investigating agent's own worktree, not the merged artifact; the merged tree differs in a way that matters here, and the discrepancy is under investigation. Recorded as the second commit-message claim on this page that the merged artifact did not reproduce.
+
 ## A correction on the record: compiled tapes do not bypass the trig gate
 
 Commit `959c7a0`'s message states: "One residual, stated rather than hidden: sin and cos inside compiled tapes bypass the eval_gpu gate and inherit no limit." **That claim is wrong for this tree, and this section retracts it.** A reader who finds the claim in the git log should find this retraction next to it.
@@ -55,7 +73,7 @@ v0.3.0, the full release, actively shipped these. A v0.3.0 wheel has all of them
 
 ### Semaphore lifetime crash - every primitive could segfault
 
-Affected: v0.3.0. Observed on: dev box, Mesa llvmpipe/lavapipe only - never observed on Apple hardware. Fixed in v0.3.1 (commit `150927b`).
+Affected: v0.3.0. Observed on: dev box, Mesa llvmpipe/lavapipe only - the crash was never observed on Apple hardware. Fixed in v0.3.1 (commit `150927b`); the fix is verified on Honeykrisp, 50 of 50 crash-loop runs green with no signals.
 
 Mesa's queue submit thread signals a submission's semaphores before `vk_queue_submit_cleanup` releases that submission's timeline sync points. Observing the timeline therefore does not prove the driver is finished with it. Our completion dispatcher took the signal at face value, dropped the submission keepalive, and destroyed the Event's timeline semaphore while the driver still held a reference. The submit thread then locked a freed mutex: `pthread_mutex_lock` on a freed mutex, from `vk_sync_timeline_point_release`, from `vk_queue_submit_cleanup`, from `vk_queue_submit_thread_func`.
 
@@ -171,7 +189,7 @@ for o, w, v in zip(np.array(mx.sin(mx.array(big))), np.sin(big), big):
 # sin(1e+30): got -1.0000000 numpy -0.7911634  diff 0.209
 ```
 
-This was the same defect the M1 investigation later measured properly: the range reduction degrades far below the magnitudes this table shows, and the real-target onset is at arguments of about 1e4 to 1e6, not 1e9. See the fixed-in-v0.3.1 entry above for the measured M1 numbers and the eager gate. Compiled tapes still bypass the gate; that is the live entry.
+This was the same defect the M1 investigation later measured properly: the range reduction degrades far below the magnitudes this table shows, and the real-target onset is at arguments of about 1e4 to 1e6, not 1e9. See the fixed-in-v0.3.1 entry above for the measured M1 numbers and the eager gate. An earlier version of this page, and the `959c7a0` commit message, called compiled tapes a live bypass; the correction section above retracts that with evidence.
 
 ## What to do
 
@@ -179,6 +197,6 @@ On v0.3.0-alpha.1: treat every operation in the alpha section as untrusted. Upgr
 
 On v0.3.0: the semaphore crash can kill any workload, and on a real M1 the scatter, LogicalAnd, select, and sin/cos defects return wrong values or refuse operations your dev box runs fine. Upgrade to v0.3.1.
 
-On v0.3.1: the live section above is the complete list of known silent failures. Watch `gelu_approx` under test runners and bf16 compiled tapes in mlx-lm. Large-argument trig refuses by name, eagerly and inside `mx.compile` alike. Everything else refuses by name.
+On the v0.3.1 release candidate: three findings against the merged tree on real M1 hardware sit in the live section above (ordered NaN comparison, indexing ops that stopped refusing, and a rope divergence). The tag is held until they are resolved; this paragraph will say exactly what shipped once it ships. The long-standing live entries remain: `gelu_approx` under test runners and bf16 compiled tapes in mlx-lm. Large-argument trig refuses by name, eagerly and inside `mx.compile` alike.
 
 Named `[omarchy] ... is not implemented` errors remain the honest failure mode. The defects on this page are dangerous because they do not fail that way.
