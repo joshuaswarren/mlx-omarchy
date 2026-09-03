@@ -259,4 +259,34 @@ MLX_API const CapabilityReport& capability_report(uint32_t index);
 // compiled tapes in their batteries and in the differential harness.
 bool compiled_tapes_refused(const Device& device);
 
+// True when the named MLX_OMARCHY_* boolean environment variable is set
+// to 1/on/true/yes (case-insensitive). False when unset or any other
+// value. Read on every call: nothing here caches environment state.
+bool env_flag(const char* name);
+
+// Scoped diagnostic switches for the compiled-tape defect hunt
+// (docs/install-omarchy.md, "Compiled-tape debug switches"). Between
+// construction and destruction, tape_full_barriers() and tape_no_reuse()
+// report the values given here so the encoder and the allocator can make
+// the tape's dispatches heavier or its resources fresher. Out of scope
+// both always read false, so no other work on the device changes shape.
+// The tape runner is the only intended constructor; there is exactly one
+// scope at a time by design.
+class MLX_API TapeDebugScope {
+ public:
+  TapeDebugScope(bool full_barriers, bool no_reuse);
+  ~TapeDebugScope();
+
+  TapeDebugScope(const TapeDebugScope&) = delete;
+  TapeDebugScope& operator=(const TapeDebugScope&) = delete;
+
+ private:
+  bool full_barriers_;
+  bool no_reuse_;
+};
+
+// Current scoped diagnostic state. False outside a TapeDebugScope.
+bool tape_full_barriers();
+bool tape_no_reuse();
+
 } // namespace mlx::core::omarchy
