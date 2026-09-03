@@ -18,13 +18,16 @@ development device, not Honeykrisp.
 ## Build the wheel
 
 1. Install the build tools: Python 3.10 or newer with `venv`, `cmake` 3.25 or
-   newer, Vulkan development headers, and a C++ compiler.
+   newer, Vulkan development headers, a C++ compiler, and the BLAS/LAPACK
+   development packages the CPU backend links (`liblapack-dev libblas-dev
+   liblapacke-dev` on Debian-family distributions).
 2. Run `./scripts/build-wheel.sh`
 3. Read the wheel path, size, and sha256 from the receipt lines.
 
 The script prepares the pinned upstream tree, builds with
-`MLX_BUILD_OMARCHY=ON` and the CPU, Metal, and CUDA backends off, and writes
-one wheel into `dist/`.
+`MLX_BUILD_OMARCHY=ON`, the CPU backend on, and the Metal and CUDA backends
+off, and writes one wheel into `dist/`. The built wheel needs
+`liblapack.so.3` and `libblas.so.3` at runtime.
 
 ## Install and smoke-test
 
