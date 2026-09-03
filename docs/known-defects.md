@@ -39,18 +39,21 @@ Affected: v0.3.0-alpha.1 through v0.3.1. Observed on: dev box, Mesa llvmpipe.
 
 Upstream's `test_autograd.py::TestAutograd::test_eval_in_grad` got `vjp = 12.000000953674316`. The exact value is `12.0`. This is one ulp of float32 accumulation. Upstream Metal is exact here. Severity is low. It surfaces only where code pins exact equality.
 
-### `mx.all` over a boolean array returns False for all-True input at sizes of 5 or more
+### Boolean reductions (`mx.all` AND `mx.any`) return wrong results once data crosses the first 32-bit word
 
-Affected: confirmed in the published v0.3.0 and v0.3.1 aarch64 wheels; earlier releases unverified but v0.3.0 predating the byte-extraction work makes a long-standing gap the running hypothesis. Observed on: real M1 (Honeykrisp), fresh process, deterministic. On llvmpipe the same code is correct, which is why every dev-box battery stayed green.
+Affected: confirmed in the published v0.3.0 and v0.3.1 aarch64 wheels; v0.3.0 predates the byte-extraction work, so this is a long-standing gap, not a regression. Observed on: real M1 (Honeykrisp), fresh process, deterministic. On llvmpipe the same code is correct, which is why every dev-box battery stayed green.
 
 ```python
 import mlx.core as mx, numpy as np
 mx.all(mx.array(np.array([True] * 33))).item()   # False; must be True
 ```
 
-Sizes 1 to 4 are correct; every size from 5 upward returns False for all-True input. `mx.any` is unaffected at both polarities, and all-False input correctly returns False. Note the signature rules out the obvious guess: a kernel that merely read the first word would return True here (word 0 of packed all-True bytes is nonzero), so the reads beyond index 3 must be returning falsy bytes - out-of-range or zero-filled - rather than being ignored. Mechanism under pinning; the wrong values and their size threshold are the verified facts. The dtype-converting `mx.sum(a.astype(mx.int32))` workaround refuses by name on the GPU (named gap), so use `bool(np.array(a).all())` or an explicit CPU stream.
+Both `mx.all` and `mx.any` are affected, for whole-array reductions and axis reductions alike. BoolAllFix's hardware map: whole-array `mx.all` of all-True input is wrong at every size from 5 up; `mx.any` over an array False everywhere except one True at index 4 or beyond returns False; an axis reduction on a `(2, n)` shape fails from `n = 3`, because row 1 begins in the second word; and the per-position map at 33 elements shows positions 0-3 and 16-19 correct while every other position past the first word reads falsy. There is no clean size-based workaround - the failure is positional, not a simple count.
 
-Found by the v0.3.1 published-artifact verification on the real target: the download check ran a device-side `mx.all`, and the entire C++ battery - 828,139 assertions - never exercised a bool All-reduction wider than one word on Apple hardware. Disclosed in a prominent warning on the v0.3.1 release page; fix in progress for v0.3.2.
+The cause is pinned: `reduce_general.comp`'s `load_truthy` uses a dynamic shift-then-mask byte extraction, which this driver miscompiles - the fifth confirmed site of the same dynamic byte-extraction family as the masked-scatter defect and the four sites fixed in `959c7a0`. `mx.logical_and` is green on the same buffers, which proves the input layout is fine and isolates the defect to the reduction's load. Workaround: `mx.logical_and` substitutes for some uses, or reduce on an explicit CPU stream; the dtype-converting `mx.sum(a.astype(mx.int32))` path refuses by name on the GPU (named gap).
+
+Found by the v0.3.1 published-artifact probe on the real target - a post-publish check, not the in-tree suite: the entire C++ battery, 828,139 assertions, never exercised a boolean reduction wider than one word on Apple hardware, and nobody had written one. The lesson recorded: coverage shape beats coverage count - the probe's device-side reduction caught in one check what the assertion count never reached. Disclosed in a prominent warning on the v0.3.1 release page; verified fix in progress for v0.3.2.
+
 
 ## What the M1 verification reds turned out to be
 
@@ -214,7 +217,7 @@ On v0.3.0-alpha.1: treat every operation in the alpha section as untrusted. Upgr
 
 On v0.3.0: the semaphore crash can kill any workload, and on a real M1 the scatter, LogicalAnd, select, and sin/cos defects return wrong values or refuse operations your dev box runs fine. Upgrade to v0.3.1.
 
-On v0.3.1, published: the release ships the `mx.all` boolean defect above on Apple Silicon - disclosed in a prominent warning at the top of the release page - and a fix ships in v0.3.2. The three M1 verification reds resolved to test-side causes before the tag landed ("What the M1 verification reds turned out to be" above). The long-standing live entries remain: `gelu_approx` under test runners and bf16 compiled tapes in mlx-lm. Large-argument trig refuses by name, eagerly and inside `mx.compile` alike.
+On v0.3.1, published: the release ships the boolean-reduction defect above on Apple Silicon - both `mx.all` and `mx.any`, positional past the first word, disclosed in a prominent warning at the top of the release page - and a verified fix ships in v0.3.2. The three M1 verification reds resolved to test-side causes before the tag landed ("What the M1 verification reds turned out to be" above). The long-standing live entries remain: `gelu_approx` under test runners and bf16 compiled tapes in mlx-lm. Large-argument trig refuses by name, eagerly and inside `mx.compile` alike.
 
 
 Named `[omarchy] ... is not implemented` errors remain the honest failure mode. The defects on this page are dangerous because they do not fail that way.
