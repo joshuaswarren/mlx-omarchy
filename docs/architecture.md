@@ -128,3 +128,4 @@ upstream change would be usable yet. A prepared six-commit `libane`
 series is kept as patches at `~/keep/eiln-ane-series/` and inlined in
 `receipts/2026-09-01-libane-upstream-prep.md`; it is not to be opened as
 a pull request.
+The fork map and the backport flow are in [`forks.md`](forks.md).
