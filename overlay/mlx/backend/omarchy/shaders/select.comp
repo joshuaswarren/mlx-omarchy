@@ -103,6 +103,16 @@ layout(push_constant) uniform Params {
   uint rhs_strides[4];
 } params;
 
+// Honeykrisp miscompiles shift-then-mask byte extraction with a
+// data-dependent shift amount (receipt 2026-09-02-masked-scatter-m1-fix,
+// diag68); four constant shifts picked by a select chain are the
+// receipt-proven equivalent. A macro, not a helper function, for the
+// same reason.
+#define BYTE_AT(word, lane)                                                  \
+  ((lane) == 0u ? ((word) & 0xFFu)                                           \
+       : (lane) == 1u ? (((word) >> 8u) & 0xFFu)                             \
+       : (lane) == 2u ? (((word) >> 16u) & 0xFFu)                            \
+                      : (((word) >> 24u) & 0xFFu))
 #ifndef USE_BOOL
 uint true_index_for(uint index) {
   if (params.dims == 0u) {
@@ -166,7 +176,7 @@ void main() {
     if (index >= params.count) {
       break;
     }
-    bool truthy = ((word >> (lane * 8u)) & 0xFFu) != 0u;
+    bool truthy = BYTE_AT(word, lane) != 0u;
     VALUE_TYPE value = truthy
         ? LOAD_VALUE(input_true.values[true_index_for(index)])
         : LOAD_VALUE(input_false.values[false_index_for(index)]);
@@ -183,7 +193,12 @@ void main() {
 // LogicalAnd/LogicalNot word-boundary failures), so all three operand
 // words are loaded straight-line at the top of main, exactly the shape
 // of the condition read above, and each thread assembles one output
-// word from the loaded registers.
+// word from the loaded registers. Byte extraction stays in the
+// byte_at helper with the plain shift-then-mask form: the M1
+// Honeykrisp returns correct bytes through the helper and wrong bytes
+// through a constant-shift select-chain macro (M1RedInvestigation,
+// 2026-09-02: the macro form broke packed-operand where at 13 of 25
+// checked positions).
 uint byte_at(uint word, uint index) {
   return (word >> ((index & 3u) * 8u)) & 0xFFu;
 }

@@ -553,13 +553,18 @@ void main() {
         value = -lhs;
         break;
       case 11:
-        // W8 revert: GLSL built-in cos for the common path. The
-        // Payne-Hanek helpers above are retained in source but no
-        // longer called from main(). Hardware and software GLSL
-        // backends that implement sin/cos with low-accuracy ext
-        // instructions saturate for |x| above ~2^24; the receipt W8
-        // directive allowed a named refusal above that magnitude.
-        // The common-path tests (|x| < 4) match upstream Metal here.
+        // GLSL built-in cos. The host refuses arguments whose maximum
+        // magnitude exceeds kTrigArgumentLimit (primitives.cpp,
+        // 1e5) because the Honeykrisp built-in range reduction
+        // degrades through that band and collapses from ~1e6 (probe
+        // 2026-09-02). The in-source Payne-Hanek fallback was probed
+        // on the same device and produces garbage of magnitude 1e15+
+        // - its carry chain rides the dynamic-indexing shapes this
+        // driver miscompiles - so it stays dead code and the op
+        // refuses above the limit instead. RoPE note: fast::RoPE is a
+        // fallback composition of these sin/cos calls with
+        // inv_freq[0] = 1.0, so 1e5 is the positional ceiling; it
+        // covers Qwen-class 32k contexts with margin.
         value = cos(lhs);
         break;
       case 12:

@@ -25,6 +25,7 @@
 #include "mlx/fast_primitives.h"
 #include "mlx/backend/gpu/copy.h"
 #include "mlx/primitives.h"
+#include "mlx/ops.h"
 
 #define OMARCHY_UNSUPPORTED(func)                                     \
   void func::eval_gpu(const std::vector<array>& inputs, array& out) { \
@@ -2592,7 +2593,51 @@ void Convolution::eval_gpu(const std::vector<array>& inputs, array& out) {
       params,
       omarchy::compute_dispatch_group_count(total));
 }
-OMARCHY_UNARY(Cos, CosOperation)
+// The GLSL built-in sin/cos keep upstream-grade accuracy only for
+// arguments the driver's range reduction survives. Measured on the M1
+// Honeykrisp (scalar sweep, 2026-09-02): built-in error 2.8e-5 at 1e3,
+// 4.5e-4 at 12345, 4.8e-3 at 123457, then 1e-2 and worse toward 1e6
+// and total collapse from there; llvmpipe stays accurate far higher,
+// but the gate is one device-independent contract. kTrigArgumentLimit
+// is 1e5, chosen for the consumer that matters: fast::RoPE is a
+// fallback composition of exactly these sin/cos calls with
+// inv_freq[0] = 1.0, so the limit is the positional ceiling - 1e5
+// covers Qwen-class 32k contexts with 3x margin while refusing the
+// band where the built-in returns garbage (error 1e-2 and collapsing).
+// An in-shader Payne-Hanek fallback was probed on the same device and
+// returns garbage of magnitude 1e15+ (its carry chain rides the
+// dynamic-indexing shapes this driver miscompiles), so it stays dead
+// code. Above the limit the op refuses by name; the compatibility
+// matrix counts Sin/Cos as partial with the magnitude named error.
+constexpr float kTrigArgumentLimit = 1.0e5f;
+
+void trig_argument_gate(
+    const std::string& name,
+    const std::vector<array>& inputs,
+    const array& out) {
+  Stream stream = out.primitive().stream();
+  array magnitude = astype(
+      max(abs(inputs.at(0), stream), stream), float32, stream);
+  magnitude.eval();
+  float worst = magnitude.item<float>();
+  if (worst > kTrigArgumentLimit) {
+    throw std::runtime_error(
+        "[omarchy] " + name + " argument magnitude " +
+        std::to_string(worst) + " exceeds the built-in accuracy limit " +
+        std::to_string(kTrigArgumentLimit) +
+        " on this backend: the Vulkan driver's sin/cos range reduction"
+        " is untrusted above it, the software Payne-Hanek fallback"
+        " miscompiles on this driver, and no other accurate kernel"
+        " exists. No silent wrong value and no silent CPU fallback"
+        " occurs. Run it on an explicit CPU stream to use the CPU"
+        " implementation.");
+  }
+}
+void Cos::eval_gpu(const std::vector<array>& inputs, array& out) {
+  trig_argument_gate(name(), inputs, out);
+  dispatch_elementwise(
+      name(), CosOperation, inputs, out, out.primitive().stream());
+}
 OMARCHY_UNARY(Cosh, CoshOperation)
 void Divide::eval_gpu(const std::vector<array>& inputs, array& out) {
   if (out.dtype() == complex64) {
@@ -4851,17 +4896,14 @@ void Scatter::eval_gpu(const std::vector<array>& inputs, array& out) {
   // scatters float32 through native float atomics (is_metal_atomic
   // includes float) and float16/bfloat16 through a packed CAS loop, so
   // duplicate-index accumulation order is nondeterministic upstream
-  // too and no ordering contract exists to preserve. The kernels here
-  // need OpAtomicFAddEXT on storage buffers, which only devices
-  // reporting shaderBufferFloat32AtomicAdd provide (measured true on
-  // llvmpipe and on the M1 G13G B1 Honeykrisp target).
-  if ((is_sum || is_prod) && float_reduce &&
-      !encoder.device().capabilities().shader_atomic_float_add) {
-    omarchy::unsupported(
-        "Scatter float Sum/Prod without VK_EXT_shader_atomic_float"
-        " shaderBufferFloat32AtomicAdd on this device",
-        out);
-  }
+  // too and no ordering contract exists to preserve. Hardware fp32
+  // atomicAdd (op 11) needs shaderBufferFloat32AtomicAdd: llvmpipe
+  // reports it, the M1 Honeykrisp does not advertise the extension at
+  // all, so devices without it run the FCAS kernel variants whose
+  // op-17 compare-exchange add is the exact-arithmetic twin of op 11.
+  // Prod's op-13 CAS multiply never needed the extension.
+  const bool hw_atomic_add =
+      encoder.device().capabilities().shader_atomic_float_add;
   if (multi_index && (is_sum || is_prod) &&
       (out.dtype() == float16 || out.dtype() == bfloat16)) {
     // Only fp32 has a multi-index FADD blob; fp16/bf16 accumulation
@@ -4882,8 +4924,11 @@ void Scatter::eval_gpu(const std::vector<array>& inputs, array& out) {
     case float32:
       map_code = 0;
       if (is_sum || is_prod) {
-        kernel = multi_index ? omarchy::ComputeKernel::ScatterFAddMultiF32
-                             : omarchy::ComputeKernel::ScatterFAddF32;
+        kernel = multi_index
+            ? (hw_atomic_add ? omarchy::ComputeKernel::ScatterFAddMultiF32
+                             : omarchy::ComputeKernel::ScatterFCasMultiF32)
+            : (hw_atomic_add ? omarchy::ComputeKernel::ScatterFAddF32
+                             : omarchy::ComputeKernel::ScatterFCasF32);
       } else {
         kernel = multi_index ? omarchy::ComputeKernel::ScatterMultiU32
                              : omarchy::ComputeKernel::ScatterU32;
@@ -4902,7 +4947,8 @@ void Scatter::eval_gpu(const std::vector<array>& inputs, array& out) {
     case float16:
       map_code = 0;
       if (is_sum || is_prod) {
-        kernel = omarchy::ComputeKernel::ScatterFAddF16;
+        kernel = hw_atomic_add ? omarchy::ComputeKernel::ScatterFAddF16
+                               : omarchy::ComputeKernel::ScatterFCasF16;
       } else {
         kernel = multi_index ? omarchy::ComputeKernel::ScatterMultiF16
                              : omarchy::ComputeKernel::ScatterF16;
@@ -4911,7 +4957,8 @@ void Scatter::eval_gpu(const std::vector<array>& inputs, array& out) {
     case bfloat16:
       map_code = 0;
       if (is_sum || is_prod) {
-        kernel = omarchy::ComputeKernel::ScatterFAddBF16;
+        kernel = hw_atomic_add ? omarchy::ComputeKernel::ScatterFAddBF16
+                               : omarchy::ComputeKernel::ScatterFCasBF16;
       } else {
         kernel = multi_index ? omarchy::ComputeKernel::ScatterMultiBF16
                              : omarchy::ComputeKernel::ScatterBF16;
@@ -5067,11 +5114,12 @@ void Scatter::eval_gpu(const std::vector<array>& inputs, array& out) {
        (is_sum || is_prod || reduce_type == Scatter::Max ||
         reduce_type == Scatter::Min))) {
     // Scratch accumulation paths: float Sum/Prod and bool Sum/Prod/
-    // Max/Min. Float Sum runs op 11 (fp32 hardware atomicAdd) and
-    // stores at op 12; float Prod runs op 13 (CAS fp32 multiply) and
-    // multiplies into the copied src at op 16. Bool Sum/Max OR the
-    // canonical update bit (op 6) and byte-write at op 14; Prod/Min
-    // AND (op 7) and byte-write at op 15.
+    // Max/Min. Float Sum runs op 11 (fp32 hardware atomicAdd) or the
+    // FCAS op 17 (compare-exchange add) and stores at op 12; float
+    // Prod runs op 13 (CAS fp32 multiply) and multiplies into the
+    // copied src at op 16. Bool Sum/Max OR the canonical update bit
+    // (op 6) and byte-write at op 14; Prod/Min AND (op 7) and
+    // byte-write at op 15.
     bool float_sum = float_reduce && is_sum;
     bool float_prod = float_reduce && is_prod;
     bool bool_or = bool_word && (is_sum || reduce_type == Scatter::Max);
@@ -5094,7 +5142,7 @@ void Scatter::eval_gpu(const std::vector<array>& inputs, array& out) {
     uint32_t accumulate;
     uint32_t finalize;
     if (float_sum) {
-      accumulate = 11;
+      accumulate = hw_atomic_add ? 11u : 17u;
       finalize = 12;
     } else if (float_prod) {
       accumulate = 13;
@@ -5192,34 +5240,35 @@ void ScatterAxis::eval_gpu(const std::vector<array>& inputs, array& out) {
   const bool float_reduce =
       out.dtype() == float32 || out.dtype() == float16 ||
       out.dtype() == bfloat16;
-  if ((is_sum && float_reduce) &&
-      !encoder.device().capabilities().shader_atomic_float_add) {
-    // Same upstream grounding as general Scatter: Metal's float axis
-    // scatter add is a native atomic fetch add, so duplicate order is
-    // nondeterministic upstream and the only hard requirement here is
-    // the fp32 atomic-add feature.
-    omarchy::unsupported(
-        "ScatterAxis float Sum without VK_EXT_shader_atomic_float"
-        " shaderBufferFloat32AtomicAdd on this device",
-        out);
-  }
+  // Same upstream grounding as general Scatter: Metal's float axis
+  // scatter add is a native atomic fetch add, so duplicate order is
+  // nondeterministic upstream and no ordering contract exists to
+  // preserve. Devices without shaderBufferFloat32AtomicAdd run the
+  // FCAS axis variants (op 17 compare-exchange add) instead of
+  // refusing: the M1 Honeykrisp does not advertise
+  // VK_EXT_shader_atomic_float at all.
+  const bool hw_atomic_add =
+      encoder.device().capabilities().shader_atomic_float_add;
   omarchy::ComputeKernel kernel;
   switch (out.dtype()) {
     case float32:
-      kernel = is_sum ? omarchy::ComputeKernel::ScatterAxisFAddF32
-                      : omarchy::ComputeKernel::ScatterAxisU32;
+      kernel = !is_sum ? omarchy::ComputeKernel::ScatterAxisU32
+          : hw_atomic_add ? omarchy::ComputeKernel::ScatterAxisFAddF32
+                          : omarchy::ComputeKernel::ScatterAxisFCasF32;
       break;
     case int32:
     case uint32:
       kernel = omarchy::ComputeKernel::ScatterAxisU32;
       break;
     case float16:
-      kernel = is_sum ? omarchy::ComputeKernel::ScatterAxisFAddF16
-                      : omarchy::ComputeKernel::ScatterAxisF16;
+      kernel = !is_sum ? omarchy::ComputeKernel::ScatterAxisF16
+          : hw_atomic_add ? omarchy::ComputeKernel::ScatterAxisFAddF16
+                          : omarchy::ComputeKernel::ScatterAxisFCasF16;
       break;
     case bfloat16:
-      kernel = is_sum ? omarchy::ComputeKernel::ScatterAxisFAddBF16
-                      : omarchy::ComputeKernel::ScatterAxisBF16;
+      kernel = !is_sum ? omarchy::ComputeKernel::ScatterAxisBF16
+          : hw_atomic_add ? omarchy::ComputeKernel::ScatterAxisFAddBF16
+                          : omarchy::ComputeKernel::ScatterAxisFCasBF16;
       break;
     case bool_:
       kernel = omarchy::ComputeKernel::ScatterAxisBool;
@@ -5284,9 +5333,10 @@ void ScatterAxis::eval_gpu(const std::vector<array>& inputs, array& out) {
     ++d;
   }
   // Sum: int rides the direct atomicAdd (op 6); float accumulates in
-  // the fp32 scratch (op 11) and stores once (op 12); bool ORs the
-  // canonical bit (op 6) and byte-writes (op 14). Duplicate order
-  // matches upstream GPU semantics; see the capability gate above.
+  // the fp32 scratch (op 11, or the FCAS op-17 compare-exchange add
+  // without hardware float atomics) and stores once (op 12); bool
+  // ORs the canonical bit (op 6) and byte-writes (op 14). Duplicate
+  // order matches upstream GPU semantics.
   if (is_sum) {
     bool int_sum = out.dtype() == int32 || out.dtype() == uint32;
     std::optional<array> scratch;
@@ -5300,9 +5350,9 @@ void ScatterAxis::eval_gpu(const std::vector<array>& inputs, array& out) {
         binding(updates),
         int_sum ? binding(out) : binding(*scratch)};
     uint32_t bound = int_sum ? 3u : 4u;
-    params.operation = int_sum ? 6u
-        : out.dtype() == bool_ ? 6u
-        : 11u;
+    params.operation = int_sum || out.dtype() == bool_ ? 6u
+        : hw_atomic_add ? 11u
+        : 17u;
     encoder.dispatch_compute(
         kernel,
         std::span<const omarchy::ComputeBinding>(bindings.data(), bound),
@@ -5704,7 +5754,11 @@ void Sign::eval_gpu(const std::vector<array>& inputs, array& out) {
   dispatch_elementwise(
       name(), SignFloatOperation, inputs, out, out.primitive().stream());
 }
-OMARCHY_UNARY(Sin, SinOperation)
+void Sin::eval_gpu(const std::vector<array>& inputs, array& out) {
+  trig_argument_gate(name(), inputs, out);
+  dispatch_elementwise(
+      name(), SinOperation, inputs, out, out.primitive().stream());
+}
 OMARCHY_UNARY(Sinh, SinhOperation)
 void Softmax::eval_gpu(const std::vector<array>& inputs, array& out) {
   dispatch_softmax(name(), inputs.at(0), out, stream());

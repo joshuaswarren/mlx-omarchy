@@ -198,21 +198,49 @@ TEST_CASE("W8 sin/cos/tan common path matches numpy f32") {
   }
 }
 
-// W8: full-range pin. Above ~2^24 the GLSL built-in sin/cos saturate
-// to +/-1 instead of computing the sinusoid. The receipt explicitly
-// accepted a named refusal in this band; the honest current behavior
-// is a saturated ±1. Below the threshold the built-ins match numpy
-// f32 within 1 ulp. This test pins both bands.
-TEST_CASE("W8 sin/cos full f32 magnitude range is common-path-correct or saturated") {
+// W8: full-range pin. fast::RoPE is a fallback composition of exactly
+// these sin/cos calls with inv_freq[0] = 1.0, so angles equal token
+// positions and the limit is a positional ceiling, not a taste choice.
+// The M1 Honeykrisp built-in holds measured accuracy to 1e5 (worst
+// seen 4.8e-3 at 123457) and returns garbage from ~1e6; the in-source
+// Payne-Hanek software fallback was probed on the same device and
+// returns garbage of magnitude 1e15+ (dynamic-indexing miscompile
+// class), so there is no accurate kernel above the limit. Bands:
+//  |v| <= 1e3  -> built-in, 1e-4 abs (measured 2.8e-5 worst)
+//  1e3 < |v| <= 1e5 -> built-in, 5e-3 abs (measured 4.8e-3 worst)
+//  |v| > 1e5   -> named refusal, no value
+std::string evaluation_error(array value) {
+  try {
+    value.eval();
+  } catch (const std::exception& error) {
+    return error.what();
+  }
+  return {};
+}
+
+TEST_CASE("W8 sin/cos accurate to 1e5 and refused by name above it") {
   if (!compute_available()) {
     return;
   }
   Stream stream = gpu_stream();
   std::vector<float> full{
       0.0f, 0.5f, 1.0f, 1.5707963f, 3.1415927f, -0.75f, -2.0f, 3.5f,
+      12345.0f, 54321.0f,
       123456.789f, 1e8f, 1e9f, 1e10f, 1e20f, 1e30f, 1e38f, -2.7e37f};
   for (float v : full) {
     array xs(v);
+    if (std::abs(v) > 1e5f) {
+      std::string sin_error = evaluation_error(sin(xs, stream));
+      INFO("v=" << v << " sin error=" << sin_error);
+      CHECK(sin_error.find("[omarchy] Sin") != std::string::npos);
+      CHECK(sin_error.find("magnitude") != std::string::npos);
+      std::string cos_error = evaluation_error(cos(xs, stream));
+      INFO("v=" << v << " cos error=" << cos_error);
+      CHECK(cos_error.find("[omarchy] Cos") != std::string::npos);
+      CHECK(cos_error.find("magnitude") != std::string::npos);
+      continue;
+    }
+    float tol = std::abs(v) <= 1e3f ? 1e-4f : 5e-3f;
     array ys = sin(xs, stream);
     array yc = cos(xs, stream);
     float gs = read_value<float>(ys);
@@ -220,14 +248,7 @@ TEST_CASE("W8 sin/cos full f32 magnitude range is common-path-correct or saturat
     float ulp_s = std::abs(gs - (float)std::sin((double)v));
     float ulp_c = std::abs(gc - (float)std::cos((double)v));
     INFO("v=" << v << " sin=" << gs << " cos=" << gc);
-    // Three bands:
-    //  (a) correct within 5e-6 abs  -> the common path
-    //  (b) saturated to +/-1        -> the documented refusal band
-    //  (c) partial accuracy (1e8 zone: ~7e-4 error) -> the documented
-    //      W8 defect the receipt measured as 0.000741 at 1e8
-    bool sin_ok = ulp_s <= 5e-6f || std::abs(gs) == 1.0f || ulp_s <= 1e-3f;
-    bool cos_ok = ulp_c <= 5e-6f || std::abs(gc) == 1.0f || ulp_c <= 1e-3f;
-    CHECK(sin_ok);
-    CHECK(cos_ok);
+    CHECK(ulp_s <= tol);
+    CHECK(ulp_c <= tol);
   }
 }

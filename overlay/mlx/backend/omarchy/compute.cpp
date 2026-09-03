@@ -132,10 +132,17 @@
 #include "scatter_fadd_f16.h"
 #include "scatter_fadd_f32.h"
 #include "scatter_fadd_multi_f32.h"
+#include "scatter_fcas_bf16.h"
+#include "scatter_fcas_f16.h"
+#include "scatter_fcas_f32.h"
+#include "scatter_fcas_multi_f32.h"
 #include "scatter_axis_bool.h"
 #include "scatter_axis_fadd_bf16.h"
 #include "scatter_axis_fadd_f16.h"
 #include "scatter_axis_fadd_f32.h"
+#include "scatter_axis_fcas_bf16.h"
+#include "scatter_axis_fcas_f16.h"
+#include "scatter_axis_fcas_f32.h"
 #include "scatter_multi_u32.h"
 #include "scatter_u32.h"
 #include "conv_f16.h"
@@ -618,6 +625,14 @@ ShaderBytes shader_bytes(ComputeKernel kernel) {
       return {scatter_fadd_bf16, scatter_fadd_bf16_size};
     case ComputeKernel::ScatterFAddMultiF32:
       return {scatter_fadd_multi_f32, scatter_fadd_multi_f32_size};
+    case ComputeKernel::ScatterFCasF32:
+      return {scatter_fcas_f32, scatter_fcas_f32_size};
+    case ComputeKernel::ScatterFCasF16:
+      return {scatter_fcas_f16, scatter_fcas_f16_size};
+    case ComputeKernel::ScatterFCasBF16:
+      return {scatter_fcas_bf16, scatter_fcas_bf16_size};
+    case ComputeKernel::ScatterFCasMultiF32:
+      return {scatter_fcas_multi_f32, scatter_fcas_multi_f32_size};
     case ComputeKernel::ScatterBool:
       return {scatter_bool, scatter_bool_size};
     case ComputeKernel::ScatterBoolMulti:
@@ -628,6 +643,12 @@ ShaderBytes shader_bytes(ComputeKernel kernel) {
       return {scatter_axis_fadd_f16, scatter_axis_fadd_f16_size};
     case ComputeKernel::ScatterAxisFAddBF16:
       return {scatter_axis_fadd_bf16, scatter_axis_fadd_bf16_size};
+    case ComputeKernel::ScatterAxisFCasF32:
+      return {scatter_axis_fcas_f32, scatter_axis_fcas_f32_size};
+    case ComputeKernel::ScatterAxisFCasF16:
+      return {scatter_axis_fcas_f16, scatter_axis_fcas_f16_size};
+    case ComputeKernel::ScatterAxisFCasBF16:
+      return {scatter_axis_fcas_bf16, scatter_axis_fcas_bf16_size};
     case ComputeKernel::ScatterAxisBool:
       return {scatter_axis_bool, scatter_axis_bool_size};
     case ComputeKernel::Count:

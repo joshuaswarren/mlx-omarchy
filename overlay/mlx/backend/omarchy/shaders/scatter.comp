@@ -38,6 +38,10 @@
 //     view (the float-atomic extension has no compare-exchange). Each
 //     step rounds in device order, the same nondeterminism class as
 //     upstream Metal's CAS-multiply float Prod.
+//  17 FCAS Sum pass: the no-hardware-atomic-float twin of op 11, a
+//     compare-exchange add through the uint view of the fp32 scratch.
+//     Compiled into the FCAS variants for devices that do not
+//     advertise VK_EXT_shader_atomic_float (the M1 Honeykrisp).
 //  14 BOOL Sum/Max finalize (one thread per output element): write the
 //     accumulated OR bit into the packed byte with an atomicAnd/atomicOr
 //     pair; the two ops touch disjoint bits, so concurrent byte writes
@@ -72,7 +76,12 @@
 // 2 = uint32 identity. aux_size carries the index word mode:
 // 0 = int32, 1 = uint32, 2 = int64.
 #version 460
-#if defined(USE_FADD)
+// Hardware fp32 atomicAdd (op 11) exists only in the USE_HW_ATOMIC
+// variants; the FCAS variants replace it with the op-17 compare-
+// exchange add, so devices that do not advertise
+// VK_EXT_shader_atomic_float (the M1 Honeykrisp) keep a correct float
+// Sum path.
+#if defined(USE_FADD) && defined(USE_HW_ATOMIC)
 #extension GL_EXT_shader_atomic_float : require
 #endif
 
@@ -112,6 +121,18 @@ uint16_t bf16_store(float value) {
 #define STORE_VALUE(f) STORAGE_TYPE(f)
 #endif
 
+// Honeykrisp miscompiles shift-then-mask byte extraction with a
+// data-dependent shift amount: the masked_scatter scan undercounted
+// and dropped writes until the pattern was replaced (receipt
+// 2026-09-02-masked-scatter-m1-fix, diag68/diag81/diag86). Four
+// constant shifts picked by a select chain are the receipt-proven
+// equivalent. A macro, not a helper function: the same receipt keeps
+// per-thread helper calls out of the hot path on this driver.
+#define BYTE_AT(word, lane)                                                  \
+  ((lane) == 0u ? ((word) & 0xFFu)                                           \
+       : (lane) == 1u ? (((word) >> 8u) & 0xFFu)                             \
+       : (lane) == 2u ? (((word) >> 16u) & 0xFFu)                            \
+                      : (((word) >> 24u) & 0xFFu))
 layout(local_size_x = 256) in;
 
 #ifdef USE_MULTI_INDEX
@@ -354,7 +375,7 @@ void main() {
             // winners in one word cannot lose either lane.
             uint ue = params.lhs_offset + t;
             uint ubyte =
-                (upd_data.values[ue >> 2u] >> ((ue & 3u) * 8u)) & 0xFFu;
+                BYTE_AT(upd_data.values[ue >> 2u], ue & 3u);
             uint lane = (target & 3u) * 8u;
             atomicAnd(out_data.values[target >> 2u], ~(0xFFu << lane));
             atomicOr(
@@ -395,6 +416,7 @@ void main() {
           }
 #endif
 #if defined(USE_FADD)
+#if defined(USE_HW_ATOMIC)
         } else if (op == 11u) {
           // FADD Sum: hardware fp32 atomicAdd of the decoded update
           // into the fp32 per-element scratch. Duplicate indices
@@ -407,6 +429,28 @@ void main() {
           atomicAdd(
               scratch_f_data.values[target],
               LOAD_VALUE(upd_data.values[params.lhs_offset + t]));
+#else
+        } else if (op == 17u) {
+          // FCAS Sum: compare-exchange add through the uint view of
+          // the fp32 scratch, the twin of op 11 for devices without
+          // hardware float atomics. The CAS loop is exact under every
+          // interleaving for the integer-valued addends the
+          // determinism contract pins; fractional duplicates keep the
+          // same reorder-tolerant total as op 11.
+          uint add_bits = floatBitsToUint(
+              LOAD_VALUE(upd_data.values[params.lhs_offset + t]));
+          uint assumed = scratch_data.values[target];
+          for (;;) {
+            uint next = floatBitsToUint(
+                uintBitsToFloat(assumed) + uintBitsToFloat(add_bits));
+            uint prev =
+                atomicCompSwap(scratch_data.values[target], assumed, next);
+            if (prev == assumed) {
+              break;
+            }
+            assumed = prev;
+          }
+#endif
         } else if (op == 13u) {
           // FADD Prod: CAS-multiply through the uint view of the fp32
           // scratch (the extension provides no compare-exchange on
@@ -435,8 +479,7 @@ void main() {
           uint ue6 = params.lhs_offset + t;
           atomicOr(
               scratch_data.values[target],
-              ((upd_data.values[ue6 >> 2u] >> ((ue6 & 3u) * 8u)) &
-                0xFFu) != 0u
+              BYTE_AT(upd_data.values[ue6 >> 2u], ue6 & 3u) != 0u
                   ? 1u
                   : 0u);
         } else if (op == 7u) {
@@ -446,8 +489,7 @@ void main() {
           uint ue7 = params.lhs_offset + t;
           atomicAnd(
               scratch_data.values[target],
-              ((upd_data.values[ue7 >> 2u] >> ((ue7 & 3u) * 8u)) &
-                0xFFu) != 0u
+              BYTE_AT(upd_data.values[ue7 >> 2u], ue7 & 3u) != 0u
                   ? 1u
                   : 0u);
 #endif
