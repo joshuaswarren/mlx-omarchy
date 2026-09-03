@@ -405,7 +405,14 @@ class BuildPayload(unittest.TestCase):
             "kernel_release": "6.9.1-asahi",
             "devicetree": {"model": "Apple Mac mini",
                            "compatible": ["apple,t8103", "apple,arm"]},
+            "cpu": {"present": 8, "possible": 64, "online": 1,
+                    "offline": 7, "hotplug_control": False},
+            "boot": {"m1n1_stage2": "v1.5.2",
+                     "iboot2": "iBoot-8422.141.2"},
+            "cmdline": "root=UUID=[redacted-uuid] quiet",
+            "core_shortfall": {"present": 8, "online": 1},
         },
+        "ane": {"devicetree": {"node": False, "compatible": None}},
         "mesa": {"gpu": {"driverName": "Asahi Vulkan",
                          "deviceName": "Apple M1"}},
         "mlx": {"distributions": {"mlx-omarchy": "0.3.2"},
@@ -425,6 +432,8 @@ class BuildPayload(unittest.TestCase):
             "schema_version", "kind", "generated_at", "arch", "model",
             "chip", "kernel", "mesa_driver", "mesa_device", "mlx_version",
             "mlx_device", "source_commit", "repo_dirty", "cpu_online",
+            "cpu_present", "hotplug_control", "ane_dt_node",
+            "ane_dt_compatible", "boot_chain", "cmdline", "core_shortfall",
             "benchmark", "redaction_summary", "files",
         ]))
 
@@ -460,6 +469,46 @@ class BuildPayload(unittest.TestCase):
         self.assertIsNone(
             cc.build_payload("deep", self.QUICK, self.MANIFEST)["cpu_online"])
 
+    def test_fleet_gap_fields_are_carried(self):
+        quick = json.loads(json.dumps(self.QUICK))
+        quick["host"]["cpu_online"] = 1
+        payload = cc.build_payload("deep", quick, self.MANIFEST)
+        self.assertEqual(payload["cpu_present"], 8)
+        self.assertIs(payload["hotplug_control"], False)
+        self.assertIs(payload["core_shortfall"], True)
+        self.assertIs(payload["ane_dt_node"], False)
+        self.assertIsNone(payload["ane_dt_compatible"])
+        self.assertEqual(payload["boot_chain"],
+                         "iboot2=iBoot-8422.141.2 m1n1_stage2=v1.5.2")
+        self.assertEqual(payload["cmdline"],
+                         "root=UUID=[redacted-uuid] quiet")
+
+    def test_shortfall_false_when_running_full_core_count(self):
+        quick = json.loads(json.dumps(self.QUICK))
+        quick["host"]["cpu_online"] = 8
+        quick["host"]["cpu"]["online"] = 8
+        quick["host"]["core_shortfall"] = None
+        payload = cc.build_payload("deep", quick, self.MANIFEST)
+        self.assertIs(payload["core_shortfall"], False)
+
+    def test_gap_fields_null_when_report_lacks_them(self):
+        payload = cc.build_payload("quick", {}, {})
+        self.assertIsNone(payload["cpu_present"])
+        self.assertIsNone(payload["hotplug_control"])
+        self.assertIsNone(payload["ane_dt_node"])
+        self.assertIsNone(payload["ane_dt_compatible"])
+        self.assertIsNone(payload["boot_chain"])
+        self.assertIsNone(payload["cmdline"])
+        self.assertIsNone(payload["core_shortfall"])
+
+    def test_ane_compatible_list_becomes_searchable_blob(self):
+        quick = json.loads(json.dumps(self.QUICK))
+        quick["ane"]["devicetree"] = {"node": True,
+                                      "compatible": ["apple,t8103-ane"]}
+        payload = cc.build_payload("deep", quick, self.MANIFEST)
+        self.assertIs(payload["ane_dt_node"], True)
+        self.assertEqual(payload["ane_dt_compatible"], "apple,t8103-ane")
+
     def test_values_extracted_from_report(self):
         payload = cc.build_payload("deep", self.QUICK, self.MANIFEST)
         self.assertEqual(payload["chip"], "apple,t8103")
@@ -480,6 +529,174 @@ class BuildPayload(unittest.TestCase):
         self.assertIsNone(payload["mlx_version"])
         self.assertEqual(payload["kind"], "quick")
 
+
+class CpuTopology(unittest.TestCase):
+    @staticmethod
+    def _sysfs(tmp, files=(), cpu_dirs=()):
+        base = os.path.join(tmp, "cpu")
+        os.makedirs(base)
+        for name, content in files:
+            with open(os.path.join(base, name), "w",
+                      encoding="utf-8") as fh:
+                fh.write(content)
+        for n in cpu_dirs:
+            os.makedirs(os.path.join(base, f"cpu{n}"))
+        return base
+
+    def test_counts_and_hotplug_control(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            base = self._sysfs(tmp, files=[
+                ("present", "0-7\n"), ("possible", "0-63\n"),
+                ("online", "0-7\n"), ("offline", "\n")],
+                cpu_dirs=(0, 1, 3))
+            with open(os.path.join(base, "cpu1", "online"), "w",
+                      encoding="utf-8"):
+                pass
+            cpu = cq._cpu_topology(base)
+        self.assertEqual(cpu["present"], 8)
+        self.assertEqual(cpu["possible"], 64)
+        self.assertEqual(cpu["online"], 8)
+        self.assertEqual(cpu["offline"], 0)
+        self.assertIsNone(cpu["offline_list"])
+        self.assertEqual(cpu["present_list"], "0-7")
+        self.assertTrue(cpu["hotplug_control"])
+
+    def test_missing_sysfs_is_all_none(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            cpu = cq._cpu_topology(os.path.join(tmp, "absent"))
+        self.assertIsNone(cpu["present"])
+        self.assertIsNone(cpu["present_list"])
+        self.assertIsNone(cpu["hotplug_control"])
+
+    def test_spin_table_has_no_hotplug_control(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            base = self._sysfs(tmp, files=[
+                ("present", "0-7\n"), ("possible", "0-7\n"),
+                ("online", "0\n"), ("offline", "1-7\n")],
+                cpu_dirs=tuple(range(8)))
+            cpu = cq._cpu_topology(base)
+        self.assertFalse(cpu["hotplug_control"])
+        self.assertEqual(cpu["offline"], 7)
+        self.assertEqual(cpu["online"], 1)
+
+
+class BootChainIdentity(unittest.TestCase):
+    PROPS = {
+        "asahi,m1n1-stage1-version": "v1.5.2\x00",
+        "asahi,m1n1-stage2-version": "v1.5.2\x00",
+        "asahi,iboot1-version": "iBoot-8422.100.1\x00",
+        "asahi,iboot2-version": "iBoot-8422.141.2\x00",
+        "asahi,system-fw-version": "iBoot-20712.1.2.0.0\x00",
+        "asahi,os-fw-version": "iBoot-24.1.0\x00",
+    }
+
+    def test_chosen_properties_are_read(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            chosen = os.path.join(tmp, "chosen")
+            os.makedirs(chosen)
+            for name, value in self.PROPS.items():
+                with open(os.path.join(chosen, name), "wb") as fh:
+                    fh.write(value.encode())
+            boot = cq._boot_chain(cc.Redactor(), base=tmp)
+        self.assertEqual(boot["m1n1_stage1"], "v1.5.2")
+        self.assertEqual(boot["m1n1_stage2"], "v1.5.2")
+        self.assertEqual(boot["iboot1"], "iBoot-8422.100.1")
+        self.assertEqual(boot["iboot2"], "iBoot-8422.141.2")
+        self.assertEqual(boot["system_fw"], "iBoot-20712.1.2.0.0")
+        self.assertEqual(boot["os_fw"], "iBoot-24.1.0")
+
+    def test_missing_chosen_is_all_none(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            boot = cq._boot_chain(cc.Redactor(), base=tmp)
+        self.assertEqual(sorted(boot), sorted([
+            "m1n1_stage1", "m1n1_stage2", "iboot1", "iboot2",
+            "system_fw", "os_fw"]))
+        self.assertTrue(all(value is None for value in boot.values()))
+
+
+class KernelCmdline(unittest.TestCase):
+    def test_uuid_and_home_are_redacted(self):
+        red = cc.Redactor(username="zoe", hostname="box", home="/home/zoe")
+        with tempfile.TemporaryDirectory() as tmp:
+            path = os.path.join(tmp, "cmdline")
+            with open(path, "w", encoding="utf-8") as fh:
+                fh.write("root=UUID=1b3c9d2e-4f5a-6b7c-8d9e-0f1a2b3c4d5e "
+                         "init=/home/zoe/overlay quiet\n")
+            out = cq._kernel_cmdline(red, path=path)
+        self.assertEqual(out, "root=UUID=[redacted-uuid] init=[home]/overlay quiet")
+
+    def test_missing_cmdline_is_none(self):
+        self.assertIsNone(
+            cq._kernel_cmdline(cc.Redactor(), path="/no/such/cmdline"))
+
+
+class CoreShortfall(unittest.TestCase):
+    def test_unexplained_gap_is_recorded_with_numbers(self):
+        self.assertEqual(
+            cq._core_shortfall({"present": 8, "online": 1}, "quiet"),
+            {"present": 8, "online": 1})
+
+    def test_full_machine_is_not_flagged(self):
+        self.assertIsNone(
+            cq._core_shortfall({"present": 8, "online": 8}, ""))
+
+    def test_maxcpus_and_nosmp_explain_the_gap(self):
+        self.assertIsNone(cq._core_shortfall(
+            {"present": 8, "online": 1}, "maxcpus=1 quiet"))
+        self.assertIsNone(cq._core_shortfall(
+            {"present": 8, "online": 1}, "nosmp"))
+
+    def test_unknown_counts_are_not_flagged(self):
+        self.assertIsNone(cq._core_shortfall({}, "quiet"))
+
+
+class AneDevicetreeProbe(unittest.TestCase):
+    def test_ane_node_is_found(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            node = os.path.join(tmp, "ane@26a000000")
+            os.makedirs(node)
+            with open(os.path.join(node, "compatible"), "wb") as fh:
+                fh.write(b"apple,t8103-ane\x00apple,ane\x00")
+            out = cq._ane_devicetree(tmp)
+        self.assertTrue(out["node"])
+        self.assertEqual(out["compatible"], ["apple,ane", "apple,t8103-ane"])
+
+    def test_stock_tree_has_no_ane_node(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            os.makedirs(os.path.join(tmp, "cpus"))
+            with open(os.path.join(tmp, "compatible"), "wb") as fh:
+                fh.write(b"apple,t8103\x00apple,arm-platform\x00")
+            out = cq._ane_devicetree(tmp)
+        self.assertFalse(out["node"])
+        self.assertIsNone(out["compatible"])
+
+    def test_ane_compatible_on_oddly_named_node_is_found(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            node = os.path.join(tmp, "engine@26a000000")
+            os.makedirs(node)
+            with open(os.path.join(node, "compatible"), "wb") as fh:
+                fh.write(b"apple,t6000-ane\x00")
+            out = cq._ane_devicetree(tmp)
+        self.assertTrue(out["node"])
+        self.assertEqual(out["compatible"], ["apple,t6000-ane"])
+
+    def test_absent_devicetree_is_clean(self):
+        out = cq._ane_devicetree("/no/such/tree")
+        self.assertFalse(out["node"])
+        self.assertIsNone(out["compatible"])
+
+
+class PayloadSchemaContract(unittest.TestCase):
+    """build_payload and the pinned schema must agree on the key set."""
+
+    def test_payload_keys_equal_schema_properties(self):
+        path = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                            os.pardir, "services", "community-data",
+                            "schema", "payload-v1.schema.json")
+        with open(path, "r", encoding="utf-8") as fh:
+            schema = json.load(fh)
+        payload = cc.build_payload("quick", {}, {})
+        self.assertEqual(sorted(payload), sorted(schema["properties"]))
 
 class SingleNetworkModule(unittest.TestCase):
     def test_only_collect_submit_imports_urllib(self):
@@ -543,6 +760,19 @@ class VersionQuadSurvivesRedaction(unittest.TestCase):
         red = cc.Redactor()
         out = red.apply("conformanceVersion = 1.4.0.0\ninet 10.1.2.3\n")
         self.assertIn("1.4.0.0", out)
+        self.assertNotIn("10.1.2.3", out)
+
+
+    def test_boot_firmware_version_chain_is_kept(self):
+        red = cc.Redactor()
+        out = red.apply("asahi,system-fw-version=iBoot-20712.1.2.0.0")
+        self.assertIn("iBoot-20712.1.2.0.0", out)
+        self.assertEqual(red.counts.get("ipv4", 0), 0)
+
+    def test_mid_chain_quad_is_kept_but_bare_quad_is_not(self):
+        red = cc.Redactor()
+        out = red.apply("fw 20712.1.2.0.0 host at 10.1.2.3")
+        self.assertIn("20712.1.2.0.0", out)
         self.assertNotIn("10.1.2.3", out)
 
 

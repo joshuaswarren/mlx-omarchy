@@ -1,6 +1,14 @@
 {
+  "ane_dt_compatible": null,
+  "ane_dt_node": false,
   "arch": "aarch64",
+  "boot_chain": "iboot2=iBoot-8422.141.2 m1n1_stage2=v1.5.2",
   "chip": "apple,t8103",
+  "cmdline": "root=UUID=[redacted-uuid] quiet",
+  "core_shortfall": false,
+  "cpu_online": 8,
+  "cpu_present": 8,
+  "hotplug_control": true,
   "files": [
     {
       "bytes": 1234,

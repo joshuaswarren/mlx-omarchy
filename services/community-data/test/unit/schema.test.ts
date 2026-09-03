@@ -56,4 +56,12 @@ describe("payload schema v1", () => {
     expect(validateSchemaRoot(mutate({ chip: 42 }), schema).length).toBeGreaterThan(0);
     expect(validateSchemaRoot(mutate({ chip: null }), schema)).toEqual([]);
   });
+
+  test("cpu_present above the schema cap is rejected", () => {
+    expect(validateSchemaRoot(mutate({ cpu_present: 65536 }), schema)).toEqual([]);
+    expect(
+      validateSchemaRoot(mutate({ cpu_present: 65537 }), schema).length,
+    ).toBeGreaterThan(0);
+    expect(validateSchemaRoot(mutate({ cpu_present: -1 }), schema).length).toBeGreaterThan(0);
+  });
 });

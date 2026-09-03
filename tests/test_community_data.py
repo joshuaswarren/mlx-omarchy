@@ -23,6 +23,8 @@ SHA_DEEP_M1 = "b7e34c02" + "a" * 56
 SHA_QUICK_M2 = "1c9d" + "f" * 28 + "e" * 32
 SHA_PARTIAL = "9a03" + "7" * 60
 SHA_FUTURE = "5d" * 32
+SHA_FLAT_STOCK = "aa11" + "0" * 62
+SHA_NESTED_SHORT = "bb22" + "1" * 62
 
 MALFORMED_LINE = '{"content_sha256": "oops", no closing brace'
 
@@ -98,6 +100,43 @@ def future_record():
         "content_sha256": SHA_FUTURE,
         "payload": {},
     }
+
+
+def flat_stock_record():
+    """Post-deploy read-API shape: new fields ride flat on the record."""
+    return {
+        "content_sha256": SHA_FLAT_STOCK,
+        "schema_version": 1,
+        "kind": "quick",
+        "chip": "apple,t8103",
+        "cpu_online": 8,
+        "cpu_present": 8,
+        "hotplug_control": True,
+        "ane_dt_node": False,
+        "ane_dt_compatible": None,
+        "boot_chain": "iboot2=iBoot-8422.141.2 m1n1_stage2=v1.5.4",
+        "cmdline": "root=UUID=[redacted-uuid] quiet",
+        "core_shortfall": False,
+        "payload": {"report": "mlx-omarchy-quick"},
+    }
+
+
+def nested_shortfall_record():
+    """Local nested shape: one-core incident facts under payload.host."""
+    record = deep_m1_record()
+    record["content_sha256"] = SHA_NESTED_SHORT
+    record["payload"]["host"]["cpu"] = {
+        "present": 8, "possible": 64, "online": 1, "offline": 7,
+        "hotplug_control": False}
+    record["payload"]["host"]["core_shortfall"] = {
+        "present": 8, "online": 1}
+    record["payload"]["host"]["cmdline"] = \
+        "root=UUID=[redacted-uuid] quiet"
+    record["payload"]["host"]["boot"] = {
+        "m1n1_stage2": "v1.5.2", "iboot2": "iBoot-8422.141.2"}
+    record["payload"]["ane"] = {"devicetree": {
+        "node": False, "compatible": None}}
+    return record
 
 
 def snapshot_bytes():
@@ -322,6 +361,135 @@ class QueryCliTests(SnapshotTestCase):
                          "6.9.1-1-ARCH")
         self.assertEqual(query.record_mlx_version(records[SHA_PARTIAL]),
                          "0.2.0")
+
+
+class FleetGapAccessors(unittest.TestCase):
+    """The new boot/core/ANE facts are readable in both record shapes."""
+
+    def test_flat_record_fields(self):
+        record = flat_stock_record()
+        self.assertEqual(query.record_cpu_present(record), 8)
+        self.assertEqual(query.record_cpu_online(record), 8)
+        self.assertIs(query.record_hotplug(record), True)
+        self.assertIs(query.record_core_shortfall(record), False)
+        self.assertIs(query.record_ane_dt(record)[0], False)
+        self.assertIn("iBoot-8422.141.2",
+                      query.record_boot_chain(record) or "")
+        self.assertIn("quiet", query.record_cmdline(record) or "")
+
+    def test_nested_record_fields(self):
+        record = nested_shortfall_record()
+        self.assertEqual(query.record_cpu_present(record), 8)
+        self.assertEqual(query.record_cpu_online(record), 1)
+        self.assertIs(query.record_hotplug(record), False)
+        self.assertIs(query.record_core_shortfall(record), True)
+        self.assertIs(query.record_ane_dt(record)[0], False)
+        self.assertIn("v1.5.2", query.record_boot_chain(record) or "")
+
+    def test_nested_compatible_list_becomes_blob(self):
+        record = nested_shortfall_record()
+        record["payload"]["ane"]["devicetree"] = {
+            "node": True, "compatible": ["apple,t8103-ane"]}
+        node, compat = query.record_ane_dt(record)
+        self.assertIs(node, True)
+        self.assertEqual(compat, "apple,t8103-ane")
+
+    def test_old_records_yield_none(self):
+        for record in (deep_m1_record(), quick_m2_record(),
+                       partial_record(), future_record()):
+            self.assertIsNone(query.record_cpu_present(record))
+            self.assertIsNone(query.record_hotplug(record))
+            self.assertIsNone(query.record_core_shortfall(record))
+            self.assertIsNone(query.record_ane_dt(record)[0])
+            self.assertIsNone(query.record_boot_chain(record))
+            self.assertIsNone(query.record_cmdline(record))
+
+    def test_derived_shortfall_respects_maxcpus(self):
+        record = deep_m1_record()
+        record["payload"]["host"]["cpu"] = {"present": 8, "online": 1}
+        self.assertIs(query.record_core_shortfall(record), True)
+        record["payload"]["host"]["cmdline"] = "maxcpus=1"
+        self.assertIsNone(query.record_core_shortfall(record))
+
+
+class FleetGapFilterTests(unittest.TestCase):
+    """--cpu-present/--hotplug/--ane/--shortfall/--boot/--cmdline."""
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tmp.cleanup)
+        self.snapshot = Path(self._tmp.name)
+        lines = [json.dumps(flat_stock_record()),
+                 json.dumps(nested_shortfall_record()),
+                 json.dumps(deep_m1_record())]
+        (self.snapshot / "latest.jsonl").write_bytes(
+            ("\n".join(lines) + "\n").encode("utf-8"))
+
+    def run_cli(self, *argv):
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), \
+                contextlib.redirect_stderr(err):
+            rc = query.main(list(argv))
+        return rc, out.getvalue(), err.getvalue()
+
+    def json_list(self, *extra):
+        rc, out, err = self.run_cli("--source", "local",
+                                    "--snapshot", str(self.snapshot),
+                                    "--json", *extra, "list")
+        self.assertEqual(rc, 0, err)
+        return json.loads(out)
+
+    def shas(self, *extra):
+        return {r["content_sha256"]
+                for r in self.json_list(*extra)["results"]}
+
+    def test_cpu_present_filter(self):
+        self.assertEqual(self.shas("--cpu-present", "8"),
+                         {SHA_FLAT_STOCK, SHA_NESTED_SHORT})
+        self.assertEqual(self.shas("--cpu-present", "1"), set())
+
+    def test_hotplug_filter(self):
+        self.assertEqual(self.shas("--hotplug", "yes"), {SHA_FLAT_STOCK})
+        self.assertEqual(self.shas("--hotplug", "no"),
+                         {SHA_NESTED_SHORT})
+
+    def test_ane_filter(self):
+        self.assertEqual(self.shas("--ane", "yes"), set())
+        self.assertEqual(self.shas("--ane", "no"),
+                         {SHA_FLAT_STOCK, SHA_NESTED_SHORT})
+
+    def test_shortfall_filter(self):
+        self.assertEqual(self.shas("--shortfall", "yes"),
+                         {SHA_NESTED_SHORT})
+        self.assertEqual(self.shas("--shortfall", "no"), {SHA_FLAT_STOCK})
+
+    def test_boot_filter(self):
+        self.assertEqual(self.shas("--boot", "iBoot-8422"),
+                         {SHA_FLAT_STOCK, SHA_NESTED_SHORT})
+        self.assertEqual(self.shas("--boot", "m1n1_stage1"), set())
+
+    def test_cmdline_filter(self):
+        self.assertEqual(self.shas("--cmdline", "maxcpus"), set())
+        self.assertEqual(self.shas("--cmdline", "quiet"),
+                         {SHA_FLAT_STOCK, SHA_NESTED_SHORT})
+
+    def test_human_list_shows_cores_ane_and_shortfall(self):
+        rc, out, _ = self.run_cli("--source", "local",
+                                  "--snapshot", str(self.snapshot),
+                                  "list")
+        self.assertEqual(rc, 0)
+        self.assertIn("cores=8/8", out)
+        self.assertIn("cores=1/8", out)
+        self.assertIn("ane=-", out)
+        self.assertIn("core-shortfall", out)
+
+    def test_json_list_includes_new_fields(self):
+        results = {r["content_sha256"]: r
+                   for r in self.json_list()["results"]}
+        self.assertEqual(results[SHA_FLAT_STOCK]["cpu_present"], 8)
+        self.assertIs(results[SHA_FLAT_STOCK]["ane_dt_node"], False)
+        self.assertEqual(results[SHA_NESTED_SHORT]["payload"]["host"]
+                         ["cpu"]["present"], 8)
 
 
 try:

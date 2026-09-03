@@ -61,10 +61,12 @@ class Redactor:
         return fn
 
     # A dotted quad is not always an address: Vulkan reports
-    # `conformanceVersion = 1.4.0.0`, and redacting that destroys real
-    # hardware data. Keep the quad when the text right before it is a
-    # version assignment; redact every other dotted quad.
-    _VERSION_CONTEXT = re.compile(r"(?i)version\s*[:=]\s*$")
+    # `conformanceVersion = 1.4.0.0`, and Apple reports boot firmware
+    # versions like `iBoot-20712.1.2.0.0`, whose trailing quad is a
+    # continuation of a dotted version chain. Keep the quad when the
+    # text right before it is a version assignment or more dotted
+    # octets; redact every other dotted quad.
+    _VERSION_CONTEXT = re.compile(r"(?i)(?:version\s*[:=]\s*|\d+\.)$")
 
     def _ipv4_sub(self, match):
         line_start = match.string.rfind("\n", 0, match.start()) + 1
@@ -294,6 +296,27 @@ def build_payload(kind, quick, manifest, generated_at=None, benchmark=None):
     soc = next((c for c in compatible
                 if re.match(r"^apple,t\d{4}", c)), None)
     host_cpu = host.get("cpu_online")
+    cpu = host.get("cpu") or {}
+    boot = host.get("boot") or {}
+    cmdline = host.get("cmdline")
+    ane_dt = (quick.get("ane") or {}).get("devicetree") or {}
+    ane_compatible = ane_dt.get("compatible")
+    ane_compat_blob = " ".join(str(t) for t in ane_compatible) \
+        if isinstance(ane_compatible, list) else None
+    boot_chain = " ".join(
+        f"{key}={boot[key]}" for key in sorted(boot)
+        if isinstance(boot.get(key), str) and boot[key])
+    present = cpu.get("present")
+    shortfall = host.get("core_shortfall")
+    # Plain wire fact: true when the report recorded an unexplained
+    # shortfall, false when present/online are known and equal enough,
+    # null when the counts needed to judge are missing.
+    if isinstance(shortfall, dict):
+        shortfall_flag = True
+    elif isinstance(present, int) and isinstance(host_cpu, int):
+        shortfall_flag = False
+    else:
+        shortfall_flag = None
     # The benchmark numbers must ride in the summary, not only inside the
     # archive: the read API serves summaries, so cross-machine comparison
     # is impossible unless the numbers travel with them.
@@ -322,6 +345,16 @@ def build_payload(kind, quick, manifest, generated_at=None, benchmark=None):
         "mlx_device": mlx.get("default_device"),
         "source_commit": manifest.get("source_commit"),
         "repo_dirty": manifest.get("repo_dirty"),
+        "cpu_present": present if isinstance(present, int) else None,
+        "hotplug_control": cpu.get("hotplug_control")
+            if isinstance(cpu.get("hotplug_control"), bool) else None,
+        "ane_dt_node": ane_dt.get("node")
+            if isinstance(ane_dt.get("node"), bool) else None,
+        "ane_dt_compatible": ane_compat_blob[:512] if ane_compat_blob
+        else None,
+        "boot_chain": boot_chain[:512] or None,
+        "cmdline": cmdline[:1024] if isinstance(cmdline, str) else None,
+        "core_shortfall": shortfall_flag,
         "cpu_online": host_cpu if isinstance(host_cpu, int) else None,
         "benchmark": rows,
         "redaction_summary": dict(

@@ -3,8 +3,11 @@
 
 The report answers the questions a maintainer asks first: which Apple
 Silicon machine, which kernel, which Mesa/Honeykrisp Vulkan stack, is the
-ANE visible, and which mlx-omarchy wheel is installed. It finishes in
-seconds, downloads nothing, and never touches the network.
+ANE visible, and which mlx-omarchy wheel is installed. It also records
+the CPU topology (present cores versus online), the boot-chain firmware
+identity from the devicetree /chosen node, the redacted kernel command
+line, and whether the booted devicetree carries an ANE node. It finishes
+in seconds, downloads nothing, and never touches the network.
 
 Personal data never reaches the output: every captured command output and
 every free-text field passes through the shared Redactor, and the script
@@ -49,6 +52,11 @@ def probe_host(redactor):
     mem = _mem_total()
     out["memory_total_mib"] = mem
     out["devicetree"] = _devicetree(redactor)
+    out["cpu"] = _cpu_topology()
+    out["boot"] = _boot_chain(redactor)
+    out["cmdline"] = _kernel_cmdline(redactor)
+    out["core_shortfall"] = _core_shortfall(out["cpu"],
+                                            out["cmdline"] or "")
     return out
 
 
@@ -76,12 +84,142 @@ def _devicetree(redactor):
     return out
 
 
-def _read_dt_file(name):
+def _read_dt_file(name, base=DT_BASE):
     try:
-        with open(os.path.join(DT_BASE, name), "rb") as fh:
+        with open(os.path.join(base, name), "rb") as fh:
             return fh.read().decode("utf-8", errors="replace")
     except OSError:
         return None
+
+
+CPU_SYSFS = "/sys/devices/system/cpu"
+
+
+def _read_cpu_list(path):
+    """(ids, raw) from a sysfs cpu list like "0-3,8"; (None, None) absent."""
+    try:
+        with open(path, "r", encoding="utf-8") as fh:
+            raw = fh.read().strip()
+    except OSError:
+        return None, None
+    ids = []
+    for part in raw.split(","):
+        lo, sep, hi = part.partition("-")
+        try:
+            first = int(lo)
+            last = int(hi) if sep else first
+        except ValueError:
+            return [], raw
+        if last < first or last - first > 65535:
+            return [], raw
+        ids.extend(range(first, last + 1))
+    return ids, raw
+
+
+def _cpu_topology(base=CPU_SYSFS):
+    """Core counts from sysfs: the machine's real size, not the taskset.
+
+    host.cpu_online is scheduler affinity, so a contributor pinned to one
+    core of eight looked identical to a one-core machine. `present` says
+    how many cores the machine has. `hotplug_control` records whether
+    cpuN/online switches exist; their absence is what spin-table bringup
+    looks like on Apple Silicon.
+    """
+    out = {"present": None, "possible": None, "online": None,
+           "offline": None, "present_list": None, "possible_list": None,
+           "online_list": None, "offline_list": None,
+           "hotplug_control": None}
+    for key in ("present", "possible", "online", "offline"):
+        ids, raw = _read_cpu_list(os.path.join(base, key))
+        if raw is not None:
+            out[f"{key}_list"] = raw or None
+            out[key] = len(ids)
+    try:
+        entries = os.listdir(base)
+    except OSError:
+        return out
+    out["hotplug_control"] = any(
+        re.fullmatch(r"cpu([1-9]\d*)", name)
+        and os.path.exists(os.path.join(base, name, "online"))
+        for name in entries)
+    return out
+
+
+CHOSEN_PROPERTIES = (
+    # (property under chosen, report key): boot firmware identity, never
+    # personal. A bootloader devicetree override (GRUB's `devicetree`
+    # command) REPLACES the m1n1-patched tree with a frozen snapshot, so
+    # these strings describe whatever tree actually booted -- the
+    # 2026-09-03 one-core incident came from exactly that override.
+    ("asahi,m1n1-stage1-version", "m1n1_stage1"),
+    ("asahi,m1n1-stage2-version", "m1n1_stage2"),
+    ("asahi,iboot1-version", "iboot1"),
+    ("asahi,iboot2-version", "iboot2"),
+    ("asahi,system-fw-version", "system_fw"),
+    ("asahi,os-fw-version", "os_fw"),
+)
+
+
+def _boot_chain(redactor, base=DT_BASE):
+    """Boot firmware identity from the live /chosen node."""
+    out = {}
+    for prop, key in CHOSEN_PROPERTIES:
+        raw = _read_dt_file(os.path.join("chosen", prop), base)
+        out[key] = redactor.apply(raw.strip("\x00\n")) if raw else None
+    return out
+
+
+def _kernel_cmdline(redactor, path="/proc/cmdline"):
+    """The live kernel command line, redacted.
+
+    Carries root=UUID=... (the UUID rule replaces it) and reveals
+    maxcpus/nosmp clamps or a custom-devicetree boot.
+    """
+    try:
+        with open(path, "r", encoding="utf-8") as fh:
+            raw = fh.read()
+    except OSError:
+        return None
+    return redactor.apply(raw.strip()) or None
+
+
+def _core_shortfall(cpu, cmdline):
+    """Plain fact: fewer cores running than present, unexplained.
+
+    Recorded only when the command line carries no maxcpus=/nosmp clamp;
+    a clamp is a deliberate choice, not a failure. Numbers, not alarms.
+    """
+    present = cpu.get("present")
+    online = cpu.get("online")
+    if not isinstance(present, int) or not isinstance(online, int):
+        return None
+    if present <= online:
+        return None
+    if cmdline and re.search(r"\bmaxcpus=\d+\b|\bnosmp\b", cmdline):
+        return None
+    return {"present": present, "online": online}
+
+
+def _ane_devicetree(base=DT_BASE):
+    """ANE node visibility in the booted devicetree, unlike /dev/ane.
+
+    Packaged t8103 dtbs ship no ane node; a node appears only when the
+    bootloader overrides the tree. This answers whether the running
+    kernel was even offered an ANE by its boot chain.
+    """
+    out = {"node": False, "compatible": None}
+    matches = []
+    for dirpath, _dirs, _files in os.walk(base):
+        named = bool(re.search(r"(?:^|/)ane(?:@[0-9a-f]+)?$", dirpath))
+        tokens = [t for t in (_read_dt_file("compatible", dirpath) or "")
+                  .split("\x00") if t]
+        hit = [t for t in tokens if t == "apple,ane" or t.endswith("-ane")]
+        if named or hit:
+            matches.extend(hit or tokens or [os.path.basename(dirpath)])
+    if matches:
+        out["node"] = True
+        out["compatible"] = sorted(set(matches))[:8]
+    return out
 
 
 def _device_blocks(text):
@@ -157,6 +295,7 @@ def probe_ane(redactor):
     """Apple Neural Engine visibility: device node and libane."""
     node = os.path.exists("/dev/ane")
     out = {"available": node, "device_node": node}
+    out["devicetree"] = _ane_devicetree()
     lib = run_tool(["sh", "-c", "ldconfig -p 2>/dev/null | grep -i libane"],
                    redactor, label="ldconfig libane", timeout=15)
     out["libane"] = lib["stdout"].strip() if lib["exit_code"] == 0 else None
