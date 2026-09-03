@@ -30,7 +30,7 @@ env:
   # Repository variable with a documented default; never a secret.
   # Set COMMUNITY_DATA_BASE_URL in repo settings if the worker lands on
   # a different URL.
-  BASE_URL: ${{ vars.COMMUNITY_DATA_BASE_URL || 'https://community-data.joshuaswarren.workers.dev' }}
+  BASE_URL: ${{ vars.COMMUNITY_DATA_BASE_URL || 'https://mlx-omarchy-community-data.joshua-s-warren.workers.dev' }}
 
 jobs:
   mirror:

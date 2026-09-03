@@ -162,7 +162,7 @@ case-insensitive substrings and combine. Sources:
   `git fetch origin community-data` is enough; no worktree needed.
 - `--source remote`: the live public endpoints, base URL from the
   repository variable `COMMUNITY_DATA_BASE_URL`, default
-  `https://community-data.joshuaswarren.workers.dev`:
+  `https://mlx-omarchy-community-data.joshua-s-warren.workers.dev`:
   - `GET /v1/results` - index: generated_at, schema_version, count
   - `GET /v1/results/<sha256>` - one full record
   - `GET /v1/results/<sha256>/archive` - original redacted archive
