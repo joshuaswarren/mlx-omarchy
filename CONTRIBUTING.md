@@ -62,26 +62,63 @@ You can share a hardware result without write access and without a pull
 request. The collector runs on your machine, redacts before it writes,
 and uploads nothing until you type `SUBMIT`.
 
-1. Run `python3 scripts/collect_quick.py` for a fast capability report
-   (machine, kernel, Mesa/Honeykrisp, ANE visibility, installed wheel),
-   or `python3 scripts/collect_deep.py` for correctness probes, a
-   matmul benchmark sweep, and a profile.
-2. Read the printed manifest and the local files it names. The default
-   run only previews.
-3. Submit only when you are satisfied:
-   `python3 scripts/collect_deep.py --out FILE --submit URL` (or set
-   `MLX_OMARCHY_SUBMIT_URL`), then type `SUBMIT` at the prompt.
-4. Keep the printed receipt URL. It is the stable public link to your
-   result.
+Both scripts run on Python 3 alone, need no build, and download no
+models. The default run uploads nothing; you always see the full preview
+first.
+
+Report a machine in minutes:
+
+```bash
+python3 scripts/collect_quick.py
+```
+
+The command prints one JSON report: CPU and memory, kernel, Apple
+Silicon model, the Mesa Honeykrisp and Vulkan stack, ANE visibility, and
+the installed mlx-omarchy wheel with its capability dump. The JSON is
+small and carries no personal data; paste it wherever you discuss the
+project.
+
+Report a performance or correctness problem in depth:
+
+```bash
+python3 scripts/collect_deep.py                  # preview only, writes nothing
+python3 scripts/collect_deep.py --out mlx-omarchy-deep.tar.gz
+```
+
+The archive is deterministic: the same workspace produces the same bytes
+as the previewed manifest, and each member carries a SHA-256 there. A
+missing precondition, such as an unbuilt benchmark binary, is recorded
+as `available: false` instead of failing the run, and a timeout keeps
+the sections that finished. The run also writes a paste-ready
+`mlx-omarchy-deep.submission.md` cover text.
+
+To publish a result:
+
+```bash
+export MLX_OMARCHY_SUBMIT_URL=https://mlx-omarchy-community-data.joshua-s-warren.workers.dev/v1/submit
+python3 scripts/collect_deep.py --out mlx-omarchy-deep.tar.gz
+# type SUBMIT at the prompt, or pass --submit "$MLX_OMARCHY_SUBMIT_URL"
+```
+
+Only the already-redacted archive is sent. The endpoint deduplicates by
+content SHA-256 and answers with a public receipt URL, which the script
+prints. Keep that URL: it is the stable public link to your result. A
+failed upload keeps the local archive and submission file.
 
 Privacy rules that hold for every submission:
 
 - Only redacted, allowlisted fields leave your machine: host model,
   architecture, kernel release, GPU and driver names, package versions,
   probe results, and benchmark numbers.
-- Hostnames, usernames, paths, IP and MAC addresses, serials, and
-  credentials are replaced with typed placeholders before any file is
-  written.
+- The redactor removes user names, host names, home paths, IP and MAC
+  addresses, serial numbers, UUIDs, and credential-shaped strings, and
+  the manifest counts every replacement it made.
+- The scripts never read the devicetree serial number, machine IDs, or
+  network configuration, and collection never touches the network;
+  upload code lives in one separate module and runs only after you
+  confirm.
+- Raw command output is capped and passes through the redactor; the
+  archive never carries an unredacted log.
 - Upload is never automatic. A failed upload keeps your local files.
 - A submission never opens a pull request, issue, or discussion. The
   dataset mirror commits snapshots as `github-actions[bot]`, so
