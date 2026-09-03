@@ -48,22 +48,25 @@ short-burst rates and are not comparable to them.
 
 | Measurement | macOS 13.7.8, MLX on Metal | Linux, 1 of 8 cores (prior, ceae628) | Linux, 8 cores (2026-09-03, current main, pinned decode) | Ratio, 8-core |
 |---|---|---|---|---|
-| bf16 prefill | 377.9 tok/s | 23.9 tok/s | 18.5 tok/s | 20.4x slower |
-| bf16 decode | 61.5 tok/s | 3.56 tok/s | 1.85 tok/s over 63 tokens | 33.2x slower |
+| bf16 prefill | 377.9 tok/s | 23.9 tok/s | 28.6 tok/s | 13.2x slower |
+| bf16 decode | 61.5 tok/s | 3.56 tok/s | 3.29 tok/s over 63 tokens | 18.7x slower |
 | bf16 peak memory | 1.025 GB | 0.993 GB | 0.993 GB | about equal |
-| 4-bit prefill | 705.6 tok/s | 25.3 tok/s | 15.5 tok/s | 45.5x slower |
-| 4-bit decode | 290.3 tok/s | 6.46 tok/s | 1.97 tok/s over 63 tokens | 147.3x slower |
+| 4-bit prefill | 705.6 tok/s | 25.3 tok/s | 21.2 tok/s | 33.3x slower |
+| 4-bit decode | 290.3 tok/s | 6.46 tok/s | 2.96 tok/s over 63 tokens | 98.1x slower |
 | 4-bit peak memory | 0.320 GB | 0.292 GB | 0.292 GB | about equal |
 
 The 8-core column was re-measured on 2026-09-03 on a wheel built from
 current main (`e7a6542`), 8 cores online, compile off, same model revisions
 and prompts. Prefill is the 36-token prompt. Decode is pinned at 64
-requested tokens with EOS suppressed and prompt processing excluded
+requested tokens with EOS suppressed and prompt processing excluded. The
+first re-measure attempt ran in a mis-provisioned venv that silently held
+the stale wheel; the run was redone behind a provenance gate that hashes
+the installed `libmlx.so` against the wheel member
 (`receipts/2026-09-03-dispatcher-compile-and-column-replace.md` for the
-wheel hash, run pairs, and full conditions). The morning 8-core figures
-(17.1 / 2.04 / 18.4 / 3.88) were taken on a stale-generation wheel and, for
-decode, are short-burst rates; they are superseded and kept in the linked
-receipts.
+full history, hashes, and conditions). The morning 8-core figures
+(17.1 / 2.04 / 18.4 / 3.88) were taken on that stale-generation wheel
+and, for decode, are short-burst rates; they are superseded and kept in
+the linked receipts.
 
 History and attribution. The 2026-09-03 8-core column first shipped on a
 `dev20260903` wheel that proved to be a stale generation (5.3 MB
@@ -85,7 +88,7 @@ the override (`receipts/2026-09-03-dispatcher-compile-and-column-replace.md`,
 eager speed with no env var and no exception; `MLX_DISABLE_COMPILE=1` is no
 longer needed. Set `MLX_OMARCHY_ALLOW_UNSAFE_COMPILE=1` to re-enable
 compiled tapes on purpose - the differential harness does exactly that to
-hunt the defect on hardware.
+hunt the defect on hardware. History: under the override at `ff4b05a` a compiled 4-bit run aborts loudly at the Cos accuracy gate (magnitude ~8e8, nondeterministic across runs), and under GPU-assisted validation the same run answers correctly - an asynchronous race. Affinity numbers measured on the stale wheel (bf16 prefill 17.4 unpinned vs 21.8 pinned to one core; the win gone with two pinned cores; 4-bit prefill -2.5% pinned; decode affinity-insensitive) are not re-measured on current main.
 
 Generated text is identical on both platforms: `Hello! How can I assist you today?` for bf16, `Paris` for 4-bit, matching token counts and stop positions. Numerical correctness is there. Speed is not.
 
@@ -105,7 +108,7 @@ name rather than compute with it. Development devices (llvmpipe under
 `MLX_OMARCHY_ALLOW_NON_APPLE=1`) are not affected: compilation stays
 armed there because the corruption class has never been observed on a
 software driver, and the differential harness sets the override so it
-can keep hunting the defect on hardware
+can keep hunting the defect on hardware History: the silent run above came from the stale `dev20260903` wheel generation; at `ff4b05a` and later the same run fails loudly at the Cos accuracy gate instead.
 
 **Where the remaining time goes**, measured on the M1 over 7,853 dispatches of a profiled 4-bit run. A ranked list beats an apology. Recording a dispatch is 0.3% of host wall. A per-pipeline descriptor cache took that from 160-260 microseconds to under one, so per-dispatch cost is not a driver-side wall. Submitting is 14.3%, joining 0.4%. Waiting for a free submission slot is 45.4%. That is the GPU-backlog signature: the host blocks because the GPU is the slower side in those windows, so more slots would not help. The remaining 39.6% sits outside the encoder, in MLX's evaluator throttle and Python.
 
