@@ -39,6 +39,19 @@ Affected: v0.3.0-alpha.1 through v0.3.1. Observed on: dev box, Mesa llvmpipe.
 
 Upstream's `test_autograd.py::TestAutograd::test_eval_in_grad` got `vjp = 12.000000953674316`. The exact value is `12.0`. This is one ulp of float32 accumulation. Upstream Metal is exact here. Severity is low. It surfaces only where code pins exact equality.
 
+### `mx.all` over a boolean array returns False for all-True input at sizes of 5 or more
+
+Affected: confirmed in the published v0.3.0 and v0.3.1 aarch64 wheels; earlier releases unverified but v0.3.0 predating the byte-extraction work makes a long-standing gap the running hypothesis. Observed on: real M1 (Honeykrisp), fresh process, deterministic. On llvmpipe the same code is correct, which is why every dev-box battery stayed green.
+
+```python
+import mlx.core as mx, numpy as np
+mx.all(mx.array(np.array([True] * 33))).item()   # False; must be True
+```
+
+Sizes 1 to 4 are correct; every size from 5 upward returns False for all-True input. `mx.any` is unaffected at both polarities, and all-False input correctly returns False - the reduction sees only the first word of the input. THE HYPOTHESIS, labelled as such because only the wrong values are verified: the bool All kernel reads a one-word extent. The dtype-converting `mx.sum(a.astype(mx.int32))` workaround refuses by name on the GPU (named gap), so use `bool(np.array(a).all())` or an explicit CPU stream.
+
+Found by the v0.3.1 published-artifact verification on the real target: the download check ran a device-side `mx.all`, and the entire C++ battery - 828,139 assertions - never exercised a bool All-reduction wider than one word on Apple hardware. Disclosed in a prominent warning on the v0.3.1 release page; fix in progress for v0.3.2.
+
 ## What the M1 verification reds turned out to be
 
 The first M1 run of the v0.3.1 release candidate (tree at `959c7a0`) reported three findings. All three were real; none of them is a device defect. They are recorded because each one carries a lesson that outlives this release, and because a red suite that gets explained away instead of root-caused is how real defects get missed later.
@@ -201,6 +214,7 @@ On v0.3.0-alpha.1: treat every operation in the alpha section as untrusted. Upgr
 
 On v0.3.0: the semaphore crash can kill any workload, and on a real M1 the scatter, LogicalAnd, select, and sin/cos defects return wrong values or refuse operations your dev box runs fine. Upgrade to v0.3.1.
 
-On the v0.3.1 release candidate: the first M1 verification reported three findings against the merged tree; all three resolved to test-side causes, not device defects (see "What the M1 verification reds turned out to be" above). The tag stays held until Main's test-file fixes land and the battery is green on both platforms, because green is the signal everyone relies on and a documented exception is a thing people forget to re-check. The long-standing live entries remain: `gelu_approx` under test runners and bf16 compiled tapes in mlx-lm. Large-argument trig refuses by name, eagerly and inside `mx.compile` alike.
+On v0.3.1, published: the release ships the `mx.all` boolean defect above on Apple Silicon - disclosed in a prominent warning at the top of the release page - and a fix ships in v0.3.2. The three M1 verification reds resolved to test-side causes before the tag landed ("What the M1 verification reds turned out to be" above). The long-standing live entries remain: `gelu_approx` under test runners and bf16 compiled tapes in mlx-lm. Large-argument trig refuses by name, eagerly and inside `mx.compile` alike.
+
 
 Named `[omarchy] ... is not implemented` errors remain the honest failure mode. The defects on this page are dangerous because they do not fail that way.
