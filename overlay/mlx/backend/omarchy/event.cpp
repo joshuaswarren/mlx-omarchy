@@ -92,10 +92,18 @@ struct EventImpl {
   std::unique_ptr<TimelineSemaphore> gpu;
   std::unique_ptr<HostCounter> host;
   // Completion timeline generation that carried the latest GPU-stream
-  // signal (0 = none captured, e.g. CPU-stream producer). Waiting threads
-  // join this generation so the signal's completion handlers have run
-  // before the waiter proceeds.
+  // signal (0 = none captured, e.g. CPU-stream producer), and the event
+  // value that generation had signaled. Waiting threads join this
+  // generation so the signal's completion handlers have run before the
+  // waiter proceeds; a device waiter may wait on the completion
+  // semaphore at this generation instead of the event semaphore when
+  // this value covers what it needs.
   std::atomic<uint64_t> signaled_completion{0};
+  std::atomic<uint64_t> signaled_value{0};
+  // Set once a signal is queued on the device instead of issued from the
+  // host. Queued and host signals of one event must not mix: a host
+  // signal can pass an in-flight queued value and corrupt the timeline.
+  std::atomic<bool> queued_signal{false};
 
   bool is_created() const {
     return gpu || host;
@@ -188,9 +196,6 @@ void Event::wait(Stream s) {
       // must outlive any Event handle the caller drops before commit.
       encoder.add_semaphore_wait(event.gpu->semaphore, value(), event_);
     } else {
-      // CPU stream waits on the host until the device counter advances.
-      // The scheduler holds a copy of this event, so the semaphore stays
-      // alive through the task; no raw pointers cross the boundary.
       uint64_t target_value = value();
       scheduler::wait_event(s, *this, [target_value](Event& self) {
         auto& impl = self.cast<EventImpl>();
@@ -241,19 +246,56 @@ void Event::signal(Stream s) {
     }
     if (s.device == Device::gpu) {
       auto& encoder = omarchy::get_command_encoder(s);
-      // Same ownership rule as waits: the signal is owned by the encoder
-      // until its submission completes.
-      encoder.add_semaphore_signal(event.gpu->semaphore, value(), event_);
-      // Signal ordering is a flush contract: the semaphore must be on the
-      // queue now, submitted immediately (flush contract).
-      encoder.commit();
-      // Record the generation that carries this signal so waiters can
-      // join its handler boundary (see Event::wait).
-      uint64_t generation = encoder.last_submitted_completion();
-      uint64_t prior = event.signaled_completion.load(std::memory_order_relaxed);
-      while (generation > prior &&
-             !event.signaled_completion.compare_exchange_weak(
-                 prior, generation, std::memory_order_release)) {
+      // An idle encoder has no submission this signal could ride and no
+      // queue work it could be ordered against, so the timeline counter
+      // moves from the host. A lone signal in its own QueueSubmit costs
+      // a driver submit, a dispatcher entry, and an in-flight dependency
+      // for zero compute: the decode loop measured ~1,645 such
+      // signal-only submissions per token against ~95 compute
+      // dispatches. Order matters here: the generation is published
+      // BEFORE the host signal, so a waiter that observes the signaled
+      // counter always also observes a generation to join, and a device
+      // waiter that misses both falls back to the event semaphore, which
+      // this or a later signal still fires.
+      if (!event.queued_signal.load(std::memory_order_acquire) &&
+          encoder.idle()) {
+        uint64_t generation = encoder.last_submitted_completion();
+        uint64_t prior_gen =
+            event.signaled_completion.load(std::memory_order_relaxed);
+        while (generation > prior_gen &&
+               !event.signaled_completion.compare_exchange_weak(
+                   prior_gen, generation, std::memory_order_release)) {
+        }
+        uint64_t prior_val =
+            event.signaled_value.load(std::memory_order_relaxed);
+        while (value() > prior_val &&
+               !event.signaled_value.compare_exchange_weak(
+                   prior_val, value(), std::memory_order_release)) {
+        }
+        event.gpu->device.signal_timeline(event.gpu->semaphore, value());
+      } else {
+        event.queued_signal.store(true, std::memory_order_release);
+        // Same ownership rule as waits: the signal is owned by the
+        // encoder until its submission completes.
+        encoder.add_semaphore_signal(event.gpu->semaphore, value(), event_);
+        // Signal ordering is a flush contract: the semaphore must be on
+        // the queue now, submitted immediately (flush contract).
+        encoder.commit();
+        // Record the generation that carries this signal so waiters can
+        // join its handler boundary (see Event::wait).
+        uint64_t generation = encoder.last_submitted_completion();
+        uint64_t prior_gen =
+            event.signaled_completion.load(std::memory_order_relaxed);
+        while (generation > prior_gen &&
+               !event.signaled_completion.compare_exchange_weak(
+                   prior_gen, generation, std::memory_order_release)) {
+        }
+        uint64_t prior_val =
+            event.signaled_value.load(std::memory_order_relaxed);
+        while (value() > prior_val &&
+               !event.signaled_value.compare_exchange_weak(
+                   prior_val, value(), std::memory_order_release)) {
+        }
       }
     } else {
       // Signal from a CPU stream by submitting the signal on the device

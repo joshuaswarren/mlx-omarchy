@@ -46,6 +46,11 @@ namespace mlx::core::omarchy {
 // timeline semaphore waits and signals carried in the submissions;
 // handler-only submissions (no recorded commands) still signal the
 // timeline, so ordering with prior queue work is preserved.
+// Nodes recorded in one open command buffer before the evaluator flushes
+// it. Bounds how many temporaries and how much work one batch pins; the
+// historical per-op commit was the 1-node extreme.
+inline constexpr int kBatchNodeBudget = 100;
+
 class MLX_API CommandEncoder {
  public:
   explicit CommandEncoder(Device& device);
@@ -67,6 +72,26 @@ class MLX_API CommandEncoder {
 
   bool needs_commit() const {
     return node_count_ > 0;
+  }
+
+  // Nodes recorded in the open batch. The evaluator flushes the batch at
+  // kBatchNodeBudget so a long graph cannot pin unbounded temporaries
+  // behind one open command buffer.
+  int nodes() const {
+    return node_count_;
+  }
+
+  // True when nothing is recorded, nothing is queued for submission, and
+  // no temporaries are pending flush: the encoder owns no GPU work and
+  // no lifetime obligations. An Event::signal issued on this state moves
+  // the target timeline counter from the host instead of submitting a
+  // signal-only command buffer; the temporaries check is what makes the
+  // flush contract explicit — a signal on an encoder that still owes a
+  // temporaries flush takes the queued path, which submits and releases.
+  bool idle() const {
+    return !recording_ && wait_semaphores_.empty() &&
+        signal_semaphores_.empty() && completed_handlers_.empty() &&
+        temporaries_.empty();
   }
 
   // Record a device-to-device buffer copy. Both buffers must have

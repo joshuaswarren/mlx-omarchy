@@ -1137,3 +1137,73 @@ TEST_CASE("small eager output stays ordered across deep submit boundaries") {
           1e-5f);
   }
 }
+
+TEST_CASE("workless evals submit nothing and pin nothing") {
+  // Pins the temporaries flush contract for evals whose primitive
+  // records no GPU work (view rearrangements, host-materialized values):
+  // no submission may be issued for them, and their buffers must return
+  // to the allocator once dropped, because nothing in flight references
+  // them. Before the batch flush contract was explicit, every workless
+  // eval boundary issued a signal-only QueueSubmit (measured ~1,645 per
+  // decode token) that existed mostly to flush accumulated temporaries.
+  if (!gpu::is_available()) {
+    skip("no qualifying Vulkan device.");
+    return;
+  }
+  auto s = default_stream(default_device());
+  synchronize(s);
+  auto& counters = omarchy::trace::counters();
+  uint64_t subs0 = counters.vk_submissions.load();
+  uint64_t disp0 = counters.vk_compute_dispatches.load();
+  size_t active0 = omarchy::allocator().get_active_memory();
+
+  array x = ones({64}, float32, s);
+  x.eval();
+  synchronize(s);
+  subs0 = counters.vk_submissions.load();
+  disp0 = counters.vk_compute_dispatches.load();
+  active0 = omarchy::allocator().get_active_memory();
+
+  for (int i = 0; i < 200; ++i) {
+    array v = transpose(reshape(x, {8, 8}));
+    v.eval();
+  }
+  synchronize(s);
+  CHECK_EQ(
+      counters.vk_compute_dispatches.load() - disp0,
+      static_cast<unsigned long long>(0));
+  CHECK(counters.vk_submissions.load() - subs0 <= 4);
+  CHECK(omarchy::allocator().get_active_memory() <= active0 + 4096);
+}
+
+TEST_CASE("one graph evaluation batches into bounded submissions") {
+  // A single eval whose graph records far more nodes than the batch
+  // budget must flush at the budget (kBatchNodeBudget) instead of
+  // submitting per op, and the batched result must match elementwise.
+  if (!gpu::is_available()) {
+    skip("no qualifying Vulkan device.");
+    return;
+  }
+  auto s = default_stream(default_device());
+  array w = ones({1}, float32, s);
+  array y = zeros({8, 8}, float32, s);
+  y.eval();
+  synchronize(s);
+  auto& counters = omarchy::trace::counters();
+  uint64_t subs0 = counters.vk_submissions.load();
+
+  constexpr int kAdds = 300;
+  for (int i = 0; i < kAdds; ++i) {
+    y = y + w;
+  }
+  y.eval();
+  synchronize(s);
+  uint64_t subs = counters.vk_submissions.load() - subs0;
+  CHECK(subs >= 1);
+  CHECK(subs <= (kAdds / omarchy::kBatchNodeBudget) + 6);
+  synchronize(s);
+  const auto* data = y.data<float>();
+  for (int i = 0; i < 64; ++i) {
+    CHECK_EQ(data[i], static_cast<float>(kAdds));
+  }
+}
