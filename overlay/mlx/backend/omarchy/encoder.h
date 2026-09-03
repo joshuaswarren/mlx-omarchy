@@ -24,12 +24,15 @@ namespace mlx::core::omarchy {
 // is BATCHED: primitive evals append to an open command buffer and the
 // buffer is submitted when a node/work budget is reached, a flush is
 // demanded (semaphore operation, host read), or the in-flight ring is
-// exhausted. Batching is order-safe because every dispatch already records
-// a full pre+post pipeline barrier, and cross-submission waits used
-// ALL_COMMANDS stage masks, so merging submissions weakens no dependency;
-// it removes the per-eval host join between them. Temporaries and
-// completion handlers released per submission still release exactly when
-// that submission's GPU work finishes, via the device completion timeline.
+// exhausted. Batching is order-safe because every dispatch records a full
+// pre+post pipeline barrier, every submission waits on the completion-
+// timeline value of this stream's previous submission (Vulkan defines no
+// cross-submission dependency without a wait), and cross-submission waits
+// use ALL_COMMANDS stage masks, so merging submissions weakens no
+// dependency; it removes the per-eval host join between them. Temporaries
+// and completion handlers released per submission still release exactly
+// when that submission's GPU work finishes, via the device completion
+// timeline.
 //
 // Command buffers come from a small ring so the device can execute one
 // batch while the host records the next; the host blocks only when every

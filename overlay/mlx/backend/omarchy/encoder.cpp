@@ -328,8 +328,21 @@ void CommandEncoder::submit() {
 
   std::vector<VkSemaphore> wait_sems;
   std::vector<uint64_t> wait_values;
-  wait_sems.reserve(wait_semaphores_.size());
-  wait_values.reserve(wait_semaphores_.size());
+  wait_sems.reserve(wait_semaphores_.size() + 1);
+  wait_values.reserve(wait_semaphores_.size() + 1);
+  // In-order stream: this submission waits for the stream's previous
+  // submission. Vulkan defines no execution or memory dependency between
+  // submissions without a semaphore wait, and the per-dispatch barriers
+  // cover hazards inside one command buffer only. Without this wait, a
+  // submission queued behind long work can read a prior tiny submission's
+  // output before that write lands (Honeykrisp: compiled 4-bit decode
+  // read an eager one-element f32 as recycled page garbage, 20/20).
+  // Waiting on an already-signaled timeline value is a driver
+  // pass-through, so the shallow-queue case pays nothing.
+  if (last_completion_ != 0) {
+    wait_sems.push_back(device_.completions().semaphore());
+    wait_values.push_back(last_completion_);
+  }
   for (auto& pending : wait_semaphores_) {
     wait_sems.push_back(pending.semaphore);
     wait_values.push_back(pending.value);

@@ -13,8 +13,9 @@
 //   7. measured concurrency of independent streams on a hardware GPU,
 //   8. fresh-process device reopen and bounded failed-submit errors,
 //      proven in process-isolated child runs,
-//   9. zero CPU tensor dispatch in the release-equivalent build.
-//  10. safe command-buffer reuse across many asynchronous commits.
+// 10. safe command-buffer reuse across many asynchronous commits.
+// 11. in-order-stream contract: a small eager output crosses deep
+//     submit boundaries into a later consumer dispatch.
 //
 // The suite needs MLX_BUILD_OMARCHY=ON and compiles against Vulkan 1.3
 // headers (the Honeykrisp driver id is pinned in device.h). Round-trip and
@@ -25,9 +26,9 @@
 #define DOCTEST_CONFIG_IMPLEMENT
 #include <sys/wait.h>
 #include <unistd.h>
-#include <algorithm>
-#include <atomic>
 #include <chrono>
+#include <cmath>
+#include <atomic>
 #include <cstdlib>
 #include <cstring>
 #include <future>
@@ -1087,5 +1088,45 @@ TEST_CASE("tensor ops dispatch on Vulkan and never silently on CPU") {
   const auto* data = zero_array.data<float>();
   for (int i = 0; i < 6; ++i) {
     CHECK_EQ(data[i], 0.0f);
+  }
+}
+
+TEST_CASE("small eager output stays ordered across deep submit boundaries") {
+  // Pins the in-order-stream contract: an eager one-element f32 output
+  // committed as its own submission must be visible to a consumer
+  // dispatch in a LATER submission, even when long work fills the queue
+  // in between. This is the shape of the compiled 4-bit decode abort:
+  // the RoPE positions chain lost its device write on Honeykrisp when a
+  // consumer submission ran without a dependency on the producer
+  // submission (Vulkan defines no cross-submission ordering without a
+  // wait; encoder submit() now waits on the stream's previous completion
+  // value). llvmpipe executes submissions synchronously in order, so
+  // this test pins the contract there and guards regressions of the
+  // wait itself; the pre-fix failure needs an out-of-order queue and is
+  // validated on Honeykrisp hardware.
+  if (!gpu::is_available()) {
+    skip("no qualifying Vulkan device.");
+    return;
+  }
+  auto s = default_stream(default_device());
+  for (int iter = 0; iter < 8; ++iter) {
+    // Tiny eager producer: one element, its own submission.
+    auto positions = arange(iter, iter + 1, float32, s);
+    positions.eval();
+    // Long work fills the queue so the consumer below is submitted
+    // while earlier submissions are still executing.
+    auto heavy = astype(ones({256, 256}, float32, s), float32);
+    for (int i = 0; i < 3; ++i) {
+      heavy = matmul(heavy, heavy, s);
+      heavy.eval();
+    }
+    // Consumer submission reads the producer's buffer across the queue.
+    auto theta = positions * ones({1}, float32, s);
+    auto c = cos(theta);
+    c.eval();
+    synchronize(s);
+    CHECK_EQ(theta.item<float>(), static_cast<float>(iter));
+    CHECK(std::fabs(c.item<float>() - std::cos(static_cast<float>(iter))) <
+          1e-5f);
   }
 }
