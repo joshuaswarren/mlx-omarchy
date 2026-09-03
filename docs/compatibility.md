@@ -73,7 +73,9 @@ re-enables compiled tapes for deliberate investigation; the differential
 harness and the mechanism probe set it for themselves. A tape that still
 reaches the interpreter (an explicit `mx.enable_compile()`, or a C++
 function armed before discovery) is refused by name by the tape runner -
-the refusal is the backstop, not the default. The scope is
+the refusal is the backstop, not the default. That C++-only edge is
+left as a refusal deliberately (loud, unreachable from Python, no user
+has hit it); it is not an oversight awaiting an eager fallback. The scope is
 device-conditional: on development devices accepted through
 `MLX_OMARCHY_ALLOW_NON_APPLE=1` (llvmpipe and other software drivers)
 compiled tapes still run, match eager, and carry the batteries. The bf16
