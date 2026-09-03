@@ -118,7 +118,16 @@ Prerequisites, in order:
    ```bash
    python3.14 -m venv ~/.venvs/mlx-collect
    ~/.venvs/mlx-collect/bin/pip install \
-     mlx_omarchy-*-cp314-cp314-linux_aarch64.whl
+     https://github.com/joshuaswarren/mlx-omarchy/releases/download/v0.3.2/mlx_omarchy-0.32.2.dev202609030512-cp314-cp314-linux_aarch64.whl
+   ```
+
+   That URL pins v0.3.2. To take whatever the newest stable release
+   ships instead:
+
+   ```bash
+   gh release download --repo joshuaswarren/mlx-omarchy \
+     --pattern '*cp314*linux_aarch64.whl'
+   ~/.venvs/mlx-collect/bin/pip install ./mlx_omarchy-*-cp314-cp314-linux_aarch64.whl
    ```
 
 4. Run the collector with that interpreter:
@@ -170,8 +179,9 @@ collect profiles only; it is not for production work. Attach the dev
 wheel to a venv:
 
 ```bash
-python3 -m venv ~/venv-mlx-diag
-~/venv-mlx-diag/bin/pip install <the .whl asset from the release page>
+python3.14 -m venv ~/venv-mlx-diag
+~/venv-mlx-diag/bin/pip install \
+  'https://github.com/joshuaswarren/mlx-omarchy/releases/download/v0.3.3-diag.1/mlx_omarchy-0.32.2.dev202609031348%2Bdiag-cp314-cp314-linux_aarch64.whl'
 ```
 
 Set the env var to a file path and run your workload. The runtime
