@@ -86,18 +86,39 @@ npx wrangler d1 migrations apply mlx-omarchy-community --remote
 npx wrangler deploy
 ```
 
-## WAF rate limiting (free plan allows exactly one rule)
+## Abuse limits, and why there is no WAF rule
 
-Dashboard -> thewarrens.co account -> Security -> WAF -> Rate limiting
-rules. Create one rule:
+This worker is served from `*.workers.dev`, which is not a zone in the
+account. WAF rate-limiting rules apply to zones, so **the free plan's
+one rate-limiting rule cannot be attached to this route.** An earlier
+version of this file told you to create one; that instruction was
+unactionable and is removed rather than left to waste someone's time in
+the dashboard.
 
-- Expression: `(http.request.uri.path contains "/v1/submit")`
-- Rate: 30 requests / 1 minute, mitigation timeout 10 minutes,
-  counted per IP address, action Block.
+What actually limits abuse today:
 
-The collector is a human-initiated CLI, so this throttle only bites
-abuse. Note: workers.dev fronting 403s default non-browser user agents,
-which is why the collector sends `User-Agent: mlx-omarchy-collector/1`.
+- Proof of work on every submission: `sha256("<content_sha256>:<nonce>")`
+  must carry at least 18 leading zero bits, and the nonce is bound to the
+  content hash so a token cannot be reused for other content.
+- Hard size caps, rejected by name before any write: payload 256 KB,
+  archive 8 MB, chunk 768 KB.
+- The D1 free write ceiling of 100k rows per day, which is a flood
+  ceiling rather than a policy.
+- The Workers free ceiling of 100k requests per day, which fails closed
+  with Error 1027 and never bills.
+- Content addressing: a replayed submission deduplicates instead of
+  adding a row.
+
+If a rate-limiting rule is ever genuinely needed, it requires attaching a
+custom domain, for example `community-data.thewarrens.co`, and putting
+the rule on that hostname. That only helps if the `workers.dev` route is
+also disabled, because otherwise abuse just uses the `workers.dev` URL
+and bypasses the rule. Do not change the public URL casually:
+contributors already have the `workers.dev` one.
+
+Unrelated but worth keeping: workers.dev fronting 403s default
+non-browser user agents, which is why the collector sends
+`User-Agent: mlx-omarchy-collector/1`.
 
 ## Local development and tests (no credentials needed)
 
