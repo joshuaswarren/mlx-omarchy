@@ -672,7 +672,7 @@ TEST_CASE(
   omarchy::allocator().free(buf);
 }
 
-TEST_CASE("temporaries release exactly at GPU completion") {
+TEST_CASE("temporaries release one completion after their submission") {
   if (!gpu::is_available()) {
     skip("no qualifying Vulkan device.");
     return;
@@ -703,7 +703,18 @@ TEST_CASE("temporaries release exactly at GPU completion") {
   CHECK_FALSE(observed.expired()); // retention outlived destruction
 
   enc.synchronize(); // bounded completion wait; joins handler execution
-  CHECK(observed.expired()); // released exactly at completion
+  // Mesa's queue thread signals a submission's semaphores (including the
+  // completion timeline) before its submit-final cleanup retires the
+  // submission's timeline points, so a payload of this submission must
+  // still be alive here: destroying it now races the driver.
+  CHECK_FALSE(observed.expired());
+
+  // The next completion proves the driver finished this submission's
+  // cleanup; the retired payload releases then, and never leaks.
+  enc.fill_buffer(scratch_buf->buffer, 0x44, 4096);
+  enc.commit();
+  enc.synchronize();
+  CHECK(observed.expired());
   omarchy::allocator().free(scratch);
 }
 

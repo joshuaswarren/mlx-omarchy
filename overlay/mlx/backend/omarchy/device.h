@@ -107,9 +107,11 @@ class ComputeRuntime;
 // Completion tracking for async submissions on the single Honeykrisp queue.
 // Every encoder submission signals one strictly increasing value on a
 // device-wide timeline semaphore; a dispatcher thread waits that timeline
-// and runs each submission's completion handlers, releasing buffer
-// temporaries and queued-semaphore ownership exactly when the GPU work
-// finishes. Submitters never block on the queue.
+// and runs each submission's completion handlers. Buffer temporaries and
+// queued-semaphore ownership release one completion generation later,
+// because Mesa signals a submission's semaphores before its submit-final
+// cleanup retires the submission's timeline points. Submitters never
+// block on the queue.
 class CompletionDispatcher {
  public:
   explicit CompletionDispatcher(VkDevice device);
@@ -144,6 +146,11 @@ class CompletionDispatcher {
   VkDevice device_;
   VkSemaphore semaphore_{VK_NULL_HANDLE};
   std::deque<Completion> pending_;
+  // Payloads of already-drained completions, released one completion
+  // later. Mesa signals a submission's semaphores before its submit-final
+  // cleanup releases timeline points, so a completion value on this
+  // timeline does not prove the driver finished that submission.
+  std::vector<std::shared_ptr<void>> retired_temporaries_;
   uint64_t next_value_{0};
   uint64_t drained_value_{0};
   std::mutex mutex_;
