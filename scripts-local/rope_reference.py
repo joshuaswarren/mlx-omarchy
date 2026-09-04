@@ -218,7 +218,6 @@ def score_sweep(sections):
     for key in sections:
         m = sweep_re.match(key)
         if m:
-            entry = (int(m.group(2)), int(m.group(3)))
             entry = (int(m.group(2)),
                      int(m.group(3)) if m.group(3) else 16)
             if entry not in found.setdefault(m.group(1), []):
@@ -241,6 +240,8 @@ def score_sweep(sections):
               "    fused/comp")
         for pos, _ in sorted(entries):
             name = f"sweep_{tag}_pos{pos}_d{dims}"
+            if f"input_{name}" not in sections:
+                name = f"sweep_{tag}_pos{pos}"
             # section keys are fused_<name>/composed_<name>/input_<name>
             # with name = sweep_<tag>_pos<p>_d<d>; tag already carries
             # no "sweep_" prefix after the regex fix.
