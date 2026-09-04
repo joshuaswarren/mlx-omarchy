@@ -114,6 +114,8 @@ def main():
                          "loaded libmlx.so and core extension are "
                          "hash-compared against it and any mismatch "
                          "refuses to emit a rate")
+    ap.add_argument("--temp", type=float, default=0.0,
+                    help="sampling temperature; 0.0 is greedy")
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--warmup-tokens", type=int, default=4,
                     help="untimed tokens generated first")
