@@ -801,8 +801,96 @@ namespace {
 // shutdown and handler dispatch by at most one interval, never forever.
 constexpr uint64_t kCompletionPollNs = 100ull * 1000 * 1000;
 
+// No-progress watchdog poll cadence. Must be a small fraction of the
+// no-progress interval so a stalled counter is detected quickly. 100 ms
+// matches kCompletionPollNs (the dispatcher background loop) and gives
+// 100 samples per no-progress interval at the 10 s default.
+constexpr uint64_t kHangWatchPollNs = kCompletionPollNs;
+
+// Parsed env override. Returns the default when the env var is unset or
+// invalid; positive non-zero values only. Negative or zero values would
+// cause the watchdog to fire instantly, so reject them.
+uint64_t env_ns_override(const char* name, uint64_t fallback) {
+  const char* v = std::getenv(name);
+  if (!v || *v == '\0') {
+    return fallback;
+  }
+  char* end = nullptr;
+  long long parsed = std::strtoll(v, &end, 10);
+  if (end == v || parsed <= 0) {
+    return fallback;
+  }
+  return static_cast<uint64_t>(parsed);
+}
+
 } // namespace
 
+uint64_t submit_hang_no_progress_ns() {
+  static const uint64_t v =
+      env_ns_override("MLX_OMARCHY_HANG_NO_PROGRESS_NS",
+                      kSubmitHangNoProgressNsDefault);
+  return v;
+}
+
+uint64_t submit_max_wall_ns() {
+  static const uint64_t v =
+      env_ns_override("MLX_OMARCHY_MAX_WALL_NS", kSubmitMaxWallNsDefault);
+  return v;
+}
+
+void wait_for_timeline_progress(
+    VkDevice device,
+    VkSemaphore semaphore,
+    uint64_t target_value) {
+  using clock = std::chrono::steady_clock;
+  const uint64_t hang_ns = submit_hang_no_progress_ns();
+  const uint64_t max_wall_ns = submit_max_wall_ns();
+  const auto start = clock::now();
+  const auto wall_deadline = start + std::chrono::nanoseconds(max_wall_ns);
+
+  uint64_t last_observed = 0;
+  auto last_advance = start;
+  if (vk::device_table().GetSemaphoreCounterValue(
+          device, semaphore, &last_observed) != VK_SUCCESS) {
+    // Driver refused to give us a counter at all; fall back to a
+    // wall-clock bound - we cannot observe progress.
+    std::this_thread::sleep_for(std::chrono::nanoseconds(kHangWatchPollNs));
+    last_observed = 0;
+    last_advance = clock::now();
+  }
+
+  while (last_observed < target_value) {
+    const auto now = clock::now();
+    if (now >= wall_deadline) {
+      throw std::runtime_error(
+          std::string(
+              "[omarchy] Vulkan submission did not complete within ") +
+          std::to_string(max_wall_ns / 1000000ull) +
+          " ms (Timeout). The device may be hung; no CPU fallback is"
+          " available.");
+    }
+    if ((now - last_advance) > std::chrono::nanoseconds(hang_ns)) {
+      throw std::runtime_error(
+          std::string(
+              "[omarchy] Vulkan timeline counter failed to advance for ") +
+          std::to_string(hang_ns / 1000000ull) + " ms (last observed=" +
+          std::to_string(last_observed) + ", target=" +
+          std::to_string(target_value) +
+          "). The device may be hung; no CPU fallback is available.");
+    }
+    std::this_thread::sleep_for(std::chrono::nanoseconds(kHangWatchPollNs));
+    uint64_t current = 0;
+    if (vk::device_table().GetSemaphoreCounterValue(
+            device, semaphore, &current) == VK_SUCCESS) {
+      if (current > last_observed) {
+        last_observed = current;
+        last_advance = clock::now();
+      }
+    }
+    // Driver failure mid-wait: do not advance last_advance; the next
+    // iteration's hang check will pick up the stall.
+  }
+}
 CompletionDispatcher::CompletionDispatcher(VkDevice device) : device_(device) {
   VkSemaphoreTypeCreateInfo type{VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO};
   type.semaphoreType = VK_SEMAPHORE_TYPE_TIMELINE;
@@ -818,6 +906,46 @@ CompletionDispatcher::~CompletionDispatcher() {
   shutdown();
 }
 
+void CompletionDispatcher::wait(uint64_t value) {
+  // No-progress watchdog: blocks until the timeline counter reaches
+  // |value| OR throws a typed Omarchy error if the counter fails to
+  // advance for the no-progress interval. vkWaitSemaphores has a
+  // wall-clock cap that misclassifies long legitimate work as a hang;
+  // observing the counter's motion avoids that failure mode without
+  // giving up on real hang detection.
+  wait_for_timeline_progress(device_, semaphore_, value);
+  // Inline fast path: drain and run every ready completion whose value
+  // is <= |value| on this thread, serialized end-to-end through
+  // drain_mutex_ with the background thread so handlers cannot interleave
+  // across separate completion values. With this serialization in place,
+  // drained_value_ already covers |value| when drain_through returns and
+  // the cv_.wait_until below acts as a defensive join only.
+  drain_through(value);
+  // Defensive join: the timeline counter reached |value| but a handler
+  // from a prior completion could still be running on the dispatcher
+  // thread. The watchdog already validated counter motion; this join
+  // is bounded by kSubmitHangNoProgressNs because any handler still
+  // outstanding belongs to a completion whose counter value advanced,
+  // and the dispatcher drains through that completion every poll
+  // cycle. A short cv_ wait here would be unsafe without a bound, so
+  // use the same no-progress interval as the watchdog ceiling.
+  const auto join_deadline = std::chrono::steady_clock::now() +
+      std::chrono::nanoseconds(submit_hang_no_progress_ns());
+  std::unique_lock<std::mutex> lk(mutex_);
+  cv_.wait_until(
+      lk, join_deadline,
+      [this, value] { return stop_ || drained_value_ >= value; });
+  if (drained_value_ < value) {
+    throw std::runtime_error(
+        std::string(
+            "[omarchy] Vulkan dispatcher drain did not catch up within ") +
+        std::to_string(submit_hang_no_progress_ns() / 1000000ull) +
+        " ms after the timeline counter reached " +
+        std::to_string(value) +
+        " (Timeout). The device may be hung; no CPU fallback is"
+        " available.");
+  }
+}
 void CompletionDispatcher::shutdown() {
   {
     std::lock_guard<std::mutex> lk(mutex_);
@@ -871,40 +999,6 @@ void CompletionDispatcher::enqueue(
   cv_.notify_all();
 }
 
-void CompletionDispatcher::wait(uint64_t value) {
-  VkSemaphoreWaitInfo info{VK_STRUCTURE_TYPE_SEMAPHORE_WAIT_INFO};
-  info.semaphoreCount = 1;
-  info.pSemaphores = &semaphore_;
-  info.pValues = &value;
-  VkResult res =
-      vk::device_table().WaitSemaphores(device_, &info, kSubmitTimeoutNs);
-  if (res != VK_SUCCESS) {
-    throw std::runtime_error(
-        std::string("[omarchy] Vulkan submission did not complete within ") +
-        std::to_string(kSubmitTimeoutNs / 1000000ull) + " ms (" +
-        vk::result_string(res) +
-        "). The device may be hung; no CPU fallback is available.");
-  }
-  // Inline fast path: drain and run every ready completion whose value
-  // is <= |value| on this thread, serialized end-to-end through
-  // drain_mutex_ with the background thread so handlers cannot interleave
-  // across separate completion values. With this serialization in place,
-  // drained_value_ already covers |value| when drain_through returns and
-  // the cv_.wait_until below acts as a defensive join only.
-  drain_through(value);
-  auto deadline = std::chrono::steady_clock::now() +
-      std::chrono::nanoseconds(kSubmitTimeoutNs);
-  std::unique_lock<std::mutex> lk(mutex_);
-  cv_.wait_until(
-      lk, deadline, [this, value] { return stop_ || drained_value_ >= value; });
-  if (drained_value_ < value) {
-    throw std::runtime_error(
-        std::string("[omarchy] Vulkan submission did not complete within ") +
-        std::to_string(kSubmitTimeoutNs / 1000000ull) +
-        " ms (Timeout). The device may be hung; no CPU fallback is"
-        " available.");
-  }
-}
 
 void CompletionDispatcher::drain_through(uint64_t max_value) {
   std::lock_guard<std::mutex> drain_lk(drain_mutex_);
