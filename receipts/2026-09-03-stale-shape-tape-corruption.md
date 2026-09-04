@@ -152,7 +152,27 @@ post-failure runs existed.
   pinned length, provenance wheel) - the number lands in the README when
   measured; graph/model differential modes to close the deviation.
 
-## Closed 2026-09-04
+## The lesson with the longest reach
+
+The existing battery could not have caught this defect at any assertion
+count: every case traced and evaluated at one fixed shape, and the
+defect requires a shape change between trace and evaluation. Assertion
+count was never the gap; the shape dimension was. `650e324` fixes that
+for this defect, and CompiledFailClosed's default-path case covers the
+user-visible contract.
+
+The question the next person should ask: does anything else in the
+backend cache or reuse shape-derived state keyed on rank and dtype
+rather than shape? Audited on 2026-09-03 alongside the fix: kernel
+selection is a pure per-call function of the eval-time arrays,
+descriptor pools are lifetime-bound to submissions rather than shapes,
+device info is per-device static data, and the only rank+dtype-keyed
+reuse in the stack is upstream's own compile cache - whose contract the
+interpreter now honours. No other instance found. The allocator's
+size-class cache remains the one deliberately shape-blind surface, with
+`MLX_OMARCHY_POISON_FREED=1` as its standing tripwire.
+
+ ## Closed 2026-09-04
 
 - Landed on main: `26c6714`/`0647236`/`5243fc3` (the three commits,
   merged verbatim), receipt merge, and the re-enable `dfe8f17`
