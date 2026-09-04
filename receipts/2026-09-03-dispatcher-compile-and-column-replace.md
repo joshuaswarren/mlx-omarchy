@@ -267,3 +267,36 @@ eager (`MLX_DISABLE_COMPILE=1`):
 
 User-facing deltas, v0.3.2 -> v0.3.3: bf16 decode 4.1x, 4-bit decode
 4.0x, bf16 prefill 2.9x, 4-bit prefill 1.9x.
+
+## Long-context token identity and GPU-busy reconciliation (final)
+
+Long-context token identity at a 5,549-token prompt (chat-template count;
+raw text ~2,054 tokens), 64 generated tokens, same wheel and seed:
+compiled-default and eager produced IDENTICAL token ids (64/64) and
+byte-identical text. The compiled path's chunked prefill fired the
+shapeless-reuse path mid-prefill (traced [1,2048,4864] serving
+[1,1452,4864]) and stayed correct. A 3.6k-token variant OOM'd the eager
+child (full-sequence logits ~2.2 GB, VK_ERROR_OUT_OF_DEVICE_MEMORY) -
+recorded as a real backend limitation: any single operation whose GPU
+work exceeds the 10 s kSubmitTimeoutNs bounded wait fails by name;
+mlx_lm chunks prefill so the ordinary path does not hit it. An
+independent context-length sweep (256/518/1030/1542/2054-token prompts,
+2 generated tokens each) succeeded linearly with no cliff, prefill
+~34 tok/s at 2k context.
+
+GPU-busy reconciliation: the earlier "1.55 ms/token GPU, 99.7%
+host-side" figure was the BF16 model (~95 dispatches/token, light GPU
+work). The 4-bit model issues ~1,868 dispatches/token (dequant-heavy,
+~50 ms GPU work per token) - both measurements were correct for their
+dtype; the unqualified claim was not. At the shipping state: 4-bit
+decode is ~14% GPU-bound (19.5 ms GPU of 137 ms token); bf16 remains
+~0.4% GPU-bound. Theory.MD and README claims need the dtype qualifier.
+
+## TCF-2b: compiled-default vs eager parity
+
+Fresh main wheel (b7bde25, gate green, harness commit printed per run):
+compiled-default (no env vars) median 7.10 tok/s over 63 tokens vs eager
+(MLX_DISABLE_COMPILE=1) 7.25 tok/s - parity within noise, no regression.
+Tape-ran proof: shapeless-reuse stderr notice in 5/5 compiled runs;
+auto-eager warning absent 5/5. With the stale-shape fix landed,
+compilation is correct at speed on M1 hardware.
