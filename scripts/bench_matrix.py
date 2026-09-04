@@ -38,6 +38,7 @@ Self-test (no GPU, no mlx): python3 bench_matrix.py --self-test
 
 import argparse
 import json
+import math
 import os
 import platform
 import re
@@ -539,9 +540,36 @@ def execute_leg(leg, manifest, args, contended, paths):
                    stderr_tail=(proc.stderr or "").strip()[-500:])
         return leg
     metrics = parse_bench_output(proc.stdout)
+    # Leg agreement: the output must be about THIS leg. bench_decode
+    # prints the rate over produced-1 tokens (the first timed token
+    # carries the prefill), so a 4-token leg must report
+    # requested 4, decode span 3. Anything else is not this leg's
+    # number and is refused, never reported as measured.
+    n = leg["tokens"]
+    bad = []
     if metrics["decode_tok_s"] is None:
-        leg.update(status="failed", stderr_tail="exit 0 but no decode rate "
-                   "in output; refusing to report a measured leg")
+        bad.append("no decode rate in output")
+    else:
+        if not (math.isfinite(metrics["decode_tok_s"])
+                and metrics["decode_tok_s"] > 0):
+            bad.append(f"decode rate not finite-positive: "
+                       f"{metrics['decode_tok_s']}")
+        if metrics["requested_tokens"] != n:
+            bad.append(f"requested_tokens {metrics['requested_tokens']} "
+                       f"!= leg tokens {n}")
+        if metrics["decode_tokens"] != n - 1:
+            bad.append(f"decode_tokens {metrics['decode_tokens']} != "
+                       f"tokens-1 ({n - 1})")
+    if (metrics["prefill_s"] is None
+            or not math.isfinite(metrics["prefill_s"])
+            or metrics["prefill_s"] <= 0):
+        bad.append("prefill seconds missing or not finite-positive")
+    if not metrics["provenance_line"]:
+        bad.append("provenance line missing")
+    if bad:
+        leg.update(status="failed",
+                   stderr_tail="leg-agreement validation failed: "
+                   + "; ".join(bad))
         return leg
     # prompt-token count with the model's own tokenizer; None stays None.
     if leg.get("prompt_tokens") is None:
@@ -735,10 +763,44 @@ def self_test():
     assert m["provenance_line"].startswith("mlx-omarchy")
     assert m["generated_ids_sha256_16"] == "0123456789abcdef"
 
+    # 4-token fixture: the shape a tokens=4 leg actually produces.
+    out4 = "decode 7.88 tok/s over 3 tokens (4 requested, EOS suppressed)\n" \
+           "prefill 0.512s (reported separately, excluded from decode)\n" \
+           "decode mean per-token 128.2 ms\n" \
+           "provenance: mlx-omarchy 0.32.2 mx=0.32.2 verified=match " \
+           "harness=abc1234 x=1\n" \
+           "generated_ids sha256:0123456789abcdef n=4 first=1,2 last=3,4\n"
+
+    class FakeOut:
+        def __init__(self, stdout):
+            self.returncode = 0
+            self.stdout = stdout
+            self.stderr = ""
+
+    # cc3897f false-pass: a 64-token output on a tokens=4 leg must be
+    # refused by leg-agreement validation, never reported as measured.
+    mismatch = {"leg_id": "x", "model_id": "m", "model_path": "/m",
+                "prompt_id": "s", "tokens": 4, "measured": False}
+    manifest = {"prompts": {"s": {"text": "Hi"}},
+                "generation": {"temp": 0, "seed": 0, "warmup_tokens": 4,
+                               "engine_script": "bench_decode.py"}}
+    real_run = subprocess.run
+    subprocess.run = lambda *a, **k: FakeOut(out)
+    try:
+        class A:
+            python, wheel, allow_non_apple, timeout = "py", None, False, 10
+        execute_leg(mismatch, manifest, A(), contended=False, paths={"m": Path("/m")})
+    finally:
+        subprocess.run = real_run
+    assert mismatch["status"] == "failed" and not mismatch["measured"]
+    assert "leg-agreement" in mismatch["stderr_tail"], mismatch["stderr_tail"]
+    assert mismatch["exit_code"] == 0  # exited fine; numbers were not ours
+
     assert sanitize(f"{os.path.expanduser('~')}/models/q4") == "~/models/q4"
     assert "hostname" not in json.dumps(
         {"host": host_facts()} | {"power": power_state()})
 
+    import io
     import tempfile
     with tempfile.TemporaryDirectory() as tmp:
         entry = {"id": "m", "repo": "org/none", "revision": None}
@@ -822,7 +884,7 @@ def self_test():
                "tokens": 4, "model_path": "~/cache/model"}
         class FakeProc:
             returncode = 0
-            stdout = out
+            stdout = out4
             stderr = ""
         received = {}
         real_run = subprocess.run
@@ -854,7 +916,9 @@ def self_test():
         # The report carries only the redacted form.
         assert leg["model_path"] == "~/cache/model", leg["model_path"]
         assert leg["status"] == "measured" and leg["contended"] is True
-        assert leg["metrics"]["decode_tok_s"] == 1.97
+        assert leg["metrics"]["decode_tok_s"] == 7.88
+        assert leg["metrics"]["decode_tokens"] == 3
+        assert leg["metrics"]["requested_tokens"] == 4
         assert leg.get("prompt_tokens") is None  # spy stdout is not JSON
 
     # Regression (16m1 metadata run): sw_vers must be invoked as its own
@@ -910,20 +974,22 @@ def self_test():
                     "--model-dir", f"m={model_dir}",
                     "--python", "py", "--host-label", "selftest",
                     "--out", str(out_path)]
-
         def main_spy(cmd, **kwargs):
             class P:
                 returncode = 0
                 stderr = ""
-            P.stdout = out if isinstance(cmd, list) and \
+            P.stdout = out4 if isinstance(cmd, list) and \
                 "--model" in cmd else ""
             return P()
 
+        real_stdout = sys.stdout
+        sys.stdout = io.StringIO()
         subprocess.run = main_spy
         try:
             main()
         finally:
             subprocess.run = real_run
+            sys.stdout = real_stdout
             sys.argv = real_argv
         emitted = json.loads(out_path.read_text())
         assert emitted["measured_legs"] == 1, emitted["measured_legs"]
