@@ -105,11 +105,16 @@ void CommandEncoder::ensure_recording() {
   }
   current_slot_ = chosen;
   cmd_ = slots_[chosen].cmd;
+  uint64_t wait_t1 = prof::get().profiling() ? prof::host_ns() : 0;
   VkCommandBufferBeginInfo bi{VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
   bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
   VKX_CHECK(vk::device_table().BeginCommandBuffer(cmd_, &bi));
   prof::get().on_begin(
-      this, chosen, cmd_, begin_t0 != 0 ? prof::host_ns() - begin_t0 : 0);
+      this,
+      chosen,
+      cmd_,
+      wait_t1 != 0 ? prof::host_ns() - wait_t1 : 0,
+      wait_t1 != 0 ? wait_t1 - begin_t0 : 0);
   recording_ = true;
 }
 
@@ -243,10 +248,13 @@ void CommandEncoder::dispatch_compute(
   group_count_z = std::min(group_count_z, kMaxComputeGroupCountX);
 
   auto& dt = vk::device_table();
+  uint64_t prof_t0 = prof::get().profiling() ? prof::host_ns() : 0;
   VkPipeline pipeline = compute.pipeline(kernel);
+  uint64_t prof_t1 = prof::get().profiling() ? prof::host_ns() : 0;
 
   VkDescriptorSet descriptor_set = acquire_descriptor_set(compute);
-
+  uint64_t prof_t2 = prof::get().profiling() ? prof::host_ns() : 0;
+  uint64_t prof_t3 = prof::get().profiling() ? prof::host_ns() : 0;
   std::array<VkDescriptorBufferInfo, kComputeBindingBudget> buffer_info{};
   std::array<VkWriteDescriptorSet, kComputeBindingBudget> writes{};
   for (uint32_t index = 0; index < bindings.size(); ++index) {
@@ -265,6 +273,7 @@ void CommandEncoder::dispatch_compute(
       writes.data(),
       0,
       nullptr);
+  uint64_t prof_t4 = prof::get().profiling() ? prof::host_ns() : 0;
 
   ensure_recording();
   uint64_t host_t0 = prof::get().profiling() ? prof::host_ns() : 0;
@@ -307,6 +316,7 @@ void CommandEncoder::dispatch_compute(
       nullptr,
       0,
       nullptr);
+  uint64_t prof_t5 = prof::get().profiling() ? prof::host_ns() : 0;
   prof::get().before_dispatch(this, current_slot_, cmd_);
 
   VkPipelineLayout pipeline_layout = compute.pipeline_layout();
@@ -328,6 +338,7 @@ void CommandEncoder::dispatch_compute(
       sizeof(params),
       &params);
   dt.CmdDispatch(cmd_, group_count_x, group_count_y, group_count_z);
+  uint64_t prof_t6 = prof::get().profiling() ? prof::host_ns() : 0;
   prof::get().after_dispatch(
       this,
       current_slot_,
@@ -338,7 +349,7 @@ void CommandEncoder::dispatch_compute(
       group_count_x,
       group_count_y,
       group_count_z,
-      host_t0 != 0 ? prof::host_ns() - host_t0 : 0);
+      host_t0 != 0 ? prof_t6 - host_t0 : 0);
 
   VkMemoryBarrier after{VK_STRUCTURE_TYPE_MEMORY_BARRIER};
   after.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
@@ -377,6 +388,18 @@ void CommandEncoder::dispatch_compute(
         0,
         nullptr);
   }
+  uint64_t prof_t7 = prof::get().profiling() ? prof::host_ns() : 0;
+  if (prof_t5 != 0) {
+    prof::get().on_dispatch_breakdown(
+        this,
+        current_slot_,
+        prof_t1 - prof_t0, // pipeline lookup
+        prof_t2 - prof_t1, // descriptor set allocate
+        prof_t4 - prof_t3, // descriptor update
+        prof_t5 - host_t0, // pre-dispatch barrier
+        prof_t6 - prof_t5, // bind + push constants + dispatch
+        prof_t7 - prof_t6); // post-dispatch barrier
+  }
 
   node_count_++;
   trace::counters().vk_compute_dispatches++;
@@ -401,9 +424,11 @@ void CommandEncoder::submit() {
   uint64_t submit_t0 = prof::get().profiling() ? prof::host_ns() : 0;
   uint64_t submitted = 0;
 
+  uint64_t prof_t0 = prof::get().profiling() ? prof::host_ns() : 0;
   if (recording_) {
     VKX_CHECK(dt.EndCommandBuffer(cmd_));
   }
+  uint64_t prof_t1 = prof::get().profiling() ? prof::host_ns() : 0;
 
   std::vector<VkSemaphore> wait_sems;
   std::vector<uint64_t> wait_values;
@@ -465,6 +490,11 @@ void CommandEncoder::submit() {
   for (auto& pending : signal_semaphores_) {
     keepalive.push_back(std::move(pending.keepalive));
   }
+  uint64_t prof_t2 = prof::get().profiling() ? prof::host_ns() : 0;
+  // Declared outside the lock block: the profiling call below reads them.
+  uint64_t prof_t3 = 0;
+  uint64_t prof_t4 = 0;
+  uint64_t prof_t5 = 0;
 
   {
     // VkQueue is externally synchronized: the lock covers completion-value
@@ -474,7 +504,9 @@ void CommandEncoder::submit() {
     std::lock_guard<std::mutex> lk(device_.queue_mutex());
     // Khronos guidance: HOST_VISIBLE memory without HOST_COHERENT needs an
     // explicit flush before submission.
+    prof_t3 = prof::get().profiling() ? prof::host_ns() : 0;
     omarchy::allocator().flush_noncoherent(device_.handle());
+    prof_t4 = prof::get().profiling() ? prof::host_ns() : 0;
     uint64_t completion_value = device_.completions().reserve();
     VkSemaphore completion_sem = device_.completions().semaphore();
     signal_sems.push_back(completion_sem);
@@ -509,6 +541,7 @@ void CommandEncoder::submit() {
       slots_[current_slot_].in_flight = completion_value;
     }
     trace::counters().vk_submissions++;
+    prof_t5 = prof::get().profiling() ? prof::host_ns() : 0;
   }
 
   recording_ = false;
@@ -520,7 +553,11 @@ void CommandEncoder::submit() {
       this,
       submitted,
       submit_t0 != 0 ? prof::host_ns() - submit_t0 : 0,
-      current_slot_);
+      current_slot_,
+      prof_t1 - prof_t0,  // EndCommandBuffer
+      prof_t2 - prof_t1,  // submission payload assembly
+      prof_t4 - prof_t3,  // noncoherent flush
+      prof_t5 - prof_t4); // QueueSubmit through dispatcher enqueue
 
   // No vkResetCommandBuffer: the buffer may still be executing. The ring
   // slot is marked in flight above; ensure_recording() only reuses a slot
