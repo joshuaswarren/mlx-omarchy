@@ -71,7 +71,9 @@ path and predicted 4-6 deletable from SDPA. Three checks refute that:
    stream as the sliced inputs - the recorded growing copies do not
    depend on slice consumption.
 3. The addendum's stage labels are misleading: stage B in
-   `scripts/kvcopy_decompose.py` ("B-update+sdpa") contains NO sdpa -
+   `scripts/kv_state_views.py` (replaces the retired
+   `kvcopy_decompose.py`; at the time this receipt was written the
+   file was `kvcopy_decompose.py`) ("B-update+sdpa") contains NO sdpa -
    it is update + `k.sum() + v.sum()`; only stage C runs attention.
    Stage B's growing copies therefore belong to the reduction/update
    consumption path, not to SDPA.

@@ -198,7 +198,9 @@ the tape-fusion engine this census ruled out for tonight.
 
 ## Addendum 2: kv-cache copy and boundary-cast attribution (same night)
 
-`scripts/kvcopy_decompose.py` isolates one layer's decode path in three
+`scripts/kv_state_views.py` (replaces the retired
+`kvcopy_decompose.py`; at the time this receipt was written the file
+was `kvcopy_decompose.py`) isolates one layer's decode path in three
 stages (update only; update+sdpa; full step with rope) under the
 profiler, Qwen2.5-0.5B-4bit, 7-token prefill, 8 decode steps.
 
