@@ -249,3 +249,21 @@ The pinned AFTER rate (6.79 / 7.31) exceeds even the pre-fix BURST rates
 (5.280 / 5.622 at 4ea2f47), so the ordering-fix regression is paid back
 with interest on the stricter metric. Against the same pinned protocol at
 `e7a6542` (3.29 / 2.96 decode), the shipping state is 2.1-2.5x faster.
+
+## Three-arm pinned re-measure (v0.3.2 / 7c25feb / v0.3.3) - release basis
+
+One session, one protocol, provenance gate green on every arm (loaded
+libmlx.so == wheel member, verified per arm): v0.3.2 published aarch64
+asset (`61424114...`), a `7c25feb` build (`8c44daef...`), and the v0.3.3
+build (`83bf38a9...`, the uploaded release asset). 5-run medians, pinned
+64 tokens, 36-token prompt, EOS suppressed, produced-count asserted,
+eager (`MLX_DISABLE_COMPILE=1`):
+
+| arm | bf16 decode | 4-bit decode | bf16 prefill | 4-bit prefill |
+|---|---|---|---|---|
+| v0.3.2 published (users today) | 1.66 tok/s | 1.79 tok/s | 17.1 tok/s | 14.7 tok/s |
+| 7c25feb | 2.51 tok/s | 2.49 tok/s | 24.1 tok/s | 17.8 tok/s |
+| v0.3.3 (`b18704e`) | 6.81 tok/s | 7.23 tok/s | 50.1 tok/s | 27.3 tok/s |
+
+User-facing deltas, v0.3.2 -> v0.3.3: bf16 decode 4.1x, 4-bit decode
+4.0x, bf16 prefill 2.9x, 4-bit prefill 1.9x.
