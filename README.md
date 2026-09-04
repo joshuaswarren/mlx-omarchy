@@ -36,23 +36,22 @@ Do not install the upstream `mlx` package beside this wheel; the module name is 
 
 ## Performance
 
-Both columns below are the same Apple M1 (T8103, 8 GPU cores, 16 GB). Same model revisions, same prompts, `--temp 0 --seed 0`, warm run, `Qwen2.5-0.5B-Instruct`. Prefill uses the 36-token prompt; decode is pinned to 64 tokens with EOS suppressed and prompt processing excluded. Generated text is identical on both platforms.
+Native Metal parity is not yet established. The archived native decode runs
+stopped at EOS after 2–10 tokens and used mlx-lm 0.30.2; current Linux
+measurements use pinned output lengths and mlx-lm 0.31.3. The former README
+ratios of 9.4× and 7.0× slower mixed those protocols and are withdrawn.
+A matched same-chip comparison must use the same model revisions, prompts,
+output lengths, and timing definitions on both operating systems.
+See the [native measurement](receipts/2026-09-01-m1-same-chip-parity.md) and
+[pinned-length correction](receipts/2026-09-03-decode-metric-fix.md).
 
-| Measurement | macOS 13.7.8, MLX on Metal | Linux on Honeykrisp | Ratio |
-|---|---|---|---|
-| bf16 prefill | 377.9 tok/s | 60.8 tok/s | 6.2x slower |
-| bf16 decode | 61.5 tok/s | 8.75 tok/s over the final 63 of 64 tokens | 7.0x slower |
-| bf16 peak memory | 1.025 GB | 0.993 GB | about equal |
-| 4-bit prefill | 705.6 tok/s | 30.2 tok/s | 23.4x slower |
-| 4-bit decode | 290.3 tok/s | 30.74 tok/s over the final 63 of 64 tokens (main; 12.52 in v0.3.5) | 9.4x slower |
-| 4-bit peak memory | 0.320 GB | 0.292 GB | about equal |
+Validated M1 Linux prefill results, five alternating pairs on one development wheel:
 
-The 4-bit decode row is current main, unreleased: two changes since v0.3.5 took it
-from 12.52 to 30.74 tok/s. Every other row describes the v0.3.5 baseline. On
-current main, quantized prefill tiling is enabled by default (measured below);
-the bf16 candidates stay gated off.
-
-Conditions, exact commands, and the prior measurements they replaced: `receipts/2026-09-04-rope-gate-drain.md` and `receipts/2026-09-04-qmm-gemv-subgroup-m1.md` (the two decode changes since v0.3.5, unreleased), `receipts/2026-09-04-release-v0.3.5.md` (decode measured on the uploaded asset), `receipts/2026-09-04-v0.3.4-decode-regression.md` (why v0.3.4 does not deliver these numbers), and `receipts/2026-09-03-dispatcher-compile-and-column-replace.md`. Decode numbers are pinned-length rates (the table header is explicit), not the EOS-truncated short-burst rates `--max-tokens` produces; the decoder ratio this table implies is not directly comparable to a `--max-tokens 32` rate on any other tool.
+| Prompt / generated tokens | Untiled prefill tok/s | Tiled prefill tok/s | Throughput ratio | Decode tok/s OFF → ON |
+|---|---|---|---|---|
+| 30 / 32 | 36.058 | 79.365 | 2.20× | 30.96 → 31.07 |
+| 262 / 128 | 36.587 | 187.545 | 5.13× | 28.41 → 28.32 |
+| 1053 / 32 | 35.963 | 197.524 | 5.49× | 23.53 → 23.53 |
 
 Development prefill tiling improved the same M1's 4-bit prefill throughput by
 2.20×, 5.13×, and 5.49× at 30, 262, and 1053 prompt tokens in five alternating
