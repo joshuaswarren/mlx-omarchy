@@ -28,6 +28,10 @@ The experimental `MLX_OMARCHY_ROPE_BF16_DIRECT` and
 `MLX_OMARCHY_SDPA_BF16_FAST` flags remain off: both changed generated
 token IDs on M1. See the [hardware gate receipt](../receipts/2026-09-04-m1-performance-gates.md).
 
+Compiled-tape elementwise chains can fuse into one dispatch behind
+`MLX_OMARCHY_FUSED_CHAIN`. It defaults off pending the native paired
+gate (`receipts/2026-09-04-swiglu-fused-chain.md`).
+
 ## Build the wheel
 
 1. Install the build tools: Python 3.10 or newer with `venv`, `cmake` 3.25 or

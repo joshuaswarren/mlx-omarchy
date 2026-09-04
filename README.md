@@ -48,8 +48,9 @@ Both columns below are the same Apple M1 (T8103, 8 GPU cores, 16 GB). Same model
 | 4-bit peak memory | 0.320 GB | 0.292 GB | about equal |
 
 The 4-bit decode row is current main, unreleased: two changes since v0.3.5 took it
-from 12.52 to 30.74 tok/s. Every other row describes the v0.3.5 baseline,
-not the opt-in development paths below.
+from 12.52 to 30.74 tok/s. Every other row describes the v0.3.5 baseline. On
+current main, quantized prefill tiling is enabled by default (measured below);
+the bf16 candidates stay gated off.
 
 Conditions, exact commands, and the prior measurements they replaced: `receipts/2026-09-04-rope-gate-drain.md` and `receipts/2026-09-04-qmm-gemv-subgroup-m1.md` (the two decode changes since v0.3.5, unreleased), `receipts/2026-09-04-release-v0.3.5.md` (decode measured on the uploaded asset), `receipts/2026-09-04-v0.3.4-decode-regression.md` (why v0.3.4 does not deliver these numbers), and `receipts/2026-09-03-dispatcher-compile-and-column-replace.md`. Decode numbers are pinned-length rates (the table header is explicit), not the EOS-truncated short-burst rates `--max-tokens` produces; the decoder ratio this table implies is not directly comparable to a `--max-tokens 32` rate on any other tool.
 

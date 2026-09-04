@@ -63,26 +63,27 @@ receipt that bounds it.
    work at the same length is fine; `mlx_lm` is unaffected. What reaches
    it is a hand-written full-sequence forward, which is why no user
    has reported it. Hardware-only.
-2. **Subgroup arithmetic on the decode hot path** (lead from
-   `receipts/2026-09-04-subgroup-finding.md`). The disassembled
-   SPIR-V in `qmm_vec.comp` and `matmul_vec.comp` contains no
-   `OpGroupNonUniform` operations; reductions use a 5-round shared-memory
-   tree. Honeykrisp exposes subgroup operations; the float subgroup reduce
-   lowers to software on this driver, so a subgroup path is a real
-   trade-off, not a free win. A pinned M1 benchmark vs the current
-   tree (`subgroupAdd` against the shared tree at the matching k-loop
-   shape) decides it. The variant is staged at
-   `receipts/2026-09-02-gemv-decode/matmul_vec_subgroup.comp` and is
-   correct only at real subgroup size 32, so a device-subgroup-size
-   gate in dispatch is a precondition for any ship. Hardware-only.
-3. **The bf16 compiled-tape defect, in multi-core form**
-   (`receipts/2026-09-02-m1-bf16-compiled-tape.md`). The defect
-   reproduces at `nproc=1` (a single-core reproduction is in the
-   receipt). The gate lifts only when mlx-lm bf16 with compile on
-   produces clean output under repeated multi-core on-device runs.
-   The single-core run serialises the concurrency a memory hazard
-   needs. Whoever flashes m1n1 and brings the seven cores back is
-   the one who can run the rerun. Hardware-only.
+2. **Subgroup arithmetic on the decode hot path - answered at kernel
+   level, no win.** `tools/subgroup-bench` on the M1 clocked float
+   `subgroupAdd` against the five-round shared-memory tree in kernels
+   differing only in the reduction body: parity at both tested sizes
+   (`receipts/2026-09-04-qmm-gemv-subgroup-m1.md`). The reduction body
+   is not a decode lever; the shipped 37% came from the GEMV dispatch.
+   The variant stays staged at
+   `receipts/2026-09-02-gemv-decode/matmul_vec_subgroup.comp` (correct
+   only at real subgroup size 32; a device-subgroup-size gate is a
+   precondition for any ship). Re-open only with a new mechanism, not
+   a re-run.
+3. **bf16 compiled tape stays disabled pending multi-core numeric
+   equality** (`receipts/2026-09-02-m1-bf16-compiled-tape.md`). bf16
+   with compile on produced wrong output on the M1; the bf16 tape gate
+   stays off in what ships, so mlx-lm bf16 runs eager. llvmpipe never
+   showed it: the differential harness and the compiled-tape battery
+   match eager exactly. The writer and the cause are not established.
+   Do not remove the guard on a theory; buffer-poisoning probes and
+   drain removal are not proposed here. The gate lifts only when
+   mlx-lm bf16 with compile on produces valid numerics under repeated
+   multi-core on-device runs. Hardware-only.
 4. **The M1 verification bars for v0.4.0 and beyond.** The v0.4.0
    proof gate is the supported M1 matrix; v0.5.0 needs an M1 install
    of the public wheel, MLX-LM generation with zero CPU dispatches,
@@ -193,14 +194,11 @@ next release.
    implicit reads, which is what broke the v0.3.4 fused-RoPE shader
    on `glslc`). A targeted kernel-vs-kernel A/B on the M1 with each
    lever isolated would decompose the 6x.
-3. **Does subgroup arithmetic close the kernel gap?** The variant
-   is staged at
-   `receipts/2026-09-02-gemv-decode/matmul_vec_subgroup.comp`. The
-   boundary condition: Honeykrisp float subgroup reduce lowers to
-   software; the integer subgroup ops are hardware. A pinned A/B
-   (subgroup vs shared-tree at matching k-loop shape, on the M1) is
-   the answer. Subgroup size is 32 on M1, so the dispatch needs a
-   device-subgroup-size gate.
+3. **Does subgroup arithmetic close the kernel gap?** Answered no at
+   kernel level: float `subgroupAdd` and the shared-memory tree cost
+   the same on the M1 (`tools/subgroup-bench`; see
+   `receipts/2026-09-04-qmm-gemv-subgroup-m1.md`). The 6x
+   decomposition (question 2) is the live work.
 4. **What are the remaining ~4 host copies per layer per token, and
    who owns them?** GPU profile shows dispatch record cost is now
    1.7 us median on llvmpipe and was 160-260 us per dispatch
