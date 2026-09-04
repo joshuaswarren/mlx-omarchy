@@ -109,6 +109,17 @@ Until then, update a row only when the linked receipt proves every named gate.
 
 ## Test rules
 
+- Print the provenance line beside every measurement, reproduction, or
+  defect claim, including throwaway probes. `scripts/mlx_provenance.py`
+  hashes the loaded `libmlx.so`, compares it against the installed
+  wheel's RECORD, and reports the harness commit. A venv can silently
+  hold a wheel from another tree: on 2026-09-03 that produced four
+  separate wrong conclusions in one day - a retracted byte-identity
+  claim, a phantom missing profiler, a stale-checkout crash that idled
+  the M1 for 47 minutes, and a reported eager-evaluation defect that did
+  not exist. Each looked entirely plausible. An unlabelled number is not
+  evidence, and a defect report from an unverified environment costs
+  more than no report.
 - Add one focused test for each new observable contract.
 - Run the release-equivalent build with CPU primitive evaluation unavailable.
 - Trace every ecosystem workflow at least once and require zero CPU tensor dispatches.
