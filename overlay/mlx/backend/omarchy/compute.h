@@ -340,12 +340,6 @@ struct ComputeParams {
   uint32_t shape[4]{};
   uint32_t in_strides[4]{};
   uint32_t out_strides[4]{};
-  // Matmul inner-matrix gaps in elements: the stored row stride, or the
-  // stored column stride under the transposed flag. Dense operands
-  // carry the natural gap; a cache slice carries its row gap and skips
-  // materialization.
-  uint32_t lhs_gap{0};
-  uint32_t rhs_gap{0};
 };
 
 class ComputeRuntime {

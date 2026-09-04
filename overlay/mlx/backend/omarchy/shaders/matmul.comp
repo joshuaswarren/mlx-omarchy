@@ -67,12 +67,6 @@ layout(push_constant) uniform Params {
   uint shape[4];
   uint in_strides[4];
   uint out_strides[4];
-  // Inner-matrix gaps in elements: for the transposed flag the stored
-  // column stride, else the stored row stride. Dense operands carry the
-  // natural gap (matrix_m / matrix_k / matrix_n by role); a cache slice
-  // carries its row gap and consumes no materialization.
-  uint lhs_gap;
-  uint rhs_gap;
 } params;
 
 shared float tile_a[16][16];
@@ -121,16 +115,16 @@ void main() {
         uint b_row = tile * TILE_SIZE + local_y;
         uint a_index = params.lhs_offset + a_batch +
             ((params.flags & 4u) != 0u
-                ? a_column * params.lhs_gap + row
-                : row * params.lhs_gap + a_column);
+                ? a_column * params.matrix_m + row
+                : row * params.matrix_k + a_column);
         tile_a[local_y][local_x] = row < params.matrix_m &&
                 a_column < params.matrix_k
             ? LOAD_VALUE(input_a.values[a_index])
             : 0.0;
         uint b_index = params.rhs_offset + b_batch +
             ((params.flags & 1u) != 0u
-                ? column * params.rhs_gap + b_row
-                : b_row * params.rhs_gap + column);
+                ? column * params.matrix_k + b_row
+                : b_row * params.matrix_n + column);
         tile_b[local_y][local_x] = b_row < params.matrix_k &&
                 column < params.matrix_n
             ? LOAD_VALUE(input_b.values[b_index])
