@@ -16,7 +16,6 @@ import os
 import sys
 
 os.environ.setdefault("MLX_OMARCHY_ALLOW_NON_APPLE", "1")
-os.environ.setdefault("MLX_OMARCHY_ALLOW_UNSAFE_COMPILE", "1")
 
 import mlx.core as mx
 

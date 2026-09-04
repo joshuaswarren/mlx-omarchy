@@ -16,7 +16,6 @@
 #include <stdexcept>
 
 #include "mlx/backend/omarchy/vulkan.h"
-#include "mlx/compile.h"
 
 #include "mlx/backend/omarchy/allocator.h"
 
@@ -440,33 +439,6 @@ bool Runtime::init_impl() {
   }
 
   error.clear();
-  // Auto-eager on the real Apple GPU target. The tape interpreter has
-  // produced silently wrong values on Honeykrisp and the defect is
-  // unpinned, so compilation is switched off for the process and the
-  // user is told once. Eager computes the same values, only slower, so
-  // this trades speed for correctness instead of refusing. The
-  // eval_compiled_tape refusal stays as a backstop for any tape that
-  // still reaches the interpreter (calling mx.enable_compile() after
-  // this point re-arms it), and the override keeps compiled tapes for
-  // deliberate investigation. This hook runs at runtime discovery,
-  // which precedes every array creation and every compiled call, since
-  // both resolve the default device first.
-  bool apple_target = false;
-  for (const auto& info : supported) {
-    apple_target = apple_target || !info.support.non_apple_dev;
-  }
-  if (apple_target && !env_flag("MLX_OMARCHY_ALLOW_UNSAFE_COMPILE")) {
-    disable_compile();
-    std::fprintf(
-        stderr,
-        "[omarchy] Compiled tapes are disabled on this Apple GPU: the tape"
-        " interpreter has produced silently wrong values on Honeykrisp and"
-        " the defect is unpinned (docs/known-defects.md;"
-        " receipts/2026-09-03-dispatcher-compile-and-column-replace.md)."
-        " Running eager instead - same values, slower. Set"
-        " MLX_OMARCHY_ALLOW_UNSAFE_COMPILE=1 to re-enable compiled tapes"
-        " for deliberate investigation.\n");
-  }
   // One lazily-filled slot per supported device; device() indexes this
   // vector directly, so it must match |supported| before ready flips.
   devices.resize(supported.size());
@@ -629,22 +601,12 @@ const CapabilityReport& capability_report(uint32_t index) {
   return rt.supported[index].caps;
 }
 
-bool compiled_tapes_refused(const Device& device) {
-  if (env_flag("MLX_OMARCHY_ALLOW_UNSAFE_COMPILE")) {
-    return false;
-  }
-  // Real Apple GPU targets corrupt compiled tape values; development
-  // devices accepted through MLX_OMARCHY_ALLOW_NON_APPLE do not.
-  return !device.non_apple_dev();
-}
-
 // --- Device ---------------------------------------------------------------
 
 Device::Device(uint32_t physical_device_index) {
   auto& rt = runtime();
   auto& info = rt.supported.at(physical_device_index);
   caps_ = info.caps;
-  non_apple_dev_ = info.support.non_apple_dev;
   VkPhysicalDevice pd = info.handle;
   auto& it = vk::instance_table();
 

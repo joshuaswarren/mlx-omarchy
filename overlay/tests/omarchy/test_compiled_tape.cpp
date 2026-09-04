@@ -7,13 +7,12 @@
 // at 1e-6, float16 at 2e-3 after both sides are widened to float32, and
 // integer, bitwise, boolean, and select classes compare exactly.
 //
-// On a real Apple GPU the runtime auto-disables compilation at device
-// discovery (docs/known-defects.md), and the device gate refuses any tape
-// that still arrives. This battery therefore needs
-// MLX_OMARCHY_ALLOW_UNSAFE_COMPILE=1 to exercise compiled tapes there;
-// without it the fail-closed case asserts the refusal and the equivalence
-// cases hit the backstop. On development devices compilation stays armed
-// and the battery runs as is.
+// Compiled tapes run by default on every device class; the stale-shape
+// defect that corrupted them on Honeykrisp is fixed at the interpreter
+// (eval-time shape derivation) and pinned by the shapeless reuse cases
+// below. No override is needed or honoured: MLX_OMARCHY_ALLOW_UNSAFE_COMPILE
+// is retired. The bf16 tape gate and the trigonometric domain gate are
+// separate protections and remain.
 
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include "doctest/doctest.h"
@@ -52,25 +51,6 @@ bool compute_available() {
     skip(
         "no qualifying Vulkan device (set MLX_OMARCHY_ALLOW_NON_APPLE=1 on"
         " a development machine).");
-    return false;
-  }
-  return true;
-}
-
-// compute_available() plus the compiled-tape policy: on a real Apple GPU
-// without the override the backstop refuses every tape, so the tape
-// equivalence and dtype-gate cases skip with the actionable instruction
-// instead of failing on refusals. The fail-closed and override cases
-// deliberately stay on compute_available(): they assert the refusal and
-// the override themselves.
-bool compiled_available() {
-  if (!compute_available()) {
-    return false;
-  }
-  if (omarchy::compiled_tapes_refused(omarchy::device(0))) {
-    skip(
-        "compiled tapes are refused on this device (set"
-        " MLX_OMARCHY_ALLOW_UNSAFE_COMPILE=1 to exercise them).");
     return false;
   }
   return true;
@@ -197,7 +177,7 @@ using BinaryFn =
 } // namespace
 
 TEST_CASE("compiled tape matches eager for every float unary class") {
-  if (!compiled_available()) {
+  if (!compute_available()) {
     return;
   }
   Stream stream = gpu_stream();
@@ -304,7 +284,7 @@ TEST_CASE("compiled tape matches eager for every float unary class") {
 }
 
 TEST_CASE("compiled tape matches eager for every float binary class") {
-  if (!compiled_available()) {
+  if (!compute_available()) {
     return;
   }
   Stream stream = gpu_stream();
@@ -392,7 +372,7 @@ TEST_CASE("compiled tape matches eager for every float binary class") {
 }
 
 TEST_CASE("compiled tape matches eager for integer and bitwise classes") {
-  if (!compiled_available()) {
+  if (!compute_available()) {
     return;
   }
   Stream stream = gpu_stream();
@@ -466,7 +446,7 @@ TEST_CASE("compiled tape matches eager for integer and bitwise classes") {
 TEST_CASE(
     "compiled tape matches eager for comparison, logical, select, and"
     " cast classes") {
-  if (!compiled_available()) {
+  if (!compute_available()) {
     return;
   }
   Stream stream = gpu_stream();
@@ -545,7 +525,7 @@ TEST_CASE(
 }
 
 TEST_CASE("compiled tape returns multiple outputs exactly") {
-  if (!compiled_available()) {
+  if (!compute_available()) {
     return;
   }
   Stream stream = gpu_stream();
@@ -563,7 +543,7 @@ TEST_CASE("compiled tape returns multiple outputs exactly") {
 }
 
 TEST_CASE("compiled tape interleaves proven and widened classes in f16") {
-  if (!compiled_available()) {
+  if (!compute_available()) {
     return;
   }
   Stream stream = gpu_stream();
@@ -586,7 +566,7 @@ TEST_CASE("compiled tape interleaves proven and widened classes in f16") {
 }
 
 TEST_CASE("bf16 tapes stay gated for the widened op set") {
-  if (!compiled_available()) {
+  if (!compute_available()) {
     return;
   }
   Stream stream = gpu_stream();
@@ -609,7 +589,7 @@ TEST_CASE("bf16 tapes stay gated for the widened op set") {
 }
 
 TEST_CASE("complex tape ops stay refused by name") {
-  if (!compiled_available()) {
+  if (!compute_available()) {
     return;
   }
   Stream stream = gpu_stream();
@@ -632,80 +612,6 @@ TEST_CASE("complex tape ops stay refused by name") {
   set_compile_mode(CompileMode::disabled);
 }
 
-// A tiny fusable tape used by the fail-closed cases below: two nodes, so
-// the tracer builds a real tape and eval_compiled_tape runs.
-auto square_plus_one_fn(const Stream& stream) {
-  return [&stream](const std::vector<array>& inputs) {
-    return std::vector<array>{
-        add(multiply(inputs[0], inputs[0], stream), array(1.0f), stream)};
-  };
-}
-
-TEST_CASE("compiled tapes refuse by default on real Apple GPUs") {
-  if (!compute_available()) {
-    return;
-  }
-  Stream stream = gpu_stream();
-  auto& dev = omarchy::device(stream.device.index);
-  bool refused_default = omarchy::compiled_tapes_refused(dev);
-
-  // The policy is keyed to the device AND the override: refusal iff a
-  // real Apple GPU runs without MLX_OMARCHY_ALLOW_UNSAFE_COMPILE. On a
-  // real Apple GPU the runtime auto-disables compilation at discovery
-  // and the device gate refuses any tape that still arrives
-  // (docs/known-defects.md); on development devices accepted through
-  // MLX_OMARCHY_ALLOW_NON_APPLE the hook does not fire and compiled
-  // tapes keep running for the batteries and the harness. Stale
-  // assertion in e600ad6 said refused == !non_apple_dev, which broke
-  // the override battery on the M1 (caught by hardware verification).
-  const bool override_set =
-      std::getenv("MLX_OMARCHY_ALLOW_UNSAFE_COMPILE") != nullptr;
-  CHECK_EQ(refused_default, !dev.non_apple_dev() && !override_set);
-
-  std::vector<float> xv = {0.5f, -1.5f, 2.0f, 0.0f};
-  array x(xv.begin(), Shape{4}, float32);
-  set_compile_mode(CompileMode::enabled);
-  auto fused = compile(square_plus_one_fn(stream));
-  std::string error = evaluation_error(fused({x})[0]);
-  if (refused_default) {
-    CHECK(
-        error.find("[omarchy] Compiled tapes are refused") !=
-        std::string::npos);
-    CHECK(error.find("MLX_DISABLE_COMPILE=1") != std::string::npos);
-    CHECK(
-        error.find("MLX_OMARCHY_ALLOW_UNSAFE_COMPILE=1") !=
-        std::string::npos);
-  } else {
-    // Development device: compilation stays armed and the default run
-    // must still execute the tape.
-    CHECK(error.empty());
-  }
-  set_compile_mode(CompileMode::disabled);
-}
-
-TEST_CASE("MLX_OMARCHY_ALLOW_UNSAFE_COMPILE=1 re-enables compiled tapes") {
-  if (!compute_available()) {
-    return;
-  }
-  Stream stream = gpu_stream();
-  auto& dev = omarchy::device(stream.device.index);
-  setenv("MLX_OMARCHY_ALLOW_UNSAFE_COMPILE", "1", 1);
-  CHECK_FALSE(omarchy::compiled_tapes_refused(dev));
-
-  std::vector<float> xv = {0.5f, -1.5f, 2.0f, 0.0f};
-  array x(xv.begin(), Shape{4}, float32);
-  set_compile_mode(CompileMode::enabled);
-  auto fused = compile(square_plus_one_fn(stream));
-  // The override must let the tape run. Output correctness is asserted
-  // only where it holds: on the Apple target the override exists so the
-  // differential harness can reproduce the defect, not to promise
-  // correct values.
-  std::string error = evaluation_error(fused({x})[0]);
-  CHECK(error.empty());
-  set_compile_mode(CompileMode::disabled);
-  unsetenv("MLX_OMARCHY_ALLOW_UNSAFE_COMPILE");
-}
-
 // The tape debug switches (docs/install-omarchy.md) are diagnostics for
 // the Honeykrisp layer isolation. Defaults must stay inert: with no env
 // var set the scoped switch state is false and every other case in this
@@ -718,7 +624,7 @@ TEST_CASE(
     "compiled-tape debug switches stay inert by default and correct when set") {
   CHECK_FALSE(omarchy::tape_full_barriers());
   CHECK_FALSE(omarchy::tape_no_reuse());
-  if (!compiled_available()) {
+  if (!compute_available()) {
     return;
   }
   Stream stream = gpu_stream();
@@ -820,7 +726,7 @@ TEST_CASE(
   // zeros, so nothing but a shape-mismatch refusal ever showed. This
   // case traces at one shape and requires value-and-shape equality with
   // eager at other shapes, which the stale-shape path cannot pass.
-  if (!compiled_available()) {
+  if (!compute_available()) {
     return;
   }
   Stream stream = gpu_stream();
@@ -853,6 +759,82 @@ TEST_CASE(
   // Reuse the same traced fragment at other shapes: grow, shrink, and
   // an unrelated width. Grow is the recorded refusal direction.
   std::vector<Shape> shapes = {Shape{4, 32}, Shape{1, 32}, Shape{3, 48}};
+  for (size_t case_index = 0; case_index < shapes.size(); ++case_index) {
+    INFO("shape case ", case_index);
+    std::vector<array> inputs = {make_input(shapes[case_index])};
+    set_compile_mode(CompileMode::disabled);
+    std::vector<array> eager = swiglu(inputs);
+    for (auto& out : eager) {
+      out.eval();
+    }
+    sync_stream(stream);
+    set_compile_mode(CompileMode::enabled);
+    auto outputs = compiled_fn(inputs);
+    for (auto& out : outputs) {
+      out.eval();
+    }
+    sync_stream(stream);
+    set_compile_mode(CompileMode::disabled);
+    REQUIRE_EQ(eager.size(), outputs.size());
+    for (size_t j = 0; j < eager.size(); ++j) {
+      REQUIRE_EQ(eager[j].shape(), outputs[j].shape());
+      const float* eager_data = eager[j].data<float>();
+      const float* compiled_data = outputs[j].data<float>();
+      for (size_t index = 0; index < eager[j].size(); ++index) {
+        INFO("element ", index, " eager=", eager_data[index],
+             " compiled=", compiled_data[index]);
+        CHECK(std::abs(eager_data[index] - compiled_data[index]) <=
+              1e-6 * std::max(1.0f, std::abs(eager_data[index])));
+      }
+    }
+  }
+}
+
+TEST_CASE("shapeless reuse works on the default path with no override set") {
+  // The user-visible contract the re-enable restores: a plain process
+  // with no MLX_OMARCHY_* override and no MLX_DISABLE_COMPILE compiles,
+  // serves new shapes from the shapeless fragment, and matches eager.
+  // Complements the stale-traced-shape regression above (which pins the
+  // interpreter fix); this case pins the default path a user actually
+  // runs, and refuses to run under any override so it cannot silently
+  // test the wrong path.
+  for (const char* name :
+       {"MLX_OMARCHY_ALLOW_UNSAFE_COMPILE", "MLX_DISABLE_COMPILE"}) {
+    if (std::getenv(name) != nullptr) {
+      skip("override environment set; this case proves the default path");
+      return;
+    }
+  }
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+
+  auto swiglu = [](const std::vector<array>& inputs) {
+    array gate = sigmoid(inputs[0]);
+    return std::vector<array>{
+        add(multiply(inputs[0], gate), array(0.25f))};
+  };
+
+  auto make_input = [](Shape shape) {
+    std::vector<float> data(shape[0] * shape[1]);
+    for (size_t i = 0; i < data.size(); ++i) {
+      data[i] = static_cast<float>(i % 23) * 0.125f - 1.5f;
+    }
+    return array(data.begin(), shape, float32);
+  };
+
+  set_compile_mode(CompileMode::enabled);
+  auto compiled_fn = compile(swiglu, /*shapeless=*/true);
+
+  std::vector<array> trace_inputs = {make_input(Shape{2, 48})};
+  auto trace_out = compiled_fn(trace_inputs);
+  for (auto& out : trace_out) {
+    out.eval();
+  }
+  sync_stream(stream);
+
+  std::vector<Shape> shapes = {Shape{1, 48}, Shape{5, 64}, Shape{2, 96}};
   for (size_t case_index = 0; case_index < shapes.size(); ++case_index) {
     INFO("shape case ", case_index);
     std::vector<array> inputs = {make_input(shapes[case_index])};

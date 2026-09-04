@@ -194,13 +194,6 @@ class Device {
     return caps_;
   }
 
-  // True when the device was accepted only through the explicit
-  // MLX_OMARCHY_ALLOW_NON_APPLE development override, so the observed
-  // corruption classes of the real Apple GPU target do not apply to it.
-  bool non_apple_dev() const {
-    return non_apple_dev_;
-  }
-
   std::mutex& queue_mutex() {
     return queue_mutex_;
   }
@@ -218,7 +211,6 @@ class Device {
   void signal_timeline(VkSemaphore semaphore, uint64_t value);
 
   CapabilityReport caps_;
-  bool non_apple_dev_{false};
   VkPhysicalDeviceMemoryProperties mem_props_{};
   VkDevice device_{VK_NULL_HANDLE};
   VkQueue queue_{VK_NULL_HANDLE};
@@ -247,17 +239,6 @@ MLX_API Device& device(uint32_t index = 0);
 // Throws std::runtime_error when the index is out of range or discovery
 // failed.
 MLX_API const CapabilityReport& capability_report(uint32_t index);
-
-// Compiled-tape execution policy for one live device. Compiled tapes
-// return wrong values on real Apple GPU targets and the defect is
-// unfixed (docs/known-defects.md), so the tape runner refuses them
-// unless the device is a development device accepted through
-// MLX_OMARCHY_ALLOW_NON_APPLE, or the explicit
-// MLX_OMARCHY_ALLOW_UNSAFE_COMPILE override is set to investigate the
-// defect deliberately. Keyed to the device, not global, because the
-// corruption is observed only on Apple GPUs and development boxes run
-// compiled tapes in their batteries and in the differential harness.
-bool compiled_tapes_refused(const Device& device);
 
 // True when the named MLX_OMARCHY_* boolean environment variable is set
 // to 1/on/true/yes (case-insensitive). False when unset or any other

@@ -15,70 +15,11 @@ for example llvmpipe, on a development machine. Do not set it on a supported
 machine. Receipts from a development run must record that the device is a
 development device, not Honeykrisp.
 
-`MLX_OMARCHY_ALLOW_UNSAFE_COMPILE=1` lets compiled tapes run on a real
-Apple GPU. The default runs them eager: at device discovery the runtime
-disables compilation and prints one warning, because the tape
-interpreter has produced silently wrong values there and the defect is
-unpinned ([docs/known-defects.md](known-defects.md)). Eager output is
-identical, only slower. Set the override only to investigate that defect
-deliberately; it permits wrong values. The differential harness
-(`scripts/differential_compile.py`, `scripts/probe_tape_eager.py`) sets
-it for itself; `scripts/probe_compile_ordering.py` measures the default
-path and runs without it.
-
-## Compiled-tape debug switches
-
-Three switches exist to bisect the compiled-tape corruption on Honeykrisp
-([docs/known-defects.md](known-defects.md)). They are diagnostics for the
-defect hunt, not product configuration. All three are off by default;
-with none set, nothing changes for any user. Each is read once per tape
-evaluation and prints one line to stderr the first time a tape runs with
-any of them active. All of them slow execution down, some severely. They
-combine freely with `MLX_OMARCHY_ALLOW_UNSAFE_COMPILE=1`, which the
-hardware hunt needs first.
-
-- `MLX_OMARCHY_TAPE_PER_NODE_SUBMIT=1` submits each tape node as its own
-  command buffer, one submission per node, matching the eager execution
-  shape while running the tape's own code path. If the corruption
-  disappears under this switch, the defect lives in the
-  many-dispatches-per-command-buffer recording. If it persists, the
-  command buffer is innocent and the tape's resource handling stays
-  suspect.
-- `MLX_OMARCHY_TAPE_FULL_BARRIERS=1` adds a full memory dependency
-  (all commands, all memory access, both directions) before and after
-  every dispatch, on top of the regular per-dispatch barriers. If
-  per-node submission fixes the corruption but this switch does not, the
-  driver is not honouring an in-buffer dependency it should, and that is
-  a Honeykrisp finding worth its own minimal shader reproduction.
-- `MLX_OMARCHY_TAPE_NO_REUSE=1` gives every dispatch fresh resources:
-  the buffer cache is bypassed for the duration of a tape recording, so
-  every intermediate lands in new device memory, and every dispatch gets
-  its own descriptor pool with exactly one set. If per-node submission
-  does not fix the corruption but this switch does, the defect is
-  aliasing or lifetime, not ordering.
-- `MLX_OMARCHY_TAPE_SYNC_EVERY=1` drains the stream after every tape
-  evaluation, so nothing queued behind the tape executes while the host
-  runs ahead. Tests whether host run-ahead is load-bearing for the
-  corruption.
-- `MLX_OMARCHY_NO_BUFFER_CACHE=1` turns the buffer cache off for the
-  whole process, not just the tape window: every freed buffer is
-  destroyed instead of recycled. Tests whether cross-window buffer
-  recycling carries the corruption. Unlike the tape-scoped switches it
-  is read once at runtime init, so it must be set before the process
-  starts, not just before the tape runs.
-- `MLX_OMARCHY_POISON_FREED=1` fills every buffer with the float32 word
-  123456789.0 when it is recycled into the allocator cache. Any stale
-  read of recycled storage then announces itself: a read that reaches
-  the Cos gate aborts with exactly that magnitude in the message, and
-  no legitimate f16 tensor can contain the word (f16 max finite is
-  65504). Run the model prompt with this armed as a regression check:
-  a correct answer proves no recycled-storage read served the run. Read
-  once at first use, so set it before the process starts.
-
-The first three switches ran the M1 decision tree on 2026-09-03: none
-of them removed the corruption, and the refused magnitude tracked the
-switch class (receipts/2026-09-03-tape-layer-isolation-switches.md,
-MEASURED OUTCOME). These two switches bisect the remaining space.
+Compiled tapes run by default on Apple GPUs: the stale-shape
+corruption that closed them is root-caused and fixed
+([docs/known-defects.md](known-defects.md)). The former
+`MLX_OMARCHY_ALLOW_UNSAFE_COMPILE` override was retired with the fix;
+setting it now does nothing.
 
 ## Build the wheel
 
