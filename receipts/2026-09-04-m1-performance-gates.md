@@ -30,16 +30,16 @@ All 30 legs produced identical token-ID digests across both sides and all repeat
 
 The complete QMM numerical sweep also passed on M1: 2,928 assertions, one case, zero failures (`m1-qmm-full-sweep-f66a144`). Checks reject nonfinite outputs before comparing against storage-rounded references. Together these results support enabling tiled prefill; single-row decode keeps its existing GEMV path.
 
-## bf16 RoPE and SDPA: keep disabled
-
-The kernel-level checks passed on the same combined wheel: `sdpa_equivalence.py --require-gates` reported `ALL PASS`; `omarchy_fast_ops_tests` passed 21 cases and 27,936 assertions. The model-level identity gate did not pass.
-
 Default-on integration smoke: a 2×32 by 3×32 quantized multiplication with
 the flag unset selected kernel 220 and returned six exact values of 32 on
 llvmpipe. The broader local sweep did not finish: after 358 passing assertions,
 its 1023×4864×4864 fp16 case hit the 10-second no-progress watchdog. This is
 recorded as a failed local sweep, not a pass; the M1 full-sweep result above
 remains the hardware qualification. No watchdog bypass was used.
+
+## bf16 RoPE and SDPA: keep disabled
+
+The kernel-level checks passed on the same combined wheel: `sdpa_equivalence.py --require-gates` reported `ALL PASS`; `omarchy_fast_ops_tests` passed 21 cases and 27,936 assertions. The model-level identity gate did not pass.
 
 Model revision: `56d07e766edd7159fbe12ed12d9cf114bf38bf1e`. Compilation was enabled, QMM tiling disabled, and every leg processed the same 262-token prompt and generated 128 tokens. Five baseline runs gave the same digest, also matching the compile-disabled matrix control.
 
