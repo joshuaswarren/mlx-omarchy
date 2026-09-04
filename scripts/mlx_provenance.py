@@ -270,6 +270,36 @@ def control_check(package_dir):
     return True, f"positive control present in {libmlx}"
 
 
+def harness_commit():
+    """Git commit of the checkout this script runs from, or 'unknown'.
+
+    The wheel hashes below say what library ran. They say nothing about
+    the script that drove it. On 2026-09-03 a stale checkout on the M1
+    crashed the pinned-length bench for 47 minutes while the provenance
+    line beside it read verified=match, because the wheel was fine and
+    the harness was three commits behind. Report both.
+    """
+    import subprocess
+
+    try:
+        out = subprocess.run(
+            ["git", "-C", str(Path(__file__).resolve().parent), "rev-parse",
+             "--short", "HEAD"],
+            capture_output=True, text=True, timeout=5, check=False,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return "unknown"
+    sha = out.stdout.strip()
+    if out.returncode != 0 or not sha:
+        return "unknown"
+    dirty = subprocess.run(
+        ["git", "-C", str(Path(__file__).resolve().parent), "status",
+         "--porcelain"],
+        capture_output=True, text=True, timeout=5, check=False,
+    )
+    return f"{sha}-dirty" if dirty.stdout.strip() else sha
+
+
 def provenance_line(prov):
     """One line that must be printed beside every emitted number."""
     files = " ".join(
@@ -279,7 +309,7 @@ def provenance_line(prov):
     return (
         f"provenance: {prov.get('dist')} {prov.get('dist_version')} "
         f"mx={prov.get('mx_version')} verified={prov.get('verified')} "
-        f"{files}"
+        f"harness={harness_commit()} {files}"
     )
 
 
