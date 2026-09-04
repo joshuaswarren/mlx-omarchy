@@ -90,16 +90,23 @@ bitwise-clean, the recycled-storage poison check 5 of 5, and the C++
 batteries green
 (`receipts/2026-09-03-stale-shape-tape-corruption.md`,
 [docs/known-defects.md](docs/known-defects.md)). Compiled-versus-eager
-speed is not measured yet; TCF-2 covers it, so treat the re-enable as
-correctness-proven and performance-unproven. History: under the override at `ff4b05a` a compiled 4-bit run aborts loudly at the Cos accuracy gate (magnitude ~8e8, nondeterministic across runs), and under GPU-assisted validation the same run answers correctly - an asynchronous race. Affinity numbers measured on the stale wheel (bf16 prefill 17.4 unpinned vs 21.8 pinned to one core; the win gone with two pinned cores; 4-bit prefill -2.5% pinned; decode affinity-insensitive) are not re-measured on current main.
+speed, measured after the re-enable on main `b7bde25` (wheel sha256
+`aa6a7e05...`, provenance gate green, 36-token prompt, 63 pinned tokens,
+five runs per leg): compiled at its default - no environment variables,
+the shapeless-reuse notice in every run proving tapes executed - decodes
+7.10 tok/s median (7.10/7.37/7.00/7.05/7.41) against 7.25 eager
+(7.29/7.21/7.61/7.07/7.25), parity within run-to-run noise; prefill is
+27.3 tok/s on both legs. The fused elementwise chains are a small share
+of a decode graph dominated by matmuls and reductions that stay eager, so
+compilation at this shape is a correctness-and-foundation win, not a
+tok/s win. History: under the override at `ff4b05a` a compiled 4-bit run aborts loudly at the Cos accuracy gate (magnitude ~8e8, nondeterministic across runs), and under GPU-assisted validation the same run answers correctly - which read as an asynchronous race and was not; the magnitudes were recycled-page contents read past undersized eval inputs, and the eliminated hypothesis trail is in the linked receipt. Affinity numbers measured on the stale wheel (bf16 prefill 17.4 unpinned vs 21.8 pinned to one core; the win gone with two pinned cores; 4-bit prefill -2.5% pinned; decode affinity-insensitive) are not re-measured on current main.
 
 Generated text is identical on both platforms: `Hello! How can I assist you today?` for bf16, `Paris` for 4-bit, matching token counts and stop positions. Numerical correctness is there. Speed is not.
 
 The Vulkan tok/s column was measured on commit `ceae628`. It moved a long way from the previous revision, on the same machine in the same session: 4-bit prefill up 35.5%, 4-bit decode up 58.6%, bf16 prefill up 45.8%, bf16 decode up 71.2%. The memory rows carry over from the earlier revision and were not re-measured.
 
-Two things about the Vulkan column are not like-for-like, and both are the product's fault rather than the benchmark's. The Vulkan legs run `MLX_DISABLE_COMPILE=1`. Compiled bf16 tapes corrupt nondeterministically on this driver, and the gate that catches them is deliberately kept. So a bf16 leg with compile at its default cannot be measured here at all. The macOS column ran compile at its default, where it works.
+Two things about the Vulkan column are not like-for-like, and both are the product's fault rather than the benchmark's. The bf16 legs run `MLX_DISABLE_COMPILE=1`: bf16 compiled tapes are refused by name - the bf16 tape gate stays after the corruption fix - so eager is the only bf16 path on this backend. The macOS column ran compile at its default, where it works.
 
-4-bit with compile enabled is now measured, and it fails loudly. With the override set, a greedy 4-bit run on the M1 at `temp 0 seed 0` aborts at the Cos accuracy gate rather than answering. The refused magnitude is different on every run - 8.08e8, 8.99e8, 9.53e8, 9.60e8 - which is a race signature, not a wrong constant. Two further observations point the same way. Under GPU-assisted validation, which serialises the queue, the same run returns the correct "Paris": slowing the device down removes the wrong values. And `omarchy_compiled_tape_tests` passes 8 of 8 cases and 343 of 343 assertions on that same machine and driver, so the defect needs a graph larger than the tests build. An earlier version of this paragraph reported the same run returning 32 tokens of silent garbage at exit 0. That observation came from a stale wheel generation installed by a broken venv pin, and it does not reproduce on a verified build; it is corrected here rather than deleted.
 
 
 **Where the time goes**, measured on the M1 with a provenance-verified wheel and a pinned generation length. Decode issues about 95 GPU dispatches per token but about 1,740 queue submissions per token in bf16, and 94 against 1,800 in 4-bit. That is roughly eighteen submissions for every dispatch, so most submissions carry no compute at all. GPU busy time is about 1.5 ms per token against hundreds of milliseconds of wall, and the gaps between submissions account for 89% of the span. Decode on this backend is about 99.7% host-side.
