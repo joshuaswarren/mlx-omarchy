@@ -722,15 +722,25 @@ TEST_CASE(
     return;
   }
   Stream stream = gpu_stream();
-
-  // A swiglu-shaped tape: sigmoid, broadcast multiply, broadcast scalar
-  // add - the node mix the differential harness localised the Honeykrisp
-  // failure to, at a size the battery can run on llvmpipe.
-  auto swiglu = [&stream](const std::vector<array>& inputs) {
-    array gate = sigmoid(inputs[0], stream);
+  // No stream capture on purpose: ops recorded through an explicit
+  // non-trace stream materialize outside the compiled tape, which
+  // truncated this fn's tape to a broadcast add and made the submission
+  // assertion below count eager per-op commits instead of tape nodes.
+  // With plain ops the tracer captures the whole graph.
+  auto swiglu = [](const std::vector<array>& inputs) {
+    array gate = sigmoid(inputs[0]);
     return std::vector<array>{
-        multiply(inputs[0], gate, stream),
-        add(gate, array(1.0f), stream)};
+        multiply(inputs[0], gate),
+        add(gate, array(1.0f))};
+  };
+  // A single-output linear variant for the submission-shape measurement
+  // below: every node has one consumer, so the tracer tapes the whole
+  // chain (the multi-output swiglu above splits at its shared gate and
+  // tapes only a remnant, which cannot demonstrate per-node shape).
+  auto swiglu1 = [](const std::vector<array>& inputs) {
+    array gate = sigmoid(inputs[0]);
+    return std::vector<array>{
+        add(multiply(inputs[0], gate), array(1.0f))};
   };
 
   std::vector<float> xv(64);
@@ -749,29 +759,50 @@ TEST_CASE(
       "MLX_OMARCHY_TAPE_FULL_BARRIERS",
       "MLX_OMARCHY_TAPE_NO_REUSE",
       "MLX_OMARCHY_TAPE_SYNC_EVERY"};
-
   for (const char* name : switches) {
     INFO("switch ", name);
     setenv(name, "1", 1);
     check_compiled_matches_eager(swiglu, inputs, float32, stream, 1e-6);
     if (std::string(name) == "MLX_OMARCHY_TAPE_PER_NODE_SUBMIT") {
       // The decisive-bisector property: the switched tape must actually
-      // change submission shape. The swiglu tape has 3 nodes (sigmoid,
-      // multiply, add); per-node submission queues at least one
-      // submission per node where the default path queues one.
+      // change submission shape. Contract (7c3d6b4 batching): eager ops
+      // accumulate and flush only at finalize, event contracts, the
+      // 100-node budget, or host-read sync; an explicit commit() still
+      // submits the open batch immediately; the tape runner commits
+      // after every dispatching node; a view-only node (Broadcast)
+      // records no commands and produces no submission either way.
+      // The tracer splits this fn at its multi-consumer intermediate
+      // (gate feeds both outputs), so the taped unit is a 2-node
+      // [Broadcast, Add] and the split-off ops run eager inside the
+      // compiled call - the switch must still strictly dominate the
+      // batched baseline for the same fn, which is the property the
+      // hardware bisect relies on. Assert dominance, not a constant:
+      // the count legitimately tracks whatever the tracer tapes.
+      unsetenv(name);
       set_compile_mode(CompileMode::enabled);
-      auto fused = compile(swiglu);
-      uint64_t before =
-          omarchy::trace::counters().vk_submissions.load();
+      auto baseline_fn = compile(swiglu1);
+      uint64_t base_t0 = omarchy::trace::counters().vk_submissions.load();
+      auto base_out = baseline_fn(inputs);
+      for (auto& out : base_out) {
+        out.eval();
+      }
+      sync_stream(stream);
+      uint64_t delta_off =
+          omarchy::trace::counters().vk_submissions.load() - base_t0;
+
+      setenv(name, "1", 1);
+      auto fused = compile(swiglu1);
+      uint64_t on_t0 = omarchy::trace::counters().vk_submissions.load();
       auto outputs = fused(inputs);
       for (auto& out : outputs) {
         out.eval();
       }
       sync_stream(stream);
-      uint64_t delta =
-          omarchy::trace::counters().vk_submissions.load() - before;
+      uint64_t delta_on =
+          omarchy::trace::counters().vk_submissions.load() - on_t0;
       set_compile_mode(CompileMode::disabled);
-      CHECK(delta >= 3);
+      CHECK(delta_off < delta_on);
+      CHECK(delta_on >= 3);
     }
     unsetenv(name);
   }
