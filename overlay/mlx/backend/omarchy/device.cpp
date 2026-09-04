@@ -155,8 +155,11 @@ CapabilityReport collect_capabilities(
     const VkPhysicalDeviceShaderAtomicFloatFeaturesEXT& fa,
     const VkPhysicalDevice16BitStorageFeatures& f16,
     const VkPhysicalDeviceMaintenance3Properties& m3,
-    const VkPhysicalDeviceMaintenance4Properties& m4) {
+    const VkPhysicalDeviceMaintenance4Properties& m4,
+    const VkPhysicalDeviceSubgroupProperties& subgroup) {
   CapabilityReport caps;
+  caps.subgroup_size = subgroup.subgroupSize;
+  caps.subgroup_operations = subgroup.supportedOperations;
   const auto& props = props2.properties;
   const auto& limits = props.limits;
   caps.device_name = props.deviceName;
@@ -358,9 +361,12 @@ bool Runtime::init_impl() {
         VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_4_PROPERTIES};
     driver.pNext = &m3;
     m3.pNext = &m4;
+    VkPhysicalDeviceSubgroupProperties subgroup{
+        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBGROUP_PROPERTIES};
     VkPhysicalDeviceProperties2 props2{
         VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2};
     props2.pNext = &driver;
+    driver.pNext = &subgroup;
     it.GetPhysicalDeviceProperties2(pd, &props2);
 
     DeviceSupport support = classify_physical_device(
@@ -418,7 +424,8 @@ bool Runtime::init_impl() {
         fa,
         f16,
         m3,
-        m4);
+        m4,
+        subgroup);
     if (info.caps.queue_count == 0) {
       if (first_refusal.empty()) {
         first_refusal = "[omarchy] device '" + info.caps.device_name +

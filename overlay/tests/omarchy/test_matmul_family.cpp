@@ -1287,3 +1287,135 @@ TEST_CASE("qq matmul matches scale-only quantized and float paths") {
     CHECK(mode_error.find("QQMatmul mode") != std::string::npos);
   }
 }
+
+// DecodeGemvSubgroup equivalence: with caps.subgroup_size==32 the
+// dispatch path in primitives.cpp routes every decode row through the
+// new QmmVecSubgroup kernel, so this case is the load-bearing proof
+// that the production subgroup path computes the same numbers as the
+// CPU double-precision dequant reference across the real decode
+// shapes. The microbenchmark in tools/subgroup-bench covers a 32-elem
+// float reduction in isolation; this case covers n not divisible by 8
+// (workgroup width), n not divisible by 32 (subgroup width), group
+// sizes 32 and 64, bits 4 and 8, and f32 / f16 / bf16 storage. bf16
+// and f16 store through the same f32 accumulator inside qmm_vec.comp,
+// so the reduction order determines the f32 sum bit-for-bit; storage
+// quantization then matches both kernels. Where subgroup reduction
+// order legitimately changes rounding (subgroupAdd is
+// implementation-defined; the tree is a strict log2(32) pairwise
+// fold), the tolerance is one f32 ulp at the reduction plus the
+// storage dtype's rtol after STORE_VALUE.
+//
+// Tree-vs-subgroup bit-exact comparison cannot be expressed through
+// the public dispatch API today (the encoder's combined
+// scales+biases buffer is private). The microbenchmark covers that
+// reduction-order comparison at the kernel level on identical
+// 32-element float sums; this test covers the end-to-end shape
+// coverage the bench does not.
+//
+// A red subgroup-vs-host result on the M1 ends the A/B regardless of
+// speed, per the assignment.
+TEST_CASE("qmm_vec subgroup dispatch matches host reference across decode shapes") {
+  if (!compute_available()) {
+    return;
+  }
+  const auto& caps = omarchy::device(0).capabilities();
+  bool subgroup_ready = caps.subgroup_size == 32u &&
+      (caps.subgroup_operations & VK_SUBGROUP_FEATURE_ARITHMETIC_BIT) != 0;
+  if (!subgroup_ready) {
+    skip("subgroup size != 32 or no ARITHMETIC; subgroup variant unrunnable on this device");
+    return;
+  }
+  Stream stream = gpu_stream();
+
+  // Shapes: n=1 is a single-element reduction; n=7 is under one
+  // workgroup width (COLUMNS_PER_GROUP=8); n=9 crosses one workgroup
+  // boundary; n=37 crosses multiple workgroups with a partial last
+  // workgroup; n=64 is exactly two workgroups; n=256 is large. k is
+  // always 3*group_size so lane boundaries land mid-slot (a known
+  // sensitive boundary for the reduction step).
+  std::vector<int> n_shapes{1, 7, 9, 37, 64, 256};
+  std::vector<std::pair<int, int>> qbits{{64, 4}, {32, 4}, {64, 8}, {32, 8}};
+  std::vector<Dtype> dtypes{float32};
+  if (float16_available()) {
+    dtypes.push_back(float16);
+  }
+  dtypes.push_back(bfloat16);
+
+  std::mt19937 gen(91);
+  std::uniform_real_distribution<float> dist(-2.0f, 2.0f);
+
+  for (auto [group_size, bits] : qbits) {
+    int k = group_size * 3;
+    int pack = 32 / bits;
+    int words_per_row = k / pack;
+    int groups_per_row = k / group_size;
+    for (auto dtype : dtypes) {
+      for (int n : n_shapes) {
+        std::vector<float> matrix(static_cast<size_t>(n) * k);
+        for (auto& v : matrix) v = dist(gen);
+        std::vector<float> x_values(k);
+        for (auto& v : x_values) v = dist(gen);
+        HostQuantizedWeights host =
+            host_affine_quantize(matrix, n, k, group_size, bits);
+        // Round-trip scales/biases through the storage dtype the kernel
+        // sees, otherwise the host reference uses f32 storage while the
+        // device rounds to bf16/f16 and the gap shows up as an
+        // apparent equivalence failure unrelated to the reduction.
+        std::vector<float> scales_rt = round_trip(stream, host.scales, dtype);
+        std::vector<float> biases_rt = round_trip(stream, host.biases, dtype);
+        HostQuantizedWeights rounded = host;
+        rounded.scales = scales_rt;
+        rounded.biases = biases_rt;
+        std::vector<float> expected = host_quantized_matmul(
+            rounded, x_values, 1, n, k, group_size, bits);
+
+        // With subgroup_ready=true the dispatch path picks
+        // QmmVecSubgroup on the M1; this is the production path.
+        array x(x_values.begin(), Shape{1, k}, dtype);
+        array w_words(host.words.begin(), Shape{n, words_per_row}, uint32);
+        array scales(scales_rt.begin(), Shape{n, groups_per_row}, dtype);
+        array biases(biases_rt.begin(), Shape{n, groups_per_row}, dtype);
+        array out = quantized_matmul(
+            x, w_words, scales, biases, true, group_size, bits, "affine",
+            stream);
+        REQUIRE(evaluation_error(out).empty());
+        REQUIRE_EQ(out.shape(), Shape{1, n});
+        std::vector<float> device_result = readback_f32(stream, out);
+
+        float max_diff = 0.0f;
+        int worst_idx = -1;
+        for (int i = 0; i < n; ++i) {
+          float d = std::fabs(device_result[i] - expected[i]);
+          if (d > max_diff) {
+            max_diff = d;
+            worst_idx = i;
+          }
+        }
+        // Tolerance rationale:
+        //   f32 storage: the device sum and the host reference are
+        //     both f32. The reduction order differs between
+        //     subgroupAdd and the host's straight-line sum, and
+        //     the qmm_vec.comp accumulator runs over group_size
+        //     elements per scale/bias pair. 1 ulp is the
+        //     worst-case rounding gap; the test fails if the gap
+        //     exceeds 1 ulp (5.96e-8) which would indicate the
+        //     subgroup variant is computing a different sum, not
+        //     just reordering.
+        //   f16/bf16 storage: STORE_VALUE quantizes the f32 sum to
+        //     16 bits; the host reference (rounded through the
+        //     same dtype via round_trip) matches. Tolerances are
+        //     the storage dtype rtol used elsewhere in this suite.
+        double rtol = (dtype == float32)
+            ? 5.96e-8
+            : (dtype == float16) ? 4e-3 : 1e-2;
+        INFO("bits=" << bits << " group_size=" << group_size
+             << " dtype=" << dtype << " n=" << n
+             << " worst_idx=" << worst_idx
+             << " device=" << device_result[worst_idx]
+             << " host=" << expected[worst_idx]
+             << " diff=" << max_diff);
+        CHECK(max_diff <= rtol);
+      }
+    }
+  }
+}
