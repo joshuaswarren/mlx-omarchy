@@ -117,14 +117,17 @@ in a form he can read, evaluate, and reuse on newer ISAs. The branch
 carries one reproduction per miscompile, expected-versus-observed
 numbers with the hardware and driver version, the shipped mlx-omarchy
 workaround per defect with receipt links, and the family analysis.
-Four of the five findings are presented as one suspected family -
-dynamic byte extraction, a data-dependent shift feeding a mask -
-labelled a hypothesis with its confound named. The README in
-`src/asahi/repro/` on the branch is the authority; this file only maps
-the fork.
+The family claim - dynamic byte extraction, a data-dependent shift
+feeding a mask, covering cases 2, 3, and 5 - was confirmed on Apple
+hardware on 2026-09-03: the case-3 matrix arms with the dynamic shift
+fail on jwm1 while the constant-shift controls pass on the same
+device, and the selector is refuted as the trigger. Cases 1 and 4 do
+not reproduce on that build and stay on the branch labeled as misses
+with both readings. The README in `src/asahi/repro/` on the branch is
+the authority; this file only maps the fork.
 
 Limits, stated on the branch itself: the shaders are reconstructions
-of the receipts' probe shapes, not copies; nothing on the branch has
-been run on Apple hardware; the llvmpipe verification (every case arm
-passes) proves only that the programs compute the expected values on a
-conformant driver.
+of the receipts' probe shapes, not copies; the misses are not yet
+re-derived; the llvmpipe verification proves the programs compute the
+expected values on a conformant driver, and the hardware run supplies
+the rest.
