@@ -7,6 +7,7 @@
 #include <atomic>
 #include <cstdio>
 #include <cstdlib>
+#include <optional>
 #include <sstream>
 #include <string>
 #include <typeinfo>
@@ -236,26 +237,29 @@ void eval_compiled_tape(
   // dispatch) or falls back to the per-node path below, so refusal
   // semantics are unchanged. bf16 tapes are refused above before any
   // chain runs.
-  FusedChain chain(fusion_enabled);
+  std::optional<FusedChain> chain;
+  if (fusion_enabled) {
+    chain.emplace(true);
+  }
   // A node that consumes the OPEN chain's tail passes the tail's
   // tracing array itself; that reference is only valid while the chain
   // stays open, so any fallback below re-resolves after closing.
   auto close_chain = [&]() -> void {
-    if (chain.size() == 0) {
+    if (!chain || chain->size() == 0) {
       return;
     }
-    trace::counters().compiled_tape_node_evaluations += chain.size();
+    trace::counters().compiled_tape_node_evaluations += chain->size();
     uint64_t dispatches_before =
         trace::counters().vk_compute_dispatches.load(std::memory_order_relaxed);
     encoder.in_tape_recording = true;
-    auto fused = chain.evaluate(stream);
+    auto fused = chain->evaluate(stream);
     encoder.in_tape_recording = false;
     trace::counters().compiled_tape_dispatches.fetch_add(
         trace::counters().vk_compute_dispatches.load(std::memory_order_relaxed) -
             dispatches_before,
         std::memory_order_relaxed);
-    const auto tail = chain.tail_id();
-    chain = FusedChain(fusion_enabled);
+    const auto tail = chain->tail_id();
+    chain.emplace(true);
     if (fused) {
       resolved.emplace(tail, *fused);
       if (output_ids.find(tail) == output_ids.end()) {
@@ -269,7 +273,7 @@ void eval_compiled_tape(
       auto it = resolved.find(in.id());
       if (it != resolved.end()) {
         out_inputs.push_back(it->second);
-      } else if (chain.size() > 0 && chain.tail_id() == in.id()) {
+      } else if (chain && chain->size() > 0 && chain->tail_id() == in.id()) {
         // Continuation of the open chain; `in` is the tail's tracing
         // array and try_add maps it back to the tail register.
         out_inputs.push_back(in);
@@ -309,12 +313,12 @@ void eval_compiled_tape(
 
       // Fast path: the node joins the open fused chain. A tape output
       // may only sit at the tail, so the chain closes right after one.
-      if (chain.try_add(
+      if (chain->try_add(
               node,
               node_inputs,
               must_materialize.find(node.id()) !=
                   must_materialize.end())) {
-        if (chain.tail_is_tape_output()) {
+        if (chain->tail_is_tape_output()) {
           close_chain();
         }
         continue;
@@ -327,7 +331,7 @@ void eval_compiled_tape(
       // output.
       bool needs_reresolve = false;
       for (const auto& in : node.inputs()) {
-        if (chain.size() > 0 && chain.tail_id() == in.id()) {
+        if (chain->size() > 0 && chain->tail_id() == in.id()) {
           needs_reresolve = true;
         }
       }
