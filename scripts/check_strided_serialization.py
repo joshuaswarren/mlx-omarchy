@@ -1,6 +1,8 @@
-# Serialization roundtrips for strided views; constant writes require
-# C-order (patches/mlx-export-dense-constants.patch).
-# Expectations are NumPy arithmetic on the host, never a backend echo.
+# Serialization roundtrips for retained strided MLX views; constant
+# writes require C-order (patches/mlx-export-dense-constants.patch).
+# Every serializer consumes the same actual MLX views (Slice, Transpose,
+# AsStrided-born) and expectations are NumPy arithmetic on the host,
+# never a backend echo.
 import os
 
 os.environ.setdefault("MLX_OMARCHY_ALLOW_NON_APPLE", "1")
@@ -22,6 +24,14 @@ def views_np():
     }
 
 
+def views_mx(src):
+    return {
+        "gapped": src[:, 2:6],
+        "transposed": src.transpose(),
+        "strided": src[1::3, ::2],
+    }
+
+
 def probe_np(view):
     return np.arange(view.size, dtype=np.float32).reshape(view.shape)
 
@@ -37,8 +47,8 @@ def expect_equal(name, got, want):
         raise AssertionError(f"{name}: values differ from NumPy expectation")
 
 
-def check_safetensors(root):
-    arrays = {name: mx.array(v) for name, v in views_np().items()}
+def check_safetensors(root, src):
+    arrays = views_mx(src)
     arrays["dense"] = mx.array(np.ascontiguousarray(SRC_NP[:, 2:6]))
     path = os.path.join(root, "st.safetensors")
     mx.save_safetensors(path, arrays)
@@ -49,48 +59,39 @@ def check_safetensors(root):
     print("PASS safetensors roundtrip (gapped, transposed, strided, dense)")
 
 
-def check_npy(root):
-    for name, v in views_np().items():
+def check_npy(root, src):
+    for name, view in views_mx(src).items():
         path = os.path.join(root, f"{name}.npy")
-        mx.save(path, mx.array(v))
-        expect_equal(f"npy {name}", mx.load(path), v)
+        mx.save(path, view)
+        expect_equal(f"npy {name}", mx.load(path), views_np()[name])
     print("PASS npy roundtrip (gapped, transposed, strided)")
 
 
-def check_export(root):
-    src = mx.array(SRC_NP)
-    views = {name: mx.array(v) for name, v in views_np().items()}
-    views["dense"] = mx.array(np.ascontiguousarray(SRC_NP[:, 2:6]))
-    # Slice-born equivalents: with the eval densifier removed these stay
-    # strided views, so the export constant path must normalize them.
-    views["slice_gapped"] = src[:, 2:6]
-    views["slice_transposed"] = src.transpose()
-    views["slice_strided"] = src[1::3, ::2]
+def check_export(root, src):
+    views = views_mx(src)
     mx.eval(*views.values())
-    numpy_by_name = dict(views_np())
-    numpy_by_name["dense"] = SRC_NP[:, 2:6]
-    for name in ("slice_gapped", "slice_transposed", "slice_strided"):
-        numpy_by_name[name] = numpy_by_name[name.split("slice_", 1)[1]]
-    for name, v in views.items():
-        want = probe_np(v) + numpy_by_name[name]
+    for name, view in views.items():
+        v_np = views_np()[name]
+        want = probe_np(view) + v_np
 
-        def fn(x, _v=v):
+        def fn(x, _v=view):
             return mx.add(x, _v)
 
         path = os.path.join(root, f"export_{name}.mlxfn")
-        mx.export_function(path, fn, mx.array(probe_np(v)))
-        out = mx.import_function(path)(mx.array(probe_np(v)))
+        mx.export_function(path, fn, mx.array(probe_np(view)))
+        out = mx.import_function(path)(mx.array(probe_np(view)))
         if isinstance(out, (list, tuple)):
             out = out[0]
         expect_equal(f"export {name}", out, want)
-    print("PASS export roundtrip (numpy-born and slice-born strided views)")
+    print("PASS export roundtrip (closed-over gapped, transposed, strided)")
 
 
 def main():
+    src = mx.array(SRC_NP)
     with tempfile.TemporaryDirectory() as root:
-        check_safetensors(root)
-        check_npy(root)
-        check_export(root)
+        check_safetensors(root, src)
+        check_npy(root, src)
+        check_export(root, src)
     print("ALL STRIDED SERIALIZATION CHECKS PASSED")
 
 
