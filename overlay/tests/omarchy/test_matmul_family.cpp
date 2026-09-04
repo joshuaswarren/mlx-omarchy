@@ -1498,9 +1498,7 @@ struct QmmTileGate {
 // PrefillQmmTile equivalence: the env-gated m-tiled kernel must match
 // the general qmm.comp kernel it stands in for at matrix_m > 1. Both
 // sides run on device through the public dispatch - the gate selects
-// qmm_tile when MLX_OMARCHY_QMM_TILE is set (ON) and qmm.comp when it
-// is unset or "0" (OFF) - so the comparison covers the real dispatch
-// wiring, not a private binding.
+// qmm_tile unless MLX_OMARCHY_QMM_TILE is "0" (OFF), selecting qmm.comp.
 //
 // Bound derivation. Both kernels accumulate x * (scale*q + bias) over
 // ascending k into a single f32 accumulator per output element in the
@@ -1599,7 +1597,10 @@ TEST_CASE("qmm tile matches host reference and qmm.comp across prefill shapes") 
     array out_tile = quantized_matmul(
         x, w_words, scales, biases, true, group_size, bits, "affine",
         stream);
-    REQUIRE(evaluation_error(out_tile).empty());
+    INFO("dtype=", dtype, " group=", group_size, " bits=", bits,
+        " m=", m, " n=", n, " k=", k);
+    const auto error = evaluation_error(out_tile);
+    REQUIRE_MESSAGE(error.empty(), error);
     std::vector<float> tile_v = readback_f32(stream, out_tile);
     gate.set(false);
     array out_base = quantized_matmul(

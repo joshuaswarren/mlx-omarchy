@@ -4558,17 +4558,8 @@ void QuantizedMatmul::eval_gpu(const std::vector<array>& inputs, array& out) {
         1u);
     return;
   }
-  // PrefillQmmTile dispatch: for matrix_m > 1, the m-tiled variant
-  // dequantizes each 16 x 16 weight block into shared f32 once per
-  // workgroup and applies it to a 16-row tile of x, amortizing the
-  // per-MAC weight unpack the general kernel repeats for every output
-  // row (prefill-census lever 1). Gated behind MLX_OMARCHY_QMM_TILE:
-  // default OFF keeps the general Qmm kernel below selected unchanged;
-  // the default flips after the M1 equivalence run. Any value other
-  // than "0" enables. Per-call getenv so a test can flip the gate
-  // between evals in one process.
   if (const char* tile_env = std::getenv("MLX_OMARCHY_QMM_TILE");
-      tile_env != nullptr && std::strcmp(tile_env, "0") != 0) {
+      tile_env == nullptr || std::strcmp(tile_env, "0") != 0) {
     auto tile_kernel = select_float_kernel(
         out.dtype(),
         omarchy::ComputeKernel::QmmTileF32,
@@ -6681,14 +6672,8 @@ void rope_trig_gate(
     // token (receipts/2026-09-04-rope-gate-drain.md).
     bool host_constant = offset.status() == array::Status::available &&
         !offset.has_primitive();
-    // FENCE (2026-09-04): bf16 keeps the drain. Without it, bf16 decode
-    // read a bf16 tensor's bytes out of the offset scalar at ~token 33:
-    // a buffer on the bf16 path is released while its writer is still
-    // queued and the allocator recycles the page. The drain hid that
-    // hole for as long as it existed. Named open defect in
-    // docs/known-defects.md; remove this conjunct when it is closed and
-    // scripts/bench_decode.py bf16 --tokens 64 --warmup-tokens 0 passes
-    // on the M1 without it.
+    // bf16 still needs this guard: the unexpected scalar writer is unknown.
+    // Keep it until the readiness defect in docs/known-defects.md is resolved.
     if (!host_constant || out.dtype() == bfloat16) {
       omarchy::get_command_encoder(stream).synchronize();
     }

@@ -21,6 +21,13 @@ corruption that closed them is root-caused and fixed
 `MLX_OMARCHY_ALLOW_UNSAFE_COMPILE` override was retired with the fix;
 setting it now does nothing.
 
+Development builds use tiled quantized prefill by default. Set
+`MLX_OMARCHY_QMM_TILE=0` to compare with the untiled path; single-row
+decode still uses GEMV. This change is not in the v0.3.5 wheels.
+The experimental `MLX_OMARCHY_ROPE_BF16_DIRECT` and
+`MLX_OMARCHY_SDPA_BF16_FAST` flags remain off: both changed generated
+token IDs on M1. See the [hardware gate receipt](../receipts/2026-09-04-m1-performance-gates.md).
+
 ## Build the wheel
 
 1. Install the build tools: Python 3.10 or newer with `venv`, `cmake` 3.25 or
