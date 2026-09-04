@@ -463,6 +463,12 @@ void copy_gpu(const array& input, array& out, CopyType ctype, const Stream& s) {
   if (flat_only) {
     dense = array(input.shape(), input.dtype(), nullptr, {});
     dense->set_data(omarchy::allocator().malloc(dense->nbytes()));
+    // Pin it: this local dies at return while both dispatches that touch
+    // it are still queued. Unpinned, the allocator recycled its bytes into
+    // the next token's RoPE offset scalar and the strided copy wrote an
+    // f32 over it (receipts/2026-09-04-rope-gate-drain.md). The per-call
+    // queue drains that used to sit in rope_trig_gate masked it.
+    omarchy::get_command_encoder(s).add_temporary(*dense);
     copy_gpu_inplace(
         input,
         *dense,
