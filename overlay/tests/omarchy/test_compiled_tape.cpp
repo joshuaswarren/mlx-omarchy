@@ -740,10 +740,15 @@ TEST_CASE(
   array x(xv.begin(), Shape{2, 32}, float32);
   std::vector<array> inputs = {x};
 
+  // NO_BUFFER_CACHE is absent here on purpose: it is read once at
+  // runtime init, which earlier cases in this binary have already
+  // triggered, so a mid-process setenv cannot arm it. It is verified by
+  // a full-process env run in the receipt instead.
   const char* switches[] = {
       "MLX_OMARCHY_TAPE_PER_NODE_SUBMIT",
       "MLX_OMARCHY_TAPE_FULL_BARRIERS",
-      "MLX_OMARCHY_TAPE_NO_REUSE"};
+      "MLX_OMARCHY_TAPE_NO_REUSE",
+      "MLX_OMARCHY_TAPE_SYNC_EVERY"};
 
   for (const char* name : switches) {
     INFO("switch ", name);

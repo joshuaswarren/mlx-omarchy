@@ -50,10 +50,23 @@ environment lookup on the unset hot path.
 
 Ordered decision tree for the M1. Every run needs
 `MLX_OMARCHY_ALLOW_UNSAFE_COMPILE=1` (compiled tapes auto-disable on
-Apple GPUs). Each run is the differential harness
-`scripts/differential_compile.py`, which aborts at the accuracy gate
-when the corruption fires; a run that finishes and answers correctly
-counts as "corruption absent" only if the harness reports agreement.
+Apple GPUs; the native mlx_lm path arms itself).
+
+Detector, amended on hardware report 2026-09-03 (BenchQueueM1): at this
+commit the differential harness `--mode realpath` cannot discriminate -
+it refuses at `[omarchy] broadcast Sigmoid is not implemented ...
+shape=[1,36,4864]` (same refusal as d1a6bfd). The tree therefore runs
+on the NATIVE mlx_lm decode instead: detection is the loud abort
+(Cos accuracy gate, rc != 0, magnitude line) versus a correct
+completion (rc = 0, correct answer). Bitwise per-step comparison is
+lost until the broadcast-Sigmoid refusal is fixed; that fix is a named
+follow-up, not a blocker for the layer verdict. Because the corruption
+is a race, every step runs the native decode 5 TIMES: a switch counts
+as "gone" only on 5/5 correct completions; any abort counts as
+"persists"; baseline establishes the abort (observed at 7c25feb:
+rc = 1, magnitude 855782848, and 4 earlier runs with differing
+magnitudes). Magnitude nondeterminism is expected and irrelevant - the
+verdict keys on abort versus correct answer.
 
 1. Baseline: override only. Expect: corruption reproduces (abort at the
    Cos gate, nondeterministic magnitude). If it does NOT reproduce,
@@ -87,6 +100,64 @@ counts as "corruption absent" only if the harness reports agreement.
      which no switch currently isolates.
 
 One pass through A, then B or C, names the layer.
+
+## MEASURED OUTCOME (M1, native tree, BenchQueueM1)
+
+Ran at 7c3d6b4 (contains 7c25feb plus TinyWriteFix's batching changes),
+wheel provenance gate green, 5 runs per step, any abort = persists.
+Baseline Cos abort: magnitude 8.56e8.
+
+| Step | Switch | Result | Magnitude |
+|---|---|---|---|
+| A | `MLX_OMARCHY_TAPE_PER_NODE_SUBMIT=1` | PERSISTS, 5/5 aborted | 1.46e11, constant across all 5 |
+| B | `MLX_OMARCHY_TAPE_FULL_BARRIERS=1` | PERSISTS, 5/5 aborted | 1.46e11, constant across all 5 |
+| C | `MLX_OMARCHY_TAPE_NO_REUSE=1` | PERSISTS, 5/5 aborted | 7.97e8-9.00e8 (baseline band) |
+
+Verdict: none of the three isolated layers removes the corruption. The
+defect is not many-dispatches-per-command-buffer, not an in-buffer
+dependency (B already used the heaviest correct barrier), and not
+in-window resource reuse. Remaining named space: host run-ahead across
+the tape boundary, cross-window buffer recycling, ring-slot command
+buffer identity, completion timeline.
+
+The band datum is load-bearing: the refused magnitude TRACKS the switch
+class. A and B (serialization/timing changes) move the garbage to a
+CONSTANT 1.46e11 = exactly 34 x 2^32 in all runs - a deterministic
+stale word, not random noise; C and baseline (timing unchanged) stay in
+the jittery 2^29.6-2^29.8 band. Two consequences: (1) the corrupted
+read picks up foreign memory whose address lands differently under
+different execution timing; (2) A or B is the reproduction workhorse
+for the next bisect - deterministic garbage is traceable, jittery
+garbage is not.
+
+C's same-band result also exonerates in-window recycling specifically:
+fresh device memory for every tape allocation changed nothing, so the
+stale bytes come from buffers whose lifetime is managed outside the
+tape window - the cross-window cache channel or a non-tape buffer.
+
+Detector notes (TapeCorruptionFix evidence + bit arithmetic):
+- The gate's unordered host read was fixed at d8cb4f6 (09:26), yet
+  sync-val runs at ff4b05a (14:52) and 7cf5e9f (16:45) still aborted
+  with f16-impossible magnitudes (~8-9.6e8 > f16 max finite 65504), so
+  those aborts read genuine corrupted f32 values (RoPE-arg path), not
+  the gate's own race. The corruption was live at 16:45.
+- 1.46e11 = exactly 34 x 2^32 (arithmetic verified), constant across
+  5/5 runs under A and B. As float32 bits that is 0x52100000; as two
+  packed f16 halves it reads [0x5210 = 33.0, 0x0000 = 0.0] - a small
+  integer in sequence-position territory (36-token prompt), consumed
+  through a float view. Inference, not verified: the stale word may be
+  a position id or position-derived index on a RoPE argument buffer.
+
+Next bisects (implemented at this commit): STEP E
+`MLX_OMARCHY_NO_BUFFER_CACHE=1` - process-wide, the allocator never
+recycles (every free destroys); tests cross-window recycling with
+in-flight staleness. STEP D `MLX_OMARCHY_TAPE_SYNC_EVERY=1` - the
+stream drains after every tape eval; tests whether host run-ahead
+(GPU executing while the host records/queues) is load-bearing. Run E
+first, then D; outcomes are independent. If both persist, recycling
+and asynchrony are innocent and the space narrows to ring-slot
+command buffer identity versus the completion timeline, under A or B's
+deterministic-garbage configuration.
 
 ## Intermediate lifetime during recording (the specific hazard)
 
@@ -129,6 +200,14 @@ configuration:
 | `MLX_OMARCHY_TAPE_PER_NODE_SUBMIT=1` | 11/11, 742/742, SUCCESS; notice printed; submission-delta assertion held |
 | `MLX_OMARCHY_TAPE_FULL_BARRIERS=1` | 11/11, 742/742, SUCCESS; notice printed |
 | `MLX_OMARCHY_TAPE_NO_REUSE=1` | 11/11, 742/742, SUCCESS; notice printed |
+| `MLX_OMARCHY_TAPE_SYNC_EVERY=1` | 11/11, 742/742, SUCCESS; notice printed |
+| `MLX_OMARCHY_NO_BUFFER_CACHE=1` | 11/11, 742/742, SUCCESS; init notice printed (armed before runtime init, as required) |
+
+The two new switches bisect the remaining space named by the M1 verdict
+above. `MLX_OMARCHY_TAPE_SYNC_EVERY` is read per tape eval and is
+covered by the in-battery loop; `MLX_OMARCHY_NO_BUFFER_CACHE` is read
+once at runtime init, so it is verified by a full-process env run (the
+in-battery setenv cannot arm it after init - the test comments say so).
 
 The new battery case asserts both scoped defaults false with no env set
 and - under `MLX_OMARCHY_TAPE_PER_NODE_SUBMIT=1` - that one 3-node
