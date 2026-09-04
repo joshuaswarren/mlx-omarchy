@@ -13,17 +13,25 @@
 //
 //   {"k":"meta",...}  once: device name, timestamp period and valid bits,
 //                     pool capacity, label, host clock start
-//   {"k":"b",...}     per command buffer begin: host cost of the ring
-//                     slot wait (when all slots are executing) plus
-//                     BeginCommandBuffer, and the host clock at begin
+//   {"k":"b",...}     per command buffer begin: total host cost "dur"
+//                     split into "w" (ring-slot wait, recorded when all
+//                     slots are executing) and "bc" (BeginCommandBuffer),
+//                     plus the host clock at begin
 //   {"k":"d",...}     per compute dispatch: kernel enum, groups,
-//                     params.count, host record cost, raw GPU ticks (t0
-//                     written after the pre-dispatch barrier, t1 after the
-//                     dispatch, both at BOTTOM_OF_PIPE), and the binding
-//                     list (buffer, offset, range) used as the dependency
-//                     proxy between consecutive dispatches
-//   {"k":"s",...}     per submission: host cost of submit() and the host
-//                     clock at submit end
+//                     params.count, host record cost "h", the host phase
+//                     breakdown "lk" (pipeline lookup), "al" (descriptor
+//                     set allocate), "up" (descriptor update), "pb"
+//                     (pre-dispatch barrier), "bd" (bind + push constants
+//                     + dispatch), "pa" (post-dispatch barrier), raw GPU
+//                     ticks (t0 written after the pre-dispatch barrier,
+//                     t1 after the dispatch, both at BOTTOM_OF_PIPE), and
+//                     the binding list (buffer, offset, range) used as
+//                     the dependency proxy between consecutive dispatches
+//   {"k":"s",...}     per submission: total submit() host cost "dur"
+//                     split into "ec" (EndCommandBuffer), "as"
+//                     (submission payload assembly), "fl" (noncoherent
+//                     flush), "qs" (QueueSubmit through dispatcher
+//                     enqueue), and the host clock at submit end
 //   {"k":"j",...}     per join: host cost of the completion-timeline wait
 //                     and of the noncoherent invalidate
 //   {"k":"end",...}   at exit: totals
@@ -123,13 +131,16 @@ class GpuProfiler {
       const void* owner,
       int slot,
       VkCommandBuffer cmd,
+      uint64_t wait_cost,
       uint64_t begin_cost) {
     if (out_ == nullptr) {
       return;
     }
-    emitf("{\"k\":\"b\",\"o\":%" PRIu64 ",\"dur\":%" PRIu64
-          ",\"t\":%" PRIu64 "}\n",
+    emitf("{\"k\":\"b\",\"o\":%" PRIu64 ",\"dur\":%" PRIu64 ",\"w\":%" PRIu64
+          ",\"bc\":%" PRIu64 ",\"t\":%" PRIu64 "}\n",
           owner_id(owner),
+          wait_cost + begin_cost,
+          wait_cost,
           begin_cost,
           host_ns());
     Ctx* ctx = find(owner);
@@ -209,13 +220,61 @@ class GpuProfiler {
     dispatches_++;
   }
 
+  // Called after the post-dispatch barrier, once per dispatch_compute.
+  // Fills the host phase breakdown of the dispatch recorded by the
+  // preceding before_dispatch/after_dispatch pair:
+  //   lookup   pipeline cache access (mutex + array index)
+  //   alloc    descriptor set acquisition (AllocateDescriptorSets and any
+  //            pool create/retire it triggers)
+  //   update   VkWriteDescriptorSet assembly + UpdateDescriptorSets
+  //   pre      pre-dispatch CmdPipelineBarrier
+  //   bind     CmdBindPipeline + CmdBindDescriptorSets + CmdPushConstants
+  //            + CmdDispatch
+  //   post     post-dispatch CmdPipelineBarrier
+  void on_dispatch_breakdown(
+      const void* owner,
+      int slot,
+      uint64_t lookup,
+      uint64_t alloc,
+      uint64_t update,
+      uint64_t pre_barrier,
+      uint64_t bind,
+      uint64_t post_barrier) {
+    if (out_ == nullptr) {
+      return;
+    }
+    Ctx* ctx = find(owner);
+    if (ctx == nullptr) {
+      return;
+    }
+    SlotCtx& s = ctx->slots[slot];
+    if (s.pending.empty()) {
+      return;
+    }
+    PendingDispatch& p = s.pending.back();
+    p.cost_lookup = lookup;
+    p.cost_alloc = alloc;
+    p.cost_update = update;
+    p.cost_pre_barrier = pre_barrier;
+    p.cost_bind = bind;
+    p.cost_post_barrier = post_barrier;
+  }
+
   // Called at the end of a successful submit(); sub is 0 for submissions
-  // that carried no completion signal.
+  // that carried no completion signal. The cost fields decompose the
+  // submit() host window: end_cb (EndCommandBuffer), assembly (submission
+  // payload vector building and keepalive moves), flush (noncoherent
+  // flush_noncoherent), qsub (completion reserve through QueueSubmit and
+  // dispatcher enqueue).
   void on_submit_end(
       const void* owner,
       uint64_t sub,
       uint64_t submit_cost,
-      int slot) {
+      int slot,
+      uint64_t end_cb,
+      uint64_t assembly,
+      uint64_t flush,
+      uint64_t qsub) {
     if (out_ == nullptr || sub == 0) {
       return;
     }
@@ -225,9 +284,14 @@ class GpuProfiler {
       ctx->slots[slot].last_sub = sub;
     }
     emitf("{\"k\":\"s\",\"s\":%" PRIu64 ",\"dur\":%" PRIu64
-          ",\"t\":%" PRIu64 "}\n",
+          ",\"ec\":%" PRIu64 ",\"as\":%" PRIu64 ",\"fl\":%" PRIu64
+          ",\"qs\":%" PRIu64 ",\"t\":%" PRIu64 "}\n",
           sub,
           submit_cost,
+          end_cb,
+          assembly,
+          flush,
+          qsub,
           host_ns());
   }
 
@@ -272,6 +336,13 @@ class GpuProfiler {
     uint32_t gy{0};
     uint32_t gz{0};
     uint64_t host_cost{0};
+    // Host phase breakdown filled by on_dispatch_breakdown.
+    uint64_t cost_lookup{0};
+    uint64_t cost_alloc{0};
+    uint64_t cost_update{0};
+    uint64_t cost_pre_barrier{0};
+    uint64_t cost_bind{0};
+    uint64_t cost_post_barrier{0};
     uint32_t tick_index{0};
     // buffer, offset, range triples for the dependency proxy between
     // consecutive dispatches: overlapping buffers suggest the pair may be
@@ -363,6 +434,14 @@ class GpuProfiler {
             p.gy,
             p.gz,
             p.host_cost);
+      emitf(",\"lk\":%" PRIu64 ",\"al\":%" PRIu64 ",\"up\":%" PRIu64
+            ",\"pb\":%" PRIu64 ",\"bd\":%" PRIu64 ",\"pa\":%" PRIu64,
+            p.cost_lookup,
+            p.cost_alloc,
+            p.cost_update,
+            p.cost_pre_barrier,
+            p.cost_bind,
+            p.cost_post_barrier);
       if (p.tick_index + 1 < queries &&
           ticks[p.tick_index + 1] >= ticks[p.tick_index]) {
         emitf(",\"t0\":%" PRIu64 ",\"t1\":%" PRIu64,
@@ -461,17 +540,8 @@ namespace mlx::core::omarchy::prof {
 
 class GpuProfiler {
  public:
-  static GpuProfiler& get() {
-    static GpuProfiler instance;
-    return instance;
-  }
-
-  bool profiling() const {
-    return false;
-  }
-
   void attach(const void*, const Device&) {}
-  void on_begin(const void*, int, VkCommandBuffer, uint64_t) {}
+  void on_begin(const void*, int, VkCommandBuffer, uint64_t, uint64_t) {}
   void before_dispatch(const void*, int, VkCommandBuffer) {}
   void after_dispatch(
       const void*,
@@ -484,7 +554,24 @@ class GpuProfiler {
       uint32_t,
       uint32_t,
       uint64_t) {}
-  void on_submit_end(const void*, uint64_t, uint64_t, int) {}
+  void on_dispatch_breakdown(
+      const void*,
+      int,
+      uint64_t,
+      uint64_t,
+      uint64_t,
+      uint64_t,
+      uint64_t,
+      uint64_t) {}
+  void on_submit_end(
+      const void*,
+      uint64_t,
+      uint64_t,
+      int,
+      uint64_t,
+      uint64_t,
+      uint64_t,
+      uint64_t) {}
   void on_join(const void*, uint64_t, uint64_t, uint64_t, uint64_t) {}
 };
 

@@ -284,3 +284,13 @@ target_link_options(omarchy_two_rank_harness PRIVATE ${SANITIZER_LINK_FLAGS})
 
 add_test(NAME omarchy_two_rank_harness
          COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/distributed/run-two-rank.sh)
+
+# Fixed-chain host-cost benchmark (not a test): a dependent chain of
+# elementwise dispatches run many times, mirroring eager decode's host
+# structure (one dispatch per op, one submission per op). Pair it with
+# MLX_OMARCHY_GPU_PROFILE=<path> and scripts/profile_analyze.py for the
+# per-phase host breakdown. Dev-box tool: host structure reproduces
+# across drivers, wall times do not.
+add_executable(omarchy_bench_hostcost
+               ${CMAKE_CURRENT_SOURCE_DIR}/bench_hostcost.cpp)
+target_link_libraries(omarchy_bench_hostcost PRIVATE mlx)

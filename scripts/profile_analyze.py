@@ -88,6 +88,7 @@ def main():
     dispatches = []
     joins = []
     submits = []
+    begins = []
     with open(args.profile, "r", encoding="utf-8") as f:
         for line in f:
             line = line.strip()
@@ -103,7 +104,8 @@ def main():
                 joins.append(rec)
             elif kind == "s":
                 submits.append(rec)
-
+            elif kind == "b":
+                begins.append(rec)
     if meta is None:
         print("no meta line; not a profile file", file=sys.stderr)
         sys.exit(1)
@@ -272,6 +274,43 @@ def main():
         say(f"   dispatch record (host) n={len(recs)} "
             f"total={fmt_ns(sum(recs))} p50={fmt_ns(pct(recs, .5))} "
             f"mean={fmt_ns(sum(recs) / len(recs))}")
+    # Host phase breakdown (ranked). One row per instrumented phase:
+    # per-dispatch phases from "d" events, per-submission phases from "s"
+    # events, per-begin phases from "b" events. Ranked by cumulative
+    # total within each group. Missing fields (older streams) skip the
+    # phase.
+    def phase_table(title, records, fields):
+        have = [(name, [r[f] for r in records if f in r])
+                for name, f in fields]
+        have = [(name, vals) for name, vals in have if vals]
+        if not have:
+            return
+        say("")
+        say(f"== {title} (ranked by cumulative total)")
+        say(f"   {'phase':<14} {'n':>7} {'total':>10} {'p50':>9} "
+            f"{'mean':>9} {'share':>6}")
+        grand = sum(sum(vals) for _, vals in have)
+        for name, vals in sorted(have, key=lambda kv: -sum(kv[1])):
+            total = sum(vals)
+            say(f"   {name:<14} {len(vals):>7} {fmt_ns(total):>10} "
+                f"{fmt_ns(pct(sorted(vals), .5)):>9} "
+                f"{fmt_ns(total / len(vals)):>9} "
+                f"{(total / grand * 100 if grand else 0):>5.1f}%")
+
+    phase_table(
+        "per-dispatch host phases",
+        dispatches,
+        [("lookup", "lk"), ("desc-alloc", "al"), ("desc-update", "up"),
+         ("bar-pre", "pb"), ("bind+dispatch", "bd"), ("bar-post", "pa")])
+    phase_table(
+        "per-submission host phases",
+        submits,
+        [("end-cmdbuf", "ec"), ("assembly", "as"), ("flush", "fl"),
+         ("queue-submit", "qs")])
+    phase_table(
+        "per-begin host phases",
+        begins,
+        [("ring-wait", "w"), ("begin-cmdbuf", "bc")])
 
     per_join = {}
     for d in dispatches:
