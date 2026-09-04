@@ -176,7 +176,12 @@ named `Quantize direction` and `Quantize mode` errors; other bits, other
 group sizes, non-row-contiguous operands, and bfloat16 parameters fail
 with the named `Quantize bits`, `Quantize group size`,
 `non-contiguous input`, and `Quantize scales dtype` errors.
-Subtract, Negative, non-zero scalar fill, and same-dtype general strided copy pass the gate.
+Subtract, Negative, non-zero scalar fill for float32, float16, bfloat16,
+complex64, int32, and uint32 (the integer words ride the same
+vkCmdFillBuffer transfer path as the zero fill and stay exact past the
+float32 integer range), and same-dtype general strided copy pass the
+gate. Non-zero fills for widths the backend does not carry keep the
+named refusal.
 Elementwise binary ops broadcast operands on any axis up to a collapsed rank of 4.
 Trailing broadcasts keep the modulo fast path, and a higher collapsed rank fails with the named `broadcast rank` error.
 Suffix Softmax passes the gate for FP32, FP16, and BF16.

@@ -239,6 +239,26 @@ void copy_gpu_inplace(
       fill_zero(s, out, o_offset);
       return;
     }
+    if (in.dtype() == int32 || in.dtype() == uint32) {
+      if (in.dtype() != out.dtype()) {
+        omarchy::unsupported("non-zero scalar fill dtype", out);
+      }
+      // vkCmdFillBuffer repeats an arbitrary 32-bit word, so the same
+      // transfer path as the zero fill writes any integer pattern with
+      // no compute pipeline. The checked count and compute_item_offset
+      // keep the whole-word span bounded, and a whole-word dtype leaves
+      // no misaligned edges for a host pass.
+      uint32_t count = checked_u32(out.data_size(), "scalar fill", out);
+      uint32_t word = 0;
+      std::memcpy(
+          &word, in.data<char>() + i_offset * in.itemsize(), sizeof(word));
+      VkDeviceSize start = static_cast<VkDeviceSize>(
+          compute_item_offset(out, o_offset, "scalar fill", out)) *
+          sizeof(uint32_t);
+      encoder.fill_buffer(
+          buffer_handle(out), word, count * sizeof(uint32_t), start);
+      return;
+    }
     if (in.dtype() != float32 && in.dtype() != float16 &&
         in.dtype() != bfloat16 && in.dtype() != complex64) {
       omarchy::unsupported("non-zero scalar fill", out);

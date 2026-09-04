@@ -341,10 +341,15 @@ TEST_CASE("Full fills exact scalar values") {
       {7.5f, 7.5f, 7.5f, 7.5f, 7.5f, 7.5f});
   // Zero fill of any dtype rides the byte-write fast path.
   check_exact<int32_t>(full({3}, 0, int32, stream), {0, 0, 0});
-  // A non-zero integer fill keeps the named error; only float storage
-  // has a fill kernel.
-  array ints = full({2}, 7, int32, stream);
-  auto message = caught_message(ints);
+  // A non-zero int32 fill rides the raw-word fill path bit-exactly,
+  // including words a float32 transport would round; the named refusal
+  // remains for widths the backend does not carry.
+  check_exact<int32_t>(full({2}, 7, int32, stream), {7, 7});
+  check_exact<int32_t>(
+      full({2}, 16777217, int32, stream),
+      {16777217, 16777217});
+  array wide = full({2}, 7, int64, stream);
+  auto message = caught_message(wide);
   CHECK(message.find("non-zero scalar fill") != std::string::npos);
 }
 

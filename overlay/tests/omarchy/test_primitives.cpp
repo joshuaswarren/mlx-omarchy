@@ -708,7 +708,14 @@ TEST_CASE("non-zero scalar fills dispatch through Vulkan compute") {
       stream);
   check_values(full({2}, 0.0f, float32, stream), {0.0f, 0.0f}, stream);
 
-  std::string int_error = evaluation_error(full({2}, 5, int32, stream));
+  // IntegerScalarFills: int32 and uint32 fill through the raw-word
+  // path bit-exactly; the named refusal remains for int64.
+  check_int32_values(full({2}, 5, int32, stream), {5, 5}, stream);
+  check_uint32_values(
+      full({2}, 4294967295u, uint32, stream),
+      {4294967295u, 4294967295u},
+      stream);
+  std::string int_error = evaluation_error(full({2}, 5, int64, stream));
   CHECK(int_error.find("non-zero scalar fill") != std::string::npos);
 
   const auto& capabilities = omarchy::device(0).capabilities();
