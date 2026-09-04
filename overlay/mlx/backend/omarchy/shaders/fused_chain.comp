@@ -1,33 +1,10 @@
 // Copyright © 2026 Joshua Warren / mlx-omarchy contributors.
 // SPDX-License-Identifier: MIT
 
-// Fused elementwise chain (FuseDecodeChains, 2026-09-02): evaluates a
-// short straight-line program of float unary/binary ops in ONE dispatch
-// instead of one dispatch per tape node. The program is a packed uint
-// word list in the program buffer; operands are registers (chain-local,
-// so intermediates never touch memory) or leaf buffer slots with a
-// broadcast addressing mode. Interpreted dispatch, not generated code:
-// register pressure stays tiny (8 floats), which is what Honeykrisp
-// occupancy tolerates.
-//
-// Instruction word packing: op[7:0] | a[15:8] | b[23:16] | dst[31:24].
-// Operand encoding: 0x00-0x07 = register, 0x10+slot = leaf buffer slot.
-// Op codes are the Chain* space packed by fused_chain.cpp
-// (chain_op_for maps primitives onto them); they are NOT the
-// ElementwiseOperation enum values from ../primitives.cpp.
-//
-// Rounding contract: a tape node's output is a storage-dtype (f16/f32)
-// array, so the per-node path rounds EVERY node's result to the storage
-// dtype before the next node loads it. ROUND_INTERMEDIATE applies that
-// same rounding to each register write, which makes a fused chain
-// BIT-EXACT against the per-node path for both float32 and float16.
-//
-// STORAGE_TYPE/LOAD_VALUE/STORE_VALUE mirror shaders/elementwise.comp;
-// the op formulas below (sigmoid, NaN-propagating max/min) mirror it
-// case for case. GLSL max/min return the non-NaN operand, but MLX
-// Maximum/Minimum propagate NaN like the other comparator ops.
-//
-// STORAGE_TYPE/LOAD_VALUE/STORE_VALUE mirror shaders/elementwise.comp.
+// Instruction: op[7:0] | a[15:8] | b[23:16] | dst[31:24].
+// Operands: 0x00-0x07 are registers; 0x10+slot selects a leaf buffer.
+// Op codes match chain_op_for in fused_chain.cpp, not ElementwiseOperation.
+// Each instruction rounds to the storage dtype, matching per-node dispatch.
 
 #version 460
 
@@ -37,14 +14,8 @@
 #define STORAGE_TYPE float16_t
 #define LOAD_VALUE(x) float(x)
 #define STORE_VALUE(f) STORAGE_TYPE(f)
-// Honeykrisp folds the plain OpFConvert(f32->f16)+OpFConvert(f16->f32)
-// round-trip to identity (M1 bit-exact rejection: the fused chain then
-// multiplies UNROUNDED f32 intermediates - one-ULP divergence vs the
-// per-node path on ~40% of lanes). Route the rounding through the
-// INTEGER domain instead: packHalf2x16 is spec-defined round-to-nearest
-// even (the same rounding as eager's OpFConvert store) and
-// unpackHalf2x16 is the exact widening back. No float->float conversion
-// pair remains for the optimizer to fold.
+// The float16_t round trip failed M1 equality; integer packing preserves
+// the required intermediate rounding. Compiler-pass attribution is unproved.
 #define ROUND_INTERMEDIATE(f) (unpackHalf2x16(packHalf2x16(vec2(f, 0.0))).x)
 #else
 #define STORAGE_TYPE float
