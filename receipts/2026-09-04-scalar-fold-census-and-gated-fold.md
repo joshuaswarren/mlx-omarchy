@@ -105,8 +105,7 @@ after intervening heavy submissions) needs an encoder-level fix - pin
 or drain at the fold's write - which belongs to the temporaries-flush
 contract owner. The measured decode chains fold fully host-side or
 within one batch, so the win is real; the edge blocks default-on.
-Related pre-existing defect exposed en route (reproduces on 238a977
-with no fold): `add(exp(0.5), 1.0)` in one eval pass returns garbage.
+RETRACTED (same night): an earlier version claimed a related pre-existing defect (`add(exp(0.5), 1.0)` garbage on 238a977 without the fold). The control run was contaminated - the worktree venv had a fold-carrying wheel reinstalled over the clean one, so the reproduction exercised this fold's since-removed is_available shortcut. Clean-tree hunts do not reproduce eager garbage on 238a977.
 
 ## M1 protocol for BenchQueueM1 (consolidated)
 
