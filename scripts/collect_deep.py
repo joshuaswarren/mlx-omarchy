@@ -23,8 +23,8 @@ previews and uploads nothing. Review the printed manifest, then rerun
 with `--out FILE` to write the deterministic archive (sorted members,
 fixed mtime, gzip mtime 0: same workspace, same bytes) plus a paste-ready
 `FILE.submission.md`. Uploading is always explicit: pass `--submit URL`,
-or set MLX_OMARCHY_SUBMIT_URL and type SUBMIT at the prompt. Only the
-redacted archive is sent; the endpoint answers with a public receipt
+or set MLX_OMARCHY_SUBMIT_URL and type SUBMIT at the prompt. The redacted
+summary and archive are sent; the endpoint answers with a public receipt
 URL, identical content is deduplicated by its SHA-256, and a failed
 upload keeps the local files. The JSON schema does not change with the
 sharing path.

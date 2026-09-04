@@ -330,7 +330,7 @@ def confirm_interactive(endpoint, archive_name, digest):
         return False
     print(f"[submit] endpoint: {endpoint}")
     print(f"[submit] archive: {archive_name} sha256={digest}")
-    print("[submit] only the redacted archive is sent. "
+    print("[submit] only redacted report data and any attached archive are sent. "
           "Type SUBMIT to upload, anything else to keep it local:")
     try:
         answer = input().strip()
