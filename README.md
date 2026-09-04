@@ -247,7 +247,7 @@ Honeykrisp is not a separate project. It is the Apple GPU Vulkan driver inside [
 
 ## Contributing
 
-Read [CONTRIBUTING.md](CONTRIBUTING.md) and the [roadmap](docs/roadmap.md). The most useful work right now is kernel time against the 16-45x gap - elementwise and copies are 64% of GPU busy, and the host encoder is already down to about 15% of wall, so kernels are where the remaining wins are. Hardware receipts from M-series machines always help.
+Read [CONTRIBUTING.md](CONTRIBUTING.md), the [roadmap](docs/roadmap.md), and the [contributor guide](docs/CONTRIBUTOR-GUIDE.md). The contributor guide names the open work split by whether it needs Apple hardware, lists what has already been tried (with the numbers), and pins the verification bar. The most useful work right now is kernel time against the 16-45x gap - elementwise and copies are 64% of GPU busy, and the host encoder is already down to about 15% of wall, so kernels are where the remaining wins are. Hardware receipts from M-series machines always help.
 
 ### A gap that needs a project of its own
 
