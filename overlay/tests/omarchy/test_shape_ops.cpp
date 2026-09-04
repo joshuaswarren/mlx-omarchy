@@ -62,6 +62,7 @@ void check_exact(array value, const std::vector<T>& expected) {
 void check_values(array value, const std::vector<float>& expected,
                   double epsilon = 1e-5) {
   auto dense = contiguous(value);
+  dense.eval();
   REQUIRE_EQ(dense.size(), expected.size());
   const float* values = dense.data<float>();
   for (size_t index = 0; index < expected.size(); ++index) {
