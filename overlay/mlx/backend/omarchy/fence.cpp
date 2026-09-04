@@ -33,7 +33,7 @@ static bool trace_fence() {
 void Fence::wait(Stream s, const array& a) {
   if (trace_fence()) {
     std::fprintf(stderr, "[fence] wait  on stream %d for %s (produced on stream %d)\n",
-        s.index, a.has_primitive() ? a.primitive().name().c_str() : "leaf",
+        s.index, a.has_primitive() ? a.primitive().name() : "leaf",
         a.has_primitive() ? a.primitive().stream().index : -1);
   }
   cast<FenceImpl>().event.wait(s);
@@ -42,7 +42,7 @@ void Fence::wait(Stream s, const array& a) {
 void Fence::update(Stream s, const array& a, bool) {
   if (trace_fence()) {
     std::fprintf(stderr, "[fence] update on stream %d after %s\n", s.index,
-        a.has_primitive() ? a.primitive().name().c_str() : "leaf");
+        a.has_primitive() ? a.primitive().name() : "leaf");
   }
   auto& f = cast<FenceImpl>();
   f.count++;
