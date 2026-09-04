@@ -268,6 +268,20 @@ target_link_options(omarchy_eq_math_tests PRIVATE ${SANITIZER_LINK_FLAGS})
 doctest_discover_tests(omarchy_eq_math_tests)
 add_test(NAME omarchy_eq_math_tests COMMAND omarchy_eq_math_tests)
 
+# ScalarFold: the single-element host fold. Dispatch-avoidance proofs
+# (trace counter deltas) and bit-exact differentials against the shader
+# leg over the +/-0 / denormal / inf / NaN-payload / 2^24 edge matrix,
+# plus the rope positions chain and the in-flight-input refusal.
+add_executable(omarchy_scalar_fold_tests
+               ${CMAKE_CURRENT_SOURCE_DIR}/test_scalar_fold.cpp)
+target_link_libraries(omarchy_scalar_fold_tests PRIVATE mlx doctest)
+target_compile_options(omarchy_scalar_fold_tests
+                       PRIVATE ${SANITIZER_COMPILE_FLAGS})
+target_link_options(omarchy_scalar_fold_tests
+                    PRIVATE ${SANITIZER_LINK_FLAGS})
+
+doctest_discover_tests(omarchy_scalar_fold_tests)
+add_test(NAME omarchy_scalar_fold_tests COMMAND omarchy_scalar_fold_tests)
 # TwoRankDistributed: the five distributed primitives value-proven on a
 # real two-rank ring group over loopback. The doctest binary is ONE rank's
 # process and fails its own group-size guards when run alone, so the
