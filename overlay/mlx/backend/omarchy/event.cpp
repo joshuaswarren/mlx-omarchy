@@ -136,19 +136,11 @@ void Event::wait() {
   }
   auto& event = cast<EventImpl>();
   if (event.gpu) {
-    VkSemaphoreWaitInfo info{VK_STRUCTURE_TYPE_SEMAPHORE_WAIT_INFO};
-    info.semaphoreCount = 1;
-    info.pSemaphores = &event.gpu->semaphore;
-    info.pValues = &value_;
-    VkResult res = omarchy::vk::device_table().WaitSemaphores(
-        event.gpu->device.handle(), &info, omarchy::kSubmitTimeoutNs);
-    if (res != VK_SUCCESS) {
-      throw std::runtime_error(
-          std::string("[omarchy] Vulkan event wait did not complete within ") +
-          std::to_string(omarchy::kSubmitTimeoutNs / 1000000ull) + " ms (" +
-          omarchy::vk::result_string(res) +
-          "). The device may be hung; no CPU fallback is available.");
-    }
+    // No-progress watchdog: blocks until the timeline counter reaches
+    // |value_| OR throws if the counter fails to advance. Slow work
+    // advances the counter steadily and is not misdiagnosed as a hang.
+    omarchy::wait_for_timeline_progress(
+        event.gpu->device.handle(), event.gpu->semaphore, value_);
     // Host reads may follow immediately: join the dispatcher handlers of
     // every already-completed submission (handler-written bytes, task
     // accounting). Later queued work is not awaited.
@@ -199,20 +191,9 @@ void Event::wait(Stream s) {
       uint64_t target_value = value();
       scheduler::wait_event(s, *this, [target_value](Event& self) {
         auto& impl = self.cast<EventImpl>();
-        VkSemaphoreWaitInfo info{VK_STRUCTURE_TYPE_SEMAPHORE_WAIT_INFO};
-        info.semaphoreCount = 1;
-        info.pSemaphores = &impl.gpu->semaphore;
-        info.pValues = &target_value;
-        VkResult res = omarchy::vk::device_table().WaitSemaphores(
-            impl.gpu->device.handle(), &info, omarchy::kSubmitTimeoutNs);
-        if (res != VK_SUCCESS) {
-          throw std::runtime_error(
-              std::string(
-                  "[omarchy] Vulkan event wait did not complete within ") +
-              std::to_string(omarchy::kSubmitTimeoutNs / 1000000ull) + " ms (" +
-              omarchy::vk::result_string(res) +
-              "). The device may be hung; no CPU fallback is available.");
-        }
+        // Same no-progress watchdog as the direct host wait above.
+        omarchy::wait_for_timeline_progress(
+            impl.gpu->device.handle(), impl.gpu->semaphore, target_value);
         // Same handler-boundary join as Event::wait().
         impl.gpu->device.join_completed_handlers();
       });
