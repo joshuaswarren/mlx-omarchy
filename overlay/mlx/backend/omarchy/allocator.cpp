@@ -5,6 +5,7 @@
 
 #include <algorithm>
 #include <cstdint>
+#include <cstring>
 #include <mutex>
 #include <stdexcept>
 #include <string>
@@ -24,6 +25,30 @@ size_t round_size(size_t size) {
     return kPageSize;
   }
   return kPageSize * ((size + kPageSize - 1) / kPageSize);
+}
+
+// MLX_OMARCHY_POISON_FREED (diagnostic, docs/install-omarchy.md): fill
+// recycled storage with the poison word so any stale read of a recycled
+// buffer announces itself. The word is float32 123456789.0, chosen so a
+// stale read that reaches the Cos trigonometric gate aborts the run with
+// exactly this magnitude in the message instead of returning silent
+// wrong values, and so no legitimate f16 model tensor can contain it
+// (f16 max finite is 65504). The hardware regression check runs the
+// France prompt with this armed: correct "Paris" output proves no
+// recycled-storage read served the run.
+constexpr uint32_t kPoisonFreedWord = 0x4CD6D231u;
+
+bool poison_freed() {
+  static const bool enabled = env_flag("MLX_OMARCHY_POISON_FREED");
+  return enabled;
+}
+
+void poison_freed_buffer(void* data, size_t size) {
+  auto* words = static_cast<uint32_t*>(data);
+  size_t count = size / sizeof(uint32_t);
+  for (size_t i = 0; i < count; ++i) {
+    words[i] = kPoisonFreedWord;
+  }
 }
 
 uint32_t VulkanAllocator::find_memory_type(
@@ -170,6 +195,13 @@ void VulkanAllocator::free(Buffer buffer) {
   active_memory_ -= sz;
   if (sz > 0 && !tape_no_reuse() && !buffer_cache_disabled() &&
       buffer_cache_.cache_size() + sz <= cache_limit_) {
+    // Buffers stay mapped for their whole lifetime (malloc maps at
+    // creation and only destroy_buffer unmaps), so the poison is a
+    // plain host memset. Non-coherent buffers are flushed at the next
+    // submit like any other host write.
+    if (poison_freed()) {
+      poison_freed_buffer(buf->data, sz);
+    }
     buffer_cache_.recycle_to_cache(buf);
     return;
   }
