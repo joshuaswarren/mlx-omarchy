@@ -55,7 +55,7 @@ Conditions, exact commands, and the prior measurements they replaced: `receipts/
 
 - Language model inference end to end: Qwen2.5-0.5B in bf16, fp16, and 4-bit affine quantization, greedy and temperature sampling
 - Arrays, elementwise math with general broadcast, reductions, softmax, logsumexp, cumulative sum, sorted-row search
-- Dense, transposed, and broadcast-batch matmul up to rank 5; grouped-query attention scored in float32 with f16 attention scores capped at magnitude ~600 (`1e-2` relative tolerance against a float64 host reference); grouped, depthwise, 1-D, and dilated forward convolution
+- Dense, transposed, and broadcast-batch matmul up to rank 5; grouped-query attention with scores computed in float32; grouped, depthwise, 1-D, and dilated forward convolution
 - Quantized matmul and dequantize: affine, 4-bit and 8-bit, group sizes 32 and 64, plus gathered expert matmul
 - Autograd: `value_and_grad`, `vjp`, `jvp` on device; `vmap` over elementwise closures
 - `mx.compile` over 51 op classes (elementwise, comparison, logical, select, broadcast); the fused RoPE pair (per-batch vector offsets, the inverse / VJP path) is fenced to the composed path because the fused variants have not passed equivalence
