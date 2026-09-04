@@ -1,0 +1,342 @@
+# Contributor guide
+
+This page is the answer to "what do you actually need help with?" Read it
+and pick something. If after ten minutes you cannot find a task, this
+guide failed and you should open an issue.
+
+The project is `mlx-omarchy`: a Vulkan backend for Apple MLX that runs on
+Apple Silicon Linux through Mesa's Honeykrisp driver. Current release
+v0.3.4 ships wheels for `linux_aarch64` (jwm1, M1) and `linux_x86_64`
+(dev box), measured at 12.52 tok/s for 4-bit decode (up from 1.79 in
+v0.3.2, a 7x gain over three releases). Apple's own MLX on macOS reaches
+~290 tok/s on the same silicon; the gap to close is large and is the
+core of the open work below.
+
+If you have not read these yet, do that first:
+
+- `README.md` (one-screen summary of what the project is)
+- `docs/architecture.md` (what is in the backend)
+- `docs/roadmap.md` (the proof-gated release plan)
+- `docs/known-defects.md` (the live defect ledger)
+- `AGENTS.md` (verification rules; for an outside contributor, the
+  sections on "Test rules" and "Verification and receipts" are
+  the ones to read)
+
+## The hardware split — read this first
+
+The project has exactly one Apple Silicon Linux machine (`jwm1`, M1,
+Honeykrisp). Every Linux dev box without an M1 runs against
+`llvmpipe`/`lavapipe`, which is correct for structure, dispatch counts,
+and code paths, and meaningless for timing and per-kernel numerics.
+This is not a wish — it is a hard split the rest of the guide depends on.
+
+| if you have | you can do | you cannot do |
+|---|---|---|
+| any Linux box (no Apple GPU) | shader-level reproductions, correctness tests, dispatch-count measurements, code reading, documentation, tooling, test additions, the `CONTRIBUTING.md` collector | real-Honeykrisp timing, hardware-only defect reports, shader micro-benchmarks on the Apple driver |
+| M1 (or other Asahi-running Apple Silicon) | all of the above + hardware verification | (everything in scope) |
+
+If you do not have an M1, the largest share of the open work below is
+yours. If you do have one, you own the measurements, the regression
+runs, and the named-error triage that turn a code change into a
+shippable result.
+
+The box protocol: `jwm1` (100.84.184.102) is held under exclusive lock
+by an M1 dispatch agent (`BenchQueueM1`). Do not run anything there
+yourself; route work through that agent via `hub` (`op: "send"`,
+`to: "BenchQueueM1"`, or `to: "Main"`) and wait. Three batches died
+overnight on the box and an unannounced intrusion disrupted a fourth.
+The lock is the protocol.
+
+## What is unfinished
+
+Open work, sorted by what it asks of you. Each item links to the
+receipt that bounds it.
+
+### Needs Apple hardware (M1) — high value, harder to land
+
+1. **The 2,048-token queue wedge** (live in v0.3.4,
+   `docs/known-defects.md` "Live in v0.3.4"; see
+   `receipts/2026-09-04-hang-watchdog-hardware.md`). One `mx.eval`
+   over a full-sequence forward at 2,048 tokens wedges the GPU queue.
+   The completion timeline counter stays frozen at 0 — no work retires —
+   and the submission watchdog correctly names the hang. Chunked
+   work at the same length is fine; `mlx_lm` is unaffected. What reaches
+   it is a hand-written full-sequence forward, which is why no user
+   has reported it. Hardware-only.
+2. **Subgroup arithmetic on the decode hot path** (lead from
+   `receipts/2026-09-04-subgroup-finding.md`). The disassembled
+   SPIR-V in `qmm_vec.comp` and `matmul_vec.comp` contains no
+   `OpGroupNonUniform` operations; reductions use a 5-round shared-memory
+   tree. Honeykrisp exposes subgroup operations; the float subgroup reduce
+   lowers to software on this driver, so a subgroup path is a real
+   trade-off, not a free win. A pinned M1 benchmark vs the current
+   tree (`subgroupAdd` against the shared tree at the matching k-loop
+   shape) decides it. The variant is staged at
+   `receipts/2026-09-02-gemv-decode/matmul_vec_subgroup.comp` and is
+   correct only at real subgroup size 32, so a device-subgroup-size
+   gate in dispatch is a precondition for any ship. Hardware-only.
+3. **The bf16 compiled-tape defect, in multi-core form**
+   (`receipts/2026-09-02-m1-bf16-compiled-tape.md`). The defect
+   reproduces at `nproc=1` (a single-core reproduction is in the
+   receipt). The gate lifts only when mlx-lm bf16 with compile on
+   produces clean output under repeated multi-core on-device runs.
+   The single-core run serialises the concurrency a memory hazard
+   needs. Whoever flashes m1n1 and brings the seven cores back is
+   the one who can run the rerun. Hardware-only.
+4. **The M1 verification bars for v0.4.0 and beyond.** The v0.4.0
+   proof gate is the supported M1 matrix; v0.5.0 needs an M1 install
+   of the public wheel, MLX-LM generation with zero CPU dispatches,
+   and one public workflow per ecosystem row. These are the bench
+   runs that close out the next two releases. Hardware-only.
+5. **Dispatch census on real hardware, post-v0.3.4.** v0.3.4 dropped
+   4-bit decode dispatches per token from 1,868.7 to 715.5 (-61.7%)
+   via the fused-RoPE pair. Re-profile with
+   `MLX_OMARCHY_GPU_PROFILE=...` (the env-gated harness;
+   `scripts/profile_analyze.py` parses it) on a clean main wheel and
+   publish the new ranking. The fused chain shader at
+   `shaders/fused_chain.comp` is in the tree; the question is whether
+   it landed on the hot path. Hardware-only.
+
+### Any Linux box — large surface, easier to land
+
+6. **Cut dispatch count: native-dtype elementwise paths, fused
+   elementwise chains, no materialized index arrays.**
+   `receipts/2026-09-02-gpu-profile-decode.md` shows Cast*, Copy*,
+   and Arange = 35.8% of 4-bit dispatches and 24-26% of GPU busy.
+   Native bf16/f16 elementwise paths (no f32 round-trip) are the
+   biggest single lever and have zero ordering risk. Build, run the
+   llvmpipe battery, run `python3 scripts/bench_decode.py
+   --self-test`, and write a value-test for the new paths.
+7. **Dependency-gated barriers.** The blanket pre+post dispatch
+   barrier pair is ~35 us per intra-submission gap, and 71-75% of
+   consecutive dispatch pairs are provably disjoint
+   (`receipts/2026-09-02-gpu-profile-decode.md`). A dependency tracker
+   that emits a barrier only when a dispatch's bindings overlap an
+   unsynced written range is the second-order lever. **A missed
+   dependency is a silent wrong value** — the exact class that
+   produced the v0.3.0 defects. The tracker must be conservative
+   (over-approximate) and gated by name where uncertain. Add a
+   dependency-trace test that asserts every refusal is reproduced
+   after the swap.
+8. **Value tests for the four still-live defects in v0.3.1.**
+   `nn.gelu_approx` and `gelu_fast_approx` (pytest-context only);
+   `fast_sdpa_vector` disagreement with its own decomposition (no
+   standalone repro yet); one vjp path off by one ulp. Each defect
+   entry in `docs/known-defects.md` names the test file and line. Add
+   a fresh-process repro for the first, a standalone probe for the
+   second, and a tolerance note for the third.
+9. **Documentation of the verification rules for outside readers.**
+   `AGENTS.md` is written for agents. A short "How to verify what you
+   just changed" page aimed at a person who has never run this
+   stack before is missing and would shorten every new contributor's
+   ramp.
+10. **CI:** there is no CI. The release gate runs locally. A
+    self-hosted runner that builds the dev-box wheel, runs the full
+    llvmpipe battery, and runs `bench_decode.py --self-test` would
+    be a small, high-value infrastructure piece. Speak to Main before
+    touching `.github/workflows/`.
+
+### Real work for an M1-equipped contributor who has 30 minutes
+
+- Re-run `scripts/bench_decode.py --wheel <wheel>` against current
+  main on jwm1, print the provenance line beside the result, file
+  the numbers in `receipts/` if they differ from `e7a6542` /
+  `d687505`.
+- Run `python3 scripts/differential_compile.py --self-test` against
+  the same wheel; copy the output.
+- Pick one defect from `docs/known-defects.md` "Live in v0.3.1",
+  find the smallest reproducer, and add a C++ unit test that fails
+  today and passes after the fix lands.
+
+## What has already been tried (and did not ship)
+
+These were tried, measured, and stood down. A contributor who re-proposes
+one of these wastes their time and ours. The numbers are pinned; the
+reason it lost is in the linked receipt.
+
+| idea | result | why it lost | receipt |
+|---|---|---|---|
+| Dispatcher-wakeup polling (1 ms in-flight poll) | bf16 decode -2.5%, 4-bit decode +0.3% on jwm1 | within noise; the hypothesis was wrong | `receipts/2026-09-03-dispatcher-compile-and-column-replace.md` |
+| Generic tape fusion at a 7.3% ceiling | fused-fragment path covered only 7.3% of model shape changes; rest refused by name | too narrow to be worth the extra compiler surface | `receipts/2026-09-03-dispatcher-compile-and-column-replace.md` (Compiled path: two gates, two generations) |
+| Compile-the-forward alone (`ff4b05a` ordering wait, no other changes) | bf16 decode -27.5%, 4-bit decode -39.2% vs parent `4ea2f47` | the ordering fix is not free on hardware; the regression is real and ships with the correctness benefit | `receipts/2026-09-03-dispatcher-compile-and-column-replace.md` |
+| Host scalar folding (`fast::rope` host-side offset probe) | bit-exact at the offset position; the earlier divergence was the probe, not the primitive | refuted by the corrected probe; rope stands | `docs/known-defects.md` "The rope divergence: the probe, not the primitive" |
+| Deep batching (16-100 ops per submission) | 4.5x slower on llvmpipe (0.637 vs 2.838 prompt tok/s); slower on M1 | per-op flush makes the throttle wait span one op; batched flush makes it span the whole batch; code deleted from the diff | `receipts/2026-09-03-submission-ring-descriptor-cache.md` "Batching: implemented, measured, DELETED" |
+| Software Payne-Hanek for `mx.sin`/`mx.cos` above 1e5 | on M1 returns -7.9e15 for sin(5e6) | the carry chain rides the same dynamic-indexing miscompile class as the masked-scatter defect | `docs/known-defects.md` "mx.sin and mx.cos degrade above 1e5..." |
+| GEMV decode path as the dispatch ceiling fix | path built and gated on `matrix_m == 1`; tests green | the wall is 91% host submission/join, not kernel arithmetic; faster matmul does not move a number that is 93% host wait | `receipts/2026-09-02-gemv-decode/README.md` |
+
+A variation of one of these is not a fresh angle — it inherits the
+loss. New ideas, please.
+
+## Open questions (what would answer each)
+
+These are the live questions the project needs answered to make the
+next release.
+
+1. **Why does a single 2,048-token `mx.eval` wedge the GPU queue with
+   the timeline frozen at 0?** The watchdog correctly classifies it
+   as a hang. The wedge reproduces on the M1; chunked work of the
+   same length is unaffected; `mlx_lm` is unaffected. The defect
+   entry is `docs/known-defects.md` "Live in v0.3.4". A reproducer
+   that names the resource the queue is waiting on (descriptor,
+   semaphore, fence, allocator page, in-flight submission) would
+   answer it. Likely inputs: shape threshold, allocator pool
+   exhaustion, an in-flight submission that the new submission
+   stalls behind.
+2. **Why are our kernels roughly six times slower than Metal's on
+   the same silicon?** GPU busy per 4-bit decode token is 19.5 ms
+   on our tree vs 3.4 ms total on Metal (q4 decode profile;
+   `receipts/2026-09-02-gpu-profile-decode.md`). The four-line
+   candidates: shared-memory barrier tree (`barrier()` vs
+   `subgroupAdd`), unroll policy (Honeykrisp is register-bound;
+   `llama.cpp` disables unrolling on this driver), register-tiling
+   width, and `gl_WorkGroupSize` declaration (this driver rejects
+   implicit reads, which is what broke the v0.3.4 fused-RoPE shader
+   on `glslc`). A targeted kernel-vs-kernel A/B on the M1 with each
+   lever isolated would decompose the 6x.
+3. **Does subgroup arithmetic close the kernel gap?** The variant
+   is staged at
+   `receipts/2026-09-02-gemv-decode/matmul_vec_subgroup.comp`. The
+   boundary condition: Honeykrisp float subgroup reduce lowers to
+   software; the integer subgroup ops are hardware. A pinned A/B
+   (subgroup vs shared-tree at matching k-loop shape, on the M1) is
+   the answer. Subgroup size is 32 on M1, so the dispatch needs a
+   device-subgroup-size gate.
+4. **What are the remaining ~4 host copies per layer per token, and
+   who owns them?** GPU profile shows dispatch record cost is now
+   1.7 us median on llvmpipe and was 160-260 us per dispatch
+   (`receipts/2026-09-03-submission-ring-descriptor-cache.md`); the
+   host-side residual on the M1 is the next ceiling. The profiled
+   hot path lives in `overlay/mlx/backend/omarchy/encoder.cpp`
+   (Begin / commit / descriptor pool cache). A per-encoder trace
+   with `MLX_OMARCHY_GPU_PROFILE=...` + `scripts/profile_analyze.py`
+   names which step is the ceiling.
+
+## Verification bar (briefly)
+
+"Measured on hardware or it does not ship." That sentence is not
+bureaucracy: in one 24-hour period, six measurements from this
+project turned out to describe an environment nobody intended —
+a stale wheel reinstalled by a freeze pin, a polluted build dir,
+a single-core run masquerading as the supported configuration, a
+test reference computed into `std::vector<bool>` (bit-packed,
+miscompiled by `g++ 16.1.1` aarch64), a shader that compiled
+green on the dev box (`glslangValidator 12.0.0`) and failed on
+the M1 (`glslc 2026.3`). Each looked entirely plausible. The
+provenance line beside every number (`scripts/mlx_provenance.py`),
+the per-wheel A/B discipline (wheels stamp their source commit),
+and the rule "rebuild after every rebase because `.work/mlx`
+holds a copy" exist because they were the bugs. Read
+`AGENTS.md` sections "Test rules" and "Verification and
+receipts" before you push. A small test that proves a real
+defect is worth more than a paragraph that explains one.
+
+## Entry points — concrete commands
+
+These are the commands a contributor runs first. Each was verified
+on the dev box at the time this guide was written; if a command
+fails, file an issue with the exact error and the wheel commit.
+
+### Pull the source and prepare the pinned MLX
+
+```sh
+git clone https://github.com/joshuaswarren/mlx-omarchy.git
+cd mlx-omarchy
+./scripts/prepare-mlx.sh        # fetches mlx.lock's archive, sha-checks it, stages .work/mlx
+```
+
+`prepare-mlx.sh` is the only sanctioned way to inspect the pinned
+upstream tree. Do not vendor `mlx` source into this repo.
+
+### Build the wheel
+
+```sh
+# Release wheel (profiling harness compiled OUT):
+DEV_RELEASE=1 ./scripts/build-wheel.sh
+
+# Diagnostics wheel (profiling harness compiled IN, slower, profiling only):
+./scripts/build-wheel.sh --diagnostics
+```
+
+The release wheel stamps its source commit into the version's local
+segment (`0.32.2.dev<timestamp>+<short7>`). The diagnostics wheel
+stages `+diag.<short7>`. Verify both.
+
+### Self-test the measurement scripts before you trust them
+
+```sh
+python3 scripts/mlx_provenance.py --self-test
+python3 scripts/bench_decode.py --self-test
+python3 scripts/differential_compile.py --self-test
+```
+
+All three exit 0 on the dev box today (verified 2026-09-04).
+
+### Run the dev-box battery against llvmpipe (no Apple GPU needed)
+
+The full battery is 24 binaries; see `AGENTS.md` "Test rules" for the
+build flags. Run from `.work/mlx`:
+
+```sh
+cd .work/mlx && ctest --output-on-failure -j$(nproc)
+```
+
+### Run the dispatch census (no Apple GPU needed)
+
+Counts and groupings work on llvmpipe; timing does not. With the
+diagnostics wheel installed in a venv:
+
+```sh
+export MLX_OMARCHY_GPU_PROFILE=$HOME/mlx-profile.jsonl
+~/venv-mlx-diag/bin/python -m mlx_lm generate \
+  --model /path/to/Qwen2.5-0.5B-Instruct-4bit-mlx \
+  --prompt "What is the capital of France? Answer in one word." \
+  --max-tokens 32 --temp 0 --seed 0
+
+python3 scripts/profile_analyze.py \
+  $HOME/mlx-profile.jsonl \
+  --compute-h overlay/mlx/backend/omarchy/compute.h
+```
+
+On a non-Apple box the path is the same; the numbers are correct
+for structure and dispatch count only.
+
+### Publish a community hardware report (no write access needed)
+
+```sh
+python3 scripts/collect_quick.py
+# or with --submit <URL> to publish to the community dataset
+```
+
+Full path lives in `CONTRIBUTING.md`.
+
+### Hardware protocol for an M1-equipped contributor
+
+```sh
+# 1. Confirm core count before you bench
+nproc && cat /sys/devices/system/cpu/present
+
+# 2. Install the wheel into a venv
+python3.14 -m venv ~/.venvs/mlx-collect
+~/.venvs/mlx-collect/bin/pip install \
+  https://github.com/joshuaswarren/mlx-omarchy/releases/download/v0.3.4/mlx_omarchy-0.32.2.dev202609040647+d687505-cp314-cp314-linux_aarch64.whl
+
+# 3. Print the provenance line beside every measurement
+~/.venvs/mlx-collect/bin/python scripts/mlx_provenance.py
+
+# 4. Run a pinned decode bench (5-run median, 36-token prompt, 64 tokens)
+~/.venvs/mlx-collect/bin/python scripts/bench_decode.py \
+  --model /path/to/Qwen2.5-0.5B-Instruct-bf16-mlx \
+  --prompt "What is the capital of France? Answer in one word." \
+  --tokens 64 --temp 0 --seed 0 \
+  --wheel <wheel-file-you-just-installed>
+```
+
+## Where this lives
+
+This page is `docs/CONTRIBUTOR-GUIDE.md`. `CONTRIBUTING.md` keeps
+its current focus (community data collection, source rules, proof
+required). The README links to this page from the documentation
+index. The two documents overlap on the verification bar but
+deliberately do not duplicate it — `AGENTS.md` is canonical for the
+exact rules, this page is the contributor-facing summary with the
+why.
