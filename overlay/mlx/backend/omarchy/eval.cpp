@@ -152,6 +152,7 @@ void eval(array& arr) {
 }
 
 void finalize(Stream s) {
+  omarchy::trace::counters().omarchy_finalize_calls++;
   // Flush contract: the evaluator calls finalize at task-throttle points
   // and at graph end, and then waits on task-completion handlers. The
   // open batch must reach the queue here or those waits never complete.
