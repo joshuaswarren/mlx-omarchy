@@ -61,6 +61,12 @@ RoPE/SDPA candidates changed the 128-token greedy output and remain disabled.
 These are Linux OFF/ON comparisons, not new Metal comparisons or published-wheel
 results. [Measurements and gate decisions](receipts/2026-09-04-m1-performance-gates.md).
 
+Development code also keeps KV state slices as views. Native checks recorded
+no slice-evaluation copy and no replacement copy in the tested matmul and
+attention consumers ([receipt](receipts/2026-09-04-kv-state-views.md)).
+Compiled elementwise fusion passes numerical checks but remains opt-in until
+its model-level performance gate is complete ([receipt](receipts/2026-09-04-swiglu-fused-chain.md)).
+
 > **A green run on a software Vulkan driver (llvmpipe, lavapipe) proves nothing about the Apple GPU.** Four of the v0.3.0 defects never appeared on a development box: bool scatter, 33-element `LogicalAnd`, broadcast `select`, and the `mx.sin`/`mx.cos` range-reduction collapse. llvmpipe passed the full battery the whole night those shipped. Numbers in this README were measured on Honeykrisp; verify them on Honeykrisp before quoting them.
 
 ## What works
