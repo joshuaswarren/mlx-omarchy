@@ -26,7 +26,7 @@ def pattern(count: int, seed: int) -> np.ndarray:
     state = np.uint32(seed)
     out = np.empty(count, dtype=np.float32)
     for i in range(count):
-        state = np.uint32(state * np.uint32(1664525) + np.uint32(1013904223))
+        state = np.uint32((int(state) * 1664525 + 1013904223) & 0xFFFFFFFF)
         out[i] = F32(np.float64(np.uint64(state % np.uint32(20000)) / 10000.0) - 1.0)
     return out
 
@@ -127,9 +127,10 @@ def score_config(name, cfg, sections, verbose=True):
     x_flat = sections[f"input_{name}"]
     tail_fused = np.abs(fused[tail_mask] - x_flat[tail_mask].astype(np.float64))
     tail_comp = np.abs(composed[tail_mask] - x_flat[tail_mask].astype(np.float64))
-    tail_bits_fused = (sections[f"fused_{name}"] != x_flat[tail_mask]).sum()
-    tail_bits_comp = (sections[f"composed_{name}"] != x_flat[tail_mask]).sum()
-
+    tail_bits_fused = (sections[f"fused_{name}"][tail_mask]
+                       != x_flat[tail_mask]).sum()
+    tail_bits_comp = (sections[f"composed_{name}"][tail_mask]
+                      != x_flat[tail_mask]).sum()
     rot = ~tail_mask
     err_f = np.abs(fused[rot] - truth[rot])
     err_c = np.abs(composed[rot] - truth[rot])
@@ -151,22 +152,32 @@ def score_config(name, cfg, sections, verbose=True):
         cos_true_rep = np.cos(theta_rep.astype(np.float64))
         sin_true_rep = np.sin(theta_rep.astype(np.float64))
         # fused_trig layout: forward half-split emits cos then sin; for
-        # traditional, even lanes cos, odd lanes sin.
+        # traditional, even lanes cos, odd lanes sin. Rows are D wide
+        # (D may exceed dims when passthrough lanes exist; the probe
+        # feeds (1,0) pairs only inside the rotated range).
         def split_trig(v):
+            v = v.reshape(-1, D)
             if traditional:
-                return v[..., 0:dims:2].ravel(), v[..., 1:dims:2].ravel()
-            return v[..., :half].ravel(), v[..., half:dims].ravel()
+                return v[:, 0:dims:2].ravel(), v[:, 1:dims:2].ravel()
+            return v[:, :half].ravel(), v[:, half:dims].ravel()
 
-        fc, fs = split_trig(ft.reshape(-1, dims))
-        cc, cs = split_trig(ct.reshape(-1, dims))
-        Cb = cos_true.ravel() if not traditional else None
-        # cos_true is (T, half); broadcast to pairs order (T-major)
-        ct_f = np.repeat(cos_true, 1, axis=0).ravel()
-        st_f = np.repeat(sin_true, 1, axis=0).ravel()
+        fc, fs = split_trig(ft)
+        cc, cs = split_trig(ct)
+        # Rows count: rotate extent; B/N from the shape for tiling.
+        Bv, Nv = shape[0], int(np.prod(shape[1:-2]))
+        # Quantize the reference to the storage grid so the metric
+        # isolates codegen error from f16 quantization, then tile over
+        # (B, N) into the sections' (b, n, t, i) order.
+        def store(v):
+            return v.astype(np.float64) if dtype == F32 else v.astype(
+                np.float16).astype(np.float64)
+
+        cos_ref = np.tile(store(np.cos(theta_f32)), (Bv * Nv, 1, 1)).ravel()
+        sin_ref = np.tile(store(np.sin(theta_f32)), (Bv * Nv, 1, 1)).ravel()
         trig_lines["fused_trig_vs_f64_of_f32_theta_max"] = float(
-            max(np.max(np.abs(fc - ct_f)), np.max(np.abs(fs - st_f))))
+            max(np.max(np.abs(fc - cos_ref)), np.max(np.abs(fs - sin_ref))))
         trig_lines["composed_trig_vs_f64_of_f32_theta_max"] = float(
-            max(np.max(np.abs(cc - ct_f)), np.max(np.abs(cs - st_f))))
+            max(np.max(np.abs(cc - cos_ref)), np.max(np.abs(cs - sin_ref))))
         trig_lines["fused_minus_composed_trig_max"] = float(
             max(np.max(np.abs(fc - cc)), np.max(np.abs(fs - cs))))
 
@@ -214,16 +225,23 @@ def main():
                 f"| tail bits fused {r['tail_fused_bit_diffs']} composed "
                 f"{r['tail_composed_bit_diffs']}")
         return
-    # Reference-only mode: print theta envelopes per config.
+    # Reference-only mode: print theta envelopes per config. The freqs
+    # variant's inv_freq is reciprocal(exp(-i*log(base)/half)), so its
+    # envelope must model the reciprocal, not the bare exp.
     for name, cfg in CONFIGS.items():
         shape, dims, traditional, with_freqs, base, offset, seed, dtype = cfg
         half = dims // 2
         T = shape[-2]
-        _, inv_freq, theta = theta_grid(range(T), offset, half, base)
-        ulp = np.spacing(np.abs(theta).max().astype(F32))
+        if with_freqs:
+            synth = np.exp(
+                -np.arange(half) * (np.log(base) / half)).astype(F32)
+            _, inv_freq, theta = theta_grid(
+                range(T), offset, half, base, synth)
+        else:
+            _, inv_freq, theta = theta_grid(range(T), offset, half, base)
+        bound = np.abs(theta).max() * 2 ** -23 * 2
         print(f"{name}: max|theta|={np.abs(theta).max():.6g} "
-              f"theta ulp(f32)~{ulp:.3g} "
-              f"arg-rounding bound~{np.abs(theta).max() * 2 ** -24:.3g}")
+              f"f32-theta-quantization bound~{bound:.3g}")
 
 
 if __name__ == "__main__":
