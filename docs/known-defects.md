@@ -12,34 +12,27 @@ Two of the worst v0.3.0 defects never appeared on a Linux development box. They 
 
 Open in the current release.
 
-### A bf16 buffer is released while its writer is still queued
+### bf16 decode still requires the RoPE synchronization guard
 
-Affected: every release. Observed on: real M1 (Honeykrisp), bf16 decode
-only. Status: OPEN, contained.
+Observed on: real M1 (Honeykrisp), in the development experiment that
+removed the bf16 queue drain. Status: OPEN, guard retained. The affected
+release range has not been established.
 
-Something on the bf16 path frees a buffer whose write is still on the
-queue, and the allocator hands the page to the next small allocation. It
-was found by removing an unrelated per-call queue drain: with the drain
-gone, bf16 decode at about token 33 read `be450000 3f670000 3fc90000` out
-of its scalar RoPE offset - bf16 pairs in the low half of each word,
-values in [-2.7, 1.6], plainly a bf16 activation tensor - and the RoPE
-accuracy gate refused by name at ~1e9 rather than returning a wrong
-number. 4-bit never reproduces; the f16 and f32 paths never reproduce.
+Without the drain, the scalar RoPE offset contained unexpected words
+such as `be450000 3f670000 3fc90000`, and the accuracy gate refused the
+argument. Interpreted as float32, those words have zero low 16 bits and
+are exactly representable in bf16. They do not identify the writer or
+prove premature release. Ownership, aliasing, and producer ordering
+remain candidate causes. The recorded 4-bit runs did not show this
+failure; that is not proof that all f16/f32 paths are unaffected.
 
-Contained, not fixed: `rope_trig_gate` keeps the drain for bf16 output
-(`primitives.cpp`, the `out.dtype() == bfloat16` conjunct), which is why
-bf16 decode is correct today and why it did not get the 73% that 4-bit
-got. One instance of this class was fixed in the same commit - the dense
-temporary `copy_gpu` materializes for strided dtype casts was not pinned
-into the submission - but bf16 still reproduces without the drain, so at
-least one more unpinned buffer remains on that path.
+`rope_trig_gate` retains synchronization for bf16 output. The same change
+also pinned the dense temporary used by `copy_gpu` for strided dtype
+casts, but that fix did not resolve the bf16 observation without the
+drain. Keep the guard until the relevant lifetime and readiness
+contracts are established and ordinary numerical checks pass.
 
-Finding it: run bf16 `scripts/bench_decode.py --tokens 64
---warmup-tokens 0` on the M1 with the bf16 conjunct removed; it refuses
-within ~35 tokens. Every `set_data(allocate_omarchy(...))` on a temporary
-must be followed by `encoder.add_temporary(...)` before the dispatch that
-reads it (`overlay/mlx/backend/omarchy/eval.cpp` documents the pinning
-contract).
+Evidence: [RoPE gate receipt](../receipts/2026-09-04-rope-gate-drain.md).
 
 
 ### 4-bit decode runs at 0.21 tok/s (v0.3.4 only)
