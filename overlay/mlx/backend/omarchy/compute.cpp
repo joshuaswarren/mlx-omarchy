@@ -93,6 +93,12 @@
 #include "logical_or_bool.h"
 #include "compare_bool.h"
 #include "scan_bf16.h"
+#include "fast_rope_bf16.h"
+#include "fast_rope_f16.h"
+#include "fast_rope_f32.h"
+#include "fast_rope_freqs_bf16.h"
+#include "fast_rope_freqs_f16.h"
+#include "fast_rope_freqs_f32.h"
 #include "scan_f16.h"
 #include "scan_f32.h"
 #include "scan_general_bf16.h"
@@ -560,6 +566,18 @@ ShaderBytes shader_bytes(ComputeKernel kernel) {
       return {fast_cross_entropy_f32, fast_cross_entropy_f32_size};
     case ComputeKernel::CrossEntropyF16:
       return {fast_cross_entropy_f16, fast_cross_entropy_f16_size};
+    case ComputeKernel::FastRopeF32:
+      return {fast_rope_f32, fast_rope_f32_size};
+    case ComputeKernel::FastRopeF16:
+      return {fast_rope_f16, fast_rope_f16_size};
+    case ComputeKernel::FastRopeBF16:
+      return {fast_rope_bf16, fast_rope_bf16_size};
+    case ComputeKernel::FastRopeFreqsF32:
+      return {fast_rope_freqs_f32, fast_rope_freqs_f32_size};
+    case ComputeKernel::FastRopeFreqsF16:
+      return {fast_rope_freqs_f16, fast_rope_freqs_f16_size};
+    case ComputeKernel::FastRopeFreqsBF16:
+      return {fast_rope_freqs_bf16, fast_rope_freqs_bf16_size};
     case ComputeKernel::CrossEntropyBF16:
       return {fast_cross_entropy_bf16, fast_cross_entropy_bf16_size};
     case ComputeKernel::Fp8ToF32:
@@ -729,6 +747,8 @@ VkPipeline ComputeRuntime::pipeline(ComputeKernel kernel) {
 VkPipeline ComputeRuntime::create_pipeline(ComputeKernel kernel) {
   auto& dt = vk::device_table();
   auto [bytes, size] = shader_bytes(kernel);
+  std::fprintf(stderr, "[probe] pipeline kernel=%d bytes=%p size=%zu\n",
+               static_cast<int>(kernel), (const void*)bytes, size);
   if (size == 0 || size % sizeof(uint32_t) != 0) {
     throw std::runtime_error("[omarchy] embedded SPIR-V has an invalid size.");
   }

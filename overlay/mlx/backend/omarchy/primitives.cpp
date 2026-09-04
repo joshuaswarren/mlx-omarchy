@@ -6539,21 +6539,248 @@ void CrossEntropyVJP::eval_gpu(
       std::min(params.output_size, omarchy::kMaxComputeGroupCountX));
 }
 
-OMARCHY_USE_FALLBACK(RoPE)
+bool RoPE::use_fallback(Stream s) {
+  return false;
+}
+
+// Fused RoPE absorbs the eager composition's Sin and Cos primitives, so it
+// carries their kTrigArgumentLimit gate: known-defects.md, "A correction on
+// the record", pins that a path which runs a primitive without going
+// through its eval_gpu must carry that primitive's gates. The eager gate
+// reduced the materialized theta tensor; this path never builds one, so the
+// bound comes from the factors instead:
+//
+//   max|theta| <= (max_b |off_b| + (T - 1)) * |scale| * max_i |inv_freq_i|
+//
+// For the non-negative offsets every caller sends this is exact (the
+// per-batch positions run off_b .. off_b + T - 1); mixed signs take the
+// triangle inequality, which can only refuse marginally earlier, never
+// later. max_i |inv_freq_i| is exactly 1.0 for base >= 1 (exp(0) = 1.0 in
+// any IEEE exp), a host exp otherwise (an ulp caveat at the refusal
+// boundary only), and the reciprocal of the smallest magnitude when freqs
+// are given. Only the tiny offset and freqs arrays are read, behind the
+// same stream-ordered synchronize trig_argument_gate documents: an
+// unordered mapped read raced its own submission on hardware and returned
+// recycled-page garbage.
+void rope_trig_gate(
+    const std::string& name,
+    const array& in,
+    const array& offset,
+    const array* freqs,
+    int dims,
+    float base,
+    float scale,
+    const array& out) {
+  Stream stream = out.primitive().stream();
+  int T = in.shape(-2);
+  float worst_offset;
+  if (offset.size() == 1) {
+    omarchy::get_command_encoder(stream).synchronize();
+    worst_offset = std::abs(static_cast<float>(offset.item<int>()));
+  } else {
+    array offset_worst =
+        astype(max(abs(offset, stream), stream), float32, stream);
+    offset_worst.eval();
+    omarchy::get_command_encoder(stream).synchronize();
+    worst_offset = offset_worst.item<float>();
+  }
+  float inv_freq_bound;
+  if (freqs != nullptr) {
+    array freqs_min = min(abs(*freqs, stream), stream);
+    freqs_min.eval();
+    omarchy::get_command_encoder(stream).synchronize();
+    inv_freq_bound = 1.0f / freqs_min.item<float>();
+  } else {
+    float beta = static_cast<float>(std::log(base) / (dims / 2));
+    inv_freq_bound =
+        (beta >= 0.0f) ? 1.0f : std::exp(-static_cast<float>(dims / 2 - 1) * beta);
+  }
+  float bound = (worst_offset + (T - 1)) * std::abs(scale) * inv_freq_bound;
+  if (bound > kTrigArgumentLimit) {
+    throw std::runtime_error(
+        "[omarchy] " + name + " rotational argument magnitude " +
+        std::to_string(bound) + " exceeds the built-in accuracy limit " +
+        std::to_string(kTrigArgumentLimit) +
+        " on this backend: the fused kernel computes sin/cos with the"
+        " Vulkan driver's built-in, whose range reduction is untrusted"
+        " above it, and the software Payne-Hanek fallback miscompiles on"
+        " this driver. No silent wrong value occurs. Run it on an explicit"
+        " CPU stream to use the CPU implementation.");
+  }
+}
+
+void RoPE::eval_gpu(
+    const std::vector<array>& inputs,
+    std::vector<array>& outputs) {
+  const std::string tag = name();
+  array& out = outputs.at(0);
+  const array& in = inputs.at(0);
+  const array& offset = inputs.at(1);
+  auto s = stream();
+  auto& encoder = omarchy::get_command_encoder(s);
+  require_float_dtype(tag, in, out, encoder);
+  if (out.size() == 0) {
+    out.set_data(allocate_omarchy(out.nbytes()));
+    return;
+  }
+  bool with_freqs = inputs.size() == 3;
+  rope_trig_gate(
+      tag,
+      in,
+      offset,
+      with_freqs ? &inputs.at(2) : nullptr,
+      dims_,
+      base_,
+      scale_,
+      out);
+
+  // The kernel never rotates in place: the input binding is readonly, the
+  // output binding writeonly, and they never alias (an aliased
+  // readonly/writeonly pair drops stores on llvmpipe - observed
+  // 2026-09-03 - so every case below reads the input buffer directly or
+  // through a temporary and writes a fresh output). The stride cases
+  // mirror the upstream Metal decision tree (mlx/backend/metal/rope.cpp).
+  int ndim = in.ndim();
+  int B = in.shape(0);
+  int T = in.shape(-2);
+  int D = in.shape(-1);
+  int half_dims = dims_ / 2;
+  bool passthrough = dims_ < D;
+  size_t mat_size = static_cast<size_t>(T) * D;
+  bool row_contiguous = in.flags().row_contiguous;
+  bool head_seq_transpose = false;
+  const array* src = &in;
+  int64_t strides[3];
+
+  int dispatch_ndim = ndim;
+  while (in.shape(-dispatch_ndim) == 1 && dispatch_ndim > 3) {
+    dispatch_ndim--;
+  }
+  int N = 1;
+  for (int i = 1; i < (ndim - 2); ++i) {
+    N *= in.shape(i);
+  }
+
+  if (row_contiguous) {
+    strides[0] = mat_size;
+    strides[1] = in.strides()[ndim - 2];
+    strides[2] = in.strides()[ndim - 1];
+  } else if (dispatch_ndim == 3) {
+    // Handle non-contiguous 3D inputs
+    strides[0] = in.strides()[ndim - 3];
+    strides[1] = in.strides()[ndim - 2];
+    strides[2] = in.strides()[ndim - 1];
+  } else if (
+      ndim == 4 &&
+      // batch dim is regularly strided
+      in.strides()[0] == static_cast<int64_t>(T) * N * D &&
+      // sequence and head dimensions are transposed
+      in.strides()[1] == D &&
+      in.strides()[2] == static_cast<int64_t>(N) * D) {
+    head_seq_transpose = true;
+    strides[0] = in.strides()[1];
+    strides[1] = in.strides()[2];
+    strides[2] = in.strides()[3];
+  } else {
+    // Copy non-contiguous > 3D inputs into a contiguous temporary and
+    // rotate from there.
+    array temp(in.shape(), in.dtype(), nullptr, {});
+    temp.set_data(allocate_omarchy(temp.nbytes()));
+    copy_gpu(in, temp, CopyType::General, s);
+    encoder.add_temporary(temp);
+    src = &temp;
+    strides[0] = mat_size;
+    strides[1] = temp.strides()[ndim - 2];
+    strides[2] = temp.strides()[ndim - 1];
+  }
+
+  int64_t offset_stride = offset.ndim() > 0 ? offset.strides()[0] : 0;
+  omarchy::ComputeParams params;
+  params.count = checked_u32(
+      static_cast<size_t>(B) * N * T * (passthrough ? D : half_dims),
+      tag,
+      out);
+  params.dims = checked_u32(half_dims, tag, out);
+  params.flags = (forward_ ? 1u : 0u) | (traditional_ ? 2u : 0u) |
+      (head_seq_transpose ? 4u : 0u) | (passthrough ? 8u : 0u);
+  params.alpha = scale_;
+  params.beta = static_cast<float>(std::log(base_) / half_dims);
+  params.lhs_offset = checked_item_offset(*src, in.size(), tag, out);
+  params.rhs_offset = checked_item_offset(offset, offset.size(), tag, out);
+  params.output_offset = checked_item_offset(out, out.size(), tag, out);
+  params.matrix_m = checked_u32(offset_stride, tag, out);
+  params.shape[0] = checked_u32(N, tag, out);
+  params.shape[1] = checked_u32(T, tag, out);
+  params.shape[2] = checked_u32(D, tag, out);
+  params.in_strides[0] = checked_u32(strides[0], tag, out);
+  params.in_strides[1] = checked_u32(strides[1], tag, out);
+  params.in_strides[2] = checked_u32(strides[2], tag, out);
+  // The output is freshly allocated here, so it is row contiguous.
+  params.out_strides[0] = checked_u32(mat_size, tag, out);
+  params.out_strides[1] = checked_u32(D, tag, out);
+  params.out_strides[2] = 1u;
+  if (with_freqs) {
+    params.aux_offset =
+        checked_item_offset(inputs.at(2), inputs.at(2).size(), tag, out);
+  }
+  // The no-freqs shader variants declare three bindings; the freqs slot
+  // doubles the offset binding like the scalar-weight norm kernels do.
+  // The bfloat16 variant rotates in float32 and rides the proven
+  // float32-to-bfloat16 cast kernel: its uint word stores are per-element
+  // read-modify-writes of a shared 32-bit word, and adjacent lanes belong
+  // to different threads for the half-split layout.
+  // The bfloat16 path rides two extra CastF32BF16 dispatches: one
+  // for the input and one for the output. They wrap the same f32 rope
+  // kernel that handles every other dtype; the word-load/bug that
+  // motivates the cast only applies to bfloat16 storage, and the cast
+  // path is the proven device capability.
+  const array* rope_input = src;
+  std::optional<array> bf16_to_f32;
+  if (out.dtype() == bfloat16) {
+    bf16_to_f32 = array(in.shape(), float32, nullptr, {});
+    bf16_to_f32->set_data(allocate_omarchy(bf16_to_f32->nbytes()));
+    encoder.add_temporary(*bf16_to_f32);
+    copy_gpu(in, *bf16_to_f32, CopyType::Vector, s);
+    rope_input = &*bf16_to_f32;
+    params.lhs_offset = 0;
+  }
+  array rope_output = out;
+  std::optional<array> f32_to_bf16;
+  if (out.dtype() == bfloat16) {
+    f32_to_bf16 = array(out.shape(), float32, nullptr, {});
+    f32_to_bf16->set_data(allocate_omarchy(f32_to_bf16->nbytes()));
+    encoder.add_temporary(*f32_to_bf16);
+    rope_output = *f32_to_bf16;
+  } else {
+    out.set_data(allocate_omarchy(out.nbytes()));
+  }
+  std::array<omarchy::ComputeBinding, 4> bindings{
+      binding(*rope_input),
+      binding(rope_output),
+      binding(offset),
+      binding(with_freqs ? inputs.at(2) : offset)};
+  auto kernel = select_float_kernel(
+      rope_output.dtype(),
+      with_freqs ? omarchy::ComputeKernel::FastRopeFreqsF32
+                 : omarchy::ComputeKernel::FastRopeF32,
+      with_freqs ? omarchy::ComputeKernel::FastRopeFreqsF16
+                 : omarchy::ComputeKernel::FastRopeF16,
+      with_freqs ? omarchy::ComputeKernel::FastRopeFreqsBF16
+                 : omarchy::ComputeKernel::FastRopeBF16);
+  encoder.dispatch_compute(
+      kernel,
+      bindings,
+      params,
+      omarchy::compute_dispatch_group_count(params.count));
+  if (f32_to_bf16) {
+    copy_gpu(*f32_to_bf16, out, CopyType::Vector, s);
+  }
+}
 void ScaledDotProductAttention::eval_gpu(
     const std::vector<array>& inputs,
     std::vector<array>& outputs) {
   const std::string tag = name();
   array& out = outputs.at(0);
-  if (outputs.size() != 1) {
-    omarchy::unsupported(tag + " logsumexp output", out);
-  }
-  if (has_sinks_ || inputs.size() > 4) {
-    omarchy::unsupported(tag + " sinks", out);
-  }
-  if (inputs.size() == 4 && do_causal_) {
-    omarchy::unsupported(tag + " causal mask with array mask", out);
-  }
   const array& q = inputs.at(0);
   const array& k = inputs.at(1);
   const array& v = inputs.at(2);
