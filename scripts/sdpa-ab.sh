@@ -192,7 +192,7 @@ else
   # Gated-ON numerical equivalence BEFORE any timing. The gate's own
   # case must pass on the gated path; nonzero aborts with no numbers.
   echo "[$(date +%T)] gate equivalence, $GATE_ENV=1 (before any timing): $EQ_CMD"
-  ( cd "$SRC" && PATH="$VG/bin:$PATH" GATE_ENV=1 bash -c "$EQ_CMD" ) \
+  ( cd "$SRC" && PATH="$VG/bin:$PATH" env "$GATE_ENV=1" bash -c "$EQ_CMD" ) \
     > "$LOG/equivalence-gate-on.log" 2>&1
   EQ=$?
   tail -3 "$LOG/equivalence-gate-on.log"
