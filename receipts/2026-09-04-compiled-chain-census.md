@@ -117,11 +117,18 @@ Multi-consumer blocking:
   multi-consumer-capable fuser would save 48/751 = 6.4% there - the
   ONLY place the harder rule pays.
 
-Mechanism finding worth keeping: the SAME swiglu is unfusable as a
-standalone shapeless compile (the tracer materializes Broadcast views
-with uses=2) and perfectly fusable inlined in a layer compile at exact
-shape (views folded away at trace time). Whether a fuser has work
-depends on compiler decisions upstream of it, not on the model.
+Mechanism finding worth keeping: the uses=2 interiors that blocked
+ElementwiseFusion's eager census were never a property of the graph -
+they were a property of HOW the graph was compiled. The SAME swiglu is
+unfusable as a standalone shapeless compile (the tracer materializes
+Broadcast views as real nodes with uses=2) and perfectly fusable
+inlined in a layer compile at exact shape (the views fold away at
+trace time, leaving a clean Sigmoid->Mul->Mul chain with uses=1
+everywhere - same ops, this run's dump proves both forms side by
+side). Whether a fuser has work depends on compile strategy upstream
+of it, not on the model. If mlx_lm's compile strategy changes - more
+inlined compiles, fewer standalone shapeless activations - re-run this
+census before assuming the old uses=2 wall still exists.
 
 ## Comparison (one sentence)
 
