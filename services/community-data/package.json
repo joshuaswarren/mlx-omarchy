@@ -3,10 +3,13 @@
   "private": true,
   "scripts": {
     "test": "bun test test/unit",
-    "smoke": "bun test/smoke.ts"
+    "smoke": "bun test/smoke.ts",
+    "lint": "oxlint ."
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^5.20260831.1",
+    "@oxlint/plugins": "^1.81.0",
+    "oxlint": "^1.81.0",
     "wrangler": "^4.38.0"
   }
 }
