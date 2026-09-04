@@ -136,7 +136,7 @@ def main():
         lib = ctypes.CDLL(str(so))
         lib.mlx_omarchy_prim_reset.argtypes = []
         lib.mlx_omarchy_prim_reset()
-
+    events = []
     markers = open(args.markers, "w", encoding="utf-8")
     install_boundary_hooks(events, read)
 
