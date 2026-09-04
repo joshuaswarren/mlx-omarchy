@@ -17,6 +17,22 @@ A lazy view first evaluated after later cache writes retained its expected pre-w
 
 Raw native output: `~/benchq/logs/performance-final-db10f53-20260904-batch3/kv_state_views.out`. These are copy-count and correctness results, not a standalone KV speedup claim.
 
+## Final integration check
+
+Native wheel source `a8f243b47a053467f71515c44283e349ecf6a94a`, SHA-256
+`fa9d55e089945c0329365f5d70ee76f87a25f6123388a3545cda43f9d2cd61c3`,
+passed complex (16 cases/519 assertions), indexing (43/1,793), and fast-op
+(21/27,967) suites. The shape helper accidentally lost its evaluation call
+in a test-only cleanup; corrected harness `9402af34` passed 24 cases/266
+assertions against the same backend. Five standalone empty-dimension matmul
+and addmm checks passed against NumPy on the installed wheel.
+
+Default q4 and eager bf16 short-32 model smokes both matched installed-wheel
+provenance and canonical generated-ID digests (`7fd25a869ff21678` and
+`635bc7f4bbaa48a4`). The C++ primitive target skipped its selected case,
+so the independent Python checks—not that skip—qualify the empty-K fix.
+Raw logs: `~/benchq/logs/performance-final-db10f53-20260904-batch4/`.
+
 ## Broader check limitations
 
 The broad llvmpipe C++ run was not green. It exposed tests that flattened retained views and tests that expected now-obsolete layout refusals. After correcting those contracts, the shape (24 cases/266 assertions), complex (16/519), indexing (43/1,786), and fast-op (21/39,914) suites passed.

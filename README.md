@@ -53,12 +53,11 @@ Validated M1 Linux prefill results, five alternating pairs on one development wh
 | 262 / 128 | 36.587 | 187.545 | 5.13× | 28.41 → 28.32 |
 | 1053 / 32 | 35.963 | 197.524 | 5.49× | 23.53 → 23.53 |
 
-Development prefill tiling improved the same M1's 4-bit prefill throughput by
-2.20×, 5.13×, and 5.49× at 30, 262, and 1053 prompt tokens in five alternating
-pairs, with identical generated token IDs. Decode was unchanged. Both bf16
-RoPE/SDPA candidates changed the 128-token greedy output and remain disabled.
-These are Linux OFF/ON comparisons, not new Metal comparisons or published-wheel
-results. [Measurements and gate decisions](receipts/2026-09-04-m1-performance-gates.md).
+Tiled quantized prefill is enabled by default in development builds. Every
+comparison above preserved generated token IDs; no decode gain is claimed.
+Both bf16 RoPE/SDPA candidates changed the 128-token greedy output and remain
+disabled. These are Linux OFF/ON measurements, not Metal comparisons or
+published-wheel results. [Conditions and gate decisions](receipts/2026-09-04-m1-performance-gates.md).
 
 Development code also keeps KV state slices as views. Native checks recorded
 no slice-evaluation copy and no replacement copy in the tested matmul and
