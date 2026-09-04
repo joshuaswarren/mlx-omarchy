@@ -20,6 +20,8 @@ corruption that closed them is root-caused and fixed
 ([docs/known-defects.md](known-defects.md)). The former
 `MLX_OMARCHY_ALLOW_UNSAFE_COMPILE` override was retired with the fix;
 setting it now does nothing.
+To enable compilation, unset `MLX_DISABLE_COMPILE`; setting it to `0`
+still disables compilation because upstream checks its presence.
 
 Development builds use tiled quantized prefill by default. Set
 `MLX_OMARCHY_QMM_TILE=0` to compare with the untiled path; single-row
