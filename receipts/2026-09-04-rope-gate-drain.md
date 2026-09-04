@@ -12,7 +12,10 @@ bf16 eager.
 
 - GPU busy 12.07% of wall
 - 604 dispatches per decode token in **48 submissions**
-- join wait 42.5 ms per decode token, against ~57 ms per token total
+- join wait 42.5 ms per decode token in the instrumented run
+
+Profiling perturbs execution. These times must not be divided by the
+uninstrumented benchmark latency to estimate its host/GPU split.
 
 48 submissions for 24 decoder layers is two per layer, and the split was
 mechanical: `sub N` = 5 dispatches (rope + 4 cache copies), `sub N+1` =
@@ -25,14 +28,13 @@ is a `vkQueueSubmit` plus a host join.
 magnitude before dispatching the fused RoPE kernel, and to read the
 offset on the host it called `encoder.synchronize()` - commit the open
 command buffer, then block until the device drains. That is correct for
-an offset produced by GPU work. In decode it never is: mlx_lm passes a
-Python int, which becomes an `array` that is `Status::available` at
-construction with no primitive. Nothing on the queue can be writing it.
-The gate drained the queue twice per layer to read a number the host had
-written itself.
+an offset produced by GPU work. The measured mlx_lm path supplies a
+Python integer, represented by an available array without a primitive.
+The implementation uses those properties to select the direct read for
+non-bf16 output. Whether these properties prove readiness for every
+other caller requires a separate ownership/readiness audit.
 
-Fix: read it directly when it is a host constant, keep the synchronize
-for anything that might be in flight.
+The bf16 path retains synchronization.
 
 ## Numbers (M1, five runs each, same session)
 
@@ -43,7 +45,9 @@ for anything that might be in flight.
 
 Submissions per decode token: 48 -> 11 (`scripts/fragmentation_probe.py`,
 same box). `omarchy_fast_ops_tests` 24,084 assertions green on the Apple
-GPU. 128-token greedy generation byte-identical across the two wheels.
+GPU. The earlier greedy check compared only the first 96 IDs after
+decoding and re-encoding generated text, with a 128-token generation cap.
+It did not establish equality of 128 actual generated token IDs.
 
 ## What removing the drain exposed
 
@@ -55,18 +59,15 @@ floats: -0.192383 0.902344 1.57031 -1.11719 1.4375 1.52344 -2.6875
 u32:    be450000 3f670000 3fc90000 bf8f0000 3fb80000 3fc30000 c02c0000
 ```
 
-Every word has a zero low half: bf16 values packed into the low bits of
-f32 words. A bf16 activation tensor was sitting in the offset scalar's
-page. Something on the bf16 path releases a buffer while its writer is
-still queued and the allocator recycles the page; the 48 drains per token
-had been hiding it.
+These are float32 values with zero low 16 bits, exactly representable in
+bf16. The bit pattern does not identify the writer or establish why the
+offset storage changed. A lifetime error, aliasing, or an ordering error
+remains a hypothesis, not a diagnosed cause.
 
-One instance of that class was found and fixed in this commit: the dense
-temporary `copy_gpu` materializes for a strided dtype cast (`copy.cpp`)
-was never pinned with `add_temporary`, so it died at return with both of
-its dispatches still queued. bf16 still reproduces without the drain, so
-at least one more remains. bf16 therefore keeps the drain, by name, and
-the defect is recorded in `docs/known-defects.md` with its reproduction.
+The commit also pins the dense temporary used by `copy_gpu` for strided
+dtype casts. That fix did not resolve the bf16 observation without the
+drain. bf16 therefore retains synchronization while ownership and
+producer readiness are investigated. See `docs/known-defects.md`.
 
 That is why 4-bit gets 76% and bf16 gets nothing today. The gate refused
 rather than returning a wrong number, which is the contract working.
