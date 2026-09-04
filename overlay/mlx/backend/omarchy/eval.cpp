@@ -11,6 +11,10 @@
 #include <string_view>
 #include <vector>
 
+#ifdef MLX_OMARCHY_GPU_PROFILING
+#include <cstdio>
+#endif
+
 #include "mlx/backend/gpu/copy.h"
 #include "mlx/backend/omarchy/allocator.h"
 #include "mlx/backend/omarchy/device.h"
@@ -90,6 +94,9 @@ void init() {
 
 void eval(array& arr) {
   omarchy::trace::counters().gpu_primitive_dispatches++;
+#ifdef MLX_OMARCHY_GPU_PROFILING
+  ++omarchy::trace::prim_counts()[arr.primitive().name()];
+#endif
   auto outputs = arr.outputs();
   auto& stream = arr.primitive().stream();
   auto& encoder = omarchy::get_command_encoder(stream);
@@ -179,5 +186,24 @@ mlx_omarchy_trace_snapshot(
   out->commit_calls_with_work = c.commit_calls_with_work.load();
   out->commit_calls_noop = c.commit_calls_noop.load();
 }
+
+#ifdef MLX_OMARCHY_GPU_PROFILING
+void mlx_omarchy_prim_dump(const char* path) {
+  std::FILE* f = std::fopen(path, "w");
+  if (!f) {
+    return;
+  }
+  for (auto& [name, count] : mlx::core::omarchy::trace::prim_counts()) {
+    std::fprintf(
+        f, "%.*s,%llu\n", static_cast<int>(name.size()), name.data(),
+        static_cast<unsigned long long>(count));
+  }
+  std::fclose(f);
+}
+
+void mlx_omarchy_prim_reset(void) {
+  mlx::core::omarchy::trace::prim_counts().clear();
+}
+#endif
 
 } // namespace mlx::core::gpu
