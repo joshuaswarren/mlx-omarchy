@@ -49,18 +49,9 @@ struct MlxOmarchyTraceSnapshot {
   uint64_t commit_calls_with_work;
   uint64_t commit_calls_noop;
 };
-
-extern "C" __attribute__((visibility("default"))) inline void
-mlx_omarchy_trace_snapshot(MlxOmarchyTraceSnapshot* out) {
-  auto& c = mlx::core::omarchy::trace::counters();
-  out->gpu_primitive_dispatches = c.gpu_primitive_dispatches.load();
-  out->vk_submissions = c.vk_submissions.load();
-  out->vk_buffer_copies = c.vk_buffer_copies.load();
-  out->vk_buffer_fills = c.vk_buffer_fills.load();
-  out->vk_compute_dispatches = c.vk_compute_dispatches.load();
-  out->omarchy_finalize_calls = c.omarchy_finalize_calls.load();
-  out->commit_calls_with_work = c.commit_calls_with_work.load();
-  out->commit_calls_noop = c.commit_calls_noop.load();
-}
+// Defined once in eval.cpp: an inline header definition is comdat and
+// never reaches the dynamic symbol table under -fvisibility=hidden.
+extern "C" __attribute__((visibility("default"))) void
+mlx_omarchy_trace_snapshot(MlxOmarchyTraceSnapshot* out);
 
 } // namespace mlx::core::omarchy::trace
