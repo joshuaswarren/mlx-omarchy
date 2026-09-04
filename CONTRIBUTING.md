@@ -91,6 +91,10 @@ the installed mlx-omarchy wheel with its capability dump. The JSON is
 small and carries no personal data; paste it wherever you discuss the
 project.
 
+Passing `--submit` publishes exactly this JSON and nothing else: the
+request is marked `archive: null`, so no archive exists on this path
+and one request carries the whole submission.
+
 ### Path 2: full report, needs the released wheel
 
 `scripts/collect_deep.py` runs five sections: `quick`, `environment`,
@@ -107,8 +111,8 @@ Prerequisites, in order:
 2. The aarch64 wheel asset from a stable release at
    [github.com/joshuaswarren/mlx-omarchy/releases](https://github.com/joshuaswarren/mlx-omarchy/releases).
    The name pattern is `mlx_omarchy-*-cp314-cp314-linux_aarch64.whl`;
-   v0.3.2 ships
-   `mlx_omarchy-0.32.2.dev202609030512-cp314-cp314-linux_aarch64.whl`.
+   v0.3.5 ships
+   `mlx_omarchy-0.32.2.dev202609040917+0535e62-cp314-cp314-linux_aarch64.whl`.
    Use a stable wheel, not the diagnostics prerelease below; the
    prerelease slows every dispatch on purpose, so its benchmark
    numbers are not comparable.
@@ -118,10 +122,10 @@ Prerequisites, in order:
    ```bash
    python3.14 -m venv ~/.venvs/mlx-collect
    ~/.venvs/mlx-collect/bin/pip install \
-     https://github.com/joshuaswarren/mlx-omarchy/releases/download/v0.3.2/mlx_omarchy-0.32.2.dev202609030512-cp314-cp314-linux_aarch64.whl
+     https://github.com/joshuaswarren/mlx-omarchy/releases/download/v0.3.5/mlx_omarchy-0.32.2.dev202609040917%2B0535e62-cp314-cp314-linux_aarch64.whl
    ```
 
-   That URL pins v0.3.2. To take whatever the newest stable release
+   That URL pins v0.3.5. To take whatever the newest stable release
    ships instead:
 
    ```bash
@@ -212,10 +216,23 @@ export MLX_OMARCHY_SUBMIT_URL=https://mlx-omarchy-community-data.joshua-s-warren
 # type SUBMIT at the prompt, or pass --submit "$MLX_OMARCHY_SUBMIT_URL"
 ```
 
-Only the already-redacted archive is sent. The endpoint deduplicates by
-content SHA-256 and answers with a public receipt URL, which the script
-prints. Keep that URL: it is the stable public link to your result. A
-failed upload keeps the local archive and submission file.
+Consent is explicit. Passing `--submit` is itself the consent and
+skips the prompt. With only the environment variable set, the
+collector asks for the exact word `SUBMIT` on a terminal; anything
+else, including a non-interactive stdin, declines and keeps every file
+local.
+
+What leaves the machine is exactly what the preview showed, redacted
+before it was written to disk. The quick path sends the JSON summary
+alone, marked `archive: null`; the deep path sends that same summary
+plus the archive itself, split into hashed 768 KiB chunks. The server
+validates the summary against a strict schema with a fixed field
+allowlist and scans it for PII; the archive chunks are stored
+opaquely, never decompressed, parsed, or scanned. The endpoint
+deduplicates by content SHA-256 and answers with a public receipt
+URL, which the script prints. Keep that URL: it is the stable public
+link to your result. A failed upload keeps the local archive and
+submission file.
 
 ### Troubleshooting
 
@@ -254,9 +271,11 @@ present and no `maxcpus=` or `nosmp` boot clamp explains the gap.
 
 Privacy rules that hold for every submission:
 
-- Only redacted, allowlisted fields leave your machine: host model,
-  architecture, kernel release, GPU and driver names, package versions,
-  probe results, and benchmark numbers.
+- The JSON summary carries only redacted, allowlisted fields: host
+  model, architecture, kernel release, GPU and driver names, package
+  versions, probe results, and benchmark numbers. A quick submission
+  sends that summary alone; a deep submission adds the redacted
+  archive and nothing else.
 - The redactor removes user names, host names, home paths, IP and MAC
   addresses, serial numbers, UUIDs, and credential-shaped strings, and
   the manifest counts every replacement it made.

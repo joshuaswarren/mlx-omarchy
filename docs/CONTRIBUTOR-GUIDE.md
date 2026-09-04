@@ -6,7 +6,7 @@ guide failed and you should open an issue.
 
 The project is `mlx-omarchy`: a Vulkan backend for Apple MLX that runs on
 Apple Silicon Linux through Mesa's Honeykrisp driver. Current release
-v0.3.4 ships wheels for `linux_aarch64` (jwm1, M1) and `linux_x86_64`
+v0.3.5 ships wheels for `linux_aarch64` (jwm1, M1) and `linux_x86_64`
 (dev box), measured at 12.52 tok/s for 4-bit decode (up from 1.79 in
 v0.3.2, a 7x gain over three releases). Apple's own MLX on macOS reaches
 ~290 tok/s on the same silicon; the gap to close is large and is the
@@ -318,7 +318,7 @@ nproc && cat /sys/devices/system/cpu/present
 # 2. Install the wheel into a venv
 python3.14 -m venv ~/.venvs/mlx-collect
 ~/.venvs/mlx-collect/bin/pip install \
-  https://github.com/joshuaswarren/mlx-omarchy/releases/download/v0.3.4/mlx_omarchy-0.32.2.dev202609040647+d687505-cp314-cp314-linux_aarch64.whl
+  https://github.com/joshuawarren/mlx-omarchy/releases/download/v0.3.5/mlx_omarchy-0.32.2.dev202609040917+0535e62-cp314-cp314-linux_aarch64.whl
 
 # 3. Print the provenance line beside every measurement
 ~/.venvs/mlx-collect/bin/python scripts/mlx_provenance.py

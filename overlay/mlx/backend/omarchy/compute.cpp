@@ -93,6 +93,8 @@
 #include "logical_or_bool.h"
 #include "compare_bool.h"
 #include "scan_bf16.h"
+#include "fused_chain_f32.h"
+#include "fused_chain_f16.h"
 #include "fast_rope_bf16.h"
 #include "fast_rope_f16.h"
 #include "fast_rope_f32.h"
@@ -696,6 +698,10 @@ ShaderBytes shader_bytes(ComputeKernel kernel) {
       return {qmm_tile_f16, qmm_tile_f16_size};
     case ComputeKernel::QmmTileBF16:
       return {qmm_tile_bf16, qmm_tile_bf16_size};
+    case ComputeKernel::FusedChainF32:
+      return {fused_chain_f32, fused_chain_f32_size};
+    case ComputeKernel::FusedChainF16:
+      return {fused_chain_f16, fused_chain_f16_size};
     case ComputeKernel::Count:
       break;
   }

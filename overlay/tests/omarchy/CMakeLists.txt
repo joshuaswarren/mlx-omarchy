@@ -268,6 +268,32 @@ target_link_options(omarchy_eq_math_tests PRIVATE ${SANITIZER_LINK_FLAGS})
 doctest_discover_tests(omarchy_eq_math_tests)
 add_test(NAME omarchy_eq_math_tests COMMAND omarchy_eq_math_tests)
 
+# FuseDecodeChains: decode dispatch counter harness (host-side trace
+# counters over a faithful Qwen2.5-0.5B decode step) and fused-chain
+# compiled-versus-eager equivalence tests.
+add_executable(omarchy_decode_dispatch_count
+               ${CMAKE_CURRENT_SOURCE_DIR}/decode_dispatch_count.cpp)
+target_link_libraries(omarchy_decode_dispatch_count PRIVATE mlx doctest)
+target_compile_options(omarchy_decode_dispatch_count
+                       PRIVATE ${SANITIZER_COMPILE_FLAGS})
+target_link_options(omarchy_decode_dispatch_count
+                    PRIVATE ${SANITIZER_LINK_FLAGS})
+add_test(NAME omarchy_decode_dispatch_count
+         COMMAND omarchy_decode_dispatch_count)
+
+# FuseDecodeChains: fused elementwise-chain compiled-versus-eager
+# equivalence tests plus dispatch-collapse and bf16-refusal guards.
+add_executable(omarchy_fused_chain_tests
+               ${CMAKE_CURRENT_SOURCE_DIR}/test_fused_chain.cpp)
+target_link_libraries(omarchy_fused_chain_tests PRIVATE mlx doctest)
+target_compile_options(omarchy_fused_chain_tests
+                       PRIVATE ${SANITIZER_COMPILE_FLAGS})
+target_link_options(omarchy_fused_chain_tests
+                    PRIVATE ${SANITIZER_LINK_FLAGS})
+
+doctest_discover_tests(omarchy_fused_chain_tests)
+add_test(NAME omarchy_fused_chain_tests COMMAND omarchy_fused_chain_tests)
+
 # TwoRankDistributed: the five distributed primitives value-proven on a
 # real two-rank ring group over loopback. The doctest binary is ONE rank's
 # process and fails its own group-size guards when run alone, so the

@@ -318,17 +318,11 @@ enum class ComputeKernel : uint8_t {
   QmmVecSubgroupF32,
   QmmVecSubgroupF16,
   QmmVecSubgroupBF16,
-  // PrefillQmmTile: m-tiled quantized matmul for matrix_m > 1. One
-  // 16x16 workgroup dequantizes each weight block into shared f32 once
-  // and applies it to a 16-row tile of x (shaders/qmm_tile.comp), so
-  // the per-MAC weight unpack of the general Qmm kernel is amortized
-  // across 16 output rows. Dispatch is gated in primitives.cpp on
-  // MLX_OMARCHY_QMM_TILE (default OFF selects QmmF32/16/BF16); these
-  // enum values live at the end so older indices stay stable for the
-  // GPU-profile NDJSON stream.
   QmmTileF32,
   QmmTileF16,
   QmmTileBF16,
+  FusedChainF32,
+  FusedChainF16,
   Count,
 };
 
