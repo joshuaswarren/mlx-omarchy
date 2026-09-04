@@ -1721,11 +1721,11 @@ TEST_CASE("fused rope bf16 direct bind matches wrapped and composed paths") {
 
       // Direct vs wrapped: the wrapped f32 interior skips the six
       // per-intermediate bf16 roundings (cos, sin, four products, the
-      // combine) that the direct leg applies. Each RNE half-ulp is
-      // 2^-9 relative, so with |x| <= in_max and |r| <= out_max the
-      // per-element difference is bounded by
-      // 2^-9 * (2*in_max + 2*in_max + out_max + out_max) - derived
-      // from the bf16 grid, not fitted to this run.
+      // combine) that the direct leg applies. bf16 stores 7 mantissa
+      // bits, so the RNE half-ulp bound is 2^-8 relative, and with
+      // |x| <= in_max and |r| <= out_max the per-element difference is
+      // bounded by 2^-8 * (2*in_max + 2*in_max + out_max + out_max) -
+      // derived from the bf16 grid, not fitted to this run.
       float in_max = 0.0f;
       for (float value : flat(x, stream)) {
         in_max = std::max(in_max, std::abs(value));
@@ -1734,7 +1734,7 @@ TEST_CASE("fused rope bf16 direct bind matches wrapped and composed paths") {
       for (float value : wrapped_v) {
         out_max = std::max(out_max, std::abs(value));
       }
-      const double kHalfUlp = 1.0 / 512.0; // 2^-9, bf16 RNE half-ulp
+      const double kHalfUlp = 1.0 / 256.0; // 2^-8, bf16 RNE half-ulp
       double direct_vs_wrapped =
           kHalfUlp * (4.0 * in_max + 2.0 * out_max);
       double observed = 0.0;
