@@ -848,16 +848,12 @@ void wait_for_timeline_progress(
   const auto start = clock::now();
   const auto wall_deadline = start + std::chrono::nanoseconds(max_wall_ns);
 
+  // No counter read before the first wait: WaitSemaphores returns at once
+  // when the value is already reached, so a read here is a driver call
+  // paid on every wait for nothing. The counter is read only after a
+  // wait outlives the poll interval.
   uint64_t last_observed = 0;
   auto last_advance = start;
-  if (vk::device_table().GetSemaphoreCounterValue(
-          device, semaphore, &last_observed) != VK_SUCCESS) {
-    // Driver refused to give us a counter at all; fall back to a
-    // wall-clock bound - we cannot observe progress.
-    std::this_thread::sleep_for(std::chrono::nanoseconds(kHangWatchPollNs));
-    last_observed = 0;
-    last_advance = clock::now();
-  }
 
   // Block on the semaphore for one poll interval at a time. A completed
   // signal returns VK_SUCCESS immediately, so a normal wait costs nothing
