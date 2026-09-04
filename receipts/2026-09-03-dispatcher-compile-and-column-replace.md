@@ -300,3 +300,23 @@ compiled-default (no env vars) median 7.10 tok/s over 63 tokens vs eager
 Tape-ran proof: shapeless-reuse stderr notice in 5/5 compiled runs;
 auto-eager warning absent 5/5. With the stale-shape fix landed,
 compilation is correct at speed on M1 hardware.
+
+## Fused RoPE on hardware (v0.3.3 -> RoPE tier series) - release-note pair
+
+Pinned protocol (5-run medians, 36-token prompt, 64 tokens, EOS
+suppressed, gates green): BEFORE = v0.3.3 wheel (`b18704e`, 0a40dd72...),
+AFTER = main with the RoPE tier series (5ac59e8, 0a40dd72-era rebuild;
+dispatches measured on dedicated diag builds):
+
+| row | v0.3.3 | + fused RoPE | change |
+|---|---|---|---|
+| bf16 decode | 6.81 tok/s | 8.75 tok/s | +28.5% |
+| 4-bit decode | 7.16 tok/s | 12.52 tok/s | +74.9% |
+| bf16 prefill | 49.8 tok/s | 60.8 tok/s | +22.1% |
+| 4-bit prefill | 27.4 tok/s | 30.2 tok/s | +10.2% |
+| dispatches/decode-token | 1868.7 | 715.5 | -61.7% |
+| submissions/decode-token | 95.2 | 48.1 | -49.5% |
+
+Mechanism transfers to Honeykrisp exactly as predicted on llvmpipe
+(-61%/-49%). Dispatches unchanged where the fusion is fenced; the decode
+case is the unfenced proven path.
