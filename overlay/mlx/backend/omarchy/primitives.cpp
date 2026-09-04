@@ -5965,8 +5965,6 @@ void Sort::eval_gpu(const std::vector<array>& inputs, array& out) {
   }
   dispatch_sort("Sort", input, out, false, encoder);
 }
-// The float Square keeps its macro body; integer Square squares in the
-// operand dtype through the integer kernel, never via float.
 void Square::eval_gpu(const std::vector<array>& inputs, array& out) {
   if (out.dtype() == int32 || out.dtype() == uint32) {
     dispatch_int_elementwise(name(), IntSquareOperation, inputs, out);
@@ -5983,10 +5981,6 @@ void Sqrt::eval_gpu(const std::vector<array>& inputs, array& out) {
       out,
       out.primitive().stream());
 }
-// The categorical sampler subtracts one from uint32 searchsorted
-// indices, so the subtract family also covers int32 and uint32 through
-// the integer elementwise kernel. Other integer operations stay named
-// rejections.
 void Subtract::eval_gpu(const std::vector<array>& inputs, array& out) {
   if (out.dtype() == complex64) {
     dispatch_complex(
