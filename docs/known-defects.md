@@ -322,3 +322,7 @@ On v0.3.1, published: the release ships the boolean-reduction defect above on Ap
 
 
 Named `[omarchy] ... is not implemented` errors remain the honest failure mode. The defects on this page are dangerous because they do not fail that way.
+
+## f16 attention score cap (sdpa-f16-scores branch, unreleased)
+
+`fast::scaled_dot_product_attention` on float16 inputs stores attention scores in f16 with f32 accumulation inside the kernel, so scaled scores above 65504 saturate to inf and softmax turns the row into NaN, while the f32/bf16 composition stays finite: the trigger is extreme but valid f16 activations (an untuned fine-tune reaches it; normalised models do not). The additive causal/padding mask uses the f16 finite maximum (-65504), not -inf, so fully masked rows stay defined and match the f32 path. This matches upstream Metal's f16 SDPA, which has the same storage cap; run f32/bf16 if you need overflow-immune attention. Reproduction and tolerance evidence: [receipt](receipts/2026-09-04-sdpa-f16-scores-rework.md) and `scripts/sdpa_equivalence.py` (fully-masked-row and overflow-boundary cases).

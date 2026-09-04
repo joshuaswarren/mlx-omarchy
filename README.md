@@ -73,15 +73,7 @@ Conditions, exact commands, and the prior measurements they replaced: `receipts/
 
 The honest list, with the platform each one was observed on. The full ledger is [docs/known-defects.md](docs/known-defects.md).
 
-- **v0.3.4: a single large evaluation can wedge the GPU queue** (`mx.eval` over a full-sequence forward at 2,048 tokens on Honeykrisp; the watchdog declares a hang after 10 s of no progress). Chunked work at the same length is unaffected; `mlx_lm` is unaffected. A wedged process must be restarted before any number it produces afterwards is relied on. Cause unknown. Live in v0.3.4.
-- **Compiled bf16 tapes** are refused by name. A Honeykrisp-specific defect corrupts them inside the real mlx-lm forward; the f16 and 4-bit paths are correct. Run bf16 workloads with `MLX_DISABLE_COMPILE=1` until the gate lifts.
-- **Top-k and argpartition over rows wider than 1024 elements refuse by name.** A wide-row ArgPartition kernel was built and reverted; the cap is pinned, not open-ended. Rows up to 1024 partition exactly.
-- **No training story yet.** Optimizers, LoRA, full backward coverage are unproven here, and upstream's optimizer tests hit named gaps.
-- **Linear algebra and FFT compute but not everywhere.** QR refuses batches pending numeric verification; complex and float64 linalg refuse. Eigh and SVD refuse rather than return unconverged factors when the Jacobi sweep limit trips. Prime FFT lengths above 32768 refuse (the chirp needs k squared exact in u32). Float64 raises named errors throughout.
-- **Three still-open defects in v0.3.1** (`gelu_approx` under pytest process context; fast SDPA vector disagreement with its own decomposition; one vjp path off by one ulp) — all reported by upstream's own suites on llvmpipe and pinned by the tests; details in [docs/known-defects.md](docs/known-defects.md).
-- **Five Honeykrisp driver miscompiles are isolated with minimal reproducing shaders, fixed or worked around in this repo.** Two further defects live on llvmpipe itself; details in [docs/known-defects.md](docs/known-defects.md).
-- **Performance is 6-23x behind Metal** as measured above, down from 20-69x at v0.3.0.
-- **ANE export works**: it exports and validates bundles but does not execute them yet. See [docs/ane-bundles.md](docs/ane-bundles.md).
+ @theirs
 
 Anything not on the defect ledger fails loudly with a named `[omarchy] ... is not implemented` error. This is the contract.
 
