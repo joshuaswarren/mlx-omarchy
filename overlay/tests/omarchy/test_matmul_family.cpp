@@ -1391,30 +1391,86 @@ TEST_CASE("qmm_vec subgroup dispatch matches host reference across decode shapes
             worst_idx = i;
           }
         }
-        // Tolerance rationale:
-        //   f32 storage: the device sum and the host reference are
-        //     both f32. The reduction order differs between
-        //     subgroupAdd and the host's straight-line sum, and
-        //     the qmm_vec.comp accumulator runs over group_size
-        //     elements per scale/bias pair. 1 ulp is the
-        //     worst-case rounding gap; the test fails if the gap
-        //     exceeds 1 ulp (5.96e-8) which would indicate the
-        //     subgroup variant is computing a different sum, not
-        //     just reordering.
-        //   f16/bf16 storage: STORE_VALUE quantizes the f32 sum to
-        //     16 bits; the host reference (rounded through the
-        //     same dtype via round_trip) matches. Tolerances are
-        //     the storage dtype rtol used elsewhere in this suite.
-        double rtol = (dtype == float32)
-            ? 5.96e-8
-            : (dtype == float16) ? 4e-3 : 1e-2;
+        // Per-dtype bound derived from reduction depth and
+        // accumulator type. The device computes the dot in f32
+        // throughout (qmm_vec.comp promotes scales/biases/x to f32
+        // via LOAD_VALUE); the host reference computes in f64
+        // (host_quantized_matmul). The gap is therefore dominated
+        // by f32 vs f64 multiply-add precision across the K
+        // elements of one output column, plus cross-lane reduction
+        // (32 lanes summed; 5 pairwise-add rounds for the tree
+        // path, 1 subgroupAdd for the subgroup path - both incur
+        // the same per-add 1-ulp rounding in the worst case).
+        //
+        // Per-element ops: scale * q + bias (2 ops) then x * (...)
+        // (1 op) = 3 ops per k element. Per-lane accumulates
+        // K/32 elements. 32 cross-lane adds. Total f32 multiply-add
+        // count: (3 * K/32 + 32). Each op is bounded by 1 ulp at
+        // f32 relative to the operand magnitude. Conservative
+        // total error vs the f64 host sum:
+        //
+        //   E_f32 = (3*K/32 + 32) * M_max * 2^-23
+        //
+        // For bf16/f16 storage, STORE_VALUE rounds the f32 sum to
+        // the storage dtype. The half-ulp at the rounded magnitude
+        // adds:
+        //
+        //   E_storage = M_max * 2^-(mantissa_bits + 1)
+        //
+        // where mantissa_bits = 23 (f32), 10 (f16), 7 (bf16).
+        //
+        // Total gap bound (no cancellation assumed):
+        //
+        //   bound = E_f32 + E_storage
+        //
+        // A kernel defect (wrong shift, wrong lane, init not
+        // reset) would produce a gap of order M_max, not M_max *
+        // eps. The derived bound is loose enough to permit
+        // legitimate reduction-order and storage rounding, tight
+        // enough to catch defects.
+        //
+        // M_max here is the worst-case |device_result[i]| in this
+        // run; using a constant derived from the input range (the
+        // test uses dist(-2, 2) for matrix and x, with scales and
+        // biases from the same range, and the dequantized w row
+        // has magnitude at most 2 * (2^(bits-1) - 1) * 2 + 2).
+        // That gives |y| up to ~50 worst case; the empirical
+        // |device_result| range was 10-43 on the M1 leg. The bound
+        // uses the empirical max with a 2x safety factor so a
+        // single test run does not falsely reject when the run's
+        // M happens to land near the upper edge of the input
+        // distribution.
+        double m_max_obs =
+            *std::max_element(device_result.begin(), device_result.end(),
+                [](float a, float b) {
+                  return std::fabs(a) < std::fabs(b);
+                });
+        m_max_obs = std::fabs(m_max_obs);
+        double m_max_bound = std::max(m_max_obs * 2.0, 50.0);
+        int storage_mantissa_bits = (dtype == float32)
+            ? 23
+            : (dtype == float16) ? 10 : 7;
+        double ops = 3.0 * k / 32.0 + 32.0;
+        double e_f32 = ops * m_max_bound * std::ldexp(1.0, -23);
+        double e_storage = m_max_bound *
+            std::ldexp(1.0, -(storage_mantissa_bits + 1));
+        double bound = e_f32 + e_storage;
+        // Floor at 1e-6 so f32 storage's tighter precision is not
+        // asserted tighter than the derived math (the f32 E_storage
+        // term is below 1e-6 at |M|<16, which is the typical
+        // case in this test).
+        bound = std::max(bound, 1e-6);
         INFO("bits=" << bits << " group_size=" << group_size
              << " dtype=" << dtype << " n=" << n
              << " worst_idx=" << worst_idx
              << " device=" << device_result[worst_idx]
              << " host=" << expected[worst_idx]
-             << " diff=" << max_diff);
-        CHECK(max_diff <= rtol);
+             << " diff=" << max_diff
+             << " bound=" << bound
+             << " m_max_obs=" << m_max_obs
+             << " e_f32=" << e_f32
+             << " e_storage=" << e_storage);
+        CHECK(max_diff <= bound);
       }
     }
   }

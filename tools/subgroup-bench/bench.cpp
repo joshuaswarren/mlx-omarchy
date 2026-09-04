@@ -238,29 +238,46 @@ static std::string read_file(const char* path) {
   return ss.str();
 }
 
+// Compile one shader source file via glslc if present, else
+// glslangValidator. The --target-env=vulkan1.3 flag is REQUIRED for
+// the subgroup extension in reduce_subgroup.comp: subgroup operations
+// need SPIR-V 1.3, and glslc without the flag rejects them with
+// "'subgroup op' : requires SPIR-V 1.3" (this bit the M1 leg once -
+// the harness used to print BENCH_DONE on this failure because the
+// exit path was wrong). The repo's own omarchy_shader uses
+// vulkan1.3; the bench matches.
+//
+// Returns 0 on success (and the SPIR-V exists and is non-empty), -1
+// on any failure. The caller dies on -1.
 static int compile_shader(const char* src, const char* out_spv) {
+  const char* cmd_template = nullptr;
+  std::string cmd;
   if (system("which glslc >/dev/null 2>&1") == 0) {
-    std::string cmd = std::string("glslc -fshader-stage=compute ") + src +
-        " -o " + out_spv + " 2>&1";
-    int rc = system(cmd.c_str());
-    if (rc != 0) {
-      std::fprintf(stderr, "glslc failed (rc=%d)\n", rc);
-      return -1;
-    }
-    return 0;
-  }
-  if (system("which glslangValidator >/dev/null 2>&1") == 0) {
-    std::string cmd = std::string("glslangValidator -V --target-env vulkan1.2 ") +
+    cmd = std::string("glslc -fshader-stage=compute --target-env=vulkan1.3 ") +
         src + " -o " + out_spv + " 2>&1";
-    int rc = system(cmd.c_str());
-    if (rc != 0) {
-      std::fprintf(stderr, "glslangValidator failed (rc=%d)\n", rc);
-      return -1;
-    }
-    return 0;
+  } else if (system("which glslangValidator >/dev/null 2>&1") == 0) {
+    cmd = std::string("glslangValidator -V --target-env vulkan1.3 ") +
+        src + " -o " + out_spv + " 2>&1";
+  } else {
+    die("neither glslc nor glslangValidator found in PATH");
   }
-  die("neither glslc nor glslangValidator found in PATH");
-  return -1;
+  int rc = system(cmd.c_str());
+  if (rc != 0) {
+    std::fprintf(stderr, "shader compile failed (rc=%d): %s\n", rc,
+        cmd.c_str());
+    return -1;
+  }
+  // Verify the SPIR-V output exists and is non-empty. A glslc that
+  // exited 0 but wrote nothing is rare but possible; the bench
+  // would otherwise dereference a zero-byte file.
+  struct stat st;
+  if (stat(out_spv, &st) != 0 || st.st_size == 0) {
+    std::fprintf(stderr,
+        "shader compile produced no SPIR-V: %s (size=%ld)\n",
+        out_spv, (long)(stat(out_spv, &st) == 0 ? st.st_size : -1));
+    return -1;
+  }
+  return 0;
 }
 
 // ---------------------------------------------------------------------------
