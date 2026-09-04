@@ -1292,16 +1292,19 @@ TEST_CASE("fused rope vector and int64 offsets match the composed fallback") {
   Stream stream = gpu_stream();
   Shape shape{2, 2, 5, 16};
   array x = rope_input(shape, 151);
-  // Per-batch offsets.
+  // Per-batch offsets: FENCED to the composition (the fused kernel's
+  // vector-offset leg failed equivalence on 2026-09-03), so this
+  // asserts the fence routes correctly - the result must equal the
+  // composed fallback exactly, element for element.
   std::vector<int32_t> batch_offsets{3, 9};
   array offset_vec = array(batch_offsets.begin(), Shape{2}, int32);
-  require_rope_close(
+  require_bit_equal(
       fast::rope(x, 16, true, 10000.0f, 1.0f, offset_vec, std::nullopt, stream),
       composed_rope(
           x, 16, true, 10000.0f, 1.0f, offset_vec, std::nullopt, true,
           stream),
       stream,
-      "rope vector offset");
+      "rope vector offset (fenced)");
   // int64 offsets exercise the same kernel path through the
   // upstream wrapper's int32 cast. Cast-and-eval on the host produces the
   // same int32 offset the fused path sees, so this asserts only that the
@@ -1317,34 +1320,23 @@ TEST_CASE("fused rope vector and int64 offsets match the composed fallback") {
   // compares outputs of each per-batch lane in isolation.
   std::vector<int32_t> from_host_int32{4};
   array offset32 = array(from_host_int32.begin(), Shape{1}, int32);
-  // Smoke: the scalar offset path runs and returns finite values.
-  auto smoke = fast::rope(x, 16, false, 10000.0f, 1.0f, offset32, std::nullopt, stream);
-  smoke.eval();
-  omarchy::get_command_encoder(stream).synchronize();
-  auto smoke_v = flat(smoke, stream);
-  for (auto v : smoke_v) {
-    CHECK(std::isfinite(v));
-  }
+  // The scalar-offset leg stays fused; f32 rides the contraction
+  // tolerance (bit-equal is not achievable under the driver's fma).
+  require_rope_close(
+      fast::rope(x, 16, false, 10000.0f, 1.0f, offset32, std::nullopt, stream),
+      composed_rope(
+          x, 16, false, 10000.0f, 1.0f, offset32, std::nullopt, true,
+          stream),
+      stream,
+      "rope int32 offset");
 }
 
-// TODO(bf16-inverse-debug): the inverse branch disagrees with the
-// composed inverse by up to ~1.0 absolute on 5 of 160 elements
-// (observed at float32, traditional, dims == D). Forward and bf16
-// variants agree bit-exactly. The disagreement does not track an obvious
-// pattern (odd d, mixed magnitudes) and reproducing it with the same
-// inputs on a debug build is queued as the next step. The composed
-// path also disagrees with itself under the same test fixture, so
-// the comparison is between two pre-existing reference paths; a
-// relative tolerance is used here until the residual is debugged.
-// TODO(bf16-inverse-debug): the inverse branch disagrees with the
-// composed inverse by up to ~1.0 absolute on 5 of 160 elements
-// (observed at float32, traditional, dims == D). Forward and bf16
-// variants agree bit-exactly. The disagreement does not track an
-// obvious pattern (odd d, mixed magnitudes) and reproducing it with
-// the same inputs on a debug build is queued as the next step. A
-// fineness check is the only assertion here until the residual is
-// debugged.
-TEST_CASE("fused rope vjp gradient is finite") {
+// The inverse/VJP path is FENCED to the composition (it failed
+// equivalence on 2026-09-03), so this asserts the fence routes
+// correctly: the gradient must equal the composed inverse rope of the
+// cotangent exactly. When the fused inverse passes equivalence, this
+// test is what proves the unfence.
+TEST_CASE("fused rope vjp gradient rides the fence to the composition") {
   if (!compute_available()) {
     return;
   }
@@ -1358,12 +1350,12 @@ TEST_CASE("fused rope vjp gradient is finite") {
         inputs[0], 16, true, 10000.0f, 1.0f, offset, std::nullopt, stream)};
   };
   auto [outputs, grads] = vjp(fun, std::vector<array>{x}, {cot});
-  grads[0].eval();
-  omarchy::get_command_encoder(stream).synchronize();
-  auto values = flat(grads[0], stream);
-  for (auto v : values) {
-    CHECK(std::isfinite(v));
-  }
+  require_bit_equal(
+      grads[0],
+      composed_rope(
+          cot, 16, true, 10000.0f, 1.0f, offset, std::nullopt, false, stream),
+      stream,
+      "rope vjp (fenced)");
 }
 
 TEST_CASE("fused rope refuses beyond the trig argument limit by name") {
