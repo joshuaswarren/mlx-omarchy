@@ -53,3 +53,44 @@ runs an import check, an add, a matmul, and a gradient check under
 Do not install the upstream `mlx` package beside this wheel. The module name
 is the same, so the two distributions conflict. Remove upstream `mlx` before
 you install `mlx-omarchy`.
+
+## Benchmark matrix
+
+`scripts/bench_matrix.py` runs the declared workload matrix (models x
+prompts x pinned-length decode) through `scripts/bench_decode.py`. It
+never downloads models: a snapshot missing from the local Hugging Face
+cache is reported `skipped`, never passing, and revisions are read from
+the cache, never guessed.
+
+On Linux, inside the venv that holds the mlx-omarchy wheel, add `mlx-lm`
+to the same venv, then:
+
+```sh
+python3 scripts/bench_matrix.py --mode plan
+python3 scripts/bench_matrix.py --mode run \
+  --python ~/.venvs/mlx-omarchy/bin/python --wheel dist/mlx_omarchy-*.whl
+```
+
+`--wheel` hands the file to `bench_decode`'s provenance gate, which
+refuses to emit numbers from a mismatched binary. On a development
+machine without an Apple GPU, add `--allow-non-apple`; llvmpipe results
+are correctness checks, never performance claims.
+
+On macOS (16-inch M1 Max baseline), keep the benchmark in its own venv
+and never install into system Python, Homebrew, or an existing venv:
+
+```sh
+/opt/homebrew/bin/python3.12 -m venv ~/src/mlx-bench-$(date +%Y%m%d)
+~/src/mlx-bench-<date>/bin/pip install "mlx" "mlx-lm==0.31.3"
+python3 scripts/bench_matrix.py --mode metadata \
+  --python ~/src/mlx-bench-<date>/bin/python
+python3 scripts/bench_matrix.py --mode run \
+  --python ~/src/mlx-bench-<date>/bin/python --host-label <label>
+```
+
+`metadata` records chip, core count, memory, OS version and build, MLX
+and mlx-lm versions, Metal identity, source commit and dirty state, power
+state, and any running model-serving processes. Hostnames, user names,
+and serial numbers are excluded. A run while `llama-server`, `ollama`, or
+similar processes are serving is labeled contended; contended timings are
+never compared against clean numbers.
