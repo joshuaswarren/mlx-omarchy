@@ -131,13 +131,17 @@ void eval(array& arr) {
   // submission flushed them.
   if (encoder.needs_commit()) {
     if (!batch_open) {
-      // One scheduler task and one completion notification per batch,
-      // attached when the batch opens so that every close path
-      // (finalize, event flush contract, node budget, host read sync)
-      // carries the pairing exactly once.
-      scheduler::notify_new_task(stream);
-      encoder.add_completed_handler(
-          [stream]() { scheduler::notify_task_completion(stream); });
+      // Fragmentation prototype (fragmentation-hunt): ONE scheduler task
+      // per graph evaluation, opened at the eval's first work-carrying
+      // primitive. The decrement rides this encoder's first commit of any
+      // kind (commit(), Event::signal idle host-complete), so the upstream
+      // MAX_ACTIVE_TASKS throttle stays live - the memory guard can still
+      // finalize mid-walk and wait_for_one safely - without forcing a
+      // flush and round trip per batch.
+      if (!encoder.scheduler_task_open()) {
+        scheduler::notify_new_task(stream);
+        encoder.set_scheduler_task_open(true, stream);
+      }
     }
     // Keep used buffers alive until the submitted work completes. The
     // output is retained too (covers donated storage, where the output

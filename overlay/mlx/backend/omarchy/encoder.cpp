@@ -388,6 +388,17 @@ void CommandEncoder::commit() {
     trace::counters().commit_calls_noop++;
     return;
   }
+  // Fragmentation prototype: close the eval's scheduler task at the FIRST
+  // commit of any kind that actually submits, so wait_for_one never waits
+  // on a task owned by the blocked thread (memory-guard path) and normal
+  // single-commit evals pay exactly one task and one round trip.
+  if (scheduler_task_open_) {
+    scheduler_task_open_ = false;
+    Stream task_stream = *scheduler_task_stream_;
+    completed_handlers_.push_back([task_stream]() {
+      scheduler::notify_task_completion(task_stream);
+    });
+  }
   trace::counters().commit_calls_with_work++;
   submit();
 }
