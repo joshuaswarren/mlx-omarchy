@@ -284,3 +284,12 @@ target_link_options(omarchy_two_rank_harness PRIVATE ${SANITIZER_LINK_FLAGS})
 
 add_test(NAME omarchy_two_rank_harness
          COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/distributed/run-two-rank.sh)
+
+# Throwaway RoPE accuracy probe for the fused-vs-composed verdict
+# (f32-image bit dumps for the host float64 reference). Plain main(), not
+# part of ctest; delete with the investigation.
+add_executable(omarchy_rope_probe
+               ${CMAKE_CURRENT_SOURCE_DIR}/rope_probe_main.cpp)
+target_link_libraries(omarchy_rope_probe PRIVATE mlx)
+target_compile_options(omarchy_rope_probe PRIVATE ${SANITIZER_COMPILE_FLAGS})
+target_link_options(omarchy_rope_probe PRIVATE ${SANITIZER_LINK_FLAGS})
