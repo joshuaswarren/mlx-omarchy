@@ -21,21 +21,25 @@ namespace mlx::core::omarchy {
 // pressure stays at 8 scalars per invocation.
 //
 // Any node the chain cannot carry (unsupported op class, shape change,
-// exotic broadcast, too many leaves) makes the whole run fall back to
-// the per-node tape path: loud refusal semantics are unchanged, and
-// bf16 tapes are refused before chains are ever considered.
+// exotic broadcast, too many leaves, no tail dependency) makes the
+// whole run fall back to the per-node tape path: loud refusal
+// semantics are unchanged, and bf16 tapes are refused before chains
+// are ever considered.
 //
 // DEFAULT OFF: the whole mechanism is gated behind
 // MLX_OMARCHY_FUSED_CHAIN until it is equivalence-proven on M1
-// hardware. With the gate unset, can_start() refuses every node and
-// the tape runs the per-node path exactly as it did before this class
-// existed.
+// hardware. With the gate unset the owner passes gate_enabled=false,
+// every try_add refuses, and the tape runs the per-node path exactly
+// as it did before this class existed.
 
 struct FusedChainImpl;
 
 class FusedChain {
  public:
-  FusedChain();
+  // gate_enabled carries the DEFAULT-OFF MLX_OMARCHY_FUSED_CHAIN
+  // decision, read ONCE per tape evaluation by the owner; false makes
+  // every try_add refuse and the tape run the per-node path.
+  explicit FusedChain(bool gate_enabled);
   ~FusedChain();
 
   FusedChain(const FusedChain&) = delete;
@@ -43,15 +47,22 @@ class FusedChain {
   FusedChain(FusedChain&&);
   FusedChain& operator=(FusedChain&&);
 
-  // True when this node can START a chain: a float32/float16 fusable
-  // unary or binary elementwise primitive. False for every node unless
-  // MLX_OMARCHY_FUSED_CHAIN=1 opts in.
+  // Pure op/dtype check (the gate lives in the constructor argument):
+  // a float32/float16 fusable unary or binary elementwise primitive.
   static bool can_start(const array& node);
 
   // Attempts to append `node` with resolved `inputs`. Returns false if
   // the node cannot be carried; the caller then closes the chain before
-  // it. `is_tape_output` members may only be the chain tail. Every
-  // refusal that would make a carried chain undispatchable (f16
+  // it. `is_tape_output` members may only be the chain tail. Two hard
+  // contracts:
+  // - an EXTENSION (chain already open) must consume the tail's
+  //   register; a no-dependency same-shape sibling is refused so the
+  //   interpreter closes the chain and the sibling opens a fresh one
+  //   (a non-tail interior member can be consumed from outside the
+  //   chain and would never be materialized);
+  // - leaves pushed for a rejected member are rolled back, so a
+  //   refused add leaves no orphan slots behind.
+  // Every refusal that would make a carried chain undispatchable (f16
   // capabilities, leaf bounds, broadcast form) is decided HERE, before
   // a node is accepted.
   bool try_add(

@@ -111,73 +111,79 @@ float eval_operand(uint operand, uint index, float regs[8]) {
 }
 
 void main() {
+  // Grid stride, mirroring elementwise.comp: the dispatcher caps the
+  // group count at the device limit, so one invocation covers several
+  // chain elements when count exceeds one full grid.
   uint index = gl_GlobalInvocationID.x;
-  if (index >= params.count) {
-    return;
-  }
-
-  float regs[8];
-  for (uint i = 0; i < params.instr_count; ++i) {
-    uint word = program_buf.words[i];
-    uint op = word & 0xffu;
-    uint a = (word >> 8) & 0xffu;
-    uint b = (word >> 16) & 0xffu;
-    uint dst = (word >> 24) & 0xffu;
-    float lhs = eval_operand(a, index, regs);
-    float rhs = eval_operand(b, index, regs);
-    float value;
-    switch (op) {
-      case 0u: // Add
-        value = lhs + eval_operand(b, index, regs);
-        break;
-      case 1u: // Multiply
-        value = lhs * eval_operand(b, index, regs);
-        break;
-      case 2u: // Divide
-        value = lhs / eval_operand(b, index, regs);
-        break;
-      case 3u: // Maximum: NaN propagates, mirroring elementwise.comp.
-        value = (isnan(lhs) || isnan(rhs))
-            ? uintBitsToFloat(0x7fc00000u)
-            : max(lhs, rhs);
-        break;
-      case 4u: // Exp
-        value = exp(lhs);
-        break;
-      case 5u: // Sigmoid: same unguarded form as elementwise.comp
-        // case 5. exp underflows to 0 for large positive x and
-        // overflows to inf for large negative x, both of which the
-        // division folds to the correct 1.0 / 0.0 without producing
-        // the inf/inf NaN a sign-guarded form would.
-        value = 1.0 / (1.0 + exp(-lhs));
-        break;
-      case 6u: // Square
-        value = lhs * lhs;
-        break;
-      case 7u: // Sqrt
-        value = sqrt(lhs);
-        break;
-      case 8u: // Rsqrt
-        value = inversesqrt(lhs);
-        break;
-      case 9u: // Subtract
-        value = lhs - eval_operand(b, index, regs);
-        break;
-      case 10u: // Negative
-        value = -lhs;
-        break;
-      case 11u: // Minimum: NaN propagates, mirroring elementwise.comp.
-        value = (isnan(lhs) || isnan(rhs))
-            ? uintBitsToFloat(0x7fc00000u)
-            : min(lhs, rhs);
-        break;
-      case 12u: // Tanh
-        value = tanh(lhs);
-        break;
-      default:
-        return;
+  uint stride = gl_NumWorkGroups.x * gl_WorkGroupSize.x;
+  while (index < params.count) {
+    float regs[8];
+    for (uint i = 0; i < params.instr_count; ++i) {
+      uint word = program_buf.words[i];
+      uint op = word & 0xffu;
+      uint a = (word >> 8) & 0xffu;
+      uint b = (word >> 16) & 0xffu;
+      uint dst = (word >> 24) & 0xffu;
+      float lhs = eval_operand(a, index, regs);
+      float rhs = eval_operand(b, index, regs);
+      float value;
+      switch (op) {
+        case 0u: // Add
+          value = lhs + rhs;
+          break;
+        case 1u: // Multiply
+          value = lhs * rhs;
+          break;
+        case 2u: // Divide
+          value = lhs / rhs;
+          break;
+        case 3u: // Maximum: NaN propagates, mirroring elementwise.comp.
+          value = (isnan(lhs) || isnan(rhs))
+              ? uintBitsToFloat(0x7fc00000u)
+              : max(lhs, rhs);
+          break;
+        case 4u: // Exp
+          value = exp(lhs);
+          break;
+        case 5u: // Sigmoid: same unguarded form as elementwise.comp
+          // case 5. exp underflows to 0 for large positive x and
+          // overflows to inf for large negative x, both of which the
+          // division folds to the correct 1.0 / 0.0 without producing
+          // the inf/inf NaN a sign-guarded form would.
+          value = 1.0 / (1.0 + exp(-lhs));
+          break;
+        case 6u: // Square
+          value = lhs * lhs;
+          break;
+        case 7u: // Sqrt
+          value = sqrt(lhs);
+          break;
+        case 8u: // Rsqrt
+          value = inversesqrt(lhs);
+          break;
+        case 9u: // Subtract
+          value = lhs - rhs;
+          break;
+        case 10u: // Negative
+          value = -lhs;
+          break;
+        case 11u: // Minimum: NaN propagates, mirroring elementwise.comp.
+          value = (isnan(lhs) || isnan(rhs))
+              ? uintBitsToFloat(0x7fc00000u)
+              : min(lhs, rhs);
+          break;
+        case 12u: // Tanh
+          value = tanh(lhs);
+          break;
+        default:
+          return;
+      }
+      regs[dst] = ROUND_INTERMEDIATE(value);
     }
-    regs[dst] = ROUND_INTERMEDIATE(value);
+    output_data.values[index] = STORE_VALUE(regs[params.dst_final]);
+    if (params.count - index <= stride) {
+      break;
+    }
+    index += stride;
   }
-  output_data.values[index] = STORE_VALUE(regs[params.dst_final]);
 }
