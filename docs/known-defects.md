@@ -12,6 +12,19 @@ Two of the worst v0.3.0 defects never appeared on a Linux development box. They 
 
 Open in the current release.
 
+### 4-bit decode runs at 0.21 tok/s
+
+Affected: v0.3.4 only. Observed on: real M1 (Honeykrisp), on the published
+aarch64 asset. Status: FIXED on main at 0535e62; v0.3.5 carries it.
+
+The hang watchdog replaced the blocking semaphore wait with a sleep-then-read
+loop, so every host wait on GPU completion cost a full 100 ms tick. About 48
+waits per token gives 4.8 s/token: 4-bit decode 12.5 -> 0.21 tok/s, 60x. The
+release notes' 12.52 was measured on the commit before the watchdog was
+cherry-picked in; nobody measured the uploaded wheel. Do not use v0.3.4 for
+decode; v0.3.3 is unaffected. Three-arm measurement, fix, and the release
+rule it produced: [receipts/2026-09-04-v0.3.4-decode-regression.md](../receipts/2026-09-04-v0.3.4-decode-regression.md).
+
 ### A single large evaluation can wedge the GPU queue
 
 Affected: v0.3.4, and every earlier release - the watchdog change in v0.3.4

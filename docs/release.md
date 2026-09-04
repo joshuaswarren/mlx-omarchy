@@ -45,8 +45,16 @@ procedure now names the required platforms, and the gate enforces them.
 4. The release is announced as usable only after the gate prints
    `VERIFIED`. `VERIFIED WITH FINDINGS` is acceptable only for the
    traceability finding on assets built before the stamping change.
-5. Write the dated receipt under `receipts/` with the gate output.
-6. For runtime measurement work, install the exact wheel under test and
+5. Run one pinned 4-bit decode on the UPLOADED aarch64 asset, installed
+   from the release URL on the M1, and put that number in the notes.
+   The gate checks hashes, platforms and feature strings; none of that
+   sees speed. v0.3.4 passed the gate and shipped 4-bit decode at 0.21
+   tok/s, 70x below the number in its notes, which had been measured on
+   the commit before the one that was tagged
+   (`receipts/2026-09-04-v0.3.4-decode-regression.md`).
+6. Write the dated receipt under `receipts/` with the gate output and
+   the decode number.
+7. For runtime measurement work, install the exact wheel under test and
    run `scripts/mlx_provenance.py` (or let `scripts/bench_decode.py` do
    it): a run whose loaded `libmlx.so` does not match the installed
    wheel's RECORD refuses to emit a number. Never pass a requirements
