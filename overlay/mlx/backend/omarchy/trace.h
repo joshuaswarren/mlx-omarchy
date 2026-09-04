@@ -21,6 +21,12 @@ struct Counters {
   std::atomic<uint64_t> vk_buffer_fills{0};
   // Number of recorded Vulkan compute dispatches.
   std::atomic<uint64_t> vk_compute_dispatches{0};
+  // Number of gpu::finalize calls (throttle points and graph ends).
+  std::atomic<uint64_t> omarchy_finalize_calls{0};
+  // Commits that submitted a real batch (work, semaphores, or handlers).
+  std::atomic<uint64_t> commit_calls_with_work{0};
+  // Commits that found nothing pending (finalize on an idle encoder).
+  std::atomic<uint64_t> commit_calls_noop{0};
 };
 
 inline Counters& counters() {
@@ -39,9 +45,12 @@ struct MlxOmarchyTraceSnapshot {
   uint64_t vk_buffer_copies;
   uint64_t vk_buffer_fills;
   uint64_t vk_compute_dispatches;
+  uint64_t omarchy_finalize_calls;
+  uint64_t commit_calls_with_work;
+  uint64_t commit_calls_noop;
 };
 
-extern "C" __attribute__((visibility("default"))) void
+extern "C" __attribute__((visibility("default"))) inline void
 mlx_omarchy_trace_snapshot(MlxOmarchyTraceSnapshot* out) {
   auto& c = mlx::core::omarchy::trace::counters();
   out->gpu_primitive_dispatches = c.gpu_primitive_dispatches.load();
@@ -49,6 +58,9 @@ mlx_omarchy_trace_snapshot(MlxOmarchyTraceSnapshot* out) {
   out->vk_buffer_copies = c.vk_buffer_copies.load();
   out->vk_buffer_fills = c.vk_buffer_fills.load();
   out->vk_compute_dispatches = c.vk_compute_dispatches.load();
+  out->omarchy_finalize_calls = c.omarchy_finalize_calls.load();
+  out->commit_calls_with_work = c.commit_calls_with_work.load();
+  out->commit_calls_noop = c.commit_calls_noop.load();
 }
 
 } // namespace mlx::core::omarchy::trace
