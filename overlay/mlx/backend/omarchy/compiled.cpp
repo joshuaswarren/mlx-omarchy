@@ -3,9 +3,10 @@
 
 #include "mlx/backend/omarchy/compiled.h"
 
+#include <algorithm>
 #include <atomic>
 #include <cstdio>
-#include <stdexcept>
+#include <sstream>
 #include <string>
 #include <typeinfo>
 #include <unordered_map>
@@ -195,9 +196,57 @@ void eval_compiled_tape(
 
     // One output per tape node. The node's primitive stays attached so the
     // per-node dispatch sees the compiled stream.
+    //
+    // The output shape is derived from the eval-time inputs, not the
+    // trace. A shapeless fragment serves every input shape from one
+    // trace - the compile cache matches ndim and dtype only - so a
+    // decode call at [1,1,...] legally reuses the prefill-traced tape,
+    // and node.shape() would be the stale prefill shape. Elementwise
+    // outputs are the trailing broadcast of their inputs (the same
+    // contract upstream applies to fused fragments); Broadcast keeps its
+    // own rule. At the trace shape this equals node.shape(), so
+    // exact-shape tapes are byte-for-byte unchanged.
+    Shape out_shape;
+    if (typeid(primitive) == typeid(Broadcast)) {
+      out_shape = primitive.output_shapes(node_inputs).front();
+    } else {
+      int nd = 0;
+      for (const auto& in : node_inputs) {
+        nd = std::max(nd, static_cast<int>(in.ndim()));
+      }
+      out_shape.resize(nd, 0);
+      for (const auto& in : node_inputs) {
+        auto dd = nd - static_cast<int>(in.ndim());
+        for (int i = dd; i < nd; ++i) {
+          out_shape[i] = std::max(out_shape[i], in.shape()[i - dd]);
+        }
+      }
+      static std::atomic<bool> shape_notice{false};
+      if (out_shape != node.shape() &&
+          !shape_notice.exchange(true, std::memory_order_relaxed)) {
+        auto fmt = [](const Shape& s) {
+          std::ostringstream os;
+          os << "[";
+          for (size_t i = 0; i < s.size(); ++i) {
+            if (i) {
+              os << ",";
+            }
+            os << s[i];
+          }
+          os << "]";
+          return os.str();
+        };
+        std::fprintf(
+            stderr,
+            "[omarchy] shapeless compiled fragment reused at a new shape:"
+            " traced %s, serving %s\n",
+            fmt(node.shape()).c_str(),
+            fmt(out_shape).c_str());
+      }
+    }
     std::vector<array> outs;
     outs.push_back(
-        array(node.shape(), node.dtype(), node.primitive_ptr(), node_inputs));
+        array(std::move(out_shape), node.dtype(), node.primitive_ptr(), node_inputs));
     primitive.eval_gpu(node_inputs, outs);
 
     resolved.emplace(node.id(), outs[0]);
