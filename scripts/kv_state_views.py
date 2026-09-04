@@ -15,32 +15,37 @@ Stages (synthetic arrays, cache [1,2,256,64] f16, offset 41):
                                         fires with NO consumer: the copy
                                         lives at slice-eval time (the
                                         omarchy eval() densifier), not in
-                                        any consumer
+                                        any consumer. After the eval
+                                        densifier is removed this stage
+                                        records no commands at all; pass
+                                        --expect-no-eval-copy to make
+                                        absence (including an empty
+                                        window) the expected verdict.
   s3  state read -> eager matmul     -> state-copy count equals the s2
                                         slice-eval baseline (the stage
                                         re-creates its slices); the
                                         consumer adds no copy of its own
   s4  state read -> fast SDPA        -> same as s3
 
-The expected verdict flips when the eval densifier is removed: pass
---expect-no-eval-copy to assert absence instead of presence.
-
-Contract checks (bounded, synthetic):
-  live view    a lazy state view covering the next-write slot, held
+Contract checks (bounded, synthetic), with the expectation built from
+the KNOWN writes in numpy - the live view is never read, densified, or
+otherwise evaluated until after the later writes, so the check cannot
+pass on an early snapshot:
+  live view    a lazy state view covering the next-write slot is held
                across subsequent slice-update writes and evaluated only
-               afterwards, still shows pre-write values; the write lands
-               in the parent (SliceUpdate allocates a fresh buffer).
-  copied state a state read is frozen at read time: later cache writes
-               never change an already-taken read.
+               afterwards; it must still show the pre-write values, and
+               the writes must land in the parent (SliceUpdate allocates
+               a fresh buffer).
+  copied state a taken state read is frozen at read time: later cache
+               writes never change it.
 
-Model leg: OPTIONAL and explicitly declared. Without --model the probe
-prints "model leg: SKIPPED (no --model given)" and runs the synthetic
-battery only.
+This probe is bounded to synthetic arrays; there is no model leg (model
+benchmarks live in scripts/bench_decode.py). No backend behavior is
+changed by this script.
 
 Usage:
   MLX_OMARCHY_ALLOW_NON_APPLE=1 MLX_DISABLE_COMPILE=1 \
-    MLX_OMARCHY_GPU_PROFILE=/tmp/kv-state-views.jsonl \
-    python3 scripts/kv_state_views.py [--model PATH]
+    python3 scripts/kv_state_views.py [--expect-no-eval-copy]
 """
 import argparse
 import json
@@ -50,7 +55,6 @@ import sys
 import tempfile
 from collections import Counter, defaultdict
 
-CACHE_SHAPE = (1, 2, 256, 64)
 OFF = 41
 
 CHILD = r'''
@@ -109,23 +113,39 @@ kv, S, d = 2, 64, 64
 c = mx.zeros((1, kv, S, d), mx.float16)
 for t in range(24):
     c[..., t:t+1, :] = mx.ones((1, kv, 1, d), mx.float16) * (t + 1)
+
+# The live view: created LAZY and never evaluated, densified, or read
+# until AFTER the later writes below.
 view = c[..., :25, :]                       # covers the next-write slot
-pre = np.asarray(mx.concatenate([view], axis=0), dtype=np.float32)
+
+# Later writes. Slot 24 is INSIDE the held view's range: if slice-update
+# ever mutated the parent buffer in place, the view would see it.
 c[..., 24:25, :] = mx.ones((1, kv, 1, d), mx.float16) * 99.0
 c[..., 25:26, :] = mx.ones((1, kv, 1, d), mx.float16) * 100.0
-mx.eval(view)                               # read the old view only now
-post = np.asarray(mx.concatenate([view], axis=0), dtype=np.float32)
-live_ok = np.array_equal(pre, post)
-frozen = c[..., :20, :]                     # copied-state read
+
+mx.eval(view)                               # first and only touch of view
+post = np.asarray(view, dtype=np.float32)   # values as the view sees them
+
+# Independent expectation built from the KNOWN writes alone: slots
+# 0..23 hold t+1, slot 24 was never written before the view was taken
+# so it must still read 0 inside the view.
+expected = np.zeros((1, kv, 25, d), dtype=np.float32)
+for t in range(24):
+    expected[0, :, t, :] = t + 1.0
+live_ok = bool(np.array_equal(post, expected))
+
+# Copied state: a taken read is frozen at read time.
+frozen = c[..., :20, :]
 mx.eval(frozen)
 c[..., 19:20, :] = mx.ones((1, kv, 1, d), mx.float16) * -1.0
 mx.eval(c)
-frozen_after = np.asarray(frozen, dtype=np.float32)
-frozen_ok = float(frozen_after[0, :, 19, :].max()) == 20.0
+frozen_ok = float(np.asarray(frozen, dtype=np.float32)[0, :, 19, :].max()) == 20.0
 parent_ok = bool((np.asarray(c, dtype=np.float32)[0, :, 19, :] == -1.0).all())
-print("RESULT", "LIVE", str(bool(live_ok)).lower(),
-      "FROZEN", str(bool(frozen_ok)).lower(),
-      "PARENT", str(bool(parent_ok)).lower())
+slot24_ok = bool((np.asarray(c, dtype=np.float32)[0, :, 24, :] == 99.0).all())
+print("RESULT", "LIVE", str(live_ok).lower(),
+      "FROZEN", str(frozen_ok).lower(),
+      "PARENT", str(parent_ok).lower(),
+      "SLOT24", str(slot24_ok).lower())
 '''
 
 
@@ -183,17 +203,19 @@ def window_counters(prof, mark, names):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--model", default=None,
-                    help="optional model path; omitted means the model leg "
-                         "is explicitly SKIPPED (synthetic battery only)")
     ap.add_argument("--expect-no-eval-copy", action="store_true",
-                    help="assert the eval-copy is ABSENT (the correct "
-                         "expectation after the eval densifier is removed)")
+                    help="expectation for the tree AFTER the eval densifier "
+                         "is removed: s2 records no commands at all "
+                         "(empty window) and no state-extent copy")
     ap.add_argument("--compute-h",
                     default=".work/mlx/mlx/backend/omarchy/compute.h")
     args = ap.parse_args()
 
-    names = kernel_names(args.compute_h)
+    try:
+        names = kernel_names(args.compute_h)
+    except OSError as e:
+        print("FATAL: cannot read kernel table:", e)
+        return 1
     if not names:
         print("FATAL: no kernel names parsed from", args.compute_h)
         return 1
@@ -226,7 +248,8 @@ def main():
     def window_total(window):
         return sum(per.get(window, {}).values())
 
-    # s1: write only -> pastes, no state-extent copy.
+    # s1: write only -> pastes, no state-extent copy. Instrumentation
+    # must always be present here.
     if window_total("s1_start") == 0:
         failures.append("s1: empty window (instrumentation failure)")
     elif state_copy_count("s1_start"):
@@ -235,16 +258,21 @@ def main():
         print(f"[PASS] s1 write-only: no state-extent copy "
               f"({dict(per.get('s1_start', {}))})")
 
-    # s2: state slice evaluated ALONE -> the eval-copy lives here.
+    # s2: state slice evaluated ALONE. With the densifier present the
+    # window holds the eval-copy; after densifier removal the slices
+    # record no commands and the window is legitimately EMPTY - that is
+    # the expected verdict only under --expect-no-eval-copy.
     s2 = state_copy_count("s2_start")
-    if window_total("s2_start") == 0:
-        failures.append("s2: empty window (instrumentation failure)")
-    elif args.expect_no_eval_copy:
-        if s2 == 0:
-            print("[PASS] s2 eval-alone: no state-extent copy "
+    if args.expect_no_eval_copy:
+        if state_copy_count("s2_start") == 0:
+            print("[PASS] s2 eval-alone: no state-extent copy recorded "
                   "(densifier absent, as expected)")
         else:
-            failures.append(f"s2: expected no eval-copy, saw {s2}")
+            failures.append(f"s2: expected no eval-copy, saw {s2} state "
+                            "copies - densifier still present?")
+    elif window_total("s2_start") == 0:
+        failures.append("s2: empty window - densifier removed? rerun with "
+                        "--expect-no-eval-copy")
     elif s2 >= 2:
         print(f"[PASS] s2 eval-alone: {s2}x CopyGeneral n={extent} with NO "
               f"consumer -> copy location = slice eval (omarchy eval() "
@@ -257,7 +285,8 @@ def main():
 
     # s3/s4: the stages re-create their slices, so their windows contain
     # their own slice-eval copies; the verdict is that the consumer adds
-    # NOTHING beyond that per-slice eval cost.
+    # NOTHING beyond that per-slice eval cost. These windows must always
+    # be non-empty: a consumer runs regardless of the densifier.
     baseline = s2
     for tag in ("s3_start", "s4_start"):
         if window_total(tag) == 0:
@@ -286,28 +315,29 @@ def main():
         failures.append(f"contract child failed: {rc.stderr[-300:]}")
     else:
         parts = line[0].split()
-        live_ok, frozen_ok, parent_ok = parts[2], parts[4], parts[6]
+        live_ok, frozen_ok = parts[2], parts[4]
+        parent_ok, slot24_ok = parts[6], parts[8]
         if live_ok == "true":
-            print("[PASS] live view: held lazy view unchanged across later "
-                  "writes (fresh-buffer slice-update)")
+            print("[PASS] live view: lazy view held across later writes "
+                  "reads its pre-write values at first evaluation "
+                  "(fresh-buffer slice-update)")
         else:
             failures.append("live view corrupted by later writes - in-place "
                             "mutation detected")
         if frozen_ok == "true":
-            print("[PASS] copied state: state read is frozen at read time; "
-                  "later cache writes do not rewrite it")
+            print("[PASS] copied state: taken state read is frozen at read "
+                  "time; later cache writes do not rewrite it")
         else:
             failures.append("state read not frozen - aliasing regression")
         if parent_ok == "true":
             print("[PASS] parent: later write landed in the parent cache")
         else:
             failures.append("later write did not land in parent")
-
-    if args.model:
-        print(f"model leg: requested model {args.model} - not exercised by "
-              "this probe; the synthetic stages are the bounded check")
-    else:
-        print("model leg: SKIPPED (no --model given)")
+        if slot24_ok == "true":
+            print("[PASS] parent: in-range write visible to fresh reads "
+                  "of the parent")
+        else:
+            failures.append("in-range write not visible in parent")
 
     if failures:
         print(f"{len(failures)} FAILURES")
