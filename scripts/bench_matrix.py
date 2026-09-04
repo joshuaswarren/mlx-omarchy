@@ -63,6 +63,7 @@ PREFILL_RE = re.compile(r"prefill ([0-9.]+)s")
 PER_TOKEN_RE = re.compile(r"decode mean per-token ([0-9.]+) ms")
 PROV_LINE_RE = re.compile(r"provenance: (.+)")
 IDS_RE = re.compile(r"generated_ids sha256:([0-9a-f]+) n=(\d+)")
+PROMPT_TOKENS_RE = re.compile(r"prompt_tokens (\d+)")
 
 
 def sanitize(text, home=None):
@@ -136,11 +137,19 @@ from transformers import AutoTokenizer
 tok = AutoTokenizer.from_pretrained(sys.argv[1])
 p = tok.apply_chat_template([{"role": "user", "content": sys.argv[2]}],
                             add_generation_prompt=True, tokenize=True)
-if isinstance(p, dict):
-    p = p.get("input_ids", [])
-if isinstance(p, str):
-    p = tok(p)["input_ids"]
-print(json.dumps({"prompt_tokens": len(p)}))
+# transformers 5.x can return a BatchEncoding here; len() of it is the
+# number of KEYS (2), not tokens - the exact bug that produced
+# prompt_tokens=2 on every real M1 leg. Extract the id list itself.
+if hasattr(p, "keys") and not isinstance(p, list):
+    enc = p["input_ids"] if "input_ids" in p else getattr(p, "input_ids")
+else:
+    enc = p
+if isinstance(enc, str):
+    enc = tok(enc)["input_ids"]
+ids = enc
+while isinstance(ids, list) and ids and isinstance(ids[0], list):
+    ids = ids[0]
+print(json.dumps({"prompt_tokens": len(ids)}))
 """
 
 PROVENANCE_SNIPPET = """
@@ -476,13 +485,15 @@ def build_legs(manifest, hf_cache, overrides, selected):
 def parse_bench_output(stdout):
     m = {"decode_tok_s": None, "decode_tokens": None, "requested_tokens": None,
          "prefill_s": None, "decode_mean_per_token_ms": None,
-         "provenance_line": None, "generated_ids_sha256_16": None}
+         "provenance_line": None, "generated_ids_sha256_16": None,
+         "generated_ids_n": None, "prompt_tokens": None}
     for line in stdout.splitlines():
         for regex, key, cast in ((DECODE_RE, None, float),
                                  (PREFILL_RE, "prefill_s", float),
                                  (PER_TOKEN_RE, "decode_mean_per_token_ms", float),
                                  (PROV_LINE_RE, "provenance_line", str),
-                                 (IDS_RE, None, str)):
+                                 (IDS_RE, None, str),
+                                 (PROMPT_TOKENS_RE, None, str)):
             hit = regex.search(line)
             if not hit:
                 continue
@@ -492,6 +503,9 @@ def parse_bench_output(stdout):
                 m["requested_tokens"] = int(hit.group(3))
             elif regex is IDS_RE:
                 m["generated_ids_sha256_16"] = hit.group(1)
+                m["generated_ids_n"] = int(hit.group(2))
+            elif regex is PROMPT_TOKENS_RE:
+                m["prompt_tokens"] = int(hit.group(1))
             else:
                 m[key] = cast(hit.group(1))
     return m
@@ -566,20 +580,33 @@ def execute_leg(leg, manifest, args, contended, paths):
         bad.append("prefill seconds missing or not finite-positive")
     if not metrics["provenance_line"]:
         bad.append("provenance line missing")
+    # generated_ids digest is mandatory on every measured leg: the
+    # integration bench_decode prints it (generated_ids sha256:<16hex>
+    # n=N), and cross-platform identity is compared on token ids.
+    digest = metrics["generated_ids_sha256_16"]
+    if not digest or len(digest) != 16 or \
+            any(c not in "0123456789abcdef" for c in digest):
+        bad.append("generated_ids digest missing or not 16 hex")
+    elif metrics["generated_ids_n"] != n:
+        bad.append(f"generated_ids n {metrics['generated_ids_n']} != "
+                   f"tokens {n}")
     if bad:
         leg.update(status="failed",
                    stderr_tail="leg-agreement validation failed: "
                    + "; ".join(bad))
         return leg
-    # prompt-token count with the model's own tokenizer; None stays None.
-    if leg.get("prompt_tokens") is None:
-        leg["prompt_tokens"] = probe_prompt_tokens(
-            args.python, paths[leg["model_id"]], prompt)
-    if (leg["prompt_tokens"] and metrics["prefill_s"]):
+    # prompt_tokens is trusted only from bench_decode's own measured
+    # GenerationResponse count. The independent tokenizer probe is gone:
+    # transformers 5.x made len(apply_chat_template(...)) return the
+    # BatchEncoding key count (2), which poisoned every derived prefill
+    # tok/s on the real M1 run. Without the bench-reported count the
+    # derived rate stays null - a guess is never substituted.
+    if metrics["prompt_tokens"]:
         metrics["prefill_tok_s"] = round(
-            leg["prompt_tokens"] / metrics["prefill_s"], 3)
+            metrics["prompt_tokens"] / metrics["prefill_s"], 3)
         metrics["prefill_tok_s_basis"] = (
-            "prompt_tokens / bench_decode prefill seconds")
+            "bench_decode prompt_tokens / prefill seconds")
+    leg["prompt_tokens"] = metrics["prompt_tokens"]
     leg.update(status="measured", measured=True, metrics=metrics)
     return leg
 
@@ -762,6 +789,7 @@ def self_test():
     assert m["decode_mean_per_token_ms"] == 507.6
     assert m["provenance_line"].startswith("mlx-omarchy")
     assert m["generated_ids_sha256_16"] == "0123456789abcdef"
+    assert m["generated_ids_n"] == 64
 
     # 4-token fixture: the shape a tokens=4 leg actually produces.
     out4 = "decode 7.88 tok/s over 3 tokens (4 requested, EOS suppressed)\n" \
@@ -795,6 +823,53 @@ def self_test():
     assert mismatch["status"] == "failed" and not mismatch["measured"]
     assert "leg-agreement" in mismatch["stderr_tail"], mismatch["stderr_tail"]
     assert mismatch["exit_code"] == 0  # exited fine; numbers were not ours
+
+    # Digest is mandatory: integration bench_decode always prints it
+    # (1a96615). An output without it is a failed leg, never measured.
+    out4_nodigest = out4.replace(
+        "generated_ids sha256:0123456789abcdef n=4 first=1,2 last=3,4\n",
+        "")
+    nodigest = {"leg_id": "x", "model_id": "m", "model_path": "/m",
+                "prompt_id": "s", "tokens": 4, "measured": False}
+    subprocess.run = lambda *a, **k: FakeOut(out4_nodigest)
+    try:
+        class A2:
+            python, wheel, allow_non_apple, timeout = "py", None, False, 10
+        execute_leg(nodigest, manifest, A2(), contended=False,
+                    paths={"m": Path("/m")})
+    finally:
+        subprocess.run = real_run
+    assert nodigest["status"] == "failed" and not nodigest["measured"]
+    assert "digest" in nodigest["stderr_tail"], nodigest["stderr_tail"]
+
+    # prompt_tokens trusted only from bench output; the derived prefill
+    # rate exists only when the bench reported the count (M1 prompt_
+    # tokens=2 probe bug).
+    out4pt = out4 + "prompt_tokens 30\n"
+    withpt = {"leg_id": "x", "model_id": "m", "model_path": "/m",
+              "prompt_id": "s", "tokens": 4, "measured": False}
+    subprocess.run = lambda *a, **k: FakeOut(out4pt)
+    try:
+        execute_leg(withpt, manifest, A2(), contended=False,
+                    paths={"m": Path("/m")})
+    finally:
+        subprocess.run = real_run
+    assert withpt["status"] == "measured"
+    assert withpt["prompt_tokens"] == 30
+    assert withpt["metrics"]["prefill_tok_s"] == round(30 / 0.512, 3)
+    assert withpt["metrics"]["prefill_tok_s_basis"].startswith(
+        "bench_decode prompt_tokens")
+    nopt = {"leg_id": "x2", "model_id": "m", "model_path": "/m",
+            "prompt_id": "s", "tokens": 4, "measured": False}
+    subprocess.run = lambda *a, **k: FakeOut(out4)
+    try:
+        execute_leg(nopt, manifest, A2(), contended=False,
+                    paths={"m": Path("/m")})
+    finally:
+        subprocess.run = real_run
+    assert nopt["status"] == "measured"
+    assert nopt["prompt_tokens"] is None
+    assert "prefill_tok_s" not in nopt["metrics"]
 
     assert sanitize(f"{os.path.expanduser('~')}/models/q4") == "~/models/q4"
     assert "hostname" not in json.dumps(
