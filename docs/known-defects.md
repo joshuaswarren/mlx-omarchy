@@ -41,6 +41,22 @@ is trusted, and any number it produces afterwards is void.
 Until the cause is found, evaluate long sequences in chunks rather than in one
 operation, and restart the process if a wedge is hit.
 
+Bisection protocol ready: scripts/wedge_bisect.py and
+scripts/wedge_primitive_probe.py (commit 94c1dfc, branch wedge/q1-2048);
+two-phase bisect (threshold sweep + single-factor) plus primitive-
+isolated shape probes. The M1 run is queued behind Main's three-arm
+hotfix session on BenchQueueM1. Code-level candidate enumeration: nine
+candidates (per-axis maxComputeWorkGroupCount exceeded, single-buffer
+maxBufferSize exceeded, single-allocation maxMemoryAllocationSize
+exceeded, descriptor maxStorageBufferRange exceeded, command-buffer
+record count exceeded, driver-side shader hang at specific shape,
+submission ordering, pre-submission host stall, descriptor-pool
+exhaustion); B/C/D are surfaced as typed errors via VKX_CHECK and ruled
+out from the symptom shape (counter never advanced, not a thrown
+error); A is defensible if M1 reports a smaller limit; F is the
+strongest remaining candidate. Full enumeration and what each one rules
+out: receipts/2026-09-04-wedge-candidates-and-bisect-protocol.md.
+
 ## Live in v0.3.1
 
 These are open in the current release. Each fails silently or crashes, so watching for errors cannot catch them.
