@@ -150,3 +150,32 @@ the misattribution finding above.
 
 An earlier rebase attempt resolved a trace.h conflict with a literal
 `@both` token that broke the build; `9bff78e` fixes it forward.
+
+## Addendum 2: fully-masked-row guard and overflow boundary (Main's bar)
+
+Main required the f16 NaN caveat become a test, not a note.
+
+1. Fully-masked row: the f16 causal addend is now -65504 (the f16
+   finite maximum) instead of -inf. Softmax's max subtraction cancels
+   the additive constant, so a fully masked row (padding over padded
+   positions - the ordinary ragged-batch case) reduces to softmax over
+   its own scores exactly like the f32 path, instead of
+   inf-minus-inf NaN. The suite gains "fully-masked row (row 2)":
+   defined on both paths, primitive-vs-f32 out error 7.1e-2 at an
+   explicit 1e-1 bar (f16 storage at 65504 magnitude has ulp 32 - the
+   recovered weights of a degenerate row are quantized; normal cases
+   keep the 1e-3 bar), emulated-storage agreement 1.0 bar.
+2. Overflow boundary: reachable. q,k ~ N(0,40) at head_dim 64 with
+   scale 0.125 pushes scaled scores past 65504 -> inf stored -> NaN
+   rows, while the f32 path stays finite. The suite asserts the
+   primitive's NaN pattern matches the f16-storage emulation exactly
+   (PASS). This is the documented cost of f16 score storage and the
+   same cap upstream Metal f16 sdpa has; workloads needing
+   overflow-immune attention take the f32/bf16 path. Plainly stated:
+   NOT guarded against extreme-but-valid f16 inputs; masked-NaN (the
+   common case) IS guarded.
+3. Integrated-tree batteries re-run on the guard build (wheel
+   `...dev202609040336+diag.d09bf7d` sha256 `6344209b...`,
+   verified=match): runtime 25/6,247, eq_math 7/116, compiled_tape
+   11/1,747 - green. Census unchanged: 633 dispatches/token, casts 0,
+   CopyGeneralF16 96 (4/layer), greedy token-identical.

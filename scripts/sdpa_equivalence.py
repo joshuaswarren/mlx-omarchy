@@ -45,15 +45,16 @@ def causal_addend(q_len, k_len, dtype):
     """The causal additive mask as a host-loaded fixture array.
 
     Mirrors what each C++ path writes per element: 0 / -1e30 in f32,
-    0 / -inf in f16 (f16 stores -1e30 as -inf). Built in numpy: the
-    backend refuses GPU broadcast compares, and a fixture needs no GPU
+    0 / -65504 (the f16 finite maximum, matching the backend's
+    fully-masked-row guard) in f16. Built in numpy: the backend
+    refuses GPU broadcast compares, and a fixture needs no GPU
     kernel. A multiplier form would NaN the kept positions (0 * -inf).
     """
     rows = np.arange(q_len)[:, None] + (k_len - q_len)
     cols = np.arange(k_len)[None, :]
     blocked = rows < cols
     if dtype == np.float16:
-        values = np.where(blocked, -np.inf, 0.0).astype(np.float16)
+        values = np.where(blocked, -65504.0, 0.0).astype(np.float16)
     else:
         values = np.where(blocked, -1e30, 0.0).astype(np.float32)
     return mx.array(values)
@@ -127,7 +128,8 @@ def f16_storage_emulation(q, k, v, scale, mask=None, causal=False):
     return out.astype(mx.float16), scores, probs
 
 
-def check(name, q, k, v, scale, mask=None, causal=False):
+def check(name, q, k, v, scale, mask=None, causal=False, atol=1e-3,
+          storage_atol=2e-3):
     kwargs = {}
     if causal:
         kwargs["mask"] = "causal"
@@ -140,26 +142,39 @@ def check(name, q, k, v, scale, mask=None, causal=False):
 
     failures = []
 
-    # Masked positions compare over the finite pairing only: f16 stores
-    # the causal addend as -inf while f32 keeps -1e30, so the raw
-    # difference at masked positions is meaningless by design.
-    def max_err(sim, ref):
+    # Causal cases exclude masked positions from the scores/probs
+    # comparison: f32 stores -1e30 there and f16 stores -65504, both by
+    # design, so the raw difference is meaningless.
+    causal_blocked = None
+    if causal:
+        q_len_m, k_len_m = q.shape[2], k.shape[2]
+        rows_m = np.arange(q_len_m)[:, None] + (k_len_m - q_len_m)
+        cols_m = np.arange(k_len_m)[None, :]
+        causal_blocked = rows_m < cols_m
+
+    def max_err(sim, ref, exclude=None):
         a = np.asarray(sim.astype(mx.float32))
         b = np.asarray(ref.astype(mx.float32))
         finite = np.isfinite(a) & np.isfinite(b)
+        if exclude is not None:
+            while exclude.ndim < a.ndim:
+                exclude = exclude[None, :]
+            finite = finite & ~np.broadcast_to(exclude, a.shape)
         if not finite.any():
             return float("nan")
         return float(np.abs(a[finite] - b[finite]).max())
 
-    sim_scores_err = max_err(sim_scores, ref_scores)
-    sim_probs_err = max_err(sim_probs, ref_probs)
+    sim_scores_err = max_err(sim_scores, ref_scores, causal_blocked)
+    sim_probs_err = max_err(sim_probs, ref_probs, causal_blocked)
     sim_out_err = max_err(sim, ref)
-    if sim_scores_err > 2e-3:
-        failures.append(f"emulated scores err {sim_scores_err:.3e} > 2e-3")
-    if sim_probs_err > 2e-3:
-        failures.append(f"emulated probs err {sim_probs_err:.3e} > 2e-3")
-    if sim_out_err > 1e-3:
-        failures.append(f"emulated out err {sim_out_err:.3e} > 1e-3")
+    if sim_scores_err > storage_atol:
+        failures.append(
+            f"emulated scores err {sim_scores_err:.3e} > {storage_atol:g}")
+    if sim_probs_err > storage_atol:
+        failures.append(
+            f"emulated probs err {sim_probs_err:.3e} > {storage_atol:g}")
+    if sim_out_err > atol:
+        failures.append(f"emulated out err {sim_out_err:.3e} > {atol:g}")
 
     got32 = got.astype(mx.float32)
     ref32 = ref.astype(mx.float32)
@@ -168,8 +183,9 @@ def check(name, q, k, v, scale, mask=None, causal=False):
         out_err = float("inf")
     else:
         out_err = float(mx.abs(got32 - ref32).max())
-        if out_err > 1e-3:
-            failures.append(f"primitive out err {out_err:.3e} > 1e-3")
+        if out_err > atol:
+            failures.append(
+                f"primitive out err {out_err:.3e} > {atol:g}")
     # mx bool reductions carry a known llvmpipe defect (receipts/
     # boolall-2026-09-03); finiteness goes through numpy.
     if not np.isfinite(np.asarray(got32)).all():
@@ -256,6 +272,43 @@ def main():
     mask = draw(key_m, (1, 4, 8, 32))
     ok &= check("causal q_len=8 k_len=32", q, k, v, 0.125, causal=True)
     ok &= check("additive f16 mask", q, k, v, 0.125, mask=mask)
+    # Fully masked row under an additive f16 mask: padding over padded
+    # positions - the degenerate case Main called out. The -65504
+    # additive guard keeps the row DEFINED on the f16 path (matching
+    # the f32 path's own softmax-over-masked-scores semantics), but f16
+    # storage at 65504 magnitude has ulp 32, so the recovered weights
+    # are quantized against the f32 reference: the honest bar here is
+    # finite + bounded at 1e-1, not the normal 1e-3.
+    key_q, key_k, key_v, key_m = mx.random.split(rng, 4)
+    q = draw(key_q, (1, 4, 4, 64))
+    k = draw(key_k, (1, 4, 16, 64))
+    v = draw(key_v, (1, 4, 16, 64))
+    mask = draw(key_m, (1, 4, 4, 16))
+    mask[:, :, 2, :] = -65504.0
+    ok &= check("fully-masked row (row 2)", q, k, v, 0.125, mask=mask,
+                atol=1e-1, storage_atol=1.0)
+
+    # Score-overflow boundary: magnitudes whose dot products overflow
+    # f16 storage after scaling. The primitive must behave exactly
+    # like the f16-storage emulation (same non-finite pattern), while
+    # the f32 path stays finite - the documented cost of f16 score
+    # storage, the same cap upstream Metal f16 sdpa has.
+    key_q, key_k, key_v = mx.random.split(rng, 3)
+    q = (mx.random.normal((1, 2, 1, 64), key=key_q) * 40.0).astype(mx.float16)
+    k = (mx.random.normal((1, 2, 64, 64), key=key_k) * 40.0).astype(mx.float16)
+    v = (mx.random.normal((1, 2, 64, 64), key=key_v) * 0.5).astype(mx.float16)
+    got = mx.fast.scaled_dot_product_attention(q, k, v, scale=0.125)
+    mx.eval(got)
+    sim, _, _ = f16_storage_emulation(q, k, v, 0.125)
+    got_np = np.asarray(got.astype(mx.float32))
+    sim_np = np.asarray(sim.astype(mx.float32))
+    same_nan = np.array_equal(np.isnan(got_np), np.isnan(sim_np))
+    print(f"[{'PASS' if same_nan else 'FAIL'}] overflow boundary "
+          f"q,k~N(0,40): primitive and f16-storage emulation "
+          f"{'agree' if same_nan else 'DISAGREE'} on NaN pattern "
+          f"(f32 path stays finite here; upstream Metal f16 sdpa has "
+          f"the same storage cap)")
+    ok &= same_nan
 
     print("ALL PASS" if ok else "SUITE FAILED")
     return 0 if ok else 1

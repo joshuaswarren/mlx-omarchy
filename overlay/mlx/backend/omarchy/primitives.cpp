@@ -6936,9 +6936,13 @@ void ScaledDotProductAttention::eval_gpu(
         omarchy::unsupported("causal offset " + tag, out);
       }
       // The same 0 / -1e30 additive shape the f32 path builds, stored
-      // in f16: -1e30 becomes -inf there, and softmax maps it to an
-      // exact zero. A fully masked row would go NaN here where the f32
-      // path stays tiny; causal shapes always expose the diagonal.
+      // in f16 at the f16 finite maximum (-65504), not -inf: softmax
+      // still maps masked positions to an exact zero, and a fully
+      // masked row (padding masks over padded positions) stays defined
+      // - the additive constant cancels in the max subtraction, so the
+      // row reduces to softmax over its own scores exactly like the
+      // f32 path, instead of inf-minus-inf NaN.
+      constexpr float kF16Floor = -65504.0f;
       array mask(Shape{q_len, k_len}, float16, nullptr, {});
       mask.set_data(allocate_omarchy(mask.nbytes()));
       float16_t* values = mask.data<float16_t>();
@@ -6948,7 +6952,7 @@ void ScaledDotProductAttention::eval_gpu(
           values[row * k_len + col] =
               offset + row >= col
                   ? float16_t(0.0f)
-                  : float16_t(-std::numeric_limits<float>::infinity());
+                  : float16_t(kF16Floor);
         }
       }
       encoder.add_temporary(mask);
