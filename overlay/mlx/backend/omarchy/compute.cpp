@@ -669,6 +669,18 @@ ShaderBytes shader_bytes(ComputeKernel kernel) {
       return {scatter_axis_fcas_bf16, scatter_axis_fcas_bf16_size};
     case ComputeKernel::ScatterAxisBool:
       return {scatter_axis_bool, scatter_axis_bool_size};
+    case ComputeKernel::QmmVecF32:
+      return {qmm_vec_f32, qmm_vec_f32_size};
+    case ComputeKernel::QmmVecF16:
+      return {qmm_vec_f16, qmm_vec_f16_size};
+    case ComputeKernel::QmmVecBF16:
+      return {qmm_vec_bf16, qmm_vec_bf16_size};
+    case ComputeKernel::QmmVecSubgroupF32:
+      return {qmm_vec_subgroup_f32, qmm_vec_subgroup_f32_size};
+    case ComputeKernel::QmmVecSubgroupF16:
+      return {qmm_vec_subgroup_f16, qmm_vec_subgroup_f16_size};
+    case ComputeKernel::QmmVecSubgroupBF16:
+      return {qmm_vec_subgroup_bf16, qmm_vec_subgroup_bf16_size};
     case ComputeKernel::Count:
       break;
   }

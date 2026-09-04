@@ -131,6 +131,17 @@ omarchy_shader(random_bits_u32 shaders/random_bits.comp)
 omarchy_shader(qmm_f32 shaders/qmm.comp)
 omarchy_shader(qmm_f16 shaders/qmm.comp -DUSE_FP16=1)
 omarchy_shader(qmm_bf16 shaders/qmm.comp -DUSE_BF16=1)
+# DecodeGemv: dedicated matrix-vector kernels for the decode shape
+# (lhs single row); qmm_vec fuses affine dequantization into the dot,
+# the same shader compiled with USE_SUBGROUP=1 produces the
+# subgroup-reduction variant of the per-column sum (see PROTOCOL in
+# tools/subgroup-bench/ for the rationale).
+omarchy_shader(qmm_vec_f32 shaders/qmm_vec.comp)
+omarchy_shader(qmm_vec_f16 shaders/qmm_vec.comp -DUSE_FP16=1)
+omarchy_shader(qmm_vec_bf16 shaders/qmm_vec.comp -DUSE_BF16=1)
+omarchy_shader(qmm_vec_subgroup_f32 shaders/qmm_vec.comp -DUSE_SUBGROUP=1)
+omarchy_shader(qmm_vec_subgroup_f16 shaders/qmm_vec.comp -DUSE_FP16=1 -DUSE_SUBGROUP=1)
+omarchy_shader(qmm_vec_subgroup_bf16 shaders/qmm_vec.comp -DUSE_BF16=1 -DUSE_SUBGROUP=1)
 omarchy_shader(dequant_f32 shaders/dequant.comp)
 omarchy_shader(dequant_f16 shaders/dequant.comp -DUSE_FP16=1)
 omarchy_shader(conv_f32 shaders/conv.comp)
