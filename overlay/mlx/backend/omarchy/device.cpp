@@ -859,6 +859,18 @@ void wait_for_timeline_progress(
     last_advance = clock::now();
   }
 
+  // Block on the semaphore for one poll interval at a time. A completed
+  // signal returns VK_SUCCESS immediately, so a normal wait costs nothing
+  // beyond the wait itself; only a wait that outlives the interval reads
+  // the counter to decide whether the device is slow or stalled. The
+  // previous form slept for the interval unconditionally, which charged
+  // every host wait up to 100 ms and took 4-bit decode from 14.56 to
+  // 0.21 tok/s on the M1 (about 48 waits per token).
+  VkSemaphoreWaitInfo info{VK_STRUCTURE_TYPE_SEMAPHORE_WAIT_INFO};
+  info.semaphoreCount = 1;
+  info.pSemaphores = &semaphore;
+  info.pValues = &target_value;
+
   while (last_observed < target_value) {
     const auto now = clock::now();
     if (now >= wall_deadline) {
@@ -878,7 +890,17 @@ void wait_for_timeline_progress(
           std::to_string(target_value) +
           "). The device may be hung; no CPU fallback is available.");
     }
-    std::this_thread::sleep_for(std::chrono::nanoseconds(kHangWatchPollNs));
+    VkResult res = vk::device_table().WaitSemaphores(
+        device, &info, kHangWatchPollNs);
+    if (res == VK_SUCCESS) {
+      return;
+    }
+    if (res != VK_TIMEOUT) {
+      throw std::runtime_error(
+          std::string("[omarchy] Vulkan timeline wait failed (") +
+          vk::result_string(res) +
+          "). The device may be lost; no CPU fallback is available.");
+    }
     uint64_t current = 0;
     if (vk::device_table().GetSemaphoreCounterValue(
             device, semaphore, &current) == VK_SUCCESS) {
