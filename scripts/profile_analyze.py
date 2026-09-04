@@ -288,14 +288,16 @@ def main():
         say("")
         say(f"== {title} (ranked by cumulative total)")
         say(f"   {'phase':<14} {'n':>7} {'total':>10} {'p50':>9} "
-            f"{'mean':>9} {'share':>6}")
+            f"{'mean':>9} {'share':>6} {'p90':>9} {'max':>9}")
         grand = sum(sum(vals) for _, vals in have)
         for name, vals in sorted(have, key=lambda kv: -sum(kv[1])):
             total = sum(vals)
+            svals = sorted(vals)
             say(f"   {name:<14} {len(vals):>7} {fmt_ns(total):>10} "
-                f"{fmt_ns(pct(sorted(vals), .5)):>9} "
+                f"{fmt_ns(pct(svals, .5)):>9} "
                 f"{fmt_ns(total / len(vals)):>9} "
-                f"{(total / grand * 100 if grand else 0):>5.1f}%")
+                f"{(total / grand * 100 if grand else 0):>5.1f}% "
+                f"{fmt_ns(pct(svals, .9)):>9} {fmt_ns(svals[-1]):>9}")
 
     phase_table(
         "per-dispatch host phases",

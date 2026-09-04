@@ -125,9 +125,11 @@ int main(int argc, char** argv) {
   }
 
   if (args.check) {
-    // Correctness guard: after N adds, y0 + N*x. Run on a fresh chain.
-    array c = full({args.elems}, 1.0f, float32, stream);
-    array z = full({args.elems}, 0.5f, float32, stream);
+    // Correctness guard on a fresh one-element chain: after 4 adds of 1,
+    // 0.5 becomes 4.5. Kept independent of --elems so the value is a
+    // scalar either way.
+    array c = full({1}, 1.0f, float32, stream);
+    array z = full({1}, 0.5f, float32, stream);
     for (int i = 0; i < 4; ++i) {
       z = add(z, c, stream);
     }
@@ -135,10 +137,10 @@ int main(int argc, char** argv) {
     omarchy::get_command_encoder(stream).synchronize();
     float got = z.item<float>();
     if (got != 4.5f) {
-      std::fprintf(stderr, "CHECK FAILED: z[0]=%f want 4.5\n", got);
+      std::fprintf(stderr, "CHECK FAILED: z=%f want 4.5\n", got);
       return 1;
     }
-    std::printf("check ok: z[0]=%f\n", got);
+    std::printf("check ok: z=%f\n", got);
   }
 
   std::printf(
