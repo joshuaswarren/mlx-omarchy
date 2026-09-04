@@ -244,3 +244,62 @@ token-identical to the current path on the same build (the composed
 attention path is the current reference; upstream's fast SDPA
 vector-path divergence is a known separate defect and not a
 justification).
+
+## Addendum 3: SDPA rework - function-level implementation plan
+
+Coordination settled: FusedRopeKernel's primitives.cpp window is closed
+(final commit ca58b89 touches RoPE only, not yet on origin/main; main
+at 238a977 carries no diff in the SDPA region). The plan below is
+mechanical; the implementing session should rebase and re-read the
+function first.
+
+Target function: `ScaledDotProductAttention::eval_gpu` (primitives.cpp,
+~6543-6729 on this base).
+
+1. Delete `to_f32(q/k/v)`; keep the existing reshape/transpose views on
+   the f16 arrays (views are free). The scale multiply moves to a
+   f16-elementwise multiply (same broadcast_view trick for the scalar)
+   or folds into the matmul alpha parameter - `dispatch_matmul` already
+   carries alpha; prefer alpha.
+2. scores: `dispatch_matmul(tag, {qs_f16, keys_t_f16}, scores_f16, ...)`
+   with `ComputeKernel::MatmulF16`. matmul.comp line 111 accumulates in
+   `float` under USE_FP16 (verified this session), so each dot product
+   keeps f32 accumulation; the only new rounding is f16 storage of the
+   scores intermediate. That is the stated tolerance: bounded by f16
+   rounding of scores (~5e-4 relative), no accumulation-order change;
+   softmax still runs from a materialized tensor as today.
+3. probs: `dispatch_softmax` on f16 scores - verify softmax.comp's f16
+   leg upcasts internally before trusting it; if it does not, keep the
+   softmax leg on the f32 kernel with one scores-cast (still deletes
+   three upcasts and two dense copies per call).
+4. result: MatmulF16 probs @ v32T; the final `copy_gpu(result, out)`
+   downcast disappears (result is already f16) - the
+   `result.dtype() == out.dtype()` buffer-share branch then takes over,
+   GQA 5-D stride case included.
+5. GQA expansion: repeats>1 currently reshapes to 5-D and relies on
+   matmul batching; audit whether the 448-class materializations die
+   with the f32 views or need the broadcast-view treatment; measure
+   before changing further.
+6. Mask legs: causal mask is built in f32 host-side then added; either
+   build it in f16 or keep one cast - measure.
+
+llvmpipe storage-defect caveats from FusedRopeKernel apply: do not
+alias a converted buffer across readonly/writeonly slots; prefer f32
+blocks for accumulate buffers; see receipts/2026-09-03-llvmpipe-
+storage-defects/.
+
+Equivalence suite required before merge (Main's bar, above the greedy
+guard): value-level SDPA versus the current composed path on the same
+build, across (a) decode shapes [1, heads, 1, 64], (b) non-contiguous
+cache slices at offsets 1, 7, 41, 256, (c) GQA repeat factors 1, 2, 7,
+(d) head_dim 48 (not a power-of-two multiple), (e) q_len 1 and q_len
+>1; tolerance: scores/probs agree within 2e-3 absolute after f16
+storage rounding, outputs within 1e-3, plus the pinned-prompt greedy
+token-identity end-to-end check. Measured acceptance: CopyGeneralF16
+per layer per token drops from 12 toward the update-path minimum (0
+appends + write-back only), casts per token drop from 240; report the
+gap against the 4-6-copy prediction either way.
+
+Not implemented this session: the implementing leg needs a full
+build-equivalence-measure cycle; this session ended at the design
+handoff.
