@@ -6896,20 +6896,32 @@ void ScaledDotProductAttention::eval_gpu(
   // runs this pattern. Deletes the three q/k/v upcasts, the scale
   // broadcast and multiply, and the output downcast per call.
   if (q.dtype() == float16) {
-    array qs = q;
-    array ks = k;
-    array vs = v;
-    if (repeats > 1) {
-      qs = reshape_in_eval(
-          qs, Shape{batch, kv_heads, repeats, q_len, head_dim}, s);
-      ks = reshape_in_eval(
-          ks, Shape{batch, kv_heads, 1, k_len, head_dim}, s);
-      vs = reshape_in_eval(
-          vs, Shape{batch, kv_heads, 1, k_len, v_dim}, s);
-      encoder.add_temporary(qs);
-      encoder.add_temporary(ks);
-      encoder.add_temporary(vs);
-    }
+    // GQA regroup as pure stride views, so a non-contiguous cache
+    // slice rides its own strides straight into the matmul;
+    // reshape_in_eval would copy - it only views row-contiguous
+    // inputs, and a cache slice never is one. q splits the heads axis
+    // into (kv, repeat); k and v keep their kv heads and insert a
+    // size-1 repeat axis the matmul broadcasts (stride pinned 0).
+    auto regroup_view = [&](const array& base) {
+      bool splits = base.shape(1) != kv_heads;
+      int rep = splits ? repeats : 1;
+      Shape shape = {
+          base.shape(0), kv_heads, rep, base.shape(2), base.shape(3)};
+      Strides strides(5);
+      strides[0] = base.strides()[0];
+      strides[1] = splits ? base.strides()[1] * rep : base.strides()[1];
+      strides[2] = splits ? base.strides()[1] : 0;
+      strides[3] = base.strides()[2];
+      strides[4] = base.strides()[3];
+      array view(std::move(shape), base.dtype(), nullptr, {});
+      view.copy_shared_buffer(
+          base, strides, {false, false, false}, base.size());
+      encoder.add_temporary(view);
+      return view;
+    };
+    array qs = repeats > 1 ? regroup_view(q) : q;
+    array ks = repeats > 1 ? regroup_view(k) : k;
+    array vs = repeats > 1 ? regroup_view(v) : v;
     array keys_t = swapaxes_in_eval(ks, -1, -2);
     encoder.add_temporary(keys_t);
     Shape score_shape = qs.shape();
