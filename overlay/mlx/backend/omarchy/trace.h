@@ -55,8 +55,6 @@ struct MlxOmarchyTraceSnapshot {
   uint64_t commit_calls_noop;
 };
 
-} // namespace mlx::core::omarchy::trace
-
 #ifdef MLX_OMARCHY_GPU_PROFILING
 // Per-primitive-name gpu::eval counts for fragmentation attribution.
 // Written on the evaluator thread only; the names are static string
@@ -68,6 +66,8 @@ inline std::unordered_map<std::string_view, std::uint64_t>& prim_counts() {
   return counts;
 }
 #endif
+
+} // namespace mlx::core::omarchy::trace
 
 // Global-scope C ABI (defined in eval.cpp): the C symbol must not live in
 // a namespace, and a qualified namespace definition nested in another
