@@ -893,8 +893,7 @@ TEST_CASE("norm kernels normalize non-contiguous inputs exactly") {
       transpose(reshape(base, Shape{4, 4}, stream), {1, 0}, stream);
   array weight = ones({4}, float32, stream);
 
-  // Host reference in double over the logical transposed values
-  // t[r][c] = 4*c + r; independent of any backend layout.
+  // Reference over the logical transposed values t[r][c] = 4*c + r.
   double x[4][4];
   for (int r = 0; r < 4; ++r) {
     for (int c = 0; c < 4; ++c) {
