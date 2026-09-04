@@ -243,11 +243,6 @@ void copy_gpu_inplace(
       if (in.dtype() != out.dtype()) {
         omarchy::unsupported("non-zero scalar fill dtype", out);
       }
-      // vkCmdFillBuffer repeats an arbitrary 32-bit word, so the same
-      // transfer path as the zero fill writes any integer pattern with
-      // no compute pipeline. The checked count and compute_item_offset
-      // keep the whole-word span bounded, and a whole-word dtype leaves
-      // no misaligned edges for a host pass.
       uint32_t count = checked_u32(out.data_size(), "scalar fill", out);
       uint32_t word = 0;
       std::memcpy(
