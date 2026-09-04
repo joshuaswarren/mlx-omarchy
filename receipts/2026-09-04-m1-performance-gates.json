@@ -1,0 +1,1049 @@
+{
+  "source_commit": "a34cdc5a9fa99485b5228be499bd1057e6374e4f",
+  "wheel_sha256": "c72f45e82e6754a3ff7c93302aa8064178d583cff89ed0068d1a4655d9b77505",
+  "binary_provenance": {
+    "dist": "mlx-omarchy",
+    "verified": "match",
+    "mismatch": null,
+    "files": [
+      {
+        "path": "mlx/core.cpython-314-aarch64-linux-gnu.so",
+        "label": "mlx.core extension",
+        "sha256": "4c6ed35b941c33c3d3df3aed2e009bc76355be9b91d158124b0b587ec3e3c6f6",
+        "record_sha256": "4c6ed35b941c33c3d3df3aed2e009bc76355be9b91d158124b0b587ec3e3c6f6",
+        "match": true
+      },
+      {
+        "path": "mlx/lib/libmlx.so",
+        "label": "mlx/lib/libmlx.so",
+        "sha256": "0dffbe3bc326a0454d812a4195b07a07cdbcf22e26f0540ba9df44251d0e05ec",
+        "record_sha256": "0dffbe3bc326a0454d812a4195b07a07cdbcf22e26f0540ba9df44251d0e05ec",
+        "match": true
+      }
+    ],
+    "dist_version": "0.32.2.dev202609041547+a34cdc5",
+    "mx_version": "0.32.2.dev202609041547+a34cdc5",
+    "version_match": true
+  },
+  "host": {
+    "system": "Linux",
+    "machine": "aarch64",
+    "python": "3.14.7",
+    "os": "Omarchy",
+    "kernel": "7.1.6-1-1-ARCH",
+    "memsize_bytes": 16228417536,
+    "gpu": {
+      "device": "Apple M1 (G13G B1)",
+      "vulkan_driver": "Honeykrisp"
+    }
+  },
+  "power": {
+    "raw": "macsmc-ac: online",
+    "source": "AC",
+    "percent": null,
+    "charging": true
+  },
+  "raw_artifacts": "~/benchq/logs/performance-gates-m1-a34cdc5-20260904-batch1/",
+  "runs": [
+    {
+      "file": "phase1-matrix-gates-off.json",
+      "clean_check": "clean",
+      "legs": [
+        {
+          "leg_id": "qwen25-0.5b-4bit:short-decode-32",
+          "revision": "a5339a4131f135d0fdc6a5c8b5bbed2753bbe0f3",
+          "status": "measured",
+          "exit_code": 0,
+          "metrics": {
+            "decode_tok_s": 30.77,
+            "decode_tokens": 31,
+            "requested_tokens": 32,
+            "prefill_s": 0.821,
+            "decode_mean_per_token_ms": 32.5,
+            "provenance_line": "mlx-omarchy 0.32.2.dev202609041547+a34cdc5 mx=0.32.2.dev202609041547+a34cdc5 verified=match harness=a34cdc5 core.cpython-314-aarch64-linux-gnu.so=sha256:4c6ed35b941c33c3 libmlx.so=sha256:0dffbe3bc326a045",
+            "generated_ids_sha256_16": "7fd25a869ff21678",
+            "generated_ids_n": 32,
+            "prompt_tokens": 30,
+            "prefill_tok_s": 36.541,
+            "prefill_tok_s_basis": "bench_decode prompt_tokens / prefill seconds"
+          }
+        },
+        {
+          "leg_id": "qwen25-0.5b-4bit:long-decode-128",
+          "revision": "a5339a4131f135d0fdc6a5c8b5bbed2753bbe0f3",
+          "status": "measured",
+          "exit_code": 0,
+          "metrics": {
+            "decode_tok_s": 28.46,
+            "decode_tokens": 127,
+            "requested_tokens": 128,
+            "prefill_s": 7.148,
+            "decode_mean_per_token_ms": 35.1,
+            "provenance_line": "mlx-omarchy 0.32.2.dev202609041547+a34cdc5 mx=0.32.2.dev202609041547+a34cdc5 verified=match harness=a34cdc5 core.cpython-314-aarch64-linux-gnu.so=sha256:4c6ed35b941c33c3 libmlx.so=sha256:0dffbe3bc326a045",
+            "generated_ids_sha256_16": "4cc08910089477fd",
+            "generated_ids_n": 128,
+            "prompt_tokens": 262,
+            "prefill_tok_s": 36.654,
+            "prefill_tok_s_basis": "bench_decode prompt_tokens / prefill seconds"
+          }
+        },
+        {
+          "leg_id": "qwen25-0.5b-4bit:longctx-1024-decode-32",
+          "revision": "a5339a4131f135d0fdc6a5c8b5bbed2753bbe0f3",
+          "status": "measured",
+          "exit_code": 0,
+          "metrics": {
+            "decode_tok_s": 23.5,
+            "decode_tokens": 31,
+            "requested_tokens": 32,
+            "prefill_s": 29.303,
+            "decode_mean_per_token_ms": 42.6,
+            "provenance_line": "mlx-omarchy 0.32.2.dev202609041547+a34cdc5 mx=0.32.2.dev202609041547+a34cdc5 verified=match harness=a34cdc5 core.cpython-314-aarch64-linux-gnu.so=sha256:4c6ed35b941c33c3 libmlx.so=sha256:0dffbe3bc326a045",
+            "generated_ids_sha256_16": "7da83f06ec9f001d",
+            "generated_ids_n": 32,
+            "prompt_tokens": 1053,
+            "prefill_tok_s": 35.935,
+            "prefill_tok_s_basis": "bench_decode prompt_tokens / prefill seconds"
+          }
+        },
+        {
+          "leg_id": "qwen25-0.5b-bf16:short-decode-32",
+          "revision": "56d07e766edd7159fbe12ed12d9cf114bf38bf1e",
+          "status": "measured",
+          "exit_code": 0,
+          "metrics": {
+            "decode_tok_s": 8.71,
+            "decode_tokens": 31,
+            "requested_tokens": 32,
+            "prefill_s": 0.532,
+            "decode_mean_per_token_ms": 114.9,
+            "provenance_line": "mlx-omarchy 0.32.2.dev202609041547+a34cdc5 mx=0.32.2.dev202609041547+a34cdc5 verified=match harness=a34cdc5 core.cpython-314-aarch64-linux-gnu.so=sha256:4c6ed35b941c33c3 libmlx.so=sha256:0dffbe3bc326a045",
+            "generated_ids_sha256_16": "635bc7f4bbaa48a4",
+            "generated_ids_n": 32,
+            "prompt_tokens": 30,
+            "prefill_tok_s": 56.391,
+            "prefill_tok_s_basis": "bench_decode prompt_tokens / prefill seconds"
+          }
+        },
+        {
+          "leg_id": "qwen25-0.5b-bf16:long-decode-128",
+          "revision": "56d07e766edd7159fbe12ed12d9cf114bf38bf1e",
+          "status": "measured",
+          "exit_code": 0,
+          "metrics": {
+            "decode_tok_s": 8.42,
+            "decode_tokens": 127,
+            "requested_tokens": 128,
+            "prefill_s": 1.471,
+            "decode_mean_per_token_ms": 118.7,
+            "provenance_line": "mlx-omarchy 0.32.2.dev202609041547+a34cdc5 mx=0.32.2.dev202609041547+a34cdc5 verified=match harness=a34cdc5 core.cpython-314-aarch64-linux-gnu.so=sha256:4c6ed35b941c33c3 libmlx.so=sha256:0dffbe3bc326a045",
+            "generated_ids_sha256_16": "def3c2c9b544eadc",
+            "generated_ids_n": 128,
+            "prompt_tokens": 262,
+            "prefill_tok_s": 178.11,
+            "prefill_tok_s_basis": "bench_decode prompt_tokens / prefill seconds"
+          }
+        },
+        {
+          "leg_id": "qwen25-0.5b-bf16:longctx-1024-decode-32",
+          "revision": "56d07e766edd7159fbe12ed12d9cf114bf38bf1e",
+          "status": "measured",
+          "exit_code": 0,
+          "metrics": {
+            "decode_tok_s": 7.78,
+            "decode_tokens": 31,
+            "requested_tokens": 32,
+            "prefill_s": 5.263,
+            "decode_mean_per_token_ms": 128.6,
+            "provenance_line": "mlx-omarchy 0.32.2.dev202609041547+a34cdc5 mx=0.32.2.dev202609041547+a34cdc5 verified=match harness=a34cdc5 core.cpython-314-aarch64-linux-gnu.so=sha256:4c6ed35b941c33c3 libmlx.so=sha256:0dffbe3bc326a045",
+            "generated_ids_sha256_16": "2fd3ef0beb806496",
+            "generated_ids_n": 32,
+            "prompt_tokens": 1053,
+            "prefill_tok_s": 200.076,
+            "prefill_tok_s_basis": "bench_decode prompt_tokens / prefill seconds"
+          }
+        }
+      ]
+    },
+    {
+      "file": "phase2-pair1-off.json",
+      "clean_check": "clean",
+      "legs": [
+        {
+          "leg_id": "qwen25-0.5b-4bit:short-decode-32",
+          "revision": "a5339a4131f135d0fdc6a5c8b5bbed2753bbe0f3",
+          "status": "measured",
+          "exit_code": 0,
+          "metrics": {
+            "decode_tok_s": 31.1,
+            "decode_tokens": 31,
+            "requested_tokens": 32,
+            "prefill_s": 0.832,
+            "decode_mean_per_token_ms": 32.2,
+            "provenance_line": "mlx-omarchy 0.32.2.dev202609041547+a34cdc5 mx=0.32.2.dev202609041547+a34cdc5 verified=match harness=a34cdc5 core.cpython-314-aarch64-linux-gnu.so=sha256:4c6ed35b941c33c3 libmlx.so=sha256:0dffbe3bc326a045",
+            "generated_ids_sha256_16": "7fd25a869ff21678",
+            "generated_ids_n": 32,
+            "prompt_tokens": 30,
+            "prefill_tok_s": 36.058,
+            "prefill_tok_s_basis": "bench_decode prompt_tokens / prefill seconds"
+          }
+        },
+        {
+          "leg_id": "qwen25-0.5b-4bit:long-decode-128",
+          "revision": "a5339a4131f135d0fdc6a5c8b5bbed2753bbe0f3",
+          "status": "measured",
+          "exit_code": 0,
+          "metrics": {
+            "decode_tok_s": 28.41,
+            "decode_tokens": 127,
+            "requested_tokens": 128,
+            "prefill_s": 7.133,
+            "decode_mean_per_token_ms": 35.2,
+            "provenance_line": "mlx-omarchy 0.32.2.dev202609041547+a34cdc5 mx=0.32.2.dev202609041547+a34cdc5 verified=match harness=a34cdc5 core.cpython-314-aarch64-linux-gnu.so=sha256:4c6ed35b941c33c3 libmlx.so=sha256:0dffbe3bc326a045",
+            "generated_ids_sha256_16": "4cc08910089477fd",
+            "generated_ids_n": 128,
+            "prompt_tokens": 262,
+            "prefill_tok_s": 36.731,
+            "prefill_tok_s_basis": "bench_decode prompt_tokens / prefill seconds"
+          }
+        },
+        {
+          "leg_id": "qwen25-0.5b-4bit:longctx-1024-decode-32",
+          "revision": "a5339a4131f135d0fdc6a5c8b5bbed2753bbe0f3",
+          "status": "measured",
+          "exit_code": 0,
+          "metrics": {
+            "decode_tok_s": 23.52,
+            "decode_tokens": 31,
+            "requested_tokens": 32,
+            "prefill_s": 29.31,
+            "decode_mean_per_token_ms": 42.5,
+            "provenance_line": "mlx-omarchy 0.32.2.dev202609041547+a34cdc5 mx=0.32.2.dev202609041547+a34cdc5 verified=match harness=a34cdc5 core.cpython-314-aarch64-linux-gnu.so=sha256:4c6ed35b941c33c3 libmlx.so=sha256:0dffbe3bc326a045",
+            "generated_ids_sha256_16": "7da83f06ec9f001d",
+            "generated_ids_n": 32,
+            "prompt_tokens": 1053,
+            "prefill_tok_s": 35.926,
+            "prefill_tok_s_basis": "bench_decode prompt_tokens / prefill seconds"
+          }
+        }
+      ]
+    },
+    {
+      "file": "phase2-pair1-on.json",
+      "clean_check": "clean",
+      "legs": [
+        {
+          "leg_id": "qwen25-0.5b-4bit:short-decode-32",
+          "revision": "a5339a4131f135d0fdc6a5c8b5bbed2753bbe0f3",
+          "status": "measured",
+          "exit_code": 0,
+          "metrics": {
+            "decode_tok_s": 31.13,
+            "decode_tokens": 31,
+            "requested_tokens": 32,
+            "prefill_s": 0.381,
+            "decode_mean_per_token_ms": 32.1,
+            "provenance_line": "mlx-omarchy 0.32.2.dev202609041547+a34cdc5 mx=0.32.2.dev202609041547+a34cdc5 verified=match harness=a34cdc5 core.cpython-314-aarch64-linux-gnu.so=sha256:4c6ed35b941c33c3 libmlx.so=sha256:0dffbe3bc326a045",
+            "generated_ids_sha256_16": "7fd25a869ff21678",
+            "generated_ids_n": 32,
+            "prompt_tokens": 30,
+            "prefill_tok_s": 78.74,
+            "prefill_tok_s_basis": "bench_decode prompt_tokens / prefill seconds"
+          }
+        },
+        {
+          "leg_id": "qwen25-0.5b-4bit:long-decode-128",
+          "revision": "a5339a4131f135d0fdc6a5c8b5bbed2753bbe0f3",
+          "status": "measured",
+          "exit_code": 0,
+          "metrics": {
+            "decode_tok_s": 27.81,
+            "decode_tokens": 127,
+            "requested_tokens": 128,
+            "prefill_s": 1.399,
+            "decode_mean_per_token_ms": 36,
+            "provenance_line": "mlx-omarchy 0.32.2.dev202609041547+a34cdc5 mx=0.32.2.dev202609041547+a34cdc5 verified=match harness=a34cdc5 core.cpython-314-aarch64-linux-gnu.so=sha256:4c6ed35b941c33c3 libmlx.so=sha256:0dffbe3bc326a045",
+            "generated_ids_sha256_16": "4cc08910089477fd",
+            "generated_ids_n": 128,
+            "prompt_tokens": 262,
+            "prefill_tok_s": 187.277,
+            "prefill_tok_s_basis": "bench_decode prompt_tokens / prefill seconds"
+          }
+        },
+        {
+          "leg_id": "qwen25-0.5b-4bit:longctx-1024-decode-32",
+          "revision": "a5339a4131f135d0fdc6a5c8b5bbed2753bbe0f3",
+          "status": "measured",
+          "exit_code": 0,
+          "metrics": {
+            "decode_tok_s": 23.54,
+            "decode_tokens": 31,
+            "requested_tokens": 32,
+            "prefill_s": 5.331,
+            "decode_mean_per_token_ms": 42.5,
+            "provenance_line": "mlx-omarchy 0.32.2.dev202609041547+a34cdc5 mx=0.32.2.dev202609041547+a34cdc5 verified=match harness=a34cdc5 core.cpython-314-aarch64-linux-gnu.so=sha256:4c6ed35b941c33c3 libmlx.so=sha256:0dffbe3bc326a045",
+            "generated_ids_sha256_16": "7da83f06ec9f001d",
+            "generated_ids_n": 32,
+            "prompt_tokens": 1053,
+            "prefill_tok_s": 197.524,
+            "prefill_tok_s_basis": "bench_decode prompt_tokens / prefill seconds"
+          }
+        }
+      ]
+    },
+    {
+      "file": "phase2-pair2-off.json",
+      "clean_check": "clean",
+      "legs": [
+        {
+          "leg_id": "qwen25-0.5b-4bit:short-decode-32",
+          "revision": "a5339a4131f135d0fdc6a5c8b5bbed2753bbe0f3",
+          "status": "measured",
+          "exit_code": 0,
+          "metrics": {
+            "decode_tok_s": 30.93,
+            "decode_tokens": 31,
+            "requested_tokens": 32,
+            "prefill_s": 0.832,
+            "decode_mean_per_token_ms": 32.3,
+            "provenance_line": "mlx-omarchy 0.32.2.dev202609041547+a34cdc5 mx=0.32.2.dev202609041547+a34cdc5 verified=match harness=a34cdc5 core.cpython-314-aarch64-linux-gnu.so=sha256:4c6ed35b941c33c3 libmlx.so=sha256:0dffbe3bc326a045",
+            "generated_ids_sha256_16": "7fd25a869ff21678",
+            "generated_ids_n": 32,
+            "prompt_tokens": 30,
+            "prefill_tok_s": 36.058,
+            "prefill_tok_s_basis": "bench_decode prompt_tokens / prefill seconds"
+          }
+        },
+        {
+          "leg_id": "qwen25-0.5b-4bit:long-decode-128",
+          "revision": "a5339a4131f135d0fdc6a5c8b5bbed2753bbe0f3",
+          "status": "measured",
+          "exit_code": 0,
+          "metrics": {
+            "decode_tok_s": 28.54,
+            "decode_tokens": 127,
+            "requested_tokens": 128,
+            "prefill_s": 7.171,
+            "decode_mean_per_token_ms": 35,
+            "provenance_line": "mlx-omarchy 0.32.2.dev202609041547+a34cdc5 mx=0.32.2.dev202609041547+a34cdc5 verified=match harness=a34cdc5 core.cpython-314-aarch64-linux-gnu.so=sha256:4c6ed35b941c33c3 libmlx.so=sha256:0dffbe3bc326a045",
+            "generated_ids_sha256_16": "4cc08910089477fd",
+            "generated_ids_n": 128,
+            "prompt_tokens": 262,
+            "prefill_tok_s": 36.536,
+            "prefill_tok_s_basis": "bench_decode prompt_tokens / prefill seconds"
+          }
+        },
+        {
+          "leg_id": "qwen25-0.5b-4bit:longctx-1024-decode-32",
+          "revision": "a5339a4131f135d0fdc6a5c8b5bbed2753bbe0f3",
+          "status": "measured",
+          "exit_code": 0,
+          "metrics": {
+            "decode_tok_s": 23.57,
+            "decode_tokens": 31,
+            "requested_tokens": 32,
+            "prefill_s": 29.274,
+            "decode_mean_per_token_ms": 42.4,
+            "provenance_line": "mlx-omarchy 0.32.2.dev202609041547+a34cdc5 mx=0.32.2.dev202609041547+a34cdc5 verified=match harness=a34cdc5 core.cpython-314-aarch64-linux-gnu.so=sha256:4c6ed35b941c33c3 libmlx.so=sha256:0dffbe3bc326a045",
+            "generated_ids_sha256_16": "7da83f06ec9f001d",
+            "generated_ids_n": 32,
+            "prompt_tokens": 1053,
+            "prefill_tok_s": 35.97,
+            "prefill_tok_s_basis": "bench_decode prompt_tokens / prefill seconds"
+          }
+        }
+      ]
+    },
+    {
+      "file": "phase2-pair2-on.json",
+      "clean_check": "clean",
+      "legs": [
+        {
+          "leg_id": "qwen25-0.5b-4bit:short-decode-32",
+          "revision": "a5339a4131f135d0fdc6a5c8b5bbed2753bbe0f3",
+          "status": "measured",
+          "exit_code": 0,
+          "metrics": {
+            "decode_tok_s": 31.03,
+            "decode_tokens": 31,
+            "requested_tokens": 32,
+            "prefill_s": 0.375,
+            "decode_mean_per_token_ms": 32.2,
+            "provenance_line": "mlx-omarchy 0.32.2.dev202609041547+a34cdc5 mx=0.32.2.dev202609041547+a34cdc5 verified=match harness=a34cdc5 core.cpython-314-aarch64-linux-gnu.so=sha256:4c6ed35b941c33c3 libmlx.so=sha256:0dffbe3bc326a045",
+            "generated_ids_sha256_16": "7fd25a869ff21678",
+            "generated_ids_n": 32,
+            "prompt_tokens": 30,
+            "prefill_tok_s": 80,
+            "prefill_tok_s_basis": "bench_decode prompt_tokens / prefill seconds"
+          }
+        },
+        {
+          "leg_id": "qwen25-0.5b-4bit:long-decode-128",
+          "revision": "a5339a4131f135d0fdc6a5c8b5bbed2753bbe0f3",
+          "status": "measured",
+          "exit_code": 0,
+          "metrics": {
+            "decode_tok_s": 28.32,
+            "decode_tokens": 127,
+            "requested_tokens": 128,
+            "prefill_s": 1.398,
+            "decode_mean_per_token_ms": 35.3,
+            "provenance_line": "mlx-omarchy 0.32.2.dev202609041547+a34cdc5 mx=0.32.2.dev202609041547+a34cdc5 verified=match harness=a34cdc5 core.cpython-314-aarch64-linux-gnu.so=sha256:4c6ed35b941c33c3 libmlx.so=sha256:0dffbe3bc326a045",
+            "generated_ids_sha256_16": "4cc08910089477fd",
+            "generated_ids_n": 128,
+            "prompt_tokens": 262,
+            "prefill_tok_s": 187.411,
+            "prefill_tok_s_basis": "bench_decode prompt_tokens / prefill seconds"
+          }
+        },
+        {
+          "leg_id": "qwen25-0.5b-4bit:longctx-1024-decode-32",
+          "revision": "a5339a4131f135d0fdc6a5c8b5bbed2753bbe0f3",
+          "status": "measured",
+          "exit_code": 0,
+          "metrics": {
+            "decode_tok_s": 23.56,
+            "decode_tokens": 31,
+            "requested_tokens": 32,
+            "prefill_s": 5.33,
+            "decode_mean_per_token_ms": 42.5,
+            "provenance_line": "mlx-omarchy 0.32.2.dev202609041547+a34cdc5 mx=0.32.2.dev202609041547+a34cdc5 verified=match harness=a34cdc5 core.cpython-314-aarch64-linux-gnu.so=sha256:4c6ed35b941c33c3 libmlx.so=sha256:0dffbe3bc326a045",
+            "generated_ids_sha256_16": "7da83f06ec9f001d",
+            "generated_ids_n": 32,
+            "prompt_tokens": 1053,
+            "prefill_tok_s": 197.561,
+            "prefill_tok_s_basis": "bench_decode prompt_tokens / prefill seconds"
+          }
+        }
+      ]
+    },
+    {
+      "file": "phase2-pair3-off.json",
+      "clean_check": "clean",
+      "legs": [
+        {
+          "leg_id": "qwen25-0.5b-4bit:short-decode-32",
+          "revision": "a5339a4131f135d0fdc6a5c8b5bbed2753bbe0f3",
+          "status": "measured",
+          "exit_code": 0,
+          "metrics": {
+            "decode_tok_s": 31.18,
+            "decode_tokens": 31,
+            "requested_tokens": 32,
+            "prefill_s": 0.833,
+            "decode_mean_per_token_ms": 32.1,
+            "provenance_line": "mlx-omarchy 0.32.2.dev202609041547+a34cdc5 mx=0.32.2.dev202609041547+a34cdc5 verified=match harness=a34cdc5 core.cpython-314-aarch64-linux-gnu.so=sha256:4c6ed35b941c33c3 libmlx.so=sha256:0dffbe3bc326a045",
+            "generated_ids_sha256_16": "7fd25a869ff21678",
+            "generated_ids_n": 32,
+            "prompt_tokens": 30,
+            "prefill_tok_s": 36.014,
+            "prefill_tok_s_basis": "bench_decode prompt_tokens / prefill seconds"
+          }
+        },
+        {
+          "leg_id": "qwen25-0.5b-4bit:long-decode-128",
+          "revision": "a5339a4131f135d0fdc6a5c8b5bbed2753bbe0f3",
+          "status": "measured",
+          "exit_code": 0,
+          "metrics": {
+            "decode_tok_s": 28.56,
+            "decode_tokens": 127,
+            "requested_tokens": 128,
+            "prefill_s": 7.168,
+            "decode_mean_per_token_ms": 35,
+            "provenance_line": "mlx-omarchy 0.32.2.dev202609041547+a34cdc5 mx=0.32.2.dev202609041547+a34cdc5 verified=match harness=a34cdc5 core.cpython-314-aarch64-linux-gnu.so=sha256:4c6ed35b941c33c3 libmlx.so=sha256:0dffbe3bc326a045",
+            "generated_ids_sha256_16": "4cc08910089477fd",
+            "generated_ids_n": 128,
+            "prompt_tokens": 262,
+            "prefill_tok_s": 36.551,
+            "prefill_tok_s_basis": "bench_decode prompt_tokens / prefill seconds"
+          }
+        },
+        {
+          "leg_id": "qwen25-0.5b-4bit:longctx-1024-decode-32",
+          "revision": "a5339a4131f135d0fdc6a5c8b5bbed2753bbe0f3",
+          "status": "measured",
+          "exit_code": 0,
+          "metrics": {
+            "decode_tok_s": 23.53,
+            "decode_tokens": 31,
+            "requested_tokens": 32,
+            "prefill_s": 29.28,
+            "decode_mean_per_token_ms": 42.5,
+            "provenance_line": "mlx-omarchy 0.32.2.dev202609041547+a34cdc5 mx=0.32.2.dev202609041547+a34cdc5 verified=match harness=a34cdc5 core.cpython-314-aarch64-linux-gnu.so=sha256:4c6ed35b941c33c3 libmlx.so=sha256:0dffbe3bc326a045",
+            "generated_ids_sha256_16": "7da83f06ec9f001d",
+            "generated_ids_n": 32,
+            "prompt_tokens": 1053,
+            "prefill_tok_s": 35.963,
+            "prefill_tok_s_basis": "bench_decode prompt_tokens / prefill seconds"
+          }
+        }
+      ]
+    },
+    {
+      "file": "phase2-pair3-on.json",
+      "clean_check": "clean",
+      "legs": [
+        {
+          "leg_id": "qwen25-0.5b-4bit:short-decode-32",
+          "revision": "a5339a4131f135d0fdc6a5c8b5bbed2753bbe0f3",
+          "status": "measured",
+          "exit_code": 0,
+          "metrics": {
+            "decode_tok_s": 31.16,
+            "decode_tokens": 31,
+            "requested_tokens": 32,
+            "prefill_s": 0.375,
+            "decode_mean_per_token_ms": 32.1,
+            "provenance_line": "mlx-omarchy 0.32.2.dev202609041547+a34cdc5 mx=0.32.2.dev202609041547+a34cdc5 verified=match harness=a34cdc5 core.cpython-314-aarch64-linux-gnu.so=sha256:4c6ed35b941c33c3 libmlx.so=sha256:0dffbe3bc326a045",
+            "generated_ids_sha256_16": "7fd25a869ff21678",
+            "generated_ids_n": 32,
+            "prompt_tokens": 30,
+            "prefill_tok_s": 80,
+            "prefill_tok_s_basis": "bench_decode prompt_tokens / prefill seconds"
+          }
+        },
+        {
+          "leg_id": "qwen25-0.5b-4bit:long-decode-128",
+          "revision": "a5339a4131f135d0fdc6a5c8b5bbed2753bbe0f3",
+          "status": "measured",
+          "exit_code": 0,
+          "metrics": {
+            "decode_tok_s": 28.46,
+            "decode_tokens": 127,
+            "requested_tokens": 128,
+            "prefill_s": 1.391,
+            "decode_mean_per_token_ms": 35.1,
+            "provenance_line": "mlx-omarchy 0.32.2.dev202609041547+a34cdc5 mx=0.32.2.dev202609041547+a34cdc5 verified=match harness=a34cdc5 core.cpython-314-aarch64-linux-gnu.so=sha256:4c6ed35b941c33c3 libmlx.so=sha256:0dffbe3bc326a045",
+            "generated_ids_sha256_16": "4cc08910089477fd",
+            "generated_ids_n": 128,
+            "prompt_tokens": 262,
+            "prefill_tok_s": 188.354,
+            "prefill_tok_s_basis": "bench_decode prompt_tokens / prefill seconds"
+          }
+        },
+        {
+          "leg_id": "qwen25-0.5b-4bit:longctx-1024-decode-32",
+          "revision": "a5339a4131f135d0fdc6a5c8b5bbed2753bbe0f3",
+          "status": "measured",
+          "exit_code": 0,
+          "metrics": {
+            "decode_tok_s": 23.47,
+            "decode_tokens": 31,
+            "requested_tokens": 32,
+            "prefill_s": 5.329,
+            "decode_mean_per_token_ms": 42.6,
+            "provenance_line": "mlx-omarchy 0.32.2.dev202609041547+a34cdc5 mx=0.32.2.dev202609041547+a34cdc5 verified=match harness=a34cdc5 core.cpython-314-aarch64-linux-gnu.so=sha256:4c6ed35b941c33c3 libmlx.so=sha256:0dffbe3bc326a045",
+            "generated_ids_sha256_16": "7da83f06ec9f001d",
+            "generated_ids_n": 32,
+            "prompt_tokens": 1053,
+            "prefill_tok_s": 197.598,
+            "prefill_tok_s_basis": "bench_decode prompt_tokens / prefill seconds"
+          }
+        }
+      ]
+    },
+    {
+      "file": "phase2-pair4-off.json",
+      "clean_check": "clean",
+      "legs": [
+        {
+          "leg_id": "qwen25-0.5b-4bit:short-decode-32",
+          "revision": "a5339a4131f135d0fdc6a5c8b5bbed2753bbe0f3",
+          "status": "measured",
+          "exit_code": 0,
+          "metrics": {
+            "decode_tok_s": 30.96,
+            "decode_tokens": 31,
+            "requested_tokens": 32,
+            "prefill_s": 0.828,
+            "decode_mean_per_token_ms": 32.3,
+            "provenance_line": "mlx-omarchy 0.32.2.dev202609041547+a34cdc5 mx=0.32.2.dev202609041547+a34cdc5 verified=match harness=a34cdc5 core.cpython-314-aarch64-linux-gnu.so=sha256:4c6ed35b941c33c3 libmlx.so=sha256:0dffbe3bc326a045",
+            "generated_ids_sha256_16": "7fd25a869ff21678",
+            "generated_ids_n": 32,
+            "prompt_tokens": 30,
+            "prefill_tok_s": 36.232,
+            "prefill_tok_s_basis": "bench_decode prompt_tokens / prefill seconds"
+          }
+        },
+        {
+          "leg_id": "qwen25-0.5b-4bit:long-decode-128",
+          "revision": "a5339a4131f135d0fdc6a5c8b5bbed2753bbe0f3",
+          "status": "measured",
+          "exit_code": 0,
+          "metrics": {
+            "decode_tok_s": 28.4,
+            "decode_tokens": 127,
+            "requested_tokens": 128,
+            "prefill_s": 7.154,
+            "decode_mean_per_token_ms": 35.2,
+            "provenance_line": "mlx-omarchy 0.32.2.dev202609041547+a34cdc5 mx=0.32.2.dev202609041547+a34cdc5 verified=match harness=a34cdc5 core.cpython-314-aarch64-linux-gnu.so=sha256:4c6ed35b941c33c3 libmlx.so=sha256:0dffbe3bc326a045",
+            "generated_ids_sha256_16": "4cc08910089477fd",
+            "generated_ids_n": 128,
+            "prompt_tokens": 262,
+            "prefill_tok_s": 36.623,
+            "prefill_tok_s_basis": "bench_decode prompt_tokens / prefill seconds"
+          }
+        },
+        {
+          "leg_id": "qwen25-0.5b-4bit:longctx-1024-decode-32",
+          "revision": "a5339a4131f135d0fdc6a5c8b5bbed2753bbe0f3",
+          "status": "measured",
+          "exit_code": 0,
+          "metrics": {
+            "decode_tok_s": 23.54,
+            "decode_tokens": 31,
+            "requested_tokens": 32,
+            "prefill_s": 29.302,
+            "decode_mean_per_token_ms": 42.5,
+            "provenance_line": "mlx-omarchy 0.32.2.dev202609041547+a34cdc5 mx=0.32.2.dev202609041547+a34cdc5 verified=match harness=a34cdc5 core.cpython-314-aarch64-linux-gnu.so=sha256:4c6ed35b941c33c3 libmlx.so=sha256:0dffbe3bc326a045",
+            "generated_ids_sha256_16": "7da83f06ec9f001d",
+            "generated_ids_n": 32,
+            "prompt_tokens": 1053,
+            "prefill_tok_s": 35.936,
+            "prefill_tok_s_basis": "bench_decode prompt_tokens / prefill seconds"
+          }
+        }
+      ]
+    },
+    {
+      "file": "phase2-pair4-on.json",
+      "clean_check": "clean",
+      "legs": [
+        {
+          "leg_id": "qwen25-0.5b-4bit:short-decode-32",
+          "revision": "a5339a4131f135d0fdc6a5c8b5bbed2753bbe0f3",
+          "status": "measured",
+          "exit_code": 0,
+          "metrics": {
+            "decode_tok_s": 31.07,
+            "decode_tokens": 31,
+            "requested_tokens": 32,
+            "prefill_s": 0.379,
+            "decode_mean_per_token_ms": 32.2,
+            "provenance_line": "mlx-omarchy 0.32.2.dev202609041547+a34cdc5 mx=0.32.2.dev202609041547+a34cdc5 verified=match harness=a34cdc5 core.cpython-314-aarch64-linux-gnu.so=sha256:4c6ed35b941c33c3 libmlx.so=sha256:0dffbe3bc326a045",
+            "generated_ids_sha256_16": "7fd25a869ff21678",
+            "generated_ids_n": 32,
+            "prompt_tokens": 30,
+            "prefill_tok_s": 79.156,
+            "prefill_tok_s_basis": "bench_decode prompt_tokens / prefill seconds"
+          }
+        },
+        {
+          "leg_id": "qwen25-0.5b-4bit:long-decode-128",
+          "revision": "a5339a4131f135d0fdc6a5c8b5bbed2753bbe0f3",
+          "status": "measured",
+          "exit_code": 0,
+          "metrics": {
+            "decode_tok_s": 28.16,
+            "decode_tokens": 127,
+            "requested_tokens": 128,
+            "prefill_s": 1.397,
+            "decode_mean_per_token_ms": 35.5,
+            "provenance_line": "mlx-omarchy 0.32.2.dev202609041547+a34cdc5 mx=0.32.2.dev202609041547+a34cdc5 verified=match harness=a34cdc5 core.cpython-314-aarch64-linux-gnu.so=sha256:4c6ed35b941c33c3 libmlx.so=sha256:0dffbe3bc326a045",
+            "generated_ids_sha256_16": "4cc08910089477fd",
+            "generated_ids_n": 128,
+            "prompt_tokens": 262,
+            "prefill_tok_s": 187.545,
+            "prefill_tok_s_basis": "bench_decode prompt_tokens / prefill seconds"
+          }
+        },
+        {
+          "leg_id": "qwen25-0.5b-4bit:longctx-1024-decode-32",
+          "revision": "a5339a4131f135d0fdc6a5c8b5bbed2753bbe0f3",
+          "status": "measured",
+          "exit_code": 0,
+          "metrics": {
+            "decode_tok_s": 23.47,
+            "decode_tokens": 31,
+            "requested_tokens": 32,
+            "prefill_s": 5.337,
+            "decode_mean_per_token_ms": 42.6,
+            "provenance_line": "mlx-omarchy 0.32.2.dev202609041547+a34cdc5 mx=0.32.2.dev202609041547+a34cdc5 verified=match harness=a34cdc5 core.cpython-314-aarch64-linux-gnu.so=sha256:4c6ed35b941c33c3 libmlx.so=sha256:0dffbe3bc326a045",
+            "generated_ids_sha256_16": "7da83f06ec9f001d",
+            "generated_ids_n": 32,
+            "prompt_tokens": 1053,
+            "prefill_tok_s": 197.302,
+            "prefill_tok_s_basis": "bench_decode prompt_tokens / prefill seconds"
+          }
+        }
+      ]
+    },
+    {
+      "file": "phase2-pair5-off.json",
+      "clean_check": "clean",
+      "legs": [
+        {
+          "leg_id": "qwen25-0.5b-4bit:short-decode-32",
+          "revision": "a5339a4131f135d0fdc6a5c8b5bbed2753bbe0f3",
+          "status": "measured",
+          "exit_code": 0,
+          "metrics": {
+            "decode_tok_s": 28.62,
+            "decode_tokens": 31,
+            "requested_tokens": 32,
+            "prefill_s": 0.839,
+            "decode_mean_per_token_ms": 34.9,
+            "provenance_line": "mlx-omarchy 0.32.2.dev202609041547+a34cdc5 mx=0.32.2.dev202609041547+a34cdc5 verified=match harness=a34cdc5 core.cpython-314-aarch64-linux-gnu.so=sha256:4c6ed35b941c33c3 libmlx.so=sha256:0dffbe3bc326a045",
+            "generated_ids_sha256_16": "7fd25a869ff21678",
+            "generated_ids_n": 32,
+            "prompt_tokens": 30,
+            "prefill_tok_s": 35.757,
+            "prefill_tok_s_basis": "bench_decode prompt_tokens / prefill seconds"
+          }
+        },
+        {
+          "leg_id": "qwen25-0.5b-4bit:long-decode-128",
+          "revision": "a5339a4131f135d0fdc6a5c8b5bbed2753bbe0f3",
+          "status": "measured",
+          "exit_code": 0,
+          "metrics": {
+            "decode_tok_s": 28.17,
+            "decode_tokens": 127,
+            "requested_tokens": 128,
+            "prefill_s": 7.161,
+            "decode_mean_per_token_ms": 35.5,
+            "provenance_line": "mlx-omarchy 0.32.2.dev202609041547+a34cdc5 mx=0.32.2.dev202609041547+a34cdc5 verified=match harness=a34cdc5 core.cpython-314-aarch64-linux-gnu.so=sha256:4c6ed35b941c33c3 libmlx.so=sha256:0dffbe3bc326a045",
+            "generated_ids_sha256_16": "4cc08910089477fd",
+            "generated_ids_n": 128,
+            "prompt_tokens": 262,
+            "prefill_tok_s": 36.587,
+            "prefill_tok_s_basis": "bench_decode prompt_tokens / prefill seconds"
+          }
+        },
+        {
+          "leg_id": "qwen25-0.5b-4bit:longctx-1024-decode-32",
+          "revision": "a5339a4131f135d0fdc6a5c8b5bbed2753bbe0f3",
+          "status": "measured",
+          "exit_code": 0,
+          "metrics": {
+            "decode_tok_s": 23.53,
+            "decode_tokens": 31,
+            "requested_tokens": 32,
+            "prefill_s": 29.266,
+            "decode_mean_per_token_ms": 42.5,
+            "provenance_line": "mlx-omarchy 0.32.2.dev202609041547+a34cdc5 mx=0.32.2.dev202609041547+a34cdc5 verified=match harness=a34cdc5 core.cpython-314-aarch64-linux-gnu.so=sha256:4c6ed35b941c33c3 libmlx.so=sha256:0dffbe3bc326a045",
+            "generated_ids_sha256_16": "7da83f06ec9f001d",
+            "generated_ids_n": 32,
+            "prompt_tokens": 1053,
+            "prefill_tok_s": 35.98,
+            "prefill_tok_s_basis": "bench_decode prompt_tokens / prefill seconds"
+          }
+        }
+      ]
+    },
+    {
+      "file": "phase2-pair5-on.json",
+      "clean_check": "clean",
+      "legs": [
+        {
+          "leg_id": "qwen25-0.5b-4bit:short-decode-32",
+          "revision": "a5339a4131f135d0fdc6a5c8b5bbed2753bbe0f3",
+          "status": "measured",
+          "exit_code": 0,
+          "metrics": {
+            "decode_tok_s": 31.01,
+            "decode_tokens": 31,
+            "requested_tokens": 32,
+            "prefill_s": 0.378,
+            "decode_mean_per_token_ms": 32.3,
+            "provenance_line": "mlx-omarchy 0.32.2.dev202609041547+a34cdc5 mx=0.32.2.dev202609041547+a34cdc5 verified=match harness=a34cdc5 core.cpython-314-aarch64-linux-gnu.so=sha256:4c6ed35b941c33c3 libmlx.so=sha256:0dffbe3bc326a045",
+            "generated_ids_sha256_16": "7fd25a869ff21678",
+            "generated_ids_n": 32,
+            "prompt_tokens": 30,
+            "prefill_tok_s": 79.365,
+            "prefill_tok_s_basis": "bench_decode prompt_tokens / prefill seconds"
+          }
+        },
+        {
+          "leg_id": "qwen25-0.5b-4bit:long-decode-128",
+          "revision": "a5339a4131f135d0fdc6a5c8b5bbed2753bbe0f3",
+          "status": "measured",
+          "exit_code": 0,
+          "metrics": {
+            "decode_tok_s": 28.43,
+            "decode_tokens": 127,
+            "requested_tokens": 128,
+            "prefill_s": 1.392,
+            "decode_mean_per_token_ms": 35.2,
+            "provenance_line": "mlx-omarchy 0.32.2.dev202609041547+a34cdc5 mx=0.32.2.dev202609041547+a34cdc5 verified=match harness=a34cdc5 core.cpython-314-aarch64-linux-gnu.so=sha256:4c6ed35b941c33c3 libmlx.so=sha256:0dffbe3bc326a045",
+            "generated_ids_sha256_16": "4cc08910089477fd",
+            "generated_ids_n": 128,
+            "prompt_tokens": 262,
+            "prefill_tok_s": 188.218,
+            "prefill_tok_s_basis": "bench_decode prompt_tokens / prefill seconds"
+          }
+        },
+        {
+          "leg_id": "qwen25-0.5b-4bit:longctx-1024-decode-32",
+          "revision": "a5339a4131f135d0fdc6a5c8b5bbed2753bbe0f3",
+          "status": "measured",
+          "exit_code": 0,
+          "metrics": {
+            "decode_tok_s": 23.53,
+            "decode_tokens": 31,
+            "requested_tokens": 32,
+            "prefill_s": 5.337,
+            "decode_mean_per_token_ms": 42.5,
+            "provenance_line": "mlx-omarchy 0.32.2.dev202609041547+a34cdc5 mx=0.32.2.dev202609041547+a34cdc5 verified=match harness=a34cdc5 core.cpython-314-aarch64-linux-gnu.so=sha256:4c6ed35b941c33c3 libmlx.so=sha256:0dffbe3bc326a045",
+            "generated_ids_sha256_16": "7da83f06ec9f001d",
+            "generated_ids_n": 32,
+            "prompt_tokens": 1053,
+            "prefill_tok_s": 197.302,
+            "prefill_tok_s_basis": "bench_decode prompt_tokens / prefill seconds"
+          }
+        }
+      ]
+    },
+    {
+      "file": "phase3-bf16-off-run1.json",
+      "clean_check": "clean",
+      "legs": [
+        {
+          "leg_id": "qwen25-0.5b-bf16:long-decode-128",
+          "revision": "56d07e766edd7159fbe12ed12d9cf114bf38bf1e",
+          "status": "measured",
+          "exit_code": 0,
+          "metrics": {
+            "decode_tok_s": 8.56,
+            "decode_tokens": 127,
+            "requested_tokens": 128,
+            "prefill_s": 1.474,
+            "decode_mean_per_token_ms": 116.9,
+            "provenance_line": "mlx-omarchy 0.32.2.dev202609041547+a34cdc5 mx=0.32.2.dev202609041547+a34cdc5 verified=match harness=a34cdc5 core.cpython-314-aarch64-linux-gnu.so=sha256:4c6ed35b941c33c3 libmlx.so=sha256:0dffbe3bc326a045",
+            "generated_ids_sha256_16": "def3c2c9b544eadc",
+            "generated_ids_n": 128,
+            "prompt_tokens": 262,
+            "prefill_tok_s": 177.748,
+            "prefill_tok_s_basis": "bench_decode prompt_tokens / prefill seconds"
+          }
+        }
+      ]
+    },
+    {
+      "file": "phase3-bf16-off-run2.json",
+      "clean_check": "clean",
+      "legs": [
+        {
+          "leg_id": "qwen25-0.5b-bf16:long-decode-128",
+          "revision": "56d07e766edd7159fbe12ed12d9cf114bf38bf1e",
+          "status": "measured",
+          "exit_code": 0,
+          "metrics": {
+            "decode_tok_s": 8.55,
+            "decode_tokens": 127,
+            "requested_tokens": 128,
+            "prefill_s": 1.478,
+            "decode_mean_per_token_ms": 117,
+            "provenance_line": "mlx-omarchy 0.32.2.dev202609041547+a34cdc5 mx=0.32.2.dev202609041547+a34cdc5 verified=match harness=a34cdc5 core.cpython-314-aarch64-linux-gnu.so=sha256:4c6ed35b941c33c3 libmlx.so=sha256:0dffbe3bc326a045",
+            "generated_ids_sha256_16": "def3c2c9b544eadc",
+            "generated_ids_n": 128,
+            "prompt_tokens": 262,
+            "prefill_tok_s": 177.267,
+            "prefill_tok_s_basis": "bench_decode prompt_tokens / prefill seconds"
+          }
+        }
+      ]
+    },
+    {
+      "file": "phase3-bf16-off-run3.json",
+      "clean_check": "clean",
+      "legs": [
+        {
+          "leg_id": "qwen25-0.5b-bf16:long-decode-128",
+          "revision": "56d07e766edd7159fbe12ed12d9cf114bf38bf1e",
+          "status": "measured",
+          "exit_code": 0,
+          "metrics": {
+            "decode_tok_s": 8.55,
+            "decode_tokens": 127,
+            "requested_tokens": 128,
+            "prefill_s": 1.474,
+            "decode_mean_per_token_ms": 117,
+            "provenance_line": "mlx-omarchy 0.32.2.dev202609041547+a34cdc5 mx=0.32.2.dev202609041547+a34cdc5 verified=match harness=a34cdc5 core.cpython-314-aarch64-linux-gnu.so=sha256:4c6ed35b941c33c3 libmlx.so=sha256:0dffbe3bc326a045",
+            "generated_ids_sha256_16": "def3c2c9b544eadc",
+            "generated_ids_n": 128,
+            "prompt_tokens": 262,
+            "prefill_tok_s": 177.748,
+            "prefill_tok_s_basis": "bench_decode prompt_tokens / prefill seconds"
+          }
+        }
+      ]
+    },
+    {
+      "file": "phase3-bf16-off-run4.json",
+      "clean_check": "clean",
+      "legs": [
+        {
+          "leg_id": "qwen25-0.5b-bf16:long-decode-128",
+          "revision": "56d07e766edd7159fbe12ed12d9cf114bf38bf1e",
+          "status": "measured",
+          "exit_code": 0,
+          "metrics": {
+            "decode_tok_s": 8.53,
+            "decode_tokens": 127,
+            "requested_tokens": 128,
+            "prefill_s": 1.473,
+            "decode_mean_per_token_ms": 117.2,
+            "provenance_line": "mlx-omarchy 0.32.2.dev202609041547+a34cdc5 mx=0.32.2.dev202609041547+a34cdc5 verified=match harness=a34cdc5 core.cpython-314-aarch64-linux-gnu.so=sha256:4c6ed35b941c33c3 libmlx.so=sha256:0dffbe3bc326a045",
+            "generated_ids_sha256_16": "def3c2c9b544eadc",
+            "generated_ids_n": 128,
+            "prompt_tokens": 262,
+            "prefill_tok_s": 177.868,
+            "prefill_tok_s_basis": "bench_decode prompt_tokens / prefill seconds"
+          }
+        }
+      ]
+    },
+    {
+      "file": "phase3-bf16-off-run5.json",
+      "clean_check": "clean",
+      "legs": [
+        {
+          "leg_id": "qwen25-0.5b-bf16:long-decode-128",
+          "revision": "56d07e766edd7159fbe12ed12d9cf114bf38bf1e",
+          "status": "measured",
+          "exit_code": 0,
+          "metrics": {
+            "decode_tok_s": 8.5,
+            "decode_tokens": 127,
+            "requested_tokens": 128,
+            "prefill_s": 1.472,
+            "decode_mean_per_token_ms": 117.7,
+            "provenance_line": "mlx-omarchy 0.32.2.dev202609041547+a34cdc5 mx=0.32.2.dev202609041547+a34cdc5 verified=match harness=a34cdc5 core.cpython-314-aarch64-linux-gnu.so=sha256:4c6ed35b941c33c3 libmlx.so=sha256:0dffbe3bc326a045",
+            "generated_ids_sha256_16": "def3c2c9b544eadc",
+            "generated_ids_n": 128,
+            "prompt_tokens": 262,
+            "prefill_tok_s": 177.989,
+            "prefill_tok_s_basis": "bench_decode prompt_tokens / prefill seconds"
+          }
+        }
+      ]
+    },
+    {
+      "file": "phase3-bf16-rope-run1.json",
+      "clean_check": "clean",
+      "legs": [
+        {
+          "leg_id": "qwen25-0.5b-bf16:long-decode-128",
+          "revision": "56d07e766edd7159fbe12ed12d9cf114bf38bf1e",
+          "status": "measured",
+          "exit_code": 0,
+          "metrics": {
+            "decode_tok_s": 8.5,
+            "decode_tokens": 127,
+            "requested_tokens": 128,
+            "prefill_s": 1.479,
+            "decode_mean_per_token_ms": 117.6,
+            "provenance_line": "mlx-omarchy 0.32.2.dev202609041547+a34cdc5 mx=0.32.2.dev202609041547+a34cdc5 verified=match harness=a34cdc5 core.cpython-314-aarch64-linux-gnu.so=sha256:4c6ed35b941c33c3 libmlx.so=sha256:0dffbe3bc326a045",
+            "generated_ids_sha256_16": "65daf2395eeb40c3",
+            "generated_ids_n": 128,
+            "prompt_tokens": 262,
+            "prefill_tok_s": 177.147,
+            "prefill_tok_s_basis": "bench_decode prompt_tokens / prefill seconds"
+          }
+        }
+      ]
+    },
+    {
+      "file": "phase3-bf16-sdpa-run1.json",
+      "clean_check": "clean",
+      "legs": [
+        {
+          "leg_id": "qwen25-0.5b-bf16:long-decode-128",
+          "revision": "56d07e766edd7159fbe12ed12d9cf114bf38bf1e",
+          "status": "measured",
+          "exit_code": 0,
+          "metrics": {
+            "decode_tok_s": 8.66,
+            "decode_tokens": 127,
+            "requested_tokens": 128,
+            "prefill_s": 1.464,
+            "decode_mean_per_token_ms": 115.4,
+            "provenance_line": "mlx-omarchy 0.32.2.dev202609041547+a34cdc5 mx=0.32.2.dev202609041547+a34cdc5 verified=match harness=a34cdc5 core.cpython-314-aarch64-linux-gnu.so=sha256:4c6ed35b941c33c3 libmlx.so=sha256:0dffbe3bc326a045",
+            "generated_ids_sha256_16": "41215d2b1ff339be",
+            "generated_ids_n": 128,
+            "prompt_tokens": 262,
+            "prefill_tok_s": 178.962,
+            "prefill_tok_s_basis": "bench_decode prompt_tokens / prefill seconds"
+          }
+        }
+      ]
+    },
+    {
+      "file": "phase3-bf16-both-run1.json",
+      "clean_check": "clean",
+      "legs": [
+        {
+          "leg_id": "qwen25-0.5b-bf16:long-decode-128",
+          "revision": "56d07e766edd7159fbe12ed12d9cf114bf38bf1e",
+          "status": "measured",
+          "exit_code": 0,
+          "metrics": {
+            "decode_tok_s": 8.73,
+            "decode_tokens": 127,
+            "requested_tokens": 128,
+            "prefill_s": 1.442,
+            "decode_mean_per_token_ms": 114.6,
+            "provenance_line": "mlx-omarchy 0.32.2.dev202609041547+a34cdc5 mx=0.32.2.dev202609041547+a34cdc5 verified=match harness=a34cdc5 core.cpython-314-aarch64-linux-gnu.so=sha256:4c6ed35b941c33c3 libmlx.so=sha256:0dffbe3bc326a045",
+            "generated_ids_sha256_16": "7a407d9ad7ec91c8",
+            "generated_ids_n": 128,
+            "prompt_tokens": 262,
+            "prefill_tok_s": 181.692,
+            "prefill_tok_s_basis": "bench_decode prompt_tokens / prefill seconds"
+          }
+        }
+      ]
+    },
+    {
+      "file": "phase3-q4control-gates-off.json",
+      "clean_check": "clean",
+      "legs": [
+        {
+          "leg_id": "qwen25-0.5b-4bit:long-decode-128",
+          "revision": "a5339a4131f135d0fdc6a5c8b5bbed2753bbe0f3",
+          "status": "measured",
+          "exit_code": 0,
+          "metrics": {
+            "decode_tok_s": 28.49,
+            "decode_tokens": 127,
+            "requested_tokens": 128,
+            "prefill_s": 7.164,
+            "decode_mean_per_token_ms": 35.1,
+            "provenance_line": "mlx-omarchy 0.32.2.dev202609041547+a34cdc5 mx=0.32.2.dev202609041547+a34cdc5 verified=match harness=a34cdc5 core.cpython-314-aarch64-linux-gnu.so=sha256:4c6ed35b941c33c3 libmlx.so=sha256:0dffbe3bc326a045",
+            "generated_ids_sha256_16": "4cc08910089477fd",
+            "generated_ids_n": 128,
+            "prompt_tokens": 262,
+            "prefill_tok_s": 36.572,
+            "prefill_tok_s_basis": "bench_decode prompt_tokens / prefill seconds"
+          }
+        }
+      ]
+    },
+    {
+      "file": "phase3-q4control-gates-on.json",
+      "clean_check": "clean",
+      "legs": [
+        {
+          "leg_id": "qwen25-0.5b-4bit:long-decode-128",
+          "revision": "a5339a4131f135d0fdc6a5c8b5bbed2753bbe0f3",
+          "status": "measured",
+          "exit_code": 0,
+          "metrics": {
+            "decode_tok_s": 28.54,
+            "decode_tokens": 127,
+            "requested_tokens": 128,
+            "prefill_s": 7.15,
+            "decode_mean_per_token_ms": 35,
+            "provenance_line": "mlx-omarchy 0.32.2.dev202609041547+a34cdc5 mx=0.32.2.dev202609041547+a34cdc5 verified=match harness=a34cdc5 core.cpython-314-aarch64-linux-gnu.so=sha256:4c6ed35b941c33c3 libmlx.so=sha256:0dffbe3bc326a045",
+            "generated_ids_sha256_16": "4cc08910089477fd",
+            "generated_ids_n": 128,
+            "prompt_tokens": 262,
+            "prefill_tok_s": 36.643,
+            "prefill_tok_s_basis": "bench_decode prompt_tokens / prefill seconds"
+          }
+        }
+      ]
+    }
+  ]
+}

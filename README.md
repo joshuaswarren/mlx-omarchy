@@ -14,20 +14,20 @@ The supported target is an Apple M1 running [Omarchy](https://github.com/omarchy
 
 Honeykrisp is the Apple GPU Vulkan driver inside [Mesa](https://gitlab.freedesktop.org/mesa/mesa) under `src/asahi/vulkan/` (the `hk_` prefixed files), sharing the AGX shader compiler with the OpenGL driver. Our fork is [`joshuaswarren/mesa`](https://github.com/joshuaswarren/mesa). All five shader miscompiles this project isolated live in that compiler; one crash bug lived in Mesa's shared submit-thread runtime.
 
-## Install (v0.3.4)
+## Install (v0.3.5)
 
-v0.3.4 ships wheels for both platforms. Pick the one that matches your machine.
+v0.3.5 ships wheels for both platforms. Pick the one that matches your machine.
 
 ```bash
 # Apple Silicon (M1, Honeykrisp) — Python 3.14
 python3.14 -m venv ~/.venvs/mlx
 ~/.venvs/mlx/bin/pip install \
-  https://github.com/joshuaswarren/mlx-omarchy/releases/download/v0.3.4/mlx_omarchy-0.32.2.dev202609040647+d687505-cp314-cp314-linux_aarch64.whl
+  https://github.com/joshuaswarren/mlx-omarchy/releases/download/v0.3.5/mlx_omarchy-0.32.2.dev202609040917%2B0535e62-cp314-cp314-linux_aarch64.whl
 
 # Any Linux box (x86_64, llvmpipe, development only) — Python 3.11
 python3.11 -m venv ~/.venvs/mlx
 ~/.venvs/mlx/bin/pip install \
-  https://github.com/joshuaswarren/mlx-omarchy/releases/download/v0.3.4/mlx_omarchy-0.32.2.dev202609040630+d687505-cp311-cp311-linux_x86_64.whl
+  https://github.com/joshuaswarren/mlx-omarchy/releases/download/v0.3.5/mlx_omarchy-0.32.2.dev202609041010%2B0535e62-cp311-cp311-linux_x86_64.whl
 ```
 
 A clean install from source is in [docs/install-omarchy.md](docs/install-omarchy.md). Build dependencies: Python 3.10+, `cmake` 3.25+, Vulkan development headers, a C++ compiler, and `liblapack-dev libblas-dev liblapacke-dev` on Debian-family distributions; the wheel needs `liblapack.so.3` and `libblas.so.3` at runtime.
@@ -41,23 +41,29 @@ Both columns below are the same Apple M1 (T8103, 8 GPU cores, 16 GB). Same model
 | Measurement | macOS 13.7.8, MLX on Metal | Linux on Honeykrisp | Ratio |
 |---|---|---|---|
 | bf16 prefill | 377.9 tok/s | 60.8 tok/s | 6.2x slower |
-| bf16 decode | 61.5 tok/s | 8.75 tok/s over 64 tokens | 7.0x slower |
+| bf16 decode | 61.5 tok/s | 8.75 tok/s over the final 63 of 64 tokens | 7.0x slower |
 | bf16 peak memory | 1.025 GB | 0.993 GB | about equal |
 | 4-bit prefill | 705.6 tok/s | 30.2 tok/s | 23.4x slower |
-| 4-bit decode | 290.3 tok/s | 30.74 tok/s over 64 tokens (main; 12.52 in v0.3.5) | 9.4x slower |
+| 4-bit decode | 290.3 tok/s | 30.74 tok/s over the final 63 of 64 tokens (main; 12.52 in v0.3.5) | 9.4x slower |
 | 4-bit peak memory | 0.320 GB | 0.292 GB | about equal |
 
 The 4-bit decode row is current main, unreleased: two changes since v0.3.5 took it
-from 12.52 to 30.74 tok/s. Every other row is v0.3.5, which is what `pip install`
-gives you today.
+from 12.52 to 30.74 tok/s. Every other row describes the v0.3.5 baseline,
+not the opt-in development paths below.
 
 Conditions, exact commands, and the prior measurements they replaced: `receipts/2026-09-04-rope-gate-drain.md` and `receipts/2026-09-04-qmm-gemv-subgroup-m1.md` (the two decode changes since v0.3.5, unreleased), `receipts/2026-09-04-release-v0.3.5.md` (decode measured on the uploaded asset), `receipts/2026-09-04-v0.3.4-decode-regression.md` (why v0.3.4 does not deliver these numbers), and `receipts/2026-09-03-dispatcher-compile-and-column-replace.md`. Decode numbers are pinned-length rates (the table header is explicit), not the EOS-truncated short-burst rates `--max-tokens` produces; the decoder ratio this table implies is not directly comparable to a `--max-tokens 32` rate on any other tool.
+
+Development prefill tiling improved the same M1's 4-bit prefill throughput by
+2.20×, 5.13×, and 5.49× at 30, 262, and 1053 prompt tokens in five alternating
+pairs, with identical generated token IDs. Decode was unchanged. Both bf16
+RoPE/SDPA candidates changed the 128-token greedy output and remain disabled.
+These are Linux OFF/ON comparisons, not new Metal comparisons or published-wheel
+results. [Measurements and gate decisions](receipts/2026-09-04-m1-performance-gates.md).
 
 > **A green run on a software Vulkan driver (llvmpipe, lavapipe) proves nothing about the Apple GPU.** Four of the v0.3.0 defects never appeared on a development box: bool scatter, 33-element `LogicalAnd`, broadcast `select`, and the `mx.sin`/`mx.cos` range-reduction collapse. llvmpipe passed the full battery the whole night those shipped. Numbers in this README were measured on Honeykrisp; verify them on Honeykrisp before quoting them.
 
 ## What works
 
- @theirs
 - Arrays, elementwise math with general broadcast, reductions, softmax, logsumexp, cumulative sum, sorted-row search
 - Dense, transposed, and broadcast-batch matmul up to rank 5; grouped-query attention with scores computed in float32; grouped, depthwise, 1-D, and dilated forward convolution
 - Quantized matmul and dequantize: affine, 4-bit and 8-bit, group sizes 32 and 64, plus gathered expert matmul
@@ -77,7 +83,6 @@ Conditions, exact commands, and the prior measurements they replaced: `receipts/
 
 The honest list, with the platform each one was observed on. The full ledger is [docs/known-defects.md](docs/known-defects.md).
 
- @theirs
 
 Anything not on the defect ledger fails loudly with a named `[omarchy] ... is not implemented` error. This is the contract.
 

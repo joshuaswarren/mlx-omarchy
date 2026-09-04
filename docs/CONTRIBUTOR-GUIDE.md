@@ -130,7 +130,8 @@ receipt that bounds it.
    just changed" page aimed at a person who has never run this
    stack before is missing and would shorten every new contributor's
    ramp.
-10. **CI:** there is no CI. The release gate runs locally. A
+10. **CI:** the daily community-data mirror is automated; test and release
+    gates run locally. A
     self-hosted runner that builds the dev-box wheel, runs the full
     llvmpipe battery, and runs `bench_decode.py --self-test` would
     be a small, high-value infrastructure piece. Speak to Main before
@@ -139,9 +140,8 @@ receipt that bounds it.
 ### Real work for an M1-equipped contributor who has 30 minutes
 
 - Re-run `scripts/bench_decode.py --wheel <wheel>` against current
-  main on jwm1, print the provenance line beside the result, file
-  the numbers in `receipts/` if they differ from `e7a6542` /
-  `d687505`.
+  main on your M1, print provenance beside the result, and record the
+  numbers in `receipts/` with the exact source, wheel, and protocol.
 - Run `python3 scripts/differential_compile.py --self-test` against
   the same wheel; copy the output.
 - Pick one defect from `docs/known-defects.md` "Live in v0.3.1",
@@ -318,12 +318,12 @@ nproc && cat /sys/devices/system/cpu/present
 # 2. Install the wheel into a venv
 python3.14 -m venv ~/.venvs/mlx-collect
 ~/.venvs/mlx-collect/bin/pip install \
-  https://github.com/joshuawarren/mlx-omarchy/releases/download/v0.3.5/mlx_omarchy-0.32.2.dev202609040917+0535e62-cp314-cp314-linux_aarch64.whl
+  https://github.com/joshuaswarren/mlx-omarchy/releases/download/v0.3.5/mlx_omarchy-0.32.2.dev202609040917%2B0535e62-cp314-cp314-linux_aarch64.whl
 
 # 3. Print the provenance line beside every measurement
 ~/.venvs/mlx-collect/bin/python scripts/mlx_provenance.py
 
-# 4. Run a pinned decode bench (5-run median, 36-token prompt, 64 tokens)
+# 4. Run pinned decode (36-token prompt, 64 pinned tokens; take the median of five invocations)
 ~/.venvs/mlx-collect/bin/python scripts/bench_decode.py \
   --model /path/to/Qwen2.5-0.5B-Instruct-bf16-mlx \
   --prompt "What is the capital of France? Answer in one word." \
