@@ -97,14 +97,16 @@ CmdBindPipeline measurably costs more than ~50 ns.
 |---|---|
 | omarchy_runtime_tests | 25 cases, 6247/6247 assertions, SUCCESS |
 | omarchy_eq_math_tests | 7 cases, 116/116 assertions, SUCCESS |
-| omarchy_compiled_tape_tests | 11 cases, 874 assertions, 873 passed, 1 failed |
+| omarchy_compiled_tape_tests | 11 cases, 875/875 assertions, SUCCESS |
 
-The 1 compiled_tape red is the MLX_OMARCHY_TAPE_PER_NODE_SUBMIT
-submission-delta assertion (`delta >= 3`, got 2). Provenance: red on
-pristine `7c3d6b4` (stash + rebuild + rerun this session) and still red
-after the rebase to `4c44e19`; instrument-inert (compile-time gated,
-hooks are no-ops with the env unset). Cause: the assertion predates the
-7c3d6b4 flush contract; routing: TapeLayerIsolation via TinyWriteFix.
+Session-end state: rebased on `26e8085` (TapeLayerIsolation's
+assertion rewrite landed) plus this branch's five commits, all three
+batteries green in one pass. During the session the compiled_tape
+battery carried one red - the MLX_OMARCHY_TAPE_PER_NODE_SUBMIT
+submission-delta assertion (`delta >= 3`, got 2), proven red on
+pristine `7c3d6b4` and `4c44e19` (stash + rebuild + rerun) and
+instrument-inert by construction; cause was the assertion predating
+the 7c3d6b4 flush contract, fixed upstream by `26e8085`.
 
 ## Commits
 
