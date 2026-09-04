@@ -38,16 +38,20 @@ Do not install the upstream `mlx` package beside this wheel; the module name is 
 
 Both columns below are the same Apple M1 (T8103, 8 GPU cores, 16 GB). Same model revisions, same prompts, `--temp 0 --seed 0`, warm run, `Qwen2.5-0.5B-Instruct`. Prefill uses the 36-token prompt; decode is pinned to 64 tokens with EOS suppressed and prompt processing excluded. Generated text is identical on both platforms.
 
-| Measurement | macOS 13.7.8, MLX on Metal | Linux, v0.3.5 on Honeykrisp | Ratio |
+| Measurement | macOS 13.7.8, MLX on Metal | Linux on Honeykrisp | Ratio |
 |---|---|---|---|
 | bf16 prefill | 377.9 tok/s | 60.8 tok/s | 6.2x slower |
 | bf16 decode | 61.5 tok/s | 8.75 tok/s over 64 tokens | 7.0x slower |
 | bf16 peak memory | 1.025 GB | 0.993 GB | about equal |
 | 4-bit prefill | 705.6 tok/s | 30.2 tok/s | 23.4x slower |
-| 4-bit decode | 290.3 tok/s | 12.52 tok/s over 64 tokens | 23.2x slower |
+| 4-bit decode | 290.3 tok/s | 30.74 tok/s over 64 tokens (main; 12.52 in v0.3.5) | 9.4x slower |
 | 4-bit peak memory | 0.320 GB | 0.292 GB | about equal |
 
-Conditions, exact commands, and the prior measurements they replaced: `receipts/2026-09-04-release-v0.3.5.md` (decode measured on the uploaded asset), `receipts/2026-09-04-v0.3.4-decode-regression.md` (why v0.3.4 does not deliver these numbers), and `receipts/2026-09-03-dispatcher-compile-and-column-replace.md`. Decode numbers are pinned-length rates (the table header is explicit), not the EOS-truncated short-burst rates `--max-tokens` produces; the decoder ratio this table implies is not directly comparable to a `--max-tokens 32` rate on any other tool.
+The 4-bit decode row is current main, unreleased: two changes since v0.3.5 took it
+from 12.52 to 30.74 tok/s. Every other row is v0.3.5, which is what `pip install`
+gives you today.
+
+Conditions, exact commands, and the prior measurements they replaced: `receipts/2026-09-04-rope-gate-drain.md` and `receipts/2026-09-04-qmm-gemv-subgroup-m1.md` (the two decode changes since v0.3.5, unreleased), `receipts/2026-09-04-release-v0.3.5.md` (decode measured on the uploaded asset), `receipts/2026-09-04-v0.3.4-decode-regression.md` (why v0.3.4 does not deliver these numbers), and `receipts/2026-09-03-dispatcher-compile-and-column-replace.md`. Decode numbers are pinned-length rates (the table header is explicit), not the EOS-truncated short-burst rates `--max-tokens` produces; the decoder ratio this table implies is not directly comparable to a `--max-tokens 32` rate on any other tool.
 
 > **A green run on a software Vulkan driver (llvmpipe, lavapipe) proves nothing about the Apple GPU.** Four of the v0.3.0 defects never appeared on a development box: bool scatter, 33-element `LogicalAnd`, broadcast `select`, and the `mx.sin`/`mx.cos` range-reduction collapse. llvmpipe passed the full battery the whole night those shipped. Numbers in this README were measured on Honeykrisp; verify them on Honeykrisp before quoting them.
 
