@@ -188,7 +188,8 @@ mlx_omarchy_trace_snapshot(
 }
 
 #ifdef MLX_OMARCHY_GPU_PROFILING
-void mlx_omarchy_prim_dump(const char* path) {
+extern "C" __attribute__((visibility("default"))) void
+mlx_omarchy_prim_dump(const char* path) {
   std::FILE* f = std::fopen(path, "w");
   if (!f) {
     return;
@@ -201,7 +202,8 @@ void mlx_omarchy_prim_dump(const char* path) {
   std::fclose(f);
 }
 
-void mlx_omarchy_prim_reset(void) {
+extern "C" __attribute__((visibility("default"))) void
+mlx_omarchy_prim_reset(void) {
   mlx::core::omarchy::trace::prim_counts().clear();
 }
 #endif
