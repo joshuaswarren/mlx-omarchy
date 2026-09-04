@@ -162,7 +162,7 @@ reason it lost is in the linked receipt.
 | Host scalar folding (`fast::rope` host-side offset probe) | bit-exact at the offset position; the earlier divergence was the probe, not the primitive | refuted by the corrected probe; rope stands | `docs/known-defects.md` "The rope divergence: the probe, not the primitive" |
 | Deep batching (16-100 ops per submission) | 4.5x slower on llvmpipe (0.637 vs 2.838 prompt tok/s); slower on M1 | per-op flush makes the throttle wait span one op; batched flush makes it span the whole batch; code deleted from the diff | `receipts/2026-09-03-submission-ring-descriptor-cache.md` "Batching: implemented, measured, DELETED" |
 | Software Payne-Hanek for `mx.sin`/`mx.cos` above 1e5 | on M1 returns -7.9e15 for sin(5e6) | the carry chain rides the same dynamic-indexing miscompile class as the masked-scatter defect | `docs/known-defects.md` "mx.sin and mx.cos degrade above 1e5..." |
-| GEMV decode path as the dispatch ceiling fix | path built and gated on `matrix_m == 1`; tests green | the wall is 91% host submission/join, not kernel arithmetic; faster matmul does not move a number that is 93% host wait | `receipts/2026-09-02-gemv-decode/README.md` |
+| ~~GEMV decode path~~ - the kill was wrong | stood down 2026-09-02 on timings taken with 1 of 8 CPU cores online; re-measured 2026-09-04 with all cores: 4-bit decode 12.83 -> 17.61 tok/s (+37%), bf16 unchanged | shipped on main as `qmm_vec.comp`. Listed here so nobody trusts the 2026-09-02 verdict: a strategy killed under a contaminated condition is not killed | `receipts/2026-09-04-qmm-gemv-subgroup-m1.md` |
 
 A variation of one of these is not a fresh angle — it inherits the
 loss. New ideas, please.
