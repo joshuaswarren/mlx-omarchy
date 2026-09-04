@@ -26,8 +26,18 @@ does not and takes the shared-memory tree).
    48/48; f16 within 1 ulp on 2/48, identical on 46; f32 within 1.5e-6 of
    the row maximum (summation order). Scripts: jwm1:/tmp/qmm_dump.py,
    /tmp/qmm_compare.py, /tmp/qmm_summary.py; dumps /tmp/qmm-{before,after}.npz.
-3. Greedy generation, 128 tokens, 4-bit model: token ids identical across
-   the two wheels.
+3. Greedy generation, 4-bit model: outputs compared through the
+   helper's re-encode of the generated text (jwm1:/tmp/greedy_ids.py:
+   `ids = t.encode(generate(...))`, max_tokens 128, printing
+   len(ids) and ids[:96]). That is an encode(decode(text)) identity,
+   NOT a direct generated-ID comparison, and it does not establish
+   "128 token ids identical": the text round trip can truncate or
+   renormalize, and without EOS suppression the token count is not
+   pinned either. What this evidence supports: identical decoded text
+   across the two wheels over the compared 96-id prefix. Direct-ID
+   identity was unmeasured here; scripts/bench_decode.py now emits a
+   generated_ids digest for exactly that check - re-run before quoting
+   token identity.
 
 ## Decode, tok/s, five runs
 
