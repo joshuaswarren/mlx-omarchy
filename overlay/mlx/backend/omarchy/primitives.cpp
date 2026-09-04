@@ -225,54 +225,13 @@ void swap_endianness(uint8_t* data_bytes, size_t n) {
   }
 }
 
-// True when the array is a contiguous stack of rank-2 matrices stored
-// row-major (transposed = false) or transposed within each matrix
-// (transposed = true, row stride 1 and column stride = row count).
-// A batch axis participates in the stack with the contiguous stride,
-// keeps an unchecked stride as a singleton, or carries stride 0 as a
-// broadcast view; a stride-0 axis repeats one matrix, so the expected
-// stride of the axes above it stays unchanged.
-bool is_batched_matrix(const array& value, bool transposed) {
-  int rank = value.ndim();
-  if (rank < 2) {
-    return false;
-  }
-  const auto& strides = value.strides();
-  int64_t row_stride =
-      transposed ? 1 : static_cast<int64_t>(value.shape(rank - 1));
-  int64_t column_stride =
-      transposed ? static_cast<int64_t>(value.shape(rank - 2)) : 1;
-  // A size-1 inner axis never dereferences its stride (the shader only
-  // indexes rows/cols below matrix_m/matrix_n), so its stride stays
-  // unchecked: decode transpose views like [B, heads, 1, head_dim] keep
-  // the zero-copy path.
-  if (value.shape(rank - 2) != 1 && strides[rank - 2] != row_stride) {
-    return false;
-  }
-  if (value.shape(rank - 1) != 1 && strides[rank - 1] != column_stride) {
-    return false;
-  }
-  int64_t expected =
-      static_cast<int64_t>(value.shape(rank - 2)) * value.shape(rank - 1);
-  for (int axis = rank - 3; axis >= 0; --axis) {
-    if (strides[axis] == 0) {
-      continue;
-    }
-    if (value.shape(axis) != 1 && strides[axis] != expected) {
-      return false;
-    }
-    expected *= value.shape(axis);
-  }
-  return true;
-}
 
-// Materializes a matmul operand whose batch strides are uniform but not
-// the contiguous layout is_batched_matrix accepts; cache slice views and
-// concatenate results compose this way. The general strided-copy engine
-// writes a standard row-major batch, and the encoder keeps the temp
-// alive until the committed work completes. Engine limits (negative
-// strides, collapsed rank beyond 4, span overflow) keep their named
-// errors.
+// Materializes a matmul operand whose inner 2-D layout fits neither the
+// row-major nor the column-major gap form; concatenate results compose
+// this way. The general strided-copy engine writes a standard row-major
+// batch, and the encoder keeps the temp alive until the committed work
+// completes. Engine limits (negative strides, collapsed rank beyond 4,
+// span overflow) keep their named errors.
 array materialize_batched_matrix(
     const array& value,
     const std::string& name,
@@ -297,6 +256,20 @@ array materialize_batched_matrix(
       strides,
       flags,
       0);
+  if (getenv("MLX_OMARCHY_TRACE_MATERIALIZE")) {
+    std::fprintf(
+        stderr,
+        "[materialize] %s shape=[", name.c_str());
+    for (int i = 0; i < value.ndim(); ++i) {
+      std::fprintf(stderr, "%s%d", i ? "," : "", value.shape(i));
+    }
+    std::fprintf(stderr, "] strides=[");
+    for (int i = 0; i < value.ndim(); ++i) {
+      std::fprintf(stderr, "%s%lld", i ? "," : "",
+          static_cast<long long>(value.strides()[i]));
+    }
+    std::fprintf(stderr, "]\n");
+  }
   copy_gpu_inplace(
       value,
       materialized,
@@ -309,6 +282,42 @@ array materialize_batched_matrix(
       out.primitive().stream());
   encoder.add_temporary(materialized);
   return materialized;
+}
+
+// Classifies a matmul operand's inner 2-D layout: row-major (column
+// stride 1, row gap = the axis -2 stride) or column-major (row stride
+// 1, column gap = the axis -1 stride). A size-1 inner axis never
+// dereferences its stride. Batch axes ride their actual strides - the
+// shader unravels workgroup z over them, and a stride-0 batch axis
+// broadcasts - so nothing materializes for batch strides alone. Gaps
+// are in elements and must fit uint32; strides outside that, or an
+// inner layout fitting neither form, materialize to a dense row-major
+// batch first.
+void classify_matmul_operand(
+    const array& value,
+    bool& transposed,
+    uint32_t& gap,
+    std::optional<array>& materialized,
+    const std::string& name,
+    array& out,
+    const Stream& s) {
+  int rank = value.ndim();
+  int64_t s_prev = value.strides()[rank - 2];
+  int64_t s_last = value.strides()[rank - 1];
+  constexpr int64_t kMaxGap = std::numeric_limits<uint32_t>::max();
+  if ((s_last == 1 || value.shape(rank - 1) == 1) && s_prev >= 0 &&
+      s_prev <= kMaxGap) {
+    transposed = false;
+    gap = static_cast<uint32_t>(s_prev);
+  } else if ((s_prev == 1 || value.shape(rank - 2) == 1) && s_last >= 0 &&
+             s_last <= kMaxGap) {
+    transposed = true;
+    gap = static_cast<uint32_t>(s_last);
+  } else {
+    materialized = materialize_batched_matrix(value, name, out, s);
+    transposed = false;
+    gap = static_cast<uint32_t>(value.shape(rank - 1));
+  }
 }
 
 void dispatch_matmul(
@@ -332,38 +341,22 @@ void dispatch_matmul(
   if (a_in.ndim() < 2 || a_in.ndim() != b_in.ndim() || a_in.ndim() > 5) {
     omarchy::unsupported("matrix rank " + name, out);
   }
-  bool a_transposed = is_batched_matrix(a_in, true);
-  bool a_row_contiguous = !a_transposed && is_batched_matrix(a_in, false);
-  bool b_transposed = is_batched_matrix(b_in, true);
-  bool b_row_contiguous = !b_transposed && is_batched_matrix(b_in, false);
-  // An operand composed from cache slices or concatenates can carry
-  // batch strides that are uniform but not the contiguous layout
-  // is_batched_matrix accepts. Materialize that one operand to a
-  // standard row-major batch through the general strided-copy engine and
-  // dispatch normally; conforming operands keep the zero-copy path.
+  // Each operand's inner 2-D matrix rides the shader's gap indexing
+  // and its batch axes ride their actual strides, so a cache slice
+  // consumes zero copies; only an inner layout fitting neither the
+  // row-major nor the column-major form materializes to a dense batch.
   std::optional<array> a_materialized;
   std::optional<array> b_materialized;
-  if (!a_row_contiguous && !a_transposed) {
-    a_materialized = materialize_batched_matrix(a_in, name, out, s);
-    a_transposed = false;
-    a_row_contiguous = true;
-  }
-  if (!b_row_contiguous && !b_transposed) {
-    b_materialized = materialize_batched_matrix(b_in, name, out, s);
-    b_transposed = false;
-    b_row_contiguous = true;
-  }
+  uint32_t a_gap = 0;
+  uint32_t b_gap = 0;
+  bool a_transposed = false;
+  bool b_transposed = false;
+  classify_matmul_operand(
+      a_in, a_transposed, a_gap, a_materialized, name, out, s);
+  classify_matmul_operand(
+      b_in, b_transposed, b_gap, b_materialized, name, out, s);
   const array& a = a_materialized ? *a_materialized : a_in;
   const array& b = b_materialized ? *b_materialized : b_in;
-  // Batch axes may broadcast: an operand axis of size 1 against a wider
-  // axis carries stride 0 through the shared-buffer broadcast view and
-  // repeats its one matrix per batch step. True mismatches stay named.
-  for (int axis = 0; axis < a.ndim() - 2; ++axis) {
-    if (a.shape(axis) != b.shape(axis) && a.shape(axis) != 1 &&
-        b.shape(axis) != 1) {
-      omarchy::unsupported("batch dimensions " + name, out);
-    }
-  }
   size_t k = a.shape(-1);
   size_t n = b.shape(-1);
   if (b.shape(-2) != k) {
@@ -402,6 +395,8 @@ void dispatch_matmul(
   params.beta = beta;
   params.flags = (b_transposed ? 1u : 0u) | (use_c ? 2u : 0u) |
       (a_transposed ? 4u : 0u);
+  params.lhs_gap = a_gap;
+  params.rhs_gap = b_gap;
   // The shader unravels workgroup z over the batch shape and offsets
   // each operand by its own strides; a singleton axis never indexes, so
   // its stride is pinned to 0 (broadcast).
@@ -440,10 +435,22 @@ void dispatch_matmul(
       omarchy::ComputeKernel::MatmulF32,
       omarchy::ComputeKernel::MatmulF16,
       omarchy::ComputeKernel::MatmulBF16);
+  // Inner spans use the actual gaps: (rows - 1) * gap + cols elements
+  // past the operand offset.
+  uint64_t a_inner = a_transposed
+      ? static_cast<uint64_t>(params.matrix_k - 1) * a_gap +
+          params.matrix_m
+      : static_cast<uint64_t>(params.matrix_m - 1) * a_gap +
+          params.matrix_k;
+  uint64_t b_inner = b_transposed
+      ? static_cast<uint64_t>(params.matrix_n - 1) * b_gap +
+          params.matrix_k
+      : static_cast<uint64_t>(params.matrix_k - 1) * b_gap +
+          params.matrix_n;
   if (!omarchy::compute_index_span_fits(
-          params.lhs_offset, a_span + params.matrix_m * params.matrix_k) ||
+          params.lhs_offset, a_span + a_inner) ||
       !omarchy::compute_index_span_fits(
-          params.rhs_offset, b_span + params.matrix_k * params.matrix_n)) {
+          params.rhs_offset, b_span + b_inner)) {
     omarchy::unsupported(name + " index span", out);
   }
   encoder.dispatch_compute(
@@ -2281,16 +2288,28 @@ void SegmentedMM::eval_gpu(const std::vector<array>& inputs, array& out) {
   if (a_in.ndim() != 2 || b_in.ndim() != 2 || a_in.shape(1) != b_in.shape(0)) {
     omarchy::unsupported(tag + " matrix dimensions", out);
   }
+  // The segmented shader indexes rows by matrix_k, so only the natural
+  // gaps pass through; anything else materializes first.
   std::optional<array> a_materialized;
-  bool a_transposed = is_batched_matrix(a_in, true);
-  if (!a_transposed && !is_batched_matrix(a_in, false)) {
+  uint32_t a_gap = 0;
+  bool a_transposed = false;
+  classify_matmul_operand(
+      a_in, a_transposed, a_gap, a_materialized, tag, out, s);
+  uint32_t a_natural = a_transposed ? a_in.shape(0) : a_in.shape(1);
+  if (!a_materialized && a_gap != a_natural) {
     a_materialized = materialize_batched_matrix(a_in, tag, out, s);
+    a_transposed = false;
   }
   const array& a = a_materialized ? *a_materialized : a_in;
   std::optional<array> b_materialized;
-  bool b_transposed = is_batched_matrix(b_in, true);
-  if (!b_transposed && !is_batched_matrix(b_in, false)) {
+  uint32_t b_gap = 0;
+  bool b_transposed = false;
+  classify_matmul_operand(
+      b_in, b_transposed, b_gap, b_materialized, tag, out, s);
+  uint32_t b_natural = b_transposed ? b_in.shape(0) : b_in.shape(1);
+  if (!b_materialized && b_gap != b_natural) {
     b_materialized = materialize_batched_matrix(b_in, tag, out, s);
+    b_transposed = false;
   }
   const array& b = b_materialized ? *b_materialized : b_in;
   std::optional<array> segments_packed;
