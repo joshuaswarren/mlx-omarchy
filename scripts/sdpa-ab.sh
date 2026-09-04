@@ -4,8 +4,9 @@
 # Two modes:
 #   distinct-wheels   BEFORE != AFTER: builds both SHAs from detached
 #                     checkouts, asserts the two wheels DIFFER, runs the
-#                     SDPA equivalence suite on the after side, then five
-#                     pinned decode runs per dtype per side in one session.
+#                     SDPA equivalence suite on the after side (EQ_CMD
+#                     default), then five pinned decode runs per dtype per
+#                     side in one session.
 #   same-wheel-gates  BEFORE == AFTER: builds ONE wheel, installs it in ONE
 #                     venv, and A/Bs ONE named optimization gate on that
 #                     identical binary. GATE_ENV must name the gate
@@ -13,15 +14,24 @@
 #                     MLX_OMARCHY_SDPA_BF16_FAST, or a future fusion gate):
 #                     side 'off' runs with GATE_ENV=0, side 'on' with
 #                     GATE_ENV=1. No default gate is guessed; same-SHA
-#                     without GATE_ENV is refused. MLX_DISABLE_COMPILE
-#                     NEVER varies between sides in this mode (bf16 stays
-#                     =1, q4 stays unset - the existing baseline), so the
-#                     measured delta is the gate, not compile behavior.
-#                     Both sides print the same wheel hash by construction;
-#                     differences are GATE effects and must never be
-#                     reported as binary differences. There is no
-#                     equivalence suite in this mode (the binary is
-#                     identical by definition).
+#                     without GATE_ENV is refused. A gate CHANGES EXECUTED
+#                     CODE, so the identical binary proves nothing about
+#                     semantics: EQ_CMD is REQUIRED in this mode (no
+#                     generic SDPA default - the numerical case must be
+#                     the gate's own), is executed with the gate ON before
+#                     any timing, and nonzero aborts the session. Same-SHA
+#                     without EQ_CMD is refused. MLX_DISABLE_COMPILE NEVER
+#                     varies between sides (bf16 stays =1, q4 stays unset
+#                     - the existing baseline), so the measured delta is
+#                     the gate, not compile behavior. Both sides print the
+#                     same wheel hash by construction; differences are
+#                     GATE effects and must never be reported as binary
+#                     differences.
+#
+# Generated IDs: every leg prints its generated_ids digest, and the
+# runner COMPARES the digests at the end - across runs within a side
+# and across sides per dtype. Equality is claimed only from that
+# comparison and any divergence is a loud nonzero failure.
 #
 # Prints its PID first. Hardened 2026-09-04 (BenchmarkIntegrity):
 # every path this script writes is unique per run (date+PID) - no
@@ -47,8 +57,7 @@ fi
 echo "mode: $MODE"
 if [ "$MODE" = same-wheel-gates ]; then
   # A same-wheel A/B measures ONE named optimization gate. No guessing:
-  # without an explicit GATE_ENV there is nothing to toggle and the run
-  # would silently measure noise, so it is refused.
+  # without an explicit GATE_ENV there is nothing to toggle, so refuse.
   if [ -z "${GATE_ENV:-}" ]; then
     echo "same-wheel mode requires GATE_ENV=<gate name>, e.g." >&2
     echo "  GATE_ENV=MLX_OMARCHY_QMM_TILE (or _ROPE_BF16_DIRECT," >&2
@@ -61,6 +70,17 @@ if [ "$MODE" = same-wheel-gates ]; then
     *) echo "GATE_ENV must be an MLX_OMARCHY_* gate name, got '$GATE_ENV'" >&2
        exit 2;;
   esac
+  # A gate changes executed code: the identical binary proves nothing
+  # about semantics. Require the gate's OWN numerical equivalence case,
+  # run gated ON before any timing. No default: the generic SDPA suite
+  # would not exercise an unrelated gate.
+  if [ -z "${EQ_CMD:-}" ]; then
+    echo "same-wheel mode requires EQ_CMD=<numerical equivalence command>" >&2
+    echo "  for the gated code path (run with the gate ON, before timing)." >&2
+    echo "  The generic SDPA suite is NOT applied to unrelated gates." >&2
+    echo "Refusing to run without an equivalence case." >&2
+    exit 2
+  fi
 fi
 RUN_ID=$(date +%Y%m%d-%H%M%S)-$$
 LOG=~/benchq/logs/${AB_NAME:-sdpa-ab}-$RUN_ID
@@ -133,6 +153,8 @@ else
   echo "  BOTH sides, so no unrelated compile behavior is measured."
   echo "  Any off/on delta below is a $GATE_ENV effect, not a binary"
   echo "  difference, and must be reported as such."
+  echo "  IDs are recorded per leg and COMPARED at the end; equality is"
+  echo "  claimed only from that comparison."
   VG=$(install_wheel "$W1" gate) || exit 1
   echo "[$(date +%T)] installed: $("$VG/bin/python" -c 'import mlx.core as mx; print(mx.__version__)')"
   SIDES="off on"
@@ -147,14 +169,17 @@ fi
   if [ "$MODE" = same-wheel-gates ]; then
     echo "gate_env=$GATE_ENV"
     echo "gate_values=off=0 on=1"
+    echo "eq_cmd=$EQ_CMD (executed with $GATE_ENV=1 BEFORE timing)"
+  else
+    echo "eq_cmd=${EQ_CMD:-python scripts/sdpa_equivalence.py} (after side)"
   fi
   echo "compile_policy=q4: MLX_DISABLE_COMPILE unset on BOTH sides; bf16: MLX_DISABLE_COMPILE=1 on BOTH sides"
   echo "prompt=$PROMPT"
   echo "tokens=64 runs=5"
+  echo "id_check=digests compared across runs within a side and across sides per dtype; divergence is fatal"
 } > "$LOG/config.txt"
 
 if [ "$MODE" = distinct-wheels ]; then
-  # EQ_CMD runs at the after checkout with the after venv first on PATH; non-zero exit = no numbers.
   EQ_CMD=${EQ_CMD:-"python scripts/sdpa_equivalence.py"}
   echo "[$(date +%T)] equivalence on after side (checkout is at $AFTER): $EQ_CMD"
   ( cd "$SRC" && PATH="$VA/bin:$PATH" bash -c "$EQ_CMD" ) \
@@ -163,8 +188,19 @@ if [ "$MODE" = distinct-wheels ]; then
   tail -3 "$LOG/equivalence.log"
   echo "equivalence exit=$EQ"
   [ $EQ -eq 0 ] || { echo "EQUIVALENCE FAILED - no numbers"; exit 1; }
+else
+  # Gated-ON numerical equivalence BEFORE any timing. The gate's own
+  # case must pass on the gated path; nonzero aborts with no numbers.
+  echo "[$(date +%T)] gate equivalence, $GATE_ENV=1 (before any timing): $EQ_CMD"
+  ( cd "$SRC" && PATH="$VG/bin:$PATH" GATE_ENV=1 bash -c "$EQ_CMD" ) \
+    > "$LOG/equivalence-gate-on.log" 2>&1
+  EQ=$?
+  tail -3 "$LOG/equivalence-gate-on.log"
+  echo "gate equivalence exit=$EQ (log: $LOG/equivalence-gate-on.log)"
+  [ $EQ -eq 0 ] || { echo "GATE EQUIVALENCE FAILED - no numbers"; exit 1; }
 fi
 
+: > "$LOG/ids.txt"
 for side in $SIDES; do
   if [ "$MODE" = distinct-wheels ]; then
     [ $side = before ] && V=$VB || V=$VA
@@ -209,7 +245,41 @@ for side in $SIDES; do
         exit 1
       fi
       printf '%s\n' "$lines"
+      ids=$(sed -n 's/.*"ids_sha256_16": "\([0-9a-f]*\)".*/\1/p' "$OUT" | head -1)
+      if [ -z "$ids" ]; then
+        echo "NO ID DIGEST [$side $dtype $gatelabel run$run]: success line present but no ids_sha256_16 (log: $OUT)" >&2
+        exit 1
+      fi
+      echo "$side $dtype $run $ids" >> "$LOG/ids.txt"
     done
   done
 done
-echo "[$(date +%T)] DONE mode=$MODE"
+
+# IDENTITY VERDICT: equality is claimed ONLY here, from actual digest
+# comparison - across runs within each side, then across sides per dtype.
+ID_FAIL=0
+while read -r side dtype run ids; do
+  key="$side $dtype"
+  prev=$(awk -v s="$side" -v d="$dtype" '$1==s && $2==d {print $4; exit}' "$LOG/ids.txt")
+  if [ "$ids" != "$prev" ]; then
+    echo "IDS DIVERGED ACROSS RUNS [$side $dtype]: run with $prev vs run $run with $ids" >&2
+    ID_FAIL=1
+  fi
+done < "$LOG/ids.txt"
+s1=$([ "$MODE" = distinct-wheels ] && echo before || echo off)
+s2=$([ "$MODE" = distinct-wheels ] && echo after || echo on)
+for dtype in q4 bf16; do
+  d1=$(awk -v s="$s1" -v d="$dtype" '$1==s && $2==d {print $4; exit}' "$LOG/ids.txt")
+  d2=$(awk -v s="$s2" -v d="$dtype" '$1==s && $2==d {print $4; exit}' "$LOG/ids.txt")
+  if [ -z "$d1" ] || [ -z "$d2" ]; then
+    echo "IDS MISSING [$dtype]: $s1='$d1' $s2='$d2'" >&2
+    ID_FAIL=1
+  elif [ "$d1" = "$d2" ]; then
+    echo "IDS IDENTITY [$dtype]: MATCH across $s1/$s2 (sha256:$d1)"
+  else
+    echo "IDS DIVERGED [$dtype]: $s1 sha256:$d1 vs $s2 sha256:$d2" >&2
+    ID_FAIL=1
+  fi
+done
+[ $ID_FAIL -eq 0 ] || { echo "ID DIVERGENCE - numbers above are measured but identity FAILED; do not claim token identity"; exit 1; }
+echo "[$(date +%T)] DONE mode=$MODE (ids compared: no divergence)"
