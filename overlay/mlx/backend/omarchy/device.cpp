@@ -23,8 +23,12 @@
 namespace mlx::core::omarchy {
 
 namespace {
-
 constexpr uint32_t kVulkan13 = VK_API_VERSION_1_3;
+
+// MLX_OMARCHY_NO_BUFFER_CACHE (diagnostic, docs/install-omarchy.md).
+// Declared here because Runtime::init_impl sets it; the exported
+// accessor lives at omarchy scope below.
+std::atomic<bool> g_no_buffer_cache{false};
 
 int32_t to_lower_ascii(char c) {
   return static_cast<int32_t>(std::tolower(static_cast<unsigned char>(c)));
@@ -257,6 +261,18 @@ CapabilityReport collect_capabilities(
 bool Runtime::init_impl() {
   allow_non_apple = env_flag("MLX_OMARCHY_ALLOW_NON_APPLE");
   preferred_device_index = env_index("MLX_OMARCHY_DEVICE_INDEX");
+  // MLX_OMARCHY_NO_BUFFER_CACHE (diagnostic, docs/install-omarchy.md):
+  // read once at init, not per allocation - the allocator polls the
+  // flag on every malloc and free.
+  g_no_buffer_cache.store(
+      env_flag("MLX_OMARCHY_NO_BUFFER_CACHE"), std::memory_order_relaxed);
+  if (g_no_buffer_cache.load(std::memory_order_relaxed)) {
+    std::fprintf(
+        stderr,
+        "[omarchy] MLX_OMARCHY_NO_BUFFER_CACHE active (diagnostics only,"
+        " not product configuration; docs/install-omarchy.md): the"
+        " buffer cache is off for the whole process.\n");
+  }
 
   if (!vk::load_loader()) {
     error =
@@ -474,13 +490,20 @@ bool env_flag(const char* name) {
   });
   return s == "1" || s == "on" || s == "true" || s == "yes";
 }
+
 // Scoped compiled-tape diagnostic state (device.h). Plain atomics: the
 // encoder and the allocator poll these per dispatch or per allocation,
 // so the unset path must stay cheaper than an environment lookup.
+// g_no_buffer_cache is declared in the anonymous namespace above because
+// Runtime::init_impl sets it before this point of the file.
 namespace {
 std::atomic<bool> g_tape_full_barriers{false};
 std::atomic<bool> g_tape_no_reuse{false};
 } // namespace
+
+bool buffer_cache_disabled() {
+  return g_no_buffer_cache.load(std::memory_order_relaxed);
+}
 
 TapeDebugScope::TapeDebugScope(bool full_barriers, bool no_reuse)
     : full_barriers_(full_barriers), no_reuse_(no_reuse) {

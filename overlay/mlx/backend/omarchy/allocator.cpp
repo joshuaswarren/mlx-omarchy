@@ -76,7 +76,10 @@ Buffer VulkanAllocator::malloc(size_t size) {
   // MLX_OMARCHY_TAPE_NO_REUSE (diagnostic, docs/install-omarchy.md):
   // skip the cache entirely so every allocation lands in fresh device
   // memory and nothing recycled can alias a tape dispatch.
-  if (!tape_no_reuse()) {
+  // MLX_OMARCHY_NO_BUFFER_CACHE (diagnostic): the same, but process-
+  // wide - it also covers frees and re-hands outside the tape window,
+  // which TAPE_NO_REUSE deliberately does not.
+  if (!tape_no_reuse() && !buffer_cache_disabled()) {
     if (void* cached = buffer_cache_.reuse_from_cache(size)) {
       auto* buf = static_cast<VulkanBuffer*>(cached);
       active_memory_ += buf->size;
@@ -165,7 +168,7 @@ void VulkanAllocator::free(Buffer buffer) {
   size_t sz = buf->size;
   std::unique_lock lk(mutex_);
   active_memory_ -= sz;
-  if (sz > 0 && !tape_no_reuse() &&
+  if (sz > 0 && !tape_no_reuse() && !buffer_cache_disabled() &&
       buffer_cache_.cache_size() + sz <= cache_limit_) {
     buffer_cache_.recycle_to_cache(buf);
     return;

@@ -288,5 +288,9 @@ class MLX_API TapeDebugScope {
 // Current scoped diagnostic state. False outside a TapeDebugScope.
 bool tape_full_barriers();
 bool tape_no_reuse();
+// True when MLX_OMARCHY_NO_BUFFER_CACHE was set at runtime init
+// (diagnostic, docs/install-omarchy.md): the allocator destroys every
+// freed buffer instead of recycling it, for the whole process.
+bool buffer_cache_disabled();
 
 } // namespace mlx::core::omarchy

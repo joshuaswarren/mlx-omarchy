@@ -56,6 +56,21 @@ hardware hunt needs first.
   its own descriptor pool with exactly one set. If per-node submission
   does not fix the corruption but this switch does, the defect is
   aliasing or lifetime, not ordering.
+- `MLX_OMARCHY_TAPE_SYNC_EVERY=1` drains the stream after every tape
+  evaluation, so nothing queued behind the tape executes while the host
+  runs ahead. Tests whether host run-ahead is load-bearing for the
+  corruption.
+- `MLX_OMARCHY_NO_BUFFER_CACHE=1` turns the buffer cache off for the
+  whole process, not just the tape window: every freed buffer is
+  destroyed instead of recycled. Tests whether cross-window buffer
+  recycling carries the corruption. Unlike the tape-scoped switches it
+  is read once at runtime init, so it must be set before the process
+  starts, not just before the tape runs.
+
+The first three switches ran the M1 decision tree on 2026-09-03: none
+of them removed the corruption, and the refused magnitude tracked the
+switch class (receipts/2026-09-03-tape-layer-isolation-switches.md,
+MEASURED OUTCOME). These two switches bisect the remaining space.
 
 ## Build the wheel
 
