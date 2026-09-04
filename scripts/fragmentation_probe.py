@@ -166,6 +166,7 @@ def main():
         lib.mlx_omarchy_prim_reset.argtypes = []
         lib.mlx_omarchy_prim_reset()
     read()  # drain any load-time counters from the deltas below
+    start = read()
     for token, _logprobs in generate_step(
         mx.array(prompt_ids),
         model,
