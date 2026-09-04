@@ -77,28 +77,32 @@ def model_repo_dir(hf_cache, repo):
 
 
 def resolve_model(entry, hf_cache, overrides):
-    """Return (status, model_path_or_None, revision, reason).
+    """Return (status, model_path_or_None, revision, reason, rev_class).
 
-    status is "ready" or "skipped". revision is always the factual
-    revision the snapshot came from, never a guess.
+    status is "ready" or "skipped". revision is the factual revision
+    only when it is backed by trusted cache metadata (a snapshot
+    directory named by its commit SHA inside the HF cache). A --model-dir
+    override proves nothing about its weights: it reports revision null
+    with rev_class "override-unverified" and can never satisfy a strict
+    pin match.
     """
     mid = entry["id"]
     if mid in overrides:
         path = Path(overrides[mid]).expanduser()
         if not (path / "config.json").is_file():
             return ("skipped", None, None,
-                    f"--model-dir {path} has no config.json")
-        rev = None
-        if entry.get("revision"):
-            rev = entry["revision"]
-        return ("ready", path, rev, "resolved via --model-dir override")
+                    f"--model-dir {path} has no config.json", None)
+        return ("ready", path, None,
+                "override: --model-dir content not verified against any "
+                "revision; directory presence is not a pin",
+                "override-unverified")
 
     repo_dir = model_repo_dir(hf_cache, entry["repo"])
     snaps = repo_dir / "snapshots"
     if not snaps.is_dir():
-        return ("skipped", None, None,
-                f"{entry['repo']} not present in local HF cache "
-                f"({sanitize(str(repo_dir))}); offline: not fetched")
+            return ("skipped", None, None,
+                    f"{entry['repo']} not present in local HF cache "
+                    f"({sanitize(str(repo_dir))}); offline: not fetched", None)
 
     if entry.get("revision"):
         rev_dir = snaps / entry["revision"]
@@ -106,21 +110,23 @@ def resolve_model(entry, hf_cache, overrides):
             have = [p.name for p in snaps.iterdir() if p.is_dir()]
             return ("skipped", None, None,
                     f"pinned revision {entry['revision']} not in cache; "
-                    f"snapshots present: {have or 'none'}")
-        return ("ready", rev_dir, entry["revision"], "pinned revision found in cache")
+                    f"snapshots present: {have or 'none'}", None)
+        return ("ready", rev_dir, entry["revision"],
+                "pinned revision found in cache", "pinned")
 
     # revision null: resolve the factual snapshot from the cache itself.
     dirs = sorted(p for p in snaps.iterdir() if p.is_dir())
     if len(dirs) != 1:
         return ("skipped", None, None,
                 f"revision unresolved and cache holds {len(dirs)} snapshots; "
-                "refusing to guess")
+                "refusing to guess", None)
     rev_dir = dirs[0]
     if not (rev_dir / "config.json").is_file():
         return ("skipped", None, None,
-                f"snapshot {rev_dir.name} has no config.json")
+                f"snapshot {rev_dir.name} has no config.json", None)
     return ("ready", rev_dir, rev_dir.name,
-            "resolved from local cache snapshot (factual)")
+            "resolved from local cache snapshot (factual)",
+            "resolved-from-cache")
 
 
 PROMPT_TOKENS_SNIPPET = """
@@ -393,12 +399,11 @@ def selected_workloads(manifest, selected):
         else:
             active.append(wl)
     return active, excluded
-
-
 def pins_map(manifest, resolved):
-    """Resolved pin per model: pinned SHAs verbatim, cache-resolved
-    revisions labeled so cross-machine comparison knows what it is
-    comparing."""
+    """Comparable pins per model: pinned and cache-resolved revisions.
+    Override dirs carry no verified revision, so they appear only in
+    models_resolved (revision null, class override-unverified) and are
+    refused by check_pins, never listed as a pin."""
     by_id = {r["model_id"]: r for r in resolved}
     pins = {}
     for entry in manifest["models"]:
@@ -407,29 +412,33 @@ def pins_map(manifest, resolved):
             continue
         pins[entry["id"]] = {
             "revision": r["revision"],
-            "class": "pinned" if entry.get("revision") else
-                     "resolved-from-cache",
+            "class": r.get("revision_class") or
+                     ("pinned" if entry.get("revision") else
+                      "resolved-from-cache"),
         }
     return pins
 
 
-def check_pins(pins, expected):
-    """Refuse cross-machine comparison on differing resolved pins.
-
-    expected maps model_id -> revision (from --expect-pins, typically
-    the pins map recorded by the other machine). Returns a refusal
-    reason or None. A model that was ready on the other machine but is
-    absent or resolved differently here is a refusal, not a label.
-    """
+def check_pins(resolved, expected):
+    """Refuse strict pin match unless every expected model resolves to
+    exactly the expected revision from trusted cache metadata. An
+    --model-dir override has unverified provenance and is refused even
+    when its directory name matches: directory names are not pins."""
+    by_id = {r["model_id"]: r for r in resolved}
     problems = []
     for mid, rev in expected.items():
-        pin = pins.get(mid)
-        if pin is None:
+        r = by_id.get(mid)
+        if not r or r["status"] != "ready":
             problems.append(f"{mid}: expected revision {rev} but model is "
                             "not ready on this machine")
-        elif pin["revision"] != rev:
+        elif r.get("revision_class") == "override-unverified":
+            problems.append(
+                f"{mid}: --model-dir override has unverified provenance; "
+                "it cannot satisfy a strict pin match")
+        elif r["revision"] != rev:
             problems.append(f"{mid}: expected revision {rev}, this machine "
-                            f"resolved {pin['revision']} ({pin['class']}); "
+                            f"resolved {r['revision']} "
+                            f"({r.get('revision_class')}); "
                             "same model id is not same weights")
     return "; ".join(problems) if problems else None
 
@@ -438,9 +447,11 @@ def build_legs(manifest, hf_cache, overrides, selected):
     workloads, excluded = selected_workloads(manifest, selected)
     resolved, legs, paths = [], [], {}
     for entry in manifest["models"]:
-        status, path, rev, reason = resolve_model(entry, hf_cache, overrides)
+        status, path, rev, reason, rev_class = resolve_model(
+            entry, hf_cache, overrides)
         resolved.append({"model_id": entry["id"], "repo": entry["repo"],
                          "revision": rev, "status": status,
+                         "revision_class": rev_class,
                          "path": sanitize(str(path)) if path else None,
                          "detail": reason})
         if status != "ready":
@@ -485,12 +496,15 @@ def parse_bench_output(stdout):
     return m
 
 
-def execute_leg(leg, manifest, args, contended):
+def execute_leg(leg, manifest, args, contended, paths):
+    """Run one leg. `paths` holds RAW model dirs for execution; the leg
+    carries only sanitized report data. A redacted path must never
+    reach a subprocess: exec does not expand '~'."""
     prompt = prompt_text(manifest, leg["prompt_id"])
     gen = manifest["generation"]
     engine = SCRIPTS_DIR / Path(gen["engine_script"]).name
     cmd = [args.python, str(engine),
-           "--model", leg["model_path"],
+           "--model", str(paths[leg["model_id"]]),
            "--prompt", prompt,
            "--tokens", str(leg["tokens"]),
            "--temp", str(gen["temp"]),
@@ -532,7 +546,7 @@ def execute_leg(leg, manifest, args, contended):
     # prompt-token count with the model's own tokenizer; None stays None.
     if leg.get("prompt_tokens") is None:
         leg["prompt_tokens"] = probe_prompt_tokens(
-            args.python, leg["model_path"], prompt)
+            args.python, paths[leg["model_id"]], prompt)
     if (leg["prompt_tokens"] and metrics["prefill_s"]):
         metrics["prefill_tok_s"] = round(
             leg["prompt_tokens"] / metrics["prefill_s"], 3)
@@ -660,7 +674,7 @@ def main():
     expected = dict(
         part.split("=", 1) for part in args.expect_pins if "=" in part)
     if expected:
-        refusal = check_pins(result["pins"], expected)
+        refusal = check_pins(result["models_resolved"], expected)
         if refusal:
             result["refusal"] = refusal
             _emit(result, args.out)
@@ -679,7 +693,6 @@ def main():
     if args.allow_non_apple:
         result["env"] = {"MLX_OMARCHY_ALLOW_NON_APPLE": "1 (dev/software GPU)"}
     env_ok = run_py(args.python, ["-c", "import mlx_lm"]).returncode == 0
-    measured = 0
     for leg in legs:
         if leg["status"] != "ready":
             continue
@@ -689,7 +702,7 @@ def main():
                                     f"{sanitize(args.python)}; environment "
                                     "incomplete, nothing executed"))
             continue
-        execute_leg(leg, manifest, args, contended)
+        execute_leg(leg, manifest, args, contended, paths)
         if leg["status"] == "measured":
             measured += 1
     result["legs"] = legs
@@ -728,24 +741,42 @@ def self_test():
     import tempfile
     with tempfile.TemporaryDirectory() as tmp:
         entry = {"id": "m", "repo": "org/none", "revision": None}
-        status, _, rev, _ = resolve_model(entry, tmp, {})
-        assert status == "skipped" and rev is None and "not present" in _
+        status, _, rev, reason, _ = resolve_model(entry, tmp, {})
+        assert status == "skipped" and rev is None and \
+            "not present" in reason
 
         snaps = Path(tmp) / "models--org--x" / "snapshots"
         (snaps / "aaaa").mkdir(parents=True)
         entry2 = {"id": "m2", "repo": "org/x", "revision": "deadbeef"}
-        status2, _, _, reason2 = resolve_model(entry2, tmp, {})
+        status2, _, _, reason2, cls2 = resolve_model(entry2, tmp, {})
         assert status2 == "skipped" and "pinned revision" in reason2
+        assert cls2 is None
 
         (snaps / "deadbeef" / "config.json").parent.mkdir(parents=True)
         (snaps / "deadbeef" / "config.json").write_text("{}")
-        status3, path3, rev3, _ = resolve_model(entry2, tmp, {})
+        status3, path3, rev3, _, cls3 = resolve_model(entry2, tmp, {})
         assert status3 == "ready" and rev3 == "deadbeef"
-        assert path3.name == "deadbeef"
+        assert path3.name == "deadbeef" and cls3 == "pinned"
 
         entry4 = {"id": "m4", "repo": "org/x", "revision": None}
-        status4, _, rev4, reason4 = resolve_model(entry4, tmp, {})
+        status4, _, rev4, reason4, _ = resolve_model(entry4, tmp, {})
         assert status4 == "skipped" and "refusing to guess" in reason4
+
+        # MatrixReview false-pass: an arbitrary dir with a config.json
+        # must never be accepted as the known SHA. Override reports
+        # revision null + override-unverified and check_pins refuses it.
+        bogus = Path(tmp) / "bogus-weights"
+        bogus.mkdir()
+        (bogus / "config.json").write_text("{}")
+        entry5 = {"id": "m5", "repo": "org/x", "revision": "deadbeef"}
+        status5, path5, rev5, reason5, cls5 = resolve_model(
+            entry5, tmp, {"m5": str(bogus)})
+        assert status5 == "ready" and rev5 is None, (rev5, reason5)
+        assert cls5 == "override-unverified" and "not a pin" in reason5
+        resolved5 = [{"model_id": "m5", "status": "ready",
+                      "revision": None, "revision_class": cls5}]
+        refusal5 = check_pins(resolved5, {"m5": "deadbeef"})
+        assert refusal5 and "strict pin match" in refusal5
 
     mfix = {"prompts": {"n": {"template": "numbered", "base": "B",
                               "item": "C", "items": 2},
@@ -763,39 +794,67 @@ def self_test():
     active, excluded = selected_workloads(mfix, "all")
     assert excluded == []
 
-    resolved = [{"model_id": "m1", "status": "ready", "revision": "aaa"},
-                {"model_id": "m2", "status": "ready", "revision": "bbb"}]
+    resolved = [{"model_id": "m1", "status": "ready", "revision": "aaa",
+                 "revision_class": "pinned"},
+                {"model_id": "m2", "status": "ready", "revision": "bbb",
+                 "revision_class": "resolved-from-cache"}]
     man = {"models": [{"id": "m1", "revision": "aaa"},
                       {"id": "m2", "revision": None}]}
     pins = pins_map(man, resolved)
     assert pins == {"m1": {"revision": "aaa", "class": "pinned"},
-                    "m2": {"revision": "bbb", "class": "resolved-from-cache"}}
-    assert check_pins(pins, {"m2": "bbb"}) is None
-    refusal = check_pins(pins, {"m2": "ccc"})
+                    "m2": {"revision": "bbb",
+                           "class": "resolved-from-cache"}}
+    assert check_pins(resolved, {"m2": "bbb"}) is None
+    refusal = check_pins(resolved, {"m2": "ccc"})
     assert refusal and "not same weights" in refusal
-    refusal2 = check_pins(pins, {"gone": "ddd"})
+    refusal2 = check_pins(resolved, {"gone": "ddd"})
     assert refusal2 and "not ready on this machine" in refusal2
 
-    manifest = {"prompts": {"s": {"text": "Hi"}},
-                "generation": {"temp": 0, "seed": 0, "warmup_tokens": 4,
-                               "engine_script": "bench_decode.py"}}
-    leg = {"leg_id": "t", "model_path": "/m", "prompt_id": "s", "tokens": 4}
+    with tempfile.TemporaryDirectory() as tmp_home:
+        model_dir = Path(tmp_home) / "cache" / "model"
+        model_dir.mkdir(parents=True)
+        (model_dir / "config.json").write_text("{}")
+        manifest = {"prompts": {"s": {"text": "Hi"}},
+                    "generation": {"temp": 0, "seed": 0, "warmup_tokens": 4,
+                                   "engine_script": "bench_decode.py"}}
+        leg = {"leg_id": "t", "model_id": "m", "prompt_id": "s",
+               "tokens": 4, "model_path": "~/cache/model"}
+        class FakeProc:
+            returncode = 0
+            stdout = out
+            stderr = ""
+        received = {}
+        real_run = subprocess.run
 
-    class FakeProc:
-        returncode = 0
-        stdout = out
-        stderr = ""
-    real_run = subprocess.run
-    subprocess.run = lambda *a, **k: FakeProc()
-    try:
-        class A:
-            python, wheel, allow_non_apple, timeout = "py", None, False, 10
-        execute_leg(leg, manifest, A(), contended=True)
-    finally:
-        subprocess.run = real_run
-    assert leg["status"] == "measured" and leg["contended"] is True
-    assert leg["metrics"]["decode_tok_s"] == 1.97
-    assert "prompt_tokens" in leg
+
+        def spy_run(cmd, **kwargs):
+            if "--model" in cmd:
+                received["cmd"] = list(cmd)
+            return FakeProc()
+        subprocess.run = spy_run
+        real_expanduser = os.path.expanduser
+        os.path.expanduser = lambda _: tmp_home
+        try:
+            class A:
+                python, wheel, allow_non_apple, timeout = \
+                    "py", None, False, 10
+            execute_leg(leg, manifest, A(), contended=True,
+                        paths={"m": model_dir})
+        finally:
+            subprocess.run = real_run
+            os.path.expanduser = real_expanduser
+
+        # The process must receive the REAL path, and it must exist on
+        # disk; a literal '~' path is exactly the M1 false-failure bug.
+        model_arg = received["cmd"][received["cmd"].index("--model") + 1]
+        assert not model_arg.startswith("~"), model_arg
+        assert Path(model_arg).is_dir() and \
+            Path(model_arg, "config.json").is_file()
+        # The report carries only the redacted form.
+        assert leg["model_path"] == "~/cache/model", leg["model_path"]
+        assert leg["status"] == "measured" and leg["contended"] is True
+        assert leg["metrics"]["decode_tok_s"] == 1.97
+        assert leg.get("prompt_tokens") is None  # spy stdout is not JSON
 
     # Regression (16m1 metadata run): sw_vers must be invoked as its own
     # command, never as a sysctl oid, or host.os parses null on macOS.
