@@ -883,7 +883,7 @@ TEST_CASE("fp8 conversion matches the upstream bit algorithm") {
   require_close(decodedbf, widen(round_trip), 1e-6, "fp8 decode bf16");
 }
 
-TEST_CASE("non-contiguous norm inputs raise the named error") {
+TEST_CASE("norm kernels normalize non-contiguous inputs exactly") {
   if (!compute_available()) {
     return;
   }
@@ -893,16 +893,44 @@ TEST_CASE("non-contiguous norm inputs raise the named error") {
       transpose(reshape(base, Shape{4, 4}, stream), {1, 0}, stream);
   array weight = ones({4}, float32, stream);
 
-  auto rms_message = caught_message([&] {
-    fast::rms_norm(transposed, weight, 1e-5f, stream).eval();
-  });
-  CHECK(rms_message.find("[omarchy]") != std::string::npos);
-  CHECK(rms_message.find("non-contiguous") != std::string::npos);
-
-  auto layer_message = caught_message([&] {
-    fast::layer_norm(transposed, weight, weight, 1e-5f, stream).eval();
-  });
-  CHECK(layer_message.find("non-contiguous") != std::string::npos);
+  // Host reference in double over the logical transposed values
+  // t[r][c] = 4*c + r; independent of any backend layout.
+  double x[4][4];
+  for (int r = 0; r < 4; ++r) {
+    for (int c = 0; c < 4; ++c) {
+      x[r][c] = 4.0 * c + r;
+    }
+  }
+  std::vector<double> rms_expected;
+  std::vector<double> layer_expected;
+  rms_expected.reserve(16);
+  layer_expected.reserve(16);
+  for (int r = 0; r < 4; ++r) {
+    double sum = 0.0;
+    double ms = 0.0;
+    for (int c = 0; c < 4; ++c) {
+      sum += x[r][c];
+      ms += x[r][c] * x[r][c];
+    }
+    double mean = sum / 4.0;
+    ms /= 4.0;
+    double rms_inv = 1.0 / std::sqrt(ms + 1e-5);
+    double layer_inv = 1.0 / std::sqrt((ms - mean * mean) + 1e-5);
+    for (int c = 0; c < 4; ++c) {
+      rms_expected.push_back(x[r][c] * rms_inv);
+      layer_expected.push_back((x[r][c] - mean) * layer_inv + 1.0);
+    }
+  }
+  require_close(
+      flat(fast::rms_norm(transposed, weight, 1e-5f, stream), stream),
+      rms_expected,
+      1e-5,
+      "rms_norm transposed");
+  require_close(
+      flat(fast::layer_norm(transposed, weight, weight, 1e-5f, stream), stream),
+      layer_expected,
+      1e-5,
+      "layer_norm transposed");
 
   // A weight whose last axis does not match the row length is refused by
   // the upstream op validation before the backend gate can run.

@@ -50,9 +50,11 @@ Stream gpu_stream() {
 
 template <typename T>
 void check_exact(array value, const std::vector<T>& expected) {
-  value.eval();
-  REQUIRE_EQ(value.size(), expected.size());
-  const T* values = value.data<T>();
+  // Retained views share gapped buffers: read logical C order only.
+  auto dense = contiguous(value);
+  dense.eval();
+  REQUIRE_EQ(dense.size(), expected.size());
+  const T* values = dense.data<T>();
   for (size_t index = 0; index < expected.size(); ++index) {
     CHECK_EQ(values[index], expected[index]);
   }
@@ -60,9 +62,10 @@ void check_exact(array value, const std::vector<T>& expected) {
 
 void check_values(array value, const std::vector<float>& expected,
                   double epsilon = 1e-5) {
-  value.eval();
-  REQUIRE_EQ(value.size(), expected.size());
-  const float* values = value.data<float>();
+  auto dense = contiguous(value);
+  dense.eval();
+  REQUIRE_EQ(dense.size(), expected.size());
+  const float* values = dense.data<float>();
   for (size_t index = 0; index < expected.size(); ++index) {
     CHECK(values[index] == doctest::Approx(expected[index]).epsilon(epsilon));
   }

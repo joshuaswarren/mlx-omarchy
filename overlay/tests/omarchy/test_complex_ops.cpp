@@ -87,21 +87,24 @@ array real_array(const std::vector<double>& v, Shape shape) {
 }
 
 std::vector<cdouble> read_complex(array a, const Stream& stream) {
-  a.eval();
+  // Retained views share gapped buffers: read logical C order only.
+  auto dense = contiguous(a);
+  dense.eval();
   sync(stream);
-  const complex64_t* data = a.data<complex64_t>();
-  std::vector<cdouble> out(a.size());
-  for (size_t i = 0; i < a.size(); ++i) {
+  const complex64_t* data = dense.data<complex64_t>();
+  std::vector<cdouble> out(dense.size());
+  for (size_t i = 0; i < dense.size(); ++i) {
     out[i] = {double(data[i].real()), double(data[i].imag())};
   }
   return out;
 }
 
 std::vector<double> read_real(array a, const Stream& stream) {
-  a.eval();
+  auto dense = contiguous(a);
+  dense.eval();
   sync(stream);
-  const float* data = a.data<float>();
-  return std::vector<double>(data, data + a.size());
+  const float* data = dense.data<float>();
+  return std::vector<double>(data, data + dense.size());
 }
 
 // Exact component comparison at float32 precision: transport carries
