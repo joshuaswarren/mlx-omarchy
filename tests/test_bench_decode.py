@@ -9,6 +9,7 @@ import subprocess
 import sys
 import unittest
 from pathlib import Path
+from unittest.mock import patch, io  # noqa: F401 - used via patcher below
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO_ROOT / "scripts"))
@@ -54,6 +55,24 @@ class RunGenerationTests(unittest.TestCase):
         times, n = bench_decode.run_generation(iter((1, 2)))
         self.assertEqual(n, 2)
 
+    def test_prompt_tokens_from_first_response_only(self):
+        class Resp:
+            def __init__(self, token, prompt_tokens):
+                self.token = token
+                self.prompt_tokens = prompt_tokens
+
+        stats = {}
+        ids = []
+        times, n = bench_decode.run_generation(
+            (Resp(i, 123) for i in (3, 1, 4)), ids, stats)
+        self.assertEqual((n, ids), (3, [3, 1, 4]))
+        self.assertEqual(stats["prompt_tokens"], 123)
+
+    def test_missing_prompt_tokens_is_none_never_zero(self):
+        stats = {}
+        bench_decode.run_generation(iter((1, 2)), [], stats)
+        self.assertIsNone(stats["prompt_tokens"])
+
 
 class ReportTests(unittest.TestCase):
     def test_short_burst_exits_nonzero_without_rate(self):
@@ -64,7 +83,6 @@ class ReportTests(unittest.TestCase):
 
     def test_pinned_run_prints_counted_rate_and_id_lines(self):
         import io
-        from unittest.mock import patch
 
         ids = [7, 8, 9, 10]
         times = [1000, 2000, 3000, 4000]
@@ -81,6 +99,51 @@ class ReportTests(unittest.TestCase):
         self.assertEqual(result["ids_first"], [7, 8, 9])
         self.assertEqual(result["ids_last"], [8, 9, 10])
         self.assertAlmostEqual(tps, 1_000_000.0)
+
+    def test_prompt_tokens_line_matches_matrix_contract(self):
+        import io
+
+        class Resp:
+            def __init__(self, token, prompt_tokens):
+                self.token = token
+                self.prompt_tokens = prompt_tokens
+
+        ids, stats = [], {}
+        times, n = bench_decode.run_generation(
+            (Resp(i, 123) for i in (3, 1, 4)), ids, stats)
+        self.assertEqual(stats["prompt_tokens"], 123)
+        with patch("sys.stdout", new=io.StringIO()) as out:
+            bench_decode.report(2_000_000, times, 3, ids,
+                                prompt_tokens=stats["prompt_tokens"],
+                                device="probe-gpu")
+        text = out.getvalue()
+        # bench_matrix PROMPT_TOKENS_RE parses exactly this line form.
+        self.assertIn("prompt_tokens 123", text)
+        self.assertTrue(any(ln == "prompt_tokens 123"
+                            for ln in text.splitlines()))
+        result = json.loads(text.strip().splitlines()[-1])
+        self.assertEqual(result["prompt_tokens"], 123)
+        self.assertEqual(result["prefill_tps"], 61500.0)  # 123 / 0.002s
+        self.assertEqual(result["device"], "probe-gpu")
+
+    def test_missing_prompt_tokens_emits_no_line_ever_zero(self):
+        import io
+
+        stats = {}
+        bench_decode.run_generation(iter((1, 2)), [], stats)
+        self.assertIsNone(stats["prompt_tokens"])
+        with patch("sys.stdout", new=io.StringIO()) as out:
+            bench_decode.report(1000, [1, 2], 2, [1, 2],
+                                prompt_tokens=stats["prompt_tokens"])
+        text = out.getvalue()
+        # No plain-text line at all when unknown (consumers parse null
+        # from its absence); the JSON key still records null.
+        self.assertFalse(any(ln.startswith("prompt_tokens ")
+                             for ln in text.splitlines()))
+        self.assertNotIn("prompt_tokens unknown", text)
+        result = json.loads(text.strip().splitlines()[-1])
+        self.assertIsNone(result["prompt_tokens"])
+        self.assertIsNone(result["prefill_tps"])
 
 
 class CliExitTests(unittest.TestCase):
