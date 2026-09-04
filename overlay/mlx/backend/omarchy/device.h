@@ -100,6 +100,13 @@ struct CapabilityReport {
   // Timestamp valid bits of the compute queue family; 0 when the queue
   // reports no timestamp query support. Read by the GPU profiling harness.
   uint32_t queue_timestamp_valid_bits{0};
+  // Subgroup properties from VkPhysicalDeviceSubgroupProperties (Vulkan
+  // 1.1+, queried at init via GetPhysicalDeviceProperties2 pNext chain).
+  // Used by primitives.cpp to gate subgroup-reduction variants; see
+  // DecodeGemvSubgroup. subgroup_size of 32 with ARITHMETIC bit set is
+  // the load-bearing combination for the qmm_vec subgroup path.
+  uint32_t subgroup_size{0};
+  uint32_t subgroup_operations{0};
 };
 
 // Bounded wait for any submission or completion (plan R16): a hung
