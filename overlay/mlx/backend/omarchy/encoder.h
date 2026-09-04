@@ -74,6 +74,13 @@ class MLX_API CommandEncoder {
     return node_count_ > 0;
   }
 
+  // True while eval_compiled_tape is recording a tape node's dispatches.
+  // Set around each node's primitive.eval_gpu call; the GPU profiler
+  // tags per-dispatch events with it so dispatch counts attribute
+  // between the tape and eager paths. Recording is single-threaded per
+  // encoder, so a plain bool is safe.
+  bool in_tape_recording{false};
+
   // Nodes recorded in the open batch. The evaluator flushes the batch at
   // kBatchNodeBudget so a long graph cannot pin unbounded temporaries
   // behind one open command buffer.
