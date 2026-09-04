@@ -59,7 +59,7 @@ def ids_digest(ids):
     return h.hexdigest()[:16]
 
 
-def run_generation(gen_iter, ids=None):
+def run_generation(gen_iter, ids=None, stats=None):
     """Consume a token iterator, returning (token_times_ns, n_tokens).
 
     gen_iter yields one object per generated token. Timing wraps only
@@ -67,17 +67,23 @@ def run_generation(gen_iter, ids=None):
     a list, the exact generated token IDs are appended to it: each item
     is either a GenerationResponse (.token is the id) or a bare id
     (self-test stubs). Identity work never re-derives ids from decoded
-    text.
+    text. When `stats` is a dict, the first response's prompt_tokens
+    (the count mlx_lm actually processed) is stored in it - never
+    retokenized, never guessed.
     """
     times = []
     for item in gen_iter:
         times.append(time.monotonic_ns())
         if ids is not None:
             ids.append(getattr(item, "token", item))
+        if stats is not None and "prompt_tokens" not in stats:
+            pt = getattr(item, "prompt_tokens", None)
+            stats["prompt_tokens"] = int(pt) if pt is not None else None
     return times, len(times)
 
 
-def result_line(decode_tps, ids, prefill_ns):
+def result_line(decode_tps, ids, prefill_ns, prompt_tokens=None,
+                device=None):
     """One machine-readable JSON line per run (parse with json.loads)."""
     return json.dumps({
         "engine": "bench_decode",
@@ -87,10 +93,15 @@ def result_line(decode_tps, ids, prefill_ns):
         "ids_first": [int(i) for i in ids[:3]],
         "ids_last": [int(i) for i in ids[-3:]],
         "prefill_s": round(prefill_ns / 1e9, 6),
+        "prompt_tokens": prompt_tokens,
+        "prefill_tps": (round(prompt_tokens / (prefill_ns / 1e9), 4)
+                        if prompt_tokens and prefill_ns else None),
+        "device": device,
     }, sort_keys=True)
 
 
-def report(prefill_ns, token_times, requested, ids=None):
+def report(prefill_ns, token_times, requested, ids=None,
+           prompt_tokens=None, device=None):
     """Print prefill and pinned-length decode rates, or fail loudly."""
     n = len(token_times)
     if n != requested:
@@ -109,13 +120,20 @@ def report(prefill_ns, token_times, requested, ids=None):
     if prefill_ns:
         print(f"prefill {prefill_ns / 1e9:.3f}s (reported separately, "
               "excluded from decode)")
+    # Contract (bench_matrix PROMPT_TOKENS_RE): exactly one line
+    # "prompt_tokens <int>" and nothing else on it. When the response
+    # carried no count, no line is emitted at all - consumers treat a
+    # missing line as null; a guessed or padded line would be worse.
+    if prompt_tokens is not None:
+        print(f"prompt_tokens {prompt_tokens}")
     per_tok = decode_ns / max(1, n - 1) / 1e6
     print(f"decode mean per-token {per_tok:.1f} ms")
     if ids is not None:
         print(f"generated_ids sha256:{ids_digest(ids)} n={len(ids)} "
               f"first={','.join(str(int(i)) for i in ids[:3])} "
               f"last={','.join(str(int(i)) for i in ids[-3:])}")
-        print(result_line(decode_tps, ids, prefill_ns))
+        print(result_line(decode_tps, ids, prefill_ns,
+                          prompt_tokens=prompt_tokens, device=device))
     return decode_tps
 
 
@@ -169,6 +187,31 @@ def self_test():
     assert parsed["generated"] == 5 and parsed["ids_first"] == [5, 9214, 0]
     print("self-test: exact generated-ID digest verified "
           "(no text round trip possible)")
+
+    # 5. The prompt token count comes from the first response's
+    # prompt_tokens - the field mlx_lm's GenerationResponse carries -
+    # and is never guessed by retokenizing. A response without the
+    # field reports unknown, not zero.
+    class FakeResp:
+        def __init__(self, token, prompt_tokens):
+            self.token = token
+            self.prompt_tokens = prompt_tokens
+
+    stats = {}
+    got = []
+    run_generation((FakeResp(7, 11), FakeResp(8, 11)), got, stats)
+    assert stats["prompt_tokens"] == 11 and got == [7, 8], stats
+    bare_stats = {}
+    run_generation([5, 6], [], bare_stats)
+    assert bare_stats["prompt_tokens"] is None, bare_stats
+    parsed = json.loads(result_line(1.0, exact, 1_000_000,
+                                    prompt_tokens=11, device="probe"))
+    assert parsed["prompt_tokens"] == 11 and parsed["device"] == "probe"
+    assert parsed["prefill_tps"] == 11000.0, parsed
+    missing = json.loads(result_line(1.0, exact, 1_000_000))
+    assert missing["prompt_tokens"] is None and missing["prefill_tps"] is None
+    print("self-test: prompt_tokens captured from the first response "
+          "(unknown when absent, never guessed)")
     print("self-test: OK")
 
 
@@ -231,6 +274,13 @@ def main():
 
     model, tokenizer = load(args.model)
     import mlx.core as mx
+    device = "unknown"
+    try:
+        di = mx.metal.device_info()
+        device = (str(di.get("device_name", di)) if hasattr(di, "get")
+                  else str(di))
+    except Exception:
+        pass  # hardware identity is best-effort; provenance stays exact
     from mlx_lm.sample_utils import make_sampler
     mx.random.seed(args.seed)
     sampler = make_sampler(temp=args.temp)
@@ -256,13 +306,16 @@ def main():
 
     t0 = time.monotonic_ns()
     generated_ids = []
-    times, n = run_generation(generate(args.tokens), generated_ids)
+    run_stats = {}
+    times, n = run_generation(generate(args.tokens), generated_ids,
+                              run_stats)
     prefill_ns = times[0] - t0 if times else 0
 
     if saved_eos is not None:
         tokenizer.eos_token_ids = saved_eos
 
-    report(prefill_ns, times, args.tokens, generated_ids)
+    report(prefill_ns, times, args.tokens, generated_ids,
+           prompt_tokens=run_stats.get("prompt_tokens"), device=device)
 
 
 if __name__ == "__main__":
