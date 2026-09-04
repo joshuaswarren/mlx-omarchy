@@ -242,7 +242,14 @@ bool is_batched_matrix(const array& value, bool transposed) {
       transposed ? 1 : static_cast<int64_t>(value.shape(rank - 1));
   int64_t column_stride =
       transposed ? static_cast<int64_t>(value.shape(rank - 2)) : 1;
-  if (strides[rank - 2] != row_stride || strides[rank - 1] != column_stride) {
+  // A size-1 inner axis never dereferences its stride (the shader only
+  // indexes rows/cols below matrix_m/matrix_n), so its stride stays
+  // unchecked: decode transpose views like [B, heads, 1, head_dim] keep
+  // the zero-copy path.
+  if (value.shape(rank - 2) != 1 && strides[rank - 2] != row_stride) {
+    return false;
+  }
+  if (value.shape(rank - 1) != 1 && strides[rank - 1] != column_stride) {
     return false;
   }
   int64_t expected =
@@ -6837,6 +6844,123 @@ void ScaledDotProductAttention::eval_gpu(
     return;
   }
 
+  // Shared commit of the attention result into the output: with GQA the
+  // result is 5-D (kv, repeat) while out is 4-D (heads). The flat
+  // row-major layouts match, so share the buffer under out's own
+  // strides: copy_shared_buffer(result) alone would install 5-D strides
+  // and a 5-element stride vector on a 4-D array, and every later
+  // reader would walk wrong addresses (the upstream fallback flattens
+  // axes 1-2 here).
+  auto commit_result = [&](const array& result) {
+    if (repeats > 1) {
+      Strides out_strides(out.ndim(), 1);
+      for (int axis = out.ndim() - 2; axis >= 0; --axis) {
+        out_strides[axis] = out_strides[axis + 1] * out.shape(axis + 1);
+      }
+      array::Flags flags;
+      flags.contiguous = true;
+      flags.row_contiguous = true;
+      auto max_dim = std::max_element(out.shape().begin(), out.shape().end());
+      flags.col_contiguous = out.size() <= 1 || out.size() == *max_dim;
+      out.copy_shared_buffer(result, out_strides, flags, result.data_size());
+    } else {
+      out.copy_shared_buffer(result);
+    }
+  };
+
+  // f16 runs at f16 storage end to end: the scores and probs matmuls
+  // keep f16 operands and accumulate in float inside the shader
+  // (matmul.comp), the scale rides the scores matmul's alpha, and the
+  // softmax runs float math over f16 storage (softmax_suffix.comp). The
+  // only new rounding against the f32 composition below is f16 storage
+  // of the score and prob intermediates; the qmm decode path already
+  // runs this pattern. Deletes the three q/k/v upcasts, the scale
+  // broadcast and multiply, and the output downcast per call.
+  if (q.dtype() == float16) {
+    array qs = q;
+    array ks = k;
+    array vs = v;
+    if (repeats > 1) {
+      qs = reshape_in_eval(
+          qs, Shape{batch, kv_heads, repeats, q_len, head_dim}, s);
+      ks = reshape_in_eval(
+          ks, Shape{batch, kv_heads, 1, k_len, head_dim}, s);
+      vs = reshape_in_eval(
+          vs, Shape{batch, kv_heads, 1, k_len, v_dim}, s);
+      encoder.add_temporary(qs);
+      encoder.add_temporary(ks);
+      encoder.add_temporary(vs);
+    }
+    array keys_t = swapaxes_in_eval(ks, -1, -2);
+    encoder.add_temporary(keys_t);
+    Shape score_shape = qs.shape();
+    score_shape.back() = k_len;
+    array scores(score_shape, float16, nullptr, {});
+    dispatch_matmul(tag, {qs, keys_t}, scores, scale_, 0.0f, false, s);
+    encoder.add_temporary(scores);
+
+    std::optional<array> masked;
+    if (do_causal_) {
+      if (k_len < q_len) {
+        omarchy::unsupported("causal offset " + tag, out);
+      }
+      // The same 0 / -1e30 additive shape the f32 path builds, stored
+      // in f16: -1e30 becomes -inf there, and softmax maps it to an
+      // exact zero. A fully masked row would go NaN here where the f32
+      // path stays tiny; causal shapes always expose the diagonal.
+      array mask(Shape{q_len, k_len}, float16, nullptr, {});
+      mask.set_data(allocate_omarchy(mask.nbytes()));
+      float16_t* values = mask.data<float16_t>();
+      int offset = k_len - q_len;
+      for (int row = 0; row < q_len; ++row) {
+        for (int col = 0; col < k_len; ++col) {
+          values[row * k_len + col] =
+              offset + row >= col
+                  ? float16_t(0.0f)
+                  : float16_t(-std::numeric_limits<float>::infinity());
+        }
+      }
+      encoder.add_temporary(mask);
+      masked = array(scores.shape(), float16, nullptr, {});
+      dispatch_elementwise(tag, AddOperation, {scores, mask}, *masked, s);
+    } else if (inputs.size() == 4) {
+      // Upstream delivers the additive mask pre-broadcast in the
+      // output dtype, so the f16 path consumes it without a cast.
+      const array& mask = inputs.at(3);
+      if (mask.dtype() != float16) {
+        omarchy::unsupported("attention mask dtype " + tag, out);
+      }
+      if (repeats > 1) {
+        masked = reshape_in_eval(
+            mask, Shape{batch, kv_heads, repeats, q_len, k_len}, s);
+        encoder.add_temporary(*masked);
+      } else {
+        masked = mask;
+      }
+      if ((*masked).shape() != scores.shape()) {
+        omarchy::unsupported("attention mask shape " + tag, out);
+      }
+      array added(scores.shape(), float16, nullptr, {});
+      dispatch_elementwise(tag, AddOperation, {scores, *masked}, added, s);
+      masked = added;
+      encoder.add_temporary(*masked);
+    }
+    const array& logits = masked ? *masked : scores;
+    encoder.add_temporary(logits);
+
+    array probs(logits.shape(), float16, nullptr, {});
+    dispatch_softmax(tag, logits, probs, s);
+    encoder.add_temporary(probs);
+
+    Shape result_shape = probs.shape();
+    result_shape.back() = v_dim;
+    array result(result_shape, float16, nullptr, {});
+    dispatch_matmul(tag, {probs, vs}, result, 1.0f, 0.0f, false, s);
+    encoder.add_temporary(result);
+    commit_result(result);
+    return;
+  }
+
   // The validated f32-score composition (the M1 4-bit degeneracy fix,
   // docs/2026-09-01-m1-4bit-greedy-sdpa-f16-scores.md): cast to
   // float32, scale, express GQA through the unflatten/expand_dims
@@ -6951,26 +7075,7 @@ void ScaledDotProductAttention::eval_gpu(
   dispatch_matmul(tag, {probs, v32}, result, 1.0f, 0.0f, false, s);
   encoder.add_temporary(result);
   if (result.dtype() == out.dtype()) {
-    if (repeats > 1) {
-      // With GQA the result is 5-D (kv, repeat) while out is 4-D (heads).
-      // The flat row-major layouts match, so share the buffer under out's
-      // own strides: copy_shared_buffer(result) alone would install 5-D
-      // strides and a 5-element stride vector on a 4-D array, and every
-      // later reader would walk wrong addresses (the upstream fallback
-      // flattens axes 1-2 here).
-      Strides out_strides(out.ndim(), 1);
-      for (int axis = out.ndim() - 2; axis >= 0; --axis) {
-        out_strides[axis] = out_strides[axis + 1] * out.shape(axis + 1);
-      }
-      array::Flags flags;
-      flags.contiguous = true;
-      flags.row_contiguous = true;
-      auto max_dim = std::max_element(out.shape().begin(), out.shape().end());
-      flags.col_contiguous = out.size() <= 1 || out.size() == *max_dim;
-      out.copy_shared_buffer(result, out_strides, flags, result.data_size());
-    } else {
-      out.copy_shared_buffer(result);
-    }
+    commit_result(result);
   } else {
     copy_gpu(result, out, CopyType::Vector, s);
   }
