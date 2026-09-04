@@ -409,6 +409,136 @@ int main(int argc, char** argv) {
           109,
           float16},
       stream);
-  std::cout << "probe done\n";
-  return 0;
-}
+  // Position sweep: RoPE's angle is position * inv_freq, so any range-
+  // reduction defect must grow with position. Measure both paths across
+  // the documented band (1e3..1e5; the failing variant2 config sits
+  // inside it at theta <= 28460). The freqs variant amplifies inv_freq
+  // to 3162, so positions must stay <= ~31 to avoid the 1e5 trig gate
+  // (we probe position 32 below to demonstrate the gate, not the kernel,
+  // refuses as documented in known-defects.md).
+  struct Sweep {
+    const char* tag;
+    Dtype dtype;
+    std::vector<int> positions;
+    int dims;
+    float base;
+    bool with_freqs;
+  };
+  Sweep sweeps[] = {
+      // Base variant, Qwen 0.5B decode shape: dims 128, base 500000.
+      // Covers positions 1 (small angle) through 32000 (inside the
+      // documented 5e-3 absolute envelope band).
+      {"base_f16", float16, {1, 37, 1000, 8000, 32000}, 128, 500000.0f, false},
+      {"base_f32", float32, {1, 37, 1000, 8000, 32000}, 128, 500000.0f, false},
+  };
+  for (const Sweep& sw : sweeps) {
+    std::optional<array> sw_freqs;
+    int half = sw.dims / 2;
+    if (sw.with_freqs) {
+      sw_freqs = exp(
+          multiply(
+              arange(0, -half, -1, float32, stream),
+              array(std::log(10000.0f) / half, float32),
+              stream),
+          stream);
+    }
+    for (int pos : sw.positions) {
+      Shape shape{1, 1, 1, sw.dims};
+      array x = rope_input(shape, 999, sw.dtype, stream);
+      array off = array(pos, int32);
+      try {
+        auto got = fast::rope(
+            x,
+            sw.dims,
+            false,
+            sw.with_freqs ? std::nullopt : std::optional<float>(sw.base),
+            1.0f,
+            off,
+            sw_freqs,
+            stream);
+        auto want = composed_rope(
+            x,
+            sw.dims,
+            false,
+            sw.base,
+            1.0f,
+            off,
+            sw_freqs,
+            true,
+            stream);
+        auto gv = flat(got, stream);
+        auto wv = flat(want, stream);
+        double max_diff = 0.0;
+        for (size_t i = 0; i < gv.size(); ++i) {
+          max_diff = std::max(
+              max_diff, std::abs(static_cast<double>(gv[i]) - wv[i]));
+        }
+        char sec[96];
+        std::snprintf(
+            sec,
+            sizeof(sec),
+            "sweep_%s_pos%d_d%d",
+            sw.tag,
+            pos,
+            sw.dims);
+        dump(out, std::string("fused_") + sec, gv);
+        dump(out, std::string("composed_") + sec, wv);
+        dump(out, std::string("input_") + sec, flat(x, stream));
+        std::cout << "[" << sw.tag << "@pos" << pos
+                  << "] max|fused-composed|=" << max_diff << "\n";
+      } catch (const std::exception& e) {
+        // The trig gate refuses above theta 1e5; record that here so
+        // the analysis can distinguish gate-refusal from kernel-error.
+        std::cout << "[" << sw.tag << "@pos" << pos
+                  << "] refused: " << e.what() << "\n";
+      }
+    }
+  }
+
+  // Gate-boundary probe (freqs variant): dims 16, inv_freq max 3162;
+  // position_max = floor(1e5 / 3162) = 31. Position 32 must refuse on
+  // both paths; positions 1, 9, 25, 31 must run and the error-vs-truth
+  // curve discriminates the mechanism.
+  {
+    array sw_freqs = exp(
+        multiply(
+            arange(0, -8, -1, float32, stream),
+            array(std::log(10000.0f) / 8, float32),
+            stream),
+        stream);
+    int positions[] = {1, 9, 25, 31, 32};
+    for (int pos : positions) {
+      Shape shape{1, 1, 1, 16};
+      array x = rope_input(shape, 991, float32, stream);
+      array off = array(pos, int32);
+      try {
+        auto got = fast::rope(
+            x, 16, false, std::nullopt, 1.0f, off,
+            std::optional<array>(sw_freqs), stream);
+        auto want = composed_rope(
+            x, 16, false, 10000.0f, 1.0f, off,
+            std::optional<array>(sw_freqs), true, stream);
+        auto gv = flat(got, stream);
+        auto wv = flat(want, stream);
+        double max_diff = 0.0;
+        for (size_t i = 0; i < gv.size(); ++i) {
+          max_diff = std::max(
+              max_diff, std::abs(static_cast<double>(gv[i]) - wv[i]));
+        }
+        char sec[64];
+        std::snprintf(sec, sizeof(sec), "sweep_freqs_f32_pos%d", pos);
+        dump(out, std::string("fused_") + sec, gv);
+        dump(out, std::string("composed_") + sec, wv);
+        dump(out, std::string("input_") + sec, flat(x, stream));
+        std::cout << "[freqs_f32@pos" << pos
+                  << "] max|fused-composed|=" << max_diff << "\n";
+      } catch (const std::exception& e) {
+        std::cout << "[freqs_f32@pos" << pos
+                  << "] refused: " << e.what() << "\n";
+      }
+    }
+  }
+
+   std::cout << "probe done\n";
+   return 0;
+ }

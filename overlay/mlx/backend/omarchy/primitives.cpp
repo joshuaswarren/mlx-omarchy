@@ -6630,8 +6630,16 @@ void RoPE::eval_gpu(
   // defect, with the equivalence test green.
   // THROWAWAY PROBE SWITCH (RoPE accuracy investigation, not for
   // merge): OMARCHY_ROPE_FORCE_COMPOSED routes every RoPE through the
-  // composed fallback so a generation A/B can compare paths on device.
+  // composed fallback so a generation A/B can compare paths on device,
+  // and the side identifier proves the two sides are different builds
+  // (AGENTS.md, "an A/B must prove its two sides are different builds").
   if (std::getenv("OMARCHY_ROPE_FORCE_COMPOSED") != nullptr) {
+    static const bool once = []() {
+      std::cout << "[rope] composed-fallback ENABLED"
+                   " (OMARCHY_ROPE_FORCE_COMPOSED active)" << std::endl;
+      return true;
+    }();
+    (void)once;
     auto result = fallback_(inputs);
     result[0].eval();
     encoder.synchronize();
