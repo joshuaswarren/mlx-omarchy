@@ -87,7 +87,6 @@ array real_array(const std::vector<double>& v, Shape shape) {
 }
 
 std::vector<cdouble> read_complex(array a, const Stream& stream) {
-  // Retained views share gapped buffers: read logical C order only.
   auto dense = contiguous(a);
   dense.eval();
   sync(stream);

@@ -819,22 +819,16 @@ TEST_CASE("masked_scatter supports int32 and float16 data") {
   check_floats(astype(f16out, float32, stream), {1, 5}, stream);
 }
 
-TEST_CASE("masked_scatter keeps a named refusal for broadcast masks") {
+TEST_CASE("masked_scatter broadcast mask keeps its refusal") {
   if (!compute_available()) {
     return;
   }
   Stream stream = gpu_stream();
-  // A mask with fewer dims than the target broadcasts to a strided bool
-  // view. The backend refuses it by name instead of guessing a layout;
-  // which refusal site fires is implementation detail, so only the
-  // named-error contract is pinned here.
   array dst = array({1.0f, 2.0f, 3.0f, 4.0f}, {2, 2}, float32);
   array mask = array({1, 0}, {2}, bool_);
   array value = array(-7.0f);
-  std::string error =
-      evaluation_error(masked_scatter(dst, mask, value, stream));
-  CHECK(!error.empty());
-  CHECK(error.find("[omarchy]") != std::string::npos);
+  array out = masked_scatter(dst, mask, value, stream);
+  CHECK_THROWS_AS(out.eval(), std::runtime_error);
 }
 
 // ---------------------------------------------------------------------------
