@@ -1,12 +1,39 @@
 # Known defects, by release
 
-This page is the project's defect ledger for silent wrong values and crashes. It covers v0.3.0-alpha.1, v0.3.0, and v0.3.1. Each entry states the affected versions, the symptom, the platform the defect was observed on, and the fix status. Upstream MLX's own test suites exposed the v0.3.0-alpha.1 list on 2026-09-02; per-case evidence sits in [receipts/2026-09-02-upstream-suite-coverage.md](../receipts/2026-09-02-upstream-suite-coverage.md). The M1 findings are recorded in [receipts/2026-09-02-m1-red-suites-root-cause.md](../receipts/2026-09-02-m1-red-suites-root-cause.md).
+This page is the project's defect ledger for silent wrong values and crashes. It covers v0.3.0-alpha.1 through v0.3.4. Each entry states the affected versions, the symptom, the platform the defect was observed on, and the fix status. Upstream MLX's own test suites exposed the v0.3.0-alpha.1 list on 2026-09-02; per-case evidence sits in [receipts/2026-09-02-upstream-suite-coverage.md](../receipts/2026-09-02-upstream-suite-coverage.md). The M1 findings are recorded in [receipts/2026-09-02-m1-red-suites-root-cause.md](../receipts/2026-09-02-m1-red-suites-root-cause.md).
 
 This project's contract is to refuse by name rather than return a wrong number. The entries below break that contract, which is why they outrank every coverage gap. Anything not on this page fails loudly with a named `[omarchy] ... is not implemented` error.
 
 ## Why platform matters here
 
 Two of the worst v0.3.0 defects never appeared on a Linux development box. They are real-M1-only, and the full dev-box battery - 24 binaries, 407 cases, 828,139 assertions - was green the whole night they shipped. A Vulkan capability query, a shader miscompile, and a submit-thread ordering are all per-driver questions: llvmpipe, lavapipe, and Honeykrisp answer them differently. **A green run on a software driver is not proof about the Apple GPU, and this ledger now records where every defect was observed.** Anyone contributing: your llvmpipe battery passing is the start of verification on this project, not the end of it.
+
+## Live in v0.3.4
+
+Open in the current release.
+
+### A single large evaluation can wedge the GPU queue
+
+Affected: v0.3.4, and every earlier release - the watchdog change in v0.3.4
+altered how the failure is reported, not whether it happens. Observed on: real
+M1 (Honeykrisp). Status: OPEN, cause unknown.
+
+A single `mx.eval` over a full-sequence forward at 2,048 tokens wedges the
+queue. The completion timeline counter stays frozen at 0 - no work retires -
+and the submission watchdog correctly declares a hang after ten seconds of no
+progress, failing by name with no CPU fallback. This is a genuine hang, not
+slow work being misclassified: an earlier reading of this failure assumed the
+ten-second bound was simply too short, and hardware testing refuted that.
+
+Chunked work at the same or greater length is unaffected. `mlx_lm` chunks
+prefill, so ordinary generation does not reach it - a 6,009-token context
+completed normally in 183 seconds. What reaches it is a hand-written
+full-sequence forward, which is why no user has reported it and no test caught
+it. Evidence and the protocol that produced it:
+[receipts/2026-09-04-hang-watchdog-hardware.md](../receipts/2026-09-04-hang-watchdog-hardware.md).
+
+Until the cause is found, evaluate long sequences in chunks rather than in one
+operation.
 
 ## Live in v0.3.1
 
