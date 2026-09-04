@@ -18,33 +18,79 @@ This script fixes the metric:
   - The decode rate is always printed with the token count it was
     measured over, e.g. "decode 1.97 tok/s over 64 tokens". A rate
     without its token count is not comparable and must not be quoted.
+  - The EXACT generated token IDs travel with every run (the
+    "generated_ids sha256:..." line and one JSON result line), so
+    before/after greedy identity is decided on the IDs themselves.
+    Never re-derive IDs via tokenizer.decode(ids) then encode(): the
+    text round trip truncates and renormalizes and can both hide and
+    fabricate divergences.
 
 Run it with MLX_DISABLE_COMPILE=1 to match the receipt baseline.
 
 Self-test (no GPU, no mlx needed): python3 bench_decode.py --self-test
-proves the pinned length is honored and that the assertion fires when
-generation stops early. Self-test timings are meaningless; only the
-assertion behavior is verified.
+proves the pinned length is honored, that the assertion fires when
+generation stops early, and that the ID digest covers the exact IDs.
+Self-test timings are meaningless; only the assertion behavior is
+verified.
+
+Exit codes: 0 measured; 1 pinned-length violation; 2 bad invocation or
+unusable environment; 3 provenance refusal.
 """
 
 import argparse
+import hashlib
+import json
 import sys
 import time
 from pathlib import Path
 
-def run_generation(gen_iter):
+
+def ids_digest(ids):
+    """Stable digest over the EXACT generated token IDs, in order.
+
+    Greedy identity between two wheels is decided by comparing these
+    digests. Never decide identity by tokenizer.decode(ids) followed by
+    encode(): the text round trip truncates and renormalizes (special
+    tokens, multi-byte characters, EOS), so it can hide a real ID
+    divergence and can fabricate one. Compare the IDs themselves.
+    """
+    h = hashlib.sha256()
+    h.update(",".join(str(int(i)) for i in ids).encode("ascii"))
+    return h.hexdigest()[:16]
+
+
+def run_generation(gen_iter, ids=None):
     """Consume a token iterator, returning (token_times_ns, n_tokens).
 
     gen_iter yields one object per generated token. Timing wraps only
-    the iteration, so it excludes load and prompt setup.
+    the iteration, so it excludes load and prompt setup. When `ids` is
+    a list, the exact generated token IDs are appended to it: each item
+    is either a GenerationResponse (.token is the id) or a bare id
+    (self-test stubs). Identity work never re-derives ids from decoded
+    text.
     """
     times = []
-    for _ in gen_iter:
+    for item in gen_iter:
         times.append(time.monotonic_ns())
+        if ids is not None:
+            ids.append(getattr(item, "token", item))
     return times, len(times)
 
 
-def report(prefill_ns, token_times, requested):
+def result_line(decode_tps, ids, prefill_ns):
+    """One machine-readable JSON line per run (parse with json.loads)."""
+    return json.dumps({
+        "engine": "bench_decode",
+        "decode_tps": round(decode_tps, 4),
+        "generated": len(ids),
+        "ids_sha256_16": ids_digest(ids),
+        "ids_first": [int(i) for i in ids[:3]],
+        "ids_last": [int(i) for i in ids[-3:]],
+        "prefill_s": round(prefill_ns / 1e9, 6),
+    }, sort_keys=True)
+
+
+def report(prefill_ns, token_times, requested, ids=None):
     """Print prefill and pinned-length decode rates, or fail loudly."""
     n = len(token_times)
     if n != requested:
@@ -65,11 +111,16 @@ def report(prefill_ns, token_times, requested):
               "excluded from decode)")
     per_tok = decode_ns / max(1, n - 1) / 1e6
     print(f"decode mean per-token {per_tok:.1f} ms")
+    if ids is not None:
+        print(f"generated_ids sha256:{ids_digest(ids)} n={len(ids)} "
+              f"first={','.join(str(int(i)) for i in ids[:3])} "
+              f"last={','.join(str(int(i)) for i in ids[-3:])}")
+        print(result_line(decode_tps, ids, prefill_ns))
     return decode_tps
 
 
 def self_test():
-    """Prove pinning and the assertion with in-process stubs."""
+    """Prove pinning, the assertion, and the ID digest with stubs."""
 
     class StubTokenizer:
         eos_token_ids = {0}
@@ -100,6 +151,24 @@ def self_test():
     # 3. Exactly-pinned run passes report().
     times, n = run_generation(stub_iter(32))
     report(prefill_ns=1_000_000, token_times=times, requested=32)
+
+    # 4. The digest covers the EXACT ids in order. The stub iterable has
+    # no encode/decode at all, so a decode->encode round trip would
+    # crash here rather than pass: the identity path cannot be the text
+    # one.
+    exact = [5, 9214, 0, 151643, 7]
+    got = []
+    run_generation(iter(exact), got)
+    assert got == exact, got
+    want = hashlib.sha256(",".join(map(str, exact)).encode("ascii"))
+    assert ids_digest(got) == want.hexdigest()[:16]
+    assert ids_digest(exact[:-1] + [8]) != ids_digest(exact), (
+        "digest did not notice a changed id")
+    parsed = json.loads(result_line(1.0, exact, 0))
+    assert parsed["ids_sha256_16"] == ids_digest(exact)
+    assert parsed["generated"] == 5 and parsed["ids_first"] == [5, 9214, 0]
+    print("self-test: exact generated-ID digest verified "
+          "(no text round trip possible)")
     print("self-test: OK")
 
 
@@ -128,6 +197,13 @@ def main():
         self_test()
         return
 
+    if not args.model:
+        ap.error("--model is required (path to the mlx_lm model)")
+    if not args.prompt:
+        ap.error("--prompt is required")
+    if args.tokens < 2:
+        ap.error("--tokens must be >= 2: a decode rate needs at least "
+                 "one inter-token gap")
     if args.wheel and not Path(args.wheel).is_file():
         print(f"ERROR: --wheel {args.wheel} does not exist", file=sys.stderr)
         sys.exit(2)
@@ -179,13 +255,14 @@ def main():
             pass
 
     t0 = time.monotonic_ns()
-    times, n = run_generation(generate(args.tokens))
+    generated_ids = []
+    times, n = run_generation(generate(args.tokens), generated_ids)
     prefill_ns = times[0] - t0 if times else 0
 
     if saved_eos is not None:
         tokenizer.eos_token_ids = saved_eos
 
-    report(prefill_ns, times, args.tokens)
+    report(prefill_ns, times, args.tokens, generated_ids)
 
 
 if __name__ == "__main__":
