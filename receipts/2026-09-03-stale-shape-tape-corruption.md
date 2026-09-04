@@ -151,3 +151,24 @@ post-failure runs existed.
 - Open on my side: TCF-2 compiled-vs-eager measurement (decode + prefill,
   pinned length, provenance wheel) - the number lands in the README when
   measured; graph/model differential modes to close the deviation.
+
+## Closed 2026-09-04
+
+- Landed on main: `26c6714`/`0647236`/`5243fc3` (the three commits,
+  merged verbatim), receipt merge, and the re-enable `dfe8f17`
+  (auto-eager hook, device gate, and `unsupported_tape_compilation()`
+  removed; `MLX_OMARCHY_ALLOW_UNSAFE_COMPILE` retired; bf16 and trig
+  gates and the poison detector stay; default-path shapeless-reuse case
+  added, llvmpipe 11/11 cases / 1747 assertions).
+- TCF-2 on main `b7bde25` (wheel sha256 `aa6a7e05cbfc373cbdb6dd8c08e6
+  86d32b519b367224d9b5bb64a92b818a1506`, provenance gate green):
+  compiled at its default (no env vars, shapeless-reuse notice in all
+  five runs) decodes 7.10 tok/s median over 63 pinned tokens
+  (7.10/7.37/7.00/7.05/7.41) against 7.25 eager
+  (7.29/7.21/7.61/7.07/7.25) - parity within run-to-run noise; prefill
+  27.3 tok/s both legs; zero disabled-warnings in stderr. Logs
+  `jwm1:~/benchq/logs/tcf2b-*.run*.log/.err`. Graph/model differential
+  modes: realpath (the load-bearing mode) is bitwise-clean over 32
+  steps on hardware; the synthetic modes ride the same interpreter path
+  and the battery covers them locally - deviation accepted, recorded
+  here rather than silently dropped.
