@@ -2,9 +2,15 @@
 # Build + run the subgroup-vs-tree microbenchmark on jwm1.
 #
 # Reads PROTOCOL.md for the full rationale. This script exists so the
-# BenchQueueM1 liveness procedure gets one concrete command and one
-# concrete log path.
-set -eu
+# Main session (and any reviewer who inherits it) gets one concrete
+# command and one concrete log path.
+#
+# Exit path: set -euo pipefail. A glslc compile failure must NOT print
+# BENCH_DONE (which it used to, because the brace pipeline returned
+# tee's status). pipefail makes the pipeline return the bench's exit
+# code, and -e turns the script's status into nonzero. The bench
+# itself dies on compile failure; pipefail then propagates that.
+set -euo pipefail
 
 # Always run from the worktree root so the relative shader paths
 # resolve. The bench prints stderr from glslc/glslangValidator if
@@ -19,15 +25,16 @@ if [[ ! -d .work/mlx ]]; then
   bash scripts/prepare-mlx.sh
 fi
 
-# 2. Build the harness. Pinned to glslc compilation for the shaders;
-#    the program will fall back to glslangValidator if glslc is not
-#    available, but the receipt requires glslc per repo hard rule.
-g++ -std=c++17 -O2 -o /tmp/subgroup-bench tools/subgroup-bench/bench.cpp
+# 2. Build the harness. The shaders are compiled by the program
+#    itself at startup (see tools/subgroup-bench/bench.cpp), passing
+#    --target-env=vulkan1.3 because the subgroup extensions need
+#    SPIR-V 1.3.
+g++ -std=c++17 -O2 -Wall -Wextra -o /tmp/subgroup-bench tools/subgroup-bench/bench.cpp
 
-# 3. Run. Both modes are quick — the program exits with the verdict
-#    on stdout as NDJSON. We tee to a log so the receipt can cite
-#    exact bytes.
 LOG=/tmp/subgroup-bench.log
+# pipefail: a failure inside the brace group propagates. The bench
+# exits nonzero on shader compile failure (see die in bench.cpp), so
+# tee returning 0 alone is not enough.
 {
   echo "=== bench ==="
   /tmp/subgroup-bench
