@@ -1108,13 +1108,21 @@ void require_rope_close(
     const array& got,
     const array& want,
     Stream stream,
-    const std::string& what) {
+    const std::string& what,
+    double theta_bound = 1e3) {
   REQUIRE_EQ(got.shape(), want.shape());
   bool apple = rope_on_apple_gpu();
   if (got.dtype() == float32) {
-    // Apple: 1e-3 bounds the observed 6.2e-4 with margin inside the
-    // documented envelope. Dev box: the contraction bound.
-    double tolerance = apple ? 1e-3 : f32_tolerance;
+    // The Apple tier follows the driver's DOCUMENTED sin/cos envelope
+    // (known-defects, measured in the v0.3.1 scalar sweep - pre-dating
+    // this kernel): below theta 1e3 the built-in is accurate to
+    // contraction level; across 1e3..1e5 it is bounded at 5e-3
+    // absolute (measured worst 4.8e-3). theta_bound is the analytic
+    // maximum |theta| of the configuration - the same bound
+    // rope_trig_gate computes - not a number fitted to failures.
+    // Dev box: the contraction bound everywhere.
+    double tolerance =
+        (!apple || theta_bound <= 1e3) ? f32_tolerance : 5e-3;
     require_close(flat(got, stream), widen(flat(want, stream)),
                   tolerance, what);
   } else if (got.dtype() == bfloat16) {
@@ -1182,7 +1190,15 @@ TEST_CASE("fused rope matches the composed fallback bit for bit") {
             with_freqs ? std::optional<array>(freqs) : std::nullopt,
             true,
             stream);
-        require_rope_close(got, want, stream, what);
+        // Analytic theta bound: positions run [3, 3+T-1]; the largest
+        // inv-frequency is the reciprocal of the smallest freqs entry
+        // (with_freqs) or exactly 1 (base >= 1).
+        double theta_bound = 9.0;
+        if (with_freqs) {
+          double min_freq = 1.0 / std::exp(7.0 * (std::log(10000.0) / 8));
+          theta_bound = 9.0 / min_freq;
+        }
+        require_rope_close(got, want, stream, what, theta_bound);
       }
     }
   }
@@ -1227,6 +1243,27 @@ TEST_CASE("fused rope partial dims keep the passthrough exact") {
     auto want = composed_rope(
         x, 16, true, 10000.0f, 1.0f, offset, std::nullopt, true, stream);
     require_rope_close(got, want, stream, "rope partial dims");
+    // The passthrough tail is a copy, not a computation: elements at
+    // d >= dims must equal the input bits exactly on every driver,
+    // independent of any trig tolerance tier. This is the mechanical
+    // check Main asked for (2026-09-04) - it separates a real tail bug
+    // from trig-class deviations on the rotated range.
+    auto got_v = flat(got, stream);
+    auto x_v = flat(x, stream);
+    for (int b = 0; b < 2; ++b) {
+      for (int n = 0; n < 3; ++n) {
+        for (int t = 0; t < 5; ++t) {
+          size_t base = ((b * 3 + n) * 5 + t) * 32u;
+          for (int d = 16; d < 32; ++d) {
+            CHECK_MESSAGE(
+                got_v[base + d] == x_v[base + d],
+                "passthrough tail element ",
+                base + d,
+                " differs from input");
+          }
+        }
+      }
+    }
   }
 }
 
