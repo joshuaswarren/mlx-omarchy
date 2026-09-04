@@ -11,6 +11,7 @@ Upstreaming a change is a separate, later decision.
 | `ml-explore/mlx` | `joshuaswarren/omarchy-mlx` | `omarchy` | MLX 0.32.2 commit `1f8e74e3f12f31365464a6867c6579f0e9b29d85`, the `mlx.lock` pin, plus the six patches from `patches/`, one commit per patch |
 | `eiln/ane` and `allbilly/libane` | `joshuaswarren/omarchy-ane` | `omarchy`, `omarchy-kmd` | `omarchy`: eiln/ane tip `0dcea99` plus the six-commit libane series from `~/keep/eiln-ane-series/`, applied with `git am`. `omarchy-kmd`: allbilly/libane head `1e0afd8` plus the jwm1 debug instrumentation from `~/keep/ane-kmd-local/local-kmd-changes.patch` |
 | `AsahiLinux/linux` | `joshuaswarren/linux` | `ane-dt-t8103` | Asahi tag `asahi-7.1.6-1`, the exact source of the Arch kernel `7.1.6-1-1-ARCH` on the M1 test machine, plus two commits `326d6033059d18a1f47833ba7ad3a3ee2c4eb443` and `b1cb024a1`: the ANE device-tree node, `status = "disabled"` in `t8103.dtsi` and enabled in `t8103-j293.dts`. After hostile review found that an enabled ANE DART node would let the in-tree `apple-dart` driver and the out-of-tree driver fight over the same MMIO window and IRQ 417, the second commit keeps the ANE DART node disabled everywhere and drops the `iommus` phandle. |
+| `gitlab.freedesktop.org/mesa/mesa` | `joshuaswarren/mesa` | `honeykrisp-miscompile-repros` | Upstream `main` tip `4a34ded300c` plus one change: `src/asahi/repro/`, standalone reproductions for the five Honeykrisp miscompiles with the family analysis and per-defect workaround links |
 
 `eiln/ane` and `allbilly/libane` are one lineage. `allbilly/libane` is a fork
 of `eiln/ane` that stays ahead of it, and it carries both the kernel module in
@@ -99,3 +100,31 @@ whether the node shape in `ane-dt-t8103` is right. The out-of-tree driver
 in `joshuaswarren/omarchy-ane` must stay blacklisted; loading it
 hard-reset the M1 on 2026-09-03. Do not pair this device-tree change
 with an automatic module load.
+
+## Mesa miscompile reproductions
+
+`joshuaswarren/mesa` carries the five Honeykrisp miscompiles as
+standalone Vulkan compute programs that any Mesa developer can build
+and run on Apple hardware. Upstream is
+`gitlab.freedesktop.org/mesa/mesa`. The fork was cut from the GitHub
+mirror `intel-lgci-fdo-gitlab-mirror/mesa.mesa` on 2026-09-03, because
+the old `Mesa3D/mesa` mirror no longer exists. The clone keeps
+`upstream` pointed at the canonical GitLab remote with push disabled.
+The branch is `honeykrisp-miscompile-repros`.
+
+Purpose: Dj does the Mesa-side Apple GPU work and asked for the fixes
+in a form he can read, evaluate, and reuse on newer ISAs. The branch
+carries one reproduction per miscompile, expected-versus-observed
+numbers with the hardware and driver version, the shipped mlx-omarchy
+workaround per defect with receipt links, and the family analysis.
+Four of the five findings are presented as one suspected family -
+dynamic byte extraction, a data-dependent shift feeding a mask -
+labelled a hypothesis with its confound named. The README in
+`src/asahi/repro/` on the branch is the authority; this file only maps
+the fork.
+
+Limits, stated on the branch itself: the shaders are reconstructions
+of the receipts' probe shapes, not copies; nothing on the branch has
+been run on Apple hardware; the llvmpipe verification (every case arm
+passes) proves only that the programs compute the expected values on a
+conformant driver.
