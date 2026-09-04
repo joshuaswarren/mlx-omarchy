@@ -17,6 +17,15 @@ records. GPU ticks convert with meta.period_ns; unwrapping uses
 meta.valid_bits. Phases come from an optional markers file written by
 scripts/profile_generate.py (CLOCK_MONOTONIC ns, same clock as the harness
 host timestamps).
+
+Phase attribution contract: dispatch ("k":"d") records are written
+DELAYED - when their ring slot is flushed at a join or slot reuse, long
+after the work was submitted - so file order and the "op" field never
+attribute anything. A dispatch belongs to the phase its SUBMISSION was
+made in: look up the submit record ("k":"s") with the same id d["s"]
+and canonicalize the last marker at that host time. Dispatches whose
+submission record is missing are reported under "unknown" and are
+never folded into a named phase as zero-cost work.
 """
 
 import argparse
@@ -88,12 +97,19 @@ def main():
     dispatches = []
     joins = []
     submits = []
+    lineno = 0
     with open(args.profile, "r", encoding="utf-8") as f:
         for line in f:
+            lineno += 1
             line = line.strip()
             if not line:
                 continue
-            rec = json.loads(line)
+            try:
+                rec = json.loads(line)
+            except json.JSONDecodeError as exc:
+                print(f"malformed profile line {lineno}: {exc}",
+                      file=sys.stderr)
+                sys.exit(2)
             kind = rec.get("k")
             if kind == "meta":
                 meta = rec
@@ -107,6 +123,11 @@ def main():
     if meta is None:
         print("no meta line; not a profile file", file=sys.stderr)
         sys.exit(1)
+    for field in ("period_ns", "valid_bits"):
+        if not isinstance(meta.get(field), (int, float)):
+            print(f"malformed meta: {field} missing or not numeric",
+                  file=sys.stderr)
+            sys.exit(2)
 
     names = {}
     if args.compute_h:
@@ -128,9 +149,23 @@ def main():
                 if line:
                     markers.append(json.loads(line))
 
-    join_by_s = {j["s"]: j for j in joins}
+    submit_by_s = {}
+    for s in submits:
+        submit_by_s[s["s"]] = s
+
+    # Marker names canonicalize to the phase whose work they bracket.
+    # tok is the per-token decode marker; the *_done markers are phase
+    # boundaries where no new work is submitted.
+    PHASE_OF_MARKER = {
+        "load_start": "load",
+        "prefill_start": "prefill",
+        "decode_start": "decode",
+        "tok": "decode",
+        "decode": "decode",
+    }
 
     def phase_of_host(t):
+        """Canonical phase of a host timestamp, or None if unknowable."""
         if not markers:
             return None
         cur = markers[0]["p"]
@@ -138,11 +173,18 @@ def main():
             if m["t"] > t:
                 break
             cur = m["p"]
-        return cur
+        return PHASE_OF_MARKER.get(cur)
 
+    # Dispatch records are flushed late (join or slot reuse), so a
+    # dispatch's phase is the phase of its SUBMISSION, resolved by the
+    # submission id d["s"] against the submit record's host time. The
+    # join's host time would attribute work to whenever the host got
+    # around to waiting, not to when the work was submitted. A
+    # dispatch with no submit record stays None and is reported as
+    # unknown below - never guessed.
     for d in dispatches:
-        j = join_by_s.get(d["s"])
-        d["phase"] = phase_of_host(j["t"]) if j else None
+        s_rec = submit_by_s.get(d["s"])
+        d["phase"] = phase_of_host(s_rec["t"]) if s_rec else None
 
     out = []
 
@@ -284,20 +326,22 @@ def main():
         by_phase = {}
         for d in dispatches:
             by_phase.setdefault(d["phase"], []).append(d)
+        dur_by_id = {id(d): dur for dur, d in kernels_ns}
         say("")
-        say("== per phase")
+        say("== per phase (a dispatch's phase is its submission's phase;")
+        say("   the dispatch records themselves are flushed late, at joins)")
         for ph in sorted(by_phase, key=lambda p: (p is None, p or "")):
             ds = by_phase[ph]
-            dur = sum((d["t1"] - d["t0"]) * period
-                      for d in ds if "t0" in d)
+            label = ph if ph else "unknown (no matching submit record)"
+            dur = sum(dur_by_id.get(id(d), 0.0) for d in ds)
             joins_ph = [j for j in joins if phase_of_host(j["t"]) == ph]
-            say(f"   {ph}: dispatches={len(ds)} gpu_busy={fmt_ns(dur)} "
+            say(f"   {label}: dispatches={len(ds)} gpu_busy={fmt_ns(dur)} "
                 f"joins={len(joins_ph)} join_wait_total="
                 f"{fmt_ns(sum(j['wait'] for j in joins_ph))}")
         n_tok = sum(1 for m in markers if m["p"] == "tok")
-        decode_ds = len(by_phase.get("decode", by_phase.get("tok", [])))
+        decode_ds = len(by_phase.get("decode", []))
         decode_subs = [s for s in submits
-                       if phase_of_host(s["t"]) in ("decode", "tok")]
+                       if phase_of_host(s["t"]) == "decode"]
         if n_tok:
             say(f"   dispatches/decode-token: {decode_ds / n_tok:.1f} "
                 f"({decode_ds} over {n_tok} tokens)")
@@ -305,7 +349,7 @@ def main():
                 f"{len(decode_subs) / n_tok:.1f} "
                 f"({len(decode_subs)} over {n_tok} tokens)")
             jw = sum(j["wait"] for j in joins
-                     if phase_of_host(j["t"]) in ("decode", "tok"))
+                     if phase_of_host(j["t"]) == "decode")
             say(f"   join wait per decode-token: {fmt_ns(jw / n_tok)}")
 
     print("\n".join(out))
