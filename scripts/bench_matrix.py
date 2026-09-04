@@ -693,6 +693,7 @@ def main():
     if args.allow_non_apple:
         result["env"] = {"MLX_OMARCHY_ALLOW_NON_APPLE": "1 (dev/software GPU)"}
     env_ok = run_py(args.python, ["-c", "import mlx_lm"]).returncode == 0
+    measured = 0
     for leg in legs:
         if leg["status"] != "ready":
             continue
@@ -884,8 +885,53 @@ def self_test():
     assert mac["os"] == "macOS 26.6.2 (25G83)", mac["os"]
     assert mac["chip"] == "Apple M1 Max"
 
+    # Main() run path, end to end with faked subprocesses: a measured
+    # leg must increment measured_legs. Guards the lost 'measured = 0'
+    # initialization (MatrixReview P0) that crashed every real run.
+    with tempfile.TemporaryDirectory() as tmp_home:
+        model_dir = Path(tmp_home) / "cache" / "model"
+        model_dir.mkdir(parents=True)
+        (model_dir / "config.json").write_text("{}")
+        man = {"schema": SCHEMA,
+               "generation": {"temp": 0, "seed": 0, "warmup_tokens": 4,
+                              "engine": "bench_decode",
+                              "engine_script": "bench_decode.py",
+                              "env": {}},
+               "models": [{"id": "m", "repo": "org/x", "revision": None,
+                           "optional": True}],
+               "prompts": {"s": {"text": "Hi"}},
+               "workloads": [{"id": "w", "prompt": "s", "tokens": 4}]}
+        man_path = Path(tmp_home) / "manifest.json"
+        out_path = Path(tmp_home) / "out.json"
+        man_path.write_text(json.dumps(man))
+        real_argv = sys.argv
+        sys.argv = ["bench_matrix.py", "--mode", "run",
+                    "--manifest", str(man_path),
+                    "--model-dir", f"m={model_dir}",
+                    "--python", "py", "--host-label", "selftest",
+                    "--out", str(out_path)]
+
+        def main_spy(cmd, **kwargs):
+            class P:
+                returncode = 0
+                stderr = ""
+            P.stdout = out if isinstance(cmd, list) and \
+                "--model" in cmd else ""
+            return P()
+
+        subprocess.run = main_spy
+        try:
+            main()
+        finally:
+            subprocess.run = real_run
+            sys.argv = real_argv
+        emitted = json.loads(out_path.read_text())
+        assert emitted["measured_legs"] == 1, emitted["measured_legs"]
+        assert emitted["legs"][0]["status"] == "measured"
+
     print("self-test: OK (parsing, skip rules, templates, selection, pin "
-          "refusal, sanitization, leg execution, darwin os parse)")
+          "refusal, sanitization, leg execution, darwin os parse, "
+          "main run path)")
 
 
 if __name__ == "__main__":
