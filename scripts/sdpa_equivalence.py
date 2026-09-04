@@ -147,7 +147,7 @@ def storage_emulation(q, k, v, scale, mask=None, causal=False):
 def derived_bf16_bars(ref_scores, v, mask, blocked):
     """bf16 bars derived from the storage grid and the reduction, not
     fitted: score storage rounds each kept score to the bf16 grid (RNE
-    half-ulp 2^-9 relative); that logit error propagates through
+    half-ulp 2^-8 relative); that logit error propagates through
     softmax bounded by 2x, and the PV reduction adds one prob-storage
     rounding plus one output-storage rounding, weighted by max|v|.
     Masked positions (causal-blocked or additive-floor, where the
@@ -174,7 +174,7 @@ def derived_bf16_bars(ref_scores, v, mask, blocked):
         mask_mag = float(np.abs(kept_mask).max())
     score_mag = float(np.abs(scores_v).max()) + mask_mag
     v_mag = float(np.abs(np.asarray(v.astype(mx.float32))).max())
-    half_ulp = 2.0 ** -9
+    half_ulp = 2.0 ** -8
     storage_atol = half_ulp * (2.0 * score_mag + 1.0)
     atol = half_ulp * (2.0 * score_mag + 2.0) * v_mag
     return atol, storage_atol
@@ -285,24 +285,17 @@ def main():
     rng = mx.random.key(0)
     ok = True
 
-    gates = {
-        "MLX_OMARCHY_ROPE_BF16_DIRECT": gate_enabled(
-            "MLX_OMARCHY_ROPE_BF16_DIRECT"),
-        "MLX_OMARCHY_SDPA_BF16_FAST": gate_enabled(
-            "MLX_OMARCHY_SDPA_BF16_FAST"),
-    }
-    state = " ".join(
-        f"{name}={'on' if on else 'off'}" for name, on in gates.items())
-    print(f"gates: {state}")
-    if "--require-gates" in sys.argv:
-        disabled = [name for name, on in gates.items() if not on]
-        if disabled:
-            print(
-                f"FAIL: gates off: {', '.join(disabled)} - the bf16 legs "
-                "would ride the f32 composition, so a PASS would not "
-                "exercise the fast paths. Set the gates and rerun."
-            )
-            return 1
+    # This suite exercises SDPA only; the RoPE gate is not consulted
+    # here (the RoPE bf16 contract is C++-tested in omarchy_fast_ops).
+    sdpa_gate_on = gate_enabled("MLX_OMARCHY_SDPA_BF16_FAST")
+    print(f"gates: MLX_OMARCHY_SDPA_BF16_FAST={'on' if sdpa_gate_on else 'off'}")
+    if "--require-gates" in sys.argv and not sdpa_gate_on:
+        print(
+            "FAIL: MLX_OMARCHY_SDPA_BF16_FAST is off - the bf16 legs "
+            "would ride the f32 composition, so a PASS would not "
+            "exercise the fast path. Set the gate and rerun."
+        )
+        return 1
 
     # (b) non-contiguous cache slices at offsets 1, 7, 41, 256.
     for offset in (1, 7, 41, 256):
@@ -392,7 +385,7 @@ def main():
           f"{'agree' if same_nan else 'DISAGREE'} on NaN pattern "
           f"(f32 path stays finite here; upstream Metal f16 sdpa has "
           f"the same storage cap)")
-
+    ok &= bool(same_nan)
     # ---- bfloat16 legs: the SDPA bf16 fast path (MLX_OMARCHY_SDPA_
     # BF16_FAST; with the gate off these ride the f32 composition and
     # pass trivially). Same coverage as the f16 legs; bars derived from
