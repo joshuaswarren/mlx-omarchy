@@ -89,8 +89,13 @@ the kernel through the normal m1n1 payload path instead of a GRUB
 test machine seven of its eight CPU cores. See `docs/boot-and-kernel.md`
 for the failure and the verification checklist.
 
-Status of that branch: it has never been booted. Before anyone installs
-it, the checklist in the commit message must pass on a disposable machine.
-The branch ships no ANE driver. The out-of-tree driver in
-`joshuaswarren/omarchy-ane` must stay blacklisted; loading it hard-reset
-the M1 on 2026-09-03.
+The branch has not been booted. It has no DT binding document and no
+in-tree driver; both are explicitly named at the repository-root cover
+`ANE-STAGING-NOTE.md` on the branch (commit `9457669`). The shipped
+`ane.dtbo` in `joshuaswarren/omarchy-ane` is also documented there as
+defective (`ane@23b100000` is the AIC address on `t8103`; its `iommus`
+and `power-domains` are unresolved `0xffffffff` fixups), independent of
+whether the node shape in `ane-dt-t8103` is right. The out-of-tree driver
+in `joshuaswarren/omarchy-ane` must stay blacklisted; loading it
+hard-reset the M1 on 2026-09-03. Do not pair this device-tree change
+with an automatic module load.
