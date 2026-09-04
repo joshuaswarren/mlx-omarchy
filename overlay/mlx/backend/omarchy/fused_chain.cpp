@@ -272,6 +272,14 @@ bool FusedChain::try_add(
     last_dim = static_cast<uint32_t>(eval_shape.back());
   }
 
+  if (!impl_->open && node.dtype() == float16) {
+    const auto& capabilities = device().capabilities();
+    if (!capabilities.shader_float16 ||
+        !capabilities.storage_buffer_16bit_access) {
+      return false;
+    }
+  }
+
   auto encode_leaf = [&](const array& in) -> std::optional<uint32_t> {
     if (!in.flags().contiguous) {
       return std::nullopt;
@@ -372,15 +380,6 @@ bool FusedChain::try_add(
     return false;
   }
 
-  // Float16 chains need the 16-bit storage capabilities. Refused at
-  // add time for the same reason as the leaf bounds above.
-  if (!impl_->open && node.dtype() == float16) {
-    const auto& capabilities = device().capabilities();
-    if (!capabilities.shader_float16 ||
-        !capabilities.storage_buffer_16bit_access) {
-      return false;
-    }
-  }
 
   impl_->program.push_back(pack_instruction(op, a.value(), b.value(), dst));
   impl_->nodes.push_back(&node);
