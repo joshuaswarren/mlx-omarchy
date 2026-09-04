@@ -147,6 +147,48 @@ int run_child_scenario(const std::string& mode) {
       std::_Exit(0);
     }
   }
+  if (mode == "progressing_long") {
+    // Run a submission long enough to exceed the no-progress interval
+    // while keeping the timeline counter advancing. Old behavior with
+    // the 10 s wall cap failed by name after exactly 10 s regardless
+    // of counter motion; new behavior completes successfully because
+    // the watchdog only fires when no progress is observed. To force a
+    // multi-second-but-progressing submission on a software renderer
+    // we issue a sequence of batches whose combined wall time crosses
+    // the watchdog interval; the per-batch signal keeps the counter
+    // moving, so the watchdog never trips.
+    Stream s = new_stream(Device::gpu);
+    auto& enc = omarchy::get_command_encoder(s);
+    setenv("MLX_OMARCHY_HANG_NO_PROGRESS_NS", "500000000", 1); // 500 ms
+    auto buf = omarchy::allocator().malloc(64u << 20); // 64 MiB
+    auto* p = static_cast<omarchy::VulkanBuffer*>(buf.ptr());
+    auto t0 = std::chrono::steady_clock::now();
+    try {
+      // Issue several batches so the per-batch signal keeps the
+      // counter advancing while the total wall crosses 2 s. Each
+      // fill is large enough to keep the GPU busy for a measurable
+      // interval even on llvmpipe.
+      // 36 batches at 64 MiB each cross the 2 s no-progress interval
+      // on llvmpipe while keeping the per-batch signal moving the
+      // counter; the watchdog therefore must not fire even though the
+      // total wall time exceeds the interval.
+      for (int i = 0; i < 36; ++i) {
+        enc.fill_buffer(p->buffer, static_cast<uint32_t>(i + 1), 64u << 20);
+        enc.commit();
+      }
+      enc.synchronize();
+      auto elapsed = std::chrono::steady_clock::now() - t0;
+      std::cout << "[child/progressing_long] completed in "
+                << std::chrono::duration<double>(elapsed).count()
+                << " s with no hang\n";
+      omarchy::allocator().free(buf);
+      std::_Exit(0);
+    } catch (const std::exception& ex) {
+      std::cout << "[child/progressing_long] FAILED: " << ex.what() << "\n";
+      omarchy::allocator().free(buf);
+      std::_Exit(7);
+    }
+  }
   return 126;
 }
 
@@ -1033,6 +1075,25 @@ TEST_CASE("a hung submit returns a bounded Omarchy error") {
   CHECK_MESSAGE(
       r.code == 0, "child bounded_submit scenario failed with code " << r.code);
 }
+
+TEST_CASE("a long-but-progressing submission completes without a hang") {
+  if (!gpu::is_available()) {
+    skip("no qualifying Vulkan device.");
+    return;
+  }
+  // The child lowers the no-progress interval to 2 s and submits a
+  // sequence of large fill batches whose combined wall time crosses
+  // the interval while the per-batch signals keep the timeline
+  // counter advancing. Old behavior (10 s wall cap) would fail by
+  // name regardless of progress; new behavior must complete because
+  // the watchdog only fires on stalled counter advance.
+  auto r = run_child("progressing_long", 60);
+  REQUIRE_FALSE(r.timed_out);
+  CHECK_MESSAGE(
+      r.code == 0,
+      "child progressing_long scenario failed with code " << r.code);
+}
+
 
 TEST_CASE("tensor ops dispatch on Vulkan and never silently on CPU") {
   if (!gpu::is_available()) {
