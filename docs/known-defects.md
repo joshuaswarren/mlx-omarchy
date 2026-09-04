@@ -8,13 +8,13 @@ This project's contract is to refuse by name rather than return a wrong number. 
 
 Two of the worst v0.3.0 defects never appeared on a Linux development box. They are real-M1-only, and the full dev-box battery - 24 binaries, 407 cases, 828,139 assertions - was green the whole night they shipped. A Vulkan capability query, a shader miscompile, and a submit-thread ordering are all per-driver questions: llvmpipe, lavapipe, and Honeykrisp answer them differently. **A green run on a software driver is not proof about the Apple GPU, and this ledger now records where every defect was observed.** Anyone contributing: your llvmpipe battery passing is the start of verification on this project, not the end of it.
 
-## Live in v0.3.4
+## Live in v0.3.5
 
 Open in the current release.
 
-### 4-bit decode runs at 0.21 tok/s
+### 4-bit decode runs at 0.21 tok/s (v0.3.4 only)
 
-Affected: v0.3.4 only. Observed on: real M1 (Honeykrisp), on the published
+Affected: v0.3.4 only; fixed in v0.3.5. Observed on: real M1 (Honeykrisp), on the published
 aarch64 asset. Status: FIXED on main at 0535e62; v0.3.5 carries it.
 
 The hang watchdog replaced the blocking semaphore wait with a sleep-then-read
