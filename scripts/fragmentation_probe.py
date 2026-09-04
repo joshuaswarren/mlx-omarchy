@@ -80,7 +80,9 @@ def install_boundary_hooks(events, read):
     import mlx.core as mx
 
     def wrap(obj, attr, kind):
-        orig = getattr(obj, attr)
+        orig = getattr(obj, attr, None)
+        if orig is None:
+            return
 
         def wrapped(*a, **k):
             before = read()
@@ -119,6 +121,7 @@ def main():
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--events", default="events.jsonl")
     ap.add_argument("--markers", default="markers.jsonl")
+    ap.add_argument("--prim-dump", default="")
     args = ap.parse_args()
 
     read = make_counter_reader()
@@ -126,9 +129,14 @@ def main():
     from mlx_lm.sample_utils import make_sampler
     from mlx_lm.utils import load
 
-    import mlx.core as mx
+    import mlx.core as mx  # noqa: F401 - ensure libmlx is loaded
 
-    events = []
+    if args.prim_dump:
+        so = pathlib.Path(mx.__file__).parent / "lib" / "libmlx.so"
+        lib = ctypes.CDLL(str(so))
+        lib.mlx_omarchy_prim_reset.argtypes = []
+        lib.mlx_omarchy_prim_reset()
+
     markers = open(args.markers, "w", encoding="utf-8")
     install_boundary_hooks(events, read)
 
@@ -151,9 +159,13 @@ def main():
 
     mark("prefill_start")
     per_token = []
+    if args.prim_dump:
+        so = pathlib.Path(mx.__file__).parent / "lib" / "libmlx.so"
+        lib = ctypes.CDLL(str(so))
+        lib.mlx_omarchy_prim_dump.argtypes = [ctypes.c_char_p]
+        lib.mlx_omarchy_prim_reset.argtypes = []
+        lib.mlx_omarchy_prim_reset()
     read()  # drain any load-time counters from the deltas below
-    events.clear()  # keep load phase out of the decode attribution
-    start = read()
     for token, _logprobs in generate_step(
         mx.array(prompt_ids),
         model,
@@ -230,6 +242,13 @@ def main():
             f"prims={v['d']['gpu_primitive_dispatches']:6d} "
             f"subs={v['d']['vk_submissions']:5d}"
         )
+
+    if args.prim_dump:
+        so = pathlib.Path(mx.__file__).parent / "lib" / "libmlx.so"
+        lib = ctypes.CDLL(str(so))
+        lib.mlx_omarchy_prim_dump.argtypes = [ctypes.c_char_p]
+        lib.mlx_omarchy_prim_dump(args.prim_dump.encode())
+        print(f"\nprimitive name counts: {args.prim_dump}")
 
 
 if __name__ == "__main__":
