@@ -1,0 +1,154 @@
+#version 460
+
+// m-tiled QuantizedMatmul for prefill (matrix_m > 1): out[m, n] = x @
+// dequant(w).T with w packed uint32 words holding 32/bits values along K,
+// low bits first, one affine scale and bias per group_size elements.
+// The per-element kernel (qmm.comp) unpacks the weight word and applies
+// scale/bias INLINE PER MAC, so unpack work is m x n x k per matmul -
+// at m=1023 that dominates prefill (receipts/2026-09-04-prefill-census.md
+// lever 1). Here one 16x16 workgroup owns a 16-row m-tile x 16-column
+// n-tile of the output and dequantizes each 16 x 16 weight block ONCE
+// into shared float before every row-thread consumes it, amortizing the
+// unpack across 16 rows. MAC count and per-output accumulation order are
+// unchanged: each output element is still one thread summing x[r][k] *
+// (scale*q + bias) over ascending k in a single f32 accumulator.
+// Shared tiles are float, not the storage dtype: the per-element kernel
+// keeps scale*q+bias at f32 precision inside the dot, and rounding the
+// dequantized weight to the storage dtype here would change results.
+// Push-constant routing and the packed scale/bias binding match
+// qmm.comp exactly (operation carries bits, reduce_size the group size,
+// binding 2 = [all scales | all biases]). matrix_k is always a multiple
+// of group_size (32 or 64, checked in dispatch), hence of the 16-wide
+// k-tile: no k tail exists.
+
+#ifdef USE_FP16
+#extension GL_EXT_shader_16bit_storage : require
+#extension GL_EXT_shader_explicit_arithmetic_types_float16 : require
+#define STORAGE_TYPE float16_t
+#define LOAD_VALUE(x) float(x)
+#define STORE_VALUE(f) STORAGE_TYPE(f)
+#elif defined(USE_BF16)
+#extension GL_EXT_shader_16bit_storage : require
+#extension GL_EXT_shader_explicit_arithmetic_types_int16 : require
+#define STORAGE_TYPE uint16_t
+#define LOAD_VALUE(x) uintBitsToFloat(uint(x) << 16u)
+uint16_t bf16_store(float value) {
+  uint bits = floatBitsToUint(value);
+  if (isnan(value)) {
+    return uint16_t((bits >> 16) | 0x40u);
+  }
+  return uint16_t((bits + 0x7fffu + ((bits >> 16) & 1u)) >> 16);
+}
+#define STORE_VALUE(f) bf16_store(f)
+#else
+#define STORAGE_TYPE float
+#define LOAD_VALUE(x) float(x)
+#define STORE_VALUE(f) STORAGE_TYPE(f)
+#endif
+
+const uint TILE = 16u;
+
+layout(local_size_x = 16, local_size_y = 16) in;
+
+layout(set = 0, binding = 0, std430) readonly buffer InputX {
+  STORAGE_TYPE values[];
+} input_x;
+layout(set = 0, binding = 1, std430) readonly buffer InputW {
+  uint values[];
+} input_w;
+layout(set = 0, binding = 2, std430) readonly buffer ScaleBias {
+  STORAGE_TYPE values[];
+} scale_bias;
+layout(set = 0, binding = 3, std430) writeonly buffer Output {
+  STORAGE_TYPE values[];
+} output_data;
+
+layout(push_constant) uniform Params {
+  uint count;
+  uint operation;
+  uint lhs_size;
+  uint rhs_size;
+  uint reduce_size;
+  uint output_size;
+  uint lhs_offset;
+  uint rhs_offset;
+  uint output_offset;
+  uint aux_size;
+  uint aux_offset;
+  uint matrix_m;
+  uint matrix_n;
+  uint matrix_k;
+  uint flags;
+  float alpha;
+  float beta;
+  uint dims;
+  uint shape[4];
+  uint in_strides[4];
+  uint out_strides[4];
+} params;
+
+shared float tile_x[16][16];
+shared float tile_w[16][16];
+
+void main() {
+  uint lx = gl_LocalInvocationID.x;
+  uint ly = gl_LocalInvocationID.y;
+  uint bits = params.operation;
+  uint group_size = params.reduce_size;
+  uint pack_factor = 32u / bits;
+  uint value_mask = (1u << bits) - 1u;
+  uint words_per_row = params.matrix_k / pack_factor;
+  uint groups_per_row = params.matrix_k / group_size;
+  uint m_tiles = params.matrix_m / TILE +
+      uint(params.matrix_m % TILE != 0u);
+  uint n_tiles = params.matrix_n / TILE +
+      uint(params.matrix_n % TILE != 0u);
+  uint k_tiles = params.matrix_k / TILE;
+
+  // Grid-stride over both tile axes keeps the kernel correct under any
+  // dispatch clamping, the same contract matmul.comp uses.
+  for (uint tile_row = gl_WorkGroupID.y; tile_row < m_tiles;
+       tile_row += gl_NumWorkGroups.y) {
+    uint row = tile_row * TILE + ly;
+    for (uint tile_col = gl_WorkGroupID.x; tile_col < n_tiles;
+         tile_col += gl_NumWorkGroups.x) {
+      uint column = tile_col * TILE + lx;
+      float accumulator = 0.0;
+      for (uint tile = 0u; tile < k_tiles; ++tile) {
+        uint k_base = tile * TILE;
+        uint x_k = k_base + lx;
+        tile_x[ly][lx] = row < params.matrix_m && x_k < params.matrix_k
+            ? LOAD_VALUE(input_x.values[params.lhs_offset +
+                  row * params.matrix_k + x_k])
+            : 0.0;
+        float dequant = 0.0;
+        if (column < params.matrix_n) {
+          uint word = input_w.values[params.rhs_offset +
+              column * words_per_row + (k_base + ly) / pack_factor];
+          uint q = (word >> ((k_base + ly) % pack_factor * bits)) &
+              value_mask;
+          uint group = (k_base + ly) / group_size;
+          float scale = LOAD_VALUE(
+              scale_bias.values[params.aux_offset +
+                  column * groups_per_row + group]);
+          float bias = LOAD_VALUE(
+              scale_bias.values[params.aux_offset +
+                  params.matrix_n * groups_per_row +
+                  column * groups_per_row + group]);
+          dequant = scale * float(q) + bias;
+        }
+        tile_w[ly][lx] = dequant;
+        barrier();
+
+        for (uint index = 0u; index < TILE; ++index) {
+          accumulator += tile_x[ly][index] * tile_w[index][lx];
+        }
+        barrier();
+      }
+      if (row < params.matrix_m && column < params.matrix_n) {
+        output_data.values[params.output_offset +
+            row * params.matrix_n + column] = STORE_VALUE(accumulator);
+      }
+    }
+  }
+}
