@@ -7,6 +7,7 @@
 #include "mlx/fence.h"
 
 #include "mlx/event.h"
+#include "mlx/primitives.h"
 
 #include <cstdio>
 #include <cstdlib>
