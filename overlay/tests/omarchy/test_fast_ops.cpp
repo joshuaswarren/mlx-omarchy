@@ -17,7 +17,7 @@
 #include "doctest/doctest.h"
 
 #include <cmath>
-#include <cstdint>
+#include <cstdlib>
 #include <cstring>
 #include <functional>
 #include <string>
@@ -1308,6 +1308,13 @@ double rope_reference_tolerance_f16(double theta_bound) {
   return theta_bound * kRefRounding + 9.765625e-4 * 1.5;
 }
 
+// bfloat16 stores on a ~7.8e-3 grid at magnitude 2-4 (ulp 2^-7): the
+// same theta * 2^-23 argument-construction term as the f16 bound, with
+// the coarser storage grid.
+double rope_reference_tolerance_bf16(double theta_bound) {
+  return theta_bound * kRefRounding + 7.8125e-3 * 1.5;
+}
+
 void require_matches_reference(
     const array& got,
     const std::vector<double>& reference,
@@ -1613,6 +1620,157 @@ TEST_CASE("fused rope boundary shapes match the composed fallback") {
           stream),
       stream,
       "rope 5D");
+}
+
+TEST_CASE("fused rope bf16 direct bind matches wrapped and composed paths") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  array offset = array(5, int32);
+  array freqs = exp(
+      multiply(
+          arange(0, -8, -1, float32, stream),
+          array(std::log(10000.0f) / 8, float32),
+          stream),
+      stream);
+  auto freqs_bits = flat(freqs, stream);
+
+  // The gate binds the bf16 input straight into the packed-word load
+  // leg (default off until the M1 equivalence leg passes). RAII so a
+  // throwing REQUIRE cannot leak the switch into later cases.
+  struct GateGuard {
+    explicit GateGuard(const char* n) : name(n) {
+      setenv(name, "1", 1);
+    }
+    ~GateGuard() {
+      unsetenv(name);
+    }
+    const char* name;
+  } gate("MLX_OMARCHY_ROPE_BF16_DIRECT");
+
+  for (bool traditional : {false, true}) {
+    for (bool with_freqs : {false, true}) {
+      Shape shape{2, 3, 5, 16};
+      array x = astype(rope_input(shape, 211), bfloat16, stream);
+      std::string what = std::string("rope bf16 direct variant ") +
+          std::to_string((traditional ? 1 : 0) + (with_freqs ? 2 : 0));
+      auto direct = fast::rope(
+          x,
+          16,
+          traditional,
+          with_freqs ? std::nullopt : std::optional<float>(10000.0f),
+          1.0f,
+          offset,
+          with_freqs ? std::optional<array>(freqs) : std::nullopt,
+          stream);
+      auto direct_v = flat(direct, stream);
+      // Restore the wrapped path (CastBF16F32 -> f32 kernel ->
+      // CastF32BF16) for the comparison legs.
+      unsetenv(gate.name);
+      auto wrapped = fast::rope(
+          x,
+          16,
+          traditional,
+          with_freqs ? std::nullopt : std::optional<float>(10000.0f),
+          1.0f,
+          offset,
+          with_freqs ? std::optional<array>(freqs) : std::nullopt,
+          stream);
+      auto wrapped_v = flat(wrapped, stream);
+      auto composed = composed_rope(
+          x,
+          16,
+          traditional,
+          10000.0f,
+          1.0f,
+          offset,
+          with_freqs ? std::optional<array>(freqs) : std::nullopt,
+          true,
+          stream);
+      auto composed_v = flat(composed, stream);
+
+      // Theta bound for the cross-path and f64 legs (the same product
+      // rope_trig_gate bounds).
+      const double theta_bound =
+          rope_theta_bound(5, 5, 1.0f, with_freqs, freqs_bits, 10000.0f, 8);
+      if (!rope_on_apple_gpu()) {
+        // The packed-word load is the exact f32 image of the stored
+        // bf16 input, and every intermediate passes rope_round exactly
+        // like the eager composition's per-op bf16 stores; llvmpipe
+        // codegen is deterministic, so the direct leg meets the
+        // composed bf16 chain bit for bit - the contract the wrapped
+        // path only held within one ulp (require_rope_close's 1e-2
+        // bf16 tier).
+        require_bit_equal(
+            composed, direct, stream, what + " direct vs composed");
+      } else {
+        // Apple compiles fused and composed trig in separate shaders
+        // with no last-ulp agreement (require_rope_close's f32/f16
+        // notes). The cross-path contract is the same derived 2B form
+        // the f16 case uses, with the bf16 grid: two theta * 2^-23
+        // angle constructions and two storage roundings.
+        const double cross_path =
+            2.0 * (theta_bound * kRefRounding + 7.8125e-3);
+        require_close(
+            flat(composed, stream),
+            widen(flat(direct, stream)),
+            cross_path,
+            what + " direct vs composed");
+      }
+
+      // Direct vs wrapped: the wrapped f32 interior skips the six
+      // per-intermediate bf16 roundings (cos, sin, four products, the
+      // combine) that the direct leg applies. Each RNE half-ulp is
+      // 2^-9 relative, so with |x| <= in_max and |r| <= out_max the
+      // per-element difference is bounded by
+      // 2^-9 * (2*in_max + 2*in_max + out_max + out_max) - derived
+      // from the bf16 grid, not fitted to this run.
+      float in_max = 0.0f;
+      for (float value : flat(x, stream)) {
+        in_max = std::max(in_max, std::abs(value));
+      }
+      float out_max = 0.0f;
+      for (float value : wrapped_v) {
+        out_max = std::max(out_max, std::abs(value));
+      }
+      const double kHalfUlp = 1.0 / 512.0; // 2^-9, bf16 RNE half-ulp
+      double direct_vs_wrapped =
+          kHalfUlp * (4.0 * in_max + 2.0 * out_max);
+      double observed = 0.0;
+      for (size_t index = 0; index < direct_v.size(); ++index) {
+        observed = std::max(
+            observed,
+            std::abs(static_cast<double>(direct_v[index]) -
+                     static_cast<double>(wrapped_v[index])));
+      }
+      CHECK_MESSAGE(
+          observed <= direct_vs_wrapped,
+          what,
+          " direct vs wrapped: observed ",
+          observed,
+          " bound ",
+          direct_vs_wrapped);
+
+      auto reference = host_rope_reference(
+          flat(x, stream),
+          shape,
+          16,
+          traditional,
+          with_freqs ? freqs_bits : std::vector<float>{},
+          10000.0f,
+          1.0,
+          5);
+      require_matches_reference(
+          direct,
+          reference,
+          rope_reference_tolerance_bf16(theta_bound),
+          stream,
+          what + " direct vs f64");
+
+      setenv(gate.name, "1", 1);
+    }
+  }
 }
 
 TEST_CASE("fused rope strided and transposed inputs match the composed fallback") {
