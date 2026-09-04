@@ -115,6 +115,7 @@ void CommandEncoder::ensure_recording() {
       cmd_,
       wait_t1 != 0 ? prof::host_ns() - wait_t1 : 0,
       wait_t1 != 0 ? wait_t1 - begin_t0 : 0);
+  last_cmd_was_dispatch_ = false;
   recording_ = true;
 }
 
@@ -131,6 +132,7 @@ void CommandEncoder::copy_buffer(
   region.size = size;
   vk::device_table().CmdCopyBuffer(cmd_, src, dst, 1, &region);
   node_count_++;
+  last_cmd_was_dispatch_ = false;
   trace::counters().vk_buffer_copies++;
 }
 
@@ -142,6 +144,7 @@ void CommandEncoder::fill_buffer(
   ensure_recording();
   vk::device_table().CmdFillBuffer(cmd_, dst, offset, size, value);
   node_count_++;
+  last_cmd_was_dispatch_ = false;
   trace::counters().vk_buffer_fills++;
 }
 
@@ -300,22 +303,29 @@ void CommandEncoder::dispatch_compute(
         0,
         nullptr);
   }
-  VkMemoryBarrier before{VK_STRUCTURE_TYPE_MEMORY_BARRIER};
-  before.srcAccessMask = VK_ACCESS_HOST_WRITE_BIT | VK_ACCESS_TRANSFER_WRITE_BIT |
-      VK_ACCESS_SHADER_WRITE_BIT;
-  before.dstAccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT;
-  dt.CmdPipelineBarrier(
-      cmd_,
-      VK_PIPELINE_STAGE_HOST_BIT | VK_PIPELINE_STAGE_TRANSFER_BIT |
-          VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
-      VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
-      0,
-      1,
-      &before,
-      0,
-      nullptr,
-      0,
-      nullptr);
+  // The pre-barrier is redundant when the previous recorded command in
+  // this buffer was a dispatch: that dispatch's post-barrier already
+  // makes its writes visible to COMPUTE read + write, which is exactly
+  // the dependency the pre-barrier would re-establish. Anything else in
+  // between (copy, fill, buffer start) keeps it.
+  if (!last_cmd_was_dispatch_) {
+    VkMemoryBarrier before{VK_STRUCTURE_TYPE_MEMORY_BARRIER};
+    before.srcAccessMask = VK_ACCESS_HOST_WRITE_BIT | VK_ACCESS_TRANSFER_WRITE_BIT |
+        VK_ACCESS_SHADER_WRITE_BIT;
+    before.dstAccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT;
+    dt.CmdPipelineBarrier(
+        cmd_,
+        VK_PIPELINE_STAGE_HOST_BIT | VK_PIPELINE_STAGE_TRANSFER_BIT |
+            VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+        VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+        0,
+        1,
+        &before,
+        0,
+        nullptr,
+        0,
+        nullptr);
+  }
   uint64_t prof_t5 = prof::get().profiling() ? prof::host_ns() : 0;
   prof::get().before_dispatch(this, current_slot_, cmd_);
 
@@ -401,6 +411,7 @@ void CommandEncoder::dispatch_compute(
         prof_t7 - prof_t6); // post-dispatch barrier
   }
 
+  last_cmd_was_dispatch_ = true;
   node_count_++;
   trace::counters().vk_compute_dispatches++;
 }
