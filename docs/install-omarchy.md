@@ -66,6 +66,14 @@ hardware hunt needs first.
   recycling carries the corruption. Unlike the tape-scoped switches it
   is read once at runtime init, so it must be set before the process
   starts, not just before the tape runs.
+- `MLX_OMARCHY_POISON_FREED=1` fills every buffer with the float32 word
+  123456789.0 when it is recycled into the allocator cache. Any stale
+  read of recycled storage then announces itself: a read that reaches
+  the Cos gate aborts with exactly that magnitude in the message, and
+  no legitimate f16 tensor can contain the word (f16 max finite is
+  65504). Run the model prompt with this armed as a regression check:
+  a correct answer proves no recycled-storage read served the run. Read
+  once at first use, so set it before the process starts.
 
 The first three switches ran the M1 decision tree on 2026-09-03: none
 of them removed the corruption, and the refused magnitude tracked the
