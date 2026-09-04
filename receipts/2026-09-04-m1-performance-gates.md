@@ -41,7 +41,7 @@ remains the hardware qualification. No watchdog bypass was used.
 
 The kernel-level checks passed on the same combined wheel: `sdpa_equivalence.py --require-gates` reported `ALL PASS`; `omarchy_fast_ops_tests` passed 21 cases and 27,936 assertions. The model-level identity gate did not pass.
 
-Model revision: `56d07e766edd7159fbe12ed12d9cf114bf38bf1e`. Compilation was enabled, QMM tiling disabled, and every leg processed the same 262-token prompt and generated 128 tokens. Five baseline runs gave the same digest, also matching the compile-disabled matrix control.
+Model revision: `56d07e766edd7159fbe12ed12d9cf114bf38bf1e`. Compilation was disabled: the manifest set `MLX_DISABLE_COMPILE=0`, but upstream disables compilation whenever this variable is present. QMM tiling was disabled, and every leg processed the same 262-token prompt and generated 128 tokens. Five baseline runs gave the same digest, also matching the matrix control. The direct-kernel identity failures remain valid; this batch did not exercise compiled tapes.
 
 | `MLX_OMARCHY_ROPE_BF16_DIRECT` | `MLX_OMARCHY_SDPA_BF16_FAST` | Generated-ID digest | Decision |
 |---|---|---|---|
