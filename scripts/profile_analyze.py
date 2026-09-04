@@ -314,6 +314,64 @@ def main():
         begins,
         [("ring-wait", "w"), ("begin-cmdbuf", "bc")])
 
+    # Wall-time attribution for the host thread: what fills the time
+    # between submissions. Three buckets from the existing stream:
+    #   encoder_active - known encoder host spans (dispatch record +
+    #     submit + begin + join wait + invalidate)
+    #   blocked_join   - the part of that which is an explicit host
+    #     block on GPU completion (join wait); ring waits sit inside
+    #     begin spans and are shown separately
+    #   unaccounted    - span minus encoder_active: time outside the
+    #     encoder (python, evaluator, allocator, scheduler waits, and
+    #     any host idle the backend cannot see)
+    # Per marker phase when markers are given, else one "all" row.
+    def attr_row(tag, t0, t1, sel):
+        ds = [d for d in dispatches if sel(d)]
+        ss = [s for s in submits if sel(s)]
+        bs = [b for b in begins if sel(b)]
+        js = [j for j in joins if sel(j)]
+        active = (sum(d["h"] for d in ds) + sum(s["dur"] for s in ss) +
+                  sum(b["dur"] for b in bs) + sum(j["wait"] for j in js) +
+                  sum(j["inval"] for j in js))
+        ring = sum(b["w"] for b in bs if "w" in b)
+        span = t1 - t0
+        if span <= 0:
+            return
+        unacc = span - active
+        say(f"   {tag:<10} span={fmt_ns(span):>10} "
+            f"encoder_active={fmt_ns(active):>10} "
+            f"({active / span * 100:5.1f}%) "
+            f"blocked_join={fmt_ns(sum(j['wait'] for j in js)):>10} "
+            f"ring_wait_in_begin={fmt_ns(ring):>9} "
+            f"outside_encoder={fmt_ns(unacc):>10} "
+            f"({unacc / span * 100:5.1f}%)")
+
+    if dispatches or submits or begins or joins:
+        say("")
+        say("== wall-time attribution (host thread; outside_encoder = "
+            "python + evaluator + allocator + scheduler waits)")
+        timed = [e for e in submits + begins + joins if "t" in e]
+        first_t = min(e["t"] for e in timed)
+        last_t = max(e["t"] for e in timed)
+        if markers:
+            phases_seen = []
+            for e in dispatches + submits + begins + joins:
+                ph = phase_of_host(e["t"])
+                if ph not in phases_seen:
+                    phases_seen.append(ph)
+            bounds = {}
+            for ph in phases_seen:
+                sel_ts = [e["t"] for e in dispatches + submits + begins +
+                          joins if phase_of_host(e["t"]) == ph]
+                bounds[ph] = (min(sel_ts), max(sel_ts))
+            for ph, (pt0, pt1) in bounds.items():
+                attr_row(ph or "none", pt0, pt1,
+                         lambda e, ph=ph: phase_of_host(e["t"]) == ph)
+        else:
+            attr_row("all", first_t, last_t, lambda e: True)
+        say("   note: span between first and last backend event; time "
+            "before the first event is not attributed")
+
     per_join = {}
     for d in dispatches:
         per_join[d["s"]] = per_join.get(d["s"], 0) + 1

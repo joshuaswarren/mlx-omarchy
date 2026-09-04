@@ -135,4 +135,37 @@ steady state, interleaved A/B order to cancel drift. Commit under test:
    revert `952f0b9` and record both sides' numbers.
 
 Compiled tapes remain auto-disabled on Apple GPUs; nothing in
-`952f0b9` depends on them.
+`6af35b7` depends on them.
+
+## Wall-time attribution (added same day, Main directive)
+
+Main's arithmetic on the ranked table is correct and now bounds the
+lever: steady encoder host work is about 1.5 us/dispatch, about 95
+dispatches per token, so roughly 140 us per token against a wall of
+order 100 ms - about 0.1 percent of decode wall. The 89 percent
+inter-submission gap is NOT encoder CPU. The instrument now attributes
+it: `profile_analyze.py` gains a wall-time-attribution section that
+splits the stream into encoder-active host spans, explicit
+backend-visible blocks (join wait; ring wait inside begin), and
+everything outside the encoder (python, evaluator, allocator,
+scheduler waits, GPU-completion idle).
+
+llvmpipe fixed-chain bench (no python in the loop), both shapes:
+
+| shape | span | encoder_active | blocked_join | ring_wait | outside_encoder |
+|---|---|---|---|---|---|
+| dep | 1103.6 ms | 8.4 ms (0.8%) | 0.33 ms | 5.1 ms | 1095.2 ms (99.2%) |
+| indep | 1014.9 ms | 5.8 ms (0.6%) | 0.45 ms | 3.6 ms | 1009.0 ms (99.4%) |
+
+Even with python removed, the host thread spends >99 percent of the
+span OUTSIDE encoder hooks: in this bench that is the evaluator
+blocking on GPU completion inside eval() (llvmpipe is slow); on the
+product path the same bucket additionally holds python and the
+async_eval tape walk. FragmentationHunt's counts (2682 gpu::eval per
+token, 97 submissions, 97 finalize, ~1.4-1.6 ms/token of in-walk
+eval_impl+record inside the async_eval window) name what fills that
+bucket on hardware; their token markers + this analyzer on an M1
+decode stream is the decisive next measurement. Descriptor chunking,
+push descriptors, and layout redesign are explicitly ruled out by Main
+as inside the same 0.1 percent. `6af35b7` stays provisional pending
+the M1 leg below.
