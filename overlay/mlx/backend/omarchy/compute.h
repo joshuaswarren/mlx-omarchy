@@ -216,6 +216,17 @@ enum class ComputeKernel : uint8_t {
   CrossEntropyF32,
   CrossEntropyF16,
   CrossEntropyBF16,
+  // FusedRoPE: one thread rotates one (position, frequency) pair; the
+  // Freqs variants take a float32 inv-frequencies source, the base
+  // variants compute exp(-i * log(base)/(dims/2)) in-shader from the
+  // precomputed beta push constant. See shaders/fast_rope.comp for the
+  // contract cases and the push-constant field mapping.
+  FastRopeF32,
+  FastRopeF16,
+  FastRopeBF16,
+  FastRopeFreqsF32,
+  FastRopeFreqsF16,
+  FastRopeFreqsBF16,
   Fp8ToF32,
   Fp8ToF16,
   Fp8ToBF16,
