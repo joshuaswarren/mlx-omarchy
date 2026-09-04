@@ -225,13 +225,47 @@ void swap_endianness(uint8_t* data_bytes, size_t n) {
   }
 }
 
+// True when the array is a contiguous stack of rank-2 matrices stored
+// row-major (transposed = false) or transposed within each matrix
+// (transposed = true, row stride 1 and column stride = row count).
+// A batch axis participates in the stack with the contiguous stride,
+// keeps an unchecked stride as a singleton, or carries stride 0 as a
+// broadcast view; a stride-0 axis repeats one matrix, so the expected
+// stride of the axes above it stays unchanged.
+bool is_batched_matrix(const array& value, bool transposed) {
+  int rank = value.ndim();
+  if (rank < 2) {
+    return false;
+  }
+  const auto& strides = value.strides();
+  int64_t row_stride =
+      transposed ? 1 : static_cast<int64_t>(value.shape(rank - 1));
+  int64_t column_stride =
+      transposed ? static_cast<int64_t>(value.shape(rank - 2)) : 1;
+  if (strides[rank - 2] != row_stride || strides[rank - 1] != column_stride) {
+    return false;
+  }
+  int64_t expected =
+      static_cast<int64_t>(value.shape(rank - 2)) * value.shape(rank - 1);
+  for (int axis = rank - 3; axis >= 0; --axis) {
+    if (strides[axis] == 0) {
+      continue;
+    }
+    if (value.shape(axis) != 1 && strides[axis] != expected) {
+      return false;
+    }
+    expected *= value.shape(axis);
+  }
+  return true;
+}
 
-// Materializes a matmul operand whose inner 2-D layout fits neither the
-// row-major nor the column-major gap form; concatenate results compose
-// this way. The general strided-copy engine writes a standard row-major
-// batch, and the encoder keeps the temp alive until the committed work
-// completes. Engine limits (negative strides, collapsed rank beyond 4,
-// span overflow) keep their named errors.
+// Materializes a matmul operand whose batch strides are uniform but not
+// the contiguous layout is_batched_matrix accepts; cache slice views and
+// concatenate results compose this way. The general strided-copy engine
+// writes a standard row-major batch, and the encoder keeps the temp
+// alive until the committed work completes. Engine limits (negative
+// strides, collapsed rank beyond 4, span overflow) keep their named
+// errors.
 array materialize_batched_matrix(
     const array& value,
     const std::string& name,
@@ -256,20 +290,6 @@ array materialize_batched_matrix(
       strides,
       flags,
       0);
-  if (getenv("MLX_OMARCHY_TRACE_MATERIALIZE")) {
-    std::fprintf(
-        stderr,
-        "[materialize] %s shape=[", name.c_str());
-    for (int i = 0; i < value.ndim(); ++i) {
-      std::fprintf(stderr, "%s%d", i ? "," : "", value.shape(i));
-    }
-    std::fprintf(stderr, "] strides=[");
-    for (int i = 0; i < value.ndim(); ++i) {
-      std::fprintf(stderr, "%s%lld", i ? "," : "",
-          static_cast<long long>(value.strides()[i]));
-    }
-    std::fprintf(stderr, "]\n");
-  }
   copy_gpu_inplace(
       value,
       materialized,
@@ -282,42 +302,6 @@ array materialize_batched_matrix(
       out.primitive().stream());
   encoder.add_temporary(materialized);
   return materialized;
-}
-
-// Classifies a matmul operand's inner 2-D layout: row-major (column
-// stride 1, row gap = the axis -2 stride) or column-major (row stride
-// 1, column gap = the axis -1 stride). A size-1 inner axis never
-// dereferences its stride. Batch axes ride their actual strides - the
-// shader unravels workgroup z over them, and a stride-0 batch axis
-// broadcasts - so nothing materializes for batch strides alone. Gaps
-// are in elements and must fit uint32; strides outside that, or an
-// inner layout fitting neither form, materialize to a dense row-major
-// batch first.
-void classify_matmul_operand(
-    const array& value,
-    bool& transposed,
-    uint32_t& gap,
-    std::optional<array>& materialized,
-    const std::string& name,
-    array& out,
-    const Stream& s) {
-  int rank = value.ndim();
-  int64_t s_prev = value.strides()[rank - 2];
-  int64_t s_last = value.strides()[rank - 1];
-  constexpr int64_t kMaxGap = std::numeric_limits<uint32_t>::max();
-  if ((s_last == 1 || value.shape(rank - 1) == 1) && s_prev >= 0 &&
-      s_prev <= kMaxGap) {
-    transposed = false;
-    gap = static_cast<uint32_t>(s_prev);
-  } else if ((s_prev == 1 || value.shape(rank - 2) == 1) && s_last >= 0 &&
-             s_last <= kMaxGap) {
-    transposed = true;
-    gap = static_cast<uint32_t>(s_last);
-  } else {
-    materialized = materialize_batched_matrix(value, name, out, s);
-    transposed = false;
-    gap = static_cast<uint32_t>(value.shape(rank - 1));
-  }
 }
 
 void dispatch_matmul(
@@ -341,22 +325,38 @@ void dispatch_matmul(
   if (a_in.ndim() < 2 || a_in.ndim() != b_in.ndim() || a_in.ndim() > 5) {
     omarchy::unsupported("matrix rank " + name, out);
   }
-  // Each operand's inner 2-D matrix rides the shader's gap indexing
-  // and its batch axes ride their actual strides, so a cache slice
-  // consumes zero copies; only an inner layout fitting neither the
-  // row-major nor the column-major form materializes to a dense batch.
+  bool a_transposed = is_batched_matrix(a_in, true);
+  bool a_row_contiguous = !a_transposed && is_batched_matrix(a_in, false);
+  bool b_transposed = is_batched_matrix(b_in, true);
+  bool b_row_contiguous = !b_transposed && is_batched_matrix(b_in, false);
+  // An operand composed from cache slices or concatenates can carry
+  // batch strides that are uniform but not the contiguous layout
+  // is_batched_matrix accepts. Materialize that one operand to a
+  // standard row-major batch through the general strided-copy engine and
+  // dispatch normally; conforming operands keep the zero-copy path.
   std::optional<array> a_materialized;
   std::optional<array> b_materialized;
-  uint32_t a_gap = 0;
-  uint32_t b_gap = 0;
-  bool a_transposed = false;
-  bool b_transposed = false;
-  classify_matmul_operand(
-      a_in, a_transposed, a_gap, a_materialized, name, out, s);
-  classify_matmul_operand(
-      b_in, b_transposed, b_gap, b_materialized, name, out, s);
+  if (!a_row_contiguous && !a_transposed) {
+    a_materialized = materialize_batched_matrix(a_in, name, out, s);
+    a_transposed = false;
+    a_row_contiguous = true;
+  }
+  if (!b_row_contiguous && !b_transposed) {
+    b_materialized = materialize_batched_matrix(b_in, name, out, s);
+    b_transposed = false;
+    b_row_contiguous = true;
+  }
   const array& a = a_materialized ? *a_materialized : a_in;
   const array& b = b_materialized ? *b_materialized : b_in;
+  // Batch axes may broadcast: an operand axis of size 1 against a wider
+  // axis carries stride 0 through the shared-buffer broadcast view and
+  // repeats its one matrix per batch step. True mismatches stay named.
+  for (int axis = 0; axis < a.ndim() - 2; ++axis) {
+    if (a.shape(axis) != b.shape(axis) && a.shape(axis) != 1 &&
+        b.shape(axis) != 1) {
+      omarchy::unsupported("batch dimensions " + name, out);
+    }
+  }
   size_t k = a.shape(-1);
   size_t n = b.shape(-1);
   if (b.shape(-2) != k) {
@@ -395,8 +395,6 @@ void dispatch_matmul(
   params.beta = beta;
   params.flags = (b_transposed ? 1u : 0u) | (use_c ? 2u : 0u) |
       (a_transposed ? 4u : 0u);
-  params.lhs_gap = a_gap;
-  params.rhs_gap = b_gap;
   // The shader unravels workgroup z over the batch shape and offsets
   // each operand by its own strides; a singleton axis never indexes, so
   // its stride is pinned to 0 (broadcast).
@@ -435,22 +433,10 @@ void dispatch_matmul(
       omarchy::ComputeKernel::MatmulF32,
       omarchy::ComputeKernel::MatmulF16,
       omarchy::ComputeKernel::MatmulBF16);
-  // Inner spans use the actual gaps: (rows - 1) * gap + cols elements
-  // past the operand offset.
-  uint64_t a_inner = a_transposed
-      ? static_cast<uint64_t>(params.matrix_k - 1) * a_gap +
-          params.matrix_m
-      : static_cast<uint64_t>(params.matrix_m - 1) * a_gap +
-          params.matrix_k;
-  uint64_t b_inner = b_transposed
-      ? static_cast<uint64_t>(params.matrix_n - 1) * b_gap +
-          params.matrix_k
-      : static_cast<uint64_t>(params.matrix_k - 1) * b_gap +
-          params.matrix_n;
   if (!omarchy::compute_index_span_fits(
-          params.lhs_offset, a_span + a_inner) ||
+          params.lhs_offset, a_span + params.matrix_m * params.matrix_k) ||
       !omarchy::compute_index_span_fits(
-          params.rhs_offset, b_span + b_inner)) {
+          params.rhs_offset, b_span + params.matrix_k * params.matrix_n)) {
     omarchy::unsupported(name + " index span", out);
   }
   encoder.dispatch_compute(
@@ -2288,28 +2274,16 @@ void SegmentedMM::eval_gpu(const std::vector<array>& inputs, array& out) {
   if (a_in.ndim() != 2 || b_in.ndim() != 2 || a_in.shape(1) != b_in.shape(0)) {
     omarchy::unsupported(tag + " matrix dimensions", out);
   }
-  // The segmented shader indexes rows by matrix_k, so only the natural
-  // gaps pass through; anything else materializes first.
   std::optional<array> a_materialized;
-  uint32_t a_gap = 0;
-  bool a_transposed = false;
-  classify_matmul_operand(
-      a_in, a_transposed, a_gap, a_materialized, tag, out, s);
-  uint32_t a_natural = a_transposed ? a_in.shape(0) : a_in.shape(1);
-  if (!a_materialized && a_gap != a_natural) {
+  bool a_transposed = is_batched_matrix(a_in, true);
+  if (!a_transposed && !is_batched_matrix(a_in, false)) {
     a_materialized = materialize_batched_matrix(a_in, tag, out, s);
-    a_transposed = false;
   }
   const array& a = a_materialized ? *a_materialized : a_in;
   std::optional<array> b_materialized;
-  uint32_t b_gap = 0;
-  bool b_transposed = false;
-  classify_matmul_operand(
-      b_in, b_transposed, b_gap, b_materialized, tag, out, s);
-  uint32_t b_natural = b_transposed ? b_in.shape(0) : b_in.shape(1);
-  if (!b_materialized && b_gap != b_natural) {
+  bool b_transposed = is_batched_matrix(b_in, true);
+  if (!b_transposed && !is_batched_matrix(b_in, false)) {
     b_materialized = materialize_batched_matrix(b_in, tag, out, s);
-    b_transposed = false;
   }
   const array& b = b_materialized ? *b_materialized : b_in;
   std::optional<array> segments_packed;
@@ -6863,135 +6837,6 @@ void ScaledDotProductAttention::eval_gpu(
     return;
   }
 
-  // Shared commit of the attention result into the output: with GQA the
-  // result is 5-D (kv, repeat) while out is 4-D (heads). The flat
-  // row-major layouts match, so share the buffer under out's own
-  // strides: copy_shared_buffer(result) alone would install 5-D strides
-  // and a 5-element stride vector on a 4-D array, and every later
-  // reader would walk wrong addresses (the upstream fallback flattens
-  // axes 1-2 here).
-  auto commit_result = [&](const array& result) {
-    if (repeats > 1) {
-      Strides out_strides(out.ndim(), 1);
-      for (int axis = out.ndim() - 2; axis >= 0; --axis) {
-        out_strides[axis] = out_strides[axis + 1] * out.shape(axis + 1);
-      }
-      array::Flags flags;
-      flags.contiguous = true;
-      flags.row_contiguous = true;
-      auto max_dim = std::max_element(out.shape().begin(), out.shape().end());
-      flags.col_contiguous = out.size() <= 1 || out.size() == *max_dim;
-      out.copy_shared_buffer(result, out_strides, flags, result.data_size());
-    } else {
-      out.copy_shared_buffer(result);
-    }
-  };
-
-  // f16 runs at f16 storage end to end: the scores and probs matmuls
-  // keep f16 operands and accumulate in float inside the shader
-  // (matmul.comp), the scale rides the scores matmul's alpha, and the
-  // softmax runs float math over f16 storage (softmax_suffix.comp). The
-  // only new rounding against the f32 composition below is f16 storage
-  // of the score and prob intermediates; the qmm decode path already
-  // runs this pattern. Deletes the three q/k/v upcasts, the scale
-  // broadcast and multiply, and the output downcast per call.
-  if (q.dtype() == float16) {
-    // GQA regroup as pure stride views, so a non-contiguous cache
-    // slice rides its own strides straight into the matmul;
-    // reshape_in_eval would copy - it only views row-contiguous
-    // inputs, and a cache slice never is one. q splits the heads axis
-    // into (kv, repeat); k and v keep their kv heads and insert a
-    // size-1 repeat axis the matmul broadcasts (stride pinned 0).
-    auto regroup_view = [&](const array& base) {
-      bool splits = base.shape(1) != kv_heads;
-      int rep = splits ? repeats : 1;
-      Shape shape = {
-          base.shape(0), kv_heads, rep, base.shape(2), base.shape(3)};
-      Strides strides(5);
-      strides[0] = base.strides()[0];
-      strides[1] = splits ? base.strides()[1] * rep : base.strides()[1];
-      strides[2] = splits ? base.strides()[1] : 0;
-      strides[3] = base.strides()[2];
-      strides[4] = base.strides()[3];
-      array view(std::move(shape), base.dtype(), nullptr, {});
-      view.copy_shared_buffer(
-          base, strides, {false, false, false}, base.size());
-      encoder.add_temporary(view);
-      return view;
-    };
-    array qs = repeats > 1 ? regroup_view(q) : q;
-    array ks = repeats > 1 ? regroup_view(k) : k;
-    array vs = repeats > 1 ? regroup_view(v) : v;
-    array keys_t = swapaxes_in_eval(ks, -1, -2);
-    encoder.add_temporary(keys_t);
-    Shape score_shape = qs.shape();
-    score_shape.back() = k_len;
-    array scores(score_shape, float16, nullptr, {});
-    dispatch_matmul(tag, {qs, keys_t}, scores, scale_, 0.0f, false, s);
-    encoder.add_temporary(scores);
-
-    std::optional<array> masked;
-    if (do_causal_) {
-      if (k_len < q_len) {
-        omarchy::unsupported("causal offset " + tag, out);
-      }
-      // The same 0 / -1e30 additive shape the f32 path builds, stored
-      // in f16: -1e30 becomes -inf there, and softmax maps it to an
-      // exact zero. A fully masked row would go NaN here where the f32
-      // path stays tiny; causal shapes always expose the diagonal.
-      array mask(Shape{q_len, k_len}, float16, nullptr, {});
-      mask.set_data(allocate_omarchy(mask.nbytes()));
-      float16_t* values = mask.data<float16_t>();
-      int offset = k_len - q_len;
-      for (int row = 0; row < q_len; ++row) {
-        for (int col = 0; col < k_len; ++col) {
-          values[row * k_len + col] =
-              offset + row >= col
-                  ? float16_t(0.0f)
-                  : float16_t(-std::numeric_limits<float>::infinity());
-        }
-      }
-      encoder.add_temporary(mask);
-      masked = array(scores.shape(), float16, nullptr, {});
-      dispatch_elementwise(tag, AddOperation, {scores, mask}, *masked, s);
-    } else if (inputs.size() == 4) {
-      // Upstream delivers the additive mask pre-broadcast in the
-      // output dtype, so the f16 path consumes it without a cast.
-      const array& mask = inputs.at(3);
-      if (mask.dtype() != float16) {
-        omarchy::unsupported("attention mask dtype " + tag, out);
-      }
-      if (repeats > 1) {
-        masked = reshape_in_eval(
-            mask, Shape{batch, kv_heads, repeats, q_len, k_len}, s);
-        encoder.add_temporary(*masked);
-      } else {
-        masked = mask;
-      }
-      if ((*masked).shape() != scores.shape()) {
-        omarchy::unsupported("attention mask shape " + tag, out);
-      }
-      array added(scores.shape(), float16, nullptr, {});
-      dispatch_elementwise(tag, AddOperation, {scores, *masked}, added, s);
-      masked = added;
-      encoder.add_temporary(*masked);
-    }
-    const array& logits = masked ? *masked : scores;
-    encoder.add_temporary(logits);
-
-    array probs(logits.shape(), float16, nullptr, {});
-    dispatch_softmax(tag, logits, probs, s);
-    encoder.add_temporary(probs);
-
-    Shape result_shape = probs.shape();
-    result_shape.back() = v_dim;
-    array result(result_shape, float16, nullptr, {});
-    dispatch_matmul(tag, {probs, vs}, result, 1.0f, 0.0f, false, s);
-    encoder.add_temporary(result);
-    commit_result(result);
-    return;
-  }
-
   // The validated f32-score composition (the M1 4-bit degeneracy fix,
   // docs/2026-09-01-m1-4bit-greedy-sdpa-f16-scores.md): cast to
   // float32, scale, express GQA through the unflatten/expand_dims
@@ -7106,7 +6951,26 @@ void ScaledDotProductAttention::eval_gpu(
   dispatch_matmul(tag, {probs, v32}, result, 1.0f, 0.0f, false, s);
   encoder.add_temporary(result);
   if (result.dtype() == out.dtype()) {
-    commit_result(result);
+    if (repeats > 1) {
+      // With GQA the result is 5-D (kv, repeat) while out is 4-D (heads).
+      // The flat row-major layouts match, so share the buffer under out's
+      // own strides: copy_shared_buffer(result) alone would install 5-D
+      // strides and a 5-element stride vector on a 4-D array, and every
+      // later reader would walk wrong addresses (the upstream fallback
+      // flattens axes 1-2 here).
+      Strides out_strides(out.ndim(), 1);
+      for (int axis = out.ndim() - 2; axis >= 0; --axis) {
+        out_strides[axis] = out_strides[axis + 1] * out.shape(axis + 1);
+      }
+      array::Flags flags;
+      flags.contiguous = true;
+      flags.row_contiguous = true;
+      auto max_dim = std::max_element(out.shape().begin(), out.shape().end());
+      flags.col_contiguous = out.size() <= 1 || out.size() == *max_dim;
+      out.copy_shared_buffer(result, out_strides, flags, result.data_size());
+    } else {
+      out.copy_shared_buffer(result);
+    }
   } else {
     copy_gpu(result, out, CopyType::Vector, s);
   }
