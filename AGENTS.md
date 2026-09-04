@@ -120,6 +120,17 @@ Until then, update a row only when the linked receipt proves every named gate.
   not exist. Each looked entirely plausible. An unlabelled number is not
   evidence, and a defect report from an unverified environment costs
   more than no report.
+- An A/B run must prove its two sides are different builds before it
+  reports numbers. Wheels stamp their source commit into the version
+  (`0.32.2.dev<timestamp>+<short7>`, diagnostics `+diag.<short7>`), so
+  assert that each side's stamp equals the commit that side was meant to
+  be, and that the two stamps differ. Fail with both stamps printed. On
+  2026-09-03 two comparisons were voided after the fact - one built the
+  wrong branch because a helper resolved HEAD instead of the branch
+  name, the other built both sides from the same tree - and a third run
+  died on a shared cmake cache left behind by an earlier build. Clear
+  the cache per build for the same reason: an environment that lies
+  about what it built produces numbers that look fine.
 - Add one focused test for each new observable contract.
 - Run the release-equivalent build with CPU primitive evaluation unavailable.
 - Trace every ecosystem workflow at least once and require zero CPU tensor dispatches.
