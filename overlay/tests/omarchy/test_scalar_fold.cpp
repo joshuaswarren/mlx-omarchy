@@ -291,11 +291,11 @@ TEST_CASE("ScalarFold keeps dispatching behind in-flight inputs") {
   CHECK_EQ(recorded, 1);
 
   // The dispatch-count contract is the fold's property and asserts
-  // clean above. The VALUE is asserted only against the pre-existing
-  // backend defect below, which this test exposed: an eager op (exp)
-  // whose output feeds a consumer in the same scheduler pass returns
-  // recycled-page garbage on this backend with or without the fold
-  // (reproduced on 238a977 with no fold installed). Not the fold's to
-  // fix; tracked separately. When that defect is fixed, assert
-  // bits32(read_f32(s, out)) == bits32(exp(0.5f) + 1.0f) here.
+  // clean above. The VALUE check is omitted because the historical
+  // "pre-existing eager garbage defect" this case once pointed at was
+  // retracted: the reproduction was contaminated by an earlier
+  // fold-carrying wheel (the since-removed is_available shortcut), and
+  // clean-tree hunts do not reproduce it. When the ordering edge below
+  // is fixed, restore bits32(read_f32(s, out)) ==
+  // bits32(exp(0.5f) + 1.0f) here.
 }
