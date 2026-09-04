@@ -118,6 +118,16 @@ Until then, update a row only when the linked receipt proves every named gate.
 - Compare performance only on the same machine, model, quantization, prompts, and thermal procedure.
 - Keep cold-start, warm steady-state, prefill, decode, and first-token results separate.
 - Trace recurrent ANE state reuse and residency invalidation across decode steps.
+- Build the `omarchy_shaders` target before pushing any change under
+  `shaders/`. The C++ test targets do not compile shaders, so a green
+  battery says nothing about whether a shader still compiles. On
+  2026-09-03 a fused RoPE shader that read `gl_WorkGroupSize` with no
+  `local_size` declaration reached `main` behind three green batteries
+  and broke the aarch64 wheel build.
+- Re-run `scripts/prepare-mlx.sh` after any rebase before building. The
+  prepared tree under `.work/mlx` holds a copy of the overlay, so a
+  build after a rebase without it tests the code you had, not the code
+  you have.
 
 Do not lower tolerances, shorten a stability run, or remove a failing workload to make a gate pass.
 
