@@ -151,3 +151,47 @@ python3 scripts/chain_census.py /tmp/prof.jsonl \
   --compute-h .work/mlx/mlx/backend/omarchy/compute.h \
   --markers /tmp/m.jsonl
 ```
+
+## Addendum: compile-the-forward probe (pivot step 1, same night)
+
+`scripts/probe_compile_forward.py` re-expresses the Qwen2 decode layer
+functionally (explicit cache arrays in/out, offset as a scalar int32
+array, full-slot cache select + additive -inf mask instead of in-place
+KV writes) and wraps each whole decoder layer in `mx.compile`. Same
+model, venv, and box; both legs in one process, split by markers.
+
+| leg | dispatches/token | tape-path/token | median inter-token |
+|---|---|---|---|
+| eager | 1,951 | 72 | 1,412 ms (profiled run) |
+| compiled layers | ~2,167 median, 3,950 first step | 1,272 | 1,757 ms |
+
+**Compile alone does NOT collapse dispatches on this backend.** The
+tape share went 3.7% -> ~59%, but every tape node still records its own
+dispatch: our Compiled path is a tape interpreter, Metal's generates a
+fused kernel. Compiling the model forward moves primitives from the
+eager path into tapes one-for-one; the dispatch count is structurally
+unchanged, and the probe's functional full-slot attention made it
+slower on top.
+
+Findings recorded for whoever continues this road:
+
+1. The chain compile -> tape -> dispatch collapse needs BOTH halves:
+   compiled graphs (mlx_lm/upstream change) AND tape-level kernel
+   generation or fused variants (backend change). Either alone moves
+   nothing; the probe measured the "compiled graph" half.
+2. mlx-lm's KVCache mutates arrays in place; mx.compile tolerates only
+   the functional re-expression. The re-expression costs full-slot
+   attention and diverges from eager greedy after one token (masked-
+   softmax numerics; output stays coherent, token argmax flips).
+3. The backend refuses int32 Add ("no GPU kernel exists"), so a
+   decode-loop offset increment cannot ride the GPU graph; the probe
+   increments offsets host-side.
+4. No shapeless retrace storm during decode: shapes stay constant, the
+   prefill->decode transition retraces once (the "[1,7,4864] serving
+   [1,1,4864]" notice).
+
+Standing conclusion unchanged: on the decode loop mlx-lm 0.31.3
+actually runs, the only dispatch reducers that work today are dedicated
+named kernels (rope ~576-700, kv-copy 288, casts 240, scalar folding
+290 dispatches/token) - plus, behind the compile-the-forward change,
+the tape-fusion engine this census ruled out for tonight.
