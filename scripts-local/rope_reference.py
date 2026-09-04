@@ -204,6 +204,56 @@ def score_config(name, cfg, sections, verbose=True):
         for k, v in result.items():
             print(f"  {k}: {v:.6g}" if isinstance(v, float) else f"  {k}: {v}")
     return result
+def score_sweep(sections):
+    """Position sweep: error vs the f64 reference as a function of
+    position, per path. This is the mechanism discriminator:
+      - both paths growing together = driver range-reduction band,
+      - fused growing faster = fused-only defect,
+      - flat = neither (sub-ulp codegen variance)."""
+    import re
+
+    sweep_re = re.compile(
+        r"^(?:fused|composed|input)_sweep_(\w+)_pos(\d+)_d(\d+)$")
+    found = {}
+    for key in sections:
+        m = sweep_re.match(key)
+        if m:
+            entry = (int(m.group(2)), int(m.group(3)))
+            if entry not in found.setdefault(m.group(1), []):
+                found[m.group(1)].append(entry)
+    for tag, entries in sorted(found.items()):
+        dims = entries[0][1]
+        half = dims // 2
+        freqs_variant = tag.startswith("freqs")
+        base = 10000.0 if freqs_variant else 500000.0
+        if freqs_variant:
+            # The freqs variant reciprocates the f32 freqs values, so
+            # inv_freq runs UP to base**((half-1)/half) ~ 3162.
+            synth = np.exp(-np.arange(half) * (np.log(base) / half))
+            invf = 1.0 / synth
+        else:
+            invf = np.exp(-np.arange(half) * (np.log(base) / half))
+        dtype = F16 if tag.endswith("f16") else F32
+        print(f"== sweep {tag} (dims {dims}, base {base:g}) ==")
+        print("  position  theta_max   err_fused     err_composed"
+              "    fused/comp")
+        for pos, _ in sorted(entries):
+            name = f"sweep_{tag}_pos{pos}_d{dims}"
+            # section keys are fused_<name>/composed_<name>/input_<name>
+            # with name = sweep_<tag>_pos<p>_d<d>; tag already carries
+            # no "sweep_" prefix after the regex fix.
+            x = sections[f"input_{name}"].reshape(1, 1, 1, dims)
+            theta_row = float(pos) * invf
+            theta = theta_row[None, :]
+            truth = rope_reference_f64(
+                x.astype(np.float64), dims, False, None, theta).ravel()
+            fused = sections[f"fused_{name}"].astype(np.float64)
+            comp = sections[f"composed_{name}"].astype(np.float64)
+            ef = np.abs(fused - truth)
+            ec = np.abs(comp - truth)
+            ratio = float(np.max(ef) / max(np.max(ec), 1e-300))
+            print(f"  {pos:>8d}  {np.abs(theta).max():>9.1f}   "
+                  f"{np.max(ef):.3e}    {np.max(ec):.3e}    {ratio:8.3f}")
 
 
 def main():
@@ -224,6 +274,7 @@ def main():
                 f"wins {r['fused_wins']}/{r['composed_wins']}/{r['ties']} "
                 f"| tail bits fused {r['tail_fused_bit_diffs']} composed "
                 f"{r['tail_composed_bit_diffs']}")
+        score_sweep(sections)
         return
     # Reference-only mode: print theta envelopes per config. The freqs
     # variant's inv_freq is reciprocal(exp(-i*log(base)/half)), so its
