@@ -213,12 +213,14 @@ def score_sweep(sections):
     import re
 
     sweep_re = re.compile(
-        r"^(?:fused|composed|input)_sweep_(\w+)_pos(\d+)_d(\d+)$")
+        r"^(?:fused|composed|input)_sweep_(\w+)_pos(\d+)(?:_d(\d+))?$")
     found = {}
     for key in sections:
         m = sweep_re.match(key)
         if m:
             entry = (int(m.group(2)), int(m.group(3)))
+            entry = (int(m.group(2)),
+                     int(m.group(3)) if m.group(3) else 16)
             if entry not in found.setdefault(m.group(1), []):
                 found[m.group(1)].append(entry)
     for tag, entries in sorted(found.items()):
