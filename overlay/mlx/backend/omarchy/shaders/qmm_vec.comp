@@ -1,0 +1,168 @@
+#version 460
+
+// Fused matrix-vector path for QuantizedMatmul when x is a single row:
+// out[1, n] = x[1, k] @ dequant(w)[n, k].T with w packed uint32 words
+// holding 32/bits values along K, low bits first, one affine scale and
+// bias per group_size elements. Decode is this shape on every layer, and
+// the general kernel serializes it: one thread per output column walks
+// the whole row serially, so its 32-lane reads sit words-per-row*4 bytes
+// apart - every lane a separate cache line. Here one of the workgroup's
+// eight 32-lane subgroups owns one weight row and lanes stride single k
+// steps, so consecutive lanes read consecutive x elements, consecutive
+// weight-row words, and one shared cache line of row bytes per step.
+// Dequantization happens in registers inside the dot product - no
+// dequantized intermediate tensor, no extra pass over memory, one
+// dispatch.
+//
+// Two reduction flavors compile from this same source via -DUSE_SUBGROUP:
+//   * default: five-round workgroup-shared tree (correct on any
+//     subgroup size; lane split is plain workgroup arithmetic). The
+//     five barrier rounds are the cost.
+//   * USE_SUBGROUP=1: one subgroupAdd(accumulator) per 32-lane slot
+//     (Honeykrisp's actual subgroupSize). Trades the barriers for a
+//     single hardware-or-software reduction; the bench
+//     (tools/subgroup-bench) decides whether the trade pays on this
+//     device. Dispatch is gated on caps.subgroup_size == 32 and the
+//     ARITHMETIC subgroup-feature bit, so a device that lacks either
+//     falls back to the tree path unchanged.
+
+#ifdef USE_FP16
+#extension GL_EXT_shader_16bit_storage : require
+#extension GL_EXT_shader_explicit_arithmetic_types_float16 : require
+#define STORAGE_TYPE float16_t
+#define LOAD_VALUE(x) float(x)
+#define STORE_VALUE(f) STORAGE_TYPE(f)
+#elif defined(USE_BF16)
+#extension GL_EXT_shader_16bit_storage : require
+#extension GL_EXT_shader_explicit_arithmetic_types_int16 : require
+#define STORAGE_TYPE uint16_t
+#define LOAD_VALUE(x) uintBitsToFloat(uint(x) << 16u)
+uint16_t bf16_store(float value) {
+  uint bits = floatBitsToUint(value);
+  if (isnan(value)) {
+    return uint16_t((bits >> 16) | 0x40u);
+  }
+  return uint16_t((bits + 0x7fffu + ((bits >> 16) & 1u)) >> 16);
+}
+#define STORE_VALUE(f) bf16_store(f)
+#else
+#define STORAGE_TYPE float
+#define LOAD_VALUE(x) float(x)
+#define STORE_VALUE(f) STORAGE_TYPE(f)
+#endif
+
+#ifdef USE_SUBGROUP
+// The subgroup reduction variant assumes subgroupSize == 32, gated in
+// dispatch (see QuantizedMatmul::eval_gpu). The kernel does not check
+// this itself because Vulkan does not let compute shaders query
+// subgroupSize at runtime. Compiling this on a device with a different
+// subgroup size produces a wrong sum, so the dispatch gate is the
+// load-bearing part of this codepath.
+#extension GL_KHR_shader_subgroup_basic : require
+#extension GL_KHR_shader_subgroup_arithmetic : require
+#endif
+
+const uint COLUMNS_PER_GROUP = 8u;
+const uint LANES = 32u;
+
+layout(local_size_x = 256) in;
+
+layout(set = 0, binding = 0, std430) readonly buffer InputX {
+  STORAGE_TYPE values[];
+} input_x;
+layout(set = 0, binding = 1, std430) readonly buffer InputW {
+  uint values[];
+} input_w;
+layout(set = 0, binding = 2, std430) readonly buffer ScaleBias {
+  STORAGE_TYPE values[];
+} scale_bias;
+layout(set = 0, binding = 3, std430) writeonly buffer Output {
+  STORAGE_TYPE values[];
+} output_data;
+
+layout(push_constant) uniform Params {
+  uint count;
+  uint operation;
+  uint lhs_size;
+  uint rhs_size;
+  uint reduce_size;
+  uint output_size;
+  uint lhs_offset;
+  uint rhs_offset;
+  uint output_offset;
+  uint aux_size;
+  uint aux_offset;
+  uint matrix_m;
+  uint matrix_n;
+  uint matrix_k;
+  uint flags;
+  float alpha;
+  float beta;
+  uint dims;
+  uint shape[4];
+  uint in_strides[4];
+  uint out_strides[4];
+} params;
+
+shared float reduce_scratch[256];
+
+void main() {
+  uint lane = gl_LocalInvocationID.x;
+  uint column_slot = lane / LANES;
+  uint lane_in_slot = lane % LANES;
+  uint bits = params.operation;
+  uint pack_factor = 32u / bits;
+  uint value_mask = (1u << bits) - 1u;
+  uint group_size = params.reduce_size;
+  uint words_per_row = params.matrix_k / pack_factor;
+  uint groups_per_row = params.matrix_k / group_size;
+  uint column = gl_WorkGroupID.x * COLUMNS_PER_GROUP + column_slot;
+  bool column_active = column < params.matrix_n;
+  float accumulator = 0.0;
+  if (column_active) {
+    uint w_base = params.rhs_offset + column * words_per_row;
+    uint scale_base = params.aux_offset + column * groups_per_row;
+    uint bias_base = params.aux_offset +
+        params.matrix_n * groups_per_row + column * groups_per_row;
+    // Runtime trip count and runtime shift/mask: lane-uniform per step,
+    // never unrolled, so the unpack state stays out of registers.
+    for (uint k = lane_in_slot; k < params.matrix_k; k += LANES) {
+      uint word = input_w.values[w_base + k / pack_factor];
+      uint q = (word >> ((k % pack_factor) * bits)) & value_mask;
+      uint group = k / group_size;
+      float x_value = LOAD_VALUE(input_x.values[params.lhs_offset + k]);
+      accumulator += x_value *
+          (LOAD_VALUE(scale_bias.values[scale_base + group]) * float(q) +
+              LOAD_VALUE(scale_bias.values[bias_base + group]));
+    }
+  }
+#ifdef USE_SUBGROUP
+  // Subgroup reduction path. Each 32-lane slot is one hardware
+  // subgroup; subgroupAdd folds the per-lane accumulators inside the
+  // subgroup without shared-memory scratch or barriers. The
+  // lane_in_slot == 0 thread of each slot owns that column's output.
+  if (column_active) {
+    float total = subgroupAdd(accumulator);
+    if (lane_in_slot == 0u) {
+      output_data.values[params.output_offset + column] = STORE_VALUE(total);
+    }
+  }
+#else
+  // Tree reduction path (default). Five rounds of barrier-synchronized
+  // shared-memory adds fold the 32-lane per-slot accumulators; first
+  // lane of each slot owns the column output. Correct on any subgroup
+  // size because the lane split is plain workgroup arithmetic.
+  reduce_scratch[lane] = accumulator;
+  barrier();
+  for (uint offset = LANES / 2u; offset > 0u; offset >>= 1u) {
+    if (lane_in_slot < offset) {
+      reduce_scratch[lane] += reduce_scratch[lane + offset];
+    }
+    barrier();
+  }
+  if (lane_in_slot == 0u && column_active) {
+    output_data.values[params.output_offset + column] =
+        STORE_VALUE(reduce_scratch[lane]);
+  }
+#endif
+}

@@ -302,6 +302,22 @@ enum class ComputeKernel : uint8_t {
   ScatterAxisFCasF16,
   ScatterAxisFCasBF16,
   ScatterAxisBool,
+  // DecodeGemv: matrix-vector kernel for Qmm when lhs has a single
+  // row (the decode shape). One workgroup owns eight output columns;
+  // lanes stride single k steps so weight reads stay coalesced. The
+  // default reduction is a five-round workgroup-shared tree.
+  QmmVecF32,
+  QmmVecF16,
+  QmmVecBF16,
+  // DecodeGemvSubgroup: same shader compiled with -DUSE_SUBGROUP=1,
+  // replacing the tree with one subgroupAdd per 32-lane slot. Dispatch
+  // is gated in primitives.cpp on caps.subgroup_size == 32 and the
+  // ARITHMETIC subgroup-feature bit; a device that lacks either falls
+  // back to QmmVecF32/16/BF16. These enum values live at the end so
+  // older indices stay stable for the GPU-profile NDJSON stream.
+  QmmVecSubgroupF32,
+  QmmVecSubgroupF16,
+  QmmVecSubgroupBF16,
   Count,
 };
 

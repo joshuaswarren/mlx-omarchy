@@ -4515,6 +4515,49 @@ void QuantizedMatmul::eval_gpu(const std::vector<array>& inputs, array& out) {
   params.output_offset = checked_item_offset(out, out.size(), tag, out);
   std::array<omarchy::ComputeBinding, 4> bindings{
       binding(x), binding(w), binding(combined), binding(out)};
+  // DecodeGemv dispatch: when lhs has a single row, the per-row GEMV
+  // path replaces the 16x16 tile. The subgroup-reduction variant is
+  // picked when the device reports subgroupSize == 32 AND the ARITHMETIC
+  // subgroup feature bit is set, both queried at device init and held
+  // on the capability report. The default fall-through path is the
+  // general Qmm kernel (unaffected by this addition).
+  //
+  // The subgroup variant replaces the five-round workgroup-shared
+  // tree with one subgroupAdd per 32-lane slot. The microbenchmark
+  // tools/subgroup-bench decides whether the trade pays; if the
+  // device lacks subgroup support, this gate is a no-op and the
+  // general path runs unchanged. See PROTOCOL.md for the keep rule.
+  //
+  // Gemv group count: COLUMNS_PER_GROUP output columns per workgroup,
+  // matching the lane split in shaders/qmm_vec.comp.
+  constexpr uint32_t kGemvColumnsPerGroup = 8u;
+  auto n_groups_qmm_vec = (params.matrix_n + kGemvColumnsPerGroup - 1u) /
+      kGemvColumnsPerGroup;
+  if (params.matrix_m == 1u) {
+    const auto& caps = encoder.device().capabilities();
+    bool subgroup_ready =
+        caps.subgroup_size == 32u &&
+        (caps.subgroup_operations & VK_SUBGROUP_FEATURE_ARITHMETIC_BIT) != 0;
+    auto vec_kernel = subgroup_ready
+        ? select_float_kernel(
+              out.dtype(),
+              omarchy::ComputeKernel::QmmVecSubgroupF32,
+              omarchy::ComputeKernel::QmmVecSubgroupF16,
+              omarchy::ComputeKernel::QmmVecSubgroupBF16)
+        : select_float_kernel(
+              out.dtype(),
+              omarchy::ComputeKernel::QmmVecF32,
+              omarchy::ComputeKernel::QmmVecF16,
+              omarchy::ComputeKernel::QmmVecBF16);
+    encoder.dispatch_compute(
+        vec_kernel,
+        bindings,
+        params,
+        std::min(n_groups_qmm_vec, omarchy::kMaxComputeGroupCountX),
+        1u,
+        1u);
+    return;
+  }
   auto kernel = select_float_kernel(
       out.dtype(),
       omarchy::ComputeKernel::QmmF32,
