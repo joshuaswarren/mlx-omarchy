@@ -28,6 +28,7 @@ Usage (llvmpipe dev box):
 Exit 0 = all cases pass; exit 1 = first failing case printed.
 """
 
+import os
 import sys
 
 import numpy as np
@@ -37,8 +38,15 @@ import mlx.core as mx
 SIGMA = 0.5
 
 
-def draw(key, shape):
-    return (mx.random.normal(shape, key=key) * SIGMA).astype(mx.float16)
+def draw(key, shape, dtype=mx.float16):
+    return (mx.random.normal(shape, key=key) * SIGMA).astype(dtype)
+
+
+# The bfloat16 finite maximum: the bf16 additive causal floor. bf16
+# shares float32's 8-bit exponent, so every finite f32 score is
+# representable and the floor stays overflow-immune where the f16 path
+# caps at -65504.
+BF16_FLOOR = -3.3895313892515355e38
 
 
 def causal_addend(q_len, k_len, dtype):
@@ -46,17 +54,22 @@ def causal_addend(q_len, k_len, dtype):
 
     Mirrors what each C++ path writes per element: 0 / -1e30 in f32,
     0 / -65504 (the f16 finite maximum, matching the backend's
-    fully-masked-row guard) in f16. Built in numpy: the backend
-    refuses GPU broadcast compares, and a fixture needs no GPU
-    kernel. A multiplier form would NaN the kept positions (0 * -inf).
+    fully-masked-row guard) in f16, 0 / BF16_FLOOR in bfloat16. Built
+    in numpy: the backend refuses GPU broadcast compares, and a fixture
+    needs no GPU kernel. A multiplier form would NaN the kept
+    positions (0 * -inf).
     """
     rows = np.arange(q_len)[:, None] + (k_len - q_len)
     cols = np.arange(k_len)[None, :]
     blocked = rows < cols
     if dtype == np.float16:
         values = np.where(blocked, -65504.0, 0.0).astype(np.float16)
-    else:
-        values = np.where(blocked, -1e30, 0.0).astype(np.float32)
+        return mx.array(values)
+    if dtype == mx.bfloat16:
+        return mx.array(
+            np.where(blocked, BF16_FLOOR, 0.0).astype(np.float32)
+        ).astype(mx.bfloat16)
+    values = np.where(blocked, -1e30, 0.0).astype(np.float32)
     return mx.array(values)
 
 
@@ -91,45 +104,84 @@ def composed_reference(q, k, v, scale, mask=None, causal=False):
     return out.astype(q.dtype), scores, probs
 
 
-def f16_storage_emulation(q, k, v, scale, mask=None, causal=False):
-    """What the reworked path computes: f16 storage, f32 accumulation.
+def storage_emulation(q, k, v, scale, mask=None, causal=False):
+    """What the fast path computes: score and prob storage at the query
+    dtype (f16 or bf16), float32 accumulation.
 
-    matmul.comp loads f16 operands as float, accumulates in float, scales
-    by alpha in float, and stores f16; softmax.comp runs float math over
-    f16 storage. This mirrors that round trip.
+    matmul.comp loads the storage dtype's operands as float, accumulates
+    in float, scales by alpha in float, and stores rounded to the
+    storage grid; softmax_suffix.comp runs float math over that
+    storage. This mirrors that round trip for both 16-bit storages.
     """
+    st = q.dtype
     batch, heads, q_len, head_dim = q.shape
     kv_heads = k.shape[1]
     k_len = k.shape[2]
     v_dim = v.shape[3]
-    q16 = q.astype(mx.float16)
-    k16 = k.astype(mx.float16)
-    v16 = v.astype(mx.float16)
+    qst = q.astype(st)
+    kst = k.astype(st)
+    vst = v.astype(st)
     if kv_heads != heads:
         repeats = heads // kv_heads
-        qs = q16.reshape(batch, kv_heads, repeats, q_len, head_dim)
-        k32 = k16.reshape(
+        qs = qst.reshape(batch, kv_heads, repeats, q_len, head_dim)
+        k32 = kst.reshape(
             batch, kv_heads, 1, k_len, head_dim).astype(mx.float32)
-        v32 = v16.reshape(
+        v32 = vst.reshape(
             batch, kv_heads, 1, k_len, v_dim).astype(mx.float32)
     else:
-        qs = q16
-        k32 = k16.astype(mx.float32)
-        v32 = v16.astype(mx.float32)
+        qs = qst
+        k32 = kst.astype(mx.float32)
+        v32 = vst.astype(mx.float32)
     scores = (qs.astype(mx.float32) @ k32.swapaxes(-1, -2)) * scale
-    scores = scores.astype(mx.float16)
+    scores = scores.astype(st)
     if causal:
-        scores = scores + causal_addend(q_len, k_len, np.float16)
+        scores = scores + causal_addend(q_len, k_len, st)
     elif mask is not None:
-        scores = scores + mask.astype(mx.float16)
-    probs = mx.softmax(scores.astype(mx.float32), axis=-1).astype(mx.float16)
+        scores = scores + mask.astype(st)
+    probs = mx.softmax(scores.astype(mx.float32), axis=-1).astype(st)
     out = (probs.astype(mx.float32) @ v32).reshape(
         batch, heads, q_len, v_dim)
-    return out.astype(mx.float16), scores, probs
+    return out.astype(st), scores, probs
 
 
-def check(name, q, k, v, scale, mask=None, causal=False, atol=1e-3,
-          storage_atol=2e-3):
+def derived_bf16_bars(ref_scores, v, mask, blocked):
+    """bf16 bars derived from the storage grid and the reduction, not
+    fitted: score storage rounds each kept score to the bf16 grid (RNE
+    half-ulp 2^-9 relative); that logit error propagates through
+    softmax bounded by 2x, and the PV reduction adds one prob-storage
+    rounding plus one output-storage rounding, weighted by max|v|.
+    Masked positions (causal-blocked or additive-floor, where the
+    stored value is the exact floor) are excluded from the magnitude
+    the bound is built from.
+    """
+    keep = np.isfinite(np.asarray(ref_scores.astype(mx.float32)))
+    if blocked is not None:
+        while blocked.ndim < keep.ndim:
+            blocked = blocked[None, :]
+        keep = keep & ~np.broadcast_to(blocked, keep.shape)
+    if mask is not None:
+        floor = np.asarray(mask.astype(mx.float32)) <= -1e29
+        while floor.ndim < keep.ndim:
+            floor = floor[None, :]
+        keep = keep & ~np.broadcast_to(floor, keep.shape)
+    scores_v = np.asarray(ref_scores.astype(mx.float32))[keep]
+    mask_mag = 0.0
+    if mask is not None:
+        kept_mask = np.asarray(mask.astype(mx.float32))
+        while kept_mask.ndim < keep.ndim:
+            kept_mask = kept_mask[None, :]
+        kept_mask = np.broadcast_to(kept_mask, keep.shape)[keep]
+        mask_mag = float(np.abs(kept_mask).max())
+    score_mag = float(np.abs(scores_v).max()) + mask_mag
+    v_mag = float(np.abs(np.asarray(v.astype(mx.float32))).max())
+    half_ulp = 2.0 ** -9
+    storage_atol = half_ulp * (2.0 * score_mag + 1.0)
+    atol = half_ulp * (2.0 * score_mag + 2.0) * v_mag
+    return atol, storage_atol
+
+
+def check(name, q, k, v, scale, mask=None, causal=False, atol=None,
+          storage_atol=None):
     kwargs = {}
     if causal:
         kwargs["mask"] = "causal"
@@ -138,7 +190,7 @@ def check(name, q, k, v, scale, mask=None, causal=False, atol=1e-3,
     got = mx.fast.scaled_dot_product_attention(q, k, v, scale=scale, **kwargs)
     mx.eval(got)
     ref, ref_scores, ref_probs = composed_reference(q, k, v, scale, mask, causal)
-    sim, sim_scores, sim_probs = f16_storage_emulation(q, k, v, scale, mask, causal)
+    sim, sim_scores, sim_probs = storage_emulation(q, k, v, scale, mask, causal)
 
     failures = []
 
@@ -151,6 +203,12 @@ def check(name, q, k, v, scale, mask=None, causal=False, atol=1e-3,
         rows_m = np.arange(q_len_m)[:, None] + (k_len_m - q_len_m)
         cols_m = np.arange(k_len_m)[None, :]
         causal_blocked = rows_m < cols_m
+    if atol is None:
+        if q.dtype == mx.bfloat16:
+            atol, storage_atol = derived_bf16_bars(
+                ref_scores, v, None if causal else mask, causal_blocked)
+        else:
+            atol, storage_atol = 1e-3, 2e-3
 
     def max_err(sim, ref, exclude=None):
         a = np.asarray(sim.astype(mx.float32))
@@ -199,26 +257,52 @@ def check(name, q, k, v, scale, mask=None, causal=False, atol=1e-3,
     return not failures
 
 
-def cache_slice_case(rng, offset, heads, kv_heads, head_dim, q_len=1):
+def cache_slice_case(rng, offset, heads, kv_heads, head_dim, q_len=1,
+                     dtype=mx.float16):
     """k/v drawn from a longer cache array, sliced - never row-contiguous."""
     max_len = offset + 16
     k_len = offset + q_len
     key_q, key_k, key_v = mx.random.split(rng, 3)
-    cache_k = draw(key_k, (1, kv_heads, max_len, head_dim))
-    cache_v = draw(key_v, (1, kv_heads, max_len, head_dim))
-    q = draw(key_q, (1, heads, q_len, head_dim))
+    cache_k = draw(key_k, (1, kv_heads, max_len, head_dim), dtype)
+    cache_v = draw(key_v, (1, kv_heads, max_len, head_dim), dtype)
+    q = draw(key_q, (1, heads, q_len, head_dim), dtype)
     k = cache_k[:, :, :k_len, :]
     v = cache_v[:, :, :k_len, :]
     scale = 1.0 / head_dim ** 0.5
     repeats = heads // kv_heads
-    name = (f"cache-slice off={offset} hd={head_dim} "
+    tag = "bf16 " if dtype == mx.bfloat16 else ""
+    name = (f"{tag}cache-slice off={offset} hd={head_dim} "
             f"heads={heads} kv={kv_heads} rep={repeats} q_len={q_len}")
     return check(name, q, k, v, scale)
+
+
+def gate_enabled(name):
+    value = os.environ.get(name)
+    return value is not None and value != "0"
 
 
 def main():
     rng = mx.random.key(0)
     ok = True
+
+    gates = {
+        "MLX_OMARCHY_ROPE_BF16_DIRECT": gate_enabled(
+            "MLX_OMARCHY_ROPE_BF16_DIRECT"),
+        "MLX_OMARCHY_SDPA_BF16_FAST": gate_enabled(
+            "MLX_OMARCHY_SDPA_BF16_FAST"),
+    }
+    state = " ".join(
+        f"{name}={'on' if on else 'off'}" for name, on in gates.items())
+    print(f"gates: {state}")
+    if "--require-gates" in sys.argv:
+        disabled = [name for name, on in gates.items() if not on]
+        if disabled:
+            print(
+                f"FAIL: gates off: {', '.join(disabled)} - the bf16 legs "
+                "would ride the f32 composition, so a PASS would not "
+                "exercise the fast paths. Set the gates and rerun."
+            )
+            return 1
 
     # (b) non-contiguous cache slices at offsets 1, 7, 41, 256.
     for offset in (1, 7, 41, 256):
@@ -299,7 +383,7 @@ def main():
     v = (mx.random.normal((1, 2, 64, 64), key=key_v) * 0.5).astype(mx.float16)
     got = mx.fast.scaled_dot_product_attention(q, k, v, scale=0.125)
     mx.eval(got)
-    sim, _, _ = f16_storage_emulation(q, k, v, 0.125)
+    sim, _, _ = storage_emulation(q, k, v, 0.125)
     got_np = np.asarray(got.astype(mx.float32))
     sim_np = np.asarray(sim.astype(mx.float32))
     same_nan = np.array_equal(np.isnan(got_np), np.isnan(sim_np))
@@ -308,7 +392,96 @@ def main():
           f"{'agree' if same_nan else 'DISAGREE'} on NaN pattern "
           f"(f32 path stays finite here; upstream Metal f16 sdpa has "
           f"the same storage cap)")
-    ok &= same_nan
+
+    # ---- bfloat16 legs: the SDPA bf16 fast path (MLX_OMARCHY_SDPA_
+    # BF16_FAST; with the gate off these ride the f32 composition and
+    # pass trivially). Same coverage as the f16 legs; bars derived from
+    # the bf16 grid by derived_bf16_bars.
+    bf = mx.bfloat16
+
+    # Cache slices across offsets and GQA repeats (the decode shapes).
+    for offset in (1, 41, 256):
+        ok &= cache_slice_case(
+            rng, offset, heads=4, kv_heads=4, head_dim=64, dtype=bf)
+    for heads, kv_heads in ((4, 2), (7, 1)):
+        ok &= cache_slice_case(rng, 41, heads, kv_heads, 64, dtype=bf)
+    ok &= cache_slice_case(rng, 41, heads=7, kv_heads=1, head_dim=48, dtype=bf)
+
+    # q_len > 1 dense, batch 2, prefill into a cache slice.
+    key_q, key_k, key_v = mx.random.split(rng, 3)
+    ok &= check(
+        "bf16 q_len=16 dense hd=48 heads=4",
+        draw(key_q, (1, 4, 16, 48), bf),
+        draw(key_k, (1, 4, 16, 48), bf),
+        draw(key_v, (1, 4, 16, 48), bf),
+        1.0 / 48 ** 0.5)
+    key_q, key_k, key_v = mx.random.split(rng, 3)
+    ok &= check(
+        "bf16 q_len=5 k_len=9 GQA7 batch=2",
+        draw(key_q, (2, 7, 5, 64), bf),
+        draw(key_k, (2, 1, 9, 64), bf),
+        draw(key_v, (2, 1, 9, 64), bf),
+        1.0 / 64 ** 0.5)
+    ok &= cache_slice_case(
+        rng, 41, heads=4, kv_heads=2, head_dim=64, q_len=5, dtype=bf)
+
+    # Decode shapes, dense and causal.
+    key_q, key_k, key_v = mx.random.split(rng, 3)
+    ok &= check(
+        "bf16 decode dense [1,4,1,64]",
+        draw(key_q, (1, 4, 1, 64), bf),
+        draw(key_k, (1, 4, 64, 64), bf),
+        draw(key_v, (1, 4, 64, 64), bf),
+        0.125)
+    key_q, key_k, key_v = mx.random.split(rng, 3)
+    ok &= check(
+        "bf16 decode causal [1,4,1,64]",
+        draw(key_q, (1, 4, 1, 64), bf),
+        draw(key_k, (1, 4, 64, 64), bf),
+        draw(key_v, (1, 4, 64, 64), bf),
+        0.125,
+        causal=True)
+    key_q, key_k, key_v = mx.random.split(rng, 3)
+    ok &= check(
+        "bf16 decode causal GQA2",
+        draw(key_q, (1, 4, 1, 64), bf),
+        draw(key_k, (1, 2, 64, 64), bf),
+        draw(key_v, (1, 2, 64, 64), bf),
+        0.125,
+        causal=True)
+
+    # Causal q_len > 1 and an explicit additive bf16 mask.
+    key_q, key_k, key_v, key_m = mx.random.split(rng, 4)
+    q = draw(key_q, (1, 4, 8, 64), bf)
+    k = draw(key_k, (1, 4, 32, 64), bf)
+    v = draw(key_v, (1, 4, 32, 64), bf)
+    mask = draw(key_m, (1, 4, 8, 32), bf)
+    ok &= check("bf16 causal q_len=8 k_len=32", q, k, v, 0.125, causal=True)
+    ok &= check("bf16 additive mask", q, k, v, 0.125, mask=mask)
+
+    # Fully masked row: the bf16 floor is exact in storage (the score
+    # addend is absorbed identically on both paths), the row reduces to
+    # a uniform softmax on both sides, and the derived bars from the
+    # kept scores govern.
+    key_q, key_k, key_v, key_m = mx.random.split(rng, 4)
+    q = draw(key_q, (1, 4, 4, 64), bf)
+    k = draw(key_k, (1, 4, 16, 64), bf)
+    v = draw(key_v, (1, 4, 16, 64), bf)
+    mask = draw(key_m, (1, 4, 4, 16), bf)
+    mask[:, :, 2, :] = BF16_FLOOR
+    ok &= check("bf16 fully-masked row (row 2)", q, k, v, 0.125, mask=mask)
+
+    # Overflow boundary: at magnitudes that overflow f16 score storage
+    # (the f16 leg above NaNs), bf16 stays finite - it shares float32's
+    # exponent, so every finite f32 scaled score is representable. The
+    # primitive must be finite AND within the derived bf16 bars of the
+    # f32 reference.
+    key_q, key_k, key_v = mx.random.split(rng, 3)
+    q = (mx.random.normal((1, 2, 1, 64), key=key_q) * 40.0).astype(bf)
+    k = (mx.random.normal((1, 2, 64, 64), key=key_k) * 40.0).astype(bf)
+    v = (mx.random.normal((1, 2, 64, 64), key=key_v) * 0.5).astype(bf)
+    ok &= check(
+        "bf16 overflow boundary q,k~N(0,40) stays finite", q, k, v, 0.125)
 
     print("ALL PASS" if ok else "SUITE FAILED")
     return 0 if ok else 1
