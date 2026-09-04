@@ -1,0 +1,20 @@
+// Minimal probe: binding one buffer readonly in one descriptor slot and
+// writeonly in another, then aliasing them to the SAME buffer, drops
+// stores on llvmpipe (Mesa lavapipe, 2026-09-03). Observed in fast::RoPE
+// when the host donated the input into the output: every element kept
+// its stale copy-in value at the writeonly slot while the same shader
+// with distinct buffers stored correctly. The trivial-copy substitution
+// below is the probe: bind in and out to one buffer, expect a copy,
+// observe stale bytes. Workaround in this repo: never alias - rotate
+// into a fresh output buffer (shaders/fast_rope.comp).
+#version 460
+layout(local_size_x = 256) in;
+layout(set = 0, binding = 0, std430) readonly buffer In { float v[]; } in_data;
+layout(set = 0, binding = 1, std430) writeonly buffer Out { float v[]; } out_data;
+layout(push_constant) uniform P { uint count; } p;
+void main() {
+  uint i = gl_GlobalInvocationID.x;
+  if (i < p.count) {
+    out_data.v[i] = in_data.v[i] * 2.0;
+  }
+}

@@ -1,0 +1,25 @@
+// Minimal probe: a uint16_t-typed storage block compiled from the RoPE
+// shader source returns recycled-memory garbage on llvmpipe (Mesa
+// lavapipe, 2026-09-03). Stable across -Os and -O0, across arithmetic
+// changes, and across roundtrip removals; the float16 twin of the same
+// shader is bit-exact; a trivial copy through the same bindings is
+// correct. Probe: bind a constant 0x3F00 (bf16 0.5) buffer, run any
+// math, read the output - bytes are recycled page content, not
+// functions of the input. Workaround in this repo: bf16 IO through
+// 32-bit words with constant-shift select chains (commit cf68e7d
+// form), storing through the proven CastF32BF16 kernel
+// (shaders/fast_rope.comp USE_BF16 branch).
+#version 460
+#extension GL_EXT_shader_16bit_storage : require
+#extension GL_EXT_shader_explicit_arithmetic_types_int16 : require
+layout(local_size_x = 256) in;
+layout(set = 0, binding = 0, std430) readonly buffer In { uint16_t v[]; } in_data;
+layout(set = 0, binding = 1, std430) writeonly buffer Out { uint16_t v[]; } out_data;
+layout(push_constant) uniform P { uint count; } p;
+void main() {
+  uint i = gl_GlobalInvocationID.x;
+  if (i < p.count) {
+    float x = uintBitsToFloat(uint(in_data.v[i]) << 16u);
+    out_data.v[i] = uint16_t(floatBitsToUint(x * 2.0) >> 16);
+  }
+}
