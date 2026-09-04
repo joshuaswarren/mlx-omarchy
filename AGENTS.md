@@ -118,12 +118,20 @@ Until then, update a row only when the linked receipt proves every named gate.
 - Compare performance only on the same machine, model, quantization, prompts, and thermal procedure.
 - Keep cold-start, warm steady-state, prefill, decode, and first-token results separate.
 - Trace recurrent ANE state reuse and residency invalidation across decode steps.
-- Build the `omarchy_shaders` target before pushing any change under
-  `shaders/`. The C++ test targets do not compile shaders, so a green
-  battery says nothing about whether a shader still compiles. On
-  2026-09-03 a fused RoPE shader that read `gl_WorkGroupSize` with no
-  `local_size` declaration reached `main` behind three green batteries
-  and broke the aarch64 wheel build.
+- A shader that compiles on the development box may fail on the M1,
+  because the two machines run different shader compilers. The build
+  prefers `glslc` and falls back to `glslangValidator`
+  (`overlay/mlx/backend/omarchy/CMakeLists.txt:10-27`). The x86
+  development box has only `glslangValidator` 12.0.0; jwm1 has `glslc`
+  2026.3. The older validator accepts constructs the newer compiler
+  rejects. On 2026-09-03 a fused RoPE shader read `gl_WorkGroupSize`
+  with no `local_size` declaration, compiled clean here behind three
+  green batteries, and broke the aarch64 wheel build on the M1.
+  `add_dependencies(mlx omarchy_shaders)` means the batteries DO compile
+  shaders, so a green battery is real evidence about this box's compiler
+  and no evidence at all about the M1's. Before pushing a change under
+  `shaders/`, either build it where `glslc` is present or have the M1
+  owner build it.
 - Re-run `scripts/prepare-mlx.sh` after any rebase before building. The
   prepared tree under `.work/mlx` holds a copy of the overlay, so a
   build after a rebase without it tests the code you had, not the code
