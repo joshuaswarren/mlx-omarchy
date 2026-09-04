@@ -8,8 +8,9 @@ Usage:
 Produces: GPU busy fraction, gap distribution (intra- vs inter-submission),
 per-kernel totals/mean/median/share, dispatches per submission, host-side
 join/submit/record costs, and the dependency proxy (fraction of consecutive
-dispatch pairs with disjoint buffer sets = ceiling for what
-dependency-gated barriers could remove).
+dispatch pairs with disjoint compute bindings - a lower-bound PROXY
+only: transfer/fill/alias dependencies are invisible to it, so it says
+nothing about which barriers are actually removable).
 
 Kernel names come from the declaration order of the ComputeKernel enum in
 overlay/mlx/backend/omarchy/compute.h, the same order the C++ harness
@@ -23,9 +24,13 @@ DELAYED - when their ring slot is flushed at a join or slot reuse, long
 after the work was submitted - so file order and the "op" field never
 attribute anything. A dispatch belongs to the phase its SUBMISSION was
 made in: look up the submit record ("k":"s") with the same id d["s"]
-and canonicalize the last marker at that host time. Dispatches whose
-submission record is missing are reported under "unknown" and are
-never folded into a named phase as zero-cost work.
+and canonicalize the last marker at that host time. Two unknowables
+are kept distinct: "unknown (no matching submit record)" and "unknown
+(submit outside named phases)". Neither is folded into a named phase
+or reported as zero-cost work. Host markers are WINDOWS, not semantic
+phases: an async pipeline can submit the next decode step before the
+first token yields, so boundary work lands in the earlier window and
+decode-window rates use inter-token intervals (n_tok - 1).
 """
 
 import argparse
@@ -175,16 +180,23 @@ def main():
             cur = m["p"]
         return PHASE_OF_MARKER.get(cur)
 
+    UNKNOWN_NOSUBMIT = "unknown (no matching submit record)"
+    UNKNOWN_OUTSIDE = "unknown (submit outside named phases)"
     # Dispatch records are flushed late (join or slot reuse), so a
     # dispatch's phase is the phase of its SUBMISSION, resolved by the
     # submission id d["s"] against the submit record's host time. The
     # join's host time would attribute work to whenever the host got
-    # around to waiting, not to when the work was submitted. A
-    # dispatch with no submit record stays None and is reported as
-    # unknown below - never guessed.
+    # around to waiting, not to when the work was submitted. Two
+    # distinct unknowables are kept distinct: no submit record at all
+    # vs a known submit time that falls outside the named phase
+    # markers. Neither is guessed.
     for d in dispatches:
         s_rec = submit_by_s.get(d["s"])
-        d["phase"] = phase_of_host(s_rec["t"]) if s_rec else None
+        if s_rec is None:
+            d["phase"] = UNKNOWN_NOSUBMIT
+        else:
+            ph = phase_of_host(s_rec["t"])
+            d["phase"] = ph if ph else UNKNOWN_OUTSIDE
 
     out = []
 
@@ -285,8 +297,9 @@ def main():
                         if bufs(a).isdisjoint(bufs(b)))
             say(f"   dependency proxy [{tag}]: {indep}/{len(ds) - 1} "
                 f"consecutive pairs fully disjoint "
-                f"({indep / (len(ds) - 1) * 100:.1f}% "
-                f"barrier-free ceiling)")
+                f"({indep / (len(ds) - 1) * 100:.1f}% - compute-binding "
+                f"disjointness only; transfer/fill/alias deps invisible, "
+                f"not a barrier-correctness bound)")
 
     waits = sorted(j["wait"] for j in joins)
     invals = sorted(j["inval"] for j in joins)
@@ -322,29 +335,37 @@ def main():
             by_phase.setdefault(d["phase"], []).append(d)
         dur_by_id = {id(d): dur for dur, d in kernels_ns}
         say("")
-        say("== per phase (a dispatch's phase is its submission's phase;")
-        say("   the dispatch records themselves are flushed late, at joins)")
-        for ph in sorted(by_phase, key=lambda p: (p is None, p or "")):
+        say("== per host-marker window (a dispatch sits in its submission's")
+        say("   window; records flush late at joins; windows are NOT")
+        say("   semantic phases - an async pipeline can submit the next")
+        say("   decode step before the first token yields, so boundary")
+        say("   work lands in the earlier window)")
+        for ph in sorted(by_phase, key=lambda p: (p.startswith("unknown"), p)):
             ds = by_phase[ph]
-            label = ph if ph else "unknown (no matching submit record)"
             dur = sum(dur_by_id.get(id(d), 0.0) for d in ds)
-            joins_ph = [j for j in joins if phase_of_host(j["t"]) == ph]
-            say(f"   {label}: dispatches={len(ds)} gpu_busy={fmt_ns(dur)} "
+            joins_ph = [j for j in joins
+                        if (phase_of_host(j["t"]) or UNKNOWN_OUTSIDE) == ph]
+            say(f"   {ph}: dispatches={len(ds)} gpu_busy={fmt_ns(dur)} "
                 f"joins={len(joins_ph)} join_wait_total="
                 f"{fmt_ns(sum(j['wait'] for j in joins_ph))}")
         n_tok = sum(1 for m in markers if m["p"] == "tok")
         decode_ds = len(by_phase.get("decode", []))
         decode_subs = [s for s in submits
                        if phase_of_host(s["t"]) == "decode"]
-        if n_tok:
-            say(f"   dispatches/decode-token: {decode_ds / n_tok:.1f} "
-                f"({decode_ds} over {n_tok} tokens)")
-            say(f"   submissions/decode-token: "
-                f"{len(decode_subs) / n_tok:.1f} "
-                f"({len(decode_subs)} over {n_tok} tokens)")
+        if n_tok >= 2:
+            # Inter-token intervals, not yields: the first decode
+            # submission can land inside the prefill window (async
+            # pipeline), so the decode window covers n_tok - 1 steps.
+            n_int = n_tok - 1
+            say(f"   dispatches/decode-interval: {decode_ds / n_int:.1f} "
+                f"({decode_ds} over {n_int} inter-token intervals; the "
+                f"first decode submit may sit in the prefill window)")
+            say(f"   submissions/decode-interval: "
+                f"{len(decode_subs) / n_int:.1f} "
+                f"({len(decode_subs)} over {n_int} intervals)")
             jw = sum(j["wait"] for j in joins
                      if phase_of_host(j["t"]) == "decode")
-            say(f"   join wait per decode-token: {fmt_ns(jw / n_tok)}")
+            say(f"   join wait per decode-interval: {fmt_ns(jw / n_int)}")
 
     print("\n".join(out))
 

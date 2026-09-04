@@ -31,8 +31,10 @@ MARKERS = [
 ]
 
 # Flushed order: decode submission 3 first, prefill submission 1 last.
-# Host submit times decide phases: s1@3500=prefill, s2@11000=decode,
-# s3@15000=decode; s99 has no submit record and must stay unknown.
+# Host submit times decide windows: s1@3500=prefill, s2@11000=decode,
+# s3@15000=decode; s4@2500 falls between load_done and prefill_start
+# (submit outside named phases); s99 has no submit record at all. The
+# two unknowables must stay distinct.
 PROFILE = [
     {"k": "meta", "device": "llvmpipe", "period_ns": 33.333,
      "valid_bits": 64, "pool": 65536, "label": "t", "host_t0": 100},
@@ -42,15 +44,18 @@ PROFILE = [
      "h": 100, "t0": 4200, "t1": 5200, "b": [[1, 0, 256]]},
     {"k": "d", "s": 1, "e": 5, "op": 0, "n": 1, "gx": 32, "gy": 1, "gz": 1,
      "h": 150, "t0": 3500, "t1": 4200, "b": [[1, 0, 256]]},
+    {"k": "d", "s": 4, "e": 5, "op": 0, "n": 1, "gx": 1, "gy": 1, "gz": 1,
+     "h": 10, "t0": 300, "t1": 400, "b": []},
     {"k": "d", "s": 99, "e": 5, "op": 0, "n": 1, "gx": 1, "gy": 1, "gz": 1,
      "h": 10, "t0": 100, "t1": 200, "b": []},
     {"k": "s", "s": 1, "dur": 800, "t": 3500},
     {"k": "s", "s": 2, "dur": 300, "t": 11000},
     {"k": "s", "s": 3, "dur": 300, "t": 15000},
+    {"k": "s", "s": 4, "dur": 50, "t": 2500},
     {"k": "j", "s": 1, "wait": 500, "inval": 100, "t": 8000},
     {"k": "j", "s": 3, "wait": 900, "inval": 100, "t": 21000},
-    {"k": "end", "t": 30000, "dispatches": 4, "dropped": 0,
-     "submissions": 3, "joins": 2},
+    {"k": "end", "t": 30000, "dispatches": 5, "dropped": 0,
+     "submissions": 4, "joins": 2},
 ]
 
 
@@ -84,29 +89,49 @@ class AttributionTests(unittest.TestCase):
         # submit time lands in prefill: attribution must say prefill.
         self.assertIn("prefill: dispatches=1", r.stdout)
         self.assertIn("decode: dispatches=2", r.stdout)
+        # Two DISTINCT unknowables, never conflated:
         self.assertIn("unknown (no matching submit record): dispatches=1",
                       r.stdout)
+        self.assertIn("unknown (submit outside named phases): dispatches=1",
+                      r.stdout)
+        # Host-marker windows are labeled as windows, not semantic phases.
+        self.assertIn("per host-marker window", r.stdout)
+        self.assertIn("windows are NOT", r.stdout)
 
     def test_no_zero_fabrication_for_unknown_dispatch(self):
         with tempfile.TemporaryDirectory() as td:
             profile, markers_path = write_fixture(td, PROFILE, MARKERS)
             r = run_analyzer(profile, markers_path)
-        # The unknown dispatch carries real GPU time (100 ticks); it must
-        # not silently vanish into a named phase or a zero.
-        unknown_row = [ln for ln in r.stdout.splitlines()
-                       if "unknown" in ln and "dispatches=1" in ln]
-        self.assertEqual(len(unknown_row), 1)
-        self.assertNotIn("gpu_busy=0.000ms", unknown_row[0])
-        self.assertNotIn("gpu_busy=0ns", unknown_row[0])
+        # Both unknown dispatches carry real GPU time (100 ticks each);
+        # neither may vanish into a named phase or a zero.
+        unknown_rows = [ln for ln in r.stdout.splitlines()
+                        if "unknown (" in ln and "dispatches=1" in ln]
+        self.assertEqual(len(unknown_rows), 2)
+        for ln in unknown_rows:
+            self.assertNotIn("gpu_busy=0.000ms", ln)
+            self.assertNotIn("gpu_busy=0ns", ln)
 
-    def test_decode_token_rates_use_canonical_decode_phase(self):
+    def test_decode_rates_use_interval_denominator(self):
         with tempfile.TemporaryDirectory() as td:
             profile, markers_path = write_fixture(td, PROFILE, MARKERS)
             r = run_analyzer(profile, markers_path)
-        self.assertIn("dispatches/decode-token: 1.0 (2 over 2 tokens)",
+        # 2 tok markers = 1 inter-token interval; the yield count must
+        # not be the denominator (39879/64 vs /63 class of error).
+        self.assertIn("dispatches/decode-interval: 2.0 "
+                      "(2 over 1 inter-token intervals", r.stdout)
+        self.assertIn("submissions/decode-interval: 2.0 (2 over 1 intervals)",
                       r.stdout)
-        self.assertIn("submissions/decode-token: 1.0 (2 over 2 tokens)",
-                      r.stdout)
+        self.assertNotIn("decode-token", r.stdout)
+
+    def test_dependency_proxy_labeled_as_proxy_only(self):
+        with tempfile.TemporaryDirectory() as td:
+            profile, markers_path = write_fixture(td, PROFILE, MARKERS)
+            r = run_analyzer(profile, markers_path)
+        # Disjoint compute bindings say nothing about transfer/fill/alias
+        # dependencies or which barriers are removable.
+        self.assertNotIn("barrier-free", r.stdout)
+        self.assertIn("compute-binding", r.stdout)
+        self.assertIn("not a barrier-correctness bound", r.stdout)
 
     def test_kernel_enum_grouping_without_header(self):
         with tempfile.TemporaryDirectory() as td:
