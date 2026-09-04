@@ -228,12 +228,6 @@ def main():
 
         # gaps between consecutive kernels on the GPU timeline
         gap_pairs = []
-        for a, b in zip(ordered, ordered[1:]):
-            ia = ordered.index(a)
-            gap = 0.0
-            gap_pairs.append((gap, 0))
-        # the pair loop above is replaced below with unwrapped values
-        gap_pairs = []
         ends = {id(d): u1 for d, u1 in zip(ordered, t1s)}
         starts = {id(d): u0 for d, u0 in zip(ordered, t0s)}
         for a, b in zip(ordered, ordered[1:]):
