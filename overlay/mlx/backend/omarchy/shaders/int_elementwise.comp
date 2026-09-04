@@ -186,6 +186,20 @@ void main() {
         // way upstream's C++ negation does on this platform.
         value = a < STORAGE_TYPE(0) ? -a : a;
         break;
+      case 12:
+        // SPIR-V OpIAdd/OpIMul are modular, so signed and unsigned both
+        // wrap exactly like the upstream C++ integral arithmetic on this
+        // platform; no float round-trip is involved.
+        value = a + b;
+        break;
+      case 13:
+        value = a * b;
+        break;
+      case 14:
+        // Square keeps its operand dtype and never routes through float,
+        // so e.g. 0x10000u * 0x10000u wraps to 0 in both variants.
+        value = a * a;
+        break;
       default:
         return;
     }

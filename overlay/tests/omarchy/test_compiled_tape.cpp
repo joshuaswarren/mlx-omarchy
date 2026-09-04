@@ -383,10 +383,10 @@ TEST_CASE("compiled tape matches eager for integer and bitwise classes") {
   array y(jv.begin(), Shape{4}, int32);
   array u(uv.begin(), Shape{4}, uint32);
 
-  // The backend implements int32 Add/Multiply only for float dtypes, so
-  // every wrapper below composes int-capable classes: bitwise, remainder,
-  // integer Power, integer Abs, and integer Sign. Two fusable nodes per
-  // graph so the tracer builds a tape. All exact against eager.
+  // Integer Add, Multiply, and Square now route through the integer
+  // kernel alongside the bitwise, remainder, Power, Abs, and Sign
+  // classes. Two fusable nodes per graph so the tracer builds a tape.
+  // All exact against eager.
 
   // BitwiseInvert, wrapped by a bitwise identity.
   auto invert_fn = [&stream](const std::vector<array>& inputs) {
@@ -441,6 +441,32 @@ TEST_CASE("compiled tape matches eager for integer and bitwise classes") {
         bitwise_and(bitwise_or(inputs[0], inputs[1], stream), inputs[0], stream)};
   };
   check_compiled_matches_eager(uint_or_fn, {u, u}, uint32, stream, 0);
+
+  // Integer Add and Multiply through a tape.
+  auto int_arith_fn = [&stream](const std::vector<array>& inputs) {
+    return std::vector<array>{
+        multiply(add(inputs[0], inputs[1], stream), inputs[0], stream)};
+  };
+  check_compiled_matches_eager(int_arith_fn, {x, y}, int32, stream, 0);
+
+  // Integer Square over boundary magnitudes (INT_MAX, INT_MIN, 2^16)
+  // whose squares wrap, wrapped by a bitwise identity so the graph has
+  // two fusable nodes.
+  std::vector<int32_t> bv = {2147483647, -2147483648, 65536, -1};
+  array b(bv.begin(), Shape{4}, int32);
+  auto int_square_fn = [&stream](const std::vector<array>& inputs) {
+    return std::vector<array>{
+        bitwise_xor(square(inputs[0], stream), inputs[0], stream)};
+  };
+  check_compiled_matches_eager(int_square_fn, {b}, int32, stream, 0);
+
+  // uint32 Add wraps through the tape: 4294967290 + 4294967290 goes to
+  // 4294967284, then adding 4294967290 again goes to 4294967278.
+  auto uint_wrap_fn = [&stream](const std::vector<array>& inputs) {
+    return std::vector<array>{
+        add(add(inputs[0], inputs[1], stream), inputs[0], stream)};
+  };
+  check_compiled_matches_eager(uint_wrap_fn, {u, u}, uint32, stream, 0);
 }
 
 TEST_CASE(

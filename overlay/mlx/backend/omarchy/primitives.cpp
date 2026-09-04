@@ -855,6 +855,9 @@ enum IntElementwiseOperation : uint32_t {
   IntPowerOperation,
   IntSignOperation,
   IntAbsOperation,
+  IntAddOperation,
+  IntMultiplyOperation,
+  IntSquareOperation,
 };
 
 // The params fill and dispatch behind dispatch_int_elementwise,
@@ -1894,6 +1897,10 @@ void Add::eval_gpu(const std::vector<array>& inputs, array& out) {
   if (out.dtype() == complex64) {
     dispatch_complex(
         name(), ComplexAdd, inputs, out, out.primitive().stream());
+    return;
+  }
+  if (out.dtype() == int32 || out.dtype() == uint32) {
+    dispatch_int_elementwise(name(), IntAddOperation, inputs, out);
     return;
   }
   dispatch_elementwise(
@@ -4361,6 +4368,10 @@ void Multiply::eval_gpu(const std::vector<array>& inputs, array& out) {
         name(), ComplexMultiply, inputs, out, out.primitive().stream());
     return;
   }
+  if (out.dtype() == int32 || out.dtype() == uint32) {
+    dispatch_int_elementwise(name(), IntMultiplyOperation, inputs, out);
+    return;
+  }
   dispatch_elementwise(
       name(), MultiplyOperation, inputs, out, out.primitive().stream());
 }
@@ -5954,7 +5965,16 @@ void Sort::eval_gpu(const std::vector<array>& inputs, array& out) {
   }
   dispatch_sort("Sort", input, out, false, encoder);
 }
-OMARCHY_UNARY(Square, SquareOperation)
+// The float Square keeps its macro body; integer Square squares in the
+// operand dtype through the integer kernel, never via float.
+void Square::eval_gpu(const std::vector<array>& inputs, array& out) {
+  if (out.dtype() == int32 || out.dtype() == uint32) {
+    dispatch_int_elementwise(name(), IntSquareOperation, inputs, out);
+    return;
+  }
+  dispatch_elementwise(
+      name(), SquareOperation, inputs, out, out.primitive().stream());
+}
 void Sqrt::eval_gpu(const std::vector<array>& inputs, array& out) {
   dispatch_elementwise(
       name(),
