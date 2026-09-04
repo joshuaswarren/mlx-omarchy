@@ -385,8 +385,10 @@ void CommandEncoder::dispatch_compute(
 void CommandEncoder::commit() {
   if (!recording_ && wait_semaphores_.empty() && signal_semaphores_.empty() &&
       completed_handlers_.empty()) {
+    trace::counters().commit_calls_noop++;
     return;
   }
+  trace::counters().commit_calls_with_work++;
   submit();
 }
 
