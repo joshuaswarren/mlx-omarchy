@@ -6,6 +6,11 @@
 #include <atomic>
 #include <cstdint>
 
+#ifdef MLX_OMARCHY_GPU_PROFILING
+#include <string_view>
+#include <unordered_map>
+#endif
+
 // Backend dispatch trace counters (plan R8). mlx-omarchy-info and the runtime
 // tests read these to prove which backend executed work.
 namespace mlx::core::omarchy::trace {
@@ -52,6 +57,18 @@ struct MlxOmarchyTraceSnapshot {
 
 } // namespace mlx::core::omarchy::trace
 
+#ifdef MLX_OMARCHY_GPU_PROFILING
+// Per-primitive-name gpu::eval counts for fragmentation attribution.
+// Written on the evaluator thread only; the names are static string
+// literals owned by the primitive classes, so the string_view keys
+// outlive the map. Read back through mlx_omarchy_prim_dump() from the
+// instrumentation driver (ctypes). Compiled out of release builds.
+inline std::unordered_map<std::string_view, std::uint64_t>& prim_counts() {
+  static std::unordered_map<std::string_view, std::uint64_t> counts;
+  return counts;
+}
+#endif
+
 // Global-scope C ABI (defined in eval.cpp): the C symbol must not live in
 // a namespace, and a qualified namespace definition nested in another
 // namespace does not resolve to this scope. ctypes resolves the plain
@@ -59,3 +76,10 @@ struct MlxOmarchyTraceSnapshot {
 extern "C" __attribute__((visibility("default"))) void
 mlx_omarchy_trace_snapshot(
     mlx::core::omarchy::trace::MlxOmarchyTraceSnapshot* out);
+
+#ifdef MLX_OMARCHY_GPU_PROFILING
+extern "C" __attribute__((visibility("default"))) void
+mlx_omarchy_prim_dump(const char* path);
+extern "C" __attribute__((visibility("default"))) void
+mlx_omarchy_prim_reset(void);
+#endif
