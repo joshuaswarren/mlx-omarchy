@@ -49,9 +49,13 @@ struct MlxOmarchyTraceSnapshot {
   uint64_t commit_calls_with_work;
   uint64_t commit_calls_noop;
 };
-// Defined once in eval.cpp: an inline header definition is comdat and
-// never reaches the dynamic symbol table under -fvisibility=hidden.
-extern "C" __attribute__((visibility("default"))) void
-mlx_omarchy_trace_snapshot(MlxOmarchyTraceSnapshot* out);
 
 } // namespace mlx::core::omarchy::trace
+
+// Global-scope C ABI (defined in eval.cpp): the C symbol must not live in
+// a namespace, and a qualified namespace definition nested in another
+// namespace does not resolve to this scope. ctypes resolves the plain
+// symbol on the already-loaded libmlx.so.
+extern "C" __attribute__((visibility("default"))) void
+mlx_omarchy_trace_snapshot(
+    mlx::core::omarchy::trace::MlxOmarchyTraceSnapshot* out);
