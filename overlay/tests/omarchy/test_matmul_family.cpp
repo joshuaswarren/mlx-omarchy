@@ -1475,3 +1475,206 @@ TEST_CASE("qmm_vec subgroup dispatch matches host reference across decode shapes
     }
   }
 }
+
+namespace {
+
+// Flips the PrefillQmmTile dispatch gate and always restores the unset
+// (default OFF) state, so an aborting REQUIRE cannot leak the switch
+// into later cases in the process.
+struct QmmTileGate {
+  explicit QmmTileGate(bool on) {
+    set(on);
+  }
+  ~QmmTileGate() {
+    unsetenv("MLX_OMARCHY_QMM_TILE");
+  }
+  void set(bool on) {
+    setenv("MLX_OMARCHY_QMM_TILE", on ? "1" : "0", 1);
+  }
+};
+
+} // namespace
+
+// PrefillQmmTile equivalence: the env-gated m-tiled kernel must match
+// the general qmm.comp kernel it stands in for at matrix_m > 1. Both
+// sides run on device through the public dispatch - the gate selects
+// qmm_tile when MLX_OMARCHY_QMM_TILE is set (ON) and qmm.comp when it
+// is unset or "0" (OFF) - so the comparison covers the real dispatch
+// wiring, not a private binding.
+//
+// Bound derivation. Both kernels accumulate x * (scale*q + bias) over
+// ascending k into a single f32 accumulator per output element in the
+// SAME order, so there is no reduction-depth term between them: the
+// residual gap is (a) FMA contraction differences between two shaders
+// whose expression shapes differ - at most one f32 ulp per k step
+// against the output magnitude, (k + 2) * M * 2^-23 - and (b) the
+// final STORE_VALUE rounding, at most one storage-dtype ulp,
+// M * 2^-(mantissa + 1). A defect (row/column swap, tail overrun,
+// barrier misordering, wrong group index) misses by O(M), not by
+// eps-scale dust, because the dequantized weights span both signs.
+//
+// The host-anchored tail case (m=17, n=37) pins the tile kernel to the
+// f64 affine contract itself, so tile cannot drift in step with
+// qmm.comp; the f16/bf16 anchor round-trips scales and biases through
+// the storage dtype so the reference sees what the kernel sees. The
+// anchor bound adds the per-element dequant (2 ops) and mul-add (1 op)
+// across the sequential k reduction: (3k + 1) * M * 2^-23 plus storage
+// rounding, the same derivation as the qmm_vec case above.
+TEST_CASE("qmm tile matches host reference and qmm.comp across prefill shapes") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+
+  std::vector<Dtype> dtypes{float32};
+  if (float16_available()) {
+    dtypes.push_back(float16);
+  }
+  dtypes.push_back(bfloat16);
+  std::vector<std::pair<int, int>> qbits{
+      {32, 4}, {64, 4}, {32, 8}, {64, 8}};
+
+  auto storage_mantissa = [](Dtype dtype) {
+    return dtype == float32 ? 23 : (dtype == float16 ? 10 : 7);
+  };
+
+  for (auto dtype : dtypes) {
+    for (auto [group_size, bits] : qbits) {
+      // m and n straddle one tile boundary each; k = 3 groups puts
+      // group boundaries inside every k span the tile crosses.
+      const int m = 17;
+      const int n = 37;
+      const int k = group_size * 3;
+      const int pack = 32 / bits;
+      const int words_per_row = k / pack;
+      const int groups_per_row = k / group_size;
+      std::mt19937 gen(17);
+      std::uniform_real_distribution<float> dist(-2.0f, 2.0f);
+      std::vector<float> matrix(static_cast<size_t>(n) * k);
+      for (auto& v : matrix) {
+        v = dist(gen);
+      }
+      std::vector<float> x_values(static_cast<size_t>(m) * k);
+      for (auto& v : x_values) {
+        v = dist(gen);
+      }
+      HostQuantizedWeights host =
+          host_affine_quantize(matrix, n, k, group_size, bits);
+      HostQuantizedWeights rounded = host;
+      rounded.scales = round_trip(stream, host.scales, dtype);
+      rounded.biases = round_trip(stream, host.biases, dtype);
+      std::vector<float> expected =
+          host_quantized_matmul(rounded, x_values, m, n, k, group_size, bits);
+
+      QmmTileGate gate(true);
+      array x(x_values.begin(), Shape{m, k}, dtype);
+      array w_words(host.words.begin(), Shape{n, words_per_row}, uint32);
+      array scales(rounded.scales.begin(), Shape{n, groups_per_row}, dtype);
+      array biases(rounded.biases.begin(), Shape{n, groups_per_row}, dtype);
+      array out = quantized_matmul(
+          x, w_words, scales, biases, true, group_size, bits, "affine",
+          stream);
+      REQUIRE(evaluation_error(out).empty());
+      REQUIRE_EQ(out.shape(), Shape{m, n});
+      std::vector<float> device_result = readback_f32(stream, out);
+
+      double m_max = 0.0;
+      for (float v : device_result) {
+        m_max = std::max(m_max, std::fabs(static_cast<double>(v)));
+      }
+      double m_bound = std::max(m_max * 2.0, 1.0);
+      double ops = 3.0 * k + 1.0;
+      double bound = ops * m_bound * std::ldexp(1.0, -23) +
+          m_bound * std::ldexp(1.0, -(storage_mantissa(dtype) + 1));
+      bound = std::max(bound, 1e-6);
+      double max_diff = 0.0;
+      size_t worst = 0;
+      for (size_t i = 0; i < expected.size(); ++i) {
+        double d = std::fabs(
+            static_cast<double>(device_result[i]) - expected[i]);
+        if (d > max_diff) {
+          max_diff = d;
+          worst = i;
+        }
+      }
+      INFO("anchor bits=" << bits << " group_size=" << group_size
+           << " dtype=" << dtype << " worst=" << worst
+           << " diff=" << max_diff << " bound=" << bound);
+      CHECK(max_diff <= bound);
+    }
+  }
+
+  // Device-vs-device sweep: gate ON must reproduce qmm.comp over the
+  // prefill shape matrix, including every m tail. Weights quantize once
+  // per (dtype, bits/group, k, n) and are reused across the m sweep.
+  std::vector<int> m_shapes{2, 15, 16, 17, 64, 255, 256, 1023};
+  std::vector<int> n_shapes{64, 896, 4864};
+  std::vector<int> k_shapes{896, 4864};
+  for (auto dtype : dtypes) {
+    for (auto [group_size, bits] : qbits) {
+      for (int k : k_shapes) {
+        for (int n : n_shapes) {
+          const int pack = 32 / bits;
+          const int words_per_row = k / pack;
+          const int groups_per_row = k / group_size;
+          std::mt19937 gen(47);
+          std::uniform_real_distribution<float> dist(-2.0f, 2.0f);
+          std::vector<float> matrix(static_cast<size_t>(n) * k);
+          for (auto& v : matrix) {
+            v = dist(gen);
+          }
+          HostQuantizedWeights host =
+              host_affine_quantize(matrix, n, k, group_size, bits);
+          array w_words(host.words.begin(), Shape{n, words_per_row}, uint32);
+          array scales(host.scales.begin(), Shape{n, groups_per_row}, dtype);
+          array biases(host.biases.begin(), Shape{n, groups_per_row}, dtype);
+          for (int m : m_shapes) {
+            std::vector<float> x_values(static_cast<size_t>(m) * k);
+            for (auto& v : x_values) {
+              v = dist(gen);
+            }
+            array x(x_values.begin(), Shape{m, k}, dtype);
+
+            QmmTileGate gate(true);
+            array out_tile = quantized_matmul(
+                x, w_words, scales, biases, true, group_size, bits, "affine",
+                stream);
+            std::vector<float> tile_v = readback_f32(stream, out_tile);
+            gate.set(false);
+            array out_base = quantized_matmul(
+                x, w_words, scales, biases, true, group_size, bits, "affine",
+                stream);
+            std::vector<float> base_v = readback_f32(stream, out_base);
+
+            REQUIRE_EQ(tile_v.size(), base_v.size());
+            double m_max = 0.0;
+            for (float v : tile_v) {
+              m_max = std::max(m_max, std::fabs(static_cast<double>(v)));
+            }
+            double m_bound = std::max(m_max * 2.0, 1.0);
+            double bound =
+                (static_cast<double>(k) + 2.0) * m_bound *
+                    std::ldexp(1.0, -23) +
+                m_bound * std::ldexp(1.0, -(storage_mantissa(dtype) + 1));
+            bound = std::max(bound, 1e-6);
+            double max_diff = 0.0;
+            size_t worst = 0;
+            for (size_t i = 0; i < tile_v.size(); ++i) {
+              double d = std::fabs(
+                  static_cast<double>(tile_v[i]) - base_v[i]);
+              if (d > max_diff) {
+                max_diff = d;
+                worst = i;
+              }
+            }
+            INFO("sweep bits=" << bits << " group_size=" << group_size
+                 << " dtype=" << dtype << " m=" << m << " n=" << n
+                 << " k=" << k << " worst=" << worst
+                 << " diff=" << max_diff << " bound=" << bound);
+            CHECK(max_diff <= bound);
+          }
+        }
+      }
+    }
+  }
+}

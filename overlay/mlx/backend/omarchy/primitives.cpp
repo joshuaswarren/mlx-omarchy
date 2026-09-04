@@ -4558,6 +4558,33 @@ void QuantizedMatmul::eval_gpu(const std::vector<array>& inputs, array& out) {
         1u);
     return;
   }
+  // PrefillQmmTile dispatch: for matrix_m > 1, the m-tiled variant
+  // dequantizes each 16 x 16 weight block into shared f32 once per
+  // workgroup and applies it to a 16-row tile of x, amortizing the
+  // per-MAC weight unpack the general kernel repeats for every output
+  // row (prefill-census lever 1). Gated behind MLX_OMARCHY_QMM_TILE:
+  // default OFF keeps the general Qmm kernel below selected unchanged;
+  // the default flips after the M1 equivalence run. Any value other
+  // than "0" enables. Per-call getenv so a test can flip the gate
+  // between evals in one process.
+  if (const char* tile_env = std::getenv("MLX_OMARCHY_QMM_TILE");
+      tile_env != nullptr && std::strcmp(tile_env, "0") != 0) {
+    auto tile_kernel = select_float_kernel(
+        out.dtype(),
+        omarchy::ComputeKernel::QmmTileF32,
+        omarchy::ComputeKernel::QmmTileF16,
+        omarchy::ComputeKernel::QmmTileBF16);
+    uint32_t m_groups = (params.matrix_m + 15u) / 16u;
+    uint32_t n_groups = (params.matrix_n + 15u) / 16u;
+    encoder.dispatch_compute(
+        tile_kernel,
+        bindings,
+        params,
+        std::min(n_groups, omarchy::kMaxComputeGroupCountX),
+        std::min(m_groups, omarchy::kMaxComputeGroupCountX),
+        1u);
+    return;
+  }
   auto kernel = select_float_kernel(
       out.dtype(),
       omarchy::ComputeKernel::QmmF32,
