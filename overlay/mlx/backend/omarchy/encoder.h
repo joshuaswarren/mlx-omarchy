@@ -9,6 +9,7 @@
 #include <cstdint>
 #include <functional>
 #include <memory>
+#include <optional>
 #include <span>
 #include <unordered_map>
 #include <utility>
@@ -72,6 +73,25 @@ class MLX_API CommandEncoder {
 
   bool needs_commit() const {
     return node_count_ > 0;
+  }
+
+  // Fragmentation prototype (fragmentation-hunt): the evaluator opens ONE
+  // scheduler task per graph evaluation, at the eval's first work-carrying
+  // primitive, and closes it at this encoder's FIRST commit of any kind
+  // (node budget, event flush contract, memory-guard finalize, or the
+  // eval-boundary signal). A task whose decrement is still attached when
+  // the encoder goes idle with no work host-completes it, so a task never
+  // waits on itself.
+  bool scheduler_task_open() const {
+    return scheduler_task_open_;
+  }
+  void set_scheduler_task_open(bool v, Stream s) {
+    scheduler_task_open_ = v;
+    scheduler_task_stream_ = s;
+  }
+
+  Stream scheduler_task_stream() const {
+    return *scheduler_task_stream_;
   }
 
   // Nodes recorded in the open batch. The evaluator flushes the batch at
@@ -217,6 +237,8 @@ class MLX_API CommandEncoder {
   int current_slot_{0};
   VkCommandBuffer cmd_{VK_NULL_HANDLE};
   bool recording_{false};
+  bool scheduler_task_open_{false};
+  std::optional<Stream> scheduler_task_stream_;
   int node_count_{0};
   uint64_t last_completion_{0};
   VkDescriptorPool desc_pool_{VK_NULL_HANDLE};

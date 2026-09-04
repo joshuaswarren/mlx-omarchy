@@ -257,8 +257,16 @@ void Event::signal(Stream s) {
       // counter always also observes a generation to join, and a device
       // waiter that misses both falls back to the event semaphore, which
       // this or a later signal still fires.
-      if (!event.queued_signal.load(std::memory_order_acquire) &&
+      if (
+          !event.queued_signal.load(std::memory_order_acquire) &&
           encoder.idle()) {
+        // Fragmentation prototype: an eval task still open on an idle
+        // encoder recorded no work at all, so nothing will ever submit
+        // its decrement. Host-complete it here.
+        if (encoder.scheduler_task_open()) {
+          encoder.set_scheduler_task_open(false, s);
+          scheduler::notify_task_completion(s);
+        }
         uint64_t generation = encoder.last_submitted_completion();
         uint64_t prior_gen =
             event.signaled_completion.load(std::memory_order_relaxed);
