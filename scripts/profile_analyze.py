@@ -245,9 +245,9 @@ def main():
         for a, b in zip(ordered, ordered[1:]):
             gap = (starts[id(b)] - ends[id(a)]) * period
             gap_pairs.append((gap, 1 if a["s"] == b["s"] else 0))
-        for tag, sel in (("intra-submission (barrier+driver)",
+        for tag, sel in (("intra-submission",
                           lambda gi: gi[1] == 1),
-                         ("inter-submission (host round trip)",
+                         ("inter-submission",
                           lambda gi: gi[1] == 0)):
             vals = sorted(g for g, i in gap_pairs if sel(gi=(g, i)))
             if not vals:
@@ -306,7 +306,7 @@ def main():
     subs = sorted(s["dur"] for s in submits)
     recs = sorted(d["h"] for d in dispatches)
     say("")
-    say("== host-side costs (SINGLE-CORE host: upper bounds)")
+    say("== host-side costs (instrumented)")
     if waits:
         say(f"   join wait    n={len(waits)} total={fmt_ns(sum(waits))} "
             f"p50={fmt_ns(pct(waits, .5))} p90={fmt_ns(pct(waits, .9))} "
