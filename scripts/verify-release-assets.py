@@ -48,6 +48,21 @@ PROFILE_STRING = b"MLX_OMARCHY_GPU_PROFILE"
 CONTROL_STRING = b"MLX_DISABLE_COMPILE"
 LIBMLX = "mlx/lib/libmlx.so"
 
+# A release must carry a wheel for every platform the project serves.
+# Stable releases serve x86_64 dev boxes AND aarch64 Apple Silicon (the
+# target hardware); a stable release missing either cannot run the
+# project's users and must not be announced. Diagnostics prereleases
+# exist to profile the M1, so they require the aarch64 wheel. Where each
+# wheel is built: docs/release.md.
+REQUIRED_PLATFORMS = {
+    False: ("linux_x86_64", "linux_aarch64"),
+    True: ("linux_aarch64",),
+}
+WHERE_BUILT = {
+    "linux_aarch64": "the M1 (jwm1, cp314)",
+    "linux_x86_64": "the dev box (cp311)",
+}
+
 
 def run(cmd, **kw):
     return subprocess.run(cmd, capture_output=True, text=True, **kw)
@@ -130,6 +145,12 @@ def _hash_near(text, name):
             if h:
                 return h.group(0)
     return None
+
+
+def wheel_platform(wheel_path):
+    """Platform component of the wheel filename (e.g. linux_x86_64)."""
+    stem = wheel_path.name[:-len(".whl")]
+    return stem.split("-")[-1]
 
 
 def wheel_metadata(wheel_path):
@@ -234,6 +255,23 @@ def verify(wheel_path, expected_hash, expected_version_note, tag,
                 "diagnostics release must ship mlx/bin/mlx-omarchy-info; "
                 "the asset does not carry the profiling tool")
 
+    wheel_tag_files = [n for n in names if n.endswith(".dist-info/WHEEL")]
+    if wheel_tag_files:
+        with zipfile.ZipFile(wheel_path) as zf:
+            wheel_txt = zf.read(wheel_tag_files[0]).decode(errors="replace")
+        m = re.search(r"(?m)^Tag: (\S+)$", wheel_txt)
+        if m:
+            fn_platform = wheel_platform(wheel_path)
+            wheel_tag_platform = m.group(1).split("-")[-1]
+            if wheel_tag_platform != fn_platform:
+                failures.append(
+                    f"platform tag disagreement: filename platform is "
+                    f"{fn_platform}, dist-info WHEEL Tag is "
+                    f"{wheel_tag_platform}; the asset was renamed or "
+                    f"rebuilt under a different platform")
+            else:
+                passes.append(f"platform tag agrees: {fn_platform}")
+
     hits = []
     with zipfile.ZipFile(wheel_path) as zf:
         for name in zf.namelist():
@@ -296,7 +334,8 @@ def main():
         candidates = [v for v in versions
                       if v in wheel.name or wheel.name.endswith(v)]
         note = max(candidates, key=len) if candidates else None
-        print(f"\n== {wheel.name} ({wheel.stat().st_size} bytes)")
+        print(f"\n== {wheel.name} ({wheel.stat().st_size} bytes, "
+              f"platform {wheel_platform(wheel)})")
         if expected:
             print(f"   recorded sha256: {expected} ({src})")
         else:
@@ -311,6 +350,18 @@ def main():
             print(f"   FINDING {f}")
         all_failures += failures
         all_findings += findings
+    present = {wheel_platform(w) for w in wheels}
+    missing = [p for p in REQUIRED_PLATFORMS[is_diag] if p not in present]
+    if missing:
+        where = "; ".join(f"{p} is built on {WHERE_BUILT[p]}"
+                          for p in missing)
+        all_failures.append(
+            f"required platform coverage failure: this release is "
+            f"missing {', '.join(missing)}; the release cannot run on "
+            f"the project's target hardware and must not be announced "
+            f"as usable ({where}; docs/release.md names the required "
+            f"platforms)")
+
 
     # Non-wheel assets with a recorded hash (e.g. the staged info tool).
     wheel_names = {w.name for w in wheels}
