@@ -1113,16 +1113,34 @@ void require_rope_close(
   REQUIRE_EQ(got.shape(), want.shape());
   bool apple = rope_on_apple_gpu();
   if (got.dtype() == float32) {
-    // The Apple tier follows the driver's DOCUMENTED sin/cos envelope
-    // (known-defects, measured in the v0.3.1 scalar sweep - pre-dating
-    // this kernel): below theta 1e3 the built-in is accurate to
-    // contraction level; across 1e3..1e5 it is bounded at 5e-3
-    // absolute (measured worst 4.8e-3). theta_bound is the analytic
-    // maximum |theta| of the configuration - the same bound
-    // rope_trig_gate computes - not a number fitted to failures.
+    // The Apple tier steps through the MEASURED sin/cos error curve
+    // from the v0.3.1 scalar sweep (receipts/2026-09-02-m1-red-suites-
+    // root-cause.md, first committed 959c7a0, one day before this
+    // kernel existed): 4.2e-6 at 100, 2.8e-5 at 1e3, 3.6e-4 at 5e3,
+    // 4.5e-4 at 12345, 1.2e-3 at 2e4, 4.8e-3 at 123457. Each band is
+    // bounded by the sweep's measurement at its upper edge - the worst
+    // measured error inside the band, since the error grows with
+    // theta - so a hundred-fold accuracy regression near theta 1e3
+    // cannot hide behind the 1e5-band worst point. theta_bound is the
+    // analytic maximum |theta| of the configuration, the same bound
+    // rope_trig_gate computes. Above 1e5 the gate refuses outright.
     // Dev box: the contraction bound everywhere.
-    double tolerance =
-        (!apple || theta_bound <= 1e3) ? f32_tolerance : 5e-3;
+    double tolerance = f32_tolerance;
+    if (apple) {
+      if (theta_bound <= 100.0) {
+        tolerance = 1e-5;
+      } else if (theta_bound <= 1e3) {
+        tolerance = 2.8e-5;
+      } else if (theta_bound <= 5e3) {
+        tolerance = 3.6e-4;
+      } else if (theta_bound <= 12345.0) {
+        tolerance = 4.5e-4;
+      } else if (theta_bound <= 2e4) {
+        tolerance = 1.2e-3;
+      } else {
+        tolerance = 4.8e-3;
+      }
+    }
     require_close(flat(got, stream), widen(flat(want, stream)),
                   tolerance, what);
   } else if (got.dtype() == bfloat16) {
