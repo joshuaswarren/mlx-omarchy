@@ -37,7 +37,15 @@
 #define STORAGE_TYPE float16_t
 #define LOAD_VALUE(x) float(x)
 #define STORE_VALUE(f) STORAGE_TYPE(f)
-#define ROUND_INTERMEDIATE(f) float(STORAGE_TYPE(f))
+// Honeykrisp folds the plain OpFConvert(f32->f16)+OpFConvert(f16->f32)
+// round-trip to identity (M1 bit-exact rejection: the fused chain then
+// multiplies UNROUNDED f32 intermediates - one-ULP divergence vs the
+// per-node path on ~40% of lanes). Route the rounding through the
+// INTEGER domain instead: packHalf2x16 is spec-defined round-to-nearest
+// even (the same rounding as eager's OpFConvert store) and
+// unpackHalf2x16 is the exact widening back. No float->float conversion
+// pair remains for the optimizer to fold.
+#define ROUND_INTERMEDIATE(f) (unpackHalf2x16(packHalf2x16(vec2(f, 0.0))).x)
 #else
 #define STORAGE_TYPE float
 #define LOAD_VALUE(x) float(x)
