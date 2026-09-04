@@ -20,6 +20,7 @@
 #include "mlx/backend/omarchy/device.h"
 #include "mlx/backend/omarchy/encoder.h"
 #include "mlx/backend/omarchy/trace.h"
+#include "mlx/backend/omarchy/scalar_fold.h"
 #include "mlx/primitives.h"
 #include "mlx/scheduler.h"
 
@@ -97,6 +98,12 @@ void eval(array& arr) {
 #ifdef MLX_OMARCHY_GPU_PROFILING
   ++omarchy::trace::prim_counts()[arr.primitive().name()];
 #endif
+  // Single-element host fold. When it fires, no dispatch is recorded:
+  // the eval's output bytes are final on the host, so nothing pins and
+  // nothing submits (the workless-evals contract below covers it).
+  if (host_fold_scalar(arr)) {
+    return;
+  }
   auto outputs = arr.outputs();
   auto& stream = arr.primitive().stream();
   auto& encoder = omarchy::get_command_encoder(stream);
