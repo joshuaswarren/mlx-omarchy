@@ -123,3 +123,30 @@ assertions, eq_math 7 / 116, compiled_tape 11 / 1,747 - green.
   workloads.
 - llvmpipe cannot see asynchronous or driver-specific defects; the M1
   leg is the gate.
+
+## Addendum: re-measured on the integrated tree (main with fused RoPE)
+
+Main flagged that the 1,953 baseline above is pre-RoPE. Branch rebased
+onto integrated main (new SHAs: fix 1 `9e9c7e7`, fix 2 `cf96f12`,
+fix 3 `5133e54`, trace completion `9bff78e`). Both legs re-measured,
+same box/model/prompt, provenance verified=match:
+
+- BEFORE `sdpa-ref-integrated` (`1294e69`, fixes reverted, wheel
+  `...dev202609040321+diag.1294e69` sha256 `1615a46a...`): 753
+  dispatches/token, casts 96, CopyGeneralF16 96 (4/layer), MatmulF32
+  48, SoftmaxF32 24, median inter-token 959.10 ms, greedy
+  "The capital of France is Paris."
+- AFTER `sdpa-f16-scores` (`9bff78e`, wheel
+  `...dev202609040317+diag.9bff78e` sha256 `5c4ff3fd...`): 633
+  dispatches/token, casts 0, CopyGeneralF16 96 (4/layer, unchanged),
+  MatmulF16 48, SoftmaxF16 24, median inter-token 959.45 ms, greedy
+  token-identical. Equivalence 17/17 ALL PASS.
+
+Delta: -120 dispatches/token (-16% of the integrated 753), all casts +
+the scale multiply, exactly the fix-1 deletion. Copies: 4/layer
+unchanged by this rework on BOTH baselines; the RoPE leg removed the
+other 8/layer between the two censuses, which independently supports
+the misattribution finding above.
+
+An earlier rebase attempt resolved a trace.h conflict with a literal
+`@both` token that broke the build; `9bff78e` fixes it forward.
