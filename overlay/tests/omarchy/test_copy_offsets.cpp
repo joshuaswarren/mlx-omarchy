@@ -41,6 +41,17 @@ bool values_equal(const array& a, const std::vector<int32_t>& expected) {
              expected.size() * sizeof(int32_t)) == 0;
 }
 
+// Compare an evaluated uint32 array against expected words.
+bool words_equal(const array& a, const std::vector<uint32_t>& expected) {
+  if (static_cast<size_t>(a.size()) != expected.size()) {
+    return false;
+  }
+  return std::memcmp(
+             a.data<uint32_t>(),
+             expected.data(),
+             expected.size() * sizeof(uint32_t)) == 0;
+}
+
 Stream gpu_stream() {
   set_default_device(Device::gpu);
   return new_stream(Device::gpu);
@@ -326,6 +337,242 @@ TEST_CASE("zero fill covers sub-word outputs") {
     CHECK(pp[2] == 0);
     CHECK(pp[3] == 8);
   }
+}
+
+TEST_CASE("nonzero scalar fill honors a slice view offset") {
+  if (!gpu::is_available()) {
+    skip("no qualifying Vulkan device.");
+    return;
+  }
+  Stream s = gpu_stream();
+
+  array parent({1, 2, 3, 4, 5, 6, 7, 8}, int32);
+  array view = slice(parent, {2}, {6}, {1}, s);
+  view.eval();
+  array seven(7, int32);
+  copy_gpu_inplace(
+      seven,
+      view,
+      view.shape(),
+      view.strides(),
+      view.strides(),
+      0,
+      0,
+      CopyType::Scalar,
+      s);
+  omarchy::get_command_encoder(s).synchronize();
+
+  CHECK(view.buffer().ptr() == parent.buffer().ptr());
+  const auto* pp = parent.data<int32_t>();
+  CHECK(pp[0] == 1);
+  CHECK(pp[1] == 2);
+  CHECK(pp[2] == 7);
+  CHECK(pp[3] == 7);
+  CHECK(pp[4] == 7);
+  CHECK(pp[5] == 7);
+  CHECK(pp[6] == 7);
+  CHECK(pp[7] == 8);
+}
+
+TEST_CASE("nonzero scalar fill keeps negative and large int32 exact") {
+  if (!gpu::is_available()) {
+    skip("no qualifying Vulkan device.");
+    return;
+  }
+  Stream s = gpu_stream();
+
+  // Destinations are 4-item views over 8-item parents: the explicit
+  // o_offset starts the fill inside the parent and the edges must keep
+  // their bytes.
+  SUBCASE("negative value at a nonzero destination offset") {
+    array parent({9, 9, 9, 9, 9, 9, 9, 9}, int32);
+    array view = slice(parent, {1}, {5}, {1}, s);
+    view.eval();
+    array neg(-1, int32);
+    copy_gpu_inplace(
+        neg,
+        view,
+        view.shape(),
+        view.strides(),
+        view.strides(),
+        0,
+        /*o_offset=*/2,
+        CopyType::Scalar,
+        s);
+    omarchy::get_command_encoder(s).synchronize();
+    CHECK(words_equal(
+        parent,
+        {9u,
+         9u,
+         9u,
+         0xFFFFFFFFu,
+         0xFFFFFFFFu,
+         0xFFFFFFFFu,
+         0xFFFFFFFFu,
+         9u}));
+  }
+  // float32 cannot represent 16777217 (it rounds to 16777216); an exact
+  // word proves the scalar rode a raw-word transport, not a float.
+  SUBCASE("integer beyond the float32 exact range") {
+    array parent({9, 9, 9, 9}, int32);
+    parent.eval();
+    array big(16777217, int32);
+    copy_gpu_inplace(
+        big,
+        parent,
+        parent.shape(),
+        parent.strides(),
+        parent.strides(),
+        0,
+        0,
+        CopyType::Scalar,
+        s);
+    omarchy::get_command_encoder(s).synchronize();
+    CHECK(words_equal(
+        parent,
+        {16777217u, 16777217u, 16777217u, 16777217u}));
+  }
+
+  SUBCASE("large odd int32 stays exact") {
+    array parent({9, 9, 9, 9, 9, 9}, int32);
+    array view = slice(parent, {0}, {4}, {1}, s);
+    view.eval();
+    array odd(1000000007, int32);
+    copy_gpu_inplace(
+        odd,
+        view,
+        view.shape(),
+        view.strides(),
+        view.strides(),
+        0,
+        0,
+        CopyType::Scalar,
+        s);
+    omarchy::get_command_encoder(s).synchronize();
+    CHECK(words_equal(
+        parent,
+        {1000000007u, 1000000007u, 1000000007u, 1000000007u, 9u, 9u}));
+  }
+}
+
+TEST_CASE("nonzero scalar fill writes uint32 max bit-exact") {
+  if (!gpu::is_available()) {
+    skip("no qualifying Vulkan device.");
+    return;
+  }
+  Stream s = gpu_stream();
+
+  array parent({3, 3, 3, 3, 3, 3}, uint32);
+  array view = slice(parent, {1}, {5}, {1}, s);
+  view.eval();
+  array umax(4294967295u, uint32);
+  copy_gpu_inplace(
+      umax,
+      view,
+      view.shape(),
+      view.strides(),
+      view.strides(),
+      0,
+      0,
+      CopyType::Scalar,
+      s);
+  omarchy::get_command_encoder(s).synchronize();
+  CHECK(words_equal(parent, {3u, 4294967295u, 4294967295u, 4294967295u, 4294967295u, 3u}));
+
+  // The all-ones word pattern also round-trips through a fresh output.
+  array out = full({3}, 4294967295u, uint32, s);
+  out.eval();
+  omarchy::get_command_encoder(s).synchronize();
+  CHECK(words_equal(out, {4294967295u, 4294967295u, 4294967295u}));
+}
+
+TEST_CASE("nonzero integer scalar fills keep named refusals elsewhere") {
+  if (!gpu::is_available()) {
+    skip("no qualifying Vulkan device.");
+    return;
+  }
+  Stream s = gpu_stream();
+
+  // A width the backend does not carry keeps the named refusal; it must
+  // never crash.
+  array wide = full({2}, 5, int64, s);
+  bool caught = false;
+  std::string message;
+  try {
+    wide.eval();
+  } catch (const std::runtime_error& e) {
+    caught = true;
+    message = e.what();
+  }
+  REQUIRE(caught);
+  CHECK(message.find("[omarchy]") != std::string::npos);
+  CHECK(message.find("non-zero scalar fill") != std::string::npos);
+
+  // A scalar dtype the destination does not share refuses by name too.
+  array out = full({4}, 0.0f, float32, s);
+  out.eval();
+  array seven(7, int32);
+  caught = false;
+  try {
+    copy_gpu_inplace(
+        seven,
+        out,
+        out.shape(),
+        seven.strides(),
+        out.strides(),
+        0,
+        0,
+        CopyType::Scalar,
+        s);
+  } catch (const std::runtime_error& e) {
+    caught = true;
+    message = e.what();
+  }
+  REQUIRE(caught);
+  CHECK(message.find("non-zero scalar fill dtype") != std::string::npos);
+}
+
+TEST_CASE("nonzero scalar fill leaves an empty output untouched") {
+  if (!gpu::is_available()) {
+    skip("no qualifying Vulkan device.");
+    return;
+  }
+  Stream s = gpu_stream();
+
+  array out = full({0}, 16777217, int32, s);
+  out.eval();
+  omarchy::get_command_encoder(s).synchronize();
+  CHECK_EQ(out.size(), 0);
+  CHECK_EQ(out.nbytes(), 0);
+}
+
+TEST_CASE("full ones and full_like fill exact integers") {
+  if (!gpu::is_available()) {
+    skip("no qualifying Vulkan device.");
+    return;
+  }
+  Stream s = gpu_stream();
+
+  array f = full({5}, 16777217, int32, s);
+  f.eval();
+  omarchy::get_command_encoder(s).synchronize();
+  CHECK(words_equal(
+      f,
+      {16777217u, 16777217u, 16777217u, 16777217u, 16777217u}));
+
+  array o = ones({4}, uint32, s);
+  o.eval();
+  omarchy::get_command_encoder(s).synchronize();
+  CHECK(words_equal(o, {1u, 1u, 1u, 1u}));
+
+  array parent({1, 2, 3, 4, 5, 6}, int32);
+  array v = slice(parent, {1}, {5}, {1}, s);
+  v.eval();
+  array like = full_like(v, -3, s);
+  like.eval();
+  omarchy::get_command_encoder(s).synchronize();
+  CHECK(like.buffer().ptr() != parent.buffer().ptr());
+  CHECK(words_equal(like, {0xFFFFFFFDu, 0xFFFFFFFDu, 0xFFFFFFFDu, 0xFFFFFFFDu}));
 }
 
 TEST_CASE("reshape shares lazily and copies with the source offset") {
