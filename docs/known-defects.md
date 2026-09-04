@@ -32,8 +32,14 @@ full-sequence forward, which is why no user has reported it and no test caught
 it. Evidence and the protocol that produced it:
 [receipts/2026-09-04-hang-watchdog-hardware.md](../receipts/2026-09-04-hang-watchdog-hardware.md).
 
+The named failure is not a clean, recoverable error: the wedge poisons the rest
+of the process. The decode run immediately after a wedged evaluation measured
+0.214 tok/s, roughly twenty times slow, from residual wedged-queue state. So a
+process that has hit the wedge must be restarted before any further work in it
+is trusted, and any number it produces afterwards is void.
+
 Until the cause is found, evaluate long sequences in chunks rather than in one
-operation.
+operation, and restart the process if a wedge is hit.
 
 ## Live in v0.3.1
 
