@@ -807,3 +807,79 @@ TEST_CASE(
     unsetenv(name);
   }
 }
+
+TEST_CASE(
+    "shapeless compiled tape reused at a new shape matches eager"
+    " (stale-traced-shape regression)") {
+  // The Honeykrisp compiled-tape corruption root cause: the interpreter
+  // used to materialize every node at the traced shape, so a shapeless
+  // fragment reused across a sequence-length change computed into
+  // stale-shape outputs and read past its eval-time input buffers. On
+  // Honeykrisp the reads landed in recycled allocator pages (the
+  // f16-impossible ~8e8 Cos-gate magnitudes); on lavapipe they read
+  // zeros, so nothing but a shape-mismatch refusal ever showed. This
+  // case traces at one shape and requires value-and-shape equality with
+  // eager at other shapes, which the stale-shape path cannot pass.
+  if (!compiled_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+
+  auto swiglu = [](const std::vector<array>& inputs) {
+    array gate = sigmoid(inputs[0]);
+    return std::vector<array>{
+        add(multiply(inputs[0], gate), array(0.5f))};
+  };
+
+  auto make_input = [](Shape shape) {
+    std::vector<float> data(shape[0] * shape[1]);
+    for (size_t i = 0; i < data.size(); ++i) {
+      data[i] = static_cast<float>(i % 17) * 0.25f - 2.0f;
+    }
+    return array(data.begin(), shape, float32);
+  };
+
+  set_compile_mode(CompileMode::enabled);
+  auto compiled_fn = compile(swiglu, /*shapeless=*/true);
+
+  // First call traces the tape at this shape.
+  std::vector<array> trace_inputs = {make_input(Shape{2, 32})};
+  auto trace_out = compiled_fn(trace_inputs);
+  for (auto& out : trace_out) {
+    out.eval();
+  }
+  sync_stream(stream);
+
+  // Reuse the same traced fragment at other shapes: grow, shrink, and
+  // an unrelated width. Grow is the recorded refusal direction.
+  std::vector<Shape> shapes = {Shape{4, 32}, Shape{1, 32}, Shape{3, 48}};
+  for (size_t case_index = 0; case_index < shapes.size(); ++case_index) {
+    INFO("shape case ", case_index);
+    std::vector<array> inputs = {make_input(shapes[case_index])};
+    set_compile_mode(CompileMode::disabled);
+    std::vector<array> eager = swiglu(inputs);
+    for (auto& out : eager) {
+      out.eval();
+    }
+    sync_stream(stream);
+    set_compile_mode(CompileMode::enabled);
+    auto outputs = compiled_fn(inputs);
+    for (auto& out : outputs) {
+      out.eval();
+    }
+    sync_stream(stream);
+    set_compile_mode(CompileMode::disabled);
+    REQUIRE_EQ(eager.size(), outputs.size());
+    for (size_t j = 0; j < eager.size(); ++j) {
+      REQUIRE_EQ(eager[j].shape(), outputs[j].shape());
+      const float* eager_data = eager[j].data<float>();
+      const float* compiled_data = outputs[j].data<float>();
+      for (size_t index = 0; index < eager[j].size(); ++index) {
+        INFO("element ", index, " eager=", eager_data[index],
+             " compiled=", compiled_data[index]);
+        CHECK(std::abs(eager_data[index] - compiled_data[index]) <=
+              1e-6 * std::max(1.0f, std::abs(eager_data[index])));
+      }
+    }
+  }
+}
