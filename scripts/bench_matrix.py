@@ -29,7 +29,9 @@ Modes:
   run        execute every ready leg through scripts/bench_decode.py
 
 Exit codes: 0 ok (or at least one measured leg), 1 bad invocation or
-manifest, 3 run mode finished with zero measured legs.
+manifest, 3 run mode finished with zero measured legs, 4 --expect-pins
+refusal: a resolved revision differs from the expected pin, so the run
+is not comparable and nothing executes.
 
 Self-test (no GPU, no mlx): python3 bench_matrix.py --self-test
 """
@@ -351,7 +353,80 @@ def clean_check():
 
 # ------------------------------------------------------------------ legs
 
-def build_legs(manifest, hf_cache, overrides):
+def prompt_text(manifest, prompt_id):
+    """Exact prompt string for a manifest prompt entry.
+
+    "numbered" templates expand deterministically so macOS and Linux
+    run byte-identical prompts without pasting kilobytes into the
+    manifest.
+    """
+    entry = manifest["prompts"][prompt_id]
+    if "text" in entry:
+        return entry["text"]
+    if entry.get("template") == "numbered":
+        parts = [entry["base"]] + [
+            f"{entry['item']} Entry {i} of {entry['items']}."
+            for i in range(1, entry["items"] + 1)]
+        return " ".join(parts)
+    raise KeyError(f"prompt {prompt_id}: unsupported prompt entry")
+
+
+def selected_workloads(manifest, selected):
+    """Workloads in effect: all, or selection=explicit ones named."""
+    wls = manifest["workloads"]
+    if selected == "all":
+        return wls, []
+    chosen = set(selected)
+    active, excluded = [], []
+    for wl in wls:
+        if wl.get("selection") == "explicit" and wl["id"] not in chosen:
+            excluded.append(wl["id"])
+        else:
+            active.append(wl)
+    return active, excluded
+
+
+def pins_map(manifest, resolved):
+    """Resolved pin per model: pinned SHAs verbatim, cache-resolved
+    revisions labeled so cross-machine comparison knows what it is
+    comparing."""
+    by_id = {r["model_id"]: r for r in resolved}
+    pins = {}
+    for entry in manifest["models"]:
+        r = by_id.get(entry["id"])
+        if not r or r["status"] != "ready" or not r["revision"]:
+            continue
+        pins[entry["id"]] = {
+            "revision": r["revision"],
+            "class": "pinned" if entry.get("revision") else
+                     "resolved-from-cache",
+        }
+    return pins
+
+
+def check_pins(pins, expected):
+    """Refuse cross-machine comparison on differing resolved pins.
+
+    expected maps model_id -> revision (from --expect-pins, typically
+    the pins map recorded by the other machine). Returns a refusal
+    reason or None. A model that was ready on the other machine but is
+    absent or resolved differently here is a refusal, not a label.
+    """
+    problems = []
+    for mid, rev in expected.items():
+        pin = pins.get(mid)
+        if pin is None:
+            problems.append(f"{mid}: expected revision {rev} but model is "
+                            "not ready on this machine")
+        elif pin["revision"] != rev:
+            problems.append(f"{mid}: expected revision {rev}, this machine "
+                            f"resolved {pin['revision']} ({pin['class']}); "
+                            "same model id is not same weights")
+    return "; ".join(problems) if problems else None
+
+
+def build_legs(manifest, hf_cache, overrides, selected):
+    workloads, excluded = selected_workloads(manifest, selected)
     resolved, legs, paths = [], [], {}
     for entry in manifest["models"]:
         status, path, rev, reason = resolve_model(entry, hf_cache, overrides)
@@ -360,7 +435,7 @@ def build_legs(manifest, hf_cache, overrides):
                          "path": sanitize(str(path)) if path else None,
                          "detail": reason})
         if status != "ready":
-            for wl in manifest["workloads"]:
+            for wl in workloads:
                 legs.append({"leg_id": f"{entry['id']}:{wl['id']}",
                              "model_id": entry["id"], "revision": rev,
                              "workload_id": wl["id"], "prompt_id": wl["prompt"],
@@ -368,13 +443,13 @@ def build_legs(manifest, hf_cache, overrides):
                              "measured": False, "skip_reason": reason})
             continue
         paths[entry["id"]] = path
-        for wl in manifest["workloads"]:
+        for wl in workloads:
             legs.append({"leg_id": f"{entry['id']}:{wl['id']}",
                          "model_id": entry["id"], "revision": rev,
                          "workload_id": wl["id"], "prompt_id": wl["prompt"],
                          "tokens": wl["tokens"], "status": "ready",
                          "measured": False, "model_path": sanitize(str(path))})
-    return resolved, legs, paths
+    return resolved, legs, paths, excluded
 
 
 def parse_bench_output(stdout):
@@ -402,7 +477,7 @@ def parse_bench_output(stdout):
 
 
 def execute_leg(leg, manifest, args, contended):
-    prompt = manifest["prompts"][leg["prompt_id"]]["text"]
+    prompt = prompt_text(manifest, leg["prompt_id"])
     gen = manifest["generation"]
     engine = SCRIPTS_DIR / Path(gen["engine_script"]).name
     cmd = [args.python, str(engine),
@@ -507,6 +582,15 @@ def main():
                          "auto-detected")
     ap.add_argument("--timeout", type=int, default=1800,
                     help="per-leg timeout in seconds")
+    ap.add_argument("--select", action="append", default=[],
+                    metavar="WORKLOAD_ID",
+                    help="include an explicit-selection workload; 'all' "
+                         "selects everything")
+    ap.add_argument("--expect-pins", action="append", default=[],
+                    metavar="MODEL_ID=REVISION",
+                    help="refuse to run (exit 4) unless each model resolves "
+                         "to exactly this revision; pass the other "
+                         "machine's pins map for cross-machine comparison")
     ap.add_argument("--out", default=None, help="also write JSON here")
     ap.add_argument("--self-test", action="store_true")
     args = ap.parse_args()
@@ -537,8 +621,16 @@ def main():
         _emit(result, args.out)
         return
 
-    resolved, legs, paths = build_legs(manifest, args.hf_cache, overrides)
+    selected = "all" if "all" in args.select else args.select
+    resolved, legs, paths, excluded = build_legs(
+        manifest, args.hf_cache, overrides, selected)
     result["models_resolved"] = resolved
+    result["pins"] = pins_map(manifest, resolved)
+    if excluded:
+        result["notes"] = [
+            f"explicit-selection workloads not selected, no legs built: "
+            f"{', '.join(excluded)} (use --select {excluded[0]} or "
+            "--select all)"]
 
     if args.mode == "plan":
         for leg in legs:
@@ -546,7 +638,7 @@ def main():
                 continue
             count = probe_prompt_tokens(
                 args.python, paths[leg["model_id"]],
-                manifest["prompts"][leg["prompt_id"]]["text"])
+                prompt_text(manifest, leg["prompt_id"]))
             leg["prompt_tokens"] = count
             leg["prompt_tokens_probe"] = (
                 "transformers tokenizer" if count is not None
@@ -556,6 +648,14 @@ def main():
         return
 
     # run mode
+    expected = dict(
+        part.split("=", 1) for part in args.expect_pins if "=" in part)
+    if expected:
+        refusal = check_pins(result["pins"], expected)
+        if refusal:
+            result["refusal"] = refusal
+            _emit(result, args.out)
+            sys.exit(4)
     meta = collect_metadata(args, manifest)
     result.update({k: meta[k] for k in
                    ("host", "packages", "binary_provenance", "power",
@@ -638,11 +738,39 @@ def self_test():
         status4, _, rev4, reason4 = resolve_model(entry4, tmp, {})
         assert status4 == "skipped" and "refusing to guess" in reason4
 
+    mfix = {"prompts": {"n": {"template": "numbered", "base": "B",
+                              "item": "C", "items": 2},
+                        "t": {"text": "T"}},
+            "workloads": [
+                {"id": "w1", "prompt": "t", "tokens": 4},
+                {"id": "wx", "prompt": "n", "tokens": 4,
+                 "selection": "explicit"}]}
+    assert prompt_text(mfix, "n") == "B C Entry 1 of 2. C Entry 2 of 2."
+    assert prompt_text(mfix, "t") == "T"
+    active, excluded = selected_workloads(mfix, [])
+    assert [w["id"] for w in active] == ["w1"] and excluded == ["wx"]
+    active, excluded = selected_workloads(mfix, ["wx"])
+    assert [w["id"] for w in active] == ["w1", "wx"] and excluded == []
+    active, excluded = selected_workloads(mfix, "all")
+    assert excluded == []
+
+    resolved = [{"model_id": "m1", "status": "ready", "revision": "aaa"},
+                {"model_id": "m2", "status": "ready", "revision": "bbb"}]
+    man = {"models": [{"id": "m1", "revision": "aaa"},
+                      {"id": "m2", "revision": None}]}
+    pins = pins_map(man, resolved)
+    assert pins == {"m1": {"revision": "aaa", "class": "pinned"},
+                    "m2": {"revision": "bbb", "class": "resolved-from-cache"}}
+    assert check_pins(pins, {"m2": "bbb"}) is None
+    refusal = check_pins(pins, {"m2": "ccc"})
+    assert refusal and "not same weights" in refusal
+    refusal2 = check_pins(pins, {"gone": "ddd"})
+    assert refusal2 and "not ready on this machine" in refusal2
+
     manifest = {"prompts": {"s": {"text": "Hi"}},
                 "generation": {"temp": 0, "seed": 0, "warmup_tokens": 4,
                                "engine_script": "bench_decode.py"}}
     leg = {"leg_id": "t", "model_path": "/m", "prompt_id": "s", "tokens": 4}
-    import io
 
     class FakeProc:
         returncode = 0
@@ -660,7 +788,8 @@ def self_test():
     assert leg["metrics"]["decode_tok_s"] == 1.97
     assert "prompt_tokens" in leg
 
-    print("self-test: OK (parsing, skip rules, sanitization, leg execution)")
+    print("self-test: OK (parsing, skip rules, templates, selection, pin "
+          "refusal, sanitization, leg execution)")
 
 
 if __name__ == "__main__":

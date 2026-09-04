@@ -94,3 +94,19 @@ state, and any running model-serving processes. Hostnames, user names,
 and serial numbers are excluded. A run while `llama-server`, `ollama`, or
 similar processes are serving is labeled contended; contended timings are
 never compared against clean numbers.
+
+The matrix covers ~262, ~1024, and ~4096 prompt-token prefill plus
+32/128-token pinned decode; exact prompt token counts are recorded per
+leg from the model's own tokenizer, never assumed. The ~4096 workload is
+explicit selection only, to bound normal runs:
+
+```sh
+python3 scripts/bench_matrix.py --mode run --select longctx-4096-decode-32
+```
+
+Every run records a pins map: each ready model with its exact revision,
+labeled `pinned` (manifest SHA) or `resolved-from-cache` (optional
+models). To compare two machines, pass machine A's pins map to machine
+B with `--expect-pins MODEL_ID=REVISION`; a different resolved revision
+refuses the run with exit 4 before anything executes, because the same
+model id with different weights is not a comparison.
