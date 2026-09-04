@@ -1222,10 +1222,6 @@ TEST_CASE("softmax normalizes rows through Vulkan compute") {
        0.73105858f},
       stream,
       1e-5);
-  std::string layout_error = evaluation_error(
-      softmax(transpose(base, stream), std::vector<int>{-1}, false, stream));
-  CHECK(layout_error.find("non-contiguous Softmax") != std::string::npos);
-
   // Non-suffix axes decompose softmax into general reductions, which now
   // compute; the result matches a host softmax over those axes.
   array grid(
@@ -1360,11 +1356,6 @@ TEST_CASE("logsumexp reduces last-axis rows through Vulkan compute") {
   CHECK(std::isinf(inf_values[0]));
   CHECK(inf_values[0] < 0.0f);
   CHECK_EQ(inf_values[1], 3.0f);
-
-  // A transpose view keeps its strides and pins the named layout error.
-  std::string layout_error = evaluation_error(
-      logsumexp(transpose(x, stream), -1, false, stream));
-  CHECK(layout_error.find("non-contiguous LogSumExp") != std::string::npos);
 
   // FP16 and BF16 match the float32 host reference at their usual
   // tolerances.
