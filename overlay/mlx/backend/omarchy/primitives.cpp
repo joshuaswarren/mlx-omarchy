@@ -164,6 +164,26 @@ omarchy::ComputeBinding binding(const array& value) {
   return {buffer->buffer, 0, buffer->size};
 }
 
+// Consumer-boundary dense normalization. Returns |value| itself when
+// |dense_enough| holds, so a dense operand takes the caller's existing
+// path with no allocation, no header copy, and no rebind. Otherwise the
+// general strided-copy engine materializes one dense same-dtype temp;
+// the caller owns |temp| across its dispatches and the encoder keeps
+// the buffer alive until the committed work completes.
+const array& ensure_dense(
+    const array& value,
+    bool dense_enough,
+    std::optional<array>& temp,
+    omarchy::CommandEncoder& encoder,
+    const Stream& s) {
+  if (dense_enough) {
+    return value;
+  }
+  temp = contiguous_copy_gpu(value, s);
+  encoder.add_temporary(*temp);
+  return *temp;
+}
+
 bool is_trailing_broadcast(const array& input, const array& out) {
   if (input.data_size() == 1) {
     return true;
@@ -542,16 +562,21 @@ void dispatch_elementwise(
     const std::vector<array>& inputs,
     array& out,
     const Stream& s) {
-  const array& lhs = inputs.at(0);
+  const array& in_lhs = inputs.at(0);
   const bool binary = inputs.size() == 2;
-  const array& rhs = binary ? inputs.at(1) : lhs;
+  const array& in_rhs = binary ? inputs.at(1) : in_lhs;
   auto& encoder = omarchy::get_command_encoder(s);
-  require_float_dtype(name, lhs, out, encoder);
-  require_float_dtype(name, rhs, out, encoder);
+  require_float_dtype(name, in_lhs, out, encoder);
+  require_float_dtype(name, in_rhs, out, encoder);
 
-  if (!lhs.flags().contiguous || !rhs.flags().contiguous) {
-    omarchy::unsupported("non-contiguous " + name, out);
-  }
+  std::optional<array> lhs_temp;
+  std::optional<array> rhs_temp;
+  const array& lhs =
+      ensure_dense(in_lhs, in_lhs.flags().contiguous, lhs_temp, encoder, s);
+  const array& rhs = binary
+      ? ensure_dense(in_rhs, in_rhs.flags().contiguous, rhs_temp, encoder, s)
+      : lhs;
+
 
   // Scalar, suffix-aligned, and full-overlap operands keep the cheap
   // modulo indexing in the shader; anything else needs shape-aware
@@ -865,19 +890,33 @@ void dispatch_int_elementwise(
     uint32_t operation,
     const std::vector<array>& inputs,
     array& out) {
-  const array& lhs = inputs.at(0);
+  const array& in_lhs = inputs.at(0);
   const bool binary = inputs.size() == 2;
-  const array& rhs = binary ? inputs.at(1) : lhs;
+  const array& in_rhs = binary ? inputs.at(1) : in_lhs;
   auto is_int_dtype = [](Dtype dtype) {
     return dtype == int32 || dtype == uint32;
   };
-  if (!is_int_dtype(lhs.dtype()) || !is_int_dtype(rhs.dtype()) ||
+  if (!is_int_dtype(in_lhs.dtype()) || !is_int_dtype(in_rhs.dtype()) ||
       !is_int_dtype(out.dtype())) {
     omarchy::unsupported(name + " dtype", out);
   }
-  if (!lhs.flags().contiguous || !rhs.flags().contiguous) {
-    omarchy::unsupported("non-contiguous " + name, out);
-  }
+  auto& encoder = omarchy::get_command_encoder(out.primitive().stream());
+  std::optional<array> lhs_temp;
+  std::optional<array> rhs_temp;
+  const array& lhs = ensure_dense(
+      in_lhs,
+      in_lhs.flags().contiguous,
+      lhs_temp,
+      encoder,
+      out.primitive().stream());
+  const array& rhs = binary
+      ? ensure_dense(
+            in_rhs,
+            in_rhs.flags().contiguous,
+            rhs_temp,
+            encoder,
+            out.primitive().stream())
+      : lhs;
   auto binary_type = get_binary_op_type(lhs, rhs);
   // Broadcast views inherit contiguous=true while data_size < size; the
   // Scalar/Vector output branches would mirror the view's undersized
@@ -939,7 +978,14 @@ void dispatch_sort(
     array& out,
     bool argsort,
     omarchy::CommandEncoder& encoder) {
-  size_t row_length = input.shape(-1);
+  std::optional<array> dense_temp;
+  const array& src = ensure_dense(
+      input,
+      input.flags().row_contiguous,
+      dense_temp,
+      encoder,
+      out.primitive().stream());
+  size_t row_length = src.shape(-1);
   if (row_length > kSortMaxRowLength) {
     omarchy::unsupported("sort row length " + name, out);
   }
@@ -947,16 +993,16 @@ void dispatch_sort(
   if (out.size() == 0) {
     return;
   }
-  size_t rows = input.size() / row_length;
+  size_t rows = src.size() / row_length;
   uint32_t output_size = checked_u32(rows, name, out);
   omarchy::ComputeParams params;
   params.count = checked_u32(out.size(), name, out);
   params.reduce_size = checked_u32(row_length, name, out);
   params.output_size = output_size;
-  params.lhs_offset = checked_item_offset(input, input.size(), name, out);
+  params.lhs_offset = checked_item_offset(src, src.size(), name, out);
   params.output_offset = checked_item_offset(out, out.size(), name, out);
   std::array<omarchy::ComputeBinding, 3> bindings{
-      binding(input), binding(input), binding(out)};
+      binding(src), binding(src), binding(out)};
   omarchy::ComputeKernel kernel;
   if (input.dtype() == int32 || input.dtype() == uint32) {
     // 32-bit integer storage buffers need no capability extension.
@@ -1005,11 +1051,11 @@ void dispatch_softmax(
     const Stream& s) {
   auto& encoder = omarchy::get_command_encoder(s);
   require_float_dtype(name, input, out, encoder);
-  if (!input.flags().row_contiguous) {
-    omarchy::unsupported("non-contiguous " + name, out);
-  }
-  size_t row_length = input.shape(-1);
-  size_t rows = input.size() / row_length;
+  std::optional<array> dense_temp;
+  const array& src =
+      ensure_dense(input, input.flags().row_contiguous, dense_temp, encoder, s);
+  size_t row_length = src.shape(-1);
+  size_t rows = src.size() / row_length;
   out.set_data(allocate_omarchy(out.nbytes()));
   if (out.size() == 0) {
     return;
@@ -1019,10 +1065,10 @@ void dispatch_softmax(
   params.count = checked_u32(out.size(), name, out);
   params.reduce_size = checked_u32(row_length, name, out);
   params.output_size = output_size;
-  params.lhs_offset = checked_item_offset(input, input.size(), name, out);
+  params.lhs_offset = checked_item_offset(src, src.size(), name, out);
   params.output_offset = checked_item_offset(out, out.size(), name, out);
   std::array<omarchy::ComputeBinding, 3> bindings{
-      binding(input), binding(input), binding(out)};
+      binding(src), binding(src), binding(out)};
   auto kernel = select_float_kernel(
       out.dtype(),
       omarchy::ComputeKernel::SoftmaxF32,
@@ -1524,11 +1570,6 @@ void dispatch_gather_qmm(
   if (w.dtype() != uint32) {
     omarchy::unsupported(tag + " weight dtype", out);
   }
-  if (!x.flags().row_contiguous || !w.flags().row_contiguous ||
-      !scales.flags().row_contiguous ||
-      (biases && !biases->flags().row_contiguous)) {
-    omarchy::unsupported(tag + " non-contiguous input", out);
-  }
   if (scales.dtype() != out.dtype() ||
       (biases && biases->dtype() != out.dtype())) {
     // ops.cpp promotes scales and biases to the output dtype.
@@ -1562,52 +1603,45 @@ void dispatch_gather_qmm(
   if (lhs.shape() != rhs.shape()) {
     omarchy::unsupported(tag + " index shape", out);
   }
-  std::optional<array> lhs_packed;
-  std::optional<array> rhs_packed;
-  const array* lhs_ptr = &lhs;
-  const array* rhs_ptr = &rhs;
-  if (!lhs.flags().row_contiguous) {
-    lhs_packed = make_dense_temp(lhs, tag, out, encoder);
-    copy_gpu_inplace(
-        lhs,
-        *lhs_packed,
-        lhs.shape(),
-        lhs.strides(),
-        lhs_packed->strides(),
-        /*i_offset=*/0,
-        /*o_offset=*/0,
-        CopyType::General,
-        s);
-    lhs_ptr = &*lhs_packed;
-  }
-  if (!rhs.flags().row_contiguous) {
-    rhs_packed = make_dense_temp(rhs, tag, out, encoder);
-    copy_gpu_inplace(
-        rhs,
-        *rhs_packed,
-        rhs.shape(),
-        rhs.strides(),
-        rhs_packed->strides(),
-        /*i_offset=*/0,
-        /*o_offset=*/0,
-        CopyType::General,
-        s);
-    rhs_ptr = &*rhs_packed;
-  }
+  std::optional<array> x_temp;
+  std::optional<array> w_temp;
+  std::optional<array> scales_temp;
+  std::optional<array> lhs_temp;
+  std::optional<array> rhs_temp;
+  std::optional<array> bias_temp;
+  const array& x_d =
+      ensure_dense(x, x.flags().row_contiguous, x_temp, encoder, s);
+  const array& w_d =
+      ensure_dense(w, w.flags().row_contiguous, w_temp, encoder, s);
+  const array& scales_d = ensure_dense(
+      scales, scales.flags().row_contiguous, scales_temp, encoder, s);
+  const array* biases_d = biases.has_value()
+      ? &ensure_dense(
+              *biases,
+              biases->flags().row_contiguous,
+              bias_temp,
+              encoder,
+              s)
+      : nullptr;
+  const array& lhs_d =
+      ensure_dense(lhs, lhs.flags().row_contiguous, lhs_temp, encoder, s);
+  const array& rhs_d =
+      ensure_dense(rhs, rhs.flags().row_contiguous, rhs_temp, encoder, s);
 
   out.set_data(allocate_omarchy(out.nbytes()));
   if (out.size() == 0) {
     return;
   }
-  size_t index_count = lhs_ptr->size();
+  size_t index_count = lhs_d.size();
   size_t scale_bytes = scales.nbytes();
   size_t bias_bytes = biases ? biases->nbytes() : 0;
   auto align4 = [](size_t value) { return (value + 3) & ~size_t(3); };
   size_t bias_base = align4(scale_bytes);
   size_t index_base = align4(bias_base + bias_bytes);
   size_t packed_bytes = index_base + 2 * index_count * 4;
-  if (scales.offset() % 4 != 0 || (biases && biases->offset() % 4 != 0) ||
-      lhs_ptr->offset() % 4 != 0 || rhs_ptr->offset() % 4 != 0) {
+  if (scales_d.offset() % 4 != 0 ||
+      (biases_d && biases_d->offset() % 4 != 0) ||
+      lhs_d.offset() % 4 != 0 || rhs_d.offset() % 4 != 0) {
     omarchy::unsupported(tag + " byte offset", out);
   }
   array packed(Shape{static_cast<int>(packed_bytes / 4)}, uint32, nullptr, {});
@@ -1624,30 +1658,30 @@ void dispatch_gather_qmm(
   encoder.add_temporary(packed);
   encoder.fill_buffer(binding(packed).buffer, 0, packed_bytes, 0);
   encoder.copy_buffer(
-      binding(scales).buffer,
+      binding(scales_d).buffer,
       binding(packed).buffer,
       scale_bytes,
-      static_cast<VkDeviceSize>(scales.offset()),
+      static_cast<VkDeviceSize>(scales_d.offset()),
       0);
-  if (biases) {
+  if (biases_d) {
     encoder.copy_buffer(
-        binding(*biases).buffer,
+        binding(*biases_d).buffer,
         binding(packed).buffer,
         bias_bytes,
-        static_cast<VkDeviceSize>(biases->offset()),
+        static_cast<VkDeviceSize>(biases_d->offset()),
         static_cast<VkDeviceSize>(bias_base));
   }
   encoder.copy_buffer(
-      binding(*lhs_ptr).buffer,
+      binding(lhs_d).buffer,
       binding(packed).buffer,
       index_count * 4,
-      static_cast<VkDeviceSize>(lhs_ptr->offset()),
+      static_cast<VkDeviceSize>(lhs_d.offset()),
       static_cast<VkDeviceSize>(index_base));
   encoder.copy_buffer(
-      binding(*rhs_ptr).buffer,
+      binding(rhs_d).buffer,
       binding(packed).buffer,
       index_count * 4,
-      static_cast<VkDeviceSize>(rhs_ptr->offset()),
+      static_cast<VkDeviceSize>(rhs_d.offset()),
       static_cast<VkDeviceSize>(index_base + index_count * 4));
 
   omarchy::ComputeParams params;
@@ -1656,8 +1690,8 @@ void dispatch_gather_qmm(
   params.rhs_size = checked_u32(w.size(), tag, out);
   params.reduce_size = static_cast<uint32_t>(group_size);
   params.output_size = params.count;
-  params.lhs_offset = checked_item_offset(x, x.size(), tag, out);
-  params.rhs_offset = checked_item_offset(w, w.size(), tag, out);
+  params.lhs_offset = checked_item_offset(x_d, x_d.size(), tag, out);
+  params.rhs_offset = checked_item_offset(w_d, w_d.size(), tag, out);
   params.output_offset = checked_item_offset(out, out.size(), tag, out);
   params.aux_offset = 0;
   params.matrix_m = checked_u32(m, tag, out);
@@ -1676,7 +1710,7 @@ void dispatch_gather_qmm(
     omarchy::unsupported(tag + " index span", out);
   }
   std::array<omarchy::ComputeBinding, 4> bindings{
-      binding(x), binding(packed), binding(w), binding(out)};
+      binding(x_d), binding(packed), binding(w_d), binding(out)};
   bool no_bias = !biases.has_value();
   omarchy::ComputeKernel kernel;
   if (out.dtype() == float32) {
@@ -1748,17 +1782,21 @@ void dispatch_complex(
     const std::vector<array>& inputs,
     array& out,
     const Stream& s) {
-  const array& lhs = inputs.at(0);
+  const array& in_lhs = inputs.at(0);
   const bool binary = inputs.size() == 2;
-  const array& rhs = binary ? inputs.at(1) : lhs;
+  const array& in_rhs = binary ? inputs.at(1) : in_lhs;
   auto& encoder = omarchy::get_command_encoder(s);
-  if (lhs.dtype() != complex64 || rhs.dtype() != complex64 ||
+  if (in_lhs.dtype() != complex64 || in_rhs.dtype() != complex64 ||
       out.dtype() != complex64) {
     omarchy::unsupported(name + " complex64 dtype", out);
   }
-  if (!lhs.flags().contiguous || !rhs.flags().contiguous) {
-    omarchy::unsupported("non-contiguous " + name, out);
-  }
+  std::optional<array> lhs_temp;
+  std::optional<array> rhs_temp;
+  const array& lhs =
+      ensure_dense(in_lhs, in_lhs.flags().contiguous, lhs_temp, encoder, s);
+  const array& rhs = binary
+      ? ensure_dense(in_rhs, in_rhs.flags().contiguous, rhs_temp, encoder, s)
+      : lhs;
   bool general_broadcast = binary
       ? (!is_trailing_broadcast(lhs, out) || !is_trailing_broadcast(rhs, out))
       : !is_trailing_broadcast(lhs, out);
@@ -1908,9 +1946,6 @@ void ArgPartition::eval_gpu(const std::vector<array>& inputs, array& out) {
   auto [kth, axis] = state();
   auto& encoder = omarchy::get_command_encoder(out.primitive().stream());
   require_sort_dtype("ArgPartition", input, out, true, encoder);
-  if (!input.flags().row_contiguous) {
-    omarchy::unsupported("non-contiguous ArgPartition", out);
-  }
   if (axis != input.ndim() - 1) {
     omarchy::unsupported("non-suffix ArgPartition", out);
   }
@@ -1956,15 +1991,18 @@ void ArgReduce::eval_gpu(const std::vector<array>& inputs, array& out) {
   if (out.dtype() != uint32) {
     omarchy::unsupported(operation_name + " output dtype", out);
   }
-  if (!input.flags().row_contiguous) {
-    omarchy::unsupported("non-contiguous " + operation_name, out);
-  }
   if (axis != input.ndim() - 1) {
     omarchy::unsupported("non-suffix " + operation_name, out);
   }
-
-  size_t row_length = input.shape(-1);
-  size_t rows = input.size() / row_length;
+  std::optional<array> dense_temp;
+  const array& src = ensure_dense(
+      input,
+      input.flags().row_contiguous,
+      dense_temp,
+      encoder,
+      out.primitive().stream());
+  size_t row_length = src.shape(-1);
+  size_t rows = src.size() / row_length;
   out.set_data(allocate_omarchy(out.nbytes()));
   if (out.size() == 0) {
     return;
@@ -1977,10 +2015,10 @@ void ArgReduce::eval_gpu(const std::vector<array>& inputs, array& out) {
   params.reduce_size = checked_u32(row_length, operation_name, out);
   params.output_size = output_size;
   params.lhs_offset = checked_item_offset(
-      input, input.size(), operation_name, out);
+      src, src.size(), operation_name, out);
   params.output_offset = checked_item_offset(out, out.size(), operation_name, out);
   std::array<omarchy::ComputeBinding, 3> bindings{
-      binding(input), binding(input), binding(out)};
+      binding(src), binding(src), binding(out)};
   auto kernel = select_float_kernel(
       input.dtype(),
       omarchy::ComputeKernel::ArgReduceF32,
@@ -1996,9 +2034,6 @@ void ArgSort::eval_gpu(const std::vector<array>& inputs, array& out) {
   const array& input = inputs.at(0);
   auto& encoder = omarchy::get_command_encoder(out.primitive().stream());
   require_sort_dtype("ArgSort", input, out, true, encoder);
-  if (!input.flags().row_contiguous) {
-    omarchy::unsupported("non-contiguous ArgSort", out);
-  }
   if (state() != input.ndim() - 1) {
     omarchy::unsupported("non-suffix ArgSort", out);
   }
@@ -2143,38 +2178,12 @@ void GatherMM::eval_gpu(const std::vector<array>& inputs, array& out) {
   if (lhs.shape() != rhs.shape()) {
     omarchy::unsupported(tag + " index shape", out);
   }
-  std::optional<array> lhs_packed;
-  std::optional<array> rhs_packed;
-  const array* lhs_ptr = &lhs;
-  const array* rhs_ptr = &rhs;
-  if (!lhs.flags().row_contiguous) {
-    lhs_packed = make_dense_temp(lhs, tag, out, encoder);
-    copy_gpu_inplace(
-        lhs,
-        *lhs_packed,
-        lhs.shape(),
-        lhs.strides(),
-        lhs_packed->strides(),
-        0,
-        0,
-        CopyType::General,
-        s);
-    lhs_ptr = &*lhs_packed;
-  }
-  if (!rhs.flags().row_contiguous) {
-    rhs_packed = make_dense_temp(rhs, tag, out, encoder);
-    copy_gpu_inplace(
-        rhs,
-        *rhs_packed,
-        rhs.shape(),
-        rhs.strides(),
-        rhs_packed->strides(),
-        0,
-        0,
-        CopyType::General,
-        s);
-    rhs_ptr = &*rhs_packed;
-  }
+  std::optional<array> lhs_temp;
+  std::optional<array> rhs_temp;
+  const array& lhs_d =
+      ensure_dense(lhs, lhs.flags().row_contiguous, lhs_temp, encoder, s);
+  const array& rhs_d =
+      ensure_dense(rhs, rhs.flags().row_contiguous, rhs_temp, encoder, s);
 
   // The gathered base offsets are index * matrix_size, so both operands
   // must be dense batched stacks; a uniform in-matrix transposition keeps
@@ -2199,7 +2208,7 @@ void GatherMM::eval_gpu(const std::vector<array>& inputs, array& out) {
   int m = a.shape(-2);
   int k = a.shape(-1);
   int n = b.shape(-1);
-  size_t batch_count = lhs_ptr->size();
+  size_t batch_count = lhs_d.size();
   if (out.size() == 0) {
     return;
   }
@@ -2209,7 +2218,7 @@ void GatherMM::eval_gpu(const std::vector<array>& inputs, array& out) {
 
   // Binding 2 packs the index words [all lhs | all rhs]; GatherMM has no
   // C operand, so its binding slot is free.
-  if (lhs_ptr->offset() % 4 != 0 || rhs_ptr->offset() % 4 != 0) {
+  if (lhs_d.offset() % 4 != 0 || rhs_d.offset() % 4 != 0) {
     omarchy::unsupported(tag + " index byte offset", out);
   }
   array indices(
@@ -2226,17 +2235,17 @@ void GatherMM::eval_gpu(const std::vector<array>& inputs, array& out) {
       0);
   encoder.add_temporary(indices);
   encoder.copy_buffer(
-      binding(*lhs_ptr).buffer,
+      binding(lhs_d).buffer,
       binding(indices).buffer,
-      lhs_ptr->nbytes(),
-      static_cast<VkDeviceSize>(lhs_ptr->offset()),
+      lhs_d.nbytes(),
+      static_cast<VkDeviceSize>(lhs_d.offset()),
       0);
   encoder.copy_buffer(
-      binding(*rhs_ptr).buffer,
+      binding(rhs_d).buffer,
       binding(indices).buffer,
-      rhs_ptr->nbytes(),
-      static_cast<VkDeviceSize>(rhs_ptr->offset()),
-      static_cast<VkDeviceSize>(lhs_ptr->nbytes()));
+      rhs_d.nbytes(),
+      static_cast<VkDeviceSize>(rhs_d.offset()),
+      static_cast<VkDeviceSize>(lhs_d.nbytes()));
 
   omarchy::ComputeParams params;
   params.count = checked_u32(out.size(), tag, out);
@@ -2312,22 +2321,9 @@ void SegmentedMM::eval_gpu(const std::vector<array>& inputs, array& out) {
     b_transposed = false;
   }
   const array& b = b_materialized ? *b_materialized : b_in;
-  std::optional<array> segments_packed;
-  const array* segments_ptr = &segments;
-  if (!segments.flags().row_contiguous) {
-    segments_packed = make_dense_temp(segments, tag, out, encoder);
-    copy_gpu_inplace(
-        segments,
-        *segments_packed,
-        segments.shape(),
-        segments.strides(),
-        segments_packed->strides(),
-        0,
-        0,
-        CopyType::General,
-        s);
-    segments_ptr = &*segments_packed;
-  }
+  std::optional<array> segments_temp;
+  const array& segments_d = ensure_dense(
+      segments, segments.flags().row_contiguous, segments_temp, encoder, s);
 
   out.set_data(allocate_omarchy(out.nbytes()));
   if (out.size() == 0) {
@@ -2336,7 +2332,7 @@ void SegmentedMM::eval_gpu(const std::vector<array>& inputs, array& out) {
   int m = a.shape(0);
   int k = a.shape(1);
   int n = b.shape(1);
-  size_t num_segments = segments_ptr->size() / 2;
+  size_t num_segments = segments_d.size() / 2;
   if (num_segments * static_cast<size_t>(m) * n != out.size()) {
     omarchy::unsupported(tag + " segment count", out);
   }
@@ -2352,7 +2348,8 @@ void SegmentedMM::eval_gpu(const std::vector<array>& inputs, array& out) {
   params.lhs_offset = checked_item_offset(a, a.size(), tag, out);
   params.rhs_offset = checked_item_offset(b, b.size(), tag, out);
   params.output_offset = checked_item_offset(out, out.size(), tag, out);
-  params.aux_offset = checked_item_offset(*segments_ptr, segments_ptr->size(), tag, out);
+  params.aux_offset =
+      checked_item_offset(segments_d, segments_d.size(), tag, out);
   params.matrix_m = checked_u32(m, tag, out);
   params.matrix_n = checked_u32(n, tag, out);
   params.matrix_k = checked_u32(k, tag, out);
@@ -2362,7 +2359,7 @@ void SegmentedMM::eval_gpu(const std::vector<array>& inputs, array& out) {
     omarchy::unsupported(tag + " index span", out);
   }
   std::array<omarchy::ComputeBinding, 4> bindings{
-      binding(a), binding(b), binding(*segments_ptr), binding(out)};
+      binding(a), binding(b), binding(segments_d), binding(out)};
   auto kernel = select_float_kernel(
       out.dtype(),
       omarchy::ComputeKernel::SegmentedMmF32,
@@ -2692,19 +2689,30 @@ void Divide::eval_gpu(const std::vector<array>& inputs, array& out) {
 void DivMod::eval_gpu(
     const std::vector<array>& inputs,
     std::vector<array>& outputs) {
-  const array& lhs = inputs.at(0);
-  const array& rhs = inputs.at(1);
+  const array& in_lhs = inputs.at(0);
+  const array& in_rhs = inputs.at(1);
   array& quotient = outputs.at(0);
   array& remainder = outputs.at(1);
   auto& encoder = omarchy::get_command_encoder(quotient.primitive().stream());
+  std::optional<array> lhs_temp;
+  std::optional<array> rhs_temp;
+  const array& lhs = ensure_dense(
+      in_lhs,
+      in_lhs.flags().contiguous,
+      lhs_temp,
+      encoder,
+      quotient.primitive().stream());
+  const array& rhs = ensure_dense(
+      in_rhs,
+      in_rhs.flags().contiguous,
+      rhs_temp,
+      encoder,
+      quotient.primitive().stream());
   auto is_int_dtype = [](Dtype dtype) {
     return dtype == int32 || dtype == uint32;
   };
   if (is_int_dtype(lhs.dtype()) && is_int_dtype(rhs.dtype()) &&
       is_int_dtype(quotient.dtype()) && is_int_dtype(remainder.dtype())) {
-    if (!lhs.flags().contiguous || !rhs.flags().contiguous) {
-      omarchy::unsupported("non-contiguous DivMod", quotient);
-    }
     auto binary_type = get_binary_op_type(lhs, rhs);
     if (lhs.data_size() != lhs.size() || rhs.data_size() != rhs.size()) {
       binary_type = BinaryOpType::General;
@@ -2723,9 +2731,6 @@ void DivMod::eval_gpu(
   }
   require_float_dtype("DivMod", lhs, quotient, encoder);
   require_float_dtype("DivMod", rhs, quotient, encoder);
-  if (!lhs.flags().contiguous || !rhs.flags().contiguous) {
-    omarchy::unsupported("non-contiguous DivMod", quotient);
-  }
   bool general_broadcast =
       !is_trailing_broadcast(lhs, quotient) ||
       !is_trailing_broadcast(rhs, quotient);
@@ -3697,7 +3702,7 @@ void Gather::eval_gpu(const std::vector<array>& inputs, array& out) {
   if (inputs.size() != 2 || axes.size() != 1 || axes[0] != 0) {
     omarchy::unsupported("non-axis-0 Take", out);
   }
-  if (table.ndim() != 2 || !table.flags().row_contiguous) {
+  if (table.ndim() != 2) {
     omarchy::unsupported("matrix layout Take", out);
   }
   if (
@@ -3728,9 +3733,16 @@ void Gather::eval_gpu(const std::vector<array>& inputs, array& out) {
     default:
       omarchy::unsupported("indexed Take dtype", out);
   }
-  if (!indices.flags().row_contiguous) {
-    omarchy::unsupported("non-contiguous indexed Take", out);
-  }
+  std::optional<array> table_temp;
+  std::optional<array> indices_temp;
+  const array& table_d = ensure_dense(
+      table, table.flags().row_contiguous, table_temp, encoder, stream());
+  const array& indices_d = ensure_dense(
+      indices,
+      indices.flags().row_contiguous,
+      indices_temp,
+      encoder,
+      stream());
   if (out.size() != indices.size() * table.shape(1)) {
     omarchy::unsupported("slice Take", out);
   }
@@ -3747,11 +3759,11 @@ void Gather::eval_gpu(const std::vector<array>& inputs, array& out) {
   params.rhs_size = checked_u32(index_words, "Take", out);
   params.reduce_size = checked_u32(table.shape(1), "Take", out);
   params.output_size = count;
-  params.lhs_offset = checked_item_offset(table, table.size(), "Take", out);
+  params.lhs_offset = checked_item_offset(table_d, table_d.size(), "Take", out);
   // The shader indexes 32-bit words, so the int64 element offset
   // doubles into word units.
   uint32_t index_offset = checked_item_offset(
-      indices, indices.size(), "Take", out);
+      indices_d, indices_d.size(), "Take", out);
   if (index_mode == 2) {
     if (index_offset > std::numeric_limits<uint32_t>::max() / 2) {
       omarchy::unsupported("indexed Take index span", out);
@@ -3761,7 +3773,7 @@ void Gather::eval_gpu(const std::vector<array>& inputs, array& out) {
   params.rhs_offset = index_offset;
   params.output_offset = checked_item_offset(out, out.size(), "Take", out);
   std::array<omarchy::ComputeBinding, 3> bindings{
-      binding(table), binding(indices), binding(out)};
+      binding(table_d), binding(indices_d), binding(out)};
   auto kernel = raw_word_table
       ? omarchy::ComputeKernel::GatherU32
       : select_float_kernel(
@@ -3809,10 +3821,13 @@ void GatherAxis::eval_gpu(const std::vector<array>& inputs, array& out) {
     default:
       omarchy::unsupported("indexed Take dtype", out);
   }
-  if (!indices.flags().row_contiguous ||
-      indices.data_size() != indices.size()) {
-    omarchy::unsupported("indexed Take layout", out);
-  }
+  std::optional<array> indices_temp;
+  const array& indices_d = ensure_dense(
+      indices,
+      indices.flags().row_contiguous && indices.data_size() == indices.size(),
+      indices_temp,
+      encoder,
+      out.primitive().stream());
   int non_axis = out.ndim() - 1;
   if (non_axis > 4) {
     // shape[] and in_strides[] cap at four slots for the non-axis walk.
@@ -3837,7 +3852,7 @@ void GatherAxis::eval_gpu(const std::vector<array>& inputs, array& out) {
   params.aux_size = checked_u32(indices.shape(axis), "Take", out);
   params.lhs_offset = checked_item_offset(src, src.size(), "Take", out);
   uint32_t index_offset =
-      checked_item_offset(indices, indices.size(), "Take", out);
+      checked_item_offset(indices_d, indices_d.size(), "Take", out);
   if (index_mode == 2) {
     if (index_offset > std::numeric_limits<uint32_t>::max() / 2) {
       omarchy::unsupported("Take index span", out);
@@ -3858,7 +3873,7 @@ void GatherAxis::eval_gpu(const std::vector<array>& inputs, array& out) {
     ++d;
   }
   std::array<omarchy::ComputeBinding, 3> bindings{
-      binding(src), binding(indices), binding(out)};
+      binding(src), binding(indices_d), binding(out)};
   auto kernel = src.dtype() == float16
       ? omarchy::ComputeKernel::GatherAxisF16
       : src.dtype() == bfloat16 ? omarchy::ComputeKernel::GatherAxisBF16
@@ -3996,9 +4011,13 @@ void Hadamard::eval_gpu(const std::vector<array>& inputs, array& out) {
   const array& input = inputs.at(0);
   auto& encoder = omarchy::get_command_encoder(out.primitive().stream());
   require_float_dtype("Hadamard", input, out, encoder);
-  if (!input.flags().row_contiguous) {
-    omarchy::unsupported("non-contiguous Hadamard", out);
-  }
+  std::optional<array> dense_temp;
+  const array& src = ensure_dense(
+      input,
+      input.flags().row_contiguous,
+      dense_temp,
+      encoder,
+      out.primitive().stream());
   if (out.ndim() == 0) {
     omarchy::unsupported("Hadamard rank", out);
   }
@@ -4031,10 +4050,10 @@ void Hadamard::eval_gpu(const std::vector<array>& inputs, array& out) {
   }
   // Copy the input bytes into the fresh output, then transform in place.
   encoder.copy_buffer(
-      binding(input).buffer,
+      binding(src).buffer,
       binding(out).buffer,
-      static_cast<VkDeviceSize>(input.nbytes()),
-      static_cast<VkDeviceSize>(input.offset()),
+      static_cast<VkDeviceSize>(src.nbytes()),
+      static_cast<VkDeviceSize>(src.offset()),
       static_cast<VkDeviceSize>(out.offset()));
   omarchy::ComputeParams params;
   params.count = checked_u32(out.size(), "Hadamard", out);
@@ -4159,9 +4178,14 @@ void LogSumExp::eval_gpu(const std::vector<array>& inputs, array& out) {
   const array& input = inputs.at(0);
   auto& encoder = omarchy::get_command_encoder(out.primitive().stream());
   require_float_dtype("LogSumExp", input, out, encoder);
-  if (!input.flags().row_contiguous) {
-    omarchy::unsupported("non-contiguous LogSumExp", out);
-  }
+  std::optional<array> dense_temp;
+  const array& src = ensure_dense(
+      input,
+      input.flags().row_contiguous,
+      dense_temp,
+      encoder,
+      out.primitive().stream());
+
 
   // Upstream mlx/ops.cpp logsumexp builds the LogSumExp primitive only
   // for a suffix reduce and keeps the reduced axis at size 1 (the
@@ -4169,8 +4193,8 @@ void LogSumExp::eval_gpu(const std::vector<array>& inputs, array& out) {
   // suffix-axis check is needed here. The shader accumulates in float32
   // for every dtype and keeps an infinite row max, matching the
   // upstream CPU rule.
-  size_t row_length = input.shape(-1);
-  size_t rows = input.size() / row_length;
+  size_t row_length = src.shape(-1);
+  size_t rows = src.size() / row_length;
   out.set_data(allocate_omarchy(out.nbytes()));
   if (out.size() == 0) {
     return;
@@ -4181,11 +4205,11 @@ void LogSumExp::eval_gpu(const std::vector<array>& inputs, array& out) {
   params.reduce_size = checked_u32(row_length, "LogSumExp", out);
   params.output_size = output_size;
   params.lhs_offset = checked_item_offset(
-      input, input.size(), "LogSumExp", out);
+      src, src.size(), "LogSumExp", out);
   params.output_offset = checked_item_offset(
       out, out.size(), "LogSumExp", out);
   std::array<omarchy::ComputeBinding, 3> bindings{
-      binding(input), binding(input), binding(out)};
+      binding(src), binding(src), binding(out)};
   auto kernel = select_float_kernel(
       out.dtype(),
       omarchy::ComputeKernel::LogSumExpF32,
@@ -4275,17 +4299,18 @@ void MaskedScatter::eval_gpu(const std::vector<array>& inputs, array& out) {
   size_t rows = mask.shape(0);
   size_t row_length = mask.size() / rows;
   size_t src_length = src.size() / rows;
-  // The scan kernel indexes mask words flat; a broadcast mask arrives
-  // as a stride view with no flat word order, so it keeps the named
-  // rejection instead of guessing a layout.
-  if (!mask.flags().row_contiguous || mask.data_size() != mask.size()) {
-    omarchy::unsupported("MaskedScatter mask layout", out);
-  }
+  std::optional<array> mask_temp;
+  const array& mask_d = ensure_dense(
+      mask,
+      mask.flags().row_contiguous && mask.data_size() == mask.size(),
+      mask_temp,
+      encoder,
+      out.primitive().stream());
   if (rows > omarchy::kMaxComputeGroupCountX) {
     omarchy::unsupported("MaskedScatter row count", out);
   }
   uint32_t mask_word_offset =
-      checked_item_offset(mask, mask.size(), "MaskedScatter", out);
+      checked_item_offset(mask_d, mask_d.size(), "MaskedScatter", out);
   if (mask_word_offset % 4 != 0) {
     omarchy::unsupported("MaskedScatter mask alignment", out);
   }
@@ -4316,7 +4341,7 @@ void MaskedScatter::eval_gpu(const std::vector<array>& inputs, array& out) {
   params.output_offset =
       checked_item_offset(out, out.size(), "MaskedScatter", out);
   std::array<omarchy::ComputeBinding, 3> bindings{
-      binding(out), binding(mask), binding(*src_dense)};
+      binding(out), binding(mask_d), binding(*src_dense)};
   encoder.dispatch_compute(
       kernel, bindings, params, checked_u32(rows, "MaskedScatter", out));
 }
@@ -4346,9 +4371,6 @@ void Partition::eval_gpu(const std::vector<array>& inputs, array& out) {
   const array& input = inputs.at(0);
   auto& encoder = omarchy::get_command_encoder(out.primitive().stream());
   require_sort_dtype("Partition", input, out, false, encoder);
-  if (!input.flags().row_contiguous) {
-    omarchy::unsupported("non-contiguous Partition", out);
-  }
   if (state().second != input.ndim() - 1) {
     omarchy::unsupported("non-suffix Partition", out);
   }
@@ -4443,10 +4465,18 @@ void QuantizedMatmul::eval_gpu(const std::vector<array>& inputs, array& out) {
       scales.shape(0) != w.shape(0)) {
     omarchy::unsupported(tag + " scales shape", out);
   }
-  if (!x.flags().row_contiguous || !w.flags().row_contiguous ||
-      !scales.flags().row_contiguous || !biases.flags().row_contiguous) {
-    omarchy::unsupported(tag + " non-contiguous input", out);
-  }
+  std::optional<array> x_temp;
+  std::optional<array> w_temp;
+  std::optional<array> scales_temp;
+  std::optional<array> biases_temp;
+  const array& x_d =
+      ensure_dense(x, x.flags().row_contiguous, x_temp, encoder, stream());
+  const array& w_d =
+      ensure_dense(w, w.flags().row_contiguous, w_temp, encoder, stream());
+  const array& scales_d = ensure_dense(
+      scales, scales.flags().row_contiguous, scales_temp, encoder, stream());
+  const array& biases_d = ensure_dense(
+      biases, biases.flags().row_contiguous, biases_temp, encoder, stream());
   int k = x.shape(-1);
   int n = out.shape(-1);
   size_t m = x.size() / k;
@@ -4468,7 +4498,7 @@ void QuantizedMatmul::eval_gpu(const std::vector<array>& inputs, array& out) {
   // device copies build it with no extra kernel, and the encoder keeps
   // the temp alive until the dispatch completes. vkCmdCopyBuffer needs
   // 4-byte-aligned source offsets, so odd 16-bit views stay named.
-  if (scales.offset() % 4 != 0 || biases.offset() % 4 != 0) {
+  if (scales_d.offset() % 4 != 0 || biases_d.offset() % 4 != 0) {
     omarchy::unsupported(tag + " scales byte offset", out);
   }
   array combined(
@@ -4486,16 +4516,16 @@ void QuantizedMatmul::eval_gpu(const std::vector<array>& inputs, array& out) {
   encoder.add_temporary(combined);
   VkDeviceSize scale_bytes = static_cast<VkDeviceSize>(scales.nbytes());
   encoder.copy_buffer(
-      binding(scales).buffer,
+      binding(scales_d).buffer,
       binding(combined).buffer,
       scale_bytes,
-      static_cast<VkDeviceSize>(scales.offset()),
+      static_cast<VkDeviceSize>(scales_d.offset()),
       0);
   encoder.copy_buffer(
-      binding(biases).buffer,
+      binding(biases_d).buffer,
       binding(combined).buffer,
       scale_bytes,
-      static_cast<VkDeviceSize>(biases.offset()),
+      static_cast<VkDeviceSize>(biases_d.offset()),
       scale_bytes);
 
   // Push-constant routing for the qmm shader: operation carries bits,
@@ -4506,15 +4536,15 @@ void QuantizedMatmul::eval_gpu(const std::vector<array>& inputs, array& out) {
   params.operation = static_cast<uint32_t>(bits_);
   params.reduce_size = static_cast<uint32_t>(group_size_);
   params.output_size = params.count;
-  params.lhs_offset = checked_item_offset(x, x.size(), tag, out);
-  params.rhs_offset = checked_item_offset(w, w.size(), tag, out);
+  params.lhs_offset = checked_item_offset(x_d, x_d.size(), tag, out);
+  params.rhs_offset = checked_item_offset(w_d, w_d.size(), tag, out);
   params.aux_size = checked_u32(combined.size(), tag, out);
   params.matrix_m = checked_u32(m, tag, out);
   params.matrix_n = checked_u32(n, tag, out);
   params.matrix_k = checked_u32(k, tag, out);
   params.output_offset = checked_item_offset(out, out.size(), tag, out);
   std::array<omarchy::ComputeBinding, 4> bindings{
-      binding(x), binding(w), binding(combined), binding(out)};
+      binding(x_d), binding(w_d), binding(combined), binding(out)};
   // DecodeGemv dispatch: when lhs has a single row, the per-row GEMV
   // path replaces the 16x16 tile. The subgroup-reduction variant is
   // picked when the device reports subgroupSize == 32 AND the ARITHMETIC
@@ -4600,9 +4630,9 @@ void RandomBits::eval_gpu(const std::vector<array>& inputs, array& out) {
   if (keys.dtype() != uint32) {
     omarchy::unsupported("RandomBits key dtype", out);
   }
-  if (!keys.flags().row_contiguous) {
-    omarchy::unsupported("non-contiguous RandomBits keys", out);
-  }
+  std::optional<array> keys_temp;
+  const array& keys_d = ensure_dense(
+      keys, keys.flags().row_contiguous, keys_temp, encoder, stream());
   out.set_data(allocate_omarchy(out.nbytes()));
   if (out.size() == 0 || keys.size() == 0) {
     return;
@@ -4621,10 +4651,10 @@ void RandomBits::eval_gpu(const std::vector<array>& inputs, array& out) {
   params.lhs_size = checked_u32(keys.size(), "RandomBits", out);
   params.reduce_size = checked_u32(words_per_key, "RandomBits", out);
   params.output_size = checked_u32(num_keys, "RandomBits", out);
-  params.lhs_offset = checked_item_offset(keys, keys.size(), "RandomBits", out);
+  params.lhs_offset = checked_item_offset(keys_d, keys_d.size(), "RandomBits", out);
   params.output_offset = checked_item_offset(out, out.size(), "RandomBits", out);
   std::array<omarchy::ComputeBinding, 2> bindings{
-      binding(keys), binding(out)};
+      binding(keys_d), binding(out)};
   encoder.dispatch_compute(
       omarchy::ComputeKernel::RandomBitsU32,
       bindings,
@@ -5514,10 +5544,19 @@ void SearchSorted::eval_gpu(const std::vector<array>& inputs, array& out) {
        !capabilities.shader_int16)) {
     omarchy::unsupported("SearchSorted bfloat16 capability", out);
   }
-  if (sequence.ndim() != 1 || !sequence.flags().row_contiguous ||
-      !values.flags().row_contiguous) {
-    omarchy::unsupported("non-contiguous SearchSorted", out);
+  if (sequence.ndim() != 1) {
+    omarchy::unsupported("non-1-D SearchSorted", out);
   }
+  std::optional<array> sequence_temp;
+  std::optional<array> values_temp;
+  const array& sequence_d = ensure_dense(
+      sequence,
+      sequence.flags().row_contiguous,
+      sequence_temp,
+      encoder,
+      stream());
+  const array& values_d = ensure_dense(
+      values, values.flags().row_contiguous, values_temp, encoder, stream());
   out.set_data(allocate_omarchy(out.nbytes()));
   if (out.size() == 0) {
     return;
@@ -5528,12 +5567,12 @@ void SearchSorted::eval_gpu(const std::vector<array>& inputs, array& out) {
   params.reduce_size = checked_u32(sequence.size(), "SearchSorted", out);
   params.output_size = params.count;
   params.lhs_offset = checked_item_offset(
-      sequence, sequence.size(), "SearchSorted", out);
+      sequence_d, sequence_d.size(), "SearchSorted", out);
   params.rhs_offset = checked_item_offset(
-      values, values.size(), "SearchSorted", out);
+      values_d, values_d.size(), "SearchSorted", out);
   params.output_offset = checked_item_offset(out, out.size(), "SearchSorted", out);
   std::array<omarchy::ComputeBinding, 3> bindings{
-      binding(sequence), binding(values), binding(out)};
+      binding(sequence_d), binding(values_d), binding(out)};
   auto kernel = sequence.dtype() == float16
       ? omarchy::ComputeKernel::SearchSortedF16
       : sequence.dtype() == bfloat16
@@ -5901,9 +5940,6 @@ void Sort::eval_gpu(const std::vector<array>& inputs, array& out) {
   const array& input = inputs.at(0);
   auto& encoder = omarchy::get_command_encoder(out.primitive().stream());
   require_sort_dtype("Sort", input, out, false, encoder);
-  if (!input.flags().row_contiguous) {
-    omarchy::unsupported("non-contiguous Sort", out);
-  }
   if (state() != input.ndim() - 1) {
     omarchy::unsupported("non-suffix Sort", out);
   }
@@ -6261,19 +6297,22 @@ void CrossEntropy::eval_gpu(
     std::vector<array>& outputs) {
   const std::string tag = name();
   array& out = outputs.at(0);
-  const array& x = inputs.at(0);
-  const array& y = inputs.at(1);
+  const array& in_x = inputs.at(0);
+  const array& in_y = inputs.at(1);
   auto s = stream();
   auto& encoder = omarchy::get_command_encoder(s);
+  std::optional<array> x_temp;
+  std::optional<array> y_temp;
+  const array& x =
+      ensure_dense(in_x, in_x.flags().row_contiguous, x_temp, encoder, s);
+  const array& y =
+      ensure_dense(in_y, in_y.flags().row_contiguous, y_temp, encoder, s);
   require_float_dtype(tag, x, x, encoder);
   if (out.dtype() != float32) {
     omarchy::unsupported(tag + " output dtype", out);
   }
   if (y.dtype() != int32) {
     omarchy::unsupported(tag + " targets dtype", out);
-  }
-  if (!x.flags().row_contiguous || !y.flags().row_contiguous) {
-    omarchy::unsupported("non-contiguous " + tag, out);
   }
   size_t row_length = x.shape(-1);
   out.set_data(allocate_omarchy(out.nbytes()));
@@ -6302,16 +6341,21 @@ void CrossEntropy::eval_gpu(
 bool RMSNorm::use_fallback(Stream s) {
   return false;
 }
-
 void RMSNorm::eval_gpu(
     const std::vector<array>& inputs,
     std::vector<array>& outputs) {
   const std::string tag = name();
   array& out = outputs.at(0);
-  const array& x = inputs.at(0);
-  const array& w = inputs.at(1);
+  const array& in_x = inputs.at(0);
+  const array& in_w = inputs.at(1);
   auto s = stream();
   auto& encoder = omarchy::get_command_encoder(s);
+  std::optional<array> x_temp;
+  std::optional<array> w_temp;
+  const array& x =
+      ensure_dense(in_x, in_x.flags().row_contiguous, x_temp, encoder, s);
+  const array& w =
+      ensure_dense(in_w, in_w.flags().row_contiguous, w_temp, encoder, s);
   require_norm_input(tag, x, out, encoder);
   require_norm_parameter(tag, w, x.shape(-1), out);
   size_t row_length = x.shape(-1);
@@ -6346,11 +6390,20 @@ void LayerNorm::eval_gpu(
     std::vector<array>& outputs) {
   const std::string tag = name();
   array& out = outputs.at(0);
-  const array& x = inputs.at(0);
-  const array& w = inputs.at(1);
-  const array& b = inputs.at(2);
+  const array& in_x = inputs.at(0);
+  const array& in_w = inputs.at(1);
+  const array& in_b = inputs.at(2);
   auto s = stream();
   auto& encoder = omarchy::get_command_encoder(s);
+  std::optional<array> x_temp;
+  std::optional<array> w_temp;
+  std::optional<array> b_temp;
+  const array& x =
+      ensure_dense(in_x, in_x.flags().row_contiguous, x_temp, encoder, s);
+  const array& w =
+      ensure_dense(in_w, in_w.flags().row_contiguous, w_temp, encoder, s);
+  const array& b =
+      ensure_dense(in_b, in_b.flags().row_contiguous, b_temp, encoder, s);
   require_norm_input(tag, x, out, encoder);
   require_norm_parameter(tag, w, x.shape(-1), out);
   require_norm_parameter(tag, b, x.shape(-1), out);
@@ -6385,16 +6438,22 @@ void RMSNormVJP::eval_gpu(
   const std::string tag = name();
   array& dx = outputs.at(0);
   array& dw = outputs.at(1);
-  const array& x = inputs.at(0);
-  const array& w = inputs.at(1);
-  const array& g = inputs.at(2);
+  const array& in_x = inputs.at(0);
+  const array& in_w = inputs.at(1);
+  const array& in_g = inputs.at(2);
   auto s = stream();
   auto& encoder = omarchy::get_command_encoder(s);
+  std::optional<array> x_temp;
+  std::optional<array> w_temp;
+  std::optional<array> g_temp;
+  const array& x =
+      ensure_dense(in_x, in_x.flags().row_contiguous, x_temp, encoder, s);
+  const array& w =
+      ensure_dense(in_w, in_w.flags().row_contiguous, w_temp, encoder, s);
+  const array& g =
+      ensure_dense(in_g, in_g.flags().row_contiguous, g_temp, encoder, s);
   require_norm_input(tag, x, dx, encoder);
   require_norm_parameter(tag, w, x.shape(-1), dx);
-  if (!g.flags().row_contiguous) {
-    omarchy::unsupported("non-contiguous " + tag, dx);
-  }
   size_t row_length = x.shape(-1);
   if (x.size() == 0) {
     dx.set_data(allocate_omarchy(dx.nbytes()));
@@ -6477,18 +6536,27 @@ void LayerNormVJP::eval_gpu(
   array& dx = outputs.at(0);
   array& dw = outputs.at(1);
   array& db = outputs.at(2);
-  const array& x = inputs.at(0);
-  const array& w = inputs.at(1);
-  const array& b = inputs.at(2);
-  const array& g = inputs.at(3);
+  const array& in_x = inputs.at(0);
+  const array& in_w = inputs.at(1);
+  const array& in_b = inputs.at(2);
+  const array& in_g = inputs.at(3);
   auto s = stream();
   auto& encoder = omarchy::get_command_encoder(s);
+  std::optional<array> x_temp;
+  std::optional<array> w_temp;
+  std::optional<array> b_temp;
+  std::optional<array> g_temp;
+  const array& x =
+      ensure_dense(in_x, in_x.flags().row_contiguous, x_temp, encoder, s);
+  const array& w =
+      ensure_dense(in_w, in_w.flags().row_contiguous, w_temp, encoder, s);
+  const array& b =
+      ensure_dense(in_b, in_b.flags().row_contiguous, b_temp, encoder, s);
+  const array& g =
+      ensure_dense(in_g, in_g.flags().row_contiguous, g_temp, encoder, s);
   require_norm_input(tag, x, dx, encoder);
   require_norm_parameter(tag, w, x.shape(-1), dx);
   require_norm_parameter(tag, b, x.shape(-1), dx);
-  if (!g.flags().row_contiguous) {
-    omarchy::unsupported("non-contiguous " + tag, dx);
-  }
   size_t row_length = x.shape(-1);
   if (x.size() == 0) {
     dx.set_data(allocate_omarchy(dx.nbytes()));
@@ -7258,9 +7326,11 @@ void ConvertFP8::eval_gpu(
     std::vector<array>& outputs) {
   const std::string tag = name();
   array& out = outputs.at(0);
-  const array& in = inputs.at(0);
   auto s = stream();
   auto& encoder = omarchy::get_command_encoder(s);
+  std::optional<array> in_temp;
+  const array& in =
+      ensure_dense(inputs.at(0), inputs.at(0).flags().row_contiguous, in_temp, encoder, s);
   // E4M3 payloads travel as little-endian uint32 word packs of four bytes,
   // so the byte-side array offset must stay 4-byte aligned.
   auto word_aligned = [&](const array& value) {
@@ -7331,9 +7401,9 @@ void Quantize::eval_gpu(
   if (group_size_ != 32 && group_size_ != 64) {
     omarchy::unsupported(tag + " group size", out);
   }
-  const array& w = inputs.at(0);
-  const array& scales = inputs.at(1);
-  const array& biases = inputs.at(2);
+  const array& in_w = inputs.at(0);
+  const array& in_scales = inputs.at(1);
+  const array& in_biases = inputs.at(2);
   auto& encoder = omarchy::get_command_encoder(out.primitive().stream());
   // The output dtype is the promoted scales dtype (ops.cpp), and the
   // kernel reads the group parameters in that dtype, so mixed dtypes
@@ -7341,37 +7411,42 @@ void Quantize::eval_gpu(
   // variants only: bfloat16 and float64 parameters keep the named
   // error.
   if (
-      scales.dtype() != out.dtype() || biases.dtype() != out.dtype() ||
-      (scales.dtype() != float16 && scales.dtype() != float32)) {
+      in_scales.dtype() != out.dtype() ||
+      in_biases.dtype() != out.dtype() ||
+      (in_scales.dtype() != float16 && in_scales.dtype() != float32)) {
     omarchy::unsupported(tag + " scales dtype", out);
   }
-  require_float_dtype(tag, scales, out, encoder);
-  if (w.dtype() != uint32) {
+  require_float_dtype(tag, in_scales, out, encoder);
+  if (in_w.dtype() != uint32) {
     omarchy::unsupported(tag + " weight dtype", out);
   }
   if (
-      w.shape().size() != scales.shape().size() ||
-      scales.shape() != biases.shape()) {
+      in_w.shape().size() != in_scales.shape().size() ||
+      in_scales.shape() != in_biases.shape()) {
     omarchy::unsupported(tag + " scales shape", out);
   }
-  size_t words_per_row = w.shape(-1);
+  size_t words_per_row = in_w.shape(-1);
   uint64_t out_columns =
       static_cast<uint64_t>(words_per_row) * 32u / bits_;
   uint64_t groups_per_row =
-      static_cast<uint64_t>(scales.shape(-1));
+      static_cast<uint64_t>(in_scales.shape(-1));
   if (
       groups_per_row * group_size_ != out_columns ||
       !std::equal(
-          w.shape().begin(),
-          w.shape().end() - 1,
-          scales.shape().begin())) {
+          in_w.shape().begin(),
+          in_w.shape().end() - 1,
+          in_scales.shape().begin())) {
     omarchy::unsupported(tag + " shape", out);
   }
-  if (
-      !w.flags().row_contiguous || !scales.flags().row_contiguous ||
-      !biases.flags().row_contiguous) {
-    omarchy::unsupported(tag + " non-contiguous input", out);
-  }
+  std::optional<array> w_temp;
+  std::optional<array> scales_temp;
+  std::optional<array> biases_temp;
+  const array& w =
+      ensure_dense(in_w, in_w.flags().row_contiguous, w_temp, encoder, stream());
+  const array& scales = ensure_dense(
+      in_scales, in_scales.flags().row_contiguous, scales_temp, encoder, stream());
+  const array& biases = ensure_dense(
+      in_biases, in_biases.flags().row_contiguous, biases_temp, encoder, stream());
   out.set_data(allocate_omarchy(out.nbytes()));
   if (out.size() == 0 || w.size() == 0) {
     return;
