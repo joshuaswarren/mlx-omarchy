@@ -97,8 +97,9 @@ never compared against clean numbers.
 
 The matrix covers ~262, ~1024, and ~4096 prompt-token prefill plus
 32/128-token pinned decode; exact prompt token counts are recorded per
-leg from the model's own tokenizer, never assumed. The ~4096 workload is
-explicit selection only, to bound normal runs:
+leg from bench_decode's own measured generation response, never assumed
+or probed separately. The ~4096 workload is explicit selection only, to
+bound normal runs:
 
 ```sh
 python3 scripts/bench_matrix.py --mode run --select longctx-4096-decode-32
