@@ -214,6 +214,15 @@ def _sysctl(key):
         return None
 
 
+def _sw_vers(flag):
+    try:
+        out = subprocess.run(["sw_vers", flag], capture_output=True,
+                             text=True, timeout=10)
+        return out.stdout.strip() or None
+    except (OSError, subprocess.SubprocessError):
+        return None
+
+
 def host_facts():
     sysname = platform.system()
     facts = {"system": sysname, "machine": platform.machine(),
@@ -223,8 +232,8 @@ def host_facts():
         facts["cores"] = _sysctl("hw.ncpu")
         mem = _sysctl("hw.memsize")
         facts["memsize_bytes"] = int(mem) if mem and mem.isdigit() else None
-        vers = _sysctl("sw_vers -productVersion")
-        build = _sysctl("sw_vers -buildVersion")
+        vers = _sw_vers("-productVersion")
+        build = _sw_vers("-buildVersion")
         facts["os"] = f"macOS {vers} ({build})" if vers else None
         try:
             sp = subprocess.run(["system_profiler", "SPDisplaysDataType"],
@@ -788,8 +797,36 @@ def self_test():
     assert leg["metrics"]["decode_tok_s"] == 1.97
     assert "prompt_tokens" in leg
 
+    # Regression (16m1 metadata run): sw_vers must be invoked as its own
+    # command, never as a sysctl oid, or host.os parses null on macOS.
+    real_system = platform.system
+
+    def fake_run(cmd, **kwargs):
+        class P:
+            returncode = 0
+            stderr = ""
+        if cmd[:2] == ["sw_vers", "-productVersion"]:
+            P.stdout = "26.6.2\n"
+        elif cmd[:2] == ["sw_vers", "-buildVersion"]:
+            P.stdout = "25G83\n"
+        elif cmd[:2] == ["sysctl", "-n"] and "brand_string" in cmd[2]:
+            P.stdout = "Apple M1 Max\n"
+        else:
+            P.stdout, P.returncode = "", 1
+        return P()
+
+    subprocess.run = fake_run
+    platform.system = lambda: "Darwin"
+    try:
+        mac = host_facts()
+    finally:
+        subprocess.run = real_run
+        platform.system = real_system
+    assert mac["os"] == "macOS 26.6.2 (25G83)", mac["os"]
+    assert mac["chip"] == "Apple M1 Max"
+
     print("self-test: OK (parsing, skip rules, templates, selection, pin "
-          "refusal, sanitization, leg execution)")
+          "refusal, sanitization, leg execution, darwin os parse)")
 
 
 if __name__ == "__main__":
