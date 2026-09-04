@@ -225,6 +225,12 @@ class MLX_API CommandEncoder {
   std::vector<PendingSemaphore> signal_semaphores_;
   std::vector<std::shared_ptr<void>> temporaries_;
   std::vector<std::function<void()>> completed_handlers_;
+  // True when the command recorded last into the open command buffer was
+  // a compute dispatch. A dispatch's post-barrier already makes its
+  // writes visible to COMPUTE read+write, so the NEXT dispatch's
+  // pre-barrier is redundant exactly when nothing but that post was
+  // recorded in between. Reset at begin; copy/fill clear it.
+  bool last_cmd_was_dispatch_{false};
 };
 
 MLX_API CommandEncoder& get_command_encoder(Stream s);
