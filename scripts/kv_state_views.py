@@ -2,7 +2,7 @@
 """KV state-slice eval-copy location probe (replaces kvcopy_decompose.py).
 
 Answers, on the current tree, where the per-read KV state-slice copy is
-produced and what the copied-state vs live-view contract is, with
+produced and what the taken-read vs live-view contract is, with
 self-verifying instrumentation: every stage must capture profile events,
 and every stage carries an explicit verdict so silent zeros cannot pass
 (the failure mode that retired kvcopy_decompose.py, which reported 0
@@ -36,8 +36,10 @@ pass on an early snapshot:
                afterwards; it must still show the pre-write values, and
                the writes must land in the parent (SliceUpdate allocates
                a fresh buffer).
-  copied state a taken state read is frozen at read time: later cache
-               writes never change it.
+  taken read   a state read taken and evaluated is a snapshot: later
+               cache writes never rewrite it (verified over the FULL
+               array against an independently built expectation, not a
+               partial aggregate).
 
 This probe is bounded to synthetic arrays; there is no model leg (model
 benchmarks live in scripts/bench_decode.py). No backend behavior is
@@ -134,12 +136,19 @@ for t in range(24):
     expected[0, :, t, :] = t + 1.0
 live_ok = bool(np.array_equal(post, expected))
 
-# Copied state: a taken read is frozen at read time.
+# Taken read snapshot: what the read captured must not change later.
+# Expectation built from the KNOWN writes alone (slots 0..19 hold t+1),
+# compared over the FULL array - a partial max() would pass even if
+# single overwritten elements regressed.
 frozen = c[..., :20, :]
 mx.eval(frozen)
 c[..., 19:20, :] = mx.ones((1, kv, 1, d), mx.float16) * -1.0
 mx.eval(c)
-frozen_ok = float(np.asarray(frozen, dtype=np.float32)[0, :, 19, :].max()) == 20.0
+frozen_after = np.asarray(frozen, dtype=np.float32)
+expected_frozen = np.zeros((1, kv, 20, d), dtype=np.float32)
+for t in range(20):
+    expected_frozen[0, :, t, :] = t + 1.0
+frozen_ok = bool(np.array_equal(frozen_after, expected_frozen))
 parent_ok = bool((np.asarray(c, dtype=np.float32)[0, :, 19, :] == -1.0).all())
 slot24_ok = bool((np.asarray(c, dtype=np.float32)[0, :, 24, :] == 99.0).all())
 print("RESULT", "LIVE", str(live_ok).lower(),
@@ -178,11 +187,16 @@ def run_python(source, env_extra):
 
 def window_counters(prof, mark, names):
     sub_t, events = {}, []
+    unresolved = 0
     for line in open(prof):
         ev = json.loads(line)
         if ev.get("k") == "s":
             sub_t[ev["s"]] = ev["t"]
         elif ev.get("k") == "d":
+            if not isinstance(ev.get("e"), int) or ev["e"] < 0 or \
+                    ev["e"] >= len(names):
+                unresolved += 1
+                continue
             events.append((sub_t.get(ev["s"], 0), ev))
     events.sort(key=lambda x: x[0])
     marks = [json.loads(l) for l in open(mark)]
@@ -196,9 +210,8 @@ def window_counters(prof, mark, names):
 
     per = defaultdict(Counter)
     for t, ev in events:
-        k = names[ev["e"]] if ev["e"] < len(names) else "?"
-        per[stage_of(t)][f"{k}/n={ev['n']}"] += 1
-    return per, len(events)
+        per[stage_of(t)][f"{names[ev['e']]}/n={ev['n']}"] += 1
+    return per, len(events), unresolved
 
 
 def main():
@@ -234,7 +247,12 @@ def main():
         print("FATAL: stage child failed:", r.stderr[-500:])
         return 1
     trace = [l for l in r.stderr.splitlines() if "[materialize]" in l]
-    per, total_events = window_counters(prof, mark, names)
+    per, total_events, unresolved = window_counters(prof, mark, names)
+    if unresolved:
+        print(f"FATAL: {unresolved} dispatch events reference kernel "
+              f"indices outside the parsed compute.h table - the kernel "
+              f"name mapping is unreliable, refusing to attribute copies")
+        return 1
     if total_events == 0:
         print("FATAL: no profile events captured - instrumentation broken,"
               " refusing to report zeros")
@@ -252,6 +270,11 @@ def main():
     # must always be present here.
     if window_total("s1_start") == 0:
         failures.append("s1: empty window (instrumentation failure)")
+    elif not any(k.startswith("CopyGeneral")
+                 for k in per.get("s1_start", {})):
+        failures.append("s1: no recognized CopyGeneral paste in the write "
+                        "window - kernel name table shifted? (attribution "
+                        "canary)")
     elif state_copy_count("s1_start"):
         failures.append("s1: unexpected state-extent copy on write-only")
     else:
@@ -303,12 +326,12 @@ def main():
 
     consumer_mat = len(trace)
     print(f"consumer-side operand materializations: {consumer_mat} "
-          "(expected 0 on this tree: state reads arrive dense from eval)")
+          "(expected 0: state slices ride strides into stride-tolerant consumers)")
     if consumer_mat:
         failures.append(f"consumer materialized state operands "
                         f"({consumer_mat} lines) - copy location moved")
 
-    print("== contract: live view vs copied state ==")
+    print("== contract: live view vs taken read ==")
     rc = run_python(CONTRACT, {})
     line = [l for l in rc.stdout.splitlines() if l.startswith("RESULT")]
     if rc.returncode != 0 or not line:
@@ -325,8 +348,8 @@ def main():
             failures.append("live view corrupted by later writes - in-place "
                             "mutation detected")
         if frozen_ok == "true":
-            print("[PASS] copied state: taken state read is frozen at read "
-                  "time; later cache writes do not rewrite it")
+            print("[PASS] taken read: the state read is a snapshot; later "
+                  "cache writes do not rewrite it (full-array check)")
         else:
             failures.append("state read not frozen - aliasing regression")
         if parent_ok == "true":
