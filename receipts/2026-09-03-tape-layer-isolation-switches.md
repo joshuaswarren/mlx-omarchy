@@ -159,6 +159,59 @@ and asynchrony are innocent and the space narrows to ring-slot
 command buffer identity versus the completion timeline, under A or B's
 deterministic-garbage configuration.
 
+## POSTMORTEM: the red submission assertion (same night)
+
+At 7c3d6b4 the PER_NODE_SUBMIT case went red (delta=2, wants >=3,
+deterministic, reproduced on llvmpipe). Investigation:
+
+1. The switch was NOT defeated. Instrumented run: every dispatching
+   tape node still forces its own submission (pre-commit nodes=1);
+   CommandEncoder::commit still submits; 7c3d6b4 did not touch
+   compiled.cpp.
+2. The old assertion counted the wrong thing. The test's swiglu lambda
+   captured a stream AND fed a shared intermediate to two outputs; the
+   tracer splits at multi-consumer nodes, so the fn's compiled tape was
+   a 2-node [Broadcast, Add] remnant with the sigmoid/multiply running
+   eager inside the compiled call (measured: tape n=2 in=2
+   ops=Broadcast,Add). Under the OLD per-op evaluator the >=3 bound was
+   satisfied by eager per-op commits - it was passing for the wrong
+   reason. Under batching those commits are gone.
+3. Corrected assertion, written against the confirmed batching
+   contract (flush sites: finalize, event contracts, 100-node budget,
+   host-read sync; explicit commit() still force-submits; one
+   submission per dispatching node under the switch): a single-output
+   LINEAR variant (sigmoid, multiply, add - one consumer per node)
+   tapes fully as [Sigmoid, Multiply, Broadcast, Add]; the test
+   measures baseline (switch off) and switched deltas for the same fn
+   and requires strict dominance (delta_off < delta_on) plus
+   delta_on >= 3. Dominance is the property the hardware bisect relies
+   on; a fixed constant would re-break on the next tracer change.
+4. Semantics note for the protocol: per-node means per-DISPATCHING
+   node. View-only tape nodes (Broadcast) record zero commands and
+   produce no submission under either mode.
+
+## ROOT CAUSE (supersedes the race interpretation above)
+
+While the switches were in flight, TapeCorruptionFix pinned the actual
+defect, and it is NOT a race: eval_compiled_tape materializes every
+node at the TRACED shape. Upstream compile_replace derives shapeless
+node shapes at eval time; this interpreter did not, and the shapeless
+compile cache keys on ndim+dtype, so decode legally reuses the
+prefill-traced fragment. Bigger traced shape than eval input = the node
+output is sized at the traced shape and reads PAST the eval input
+buffer. Lavapipe serves zeros past the buffer (looks clean, matches
+eager); Honeykrisp serves recycled pages - which is the ~8-9e8 jittery
+band, the constant 34x2^32 position word under the serialization
+switches, the f16-impossible magnitudes, and 'Parisse'. Every datum in
+MEASURED OUTCOME is consistent with OOB-into-recycled-pages; the
+race interpretation of the differing magnitudes is retracted. The
+broadcast-Sigmoid refusal is the same root cause in the opposite
+direction: a traced node shape larger than the eval input surfaces as
+the named refusal instead of silent OOB. The fix (eval-time shape
+derivation in eval_compiled_tape) is TapeCorruptionFix's; the A/B/C/D/E
+verdicts above all stand as exonerations - the defect was never in the
+submission/buffer layers the switches isolate.
+
 ## Intermediate lifetime during recording (the specific hazard)
 
 Question: can an intermediate's buffer be freed and re-handed to a
