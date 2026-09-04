@@ -142,6 +142,14 @@ omarchy_shader(qmm_vec_bf16 shaders/qmm_vec.comp -DUSE_BF16=1)
 omarchy_shader(qmm_vec_subgroup_f32 shaders/qmm_vec.comp -DUSE_SUBGROUP=1)
 omarchy_shader(qmm_vec_subgroup_f16 shaders/qmm_vec.comp -DUSE_FP16=1 -DUSE_SUBGROUP=1)
 omarchy_shader(qmm_vec_subgroup_bf16 shaders/qmm_vec.comp -DUSE_BF16=1 -DUSE_SUBGROUP=1)
+# PrefillQmmTile: m-tiled quantized matmul for prefill (matrix_m > 1);
+# one workgroup dequantizes each 16 x 16 weight block into shared f32
+# once and applies it to a 16-row tile of x, amortizing the inline
+# unpack the per-element qmm kernel repeats per output row. Dispatch is
+# env-gated in primitives.cpp (MLX_OMARCHY_QMM_TILE).
+omarchy_shader(qmm_tile_f32 shaders/qmm_tile.comp)
+omarchy_shader(qmm_tile_f16 shaders/qmm_tile.comp -DUSE_FP16=1)
+omarchy_shader(qmm_tile_bf16 shaders/qmm_tile.comp -DUSE_BF16=1)
 omarchy_shader(dequant_f32 shaders/dequant.comp)
 omarchy_shader(dequant_f16 shaders/dequant.comp -DUSE_FP16=1)
 omarchy_shader(conv_f32 shaders/conv.comp)
