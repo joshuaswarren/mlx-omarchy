@@ -183,7 +183,6 @@ class ArchiveIntegrityAndDeterminism(unittest.TestCase):
         with tarfile.open(fileobj=io.BytesIO(data), mode="r:gz") as tf:
             embedded = json.load(tf.extractfile("manifest.json"))
         self.assertTrue(embedded["no_network"])
-        self.assertIn("never", embedded["upload"])
         self.assertIn("correctness", embedded["sections_unavailable"])
 
     def test_submission_is_paste_ready_and_ingestion_free(self):

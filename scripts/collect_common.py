@@ -270,7 +270,7 @@ def build_manifest(archive_name, files, extra=None):
         "archive": archive_name,
         "files": entries,
         "no_network": True,
-        "upload": "never; this archive is shared by a human, by hand",
+        "upload": "only after explicit --submit or SUBMIT confirmation",
     }
     if extra:
         manifest.update(extra)
