@@ -117,24 +117,31 @@ void eval_compiled_tape(
   for (const auto& out : tape_outputs) {
     output_ids.insert(out.id());
   }
+  // FuseDecodeChains gate: read ONCE per tape evaluation. With it off,
+  // no chain structures are built and the interpreter below runs the
+  // pre-chain per-node loop byte for byte.
+  const bool fusion_enabled = env_flag("MLX_OMARCHY_FUSED_CHAIN");
   // Nodes consumed by MORE than one tape consumer (or surfaced as tape
   // outputs) must keep a materialized value, so a fused chain closes
   // after them; only single-consumer nodes may stay interior. This is
   // what makes interior chain members unreachable to non-chain ops by
   // construction.
-  std::unordered_map<std::uintptr_t, int> consumer_counts;
-  for (const auto& node : tape) {
-    if (!node.has_primitive()) {
-      continue;
+  std::unordered_set<std::uintptr_t> must_materialize;
+  if (fusion_enabled) {
+    std::unordered_map<std::uintptr_t, int> consumer_counts;
+    for (const auto& node : tape) {
+      if (!node.has_primitive()) {
+        continue;
+      }
+      for (const auto& in : node.inputs()) {
+        ++consumer_counts[in.id()];
+      }
     }
-    for (const auto& in : node.inputs()) {
-      ++consumer_counts[in.id()];
-    }
-  }
-  std::unordered_set<std::uintptr_t> must_materialize = output_ids;
-  for (const auto& [id, count] : consumer_counts) {
-    if (count > 1) {
-      must_materialize.insert(id);
+    must_materialize = output_ids;
+    for (const auto& [id, count] : consumer_counts) {
+      if (count > 1) {
+        must_materialize.insert(id);
+      }
     }
   }
   // MLX_OMARCHY_TAPE_CENSUS=<path>: append one line per tape evaluation
@@ -221,13 +228,15 @@ void eval_compiled_tape(
 
   auto& encoder = get_command_encoder(stream);
   // Fused-chain accumulation (FuseDecodeChains, DEFAULT OFF via
-  // MLX_OMARCHY_FUSED_CHAIN): consecutive same-shape float unary/binary
-  // tape nodes collapse into ONE dispatch when the gate is on. A node
-  // the chain cannot carry closes it; the closed chain either fuses
-  // (one dispatch) or falls back to the per-node path below, so refusal
+  // MLX_OMARCHY_FUSED_CHAIN, read once above): consecutive same-shape
+  // float unary/binary tape nodes collapse into ONE dispatch when the
+  // gate is on, and every EXTENSION must consume the open chain's tail
+  // so interior members are never consumable from outside. A node the
+  // chain cannot carry closes it; the closed chain either fuses (one
+  // dispatch) or falls back to the per-node path below, so refusal
   // semantics are unchanged. bf16 tapes are refused above before any
   // chain runs.
-  FusedChain chain;
+  FusedChain chain(fusion_enabled);
   // A node that consumes the OPEN chain's tail passes the tail's
   // tracing array itself; that reference is only valid while the chain
   // stays open, so any fallback below re-resolves after closing.
@@ -246,7 +255,7 @@ void eval_compiled_tape(
             dispatches_before,
         std::memory_order_relaxed);
     const auto tail = chain.tail_id();
-    chain = FusedChain();
+    chain = FusedChain(fusion_enabled);
     if (fused) {
       resolved.emplace(tail, *fused);
       if (output_ids.find(tail) == output_ids.end()) {
@@ -286,44 +295,63 @@ void eval_compiled_tape(
 
     std::vector<array> node_inputs;
     node_inputs.reserve(node.inputs().size());
-    if (!resolve_inputs(node, node_inputs)) {
-      // The node consumes the OPEN chain's tail as an INTERIOR operand
-      // of a node that will not join: fuse what the chain carries,
-      // then resolve against its materialized tail value.
-      close_chain();
-      node_inputs.clear();
+    if (fusion_enabled) {
       if (!resolve_inputs(node, node_inputs)) {
-        unsupported_tape_op(primitive);
-      }
-    }
-
-    // Fast path: the node joins the open fused chain. A tape output may
-    // only sit at the tail, so the chain closes right after one.
-    if (chain.try_add(
-            node,
-            node_inputs,
-            must_materialize.find(node.id()) != must_materialize.end())) {
-      if (chain.tail_is_tape_output()) {
+        // The node consumes the OPEN chain's tail as an INTERIOR
+        // operand of a node that will not join: fuse what the chain
+        // carries, then resolve against its materialized tail value.
         close_chain();
+        node_inputs.clear();
+        if (!resolve_inputs(node, node_inputs)) {
+          unsupported_tape_op(primitive);
+        }
       }
-      continue;
-    }
 
-    // The node cannot join (gate off, unsupported op class, shape
-    // change, ...). Close the chain - it may itself fuse - and fall
-    // back to the per-node path. If any input referenced the closed
-    // chain's tail, re-resolve it against the fused output.
-    bool needs_reresolve = false;
-    for (const auto& in : node.inputs()) {
-      if (chain.size() > 0 && chain.tail_id() == in.id()) {
-        needs_reresolve = true;
+      // Fast path: the node joins the open fused chain. A tape output
+      // may only sit at the tail, so the chain closes right after one.
+      if (chain.try_add(
+              node,
+              node_inputs,
+              must_materialize.find(node.id()) !=
+                  must_materialize.end())) {
+        if (chain.tail_is_tape_output()) {
+          close_chain();
+        }
+        continue;
       }
-    }
-    close_chain();
-    if (needs_reresolve) {
-      node_inputs.clear();
-      if (!resolve_inputs(node, node_inputs)) {
-        unsupported_tape_op(primitive);
+
+      // The node cannot join (unsupported op class, shape change, no
+      // tail dependency, ...). Close the chain - it may itself fuse -
+      // and fall back to the per-node path. If any input referenced
+      // the closed chain's tail, re-resolve it against the fused
+      // output.
+      bool needs_reresolve = false;
+      for (const auto& in : node.inputs()) {
+        if (chain.size() > 0 && chain.tail_id() == in.id()) {
+          needs_reresolve = true;
+        }
+      }
+      close_chain();
+      if (needs_reresolve) {
+        node_inputs.clear();
+        if (!resolve_inputs(node, node_inputs)) {
+          unsupported_tape_op(primitive);
+        }
+      }
+    } else {
+      // Gate off: the pre-chain resolution, byte for byte - no chain
+      // objects, no chain scans, no chain structures.
+      for (const auto& in : node.inputs()) {
+        auto it = resolved.find(in.id());
+        if (it != resolved.end()) {
+          node_inputs.push_back(it->second);
+        } else if (!in.has_primitive()) {
+          // Scalar constants baked into the tape hold their data
+          // already.
+          node_inputs.push_back(in);
+        } else {
+          unsupported_tape_op(primitive);
+        }
       }
     }
 

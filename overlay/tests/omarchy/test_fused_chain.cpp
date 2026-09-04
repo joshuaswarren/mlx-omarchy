@@ -12,16 +12,19 @@
 
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include "doctest/doctest.h"
-
+#include <array>
 #include <cmath>
 #include <cstdint>
 #include <cstdlib>
+#include <cstring>
 #include <functional>
 #include <limits>
 #include <string>
 #include <vector>
 
 #include "mlx/backend/gpu/device_info.h"
+#include "mlx/backend/omarchy/allocator.h"
+#include "mlx/backend/omarchy/compute.h"
 #include "mlx/backend/omarchy/encoder.h"
 #include "mlx/backend/omarchy/trace.h"
 #include "mlx/compile.h"
@@ -346,6 +349,105 @@ TEST_CASE("special values carry through the chain bit-exactly") {
   check_compiled_matches_eager(swiglu, {gh, uh}, float16, stream, -1.0);
   check_compiled_matches_eager(minmax, {gf, uf}, float32, stream, -1.0);
   check_compiled_matches_eager(minmax, {gh, uh}, float16, stream, -1.0);
+}
+
+TEST_CASE("independent same-shape siblings close and reopen chains") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  enable_fusion();
+  // x*x + y*y: the second mul shares no data with the first, so it
+  // must be REFUSED as an extension (extensions require the tail's
+  // register), closing chain one; it then opens its own chain and the
+  // add extends that one. Extending with a no-dependency sibling
+  // would strand a non-tail interior member and lose it at close.
+  check_compiled_matches_eager(
+      [](const std::vector<array>& in) {
+        array x = in[0];
+        array y = in[1];
+        return std::vector<array>{x * x + y * y};
+      },
+      std::vector<array>{random::normal(Shape{4, 64}, float32),
+                         random::normal(Shape{4, 64}, float32)},
+      float32,
+      stream,
+      0.0);
+}
+
+TEST_CASE("fused chain kernel strides one forced workgroup") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  enable_fusion();
+  // Direct ONE-GROUP dispatch of the fused kernel over MORE elements
+  // than one group covers (the elementwise grid-stride test pattern):
+  // no large allocations, and every value beyond the first 256 - the
+  // wrap region - must match the eager path bit for bit.
+  constexpr uint32_t kCount = 600;
+  std::vector<float> gv(kCount);
+  std::vector<float> uv(kCount);
+  for (uint32_t i = 0; i < kCount; ++i) {
+    gv[i] = static_cast<float>(i % 7) - 3.0f;
+    uv[i] = static_cast<float>(i % 5) - 2.0f;
+  }
+  array gate = array(gv.begin(), Shape{static_cast<int>(kCount)}, float32);
+  array up = array(uv.begin(), Shape{static_cast<int>(kCount)}, float32);
+  array reference = gate * sigmoid(gate) * up;
+  gate.eval();
+  up.eval();
+  reference.eval();
+  auto& encoder = omarchy::get_command_encoder(stream);
+  encoder.synchronize();
+
+  // The swiglu program with two direct leaves:
+  // r0 = sigmoid(leaf0); r1 = r0 * leaf0; out = r1 * leaf1.
+  std::array<uint32_t, 3> words = {
+      5u | (0x10u << 8) | (0x10u << 16) | (0u << 24),
+      1u | (0x00u << 8) | (0x10u << 16) | (1u << 24),
+      1u | (0x01u << 8) | (0x11u << 16) | (2u << 24)};
+  auto program_buffer =
+      omarchy::allocator().malloc(words.size() * sizeof(uint32_t));
+  auto* program_vk = static_cast<omarchy::VulkanBuffer*>(program_buffer.ptr());
+  std::memcpy(program_vk->data, words.data(), words.size() * sizeof(uint32_t));
+
+  array output = zeros({static_cast<int>(kCount)}, float32, stream);
+  output.eval();
+  encoder.synchronize();
+  auto binding = [](const array& value) {
+    auto* buffer =
+        static_cast<const omarchy::VulkanBuffer*>(value.buffer().ptr());
+    return omarchy::ComputeBinding{buffer->buffer, 0, buffer->size};
+  };
+  omarchy::ComputeParams params;
+  params.count = kCount;
+  params.operation = static_cast<uint32_t>(words.size());
+  params.lhs_size = kCount; // last_dim: direct leaves
+  params.rhs_size = 2;      // dst_final register
+  params.reduce_size = 0;   // leaf_offset[0]
+  params.output_size = 0;   // leaf_offset[1]
+  params.lhs_offset = 0;    // leaf_offset[2]
+  params.rhs_offset = 0;    // leaf_mode[0] = direct
+  params.output_offset = 0; // leaf_mode[1] = direct
+  params.aux_size = 0;      // leaf_mode[2] = direct
+  std::array<omarchy::ComputeBinding, 5> bindings{
+      binding(gate),
+      binding(up),
+      binding(output),
+      omarchy::ComputeBinding{program_vk->buffer, 0, program_vk->size},
+      binding(output)};
+  // ONE group for 600 elements: each invocation must stride.
+  encoder.dispatch_compute(
+      omarchy::ComputeKernel::FusedChainF32, bindings, params, 1);
+  encoder.synchronize();
+
+  const float* got = output.data<float>();
+  const float* want = reference.data<float>();
+  for (uint32_t i = 0; i < kCount; ++i) {
+    INFO("stride mismatch at ", i, " fused=", got[i], " eager=", want[i]);
+    CHECK_EQ(got[i], want[i]);
+  }
 }
 
 TEST_CASE("residual add chain (tape-input leaf) matches eager") {

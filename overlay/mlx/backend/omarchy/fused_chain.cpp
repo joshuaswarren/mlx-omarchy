@@ -153,8 +153,12 @@ struct FusedChainImpl {
   bool saw_tape_output = false;
 };
 
-FusedChain::FusedChain() : impl_(std::make_unique<FusedChainImpl>()) {
-  impl_->gate_enabled = env_flag("MLX_OMARCHY_FUSED_CHAIN");
+FusedChain::FusedChain(bool gate_enabled)
+    : impl_(std::make_unique<FusedChainImpl>()) {
+  // The gate is read ONCE per tape evaluation by the owner
+  // (eval_compiled_tape) and handed in, so the off path costs no env
+  // lookups at all.
+  impl_->gate_enabled = gate_enabled;
 }
 FusedChain::~FusedChain() = default;
 FusedChain::FusedChain(FusedChain&& other)
@@ -171,14 +175,9 @@ FusedChain& FusedChain::operator=(FusedChain&& other) {
 }
 
 bool FusedChain::can_start(const array& node) {
-  // FuseDecodeChains is DEFAULT OFF: the fused chain has not been
-  // equivalence-proven on M1 hardware yet. MLX_OMARCHY_FUSED_CHAIN=1
-  // opts in (software-Vulkan correctness runs now, the hardware A/B
-  // when scheduled); with the gate off the tape runs the per-node path
-  // exactly as it did before the chain existed.
-  if (!env_flag("MLX_OMARCHY_FUSED_CHAIN")) {
-    return false;
-  }
+  // Pure op/dtype check; the DEFAULT-OFF gate lives in the
+  // constructor argument (MLX_OMARCHY_FUSED_CHAIN, decided by the tape
+  // interpreter).
   if (!node.has_primitive()) {
     return false;
   }
@@ -331,6 +330,19 @@ bool FusedChain::try_add(
   auto is_prev = [&](const array& in) {
     return dst > 0 && in.id() == (*impl_->nodes.back()).id();
   };
+  if (impl_->open && !is_prev(node_inputs[0]) &&
+      (node_inputs.size() < 2 || !is_prev(node_inputs[1]))) {
+    // EXTENSIONS must consume the tail's register. A same-shape node
+    // sharing no data with the tail would ride the chain as a NON-tail
+    // interior member; closing the chain materializes the tail only,
+    // so a consumer of that member outside the chain would resolve
+    // nothing. Refusing here makes the interpreter close the chain
+    // first; the sibling then opens a fresh chain of its own.
+    return false;
+  }
+  // Leaves pushed for a REJECTED member are rolled back below, so the
+  // chain never carries orphan slots.
+  const size_t leaf_base = impl_->leaves.size();
   if (node_inputs.size() == 1) {
     a = is_prev(node_inputs[0]) ? prev_reg : encode_leaf(node_inputs[0]);
     b = a;
@@ -342,6 +354,8 @@ bool FusedChain::try_add(
       b = prev_reg;
       a = encode_leaf(node_inputs[0]);
     } else {
+      // Chain head only (extensions were refused above): both
+      // operands are addressable leaves.
       a = encode_leaf(node_inputs[0]);
       b = encode_leaf(node_inputs[1]);
     }
@@ -349,6 +363,12 @@ bool FusedChain::try_add(
     return false;
   }
   if (!a || !b) {
+    // Erase, not resize: array is not default-constructible.
+    impl_->leaves.erase(
+        impl_->leaves.begin() + static_cast<std::ptrdiff_t>(leaf_base),
+        impl_->leaves.end());
+    impl_->leaf_offsets.resize(leaf_base);
+    impl_->leaf_modes.resize(leaf_base);
     return false;
   }
 
