@@ -1124,7 +1124,13 @@ void require_rope_close(
     // cannot hide behind the 1e5-band worst point. theta_bound is the
     // analytic maximum |theta| of the configuration, the same bound
     // rope_trig_gate computes. Above 1e5 the gate refuses outright.
-    // Dev box: the contraction bound everywhere.
+    // Dev box (llvmpipe): codegen is deterministic per Mesa version,
+    // so its divergence envelope is a property, not a sample - the
+    // bounds below are the measured spread of the offset sweep (fma
+    // contraction plus range-reduction drift, both growing with
+    // theta); re-measure on Mesa bumps. Deterministic-envelope bounds
+    // are regression gates, unlike the Apple tier which must absorb
+    // nondeterministic trig codegen.
     double tolerance = f32_tolerance;
     if (apple) {
       if (theta_bound <= 100.0) {
@@ -1140,6 +1146,18 @@ void require_rope_close(
       } else {
         tolerance = 4.8e-3;
       }
+    } else if (theta_bound > 100.0) {
+      if (theta_bound <= 1e3) {
+        tolerance = 1e-5;
+      } else if (theta_bound <= 5e3) {
+        tolerance = 5e-5;
+      } else if (theta_bound <= 12345.0) {
+        tolerance = 2e-4;
+      } else if (theta_bound <= 2e4) {
+        tolerance = 6e-4;
+      } else {
+        tolerance = 2e-3;
+      }
     }
     require_close(flat(got, stream), widen(flat(want, stream)),
                   tolerance, what);
@@ -1150,10 +1168,20 @@ void require_rope_close(
     // the test inputs.
     require_close(flat(got, stream), widen(flat(want, stream)),
                   1e-2, what);
-  } else if (got.dtype() == float16 && apple) {
-    // Apple: 3e-3 is 3 ulp at magnitude 1; observed spread 1-2 ulp.
-    require_close(flat(got, stream), widen(flat(want, stream)),
-                  3e-3, what);
+  } else if (got.dtype() == float16) {
+    if (apple) {
+      // Apple: 3e-3 is 3 ulp at magnitude 1; observed spread 1-2 ulp.
+      require_close(flat(got, stream), widen(flat(want, stream)),
+                    3e-3, what);
+    } else if (theta_bound > 12345.0) {
+      // Dev box: f16 is bit-exact through theta 12345 (measured across
+      // the offset sweep); at the top of the envelope the two codegen
+      // paths' range-reduction drift reaches 1-3 f16 ulp.
+      require_close(flat(got, stream), widen(flat(want, stream)),
+                    3e-3, what);
+    } else {
+      require_bit_equal(got, want, stream, what);
+    }
   } else {
     require_bit_equal(got, want, stream, what);
   }
@@ -1446,6 +1474,65 @@ TEST_CASE("fused rope vjp gradient rides the fence to the composition") {
           cot, 16, true, 10000.0f, 1.0f, offset, std::nullopt, false, stream),
       stream,
       "rope vjp (fenced)");
+}
+
+// Offset sweep: the tolerance bands are theta-dependent, so the
+// battery must exercise the theta range the bands describe - a
+// short-context battery never tests the upper bands. Positions scale
+// the angle directly, so each offset lands in a different band of the
+// measured sweep curve (shape (1,1,4,16), dims 16, base 1e4, scale 1:
+// theta_max = offset + 3). Coordinated with RopeAccuracyVerdict's
+// float64 position sweep: the f64 run establishes which path is
+// closer to truth; this run establishes that the permanent battery
+// covers every band. Offset 99990 tests the last band inside the
+// gate; offset 100000 tests that the GATE FIRES (refusal, not
+// accuracy - above theta 1e5 the built-in is untrusted by contract).
+TEST_CASE("fused rope offset sweep validates every tolerance band") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  Shape shape{1, 1, 4, 16};
+  struct SweepPoint {
+    int offset;
+    double theta_bound;
+    const char* band;
+  };
+  const SweepPoint sweep[] = {
+      {0, 3.0, "contraction (theta <= 100)"},
+      {512, 515.0, "sweep point 1e3 (theta 515)"},
+      {2048, 2051.0, "sweep point 5e3 (theta 2051)"},
+      {8192, 8195.0, "sweep point 12345 (theta 8195)"},
+      {99990, 99993.0, "sweep point 1e5 (theta 99993, last inside gate)"},
+  };
+  for (const auto& point : sweep) {
+    array offset = array(point.offset, int32);
+    for (auto dtype : {float32, float16}) {
+      std::string what = std::string("rope offset sweep ") +
+          std::to_string(point.offset) + " (" + point.band + ")" +
+          (dtype == float32 ? " f32" : " f16");
+      array x = astype(rope_input(shape, 173), dtype, stream);
+      auto got = fast::rope(
+          x, 16, false, 10000.0f, 1.0f, offset, std::nullopt, stream);
+      auto want = composed_rope(
+          x, 16, false, 10000.0f, 1.0f, offset, std::nullopt, true, stream);
+      require_rope_close(got, want, stream, what, point.theta_bound);
+    }
+  }
+
+  // The gate boundary itself: one step past theta 1e5 the fused path
+  // refuses by name - the top of the sweep confirms the gate fires,
+  // not that the kernel is accurate there.
+  Shape dshape{1, 1, 4, 16};
+  array x = astype(rope_input(dshape, 179), float32, stream);
+  array past_gate = array(100000, int32);
+  auto message = caught_message([&] {
+    fast::rope(x, 16, false, 10000.0f, 1.0f, past_gate, std::nullopt, stream)
+        .eval();
+  });
+  CHECK(message.find("[omarchy] RoPE") != std::string::npos);
+  CHECK(message.find("exceeds the built-in accuracy limit") !=
+        std::string::npos);
 }
 
 TEST_CASE("fused rope refuses beyond the trig argument limit by name") {
