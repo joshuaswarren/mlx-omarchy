@@ -1,6 +1,6 @@
 # Forks and the backport flow
 
-mlx-omarchy patches two upstream lineages. Each has a fork under
+mlx-omarchy patches three upstream lineages. Each has a fork under
 `joshuaswarren` carrying our work on branches. Work lands in the fork first.
 Upstreaming a change is a separate, later decision.
 
@@ -10,6 +10,7 @@ Upstreaming a change is a separate, later decision.
 | --- | --- | --- | --- |
 | `ml-explore/mlx` | `joshuaswarren/omarchy-mlx` | `omarchy` | MLX 0.32.2 commit `1f8e74e3f12f31365464a6867c6579f0e9b29d85`, the `mlx.lock` pin, plus the six patches from `patches/`, one commit per patch |
 | `eiln/ane` and `allbilly/libane` | `joshuaswarren/omarchy-ane` | `omarchy`, `omarchy-kmd` | `omarchy`: eiln/ane tip `0dcea99` plus the six-commit libane series from `~/keep/eiln-ane-series/`, applied with `git am`. `omarchy-kmd`: allbilly/libane head `1e0afd8` plus the jwm1 debug instrumentation from `~/keep/ane-kmd-local/local-kmd-changes.patch` |
+| `AsahiLinux/linux` | `joshuaswarren/linux` | `ane-dt-t8103` | Asahi tag `asahi-7.1.6-1`, the exact source of the Arch kernel `7.1.6-1-1-ARCH` on the M1 test machine, plus one commit `326d6033059d18a1f47833ba7ad3a3ee2c4eb443`: the ANE device-tree node, `status = "disabled"` in `t8103.dtsi` and enabled in `t8103-j293.dts`. |
 
 `eiln/ane` and `allbilly/libane` are one lineage. `allbilly/libane` is a fork
 of `eiln/ane` that stays ahead of it, and it carries both the kernel module in
@@ -76,3 +77,20 @@ instead of `ml-explore`.
 ANE node cost this project seven of eight CPU cores. An overlay applied to the
 live tree is the correct mechanism. Read `docs/boot-and-kernel.md` before
 kernel work that touches the device tree.
+
+## Kernel device tree fork
+
+`joshuaswarren/linux` exists so the ANE device-tree work has a reviewable
+home. Mesa will not take user-space driver support until a kernel driver is
+upstream, so kernel-side work is prepared here first. The branch
+`ane-dt-t8103` carries the device-tree patch that lets the ANE node reach
+the kernel through the normal m1n1 payload path instead of a GRUB
+`devicetree` override, which freezes m1n1's per-boot patching and cost the
+test machine seven of its eight CPU cores. See `docs/boot-and-kernel.md`
+for the failure and the verification checklist.
+
+Status of that branch: it has never been booted. Before anyone installs
+it, the checklist in the commit message must pass on a disposable machine.
+The branch ships no ANE driver. The out-of-tree driver in
+`joshuaswarren/omarchy-ane` must stay blacklisted; loading it hard-reset
+the M1 on 2026-09-03.
