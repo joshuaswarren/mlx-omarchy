@@ -32,6 +32,14 @@ struct Counters {
   std::atomic<uint64_t> commit_calls_with_work{0};
   // Commits that found nothing pending (finalize on an idle encoder).
   std::atomic<uint64_t> commit_calls_noop{0};
+  // Number of Vulkan compute dispatches recorded from inside
+  // eval_compiled_tape, i.e. issued on behalf of a tape node rather
+  // than an eager primitive. Attributes per-token dispatch counts
+  // between the tape and eager paths.
+  std::atomic<uint64_t> compiled_tape_dispatches{0};
+  // Number of Compiled-tape nodes the interpreter evaluated, whether
+  // they recorded a dispatch or not.
+  std::atomic<uint64_t> compiled_tape_node_evaluations{0};
 };
 
 inline Counters& counters() {

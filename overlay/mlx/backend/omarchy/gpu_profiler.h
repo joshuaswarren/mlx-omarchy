@@ -178,7 +178,8 @@ class GpuProfiler {
       uint32_t gx,
       uint32_t gy,
       uint32_t gz,
-      uint64_t host_cost) {
+      uint64_t host_cost,
+      uint32_t tape) {
     if (out_ == nullptr) {
       return;
     }
@@ -195,6 +196,7 @@ class GpuProfiler {
     p.gy = gy;
     p.gz = gz;
     p.host_cost = host_cost;
+    p.tape = tape;
     p.nb = std::min(bindings.size(), p.bind.size());
     for (size_t i = 0; i < p.nb; ++i) {
       p.bind[i] = {reinterpret_cast<uintptr_t>(bindings[i].buffer),
@@ -280,6 +282,7 @@ class GpuProfiler {
     std::array<std::array<uint64_t, 3>, kMaxRecordedBindings> bind{};
     size_t nb{0};
     bool skipped{false};
+    uint32_t tape{0};
   };
 
   // Per-ring-slot recording state: one query pool per slot so an in-flight
@@ -354,7 +357,7 @@ class GpuProfiler {
         continue;
       }
       emitf("{\"k\":\"d\",\"s\":%" PRIu64 ",\"e\":%u,\"op\":%u,\"n\":%u"
-            ",\"gx\":%u,\"gy\":%u,\"gz\":%u,\"h\":%" PRIu64,
+            ",\"gx\":%u,\"gy\":%u,\"gz\":%u,\"h\":%" PRIu64 ",\"tp\":%u",
             sub,
             p.kernel,
             p.operation,
@@ -362,7 +365,8 @@ class GpuProfiler {
             p.gx,
             p.gy,
             p.gz,
-            p.host_cost);
+            p.host_cost,
+            p.tape);
       if (p.tick_index + 1 < queries &&
           ticks[p.tick_index + 1] >= ticks[p.tick_index]) {
         emitf(",\"t0\":%" PRIu64 ",\"t1\":%" PRIu64,
@@ -483,7 +487,8 @@ class GpuProfiler {
       uint32_t,
       uint32_t,
       uint32_t,
-      uint64_t) {}
+      uint64_t,
+      uint32_t) {}
   void on_submit_end(const void*, uint64_t, uint64_t, int) {}
   void on_join(const void*, uint64_t, uint64_t, uint64_t, uint64_t) {}
 };
