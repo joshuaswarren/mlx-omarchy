@@ -61,26 +61,21 @@ does not exercise the concurrency a memory hazard needs, so the gate
 lifts only on repeated green mlx-lm bf16 runs on fully populated
 hardware.
 
-### Compiled tapes on Apple GPUs - eager by default
+### Compiled tapes on Apple GPUs - fixed and re-enabled
 
-Compiled tape execution is switched off on real Apple GPUs. At device
-discovery the runtime calls upstream's `disable_compile()` and prints one
-warning, because the 4-bit mlx-lm corruption measured at commit `ff4b05a`
-(`receipts/2026-09-03-dispatcher-compile-and-column-replace.md`) left the
-defect unpinned on the product target. Users get correct output at eager
-speed with no env var and no exception. `MLX_OMARCHY_ALLOW_UNSAFE_COMPILE=1`
-re-enables compiled tapes for deliberate investigation; the differential
-harness and the mechanism probe set it for themselves. A tape that still
-reaches the interpreter (an explicit `mx.enable_compile()`, or a C++
-function armed before discovery) is refused by name by the tape runner -
-the refusal is the backstop, not the default. That C++-only edge is
-left as a refusal deliberately (loud, unreachable from Python, no user
-has hit it); it is not an oversight awaiting an eager fallback. The scope is
-device-conditional: on development devices accepted through
-`MLX_OMARCHY_ALLOW_NON_APPLE=1` (llvmpipe and other software drivers)
-compiled tapes still run, match eager, and carry the batteries. The bf16
-tape gate above and the trigonometric domain gate are unchanged.
-See [known-defects.md](known-defects.md) for the full entry.
+Compiled tapes run by default on every device class. The corruption that
+closed them was root-caused: the interpreter materialised nodes at their
+traced shapes, so shapeless fragments reused across a shape change
+computed into stale-shape outputs. Node shapes are now derived at eval
+time (commit `13d83f7`), pinned by a shapeless-reuse regression case,
+with a recycled-storage detector (`MLX_OMARCHY_POISON_FREED`). The
+fail-closed device gate, the discovery-time `disable_compile()` hook,
+and the `MLX_OMARCHY_ALLOW_UNSAFE_COMPILE` override were retired with
+the fix. The bf16 tape gate above and the trigonometric domain gate are
+unchanged. Full record:
+[known-defects.md](known-defects.md) and
+`receipts/2026-09-03-stale-shape-tape-corruption.md`. Compiled-versus-
+eager speed is not measured yet (TCF-2).
 
 Wave 11 audited the four suspect hazard classes in the interpreter
 (`compiled.cpp`, `encoder.cpp`, `allocator.cpp`) and found no defect:

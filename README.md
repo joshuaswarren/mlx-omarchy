@@ -79,16 +79,19 @@ commit that self-reported +9% tokens/s, landed. Pinning: bf16 prefill
 recovers to 21.8 tok/s under `taskset -c 0` (+25% vs unpinned), the win
 disappears with two pinned cores, 4-bit prefill does not improve pinned
 (-2.5% on one core), and decode is affinity-insensitive. Pin for bf16
-prefill measurement, not as a runtime default. Compiled tapes run eager
-automatically on this platform: the tape interpreter has produced silently
-wrong values on Honeykrisp, so at device discovery the backend disables
-compilation for the process and prints one warning naming the defect and
-the override (`receipts/2026-09-03-dispatcher-compile-and-column-replace.md`,
-[docs/known-defects.md](docs/known-defects.md)). You get correct output at
-eager speed with no env var and no exception; `MLX_DISABLE_COMPILE=1` is no
-longer needed. Set `MLX_OMARCHY_ALLOW_UNSAFE_COMPILE=1` to re-enable
-compiled tapes on purpose - the differential harness does exactly that to
-hunt the defect on hardware. History: under the override at `ff4b05a` a compiled 4-bit run aborts loudly at the Cos accuracy gate (magnitude ~8e8, nondeterministic across runs), and under GPU-assisted validation the same run answers correctly - an asynchronous race. Affinity numbers measured on the stale wheel (bf16 prefill 17.4 unpinned vs 21.8 pinned to one core; the win gone with two pinned cores; 4-bit prefill -2.5% pinned; decode affinity-insensitive) are not re-measured on current main.
+prefill measurement, not as a runtime default. Compiled tapes run by
+default again: the Honeykrisp corruption was root-caused - the tape
+interpreter materialised every node at its traced shape, so a shapeless
+fragment traced at prefill was reused at decode shape and computed into
+prefill-sized outputs - and fixed by deriving node shapes at eval time
+(commit `13d83f7`). TCF-1 acceptance on the M1: 25 of 25 greedy runs
+correct with proof the tapes executed, the differential harness
+bitwise-clean, the recycled-storage poison check 5 of 5, and the C++
+batteries green
+(`receipts/2026-09-03-stale-shape-tape-corruption.md`,
+[docs/known-defects.md](docs/known-defects.md)). Compiled-versus-eager
+speed is not measured yet; TCF-2 covers it, so treat the re-enable as
+correctness-proven and performance-unproven. History: under the override at `ff4b05a` a compiled 4-bit run aborts loudly at the Cos accuracy gate (magnitude ~8e8, nondeterministic across runs), and under GPU-assisted validation the same run answers correctly - an asynchronous race. Affinity numbers measured on the stale wheel (bf16 prefill 17.4 unpinned vs 21.8 pinned to one core; the win gone with two pinned cores; 4-bit prefill -2.5% pinned; decode affinity-insensitive) are not re-measured on current main.
 
 Generated text is identical on both platforms: `Hello! How can I assist you today?` for bf16, `Paris` for 4-bit, matching token counts and stop positions. Numerical correctness is there. Speed is not.
 
@@ -98,17 +101,6 @@ Two things about the Vulkan column are not like-for-like, and both are the produ
 
 4-bit with compile enabled is now measured, and it fails loudly. With the override set, a greedy 4-bit run on the M1 at `temp 0 seed 0` aborts at the Cos accuracy gate rather than answering. The refused magnitude is different on every run - 8.08e8, 8.99e8, 9.53e8, 9.60e8 - which is a race signature, not a wrong constant. Two further observations point the same way. Under GPU-assisted validation, which serialises the queue, the same run returns the correct "Paris": slowing the device down removes the wrong values. And `omarchy_compiled_tape_tests` passes 8 of 8 cases and 343 of 343 assertions on that same machine and driver, so the defect needs a graph larger than the tests build. An earlier version of this paragraph reported the same run returning 32 tokens of silent garbage at exit 0. That observation came from a stale wheel generation installed by a broken venv pin, and it does not reproduce on a verified build; it is corrected here rather than deleted.
 
-The runtime now fails safe on this path. At device discovery the backend
-calls upstream's own `disable_compile()` switch, so `mx.compile` resolves
-to its eager function for the rest of the process: same values, slower,
-no env var to remember. One warning names the defect, the receipt, and
-the override. Should a tape still reach the interpreter - for example
-after an explicit `mx.enable_compile()` - the tape runner refuses it by
-name rather than compute with it. Development devices (llvmpipe under
-`MLX_OMARCHY_ALLOW_NON_APPLE=1`) are not affected: compilation stays
-armed there because the corruption class has never been observed on a
-software driver, and the differential harness sets the override so it
-can keep hunting the defect on hardware.
 
 **Where the time goes**, measured on the M1 with a provenance-verified wheel and a pinned generation length. Decode issues about 95 GPU dispatches per token but about 1,740 queue submissions per token in bf16, and 94 against 1,800 in 4-bit. That is roughly eighteen submissions for every dispatch, so most submissions carry no compute at all. GPU busy time is about 1.5 ms per token against hundreds of milliseconds of wall, and the gaps between submissions account for 89% of the span. Decode on this backend is about 99.7% host-side.
 
@@ -164,7 +156,7 @@ Honest list. Each one fails loudly with a named error rather than returning wron
 - Performance is 16-45x behind Metal, as measured above, down from 20-69x.
 - ANE export works: it exports and validates bundles but does not execute them yet; see below.
 
-Five Honeykrisp driver miscompiles are isolated with minimal reproducing shaders, and all five are fixed or worked around in this repo. Bool-word loads inside loops whose load address changes every iteration read zero except at 16-byte-aligned words (the receipt calls the loop shape "divergent"; the Mesa-branch reproduction uses a grid-stride loop, and divergence itself was never isolated as the trigger) ([receipt](receipts/2026-08-31-m1-mlxlm-fp16-smoke.md)). A data-dependent shift-and-mask feeding a shared-memory scan stops propagating mid-scan ([receipt](receipts/2026-09-02-masked-scatter-m1-fix.md)). A wide op selector over a per-byte path miscompiles bool comparisons, so they live in their own shader (commit `3c7d257`). Shift-then-mask byte extraction with a data-dependent shift amount drops bool scatter writes and corrupts `LogicalAnd` and `select` on the M1, and the workaround is per-site: neither byte-extraction form is safe by default on this hardware, so an eight-variant device probe pins every site (commit `959c7a0`, [receipt](receipts/2026-09-02-m1-red-suites-root-cause.md)). The same dynamic shift-then-mask inside `reduce_general.comp`'s `load_truthy` misreduced boolean results past the first 32-bit word - `mx.all` and `mx.any` both - and the fix replaced it with the constant-shift chain, device-probed at every boundary rather than trusted by analogy (commit `cf68e7d`). Anyone building compute on this driver should read those five first. A sixth defect stays open and gated: bf16 compiled tapes corrupt inside the real mlx-lm forward. On real M1 hardware, 15 identical-seed runs produced 15 different garbage outputs, prefill matched eager bit for bit through all 24 layers, and divergence began at decode step 2 ([receipt](receipts/2026-09-02-m1-bf16-compiled-tape.md)). No minimal shader repro exists, so it is suspected but not confirmed as a miscompile. The runtime runs these tapes eager automatically on Apple GPUs.
+Five Honeykrisp driver miscompiles are isolated with minimal reproducing shaders, and all five are fixed or worked around in this repo. Bool-word loads inside loops whose load address changes every iteration read zero except at 16-byte-aligned words (the receipt calls the loop shape "divergent"; the Mesa-branch reproduction uses a grid-stride loop, and divergence itself was never isolated as the trigger) ([receipt](receipts/2026-08-31-m1-mlxlm-fp16-smoke.md)). A data-dependent shift-and-mask feeding a shared-memory scan stops propagating mid-scan ([receipt](receipts/2026-09-02-masked-scatter-m1-fix.md)). A wide op selector over a per-byte path miscompiles bool comparisons, so they live in their own shader (commit `3c7d257`). Shift-then-mask byte extraction with a data-dependent shift amount drops bool scatter writes and corrupts `LogicalAnd` and `select` on the M1, and the workaround is per-site: neither byte-extraction form is safe by default on this hardware, so an eight-variant device probe pins every site (commit `959c7a0`, [receipt](receipts/2026-09-02-m1-red-suites-root-cause.md)). The same dynamic shift-then-mask inside `reduce_general.comp`'s `load_truthy` misreduced boolean results past the first 32-bit word - `mx.all` and `mx.any` both - and the fix replaced it with the constant-shift chain, device-probed at every boundary rather than trusted by analogy (commit `cf68e7d`). Anyone building compute on this driver should read those five first. A sixth defect stays open and gated: bf16 compiled tapes corrupt inside the real mlx-lm forward. On real M1 hardware, 15 identical-seed runs produced 15 different garbage outputs, prefill matched eager bit for bit through all 24 layers, and divergence began at decode step 2 ([receipt](receipts/2026-09-02-m1-bf16-compiled-tape.md)). No minimal shader repro exists, so it is suspected but not confirmed as a miscompile. Root-caused and fixed: node shapes are now derived at eval time (`13d83f7`), and compiled tapes run by default.
 
 ## Quick start
 

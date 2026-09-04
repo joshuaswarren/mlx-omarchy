@@ -817,11 +817,6 @@ def self_test():
 # --------------------------------------------------------------------------
 
 def main():
-    # The runtime refuses compiled tapes on real Apple GPUs by default
-    # (docs/known-defects.md); this harness exists to reproduce that
-    # defect on hardware, so it opts in through the documented override
-    # before mlx is imported. Subprocesses inherit it.
-    os.environ.setdefault("MLX_OMARCHY_ALLOW_UNSAFE_COMPILE", "1")
     p = argparse.ArgumentParser(description="differential compiled-vs-eager harness")
     p.add_argument("--mode", choices=["graph", "model", "realpath", "self-test"],
                    default="graph")

@@ -12,7 +12,7 @@ Two of the worst v0.3.0 defects never appeared on a Linux development box. They 
 
 These are open in the current release. Each fails silently or crashes, so watching for errors cannot catch them.
 
-### Compiled tapes return wrong values on real Apple GPUs - run eager by default since the auto-eager gate
+### Compiled tapes returned wrong values on real Apple GPUs - root-caused, fixed, re-enabled
 
 Affected: observed at commit `ff4b05a` on the mlx-lm decode path; the same
 family was measured for bf16 at `fbdd5ed` and `5f8ba16` (see
@@ -32,57 +32,39 @@ Full conditions and numbers: `receipts/2026-09-03-dispatcher-compile-and-column-
 Later provenance work attributed one earlier corruption report to a stale
 wheel generation, so whether the silent corruption still reproduces at
 current main is unproven in both directions
-([docs/differential-harness.md](differential-harness.md)). An unpinned
-wrong-value defect on the product target is fenced off regardless.
+([docs/differential-harness.md](differential-harness.md)).
 
-**The gate, part 1 - auto-eager.** At device discovery the runtime calls
-upstream's own `disable_compile()` switch (`mlx/compile.cpp`) and prints
-one warning naming the defect, the receipt, and the override. Compilation
-is defined as an optimization: eager computes the same values, only
-slower, so the default trades speed for correctness instead of refusing.
-Users get correct output with no env var and no exception. The point is
-early enough because Python reaches it before any compiled call can run:
-device discovery happens at the first array creation, or inside the first
-`mx.compile` statement itself (`skip_compile()` resolves the default
-device), and the Python compiled-function wrapper re-checks the switch on
-every call. Measured with `scripts/probe_compile_ordering.py` on the bf16
-discriminator: `compile-first`, `array-first`, `forced-eager`, and
-`pre-armed-then-disable` all resolve to the eager path once the switch is
-off, including the ordering where the function was armed before the
-disable. The C++ API has one narrower edge: a `std::function` armed
-before discovery keeps its trace-time fusion, which is what the backstop
-below is for.
 
-**The gate, part 2 - the backstop.** The tape runner `eval_compiled_tape`
-is the only place the backend executes a compiled tape, and its single
-caller is `Compiled::eval_gpu`, so the refusal sits where no outer layer
-can bypass it. It is unreachable in normal use and stays for tapes that
-still arrive - for example after an explicit `mx.enable_compile()`. On a
-real Apple GPU it raises:
-```
-[omarchy] Compiled tapes are refused on real Apple GPUs: the tape interpreter returns wrong values on Honeykrisp and the defect is unfixed (docs/known-defects.md; receipts/2026-09-03-dispatcher-compile-and-column-replace.md). Re-run with MLX_DISABLE_COMPILE=1. Set MLX_OMARCHY_ALLOW_UNSAFE_COMPILE=1 only to investigate the defect deliberately; it permits wrong values.
-```
+**Why it happened.** The tape interpreter materialised every node output
+at the node's traced shape. A shapeless compiled fragment serves every
+input shape from one trace, so a decode call legally reused a
+prefill-traced tape: nodes computed into prefill-sized outputs and read
+past their eval-time input buffers, into recycled allocator pages. That
+is why the wrong text looked like garbage from nowhere, why magnitudes
+were impossible for f16, and why llvmpipe (reading zeros from the same
+overruns) never showed it. Not a race; the submission-ordering and
+affinity theories are retired. Full hypothesis elimination, the
+upstream-contract answer, and the TCF-1 hardware record:
+`receipts/2026-09-03-stale-shape-tape-corruption.md`.
 
-The C++-only edge - a `std::function` armed before discovery keeps its
-trace-time fusion and lands here - was reviewed and left as a refusal on
-purpose: Python is the product surface and is fully covered by the
-auto-eager hook, the edge fails loudly rather than silently, and a
-per-node eager fallback for it would be speculative machinery for a case
-no user has hit. It is a decision, not an oversight; do not reopen it
-without a user who has hit it.
+**The fix.** Node shapes are derived at eval time from the eval inputs
+(trailing-broadcast derivation, commit `13d83f7`), pinned by the
+shapeless-reuse regression case (`650e324`), with a recycled-storage
+detector (`MLX_OMARCHY_POISON_FREED`, `6cc0c07`). TCF-1 acceptance on
+the M1: 25 of 25 greedy runs correct with proof the tapes executed, the
+differential harness bitwise-clean, poison 5 of 5, batteries green.
+Compilation runs by default again on every device class.
 
-Scope is device-conditional, not global: the corruption is observed only on
-Apple GPUs, development boxes run their compiled-tape batteries and the
-differential harness on llvmpipe, and a global refusal would train every
-developer and x86 user to set the override reflexively. The override
-(`MLX_OMARCHY_ALLOW_UNSAFE_COMPILE=1`) both skips the auto-disable and
-passes the backstop, and `scripts/differential_compile.py`,
-`scripts/probe_tape_eager.py`, and `scripts/probe_compile_ordering.py`
-set it for themselves so hardware investigation keeps working. Two
-protections are unchanged: the bf16 tape gate (it still names bf16 on
-development devices; on Apple GPUs the device backstop fires first) and
-the trigonometric domain gate (tape nodes dispatch through their own
-`eval_gpu`, which carries it).
+**What was retired with the fix.** The fail-closed device gate in
+`eval_compiled_tape`, the discovery-time `disable_compile()` hook, and
+the `MLX_OMARCHY_ALLOW_UNSAFE_COMPILE` override all existed to fence an
+unpinned defect; the fix pins it, so they are removed rather than left
+as switches that no longer switch anything. The protections that remain,
+unchanged: the bf16 tape gate (a separate, still-live bf16 defect), the
+trigonometric accuracy gate (tape nodes dispatch through their own
+`eval_gpu`, which carries it), and the named-error contract for
+unsupported tape ops. Compiled-versus-eager speed is not measured yet
+(TCF-2); correctness is the proven part.
 
 ### `nn.gelu_approx` and `gelu_fast_approx` return values up to 1.47e13 under pytest process context
 
@@ -290,7 +272,7 @@ On v0.3.0-alpha.1: treat every operation in the alpha section as untrusted. Upgr
 
 On v0.3.0: the semaphore crash can kill any workload, and on a real M1 the scatter, LogicalAnd, select, and sin/cos defects return wrong values or refuse operations your dev box runs fine. Upgrade to v0.3.1.
 
-On v0.3.1, published: the release ships the boolean-reduction defect above on Apple Silicon - both `mx.all` and `mx.any`, positional past the first word, disclosed in a prominent warning at the top of the release page - and a verified fix ships in v0.3.2. The three M1 verification reds resolved to test-side causes before the tag landed ("What the M1 verification reds turned out to be" above). The long-standing live entries remain: `gelu_approx` under test runners and bf16 compiled tapes in mlx-lm; compiled tapes on real Apple GPUs now refuse by default (fail-closed gate, first live entry above), so the bf16 tape exposure is fenced behind `MLX_OMARCHY_ALLOW_UNSAFE_COMPILE=1`. Large-argument trig refuses by name, eagerly and inside `mx.compile` alike.
+On v0.3.1, published: the release ships the boolean-reduction defect above on Apple Silicon - both `mx.all` and `mx.any`, positional past the first word, disclosed in a prominent warning at the top of the release page - and a verified fix ships in v0.3.2. The three M1 verification reds resolved to test-side causes before the tag landed ("What the M1 verification reds turned out to be" above). The long-standing live entries remain: `gelu_approx` under test runners and bf16 compiled tapes in mlx-lm; compiled tapes on real Apple GPUs ran behind the auto-eager gate and the fail-closed backstop; the root-cause fix (13d83f7, first live entry above) re-enables them and retires both, so that exposure is closed at the source rather than fenced. Large-argument trig refuses by name, eagerly and inside `mx.compile` alike.
 
 
 Named `[omarchy] ... is not implemented` errors remain the honest failure mode. The defects on this page are dangerous because they do not fail that way.
