@@ -48,15 +48,15 @@ short-burst rates and are not comparable to them.
 
 | Measurement | macOS 13.7.8, MLX on Metal | Linux, 1 of 8 cores (prior, ceae628) | Linux, 8 cores (2026-09-03, current main, pinned decode) | Ratio, 8-core |
 |---|---|---|---|---|
-| bf16 prefill | 377.9 tok/s | 23.9 tok/s | 28.6 tok/s | 13.2x slower |
-| bf16 decode | 61.5 tok/s | 3.56 tok/s | 3.29 tok/s over 63 tokens | 18.7x slower |
+| bf16 prefill | 377.9 tok/s | 23.9 tok/s | 49.4 tok/s | 7.7x slower |
+| bf16 decode | 61.5 tok/s | 3.56 tok/s | 6.79 tok/s over 63 tokens | 9.1x slower |
 | bf16 peak memory | 1.025 GB | 0.993 GB | 0.993 GB | about equal |
-| 4-bit prefill | 705.6 tok/s | 25.3 tok/s | 21.2 tok/s | 33.3x slower |
-| 4-bit decode | 290.3 tok/s | 6.46 tok/s | 2.96 tok/s over 63 tokens | 98.1x slower |
+| 4-bit prefill | 705.6 tok/s | 25.3 tok/s | 27.3 tok/s | 25.8x slower |
+| 4-bit decode | 290.3 tok/s | 6.46 tok/s | 7.31 tok/s over 63 tokens | 39.7x slower |
 | 4-bit peak memory | 0.320 GB | 0.292 GB | 0.292 GB | about equal |
 
 The 8-core column was re-measured on 2026-09-03 on a wheel built from
-current main (`e7a6542`), 8 cores online, compile off, same model revisions
+the shipping state (current main at re-measure time), 8 cores online, compile off, same model revisions
 and prompts. Prefill is the 36-token prompt. Decode is pinned at 64
 requested tokens with EOS suppressed and prompt processing excluded. The
 first re-measure attempt ran in a mis-provisioned venv that silently held
