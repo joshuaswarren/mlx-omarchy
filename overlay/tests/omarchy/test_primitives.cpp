@@ -1005,10 +1005,47 @@ TEST_CASE("unsupported compute shapes and dtypes refuse by name") {
   }
   Stream stream = gpu_stream();
 
-  std::string dtype_error = evaluation_error(add(
-      array({1, 2}, int32), array({3, 4}, int32), stream));
-  CHECK(dtype_error.find("[omarchy] Add dtype") != std::string::npos);
-  CHECK(dtype_error.find("no silent CPU fallback") != std::string::npos);
+  // Integer Add, Multiply, and Square computed in this wave, so this no
+  // longer pins a refusal. Like the complex64 case below it stays as an
+  // exact check, here against independent host uint32 arithmetic: the
+  // operands sit on every wrap boundary, so a float round-trip or a
+  // wrong wrap convention cannot pass.
+  std::vector<uint32_t> au_v = {0u, 1u, 2147483647u, 4294967290u};
+  std::vector<uint32_t> bu_v = {0u, 2u, 1u, 12u};
+  array au(au_v.begin(), Shape{4}, uint32);
+  array bu(bu_v.begin(), Shape{4}, uint32);
+  std::vector<uint32_t> u_sum(au_v.size());
+  std::vector<uint32_t> u_prod(au_v.size());
+  std::vector<uint32_t> u_square(au_v.size());
+  for (size_t i = 0; i < au_v.size(); ++i) {
+    u_sum[i] = au_v[i] + bu_v[i];
+    u_prod[i] = au_v[i] * bu_v[i];
+    u_square[i] = au_v[i] * au_v[i];
+  }
+  check_uint32_values(add(au, bu, stream), u_sum, stream);
+  check_uint32_values(multiply(au, bu, stream), u_prod, stream);
+  check_uint32_values(square(au, stream), u_square, stream);
+
+  std::vector<int32_t> ai_v = {2147483647, -2147483648, -1, 12345};
+  std::vector<int32_t> bi_v = {1, -1, 2147483647, -54321};
+  array ai(ai_v.begin(), Shape{4}, int32);
+  array bi(bi_v.begin(), Shape{4}, int32);
+  std::vector<int32_t> i_sum(ai_v.size());
+  std::vector<int32_t> i_prod(ai_v.size());
+  std::vector<int32_t> i_square(ai_v.size());
+  for (size_t i = 0; i < ai_v.size(); ++i) {
+    // Signed wrap computed in unsigned host arithmetic, then cast
+    // back, so the reference itself never overflows a signed type.
+    i_sum[i] = static_cast<int32_t>(
+        static_cast<uint32_t>(ai_v[i]) + static_cast<uint32_t>(bi_v[i]));
+    i_prod[i] = static_cast<int32_t>(
+        static_cast<uint32_t>(ai_v[i]) * static_cast<uint32_t>(bi_v[i]));
+    i_square[i] = static_cast<int32_t>(
+        static_cast<uint32_t>(ai_v[i]) * static_cast<uint32_t>(ai_v[i]));
+  }
+  check_int32_values(add(ai, bi, stream), i_sum, stream);
+  check_int32_values(multiply(ai, bi, stream), i_prod, stream);
+  check_int32_values(square(ai, stream), i_square, stream);
 
   // Slice views with gaps materialize at eval, so elementwise work over
   // them runs. A transpose view keeps its strides and pins the named
@@ -1097,6 +1134,43 @@ TEST_CASE("unsupported compute shapes and dtypes refuse by name") {
     linalg::inv(spd64, stream).eval();
   });
   CHECK(inv_error.find("float64") != std::string::npos);
+}
+
+TEST_CASE(
+    "integer Add Multiply Square cover scalar broadcast, transposed"
+    " views, and empty arrays") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+
+  // Scalar broadcast rides the normalizer's size-1 fast path.
+  std::vector<int32_t> rv = {1, -2, 3};
+  array r(rv.begin(), Shape{3}, int32);
+  check_int32_values(add(r, array(1, int32), stream), {2, -1, 4}, stream);
+  check_int32_values(
+      multiply(r, array(-2, int32), stream), {-2, 4, -6}, stream);
+
+  // A transposed view keeps its strides and feeds the general
+  // broadcast transport, so the add must read it strided, not dense.
+  std::vector<int32_t> mv = {1, 2, 3, 4, 5, 6};
+  array m(mv.begin(), Shape{2, 3}, int32);
+  array mt = transpose(m, stream);
+  check_int32_values(add(mt, mt, stream), {2, 8, 4, 10, 6, 12}, stream);
+
+  // Empty operands return empty results and touch no kernel.
+  std::vector<int32_t> empty_values;
+  array empty(empty_values.begin(), Shape{0}, int32);
+  auto empty_sum = add(empty, empty, stream);
+  empty_sum.eval();
+  omarchy::get_command_encoder(stream).synchronize();
+  CHECK_EQ(empty_sum.shape(), Shape{0});
+  CHECK_EQ(empty_sum.dtype(), int32);
+
+  // uint32 shares the route; one wrapped vector add pins the dtype.
+  std::vector<uint32_t> uv = {4294967290u, 7u};
+  array u(uv.begin(), Shape{2}, uint32);
+  check_uint32_values(add(u, u, stream), {4294967284u, 14u}, stream);
 }
 
 // Host reference: numerically stable softmax over the last axis.

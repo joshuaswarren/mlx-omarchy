@@ -119,10 +119,7 @@ array index_ramp(const Stream& stream, Shape shape) {
 }
 
 // Dense bool mask with mask[i * n + j] = (i + j) % 2 == 1. Parity of a
-// sum is bit 0 of the bitwise XOR, and the bitwise ops are implemented
-// for int32 while integer add is not - an integer-Add refusal thrown
-// mid-eval would leave queued kernels against buffers that recycle into
-// later allocations, poisoning everything after it.
+// sum is bit 0 of the bitwise XOR, which is implemented for int32.
 array parity_mask(const Stream& stream, int m, int n) {
   array rows = expand_dims(arange(0, m, 1, int32, stream), 1, stream);
   array cols = expand_dims(arange(0, n, 1, int32, stream), 0, stream);
