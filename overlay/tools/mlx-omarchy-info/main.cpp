@@ -149,6 +149,12 @@ void print_json(uint32_t index) {
   num_field("vk_buffer_fills", trace.vk_buffer_fills.load(), false);
   num_field("vk_compute_dispatches", trace.vk_compute_dispatches.load(),
             false);
+  num_field(
+      "compiled_tape_dispatches", trace.compiled_tape_dispatches.load(), false);
+  num_field(
+      "compiled_tape_node_evaluations",
+      trace.compiled_tape_node_evaluations.load(),
+      false);
   std::cout << "  }\n";
   std::cout << "}\n";
 }

@@ -338,7 +338,8 @@ void CommandEncoder::dispatch_compute(
       group_count_x,
       group_count_y,
       group_count_z,
-      host_t0 != 0 ? prof::host_ns() - host_t0 : 0);
+      host_t0 != 0 ? prof::host_ns() - host_t0 : 0,
+      in_tape_recording ? 1u : 0u);
 
   VkMemoryBarrier after{VK_STRUCTURE_TYPE_MEMORY_BARRIER};
   after.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT;

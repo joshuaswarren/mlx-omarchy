@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <atomic>
 #include <cstdio>
+#include <cstdlib>
 #include <sstream>
 #include <string>
 #include <typeinfo>
@@ -13,6 +14,7 @@
 #include <unordered_set>
 
 #include "mlx/backend/omarchy/encoder.h"
+#include "mlx/backend/omarchy/trace.h"
 #include "mlx/primitives.h"
 
 namespace mlx::core::omarchy {
@@ -113,6 +115,58 @@ void eval_compiled_tape(
   output_ids.reserve(tape_outputs.size());
   for (const auto& out : tape_outputs) {
     output_ids.insert(out.id());
+  }
+  // MLX_OMARCHY_TAPE_CENSUS=<path>: append one line per tape evaluation
+  // describing the fragment - node count, per-node op name, dtype,
+  // tape-wide use count (references by other nodes plus the output
+  // flag), and whether the node is a tape output. Measurement
+  // instrument for the elementwise-chain census; off by default.
+  if (const char* census_path = std::getenv("MLX_OMARCHY_TAPE_CENSUS")) {
+    static FILE* census_out = std::fopen(census_path, "a");
+    if (census_out) {
+      std::unordered_map<std::uintptr_t, int> uses;
+      std::unordered_map<std::uintptr_t, int> index;
+      for (size_t n = 0; n < tape.size(); ++n) {
+        index[tape[n].id()] = static_cast<int>(n);
+      }
+      for (const auto& node : tape) {
+        for (const auto& in : node.inputs()) {
+          uses[in.id()]++;
+        }
+      }
+      std::ostringstream line;
+      line << "CENSUS nodes=" << tape.size();
+      for (size_t n = 0; n < tape.size(); ++n) {
+        const auto& node = tape[n];
+        int u = uses.count(node.id()) ? uses.at(node.id()) : 0;
+        if (output_ids.count(node.id())) {
+          u++;
+        }
+        char kind = '?';
+        switch (kindof(node.dtype())) {
+          case Dtype::Kind::b: kind = 'b'; break;
+          case Dtype::Kind::i: kind = 'i'; break;
+          case Dtype::Kind::u: kind = 'u'; break;
+          case Dtype::Kind::V: kind = 'V'; break;
+          case Dtype::Kind::f: kind = 'f'; break;
+          case Dtype::Kind::c: kind = 'c'; break;
+        }
+        line << " | n" << n << "="
+             << (node.has_primitive() ? node.primitive().name() : "Const")
+             << " " << kind << " uses=" << u << " in=[";
+        size_t ti = 0;
+        for (const auto& in : node.inputs()) {
+          auto it = index.find(in.id());
+          line << (ti ? "," : "")
+               << (it != index.end() ? std::to_string(it->second)
+                                     : std::string("x"));
+          ti++;
+        }
+        line << "]" << (output_ids.count(node.id()) ? " OUT" : "");
+      }
+      std::fprintf(census_out, "%s\n", line.str().c_str());
+      std::fflush(census_out);
+    }
   }
 
   // Compiled-tape debug switches (docs/install-omarchy.md). All default
@@ -222,7 +276,16 @@ void eval_compiled_tape(
     std::vector<array> outs;
     outs.push_back(
         array(std::move(out_shape), node.dtype(), node.primitive_ptr(), node_inputs));
+    trace::counters().compiled_tape_node_evaluations++;
+    uint64_t dispatches_before =
+        trace::counters().vk_compute_dispatches.load(std::memory_order_relaxed);
+    encoder.in_tape_recording = true;
     primitive.eval_gpu(node_inputs, outs);
+    encoder.in_tape_recording = false;
+    trace::counters().compiled_tape_dispatches.fetch_add(
+        trace::counters().vk_compute_dispatches.load(std::memory_order_relaxed) -
+        dispatches_before,
+        std::memory_order_relaxed);
 
     resolved.emplace(node.id(), outs[0]);
     if (output_ids.find(node.id()) == output_ids.end()) {
