@@ -1585,7 +1585,7 @@ def main():
     if args.json_out:
         payload = {
             "schemaVersion": 1,
-            "label": "Mac parity",
+            "label": "Primitive coverage",
             "message":
                 f"{mac_pct:.1f}% ({mac_covered}/{mac_total} "
                 "Mac-usable primitives)",
@@ -1613,8 +1613,8 @@ def main():
     out.append("")
     out.append("## Coverage")
     out.append(
-        f"**Mac parity: {mac_pct:.1f}% — {mac_covered} of {mac_total} "
-        "primitives MLX implements and a Mac user can actually use.**")
+        f"**Value-tested primitive coverage: {mac_pct:.1f}% "
+        f"({mac_covered}/{mac_total} Mac-usable primitives). Not functional parity.**")
     out.append("")
     out.append(
         f"Against the full upstream primitive list: {coverage_pct:.1f}% "
@@ -1641,16 +1641,11 @@ def main():
         "short-circuit, never the primitive.")
     out.append("")
     out.append(
-        "One thing that number does not mean: a `partial` primitive "
-        "counts toward it. Partial means the primitive computes real "
-        "results for the dtypes, layouts, and modes it implements and "
-        "raises a named error for the rest, so a counted primitive is "
-        "not necessarily a primitive that handles every input upstream "
-        "accepts. The per-primitive rows below carry each row's own "
-        "named errors, which is where the real limits live. Read "
-        f"{coverage_pct:.1f}% as \"this share of upstream primitives "
-        "does something correct and proven, and refuses the rest by "
-        "name\" — never as \"this share is complete.\"")
+        "Partial primitives count: a value-tested path does not establish "
+        "support for every dtype, layout, or mode upstream accepts. "
+        "The rows below list known refusals. This source-and-test-anchor "
+        "inventory is not a current full-suite pass rate or a measure "
+        "of complete functional compatibility.")
     out.append("")
     out.append(
         "The full-upstream denominator is every concrete primitive "
