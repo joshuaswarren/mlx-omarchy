@@ -166,4 +166,19 @@ void synchronize(Stream s) {
   omarchy::get_command_encoder(s).synchronize();
 }
 
+namespace mlx::core::omarchy::trace {
+extern "C" __attribute__((visibility("default"))) void
+mlx_omarchy_trace_snapshot(MlxOmarchyTraceSnapshot* out) {
+  auto& c = counters();
+  out->gpu_primitive_dispatches = c.gpu_primitive_dispatches.load();
+  out->vk_submissions = c.vk_submissions.load();
+  out->vk_buffer_copies = c.vk_buffer_copies.load();
+  out->vk_buffer_fills = c.vk_buffer_fills.load();
+  out->vk_compute_dispatches = c.vk_compute_dispatches.load();
+  out->omarchy_finalize_calls = c.omarchy_finalize_calls.load();
+  out->commit_calls_with_work = c.commit_calls_with_work.load();
+  out->commit_calls_noop = c.commit_calls_noop.load();
+}
+} // namespace mlx::core::omarchy::trace
+
 } // namespace mlx::core::gpu
