@@ -6837,18 +6837,33 @@ void RoPE::eval_gpu(
   }
   // The no-freqs shader variants declare three bindings; the freqs slot
   // doubles the offset binding like the scalar-weight norm kernels do.
-  // The bfloat16 variant rotates in float32 and rides the proven
-  // float32-to-bfloat16 cast kernel: its uint word stores are per-element
-  // read-modify-writes of a shared 32-bit word, and adjacent lanes belong
-  // to different threads for the half-split layout.
-  // The bfloat16 path rides two extra CastF32BF16 dispatches: one
-  // for the input and one for the output. They wrap the same f32 rope
-  // kernel that handles every other dtype; the word-load/bug that
-  // motivates the cast only applies to bfloat16 storage, and the cast
-  // path is the proven device capability.
+  // The bfloat16 shader legs read the packed bf16 words directly (the
+  // proven constant-shift form, commit cf68e7d) and write float32; a
+  // uint16_t-typed block compiled from that source returned recycled
+  // memory on llvmpipe, and per-element half-word stores of a shared
+  // 32-bit word race between adjacent lanes, so the in-kernel bf16
+  // store stays unbuilt.
+  // Wrapped path (default): one CastBF16F32 up-cast feeds the f32 rope
+  // kernel and one CastF32BF16 narrows the output - the proven device
+  // capability. Direct path (MLX_OMARCHY_ROPE_BF16_DIRECT, default off
+  // until the M1 equivalence leg passes; any value other than "0"
+  // enables): the bf16 input binds straight into the packed-word load
+  // leg, deleting the up-cast - one dispatch fewer per rope call. The
+  // leg's rope_round keeps the per-intermediate bf16 roundings of the
+  // eager composition, so its result sits within a derived
+  // intermediate-quantization bound of the wrapped result (pinned by
+  // the fast-ops bf16 case) and bit-exact against the composed bf16
+  // chain.
+  bool direct_bf16 = false;
+  if (out.dtype() == bfloat16) {
+    if (const char* env = std::getenv("MLX_OMARCHY_ROPE_BF16_DIRECT");
+        env != nullptr && std::strcmp(env, "0") != 0) {
+      direct_bf16 = true;
+    }
+  }
   const array* rope_input = src;
   std::optional<array> bf16_to_f32;
-  if (out.dtype() == bfloat16) {
+  if (out.dtype() == bfloat16 && !direct_bf16) {
     bf16_to_f32 = array(in.shape(), float32, nullptr, {});
     bf16_to_f32->set_data(allocate_omarchy(bf16_to_f32->nbytes()));
     encoder.add_temporary(*bf16_to_f32);
@@ -6871,14 +6886,24 @@ void RoPE::eval_gpu(
       binding(rope_output),
       binding(offset),
       binding(with_freqs ? inputs.at(2) : offset)};
-  auto kernel = select_float_kernel(
-      rope_output.dtype(),
-      with_freqs ? omarchy::ComputeKernel::FastRopeFreqsF32
-                 : omarchy::ComputeKernel::FastRopeF32,
-      with_freqs ? omarchy::ComputeKernel::FastRopeFreqsF16
-                 : omarchy::ComputeKernel::FastRopeF16,
-      with_freqs ? omarchy::ComputeKernel::FastRopeFreqsBF16
-                 : omarchy::ComputeKernel::FastRopeBF16);
+  // The direct bf16 bind must select by INPUT dtype: the packed-word
+  // load leg pairs a bf16 input with this call's float32 output
+  // temporary, so the output-dtype selector would pick the F32 kernel
+  // and read the bf16 buffer as float words.
+  omarchy::ComputeKernel kernel;
+  if (direct_bf16) {
+    kernel = with_freqs ? omarchy::ComputeKernel::FastRopeFreqsBF16
+                        : omarchy::ComputeKernel::FastRopeBF16;
+  } else {
+    kernel = select_float_kernel(
+        rope_output.dtype(),
+        with_freqs ? omarchy::ComputeKernel::FastRopeFreqsF32
+                   : omarchy::ComputeKernel::FastRopeF32,
+        with_freqs ? omarchy::ComputeKernel::FastRopeFreqsF16
+                   : omarchy::ComputeKernel::FastRopeF16,
+        with_freqs ? omarchy::ComputeKernel::FastRopeFreqsBF16
+                   : omarchy::ComputeKernel::FastRopeBF16);
+  }
   encoder.dispatch_compute(
       kernel,
       bindings,
@@ -6958,7 +6983,29 @@ void ScaledDotProductAttention::eval_gpu(
   // of the score and prob intermediates; the qmm decode path already
   // runs this pattern. Deletes the three q/k/v upcasts, the scale
   // broadcast and multiply, and the output downcast per call.
-  if (q.dtype() == float16) {
+  //
+  // bfloat16 rides the same shape under MLX_OMARCHY_SDPA_BF16_FAST
+  // (default off until the M1 equivalence leg passes; any value other
+  // than "0" enables): MatmulBF16, SoftmaxBF16, and ElementwiseBF16 are
+  // the proven uint16_t-typed USE_BF16 legs the projections, the
+  // residual adds, and the norm already run - float accumulation inside
+  // the shader, bf16 storage with round-to-nearest-even stores on both
+  // drivers. Scores store bf16 (2^-8 relative rounding per stored
+  // score), the additive causal floor becomes bf16's finite maximum
+  // (-3.3895313892515355e38 - overflow-immune where the f16 path caps
+  // at 65504), and the output stays bf16 end to end. Deletes the three
+  // q/k/v upcasts, the f32 scale multiply, the f32 softmax, and the
+  // output downcast per call.
+  bool bf16_fast = false;
+  if (q.dtype() == bfloat16) {
+    if (const char* env = std::getenv("MLX_OMARCHY_SDPA_BF16_FAST");
+        env != nullptr && std::strcmp(env, "0") != 0) {
+      bf16_fast = true;
+    }
+  }
+  if (q.dtype() == float16 || bf16_fast) {
+    const bool bf16 = q.dtype() == bfloat16;
+    const Dtype storage_dtype = bf16 ? bfloat16 : float16;
     // GQA regroup as pure stride views, so a non-contiguous cache
     // slice rides its own strides straight into the matmul;
     // reshape_in_eval would copy - it only views row-contiguous
@@ -6989,7 +7036,7 @@ void ScaledDotProductAttention::eval_gpu(
     encoder.add_temporary(keys_t);
     Shape score_shape = qs.shape();
     score_shape.back() = k_len;
-    array scores(score_shape, float16, nullptr, {});
+    array scores(score_shape, storage_dtype, nullptr, {});
     dispatch_matmul(tag, {qs, keys_t}, scores, scale_, 0.0f, false, s);
     encoder.add_temporary(scores);
 
@@ -6999,33 +7046,47 @@ void ScaledDotProductAttention::eval_gpu(
         omarchy::unsupported("causal offset " + tag, out);
       }
       // The same 0 / -1e30 additive shape the f32 path builds, stored
-      // in f16 at the f16 finite maximum (-65504), not -inf: softmax
-      // still maps masked positions to an exact zero, and a fully
-      // masked row (padding masks over padded positions) stays defined
-      // - the additive constant cancels in the max subtraction, so the
-      // row reduces to softmax over its own scores exactly like the
-      // f32 path, instead of inf-minus-inf NaN.
+      // in the storage dtype at its finite maximum (f16 -65504, bf16
+      // -3.3895313892515355e38), not -inf: softmax still maps masked
+      // positions to an exact zero, and a fully masked row (padding
+      // masks over padded positions) stays defined - the additive
+      // constant cancels in the max subtraction, so the row reduces to
+      // softmax over its own scores exactly like the f32 path, instead
+      // of inf-minus-inf NaN.
       constexpr float kF16Floor = -65504.0f;
-      array mask(Shape{q_len, k_len}, float16, nullptr, {});
+      constexpr float kBF16Floor = -3.3895313892515355e38f;
+      array mask(Shape{q_len, k_len}, storage_dtype, nullptr, {});
       mask.set_data(allocate_omarchy(mask.nbytes()));
-      float16_t* values = mask.data<float16_t>();
       int offset = k_len - q_len;
-      for (int row = 0; row < q_len; ++row) {
-        for (int col = 0; col < k_len; ++col) {
-          values[row * k_len + col] =
-              offset + row >= col
-                  ? float16_t(0.0f)
-                  : float16_t(kF16Floor);
+      if (bf16) {
+        bfloat16_t* values = mask.data<bfloat16_t>();
+        for (int row = 0; row < q_len; ++row) {
+          for (int col = 0; col < k_len; ++col) {
+            values[row * k_len + col] =
+                offset + row >= col ? bfloat16_t(0.0f)
+                                    : bfloat16_t(kBF16Floor);
+          }
+        }
+      } else {
+        float16_t* values = mask.data<float16_t>();
+        for (int row = 0; row < q_len; ++row) {
+          for (int col = 0; col < k_len; ++col) {
+            values[row * k_len + col] =
+                offset + row >= col
+                    ? float16_t(0.0f)
+                    : float16_t(kF16Floor);
+          }
         }
       }
       encoder.add_temporary(mask);
-      masked = array(scores.shape(), float16, nullptr, {});
+      masked = array(scores.shape(), storage_dtype, nullptr, {});
       dispatch_elementwise(tag, AddOperation, {scores, mask}, *masked, s);
     } else if (inputs.size() == 4) {
       // Upstream delivers the additive mask pre-broadcast in the
-      // output dtype, so the f16 path consumes it without a cast.
+      // output dtype, so the f16 and bf16 fast paths consume it
+      // without a cast.
       const array& mask = inputs.at(3);
-      if (mask.dtype() != float16) {
+      if (mask.dtype() != storage_dtype) {
         omarchy::unsupported("attention mask dtype " + tag, out);
       }
       if (repeats > 1) {
@@ -7038,7 +7099,7 @@ void ScaledDotProductAttention::eval_gpu(
       if ((*masked).shape() != scores.shape()) {
         omarchy::unsupported("attention mask shape " + tag, out);
       }
-      array added(scores.shape(), float16, nullptr, {});
+      array added(scores.shape(), storage_dtype, nullptr, {});
       dispatch_elementwise(tag, AddOperation, {scores, *masked}, added, s);
       masked = added;
       encoder.add_temporary(*masked);
@@ -7046,13 +7107,13 @@ void ScaledDotProductAttention::eval_gpu(
     const array& logits = masked ? *masked : scores;
     encoder.add_temporary(logits);
 
-    array probs(logits.shape(), float16, nullptr, {});
+    array probs(logits.shape(), storage_dtype, nullptr, {});
     dispatch_softmax(tag, logits, probs, s);
     encoder.add_temporary(probs);
 
     Shape result_shape = probs.shape();
     result_shape.back() = v_dim;
-    array result(result_shape, float16, nullptr, {});
+    array result(result_shape, storage_dtype, nullptr, {});
     dispatch_matmul(tag, {probs, vs}, result, 1.0f, 0.0f, false, s);
     encoder.add_temporary(result);
     commit_result(result);
