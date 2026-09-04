@@ -456,17 +456,26 @@ void dispatch_matmul(
       omarchy::ComputeKernel::MatmulF16,
       omarchy::ComputeKernel::MatmulBF16);
   // Inner spans use the actual gaps: (rows - 1) * gap + cols elements
-  // past the operand offset.
-  uint64_t a_inner = a_transposed
-      ? static_cast<uint64_t>(params.matrix_k - 1) * a_gap +
-          params.matrix_m
-      : static_cast<uint64_t>(params.matrix_m - 1) * a_gap +
-          params.matrix_k;
-  uint64_t b_inner = b_transposed
-      ? static_cast<uint64_t>(params.matrix_n - 1) * b_gap +
-          params.matrix_k
-      : static_cast<uint64_t>(params.matrix_k - 1) * b_gap +
-          params.matrix_n;
+  // past the operand offset. A degenerate inner dimension (m, n, or k
+  // == 0) touches no elements, but the uint32 subtraction would wrap
+  // zero into a huge span and spuriously refuse valid empty-K
+  // matmuls, so those terms are zeroed outright. The shader's
+  // per-element tile guards then load nothing and accumulate the
+  // zero fill the empty-K contract requires.
+  uint64_t a_inner = params.matrix_m == 0u || params.matrix_k == 0u
+      ? 0u
+      : (a_transposed
+            ? static_cast<uint64_t>(params.matrix_k - 1) * a_gap +
+                params.matrix_m
+            : static_cast<uint64_t>(params.matrix_m - 1) * a_gap +
+                params.matrix_k);
+  uint64_t b_inner = params.matrix_k == 0u || params.matrix_n == 0u
+      ? 0u
+      : (b_transposed
+            ? static_cast<uint64_t>(params.matrix_n - 1) * b_gap +
+                params.matrix_k
+            : static_cast<uint64_t>(params.matrix_k - 1) * b_gap +
+                params.matrix_n);
   if (!omarchy::compute_index_span_fits(
           params.lhs_offset, a_span + a_inner) ||
       !omarchy::compute_index_span_fits(
