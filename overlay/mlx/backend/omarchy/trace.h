@@ -26,12 +26,7 @@ struct Counters {
   std::atomic<uint64_t> vk_buffer_fills{0};
   // Number of recorded Vulkan compute dispatches.
   std::atomic<uint64_t> vk_compute_dispatches{0};
-  // Number of gpu::finalize calls (throttle points and graph ends).
-  std::atomic<uint64_t> omarchy_finalize_calls{0};
-  // Commits that submitted a real batch (work, semaphores, or handlers).
-  std::atomic<uint64_t> commit_calls_with_work{0};
-  // Commits that found nothing pending (finalize on an idle encoder).
-  std::atomic<uint64_t> commit_calls_noop{0};
+ @both
 };
 
 inline Counters& counters() {
