@@ -6618,6 +6618,23 @@ void RoPE::eval_gpu(
   const array& offset = inputs.at(1);
   auto s = stream();
   auto& encoder = omarchy::get_command_encoder(s);
+
+  // FENCE (2026-09-03): two variants have not passed equivalence
+  // against the composed fallback - per-batch vector offsets (160 of
+  // 320 element checks diverged) and the inverse/VJP path (5 of 160).
+  // A fused path must never serve a leg that has not passed, so both
+  // ride the composition until each passes real equivalence. Decode,
+  // the case worth ~460 primitives per token, is forward with a
+  // scalar offset and stays fused. Remove one conjunct per fixed
+  // defect, with the equivalence test green.
+  if (!forward_ || offset.size() > 1) {
+    auto result = fallback_(inputs);
+    result[0].eval();
+    encoder.synchronize();
+    out.copy_shared_buffer(result[0]);
+    return;
+  }
+
   require_float_dtype(tag, in, out, encoder);
   if (out.size() == 0) {
     out.set_data(allocate_omarchy(out.nbytes()));
@@ -6694,7 +6711,13 @@ void RoPE::eval_gpu(
     strides[2] = temp.strides()[ndim - 1];
   }
 
-  int64_t offset_stride = offset.ndim() > 0 ? offset.strides()[0] : 0;
+  // A size-1 offset is a scalar no matter its rank: the composition
+  // broadcasts it to every batch. A (1,)-shaped array has stride 1, so
+  // borrowing it verbatim would read past the buffer for b > 0 (found
+  // 2026-09-03 by the fence's scalar-offset equivalence test, at the
+  // first element of batch 1).
+  int64_t offset_stride =
+      (offset.size() == 1 || offset.ndim() == 0) ? 0 : offset.strides()[0];
   omarchy::ComputeParams params;
   params.count = checked_u32(
       static_cast<size_t>(B) * N * T * (passthrough ? D : half_dims),
