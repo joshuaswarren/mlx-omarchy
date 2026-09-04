@@ -171,7 +171,8 @@ generation (see the bakeoff section above).
 Never provision a measurement venv from a freeze that contains `@`
 direct-URL pins for the package under test; exclude by name prefix, and
 gate every run on installed-`libmlx.so` == wheel-member hashes. A
-
+harness-level gate in `scripts/bench_decode.py` landed on main and is in
+use (`--wheel` self-check); adopt it for every new measurement venv.
 
 ## Release gate (0a2e4fc) - PASS
 
@@ -201,3 +202,50 @@ eager path; the `mx.enable_compile()` backstop refuses with
 policy assertion `CHECK_EQ(refused_default, !dev.non_apple_dev())`
 (test_compiled_tape.cpp:628), which the auto-eager redesign makes stale;
 without the override the battery is 2/10 for the same reason.
+
+## Shipping state pinned re-measure (18f59e3) - release numbers
+
+Wheel from main `18f59e3` (the shipping state: batching plus poll
+revert), provenance gate green (loaded libmlx.so `bace94cf...` == wheel
+member), `scripts/bench_decode.py --wheel` self-check passing, 5-run
+median, 36-token prompt, 64 pinned tokens:
+
+| row | value | runs |
+|---|---|---|
+| bf16 prefill | 49.7 tok/s | 0.724 s median, spread < 1% |
+| bf16 decode | 6.79 tok/s over 63 tokens | 6.77 / 6.83 / 6.82 / 6.71 / 6.79 |
+| 4-bit prefill | 27.2 tok/s | 1.323 s median |
+| 4-bit decode | 7.21 tok/s over 63 tokens | 7.26 / 7.36 / 7.21 / 6.78 / 7.16 |
+
+Versus the same pinned protocol at `e7a6542` (3.29 / 2.96 decode, 28.6 /
+21.2 prefill): decode is 2.1-2.4x faster and prefill 1.3-1.7x faster at
+the shipping state. Mechanism confirmed by the profiler at `7c3d6b4`:
+submissions per decode token fell from 1740.7 (bf16) / 1800.0 (4-bit) to
+96.0 / 95.2 - one submission per dispatch, zero signal-only submits -
+while recorded dispatches per token rose to ~1810-1869 (batched recording
+emits finer-grained dispatches per submission). The tok/s gain (2.1-2.4x
+pinned) is smaller than the submission reduction (18x) because the
+remaining ~96 inter-submission gaps are larger (p50 371 us vs 147 us -
+bigger command buffers cost more to submit); decode wall is now roughly
+96 gaps plus ~1.5 ms of GPU work.
+
+## Two-sided pinned re-measure (7c25feb vs current main 56cb642) - final
+
+5-run medians, 36-token prompt, 64 pinned tokens, EOS suppressed, gates
+green on both sides (BEFORE wheel `8c44daef...` build of `7c25feb`,
+libmlx `45d3c36b...`; AFTER wheel `f1c5d07d...` build of current main,
+libmlx `2c7fe271...`; harness/scripts from main tip with the `--temp`
+fix, harness commit printed beside each run):
+
+| row | BEFORE 7c25feb | AFTER current main | change |
+|---|---|---|---|
+| bf16 decode | 2.52 tok/s over 63 tokens | 6.79 tok/s over 63 tokens | +170% (2.7x) |
+| 4-bit decode | 2.49 tok/s over 63 tokens | 7.31 tok/s over 63 tokens | +194% (2.9x) |
+| bf16 prefill | 23.2 tok/s | 49.4 tok/s | +113% (2.1x) |
+| 4-bit prefill | 17.8 tok/s | 27.3 tok/s | +53% (1.5x) |
+
+Per-token decode wall: bf16 401.4 -> 147.2 ms; 4-bit 401.4 -> 137.0 ms.
+The pinned AFTER rate (6.79 / 7.31) exceeds even the pre-fix BURST rates
+(5.280 / 5.622 at 4ea2f47), so the ordering-fix regression is paid back
+with interest on the stricter metric. Against the same pinned protocol at
+`e7a6542` (3.29 / 2.96 decode), the shipping state is 2.1-2.5x faster.
