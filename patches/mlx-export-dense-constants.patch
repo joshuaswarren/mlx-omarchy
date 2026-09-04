@@ -8,17 +8,12 @@
  #include "mlx/primitives.h"
  #include "mlx/transforms_impl.h"
  #include "mlx/utils.h"
-@@ -898,7 +899,19 @@
+@@ -898,7 +899,14 @@
          if (constants.insert({arr.id(), arr}).second) {
            serialize(os, arr.shape());
            serialize(os, arr.dtype());
 -          os.write(arr.data<char>(), arr.nbytes());
-+          // A constant can be an evaluated view (a closed-over slice or
-+          // transpose) sharing a gapped buffer, so the packed write must
-+          // store logical C order. Flags are honest only after eval, and
-+          // row_contiguous is the C-order test: flags.contiguous stays
-+          // true for C-order transposes under the span-based definition.
-+          // Dense constants keep the no-copy path.
++          // Export evaluated constants in logical C order.
 +          if (!arr.flags().row_contiguous) {
 +            array dense = contiguous(arr);
 +            dense.eval();
