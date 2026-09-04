@@ -9,6 +9,7 @@
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
+#include <cstdlib>
 #include <optional>
 #include <numeric>
 #include <string>
@@ -6627,6 +6628,16 @@ void RoPE::eval_gpu(
   // the case worth ~460 primitives per token, is forward with a
   // scalar offset and stays fused. Remove one conjunct per fixed
   // defect, with the equivalence test green.
+  // THROWAWAY PROBE SWITCH (RoPE accuracy investigation, not for
+  // merge): OMARCHY_ROPE_FORCE_COMPOSED routes every RoPE through the
+  // composed fallback so a generation A/B can compare paths on device.
+  if (std::getenv("OMARCHY_ROPE_FORCE_COMPOSED") != nullptr) {
+    auto result = fallback_(inputs);
+    result[0].eval();
+    encoder.synchronize();
+    out.copy_shared_buffer(result[0]);
+    return;
+  }
   if (!forward_ || offset.size() > 1) {
     auto result = fallback_(inputs);
     result[0].eval();
