@@ -6644,7 +6644,27 @@ void rope_trig_gate(
   int T = in.shape(-2);
   float worst_offset;
   if (offset.size() == 1) {
-    omarchy::get_command_encoder(stream).synchronize();
+    // A scalar constructed from a host int (what an mlx_lm decode step
+    // passes) is Status::available from construction with no primitive:
+    // nothing on the queue can be writing it, so it is read directly.
+    // Anything else may still be in flight and takes the stream-ordered
+    // synchronize. is_available() is NOT the test: it promotes an
+    // in-flight evaluated array with no event. Draining the queue for
+    // every offset cost two host round trips per decoder layer, 48 per
+    // token (receipts/2026-09-04-rope-gate-drain.md).
+    bool host_constant = offset.status() == array::Status::available &&
+        !offset.has_primitive();
+    // FENCE (2026-09-04): bf16 keeps the drain. Without it, bf16 decode
+    // read a bf16 tensor's bytes out of the offset scalar at ~token 33:
+    // a buffer on the bf16 path is released while its writer is still
+    // queued and the allocator recycles the page. The drain hid that
+    // hole for as long as it existed. Named open defect in
+    // docs/known-defects.md; remove this conjunct when it is closed and
+    // scripts/bench_decode.py bf16 --tokens 64 --warmup-tokens 0 passes
+    // on the M1 without it.
+    if (!host_constant || out.dtype() == bfloat16) {
+      omarchy::get_command_encoder(stream).synchronize();
+    }
     worst_offset = std::abs(static_cast<float>(offset.item<int>()));
   } else {
     array offset_worst =
