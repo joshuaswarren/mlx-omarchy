@@ -195,3 +195,52 @@ actually runs, the only dispatch reducers that work today are dedicated
 named kernels (rope ~576-700, kv-copy 288, casts 240, scalar folding
 290 dispatches/token) - plus, behind the compile-the-forward change,
 the tape-fusion engine this census ruled out for tonight.
+
+## Addendum 2: kv-cache copy and boundary-cast attribution (same night)
+
+`scripts/kvcopy_decompose.py` isolates one layer's decode path in three
+stages (update only; update+sdpa; full step with rope) under the
+profiler, Qwen2.5-0.5B-4bit, 7-token prefill, 8 decode steps.
+
+- update_and_fetch alone: **0** strided copies. The cache append is
+  innocent.
+- update+sdpa: 4 copies/step - the 128-element pieces are the new k/v
+  (transposed post-projection views) written into the cache, and the
+  growing pieces are the cache.state slices.
+- full step: 10 of the 12 copies/layer reproduce in isolation.
+
+Root cause found in our own SDPA path (primitives.cpp,
+ScaledDotProductAttention::eval_gpu): `to_f32()` runs
+`contiguous_copy_gpu` on any input that is not row-contiguous, then a
+separate cast to float32, for q, k, AND v; scores run as MatmulF32; the
+output is cast back. The cache slice `keys[..., :offset, :]` is never
+row-contiguous, so every layer every token pays:
+
+- 2x CopyGeneralF16 growing with offset (k, v dense materialization)
+- casts in both directions around the f32 scores matmul (the census's
+  CastF32F16 120 + CastF16F32 72 + CastI32F32 48 per token; the int32
+  pair is rope's offset-to-position arithmetic)
+- GQA repeat expansion materializing 448-class pieces (7 repeats x 64
+  head_dim per kv head)
+
+Verdict per Main's question: the copies and most casts should be
+DELETED, not accelerated. The boundary crossing is our implementation's
+choice, not the graph's:
+
+1. The scores matmul can take f16 inputs with f32 accumulation (the
+   qmm kernel already does), deleting to_f32 for q/k/v and the output
+   downcast - most of the 240 casts/token plus the 2 growing
+   CopyGeneralF16 per layer.
+2. A stride-aware cast (or strided-input matmul) removes the
+   contiguous materialization of the cache slices outright.
+3. The GQA expansion should ride broadcast views (the pattern
+   broadcast_view already uses for the scale), not materialized
+   repeats.
+
+These are changes to ScaledDotProductAttention::eval_gpu in
+primitives.cpp - shared file; coordinate before implementing.
+Equivalence guard: greedy decode of the pinned prompt must stay
+token-identical to the current path on the same build (the composed
+attention path is the current reference; upstream's fast SDPA
+vector-path divergence is a known separate defect and not a
+justification).
