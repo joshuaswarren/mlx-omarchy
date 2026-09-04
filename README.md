@@ -53,7 +53,7 @@ Conditions, exact commands, and the prior measurements they replaced: `receipts/
 
 ## What works
 
-- Language model inference end to end: Qwen2.5-0.5B in bf16, fp16, and 4-bit affine quantization, greedy and temperature sampling
+ @theirs
 - Arrays, elementwise math with general broadcast, reductions, softmax, logsumexp, cumulative sum, sorted-row search
 - Dense, transposed, and broadcast-batch matmul up to rank 5; grouped-query attention with scores computed in float32; grouped, depthwise, 1-D, and dilated forward convolution
 - Quantized matmul and dequantize: affine, 4-bit and 8-bit, group sizes 32 and 64, plus gathered expert matmul
