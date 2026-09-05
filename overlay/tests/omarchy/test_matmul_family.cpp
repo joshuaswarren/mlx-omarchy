@@ -102,7 +102,7 @@ void expect_close_tol(
 }
 
 double host_at(const std::vector<float>& values, size_t index) {
-  return static_cast<double>(values[index]);
+  return static_cast<double>(values.at(index));
 }
 
 // Host affine quantizer matching the upstream affine_quantize kernel:
@@ -1743,6 +1743,442 @@ TEST_CASE("qmm tile matches host reference and qmm.comp across prefill shapes") 
         run_tile_case(dtype, 32, 4, 4864, 4864, m, seed++);
         run_tile_case(dtype, 64, 8, 4864, 4864, m, seed++);
       }
+    }
+  }
+}
+
+namespace {
+
+// Flips the DenseDecodeGemv dispatch gate and always restores the unset
+// (default OFF) state, so an aborting REQUIRE cannot leak the switch
+// into later cases in the process.
+struct DenseGemvGate {
+  explicit DenseGemvGate(bool on) {
+    set(on);
+  }
+  ~DenseGemvGate() {
+    unsetenv("MLX_OMARCHY_DENSE_GEMV");
+  }
+  void set(bool on) {
+    setenv("MLX_OMARCHY_DENSE_GEMV", on ? "1" : "0", 1);
+  }
+};
+
+} // namespace
+
+// DenseDecodeGemv equivalence: with MLX_OMARCHY_DENSE_GEMV=1, a
+// single-row lhs routes matmul/addmm through the matrix-vector kernel
+// instead of the 16x16 tile. This case pins the candidate three ways:
+// (1) against the f64 host contract, (2) against the tile path it
+// stands in for on the same device with identical inputs, and (3)
+// behavior-preserved where the gate must not apply (m > 1 stays
+// bit-identical, and outputs wider than one clamped grid dimension
+// fall back to the tile kernel bit-identically). Shapes deliberately
+// miss the 8-column workgroup width and the 32-lane k step; the empty-K
+// case pins the zero-fill contract; addmm covers scalar, per-column,
+// and full bias c with alpha/beta. f32 accumulation and one final
+// STORE_VALUE rounding are shared by both flavors, so the residual
+// gap vs the f64 host sum is f32 multiply-add precision across the K
+// elements plus the 32-lane fold:
+//   E_f32 = (2k + 34) * M * 2^-23
+// (k multiplies, k adds per lane, 31 fold adds, alpha and beta terms),
+// plus the storage-dtype rounding of the output,
+//   E_storage = M * 2^-(mantissa + 1).
+// A wrong lane, gap, batch stride, or index misses by O(M), not by
+// eps-scale dust, because operands span both signs. Every readback is
+// asserted finite BEFORE max reductions: NaN never wins a `>`
+// comparison, so one NaN output would false-pass the bound.
+TEST_CASE("dense gemv matches host reference and tile path across decode shapes") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+
+  std::vector<Dtype> dtypes{float32};
+  if (float16_available()) {
+    dtypes.push_back(float16);
+  }
+  dtypes.push_back(bfloat16);
+
+  auto storage_mantissa = [](Dtype dtype) {
+    return dtype == float32 ? 23 : (dtype == float16 ? 10 : 7);
+  };
+
+  auto finite_max = [](const std::vector<float>& values, double& max_abs) {
+    max_abs = 0.0;
+    for (float v : values) {
+      if (!std::isfinite(v)) {
+        return false;
+      }
+      max_abs = std::max(max_abs, std::fabs(static_cast<double>(v)));
+    }
+    return true;
+  };
+
+  auto run_paths = [&](auto build_op) {
+    DenseGemvGate gate(true);
+    array gemv_out = build_op();
+    const auto gemv_error = evaluation_error(gemv_out);
+    REQUIRE_MESSAGE(gemv_error.empty(), gemv_error);
+    std::vector<float> gemv_v = readback_f32(stream, gemv_out);
+    gate.set(false);
+    array tile_out = build_op();
+    const auto tile_error = evaluation_error(tile_out);
+    REQUIRE_MESSAGE(tile_error.empty(), tile_error);
+    std::vector<float> tile_v = readback_f32(stream, tile_out);
+    REQUIRE_EQ(gemv_v.size(), tile_v.size());
+    return std::make_pair(gemv_v, tile_v);
+  };
+
+  auto check_case = [&](const std::vector<float>& gemv_v,
+      const std::vector<float>& tile_v, const std::vector<float>& host,
+      Dtype dtype, double k, const std::string& tag) {
+    REQUIRE_EQ(gemv_v.size(), host.size());
+    double gemv_max = 0.0;
+    double tile_max = 0.0;
+    REQUIRE_MESSAGE(finite_max(gemv_v, gemv_max), "gemv non-finite output");
+    REQUIRE_MESSAGE(finite_max(tile_v, tile_max), "tile non-finite output");
+    double host_max = 0.0;
+    for (float v : host) {
+      host_max = std::max(host_max, std::fabs(static_cast<double>(v)));
+    }
+    double m_bound = std::max(std::max({gemv_max, tile_max, host_max}) * 2.0,
+        1.0);
+    double ops = 2.0 * k + 34.0;
+    double f32_term = ops * m_bound * std::ldexp(1.0, -23);
+    double storage_term = m_bound *
+        std::ldexp(1.0, -(storage_mantissa(dtype) + 1));
+    double host_bound = std::max(f32_term + storage_term, 1e-6);
+    double cross_bound = std::max(2.0 * f32_term + 2.0 * storage_term, 1e-6);
+    double host_diff = 0.0;
+    size_t host_worst = 0;
+    for (size_t i = 0; i < host.size(); ++i) {
+      double d = std::fabs(static_cast<double>(gemv_v[i]) - host[i]);
+      if (d > host_diff) {
+        host_diff = d;
+        host_worst = i;
+      }
+    }
+    INFO(tag << " dtype=" << dtype << " host_worst=" << host_worst
+         << " diff=" << host_diff << " bound=" << host_bound);
+    CHECK(host_diff <= host_bound);
+    double cross_diff = 0.0;
+    size_t cross_worst = 0;
+    for (size_t i = 0; i < tile_v.size(); ++i) {
+      double d = std::fabs(static_cast<double>(gemv_v[i]) -
+          static_cast<double>(tile_v[i]));
+      if (d > cross_diff) {
+        cross_diff = d;
+        cross_worst = i;
+      }
+    }
+    INFO(tag << " dtype=" << dtype << " cross_worst=" << cross_worst
+         << " diff=" << cross_diff << " bound=" << cross_bound);
+    CHECK(cross_diff <= cross_bound);
+  };
+
+  struct GemvShape {
+    int batch;
+    int k;
+    int n;
+  };
+  std::vector<GemvShape> shapes{
+      {1, 1, 1}, {1, 33, 7}, {1, 896, 1}, {1, 896, 72}};
+  unsigned seed = 211;
+  for (auto dtype : dtypes) {
+    for (bool b_transposed : {false, true}) {
+      for (auto [batch, k, n] : shapes) {
+        std::mt19937 gen(seed++);
+        std::uniform_real_distribution<float> dist(-2.0f, 2.0f);
+        std::vector<float> a_values(static_cast<size_t>(batch) * k);
+        for (auto& v : a_values) {
+          v = dist(gen);
+        }
+        std::vector<float> b_values(static_cast<size_t>(k) * n);
+        for (auto& v : b_values) {
+          v = dist(gen);
+        }
+        std::vector<float> a_rt = round_trip(stream, a_values, dtype);
+        std::vector<float> b_rt = round_trip(stream, b_values, dtype);
+        std::vector<float> expected =
+            host_matmul(a_rt, b_rt, batch, 1, k, n);
+        std::string tag = b_transposed ? "transposed-b" : "dense-b";
+        INFO(tag << " batch=" << batch << " k=" << k << " n=" << n);
+
+        array a(a_rt.begin(), Shape{batch, 1, k}, dtype);
+        std::vector<float> b_store_values;
+        if (b_transposed) {
+          b_store_values.resize(b_rt.size());
+          for (int bt = 0; bt < batch; ++bt) {
+            for (int row = 0; row < k; ++row) {
+              for (int column = 0; column < n; ++column) {
+                b_store_values[static_cast<size_t>(bt) * n * k +
+                    static_cast<size_t>(column) * k + row] =
+                    b_rt[static_cast<size_t>(bt) * k * n +
+                        static_cast<size_t>(row) * n + column];
+              }
+            }
+          }
+        }
+        auto build_op = [&]() {
+          if (!b_transposed) {
+            array b(b_rt.begin(), Shape{batch, k, n}, dtype);
+            return matmul(a, b, stream);
+          }
+          array b_store(
+              b_store_values.begin(), Shape{batch, n, k}, dtype);
+          return matmul(a, transpose(b_store, {0, 2, 1}, stream), stream);
+        };
+        auto [gemv_v, tile_v] = run_paths(build_op);
+        REQUIRE_EQ(gemv_v.size(),
+            static_cast<size_t>(batch) * static_cast<size_t>(n));
+        check_case(gemv_v, tile_v, expected, dtype, k, tag);
+      }
+    }
+  }
+
+
+  {
+    std::vector<float> a_store(10, 99.0f);
+    std::vector<float> a_payload{1.0f, -2.0f, 3.0f};
+    for (size_t i = 0; i < a_payload.size(); ++i) {
+      a_store[5 + i] = a_payload[i];
+    }
+    std::vector<float> b_store(12, 99.0f);
+    std::vector<float> b_payload{4.0f, 0.5f, -1.5f, 2.0f, -0.5f, 1.0f,
+        3.0f, -2.5f, 0.25f};
+    for (size_t i = 0; i < b_payload.size(); ++i) {
+      b_store[3 + i] = b_payload[i];
+    }
+    auto host_row = [&](const std::vector<float>& row_values, int row_k) {
+      std::vector<float> out(b_payload.size() / row_k);
+      for (size_t j = 0; j < out.size(); ++j) {
+        double acc = 0.0;
+        for (int i = 0; i < row_k; ++i) {
+          acc += static_cast<double>(row_values[i]) *
+              static_cast<double>(b_payload[i * out.size() + j]);
+        }
+        out[j] = static_cast<float>(acc);
+      }
+      return out;
+    };
+    array a_store_arr(a_store.begin(), Shape{2, 5}, float32);
+    array a_slice = slice(a_store_arr, {1, 0}, {2, 3}, {1, 1}, stream);
+    array b_store_arr(b_store.begin(), Shape{4, 3}, float32);
+    array b_slice = slice(b_store_arr, {1, 0}, {4, 3}, {1, 1}, stream);
+    std::vector<float> expected = host_row(a_payload, 3);
+    auto [gemv_v, tile_v] = run_paths(
+        [&]() { return matmul(a_slice, b_slice, stream); });
+    check_case(gemv_v, tile_v, expected, float32, 3, "slices");
+
+    std::vector<float> a_pair_values{1.0f, 97.0f, -2.0f, 97.0f, 3.0f,
+        97.0f};
+    array a_pair(a_pair_values.begin(), Shape{3, 2}, float32);
+    array a_transposed = transpose(
+        slice(a_pair, {0, 0}, {3, 1}, {1, 1}, stream), {1, 0}, stream);
+    std::vector<float> expected_t = host_row(a_payload, 3);
+    auto [gemv_t, tile_t] = run_paths(
+        [&]() { return matmul(a_transposed, b_slice, stream); });
+    check_case(gemv_t, tile_t, expected_t, float32, 3, "a-transposed");
+  }
+
+  {
+    std::vector<float> empty;
+    array empty_a(empty.begin(), Shape{1, 0}, float32);
+    array empty_b(empty.begin(), Shape{0, 3}, float32);
+    auto [gemv_v, tile_v] = run_paths(
+        [&]() { return matmul(empty_a, empty_b, stream); });
+    check_case(gemv_v, tile_v, {0.0f, 0.0f, 0.0f}, float32, 0, "empty-k");
+    array c_vec(
+        std::vector<float>{1.0f, 2.0f, 3.0f}.begin(), Shape{3}, float32);
+    auto [gemv_add, tile_add] = run_paths([&]() {
+      return addmm(c_vec, empty_a, empty_b, 1.0f, 2.0f, stream);
+    });
+    check_case(gemv_add, tile_add, {2.0f, 4.0f, 6.0f}, float32, 0,
+        "empty-k-addmm");
+  }
+
+  {
+    std::mt19937 gen(seed++);
+    std::uniform_real_distribution<float> dist(-2.0f, 2.0f);
+    constexpr int m = 4;
+    constexpr int k = 33;
+    constexpr int n = 9;
+    std::vector<float> a_values(m * k);
+    for (auto& v : a_values) {
+      v = dist(gen);
+    }
+    std::vector<float> b_values(k * n);
+    for (auto& v : b_values) {
+      v = dist(gen);
+    }
+    array a(a_values.begin(), Shape{m, k}, float32);
+    array b(b_values.begin(), Shape{k, n}, float32);
+    DenseGemvGate gate(true);
+    array wide_out = matmul(a, b, stream);
+    REQUIRE(evaluation_error(wide_out).empty());
+    std::vector<float> wide_v = readback_f32(stream, wide_out);
+    gate.set(false);
+    array wide_tile = matmul(a, b, stream);
+    std::vector<float> wide_tile_v = readback_f32(stream, wide_tile);
+    gate.set(true);
+    CHECK(wide_v == wide_tile_v);
+
+    constexpr int wide_n = 65535 * 8 + 8;
+    std::vector<float> tall_b(wide_n, 0.5f);
+    std::vector<float> row{2.0f};
+    array a_one(row.begin(), Shape{1, 1}, float32);
+    array b_tall(tall_b.begin(), Shape{1, wide_n}, float32);
+    array fallback_out = matmul(a_one, b_tall, stream);
+    REQUIRE(evaluation_error(fallback_out).empty());
+    std::vector<float> fallback_v = readback_f32(stream, fallback_out);
+    gate.set(false);
+    array fallback_tile = matmul(a_one, b_tall, stream);
+    std::vector<float> fallback_tile_v = readback_f32(stream, fallback_tile);
+    REQUIRE_EQ(fallback_v.size(), static_cast<size_t>(wide_n));
+    CHECK(fallback_v == fallback_tile_v);
+    double fallback_max = 0.0;
+    REQUIRE_MESSAGE(finite_max(fallback_v, fallback_max),
+        "fallback non-finite output");
+    CHECK(fallback_max == 1.0);
+  }
+
+  std::vector<GemvShape> batched_shapes{{2, 7, 9}, {3, 130, 37}};
+  for (auto dtype : dtypes) {
+    for (bool b_transposed : {false, true}) {
+      for (auto [batch, k, n] : batched_shapes) {
+        std::mt19937 gen(seed++);
+        std::uniform_real_distribution<float> dist(-2.0f, 2.0f);
+        std::vector<float> a_values(static_cast<size_t>(batch) * k);
+        for (auto& v : a_values) {
+          v = dist(gen);
+        }
+        std::vector<float> b_values(static_cast<size_t>(batch) * k * n);
+        for (auto& v : b_values) {
+          v = dist(gen);
+        }
+        std::vector<float> a_rt = round_trip(stream, a_values, dtype);
+        std::vector<float> b_rt = round_trip(stream, b_values, dtype);
+        std::vector<float> expected =
+            host_matmul(a_rt, b_rt, batch, 1, k, n);
+        std::string tag = b_transposed ? "transposed-b" : "dense-b";
+        INFO(tag << " batch=" << batch << " k=" << k << " n=" << n);
+
+        array a(a_rt.begin(), Shape{batch, 1, k}, dtype);
+        std::vector<float> b_store_values;
+        if (b_transposed) {
+          b_store_values.resize(b_rt.size());
+          for (int bt = 0; bt < batch; ++bt) {
+            for (int row = 0; row < k; ++row) {
+              for (int column = 0; column < n; ++column) {
+                b_store_values[static_cast<size_t>(bt) * n * k +
+                    static_cast<size_t>(column) * k + row] =
+                    b_rt[static_cast<size_t>(bt) * k * n +
+                        static_cast<size_t>(row) * n + column];
+              }
+            }
+          }
+        }
+        auto build_op = [&]() {
+          if (!b_transposed) {
+            array b(b_rt.begin(), Shape{batch, k, n}, dtype);
+            return matmul(a, b, stream);
+          }
+          array b_store(
+              b_store_values.begin(), Shape{batch, n, k}, dtype);
+          return matmul(a, transpose(b_store, {0, 2, 1}, stream), stream);
+        };
+        auto [gemv_v, tile_v] = run_paths(build_op);
+        REQUIRE_EQ(gemv_v.size(),
+            static_cast<size_t>(batch) * static_cast<size_t>(n));
+        check_case(gemv_v, tile_v, expected, dtype, k, tag);
+      }
+    }
+  }
+
+  {
+    constexpr int batch = 2;
+    constexpr int k = 15;
+    constexpr int n = 5;
+    std::mt19937 gen(seed++);
+    std::uniform_real_distribution<float> dist(-2.0f, 2.0f);
+    std::vector<float> a_values(batch * k);
+    for (auto& v : a_values) {
+      v = dist(gen);
+    }
+    std::vector<float> b_values(k * n);
+    for (auto& v : b_values) {
+      v = dist(gen);
+    }
+    array a(a_values.begin(), Shape{batch, 1, k}, float32);
+    array b2(b_values.begin(), Shape{k, n}, float32);
+    auto build_op = [&]() {
+      return matmul(a, broadcast_to(b2, Shape{batch, k, n}, stream), stream);
+    };
+    auto [gemv_v, tile_v] = run_paths(build_op);
+    std::vector<float> repeated_b;
+    repeated_b.reserve(static_cast<size_t>(batch) * k * n);
+    for (int bt = 0; bt < batch; ++bt) {
+      repeated_b.insert(repeated_b.end(), b_values.begin(), b_values.end());
+    }
+    std::vector<float> expected =
+        host_matmul(a_values, repeated_b, batch, 1, k, n);
+    check_case(gemv_v, tile_v, expected, float32, k, "broadcast-b");
+  }
+
+  for (auto dtype : dtypes) {
+    constexpr int batch = 2;
+    constexpr int k = 41;
+    constexpr int n = 11;
+    std::mt19937 gen(seed++);
+    std::uniform_real_distribution<float> dist(-2.0f, 2.0f);
+    std::vector<float> a_values(batch * k);
+    for (auto& v : a_values) {
+      v = dist(gen);
+    }
+    std::vector<float> b_values(static_cast<size_t>(batch) * k * n);
+    for (auto& v : b_values) {
+      v = dist(gen);
+    }
+    std::vector<float> a_rt = round_trip(stream, a_values, dtype);
+    std::vector<float> b_rt = round_trip(stream, b_values, dtype);
+    std::vector<float> mm = host_matmul(a_rt, b_rt, batch, 1, k, n);
+    std::vector<float> c_values(batch * n);
+    for (auto& v : c_values) {
+      v = dist(gen);
+    }
+    std::vector<float> c_rt = round_trip(stream, c_values, dtype);
+    constexpr float alpha = 1.5f;
+    constexpr float beta = -0.75f;
+    array a(a_rt.begin(), Shape{batch, 1, k}, dtype);
+    array b(b_rt.begin(), Shape{batch, k, n}, dtype);
+    array c_full(c_rt.begin(), Shape{batch, 1, n}, dtype);
+    array c_vector(c_rt.begin(), Shape{n}, dtype);
+    array c_scalar(std::vector<float>{c_rt[0]}.begin(), Shape{1}, dtype);
+    for (int mode = 0; mode < 3; ++mode) {
+      std::vector<float> expected(mm.size());
+      for (size_t i = 0; i < mm.size(); ++i) {
+        float c_value = mode == 0 ? c_rt[0]
+            : mode == 1           ? c_rt[i % n]
+                                  : c_rt[i];
+        expected[i] = static_cast<float>(
+            static_cast<double>(alpha) * mm[i] +
+            static_cast<double>(beta) * c_value);
+      }
+      auto build_op = [&]() {
+        if (mode == 0) {
+          return addmm(c_scalar, a, b, alpha, beta, stream);
+        }
+        if (mode == 1) {
+          return addmm(c_vector, a, b, alpha, beta, stream);
+        }
+        return addmm(c_full, a, b, alpha, beta, stream);
+      };
+      auto [gemv_v, tile_v] = run_paths(build_op);
+      std::string tag = mode == 0 ? "addmm-scalar"
+          : mode == 1             ? "addmm-vector"
+                                  : "addmm-full";
+      check_case(gemv_v, tile_v, expected, dtype, k, tag);
     }
   }
 }
