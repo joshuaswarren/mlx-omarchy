@@ -58,6 +58,7 @@ device_info(int device_index) {
         static_cast<size_t>(caps.host_visible_coherent ? 1 : 0);
     info["shader_float16"] = static_cast<size_t>(caps.shader_float16 ? 1 : 0);
     info["shader_int16"] = static_cast<size_t>(caps.shader_int16 ? 1 : 0);
+    info["shader_int64"] = static_cast<size_t>(caps.shader_int64 ? 1 : 0);
     info["storage_buffer_16bit_access"] =
         static_cast<size_t>(caps.storage_buffer_16bit_access ? 1 : 0);
     info["max_compute_shared_memory_size"] =

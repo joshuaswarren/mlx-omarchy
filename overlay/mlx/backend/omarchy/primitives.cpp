@@ -650,30 +650,87 @@ void dispatch_logical(
     const std::vector<array>& inputs,
     array& out);
 
+// The params fill and dispatch behind the bool-input comparisons and
+// the bool Power op: two bool inputs, a word-packed bool output. It
+// uses a plain word store (no atomicOr, no zero-fill requirement) and
+// a 7-op selector, avoiding both the Honeykrisp wide-selector
+// store-coalescing miscompile and the shared-accumulator hazard a
+// logical_or.comp extension would carry. The masked C++ cases (test
+// array basics, test array types, gguf metadata, is close, random
+// split, vmap comparison ops) route here, as does Power over bool.
+void dispatch_compare_bool_to(
+    const std::string& name,
+    uint32_t bool_op,
+    const array& lhs,
+    const array& rhs,
+    array& out,
+    omarchy::CommandEncoder& encoder) {
+  out.set_data(allocate_omarchy(out.nbytes()));
+  if (out.size() == 0) {
+    return;
+  }
+  uint32_t count = checked_u32(out.size(), name, out);
+  uint32_t word_count = checked_u32(
+      (static_cast<uint64_t>(count) + 3) / 4, name, out);
+  omarchy::ComputeParams params;
+  params.count = count;
+  params.operation = bool_op;
+  params.lhs_size = checked_u32(lhs.data_size(), name, out);
+  params.rhs_size = checked_u32(rhs.data_size(), name, out);
+  params.output_size = count;
+  params.lhs_offset = checked_item_offset(lhs, params.lhs_size, name, out);
+  params.rhs_offset = checked_item_offset(rhs, params.rhs_size, name, out);
+  params.output_offset = checked_item_offset(out, count, name, out);
+  bool general_broadcast =
+      !is_trailing_broadcast(lhs, out) || !is_trailing_broadcast(rhs, out);
+  if (general_broadcast) {
+    fill_broadcast_transport(name, params, lhs, rhs, out);
+  }
+  std::array<omarchy::ComputeBinding, 3> bindings{
+      binding(lhs), binding(rhs), binding(out)};
+  encoder.dispatch_compute(
+      omarchy::ComputeKernel::CompareBool,
+      bindings,
+      params,
+      omarchy::compute_dispatch_group_count(word_count));
+}
+
 void dispatch_comparison(
     const std::string& name,
     uint32_t operation,
     const std::vector<array>& inputs,
     array& out,
     uint32_t flags = 0) {
-  const array& lhs = inputs.at(0);
-  const array& rhs = inputs.at(1);
+  const array& in_lhs = inputs.at(0);
+  const array& in_rhs = inputs.at(1);
   auto& encoder = omarchy::get_command_encoder(out.primitive().stream());
   if (out.dtype() != bool_) {
     omarchy::unsupported(name + " output dtype", out);
   }
-  // Bool inputs run through compare_bool.comp, a dedicated kernel for
-  // the comparison sextet. It uses a plain word store (no atomicOr, no
-  // zero-fill requirement) and a 6-op selector, avoiding both the
-  // Honeykrisp wide-selector store-coalescing miscompile and the
-  // shared-accumulator hazard a logical_or.comp extension would carry.
-  // The 6 masked C++ cases (test array basics, test array types, gguf
-  // metadata, is close, random split, vmap comparison ops) route here.
+  // Views with gaps or negative strides (flip, as_strided) materialize
+  // through the strided-copy engine first: the transport strides are
+  // unsigned, so a negative stride would wrap the span computation and
+  // the kernel would read the wrong elements. Dense inputs, broadcast
+  // views, and transposes keep the zero-copy path.
+  std::optional<array> lhs_temp;
+  std::optional<array> rhs_temp;
+  const array& lhs = ensure_dense(
+      in_lhs,
+      in_lhs.flags().contiguous,
+      lhs_temp,
+      encoder,
+      out.primitive().stream());
+  const array& rhs = ensure_dense(
+      in_rhs,
+      in_rhs.flags().contiguous,
+      rhs_temp,
+      encoder,
+      out.primitive().stream());
   if (lhs.dtype() == bool_) {
     // Map ComparisonOperation onto compare_bool selector codes.
     // ComparisonOperation: Equal=0, GreaterEqual=1, Greater=2, Less=3,
     // LessEqual=4, NotEqual=5. compare_bool: Equal=0, NotEqual=1,
-    // Greater=2, Less=3, GreaterEqual=4, LessEqual=5.
+    // Greater=2, Less=3, GreaterEqual=4, LessEqual=5, Power=6.
     uint bool_op;
     switch (operation) {
       case CompareEqual:        bool_op = 0u; break;
@@ -684,39 +741,14 @@ void dispatch_comparison(
       case CompareLessEqual:    bool_op = 5u; break;
       default: omarchy::unsupported(name + " bool selector", out);
     }
-    out.set_data(allocate_omarchy(out.nbytes()));
-    if (out.size() == 0) {
-      return;
-    }
-    uint32_t count = checked_u32(out.size(), name, out);
-    uint32_t word_count = checked_u32(
-        (static_cast<uint64_t>(count) + 3) / 4, name, out);
-    omarchy::ComputeParams params;
-    params.count = count;
-    params.operation = bool_op;
-    params.lhs_size = checked_u32(lhs.data_size(), name, out);
-    params.rhs_size = checked_u32(rhs.data_size(), name, out);
-    params.output_size = count;
-    params.lhs_offset = checked_item_offset(lhs, params.lhs_size, name, out);
-    params.rhs_offset = checked_item_offset(rhs, params.rhs_size, name, out);
-    params.output_offset = checked_item_offset(out, count, name, out);
-    bool general_broadcast =
-        !is_trailing_broadcast(lhs, out) || !is_trailing_broadcast(rhs, out);
-    if (general_broadcast) {
-      fill_broadcast_transport(name, params, lhs, rhs, out);
-    }
-    std::array<omarchy::ComputeBinding, 3> bindings{
-        binding(lhs), binding(rhs), binding(out)};
-    encoder.dispatch_compute(
-        omarchy::ComputeKernel::CompareBool,
-        bindings,
-        params,
-        omarchy::compute_dispatch_group_count(word_count));
+    dispatch_compare_bool_to(name, bool_op, lhs, rhs, out, encoder);
     return;
   }
   if (lhs.dtype() != rhs.dtype() ||
       (lhs.dtype() != float32 && lhs.dtype() != float16 &&
-       lhs.dtype() != bfloat16 && lhs.dtype() != int32)) {
+       lhs.dtype() != bfloat16 && lhs.dtype() != int32 &&
+       lhs.dtype() != uint32 && lhs.dtype() != int64 &&
+       lhs.dtype() != complex64)) {
     omarchy::unsupported(name + " dtype", out);
   }
   const auto& capabilities = encoder.device().capabilities();
@@ -729,6 +761,11 @@ void dispatch_comparison(
       (!capabilities.storage_buffer_16bit_access ||
        !capabilities.shader_int16)) {
     omarchy::unsupported(name + " bfloat16 capability", out);
+  }
+  // 64-bit loads and compares need the device feature; the compare
+  // shader uses int64_t storage directly.
+  if (lhs.dtype() == int64 && !capabilities.shader_int64) {
+    omarchy::unsupported(name + " int64 capability", out);
   }
 
   out.set_data(allocate_omarchy(out.nbytes()));
@@ -758,8 +795,10 @@ void dispatch_comparison(
   auto kernel = lhs.dtype() == float16
       ? omarchy::ComputeKernel::CompareF16
       : lhs.dtype() == bfloat16 ? omarchy::ComputeKernel::CompareBF16
-                                : lhs.dtype() == int32
-          ? omarchy::ComputeKernel::CompareI32
+          : lhs.dtype() == int32 ? omarchy::ComputeKernel::CompareI32
+          : lhs.dtype() == uint32 ? omarchy::ComputeKernel::CompareU32
+          : lhs.dtype() == int64 ? omarchy::ComputeKernel::CompareI64
+          : lhs.dtype() == complex64 ? omarchy::ComputeKernel::CompareComplex
           : omarchy::ComputeKernel::CompareF32;
   encoder.dispatch_compute(
       kernel,
@@ -858,6 +897,9 @@ enum IntElementwiseOperation : uint32_t {
   IntAddOperation,
   IntMultiplyOperation,
   IntSquareOperation,
+  IntMinimumOperation,
+  IntMaximumOperation,
+  IntDivideOperation,
 };
 
 // The params fill and dispatch behind dispatch_int_elementwise,
@@ -1848,6 +1890,7 @@ enum ComplexOperation : uint32_t {
   ComplexMultiply,
   ComplexDivide,
   ComplexNegative,
+  ComplexLogAddExp,
 };
 
 // The params fill and dispatch behind the complex64 elementwise
@@ -2788,6 +2831,13 @@ void Divide::eval_gpu(const std::vector<array>& inputs, array& out) {
   if (out.dtype() == complex64) {
     dispatch_complex(
         name(), ComplexDivide, inputs, out, out.primitive().stream());
+    return;
+  }
+  if (out.dtype() == int32 || out.dtype() == uint32) {
+    // Integer-output Divide is what upstream floor_divide emits for
+    // promoted integer inputs; the kernel truncates like the upstream
+    // C++ operator/.
+    dispatch_int_elementwise(name(), IntDivideOperation, inputs, out);
     return;
   }
   dispatch_elementwise(
@@ -4098,18 +4148,14 @@ void QQMatmul::eval_gpu(const std::vector<array>& inputs, array& out) {
 void Greater::eval_gpu(const std::vector<array>& inputs, array& out) {
   dispatch_comparison(name(), CompareGreater, inputs, out);
 }
-// GreaterEqual serves the composed causal mask: two int32 index arrays
-// (broadcast views with stride-0 axes) produce a bool mask. Other dtypes
-// stay named rejections. The comparison kernel packs the bytes into
+// GreaterEqual serves the composed causal mask (two int32 index arrays
+// with stride-0 axes produce a bool mask) and the rest of the
+// comparison dtype table: the dispatch decides which dtypes run and
+// which refuse by name. The comparison kernel packs the bytes into
 // 32-bit words, so the dispatch covers words.
 void GreaterEqual::eval_gpu(
     const std::vector<array>& inputs,
     array& out) {
-  const array& a = inputs.at(0);
-  const array& b = inputs.at(1);
-  if (a.dtype() != int32 || b.dtype() != int32) {
-    omarchy::unsupported("GreaterEqual dtype", out);
-  }
   dispatch_comparison(name(), CompareGreaterEqual, inputs, out);
 }
 // Hadamard runs the fast Walsh-Hadamard transform over the last axis, the
@@ -4286,7 +4332,18 @@ void LogicalNot::eval_gpu(const std::vector<array>& inputs, array& out) {
 void LogicalOr::eval_gpu(const std::vector<array>& inputs, array& out) {
   dispatch_logical(name(), LogicalOrOperation, inputs, out);
 }
-OMARCHY_BINARY(LogAddExp, LogAddExpOperation)
+void LogAddExp::eval_gpu(const std::vector<array>& inputs, array& out) {
+  if (out.dtype() == complex64) {
+    // Upstream evaluates complex logaddexp through the same binary
+    // primitive; the kernel mirrors the CPU formula including the
+    // -inf selects.
+    dispatch_complex(
+        name(), ComplexLogAddExp, inputs, out, out.primitive().stream());
+    return;
+  }
+  dispatch_elementwise(
+      name(), LogAddExpOperation, inputs, out, out.primitive().stream());
+}
 void LogSumExp::eval_gpu(const std::vector<array>& inputs, array& out) {
   const array& input = inputs.at(0);
   auto& encoder = omarchy::get_command_encoder(out.primitive().stream());
@@ -4385,7 +4442,14 @@ void Matmul::eval_gpu(const std::vector<array>& inputs, array& out) {
   dispatch_matmul(
       name(), inputs, out, 1.0f, 0.0f, false, out.primitive().stream());
 }
-OMARCHY_BINARY(Maximum, MaximumOperation)
+void Maximum::eval_gpu(const std::vector<array>& inputs, array& out) {
+  if (out.dtype() == int32 || out.dtype() == uint32) {
+    dispatch_int_elementwise(name(), IntMaximumOperation, inputs, out);
+    return;
+  }
+  dispatch_elementwise(
+      name(), MaximumOperation, inputs, out, out.primitive().stream());
+}
 void MaskedScatter::eval_gpu(const std::vector<array>& inputs, array& out) {
   const array& dst = inputs.at(0);
   const array& mask = inputs.at(1);
@@ -4458,7 +4522,14 @@ void MaskedScatter::eval_gpu(const std::vector<array>& inputs, array& out) {
   encoder.dispatch_compute(
       kernel, bindings, params, checked_u32(rows, "MaskedScatter", out));
 }
-OMARCHY_BINARY(Minimum, MinimumOperation)
+void Minimum::eval_gpu(const std::vector<array>& inputs, array& out) {
+  if (out.dtype() == int32 || out.dtype() == uint32) {
+    dispatch_int_elementwise(name(), IntMinimumOperation, inputs, out);
+    return;
+  }
+  dispatch_elementwise(
+      name(), MinimumOperation, inputs, out, out.primitive().stream());
+}
 void Multiply::eval_gpu(const std::vector<array>& inputs, array& out) {
   if (out.dtype() == complex64) {
     dispatch_complex(
@@ -4499,6 +4570,19 @@ void Partition::eval_gpu(const std::vector<array>& inputs, array& out) {
 // Float bases below zero need the sign handling GLSL's pow refuses:
 // non-integer exponents produce NaN, odd integer exponents negate.
 void Power::eval_gpu(const std::vector<array>& inputs, array& out) {
+  if (out.dtype() == bool_) {
+    // Upstream power promotes bool to bool (promote_types of two bools)
+    // and evaluates pow over {0, 1}: x^y is x || !y. The bool kernel's
+    // selector code 6 carries it.
+    auto& encoder = omarchy::get_command_encoder(out.primitive().stream());
+    const array& lhs = inputs.at(0);
+    const array& rhs = inputs.at(1);
+    if (lhs.dtype() != bool_ || rhs.dtype() != bool_) {
+      omarchy::unsupported(std::string(name()) + " dtype", out);
+    }
+    dispatch_compare_bool_to(name(), 6u, lhs, rhs, out, encoder);
+    return;
+  }
   if (out.dtype() == int32 || out.dtype() == uint32) {
     dispatch_int_elementwise(name(), IntPowerOperation, inputs, out);
     return;
@@ -6059,6 +6143,13 @@ void Sort::eval_gpu(const std::vector<array>& inputs, array& out) {
   dispatch_sort("Sort", input, out, false, encoder);
 }
 void Square::eval_gpu(const std::vector<array>& inputs, array& out) {
+  if (out.dtype() == complex64) {
+    // z*z through the complex multiply kernel; the unary dispatch
+    // binds the single input to both operand slots.
+    dispatch_complex(
+        name(), ComplexMultiply, inputs, out, out.primitive().stream());
+    return;
+  }
   if (out.dtype() == int32 || out.dtype() == uint32) {
     dispatch_int_elementwise(name(), IntSquareOperation, inputs, out);
     return;

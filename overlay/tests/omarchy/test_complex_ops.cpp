@@ -448,3 +448,42 @@ TEST_CASE("fft accepts a non-contiguous complex64 input") {
   }
   check_close(read_complex(spectrum, stream), expect, 1e-4);
 }
+
+TEST_CASE("complex square, logaddexp, and equality match host references") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+
+  // Square = z*z through the complex multiply kernel.
+  array z({complex64_t{1, 2}, complex64_t{-1, 0.5f}, complex64_t{0, -3}}, {3});
+  auto sq = read_complex(square(z, stream), stream);
+  CHECK(sq[0].real() == doctest::Approx(-3.0));
+  CHECK(sq[0].imag() == doctest::Approx(4.0));
+  CHECK(sq[1].real() == doctest::Approx(0.75));
+  CHECK(sq[1].imag() == doctest::Approx(-1.0));
+  CHECK(sq[2].real() == doctest::Approx(-9.0));
+  CHECK(sq[2].imag() == doctest::Approx(0.0).epsilon(1e-6));
+
+  // Equality: componentwise exact, including equal_nan=false defaults.
+  array e1({complex64_t{1, 2}, complex64_t{0, 0}}, {2});
+  array e2({complex64_t{1, 2}, complex64_t{0, 1}}, {2});
+  CHECK(all(equal(e1, e2, stream), stream).item<bool>() == false);
+  CHECK(any(not_equal(e1, e2, stream), stream).item<bool>() == true);
+  CHECK(all(not_equal(e1, e2, stream), stream).item<bool>() == false);
+  CHECK(all(equal(e1, e1, stream), stream).item<bool>() == true);
+
+  // LogAddExp on a vector pair against the host formula
+  // max + log(1 + exp(min - max)) in complex arithmetic.
+  array lv({complex64_t{1, 1}, complex64_t{2, 0}}, {2});
+  array rv({complex64_t{1, 1}, complex64_t{1, 1}}, {2});
+  auto la = read_complex(logaddexp(lv, rv, stream), stream);
+  std::complex<double> expect0 =
+      std::complex<double>(1, 1) + std::log(std::complex<double>(2, 0));
+  std::complex<double> expect1 = std::complex<double>(2, 0) +
+      std::log(1.0 + std::exp(std::complex<double>(-1, 1)));
+  CHECK(la[0].real() == doctest::Approx(expect0.real()).epsilon(1e-5));
+  CHECK(la[0].imag() == doctest::Approx(expect0.imag()).epsilon(1e-5));
+  CHECK(la[1].real() == doctest::Approx(expect1.real()).epsilon(1e-5));
+  CHECK(la[1].imag() == doctest::Approx(expect1.imag()).epsilon(1e-5));
+}

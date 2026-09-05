@@ -203,6 +203,7 @@ CapabilityReport collect_capabilities(
   caps.timeline_semaphore = f12.timelineSemaphore == VK_TRUE;
   caps.shader_float16 = f12.shaderFloat16 == VK_TRUE;
   caps.shader_int16 = feats2.features.shaderInt16 == VK_TRUE;
+  caps.shader_int64 = feats2.features.shaderInt64 == VK_TRUE;
   caps.storage_buffer_16bit_access = f16.storageBuffer16BitAccess == VK_TRUE;
 
   caps.max_allocation_size = m3.maxMemoryAllocationSize;
@@ -634,6 +635,7 @@ Device::Device(uint32_t physical_device_index) {
   VkPhysicalDeviceFeatures2 enabled2{
       VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2};
   enabled2.features.shaderInt16 = caps_.shader_int16 ? VK_TRUE : VK_FALSE;
+  enabled2.features.shaderInt64 = caps_.shader_int64 ? VK_TRUE : VK_FALSE;
   enabled16.pNext = &enabled12;
   enabled12.pNext = &enabled13;
   enabled13.pNext = &enabled_fa;
