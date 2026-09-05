@@ -949,6 +949,154 @@ TEST_CASE("FP16 hadamard matches the reference within half precision") {
       1e-2);
 }
 
+TEST_CASE("rank-5 general reductions preserve every operation") {
+  if (!compute_available()) {
+    return;
+  }
+  auto stream = gpu_stream();
+  Shape shape{2, 2, 2, 2, 2};
+  std::vector<int32_t> values(32);
+  for (size_t i = 0; i < values.size(); ++i) {
+    values[i] = static_cast<int32_t>(i) + 1;
+  }
+  array x(values.begin(), shape, int32);
+  std::vector<int32_t> sums;
+  std::vector<int32_t> mins;
+  std::vector<int32_t> maxs;
+  for (int i1 = 0; i1 < 2; ++i1) {
+    for (int i3 = 0; i3 < 2; ++i3) {
+      int32_t total = 0;
+      int32_t smallest = std::numeric_limits<int32_t>::max();
+      int32_t largest = std::numeric_limits<int32_t>::min();
+      for (int i0 = 0; i0 < 2; ++i0) {
+        for (int i2 = 0; i2 < 2; ++i2) {
+          for (int i4 = 0; i4 < 2; ++i4) {
+            int index = (((i0 * 2 + i1) * 2 + i2) * 2 + i3) * 2 + i4;
+            total += values[index];
+            smallest = std::min(smallest, values[index]);
+            largest = std::max(largest, values[index]);
+          }
+        }
+      }
+      sums.push_back(total);
+      mins.push_back(smallest);
+      maxs.push_back(largest);
+    }
+  }
+  std::vector<int> axes{0, 2, 4};
+  check_int32_values(sum(x, axes, false, stream), sums, stream);
+  check_int32_values(min(x, axes, false, stream), mins, stream);
+  check_int32_values(max(x, axes, false, stream), maxs, stream);
+  array kept = sum(x, axes, true, stream);
+  CHECK_EQ(kept.shape(), Shape{1, 2, 1, 2, 1});
+  check_int32_values(kept, sums, stream);
+
+  std::vector<int32_t> factors(32, 1);
+  for (int i0 = 0; i0 < 2; ++i0) {
+    for (int i1 = 0; i1 < 2; ++i1) {
+      for (int i2 = 0; i2 < 2; ++i2) {
+        for (int i3 = 0; i3 < 2; ++i3) {
+          for (int i4 = 0; i4 < 2; ++i4) {
+            if (i0 == 1) {
+              int index = (((i0 * 2 + i1) * 2 + i2) * 2 + i3) * 2 + i4;
+              factors[index] = 2;
+            }
+          }
+        }
+      }
+    }
+  }
+  array factor_grid(factors.begin(), shape, int32);
+  check_int32_values(prod(factor_grid, axes, false, stream),
+                     {16, 16, 16, 16}, stream);
+  const auto& capabilities = omarchy::device(0).capabilities();
+  if (capabilities.shader_float16 &&
+      capabilities.storage_buffer_16bit_access) {
+    std::vector<float> half_values(4097, 1.0f);
+    half_values[4000] = 2.0f;
+    array half = astype(
+        array(half_values.begin(), Shape{1, 1, 1, 1, 4097}, float32),
+        float16,
+        stream);
+    check_values(
+        astype(
+            prod(half, std::vector<int>{0, 1, 2, 3, 4}, false, stream),
+            float32,
+            stream),
+        {2.0f},
+        stream,
+        1e-3);
+  }
+
+  std::vector<bool> flags(32, true);
+  for (int i0 = 0; i0 < 2; ++i0) {
+    for (int i2 = 0; i2 < 2; ++i2) {
+      for (int i4 = 0; i4 < 2; ++i4) {
+        int index = (((i0 * 2) * 2 + i2) * 2) * 2 + i4;
+        flags[index] = false;
+      }
+    }
+  }
+  array flag_grid(flags.begin(), shape, bool_);
+  check_bool_values(any(flag_grid, axes, false, stream),
+                    {false, true, true, true}, stream);
+  check_bool_values(all(flag_grid, axes, false, stream),
+                    {false, true, true, true}, stream);
+}
+
+TEST_CASE("rank-5 strided and broadcast reductions preserve logical order") {
+  if (!compute_available()) {
+    return;
+  }
+  auto stream = gpu_stream();
+  std::vector<float> values(48);
+  for (size_t i = 0; i < values.size(); ++i) {
+    values[i] = static_cast<float>(i) + 1.0f;
+  }
+  array base(values.begin(), Shape{2, 3, 2, 2, 2}, float32);
+  array view = transpose(base, {4, 1, 3, 0, 2});
+  std::vector<float> expected;
+  for (int i1 = 0; i1 < 3; ++i1) {
+    for (int i3 = 0; i3 < 2; ++i3) {
+      float total = 0.0f;
+      for (int i0 = 0; i0 < 2; ++i0) {
+        for (int i2 = 0; i2 < 2; ++i2) {
+          for (int i4 = 0; i4 < 2; ++i4) {
+            int index = (((i3 * 3 + i1) * 2 + i4) * 2 + i2) * 2 + i0;
+            total += values[index];
+          }
+        }
+      }
+      expected.push_back(total);
+    }
+  }
+  check_values(sum(view, std::vector<int>{0, 2, 4}, false, stream),
+               expected, stream);
+
+  array scalar(3, int32);
+  array expanded = broadcast_to(scalar, {2, 3, 2, 2, 2});
+  check_int32_values(sum(expanded, std::vector<int>{0, 2, 4}, false, stream),
+                     {24, 24, 24, 24, 24, 24}, stream);
+}
+
+TEST_CASE("rank-6 empty reductions retain upstream identities") {
+  if (!compute_available()) {
+    return;
+  }
+  auto stream = gpu_stream();
+  Shape shape{2, 1, 0, 3, 1, 2};
+  std::vector<int> axes{2, 4};
+  array ints = zeros(shape, int32, stream);
+  check_int32_values(sum(ints, axes, false, stream),
+                     std::vector<int32_t>(12, 0), stream);
+  check_int32_values(prod(ints, axes, false, stream),
+                     std::vector<int32_t>(12, 1), stream);
+  array flags = zeros(shape, bool_, stream);
+  check_bool_values(any(flags, axes, false, stream),
+                    std::vector<bool>(12, false), stream);
+  check_bool_values(all(flags, axes, false, stream),
+                    std::vector<bool>(12, true), stream);
+}
 TEST_CASE("out-of-scope dtypes and shapes keep their named errors") {
   if (!compute_available()) {
     return;
@@ -978,12 +1126,6 @@ TEST_CASE("out-of-scope dtypes and shapes keep their named errors") {
   CHECK(evaluation_error(hadamard_transform(bad, std::nullopt, stream))
             .find("Hadamard size") != std::string::npos);
 
-  // Rank above the push-constant array cap stays a named error for the
-  // integer general path.
-  std::vector<int32_t> deep(32, 1);
-  array grid5(deep.begin(), Shape{2, 2, 2, 2, 2}, int32);
-  CHECK(evaluation_error(sum(grid5, std::vector<int>{0}, false, stream))
-            .find("Sum rank above 4") != std::string::npos);
 }
 
 

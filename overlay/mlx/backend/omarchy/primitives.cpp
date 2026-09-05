@@ -1158,23 +1158,62 @@ omarchy::ComputeKernel select_reduce_general_kernel(Dtype dtype) {
   }
 }
 
-// The stride-walking general reduction: axes in any position, up to four
-// total. Push-constant routing mirrors shaders/reduce_general.comp:
-// shape[] carries the kept extents then the reduced extents, in_strides[]
-// the kept input strides, out_strides[] the reduced input strides, dims
-// the kept count, and matrix_m the reduced count. A broadcast view
-// reduces correctly because its expanded axes carry stride 0.
-//
-// Single-invocation serial loops in the shader are bounded by the driver
-// (the lavapipe runtime stops after roughly 2^15 trips for this kernel
-// shape, depending on local size), so reduce_size is split across chunks
-// when it exceeds kReduceGeneralChunkTrips. The kernel runs in two
-// phases: the partial phase writes one accumulator per (output element,
-// chunk) to a scratch buffer at binding 1; the combine phase reads that
-// scratch and emits the final typed output (or word-packed bool output).
-// When the whole reduce fits in a single chunk the partial phase skips
-// scratch and writes the accumulator straight to the output, matching the
-// pre-tiling behaviour for small reductions.
+struct ReductionAxis {
+  uint32_t extent;
+  uint32_t stride;
+  bool reduced;
+};
+
+std::vector<ReductionAxis> collapse_reduction_axes(
+    const std::string& operation_name,
+    const array& input,
+    const array& out,
+    const std::vector<int>& axes) {
+  std::vector<bool> reduction_mask(input.ndim(), false);
+  for (int axis : axes) {
+    if (axis < 0 || axis >= input.ndim()) {
+      omarchy::unsupported(operation_name + " axes", out);
+    }
+    reduction_mask[axis] = true;
+  }
+
+  std::vector<ReductionAxis> collapsed;
+  collapsed.reserve(input.ndim());
+  for (int axis = 0; axis < input.ndim(); ++axis) {
+    int extent = input.shape(axis);
+    if (extent == 1) {
+      continue;
+    }
+    int64_t raw_stride = extent == 0 ? 0 : input.strides()[axis];
+    if (raw_stride < 0 ||
+        static_cast<uint64_t>(raw_stride) >
+            std::numeric_limits<uint32_t>::max()) {
+      omarchy::unsupported(operation_name + " stride", out);
+    }
+    uint32_t axis_extent = checked_u32(
+        static_cast<size_t>(extent), operation_name + " shape", out);
+    uint32_t axis_stride = static_cast<uint32_t>(raw_stride);
+    bool reduced = reduction_mask[axis];
+    bool merge = !collapsed.empty() && collapsed.back().reduced == reduced &&
+        axis_extent != 0 &&
+        ((collapsed.back().stride == 0 && axis_stride == 0) ||
+         static_cast<uint64_t>(axis_stride) * axis_extent ==
+             collapsed.back().stride);
+    if (!merge) {
+      collapsed.push_back({axis_extent, axis_stride, reduced});
+      continue;
+    }
+    uint64_t merged_extent =
+        static_cast<uint64_t>(collapsed.back().extent) * axis_extent;
+    if (merged_extent > std::numeric_limits<uint32_t>::max()) {
+      omarchy::unsupported(operation_name + " shape", out);
+    }
+    collapsed.back().extent = static_cast<uint32_t>(merged_extent);
+    collapsed.back().stride = axis_stride;
+  }
+  return collapsed;
+}
+
 void dispatch_reduce_general(
     const std::string& operation_name,
     uint32_t operation,
@@ -1183,30 +1222,30 @@ void dispatch_reduce_general(
     const std::vector<int>& axes,
     omarchy::CommandEncoder& encoder,
     omarchy::ComputeKernel kernel) {
-  if (input.ndim() > 4) {
-    omarchy::unsupported(operation_name + " rank above 4", out);
+  auto collapsed =
+      collapse_reduction_axes(operation_name, input, out, axes);
+  std::vector<ReductionAxis> kept;
+  std::vector<ReductionAxis> reduced;
+  kept.reserve(collapsed.size());
+  reduced.reserve(collapsed.size());
+  for (const auto& axis : collapsed) {
+    (axis.reduced ? reduced : kept).push_back(axis);
   }
-  std::vector<int> kept;
-  std::vector<int> reduced;
-  for (int axis = 0; axis < input.ndim(); ++axis) {
-    if (std::find(axes.begin(), axes.end(), axis) != axes.end()) {
-      reduced.push_back(axis);
-    } else {
-      kept.push_back(axis);
+
+  uint64_t reduce_size = 1;
+  for (const auto& axis : reduced) {
+    reduce_size *= axis.extent;
+    if (reduce_size > std::numeric_limits<uint32_t>::max()) {
+      omarchy::unsupported(operation_name + " reduction size", out);
     }
-  }
-  size_t reduce_size = 1;
-  for (int axis : reduced) {
-    reduce_size *= input.shape(axis);
   }
   out.set_data(allocate_omarchy(out.nbytes()));
   if (out.size() == 0) {
     return;
   }
   uint32_t output_size = checked_u32(out.size(), operation_name, out);
+  uint32_t reduce_size_u32 = static_cast<uint32_t>(reduce_size);
   const array& bound_input = input.size() == 0 ? out : input;
-  uint32_t reduce_size_u32 =
-      checked_u32(reduce_size, operation_name, out);
   constexpr uint32_t kReduceGeneralChunkTrips = 4096;
   uint32_t chunks = reduce_size_u32 == 0
       ? 1u
@@ -1215,17 +1254,12 @@ void dispatch_reduce_general(
   if (chunks == 0) {
     chunks = 1;
   }
-  // The scratch buffer holds one partial per (output element, chunk);
-  // the bool AnyAll variant uses 0/1 uints, every other variant uses
-  // the input width (with float variants accumulating in float32, the
-  // rule the suffix reduce and scan kernels follow).
   bool bool_out = out.dtype() == bool_;
-  Dtype scratch_dtype = bool_out ? uint32 : input.dtype();
-  uint64_t scratch_elems =
-      static_cast<uint64_t>(output_size) * chunks;
-  // 64 MiB partials cap keeps any single dispatch's working memory
-  // within the device's reachable resident set on lavapipe; shapes that
-  // demand more are refused by name so the failure is loud.
+  Dtype scratch_dtype =
+      bool_out ? uint32
+               : (issubdtype(input.dtype(), floating) ? float32
+                                                      : input.dtype());
+  uint64_t scratch_elems = static_cast<uint64_t>(output_size) * chunks;
   if (scratch_elems > (1ull << 25)) {
     omarchy::unsupported(
         operation_name + " reduction split exceeds scratch budget", out);
@@ -1244,25 +1278,90 @@ void dispatch_reduce_general(
       bound_input, input.size(), operation_name, out);
   params.output_offset = checked_item_offset(
       out, out.size(), operation_name, out);
-  params.dims = static_cast<uint32_t>(kept.size());
-  params.matrix_m = static_cast<uint32_t>(reduced.size());
+  params.dims = checked_u32(kept.size(), operation_name + " rank", out);
+  params.matrix_m =
+      checked_u32(reduced.size(), operation_name + " rank", out);
   params.matrix_n = chunks;
-  for (size_t index = 0; index < kept.size(); ++index) {
-    params.shape[index] = static_cast<uint32_t>(input.shape(kept[index]));
-    params.in_strides[index] =
-        static_cast<uint32_t>(input.strides()[kept[index]]);
+
+  uint64_t input_span = 0;
+  if (reduce_size_u32 != 0) {
+    for (const auto& axis : collapsed) {
+      uint64_t term =
+          static_cast<uint64_t>(axis.extent - 1u) * axis.stride;
+      if (term > std::numeric_limits<uint32_t>::max() - input_span) {
+        omarchy::unsupported(operation_name + " index span", out);
+      }
+      input_span += term;
+    }
+    if (!omarchy::compute_index_span_fits(
+            params.lhs_offset, input_span + 1)) {
+      omarchy::unsupported(operation_name + " index span", out);
+    }
+    uint64_t input_bytes =
+        (static_cast<uint64_t>(params.lhs_offset) + input_span + 1) *
+        input.itemsize();
+    if (input_bytes > binding(input).range) {
+      omarchy::unsupported(operation_name + " input allocation", out);
+    }
   }
-  for (size_t index = 0; index < reduced.size(); ++index) {
-    params.shape[kept.size() + index] =
-        static_cast<uint32_t>(input.shape(reduced[index]));
-    params.out_strides[index] =
-        static_cast<uint32_t>(input.strides()[reduced[index]]);
+
+  std::optional<array> axis_metadata;
+  size_t collapsed_rank = kept.size() + reduced.size();
+  if (collapsed_rank <= 4) {
+    for (size_t index = 0; index < kept.size(); ++index) {
+      params.shape[index] = kept[index].extent;
+      params.in_strides[index] = kept[index].stride;
+    }
+    for (size_t index = 0; index < reduced.size(); ++index) {
+      params.shape[kept.size() + index] = reduced[index].extent;
+      params.out_strides[index] = reduced[index].stride;
+    }
+  } else {
+    if (collapsed_rank > static_cast<size_t>(std::numeric_limits<int>::max()) /
+            2) {
+      omarchy::unsupported(operation_name + " rank", out);
+    }
+    std::vector<uint32_t> words;
+    words.reserve(2 * collapsed_rank);
+    for (const auto& axis : kept) {
+      words.push_back(axis.extent);
+    }
+    for (const auto& axis : reduced) {
+      words.push_back(axis.extent);
+    }
+    for (const auto& axis : kept) {
+      words.push_back(axis.stride);
+    }
+    for (const auto& axis : reduced) {
+      words.push_back(axis.stride);
+    }
+    axis_metadata.emplace(
+        Shape{static_cast<int>(words.size())},
+        uint32,
+        nullptr,
+        std::vector<array>{});
+    array::Flags flags;
+    flags.contiguous = true;
+    flags.row_contiguous = true;
+    flags.col_contiguous = true;
+    axis_metadata->set_data(
+        allocate_omarchy(axis_metadata->nbytes()),
+        axis_metadata->size(),
+        Strides{1},
+        flags,
+        0);
+    auto* metadata_buffer = static_cast<omarchy::VulkanBuffer*>(
+        axis_metadata->buffer().ptr());
+    std::memcpy(metadata_buffer->data, words.data(), axis_metadata->nbytes());
+    encoder.add_temporary(*axis_metadata);
+    params.matrix_k = static_cast<uint32_t>(collapsed_rank);
   }
 
   auto run_phase = [&](uint32_t flags, uint32_t dispatch_count) {
     params.flags = flags;
-    std::array<omarchy::ComputeBinding, 3> bindings{
-        binding(bound_input), binding(scratch), binding(out)};
+    const array& metadata = axis_metadata ? *axis_metadata : scratch;
+    std::array<omarchy::ComputeBinding, 4> bindings{
+        binding(bound_input), binding(scratch), binding(out), binding(metadata)};
     encoder.dispatch_compute(
         kernel,
         bindings,
@@ -1270,28 +1369,24 @@ void dispatch_reduce_general(
         omarchy::compute_dispatch_group_count(dispatch_count));
   };
 
-  // Bool AnyAll combines partials in a second phase so the output words
-  // pack correctly; every other dtype combines per-element typed output.
   if (bool_out) {
-    uint32_t word_count =
-        checked_u32(
-            (static_cast<uint64_t>(output_size) + 3) / 4, operation_name, out);
+    uint32_t word_count = checked_u32(
+        (static_cast<uint64_t>(output_size) + 3) / 4,
+        operation_name,
+        out);
     if (chunks == 1) {
       run_phase(0u | 2u, word_count);
     } else {
       run_phase(0u, checked_u32(scratch_elems, operation_name, out));
       run_phase(1u, word_count);
     }
+  } else if (chunks == 1) {
+    run_phase(0u | 2u, output_size);
   } else {
-    if (chunks == 1) {
-      run_phase(0u | 2u, output_size);
-    } else {
-      run_phase(0u, checked_u32(scratch_elems, operation_name, out));
-      run_phase(1u, output_size);
-    }
+    run_phase(0u, checked_u32(scratch_elems, operation_name, out));
+    run_phase(1u, output_size);
   }
 }
-
 // ---------------------------------------------------------------------------
 // Wave 5: indexing and scatter. Shared helpers live in this block; the
 // eval functions sit at their alphabetical primitive sites below.
@@ -4782,8 +4877,7 @@ void Reduce::eval_gpu(const std::vector<array>& inputs, array& out) {
     if (chunks == 0) {
       chunks = 1;
     }
-    bool bool_out = out.dtype() == bool_;
-    Dtype scratch_dtype = bool_out ? uint32 : input.dtype();
+    Dtype scratch_dtype = float32;
     array scratch(
         Shape{static_cast<int>(static_cast<uint64_t>(output_size) * chunks)},
         scratch_dtype,
