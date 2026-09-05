@@ -146,11 +146,10 @@ void print_json(uint32_t index) {
       "gpu_primitive_dispatches", trace.gpu_primitive_dispatches.load(), true);
   num_field("vk_submissions", trace.vk_submissions.load(), true);
   num_field("vk_buffer_copies", trace.vk_buffer_copies.load(), true);
-  num_field("vk_buffer_fills", trace.vk_buffer_fills.load(), false);
-  num_field("vk_compute_dispatches", trace.vk_compute_dispatches.load(),
-            false);
+  num_field("vk_buffer_fills", trace.vk_buffer_fills.load(), true);
+  num_field("vk_compute_dispatches", trace.vk_compute_dispatches.load(), true);
   num_field(
-      "compiled_tape_dispatches", trace.compiled_tape_dispatches.load(), false);
+      "compiled_tape_dispatches", trace.compiled_tape_dispatches.load(), true);
   num_field(
       "compiled_tape_node_evaluations",
       trace.compiled_tape_node_evaluations.load(),
