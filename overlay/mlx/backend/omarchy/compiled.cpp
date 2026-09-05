@@ -25,50 +25,14 @@ namespace {
 
 // Upstream compile_fuse (mlx/compile.cpp is_fusable) only ever places
 // unary, binary, ternary (Select), and Broadcast primitives inside a
-// Compiled tape; reductions and everything else stay eager outside it.
-// Every class in that set has an Omarchy eval_gpu implementation except
-// Conjugate, Real, and Imag (complex), which keep the named-error
-// contract here because their backend path is unsupported.
-bool tape_op_supported(const Primitive& primitive) {
-  const auto& p = primitive;
-  // Upstream is_unary: everything fusable the backend implements, minus
-  // the complex-only Conjugate/Real/Imag which stay refused below.
-  return typeid(p) == typeid(Abs) || typeid(p) == typeid(ArcCos) ||
-      typeid(p) == typeid(ArcCosh) || typeid(p) == typeid(ArcSin) ||
-      typeid(p) == typeid(ArcSinh) || typeid(p) == typeid(ArcTan) ||
-      typeid(p) == typeid(ArcTanh) || typeid(p) == typeid(AsType) ||
-      typeid(p) == typeid(BitwiseInvert) || typeid(p) == typeid(Ceil) ||
-      typeid(p) == typeid(Cos) || typeid(p) == typeid(Cosh) ||
-      typeid(p) == typeid(Erf) || typeid(p) == typeid(ErfInv) ||
-      typeid(p) == typeid(Exp) || typeid(p) == typeid(Expm1) ||
-      typeid(p) == typeid(Floor) || typeid(p) == typeid(Log) ||
-      typeid(p) == typeid(Log1p) || typeid(p) == typeid(LogicalNot) ||
-      typeid(p) == typeid(Negative) || typeid(p) == typeid(Round) ||
-      typeid(p) == typeid(Sigmoid) || typeid(p) == typeid(Sign) ||
-      typeid(p) == typeid(Sin) || typeid(p) == typeid(Sinh) ||
-      typeid(p) == typeid(Square) || typeid(p) == typeid(Sqrt) ||
-      typeid(p) == typeid(Tan) || typeid(p) == typeid(Tanh) ||
-      // Upstream is_binary.
-      typeid(p) == typeid(Add) || typeid(p) == typeid(ArcTan2) ||
-      typeid(p) == typeid(BitwiseBinary) || typeid(p) == typeid(Divide) ||
-      typeid(p) == typeid(Equal) || typeid(p) == typeid(Greater) ||
-      typeid(p) == typeid(GreaterEqual) || typeid(p) == typeid(Less) ||
-      typeid(p) == typeid(LessEqual) || typeid(p) == typeid(LogAddExp) ||
-      typeid(p) == typeid(LogicalAnd) || typeid(p) == typeid(LogicalOr) ||
-      typeid(p) == typeid(Maximum) || typeid(p) == typeid(Minimum) ||
-      typeid(p) == typeid(Multiply) || typeid(p) == typeid(NotEqual) ||
-      typeid(p) == typeid(Power) || typeid(p) == typeid(Remainder) ||
-      typeid(p) == typeid(Subtract) ||
-      // Upstream is_ternary and is_broadcast.
-      typeid(p) == typeid(Select) || typeid(p) == typeid(Broadcast);
-}
-
-[[noreturn]] void unsupported_tape_op(const Primitive& primitive) {
+// Compiled tape, and every class in that set has an Omarchy eval_gpu
+// implementation that refuses its own unsupported dtypes and layouts by
+// name. The interpreter therefore carries no op allowlist of its own.
+[[noreturn]] void unresolved_tape_input(const Primitive& primitive) {
   throw std::runtime_error(
       "[omarchy] Compiled tape op " + std::string(primitive.name()) +
-      " is not implemented for the Omarchy Vulkan backend. No GPU kernel"
-      " exists for it; no silent CPU fallback occurs. Run it on an explicit"
-      " CPU stream to use the CPU implementation.");
+      " reads an input the tape never produced; the interpreter cannot"
+      " evaluate this tape. No silent CPU fallback occurs.");
 }
 
 // bf16 compiled tapes corrupt nondeterministically on Honeykrisp: the M1
@@ -396,9 +360,6 @@ void eval_compiled_tape(
       continue;
     }
     Primitive& primitive = node.primitive();
-    if (!tape_op_supported(primitive)) {
-      unsupported_tape_op(primitive);
-    }
 
     std::vector<array> node_inputs;
     node_inputs.reserve(node.inputs().size());
@@ -413,7 +374,7 @@ void eval_compiled_tape(
         close_chain();
         node_inputs.clear();
         if (!resolve_inputs(node, node_inputs)) {
-          unsupported_tape_op(primitive);
+          unresolved_tape_input(primitive);
         }
       }
 
@@ -448,7 +409,7 @@ void eval_compiled_tape(
       if (needs_reresolve) {
         node_inputs.clear();
         if (!resolve_inputs(node, node_inputs)) {
-          unsupported_tape_op(primitive);
+          unresolved_tape_input(primitive);
         }
       }
     } else {
@@ -463,7 +424,7 @@ void eval_compiled_tape(
           // already.
           node_inputs.push_back(in);
         } else {
-          unsupported_tape_op(primitive);
+          unresolved_tape_input(primitive);
         }
       }
     }

@@ -388,14 +388,14 @@ Transform work is in progress.
 `jvp` passes the gate for `sum(exp(x))` and matmul tangents with value checks at `1e-4`.
 `vmap` passes the gate for batched `exp` and `add` with value checks.
 Batched matmul under `vmap` passes the gate with value checks.
-`mx.compile` interprets the fused tape on the GPU for the elementwise subset: add, multiply, divide, maximum, exp, sigmoid, square, sqrt, subtract, negative, casts, and broadcast.
+`mx.compile` interprets the fused tape on the GPU for every class upstream fuses (`mlx/compile.cpp is_fusable`): the unary, binary, Select, and Broadcast primitives, including Real, Imag, and Conjugate on complex64.
 Compiled chains evaluate and match the uncompiled values at `1e-5`.
 Tape nodes dispatch separately by default. Opt-in `MLX_OMARCHY_FUSED_CHAIN=1`
 combines eligible float32/float16 chains. The pinned M1 model now records
 72 to 24 tape dispatches per decode token with equal full generated arrays
 in all 15 paired comparisons. Gains are small and the default remains off;
 see the [fusion receipt](../receipts/2026-09-04-swiglu-fused-chain.md).
-Tape ops outside the subset fail with the named `Compiled tape op <name>` error.
+Each tape node runs through its own `eval_gpu`, so an unsupported dtype or layout fails with that primitive's named error; the interpreter keeps no allowlist of its own.
 `CompileMode::no_fuse` keeps the tape unfused and matches the uncompiled values.
 
 Compilation work is in progress.

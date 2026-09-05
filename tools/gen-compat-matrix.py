@@ -1127,6 +1127,11 @@ COPY_EVIDENCE = re.compile(
 
 DELEGATE_EVIDENCE = re.compile(r"\bomarchy::(eval_\w+)\(")
 DELEGATE_FILES = {"eval_compiled_tape": "compiled.cpp"}
+# The tape interpreter runs every class upstream fuses, so the op set is
+# upstream's own is_unary/is_binary/is_ternary/is_broadcast predicates.
+UPSTREAM_FUSABLE = ROOT / ".work/mlx/mlx/compile.cpp"
+FUSABLE_REGION = re.compile(
+    r"bool is_unary\(.*?bool is_noop\(", re.DOTALL)
 
 
 def parse_delegate_info(entries):
@@ -1152,8 +1157,14 @@ def parse_delegate_info(entries):
                     rendered += "{name}" if name_call else literal
                 if rendered not in fragments:
                     fragments.append(rendered.strip())
-            tape_ops = re.findall(
-                r"typeid\(\w+\) == typeid\((\w+)\)", text)
+            region = FUSABLE_REGION.search(
+                strip_comments(UPSTREAM_FUSABLE.read_text()))
+            if not region:
+                raise SystemExit(
+                    f"{UPSTREAM_FUSABLE}: is_unary..is_noop region not "
+                    "found; the fusable op set cannot be derived.")
+            tape_ops = list(dict.fromkeys(re.findall(
+                r"typeid\(\w+\) == typeid\((\w+)\)", region.group(0))))
         info[(entry["ns"], entry["name"])] = {
             "fragments": fragments, "tape_ops": tape_ops}
     return info

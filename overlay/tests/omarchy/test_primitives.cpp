@@ -5074,33 +5074,6 @@ TEST_CASE("mx.compile evaluates a four-op elementwise chain") {
   set_compile_mode(CompileMode::enabled);
 }
 
-TEST_CASE("mx.compile pins the named error for tape ops outside the subset") {
-  if (!compute_available()) {
-    return;
-  }
-  Stream stream = gpu_stream();
-  // Wave 11 admitted the whole upstream-fusable set except the
-  // complex-only trio, so the surviving tape-level refusal is Real: the
-  // tracer fuses it, the interpreter refuses it by name.
-
-  // The pinned upstream header cannot build complex arrays from host
-  // iterators, so use the explicit scalar overload; content never
-  // matters because the tape refuses Real before any dispatch.
-  array z = array(complex64_t{1.0f, 0.5f});
-  using VectorFn = std::function<std::vector<array>(const std::vector<array>&)>;
-
-  set_compile_mode(CompileMode::enabled);
-  VectorFn mixed_fun = [&](const std::vector<array>& inputs) {
-    return std::vector<array>{
-        add(real(inputs[0], stream), array(1.0f), stream)};
-  };
-  auto mixed = compile(mixed_fun);
-  std::string mixed_error = evaluation_error(mixed({z})[0]);
-  CHECK(
-      mixed_error.find("[omarchy] Compiled tape op Real") != std::string::npos);
-  set_compile_mode(CompileMode::enabled);
-}
-
 TEST_CASE("mx.compile pins the named bfloat16 tape gate") {
   if (!compute_available()) {
     return;
