@@ -1,14 +1,12 @@
-// General-axis reduction: any single-reduction pass over up to four axes in
-// any position, for the dtypes and operations the float-only suffix kernel
-// cannot serve. Push-constant routing: dims carries the kept-axis count K,
-// shape[0..K) the kept extents, shape[K..K+R) the reduced extents, matrix_m
-// the reduced-axis count R, in_strides[0..K) the input strides of the kept
-// axes, out_strides[0..R) the input strides of the reduced axes, reduce_size
-// the reduced element count, and operation the selector below. matrix_n is
-// the chunk count: one invocation covers at most chunk-trip reduced elements,
-// because serial per-invocation loops beyond a driver-dependent cap
-// (2^15-1 trips on lavapipe for this kernel shape) silently stop early.
-// Broadcast views work for free: an expanded axis has stride 0.
+// General-axis reduction for every rank representable by uint32 extents and
+// strides. The host removes singleton axes and collapses adjacent compatible
+// axes. Up to four collapsed axes use the push-constant arrays. Higher ranks
+// use binding 3 for [extents, strides], with matrix_k carrying the collapsed
+// rank. dims and matrix_m carry the kept and reduced counts. Broadcast views
+// retain stride 0.
+//
+// matrix_n is the chunk count: one invocation covers at most chunk-trip
+// reduced elements because longer serial loops can stop early on the driver.
 //
 // flags bit 0 selects the phase. Bit 0 clear: the invocation owns one
 // (output element, chunk) pair and writes its partial accumulator to the
@@ -110,6 +108,9 @@ layout(set = 0, binding = 1, std430) buffer Scratch {
 layout(set = 0, binding = 2, std430) writeonly buffer Output {
   OUT_TYPE values[];
 } output_data;
+layout(set = 0, binding = 3, std430) readonly buffer AxisMetadata {
+  uint values[];
+} axis_data;
 
 layout(push_constant) uniform Params {
   uint count;
@@ -129,9 +130,8 @@ layout(push_constant) uniform Params {
   uint flags;
   float alpha;
   float beta;
-  // dims is the kept-axis count K; shape[] holds the kept extents first and
-  // the reduced extents after; in_strides[] indexes the kept axes and
-  // out_strides[] the reduced axes.
+  // dims is the kept-axis count. matrix_m is the reduced-axis count.
+  // matrix_k is zero for inline axes or the rank of binding 3 metadata.
   uint dims;
   uint shape[4];
   uint in_strides[4];
@@ -185,30 +185,48 @@ bool load_truthy(uint index) {
 }
 #endif
 
-// The kept-axis decode of one output element: its input base offset.
+uint axis_extent(uint index) {
+  if (params.matrix_k == 0u) {
+    return params.shape[index];
+  }
+  return axis_data.values[index];
+}
+
+uint kept_axis_stride(uint index) {
+  if (params.matrix_k == 0u) {
+    return params.in_strides[index];
+  }
+  return axis_data.values[params.matrix_k + index];
+}
+
+uint reduced_axis_stride(uint index) {
+  if (params.matrix_k == 0u) {
+    return params.out_strides[index];
+  }
+  return axis_data.values[params.matrix_k + params.dims + index];
+}
+
 uint decode_kept_offset(uint output_index) {
   uint rem = output_index;
   uint in_off = 0u;
   for (int d = int(params.dims) - 1; d >= 0; --d) {
-    uint coord = rem % params.shape[d];
-    rem /= params.shape[d];
-    in_off += coord * params.in_strides[d];
+    uint coord = rem % axis_extent(uint(d));
+    rem /= axis_extent(uint(d));
+    in_off += coord * kept_axis_stride(uint(d));
   }
   return in_off;
 }
 
-// The reduced-axis decode of one reduced position: its input offset.
 uint decode_reduced_offset(uint j) {
   uint rrem = j;
   uint r_off = 0u;
   for (uint r = 0u; r < params.matrix_m; ++r) {
-    uint coord = rrem % params.shape[params.dims + r];
-    rrem /= params.shape[params.dims + r];
-    r_off += coord * params.out_strides[r];
+    uint coord = rrem % axis_extent(params.dims + r);
+    rrem /= axis_extent(params.dims + r);
+    r_off += coord * reduced_axis_stride(r);
   }
   return r_off;
 }
-
 #ifndef BOOL_OUT
 // Min and Max follow the upstream NaN convention: any NaN in the reduced
 // set poisons the result. A plain ordered compare silently drops a NaN
