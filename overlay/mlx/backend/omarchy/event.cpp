@@ -102,19 +102,20 @@ struct EventImpl {
   std::atomic<Error*> error{nullptr};
   std::unique_ptr<TimelineSemaphore> gpu;
   std::unique_ptr<HostCounter> host;
-  std::mutex bridge_mtx;
+  mutable std::mutex bridge_mtx;
   uint64_t host_value_on_gpu{0};
   std::atomic<uint64_t> signaled_completion{0};
   std::atomic<uint64_t> signaled_value{0};
   std::atomic<bool> queued_signal{false};
 
   bool is_created() const {
+    std::lock_guard<std::mutex> lk(bridge_mtx);
     return gpu || host;
   }
 
   void ensure_created(Stream s) {
     std::lock_guard<std::mutex> lk(bridge_mtx);
-    if (is_created()) {
+    if (gpu || host) {
       return;
     }
     if (s.device == Device::gpu) {
