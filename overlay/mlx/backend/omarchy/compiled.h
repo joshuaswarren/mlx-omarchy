@@ -11,10 +11,10 @@
 namespace mlx::core::omarchy {
 
 // GPU tape interpreter for the Compiled primitive. Walks the tape in order
-// and runs each supported elementwise node through its own primitive GPU
-// path into a fresh temporary; intermediate buffers stay alive through
-// encoder temporaries until the submission completes. Tape ops outside the
-// supported subset throw the named `Compiled tape op` error. There is no
+// and runs each node through its own primitive GPU path into a fresh
+// temporary; intermediate buffers stay alive through encoder temporaries
+// until the submission completes. Every class upstream fuses has a GPU
+// path, and each refuses its own unsupported dtypes by name. There is no
 // CPU fallback in Omarchy builds, and no fusion speedup is claimed: each
 // node dispatches separately.
 void eval_compiled_tape(

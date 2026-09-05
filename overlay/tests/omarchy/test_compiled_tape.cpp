@@ -614,28 +614,58 @@ TEST_CASE("bf16 tapes stay gated for the widened op set") {
   set_compile_mode(CompileMode::disabled);
 }
 
-TEST_CASE("complex tape ops stay refused by name") {
+TEST_CASE("compiled tape computes Real, Imag, and Conjugate on complex64") {
   if (!compute_available()) {
     return;
   }
   Stream stream = gpu_stream();
-  // The pinned upstream header cannot list-initialize complex arrays from
-  // iterators, so build the scalar through the explicit complex overload.
-  // Content never matters: the tape refuses the Real node before any
-  // dispatch.
-  array z = array(complex64_t{1.0f, 0.5f});
+  // Upstream fuses the complex trio (mlx/compile.cpp is_unary); the
+  // backend kernels landed with complex64 transport, so the tape runs
+  // them instead of refusing by name. Eager is the reference.
+  std::vector<complex64_t> zv = {
+      complex64_t{1.0f, 0.5f},
+      complex64_t{-2.0f, 3.0f},
+      complex64_t{0.0f, -1.25f},
+      complex64_t{4.5f, 0.0f}};
+  array z(zv.begin(), Shape{4}, complex64);
 
-  // Real is upstream-fusable so the tracer places it in the tape, but the
-  // backend does not implement it, so the named tape error must fire.
-  set_compile_mode(CompileMode::enabled);
   auto fn = [&stream](const std::vector<array>& inputs) {
-    return std::vector<array>{add(real(inputs[0], stream), array(1.0f), stream)};
+    auto projected = add(
+        real(inputs[0], stream),
+        multiply(imag(inputs[0], stream), array(2.0f), stream),
+        stream);
+    auto mirrored = multiply(conjugate(inputs[0], stream), inputs[0], stream);
+    return std::vector<array>{projected, mirrored};
   };
-  auto fused = compile(fn);
-  std::string real_error = evaluation_error(fused({z})[0]);
-  CHECK(
-      real_error.find("[omarchy] Compiled tape op Real") != std::string::npos);
   set_compile_mode(CompileMode::disabled);
+  auto eager = fn({z});
+  set_compile_mode(CompileMode::enabled);
+  auto compiled = compile(fn)({z});
+  for (auto& out : eager) {
+    out.eval();
+  }
+  for (auto& out : compiled) {
+    out.eval();
+  }
+  sync_stream(stream);
+  set_compile_mode(CompileMode::disabled);
+
+  REQUIRE_EQ(compiled[0].dtype(), float32);
+  REQUIRE_EQ(compiled[1].dtype(), complex64);
+  for (size_t i = 0; i < 4; ++i) {
+    INFO("element ", i);
+    CHECK_EQ(compiled[0].data<float>()[i], eager[0].data<float>()[i]);
+    CHECK_EQ(
+        compiled[1].data<complex64_t>()[i].real(),
+        eager[1].data<complex64_t>()[i].real());
+    CHECK_EQ(
+        compiled[1].data<complex64_t>()[i].imag(),
+        eager[1].data<complex64_t>()[i].imag());
+  }
+  // The values themselves: real + 2*imag, and |z|^2 with zero imaginary.
+  CHECK_EQ(compiled[0].data<float>()[1], -2.0f + 6.0f);
+  CHECK_EQ(compiled[1].data<complex64_t>()[1].real(), 13.0f);
+  CHECK_EQ(compiled[1].data<complex64_t>()[1].imag(), 0.0f);
 }
 
 // The tape debug switches (docs/install-omarchy.md) are diagnostics for
