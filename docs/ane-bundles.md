@@ -19,8 +19,9 @@ the U6 validation layer in
 `docs/plans/2026-08-29-mlx-omarchy-ane-compatibility-plan.md`.
 
 Status: the Linux validation layer, its tests, and the macOS exporter
-(`tools/ane-export/`) are in place. Lowering general MLX graphs to the
-exporter's descriptors and M1 execution remain open work; see
+(`tools/ane-export/`) are in place. The loader now checks the libane `.anec`
+header against the manifest before a worker can map buffers. Lowering general
+MLX graphs to the exporter's descriptors and M1 execution remain open work; see
 `docs/compatibility.md`.
 See `docs/ane-hwx-format-notes.md` for the HWX container and task-descriptor
 format reference (external guide evaluation).
@@ -91,6 +92,13 @@ and task KDMA offsets step `0x28000..0x3c000` in `0x4000` increments
 the receipts record sizes that are not `0x4000` multiples, such as `0x66000`
 (`qwen-linux-terminal-task.log`).
 
+The manifest `stride` is the logical DMA stride recorded for compatibility.
+The full libane staging allocation is derived from the `.anec` header as
+`tiles[channel] * 0x4000`; `mlx-omarchy-info --check-bundle` prints those
+channel byte counts beside the manifest fields. The current libane tile and
+untile ABI copies 16-bit elements, so this ANEC channel preflight accepts only
+`float16` and `bfloat16` input, output, and state tensors.
+
 ## Validation order
 
 `load_bundle(dir)` performs these steps in order. Steps 1 and 2 touch no
@@ -107,6 +115,13 @@ payload mapping, and nothing here accesses a device.
 4. **Payload presence.** Each listed payload must exist.
 5. **Payload byte size.** The file size must match the manifest.
 6. **Payload sha256.** The digest must match the manifest.
+7. **ANEC header and channel ABI.** After digest verification, the loader
+   parses the libane header at file offset 0 and confirms the executable
+   payload starts at `0x1000`. It checks the task count and source and
+   destination counts against the manifest, proves the payload and task stream
+   fit command channel 0, requires reserved kernel channel 1 to be unbound,
+   checks the task-descriptor word units and aligned kernel envelope, and
+   checks each manifest tensor against its 16-bit tile/NCHW allocation.
 
 ## Failure contract
 
@@ -116,14 +131,16 @@ payload mapping, and nothing here accesses a device.
 | `manifest.json` unreadable or invalid JSON | named manifest error |
 | Any field missing, wrong type, or out of contract | named manifest error |
 | Extra file, missing payload, size mismatch, hash mismatch | named bundle error |
+| ANEC task or channel count, payload or task envelope, reserved channel, task-descriptor units, kernel envelope, dtype, or NCHW mismatch | named bundle error before worker/device access |
 
 ## Check a bundle
 
 `mlx-omarchy-info --check-bundle <dir>` validates one bundle directory and
 prints its parsed contract as `[receipt]` lines: graph name and hash, task
-descriptor count, every tensor, payload names and digests, and the compiler
-and firmware identity. The check runs `load_bundle` only. It opens no Vulkan
-device, so it works on any Linux host.
+descriptor count, every tensor, libane ANEC header fields, each input/output/
+state channel binding with channel bytes and NCHW, payload names and digests,
+and the compiler and firmware identity. The check runs `load_bundle` only. It
+opens no Vulkan device, so it works on any Linux host.
 
 Exit codes:
 
@@ -171,13 +188,15 @@ missing asset leaves the region on Vulkan.
 
 ## Tests
 
-`omarchy_ane_bundle_tests` builds fixture bundles at runtime and covers:
-exact contract exposure, every single-field mutation with its named error,
-mutation-before-payload ordering, graph identity repeatability, the
-not-found contract, and unknown-payload rejection. Run:
+`omarchy_ane_bundle_tests` builds fixture bundles at runtime and covers the
+manifest contract, libane ANEC header and channel exposure, state bound as both
+source and destination, validation ordering, graph identity repeatability, the
+not-found contract, unknown payloads, and malformed ANEC envelopes, channels,
+task fields, dtypes, and NCHW geometry. Run:
 
 ```
 ./tools/ci/run-ane-bundle-tests.sh
+```
 
 ## External reference: maderix (Inside the M4 ANE)
 
