@@ -1133,17 +1133,23 @@ TEST_CASE("out-of-scope dtypes and shapes keep their named errors") {
   array wide({1, 2, 3}, {3}, int64);
   CHECK(evaluation_error(prod(wide, std::vector<int>{0}, false, stream))
             .find("Prod dtype") != std::string::npos);
+  check_int32_values(
+      sum(array({1, 2, 3}, {3}, int32), 0, false, stream), {6}, stream);
 
   // LogAddExp scans stay rejected.
   array x({1.0f, 2.0f}, {2}, float32);
   CHECK(evaluation_error(logcumsumexp(x, 0, false, true, stream))
             .find("Scan LogAddExp") != std::string::npos);
+  check_int32_values(
+      sum(array({4, 5, 6}, {3}, int32), 0, false, stream), {15}, stream);
 
   // Hadamard only supports n = m*2^k for m in (1, 12, 20, 28).
   std::vector<float> bad_values(7, 1.0f);
   array bad(bad_values.begin(), Shape{7}, float32);
   CHECK(evaluation_error(hadamard_transform(bad, std::nullopt, stream))
             .find("Hadamard size") != std::string::npos);
+  check_int32_values(
+      sum(array({7, 8, 9}, {3}, int32), 0, false, stream), {24}, stream);
 
 }
 
