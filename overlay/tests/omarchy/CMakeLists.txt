@@ -309,4 +309,5 @@ target_compile_options(omarchy_two_rank_harness
 target_link_options(omarchy_two_rank_harness PRIVATE ${SANITIZER_LINK_FLAGS})
 
 add_test(NAME omarchy_two_rank_harness
-         COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/distributed/run-two-rank.sh)
+         COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/distributed/run-two-rank.sh
+                 $<TARGET_FILE:omarchy_two_rank_harness>)
