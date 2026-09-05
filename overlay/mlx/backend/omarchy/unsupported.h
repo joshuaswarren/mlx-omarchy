@@ -18,12 +18,12 @@ namespace mlx::core::omarchy {
 
 [[noreturn]] inline void unsupported(
     const std::string& name,
-    const array& out) {
+    Dtype dtype,
+    const Shape& shape) {
   std::ostringstream msg;
   msg << "[omarchy] " << name
       << " is not implemented for the Omarchy Vulkan backend (dtype="
-      << dtype_to_string(out.dtype()) << ", shape=[";
-  const auto& shape = out.shape();
+      << dtype_to_string(dtype) << ", shape=[";
   for (int i = 0; i < static_cast<int>(shape.size()); ++i) {
     if (i > 0) {
       msg << ",";
@@ -33,6 +33,12 @@ namespace mlx::core::omarchy {
   msg << "]). No GPU kernel exists for it; no silent CPU fallback occurs."
       << " Run it on an explicit CPU stream to use the CPU implementation.";
   throw std::runtime_error(msg.str());
+}
+
+[[noreturn]] inline void unsupported(
+    const std::string& name,
+    const array& out) {
+  unsupported(name, out.dtype(), out.shape());
 }
 
 } // namespace mlx::core::omarchy

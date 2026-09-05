@@ -4709,55 +4709,90 @@ TEST_CASE("quantize and dequantize pin named errors outside the affine gate") {
     return;
   }
   Stream stream = gpu_stream();
+  auto construction_error = [](auto&& build) {
+    try {
+      build();
+    } catch (const std::exception& error) {
+      return std::string(error.what());
+    }
+    return std::string{};
+  };
+
   std::vector<float> matrix(4 * 128, 0.5f);
   array x(matrix.begin(), Shape{4, 128}, float32);
-  CHECK(evaluation_error(
-            quantize(x, 32, 4, "mxfp4", std::nullopt, stream)[0])
-            .find("Quantize mode") != std::string::npos);
-  CHECK(evaluation_error(
-            quantize(x, 32, 2, "affine", std::nullopt, stream)[0])
-            .find("Quantize bits") != std::string::npos);
-  CHECK(evaluation_error(
-            quantize(x, 128, 4, "affine", std::nullopt, stream)[0])
-            .find("Quantize group size") != std::string::npos);
-  array bf16_input = astype(x, bfloat16, stream);
-  CHECK(evaluation_error(
-            quantize(bf16_input, 32, 4, "affine", std::nullopt, stream)[0])
-            .find("Quantize input dtype") != std::string::npos);
+  CHECK(construction_error([&] {
+          quantize(x, 32, 4, "mxfp4", std::nullopt, stream);
+        }).find("Quantize mode") != std::string::npos);
+  CHECK(construction_error([&] {
+          quantize(x, 32, 2, "affine", std::nullopt, stream);
+        }).find("Quantize bits") != std::string::npos);
+  CHECK(construction_error([&] {
+          quantize(x, 128, 4, "affine", std::nullopt, stream);
+        }).find("Quantize group size") != std::string::npos);
+  array bf16_input(matrix.begin(), Shape{4, 128}, bfloat16);
+  CHECK(construction_error([&] {
+          quantize(bf16_input, 32, 4, "affine", std::nullopt, stream);
+        }).find("Quantize input dtype") != std::string::npos);
 
-
-  // mxfp4 keeps its mode rejection: two inputs, uint8 scales.
   std::vector<uint32_t> words4(4 * 16, 0x33221100u);
   std::vector<uint8_t> scales_u8(4 * 4, 100);
   array w4(words4.begin(), Shape{4, 16}, uint32);
   array s8(scales_u8.begin(), Shape{4, 4}, uint8);
-  std::string mode_error = evaluation_error(
-      dequantize(w4, s8, std::nullopt, 32, 4, "mxfp4", std::nullopt, std::nullopt, stream));
-  CHECK(mode_error.find("Quantize mode") != std::string::npos);
+  CHECK(construction_error([&] {
+          dequantize(
+              w4,
+              s8,
+              std::nullopt,
+              32,
+              4,
+              "mxfp4",
+              std::nullopt,
+              std::nullopt,
+              stream);
+        }).find("Quantize mode") != std::string::npos);
 
-  // Non-affine bits and group sizes keep their named rejections. The
-  // word and parameter shapes stay consistent with the requested
-  // parameters so the ops-level shape validation passes and the
-  // backend gate is what rejects them.
   std::vector<float> params4(4 * 4, 0.03125f);
   std::vector<float> params8(4 * 8, 0.03125f);
   std::vector<float> params1(4 * 1, 0.03125f);
-  array sb4(params4.begin(), Shape{4, 4}, float32);
   array sb8(params8.begin(), Shape{4, 8}, float32);
   array sb1(params1.begin(), Shape{4, 1}, float32);
-  std::string bits_error = evaluation_error(
-      dequantize(w4, sb8, sb8, 32, 2, "affine", std::nullopt, std::nullopt, stream));
-  CHECK(bits_error.find("Quantize bits") != std::string::npos);
-  std::string group_error = evaluation_error(
-      dequantize(w4, sb1, sb1, 128, 4, "affine", std::nullopt, std::nullopt, stream));
-  CHECK(group_error.find("Quantize group size") != std::string::npos);
-
-  // bfloat16 group parameters keep the named dtype rejection: the
-  // dequant kernels ship f32 and f16 variants only.
-  array sb_bf16 = astype(sb4, bfloat16, stream);
-  std::string dtype_error = evaluation_error(
-      dequantize(w4, sb_bf16, sb_bf16, 32, 4, "affine", std::nullopt, std::nullopt, stream));
-  CHECK(dtype_error.find("Quantize scales dtype") != std::string::npos);
+  CHECK(construction_error([&] {
+          dequantize(
+              w4,
+              sb8,
+              sb8,
+              32,
+              2,
+              "affine",
+              std::nullopt,
+              std::nullopt,
+              stream);
+        }).find("Quantize bits") != std::string::npos);
+  CHECK(construction_error([&] {
+          dequantize(
+              w4,
+              sb1,
+              sb1,
+              128,
+              4,
+              "affine",
+              std::nullopt,
+              std::nullopt,
+              stream);
+        }).find("Quantize group size") != std::string::npos);
+  array sb_bf16(params4.begin(), Shape{4, 4}, bfloat16);
+  CHECK(construction_error([&] {
+          dequantize(
+              w4,
+              sb_bf16,
+              sb_bf16,
+              32,
+              4,
+              "affine",
+              std::nullopt,
+              std::nullopt,
+              stream);
+        }).find("Quantize scales dtype") != std::string::npos);
 }
 
 // Host direct convolution reference copied from the upstream CPU path
