@@ -1,0 +1,108 @@
+#version 460
+
+// Affine quantization. One invocation owns one contiguous group, derives
+// float32 scale and bias with the pinned MLX endpoint rule, and writes the
+// group's low-bit codes LSB-first into uint32 words. Scales and biases use
+// the input storage dtype, but packing uses the unrounded float32 parameters.
+
+#ifdef USE_FP16
+#extension GL_EXT_shader_16bit_storage : require
+#extension GL_EXT_shader_explicit_arithmetic_types_float16 : require
+#define STORAGE_TYPE float16_t
+#define LOAD_VALUE(x) float(x)
+#define STORE_VALUE(f) STORAGE_TYPE(f)
+#else
+#define STORAGE_TYPE float
+#define LOAD_VALUE(x) float(x)
+#define STORE_VALUE(f) STORAGE_TYPE(f)
+#endif
+
+layout(local_size_x = 256) in;
+
+layout(set = 0, binding = 0, std430) readonly buffer Input {
+  STORAGE_TYPE values[];
+} input_data;
+layout(set = 0, binding = 1, std430) writeonly buffer Packed {
+  uint values[];
+} packed_data;
+layout(set = 0, binding = 2, std430) writeonly buffer Scales {
+  STORAGE_TYPE values[];
+} scales_data;
+layout(set = 0, binding = 3, std430) writeonly buffer Biases {
+  STORAGE_TYPE values[];
+} biases_data;
+
+layout(push_constant) uniform Params {
+  uint count;
+  uint operation;
+  uint lhs_size;
+  uint rhs_size;
+  uint reduce_size;
+  uint output_size;
+  uint lhs_offset;
+  uint rhs_offset;
+  uint output_offset;
+  uint aux_size;
+  uint aux_offset;
+  uint matrix_m;
+  uint matrix_n;
+  uint matrix_k;
+  uint flags;
+  float alpha;
+  float beta;
+  uint dims;
+  uint shape[4];
+  uint in_strides[4];
+  uint out_strides[4];
+} params;
+
+float round_away_from_zero(float value) {
+  return sign(value) * floor(abs(value) + 0.5);
+}
+
+void main() {
+  uint bits = params.operation;
+  uint group_size = params.reduce_size;
+  uint pack_factor = 32u / bits;
+  uint words_per_group = group_size / pack_factor;
+  uint stride = gl_NumWorkGroups.x * 256u;
+  float n_bins = float((1u << bits) - 1u);
+
+  for (uint group = gl_GlobalInvocationID.x; group < params.count;
+       group += stride) {
+    uint input_base = params.lhs_offset + group * group_size;
+    float w_min = uintBitsToFloat(0x7f800000u);
+    float w_max = uintBitsToFloat(0xff800000u);
+    for (uint lane = 0u; lane < group_size; ++lane) {
+      float value = LOAD_VALUE(input_data.values[input_base + lane]);
+      w_min = min(w_min, value);
+      w_max = max(w_max, value);
+    }
+
+    bool min_dominant = abs(w_min) > abs(w_max);
+    float scale = max((w_max - w_min) / n_bins, 1e-7);
+    scale = min_dominant ? scale : -scale;
+    float edge = min_dominant ? w_min : w_max;
+    float q0 = round_away_from_zero(edge / scale);
+    float bias = 0.0;
+    if (q0 != 0.0) {
+      scale = edge / q0;
+      bias = edge;
+    }
+
+    scales_data.values[params.rhs_offset + group] = STORE_VALUE(scale);
+    biases_data.values[params.aux_offset + group] = STORE_VALUE(bias);
+    uint packed_base = params.output_offset + group * words_per_group;
+    for (uint word_index = 0u; word_index < words_per_group; ++word_index) {
+      uint packed = 0u;
+      for (uint lane = 0u; lane < pack_factor; ++lane) {
+        uint input_index = word_index * pack_factor + lane;
+        float value = LOAD_VALUE(input_data.values[input_base + input_index]);
+        float quantized = clamp(
+            round_away_from_zero((value - bias) / scale), 0.0, n_bins);
+        packed |= uint(quantized) << (lane * bits);
+      }
+      packed_data.values[packed_base + word_index] = packed;
+    }
+  }
+}
