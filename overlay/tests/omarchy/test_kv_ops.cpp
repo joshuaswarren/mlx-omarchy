@@ -205,7 +205,7 @@ TEST_CASE("KV cache growth: slice_update steps then concatenate when full") {
       stream);
 }
 
-TEST_CASE("Unsupported SliceUpdate reduce mode reports a named error") {
+TEST_CASE("SliceUpdate add folds the update into the copied window") {
   if (!compute_available()) {
     return;
   }
@@ -213,10 +213,14 @@ TEST_CASE("Unsupported SliceUpdate reduce mode reports a named error") {
   array src({1.0f, 2.0f, 3.0f, 4.0f}, {2, 2}, float32);
   array upd({10.0f, 20.0f}, {1, 2}, float32);
 
-  std::string reduce_error = evaluation_error(
-      slice_update_add(src, upd, Shape{0, 0}, Shape{1, 2}, stream));
-  CHECK(reduce_error.find("[omarchy] SliceUpdate reduce") !=
-        std::string::npos);
+  array out = slice_update_add(src, upd, Shape{0, 0}, Shape{1, 2}, stream);
+  out.eval();
+  omarchy::get_command_encoder(stream).synchronize();
+  const float* v = out.data<float>();
+  CHECK_EQ(v[0], 11.0f);
+  CHECK_EQ(v[1], 22.0f);
+  CHECK_EQ(v[2], 3.0f);
+  CHECK_EQ(v[3], 4.0f);
 }
 
 // Exact integer comparison against an evaluated int32 result.

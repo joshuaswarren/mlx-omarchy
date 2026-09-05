@@ -169,18 +169,18 @@ TEST_CASE("take wraps negative int64 indices") {
   sync_gpu(stream);
 }
 
-TEST_CASE("take keeps its named refusals for unsupported axes") {
+TEST_CASE("take along non-suffix axes keeps the zero-fill rule") {
   if (!compute_available()) {
     return;
   }
   Stream stream = gpu_stream();
   array a = array({1, 2, 3, 4}, {2, 2}, int32);
-  // Axis 1 (and negative -1 on a 2-D array) is not the axis-0 row
-  // gather; it keeps its named error instead of a wrong value.
-  expect_named_error(
-      [&] { take(a, array({0}, int32), 1, stream).eval(); }, "non-axis-0");
-  expect_named_error(
-      [&] { take(a, array({0}, int32), -1, stream).eval(); }, "non-axis-0");
+  // Axis 1 (and negative -1 on a 2-D array) gathers columns; an
+  // out-of-range index reads zero, the same documented deviation the
+  // axis-0 row gather makes.
+  check_ints(take(a, array({0}, int32), 1, stream), {1, 3});
+  check_ints(take(a, array({0}, int32), -1, stream), {1, 3});
+  check_ints(take(a, array({7}, int32), 1, stream), {0, 0});
   sync_gpu(stream);
 }
 

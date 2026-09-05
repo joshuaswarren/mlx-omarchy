@@ -25,7 +25,10 @@ inline constexpr uint32_t kComputeBindingFloor = 4;
 // that budget refuse by name instead of dispatching. The spec floor is why
 // the pre-2026-09-02 four-slot constant was portable, not a device ceiling:
 // real drivers report orders of magnitude more.
-inline constexpr uint32_t kComputeBindingBudget = 5;
+// Six slots fit the widest kernel today: the triple-index scatter
+// binds out, updates, three index arrays, and the rank/key or
+// accumulation scratch.
+inline constexpr uint32_t kComputeBindingBudget = 6;
 
 constexpr uint32_t compute_dispatch_group_count(uint32_t count) {
   if (count == 0) {
@@ -89,10 +92,6 @@ enum class ComputeKernel : uint8_t {
   CompareComplex,
   LogicalOrBool,
   CompareBool,
-  GatherF32,
-  GatherF16,
-  GatherBF16,
-  GatherU32,
   CopyGeneralF32,
   CopyGeneralF16,
   CopyGeneralBF16,
@@ -169,6 +168,22 @@ enum class ComputeKernel : uint8_t {
   ScatterMultiU32,
   ScatterMultiF16,
   ScatterMultiBF16,
+  ScatterTripleU32,
+  ScatterTripleF16,
+  ScatterTripleBF16,
+  ScatterBoolTriple,
+  SliceUpdateReduceF32,
+  SliceUpdateReduceF16,
+  SliceUpdateReduceBF16,
+  SliceUpdateReduceU32,
+  TakeF32,
+  TakeF16,
+  TakeBF16,
+  TakeU32,
+  TakeMultiF32,
+  TakeMultiF16,
+  TakeMultiBF16,
+  TakeMultiU32,
   ClearU32,
   BlockMaskF32,
   GatherMmF32,

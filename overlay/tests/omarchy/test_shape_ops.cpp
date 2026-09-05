@@ -273,7 +273,7 @@ TEST_CASE("Depends forces evaluation of its dependencies") {
   check_values(dep, {10.0f, 20.0f, 30.0f});
 }
 
-TEST_CASE("DynamicSlice raises the named dynamic-slice-offset error") {
+TEST_CASE("DynamicSlice resolves device start indices through the window") {
   if (!compute_available()) {
     return;
   }
@@ -288,11 +288,10 @@ TEST_CASE("DynamicSlice raises the named dynamic-slice-offset error") {
       float32,
       std::make_shared<DynamicSlice>(stream, std::vector<int>{0}, Shape{3}),
       {src, start});
-  auto message = caught_message(sliced);
-  CHECK(message.find("dynamic slice offset") != std::string::npos);
+  check_values(sliced, {2.0f, 3.0f, 4.0f});
 }
 
-TEST_CASE("DynamicSliceUpdate raises the named dynamic-slice-offset error") {
+TEST_CASE("DynamicSliceUpdate writes through device start indices") {
   if (!compute_available()) {
     return;
   }
@@ -306,8 +305,7 @@ TEST_CASE("DynamicSliceUpdate raises the named dynamic-slice-offset error") {
       float32,
       std::make_shared<DynamicSliceUpdate>(stream, std::vector<int>{0}),
       {src, upd, start});
-  auto message = caught_message(updated);
-  CHECK(message.find("dynamic slice offset") != std::string::npos);
+  check_values(updated, {0.0f, 1.0f, 9.0f, 9.0f, 4.0f, 5.0f, 6.0f, 7.0f});
 }
 
 TEST_CASE("ExpandDims inserts length-one axes in place") {

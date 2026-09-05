@@ -1,0 +1,193 @@
+// Copyright © 2026 Joshua Warren / mlx-omarchy contributors.
+// SPDX-License-Identifier: MIT
+//
+// General gather (the Gather primitive behind take and take_along
+// slicing). Output element t splits into a broadcast index position and
+// a slice-window position: idx_lin = t / slice_total and s = t % slice
+// _total. Every table dim contributes s_d * table_stride[d] to the
+// source offset (window sizes come from slice_sizes, gathered dims
+// included), and each gathered axis adds its decoded index value times
+// that axis's table stride. Index arrays arrive pre-broadcast by the
+// op layer, share one dtype and shape, and are materialized dense by
+// the host, so one extent table decodes every array's position.
+//
+// params.operation selects the index interpretation, the rule the
+// gather_rows kernel used before the general kernel replaced it:
+// 0 = signed 32-bit, 1 = unsigned 32-bit, 2 = signed 64-bit as two
+// little-endian words. Negative signed indices wrap like upstream
+// offset_neg_idx: -1 reads the last position along that axis. An index
+// outside [-dim, dim) writes zero, the documented deviation the axis
+// gather and the row gather make; upstream leaves such reads undefined.
+// An int64 index whose high word is neither 0 nor 0xFFFFFFFF is out of
+// range and takes the zero path.
+//
+// USE_U32 selects raw uint32 storage: words copy with no float
+// conversion, so int32/uint32 tables and packed words above 2^31 stay
+// bit-exact. USE_MULTI_INDEX compiles the second index array at
+// binding 2 and moves the output to binding 3; params.matrix_n /
+// matrix_k carry the second axis's dim and stride and aux_offset the
+// second array's word offset. The dims tables cap at four entries each
+// (table dims, broadcast index dims); the host refuses deeper ranks by
+// name.
+#version 460
+
+#ifdef USE_FP16
+#extension GL_EXT_shader_16bit_storage : require
+#extension GL_EXT_shader_explicit_arithmetic_types_float16 : require
+#define STORAGE_TYPE float16_t
+#define LOAD_VALUE(x) float(x)
+#define STORE_VALUE(f) STORAGE_TYPE(f)
+#elif defined(USE_BF16)
+#extension GL_EXT_shader_16bit_storage : require
+#extension GL_EXT_shader_explicit_arithmetic_types_int16 : require
+#define STORAGE_TYPE uint16_t
+#define LOAD_VALUE(x) uintBitsToFloat(uint(x) << 16u)
+uint16_t bf16_store(float value) {
+  uint bits = floatBitsToUint(value);
+  if (isnan(value)) {
+    return uint16_t((bits >> 16) | 0x40u);
+  }
+  return uint16_t((bits + 0x7fffu + ((bits >> 16) & 1u)) >> 16);
+}
+#define STORE_VALUE(f) bf16_store(f)
+#elif defined(USE_U32)
+#define STORAGE_TYPE uint
+#define LOAD_VALUE(x) (x)
+#define STORE_VALUE(x) (x)
+#else
+#define STORAGE_TYPE float
+#define LOAD_VALUE(x) float(x)
+#define STORE_VALUE(f) STORAGE_TYPE(f)
+#endif
+
+layout(local_size_x = 256) in;
+
+layout(set = 0, binding = 0, std430) readonly buffer Table {
+  STORAGE_TYPE values[];
+} input_data;
+layout(set = 0, binding = 1, std430) readonly buffer Indices {
+  int values[];
+} indices_data;
+#ifdef USE_MULTI_INDEX
+layout(set = 0, binding = 2, std430) readonly buffer IndicesB {
+  int values[];
+} indices_b_data;
+layout(set = 0, binding = 3, std430) writeonly buffer Output {
+  STORAGE_TYPE values[];
+} output_data;
+#else
+layout(set = 0, binding = 2, std430) writeonly buffer Output {
+  STORAGE_TYPE values[];
+} output_data;
+#endif
+
+layout(push_constant) uniform Params {
+  uint count;
+  uint operation;
+  uint lhs_size;
+  uint rhs_size;
+  uint reduce_size;
+  uint output_size;
+  uint lhs_offset;
+  uint rhs_offset;
+  uint output_offset;
+  uint aux_size;
+  uint aux_offset;
+  uint matrix_m;
+  uint matrix_n;
+  uint matrix_k;
+  uint flags;
+  float alpha;
+  float beta;
+  uint dims;
+  uint shape[4];
+  uint in_strides[4];
+  uint out_strides[4];
+} params;
+
+void main() {
+  uint t = gl_GlobalInvocationID.x;
+  uint stride = gl_NumWorkGroups.x * gl_WorkGroupSize.x;
+  while (t < params.count) {
+    // Split the output element into index position and window position.
+    uint idx_count = 1u;
+    for (uint i = 0u; i < params.dims; ++i) {
+      idx_count *= params.out_strides[i];
+    }
+    uint slice_total = params.count / idx_count;
+    uint idx_lin = t / slice_total;
+    uint s = t - idx_lin * slice_total;
+
+    // Decode the window position across the table dims.
+    uint win = 0u;
+    uint scale = 1u;
+    for (uint i = params.flags; i > 0u; --i) {
+      uint dim = params.shape[i - 1u];
+      win += ((s / scale) % dim) * params.in_strides[i - 1u];
+      scale *= dim;
+    }
+
+    // First gathered axis.
+    uint word_slot =
+        params.operation == 2u ? idx_lin + idx_lin : idx_lin;
+    bool valid = true;
+    uint src = 0u;
+    {
+      uint dim = params.reduce_size;
+      uint index = dim;
+      uint word = uint(indices_data.values[params.rhs_offset + word_slot]);
+      if (params.operation == 0u) {
+        index = word < 0x80000000u ? word : dim + word;
+      } else if (params.operation == 1u) {
+        index = word;
+      } else {
+        uint high =
+            uint(indices_data.values[params.rhs_offset + word_slot + 1u]);
+        if (high == 0u) {
+          index = word;
+        } else if (high == 0xFFFFFFFFu) {
+          index = dim + word;
+        }
+      }
+      valid = index < dim;
+      src = index * params.matrix_m;
+    }
+#ifdef USE_MULTI_INDEX
+    {
+      uint dim = params.matrix_n;
+      uint index = dim;
+      uint word =
+          uint(indices_b_data.values[params.aux_offset + word_slot]);
+      if (params.operation == 0u) {
+        index = word < 0x80000000u ? word : dim + word;
+      } else if (params.operation == 1u) {
+        index = word;
+      } else {
+        uint high = uint(
+            indices_b_data.values[params.aux_offset + word_slot + 1u]);
+        if (high == 0u) {
+          index = word;
+        } else if (high == 0xFFFFFFFFu) {
+          index = dim + word;
+        }
+      }
+      valid = valid && index < dim;
+      src += index * params.matrix_k;
+    }
+#endif
+#ifdef USE_U32
+    STORAGE_TYPE value = 0u;
+#else
+    float value = 0.0;
+#endif
+    if (valid) {
+      value = LOAD_VALUE(
+          input_data.values[params.lhs_offset + src + win]);
+    }
+    output_data.values[params.output_offset + t] = STORE_VALUE(value);
+    if (params.count - t <= stride) {
+      break;
+    }
+    t += stride;
+  }
+}

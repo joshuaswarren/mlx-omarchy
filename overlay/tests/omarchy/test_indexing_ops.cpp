@@ -518,24 +518,18 @@ TEST_CASE("scatter float Sum and Prod compute without atomic float; multi-index 
     check_floats(product, {5.0f, 12.0f, 3.0f}, stream);
   }
 
-  // Three index arrays exceed the implemented two-index kernel; the
-  // named refusal states the array count. The two-index case is now
-  // implemented and value-tested in its own cases below.
+  // Three index arrays run the triple-index kernel: one slot per
+  // batch axis, last-write-wins on duplicates like the CPU order.
   array src3d = array(
       {1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f, 7.0f, 8.0f}, {2, 2, 2}, float32);
   array i0 = array({0}, {1}, int32);
   array i1 = array({0}, {1}, int32);
   array i2 = array({0}, {1}, int32);
-  array one3 = array({9.0f, 9.0f}, {1, 1, 1, 2}, float32);
-  CHECK(evaluation_error(
-            scatter(
-                src3d,
-                std::vector<array>{i0, i1, i2},
-                one3,
-                {0, 1, 2},
-                stream))
-            .find("multi-index Scatter with 3 index arrays") !=
-        std::string::npos);
+  array one3 = array({9.0f}, {1, 1, 1, 1}, float32);
+  array triple = scatter(
+      src3d, std::vector<array>{i0, i1, i2}, one3, {0, 1, 2}, stream);
+  check_floats(triple, {9.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f, 7.0f, 8.0f},
+               stream);
 
   // The bool scatter pin and the float16 Sum pin retired: ScatterBool
   // and the FADD float16 kernel are implemented, and their value
@@ -912,14 +906,23 @@ TEST_CASE("argpartition small rows partition exactly on the bitonic path") {
   }
 }
 
-TEST_CASE("argpartition keeps named errors for non-suffix axes") {
+TEST_CASE("argpartition partitions over a non-suffix axis") {
   if (!compute_available()) {
     return;
   }
   Stream stream = gpu_stream();
-  array a = array({1.0f, 2.0f, 3.0f, 4.0f}, {2, 2}, float32);
-  std::string error = evaluation_error(argpartition(a, 1, 0, stream));
-  CHECK(error.find("non-suffix ArgPartition") != std::string::npos);
+  array a = array({4.0f, 1.0f, 2.0f, 3.0f}, {2, 2}, float32);
+  // kth = 1 along axis 0: the full-sort redirect makes the per-column
+  // index output equal argsort: column 0 sorts {4, 2} to {1, 0} and
+  // column 1 sorts {1, 3} to {0, 1}.
+  array out = argpartition(a, 1, 0, stream);
+  out.eval();
+  sync_gpu(stream);
+  const uint32_t* v = out.data<uint32_t>();
+  CHECK_EQ(v[0], 1u);
+  CHECK_EQ(v[1], 0u);
+  CHECK_EQ(v[2], 0u);
+  CHECK_EQ(v[3], 1u);
 }
 
 TEST_CASE("argpartition wide rows keep the named refusal until a selection "
