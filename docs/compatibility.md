@@ -115,6 +115,11 @@ See the [v0.2.0 M1 kernel receipt](https://github.com/joshuaswarren/mlx-omarchy/
 
 Primitive operations are in progress.
 The development gate covers FP32 and FP16 elementwise work, suffix Sum and Max, offsets, and grid-stride dispatch.
+General reductions now accept higher-rank inputs. The local valid-input suite
+covers rank-5 Sum, Product, Min, Max, Any, and All with keepdims, transposed
+and broadcast views, and chunked FP16 accumulation. Rank-6 empty reductions
+preserve the pinned Sum, Product, Any, and All identities. M1 qualification
+remains required.
 It also covers dense Matmul and AddMM with tiled kernels, transposed inputs, and trailing-dimension bias broadcast.
 Transposed-input Matmul now passes the gate for 2D views of either operand.
 Batched Matmul and AddMM pass the gate for rank-3, rank-4, and rank-5 operands.
@@ -170,11 +175,13 @@ promoted scales dtype, and a `[1, 40, 112]` word block dequantizes to the
 `[1, 40, 896]` embedding shape. Device values match a host unpack of the
 same packed words bit for bit with dyadic group parameters, and the
 quantizer's own parameters round-trip within float32 rounding noise.
-The quantize direction and non-affine modes such as mxfp4 fail with the
-named `Quantize direction` and `Quantize mode` errors; other bits, other
-group sizes, non-row-contiguous operands, and bfloat16 parameters fail
-with the named `Quantize bits`, `Quantize group size`,
-`non-contiguous input`, and `Quantize scales dtype` errors.
+`mx.quantize` passes the local valid-input gate for affine 4-bit and 8-bit
+output, group sizes 32 and 64, and row-contiguous float32 and float16 inputs.
+Scale, bias, half-away-from-zero rounding, and LSB-first packed words match
+the pinned MLX GPU behavior, including constant and nonconstant all-negative
+groups. Non-affine modes, other bit widths or group sizes, bfloat16 inputs,
+and unsupported dequantization parameter dtypes keep the named `Quantize`
+errors. M1 qualification remains required.
 Subtract, Negative, non-zero scalar fill for float32, float16, bfloat16,
 complex64, int32, and uint32 (the integer words ride the same
 vkCmdFillBuffer transfer path as the zero fill and stay exact past the
