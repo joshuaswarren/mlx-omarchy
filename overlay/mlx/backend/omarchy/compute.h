@@ -326,6 +326,7 @@ enum class ComputeKernel : uint8_t {
   FusedChainF16,
   QuantizeF32,
   QuantizeF16,
+  ReduceGeneralBool,
   Count,
 };
 

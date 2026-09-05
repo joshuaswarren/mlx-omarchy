@@ -1097,6 +1097,32 @@ TEST_CASE("rank-6 empty reductions retain upstream identities") {
   check_bool_values(all(flags, axes, false, stream),
                     std::vector<bool>(12, true), stream);
 }
+TEST_CASE("bool sum and product preserve numeric promotion across layouts") {
+  if (!compute_available()) return;
+  auto stream = gpu_stream();
+  std::vector<uint8_t> raw{0, 1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1};
+  array storage(raw.begin(), Shape{16}, bool_);
+  array x = reshape(slice(storage, {1}, {16}, stream), {3, 5}, stream);
+  check_int32_values(sum(x, 1, false, stream), {3, 0, 5}, stream);
+  check_int32_values(prod(x, 1, false, stream), {0, 0, 1}, stream);
+  auto transposed = transpose(x, stream);
+  check_int32_values(sum(transposed, 1, false, stream), {2, 1, 2, 1, 2}, stream);
+  check_int32_values(prod(transposed, 1, false, stream), {0, 0, 0, 0, 0}, stream);
+  auto broadcast = broadcast_to(array(true), {2, 3, 2, 2, 2}, stream);
+  check_int32_values(sum(broadcast, std::vector<int>{0, 2, 4}, false, stream),
+                     std::vector<int32_t>(6, 8), stream);
+  check_int32_values(prod(broadcast, std::vector<int>{0, 2, 4}, false, stream),
+                     std::vector<int32_t>(6, 1), stream);
+  auto empty = zeros({2, 0, 3}, bool_, stream);
+  check_int32_values(sum(empty, 1, false, stream), std::vector<int32_t>(6, 0), stream);
+  check_int32_values(prod(empty, 1, false, stream), std::vector<int32_t>(6, 1), stream);
+  std::vector<uint8_t> large(5000, 1);
+  large[4501] = 0;
+  array split(large.begin(), Shape{5000}, bool_);
+  check_int32_values(sum(split, 0, false, stream), {4999}, stream);
+  check_int32_values(prod(split, 0, false, stream), {0}, stream);
+}
+
 TEST_CASE("out-of-scope dtypes and shapes keep their named errors") {
   if (!compute_available()) {
     return;
@@ -1107,13 +1133,6 @@ TEST_CASE("out-of-scope dtypes and shapes keep their named errors") {
   array wide({1, 2, 3}, {3}, int64);
   CHECK(evaluation_error(prod(wide, std::vector<int>{0}, false, stream))
             .find("Prod dtype") != std::string::npos);
-
-  // bool Sum is not in the wave scope: the op layer promotes the output to
-  // int32 but the primitive reads bool, so the dtype gate rejects it.
-  std::vector<bool> flag_values = {true, false};
-  array flags(flag_values.begin(), Shape{2}, bool_);
-  CHECK(evaluation_error(sum(flags, std::vector<int>{0}, false, stream))
-            .find("Sum dtype") != std::string::npos);
 
   // LogAddExp scans stay rejected.
   array x({1.0f, 2.0f}, {2}, float32);
