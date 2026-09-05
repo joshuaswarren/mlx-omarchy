@@ -256,7 +256,7 @@ void Event::signal(Stream s) {
              !event.signaled_value.compare_exchange_weak(
                  prior_val, value(), std::memory_order_release)) {
       }
-      event.gpu->device.signal_timeline(event.gpu->semaphore, value());
+      event.gpu->signal_from_host(value());
     } else {
       event.queued_signal.store(true, std::memory_order_release);
       encoder.add_semaphore_signal(event.gpu->semaphore, value(), event_);
