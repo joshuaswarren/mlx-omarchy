@@ -17,7 +17,6 @@ Vulkan runtime and matched kernel gates passed through `v0.2.0`.
 The receipt used Vulkan API `1.4.354`, `MESA_HONEYKRISP`, Mesa `26.1.7`, and an Apple M1 device.
 The device reported vendor `0x10005`.
 ANE research continues in [`ane-linux-experiments`](https://github.com/joshuaswarren/ane-linux-experiments).
-The package gate has not started.
 
 M2, M3, and M4 Omarchy Linux work is deferred.
 Vulkan, ANE, and install gates are not qualified on those systems.
@@ -182,6 +181,26 @@ vkCmdFillBuffer transfer path as the zero fill and stay exact past the
 float32 integer range), and same-dtype general strided copy pass the
 gate. Non-zero fills for widths the backend does not carry keep the
 named refusal.
+
+The 2026-09-04 integer update also adds int32/uint32 Add, Multiply, and
+Square, including modular overflow, scalar broadcast, and retained views.
+On M1, source `4f27136d26bed63994363d8d8aabf835c260f6ea` passed the
+copy-offset suite (13 cases, 93 assertions), public fill checks (18 and
+26 assertions), integer broadcast/view checks (20), the updated refusal
+case (51), and compiled tapes (11 cases, 1,765 assertions). Selected cases
+ran separately; repeating doctest `-tc` flags selects only the final filter.
+
+The wheel was `mlx_omarchy-0.32.2.dev202609041856+4f27136`, SHA-256
+`300aa890dd45e73a4adc1aeae03d72b34862cfdc3467636688f89d89d964f5df`.
+Default q4 and eager bf16 32-token smokes preserved the previous Linux
+digests (`7fd25a869ff21678` and `635bc7f4bbaa48a4`) with matching binary
+provenance. These checks establish this update, not complete dtype coverage
+or equivalence to native Metal. No integer speedup is claimed.
+
+Raw native logs: `~/benchq/logs/integer-gate-4f27136d26bed63994363d8d8aabf835c260f6ea/`.
+Local copies: `/tmp/integer-gate-4f27136/`, including the separate
+`integer_add_only.out` selection.
+
 Elementwise binary ops broadcast operands on any axis up to a collapsed rank of 4.
 Trailing broadcasts keep the modulo fast path, and a higher collapsed rank fails with the named `broadcast rank` error.
 Suffix Softmax passes the gate for FP32, FP16, and BF16.
