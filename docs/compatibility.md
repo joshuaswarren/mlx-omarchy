@@ -498,39 +498,31 @@ views matches host values" (`omarchy_primitive_tests`, 77 cases).
 
 ## ANE
 
-Linux descriptor submission is in progress.
-Production task graphs run through the experimental KMD.
-Full graph tensor parity remains open.
+mlx-omarchy ANE bundle validation is device-free and fail-closed. The Linux
+host gate parses `manifest_version: 1`, verifies graph identity, tensor
+geometry, tile-aligned logical strides, compiler and firmware identity, and
+payload sha256. It also checks the libane `.anec` header: the payload and task
+stream fit the command channel, the reserved kernel channel is unbound, task
+descriptor fields are nonzero and word-aligned, the kernel starts at its
+16-byte boundary inside the payload, and each input, output, and state tensor
+fits the 16-bit tile/NCHW allocation. A missing bundle directory is the
+keep-on-Vulkan outcome. See `docs/ane-bundles.md`.
 
-Qwen graph export is in progress.
-macOS exports the 13-layer and 11-layer HWX graphs.
-The corrected Linux 13-layer run remains open.
+macOS export is limited to small hand-authored MIL descriptors today. The
+exporter builds fp16 add and mul fixtures through `ANECompiler` and records the
+exact macOS build, compiler identity, firmware range, source commit, graph hash,
+payload digests, and model key. General MLX-to-MIL lowering, complete Qwen graph
+export, and execution of a mlx-omarchy validated bundle on M1 remain open.
 
-The complete token path is in progress.
-Buffer geometry and the workspace role are mapped.
-The 13-layer output and state must connect to the 11-layer tail.
+ANE performance remains unsupported. A future claim needs the same model,
+prompt, output-token budget, transfer and staging policy, warmup, exact target,
+numerical output, and same-chip macOS and Linux provenance.
 
-MLX-to-MIL lowering has not started.
-Known fixtures pass existing compiler stages.
-A hand-authored one-operation MIL proof remains open.
+MLX graph partitioning has not started. The architecture is defined: partition
+before fusion, keep ineligible regions on Vulkan, run ANE work in a bounded
+worker that owns the fd and resident buffers, include copy plus IPC cost, and
+disable dma-buf until export, import, coherency, sync, and recovery tests pass.
 
-Bundle validation is in progress.
-The Linux host gate parses `manifest_version: 1` bundles.
-It verifies graph identity, tensor geometry, tile-aligned strides, compiler and firmware identity, and payload sha256 before any mapping.
-A missing bundle directory is the keep-on-Vulkan outcome.
-See `docs/ane-bundles.md`.
-The bundle validation gate also passes on the M1 (12/12 aarch64).
-The macOS export proof and M1 execution of a validated bundle remain open.
-
-MLX graph partitioning has not started.
-The architecture is defined.
-The Vulkan baseline and Linux bundle validation now exist; it still needs a stable worker ABI.
-
-GPU and ANE shared memory is blocked.
-Honeykrisp supports Linux external memory.
-The ANE driver still needs the PRIME and dma-buf capability gate.
-
-The detailed receipts live in [`ane-linux-experiments`](https://github.com/joshuaswarren/ane-linux-experiments).
 Do not mark a research result as Supported.
 
 ## Reference model

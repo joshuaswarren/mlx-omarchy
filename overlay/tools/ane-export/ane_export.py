@@ -18,7 +18,7 @@ Runs on macOS (Apple silicon) with Xcode and ANECompiler installed. The tool:
    ``mlx-omarchy-info --check-bundle`` on Linux.
 
 Usage:
-    python3 ane_export.py DESCRIPTOR.json --out-dir EXPORT_DIR
+    python3 ane_export.py DESCRIPTOR.json --out-dir EXPORT_DIR [--target h13]
 
 Descriptor fields:
     op           "add" | "mul" | "matmul"          (required)
@@ -159,10 +159,11 @@ def probe(command: list, fallback: str = "") -> str:
 
 
 def compile_region(tools_dir: Path, capture: Path, hwx_output: Path,
-                   anec_path: Path, in_elems: int, out_elems: int) -> dict:
+                   anec_path: Path, in_elems: int, out_elems: int,
+                   target: str) -> dict:
     """Compile + convert. Returns converter facts (td-count, workspace)."""
     transcript = run_tool(
-        ["./ane-compile-hwx", str(capture), str(hwx_output), "h13"],
+        ["./ane-compile-hwx", str(capture), str(hwx_output), target],
         cwd=tools_dir, stage="ANECCompile",
     )
     convert = run_tool(
@@ -200,6 +201,8 @@ def main() -> int:
                         help="override probed sw_vers -buildVersion")
     parser.add_argument("--anecompiler", default="",
                         help="override probed compiler identity string")
+    parser.add_argument("--target", default="h13",
+                        help="ANECompiler hardware target passed to ane-compile-hwx")
     args = parser.parse_args()
 
     descriptor = json.loads(args.descriptor.read_text())
@@ -260,8 +263,9 @@ def main() -> int:
 
     # 3-4: compile + convert.
     anec_path = bundle_dir / "model.anec"
+    log(f"target={args.target}")
     facts = compile_region(tools_dir, capture_dir, hwx_dir, anec_path,
-                           in_elems, out_elems)
+                           in_elems, out_elems, args.target)
     bundle_weights = bundle_dir / "weights.bin"
     bundle_weights.write_bytes(weights_bin)
 

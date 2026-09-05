@@ -273,6 +273,72 @@ void print_tensor_list(
   }
 }
 
+uint64_t anec_channel_bytes(
+    const omarchy::ane::AneAnecHeader& header,
+    uint32_t channel) {
+  return uint64_t(header.tiles[channel]) * omarchy::ane::kAneTileAlignment;
+}
+
+void print_anec_nchw(
+    const omarchy::ane::AneAnecHeader& header,
+    uint32_t channel) {
+  std::cout << " nchw=[";
+  for (size_t i = 0; i < header.nchw[channel].size(); ++i) {
+    if (i > 0) {
+      std::cout << ",";
+    }
+    std::cout << header.nchw[channel][i];
+  }
+  std::cout << "]";
+}
+
+void print_anec_channel(
+    const char* kind,
+    const omarchy::ane::AneTensor& tensor,
+    const omarchy::ane::AneAnecHeader& header,
+    uint32_t channel) {
+  std::cout << "[receipt] anec " << kind << " " << tensor.name
+            << ": descriptor_index=" << tensor.index
+            << " channel=" << channel
+            << " channel_bytes=" << anec_channel_bytes(header, channel);
+  print_anec_nchw(header, channel);
+  std::cout << "\n";
+}
+
+void print_anec_contract(
+    const omarchy::ane::AneManifest& manifest,
+    const omarchy::ane::AneAnecHeader& header) {
+  std::cout << "[receipt] anec: payload_size=" << header.payload_size
+            << " td_size=" << header.task_descriptor_size
+            << " td_count=" << header.task_descriptor_count
+            << " task_size=" << header.task_size
+            << " kernel_size=" << header.kernel_size
+            << " sources=" << header.source_count
+            << " destinations=" << header.destination_count
+            << " bootstrap_channel_size=" << header.bootstrap_channel_size
+            << "\n";
+  for (uint32_t i = 0; i < manifest.outputs.size(); ++i) {
+    print_anec_channel("output", manifest.outputs[i], header, 4 + i);
+  }
+  for (uint32_t i = 0; i < manifest.state.size(); ++i) {
+    print_anec_channel(
+        "state-destination",
+        manifest.state[i],
+        header,
+        4 + static_cast<uint32_t>(manifest.outputs.size() + i));
+  }
+  for (uint32_t i = 0; i < manifest.inputs.size(); ++i) {
+    print_anec_channel("input", manifest.inputs[i], header, 4 + header.destination_count + i);
+  }
+  for (uint32_t i = 0; i < manifest.state.size(); ++i) {
+    print_anec_channel(
+        "state-source",
+        manifest.state[i],
+        header,
+        4 + header.destination_count + static_cast<uint32_t>(manifest.inputs.size() + i));
+  }
+}
+
 // Validates one bundle directory and prints its parsed contract. This runs
 // load_bundle only (see mlx/backend/omarchy/ane/bundle.h): no Vulkan device
 // is opened and nothing reaches a descriptor submission.
@@ -290,6 +356,7 @@ int check_bundle(const std::string& dir_arg) {
     print_tensor_list("output", m.outputs);
     print_tensor_list("state", m.state);
     print_tensor_list("workspace", m.workspace);
+    print_anec_contract(m, bundle.anec_header);
     for (const auto& payload : m.payloads) {
       std::cout << "[receipt] payload " << payload.role << ": " << payload.path
                 << " sha256=" << payload.sha256

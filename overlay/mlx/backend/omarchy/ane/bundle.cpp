@@ -5,9 +5,11 @@
 
 #include <array>
 #include <fstream>
+#include <limits>
 #include <stdexcept>
 #include <string>
 #include <system_error>
+#include <type_traits>
 #include <vector>
 
 namespace mlx::core::omarchy::ane {
@@ -184,6 +186,259 @@ std::string sha256_file(const std::filesystem::path& path) {
   return sha256_pad_and_digest(context);
 }
 
+namespace {
+
+uint64_t file_size_checked(const std::filesystem::path& path) {
+  std::error_code ec;
+  const auto size = std::filesystem::file_size(path, ec);
+  if (ec) {
+    throw bundle_error("cannot stat file " + path.string());
+  }
+  return static_cast<uint64_t>(size);
+}
+
+uint64_t checked_add(uint64_t lhs, uint64_t rhs, const std::string& label) {
+  if (rhs > std::numeric_limits<uint64_t>::max() - lhs) {
+    throw bundle_error(label + " overflows uint64");
+  }
+  return lhs + rhs;
+}
+
+uint64_t checked_mul(uint64_t lhs, uint64_t rhs, const std::string& label) {
+  if (lhs != 0 && rhs > std::numeric_limits<uint64_t>::max() / lhs) {
+    throw bundle_error(label + " overflows uint64");
+  }
+  return lhs * rhs;
+}
+
+uint64_t align_up(uint64_t value, uint64_t alignment, const std::string& label) {
+  const uint64_t remainder = value % alignment;
+  if (remainder == 0) {
+    return value;
+  }
+  return checked_add(value, alignment - remainder, label);
+}
+
+template <typename T>
+T read_le(const std::array<unsigned char, kAnecHeaderSize>& bytes, size_t offset) {
+  static_assert(std::is_unsigned_v<T>);
+  if (offset > bytes.size() - sizeof(T)) {
+    throw bundle_error("ANEC header read escapes header");
+  }
+  T value = 0;
+  for (size_t i = 0; i < sizeof(T); ++i) {
+    value |= static_cast<T>(bytes[offset + i]) << (i * 8);
+  }
+  return value;
+}
+
+uint64_t shape_elements(const std::vector<uint64_t>& shape, const std::string& label) {
+  uint64_t total = 1;
+  for (auto dim : shape) {
+    total = checked_mul(total, dim, label);
+  }
+  return total;
+}
+
+uint64_t channel_size_bytes(const AneAnecHeader& header, uint32_t bdx) {
+  return checked_mul(header.tiles.at(bdx), kAneTileAlignment, "ANEC channel size");
+}
+
+uint32_t output_bdx(uint32_t ordinal) {
+  return 4 + ordinal;
+}
+
+uint32_t input_bdx(const AneAnecHeader& header, uint32_t ordinal) {
+  return 4 + header.destination_count + ordinal;
+}
+
+void validate_nchw_geometry(
+    const std::string& label,
+    const AneTensor& tensor,
+    const AneAnecHeader& header,
+    uint32_t bdx) {
+  const auto& nchw = header.nchw.at(bdx);
+  for (size_t i = 0; i < 4; ++i) {
+    if (nchw[i] == 0) {
+      throw bundle_error(label + " ANEC NCHW geometry is incomplete");
+    }
+  }
+  if (nchw[4] == 0 || nchw[5] == 0) {
+    throw bundle_error(label + " ANEC tile geometry is incomplete");
+  }
+
+  uint64_t header_elements = 1;
+  for (size_t i = 0; i < 4; ++i) {
+    header_elements = checked_mul(header_elements, nchw[i], label + " ANEC NCHW");
+  }
+  if (header_elements != shape_elements(tensor.shape, label)) {
+    throw bundle_error(label + " ANEC NCHW does not match manifest shape");
+  }
+  if (tensor.dtype != "float16" && tensor.dtype != "bfloat16") {
+    throw bundle_error(label + " ANEC tiled channel requires a 16-bit tensor dtype");
+  }
+  constexpr uint64_t element_bytes = sizeof(uint16_t);
+  if (nchw[4] % nchw[5] != 0 || nchw[5] % element_bytes != 0) {
+    throw bundle_error(label + " ANEC tile geometry is not 16-bit aligned");
+  }
+  if (nchw[4] / nchw[5] < nchw[2] || nchw[5] / element_bytes < nchw[3]) {
+    throw bundle_error(label + " ANEC packed tile is smaller than logical shape");
+  }
+
+  const uint64_t physical_bytes = checked_mul(
+      checked_mul(nchw[0], nchw[1], label + " ANEC physical bytes"),
+      nchw[4],
+      label + " ANEC physical bytes");
+  if (physical_bytes > channel_size_bytes(header, bdx)) {
+    throw bundle_error(label + " ANEC physical tile bytes exceed channel allocation");
+  }
+}
+
+void validate_channel_contract(
+    const std::string& label,
+    const AneTensor& tensor,
+    const AneAnecHeader& header,
+    uint32_t bdx) {
+  if (bdx >= kAnecTileCount) {
+    throw bundle_error(label + " ANEC channel index is out of range");
+  }
+  const auto channel_bytes = channel_size_bytes(header, bdx);
+  if (channel_bytes == 0) {
+    throw bundle_error(label + " ANEC channel allocation is zero");
+  }
+  if (tensor.byte_size > channel_bytes) {
+    throw bundle_error(label + " byte_size exceeds ANEC channel allocation");
+  }
+  if (tensor.stride > channel_bytes) {
+    throw bundle_error(label + " stride exceeds ANEC channel allocation");
+  }
+  validate_nchw_geometry(label, tensor, header, bdx);
+}
+
+void validate_manifest_anec_contract(const AneManifest& manifest, const AneAnecHeader& header) {
+  if (manifest.task_descriptors != header.task_descriptor_count) {
+    throw bundle_error("ANEC task_descriptors does not match manifest");
+  }
+
+  const auto expected_sources = static_cast<uint32_t>(manifest.inputs.size() + manifest.state.size());
+  const auto expected_destinations = static_cast<uint32_t>(manifest.outputs.size() + manifest.state.size());
+  if (header.source_count != expected_sources) {
+    throw bundle_error("ANEC source_count does not match manifest inputs plus state");
+  }
+  if (header.destination_count != expected_destinations) {
+    throw bundle_error("ANEC destination_count does not match manifest outputs plus state");
+  }
+
+  for (uint32_t i = 0; i < manifest.outputs.size(); ++i) {
+    validate_channel_contract(
+        "output " + manifest.outputs[i].name, manifest.outputs[i], header, output_bdx(i));
+  }
+  for (uint32_t i = 0; i < manifest.state.size(); ++i) {
+    validate_channel_contract(
+        "state destination " + manifest.state[i].name,
+        manifest.state[i],
+        header,
+        output_bdx(static_cast<uint32_t>(manifest.outputs.size() + i)));
+  }
+  for (uint32_t i = 0; i < manifest.inputs.size(); ++i) {
+    validate_channel_contract(
+        "input " + manifest.inputs[i].name, manifest.inputs[i], header, input_bdx(header, i));
+  }
+  for (uint32_t i = 0; i < manifest.state.size(); ++i) {
+    validate_channel_contract(
+        "state source " + manifest.state[i].name,
+        manifest.state[i],
+        header,
+        input_bdx(header, static_cast<uint32_t>(manifest.inputs.size() + i)));
+  }
+}
+
+} // namespace
+
+AneAnecHeader parse_anec_header(const std::filesystem::path& path) {
+  const auto file_size = file_size_checked(path);
+  if (file_size < kAnecHeaderSize) {
+    throw bundle_error("ANEC file is smaller than libane header");
+  }
+
+  std::array<unsigned char, kAnecHeaderSize> bytes{};
+  std::ifstream in(path, std::ios::binary);
+  if (!in) {
+    throw bundle_error("cannot read payload " + path.string());
+  }
+  in.read(reinterpret_cast<char*>(bytes.data()), bytes.size());
+  if (in.gcount() != static_cast<std::streamsize>(bytes.size())) {
+    throw bundle_error("cannot read ANEC header " + path.string());
+  }
+
+  AneAnecHeader header;
+  header.payload_size = read_le<uint64_t>(bytes, 0);
+  header.task_descriptor_size = read_le<uint32_t>(bytes, 8);
+  header.task_descriptor_count = read_le<uint32_t>(bytes, 12);
+  header.task_size = read_le<uint64_t>(bytes, 16);
+  header.kernel_size = read_le<uint64_t>(bytes, 24);
+  header.source_count = read_le<uint32_t>(bytes, 32);
+  header.destination_count = read_le<uint32_t>(bytes, 36);
+
+  size_t offset = 40;
+  for (auto& tile : header.tiles) {
+    tile = read_le<uint32_t>(bytes, offset);
+    offset += sizeof(uint32_t);
+  }
+  for (auto& dims : header.nchw) {
+    for (auto& dim : dims) {
+      dim = read_le<uint64_t>(bytes, offset);
+      offset += sizeof(uint64_t);
+    }
+  }
+
+  if (header.payload_size == 0) {
+    throw bundle_error("ANEC payload size is zero");
+  }
+  if (header.task_descriptor_size == 0 || header.task_descriptor_count == 0) {
+    throw bundle_error("ANEC task descriptor table is empty");
+  }
+  if (header.task_descriptor_size % sizeof(uint32_t) != 0) {
+    throw bundle_error("ANEC task descriptor size is not a multiple of 4");
+  }
+  if (header.task_size == 0) {
+    throw bundle_error("ANEC task size is zero");
+  }
+  if (uint64_t{4} + header.destination_count + header.source_count >
+      kAnecTileCount) {
+    throw bundle_error("ANEC source/destination count exceeds libane channel table");
+  }
+  if (checked_add(kAnecPayloadOffset, header.payload_size, "ANEC payload end") > file_size) {
+    throw bundle_error("ANEC executable payload extends past file");
+  }
+  if (header.tiles[0] == 0) {
+    throw bundle_error("ANEC command channel allocation is zero");
+  }
+  if (header.tiles[1] != 0) {
+    throw bundle_error("ANEC reserved kernel channel allocation must be zero");
+  }
+
+  const uint64_t command_channel_size = channel_size_bytes(header, 0);
+  if (header.payload_size > command_channel_size) {
+    throw bundle_error("ANEC executable payload exceeds command channel allocation");
+  }
+  if (header.task_descriptor_size > header.payload_size) {
+    throw bundle_error("ANEC task descriptor bytes exceed executable payload");
+  }
+  if (header.task_size >= command_channel_size) {
+    throw bundle_error("ANEC task size reaches command channel end");
+  }
+
+  const uint64_t kernel_offset = align_up(header.task_size, 16, "ANEC kernel offset");
+  if (kernel_offset > header.payload_size ||
+      header.kernel_size > header.payload_size - kernel_offset) {
+    throw bundle_error("ANEC task plus kernel bytes exceed executable payload");
+  }
+  header.bootstrap_channel_size = align_up(
+      header.task_descriptor_size, kAneTileAlignment, "ANEC bootstrap channel");
+  return header;
+}
+
 AneBundle load_bundle(const std::filesystem::path& dir) {
   if (!std::filesystem::is_directory(dir)) {
     throw AneBundleNotFound(
@@ -239,9 +494,9 @@ AneBundle load_bundle(const std::filesystem::path& dir) {
     }
     resolved.push_back(payload_path);
   }
-  std::error_code size_error;
   for (size_t i = 0; i < manifest.payloads.size(); ++i) {
     const auto& payload = manifest.payloads[i];
+    std::error_code size_error;
     uint64_t actual = uint64_t(std::filesystem::file_size(resolved[i], size_error));
     if (size_error) {
       throw bundle_error("cannot stat payload " + payload.path);
@@ -268,6 +523,8 @@ AneBundle load_bundle(const std::filesystem::path& dir) {
       bundle.weights = resolved[i];
     }
   }
+  bundle.anec_header = parse_anec_header(bundle.anec);
+  validate_manifest_anec_contract(bundle.manifest, bundle.anec_header);
   return bundle;
 }
 
