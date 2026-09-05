@@ -8,13 +8,30 @@
 
 #include "mlx/backend/omarchy/vulkan.h"
 
+#include "arange_u32.h"
 #include "arange_bf16.h"
 #include "arange_f16.h"
 #include "arange_f32.h"
 #include "arange_i32.h"
+#include "argreduce_f32.h"
 #include "argreduce_bf16.h"
 #include "argreduce_f16.h"
-#include "argreduce_f32.h"
+#include "cast_int_w1_w1.h"
+#include "cast_int_w1_w2.h"
+#include "cast_int_w1_w4.h"
+#include "cast_int_w1_w8.h"
+#include "cast_int_w2_w1.h"
+#include "cast_int_w2_w2.h"
+#include "cast_int_w2_w4.h"
+#include "cast_int_w2_w8.h"
+#include "cast_int_w4_w1.h"
+#include "cast_int_w4_w2.h"
+#include "cast_int_w4_w4.h"
+#include "cast_int_w4_w8.h"
+#include "cast_int_w8_w1.h"
+#include "cast_int_w8_w2.h"
+#include "cast_int_w8_w4.h"
+#include "cast_int_w8_w8.h"
 #include "cast_bf16_f16.h"
 #include "cast_bool_f32.h"
 #include "cast_bool_i32.h"
@@ -55,6 +72,7 @@
 #include "copy_general_f16.h"
 #include "copy_general_f32.h"
 #include "copy_general_u32.h"
+#include "copy_general_bool.h"
 #include "fill_bf16.h"
 #include "fill_f16.h"
 #include "fill_f32.h"
@@ -312,6 +330,8 @@ ShaderBytes shader_bytes(ComputeKernel kernel) {
       return {arange_bf16, arange_bf16_size};
     case ComputeKernel::ArangeI32:
       return {arange_i32, arange_i32_size};
+    case ComputeKernel::ArangeU32:
+      return {arange_u32, arange_u32_size};
     case ComputeKernel::ReduceF32:
       return {reduce_f32, reduce_f32_size};
     case ComputeKernel::ReduceF16:
@@ -470,6 +490,8 @@ ShaderBytes shader_bytes(ComputeKernel kernel) {
       return {copy_general_bf16, copy_general_bf16_size};
     case ComputeKernel::CopyGeneralU32:
       return {copy_general_u32, copy_general_u32_size};
+    case ComputeKernel::CopyGeneralBool:
+      return {copy_general_bool, copy_general_bool_size};
     case ComputeKernel::ArgSortF32:
       return {argsort_f32, argsort_f32_size};
     case ComputeKernel::ArgSortF16:
@@ -693,6 +715,38 @@ ShaderBytes shader_bytes(ComputeKernel kernel) {
       return {cast_u32_c64, cast_u32_c64_size};
     case ComputeKernel::CastBoolComplex64:
       return {cast_bool_c64, cast_bool_c64_size};
+    case ComputeKernel::CastIntW1W1:
+      return {cast_int_w1_w1, cast_int_w1_w1_size};
+    case ComputeKernel::CastIntW1W2:
+      return {cast_int_w1_w2, cast_int_w1_w2_size};
+    case ComputeKernel::CastIntW1W4:
+      return {cast_int_w1_w4, cast_int_w1_w4_size};
+    case ComputeKernel::CastIntW1W8:
+      return {cast_int_w1_w8, cast_int_w1_w8_size};
+    case ComputeKernel::CastIntW2W1:
+      return {cast_int_w2_w1, cast_int_w2_w1_size};
+    case ComputeKernel::CastIntW2W2:
+      return {cast_int_w2_w2, cast_int_w2_w2_size};
+    case ComputeKernel::CastIntW2W4:
+      return {cast_int_w2_w4, cast_int_w2_w4_size};
+    case ComputeKernel::CastIntW2W8:
+      return {cast_int_w2_w8, cast_int_w2_w8_size};
+    case ComputeKernel::CastIntW4W1:
+      return {cast_int_w4_w1, cast_int_w4_w1_size};
+    case ComputeKernel::CastIntW4W2:
+      return {cast_int_w4_w2, cast_int_w4_w2_size};
+    case ComputeKernel::CastIntW4W4:
+      return {cast_int_w4_w4, cast_int_w4_w4_size};
+    case ComputeKernel::CastIntW4W8:
+      return {cast_int_w4_w8, cast_int_w4_w8_size};
+    case ComputeKernel::CastIntW8W1:
+      return {cast_int_w8_w1, cast_int_w8_w1_size};
+    case ComputeKernel::CastIntW8W2:
+      return {cast_int_w8_w2, cast_int_w8_w2_size};
+    case ComputeKernel::CastIntW8W4:
+      return {cast_int_w8_w4, cast_int_w8_w4_size};
+    case ComputeKernel::CastIntW8W8:
+      return {cast_int_w8_w8, cast_int_w8_w8_size};
     case ComputeKernel::CastF16Complex64:
       return {cast_f16_c64, cast_f16_c64_size};
     case ComputeKernel::CastBF16Complex64:

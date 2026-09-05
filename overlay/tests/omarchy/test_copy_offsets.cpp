@@ -607,3 +607,726 @@ TEST_CASE("reshape shares lazily and copies with the source offset") {
   CHECK(r.buffer().ptr() != x.buffer().ptr());
   CHECK(values_equal(r, {101, 104, 102, 105, 103, 106}));
 }
+
+namespace {
+
+// Build an integer-family array from host values. Bool sources go
+// through a byte vector, never std::vector<bool> (bit-packed proxy;
+// see docs/known-defects.md).
+array int_values_array(const std::vector<int64_t>& values, Dtype dtype) {
+  Shape shape{static_cast<int>(values.size())};
+  switch (dtype) {
+    case bool_: {
+      std::vector<uint8_t> v;
+      for (int64_t x : values) {
+        v.push_back(x != 0 ? 1 : 0);
+      }
+      return array(v.begin(), shape, bool_);
+    }
+    case uint8: {
+      std::vector<uint8_t> v(values.begin(), values.end());
+      return array(v.begin(), shape, uint8);
+    }
+    case int8: {
+      std::vector<int8_t> v(values.begin(), values.end());
+      return array(v.begin(), shape, int8);
+    }
+    case uint16: {
+      std::vector<uint16_t> v(values.begin(), values.end());
+      return array(v.begin(), shape, uint16);
+    }
+    case int16: {
+      std::vector<int16_t> v(values.begin(), values.end());
+      return array(v.begin(), shape, int16);
+    }
+    case uint32: {
+      std::vector<uint32_t> v(values.begin(), values.end());
+      return array(v.begin(), shape, uint32);
+    }
+    case int32: {
+      std::vector<int32_t> v(values.begin(), values.end());
+      return array(v.begin(), shape, int32);
+    }
+    case uint64: {
+      std::vector<uint64_t> v(values.begin(), values.end());
+      return array(v.begin(), shape, uint64);
+    }
+    case int64: {
+      std::vector<int64_t> v(values.begin(), values.end());
+      return array(v.begin(), shape, int64);
+    }
+    default:
+      throw std::runtime_error("unsupported test dtype");
+  }
+}
+
+// The exact bytes a static_cast chain from source value to destination
+// must produce: canonicalize the source value (sign/zero extend to 64
+// bits), then truncate to the destination width; a bool destination
+// stores 0/1 by nonzero.
+uint64_t source_bits(int64_t v, Dtype src) {
+  switch (src) {
+    case bool_:
+      return v != 0 ? 1u : 0u;
+    case uint8:
+      return static_cast<uint8_t>(v);
+    case int8:
+      return static_cast<uint64_t>(
+          static_cast<int64_t>(static_cast<int8_t>(v)));
+    case uint16:
+      return static_cast<uint16_t>(v);
+    case int16:
+      return static_cast<uint64_t>(
+          static_cast<int64_t>(static_cast<int16_t>(v)));
+    case uint32:
+      return static_cast<uint32_t>(v);
+    case int32:
+      return static_cast<uint64_t>(
+          static_cast<int64_t>(static_cast<int32_t>(v)));
+    case uint64:
+      return static_cast<uint64_t>(v);
+    case int64:
+      return static_cast<uint64_t>(v);
+    default:
+      return 0;
+  }
+}
+
+std::vector<uint8_t> expected_cast_bytes(
+    const std::vector<int64_t>& values,
+    Dtype src,
+    Dtype dst) {
+  std::vector<uint8_t> out;
+  for (int64_t v : values) {
+    uint64_t canonical = source_bits(v, src);
+    if (dst == bool_) {
+      out.push_back(canonical != 0 ? 1 : 0);
+      continue;
+    }
+    size_t n = static_cast<size_t>(size_of(dst));
+    uint64_t bits = n == 8
+        ? canonical
+        : (canonical & ((1ull << (8 * n)) - 1));
+    for (size_t i = 0; i < n; ++i) {
+      out.push_back(static_cast<uint8_t>(bits >> (8 * i)));
+    }
+  }
+  return out;
+}
+
+} // namespace
+
+TEST_CASE("dtype converting copies cover the integer family and bool") {
+  if (!gpu::is_available()) {
+    skip("no qualifying Vulkan device.");
+    return;
+  }
+  Stream s = gpu_stream();
+
+  // Nine elements: a partial tail word for the packed-byte legs.
+  const std::vector<int64_t> values = {
+      0, 1, 3, 200, 255, 127, 128, -1, -128};
+  const std::vector<Dtype> dtypes = {
+      bool_, uint8, int8, uint16, int16, uint32, int32, uint64, int64};
+  for (Dtype src : dtypes) {
+    array in = int_values_array(values, src);
+    in.eval();
+    for (Dtype dst : dtypes) {
+      std::vector<uint8_t> expected = expected_cast_bytes(values, src, dst);
+      std::optional<array> out;
+      bool caught = false;
+      std::string message;
+      try {
+        out = astype(in, dst, s);
+        out->eval();
+        omarchy::get_command_encoder(s).synchronize();
+      } catch (const std::runtime_error& e) {
+        caught = true;
+        message = e.what();
+      }
+      if (caught) {
+        // Only a device without shaderInt64 may refuse a leg, and only
+        // a 64-bit leg; the refusal must carry the exact name.
+        CHECK(message.find("[omarchy]") != std::string::npos);
+        CHECK(message.find("dtype converting copy") != std::string::npos);
+        bool sixty_four_leg = src == int64 || src == uint64 || dst == int64 ||
+            dst == uint64;
+        CHECK(sixty_four_leg);
+        continue;
+      }
+      CHECK(std::memcmp(
+                out->data<uint8_t>(), expected.data(), expected.size()) == 0);
+    }
+  }
+}
+
+TEST_CASE("byte dtype casts write packed edge words exactly") {
+  if (!gpu::is_available()) {
+    skip("no qualifying Vulkan device.");
+    return;
+  }
+  Stream s = gpu_stream();
+
+  // A uint8 view at byte offset 1 inside its parent: the cast must not
+  // clobber the untouched lead or tail bytes of the edge words.
+  std::vector<int64_t> vals = {100, 200, 0, 1, 255, 3, 7};
+  array parent = zeros({9}, uint8, s);
+  parent.eval();
+  array view = slice(parent, {1}, {8}, {1}, s);
+  view.eval();
+  array src = int_values_array(vals, int32);
+  src.eval();
+  copy_gpu_inplace(
+      src,
+      view,
+      src.shape(),
+      src.strides(),
+      view.strides(),
+      0,
+      0,
+      CopyType::Vector,
+      s);
+  omarchy::get_command_encoder(s).synchronize();
+  const auto* pp = parent.data<uint8_t>();
+  CHECK(pp[0] == 0);
+  for (size_t i = 0; i < vals.size(); ++i) {
+    CHECK(pp[i + 1] == static_cast<uint8_t>(vals[i]));
+  }
+  CHECK(pp[8] == 0);
+
+  // The same shape with a bool destination keeps the 0/1 canonical.
+  array bparent = zeros({5}, bool_, s);
+  bparent.eval();
+  array bview = slice(bparent, {1}, {4}, {1}, s);
+  bview.eval();
+  array bsrc = int_values_array({0, 5, -2}, int32);
+  bsrc.eval();
+  copy_gpu_inplace(
+      bsrc,
+      bview,
+      bsrc.shape(),
+      bsrc.strides(),
+      bview.strides(),
+      0,
+      0,
+      CopyType::Vector,
+      s);
+  omarchy::get_command_encoder(s).synchronize();
+  const auto* bp = bparent.data<bool>();
+  CHECK(bp[0] == false);
+  CHECK(bp[1] == false);
+  CHECK(bp[2] == true);
+  CHECK(bp[3] == true);
+  CHECK(bp[4] == false);
+}
+
+TEST_CASE("nonzero scalar fills cover bool and the 8-bit integers") {
+  if (!gpu::is_available()) {
+    skip("no qualifying Vulkan device.");
+    return;
+  }
+  Stream s = gpu_stream();
+
+  array tb = full({2}, true, bool_, s);
+  tb.eval();
+  omarchy::get_command_encoder(s).synchronize();
+  CHECK(tb.nbytes() == 2);
+  const auto* bp = tb.data<bool>();
+  CHECK(bp[0] == true);
+  CHECK(bp[1] == true);
+
+  // Five int8 bytes of 0xFD straddle a word boundary at offset 0.
+  array fi = full({5}, -3, int8, s);
+  fi.eval();
+  omarchy::get_command_encoder(s).synchronize();
+  const auto* ip = fi.data<int8_t>();
+  for (int i = 0; i < 5; ++i) {
+    CHECK(ip[i] == -3);
+  }
+
+  array fu = full({7}, 200, uint8, s);
+  fu.eval();
+  omarchy::get_command_encoder(s).synchronize();
+  const auto* up = fu.data<uint8_t>();
+  for (int i = 0; i < 7; ++i) {
+    CHECK(up[i] == 200);
+  }
+
+  // A bool fill into an odd-offset view leaves the parent's edge
+  // bytes untouched.
+  array parent = zeros({6}, bool_, s);
+  parent.eval();
+  array v = slice(parent, {1}, {5}, {1}, s);
+  v.eval();
+  array t(true, bool_);
+  copy_gpu_inplace(
+      t, v, v.shape(), v.strides(), v.strides(), 0, 0, CopyType::Scalar, s);
+  omarchy::get_command_encoder(s).synchronize();
+  const auto* pp = parent.data<bool>();
+  CHECK(pp[0] == false);
+  CHECK(pp[1] == true);
+  CHECK(pp[2] == true);
+  CHECK(pp[3] == true);
+  CHECK(pp[4] == true);
+  CHECK(pp[5] == false);
+}
+
+TEST_CASE("arange covers uint32") {
+  if (!gpu::is_available()) {
+    skip("no qualifying Vulkan device.");
+    return;
+  }
+  Stream s = gpu_stream();
+
+  array a = arange(0.0, 10.0, 2.0, uint32, s);
+  a.eval();
+  omarchy::get_command_encoder(s).synchronize();
+  CHECK(a.dtype() == uint32);
+  const auto* p = a.data<uint32_t>();
+  const uint32_t expected[5] = {0, 2, 4, 6, 8};
+  REQUIRE(a.size() == 5);
+  for (int i = 0; i < 5; ++i) {
+    CHECK(p[i] == expected[i]);
+  }
+
+  array b = arange(4.0, 0.0, -1.0, uint32, s);
+  b.eval();
+  omarchy::get_command_encoder(s).synchronize();
+  const auto* q = b.data<uint32_t>();
+  const uint32_t down[4] = {4, 3, 2, 1};
+  REQUIRE(b.size() == 4);
+  for (int i = 0; i < 4; ++i) {
+    CHECK(q[i] == down[i]);
+  }
+}
+
+TEST_CASE("negative strides flip through the strided copy engine") {
+  if (!gpu::is_available()) {
+    skip("no qualifying Vulkan device.");
+    return;
+  }
+  Stream s = gpu_stream();
+
+  array x({0.f, 1.f, 2.f, 3.f, 4.f, 5.f, 6.f, 7.f}, float32);
+  x.eval();
+  array r = flip(x, 0, s);
+  array rf = full(r.shape(), r, s);
+  rf.eval();
+  omarchy::get_command_encoder(s).synchronize();
+  const auto* rp = rf.data<float>();
+  for (int i = 0; i < 8; ++i) {
+    CHECK(rp[i] == static_cast<float>(7 - i));
+  }
+
+  // Two-dimensional flip on a non-zero axis.
+  array m({0.f, 1.f, 2.f, 3.f, 4.f, 5.f}, float32);
+  m = reshape(m, {2, 3}, s);
+  m.eval();
+  array mf = full(m.shape(), flip(m, 1, s), s);
+  mf.eval();
+  omarchy::get_command_encoder(s).synchronize();
+  const auto* mp = mf.data<float>();
+  const float mexpected[6] = {2.f, 1.f, 0.f, 5.f, 4.f, 3.f};
+  for (int i = 0; i < 6; ++i) {
+    CHECK(mp[i] == mexpected[i]);
+  }
+
+  // A reversed destination view: the negative stride sits on the
+  // output side of a GeneralGeneral copy.
+  array parent({9.f, 9.f, 9.f, 9.f, 9.f, 9.f, 9.f, 9.f}, float32);
+  parent.eval();
+  array dst = slice(parent, {4}, {1}, {-1}, s);
+  dst.eval();
+  array src({1.f, 2.f, 3.f}, float32);
+  src.eval();
+  copy_gpu_inplace(
+      src,
+      dst,
+      src.shape(),
+      src.strides(),
+      dst.strides(),
+      0,
+      0,
+      CopyType::GeneralGeneral,
+      s);
+  omarchy::get_command_encoder(s).synchronize();
+  const auto* gp = parent.data<float>();
+  CHECK(gp[0] == 9.f);
+  CHECK(gp[1] == 9.f);
+  CHECK(gp[2] == 3.f);
+  CHECK(gp[3] == 2.f);
+  CHECK(gp[4] == 1.f);
+  CHECK(gp[5] == 9.f);
+  CHECK(gp[6] == 9.f);
+  CHECK(gp[7] == 9.f);
+}
+
+TEST_CASE("strided copy covers bool") {
+  if (!gpu::is_available()) {
+    skip("no qualifying Vulkan device.");
+    return;
+  }
+  Stream s = gpu_stream();
+
+  array b({1, 0, 1, 1, 0, 1}, bool_);
+  b = reshape(b, {2, 3}, s);
+  b.eval();
+  array t = transpose(b, {1, 0}, s);
+  array tm = full(t.shape(), t, s);
+  tm.eval();
+  omarchy::get_command_encoder(s).synchronize();
+  REQUIRE(tm.dtype() == bool_);
+  REQUIRE(tm.nbytes() == 6);
+  const auto* tp = tm.data<bool>();
+  const bool texpected[6] = {true, true, false, false, true, true};
+  for (int i = 0; i < 6; ++i) {
+    CHECK(tp[i] == texpected[i]);
+  }
+}
+
+TEST_CASE("nonzero scalar fills cover bool and the 8-bit integers") {
+  if (!gpu::is_available()) {
+    skip("no qualifying Vulkan device.");
+    return;
+  }
+  Stream s = gpu_stream();
+
+  array tb = full({2}, true, bool_, s);
+  tb.eval();
+  omarchy::get_command_encoder(s).synchronize();
+  CHECK(tb.nbytes() == 2);
+  const auto* bp = tb.data<bool>();
+  CHECK(bp[0] == true);
+  CHECK(bp[1] == true);
+
+  // Five int8 bytes of 0xFD straddle a word boundary at offset 0.
+  array fi = full({5}, -3, int8, s);
+  fi.eval();
+  omarchy::get_command_encoder(s).synchronize();
+  const auto* ip = fi.data<int8_t>();
+  for (int i = 0; i < 5; ++i) {
+    CHECK(ip[i] == -3);
+  }
+
+  array fu = full({7}, 200, uint8, s);
+  fu.eval();
+  omarchy::get_command_encoder(s).synchronize();
+  const auto* up = fu.data<uint8_t>();
+  for (int i = 0; i < 7; ++i) {
+    CHECK(up[i] == 200);
+  }
+
+  // A bool fill into an odd-offset view leaves the parent's edge
+  // bytes untouched.
+  array parent = zeros({6}, bool_, s);
+  parent.eval();
+  array v = slice(parent, {1}, {5}, {1}, s);
+  v.eval();
+  array t(true, bool_);
+  copy_gpu_inplace(
+      t, v, v.shape(), v.strides(), v.strides(), 0, 0, CopyType::Scalar, s);
+  omarchy::get_command_encoder(s).synchronize();
+  const auto* pp = parent.data<bool>();
+  CHECK(pp[0] == false);
+  CHECK(pp[1] == true);
+  CHECK(pp[2] == true);
+  CHECK(pp[3] == true);
+  CHECK(pp[4] == true);
+  CHECK(pp[5] == false);
+}
+
+TEST_CASE("arange covers uint32") {
+  if (!gpu::is_available()) {
+    skip("no qualifying Vulkan device.");
+    return;
+  }
+  Stream s = gpu_stream();
+
+  array a = arange(0.0, 10.0, 2.0, uint32, s);
+  a.eval();
+  omarchy::get_command_encoder(s).synchronize();
+  CHECK(a.dtype() == uint32);
+  const auto* p = a.data<uint32_t>();
+  const uint32_t expected[5] = {0, 2, 4, 6, 8};
+  REQUIRE(a.size() == 5);
+  for (int i = 0; i < 5; ++i) {
+    CHECK(p[i] == expected[i]);
+  }
+
+  array b = arange(4.0, 0.0, -1.0, uint32, s);
+  b.eval();
+  omarchy::get_command_encoder(s).synchronize();
+  const auto* q = b.data<uint32_t>();
+  const uint32_t down[4] = {4, 3, 2, 1};
+  REQUIRE(b.size() == 4);
+  for (int i = 0; i < 4; ++i) {
+    CHECK(q[i] == down[i]);
+  }
+}
+
+TEST_CASE("negative strides flip through the strided copy engine") {
+  if (!gpu::is_available()) {
+    skip("no qualifying Vulkan device.");
+    return;
+  }
+  Stream s = gpu_stream();
+
+  array x({0.f, 1.f, 2.f, 3.f, 4.f, 5.f, 6.f, 7.f}, float32);
+  x.eval();
+  array r = flip(x, 0, s);
+  array rf = full(r.shape(), r, s);
+  rf.eval();
+  omarchy::get_command_encoder(s).synchronize();
+  const auto* rp = rf.data<float>();
+  for (int i = 0; i < 8; ++i) {
+    CHECK(rp[i] == static_cast<float>(7 - i));
+  }
+
+  // Two-dimensional flip on a non-zero axis.
+  array m({0.f, 1.f, 2.f, 3.f, 4.f, 5.f}, float32);
+  m = reshape(m, {2, 3}, s);
+  m.eval();
+  array mf = full(m.shape(), flip(m, 1, s), s);
+  mf.eval();
+  omarchy::get_command_encoder(s).synchronize();
+  const auto* mp = mf.data<float>();
+  const float mexpected[6] = {2.f, 1.f, 0.f, 5.f, 4.f, 3.f};
+  for (int i = 0; i < 6; ++i) {
+    CHECK(mp[i] == mexpected[i]);
+  }
+
+  // A reversed destination view: the negative stride sits on the
+  // output side of a GeneralGeneral copy.
+  array parent({9.f, 9.f, 9.f, 9.f, 9.f, 9.f, 9.f, 9.f}, float32);
+  parent.eval();
+  array dst = slice(parent, {4}, {1}, {-1}, s);
+  dst.eval();
+  array src({1.f, 2.f, 3.f}, float32);
+  src.eval();
+  copy_gpu_inplace(
+      src,
+      dst,
+      src.shape(),
+      src.strides(),
+      dst.strides(),
+      0,
+      0,
+      CopyType::GeneralGeneral,
+      s);
+  omarchy::get_command_encoder(s).synchronize();
+  const auto* gp = parent.data<float>();
+  CHECK(gp[0] == 9.f);
+  CHECK(gp[1] == 9.f);
+  CHECK(gp[2] == 3.f);
+  CHECK(gp[3] == 2.f);
+  CHECK(gp[4] == 1.f);
+  CHECK(gp[5] == 9.f);
+  CHECK(gp[6] == 9.f);
+  CHECK(gp[7] == 9.f);
+}
+
+TEST_CASE("strided copy covers bool") {
+  if (!gpu::is_available()) {
+    skip("no qualifying Vulkan device.");
+    return;
+  }
+  Stream s = gpu_stream();
+
+  array b({1, 0, 1, 1, 0, 1}, bool_);
+  b = reshape(b, {2, 3}, s);
+  b.eval();
+  array t = transpose(b, {1, 0}, s);
+  array tm = full(t.shape(), t, s);
+  tm.eval();
+  omarchy::get_command_encoder(s).synchronize();
+  REQUIRE(tm.dtype() == bool_);
+  REQUIRE(tm.nbytes() == 6);
+  const auto* tp = tm.data<bool>();
+  const bool texpected[6] = {true, true, false, false, true, true};
+  for (int i = 0; i < 6; ++i) {
+    CHECK(tp[i] == texpected[i]);
+  }
+}
+
+TEST_CASE("negative strides flip through the strided copy engine") {
+  if (!gpu::is_available()) {
+    skip("no qualifying Vulkan device.");
+    return;
+  }
+  Stream s = gpu_stream();
+
+  array x({0.f, 1.f, 2.f, 3.f, 4.f, 5.f, 6.f, 7.f}, float32);
+  x.eval();
+  array r = flip(x, 0, s);
+  array rf = full(r.shape(), r, s);
+  rf.eval();
+  omarchy::get_command_encoder(s).synchronize();
+  const auto* rp = rf.data<float>();
+  for (int i = 0; i < 8; ++i) {
+    CHECK(rp[i] == static_cast<float>(7 - i));
+}
+
+}
+TEST_CASE("nonzero scalar fills cover bool and the 8-bit integers") {
+  if (!gpu::is_available()) {
+    skip("no qualifying Vulkan device.");
+    return;
+  }
+  Stream s = gpu_stream();
+
+  array tb = full({2}, true, bool_, s);
+  tb.eval();
+  omarchy::get_command_encoder(s).synchronize();
+  CHECK(tb.nbytes() == 2);
+  const auto* bp = tb.data<bool>();
+  CHECK(bp[0] == true);
+  CHECK(bp[1] == true);
+
+  // Five int8 bytes of 0xFD straddle a word boundary at offset 0.
+  array fi = full({5}, -3, int8, s);
+  fi.eval();
+  omarchy::get_command_encoder(s).synchronize();
+  const auto* ip = fi.data<int8_t>();
+  for (int i = 0; i < 5; ++i) {
+    CHECK(ip[i] == -3);
+  }
+
+  array fu = full({7}, 200, uint8, s);
+  fu.eval();
+  omarchy::get_command_encoder(s).synchronize();
+  const auto* up = fu.data<uint8_t>();
+  for (int i = 0; i < 7; ++i) {
+    CHECK(up[i] == 200);
+  }
+
+  // A bool fill into an odd-offset view leaves the parent's edge
+  // bytes untouched.
+  array parent = zeros({6}, bool_, s);
+  parent.eval();
+  array v = slice(parent, {1}, {5}, {1}, s);
+  v.eval();
+  array t(true, bool_);
+  copy_gpu_inplace(
+      t, v, v.shape(), v.strides(), v.strides(), 0, 0, CopyType::Scalar, s);
+  omarchy::get_command_encoder(s).synchronize();
+  const auto* pp = parent.data<bool>();
+  CHECK(pp[0] == false);
+  CHECK(pp[1] == true);
+  CHECK(pp[2] == true);
+  CHECK(pp[3] == true);
+  CHECK(pp[4] == true);
+  CHECK(pp[5] == false);
+}
+
+TEST_CASE("arange covers uint32") {
+  if (!gpu::is_available()) {
+    skip("no qualifying Vulkan device.");
+    return;
+  }
+  Stream s = gpu_stream();
+
+  array a = arange(0.0, 10.0, 2.0, uint32, s);
+  a.eval();
+  omarchy::get_command_encoder(s).synchronize();
+  CHECK(a.dtype() == uint32);
+  const auto* p = a.data<uint32_t>();
+  const uint32_t expected[5] = {0, 2, 4, 6, 8};
+  REQUIRE(a.size() == 5);
+  for (int i = 0; i < 5; ++i) {
+    CHECK(p[i] == expected[i]);
+  }
+
+  array b = arange(4.0, 0.0, -1.0, uint32, s);
+  b.eval();
+  omarchy::get_command_encoder(s).synchronize();
+  const auto* q = b.data<uint32_t>();
+  const uint32_t down[4] = {4, 3, 2, 1};
+  REQUIRE(b.size() == 4);
+  for (int i = 0; i < 4; ++i) {
+    CHECK(q[i] == down[i]);
+  }
+}
+
+TEST_CASE("negative strides flip through the strided copy engine") {
+  if (!gpu::is_available()) {
+    skip("no qualifying Vulkan device.");
+    return;
+  }
+  Stream s = gpu_stream();
+
+  array x({0.f, 1.f, 2.f, 3.f, 4.f, 5.f, 6.f, 7.f}, float32);
+  x.eval();
+  array r = flip(x, 0, s);
+  array rf = full(r.shape(), r, s);
+  rf.eval();
+  omarchy::get_command_encoder(s).synchronize();
+  const auto* rp = rf.data<float>();
+  for (int i = 0; i < 8; ++i) {
+    CHECK(rp[i] == static_cast<float>(7 - i));
+  }
+
+  // Two-dimensional flip on a non-zero axis.
+  array m({0.f, 1.f, 2.f, 3.f, 4.f, 5.f}, float32);
+  m = reshape(m, {2, 3}, s);
+  m.eval();
+  array mf = full(m.shape(), flip(m, 1, s), s);
+  mf.eval();
+  omarchy::get_command_encoder(s).synchronize();
+  const auto* mp = mf.data<float>();
+  const float mexpected[6] = {2.f, 1.f, 0.f, 5.f, 4.f, 3.f};
+  for (int i = 0; i < 6; ++i) {
+    CHECK(mp[i] == mexpected[i]);
+  }
+
+  // A reversed destination view: the negative stride sits on the
+  // output side of a GeneralGeneral copy.
+  array parent({9.f, 9.f, 9.f, 9.f, 9.f, 9.f, 9.f, 9.f}, float32);
+  parent.eval();
+  array dst = slice(parent, {4}, {1}, {-1}, s);
+  dst.eval();
+  array src({1.f, 2.f, 3.f}, float32);
+  src.eval();
+  copy_gpu_inplace(
+      src,
+      dst,
+      src.shape(),
+      src.strides(),
+      dst.strides(),
+      0,
+      0,
+      CopyType::GeneralGeneral,
+      s);
+  omarchy::get_command_encoder(s).synchronize();
+  const auto* gp = parent.data<float>();
+  CHECK(gp[0] == 9.f);
+  CHECK(gp[1] == 9.f);
+  CHECK(gp[2] == 3.f);
+  CHECK(gp[3] == 2.f);
+  CHECK(gp[4] == 1.f);
+  CHECK(gp[5] == 9.f);
+  CHECK(gp[6] == 9.f);
+  CHECK(gp[7] == 9.f);
+}
+
+TEST_CASE("strided copy covers bool") {
+  if (!gpu::is_available()) {
+    skip("no qualifying Vulkan device.");
+    return;
+  }
+  Stream s = gpu_stream();
+
+  array b({1, 0, 1, 1, 0, 1}, bool_);
+  b = reshape(b, {2, 3}, s);
+  b.eval();
+  array t = transpose(b, {1, 0}, s);
+  array tm = full(t.shape(), t, s);
+  tm.eval();
+  omarchy::get_command_encoder(s).synchronize();
+  REQUIRE(tm.dtype() == bool_);
+  REQUIRE(tm.nbytes() == 6);
+  const auto* tp = tm.data<bool>();
+  const bool texpected[6] = {true, true, false, false, true, true};
+  for (int i = 0; i < 6; ++i) {
+    CHECK(tp[i] == texpected[i]);
+  }
+}

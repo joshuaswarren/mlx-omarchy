@@ -2145,11 +2145,13 @@ void AddMM::eval_gpu(const std::vector<array>& inputs, array& out) {
 void Arange::eval_gpu(const std::vector<array>& inputs, array& out) {
   auto& encoder = omarchy::get_command_encoder(out.primitive().stream());
   bool is_int32 = out.dtype() == int32;
-  if (!is_int32) {
+  bool is_uint32 = out.dtype() == uint32;
+  if (!is_int32 && !is_uint32) {
     require_float_dtype("Arange", out, out, encoder);
   }
-  if (is_int32 && out.size() > 0) {
-    // The shader computes int(alpha) + index * int(beta), so the float
+  if ((is_int32 || is_uint32) && out.size() > 0) {
+    // The shader computes int(alpha) + index * int(beta) (the uint32
+    // kernel stores the same two's-complement bits), so the float
     // transport is only exact while every value and the one-past-last
     // value stay under 2^24.
     constexpr double kArangeIntLimit = 16777216.0;
@@ -2174,6 +2176,8 @@ void Arange::eval_gpu(const std::vector<array>& inputs, array& out) {
   std::array<omarchy::ComputeBinding, 1> bindings{binding(out)};
   auto kernel = is_int32
       ? omarchy::ComputeKernel::ArangeI32
+      : is_uint32
+      ? omarchy::ComputeKernel::ArangeU32
       : select_float_kernel(
             out.dtype(),
             omarchy::ComputeKernel::ArangeF32,

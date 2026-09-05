@@ -847,16 +847,18 @@ TEST_CASE("masked_scatter supports int32 and float16 data") {
   check_floats(astype(f16out, float32, stream), {1, 5}, stream);
 }
 
-TEST_CASE("masked_scatter broadcast mask keeps its refusal") {
+TEST_CASE("masked_scatter broadcast mask fills whole leading rows") {
   if (!compute_available()) {
     return;
   }
   Stream stream = gpu_stream();
+  // A [2] mask over a [2, 2] array masks leading rows (upstream expands
+  // it to [2, 1] and broadcasts), and a scalar value fills every masked
+  // position.
   array dst = array({1.0f, 2.0f, 3.0f, 4.0f}, {2, 2}, float32);
   array mask = array({1, 0}, {2}, bool_);
   array value = array(-7.0f);
-  array out = masked_scatter(dst, mask, value, stream);
-  CHECK_THROWS_AS(out.eval(), std::runtime_error);
+  check_floats(masked_scatter(dst, mask, value, stream), {-7, -7, 3, 4}, stream);
 }
 
 // ---------------------------------------------------------------------------

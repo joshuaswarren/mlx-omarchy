@@ -1,0 +1,150 @@
+// Copyright © 2026 Joshua Warren / mlx-omarchy contributors.
+// SPDX-License-Identifier: MIT
+//
+// Integer-family dtype-converting copy. One blob per (source,
+// destination) element-width pair; the push-constant operation field
+// carries the runtime dtype codes as (source | destination << 16)
+// inside one uniform value:
+//   0 bool  1 uint8  2 int8  3 uint16  4 int16  5 uint32  6 int32
+//   7 uint64  8 int64
+//
+// Conversion mirrors the C++ static_cast chain: a source canonicalizes
+// to a (low, high) uint word pair - the low word always carries the
+// 32-bit two's-complement bits, the high word extends the sign for
+// 64-bit stores; a store truncates the low bits (same modular result
+// as static_cast to the narrower type); bool canonicalizes on load
+// (!= 0 -> 1) and on store (nonzero -> 1). int64/uint64 ride as
+// little-endian word pairs, so no 64-bit arithmetic compiles into the
+// blob; dispatch is gated on the device's shaderInt64 feature anyway.
+//
+// Shape discipline (docs/known-defects.md byte-extraction family): one
+// thread per item in a straight-line while loop, every step inlined -
+// no helper functions, no per-thread word windows, no lane loops over
+// a shared word. Packed-byte loads use the gather-style address and
+// the constant-shift select chain proven in scatter.comp; byte stores
+// land as the commuting atomicAnd/atomicOr lane pair, so shared edge
+// words stay exact.
+#version 460
+
+#if SRC_W == 2 || DST_W == 2
+#extension GL_EXT_shader_16bit_storage : require
+#extension GL_EXT_shader_explicit_arithmetic_types_int16 : require
+#endif
+
+#define CODE_BOOL 0u
+#define CODE_U8 1u
+#define CODE_I8 2u
+#define CODE_U16 3u
+#define CODE_I16 4u
+#define CODE_U32 5u
+#define CODE_I32 6u
+#define CODE_U64 7u
+#define CODE_I64 8u
+
+#define SRC_CODE (params.operation & 0xFFFFu)
+#define DST_CODE (params.operation >> 16u)
+
+layout(local_size_x = 256) in;
+
+#if SRC_W == 2
+layout(set = 0, binding = 0, std430) readonly buffer InputH {
+  uint16_t values[];
+} in_h;
+#else
+layout(set = 0, binding = 0, std430) readonly buffer InputW {
+  uint values[];
+} in_w;
+#endif
+
+#if DST_W == 2
+layout(set = 0, binding = 2, std430) buffer OutputH {
+  uint16_t values[];
+} out_h;
+#elif DST_W == 1
+// Byte destinations insert lanes with atomics, so the buffer must be
+// readable and writable, not writeonly.
+layout(set = 0, binding = 2, std430) buffer OutputW {
+  uint values[];
+} out_w;
+#else
+layout(set = 0, binding = 2, std430) writeonly buffer OutputW {
+  uint values[];
+} out_w;
+#endif
+
+layout(push_constant) uniform Params {
+  uint count;
+  uint operation;
+  uint lhs_size;
+  uint rhs_size;
+  uint reduce_size;
+  uint output_size;
+  uint lhs_offset;
+  uint rhs_offset;
+  uint output_offset;
+} params;
+
+void main() {
+  uint index = gl_GlobalInvocationID.x;
+  uint stride = gl_NumWorkGroups.x * gl_WorkGroupSize.x;
+  while (index < params.count) {
+    uint addr = params.lhs_offset + index;
+    uint lo;
+    uint hi;
+#if SRC_W == 1
+    // Packed byte at addr: gather-style word load, then the
+    // constant-shift select chain from scatter.comp BYTE_AT.
+    uint word = in_w.values[addr >> 2u];
+    uint lane = addr & 3u;
+    uint b = (lane == 0u)
+        ? (word & 0xFFu)
+        : (lane == 1u)
+        ? ((word >> 8u) & 0xFFu)
+        : (lane == 2u)
+        ? ((word >> 16u) & 0xFFu)
+        : ((word >> 24u) & 0xFFu);
+    lo = b;
+    hi = 0u;
+    if (SRC_CODE == CODE_I8 && (b & 0x80u) != 0u) {
+      lo = b | 0xFFFFFF00u;
+      hi = 0xFFFFFFFFu;
+    }
+    if (SRC_CODE == CODE_BOOL) {
+      lo = (b != 0u) ? 1u : 0u;
+    }
+#elif SRC_W == 2
+    uint16_t h = in_h.values[addr];
+    lo = uint(h);
+    hi = 0u;
+    if (SRC_CODE == CODE_I16 && (lo & 0x8000u) != 0u) {
+      lo = lo | 0xFFFF0000u;
+      hi = 0xFFFFFFFFu;
+    }
+#elif SRC_W == 4
+    lo = in_w.values[addr];
+    hi = (SRC_CODE == CODE_I32 && (lo & 0x80000000u) != 0u) ? 0xFFFFFFFFu : 0u;
+#else
+    lo = in_w.values[2u * addr];
+    hi = in_w.values[2u * addr + 1u];
+#endif
+#if DST_W == 1
+    uint v = (DST_CODE == CODE_BOOL) ? (((lo | hi) != 0u) ? 1u : 0u)
+                                     : (lo & 0xFFu);
+    uint daddr = params.output_offset + index;
+    uint shift = (daddr & 3u) * 8u;
+    atomicAnd(out_w.values[daddr >> 2u], ~(0xFFu << shift));
+    atomicOr(out_w.values[daddr >> 2u], v << shift);
+#elif DST_W == 2
+    out_h.values[params.output_offset + index] = uint16_t(lo & 0xFFFFu);
+#elif DST_W == 4
+    out_w.values[params.output_offset + index] = lo;
+#else
+    out_w.values[2u * (params.output_offset + index)] = lo;
+    out_w.values[2u * (params.output_offset + index) + 1u] = hi;
+#endif
+    if (params.count - index <= stride) {
+      break;
+    }
+    index += stride;
+  }
+}

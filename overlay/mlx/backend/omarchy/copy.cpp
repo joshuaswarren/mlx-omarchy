@@ -2,13 +2,15 @@
 // SPDX-License-Identifier: MIT
 
 // Buffer-level copy path. Transfer commands handle contiguous same-dtype
-// ranges. Vulkan compute handles contiguous FP16 and FP32 conversions,
-// non-zero scalar fills, and same-dtype strided copies.
-// Dtype-converting strided copies keep the exact compatibility error for
-// this slice.
+// ranges. Vulkan compute handles contiguous conversions across the
+// integer family and bool, non-zero scalar fills, and same-dtype
+// strided copies (flips included, via signed stride math). Float and
+// complex conversions keep their dedicated kernels. Dtype-converting
+// strided copies keep the exact compatibility error for this slice.
 
 #include "mlx/backend/omarchy/unsupported.h"
 
+#include <algorithm>
 #include <array>
 #include <cstdint>
 #include <cstring>
@@ -124,13 +126,18 @@ omarchy::ComputeBinding compute_binding(const array& value) {
   return {buffer->buffer, 0, buffer->size};
 }
 
-// Zero an allocated output at its destination offset: whole 4-byte words on
-// the device with vkCmdFillBuffer, misaligned lead and trailing bytes on
-// the host. When edges exist, prior device work is drained first and the
-// host memset happens immediately - never in a completion handler, or a
-// later same-stream GPU submission could read stale bytes. The next
-// submission's flush publishes the host writes.
-void fill_zero(const Stream& s, array& out, int64_t o_offset) {
+// Fill an allocated output region at its destination offset with a
+// repeated byte: whole 4-byte words on the device with vkCmdFillBuffer,
+// misaligned lead and trailing bytes on the host. When edges exist,
+// prior device work is drained first and the host memset happens
+// immediately - never in a completion handler, or a later same-stream
+// GPU submission could read stale bytes. The next submission's flush
+// publishes the host writes.
+void fill_pattern(
+    const Stream& s,
+    array& out,
+    int64_t o_offset,
+    uint8_t byte) {
   auto& encoder = omarchy::get_command_encoder(s);
   size_t start = byte_offset(out, o_offset);
   size_t nbytes = out.nbytes();
@@ -144,11 +151,12 @@ void fill_zero(const Stream& s, array& out, int64_t o_offset) {
   if (lead + tail > 0) {
     encoder.synchronize();
     auto* base = static_cast<uint8_t*>(out.buffer().raw_ptr());
-    std::memset(base + start, 0, lead);
-    std::memset(base + start + lead + words_bytes, 0, tail);
+    std::memset(base + start, byte, lead);
+    std::memset(base + start + lead + words_bytes, byte, tail);
   }
   if (words_bytes > 0) {
-    encoder.fill_buffer(buffer_handle(out), 0, words_bytes, start + lead);
+    encoder.fill_buffer(
+        buffer_handle(out), 0x01010101u * byte, words_bytes, start + lead);
   }
 }
 
@@ -168,6 +176,11 @@ omarchy::ComputeKernel fill_kernel(Dtype dtype) {
 }
 
 omarchy::ComputeKernel copy_general_kernel(Dtype dtype) {
+  if (dtype == bool_) {
+    // Packed word transport: 4 bools per word, byte-lane atomics in
+    // the shader (scatter.comp shape).
+    return omarchy::ComputeKernel::CopyGeneralBool;
+  }
   if (dtype == float16) {
     return omarchy::ComputeKernel::CopyGeneralF16;
   }
@@ -186,6 +199,104 @@ omarchy::ComputeKernel copy_general_kernel(Dtype dtype) {
     return omarchy::ComputeKernel::CopyGeneralComplex64;
   }
   return omarchy::ComputeKernel::CopyGeneralF32;
+}
+
+// Element-width class of the integer family: 1-byte (bool, int8,
+// uint8), 2-byte (int16, uint16), 4-byte (int32, uint32), 8-byte
+// (int64, uint64). 0 for every other dtype.
+int int_width(Dtype dtype) {
+  switch (dtype) {
+    case bool_:
+    case int8:
+    case uint8:
+      return 1;
+    case int16:
+    case uint16:
+      return 2;
+    case int32:
+    case uint32:
+      return 4;
+    case int64:
+    case uint64:
+      return 8;
+    default:
+      return 0;
+  }
+}
+
+// Dtype codes cast_int.comp understands (the same numbering the
+// shader embeds); the pair rides in params.operation as
+// (source | destination << 16).
+uint32_t cast_int_code(Dtype dtype) {
+  switch (dtype) {
+    case bool_:
+      return 0;
+    case uint8:
+      return 1;
+    case int8:
+      return 2;
+    case uint16:
+      return 3;
+    case int16:
+      return 4;
+    case uint32:
+      return 5;
+    case int32:
+      return 6;
+    case uint64:
+      return 7;
+    case int64:
+      return 8;
+    default:
+      return 0xFFFFFFFFu;
+  }
+}
+
+// Blob for a flat integer-family cast: one kernel per (source,
+// destination) width pair, with runtime dtype codes inside the blob,
+// so no per-dtype kernel forks. Conversions mirror the C++
+// static_cast chain. 64-bit legs need the device's shaderInt64
+// feature and 16-bit legs need 16-bit storage; a device without them
+// keeps the named refusal.
+std::optional<omarchy::ComputeKernel> cast_int_kernel(
+    Dtype in_dtype,
+    Dtype out_dtype,
+    const omarchy::CapabilityReport& capabilities) {
+  int sw = int_width(in_dtype);
+  int dw = int_width(out_dtype);
+  if (sw == 0 || dw == 0) {
+    return std::nullopt;
+  }
+  if ((sw == 8 || dw == 8) && !capabilities.shader_int64) {
+    return std::nullopt;
+  }
+  if ((sw == 2 || dw == 2) &&
+      (!capabilities.storage_buffer_16bit_access ||
+       !capabilities.shader_int16)) {
+    return std::nullopt;
+  }
+  static constexpr omarchy::ComputeKernel kTable[4][4] = {
+      {omarchy::ComputeKernel::CastIntW1W1,
+       omarchy::ComputeKernel::CastIntW1W2,
+       omarchy::ComputeKernel::CastIntW1W4,
+       omarchy::ComputeKernel::CastIntW1W8},
+      {omarchy::ComputeKernel::CastIntW2W1,
+       omarchy::ComputeKernel::CastIntW2W2,
+       omarchy::ComputeKernel::CastIntW2W4,
+       omarchy::ComputeKernel::CastIntW2W8},
+      {omarchy::ComputeKernel::CastIntW4W1,
+       omarchy::ComputeKernel::CastIntW4W2,
+       omarchy::ComputeKernel::CastIntW4W4,
+       omarchy::ComputeKernel::CastIntW4W8},
+      {omarchy::ComputeKernel::CastIntW8W1,
+       omarchy::ComputeKernel::CastIntW8W2,
+       omarchy::ComputeKernel::CastIntW8W4,
+       omarchy::ComputeKernel::CastIntW8W8},
+  };
+  auto col = [](int width) {
+    return width == 1 ? 0 : width == 2 ? 1 : width == 4 ? 2 : 3;
+  };
+  return kTable[col(sw)][col(dw)];
 }
 
 // Storage-buffer access requirements for a 16-bit float dtype, shared by
@@ -245,7 +356,17 @@ void copy_gpu_inplace(
     }
     encoder.synchronize();
     if (scalar_is_zero(in, i_offset)) {
-      fill_zero(s, out, o_offset);
+      fill_pattern(s, out, o_offset, 0);
+      return;
+    }
+    if (in.itemsize() == 1) {
+      // Byte-packed fills: bool stores canonical 0/1 bytes and the
+      // 8-bit ints store their raw byte, so a repeated-byte word
+      // pattern covers the whole region. The scalar is non-zero here.
+      if (in.dtype() != out.dtype()) {
+        omarchy::unsupported("non-zero scalar fill dtype", out);
+      }
+      fill_pattern(s, out, o_offset, in.data<char>()[i_offset]);
       return;
     }
     if (in.dtype() == int32 || in.dtype() == uint32) {
@@ -302,17 +423,11 @@ void copy_gpu_inplace(
     if (in.dtype() != out.dtype() ||
         (in.dtype() != float32 && in.dtype() != float16 &&
          in.dtype() != bfloat16 && in.dtype() != int32 &&
-         in.dtype() != uint32 && in.dtype() != complex64)) {
+         in.dtype() != uint32 && in.dtype() != complex64 &&
+         in.dtype() != bool_)) {
       omarchy::unsupported("strided copy", out);
     }
     require_float_storage("strided copy", in.dtype(), out, encoder);
-    for (const auto& strides : {i_strides, o_strides}) {
-      for (int64_t stride : strides) {
-        if (stride < 0) {
-          omarchy::unsupported("negative stride copy", out);
-        }
-      }
-    }
     auto [collapsed_shape, collapsed_strides] = collapse_contiguous_dims(
         data_shape, std::vector<Strides>{i_strides, o_strides});
     size_t rank = collapsed_shape.size();
@@ -327,25 +442,41 @@ void copy_gpu_inplace(
     omarchy::ComputeParams params;
     params.count = count;
     params.dims = static_cast<uint32_t>(rank);
-    uint64_t in_span = 0;
-    uint64_t out_span = 0;
+    // Signed span: strides may be negative (a flip carries its base at
+    // the far end), and the shader indexes with int math, so every
+    // intermediate index must land in [0, INT32_MAX] per buffer.
+    int64_t in_lo = 0;
+    int64_t in_hi = 0;
+    int64_t out_lo = 0;
+    int64_t out_hi = 0;
     for (size_t axis = 0; axis < rank; ++axis) {
       params.shape[axis] = static_cast<uint32_t>(collapsed_shape[axis]);
       params.in_strides[axis] =
           static_cast<uint32_t>(collapsed_strides[0][axis]);
       params.out_strides[axis] =
           static_cast<uint32_t>(collapsed_strides[1][axis]);
-      uint64_t extent = params.shape[axis] - 1u;
-      in_span += extent * params.in_strides[axis];
-      out_span += extent * params.out_strides[axis];
+      int64_t extent = static_cast<int64_t>(params.shape[axis]) - 1;
+      int64_t ist =
+          static_cast<int64_t>(static_cast<int32_t>(params.in_strides[axis]));
+      int64_t ost =
+          static_cast<int64_t>(static_cast<int32_t>(params.out_strides[axis]));
+      in_lo += std::min<int64_t>(0, ist * extent);
+      in_hi += std::max<int64_t>(0, ist * extent);
+      out_lo += std::min<int64_t>(0, ost * extent);
+      out_hi += std::max<int64_t>(0, ost * extent);
     }
     params.lhs_offset =
         compute_item_offset(in, i_offset, "strided copy", out);
     params.output_offset =
         compute_item_offset(out, o_offset, "strided copy", out);
-    if (!omarchy::compute_index_span_fits(params.lhs_offset, in_span + 1) ||
-        !omarchy::compute_index_span_fits(
-            params.output_offset, out_span + 1)) {
+    if (in_lo < -static_cast<int64_t>(params.lhs_offset) ||
+        in_hi >
+            std::numeric_limits<int32_t>::max() -
+                static_cast<int64_t>(params.lhs_offset) ||
+        out_lo < -static_cast<int64_t>(params.output_offset) ||
+        out_hi >
+            std::numeric_limits<int32_t>::max() -
+                static_cast<int64_t>(params.output_offset)) {
       omarchy::unsupported("strided copy index span", out);
     }
     std::array<omarchy::ComputeBinding, 3> bindings{
@@ -359,6 +490,7 @@ void copy_gpu_inplace(
   }
 
   if (in.dtype() != out.dtype()) {
+    const auto& capabilities = encoder.device().capabilities();
     omarchy::ComputeKernel kernel;
     if (in.dtype() == bool_ && out.dtype() == float32) {
       kernel = omarchy::ComputeKernel::CastBoolF32;
@@ -404,11 +536,14 @@ void copy_gpu_inplace(
       kernel = omarchy::ComputeKernel::CastBF16Complex64;
     } else if (in.dtype() == complex64 && out.dtype() == float32) {
       kernel = omarchy::ComputeKernel::CastComplex64F32;
+    } else if (
+        auto int_kernel = cast_int_kernel(in.dtype(), out.dtype(),
+                                          capabilities)) {
+      kernel = *int_kernel;
     } else {
       omarchy::unsupported("dtype converting copy", out);
     }
 
-    const auto& capabilities = encoder.device().capabilities();
     if ((in.dtype() == float16 || out.dtype() == float16) &&
         (!capabilities.shader_float16 ||
          !capabilities.storage_buffer_16bit_access)) {
@@ -428,6 +563,8 @@ void copy_gpu_inplace(
         checked_u32(in.data_size(), "dtype converting copy", out);
     params.rhs_size = params.lhs_size;
     params.output_size = count;
+    params.operation =
+        cast_int_code(in.dtype()) | (cast_int_code(out.dtype()) << 16);
     params.lhs_offset =
         compute_item_offset(in, i_offset, "dtype converting copy", out);
     params.output_offset =
@@ -436,8 +573,21 @@ void copy_gpu_inplace(
         !omarchy::compute_index_span_fits(params.output_offset, count)) {
       omarchy::unsupported("dtype converting copy index span", out);
     }
+    if (int_width(in.dtype()) == 8 || int_width(out.dtype()) == 8) {
+      // The shader addresses 64-bit items as little-endian word pairs,
+      // so the word span 2*(offset+count) must stay in uint32 range.
+      if (!omarchy::compute_index_span_fits(
+              2ull * params.lhs_offset, 2ull * count) ||
+          !omarchy::compute_index_span_fits(
+              2ull * params.output_offset, 2ull * count)) {
+        omarchy::unsupported("dtype converting copy index span", out);
+      }
+    }
     std::array<omarchy::ComputeBinding, 3> bindings{
         compute_binding(in), compute_binding(in), compute_binding(out)};
+    // The legacy bool-source kernels dispatch one thread per word
+    // window (cast.comp SOURCE_BOOL shape); the cast_int blobs run one
+    // thread per item.
     const bool source_bool_kernel =
         kernel == omarchy::ComputeKernel::CastBoolF32 ||
         kernel == omarchy::ComputeKernel::CastBoolI32 ||
@@ -538,7 +688,7 @@ void fill_gpu(const array& val, array& out, const Stream& s) {
   if (!scalar_is_zero(val, 0)) {
     omarchy::unsupported("non-zero fill", out);
   }
-  fill_zero(s, out, 0);
+  fill_pattern(s, out, 0, 0);
 }
 
 
