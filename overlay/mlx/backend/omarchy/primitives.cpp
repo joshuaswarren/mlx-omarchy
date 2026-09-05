@@ -2642,16 +2642,16 @@ void Conjugate::eval_gpu(const std::vector<array>& inputs, array& out) {
       out.primitive().stream());
 }
 // General direct convolution for the channels-last layouts upstream
-// hands this primitive: input [N, (H,) W, C] and weight
-// [O, (kH,) kW, C_per_group], both row-major. One thread owns one
-// output element; a float32 accumulator walks the kernel window and
-// index guards contribute zero for padding. The kernel covers every
-// combination the public ops build: groups including the depthwise
-// case, the flip that conv_transpose uses, input dilation, kernel
-// dilation, strides, and asymmetric padding, over 1D and 2D spatial
-// ranks. 1D rides the same kernel as a degenerate height of one,
-// matching the upstream CPU reference where slow_conv_1D is
-// slow_conv_2D with an extent-one height axis.
+// hands this primitive: input [N, (D,) (H,) W, C] and weight
+// [O, (kD,) (kH,) kW, C_per_group], both row-major. One thread owns
+// one output element; a float32 accumulator walks the kernel window
+// and index guards contribute zero for padding. The kernel covers
+// every combination the public ops build: groups including the
+// depthwise case, the flip that conv_transpose uses, input dilation,
+// kernel dilation, strides, and asymmetric padding, over 1D, 2D, and
+// 3D spatial ranks. Lower ranks ride the same kernel with degenerate
+// extent-one outer axes, matching the upstream CPU reference where
+// slow_conv_1D is slow_conv_2D with an extent-one height axis.
 void Convolution::eval_gpu(const std::vector<array>& inputs, array& out) {
   const array& in = inputs.at(0);
   const array& wt = inputs.at(1);
@@ -2659,24 +2659,26 @@ void Convolution::eval_gpu(const std::vector<array>& inputs, array& out) {
   require_float_dtype("Convolution", in, out, encoder);
   require_float_dtype("Convolution", wt, out, encoder);
   const int spatial = in.ndim() - 2;
-  if (spatial > 2) {
-    omarchy::unsupported("3-D Convolution", out);
-  }
-  // The flip (conv_transpose) path stays gated: the one-hot probe in
-  // test_conv_general.cpp showed the kernel reading the wrong input
-  // channels once flip and input dilation combine, and a wrong number
-  // is never acceptable. Forward convolutions - grouped, depthwise,
-  // 1-D, input-dilated, kernel-dilated, strided - run the general
-  // kernel below.
-  if (flip_) {
-    omarchy::unsupported("transposed (flip) Convolution", out);
-  }
-  if (in.ndim() != wt.ndim() || spatial < 1) {
+  if (spatial < 1 || spatial > 3 || in.ndim() != wt.ndim()) {
     omarchy::unsupported("Convolution shapes", out);
   }
-  const bool one_d = spatial == 1;
-  const int width_axis = one_d ? 1 : 2;
-  const int channel_axis = one_d ? 2 : 3;
+  // conv_transpose_general is the only flip producer and it always
+  // passes kernel strides of one, so a strided flip keeps the named
+  // rejection. 3-D input dilation stays refused because the fixed
+  // ComputeParams layout has no slot for it (upstream conv3d never
+  // builds one; only the public conv_general could).
+  const std::vector<int> unit_strides(spatial, 1);
+  if (flip_ && kernel_strides_ != unit_strides) {
+    omarchy::unsupported("transposed (flip) Convolution stride", out);
+  }
+  // Forward 3-D with non-unit input dilation keeps a named rejection:
+  // the fixed ComputeParams layout has no slot for it once the stride
+  // slots carry the kernel stride (the transposed path needs no slot
+  // there because flip always pairs with unit kernel stride).
+  const std::vector<int> unit_dilation(3, 1);
+  if (spatial == 3 && !flip_ && input_dilation_ != unit_dilation) {
+    omarchy::unsupported("3-D input dilation", out);
+  }
 
   // Materialize operands whose strides are not the standard
   // channels-last and O(HKW) row-major layouts; cache slices and
@@ -2695,17 +2697,21 @@ void Convolution::eval_gpu(const std::vector<array>& inputs, array& out) {
   const array& x = in_materialized ? *in_materialized : in;
   const array& w = wt_materialized ? *wt_materialized : wt;
 
+  auto axis_extent =
+      [](const array& a, int axis) { return a.shape(1 + axis); };
   const int batch = x.shape(0);
-  const int in_height = one_d ? 1 : x.shape(1);
-  const int in_width = x.shape(width_axis);
-  const int in_channels = x.shape(channel_axis);
+  const int in_channels = x.shape(x.ndim() - 1);
   const int out_channels = w.shape(0);
-  const int kernel_height = one_d ? 1 : w.shape(1);
-  const int kernel_width = w.shape(width_axis);
-  const int in_channels_per_group = w.shape(channel_axis);
+  const int in_channels_per_group = w.shape(w.ndim() - 1);
+  // Per-axis extents outermost-first with extent-one fill.
+  std::vector<int> in_ext(spatial), kern_ext(spatial);
+  for (int axis = 0; axis < spatial; ++axis) {
+    in_ext[axis] = axis_extent(x, axis);
+    kern_ext[axis] = axis_extent(w, axis);
+  }
   if (groups_ <= 0 || in_channels_per_group * groups_ != in_channels ||
       out_channels % groups_ != 0 || out.shape(0) != batch ||
-      out.shape(channel_axis) != out_channels) {
+      out.shape(out.ndim() - 1) != out_channels) {
     omarchy::unsupported("Convolution shapes", out);
   }
 
@@ -2718,47 +2724,77 @@ void Convolution::eval_gpu(const std::vector<array>& inputs, array& out) {
   // Push-constant routing mirrors shaders/conv.comp: spatial extents,
   // kernel window, and the conv parameters ride the generic dims
   // fields because the fixed ComputeParams layout has no conv block.
-  // 1D packs a degenerate height of one, so every axis stays 2D.
+  // Axes are packed outermost-first (depth, height, width); absent
+  // axes read back as extent one and unit parameters. The shader
+  // comment carries the full table.
+  auto axis_or_one = [&](const std::vector<int>& values, int axis) {
+    return static_cast<uint32_t>(axis < spatial ? values[axis] : 1);
+  };
+  auto pad_lo_axis = [&](int axis) {
+    return axis_or_one(padding_lo_, axis);
+  };
+  auto pad_hi_axis = [&](int axis) {
+    return axis_or_one(padding_hi_, axis);
+  };
   params.count = total;
-  params.operation = checked_u32(kernel_width, "Convolution", out);
   params.reduce_size = checked_u32(in_channels_per_group, "Convolution", out);
   params.lhs_offset = checked_item_offset(x, x.size(), "Convolution", out);
   params.rhs_offset = checked_item_offset(w, w.size(), "Convolution", out);
   params.output_offset =
       checked_item_offset(out, out.size(), "Convolution", out);
-  params.aux_size = checked_u32(in_width, "Convolution", out);
-  params.aux_offset = checked_u32(kernel_height, "Convolution", out);
   params.matrix_m = checked_u32(batch, "Convolution", out);
   params.matrix_n = checked_u32(out_channels, "Convolution", out);
-  params.matrix_k = checked_u32(in_height, "Convolution", out);
-  // lhs_size/rhs_size carry the input dilation (transposed convs
-  // express their stride this way), flags the kernel flip, and
-  // out_strides[2] the group count.
-  params.lhs_size =
-      checked_u32(one_d ? 1 : input_dilation_[0], "Convolution", out);
-  params.rhs_size = checked_u32(
-      one_d ? input_dilation_[0] : input_dilation_[1], "Convolution", out);
+  params.rhs_gap = checked_u32(groups_, "Convolution", out);
   params.flags = flip_ ? 1u : 0u;
-  params.dims = 2;
-  params.shape[0] = checked_u32(one_d ? 1 : out.shape(1), "Convolution", out);
+  params.dims = checked_u32(spatial, "Convolution", out);
+  // Input extents: depth, height, width.
+  params.output_size =
+      checked_u32(spatial == 3 ? in_ext[0] : 1, "Convolution", out);
+  params.matrix_k =
+      checked_u32(spatial >= 2 ? in_ext[spatial - 2] : 1, "Convolution", out);
+  params.aux_size =
+      checked_u32(in_ext[spatial - 1], "Convolution", out);
+  // Kernel extents: depth, height, width.
+  params.lhs_gap =
+      checked_u32(spatial == 3 ? kern_ext[0] : 1, "Convolution", out);
+  params.aux_offset =
+      checked_u32(spatial >= 2 ? kern_ext[spatial - 2] : 1, "Convolution", out);
+  params.operation =
+      checked_u32(kern_ext[spatial - 1], "Convolution", out);
+  // Output extents above the innermost axis; the shader derives the
+  // innermost extent from count. Axis 0 is depth (3-D) or height
+  // (2-D); axis 1 holds height under a 3-D rank only.
+  params.shape[0] =
+      checked_u32(spatial >= 2 ? out.shape(1) : 1, "Convolution", out);
   params.shape[1] =
-      checked_u32(one_d ? out.shape(1) : out.shape(2), "Convolution", out);
-  params.shape[2] = checked_u32(one_d ? 0 : padding_lo_[0], "Convolution", out);
+      checked_u32(spatial == 3 ? out.shape(2) : 1, "Convolution", out);
+  // Kernel stride and low padding per axis. The transposed path
+  // always pairs the flip with unit kernel stride, so its stride
+  // slots carry the conv stride expressed as input dilation instead.
+  for (int axis = 0; axis < 3; ++axis) {
+    params.in_strides[axis] = flip_
+        ? axis_or_one(input_dilation_, axis)
+        : axis_or_one(kernel_strides_, axis);
+    params.out_strides[axis] = pad_lo_axis(axis);
+  }
+  // High padding: depth, height, width.
+  params.in_strides[3] = pad_hi_axis(spatial == 3 ? 0 : 3);
+  params.lhs_size = pad_hi_axis(spatial >= 2 ? spatial - 2 : 3);
+  params.rhs_size = pad_hi_axis(spatial - 1);
+  // Kernel dilation: depth, height, width.
+  params.shape[2] = axis_or_one(kernel_dilation_, spatial == 3 ? 0 : 3);
   params.shape[3] =
-      checked_u32(one_d ? padding_lo_[0] : padding_lo_[1], "Convolution", out);
-  params.in_strides[0] =
-      checked_u32(one_d ? 1 : kernel_strides_[0], "Convolution", out);
-  params.in_strides[1] = checked_u32(
-      one_d ? kernel_strides_[0] : kernel_strides_[1], "Convolution", out);
-  params.in_strides[2] =
-      checked_u32(one_d ? 1 : kernel_dilation_[0], "Convolution", out);
-  params.in_strides[3] = checked_u32(
-      one_d ? kernel_dilation_[0] : kernel_dilation_[1], "Convolution", out);
-  params.out_strides[0] =
-      checked_u32(one_d ? 0 : padding_hi_[0], "Convolution", out);
-  params.out_strides[1] = checked_u32(
-      one_d ? padding_hi_[0] : padding_hi_[1], "Convolution", out);
-  params.out_strides[2] = checked_u32(groups_, "Convolution", out);
+      axis_or_one(kernel_dilation_, spatial >= 2 ? spatial - 2 : 3);
+  params.out_strides[3] = axis_or_one(kernel_dilation_, spatial - 1);
+  // Forward input dilation rides the slots the 3-D packing leaves
+  // unused; 3-D forward refused non-unit input dilation above, so
+  // those slots keep their depth placeholders there.
+  if (!flip_ && spatial == 2) {
+    params.lhs_gap = checked_u32(input_dilation_[0], "Convolution", out);
+    params.output_size = checked_u32(input_dilation_[1], "Convolution", out);
+  } else if (!flip_ && spatial == 1) {
+    params.output_size = checked_u32(input_dilation_[0], "Convolution", out);
+  }
   std::array<omarchy::ComputeBinding, 4> bindings{
       binding(x), binding(w), binding(x), binding(out)};
   auto kernel = select_float_kernel(
@@ -4822,10 +4858,13 @@ void QuantizedMatmul::eval_gpu(const std::vector<array>& inputs, array& out) {
 void RandomBits::eval_gpu(const std::vector<array>& inputs, array& out) {
   const array& keys = inputs.at(0);
   auto& encoder = omarchy::get_command_encoder(out.primitive().stream());
-  // mlx-lm sampling only consumes width 4 (uniform, gumbel, categorical,
-  // and key splits all create RandomBits with width 4), so the shader
-  // implements the uint32 case and other widths keep the named rejection.
-  if (width_ != 4 || out.dtype() != uint32) {
+  // Upstream random::bits maps width 4/2/1 to uint32/uint16/uint8
+  // (mlx/random.cpp). One threefry word stream fills the output in all
+  // three cases; the shader masks the trailing partial word to the
+  // valid low bytes, matching eval_cpu's copy_remaining.
+  if (!((width_ == 4 && out.dtype() == uint32) ||
+        (width_ == 2 && out.dtype() == uint16) ||
+        (width_ == 1 && out.dtype() == uint8))) {
     omarchy::unsupported("RandomBits width", out);
   }
   if (keys.dtype() != uint32) {
@@ -4845,13 +4884,15 @@ void RandomBits::eval_gpu(const std::vector<array>& inputs, array& out) {
   if (keys.size() % 2 != 0 || out.size() % num_keys != 0) {
     omarchy::unsupported("RandomBits shape", out);
   }
-  size_t words_per_key = out.size() / num_keys;
-  uint32_t count = checked_u32(out.size(), "RandomBits", out);
+  size_t bytes_per_key = out.nbytes() / num_keys;
+  size_t words_per_key = (bytes_per_key + 3) / 4;
+  uint32_t count =
+      checked_u32(words_per_key * num_keys, "RandomBits", out);
   omarchy::ComputeParams params;
   params.count = count;
-  params.lhs_size = checked_u32(keys.size(), "RandomBits", out);
   params.reduce_size = checked_u32(words_per_key, "RandomBits", out);
   params.output_size = checked_u32(num_keys, "RandomBits", out);
+  params.rhs_size = checked_u32(bytes_per_key, "RandomBits", out);
   params.lhs_offset = checked_item_offset(keys_d, keys_d.size(), "RandomBits", out);
   params.output_offset = checked_item_offset(out, out.size(), "RandomBits", out);
   std::array<omarchy::ComputeBinding, 2> bindings{
@@ -7580,10 +7621,14 @@ void Quantize::eval_gpu(
   if (mode_ != QuantizationMode::Affine) {
     omarchy::unsupported(tag + " mode", out);
   }
-  if (bits_ != 4 && bits_ != 8) {
+  // Aligned affine packing only: the kernels fill uint32 words LSB
+  // first with 32/bits values each (upstream's power-of-2 bit path,
+  // quantized.cpp dispatch_quantize<T, uint32_t>). Bits 3/5/6 pack
+  // byte-oriented into a uint8 output and keep the named rejection.
+  if (bits_ != 2 && bits_ != 4 && bits_ != 8) {
     omarchy::unsupported(tag + " bits", out);
   }
-  if (group_size_ != 32 && group_size_ != 64) {
+  if (group_size_ <= 0 || group_size_ % (32 / bits_) != 0) {
     omarchy::unsupported(tag + " group size", out);
   }
   auto& encoder = omarchy::get_command_encoder(out.primitive().stream());

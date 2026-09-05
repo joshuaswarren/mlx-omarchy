@@ -1,13 +1,19 @@
 // Copyright © 2026 Joshua Warren / mlx-omarchy contributors.
 // SPDX-License-Identifier: MIT
 //
-// RandomBits for the width-4 (uint32) case. Each output word is one
-// threefry2x32 hash output. The rotation constants, the 5-round schedule,
-// and the (key, counter) to output word mapping mirror
-// mlx/backend/cpu/threefry.cpp and RandomBits::eval_cpu exactly, so seeded
-// runs reproduce upstream MLX semantics bit for bit. The keys input has
-// shape (N1, ..., NK, 2) as raw uint32 words; the output is the
-// (N1, ..., NK, M1, M2, ...) uint32 bit tensor.
+// RandomBits for all upstream widths: 4 (uint32), 2 (uint16), and
+// 1 (uint8). Each threefry2x32 hash call fills two output words; the
+// rotation constants, the 5-round schedule, and the (key, counter) to
+// output word mapping mirror mlx/backend/cpu/threefry.cpp and
+// RandomBits::eval_cpu exactly, so seeded runs reproduce upstream MLX
+// semantics bit for bit. The keys input has shape (N1, ..., NK, 2) as
+// raw uint32 words; the output is the (N1, ..., NK, M1, M2, ...)
+// bit tensor. Widths 1 and 2 store 1 or 2 bytes per element, so a
+// key's byte count rarely lands on a word boundary: params.rhs_size
+// carries the per-key byte count and each thread masks its word to
+// the valid low bytes. The trailing bytes of the last word fall in
+// the omarchy allocator's page-rounded slack (the same convention as
+// compare_bool.comp), never inside another tensor.
 
 #version 460
 
@@ -33,8 +39,9 @@ layout(push_constant) uniform Params {
 } params;
 
 // count carries the total output words, reduce_size the words per key,
-// output_size the key count, lhs_offset the word offset of the keys, and
-// output_offset the word offset of the output.
+// output_size the key count, lhs_offset the word offset of the keys,
+// rhs_size the per-key byte count, and output_offset the word offset
+// of the output.
 
 uvec2 threefry2x32(uvec2 key, uvec2 count) {
   // Upstream rotations[2][4] flattened: rounds 0,2,4 use {13,15,26,6}
@@ -90,12 +97,24 @@ void main() {
     } else {
       counter = uvec2(word - half_count - 1u, word);
     }
-
     uvec2 bits = threefry2x32(key, counter);
     bool use_first =
         (word < half_count) || (!even && word == half_count);
-    output_data.values[params.output_offset + output_index] =
-        use_first ? bits.x : bits.y;
+
+    uint bits_out = use_first ? bits.x : bits.y;
+    // Mask bytes beyond the key's byte count: little-endian words keep
+    // only the valid low bytes, selected with constant shifts picked
+    // by a select chain (the receipt-proven Honeykrisp-safe shape; no
+    // data-dependent shift-then-mask).
+    uint valid_bytes = params.rhs_size - word * 4u;
+    if (valid_bytes == 3u) {
+      bits_out &= 0x00FFFFFFu;
+    } else if (valid_bytes == 2u) {
+      bits_out &= 0x0000FFFFu;
+    } else if (valid_bytes == 1u) {
+      bits_out &= 0x000000FFu;
+    }
+    output_data.values[params.output_offset + output_index] = bits_out;
     if (params.count - output_index <= stride) {
       break;
     }

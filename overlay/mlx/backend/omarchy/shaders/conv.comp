@@ -1,29 +1,48 @@
 #version 460
 
 // Direct convolution for channels-last arrays. One thread owns one
-// output element out[n, oh, ow, o] and walks ky, kx with a float32
-// accumulator; every load is a straight-line per-thread read at a
-// linear address (Honeykrisp caution: no divergent per-lane word
+// output element out[n, d?, h?, w, o] and walks the kernel window with
+// a float32 accumulator; every load is a straight-line per-thread read
+// at a linear address (Honeykrisp caution: no divergent per-lane word
 // loads). Out-of-range input coordinates contribute zero via index
 // guards, so padding needs no materialized buffer.
-// The kernel is the general upstream Convolution semantics: groups
-// (each output channel reads its group's channel slice and weight
-// last axis), the kernel flip conv_transpose uses, input dilation
-// (taps off the dilated grid contribute zero), kernel dilation,
-// strides, and asymmetric padding. 1D convolutions ride this kernel
-// as a degenerate height of one.
-// Push-constant routing: reduce_size carries the PER-GROUP input
-// channel count, aux_offset the kernel height, operation the kernel
-// width, matrix_m the batch count, matrix_n the total output channel
-// count, matrix_k the input height, aux_size the input width,
-// lhs_size/rhs_size the input dilation height/width, flags the kernel
-// flip (1 = flip), out_strides[2] the group count, dims the spatial
-// rank (always packed as 2; 1D uses height 1), shape[0..1] the output
-// height/width, shape[2..3] the padding low height/width,
-// in_strides[0..1] the stride height/width, in_strides[2..3] the
-// kernel dilation height/width, and out_strides[0..1] the padding
-// high height/width.
-
+//
+// The kernel is the general upstream Convolution semantics over 1-D,
+// 2-D, and 3-D spatial ranks: groups (each output channel reads its
+// group's channel slice and weight last axis), the kernel flip
+// conv_transpose uses, input dilation (taps off the dilated grid
+// contribute zero), kernel dilation, strides, and asymmetric padding.
+//
+// Push-constant routing (the fixed ComputeParams layout has no conv
+// block, so the conv parameters ride the generic dims fields). Axes
+// are packed outermost-first (depth, height, width) and absent axes
+// read back as extent one with unit parameters:
+//   dims               spatial rank (1, 2, or 3)
+//   flags & 1          kernel flip (the transposed path)
+//   matrix_m           batch count            matrix_n  out channels
+//   reduce_size        channels per group     rhs_gap   group count
+//   lhs_offset         input element offset   rhs_offset weight element
+//   output_offset      output element offset
+//   output_size        input depth            (3-D)
+//   matrix_k           input height           (2-D and 3-D)
+//   aux_size           input width
+//   lhs_gap            kernel depth           (3-D)
+//   aux_offset         kernel height          (2-D and 3-D)
+//   operation          kernel width
+//   shape[0..dims-2]   output extents above the innermost axis; the
+//                      innermost extent is derived from count
+//   in_strides[0..2]   kernel stride per axis (transposed convs: all 1)
+//   out_strides[0..2]  low padding per axis
+//   in_strides[3]      high padding, depth    (3-D)
+//   lhs_size           high padding, height   (2-D and 3-D)
+//   rhs_size           high padding, width
+//   shape[2]           kernel dilation, depth (3-D)
+//   shape[3]           kernel dilation, above-innermost axis
+//   out_strides[3]     kernel dilation, innermost axis
+//   lhs_gap            forward input dilation, above-innermost axis
+//                      (1-D/2-D)
+//   output_size        forward input dilation, innermost axis (1-D/
+//                      2-D; 3-D forward refuses non-unit dilation)
 #ifdef USE_FP16
 #extension GL_EXT_shader_16bit_storage : require
 #extension GL_EXT_shader_explicit_arithmetic_types_float16 : require
@@ -86,83 +105,212 @@ layout(push_constant) uniform Params {
   uint shape[4];
   uint in_strides[4];
   uint out_strides[4];
+  uint lhs_gap;
+  uint rhs_gap;
 } params;
+// Per-axis accessors: axis 0 is the outermost spatial axis (depth in
+// 3-D, height in 2-D, width in 1-D) and axis dims-1 the innermost.
+// Absent axes read as extent one, stride one, zero padding, and unit
+// dilation. The innermost output extent is derived from count because
+// the fixed layout stores only the axes above it.
+
+uint in_axis(uint a) {
+  if (a + 1u == params.dims) {
+    return params.aux_size;
+  }
+  if (a + 2u == params.dims) {
+    return params.matrix_k;
+  }
+  if (a == 0u && params.dims == 3u) {
+    return params.output_size;
+  }
+  return 1u;
+}
+
+uint kern_axis(uint a) {
+  if (a + 1u == params.dims) {
+    return params.operation;
+  }
+  if (a + 2u == params.dims) {
+    return params.aux_offset;
+  }
+  if (a == 0u && params.dims == 3u) {
+    return params.lhs_gap;
+  }
+  return 1u;
+}
+
+uint out_axis(uint a, uint innermost) {
+  if (a + 1u == params.dims) {
+    return innermost;
+  }
+  if (a >= params.dims) {
+    return 1u;
+  }
+  return params.shape[a];
+}
+uint stride_axis(uint a) {
+  // The transposed path always pairs the flip with unit kernel
+  // stride; its conv stride arrives as input dilation below.
+  if ((params.flags & 1u) != 0u) {
+    return 1u;
+  }
+  return a < params.dims ? params.in_strides[a] : 1u;
+}
+
+uint pad_lo_axis(uint a) {
+  return a < params.dims ? params.out_strides[a] : 0u;
+}
+
+uint pad_hi_axis(uint a) {
+  if (a + 1u == params.dims) {
+    return params.rhs_size;
+  }
+  if (a + 2u == params.dims) {
+    return params.lhs_size;
+  }
+  if (a == 0u && params.dims == 3u) {
+    return params.in_strides[3u];
+  }
+  return 0u;
+}
+
+uint kdil_axis(uint a) {
+  if (a + 1u == params.dims) {
+    return params.out_strides[3u];
+  }
+  if (a + 2u == params.dims) {
+    return params.shape[3u];
+  }
+  if (a == 0u && params.dims == 3u) {
+    return params.shape[2u];
+  }
+  return 1u;
+}
+
+uint idil_axis(uint a) {
+  // Under the flip the stride slots carry the conv stride (upstream
+  // conv_transpose_general passes it as input dilation). The forward
+  // path reads its input dilation from the slots the 3-D packing
+  // leaves unused; 3-D forward refuses non-unit input dilation on
+  // the host.
+  if ((params.flags & 1u) != 0u) {
+    return a < params.dims ? params.in_strides[a] : 1u;
+  }
+  if (params.dims == 3u) {
+    return 1u;
+  }
+  if (a + 1u == params.dims) {
+    return params.output_size;
+  }
+  if (a + 2u == params.dims) {
+    return params.lhs_gap;
+  }
+  return 1u;
+}
 
 void main() {
   uint out_channels = params.matrix_n;
-  uint out_height = params.shape[0u];
-  uint out_width = params.shape[1u];
-  uint in_height = params.matrix_k;
-  uint in_width = params.aux_size;
-  // reduce_size is the per-group channel count; the input buffer
-  // strides with the total channel count.
   uint in_channels_per_group = params.reduce_size;
-  uint groups = params.out_strides[2u];
+  uint groups = params.rhs_gap;
   uint in_channels = in_channels_per_group * groups;
   uint out_channels_per_group = out_channels / groups;
-  uint flip = params.flags;
-  uint input_dilation_height = params.lhs_size;
-  uint input_dilation_width = params.rhs_size;
-  uint kernel_height = params.aux_offset;
-  uint kernel_width = params.operation;
-  uint pad_lo_height = params.shape[2u];
-  uint pad_lo_width = params.shape[3u];
-  uint pad_hi_height = params.out_strides[0u];
-  uint pad_hi_width = params.out_strides[1u];
-  uint stride_height = params.in_strides[0u];
-  uint stride_width = params.in_strides[1u];
-  uint dilation_height = params.in_strides[2u];
-  uint dilation_width = params.in_strides[3u];
-  uint stride = gl_NumWorkGroups.x * 256u;
+  uint flip = params.flags & 1u;
 
+  uint stored_out = params.dims == 3u
+      ? params.shape[0u] * params.shape[1u]
+      : (params.dims == 2u ? params.shape[0u] : 1u);
+  uint innermost =
+      params.count / (params.matrix_m * params.matrix_n * stored_out);
+
+  uint in_ext[3];
+  uint kern_ext[3];
+  uint out_ext[3];
+  uint stride[3];
+  uint pad_lo[3];
+  uint pad_hi[3];
+  uint kdil[3];
+  uint idil[3];
+  for (uint a = 0u; a < 3u; ++a) {
+    in_ext[a] = in_axis(a);
+    kern_ext[a] = kern_axis(a);
+    out_ext[a] = out_axis(a, innermost);
+    stride[a] = stride_axis(a);
+    pad_lo[a] = pad_lo_axis(a);
+    pad_hi[a] = pad_hi_axis(a);
+    kdil[a] = kdil_axis(a);
+    idil[a] = idil_axis(a);
+  }
+  uint in_ext_dilated[3];
+  uint total_out_spatial = 1u;
+  for (uint a = 0u; a < 3u; ++a) {
+    in_ext_dilated[a] = in_ext[a] * idil[a];
+    total_out_spatial *= out_ext[a];
+  }
+
+  uint stride_threads = gl_NumWorkGroups.x * 256u;
   for (uint index = gl_GlobalInvocationID.x; index < params.count;
-       index += stride) {
-    uint batch = index / (out_height * out_width * out_channels);
-    uint remainder = index % (out_height * out_width * out_channels);
-    uint out_row = remainder / (out_width * out_channels);
-    remainder %= out_width * out_channels;
-    uint out_column = remainder / out_channels;
+       index += stride_threads) {
+    uint batch = index / (total_out_spatial * out_channels);
+    uint remainder = index % (total_out_spatial * out_channels);
     uint out_channel = remainder % out_channels;
+    uint spatial = remainder / out_channels;
+    uint coord[3];
+    for (uint a = 3u; a-- > 0u;) {
+      coord[a] = spatial % out_ext[a];
+      spatial /= out_ext[a];
+    }
     uint group = out_channel / out_channels_per_group;
-    int in_row_base = int(out_row * stride_height) - int(pad_lo_height);
-    int in_column_base = int(out_column * stride_width) - int(pad_lo_width);
     float accumulator = 0.0;
 
-    for (uint ky = 0u; ky < kernel_height; ++ky) {
-      uint ky_window = flip != 0u ? (kernel_height - 1u - ky) : ky;
-      int in_row = in_row_base + int(ky_window * dilation_height);
-      if (in_row < 0 || in_row >= int(in_height * input_dilation_height)) {
+    for (uint k0 = 0u; k0 < kern_ext[0u]; ++k0) {
+      uint k0_window = flip != 0u ? (kern_ext[0u] - 1u - k0) : k0;
+      int in_0 = int(coord[0u] * stride[0u]) - int(pad_lo[0u]) +
+          int(k0_window * kdil[0u]);
+      if (in_0 < 0 || in_0 >= int(in_ext_dilated[0u]) ||
+          in_0 % int(idil[0u]) != 0) {
         continue;
       }
-      if (in_row % int(input_dilation_height) != 0) {
-        continue;
-      }
-      uint row = uint(in_row) / input_dilation_height;
-      for (uint kx = 0u; kx < kernel_width; ++kx) {
-        uint kx_window = flip != 0u ? (kernel_width - 1u - kx) : kx;
-        int in_column = in_column_base + int(kx_window * dilation_width);
-        if (in_column < 0 ||
-            in_column >= int(in_width * input_dilation_width)) {
+      uint tap_0 = uint(in_0) / idil[0u];
+      for (uint k1 = 0u; k1 < kern_ext[1u]; ++k1) {
+        uint k1_window = flip != 0u ? (kern_ext[1u] - 1u - k1) : k1;
+        int in_1 = int(coord[1u] * stride[1u]) - int(pad_lo[1u]) +
+            int(k1_window * kdil[1u]);
+        if (in_1 < 0 || in_1 >= int(in_ext_dilated[1u]) ||
+            in_1 % int(idil[1u]) != 0) {
           continue;
         }
-        if (in_column % int(input_dilation_width) != 0) {
-          continue;
-        }
-        uint column = uint(in_column) / input_dilation_width;
-        uint input_base = params.lhs_offset +
-            (batch * in_height + row) * in_width * in_channels +
-            column * in_channels + group * in_channels_per_group;
-        uint weight_base = params.rhs_offset +
-            out_channel * kernel_height * kernel_width *
-                in_channels_per_group +
-            (ky * kernel_width + kx) * in_channels_per_group;
-        for (uint channel = 0u; channel < in_channels_per_group; ++channel) {
-          accumulator +=
-              LOAD_VALUE(input_x.values[input_base + channel]) *
-              LOAD_VALUE(weight.values[weight_base + channel]);
+        uint tap_1 = uint(in_1) / idil[1u];
+        for (uint k2 = 0u; k2 < kern_ext[2u]; ++k2) {
+          uint k2_window = flip != 0u ? (kern_ext[2u] - 1u - k2) : k2;
+          int in_2 = int(coord[2u] * stride[2u]) - int(pad_lo[2u]) +
+              int(k2_window * kdil[2u]);
+          if (in_2 < 0 || in_2 >= int(in_ext_dilated[2u]) ||
+              in_2 % int(idil[2u]) != 0) {
+            continue;
+          }
+          uint tap_2 = uint(in_2) / idil[2u];
+          uint input_base = params.lhs_offset +
+              (((batch * in_ext[0u] + tap_0) * in_ext[1u] + tap_1) *
+                          in_ext[2u] +
+                      tap_2) *
+                  in_channels +
+              group * in_channels_per_group;
+          uint weight_base = params.rhs_offset +
+              (((out_channel * kern_ext[0u] + k0) * kern_ext[1u] + k1) *
+                          kern_ext[2u] +
+                      k2) *
+                  in_channels_per_group;
+          for (uint channel = 0u; channel < in_channels_per_group;
+               ++channel) {
+            accumulator +=
+                LOAD_VALUE(input_x.values[input_base + channel]) *
+                LOAD_VALUE(weight.values[weight_base + channel]);
+          }
         }
       }
     }
-    output_data.values[params.output_offset + index] = STORE_VALUE(accumulator);
+    output_data.values[params.output_offset + index] =
+        STORE_VALUE(accumulator);
   }
 }

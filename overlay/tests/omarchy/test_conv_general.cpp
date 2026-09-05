@@ -65,14 +65,6 @@ void check_close(
   }
 }
 
-std::string evaluation_error(array value) {
-  try {
-    value.eval();
-  } catch (const std::exception& error) {
-    return error.what();
-  }
-  return {};
-}
 
 // General host reference. Encodes the upstream slow_conv_2D rules:
 // out[n, oh, ow, o] sums in[n, ih, iw, c] * wt[o, kh, kw, cpg] for
@@ -473,61 +465,187 @@ TEST_CASE("[conv-gaps] 1-D Convolution matches host reference") {
   }
 }
 
-// Transposed (flip) convolution is gated by name: the one-hot probe
-// showed the kernel reading wrong input channels once flip and input
-// dilation combine. These pins convert the former value tests into
-// refusal checks so a silent wrong feature map can never ship.
-TEST_CASE(
-    "[conv-gaps] transposed 2-D and 1-D Convolution refuse by name") {
+// Transposed (flip) convolution runs the general kernel with the
+// kernel stride fixed at one and the conv stride expressed as input
+// dilation, exactly as upstream conv_transpose_general builds the
+// primitive. The flip reverses the input walk while the weight keeps
+// its stored order; every value below is checked against the
+// double-precision host reference, which is the probe that actually
+// distinguishes a wrong channel slice from its negation.
+TEST_CASE("[conv-gaps] transposed 2-D Convolution matches host reference") {
   if (!compute_available()) {
     return;
   }
   Stream stream = gpu_stream();
-  std::vector<float> in_values(1 * 3 * 3 * 2, 0.5f);
-  std::vector<float> wt_values(2 * 2 * 2 * 2, 0.25f);
+  std::mt19937 rng(101);
+  std::uniform_real_distribution<float> dist(-1.0f, 1.0f);
 
-  std::string two_d_error = evaluation_error(conv_transpose2d(
-      array(in_values.begin(), Shape{1, 3, 3, 2}, float32),
-      array(wt_values.begin(), Shape{2, 2, 2, 2}, float32),
-      {2, 2},
-      {0, 0},
-      {1, 1},
-      {0, 0},
-      1,
-      stream));
-  CHECK(
-      two_d_error.find("[omarchy] transposed (flip) Convolution") !=
-      std::string::npos);
-  CHECK(two_d_error.find("no silent CPU fallback") != std::string::npos);
+  // Stride 2, kernel 2x2: the smallest transposed conv that doubles
+  // spatial extent. Output shape must equal 1 + stride*(in-1).
+  {
+    Shape in_shape{1, 3, 3, 2};
+    Shape wt_shape{2, 2, 2, 2};
+    std::vector<float> in(1 * 3 * 3 * 2);
+    std::vector<float> wt(2 * 2 * 2 * 2);
+    for (auto& v : in) {
+      v = dist(rng);
+    }
+    for (auto& v : wt) {
+      v = dist(rng);
+    }
+    auto [spec, expected_shape] = transpose2d_to_conv_spec(
+        in_shape, wt_shape, 2, 2, 0, 0, 1, 1, 0, 0, 1);
+    auto expected = host_conv2d_general(in, wt, in_shape, wt_shape, spec);
+    auto actual = conv_transpose2d(
+        array(in.begin(), in_shape, float32),
+        array(wt.begin(), wt_shape, float32),
+        {2, 2},
+        {0, 0},
+        {1, 1},
+        {0, 0},
+        1,
+        stream);
+    REQUIRE_EQ(actual.shape(), expected_shape);
+    check_close(actual, expected, stream, 1e-5);
+  }
 
-  // The grouped transposed combination identifies the same gate.
-  std::string grouped_error = evaluation_error(conv_transpose2d(
-      array(in_values.begin(), Shape{1, 3, 3, 4}, float32),
-      array(wt_values.begin(), Shape{4, 2, 2, 2}, float32),
-      {2, 2},
-      {0, 0},
-      {1, 1},
-      {0, 0},
-      2,
-      stream));
-  CHECK(
-      grouped_error.find("[omarchy] transposed (flip) Convolution") !=
-      std::string::npos);
+  // Stride 2, kernel 3x3 with padding 1 and output_padding 1: the
+  // standard GAN/generative model transposed block. Pads are
+  // asymmetric and the kernel is larger than the stride.
+  {
+    Shape in_shape{1, 4, 4, 2};
+    Shape wt_shape{2, 3, 3, 2};
+    std::vector<float> in(1 * 4 * 4 * 2);
+    std::vector<float> wt(2 * 3 * 3 * 2);
+    for (auto& v : in) {
+      v = dist(rng);
+    }
+    for (auto& v : wt) {
+      v = dist(rng);
+    }
+    auto [spec, expected_shape] = transpose2d_to_conv_spec(
+        in_shape, wt_shape, 2, 2, 1, 1, 1, 1, 1, 1, 1);
+    auto expected = host_conv2d_general(in, wt, in_shape, wt_shape, spec);
+    auto actual = conv_transpose2d(
+        array(in.begin(), in_shape, float32),
+        array(wt.begin(), wt_shape, float32),
+        {2, 2},
+        {1, 1},
+        {1, 1},
+        {1, 1},
+        1,
+        stream);
+    REQUIRE_EQ(actual.shape(), expected_shape);
+    check_close(actual, expected, stream, 1e-5);
+  }
 
-  std::vector<float> in1d(1 * 5 * 3, 0.5f);
-  std::vector<float> wt1d(3 * 3 * 3, 0.25f);
-  std::string one_d_error = evaluation_error(conv_transpose1d(
-      array(in1d.begin(), Shape{1, 5, 3}, float32),
-      array(wt1d.begin(), Shape{3, 3, 3}, float32),
-      2,
+  // Combined transposed + kernel dilation: dilation 2 doubles the
+  // effective kernel extent in the transposed path. Off-by-one in
+  // output shape here is the classic transposed-conv bug.
+  {
+    Shape in_shape{1, 2, 2, 2};
+    Shape wt_shape{2, 2, 2, 2};
+    std::vector<float> in(1 * 2 * 2 * 2);
+    std::vector<float> wt(2 * 2 * 2 * 2);
+    for (auto& v : in) {
+      v = dist(rng);
+    }
+    for (auto& v : wt) {
+      v = dist(rng);
+    }
+    auto [spec, expected_shape] = transpose2d_to_conv_spec(
+        in_shape, wt_shape, 1, 1, 0, 0, 2, 2, 1, 1, 1);
+    auto expected = host_conv2d_general(in, wt, in_shape, wt_shape, spec);
+    auto actual = conv_transpose2d(
+        array(in.begin(), in_shape, float32),
+        array(wt.begin(), wt_shape, float32),
+        {1, 1},
+        {0, 0},
+        {2, 2},
+        {1, 1},
+        1,
+        stream);
+    REQUIRE_EQ(actual.shape(), expected_shape);
+    check_close(actual, expected, stream, 1e-5);
+  }
+
+  // Grouped transposed: groups=2 exercises the group channel slice
+  // under flip plus input dilation - the combination the retired
+  // one-hot probe distrusted.
+  {
+    Shape in_shape{1, 3, 3, 4};
+    Shape wt_shape{4, 2, 2, 2};
+    std::vector<float> in(1 * 3 * 3 * 4);
+    std::vector<float> wt(4 * 2 * 2 * 2);
+    for (auto& v : in) {
+      v = dist(rng);
+    }
+    for (auto& v : wt) {
+      v = dist(rng);
+    }
+    auto [spec, expected_shape] = transpose2d_to_conv_spec(
+        in_shape, wt_shape, 2, 2, 0, 0, 1, 1, 0, 0, 2);
+    auto expected = host_conv2d_general(in, wt, in_shape, wt_shape, spec);
+    auto actual = conv_transpose2d(
+        array(in.begin(), in_shape, float32),
+        array(wt.begin(), wt_shape, float32),
+        {2, 2},
+        {0, 0},
+        {1, 1},
+        {0, 0},
+        2,
+        stream);
+    REQUIRE_EQ(actual.shape(), expected_shape);
+    check_close(actual, expected, stream, 1e-5);
+  }
+}
+
+TEST_CASE("[conv-gaps] transposed 1-D Convolution matches host reference") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  std::mt19937 rng(149);
+  std::uniform_real_distribution<float> dist(-1.0f, 1.0f);
+  Shape in_shape{1, 5, 3};
+  Shape wt_shape{3, 3, 3};
+  std::vector<float> in(1 * 5 * 3);
+  std::vector<float> wt(3 * 3 * 3);
+  for (auto& v : in) {
+    v = dist(rng);
+  }
+  for (auto& v : wt) {
+    v = dist(rng);
+  }
+  int stride = 2;
+  int pad = 1;
+  int kdil = 1;
+  int opad = 1;
+  auto [spec, expected_shape] = transpose1d_to_conv_spec(
+      in_shape, wt_shape, stride, pad, kdil, opad, 1);
+  auto expected = host_conv1d_general(
+      in,
+      wt,
+      in_shape,
+      wt_shape,
+      /*stride=*/1,
+      spec.pad_lo_w,
+      spec.pad_hi_w,
+      kdil,
+      stride,
       1,
+      /*flip=*/true);
+  auto actual = conv_transpose1d(
+      array(in.begin(), in_shape, float32),
+      array(wt.begin(), wt_shape, float32),
+      stride,
+      pad,
+      kdil,
+      opad,
       1,
-      1,
-      1,
-      stream));
-  CHECK(
-      one_d_error.find("[omarchy] transposed (flip) Convolution") !=
-      std::string::npos);
+      stream);
+  REQUIRE_EQ(actual.shape(), expected_shape);
+  check_close(actual, expected, stream, 1e-5);
 }
 
 TEST_CASE("[conv-gaps] input-dilated 2-D Convolution matches host reference") {
@@ -679,29 +797,321 @@ TEST_CASE("[conv-gaps] BF16 grouped 2-D Convolution matches host reference") {
   check_close(actual, expected, stream, 1e-1);
 }
 
-TEST_CASE(
-    "[conv-gaps] remaining unsupported combinations refuse by name") {
+// General 3-D host reference: the upstream slow_conv rules extended
+// with a depth axis over channels-last [N, D, H, W, C] input and
+// [O, kD, kH, kW, Cpg] weight. Input dilation is 1 in 3-D on this
+// backend (the named rejection covers the rest).
+std::vector<double> host_conv3d_general(
+    const std::vector<float>& input,
+    const std::vector<float>& weight,
+    const Shape& in_shape,
+    const Shape& wt_shape,
+    const std::tuple<int, int, int>& stride,
+    const std::tuple<int, int, int>& pad_lo,
+    const std::tuple<int, int, int>& pad_hi,
+    const std::tuple<int, int, int>& kernel_dilation,
+    const std::tuple<int, int, int>& input_dilation,
+    int groups,
+    bool flip) {
+  const int n = in_shape[0];
+  const int id_n = in_shape[1];
+  const int ih_n = in_shape[2];
+  const int iw_n = in_shape[3];
+  const int o = wt_shape[0];
+  const int kd_n = wt_shape[1];
+  const int kh_n = wt_shape[2];
+  const int kw_n = wt_shape[3];
+  const int cpg = wt_shape[4];
+  const int c_total = groups * cpg;
+  const auto extent = [](int size, int dil) {
+    return 1LL + (long long)dil * (size - 1);
+  };
+  const long long id_ext = extent(id_n, std::get<0>(input_dilation));
+  const long long ih_ext = extent(ih_n, std::get<1>(input_dilation));
+  const long long iw_ext = extent(iw_n, std::get<2>(input_dilation));
+  const long long kd_ext = extent(kd_n, std::get<0>(kernel_dilation));
+  const long long kh_ext = extent(kh_n, std::get<1>(kernel_dilation));
+  const long long kw_ext = extent(kw_n, std::get<2>(kernel_dilation));
+  const long long od = (id_ext + std::get<0>(pad_lo) + std::get<0>(pad_hi) -
+                        kd_ext) / std::get<0>(stride) + 1;
+  const long long oh = (ih_ext + std::get<1>(pad_lo) + std::get<1>(pad_hi) -
+                        kh_ext) / std::get<1>(stride) + 1;
+  const long long ow = (iw_ext + std::get<2>(pad_lo) + std::get<2>(pad_hi) -
+                        kw_ext) / std::get<2>(stride) + 1;
+  const int o_per_group = o / groups;
+  std::vector<double> output(n * od * oh * ow * o, 0.0);
+  for (int batch = 0; batch < n; ++batch) {
+    for (long long out_d = 0; out_d < od; ++out_d) {
+      for (long long out_row = 0; out_row < oh; ++out_row) {
+        for (long long out_col = 0; out_col < ow; ++out_col) {
+          for (int out_channel = 0; out_channel < o; ++out_channel) {
+            const int group = out_channel / o_per_group;
+            double acc = 0.0;
+            for (int kz = 0; kz < kd_n; ++kz) {
+              const int kz_eff = flip ? (kd_n - 1 - kz) : kz;
+              const long long id = out_d * std::get<0>(stride) -
+                  std::get<0>(pad_lo) + kz_eff * std::get<0>(kernel_dilation);
+              if (id < 0 || id >= id_ext || id % std::get<0>(input_dilation) != 0) {
+                continue;
+              }
+              const long long tap_d = id / std::get<0>(input_dilation);
+              for (int ky = 0; ky < kh_n; ++ky) {
+                const int ky_eff = flip ? (kh_n - 1 - ky) : ky;
+                const long long ih = out_row * std::get<1>(stride) -
+                    std::get<1>(pad_lo) +
+                    ky_eff * std::get<1>(kernel_dilation);
+                if (ih < 0 || ih >= ih_ext ||
+                    ih % std::get<1>(input_dilation) != 0) {
+                  continue;
+                }
+                const long long tap_h = ih / std::get<1>(input_dilation);
+                for (int kx = 0; kx < kw_n; ++kx) {
+                  const int kx_eff = flip ? (kw_n - 1 - kx) : kx;
+                  const long long iw = out_col * std::get<2>(stride) -
+                      std::get<2>(pad_lo) +
+                      kx_eff * std::get<2>(kernel_dilation);
+                  if (iw < 0 || iw >= iw_ext ||
+                      iw % std::get<2>(input_dilation) != 0) {
+                    continue;
+                  }
+                  const long long tap_w = iw / std::get<2>(input_dilation);
+                  const size_t in_base =
+                      ((((size_t)batch * id_n + (size_t)tap_d) * ih_n +
+                        (size_t)tap_h) * iw_n + (size_t)tap_w) * c_total;
+                  const size_t wt_base =
+                      ((((size_t)out_channel * kd_n + (size_t)kz) * kh_n +
+                        (size_t)ky) * kw_n + (size_t)kx) * cpg;
+                  for (int channel = 0; channel < cpg; ++channel) {
+                    acc += (double)input[in_base + group * cpg + channel] *
+                        (double)weight[wt_base + channel];
+                  }
+                }
+              }
+            }
+            output[(((((size_t)batch * od + out_d) * oh + out_row) * ow +
+                     out_col) * o) + out_channel] = acc;
+          }
+        }
+      }
+    }
+  }
+  return output;
+}
+
+// Copy of conv_transpose_general's padding derivation for 3 axes
+// (.work/mlx/mlx/ops.cpp), returning the primitive-level parameters.
+struct Conv3DSpec {
+  std::tuple<int, int, int> stride;
+  std::tuple<int, int, int> pad_lo;
+  std::tuple<int, int, int> pad_hi;
+  std::tuple<int, int, int> kernel_dilation;
+  bool flip = true;
+};
+
+std::pair<Conv3DSpec, Shape> transpose3d_to_conv_spec(
+    const Shape& in_shape,
+    const Shape& wt_shape,
+    std::tuple<int, int, int> stride,
+    std::tuple<int, int, int> pad,
+    std::tuple<int, int, int> dilation,
+    std::tuple<int, int, int> output_padding,
+    int groups) {
+  Conv3DSpec spec;
+  spec.stride = {1, 1, 1};
+  spec.kernel_dilation = dilation;
+  spec.flip = true;
+  Shape out_shape{in_shape[0], 0, 0, 0, wt_shape[0]};
+  const int stride_a[3] = {std::get<0>(stride),
+                           std::get<1>(stride),
+                           std::get<2>(stride)};
+  const int pad_a[3] = {
+      std::get<0>(pad), std::get<1>(pad), std::get<2>(pad)};
+  const int dil_a[3] = {std::get<0>(dilation),
+                        std::get<1>(dilation),
+                        std::get<2>(dilation)};
+  const int opad_a[3] = {std::get<0>(output_padding),
+                         std::get<1>(output_padding),
+                         std::get<2>(output_padding)};
+  int pad_lo_a[3] = {0, 0, 0};
+  int pad_hi_a[3] = {0, 0, 0};
+  for (int axis = 0; axis < 3; ++axis) {
+    const long long wt_size =
+        1LL + (long long)dil_a[axis] * (wt_shape[1 + axis] - 1);
+    const long long padding_lo = wt_size - pad_a[axis] - 1;
+    const long long conv_output_shape =
+        (long long)(in_shape[1 + axis] - 1) * stride_a[axis] -
+        2LL * pad_a[axis] + (long long)dil_a[axis] * (wt_shape[1 + axis] - 1) +
+        1;
+    const long long out_size =
+        1LL + (long long)stride_a[axis] * (in_shape[1 + axis] - 1);
+    pad_lo_a[axis] = (int)padding_lo;
+    pad_hi_a[axis] =
+        (int)(conv_output_shape - out_size + pad_a[axis] + opad_a[axis]);
+    out_shape[1 + axis] = (int)(conv_output_shape + opad_a[axis]);
+  }
+  spec.pad_lo = {pad_lo_a[0], pad_lo_a[1], pad_lo_a[2]};
+  spec.pad_hi = {pad_hi_a[0], pad_hi_a[1], pad_hi_a[2]};
+  (void)groups;
+  return {spec, out_shape};
+}
+
+TEST_CASE("[conv-gaps] 3-D Convolution matches host reference") {
   if (!compute_available()) {
     return;
   }
   Stream stream = gpu_stream();
-  std::vector<float> in_values(1 * 4 * 4 * 4 * 2, 0.5f);
-  std::vector<float> wt_values(2 * 3 * 3 * 3 * 2, 0.25f);
+  std::mt19937 rng(283);
+  std::uniform_real_distribution<float> dist(-1.0f, 1.0f);
 
-  // conv3d reaches this primitive as a 5-D array and refuses with the
-  // 3-D name; the combination must not be mis-reported as plain
-  // "Convolution shapes". The grouped+3-D case is caught upstream at
-  // graph construction, so a single 3-D primitive refusal pins the
-  // path that still flows through this backend.
-  std::string three_d_error = evaluation_error(conv3d(
-      array(in_values.begin(), Shape{1, 4, 4, 4, 2}, float32),
-      array(wt_values.begin(), Shape{2, 3, 3, 3, 2}, float32),
-      std::tuple<int, int, int>(1, 1, 1),
-      std::tuple<int, int, int>(1, 1, 1),
-      std::tuple<int, int, int>(1, 1, 1),
-      1,
-      stream));
-  CHECK(
-      three_d_error.find("[omarchy] 3-D Convolution") != std::string::npos);
-  CHECK(three_d_error.find("no silent CPU fallback") != std::string::npos);
+  // Forward conv3d with stride 1 and symmetric padding: the plain
+  // volume filter the retired refusal used to pin.
+  {
+    Shape in_shape{1, 4, 4, 4, 2};
+    Shape wt_shape{2, 3, 3, 3, 2};
+    std::vector<float> in(1 * 4 * 4 * 4 * 2);
+    std::vector<float> wt(2 * 3 * 3 * 3 * 2);
+    for (auto& v : in) {
+      v = dist(rng);
+    }
+    for (auto& v : wt) {
+      v = dist(rng);
+    }
+    auto expected = host_conv3d_general(
+        in,
+        wt,
+        in_shape,
+        wt_shape,
+        {1, 1, 1},
+        {1, 1, 1},
+        {1, 1, 1},
+        {1, 1, 1},
+        {1, 1, 1},
+        1,
+        /*flip=*/false);
+    auto actual = conv3d(
+        array(in.begin(), in_shape, float32),
+        array(wt.begin(), wt_shape, float32),
+        std::tuple<int, int, int>(1, 1, 1),
+        std::tuple<int, int, int>(1, 1, 1),
+        std::tuple<int, int, int>(1, 1, 1),
+        1,
+        stream);
+    check_close(actual, expected, stream, 1e-5);
+  }
+
+  // Strided forward conv3d with kernel dilation.
+  {
+    Shape in_shape{2, 5, 6, 7, 3};
+    Shape wt_shape{4, 2, 2, 2, 3};
+    std::vector<float> in(2 * 5 * 6 * 7 * 3);
+    std::vector<float> wt(4 * 2 * 2 * 2 * 3);
+    for (auto& v : in) {
+      v = dist(rng);
+    }
+    for (auto& v : wt) {
+      v = dist(rng);
+    }
+    auto expected = host_conv3d_general(
+        in,
+        wt,
+        in_shape,
+        wt_shape,
+        {2, 2, 2},
+        {0, 1, 0},
+        {0, 1, 0},
+        {2, 1, 2},
+        {1, 1, 1},
+        1,
+        /*flip=*/false);
+    auto actual = conv3d(
+        array(in.begin(), in_shape, float32),
+        array(wt.begin(), wt_shape, float32),
+        std::tuple<int, int, int>(2, 2, 2),
+        std::tuple<int, int, int>(0, 1, 0),
+        std::tuple<int, int, int>(2, 1, 2),
+        1,
+        stream);
+    check_close(actual, expected, stream, 1e-5);
+  }
+}
+
+TEST_CASE(
+    "[conv-gaps] transposed 3-D Convolution matches host reference") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  std::mt19937 rng(293);
+  std::uniform_real_distribution<float> dist(-1.0f, 1.0f);
+
+  // The upstream output_padding shape: stride 2, 1x1x1 kernel,
+  // output_padding 1. Values are the upstream ops_tests expectation
+  // exactly.
+  {
+    Shape in_shape{1, 1, 2, 2, 2};
+    std::vector<float> in{1, 2, 3, 4, 5, 6, 7, 8};
+    std::vector<float> wt{1, 1};
+    Shape wt_shape{1, 1, 1, 1, 2};
+    auto actual = conv_transpose3d(
+        array(in.begin(), in_shape, float32),
+        array(wt.begin(), wt_shape, float32),
+        std::tuple<int, int, int>(2, 2, 2),
+        std::tuple<int, int, int>(0, 0, 0),
+        std::tuple<int, int, int>(1, 1, 1),
+        std::tuple<int, int, int>(1, 1, 1),
+        1,
+        stream);
+    std::vector<double> expected{
+        3,    0,    7,    0,    0,    0,    0,    0,    11,   0,    15,
+        0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+        0,    0,    0,    0,    0,    0,    0,    0,    0,    0};
+    check_close(actual, expected, stream, 1e-6);
+  }
+
+  // Random volume with a 2x2x2 kernel, stride 2: the transposed taps
+  // walk a dilated input grid in every axis against the double host
+  // reference.
+  {
+    Shape in_shape{1, 2, 2, 2, 2};
+    Shape wt_shape{2, 2, 2, 2, 2};
+    std::vector<float> in(1 * 2 * 2 * 2 * 2);
+    std::vector<float> wt(2 * 2 * 2 * 2 * 2);
+    for (auto& v : in) {
+      v = dist(rng);
+    }
+    for (auto& v : wt) {
+      v = dist(rng);
+    }
+    auto [spec, expected_shape] = transpose3d_to_conv_spec(
+        in_shape,
+        wt_shape,
+        {2, 2, 2},
+        {0, 0, 0},
+        {1, 1, 1},
+        {0, 0, 0},
+        1);
+    auto expected = host_conv3d_general(
+        in,
+        wt,
+        in_shape,
+        wt_shape,
+        spec.stride,
+        spec.pad_lo,
+        spec.pad_hi,
+        spec.kernel_dilation,
+        {2, 2, 2},
+        1,
+        spec.flip);
+    auto actual = conv_transpose3d(
+        array(in.begin(), in_shape, float32),
+        array(wt.begin(), wt_shape, float32),
+        {2, 2, 2},
+        {0, 0, 0},
+        {1, 1, 1},
+        {0, 0, 0},
+        1,
+        stream);
+    REQUIRE_EQ(actual.shape(), expected_shape);
+    check_close(actual, expected, stream, 1e-5);
+  }
 }
