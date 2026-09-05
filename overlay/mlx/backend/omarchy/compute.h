@@ -44,7 +44,7 @@ constexpr bool compute_index_span_fits(uint64_t offset, uint64_t count) {
       (count == 0 || count - 1 <= max_index - offset);
 }
 
-enum class ComputeKernel : uint8_t {
+enum class ComputeKernel : uint16_t {
   ElementwiseF32,
   ElementwiseF16,
   ElementwiseBF16,
@@ -96,6 +96,7 @@ enum class ComputeKernel : uint8_t {
   CopyGeneralF16,
   CopyGeneralBF16,
   CopyGeneralU32,
+  CopyGeneralBool,
   ArgReduceF32,
   ArgReduceF16,
   ArgReduceBF16,
@@ -103,6 +104,7 @@ enum class ComputeKernel : uint8_t {
   ArangeF16,
   ArangeBF16,
   ArangeI32,
+  ArangeU32,
   SortF32,
   SortF16,
   SortBF16,
@@ -345,6 +347,27 @@ enum class ComputeKernel : uint8_t {
   QuantizeF32,
   QuantizeF16,
   ReduceGeneralBool,
+  // CopyEngineDtypes: integer-family flat casts, one blob per (source,
+  // destination) element-width pair. Runtime dtype codes inside the blob
+  // pick bool/u8/i8 (W1), u16/i16 (W2), u32/i32 (W4), u64/i64 (W8), so
+  // no per-dtype kernel forks. W8 blobs ride little-endian word pairs
+  // and dispatch only behind the device's shaderInt64 feature.
+  CastIntW1W1,
+  CastIntW1W2,
+  CastIntW1W4,
+  CastIntW1W8,
+  CastIntW2W1,
+  CastIntW2W2,
+  CastIntW2W4,
+  CastIntW2W8,
+  CastIntW4W1,
+  CastIntW4W2,
+  CastIntW4W4,
+  CastIntW4W8,
+  CastIntW8W1,
+  CastIntW8W2,
+  CastIntW8W4,
+  CastIntW8W8,
   Count,
 };
 

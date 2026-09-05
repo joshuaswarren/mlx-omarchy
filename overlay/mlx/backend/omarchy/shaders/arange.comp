@@ -1,9 +1,15 @@
 #version 460
 
-#ifdef USE_I32
+#if defined(USE_I32)
 #define STORAGE_TYPE int
 #define LOAD_VALUE(x) (x)
 #define STORE_VALUE(f) (f)
+#define USE_INT_MATH 1
+#elif defined(USE_U32)
+#define STORAGE_TYPE uint
+#define LOAD_VALUE(x) (x)
+#define STORE_VALUE(f) uint(f)
+#define USE_INT_MATH 1
 #elif defined(USE_FP16)
 #extension GL_EXT_shader_16bit_storage : require
 #extension GL_EXT_shader_explicit_arithmetic_types_float16 : require
@@ -59,7 +65,7 @@ void main() {
   uint index = gl_GlobalInvocationID.x;
   uint stride = gl_NumWorkGroups.x * gl_WorkGroupSize.x;
   while (index < params.count) {
-#ifdef USE_I32
+#if defined(USE_INT_MATH)
     // The host keeps |start|, |step|, and |start + step * count| below
     // 2^24, so alpha and beta transport exactly and the int math is
     // exact for every index.
