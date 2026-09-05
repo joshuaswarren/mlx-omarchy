@@ -87,10 +87,10 @@ did not cut GPU calls or show a clear speed gain
 
 ## Known gaps and defects
 
-The honest list, with the platform each one was observed on. The full ledger is [docs/known-defects.md](docs/known-defects.md).
-
-
-Anything not on the defect ledger fails loudly with a named `[omarchy] ... is not implemented` error. This is the contract.
+The [defect ledger](docs/known-defects.md) lists wrong values and crashes.
+The current bf16 build gets the first token wrong in a pinned Qwen2.5
+run, then repeats text fragments. The same wrong output on each run is
+not a pass. See the [full-token comparison](docs/known-defects.md#bf16-generation-emits-repetitive-fragments).
 
 ## Quick start
 

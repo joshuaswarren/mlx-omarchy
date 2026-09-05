@@ -1,12 +1,46 @@
 # Known defects, by release
 
-This page is the project's defect ledger for silent wrong values and crashes. It covers v0.3.0-alpha.1 through v0.3.4. Each entry states the affected versions, the symptom, the platform the defect was observed on, and the fix status. Upstream MLX's own test suites exposed the v0.3.0-alpha.1 list on 2026-09-02; per-case evidence sits in [receipts/2026-09-02-upstream-suite-coverage.md](../receipts/2026-09-02-upstream-suite-coverage.md). The M1 findings are recorded in [receipts/2026-09-02-m1-red-suites-root-cause.md](../receipts/2026-09-02-m1-red-suites-root-cause.md).
+This page records silent wrong values and crashes in releases and development builds. Each entry states the observed version and platform, the symptom, and the fix status. Upstream MLX tests exposed the initial list on 2026-09-02; per-case evidence sits in [the suite receipt](../receipts/2026-09-02-upstream-suite-coverage.md). The M1 findings are recorded in [the hardware receipt](../receipts/2026-09-02-m1-red-suites-root-cause.md).
 
-This project's contract is to refuse by name rather than return a wrong number. The entries below break that contract, which is why they outrank every coverage gap. Anything not on this page fails loudly with a named `[omarchy] ... is not implemented` error.
+The backend must refuse unsupported operations by name rather than return a wrong number. Known silent failures take priority over coverage expansion; this ledger is not proof that unlisted paths are correct.
 
 ## Why platform matters here
 
 Two of the worst v0.3.0 defects never appeared on a Linux development box. They are real-M1-only, and the full dev-box battery - 24 binaries, 407 cases, 828,139 assertions - was green the whole night they shipped. A Vulkan capability query, a shader miscompile, and a submit-thread ordering are all per-driver questions: llvmpipe, lavapipe, and Honeykrisp answer them differently. **A green run on a software driver is not proof about the Apple GPU, and this ledger now records where every defect was observed.** Anyone contributing: your llvmpipe battery passing is the start of verification on this project, not the end of it.
+
+## Open in development
+
+### bf16 generation emits repetitive fragments
+
+Observed on: real M1, Honeykrisp, development wheel built from `4f27136`.
+Status: OPEN, cause unknown. The affected release range is not established.
+The RoPE synchronization guard was present; this is not the guard-removal
+experiment described below.
+
+Both backends used upstream MLX 0.32.2 as their source version, mlx-lm
+0.31.3, model revision `56d07e766edd7159fbe12ed12d9cf114bf38bf1e`,
+the prompt `Hi` (30 actual template tokens), eager execution
+(`MLX_DISABLE_COMPILE=1`), temperature 0, seed 0, and four warmup tokens.
+The harness suppressed EOS to capture exactly 32 tokens.
+
+Linux started with token 978 (` spire`) and continued with fragments such
+as `the blank spire`. Native MLX on an M1 Max started with token 9707
+(`Hello`) and answered `Hello! How can I assist you today?` before EOS;
+its later template tokens are an artifact of suppressing EOS. The first
+difference is at zero-based index 0. The stable Linux digest
+`635bc7f4bbaa48a4` proves repeatability, not correct generation; the native
+digest is `7fc0f968789b1882`. Neither timing nor the cause is inferred
+from this comparison. The native machine was contended and is not the
+same chip as the Linux target.
+
+For comparison, the 4-bit long128 run at model revision
+`a5339a4131f135d0fdc6a5c8b5bbed2753bbe0f3` shared its first 20 tokens.
+Native then selected ` carefully` and Linux selected ` review`; both
+continued coherently, with different text. Their digests were
+`254d73fd93164b98` and `4cc08910089477fd`, respectively. Token agreement
+alone is not a general numerical correctness test.
+
+Evidence: [full ID lists, decoded text, parameters, and provenance](../receipts/2026-09-04-native-output-comparison.json). The IDs were captured after generation without changing inference. Their digests and first-difference indexes were recomputed from the lists, and text decoded with the cached tokenizers.
 
 ## Live in v0.3.5
 
