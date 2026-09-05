@@ -241,8 +241,12 @@ void Event::signal(Stream s) {
   }
   if (s.device == Device::gpu) {
     auto& encoder = omarchy::get_command_encoder(s);
+    // Host-signal only when nothing on this stream is still executing:
+    // a queue-ordered signal would have to outlive the event (it once
+    // destroyed the semaphore under a live submit), and a host signal
+    // with work in flight lets a GPU-stream waiter run ahead of it.
     if (!event.queued_signal.load(std::memory_order_acquire) &&
-        encoder.idle()) {
+        encoder.idle() && encoder.synchronized()) {
       uint64_t generation = encoder.last_submitted_completion();
       uint64_t prior_gen =
           event.signaled_completion.load(std::memory_order_relaxed);
