@@ -129,6 +129,8 @@
 #include "qmm_tile_f32.h"
 #include "dequant_f32.h"
 #include "dequant_f16.h"
+#include "quantize_f32.h"
+#include "quantize_f16.h"
 #include "conv_bf16.h"
 #include "clear_u32.h"
 #include "gather_axis_bf16.h"
@@ -478,6 +480,10 @@ ShaderBytes shader_bytes(ComputeKernel kernel) {
       return {dequant_f32, dequant_f32_size};
     case ComputeKernel::DequantF16:
       return {dequant_f16, dequant_f16_size};
+    case ComputeKernel::QuantizeF32:
+      return {quantize_f32, quantize_f32_size};
+    case ComputeKernel::QuantizeF16:
+      return {quantize_f16, quantize_f16_size};
     case ComputeKernel::ConvF32:
       return {conv_f32, conv_f32_size};
     case ComputeKernel::ConvF16:

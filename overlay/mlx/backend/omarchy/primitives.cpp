@@ -7487,12 +7487,6 @@ void Quantize::eval_gpu(
     std::vector<array>& outputs) {
   const std::string tag = name();
   array& out = outputs.at(0);
-  // One primitive serves both directions; only the dequantize side is
-  // implemented. The quantize direction and every non-affine mode keep
-  // the named rejection.
-  if (!dequantize_) {
-    omarchy::unsupported(tag + " direction", out);
-  }
   if (mode_ != QuantizationMode::Affine) {
     omarchy::unsupported(tag + " mode", out);
   }
@@ -7502,10 +7496,66 @@ void Quantize::eval_gpu(
   if (group_size_ != 32 && group_size_ != 64) {
     omarchy::unsupported(tag + " group size", out);
   }
+  auto& encoder = omarchy::get_command_encoder(out.primitive().stream());
+  if (!dequantize_) {
+    const array& in_w = inputs.at(0);
+    array& scales = outputs.at(1);
+    array& biases = outputs.at(2);
+    if (
+        (in_w.dtype() != float16 && in_w.dtype() != float32) ||
+        scales.dtype() != in_w.dtype() || biases.dtype() != in_w.dtype()) {
+      omarchy::unsupported(tag + " input dtype", out);
+    }
+    if (out.dtype() != uint32) {
+      omarchy::unsupported(tag + " output dtype", out);
+    }
+    require_float_dtype(tag, in_w, scales, encoder);
+    Shape packed_shape = in_w.shape();
+    Shape parameter_shape = in_w.shape();
+    packed_shape.back() = packed_shape.back() * bits_ / 32;
+    parameter_shape.back() /= group_size_;
+    if (
+        out.shape() != packed_shape || scales.shape() != parameter_shape ||
+        biases.shape() != parameter_shape) {
+      omarchy::unsupported(tag + " shape", out);
+    }
+    std::optional<array> w_temp;
+    const array& w = ensure_dense(
+        in_w, in_w.flags().row_contiguous, w_temp, encoder, stream());
+    out.set_data(allocate_omarchy(out.nbytes()));
+    scales.set_data(allocate_omarchy(scales.nbytes()));
+    biases.set_data(allocate_omarchy(biases.nbytes()));
+    if (w.size() == 0) {
+      return;
+    }
+    omarchy::ComputeParams params;
+    params.count = checked_u32(w.size() / group_size_, tag, out);
+    params.operation = static_cast<uint32_t>(bits_);
+    params.lhs_size = checked_u32(w.size(), tag, out);
+    params.rhs_size = checked_u32(scales.size(), tag, out);
+    params.reduce_size = static_cast<uint32_t>(group_size_);
+    params.output_size = checked_u32(out.size(), tag, out);
+    params.lhs_offset = checked_item_offset(w, w.size(), tag, out);
+    params.rhs_offset =
+        checked_item_offset(scales, scales.size(), tag, out);
+    params.output_offset = checked_item_offset(out, out.size(), tag, out);
+    params.aux_size = checked_u32(biases.size(), tag, out);
+    params.aux_offset = checked_item_offset(biases, biases.size(), tag, out);
+    std::array<omarchy::ComputeBinding, 4> bindings{
+        binding(w), binding(out), binding(scales), binding(biases)};
+    auto kernel = in_w.dtype() == float16
+        ? omarchy::ComputeKernel::QuantizeF16
+        : omarchy::ComputeKernel::QuantizeF32;
+    encoder.dispatch_compute(
+        kernel,
+        bindings,
+        params,
+        omarchy::compute_dispatch_group_count(params.count));
+    return;
+  }
   const array& in_w = inputs.at(0);
   const array& in_scales = inputs.at(1);
   const array& in_biases = inputs.at(2);
-  auto& encoder = omarchy::get_command_encoder(out.primitive().stream());
   // The output dtype is the promoted scales dtype (ops.cpp), and the
   // kernel reads the group parameters in that dtype, so mixed dtypes
   // stay a named rejection. The dequant kernels ship f32 and f16

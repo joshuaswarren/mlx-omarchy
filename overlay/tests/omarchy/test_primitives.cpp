@@ -4597,19 +4597,131 @@ TEST_CASE("dequantize reproduces hand-packed affine words") {
   }
 }
 
-TEST_CASE("dequantize pins named errors outside the affine gate") {
+TEST_CASE("quantize matches the pinned upstream affine contract") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  const auto& capabilities = omarchy::device(0).capabilities();
+  const bool f16_ok =
+      capabilities.shader_float16 && capabilities.storage_buffer_16bit_access;
+  constexpr int rows = 6;
+  constexpr int columns = 128;
+  std::mt19937 gen(29);
+  std::uniform_real_distribution<float> dist(-4.0f, 4.0f);
+
+  for (int bits : {4, 8}) {
+    for (int group_size : {32, 64}) {
+      CAPTURE(bits);
+      CAPTURE(group_size);
+      std::vector<float> matrix(static_cast<size_t>(rows) * columns);
+      for (auto& value : matrix) {
+        value = dist(gen);
+      }
+      float high = static_cast<float>(1 << (bits - 1));
+      matrix[0] = high - static_cast<float>((1 << bits) - 1);
+      matrix[1] = high;
+      matrix[2] = high - 0.5f;
+      std::fill(
+          matrix.begin() + columns - group_size,
+          matrix.begin() + columns,
+          0.0f);
+
+      for (Dtype dtype : {float32, float16}) {
+        if (dtype == float16 && !f16_ok) {
+          skip("Vulkan device lacks required FP16 shader and storage features.");
+          continue;
+        }
+        CAPTURE(dtype);
+        array source(
+            matrix.begin(), Shape{2, 3, columns}, float32);
+        array input = dtype == float32 ? source : astype(source, dtype, stream);
+        std::vector<float> input_values =
+            dtype == float32 ? matrix : readback_f32(stream, input);
+        HostQuantizedWeights expected = host_affine_quantize(
+            input_values, rows, columns, group_size, bits);
+
+        auto outputs = quantize(
+            input, group_size, bits, "affine", std::nullopt, stream);
+        REQUIRE_EQ(outputs.size(), 3);
+        uint64_t compute_before =
+            omarchy::trace::counters().vk_compute_dispatches.load();
+        outputs[0].eval();
+        omarchy::get_command_encoder(stream).synchronize();
+        CHECK(
+            omarchy::trace::counters().vk_compute_dispatches.load() >
+            compute_before);
+        REQUIRE_EQ(outputs[0].dtype(), uint32);
+        REQUIRE_EQ(outputs[1].dtype(), dtype);
+        REQUIRE_EQ(outputs[2].dtype(), dtype);
+        CHECK_EQ(outputs[0].shape(), Shape{2, 3, columns * bits / 32});
+        CHECK_EQ(outputs[1].shape(), Shape{2, 3, columns / group_size});
+        CHECK_EQ(outputs[2].shape(), outputs[1].shape());
+
+        const uint32_t* words = outputs[0].data<uint32_t>();
+        for (size_t index = 0; index < expected.words.size(); ++index) {
+          CHECK_EQ(words[index], expected.words[index]);
+        }
+        std::vector<float> scales = readback_f32(stream, outputs[1]);
+        std::vector<float> biases = readback_f32(stream, outputs[2]);
+        REQUIRE_EQ(scales.size(), expected.scales.size());
+        REQUIRE_EQ(biases.size(), expected.biases.size());
+        const double parameter_tolerance = dtype == float32 ? 1e-6 : 1e-3;
+        for (size_t index = 0; index < scales.size(); ++index) {
+          CHECK(std::abs(scales[index] - expected.scales[index]) <=
+                parameter_tolerance);
+          CHECK(std::abs(biases[index] - expected.biases[index]) <=
+                parameter_tolerance);
+        }
+
+        array reconstructed = dequantize(
+            outputs[0],
+            outputs[1],
+            outputs[2],
+            group_size,
+            bits,
+            "affine",
+            std::nullopt,
+            std::nullopt,
+            stream);
+        std::vector<float> dequantized = readback_f32(stream, reconstructed);
+        REQUIRE_EQ(dequantized.size(), input_values.size());
+        const int groups = columns / group_size;
+        const float reconstruction_tolerance =
+            dtype == float32 ? 1e-6f : 1e-3f;
+        for (size_t index = 0; index < dequantized.size(); ++index) {
+          size_t group = (index / columns) * groups +
+              (index % columns) / group_size;
+          CHECK(std::abs(dequantized[index] - input_values[index]) <=
+                std::abs(scales[group]) + reconstruction_tolerance);
+        }
+      }
+    }
+  }
+}
+
+
+TEST_CASE("quantize and dequantize pin named errors outside the affine gate") {
   if (!compute_available()) {
     return;
   }
   Stream stream = gpu_stream();
   std::vector<float> matrix(4 * 128, 0.5f);
   array x(matrix.begin(), Shape{4, 128}, float32);
+  CHECK(evaluation_error(
+            quantize(x, 32, 4, "mxfp4", std::nullopt, stream)[0])
+            .find("Quantize mode") != std::string::npos);
+  CHECK(evaluation_error(
+            quantize(x, 32, 2, "affine", std::nullopt, stream)[0])
+            .find("Quantize bits") != std::string::npos);
+  CHECK(evaluation_error(
+            quantize(x, 128, 4, "affine", std::nullopt, stream)[0])
+            .find("Quantize group size") != std::string::npos);
+  array bf16_input(matrix.begin(), Shape{4, 128}, bfloat16);
+  CHECK(evaluation_error(
+            quantize(bf16_input, 32, 4, "affine", std::nullopt, stream)[0])
+            .find("Quantize input dtype") != std::string::npos);
 
-  // The quantize direction stays a named rejection.
-  std::vector<array> packed = quantize(x, 32, 4, "affine", std::nullopt, stream);
-  std::string direction_error = evaluation_error(packed[0]);
-  CHECK(
-      direction_error.find("Quantize direction") != std::string::npos);
 
   // mxfp4 keeps its mode rejection: two inputs, uint8 scales.
   std::vector<uint32_t> words4(4 * 16, 0x33221100u);
