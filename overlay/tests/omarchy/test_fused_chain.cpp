@@ -80,16 +80,16 @@ void check_compiled_matches_eager(
     const std::vector<array>& inputs,
     Dtype dtype,
     const Stream& stream,
-    double epsilon) {
+    double epsilon,
+    bool shapeless = false) {
   set_compile_mode(CompileMode::disabled);
   std::vector<array> eager_outputs = fn(inputs);
   for (auto& out : eager_outputs) {
     out.eval();
   }
   sync_stream(stream);
-
   set_compile_mode(CompileMode::enabled);
-  auto compiled_fn = compile(fn);
+  auto compiled_fn = compile(fn, shapeless);
   std::vector<array> compiled_outputs = compiled_fn(inputs);
   for (auto& out : compiled_outputs) {
     out.eval();
@@ -611,4 +611,372 @@ TEST_CASE("bf16 compiled tape stays refused") {
   std::string error = evaluation_error(fn({a, b})[0]);
   CHECK(error.find("[omarchy] Compiled tape bfloat16") != std::string::npos);
   set_compile_mode(CompileMode::disabled);
+}
+
+// The model fragment: mlx_lm compiles swiglu with shapeless=True, and a
+// shapeless trace keeps the broadcast_arrays identity pairs (including the
+// stop-gradient operand copies). Before identity-broadcast normalization
+// that tape walked as three one-instruction chains; it must cost exactly
+// one three-instruction dispatch like the non-shapeless tape does.
+TEST_CASE("shapeless swiglu fragment collapses identity broadcast pairs (f32)") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  enable_fusion();
+  std::vector<array> inputs{random::normal(Shape{4, 64}, float32),
+                            random::normal(Shape{4, 64}, float32)};
+  for (auto& in : inputs) {
+    in.eval();
+  }
+  sync_stream(stream);
+  std::function<std::vector<array>(const std::vector<array>&)> fn =
+      [](const std::vector<array>& in) {
+        return std::vector<array>{in[0] * sigmoid(in[0]) * in[1]};
+      };
+
+  set_compile_mode(CompileMode::disabled);
+  uint64_t eager = counted_dispatches(
+      [&] { return fn(inputs)[0]; }, 1, stream);
+  set_compile_mode(CompileMode::enabled);
+  auto compiled_fn = compile(fn, /*shapeless=*/true);
+  uint64_t fused = counted_dispatches(
+      [&] { return compiled_fn(inputs)[0]; }, 2, stream);
+  set_compile_mode(CompileMode::disabled);
+  CHECK_EQ(eager, 3);
+  CHECK_EQ(fused, 1);
+  check_compiled_matches_eager(fn, inputs, float32, stream, 0.0, true);
+}
+
+TEST_CASE("shapeless swiglu fragment collapses identity broadcast pairs (f16)") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  enable_fusion();
+  std::vector<array> inputs{random::normal(Shape{4, 64}, float16),
+                            random::normal(Shape{4, 64}, float16)};
+  for (auto& in : inputs) {
+    in.eval();
+  }
+  sync_stream(stream);
+  std::function<std::vector<array>(const std::vector<array>&)> fn =
+      [](const std::vector<array>& in) {
+        return std::vector<array>{in[0] * sigmoid(in[0]) * in[1]};
+      };
+
+  set_compile_mode(CompileMode::disabled);
+  uint64_t eager = counted_dispatches(
+      [&] { return fn(inputs)[0]; }, 1, stream);
+  set_compile_mode(CompileMode::enabled);
+  auto compiled_fn = compile(fn, /*shapeless=*/true);
+  uint64_t fused = counted_dispatches(
+      [&] { return compiled_fn(inputs)[0]; }, 2, stream);
+  set_compile_mode(CompileMode::disabled);
+  CHECK_EQ(eager, 3);
+  CHECK_EQ(fused, 1);
+  check_compiled_matches_eager(fn, inputs, float16, stream, -1.0, true);
+}
+
+TEST_CASE("shapeless fragment serves new shapes with one dispatch each") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  enable_fusion();
+  std::function<std::vector<array>(const std::vector<array>&)> fn =
+      [](const std::vector<array>& in) {
+        return std::vector<array>{in[0] * sigmoid(in[0]) * in[1]};
+      };
+  set_compile_mode(CompileMode::enabled);
+  auto compiled_fn = compile(fn, /*shapeless=*/true);
+  std::vector<array> warm{random::normal(Shape{4, 64}, float32),
+                          random::normal(Shape{4, 64}, float32)};
+  for (auto& in : warm) {
+    in.eval();
+  }
+  array warm_out = compiled_fn(warm)[0];
+  warm_out.eval();
+  sync_stream(stream);
+  for (Shape shape : {Shape{2, 64}, Shape{1, 64}}) {
+    std::vector<array> in{random::normal(shape, float32),
+                          random::normal(shape, float32)};
+    for (auto& a : in) {
+      a.eval();
+    }
+    set_compile_mode(CompileMode::disabled);
+    array want = fn(in)[0];
+    want.eval();
+    sync_stream(stream);
+    set_compile_mode(CompileMode::enabled);
+    uint64_t fused = counted_dispatches(
+        [&] { return compiled_fn(in)[0]; }, 0, stream);
+    set_compile_mode(CompileMode::disabled);
+    array got = compiled_fn(in)[0];
+    got.eval();
+    sync_stream(stream);
+    CHECK_EQ(fused, 1);
+    array got32 = as_float32(got, stream);
+    array want32 = as_float32(want, stream);
+    got32.eval();
+    want32.eval();
+    sync_stream(stream);
+    const uint32_t* got_words =
+        reinterpret_cast<const uint32_t*>(got32.data<float>());
+    const uint32_t* want_words =
+        reinterpret_cast<const uint32_t*>(want32.data<float>());
+    for (size_t index = 0; index < want32.size(); ++index) {
+      INFO("shape-reuse mismatch at ", index);
+      CHECK_EQ(got_words[index], want_words[index]);
+    }
+  }
+  set_compile_mode(CompileMode::disabled);
+}
+
+TEST_CASE("broadcast identity is reclassified per eval shape") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  enable_fusion();
+  // Traced with row [1,64] against gate [1,64], every broadcast pair is an
+  // identity at the trace shape. Serving gate [4,64] with row [1,64] makes
+  // the row-side pair a REAL broadcast again: the walk must reclassify per
+  // evaluation, fuse only the identity prefix, and drop the rest to the
+  // per-node view path.
+  std::function<std::vector<array>(const std::vector<array>&)> fn =
+      [](const std::vector<array>& in) {
+        return std::vector<array>{in[0] * sigmoid(in[0]) * in[1]};
+      };
+  set_compile_mode(CompileMode::enabled);
+  std::vector<array> trace_in{random::normal(Shape{1, 64}, float32),
+                              random::normal(Shape{1, 64}, float32)};
+  for (auto& in : trace_in) {
+    in.eval();
+  }
+  auto compiled_fn = compile(fn, /*shapeless=*/true);
+  uint64_t identity = counted_dispatches(
+      [&] { return compiled_fn(trace_in)[0]; }, 2, stream);
+  CHECK_EQ(identity, 1);
+
+  std::vector<array> grown{random::normal(Shape{4, 64}, float32),
+                           random::normal(Shape{1, 64}, float32)};
+  for (auto& in : grown) {
+    in.eval();
+  }
+  set_compile_mode(CompileMode::disabled);
+  array want = fn(grown)[0];
+  want.eval();
+  sync_stream(stream);
+  set_compile_mode(CompileMode::enabled);
+  uint64_t mixed = counted_dispatches(
+      [&] { return compiled_fn(grown)[0]; }, 0, stream);
+  set_compile_mode(CompileMode::disabled);
+  CHECK_EQ(mixed, 2);
+  array got = compiled_fn(grown)[0];
+  got.eval();
+  sync_stream(stream);
+  array got32 = as_float32(got, stream);
+  array want32 = as_float32(want, stream);
+  got32.eval();
+  want32.eval();
+  sync_stream(stream);
+  const uint32_t* got_words =
+      reinterpret_cast<const uint32_t*>(got32.data<float>());
+  const uint32_t* want_words =
+      reinterpret_cast<const uint32_t*>(want32.data<float>());
+  for (size_t index = 0; index < want32.size(); ++index) {
+    INFO("reclassified mismatch at ", index);
+    CHECK_EQ(got_words[index], want_words[index]);
+  }
+}
+
+TEST_CASE("identity broadcast as tape output resolves through the alias") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  enable_fusion();
+  std::vector<array> inputs{random::normal(Shape{4, 64}, float32),
+                            random::normal(Shape{4, 64}, float32)};
+  for (auto& in : inputs) {
+    in.eval();
+  }
+  sync_stream(stream);
+  std::function<std::vector<array>(const std::vector<array>&)> fn =
+      [](const std::vector<array>& in) {
+        array t = in[0] * sigmoid(in[0]);
+        auto outs = broadcast_arrays({t, in[1]});
+        return std::vector<array>{t, outs[0]};
+      };
+  set_compile_mode(CompileMode::disabled);
+  uint64_t eager = counted_dispatches(
+      [&] { return fn(inputs)[1]; }, 1, stream);
+  set_compile_mode(CompileMode::enabled);
+  auto compiled_fn = compile(fn, /*shapeless=*/true);
+  uint64_t fused = counted_dispatches(
+      [&] { return compiled_fn(inputs)[1]; }, 2, stream);
+  set_compile_mode(CompileMode::disabled);
+  // The second tape output is an identity broadcast: it resolves through
+  // the alias to its source, dispatches nothing, and the fragment's one
+  // chain carries the two compute nodes.
+  CHECK_EQ(eager, 2);
+  CHECK_EQ(fused, 1);
+  check_compiled_matches_eager(fn, inputs, float32, stream, 0.0, true);
+}
+
+TEST_CASE("identity broadcast as tape output resolves through the alias") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  enable_fusion();
+  std::vector<array> inputs{random::normal(Shape{4, 64}, float32),
+                            random::normal(Shape{4, 64}, float32)};
+  for (auto& in : inputs) {
+    in.eval();
+  }
+  sync_stream(stream);
+  std::function<std::vector<array>(const std::vector<array>&)> fn =
+      [](const std::vector<array>& in) {
+        auto outs = broadcast_arrays({in[0], in[1]});
+        return std::vector<array>{outs[0]};
+      };
+  set_compile_mode(CompileMode::disabled);
+  uint64_t eager = counted_dispatches(
+      [&] { return fn(inputs)[0]; }, 1, stream);
+  set_compile_mode(CompileMode::enabled);
+  auto compiled_fn = compile(fn, /*shapeless=*/true);
+  uint64_t fused = counted_dispatches(
+      [&] { return compiled_fn(inputs)[0]; }, 2, stream);
+  set_compile_mode(CompileMode::disabled);
+  // The tape's only node is an identity broadcast and the tape output is
+  // that node itself: nothing dispatches, and the output resolves through
+  // the alias to the input's buffer.
+  CHECK_EQ(eager, 0);
+  CHECK_EQ(fused, 0);
+  check_compiled_matches_eager(fn, inputs, float32, stream, 0.0, true);
+}
+
+TEST_CASE("nonidentity broadcast keeps the per-node fallback (shapeless)") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  enable_fusion();
+  std::vector<array> inputs{random::normal(Shape{4, 64}, float32),
+                            random::normal(Shape{64}, float32)};
+  for (auto& in : inputs) {
+    in.eval();
+  }
+  sync_stream(stream);
+  std::function<std::vector<array>(const std::vector<array>&)> fn =
+      [](const std::vector<array>& in) {
+        return std::vector<array>{in[0] * sigmoid(in[0]) * in[1]};
+      };
+  set_compile_mode(CompileMode::disabled);
+  uint64_t eager = counted_dispatches(
+      [&] { return fn(inputs)[0]; }, 1, stream);
+  set_compile_mode(CompileMode::enabled);
+  auto compiled_fn = compile(fn, /*shapeless=*/true);
+  uint64_t fused = counted_dispatches(
+      [&] { return compiled_fn(inputs)[0]; }, 2, stream);
+  set_compile_mode(CompileMode::disabled);
+  // The scale-side broadcast is real ([64] to [4,64]): the identity prefix
+  // still fuses, the scale side keeps the per-node view, and the tail mul
+  // refuses the non-contiguous leaf.
+  CHECK_EQ(eager, 3);
+  CHECK_EQ(fused, 2);
+  check_compiled_matches_eager(fn, inputs, float32, stream, 0.0, true);
+}
+
+TEST_CASE("incompatible call-time shapes refuse like eager (shapeless)") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  enable_fusion();
+  std::function<std::vector<array>(const std::vector<array>&)> fn =
+      [](const std::vector<array>& in) {
+        array t = in[0] * sigmoid(in[0]);
+        auto outs = broadcast_arrays({t, in[1]});
+        return std::vector<array>{t, outs[0]};
+      };
+  std::vector<array> trace_in{random::normal(Shape{4, 64}, float32),
+                              random::normal(Shape{4, 64}, float32)};
+  for (auto& in : trace_in) {
+    in.eval();
+  }
+  sync_stream(stream);
+  set_compile_mode(CompileMode::enabled);
+  auto compiled_fn = compile(fn, /*shapeless=*/true);
+  for (auto& out : compiled_fn(trace_in)) {
+    out.eval();
+  }
+  sync_stream(stream);
+  set_compile_mode(CompileMode::disabled);
+
+  std::vector<array> bad{random::normal(Shape{4, 64}, float32),
+                         random::normal(Shape{8, 64}, float32)};
+  for (auto& in : bad) {
+    in.eval();
+  }
+  sync_stream(stream);
+  std::string eager_error;
+  try {
+    auto outs = fn(bad);
+    for (auto& out : outs) {
+      out.eval();
+    }
+  } catch (const std::exception& e) {
+    eager_error = e.what();
+  }
+  CHECK(eager_error.find("[broadcast_shapes]") != std::string::npos);
+
+  set_compile_mode(CompileMode::enabled);
+  std::string compiled_error;
+  try {
+    auto outs = compiled_fn(bad);
+    for (auto& out : outs) {
+      out.eval();
+    }
+    sync_stream(stream);
+  } catch (const std::exception& e) {
+    compiled_error = e.what();
+  }
+  set_compile_mode(CompileMode::disabled);
+  CHECK(compiled_error.find("[broadcast_shapes]") != std::string::npos);
+  INFO("eager: ", eager_error, " | compiled: ", compiled_error);
+  CHECK_EQ(eager_error, compiled_error);
+}
+
+TEST_CASE("zero-sized inputs stay correct end to end (shapeless)") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  enable_fusion();
+  std::function<std::vector<array>(const std::vector<array>&)> fn =
+      [](const std::vector<array>& in) {
+        return std::vector<array>{in[0] * sigmoid(in[0]) * in[1]};
+      };
+  std::vector<array> inputs{zeros(Shape{0, 64}, float32),
+                            zeros(Shape{0, 64}, float32)};
+  for (auto& in : inputs) {
+    in.eval();
+  }
+  sync_stream(stream);
+  set_compile_mode(CompileMode::enabled);
+  auto compiled_fn = compile(fn, /*shapeless=*/true);
+  auto outs = compiled_fn(inputs);
+  CHECK_EQ(outs[0].shape(), Shape{0, 64});
+  for (auto& out : outs) {
+    out.eval();
+  }
+  sync_stream(stream);
+  set_compile_mode(CompileMode::disabled);
+  array want = fn(inputs)[0];
+  want.eval();
+  sync_stream(stream);
+  CHECK_EQ(outs[0].shape(), want.shape());
 }
