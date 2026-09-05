@@ -229,18 +229,26 @@ bool FusedChain::try_add(
   // resolved inputs exactly as the per-node interpreter derives its
   // output shape. A shapeless tape serves decode from a prefill trace,
   // so node.shape() can be a stale trace shape; chain uniformity and
-  // the dispatch count must key on what actually evaluates.
+  // the dispatch count must key on what actually evaluates. The tail
+  // contributes the chain's eval shape, not its tracing shape.
+  auto is_prev = [&](const array& in) {
+    return !impl_->nodes.empty() && in.id() == (*impl_->nodes.back()).id();
+  };
   Shape eval_shape;
   {
     int nd = 0;
     for (const auto& in : node_inputs) {
-      nd = std::max(nd, static_cast<int>(in.ndim()));
+      nd = std::max(nd, static_cast<int>(
+                            is_prev(in) ? impl_->eval_shape.size()
+                                        : in.ndim()));
     }
     eval_shape.resize(nd, 0);
     for (const auto& in : node_inputs) {
-      auto dd = nd - static_cast<int>(in.ndim());
+      const bool prev = is_prev(in);
+      const Shape& shape = prev ? impl_->eval_shape : in.shape();
+      auto dd = nd - static_cast<int>(shape.size());
       for (int i = dd; i < nd; ++i) {
-        eval_shape[i] = std::max(eval_shape[i], in.shape()[i - dd]);
+        eval_shape[i] = std::max(eval_shape[i], shape[i - dd]);
       }
     }
   }
@@ -335,9 +343,6 @@ bool FusedChain::try_add(
   const uint32_t prev_reg = dst > 0 ? dst - 1 : std::numeric_limits<uint32_t>::max();
   std::optional<uint32_t> a;
   std::optional<uint32_t> b;
-  auto is_prev = [&](const array& in) {
-    return dst > 0 && in.id() == (*impl_->nodes.back()).id();
-  };
   if (impl_->open && !is_prev(node_inputs[0]) &&
       (node_inputs.size() < 2 || !is_prev(node_inputs[1]))) {
     // EXTENSIONS must consume the tail's register. A same-shape node

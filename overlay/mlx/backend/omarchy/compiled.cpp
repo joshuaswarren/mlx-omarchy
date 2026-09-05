@@ -18,6 +18,7 @@
 #include "mlx/backend/omarchy/fused_chain.h"
 #include "mlx/backend/omarchy/trace.h"
 #include "mlx/primitives.h"
+#include "mlx/utils.h"
 
 namespace mlx::core::omarchy {
 namespace {
@@ -113,6 +114,7 @@ void eval_compiled_tape(
   for (size_t i = 0; i < tape_inputs.size(); ++i) {
     resolved.emplace(tape_inputs[i].id(), inputs[i]);
   }
+  std::unordered_map<std::uintptr_t, array> broadcast_alias;
   std::unordered_set<std::uintptr_t> output_ids;
   output_ids.reserve(tape_outputs.size());
   for (const auto& out : tape_outputs) {
@@ -120,8 +122,11 @@ void eval_compiled_tape(
   }
   // FuseDecodeChains gate: read ONCE per tape evaluation. With it off,
   // no chain structures are built and the interpreter below runs the
-  // pre-chain per-node loop byte for byte.
-  const bool fusion_enabled = env_flag("MLX_OMARCHY_FUSED_CHAIN");
+  // pre-chain per-node loop byte for byte. Per-node submission is a
+  // batching bisector and owns the evaluation when set.
+  const bool per_node_submit = env_flag("MLX_OMARCHY_TAPE_PER_NODE_SUBMIT");
+  const bool fusion_enabled =
+      env_flag("MLX_OMARCHY_FUSED_CHAIN") && !per_node_submit;
   // Nodes consumed by MORE than one tape consumer (or surfaced as tape
   // outputs) must keep a materialized value, so a fused chain closes
   // after them; only single-consumer nodes may stay interior. This is
@@ -129,13 +134,110 @@ void eval_compiled_tape(
   // construction.
   std::unordered_set<std::uintptr_t> must_materialize;
   if (fusion_enabled) {
-    std::unordered_map<std::uintptr_t, int> consumer_counts;
+    std::unordered_map<std::uintptr_t, Shape> eval_shapes;
+    eval_shapes.reserve(tape_inputs.size() + tape.size());
+    for (size_t i = 0; i < tape_inputs.size(); ++i) {
+      eval_shapes.emplace(tape_inputs[i].id(), inputs[i].shape());
+    }
     for (const auto& node : tape) {
       if (!node.has_primitive()) {
+        eval_shapes.emplace(node.id(), node.shape());
+        continue;
+      }
+      bool known = true;
+      std::vector<Shape> in_shapes;
+      in_shapes.reserve(node.inputs().size());
+      for (const auto& in : node.inputs()) {
+        auto it = eval_shapes.find(in.id());
+        if (it == eval_shapes.end()) {
+          known = false;
+          break;
+        }
+        in_shapes.push_back(it->second);
+      }
+      if (!known) {
+        continue;
+      }
+      Shape out_shape;
+      bool is_broadcast = typeid(node.primitive()) == typeid(Broadcast);
+      if (is_broadcast) {
+        const auto& bcast = static_cast<const Broadcast&>(node.primitive());
+        try {
+          if (in_shapes.size() >= 2) {
+            out_shape = in_shapes[0];
+            for (size_t k = 1; k < in_shapes.size(); ++k) {
+              out_shape = broadcast_shapes(out_shape, in_shapes[k]);
+            }
+          } else if (
+              !in_shapes.empty() &&
+              broadcast_shapes(in_shapes[0], bcast.state()) == bcast.state()) {
+            out_shape = bcast.state();
+          } else {
+            continue;
+          }
+        } catch (const std::invalid_argument&) {
+          continue;
+        }
+      } else {
+        int nd = 0;
+        for (const auto& s : in_shapes) {
+          nd = std::max(nd, static_cast<int>(s.size()));
+        }
+        out_shape.resize(nd, 0);
+        for (const auto& s : in_shapes) {
+          auto dd = nd - static_cast<int>(s.size());
+          for (int i = dd; i < nd; ++i) {
+            out_shape[i] = std::max(out_shape[i], s[i - dd]);
+          }
+        }
+      }
+      auto inserted = eval_shapes.emplace(node.id(), std::move(out_shape));
+      if (is_broadcast && !node.inputs().empty()) {
+        auto src_it = eval_shapes.find(node.inputs()[0].id());
+        if (src_it != eval_shapes.end() &&
+            inserted.first->second == src_it->second) {
+          auto alias_it = broadcast_alias.find(node.inputs()[0].id());
+          broadcast_alias.emplace(
+              node.id(),
+              alias_it != broadcast_alias.end() ? alias_it->second
+                                                : node.inputs()[0]);
+        }
+      }
+    }
+    std::vector<std::uintptr_t> alias_outputs;
+    for (const auto& id : output_ids) {
+      auto alias_it = broadcast_alias.find(id);
+      if (alias_it != broadcast_alias.end()) {
+        alias_outputs.push_back(alias_it->second.id());
+      }
+    }
+    for (const auto& id : alias_outputs) {
+      output_ids.insert(id);
+    }
+    for (auto it = output_ids.begin(); it != output_ids.end();) {
+      if (broadcast_alias.count(*it) > 0) {
+        it = output_ids.erase(it);
+      } else {
+        ++it;
+      }
+    }
+    // Nodes consumed by MORE than one canonical tape consumer (or surfaced
+    // as tape outputs) must keep a materialized value, so a fused chain
+    // closes after them; only single-consumer nodes may stay interior. This
+    // is what makes interior chain members unreachable to non-chain ops by
+    // construction. Edges through identity broadcasts count toward the
+    // canonical source, and the broadcast nodes themselves are not
+    // consumers - they read no buffer.
+    std::unordered_map<std::uintptr_t, int> consumer_counts;
+    for (const auto& node : tape) {
+      if (!node.has_primitive() || broadcast_alias.count(node.id()) > 0) {
         continue;
       }
       for (const auto& in : node.inputs()) {
-        ++consumer_counts[in.id()];
+        auto alias_it = broadcast_alias.find(in.id());
+        ++consumer_counts[alias_it != broadcast_alias.end()
+                              ? alias_it->second.id()
+                              : in.id()];
       }
     }
     must_materialize = output_ids;
@@ -209,7 +311,6 @@ void eval_compiled_tape(
   TapeDebugScope debug_scope(
       env_flag("MLX_OMARCHY_TAPE_FULL_BARRIERS"),
       env_flag("MLX_OMARCHY_TAPE_NO_REUSE"));
-  const bool per_node_submit = env_flag("MLX_OMARCHY_TAPE_PER_NODE_SUBMIT");
   const bool sync_every = env_flag("MLX_OMARCHY_TAPE_SYNC_EVERY");
   static std::atomic<bool> announced{false};
   if (!announced.load(std::memory_order_relaxed) &&
@@ -270,16 +371,18 @@ void eval_compiled_tape(
   auto resolve_inputs = [&](const array& node, std::vector<array>& out_inputs)
       -> bool {
     for (const auto& in : node.inputs()) {
-      auto it = resolved.find(in.id());
+      auto alias_it = broadcast_alias.find(in.id());
+      const array& src =
+          alias_it != broadcast_alias.end() ? alias_it->second : in;
+      auto it = resolved.find(src.id());
       if (it != resolved.end()) {
         out_inputs.push_back(it->second);
-      } else if (chain && chain->size() > 0 && chain->tail_id() == in.id()) {
-        // Continuation of the open chain; `in` is the tail's tracing
-        // array and try_add maps it back to the tail register.
-        out_inputs.push_back(in);
-      } else if (!in.has_primitive()) {
+      } else if (chain && chain->size() > 0 && chain->tail_id() == src.id()) {
+        // Continuation of the open chain.
+        out_inputs.push_back(src);
+      } else if (!src.has_primitive()) {
         // Scalar constants baked into the tape hold their data already.
-        out_inputs.push_back(in);
+        out_inputs.push_back(src);
       } else {
         return false;
       }
@@ -300,6 +403,9 @@ void eval_compiled_tape(
     std::vector<array> node_inputs;
     node_inputs.reserve(node.inputs().size());
     if (fusion_enabled) {
+      if (broadcast_alias.count(node.id()) > 0) {
+        continue;
+      }
       if (!resolve_inputs(node, node_inputs)) {
         // The node consumes the OPEN chain's tail as an INTERIOR
         // operand of a node that will not join: fuse what the chain
@@ -331,7 +437,10 @@ void eval_compiled_tape(
       // output.
       bool needs_reresolve = false;
       for (const auto& in : node.inputs()) {
-        if (chain->size() > 0 && chain->tail_id() == in.id()) {
+        auto alias_it = broadcast_alias.find(in.id());
+        const std::uintptr_t target =
+            alias_it != broadcast_alias.end() ? alias_it->second.id() : in.id();
+        if (chain->size() > 0 && chain->tail_id() == target) {
           needs_reresolve = true;
         }
       }
@@ -445,7 +554,10 @@ void eval_compiled_tape(
   close_chain();
 
   for (size_t j = 0; j < tape_outputs.size(); ++j) {
-    outputs[j].copy_shared_buffer(resolved.at(tape_outputs[j].id()));
+    auto alias_it = broadcast_alias.find(tape_outputs[j].id());
+    const array& source =
+        alias_it != broadcast_alias.end() ? alias_it->second : tape_outputs[j];
+    outputs[j].copy_shared_buffer(resolved.at(source.id()));
   }
   if (sync_every) {
     // MLX_OMARCHY_TAPE_SYNC_EVERY (diagnostic): drain this stream
