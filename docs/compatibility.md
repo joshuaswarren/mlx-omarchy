@@ -199,7 +199,10 @@ or equivalence to native Metal. No integer speedup is claimed.
 
 Raw native logs: `~/benchq/logs/integer-gate-4f27136d26bed63994363d8d8aabf835c260f6ea/`.
 Local copies: `/tmp/integer-gate-4f27136/`, including the separate
-`integer_add_only.out` selection.
+`integer_add_only.out` selection. Review strengthened the slice boundary
+sentinel in test source `d5bbcaa091e6363dff7c89ee7ced202803ec63ea`; the
+rebuilt copy-offset suite again passed 13 cases and 93 assertions against
+the unchanged `4f27136` backend (`copy_offset-fixed.out`).
 
 Elementwise binary ops broadcast operands on any axis up to a collapsed rank of 4.
 Trailing broadcasts keep the modulo fast path, and a higher collapsed rank fails with the named `broadcast rank` error.
