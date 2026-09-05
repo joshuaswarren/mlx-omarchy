@@ -4103,16 +4103,13 @@ HostQuantizedWeights host_affine_quantize(
   result.biases.resize(static_cast<size_t>(rows) * groups);
   for (int row = 0; row < rows; ++row) {
     for (int group = 0; group < groups; ++group) {
-      float w_max = -std::numeric_limits<float>::infinity();
+      float w_max = 0.0f;
       float w_min = std::numeric_limits<float>::infinity();
       for (int i = 0; i < group_size; ++i) {
         float value = matrix[row * cols + group * group_size + i];
         w_max = std::max(w_max, value);
         w_min = std::min(w_min, value);
       }
-      // Upstream keeps the scale positive when the abs-dominant
-      // endpoint is w_min (where(mask, scale, -scale)) and pins that
-      // endpoint as the edge.
       bool min_dominant = std::abs(w_min) > std::abs(w_max);
       float scale = std::max((w_max - w_min) / n_bins, 1e-7f);
       if (!min_dominant) {
@@ -4627,6 +4624,12 @@ TEST_CASE("quantize matches the pinned upstream affine contract") {
           matrix.begin() + columns,
           0.0f);
 
+      std::fill(matrix.begin() + columns, matrix.begin() + 2 * columns, -1.0f);
+      std::fill(matrix.begin() + 2 * columns, matrix.begin() + 3 * columns, -2.0f);
+      std::fill(
+          matrix.begin() + 2 * columns + group_size / 2,
+          matrix.begin() + 2 * columns + group_size,
+          -1.0f);
       for (Dtype dtype : {float32, float16}) {
         if (dtype == float16 && !f16_ok) {
           skip("Vulkan device lacks required FP16 shader and storage features.");

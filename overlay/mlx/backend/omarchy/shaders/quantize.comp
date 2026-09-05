@@ -72,7 +72,7 @@ void main() {
        group += stride) {
     uint input_base = params.lhs_offset + group * group_size;
     float w_min = uintBitsToFloat(0x7f800000u);
-    float w_max = uintBitsToFloat(0xff800000u);
+    float w_max = 0.0;
     for (uint lane = 0u; lane < group_size; ++lane) {
       float value = LOAD_VALUE(input_data.values[input_base + lane]);
       w_min = min(w_min, value);
