@@ -4720,7 +4720,7 @@ TEST_CASE("quantize and dequantize pin named errors outside the affine gate") {
   CHECK(evaluation_error(
             quantize(x, 128, 4, "affine", std::nullopt, stream)[0])
             .find("Quantize group size") != std::string::npos);
-  array bf16_input(matrix.begin(), Shape{4, 128}, bfloat16);
+  array bf16_input = astype(x, bfloat16, stream);
   CHECK(evaluation_error(
             quantize(bf16_input, 32, 4, "affine", std::nullopt, stream)[0])
             .find("Quantize input dtype") != std::string::npos);
