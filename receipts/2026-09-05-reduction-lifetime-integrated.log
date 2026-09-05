@@ -1,0 +1,198 @@
+source 60e978b46f4153cb98d64ee3d86f5d2ca756570b
+4e6f12047fc44ea1f87629e13dc0b9089a3af68fcbe278b9edfbf30b3e0e6416  .work/integration-build/tests/omarchy/omarchy_reduce_ops_tests
+7251b46a81db5eba8fce5ae3c4b7ecec2e7751a89bcc9326679254c22d616e49  .work/integration-build/tests/omarchy/omarchy_runtime_tests
+== reduce run 1 ==
+[probe] pipeline kernel=83 bytes=0x5c3ef22a74c8 size=8908
+[probe] pipeline kernel=84 bytes=0x5c3ef22a521c size=8876
+[probe] pipeline kernel=80 bytes=0x5c3ef22a9794 size=9244
+[probe] pipeline kernel=18 bytes=0x5c3ef22c6c20 size=6020
+[probe] pipeline kernel=90 bytes=0x5c3ef22b0820 size=12492
+[probe] pipeline kernel=88 bytes=0x5c3ef22b6568 size=11404
+[probe] pipeline kernel=89 bytes=0x5c3ef22b38ec size=11388
+[probe] pipeline kernel=85 bytes=0x5c3ef22b91f4 size=11420
+[probe] pipeline kernel=72 bytes=0x5c3ef22781dc size=2340
+[probe] pipeline kernel=91 bytes=0x5c3ef2273ae4 size=5712
+[probe] pipeline kernel=94 bytes=0x5c3ef22725e4 size=5376
+[probe] pipeline kernel=96 bytes=0x5c3ef22c1934 size=6560
+[probe] pipeline kernel=6 bytes=0x5c3ef22feaa0 size=2196
+[probe] pipeline kernel=97 bytes=0x5c3ef22c32d4 size=6760
+[probe] pipeline kernel=3 bytes=0x5c3ef230079c size=2196
+[probe] pipeline kernel=81 bytes=0x5c3ef22abbb0 size=9412
+[probe] pipeline kernel=228 bytes=0x5c3ef22a2cd4 size=9544
+[doctest] doctest version is "2.4.12"
+[doctest] run with "--help" for options
+===============================================================================
+[doctest] test cases:   26 |   26 passed | 0 failed | 0 skipped
+[doctest] assertions: 7019 | 7019 passed | 0 failed |
+[doctest] Status: SUCCESS!
+rc=0
+== reduce run 2 ==
+[probe] pipeline kernel=83 bytes=0x5832d04e04c8 size=8908
+[probe] pipeline kernel=84 bytes=0x5832d04de21c size=8876
+[probe] pipeline kernel=80 bytes=0x5832d04e2794 size=9244
+[probe] pipeline kernel=18 bytes=0x5832d04ffc20 size=6020
+[probe] pipeline kernel=90 bytes=0x5832d04e9820 size=12492
+[probe] pipeline kernel=88 bytes=0x5832d04ef568 size=11404
+[probe] pipeline kernel=89 bytes=0x5832d04ec8ec size=11388
+[probe] pipeline kernel=85 bytes=0x5832d04f21f4 size=11420
+[probe] pipeline kernel=72 bytes=0x5832d04b11dc size=2340
+[probe] pipeline kernel=91 bytes=0x5832d04acae4 size=5712
+[probe] pipeline kernel=94 bytes=0x5832d04ab5e4 size=5376
+[probe] pipeline kernel=96 bytes=0x5832d04fa934 size=6560
+[probe] pipeline kernel=6 bytes=0x5832d0537aa0 size=2196
+[probe] pipeline kernel=97 bytes=0x5832d04fc2d4 size=6760
+[probe] pipeline kernel=3 bytes=0x5832d053979c size=2196
+[probe] pipeline kernel=81 bytes=0x5832d04e4bb0 size=9412
+[probe] pipeline kernel=228 bytes=0x5832d04dbcd4 size=9544
+[doctest] doctest version is "2.4.12"
+[doctest] run with "--help" for options
+===============================================================================
+[doctest] test cases:   26 |   26 passed | 0 failed | 0 skipped
+[doctest] assertions: 7019 | 7019 passed | 0 failed |
+[doctest] Status: SUCCESS!
+rc=0
+== reduce run 3 ==
+[probe] pipeline kernel=83 bytes=0x5cd8148af4c8 size=8908
+[probe] pipeline kernel=84 bytes=0x5cd8148ad21c size=8876
+[probe] pipeline kernel=80 bytes=0x5cd8148b1794 size=9244
+[probe] pipeline kernel=18 bytes=0x5cd8148cec20 size=6020
+[probe] pipeline kernel=90 bytes=0x5cd8148b8820 size=12492
+[probe] pipeline kernel=88 bytes=0x5cd8148be568 size=11404
+[probe] pipeline kernel=89 bytes=0x5cd8148bb8ec size=11388
+[probe] pipeline kernel=85 bytes=0x5cd8148c11f4 size=11420
+[probe] pipeline kernel=72 bytes=0x5cd8148801dc size=2340
+[probe] pipeline kernel=91 bytes=0x5cd81487bae4 size=5712
+[probe] pipeline kernel=94 bytes=0x5cd81487a5e4 size=5376
+[probe] pipeline kernel=96 bytes=0x5cd8148c9934 size=6560
+[probe] pipeline kernel=6 bytes=0x5cd814906aa0 size=2196
+[probe] pipeline kernel=97 bytes=0x5cd8148cb2d4 size=6760
+[probe] pipeline kernel=3 bytes=0x5cd81490879c size=2196
+[probe] pipeline kernel=81 bytes=0x5cd8148b3bb0 size=9412
+[probe] pipeline kernel=228 bytes=0x5cd8148aacd4 size=9544
+[doctest] doctest version is "2.4.12"
+[doctest] run with "--help" for options
+===============================================================================
+[doctest] test cases:   26 |   26 passed | 0 failed | 0 skipped
+[doctest] assertions: 7019 | 7019 passed | 0 failed |
+[doctest] Status: SUCCESS!
+rc=0
+== reduce validation ==
+[probe] pipeline kernel=83 bytes=0x5c893932b4c8 size=8908
+[doctest] doctest version is "2.4.12"
+[doctest] run with "--help" for options
+VUID-RuntimeSpirv-LocalSizeId-06434(ERROR / SPEC): msgNum: -111277897 - Validation Error: [ VUID-RuntimeSpirv-LocalSizeId-06434 ] Object 0: handle = 0xc000000000c, type = VK_OBJECT_TYPE_SHADER_MODULE; | MessageID = 0xf95e08b7 | LocalSizeId execution mode used but maintenance4 feature not enabled The Vulkan spec states: If execution mode LocalSizeId is used, maintenance4 must be enabled (https://www.khronos.org/registry/vulkan/specs/1.3-extensions/html/vkspec.html#VUID-RuntimeSpirv-LocalSizeId-06434)
+    Objects: 1
+        [0] 0xc000000000c, type: 15, name: NULL
+[probe] pipeline kernel=84 bytes=0x5c893932921c size=8876
+VUID-RuntimeSpirv-LocalSizeId-06434(ERROR / SPEC): msgNum: -111277897 - Validation Error: [ VUID-RuntimeSpirv-LocalSizeId-06434 ] Object 0: handle = 0x320000000032, type = VK_OBJECT_TYPE_SHADER_MODULE; | MessageID = 0xf95e08b7 | LocalSizeId execution mode used but maintenance4 feature not enabled The Vulkan spec states: If execution mode LocalSizeId is used, maintenance4 must be enabled (https://www.khronos.org/registry/vulkan/specs/1.3-extensions/html/vkspec.html#VUID-RuntimeSpirv-LocalSizeId-06434)
+    Objects: 1
+        [0] 0x320000000032, type: 15, name: NULL
+[probe] pipeline kernel=80 bytes=0x5c893932d794 size=9244
+VUID-RuntimeSpirv-LocalSizeId-06434(ERROR / SPEC): msgNum: -111277897 - Validation Error: [ VUID-RuntimeSpirv-LocalSizeId-06434 ] Object 0: handle = 0x4e000000004e, type = VK_OBJECT_TYPE_SHADER_MODULE; | MessageID = 0xf95e08b7 | LocalSizeId execution mode used but maintenance4 feature not enabled The Vulkan spec states: If execution mode LocalSizeId is used, maintenance4 must be enabled (https://www.khronos.org/registry/vulkan/specs/1.3-extensions/html/vkspec.html#VUID-RuntimeSpirv-LocalSizeId-06434)
+    Objects: 1
+        [0] 0x4e000000004e, type: 15, name: NULL
+[probe] pipeline kernel=18 bytes=0x5c893934ac20 size=6020
+VUID-RuntimeSpirv-LocalSizeId-06434(ERROR / SPEC): msgNum: -111277897 - Validation Error: [ VUID-RuntimeSpirv-LocalSizeId-06434 ] Object 0: handle = 0x5d000000005d, type = VK_OBJECT_TYPE_SHADER_MODULE; | MessageID = 0xf95e08b7 | LocalSizeId execution mode used but maintenance4 feature not enabled The Vulkan spec states: If execution mode LocalSizeId is used, maintenance4 must be enabled (https://www.khronos.org/registry/vulkan/specs/1.3-extensions/html/vkspec.html#VUID-RuntimeSpirv-LocalSizeId-06434)
+    Objects: 1
+        [0] 0x5d000000005d, type: 15, name: NULL
+[probe] pipeline kernel=90 bytes=0x5c8939334820 size=12492
+VUID-RuntimeSpirv-LocalSizeId-06434(ERROR / SPEC): msgNum: -111277897 - Validation Error: [ VUID-RuntimeSpirv-LocalSizeId-06434 ] Object 0: handle = 0x730000000073, type = VK_OBJECT_TYPE_SHADER_MODULE; | MessageID = 0xf95e08b7 | LocalSizeId execution mode used but maintenance4 feature not enabled The Vulkan spec states: If execution mode LocalSizeId is used, maintenance4 must be enabled (https://www.khronos.org/registry/vulkan/specs/1.3-extensions/html/vkspec.html#VUID-RuntimeSpirv-LocalSizeId-06434)
+    Objects: 1
+        [0] 0x730000000073, type: 15, name: NULL
+[probe] pipeline kernel=88 bytes=0x5c893933a568 size=11404
+VUID-RuntimeSpirv-LocalSizeId-06434(ERROR / SPEC): msgNum: -111277897 - Validation Error: [ VUID-RuntimeSpirv-LocalSizeId-06434 ] Object 0: handle = 0x890000000089, type = VK_OBJECT_TYPE_SHADER_MODULE; | MessageID = 0xf95e08b7 | LocalSizeId execution mode used but maintenance4 feature not enabled The Vulkan spec states: If execution mode LocalSizeId is used, maintenance4 must be enabled (https://www.khronos.org/registry/vulkan/specs/1.3-extensions/html/vkspec.html#VUID-RuntimeSpirv-LocalSizeId-06434)
+    Objects: 1
+        [0] 0x890000000089, type: 15, name: NULL
+[probe] pipeline kernel=89 bytes=0x5c89393378ec size=11388
+VUID-RuntimeSpirv-LocalSizeId-06434(ERROR / SPEC): msgNum: -111277897 - Validation Error: [ VUID-RuntimeSpirv-LocalSizeId-06434 ] Object 0: handle = 0x8f000000008f, type = VK_OBJECT_TYPE_SHADER_MODULE; | MessageID = 0xf95e08b7 | LocalSizeId execution mode used but maintenance4 feature not enabled The Vulkan spec states: If execution mode LocalSizeId is used, maintenance4 must be enabled (https://www.khronos.org/registry/vulkan/specs/1.3-extensions/html/vkspec.html#VUID-RuntimeSpirv-LocalSizeId-06434)
+    Objects: 1
+        [0] 0x8f000000008f, type: 15, name: NULL
+[probe] pipeline kernel=85 bytes=0x5c893933d1f4 size=11420
+VUID-RuntimeSpirv-LocalSizeId-06434(ERROR / SPEC): msgNum: -111277897 - Validation Error: [ VUID-RuntimeSpirv-LocalSizeId-06434 ] Object 0: handle = 0x950000000095, type = VK_OBJECT_TYPE_SHADER_MODULE; | MessageID = 0xf95e08b7 | LocalSizeId execution mode used but maintenance4 feature not enabled The Vulkan spec states: If execution mode LocalSizeId is used, maintenance4 must be enabled (https://www.khronos.org/registry/vulkan/specs/1.3-extensions/html/vkspec.html#VUID-RuntimeSpirv-LocalSizeId-06434)
+    Objects: 1
+        [0] 0x950000000095, type: 15, name: NULL
+[probe] pipeline kernel=72 bytes=0x5c89392fc1dc size=2340
+VUID-RuntimeSpirv-LocalSizeId-06434(ERROR / SPEC): msgNum: -111277897 - Validation Error: [ VUID-RuntimeSpirv-LocalSizeId-06434 ] Object 0: handle = 0x2100000000210, type = VK_OBJECT_TYPE_SHADER_MODULE; | MessageID = 0xf95e08b7 | LocalSizeId execution mode used but maintenance4 feature not enabled The Vulkan spec states: If execution mode LocalSizeId is used, maintenance4 must be enabled (https://www.khronos.org/registry/vulkan/specs/1.3-extensions/html/vkspec.html#VUID-RuntimeSpirv-LocalSizeId-06434)
+    Objects: 1
+        [0] 0x2100000000210, type: 15, name: NULL
+[probe] pipeline kernel=91 bytes=0x5c89392f7ae4 size=5712
+VUID-RuntimeSpirv-LocalSizeId-06434(ERROR / SPEC): msgNum: -111277897 - Validation Error: [ VUID-RuntimeSpirv-LocalSizeId-06434 ] Object 0: handle = 0x2170000000217, type = VK_OBJECT_TYPE_SHADER_MODULE; | MessageID = 0xf95e08b7 | LocalSizeId execution mode used but maintenance4 feature not enabled The Vulkan spec states: If execution mode LocalSizeId is used, maintenance4 must be enabled (https://www.khronos.org/registry/vulkan/specs/1.3-extensions/html/vkspec.html#VUID-RuntimeSpirv-LocalSizeId-06434)
+    Objects: 1
+        [0] 0x2170000000217, type: 15, name: NULL
+[probe] pipeline kernel=94 bytes=0x5c89392f65e4 size=5376
+VUID-RuntimeSpirv-LocalSizeId-06434(ERROR / SPEC): msgNum: -111277897 - Validation Error: [ VUID-RuntimeSpirv-LocalSizeId-06434 ] Object 0: handle = 0x23c000000023c, type = VK_OBJECT_TYPE_SHADER_MODULE; | MessageID = 0xf95e08b7 | LocalSizeId execution mode used but maintenance4 feature not enabled The Vulkan spec states: If execution mode LocalSizeId is used, maintenance4 must be enabled (https://www.khronos.org/registry/vulkan/specs/1.3-extensions/html/vkspec.html#VUID-RuntimeSpirv-LocalSizeId-06434)
+    Objects: 1
+        [0] 0x23c000000023c, type: 15, name: NULL
+[probe] pipeline kernel=96 bytes=0x5c8939345934 size=6560
+VUID-RuntimeSpirv-LocalSizeId-06434(ERROR / SPEC): msgNum: -111277897 - Validation Error: [ VUID-RuntimeSpirv-LocalSizeId-06434 ] Object 0: handle = 0x24e000000024e, type = VK_OBJECT_TYPE_SHADER_MODULE; | MessageID = 0xf95e08b7 | LocalSizeId execution mode used but maintenance4 feature not enabled The Vulkan spec states: If execution mode LocalSizeId is used, maintenance4 must be enabled (https://www.khronos.org/registry/vulkan/specs/1.3-extensions/html/vkspec.html#VUID-RuntimeSpirv-LocalSizeId-06434)
+    Objects: 1
+        [0] 0x24e000000024e, type: 15, name: NULL
+[probe] pipeline kernel=6 bytes=0x5c8939382aa0 size=2196
+VUID-RuntimeSpirv-LocalSizeId-06434(ERROR / SPEC): msgNum: -111277897 - Validation Error: [ VUID-RuntimeSpirv-LocalSizeId-06434 ] Object 0: handle = 0x2640000000264, type = VK_OBJECT_TYPE_SHADER_MODULE; | MessageID = 0xf95e08b7 | LocalSizeId execution mode used but maintenance4 feature not enabled The Vulkan spec states: If execution mode LocalSizeId is used, maintenance4 must be enabled (https://www.khronos.org/registry/vulkan/specs/1.3-extensions/html/vkspec.html#VUID-RuntimeSpirv-LocalSizeId-06434)
+    Objects: 1
+        [0] 0x2640000000264, type: 15, name: NULL
+[probe] pipeline kernel=97 bytes=0x5c89393472d4 size=6760
+VUID-RuntimeSpirv-LocalSizeId-06434(ERROR / SPEC): msgNum: -111277897 - Validation Error: [ VUID-RuntimeSpirv-LocalSizeId-06434 ] Object 0: handle = 0x2680000000268, type = VK_OBJECT_TYPE_SHADER_MODULE; | MessageID = 0xf95e08b7 | LocalSizeId execution mode used but maintenance4 feature not enabled The Vulkan spec states: If execution mode LocalSizeId is used, maintenance4 must be enabled (https://www.khronos.org/registry/vulkan/specs/1.3-extensions/html/vkspec.html#VUID-RuntimeSpirv-LocalSizeId-06434)
+    Objects: 1
+        [0] 0x2680000000268, type: 15, name: NULL
+[probe] pipeline kernel=3 bytes=0x5c893938479c size=2196
+VUID-RuntimeSpirv-LocalSizeId-06434(ERROR / SPEC): msgNum: -111277897 - Validation Error: [ VUID-RuntimeSpirv-LocalSizeId-06434 ] Object 0: handle = 0x26b000000026b, type = VK_OBJECT_TYPE_SHADER_MODULE; | MessageID = 0xf95e08b7 | LocalSizeId execution mode used but maintenance4 feature not enabled The Vulkan spec states: If execution mode LocalSizeId is used, maintenance4 must be enabled (https://www.khronos.org/registry/vulkan/specs/1.3-extensions/html/vkspec.html#VUID-RuntimeSpirv-LocalSizeId-06434)
+    Objects: 1
+        [0] 0x26b000000026b, type: 15, name: NULL
+[probe] pipeline kernel=81 bytes=0x5c893932fbb0 size=9412
+VUID-RuntimeSpirv-LocalSizeId-06434(ERROR / SPEC): msgNum: -111277897 - Validation Error: [ VUID-RuntimeSpirv-LocalSizeId-06434 ] Object 0: handle = 0x27c000000027c, type = VK_OBJECT_TYPE_SHADER_MODULE; | MessageID = 0xf95e08b7 | LocalSizeId execution mode used but maintenance4 feature not enabled The Vulkan spec states: If execution mode LocalSizeId is used, maintenance4 must be enabled (https://www.khronos.org/registry/vulkan/specs/1.3-extensions/html/vkspec.html#VUID-RuntimeSpirv-LocalSizeId-06434)
+    Objects: 1
+        [0] 0x27c000000027c, type: 15, name: NULL
+[probe] pipeline kernel=228 bytes=0x5c8939326cd4 size=9544
+VUID-RuntimeSpirv-LocalSizeId-06434(ERROR / SPEC): msgNum: -111277897 - Validation Error: [ VUID-RuntimeSpirv-LocalSizeId-06434 ] Object 0: handle = 0x2990000000299, type = VK_OBJECT_TYPE_SHADER_MODULE; | MessageID = 0xf95e08b7 | LocalSizeId execution mode used but maintenance4 feature not enabled The Vulkan spec states: If execution mode LocalSizeId is used, maintenance4 must be enabled (https://www.khronos.org/registry/vulkan/specs/1.3-extensions/html/vkspec.html#VUID-RuntimeSpirv-LocalSizeId-06434)
+    Objects: 1
+        [0] 0x2990000000299, type: 15, name: NULL
+===============================================================================
+[doctest] test cases:   26 |   26 passed | 0 failed | 0 skipped
+[doctest] assertions: 7019 | 7019 passed | 0 failed |
+[doctest] Status: SUCCESS!
+VUID-vkDestroyDevice-device-00378(ERROR / SPEC): msgNum: 1901072314 - Validation Error: [ VUID-vkDestroyDevice-device-00378 ] Object 0: handle = 0x5c893b9ca7a0, type = VK_OBJECT_TYPE_DEVICE; Object 1: handle = 0x2b000000002b, type = VK_OBJECT_TYPE_BUFFER; | MessageID = 0x71500fba | OBJ ERROR : For VkDevice 0x5c893b9ca7a0[], VkBuffer 0x2b000000002b[] has not been destroyed. The Vulkan spec states: All child objects created on device must have been destroyed prior to destroying device (https://www.khronos.org/registry/vulkan/specs/_MAGIC_KHRONOS_SPEC_TYPE_/html/vkspec.html#VUID-vkDestroyDevice-device-00378)
+    Objects: 2
+        [0] 0x5c893b9ca7a0, type: 3, name: NULL
+        [1] 0x2b000000002b, type: 9, name: NULL
+VUID-vkDestroyDevice-device-00378(ERROR / SPEC): msgNum: 1901072314 - Validation Error: [ VUID-vkDestroyDevice-device-00378 ] Object 0: handle = 0x5c893b9ca7a0, type = VK_OBJECT_TYPE_DEVICE; Object 1: handle = 0x1f000000001f, type = VK_OBJECT_TYPE_BUFFER; | MessageID = 0x71500fba | OBJ ERROR : For VkDevice 0x5c893b9ca7a0[], VkBuffer 0x1f000000001f[] has not been destroyed. The Vulkan spec states: All child objects created on device must have been destroyed prior to destroying device (https://www.khronos.org/registry/vulkan/specs/_MAGIC_KHRONOS_SPEC_TYPE_/html/vkspec.html#VUID-vkDestroyDevice-device-00378)
+    Objects: 2
+        [0] 0x5c893b9ca7a0, type: 3, name: NULL
+        [1] 0x1f000000001f, type: 9, name: NULL
+VUID-vkDestroyDevice-device-00378(ERROR / SPEC): msgNum: 1901072314 - Validation Error: [ VUID-vkDestroyDevice-device-00378 ] Object 0: handle = 0x5c893b9ca7a0, type = VK_OBJECT_TYPE_DEVICE; Object 1: handle = 0x3110000000311, type = VK_OBJECT_TYPE_BUFFER; | MessageID = 0x71500fba | OBJ ERROR : For VkDevice 0x5c893b9ca7a0[], VkBuffer 0x3110000000311[] has not been destroyed. The Vulkan spec states: All child objects created on device must have been destroyed prior to destroying device (https://www.khronos.org/registry/vulkan/specs/_MAGIC_KHRONOS_SPEC_TYPE_/html/vkspec.html#VUID-vkDestroyDevice-device-00378)
+    Objects: 2
+        [0] 0x5c893b9ca7a0, type: 3, name: NULL
+        [1] 0x3110000000311, type: 9, name: NULL
+VUID-vkDestroyDevice-device-00378(ERROR / SPEC): msgNum: 1901072314 - Validation Error: [ VUID-vkDestroyDevice-device-00378 ] Object 0: handle = 0x5c893b9ca7a0, type = VK_OBJECT_TYPE_DEVICE; Object 1: handle = 0x3150000000315, type = VK_OBJECT_TYPE_SEMAPHORE; | MessageID = 0x71500fba | OBJ ERROR : For VkDevice 0x5c893b9ca7a0[], VkSemaphore 0x3150000000315[] has not been destroyed. The Vulkan spec states: All child objects created on device must have been destroyed prior to destroying device (https://www.khronos.org/registry/vulkan/specs/_MAGIC_KHRONOS_SPEC_TYPE_/html/vkspec.html#VUID-vkDestroyDevice-device-00378)
+    Objects: 2
+        [0] 0x5c893b9ca7a0, type: 3, name: NULL
+        [1] 0x3150000000315, type: 5, name: NULL
+VUID-vkDestroyDevice-device-00378(ERROR / SPEC): msgNum: 1901072314 - Validation Error: [ VUID-vkDestroyDevice-device-00378 ] Object 0: handle = 0x5c893b9ca7a0, type = VK_OBJECT_TYPE_DEVICE; Object 1: handle = 0x2c000000002c, type = VK_OBJECT_TYPE_DEVICE_MEMORY; | MessageID = 0x71500fba | OBJ ERROR : For VkDevice 0x5c893b9ca7a0[], VkDeviceMemory 0x2c000000002c[] has not been destroyed. The Vulkan spec states: All child objects created on device must have been destroyed prior to destroying device (https://www.khronos.org/registry/vulkan/specs/_MAGIC_KHRONOS_SPEC_TYPE_/html/vkspec.html#VUID-vkDestroyDevice-device-00378)
+    Objects: 2
+        [0] 0x5c893b9ca7a0, type: 3, name: NULL
+        [1] 0x2c000000002c, type: 8, name: NULL
+VUID-vkDestroyDevice-device-00378(ERROR / SPEC): msgNum: 1901072314 - Validation Error: [ VUID-vkDestroyDevice-device-00378 ] Object 0: handle = 0x5c893b9ca7a0, type = VK_OBJECT_TYPE_DEVICE; Object 1: handle = 0x200000000020, type = VK_OBJECT_TYPE_DEVICE_MEMORY; | MessageID = 0x71500fba | OBJ ERROR : For VkDevice 0x5c893b9ca7a0[], VkDeviceMemory 0x200000000020[] has not been destroyed. The Vulkan spec states: All child objects created on device must have been destroyed prior to destroying device (https://www.khronos.org/registry/vulkan/specs/_MAGIC_KHRONOS_SPEC_TYPE_/html/vkspec.html#VUID-vkDestroyDevice-device-00378)
+    Objects: 2
+        [0] 0x5c893b9ca7a0, type: 3, name: NULL
+        [1] 0x200000000020, type: 8, name: NULL
+VUID-vkDestroyDevice-device-00378(ERROR / SPEC): msgNum: 1901072314 - Validation Error: [ VUID-vkDestroyDevice-device-00378 ] Object 0: handle = 0x5c893b9ca7a0, type = VK_OBJECT_TYPE_DEVICE; Object 1: handle = 0x3120000000312, type = VK_OBJECT_TYPE_DEVICE_MEMORY; | MessageID = 0x71500fba | OBJ ERROR : For VkDevice 0x5c893b9ca7a0[], VkDeviceMemory 0x3120000000312[] has not been destroyed. The Vulkan spec states: All child objects created on device must have been destroyed prior to destroying device (https://www.khronos.org/registry/vulkan/specs/_MAGIC_KHRONOS_SPEC_TYPE_/html/vkspec.html#VUID-vkDestroyDevice-device-00378)
+    Objects: 2
+        [0] 0x5c893b9ca7a0, type: 3, name: NULL
+        [1] 0x3120000000312, type: 8, name: NULL
+rc=0
+== runtime ==
+[child/reopen] fresh process device reopen ok
+[probe] pipeline kernel=0 bytes=0x64398ed1d274 size=21336
+[probe] pipeline kernel=55 bytes=0x64398ed3c574 size=2276
+[probe] pipeline kernel=24 bytes=0x64398ed14430 size=2176
+[probe] pipeline kernel=21 bytes=0x64398ed0815c size=7580
+[doctest] doctest version is "2.4.12"
+[doctest] run with "--help" for options
+Skipping: a qualifying GPU is present; the refusal path is exercised by the classification tests and this test is meaningless there.
+[receipt] compute queue families expose 1 queue(s)
+Skipping: software Vulkan has no independent GPU execution.
+===============================================================================
+[doctest] test cases:   29 |   29 passed | 0 failed | 0 skipped
+[doctest] assertions: 6256 | 6256 passed | 0 failed |
+[doctest] Status: SUCCESS!
+rc=0

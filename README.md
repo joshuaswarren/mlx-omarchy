@@ -76,7 +76,7 @@ until broader model coverage supports changing it
 - Dense, transposed, and broadcast-batch matmul up to rank 5; grouped-query attention with scores computed in float32; grouped, depthwise, 1-D, and dilated forward convolution
 - Quantized matmul and dequantize: affine, 4-bit and 8-bit, group sizes 32 and 64, plus gathered expert matmul
 - Autograd: `value_and_grad`, `vjp`, `jvp` on device; `vmap` over elementwise closures
-- `mx.compile` over 51 op classes (elementwise, comparison, logical, select, broadcast); the fused RoPE pair (per-batch vector offsets, the inverse / VJP path) is fenced to the composed path because the fused variants have not passed equivalence
+- `mx.compile` over every class upstream fuses (elementwise, comparison, logical, select, broadcast, and the complex Real/Imag/Conjugate); the fused RoPE pair (per-batch vector offsets, the inverse / VJP path) is fenced to the composed path because the fused variants have not passed equivalence
 - Sort, argsort, argpartition, and top-k over float and integer rows up to 1024 elements; argmax and argmin; threefry-exact random sampling
 - FFT at arbitrary lengths: composites decompose into radix-2 passes, primes ride a Bluestein chirp-z, and non-trailing-axis rfft and irfft compute
 - complex64 end to end: arithmetic, Conjugate, Real, Imag, and transport through reshape, slice, pad, concatenate

@@ -10,6 +10,31 @@ Two of the worst v0.3.0 defects never appeared on a Linux development box. They 
 
 ## Fixed in development
 
+### Idle-stream events destroyed their semaphore while a submit still used it
+
+Observed on: llvmpipe development host, in every release through v0.3.5
+(the code path is platform-independent). Status: FIXED at `eb9571a`.
+
+A GPU-stream `Event::signal` on an idle encoder claimed to signal from
+the host but called `Device::signal_timeline`, a signal-only
+`vkQueueSubmit`. `Event::wait` then observed the timeline value and the
+event destructor destroyed the semaphore while the driver still
+referenced it from that submission. The symptom was a timing-sensitive
+SIGSEGV in the full reduction suite after about 2,600 passing assertions,
+at the boundary after a named-error evaluation; GDB and ASan runs never
+reproduced it. Vulkan validation pinned it: exactly three
+`VUID-vkDestroySemaphore-semaphore-01137` errors at the three named-error
+boundaries preceding the crash.
+
+The fix routes that path through the existing `vkSignalSemaphore` host
+signal, so no queue submission references the semaphore. Verification on
+the integrated source: three plain reduction runs at 26/26 cases and
+7019/7019 assertions each, one validation-layer run at the same counts
+with zero VUID-01137 matches, and the runtime suite at 29/29 and
+6256/6256 (`receipts/2026-09-05-reduction-lifetime-integrated.log`).
+The validation layer still reports pre-existing LocalSizeId and
+device-teardown leak diagnostics; those are not this defect.
+
 ### bf16 generation emits repetitive fragments
 
 Observed on: real M1, Honeykrisp, development wheel built from `4f27136`.

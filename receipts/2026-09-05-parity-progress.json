@@ -1,7 +1,7 @@
 {
   "date": "2026-09-05",
   "status": "development-branch-not-release-qualified",
-  "integration_source": "32ae61133b19eb7cde5921d88bf4e08c7cb02f62",
+  "integration_source": "60e978bd6a6d67d7f5d1a5f3af96a9d9a0d7e9c1",
   "upstream": {
     "version": "0.32.2",
     "commit": "1f8e74e3f12f31365464a6867c6579f0e9b29d85"
@@ -13,7 +13,9 @@
     "Early rejection of unsupported GPU quantization before asynchronous evaluation",
     "Packed bool Sum/Prod with int32 accumulation and output",
     "Zero-index Scatter update blocks across existing GPU reducers",
-    "CPU-produced event synchronization into GPU consumers"
+    "CPU-produced event synchronization into GPU consumers",
+    "Host-signalled idle boundary events (semaphore lifetime fix, eb9571a)",
+    "Complex Real, Imag, and Conjugate inside compiled tapes (60e978b)"
   ],
   "runner_verification": {
     "commands": [
@@ -57,11 +59,11 @@
     "runtime_suite": {"cases_passed": 29, "assertions_passed": 6256},
     "profiler_compatibility": "The existing analyzer confirms all 228 existing kernel IDs retain their names; ReduceGeneralBool is appended as ID 228",
     "review": "Empty-index scatter review found no introduced bugs. Bool review found shifted profiler IDs; fixed by appending the enum. Event review found a promotion race; fixed by synchronizing creation inspection.",
-    "reduction_crash": "A full plain reduction run still SIGSEGVed after 2638 passing assertions. GDB and ASan runs each passed 26 cases and 7010 assertions without reproducing it. The timing-sensitive crash is unresolved, not waived.",
+    "reduction_crash": "Root-caused by Vulkan validation: idle-stream Event::signal issued a signal-only queue submit and the semaphore was destroyed while still referenced (three VUID-vkDestroySemaphore-semaphore-01137 at the named-error boundaries). Fixed at eb9571a. Integrated verification: three plain reduction runs 26/26 and 7019/7019, one validation-layer run 26/26 and 7019/7019 with zero VUID-01137, runtime 29/29 and 6256/6256; receipt 2026-09-05-reduction-lifetime-integrated.log.",
     "event_limit": "Source/direct Event errors are preserved; downstream GPU-output error propagation remains unimplemented."
   },
   "qualification_blockers": [
-    "The full reduction suite has an unresolved timing-sensitive SIGSEGV; targeted reductions and instrumented runs do not qualify that suite.",
+    "The full battery on the integrated source has passed on llvmpipe only; the M1 has not run it.",
     "The current integrated source has not completed the full pinned upstream test suite on M1.",
     "Matched native macOS performance comparison has not been completed.",
     "Compiled bfloat16 and large single-evaluation queue issues remain unresolved.",
