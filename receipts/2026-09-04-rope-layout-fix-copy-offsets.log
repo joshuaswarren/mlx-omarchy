@@ -1,0 +1,7 @@
+[probe] pipeline kernel=50 bytes=0x5ac024c70790 size=3300
+[doctest] doctest version is "2.4.12"
+[doctest] run with "--help" for options
+===============================================================================
+[doctest] test cases: 13 | 13 passed | 0 failed | 0 skipped
+[doctest] assertions: 93 | 93 passed | 0 failed |
+[doctest] Status: SUCCESS!

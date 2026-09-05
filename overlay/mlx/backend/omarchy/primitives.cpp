@@ -6856,9 +6856,23 @@ void RoPE::eval_gpu(
   int half_dims = dims_ / 2;
   bool passthrough = dims_ < D;
   size_t mat_size = static_cast<size_t>(T) * D;
-  bool row_contiguous = in.flags().row_contiguous;
-  bool head_seq_transpose = false;
+  bool direct_bf16 = false;
+  if (out.dtype() == bfloat16) {
+    if (const char* env = std::getenv("MLX_OMARCHY_ROPE_BF16_DIRECT");
+        env != nullptr && std::strcmp(env, "0") != 0) {
+      direct_bf16 = true;
+    }
+  }
+  std::optional<array> normalized;
   const array* src = &in;
+  if (out.dtype() == bfloat16 && !direct_bf16) {
+    normalized = array(in.shape(), float32, nullptr, {});
+    copy_gpu(in, *normalized, CopyType::Vector, s);
+    encoder.add_temporary(*normalized);
+    src = &*normalized;
+  }
+  bool row_contiguous = src->flags().row_contiguous;
+  bool head_seq_transpose = false;
   int64_t strides[3];
 
   int dispatch_ndim = ndim;
@@ -6869,38 +6883,36 @@ void RoPE::eval_gpu(
   for (int i = 1; i < (ndim - 2); ++i) {
     N *= in.shape(i);
   }
-
   if (row_contiguous) {
     strides[0] = mat_size;
-    strides[1] = in.strides()[ndim - 2];
-    strides[2] = in.strides()[ndim - 1];
+    strides[1] = src->strides()[ndim - 2];
+    strides[2] = src->strides()[ndim - 1];
   } else if (dispatch_ndim == 3) {
     // Handle non-contiguous 3D inputs
-    strides[0] = in.strides()[ndim - 3];
-    strides[1] = in.strides()[ndim - 2];
-    strides[2] = in.strides()[ndim - 1];
+    strides[0] = src->strides()[ndim - 3];
+    strides[1] = src->strides()[ndim - 2];
+    strides[2] = src->strides()[ndim - 1];
   } else if (
       ndim == 4 &&
       // batch dim is regularly strided
-      in.strides()[0] == static_cast<int64_t>(T) * N * D &&
+      src->strides()[0] == static_cast<int64_t>(T) * N * D &&
       // sequence and head dimensions are transposed
-      in.strides()[1] == D &&
-      in.strides()[2] == static_cast<int64_t>(N) * D) {
+      src->strides()[1] == D &&
+      src->strides()[2] == static_cast<int64_t>(N) * D) {
     head_seq_transpose = true;
-    strides[0] = in.strides()[1];
-    strides[1] = in.strides()[2];
-    strides[2] = in.strides()[3];
+    strides[0] = src->strides()[1];
+    strides[1] = src->strides()[2];
+    strides[2] = src->strides()[3];
   } else {
     // Copy non-contiguous > 3D inputs into a contiguous temporary and
     // rotate from there.
-    array temp(in.shape(), in.dtype(), nullptr, {});
-    temp.set_data(allocate_omarchy(temp.nbytes()));
-    copy_gpu(in, temp, CopyType::General, s);
-    encoder.add_temporary(temp);
-    src = &temp;
+    normalized = array(in.shape(), in.dtype(), nullptr, {});
+    copy_gpu(in, *normalized, CopyType::General, s);
+    encoder.add_temporary(*normalized);
+    src = &*normalized;
     strides[0] = mat_size;
-    strides[1] = temp.strides()[ndim - 2];
-    strides[2] = temp.strides()[ndim - 1];
+    strides[1] = (*normalized).strides()[ndim - 2];
+    strides[2] = (*normalized).strides()[ndim - 1];
   }
 
   // A size-1 offset is a scalar no matter its rank: the composition
@@ -6946,34 +6958,6 @@ void RoPE::eval_gpu(
   // memory on llvmpipe, and per-element half-word stores of a shared
   // 32-bit word race between adjacent lanes, so the in-kernel bf16
   // store stays unbuilt.
-  // Wrapped path (default): one CastBF16F32 up-cast feeds the f32 rope
-  // kernel and one CastF32BF16 narrows the output - the proven device
-  // capability. Direct path (MLX_OMARCHY_ROPE_BF16_DIRECT, default off
-  // until the M1 equivalence leg passes; any value other than "0"
-  // enables): the bf16 input binds straight into the packed-word load
-  // leg, deleting the up-cast - one dispatch fewer per rope call. The
-  // leg's rope_round keeps the per-intermediate bf16 roundings of the
-  // eager composition, so its result sits within a derived
-  // intermediate-quantization bound of the wrapped result (pinned by
-  // the fast-ops bf16 case) and bit-exact against the composed bf16
-  // chain.
-  bool direct_bf16 = false;
-  if (out.dtype() == bfloat16) {
-    if (const char* env = std::getenv("MLX_OMARCHY_ROPE_BF16_DIRECT");
-        env != nullptr && std::strcmp(env, "0") != 0) {
-      direct_bf16 = true;
-    }
-  }
-  const array* rope_input = src;
-  std::optional<array> bf16_to_f32;
-  if (out.dtype() == bfloat16 && !direct_bf16) {
-    bf16_to_f32 = array(in.shape(), float32, nullptr, {});
-    bf16_to_f32->set_data(allocate_omarchy(bf16_to_f32->nbytes()));
-    encoder.add_temporary(*bf16_to_f32);
-    copy_gpu(in, *bf16_to_f32, CopyType::Vector, s);
-    rope_input = &*bf16_to_f32;
-    params.lhs_offset = 0;
-  }
   array rope_output = out;
   std::optional<array> f32_to_bf16;
   if (out.dtype() == bfloat16) {
@@ -6985,7 +6969,7 @@ void RoPE::eval_gpu(
     out.set_data(allocate_omarchy(out.nbytes()));
   }
   std::array<omarchy::ComputeBinding, 4> bindings{
-      binding(*rope_input),
+      binding(*src),
       binding(rope_output),
       binding(offset),
       binding(with_freqs ? inputs.at(2) : offset)};

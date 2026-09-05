@@ -1,0 +1,14 @@
+[child/reopen] fresh process device reopen ok
+[probe] pipeline kernel=0 bytes=0x631360767010 size=21336
+[probe] pipeline kernel=54 bytes=0x63136074d058 size=2276
+[probe] pipeline kernel=23 bytes=0x631360774998 size=2176
+[probe] pipeline kernel=20 bytes=0x63136077f798 size=7580
+[doctest] doctest version is "2.4.12"
+[doctest] run with "--help" for options
+Skipping: a qualifying GPU is present; the refusal path is exercised by the classification tests and this test is meaningless there.
+[receipt] compute queue families expose 1 queue(s)
+Skipping: software Vulkan has no independent GPU execution.
+===============================================================================
+[doctest] test cases:   26 |   26 passed | 0 failed | 0 skipped
+[doctest] assertions: 6249 | 6249 passed | 0 failed |
+[doctest] Status: SUCCESS!

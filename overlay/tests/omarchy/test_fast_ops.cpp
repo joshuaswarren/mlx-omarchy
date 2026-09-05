@@ -1850,6 +1850,140 @@ TEST_CASE("fused rope strided and transposed inputs match the composed fallback"
       "rope 5D strided");
 }
 
+TEST_CASE("fused rope bf16 noncontiguous layouts match the f64 reference") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  array offset = array(5, int32);
+  // The wrapped bf16 path up-casts the input into a dense f32 image and
+  // the stride classification must describe that image. The pre-fix
+  // code classified the ORIGINAL view instead, so sliced and transposed
+  // bf16 inputs read the dense image with stale strides and diverged
+  // from the whole-contiguous case. Contract: the same derived
+  // bf16-vs-f64 bound the contiguous case holds, on every device.
+
+  // 3D strided slice: strides classified from a sliced view.
+  array wide3 = astype(rope_input(Shape{3, 10, 16}, 257), bfloat16, stream);
+  array strided3 = slice(wide3, {0, 0, 0}, {3, 10, 16}, {1, 2, 1}, stream);
+  REQUIRE(strided3.shape() == Shape{3, 5, 16});
+  const double theta3 =
+      rope_theta_bound(5, 5, 1.0f, false, {}, 10000.0f, 8);
+  auto got3 = fast::rope(
+      strided3, 16, false, 10000.0f, 1.0f, offset, std::nullopt, stream);
+  require_matches_reference(
+      got3,
+      host_rope_reference(
+          flat(contiguous(strided3, false, stream), stream),
+          strided3.shape(),
+          16,
+          false,
+          {},
+          10000.0f,
+          1.0,
+          5),
+      rope_reference_tolerance_bf16(theta3),
+      stream,
+      "rope bf16 3D strided vs f64");
+
+  // 4D head/sequence transposed cache layout: the pre-fix path kept the
+  // transpose flag while binding the promoted dense image.
+  array bnt = astype(rope_input(Shape{2, 5, 3, 8}, 263), bfloat16, stream);
+  array btn = transpose(bnt, {0, 2, 1, 3}, stream);
+  REQUIRE(btn.shape() == Shape{2, 3, 5, 8});
+  const double theta4 =
+      rope_theta_bound(5, 5, 1.0f, false, {}, 10000.0f, 4);
+  auto got4 =
+      fast::rope(btn, 8, false, 10000.0f, 1.0f, offset, std::nullopt, stream);
+  require_matches_reference(
+      got4,
+      host_rope_reference(
+          flat(contiguous(btn, false, stream), stream),
+          btn.shape(),
+          8,
+          false,
+          {},
+          10000.0f,
+          1.0,
+          5),
+      rope_reference_tolerance_bf16(theta4),
+      stream,
+      "rope bf16 head-seq transpose vs f64");
+
+  // 5D strided: the promotion itself must survive a general layout, and
+  // its owning temporary must stay alive through the dispatch.
+  array wide5 =
+      astype(rope_input(Shape{2, 6, 2, 7, 8}, 269), bfloat16, stream);
+  array strided5 = slice(
+      wide5, {0, 0, 0, 0, 0}, {2, 6, 2, 7, 8}, {1, 3, 1, 1, 1}, stream);
+  REQUIRE(strided5.shape() == Shape{2, 2, 2, 7, 8});
+  const double theta5 =
+      rope_theta_bound(5, 7, 1.0f, false, {}, 10000.0f, 4);
+  auto got5 = fast::rope(
+      strided5, 8, false, 10000.0f, 1.0f, offset, std::nullopt, stream);
+  require_matches_reference(
+      got5,
+      host_rope_reference(
+          flat(contiguous(strided5, false, stream), stream),
+          strided5.shape(),
+          8,
+          false,
+          {},
+          10000.0f,
+          1.0,
+          5),
+      rope_reference_tolerance_bf16(theta5),
+      stream,
+      "rope bf16 5D strided vs f64");
+}
+
+TEST_CASE("fused rope bf16 chunked input matches the whole-input slice") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  // Whole-contiguous bf16 input matched the reference while the same
+  // rows arriving as a sliced chunk diverged. The contract is exact:
+  // the chunk rides the same promotion, kernel, and narrow over
+  // identical values, so its output must be bit-identical to the
+  // corresponding slice of the whole-input output. Each chunk offset is
+  // the whole offset plus the slice start so positions line up.
+  array offset = array(1, int32);
+  // 3D sequence chunk: the defect shape class.
+  array whole3 =
+      astype(rope_input(Shape{2, 10, 16}, 271), bfloat16, stream);
+  auto roped3 = fast::rope(
+      whole3, 16, false, 10000.0f, 1.0f, offset, std::nullopt, stream);
+  array chunk3 = slice(whole3, {0, 3, 0}, {2, 9, 16}, stream);
+  REQUIRE(chunk3.shape() == Shape{2, 6, 16});
+  array chunk_offset3 = array(4, int32);
+  auto chunk3_out = fast::rope(
+      chunk3, 16, false, 10000.0f, 1.0f, chunk_offset3, std::nullopt, stream);
+  require_bit_equal(
+      chunk3_out,
+      contiguous(
+          slice(roped3, {0, 3, 0}, {2, 9, 16}, stream), false, stream),
+      stream,
+      "rope bf16 3D chunk vs whole");
+
+  // 4D sequence chunk.
+  array whole4 =
+      astype(rope_input(Shape{2, 4, 10, 16}, 277), bfloat16, stream);
+  auto roped4 = fast::rope(
+      whole4, 16, false, 10000.0f, 1.0f, offset, std::nullopt, stream);
+  array chunk4 = slice(whole4, {0, 0, 2, 0}, {2, 4, 8, 16}, stream);
+  REQUIRE(chunk4.shape() == Shape{2, 4, 6, 16});
+  array chunk_offset4 = array(3, int32);
+  auto chunk4_out = fast::rope(
+      chunk4, 16, false, 10000.0f, 1.0f, chunk_offset4, std::nullopt, stream);
+  require_bit_equal(
+      chunk4_out,
+      contiguous(
+          slice(roped4, {0, 0, 2, 0}, {2, 4, 8, 16}, stream), false, stream),
+      stream,
+      "rope bf16 4D chunk vs whole");
+}
+
 TEST_CASE("fused rope vector and int64 offsets match the composed fallback") {
   if (!compute_available()) {
     return;
