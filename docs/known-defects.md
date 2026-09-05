@@ -8,12 +8,12 @@ The backend must refuse unsupported operations by name rather than return a wron
 
 Two of the worst v0.3.0 defects never appeared on a Linux development box. They are real-M1-only, and the full dev-box battery - 24 binaries, 407 cases, 828,139 assertions - was green the whole night they shipped. A Vulkan capability query, a shader miscompile, and a submit-thread ordering are all per-driver questions: llvmpipe, lavapipe, and Honeykrisp answer them differently. **A green run on a software driver is not proof about the Apple GPU, and this ledger now records where every defect was observed.** Anyone contributing: your llvmpipe battery passing is the start of verification on this project, not the end of it.
 
-## Open in development
+## Fixed in development
 
 ### bf16 generation emits repetitive fragments
 
 Observed on: real M1, Honeykrisp, development wheel built from `4f27136`.
-Status: OPEN, cause unknown. The affected release range is not established.
+Status: FIXED in the tested eager path at `2f54fcb`. The affected release range is not established; published wheels have not been qualified with this fix.
 The RoPE synchronization guard was present; this is not the guard-removal
 experiment described below.
 
@@ -40,7 +40,22 @@ continued coherently, with different text. Their digests were
 `254d73fd93164b98` and `4cc08910089477fd`, respectively. Token agreement
 alone is not a general numerical correctness test.
 
-Evidence: [full ID lists, decoded text, parameters, and provenance](../receipts/2026-09-04-native-output-comparison.json). The IDs were captured after generation without changing inference. Their digests and first-difference indexes were recomputed from the lists, and text decoded with the cached tokenizers.
+The default bf16 RoPE path promoted its input to dense float32 but retained
+the original view's strides and transpose classification. RoPE now derives
+layout from the buffer it actually binds, after promotion, and keeps the
+normalized array alive through dispatch. The existing copy path already
+normalizes strided casts; no extra copy or shader change was needed.
+
+On M1 at `2f54fcb`, whole-sequence and 29+1 chunked RoPE results agree
+exactly for both Q and K. The ordinary eager model run now answers
+`Hello! How can I assist you today?`, with every token through the first
+EOS identical to native MLX. Its full EOS-suppressed 32-token stream has
+digest `f26175202f3dabe9`; the first difference from native is index 14,
+after EOS at index 9. This fixes the observed first-token corruption, not
+general cross-backend token equality. The synchronization guard stays in
+place, and compiled bf16 is not qualified by this eager check.
+
+Evidence: [original full-token comparison](../receipts/2026-09-04-native-output-comparison.json) and [fixed-source M1 values and full-token comparison](../receipts/2026-09-04-bf16-rope-layout-m1.json).
 
 ## Live in v0.3.5
 

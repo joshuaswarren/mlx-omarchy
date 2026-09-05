@@ -62,8 +62,10 @@ published-wheel results. [Conditions and gate decisions](receipts/2026-09-04-m1-
 Development code also keeps KV state slices as views. Native checks recorded
 no slice-evaluation copy and no replacement copy in the tested matmul and
 attention consumers ([receipt](receipts/2026-09-04-kv-state-views.md)).
-Fusion passes its numeric tests but stays off by default. In model runs, it
-did not cut GPU calls or show a clear speed gain
+Opt-in fusion cuts decode GPU calls from 585 to 537 per token in the pinned
+4-bit model. Five balanced pairs per workload retained equal full token
+arrays and measured roughly 1% decode gains. Fusion stays off by default
+until broader model coverage supports changing it
 ([receipt](receipts/2026-09-04-swiglu-fused-chain.md)).
 
 > **A green run on a software Vulkan driver (llvmpipe, lavapipe) proves nothing about the Apple GPU.** Four of the v0.3.0 defects never appeared on a development box: bool scatter, 33-element `LogicalAnd`, broadcast `select`, and the `mx.sin`/`mx.cos` range-reduction collapse. llvmpipe passed the full battery the whole night those shipped. Numbers in this README were measured on Honeykrisp; verify them on Honeykrisp before quoting them.
@@ -88,9 +90,10 @@ did not cut GPU calls or show a clear speed gain
 ## Known gaps and defects
 
 The [defect ledger](docs/known-defects.md) lists wrong values and crashes.
-The current bf16 build gets the first token wrong in a pinned Qwen2.5
-run, then repeats text fragments. The same wrong output on each run is
-not a pass. See the [full-token comparison](docs/known-defects.md#bf16-generation-emits-repetitive-fragments).
+Development source `2f54fcb` fixes the observed bf16 first-token corruption
+in the pinned eager Qwen2.5 run. Its reply through EOS now matches native
+MLX; the forced continuation still differs. Published wheels have not been
+qualified with this fix, and the RoPE synchronization guard remains.
 
 ## Quick start
 
