@@ -61,12 +61,46 @@ vec2 cmul(vec2 a, vec2 b) {
   return vec2(a.x * b.x - a.y * b.y, a.x * b.y + a.y * b.x);
 }
 
-// e^(direction * i * pi * (k^2 mod 2n) / n), the Bluestein chirp. k < 65536
+// e^(+-i pi (k^2 mod 2n) / n), the Bluestein chirp (sign from inverse). k < 65536
 // under the length bound, so k*k reduces exactly in u32.
-vec2 chirp(float direction, uint k, uint n) {
+// e^(+i 2 pi num/den) for 0 <= num < den, exact at every multiple of a
+// quarter turn: the quadrant is split off in integer arithmetic and the
+// residual angle is folded into [0, pi/4] before sin/cos, so cos(pi/2)
+// is exactly 0 and the radix-2/4 butterflies match an exact reference.
+// den < 2^30 keeps 4*num inside u32.
+vec2 unit_twiddle(uint num, uint den) {
+  uint quadrant = (4u * num) / den;
+  uint rem = (4u * num) - quadrant * den;
+  bool fold = (2u * rem) > den;
+  uint r = fold ? den - rem : rem;
+  float theta = 1.5707963267948966 * float(r) / float(den);
+  float c = cos(theta);
+  float s = sin(theta);
+  if (fold) {
+    float t = c;
+    c = s;
+    s = t;
+  }
+  if (quadrant == 1u) {
+    return vec2(0.0 - s, c);
+  }
+  if (quadrant == 2u) {
+    return vec2(0.0 - c, 0.0 - s);
+  }
+  if (quadrant == 3u) {
+    return vec2(s, 0.0 - c);
+  }
+  return vec2(c, s);
+}
+
+vec2 twiddle(bool inverse, uint num, uint den) {
+  vec2 w = unit_twiddle(num % den, den);
+  return inverse ? w : vec2(w.x, 0.0 - w.y);
+}
+
+vec2 chirp(bool inverse, uint k, uint n) {
   uint reduced = (k * k) % (2u * n);
-  float angle = direction * 3.141592653589793 * float(reduced) / float(n);
-  return vec2(cos(angle), sin(angle));
+  return twiddle(inverse, reduced, 2u * n);
 }
 
 // Address of sample j of transform t in a dense row-major buffer whose
@@ -86,7 +120,6 @@ void main() {
   uint stride = params.rhs_size;
   uint mode = params.reduce_size;
   bool inverse = (params.operation & 1u) != 0u;
-  float direction = inverse ? 1.0 : -1.0;
 
   if (mode == 0u) {
     // Twiddle stage: p enumerates transform-local samples, t*n + j.
@@ -94,8 +127,7 @@ void main() {
     uint t = p / n;
     uint j = p % n;
     uint phase = (j / trailing) * (j % trailing);
-    float angle = direction * 6.283185307179586 * float(phase) / float(n);
-    vec2 w = vec2(cos(angle), sin(angle));
+    vec2 w = twiddle(inverse, phase, n);
     uint at = params.lhs_offset + dense_address(t, j, n, stride);
     vec2 x = fft_in_complex.values[at];
     fft_out_complex.values[params.output_offset + at] = cmul(x, w);
@@ -126,7 +158,7 @@ void main() {
           x = fft_in_complex.values[params.lhs_offset + source];
         }
       }
-      value = cmul(x, chirp(direction, j, n));
+      value = cmul(x, chirp(inverse, j, n));
     }
     fft_out_complex.values[params.output_offset + p] = value;
   } else if (mode == 2u) {
@@ -135,9 +167,9 @@ void main() {
     uint k = p % conv_len;
     vec2 value = vec2(1.0, 0.0);
     if (k > 0u && k < n) {
-      value = chirp(-direction, k, n);
+      value = chirp(!inverse, k, n);
     } else if (k > conv_len - n) {
-      value = chirp(-direction, conv_len - k, n);
+      value = chirp(!inverse, conv_len - k, n);
     }
     fft_out_complex.values[params.output_offset + p] = value;
   } else if (mode == 3u) {
@@ -154,7 +186,7 @@ void main() {
     }
     vec2 value =
         cmul(fft_in_complex.values[params.lhs_offset + t * conv_len + j],
-             chirp(direction, j, n));
+             chirp(inverse, j, n));
     float scale = inverse ? float(conv_len) / float(n) : 1.0;
     value *= scale;
     uint at = (params.operation & 8u) != 0u

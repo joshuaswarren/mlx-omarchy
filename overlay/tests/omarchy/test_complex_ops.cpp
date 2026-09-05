@@ -487,3 +487,21 @@ TEST_CASE("complex square, logaddexp, and equality match host references") {
   CHECK(la[1].real() == doctest::Approx(expect1.real()).epsilon(1e-5));
   CHECK(la[1].imag() == doctest::Approx(expect1.imag()).epsilon(1e-5));
 }
+
+TEST_CASE("fft of a small real signal is exact at quarter-turn twiddles") {
+  if (!compute_available()) {
+    return;
+  }
+  auto stream = gpu_stream();
+  // Upstream's fft tests compare with array_equal, so the radix-2
+  // butterflies must produce exact results where the twiddles are
+  // exact: cos(pi/2) evaluated directly is -4.4e-8, which once left
+  // y[1].real at -1.99999988.
+  array x({0.0f, 1.0f, 2.0f, 3.0f});
+  array y = fft::fft(x, -1, FFTNorm::Backward, stream);
+  std::vector<cdouble> expect{{6, 0}, {-2, 2}, {-2, 0}, {-2, -2}};
+  check_exact(read_complex(y, stream), expect);
+  array back = fft::ifft(y, -1, FFTNorm::Backward, stream);
+  std::vector<cdouble> expect_back{{0, 0}, {1, 0}, {2, 0}, {3, 0}};
+  check_exact(read_complex(back, stream), expect_back);
+}
