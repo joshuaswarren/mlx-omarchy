@@ -7,12 +7,12 @@ layout(local_size_x = 256) in;
 // needed; the omarchy allocator page-rounds every buffer, so the word
 // that contains the last byte is always inside the allocation.
 //
-// This kernel is the bool comparison sextet (Equal, NotEqual, Greater,
-// Less, GreaterEqual, LessEqual). It is separate from logical_or.comp
-// on purpose:
+// This kernel is the bool comparison sextet plus the bool Power op
+// (Equal, NotEqual, Greater, Less, GreaterEqual, LessEqual, Power).
+// It is separate from logical_or.comp on purpose:
 //   * one plain word store per output word, no atomicOr — the caller
 //     never has to zero-fill the output buffer first;
-//   * a 6-op selector, well below the op-count width where Honeykrisp
+//   * a 7-op selector, well below the op-count width where Honeykrisp
 //     mis-lowers wide if/else chains into coalesced stores (the same
 //     driver bug FixM1BoolAndInt isolated on packed-byte logical ops);
 //   * no shared selector space with the logical trio, so extending
@@ -125,6 +125,9 @@ void main() {
       // Selector codes: 0 = Equal, 1 = NotEqual, 2 = Greater,
       // 3 = Less, 4 = GreaterEqual, 5 = LessEqual. These are LOCAL to
       // this kernel; the host maps ComparisonOperation onto them.
+      // Code 6 = Power: upstream bool pow is x^y with x, y in {0, 1},
+      // i.e. false^false = true, false^true = false, true^anything =
+      // true — x || !y.
       bool result;
       if (params.operation == 0u) {
         result = a == b;
@@ -136,6 +139,8 @@ void main() {
         result = a < b;
       } else if (params.operation == 4u) {
         result = a >= b;
+      } else if (params.operation == 6u) {
+        result = (a != 0u) || (b == 0u);
       } else {
         result = a <= b;
       }

@@ -106,6 +106,42 @@ void main() {
       case 5:
         value = -lhs;
         break;
+      case 6: {
+        // Upstream complex LogAddExp: maxval + log1p(exp(minval -
+        // maxval)) over the lexicographic (real, then imaginary)
+        // ordering, with maxval returned directly when minval is
+        // -inf or maxval is +inf (the complex -inf constant has a
+        // zero imaginary part upstream). exp of a real part of -inf
+        // follows the C99 cexp rule and returns {+0, +0}, which raw
+        // exp*cos/sin would turn into NaN through cos(-inf).
+        bool ge = (lhs.x > rhs.x) || (lhs.x == rhs.x && lhs.y >= rhs.y);
+        vec2 maxv = ge ? lhs : rhs;
+        vec2 minv = ge ? rhs : lhs;
+        // GLSL has no inf identifier; +/-inf are the IEEE bit patterns.
+        const float POS_INF = uintBitsToFloat(0x7f800000u);
+        const float NEG_INF = uintBitsToFloat(0xff800000u);
+        bool at_inf = (minv.x == NEG_INF && minv.y == 0.0) ||
+            (maxv.x == POS_INF && maxv.y == 0.0);
+        vec2 value_out;
+        if (at_inf) {
+          value_out = maxv;
+        } else {
+          vec2 diff = minv - maxv;
+          vec2 cexp = diff.x == NEG_INF
+              ? vec2(0.0)
+              : vec2(exp(diff.x) * cos(diff.y), exp(diff.x) * sin(diff.y));
+          vec2 one_plus = cexp + vec2(1.0, 0.0);
+          // log(1+z): magnitude log and quadrant-aware argument; the
+          // (0, 0) argument is 0 by convention (SPIR-V leaves raw
+          // atan(0, 0) undefined).
+          float arg = (one_plus.x == 0.0 && one_plus.y == 0.0)
+              ? 0.0
+              : atan(one_plus.y, one_plus.x);
+          value_out = maxv + vec2(log(length(one_plus)), arg);
+        }
+        value = value_out;
+        break;
+      }
       default:
         value = vec2(0.0);
         break;

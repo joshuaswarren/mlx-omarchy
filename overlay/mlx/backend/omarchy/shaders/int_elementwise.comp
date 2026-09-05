@@ -195,6 +195,23 @@ void main() {
       case 14:
         value = a * a;
         break;
+      case 15:
+        // Upstream Minimum/Maximum on integers: the plain min/max; NaN
+        // propagation cannot arise for integers.
+        value = a < b ? a : b;
+        break;
+      case 16:
+        value = a > b ? a : b;
+        break;
+      case 17:
+        // Upstream Divide with an integer output dtype (floor_divide
+        // on promoted integer inputs reaches this primitive) runs the
+        // C++ operator/, which truncates toward zero. A zero divisor
+        // is undefined upstream on the CPU and yields an
+        // implementation-defined value on Metal, so the raw SDiv/UDiv
+        // matches the reference family; no guard is added.
+        value = a / b;
+        break;
       default:
         return;
     }

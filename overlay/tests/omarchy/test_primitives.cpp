@@ -5841,11 +5841,10 @@ TEST_CASE("Less, LessEqual, Greater, and NotEqual match host references and the 
   check_bool(less(na, nb, stream), {false, false, false}, stream);
   check_bool(less_equal(na, nb, stream), {false, false, false}, stream);
   check_bool(greater(na, nb, stream), {false, false, false}, stream);
-  // GreaterEqual keeps its pre-wave int32-only causal-mask contract,
-  // so the float NaN row raises its named dtype rejection.
-  CHECK(
-      evaluation_error(greater_equal(na, nb, stream))
-          .find("[omarchy] GreaterEqual dtype") != std::string::npos);
+  // GreaterEqual now serves the full comparison dtype table, so the
+  // float NaN row follows C++ ordering: every ordered comparison of a
+  // NaN stays false.
+  check_bool(greater_equal(na, nb, stream), {false, false, false}, stream);
   check_bool(equal(na, nb, stream), {false, false, false}, stream);
   check_bool(not_equal(na, nb, stream), {true, true, true}, stream);
   std::vector<int32_t> iv = {-2, 0, 7};
@@ -5876,13 +5875,12 @@ TEST_CASE("Less, LessEqual, Greater, and NotEqual match host references and the 
   array bf(hv.begin(), Shape{2}, bfloat16);
   check_bool(not_equal(bf, array(0.5f, bfloat16), stream), {false, true}, stream);
 
-  // Unsigned comparisons keep the named dtype rejection: the shader
-  // compares signed, so uint32 stays unsupported rather than wrong.
+  // Unsigned comparisons run the unsigned shader variant: identical
+  // self-comparison is all-false, and 3 < 0 is false the way the
+  // unsigned reference is.
   std::vector<uint32_t> uv = {3u, 0u};
   array u(uv.begin(), Shape{2}, uint32);
-  CHECK(
-      evaluation_error(less(u, u, stream))
-          .find("[omarchy] Less dtype") != std::string::npos);
+  check_bool(less(u, u, stream), {false, false}, stream);
 }
 
 TEST_CASE("LogicalAnd and LogicalNot match host references") {

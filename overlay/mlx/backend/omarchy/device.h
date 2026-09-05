@@ -75,6 +75,7 @@ struct CapabilityReport {
   bool timeline_semaphore{false};
   bool shader_float16{false};
   bool shader_int16{false};
+  bool shader_int64{false};
   bool storage_buffer_16bit_access{false};
   // True when the device exposes VK_EXT_shader_atomic_float with the
   // shaderBufferFloat32AtomicAdd feature: measured true on llvmpipe;

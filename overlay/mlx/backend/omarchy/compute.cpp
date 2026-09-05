@@ -50,7 +50,10 @@
 #include "compare_bf16.h"
 #include "compare_f16.h"
 #include "compare_f32.h"
+#include "compare_complex.h"
 #include "compare_i32.h"
+#include "compare_i64.h"
+#include "compare_u32.h"
 #include "matmul_f16.h"
 #include "matmul_f32.h"
 #include "select_bf16.h"
@@ -345,6 +348,12 @@ ShaderBytes shader_bytes(ComputeKernel kernel) {
       return {compare_bf16, compare_bf16_size};
     case ComputeKernel::CompareI32:
       return {compare_i32, compare_i32_size};
+    case ComputeKernel::CompareU32:
+      return {compare_u32, compare_u32_size};
+    case ComputeKernel::CompareI64:
+      return {compare_i64, compare_i64_size};
+    case ComputeKernel::CompareComplex:
+      return {compare_complex, compare_complex_size};
     case ComputeKernel::LogicalOrBool:
       return {logical_or_bool, logical_or_bool_size};
     case ComputeKernel::CompareBool:
