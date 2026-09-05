@@ -1,0 +1,83 @@
+diff --git a/mlx/ops.cpp b/mlx/ops.cpp
+--- a/mlx/ops.cpp
++++ b/mlx/ops.cpp
+@@ -11,6 +11,8 @@
+ 
+ #include "mlx/backend/cuda/cuda.h"
+ #include "mlx/backend/metal/metal.h"
++#include "mlx/backend/omarchy/omarchy.h"
++#include "mlx/backend/omarchy/unsupported.h"
+ #include "mlx/fast_primitives.h"
+ #include "mlx/ops.h"
+ #include "mlx/primitives.h"
+@@ -5048,6 +5050,21 @@ affine_quantize(const array& w, int group_size, int bits, StreamOrDevice s_) {
+     throw std::invalid_argument(msg.str());
+   }
+ 
++  if (s.device == Device::gpu) {
++    auto out_shape = w.shape();
++    out_shape.back() = w.shape(-1) * bits / 32;
++    if ((bits != 4 && bits != 8) && omarchy::is_available()) {
++      omarchy::unsupported("Quantize bits", uint32, out_shape);
++    }
++    if ((group_size != 32 && group_size != 64) && omarchy::is_available()) {
++      omarchy::unsupported("Quantize group size", uint32, out_shape);
++    }
++    if ((w.dtype() != float16 && w.dtype() != float32) &&
++        omarchy::is_available()) {
++      omarchy::unsupported("Quantize input dtype", uint32, out_shape);
++    }
++  }
++
+   auto fallback = [group_size, bits, s](
+                       const std::vector<array>& inputs) -> std::vector<array> {
+     auto& w = inputs[0];
+@@ -5121,6 +5138,12 @@ std::vector<array> fp_quantize(
+     throw std::invalid_argument(msg.str());
+   }
+ 
++  if (s.device == Device::gpu && omarchy::is_available()) {
++    auto out_shape = w.shape();
++    out_shape.back() = w.shape(-1) * bits / 32;
++    omarchy::unsupported("Quantize mode", uint32, out_shape);
++  }
++
+   auto inputs = std::vector<array>{w};
+   if (global_scale.has_value()) {
+     inputs.push_back(global_scale.value());
+@@ -5288,6 +5311,21 @@ array affine_dequantize(
+ 
+   auto s = to_stream(s_);
+ 
++  if (s.device == Device::gpu) {
++    auto out_shape = w.shape();
++    out_shape.back() = out_size;
++    if ((bits != 4 && bits != 8) && omarchy::is_available()) {
++      omarchy::unsupported("Quantize bits", scales.dtype(), out_shape);
++    }
++    if ((group_size != 32 && group_size != 64) && omarchy::is_available()) {
++      omarchy::unsupported("Quantize group size", scales.dtype(), out_shape);
++    }
++    if ((scales.dtype() != float16 && scales.dtype() != float32) &&
++        omarchy::is_available()) {
++      omarchy::unsupported("Quantize scales dtype", scales.dtype(), out_shape);
++    }
++  }
++
+   auto fallback =
+       [wshape = std::move(wshape),
+        sshape = std::move(sshape),
+@@ -5396,6 +5434,13 @@ array fp_dequantize(
+     throw std::invalid_argument(msg.str());
+   }
+ 
++  if (s.device == Device::gpu && omarchy::is_available()) {
++    auto out_shape = w.shape();
++    out_shape.back() = out_size;
++    omarchy::unsupported(
++        "Quantize mode", out_type, out_shape);
++  }
++
+   auto inputs = std::vector<array>{w, scales};
+   if (global_scale.has_value()) {
+     inputs.push_back(global_scale.value());

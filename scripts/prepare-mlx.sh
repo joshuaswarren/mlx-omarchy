@@ -55,6 +55,8 @@ patch --directory="$STAGING_DIR" --strip=1 --forward --fuzz=0 \
 patch --directory="$STAGING_DIR" --strip=1 --forward --fuzz=0 \
   < "$ROOT/patches/mlx-python-buffer.patch"
 patch --directory="$STAGING_DIR" --strip=1 --forward --fuzz=0 \
+  < "$ROOT/patches/mlx-omarchy-quantize-errors.patch"
+patch --directory="$STAGING_DIR" --strip=1 --forward --fuzz=0 \
   < "$ROOT/patches/mlx-version-time.patch"
 
 rm -rf "$SOURCE_DIR"
