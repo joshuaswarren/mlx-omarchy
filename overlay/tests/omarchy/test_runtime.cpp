@@ -16,6 +16,9 @@
 // 10. safe command-buffer reuse across many asynchronous commits.
 // 11. in-order-stream contract: a small eager output crosses deep
 //     submit boundaries into a later consumer dispatch.
+// 12. a no-progress watchdog throw unwinds through FULL process teardown
+//     (encoder and device destruction) without crashing, in a
+//     process-isolated child run.
 //
 // The suite needs MLX_BUILD_OMARCHY=ON and compiles against Vulkan 1.3
 // headers (the Honeykrisp driver id is pinned in device.h). Round-trip and
@@ -188,6 +191,47 @@ int run_child_scenario(const std::string& mode) {
       std::cout << "[child/progressing_long] FAILED: " << ex.what() << "\n";
       omarchy::allocator().free(buf);
       std::_Exit(7);
+    }
+  }
+  if (mode == "watchdog_teardown") {
+    // Fire the no-progress watchdog on a genuinely slow dispatch, catch
+    // the typed error, and then exit through FULL process teardown. The
+    // setenv lands before any completion wait in this fresh child, so
+    // the 1 ns interval is what wait_for_timeline_progress caches. One
+    // batch of 64 MiB fills takes well over the 100 ms poll interval on
+    // llvmpipe, so the watchdog fires on real in-flight work (the same
+    // misclassification a jumbo prefill hits); on fast hardware the
+    // fills complete inside the first poll and the child still asserts
+    // clean teardown after a successful join. Per docs/known-defects.md
+    // a process that hit a wedge must be restarted before its output is
+    // trusted, so the contract under test is exit 0 through teardown,
+    // not same-device recovery. The allocation is leaked on purpose:
+    // the fill is still executing, and a cache-free would hand that
+    // memory back while the queue is writing it.
+    setenv("MLX_OMARCHY_HANG_NO_PROGRESS_NS", "1", 1);
+    Stream s = new_stream(Device::gpu);
+    auto& enc = omarchy::get_command_encoder(s);
+    auto buf = omarchy::allocator().malloc(64u << 20);
+    auto* p = static_cast<omarchy::VulkanBuffer*>(buf.ptr());
+    for (int i = 0; i < 16; ++i) {
+      enc.fill_buffer(p->buffer, static_cast<uint32_t>(i + 1), 64u << 20);
+    }
+    enc.commit();
+    try {
+      enc.synchronize();
+      std::cout << "[child/watchdog_teardown] submit completed before the"
+                   " watchdog fired; teardown is the assertion\n";
+      return 0;
+    } catch (const std::exception& ex) {
+      std::string msg = ex.what();
+      std::cout << "[child/watchdog_teardown] typed error: " << msg << "\n";
+      if (msg.find("[omarchy]") == std::string::npos) {
+        return 8;
+      }
+      if (msg.find("no CPU fallback") == std::string::npos) {
+        return 9;
+      }
+      return 0;
     }
   }
   if (mode == "cpu_event_signal_first" || mode == "cpu_event_wait_first") {
@@ -1216,6 +1260,23 @@ TEST_CASE("a long-but-progressing submission completes without a hang") {
       "child progressing_long scenario failed with code " << r.code);
 }
 
+TEST_CASE("a watchdog throw unwinds cleanly through process teardown") {
+  if (!gpu::is_available()) {
+    skip("no qualifying Vulkan device.");
+    return;
+  }
+  // The child trips the no-progress watchdog on a dispatch that is still
+  // executing, catches the typed error, and returns through FULL teardown
+  // (encoder destruction, device destruction). A pre-fix process died
+  // here with SIGSEGV (exit 139) or "pure virtual method called"
+  // (exit 134): the main-thread encoder destroyed its command and
+  // descriptor pools while the last submission was still pending.
+  auto r = run_child("watchdog_teardown", 90);
+  REQUIRE_FALSE(r.timed_out);
+  CHECK_MESSAGE(
+      r.code == 0,
+      "child watchdog_teardown scenario failed with code " << r.code);
+}
 
 TEST_CASE("tensor ops dispatch on Vulkan and never silently on CPU") {
   if (!gpu::is_available()) {
