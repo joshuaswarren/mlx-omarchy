@@ -576,15 +576,8 @@ TEST_CASE("gather mm gathers operand matrices") {
     array a(a_values.begin(), Shape{m, k}, float32);
     array b(b_values.begin(), Shape{batch_b, k, n}, float32);
     array rhs(rhs_v.begin(), Shape{3}, uint32);
-    // Default lhs indices compose arange(total, uint32) at the op layer;
-    // the Arange uint32 rejection is a wave-1 gap, not a GatherMM one,
-    // so this sub-block pins that named error instead of value checks.
+    // Default lhs indices compose arange(total, uint32) at the op layer.
     array out = gather_mm(a, b, std::nullopt, rhs, false, stream);
-    std::string arange_error = evaluation_error(out);
-    CHECK(arange_error.find("Arange dtype") != std::string::npos);
-    if (!arange_error.empty()) {
-      return;
-    }
     REQUIRE(evaluation_error(out).empty());
     std::vector<float> ga(3 * static_cast<size_t>(m) * k);
     std::vector<float> gb(3 * static_cast<size_t>(k) * n);

@@ -156,11 +156,10 @@ TEST_CASE(
   // the any-branch of init() reassigns bk_ to "jaccl" unconditionally
   // (distributed.cpp) even when jaccl::init returns nullptr, so
   // register_group caches the EmptyGroup under the key "jaccl" and every
-  // later init(true, "jaccl") cache-hits instead of throwing. A
-  // fresh-process init(true, "jaccl") does throw (no_jaccl.cpp:11-19),
-  // and doctest discovery runs each case in a fresh process, so prime
-  // the cache here and pin the post-init() state a caller sees.
-  CHECK_THROWS_AS(distributed::init(true, "jaccl"), std::runtime_error);
+  // later init(true, "jaccl") cache-hits instead of throwing. Whether a
+  // strict jaccl init throws therefore depends on what ran earlier in
+  // the process (discovery runs one case per process; the aggregate
+  // binary runs many), so pin only the post-init() state a caller sees.
   distributed::init();
   auto jaccl = distributed::init(true, "jaccl");
   CHECK_EQ(jaccl.size(), 1);
