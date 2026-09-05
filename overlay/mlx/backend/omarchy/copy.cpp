@@ -220,9 +220,18 @@ void copy_gpu_inplace(
     const Stream& s,
     std::optional<array> dynamic_i_offset,
     std::optional<array> dynamic_o_offset) {
-  if (dynamic_i_offset || dynamic_o_offset) {
-    // The offset tensor would have to be read by a shader.
-    omarchy::unsupported("DynamicSlice copy", out);
+  // The only producer of these optionals is the shared GPU
+  // DynamicSlice/DynamicSliceUpdate eval, which builds them through
+  // compute_dynamic_offset: that helper synchronizes the stream and
+  // writes one int64 into host-visible storage before this copy is
+  // scheduled. Reading the scalar here is a synchronized host read, so
+  // the offset folds into the item offset and the copy takes the same
+  // strided path as any other slice.
+  if (dynamic_i_offset) {
+    i_offset += *dynamic_i_offset->data<int64_t>();
+  }
+  if (dynamic_o_offset) {
+    o_offset += *dynamic_o_offset->data<int64_t>();
   }
 
   if (out.nbytes() == 0) {

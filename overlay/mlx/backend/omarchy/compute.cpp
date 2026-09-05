@@ -35,10 +35,22 @@
 #include "elementwise_u32.h"
 #include "elementwise_f16.h"
 #include "elementwise_f32.h"
-#include "gather_bf16.h"
-#include "gather_f16.h"
-#include "gather_f32.h"
-#include "gather_u32.h"
+#include "take_bf16.h"
+#include "take_f16.h"
+#include "take_f32.h"
+#include "take_multi_bf16.h"
+#include "take_multi_f16.h"
+#include "take_multi_f32.h"
+#include "take_multi_u32.h"
+#include "take_u32.h"
+#include "slice_update_reduce_bf16.h"
+#include "slice_update_reduce_f16.h"
+#include "slice_update_reduce_f32.h"
+#include "slice_update_reduce_u32.h"
+#include "scatter_triple_u32.h"
+#include "scatter_triple_f16.h"
+#include "scatter_triple_bf16.h"
+#include "scatter_bool_triple.h"
 #include "copy_general_bf16.h"
 #include "copy_general_f16.h"
 #include "copy_general_f32.h"
@@ -418,14 +430,38 @@ ShaderBytes shader_bytes(ComputeKernel kernel) {
       return {hadamard_f16, hadamard_f16_size};
     case ComputeKernel::HadamardBF16:
       return {hadamard_bf16, hadamard_bf16_size};
-    case ComputeKernel::GatherF32:
-      return {gather_f32, gather_f32_size};
-    case ComputeKernel::GatherF16:
-      return {gather_f16, gather_f16_size};
-    case ComputeKernel::GatherBF16:
-      return {gather_bf16, gather_bf16_size};
-    case ComputeKernel::GatherU32:
-      return {gather_u32, gather_u32_size};
+    case ComputeKernel::TakeF32:
+      return {take_f32, take_f32_size};
+    case ComputeKernel::TakeF16:
+      return {take_f16, take_f16_size};
+    case ComputeKernel::TakeBF16:
+      return {take_bf16, take_bf16_size};
+    case ComputeKernel::TakeU32:
+      return {take_u32, take_u32_size};
+    case ComputeKernel::TakeMultiF32:
+      return {take_multi_f32, take_multi_f32_size};
+    case ComputeKernel::TakeMultiF16:
+      return {take_multi_f16, take_multi_f16_size};
+    case ComputeKernel::TakeMultiBF16:
+      return {take_multi_bf16, take_multi_bf16_size};
+    case ComputeKernel::TakeMultiU32:
+      return {take_multi_u32, take_multi_u32_size};
+    case ComputeKernel::SliceUpdateReduceF32:
+      return {slice_update_reduce_f32, slice_update_reduce_f32_size};
+    case ComputeKernel::SliceUpdateReduceF16:
+      return {slice_update_reduce_f16, slice_update_reduce_f16_size};
+    case ComputeKernel::SliceUpdateReduceBF16:
+      return {slice_update_reduce_bf16, slice_update_reduce_bf16_size};
+    case ComputeKernel::SliceUpdateReduceU32:
+      return {slice_update_reduce_u32, slice_update_reduce_u32_size};
+    case ComputeKernel::ScatterTripleU32:
+      return {scatter_triple_u32, scatter_triple_u32_size};
+    case ComputeKernel::ScatterTripleF16:
+      return {scatter_triple_f16, scatter_triple_f16_size};
+    case ComputeKernel::ScatterTripleBF16:
+      return {scatter_triple_bf16, scatter_triple_bf16_size};
+    case ComputeKernel::ScatterBoolTriple:
+      return {scatter_bool_triple, scatter_bool_triple_size};
     case ComputeKernel::CopyGeneralF32:
       return {copy_general_f32, copy_general_f32_size};
     case ComputeKernel::CopyGeneralF16:

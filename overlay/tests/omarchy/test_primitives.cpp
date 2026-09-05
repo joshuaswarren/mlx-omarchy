@@ -1603,16 +1603,21 @@ TEST_CASE("take gathers table rows through Vulkan compute") {
     bool_error = error.what();
   }
   CHECK(bool_error.find("Boolean indices") != std::string::npos);
-  // Non-zero gather axes pin the named axis error.
-  std::string axis_error =
-      evaluation_error(take(table, array({0}, int32), 1, stream));
-  CHECK(axis_error.find("non-axis-0 Take") != std::string::npos);
+  // Non-zero gather axes gather along that axis through the general
+  // take kernel: column 1 of each row, in row order.
+  check_values(
+      take(table, array({1}, int32), 1, stream),
+      {11.0f, 21.0f, 31.0f},
+      stream);
 
-  // Higher-rank tables pin the named layout error.
+  // Higher-rank tables take rows through the same kernel: rows {0} of
+  // the {1, 3, 4} table keep the full trailing shape.
   array cube(tv.begin(), Shape{1, 3, 4}, float32);
-  std::string rank_error =
-      evaluation_error(take(cube, array({0}, int32), 0, stream));
-  CHECK(rank_error.find("matrix layout Take") != std::string::npos);
+  check_values(
+      take(cube, array({0}, int32), 0, stream),
+      {10.0f, 11.0f, 12.0f, 13.0f, 20.0f, 21.0f, 22.0f, 23.0f,
+       30.0f, 31.0f, 32.0f, 33.0f},
+      stream);
 
   const auto& capabilities = omarchy::device(0).capabilities();
   std::vector<float> hv = {0.5f, 1.0f, 2.0f, -1.5f, 0.25f, 4.0f};
@@ -3211,11 +3216,10 @@ TEST_CASE("argmax reduces last-axis rows through Vulkan compute") {
   check_indices(argmax(w, -1, false, stream), {512}, stream);
   check_indices(argmin(w, -1, false, stream), {257}, stream);
 
-  // Non-suffix axes are named rejections, not CPU fallbacks.
+  // Non-suffix axes reduce through the moved-axis path: argmax over
+  // axis 0 of {2, 3} picks the second row everywhere.
   array matrix({1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f}, {2, 3}, float32);
-  std::string axis_error = evaluation_error(argmax(matrix, 0, false, stream));
-  CHECK(axis_error.find("non-suffix ArgMax") != std::string::npos);
-  CHECK(axis_error.find("no silent CPU fallback") != std::string::npos);
+  check_indices(argmax(matrix, 0, false, stream), {1, 1, 1}, stream);
 }
 
 TEST_CASE("argmin matches first-occurrence ties through Vulkan compute") {
@@ -3618,11 +3622,8 @@ TEST_CASE("sort rejects long rows and non-float dtypes with named errors") {
       index_dtype_error.find("[omarchy] ArgSort dtype") != std::string::npos);
 
   array matrix({1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f}, {2, 3}, float32);
-  std::string axis_error = evaluation_error(sort(matrix, 0, stream));
-  CHECK(axis_error.find("non-suffix Sort") != std::string::npos);
-  std::string index_axis_error =
-      evaluation_error(argsort(matrix, 0, stream));
-  CHECK(index_axis_error.find("non-suffix ArgSort") != std::string::npos);
+  check_values(sort(matrix, 0, stream), {1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f}, stream);
+  check_indices(argsort(matrix, 0, stream), {0, 0, 0, 1, 1, 1}, stream);
 }
 
 TEST_CASE(
@@ -3746,8 +3747,21 @@ TEST_CASE("partition redirects to sort and topk returns the right set") {
       {1.0f, 4.0f, 5.0f, 0.0f, 2.0f, 3.0f},
       stream);
 
-  std::string axis_error = evaluation_error(partition(m, 0, 0, stream));
-  CHECK(axis_error.find("non-suffix Partition") != std::string::npos);
+  // Partition over axis 0 routes through the moved-axis path: each
+  // column sorts independently, so the result is [[2, 1, 0], [5, 3, 4]]
+  // in row-major order. A column-major temp once produced
+  // {1, 5, 2, 4, 0, 3} here.
+  check_values(partition(m, 0, 0, stream), {2.0f, 1.0f, 0.0f, 5.0f, 3.0f, 4.0f}, stream);
+  check_indices(argsort(m, 0, stream), {1, 0, 1, 0, 1, 0}, stream);
+  // A 3-D case where the moved shape is not a transpose of the input.
+  array t(
+      {9.0f, 2.0f, 7.0f, 4.0f, 1.0f, 8.0f, 3.0f, 6.0f, 5.0f, 0.0f, 11.0f, 10.0f},
+      {2, 2, 3},
+      float32);
+  check_values(
+      sort(t, 1, stream),
+      {4.0f, 1.0f, 7.0f, 9.0f, 2.0f, 8.0f, 0.0f, 6.0f, 5.0f, 3.0f, 11.0f, 10.0f},
+      stream);
 }
 
 TEST_CASE("strided slice views materialize exact values") {

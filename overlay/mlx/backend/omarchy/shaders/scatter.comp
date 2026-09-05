@@ -65,6 +65,13 @@
 // same decode rule as the single-array path; the axis-0 pair is unchanged
 // (reduce_size/matrix_m) and the axis-1 dim/stride ride matrix_n/matrix_k
 // with the second array's word offset in lhs_size.
+// With USE_TRIPLE_INDEX a third index array joins at binding 2's sibling
+// binding 4 and scratch moves to binding 5 (six bindings). The third
+// axis's dim, stride, and word offset ride the never-used lhs_gap,
+// rhs_gap, and out_strides[0] fields (rhs_size must stay the no-index
+// flag the first axis checks). The same in-range rule guards all axes
+// and the host refuses the scratch-heavy modes on three arrays when the
+// device reports fewer than six storage-buffer slots.
 //
 // t addresses one update element: slot = t / output_size selects the
 // index row, and t mod output_size is the element's position inside
@@ -135,7 +142,26 @@ uint16_t bf16_store(float value) {
                       : (((word) >> 24u) & 0xFFu))
 layout(local_size_x = 256) in;
 
-#ifdef USE_MULTI_INDEX
+#if defined(USE_TRIPLE_INDEX)
+layout(set = 0, binding = 0, std430) buffer Output {
+  STORAGE_TYPE values[];
+} out_data;
+layout(set = 0, binding = 1, std430) readonly buffer Updates {
+  STORAGE_TYPE values[];
+} upd_data;
+layout(set = 0, binding = 2, std430) readonly buffer Indices {
+  int values[];
+} indices_data;
+layout(set = 0, binding = 3, std430) readonly buffer IndicesB {
+  int values[];
+} indices_b_data;
+layout(set = 0, binding = 4, std430) readonly buffer IndicesC {
+  int values[];
+} indices_c_data;
+layout(set = 0, binding = 5, std430) buffer Scratch {
+  uint values[];
+} scratch_data;
+#elif defined(USE_MULTI_INDEX)
 layout(set = 0, binding = 0, std430) buffer Output {
   STORAGE_TYPE values[];
 } out_data;
@@ -201,6 +227,10 @@ layout(push_constant) uniform Params {
   uint shape[4];
   uint in_strides[4];
   uint out_strides[4];
+  // Matmul-only fields on the host; the triple-index scatter borrows
+  // lhs_gap (third axis dim) and rhs_gap (third axis stride).
+  uint lhs_gap;
+  uint rhs_gap;
 } params;
 
 #if defined(USE_U32) || defined(USE_BOOL)
@@ -329,7 +359,7 @@ void main() {
       }
       bool in_range = index < params.reduce_size;
       uint axis_b_offset = 0u;
-#ifdef USE_MULTI_INDEX
+#if defined(USE_MULTI_INDEX) || defined(USE_TRIPLE_INDEX)
       // Second axis: same decode rule against the second index array,
       // the axis dim in matrix_n, and the axis stride in matrix_k. A
       // slot lands only when both axes decode in range.
@@ -350,6 +380,30 @@ void main() {
       }
       in_range = in_range && index_b < params.matrix_n;
       axis_b_offset = index_b * params.matrix_k;
+#ifdef USE_TRIPLE_INDEX
+      // Third axis: the same decode rule against the third index
+      // array; the dim, stride, and word offset ride lhs_gap, rhs_gap,
+      // and out_strides[0] (see the binding notes above). A slot lands
+      // only when every axis decodes in range.
+      uint index_c = params.lhs_gap;
+      uint word_c =
+          uint(indices_c_data.values[params.out_strides[0] + word_slot]);
+      if (params.aux_size == 0u) {
+        if (word_c < 0x80000000u) {
+          index_c = word_c;
+        }
+      } else if (params.aux_size == 1u) {
+        index_c = word_c;
+      } else {
+        uint high_c = uint(
+            indices_c_data.values[params.out_strides[0] + word_slot + 1u]);
+        if (high_c == 0u) {
+          index_c = word_c;
+        }
+      }
+      in_range = in_range && index_c < params.lhs_gap;
+      axis_b_offset += index_c * params.rhs_gap;
+#endif
 #endif
       if (in_range) {
         uint out_tail = 0u;

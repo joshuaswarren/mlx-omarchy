@@ -1085,6 +1085,98 @@ void dispatch_sort(
       params,
       std::min(output_size, omarchy::kMaxComputeGroupCountX));
 }
+// Any-axis sort family. The suffix kernel sorts one row-contiguous row
+// per workgroup, so a non-suffix axis rides the general strided-copy
+// engine: move the sorted axis to the end (the same materialization a
+// Transpose node takes), run the suffix kernel, and write the result
+// back through the inverse permutation. Values keep the input dtype;
+// argsort writes uint32 indices.
+struct AxisMoveTables {
+  Shape shape;
+  Strides in_strides;
+  Strides moved_strides;
+};
+
+// Shape tables that move `axis` of `input` to the end: the moved shape,
+// the input strides read in moved order, and the moved shape's
+// row-major strides for the dense temp.
+AxisMoveTables axis_move_tables(const array& input, int axis) {
+  AxisMoveTables tables;
+  for (int i = 0; i < input.ndim(); ++i) {
+    if (i == axis) {
+      continue;
+    }
+    tables.shape.push_back(input.shape(i));
+    tables.in_strides.push_back(input.strides()[i]);
+  }
+  tables.shape.push_back(input.shape(axis));
+  tables.in_strides.push_back(input.strides()[axis]);
+  // The dense temp is read as row-major rows by the suffix kernel, so
+  // its strides run from the last moved dim backwards.
+  tables.moved_strides = Strides(tables.shape.size(), 1);
+  for (int i = static_cast<int>(tables.shape.size()) - 2; i >= 0; --i) {
+    tables.moved_strides[i] =
+        tables.moved_strides[i + 1] * tables.shape[i + 1];
+  }
+  return tables;
+}
+
+// The output strides that undo an axis move: the kept dims in original
+// order, then the moved axis, matching the moved dim order.
+Strides permuted_out_strides(const array& out, int axis) {
+  Strides strides;
+  for (int i = 0; i < out.ndim(); ++i) {
+    if (i != axis) {
+      strides.push_back(out.strides()[i]);
+    }
+  }
+  strides.push_back(out.strides()[axis]);
+  return strides;
+}
+
+void dispatch_sort_any_axis(
+    const std::string& name,
+    const array& input,
+    array& out,
+    int axis,
+    bool argsort,
+    omarchy::CommandEncoder& encoder) {
+  if (axis == input.ndim() - 1) {
+    dispatch_sort(name, input, out, argsort, encoder);
+    return;
+  }
+  AxisMoveTables tables = axis_move_tables(input, axis);
+  auto& s = out.primitive().stream();
+  out.set_data(allocate_omarchy(out.nbytes()));
+  array moved(tables.shape, input.dtype(), nullptr, {});
+  moved.set_data(allocate_omarchy(moved.nbytes()));
+  array sorted(tables.shape, out.dtype(), nullptr, {});
+  if (out.size() != 0) {
+    copy_gpu_inplace(
+        input,
+        moved,
+        tables.shape,
+        tables.in_strides,
+        tables.moved_strides,
+        /* i_offset = */ 0,
+        /* o_offset = */ 0,
+        CopyType::GeneralGeneral,
+        s);
+    dispatch_sort(name, moved, sorted, argsort, encoder);
+    copy_gpu_inplace(
+        sorted,
+        out,
+        tables.shape,
+        tables.moved_strides,
+        permuted_out_strides(out, axis),
+        /* i_offset = */ 0,
+        /* o_offset = */ 0,
+        CopyType::GeneralGeneral,
+        s);
+  }
+  encoder.add_temporary(moved);
+  encoder.add_temporary(sorted);
+}
 // Wide-row ArgPartition. One workgroup per row runs a binary search over
 // the monotone unsigned key (with canonical -0.0 and NaN handling) and
 // serially emits the indices. The shader handles any row length; the
@@ -2102,12 +2194,9 @@ void ArgPartition::eval_gpu(const std::vector<array>& inputs, array& out) {
   auto [kth, axis] = state();
   auto& encoder = omarchy::get_command_encoder(out.primitive().stream());
   require_sort_dtype("ArgPartition", input, out, true, encoder);
-  if (axis != input.ndim() - 1) {
-    omarchy::unsupported("non-suffix ArgPartition", out);
-  }
   // Ops layer (mlx/ops.cpp argpartition) already validated kth in
   // [0, axis_size) so the row axis is non-empty.
-  size_t row_length = input.shape(-1);
+  size_t row_length = input.shape(axis);
   if (row_length > kSortMaxRowLength) {
     // Wide-row vocabulary widths (top-k sampling for real language
     // models) need a selection algorithm rather than a full sort. A
@@ -2116,7 +2205,44 @@ void ArgPartition::eval_gpu(const std::vector<array>& inputs, array& out) {
     // refuses by name rather than returning a wrong kth.
     omarchy::unsupported("sort row length ArgPartition", out);
   }
-  dispatch_sort("ArgPartition", input, out, true, encoder);
+  dispatch_sort_any_axis("ArgPartition", input, out, axis, true, encoder);
+}
+// One thread per output row sweeps the row-contiguous suffix row of
+// `src`; the uint32 index output drops the reduced axis, so `out` is
+// dense with the input's non-axis dims.
+void dispatch_arg_reduce_suffix(
+    const std::string& operation_name,
+    bool is_max,
+    const array& src,
+    array& out,
+    omarchy::CommandEncoder& encoder) {
+  out.set_data(allocate_omarchy(out.nbytes()));
+  if (out.size() == 0) {
+    return;
+  }
+  size_t row_length = src.shape(-1);
+  size_t rows = src.size() / row_length;
+  uint32_t output_size = checked_u32(rows, operation_name, out);
+  omarchy::ComputeParams params;
+  params.count = output_size;
+  params.operation = is_max ? 1u : 0u;
+  params.reduce_size = checked_u32(row_length, operation_name, out);
+  params.output_size = output_size;
+  params.lhs_offset = checked_item_offset(
+      src, src.size(), operation_name, out);
+  params.output_offset = checked_item_offset(out, out.size(), operation_name, out);
+  std::array<omarchy::ComputeBinding, 3> bindings{
+      binding(src), binding(src), binding(out)};
+  auto kernel = select_float_kernel(
+      src.dtype(),
+      omarchy::ComputeKernel::ArgReduceF32,
+      omarchy::ComputeKernel::ArgReduceF16,
+      omarchy::ComputeKernel::ArgReduceBF16);
+  encoder.dispatch_compute(
+      kernel,
+      bindings,
+      params,
+      std::min(output_size, omarchy::kMaxComputeGroupCountX));
 }
 void ArgReduce::eval_gpu(const std::vector<array>& inputs, array& out) {
   const array& input = inputs.at(0);
@@ -2147,53 +2273,45 @@ void ArgReduce::eval_gpu(const std::vector<array>& inputs, array& out) {
   if (out.dtype() != uint32) {
     omarchy::unsupported(operation_name + " output dtype", out);
   }
-  if (axis != input.ndim() - 1) {
-    omarchy::unsupported("non-suffix " + operation_name, out);
-  }
-  std::optional<array> dense_temp;
-  const array& src = ensure_dense(
-      input,
-      input.flags().row_contiguous,
-      dense_temp,
-      encoder,
-      out.primitive().stream());
-  size_t row_length = src.shape(-1);
-  size_t rows = src.size() / row_length;
-  out.set_data(allocate_omarchy(out.nbytes()));
-  if (out.size() == 0) {
+  bool is_max = reduce_type == ArgReduce::ArgMax;
+  if (axis == input.ndim() - 1) {
+    std::optional<array> dense_temp;
+    const array& src = ensure_dense(
+        input,
+        input.flags().row_contiguous,
+        dense_temp,
+        encoder,
+        out.primitive().stream());
+    dispatch_arg_reduce_suffix(operation_name, is_max, src, out, encoder);
     return;
   }
-
-  uint32_t output_size = checked_u32(rows, operation_name, out);
-  omarchy::ComputeParams params;
-  params.count = output_size;
-  params.operation = reduce_type == ArgReduce::ArgMax ? 1u : 0u;
-  params.reduce_size = checked_u32(row_length, operation_name, out);
-  params.output_size = output_size;
-  params.lhs_offset = checked_item_offset(
-      src, src.size(), operation_name, out);
-  params.output_offset = checked_item_offset(out, out.size(), operation_name, out);
-  std::array<omarchy::ComputeBinding, 3> bindings{
-      binding(src), binding(src), binding(out)};
-  auto kernel = select_float_kernel(
-      input.dtype(),
-      omarchy::ComputeKernel::ArgReduceF32,
-      omarchy::ComputeKernel::ArgReduceF16,
-      omarchy::ComputeKernel::ArgReduceBF16);
-  encoder.dispatch_compute(
-      kernel,
-      bindings,
-      params,
-      std::min(output_size, omarchy::kMaxComputeGroupCountX));
+  // Non-suffix axis: move the reduced axis to the end through the
+  // strided-copy engine. The uint32 output drops the axis, so it is
+  // already the dense rows the suffix kernel writes and needs no
+  // backward permutation.
+  AxisMoveTables tables = axis_move_tables(input, axis);
+  array moved(tables.shape, input.dtype(), nullptr, {});
+  moved.set_data(allocate_omarchy(moved.nbytes()));
+  if (out.size() != 0) {
+    copy_gpu_inplace(
+        input,
+        moved,
+        tables.shape,
+        tables.in_strides,
+        tables.moved_strides,
+        /* i_offset = */ 0,
+        /* o_offset = */ 0,
+        CopyType::GeneralGeneral,
+        out.primitive().stream());
+  }
+  dispatch_arg_reduce_suffix(operation_name, is_max, moved, out, encoder);
+  encoder.add_temporary(moved);
 }
 void ArgSort::eval_gpu(const std::vector<array>& inputs, array& out) {
   const array& input = inputs.at(0);
   auto& encoder = omarchy::get_command_encoder(out.primitive().stream());
   require_sort_dtype("ArgSort", input, out, true, encoder);
-  if (state() != input.ndim() - 1) {
-    omarchy::unsupported("non-suffix ArgSort", out);
-  }
-  dispatch_sort("ArgSort", input, out, true, encoder);
+  dispatch_sort_any_axis("ArgSort", input, out, state(), true, encoder);
 }
 // BitwiseBinary carries the upstream op enum (and/or/xor and both
 // shifts). int32 and uint32 run through the integer kernel, where `>>`
@@ -3898,52 +4016,81 @@ void Gather::eval_gpu(const std::vector<array>& inputs, array& out) {
   } else {
     require_float_dtype("Take", table, out, encoder);
   }
-  if (inputs.size() != 2 || axes.size() != 1 || axes[0] != 0) {
-    omarchy::unsupported("non-axis-0 Take", out);
+  size_t nidx = inputs.size() - 1;
+  if (nidx > 2) {
+    omarchy::unsupported(
+        "multi-index Gather with " + std::to_string(nidx) +
+            " index arrays",
+        out);
   }
-  if (table.ndim() != 2) {
-    omarchy::unsupported("matrix layout Take", out);
+  if (table.ndim() != slice_sizes.size() || table.ndim() > 4) {
+    // The window and index decode tables each cap at four entries.
+    omarchy::unsupported("Take rank", out);
   }
-  if (
-      slice_sizes.size() != 2 || slice_sizes[0] != 1 ||
-      slice_sizes[1] != table.shape(1)) {
-    omarchy::unsupported("slice Take", out);
+  if (nidx == 0) {
+    // No index arrays: the gather is the leading slice window itself, a
+    // strided copy at offset zero.
+    copy_gpu(table, out, CopyType::General, out.primitive().stream());
+    return;
   }
-  const array& indices = inputs.at(1);
-  // gather_rows.comp reads index words selected by params.operation:
-  // 0 = int32, 1 = uint32, 2 = int64 as two little-endian words. The
-  // int64 element offset doubles into word units. Other index dtypes
-  // keep the named rejection.
+  // gather_take.comp reads index words selected by params.operation:
+  // 0 = int32, 1 = uint32, 2 = int64 as two little-endian words. Other
+  // index dtypes keep the named rejection.
   uint32_t index_mode;
-  uint64_t index_words;
-  switch (indices.dtype()) {
+  switch (inputs.at(1).dtype()) {
     case int32:
       index_mode = 0;
-      index_words = indices.size();
       break;
     case uint32:
       index_mode = 1;
-      index_words = indices.size();
       break;
     case int64:
       index_mode = 2;
-      index_words = indices.size() * 2;
       break;
     default:
       omarchy::unsupported("indexed Take dtype", out);
   }
+  if (nidx != axes.size()) {
+    omarchy::unsupported("Take index arity", out);
+  }
+  const array& idx0 = inputs.at(1);
+  const array& idx1 = nidx == 2 ? inputs.at(2) : idx0;
+  if (nidx == 2 && idx1.dtype() != idx0.dtype()) {
+    omarchy::unsupported("Take index dtype", out);
+  }
+  int idx_ndim = idx0.ndim();
+  if (idx_ndim > 4) {
+    omarchy::unsupported("Take index rank", out);
+  }
   std::optional<array> table_temp;
-  std::optional<array> indices_temp;
   const array& table_d = ensure_dense(
       table, table.flags().row_contiguous, table_temp, encoder, stream());
-  const array& indices_d = ensure_dense(
-      indices,
-      indices.flags().row_contiguous,
-      indices_temp,
-      encoder,
-      stream());
-  if (out.size() != indices.size() * table.shape(1)) {
-    omarchy::unsupported("slice Take", out);
+  // Index arrays arrive broadcast by the op layer; broadcast views can
+  // carry a contiguous flag while holding fewer elements than the shape
+  // names, so test data_size against size like the scatter path does.
+  const array* idx0_ptr = &idx0;
+  std::optional<array> idx0_mat;
+  if (!idx0.flags().row_contiguous || idx0.data_size() != idx0.size()) {
+    idx0_mat = array(idx0.shape(), idx0.dtype(), nullptr, {});
+    copy_gpu(idx0, *idx0_mat, CopyType::General, out.primitive().stream());
+    encoder.add_temporary(*idx0_mat);
+    idx0_ptr = &*idx0_mat;
+  }
+  const array* idx1_ptr = &idx1;
+  std::optional<array> idx1_mat;
+  if (nidx == 2 &&
+      (!idx1.flags().row_contiguous || idx1.data_size() != idx1.size())) {
+    idx1_mat = array(idx1.shape(), idx1.dtype(), nullptr, {});
+    copy_gpu(idx1, *idx1_mat, CopyType::General, out.primitive().stream());
+    encoder.add_temporary(*idx1_mat);
+    idx1_ptr = &*idx1_mat;
+  }
+  size_t slice_total = 1;
+  for (int dim : slice_sizes) {
+    slice_total *= static_cast<size_t>(dim);
+  }
+  if (out.size() != idx0.size() * slice_total) {
+    omarchy::unsupported("Take index shape", out);
   }
 
   out.set_data(allocate_omarchy(out.nbytes()));
@@ -3954,34 +4101,65 @@ void Gather::eval_gpu(const std::vector<array>& inputs, array& out) {
   omarchy::ComputeParams params;
   params.count = count;
   params.operation = index_mode;
-  params.lhs_size = checked_u32(table.size(), "Take", out);
-  params.rhs_size = checked_u32(index_words, "Take", out);
-  params.reduce_size = checked_u32(table.shape(1), "Take", out);
-  params.output_size = count;
-  params.lhs_offset = checked_item_offset(table_d, table_d.size(), "Take", out);
-  // The shader indexes 32-bit words, so the int64 element offset
-  // doubles into word units.
-  uint32_t index_offset = checked_item_offset(
-      indices_d, indices_d.size(), "Take", out);
-  if (index_mode == 2) {
-    if (index_offset > std::numeric_limits<uint32_t>::max() / 2) {
-      omarchy::unsupported("indexed Take index span", out);
-    }
-    index_offset *= 2;
-  }
-  params.rhs_offset = index_offset;
+  params.reduce_size =
+      checked_u32(table_d.shape(axes[0]), "Take", out);
+  params.matrix_m =
+      checked_u32(table_d.strides()[axes[0]], "Take", out);
+  params.lhs_offset =
+      checked_item_offset(table_d, table_d.size(), "Take", out);
+  params.rhs_offset =
+      checked_item_offset(*idx0_ptr, idx0_ptr->size(), "Take", out);
   params.output_offset = checked_item_offset(out, out.size(), "Take", out);
-  std::array<omarchy::ComputeBinding, 3> bindings{
-      binding(table_d), binding(indices_d), binding(out)};
+  // The window decode walks every table dim through slice_sizes.
+  params.flags = checked_u32(table_d.ndim(), "Take", out);
+  for (int i = 0; i < table_d.ndim(); ++i) {
+    params.shape[i] = checked_u32(
+        static_cast<size_t>(slice_sizes[i]), "Take", out);
+    params.in_strides[i] =
+        checked_u32(table_d.strides()[i], "Take", out);
+  }
+  // The index decode walks the shared broadcast shape of the arrays.
+  params.dims = checked_u32(idx_ndim, "Take", out);
+  for (int i = 0; i < idx_ndim; ++i) {
+    params.out_strides[i] =
+        checked_u32(idx0.shape(i), "Take", out);
+  }
+  if (nidx == 2) {
+    // Second gathered axis rides the fields the single-index kernel
+    // never reads: the axis dim in matrix_n, the axis stride in
+    // matrix_k, and the second array's word offset in aux_offset.
+    params.matrix_n =
+        checked_u32(table_d.shape(axes[1]), "Take", out);
+    params.matrix_k =
+        checked_u32(table_d.strides()[axes[1]], "Take", out);
+    params.aux_offset =
+        checked_item_offset(*idx1_ptr, idx1_ptr->size(), "Take", out);
+  }
+  // The multi-index kernel moves the output to binding 3 and reads the
+  // second index array at binding 2; the single-index kernel reads the
+  // output at binding 2.
+  std::array<omarchy::ComputeBinding, 4> bindings{
+      binding(table_d), binding(*idx0_ptr), binding(*idx1_ptr), binding(out)};
+  if (nidx == 1) {
+    bindings[2] = binding(out);
+  }
   auto kernel = raw_word_table
-      ? omarchy::ComputeKernel::GatherU32
+      ? (nidx == 2 ? omarchy::ComputeKernel::TakeMultiU32
+                   : omarchy::ComputeKernel::TakeU32)
       : select_float_kernel(
             out.dtype(),
-            omarchy::ComputeKernel::GatherF32,
-            omarchy::ComputeKernel::GatherF16,
-            omarchy::ComputeKernel::GatherBF16);
+            nidx == 2 ? omarchy::ComputeKernel::TakeMultiF32
+                      : omarchy::ComputeKernel::TakeF32,
+            nidx == 2 ? omarchy::ComputeKernel::TakeMultiF16
+                      : omarchy::ComputeKernel::TakeF16,
+            nidx == 2 ? omarchy::ComputeKernel::TakeMultiBF16
+                      : omarchy::ComputeKernel::TakeBF16);
+  uint32_t bound = nidx == 2 ? 4u : 3u;
   encoder.dispatch_compute(
-      kernel, bindings, params, omarchy::compute_dispatch_group_count(count));
+      kernel,
+      std::span<const omarchy::ComputeBinding>(bindings.data(), bound),
+      params,
+      omarchy::compute_dispatch_group_count(count));
 }
 void GatherAxis::eval_gpu(const std::vector<array>& inputs, array& out) {
   const array& src = inputs.at(0);
@@ -4595,10 +4773,8 @@ void Partition::eval_gpu(const std::vector<array>& inputs, array& out) {
   const array& input = inputs.at(0);
   auto& encoder = omarchy::get_command_encoder(out.primitive().stream());
   require_sort_dtype("Partition", input, out, false, encoder);
-  if (state().second != input.ndim() - 1) {
-    omarchy::unsupported("non-suffix Partition", out);
-  }
-  dispatch_sort("Partition", input, out, false, encoder);
+  dispatch_sort_any_axis(
+      "Partition", input, out, state().second, false, encoder);
 }
 // Power promotes base and exponent to one dtype upstream, so a float
 // dtype runs the float pow and an integer dtype runs the upstream
@@ -5220,6 +5396,47 @@ void Scan::eval_gpu(const std::vector<array>& inputs, array& out) {
             omarchy::ComputeKernel::ScanGeneralBF16);
   encoder.dispatch_compute(kernel, bindings, params, output_size);
 }
+// The word-transport kernel family (raw None phases, keys, integer
+// Sum/Prod) tracks the index-array count so each array gets its own
+// storage-buffer slot: U32 for float32/int32/uint32 words, packed
+// 16-bit and bool variants for the rest.
+omarchy::ComputeKernel scatter_word_kernel(
+    bool multi_index, bool triple_index, Dtype dtype) {
+  if (triple_index) {
+    switch (dtype) {
+      case float16:
+        return omarchy::ComputeKernel::ScatterTripleF16;
+      case bfloat16:
+        return omarchy::ComputeKernel::ScatterTripleBF16;
+      case bool_:
+        return omarchy::ComputeKernel::ScatterBoolTriple;
+      default:
+        return omarchy::ComputeKernel::ScatterTripleU32;
+    }
+  }
+  if (multi_index) {
+    switch (dtype) {
+      case float16:
+        return omarchy::ComputeKernel::ScatterMultiF16;
+      case bfloat16:
+        return omarchy::ComputeKernel::ScatterMultiBF16;
+      case bool_:
+        return omarchy::ComputeKernel::ScatterBoolMulti;
+      default:
+        return omarchy::ComputeKernel::ScatterMultiU32;
+    }
+  }
+  switch (dtype) {
+    case float16:
+      return omarchy::ComputeKernel::ScatterF16;
+    case bfloat16:
+      return omarchy::ComputeKernel::ScatterBF16;
+    case bool_:
+      return omarchy::ComputeKernel::ScatterBool;
+    default:
+      return omarchy::ComputeKernel::ScatterU32;
+  }
+}
 void Scatter::eval_gpu(const std::vector<array>& inputs, array& out) {
   auto [reduce_type, axes] = state();
   const bool no_index = axes.empty();
@@ -5227,26 +5444,27 @@ void Scatter::eval_gpu(const std::vector<array>& inputs, array& out) {
   const array& indices = inputs.at(1);
   const array& updates = inputs.back();
   auto& encoder = omarchy::get_command_encoder(out.primitive().stream());
-  if (axes.size() > 2) {
+  if (axes.size() > 3) {
     omarchy::unsupported(
         "multi-index Scatter with " + std::to_string(axes.size()) +
             " index arrays",
         out);
   }
-  const bool multi_index = axes.size() == 2;
+  const bool multi_index = axes.size() >= 2;
+  const bool triple_index = axes.size() == 3;
   bool is_sum = reduce_type == Scatter::Sum;
   bool is_prod = reduce_type == Scatter::Prod;
   const bool float_reduce =
       out.dtype() == float32 || out.dtype() == float16 ||
       out.dtype() == bfloat16;
   if (multi_index) {
-    // The two-index kernel binds out, updates, both index arrays, and
-    // the rank/key or accumulation scratch (only integer Sum drops the
-    // scratch): four or five slots against the budget the device
+    // The multi-index kernel binds out, updates, one index array per
+    // axis, and - except for integer Sum - the rank/key or accumulation
+    // scratch: three to six slots against the budget the device
     // reported at initialization.
-    uint32_t needed = (is_sum && !float_reduce && out.dtype() != bool_)
-        ? 4u
-        : 5u;
+    uint32_t base = triple_index ? 5u : (multi_index ? 4u : 3u);
+    uint32_t needed =
+        (is_sum && !float_reduce && out.dtype() != bool_) ? base : base + 1u;
     uint32_t allowed = encoder.device().compute().binding_limit();
     if (needed > allowed) {
       omarchy::unsupported(
@@ -5276,9 +5494,11 @@ void Scatter::eval_gpu(const std::vector<array>& inputs, array& out) {
         "multi-index Scatter float16/bfloat16 Sum/Prod dtype",
         out);
   }
-  // The second index array in the multi-index case; upstream's op layer
-  // broadcasts and dtype-promotes every index array to one shape.
+  // The second and third index arrays in the multi-index case;
+  // upstream's op layer broadcasts and dtype-promotes every index
+  // array to one shape.
   const array& indices_b = multi_index ? inputs.at(2) : indices;
+  const array& indices_c = triple_index ? inputs.at(3) : indices;
   if (out.dtype() == float16 || out.dtype() == bfloat16) {
     require_float_dtype("Scatter", src, out, encoder);
   }
@@ -5288,25 +5508,29 @@ void Scatter::eval_gpu(const std::vector<array>& inputs, array& out) {
     case float32:
       map_code = 0;
       if (is_sum || is_prod) {
+        if (triple_index) {
+          // Only the word kernel compiles a triple-index variant; the
+          // float Sum/Prod blobs stop at two index arrays.
+          omarchy::unsupported(
+              "multi-index Scatter float32 Sum/Prod with 3 index arrays",
+              out);
+        }
         kernel = multi_index
             ? (hw_atomic_add ? omarchy::ComputeKernel::ScatterFAddMultiF32
                              : omarchy::ComputeKernel::ScatterFCasMultiF32)
             : (hw_atomic_add ? omarchy::ComputeKernel::ScatterFAddF32
                              : omarchy::ComputeKernel::ScatterFCasF32);
       } else {
-        kernel = multi_index ? omarchy::ComputeKernel::ScatterMultiU32
-                             : omarchy::ComputeKernel::ScatterU32;
+        kernel = scatter_word_kernel(multi_index, triple_index, out.dtype());
       }
       break;
     case int32:
       map_code = 1;
-      kernel = multi_index ? omarchy::ComputeKernel::ScatterMultiU32
-                           : omarchy::ComputeKernel::ScatterU32;
+      kernel = scatter_word_kernel(multi_index, triple_index, out.dtype());
       break;
     case uint32:
       map_code = 2;
-      kernel = multi_index ? omarchy::ComputeKernel::ScatterMultiU32
-                           : omarchy::ComputeKernel::ScatterU32;
+      kernel = scatter_word_kernel(multi_index, triple_index, out.dtype());
       break;
     case float16:
       map_code = 0;
@@ -5314,8 +5538,7 @@ void Scatter::eval_gpu(const std::vector<array>& inputs, array& out) {
         kernel = hw_atomic_add ? omarchy::ComputeKernel::ScatterFAddF16
                                : omarchy::ComputeKernel::ScatterFCasF16;
       } else {
-        kernel = multi_index ? omarchy::ComputeKernel::ScatterMultiF16
-                             : omarchy::ComputeKernel::ScatterF16;
+        kernel = scatter_word_kernel(multi_index, triple_index, out.dtype());
       }
       break;
     case bfloat16:
@@ -5324,14 +5547,12 @@ void Scatter::eval_gpu(const std::vector<array>& inputs, array& out) {
         kernel = hw_atomic_add ? omarchy::ComputeKernel::ScatterFAddBF16
                                : omarchy::ComputeKernel::ScatterFCasBF16;
       } else {
-        kernel = multi_index ? omarchy::ComputeKernel::ScatterMultiBF16
-                             : omarchy::ComputeKernel::ScatterBF16;
+        kernel = scatter_word_kernel(multi_index, triple_index, out.dtype());
       }
       break;
     case bool_:
       map_code = 1;
-      kernel = multi_index ? omarchy::ComputeKernel::ScatterBoolMulti
-                           : omarchy::ComputeKernel::ScatterBool;
+      kernel = scatter_word_kernel(multi_index, triple_index, out.dtype());
       break;
     default:
       omarchy::unsupported("Scatter dtype", out);
@@ -5362,12 +5583,20 @@ void Scatter::eval_gpu(const std::vector<array>& inputs, array& out) {
   }
   if (multi_index) {
     // Upstream promotes all index arrays together before the primitive
-    // sees them, so the second array shares the first's dtype and
-    // shape; its layout is materialized like the first.
+    // sees them, so the later arrays share the first's dtype and
+    // shape; their layouts materialize like the first.
     if (indices_b.size() != indices.size()) {
       omarchy::unsupported("Scatter index shape", out);
     }
     if (indices_b.dtype() != indices.dtype()) {
+      omarchy::unsupported("Scatter index dtype", out);
+    }
+  }
+  if (triple_index) {
+    if (indices_c.size() != indices.size()) {
+      omarchy::unsupported("Scatter index shape", out);
+    }
+    if (indices_c.dtype() != indices.dtype()) {
       omarchy::unsupported("Scatter index dtype", out);
     }
   }
@@ -5382,6 +5611,18 @@ void Scatter::eval_gpu(const std::vector<array>& inputs, array& out) {
         indices_b, *idx_b_mat, CopyType::General, out.primitive().stream());
     encoder.add_temporary(*idx_b_mat);
     idx_b = &*idx_b_mat;
+  }
+  const array* idx_c = &indices_c;
+  std::optional<array> idx_c_mat;
+  if (triple_index &&
+      (!indices_c.flags().row_contiguous ||
+       indices_c.data_size() != indices_c.size())) {
+    idx_c_mat =
+        array(indices_c.shape(), indices_c.dtype(), nullptr, {});
+    copy_gpu(
+        indices_c, *idx_c_mat, CopyType::General, out.primitive().stream());
+    encoder.add_temporary(*idx_c_mat);
+    idx_c = &*idx_c_mat;
   }
   const array* upd = &updates;
   std::optional<array> upd_mat;
@@ -5429,6 +5670,15 @@ void Scatter::eval_gpu(const std::vector<array>& inputs, array& out) {
     params.matrix_k = checked_u32(out.strides(axes[1]), "Scatter", out);
     params.lhs_size = scatter_index_offset(*idx_b, out, "Scatter");
   }
+  if (triple_index) {
+    // Axis-2 rides the fields the narrower kernels never read: the
+    // axis dim in lhs_gap, the axis stride in rhs_gap, and the third
+    // array's word offset in out_strides[0]. rhs_size stays the
+    // no-index flag the first axis checks and must not be reused.
+    params.lhs_gap = checked_u32(out.shape(axes[2]), "Scatter", out);
+    params.rhs_gap = checked_u32(out.strides(axes[2]), "Scatter", out);
+    params.out_strides[0] = scatter_index_offset(*idx_c, out, "Scatter");
+  }
   params.matrix_m = no_index ? 0u : checked_u32(out.strides(axes[0]), "Scatter", out);
   params.rhs_offset = no_index ? 0u : scatter_index_offset(*idx, out, "Scatter");
   params.output_offset = checked_item_offset(out, out.size(), "Scatter", out);
@@ -5456,18 +5706,18 @@ void Scatter::eval_gpu(const std::vector<array>& inputs, array& out) {
   if (is_sum && (out.dtype() == int32 || out.dtype() == uint32)) {
     // Phase 6: integer atomicAdd. Integer addition is associative, so
     // the result is deterministic even under duplicate indices. The
-    // multi-index kernel binds both index arrays; the fourth slot of
-    // the array stays unbound for the single-index path.
-    std::array<omarchy::ComputeBinding, 4> bindings{
-        binding(out), binding(*upd), binding(*idx)};
-    if (multi_index) {
-      bindings[3] = binding(*idx_b);
+    // multi-index kernel binds every index array; unused slots of the
+    // array stay unbound for the narrower paths.
+    std::array<omarchy::ComputeBinding, 5> bindings{
+        binding(out), binding(*upd), binding(*idx), binding(*idx_b)};
+    if (triple_index) {
+      bindings[4] = binding(*idx_c);
     }
+    uint32_t bound = triple_index ? 5u : (multi_index ? 4u : 3u);
     params.operation = 6;
     encoder.dispatch_compute(
         kernel,
-        std::span<const omarchy::ComputeBinding>(
-            bindings.data(), multi_index ? 4u : 3u),
+        std::span<const omarchy::ComputeBinding>(bindings.data(), bound),
         params,
         omarchy::compute_dispatch_group_count(elements));
     return;
@@ -5493,16 +5743,22 @@ void Scatter::eval_gpu(const std::vector<array>& inputs, array& out) {
         : 0u;
     array scratch = make_u32_scratch(out.size(), encoder);
     dispatch_clear_u32(scratch, clear_value, encoder);
-    std::array<omarchy::ComputeBinding, 5> bindings{
+    std::array<omarchy::ComputeBinding, 6> bindings{
         binding(out),
         binding(*upd),
         binding(*idx),
         binding(*idx_b),
+        binding(*idx_c),
         binding(scratch)};
+    // Scratch rides the last bound slot of each variant: binding 3 for
+    // the single-index kernel, 4 for the multi-index kernel, 5 for the
+    // triple-index kernel.
     if (!multi_index) {
       bindings[3] = binding(scratch);
+    } else if (!triple_index) {
+      bindings[4] = binding(scratch);
     }
-    uint32_t bound = multi_index ? 5u : 4u;
+    uint32_t bound = triple_index ? 6u : (multi_index ? 5u : 4u);
     uint32_t accumulate;
     uint32_t finalize;
     if (float_sum) {
@@ -5555,22 +5811,26 @@ void Scatter::eval_gpu(const std::vector<array>& inputs, array& out) {
   dispatch_clear_u32(scratch, clear_value, encoder);
   // The multi-index kernel moves scratch to binding 4 and binds the
   // second index array at binding 3; the span width follows the case.
-  std::array<omarchy::ComputeBinding, 5> bindings{
+  std::array<omarchy::ComputeBinding, 6> bindings{
       binding(out),
       binding(*upd),
       binding(*idx),
       binding(*idx_b),
+      binding(*idx_c),
       binding(scratch)};
-  // The single-index shader keeps the rank scratch at binding 3 (the
-  // multi-index variant moves it to 4 for the second index array).
+  // Scratch rides the last bound slot of each variant: binding 3 for
+  // the single-index kernel, 4 for the multi-index kernel, 5 for the
+  // triple-index kernel.
   // Without this rebind, binding 3 carries the indices buffer: pass 1
   // atomically maxes rank words into the indices and pass 2 reads its
   // ranks back out of them, so updates land only where an index value
   // collides with a rank and the indices array is corrupted.
   if (!multi_index) {
     bindings[3] = binding(scratch);
+  } else if (!triple_index) {
+    bindings[4] = binding(scratch);
   }
-  uint32_t bound = multi_index ? 5u : 4u;
+  uint32_t bound = triple_index ? 6u : (multi_index ? 5u : 4u);
   params.operation = phase1;
   encoder.dispatch_compute(
       kernel,
@@ -6136,6 +6396,112 @@ OMARCHY_UNARY(Sinh, SinhOperation)
 void Softmax::eval_gpu(const std::vector<array>& inputs, array& out) {
   dispatch_softmax(name(), inputs.at(0), out, stream());
 }
+// Read-modify-write fold of `upd` into the slice window of `out` that
+// prepare_slice named. Each window position is written at most once, so
+// the fold needs no atomics and stays deterministic. The collapsed
+// window rank caps at four entries; negative strides and dtypes beyond
+// the float/32-bit-int set keep the named refusal, the same boundary
+// the strided-copy engine draws.
+void dispatch_slice_update_reduce(
+    SliceUpdate::ReduceType reduce_type,
+    const array& upd,
+    array& out,
+    int64_t data_offset,
+    const Strides& window_strides) {
+  if (out.dtype() != float32 && out.dtype() != float16 &&
+      out.dtype() != bfloat16 && out.dtype() != int32 &&
+      out.dtype() != uint32) {
+    omarchy::unsupported("SliceUpdate reduce dtype", out);
+  }
+  auto& encoder = omarchy::get_command_encoder(out.primitive().stream());
+  const auto& capabilities = encoder.device().capabilities();
+  if (out.dtype() == float16 &&
+      (!capabilities.shader_float16 ||
+       !capabilities.storage_buffer_16bit_access)) {
+    omarchy::unsupported("SliceUpdate reduce float16 capability", out);
+  }
+  if (out.dtype() == bfloat16 &&
+      (!capabilities.storage_buffer_16bit_access ||
+       !capabilities.shader_int16)) {
+    omarchy::unsupported("SliceUpdate reduce bfloat16 capability", out);
+  }
+  uint32_t operation;
+  switch (reduce_type) {
+    case SliceUpdate::Sum:
+      operation = 0;
+      break;
+    case SliceUpdate::Prod:
+      operation = 1;
+      break;
+    case SliceUpdate::Max:
+      operation = 2;
+      break;
+    default:
+      operation = 3;
+      break;
+  }
+  // A scalar update strides zero across the window; otherwise the
+  // update walks its own layout.
+  bool upd_scalar = upd.data_size() == 1;
+  Strides upd_strides(upd.ndim(), 0);
+  if (!upd_scalar) {
+    upd_strides = upd.strides();
+  }
+  auto [collapsed_shape, collapsed_strides] = collapse_contiguous_dims(
+      upd.shape(), std::vector<Strides>{upd_strides, window_strides});
+  size_t rank = collapsed_shape.size();
+  if (rank > 4) {
+    omarchy::unsupported("SliceUpdate reduce rank", out);
+  }
+  uint32_t count = checked_u32(upd.size(), "SliceUpdate reduce", out);
+  omarchy::ComputeParams params;
+  params.count = count;
+  params.operation = operation;
+  params.dims = static_cast<uint32_t>(rank);
+  params.aux_offset = out.dtype() == int32 ? 1u
+      : out.dtype() == uint32              ? 2u
+                                           : 0u;
+  for (size_t axis = 0; axis < rank; ++axis) {
+    params.shape[axis] = checked_u32(
+        static_cast<size_t>(collapsed_shape[axis]),
+        "SliceUpdate reduce",
+        out);
+    int64_t in_stride = collapsed_strides[0][axis];
+    int64_t out_stride = collapsed_strides[1][axis];
+    if (in_stride < 0 || out_stride < 0) {
+      omarchy::unsupported("negative stride copy", out);
+    }
+    params.in_strides[axis] = static_cast<uint32_t>(in_stride);
+    params.out_strides[axis] = static_cast<uint32_t>(out_stride);
+  }
+  params.lhs_offset =
+      checked_item_offset(upd, upd.size(), "SliceUpdate reduce", out);
+  uint32_t base =
+      checked_item_offset(out, out.size(), "SliceUpdate reduce", out);
+  if (data_offset < 0) {
+    omarchy::unsupported("SliceUpdate reduce window", out);
+  }
+  uint64_t window_base =
+      static_cast<uint64_t>(base) + static_cast<uint64_t>(data_offset);
+  if (!omarchy::compute_index_span_fits(window_base, count)) {
+    omarchy::unsupported("SliceUpdate reduce index span", out);
+  }
+  params.output_offset = static_cast<uint32_t>(window_base);
+  auto kernel = out.dtype() == int32 || out.dtype() == uint32
+      ? omarchy::ComputeKernel::SliceUpdateReduceU32
+      : select_float_kernel(
+            out.dtype(),
+            omarchy::ComputeKernel::SliceUpdateReduceF32,
+            omarchy::ComputeKernel::SliceUpdateReduceF16,
+            omarchy::ComputeKernel::SliceUpdateReduceBF16);
+  std::array<omarchy::ComputeBinding, 2> bindings{
+      binding(upd), binding(out)};
+  encoder.dispatch_compute(
+      kernel,
+      bindings,
+      params,
+      omarchy::compute_dispatch_group_count(count));
+}
 void SliceUpdate::eval_gpu(const std::vector<array>& inputs, array& out) {
   if (out.size() == 0) {
     return;
@@ -6149,12 +6515,8 @@ void SliceUpdate::eval_gpu(const std::vector<array>& inputs, array& out) {
     return;
   }
 
-  // Only the None reduce mode is a plain paste; every other mode needs
-  // read-modify-write shaders.
-  if (reduce_type_ != SliceUpdate::None) {
-    omarchy::unsupported("SliceUpdate reduce", out);
-  }
-
+  // A plain paste rides the strided-copy engine; the reduce modes run
+  // the read-modify-write shader against the copied window.
   auto ctype = in.flags().contiguous && in.size() == in.data_size()
       ? CopyType::Vector
       : CopyType::General;
@@ -6162,6 +6524,12 @@ void SliceUpdate::eval_gpu(const std::vector<array>& inputs, array& out) {
 
   auto [data_offset, out_strides] =
       prepare_slice(out, start_indices_, strides_);
+
+  if (reduce_type_ != SliceUpdate::None) {
+    dispatch_slice_update_reduce(
+        reduce_type_, upd, out, data_offset, out_strides);
+    return;
+  }
 
   copy_gpu_inplace(
       upd,
@@ -6178,10 +6546,7 @@ void Sort::eval_gpu(const std::vector<array>& inputs, array& out) {
   const array& input = inputs.at(0);
   auto& encoder = omarchy::get_command_encoder(out.primitive().stream());
   require_sort_dtype("Sort", input, out, false, encoder);
-  if (state() != input.ndim() - 1) {
-    omarchy::unsupported("non-suffix Sort", out);
-  }
-  dispatch_sort("Sort", input, out, false, encoder);
+  dispatch_sort_any_axis("Sort", input, out, state(), false, encoder);
 }
 void Square::eval_gpu(const std::vector<array>& inputs, array& out) {
   if (out.dtype() == complex64) {
