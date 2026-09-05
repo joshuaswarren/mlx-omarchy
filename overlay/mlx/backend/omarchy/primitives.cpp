@@ -1145,6 +1145,8 @@ omarchy::ComputeKernel select_anyall_kernel(Dtype input_dtype) {
 
 omarchy::ComputeKernel select_reduce_general_kernel(Dtype dtype) {
   switch (dtype) {
+    case bool_:
+      return omarchy::ComputeKernel::ReduceGeneralBool;
     case int32:
       return omarchy::ComputeKernel::ReduceGeneralI32;
     case uint32:
@@ -1258,7 +1260,7 @@ void dispatch_reduce_general(
   Dtype scratch_dtype =
       bool_out ? uint32
                : (issubdtype(input.dtype(), floating) ? float32
-                                                      : input.dtype());
+                                                      : out.dtype());
   uint64_t scratch_elems = static_cast<uint64_t>(output_size) * chunks;
   if (scratch_elems > (1ull << 25)) {
     omarchy::unsupported(
@@ -4924,14 +4926,10 @@ void Reduce::eval_gpu(const std::vector<array>& inputs, array& out) {
     return;
   }
 
-  // The general path: integer dtypes, Prod, Min, and every non-suffix or
-  // strided layout. Float outputs must equal their input; int32 and
-  // uint32 outputs likewise (the op layer promotes bool and small
-  // integers before the primitive, so those never arrive here).
-  if (input.dtype() != out.dtype() ||
-      !(input.dtype() == float32 || input.dtype() == float16 ||
-        input.dtype() == bfloat16 || input.dtype() == int32 ||
-        input.dtype() == uint32)) {
+  bool bool_numeric = input.dtype() == bool_ && out.dtype() == int32 &&
+      (reduce_type == Reduce::Sum || reduce_type == Reduce::Prod);
+  if (!bool_numeric && (input.dtype() != out.dtype() ||
+      !(float_dtype || input.dtype() == int32 || input.dtype() == uint32))) {
     omarchy::unsupported(operation_name + " dtype", out);
   }
   if (float_dtype) {
@@ -5099,6 +5097,7 @@ void Scan::eval_gpu(const std::vector<array>& inputs, array& out) {
 }
 void Scatter::eval_gpu(const std::vector<array>& inputs, array& out) {
   auto [reduce_type, axes] = state();
+  const bool no_index = axes.empty();
   const array& src = inputs.at(0);
   const array& indices = inputs.at(1);
   const array& updates = inputs.back();
@@ -5217,10 +5216,10 @@ void Scatter::eval_gpu(const std::vector<array>& inputs, array& out) {
       ? CopyType::Vector
       : CopyType::General;
   copy_gpu(src, out, copy_type, out.primitive().stream());
-  if (indices.size() == 0) {
+  if (updates.size() == 0 || (!no_index && indices.size() == 0)) {
     return;
   }
-  if (indices.size() > (size_t{1} << 31)) {
+  if (!no_index && indices.size() > (size_t{1} << 31)) {
     omarchy::unsupported("Scatter slot count", out);
   }
   // Materialize non-dense index and update views. Test data_size
@@ -5229,8 +5228,8 @@ void Scatter::eval_gpu(const std::vector<array>& inputs, array& out) {
   // shape names (the lying-contiguous-flag defect family).
   const array* idx = &indices;
   std::optional<array> idx_mat;
-  if (!indices.flags().row_contiguous ||
-      indices.data_size() != indices.size()) {
+  if (!no_index && (!indices.flags().row_contiguous ||
+      indices.data_size() != indices.size())) {
     idx_mat = array(indices.shape(), indices.dtype(), nullptr, {});
     copy_gpu(indices, *idx_mat, CopyType::General, out.primitive().stream());
     encoder.add_temporary(*idx_mat);
@@ -5279,20 +5278,24 @@ void Scatter::eval_gpu(const std::vector<array>& inputs, array& out) {
     encoder.add_temporary(*upd_mat);
     upd = &*upd_mat;
   }
-  uint32_t index_mode = scatter_index_mode(*idx, out, "Scatter");
-  size_t update_ndim = updates.ndim() - indices.ndim();
+  if (no_index) {
+    idx = upd;
+  }
+  uint32_t index_mode = no_index ? 0u : scatter_index_mode(*idx, out, "Scatter");
+  size_t index_ndim = no_index ? 0u : indices.ndim();
+  size_t update_ndim = updates.ndim() - index_ndim;
   if (update_ndim > 4) {
     omarchy::unsupported("Scatter update rank", out);
   }
-  uint32_t count = checked_u32(indices.size(), "Scatter", out);
+  uint32_t count = no_index ? 1u : checked_u32(indices.size(), "Scatter", out);
   omarchy::ComputeParams params;
   // Output element bound for the shader's target guard: update blocks
   // whose trailing dims overflow the output are skipped instead of
   // writing out of range (upstream leaves that undefined).
   params.dims = checked_u32(out.size(), "Scatter", out);
-  params.reduce_size = checked_u32(out.shape(axes[0]), "Scatter", out);
-  params.output_size =
-      checked_u32(updates.size() / indices.size(), "Scatter", out);
+  params.rhs_size = no_index ? 1u : 0u;
+  params.reduce_size = no_index ? 1u : checked_u32(out.shape(axes[0]), "Scatter", out);
+  params.output_size = checked_u32(updates.size() / count, "Scatter", out);
   if (multi_index) {
     // Axis-1 addressing rides fields the single-index kernel never
     // reads: the axis dim in matrix_n, the axis stride in matrix_k,
@@ -5301,19 +5304,15 @@ void Scatter::eval_gpu(const std::vector<array>& inputs, array& out) {
     params.matrix_k = checked_u32(out.strides(axes[1]), "Scatter", out);
     params.lhs_size = scatter_index_offset(*idx_b, out, "Scatter");
   }
-  params.matrix_m = checked_u32(out.strides(axes[0]), "Scatter", out);
-  params.rhs_offset = scatter_index_offset(*idx, out, "Scatter");
+  params.matrix_m = no_index ? 0u : checked_u32(out.strides(axes[0]), "Scatter", out);
+  params.rhs_offset = no_index ? 0u : scatter_index_offset(*idx, out, "Scatter");
   params.output_offset = checked_item_offset(out, out.size(), "Scatter", out);
   params.aux_size = index_mode;
   params.aux_offset = map_code;
   params.flags = checked_u32(update_ndim, "Scatter", out);
   for (size_t i = 0; i < update_ndim; ++i) {
-    // Update trailing dim i is updates.shape(indices.ndim() + i) and
-    // maps onto out dim i; in_strides[i] is that out dim's stride.
-    // Indexing updates from dim 0 instead reads the index-prefix dims
-    // and misroutes every slot past the first.
     params.shape[i] = checked_u32(
-        updates.shape(indices.ndim() + i), "Scatter", out);
+        updates.shape(index_ndim + i), "Scatter", out);
     params.in_strides[i] = checked_u32(out.strides(i), "Scatter", out);
   }
   // The kernel walks update elements: slot = t / output_size. The

@@ -75,6 +75,7 @@
 #include "reduce_general_f32.h"
 #include "reduce_general_i32.h"
 #include "reduce_general_u32.h"
+#include "reduce_general_bool.h"
 #include "logsumexp_bf16.h"
 #include "logsumexp_f16.h"
 #include "logsumexp_f32.h"
@@ -378,6 +379,8 @@ ShaderBytes shader_bytes(ComputeKernel kernel) {
       return {reduce_general_i32, reduce_general_i32_size};
     case ComputeKernel::ReduceGeneralU32:
       return {reduce_general_u32, reduce_general_u32_size};
+    case ComputeKernel::ReduceGeneralBool:
+      return {reduce_general_bool, reduce_general_bool_size};
     case ComputeKernel::AnyAllF32:
       return {anyall_f32, anyall_f32_size};
     case ComputeKernel::AnyAllF16:

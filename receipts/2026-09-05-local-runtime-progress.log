@@ -1,0 +1,51 @@
+[probe] pipeline kernel=228 bytes=0x63634a429d0c size=9544
+[doctest] doctest version is "2.4.12"
+[doctest] run with "--help" for options
+===============================================================================
+[doctest] test cases:  1 |  1 passed | 0 failed | 25 skipped
+[doctest] assertions: 62 | 62 passed | 0 failed |
+[doctest] Status: SUCCESS!
+[probe] pipeline kernel=107 bytes=0x5d5a7d86b700 size=5460
+[probe] pipeline kernel=6 bytes=0x5d5a7d918918 size=2196
+[probe] pipeline kernel=108 bytes=0x5d5a7d86cc54 size=5612
+[probe] pipeline kernel=3 bytes=0x5d5a7d91a614 size=2196
+[probe] pipeline kernel=8 bytes=0x5d5a7d9191ac size=2572
+[probe] pipeline kernel=109 bytes=0x5d5a7d86e240 size=6040
+[probe] pipeline kernel=7 bytes=0x5d5a7d91aea8 size=2260
+[probe] pipeline kernel=122 bytes=0x5d5a7d86f9d8 size=2440
+[probe] pipeline kernel=110 bytes=0x5d5a7d82b8a4 size=9724
+[probe] pipeline kernel=198 bytes=0x5d5a7d84b690 size=11272
+[probe] pipeline kernel=206 bytes=0x5d5a7d857824 size=12264
+[probe] pipeline kernel=5 bytes=0x5d5a7d91b77c size=2488
+[probe] pipeline kernel=111 bytes=0x5d5a7d85f098 size=8028
+[probe] pipeline kernel=112 bytes=0x5d5a7d860ff4 size=8504
+[probe] pipeline kernel=119 bytes=0x5d5a7d82dea0 size=10744
+[probe] pipeline kernel=113 bytes=0x5d5a7d86312c size=6584
+[probe] pipeline kernel=208 bytes=0x5d5a7d835fec size=8320
+[probe] pipeline kernel=116 bytes=0x5d5a7d867cb8 size=4892
+[probe] pipeline kernel=24 bytes=0x5d5a7d8f8a18 size=2176
+[probe] pipeline kernel=117 bytes=0x5d5a7d868fd4 size=5012
+[probe] pipeline kernel=62 bytes=0x5d5a7d8aedc0 size=4980
+[doctest] doctest version is "2.4.12"
+[doctest] run with "--help" for options
+===============================================================================
+[doctest] test cases:   44 |   44 passed | 0 failed | 0 skipped
+[doctest] assertions: 1854 | 1854 passed | 0 failed |
+[doctest] Status: SUCCESS!
+[child/reopen] fresh process device reopen ok
+[probe] pipeline kernel=0 bytes=0x5eb36863b2ac size=21336
+[probe] pipeline kernel=55 bytes=0x5eb36865a5ac size=2276
+[probe] pipeline kernel=24 bytes=0x5eb368632468 size=2176
+[probe] pipeline kernel=21 bytes=0x5eb368626194 size=7580
+[doctest] doctest version is "2.4.12"
+[doctest] run with "--help" for options
+Skipping: a qualifying GPU is present; the refusal path is exercised by the classification tests and this test is meaningless there.
+[receipt] compute queue families expose 1 queue(s)
+Skipping: software Vulkan has no independent GPU execution.
+===============================================================================
+[doctest] test cases:   29 |   29 passed | 0 failed | 0 skipped
+[doctest] assertions: 6256 | 6256 passed | 0 failed |
+[doctest] Status: SUCCESS!
+
+
+Wall time: 18.70 seconds

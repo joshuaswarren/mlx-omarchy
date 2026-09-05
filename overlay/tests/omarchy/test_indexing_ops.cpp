@@ -266,6 +266,40 @@ TEST_CASE("take_along_axis rejects rank beyond the four-slot table") {
 // Scatter: None / Sum / Prod / Max / Min over one index array
 // ---------------------------------------------------------------------------
 
+TEST_CASE("scatter without indices applies update blocks and reducers") {
+  if (!compute_available()) return;
+  auto stream = gpu_stream();
+  std::vector<array> indices;
+  std::vector<int> axes;
+  check_ints(scatter_max(array(1), indices, array(2), axes, stream), {2}, stream);
+  array src({1, 5, -2, 8, 0});
+  array updates({3, 4, -7, -1, 6});
+  check_ints(scatter(src, indices, updates, axes, stream), {3, 4, -7, -1, 6}, stream);
+  check_ints(scatter_add(src, indices, updates, axes, stream), {4, 9, -9, 7, 6}, stream);
+  check_ints(scatter_prod(src, indices, updates, axes, stream), {3, 20, 14, -8, 0}, stream);
+  check_ints(scatter_max(src, indices, updates, axes, stream), {3, 5, -2, 8, 6}, stream);
+  check_ints(scatter_min(src, indices, updates, axes, stream), {1, 4, -7, -1, 0}, stream);
+  array matrix({1, 2, 3, 4, 5, 6}, {2, 3});
+  array block({10, 20, 30, 40}, {2, 2});
+  check_ints(scatter(matrix, indices, block, axes, stream), {10, 20, 3, 30, 40, 6}, stream);
+  auto empty = zeros({0}, int32, stream);
+  check_ints(scatter_add(src, indices, empty, axes, stream), {1, 5, -2, 8, 0}, stream);
+  array real_src({2.0f, 3.0f});
+  array real_updates({5.0f, 4.0f});
+  check_floats(scatter_add(real_src, indices, real_updates, axes, stream), {7, 7}, stream);
+  check_floats(scatter_prod(real_src, indices, real_updates, axes, stream), {10, 12}, stream);
+  std::vector<uint8_t> bit_values{0, 1, 1, 0, 1};
+  std::vector<uint8_t> update_values{1, 0, 1, 1, 0};
+  array bits(bit_values.begin(), Shape{5}, bool_);
+  array bit_updates(update_values.begin(), Shape{5}, bool_);
+  check_ints(astype(scatter(bits, indices, bit_updates, axes, stream), int32, stream),
+             {1, 0, 1, 1, 0}, stream);
+  check_ints(astype(scatter_add(bits, indices, bit_updates, axes, stream), int32, stream),
+             {1, 1, 1, 1, 1}, stream);
+  check_ints(astype(scatter_prod(bits, indices, bit_updates, axes, stream), int32, stream),
+             {0, 0, 1, 0, 0}, stream);
+}
+
 TEST_CASE("scatter none writes every slot of an eight-slot permutation") {
   if (!compute_available()) {
     return;

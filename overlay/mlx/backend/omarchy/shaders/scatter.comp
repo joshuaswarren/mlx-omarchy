@@ -310,19 +310,21 @@ void main() {
       uint slot = t / params.output_size;
       uint block = t - slot * params.output_size;
       uint word_slot = params.aux_size == 2u ? slot + slot : slot;
-      uint word = uint(indices_data.values[params.rhs_offset + word_slot]);
-      uint index = params.reduce_size;
-      if (params.aux_size == 0u) {
-        if (word < 0x80000000u) {
+      uint index = 0u;
+      if (params.rhs_size == 0u) {
+        uint word = uint(indices_data.values[params.rhs_offset + word_slot]);
+        index = params.reduce_size;
+        if (params.aux_size == 0u) {
+          if (word < 0x80000000u) {
+            index = word;
+          }
+        } else if (params.aux_size == 1u) {
           index = word;
-        }
-      } else if (params.aux_size == 1u) {
-        index = word;
-      } else {
-        uint high =
-            uint(indices_data.values[params.rhs_offset + word_slot + 1u]);
-        if (high == 0u) {
-          index = word;
+        } else {
+          uint high = uint(indices_data.values[params.rhs_offset + word_slot + 1u]);
+          if (high == 0u) {
+            index = word;
+          }
         }
       }
       bool in_range = index < params.reduce_size;
