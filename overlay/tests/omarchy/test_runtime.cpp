@@ -46,6 +46,7 @@
 #include "mlx/backend/omarchy/vulkan.h"
 #include "mlx/device.h"
 #include "mlx/ops.h"
+#include "mlx/scheduler.h"
 #include "mlx/stream.h"
 
 using namespace mlx::core;
@@ -188,6 +189,66 @@ int run_child_scenario(const std::string& mode) {
       omarchy::allocator().free(buf);
       std::_Exit(7);
     }
+  }
+  if (mode == "cpu_event_signal_first" || mode == "cpu_event_wait_first") {
+    if (!cpu::is_available()) {
+      return 77;
+    }
+    const bool wait_first = mode == "cpu_event_wait_first";
+    const uint32_t expected = wait_first ? 0xa5a5a5a5u : 0x5a5a5a5au;
+    Stream producer = new_stream(Device::cpu);
+    Stream consumer = new_stream(Device::gpu);
+    auto src = omarchy::allocator().malloc(4096);
+    auto dst = omarchy::allocator().malloc(4096);
+    auto* src_buf = static_cast<omarchy::VulkanBuffer*>(src.ptr());
+    auto* dst_buf = static_cast<omarchy::VulkanBuffer*>(dst.ptr());
+    std::memset(src_buf->data, 0, 4096);
+    std::memset(dst_buf->data, 0, 4096);
+
+    std::promise<void> release_producer;
+    std::shared_future<void> released = release_producer.get_future().share();
+    scheduler::enqueue(producer, [src_buf, released, expected]() {
+      released.wait();
+      std::fill_n(static_cast<uint32_t*>(src_buf->data), 1024, expected);
+    });
+
+    auto& encoder = omarchy::get_command_encoder(consumer);
+    {
+      Event produced{producer};
+      produced.set_value(1);
+      if (!wait_first) {
+        produced.signal(producer);
+      }
+      produced.wait(consumer);
+      if (wait_first) {
+        produced.signal(producer);
+      }
+      encoder.copy_buffer(src_buf->buffer, dst_buf->buffer, 4096);
+    }
+    encoder.commit();
+
+    std::atomic<bool> consumer_returned{false};
+    std::thread waiter([&]() {
+      encoder.synchronize();
+      consumer_returned.store(true);
+    });
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    const bool returned_before_release = consumer_returned.load();
+    release_producer.set_value();
+    waiter.join();
+    synchronize(producer);
+
+    auto* words = static_cast<uint32_t*>(dst_buf->data);
+    const bool correct = words[0] == expected && words[1023] == expected;
+    omarchy::allocator().free(src);
+    omarchy::allocator().free(dst);
+    if (returned_before_release) {
+      return 20;
+    }
+    if (!consumer_returned.load()) {
+      return 21;
+    }
+    return correct ? 0 : 22;
   }
   return 126;
 }
@@ -887,19 +948,80 @@ TEST_CASE("host event bridges a GPU-stream signal") {
   }
   Stream cs = new_stream(Device::cpu);
   Stream gs = new_stream(Device::gpu);
+  auto buf = omarchy::allocator().malloc(16);
+  auto* vkbuf = static_cast<omarchy::VulkanBuffer*>(buf.ptr());
+  auto& encoder = omarchy::get_command_encoder(gs);
   Event e{cs};
   e.set_value(1);
-  e.signal(cs); // host counter path: queued behind cpu-stream work
-  e.wait(); // bounded host wait; joins the queue behind the signal
+  e.signal(cs);
+  e.wait();
   CHECK(e.is_signaled());
 
+  e.wait(gs);
+  encoder.fill_buffer(vkbuf->buffer, 0x11, 16);
+  encoder.commit();
+  encoder.synchronize();
+  CHECK_EQ(static_cast<uint32_t*>(vkbuf->data)[0], 0x11u);
+
   e.set_value(2);
-  e.signal(gs); // GPU stream: the host counter advances at completion
-  // No negative check here: the submission may already have completed by
-  // the time this thread looks, so "not yet signaled" is unobservable.
-  e.wait(); // bounded host wait; joins the completion handler
+  encoder.fill_buffer(vkbuf->buffer, 0x22, 16);
+  e.signal(gs);
+  e.wait(gs);
+  encoder.fill_buffer(vkbuf->buffer, 0x33, 16);
+  encoder.commit();
+  encoder.synchronize();
+  e.wait();
   CHECK(e.is_signaled());
+  CHECK_EQ(static_cast<uint32_t*>(vkbuf->data)[0], 0x33u);
+  omarchy::allocator().free(buf);
 }
+
+TEST_CASE("CPU-produced event gates a GPU consumer without blocking eval") {
+  if (!cpu::is_available()) {
+    skip("requires a development build with the CPU backend enabled.");
+    return;
+  }
+  if (!gpu::is_available()) {
+    skip("no qualifying Vulkan device.");
+    return;
+  }
+
+  auto result = run_child("cpu_event_signal_first", 10);
+  CHECK_FALSE(result.timed_out);
+  CHECK_EQ(result.code, 0);
+}
+
+TEST_CASE("GPU wait before CPU signal keeps producer stream order") {
+  if (!cpu::is_available()) {
+    skip("requires a development build with the CPU backend enabled.");
+    return;
+  }
+  if (!gpu::is_available()) {
+    skip("no qualifying Vulkan device.");
+    return;
+  }
+
+  auto result = run_child("cpu_event_wait_first", 10);
+  CHECK_FALSE(result.timed_out);
+  CHECK_EQ(result.code, 0);
+}
+
+TEST_CASE("CPU-only event keeps scheduler errors and needs no GPU") {
+  if (!cpu::is_available()) {
+    skip("requires a development build with the CPU backend enabled.");
+    return;
+  }
+
+  Stream producer = new_stream(Device::cpu);
+  Event produced{producer};
+  produced.set_value(1);
+  scheduler::enqueue(producer, []() {
+    throw std::runtime_error("cpu producer failed");
+  });
+  produced.signal(producer);
+  CHECK_THROWS_WITH(produced.wait(), "cpu producer failed");
+}
+
 TEST_CASE("device_info returns stable references under concurrent access") {
   if (!gpu::is_available()) {
     skip("no qualifying Vulkan device.");
