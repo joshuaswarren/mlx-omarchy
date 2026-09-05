@@ -37,22 +37,46 @@ def kind_of(msg):
 
 
 def main():
+    if len(sys.argv) < 2:
+        print("ERROR: report directory argument is required", file=sys.stderr)
+        return 2
     xml_dir = sys.argv[1]
     csv_path = None
     if "--csv" in sys.argv:
-        csv_path = sys.argv[sys.argv.index("--csv") + 1]
+        index = sys.argv.index("--csv")
+        if index + 1 == len(sys.argv):
+            print("ERROR: --csv requires an output path", file=sys.stderr)
+            return 2
+        csv_path = sys.argv[index + 1]
+
+    if not os.path.isdir(xml_dir):
+        print(f"ERROR: report directory not found: {xml_dir}", file=sys.stderr)
+        return 2
+    xml_files = sorted(glob.glob(f"{xml_dir}/*.xml"))
+    if not xml_files:
+        print(f"ERROR: no XML reports in directory: {xml_dir}", file=sys.stderr)
+        return 2
+
     kinds = collections.Counter()
     named = collections.Counter()
     asserts = []
     rows = []
-    for xf in sorted(glob.glob(f"{xml_dir}/*.xml")):
+    for xf in xml_files:
         stem = os.path.basename(xf)[:-4]
         try:
             tree = ET.parse(xf)
-        except Exception as e:
-            print(f"PARSE-ERROR {stem}: {e}", file=sys.stderr)
-            continue
-        for tc in tree.findall(".//testcase"):
+        except ET.ParseError as e:
+            print(f"ERROR: malformed XML report {xf}: {e}", file=sys.stderr)
+            return 2
+        except OSError as e:
+            print(f"ERROR: cannot read XML report {xf}: {e}", file=sys.stderr)
+            return 2
+        cases = tree.findall(".//testcase")
+        if not any(tc.find("skipped") is None for tc in cases):
+            print(f"ERROR: XML report has no executed test cases: {xf}",
+                  file=sys.stderr)
+            return 2
+        for tc in cases:
             for fail in list(tc.findall("failure")) + list(tc.findall("error")):
                 msg = fail.get("message") or (fail.text or "")
                 k, detail = kind_of(msg)
@@ -76,7 +100,8 @@ def main():
     print(f"\nAssertionError cases ({len(asserts)}):")
     for stem, case, msg in asserts:
         print(f"  {stem}::{case}\n      {msg}")
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())
