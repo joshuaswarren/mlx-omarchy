@@ -69,7 +69,10 @@ def main():
         executed_total += len(cases)
         for c in cases:
             a = c.find("OverallResultsAsserts")
-            if a is None or a.get("test_case_success") != "false":
+            if a is None or a.get("test_case_success") not in ("true", "false"):
+                print(f"ERROR: incomplete test case in {xf}", file=sys.stderr)
+                return 2
+            if a.get("test_case_success") == "true":
                 continue
             name = c.get("name")
             excs, noexc = [], []

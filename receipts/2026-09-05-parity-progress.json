@@ -2,7 +2,10 @@
   "date": "2026-09-05",
   "status": "development-branch-not-release-qualified",
   "integration_source": "32ae61133b19eb7cde5921d88bf4e08c7cb02f62",
-  "upstream": {"version": "0.32.2", "commit": "1f8e74e3f12f31365464a6867c6579f0e9b29d85"},
+  "upstream": {
+    "version": "0.32.2",
+    "commit": "1f8e74e3f12f31365464a6867c6579f0e9b29d85"
+  },
   "integrated_changes": [
     "Higher-rank Vulkan reductions",
     "Affine GPU quantization and all-negative group correction",
@@ -13,9 +16,14 @@
     "commands": [
       "bash -n tools/run-upstream-suite.sh",
       "python3 /tmp/check-upstream-report-parsers.py tools/run-upstream-suite.sh",
-      "python3 -m unittest tests.test_upstream_suite tests.test_wheel_pins tests.test_mlx_provenance"
+      "python3 -m unittest tests.test_upstream_suite tests.test_wheel_pins tests.test_mlx_provenance",
+      "python3 -m unittest tests.test_upstream_suite tests.test_analyze_upstream_suite tests.test_analyze_py_suite tests.test_wheel_pins tests.test_mlx_provenance"
     ],
-    "observed_results": {"shell_syntax": "pass", "embedded_parser_smoke_cases_passed": 14, "unittest_tests_passed": 12},
+    "observed_results": {
+      "shell_syntax": "pass",
+      "embedded_parser_smoke_cases_passed": 14,
+      "unittest_tests_passed": 26
+    },
     "scope": "Runner and provenance tooling only. Not upstream functional or M1 hardware qualification. The parser smoke script is a temporary local check; the empty-run regression is retained in tests/test_upstream_suite.py."
   },
   "performance_candidate": {
@@ -42,7 +50,18 @@
     "Integration worker reported full reduction-suite SIGSEGV in int32 multi-axis sum visits every reduced element: 19 cases, 18 passed, 1 failed, 2577 passing assertions before crash. No preserved stack or core; source diagnosis remains open.",
     "The current integrated source has not completed the full pinned upstream test suite on M1.",
     "Matched native macOS performance comparison has not been completed.",
-    "Compiled bfloat16 and large single-evaluation queue issues remain unresolved."
+    "Compiled bfloat16 and large single-evaluation queue issues remain unresolved.",
+    "Affine quantization tests use a Metal-source transcription, not an independent pinned M1 execution fixture; CPU and Metal quantizer conventions differ. Independent native fixture remains required."
   ],
-  "claims": {"full_functional_parity": false, "native_performance_parity": false, "release_qualified": false}
+  "claims": {
+    "full_functional_parity": false,
+    "native_performance_parity": false,
+    "release_qualified": false
+  },
+  "runner_changes": [
+    "Prepare the pinned source before qualification and reject uncommitted source inputs",
+    "Use a fresh per-run C++ build and retain binary hash/source revision",
+    "Verify installed Python binaries against the claimed wheel and require its revision stamp to match source",
+    "Retain full-scope FFT, export/import and linalg failures; reject empty, malformed and incomplete reports"
+  ]
 }
