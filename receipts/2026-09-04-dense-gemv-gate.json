@@ -1,0 +1,918 @@
+{
+  "schema": "dense-gemv-gate-receipt/1",
+  "created_utc": "2026-09-05T01:43:41Z",
+  "title": "MLX_OMARCHY_DENSE_GEMV paired identity+performance gate, candidate 8bf15b3, native M1 (Linux aarch64)",
+  "decision": {
+    "verdict": "REJECT_DEFAULT_ADOPTION",
+    "dense_gemv_default_stays": "OFF (MLX_OMARCHY_DENSE_GEMV unset => 0)",
+    "not_a_claim": "This is NOT a correctness-pass on the whole model. It is a paired A/B gate on one 4-bit 0.5B model with digest-level identity checks.",
+    "rationale": "DENSE_GEMV=1 changed long-decode-128 output on ALL 5 ON runs (digest f873dc2bdd34c0fe vs canonical 4cc08910089477fd). An output-changing optimization cannot ship as a default. ON-side long128 timings (+5.28% median decode) are NOT comparable because the output changed. Digest-level PASS on short32 and ctx1024 plus their timing deltas (decode +1.56% and +14.51% median) remain hypothesis-grade only."
+  },
+  "integration": "Candidate removed from integration source after the failed gate; retained on the dense-gemv/m1-decode experimental branch.",
+  "identity_gate_note": "The paired matrix retained 64-bit digests, not full generated-ID arrays. Its full-ID preservation requirement was not met. Matching digests do not prove full-stream identity; the first differing long128 token index is unknown. The separate short32 smoke below contains full arrays and has its own limited identity evidence.",
+  "provenance": {
+    "candidate_commit": "8bf15b3cbd41c29347000ca19a7f207f1cfaaba3",
+    "candidate_short": "8bf15b3",
+    "wheel": {
+      "filename": "mlx_omarchy-0.32.2.dev202609042003+8bf15b3-cp314-cp314-linux_aarch64.whl",
+      "path_redacted": "~/benchq/perf-build.sH4lFbqd/mlx_omarchy-0.32.2.dev202609042003+8bf15b3-cp314-cp314-linux_aarch64.whl",
+      "sha256": "36a1febeee22c62fd2185efff097d933a382d234f207910277b2e762c0446a99",
+      "sha256_status": "recorded by orchestrator at build time; wheel not present on this workstation so not re-hashed here"
+    },
+    "installed_binary_provenance_per_run": {
+      "mlx_omarchy": {
+        "dist_version": "0.32.2.dev202609042003+8bf15b3",
+        "mx_version": "0.32.2.dev202609042003+8bf15b3",
+        "verified": "match",
+        "version_match": true,
+        "files": [
+          {
+            "path": "mlx/core.cpython-314-aarch64-linux-gnu.so",
+            "sha256": "4ad850da16c300ea9f60aa7247f034f358aa16d7ba2fd146979a01c867e3cfa5",
+            "record_match": true
+          },
+          {
+            "path": "mlx/lib/libmlx.so",
+            "sha256": "a98e41a89a34630c8c7f3afa8ecb563e38aa68d85eb83fc3eff2662fd1ee568f",
+            "record_match": true
+          }
+        ]
+      },
+      "upstream_mlx": "source install, no dist metadata; mx reports 0.32.2.dev202609042003+8bf15b3",
+      "harness_commit": "a34cdc5"
+    },
+    "model": {
+      "model_id": "qwen25-0.5b-4bit",
+      "repo": "mlx-community/Qwen2.5-0.5B-Instruct-4bit",
+      "revision": "a5339a4131f135d0fdc6a5c8b5bbed2753bbe0f3",
+      "revision_class": "pinned",
+      "pin_verified_in_all_10_files": true
+    },
+    "host": {
+      "system": "Linux",
+      "machine": "aarch64",
+      "python": "3.14.7",
+      "os": "Omarchy",
+      "kernel": "7.1.6-1-1-ARCH",
+      "memsize_bytes": 16228417536,
+      "gpu": {
+        "device": "Apple M1 (G13G B1)",
+        "vulkan_driver": "Honeykrisp"
+      },
+      "host_label": "jwm1-linux",
+      "gpu_arch_note": "native Apple M1, Vulkan Honeykrisp"
+    },
+    "packages": {
+      "mlx": null,
+      "mlx-omarchy": "0.32.2.dev202609042003+8bf15b3",
+      "mlx-lm": "0.31.3",
+      "transformers": "5.16.1",
+      "numpy": "2.5.2"
+    },
+    "power": {
+      "source": "AC",
+      "raw": "macsmc-ac: online"
+    },
+    "env_per_run": {
+      "set": {
+        "MLX_OMARCHY_DENSE_GEMV": "0 (off side) / 1 (on side)",
+        "MLX_OMARCHY_FUSED_CHAIN": "0",
+        "MLX_OMARCHY_ROPE_BF16_DIRECT": "0",
+        "MLX_OMARCHY_SDPA_BF16_FAST": "0"
+      },
+      "unset": [
+        "MLX_OMARCHY_QMM_TILE",
+        "MLX_DISABLE_COMPILE",
+        "MLX_OMARCHY_GPU_PROFILE"
+      ],
+      "invocation": "env -u MLX_DISABLE_COMPILE bench_matrix ...",
+      "clean_check_per_run_file": {
+        "status": "clean",
+        "scanned": 234
+      }
+    }
+  },
+  "commands": {
+    "driver_script_verbatim": "#!/bin/bash\nset -euo pipefail\nB=$HOME/benchq/logs/dense-gate-8bf15b3cbd41c29347000ca19a7f207f1cfaaba3\nH=$HOME/src/mlx-matrix-harness-a34cdc5\nMANIFEST=$HOME/benchq/logs/performance-final-db10f53-20260904-batch4/manifest.q4-compile-unset.json\nPY=$HOME/benchq/perf-build.sH4lFbqd/venv/bin/python\nWHEEL=$HOME/benchq/perf-build.sH4lFbqd/mlx_omarchy-0.32.2.dev202609042003+8bf15b3-cp314-cp314-linux_aarch64.whl\ncd \"$H\"\nfor i in 1 2 3 4 5; do\n  if [ $((i % 2)) -eq 1 ]; then order=\"off on\"; else order=\"on off\"; fi\n  for side in $order; do\n    if [ \"$side\" = off ]; then export MLX_OMARCHY_DENSE_GEMV=0; else export MLX_OMARCHY_DENSE_GEMV=1; fi\n    export MLX_OMARCHY_FUSED_CHAIN=0 MLX_OMARCHY_ROPE_BF16_DIRECT=0 MLX_OMARCHY_SDPA_BF16_FAST=0\n    unset MLX_OMARCHY_QMM_TILE MLX_DISABLE_COMPILE MLX_OMARCHY_GPU_PROFILE\n    echo \"[$(date -Is)] pair$i $side DENSE=$MLX_OMARCHY_DENSE_GEMV start\" >> \"$B/pairs.progress\"\n    env -u MLX_DISABLE_COMPILE \"$PY\" scripts/bench_matrix.py --mode run --manifest \"$MANIFEST\" --python \"$PY\" --wheel \"$WHEEL\" --host-label jwm1-linux --out \"$B/pair$i-$side.json\" > \"$B/pair$i-$side.stdout\" 2>&1\n    echo \"[$(date -Is)] pair$i $side exit=$?\" >> \"$B/pairs.progress\"\n  done\ndone\necho PAIRS_DONE >> \"$B/pairs.progress\"\n",
+    "driver_script_path_redacted": "~/benchq/logs/dense-gate-8bf15b3cbd41c29347000ca19a7f207f1cfaaba3/pairs.sh (executed from ~/src/mlx-matrix-harness-a34cdc5)",
+    "bench_matrix_invocation": "env -u MLX_DISABLE_COMPILE <venv python> scripts/bench_matrix.py --mode run --manifest ~/benchq/logs/performance-final-db10f53-20260904-batch4/manifest.q4-compile-unset.json --python <venv python> --wheel <wheel> --host-label jwm1-linux --out pair<i>-<side>.json",
+    "per_workload_bench_decode_cmd": {
+      "short-decode-32": "~/benchq/perf-build.sH4lFbqd/venv/bin/python ~/src/mlx-matrix-harness-a34cdc5/scripts/bench_decode.py --model ~/.cache/huggingface/hub/models--mlx-community--Qwen2.5-0.5B-Instruct-4bit/snapshots/a5339a4131f135d0fdc6a5c8b5bbed2753bbe0f3 --prompt Hi --tokens 32 --temp 0.0 --seed 0 --warmup-tokens 4 --wheel ~/benchq/perf-build.sH4lFbqd/mlx_omarchy-0.32.2.dev202609042003+8bf15b3-cp314-cp314-linux_aarch64.whl",
+      "long-decode-128": "~/benchq/perf-build.sH4lFbqd/venv/bin/python ~/src/mlx-matrix-harness-a34cdc5/scripts/bench_decode.py --model ~/.cache/huggingface/hub/models--mlx-community--Qwen2.5-0.5B-Instruct-4bit/snapshots/a5339a4131f135d0fdc6a5c8b5bbed2753bbe0f3 --prompt You are reviewing a measurement protocol for a small language-model benchmark. The benchmark runs the same workload matrix on two operating systems and compares prefill and decode throughput. Each leg loads one pinned model snapshot, applies the model chat template to the prompt, runs greedy decoding with a fixed random seed, and records the prompt phase, the per-token phase, the generated token count, a hash of the generated token ids, and peak memory. A leg is valid only when the model snapshot revision matches the manifest pin, the power state is recorded, and no other model-serving process is holding the accelerator. The runner never downloads models on an offline host; a missing snapshot is reported as skipped, never as a pass. Provenance for each run captures the chip, core count, memory, operating system version and build, Python version, MLX and mlx-lm versions, the GPU driver identity where available, the exact source commit, and whether the source tree was dirty. Hostnames, user names, and serial numbers are deliberately excluded from the recorded output. Timing on a machine that is also serving other model processes is labeled contended and is not compared against clean numbers. --tokens 128 --temp 0.0 --seed 0 --warmup-tokens 4 --wheel ~/benchq/perf-build.sH4lFbqd/mlx_omarchy-0.32.2.dev202609042003+8bf15b3-cp314-cp314-linux_aarch64.whl",
+      "longctx-1024-decode-32": "~/benchq/perf-build.sH4lFbqd/venv/bin/python ~/src/mlx-matrix-harness-a34cdc5/scripts/bench_decode.py --model ~/.cache/huggingface/hub/models--mlx-community--Qwen2.5-0.5B-Instruct-4bit/snapshots/a5339a4131f135d0fdc6a5c8b5bbed2753bbe0f3 --prompt You are reviewing a measurement protocol for a small language-model benchmark. The benchmark runs the same workload matrix on two operating systems and compares prefill and decode throughput. Each leg loads one pinned model snapshot, applies the model chat template to the prompt, runs greedy decoding with a fixed random seed, and records the prompt phase, the per-token phase, the generated token count, a hash of the generated token ids, and peak memory. A leg is valid only when the model snapshot revision matches the manifest pin, the power state is recorded, and no other model-serving process is holding the accelerator. The runner never downloads models on an offline host; a missing snapshot is reported as skipped, never as a pass. Provenance for each run captures the chip, core count, memory, operating system version and build, Python version, MLX and mlx-lm versions, the GPU driver identity where available, the exact source commit, and whether the source tree was dirty. Hostnames, user names, and serial numbers are deliberately excluded from the recorded output. Timing on a machine that is also serving other model processes is labeled contended and is not compared against clean numbers. Checkpoint: the runner records the prefill duration, the pinned decode length, the generated token identity, and the peak memory before the next workload starts. Entry 1 of 20. Checkpoint: the runner records the prefill duration, the pinned decode length, the generated token identity, and the peak memory before the next workload starts. Entry 2 of 20. Checkpoint: the runner records the prefill duration, the pinned decode length, the generated token identity, and the peak memory before the next workload starts. Entry 3 of 20. Checkpoint: the runner records the prefill duration, the pinned decode length, the generated token identity, and the peak memory before the next workload starts. Entry 4 of 20. Checkpoint: the runner records the prefill duration, the pinned decode length, the generated token identity, and the peak memory before the next workload starts. Entry 5 of 20. Checkpoint: the runner records the prefill duration, the pinned decode length, the generated token identity, and the peak memory before the next workload starts. Entry 6 of 20. Checkpoint: the runner records the prefill duration, the pinned decode length, the generated token identity, and the peak memory before the next workload starts. Entry 7 of 20. Checkpoint: the runner records the prefill duration, the pinned decode length, the generated token identity, and the peak memory before the next workload starts. Entry 8 of 20. Checkpoint: the runner records the prefill duration, the pinned decode length, the generated token identity, and the peak memory before the next workload starts. Entry 9 of 20. Checkpoint: the runner records the prefill duration, the pinned decode length, the generated token identity, and the peak memory before the next workload starts. Entry 10 of 20. Checkpoint: the runner records the prefill duration, the pinned decode length, the generated token identity, and the peak memory before the next workload starts. Entry 11 of 20. Checkpoint: the runner records the prefill duration, the pinned decode length, the generated token identity, and the peak memory before the next workload starts. Entry 12 of 20. Checkpoint: the runner records the prefill duration, the pinned decode length, the generated token identity, and the peak memory before the next workload starts. Entry 13 of 20. Checkpoint: the runner records the prefill duration, the pinned decode length, the generated token identity, and the peak memory before the next workload starts. Entry 14 of 20. Checkpoint: the runner records the prefill duration, the pinned decode length, the generated token identity, and the peak memory before the next workload starts. Entry 15 of 20. Checkpoint: the runner records the prefill duration, the pinned decode length, the generated token identity, and the peak memory before the next workload starts. Entry 16 of 20. Checkpoint: the runner records the prefill duration, the pinned decode length, the generated token identity, and the peak memory before the next workload starts. Entry 17 of 20. Checkpoint: the runner records the prefill duration, the pinned decode length, the generated token identity, and the peak memory before the next workload starts. Entry 18 of 20. Checkpoint: the runner records the prefill duration, the pinned decode length, the generated token identity, and the peak memory before the next workload starts. Entry 19 of 20. Checkpoint: the runner records the prefill duration, the pinned decode length, the generated token identity, and the peak memory before the next workload starts. Entry 20 of 20. --tokens 32 --temp 0.0 --seed 0 --warmup-tokens 4 --wheel ~/benchq/perf-build.sH4lFbqd/mlx_omarchy-0.32.2.dev202609042003+8bf15b3-cp314-cp314-linux_aarch64.whl"
+    },
+    "pair_order_counterbalanced": [
+      "pair1: off,on",
+      "pair2: on,off",
+      "pair3: off,on",
+      "pair4: on,off",
+      "pair5: off,on"
+    ],
+    "launched_local": "2026-09-04T20:11:32-05:00",
+    "all_10_runs_exit_code_0": true
+  },
+  "runs_30_legs": {
+    "short-decode-32": {
+      "off": [
+        {
+          "pair_index": 1,
+          "source_file": "pair1-off.json",
+          "run_started_utc": "2026-09-05T01:11:51Z",
+          "leg_id": "qwen25-0.5b-4bit:short-decode-32",
+          "prompt_id": "short",
+          "prompt_tokens": 30,
+          "requested_tokens": 32,
+          "decode_tokens": 31,
+          "generated_ids_n": 32,
+          "decode_tok_s": 31.45,
+          "prefill_s": 0.372,
+          "decode_mean_per_token_ms": 31.8,
+          "prefill_tok_s": 80.645,
+          "generated_ids_sha256_16": "7fd25a869ff21678",
+          "exit_code": 0,
+          "contended": false
+        },
+        {
+          "pair_index": 2,
+          "source_file": "pair2-off.json",
+          "run_started_utc": "2026-09-05T01:13:09Z",
+          "leg_id": "qwen25-0.5b-4bit:short-decode-32",
+          "prompt_id": "short",
+          "prompt_tokens": 30,
+          "requested_tokens": 32,
+          "decode_tokens": 31,
+          "generated_ids_n": 32,
+          "decode_tok_s": 31.52,
+          "prefill_s": 0.371,
+          "decode_mean_per_token_ms": 31.7,
+          "prefill_tok_s": 80.863,
+          "generated_ids_sha256_16": "7fd25a869ff21678",
+          "exit_code": 0,
+          "contended": false
+        },
+        {
+          "pair_index": 3,
+          "source_file": "pair3-off.json",
+          "run_started_utc": "2026-09-05T01:13:35Z",
+          "leg_id": "qwen25-0.5b-4bit:short-decode-32",
+          "prompt_id": "short",
+          "prompt_tokens": 30,
+          "requested_tokens": 32,
+          "decode_tokens": 31,
+          "generated_ids_n": 32,
+          "decode_tok_s": 31.54,
+          "prefill_s": 0.372,
+          "decode_mean_per_token_ms": 31.7,
+          "prefill_tok_s": 80.645,
+          "generated_ids_sha256_16": "7fd25a869ff21678",
+          "exit_code": 0,
+          "contended": false
+        },
+        {
+          "pair_index": 4,
+          "source_file": "pair4-off.json",
+          "run_started_utc": "2026-09-05T01:14:53Z",
+          "leg_id": "qwen25-0.5b-4bit:short-decode-32",
+          "prompt_id": "short",
+          "prompt_tokens": 30,
+          "requested_tokens": 32,
+          "decode_tokens": 31,
+          "generated_ids_n": 32,
+          "decode_tok_s": 31.45,
+          "prefill_s": 0.37,
+          "decode_mean_per_token_ms": 31.8,
+          "prefill_tok_s": 81.081,
+          "generated_ids_sha256_16": "7fd25a869ff21678",
+          "exit_code": 0,
+          "contended": false
+        },
+        {
+          "pair_index": 5,
+          "source_file": "pair5-off.json",
+          "run_started_utc": "2026-09-05T01:15:20Z",
+          "leg_id": "qwen25-0.5b-4bit:short-decode-32",
+          "prompt_id": "short",
+          "prompt_tokens": 30,
+          "requested_tokens": 32,
+          "decode_tokens": 31,
+          "generated_ids_n": 32,
+          "decode_tok_s": 31.49,
+          "prefill_s": 0.368,
+          "decode_mean_per_token_ms": 31.8,
+          "prefill_tok_s": 81.522,
+          "generated_ids_sha256_16": "7fd25a869ff21678",
+          "exit_code": 0,
+          "contended": false
+        }
+      ],
+      "on": [
+        {
+          "pair_index": 1,
+          "source_file": "pair1-on.json",
+          "run_started_utc": "2026-09-05T01:12:17Z",
+          "leg_id": "qwen25-0.5b-4bit:short-decode-32",
+          "prompt_id": "short",
+          "prompt_tokens": 30,
+          "requested_tokens": 32,
+          "decode_tokens": 31,
+          "generated_ids_n": 32,
+          "decode_tok_s": 31.99,
+          "prefill_s": 0.376,
+          "decode_mean_per_token_ms": 31.3,
+          "prefill_tok_s": 79.787,
+          "generated_ids_sha256_16": "7fd25a869ff21678",
+          "exit_code": 0,
+          "contended": false
+        },
+        {
+          "pair_index": 2,
+          "source_file": "pair2-on.json",
+          "run_started_utc": "2026-09-05T01:12:43Z",
+          "leg_id": "qwen25-0.5b-4bit:short-decode-32",
+          "prompt_id": "short",
+          "prompt_tokens": 30,
+          "requested_tokens": 32,
+          "decode_tokens": 31,
+          "generated_ids_n": 32,
+          "decode_tok_s": 31.98,
+          "prefill_s": 0.379,
+          "decode_mean_per_token_ms": 31.3,
+          "prefill_tok_s": 79.156,
+          "generated_ids_sha256_16": "7fd25a869ff21678",
+          "exit_code": 0,
+          "contended": false
+        },
+        {
+          "pair_index": 3,
+          "source_file": "pair3-on.json",
+          "run_started_utc": "2026-09-05T01:14:02Z",
+          "leg_id": "qwen25-0.5b-4bit:short-decode-32",
+          "prompt_id": "short",
+          "prompt_tokens": 30,
+          "requested_tokens": 32,
+          "decode_tokens": 31,
+          "generated_ids_n": 32,
+          "decode_tok_s": 31.94,
+          "prefill_s": 0.37,
+          "decode_mean_per_token_ms": 31.3,
+          "prefill_tok_s": 81.081,
+          "generated_ids_sha256_16": "7fd25a869ff21678",
+          "exit_code": 0,
+          "contended": false
+        },
+        {
+          "pair_index": 4,
+          "source_file": "pair4-on.json",
+          "run_started_utc": "2026-09-05T01:14:28Z",
+          "leg_id": "qwen25-0.5b-4bit:short-decode-32",
+          "prompt_id": "short",
+          "prompt_tokens": 30,
+          "requested_tokens": 32,
+          "decode_tokens": 31,
+          "generated_ids_n": 32,
+          "decode_tok_s": 32.04,
+          "prefill_s": 0.366,
+          "decode_mean_per_token_ms": 31.2,
+          "prefill_tok_s": 81.967,
+          "generated_ids_sha256_16": "7fd25a869ff21678",
+          "exit_code": 0,
+          "contended": false
+        },
+        {
+          "pair_index": 5,
+          "source_file": "pair5-on.json",
+          "run_started_utc": "2026-09-05T01:15:46Z",
+          "leg_id": "qwen25-0.5b-4bit:short-decode-32",
+          "prompt_id": "short",
+          "prompt_tokens": 30,
+          "requested_tokens": 32,
+          "decode_tokens": 31,
+          "generated_ids_n": 32,
+          "decode_tok_s": 31.85,
+          "prefill_s": 0.382,
+          "decode_mean_per_token_ms": 31.4,
+          "prefill_tok_s": 78.534,
+          "generated_ids_sha256_16": "7fd25a869ff21678",
+          "exit_code": 0,
+          "contended": false
+        }
+      ]
+    },
+    "long-decode-128": {
+      "off": [
+        {
+          "pair_index": 1,
+          "source_file": "pair1-off.json",
+          "run_started_utc": "2026-09-05T01:11:51Z",
+          "leg_id": "qwen25-0.5b-4bit:long-decode-128",
+          "prompt_id": "long",
+          "prompt_tokens": 262,
+          "requested_tokens": 128,
+          "decode_tokens": 127,
+          "generated_ids_n": 128,
+          "decode_tok_s": 28.97,
+          "prefill_s": 1.391,
+          "decode_mean_per_token_ms": 34.5,
+          "prefill_tok_s": 188.354,
+          "generated_ids_sha256_16": "4cc08910089477fd",
+          "exit_code": 0,
+          "contended": false
+        },
+        {
+          "pair_index": 2,
+          "source_file": "pair2-off.json",
+          "run_started_utc": "2026-09-05T01:13:09Z",
+          "leg_id": "qwen25-0.5b-4bit:long-decode-128",
+          "prompt_id": "long",
+          "prompt_tokens": 262,
+          "requested_tokens": 128,
+          "decode_tokens": 127,
+          "generated_ids_n": 128,
+          "decode_tok_s": 29.05,
+          "prefill_s": 1.402,
+          "decode_mean_per_token_ms": 34.4,
+          "prefill_tok_s": 186.876,
+          "generated_ids_sha256_16": "4cc08910089477fd",
+          "exit_code": 0,
+          "contended": false
+        },
+        {
+          "pair_index": 3,
+          "source_file": "pair3-off.json",
+          "run_started_utc": "2026-09-05T01:13:35Z",
+          "leg_id": "qwen25-0.5b-4bit:long-decode-128",
+          "prompt_id": "long",
+          "prompt_tokens": 262,
+          "requested_tokens": 128,
+          "decode_tokens": 127,
+          "generated_ids_n": 128,
+          "decode_tok_s": 28.99,
+          "prefill_s": 1.387,
+          "decode_mean_per_token_ms": 34.5,
+          "prefill_tok_s": 188.897,
+          "generated_ids_sha256_16": "4cc08910089477fd",
+          "exit_code": 0,
+          "contended": false
+        },
+        {
+          "pair_index": 4,
+          "source_file": "pair4-off.json",
+          "run_started_utc": "2026-09-05T01:14:53Z",
+          "leg_id": "qwen25-0.5b-4bit:long-decode-128",
+          "prompt_id": "long",
+          "prompt_tokens": 262,
+          "requested_tokens": 128,
+          "decode_tokens": 127,
+          "generated_ids_n": 128,
+          "decode_tok_s": 28.96,
+          "prefill_s": 1.396,
+          "decode_mean_per_token_ms": 34.5,
+          "prefill_tok_s": 187.679,
+          "generated_ids_sha256_16": "4cc08910089477fd",
+          "exit_code": 0,
+          "contended": false
+        },
+        {
+          "pair_index": 5,
+          "source_file": "pair5-off.json",
+          "run_started_utc": "2026-09-05T01:15:20Z",
+          "leg_id": "qwen25-0.5b-4bit:long-decode-128",
+          "prompt_id": "long",
+          "prompt_tokens": 262,
+          "requested_tokens": 128,
+          "decode_tokens": 127,
+          "generated_ids_n": 128,
+          "decode_tok_s": 29.03,
+          "prefill_s": 1.395,
+          "decode_mean_per_token_ms": 34.5,
+          "prefill_tok_s": 187.814,
+          "generated_ids_sha256_16": "4cc08910089477fd",
+          "exit_code": 0,
+          "contended": false
+        }
+      ],
+      "on": [
+        {
+          "pair_index": 1,
+          "source_file": "pair1-on.json",
+          "run_started_utc": "2026-09-05T01:12:17Z",
+          "leg_id": "qwen25-0.5b-4bit:long-decode-128",
+          "prompt_id": "long",
+          "prompt_tokens": 262,
+          "requested_tokens": 128,
+          "decode_tokens": 127,
+          "generated_ids_n": 128,
+          "decode_tok_s": 30.63,
+          "prefill_s": 1.392,
+          "decode_mean_per_token_ms": 32.6,
+          "prefill_tok_s": 188.218,
+          "generated_ids_sha256_16": "f873dc2bdd34c0fe",
+          "exit_code": 0,
+          "contended": false
+        },
+        {
+          "pair_index": 2,
+          "source_file": "pair2-on.json",
+          "run_started_utc": "2026-09-05T01:12:43Z",
+          "leg_id": "qwen25-0.5b-4bit:long-decode-128",
+          "prompt_id": "long",
+          "prompt_tokens": 262,
+          "requested_tokens": 128,
+          "decode_tokens": 127,
+          "generated_ids_n": 128,
+          "decode_tok_s": 30.52,
+          "prefill_s": 1.394,
+          "decode_mean_per_token_ms": 32.8,
+          "prefill_tok_s": 187.948,
+          "generated_ids_sha256_16": "f873dc2bdd34c0fe",
+          "exit_code": 0,
+          "contended": false
+        },
+        {
+          "pair_index": 3,
+          "source_file": "pair3-on.json",
+          "run_started_utc": "2026-09-05T01:14:02Z",
+          "leg_id": "qwen25-0.5b-4bit:long-decode-128",
+          "prompt_id": "long",
+          "prompt_tokens": 262,
+          "requested_tokens": 128,
+          "decode_tokens": 127,
+          "generated_ids_n": 128,
+          "decode_tok_s": 30.76,
+          "prefill_s": 1.384,
+          "decode_mean_per_token_ms": 32.5,
+          "prefill_tok_s": 189.306,
+          "generated_ids_sha256_16": "f873dc2bdd34c0fe",
+          "exit_code": 0,
+          "contended": false
+        },
+        {
+          "pair_index": 4,
+          "source_file": "pair4-on.json",
+          "run_started_utc": "2026-09-05T01:14:28Z",
+          "leg_id": "qwen25-0.5b-4bit:long-decode-128",
+          "prompt_id": "long",
+          "prompt_tokens": 262,
+          "requested_tokens": 128,
+          "decode_tokens": 127,
+          "generated_ids_n": 128,
+          "decode_tok_s": 30.44,
+          "prefill_s": 1.384,
+          "decode_mean_per_token_ms": 32.9,
+          "prefill_tok_s": 189.306,
+          "generated_ids_sha256_16": "f873dc2bdd34c0fe",
+          "exit_code": 0,
+          "contended": false
+        },
+        {
+          "pair_index": 5,
+          "source_file": "pair5-on.json",
+          "run_started_utc": "2026-09-05T01:15:46Z",
+          "leg_id": "qwen25-0.5b-4bit:long-decode-128",
+          "prompt_id": "long",
+          "prompt_tokens": 262,
+          "requested_tokens": 128,
+          "decode_tokens": 127,
+          "generated_ids_n": 128,
+          "decode_tok_s": 30.38,
+          "prefill_s": 1.389,
+          "decode_mean_per_token_ms": 32.9,
+          "prefill_tok_s": 188.625,
+          "generated_ids_sha256_16": "f873dc2bdd34c0fe",
+          "exit_code": 0,
+          "contended": false
+        }
+      ]
+    },
+    "longctx-1024-decode-32": {
+      "off": [
+        {
+          "pair_index": 1,
+          "source_file": "pair1-off.json",
+          "run_started_utc": "2026-09-05T01:11:51Z",
+          "leg_id": "qwen25-0.5b-4bit:longctx-1024-decode-32",
+          "prompt_id": "ctx1024",
+          "prompt_tokens": 1053,
+          "requested_tokens": 32,
+          "decode_tokens": 31,
+          "generated_ids_n": 32,
+          "decode_tok_s": 24.36,
+          "prefill_s": 5.302,
+          "decode_mean_per_token_ms": 41.1,
+          "prefill_tok_s": 198.604,
+          "generated_ids_sha256_16": "7da83f06ec9f001d",
+          "exit_code": 0,
+          "contended": false
+        },
+        {
+          "pair_index": 2,
+          "source_file": "pair2-off.json",
+          "run_started_utc": "2026-09-05T01:13:09Z",
+          "leg_id": "qwen25-0.5b-4bit:longctx-1024-decode-32",
+          "prompt_id": "ctx1024",
+          "prompt_tokens": 1053,
+          "requested_tokens": 32,
+          "decode_tokens": 31,
+          "generated_ids_n": 32,
+          "decode_tok_s": 24.26,
+          "prefill_s": 5.317,
+          "decode_mean_per_token_ms": 41.2,
+          "prefill_tok_s": 198.044,
+          "generated_ids_sha256_16": "7da83f06ec9f001d",
+          "exit_code": 0,
+          "contended": false
+        },
+        {
+          "pair_index": 3,
+          "source_file": "pair3-off.json",
+          "run_started_utc": "2026-09-05T01:13:35Z",
+          "leg_id": "qwen25-0.5b-4bit:longctx-1024-decode-32",
+          "prompt_id": "ctx1024",
+          "prompt_tokens": 1053,
+          "requested_tokens": 32,
+          "decode_tokens": 31,
+          "generated_ids_n": 32,
+          "decode_tok_s": 24.19,
+          "prefill_s": 5.311,
+          "decode_mean_per_token_ms": 41.3,
+          "prefill_tok_s": 198.268,
+          "generated_ids_sha256_16": "7da83f06ec9f001d",
+          "exit_code": 0,
+          "contended": false
+        },
+        {
+          "pair_index": 4,
+          "source_file": "pair4-off.json",
+          "run_started_utc": "2026-09-05T01:14:53Z",
+          "leg_id": "qwen25-0.5b-4bit:longctx-1024-decode-32",
+          "prompt_id": "ctx1024",
+          "prompt_tokens": 1053,
+          "requested_tokens": 32,
+          "decode_tokens": 31,
+          "generated_ids_n": 32,
+          "decode_tok_s": 24.34,
+          "prefill_s": 5.303,
+          "decode_mean_per_token_ms": 41.1,
+          "prefill_tok_s": 198.567,
+          "generated_ids_sha256_16": "7da83f06ec9f001d",
+          "exit_code": 0,
+          "contended": false
+        },
+        {
+          "pair_index": 5,
+          "source_file": "pair5-off.json",
+          "run_started_utc": "2026-09-05T01:15:20Z",
+          "leg_id": "qwen25-0.5b-4bit:longctx-1024-decode-32",
+          "prompt_id": "ctx1024",
+          "prompt_tokens": 1053,
+          "requested_tokens": 32,
+          "decode_tokens": 31,
+          "generated_ids_n": 32,
+          "decode_tok_s": 23.84,
+          "prefill_s": 5.309,
+          "decode_mean_per_token_ms": 41.9,
+          "prefill_tok_s": 198.342,
+          "generated_ids_sha256_16": "7da83f06ec9f001d",
+          "exit_code": 0,
+          "contended": false
+        }
+      ],
+      "on": [
+        {
+          "pair_index": 1,
+          "source_file": "pair1-on.json",
+          "run_started_utc": "2026-09-05T01:12:17Z",
+          "leg_id": "qwen25-0.5b-4bit:longctx-1024-decode-32",
+          "prompt_id": "ctx1024",
+          "prompt_tokens": 1053,
+          "requested_tokens": 32,
+          "decode_tokens": 31,
+          "generated_ids_n": 32,
+          "decode_tok_s": 27.77,
+          "prefill_s": 5.302,
+          "decode_mean_per_token_ms": 36.0,
+          "prefill_tok_s": 198.604,
+          "generated_ids_sha256_16": "7da83f06ec9f001d",
+          "exit_code": 0,
+          "contended": false
+        },
+        {
+          "pair_index": 2,
+          "source_file": "pair2-on.json",
+          "run_started_utc": "2026-09-05T01:12:43Z",
+          "leg_id": "qwen25-0.5b-4bit:longctx-1024-decode-32",
+          "prompt_id": "ctx1024",
+          "prompt_tokens": 1053,
+          "requested_tokens": 32,
+          "decode_tokens": 31,
+          "generated_ids_n": 32,
+          "decode_tok_s": 27.8,
+          "prefill_s": 5.294,
+          "decode_mean_per_token_ms": 36.0,
+          "prefill_tok_s": 198.904,
+          "generated_ids_sha256_16": "7da83f06ec9f001d",
+          "exit_code": 0,
+          "contended": false
+        },
+        {
+          "pair_index": 3,
+          "source_file": "pair3-on.json",
+          "run_started_utc": "2026-09-05T01:14:02Z",
+          "leg_id": "qwen25-0.5b-4bit:longctx-1024-decode-32",
+          "prompt_id": "ctx1024",
+          "prompt_tokens": 1053,
+          "requested_tokens": 32,
+          "decode_tokens": 31,
+          "generated_ids_n": 32,
+          "decode_tok_s": 27.81,
+          "prefill_s": 5.292,
+          "decode_mean_per_token_ms": 36.0,
+          "prefill_tok_s": 198.98,
+          "generated_ids_sha256_16": "7da83f06ec9f001d",
+          "exit_code": 0,
+          "contended": false
+        },
+        {
+          "pair_index": 4,
+          "source_file": "pair4-on.json",
+          "run_started_utc": "2026-09-05T01:14:28Z",
+          "leg_id": "qwen25-0.5b-4bit:longctx-1024-decode-32",
+          "prompt_id": "ctx1024",
+          "prompt_tokens": 1053,
+          "requested_tokens": 32,
+          "decode_tokens": 31,
+          "generated_ids_n": 32,
+          "decode_tok_s": 27.69,
+          "prefill_s": 5.299,
+          "decode_mean_per_token_ms": 36.1,
+          "prefill_tok_s": 198.717,
+          "generated_ids_sha256_16": "7da83f06ec9f001d",
+          "exit_code": 0,
+          "contended": false
+        },
+        {
+          "pair_index": 5,
+          "source_file": "pair5-on.json",
+          "run_started_utc": "2026-09-05T01:15:46Z",
+          "leg_id": "qwen25-0.5b-4bit:longctx-1024-decode-32",
+          "prompt_id": "ctx1024",
+          "prompt_tokens": 1053,
+          "requested_tokens": 32,
+          "decode_tokens": 31,
+          "generated_ids_n": 32,
+          "decode_tok_s": 27.78,
+          "prefill_s": 5.299,
+          "decode_mean_per_token_ms": 36.0,
+          "prefill_tok_s": 198.717,
+          "generated_ids_sha256_16": "7da83f06ec9f001d",
+          "exit_code": 0,
+          "contended": false
+        }
+      ]
+    }
+  },
+  "paired_statistics_recomputed": {
+    "method": "recomputed from the 30 raw per-leg values in this receipt's source pair files; independent of pairs-summary.json",
+    "cross_check": "reproduction of pairs-summary.json medians/minmax/ratios/digest sets: exact match, zero discrepancies",
+    "workloads": {
+      "short-decode-32": {
+        "off": {
+          "n": 5,
+          "median_prefill_s": 0.371,
+          "prefill_min_s": 0.368,
+          "prefill_max_s": 0.372,
+          "median_decode_tok_s": 31.49,
+          "decode_min_tok_s": 31.45,
+          "decode_max_tok_s": 31.54
+        },
+        "on": {
+          "n": 5,
+          "median_prefill_s": 0.376,
+          "prefill_min_s": 0.366,
+          "prefill_max_s": 0.382,
+          "median_decode_tok_s": 31.98,
+          "decode_min_tok_s": 31.85,
+          "decode_max_tok_s": 32.04
+        },
+        "prefill_ratio_on_over_off_per_pair": [
+          1.0108,
+          1.0216,
+          0.9946,
+          0.9892,
+          1.038
+        ],
+        "decode_ratio_on_over_off_per_pair": [
+          1.0172,
+          1.0146,
+          1.0127,
+          1.0188,
+          1.0114
+        ],
+        "decode_ratio_on_over_off_medians": 1.0156,
+        "prefill_ratio_on_over_off_medians": 1.0135
+      },
+      "long-decode-128": {
+        "off": {
+          "n": 5,
+          "median_prefill_s": 1.395,
+          "prefill_min_s": 1.387,
+          "prefill_max_s": 1.402,
+          "median_decode_tok_s": 28.99,
+          "decode_min_tok_s": 28.96,
+          "decode_max_tok_s": 29.05
+        },
+        "on": {
+          "n": 5,
+          "median_prefill_s": 1.389,
+          "prefill_min_s": 1.384,
+          "prefill_max_s": 1.394,
+          "median_decode_tok_s": 30.52,
+          "decode_min_tok_s": 30.38,
+          "decode_max_tok_s": 30.76
+        },
+        "prefill_ratio_on_over_off_per_pair": [
+          1.0007,
+          0.9943,
+          0.9978,
+          0.9914,
+          0.9957
+        ],
+        "decode_ratio_on_over_off_per_pair": [
+          1.0573,
+          1.0506,
+          1.0611,
+          1.0511,
+          1.0465
+        ],
+        "decode_ratio_on_over_off_medians": 1.0528,
+        "prefill_ratio_on_over_off_medians": 0.9957
+      },
+      "longctx-1024-decode-32": {
+        "off": {
+          "n": 5,
+          "median_prefill_s": 5.309,
+          "prefill_min_s": 5.302,
+          "prefill_max_s": 5.317,
+          "median_decode_tok_s": 24.26,
+          "decode_min_tok_s": 23.84,
+          "decode_max_tok_s": 24.36
+        },
+        "on": {
+          "n": 5,
+          "median_prefill_s": 5.299,
+          "prefill_min_s": 5.292,
+          "prefill_max_s": 5.302,
+          "median_decode_tok_s": 27.78,
+          "decode_min_tok_s": 27.69,
+          "decode_max_tok_s": 27.81
+        },
+        "prefill_ratio_on_over_off_per_pair": [
+          1.0,
+          0.9957,
+          0.9964,
+          0.9992,
+          0.9981
+        ],
+        "decode_ratio_on_over_off_per_pair": [
+          1.14,
+          1.1459,
+          1.1496,
+          1.1376,
+          1.1653
+        ],
+        "decode_ratio_on_over_off_medians": 1.1451,
+        "prefill_ratio_on_over_off_medians": 0.9981
+      }
+    }
+  },
+  "identity_verdicts": {
+    "basis": "64-bit generated-ids digest (sha256 first-16-hex) ONLY; full ID arrays not retained in bench_matrix outputs",
+    "short-decode-32": {
+      "verdict": "PASS",
+      "canonical_digest": "7fd25a869ff21678",
+      "off_digests_5": [
+        "7fd25a869ff21678",
+        "7fd25a869ff21678",
+        "7fd25a869ff21678",
+        "7fd25a869ff21678",
+        "7fd25a869ff21678"
+      ],
+      "on_digests_5": [
+        "7fd25a869ff21678",
+        "7fd25a869ff21678",
+        "7fd25a869ff21678",
+        "7fd25a869ff21678",
+        "7fd25a869ff21678"
+      ]
+    },
+    "long-decode-128": {
+      "verdict": "FAIL",
+      "canonical_digest": "4cc08910089477fd",
+      "off_digests_5": [
+        "4cc08910089477fd",
+        "4cc08910089477fd",
+        "4cc08910089477fd",
+        "4cc08910089477fd",
+        "4cc08910089477fd"
+      ],
+      "on_digests_5": [
+        "f873dc2bdd34c0fe",
+        "f873dc2bdd34c0fe",
+        "f873dc2bdd34c0fe",
+        "f873dc2bdd34c0fe",
+        "f873dc2bdd34c0fe"
+      ],
+      "mismatch": "ON digest f873dc2bdd34c0fe on ALL 5 ON runs != canonical 4cc08910089477fd (OFF side and all prior batches)",
+      "first_differing_index": "UNKNOWN (full IDs not preserved)"
+    },
+    "longctx-1024-decode-32": {
+      "verdict": "PASS",
+      "canonical_digest": "7da83f06ec9f001d",
+      "off_digests_5": [
+        "7da83f06ec9f001d",
+        "7da83f06ec9f001d",
+        "7da83f06ec9f001d",
+        "7da83f06ec9f001d",
+        "7da83f06ec9f001d"
+      ],
+      "on_digests_5": [
+        "7da83f06ec9f001d",
+        "7da83f06ec9f001d",
+        "7da83f06ec9f001d",
+        "7da83f06ec9f001d",
+        "7da83f06ec9f001d"
+      ]
+    }
+  },
+  "numerical_evidence": {
+    "dense_gemv_native_standalone": {
+      "file": "dense-case.out",
+      "result": "doctest: test cases 1 passed, 0 failed, 8 skipped; assertions 443 passed, 0 failed; Status: SUCCESS"
+    },
+    "dense_pipelines_created_per_logs": {
+      "kernels": [
+        228,
+        229,
+        230
+      ],
+      "files": [
+        "dense-case.out",
+        "subgroup32-dispatch-evidence.txt"
+      ],
+      "caveat": "probe lines show dense pipeline kernel CREATION (sizes 4908/4992/5476) only; pipeline creation is NOT evidence of an instrumented model dispatch"
+    },
+    "supporting_native_tests": [
+      {
+        "file": "compiled_tape.out",
+        "result": "11 test cases passed, 0 failed; 1765 assertions passed, 0 failed",
+        "note": "run with MLX_OMARCHY_TAPE_PER_NODE_SUBMIT debug switch, diagnostics only"
+      },
+      {
+        "file": "copy_offset.out",
+        "result": "13 test cases passed, 0 failed; 93 assertions passed, 0 failed"
+      }
+    ]
+  },
+  "scoped_full_id_evidence": {
+    "short32_smoke_q4": {
+      "files": [
+        "smoke-q4-dense-off.out",
+        "smoke-q4-dense-on.out"
+      ],
+      "verified_in_files": "full elementwise 32-id arrays present in BOTH files, elementwise identical, ids_sha256_16 7fd25a869ff21678 == paired-matrix short32 canonical digest",
+      "scope": "single smoke run per side, short-decode-32 'Hi' prompt only; does NOT extend identity claims to other workloads or to the paired matrix"
+    },
+    "bf16_stages_capture_prior_build": {
+      "wheel": "0.32.2.dev202609041856+4f27136 (NOT this candidate)",
+      "local_copies": [
+        "/tmp/bf16-stages-v2/capture-bf16-stages-v2.json",
+        "/tmp/bf16-stages-v2/capture-bf16-stages-v2.npz",
+        "/tmp/bf16-stages-v2/capture-v2-stdout.out"
+      ],
+      "note": "capture-full-ids wrapper evidence, scoped to the bf16 0.5B config; validation_ok true, first_token_changed false"
+    }
+  },
+  "limitations": [
+    "bench_matrix did NOT preserve full generated-ID arrays for the paired matrix; identity verdicts are digest-level only",
+    "First differing token index of the long128 ON mismatch is UNKNOWN",
+    "No identical-full-output claim is made; digest equality does not prove full-stream identity",
+    "long128 ON timing (+5.28% median decode) is NONCOMPARABLE because output changed",
+    "short32/ctx1024 timing deltas are hypothesis-grade until a full-ID-preserving rerun passes",
+    "Wheel-level sha256 recorded at build; not re-hashed on this workstation",
+    "Single model (Qwen2.5-0.5B-Instruct-4bit), single host (jwm1-linux M1), 5 pairs, AC power; no other models/hosts covered"
+  ],
+  "artifacts": {
+    "source_dir_on_measurement_host": "~/benchq/logs/dense-gate-8bf15b3cbd41c29347000ca19a7f207f1cfaaba3/",
+    "local_artifact_copy": "/tmp/dense-gate-8bf15b3/",
+    "raw_logs_retained": [
+      "~/benchq/logs/dense-gate-8bf15b3cbd41c29347000ca19a7f207f1cfaaba3/pair{1..5}-{off,on}.{json,stdout}",
+      "~/benchq/logs/dense-gate-8bf15b3cbd41c29347000ca19a7f207f1cfaaba3/pairs.progress",
+      "~/benchq/logs/dense-gate-8bf15b3cbd41c29347000ca19a7f207f1cfaaba3/pairs-summary.json",
+      "~/src/mlx-matrix-harness-a34cdc5 (harness a34cdc5)"
+    ],
+    "notices": [
+      "ID-MISMATCH.notice",
+      "RECEIPT-CORRECTION.notice"
+    ]
+  }
+}
