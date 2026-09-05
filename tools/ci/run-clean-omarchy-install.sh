@@ -11,14 +11,25 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 DIST_DIR="$ROOT/dist"
 
-shopt -s nullglob
-wheels=("$DIST_DIR"/mlx_omarchy-*.whl)
-shopt -u nullglob
-if [[ ${#wheels[@]} -eq 0 ]]; then
-  echo "no mlx_omarchy wheel in $DIST_DIR; run scripts/build-wheel.sh first" >&2
-  exit 1
+if [[ -n "${MLX_OMARCHY_WHEEL:-}" ]]; then
+  wheel="$MLX_OMARCHY_WHEEL"
+  if [[ ! -f "$wheel" ]]; then
+    echo "MLX_OMARCHY_WHEEL does not exist: $wheel" >&2
+    exit 1
+  fi
+else
+  shopt -s nullglob
+  wheels=("$DIST_DIR"/mlx_omarchy-*.whl)
+  shopt -u nullglob
+  if [[ ${#wheels[@]} -eq 0 ]]; then
+    echo "no mlx_omarchy wheel in $DIST_DIR; run scripts/build-wheel.sh first" >&2
+    exit 1
+  fi
+  wheel="${wheels[0]}"
+  for candidate in "${wheels[@]}"; do
+    [[ "$candidate" -nt "$wheel" ]] && wheel="$candidate"
+  done
 fi
-wheel="$(ls -t "${wheels[@]}" | head -n1)"
 echo "[receipt] wheel: $(basename "$wheel")"
 
 tmp="$(mktemp -d)"
@@ -30,7 +41,7 @@ trap cleanup EXIT
 python3 -m venv "$tmp/venv"
 "$tmp/venv/bin/pip" --quiet install "$wheel"
 
-MLX_OMARCHY_ALLOW_NON_APPLE=1 "$tmp/venv/bin/python" - <<'EOF'
+"$tmp/venv/bin/python" - <<'EOF'
 import json
 import math
 import pathlib

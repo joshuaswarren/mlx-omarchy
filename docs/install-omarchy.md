@@ -54,9 +54,9 @@ off, and writes one wheel into `dist/`. The built wheel needs
 2. Expect `clean install verified` as the last line.
 
 The script creates a fresh venv, installs the newest wheel from `dist/`, and
-runs an import check, an add, a matmul, and a gradient check under
-`MLX_OMARCHY_ALLOW_NON_APPLE=1`.
-
+runs an import check, an add, a matmul, and a gradient check. On a non-Apple
+development host, set `MLX_OMARCHY_ALLOW_NON_APPLE=1` explicitly before
+running it; do not set that override on a supported M1 host.
 ## Install by hand
 
 1. `python3 -m venv ~/.venvs/mlx-omarchy`
