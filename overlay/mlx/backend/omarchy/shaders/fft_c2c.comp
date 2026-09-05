@@ -56,6 +56,41 @@ uint reverse_bits(uint value, uint bit_count) {
   return result;
 }
 
+// e^(+i 2 pi num/den) for 0 <= num < den, exact at every multiple of a
+// quarter turn: the quadrant is split off in integer arithmetic and the
+// residual angle is folded into [0, pi/4] before sin/cos, so cos(pi/2)
+// is exactly 0 and the radix-2/4 butterflies match an exact reference.
+// den < 2^30 keeps 4*num inside u32.
+vec2 unit_twiddle(uint num, uint den) {
+  uint quadrant = (4u * num) / den;
+  uint rem = (4u * num) - quadrant * den;
+  bool fold = (2u * rem) > den;
+  uint r = fold ? den - rem : rem;
+  float theta = 1.5707963267948966 * float(r) / float(den);
+  float c = cos(theta);
+  float s = sin(theta);
+  if (fold) {
+    float t = c;
+    c = s;
+    s = t;
+  }
+  if (quadrant == 1u) {
+    return vec2(0.0 - s, c);
+  }
+  if (quadrant == 2u) {
+    return vec2(0.0 - c, 0.0 - s);
+  }
+  if (quadrant == 3u) {
+    return vec2(s, 0.0 - c);
+  }
+  return vec2(c, s);
+}
+
+vec2 twiddle(bool inverse, uint num, uint den) {
+  vec2 w = unit_twiddle(num % den, den);
+  return inverse ? w : vec2(w.x, 0.0 - w.y);
+}
+
 void main() {
   uint transform =
       gl_WorkGroupID.z * gl_NumWorkGroups.y * gl_NumWorkGroups.x +
@@ -108,21 +143,18 @@ void main() {
   }
   barrier();
 
-  // Twiddles stay in one turn around the circle, so the argument magnitude
-  // never leaves (-pi, pi] per stage and single-precision sin/cos keeps
-  // roughly 1e-6 relative accuracy over the eleven stages.
+  // Twiddles come from unit_twiddle, exact at every quarter turn, so a
+  // radix-2 stage adds no rounding beyond the butterfly itself.
   for (uint stage = 1u; stage <= log_n; ++stage) {
     uint len = 1u << stage;
     uint half_len = len >> 1u;
     barrier();
-    float angle_step =
-        (inverse ? 1.0 : -1.0) * 6.283185307179586 / float(len);
     for (uint pair = gl_LocalInvocationID.x; pair < (n >> 1u);
          pair += 256u) {
       uint offset = pair % half_len;
-      float angle = angle_step * float(offset);
-      float w_re = cos(angle);
-      float w_im = sin(angle);
+      vec2 w = twiddle(inverse, offset, len);
+      float w_re = w.x;
+      float w_im = w.y;
       uint a = (pair / half_len) * len + offset;
       uint b = a + half_len;
       float ur = sh_re[a];
