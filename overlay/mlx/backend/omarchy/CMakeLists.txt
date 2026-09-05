@@ -146,6 +146,17 @@ omarchy_shader(qmm_vec_bf16 shaders/qmm_vec.comp -DUSE_BF16=1)
 omarchy_shader(qmm_vec_subgroup_f32 shaders/qmm_vec.comp -DUSE_SUBGROUP=1)
 omarchy_shader(qmm_vec_subgroup_f16 shaders/qmm_vec.comp -DUSE_FP16=1 -DUSE_SUBGROUP=1)
 omarchy_shader(qmm_vec_subgroup_bf16 shaders/qmm_vec.comp -DUSE_BF16=1 -DUSE_SUBGROUP=1)
+# DenseDecodeGemv: dense matrix-vector kernels for the decode shape
+# (lhs single row), behind MLX_OMARCHY_DENSE_GEMV (default off) in
+# primitives.cpp. Same source compiled with USE_SUBGROUP=1 produces the
+# subgroup-reduction variant, dispatched only when the device reports
+# subgroupSize == 32 and the ARITHMETIC feature bit.
+omarchy_shader(matmul_vec_f32 shaders/matmul_vec.comp)
+omarchy_shader(matmul_vec_f16 shaders/matmul_vec.comp -DUSE_FP16=1)
+omarchy_shader(matmul_vec_bf16 shaders/matmul_vec.comp -DUSE_BF16=1)
+omarchy_shader(matmul_vec_subgroup_f32 shaders/matmul_vec.comp -DUSE_SUBGROUP=1)
+omarchy_shader(matmul_vec_subgroup_f16 shaders/matmul_vec.comp -DUSE_FP16=1 -DUSE_SUBGROUP=1)
+omarchy_shader(matmul_vec_subgroup_bf16 shaders/matmul_vec.comp -DUSE_BF16=1 -DUSE_SUBGROUP=1)
 # PrefillQmmTile: m-tiled quantized matmul for prefill (matrix_m > 1);
 # one workgroup dequantizes each 16 x 16 weight block into shared f32
 # once and applies it to a 16-row tile of x, amortizing the inline

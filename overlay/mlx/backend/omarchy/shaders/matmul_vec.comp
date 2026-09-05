@@ -1,0 +1,153 @@
+#version 460
+
+// Dense matrix-vector path for Matmul/AddMM when lhs has a single row:
+// out[batch, 1, n] = a[batch, 1, k] @ b[k, n] (+ beta * c). One
+// workgroup owns eight output columns; lanes stride K, so consecutive
+// lanes touch consecutive addresses of the a row and, when the rhs
+// carries the transposed flag, of the stored weight row (the x @ w.T
+// decode layout).
+//
+// Reduction flavors compile from this same source:
+//   * default: five-round workgroup-shared tree; the lane split is
+//     plain workgroup arithmetic, correct on any subgroup size.
+//   * USE_SUBGROUP=1: one subgroupAdd per 32-lane slot. Vulkan cannot
+//     query subgroupSize at runtime, so this flavor is correct only
+//     under the dispatch gate (caps.subgroup_size == 32 and the
+//     ARITHMETIC feature bit), and the subgroup op runs in every lane
+//     to keep subgroup execution uniform.
+// Both flavors accumulate in f32 and round once at STORE_VALUE.
+
+#ifdef USE_FP16
+#extension GL_EXT_shader_16bit_storage : require
+#extension GL_EXT_shader_explicit_arithmetic_types_float16 : require
+#define STORAGE_TYPE float16_t
+#define LOAD_VALUE(x) float(x)
+#define STORE_VALUE(f) STORAGE_TYPE(f)
+#elif defined(USE_BF16)
+#extension GL_EXT_shader_16bit_storage : require
+#extension GL_EXT_shader_explicit_arithmetic_types_int16 : require
+#define STORAGE_TYPE uint16_t
+#define LOAD_VALUE(x) uintBitsToFloat(uint(x) << 16u)
+uint16_t bf16_store(float value) {
+  uint bits = floatBitsToUint(value);
+  if (isnan(value)) {
+    return uint16_t((bits >> 16) | 0x40u);
+  }
+  return uint16_t((bits + 0x7fffu + ((bits >> 16) & 1u)) >> 16);
+}
+#define STORE_VALUE(f) bf16_store(f)
+#else
+#define STORAGE_TYPE float
+#define LOAD_VALUE(x) float(x)
+#define STORE_VALUE(f) STORAGE_TYPE(f)
+#endif
+
+#ifdef USE_SUBGROUP
+// Correct only under the dispatch gate; see shaders/qmm_vec.comp.
+#extension GL_KHR_shader_subgroup_basic : require
+#extension GL_KHR_shader_subgroup_arithmetic : require
+#endif
+
+const uint COLUMNS_PER_GROUP = 8u;
+const uint LANES = 32u;
+
+layout(local_size_x = 256) in;
+
+layout(set = 0, binding = 0, std430) readonly buffer InputA {
+  STORAGE_TYPE values[];
+} input_a;
+layout(set = 0, binding = 1, std430) readonly buffer InputB {
+  STORAGE_TYPE values[];
+} input_b;
+layout(set = 0, binding = 2, std430) readonly buffer InputC {
+  STORAGE_TYPE values[];
+} input_c;
+layout(set = 0, binding = 3, std430) writeonly buffer Output {
+  STORAGE_TYPE values[];
+} output_data;
+
+layout(push_constant) uniform Params {
+  uint count;
+  uint operation;
+  uint lhs_size;
+  uint rhs_size;
+  uint reduce_size;
+  uint output_size;
+  uint lhs_offset;
+  uint rhs_offset;
+  uint output_offset;
+  uint aux_size;
+  uint aux_offset;
+  uint matrix_m;
+  uint matrix_n;
+  uint matrix_k;
+  uint flags;
+  float alpha;
+  float beta;
+  uint dims;
+  uint shape[4];
+  uint in_strides[4];
+  uint out_strides[4];
+  uint lhs_gap;
+  uint rhs_gap;
+} params;
+
+shared float reduce_scratch[256];
+
+void main() {
+  uint lane = gl_LocalInvocationID.x;
+  uint column_slot = lane / LANES;
+  uint lane_in_slot = lane % LANES;
+  uint batch_index = gl_WorkGroupID.z;
+  uint remaining = batch_index;
+  uint a_batch = 0u;
+  uint b_batch = 0u;
+  for (uint axis = params.dims; axis > 0u; --axis) {
+    uint coord = remaining % params.shape[axis - 1u];
+    remaining /= params.shape[axis - 1u];
+    a_batch += coord * params.in_strides[axis - 1u];
+    b_batch += coord * params.out_strides[axis - 1u];
+  }
+  uint column = gl_WorkGroupID.x * COLUMNS_PER_GROUP + column_slot;
+  bool column_active = column < params.matrix_n;
+  bool b_transposed = (params.flags & 1u) != 0u;
+  uint a_base = params.lhs_offset + a_batch;
+  uint b_base = params.rhs_offset + b_batch +
+      (b_transposed ? column * params.rhs_gap : 0u);
+  float accumulator = 0.0;
+  if (column_active) {
+    for (uint k = lane_in_slot; k < params.matrix_k; k += LANES) {
+      float b_value = LOAD_VALUE(input_b.values[b_base +
+          (b_transposed ? k : k * params.rhs_gap + column)]);
+      float a_value = LOAD_VALUE(input_a.values[a_base +
+          ((params.flags & 4u) != 0u ? k * params.lhs_gap : k)]);
+      accumulator += a_value * b_value;
+    }
+  }
+#ifdef USE_SUBGROUP
+  float total = subgroupAdd(accumulator);
+#else
+  reduce_scratch[lane] = accumulator;
+  barrier();
+  for (uint offset = LANES / 2u; offset > 0u; offset >>= 1u) {
+    if (lane_in_slot < offset) {
+      reduce_scratch[lane] += reduce_scratch[lane + offset];
+    }
+    barrier();
+  }
+  float total = reduce_scratch[lane];
+#endif
+  if (lane_in_slot == 0u && column_active) {
+    uint output_index = batch_index * params.matrix_n + column;
+    float value = params.alpha * total;
+    if ((params.flags & 2u) != 0u) {
+      uint c_index = params.aux_size == 1u
+          ? 0u
+          : output_index % params.aux_size;
+      value += params.beta * LOAD_VALUE(
+          input_c.values[params.aux_offset + c_index]);
+    }
+    output_data.values[params.output_offset + output_index] =
+        STORE_VALUE(value);
+  }
+}

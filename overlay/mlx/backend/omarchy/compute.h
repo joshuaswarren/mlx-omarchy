@@ -323,6 +323,22 @@ enum class ComputeKernel : uint8_t {
   QmmTileBF16,
   FusedChainF32,
   FusedChainF16,
+  // DenseDecodeGemv: matrix-vector kernel for Matmul/AddMM when lhs has
+  // a single row, behind MLX_OMARCHY_DENSE_GEMV (default off). Same
+  // eight-column workgroup shape as qmm_vec.comp; the shared-tree
+  // reduction is the portable default, and the USE_SUBGROUP twins
+  // replace it with one subgroupAdd per 32-lane slot. The subgroup
+  // dispatch gate in primitives.cpp is the same contract as qmm_vec:
+  // caps.subgroup_size == 32 and the ARITHMETIC subgroup-feature bit,
+  // falling back to the tree kernels when either is missing. Enum
+  // values live at the end so older indices stay stable for the
+  // GPU-profile NDJSON stream.
+  MatmulVecF32,
+  MatmulVecF16,
+  MatmulVecBF16,
+  MatmulVecSubgroupF32,
+  MatmulVecSubgroupF16,
+  MatmulVecSubgroupBF16,
   Count,
 };
 
