@@ -36,20 +36,22 @@ CommandEncoder::CommandEncoder(Device& device) : device_(device) {
 }
 
 CommandEncoder::~CommandEncoder() {
-  // Release pending work (and its temporaries) while the device is alive.
+  // Drain pending work (and its temporaries) while the device is alive.
   // A wedged queue throws here; swallow so destruction can continue, the
   // bounded error already surfaced through synchronize().
+  //
+  // The command and descriptor pools are deliberately NOT destroyed
+  // here. After a watchdog throw the newest submission is still in
+  // flight, and even after a successful join Mesa signals a submission's
+  // semaphores before its submit-final cleanup retires the command
+  // buffer (see drain_through), so a pool destroy in this destructor can
+  // free state the driver's queue thread still walks - observed as
+  // teardown SIGSEGV, pure-virtual aborts, and Khronos-validation-layer
+  // crashes after a watchdog throw. The pools are children of the
+  // VkDevice; vkDestroyDevice releases them with it.
   try {
     synchronize();
   } catch (const std::exception&) {
-  }
-  auto& dt = vk::device_table();
-  if (desc_pool_ != VK_NULL_HANDLE) {
-    dt.DestroyDescriptorPool(device_.handle(), desc_pool_, nullptr);
-    desc_pool_ = VK_NULL_HANDLE;
-  }
-  if (pool_ != VK_NULL_HANDLE) {
-    dt.DestroyCommandPool(device_.handle(), pool_, nullptr);
   }
 }
 

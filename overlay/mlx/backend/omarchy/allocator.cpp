@@ -277,8 +277,18 @@ void VulkanAllocator::invalidate_noncoherent(VkDevice device) {
 }
 
 VulkanAllocator& allocator() {
-  static VulkanAllocator allocator_;
-  return allocator_;
+  // Deliberately never destroyed. The completion dispatcher drains
+  // whenever a submission retires - including during static destruction,
+  // when a watchdog-thrown submit finishes after the teardown has begun
+  // - and the drained temporaries free arrays through this object's
+  // virtuals. Destroying it under such a late drain aborts with "pure
+  // virtual method called" (observed on the qmm teardown crash). The
+  // device-side resources behind cached buffers are children of the
+  // VkDevice and die with vkDestroyDevice; only the small host structs
+  // leak, matching the scheduler-leak and teardown-temporaries-leak
+  // precedents.
+  static auto* allocator_ = new VulkanAllocator();
+  return *allocator_;
 }
 
 } // namespace omarchy
