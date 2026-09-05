@@ -1,0 +1,282 @@
+{
+ "schema": "bf16-rope-layout-m1/1",
+ "date": "2026-09-04",
+ "purpose": "M1 bf16 RoPE layout and eager generation qualification. Component measurements and full token arrays are retained; no performance or native throughput parity claim.",
+ "rope_layout_defect": {
+  "mechanism": "The default bf16 RoPE path promoted the input through copy_gpu, which already normalizes strided casts to dense storage, but retained the original view strides and transpose classification. The fix classifies the actual bound source after promotion and owns its normalized array through dispatch.",
+  "attribution_note": "single-mechanism finding; the promotion copy itself normalizes correctly"
+ },
+ "component_diagnostic": {
+  "build": {
+   "dist_version": "0.32.2.dev202609042128+2f54fcb",
+   "verified": "match",
+   "expected_wheel": "~/benchq/perf-build.IQMY0PI6/mlx_omarchy-0.32.2.dev202609042128+2f54fcb-cp314-cp314-linux_aarch64.whl",
+   "flags": {
+    "MLX_OMARCHY_FUSED_CHAIN": "0",
+    "MLX_OMARCHY_DENSE_GEMV": "0",
+    "MLX_OMARCHY_ROPE_BF16_DIRECT": "0",
+    "MLX_OMARCHY_SDPA_BF16_FAST": "0"
+   },
+   "files": [
+    {
+     "path": "mlx/core.cpython-314-aarch64-linux-gnu.so",
+     "label": "mlx.core extension",
+     "sha256": "4ad850da16c300ea9f60aa7247f034f358aa16d7ba2fd146979a01c867e3cfa5",
+     "record_sha256": "4ad850da16c300ea9f60aa7247f034f358aa16d7ba2fd146979a01c867e3cfa5",
+     "match": true
+    },
+    {
+     "path": "mlx/lib/libmlx.so",
+     "label": "mlx/lib/libmlx.so",
+     "sha256": "182c5e5de5ab68e591d62358c30f0d39bbe2e97b855cd3949287f103e02c52a2",
+     "record_sha256": "182c5e5de5ab68e591d62358c30f0d39bbe2e97b855cd3949287f103e02c52a2",
+     "match": true
+    }
+   ],
+   "libmlx_sha256": "182c5e5de5ab68e591d62358c30f0d39bbe2e97b855cd3949287f103e02c52a2"
+  },
+  "helper_sha256": "1dad6073791372846685bdd257245815018b607b413c75dc9dc08e35d3e15b97",
+  "exact_command": "EXACT COMMAND: MLX_DISABLE_COMPILE=1 MLX_OMARCHY_FUSED_CHAIN=0 MLX_OMARCHY_DENSE_GEMV=0 MLX_OMARCHY_ROPE_BF16_DIRECT=0 MLX_OMARCHY_SDPA_BF16_FAST=0 PYTHONPATH=/scripts timeout 60 ~/benchq/perf-build.IQMY0PI6/venv/bin/python /tmp/bf16-attention-components.py --npz ~/benchq/logs/bf16-stages-4f27136/capture-bf16-stages-v3.npz --wheel ~/benchq/perf-build.IQMY0PI6/mlx_omarchy-0.32.2.dev202609042128+2f54fcb-cp314-cp314-linux_aarch64.whl --out-prefix ~/benchq/logs/combined-gate-2f54fcb0/components",
+  "parameters": {
+   "heads": 14,
+   "kv_heads": 2,
+   "dim": 64,
+   "length": 30,
+   "rope_base": 1000000.0,
+   "scale": 0.125
+  },
+  "comparisons": {
+   "rope_q_host_reference_vs_device_whole": {
+    "shape": [
+     1,
+     14,
+     30,
+     64
+    ],
+    "maxabs": 1.52587890625e-05,
+    "rmse": 9.329602624475078e-08,
+    "relative_to_reference_norm": 1.1838565156364596e-08,
+    "bf16_grid_equal_fraction": 0.9998883928571428
+   },
+   "rope_k_host_reference_vs_device_whole": {
+    "shape": [
+     1,
+     2,
+     30,
+     64
+    ],
+    "maxabs": 0.0,
+    "rmse": 0.0,
+    "relative_to_reference_norm": 0.0,
+    "bf16_grid_equal_fraction": 1.0
+   },
+   "rope_q_whole_vs_chunked": {
+    "shape": [
+     1,
+     14,
+     30,
+     64
+    ],
+    "maxabs": 0.0,
+    "rmse": 0.0,
+    "relative_to_reference_norm": 0.0,
+    "bf16_grid_equal_fraction": 1.0
+   },
+   "rope_k_whole_vs_chunked": {
+    "shape": [
+     1,
+     2,
+     30,
+     64
+    ],
+    "maxabs": 0.0,
+    "rmse": 0.0,
+    "relative_to_reference_norm": 0.0,
+    "bf16_grid_equal_fraction": 1.0
+   },
+   "sdpa_own_device_operand_reference_vs_whole": {
+    "shape": [
+     1,
+     14,
+     30,
+     64
+    ],
+    "maxabs": 0.00048828125,
+    "rmse": 3.651738955562992e-06,
+    "relative_to_reference_norm": 0.0001751562724462954,
+    "bf16_grid_equal_fraction": 0.9952752976190476
+   },
+   "attention_host_pipeline_reference_vs_whole": {
+    "shape": [
+     1,
+     14,
+     30,
+     64
+    ],
+    "maxabs": 0.00048828125,
+    "rmse": 3.6564870688339325e-06,
+    "relative_to_reference_norm": 0.00017538401917854346,
+    "bf16_grid_equal_fraction": 0.9950892857142857
+   },
+   "captured_model_attention_vs_whole": {
+    "shape": [
+     1,
+     14,
+     30,
+     64
+    ],
+    "maxabs": 0.455078125,
+    "rmse": 0.022005316728758193,
+    "relative_to_reference_norm": 1.0031723584041286,
+    "bf16_grid_equal_fraction": 0.04281994047619048
+   },
+   "sdpa_own_chunk_operand_reference_vs_chunked": {
+    "shape": [
+     1,
+     14,
+     30,
+     64
+    ],
+    "maxabs": 0.00048828125,
+    "rmse": 3.651738955562992e-06,
+    "relative_to_reference_norm": 0.0001751562724462954,
+    "bf16_grid_equal_fraction": 0.9952752976190476
+   },
+   "sdpa_whole_vs_chunked": {
+    "shape": [
+     1,
+     14,
+     30,
+     64
+    ],
+    "maxabs": 0.0,
+    "rmse": 0.0,
+    "relative_to_reference_norm": 0.0,
+    "bf16_grid_equal_fraction": 1.0
+   },
+   "captured_model_attention_vs_chunked": {
+    "shape": [
+     1,
+     14,
+     30,
+     64
+    ],
+    "maxabs": 0.455078125,
+    "rmse": 0.022005316728758193,
+    "relative_to_reference_norm": 1.0031723584041286,
+    "bf16_grid_equal_fraction": 0.04281994047619048
+   },
+   "sdpa_contiguous_vs_cache_view": {
+    "shape": [
+     1,
+     14,
+     30,
+     64
+    ],
+    "maxabs": 0.0,
+    "rmse": 0.0,
+    "relative_to_reference_norm": 0.0,
+    "bf16_grid_equal_fraction": 1.0
+   }
+  },
+  "interpretation": "Differences are measurements, not a correctness pass. References round final outputs to bf16; relative errors use the named reference norm.",
+  "reference_label": {
+   "captured_model_attention": "PRE-FIX capture (bf16-stages-4f27136 v3 NPZ, mlx-omarchy 4f27136 build); it is the pre-fix model-attention reference used for deviation measurement, NOT current model output"
+  },
+  "signal_validated": true
+ },
+ "fixed_build_gate": {
+  "source": "2f54fcb",
+  "source_full": "2f54fcb0738bc23e6b5987bcc6b341825759d3c4",
+  "build_cpu_backend": "ON, matching scripts/build-wheel.sh; explicit CPU streams are available, but the measured default device is Apple M1 GPU",
+  "model_revision": "56d07e766edd7159fbe12ed12d9cf114bf38bf1e",
+  "generation": {"compile": "MLX_DISABLE_COMPILE=1", "temperature": 0, "seed": 0, "warmup_tokens": 4, "eos_suppressed": true},
+  "wheel_sha256": "f093933b1a0634c0ae58280fd8984009925cc42b6974235731317c84faa3612e",
+  "raw_provenance_line": "provenance: mlx-omarchy 0.32.2.dev202609042128+2f54fcb mx=0.32.2.dev202609042128+2f54fcb verified=match harness=a34cdc5 core.cpython-314-aarch64-linux-gnu.so=sha256:4ad850da16c300ea libmlx.so=sha256:182c5e5de5ab68e5",
+  "leg": "bf16 short32 (prompt 'Hi', prompt_tokens 30, 32 generated, EOS suppressed)",
+  "digest": {
+   "recomputed": "f26175202f3dabe9",
+   "reported": "f26175202f3dabe9",
+   "match": true
+  },
+  "vs_native_published_reference": {
+   "native_receipt": "receipts/2026-09-04-native-output-comparison.json, comparisons.bf16_short32, native digest 7fc0f968789b1882",
+   "full32_new_gate_ids": [
+    9707,
+    0,
+    2585,
+    646,
+    358,
+    7789,
+    498,
+    3351,
+    30,
+    151645,
+    198,
+    151643,
+    33975,
+    25,
+    2585,
+    646,
+    358,
+    7269,
+    847,
+    4378,
+    7361,
+    30,
+    151645,
+    198,
+    151644,
+    872,
+    198,
+    40,
+    2776,
+    537,
+    2704,
+    1246
+   ],
+   "full32_native_ids": [
+    9707,
+    0,
+    2585,
+    646,
+    358,
+    7789,
+    498,
+    3351,
+    30,
+    151645,
+    198,
+    151643,
+    33975,
+    25,
+    3555,
+    374,
+    279,
+    6672,
+    1948,
+    264,
+    729,
+    323,
+    264,
+    1714,
+    304,
+    13027,
+    30,
+    151645,
+    198,
+    151644,
+    872,
+    198
+   ],
+   "first_differing_index_zero_based": 14,
+   "matching_prefix_tokens": 14,
+   "first_eos_index": 9,
+   "ids_through_first_eos_equal": true,
+   "decoded_through_first_eos": "Hello! How can I assist you today?<|im_end|>",
+   "scope_note": "equality is established ONLY through the first EOS token (10 tokens); full-32 equality is NOT claimed"
+  },
+  "guard": "The bf16 RoPE synchronization guard remains unchanged; direct bf16 RoPE and fast bf16 SDPA remain disabled. This eager check does not qualify compiled bf16."
+ },
+ "no_timing_fields": "this receipt contains no throughput, latency, or duration values"
+}

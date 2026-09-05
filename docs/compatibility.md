@@ -192,10 +192,15 @@ ran separately; repeating doctest `-tc` flags selects only the final filter.
 
 The wheel was `mlx_omarchy-0.32.2.dev202609041856+4f27136`, SHA-256
 `300aa890dd45e73a4adc1aeae03d72b34862cfdc3467636688f89d89d964f5df`.
-Default q4 and eager bf16 32-token smokes preserved the previous Linux
+The historical default q4 and eager bf16 32-token smokes preserved the
 digests (`7fd25a869ff21678` and `635bc7f4bbaa48a4`) with matching binary
-provenance. These checks establish this update, not complete dtype coverage
-or equivalence to native Metal. No integer speedup is claimed.
+provenance. The bf16 digest was later shown to repeat corrupt output, so
+it is not a correctness pass. Development source `2f54fcb` fixes stale
+layout metadata after bf16 RoPE promotion; its pinned eager reply matches
+native through EOS, but not the full forced continuation. See the
+[M1 fix receipt](../receipts/2026-09-04-bf16-rope-layout-m1.json).
+The integer checks do not establish complete dtype coverage or native
+Metal equivalence. No integer speedup is claimed.
 
 Raw native logs: `~/benchq/logs/integer-gate-4f27136d26bed63994363d8d8aabf835c260f6ea/`.
 Local copies: `/tmp/integer-gate-4f27136/`, including the separate
@@ -378,7 +383,11 @@ Transform work is in progress.
 Batched matmul under `vmap` passes the gate with value checks.
 `mx.compile` interprets the fused tape on the GPU for the elementwise subset: add, multiply, divide, maximum, exp, sigmoid, square, sqrt, subtract, negative, casts, and broadcast.
 Compiled chains evaluate and match the uncompiled values at `1e-5`.
-Each tape node dispatches separately, so no fusion speedup is claimed.
+Tape nodes dispatch separately by default. Opt-in `MLX_OMARCHY_FUSED_CHAIN=1`
+combines eligible float32/float16 chains. The pinned M1 model now records
+72 to 24 tape dispatches per decode token with equal full generated arrays
+in all 15 paired comparisons. Gains are small and the default remains off;
+see the [fusion receipt](../receipts/2026-09-04-swiglu-fused-chain.md).
 Tape ops outside the subset fail with the named `Compiled tape op <name>` error.
 `CompileMode::no_fuse` keeps the tape unfused and matches the uncompiled values.
 
