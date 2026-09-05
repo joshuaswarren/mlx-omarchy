@@ -353,6 +353,8 @@ void copy_gpu_inplace(
     omarchy::ComputeKernel kernel;
     if (in.dtype() == bool_ && out.dtype() == float32) {
       kernel = omarchy::ComputeKernel::CastBoolF32;
+    } else if (in.dtype() == bool_ && out.dtype() == int32) {
+      kernel = omarchy::ComputeKernel::CastBoolI32;
     } else if (in.dtype() == float16 && out.dtype() == float32) {
       kernel = omarchy::ComputeKernel::CastF16F32;
     } else if (in.dtype() == float32 && out.dtype() == float16) {
@@ -427,14 +429,15 @@ void copy_gpu_inplace(
     }
     std::array<omarchy::ComputeBinding, 3> bindings{
         compute_binding(in), compute_binding(in), compute_binding(out)};
-    // CastBoolF32 processes one output word (four elements) per thread
-    // for the same reason as select.comp and compare.comp; every other
-    // cast kernel stays per element.
-    uint32_t dispatch_count =
+    const bool source_bool_kernel =
         kernel == omarchy::ComputeKernel::CastBoolF32 ||
-            kernel == omarchy::ComputeKernel::CastBoolComplex64
+        kernel == omarchy::ComputeKernel::CastBoolI32 ||
+        kernel == omarchy::ComputeKernel::CastBoolComplex64;
+    uint32_t dispatch_count = source_bool_kernel
         ? checked_u32(
-              (static_cast<uint64_t>(count) + 3) / 4,
+              (static_cast<uint64_t>(count) +
+               static_cast<uint64_t>(params.lhs_offset & 3u) + 3u) /
+                  4u,
               "dtype converting copy",
               out)
         : count;

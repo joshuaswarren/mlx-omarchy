@@ -110,10 +110,21 @@ TEST_CASE("AsType casts values exactly through the copy engine") {
   check_values(
       astype(array({0, 1, 2}, int32), float32, stream),
       {0.0f, 1.0f, 2.0f});
-  // bool -> f32 rides the CastBoolF32 word kernel.
+  array raw_bool =
+      array({true, false, true, false, true, false, true, false}, bool_);
+  array raw_i32 = astype(raw_bool, int32, stream);
+  CHECK_EQ(raw_i32.dtype(), int32);
+  check_exact<int32_t>(raw_i32, {1, 0, 1, 0, 1, 0, 1, 0});
   check_values(
-      astype(array({true, false, true}, bool_), float32, stream),
-      {1.0f, 0.0f, 1.0f});
+      astype(raw_bool, float32, stream),
+      {1.0f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f});
+  array offset_bool = slice(raw_bool, {1}, {5}, {1}, stream);
+  array offset_i32 = astype(offset_bool, int32, stream);
+  CHECK_EQ(offset_i32.dtype(), int32);
+  check_exact<int32_t>(offset_i32, {0, 1, 0, 1});
+  array empty_i32 = astype(zeros({0}, bool_, stream), int32, stream);
+  CHECK_EQ(empty_i32.dtype(), int32);
+  check_exact<int32_t>(empty_i32, std::vector<int32_t>{});
   // A dtype-converting cast of a non-row-contiguous view must carry the
   // transposed logical order, not the storage order; copy_gpu
   // materializes the view first (same-dtype astype returns the view
