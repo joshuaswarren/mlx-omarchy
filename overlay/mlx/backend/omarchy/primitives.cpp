@@ -482,44 +482,6 @@ void dispatch_matmul(
           params.rhs_offset, b_span + b_inner)) {
     omarchy::unsupported(name + " index span", out);
   }
-  // DenseDecodeGemv (default off): single-row lhs takes the
-  // matrix-vector kernel when MLX_OMARCHY_DENSE_GEMV is set and not
-  // "0". The USE_SUBGROUP twins require subgroupSize == 32 with the
-  // ARITHMETIC bit (qmm_vec contract); outputs wider than one clamped
-  // grid dimension stay on the tile kernel.
-  const char* gemv_env = std::getenv("MLX_OMARCHY_DENSE_GEMV");
-  if (params.matrix_m == 1u && gemv_env != nullptr &&
-      std::strcmp(gemv_env, "0") != 0) {
-    constexpr uint32_t kGemvColumnsPerGroup = 8u;
-    uint32_t gemv_groups = (params.matrix_n + kGemvColumnsPerGroup - 1u) /
-        kGemvColumnsPerGroup;
-    if (gemv_groups <= omarchy::kMaxComputeGroupCountX) {
-      const auto& caps = encoder.device().capabilities();
-      bool subgroup_ready =
-          caps.subgroup_size == 32u &&
-          (caps.subgroup_operations & VK_SUBGROUP_FEATURE_ARITHMETIC_BIT) !=
-              0;
-      auto gemv_kernel = subgroup_ready
-          ? select_float_kernel(
-                out.dtype(),
-                omarchy::ComputeKernel::MatmulVecSubgroupF32,
-                omarchy::ComputeKernel::MatmulVecSubgroupF16,
-                omarchy::ComputeKernel::MatmulVecSubgroupBF16)
-          : select_float_kernel(
-                out.dtype(),
-                omarchy::ComputeKernel::MatmulVecF32,
-                omarchy::ComputeKernel::MatmulVecF16,
-                omarchy::ComputeKernel::MatmulVecBF16);
-      encoder.dispatch_compute(
-          gemv_kernel,
-          bindings,
-          params,
-          gemv_groups,
-          1u,
-          checked_u32(batch_count, name, out));
-      return;
-    }
-  }
   encoder.dispatch_compute(
       kernel,
       bindings,
