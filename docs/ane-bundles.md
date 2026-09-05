@@ -18,11 +18,7 @@ descriptor. A bundle that fails any check never reaches the device. This is
 the U6 validation layer in
 `docs/plans/2026-08-29-mlx-omarchy-ane-compatibility-plan.md`.
 
-Status: the Linux validation layer, its tests, and the macOS exporter
-(`tools/ane-export/`) are in place. The loader now checks the libane `.anec`
-header against the manifest before a worker can map buffers. Lowering general
-MLX graphs to the exporter's descriptors and M1 execution remain open work; see
-`docs/compatibility.md`.
+Status: the Linux validator checks the manifest and libane file layout without opening a device. Schema version 2 accepts host-neutral compiler provenance and requires an explicit H13 target. The retained reference exporter uses macOS; it is not the required Linux compiler path. Linux-host H16G compilation and M1/H13 code generation are separate gates. General MLX lowering and M1 execution remain unqualified; see `docs/compatibility.md`.
 See `docs/ane-hwx-format-notes.md` for the HWX container and task-descriptor
 format reference (external guide evaluation).
 
@@ -30,7 +26,7 @@ format reference (external guide evaluation).
 
 ```
 my-bundle/
-  manifest.json      required, manifest_version 1
+  manifest.json      required, manifest_version 2
   model.anec         required, exactly one "anec" payload
   weights.bin        optional "weights" payload
 ```
@@ -39,13 +35,13 @@ The directory holds regular files only. Every file must be `manifest.json` or
 a listed payload. An unlisted file is an error: a bundle cannot carry payloads
 the manifest does not describe.
 
-## Manifest schema (manifest_version 1)
+## Manifest schema (manifest_version 2)
 
-All checks fail closed. Each error names the field and the reason.
+Version 1 is rejected rather than inferred or silently upgraded. Current reference manifests have been migrated without changing their payloads or historical compiler identity. Schema validation does not prove that the declared target matches the machine code; target-correct generation and on-device qualification remain required before execution.
 
 | Field | Type | Checks | Receipt ground |
 | --- | --- | --- | --- |
-| `manifest_version` | int | must be `1` | Versioned format per R9/R10. |
+| `manifest_version` | int | must be `2` | Host-neutral provenance and explicit target; version 1 is rejected. |
 | `name` | string | non-empty | Region name used in traces and release keys. |
 | `graph_hash` | string | 64 lowercase hex | Identity of the lowered graph; the export receipt hashes artifacts with `shasum -a 256` (`qwen-hwx-export-convert.log`). |
 | `task_descriptors` | int | positive | Task counts are receipted: 1403 and 1175 for the 13- and 11-layer Qwen graphs, 3072 for the production graph (`qwen-linux-terminal-task.log`). |
@@ -54,8 +50,9 @@ All checks fail closed. Each error names the field and the reason.
 | `state` | tensor list | see below | Device-resident K/V state with stable indices across decode steps: 2 kv heads, 128 context, 256 dim (`qwen-linux-kv-state-validation.json`). |
 | `workspace` | tensor list | exactly one entry | One scratch buffer bound at submit time before enqueue: `workspace=0x66000` (`qwen-linux-terminal-task.log`). |
 | `payloads` | payload list | exactly one `anec`, at most one `weights`; unique safe relative paths | MIL `program(1.3)` plus `weights.bin` per KTD6; sha256 per payload per `qwen-linux-kv-state-validation.json` (`anec_sha256`, `hwx_sha256`). |
-| `compiler.macos_build` | string | non-empty | `build 20A2411` (`qwen-bigsur-compiler-attempt.log`). |
-| `compiler.anecompiler` | string | non-empty | `Monterey ANECompiler 5.5.0` (`qwen-linux-kv-state-validation.json`); `zin_ane_compiler v4.2.1` on Big Sur. |
+| `compiler.host_build` | string | non-empty | Build-host identity, independent of operating system. Retained Mac reference fixtures preserve `25G83`. |
+| `compiler.toolchain` | string | non-empty | Compiler identity, including version or source revision. |
+| `compiler.target` | string | exactly `h13` | Current M1-only ANEC contract; H16G/M4 output is rejected before payload access. |
 | `firmware.min`, `firmware.max` | dotted integer versions | `min <= max` | The macOS 26 compiler emits TD encodings "this firmware/KMD cannot execute" (`ane-static-graph-loop.log`), so a bundle must record the firmware range it was proven against (R19). |
 | `provenance.source_repo` | string | non-empty | Experiment receipts name their source repo. |
 | `provenance.source_commit` | string | 40 lowercase hex | `7f80713` push-before-hardware discipline (`qwen-linux-task-layout.log`). |
@@ -170,29 +167,17 @@ output `t2`, const through `weights.bin`). Field derivations:
   macOS 26.6.2 (25G83), ANECompiler 9.509.0, coremlcompiler 3520.5.1.
   On-device execution is not yet proven; see the proof receipt.
 
-New bundles are produced with the macOS exporter, `tools/ane-export/`
-(runs on macOS with Xcode + ANECompiler; Linux validates only). It turns a
-JSON descriptor into the MIL program, `weights.bin`, the compiled `hwx`,
-the converted `.anec`, and a manifest in this schema.
-`receipts/fixtures/exported/` carries its output for add [1, 512],
-add [1, 896], and mul [1, 512]; see `receipts/2026-09-01-ane-exporter.md`.
+The reference exporter, `tools/ane-export/`, reproduces the retained Apple-compiled fixtures. Its output includes the selected target in schema version 2. The fixtures under `receipts/fixtures/exported/` cover add [1, 512], add [1, 896], and mul [1, 512]; see `receipts/2026-09-01-ane-exporter.md`. Their presence is not proof of Linux-native compilation or device execution.
 
 ## Community submissions
 
-The exporter is that user-runnable tool (KTD6): `tools/ane-export/`. A
-community bundle submission must reproduce through it and pass exactly these
-checks on Linux, with no private Apple frameworks, compiler binaries,
-firmware, or model weights in the bundle (R18). Release assets carry bundles
-keyed by exact model, shapes, compiler, firmware, and graph hash (KTD10); a
-missing asset leaves the region on Vulkan.
+The product build must generate bundles on Linux without private Apple frameworks or compiler binaries. The open-source compiler's Linux host port emits H16G/M4 HWX; a distinct H13 backend and a compatible conversion path are still required for this M1 loader. A submission must record the real target, compiler revision, firmware range, graph identity, and tensor contracts. Renaming H16G metadata to H13 is not a conversion. Release assets may cache qualified bundles; a missing compatible asset leaves the region on Vulkan.
 
 ## Tests
 
 `omarchy_ane_bundle_tests` builds fixture bundles at runtime and covers the
 manifest contract, libane ANEC header and channel exposure, state bound as both
-source and destination, validation ordering, graph identity repeatability, the
-not-found contract, unknown payloads, and malformed ANEC envelopes, channels,
-task fields, dtypes, and NCHW geometry. Run:
+source and destination, validation ordering, the not-found contract, unsupported targets, unknown payloads, and malformed ANEC envelopes, channels, task fields, dtypes, and NCHW geometry. The synthetic unit fixtures use Linux compiler metadata; they do not claim to be compiler-generated. Run:
 
 ```
 ./tools/ci/run-ane-bundle-tests.sh
@@ -254,12 +239,7 @@ This section reconciles the maderix bundle/runtime findings against
   only for two-branch-convolution graphs; plain chains stay on the
   internal solver. This is a macOS framework detail and does not
   affect bundle payloads.
-- **Reconciled with our work:** the manifest already records
-  `compiler.macos_build` and `compiler.anecompiler`. The maderix
-  evidence is consistent. No new field is needed for what the
-  author proved; the missing field is **`compiler.dt_compiler`**
-  for the build-tool marker, which is private-Apple and of no use
-  to a Linux validator.
+- **Reconciled with our work:** schema version 2 records `compiler.host_build`, `compiler.toolchain`, and `compiler.target`. Apple reference identities remain historical facts; they are not required build dependencies.
 
 ### Compiler options the exporter can capture (Part 4b "Compiler options and retained debug output")
 
@@ -322,10 +302,7 @@ This section reconciles the maderix bundle/runtime findings against
 
 ### Where the maderix findings would change the manifest schema
 
-- **No required changes.** Every contract field in
-  `docs/ane-bundles.md` (manifest_version 1) is still the right
-  contract for M1-bound bundles. Nothing the author demonstrated on
-  M4 contradicts what we validate.
+- **Required boundary:** a Linux host build does not establish M1 compatibility. The loader requires the H13 target explicitly. The open-source H16G writer uses a different architecture subtype and cannot supply an M1 bundle merely by changing its metadata.
 - **Possible additions (none required):** `td_stream_size` and the
   set of compute-mode words in the HWX are useful provenance but
   not validation criteria. They are recording only; they would not

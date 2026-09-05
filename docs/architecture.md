@@ -69,12 +69,9 @@ The partitioner uses an exact capability key:
 - compiler and firmware identifiers
 - measured transfer and execution cost
 
-The exporter must first compile one hand-authored operation through the existing macOS path.
-General MLX lowering stops if that proof fails.
-After it passes, the exporter lowers a supported MLX region into MIL `program(1.3)` plus `weights.bin`.
-It calls `ANECCompile`, converts HWX to ANEC, and writes a versioned bundle manifest.
-The exporter is a user-runnable tool with a documented community bundle path.
-GitHub release assets carry bundles for exact model, shape, compiler, firmware, and graph hashes.
+ANE compilation must run on Linux without private Apple frameworks. Reuse an open-source compiler rather than require a Mac export service. The preserved maderix MIL-to-HWX compiler generates new HWX objects for H16G/M4; making its host tools run on Linux does not establish M1 target support.
+
+First compile a supported single operation on Linux, then validate its target-specific output and execute it through the bounded M1 worker. General MLX lowering follows that proof. The compiler and HWX-to-ANEC path must preserve graph identity, tensor bindings, target, toolchain provenance, and payload hashes. The bundle schema must record host-neutral compiler identity instead of requiring a macOS build. GitHub release assets may cache qualified bundles, but creating them must not require a Mac.
 Linux rejects a bundle before device access if any contract field differs.
 A missing bundle keeps only the affected region on Vulkan.
 

@@ -137,9 +137,9 @@ For the C++ test battery and the dispatch-count profiler, see [docs/install-omar
 
 ## The Neural Engine plan
 
-The ANE has no public compiler, so this project splits the work. A macOS machine compiles supported graph regions into versioned bundles. Each bundle holds the compiled program, its weights, and a manifest that pins graph identity, tensor contracts, compiler and firmware identity, and payload hashes. Linux validates every field before it maps a single byte, then executes the bundle through the open [eiln/ane](https://github.com/eiln/ane) driver. A region without a valid bundle stays on Vulkan.
+The open-source [MIL-to-HWX compiler](https://github.com/joshuaswarren/mil-hwx-compiler) now builds on Linux and emits fresh HWX files without Apple's compiler. Its current backend targets the M4. M1 code generation needs a separate H13 backend; changing the target label does not make an M4 program run on M1.
 
-Today the exporter (`tools/ane-export`) compiles fp16 add and multiply regions on macOS, and the Linux validation gate (`mlx-omarchy-info --check-bundle`) accepts or rejects them. Execution on Linux is still blocked on the ANE device node. See [docs/ane-bundles.md](docs/ane-bundles.md) and [docs/ane-hwx-format-notes.md](docs/ane-hwx-format-notes.md).
+The Linux bundle checker validates files without opening the ANE device. Schema version 2 records the build host, compiler, and target, and rejects targets other than H13. M1 code generation, conversion, worker execution, and graph splitting remain open. Mac runs are reference measurements, not a build dependency. See the [bundle contract](docs/ane-bundles.md) and [file format notes](docs/ane-hwx-format-notes.md).
 
 ## Contributing
 

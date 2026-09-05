@@ -361,8 +361,9 @@ int check_bundle(const std::string& dir_arg) {
                 << " sha256=" << payload.sha256
                 << " byte_size=" << payload.byte_size << "\n";
     }
-    std::cout << "[receipt] compiler: macos_build=" << m.compiler.macos_build
-              << " anecompiler=" << m.compiler.anecompiler << "\n";
+    std::cout << "[receipt] compiler: host_build=" << m.compiler.host_build
+              << " toolchain=" << m.compiler.toolchain
+              << " target=" << m.compiler.target << "\n";
     std::cout << "[receipt] firmware: min=" << m.firmware.min
               << " max=" << m.firmware.max << "\n";
     std::cout << "[receipt] provenance: repo=" << m.provenance.source_repo

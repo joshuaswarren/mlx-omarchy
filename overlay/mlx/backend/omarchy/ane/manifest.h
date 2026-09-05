@@ -40,8 +40,9 @@ struct AnePayload {
 };
 
 struct AneCompilerIdentity {
-  std::string macos_build;
-  std::string anecompiler;
+  std::string host_build;
+  std::string toolchain;
+  std::string target;
 };
 
 struct AneFirmwareRange {

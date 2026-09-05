@@ -53,15 +53,17 @@ off, and writes one wheel into `dist/`. The built wheel needs
 1. Run `./tools/ci/run-clean-omarchy-install.sh`
 2. Expect `clean install verified` as the last line.
 
-The script creates a fresh venv, installs the newest wheel from `dist/`, and
-runs an import check, an add, a matmul, and a gradient check. On a non-Apple
-development host, set `MLX_OMARCHY_ALLOW_NON_APPLE=1` explicitly before
-running it; do not set that override on a supported M1 host.
+The script creates a fresh venv and runs an import check, an add, a matmul,
+and a gradient check. It installs the newest wheel from `dist/` by default;
+set `MLX_OMARCHY_WHEEL` to an existing wheel path to test that exact build.
+On a non-Apple development host, set `MLX_OMARCHY_ALLOW_NON_APPLE=1`
+explicitly before running it. Do not set that override on a supported M1 host.
+
 ## Install by hand
 
 1. `python3 -m venv ~/.venvs/mlx-omarchy`
 2. `~/.venvs/mlx-omarchy/bin/pip install dist/mlx_omarchy-*.whl`
-3. `MLX_OMARCHY_ALLOW_NON_APPLE=1 ~/.venvs/mlx-omarchy/bin/python -c 'import mlx.core as mx; print(mx.default_device())'`
+3. `~/.venvs/mlx-omarchy/bin/python -c 'import mlx.core as mx; print(mx.default_device())'`
 
 Do not install the upstream `mlx` package beside this wheel. The module name
 is the same, so the two distributions conflict. Remove upstream `mlx` before
