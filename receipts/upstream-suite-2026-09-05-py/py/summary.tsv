@@ -1,0 +1,34 @@
+file	rc	result
+test_array.py	1	executed=208 passed=188 failed=20 skipped=19
+test_autograd.py	1	executed=53 passed=39 failed=14 skipped=1
+test_bf16.py	0	executed=77 passed=77 failed=0 skipped=2
+test_blas.py	1	executed=1047 passed=1028 failed=19 skipped=0
+test_compile.py	1	executed=67 passed=59 failed=8 skipped=0
+test_constants.py	0	executed=3 passed=3 failed=0 skipped=0
+test_conv.py	1	executed=26 passed=21 failed=5 skipped=10
+test_conv_transpose.py	0	executed=0 passed=0 failed=0 skipped=10
+test_device.py	0	executed=10 passed=10 failed=0 skipped=0
+test_double.py	0	executed=11 passed=11 failed=0 skipped=0
+test_einsum.py	1	executed=12 passed=10 failed=2 skipped=0
+test_eval.py	1	executed=14 passed=12 failed=2 skipped=1
+test_export_import.py	1	executed=34 passed=26 failed=8 skipped=0
+test_fast.py	1	executed=25 passed=19 failed=6 skipped=6
+test_fast_sdpa.py	124	INVALID-REPORT: [Errno 2] No such file or directory: 'receipts/upstream-suite-2026-09-05-py/py/test_fast_sdpa.py.xml'
+test_fft.py	1	executed=16 passed=13 failed=3 skipped=4
+test_graph.py	0	executed=1 passed=1 failed=0 skipped=0
+test_init.py	0	executed=54 passed=54 failed=0 skipped=0
+test_linalg.py	1	executed=284 passed=270 failed=14 skipped=0
+test_load.py	1	executed=211 passed=133 failed=78 skipped=0
+test_losses.py	1	executed=14 passed=13 failed=1 skipped=0
+test_memory.py	1	executed=2 passed=0 failed=2 skipped=1
+test_nn.py	1	executed=75 passed=67 failed=8 skipped=1
+test_ops.py	1	executed=407 passed=301 failed=106 skipped=2
+test_optimizers.py	1	executed=25 passed=20 failed=5 skipped=1
+test_quantized.py	1	executed=3058 passed=401 failed=2657 skipped=1
+test_random.py	1	executed=14 passed=12 failed=2 skipped=0
+test_reduce.py	1	executed=5047 passed=4803 failed=244 skipped=0
+test_threads.py	0	executed=2 passed=2 failed=0 skipped=0
+test_tree.py	0	executed=6 passed=6 failed=0 skipped=0
+test_upsample.py	1	executed=12 passed=2 failed=10 skipped=4
+test_vmap.py	1	executed=65 passed=58 failed=7 skipped=0
+test_zero_copy.py	0	executed=4 passed=4 failed=0 skipped=2

@@ -1,0 +1,21 @@
+file	rc	result
+allocator_tests	0	executed=4 passed=4 failed=0 skipped=247 cases=
+array_tests	0	executed=9 passed=9 failed=0 skipped=242 cases=
+arg_reduce_tests	0	executed=5 passed=5 failed=0 skipped=246 cases=
+autograd_tests	1	executed=25 passed=23 failed=2 skipped=226 cases=test op vjps,test jvp from vjp
+blas_tests	0	executed=1 passed=1 failed=0 skipped=250 cases=
+compile_tests	0	executed=31 passed=31 failed=0 skipped=220 cases=
+custom_vjp_tests	0	executed=2 passed=2 failed=0 skipped=249 cases=
+creations_tests	0	executed=3 passed=3 failed=0 skipped=248 cases=
+device_tests	0	executed=2 passed=2 failed=0 skipped=249 cases=
+einsum_tests	0	executed=2 passed=2 failed=0 skipped=249 cases=
+export_import_tests	0	executed=8 passed=8 failed=0 skipped=243 cases=
+eval_tests	0	executed=4 passed=4 failed=0 skipped=247 cases=
+fft_tests	1	executed=7 passed=3 failed=4 skipped=244 cases=test fft basics,test real ffts,test fftn,test fft grads
+load_tests	1	executed=7 passed=6 failed=1 skipped=244 cases=test gguf
+linalg_tests	0	executed=15 passed=15 failed=0 skipped=236 cases=
+ops_tests	1	executed=88 passed=81 failed=7 skipped=163 cases=test reduction ops,test arithmetic unary ops,test scatter types,test complex ops,test power,test full_like,test bitwise shift operations
+random_tests	1	executed=12 passed=11 failed=1 skipped=239 cases=test random bits
+scheduler_tests	0	executed=10 passed=10 failed=0 skipped=241 cases=
+utils_tests	0	executed=4 passed=4 failed=0 skipped=247 cases=
+vmap_tests	0	executed=12 passed=12 failed=0 skipped=239 cases=

@@ -1,0 +1,21 @@
+file	rc	result
+allocator_tests	0	executed=4 passed=4 failed=0 skipped=247 cases=
+array_tests	0	executed=9 passed=9 failed=0 skipped=242 cases=
+arg_reduce_tests	0	executed=5 passed=5 failed=0 skipped=246 cases=
+autograd_tests	1	executed=25 passed=18 failed=7 skipped=226 cases=test op vjps,test gather and take grads,test slice update jvp with one tangent,test jvp from vjp,test complex gradients,test scan grads,test grad dynamic slices
+blas_tests	0	executed=1 passed=1 failed=0 skipped=250 cases=
+compile_tests	1	executed=31 passed=30 failed=1 skipped=220 cases=test compile random bits
+custom_vjp_tests	0	executed=2 passed=2 failed=0 skipped=249 cases=
+creations_tests	1	executed=3 passed=2 failed=1 skipped=248 cases=test full
+device_tests	0	executed=2 passed=2 failed=0 skipped=249 cases=
+einsum_tests	0	executed=2 passed=2 failed=0 skipped=249 cases=
+export_import_tests	1	executed=8 passed=7 failed=1 skipped=243 cases=test export primitives with state
+eval_tests	0	executed=4 passed=4 failed=0 skipped=247 cases=
+fft_tests	1	executed=7 passed=2 failed=5 skipped=244 cases=test fft basics,test real ffts,test fftn,test fft vmap,test fft grads
+load_tests	1	executed=7 passed=5 failed=2 skipped=244 cases=test gguf,test gguf metadata
+linalg_tests	1	executed=15 passed=14 failed=1 skipped=236 cases=test SVD factorization
+ops_tests	1	executed=88 passed=59 failed=29 skipped=163 cases=test slice update,test slice update add,test dynamic slice,test dynamic slice update,test flip,test comparison ops,test reduction ops,test arithmetic unary ops,test arithmetic binary ops,test gather,test take,test scatter,test masked_scatter,test scatter types,test complex ops,test as_strided op,test pad,test power,test where,test full_like,test quantize dequantize,test diagonal,test diag,test topk,test trace,test bitwise shift operations,test conv_transpose1d with output_padding,test conv_transpose2d with output_padding,test conv_transpose3d with output_padding
+random_tests	1	executed=12 passed=5 failed=7 skipped=239 cases=test random key,test random split,test random bits,test random uniform,test random randint,test categorical,test laplace
+scheduler_tests	0	executed=10 passed=10 failed=0 skipped=241 cases=
+utils_tests	0	executed=4 passed=4 failed=0 skipped=247 cases=
+vmap_tests	1	executed=12 passed=8 failed=4 skipped=239 cases=test simple vmap,test vmap scatter,test vmap dynamic slices,test vmap floor_divide integer
