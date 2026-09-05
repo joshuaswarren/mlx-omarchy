@@ -81,11 +81,11 @@ Two numbers, measured differently:
 | Measure | Result | Date |
 |---|---|---|
 | MLX primitives with a working GPU kernel (the badge above) | 128 / 130 | 2026-09-05 |
-| Upstream MLX C++ test cases passing on the GPU device | 193 / 251 | 2026-09-05 |
+| Upstream MLX C++ test cases passing on the GPU device | 237 / 251 | 2026-09-05 |
 
 The first counts operations: a primitive counts once it computes on the GPU and a test verifies its values against a host reference. The second runs upstream's own test suite, pinned at the commit the backend is built from (MLX 0.32.2, `1f8e74e3`); one test case exercises many primitives across many dtypes and layouts, so it is the stricter measure.
 
-Every remaining failure is a named `not implemented` refusal, not a wrong value: an operation the backend does not support fails with the primitive name, dtype, and shape instead of returning a silent result or running on the CPU. The current refusals are being closed in dtype clusters (narrow integer copies, indexing over non-contiguous views, non-suffix-axis sort); the table updates with each release. Per-primitive status is generated from source in [docs/compatibility-matrix.md](docs/compatibility-matrix.md).
+Every remaining failure is a named `not implemented` refusal, not a wrong value: an operation the backend does not support fails with the primitive name, dtype, and shape instead of returning a silent result or running on the CPU. The remaining refusals are complex64 abs/select/power and a handful of 8- and 16-bit integer paths; the table updates with each release. Per-primitive status is generated from source in [docs/compatibility-matrix.md](docs/compatibility-matrix.md).
 
 ### What works
 
