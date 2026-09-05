@@ -111,15 +111,15 @@ void main() {
   // word_index. The Honeykrisp driver on Apple M1 returns zero for bool
   // word loads whose address is recomputed per lane inside a loop; this
   // straight-line form reads correctly on that driver. mis handles a
-  // source whose first element does not start on a word boundary: the
-  // first word then covers only its trailing bytes.
+  // source whose first element does not start on a word boundary, and
+  // word_count includes the skipped leading lanes.
+  uint mis = params.lhs_offset & 3u;
   uint word_index = gl_GlobalInvocationID.x;
-  uint word_count = (params.count + 3u) >> 2u;
+  uint word_count = (params.count + mis + 3u) >> 2u;
   if (word_index >= word_count) {
     return;
   }
   uint word = input_data.values[(params.lhs_offset >> 2u) + word_index];
-  uint mis = params.lhs_offset & 3u;
   uint first = 4u * word_index - mis;
   for (uint lane = 0u; lane < 4u; ++lane) {
     if (word_index == 0u && lane < mis) {

@@ -17,6 +17,7 @@
 #include "argreduce_f32.h"
 #include "cast_bf16_f16.h"
 #include "cast_bool_f32.h"
+#include "cast_bool_i32.h"
 #include "cast_bf16_f32.h"
 #include "cast_f16_f32.h"
 #include "cast_f16_bf16.h"
@@ -253,6 +254,8 @@ ShaderBytes shader_bytes(ComputeKernel kernel) {
       return {cast_f16_f32, cast_f16_f32_size};
     case ComputeKernel::CastBoolF32:
       return {cast_bool_f32, cast_bool_f32_size};
+    case ComputeKernel::CastBoolI32:
+      return {cast_bool_i32, cast_bool_i32_size};
     case ComputeKernel::CastF32F16:
       return {cast_f32_f16, cast_f32_f16_size};
     case ComputeKernel::CastBF16F32:

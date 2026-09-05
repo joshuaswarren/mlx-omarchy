@@ -47,6 +47,7 @@ enum class ComputeKernel : uint8_t {
   ElementwiseBF16,
   CastF16F32,
   CastBoolF32,
+  CastBoolI32,
   CastF32F16,
   CastBF16F32,
   CastF32BF16,
