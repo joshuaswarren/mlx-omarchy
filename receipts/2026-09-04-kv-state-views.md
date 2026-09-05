@@ -39,4 +39,6 @@ The broad llvmpipe C++ run was not green. It exposed tests that flattened retain
 
 A real empty-K matmul span-check regression was fixed in `3d978f9`: empty dimensions no longer enter subtraction-based span arithmetic. The selected matmul case passed all 667 assertions, including zero-valued empty-K matmul and scaled addmm results. This changes degenerate shapes only; the performance results above remain attributed to `db10f53`, not to an unmeasured later binary.
 
-Separate broad-suite crash and timeout observations remain unqualified; no full-suite pass is claimed. The local large QMM case exceeded the watchdog, while the complete 2,928-assertion QMM sweep passed on M1. Local logs: `/tmp/strided-combined-76a06dc-172317/`.
+The frozen combined CTest snapshot contains 725 results: 608 Passed, 101 Failed, 12 SEGFAULT, and 4 Timeout. These are historical results for that run, not a current functional pass rate. The 101 Failed results comprise 72 with named-refusal markers, 13 host-counter-event refusals, 15 without those markers, and one watchdog failure. Watchdog messages in other statuses are already included in the totals; they are not additional failures. Fixes made afterward do not retroactively turn those results into passes.
+
+Broad-suite crash and timeout observations remain unqualified; no full-suite pass is claimed. The local large QMM case exceeded the watchdog, while the complete 2,928-assertion QMM sweep passed on M1. Local logs: `/tmp/strided-combined-76a06dc-172317/`.

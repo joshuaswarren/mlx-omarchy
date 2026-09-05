@@ -346,7 +346,7 @@ TEST_CASE("nonzero scalar fill honors a slice view offset") {
   }
   Stream s = gpu_stream();
 
-  array parent({1, 2, 3, 4, 5, 6, 7, 8}, int32);
+  array parent({1, 2, 3, 4, 5, 6, 70, 8}, int32);
   array view = slice(parent, {2}, {6}, {1}, s);
   view.eval();
   array seven(7, int32);
@@ -370,7 +370,7 @@ TEST_CASE("nonzero scalar fill honors a slice view offset") {
   CHECK(pp[3] == 7);
   CHECK(pp[4] == 7);
   CHECK(pp[5] == 7);
-  CHECK(pp[6] == 7);
+  CHECK(pp[6] == 70);
   CHECK(pp[7] == 8);
 }
 
