@@ -17,10 +17,10 @@ diff --git a/mlx/ops.cpp b/mlx/ops.cpp
 +  if (s.device == Device::gpu) {
 +    auto out_shape = w.shape();
 +    out_shape.back() = w.shape(-1) * bits / 32;
-+    if ((bits != 4 && bits != 8) && omarchy::is_available()) {
++    if ((bits != 2 && bits != 4 && bits != 8) && omarchy::is_available()) {
 +      omarchy::unsupported("Quantize bits", uint32, out_shape);
 +    }
-+    if ((group_size != 32 && group_size != 64) && omarchy::is_available()) {
++    if ((group_size <= 0 || group_size % (32 / bits) != 0) && omarchy::is_available()) {
 +      omarchy::unsupported("Quantize group size", uint32, out_shape);
 +    }
 +    if ((w.dtype() != float16 && w.dtype() != float32) &&
@@ -52,10 +52,10 @@ diff --git a/mlx/ops.cpp b/mlx/ops.cpp
 +  if (s.device == Device::gpu) {
 +    auto out_shape = w.shape();
 +    out_shape.back() = out_size;
-+    if ((bits != 4 && bits != 8) && omarchy::is_available()) {
++    if ((bits != 2 && bits != 4 && bits != 8) && omarchy::is_available()) {
 +      omarchy::unsupported("Quantize bits", scales.dtype(), out_shape);
 +    }
-+    if ((group_size != 32 && group_size != 64) && omarchy::is_available()) {
++    if ((group_size <= 0 || group_size % (32 / bits) != 0) && omarchy::is_available()) {
 +      omarchy::unsupported("Quantize group size", scales.dtype(), out_shape);
 +    }
 +    if ((scales.dtype() != float16 && scales.dtype() != float32) &&

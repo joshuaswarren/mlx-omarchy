@@ -3283,6 +3283,38 @@ TEST_CASE("RandomBits matches the host threefry reference bit for bit") {
   }
 }
 
+TEST_CASE("RandomBits widths match the CPU stream bit for bit") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  Stream cpu_stream = new_stream(Device::cpu);
+  // Odd element counts land a partial word in every width: 1 and 2
+  // byte elements make bytes_per_key miss a word boundary, and the
+  // trailing bytes must match the CPU's copy_remaining byte for byte.
+  for (int width : {1, 2, 4}) {
+    for (auto& shape : {Shape{1}, Shape{3}, Shape{5}, Shape{7}, Shape{9}}) {
+      // The same raw key words feed both streams; each bits call
+      // schedules its own copy onto its stream.
+      array key({0x01234567u, 0x89abcdefu}, uint32);
+      array from_gpu = random::bits(shape, width, key, stream);
+      array from_cpu = random::bits(shape, width, key, cpu_stream);
+      from_gpu.eval();
+      from_cpu.eval();
+      omarchy::get_command_encoder(stream).synchronize();
+      mlx::core::synchronize(cpu_stream);
+      REQUIRE_EQ(from_gpu.nbytes(), from_cpu.nbytes());
+      REQUIRE_EQ(
+          std::vector<uint8_t>(
+              from_gpu.data<uint8_t>(),
+              from_gpu.data<uint8_t>() + from_gpu.nbytes()),
+          std::vector<uint8_t>(
+              from_cpu.data<uint8_t>(),
+              from_cpu.data<uint8_t>() + from_cpu.nbytes()));
+    }
+  }
+}
+
 TEST_CASE("uniform with a pinned key is deterministic through Vulkan") {
   if (!compute_available()) {
     return;
@@ -3328,18 +3360,30 @@ TEST_CASE("categorical samples every class through Vulkan compute") {
   }
 }
 
-TEST_CASE("RandomBits pins named errors outside the uint32 width") {
+TEST_CASE("RandomBits maps every width to its upstream dtype") {
   if (!compute_available()) {
     return;
   }
   Stream stream = gpu_stream();
   array key({1u, 2u}, uint32);
-  std::string width_error =
-      evaluation_error(random::bits(Shape{4}, 2, key, stream));
-  CHECK(width_error.find("RandomBits width") != std::string::npos);
-  std::string byte_error =
-      evaluation_error(random::bits(Shape{4}, 1, key, stream));
-  CHECK(byte_error.find("RandomBits width") != std::string::npos);
+  // Widths 1, 2, and 4 all run the threefry kernel now; each keeps
+  // its upstream dtype mapping (mlx/random.cpp). Invalid widths are
+  // rejected upstream in mlx/random.cpp before a primitive exists.
+  CHECK_EQ(random::bits(Shape{4}, 4, key, stream).dtype(), uint32);
+  CHECK_EQ(random::bits(Shape{4}, 2, key, stream).dtype(), uint16);
+  CHECK_EQ(random::bits(Shape{4}, 1, key, stream).dtype(), uint8);
+  // The width check throws at construction, so wrap the build itself.
+  std::string width_error = [&] {
+    try {
+      auto value = random::bits(Shape{4}, 3, key, stream);
+      value.eval();
+      return std::string{};
+    } catch (const std::exception& error) {
+      return std::string(error.what());
+    }
+  }();
+  CHECK(width_error.find("Bit width must be in {1, 2, 4}") !=
+        std::string::npos);
 }
 
 TEST_CASE("FP16 argmax matches host references") {
@@ -4537,8 +4581,8 @@ TEST_CASE("dequantize reproduces hand-packed affine words") {
     value = dist(gen);
   }
   std::vector<int> groups_list;
-  for (int bits : {4, 8}) {
-    for (int group_size : {32, 64}) {
+  for (int bits : {2, 4, 8}) {
+    for (int group_size : {32, 64, 128}) {
       CAPTURE(bits);
       CAPTURE(group_size);
       HostQuantizedWeights host =
@@ -4658,8 +4702,8 @@ TEST_CASE("quantize matches the pinned Metal-source affine reference") {
   std::mt19937 gen(29);
   std::uniform_real_distribution<float> dist(-4.0f, 4.0f);
 
-  for (int bits : {4, 8}) {
-    for (int group_size : {32, 64}) {
+  for (int bits : {2, 4, 8}) {
+    for (int group_size : {32, 64, 128}) {
       CAPTURE(bits);
       CAPTURE(group_size);
       std::vector<float> matrix(static_cast<size_t>(rows) * columns);
@@ -4774,12 +4818,19 @@ TEST_CASE("quantize and dequantize pin named errors outside the affine gate") {
   CHECK(construction_error([&] {
           quantize(x, 32, 4, "mxfp4", std::nullopt, stream);
         }).find("Quantize mode") != std::string::npos);
+  // Bits outside {2, 4, 8} refuse: 3/5/6 pack byte-oriented into a
+  // uint8 output the kernels do not implement.
   CHECK(construction_error([&] {
-          quantize(x, 32, 2, "affine", std::nullopt, stream);
+          quantize(x, 32, 3, "affine", std::nullopt, stream);
         }).find("Quantize bits") != std::string::npos);
+  // Group sizes outside upstream's 32/64/128 set are rejected by the
+  // pinned op-level validation before the backend gate runs.
+  std::vector<float> matrix12(4 * 96, 0.5f);
+  array x12(matrix12.begin(), Shape{4, 96}, float32);
   CHECK(construction_error([&] {
-          quantize(x, 128, 4, "affine", std::nullopt, stream);
-        }).find("Quantize group size") != std::string::npos);
+          quantize(x12, 12, 4, "affine", std::nullopt, stream);
+        }).find("The requested group size 12 is not supported") !=
+        std::string::npos);
   array bf16_input(matrix.begin(), Shape{4, 128}, bfloat16);
   CHECK(construction_error([&] {
           quantize(bf16_input, 32, 4, "affine", std::nullopt, stream);
@@ -4804,27 +4855,32 @@ TEST_CASE("quantize and dequantize pin named errors outside the affine gate") {
 
   std::vector<float> params4(4 * 4, 0.03125f);
   std::vector<float> params8(4 * 8, 0.03125f);
-  std::vector<float> params1(4 * 1, 0.03125f);
+  std::vector<float> params96(4 * 8, 0.03125f);
+  array sb96(params96.begin(), Shape{4, 8}, float32);
+  std::vector<uint32_t> words12(4 * 12, 0x33221100u);
+  array w12(words12.begin(), Shape{4, 12}, uint32);
   array sb8(params8.begin(), Shape{4, 8}, float32);
-  array sb1(params1.begin(), Shape{4, 1}, float32);
+  // Bits 3/5/6 pack byte-oriented into a uint8 output this backend
+  // does not implement; the pinned op-level word-shape math rejects
+  // the mismatched uint32 word count before the backend gate runs.
   CHECK(construction_error([&] {
           dequantize(
               w4,
               sb8,
               sb8,
               32,
-              2,
+              3,
               "affine",
               std::nullopt,
               std::nullopt,
               stream);
-        }).find("Quantize bits") != std::string::npos);
+        }).find("does not match the matrix") != std::string::npos);
   CHECK(construction_error([&] {
           dequantize(
-              w4,
-              sb1,
-              sb1,
-              128,
+              w12,
+              sb96,
+              sb96,
+              12,
               4,
               "affine",
               std::nullopt,
