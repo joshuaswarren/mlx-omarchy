@@ -6,7 +6,7 @@
 // double-precision reference on small shapes, one edge-tile shape per op,
 // and named-error pins for the unsupported quantization modes.
 
-#define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
+#define DOCTEST_CONFIG_IMPLEMENT
 #include "doctest/doctest.h"
 
 #include <algorithm>
@@ -28,6 +28,48 @@
 #include "mlx/stream.h"
 
 using namespace mlx::core;
+
+namespace {
+
+// The no-progress submit watchdog (device.cpp wait_for_timeline_progress)
+// sizes its hang interval for hardware: a single-increment timeline wait
+// shows no counter motion until its submit completes, so any dispatch that
+// legitimately runs longer than MLX_OMARCHY_HANG_NO_PROGRESS_NS is
+// misdiagnosed as a hung device. On hardware each prefill submit stays
+// under the 10 s default; on the Mesa llvmpipe software rasterizer this
+// repo develops against, one 4864x4864 prefill-shape quantized matmul
+// takes tens of seconds, so the default window kills the tile case's
+// jumbo sweep (and trips a teardown crash on the error path) even though
+// the kernel is correct. Provision the documented env override before the
+// first wait caches it (device.cpp env_ns_override is static-cached on
+// first use): only when the driver is llvmpipe, only when the operator
+// has not set a window already. Hardware keeps the 10 s default, and the
+// MLX_OMARCHY_MAX_WALL_NS ceiling (30 min default) stays authoritative.
+void provision_software_device_watchdog() {
+  if (std::getenv("MLX_OMARCHY_HANG_NO_PROGRESS_NS") != nullptr) {
+    return;
+  }
+  if (!gpu::is_available()) {
+    return;
+  }
+  const auto& caps = omarchy::device(0).capabilities();
+  if (caps.driver_id != VK_DRIVER_ID_MESA_LLVMPIPE) {
+    return;
+  }
+  std::cout
+      << "[provenance] llvmpipe detected: raising submit no-progress"
+      << " window to 900 s for jumbo prefill-shape dispatches\n";
+  setenv("MLX_OMARCHY_HANG_NO_PROGRESS_NS", "900000000000", 1);
+}
+
+} // namespace
+
+int main(int argc, char** argv) {
+  provision_software_device_watchdog();
+  doctest::Context ctx;
+  ctx.applyCommandLine(argc, argv);
+  return ctx.run();
+}
 
 namespace {
 
