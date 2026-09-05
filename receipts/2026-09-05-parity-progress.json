@@ -1,0 +1,48 @@
+{
+  "date": "2026-09-05",
+  "status": "development-branch-not-release-qualified",
+  "integration_source": "32ae61133b19eb7cde5921d88bf4e08c7cb02f62",
+  "upstream": {"version": "0.32.2", "commit": "1f8e74e3f12f31365464a6867c6579f0e9b29d85"},
+  "integrated_changes": [
+    "Higher-rank Vulkan reductions",
+    "Affine GPU quantization and all-negative group correction",
+    "Valid bfloat16 quantization error fixture",
+    "Early rejection of unsupported GPU quantization before asynchronous evaluation"
+  ],
+  "runner_verification": {
+    "commands": [
+      "bash -n tools/run-upstream-suite.sh",
+      "python3 /tmp/check-upstream-report-parsers.py tools/run-upstream-suite.sh",
+      "python3 -m unittest tests.test_upstream_suite tests.test_wheel_pins tests.test_mlx_provenance"
+    ],
+    "observed_results": {"shell_syntax": "pass", "embedded_parser_smoke_cases_passed": 14, "unittest_tests_passed": 12},
+    "scope": "Runner and provenance tooling only. Not upstream functional or M1 hardware qualification. The parser smoke script is a temporary local check; the empty-run regression is retained in tests/test_upstream_suite.py."
+  },
+  "performance_candidate": {
+    "baseline": "00a8df2cb48f55f2bacc539351ebb9af36f670c5",
+    "candidate": "8564957905f7fc303e8af6415f84b1ef2ab5b6ae",
+    "platform": "Apple M1 Linux, Mesa Honeykrisp",
+    "protocol": "Two models, three workloads, five alternating-order pairs per group",
+    "measured_legs": 60,
+    "failed_legs": 0,
+    "completed_pairs": 30,
+    "full_token_ids_equal_within_each_group": true,
+    "paired_median_decode_change_percent": {
+      "q4:short32": -0.5298,
+      "q4:long128": 0.2036,
+      "q4:ctx1024-32": -0.3238,
+      "bf16:short32": 0.4543,
+      "bf16:long128": 0.1225,
+      "bf16:ctx1024-32": -0.1907
+    },
+    "decision": "Do not adopt candidate as a performance improvement; no consistent gain.",
+    "scope": "Compares two older Linux builds, not this integrated source and not native macOS MLX. Fixed-length decoding continues after EOS by design."
+  },
+  "qualification_blockers": [
+    "Integration worker reported full reduction-suite SIGSEGV in int32 multi-axis sum visits every reduced element: 19 cases, 18 passed, 1 failed, 2577 passing assertions before crash. No preserved stack or core; source diagnosis remains open.",
+    "The current integrated source has not completed the full pinned upstream test suite on M1.",
+    "Matched native macOS performance comparison has not been completed.",
+    "Compiled bfloat16 and large single-evaluation queue issues remain unresolved."
+  ],
+  "claims": {"full_functional_parity": false, "native_performance_parity": false, "release_qualified": false}
+}
