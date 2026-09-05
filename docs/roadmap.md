@@ -78,10 +78,10 @@ Exit receipt: One Linux token-to-logits run matches the accepted reference.
 
 ### Build versioned ANE bundles
 
-(1) Compile one hand-authored MIL operation through the existing macOS path.
-(2) Revise the lowering design if that proof fails.
-(3) Lower a supported MLX region to MIL `program(1.3)` plus `weights.bin`.
-(4) Publish the exporter and exact compatibility manifest.
+(1) Build the open-source compiler on Linux, without Apple frameworks.
+(2) Prove target-correct M1 code generation separately from the Linux host port.
+(3) Compile one supported operation on Linux, validate the bundle, and execute it through the bounded M1 worker.
+(4) Lower supported MLX regions through that path and publish the compiler and exact compatibility manifest.
 (5) Keep private Apple software out of source and release assets.
 
 Exit receipt: An MLX-built region exports and runs on Linux.
@@ -89,12 +89,12 @@ The runtime rejects each changed compatibility field.
 
 ### Stabilize the ANE runtime ABI
 
-(1) Upstream proven buffer and kernel-window bindings to `eiln/ane`.
+(1) Land proven buffer and kernel-window bindings in our `joshuaswarren/omarchy-ane` fork.
 (2) Add capacity queries and state-indexed repeated execution.
 (3) Return timeout and recovery state.
 (4) Keep dma-buf APIs off until the full capability probe passes.
 
-Exit receipt: The upstream `libane` ABI passes its tests and an M1 consumer smoke.
+Exit receipt: The forked `libane` ABI passes its tests and an M1 consumer smoke.
 
 ### Enable ANE graph regions
 

@@ -1,0 +1,68 @@
+[receipt] bundle: receipts/fixtures/mil-oneop-bundle
+[receipt] graph: mil-oneop-add-fp16-1x512
+[receipt] graph_hash: 0417bba9b253e8ada7ab60357aaa7cd05d0000dde58d2c578e6174c310ad3151
+[receipt] task_descriptors: 1
+[receipt] input t1: index=0 dtype=float16 shape=[1,512] byte_size=1024 stride=16384
+[receipt] output t2: index=1 dtype=float16 shape=[1,512] byte_size=1024 stride=16384
+[receipt] state: none
+[receipt] workspace workspace: index=0 dtype=uint8 shape=[16384] byte_size=16384 stride=16384
+[receipt] anec: payload_size=16384 td_size=628 td_count=1 task_size=504 kernel_size=1024 sources=1 destinations=1 bootstrap_channel_size=16384
+[receipt] anec output t2: descriptor_index=1 channel=4 channel_bytes=32768 nchw=[1,512,1,1,64,64]
+[receipt] anec input t1: descriptor_index=0 channel=5 channel_bytes=32768 nchw=[1,512,1,1,64,64]
+[receipt] payload anec: model-512.anec sha256=479a30e8197bce9130f5d78939ab2862b83d015ca27e8623b8855747981f527e byte_size=20480
+[receipt] payload weights: weights.bin sha256=9436a9563e7e7c17767424814e9d418774cad1a507715a75891a15c24c6c6143 byte_size=1152
+[receipt] compiler: host_build=25G83 toolchain=ANECompiler 9.509.0 (macOS 26.6.2, coremlcompiler 3520.5.1) target=h13
+[receipt] firmware: min=26.0 max=26.6
+[receipt] provenance: repo=joshuaswarren/ane-linux-experiments commit=9bf0a7202e581ed0dab73c0fc3cb7ccc3bd8bf52
+[receipt] OK: bundle valid
+[receipt] bundle: receipts/fixtures/exported/ane-add-fp16-1x512
+[receipt] graph: ane-add-fp16-1x512
+[receipt] graph_hash: 0417bba9b253e8ada7ab60357aaa7cd05d0000dde58d2c578e6174c310ad3151
+[receipt] task_descriptors: 1
+[receipt] input t1: index=0 dtype=float16 shape=[1,512] byte_size=1024 stride=16384
+[receipt] output t2: index=1 dtype=float16 shape=[1,512] byte_size=1024 stride=16384
+[receipt] state: none
+[receipt] workspace workspace: index=0 dtype=uint8 shape=[16384] byte_size=16384 stride=16384
+[receipt] anec: payload_size=16384 td_size=628 td_count=1 task_size=504 kernel_size=1024 sources=1 destinations=1 bootstrap_channel_size=16384
+[receipt] anec output t2: descriptor_index=1 channel=4 channel_bytes=32768 nchw=[1,512,1,1,64,64]
+[receipt] anec input t1: descriptor_index=0 channel=5 channel_bytes=32768 nchw=[1,512,1,1,64,64]
+[receipt] payload anec: model.anec sha256=479a30e8197bce9130f5d78939ab2862b83d015ca27e8623b8855747981f527e byte_size=20480
+[receipt] payload weights: weights.bin sha256=9436a9563e7e7c17767424814e9d418774cad1a507715a75891a15c24c6c6143 byte_size=1152
+[receipt] compiler: host_build=25G83 toolchain=ANECompiler 9.509.0 (macOS 26.6.2, coremlcompiler 3520.5.1) target=h13
+[receipt] firmware: min=26.0 max=26.6
+[receipt] provenance: repo=joshuaswarren/mlx-omarchy commit=c17bb1b82490b661ef6a3acd1fa008265383802b
+[receipt] OK: bundle valid
+[receipt] bundle: receipts/fixtures/exported/ane-add-fp16-1x896
+[receipt] graph: ane-add-fp16-1x896
+[receipt] graph_hash: 9048326d6335b6bec29296d0ce521fa528c09c4558d93e15bf1830d7ec777da1
+[receipt] task_descriptors: 1
+[receipt] input t1: index=0 dtype=float16 shape=[1,896] byte_size=1792 stride=16384
+[receipt] output t2: index=1 dtype=float16 shape=[1,896] byte_size=1792 stride=16384
+[receipt] state: none
+[receipt] workspace workspace: index=0 dtype=uint8 shape=[16384] byte_size=16384 stride=16384
+[receipt] anec: payload_size=16384 td_size=628 td_count=1 task_size=504 kernel_size=1792 sources=1 destinations=1 bootstrap_channel_size=16384
+[receipt] anec output t2: descriptor_index=1 channel=4 channel_bytes=65536 nchw=[1,896,1,1,64,64]
+[receipt] anec input t1: descriptor_index=0 channel=5 channel_bytes=65536 nchw=[1,896,1,1,64,64]
+[receipt] payload anec: model.anec sha256=79d307207318285d9e2aa8a52b9ac06a3460c09c6628c26dfa14a9acd01a8271 byte_size=20480
+[receipt] payload weights: weights.bin sha256=41aa2b92c429c8790c55c37015e02d719c28eb7aa4ca26064fec95fae40dc0bb byte_size=1920
+[receipt] compiler: host_build=25G83 toolchain=ANECompiler 9.509.0 (macOS 26.6.2, coremlcompiler 3520.5.1) target=h13
+[receipt] firmware: min=26.0 max=26.6
+[receipt] provenance: repo=joshuaswarren/mlx-omarchy commit=c17bb1b82490b661ef6a3acd1fa008265383802b
+[receipt] OK: bundle valid
+[receipt] bundle: receipts/fixtures/exported/ane-mul-fp16-1x512
+[receipt] graph: ane-mul-fp16-1x512
+[receipt] graph_hash: fcd8aed34f664f6972866e46c49486a8ba70e92eccc61d9078f32f49261ce65d
+[receipt] task_descriptors: 1
+[receipt] input t1: index=0 dtype=float16 shape=[1,512] byte_size=1024 stride=16384
+[receipt] output t2: index=1 dtype=float16 shape=[1,512] byte_size=1024 stride=16384
+[receipt] state: none
+[receipt] workspace workspace: index=0 dtype=uint8 shape=[16384] byte_size=16384 stride=16384
+[receipt] anec: payload_size=16384 td_size=628 td_count=1 task_size=504 kernel_size=1024 sources=1 destinations=1 bootstrap_channel_size=16384
+[receipt] anec output t2: descriptor_index=1 channel=4 channel_bytes=32768 nchw=[1,512,1,1,64,64]
+[receipt] anec input t1: descriptor_index=0 channel=5 channel_bytes=32768 nchw=[1,512,1,1,64,64]
+[receipt] payload anec: model.anec sha256=01c61e430633d4d94b3ca9b8dc426cc03f650df49a3deca6ca6845de9712d8ec byte_size=20480
+[receipt] payload weights: weights.bin sha256=9436a9563e7e7c17767424814e9d418774cad1a507715a75891a15c24c6c6143 byte_size=1152
+[receipt] compiler: host_build=25G83 toolchain=ANECompiler 9.509.0 (macOS 26.6.2, coremlcompiler 3520.5.1) target=h13
+[receipt] firmware: min=26.0 max=26.6
+[receipt] provenance: repo=joshuaswarren/mlx-omarchy commit=c17bb1b82490b661ef6a3acd1fa008265383802b
+[receipt] OK: bundle valid

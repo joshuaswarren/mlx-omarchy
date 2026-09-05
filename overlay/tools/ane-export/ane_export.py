@@ -294,7 +294,7 @@ def main() -> int:
 
     anec_sha = sha256_file(anec_path)
     manifest = {
-        "manifest_version": 1,
+        "manifest_version": 2,
         "name": name,
         "graph_hash": sha256_file(mil_path),
         "task_descriptors": facts["task_descriptors"],
@@ -322,7 +322,8 @@ def main() -> int:
              "sha256": sha256_file(bundle_weights),
              "byte_size": bundle_weights.stat().st_size},
         ],
-        "compiler": {"macos_build": macos_build, "anecompiler": anecompiler},
+        "compiler": {"host_build": macos_build, "toolchain": anecompiler,
+                     "target": args.target.lower()},
         "firmware": {"min": args.firmware_min, "max": args.firmware_max},
         "provenance": {
             "source_repo": args.source_repo,

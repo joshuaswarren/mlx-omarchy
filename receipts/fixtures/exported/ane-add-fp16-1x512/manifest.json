@@ -1,5 +1,5 @@
 {
-  "manifest_version": 1,
+  "manifest_version": 2,
   "name": "ane-add-fp16-1x512",
   "graph_hash": "0417bba9b253e8ada7ab60357aaa7cd05d0000dde58d2c578e6174c310ad3151",
   "task_descriptors": 1,
@@ -57,8 +57,9 @@
     }
   ],
   "compiler": {
-    "macos_build": "25G83",
-    "anecompiler": "ANECompiler 9.509.0 (macOS 26.6.2, coremlcompiler 3520.5.1)"
+    "host_build": "25G83",
+    "toolchain": "ANECompiler 9.509.0 (macOS 26.6.2, coremlcompiler 3520.5.1)",
+    "target": "h13"
   },
   "firmware": {
     "min": "26.0",

@@ -16,7 +16,7 @@ namespace mlx::core::omarchy::ane {
 namespace {
 
 constexpr const char* kManifestName = "manifest.json";
-constexpr int kSupportedManifestVersion = 1;
+constexpr int kSupportedManifestVersion = 2;
 
 std::runtime_error manifest_error(const std::string& reason) {
   return std::runtime_error("[omarchy-ane] manifest: " + reason + ".");
@@ -391,9 +391,14 @@ AneManifest parse_ane_manifest(const std::filesystem::path& manifest_path) {
   if (!compiler.is_object()) {
     throw manifest_error("field 'compiler' must be an object");
   }
-  reject_unknown_fields(compiler, {"macos_build", "anecompiler"});
-  manifest.compiler.macos_build = require_non_empty_string(compiler, "macos_build");
-  manifest.compiler.anecompiler = require_non_empty_string(compiler, "anecompiler");
+  reject_unknown_fields(compiler, {"host_build", "toolchain", "target"});
+  manifest.compiler.host_build = require_non_empty_string(compiler, "host_build");
+  manifest.compiler.toolchain = require_non_empty_string(compiler, "toolchain");
+  manifest.compiler.target = require_non_empty_string(compiler, "target");
+  if (manifest.compiler.target != "h13") {
+    throw manifest_error("unsupported compiler target " + manifest.compiler.target +
+                         " (expected h13)");
+  }
 
   parse_firmware_range(root, manifest);
 

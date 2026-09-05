@@ -1,0 +1,83 @@
+{
+  "date": "2026-09-05",
+  "status": "local integration verified; M1 native comparison and ANE execution blocked",
+  "source": {
+    "bool_cast": "25c4e35",
+    "clean_install": "835484f",
+    "ane_bundle_validation": "51e9585",
+    "device_json": "00a8df2cb48f55f2bacc539351ebb9af36f670c5"
+  },
+  "local_device": "llvmpipe (LLVM 15.0.6, 256 bits), Mesa, Vulkan 1.3.230; explicit non-Apple development override",
+  "verification": [
+    {
+      "command": "cmake --build .work/integration-build --target omarchy_shape_ops_tests omarchy_ane_bundle_tests omarchy_runtime_tests mlx-omarchy-info -j8",
+      "result": "exit 0",
+      "source": "51e9585"
+    },
+    {
+      "command": "MLX_OMARCHY_ALLOW_NON_APPLE=1 timeout 120 .work/integration-build/tests/omarchy/omarchy_shape_ops_tests",
+      "result": "24 cases passed, 295 assertions passed, zero failures",
+      "receipt": "2026-09-05-integrated-shape-ops.log"
+    },
+    {
+      "command": "timeout 120 .work/integration-build/tests/omarchy/omarchy_ane_bundle_tests",
+      "result": "26 cases passed, 2709 assertions passed, zero failures",
+      "receipt": "2026-09-05-integrated-ane-bundles.log"
+    },
+    {
+      "command": "mlx-omarchy-info --check-bundle for ane-add-fp16-1x512, ane-add-fp16-1x896, ane-mul-fp16-1x512 under receipts/fixtures/exported",
+      "result": "All three existing exports returned OK: bundle valid",
+      "receipt": "2026-09-05-integrated-bundle-fixtures.log",
+      "scope": "Device-free file validation; no ANE graph execution"
+    },
+    {
+      "command": "bash -n tools/ci/run-clean-omarchy-install.sh && python3 -m unittest tests.test_wheel_pins tests.test_mlx_provenance",
+      "result": "11 tests passed"
+    },
+    {
+      "command": "MLX_OMARCHY_ALLOW_NON_APPLE=1 .work/integration-build/tools/mlx-omarchy-info/mlx-omarchy-info --json, parsed with Python json.load",
+      "before": "JSONDecodeError: Expecting ',' delimiter at line 32 column 3",
+      "after": "valid device JSON: llvmpipe (LLVM 15.0.6, 256 bits) trace counters: 7",
+      "receipt": "2026-09-05-integrated-local-device.json",
+      "note": "An intermediate check still used the old executable while its rebuild was running. The passing check ran after that build completed."
+    }
+  ],
+  "benchmark_runner_correction": {
+    "file": "/tmp/samechip_bench.py",
+    "sha256": "52ab63cb896af7b7d8eec55e5daef99cf00c1db95f5f03f292d606d5b9eed721",
+    "cause": "Path.resolve followed venv/bin/python to the system interpreter, losing the selected package environment",
+    "fix": "Keep the caller's absolute executable path without resolving symlinks",
+    "regression": "Create a real symlinked stdlib venv, launch the selected interpreter, require its sys.prefix to equal that venv",
+    "before": "AssertionError: selected /usr/bin/python3.11, prefix /usr instead of the temporary venv",
+    "after": "self-test: OK (env cleanup, rejections, provenance, counts); py_compile succeeded",
+    "hardware_boundary": "The first hardware attempt refused packages before any inference leg. It is not a benchmark result."
+  },
+  "candidate_not_adopted": {
+    "commit": "8564957905f7fc303e8af6415f84b1ef2ab5b6ae",
+    "change": "Reviewed submit scratch-vector capacity reuse, based on b6547c3",
+    "local_checks": "Three selected runtime cases passed with 96 assertions; one decode-dispatch case passed with two assertions (eager 22, compiled per-node 22, compiled fused 20 at one layer)",
+    "missing": "Balanced normal-wheel M1 performance and full-output comparisons"
+  },
+  "removed": "Uncommitted portability matrix, tests and receipts that fabricated assertion counts or listed placeholder coverage. Actual clean-install checks were retained.",
+  "schema_v2": {
+    "fields": ["compiler.host_build", "compiler.toolchain", "compiler.target"],
+    "target": "h13 only; unsupported targets fail before payload access",
+    "red": "Pre-migration CLI rejected version 2 with expected 1",
+    "verification": "25 bundle cases and 2719 assertions passed; all four retained fixtures accepted; shape 24/295 and Python 11 tests passed",
+    "receipts": ["2026-09-05-host-neutral-bundles.log", "2026-09-05-host-neutral-fixtures.log"],
+    "scope": "Device-free validation; synthetic tests use Linux compiler metadata; reference payloads retain original Mac compiler identities"
+  },
+  "hardware_blocker": {
+    "native_os": "macOS 13.7.8 build 22H730",
+    "reason": "Below macOS 14 native benchmark requirement; passwordless reboot unavailable",
+    "native_measurements": 0,
+    "state": "M1 remains in macOS; privileged reboot or physical restart needed to restore Linux"
+  },
+  "not_established": [
+    "Full pinned upstream MLX functional parity",
+    "End-to-end ecosystem portability",
+    "Same-physical-M1 native macOS comparison",
+    "Linux performance above native macOS",
+    "mlx-omarchy ANE worker execution, graph partitioning, numerical parity, recovery or acceleration"
+  ]
+}

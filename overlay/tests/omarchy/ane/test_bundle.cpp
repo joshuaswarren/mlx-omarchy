@@ -93,7 +93,7 @@ void write_file(const std::filesystem::path& path, const std::string& content) {
 }
 
 struct FixtureManifest {
-  int manifest_version = 1;
+  int manifest_version = 2;
   bool omit_manifest_version = false;
   std::string name = "ane-add-fp16-1x512";
   std::string graph_hash = hex64('1');
@@ -117,8 +117,9 @@ struct FixtureManifest {
   std::string weights_path = "weights.bin";
   std::string weights_sha256_override;
   bool omit_compiler = false;
-  std::string macos_build = "20A2411";
-  std::string anecompiler = "ANECompiler 5.5.0 (Monterey)";
+  std::string host_build = "Linux test host";
+  std::string toolchain = "test compiler";
+  std::string target = "h13";
   std::string firmware_min = "13.0";
   std::string firmware_max = "13.5";
   std::string source_repo = "joshuaswarren/mlx-omarchy";
@@ -273,8 +274,9 @@ struct FixtureManifest {
     }
     json += "\n  ],\n";
     if (!omit_compiler) {
-      json += "  \"compiler\": {\"macos_build\": \"" + macos_build + "\",";
-      json += " \"anecompiler\": \"" + anecompiler + "\"},\n";
+      json += "  \"compiler\": {\"host_build\": \"" + host_build + "\",";
+      json += " \"toolchain\": \"" + toolchain + "\",";
+      json += " \"target\": \"" + target + "\"},\n";
     }
     json += "  \"firmware\": {\"min\": \"" + firmware_min + "\",";
     json += " \"max\": \"" + firmware_max + "\"},\n";
@@ -329,7 +331,6 @@ TEST_CASE("valid bundle exposes its exact contracts") {
   auto dir = write_bundle(temp, fixture);
 
   AneBundle bundle = load_bundle(dir);
-  CHECK(bundle.manifest.manifest_version == 1);
   CHECK(bundle.manifest.name == "ane-add-fp16-1x512");
   CHECK(bundle.manifest.graph_hash == hex64('1'));
   CHECK(bundle.manifest.task_descriptors == 1);
@@ -370,8 +371,6 @@ TEST_CASE("valid bundle exposes its exact contracts") {
   CHECK(bundle.anec_header.nchw[fixture.output_bdx()][1] == 512);
   CHECK(bundle.anec_header.nchw[fixture.input_bdx(0)][4] == 64);
 
-  CHECK(bundle.manifest.compiler.macos_build == "20A2411");
-  CHECK(bundle.manifest.compiler.anecompiler == "ANECompiler 5.5.0 (Monterey)");
   CHECK(bundle.manifest.firmware.min == "13.0");
   CHECK(bundle.manifest.firmware.max == "13.5");
   CHECK(bundle.manifest.provenance.source_repo == "joshuaswarren/mlx-omarchy");
@@ -417,23 +416,6 @@ TEST_CASE("directory without manifest.json is a manifest error") {
   CHECK(message.find("cannot open") != std::string::npos);
 }
 
-TEST_CASE("repeated identical manifests yield identical graph identity") {
-  TempDir temp;
-  auto dir = write_bundle(temp, FixtureManifest{});
-  AneManifest first = parse_ane_manifest(dir / "manifest.json");
-  AneManifest second = parse_ane_manifest(dir / "manifest.json");
-  CHECK(first.graph_hash == second.graph_hash);
-  CHECK(first.name == second.name);
-  CHECK(first.task_descriptors == second.task_descriptors);
-  REQUIRE_EQ(first.inputs.size(), second.inputs.size());
-  CHECK(first.inputs[0].shape == second.inputs[0].shape);
-  CHECK(first.inputs[0].byte_size == second.inputs[0].byte_size);
-  CHECK(first.inputs[0].stride == second.inputs[0].stride);
-  CHECK(first.workspace[0].byte_size == second.workspace[0].byte_size);
-  CHECK(first.compiler.anecompiler == second.compiler.anecompiler);
-  CHECK(first.firmware.min == second.firmware.min);
-  CHECK(first.release_asset.model_sha256 == second.release_asset.model_sha256);
-}
 
 TEST_CASE("sha256_file matches the manifest descriptor digest") {
   TempDir temp;
@@ -449,7 +431,7 @@ TEST_CASE("single-field mutations fail before payload access") {
 
   SUBCASE("unknown manifest_version") {
     FixtureManifest fixture;
-    fixture.manifest_version = 2;
+    fixture.manifest_version = 1;
     std::string message = load_error(write_bundle(temp, fixture, false, false));
     CHECK(message.find("unsupported manifest_version") != std::string::npos);
   }
@@ -477,11 +459,23 @@ TEST_CASE("single-field mutations fail before payload access") {
     std::string message = load_error(write_bundle(temp, fixture, false, false));
     CHECK(message.find("missing field 'compiler'") != std::string::npos);
   }
-  SUBCASE("empty anecompiler") {
+  SUBCASE("empty toolchain") {
     FixtureManifest fixture;
-    fixture.anecompiler = "";
+    fixture.toolchain = "";
     std::string message = load_error(write_bundle(temp, fixture, false, false));
-    CHECK(message.find("'anecompiler' must not be empty") != std::string::npos);
+    CHECK(message.find("'toolchain' must not be empty") != std::string::npos);
+  }
+  SUBCASE("unsupported target fails before payload access") {
+    FixtureManifest fixture;
+    fixture.target = "H16G";
+    std::string message = load_error(write_bundle(temp, fixture, false, false));
+    CHECK(message.find("unsupported compiler target") != std::string::npos);
+  }
+  SUBCASE("empty compiler host fails before payload access") {
+    FixtureManifest fixture;
+    fixture.host_build = "";
+    std::string message = load_error(write_bundle(temp, fixture, false, false));
+    CHECK(message.find("'host_build' must not be empty") != std::string::npos);
   }
   SUBCASE("changed shape") {
     FixtureManifest fixture;

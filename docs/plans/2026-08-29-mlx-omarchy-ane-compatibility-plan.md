@@ -68,7 +68,7 @@ The corrected 13-layer graph still needs a run with workspace buffer 3 before th
 
 **Artifacts and interoperation**
 
-- R9. The first release may compile ANE graphs on macOS and must run versioned precompiled bundles on Linux.
+- R9. ANE graphs must compile on Linux through an open-source compiler. Building or using the Linux ANE path must not require a Mac or private Apple compiler. macOS may provide independent numerical and performance references.
 - R10. Every ANE bundle must record graph metadata, tensor contracts, compiler and firmware identifiers, hashes, and source provenance.
 - R11. GPU-to-ANE transfers must use measured host staging until the DRM driver and Vulkan stack prove safe dma-buf sharing.
 - R19. Release bundles must ship as separate public assets keyed by model, shapes, compiler, firmware, and graph hash. Unsupported or missing bundles must leave the affected region on Vulkan.
@@ -146,7 +146,6 @@ The corrected 13-layer graph still needs a run with workspace buffer 3 before th
 **Deferred until the M1 contract passes**
 
 - M2, M3, and M4 device qualification.
-- A Linux-native ANE compiler.
 - Zero-copy GPU-to-ANE sharing.
 - Separate product repositories for servers, audio, vision, or desktop applications.
 
@@ -162,7 +161,7 @@ The corrected 13-layer graph still needs a run with workspace buffer 3 before th
 
 - The target M1 Omarchy kernel, Mesa Honeykrisp Vulkan driver, Vulkan loader, and shader compiler.
 - The out-of-tree ANE DRM driver and `libane` work in `eiln/ane`.
-- A macOS machine that can run the private ANE compiler during the first artifact phase.
+- A pinned open-source ANE compiler, its Linux build dependencies, and a separately qualified M1 target backend.
 - Upstream MLX source and its existing CPU, CUDA, Metal, and no-backend implementations.
 
 ---
@@ -176,7 +175,7 @@ The corrected 13-layer graph still needs a run with workspace buffer 3 before th
 - KTD3. **Keep ANE behind `mx.gpu` and preserve state across evaluations.** The graph evaluator will select ANE regions inside normal GPU evaluation. It will keep stable ANE buffer identities for recurrent state, rebind per-step inputs, and invalidate residency on shape, graph, or stream changes. Applications will not manage an ANE device. This implements R3, R6, and R7.
 - KTD4. **Compile out CPU tensor execution in release builds.** Host code may schedule and copy, but missing accelerator support is an error. Tests will run a release-equivalent no-CPU build. This implements R4, R7, and R8.
 - KTD5. **Start with host-staged GPU-to-ANE copies.** Current `libane` buffer objects expose CPU mappings but no PRIME or dma-buf API. Direct sharing can replace staging only after export, import, cache-coherency, and fence probes pass. dma-buf work remains disabled probe-only scaffolding until then. This implements R11, R16, R17, and R20.
-- KTD6. **Lower MLX regions to versioned MIL before ANE compilation.** The user-runnable macOS exporter will translate a supported MLX primitive region into MIL `program(1.3)` plus `weights.bin`, call `ANECCompile`, convert HWX to ANEC, and package the result with its manifest. Linux will reject incompatible hashes, shapes, compiler versions, or firmware ranges. This implements R9, R10, and R18.
+- KTD6. **Compile supported MLX regions on Linux.** Reuse the open-source MIL-to-HWX compiler pipeline, provide a Linux host build, and qualify M1 code generation independently from the existing H16G/M4 target. Lower supported MLX regions into the compiler IR, emit target-specific HWX, convert to ANEC, and retain the versioned bundle contract. Compiler metadata must name the toolchain, source revision, build host, and target without requiring macOS fields. This implements R9, R10, and R18.
 - KTD7. **Emulate missing dtypes on Vulkan.** The M1 Vulkan capability report has FP16 but lacks native BF16, FP4, integer dot-product, and matrix-core operations. Shaders must preserve MLX semantics through packing and conversion rather than CPU fallback. This implements R4, R5, and R7.
 - KTD8. **Keep the repository set small.** `mlx-omarchy` owns the Linux patch set, integration, packaging, and release docs. `ane-linux-experiments` remains the hardware evidence lab. Driver ABI changes belong in `eiln/ane`. This implements R12 and R15.
 - KTD9. **Gate products through existing projects.** MLX-LM is the first executable gate. The later matrix uses established MLX projects and native engine ports instead of custom demo applications. This implements R13 and R14.
@@ -210,15 +209,14 @@ The worker preserves eligible recurrent state buffers across evaluations and reb
 It tears down residency on graph, shape, or stream changes.
 Everything else stays in the Vulkan graph.
 
-On macOS, the exporter lowers the selected MLX primitive region into MIL `program(1.3)` plus `weights.bin`.
-The existing compiler and HWX-to-ANEC stages then produce the release bundle.
+On Linux, the compiler lowers supported MLX regions into its typed IR and emits target-specific code without private Apple frameworks. A Linux host build that emits H16G/M4 code is not an M1 execution proof. The target backend, HWX-to-ANEC conversion, manifest, and worker must pass one connected M1 numerical gate.
 
 ### Sequencing
 
 1. Complete the current full Qwen ANE parity experiment and freeze the buffer contract.
 2. Build the Vulkan runtime, then run an early matmul and attention performance spike against the pinned `llama.cpp` build before broad primitive expansion.
 3. Pass MLX core semantics and MLX-LM on Vulkan before adding ANE to the evaluator.
-4. Add the macOS bundle exporter and Linux ANE runtime behind a disabled-by-default capability flag.
+4. Add the Linux compiler and ANE worker behind a disabled-by-default capability flag; qualify M1 code generation before enabling it.
 5. Enable ANE regions only after parity, safety, and measured crossover gates pass.
 6. Qualify ecosystem projects and publish the first supported release.
 
@@ -379,22 +377,22 @@ ANE work follows `v0.5.0`. It does not block the five Vulkan releases.
 
 - **Goal:** Lower supported MLX primitive regions into portable bundles that Linux can validate and execute.
 - **Requirements:** R6, R9, R10, R18, R19
-- **Repositories:** `mlx-omarchy`, `ane-linux-experiments`
-- **Files:** In `mlx-omarchy`: `tools/ane-export/lower_mlx_region.cpp`, `tools/ane-export/`, `mlx/backend/omarchy/ane/bundle.cpp`, `mlx/backend/omarchy/ane/manifest.cpp`, `tests/omarchy/ane/test_mil_lowering.cpp`, `tests/omarchy/ane/test_bundle.cpp`, `docs/ane-bundles.md`. In `ane-linux-experiments`: `tools/ane-compile-hwx.mm`, `tools/hwxv2-to-anec.py`.
-- **Patterns:** Reuse the proven `ANECCompile` and HWX-to-ANEC stages from `tools/ane-compile-hwx.mm` and `tools/hwxv2-to-anec.py`. Keep private compiler calls on macOS.
-- **Approach:** First send one hand-authored single-operation MIL program through the existing `ane-compile-hwx.mm` path. Stop U6 and revise the lowering design if the compiler rejects that proof. After it passes, lower supported MLX primitive regions to MIL `program(1.3)` plus `weights.bin`. Compile on macOS, convert HWX to ANEC, and package a manifest with graph identity, tensor contracts, compiler and firmware identifiers, descriptor hashes, provenance, and release-asset keys. Publish the macOS exporter as a user-runnable tool and document community bundle submission. Validate every field before Linux maps or submits a descriptor.
+- **Repositories:** `mlx-omarchy`, the open-source compiler fork, and read-only hardware evidence from `ane-linux-experiments`.
+- **Files:** Compiler build and target backends in the compiler fork; MLX lowering, bundle schema, exporter, validator, and focused tests in `mlx-omarchy`. Preserve repository boundaries and compiler license attribution.
+- **Patterns:** Reuse the open compiler front end, IR, planner, and object writer. Reuse the known libane artifact contract. Do not call private Apple compiler frameworks, select precompiled blobs by fixture name, or relabel M4 descriptors as M1 output.
+- **Approach:** Build the compiler on Linux and prove fresh output from a supported source graph. Separately implement or reuse a verified M1 target. Compile a single operation on Linux, package host-neutral toolchain and target metadata, validate it before device access, and execute through the bounded M1 worker. General MLX lowering follows that proof. Publish a Linux-runnable compiler path; prebuilt bundles are a cache, not a Mac dependency.
 - **Test scenarios:**
-  - A hand-authored one-operation MIL program compiles through the existing macOS path and executes as a Linux ANEC fixture.
+  - A hand-authored one-operation source graph compiles on Linux without Apple frameworks and its M1-target artifact executes as a validated ANEC fixture.
   - A region built from MLX primitives lowers, compiles, bundles, and runs independently from the existing ANEForge fixtures.
   - A valid bundle exposes its exact input, output, state, and workspace contracts.
   - A changed graph, shape, compiler, firmware range, descriptor hash, or signature fails before device access.
   - Repeated export of the same graph and toolchain produces the same graph identity.
   - The release manifest resolves only assets matching the exact model, shape, compiler, firmware, and graph hash.
   - A missing bundle leaves the affected region on Vulkan.
-  - The package omits private frameworks and compiler binaries.
+  - The build, package, and runtime require no private Apple frameworks or compiler binaries.
   - A community bundle submission reproduces through the public exporter and passes the same manifest checks.
   - Existing production ANEC fixtures migrate without weakening their validation.
-- **Verification:** `tools/ci/run-ane-bundle-tests.sh` on Linux and the recorded hand-authored MIL and MLX-region macOS export-to-Linux smokes.
+- **Verification:** Linux compiler software tests and fresh artifact generation, Linux bundle checks, and a connected single-operation then MLX-region compile-to-M1-execution receipt. macOS reference timings do not satisfy the compiler gate.
 - **Dependencies:** U1 and U5.
 
 ### U9. Stabilize the ANE driver and libane contract

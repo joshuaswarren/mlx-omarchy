@@ -1,5 +1,5 @@
 {
-  "manifest_version": 1,
+  "manifest_version": 2,
   "name": "ane-mul-fp16-1x512",
   "graph_hash": "fcd8aed34f664f6972866e46c49486a8ba70e92eccc61d9078f32f49261ce65d",
   "task_descriptors": 1,
@@ -57,8 +57,9 @@
     }
   ],
   "compiler": {
-    "macos_build": "25G83",
-    "anecompiler": "ANECompiler 9.509.0 (macOS 26.6.2, coremlcompiler 3520.5.1)"
+    "host_build": "25G83",
+    "toolchain": "ANECompiler 9.509.0 (macOS 26.6.2, coremlcompiler 3520.5.1)",
+    "target": "h13"
   },
   "firmware": {
     "min": "26.0",

@@ -1,5 +1,5 @@
 {
-  "manifest_version": 1,
+  "manifest_version": 2,
   "name": "mil-oneop-add-fp16-1x512",
   "graph_hash": "0417bba9b253e8ada7ab60357aaa7cd05d0000dde58d2c578e6174c310ad3151",
   "task_descriptors": 1,
@@ -17,7 +17,7 @@
     {"role": "anec", "path": "model-512.anec", "sha256": "479a30e8197bce9130f5d78939ab2862b83d015ca27e8623b8855747981f527e", "byte_size": 20480},
     {"role": "weights", "path": "weights.bin", "sha256": "9436a9563e7e7c17767424814e9d418774cad1a507715a75891a15c24c6c6143", "byte_size": 1152}
   ],
-  "compiler": {"macos_build": "25G83", "anecompiler": "ANECompiler 9.509.0 (macOS 26.6.2, coremlcompiler 3520.5.1)"},
+  "compiler": {"host_build": "25G83", "toolchain": "ANECompiler 9.509.0 (macOS 26.6.2, coremlcompiler 3520.5.1)", "target": "h13"},
   "firmware": {"min": "26.0", "max": "26.6"},
   "provenance": {
     "source_repo": "joshuaswarren/ane-linux-experiments",
