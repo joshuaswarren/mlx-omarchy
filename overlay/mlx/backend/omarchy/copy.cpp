@@ -498,6 +498,12 @@ void copy_gpu(const array& input, array& out, CopyType ctype, const Stream& s) {
         CopyType::GeneralGeneral,
         s);
     in = &*dense;
+    // The gather above leaves |dense| row-contiguous, so the follow-up
+    // copy reads flat storage. A dtype-converting AsType picks General
+    // for a non-contiguous input; kept here it hits the dtype-converting
+    // strided-copy refusal even though nothing strided remains (the
+    // db10f53 slice views). Vector reaches the flat cast path.
+    ctype = CopyType::Vector;
   }
   // Upstream's set_copy_output_data always gives the output a buffer, even
   // for zero-size outputs (malloc(0) yields a valid empty VulkanBuffer).

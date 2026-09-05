@@ -443,11 +443,27 @@ TEST_CASE("elementwise on broadcast-expanded views matches host values") {
        4, 4},
       stream);
 
-  // A real reduce over a view above the push-constant rank cap stays a
-  // named error, never a silent wrong value.
-  CHECK(
-      evaluation_error(sum(view, std::vector<int>{0}, false, stream))
-          .find("Sum rank above 4") != std::string::npos);
+  // e163a56 lifted the rank cap: a real reduce over the rank-5 view now
+  // computes, so pin the axis-0 sum against the host reference instead
+  // of a named error. Output shape (5,5,1,5,1): element (b,c,e) sums
+  // base over the expanded axis 0.
+  std::vector<float> sum_expected;
+  for (int b = 0; b < 5; ++b) {
+    for (int c = 0; c < 5; ++c) {
+      for (int e = 0; e < 5; ++e) {
+        float total = 0.0f;
+        for (int a = 0; a < 5; ++a) {
+          total += base_values[a * 25 + c * 5 + e];
+        }
+        sum_expected.push_back(total);
+      }
+    }
+  }
+  check_values(
+      sum(view, std::vector<int>{0}, false, stream),
+      sum_expected,
+      stream,
+      1e-6);
 }
 
 TEST_CASE("compute indexing stays inside Vulkan and uint32 limits") {
@@ -1701,13 +1717,21 @@ TEST_CASE("take gathers N-D index arrays as flat row sequences") {
     skip("Vulkan device lacks required BF16 storage and shader features.");
   }
 
-  // A transposed index view is gapless but not row-contiguous, so it
-  // still pins the named error.
-  std::vector<int> wv = {1, 2, 3, 4, 5, 6};
+  // A transposed index view is gapless but not row-contiguous; the
+  // consumer-boundary normalization (3b30130) gathers it correctly, so
+  // pin the flat row sequence instead of a named error. The transposed
+  // indices {{1, 4}, {2, 0}, {3, 2}} read rows 1, 4, 2, 0, 3, 2.
+  std::vector<int> wv = {1, 2, 3, 4, 0, 2};
   array wide(wv.begin(), Shape{2, 3}, int32);
-  std::string layout_error = evaluation_error(
-      take(table, transpose(wide, {1, 0}, stream), 0, stream));
-  CHECK(layout_error.find("non-contiguous indexed Take") != std::string::npos);
+  check_values(
+      take(table, transpose(wide, {1, 0}, stream), 0, stream),
+      {20.0f, 21.0f, 22.0f, 23.0f,
+       50.0f, 51.0f, 52.0f, 53.0f,
+       30.0f, 31.0f, 32.0f, 33.0f,
+       10.0f, 11.0f, 12.0f, 13.0f,
+       40.0f, 41.0f, 42.0f, 43.0f,
+       30.0f, 31.0f, 32.0f, 33.0f},
+      stream);
 }
 
 
@@ -3688,27 +3712,42 @@ TEST_CASE("strided slice views materialize exact values") {
   }
   Stream stream = gpu_stream();
 
+  // db10f53 keeps evaluated slices as retained views; a host read of a
+  // retained view goes through contiguous, which materializes via the
+  // strided-copy engine (the corrected contract from the
+  // kv-state-views receipt). Values below are unchanged.
   // Column 2 of each row: the tail-slice shape that mx.topk lowers to.
   array m({5.0f, 1.0f, 4.0f, 2.0f, 3.0f, 0.0f}, {2, 3}, float32);
-  check_values(slice(m, {0, 2}, {2, 3}, stream), {4.0f, 0.0f}, stream);
+  array m_tail = slice(m, {0, 2}, {2, 3}, stream);
+  m_tail.eval();
+  omarchy::get_command_encoder(stream).synchronize();
+  CHECK_FALSE(m_tail.flags().contiguous);
+  check_values(contiguous(m_tail, false, stream), {4.0f, 0.0f}, stream);
 
-  // mx.topk(m, 2, -1) is partition plus a strided tail slice.
-  check_values(topk(m, 2, -1, stream), {4.0f, 5.0f, 2.0f, 3.0f}, stream);
+  // mx.topk(m, 2, -1) is partition plus a strided tail slice; the
+  // partition output is exact and contiguous flattens the tail view.
+  check_values(
+      contiguous(topk(m, 2, -1, stream), false, stream),
+      {4.0f, 5.0f, 2.0f, 3.0f},
+      stream);
 
   // Inner-axis slices leave gaps between rows.
   array p({0.0f, 1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f, 7.0f},
           {2, 4},
           float32);
-  check_values(slice(p, {0, 1}, {2, 3}, {1, 1}, stream),
-               {1.0f, 2.0f, 5.0f, 6.0f},
-               stream);
+  check_values(
+      contiguous(slice(p, {0, 1}, {2, 3}, {1, 1}, stream), false, stream),
+      {1.0f, 2.0f, 5.0f, 6.0f},
+      stream);
 
   // A 1-D stride-2 slice gathers every other element.
   array base({0.0f, 1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f, 7.0f},
              {8},
              float32);
   check_values(
-      slice(base, {0}, {7}, {2}, stream), {0.0f, 2.0f, 4.0f, 6.0f}, stream);
+      contiguous(slice(base, {0}, {7}, {2}, stream), false, stream),
+      {0.0f, 2.0f, 4.0f, 6.0f},
+      stream);
 }
 
 TEST_CASE("elementwise ops over strided slice views match host values") {
@@ -4416,15 +4455,30 @@ TEST_CASE("quantized matmul pins named errors outside the linear shape") {
       batched_error.find("QuantizedMatmul weight layout") !=
       std::string::npos);
 
-  // A transposed x view is not row-contiguous and keeps its named error.
+  // A transposed x view is not row-contiguous; the consumer-boundary
+  // normalization (3b30130) materializes it, so pin the result against
+  // the host reference instead of a named error. Every x_view element
+  // is 0.5 and every group reads LSB-first codes 0..3 from the pinned
+  // word with scale and bias 0.03125, so each output element is
+  // sum_j 0.5 * (code_j * 0.03125 + 0.03125) over K=128.
   std::vector<float> wide_values(128 * 4, 0.5f);
   array wide(wide_values.begin(), Shape{128, 4}, float32);
   array x_view = transpose(wide);
-  std::string view_error = evaluation_error(quantized_matmul(
-      x_view, w4, sb4, sb4, true, 32, 4, "affine", stream));
-  CHECK(
-      view_error.find("QuantizedMatmul non-contiguous input") !=
-      std::string::npos);
+  array qmm_view = quantized_matmul(
+      x_view, w4, sb4, sb4, true, 32, 4, "affine", stream);
+  const Shape qmm_view_shape({4, 4});
+  CHECK_EQ(qmm_view.shape(), qmm_view_shape);
+  qmm_view.eval();
+  omarchy::get_command_encoder(stream).synchronize();
+  double expected_dot = 0.0;
+  for (int column = 0; column < 128; ++column) {
+    uint32_t code = (0x33221100u >> ((column % 8) * 4)) & 0xFu;
+    expected_dot += 0.5 * (static_cast<double>(code) * 0.03125 + 0.03125);
+  }
+  const float* qmm_values = qmm_view.data<float>();
+  for (size_t index = 0; index < qmm_view.size(); ++index) {
+    CHECK(qmm_values[index] == doctest::Approx(expected_dot).epsilon(1e-6));
+  }
 }
 
 // Host unpack of hand-packed affine words: LSB-first codes, 32 / bits
