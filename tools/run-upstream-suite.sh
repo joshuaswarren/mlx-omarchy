@@ -25,12 +25,21 @@ if [[ $RUN_CPP -eq 0 && $RUN_PY -eq 0 ]]; then
   echo "--cpp-only and --py-only are mutually exclusive" >&2
   exit 2
 fi
-mkdir -p "$OUT_DIR" || exit 1
+SOURCE_COMMIT="$(git -C "$ROOT" rev-parse HEAD)" || exit 1
+git -C "$ROOT" diff --quiet HEAD -- overlay patches scripts mlx.lock || {
+  echo "Commit source changes before qualification." >&2
+  exit 1
+}
+mkdir -p "$(dirname "$OUT_DIR")" || exit 1
+mkdir "$OUT_DIR" || exit 1
+printf '%s\n' "$SOURCE_COMMIT" > "$OUT_DIR/source-commit.txt" || exit 1
+MLX_OMARCHY_WORK_DIR="$WORK_DIR" "$ROOT/scripts/prepare-mlx.sh" > "$OUT_DIR/prepare.log" 2>&1 || exit 1
+cp "$ROOT/mlx.lock" "$OUT_DIR/mlx.lock" || exit 1
 export DEVICE=gpu
 fail_total=0
 
 if [[ $RUN_CPP -eq 1 ]]; then
-  BUILD_DIR="$WORK_DIR/build-upstream"
+  BUILD_DIR="$OUT_DIR/build-cpp"
   DOCTEST_PIN_ARGS=()
   if [[ -d "$WORK_DIR/build/_deps/doctest-src" ]]; then
     DOCTEST_PIN_ARGS+=(-DFETCHCONTENT_SOURCE_DIR_DOCTEST="$WORK_DIR/build/_deps/doctest-src")
@@ -42,6 +51,7 @@ if [[ $RUN_CPP -eq 1 ]]; then
     "${DOCTEST_PIN_ARGS[@]}" || exit 1
   cmake --build "$BUILD_DIR" --target tests -j "${CMAKE_BUILD_PARALLEL_LEVEL:-$(nproc)}" || exit 1
   TESTS_BIN="$BUILD_DIR/tests/tests"
+  sha256sum "$TESTS_BIN" > "$OUT_DIR/cpp-binary.sha256" || exit 1
   mkdir -p "$OUT_DIR/cpp" || exit 1
   cpp_files="allocator_tests.cpp array_tests.cpp arg_reduce_tests.cpp \
 autograd_tests.cpp blas_tests.cpp compile_tests.cpp custom_vjp_tests.cpp \
@@ -107,6 +117,17 @@ if [[ $RUN_PY -eq 1 ]]; then
   fi
   "$VENV_DIR/bin/python" -m pip install numpy pytest || exit 1
   "$VENV_DIR/bin/python" -m pip install --force-reinstall --no-deps "$WHEEL" || exit 1
+  "$VENV_DIR/bin/python" "$ROOT/scripts/mlx_provenance.py" --expect-wheel "$WHEEL" > "$OUT_DIR/python-provenance.json" || exit 1
+  "$VENV_DIR/bin/python" - "$OUT_DIR/python-provenance.json" "$SOURCE_COMMIT" <<'PYPIN' || exit 1
+import json
+import sys
+with open(sys.argv[1]) as source:
+    provenance = json.load(source)
+stamp = (provenance.get("dist_version") or "").partition("+")[2].split(".")[-1]
+if provenance.get("verified") != "match" or stamp != sys.argv[2][:7]:
+    raise SystemExit(f"Unqualified wheel provenance: expected source {sys.argv[2][:7]}, got {stamp!r}")
+print(f"SOURCE-VERIFIED {sys.argv[2]} wheel={provenance['dist_version']}")
+PYPIN
   mkdir -p "$OUT_DIR/py" || exit 1
   shopt -s nullglob
   py_files=("$WORK_DIR/mlx/python/tests"/test_*.py)

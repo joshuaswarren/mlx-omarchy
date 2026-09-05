@@ -4076,11 +4076,8 @@ TEST_CASE("temp sampling chain runs the vocab-wide categorical on device") {
 }
 
 
-// Host copy of the upstream affine quantizer (mlx/ops.cpp
-// affine_quantize + pack_and_quantize): per group the abs-dominant sign
-// picks the scale sign, the q0 refinement pins one endpoint exactly, and
-// clipped rounded codes pack LSB-first into uint32 words, 32 / bits
-// values per word.
+// Reference transcribed from pinned mlx/backend/metal/kernels/quantized.h.
+// This is not an independent M1 execution oracle or the CPU quantizer contract.
 struct HostQuantizedWeights {
   std::vector<uint32_t> words;
   std::vector<float> scales;
@@ -4594,7 +4591,7 @@ TEST_CASE("dequantize reproduces hand-packed affine words") {
   }
 }
 
-TEST_CASE("quantize matches the pinned upstream affine contract") {
+TEST_CASE("quantize matches the pinned Metal-source affine reference") {
   if (!compute_available()) {
     return;
   }
