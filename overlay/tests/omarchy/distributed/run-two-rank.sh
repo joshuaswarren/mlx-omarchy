@@ -11,14 +11,15 @@
 #
 # Usage (from anywhere; target must be built first):
 #   MLX_OMARCHY_ALLOW_NON_APPLE=1 \
-#     overlay/tests/omarchy/distributed/run-two-rank.sh
+#     overlay/tests/omarchy/distributed/run-two-rank.sh [harness-binary]
 # Environment:
-#   MLX_OMARCHY_WORK_DIR  build root (default <repo>/.work)
+#   MLX_OMARCHY_WORK_DIR  build root when no binary is given
+#                         (default <repo>/.work)
 #   TWO_RANK_PORTS        loopback ring ports (default "55000 55001")
 set -uo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../../.." && pwd)"
 WORK_DIR="${MLX_OMARCHY_WORK_DIR:-$ROOT/.work}"
-BIN="$WORK_DIR/build/tests/omarchy/omarchy_two_rank_harness"
+BIN="${1:-$WORK_DIR/build/tests/omarchy/omarchy_two_rank_harness}"
 read -r PORT0 PORT1 <<< "${TWO_RANK_PORTS:-55000 55001}"
 
 if [[ ! -x "$BIN" ]]; then

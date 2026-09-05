@@ -157,8 +157,11 @@ TEST_CASE(
   // (distributed.cpp) even when jaccl::init returns nullptr, so
   // register_group caches the EmptyGroup under the key "jaccl" and every
   // later init(true, "jaccl") cache-hits instead of throwing. A
-  // fresh-process init(true, "jaccl") does throw (no_jaccl.cpp:11-19); we
-  // pin the post-init() state a caller in this process actually sees.
+  // fresh-process init(true, "jaccl") does throw (no_jaccl.cpp:11-19),
+  // and doctest discovery runs each case in a fresh process, so prime
+  // the cache here and pin the post-init() state a caller sees.
+  CHECK_THROWS_AS(distributed::init(true, "jaccl"), std::runtime_error);
+  distributed::init();
   auto jaccl = distributed::init(true, "jaccl");
   CHECK_EQ(jaccl.size(), 1);
   CHECK_EQ(jaccl.rank(), 0);
