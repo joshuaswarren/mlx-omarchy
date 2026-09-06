@@ -414,15 +414,15 @@ void main() {
         uint decoded = dim;
         uint word = uint(indices_data.values[base + word_slot]);
         if (params.aux_size == 0u) {
-          if (word < 0x80000000u) {
-            decoded = word;
-          }
+          decoded = word < 0x80000000u ? word : dim + word;
         } else if (params.aux_size == 1u) {
           decoded = word;
         } else {
           uint high = uint(indices_data.values[base + word_slot + 1u]);
           if (high == 0u) {
             decoded = word;
+          } else if (high == 0xFFFFFFFFu) {
+            decoded = dim + word;
           }
         }
         in_range = in_range && decoded < dim;
@@ -434,9 +434,7 @@ void main() {
         uint word = uint(indices_data.values[params.rhs_offset + word_slot]);
         index = params.reduce_size;
         if (params.aux_size == 0u) {
-          if (word < 0x80000000u) {
-            index = word;
-          }
+          index = word < 0x80000000u ? word : params.reduce_size + word;
         } else if (params.aux_size == 1u) {
           index = word;
         } else {
@@ -444,6 +442,8 @@ void main() {
               uint(indices_data.values[params.rhs_offset + word_slot + 1u]);
           if (high == 0u) {
             index = word;
+          } else if (high == 0xFFFFFFFFu) {
+            index = params.reduce_size + word;
           }
         }
       }
@@ -452,9 +452,7 @@ void main() {
       uint index_b = params.matrix_n;
       uint word_b = uint(indices_b_data.values[params.lhs_size + word_slot]);
       if (params.aux_size == 0u) {
-        if (word_b < 0x80000000u) {
-          index_b = word_b;
-        }
+        index_b = word_b < 0x80000000u ? word_b : params.matrix_n + word_b;
       } else if (params.aux_size == 1u) {
         index_b = word_b;
       } else {
@@ -462,6 +460,8 @@ void main() {
             uint(indices_b_data.values[params.lhs_size + word_slot + 1u]);
         if (high_b == 0u) {
           index_b = word_b;
+        } else if (high_b == 0xFFFFFFFFu) {
+          index_b = params.matrix_n + word_b;
         }
       }
       in_range = in_range && index_b < params.matrix_n;
@@ -471,9 +471,7 @@ void main() {
       uint word_c =
           uint(indices_c_data.values[params.out_strides[0] + word_slot]);
       if (params.aux_size == 0u) {
-        if (word_c < 0x80000000u) {
-          index_c = word_c;
-        }
+        index_c = word_c < 0x80000000u ? word_c : params.lhs_gap + word_c;
       } else if (params.aux_size == 1u) {
         index_c = word_c;
       } else {
@@ -481,6 +479,8 @@ void main() {
             indices_c_data.values[params.out_strides[0] + word_slot + 1u]);
         if (high_c == 0u) {
           index_c = word_c;
+        } else if (high_c == 0xFFFFFFFFu) {
+          index_c = params.lhs_gap + word_c;
         }
       }
       in_range = in_range && index_c < params.lhs_gap;
