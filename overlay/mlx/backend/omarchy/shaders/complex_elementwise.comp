@@ -53,6 +53,36 @@ layout(push_constant) uniform Params {
   uint rhs_strides[4];
 } params;
 
+layout(set = 0, binding = 3, std430) readonly buffer AxisMetadata {
+  uint values[];
+} axis_data;
+
+// Rank>4 broadcast transport: matrix_k carries the collapsed axis count
+// and axis_data holds [extents | lhs strides | rhs strides], the
+// reduce_general.comp binding-3 word order. matrix_k == 0 keeps the
+// inline push-constant arrays; the host always binds the metadata slot
+// (a placeholder while inline) because the interface is static.
+uint axis_extent(uint index) {
+  if (params.matrix_k == 0u) {
+    return params.shape[index];
+  }
+  return axis_data.values[index];
+}
+
+uint lhs_stride_at(uint index) {
+  if (params.matrix_k == 0u) {
+    return params.lhs_strides[index];
+  }
+  return axis_data.values[params.matrix_k + index];
+}
+
+uint rhs_stride_at(uint index) {
+  if (params.matrix_k == 0u) {
+    return params.rhs_strides[index];
+  }
+  return axis_data.values[2u * params.matrix_k + index];
+}
+
 void main() {
   uint index = gl_GlobalInvocationID.x;
   uint stride = gl_NumWorkGroups.x * gl_WorkGroupSize.x;
@@ -71,10 +101,10 @@ void main() {
       lhs_index = params.lhs_offset;
       rhs_index = params.rhs_offset;
       for (int dim = int(params.dims) - 1; dim >= 0; --dim) {
-        uint coord = rem % params.shape[dim];
-        rem /= params.shape[dim];
-        lhs_index += coord * params.lhs_strides[dim];
-        rhs_index += coord * params.rhs_strides[dim];
+        uint coord = rem % axis_extent(uint(dim));
+        rem /= axis_extent(uint(dim));
+        lhs_index += coord * lhs_stride_at(uint(dim));
+        rhs_index += coord * rhs_stride_at(uint(dim));
       }
     }
     vec2 lhs = input_a.values[lhs_index];

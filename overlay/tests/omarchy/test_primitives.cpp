@@ -1134,9 +1134,9 @@ TEST_CASE("unsupported compute shapes and dtypes refuse by name") {
       stream,
       1e-4);
 
-  // Inner-axis broadcast is supported now; a broadcast pattern whose
-  // stride runs still collapse to rank above 4 pins the named rank
-  // error.
+  // Inner-axis broadcast is supported through the 8-axis metadata
+  // transport; a broadcast pattern whose stride runs still collapse to
+  // rank above 8 pins the named rank error with the limit in it.
   array lhs({1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f, 7.0f, 8.0f,
              9.0f, 10.0f, 11.0f, 12.0f, 13.0f, 14.0f, 15.0f, 16.0f,
              17.0f, 18.0f, 19.0f, 20.0f, 21.0f, 22.0f, 23.0f, 24.0f,
@@ -1146,6 +1146,7 @@ TEST_CASE("unsupported compute shapes and dtypes refuse by name") {
   array rhs(wide_values.begin(), Shape{2, 2, 2, 2, 2, 2, 2, 2, 2}, float32);
   std::string broadcast_error = evaluation_error(add(lhs, rhs, stream));
   CHECK(broadcast_error.find("broadcast rank Add") != std::string::npos);
+  CHECK(broadcast_error.find("8-axis transport limit") != std::string::npos);
 
   // Leading-axis reduction now computes through the general kernel.
   array matrix({1.0f, 2.0f, 3.0f, 4.0f}, {2, 2}, float32);
@@ -2124,6 +2125,103 @@ TEST_CASE("general broadcast elementwise matches host references") {
   } else {
     skip("Vulkan device lacks required BF16 storage and shader features.");
   }
+}
+
+TEST_CASE("broadcast divide carries collapsed ranks 5 through 8") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+
+  // Rank-6 broadcast divide: the stride-0 axes break every mergeable
+  // run, so the transport collapses to rank 6 and needs the axis-
+  // metadata storage buffer (four inline push-constant slots hold at
+  // most rank 4). Host reference walks the same stride pattern.
+  std::vector<float> six_base_values(8);
+  std::iota(six_base_values.begin(), six_base_values.end(), 1.0f);
+  array six_base(six_base_values.begin(), Shape{2, 1, 2, 1, 2, 1}, float32);
+  array six_view = broadcast_to(six_base, Shape{2, 2, 2, 2, 2, 2}, stream);
+  std::vector<float> six_rhs_values(64);
+  for (int i = 0; i < 64; ++i) {
+    six_rhs_values[i] = 1.0f + static_cast<float>(i % 4);
+  }
+  array six_rhs(six_rhs_values.begin(), Shape{2, 2, 2, 2, 2, 2}, float32);
+  std::vector<float> six_expected;
+  six_expected.reserve(64);
+  for (int i0 = 0; i0 < 2; ++i0) {
+    for (int i1 = 0; i1 < 2; ++i1) {
+      for (int i2 = 0; i2 < 2; ++i2) {
+        for (int i3 = 0; i3 < 2; ++i3) {
+          for (int i4 = 0; i4 < 2; ++i4) {
+            for (int i5 = 0; i5 < 2; ++i5) {
+              int flat =
+                  ((((i0 * 2 + i1) * 2 + i2) * 2 + i3) * 2 + i4) * 2 + i5;
+              six_expected.push_back(
+                  six_base_values[i0 * 4 + i2 * 2 + i4] / six_rhs_values[flat]);
+            }
+          }
+        }
+      }
+    }
+  }
+  check_values(divide(six_view, six_rhs, stream), six_expected, stream, 1e-6);
+  // The reversed operand order routes the broadcast view through the
+  // rhs slot instead; decode the flat index back to the view's source
+  // element (even axes carry the base strides 4, 2, 1).
+  std::vector<float> six_reversed_expected(64);
+  for (int flat = 0; flat < 64; ++flat) {
+    int source = 0;
+    int rem = flat;
+    int stride = 32;
+    for (int axis = 0; axis < 6; ++axis) {
+      int coord = rem / stride;
+      rem %= stride;
+      if (axis % 2 == 0) {
+        source += coord * (4 >> (axis / 2));
+      }
+      stride /= 2;
+    }
+    six_reversed_expected[flat] =
+        six_rhs_values[flat] / six_base_values[source];
+  }
+  check_values(
+      divide(six_rhs, six_view, stream),
+      six_reversed_expected,
+      stream,
+      1e-6);
+  // Rank-8: one more stride-0 break per axis pair, the transport's top
+  // supported collapsed rank.
+  std::vector<float> eight_base_values(16);
+  std::iota(eight_base_values.begin(), eight_base_values.end(), 1.0f);
+  array eight_base(
+      eight_base_values.begin(), Shape{2, 1, 2, 1, 2, 1, 2, 1}, float32);
+  array eight_view = broadcast_to(
+      eight_base, Shape{2, 2, 2, 2, 2, 2, 2, 2}, stream);
+  std::vector<float> eight_rhs_values(256);
+  for (int i = 0; i < 256; ++i) {
+    eight_rhs_values[i] = 1.0f + static_cast<float>(i % 4);
+  }
+  array eight_rhs(
+      eight_rhs_values.begin(), Shape{2, 2, 2, 2, 2, 2, 2, 2}, float32);
+  std::vector<float> eight_expected;
+  eight_expected.reserve(256);
+  for (int flat = 0; flat < 256; ++flat) {
+    int source = 0;
+    int rem = flat;
+    int stride = 128;
+    for (int axis = 0; axis < 8; ++axis) {
+      int coord = rem / stride;
+      rem %= stride;
+      if (axis % 2 == 0) {
+        source += coord * (8 >> (axis / 2));
+      }
+      stride /= 2;
+    }
+    eight_expected.push_back(
+        eight_base_values[source] / eight_rhs_values[flat]);
+  }
+  check_values(
+      divide(eight_view, eight_rhs, stream), eight_expected, stream, 1e-6);
 }
 
 TEST_CASE("value_and_grad runs softmax times input through broadcast views") {

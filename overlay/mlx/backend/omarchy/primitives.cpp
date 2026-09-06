@@ -500,39 +500,93 @@ void dispatch_matmul(
 // the elementwise-style kernels. Broadcast views keep the output shape
 // with stride-0 axes, so the view strides index the sources directly;
 // collapse_contiguous_dims merges the linear runs, and a stride of 0
-// breaks every merge around a broadcast axis. Callers set the offsets
-// before calling, because the span check uses them.
-void fill_broadcast_transport(
+// breaks every merge around a broadcast axis. Up to four collapsed axes
+// ride the inline push-constant arrays. Ranks 5 through 8 carry
+// [extents | lhs strides | rhs strides] in an axis-metadata storage
+// buffer - the reduce_general.comp binding-3 word order - and set
+// matrix_k to the collapsed rank; the shader routes its unravel through
+// the metadata whenever matrix_k is nonzero. Above 8 the primitive is
+// refused by name with the limit in the message. Callers set the
+// offsets before calling, because the span check uses them, and bind
+// the returned metadata array in the kernel's metadata slot (or a
+// placeholder buffer when it is empty: the slot must hold a valid
+// descriptor even while the shader never reads it).
+std::optional<array> fill_broadcast_transport(
     const std::string& error_name,
     omarchy::ComputeParams& params,
     const array& lhs,
     const array& rhs,
-    const array& out) {
+    const array& out,
+    omarchy::CommandEncoder& encoder) {
   if (lhs.shape() != out.shape() || rhs.shape() != out.shape()) {
     omarchy::unsupported("broadcast " + error_name, out);
   }
   auto [collapsed_shape, collapsed_strides] = collapse_contiguous_dims(
       out.shape(), std::vector<Strides>{lhs.strides(), rhs.strides()});
-  if (collapsed_shape.size() > 4) {
-    omarchy::unsupported("broadcast rank " + error_name, out);
+  if (collapsed_shape.size() > 8) {
+    omarchy::unsupported(
+        "broadcast rank " + error_name + " exceeds the 8-axis transport"
+        " limit",
+        out);
   }
   params.dims = static_cast<uint32_t>(collapsed_shape.size());
   uint64_t lhs_span = 0;
   uint64_t rhs_span = 0;
-  for (size_t axis = 0; axis < collapsed_shape.size(); ++axis) {
-    params.shape[axis] = static_cast<uint32_t>(collapsed_shape[axis]);
-    params.in_strides[axis] =
-        static_cast<uint32_t>(collapsed_strides[0][axis]);
-    params.out_strides[axis] =
-        static_cast<uint32_t>(collapsed_strides[1][axis]);
-    uint64_t extent = params.shape[axis] - 1u;
-    lhs_span += extent * params.in_strides[axis];
-    rhs_span += extent * params.out_strides[axis];
+  if (collapsed_shape.size() <= 4) {
+    for (size_t axis = 0; axis < collapsed_shape.size(); ++axis) {
+      params.shape[axis] = static_cast<uint32_t>(collapsed_shape[axis]);
+      params.in_strides[axis] =
+          static_cast<uint32_t>(collapsed_strides[0][axis]);
+      params.out_strides[axis] =
+          static_cast<uint32_t>(collapsed_strides[1][axis]);
+      uint64_t extent = params.shape[axis] - 1u;
+      lhs_span += extent * params.in_strides[axis];
+      rhs_span += extent * params.out_strides[axis];
+    }
+    if (!omarchy::compute_index_span_fits(params.lhs_offset, lhs_span + 1) ||
+        !omarchy::compute_index_span_fits(params.rhs_offset, rhs_span + 1)) {
+      omarchy::unsupported(error_name + " index span", out);
+    }
+    return std::nullopt;
+  }
+  size_t rank = collapsed_shape.size();
+  std::vector<uint32_t> in_strides(rank);
+  std::vector<uint32_t> out_strides(rank);
+  for (size_t axis = 0; axis < rank; ++axis) {
+    uint32_t extent = static_cast<uint32_t>(collapsed_shape[axis]);
+    in_strides[axis] = static_cast<uint32_t>(collapsed_strides[0][axis]);
+    out_strides[axis] = static_cast<uint32_t>(collapsed_strides[1][axis]);
+    lhs_span += static_cast<uint64_t>(extent - 1u) * in_strides[axis];
+    rhs_span += static_cast<uint64_t>(extent - 1u) * out_strides[axis];
   }
   if (!omarchy::compute_index_span_fits(params.lhs_offset, lhs_span + 1) ||
       !omarchy::compute_index_span_fits(params.rhs_offset, rhs_span + 1)) {
     omarchy::unsupported(error_name + " index span", out);
   }
+  std::vector<uint32_t> words;
+  words.reserve(3 * rank);
+  for (size_t axis = 0; axis < rank; ++axis) {
+    words.push_back(static_cast<uint32_t>(collapsed_shape[axis]));
+  }
+  words.insert(words.end(), in_strides.begin(), in_strides.end());
+  words.insert(words.end(), out_strides.begin(), out_strides.end());
+  array metadata(Shape{static_cast<int>(words.size())}, uint32, nullptr, {});
+  array::Flags flags;
+  flags.contiguous = true;
+  flags.row_contiguous = true;
+  flags.col_contiguous = true;
+  metadata.set_data(
+      allocate_omarchy(metadata.nbytes()),
+      metadata.size(),
+      Strides{1},
+      flags,
+      0);
+  auto* metadata_buffer =
+      static_cast<omarchy::VulkanBuffer*>(metadata.buffer().ptr());
+  std::memcpy(metadata_buffer->data, words.data(), metadata.nbytes());
+  encoder.add_temporary(metadata);
+  params.matrix_k = static_cast<uint32_t>(rank);
+  return metadata;
 }
 
 // The params fill and dispatch behind dispatch_elementwise, callable
@@ -556,11 +610,15 @@ void dispatch_float_elementwise_to(
   params.lhs_offset = checked_item_offset(lhs, params.lhs_size, name, out);
   params.rhs_offset = checked_item_offset(rhs, params.rhs_size, name, out);
   params.output_offset = checked_item_offset(out, count, name, out);
+  std::optional<array> axis_metadata;
   if (general_broadcast) {
-    fill_broadcast_transport(name, params, lhs, rhs, out);
+    axis_metadata = fill_broadcast_transport(name, params, lhs, rhs, out, encoder);
   }
-  std::array<omarchy::ComputeBinding, 3> bindings{
-      binding(lhs), binding(rhs), binding(out)};
+  std::array<omarchy::ComputeBinding, 4> bindings{
+      binding(lhs),
+      binding(rhs),
+      binding(out),
+      binding(axis_metadata ? *axis_metadata : out)};
   auto kernel = select_float_kernel(
       out.dtype(),
       omarchy::ComputeKernel::ElementwiseF32,
@@ -688,11 +746,15 @@ void dispatch_compare_bool_to(
   params.output_offset = checked_item_offset(out, count, name, out);
   bool general_broadcast =
       !is_trailing_broadcast(lhs, out) || !is_trailing_broadcast(rhs, out);
+  std::optional<array> axis_metadata;
   if (general_broadcast) {
-    fill_broadcast_transport(name, params, lhs, rhs, out);
+    axis_metadata = fill_broadcast_transport(name, params, lhs, rhs, out, encoder);
   }
-  std::array<omarchy::ComputeBinding, 3> bindings{
-      binding(lhs), binding(rhs), binding(out)};
+  std::array<omarchy::ComputeBinding, 4> bindings{
+      binding(lhs),
+      binding(rhs),
+      binding(out),
+      binding(axis_metadata ? *axis_metadata : out)};
   encoder.dispatch_compute(
       omarchy::ComputeKernel::CompareBool,
       bindings,
@@ -803,11 +865,15 @@ void dispatch_comparison(
   params.output_offset = checked_item_offset(out, count, name, out);
   bool general_broadcast =
       !is_trailing_broadcast(lhs, out) || !is_trailing_broadcast(rhs, out);
+  std::optional<array> axis_metadata;
   if (general_broadcast) {
-    fill_broadcast_transport(name, params, lhs, rhs, out);
+    axis_metadata = fill_broadcast_transport(name, params, lhs, rhs, out, encoder);
   }
-  std::array<omarchy::ComputeBinding, 3> bindings{
-      binding(lhs), binding(rhs), binding(out)};
+  std::array<omarchy::ComputeBinding, 4> bindings{
+      binding(lhs),
+      binding(rhs),
+      binding(out),
+      binding(axis_metadata ? *axis_metadata : out)};
   // Every admitted dtype names its kernel; a dtype with no entry refuses
   // rather than reaching a kernel that reads the wrong element width
   // (int8 once fell through to CompareF32 and overread 4x).
@@ -906,11 +972,15 @@ void dispatch_logical(
   params.output_offset = checked_item_offset(out, count, name, out);
   bool general_broadcast =
       !is_trailing_broadcast(lhs, out) || !is_trailing_broadcast(rhs, out);
+  std::optional<array> axis_metadata;
   if (general_broadcast) {
-    fill_broadcast_transport(name, params, lhs, rhs, out);
+    axis_metadata = fill_broadcast_transport(name, params, lhs, rhs, out, encoder);
   }
-  std::array<omarchy::ComputeBinding, 3> bindings{
-      binding(lhs), binding(rhs), binding(out)};
+  std::array<omarchy::ComputeBinding, 4> bindings{
+      binding(lhs),
+      binding(rhs),
+      binding(out),
+      binding(axis_metadata ? *axis_metadata : out)};
   encoder.dispatch_compute(
       omarchy::ComputeKernel::LogicalOrBool,
       bindings,
@@ -998,11 +1068,15 @@ void dispatch_int_elementwise_to(
   params.lhs_offset = checked_item_offset(lhs, params.lhs_size, name, out);
   params.rhs_offset = checked_item_offset(rhs, params.rhs_size, name, out);
   params.output_offset = checked_item_offset(out, count, name, out);
+  std::optional<array> axis_metadata;
   if (!is_trailing_broadcast(lhs, out) || !is_trailing_broadcast(rhs, out)) {
-    fill_broadcast_transport(name, params, lhs, rhs, out);
+    axis_metadata = fill_broadcast_transport(name, params, lhs, rhs, out, encoder);
   }
-  std::array<omarchy::ComputeBinding, 3> bindings{
-      binding(lhs), binding(rhs), binding(out)};
+  std::array<omarchy::ComputeBinding, 4> bindings{
+      binding(lhs),
+      binding(rhs),
+      binding(out),
+      binding(axis_metadata ? *axis_metadata : out)};
   // Signed and unsigned run separate SPIR-V variants: `>>` arithmetic
   // versus logical, and the sign fixups compare against a signed zero.
   // The widened variants serve the 8/16/64-bit integer family with the
@@ -2234,11 +2308,15 @@ void dispatch_complex_elementwise_to(
   params.lhs_offset = checked_item_offset(lhs, params.lhs_size, name, out);
   params.rhs_offset = checked_item_offset(rhs, params.rhs_size, name, out);
   params.output_offset = checked_item_offset(out, count, name, out);
+  std::optional<array> axis_metadata;
   if (general_broadcast) {
-    fill_broadcast_transport(name, params, lhs, rhs, out);
+    axis_metadata = fill_broadcast_transport(name, params, lhs, rhs, out, encoder);
   }
-  std::array<omarchy::ComputeBinding, 3> bindings{
-      binding(lhs), binding(rhs), binding(out)};
+  std::array<omarchy::ComputeBinding, 4> bindings{
+      binding(lhs),
+      binding(rhs),
+      binding(out),
+      binding(axis_metadata ? *axis_metadata : out)};
   encoder.dispatch_compute(
       omarchy::ComputeKernel::ComplexElementwise,
       bindings,
@@ -6705,6 +6783,20 @@ void Select::eval_gpu(const std::vector<array>& inputs, array& out) {
     default:
       omarchy::unsupported("Select dtype", out);
   }
+  // The value-variant kernels statically read the axis-metadata buffer
+  // at binding 4 (their rank>4 broadcast transport), so every non-bool
+  // Select dispatch carries five bindings; the packed-bool variant
+  // keeps its dense-only four-binding interface. The spec floor is
+  // four slots, so devices at the floor cannot run the value variants
+  // and must refuse by name.
+  if (out.dtype() != bool_ &&
+      encoder.device().compute().binding_limit() < 5) {
+    omarchy::unsupported(
+        "Select needs 5 storage-buffer bindings; this device allows " +
+            std::to_string(encoder.device().compute().binding_limit()) +
+        ".",
+        out);
+  }
   // Dense row-major means the flat element index is the memory index:
   // data_size equals size and the strides are the exact suffix products.
   // Broadcast views carry a stride of 0 and transposed or sliced views
@@ -6781,9 +6873,13 @@ void Select::eval_gpu(const std::vector<array>& inputs, array& out) {
     material_params.rhs_offset = material_params.lhs_offset;
     material_params.output_offset = checked_item_offset(
         dense, material_count, name(), out);
-    fill_broadcast_transport(name(), material_params, value, value, dense);
-    std::array<omarchy::ComputeBinding, 3> material_bindings{
-        binding(value), binding(value), binding(dense)};
+    std::optional<array> axis_metadata = fill_broadcast_transport(
+        name(), material_params, value, value, dense, encoder);
+    std::array<omarchy::ComputeBinding, 4> material_bindings{
+        binding(value),
+        binding(value),
+        binding(dense),
+        binding(axis_metadata ? *axis_metadata : dense)};
     encoder.dispatch_compute(
         omarchy::ComputeKernel::LogicalOrBool,
         material_bindings,
@@ -6861,29 +6957,75 @@ void Select::eval_gpu(const std::vector<array>& inputs, array& out) {
   params.aux_offset = checked_item_offset(
       *falsy_ptr, params.aux_size, name(), out);
   params.output_offset = checked_item_offset(out, count, name(), out);
+  std::optional<array> axis_metadata;
   if (general) {
     // Collapse contiguous runs once for both strided operands; a stride
-    // of 0 breaks every merge around a broadcast axis, and collapsed
-    // rank beyond 4 stays a named refusal exactly like the elementwise
-    // kernels.
+    // of 0 breaks every merge around a broadcast axis. Up to four
+    // collapsed axes ride the inline push-constant arrays exactly like
+    // the elementwise kernels; ranks 5 through 8 carry
+    // [extents | in_strides | out_strides] in an axis-metadata storage
+    // buffer (the false operand rides in_strides, the true operand
+    // out_strides, matching the shader accessors), and above 8 the
+    // primitive is refused by name with the limit in the message.
     auto [collapsed_shape, collapsed_strides] = collapse_contiguous_dims(
         out.shape(),
         std::vector<Strides>{truthy_ptr->strides(), falsy_ptr->strides()});
-    if (collapsed_shape.size() > 4) {
-      omarchy::unsupported("Select layout", out);
+    if (collapsed_shape.size() > 8) {
+      omarchy::unsupported(
+          std::string("broadcast rank ") + name() +
+              " exceeds the 8-axis transport limit",
+          out);
     }
     params.dims = static_cast<uint32_t>(collapsed_shape.size());
     uint64_t true_span = 0;
     uint64_t false_span = 0;
-    for (size_t axis = 0; axis < collapsed_shape.size(); ++axis) {
-      params.shape[axis] = static_cast<uint32_t>(collapsed_shape[axis]);
-      params.out_strides[axis] =
-          static_cast<uint32_t>(collapsed_strides[0][axis]);
-      params.in_strides[axis] =
-          static_cast<uint32_t>(collapsed_strides[1][axis]);
-      uint64_t extent = params.shape[axis] - 1u;
-      true_span += extent * params.out_strides[axis];
-      false_span += extent * params.in_strides[axis];
+    if (collapsed_shape.size() <= 4) {
+      for (size_t axis = 0; axis < collapsed_shape.size(); ++axis) {
+        params.shape[axis] = static_cast<uint32_t>(collapsed_shape[axis]);
+        params.out_strides[axis] =
+            static_cast<uint32_t>(collapsed_strides[0][axis]);
+        params.in_strides[axis] =
+            static_cast<uint32_t>(collapsed_strides[1][axis]);
+        uint64_t extent = params.shape[axis] - 1u;
+        true_span += extent * params.out_strides[axis];
+        false_span += extent * params.in_strides[axis];
+      }
+    } else {
+      size_t rank = collapsed_shape.size();
+      std::vector<uint32_t> in_strides(rank);
+      std::vector<uint32_t> out_strides(rank);
+      for (size_t axis = 0; axis < rank; ++axis) {
+        uint32_t extent = static_cast<uint32_t>(collapsed_shape[axis]);
+        out_strides[axis] = static_cast<uint32_t>(collapsed_strides[0][axis]);
+        in_strides[axis] = static_cast<uint32_t>(collapsed_strides[1][axis]);
+        true_span += static_cast<uint64_t>(extent - 1u) * out_strides[axis];
+        false_span += static_cast<uint64_t>(extent - 1u) * in_strides[axis];
+      }
+      std::vector<uint32_t> words;
+      words.reserve(3 * rank);
+      for (size_t axis = 0; axis < rank; ++axis) {
+        words.push_back(static_cast<uint32_t>(collapsed_shape[axis]));
+      }
+      words.insert(words.end(), in_strides.begin(), in_strides.end());
+      words.insert(words.end(), out_strides.begin(), out_strides.end());
+      array metadata(
+          Shape{static_cast<int>(words.size())}, uint32, nullptr, {});
+      array::Flags flags;
+      flags.contiguous = true;
+      flags.row_contiguous = true;
+      flags.col_contiguous = true;
+      metadata.set_data(
+          allocate_omarchy(metadata.nbytes()),
+          metadata.size(),
+          Strides{1},
+          flags,
+          0);
+      auto* metadata_buffer =
+          static_cast<omarchy::VulkanBuffer*>(metadata.buffer().ptr());
+      std::memcpy(metadata_buffer->data, words.data(), metadata.nbytes());
+      encoder.add_temporary(metadata);
+      axis_metadata = std::move(metadata);
+      params.matrix_k = static_cast<uint32_t>(rank);
     }
     if (!omarchy::compute_index_span_fits(params.rhs_offset, true_span + 1) ||
         !omarchy::compute_index_span_fits(
@@ -6891,11 +7033,12 @@ void Select::eval_gpu(const std::vector<array>& inputs, array& out) {
       omarchy::unsupported("Select index span", out);
     }
   }
-  std::array<omarchy::ComputeBinding, 4> bindings{
+  std::array<omarchy::ComputeBinding, 5> bindings{
       binding(*condition_ptr),
       binding(*truthy_ptr),
       binding(*falsy_ptr),
-      binding(out)};
+      binding(out),
+      binding(axis_metadata ? *axis_metadata : out)};
   // The kernel processes one output word (four elements) per thread
   // with no grid-stride loop, so very large outputs dispatch in
   // back-to-back offset chunks.
