@@ -87,9 +87,9 @@ Two numbers, measured differently:
 |---|---|---|
 | MLX primitives with a working GPU kernel (the badge above) | 128 / 130 | 2026-09-05 |
 | Upstream MLX C++ test cases passing on the GPU device | 251 / 251 | 2026-09-06 |
-| Upstream MLX Python test cases passing on the GPU device | 8,850 / 10,918 | 2026-09-06 |
+| Upstream MLX Python test cases passing on the GPU device | 10,767 / 11,437 | 2026-09-06 |
 
-The first counts operations: a primitive counts once it computes on the GPU and a test verifies its values against a host reference. The other two run upstream's own test suites, pinned at the commit the backend is built from (MLX 0.32.2, `1f8e74e3`); one test case exercises many primitives across many dtypes and layouts, so they are the stricter measure. Most of the open Python cases are quantization variants (bit widths and modes beyond 4/8-bit affine); two files (test_fast, test_fast_sdpa) crash under the full run and are excluded from the count until fixed.
+The first counts operations: a primitive counts once it computes on the GPU and a test verifies its values against a host reference. The other two run upstream's own test suites, pinned at the commit the backend is built from (MLX 0.32.2, `1f8e74e3`); one test case exercises many primitives across many dtypes and layouts, so they are the stricter measure. The open Python cases are mostly fp-mode quantized matmul over batched weights, attention-mask variants in `test_fast_sdpa`, and the Metal-only custom-kernel tests.
 
 Every remaining Python failure is a named `not implemented` refusal, not a wrong value: an operation the backend does not support fails with the primitive name, dtype, and shape instead of returning a silent result or running on the CPU. The table updates with each release. Per-primitive status is generated from source in [docs/compatibility-matrix.md](docs/compatibility-matrix.md).
 

@@ -1,0 +1,671 @@
+file,case,kind,detail
+test_array.py,test_array_at,named,multi-index Scatter float32 Sum/Prod with 3 index arrays
+test_array.py,test_array_at_complex_add_gpu,named,Scatter dtype
+test_array.py,test_array_copy,named,dtype converting copy
+test_array.py,test_array_pickle,named,dtype converting copy
+test_array.py,test_construction_from_lists_of_mlx_arrays,named,dtype converting copy
+test_array.py,test_indexing,assert,
+test_array.py,test_setitem,assert,
+test_autograd.py,test_complex_abs_grad,named,Sign dtype
+test_autograd.py,test_complex_prod_vjp,named,Take dtype
+test_autograd.py,test_complex_unary_vjps,named,Cosh dtype
+test_autograd.py,test_eval_in_grad,assert,
+test_autograd.py,test_power_grad,assert,
+test_autograd.py,test_second_order_permutation_ops,assert,
+test_autograd.py,test_take_along_axis_complex_vjp,named,ScatterAxis dtype
+test_blas.py,test_addmm,named,broadcast AddMM
+test_blas.py,test_block_masked_matmul,named,strided reshape
+test_blas.py,test_block_masked_matmul,named,strided reshape
+test_blas.py,test_block_masked_matmul,named,strided reshape
+test_blas.py,test_block_masked_matmul,named,strided reshape
+test_blas.py,test_block_masked_matmul,named,strided reshape
+test_blas.py,test_block_masked_matmul,named,strided reshape
+test_blas.py,test_block_masked_matmul,named,strided reshape
+test_blas.py,test_block_masked_matmul,named,strided reshape
+test_blas.py,test_complex_gemm,named,Matmul dtype
+test_blas.py,test_complex_gemv,named,Matmul dtype
+test_blas.py,test_matrix_vector_batched,named,matrix rank Matmul
+test_blas.py,test_matrix_vector_batched,named,matrix rank Matmul
+test_compile.py,test_compile_dynamic_dims,named,broadcast rank Add exceeds the 8-axis transport limit
+test_compile.py,test_compile_nonfinite_constants,other,RuntimeError: [omarchy] Compiled tape bfloat16 is refused: bf16 fragments corrupt nondeter
+test_compile.py,test_compiled_subnormal_bool_cast,other,RuntimeError: [omarchy] Compiled tape bfloat16 is refused: bf16 fragments corrupt nondeter
+test_compile.py,test_inf_constant,other,RuntimeError: [omarchy] Compiled tape bfloat16 is refused: bf16 fragments corrupt nondeter
+test_conv.py,test_conv2d_large_filter_small_channels,assert,
+test_einsum.py,test_opt_einsum_test_cases,named,rank>4 strided copy
+test_einsum.py,test_simple_einsum,assert,
+test_export_import.py,test_export_import_custom_kernel,other,UnboundLocalError custom_kernel (upstream harness artifact)
+test_fast.py,test_cross_entropy_grad,named,non-contiguous CrossEntropyVJP
+test_fast.py,test_custom_kernel_args,other,UnboundLocalError custom_kernel (upstream harness artifact)
+test_fast.py,test_custom_kernel_attributes,other,UnboundLocalError custom_kernel (upstream harness artifact)
+test_fast.py,test_custom_kernel_basic,other,UnboundLocalError custom_kernel (upstream harness artifact)
+test_fast.py,test_custom_kernel_helper,other,UnboundLocalError custom_kernel (upstream harness artifact)
+test_fast.py,test_custom_kernel_strides,other,UnboundLocalError custom_kernel (upstream harness artifact)
+test_fast_sdpa.py,test_sdpa,assert,
+test_fast_sdpa.py,test_sdpa,assert,
+test_fast_sdpa.py,test_sdpa,assert,
+test_fast_sdpa.py,test_sdpa,assert,
+test_fast_sdpa.py,test_sdpa,assert,
+test_fast_sdpa.py,test_sdpa,assert,
+test_fast_sdpa.py,test_sdpa,assert,
+test_fast_sdpa.py,test_sdpa,assert,
+test_fast_sdpa.py,test_sdpa,assert,
+test_fast_sdpa.py,test_sdpa,named,causal offset ScaledDotProductAttention
+test_fast_sdpa.py,test_sdpa,assert,
+test_fast_sdpa.py,test_sdpa,assert,
+test_fast_sdpa.py,test_sdpa,assert,
+test_fast_sdpa.py,test_sdpa,named,causal offset ScaledDotProductAttention
+test_fast_sdpa.py,test_sdpa,assert,
+test_fast_sdpa.py,test_sdpa,assert,
+test_fast_sdpa.py,test_sdpa,assert,
+test_fast_sdpa.py,test_sdpa,assert,
+test_fast_sdpa.py,test_sdpa,assert,
+test_fast_sdpa.py,test_sdpa,assert,
+test_fast_sdpa.py,test_sdpa,assert,
+test_fast_sdpa.py,test_sdpa,assert,
+test_fast_sdpa.py,test_sdpa,assert,
+test_fast_sdpa.py,test_sdpa,assert,
+test_fast_sdpa.py,test_sdpa,assert,
+test_fast_sdpa.py,test_sdpa,assert,
+test_fast_sdpa.py,test_sdpa,assert,
+test_fast_sdpa.py,test_sdpa,assert,
+test_fast_sdpa.py,test_sdpa,assert,
+test_fast_sdpa.py,test_sdpa,assert,
+test_fast_sdpa.py,test_sdpa,assert,
+test_fast_sdpa.py,test_sdpa,assert,
+test_fast_sdpa.py,test_sdpa,assert,
+test_fast_sdpa.py,test_sdpa,assert,
+test_fast_sdpa.py,test_sdpa,assert,
+test_fast_sdpa.py,test_sdpa,assert,
+test_fast_sdpa.py,test_sdpa,assert,
+test_fast_sdpa.py,test_sdpa,named,causal offset ScaledDotProductAttention
+test_fast_sdpa.py,test_sdpa,assert,
+test_fast_sdpa.py,test_sdpa,assert,
+test_fast_sdpa.py,test_sdpa,assert,
+test_fast_sdpa.py,test_sdpa,named,causal offset ScaledDotProductAttention
+test_fast_sdpa.py,test_sdpa,assert,
+test_fast_sdpa.py,test_sdpa,assert,
+test_fast_sdpa.py,test_sdpa,assert,
+test_fast_sdpa.py,test_sdpa,assert,
+test_fast_sdpa.py,test_sdpa,assert,
+test_fast_sdpa.py,test_sdpa,assert,
+test_fast_sdpa.py,test_sdpa,assert,
+test_fast_sdpa.py,test_sdpa,assert,
+test_fast_sdpa.py,test_sdpa,assert,
+test_fast_sdpa.py,test_sdpa,assert,
+test_fast_sdpa.py,test_sdpa,assert,
+test_fast_sdpa.py,test_sdpa,assert,
+test_fast_sdpa.py,test_sdpa,assert,
+test_fast_sdpa.py,test_sdpa,assert,
+test_fast_sdpa.py,test_sdpa_attention_sinks,assert,
+test_fast_sdpa.py,test_sdpa_attention_sinks,assert,
+test_fast_sdpa.py,test_sdpa_attention_sinks,named,attention mask shape ScaledDotProductAttention
+test_fast_sdpa.py,test_sdpa_attention_sinks,named,attention mask shape ScaledDotProductAttention
+test_fast_sdpa.py,test_sdpa_attention_sinks,assert,
+test_fast_sdpa.py,test_sdpa_attention_sinks,assert,
+test_fast_sdpa.py,test_sdpa_attention_sinks,named,attention mask shape ScaledDotProductAttention
+test_fast_sdpa.py,test_sdpa_attention_sinks,named,attention mask shape ScaledDotProductAttention
+test_fast_sdpa.py,test_sdpa_attention_sinks,assert,
+test_fast_sdpa.py,test_sdpa_attention_sinks,assert,
+test_fast_sdpa.py,test_sdpa_attention_sinks,named,attention mask shape ScaledDotProductAttention
+test_fast_sdpa.py,test_sdpa_attention_sinks,named,attention mask shape ScaledDotProductAttention
+test_fast_sdpa.py,test_sdpa_attention_sinks,assert,
+test_fast_sdpa.py,test_sdpa_attention_sinks,assert,
+test_fast_sdpa.py,test_sdpa_attention_sinks,named,attention mask shape ScaledDotProductAttention
+test_fast_sdpa.py,test_sdpa_attention_sinks,named,attention mask shape ScaledDotProductAttention
+test_fast_sdpa.py,test_sdpa_broadcast_mask,assert,
+test_fast_sdpa.py,test_sdpa_few_query,assert,
+test_fast_sdpa.py,test_sdpa_full_head_dim_256,other,RuntimeError: [omarchy] Vulkan timeline counter failed to advance for 10000 ms (last obser
+test_fast_sdpa.py,test_sdpa_full_head_dim_256,other,RuntimeError: [omarchy] Vulkan timeline counter failed to advance for 10000 ms (last obser
+test_fast_sdpa.py,test_sdpa_full_head_dim_256,other,RuntimeError: [omarchy] Vulkan timeline counter failed to advance for 10000 ms (last obser
+test_fast_sdpa.py,test_sdpa_full_head_dim_256,other,RuntimeError: [omarchy] Vulkan timeline counter failed to advance for 10000 ms (last obser
+test_fast_sdpa.py,test_sdpa_full_head_dim_256,other,RuntimeError: [omarchy] Vulkan timeline counter failed to advance for 10000 ms (last obser
+test_fast_sdpa.py,test_sdpa_full_head_dim_256,other,RuntimeError: [omarchy] Vulkan timeline counter failed to advance for 10000 ms (last obser
+test_fast_sdpa.py,test_sdpa_full_head_dim_256,other,RuntimeError: [omarchy] Vulkan timeline counter failed to advance for 10000 ms (last obser
+test_fast_sdpa.py,test_sdpa_full_head_dim_256,other,RuntimeError: [omarchy] Vulkan timeline counter failed to advance for 10000 ms (last obser
+test_fast_sdpa.py,test_sdpa_full_head_dim_256,other,RuntimeError: [omarchy] Vulkan timeline counter failed to advance for 10000 ms (last obser
+test_fast_sdpa.py,test_sdpa_full_head_dim_256,other,RuntimeError: [omarchy] Vulkan timeline counter failed to advance for 10000 ms (last obser
+test_fast_sdpa.py,test_sdpa_full_head_dim_256,other,RuntimeError: [omarchy] Vulkan timeline counter failed to advance for 10000 ms (last obser
+test_fast_sdpa.py,test_sdpa_full_head_dim_256,other,RuntimeError: [omarchy] Vulkan timeline counter failed to advance for 10000 ms (last obser
+test_fast_sdpa.py,test_sdpa_full_head_dim_256,other,RuntimeError: [omarchy] Vulkan timeline counter failed to advance for 10000 ms (last obser
+test_fast_sdpa.py,test_sdpa_full_head_dim_256,other,RuntimeError: [omarchy] Vulkan timeline counter failed to advance for 10000 ms (last obser
+test_fast_sdpa.py,test_sdpa_fully_masked,other,RuntimeError: [omarchy] Vulkan timeline counter failed to advance for 10000 ms (last obser
+test_fast_sdpa.py,test_sdpa_grad,other,RuntimeError: [omarchy] Vulkan timeline counter failed to advance for 10000 ms (last obser
+test_fast_sdpa.py,test_sdpa_head_dim_72,other,RuntimeError: [omarchy] Vulkan timeline counter failed to advance for 10000 ms (last obser
+test_fast_sdpa.py,test_sdpa_head_dim_72,other,RuntimeError: [omarchy] Vulkan timeline counter failed to advance for 10000 ms (last obser
+test_fast_sdpa.py,test_sdpa_head_dim_72,other,RuntimeError: [omarchy] Vulkan timeline counter failed to advance for 10000 ms (last obser
+test_fast_sdpa.py,test_sdpa_head_dim_72,other,RuntimeError: [omarchy] Vulkan timeline counter failed to advance for 10000 ms (last obser
+test_fast_sdpa.py,test_sdpa_head_dim_72,other,RuntimeError: [omarchy] Vulkan timeline counter failed to advance for 10000 ms (last obser
+test_fast_sdpa.py,test_sdpa_head_dim_72,other,RuntimeError: [omarchy] Vulkan timeline counter failed to advance for 10000 ms (last obser
+test_fast_sdpa.py,test_sdpa_head_dim_72,other,RuntimeError: [omarchy] Vulkan timeline counter failed to advance for 10000 ms (last obser
+test_fast_sdpa.py,test_sdpa_head_dim_72,other,RuntimeError: [omarchy] Vulkan timeline counter failed to advance for 10000 ms (last obser
+test_fast_sdpa.py,test_sdpa_head_dim_72,other,RuntimeError: [omarchy] Vulkan timeline counter failed to advance for 10000 ms (last obser
+test_fast_sdpa.py,test_sdpa_head_dim_72,other,RuntimeError: [omarchy] Vulkan timeline counter failed to advance for 10000 ms (last obser
+test_fast_sdpa.py,test_sdpa_head_dim_72,other,RuntimeError: [omarchy] Vulkan timeline counter failed to advance for 10000 ms (last obser
+test_fast_sdpa.py,test_sdpa_head_dim_72,assert,
+test_fast_sdpa.py,test_sdpa_head_dim_72,assert,
+test_fast_sdpa.py,test_sdpa_head_dim_72,assert,
+test_fast_sdpa.py,test_sdpa_head_dim_72,assert,
+test_fast_sdpa.py,test_sdpa_head_dim_72,assert,
+test_fast_sdpa.py,test_sdpa_head_dim_72,assert,
+test_fast_sdpa.py,test_sdpa_head_dim_72,assert,
+test_fast_sdpa.py,test_sdpa_head_dim_72,assert,
+test_fast_sdpa.py,test_sdpa_head_dim_72,assert,
+test_fast_sdpa.py,test_sdpa_head_dim_72,assert,
+test_fast_sdpa.py,test_sdpa_head_dim_96,assert,
+test_fast_sdpa.py,test_sdpa_head_dim_96,assert,
+test_fast_sdpa.py,test_sdpa_head_dim_96,assert,
+test_fast_sdpa.py,test_sdpa_head_dim_96,assert,
+test_fast_sdpa.py,test_sdpa_head_dim_96,assert,
+test_fast_sdpa.py,test_sdpa_head_dim_96,assert,
+test_fast_sdpa.py,test_sdpa_head_dim_96,assert,
+test_fast_sdpa.py,test_sdpa_head_dim_96,assert,
+test_fast_sdpa.py,test_sdpa_head_dim_96,assert,
+test_fast_sdpa.py,test_sdpa_head_dim_96,assert,
+test_fast_sdpa.py,test_sdpa_head_dim_96,assert,
+test_fast_sdpa.py,test_sdpa_head_dim_96,assert,
+test_fast_sdpa.py,test_sdpa_long_masked_sequence,other,RuntimeError: [omarchy] Vulkan timeline counter failed to advance for 10000 ms (last obser
+test_fast_sdpa.py,test_sdpa_long_masked_sequence,other,RuntimeError: [omarchy] Vulkan timeline counter failed to advance for 10000 ms (last obser
+test_fast_sdpa.py,test_sdpa_long_masked_sequence,other,RuntimeError: [omarchy] Vulkan timeline counter failed to advance for 10000 ms (last obser
+test_fast_sdpa.py,test_sdpa_long_masked_sequence,other,RuntimeError: [omarchy] Vulkan timeline counter failed to advance for 10000 ms (last obser
+test_fast_sdpa.py,test_sdpa_nan_bug,other,RuntimeError: [omarchy] Vulkan timeline counter failed to advance for 10000 ms (last obser
+test_fast_sdpa.py,test_sdpa_noncontiguous_inputs,other,RuntimeError: [omarchy] Vulkan timeline counter failed to advance for 10000 ms (last obser
+test_fast_sdpa.py,test_sdpa_promote_mask,other,RuntimeError: [omarchy] Vulkan timeline counter failed to advance for 10000 ms (last obser
+test_fast_sdpa.py,test_sdpa_sliced,other,RuntimeError: [omarchy] Vulkan timeline counter failed to advance for 10000 ms (last obser
+test_fast_sdpa.py,test_sdpa_sliced,other,RuntimeError: [omarchy] Vulkan timeline counter failed to advance for 10000 ms (last obser
+test_fast_sdpa.py,test_sdpa_sliced,other,RuntimeError: [omarchy] Vulkan timeline counter failed to advance for 10000 ms (last obser
+test_fast_sdpa.py,test_sdpa_sliced,other,RuntimeError: [omarchy] Vulkan timeline counter failed to advance for 10000 ms (last obser
+test_fast_sdpa.py,test_sdpa_sliced,other,RuntimeError: [omarchy] Vulkan timeline counter failed to advance for 10000 ms (last obser
+test_fast_sdpa.py,test_sdpa_sliced,assert,
+test_fast_sdpa.py,test_sdpa_sliced,assert,
+test_fast_sdpa.py,test_sdpa_sliced,assert,
+test_fast_sdpa.py,test_sdpa_sliced,assert,
+test_fast_sdpa.py,test_sdpa_sliced,assert,
+test_fast_sdpa.py,test_sdpa_sliced,assert,
+test_fast_sdpa.py,test_sdpa_sliced,assert,
+test_fast_sdpa.py,test_sdpa_sliced,assert,
+test_fast_sdpa.py,test_sdpa_sliced,assert,
+test_fast_sdpa.py,test_sdpa_sliced,assert,
+test_fast_sdpa.py,test_sdpa_sliced,assert,
+test_fast_sdpa.py,test_sdpa_sliced,assert,
+test_fast_sdpa.py,test_sdpa_sliced,assert,
+test_fast_sdpa.py,test_sdpa_sliced,assert,
+test_fast_sdpa.py,test_sdpa_sliced,assert,
+test_fast_sdpa.py,test_sdpa_sliced,assert,
+test_fast_sdpa.py,test_sdpa_sliced,assert,
+test_fast_sdpa.py,test_sdpa_sliced,assert,
+test_fast_sdpa.py,test_sdpa_sliced,assert,
+test_fast_sdpa.py,test_sdpa_sliced,assert,
+test_fast_sdpa.py,test_sdpa_sliced,assert,
+test_fast_sdpa.py,test_sdpa_sliced,assert,
+test_fast_sdpa.py,test_sdpa_sliced,assert,
+test_fast_sdpa.py,test_sdpa_sliced,assert,
+test_fast_sdpa.py,test_sdpa_sliced,assert,
+test_fast_sdpa.py,test_sdpa_sliced,assert,
+test_fast_sdpa.py,test_sdpa_sliced,assert,
+test_fast_sdpa.py,test_sdpa_sliced,assert,
+test_fast_sdpa.py,test_sdpa_sliced,assert,
+test_fast_sdpa.py,test_sdpa_sliced,assert,
+test_fast_sdpa.py,test_sdpa_sliced,assert,
+test_fast_sdpa.py,test_sdpa_sliced,assert,
+test_fast_sdpa.py,test_sdpa_sliced,assert,
+test_fast_sdpa.py,test_sdpa_sliced,assert,
+test_fast_sdpa.py,test_sdpa_sliced,assert,
+test_fast_sdpa.py,test_sdpa_sliced,assert,
+test_fast_sdpa.py,test_sdpa_sliced,assert,
+test_fast_sdpa.py,test_sdpa_sliced,assert,
+test_fast_sdpa.py,test_sdpa_vector,assert,
+test_fast_sdpa.py,test_sdpa_vector_kv_transposed_head_seq,assert,
+test_fft.py,test_fft_big_powers_of_two,assert,
+test_fft.py,test_fft_contiguity,assert,
+test_fft.py,test_fft_vmap,named,Take dtype
+test_linalg.py,test_eig,named,Matmul dtype
+test_linalg.py,test_eigh,named,Matmul dtype
+test_nn.py,test_causal_mask,named,dtype converting copy
+test_nn.py,test_pooling,assert,
+test_nn.py,test_upsample,named,multi-index Gather with 3 index arrays
+test_nn.py,test_upsample_align_corners_one_dim,named,multi-index Gather with 3 index arrays
+test_ops.py,test_add,named,dtype converting copy
+test_ops.py,test_arange_corner_cases_cast,named,Arange range
+test_ops.py,test_arange_inferred_dtype,named,Arange range
+test_ops.py,test_complex_ops,named,ArcCos dtype
+test_ops.py,test_complex_ops,named,ArcSin dtype
+test_ops.py,test_complex_ops,named,ArcTan dtype
+test_ops.py,test_complex_ops,named,Sqrt dtype
+test_ops.py,test_complex_ops,named,Rsqrt dtype
+test_ops.py,test_hadamard_grad_vmap,named,dtype converting copy
+test_ops.py,test_irregular_binary_ops,assert,
+test_ops.py,test_large_binary,other,RuntimeError: [omarchy] Vulkan timeline counter failed to advance for 10000 ms (last obser
+test_ops.py,test_linspace,named,dtype converting copy
+test_ops.py,test_linspace_endpoint,named,dtype converting copy
+test_ops.py,test_log,named,Log dtype
+test_ops.py,test_log10,named,Log10 dtype
+test_ops.py,test_log1p,named,Log1p dtype
+test_ops.py,test_log2,named,Log2 dtype
+test_ops.py,test_masked_scatter,assert,
+test_ops.py,test_median_nan,named,Sort dtype
+test_ops.py,test_meshgrid,named,dtype converting copy
+test_ops.py,test_pad,named,non-zero fill
+test_ops.py,test_pad,named,non-zero fill
+test_ops.py,test_round,named,Round dtype
+test_ops.py,test_scans,named,multi-index Gather with 3 index arrays
+test_ops.py,test_searchsorted,assert,
+test_ops.py,test_sign,named,Sign dtype
+test_ops.py,test_sin,other,RuntimeError: [omarchy] Sin argument magnitude 1000000015047466219876688855040.000000 exce
+test_ops.py,test_sort,assert,
+test_ops.py,test_sort,assert,
+test_ops.py,test_sort,assert,
+test_ops.py,test_sort,assert,
+test_ops.py,test_sort,assert,
+test_ops.py,test_sort,assert,
+test_ops.py,test_sort,assert,
+test_ops.py,test_sort,assert,
+test_ops.py,test_sort,assert,
+test_ops.py,test_sort_nan,named,Sort dtype
+test_ops.py,test_take_along_axis,named,Take dtype
+test_ops.py,test_tile,named,rank>4 strided copy
+test_ops.py,test_trace,named,dtype converting copy
+test_ops.py,test_trig_ops,named,Tan dtype
+test_ops.py,test_trig_ops,named,Sinh dtype
+test_ops.py,test_trig_ops,named,Cosh dtype
+test_ops.py,test_trig_ops,named,Tanh dtype
+test_ops.py,test_view,assert,
+test_optimizers.py,test_adafactor,named,dtype converting copy
+test_optimizers.py,test_optimizers,named,dtype converting copy
+test_optimizers.py,test_compile_with_schedule,named,dtype converting copy
+test_optimizers.py,test_decay_lr,named,dtype converting copy
+test_optimizers.py,test_linear_warmup_with_cosine_decay,named,dtype converting copy
+test_quantized.py,test_fp_qmv,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qmv,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qmv,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qmv,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qmv,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qmv,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qmv,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qmv,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qmv,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qmv,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qmv,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qmv,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qmv,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qmv,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qmv,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qmv,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qmv,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qmv,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qmv,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qmv,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qmv,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qmv,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qmv,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qmv,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qmv,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qmv,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qmv,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qmv,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qmv,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qmv,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qmv,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qmv,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qmv,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qmv,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qmv,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qmv,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qmv,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qmv,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qmv,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qmv,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qmv,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qmv,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qmv,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qmv,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qmv,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qmv,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qmv,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qmv,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qmv,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qmv,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qmv,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qmv,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qmv,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qmv,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qmv,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qmv,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qmv,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qmv,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qmv,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qmv,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qmv,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qmv,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qmv,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qmv,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qmv,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qmv,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qmv,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qmv,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qmv,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qmv,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qmv,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qmv,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qmv,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qmv,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qmv,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qmv,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qmv,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qmv,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qmv,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qmv,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qmv,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qmv,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qmv,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qmv,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qmv,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qmv,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qmv,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qmv,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qmv,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qmv,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qmv_large_output,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qmv_large_output,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qmv_large_output,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qvm,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qvm,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qvm,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qvm,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qvm,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qvm,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qvm,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qvm,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qvm,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qvm,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qvm,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qvm,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qvm,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qvm,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qvm,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qvm,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qvm,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qvm,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qvm,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qvm,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qvm,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qvm,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qvm,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qvm,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qvm,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qvm,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qvm,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qvm,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qvm,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qvm,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qvm,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qvm,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qvm,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qvm,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qvm,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qvm,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qvm,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qvm,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qvm,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qvm,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qvm,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qvm,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qvm,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qvm,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qvm,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qvm,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qvm,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qvm,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qvm,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qvm,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qvm,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qvm,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qvm,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qvm,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qvm,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qvm,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qvm,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qvm,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qvm,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qvm,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qvm,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qvm,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qvm,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qvm,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qvm,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qvm,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qvm,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qvm,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qvm,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qvm,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qvm,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qvm,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qvm,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qvm,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qvm,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qvm,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qvm,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qvm,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qvm,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qvm,named,QuantizedMatmul weight layout
+test_quantized.py,test_fp_qvm,named,QuantizedMatmul weight layout
+test_quantized.py,test_gather_qmm_matrix_path,named,Quantize input dtype
+test_quantized.py,test_gather_qmm_sorted,assert,
+test_quantized.py,test_gather_qqmm,named,GatherQQMM x quantization
+test_quantized.py,test_gather_qqmm,named,GatherQQMM x quantization
+test_quantized.py,test_gather_qqmm,named,GatherQQMM x quantization
+test_quantized.py,test_gather_qqmm,named,GatherQQMM x quantization
+test_quantized.py,test_gather_qqmm,named,GatherQQMM x quantization
+test_quantized.py,test_gather_qqmm,named,GatherQQMM x quantization
+test_quantized.py,test_gather_qqmm,named,GatherQQMM x quantization
+test_quantized.py,test_gather_qqmm,named,GatherQQMM x quantization
+test_quantized.py,test_gather_qqmm,named,GatherQQMM x quantization
+test_quantized.py,test_gather_qqmm,named,GatherQQMM x quantization
+test_quantized.py,test_gather_qqmm,named,GatherQQMM x quantization
+test_quantized.py,test_gather_qqmm,named,GatherQQMM x quantization
+test_quantized.py,test_gather_qqmm,named,GatherQQMM x quantization
+test_quantized.py,test_gather_qqmm,named,GatherQQMM x quantization
+test_quantized.py,test_gather_qqmm,named,GatherQQMM x quantization
+test_quantized.py,test_gather_qqmm,named,GatherQQMM x quantization
+test_quantized.py,test_gather_qqmm,named,GatherQQMM x quantization
+test_quantized.py,test_gather_qqmm,named,GatherQQMM x quantization
+test_quantized.py,test_gather_qqmm,named,GatherQQMM x quantization
+test_quantized.py,test_gather_qqmm,named,GatherQQMM x quantization
+test_quantized.py,test_gather_qqmm,named,GatherQQMM x quantization
+test_quantized.py,test_gather_qqmm,named,GatherQQMM x quantization
+test_quantized.py,test_gather_qqmm,named,GatherQQMM x quantization
+test_quantized.py,test_gather_qqmm,named,GatherQQMM x quantization
+test_quantized.py,test_gather_qqmm,named,GatherQQMM x quantization
+test_quantized.py,test_gather_qqmm,named,GatherQQMM x quantization
+test_quantized.py,test_gather_qqmm,named,GatherQQMM x quantization
+test_quantized.py,test_gather_qqmm,named,GatherQQMM x quantization
+test_quantized.py,test_gather_qqmm,named,GatherQQMM x quantization
+test_quantized.py,test_gather_qqmm,named,GatherQQMM x quantization
+test_quantized.py,test_gather_qqmm,named,GatherQQMM x quantization
+test_quantized.py,test_gather_qqmm,named,GatherQQMM x quantization
+test_quantized.py,test_gather_qqmm,named,GatherQQMM x quantization
+test_quantized.py,test_gather_qqmm,named,GatherQQMM x quantization
+test_quantized.py,test_gather_qqmm,named,GatherQQMM x quantization
+test_quantized.py,test_gather_qqmm,named,GatherQQMM x quantization
+test_quantized.py,test_gather_qqmm,named,GatherQQMM x quantization
+test_quantized.py,test_gather_qqmm,named,GatherQQMM x quantization
+test_quantized.py,test_gather_qqmm,named,GatherQQMM x quantization
+test_quantized.py,test_gather_qqmm,named,GatherQQMM x quantization
+test_quantized.py,test_gather_qqmm,named,GatherQQMM x quantization
+test_quantized.py,test_gather_qqmm,named,GatherQQMM x quantization
+test_quantized.py,test_gather_qqmm,named,GatherQQMM x quantization
+test_quantized.py,test_gather_qqmm,named,GatherQQMM x quantization
+test_quantized.py,test_gather_qqmm,named,GatherQQMM x quantization
+test_quantized.py,test_gather_qqmm,named,GatherQQMM x quantization
+test_quantized.py,test_gather_qqmm,named,GatherQQMM x quantization
+test_quantized.py,test_gather_qqmm,named,GatherQQMM x quantization
+test_quantized.py,test_gather_qqmm,named,GatherQQMM x quantization
+test_quantized.py,test_gather_qqmm,named,GatherQQMM x quantization
+test_quantized.py,test_gather_qqmm,named,GatherQQMM x quantization
+test_quantized.py,test_gather_qqmm,named,GatherQQMM x quantization
+test_quantized.py,test_gather_qqmm,named,GatherQQMM x quantization
+test_quantized.py,test_gather_qqmm,named,GatherQQMM x quantization
+test_quantized.py,test_gather_qqmm,named,GatherQQMM x quantization
+test_quantized.py,test_gather_qqmm,named,GatherQQMM x quantization
+test_quantized.py,test_gather_qqmm,named,GatherQQMM x quantization
+test_quantized.py,test_gather_qqmm,named,GatherQQMM x quantization
+test_quantized.py,test_gather_qqmm,named,GatherQQMM x quantization
+test_quantized.py,test_gather_qqmm,named,GatherQQMM x quantization
+test_quantized.py,test_gather_qqmm,named,GatherQQMM x quantization
+test_quantized.py,test_gather_qqmm,named,GatherQQMM x quantization
+test_quantized.py,test_gather_qqmm,named,GatherQQMM x quantization
+test_quantized.py,test_gather_qqmm,named,GatherQQMM x quantization
+test_quantized.py,test_gather_qqmm,named,GatherQQMM x quantization
+test_quantized.py,test_gather_qqmm,named,GatherQQMM x quantization
+test_quantized.py,test_gather_qqmm,named,GatherQQMM x quantization
+test_quantized.py,test_gather_qqmm,named,GatherQQMM x quantization
+test_quantized.py,test_gather_qqmm,named,GatherQQMM x quantization
+test_quantized.py,test_gather_qqmm,named,GatherQQMM x quantization
+test_quantized.py,test_gather_qqmm,named,GatherQQMM x quantization
+test_quantized.py,test_gather_qqmm,named,GatherQQMM x quantization
+test_quantized.py,test_gather_qqmm,named,GatherQQMM x quantization
+test_quantized.py,test_gather_qqmm,named,GatherQQMM x quantization
+test_quantized.py,test_gather_qqmm,named,GatherQQMM x quantization
+test_quantized.py,test_gather_qqmm,named,GatherQQMM x quantization
+test_quantized.py,test_gather_qqmm,named,GatherQQMM x quantization
+test_quantized.py,test_gather_qqmm,named,GatherQQMM x quantization
+test_quantized.py,test_gather_qqmm,named,GatherQQMM x quantization
+test_quantized.py,test_gather_qqmm,named,GatherQQMM x quantization
+test_quantized.py,test_qmv_wide,named,QuantizedMatmul weight layout
+test_quantized.py,test_qmv_wide,named,QuantizedMatmul weight layout
+test_quantized.py,test_qmv_wide,named,QuantizedMatmul weight layout
+test_quantized.py,test_qmv_wide,named,QuantizedMatmul weight layout
+test_quantized.py,test_qmv_wide,named,QuantizedMatmul weight layout
+test_quantized.py,test_qmv_wide,named,QuantizedMatmul weight layout
+test_quantized.py,test_qmv_wide,named,QuantizedMatmul weight layout
+test_quantized.py,test_qmv_wide,named,QuantizedMatmul weight layout
+test_quantized.py,test_qmv_wide,named,QuantizedMatmul weight layout
+test_quantized.py,test_qmv_wide,named,QuantizedMatmul weight layout
+test_quantized.py,test_qmv_wide,named,QuantizedMatmul weight layout
+test_quantized.py,test_qmv_wide,named,QuantizedMatmul weight layout
+test_quantized.py,test_qmv_wide,named,QuantizedMatmul weight layout
+test_quantized.py,test_qmv_wide,named,QuantizedMatmul weight layout
+test_quantized.py,test_qmv_wide,named,QuantizedMatmul weight layout
+test_quantized.py,test_qmv_wide,named,QuantizedMatmul weight layout
+test_quantized.py,test_qmv_wide,named,QuantizedMatmul weight layout
+test_quantized.py,test_qmv_wide,named,QuantizedMatmul weight layout
+test_quantized.py,test_qmv_wide,named,QuantizedMatmul weight layout
+test_quantized.py,test_qmv_wide,named,QuantizedMatmul weight layout
+test_quantized.py,test_qmv_wide,named,QuantizedMatmul weight layout
+test_quantized.py,test_qmv_wide,named,QuantizedMatmul weight layout
+test_quantized.py,test_qmv_wide,named,QuantizedMatmul weight layout
+test_quantized.py,test_qmv_wide,named,QuantizedMatmul weight layout
+test_quantized.py,test_qmv_wide,named,QuantizedMatmul weight layout
+test_quantized.py,test_qmv_wide,named,QuantizedMatmul weight layout
+test_quantized.py,test_qmv_wide,named,QuantizedMatmul weight layout
+test_quantized.py,test_qmv_wide,named,QuantizedMatmul weight layout
+test_quantized.py,test_qmv_wide,named,QuantizedMatmul weight layout
+test_quantized.py,test_qmv_wide,named,QuantizedMatmul weight layout
+test_quantized.py,test_qmv_wide,named,QuantizedMatmul weight layout
+test_quantized.py,test_qmv_wide,named,QuantizedMatmul weight layout
+test_quantized.py,test_qmv_wide,named,QuantizedMatmul weight layout
+test_quantized.py,test_qmv_wide,named,QuantizedMatmul weight layout
+test_quantized.py,test_qmv_wide,named,QuantizedMatmul weight layout
+test_quantized.py,test_qmv_wide,named,QuantizedMatmul weight layout
+test_quantized.py,test_qmv_wide,named,QuantizedMatmul weight layout
+test_quantized.py,test_qmv_wide,named,QuantizedMatmul weight layout
+test_quantized.py,test_qmv_wide,named,QuantizedMatmul weight layout
+test_quantized.py,test_qmv_wide,named,QuantizedMatmul weight layout
+test_quantized.py,test_qmv_wide,named,QuantizedMatmul weight layout
+test_quantized.py,test_qmv_wide,named,QuantizedMatmul weight layout
+test_quantized.py,test_qmv_wide,named,QuantizedMatmul weight layout
+test_quantized.py,test_qmv_wide,named,QuantizedMatmul weight layout
+test_quantized.py,test_qmv_wide,named,QuantizedMatmul weight layout
+test_quantized.py,test_qmv_wide,named,QuantizedMatmul weight layout
+test_quantized.py,test_qmv_wide,named,QuantizedMatmul weight layout
+test_quantized.py,test_qmv_wide,named,QuantizedMatmul weight layout
+test_quantized.py,test_qmv_wide,named,QuantizedMatmul weight layout
+test_quantized.py,test_qmv_wide,named,QuantizedMatmul weight layout
+test_quantized.py,test_qmv_wide,named,QuantizedMatmul weight layout
+test_quantized.py,test_qmv_wide,named,QuantizedMatmul weight layout
+test_quantized.py,test_qmv_wide,named,QuantizedMatmul weight layout
+test_quantized.py,test_qmv_wide,named,QuantizedMatmul weight layout
+test_quantized.py,test_qmv_wide,named,QuantizedMatmul weight layout
+test_quantized.py,test_qmv_wide,named,QuantizedMatmul weight layout
+test_quantized.py,test_qmv_wide,named,QuantizedMatmul weight layout
+test_quantized.py,test_qmv_wide,named,QuantizedMatmul weight layout
+test_quantized.py,test_qmv_wide,named,QuantizedMatmul weight layout
+test_quantized.py,test_qmv_wide,named,QuantizedMatmul weight layout
+test_quantized.py,test_qmv_wide,named,QuantizedMatmul weight layout
+test_quantized.py,test_qmv_wide,named,QuantizedMatmul weight layout
+test_quantized.py,test_qmv_wide,named,QuantizedMatmul weight layout
+test_quantized.py,test_qmv_wide,named,QuantizedMatmul weight layout
+test_quantized.py,test_qmv_wide,named,QuantizedMatmul weight layout
+test_quantized.py,test_qmv_wide,named,QuantizedMatmul weight layout
+test_quantized.py,test_qmv_wide,named,QuantizedMatmul weight layout
+test_quantized.py,test_qmv_wide,named,QuantizedMatmul weight layout
+test_quantized.py,test_qmv_wide,named,QuantizedMatmul weight layout
+test_quantized.py,test_qmv_wide,named,QuantizedMatmul weight layout
+test_quantized.py,test_qmv_wide,named,QuantizedMatmul weight layout
+test_quantized.py,test_qmv_wide,named,QuantizedMatmul weight layout
+test_quantized.py,test_qmv_wide,named,QuantizedMatmul weight layout
+test_quantized.py,test_qmv_wide,named,QuantizedMatmul weight layout
+test_quantized.py,test_qmv_wide,named,QuantizedMatmul weight layout
+test_quantized.py,test_qmv_wide,named,QuantizedMatmul weight layout
+test_quantized.py,test_qmv_wide,named,QuantizedMatmul weight layout
+test_quantized.py,test_qmv_wide,named,QuantizedMatmul weight layout
+test_quantized.py,test_qmv_wide,named,QuantizedMatmul weight layout
+test_quantized.py,test_qmv_wide,named,QuantizedMatmul weight layout
+test_quantized.py,test_qmv_wide,named,QuantizedMatmul weight layout
+test_quantized.py,test_qmv_wide,named,QuantizedMatmul weight layout
+test_quantized.py,test_qmv_wide,named,QuantizedMatmul weight layout
+test_quantized.py,test_qmv_wide,named,QuantizedMatmul weight layout
+test_quantized.py,test_qqmm,named,QQMatmul mode
+test_quantized.py,test_qqmm,named,QQMatmul mode
+test_quantized.py,test_qqmm,named,QQMatmul mode
+test_quantized.py,test_qqmm,named,QQMatmul mode
+test_quantized.py,test_qqmm,named,QQMatmul mode
+test_quantized.py,test_qqmm,named,QQMatmul mode
+test_quantized.py,test_qqmm,named,QQMatmul mode
+test_quantized.py,test_qqmm,named,QQMatmul mode
+test_quantized.py,test_qqmm,named,QQMatmul mode
+test_quantized.py,test_qqmm,named,QQMatmul mode
+test_quantized.py,test_qqmm,named,QQMatmul mode
+test_quantized.py,test_qqmm,named,QQMatmul mode
+test_quantized.py,test_qqmm,named,QQMatmul mode
+test_quantized.py,test_qqmm,named,QQMatmul mode
+test_quantized.py,test_qqmm,named,QQMatmul mode
+test_quantized.py,test_qqmm,named,QQMatmul mode
+test_quantized.py,test_qqmm,named,QQMatmul mode
+test_quantized.py,test_qqmm,named,QQMatmul mode
+test_quantized.py,test_qqmm,named,QQMatmul mode
+test_quantized.py,test_qqmm,named,QQMatmul mode
+test_quantized.py,test_qqmm,named,QQMatmul mode
+test_quantized.py,test_qqmm,named,QQMatmul mode
+test_quantized.py,test_qqmm,named,QQMatmul mode
+test_quantized.py,test_qqmm,named,QQMatmul mode
+test_quantized.py,test_qqmm,named,QQMatmul mode
+test_quantized.py,test_qqmm,named,QQMatmul mode
+test_quantized.py,test_qqmm,named,QQMatmul mode
+test_quantized.py,test_qqmm,named,QQMatmul mode
+test_quantized.py,test_qqmm,named,QQMatmul mode
+test_quantized.py,test_qqmm,named,QQMatmul mode
+test_quantized.py,test_qqmm,named,QQMatmul mode
+test_quantized.py,test_qqmm,named,QQMatmul mode
+test_quantized.py,test_qqmv,named,QQMatmul mode
+test_quantized.py,test_qqmv,named,QQMatmul mode
+test_quantized.py,test_qqmv,named,QQMatmul mode
+test_quantized.py,test_qqmv,named,QQMatmul mode
+test_quantized.py,test_qqmv,named,QQMatmul mode
+test_quantized.py,test_qqmv,named,QQMatmul mode
+test_quantized.py,test_qqmv,named,QQMatmul mode
+test_quantized.py,test_qqmv,named,QQMatmul mode
+test_quantized.py,test_qqmv,named,QQMatmul mode
+test_quantized.py,test_qqmv,named,QQMatmul mode
+test_quantized.py,test_qqmv,named,QQMatmul mode
+test_quantized.py,test_qqmv,named,QQMatmul mode
+test_quantized.py,test_qqmv,named,QQMatmul mode
+test_quantized.py,test_qqmv,named,QQMatmul mode
+test_quantized.py,test_qqmv,named,QQMatmul mode
+test_quantized.py,test_qqmv,named,QQMatmul mode
+test_quantized.py,test_qqmv,named,QQMatmul mode
+test_quantized.py,test_qqmv,named,QQMatmul mode
+test_quantized.py,test_qvm_splitk,named,QuantizedMatmul rank
+test_random.py,test_randint,named,dtype converting copy
+test_vmap.py,test_vmap_masked_scatter,assert,
+test_vmap.py,test_vmap_matmul,named,broadcast AddMM
+test_vmap.py,test_vmap_pad,named,non-zero fill
