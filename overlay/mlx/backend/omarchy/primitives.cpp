@@ -1983,6 +1983,11 @@ enum ComplexOperation : uint32_t {
   ComplexDivide,
   ComplexNegative,
   ComplexLogAddExp,
+  ComplexPower,
+  ComplexExp,
+  ComplexSin,
+  ComplexCos,
+  ComplexMaximum,
 };
 
 // The params fill and dispatch behind the complex64 elementwise
@@ -2064,11 +2069,15 @@ void dispatch_complex(
   dispatch_complex_elementwise_to(
       name, operation, lhs, rhs, out, general_broadcast, encoder);
 }
-
-// Complex64 component extraction to float32 (ComplexReal and
-// ComplexImag kernels; operation 0 keeps the real part, 1 the
-// imaginary part). The input offset is a complex64 item offset and
-// the output offset a float32 item offset, which is what the
+// Complex64 component extraction and magnitude to float32: operation
+// 0 takes the real part (ComplexReal), 1 the imaginary part
+// (ComplexImag), 2 the magnitude |z| with overflow-safe hypot
+// (ComplexAbs). Operations 0 and 1 mirror the upstream real()/imag()
+// semantics on a complex64 array (mlx/backend/cpu/unary.cpp routes
+// both through unary_complex_to_float); operation 2 mirrors cabsf /
+// std::abs so upstream allclose can take the absolute value of a
+// complex difference. The input offset is a complex64 item offset
+// and the output offset a float32 item offset, which is what the
 // per-array checked_item_offset calls already produce.
 void dispatch_complex_extract(
     const std::string& name,
@@ -2078,7 +2087,18 @@ void dispatch_complex_extract(
     const Stream& s) {
   const array& in = inputs.at(0);
   auto& encoder = omarchy::get_command_encoder(s);
-  if (in.dtype() != complex64 || out.dtype() != float32) {
+  if (in.dtype() != complex64) {
+    omarchy::unsupported(name + " dtype", out);
+  }
+  // Operations 0 and 1 (real/imag) target float32 out; operation 2
+  // (abs) can target either float32 (direct) or complex64 (the
+  // intermediate path Abs::eval_gpu takes when out is the primary
+  // complex64 buffer the ops layer allocated).
+  if (operation < 2u && out.dtype() != float32) {
+    omarchy::unsupported(name + " dtype", out);
+  }
+  if (operation == 2u && out.dtype() != float32 &&
+      out.dtype() != complex64) {
     omarchy::unsupported(name + " dtype", out);
   }
   uint32_t count = checked_u32(out.size(), name, out);
@@ -2088,15 +2108,19 @@ void dispatch_complex_extract(
   params.output_size = count;
   params.lhs_offset = checked_item_offset(in, in.data_size(), name, out);
   params.output_offset = checked_item_offset(out, count, name, out);
-  out.set_data(allocate_omarchy(out.nbytes()));
   if (out.size() == 0) {
     return;
   }
+  out.set_data(allocate_omarchy(out.nbytes()));
   std::array<omarchy::ComputeBinding, 3> bindings{
       binding(in), binding(in), binding(out)};
   auto kernel = operation == 0
       ? omarchy::ComputeKernel::ComplexReal
-      : omarchy::ComputeKernel::ComplexImag;
+      : operation == 1
+      ? omarchy::ComputeKernel::ComplexImag
+      : out.dtype() == complex64
+      ? omarchy::ComputeKernel::ComplexAbsAsComplex
+      : omarchy::ComputeKernel::ComplexAbs;
   encoder.dispatch_compute(
       kernel, bindings, params, omarchy::compute_dispatch_group_count(count));
 }
@@ -2107,17 +2131,24 @@ void dispatch_complex_extract(
     dispatch_elementwise(                                             \
         #func, operation, inputs, out, out.primitive().stream());     \
   }
-
 #define OMARCHY_UNARY(func, operation)                                \
   void func::eval_gpu(const std::vector<array>& inputs, array& out) { \
     dispatch_elementwise(                                             \
         #func, operation, inputs, out, out.primitive().stream());     \
   }
-
-// Abs negates negatives for every signed dtype; uint32 is the
-// upstream no-op and INT_MIN wraps to itself the way upstream's C++
-// negation does on this platform. bool keeps the named rejection.
 void Abs::eval_gpu(const std::vector<array>& inputs, array& out) {
+  const array& in = inputs.at(0);
+  if (in.dtype() == complex64) {
+    // ops.cpp builds the primary array with the input dtype (so out
+    // starts as complex64) and applies astype(complex64 -> float32)
+    // as a separate Cast downstream; dispatch_complex_extract
+    // detects that out is complex64 and routes to ComplexAbsAsComplex
+    // (magnitude into .x, 0 into .y) so the downstream Cast reads
+    // real() and gets the right value. The direct float32-out path
+    // also works (one scalar per element).
+    dispatch_complex_extract(name(), 2, inputs, out, out.primitive().stream());
+    return;
+  }
   if (out.dtype() == int32 || out.dtype() == uint32) {
     dispatch_int_elementwise(name(), IntAbsOperation, inputs, out);
     return;
@@ -2980,6 +3011,15 @@ void trig_argument_gate(
   }
 }
 void Cos::eval_gpu(const std::vector<array>& inputs, array& out) {
+  if (out.dtype() == complex64) {
+    // Upstream std::cos(complex) goes through glibc ccosf, which is
+    // (cos a cosh b, -sin a sinh b) for normal-range inputs; the
+    // float trig argument gate is irrelevant to the complex path
+    // because the accuracy loss it guards against does not apply.
+    dispatch_complex(
+        name(), ComplexCos, inputs, out, out.primitive().stream());
+    return;
+  }
   trig_argument_gate(name(), inputs, out);
   dispatch_elementwise(
       name(), CosOperation, inputs, out, out.primitive().stream());
@@ -3091,7 +3131,20 @@ void Equal::eval_gpu(const std::vector<array>& inputs, array& out) {
 }
 OMARCHY_UNARY(Erf, ErfOperation)
 OMARCHY_UNARY(ErfInv, ErfInvOperation)
-OMARCHY_UNARY(Exp, ExpOperation)
+// complex64 exp matches std::exp(complex<float>) / glibc cexpf:
+// exp(a)*(cos b, sin b); the unary dispatch aliases rhs to lhs so
+// the existing complex elementwise transport carries it without a
+// new shader variant. The float/int/bool paths keep the standard
+// elementwise dispatch the macro would have produced.
+void Exp::eval_gpu(const std::vector<array>& inputs, array& out) {
+  if (out.dtype() == complex64) {
+    dispatch_complex(
+        name(), ComplexExp, inputs, out, out.primitive().stream());
+    return;
+  }
+  dispatch_elementwise(
+      name(), ExpOperation, inputs, out, out.primitive().stream());
+}
 OMARCHY_UNARY(Expm1, Expm1Operation)
 namespace {
 
@@ -4661,6 +4714,14 @@ void Matmul::eval_gpu(const std::vector<array>& inputs, array& out) {
       name(), inputs, out, 1.0f, 0.0f, false, out.primitive().stream());
 }
 void Maximum::eval_gpu(const std::vector<array>& inputs, array& out) {
+  if (out.dtype() == complex64) {
+    // Lexicographic (real, then imaginary) maximum, exactly the
+    // upstream complex64_t ordering that compare_complex encodes for
+    // Equal/Greater; ties favor the left operand so max(a, b) == a.
+    dispatch_complex(
+        name(), ComplexMaximum, inputs, out, out.primitive().stream());
+    return;
+  }
   if (out.dtype() == int32 || out.dtype() == uint32) {
     dispatch_int_elementwise(name(), IntMaximumOperation, inputs, out);
     return;
@@ -4785,7 +4846,20 @@ void Partition::eval_gpu(const std::vector<array>& inputs, array& out) {
 // exponentiation-by-squaring (negative signed exponent yields 0).
 // Float bases below zero need the sign handling GLSL's pow refuses:
 // non-integer exponents produce NaN, odd integer exponents negate.
+// complex64 power routes through the principal branch
+// exp(y * clog(x)) matching std::pow(complex<float>), with the
+// zero-base special cases the comparisons cluster deliberately
+// skipped; the test power expected values are std::pow(complex<float>)
+// on the host, and the tolerance is 1e-7 absolute for the small-
+// magnitude test case so the formula mirrors glibc cpowf exactly
+// (log(length) + atan2 for the principal log, exp * cos/sin for the
+// exp).
 void Power::eval_gpu(const std::vector<array>& inputs, array& out) {
+  if (out.dtype() == complex64) {
+    dispatch_complex(
+        name(), ComplexPower, inputs, out, out.primitive().stream());
+    return;
+  }
   if (out.dtype() == bool_) {
     // Upstream power promotes bool to bool (promote_types of two bools)
     // and evaluates pow over {0, 1}: x^y is x || !y. The bool kernel's
@@ -6130,6 +6204,14 @@ void Select::eval_gpu(const std::vector<array>& inputs, array& out) {
     case bool_:
       kernel = omarchy::ComputeKernel::SelectBool;
       break;
+    case complex64:
+      // complex64 select rides the per-element uvec2 variant: the
+      // value buffers carry two raw 32-bit words per element, the
+      // condition stays a packed-bool byte stream, and the word
+      // count math is unchanged because the per-thread lane loop
+      // already counts condition elements, not value words.
+      kernel = omarchy::ComputeKernel::SelectComplex64;
+      break;
     default:
       omarchy::unsupported("Select dtype", out);
   }
@@ -6392,6 +6474,16 @@ void Sign::eval_gpu(const std::vector<array>& inputs, array& out) {
       name(), SignFloatOperation, inputs, out, out.primitive().stream());
 }
 void Sin::eval_gpu(const std::vector<array>& inputs, array& out) {
+  if (out.dtype() == complex64) {
+    // Upstream std::sin(complex) goes through glibc csinf, which is
+    // (sin a cosh b, cos a sinh b) for normal-range inputs; the float
+    // trig argument gate does not apply to the complex path because
+    // the accuracy loss it guards against lives in the float range
+    // reduction, not in the complex extension.
+    dispatch_complex(
+        name(), ComplexSin, inputs, out, out.primitive().stream());
+    return;
+  }
   trig_argument_gate(name(), inputs, out);
   dispatch_elementwise(
       name(), SinOperation, inputs, out, out.primitive().stream());
