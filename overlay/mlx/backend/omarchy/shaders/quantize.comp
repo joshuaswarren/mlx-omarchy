@@ -60,6 +60,48 @@ float round_away_from_zero(float value) {
   return sign(value) * floor(abs(value) + 0.5);
 }
 
+// AGX (Honeykrisp) rounding contract, measured on jwm1-linux (Mesa
+// 26.1.7): (1) GLSL "/" lands up to 1 ulp from the correctly rounded
+// quotient - 80/25 and 10/25 one ulp low, 6.55859375/0.030016447 one
+// ulp high, which flipped one affine code at the exact 218.5
+// round-away boundary - while llvmpipe and the pinned CPU/Metal
+// reference are correctly rounded. (2) GLSL fma() lowers to plain
+// OpFMul/OpFAdd and the AGX compiler contracts those pairs into a
+// native fused op that does not deliver the IEEE fused result, so
+// fma-based Markstein refinement cannot restore correct rounding
+// here. Reproduce the reference bits with a Dekker exact-residual
+// refinement using only precise (NoContraction) IEEE multiplies and
+// adds: the Veltkamp split (8193 = 2^13 + 1 for binary32) makes
+// r = a - q*b exact, and one correction step q + r*(1/b) rounds to the
+// correctly rounded quotient. When q is already correctly rounded the
+// residual is exactly zero and the value is unchanged, so llvmpipe
+// stays bit-identical. Degenerate and split-range-edge inputs keep the
+// native result. Every division feeding the pinned bit-exact affine
+// contract goes through this helper.
+float precise_div(float a, float b) {
+  float q = a / b;
+  if (b == 0.0 || isnan(q) || isinf(q) || q == 0.0 ||
+      abs(b) < 1.1754944e-38 || abs(b) > 2.8e30 ||
+      abs(q) > 2.8e30) {
+    return q;
+  }
+  precise float p = q * b;
+  if (isnan(p) || isinf(p)) {
+    return q;
+  }
+  precise float bsplit = b * 8193.0;
+  precise float b_hi = bsplit - (bsplit - b);
+  precise float b_lo = b - b_hi;
+  precise float qsplit = q * 8193.0;
+  precise float q_hi = qsplit - (qsplit - q);
+  precise float q_lo = q - q_hi;
+  precise float err =
+      ((q_hi * b_hi - p) + q_hi * b_lo + q_lo * b_hi) + q_lo * b_lo;
+  precise float r = (a - p) - err;
+  precise float correction = r * (1.0 / b);
+  return q + correction;
+}
+
 void main() {
   uint bits = params.operation;
   uint group_size = params.reduce_size;
@@ -80,13 +122,13 @@ void main() {
     }
 
     bool min_dominant = abs(w_min) > abs(w_max);
-    float scale = max((w_max - w_min) / n_bins, 1e-7);
+    float scale = max(precise_div(w_max - w_min, n_bins), 1e-7);
     scale = min_dominant ? scale : -scale;
     float edge = min_dominant ? w_min : w_max;
-    float q0 = round_away_from_zero(edge / scale);
+    float q0 = round_away_from_zero(precise_div(edge, scale));
     float bias = 0.0;
     if (q0 != 0.0) {
-      scale = edge / q0;
+      scale = precise_div(edge, q0);
       bias = edge;
     }
 
@@ -99,7 +141,7 @@ void main() {
         uint input_index = word_index * pack_factor + lane;
         float value = LOAD_VALUE(input_data.values[input_base + input_index]);
         float quantized = clamp(
-            round_away_from_zero((value - bias) / scale), 0.0, n_bins);
+            round_away_from_zero(precise_div(value - bias, scale)), 0.0, n_bins);
         packed |= uint(quantized) << (lane * bits);
       }
       packed_data.values[packed_base + word_index] = packed;

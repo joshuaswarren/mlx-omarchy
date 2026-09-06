@@ -53,6 +53,48 @@ layout(push_constant) uniform Params {
   uint rhs_strides[4];
 } params;
 
+// AGX (Honeykrisp) rounding contract, measured on jwm1-linux (Mesa
+// 26.1.7): (1) GLSL "/" lands up to 1 ulp from the correctly rounded
+// quotient - 80/25 and 10/25 one ulp low - so the complex64 divide vjp
+// pin (-3.2-0.4j) missed by one bit even though every multiply and add
+// in its chain is exact; llvmpipe and the pinned CPU/Metal reference
+// are correctly rounded. (2) GLSL fma() lowers to plain
+// OpFMul/OpFAdd and the AGX compiler contracts those pairs into a
+// native fused op that does not deliver the IEEE fused result, so
+// fma-based Markstein refinement cannot restore correct rounding
+// here. Reproduce the reference bits with a Dekker exact-residual
+// refinement using only precise (NoContraction) IEEE multiplies and
+// adds: the Veltkamp split (8193 = 2^13 + 1 for binary32) makes
+// r = a - q*b exact, and one correction step q + r*(1/b) rounds to the
+// correctly rounded quotient. When q is already correctly rounded the
+// residual is exactly zero and the value is unchanged, so llvmpipe
+// stays bit-identical. Degenerate and split-range-edge inputs keep the
+// native result, preserving the zero-denominator inf/NaN semantics of
+// the upstream complex division.
+float precise_div(float a, float b) {
+  float q = a / b;
+  if (b == 0.0 || isnan(q) || isinf(q) || q == 0.0 ||
+      abs(b) < 1.1754944e-38 || abs(b) > 2.8e30 ||
+      abs(q) > 2.8e30) {
+    return q;
+  }
+  precise float p = q * b;
+  if (isnan(p) || isinf(p)) {
+    return q;
+  }
+  precise float bsplit = b * 8193.0;
+  precise float b_hi = bsplit - (bsplit - b);
+  precise float b_lo = b - b_hi;
+  precise float qsplit = q * 8193.0;
+  precise float q_hi = qsplit - (qsplit - q);
+  precise float q_lo = q - q_hi;
+  precise float err =
+      ((q_hi * b_hi - p) + q_hi * b_lo + q_lo * b_hi) + q_lo * b_lo;
+  precise float r = (a - p) - err;
+  precise float correction = r * (1.0 / b);
+  return q + correction;
+}
+
 void main() {
   uint index = gl_GlobalInvocationID.x;
   uint stride = gl_NumWorkGroups.x * gl_WorkGroupSize.x;
@@ -97,10 +139,9 @@ void main() {
         break;
       case 4: {
         float denom = rhs.x * rhs.x + rhs.y * rhs.y;
-        value = vec2(
-                    lhs.x * rhs.x + lhs.y * rhs.y,
-                    lhs.y * rhs.x - lhs.x * rhs.y) /
-            denom;
+        float re = lhs.x * rhs.x + lhs.y * rhs.y;
+        float im = lhs.y * rhs.x - lhs.x * rhs.y;
+        value = vec2(precise_div(re, denom), precise_div(im, denom));
         break;
       }
       case 5:
