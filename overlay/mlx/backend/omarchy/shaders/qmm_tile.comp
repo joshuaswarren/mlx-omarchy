@@ -18,8 +18,8 @@
 // Push-constant routing and the packed scale/bias binding match
 // qmm.comp exactly (operation carries bits, reduce_size the group size,
 // binding 2 = [all scales | all biases]). matrix_k is always a multiple
-// of group_size (32 or 64, checked in dispatch), hence of the 16-wide
-// k-tile: no k tail exists.
+// of group_size (32, 64, or 128, checked in dispatch), hence of the
+// 16-wide k-tile: no k tail exists.
 
 #ifdef USE_FP16
 #extension GL_EXT_shader_16bit_storage : require
@@ -90,51 +90,83 @@ layout(push_constant) uniform Params {
 shared float tile_x[16][16];
 shared float tile_w[16][16];
 
+// Weight layout routing mirrors qmm.comp: flags bit 0 set means
+// non-transposed weights ([batch, Kp, N], scales [batch, K/group_size,
+// N]); shape[0] carries the batch count B and the tile loops run once
+// per batch slice with per-slice x/w/scale bases. Only strides differ
+// between the layouts, selected as uniform values before the loops.
 void main() {
   uint lx = gl_LocalInvocationID.x;
   uint ly = gl_LocalInvocationID.y;
   uint bits = params.operation;
   uint group_size = params.reduce_size;
+  bool non_transposed = (params.flags & 1u) != 0u;
   uint pack_factor = 32u / bits;
   uint value_mask = (1u << bits) - 1u;
   uint words_per_row = params.matrix_k / pack_factor;
   uint groups_per_row = params.matrix_k / group_size;
+  uint batch = params.shape[0];
+  uint w_batch_words = params.shape[1];
+  uint param_batch = params.shape[2];
+  uint scale_total = params.shape[3];
+  uint x_batch_rows = params.matrix_m * params.matrix_k;
   uint m_tiles = params.matrix_m / TILE +
       uint(params.matrix_m % TILE != 0u);
   uint n_tiles = params.matrix_n / TILE +
       uint(params.matrix_n % TILE != 0u);
-  uint k_tiles = params.matrix_k / TILE;
-
+  // Transposed: groups run along K, so K is a multiple of group_size
+  // (32/64/128) and of the 16-wide k-tile: no k tail. Non-transposed:
+  // groups run along N and K only needs pack alignment, so the final
+  // k-tile can be partial and must bound-check.
+  uint k_tiles = params.matrix_k / TILE +
+      uint(non_transposed && (params.matrix_k % TILE != 0u));
   // Grid-stride over both tile axes keeps the kernel correct under any
   // dispatch clamping, the same contract matmul.comp uses.
+  for (uint b = 0u; b < batch; ++b) {
   for (uint tile_row = gl_WorkGroupID.y; tile_row < m_tiles;
        tile_row += gl_NumWorkGroups.y) {
     uint row = tile_row * TILE + ly;
     for (uint tile_col = gl_WorkGroupID.x; tile_col < n_tiles;
          tile_col += gl_NumWorkGroups.x) {
       uint column = tile_col * TILE + lx;
+      // Non-transposed: w batch slice [K, Np], groups along N, scale
+      // [k][n / gs], fixed lane nibble per thread. Transposed:
+      // [N, Kp], groups along K, scale [n][k / gs].
+      uint w_slice = params.rhs_offset + b * w_batch_words;
+      uint p_slice = params.aux_offset + b * param_batch;
+      uint w_base = w_slice +
+          (non_transposed ? column / pack_factor : column * words_per_row);
+      uint scale_base = p_slice +
+          (non_transposed ? column / group_size : column * groups_per_row);
+      uint bias_base = p_slice + scale_total +
+          (non_transposed ? column / group_size : column * groups_per_row);
+      uint w_step = non_transposed ? params.matrix_n / pack_factor : 1u;
+      uint w_pack_div = non_transposed ? 1u : pack_factor;
+      uint p_step = non_transposed ? params.matrix_n / group_size : 1u;
+      uint lane_shift = (column % pack_factor) * bits;
       float accumulator = 0.0;
       for (uint tile = 0u; tile < k_tiles; ++tile) {
         uint k_base = tile * TILE;
         uint x_k = k_base + lx;
         tile_x[ly][lx] = row < params.matrix_m && x_k < params.matrix_k
             ? LOAD_VALUE(input_x.values[params.lhs_offset +
-                  row * params.matrix_k + x_k])
+                  b * x_batch_rows + row * params.matrix_k + x_k])
             : 0.0;
         float dequant = 0.0;
-        if (column < params.matrix_n) {
-          uint word = input_w.values[params.rhs_offset +
-              column * words_per_row + (k_base + ly) / pack_factor];
-          uint q = (word >> ((k_base + ly) % pack_factor * bits)) &
-              value_mask;
-          uint group = (k_base + ly) / group_size;
+        if (column < params.matrix_n &&
+            (!non_transposed || (k_base + ly) < params.matrix_k)) {
+          uint word = input_w.values[
+              w_base + (k_base + ly) / w_pack_div * w_step];
+          uint q = non_transposed
+              ? (word >> lane_shift) & value_mask
+              : (word >> ((k_base + ly) % pack_factor * bits)) & value_mask;
+          uint param = non_transposed
+              ? (k_base + ly) * p_step
+              : ((k_base + ly) / group_size);
           float scale = LOAD_VALUE(
-              scale_bias.values[params.aux_offset +
-                  column * groups_per_row + group]);
+              scale_bias.values[scale_base + param]);
           float bias = LOAD_VALUE(
-              scale_bias.values[params.aux_offset +
-                  params.matrix_n * groups_per_row +
-                  column * groups_per_row + group]);
+              scale_bias.values[bias_base + param]);
           dequant = scale * float(q) + bias;
         }
         tile_w[ly][lx] = dequant;
@@ -147,8 +179,10 @@ void main() {
       }
       if (row < params.matrix_m && column < params.matrix_n) {
         output_data.values[params.output_offset +
+            b * params.matrix_m * params.matrix_n +
             row * params.matrix_n + column] = STORE_VALUE(accumulator);
       }
     }
+  }
   }
 }
