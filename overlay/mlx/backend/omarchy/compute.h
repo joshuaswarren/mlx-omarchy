@@ -83,6 +83,7 @@ enum class ComputeKernel : uint16_t {
   SelectBF16,
   SelectI32,
   SelectBool,
+  SelectComplex64,
   CompareF32,
   CompareF16,
   CompareBF16,
@@ -295,6 +296,19 @@ enum class ComputeKernel : uint16_t {
   CastComplex64F32,
   FillComplex64,
   CopyGeneralComplex64,
+  // ComplexAbs: magnitude |z| of a complex64 element into float32,
+  // the value-side counterpart to compare_complex and the missing
+  // piece upstream allclose needs for complex differences. The shader
+  // (shaders/complex_extract.comp, operation 2) implements hypot(re,
+  // im) with overflow-safe scaling so large-magnitude inputs do not
+  ComplexAbs,
+  // ComplexAbsAsComplex: same magnitude kernel but the output buffer
+  // is complex64 (vec2): the magnitude lands in .x and 0 in .y so
+  // the downstream Cast(complex64 -> float32) reads real() and gets
+  // the magnitude. This is the path Abs::eval_gpu takes when ops.cpp
+  // builds the primary output as complex64 and applies a separate
+  // astype Cast downstream.
+  ComplexAbsAsComplex,
   // ScatterDeterminism: float scatter reductions ride hardware fp32
   // atomic add where VK_EXT_shader_atomic_float reports
   // shaderBufferFloat32AtomicAdd (llvmpipe does; the M1 Honeykrisp

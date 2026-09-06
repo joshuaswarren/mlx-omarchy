@@ -91,6 +91,7 @@
 #include "select_f32.h"
 #include "select_i32.h"
 #include "select_bool.h"
+#include "select_complex64.h"
 #include "reduce_bf16.h"
 #include "reduce_f16.h"
 #include "reduce_f32.h"
@@ -261,6 +262,8 @@
 #include "complex_elementwise.h"
 #include "complex_real.h"
 #include "complex_imag.h"
+#include "complex_abs.h"
+#include "complex_abs_as_complex.h"
 #include "cast_f32_c64.h"
 #include "cast_i32_c64.h"
 #include "cast_u32_c64.h"
@@ -372,6 +375,8 @@ ShaderBytes shader_bytes(ComputeKernel kernel) {
       return {select_i32, select_i32_size};
     case ComputeKernel::SelectBool:
       return {select_bool, select_bool_size};
+    case ComputeKernel::SelectComplex64:
+      return {select_complex64, select_complex64_size};
     case ComputeKernel::CompareF32:
       return {compare_f32, compare_f32_size};
     case ComputeKernel::CompareF16:
@@ -707,6 +712,10 @@ ShaderBytes shader_bytes(ComputeKernel kernel) {
       return {complex_real, complex_real_size};
     case ComputeKernel::ComplexImag:
       return {complex_imag, complex_imag_size};
+    case ComputeKernel::ComplexAbs:
+      return {complex_abs, complex_abs_size};
+    case ComputeKernel::ComplexAbsAsComplex:
+      return {complex_abs_as_complex, complex_abs_as_complex_size};
     case ComputeKernel::CastF32Complex64:
       return {cast_f32_c64, cast_f32_c64_size};
     case ComputeKernel::CastI32Complex64:

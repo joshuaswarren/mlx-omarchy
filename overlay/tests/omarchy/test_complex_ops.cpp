@@ -505,3 +505,176 @@ TEST_CASE("fft of a small real signal is exact at quarter-turn twiddles") {
   std::vector<cdouble> expect_back{{0, 0}, {1, 0}, {2, 0}, {3, 0}};
   check_exact(read_complex(back, stream), expect_back);
 }
+
+TEST_CASE("complex abs matches host reference including overflow-scale") {
+  if (!compute_available()) {
+    return;
+  }
+  auto stream = gpu_stream();
+  // Normal range: |3 + 4i| = 5, |0| = 0, pure imaginary, negatives.
+  array z({complex64_t{3, 4}, complex64_t{0, 0}, complex64_t{0, -2},
+           complex64_t{-1, -1}},
+          {4});
+  auto got = read_real(abs(z, stream), stream);
+  CHECK(got[0] == doctest::Approx(5.0).epsilon(1e-6));
+  CHECK(got[1] == 0.0);
+  CHECK(got[2] == doctest::Approx(2.0).epsilon(1e-6));
+  CHECK(got[3] == doctest::Approx(std::sqrt(2.0)).epsilon(1e-6));
+  // Large magnitude: sqrt(re^2 + im^2) overflows float32 for both
+  // components above ~1.8e19, so the kernel must scale before squaring.
+  // std::abs over double is the reference; the naive form would return
+  // inf here.
+  std::vector<cdouble> big{{3e19, 4e19}, {1e20, 1e20}, {5e18, -1.2e19}};
+  std::vector<complex64_t> host(big.size());
+  for (size_t i = 0; i < big.size(); ++i) {
+    host[i] = complex64_t(float(big[i].real()), float(big[i].imag()));
+  }
+  array zb(host.begin(), Shape{3}, complex64);
+  auto got_big = read_real(abs(zb, stream), stream);
+  for (size_t i = 0; i < big.size(); ++i) {
+    double want = std::abs(big[i]);
+    INFO("big index ", i, " got ", got_big[i], " want ", want);
+    CHECK(got_big[i] == doctest::Approx(want).epsilon(1e-6));
+    CHECK(std::isfinite(got_big[i]));
+  }
+}
+
+TEST_CASE("complex select copies whole elements by condition") {
+  if (!compute_available()) {
+    return;
+  }
+  auto stream = gpu_stream();
+  array t({complex64_t{1, 2}, complex64_t{3, 4}, complex64_t{5, 6}}, {3});
+  array f({complex64_t{-1, -2}, complex64_t{-3, -4}, complex64_t{-5, -6}}, {3});
+  // Condition bytes: 1, 0, 1 - exercises both lanes and the odd count.
+  array cond({true, false, true});
+  auto got = read_complex(where(cond, t, f, stream), stream);
+  check_exact(got, {{1, 2}, {-3, -4}, {5, 6}});
+  // Scalar false operand rides the broadcast index path.
+  auto scalar = read_complex(where(cond, t, array(complex64_t{9, 9}), stream),
+                             stream);
+  check_exact(scalar, {{1, 2}, {9, 9}, {5, 6}});
+  auto flipped =
+      read_complex(where(logical_not(cond), t, f, stream), stream);
+  check_exact(flipped, {{-1, -2}, {3, 4}, {-5, -6}});
+}
+
+TEST_CASE("complex power matches host reference with zero-base cases") {
+  if (!compute_available()) {
+    return;
+  }
+  auto stream = gpu_stream();
+  // General bases and exponents against std::pow over double.
+  std::vector<cdouble> bases{{2, 1}, {-1, 0.5}, {0.5, -0.5}, {3, -2}};
+  std::vector<cdouble> exponents{{2, 0}, {0.5, 0.5}, {-1, 1}, {3, 2}};
+  std::vector<complex64_t> hb(bases.size());
+  for (size_t i = 0; i < bases.size(); ++i) {
+    hb[i] = complex64_t(float(bases[i].real()), float(bases[i].imag()));
+  }
+  std::vector<complex64_t> he(exponents.size());
+  for (size_t i = 0; i < exponents.size(); ++i) {
+    he[i] = complex64_t(
+        float(exponents[i].real()), float(exponents[i].imag()));
+  }
+  array b(hb.begin(), Shape{4}, complex64);
+  array e(he.begin(), Shape{4}, complex64);
+  auto got = read_complex(power(b, e, stream), stream);
+  for (size_t i = 0; i < bases.size(); ++i) {
+    cdouble want = std::pow(
+        cdouble(float(bases[i].real()), float(bases[i].imag())),
+        cdouble(float(exponents[i].real()), float(exponents[i].imag())));
+    INFO("power index ", i, " got (", got[i].real(), ", ", got[i].imag(),
+         ") want (", want.real(), ", ", want.imag(), ")");
+    CHECK(got[i].real() == doctest::Approx(want.real()).epsilon(1e-4));
+    CHECK(got[i].imag() == doctest::Approx(want.imag()).epsilon(1e-4));
+  }
+  // Zero-base special cases: 0^0 = 1, 0^positive-real = 0.
+  array zero({complex64_t{0, 0}}, {1});
+  array e0({complex64_t{0, 0}}, {1});
+  array epos({complex64_t{2, 0}}, {1});
+  check_exact(read_complex(power(zero, e0, stream), stream), {{1, 0}});
+  check_exact(read_complex(power(zero, epos, stream), stream), {{0, 0}});
+}
+
+TEST_CASE("complex exp matches host reference") {
+  if (!compute_available()) {
+    return;
+  }
+  auto stream = gpu_stream();
+  std::vector<cdouble> vals{{0, 0}, {1, 0}, {0, M_PI}, {0.5, -2}, {-1, 3}};
+  std::vector<complex64_t> host(vals.size());
+  for (size_t i = 0; i < vals.size(); ++i) {
+    host[i] = complex64_t(float(vals[i].real()), float(vals[i].imag()));
+  }
+  array z(host.begin(), Shape{5}, complex64);
+  auto got = read_complex(exp(z, stream), stream);
+  for (size_t i = 0; i < vals.size(); ++i) {
+    cdouble want = std::exp(
+        cdouble(float(vals[i].real()), float(vals[i].imag())));
+    INFO("exp index ", i, " got (", got[i].real(), ", ", got[i].imag(),
+         ") want (", want.real(), ", ", want.imag(), ")");
+    CHECK(got[i].real() == doctest::Approx(want.real()).epsilon(1e-5));
+    CHECK(got[i].imag() == doctest::Approx(want.imag()).epsilon(1e-5));
+  }
+}
+
+TEST_CASE("complex sin matches host reference") {
+  if (!compute_available()) {
+    return;
+  }
+  auto stream = gpu_stream();
+  std::vector<cdouble> vals{{0, 0}, {0.5, 0.25}, {-1, 0}, {2, -1}, {0, 1}};
+  std::vector<complex64_t> host(vals.size());
+  for (size_t i = 0; i < vals.size(); ++i) {
+    host[i] = complex64_t(float(vals[i].real()), float(vals[i].imag()));
+  }
+  array z(host.begin(), Shape{5}, complex64);
+  auto got = read_complex(sin(z, stream), stream);
+  for (size_t i = 0; i < vals.size(); ++i) {
+    cdouble want = std::sin(
+        cdouble(float(vals[i].real()), float(vals[i].imag())));
+    INFO("sin index ", i, " got (", got[i].real(), ", ", got[i].imag(),
+         ") want (", want.real(), ", ", want.imag(), ")");
+    CHECK(got[i].real() == doctest::Approx(want.real()).epsilon(1e-5));
+    CHECK(got[i].imag() == doctest::Approx(want.imag()).epsilon(1e-5));
+  }
+}
+
+TEST_CASE("complex cos matches host reference") {
+  if (!compute_available()) {
+    return;
+  }
+  auto stream = gpu_stream();
+  std::vector<cdouble> vals{{0, 0}, {0.5, 0.25}, {-1, 0}, {2, -1}, {0, 1}};
+  std::vector<complex64_t> host(vals.size());
+  for (size_t i = 0; i < vals.size(); ++i) {
+    host[i] = complex64_t(float(vals[i].real()), float(vals[i].imag()));
+  }
+  array z(host.begin(), Shape{5}, complex64);
+  auto got = read_complex(cos(z, stream), stream);
+  for (size_t i = 0; i < vals.size(); ++i) {
+    cdouble want = std::cos(
+        cdouble(float(vals[i].real()), float(vals[i].imag())));
+    INFO("cos index ", i, " got (", got[i].real(), ", ", got[i].imag(),
+         ") want (", want.real(), ", ", want.imag(), ")");
+    CHECK(got[i].real() == doctest::Approx(want.real()).epsilon(1e-5));
+    CHECK(got[i].imag() == doctest::Approx(want.imag()).epsilon(1e-5));
+  }
+}
+
+TEST_CASE("complex maximum orders lexicographically") {
+  if (!compute_available()) {
+    return;
+  }
+  auto stream = gpu_stream();
+  // Larger real wins regardless of imaginary; equal real compares
+  // imaginary; an exact tie keeps the left operand.
+  array a({complex64_t{2, -100}, complex64_t{1, 5}, complex64_t{0, 0},
+           complex64_t{1, 2}},
+          {4});
+  array b({complex64_t{1, 99}, complex64_t{1, 6}, complex64_t{0, 0},
+           complex64_t{-3, 4}},
+          {4});
+  auto got = read_complex(maximum(a, b, stream), stream);
+  check_exact(got, {{2, -100}, {1, 6}, {0, 0}, {1, 2}});
+}

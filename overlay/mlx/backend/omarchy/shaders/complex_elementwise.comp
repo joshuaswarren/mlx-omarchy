@@ -1,19 +1,19 @@
 // Copyright © 2026 Joshua Warren / mlx-omarchy contributors.
-// SPDX-License-Identifier: MIT
-//
 // Complex64 elementwise kernel. One element is a vec2 (re, im) in a
 // std430 storage buffer, the same paired-float layout the FFT kernels
 // use, so a complex64 item is two consecutive float32 words and every
 // offset in the params is an item offset. Operation codes match the
 // ComplexOperation enum in ../primitives.cpp: 0 conjugate, 1 add,
-// 2 subtract, 3 multiply, 4 divide, 5 negate. Division multiplies by
-// the conjugate over the squared magnitude; at float32 with test
+// 2 subtract, 3 multiply, 4 divide, 5 negate, 6 logaddexp, 7 power,
+// 8 exp, 9 sin, 10 cos, 11 maximum. Division multiplies by the
+// conjugate over the squared magnitude; at float32 with test
 // magnitudes near 1 the naive form and Smith's algorithm agree to a
 // few ulps, and a zero denominator gives inf/NaN exactly like the
-// upstream std::complex<float> division. Broadcast indexing mirrors
-// elementwise.comp: dims == 0 selects the modulo fast path, otherwise
-// the output index unravels over shape[] and a stride of 0 broadcasts
-// the axis.
+// upstream std::complex<float> division. Power mirrors glibc cpowf
+// (principal branch on the negative axis, zero-base special cases).
+// Broadcast indexing mirrors elementwise.comp: dims == 0 selects the
+// modulo fast path, otherwise the output index unravels over shape[]
+// and a stride of 0 broadcasts the axis.
 
 #version 460
 
@@ -106,6 +106,68 @@ void main() {
       case 5:
         value = -lhs;
         break;
+      case 7: {
+        // Upstream std::pow(complex<float>, complex<float>) =
+        // exp(y * clog(x)), principal branch on the negative axis,
+        // with the zero-base special cases assigned to this cluster:
+        // 0^0 = 1, 0^w = 0 for re(w) > 0, NaN otherwise. glibc
+        // cpowf reduces to the same formula in float32.
+        if (lhs.x == 0.0 && lhs.y == 0.0) {
+          if (rhs.x == 0.0 && rhs.y == 0.0) {
+            value = vec2(1.0, 0.0);
+          } else if (rhs.x > 0.0) {
+            value = vec2(0.0);
+          } else {
+            const float QNAN = uintBitsToFloat(0x7fc00000u);
+            value = vec2(QNAN);
+          }
+        } else {
+          float mag = log(length(lhs));
+          float arg = atan(lhs.y, lhs.x);
+          vec2 t = vec2(rhs.x * mag - rhs.y * arg,
+                        rhs.x * arg + rhs.y * mag);
+          float ex = exp(t.x);
+          value = vec2(ex * cos(t.y), ex * sin(t.y));
+        }
+        break;
+      }
+      case 8: {
+        // exp(a + bi) = exp(a)*(cos b, sin b), matching std::exp(complex)
+        // and glibc cexpf for normal-range inputs.
+        float ex = exp(lhs.x);
+        value = vec2(ex * cos(lhs.y), ex * sin(lhs.y));
+        break;
+      }
+      case 9: {
+        // sin(a + bi) = (sin a cosh b, cos a sinh b); glibc csinf uses
+        // the same formula for |b| under ~88 (exp(b) finite). The test
+        // magnitudes stay well within that range.
+        float sa = sin(lhs.x);
+        float ca = cos(lhs.x);
+        float sh = sinh(lhs.y);
+        float ch = cosh(lhs.y);
+        value = vec2(sa * ch, ca * sh);
+        break;
+      }
+      case 10: {
+        // cos(a + bi) = (cos a cosh b, -sin a sinh b), matching
+        // std::cos(complex) and glibc ccosf.
+        float sa = sin(lhs.x);
+        float ca = cos(lhs.x);
+        float sh = sinh(lhs.y);
+        float ch = cosh(lhs.y);
+        value = vec2(ca * ch, -sa * sh);
+        break;
+      }
+      case 11: {
+        // Lexicographic maximum: (re_a > re_b) || (re_a == re_b &&
+        // im_a >= im_b) selects a, matching the upstream
+        // compare_complex lex order; ties favor a so max(a,b)==a.
+        bool ge = (lhs.x > rhs.x) ||
+            (lhs.x == rhs.x && lhs.y >= rhs.y);
+        value = ge ? lhs : rhs;
+        break;
+      }
       case 6: {
         // Upstream complex LogAddExp: maxval + log1p(exp(minval -
         // maxval)) over the lexicographic (real, then imaginary)
