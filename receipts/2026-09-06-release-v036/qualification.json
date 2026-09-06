@@ -1,0 +1,155 @@
+{
+  "tag": "v0.3.6",
+  "source": "218f8769",
+  "status": "local_wheels_and_changed_paths_verified_upload_gate_pending",
+  "gated_barriers_default": false,
+  "performance_gain_claimed": false,
+  "m1_suites": [
+    {
+      "source": "d2a79b0b",
+      "gate": "OFF",
+      "suite": "runtime",
+      "cases": 34,
+      "assertions": 6302,
+      "log": "m1-d2a79b0b-runtime-gateOFF.log"
+    },
+    {
+      "source": "d2a79b0b",
+      "gate": "OFF",
+      "suite": "matmul_family",
+      "cases": 8,
+      "assertions": 18330,
+      "log": "m1-d2a79b0b-matmul_family-gateOFF.log"
+    },
+    {
+      "source": "d2a79b0b",
+      "gate": "OFF",
+      "suite": "primitive",
+      "cases": 94,
+      "assertions": 2580602,
+      "log": "m1-d2a79b0b-primitive-gateOFF.log"
+    },
+    {
+      "source": "d2a79b0b",
+      "gate": "OFF",
+      "suite": "compiled_tape",
+      "cases": 11,
+      "assertions": 1781,
+      "log": "m1-d2a79b0b-compiled_tape-gateOFF.log"
+    },
+    {
+      "source": "d2a79b0b",
+      "gate": "OFF",
+      "suite": "reduce_ops",
+      "cases": 32,
+      "assertions": 7141,
+      "log": "m1-d2a79b0b-reduce_ops-gateOFF.log"
+    },
+    {
+      "source": "d2a79b0b",
+      "gate": "ON",
+      "suite": "runtime",
+      "cases": 34,
+      "assertions": 6302,
+      "log": "m1-d2a79b0b-runtime-gateON.log"
+    },
+    {
+      "source": "d2a79b0b",
+      "gate": "ON",
+      "suite": "matmul_family",
+      "cases": 8,
+      "assertions": 18330,
+      "log": "m1-d2a79b0b-matmul_family-gateON.log"
+    },
+    {
+      "source": "d2a79b0b",
+      "gate": "ON",
+      "suite": "primitive",
+      "cases": 94,
+      "assertions": 2580602,
+      "log": "m1-d2a79b0b-primitive-gateON.log"
+    },
+    {
+      "source": "d2a79b0b",
+      "gate": "ON",
+      "suite": "compiled_tape",
+      "cases": 11,
+      "assertions": 1781,
+      "log": "m1-d2a79b0b-compiled_tape-gateON.log"
+    },
+    {
+      "source": "d2a79b0b",
+      "gate": "ON",
+      "suite": "reduce_ops",
+      "cases": 32,
+      "assertions": 7141,
+      "log": "m1-d2a79b0b-reduce_ops-gateON.log"
+    },
+    {
+      "source": "218f8769",
+      "gate": "OFF",
+      "suite": "runtime",
+      "cases": 34,
+      "assertions": 6302,
+      "log": "m1-218f8769-runtime-gateOFF.log"
+    },
+    {
+      "source": "218f8769",
+      "gate": "OFF",
+      "suite": "select",
+      "cases": 11,
+      "assertions": 1908,
+      "log": "m1-218f8769-select-gateOFF.log"
+    },
+    {
+      "source": "218f8769",
+      "gate": "ON",
+      "suite": "runtime",
+      "cases": 34,
+      "assertions": 6302,
+      "log": "m1-218f8769-runtime-gateON.log"
+    },
+    {
+      "source": "218f8769",
+      "gate": "ON",
+      "suite": "select",
+      "cases": 11,
+      "assertions": 1908,
+      "log": "m1-218f8769-select-gateON.log"
+    }
+  ],
+  "x86_smoke": {
+    "source": "218f8769",
+    "modes": [
+      "0",
+      "1"
+    ],
+    "result": "PASS",
+    "checks": [
+      "broadcast Select1161 exact values",
+      "quantized_matmul6 exact values",
+      "compiled1024 values match eager"
+    ],
+    "provenance": "match"
+  },
+  "wheels": [
+    {
+      "name": "mlx_omarchy-0.32.2.dev202609060910+218f876-cp311-cp311-linux_x86_64.whl",
+      "bytes": 7286341,
+      "sha256": "82c42c190c15da3e0ca21714635c85e5de065d3b9af1de7f80048e71033a5b93"
+    },
+    {
+      "name": "mlx_omarchy-0.32.2.dev202609060917+218f876-cp314-cp314-linux_aarch64.whl",
+      "bytes": 7220791,
+      "sha256": "c7f36813cfbac0c635ebe0f60dbe4f5c55e9ca9cff8f1efeaa75dcaa4e0ec536"
+    }
+  ],
+  "remaining": [
+    "uploaded asset verification",
+    "pinned generation on downloaded aarch64 release asset"
+  ],
+  "performance_limitations": [
+    "Only one paired M1 benchmark repeat; no performance conclusion",
+    "Long-prompt4-bit Linux/native generated-ID digest mismatch persists"
+  ]
+}

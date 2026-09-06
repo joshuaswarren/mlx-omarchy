@@ -40,12 +40,12 @@ yours. If you do have one, you own the measurements, the regression
 runs, and the named-error triage that turn a code change into a
 shippable result.
 
-The box protocol: `jwm1` (100.84.184.102) is held under exclusive lock
-by an M1 dispatch agent (`BenchQueueM1`). Do not run anything there
-yourself; route work through that agent via `hub` (`op: "send"`,
-`to: "BenchQueueM1"`, or `to: "Main"`) and wait. Three batches died
-overnight on the box and an unannounced intrusion disrupted a fourth.
-The lock is the protocol.
+The shared M1 has one hardware owner at a time. Ask the session
+coordinator for the current owner and an explicit access window before
+running commands. A deadline does not transfer ownership: the owner must
+confirm that its processes have stopped and explicitly hand back the
+machine. GPU access does not authorize ANE, driver, device-tree, power
+management, or boot changes.
 
 ## What is unfinished
 

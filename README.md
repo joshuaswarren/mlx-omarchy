@@ -66,7 +66,7 @@ Same Apple M1 (8-core GPU), same model revisions, prompts, and output lengths, m
 | 4-bit | 1053 / 32 | 140.3 | 23.5 | 1838 | 198 |
 | bf16 | 30 / 32 | 56.2 | see note | 233 | see note |
 
-Linux decode runs at roughly one fifth of native and prefill at one sixth to one ninth; closing that gap is the current performance work. Both sides produced identical generated token IDs on the 4-bit long-prompt leg (hash `254d73fd93164b98`). bf16 on Linux runs eagerly (compiled bf16 graphs are refused, see below) and is not yet measured under the matched protocol. Native receipts: [receipts/native-baseline-2026-09-06](receipts/native-baseline-2026-09-06); Linux receipts: [receipts/2026-09-04-m1-performance-gates.md](receipts/2026-09-04-m1-performance-gates.md).
+Linux decode runs at roughly one fifth of native and prefill at one sixth to one ninth; closing that gap is the current performance work. The historical short and 1024-context 4-bit token-ID hashes match across systems, but the long-prompt hashes differ: native `254d73fd93164b98`, Linux `4cc08910089477fd`. These timings do not establish numerical parity. bf16 on Linux runs eagerly (compiled bf16 graphs are refused, see below) and is not yet measured under the matched protocol. Native receipts: [receipts/native-baseline-2026-09-06](receipts/native-baseline-2026-09-06); Linux receipts: [receipts/2026-09-04-m1-performance-gates.md](receipts/2026-09-04-m1-performance-gates.md).
 
 To reproduce a leg, use the pinned-length harness (it suppresses EOS so every run decodes the same number of tokens):
 
@@ -91,7 +91,7 @@ Two numbers, measured differently:
 
 The first counts operations: a primitive counts once it computes on the GPU and a test verifies its values against a host reference. The other two run upstream's own test suites, pinned at the commit the backend is built from (MLX 0.32.2, `1f8e74e3`); one test case exercises many primitives across many dtypes and layouts, so they are the stricter measure. The open Python cases are mostly fp-mode quantized matmul over batched weights, attention-mask variants in `test_fast_sdpa`, and the Metal-only custom-kernel tests.
 
-Every remaining Python failure is a named `not implemented` refusal, not a wrong value: an operation the backend does not support fails with the primitive name, dtype, and shape instead of returning a silent result or running on the CPU. The table updates with each release. Per-primitive status is generated from source in [docs/compatibility-matrix.md](docs/compatibility-matrix.md).
+The [Python failure classification](receipts/upstream-suite-2026-09-06-py4/case-classification.csv) at `ef188d58` records 471 named refusals, 149 assertion failures, and 50 other errors, including 40 watchdog timeouts. All 670 remain failures in that snapshot; a named refusal does not count as support. GPU operations never fall back silently to CPU execution. Per-primitive status is generated from source in [docs/compatibility-matrix.md](docs/compatibility-matrix.md).
 
 ### What works
 
