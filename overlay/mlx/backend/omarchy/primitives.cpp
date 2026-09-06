@@ -883,12 +883,13 @@ void dispatch_logical(
         clear_params,
         omarchy::compute_dispatch_group_count(zero_words));
   }
-  // One thread per output word. Honeykrisp coalesces adjacent word
-  // stores into a 16-byte vector store and drops the inner three
-  // lanes' values; atomicOr on the output word bypasses that path.
+  // One invocation per output byte: the shader's index gate is
+  // params.count, in elements, and its atomicOr store exists because
+  // Honeykrisp coalesces adjacent word stores and drops the inner
+  // three lanes' values - atomicOr on the output word bypasses that
+  // path. The grid must therefore cover the element count; a
+  // word-sized grid leaves every element past word_count unwritten.
   uint32_t count = checked_u32(out.size(), name, out);
-  uint32_t word_count = checked_u32(
-      (static_cast<uint64_t>(count) + 3) / 4, name, out);
   omarchy::ComputeParams params;
   params.count = count;
   params.operation = operation;
@@ -909,7 +910,7 @@ void dispatch_logical(
       omarchy::ComputeKernel::LogicalOrBool,
       bindings,
       params,
-      omarchy::compute_dispatch_group_count(word_count));
+      omarchy::compute_dispatch_group_count(count));
 }
 
 // Integer twin of the binary elementwise path. The shader carries the
@@ -1946,7 +1947,11 @@ void dispatch_block_mask(
 // un-gathered case. The packed word buffer carries [scales bytes |
 // (bias bytes) | lhs index words | rhs index words]; every region sits
 // on a 4-byte boundary and padding stays zeroed, so 16-bit parameters
-// decode from whole words with no 16-bit storage reads.
+// decode from whole words with no 16-bit storage reads. transpose
+// selects the packed weight layout (transposed rows [batch, N, Kp] or
+// non-transposed columns [batch, Kp, N]) routed to the kernel through
+// flags bit 0; x accepts any rank >= 2 and w/scales any equal batch
+// rank, because lhs/rhs indices index x/w batch slices flat.
 void dispatch_gather_qmm(
     const std::string& tag,
     const array& x,
@@ -1957,6 +1962,7 @@ void dispatch_gather_qmm(
     const array& rhs,
     int group_size,
     int bits,
+    bool transpose,
     array& out,
     const Stream& s) {
   auto& encoder = omarchy::get_command_encoder(s);
@@ -1964,7 +1970,7 @@ void dispatch_gather_qmm(
   if (bits != 4 && bits != 8) {
     omarchy::unsupported(tag + " bits", out);
   }
-  if (group_size != 32 && group_size != 64) {
+  if (group_size != 32 && group_size != 64 && group_size != 128) {
     omarchy::unsupported(tag + " group size", out);
   }
   if (w.dtype() != uint32) {
@@ -1975,24 +1981,25 @@ void dispatch_gather_qmm(
     // ops.cpp promotes scales and biases to the output dtype.
     omarchy::unsupported(tag + " scales dtype", out);
   }
-  if ((x.ndim() != 2 && x.ndim() != 3) || (w.ndim() != 2 && w.ndim() != 3)) {
+  if (x.ndim() < 2 || w.ndim() < 2 || scales.ndim() != w.ndim()) {
     omarchy::unsupported(tag + " rank", out);
   }
   int k = x.shape(-1);
   int m = x.shape(-2);
-  int n = w.shape(-2);
-  if (static_cast<uint64_t>(w.shape(-1)) * 32u / bits !=
-      static_cast<uint64_t>(k)) {
-    omarchy::unsupported(tag + " shape", out);
-  }
-  if (scales.ndim() != w.ndim() || scales.shape(-2) != n ||
-      static_cast<uint64_t>(scales.shape(-1)) * group_size !=
-          static_cast<uint64_t>(k) ||
+  // mx.quantize packs along the dequantized last axis: transposed w
+  // is [batch, N, Kp] with scales [batch, N, K / group_size];
+  // non-transposed w is [batch, K, Np] with scales
+  // [batch, K, N / group_size]; Np = N * bits / 32.
+  int n = transpose ? w.shape(-2) : w.shape(-1) * 32 / bits;
+  int packed_inner = transpose ? w.shape(-1) * 32 / bits : w.shape(-2);
+  if (packed_inner != k ||
+      scales.shape(-2) != (transpose ? n : k) ||
+      scales.shape(-1) * group_size != (transpose ? k : n) ||
       !std::equal(
           w.shape().begin(),
           w.shape().end() - 2,
           scales.shape().begin())) {
-    omarchy::unsupported(tag + " scales shape", out);
+    omarchy::unsupported(tag + " shape", out);
   }
   if (biases && biases->shape() != scales.shape()) {
     omarchy::unsupported(tag + " scales shape", out);
@@ -2099,9 +2106,11 @@ void dispatch_gather_qmm(
   params.matrix_k = checked_u32(k, tag, out);
   params.operation = static_cast<uint32_t>(bits);
   // shape[0] is the per-half index count; shape[1] the bias region's
-  // byte base; in_strides[0]/out_strides[0] the lhs/rhs word offsets.
+  // byte base; in_strides[0]/out_strides[0] the lhs/rhs word offsets;
+  // flags bit 0 the non-transposed weight layout.
   params.shape[0] = checked_u32(index_count, tag, out);
   params.shape[1] = static_cast<uint32_t>(bias_base);
+  params.flags = transpose ? 0u : 1u;
   params.in_strides[0] = static_cast<uint32_t>(index_base / 4);
   params.out_strides[0] =
       static_cast<uint32_t>(index_base / 4 + index_count);
@@ -4529,10 +4538,8 @@ void GatherQMM::eval_gpu(const std::vector<array>& inputs, array& out) {
   if (mode_ != QuantizationMode::Affine) {
     omarchy::unsupported(tag + " mode", out);
   }
-  if (!transpose_) {
-    omarchy::unsupported(tag + " transpose", out);
-  }
-  // Affine inputs: [x, w, scales, biases, lhs, rhs].
+  // Affine inputs: [x, w, scales, biases, lhs, rhs]. Both transpose
+  // layouts are first-class.
   dispatch_gather_qmm(
       tag,
       inputs[0],
@@ -4543,9 +4550,11 @@ void GatherQMM::eval_gpu(const std::vector<array>& inputs, array& out) {
       inputs[5],
       group_size_,
       bits_,
+      transpose_,
       out,
       out.primitive().stream());
 }
+
 
 void GatherQQMM::eval_gpu(const std::vector<array>& inputs, array& out) {
   const std::string tag = name();
@@ -4567,6 +4576,7 @@ void GatherQQMM::eval_gpu(const std::vector<array>& inputs, array& out) {
       inputs[3],
       group_size_,
       bits_,
+      true,
       out,
       out.primitive().stream());
 }
@@ -4614,6 +4624,7 @@ void QQMatmul::eval_gpu(const std::vector<array>& inputs, array& out) {
       zero_index,
       group_size_,
       bits_,
+      true,
       out,
       s);
 }
@@ -5135,29 +5146,37 @@ void QuantizedMatmul::eval_gpu(const std::vector<array>& inputs, array& out) {
   const array& w = inputs[1];
   const array& scales = inputs[2];
   const array& biases = inputs[3];
-  // First-class scope: the mlx-lm Linear shape. transpose=true reads the
-  // packed w rows [N, K * bits / 32] as the dequantized matrix [N, K]
-  // and computes x @ w.T; other affine shapes keep the named rejection.
+  // Both affine layouts are first-class: transpose=true reads the
+  // packed w rows [batch, N, K * bits / 32] and computes x @ w.T;
+  // transpose=false reads w columns [batch, K * bits / 32, N] and
+  // computes x @ w. Batched weights (3D) arrive broadcast-materialized
+  // from ops.cpp, so every batch slice is contiguous and pairs with an
+  // x batch slice of matrix_m rows.
   if (bits_ != 4 && bits_ != 8) {
     omarchy::unsupported(tag + " bits", out);
   }
-  if (group_size_ != 32 && group_size_ != 64) {
+  if (group_size_ != 32 && group_size_ != 64 && group_size_ != 128) {
     omarchy::unsupported(tag + " group size", out);
-  }
-  if (!transpose_) {
-    omarchy::unsupported(tag + " transpose", out);
   }
   auto& encoder = omarchy::get_command_encoder(out.primitive().stream());
   require_float_dtype(tag, x, out, encoder);
-  if (w.dtype() != uint32 || w.ndim() != 2) {
+  if (w.dtype() != uint32 || w.ndim() < 2 || w.ndim() > 3) {
     omarchy::unsupported(tag + " weight layout", out);
   }
   if (scales.dtype() != out.dtype() || biases.dtype() != out.dtype()) {
     // ops.cpp promotes x, scales, and biases to one affine dtype.
     omarchy::unsupported(tag + " scales dtype", out);
   }
-  if (scales.ndim() != 2 || scales.shape() != biases.shape() ||
-      scales.shape(0) != w.shape(0)) {
+  // mx.quantize always packs along the dequantized last axis, so the
+  // two layouts derive shapes differently: transposed w is
+  // [batch, N, Kp] with scales [batch, N, K / group_size];
+  // non-transposed w is [batch, K, Np] with scales
+  // [batch, K, N / group_size]; Np = N * bits / 32.
+  int packed_cols = transpose_ ? w.shape(-1) : w.shape(-2);
+  int n = transpose_ ? w.shape(-2) : w.shape(-1) * 32 / bits_;
+  int scale_cols = scales.shape(-1);
+  int scale_rows = scales.shape(-2);
+  if (scales.ndim() != w.ndim() || scales.shape() != biases.shape()) {
     omarchy::unsupported(tag + " scales shape", out);
   }
   std::optional<array> x_temp;
@@ -5172,14 +5191,24 @@ void QuantizedMatmul::eval_gpu(const std::vector<array>& inputs, array& out) {
       scales, scales.flags().row_contiguous, scales_temp, encoder, stream());
   const array& biases_d = ensure_dense(
       biases, biases.flags().row_contiguous, biases_temp, encoder, stream());
+  if (x.ndim() < 2) {
+    omarchy::unsupported(tag + " rank", out);
+  }
   int k = x.shape(-1);
-  int n = out.shape(-1);
-  size_t m = x.size() / k;
-  if (w.shape(0) != n ||
-      static_cast<uint64_t>(w.shape(1)) * 32u / bits_ !=
-          static_cast<uint64_t>(k) ||
-      static_cast<uint64_t>(scales.shape(1)) * group_size_ !=
-          static_cast<uint64_t>(k)) {
+  int m = x.shape(-2);
+  size_t batch = x.size() / (static_cast<int64_t>(m) * k);
+  // out is x-shaped with the last axis replaced by n; a 2D w (or 2D
+  // scales) is shared across the x batch, 3D operands pair one slice
+  // per batch index. The w words per slice are shape(-2) * shape(-1)
+  // in both layouts, so only the derived inner/outer pairings and the
+  // output size need checking.
+  int packed_inner =
+      transpose_ ? w.shape(-1) * 32 / bits_ : w.shape(-2);
+  if (packed_inner != k ||
+      scale_cols * group_size_ != (transpose_ ? k : n) ||
+      scale_rows != (transpose_ ? n : k) ||
+      out.size() != batch * static_cast<size_t>(m) *
+              static_cast<size_t>(n)) {
     omarchy::unsupported(tag + " shape", out);
   }
 
@@ -5223,9 +5252,12 @@ void QuantizedMatmul::eval_gpu(const std::vector<array>& inputs, array& out) {
       static_cast<VkDeviceSize>(biases_d.offset()),
       scale_bytes);
 
-  // Push-constant routing for the qmm shader: operation carries bits,
-  // reduce_size carries the group size (see shaders/qmm.comp).
-  uint64_t total = static_cast<uint64_t>(m) * static_cast<uint64_t>(n);
+  // Push-constant routing for the qmm shaders: operation carries bits,
+  // reduce_size the group size, shape[0] the batch count, flags bit 0
+  // the non-transposed weight layout (see shaders/qmm.comp).
+  uint64_t total =
+      static_cast<uint64_t>(batch) * static_cast<uint64_t>(m) *
+      static_cast<uint64_t>(n);
   omarchy::ComputeParams params;
   params.count = checked_u32(total, tag, out);
   params.operation = static_cast<uint32_t>(bits_);
@@ -5238,6 +5270,15 @@ void QuantizedMatmul::eval_gpu(const std::vector<array>& inputs, array& out) {
   params.matrix_n = checked_u32(n, tag, out);
   params.matrix_k = checked_u32(k, tag, out);
   params.output_offset = checked_item_offset(out, out.size(), tag, out);
+  params.shape[0] = checked_u32(batch, tag, out);
+  // A 2D w or 2D scales is shared across the x batch (stride 0);
+  // broadcast 3D operands pair one slice per batch index.
+  params.shape[1] =
+      checked_u32(w.ndim() == 3 ? w_d.size() / batch : 0, tag, out);
+  params.shape[2] =
+      checked_u32(scales.ndim() == 3 ? scales_d.size() / batch : 0, tag, out);
+  params.shape[3] = checked_u32(scales_d.size(), tag, out);
+  params.flags = transpose_ ? 0u : 1u;
   std::array<omarchy::ComputeBinding, 4> bindings{
       binding(x_d), binding(w_d), binding(combined), binding(out)};
   // DecodeGemv dispatch: when lhs has a single row, the per-row GEMV

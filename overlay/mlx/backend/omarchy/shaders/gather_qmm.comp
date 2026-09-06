@@ -111,9 +111,18 @@ float decode_param(uint byte_offset) {
 #endif
 }
 
+// Weight layout routing mirrors qmm.comp: flags bit 0 set means
+// non-transposed weights (w batch slice [Kp, N], scales slice
+// [K/group_size, N]). The gathered rhs index selects the whole batch
+// slice, and both layouts pack the same per-slice word and parameter
+// counts (matrix_n * words_per_row words, matrix_n * groups_per_row
+// parameters), so only the per-step strides differ, selected once
+// before the loop as uniform values. lhs indices index x's batch dims
+// flat (lhs * matrix_m * matrix_k), which covers every input rank.
 void main() {
   uint bits = params.operation;
   uint group_size = params.reduce_size;
+  bool non_transposed = (params.flags & 1u) != 0u;
   uint pack_factor = 32u / bits;
   uint value_mask = (1u << bits) - 1u;
   uint words_per_row = params.matrix_k / pack_factor;
@@ -121,7 +130,9 @@ void main() {
   uint matrix = params.matrix_m * params.matrix_n;
   uint param_bytes = PARAM_BYTES;
   uint w_row_words = params.matrix_n * words_per_row;
-  uint scale_row_words = params.matrix_n * groups_per_row;
+  uint scale_row_words = non_transposed
+      ? params.matrix_k * (params.matrix_n / group_size)
+      : params.matrix_n * groups_per_row;
   uint index_count = params.shape[0];
   uint lhs_word_base = params.in_strides[0];
   uint rhs_word_base = params.out_strides[0];
@@ -141,36 +152,62 @@ void main() {
     uint x_base = params.lhs_offset +
         lhs * (params.matrix_m * params.matrix_k) +
         row * params.matrix_k;
-    uint w_base = params.rhs_offset + rhs * w_row_words +
-        column * words_per_row;
-    uint scale_base = rhs * scale_row_words + column * groups_per_row;
+    float accumulator = 0.0;
     // Flat k loop with every index derived from k. A nested group/word/
     // lane structure carrying a word_base induction variable miscompiles
     // on older Lavapipe (Mesa 22.3): the accumulated word offset pairs x
     // columns with the wrong packed words from the third word of a group
     // on, silently, for sub-byte codes. Derived indices keep the compiled
     // form straight-line and identical math everywhere.
-    float accumulator = 0.0;
-    for (uint k = 0u; k < params.matrix_k; ++k) {
-      uint group = k / group_size;
-      uint word = input_w.values[w_base + k / pack_factor];
-      uint lane = k - (k / pack_factor) * pack_factor;
-      // bitfieldExtract compiles to OpBitFieldUExtract; the equivalent
-      // shift+mask misdecodes lanes 1..2 (reading the next lane's nibble,
-      // lane 0 reading zero) on llvmpipe Mesa 22.3 when the lane comes
-      // from a division-derived index.
-      uint q = bitfieldExtract(word, int(lane * bits), int(bits));
-      float scale = decode_param(scale_base * param_bytes +
-          group * param_bytes);
-      float bias = 0.0;
+    if (non_transposed) {
+      // w batch slice [K, Np]: groups along N, scale [k][n / group_size];
+      // the lane nibble and scale column are fixed per thread.
+      uint w_base = params.rhs_offset + rhs * w_row_words +
+          column / pack_factor;
+      uint scale_base = rhs * scale_row_words + column / group_size;
+      uint lane_shift = (column % pack_factor) * bits;
+      uint param_step = params.matrix_n / group_size;
+      for (uint k = 0u; k < params.matrix_k; ++k) {
+        uint word = input_w.values[
+            w_base + k * (params.matrix_n / pack_factor)];
+        uint q = (word >> lane_shift) & value_mask;
+        float scale = decode_param((scale_base + k * param_step) *
+            param_bytes);
+        float bias = 0.0;
 #ifndef NO_BIAS
-      // shape[1] is the byte base of the bias region inside the packed
-      // buffer, placed after the whole scales region.
-      bias = decode_param(params.shape[1] + scale_base * param_bytes +
-          group * param_bytes);
+        // shape[1] is the byte base of the bias region inside the packed
+        // buffer, placed after the whole scales region.
+        bias = decode_param(params.shape[1] +
+            (scale_base + k * param_step) * param_bytes);
 #endif
-      float x_value = LOAD_VALUE(input_x.values[x_base + k]);
-      accumulator += x_value * (scale * float(q) + bias);
+        accumulator += LOAD_VALUE(input_x.values[x_base + k]) *
+            (scale * float(q) + bias);
+      }
+    } else {
+      // w batch slice [N, Kp]: groups along K, scale [n][k / group_size].
+      uint w_base = params.rhs_offset + rhs * w_row_words +
+          column * words_per_row;
+      uint scale_base = rhs * scale_row_words + column * groups_per_row;
+      for (uint k = 0u; k < params.matrix_k; ++k) {
+        uint group = k / group_size;
+        uint word = input_w.values[w_base + k / pack_factor];
+        uint lane = k - (k / pack_factor) * pack_factor;
+        // bitfieldExtract compiles to OpBitFieldUExtract; the equivalent
+        // shift+mask misdecodes lanes 1..2 (reading the next lane's nibble,
+        // lane 0 reading zero) on llvmpipe Mesa 22.3 when the lane comes
+        // from a division-derived index.
+        uint q = bitfieldExtract(word, int(lane * bits), int(bits));
+        float scale = decode_param((scale_base + group) * param_bytes);
+        float bias = 0.0;
+#ifndef NO_BIAS
+        // shape[1] is the byte base of the bias region inside the packed
+        // buffer, placed after the whole scales region.
+        bias = decode_param(params.shape[1] +
+            (scale_base + group) * param_bytes);
+#endif
+        accumulator += LOAD_VALUE(input_x.values[x_base + k]) *
+            (scale * float(q) + bias);
+      }
     }
     output_data.values[params.output_offset + index] =
         STORE_VALUE(accumulator);

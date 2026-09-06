@@ -1060,13 +1060,16 @@ TEST_CASE("gather qmm gathers experts with scales and biases") {
         stream));
     CHECK(mode_error.find("GatherQMM mode") != std::string::npos);
 
-    // Non-transposed weights: w reads as (k, n) with k == 64.
+    // Non-transposed weights are a value path now: w reads as (k, n)
+    // with k == 64, groups along n. Codes are zero and every
+    // scale/bias is 0.5, so deq[k][n] == 0.5 and each output element
+    // is 64 * (0.25 * 0.5) == 8.
     std::vector<uint32_t> w_nt(64 * 8, 0u);
     array w_nt_words(w_nt.begin(), Shape{64, 8}, uint32);
     std::vector<float> nt_params(64 * 2, 0.5f);
     array nt_scales(nt_params.begin(), Shape{64, 2}, float32);
     array nt_biases(nt_params.begin(), Shape{64, 2}, float32);
-    std::string transpose_error = evaluation_error(gather_qmm(
+    array nt_out = gather_qmm(
         x,
         w_nt_words,
         nt_scales,
@@ -1078,8 +1081,11 @@ TEST_CASE("gather qmm gathers experts with scales and biases") {
         4,
         "affine",
         false,
-        stream));
-    CHECK(transpose_error.find("GatherQMM transpose") != std::string::npos);
+        stream);
+    REQUIRE(evaluation_error(nt_out).empty());
+    REQUIRE_EQ(nt_out.shape(), Shape{1, 2, 64});
+    std::vector<float> nt_expected(2 * 64, 64.0f * 0.25f * 0.5f);
+    expect_close_tol(readback_f32(stream, nt_out), nt_expected, 1e-5, 1e-4);
 
     // bits=2: packed width and scales must agree through the op layer
     // equality, so k = 8*32/2 = 128 with one scale per 128 columns.
@@ -1103,7 +1109,9 @@ TEST_CASE("gather qmm gathers experts with scales and biases") {
         stream));
     CHECK(bits_error.find("GatherQMM bits") != std::string::npos);
 
-    // group_size=128: k = 32*32/4 = 256 with two scales per row.
+    // group_size=128 is a value path now: k = 32*32/4 = 256 with two
+    // scales per row. Codes are zero and every scale/bias is 0.5, so
+    // each output element is 256 * (0.25 * 0.5) == 32.
     std::vector<uint32_t> w_wide(8 * 32, 0u);
     array w_wide_words(w_wide.begin(), Shape{8, 32}, uint32);
     std::vector<float> two_params(8 * 2, 0.5f);
@@ -1111,7 +1119,7 @@ TEST_CASE("gather qmm gathers experts with scales and biases") {
     array biases_two(two_params.begin(), Shape{8, 2}, float32);
     std::vector<float> x4_values(2 * 256, 0.25f);
     array x4(x4_values.begin(), Shape{2, 256}, float32);
-    std::string group_error = evaluation_error(gather_qmm(
+    array wide_out = gather_qmm(
         x4,
         w_wide_words,
         scales_two,
@@ -1123,8 +1131,11 @@ TEST_CASE("gather qmm gathers experts with scales and biases") {
         4,
         "affine",
         false,
-        stream));
-    CHECK(group_error.find("GatherQMM group size") != std::string::npos);
+        stream);
+    REQUIRE(evaluation_error(wide_out).empty());
+    REQUIRE_EQ(wide_out.shape(), Shape{1, 2, 8});
+    std::vector<float> wide_expected(16, 256.0f * 0.25f * 0.5f);
+    expect_close_tol(readback_f32(stream, wide_out), wide_expected, 1e-5, 1e-4);
   }
 }
 

@@ -1,15 +1,21 @@
 #version 460
 
-// QuantizedMatmul (affine, transposed weights): out[m, n] is the dot
-// product of x row m with the dequantized w row n, where packed uint32
-// words hold 32/bits quantized values along K in the low bits first and
-// each group of group_size elements shares one scale and one bias:
-// w_deq[n, k] = q * scale[n, k / group_size] + bias[n, k / group_size].
+// QuantizedMatmul (affine). out[m, n] is the dot product of the x row
+// m with the dequantized w column/row n: packed uint32 words hold
+// 32/bits quantized values along K in the low bits first and each
+// group of group_size elements shares one scale and one bias:
+// w_deq[n, k] = q * scale[n, k / group_size] + bias[n, k / group_size]
+// (transposed layout) or w_deq[k, n] = q * scale[k / group_size, n] +
+// bias[k / group_size, n] (non-transposed, flags bit 0 set).
 // Push-constant routing: operation carries bits (4 or 8), reduce_size
-// carries the group size. Binding 2 packs the group parameters as two
-// halves of one buffer ([all scales | all biases], K / group_size
-// values per row) so the five operand arrays fit the four-binding
-// pipeline limit.
+// carries the group size, flags bit 0 the non-transposed layout,
+// shape[0] the batch count, shape[1] the per-batch w word stride (0
+// when a 2D w is shared across the batch), shape[2] the per-batch
+// scale/bias stride (0 when shared), shape[3] the total scale value
+// count ahead of the bias region in binding 2. Binding 2 packs the
+// group parameters as two halves of one buffer ([all scales | all
+// biases], K / group_size values per row per batch) so the five
+// operand arrays fit the four-binding pipeline limit.
 // Every load is a straight-line per-thread word or element read at a
 // linear address inside uniform-trip-count loops (Honeykrisp caution:
 // no per-lane divergent word loads, no broadcast-unravel addressing).
@@ -78,44 +84,90 @@ layout(push_constant) uniform Params {
   uint out_strides[4];
 } params;
 
+// Weight layout routing. Transposed (flags bit 0 clear): w batch slice
+// [N, Kp], packed K
+// elements per row, quantization groups along K; scale value
+// [n][k / group_size]. Non-transposed (bit 0 set): w batch slice
+// [K, Np], packed N elements per row (as mx.quantize stores the last
+// axis), quantization groups along N; scale value [k][n / group_size].
+// Both layouts pack the same per-slice word and parameter counts, so
+// w_batch_words/param_batch/scale_total arrive from the host for the
+// shared-2D case and the per-thread offsets below just switch strides.
 void main() {
   uint bits = params.operation;
   uint group_size = params.reduce_size;
+  bool non_transposed = (params.flags & 1u) != 0u;
   uint pack_factor = 32u / bits;
   uint value_mask = (1u << bits) - 1u;
   uint words_per_group = group_size / pack_factor;
   uint words_per_row = params.matrix_k / pack_factor;
   uint groups_per_row = params.matrix_k / group_size;
-  uint total = params.matrix_m * params.matrix_n;
+  uint batch = params.shape[0];
+  uint w_batch_words = params.shape[1];
+  uint param_batch = params.shape[2];
+  uint scale_total = params.shape[3];
+  uint matrix = params.matrix_m * params.matrix_n;
+  uint x_batch_rows = params.matrix_m * params.matrix_k;
+  uint total = batch * matrix;
   uint stride = gl_NumWorkGroups.x * 256u;
 
   for (uint index = gl_GlobalInvocationID.x; index < total;
        index += stride) {
-    uint row = index / params.matrix_n;
-    uint column = index % params.matrix_n;
-    uint w_base = params.rhs_offset + column * words_per_row;
-    uint param_base = params.aux_offset + column * groups_per_row;
-    uint bias_base = param_base + params.matrix_n * groups_per_row;
+    uint b = index / matrix;
+    uint within = index - b * matrix;
+    uint row = within / params.matrix_n;
+    uint column = within - row * params.matrix_n;
+    uint x_base = params.lhs_offset + b * x_batch_rows +
+        row * params.matrix_k;
     float accumulator = 0.0;
-    uint group = 0u;
-    uint word_base = w_base;
-    for (uint k = 0u; k < params.matrix_k; k += group_size) {
-      float scale = LOAD_VALUE(scale_bias.values[param_base + group]);
-      float bias = LOAD_VALUE(scale_bias.values[bias_base + group]);
-      ++group;
-      for (uint word_index = 0u; word_index < words_per_group;
-           ++word_index) {
-        uint word = input_w.values[word_base + word_index];
-        uint k_base = k + word_index * pack_factor;
-        for (uint lane = 0u; lane < pack_factor; ++lane) {
-          uint q = (word >> (lane * bits)) & value_mask;
-          float x_value = LOAD_VALUE(
-              input_x.values[params.lhs_offset + row * params.matrix_k +
-                  k_base + lane]);
-          accumulator += x_value * (scale * float(q) + bias);
-        }
+    if (non_transposed) {
+      // One word per k step, a fixed lane nibble and a fixed scale
+      // column per thread; scales walk [k][column / group_size].
+      uint w_base = params.rhs_offset + b * w_batch_words +
+          column / pack_factor;
+      uint param_base = params.aux_offset + b * param_batch +
+          column / group_size;
+      uint lane_shift = (column % pack_factor) * bits;
+      uint param_step = params.matrix_n / group_size;
+      for (uint k = 0u; k < params.matrix_k; ++k) {
+        float scale = LOAD_VALUE(
+            scale_bias.values[param_base + k * param_step]);
+        float bias = LOAD_VALUE(
+            scale_bias.values[param_base + scale_total + k * param_step]);
+        uint word = input_w.values[w_base + k * (params.matrix_n /
+            pack_factor)];
+        uint q = (word >> lane_shift) & value_mask;
+        accumulator += LOAD_VALUE(input_x.values[x_base + k]) *
+            (scale * float(q) + bias);
       }
-      word_base += words_per_group;
+    } else {
+      uint w_base = params.rhs_offset + b * w_batch_words +
+          column * words_per_row;
+      uint param_base = params.aux_offset + b * param_batch +
+          column * groups_per_row;
+      uint bias_base = param_base + scale_total;
+      uint group = 0u;
+      uint word_base = w_base;
+      uint param_off = 0u;
+      for (uint k = 0u; k < params.matrix_k; k += group_size) {
+        float scale =
+            LOAD_VALUE(scale_bias.values[param_base + param_off]);
+        float bias = LOAD_VALUE(scale_bias.values[bias_base + param_off]);
+        ++group;
+        for (uint word_index = 0u; word_index < words_per_group;
+             ++word_index) {
+          uint word = input_w.values[word_base + word_index];
+          uint k_base = k + word_index * pack_factor;
+          for (uint lane = 0u; lane < pack_factor; ++lane) {
+            uint q = (word >> (lane * bits)) & value_mask;
+            accumulator +=
+                LOAD_VALUE(input_x.values[x_base + k_base + lane]) *
+                (scale * float(q) + bias);
+          }
+        }
+        word_base += words_per_group;
+        param_off += 1u;
+      }
     }
     output_data.values[params.output_offset + index] =
         STORE_VALUE(accumulator);

@@ -106,6 +106,12 @@ layout(push_constant) uniform Params {
 
 shared float reduce_scratch[256];
 
+// Weight layout routing mirrors qmm.comp. Transposed (flags bit 0
+// clear): w batch slice [N, Kp], groups along K, scale [n][k / gs].
+// Non-transposed (bit 0 set): w batch slice [K, Np], packed N per row,
+// groups along N, scale [k][n / gs]. shape[0] carries the batch count
+// B and the per-slot work runs once per batch slice; each thread's
+// lane nibble and scale column stay fixed for the whole reduction.
 void main() {
   uint lane = gl_LocalInvocationID.x;
   uint column_slot = lane / LANES;
@@ -114,55 +120,88 @@ void main() {
   uint pack_factor = 32u / bits;
   uint value_mask = (1u << bits) - 1u;
   uint group_size = params.reduce_size;
-  uint words_per_row = params.matrix_k / pack_factor;
-  uint groups_per_row = params.matrix_k / group_size;
+  bool non_transposed = (params.flags & 1u) != 0u;
+  uint batch = params.shape[0];
+  uint w_batch_words = params.shape[1];
+  uint param_batch = params.shape[2];
+  uint scale_total = params.shape[3];
   uint column = gl_WorkGroupID.x * COLUMNS_PER_GROUP + column_slot;
   bool column_active = column < params.matrix_n;
-  float accumulator = 0.0;
-  if (column_active) {
-    uint w_base = params.rhs_offset + column * words_per_row;
-    uint scale_base = params.aux_offset + column * groups_per_row;
-    uint bias_base = params.aux_offset +
-        params.matrix_n * groups_per_row + column * groups_per_row;
-    // Runtime trip count and runtime shift/mask: lane-uniform per step,
-    // never unrolled, so the unpack state stays out of registers.
-    for (uint k = lane_in_slot; k < params.matrix_k; k += LANES) {
-      uint word = input_w.values[w_base + k / pack_factor];
-      uint q = (word >> ((k % pack_factor) * bits)) & value_mask;
-      uint group = k / group_size;
-      float x_value = LOAD_VALUE(input_x.values[params.lhs_offset + k]);
-      accumulator += x_value *
-          (LOAD_VALUE(scale_bias.values[scale_base + group]) * float(q) +
-              LOAD_VALUE(scale_bias.values[bias_base + group]));
+  for (uint b = 0u; b < batch; ++b) {
+    float accumulator = 0.0;
+    if (column_active) {
+      uint w_row = params.rhs_offset + b * w_batch_words;
+      uint p_base = params.aux_offset + b * param_batch;
+      // Runtime trip count and runtime shift/mask: lane-uniform per
+      // step, never unrolled, so the unpack state stays out of
+      // registers.
+      if (non_transposed) {
+        uint word_index = w_row + column / pack_factor;
+        uint lane_shift = (column % pack_factor) * bits;
+        uint param_step = params.matrix_n / group_size;
+        uint param_col = p_base + column / group_size;
+        for (uint k = lane_in_slot; k < params.matrix_k; k += LANES) {
+          uint word = input_w.values[word_index +
+              k * (params.matrix_n / pack_factor)];
+          uint q = (word >> lane_shift) & value_mask;
+          float x_value = LOAD_VALUE(
+              input_x.values[params.lhs_offset + b * params.matrix_k + k]);
+          accumulator += x_value *
+              (LOAD_VALUE(scale_bias.values[param_col + k * param_step]) *
+                    float(q) +
+                LOAD_VALUE(scale_bias.values[
+                    param_col + scale_total + k * param_step]));
+        }
+      } else {
+        uint w_base = w_row + column * (params.matrix_k / pack_factor);
+        uint scale_base = p_base + column * (params.matrix_k / group_size);
+        for (uint k = lane_in_slot; k < params.matrix_k; k += LANES) {
+          uint word = input_w.values[
+              w_base + k / pack_factor];
+          uint q = (word >> ((k % pack_factor) * bits)) & value_mask;
+          uint group = k / group_size;
+          float x_value = LOAD_VALUE(
+              input_x.values[params.lhs_offset + b * params.matrix_k + k]);
+          accumulator += x_value *
+              (LOAD_VALUE(scale_bias.values[scale_base + group]) *
+                    float(q) +
+                LOAD_VALUE(scale_bias.values[
+                    scale_base + scale_total + group]));
+        }
+      }
     }
-  }
+    // Every lane reaches the reduction, including inactive slots
+    // (accumulator 0), so the barriers stay uniform across the
+    // workgroup.
 #ifdef USE_SUBGROUP
-  // Subgroup reduction path. Each 32-lane slot is one hardware
-  // subgroup; subgroupAdd folds the per-lane accumulators inside the
-  // subgroup without shared-memory scratch or barriers. The
-  // lane_in_slot == 0 thread of each slot owns that column's output.
-  if (column_active) {
-    float total = subgroupAdd(accumulator);
-    if (lane_in_slot == 0u) {
-      output_data.values[params.output_offset + column] = STORE_VALUE(total);
+    // Subgroup reduction path. Each 32-lane slot is one hardware
+    // subgroup; subgroupAdd folds the per-lane accumulators inside the
+    // subgroup without shared-memory scratch or barriers. The
+    // lane_in_slot == 0 thread of each slot owns that column's output.
+    if (column_active) {
+      float total = subgroupAdd(accumulator);
+      if (lane_in_slot == 0u) {
+        output_data.values[params.output_offset + b * params.matrix_n +
+            column] = STORE_VALUE(total);
+      }
     }
-  }
 #else
-  // Tree reduction path (default). Five rounds of barrier-synchronized
-  // shared-memory adds fold the 32-lane per-slot accumulators; first
-  // lane of each slot owns the column output. Correct on any subgroup
-  // size because the lane split is plain workgroup arithmetic.
-  reduce_scratch[lane] = accumulator;
-  barrier();
-  for (uint offset = LANES / 2u; offset > 0u; offset >>= 1u) {
-    if (lane_in_slot < offset) {
-      reduce_scratch[lane] += reduce_scratch[lane + offset];
-    }
+    // Tree reduction path (default). Five rounds of barrier-synchronized
+    // shared-memory adds fold the 32-lane per-slot accumulators; first
+    // lane of each slot owns the column output. Correct on any subgroup
+    // size because the lane split is plain workgroup arithmetic.
+    reduce_scratch[lane] = accumulator;
     barrier();
-  }
-  if (lane_in_slot == 0u && column_active) {
-    output_data.values[params.output_offset + column] =
-        STORE_VALUE(reduce_scratch[lane]);
-  }
+    for (uint offset = LANES / 2u; offset > 0u; offset >>= 1u) {
+      if (lane_in_slot < offset) {
+        reduce_scratch[lane] += reduce_scratch[lane + offset];
+      }
+      barrier();
+    }
+    if (lane_in_slot == 0u && column_active) {
+      output_data.values[params.output_offset + b * params.matrix_n +
+          column] = STORE_VALUE(reduce_scratch[lane]);
+    }
 #endif
+  }
 }
