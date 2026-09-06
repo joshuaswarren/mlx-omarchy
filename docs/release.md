@@ -26,6 +26,9 @@ procedure now names the required platforms, and the gate enforces them.
    the aarch64 wheel). The receipt prints the source commit the wheel is
    stamped with; record wheel name, bytes, sha256, and the installed
    version string in the receipt.
+   Development versions use the prepared `setup.py` modification time in UTC,
+   or `SOURCE_DATE_EPOCH` when set, so metadata and wheel build hooks agree.
+   Check this with `python3 scripts/check-version-stability.py .work/mlx`.
 3. Upload the assets to the release, then run the gate against the
    UPLOADED bytes:
 
