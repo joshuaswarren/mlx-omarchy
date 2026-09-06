@@ -1,0 +1,190 @@
+{
+  "task": "Qualify mlx-omarchy main on real Apple M1 (Honeykrisp) under Linux",
+  "generated": "2026-09-06T05:40:00Z",
+  "source_commit": "76f2cd8e44aa9fb2d5f7a696be4fc06b05680705",
+  "source_commit_note": "Tip of main worktree branch performance-expansion; descendant of caaed74 (verified with merge-base --is-ancestor). Commit was local to the CT; transferred to the M1 via git bundle (origin did not have it).",
+  "build_head": "111dbcd439166d9ee97fb7655304e255e84045b6",
+  "build_head_note": "76f2cd8 + exactly one commit: the mandatory glslc shader fix below, on branch m1/shader-fixes, pushed to origin (verified via git ls-remote). Without it the C++ build does not compile on the M1.",
+  "host": {
+    "hostname": "jwm1-linux",
+    "kernel": "7.1.6-1-1-ARCH",
+    "uname": "Linux jwm1-linux 7.1.6-1-1-ARCH #1 SMP PREEMPT_DYNAMIC Sat, 08 Aug 2026 17:14:04 +0000 aarch64 GNU/Linux",
+    "cpu_cores": 8,
+    "memory": "15Gi"
+  },
+  "graphics": {
+    "vulkan_device": "Apple M1 (G13G B1)",
+    "device_type": "PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU",
+    "driver": "Honeykrisp",
+    "driver_id": "DRIVER_ID_MESA_HONEYKRISP",
+    "mesa": "26.1.7",
+    "vulkan_api": "1.4.354",
+    "conformance": "1.4.0.0",
+    "shader_compiler": "glslc 2026.3",
+    "validation_layer": "VK_LAYER_KHRONOS_validation (installed and proven active: receipts-m1/09b-validation-layer-activation.log)"
+  },
+  "pinned_mlx": {
+    "version": "0.32.2",
+    "commit": "1f8e74e3f12f31365464a6867c6579f0e9b29d85",
+    "archive_sha256": "cb988a5bdc38c798918d042b9b1c6edda3ccc5f23a2155138d3aa5c1b2acc301",
+    "note": "Archive copied from ~/mlx-omarchy-diagbuild/.work and SHA-verified by scripts/prepare-mlx.sh; no download needed."
+  },
+  "device_isolation": "MLX_OMARCHY_ALLOW_NON_APPLE was NOT set for the ordered suites; the backend rejects llvmpipe unless it is set (overlay/mlx/backend/omarchy/device.cpp:549), so every ordered-suite test executed on the Apple M1 Honeykrisp device. The one exception is receipts-m1/10-llvmpipe-disambiguation.log, a diagnostic rerun with ALLOW_NON_APPLE=1 DEVICE_INDEX=1 (llvmpipe, same machine and toolchain) used only to classify failures.",
+  "shader_compile_failures": [
+    {
+      "file": "overlay/mlx/backend/omarchy/shaders/int_elementwise.comp",
+      "line": 228,
+      "compiler": "glslc 2026.3 (jwm1)",
+      "error": "'.' : can't read from gl_WorkGroupSize before a fixed workgroup size has been declared",
+      "affected_spv": [
+        "elementwise_i32", "elementwise_u32", "elementwise_i8", "elementwise_u8",
+        "elementwise_i16", "elementwise_u16", "elementwise_i64", "elementwise_u64"
+      ],
+      "root_cause": "Shader reads gl_WorkGroupSize.x with no local_size layout declaration; glslangValidator 12.0.0 on the x86 dev box accepted it (same bug class as the 2026-09-03 fused RoPE incident in AGENTS.md).",
+      "fix": "layout(local_size_x = 256) in; (256 = kComputeThreadsPerGroup in compute.h, the group size every host dispatch uses)",
+      "fixed_on_branch": "m1/shader-fixes",
+      "branch_head": "111dbcd439166d9ee97fb7655304e255e84045b6",
+      "pushed_to_origin": true,
+      "evidence": "receipts-m1/03-build.log (failure), receipts-m1/03-build.3.log (green build after fix, NINJA-DONE-EXIT-0, zero FAILED lines)"
+    }
+  ],
+  "suites": {
+    "omarchy_ctest": {
+      "command": "ctest --output-on-failure --timeout 1800 (in .work/build, no MLX_OMARCHY_ALLOW_NON_APPLE)",
+      "total": 799,
+      "passed": 781,
+      "failed": 18,
+      "wall": "about 16 minutes",
+      "log": "receipts-m1/04-ctest-omarchy.log",
+      "first_errors": "receipts-m1/05-ctest-failures-first-error.txt"
+    },
+    "upstream_cpp": {
+      "command": "OUT_DIR=... tools/run-upstream-suite.sh --cpp-only",
+      "files_run": 11,
+      "files_clean": 9,
+      "stopped": "protocol stop after export_import_tests exited 134 (SIGABRT): 'Stopping after timeout or signal' (run-upstream-suite.sh preserves device state)",
+      "summary_tsv": "receipts-m1/upstream-suite-cpp/cpp/summary.tsv",
+      "notable": "Only autograd (1 case: test complex gradients) and export_import (crash) red. On the llvmpipe dev-box baseline this suite had failures in 10 files including ops_tests 29 cases; the M1 is cleaner here except the crashes."
+    },
+    "upstream_py": {
+      "command": "scripts/build-wheel.sh (python3.14) then OUT_DIR=... WHEEL=dist/mlx_omarchy-0.32.2.dev202609052254+111dbcd-cp314-cp314-linux_aarch64.whl tools/run-upstream-suite.sh --py-only",
+      "wheel_stamp": "0.32.2.dev202609052254+111dbcd (provenance gate passed: stamp equals build HEAD short7)",
+      "files_run": 15,
+      "files_clean": 8,
+      "stopped": "protocol stop after test_fast_sdpa.py segfaulted (rc 139)",
+      "summary_tsv": "receipts-m1/upstream-suite-py/py/summary.tsv",
+      "per_case_detail": "receipts-m1/12-py-failing-cases.txt",
+      "notable": "Most py failures are exact-compatibility RuntimeErrors from the contract ('[omarchy] X dtype is not implemented...'), not numeric defects. M1 is cleaner than the llvmpipe dev-box baseline per file (array 11 vs 20, blas 13 vs 19, export_import 1 vs 8, conv 0 vs 5, eval 0 vs 2)."
+    },
+    "validation_layer": {
+      "command": "VK_INSTANCE_LAYERS=VK_LAYER_KHRONOS_validation <binary> (layer proven loaded, receipts-m1/09b-validation-layer-activation.log)",
+      "omarchy_reduce_ops_tests": "31/31 cases, 7104/7104 assertions PASSED; process then HUNG at device teardown (no exit after 600s, timeout killed it). A repeat run with the layer force-enabled via VK_LOADER_LAYERS_ENABLE printed SUCCESS then dumped core. receipts-m1/09-validation-reduce-ops.log",
+      "omarchy_runtime_tests": "27/31 cases, 6263/6267 assertions; 4 failed - all four spawn child processes that reopen or tear down the device and the child times out (code -2); binary then aborted (SIGABRT, core dump; kernel audit type=1701 confirms). receipts-m1/09-validation-runtime.log",
+      "classification": "Honeykrisp defect (a): teardown/reopen paths wedge or crash under the validation layer; without the layer the same binaries pass and exit cleanly.",
+      "post_incident_device_state": "receipts-m1/11-post-incident-device-state.txt - device healthy (vulkaninfo answers, no kernel GPU faults, no watchdog events)"
+    },
+    "llvmpipe_disambiguation_diagnostic": {
+      "command": "MLX_OMARCHY_ALLOW_NON_APPLE=1 MLX_OMARCHY_DEVICE_INDEX=1 ctest -R <13 M1-new failures>",
+      "purpose": "Same machine, same toolchain, llvmpipe device: separates Honeykrisp defects from toolchain/environment issues.",
+      "result": "11 of 13 also fail on llvmpipe; only #38 and #384 pass -> only those two are Honeykrisp defects.",
+      "log": "receipts-m1/10-llvmpipe-disambiguation.log"
+    }
+  },
+  "classification_legend": {
+    "a": "Honeykrisp defect: fails on the M1 GPU, passes on llvmpipe on the same M1 (device flipped via MLX_OMARCHY_DEVICE_INDEX=1), or is validation-layer-specific",
+    "b": "also failing on llvmpipe dev box per receipts/2026-09-05-integrated-battery.log and receipts/upstream-suite-2026-09-05-py/py/summary.tsv",
+    "c": "environment/toolchain: reproduces on llvmpipe on the same M1 (GCC 16.1.1 aarch64) and is absent from the dev-box llvmpipe baseline"
+  },
+  "failing_cases": [
+    {"suite": "ctest", "id": 38, "name": "test complex gradients", "class": "a", "first_error": "tests/autograd_tests.cpp:1276: CHECK_EQ( vjp_out[1].item<complex64>, ... ) values print identical: -3.2-0.4j vs -3.2-0.4j (bit-level complex64 mismatch)", "disambiguation": "PASSED on M1 llvmpipe"},
+    {"suite": "ctest", "id": 92, "name": "test export primitives with state", "class": "c", "first_error": "FATAL: test case CRASHED: SIGABRT at export_import_tests.cpp:80; std::__shared_ptr_deref<mlx::core::Primitive> on null (error-path shared_ptr deref)", "disambiguation": "also SIGABRT on M1 llvmpipe"},
+    {"suite": "ctest", "id": 146, "name": "test reduction ops", "class": "b", "first_error": "tests/ops_tests.cpp:1227-1232: CHECK( array_equal(max/min(x, axis), expected) ) - 4 bool max/min reduction assertions (154/158 passed)"},
+    {"suite": "ctest", "id": 148, "name": "test arithmetic unary ops", "class": "b", "first_error": "tests/ops_tests.cpp:1435: CHECK( array_equal(abs(x), ...) ) then sign on bool/uint64 (ops_tests.cpp:1456-1493)"},
+    {"suite": "ctest", "id": 197, "name": "test topk", "class": "c", "first_error": "FATAL: test case CRASHED: SIGABRT at ops_tests.cpp:3970; std::__shared_ptr_deref<mlx::core::Primitive> on null", "disambiguation": "also SIGABRT on M1 llvmpipe"},
+    {"suite": "ctest", "id": 205, "name": "test bitwise shift operations", "class": "b", "first_error": "tests/ops_tests.cpp:4328,4333: CHECK( array_equal(left_shift_result, ...), array_equal(right_shift_result, ...) )"},
+    {"suite": "ctest", "id": 217, "name": "test random bits", "class": "b", "first_error": "tests/random_tests.cpp:239-240: CHECK( array_equal(take(out, array(0/1)), ...) )"},
+    {"suite": "ctest", "id": 252, "name": "tests (upstream aggregate)", "class": "b", "first_error": "aggregate binary: same complex-gradient CHECK_EQ failure plus the export-import SIGABRT (90/92 cases, 1010/1011 assertions)"},
+    {"suite": "ctest", "id": 366, "name": "sort rejects long rows and non-float dtypes with named errors", "class": "c", "first_error": "FATAL: SIGABRT at tests/omarchy/test_primitives.cpp:3601 after 5 passing assertions (named-error path crashes)", "disambiguation": "also aborts on M1 llvmpipe"},
+    {"suite": "ctest", "id": 368, "name": "partition redirects to sort and topk returns the right set", "class": "c", "first_error": "FATAL: SIGABRT at tests/omarchy/test_primitives.cpp:3727 after 23 passing assertions", "disambiguation": "also aborts on M1 llvmpipe"},
+    {"suite": "ctest", "id": 382, "name": "quantized matmul pins named errors outside the linear shape", "class": "c", "first_error": "tests/omarchy/test_primitives.cpp:4494,4503,4515: CHECK( group_error.find(...) != npos ) both sides 18446744073709551615 (expected error substring absent from the raised message)", "disambiguation": "also fails on M1 llvmpipe"},
+    {"suite": "ctest", "id": 384, "name": "quantize matches the pinned Metal-source affine reference", "class": "a", "first_error": "tests/omarchy/test_primitives.cpp:4778: CHECK_EQ( words[index], ... ) values 98174014 vs 98239550 (1 of 16542 words bit-mismatches the pinned reference)", "disambiguation": "PASSED on M1 llvmpipe"},
+    {"suite": "ctest", "id": 440, "name": "unsupported primitive raises a catchable named error", "class": "c", "first_error": "tests/omarchy/test_error_contract.cpp:56: FATAL: REQUIRE( caught ) values REQUIRE( false ) - expected exception never thrown", "disambiguation": "also fails on M1 llvmpipe"},
+    {"suite": "ctest", "id": 541, "name": "argpartition partitions over a non-suffix axis", "class": "c", "first_error": "FATAL: SIGABRT at tests/omarchy/test_indexing_ops.cpp:911", "disambiguation": "also aborts on M1 llvmpipe"},
+    {"suite": "ctest", "id": 775, "name": "omarchy_primitive_tests", "class": "c", "first_error": "FATAL: SIGABRT in case 'sort rejects long rows and non-float dtypes with named errors' (same root as #366); 162822/162822 assertions passed before the crash", "disambiguation": "also aborts on M1 llvmpipe"},
+    {"suite": "ctest", "id": 778, "name": "omarchy_error_contract_tests", "class": "c", "first_error": "same as #440: REQUIRE( caught ) == false at test_error_contract.cpp:56", "disambiguation": "also fails on M1 llvmpipe"},
+    {"suite": "ctest", "id": 781, "name": "omarchy_indexing_ops_tests", "class": "c", "first_error": "FATAL: SIGABRT at tests/omarchy/test_indexing_ops.cpp:911 (same root as #541); 1872/1872 assertions passed before the crash", "disambiguation": "also aborts on M1 llvmpipe"},
+    {"suite": "ctest", "id": 799, "name": "omarchy_two_rank_harness", "class": "c", "first_error": "run-two-rank.sh: both ranks Aborted; mlx/backend/cpu/distributed.cpp:101 assertion in the CPU distributed path (4/5 cases, 12/12 assertions passed first)", "disambiguation": "also fails on M1 llvmpipe"},
+    {"suite": "upstream_py", "file": "test_fast_sdpa.py", "class": "c", "first_error": "Segmentation fault (rc 139) before any report; reproduces identically under MLX_OMARCHY_DEVICE_INDEX=1 (llvmpipe) on the same M1; dev-box llvmpipe timed out (rc 124) instead"},
+    {"suite": "upstream_py", "file": "test_array.py (11 cases)", "class": "b", "first_error": "RuntimeError '[omarchy] Scatter/Abs/Add/Take/BitwiseAnd dtype is not implemented...' (contract errors); test_indexing/test_setitem AssertionError: False is not true"},
+    {"suite": "upstream_py", "file": "test_autograd.py (7 cases)", "class": "b", "first_error": "RuntimeError contract errors (Sign/Take/Cosh/BitwiseOr/ScatterAxis dtype); test_eval_in_grad 11.999999046325684 != 12.0; test_power_grad nan != 1.0"},
+    {"suite": "upstream_py", "file": "test_blas.py (13 cases)", "class": "b", "first_error": "RuntimeError '[omarchy] broadcast AddMM / strided reshape / Matmul dtype / matrix rank not implemented'"},
+    {"suite": "upstream_py", "file": "test_compile.py (6 cases)", "class": "b", "first_error": "RuntimeError 'Compiled tape bfloat16 is refused' etc.; test_compiled_subnormal_bool_cast AssertionError: False is not true"},
+    {"suite": "upstream_py", "file": "test_einsum.py (2 cases)", "class": "b", "first_error": "RuntimeError '[omarchy] broadcast rank Multiply is not implemented'"},
+    {"suite": "upstream_py", "file": "test_export_import.py (1 case)", "class": "b", "first_error": "UnboundLocalError: custom_kernel (test harness variable, not GPU)"},
+    {"suite": "upstream_py", "file": "test_fast.py (6 cases)", "class": "b", "first_error": "5x UnboundLocalError custom_kernel (harness); non-contiguous CrossEntropyVJP RuntimeError"}
+  ],
+  "crashes": [
+    "SIGABRT null shared_ptr<mlx::core::Primitive> deref on named-error paths: ctest #92, #197, #366, #368, #541, #775, #781 (also on M1 llvmpipe -> toolchain class c)",
+    "SIGABRT cpu/distributed.cpp:101 in two-rank harness: ctest #799 (also on M1 llvmpipe -> class c)",
+    "python segfault in test_fast_sdpa.py (also on M1 llvmpipe -> class c)",
+    "validation-layer teardown hang then core dump in omarchy_reduce_ops_tests; runtime_tests child device-reopen timeouts + abort (Honeykrisp-specific, class a)"
+  ],
+  "dev_box_failures_that_pass_on_m1": [
+    "test gguf (llvmpipe integrated battery #121 failed; M1 passes)",
+    "test scatter types (llvmpipe #161 failed; M1 passes)",
+    "upstream cpp ops_tests had 29 failing cases on llvmpipe; suite stopped before ops on M1 so not directly comparable, but ctest equivalents mostly pass"
+  ],
+  "top_defects_for_main": [
+    {
+      "rank": 1,
+      "defect": "Validation-layer teardown wedge: with VK_LAYER_KHRONOS_validation active, processes that finish work then destroy the device hang (reduce_ops) or abort (runtime_tests children that reopen the device time out with code -2). All in-test assertions pass; the failure is strictly in destroy/reopen paths.",
+      "class": "a",
+      "evidence": "receipts-m1/09-validation-reduce-ops.log, 09-validation-runtime.log, 09b-validation-layer-activation.log, 11-post-incident-device-state.txt"
+    },
+    {
+      "rank": 2,
+      "defect": "complex64 bit-level mismatch: vjp of a complex gradient produces a value that prints as -3.2-0.4j on both sides but CHECK_EQ fails; Honeykrisp-only (passes on llvmpipe same machine). Suspect complex abs/mul conjugation path or FMA contraction in the complex elementwise shader.",
+      "class": "a",
+      "evidence": "receipts-m1/05-ctest-failures-first-error.txt TEST 38; disambiguation log line 'Test #38 ... Passed'"
+    },
+    {
+      "rank": 3,
+      "defect": "quantize affine bit mismatch vs pinned Metal-source reference: exactly 1 of 16542 words differs (98174014 vs 98239550). Honeykrisp-only. Rounding-mode or fused multiply-add divergence in the quantize kernel.",
+      "class": "a",
+      "evidence": "receipts-m1/05-ctest-failures-first-error.txt TEST 384"
+    },
+    {
+      "rank": 4,
+      "defect": "Named-error contract broken on aarch64/GCC16 builds: expected exceptions are not thrown (test_error_contract.cpp:56 REQUIRE(false)) and error-message substrings do not match (string::npos both sides in quantized matmul pinning). Crashes (null shared_ptr<Primitive> deref) on the same error paths. Reproduces on both M1 devices -> not GPU; likely uninitialized/error-object lifetime behavior differing under GCC 16.1.1 aarch64.",
+      "class": "c",
+      "evidence": "receipts-m1/05-ctest-failures-first-error.txt TESTS 92/197/366/368/382/440/541/775/778/781; 10-llvmpipe-disambiguation.log"
+    },
+    {
+      "rank": 5,
+      "defect": "Cross-platform pre-existing numeric failures (bool max/min reductions, bool/uint64 sign, bitwise shift, random bits): identical failures on llvmpipe dev box and M1; not M1 regressions but they gate the battery green.",
+      "class": "b",
+      "evidence": "receipts-m1/05-ctest-failures-first-error.txt vs receipts/2026-09-05-integrated-battery.log"
+    },
+    {
+      "rank": 6,
+      "defect": "test_fast_sdpa python segfault on aarch64 builds (both devices); dev box times out instead. Different mode than dev box, blocks ~18 upstream py files after it under the pinned protocol.",
+      "class": "c",
+      "evidence": "receipts-m1/08-upstream-py.log, upstream-suite-py/py/summary.tsv"
+    }
+  ],
+  "hardware_safety": {
+    "one_binary_at_a_time": true,
+    "hangs": "one process-level hang (validation reduce_ops teardown, killed by timeout 600); no suite wedged past its timeout otherwise",
+    "dmesg_watchdog": "no 'no progress' or GPU fault events during the whole qualification",
+    "post_run_state": "device healthy, vulkaninfo reports Apple M1 Honeykrisp (receipts-m1/11-post-incident-device-state.txt)",
+    "prohibited_actions": "no reboot, no boot config change, no ANE driver load, no /Applications access, no asahi-bless, no compiler-repo or ane-linux-experiments changes"
+  },
+  "receipts_ct_path": "/tmp/m1-qual-76f2cd8/receipts-m1/",
+  "receipts_m1_path": "~/mlx-omarchy-qual/receipts-m1/ on jwm1-linux",
+  "branch_pushed": {
+    "branch": "m1/shader-fixes",
+    "head": "111dbcd439166d9ee97fb7655304e255e84045b6",
+    "remote": "origin (github.com/joshuaswarren/mlx-omarchy)",
+    "verified": "git ls-remote origin refs/heads/m1/shader-fixes"
+  }
+}

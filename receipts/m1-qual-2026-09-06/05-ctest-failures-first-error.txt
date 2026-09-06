@@ -1,0 +1,145 @@
+====================================================================================================
+TEST 38: test complex gradients  [Failed]
+  38/799 Test  #38: test complex gradients ........................................................................***Failed    0.03 sec
+  /home/joshuawarren/mlx-omarchy-qual/.work/mlx/tests/autograd_tests.cpp:1276: ERROR: CHECK_EQ( vjp_out[1].item<complex64_t>(), complex64_t{-3.2, -0.4} ) is NOT correct!
+  values: CHECK_EQ( -3.2-0.4j, -3.2-0.4j )
+  [doctest] test cases:  1 |  0 passed | 1 failed | 250 skipped
+  [doctest] assertions: 11 | 10 passed | 1 failed |
+====================================================================================================
+TEST 92: test export primitives with state  [Subprocess aborted]
+  92/799 Test  #92: test export primitives with state .............................................................Subprocess aborted***Exception:   0.44 sec
+  /usr/include/c++/16.1.1/bits/shared_ptr_base.h:1423: _Tp* std::__shared_ptr_deref(_Tp*) [with _Tp = mlx::core::Primitive]: Assertion '__p != nullptr' failed.
+  /home/joshuawarren/mlx-omarchy-qual/.work/mlx/tests/export_import_tests.cpp:80: FATAL ERROR: test case CRASHED: SIGABRT - Abort (abnormal termination) signal
+  [doctest] test cases: 1 | 0 passed | 1 failed | 250 skipped
+  [doctest] assertions: 0 | 0 passed | 0 failed |
+====================================================================================================
+TEST 146: test reduction ops  [Failed]
+  146/799 Test #146: test reduction ops ............................................................................***Failed    0.18 sec
+  /home/joshuawarren/mlx-omarchy-qual/.work/mlx/tests/ops_tests.cpp:1227: ERROR: CHECK( array_equal(max(x, 1), array({true, false})).item<bool>() ) THREW exception: "[omarchy] Max dtype is not implemented for the Omarchy Vulkan backend (dtype=bool, shape=[2,1]). No GPU kernel exist
+  /home/joshuawarren/mlx-omarchy-qual/.work/mlx/tests/ops_tests.cpp:1228: ERROR: CHECK( array_equal(max(x, 0), array({true, false, true})).item<bool>() ) THREW exception: "[omarchy] Max dtype is not implemented for the Omarchy Vulkan backend (dtype=bool, shape=[1,3]). No GPU kernel
+  /home/joshuawarren/mlx-omarchy-qual/.work/mlx/tests/ops_tests.cpp:1231: ERROR: CHECK( array_equal(min(x, 1), array({true, false})).item<bool>() ) THREW exception: "[omarchy] Min dtype is not implemented for the Omarchy Vulkan backend (dtype=bool, shape=[2,1]). No GPU kernel exist
+  /home/joshuawarren/mlx-omarchy-qual/.work/mlx/tests/ops_tests.cpp:1232: ERROR: CHECK( array_equal(min(x, 0), array({false, true, false})).item<bool>() ) THREW exception: "[omarchy] Min dtype is not implemented for the Omarchy Vulkan backend (dtype=bool, shape=[1,3]). No GPU kerne
+  [doctest] test cases:   1 |   0 passed | 1 failed | 250 skipped
+  [doctest] assertions: 158 | 154 passed | 4 failed |
+====================================================================================================
+TEST 148: test arithmetic unary ops  [Failed]
+  148/799 Test #148: test arithmetic unary ops .....................................................................***Failed    0.08 sec
+  /home/joshuawarren/mlx-omarchy-qual/.work/mlx/tests/ops_tests.cpp:1435: ERROR: CHECK( array_equal(abs(x), array({false, true})).item<bool>() ) THREW exception: "[omarchy] Abs dtype is not implemented for the Omarchy Vulkan backend (dtype=bool, shape=[2]). No GPU kernel exists for
+  /home/joshuawarren/mlx-omarchy-qual/.work/mlx/tests/ops_tests.cpp:1456: ERROR: CHECK( array_equal(sign(x), x).item<bool>() ) THREW exception: "[omarchy] Sign dtype is not implemented for the Omarchy Vulkan backend (dtype=bool, shape=[2]). No GPU kernel exists for it; no silent CP
+  /home/joshuawarren/mlx-omarchy-qual/.work/mlx/tests/ops_tests.cpp:1469: ERROR: CHECK( array_equal(sign(x_uint64), expected).item<bool>() ) THREW exception: "[omarchy] Sign dtype is not implemented for the Omarchy Vulkan backend (dtype=uint64, shape=[4]). No GPU kernel exists for 
+  /home/joshuawarren/mlx-omarchy-qual/.work/mlx/tests/ops_tests.cpp:1479: ERROR: CHECK( array_equal(sign(x_uint64), expected).item<bool>() ) THREW exception: "[omarchy] Sign dtype is not implemented for the Omarchy Vulkan backend (dtype=uint64, shape=[3]). No GPU kernel exists for 
+  /home/joshuawarren/mlx-omarchy-qual/.work/mlx/tests/ops_tests.cpp:1485: ERROR: CHECK( array_equal(sign(x_uint64), expected).item<bool>() ) THREW exception: "[omarchy] Sign dtype is not implemented for the Omarchy Vulkan backend (dtype=uint64, shape=[2]). No GPU kernel exists for 
+  /home/joshuawarren/mlx-omarchy-qual/.work/mlx/tests/ops_tests.cpp:1489: ERROR: CHECK( array_equal(sign(x_uint64), expected).item<bool>() ) THREW exception: "[omarchy] Sign dtype is not implemented for the Omarchy Vulkan backend (dtype=uint64, shape=[1]). No GPU kernel exists for 
+  /home/joshuawarren/mlx-omarchy-qual/.work/mlx/tests/ops_tests.cpp:1493: ERROR: CHECK( array_equal(sign(x_uint64), expected).item<bool>() ) THREW exception: "[omarchy] Sign dtype is not implemented for the Omarchy Vulkan backend (dtype=uint64, shape=[1]). No GPU kernel exists for 
+====================================================================================================
+TEST 197: test topk  [Subprocess aborted]
+  197/799 Test #197: test topk .....................................................................................Subprocess aborted***Exception:   0.43 sec
+  /usr/include/c++/16.1.1/bits/shared_ptr_base.h:1423: _Tp* std::__shared_ptr_deref(_Tp*) [with _Tp = mlx::core::Primitive]: Assertion '__p != nullptr' failed.
+  /home/joshuawarren/mlx-omarchy-qual/.work/mlx/tests/ops_tests.cpp:3970: FATAL ERROR: test case CRASHED: SIGABRT - Abort (abnormal termination) signal
+  [doctest] test cases: 1 | 0 passed | 1 failed | 250 skipped
+  [doctest] assertions: 2 | 2 passed | 0 failed |
+====================================================================================================
+TEST 205: test bitwise shift operations  [Failed]
+  205/799 Test #205: test bitwise shift operations .................................................................***Failed    0.05 sec
+  /home/joshuawarren/mlx-omarchy-qual/.work/mlx/tests/ops_tests.cpp:4328: ERROR: CHECK( array_equal(left_shift_result, array({4, 4, 4, 4}, dtype)) .item<bool>() ) THREW exception: "[omarchy] Equal dtype is not implemented for the Omarchy Vulkan backend (dtype=bool, shape=[4]). No G
+  /home/joshuawarren/mlx-omarchy-qual/.work/mlx/tests/ops_tests.cpp:4333: ERROR: CHECK( array_equal(right_shift_result, full({4}, 1, dtype)).item<bool>() ) THREW exception: "[omarchy] Equal dtype is not implemented for the Omarchy Vulkan backend (dtype=bool, shape=[4]). No GPU kern
+  [doctest] test cases:  1 |  0 passed | 1 failed | 250 skipped
+  [doctest] assertions: 38 | 36 passed | 2 failed |
+====================================================================================================
+TEST 217: test random bits  [Failed]
+  217/799 Test #217: test random bits ..............................................................................***Failed    0.02 sec
+  /home/joshuawarren/mlx-omarchy-qual/.work/mlx/tests/random_tests.cpp:239: ERROR: CHECK( array_equal(take(out, array(0), 0), x1).item<bool>() ) THREW exception: "[omarchy] Take dtype is not implemented for the Omarchy Vulkan backend (dtype=uint16, shape=[1,5]). No GPU kernel exist
+  /home/joshuawarren/mlx-omarchy-qual/.work/mlx/tests/random_tests.cpp:240: ERROR: CHECK( array_equal(take(out, array(1), 0), x2).item<bool>() ) THREW exception: "[omarchy] Take dtype is not implemented for the Omarchy Vulkan backend (dtype=uint16, shape=[1,5]). No GPU kernel exist
+  [doctest] test cases:  1 |  0 passed | 1 failed | 250 skipped
+  [doctest] assertions: 28 | 26 passed | 2 failed |
+====================================================================================================
+TEST 252: tests  [Subprocess aborted]
+  252/799 Test #252: tests .........................................................................................Subprocess aborted***Exception:   0.99 sec
+  /usr/include/c++/16.1.1/bits/shared_ptr_base.h:1423: _Tp* std::__shared_ptr_deref(_Tp*) [with _Tp = mlx::core::Primitive]: Assertion '__p != nullptr' failed.
+  /home/joshuawarren/mlx-omarchy-qual/.work/mlx/tests/autograd_tests.cpp:1276: ERROR: CHECK_EQ( vjp_out[1].item<complex64_t>(), complex64_t{-3.2, -0.4} ) is NOT correct!
+  values: CHECK_EQ( -3.2-0.4j, -3.2-0.4j )
+  /home/joshuawarren/mlx-omarchy-qual/.work/mlx/tests/export_import_tests.cpp:80: FATAL ERROR: test case CRASHED: SIGABRT - Abort (abnormal termination) signal
+  [doctest] test cases:   92 |   90 passed | 2 failed | 159 skipped
+  [doctest] assertions: 1011 | 1010 passed | 1 failed |
+====================================================================================================
+TEST 366: sort rejects long rows and non-float dtypes with named errors  [Subprocess aborted]
+  366/799 Test #366: sort rejects long rows and non-float dtypes with named errors .................................Subprocess aborted***Exception:   0.35 sec
+  /usr/include/c++/16.1.1/bits/shared_ptr_base.h:1423: _Tp* std::__shared_ptr_deref(_Tp*) [with _Tp = mlx::core::Primitive]: Assertion '__p != nullptr' failed.
+  TEST CASE:  sort rejects long rows and non-float dtypes with named errors
+  /home/joshuawarren/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_primitives.cpp:3601: FATAL ERROR: test case CRASHED: SIGABRT - Abort (abnormal termination) signal
+  [doctest] test cases: 1 | 0 passed | 1 failed | 88 skipped
+  [doctest] assertions: 5 | 5 passed | 0 failed |
+====================================================================================================
+TEST 368: partition redirects to sort and topk returns the right set  [Subprocess aborted]
+  368/799 Test #368: partition redirects to sort and topk returns the right set ....................................Subprocess aborted***Exception:   0.35 sec
+  /usr/include/c++/16.1.1/bits/shared_ptr_base.h:1423: _Tp* std::__shared_ptr_deref(_Tp*) [with _Tp = mlx::core::Primitive]: Assertion '__p != nullptr' failed.
+  /home/joshuawarren/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_primitives.cpp:3727: FATAL ERROR: test case CRASHED: SIGABRT - Abort (abnormal termination) signal
+  [doctest] test cases:  1 |  0 passed | 1 failed | 88 skipped
+  [doctest] assertions: 23 | 23 passed | 0 failed |
+====================================================================================================
+TEST 382: quantized matmul pins named errors outside the linear shape  [Failed]
+  382/799 Test #382: quantized matmul pins named errors outside the linear shape ...................................***Failed    0.03 sec
+  TEST CASE:  quantized matmul pins named errors outside the linear shape
+  /home/joshuawarren/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_primitives.cpp:4494: ERROR: CHECK( group_error.find("QuantizedMatmul group size") != std::string::npos ) is NOT correct!
+  values: CHECK( 18446744073709551615 != 18446744073709551615 )
+  /home/joshuawarren/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_primitives.cpp:4503: ERROR: CHECK( transpose_error.find("QuantizedMatmul transpose") != std::string::npos ) is NOT correct!
+  values: CHECK( 18446744073709551615 != 18446744073709551615 )
+  /home/joshuawarren/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_primitives.cpp:4515: ERROR: CHECK( batched_error.find("QuantizedMatmul weight layout") != std::string::npos ) is NOT correct!
+  values: CHECK( 18446744073709551615 != 18446744073709551615 )
+====================================================================================================
+TEST 384: quantize matches the pinned Metal-source affine reference  [Failed]
+  384/799 Test #384: quantize matches the pinned Metal-source affine reference .....................................***Failed    0.03 sec
+  /home/joshuawarren/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_primitives.cpp:4778: ERROR: CHECK_EQ( words[index], expected.words[index] ) is NOT correct!
+  values: CHECK_EQ( 98174014, 98239550 )
+  [doctest] test cases:     1 |     0 passed | 1 failed | 88 skipped
+  [doctest] assertions: 16542 | 16541 passed | 1 failed |
+====================================================================================================
+TEST 440: unsupported primitive raises a catchable named error  [Failed]
+  440/799 Test #440: unsupported primitive raises a catchable named error ..........................................***Failed    0.03 sec
+  /home/joshuawarren/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_error_contract.cpp:35:
+  TEST CASE:  unsupported primitive raises a catchable named error
+  /home/joshuawarren/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_error_contract.cpp:56: FATAL ERROR: REQUIRE( caught ) is NOT correct!
+  values: REQUIRE( false )
+  [doctest] test cases: 1 | 0 passed | 1 failed | 2 skipped
+  [doctest] assertions: 1 | 0 passed | 1 failed |
+====================================================================================================
+TEST 541: argpartition partitions over a non-suffix axis  [Subprocess aborted]
+  541/799 Test #541: argpartition partitions over a non-suffix axis ................................................Subprocess aborted***Exception:   0.39 sec
+  /usr/include/c++/16.1.1/bits/shared_ptr_base.h:1423: _Tp* std::__shared_ptr_deref(_Tp*) [with _Tp = mlx::core::Primitive]: Assertion '__p != nullptr' failed.
+  /home/joshuawarren/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:911: FATAL ERROR: test case CRASHED: SIGABRT - Abort (abnormal termination) signal
+  [doctest] test cases: 1 | 0 passed | 1 failed | 43 skipped
+  [doctest] assertions: 0 | 0 passed | 0 failed |
+====================================================================================================
+TEST 775: omarchy_primitive_tests  [Subprocess aborted]
+  775/799 Test #775: omarchy_primitive_tests .......................................................................Subprocess aborted***Exception:   0.60 sec
+  /usr/include/c++/16.1.1/bits/shared_ptr_base.h:1423: _Tp* std::__shared_ptr_deref(_Tp*) [with _Tp = mlx::core::Primitive]: Assertion '__p != nullptr' failed.
+  TEST CASE:  sort rejects long rows and non-float dtypes with named errors
+  /home/joshuawarren/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_primitives.cpp:3601: FATAL ERROR: test case CRASHED: SIGABRT - Abort (abnormal termination) signal
+  [doctest] test cases:     55 |     54 passed | 1 failed | 34 skipped
+  [doctest] assertions: 162822 | 162822 passed | 0 failed |
+====================================================================================================
+TEST 778: omarchy_error_contract_tests  [Failed]
+  778/799 Test #778: omarchy_error_contract_tests ..................................................................***Failed    0.03 sec
+  /home/joshuawarren/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_error_contract.cpp:35:
+  TEST CASE:  unsupported primitive raises a catchable named error
+  /home/joshuawarren/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_error_contract.cpp:56: FATAL ERROR: REQUIRE( caught ) is NOT correct!
+  values: REQUIRE( false )
+  [doctest] test cases:  3 |  2 passed | 1 failed | 0 skipped
+  [doctest] assertions: 11 | 10 passed | 1 failed |
+====================================================================================================
+TEST 781: omarchy_indexing_ops_tests  [Subprocess aborted]
+  781/799 Test #781: omarchy_indexing_ops_tests ....................................................................Subprocess aborted***Exception:   0.48 sec
+  /usr/include/c++/16.1.1/bits/shared_ptr_base.h:1423: _Tp* std::__shared_ptr_deref(_Tp*) [with _Tp = mlx::core::Primitive]: Assertion '__p != nullptr' failed.
+  /home/joshuawarren/mlx-omarchy-qual/.work/mlx/tests/omarchy/test_indexing_ops.cpp:911: FATAL ERROR: test case CRASHED: SIGABRT - Abort (abnormal termination) signal
+  [doctest] test cases:   43 |   42 passed | 1 failed | 1 skipped
+  [doctest] assertions: 1872 | 1872 passed | 0 failed |
+====================================================================================================
+TEST 799: omarchy_two_rank_harness  [Failed]
+  799/799 Test #799: omarchy_two_rank_harness ......................................................................***Failed    1.11 sec
+  /home/joshuawarren/mlx-omarchy-qual/.work/mlx/tests/omarchy/distributed/run-two-rank.sh: line 49:  6634 Aborted                    MLX_HOSTFILE="$RUN_DIR/hosts.json" MLX_RANK=0 MLX_OMARCHY_ALLOW_NON_APPLE=1 timeout 120 "$BIN" > "$RUN_DIR/rank0.log" 2>&1
+  /home/joshuawarren/mlx-omarchy-qual/.work/mlx/tests/omarchy/distributed/run-two-rank.sh: line 50:  6635 Aborted                    MLX_HOSTFILE="$RUN_DIR/hosts.json" MLX_RANK=1 MLX_OMARCHY_ALLOW_NON_APPLE=1 timeout 120 "$BIN" > "$RUN_DIR/rank1.log" 2>&1
+  two-rank harness FAILED; logs:
+  omarchy_two_rank_harness: /home/joshuawarren/mlx-omarchy-qual/.work/mlx/mlx/backend/cpu/distributed.cpp:101: virtual void mlx::core::distributed::ReduceScatter::eval_cpu(const std::vector<mlx::core::array>&, std::vector<mlx::core::array>&): Assertion `inputs.size() == 0' failed.
+  /home/joshuawarren/mlx-omarchy-qual/.work/mlx/tests/omarchy/distributed/test_two_rank.cpp:156: FATAL ERROR: test case CRASHED: SIGABRT - Abort (abnormal termination) signal
+  [doctest] test cases:  5 |  4 passed | 1 failed | 0 skipped
+  [doctest] assertions: 12 | 12 passed | 0 failed |
