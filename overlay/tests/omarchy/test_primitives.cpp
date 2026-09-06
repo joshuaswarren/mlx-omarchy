@@ -5031,6 +5031,119 @@ TEST_CASE("quantized matmul runs f16 and bf16 activations") {
   }
 }
 
+TEST_CASE("quantized matmul binds affine streams at storage offsets") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  const auto& capabilities = omarchy::device(0).capabilities();
+  if (!capabilities.shader_float16 ||
+      !capabilities.storage_buffer_16bit_access) {
+    skip("Vulkan device lacks required FP16 shader and storage features.");
+    return;
+  }
+  // Scales and biases bind as separate streams indexed from each
+  // buffer's own storage offset (aux_offset / aux_size item bases).
+  // F16 views at odd element offsets exercise both push-constant bases
+  // and used to trip the packed-copy 4-byte word-alignment refusal,
+  // which was retired with the staging copies.
+  constexpr int n = 20;
+  constexpr int k = 128;
+  constexpr int group_size = 64;
+  constexpr int bits = 4;
+  constexpr int groups = k / group_size;
+  constexpr int words_per_row = k / 8;
+  for (int m : {1, 7}) {
+    CAPTURE(m);
+    std::mt19937 gen(13);
+    std::uniform_real_distribution<float> dist(-2.0f, 2.0f);
+    std::vector<float> w_values(static_cast<size_t>(n) * k);
+    std::vector<float> x_values(static_cast<size_t>(m) * k);
+    for (auto& value : w_values) {
+      value = dist(gen);
+    }
+    for (auto& value : x_values) {
+      value = dist(gen);
+    }
+    HostQuantizedWeights host =
+        host_affine_quantize(w_values, n, k, group_size, bits);
+
+    auto round_trip = [&](const std::vector<float>& values, Dtype dtype) {
+      array device(
+          values.begin(),
+          Shape{static_cast<int>(values.size())},
+          float32);
+      return readback_f32(
+          stream, astype(astype(device, dtype, stream), float32, stream));
+    };
+    std::vector<float> x_rounded = round_trip(x_values, float16);
+    std::vector<float> scales_rounded = round_trip(host.scales, float16);
+    std::vector<float> biases_rounded = round_trip(host.biases, float16);
+    HostQuantizedWeights rounded_host = host;
+    rounded_host.scales = scales_rounded;
+    rounded_host.biases = biases_rounded;
+    std::vector<float> expected = host_quantized_matmul(
+        rounded_host, x_rounded, m, n, k, group_size, bits);
+
+    // Pad each stream by a distinct odd element count, cast to f16
+    // first, then slice: the views stay row-contiguous with storage
+    // offsets 2 and 6 bytes (item bases 1 and 3).
+    std::vector<float> scales_pad(1 + n * groups, 0.0f);
+    std::vector<float> biases_pad(3 + n * groups, 0.0f);
+    std::copy(
+        scales_rounded.begin(), scales_rounded.end(), scales_pad.begin() + 1);
+    std::copy(
+        biases_rounded.begin(), biases_rounded.end(), biases_pad.begin() + 3);
+    array w_words(host.words.begin(), Shape{n, words_per_row}, uint32);
+    array x(x_rounded.begin(), Shape{m, k}, float32);
+    array scales_padded(
+        scales_pad.begin(),
+        Shape{static_cast<int>(scales_pad.size())},
+        float32);
+    array biases_padded(
+        biases_pad.begin(),
+        Shape{static_cast<int>(biases_pad.size())},
+        float32);
+    array scales_view = reshape(
+        slice(
+            astype(scales_padded, float16, stream),
+            {1},
+            {1 + n * groups},
+            {1},
+            stream),
+        {n, groups},
+        stream);
+    array biases_view = reshape(
+        slice(
+            astype(biases_padded, float16, stream),
+            {3},
+            {3 + n * groups},
+            {1},
+            stream),
+        {n, groups},
+        stream);
+    array out = quantized_matmul(
+        astype(x, float16, stream),
+        w_words,
+        scales_view,
+        biases_view,
+        /*transpose=*/true,
+        group_size,
+        bits,
+        "affine",
+        stream);
+    std::string blocked = evaluation_error(out);
+    REQUIRE(blocked.empty());
+    std::vector<float> device_values = readback_f32(stream, out);
+    REQUIRE_EQ(device_values.size(), expected.size());
+    for (size_t index = 0; index < expected.size(); ++index) {
+      CHECK(
+          device_values[index] ==
+          doctest::Approx(expected[index]).epsilon(4e-3));
+    }
+  }
+}
+
 TEST_CASE("quantized matmul pins named errors outside the linear shape") {
   if (!compute_available()) {
     return;

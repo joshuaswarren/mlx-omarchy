@@ -13,11 +13,10 @@
 // reduce_size the group size, flags bit 0 the non-transposed layout,
 // shape[0] the batch count, shape[1] the per-batch w word stride (0
 // when a 2D w is shared across the batch), shape[2] the per-batch
-// scale/bias stride (0 when shared), shape[3] the total scale value
-// count ahead of the bias region in binding 2. Binding 2 packs the
-// group parameters as two halves of one buffer ([all scales | all
-// biases], group values per row per batch) so the five operand arrays
-// fit the four-binding pipeline limit.
+// scale/bias stride (0 when shared). Bindings 2/3 are the separate
+// scale and bias streams, each indexed from its own storage offset
+// (aux_offset the scale base item, aux_size the bias base item); no
+// packed [scales | biases] staging buffer exists.
 // With -DFP_MODE the kernel runs the non-affine modes instead: one
 // scale byte per group through a uint word view, fp4 e2m1 or fp8 e4m3
 // elements, no bias. FP_MODE is flat over the m x n output against a
@@ -68,14 +67,24 @@ layout(set = 0, binding = 1, std430) readonly buffer InputW {
 layout(set = 0, binding = 2, std430) readonly buffer ScaleBias {
   uint values[];
 } scale_bias;
-#else
-layout(set = 0, binding = 2, std430) readonly buffer ScaleBias {
-  STORAGE_TYPE values[];
-} scale_bias;
-#endif
 layout(set = 0, binding = 3, std430) writeonly buffer Output {
   STORAGE_TYPE values[];
 } output_data;
+#else
+// Affine: the scale and bias streams bind directly (bindings 2 and 3);
+// no packed [scales | biases] staging buffer exists. Each stream is
+// indexed from its own storage offset: aux_offset rides the scale base
+// item and aux_size the bias base item.
+layout(set = 0, binding = 2, std430) readonly buffer Scales {
+  STORAGE_TYPE values[];
+} scales;
+layout(set = 0, binding = 3, std430) readonly buffer Biases {
+  STORAGE_TYPE values[];
+} biases;
+layout(set = 0, binding = 4, std430) writeonly buffer Output {
+  STORAGE_TYPE values[];
+} output_data;
+#endif
 
 layout(push_constant) uniform Params {
   uint count;
@@ -169,9 +178,9 @@ uint q6_at(uint e, uint c0, uint c1, uint c2) {
 // slice [K, Np], packed N elements per row (as mx.quantize stores the
 // last axis), quantization groups along N; scale value
 // [k][n / group_size]. Both layouts pack the same per-slice word and
-// parameter counts, so w_batch_words/param_batch/scale_total arrive
-// from the host for the shared-2D case and the per-thread offsets
-// below just switch strides.
+// parameter counts, so w_batch_words/param_batch arrive from the host
+// for the shared-2D case and the per-thread offsets below just switch
+// strides.
 void main() {
   uint bits = params.operation;
   uint group_size = params.reduce_size;
@@ -188,7 +197,6 @@ void main() {
   uint batch = params.shape[0];
   uint w_batch_words = params.shape[1];
   uint param_batch = params.shape[2];
-  uint scale_total = params.shape[3];
   uint matrix = params.matrix_m * params.matrix_n;
   uint x_batch_rows = params.matrix_m * params.matrix_k;
 #ifdef FP_MODE
@@ -283,9 +291,10 @@ void main() {
       uint lane_shift = lane * bits;
       for (uint k = 0u; k < params.matrix_k; ++k) {
         float scale = LOAD_VALUE(
-            scale_bias.values[param_base + k * param_step]);
+            scales.values[param_base + k * param_step]);
         float bias = LOAD_VALUE(
-            scale_bias.values[param_base + scale_total + k * param_step]);
+            biases.values[params.aux_size + b * param_batch +
+                column / group_size + k * param_step]);
         uint q;
         if (is_byte_bits == 1u) {
           uint byte_addr =
@@ -321,11 +330,12 @@ void main() {
           column * words_per_row;
       uint param_base = params.aux_offset + b * param_batch +
           column * groups_per_row;
-      uint bias_base = param_base + scale_total;
+      uint bias_base = params.aux_size + b * param_batch +
+          column * groups_per_row;
       uint group = 0u;
       for (uint k = 0u; k < params.matrix_k; k += group_size) {
-        float scale = LOAD_VALUE(scale_bias.values[param_base + group]);
-        float bias = LOAD_VALUE(scale_bias.values[bias_base + group]);
+        float scale = LOAD_VALUE(scales.values[param_base + group]);
+        float bias = LOAD_VALUE(biases.values[bias_base + group]);
         ++group;
         for (uint pack = 0u; pack < packs_per_group; ++pack) {
           uint k_base = k + pack * pack_factor;

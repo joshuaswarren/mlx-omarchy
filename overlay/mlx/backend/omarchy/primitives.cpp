@@ -6270,43 +6270,13 @@ void QuantizedMatmul::eval_gpu(const std::vector<array>& inputs, array& out) {
     return;
   }
 
-  // Binding 2 packs the group parameters as two halves of one buffer:
-  // [all scales | all biases] with K / group_size values per w row. Two
-  // device copies build it with no extra kernel, and the encoder keeps
-  // the temp alive until the dispatch completes. vkCmdCopyBuffer needs
-  // 4-byte-aligned source offsets, so odd 16-bit views stay named.
-  if (scales_d.offset() % 4 != 0 || biases_d.offset() % 4 != 0) {
-    omarchy::unsupported(tag + " scales byte offset", out);
-  }
-  array combined(
-      Shape{static_cast<int>(2 * scales.size())}, scales.dtype(), nullptr, {});
-  array::Flags combined_flags;
-  combined_flags.contiguous = true;
-  combined_flags.row_contiguous = true;
-  combined_flags.col_contiguous = true;
-  combined.set_data(
-      allocate_omarchy(combined.nbytes()),
-      combined.size(),
-      Strides{1},
-      combined_flags,
-      0);
-  encoder.add_temporary(combined);
-  VkDeviceSize scale_bytes = static_cast<VkDeviceSize>(scales.nbytes());
-  encoder.add_temporary(scales_d);
-  encoder.add_temporary(biases_d);
-  encoder.add_temporary(combined);
-  encoder.copy_buffer(
-      binding(scales_d).buffer,
-      binding(combined).buffer,
-      scale_bytes,
-      static_cast<VkDeviceSize>(scales_d.offset()),
-      0);
-  encoder.copy_buffer(
-      binding(biases_d).buffer,
-      binding(combined).buffer,
-      scale_bytes,
-      static_cast<VkDeviceSize>(biases_d.offset()),
-      scale_bytes);
+  // The affine group parameters bind directly: binding 2 is the scale
+  // stream and binding 3 the bias stream, each indexed by the shaders
+  // from its own storage offset, pushed as the aux_offset / aux_size
+  // item bases below. No [scales | biases] staging buffer and no
+  // per-eval packing copies; checked_item_offset enforces item
+  // alignment, so odd 16-bit views are first-class and the old
+  // vkCmdCopyBuffer word-alignment refusal no longer applies.
 
   // Push-constant routing for the qmm shaders: operation carries bits,
   // reduce_size the group size, shape[0] the batch count, flags bit 0
@@ -6321,7 +6291,8 @@ void QuantizedMatmul::eval_gpu(const std::vector<array>& inputs, array& out) {
   params.output_size = params.count;
   params.lhs_offset = checked_item_offset(x_d, x_d.size(), tag, out);
   params.rhs_offset = checked_item_offset(w_d, w_d.size(), tag, out);
-  params.aux_size = checked_u32(combined.size(), tag, out);
+  params.aux_offset = checked_item_offset(scales_d, scales_d.size(), tag, out);
+  params.aux_size = checked_item_offset(biases_d, biases_d.size(), tag, out);
   params.matrix_m = checked_u32(m, tag, out);
   params.matrix_n = checked_u32(n, tag, out);
   params.matrix_k = checked_u32(k, tag, out);
@@ -6333,10 +6304,13 @@ void QuantizedMatmul::eval_gpu(const std::vector<array>& inputs, array& out) {
       checked_u32(w.ndim() == 3 ? w_d.size() / batch : 0, tag, out);
   params.shape[2] =
       checked_u32(scales.ndim() == 3 ? scales_d.size() / batch : 0, tag, out);
-  params.shape[3] = checked_u32(scales_d.size(), tag, out);
   params.flags = transpose_ ? 0u : 1u;
-  std::array<omarchy::ComputeBinding, 4> bindings{
-      binding(x_d), binding(w_d), binding(combined), binding(out)};
+  std::array<omarchy::ComputeBinding, 5> bindings{
+      binding(x_d),
+      binding(w_d),
+      binding(scales_d),
+      binding(biases_d),
+      binding(out)};
   // DecodeGemv dispatch: when lhs has a single row, the per-row GEMV
   // path replaces the 16x16 tile. The subgroup-reduction variant is
   // picked when the device reports subgroupSize == 32 AND the ARITHMETIC
