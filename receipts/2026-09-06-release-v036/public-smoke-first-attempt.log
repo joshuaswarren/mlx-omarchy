@@ -1,0 +1,21 @@
+Host: jwm1-linux
+Downloaded release URL: https://github.com/joshuaswarren/mlx-omarchy/releases/download/v0.3.6/mlx_omarchy-0.32.2.dev202609060917+218f876-cp314-cp314-linux_aarch64.whl
+Downloaded sha256: c7f36813cfbac0c635ebe0f60dbe4f5c55e9ca9cff8f1efeaa75dcaa4e0ec536
+Processing ./src/m1gpuqual-20260906-326e2ec6/release-v036-public/mlx_omarchy-0.32.2.dev202609060917+218f876-cp314-cp314-linux_aarch64.whl
+Installing collected packages: mlx-omarchy
+  Attempting uninstall: mlx-omarchy
+    Found existing installation: mlx-omarchy 0.32.2.dev202609060905+d2a79b0
+    Uninstalling mlx-omarchy-0.32.2.dev202609060905+d2a79b0:
+      Successfully uninstalled mlx-omarchy-0.32.2.dev202609060905+d2a79b0
+Successfully installed mlx-omarchy-0.32.2.dev202609060917+218f876
+usage: bench_decode.py [-h] [--model MODEL] [--prompt PROMPT]
+                       [--tokens TOKENS] [--wheel WHEEL] [--temp TEMP]
+                       [--seed SEED] [--warmup-tokens WARMUP_TOKENS]
+                       [--raw-prompt] [--self-test]
+bench_decode.py: error: --prompt is required
+Traceback (most recent call last):
+  File "<stdin>", line 23, in <module>
+  File "/usr/lib/python3.14/subprocess.py", line 578, in run
+    raise CalledProcessError(retcode, process.args,
+                             output=stdout, stderr=stderr)
+subprocess.CalledProcessError: Command '['/home/joshuawarren/src/m1gpuqual-20260906-326e2ec6/venv-test/bin/python', '/home/joshuawarren/src/m1gpuqual-20260906-326e2ec6/repo/scripts/bench_decode.py', '--model', '/home/joshuawarren/.cache/huggingface/hub/models--mlx-community--Qwen2.5-0.5B-Instruct-4bit/snapshots/a5339a4131f135d0fdc6a5c8b5bbed2753bbe0f3', '--tokens', '64', '--seed', '0', '--temp', '0', '--warmup-tokens', '4', '--wheel', '/home/joshuawarren/src/m1gpuqual-20260906-326e2ec6/release-v036-public/mlx_omarchy-0.32.2.dev202609060917+218f876-cp314-cp314-linux_aarch64.whl']' returned non-zero exit status 2.

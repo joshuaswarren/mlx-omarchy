@@ -1,7 +1,7 @@
 {
   "tag": "v0.3.6",
   "source": "218f8769",
-  "status": "local_wheels_and_changed_paths_verified_upload_gate_pending",
+  "status": "uploaded_assets_verified_and_public_m1_generation_passed",
   "gated_barriers_default": false,
   "performance_gain_claimed": false,
   "m1_suites": [
@@ -144,12 +144,24 @@
       "sha256": "c7f36813cfbac0c635ebe0f60dbe4f5c55e9ca9cff8f1efeaa75dcaa4e0ec536"
     }
   ],
-  "remaining": [
-    "uploaded asset verification",
-    "pinned generation on downloaded aarch64 release asset"
-  ],
+  "remaining": [],
   "performance_limitations": [
     "Only one paired M1 benchmark repeat; no performance conclusion",
     "Long-prompt4-bit Linux/native generated-ID digest mismatch persists"
-  ]
+  ],
+  "public_m1_generation": {
+    "wheel": "mlx_omarchy-0.32.2.dev202609060917+218f876-cp314-cp314-linux_aarch64.whl",
+    "provenance": "match",
+    "model_revision": "a5339a4131f135d0fdc6a5c8b5bbed2753bbe0f3",
+    "prompt": "Hi",
+    "prompt_tokens": 30,
+    "requested_tokens": 64,
+    "decode_tokens": 63,
+    "decode_tok_s": 28.4229,
+    "prefill_seconds": 0.389614,
+    "generated_ids_sha256_16": "348080e511122e41",
+    "repeats": 1,
+    "compile": "default; MLX_DISABLE_COMPILE unset",
+    "log": "public-m1-generation.log"
+  }
 }
