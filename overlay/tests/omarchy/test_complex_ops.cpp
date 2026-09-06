@@ -813,3 +813,25 @@ TEST_CASE("complex sign maps zero to itself and z to z/abs(z)") {
     CHECK(got[i].imag() == doctest::Approx(want.imag()).epsilon(1e-6));
   }
 }
+
+TEST_CASE("complex unary operations retain finite large-magnitude results") {
+  if (!compute_available()) return;
+  auto stream = gpu_stream();
+  std::vector<cdouble> hyper{{89.0, 0.25}, {-89.0, -0.25}};
+  auto h = complex_array(hyper, Shape{2});
+  check_unary_vs_host("sinh large", sinh(h, stream), stream, host_sinh, hyper);
+  check_unary_vs_host("cosh large", cosh(h, stream), stream, host_cosh, hyper);
+  std::vector<cdouble> trig{{0.5, 100.0}, {100.0, -0.5}, {float(1.5707963267948966), 0.0}};
+  auto t = complex_array(trig, Shape{3});
+  check_unary_vs_host("tan large", tan(t, stream), stream, host_tan, trig);
+  check_unary_vs_host("tanh large", tanh(t, stream), stream, host_tanh, trig);
+  std::vector<cdouble> large{{1e30, 1e30}, {-1e30, 1e30}};
+  auto z = complex_array(large, Shape{2});
+  check_unary_vs_host("log1p large", log1p(z, stream), stream, host_log1p, large);
+  auto signs = read_complex(sign(z, stream), stream);
+  for (size_t i = 0; i < large.size(); ++i) {
+    cdouble expected = large[i] / std::abs(large[i]);
+    CHECK(signs[i].real() == doctest::Approx(expected.real()).epsilon(1e-5));
+    CHECK(signs[i].imag() == doctest::Approx(expected.imag()).epsilon(1e-5));
+  }
+}

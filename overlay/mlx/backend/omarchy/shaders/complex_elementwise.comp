@@ -296,33 +296,47 @@ void main() {
         value = value_out;
         break;
       }
-      case 12: {
-        // sinh(a + bi) = (sinh a cos b, cosh a sin b); the glibc
-        // csinhf formula for normal-range arguments.
-        float sh = sinh(lhs.x);
-        float ch = cosh(lhs.x);
-        value = vec2(sh * cos(lhs.y), ch * sin(lhs.y));
-        break;
-      }
+      case 12:
       case 13: {
-        // cosh(a + bi) = (cosh a cos b, sinh a sin b); glibc ccoshf.
-        float ch = cosh(lhs.x);
-        float sh = sinh(lhs.x);
-        value = vec2(ch * cos(lhs.y), sh * sin(lhs.y));
+        float sx = sin(lhs.y);
+        float cx = cos(lhs.y);
+        if (abs(lhs.x) <= 1.0) {
+          float sh = sinh(lhs.x);
+          float ch = cosh(lhs.x);
+          value = params.operation == 12u
+              ? vec2(sh * cx, ch * sx) : vec2(ch * cx, sh * sx);
+        } else {
+          float h = exp(0.5 * abs(lhs.x));
+          float inverse = exp(-2.0 * abs(lhs.x));
+          float sh = 0.5 * (1.0 - inverse) * sign(lhs.x);
+          float ch = 0.5 * (1.0 + inverse);
+          vec2 factors = params.operation == 12u
+              ? vec2(sh * cx, ch * sx) : vec2(ch * cx, sh * sx);
+          value = (factors * h) * h;
+          if (factors.x == 0.0) value.x = factors.x;
+          if (factors.y == 0.0) value.y = factors.y;
+        }
         break;
       }
-      case 14: {
-        // tan(a + bi) = (sin 2a, sinh 2b) / (cos 2a + cosh 2b); the
-        // glibc ctanf core formula for moderate arguments.
-        float den = cos(2.0 * lhs.x) + cosh(2.0 * lhs.y);
-        value = vec2(sin(2.0 * lhs.x) / den, sinh(2.0 * lhs.y) / den);
-        break;
-      }
+      case 14:
       case 15: {
-        // tanh(a + bi) = (sinh 2a, sin 2b) / (cosh 2a + cos 2b); the
-        // glibc ctanhf core formula for moderate arguments.
-        float den = cosh(2.0 * lhs.x) + cos(2.0 * lhs.y);
-        value = vec2(sinh(2.0 * lhs.x) / den, sin(2.0 * lhs.y) / den);
+        bool tangent = params.operation == 14u;
+        float a = tangent ? lhs.y : lhs.x;
+        float b = tangent ? lhs.x : lhs.y;
+        vec2 pair;
+        float sb = sin(b);
+        float cb = cos(b);
+        if (abs(a) < 1.0) {
+          float sh = sinh(a);
+          float denominator = sh * sh + cb * cb;
+          pair = vec2(sh * cosh(a), sb * cb) / denominator;
+        } else {
+          float t = exp(-2.0 * abs(a));
+          float denominator = 1.0 + 2.0 * (cb * cb - sb * sb) * t + t * t;
+          pair = vec2(sign(a) * (1.0 - t * t),
+                      4.0 * sb * cb * t) / denominator;
+        }
+        value = tangent ? pair.yx : pair;
         break;
       }
       case 16: {
@@ -338,16 +352,21 @@ void main() {
           value = r == 0.0 ? vec2(0.0, theta)
                            : vec2(0.5 * log1p_f(r), theta);
         } else {
-          value = vec2(log(length(vec2(lhs.x + 1.0, lhs.y))), theta);
+          vec2 shifted = vec2(lhs.x + 1.0, lhs.y);
+          float scale = max(abs(shifted.x), abs(shifted.y));
+          float log_magnitude = scale == 0.0 || isinf(scale)
+              ? log(scale) : log(scale) + log(length(shifted / scale));
+          value = vec2(log_magnitude, theta);
         }
         break;
       }
       case 17: {
         // Upstream simd::Sign complex rule: sign(z) = z / |z| with
         // the zero element mapping to itself.
-        value = (lhs.x == 0.0 && lhs.y == 0.0)
-            ? lhs
-            : lhs / length(lhs);
+        float scale = max(abs(lhs.x), abs(lhs.y));
+        vec2 normalized = scale == 0.0 ? lhs : lhs / scale;
+        value = scale == 0.0 || isinf(scale)
+            ? normalized : normalized / length(normalized);
         break;
       }
       default:

@@ -7348,11 +7348,16 @@ TEST_CASE("Power keeps the host libm zero-base and integral contract") {
   std::vector<float> qv = {1.0f, 3.0f, 11.0f, 2.0f, -4.0f, 0.0f};
   array p(pv.begin(), Shape{6}, float32);
   array q(qv.begin(), Shape{6}, float32);
-  check_values(
-      power(p, q, stream),
-      {3.0f, 125.0f, 2048.0f, 56.25f, 1.0f, 1.0f},
-      stream,
-      0.0);
+  array pow_out = power(p, q, stream);
+  pow_out.eval();
+  omarchy::get_command_encoder(stream).synchronize();
+  const float* pow_values = pow_out.data<float>();
+  CHECK_EQ(pow_values[0], 3.0f);
+  CHECK_EQ(pow_values[1], 125.0f);
+  CHECK_EQ(pow_values[2], 2048.0f);
+  CHECK_EQ(pow_values[3], 56.25f);
+  CHECK_EQ(pow_values[4], 1.0f);
+  CHECK_EQ(pow_values[5], 1.0f);
 }
 
 TEST_CASE("int8 comparisons read one byte per element") {
