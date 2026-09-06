@@ -1,0 +1,433 @@
+{
+  "schema_version": 1,
+  "date": "2026-09-05",
+  "scope": {
+    "assignment": "Authorized M1 native MLX baseline preparation: persistent macOS boot, Sonoma 14.8.9 upgrade, toolchain preparation, exact pinned source build, and native provenance",
+    "linux_host": "joshuawarren@100.84.184.102",
+    "linux_hostname": "jwm1-linux",
+    "macos_lan_identity": "192.168.3.66",
+    "macos_known_hosts_file": "/tmp/jwm1-macos-known_hosts",
+    "mutations_performed": ["Copied GPT/ESP/GRUB recovery material to this CT", "Set the one-shot macOS boot target twice", "Rebooted Linux to macOS and back twice", "Started and stopped a bounded Time Machine backup attempt after authentication failed", "Set Macintosh HD as the persistent startup target", "Booted persistently into macOS", "Installed CMake 4.4.2 with Homebrew", "Started signed Sonoma installer transfer over read-only HTTP and rsync paths"],
+    "workloads_run": ["PRELIMINARY metadata-only bench matrix on macOS 13.7.8 with mlx 0.29.3; all model legs skipped because pinned Qwen snapshots were absent"],
+    "reboots_performed": ["Linux to macOS for prerequisite inspection", "macOS to Linux after prerequisite inspection", "Linux to macOS for backup attempt", "macOS to Linux after backup failure", "Linux to persistent Macintosh HD boot for authorized upgrade"],
+    "packages_installed": ["cmake 4.4.2"],
+    "compiler_sibling_reservation_released": false
+  },
+  "source_identity": {
+    "mlx_omarchy_worktree": "/home/joshuawarren/.config/superpowers/worktrees/mlx-omarchy/performance-expansion",
+    "mlx_omarchy_head": "8be106516fc375effebc703be2405b73a84bd69b",
+    "mlx_lock_sha256": "7c70dbbb282d8164f6e1b224c612be32194b9d4447fc65aa2708f3a428e76dec",
+    "mlx_version": "0.32.2",
+    "mlx_commit": "1f8e74e3f12f31365464a6867c6579f0e9b29d85",
+    "mlx_archive_url": "https://github.com/ml-explore/mlx/archive/1f8e74e3f12f31365464a6867c6579f0e9b29d85.tar.gz",
+    "mlx_archive_sha256": "cb988a5bdc38c798918d042b9b1c6edda3ccc5f23a2155138d3aa5c1b2acc301"
+  },
+  "native_mlx_prerequisites": {
+    "source_evidence": [
+      "mlx.lock",
+      "https://raw.githubusercontent.com/ml-explore/mlx/1f8e74e3f12f31365464a6867c6579f0e9b29d85/pyproject.toml",
+      "https://raw.githubusercontent.com/ml-explore/mlx/1f8e74e3f12f31365464a6867c6579f0e9b29d85/CMakeLists.txt"
+    ],
+    "python": ">=3.10",
+    "setuptools": ">=80",
+    "cmake": ">=3.25",
+    "host": "Apple silicon arm64",
+    "macos_deployment_target": ">=14.0",
+    "macos_sdk": ">=14.0",
+    "toolchain": "xcrun must provide the macOS SDK and Metal compiler",
+    "current_macos_observation_from_existing_receipt": "13.7.8 build 22H730; below the pinned source requirement",
+    "post_upgrade_checks": [
+      "sw_vers -productVersion",
+      "uname -m",
+      "xcrun -sdk macosx --show-sdk-version",
+      "xcrun -f metal",
+      "python3 -c 'import sys; print(sys.version); assert sys.version_info >= (3, 10)'"
+    ]
+  },
+  "live_linux": {
+    "kernel": "7.1.6-1-1-ARCH aarch64",
+    "distribution": "Omarchy 4.0.1rc2",
+    "root": "/dev/nvme0n1p5 subvolume @, btrfs, read-write",
+    "ane_device_tree": "absent",
+    "loaded_m1n1_stage1": "v1.5.2",
+    "loaded_m1n1_stage2": "v1.5.2",
+    "asahi_bless": "0.4.2"
+  },
+  "storage": {
+    "physical_disk_bytes": 2001111162880,
+    "partitions": [
+      {"node": "/dev/nvme0n1p1", "bytes": 524288000, "fstype": "apfs", "label": "iBootSystemContainer"},
+      {"node": "/dev/nvme0n1p2", "bytes": 1513757868032, "fstype": "apfs", "label": "Container", "role": "macOS container"},
+      {"node": "/dev/nvme0n1p3", "bytes": 2499805184, "fstype": "apfs"},
+      {"node": "/dev/nvme0n1p4", "bytes": 524288000, "fstype": "vfat", "role": "Asahi system ESP", "available_bytes": 388251648},
+      {"node": "/dev/nvme0n1p5", "bytes": 478435868672, "fstype": "btrfs", "role": "Linux root/home", "available_bytes": 409474244608},
+      {"node": "/dev/nvme0n1p6", "bytes": 5368664064, "fstype": "apfs", "label": "RecoveryOSContainer"}
+    ],
+    "unpartitioned_space": "No material gap; only 82 4096-byte sectors between p5 and p6",
+    "macos_apfs_free_bytes": 111689003008,
+    "macos_apfs_free_status": "Measured live in macOS. The signed Sonoma 14.8.9 InstallAssistant package is 13654790295 bytes; 111689003008 bytes are free before download, and the Asahi 38 GB reserve is present."
+  },
+  "backup_and_recovery": {
+    "linux_snapper": {
+      "config": "root only; NUMBER_LIMIT=5; timeline disabled",
+      "snapshots": [
+        {"number": 1, "created": "2026-08-24T16:10:19-05:00", "description": "4.0.1rc2-1", "readonly": true}
+      ],
+      "backup_timer": "disabled",
+      "timeline_timer": "disabled",
+      "scrub_timer": "disabled"
+    },
+    "off_device_linux_backup_evidence": "GPT edges, sfdisk layouts, full Asahi ESP, and Linux GRUB configuration were copied to /tmp/jwm1-native-preflight-recovery-20260905 on this CT; all seven payload checksums passed and SHA256SUMS hashes to ec5204f5e217e899090cb1008a10a2e504cdc46e45afdf39a6f7104e7b927bca.",
+    "macos_backup_evidence": "Time Machine backup attempt failed before transfer with authentication error 80 and was stopped cleanly at zero bytes. Joshua explicitly waived Time Machine backup for this experimental/test M1 and authorized the upgrade without backup. Off-host GPT/ESP/GRUB recovery material remains verified on this CT.",
+    "backup_requirement": "Waived by owner in the current conversation: experimental/test machine with no data of concern; no Time Machine backup required for this upgrade.",
+    "macos_local_snapshots": ["com.apple.TimeMachine.2026-09-05-072225.local", "com.apple.TimeMachine.2026-09-05-082243.local"],
+    "configured_time_machine_destinations": ["TMBackup smb://TimeMachine@192.168.8.2/TMBackup", "13M1TimeMachine local", "TimeMachineBackup afp://192.168.7.141/TimeMachineBackup"],
+    "recovery_assets": [
+      "Internal macOS APFS container retained",
+      "RecoveryOSContainer partition present",
+      "iBootSystemContainer present",
+      "Asahi system ESP mounted read-write",
+      "/boot/efi/grub-ane/grub.cfg.preoneshot",
+      "/boot/efi/grub-ane/grub.cfg.prepersistent",
+      "/boot/efi/grub-ane/grub.cfg.bak-20260903-130516"
+    ],
+    "limits": [
+      "The only Linux snapshot is on the same physical disk and does not protect the macOS container, partition table, ESP, or firmware",
+      "RecoveryOS presence was observed but recovery boot was not exercised",
+      "System-global Apple firmware moves forward with macOS updates and is not an ordinary in-place rollback surface"
+    ]
+  },
+  "boot_state": {
+    "asahi_bless_list": ["Macintosh HD", "Asahi Alarm Minimal (BTRFS)"],
+    "selected": "Asahi Alarm Minimal (BTRFS)",
+    "next_query": "Asahi Alarm Minimal (BTRFS)",
+    "verified_readback": "sudo asahi-bless --get-boot returned 'Asahi Alarm Minimal (BTRFS)' from Linux after the 2026-09-06T03:23:14Z reboot",
+    "documented_persistent_to_macos": "sudo asahi-bless --set-boot-macos -y",
+    "correction": "The earlier macOS boots were consumed one-shot selections; the persistent target never left Asahi. macOS cannot change the startup target unattended because 'sudo bless --setBoot' requires Joshua's password and 'bless --info' is unsupported for internal Apple silicon disks.",
+    "linux_internal_grub": {
+      "config": "/boot/efi/grub-ane/grub.cfg",
+      "default": 0,
+      "entry_0": "Omarchy Linux",
+      "entry_1": "Omarchy ANE test (STALE DT: boots 1 core only)",
+      "grubenv": "next_entry=",
+      "confirm_service": "active (exited), enabled"
+    }
+  },
+  "post_reboot_state": {
+    "rebooted_utc": "2026-09-06T03:23:14Z",
+    "linux_up_after_seconds": 120,
+    "hostname": "jwm1-linux",
+    "uname": "Linux jwm1-linux 7.1.6-1-1-ARCH #1 SMP PREEMPT_DYNAMIC Sat, 08 Aug 2026 17:14:04 +0000 aarch64 GNU/Linux",
+    "asahi_bless_get_boot": "Asahi Alarm Minimal (BTRFS)",
+    "vulkan_icds": ["asahi_icd.aarch64.json", "lvp_icd.aarch64.json", "virtio_icd.aarch64.json"],
+    "gpu": {"deviceName": "Apple M1 (G13G B1)", "driverName": "Honeykrisp", "apiVersion": "1.4.354"},
+    "macos_partitions_intact": true
+  },
+  "resume_plan": {
+    "blocker": "Apple silicon requires volume-owner credentials. startosinstall returned 'Error: failed to authorize for installation. Provide a password with --stdinpass or --passprompt.' The only cryptographic user is joshuawarren (GeneratedUID 0A000FB9-4908-4BCD-B672-D7706D990D64, Volume Owner: Yes, Secure token ENABLED).",
+    "staged_on_m1": {
+      "installer_app": "/Applications/Install macOS Sonoma.app (left in place)",
+      "mlx_source": "~/mlx-native/mlx-1f8e74e3.tar.gz, SHA-256 cb988a5bdc38c798918d042b9b1c6edda3ccc5f23a2155138d3aa5c1b2acc301, extracted",
+      "build_env": "~/mlx-native/.venv on CPython 3.11.16 with setuptools 84.0.0 and cmake 4.4.3",
+      "bench_scripts": "~/mlx-bench/scripts (bench_decode.py, bench_matrix.py, bench_matrix.json, mlx_provenance.py, collect_common.py)",
+      "toolchain_installed": "cmake 4.4.2 via Homebrew at /opt/homebrew/bin/cmake"
+    },
+    "resume_commands": [
+      "From Linux: sudo asahi-bless --set-boot-macos -y && sudo reboot",
+      "In macOS, with the password on stdin: sudo -n caffeinate -dimsu '/Applications/Install macOS Sonoma.app/Contents/Resources/startosinstall' --agreetolicense --nointeraction --user joshuawarren --stdinpass",
+      "After the final macOS boot: sw_vers -productVersion; uname -m; xcrun -sdk macosx --show-sdk-version; xcrun -f metal",
+      "If the SDK is still 13.x: sudo softwareupdate --install 'Command Line Tools for Xcode-15.2' or install the Sonoma Command Line Tools package",
+      "Build pinned MLX: cd ~/mlx-native/mlx-1f8e74e3f12f31365464a6867c6579f0e9b29d85 && ~/mlx-native/.venv/bin/python -m pip install . --no-build-isolation",
+      "Record provenance and run the matrix: cd ~/mlx-bench && ~/mlx-native/.venv/bin/python scripts/bench_matrix.py --mode metadata --out /tmp/native-mlx0.32.2.json"
+    ],
+    "model_prerequisite": "The pinned Qwen2.5 snapshots are absent from ~/.cache/huggingface/hub, so measured legs require downloading them first.",
+    "remaining_blockers_after_password": ["macOS 13.7.8 must become >=14", "macOS SDK is 13.1 and must become >=14"]
+  },
+  "native_build": {
+    "status": "COMPLETE: pinned MLX 0.32.2 runs natively on the M1 with Metal execution verified",
+    "macos": {"ProductVersion": "14.8.9", "BuildVersion": "23J631", "arch": "arm64"},
+    "host_toolchain_on_m1": {
+      "command_line_tools": "Command Line Tools for Xcode-15.3 installed non-interactively via softwareupdate",
+      "active_developer_dir": "/Library/Developer/CommandLineTools",
+      "sdk_version": "14.4",
+      "clang": "Apple clang 15.0.0 (clang-1500.3.9.4)",
+      "cmake": "4.4.2 (Homebrew) and 4.4.3 (uv env)"
+    },
+    "why_local_build_failed": [
+      "Xcode 14.2's Metal frontend is Metal 3.0 (__METAL_VERSION__ = 300); pinned kernels need Metal 3.1, failing with \"unknown type name 'bfloat'\".",
+      "Even with MLX_BUILD_METAL=OFF, Apple clang 15.0.0 rejects the pinned C++ with \"reference to local binding declared in enclosing function\", so no CPU-only fallback artifact exists on this host either.",
+      "The only App Store Xcode is 26.6 with Minimum OS 26.2, and macOS Tahoe was ruled out to protect the Asahi boot chain."
+    ],
+    "cross_build": {
+      "build_host": "16m1mbp (16M1MBP.local), macOS 26.6.2, Xcode 26.6, Apple clang 21.0.0, SDK 26.5, Metal toolchain v17.6.109.0",
+      "source_sha256": "cb988a5bdc38c798918d042b9b1c6edda3ccc5f23a2155138d3aa5c1b2acc301",
+      "build_env": "MACOSX_DEPLOYMENT_TARGET=14.0 PYPI_RELEASE=1 CMAKE_ARGS=-DCMAKE_OSX_DEPLOYMENT_TARGET=14.0, uv build --python 3.11 --wheel",
+      "cmake_report": ["Building on macOS 26.6.2", "Building with macOS 26.5 SDK", "Building for macOS 14.0", "Metal version: 310"],
+      "metal4_nax_kernels": "excluded by upstream gating, which requires deployment target >= 26.2",
+      "wheel": "mlx-0.32.2-cp311-cp311-macosx_14_0_arm64.whl",
+      "wheel_bytes": 43138175,
+      "wheel_sha256": "fde266e1634427f11346acdaccb9515a12048483187fb8b37037f04480802325",
+      "wheel_sha256_verified_on": ["16m1mbp", "this CT", "jwm1 macOS"],
+      "build_scope_on_16m1mbp": "uv-provisioned CPython 3.11.15 plus a /tmp build dir only; Xcode untouched"
+    },
+    "installed_binaries": {
+      "load_command": "LC_BUILD_VERSION platform 1 minos 14.0",
+      "core.cpython-311-darwin.so": "32a9f068ef30e66aa3f18aedef18cad199c40555e507bad1560296ca3327c76f",
+      "libmlx.dylib": "37b089749c6f4d0f250dd8913fdef6d376a129d5afc24dc1594aeeeabface460",
+      "libjaccl.dylib": "af9bc15678bae4a7e6f82f3cebd5201e8c2da44847753ec7d854cbdb117bcf4a",
+      "mlx.metallib": "a19618258e2a215d0d0ac3056174a6e066818bb6cdecb50062cc9316076ebe43"
+    },
+    "runtime_verification": {
+      "mx.__version__": "0.32.2",
+      "mx.metal.is_available()": true,
+      "ones64_matmul_element": 64.0,
+      "device_info": {"device_name": "Apple M1", "architecture": "applegpu_g13g", "memory_size": 17179869184, "max_recommended_working_set_size": 11453251584, "max_buffer_length": 8589934592, "resource_limit": 499000},
+      "provenance_json": "/tmp/native-mlx0.32.2.json on the M1; upstream mlx extension hash verified=match against RECORD"
+    },
+    "cleanup": "The temporary Metal 3.0 shims placed in /Library/Developer/CommandLineTools/usr/bin were removed after the wheel landed, so 'xcrun -f metal' again reports no metal utility and cannot silently produce a Metal 3.0 build; the installed wheel still runs (verified True and 32.0 after removal).",
+    "remaining_for_measured_legs": "The pinned Qwen2.5 snapshots are still absent from ~/.cache/huggingface/hub, and mlx-lm is not installed in ~/mlx-native/.venv."
+  },
+  "measured_native_legs": {
+    "date_utc": "2026-09-06",
+    "host_label": "jwm1-macos-14.8.9-native",
+    "harness": "scripts/bench_matrix.py --mode run from mlx-omarchy commit 9cef4d3da4eb2836b3f2eb7df37a15d195d203c3 (bench_matrix.py sha256 e3b540cc79deab9c2010720e6e526ddb8cc3bcd6a9e250778c2712f7019d7787, bench_decode.py sha256 9d5732ec72e1c09472f569270cd9786ea9b1385971ffd8338e06dc29c68d5442, bench_matrix.json sha256 df8eb9f3ed84182604379b7cde070ade706bfe590fbf83a35b1877cfaf43f258)",
+    "leg_command_shape": "bench_decode.py --model <pinned snapshot> --prompt <workload> --tokens <n> --temp 0.0 --seed 0 --warmup-tokens 4",
+    "runtime": {"mlx": "0.32.2 cross-built wheel", "mlx_lm": "0.31.3", "python": "3.11.16", "macos": "14.8.9 (23J631)", "metal_available": true},
+    "repeats": 5,
+    "compile_variants": {
+      "compile_enabled": "5 passes, files native-2026-09-06-rep1..rep5.json",
+      "compile_disabled": "5 passes with MLX_DISABLE_COMPILE=1, files native-2026-09-06-nc1..nc5.json; this variant matches the receipt baseline the harness documents"
+    },
+    "results_medians": {
+      "qwen25-0.5b-4bit:short-decode-32": {"decode_tok_s": 150.84, "prefill_tok_s": 294.1, "prompt_tokens": 30, "decode_tokens": 31, "generated_ids_sha256_16": "7fd25a869ff21678"},
+      "qwen25-0.5b-4bit:long-decode-128": {"decode_tok_s": 146.57, "prefill_tok_s": 1213.0, "prompt_tokens": 262, "decode_tokens": 127, "generated_ids_sha256_16": "254d73fd93164b98"},
+      "qwen25-0.5b-4bit:longctx-1024-decode-32": {"decode_tok_s": 140.25, "prefill_tok_s": 1837.7, "prompt_tokens": 1053, "decode_tokens": 31, "generated_ids_sha256_16": "7da83f06ec9f001d"},
+      "qwen25-0.5b-bf16:short-decode-32": {"decode_tok_s": 56.24, "prefill_tok_s": 232.6, "prompt_tokens": 30, "decode_tokens": 31, "generated_ids_sha256_16": "7fc0f968789b1882"},
+      "qwen25-0.5b-bf16:long-decode-128": {"decode_tok_s": 55.62, "prefill_tok_s": 1007.7, "prompt_tokens": 262, "decode_tokens": 127, "generated_ids_sha256_16": "407b7624ed1b3b29"},
+      "qwen25-0.5b-bf16:longctx-1024-decode-32": {"decode_tok_s": 54.25, "prefill_tok_s": 1653.1, "prompt_tokens": 1053, "decode_tokens": 31, "generated_ids_sha256_16": "ff502900d2a179a5"}
+    },
+    "medians_source": "MLX_DISABLE_COMPILE=1 variant; the compile-enabled variant agreed within 0.6% on every leg and produced identical token-ID hashes",
+    "determinism": "every leg produced one stable generated_ids_sha256_16 across all 10 passes",
+    "model_pins": {"qwen25-0.5b-4bit": "a5339a4131f135d0fdc6a5c8b5bbed2753bbe0f3", "qwen25-0.5b-bf16": "56d07e766edd7159fbe12ed12d9cf114bf38bf1e"},
+    "skipped_legs": "the 7B and 14B manifest models remain absent from the HF cache and were reported skipped, not measured",
+    "thermal_and_power": "AC power, battery 100% charged, and no thermal, performance, or CPU-power warning recorded before or after the runs",
+    "download_note": "the HF xet backend failed with a CAS client error on this link; downloads succeeded with HF_HUB_DISABLE_XET=1",
+    "artifacts_on_ct": "/tmp/native-baseline-2026-09-06/ holds all 12 run JSONs, both summaries, the per-pass logs, and native-mlx0.32.2.json; summary hashes 58b3afb525ff43b0203dfcbb1f43417aba9cae737882d9ffd75625787e76546b (no-compile) and 7c65225bbd2890884952da47b815d7d44f1f547c198becbf0ef39cbf509d2f50 (compile-enabled)"
+  },
+  "pre_install_state": {
+    "captured_utc": "2026-09-06T03:00:00Z",
+    "sw_vers": {"ProductName": "macOS", "ProductVersion": "13.7.8", "BuildVersion": "22H730"},
+    "installer_package": {
+      "path_on_m1": "/tmp/InstallAssistant-14.8.9.pkg (deleted after expansion; verified copy retained on CT)",
+      "bytes": 13654790295,
+      "sha1": "a8b796d408b5b3870be14161b43042b8bfca40f9",
+      "signature_status": "signed Apple Software",
+      "certificate_chain": ["Software Update", "Apple Software Update Certification Authority", "Apple Root CA"],
+      "expanded_app": "/Applications/Install macOS Sonoma.app",
+      "installer_pkg_result": "installer: The install was successful."
+    },
+    "container_free_bytes_before_startosinstall": 83479883776,
+    "startup_disk_query": "systemsetup -getstartupdisk returned /System/Volumes/Update/mnt1/WINNT; persistent target was set to Macintosh HD with asahi-bless",
+    "diskutil_partitions": [
+      "disk0s1 Apple_APFS_ISC 524.3 MB",
+      "disk0s2 Apple_APFS macOS container 1.5 TB",
+      "disk0s3 Apple_APFS 2.5 GB",
+      "disk0s4 EFI - ASAHI 524.3 MB",
+      "disk0s5 Linux Filesystem 478.4 GB",
+      "disk0s6 Apple_APFS_Recovery 5.4 GB"
+    ],
+    "asahi_volumes_present": ["Asahi Alarm Minimal (disk3s1)", "Asahi Alarm Minimal (disk3s2)", "Preboot disk3s3", "Recovery disk3s4"],
+    "macos_volumes_present": ["Macintosh HD disk4s1", "Preboot disk4s2", "Recovery disk4s3", "Data disk4s5", "VM disk4s6", "Nix Store disk4s7"]
+  },
+  "official_asahi_guidance": {
+    "sources": [
+      "https://asahilinux.org/docs/project/faq/",
+      "https://asahilinux.org/docs/platform/quirks/",
+      "https://social.treehouse.systems/@AsahiLinux/112454079096607233",
+      "https://discussion.fedoraproject.org/t/important-psa-update-your-m1n1-before-updating-to-macos-sonoma-14-5/117192"
+    ],
+    "requirements": [
+      "Keep an internal macOS installation because it is required to update or repair m1n1 and resize active Asahi installations",
+      "Keep 38 GB free for macOS upgrades in addition to the space required by the new OS",
+      "Before Sonoma 14.5 or later, update m1n1 stage 1 with the official installer; the published fix floor was v1.4.13",
+      "System-global firmware is updated with macOS and normally only moves forward"
+    ],
+    "host_compliance": {
+      "internal_macos_retained": true,
+      "recovery_container_present": true,
+      "m1n1_fix_floor_met": true,
+      "evidence": "Loaded stage 1 and stage 2 both report v1.5.2",
+      "free_space_reserve_verified": true
+    }
+  },
+  "go_no_go": {
+    "assessment": "IN PROGRESS: owner authorized Sonoma 14.8.9 installation without Time Machine backup. Persistent Macintosh HD boot and CMake 4.4.2 are complete; the signed installer package is transferring before signature verification and installation.",
+    "missing_prerequisites": [],
+    "native_baseline_blockers_after_backup": [
+      "Sonoma 14.8.9 InstallAssistant package transfer, exact-size check, and Apple Software Update signature verification are incomplete.",
+      "macOS is 13.7.8; pinned MLX requires macOS >=14.",
+      "The only Xcode is 14.2 with macOS SDK 13.1; pinned MLX requires SDK >=14.",
+      "The existing Python 3.11.16 uv environment contains mlx 0.29.3 and mlx-lm 0.30.2, not locked MLX 0.32.2."
+    ],
+    "not_missing": [
+      "m1n1 14.5 safeguard: loaded stage 1 and stage 2 are v1.5.2, newer than v1.4.13",
+      "Internal macOS and RecoveryOS partitions",
+      "One-shot Linux-to-macOS selector and verified return to persistent Asahi",
+      "111689003008 bytes free in the macOS APFS container",
+      "Signed Sonoma 14.8.9 build 23J631 for J293AP",
+      "Verified off-host GPT/ESP/GRUB recovery material",
+      "Exact MLX source/version/archive hash pin"
+    ]
+  },
+  "safe_upgrade_plan": [
+    "The GPT edges, sfdisk layouts, complete Asahi ESP, and Linux GRUB configuration are copied and checksum-verified at /tmp/jwm1-native-preflight-recovery-20260905 on this CT.",
+    "The one-shot macOS selector was exercised and the machine returned to persistent Asahi after inspection; repeat it only after the backup blocker is cleared.",
+    "Time Machine currently cannot provide a restorable backup path. Reconnect or create an off-device backup and require concrete latestbackup/listbackups output before installation.",
+    "Live macOS reports 111689003008 bytes free. The signed Sonoma 14.8.9 package is 13654790295 bytes and the 38 GB Asahi reserve is present.",
+    "Use signed macOS Sonoma 14.8.9 build 23J631, which explicitly supports J293AP and is the smallest major-version change that meets MLX's macOS 14 floor.",
+    "Because a major upgrade can use several reboots, do not assume the one-shot selector will keep choosing macOS throughout installation. Before starting the installer, select Macintosh HD as the temporary Startup Disk and keep local console access available.",
+    "Complete the macOS upgrade without deleting, resizing, repairing, or reformatting any Asahi partition.",
+    "After the final macOS boot, verify macOS >=14, arm64, SDK >=14, and xcrun Metal availability with the recorded post-upgrade checks.",
+    "Fetch the exact mlx.lock archive, verify SHA-256 cb988a5bdc38c798918d042b9b1c6edda3ccc5f23a2155138d3aa5c1b2acc301, build in a fresh Python >=3.10 environment with setuptools >=80 and CMake >=3.25, and record native provenance before any comparison.",
+    "Return to Asahi through Startup Options, then restore the persistent Asahi target by name with asahi-bless after Linux boots. Do not select the stale one-core ANE GRUB entry."
+  ],
+  "rollback_plan": [
+    "Before the macOS installer starts, a failed prerequisite check is a clean stop: power off and boot Asahi; the one-shot macOS selection does not replace the persistent Asahi target.",
+    "If macOS upgrades but the selected startup volume changes, hold the power button to open Startup Options and select Asahi Alarm Minimal (BTRFS). Once Linux boots, use 'sudo asahi-bless --set-boot \"Asahi Alarm Minimal (BTRFS)\" -y' and verify with 'sudo asahi-bless --get-boot'.",
+    "If Linux does not boot, use Startup Options to boot Macintosh HD or Options/RecoveryOS. Preserve all Asahi partitions; use the official Asahi installer from macOS for m1n1 repair rather than repartitioning.",
+    "If macOS data recovery is required, restore from the verified off-device backup. The same-disk Btrfs snapshot is not a macOS rollback.",
+    "Do not promise or attempt an ordinary firmware downgrade to Ventura. The Asahi platform guidance states system-global firmware normally moves only forward; a full DFU erase is a destructive last resort outside this plan."
+  ],
+  "live_macos_assessment": {
+    "hostname": "JW-M1.local",
+    "os": "macOS 13.7.8 build 22H730",
+    "architecture": "arm64",
+    "apfs_container_bytes": 1513757868032,
+    "apfs_used_bytes": 1402068865024,
+    "apfs_free_bytes": 111689003008,
+    "filevault": "off",
+    "external_physical_disks": [],
+    "xcode": "14.2 build 14C18",
+    "macos_sdk": "13.1",
+    "metal_compiler": "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/metal",
+    "cmake": "absent",
+    "system_python": "3.9.6",
+    "uv": "0.12.8",
+    "existing_uv_python": "3.11.16",
+    "existing_uv_mlx": "0.29.3",
+    "existing_uv_mlx_lm": "0.30.2",
+    "softwareupdate_list_full_installers": "Timed out after 180 seconds with no output; process confirmed gone",
+    "signed_catalog": {
+      "catalog_url": "https://swscan.apple.com/content/catalogs/others/index-15-14-13-12-10.16-10.15-10.14-10.13-10.12-10.11-10.10-10.9-mountainlion-lion-snowleopard-leopard.merged-1.sucatalog.gz",
+      "catalog_sha256": "7896d32e0553d300f44577c2ceadfbff6f4809bfccd8f4cf8bbfcbfbc86f3b95",
+      "installers": [
+        {"name": "macOS Sonoma", "version": "14.8.9", "build": "23J631", "product_id": "140-88558", "package_bytes": 13654790295, "supports_j293ap": true},
+        {"name": "macOS Sequoia", "version": "15.7.9", "build": "24G830", "product_id": "140-85388", "package_bytes": 15655958320, "supports_j293ap": true},
+        {"name": "macOS Tahoe", "version": "26.6.2", "build": "25G83", "product_id": "140-93587", "package_bytes": 18384624402, "supports_j293ap": true}
+      ]
+    }
+  },
+  "recovery_copy": {
+    "path": "/tmp/jwm1-native-preflight-recovery-20260905",
+    "bytes": 105943412,
+    "manifest": "/tmp/jwm1-native-preflight-recovery-20260905/SHA256SUMS",
+    "manifest_sha256": "ec5204f5e217e899090cb1008a10a2e504cdc46e45afdf39a6f7104e7b927bca",
+    "validation": "All seven payload checksums, both tar listings, and the sfdisk JSON validation passed"
+  },
+  "commands": [
+    {
+      "purpose": "SSH preflight",
+      "command": "ssh -o IdentitiesOnly=yes -o BatchMode=yes -o ConnectTimeout=8 joshuawarren@100.84.184.102 'hostname'",
+      "result": "jwm1-linux"
+    },
+    {
+      "purpose": "Storage and filesystem inventory",
+      "command": "ssh ... 'hostname; uname -srmo; lsblk -b -o NAME,PATH,SIZE,TYPE,FSTYPE,FSVER,FSAVAIL,FSUSE%,MOUNTPOINTS,PARTLABEL,PARTUUID; df -B1 -T / /boot; sudo -n btrfs filesystem usage -b /; sudo -n btrfs subvolume list -t /; sudo -n sfdisk --json /dev/nvme0n1'",
+      "result": "Linux 7.1.6-1-1-ARCH aarch64; APFS p2 1513757868032 bytes; Btrfs p5 478435868672 bytes with 409474244608 available; RecoveryOS p6 5368664064 bytes"
+    },
+    {
+      "purpose": "Asahi boot selector",
+      "command": "ssh ... 'sudo -n asahi-bless --list-volumes; asahi-bless --help'",
+      "result": "1) Macintosh HD; *2) Asahi Alarm Minimal (BTRFS); --next and --set-boot-macos supported"
+    },
+    {
+      "purpose": "Boot state and versions",
+      "command": "ssh ... 'sudo -n asahi-bless --get-boot; sudo -n asahi-bless --next --get-boot; asahi-bless --version; pacman -Q m1n1 uboot-asahi asahi-scripts asahi-fwextract; sudo -n grub-editenv /boot/efi/grub-ane/grubenv list'",
+      "result": "Current and next queries: Asahi Alarm Minimal (BTRFS); asahi-bless 0.4.2; m1n1 1.5.2-1; uboot-asahi 2026.04.asahi2-1; next_entry="
+    },
+    {
+      "purpose": "Loaded firmware and DT state",
+      "command": "ssh ... 'read /proc/device-tree/chosen/asahi,m1n1-stage1-version and stage2-version; inspect /proc/device-tree for ANE nodes'",
+      "result": "stage1=v1.5.2; stage2=v1.5.2; ANE DT absent; system ESP UUID 2dccadb2-c083-4c21-abae-5a29b442ea48"
+    },
+    {
+      "purpose": "Backup inventory",
+      "command": "ssh ... 'snapper list-configs; snapper list; systemctl list-timers --all; systemctl list-unit-files; btrfs filesystem show /; crontab and user timer checks'",
+      "result": "One same-disk root snapshot from 2026-08-24; timeline/backup/scrub timers disabled; no user timers; no cron implementation; single Btrfs device"
+    },
+    {
+      "purpose": "Project pin identity",
+      "command": "git -C /home/joshuawarren/.config/superpowers/worktrees/mlx-omarchy/performance-expansion rev-parse HEAD && sha256sum /home/joshuawarren/.config/superpowers/worktrees/mlx-omarchy/performance-expansion/mlx.lock",
+      "result": "8be106516fc375effebc703be2405b73a84bd69b; mlx.lock SHA-256 7c70dbbb282d8164f6e1b224c612be32194b9d4447fc65aa2708f3a428e76dec"
+    },
+    {
+      "purpose": "Off-host recovery capture",
+      "command": "Stream sfdisk layouts, first/last 1 MiB GPT edges, full /boot/efi, and GRUB configuration over SSH to /tmp/jwm1-native-preflight-recovery-20260905",
+      "result": "105943412 bytes; all seven payload checksums passed; manifest SHA-256 ec5204f5e217e899090cb1008a10a2e504cdc46e45afdf39a6f7104e7b927bca"
+    },
+    {
+      "purpose": "One-shot macOS boot",
+      "command": "sudo asahi-bless --next --set-boot-macos -y; verify next target; reboot",
+      "result": "Next target changed from Asahi Alarm Minimal (BTRFS) to Macintosh HD; macOS became reachable as JW-M1.local 13.7.8 build 22H730 arm64"
+    },
+    {
+      "purpose": "Live macOS storage and backup inspection",
+      "command": "diskutil apfs list; df -k /System/Volumes/Data; diskutil list external physical; tmutil destinationinfo/latestbackup/listbackups/listlocalsnapshots; network destination probes",
+      "result": "111689003008 APFS bytes free; no external physical disk; latestbackup could not mount destination; listbackups found no machine directory; two local snapshots; SMB host reachable, AFP host unreachable"
+    },
+    {
+      "purpose": "Live macOS toolchain inspection",
+      "command": "xcode-select -p; xcrun SDK/Metal checks; xcodebuild -version; clang/cmake/python/uv version and environment package checks",
+      "result": "Xcode 14.2; SDK 13.1; Metal compiler present; CMake absent; system Python 3.9.6; uv Python 3.11.16 with mlx 0.29.3 and mlx-lm 0.30.2"
+    },
+    {
+      "purpose": "Signed installer catalog",
+      "command": "Fetch and parse Apple's current public sucatalog and distribution metadata",
+      "result": "Sonoma 14.8.9 23J631, Sequoia 15.7.9 24G830, and Tahoe 26.6.2 25G83 are listed and each distribution includes J293AP"
+    },
+    {
+      "purpose": "Return to Linux",
+      "command": "sudo shutdown -r now from macOS; SSH Linux verification",
+      "result": "jwm1-linux; Linux 7.1.6-1-1-ARCH aarch64; current and next Asahi targets; m1n1 v1.5.2; ANE DT absent"
+    },
+    {
+      "purpose": "Fresh Time Machine backup attempt",
+      "command": "tmutil startbackup --block -d 41417843-9233-4C66-9BD3-8864B0242420",
+      "result": "Failed before data transfer: 0 bytes copied in 206.26 seconds; backupd reported NAConnectToServerSync error 80 (Authentication error) for smb://TimeMachine@192.168.8.2/TMBackup"
+    },
+    {
+      "purpose": "Stop failed backup and return to Linux",
+      "command": "tmutil stopbackup; verify Running=0; sudo shutdown -r now; verify Linux over SSH",
+      "result": "Backup Running=0; jwm1-linux; Linux 7.1.6-1-1-ARCH aarch64; current and next Asahi Alarm Minimal (BTRFS); ANE DT absent"
+    }
+  ],
+  "time_machine_backup_attempt": {
+    "date": "2026-09-05",
+    "destination_id": "41417843-9233-4C66-9BD3-8864B0242420",
+    "destination_url": "smb://TimeMachine@192.168.8.2/TMBackup",
+    "command": "tmutil startbackup --block -d 41417843-9233-4C66-9BD3-8864B0242420",
+    "status": "failed_before_transfer",
+    "duration_seconds": 206.26,
+    "backup_path": null,
+    "size_bytes": 0,
+    "verified_file_path": null,
+    "source_file_sha256": null,
+    "restored_file_sha256": null,
+    "exact_error": "NAConnectToServerSync failed with error: 80 (Authentication error) for url: smb://TimeMachine@192.168.8.2/TMBackup",
+    "exact_explanation": "Authentication error (80) - the correct user or password info may not exist in the System.keychain or the server may no longer allow access for this user.",
+    "keychain_observation": "A login.keychain network-password item exists for account TimeMachine and server 192.168.8.2, but backupd requires valid credentials in System.keychain or server acceptance; no password was extracted or guessed.",
+    "cleanup": "tmutil stopbackup returned the session to Running=0",
+    "completion_verification": "Not possible: no backup path, backup bytes, or restorable file exists because authentication failed before transfer"
+  },
+  "actual_model_identity": "openai-codex/gpt-5.6-sol"
+}

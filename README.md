@@ -57,15 +57,18 @@ python -m mlx_lm generate \
 
 ## Performance
 
-Measured on an Apple M1 (8-core GPU) running Omarchy Linux with Mesa Honeykrisp, `Qwen2.5-0.5B-Instruct-4bit`, greedy decoding, fixed output lengths:
+Same Apple M1 (8-core GPU), same model revisions, prompts, and output lengths, measured under both operating systems. Native is upstream MLX 0.32.2 on macOS 14.8.9 with Metal; Linux is mlx-omarchy on Omarchy with Mesa Honeykrisp. `Qwen2.5-0.5B-Instruct`, greedy decoding, fixed output lengths, medians of five runs.
 
-| Prompt tokens | Generated tokens | Prefill tok/s | Decode tok/s |
-|---|---|---|---|
-| 30 | 32 | 79 | 31.1 |
-| 262 | 128 | 188 | 28.3 |
-| 1053 | 32 | 198 | 23.5 |
+| Model | Prompt / generated tokens | Native decode tok/s | Linux decode tok/s | Native prefill tok/s | Linux prefill tok/s |
+|---|---|---|---|---|---|
+| 4-bit | 30 / 32 | 150.8 | 31.1 | 294 | 79 |
+| 4-bit | 262 / 128 | 146.6 | 28.3 | 1213 | 188 |
+| 4-bit | 1053 / 32 | 140.3 | 23.5 | 1838 | 198 |
+| bf16 | 30 / 32 | 56.2 | see note | 233 | see note |
 
-Full conditions and the raw runs are in [receipts/2026-09-04-m1-performance-gates.md](receipts/2026-09-04-m1-performance-gates.md). To reproduce, use the pinned-length harness (it suppresses EOS so every run decodes the same number of tokens):
+Linux decode runs at roughly one fifth of native and prefill at one sixth to one ninth; closing that gap is the current performance work. Both sides produced identical generated token IDs on the 4-bit long-prompt leg (hash `254d73fd93164b98`). bf16 on Linux runs eagerly (compiled bf16 graphs are refused, see below) and is not yet measured under the matched protocol. Native receipts: [receipts/native-baseline-2026-09-06](receipts/native-baseline-2026-09-06); Linux receipts: [receipts/2026-09-04-m1-performance-gates.md](receipts/2026-09-04-m1-performance-gates.md).
+
+To reproduce a leg, use the pinned-length harness (it suppresses EOS so every run decodes the same number of tokens):
 
 ```bash
 python3 scripts/bench_decode.py \
@@ -73,6 +76,8 @@ python3 scripts/bench_decode.py \
   --prompt "What is the capital of France? Answer in one word." \
   --tokens 64
 ```
+
+The full matrix runs through `scripts/bench_matrix.py --mode run` on either operating system.
 
 ## Feature parity
 
