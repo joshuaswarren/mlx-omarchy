@@ -4295,6 +4295,138 @@ TEST_CASE("Equal matches host references across dtypes and broadcast shapes") {
   nan_equal.eval();
   omarchy::get_command_encoder(stream).synchronize();
   CHECK_EQ(nan_equal.data<bool>()[0], false);
+
+  // uint64 compares through the CompareU64 blob: one 64-bit word per
+  // element. The third pair differs only in the high word, the read a
+  // 32-bit kernel cannot see.
+  std::vector<uint64_t> uv = {
+      0xa11cc311cb6acd70ull,
+      0x7a375ac3ebb533f3ull,
+      0x0000000100000000ull,
+      0xffffffffffffffffull};
+  std::vector<uint64_t> uv2 = {
+      0xa11cc311cb6acd70ull,
+      0x7a375ac3ebb533f3ull,
+      0x0000000100000001ull,
+      0xffffffffffffffffull};
+  array u(uv.begin(), Shape{4}, uint64);
+  array u2(uv2.begin(), Shape{4}, uint64);
+  array u_equal = equal(u, u2, stream);
+  u_equal.eval();
+  omarchy::get_command_encoder(stream).synchronize();
+  CHECK_EQ(u_equal.data<bool>()[0], true);
+  CHECK_EQ(u_equal.data<bool>()[1], true);
+  CHECK_EQ(u_equal.data<bool>()[2], false);
+  CHECK_EQ(u_equal.data<bool>()[3], true);
+
+  // sign on uint64 keeps the upstream unsigned rule (0 -> 0, else 1).
+  std::vector<uint64_t> sv = {
+      0xb400515a4f673424ull, 0x0000000000000000ull, 0x0000000000000001ull};
+  array s_in(sv.begin(), Shape{3}, uint64);
+  array s_out = sign(s_in, stream);
+  s_out.eval();
+  omarchy::get_command_encoder(stream).synchronize();
+  CHECK_EQ(s_out.data<uint64_t>()[0], 1u);
+  CHECK_EQ(s_out.data<uint64_t>()[1], 0u);
+  CHECK_EQ(s_out.data<uint64_t>()[2], 1u);
+  // all(equal(sign(x), expected)) exercises Equal on the bool output
+  // of the sign comparison chain, the shape array_equal builds.
+  CHECK(all(equal(sign(s_in, stream), s_out), false, stream).item<bool>());
+}
+
+TEST_CASE("bool Abs and Sign are the identity through the byte lanes") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+
+  // Upstream abs on bool is the identity and sign on bool is
+  // x != 0, which is the value itself for canonical 0/1 bytes.
+  std::vector<bool> values = {false, true, false, true, true, false, true};
+  array x(values.begin(), Shape{7}, bool_);
+  array a = abs(x, stream);
+  a.eval();
+  omarchy::get_command_encoder(stream).synchronize();
+  CHECK_EQ(a.dtype(), bool_);
+  const bool* a_bytes = a.data<bool>();
+  for (size_t index = 0; index < 7; ++index) {
+    CHECK_EQ(a_bytes[index], values[index]);
+  }
+  array s = sign(x, stream);
+  s.eval();
+  omarchy::get_command_encoder(stream).synchronize();
+  CHECK_EQ(s.dtype(), bool_);
+  const bool* s_bytes = s.data<bool>();
+  for (size_t index = 0; index < 7; ++index) {
+    CHECK_EQ(s_bytes[index], values[index]);
+  }
+}
+
+TEST_CASE("sin and cos on an empty argument return empty") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+
+  // The trig magnitude gate must not run its max() host check over a
+  // size-0 axis; upstream just returns the empty array.
+  array empty = array({});
+  array s = sin(empty, stream);
+  s.eval();
+  omarchy::get_command_encoder(stream).synchronize();
+  CHECK_EQ(s.size(), 0u);
+  CHECK_EQ(s.dtype(), float32);
+  array c = cos(empty, stream);
+  c.eval();
+  omarchy::get_command_encoder(stream).synchronize();
+  CHECK_EQ(c.size(), 0u);
+  CHECK_EQ(c.dtype(), float32);
+}
+
+TEST_CASE("RandomBits batched keys keep every key's elements in place") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  Stream cpu_stream = new_stream(Device::cpu);
+
+  // Widths 1 and 2 with per-key element counts that end mid-word
+  // under multiple keys: the regression behind the vmap
+  // take(out, array(1), 0) mismatch, where a word-granular layout let
+  // key i's masked tail word zero key i+1's leading bytes and shift
+  // every later element by one slot. Host reference: the same raw key
+  // words through the CPU stream, row by row.
+  std::vector<uint32_t> kv = {
+      0x01234567u, 0x89abcdefu,
+      0xdeadbeefu, 0x12345678u,
+      0x00000000u, 0xffffffffu};
+  array keys(kv.begin(), Shape{3, 2}, uint32);
+  for (int width : {1, 2, 4}) {
+    for (auto& row_length : {size_t(5), size_t(3), size_t(9)}) {
+      auto fn = [&](array k) {
+        return random::bits(
+            Shape{static_cast<int>(row_length)}, width, k, stream);
+      };
+      array out = vmap(fn, 0)(keys);
+      out.eval();
+      omarchy::get_command_encoder(stream).synchronize();
+      REQUIRE_EQ(out.size(), keys.shape(0) * row_length);
+      for (int row = 0; row < keys.shape(0); ++row) {
+        std::vector<uint32_t> row_kv{kv[row * 2], kv[row * 2 + 1]};
+        array row_key(row_kv.begin(), Shape{2}, uint32);
+        array ref = random::bits(
+            Shape{static_cast<int>(row_length)}, width, row_key, cpu_stream);
+        ref.eval();
+        mlx::core::synchronize(cpu_stream);
+        const uint8_t* got = out.data<uint8_t>();
+        const uint8_t* want = ref.data<uint8_t>();
+        size_t base = row * row_length * width;
+        for (size_t byte = 0; byte < row_length * width; ++byte) {
+          CHECK_EQ(got[base + byte], want[byte]);
+        }
+      }
+    }
+  }
 }
 
 TEST_CASE("isinf composes Equal and LogicalOr through Vulkan compute") {

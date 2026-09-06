@@ -811,12 +811,14 @@ void dispatch_comparison(
     dispatch_compare_bool_to(name, bool_op, lhs, rhs, out, encoder);
     return;
   }
-  // uint64 stays a named refusal here (CompareU64 is staged but its
-  // in-graph path is not yet proven); the narrow int family is proven.
+  // uint64 rides the shaderInt64-capable CompareU64 blob (value-tested
+  // against the CPU stream); the narrow int family uses the word-lane
+  // variants.
   if (lhs.dtype() != rhs.dtype() ||
       (lhs.dtype() != float32 && lhs.dtype() != float16 &&
        lhs.dtype() != bfloat16 && lhs.dtype() != int32 &&
        lhs.dtype() != uint32 && lhs.dtype() != int64 &&
+       lhs.dtype() != uint64 &&
        lhs.dtype() != int8 && lhs.dtype() != uint8 &&
        lhs.dtype() != int16 && lhs.dtype() != uint16 &&
        lhs.dtype() != complex64)) {
@@ -841,8 +843,9 @@ void dispatch_comparison(
     omarchy::unsupported(name + " bfloat16 capability", out);
   }
   // 64-bit loads and compares need the device feature; the compare
-  // shader uses int64_t storage directly.
-  if (lhs.dtype() == int64 && !capabilities.shader_int64) {
+  // shader uses int64_t/uint64_t storage directly.
+  if ((lhs.dtype() == int64 || lhs.dtype() == uint64) &&
+      !capabilities.shader_int64) {
     omarchy::unsupported(name + " int64 capability", out);
   }
 
@@ -890,6 +893,8 @@ void dispatch_comparison(
     kernel = omarchy::ComputeKernel::CompareU32;
   } else if (lhs.dtype() == int64) {
     kernel = omarchy::ComputeKernel::CompareI64;
+  } else if (lhs.dtype() == uint64) {
+    kernel = omarchy::ComputeKernel::CompareU64;
   } else if (lhs.dtype() == int8) {
     kernel = omarchy::ComputeKernel::CompareI8;
   } else if (lhs.dtype() == uint8) {
@@ -1109,8 +1114,9 @@ void dispatch_int_elementwise(
         dtype == uint16 || dtype == int64 || dtype == uint64;
   };
   // Bool rides the unsigned byte lanes (values are 0/1); only the
-  // logical ops compute: BitwiseAnd/Or/Xor, Add as the logical or, and
-  // Maximum/Minimum. Everything else keeps the named refusal.
+  // logical ops compute: BitwiseAnd/Or/Xor, Add as the logical or,
+  // Maximum/Minimum, plus Abs and Sign (upstream identity and x != 0,
+  // both the byte itself). Everything else keeps the named refusal.
   if (out.dtype() == bool_) {
     switch (operation) {
       case IntBitwiseAndOperation:
@@ -1119,6 +1125,8 @@ void dispatch_int_elementwise(
       case IntAddOperation:
       case IntMaximumOperation:
       case IntMinimumOperation:
+      case IntAbsOperation:
+      case IntSignOperation:
         break;
       default:
         omarchy::unsupported(name + " dtype", out);
@@ -2640,6 +2648,12 @@ void dispatch_complex_extract(
         #func, operation, inputs, out, out.primitive().stream());     \
   }
 void Abs::eval_gpu(const std::vector<array>& inputs, array& out) {
+  if (inputs.at(0).dtype() == bool_ && out.dtype() == bool_) {
+    // Upstream abs on bool is the identity; sign and abs of 0/1
+    // bytes are the byte itself.
+    dispatch_int_elementwise(name(), IntAbsOperation, inputs, out);
+    return;
+  }
   const array& in = inputs.at(0);
   if (in.dtype() == complex64) {
     // ops.cpp builds the primary array with the input dtype (so out
@@ -3544,6 +3558,12 @@ void trig_argument_gate(
     const std::vector<array>& inputs,
     const array& out) {
   Stream stream = out.primitive().stream();
+  // An empty argument has no magnitude to gate; the max over its
+  // size-0 axes would throw upstream. The elementwise kernel below
+  // treats the empty output as a no-op.
+  if (inputs.at(0).size() == 0) {
+    return;
+  }
   array magnitude = astype(
       max(abs(inputs.at(0), stream), stream), float32, stream);
   magnitude.eval();
@@ -5764,8 +5784,13 @@ void RandomBits::eval_gpu(const std::vector<array>& inputs, array& out) {
   auto& encoder = omarchy::get_command_encoder(out.primitive().stream());
   // Upstream random::bits maps width 4/2/1 to uint32/uint16/uint8
   // (mlx/random.cpp). One threefry word stream fills the output in all
-  // three cases; the shader masks the trailing partial word to the
-  // valid low bytes, matching eval_cpu's copy_remaining.
+  // three cases; the shader assembles each output word from the
+  // elements that own its bytes, so per-key regions that end mid-word
+  // stay byte-exact with eval_cpu's copy_remaining. A word-granular
+  // layout (words_per_key whole words per key) was wrong for width 2
+  // and 1 with several keys: key i's masked tail word zeroed key
+  // i+1's leading bytes and shifted every later element by one slot
+  // (the vmap take(out, array(1), 0) mismatch, 2026-09-06).
   if (!((width_ == 4 && out.dtype() == uint32) ||
         (width_ == 2 && out.dtype() == uint16) ||
         (width_ == 1 && out.dtype() == uint8))) {
@@ -5783,22 +5808,21 @@ void RandomBits::eval_gpu(const std::vector<array>& inputs, array& out) {
   }
   // Upstream layout: keys (N1, ..., NK, 2) and out
   // (N1, ..., NK, M1, M2, ...), so every key owns an equal number of
-  // output words.
+  // output elements.
   size_t num_keys = keys.size() / 2;
   if (keys.size() % 2 != 0 || out.size() % num_keys != 0) {
     omarchy::unsupported("RandomBits shape", out);
   }
-  size_t bytes_per_key = out.nbytes() / num_keys;
-  size_t words_per_key = (bytes_per_key + 3) / 4;
   uint32_t count =
-      checked_u32(words_per_key * num_keys, "RandomBits", out);
+      checked_u32((out.nbytes() + 3) / 4, "RandomBits", out);
   omarchy::ComputeParams params;
   params.count = count;
-  params.reduce_size = checked_u32(words_per_key, "RandomBits", out);
+  params.operation = static_cast<uint32_t>(width_);
+  params.reduce_size = checked_u32(out.size() / num_keys, "RandomBits", out);
   params.output_size = checked_u32(num_keys, "RandomBits", out);
-  params.rhs_size = checked_u32(bytes_per_key, "RandomBits", out);
   params.lhs_offset = checked_item_offset(keys_d, keys_d.size(), "RandomBits", out);
-  params.output_offset = checked_item_offset(out, out.size(), "RandomBits", out);
+  params.output_offset = checked_item_offset(out, out.size(), "RandomBits", out) *
+      static_cast<uint32_t>(width_) / 4u;
   std::array<omarchy::ComputeBinding, 2> bindings{
       binding(keys_d), binding(out)};
   encoder.dispatch_compute(
@@ -5853,6 +5877,24 @@ void Reduce::eval_gpu(const std::vector<array>& inputs, array& out) {
         axes,
         encoder,
         select_anyall_kernel(input.dtype()));
+    return;
+  }
+
+  // Upstream bool Min/Max/Prod map onto the logical reductions
+  // (mlx/backend/metal/reduce.cpp remap_reduce_types): max = any,
+  // min = all, prod = all, each returning bool.
+  if (input.dtype() == bool_ && out.dtype() == bool_ &&
+      (reduce_type == Reduce::Max || reduce_type == Reduce::Min ||
+       reduce_type == Reduce::Prod)) {
+    dispatch_reduce_general(
+        operation_name,
+        reduce_type == Reduce::Max ? ReduceAnyOperation
+                                   : ReduceAllOperation,
+        input,
+        out,
+        axes,
+        encoder,
+        select_anyall_kernel(bool_));
     return;
   }
 
@@ -7296,6 +7338,12 @@ OMARCHY_UNARY(Sigmoid, SigmoidOperation)
 // (unsigned 0/1) through the integer kernel. Everything else keeps the
 // named float-dtype rejection from dispatch_elementwise.
 void Sign::eval_gpu(const std::vector<array>& inputs, array& out) {
+  if (inputs.at(0).dtype() == bool_ && out.dtype() == bool_) {
+    // Upstream sign on bool is x != 0, which is the value itself for
+    // the 0/1 byte lanes.
+    dispatch_int_elementwise(name(), IntSignOperation, inputs, out);
+    return;
+  }
   if (is_int_elementwise_dtype(out.dtype())) {
     dispatch_int_elementwise(name(), IntSignOperation, inputs, out);
     return;
