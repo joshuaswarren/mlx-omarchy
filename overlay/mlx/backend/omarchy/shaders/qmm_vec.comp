@@ -82,14 +82,24 @@ layout(set = 0, binding = 1, std430) readonly buffer InputW {
 layout(set = 0, binding = 2, std430) readonly buffer ScaleBias {
   uint values[];
 } scale_bias;
-#else
-layout(set = 0, binding = 2, std430) readonly buffer ScaleBias {
-  STORAGE_TYPE values[];
-} scale_bias;
-#endif
 layout(set = 0, binding = 3, std430) writeonly buffer Output {
   STORAGE_TYPE values[];
 } output_data;
+#else
+// Affine: the scale and bias streams bind directly (bindings 2 and 3);
+// no packed [scales | biases] staging buffer exists. Each stream is
+// indexed from its own storage offset: aux_offset rides the scale base
+// item and aux_size the bias base item (push-constant routing below).
+layout(set = 0, binding = 2, std430) readonly buffer Scales {
+  STORAGE_TYPE values[];
+} scales;
+layout(set = 0, binding = 3, std430) readonly buffer Biases {
+  STORAGE_TYPE values[];
+} biases;
+layout(set = 0, binding = 4, std430) writeonly buffer Output {
+  STORAGE_TYPE values[];
+} output_data;
+#endif
 
 layout(push_constant) uniform Params {
   uint count;
@@ -119,8 +129,9 @@ shared float reduce_scratch[256];
 
 // Push-constant routing: operation carries bits (2, 3, 4, 5, 6, or 8),
 // reduce_size the group size, flags bit 0 the non-transposed layout.
-// Affine binding 2 packs the group parameters as two halves of one
-// buffer ([all scales | all biases], group values per row). FP_MODE
+// Affine bindings 2/3 are the separate scale/bias streams; aux_offset
+// is the scale base item and aux_size the bias base item (storage
+// offsets in elements), shape[2] the per-batch param stride. FP_MODE
 // binding 2 is the scale-byte stream (one byte per group, aux_offset =
 // byte offset into it).
 
@@ -207,7 +218,6 @@ void main() {
 #endif
   uint w_batch_words = params.shape[1];
   uint param_batch = params.shape[2];
-  uint scale_total = params.shape[3];
   uint column = gl_WorkGroupID.x * COLUMNS_PER_GROUP + column_slot;
   bool column_active = column < params.matrix_n;
   for (uint b = 0u; b < batch; ++b) {
@@ -299,6 +309,8 @@ void main() {
         uint lane_shift = lane_n * bits;
         uint param_step = params.matrix_n / group_size;
         uint param_col = p_base + column / group_size;
+        uint bias_col =
+            params.aux_size + b * param_batch + column / group_size;
         for (uint k = lane_in_slot; k < params.matrix_k; k += LANES) {
           uint q;
           if (is_byte_bits) {
@@ -329,17 +341,17 @@ void main() {
           float x_value = LOAD_VALUE(
               input_x.values[params.lhs_offset + b * params.matrix_k + k]);
           accumulator += x_value *
-              (LOAD_VALUE(scale_bias.values[param_col + k * param_step]) *
+              (LOAD_VALUE(scales.values[param_col + k * param_step]) *
                     float(q) +
-                LOAD_VALUE(scale_bias.values[
-                    param_col + scale_total + k * param_step]));
+                LOAD_VALUE(biases.values[bias_col + k * param_step]));
         }
       } else {
         uint words_per_row = params.matrix_k * bits / 32u;
         uint groups_per_row = params.matrix_k / group_size;
         uint w_base = w_row + column * words_per_row;
         uint scale_base = p_base + column * groups_per_row;
-        uint bias_base = p_base + scale_total + column * groups_per_row;
+        uint bias_base =
+            params.aux_size + b * param_batch + column * groups_per_row;
         for (uint k = lane_in_slot; k < params.matrix_k; k += LANES) {
           uint group = k / group_size;
           float x_value = LOAD_VALUE(
@@ -373,9 +385,9 @@ void main() {
             dequant = float(q);
           }
           accumulator += x_value *
-              (LOAD_VALUE(scale_bias.values[scale_base + group]) *
+              (LOAD_VALUE(scales.values[scale_base + group]) *
                     dequant +
-                  LOAD_VALUE(scale_bias.values[bias_base + group]));
+                  LOAD_VALUE(biases.values[bias_base + group]));
         }
       }
 #endif

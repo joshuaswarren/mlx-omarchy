@@ -21,8 +21,9 @@
 // dequantized weight to the storage dtype here would change results.
 // Push-constant routing matches qmm.comp exactly (operation carries
 // bits, reduce_size the group size, flags bit 0 the non-transposed
-// layout; affine binding 2 = [all scales | all biases], FP_MODE
-// binding 2 the scale-byte stream). matrix_k is always a multiple of
+// layout; affine bindings 2/3 the separate scale/bias streams with
+// aux_offset/aux_size their base items, FP_MODE binding 2 the
+// scale-byte stream). matrix_k is always a multiple of
 // group_size (16, 32, 64, or 128, checked in dispatch), hence of the
 // 16-wide k-tile in the transposed layouts; only the non-transposed
 // affine layouts can leave a partial k-tile, which bound-checks.
@@ -67,14 +68,24 @@ layout(set = 0, binding = 1, std430) readonly buffer InputW {
 layout(set = 0, binding = 2, std430) readonly buffer ScaleBias {
   uint values[];
 } scale_bias;
-#else
-layout(set = 0, binding = 2, std430) readonly buffer ScaleBias {
-  STORAGE_TYPE values[];
-} scale_bias;
-#endif
 layout(set = 0, binding = 3, std430) writeonly buffer Output {
   STORAGE_TYPE values[];
 } output_data;
+#else
+// Affine: the scale and bias streams bind directly (bindings 2 and 3);
+// no packed [scales | biases] staging buffer exists. Each stream is
+// indexed from its own storage offset: aux_offset rides the scale base
+// item and aux_size the bias base item.
+layout(set = 0, binding = 2, std430) readonly buffer Scales {
+  STORAGE_TYPE values[];
+} scales;
+layout(set = 0, binding = 3, std430) readonly buffer Biases {
+  STORAGE_TYPE values[];
+} biases;
+layout(set = 0, binding = 4, std430) writeonly buffer Output {
+  STORAGE_TYPE values[];
+} output_data;
+#endif
 
 layout(push_constant) uniform Params {
   uint count;
@@ -186,7 +197,6 @@ void main() {
 #endif
   uint w_batch_words = params.shape[1];
   uint param_batch = params.shape[2];
-  uint scale_total = params.shape[3];
   uint x_batch_rows = params.matrix_m * params.matrix_k;
   uint m_tiles = params.matrix_m / TILE +
       uint(params.matrix_m % TILE != 0u);
@@ -285,7 +295,9 @@ void main() {
           uint scale_base = p_slice +
               (non_transposed ? column / group_size
                               : column * groups_per_row);
-          uint bias_base = scale_base + scale_total;
+          uint bias_base = params.aux_size + b * param_batch +
+              (non_transposed ? column / group_size
+                              : column * groups_per_row);
           float scale;
           float bias;
           uint q;
@@ -293,9 +305,9 @@ void main() {
             uint n_bytes_per_row = params.matrix_n * bits / 8u;
             uint group_bytes =
                 (group_size / pack_factor) * bytes_per_pack;
-            scale = LOAD_VALUE(scale_bias.values[
+            scale = LOAD_VALUE(scales.values[
                 scale_base + k * (params.matrix_n / group_size)]);
-            bias = LOAD_VALUE(scale_bias.values[
+            bias = LOAD_VALUE(biases.values[
                 bias_base + k * (params.matrix_n / group_size)]);
             if (is_byte_bits) {
               uint byte_addr = w_slice * 4u + k * n_bytes_per_row +
@@ -328,9 +340,9 @@ void main() {
                   value_mask;
             }
           } else {
-            scale = LOAD_VALUE(scale_bias.values[
+            scale = LOAD_VALUE(scales.values[
                 scale_base + k / group_size]);
-            bias = LOAD_VALUE(scale_bias.values[
+            bias = LOAD_VALUE(biases.values[
                 bias_base + k / group_size]);
             if (is_byte_bits) {
               uint byte_addr = (w_slice + column * words_per_row) *
