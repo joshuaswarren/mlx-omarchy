@@ -19,14 +19,17 @@
 //   {"k":"d",...}     per compute dispatch: kernel enum, groups,
 //                     params.count, host record cost, raw GPU ticks (t0
 //                     written after the pre-dispatch barrier, t1 after the
-//                     dispatch, both at BOTTOM_OF_PIPE), and the binding
+//                     dispatch, both at BOTTOM_OF_PIPE), the binding
 //                     list (buffer, offset, range) used as the dependency
-//                     proxy between consecutive dispatches
+//                     proxy between consecutive dispatches, and "bar" (1
+//                     when the dispatch recorded a dependency barrier,
+//                     0 when gated tracking skipped it)
 //   {"k":"s",...}     per submission: host cost of submit() and the host
 //                     clock at submit end
 //   {"k":"j",...}     per join: host cost of the completion-timeline wait
 //                     and of the noncoherent invalidate
-//   {"k":"end",...}   at exit: totals
+//   {"k":"end",...}   at exit: totals incl. barrier decisions ("barriers",
+//                     "barriers_skipped"; transfer/fill decisions included)
 //
 // GPU ticks convert to nanoseconds with meta.period_ns; tick wraparound
 // wraps at 2^valid_bits. Kernel enum values map to names by their
@@ -143,9 +146,15 @@ class GpuProfiler {
     vk::device_table().CmdResetQueryPool(cmd, s.pool, 0, kPoolQueries);
   }
 
-  // Called after the pre-dispatch barrier and before the dispatch itself,
-  // so t0 lands when prior GPU work (including the barrier) completes.
-  void before_dispatch(const void* owner, int slot, VkCommandBuffer cmd) {
+  // Called after the pre-dispatch barrier (when one was recorded) and
+  // before the dispatch itself, so t0 lands when prior GPU work
+  // (including the barrier) completes. barrier reports whether this
+  // dispatch recorded a dependency barrier (gated mode may skip it).
+  void before_dispatch(
+      const void* owner,
+      int slot,
+      VkCommandBuffer cmd,
+      bool barrier) {
     if (out_ == nullptr) {
       return;
     }
@@ -156,6 +165,7 @@ class GpuProfiler {
     SlotCtx& s = ctx->slots[slot];
     PendingDispatch p{};
     p.skipped = s.cursor + 2 > kPoolQueries;
+    p.bar = barrier ? 1u : 0u;
     if (p.skipped) {
       dropped_++;
     } else {
@@ -164,6 +174,19 @@ class GpuProfiler {
           cmd, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, s.pool, s.cursor);
     }
     s.pending.push_back(p);
+  }
+
+  // Dependency-barrier decision counter (dispatch pre/post and
+  // transfer/fill decisions; excludes TAPE_FULL_BARRIERS diagnostics).
+  void on_barrier(bool emitted) {
+    if (out_ == nullptr) {
+      return;
+    }
+    if (emitted) {
+      barriers_emitted_++;
+    } else {
+      barriers_skipped_++;
+    }
   }
 
   // Called right after the dispatch (before the post-dispatch barrier), so
@@ -283,6 +306,9 @@ class GpuProfiler {
     size_t nb{0};
     bool skipped{false};
     uint32_t tape{0};
+    // 1 when this dispatch recorded a dependency barrier, 0 when the
+    // gated tracker skipped it.
+    uint32_t bar{0};
   };
 
   // Per-ring-slot recording state: one query pool per slot so an in-flight
@@ -309,12 +335,15 @@ class GpuProfiler {
     }
     emitf("{\"k\":\"end\",\"t\":%" PRIu64 ",\"dispatches\":%" PRIu64
           ",\"dropped\":%u,\"submissions\":%" PRIu64 ",\"joins\":%" PRIu64
+          ",\"barriers\":%" PRIu64 ",\"barriers_skipped\":%" PRIu64
           "}\n",
           host_ns(),
           dispatches_,
           dropped_,
           submissions_,
-          joins_);
+          joins_,
+          barriers_emitted_,
+          barriers_skipped_);
     std::fclose(out_);
     out_ = nullptr;
   }
@@ -357,7 +386,8 @@ class GpuProfiler {
         continue;
       }
       emitf("{\"k\":\"d\",\"s\":%" PRIu64 ",\"e\":%u,\"op\":%u,\"n\":%u"
-            ",\"gx\":%u,\"gy\":%u,\"gz\":%u,\"h\":%" PRIu64 ",\"tp\":%u",
+            ",\"gx\":%u,\"gy\":%u,\"gz\":%u,\"h\":%" PRIu64 ",\"tp\":%u"
+            ",\"bar\":%u",
             sub,
             p.kernel,
             p.operation,
@@ -366,7 +396,8 @@ class GpuProfiler {
             p.gy,
             p.gz,
             p.host_cost,
-            p.tape);
+            p.tape,
+            p.bar);
       if (p.tick_index + 1 < queries &&
           ticks[p.tick_index + 1] >= ticks[p.tick_index]) {
         emitf(",\"t0\":%" PRIu64 ",\"t1\":%" PRIu64,
@@ -445,6 +476,8 @@ class GpuProfiler {
   uint64_t submissions_{0};
   uint64_t joins_{0};
   uint32_t dropped_{0};
+  uint64_t barriers_emitted_{0};
+  uint64_t barriers_skipped_{0};
 };
 
 // Namespace-level accessor used by encoder.cpp call sites.
@@ -476,7 +509,8 @@ class GpuProfiler {
 
   void attach(const void*, const Device&) {}
   void on_begin(const void*, int, VkCommandBuffer, uint64_t) {}
-  void before_dispatch(const void*, int, VkCommandBuffer) {}
+  void before_dispatch(const void*, int, VkCommandBuffer, bool) {}
+  void on_barrier(bool) {}
   void after_dispatch(
       const void*,
       int,

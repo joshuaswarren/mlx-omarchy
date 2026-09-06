@@ -25,15 +25,18 @@ namespace mlx::core::omarchy {
 // is BATCHED: primitive evals append to an open command buffer and the
 // buffer is submitted when a node/work budget is reached, a flush is
 // demanded (semaphore operation, host read), or the in-flight ring is
-// exhausted. Batching is order-safe because every dispatch records a full
-// pre+post pipeline barrier, every submission waits on the completion-
-// timeline value of this stream's previous submission (Vulkan defines no
-// cross-submission dependency without a wait), and cross-submission waits
-// use ALL_COMMANDS stage masks, so merging submissions weakens no
-// dependency; it removes the per-eval host join between them. Temporaries
-// and completion handlers released per submission still release exactly
-// when that submission's GPU work finishes, via the device completion
-// timeline.
+// exhausted. Batching is order-safe because every dispatch is separated
+// from its neighbors by a full dependency (MLX_OMARCHY_GATED_BARRIERS=0,
+// the default: unconditional pre+post memory barriers per dispatch;
+// =1: a barrier only when the node's ranges overlap work recorded since
+// the last barrier, tracked per open batch), every submission waits on
+// the completion-timeline value of this stream's previous submission
+// (Vulkan defines no cross-submission dependency without a wait) and
+// cross-submission waits use ALL_COMMANDS stage masks, so merging
+// submissions weakens no dependency; it removes the per-eval host join
+// between them. Temporaries and completion handlers released per
+// submission still release exactly when that submission's GPU work
+// finishes, via the device completion timeline.
 //
 // Command buffers come from a small ring so the device can execute one
 // batch while the host records the next; the host blocks only when every
@@ -248,6 +251,30 @@ class MLX_API CommandEncoder {
   // left the pending state.
   void join_last_completion();
   void submit();
+
+  // Dependency-gated barrier state (MLX_OMARCHY_GATED_BARRIERS, default
+  // off). Buffer ranges recorded by the open batch since the last
+  // barrier: a node skips its barrier only when neither its reads nor
+  // its writes overlap an unsynced range. Dispatch bindings carry no
+  // read/write split, so they are tracked as both. head_synced_ is the
+  // batch-head dependency: the first node of a freshly begun command
+  // buffer always records a barrier so host writes and the allocator's
+  // noncoherent flush keep exactly the visibility the unconditional
+  // path provides.
+  struct TrackedRange {
+    VkBuffer buffer;
+    VkDeviceSize offset;
+    VkDeviceSize end;
+  };
+  static bool gated_barriers();
+  bool batch_needs_barrier(
+      std::span<const TrackedRange> reads,
+      std::span<const TrackedRange> writes) const;
+  void record_dependency_barrier();
+  void reset_dependency_tracking();
+  std::vector<TrackedRange> tracked_reads_;
+  std::vector<TrackedRange> tracked_writes_;
+  bool head_synced_{false};
 
   Device& device_;
   VkCommandPool pool_{VK_NULL_HANDLE};
