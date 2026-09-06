@@ -16,6 +16,14 @@
 #include "argreduce_f32.h"
 #include "argreduce_bf16.h"
 #include "argreduce_f16.h"
+#include "argreduce_i8.h"
+#include "argreduce_u8.h"
+#include "argreduce_i16.h"
+#include "argreduce_u16.h"
+#include "argreduce_i32.h"
+#include "argreduce_u32.h"
+#include "argreduce_i64.h"
+#include "argreduce_u64.h"
 #include "cast_int_w1_w1.h"
 #include "cast_int_w1_w2.h"
 #include "cast_int_w1_w4.h"
@@ -132,6 +140,13 @@
 #include "reduce_general_i32.h"
 #include "reduce_general_u32.h"
 #include "reduce_general_bool.h"
+#include "reduce_general_i8.h"
+#include "reduce_general_u8.h"
+#include "reduce_general_i16.h"
+#include "reduce_general_u16.h"
+#include "reduce_general_i64.h"
+#include "reduce_general_u64.h"
+#include "reduce_general_complex.h"
 #include "logsumexp_bf16.h"
 #include "logsumexp_f16.h"
 #include "logsumexp_f32.h"
@@ -166,6 +181,14 @@
 #include "scan_general_f32.h"
 #include "scan_general_i32.h"
 #include "scan_general_u32.h"
+#include "scan_general_bool.h"
+#include "scan_general_i8.h"
+#include "scan_general_u8.h"
+#include "scan_general_i16.h"
+#include "scan_general_u16.h"
+#include "scan_general_i64.h"
+#include "scan_general_u64.h"
+#include "scan_general_complex.h"
 #include "searchsorted_bf16.h"
 #include "searchsorted_f16.h"
 #include "searchsorted_f32.h"
@@ -350,6 +373,22 @@ ShaderBytes shader_bytes(ComputeKernel kernel) {
       return {argreduce_f16, argreduce_f16_size};
     case ComputeKernel::ArgReduceBF16:
       return {argreduce_bf16, argreduce_bf16_size};
+    case ComputeKernel::ArgReduceI8:
+      return {argreduce_i8, argreduce_i8_size};
+    case ComputeKernel::ArgReduceU8:
+      return {argreduce_u8, argreduce_u8_size};
+    case ComputeKernel::ArgReduceI16:
+      return {argreduce_i16, argreduce_i16_size};
+    case ComputeKernel::ArgReduceU16:
+      return {argreduce_u16, argreduce_u16_size};
+    case ComputeKernel::ArgReduceI32:
+      return {argreduce_i32, argreduce_i32_size};
+    case ComputeKernel::ArgReduceU32:
+      return {argreduce_u32, argreduce_u32_size};
+    case ComputeKernel::ArgReduceI64:
+      return {argreduce_i64, argreduce_i64_size};
+    case ComputeKernel::ArgReduceU64:
+      return {argreduce_u64, argreduce_u64_size};
     case ComputeKernel::ArangeF32:
       return {arange_f32, arange_f32_size};
     case ComputeKernel::ArangeF16:
@@ -452,6 +491,20 @@ ShaderBytes shader_bytes(ComputeKernel kernel) {
       return {reduce_general_u32, reduce_general_u32_size};
     case ComputeKernel::ReduceGeneralBool:
       return {reduce_general_bool, reduce_general_bool_size};
+    case ComputeKernel::ReduceGeneralI8:
+      return {reduce_general_i8, reduce_general_i8_size};
+    case ComputeKernel::ReduceGeneralU8:
+      return {reduce_general_u8, reduce_general_u8_size};
+    case ComputeKernel::ReduceGeneralI16:
+      return {reduce_general_i16, reduce_general_i16_size};
+    case ComputeKernel::ReduceGeneralU16:
+      return {reduce_general_u16, reduce_general_u16_size};
+    case ComputeKernel::ReduceGeneralI64:
+      return {reduce_general_i64, reduce_general_i64_size};
+    case ComputeKernel::ReduceGeneralU64:
+      return {reduce_general_u64, reduce_general_u64_size};
+    case ComputeKernel::ReduceGeneralComplex:
+      return {reduce_general_complex, reduce_general_complex_size};
     case ComputeKernel::AnyAllF32:
       return {anyall_f32, anyall_f32_size};
     case ComputeKernel::AnyAllF16:
@@ -474,6 +527,22 @@ ShaderBytes shader_bytes(ComputeKernel kernel) {
       return {scan_general_i32, scan_general_i32_size};
     case ComputeKernel::ScanGeneralU32:
       return {scan_general_u32, scan_general_u32_size};
+    case ComputeKernel::ScanGeneralBool:
+      return {scan_general_bool, scan_general_bool_size};
+    case ComputeKernel::ScanGeneralI8:
+      return {scan_general_i8, scan_general_i8_size};
+    case ComputeKernel::ScanGeneralU8:
+      return {scan_general_u8, scan_general_u8_size};
+    case ComputeKernel::ScanGeneralI16:
+      return {scan_general_i16, scan_general_i16_size};
+    case ComputeKernel::ScanGeneralU16:
+      return {scan_general_u16, scan_general_u16_size};
+    case ComputeKernel::ScanGeneralI64:
+      return {scan_general_i64, scan_general_i64_size};
+    case ComputeKernel::ScanGeneralU64:
+      return {scan_general_u64, scan_general_u64_size};
+    case ComputeKernel::ScanGeneralComplex:
+      return {scan_general_complex, scan_general_complex_size};
     case ComputeKernel::HadamardF32:
       return {hadamard_f32, hadamard_f32_size};
     case ComputeKernel::HadamardF16:

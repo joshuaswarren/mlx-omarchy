@@ -101,6 +101,48 @@ void check_uint32_values(
   }
 }
 
+void check_int8_values(
+    array value,
+    const std::vector<int8_t>& expected,
+    const Stream& stream) {
+  value.eval();
+  sync(stream);
+  REQUIRE_EQ(value.dtype(), int8);
+  REQUIRE_EQ(value.size(), expected.size());
+  const int8_t* values = value.data<int8_t>();
+  for (size_t index = 0; index < expected.size(); ++index) {
+    CHECK_EQ(values[index], expected[index]);
+  }
+}
+
+void check_uint8_values(
+    array value,
+    const std::vector<uint8_t>& expected,
+    const Stream& stream) {
+  value.eval();
+  sync(stream);
+  REQUIRE_EQ(value.dtype(), uint8);
+  REQUIRE_EQ(value.size(), expected.size());
+  const uint8_t* values = value.data<uint8_t>();
+  for (size_t index = 0; index < expected.size(); ++index) {
+    CHECK_EQ(values[index], expected[index]);
+  }
+}
+
+void check_int64_values(
+    array value,
+    const std::vector<int64_t>& expected,
+    const Stream& stream) {
+  value.eval();
+  sync(stream);
+  REQUIRE_EQ(value.dtype(), int64);
+  REQUIRE_EQ(value.size(), expected.size());
+  const int64_t* values = value.data<int64_t>();
+  for (size_t index = 0; index < expected.size(); ++index) {
+    CHECK_EQ(values[index], expected[index]);
+  }
+}
+
 void check_bool_values(
     array value,
     const std::vector<bool>& expected,
@@ -1129,17 +1171,20 @@ TEST_CASE("out-of-scope dtypes and shapes keep their named errors") {
   }
   Stream stream = gpu_stream();
 
-  // int64 reductions stay rejected.
+  // int64 Sum/Prod reduce in their own width behind shaderInt64.
   array wide({1, 2, 3}, {3}, int64);
-  CHECK(evaluation_error(prod(wide, std::vector<int>{0}, false, stream))
-            .find("Prod dtype") != std::string::npos);
+  check_int64_values(
+      prod(wide, std::vector<int>{0}, false, stream), {6}, stream);
   check_int32_values(
       sum(array({1, 2, 3}, {3}, int32), 0, false, stream), {6}, stream);
 
-  // LogAddExp scans stay rejected.
+  // LogAddExp scans accumulate through the float log-sum-exp.
   array x({1.0f, 2.0f}, {2}, float32);
-  CHECK(evaluation_error(logcumsumexp(x, 0, false, true, stream))
-            .find("Scan LogAddExp") != std::string::npos);
+  check_values(
+      logcumsumexp(x, 0, false, true, stream),
+      {1.0f, 2.0f + std::log1p(std::exp(-1.0f))},
+      stream,
+      1e-5);
   check_int32_values(
       sum(array({4, 5, 6}, {3}, int32), 0, false, stream), {15}, stream);
 
@@ -1443,4 +1488,129 @@ TEST_CASE("suffix reductions cover rows larger than the driver trip cap") {
   eval(mm);
   sync(stream);
   CHECK(std::isnan(mm.data<float>()[0]));
+}
+
+TEST_CASE("narrow integers sum in 32 bits and keep Min/Max width") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  // The upstream contract accumulates narrow sums in int32: 120 + 120
+  // wraps an int8 accumulator but stays exact through the int32 lane.
+  std::vector<int8_t> narrow_bits = {120, 120};
+  array narrow(narrow_bits.begin(), Shape{2}, int8);
+  check_int32_values(sum(narrow, 0, false, stream), {240}, stream);
+  std::vector<int8_t> prod_bits = {3, 5};
+  array prod_vals(prod_bits.begin(), Shape{2}, int8);
+  check_int32_values(prod(prod_vals, 0, false, stream), {15}, stream);
+  // Min/Max keep the input width, negative values included.
+  std::vector<int8_t> signed_bits = {-128, 3, 127};
+  array signed_vals(signed_bits.begin(), Shape{3}, int8);
+  check_int8_values(min(signed_vals, 0, false, stream), {-128}, stream);
+  check_int8_values(max(signed_vals, 0, false, stream), {127}, stream);
+  std::vector<uint8_t> unsigned_bits = {200, 3, 250};
+  array unsigned_vals(unsigned_bits.begin(), Shape{3}, uint8);
+  check_uint8_values(min(unsigned_vals, 0, false, stream), {3}, stream);
+  check_uint8_values(max(unsigned_vals, 0, false, stream), {250}, stream);
+  std::vector<uint8_t> sum_bits = {250, 10};
+  array sum_vals(sum_bits.begin(), Shape{2}, uint8);
+  check_uint32_values(sum(sum_vals, 0, false, stream), {260}, stream);
+}
+
+TEST_CASE("64-bit and complex64 reductions match host references") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  std::vector<int64_t> big_bits = {4, 2, 1};
+  array big(big_bits.begin(), Shape{3}, int64);
+  check_int64_values(sum(big, 0, false, stream), {7}, stream);
+  check_int64_values(
+      max(array({-4, 9, 2}, {3}, int64), 0, false, stream), {9}, stream);
+  std::vector<uint64_t> ubits = {1ull << 40u, 3};
+  array uvals(ubits.begin(), Shape{2}, uint64);
+  auto usum = sum(uvals, 0, false, stream);
+  usum.eval();
+  sync(stream);
+  CHECK_EQ(usum.data<uint64_t>()[0], (1ull << 40u) + 3u);
+
+  // complex64 Sum/Prod/Min/Max: lexicographic compare, numpy NaN rule.
+  std::vector<float> ca_bits = {1.0f, 1.0f, 2.0f, -1.0f, 0.5f, 2.0f};
+  array ca_flat(ca_bits.begin(), Shape{6}, float32);
+  array ca = view(ca_flat, complex64, stream);
+  ca.eval();
+  sync(stream);
+  array csum = sum(ca, 0, false, stream);
+  csum.eval();
+  sync(stream);
+  auto packed = csum.data<float>();
+  CHECK_EQ(packed[0], doctest::Approx(3.5f));
+  CHECK_EQ(packed[1], doctest::Approx(2.0f));
+  array cmax = max(ca, 0, false, stream);
+  cmax.eval();
+  sync(stream);
+  auto maxp = cmax.data<float>();
+  CHECK_EQ(maxp[0], doctest::Approx(2.0f));
+  CHECK_EQ(maxp[1], doctest::Approx(-1.0f));
+}
+
+TEST_CASE("integer argreduces pick exact native comparisons") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  array i16_vals({-300, 5, -301}, {3}, int16);
+  check_uint32_values(argmin(i16_vals, 0, false, stream), {2}, stream);
+  check_uint32_values(argmax(i16_vals, 0, false, stream), {1}, stream);
+  array i64_vals({5, -9, 9}, {3}, int64);
+  check_uint32_values(argmin(i64_vals, 0, false, stream), {1}, stream);
+  check_uint32_values(argmax(i64_vals, 0, false, stream), {2}, stream);
+  array u64_vals({7, 1, 3}, {3}, uint64);
+  check_uint32_values(argmin(u64_vals, 0, false, stream), {1}, stream);
+}
+
+TEST_CASE("scans cover int64, complex64, and bool cumsum widths") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  std::vector<int64_t> wide_bits = {1, 2, 3, -4};
+  array wide(wide_bits.begin(), Shape{4}, int64);
+  check_int64_values(cumsum(wide, 0, false, true, stream), {1, 3, 6, 2},
+                     stream);
+  check_int64_values(cumprod(wide, 0, false, true, stream), {1, 2, 6, -24},
+                     stream);
+
+  std::vector<float> ca_bits = {1.0f, 0.0f, 2.0f, 1.0f};
+  array ca_flat(ca_bits.begin(), Shape{4}, float32);
+  array ca = view(ca_flat, complex64, stream);
+  array cc = cumsum(ca, 0, false, true, stream);
+  cc.eval();
+  sync(stream);
+  const float* got = cc.data<float>();
+  CHECK_EQ(got[0], doctest::Approx(1.0f));
+  CHECK_EQ(got[1], doctest::Approx(0.0f));
+  CHECK_EQ(got[2], doctest::Approx(3.0f));
+  CHECK_EQ(got[3], doctest::Approx(1.0f));
+
+  std::vector<int32_t> bbits = {1, 1, 0, 1};
+  array braw(bbits.begin(), Shape{4}, int32);
+  array bvals = astype(braw, bool_, stream);
+  check_int32_values(
+      cumsum(bvals, 0, false, true, stream), {1, 2, 2, 3}, stream);
+  check_bool_values(
+      cummax(bvals, 0, false, true, stream), {true, true, true, true},
+      stream);
+}
+
+TEST_CASE("reductions over flip views materialize negative strides") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  array base({1.0f, 2.0f, 3.0f, 4.0f}, {4}, float32);
+  array flipped = flip(base, 0, stream);
+  check_values(sum(flipped, 0, false, stream), {10.0f}, stream);
+  check_values(max(flipped, 0, false, stream), {4.0f}, stream);
+  check_values(min(flipped, 0, false, stream), {1.0f}, stream);
 }

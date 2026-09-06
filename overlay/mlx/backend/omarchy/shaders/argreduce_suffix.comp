@@ -3,37 +3,129 @@
 //
 // ArgMin/ArgMax over the last axis. One workgroup handles one row with a
 // shared-memory (value, index) reduction. Matches the upstream Metal kernel:
-// the running pair starts at +/-infinity with index 0, a candidate wins only
-// on a strict compare, ties keep the smaller index (first occurrence), and a
-// NaN never wins because every comparison against it is false. All compares
-// run in float32 for every storage dtype.
+// the running pair starts at the type's extreme with index 0, a candidate
+// wins only on a strict compare, ties keep the smaller index (first
+// occurrence), and a NaN never wins because every comparison against it is
+// false. Floats compare in float32 for every storage dtype; integers
+// compare in their exact signed or unsigned width so 64-bit values stay
+// distinct.
 
 #version 460
-
-#ifdef USE_FP16
+#if defined(USE_FP16) || defined(USE_BF16) || defined(USE_I16) ||              \
+    defined(USE_U16)
 #extension GL_EXT_shader_16bit_storage : require
+#endif
+// Requested unconditionally: the byte/half lane helpers below carry
+// uint16_t signatures in every variant.
+#extension GL_EXT_shader_explicit_arithmetic_types_int16 : require
+#if defined(USE_I64) || defined(USE_U64)
+#extension GL_EXT_shader_explicit_arithmetic_types_int64 : require
+#endif
+// every integer storage so 64-bit values never collide in a 24-bit
+// mantissa. Byte inputs ride the gather-style word load and the
+// constant-shift select chain proven in scatter.comp; half inputs bind a
+// uint16_t storage view.
+#ifdef USE_FP16
 #extension GL_EXT_shader_explicit_arithmetic_types_float16 : require
 #define STORAGE_TYPE float16_t
-#define LOAD_VALUE(x) float(x)
+#define VAL_TYPE float
+#define ACC_LOWEST uintBitsToFloat(0xff800000u)
+#define ACC_HIGHEST uintBitsToFloat(0x7f800000u)
+#define LOAD_AT(addr) float(input_data.values[addr])
 #elif defined(USE_BF16)
-#extension GL_EXT_shader_16bit_storage : require
 #extension GL_EXT_shader_explicit_arithmetic_types_int16 : require
 #define STORAGE_TYPE uint16_t
-#define LOAD_VALUE(x) uintBitsToFloat(uint(x) << 16u)
+#define VAL_TYPE float
+#define ACC_LOWEST uintBitsToFloat(0xff800000u)
+#define ACC_HIGHEST uintBitsToFloat(0x7f800000u)
+#define LOAD_AT(addr) uintBitsToFloat(uint(input_data.values[addr]) << 16u)
+#elif defined(USE_I8)
+#define BYTE 1
+#define VAL_TYPE int
+#define ACC_LOWEST (-2147483647 - 1)
+#define ACC_HIGHEST 2147483647
+#define LOAD_AT(addr) byte_extend(input_data.values[(addr) >> 2u], (addr) & 3u)
+#elif defined(USE_U8)
+#define BYTE 1
+#define VAL_TYPE uint
+#define ACC_LOWEST 0u
+#define ACC_HIGHEST 0xffffffffu
+#define LOAD_AT(addr) byte_lane(input_data.values[(addr) >> 2u], (addr) & 3u)
+#elif defined(USE_I16)
+#define VAL_TYPE int
+#define ACC_LOWEST (-2147483647 - 1)
+#define ACC_HIGHEST 2147483647
+#define LOAD_AT(addr) half_extend(input_data.values[addr])
+#elif defined(USE_U16)
+#define VAL_TYPE uint
+#define ACC_LOWEST 0u
+#define ACC_HIGHEST 0xffffffffu
+#define LOAD_AT(addr) uint(input_data.values[addr])
+#elif defined(USE_I32)
+#define STORAGE_TYPE int
+#define VAL_TYPE int
+#define ACC_LOWEST (-2147483647 - 1)
+#define ACC_HIGHEST 2147483647
+#define LOAD_AT(addr) input_data.values[addr]
+#elif defined(USE_U32)
+#define STORAGE_TYPE uint
+#define VAL_TYPE uint
+#define ACC_LOWEST 0u
+#define ACC_HIGHEST 0xffffffffu
+#define LOAD_AT(addr) input_data.values[addr]
+#elif defined(USE_I64)
+#define STORAGE_TYPE int64_t
+#define VAL_TYPE int64_t
+#define ACC_LOWEST (-9223372036854775807L - 1)
+#define ACC_HIGHEST 9223372036854775807L
+#define LOAD_AT(addr) input_data.values[addr]
+#elif defined(USE_U64)
+#define STORAGE_TYPE uint64_t
+#define VAL_TYPE uint64_t
+#define ACC_LOWEST 0UL
+#define ACC_HIGHEST 0xffffffffffffffffUL
+#define LOAD_AT(addr) input_data.values[addr]
 #else
 #define STORAGE_TYPE float
-#define LOAD_VALUE(x) float(x)
+#define VAL_TYPE float
+#define ACC_LOWEST uintBitsToFloat(0xff800000u)
+#define ACC_HIGHEST uintBitsToFloat(0x7f800000u)
+#define LOAD_AT(addr) float(input_data.values[addr])
 #endif
 
 layout(local_size_x = 256) in;
 
 layout(set = 0, binding = 0, std430) readonly buffer Input {
+#ifdef BYTE
+  uint values[];
+#elif defined(USE_I16) || defined(USE_U16)
+  uint16_t values[];
+#else
   STORAGE_TYPE values[];
+#endif
 } input_data;
 layout(set = 0, binding = 2, std430) writeonly buffer Output {
   uint values[];
 } output_data;
 
+// Honeykrisp miscompiles shift-then-mask byte extraction with a
+// data-dependent shift amount (receipt 2026-09-02-masked-scatter-m1-fix,
+// diag68); the constant-shift select chain is the receipt-proven
+// equivalent (the same macro compare_bool.comp and cast_int.comp use).
+uint byte_lane(uint word, uint lane) {
+  return (lane) == 0u ? ((word) & 0xFFu)
+       : (lane) == 1u ? (((word) >> 8u) & 0xFFu)
+       : (lane) == 2u ? (((word) >> 16u) & 0xFFu)
+                      : (((word) >> 24u) & 0xFFu);
+}
+int byte_extend(uint word, uint lane) {
+  uint byte = byte_lane(word, lane);
+  return (byte & 0x80u) != 0u ? int(byte) - 256 : int(byte);
+}
+int half_extend(uint16_t bits) {
+  uint extended = uint(bits);
+  return (extended & 0x8000u) != 0u ? int(extended) - 65536 : int(extended);
+}
 layout(push_constant) uniform Params {
   uint count;
   uint operation;
@@ -46,7 +138,7 @@ layout(push_constant) uniform Params {
   uint output_offset;
 } params;
 
-shared float block_values[256];
+shared VAL_TYPE block_values[256];
 shared uint block_indices[256];
 
 void main() {
@@ -56,11 +148,10 @@ void main() {
   for (uint row = gl_WorkGroupID.x; row < params.output_size;
        row += gl_NumWorkGroups.x) {
     uint start = params.lhs_offset + row * row_length;
-    float local_value = is_max ? uintBitsToFloat(0xff800000u)
-                               : uintBitsToFloat(0x7f800000u);
+    VAL_TYPE local_value = is_max ? ACC_LOWEST : ACC_HIGHEST;
     uint local_index = 0u;
     for (uint index = thread; index < row_length; index += 256u) {
-      float next = LOAD_VALUE(input_data.values[start + index]);
+      VAL_TYPE next = LOAD_AT(start + index);
       bool wins = is_max ? next > local_value : next < local_value;
       if (wins) {
         local_value = next;
@@ -72,8 +163,8 @@ void main() {
     barrier();
     for (uint stride = 128u; stride > 0u; stride >>= 1u) {
       if (thread < stride) {
-        float mine = block_values[thread];
-        float theirs = block_values[thread + stride];
+        VAL_TYPE mine = block_values[thread];
+        VAL_TYPE theirs = block_values[thread + stride];
         bool wins = is_max ? theirs > mine : theirs < mine;
         bool ties = theirs == mine &&
             block_indices[thread + stride] < block_indices[thread];
