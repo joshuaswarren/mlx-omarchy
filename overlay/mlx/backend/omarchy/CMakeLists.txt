@@ -422,11 +422,9 @@ omarchy_shader(cast_bool_c64 shaders/cast.comp -DSOURCE_BOOL=1 -DDEST_C64=1)
 omarchy_shader(cast_f16_c64 shaders/cast.comp -DSOURCE_FP16=1 -DDEST_C64=1)
 omarchy_shader(cast_bf16_c64 shaders/cast.comp -DSOURCE_BF16=1 -DDEST_C64=1)
 omarchy_shader(cast_c64_f32 shaders/cast.comp -DSOURCE_C64=1)
-# CopyEngineDtypes: integer-family flat casts. One blob per (source,
-# destination) element-width pair; runtime dtype codes inside the blob
-# pick bool/u8/i8 (W1), u16/i16 (W2), u32/i32 (W4), u64/i64 (W8) without
-# forking a kernel per dtype. The W8 blobs ride little-endian word pairs
-# and dispatch only behind the device's shaderInt64 feature.
+# Numeric casts: one blob per source/destination storage-width pair.
+# Runtime dtype codes preserve integer signedness, floating conversion,
+# and complex real-part projection without a per-dtype kernel matrix.
 omarchy_shader(cast_int_w1_w1 shaders/cast_int.comp -DSRC_W=1 -DDST_W=1)
 omarchy_shader(cast_int_w1_w2 shaders/cast_int.comp -DSRC_W=1 -DDST_W=2)
 omarchy_shader(cast_int_w1_w4 shaders/cast_int.comp -DSRC_W=1 -DDST_W=4)
