@@ -110,6 +110,46 @@ rule that the M1 leg uses glslc.
 - SubgroupSize other than 32: the bench reports and skips. A device
   with subgroupSize != 32 is not the M1 and not the support target.
 
+## qmm_vec variant legs (TOP-2, `--qmm-vec`)
+
+The same binary times the production decode GEMV kernel
+(`overlay/mlx/backend/omarchy/shaders/qmm_vec.comp`) per
+`MLX_OMARCHY_QMM_VEC_VARIANT` define set on the real Qwen2.5-0.5B
+decode shapes (K=896, N in {896, 4864, 151936}, bits 4, group 64,
+transposed layout), GPU-timestamped around the dispatch, median of 9
+(3 with `--quick`):
+
+```sh
+/tmp/subgroup-bench --qmm-vec          # add to the same log
+```
+
+Legs: `v0_tree`/`v0_sub` (shipped default), `v1_lowpress_*` (x staged
+in shared memory; bit-exact vs v0 by construction - `bit_eq_v0` must
+be true), `v2_wordpack_*` (whole packed word per lane step; ulp
+bound), `v3_ksplit_*` (each slot an eighth of K, group count = N;
+ulp bound). Each (shape, leg) runs in a freshly exec'd process with
+its own device: a Mesa/lavapipe driver fault then costs exactly one
+leg, and the parent records it as a `qmm_leg_fault` line - never a
+silent drop.
+
+Keep rule (mirrors the subgroup leg): `eq_ok` true on the M1 for a
+variant is the gate; among gated variants the lowest `gpu_ns_med`
+across the three shapes is the default-flip candidate. The parent
+then flips `MLX_OMARCHY_QMM_VEC_VARIANT` for `bench_decode.py`
+5x-median + digest check (7fd25a869ff21678 / 254d73fd93164b98 /
+7da83f06ec9f001d must hold for variants 0 and 1; variants 2/3 may
+flip a greedy argmax on a near-tie - a shifted digest is a finding
+to weigh, not an automatic pass).
+
+llvmpipe note (Mesa 22 / LLVM 15 lavapipe): this box's driver
+segfaults in pipeline creation for the qmm_vec SPIR-V inside the
+harness while a byte-identical module+layout succeeds in a minimal
+fresh probe; the legs then come back as `qmm_leg_fault` lines. That
+is an old-lavapipe defect, not a harness verdict - Honeykrisp on the
+M1 creates these exact pipelines in production every decode step.
+The bench also needs 16-bit storage for the f16 legs; devices without
+it fall back to f32 legs (noted as `qmm_note`), same structure.
+
 ## Receipt
 
 The receipt (`receipts/2026-09-04-subgroup-vs-tree-microbench.md`) is
