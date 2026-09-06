@@ -79,9 +79,16 @@ modes (mxfp4 / nvfp4 / mxfp8):
    (These are exactly the 130 previously-refusing subtests:
    80 GatherQQMM x quantization + 32 test_qqmm + 18 test_qqmv.)
 
-4. Full test_quantized.py raw outcome (my wheel):
+4. Full test_quantized.py raw outcome (my wheel; pytest counts
+   subtests as tests, so parent cases and subtest rows overlap):
 
    374 failed, 37 passed, 2991 subtests passed in 1188.29s
+   Composition by raw line category: 1 top-level FAILED
+   (test_qvm_splitk, "QuantizedMatmul rank" refusal) + 373
+   SUBFAILED subtest rows at distinct nodeids: test_qmm_non_transposed
+   105, test_qmv_wide 84, test_fp_qmv 90, test_fp_qvm 81,
+   test_gather_qmm_sorted 9, test_fp_qmv_large_output 3,
+   test_gather_qmm_matrix_path 1.
    (py4 baseline same file: 391 failed, 36 passed, 2636 subtests
    passed; target subfail rows 80+32+18 = 130 -> 0.)
 
@@ -90,11 +97,16 @@ modes (mxfp4 / nvfp4 / mxfp8):
 
    test_qmm_non_transposed + test_qmv_wide on base: 189 failed subtests
    on my line (7b778d29):                      105 + 84 = 189
-   -> identical failure set; my commit introduces no python-suite
-   regression. BatchedQmmRecovery independently corroborated the same
-   rows failing on their before-control. These rows (fp16
-   qmm_non_transposed / mxfp8 qmv_wide / fp_qmv / fp_qvm weight
-   layout) are the batched-fp-qmm territory (fix/batched-fp-qmm-v2).
+   -> The A/B compared exactly these two test cases' subtest failure
+   counts under one run condition (single-file pytest, LP_NUM_THREADS=4,
+   contended host); the aggregates matched (189 = 105 + 84). This
+   supports - but does not by itself prove - no regression elsewhere:
+   the other 184 subfail rows (fp_qmv / fp_qvm layout family,
+   gather rows) were not A/B-run on my side and are the pre-existing
+   batched-fp-qmm classification rows. BatchedQmmRecovery
+   independently observed the same qmm_non_transposed rows failing on
+   their before-control. These rows are batched-fp-qmm territory
+   (fix/batched-fp-qmm-v2).
 
 ## Remaining known failures (not this task's scope)
 
