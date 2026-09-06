@@ -34,6 +34,15 @@ Compiled-tape elementwise chains can fuse into one dispatch behind
 `MLX_OMARCHY_FUSED_CHAIN`. It defaults off pending the native paired
 gate (`receipts/2026-09-04-swiglu-fused-chain.md`).
 
+Dispatches record unconditional pre+post memory barriers by default.
+`MLX_OMARCHY_GATED_BARRIERS=1` replaces them with dependency-gated
+barriers: the encoder tracks per open batch which buffer ranges were
+read or written since the last barrier and records one barrier only
+when a dispatch, copy, or fill overlaps an unsynced range. It defaults
+off pending the M1 A/B (`docs/plans/2026-09-06-decode-gap-plan.md`,
+TOP-1); skip and emit counts appear in the GPU profile and in the
+runtime-test trace counters.
+
 ## Build the wheel
 
 1. Install the build tools: Python 3.10 or newer with `venv`, `cmake` 3.25 or

@@ -14,6 +14,95 @@
 
 namespace mlx::core::omarchy {
 
+namespace {
+
+// Saturating byte-range end for dependency tracking. VK_WHOLE_SIZE and
+// overflowing sizes clamp to the address space so a tracked range never
+// under-covers the accesses it stands for.
+inline VkDeviceSize tracked_range_end(VkDeviceSize offset, VkDeviceSize size) {
+  if (size == VK_WHOLE_SIZE) {
+    return UINT64_MAX;
+  }
+  VkDeviceSize end = offset + size;
+  return end < offset ? UINT64_MAX : end;
+}
+
+} // namespace
+
+bool CommandEncoder::gated_barriers() {
+  // MLX_OMARCHY_GATED_BARRIERS (docs/install-omarchy.md): default off.
+  // On, dispatch/copy/fill nodes record a barrier only when their buffer
+  // ranges overlap unsynced work of the open batch; off, the historic
+  // unconditional pre+post dispatch barriers apply. Read once: the gate
+  // shapes recorded commands, so flipping it mid-batch would desync the
+  // tracker from the command buffer.
+  static const bool on = env_flag("MLX_OMARCHY_GATED_BARRIERS");
+  return on;
+}
+
+bool CommandEncoder::batch_needs_barrier(
+    std::span<const TrackedRange> reads,
+    std::span<const TrackedRange> writes) const {
+  auto overlaps = [](const TrackedRange& a, const TrackedRange& b) {
+    return a.buffer == b.buffer && a.offset < b.end && b.offset < a.end;
+  };
+  // Read after write and write after write.
+  for (const auto& r : reads) {
+    for (const auto& w : tracked_writes_) {
+      if (overlaps(r, w)) {
+        return true;
+      }
+    }
+  }
+  // Write after write and write after read: compute-to-compute in one
+  // queue has no execution dependency without a barrier, so a node
+  // writing a range any earlier node read must also wait.
+  for (const auto& w : writes) {
+    for (const auto& tw : tracked_writes_) {
+      if (overlaps(w, tw)) {
+        return true;
+      }
+    }
+    for (const auto& tr : tracked_reads_) {
+      if (overlaps(w, tr)) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+void CommandEncoder::record_dependency_barrier() {
+  // The heaviest correct dependency: all commands, all memory access,
+  // both directions. The tracker restarts after it because the barrier
+  // orders everything recorded before it.
+  VkMemoryBarrier full{VK_STRUCTURE_TYPE_MEMORY_BARRIER};
+  full.srcAccessMask =
+      VK_ACCESS_MEMORY_READ_BIT | VK_ACCESS_MEMORY_WRITE_BIT;
+  full.dstAccessMask =
+      VK_ACCESS_MEMORY_READ_BIT | VK_ACCESS_MEMORY_WRITE_BIT;
+  vk::device_table().CmdPipelineBarrier(
+      cmd_,
+      VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
+      VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
+      0,
+      1,
+      &full,
+      0,
+      nullptr,
+      0,
+      nullptr);
+  tracked_reads_.clear();
+  tracked_writes_.clear();
+  head_synced_ = true;
+}
+
+void CommandEncoder::reset_dependency_tracking() {
+  tracked_reads_.clear();
+  tracked_writes_.clear();
+  head_synced_ = false;
+}
+
 CommandEncoder::CommandEncoder(Device& device) : device_(device) {
   auto& dt = vk::device_table();
   VkCommandPoolCreateInfo pci{VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO};
@@ -122,6 +211,25 @@ void CommandEncoder::copy_buffer(
     VkDeviceSize src_offset,
     VkDeviceSize dst_offset) {
   ensure_recording();
+  // The tape-full diagnostic forces the heaviest dependency around the
+  // copy and restarts tracking either way.
+  if (tape_full_barriers()) {
+    record_dependency_barrier();
+  }
+  if (gated_barriers()) {
+    TrackedRange read{src, src_offset, tracked_range_end(src_offset, size)};
+    TrackedRange write{dst, dst_offset, tracked_range_end(dst_offset, size)};
+    if (!head_synced_ || batch_needs_barrier({&read, 1}, {&write, 1})) {
+      record_dependency_barrier();
+      trace::counters().barriers_emitted++;
+      prof::get().on_barrier(true);
+    } else {
+      trace::counters().barriers_skipped++;
+      prof::get().on_barrier(false);
+    }
+    tracked_reads_.push_back(read);
+    tracked_writes_.push_back(write);
+  }
   VkBufferCopy region{};
   region.srcOffset = src_offset;
   region.dstOffset = dst_offset;
@@ -137,6 +245,21 @@ void CommandEncoder::fill_buffer(
     VkDeviceSize size,
     VkDeviceSize offset) {
   ensure_recording();
+  if (tape_full_barriers()) {
+    record_dependency_barrier();
+  }
+  if (gated_barriers()) {
+    TrackedRange write{dst, offset, tracked_range_end(offset, size)};
+    if (!head_synced_ || batch_needs_barrier({}, {&write, 1})) {
+      record_dependency_barrier();
+      trace::counters().barriers_emitted++;
+      prof::get().on_barrier(true);
+    } else {
+      trace::counters().barriers_skipped++;
+      prof::get().on_barrier(false);
+    }
+    tracked_writes_.push_back(write);
+  }
   vk::device_table().CmdFillBuffer(cmd_, dst, offset, size, value);
   node_count_++;
   trace::counters().vk_buffer_fills++;
@@ -270,49 +393,75 @@ void CommandEncoder::dispatch_compute(
       writes.data(),
       0,
       nullptr);
+  trace::counters().vk_descriptor_update_writes += bindings.size();
 
   ensure_recording();
   uint64_t host_t0 = prof::get().profiling() ? prof::host_ns() : 0;
   // MLX_OMARCHY_TAPE_FULL_BARRIERS (diagnostic, docs/install-omarchy.md):
   // the heaviest correct dependency - all commands, all memory access,
   // both directions - ahead of every dispatch, on top of the regular
-  // barriers below. Probes whether the driver drops an in-buffer
-  // dependency the regular barriers already express.
+  // dependency below. Probes whether the driver drops an in-buffer
+  // dependency the regular dependency already expresses. It also
+  // restarts the gated tracker: the full barrier orders everything
+  // recorded before it.
   if (tape_full_barriers()) {
-    VkMemoryBarrier full{VK_STRUCTURE_TYPE_MEMORY_BARRIER};
-    full.srcAccessMask =
-        VK_ACCESS_MEMORY_READ_BIT | VK_ACCESS_MEMORY_WRITE_BIT;
-    full.dstAccessMask =
-        VK_ACCESS_MEMORY_READ_BIT | VK_ACCESS_MEMORY_WRITE_BIT;
+    record_dependency_barrier();
+  }
+  // MLX_OMARCHY_GATED_BARRIERS (default off): one full barrier before
+  // the dispatch only when a binding overlaps unsynced work of the open
+  // batch (RAW/WAW against tracked writes, WAR against tracked reads)
+  // or when this is the first node of a fresh command buffer. Off: the
+  // historic unconditional pre-dispatch barrier. Bindings carry no
+  // read/write split, so each binding is tracked as both read and
+  // write - the tracker may barrier a read-read pair, never skip a
+  // real hazard.
+  bool barrier_recorded = false;
+  if (gated_barriers()) {
+    std::array<TrackedRange, kComputeBindingBudget> ranges{};
+    for (size_t i = 0; i < bindings.size(); ++i) {
+      ranges[i] = {bindings[i].buffer,
+                   bindings[i].offset,
+                   tracked_range_end(bindings[i].offset, bindings[i].range)};
+    }
+    std::span<const TrackedRange> view{ranges.data(), bindings.size()};
+    if (!head_synced_ || batch_needs_barrier(view, view)) {
+      record_dependency_barrier();
+      trace::counters().barriers_emitted++;
+      prof::get().on_barrier(true);
+      barrier_recorded = true;
+    } else {
+      trace::counters().barriers_skipped++;
+      prof::get().on_barrier(false);
+    }
+    for (size_t i = 0; i < bindings.size(); ++i) {
+      tracked_reads_.push_back(ranges[i]);
+      tracked_writes_.push_back(ranges[i]);
+    }
+  } else {
+    VkMemoryBarrier before{VK_STRUCTURE_TYPE_MEMORY_BARRIER};
+    before.srcAccessMask =
+        VK_ACCESS_HOST_WRITE_BIT | VK_ACCESS_TRANSFER_WRITE_BIT |
+        VK_ACCESS_SHADER_WRITE_BIT;
+    before.dstAccessMask =
+        VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT;
     dt.CmdPipelineBarrier(
         cmd_,
-        VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
-        VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
+        VK_PIPELINE_STAGE_HOST_BIT | VK_PIPELINE_STAGE_TRANSFER_BIT |
+            VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+        VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
         0,
         1,
-        &full,
+        &before,
         0,
         nullptr,
         0,
         nullptr);
+    head_synced_ = true;
+    trace::counters().barriers_emitted++;
+    prof::get().on_barrier(true);
+    barrier_recorded = true;
   }
-  VkMemoryBarrier before{VK_STRUCTURE_TYPE_MEMORY_BARRIER};
-  before.srcAccessMask = VK_ACCESS_HOST_WRITE_BIT | VK_ACCESS_TRANSFER_WRITE_BIT |
-      VK_ACCESS_SHADER_WRITE_BIT;
-  before.dstAccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT;
-  dt.CmdPipelineBarrier(
-      cmd_,
-      VK_PIPELINE_STAGE_HOST_BIT | VK_PIPELINE_STAGE_TRANSFER_BIT |
-          VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
-      VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
-      0,
-      1,
-      &before,
-      0,
-      nullptr,
-      0,
-      nullptr);
-  prof::get().before_dispatch(this, current_slot_, cmd_);
+  prof::get().before_dispatch(this, current_slot_, cmd_, barrier_recorded);
 
   VkPipelineLayout pipeline_layout = compute.pipeline_layout();
   dt.CmdBindPipeline(cmd_, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline);
@@ -346,42 +495,34 @@ void CommandEncoder::dispatch_compute(
       host_t0 != 0 ? prof::host_ns() - host_t0 : 0,
       in_tape_recording ? 1u : 0u);
 
-  VkMemoryBarrier after{VK_STRUCTURE_TYPE_MEMORY_BARRIER};
-  after.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
-  after.dstAccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_TRANSFER_READ_BIT |
-      VK_ACCESS_HOST_READ_BIT;
-  dt.CmdPipelineBarrier(
-      cmd_,
-      VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
-      VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_TRANSFER_BIT |
-          VK_PIPELINE_STAGE_HOST_BIT,
-      0,
-      1,
-      &after,
-      0,
-      nullptr,
-      0,
-      nullptr);
-  if (tape_full_barriers()) {
-    // Diagnostic: matching full barrier out of this dispatch, so every
-    // dependency between two dispatches is the heaviest form (see the
-    // pre-dispatch barrier above).
-    VkMemoryBarrier full{VK_STRUCTURE_TYPE_MEMORY_BARRIER};
-    full.srcAccessMask =
-        VK_ACCESS_MEMORY_READ_BIT | VK_ACCESS_MEMORY_WRITE_BIT;
-    full.dstAccessMask =
-        VK_ACCESS_MEMORY_READ_BIT | VK_ACCESS_MEMORY_WRITE_BIT;
+  // Gated mode tracks this dispatch's writes instead of recording a
+  // post barrier; the next node's overlap test consumes the tracking.
+  if (!gated_barriers()) {
+    VkMemoryBarrier after{VK_STRUCTURE_TYPE_MEMORY_BARRIER};
+    after.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
+    after.dstAccessMask =
+        VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_TRANSFER_READ_BIT |
+        VK_ACCESS_HOST_READ_BIT;
     dt.CmdPipelineBarrier(
         cmd_,
-        VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
-        VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
+        VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+        VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_TRANSFER_BIT |
+            VK_PIPELINE_STAGE_HOST_BIT,
         0,
         1,
-        &full,
+        &after,
         0,
         nullptr,
         0,
         nullptr);
+    trace::counters().barriers_emitted++;
+    prof::get().on_barrier(true);
+  }
+  if (tape_full_barriers()) {
+    // Diagnostic: matching full barrier out of this dispatch, so every
+    // dependency between two dispatches is the heaviest form (see the
+    // pre-dispatch barrier above).
+    record_dependency_barrier();
   }
 
   node_count_++;
@@ -524,6 +665,7 @@ void CommandEncoder::submit() {
       wait_semaphores_.clear();
       signal_semaphores_.clear();
       completed_handlers_.clear();
+      reset_dependency_tracking();
       throw;
     }
     // Publish only after the submit: the dispatcher must never wait on a
@@ -543,6 +685,10 @@ void CommandEncoder::submit() {
   wait_semaphores_.clear();
   signal_semaphores_.clear();
   completed_handlers_.clear();
+  // The submission's in-order wait (last_completion_) provides the
+  // cross-submission dependency, so the open batch's unsynced ranges
+  // die here either way.
+  reset_dependency_tracking();
   prof::get().on_submit_end(
       this,
       submitted,

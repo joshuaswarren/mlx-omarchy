@@ -99,6 +99,7 @@ def main():
     args = ap.parse_args()
 
     meta = None
+    end_rec = None
     dispatches = []
     joins = []
     submits = []
@@ -124,6 +125,8 @@ def main():
                 joins.append(rec)
             elif kind == "s":
                 submits.append(rec)
+            elif kind == "end":
+                end_rec = rec
 
     if meta is None:
         print("no meta line; not a profile file", file=sys.stderr)
@@ -329,6 +332,20 @@ def main():
     say("== dispatches per submission (in submit order)")
     say("   " + str([per_join.get(s["s"], 0) for s in submits]))
 
+    disp_bar = [d for d in dispatches if "bar" in d]
+    if disp_bar:
+        emitted = sum(d["bar"] for d in disp_bar)
+        say("")
+        say("== dependency-barrier decisions (MLX_OMARCHY_GATED_BARRIERS)")
+        say(f"   dispatch barriers: emitted={emitted} "
+            f"skipped={len(disp_bar) - emitted} "
+            f"({(len(disp_bar) - emitted) / len(disp_bar) * 100:.1f}% "
+            f"skipped)")
+        if end_rec and "barriers" in end_rec:
+            say(f"   all nodes incl. transfer/fill: "
+                f"emitted={end_rec['barriers']} "
+                f"skipped={end_rec['barriers_skipped']}")
+
     if markers and has_gpu:
         by_phase = {}
         for d in dispatches:
@@ -366,6 +383,11 @@ def main():
             jw = sum(j["wait"] for j in joins
                      if phase_of_host(j["t"]) == "decode")
             say(f"   join wait per decode-interval: {fmt_ns(jw / n_int)}")
+            if disp_bar:
+                db = sum(d["bar"] for d in by_phase.get("decode", [])
+                         if "bar" in d)
+                say(f"   dispatch barriers/decode-interval: {db / n_int:.1f} "
+                    f"({db} emitted over {n_int} intervals)")
 
     print("\n".join(out))
 

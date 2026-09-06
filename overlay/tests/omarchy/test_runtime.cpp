@@ -19,6 +19,9 @@
 // 12. a no-progress watchdog throw unwinds through FULL process teardown
 //     (encoder and device destruction) without crashing, in a
 //     process-isolated child run.
+// 13. dependency-gated barriers (MLX_OMARCHY_GATED_BARRIERS): RAW, WAW,
+//     and WAR chains on one buffer hold their values with the gate on,
+//     hazard pairs emit, disjoint pairs skip.
 //
 // The suite needs MLX_BUILD_OMARCHY=ON and compiles against Vulkan 1.3
 // headers (the Honeykrisp driver id is pinned in device.h). Round-trip and
@@ -1630,4 +1633,189 @@ TEST_CASE("one graph evaluation batches into bounded submissions") {
   for (int i = 0; i < 64; ++i) {
     CHECK_EQ(data[i], static_cast<float>(kAdds));
   }
+}
+
+TEST_CASE("dependency-gated barriers keep hazard chains correct") {
+  // Pins the MLX_OMARCHY_GATED_BARRIERS contract: RAW, WAW, and WAR
+  // chains on ONE buffer across consecutive nodes (fills, copies, and
+  // compute dispatches) must hold their values with the gate on, the
+  // tracker must emit a barrier for every hazard pair and never skip
+  // one, and a disjoint pair must actually be skipped. Value asserts
+  // run in both gate modes; the counter asserts are the tracker's
+  // observable behavior and are asserted per mode (the default
+  // unconditional path records no copy/fill barriers and skips
+  // nothing). llvmpipe executes commands in order, so a missed hazard
+  // would not always corrupt these values in software - that half of
+  // the proof is the counter asserts here plus the Honeykrisp hardware
+  // runs in the M1 protocol.
+  if (!gpu::is_available()) {
+    skip("no qualifying Vulkan device.");
+    return;
+  }
+  auto& alloc = omarchy::allocator();
+  auto& counters = omarchy::trace::counters();
+  Stream s = new_stream(Device::gpu);
+  auto& encoder = omarchy::get_command_encoder(s);
+  const bool gated = []() {
+    const char* v = std::getenv("MLX_OMARCHY_GATED_BARRIERS");
+    if (v == nullptr) {
+      return false;
+    }
+    std::string t = v;
+    return t == "1" || t == "on" || t == "true" || t == "yes";
+  }();
+
+  constexpr size_t kBytes = 1 << 16;
+  constexpr uint32_t kFloats = kBytes / sizeof(float);
+  auto handle = [](auto& buf) {
+    return static_cast<omarchy::VulkanBuffer*>(buf.ptr())->buffer;
+  };
+  auto bytes_of = [](auto& buf) {
+    return static_cast<uint8_t*>(
+        static_cast<omarchy::VulkanBuffer*>(buf.ptr())->data);
+  };
+  auto all_bytes = [&](auto& buf, uint8_t v) {
+    auto* p = bytes_of(buf);
+    for (size_t i = 0; i < kBytes; ++i) {
+      if (p[i] != v) {
+        return false;
+      }
+    }
+    return true;
+  };
+  auto all_floats = [&](auto& buf, float v) {
+    auto* p = reinterpret_cast<float*>(bytes_of(buf));
+    for (size_t i = 0; i < kFloats; ++i) {
+      if (p[i] != v) {
+        return false;
+      }
+    }
+    return true;
+  };
+  auto fill_dispatch = [&](auto& buf, float value) {
+    omarchy::ComputeParams params;
+    params.count = kFloats;
+    params.output_size = kFloats;
+    params.alpha = value;
+    std::array<omarchy::ComputeBinding, 1> bindings{
+        omarchy::ComputeBinding{
+            handle(buf), 0, kBytes, buf.ptr()}};
+    encoder.dispatch_compute(
+        omarchy::ComputeKernel::FillF32,
+        bindings,
+        params,
+        omarchy::compute_dispatch_group_count(kFloats));
+  };
+  auto snapshot = [&]() {
+    return std::pair<uint64_t, uint64_t>(
+        counters.barriers_emitted.load(), counters.barriers_skipped.load());
+  };
+
+  // RAW across nodes: a fill writes buf, a following copy reads it.
+  auto raw_src = alloc.malloc(kBytes);
+  auto raw_dst = alloc.malloc(kBytes);
+  auto raw0 = snapshot();
+  encoder.fill_buffer(handle(raw_src), 0x2a2a2a2au, kBytes);
+  encoder.copy_buffer(handle(raw_src), handle(raw_dst), kBytes);
+  encoder.commit();
+  encoder.synchronize();
+  CHECK(all_bytes(raw_src, 0x2a));
+  CHECK(all_bytes(raw_dst, 0x2a));
+  CHECK(
+      counters.barriers_emitted.load() - raw0.first >=
+      (gated ? 1u : 0u));
+  CHECK(counters.barriers_skipped.load() - raw0.second == 0);
+
+  // WAW: two fills to the same buffer, the later must win.
+  auto waw = alloc.malloc(kBytes);
+  auto waw0 = snapshot();
+  encoder.fill_buffer(handle(waw), 0x01010101u, kBytes);
+  encoder.fill_buffer(handle(waw), 0x02020202u, kBytes);
+  encoder.commit();
+  encoder.synchronize();
+  CHECK(all_bytes(waw, 0x02));
+  CHECK(
+      counters.barriers_emitted.load() - waw0.first >=
+      (gated ? 1u : 0u));
+  CHECK(counters.barriers_skipped.load() - waw0.second == 0);
+
+  // WAR: a copy reads buf, then a fill overwrites it. The copy must
+  // keep the pre-fill bytes and the fill must land.
+  auto war_src = alloc.malloc(kBytes);
+  auto war_dst = alloc.malloc(kBytes);
+  encoder.fill_buffer(handle(war_src), 0x03030303u, kBytes);
+  encoder.commit();
+  encoder.synchronize();
+  auto war0 = snapshot();
+  encoder.copy_buffer(handle(war_src), handle(war_dst), kBytes);
+  encoder.fill_buffer(handle(war_src), 0x5e5e5e5eu, kBytes);
+  encoder.commit();
+  encoder.synchronize();
+  CHECK(all_bytes(war_dst, 0x03));
+  CHECK(all_bytes(war_src, 0x5e));
+  CHECK(
+      counters.barriers_emitted.load() - war0.first >=
+      (gated ? 1u : 0u));
+  CHECK(counters.barriers_skipped.load() - war0.second == 0);
+
+  // Disjoint pair: writes to two separate buffers may skip. Only the
+  // gate makes the skip observable; with the gate off nothing records
+  // or skips a barrier for fills.
+  auto dis_a = alloc.malloc(kBytes);
+  auto dis_b = alloc.malloc(kBytes);
+  auto dis0 = snapshot();
+  encoder.fill_buffer(handle(dis_a), 0x11111111u, kBytes);
+  encoder.fill_buffer(handle(dis_b), 0x22222222u, kBytes);
+  encoder.commit();
+  encoder.synchronize();
+  CHECK(all_bytes(dis_a, 0x11));
+  CHECK(all_bytes(dis_b, 0x22));
+  if (gated) {
+    CHECK(counters.barriers_skipped.load() - dis0.second >= 1);
+  } else {
+    CHECK(counters.barriers_skipped.load() - dis0.second == 0);
+  }
+
+  // Dispatch RAW: a compute dispatch writes, a copy reads. The copy
+  // must see the dispatched floats, not stale bytes.
+  auto dsp_src = alloc.malloc(kBytes);
+  auto dsp_dst = alloc.malloc(kBytes);
+  auto dsp0 = snapshot();
+  fill_dispatch(dsp_src, 6.5f);
+  encoder.copy_buffer(handle(dsp_src), handle(dsp_dst), kBytes);
+  encoder.commit();
+  encoder.synchronize();
+  CHECK(all_floats(dsp_src, 6.5f));
+  CHECK(all_floats(dsp_dst, 6.5f));
+  CHECK(counters.barriers_emitted.load() - dsp0.first >= 1);
+  CHECK(counters.barriers_skipped.load() - dsp0.second == 0);
+
+  // Dispatch WAR: a copy reads, then a compute dispatch overwrites the
+  // same buffer. The copy keeps the old bytes and the dispatch lands.
+  auto wr_src = alloc.malloc(kBytes);
+  auto wr_dst = alloc.malloc(kBytes);
+  encoder.fill_buffer(handle(wr_src), 0x04040404u, kBytes);
+  encoder.commit();
+  encoder.synchronize();
+  auto wr0 = snapshot();
+  encoder.copy_buffer(handle(wr_src), handle(wr_dst), kBytes);
+  fill_dispatch(wr_src, 2.25f);
+  encoder.commit();
+  encoder.synchronize();
+  CHECK(all_bytes(wr_dst, 0x04));
+  CHECK(all_floats(wr_src, 2.25f));
+  CHECK(counters.barriers_emitted.load() - wr0.first >= 1);
+  CHECK(counters.barriers_skipped.load() - wr0.second == 0);
+
+  alloc.free(raw_src);
+  alloc.free(raw_dst);
+  alloc.free(waw);
+  alloc.free(war_src);
+  alloc.free(war_dst);
+  alloc.free(dis_a);
+  alloc.free(dis_b);
+  alloc.free(dsp_src);
+  alloc.free(dsp_dst);
+  alloc.free(wr_src);
+  alloc.free(wr_dst);
 }
