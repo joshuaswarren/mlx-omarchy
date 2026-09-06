@@ -1,0 +1,53 @@
+{
+  "cases": [
+    {
+      "name": "vec_f32_m1_T",
+      "copies_delta": 2,
+      "dispatch_delta": 1,
+      "out_sha256": "37925d74ff55438c8fae1bb16971bee45b13bc4622731901e26261451b4d2fcc"
+    },
+    {
+      "name": "tile_f32_m7_T",
+      "copies_delta": 2,
+      "dispatch_delta": 1,
+      "out_sha256": "1b619fc9074f58a05946cbb4936d2df356a71907a52d123e5d35703a3f76274f"
+    },
+    {
+      "name": "scalar_f32_m7_T",
+      "copies_delta": 2,
+      "dispatch_delta": 1,
+      "out_sha256": "61873ed2e5c2024764959ba42f3c753a24ad02e6401e5d3d7c1d6f36692647ed"
+    },
+    {
+      "name": "vec_f16_m1_T",
+      "copies_delta": 2,
+      "dispatch_delta": 4,
+      "out_sha256": "da591fc963e9f75ab0ab92980b4c27d53b72a8d54b059c4e38c6bbd798c45c1f"
+    },
+    {
+      "name": "tile_f16_m7_NT",
+      "copies_delta": 2,
+      "dispatch_delta": 4,
+      "out_sha256": "713af454b1a56d1115fe22be94ac824584b2a31df8945f53099b1e51144f3f25"
+    },
+    {
+      "name": "tile_f32_batched",
+      "copies_delta": 2,
+      "dispatch_delta": 1,
+      "out_sha256": "02efb4d96fcb972f6f4d68bd0f1d348ffb3fc1572bda2eaa797949fa58ed96a4"
+    },
+    {
+      "name": "bits6_m7_T",
+      "copies_delta": 2,
+      "dispatch_delta": 1,
+      "out_sha256": "f09b364af4b03b2f181c8c9a054b007f3557b64faca96317791c7ae230a03623"
+    },
+    {
+      "name": "nonaffine_mxfp4",
+      "copies_delta": 0
+    }
+  ],
+  "odd_offset": {
+    "refused": "[omarchy] QuantizedMatmul scales byte offset is not implemented for the Omarchy Vulkan backend (dtype=float16, shape=[1,20]). No GPU kernel exists for it; no silent CPU fallback occurs. Run it on an explicit CPU stream to use the CPU implementation."
+  }
+}

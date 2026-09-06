@@ -1,0 +1,50 @@
+{
+  "cases": [
+    {
+      "name": "vec_f32_m1_T",
+      "copies_delta": 2,
+      "dispatch_delta": 1,
+      "out_sha256": "8348380ca2a6b86cfdcec16026b05176a1d997f5c2a559dced946fed8ddb59be"
+    },
+    {
+      "name": "tile_f32_m7_T",
+      "copies_delta": 2,
+      "dispatch_delta": 1,
+      "out_sha256": "23cdede2d6512a8bb0e4adbc8276cb4775074a549416130198d671bba9416831"
+    },
+    {
+      "name": "scalar_f32_m7_T",
+      "copies_delta": 2,
+      "dispatch_delta": 1,
+      "out_sha256": "f811dfb8fa88755ae2ffdfbece2c021666ea94bd6a4ddf7b9731b0ead747c416"
+    },
+    {
+      "name": "vec_f16_m1_T",
+      "copies_delta": 2,
+      "dispatch_delta": 4,
+      "out_sha256": "1d28c9e80ec462f3dd6235e897c9e7377799ca297989db542bcbb9846321a551"
+    },
+    {
+      "name": "tile_f16_m7_NT",
+      "copies_delta": 2,
+      "dispatch_delta": 4,
+      "out_sha256": "968ee69d5f1f4c596e0b57398eee6905732e052a6d2e65183b53f9a72a632221"
+    },
+    {
+      "name": "tile_f32_batched",
+      "copies_delta": 2,
+      "dispatch_delta": 1,
+      "out_sha256": "631d534b45ad3d3a43d07674958f156520e6836ee12f19218970cbe24f58870e"
+    },
+    {
+      "name": "bits6_m7_T",
+      "copies_delta": 2,
+      "dispatch_delta": 1,
+      "out_sha256": "f5937ec08e6b496eb94d2a7acd8a7bdbe9276a374b1172d8905d0395718253c6"
+    },
+    {
+      "name": "nonaffine_mxfp4",
+      "copies_delta": 0
+    }
+  ]
+}

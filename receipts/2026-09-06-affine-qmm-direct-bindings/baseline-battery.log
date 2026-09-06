@@ -1,0 +1,13 @@
+== primitive tests ==
+[doctest] run with "--help" for options
+===============================================================================
+[doctest] test cases:      94 |      94 passed | 0 failed | 0 skipped
+[doctest] assertions: 2580602 | 2580602 passed | 0 failed |
+[doctest] Status: SUCCESS!
+== matmul family tests ==
+Skipping: subgroup size != 32 or no ARITHMETIC; subgroup variant unrunnable on this device
+===============================================================================
+[doctest] test cases:     8 |     8 passed | 0 failed | 0 skipped
+[doctest] assertions: 18114 | 18114 passed | 0 failed |
+[doctest] Status: SUCCESS!
+BASELINE_TESTS_OK

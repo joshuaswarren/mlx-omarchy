@@ -1,0 +1,31 @@
+ORIGIN NOTE - test_primitives.cpp line 5011 corruption (AffineQmmRecovered, 2026-09-06)
+
+Root cause (confirmed independently by Main in a fresh Eval): the eval harness
+shell-shorthand rewrites exclamation-prefixed physical lines inside multiline
+Python string literals. The intended C++ line
+
+      EXCL capabilities.storage_buffer_16bit_access) {
+(where EXCL stood for the negation operator)
+
+was rewritten in-memory to
+
+      __omp_shell("capabilities.storage_buffer_16bit_access) {")
+
+by the insertion eval cell itself ("insert storage-offset regression test").
+Submitted/recorded Eval code remains original; the in-memory string was
+already corrupted at write time. No late writer, no old-worker interference.
+
+This also explains the failed string-replace repair attempts: the repair
+cells' replacement literals containing the same negation-prefixed line were
+corrupted identically in those cells' memory, so replacement was a no-op.
+The final repair used a line-index write with no multiline literal.
+
+Pre-repair bytes do not survive as files (backup legitimately refreshed with
+repaired bytes; corrupted staging deleted by prepare-mlx re-run). The verbatim
+corrupted line and compiler error are preserved in the session transcript
+records and in the original PRE-REPAIR-EVIDENCE history of this quarantine
+directory.
+
+Restriction going forward per Main: C++ source edits via escaped single-line
+strings or index writes; never raw multiline literals with
+negation-prefixed physical lines in Python Eval.
