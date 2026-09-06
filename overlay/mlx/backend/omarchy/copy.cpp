@@ -612,6 +612,10 @@ void copy_gpu_inplace(
       kernel = omarchy::ComputeKernel::CastBoolF32;
     } else if (in.dtype() == bool_ && out.dtype() == int32) {
       kernel = omarchy::ComputeKernel::CastBoolI32;
+    } else if (in.dtype() == bool_ && out.dtype() == float16) {
+      kernel = omarchy::ComputeKernel::CastBoolF16;
+    } else if (in.dtype() == bool_ && out.dtype() == bfloat16) {
+      kernel = omarchy::ComputeKernel::CastBoolBF16;
     } else if (in.dtype() == float16 && out.dtype() == float32) {
       kernel = omarchy::ComputeKernel::CastF16F32;
     } else if (in.dtype() == float32 && out.dtype() == float16) {
@@ -707,6 +711,8 @@ void copy_gpu_inplace(
     const bool source_bool_kernel =
         kernel == omarchy::ComputeKernel::CastBoolF32 ||
         kernel == omarchy::ComputeKernel::CastBoolI32 ||
+        kernel == omarchy::ComputeKernel::CastBoolF16 ||
+        kernel == omarchy::ComputeKernel::CastBoolBF16 ||
         kernel == omarchy::ComputeKernel::CastBoolComplex64;
     uint32_t dispatch_count = source_bool_kernel
         ? checked_u32(

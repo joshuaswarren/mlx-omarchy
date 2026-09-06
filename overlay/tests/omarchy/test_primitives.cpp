@@ -4491,6 +4491,36 @@ TEST_CASE("bool to float32 casts exact zero and one through Vulkan compute") {
   check_values(mask, {0.0f, 1.0f, 1.0f, 0.0f}, stream);
 }
 
+TEST_CASE("bool to float16 and bfloat16 casts exact zero and one") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  const auto& capabilities = omarchy::device(0).capabilities();
+  std::vector<float> xv = {1.0f, 2.0f, 2.0f, 0.0f};
+  array x(xv.begin(), Shape{4}, float32);
+  if (capabilities.shader_float16 && capabilities.storage_buffer_16bit_access) {
+    check_values(
+        astype(
+            astype(equal(x, array(2.0f), stream), float16, stream),
+            float32,
+            stream),
+        {0.0f, 1.0f, 1.0f, 0.0f},
+        stream,
+        1e-3);
+  }
+  if (capabilities.storage_buffer_16bit_access && capabilities.shader_int16) {
+    check_values(
+        astype(
+            astype(equal(x, array(2.0f), stream), bfloat16, stream),
+            float32,
+            stream),
+        {0.0f, 1.0f, 1.0f, 0.0f},
+        stream,
+        8e-3);
+  }
+}
+
 TEST_CASE("CumSum scans suffix rows against host references") {
   if (!compute_available()) {
     return;

@@ -51,6 +51,8 @@ enum class ComputeKernel : uint16_t {
   CastF16F32,
   CastBoolF32,
   CastBoolI32,
+  CastBoolF16,
+  CastBoolBF16,
   CastF32F16,
   CastBF16F32,
   CastF32BF16,
