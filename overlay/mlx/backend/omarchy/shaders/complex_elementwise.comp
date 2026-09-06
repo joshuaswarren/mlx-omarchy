@@ -204,9 +204,15 @@ void main() {
       }
       case 8: {
         // exp(a + bi) = exp(a)*(cos b, sin b), matching std::exp(complex)
-        // and glibc cexpf for normal-range inputs.
-        float ex = exp(lhs.x);
-        value = vec2(ex * cos(lhs.y), ex * sin(lhs.y));
+        // and glibc cexpf for normal-range inputs. C99 G.6.3.2 pins the
+        // infinite-argument case: cexp(-inf + i*inf) = +0 + i0, where
+        // the naive form turns 0 * cos(inf) into NaN.
+        if (isinf(lhs.x) && lhs.x < 0.0 && isinf(lhs.y)) {
+          value = vec2(0.0);
+        } else {
+          float ex = exp(lhs.x);
+          value = vec2(ex * cos(lhs.y), ex * sin(lhs.y));
+        }
         break;
       }
       case 9: {

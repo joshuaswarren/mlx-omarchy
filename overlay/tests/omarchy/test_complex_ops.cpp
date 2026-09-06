@@ -23,6 +23,7 @@
 
 #include <cmath>
 #include <complex>
+#include <limits>
 #include <cstdint>
 #include <iostream>
 #include <random>
@@ -616,6 +617,31 @@ TEST_CASE("complex exp matches host reference") {
     CHECK(got[i].real() == doctest::Approx(want.real()).epsilon(1e-5));
     CHECK(got[i].imag() == doctest::Approx(want.imag()).epsilon(1e-5));
   }
+}
+
+TEST_CASE("complex exp matches C99 for infinite arguments") {
+  if (!compute_available()) {
+    return;
+  }
+  auto stream = gpu_stream();
+  const float inf = std::numeric_limits<float>::infinity();
+  std::vector<complex64_t> host = {
+      complex64_t{-inf, -inf},
+      complex64_t{-inf, 2.0f},
+      complex64_t{1.0f, -inf}};
+  array z(host.begin(), Shape{3}, complex64);
+  auto got = read_complex(exp(z, stream), stream);
+  // C99 G.6.3.2: cexp(-inf + i*inf) = +0 + i0; the naive
+  // exp(a)*(cos b, sin b) turns 0 * cos(inf) into NaN.
+  CHECK_EQ(got[0].real(), 0.0);
+  CHECK_EQ(got[0].imag(), 0.0);
+  // A -inf real with a finite argument keeps the magnitude-zero
+  // result (0 * cos(2) may carry the sign of cos, but compares 0).
+  CHECK_EQ(got[1].real(), 0.0);
+  CHECK_EQ(got[1].imag(), 0.0);
+  // A finite real with an infinite argument stays NaN per C99.
+  CHECK(std::isnan(got[2].real()));
+  CHECK(std::isnan(got[2].imag()));
 }
 
 TEST_CASE("complex sin matches host reference") {

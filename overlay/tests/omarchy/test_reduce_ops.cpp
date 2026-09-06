@@ -660,6 +660,49 @@ TEST_CASE("any and all reduce bool, integer, and float truthiness") {
       any(grid, std::vector<int>{1}, true, stream), {true, true}, stream);
 }
 
+TEST_CASE("bool Min, Max, and Prod follow the upstream logical mapping") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+
+  // Upstream maps bool max to any and bool min to all, each
+  // returning bool (mlx/backend/metal/reduce.cpp remap_reduce_types).
+  // Host reference: elementwise or / and over the reduced axis.
+  // Bool prod keeps the upstream int32 output (mlx/ops.cpp) and runs
+  // the existing bool-numeric path; its values are 0/1 all-products.
+  std::vector<bool> values = {true, true, false, true, true, true};
+  array x(values.begin(), Shape{2, 3}, bool_);
+  check_bool_values(
+      max(x, std::vector<int>{0}, false, stream), {true, true, true},
+      stream);
+  check_bool_values(
+      max(x, std::vector<int>{1}, false, stream), {true, true}, stream);
+  check_bool_values(
+      min(x, std::vector<int>{0}, false, stream), {true, true, false},
+      stream);
+  check_bool_values(
+      min(x, std::vector<int>{1}, false, stream), {false, true}, stream);
+  check_int32_values(
+      prod(x, std::vector<int>{0}, false, stream), {1, 1, 0}, stream);
+  check_int32_values(
+      prod(x, std::vector<int>{1}, false, stream), {0, 1}, stream);
+
+  // All-axes reduces over a non-word-multiple length: a kernel that
+  // reads a falsy byte past the packed word boundary flips any/all.
+  std::vector<bool> five_values = {false, true, false, true, true};
+  array five(five_values.begin(), Shape{5}, bool_);
+  check_bool_values(max(five, false, stream), {true}, stream);
+  check_bool_values(min(five, false, stream), {false}, stream);
+  check_int32_values(prod(five, false, stream), {0}, stream);
+
+  // The min/max output dtype is bool, not the int32 of a bool sum.
+  array reduced = min(x, std::vector<int>{0}, false, stream);
+  reduced.eval();
+  sync(stream);
+  CHECK_EQ(reduced.dtype(), bool_);
+}
+
 TEST_CASE("bool Any and All stay exact across word and chunk boundaries") {
   if (!compute_available()) {
     return;
