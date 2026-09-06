@@ -493,26 +493,22 @@ TEST_CASE("nonzero integer scalar fills keep named refusals elsewhere") {
   }
   Stream s = gpu_stream();
 
-  // A width the backend does not carry keeps the named refusal; it must
-  // never crash.
+  // int64 rides the 64-bit fill (both little-endian words ride the
+  // alpha/beta slots bit-exactly, behind shaderInt64); it must never
+  // crash.
   array wide = full({2}, 5, int64, s);
-  bool caught = false;
-  std::string message;
-  try {
-    wide.eval();
-  } catch (const std::runtime_error& e) {
-    caught = true;
-    message = e.what();
-  }
-  REQUIRE(caught);
-  CHECK(message.find("[omarchy]") != std::string::npos);
-  CHECK(message.find("non-zero scalar fill") != std::string::npos);
+  wide.eval();
+  omarchy::get_command_encoder(s).synchronize();
+  REQUIRE_EQ(wide.size(), 2u);
+  CHECK_EQ(wide.data<int64_t>()[0], int64_t(5));
+  CHECK_EQ(wide.data<int64_t>()[1], int64_t(5));
 
   // A scalar dtype the destination does not share refuses by name too.
   array out = full({4}, 0.0f, float32, s);
   out.eval();
   array seven(7, int32);
-  caught = false;
+  bool caught = false;
+  std::string message;
   try {
     copy_gpu_inplace(
         seven,
