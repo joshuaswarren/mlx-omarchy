@@ -175,17 +175,26 @@ omarchy::ComputeKernel fill_kernel(Dtype dtype) {
   return omarchy::ComputeKernel::FillF32;
 }
 
-omarchy::ComputeKernel copy_general_kernel(Dtype dtype) {
+omarchy::ComputeKernel copy_general_kernel(Dtype dtype, const array& out) {
   if (dtype == bool_) {
     // Packed word transport: 4 bools per word, byte-lane atomics in
     // the shader (scatter.comp shape).
     return omarchy::ComputeKernel::CopyGeneralBool;
+  }
+  if (dtype == int8 || dtype == uint8) {
+    // Packed word transport: 4 raw bytes per word, the bool transport
+    // minus canonicalization.
+    return omarchy::ComputeKernel::CopyGeneralU8;
   }
   if (dtype == float16) {
     return omarchy::ComputeKernel::CopyGeneralF16;
   }
   if (dtype == bfloat16) {
     return omarchy::ComputeKernel::CopyGeneralBF16;
+  }
+  if (dtype == int16 || dtype == uint16) {
+    // uint16_t storage, the bfloat16 shape.
+    return omarchy::ComputeKernel::CopyGeneralU16;
   }
   if (dtype == int32 || dtype == uint32) {
     // Raw-word copies: the same 4-byte stride math as float32 with no
@@ -198,7 +207,14 @@ omarchy::ComputeKernel copy_general_kernel(Dtype dtype) {
     // params already carry.
     return omarchy::ComputeKernel::CopyGeneralComplex64;
   }
-  return omarchy::ComputeKernel::CopyGeneralF32;
+  if (dtype == int64 || dtype == uint64) {
+    // One 8-byte item per element, the complex64 stride shape.
+    return omarchy::ComputeKernel::CopyGeneralU64;
+  }
+  if (dtype == float32) {
+    return omarchy::ComputeKernel::CopyGeneralF32;
+  }
+  omarchy::unsupported("strided copy dtype", out);
 }
 
 // Element-width class of the integer family: 1-byte (bool, int8,
@@ -509,10 +525,23 @@ void copy_gpu_inplace(
         (in.dtype() != float32 && in.dtype() != float16 &&
          in.dtype() != bfloat16 && in.dtype() != int32 &&
          in.dtype() != uint32 && in.dtype() != complex64 &&
-         in.dtype() != bool_)) {
+         in.dtype() != bool_ && in.dtype() != int8 &&
+         in.dtype() != uint8 && in.dtype() != int16 &&
+         in.dtype() != uint16 && in.dtype() != int64 &&
+         in.dtype() != uint64)) {
       omarchy::unsupported("strided copy", out);
     }
     require_float_storage("strided copy", in.dtype(), out, encoder);
+    const auto& capabilities = encoder.device().capabilities();
+    if ((in.dtype() == int16 || in.dtype() == uint16) &&
+        (!capabilities.storage_buffer_16bit_access ||
+         !capabilities.shader_int16)) {
+      omarchy::unsupported("strided copy 16-bit capability", out);
+    }
+    if ((in.dtype() == int64 || in.dtype() == uint64) &&
+        !capabilities.shader_int64) {
+      omarchy::unsupported("strided copy int64 capability", out);
+    }
     auto [collapsed_shape, collapsed_strides] = collapse_contiguous_dims(
         data_shape, std::vector<Strides>{i_strides, o_strides});
     size_t rank = collapsed_shape.size();
@@ -567,7 +596,7 @@ void copy_gpu_inplace(
     std::array<omarchy::ComputeBinding, 3> bindings{
         compute_binding(in), compute_binding(in), compute_binding(out)};
     encoder.dispatch_compute(
-        copy_general_kernel(in.dtype()),
+        copy_general_kernel(in.dtype(), out),
         bindings,
         params,
         omarchy::compute_dispatch_group_count(count));
