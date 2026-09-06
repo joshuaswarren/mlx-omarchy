@@ -28,16 +28,32 @@
 // write in the combine phase, the same packing compare.comp and
 // logical_or.comp use. USE_BOOL_INPUT reads a bool input through that
 // word packing.
+//
+// Dtype families mirror the upstream remap_reduce_types contract
+// (mlx/backend/metal/reduce.cpp): narrow integers accumulate in 32 bits
+// (int8/int16 -> int32, uint8/uint16 -> uint32) and Sum/Prod store the
+// promoted width, Min/Max store the input width through the packed
+// byte/half lanes cast_int.comp proved; int64/uint64 reduce in their own
+// width behind the device's shaderInt64; complex64 accumulates as a vec2
+// pair with two scratch words per partial.
 #version 460
 
-#ifdef USE_FP16
+#if defined(USE_FP16) || defined(USE_BF16) || defined(USE_I16) || defined(USE_U16)
 #extension GL_EXT_shader_16bit_storage : require
+#endif
+#ifdef USE_FP16
 #extension GL_EXT_shader_explicit_arithmetic_types_float16 : require
+#elif defined(USE_I16) || defined(USE_U16)
+#extension GL_EXT_shader_explicit_arithmetic_types_int16 : require
+#endif
+#if defined(USE_I64) || defined(USE_U64)
+#extension GL_EXT_shader_explicit_arithmetic_types_int64 : require
+#endif
+
+#ifdef USE_FP16
 #define STORAGE_TYPE float16_t
 #define LOAD_VALUE(x) float(x)
 #elif defined(USE_BF16)
-#extension GL_EXT_shader_16bit_storage : require
-#extension GL_EXT_shader_explicit_arithmetic_types_int16 : require
 #define STORAGE_TYPE uint16_t
 #define LOAD_VALUE(x) uintBitsToFloat(uint(x) << 16u)
 #elif defined(USE_BOOL_INPUT)
@@ -48,23 +64,40 @@
 #elif defined(USE_U32)
 #define STORAGE_TYPE uint
 #define LOAD_VALUE(x) STORAGE_TYPE(x)
+#elif defined(USE_I8) || defined(USE_U8) || defined(USE_I16) || defined(USE_U16)
+#define STORAGE_TYPE uint
 #else
 #define STORAGE_TYPE float
 #define LOAD_VALUE(x) float(x)
 #endif
 
-#if defined(USE_I32)
+#if defined(USE_I8) || defined(USE_I16) || defined(USE_I32)
 #define ACC_TYPE int
 // -2147483648 has no direct GLSL literal; the C-style two-step avoids the
 // unary-minus-parses-first trap.
 #define MAX_SENTINEL 2147483647
 #define MIN_SENTINEL (-2147483647 - 1)
 #define SCRATCH_TYPE int
-#elif defined(USE_U32)
+#elif defined(USE_U8) || defined(USE_U16) || defined(USE_U32)
 #define ACC_TYPE uint
 #define MAX_SENTINEL 0xffffffffu
 #define MIN_SENTINEL 0u
 #define SCRATCH_TYPE uint
+#elif defined(USE_I64)
+#define ACC_TYPE int64_t
+#define MAX_SENTINEL 9223372036854775807L
+#define MIN_SENTINEL (-9223372036854775807L - 1)
+#define SCRATCH_TYPE int64_t
+#elif defined(USE_U64)
+#define ACC_TYPE uint64_t
+#define MAX_SENTINEL 0xffffffffffffffffUL
+#define MIN_SENTINEL 0UL
+#define SCRATCH_TYPE uint64_t
+#elif defined(USE_COMPLEX)
+#define ACC_TYPE vec2
+#define MIN_SENTINEL uintBitsToFloat(0xff800000u)
+#define MAX_SENTINEL uintBitsToFloat(0x7f800000u)
+#define SCRATCH_TYPE float
 #else
 #define ACC_TYPE float
 #define MAX_SENTINEL uintBitsToFloat(0x7f800000u)
@@ -89,14 +122,32 @@ uint16_t bf16_store(float value) {
 #define STORE_VALUE(f) bf16_store(f)
 #elif defined(USE_BOOL_INPUT) && !defined(BOOL_OUT)
 #define STORE_VALUE(f) int(f)
+#elif defined(USE_COMPLEX)
 #else
 #define STORE_VALUE(f) STORAGE_TYPE(f)
+#endif
+
+// Which load/store transport the blob uses. BYTE_INPUT reads one byte per
+// item through the gather-style word load and the constant-shift select
+// chain proven in scatter.comp; HALF_INPUT binds a uint16_t storage view;
+// WORD64 binds 64-bit words; COMPLEX binds vec2 pairs. Everything else
+// reads one STORAGE_TYPE word per item.
+#if defined(USE_I8) || defined(USE_U8) || defined(USE_BOOL_INPUT)
+#define BYTE_INPUT 1
+#elif defined(USE_I16) || defined(USE_U16)
+#define HALF_INPUT 1
+#elif defined(USE_I64) || defined(USE_U64)
+#define WORD64 1
+#elif defined(USE_COMPLEX)
+#define COMPLEX 1
 #endif
 
 #ifdef BOOL_OUT
 #define OUT_TYPE uint
 #elif defined(USE_BOOL_INPUT)
 #define OUT_TYPE int
+#elif defined(USE_COMPLEX)
+#define OUT_TYPE vec2
 #else
 #define OUT_TYPE STORAGE_TYPE
 #endif
@@ -104,13 +155,31 @@ uint16_t bf16_store(float value) {
 layout(local_size_x = 256) in;
 
 layout(set = 0, binding = 0, std430) readonly buffer Input {
+#if defined(BYTE_INPUT)
+  uint values[];
+#elif defined(HALF_INPUT)
+  uint16_t values[];
+#elif defined(WORD64)
+  uint64_t values[];
+#elif defined(COMPLEX)
+  vec2 values[];
+#else
   STORAGE_TYPE values[];
+#endif
 } input_data;
 layout(set = 0, binding = 1, std430) buffer Scratch {
   SCRATCH_TYPE values[];
 } scratch_data;
-layout(set = 0, binding = 2, std430) writeonly buffer Output {
+layout(set = 0, binding = 2, std430) buffer Output {
+#if defined(COMPLEX)
+  vec2 values[];
+#elif defined(USE_I8) || defined(USE_U8) || defined(USE_I16) || defined(USE_U16)
+  uint values[];
+#elif defined(WORD64)
+  uint64_t values[];
+#else
   OUT_TYPE values[];
+#endif
 } output_data;
 layout(set = 0, binding = 3, std430) readonly buffer AxisMetadata {
   uint values[];
@@ -142,38 +211,219 @@ layout(push_constant) uniform Params {
   uint out_strides[4];
 } params;
 
+#if defined(BYTE_INPUT)
+// Honeykrisp miscompiles shift-then-mask byte extraction with a
+// data-dependent shift amount (receipt 2026-09-02-masked-scatter-m1-fix,
+// diag68); the constant-shift select chain is the receipt-proven
+// equivalent (the same macro compare_bool.comp and cast_int.comp use).
+#define BYTE_AT(word, lane)                                                  \
+  ((lane) == 0u ? ((word) & 0xFFu)                                           \
+       : (lane) == 1u ? (((word) >> 8u) & 0xFFu)                             \
+       : (lane) == 2u ? (((word) >> 16u) & 0xFFu)                            \
+                      : (((word) >> 24u) & 0xFFu))
+#endif
+
+#if defined(BYTE_INPUT) && !defined(BOOL_OUT)
+// Byte inputs extend to the 32-bit accumulator exactly like static_cast:
+// int8 sign-extends, uint8 zero-extends, bool canonicalizes to 0/1.
+ACC_TYPE load_item(uint item) {
+  uint addr = params.lhs_offset + item;
+  uint byte = BYTE_AT(input_data.values[addr >> 2u], addr & 3u);
+#if defined(USE_I8)
+  return (byte & 0x80u) != 0u ? int(byte) - 256 : int(byte);
+#elif defined(USE_U8)
+  return uint(byte);
+#else
+  return byte != 0u ? 1 : 0;
+#endif
+}
+#elif defined(BYTE_INPUT)
+ACC_TYPE load_item(uint item) {
+  uint addr = params.lhs_offset + item;
+  uint word = input_data.values[addr >> 2u];
+  return BYTE_AT(word, addr & 3u) != 0u ? 1 : 0;
+}
+#elif defined(HALF_INPUT)
+ACC_TYPE load_item(uint item) {
+  uint16_t bits = input_data.values[params.lhs_offset + item];
+#if defined(USE_I16)
+  uint extended = uint(bits);
+  return (extended & 0x8000u) != 0u ? int(extended) - 65536 : int(extended);
+#else
+  return uint(bits);
+#endif
+}
+#elif defined(WORD64)
+ACC_TYPE load_item(uint item) {
+  return ACC_TYPE(input_data.values[params.lhs_offset + item]);
+}
+#elif defined(COMPLEX)
+ACC_TYPE load_item(uint item) {
+  return input_data.values[params.lhs_offset + item];
+}
+#else
+ACC_TYPE load_item(uint item) {
+  return LOAD_VALUE(input_data.values[params.lhs_offset + item]);
+}
+#endif
+
+// Output stores. The output dtype follows the upstream remap contract:
+// narrow Sum/Prod store the promoted 32-bit accumulator, narrow Min/Max
+// store the input width, everything else stores its own width. Byte and
+// half lanes insert with atomics so adjacent elements sharing one word
+// stay exact (the cast_int.comp lane-pair shape). Those bindings are
+// never writeonly; the omarchy allocator page-rounds every buffer, so
+// the word holding the last lane is inside the allocation.
+#ifndef BOOL_OUT
+void store_output(uint index, ACC_TYPE value) {
+#if defined(COMPLEX)
+  output_data.values[params.output_offset + index] = value;
+#elif defined(WORD64)
+  output_data.values[params.output_offset + index] = uint64_t(value);
+#elif defined(USE_I8) || defined(USE_U8) || defined(USE_I16) ||               \
+    defined(USE_U16)
+  if (params.operation <= 1u) {
+    // Sum/Prod: the output is the promoted int32/uint32 array.
+    output_data.values[params.output_offset + index] = uint(value);
+    return;
+  }
+  uint narrow = uint(value);
+  uint addr = params.output_offset + index;
+  uint shift;
+#if defined(USE_I8) || defined(USE_U8)
+  narrow &= 0xFFu;
+  shift = (addr & 3u) * 8u;
+  atomicAnd(output_data.values[addr >> 2u], ~(0xFFu << shift));
+  atomicOr(output_data.values[addr >> 2u], narrow << shift);
+#else
+  narrow &= 0xFFFFu;
+  // addr counts 16-bit items: two share one output word.
+  shift = (addr & 1u) * 16u;
+  atomicAnd(output_data.values[addr >> 1u], ~(0xFFFFu << shift));
+  atomicOr(output_data.values[addr >> 1u], narrow << shift);
+#endif
+#else
+  output_data.values[params.output_offset + index] = STORE_VALUE(value);
+#endif
+}
+#endif
+
+#if defined(USE_COMPLEX)
+// Complex partials live as two float words per (element, chunk) pair.
+ACC_TYPE load_partial(uint pair, uint component) {
+  return vec2(scratch_data.values[2u * pair],
+              scratch_data.values[2u * pair + 1u]);
+}
+void store_partial(uint pair, ACC_TYPE value) {
+  scratch_data.values[2u * pair] = value.x;
+  scratch_data.values[2u * pair + 1u] = value.y;
+}
+#else
+ACC_TYPE load_partial(uint pair, uint component) {
+  return ACC_TYPE(scratch_data.values[pair]);
+}
+void store_partial(uint pair, ACC_TYPE value) {
+  scratch_data.values[pair] = SCRATCH_TYPE(value);
+}
+#endif
+
 // The accumulator seed for each operation: the empty-reduction identity.
 ACC_TYPE init_value(uint operation) {
   if (operation == 0u) {
     return ACC_TYPE(0);
   }
   if (operation == 1u) {
+#ifdef USE_COMPLEX
+    return ACC_TYPE(1.0, 0.0);
+#else
     return ACC_TYPE(1);
+#endif
   }
   if (operation == 2u) {
+#ifdef USE_COMPLEX
+    return ACC_TYPE(MAX_SENTINEL, MAX_SENTINEL);
+#else
     return ACC_TYPE(MAX_SENTINEL);
+#endif
   }
-  if (operation == 3u) {
-    return ACC_TYPE(MIN_SENTINEL);
-  }
-  if (operation == 4u) {
-    return ACC_TYPE(0);
-  }
-  return ACC_TYPE(1);
+#ifdef USE_COMPLEX
+  return ACC_TYPE(MIN_SENTINEL, MIN_SENTINEL);
+#else
+  return ACC_TYPE(MIN_SENTINEL);
+#endif
 }
 
+#if defined(USE_COMPLEX)
+bool complex_is_nan(ACC_TYPE value) {
+  return isnan(value.x) || isnan(value.y);
+}
+
+// Lexicographic (real, then imaginary) ordering, matching the upstream
+// compare_complex and complex_elementwise maximum rules: strict compare,
+// ties favor the accumulator.
+bool complex_less(ACC_TYPE a, ACC_TYPE b) {
+  return (a.x < b.x) || (a.x == b.x && a.y < b.y);
+}
+
+// Numpy complex minimum/maximum rule, the behavior the upstream Python
+// suite pins against np.minimum/np.maximum: a NaN operand is itself the
+// result, the accumulator's NaN wins once carried, otherwise the strict
+// lexicographic compare picks. (The upstream Metal Min/Max complex
+// combine instead carries NaN per component - (nan, min(imag)) - which
+// no numpy value reproduces, so the reduce would fail its own suite's
+// nan_propagation_complex64 comparison either way the accumulator is
+// seeded.)
+ACC_TYPE combine(ACC_TYPE acc, ACC_TYPE next, uint operation) {
+  if (operation == 0u) {
+    return acc + next;
+  }
+  if (operation == 1u) {
+    return ACC_TYPE(acc.x * next.x - acc.y * next.y,
+                    acc.x * next.y + acc.y * next.x);
+  }
+  if (complex_is_nan(acc)) {
+    return acc;
+  }
+  if (complex_is_nan(next)) {
+    return next;
+  }
+  if (operation == 2u) {
+    return complex_less(next, acc) ? next : acc;
+  }
+  return complex_less(acc, next) ? next : acc;
+}
+#else
+#ifndef BOOL_OUT
+// Min and Max follow the upstream NaN convention: any NaN in the reduced
+// set poisons the result. A plain ordered compare silently drops a NaN
+// carried in the accumulator, so the poison is held once it enters.
+// Integer accumulators compare exactly with no NaN domain.
+ACC_TYPE combine(ACC_TYPE acc, ACC_TYPE next, uint operation) {
+  if (operation == 0u) {
+    return acc + next;
+  }
+  if (operation == 1u) {
+    return acc * next;
+  }
+#if !defined(USE_I32) && !defined(USE_U32) && !defined(USE_I8) &&              \
+    !defined(USE_U8) && !defined(USE_I16) && !defined(USE_U16) &&              \
+    !defined(USE_I64) && !defined(USE_U64) && !defined(USE_BOOL_INPUT)
+  if (isnan(acc)) {
+    return acc;
+  }
+  if (isnan(next)) {
+    return next;
+  }
+#endif
+  if (operation == 2u) {
+    return acc < next ? acc : next;
+  }
+  return acc > next ? acc : next;
+}
+#endif
+#endif
+
 #if defined(BOOL_OUT) || defined(USE_BOOL_INPUT)
-// Honeykrisp miscompiles shift-then-mask byte extraction with a
-// data-dependent shift amount (receipt 2026-09-02-masked-scatter-m1-fix,
-// diag68); on the M1 the bool AnyAll read falsy bytes past the first
-// input word, so All over all-true input returned false from size 5 up.
-// Four constant shifts picked by a select chain are the receipt-proven
-// equivalent (the same macro compare_bool.comp uses).
-#define BYTE_AT(word, lane)                                                  \
-  ((lane) == 0u ? ((word) & 0xFFu)                                           \
-       : (lane) == 1u ? (((word) >> 8u) & 0xFFu)                             \
-       : (lane) == 2u ? (((word) >> 16u) & 0xFFu)                            \
-                      : (((word) >> 24u) & 0xFFu))
 bool load_truthy(uint index) {
 #ifdef USE_BOOL_INPUT
   uint position = params.lhs_offset + index;
@@ -231,32 +481,6 @@ uint decode_reduced_offset(uint j) {
   }
   return r_off;
 }
-#ifndef BOOL_OUT
-// Min and Max follow the upstream NaN convention: any NaN in the reduced
-// set poisons the result. A plain ordered compare silently drops a NaN
-// carried in the accumulator, so the poison is held once it enters.
-ACC_TYPE combine(ACC_TYPE acc, ACC_TYPE next, uint operation) {
-  if (operation == 0u) {
-    return acc + next;
-  }
-  if (operation == 1u) {
-    return acc * next;
-  }
-#if !defined(USE_I32) && !defined(USE_U32)
-  if (isnan(acc)) {
-    return acc;
-  }
-  if (isnan(next)) {
-    return next;
-  }
-#endif
-  if (operation == 2u) {
-    return acc < next ? acc : next;
-  }
-  return acc > next ? acc : next;
-}
-#endif
-
 #ifdef BOOL_OUT
 void main() {
   uint word_stride = gl_NumWorkGroups.x * gl_WorkGroupSize.x;
@@ -350,11 +574,10 @@ void main() {
       ACC_TYPE value = init_value(params.operation);
       uint base = output_index * params.matrix_n;
       for (uint c = 0u; c < params.matrix_n; ++c) {
-        value = combine(value, ACC_TYPE(scratch_data.values[base + c]),
+        value = combine(value, load_partial(base + c, 0u),
                         params.operation);
       }
-      output_data.values[params.output_offset + output_index] =
-          STORE_VALUE(value);
+      store_output(output_index, value);
       if (params.output_size - output_index <= grid) {
         break;
       }
@@ -379,15 +602,14 @@ void main() {
 #ifdef USE_BOOL_INPUT
       ACC_TYPE next = ACC_TYPE(load_truthy(offset));
 #else
-      ACC_TYPE next = LOAD_VALUE(input_data.values[params.lhs_offset + offset]);
+      ACC_TYPE next = load_item(offset);
 #endif
       value = combine(value, next, params.operation);
     }
     if ((params.flags & 2u) != 0u) {
-      output_data.values[params.output_offset + output_index] =
-          STORE_VALUE(value);
+      store_output(output_index, value);
     } else {
-      scratch_data.values[id] = SCRATCH_TYPE(value);
+      store_partial(id, value);
     }
     if (params.output_size * params.matrix_n - id <= grid) {
       break;

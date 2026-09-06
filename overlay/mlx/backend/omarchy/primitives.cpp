@@ -1379,10 +1379,24 @@ omarchy::ComputeKernel select_reduce_general_kernel(Dtype dtype) {
   switch (dtype) {
     case bool_:
       return omarchy::ComputeKernel::ReduceGeneralBool;
+    case int8:
+      return omarchy::ComputeKernel::ReduceGeneralI8;
+    case uint8:
+      return omarchy::ComputeKernel::ReduceGeneralU8;
+    case int16:
+      return omarchy::ComputeKernel::ReduceGeneralI16;
+    case uint16:
+      return omarchy::ComputeKernel::ReduceGeneralU16;
     case int32:
       return omarchy::ComputeKernel::ReduceGeneralI32;
     case uint32:
       return omarchy::ComputeKernel::ReduceGeneralU32;
+    case int64:
+      return omarchy::ComputeKernel::ReduceGeneralI64;
+    case uint64:
+      return omarchy::ComputeKernel::ReduceGeneralU64;
+    case complex64:
+      return omarchy::ComputeKernel::ReduceGeneralComplex;
     case float16:
       return omarchy::ComputeKernel::ReduceGeneralF16;
     case bfloat16:
@@ -1456,8 +1470,22 @@ void dispatch_reduce_general(
     const std::vector<int>& axes,
     omarchy::CommandEncoder& encoder,
     omarchy::ComputeKernel kernel) {
+  // Flip-style views carry negative strides; the kernel walk uses
+  // unsigned offsets from the base pointer, so materialize a dense copy
+  // first. Other strided views reduce in place as before.
+  bool negative_strides = false;
+  for (int axis = 0; axis < input.ndim(); ++axis) {
+    negative_strides = negative_strides || input.strides()[axis] < 0;
+  }
+  std::optional<array> dense_temp;
+  const array& src = ensure_dense(
+      input,
+      !negative_strides,
+      dense_temp,
+      encoder,
+      out.primitive().stream());
   auto collapsed =
-      collapse_reduction_axes(operation_name, input, out, axes);
+      collapse_reduction_axes(operation_name, src, out, axes);
   std::vector<ReductionAxis> kept;
   std::vector<ReductionAxis> reduced;
   kept.reserve(collapsed.size());
@@ -1479,7 +1507,7 @@ void dispatch_reduce_general(
   }
   uint32_t output_size = checked_u32(out.size(), operation_name, out);
   uint32_t reduce_size_u32 = static_cast<uint32_t>(reduce_size);
-  const array& bound_input = input.size() == 0 ? out : input;
+  const array& bound_input = src.size() == 0 ? out : src;
   constexpr uint32_t kReduceGeneralChunkTrips = 4096;
   uint32_t chunks = reduce_size_u32 == 0
       ? 1u
@@ -1489,12 +1517,43 @@ void dispatch_reduce_general(
     chunks = 1;
   }
   bool bool_out = out.dtype() == bool_;
-  Dtype scratch_dtype =
-      bool_out ? uint32
-               : (issubdtype(input.dtype(), floating) ? float32
-                                                      : out.dtype());
-  uint64_t scratch_elems = static_cast<uint64_t>(output_size) * chunks;
-  if (scratch_elems > (1ull << 25)) {
+  // The scratch width follows the shader accumulator, not the output:
+  // narrow integers accumulate in 32 bits, complex64 keeps two float
+  Dtype scratch_dtype = float32;
+  uint64_t words_per_partial = 1;
+  switch (src.dtype()) {
+    case bool_:
+    case int8:
+    case int16:
+    case int32:
+      scratch_dtype = int32;
+      break;
+    case uint8:
+    case uint16:
+    case uint32:
+      scratch_dtype = uint32;
+      break;
+    case int64:
+      scratch_dtype = int64;
+      break;
+    case uint64:
+      scratch_dtype = uint64;
+      break;
+    case complex64:
+      scratch_dtype = float32;
+      words_per_partial = 2;
+      break;
+    default:
+      scratch_dtype = float32;
+      break;
+  }
+  if (bool_out) {
+    scratch_dtype = uint32;
+  }
+  uint64_t scratch_elems =
+      static_cast<uint64_t>(output_size) * chunks * words_per_partial;
+  uint64_t partial_pairs = static_cast<uint64_t>(output_size) * chunks;
+  if (partial_pairs > (1ull << 25)) {
     omarchy::unsupported(
         operation_name + " reduction split exceeds scratch budget", out);
   }
@@ -1509,7 +1568,7 @@ void dispatch_reduce_general(
   params.reduce_size = reduce_size_u32;
   params.output_size = output_size;
   params.lhs_offset = checked_item_offset(
-      bound_input, input.size(), operation_name, out);
+      bound_input, src.size(), operation_name, out);
   params.output_offset = checked_item_offset(
       out, out.size(), operation_name, out);
   params.dims = checked_u32(kept.size(), operation_name + " rank", out);
@@ -1533,8 +1592,8 @@ void dispatch_reduce_general(
     }
     uint64_t input_bytes =
         (static_cast<uint64_t>(params.lhs_offset) + input_span + 1) *
-        input.itemsize();
-    if (input_bytes > binding(input).range) {
+        src.itemsize();
+    if (input_bytes > binding(src).range) {
       omarchy::unsupported(operation_name + " input allocation", out);
     }
   }
@@ -1611,13 +1670,13 @@ void dispatch_reduce_general(
     if (chunks == 1) {
       run_phase(0u | 2u, word_count);
     } else {
-      run_phase(0u, checked_u32(scratch_elems, operation_name, out));
+      run_phase(0u, checked_u32(partial_pairs, operation_name, out));
       run_phase(1u, word_count);
     }
   } else if (chunks == 1) {
     run_phase(0u | 2u, output_size);
   } else {
-    run_phase(0u, checked_u32(scratch_elems, operation_name, out));
+    run_phase(0u, checked_u32(partial_pairs, operation_name, out));
     run_phase(1u, output_size);
   }
 }
@@ -2366,11 +2425,42 @@ void dispatch_arg_reduce_suffix(
   params.output_offset = checked_item_offset(out, out.size(), operation_name, out);
   std::array<omarchy::ComputeBinding, 3> bindings{
       binding(src), binding(src), binding(out)};
-  auto kernel = select_float_kernel(
-      src.dtype(),
-      omarchy::ComputeKernel::ArgReduceF32,
-      omarchy::ComputeKernel::ArgReduceF16,
-      omarchy::ComputeKernel::ArgReduceBF16);
+  omarchy::ComputeKernel kernel;
+  switch (src.dtype()) {
+    case int8:
+      kernel = omarchy::ComputeKernel::ArgReduceI8;
+      break;
+    case uint8:
+      kernel = omarchy::ComputeKernel::ArgReduceU8;
+      break;
+    case int16:
+      kernel = omarchy::ComputeKernel::ArgReduceI16;
+      break;
+    case uint16:
+      kernel = omarchy::ComputeKernel::ArgReduceU16;
+      break;
+    case int32:
+      kernel = omarchy::ComputeKernel::ArgReduceI32;
+      break;
+    case uint32:
+      kernel = omarchy::ComputeKernel::ArgReduceU32;
+      break;
+    case int64:
+      kernel = omarchy::ComputeKernel::ArgReduceI64;
+      break;
+    case uint64:
+      kernel = omarchy::ComputeKernel::ArgReduceU64;
+      break;
+    case float16:
+      kernel = omarchy::ComputeKernel::ArgReduceF16;
+      break;
+    case bfloat16:
+      kernel = omarchy::ComputeKernel::ArgReduceBF16;
+      break;
+    default:
+      kernel = omarchy::ComputeKernel::ArgReduceF32;
+      break;
+  }
   encoder.dispatch_compute(
       kernel,
       bindings,
@@ -2388,9 +2478,25 @@ void ArgReduce::eval_gpu(const std::vector<array>& inputs, array& out) {
 
   // The output carries indices, so the float checks apply to the input
   // only and the output must be uint32.
-  if (input.dtype() != float16 && input.dtype() != float32 &&
-      input.dtype() != bfloat16) {
-    omarchy::unsupported(operation_name + " dtype", out);
+  switch (input.dtype()) {
+    case float16:
+    case bfloat16:
+    case float32:
+    case int8:
+    case uint8:
+    case int16:
+    case uint16:
+    case int32:
+    case uint32:
+    case int64:
+    case uint64:
+      break;
+    default:
+      omarchy::unsupported(operation_name + " dtype", out);
+  }
+  if ((input.dtype() == int64 || input.dtype() == uint64) &&
+      !encoder.device().capabilities().shader_int64) {
+    omarchy::unsupported(operation_name + " int64 capability", out);
   }
   const auto& capabilities = encoder.device().capabilities();
   if (input.dtype() == float16 &&
@@ -5403,11 +5509,28 @@ void Reduce::eval_gpu(const std::vector<array>& inputs, array& out) {
     return;
   }
 
-  bool bool_numeric = input.dtype() == bool_ && out.dtype() == int32 &&
-      (reduce_type == Reduce::Sum || reduce_type == Reduce::Prod);
-  if (!bool_numeric && (input.dtype() != out.dtype() ||
-      !(float_dtype || input.dtype() == int32 || input.dtype() == uint32))) {
+  Dtype in_dtype = input.dtype();
+  bool is_sum_prod =
+      reduce_type == Reduce::Sum || reduce_type == Reduce::Prod;
+  bool bool_numeric = in_dtype == bool_ && out.dtype() == int32 && is_sum_prod;
+  // The upstream remap_reduce_types contract (mlx/backend/metal/reduce.cpp):
+  // narrow integers promote Sum/Prod outputs to int32/uint32 and keep
+  // Min/Max in the input width; floats, 32/64-bit integers, and complex64
+  // reduce in their own width.
+  bool promoted_narrow = is_sum_prod &&
+      ((in_dtype == int8 || in_dtype == int16) && out.dtype() == int32 ||
+       (in_dtype == uint8 || in_dtype == uint16) && out.dtype() == uint32);
+  bool exact_width = out.dtype() == in_dtype &&
+      (float_dtype || in_dtype == int8 || in_dtype == uint8 ||
+          in_dtype == int16 || in_dtype == uint16 || in_dtype == int32 ||
+          in_dtype == uint32 || in_dtype == int64 || in_dtype == uint64 ||
+          in_dtype == complex64);
+  if (!bool_numeric && !promoted_narrow && !exact_width) {
     omarchy::unsupported(operation_name + " dtype", out);
+  }
+  if ((in_dtype == int64 || in_dtype == uint64) &&
+      !encoder.device().capabilities().shader_int64) {
+    omarchy::unsupported(operation_name + " int64 capability", out);
   }
   if (float_dtype) {
     require_float_input(operation_name, input, out, encoder);
@@ -5461,18 +5584,35 @@ void Scan::eval_gpu(const std::vector<array>& inputs, array& out) {
   auto [reduce_type, axis, reverse, inclusive] = state();
   const array& input = inputs.at(0);
   auto& encoder = omarchy::get_command_encoder(out.primitive().stream());
-  if (reduce_type == Scan::LogAddExp) {
-    omarchy::unsupported("Scan LogAddExp", out);
-  }
-  if (input.dtype() == float32 || input.dtype() == float16 ||
-      input.dtype() == bfloat16) {
+  // Floats and complex64 scan through require_float_dtype; integers scan
+  // in their own width (narrow wraps match the upstream narrow kernels);
+  // bool cumsum produces the upstream int32 output. LogAddExp runs on the
+  // float family and complex64.
+  bool scan_float = input.dtype() == float32 || input.dtype() == float16 ||
+      input.dtype() == bfloat16;
+  bool scan_complex =
+      input.dtype() == complex64 && out.dtype() == complex64;
+  bool scan_int = out.dtype() == input.dtype() &&
+      (input.dtype() == int8 || input.dtype() == uint8 ||
+          input.dtype() == int16 || input.dtype() == uint16 ||
+          input.dtype() == int32 || input.dtype() == uint32 ||
+          input.dtype() == int64 || input.dtype() == uint64);
+  bool scan_bool = input.dtype() == bool_ &&
+      ((reduce_type == Scan::Sum && out.dtype() == int32) ||
+       (reduce_type != Scan::Sum && reduce_type != Scan::LogAddExp &&
+           out.dtype() == bool_));
+  if (scan_float) {
     require_float_dtype("Scan", input, out, encoder);
-  } else if (
-      (input.dtype() == int32 || input.dtype() == uint32) &&
-      out.dtype() == input.dtype()) {
-    // Integers scan in their own width; bool and 64-bit stay rejected.
+  } else if (scan_complex) {
+    // complex64 scans in its own width; out == in is checked above.
+  } else if (scan_int || scan_bool) {
+    // Supported.
   } else {
     omarchy::unsupported("Scan dtype", out);
+  }
+  if ((input.dtype() == int64 || input.dtype() == uint64) &&
+      !encoder.device().capabilities().shader_int64) {
+    omarchy::unsupported("Scan int64 capability", out);
   }
   if (input.ndim() == 0 || input.ndim() > 4 || axis < 0 ||
       axis >= input.ndim()) {
@@ -5480,8 +5620,8 @@ void Scan::eval_gpu(const std::vector<array>& inputs, array& out) {
   }
 
   bool suffix_float_sum = reduce_type == Scan::Sum && !reverse &&
-      input.dtype() != int32 && input.dtype() != uint32 &&
-      input.flags().row_contiguous && axis == input.ndim() - 1;
+      scan_float && input.flags().row_contiguous &&
+      axis == input.ndim() - 1;
   if (suffix_float_sum) {
     size_t row_length = input.shape(-1);
     size_t rows = row_length == 0 ? 0 : input.size() / row_length;
@@ -5527,8 +5667,11 @@ void Scan::eval_gpu(const std::vector<array>& inputs, array& out) {
     case Scan::Min:
       operation_selector = 2u;
       break;
-    default:
+    case Scan::Max:
       operation_selector = 3u;
+      break;
+    default:
+      operation_selector = 4u;
       break;
   }
   out.set_data(allocate_omarchy(out.nbytes()));
@@ -5561,15 +5704,48 @@ void Scan::eval_gpu(const std::vector<array>& inputs, array& out) {
   }
   std::array<omarchy::ComputeBinding, 3> bindings{
       binding(input), binding(input), binding(out)};
-  auto kernel = input.dtype() == int32
-      ? omarchy::ComputeKernel::ScanGeneralI32
-      : input.dtype() == uint32
-      ? omarchy::ComputeKernel::ScanGeneralU32
-      : select_float_kernel(
-            out.dtype(),
-            omarchy::ComputeKernel::ScanGeneralF32,
-            omarchy::ComputeKernel::ScanGeneralF16,
-            omarchy::ComputeKernel::ScanGeneralBF16);
+  omarchy::ComputeKernel kernel;
+  switch (input.dtype()) {
+    case bool_:
+      kernel = omarchy::ComputeKernel::ScanGeneralBool;
+      break;
+    case int8:
+      kernel = omarchy::ComputeKernel::ScanGeneralI8;
+      break;
+    case uint8:
+      kernel = omarchy::ComputeKernel::ScanGeneralU8;
+      break;
+    case int16:
+      kernel = omarchy::ComputeKernel::ScanGeneralI16;
+      break;
+    case uint16:
+      kernel = omarchy::ComputeKernel::ScanGeneralU16;
+      break;
+    case int32:
+      kernel = omarchy::ComputeKernel::ScanGeneralI32;
+      break;
+    case uint32:
+      kernel = omarchy::ComputeKernel::ScanGeneralU32;
+      break;
+    case int64:
+      kernel = omarchy::ComputeKernel::ScanGeneralI64;
+      break;
+    case uint64:
+      kernel = omarchy::ComputeKernel::ScanGeneralU64;
+      break;
+    case complex64:
+      kernel = omarchy::ComputeKernel::ScanGeneralComplex;
+      break;
+    case float16:
+      kernel = omarchy::ComputeKernel::ScanGeneralF16;
+      break;
+    case bfloat16:
+      kernel = omarchy::ComputeKernel::ScanGeneralBF16;
+      break;
+    default:
+      kernel = omarchy::ComputeKernel::ScanGeneralF32;
+      break;
+  }
   encoder.dispatch_compute(kernel, bindings, params, output_size);
 }
 // The word-transport kernel family (raw None phases, keys, integer
