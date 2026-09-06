@@ -10,6 +10,23 @@ Two of the worst v0.3.0 defects never appeared on a Linux development box. They 
 
 ## Fixed in development
 
+### AGX float division is one ulp off the correctly rounded quotient
+
+Observed on: real M1, Honeykrisp Mesa 26.1.7. Status: FIXED at `dcc4b664`
+for the two pinned bit-exact contracts (complex64 divide, affine
+quantize); other kernels still use native division.
+
+GLSL `/` on this driver returns quotients up to one ulp from the
+correctly rounded value (80/25 and 10/25 one ulp low; a quantize
+boundary quotient one ulp high, flipping round-half-away from 219 to
+218). llvmpipe and the CPU/Metal references are correctly rounded.
+`fma()` does not help: the AGX compiler contracts the lowered
+multiply-add into a native fused op that is not the IEEE fused result.
+The fix routes those divisions through a `precise`-qualified Dekker
+exact-residual correction, which is a no-op where the native quotient is
+already correct. Receipts: M1 log `receipts-m1/11-bitexact-fix-aa66b1af.log`
+in the qualification checkout; the two cases pin the exact inputs.
+
 ### Idle-stream events destroyed their semaphore while a submit still used it
 
 Observed on: llvmpipe development host, in every release through v0.3.5
