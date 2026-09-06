@@ -1,0 +1,1601 @@
+Test project /home/joshuawarren/.config/superpowers/worktrees/mlx-omarchy/performance-expansion/.work/integration-build
+        Start   1: test simple allocations
+  1/798 Test   #1: test simple allocations .......................................................................   Passed    0.04 sec
+        Start   2: test large allocations
+  2/798 Test   #2: test large allocations ........................................................................   Passed    0.04 sec
+        Start   3: test cached allocation keeps capacity
+  3/798 Test   #3: test cached allocation keeps capacity .........................................................   Passed    0.04 sec
+        Start   4: test clear cache synchronizes cpu streams
+  4/798 Test   #4: test clear cache synchronizes cpu streams .....................................................   Passed    0.04 sec
+        Start   5: test arg reduce small
+  5/798 Test   #5: test arg reduce small .........................................................................   Passed    0.04 sec
+        Start   6: test arg reduce against cpu
+  6/798 Test   #6: test arg reduce against cpu ...................................................................   Passed    0.04 sec
+        Start   7: test arg reduce bool
+  7/798 Test   #7: test arg reduce bool ..........................................................................   Passed    0.04 sec
+        Start   8: test arg reduce edge cases
+  8/798 Test   #8: test arg reduce edge cases ....................................................................   Passed    0.04 sec
+        Start   9: test arg reduce irregular strides
+  9/798 Test   #9: test arg reduce irregular strides .............................................................   Passed    0.04 sec
+        Start  10: test array basics
+ 10/798 Test  #10: test array basics .............................................................................   Passed    0.08 sec
+        Start  11: test array types
+ 11/798 Test  #11: test array types ..............................................................................   Passed    0.06 sec
+        Start  12: test array metadata
+ 12/798 Test  #12: test array metadata ...........................................................................   Passed    0.04 sec
+        Start  13: test array iteration
+ 13/798 Test  #13: test array iteration ..........................................................................   Passed    0.05 sec
+        Start  14: test array shared buffer
+ 14/798 Test  #14: test array shared buffer ......................................................................   Passed    0.06 sec
+        Start  15: test make empty array
+ 15/798 Test  #15: test make empty array .........................................................................   Passed    0.05 sec
+        Start  16: test make array from user buffer
+ 16/798 Test  #16: test make array from user buffer ..............................................................   Passed    0.07 sec
+        Start  17: test negative indexing for shape/strides
+ 17/798 Test  #17: test negative indexing for shape/strides ......................................................   Passed    0.04 sec
+        Start  18: test siblings circular references without eval
+ 18/798 Test  #18: test siblings circular references without eval ................................................   Passed    0.04 sec
+        Start  19: test stop gradient
+ 19/798 Test  #19: test stop gradient ............................................................................   Passed    0.08 sec
+        Start  20: test jvp
+ 20/798 Test  #20: test jvp ......................................................................................   Passed    0.08 sec
+        Start  21: test vjp
+ 21/798 Test  #21: test vjp ......................................................................................   Passed    0.08 sec
+        Start  22: test grad
+ 22/798 Test  #22: test grad .....................................................................................   Passed    0.06 sec
+        Start  23: test transform container reuse does not accumulate stale wrappers
+ 23/798 Test  #23: test transform container reuse does not accumulate stale wrappers .............................   Passed    0.05 sec
+        Start  24: test creation grads
+ 24/798 Test  #24: test creation grads ...........................................................................   Passed    0.08 sec
+        Start  25: test op vjps
+ 25/798 Test  #25: test op vjps ..................................................................................   Passed    0.11 sec
+        Start  26: test gather and take grads
+ 26/798 Test  #26: test gather and take grads ....................................................................   Passed    0.08 sec
+        Start  27: test slice grads
+ 27/798 Test  #27: test slice grads ..............................................................................   Passed    0.07 sec
+        Start  28: test slice update jvp with one tangent
+ 28/798 Test  #28: test slice update jvp with one tangent ........................................................   Passed    0.06 sec
+        Start  29: test min and max vjp
+ 29/798 Test  #29: test min and max vjp ..........................................................................   Passed    0.09 sec
+        Start  30: test reshape and transpose grads
+ 30/798 Test  #30: test reshape and transpose grads ..............................................................   Passed    0.07 sec
+        Start  31: test copy grads
+ 31/798 Test  #31: test copy grads ...............................................................................   Passed    0.05 sec
+        Start  32: test matmul vjp
+ 32/798 Test  #32: test matmul vjp ...............................................................................   Passed    0.06 sec
+        Start  33: test concatenate grads
+ 33/798 Test  #33: test concatenate grads ........................................................................   Passed    0.05 sec
+        Start  34: test split grads
+ 34/798 Test  #34: test split grads ..............................................................................   Passed    0.07 sec
+        Start  35: test comparison grads
+ 35/798 Test  #35: test comparison grads .........................................................................   Passed    0.07 sec
+        Start  36: test as_strided grads
+ 36/798 Test  #36: test as_strided grads .........................................................................   Passed    0.06 sec
+        Start  37: test jvp from vjp
+ 37/798 Test  #37: test jvp from vjp .............................................................................   Passed    0.12 sec
+        Start  38: test complex gradients
+ 38/798 Test  #38: test complex gradients ........................................................................   Passed    0.05 sec
+        Start  39: test scan grads
+ 39/798 Test  #39: test scan grads ...............................................................................   Passed    0.11 sec
+        Start  40: test update state
+ 40/798 Test  #40: test update state .............................................................................   Passed    0.06 sec
+        Start  41: test grad types
+ 41/798 Test  #41: test grad types ...............................................................................   Passed    0.04 sec
+        Start  42: test grad dynamic slices
+ 42/798 Test  #42: test grad dynamic slices ......................................................................   Passed    0.09 sec
+        Start  43: test masked_scatter autograd
+ 43/798 Test  #43: test masked_scatter autograd ..................................................................   Passed    0.08 sec
+        Start  44: test matmul
+ 44/798 Test  #44: test matmul ...................................................................................   Passed    0.09 sec
+        Start  45: test simple compile
+ 45/798 Test  #45: test simple compile ...........................................................................   Passed    0.08 sec
+        Start  46: test compile with grad
+ 46/798 Test  #46: test compile with grad ........................................................................   Passed    0.07 sec
+        Start  47: test compile inputs with primitive
+ 47/798 Test  #47: test compile inputs with primitive ............................................................   Passed    0.08 sec
+        Start  48: test compile with created array
+ 48/798 Test  #48: test compile with created array ...............................................................   Passed    0.06 sec
+        Start  49: test nested compile
+ 49/798 Test  #49: test nested compile ...........................................................................   Passed    0.05 sec
+        Start  50: test enable and disable compile
+ 50/798 Test  #50: test enable and disable compile ...............................................................   Passed    0.04 sec
+        Start  51: test compile with non-finite constants
+ 51/798 Test  #51: test compile with non-finite constants ........................................................   Passed    0.04 sec
+        Start  52: test simplify scalars
+ 52/798 Test  #52: test simplify scalars .........................................................................   Passed    0.04 sec
+        Start  53: test simplify
+ 53/798 Test  #53: test simplify .................................................................................   Passed    0.04 sec
+        Start  54: test simplify noops
+ 54/798 Test  #54: test simplify noops ...........................................................................   Passed    0.04 sec
+        Start  55: test no simplify
+ 55/798 Test  #55: test no simplify ..............................................................................   Passed    0.04 sec
+        Start  56: test simplify multi output
+ 56/798 Test  #56: test simplify multi output ....................................................................   Passed    0.07 sec
+        Start  57: test compile unary fused
+ 57/798 Test  #57: test compile unary fused ......................................................................   Passed    0.06 sec
+        Start  58: test compile binary fused
+ 58/798 Test  #58: test compile binary fused .....................................................................   Passed    0.06 sec
+        Start  59: test compile gelu
+ 59/798 Test  #59: test compile gelu .............................................................................   Passed    0.08 sec
+        Start  60: test compile tape with outside parents
+ 60/798 Test  #60: test compile tape with outside parents ........................................................   Passed    0.08 sec
+        Start  61: test compile across streams
+ 61/798 Test  #61: test compile across streams ...................................................................   Passed    0.05 sec
+        Start  62: test compile internal output
+ 62/798 Test  #62: test compile internal output ..................................................................   Passed    0.06 sec
+        Start  63: test compile deep graph
+ 63/798 Test  #63: test compile deep graph .......................................................................   Passed    0.09 sec
+        Start  64: test compile repeat input
+ 64/798 Test  #64: test compile repeat input .....................................................................   Passed    0.08 sec
+        Start  65: test compile compiled function
+ 65/798 Test  #65: test compile compiled function ................................................................   Passed    0.04 sec
+        Start  66: test transform compiled function
+ 66/798 Test  #66: test transform compiled function ..............................................................   Passed    0.04 sec
+        Start  67: test fusion kernel reuse
+ 67/798 Test  #67: test fusion kernel reuse ......................................................................   Passed    0.06 sec
+        Start  68: test fusion types
+ 68/798 Test  #68: test fusion types .............................................................................   Passed    0.06 sec
+        Start  69: test shapeless compile
+ 69/798 Test  #69: test shapeless compile ........................................................................   Passed    0.06 sec
+        Start  70: test compile strides
+ 70/798 Test  #70: test compile strides ..........................................................................   Passed    0.06 sec
+        Start  71: test compile change streams
+ 71/798 Test  #71: test compile change streams ...................................................................   Passed    0.14 sec
+        Start  72: test compile lambda
+ 72/798 Test  #72: test compile lambda ...........................................................................   Passed    0.05 sec
+        Start  73: test compile with no-ops
+ 73/798 Test  #73: test compile with no-ops ......................................................................   Passed    0.04 sec
+        Start  74: test compile random bits
+ 74/798 Test  #74: test compile random bits ......................................................................   Passed    0.07 sec
+        Start  75: test compile throwing first trace does not poison cache
+ 75/798 Test  #75: test compile throwing first trace does not poison cache .......................................   Passed    0.05 sec
+        Start  76: test arange
+ 76/798 Test  #76: test arange ...................................................................................   Passed    0.07 sec
+        Start  77: test astype
+ 77/798 Test  #77: test astype ...................................................................................   Passed    0.04 sec
+        Start  78: test full
+ 78/798 Test  #78: test full .....................................................................................   Passed    0.08 sec
+        Start  79: test simple custom vjp
+ 79/798 Test  #79: test simple custom vjp ........................................................................   Passed    0.06 sec
+        Start  80: test checkpointing
+ 80/798 Test  #80: test checkpointing ............................................................................   Passed    0.06 sec
+        Start  81: test device and stream ordering
+ 81/798 Test  #81: test device and stream ordering ...............................................................   Passed    0.03 sec
+        Start  82: test device placement
+ 82/798 Test  #82: test device placement .........................................................................   Passed    0.04 sec
+        Start  83: test einsum path
+ 83/798 Test  #83: test einsum path ..............................................................................   Passed    0.04 sec
+        Start  84: test einsum
+ 84/798 Test  #84: test einsum ...................................................................................   Passed    0.09 sec
+        Start  85: test eval
+ 85/798 Test  #85: test eval .....................................................................................   Passed    0.05 sec
+        Start  86: test eval multiple
+ 86/798 Test  #86: test eval multiple ............................................................................   Passed    0.08 sec
+        Start  87: test eval with tracer when not tracing
+ 87/798 Test  #87: test eval with tracer when not tracing ........................................................   Passed    0.04 sec
+        Start  88: test eval graph retention when not tracing
+ 88/798 Test  #88: test eval graph retention when not tracing ....................................................   Passed    0.05 sec
+        Start  89: test export basic functions
+ 89/798 Test  #89: test export basic functions ...................................................................   Passed    0.08 sec
+        Start  90: test export function with no inputs
+ 90/798 Test  #90: test export function with no inputs ...........................................................   Passed    0.09 sec
+        Start  91: test export multi output primitives
+ 91/798 Test  #91: test export multi output primitives ...........................................................   Passed    0.10 sec
+        Start  92: test export primitives with state
+ 92/798 Test  #92: test export primitives with state .............................................................   Passed    0.09 sec
+        Start  93: test export functions with kwargs
+ 93/798 Test  #93: test export functions with kwargs .............................................................   Passed    0.05 sec
+        Start  94: test export function with variable inputs
+ 94/798 Test  #94: test export function with variable inputs .....................................................   Passed    0.07 sec
+        Start  95: test export function on different stream
+ 95/798 Test  #95: test export function on different stream ......................................................   Passed    0.04 sec
+        Start  96: test export import with metadata
+ 96/798 Test  #96: test export import with metadata ..............................................................   Passed    0.05 sec
+        Start  97: test fft basics
+ 97/798 Test  #97: test fft basics ...............................................................................   Passed    0.11 sec
+        Start  98: test real ffts
+ 98/798 Test  #98: test real ffts ................................................................................   Passed    0.06 sec
+        Start  99: test fftn
+ 99/798 Test  #99: test fftn .....................................................................................   Passed    0.10 sec
+        Start 100: test fft with provided shape
+100/798 Test #100: test fft with provided shape ..................................................................   Passed    0.05 sec
+        Start 101: test fft vmap
+101/798 Test #101: test fft vmap .................................................................................   Passed    0.07 sec
+        Start 102: test fft grads
+102/798 Test #102: test fft grads ................................................................................   Passed    0.14 sec
+        Start 103: test fftshift and ifftshift
+103/798 Test #103: test fftshift and ifftshift ...................................................................   Passed    0.06 sec
+        Start 104: [mlx.core.linalg.norm] no ord
+104/798 Test #104: [mlx.core.linalg.norm] no ord .................................................................   Passed    0.11 sec
+        Start 105: [mlx.core.linalg.norm] double ord
+105/798 Test #105: [mlx.core.linalg.norm] double ord .............................................................   Passed    0.16 sec
+        Start 106: [mlx.core.linalg.norm] string ord
+106/798 Test #106: [mlx.core.linalg.norm] string ord .............................................................   Passed    0.11 sec
+        Start 107: test QR factorization
+107/798 Test #107: test QR factorization .........................................................................   Passed    0.10 sec
+        Start 108: test SVD factorization
+108/798 Test #108: test SVD factorization ........................................................................   Passed    0.10 sec
+        Start 109: test matrix inversion
+109/798 Test #109: test matrix inversion .........................................................................   Passed    0.10 sec
+        Start 110: test matrix cholesky
+110/798 Test #110: test matrix cholesky ..........................................................................   Passed    0.08 sec
+        Start 111: test matrix pseudo-inverse
+111/798 Test #111: test matrix pseudo-inverse ....................................................................   Passed    0.10 sec
+        Start 112: test cross product
+112/798 Test #112: test cross product ............................................................................   Passed    0.08 sec
+        Start 113: test matrix eigh
+113/798 Test #113: test matrix eigh ..............................................................................   Passed    0.09 sec
+        Start 114: test lu
+114/798 Test #114: test lu .......................................................................................   Passed    0.09 sec
+        Start 115: test solve
+115/798 Test #115: test solve ....................................................................................   Passed    0.09 sec
+        Start 116: test solve_triangluar
+116/798 Test #116: test solve_triangluar .........................................................................   Passed    0.07 sec
+        Start 117: test det
+117/798 Test #117: test det ......................................................................................   Passed    0.05 sec
+        Start 118: test slogdet
+118/798 Test #118: test slogdet ..................................................................................   Passed    0.04 sec
+        Start 119: test save_safetensors
+119/798 Test #119: test save_safetensors .........................................................................   Passed    0.05 sec
+        Start 120: test safetensors file boundary validation
+120/798 Test #120: test safetensors file boundary validation .....................................................   Passed    0.06 sec
+        Start 121: test gguf
+121/798 Test #121: test gguf .....................................................................................   Passed    0.09 sec
+        Start 122: test gguf tensor data offset validation
+122/798 Test #122: test gguf tensor data offset validation .......................................................   Passed    0.06 sec
+        Start 123: test gguf metadata value validation
+123/798 Test #123: test gguf metadata value validation ...........................................................   Passed    0.03 sec
+        Start 124: test gguf metadata
+124/798 Test #124: test gguf metadata ............................................................................   Passed    0.06 sec
+        Start 125: test single array serialization
+125/798 Test #125: test single array serialization ...............................................................   Passed    0.08 sec
+        Start 126: test copy
+126/798 Test #126: test copy .....................................................................................   Passed    0.06 sec
+        Start 127: test reshape
+127/798 Test #127: test reshape ..................................................................................   Passed    0.04 sec
+        Start 128: test flatten
+128/798 Test #128: test flatten ..................................................................................   Passed    0.04 sec
+        Start 129: test unflatten
+129/798 Test #129: test unflatten ................................................................................   Passed    0.05 sec
+        Start 130: test squeeze and expand
+130/798 Test #130: test squeeze and expand .......................................................................   Passed    0.04 sec
+        Start 131: test slice
+131/798 Test #131: test slice ....................................................................................   Passed    0.07 sec
+        Start 132: test slice update
+132/798 Test #132: test slice update .............................................................................   Passed    0.06 sec
+        Start 133: test slice update add
+133/798 Test #133: test slice update add .........................................................................   Passed    0.08 sec
+        Start 134: test dynamic slice
+134/798 Test #134: test dynamic slice ............................................................................   Passed    0.07 sec
+        Start 135: test dynamic slice update
+135/798 Test #135: test dynamic slice update .....................................................................   Passed    0.06 sec
+        Start 136: test split
+136/798 Test #136: test split ....................................................................................   Passed    0.07 sec
+        Start 137: test flip
+137/798 Test #137: test flip .....................................................................................   Passed    0.06 sec
+        Start 138: test unstack
+138/798 Test #138: test unstack ..................................................................................   Passed    0.05 sec
+        Start 139: test swap and move axes
+139/798 Test #139: test swap and move axes .......................................................................   Passed    0.04 sec
+        Start 140: test transpose
+140/798 Test #140: test transpose ................................................................................   Passed    0.06 sec
+        Start 141: test comparison ops
+141/798 Test #141: test comparison ops ...........................................................................   Passed    0.08 sec
+        Start 142: test is nan
+142/798 Test #142: test is nan ...................................................................................   Passed    0.07 sec
+        Start 143: test is inf
+143/798 Test #143: test is inf ...................................................................................   Passed    0.08 sec
+        Start 144: test all close
+144/798 Test #144: test all close ................................................................................   Passed    0.07 sec
+        Start 145: test is close
+145/798 Test #145: test is close .................................................................................   Passed    0.08 sec
+        Start 146: test reduction ops
+146/798 Test #146: test reduction ops ............................................................................   Passed    0.27 sec
+        Start 147: test irregular binary ops
+147/798 Test #147: test irregular binary ops .....................................................................   Passed    0.07 sec
+        Start 148: test arithmetic unary ops
+148/798 Test #148: test arithmetic unary ops .....................................................................   Passed    0.15 sec
+        Start 149: test error functions
+149/798 Test #149: test error functions ..........................................................................   Passed    0.09 sec
+        Start 150: test arithmetic binary ops
+150/798 Test #150: test arithmetic binary ops ....................................................................   Passed    0.09 sec
+        Start 151: test broadcast
+151/798 Test #151: test broadcast ................................................................................   Passed    0.06 sec
+        Start 152: test gather
+152/798 Test #152: test gather ...................................................................................   Passed    0.07 sec
+        Start 153: test take
+153/798 Test #153: test take .....................................................................................   Passed    0.07 sec
+        Start 154: test gather contiguity
+154/798 Test #154: test gather contiguity ........................................................................   Passed    0.06 sec
+        Start 155: test take along axis
+155/798 Test #155: test take along axis ..........................................................................   Passed    0.06 sec
+        Start 156: test put along axis
+156/798 Test #156: test put along axis ...........................................................................   Passed    0.07 sec
+        Start 157: test scatter
+157/798 Test #157: test scatter ..................................................................................   Passed    0.10 sec
+        Start 158: test masked_scatter
+158/798 Test #158: test masked_scatter ...........................................................................   Passed    0.06 sec
+        Start 159: test is positive infinity
+159/798 Test #159: test is positive infinity .....................................................................   Passed    0.08 sec
+        Start 160: test is negative infinity
+160/798 Test #160: test is negative infinity .....................................................................   Passed    0.06 sec
+        Start 161: test scatter types
+161/798 Test #161: test scatter types ............................................................................   Passed    0.21 sec
+        Start 162: test complex ops
+162/798 Test #162: test complex ops ..............................................................................   Passed    0.09 sec
+        Start 163: test as_strided op
+163/798 Test #163: test as_strided op ............................................................................   Passed    0.06 sec
+        Start 164: test scan op
+164/798 Test #164: test scan op ..................................................................................   Passed    0.07 sec
+        Start 165: test pad
+165/798 Test #165: test pad ......................................................................................   Passed    0.06 sec
+        Start 166: test power
+166/798 Test #166: test power ....................................................................................   Passed    0.08 sec
+        Start 167: test where
+167/798 Test #167: test where ....................................................................................   Passed    0.09 sec
+        Start 168: test stack
+168/798 Test #168: test stack ....................................................................................   Passed    0.04 sec
+        Start 169: test full_like
+169/798 Test #169: test full_like ................................................................................   Passed    0.07 sec
+        Start 170: test eye
+170/798 Test #170: test eye ......................................................................................   Passed    0.06 sec
+        Start 171: test tri
+171/798 Test #171: test tri ......................................................................................   Passed    0.06 sec
+        Start 172: test tril
+172/798 Test #172: test tril .....................................................................................   Passed    0.06 sec
+        Start 173: test triu
+173/798 Test #173: test triu .....................................................................................   Passed    0.06 sec
+        Start 174: test identity
+174/798 Test #174: test identity .................................................................................   Passed    0.08 sec
+        Start 175: test eye with positive k offset
+175/798 Test #175: test eye with positive k offset ...............................................................   Passed    0.06 sec
+        Start 176: test eye with negative k offset
+176/798 Test #176: test eye with negative k offset ...............................................................   Passed    0.07 sec
+        Start 177: test basic clipping
+177/798 Test #177: test basic clipping ...........................................................................   Passed    0.07 sec
+        Start 178: test clipping with only min
+178/798 Test #178: test clipping with only min ...................................................................   Passed    0.07 sec
+        Start 179: test clipping with only max
+179/798 Test #179: test clipping with only max ...................................................................   Passed    0.08 sec
+        Start 180: test linspace
+180/798 Test #180: test linspace .................................................................................   Passed    0.08 sec
+        Start 181: test quantize dequantize
+181/798 Test #181: test quantize dequantize ......................................................................   Passed    0.08 sec
+        Start 182: test repeat
+182/798 Test #182: test repeat ...................................................................................   Passed    0.07 sec
+        Start 183: tile
+183/798 Test #183: tile ..........................................................................................   Passed    0.07 sec
+        Start 184: tensordot
+184/798 Test #184: tensordot .....................................................................................   Passed    0.07 sec
+        Start 185: outer
+185/798 Test #185: outer .........................................................................................   Passed    0.07 sec
+        Start 186: inner
+186/798 Test #186: inner .........................................................................................   Passed    0.08 sec
+        Start 187: test divmod
+187/798 Test #187: test divmod ...................................................................................   Passed    0.10 sec
+        Start 188: test diagonal
+188/798 Test #188: test diagonal .................................................................................   Passed    0.07 sec
+        Start 189: test diag
+189/798 Test #189: test diag .....................................................................................   Passed    0.07 sec
+        Start 190: test issubdtype
+190/798 Test #190: test issubdtype ...............................................................................   Passed    0.04 sec
+        Start 191: test atleast_1d
+191/798 Test #191: test atleast_1d ...............................................................................   Passed    0.04 sec
+        Start 192: test atleast_1d vector
+192/798 Test #192: test atleast_1d vector ........................................................................   Passed    0.04 sec
+        Start 193: test atleast_2d
+193/798 Test #193: test atleast_2d ...............................................................................   Passed    0.04 sec
+        Start 194: test atleast_2d vector
+194/798 Test #194: test atleast_2d vector ........................................................................   Passed    0.04 sec
+        Start 195: test atleast_3d
+195/798 Test #195: test atleast_3d ...............................................................................   Passed    0.04 sec
+        Start 196: test atleast_3d vector
+196/798 Test #196: test atleast_3d vector ........................................................................   Passed    0.05 sec
+        Start 197: test topk
+197/798 Test #197: test topk .....................................................................................   Passed    0.06 sec
+        Start 198: test meshgrid
+198/798 Test #198: test meshgrid .................................................................................   Passed    0.07 sec
+        Start 199: test conv1d
+199/798 Test #199: test conv1d ...................................................................................   Passed    0.12 sec
+        Start 200: test conv2d
+200/798 Test #200: test conv2d ...................................................................................   Passed    0.09 sec
+        Start 201: test trace
+201/798 Test #201: test trace ....................................................................................   Passed    0.09 sec
+        Start 202: test view
+202/798 Test #202: test view .....................................................................................   Passed    0.05 sec
+        Start 203: test roll
+203/798 Test #203: test roll .....................................................................................   Passed    0.06 sec
+        Start 204: test contiguous
+204/798 Test #204: test contiguous ...............................................................................   Passed    0.04 sec
+        Start 205: test bitwise shift operations
+205/798 Test #205: test bitwise shift operations .................................................................   Passed    0.17 sec
+        Start 206: test conv_transpose1d with output_padding
+206/798 Test #206: test conv_transpose1d with output_padding .....................................................   Passed    0.07 sec
+        Start 207: test conv_transpose2d with output_padding
+207/798 Test #207: test conv_transpose2d with output_padding .....................................................   Passed    0.06 sec
+        Start 208: test conv_transpose3d with output_padding
+208/798 Test #208: test conv_transpose3d with output_padding .....................................................   Passed    0.06 sec
+        Start 209: test conv shape overflow
+209/798 Test #209: test conv shape overflow ......................................................................   Passed    0.15 sec
+        Start 210: test pad shape overflow
+210/798 Test #210: test pad shape overflow .......................................................................   Passed    0.04 sec
+        Start 211: test fp8 conversion
+211/798 Test #211: test fp8 conversion ...........................................................................   Passed    0.08 sec
+        Start 212: test max min with nan
+212/798 Test #212: test max min with nan .........................................................................   Passed    0.07 sec
+        Start 213: roll and tile shape overflow
+213/798 Test #213: roll and tile shape overflow ..................................................................   Passed    0.06 sec
+        Start 214: test random key
+214/798 Test #214: test random key ...............................................................................   Passed    0.05 sec
+        Start 215: test global rng
+215/798 Test #215: test global rng ...............................................................................   Passed    0.04 sec
+        Start 216: test random split
+216/798 Test #216: test random split .............................................................................   Passed    0.05 sec
+        Start 217: test random bits
+217/798 Test #217: test random bits ..............................................................................   Passed    0.08 sec
+        Start 218: test random uniform
+218/798 Test #218: test random uniform ...........................................................................   Passed    0.13 sec
+        Start 219: test random normal
+219/798 Test #219: test random normal ............................................................................   Passed    0.11 sec
+        Start 220: test random multivariate_normal
+220/798 Test #220: test random multivariate_normal ...............................................................   Passed    0.04 sec
+        Start 221: test random randint
+221/798 Test #221: test random randint ...........................................................................   Passed    0.22 sec
+        Start 222: test random bernoulli
+222/798 Test #222: test random bernoulli .........................................................................   Passed    0.06 sec
+        Start 223: Test truncated normal
+223/798 Test #223: Test truncated normal .........................................................................   Passed    0.08 sec
+        Start 224: test categorical
+224/798 Test #224: test categorical ..............................................................................   Passed    0.12 sec
+        Start 225: test laplace
+225/798 Test #225: test laplace ..................................................................................   Passed    0.49 sec
+        Start 226: test stream management
+226/798 Test #226: test stream management ........................................................................   Passed    0.04 sec
+        Start 227: test default stream in threads
+227/798 Test #227: test default stream in threads ................................................................   Passed    0.04 sec
+        Start 228: test access stream in other thread
+228/798 Test #228: test access stream in other thread ............................................................   Passed    0.04 sec
+        Start 229: test new stream in threads
+229/798 Test #229: test new stream in threads ....................................................................   Passed    0.04 sec
+        Start 230: test thread unsafe stream
+230/798 Test #230: test thread unsafe stream .....................................................................   Passed    0.04 sec
+        Start 231: test thread local stream
+231/798 Test #231: test thread local stream ......................................................................   Passed    0.04 sec
+        Start 232: test get streams
+232/798 Test #232: test get streams ..............................................................................   Passed    0.03 sec
+        Start 233: test asynchronous launch
+233/798 Test #233: test asynchronous launch ......................................................................   Passed    0.03 sec
+        Start 234: test stream placement
+234/798 Test #234: test stream placement .........................................................................   Passed    0.04 sec
+        Start 235: test scheduler races
+235/798 Test #235: test scheduler races ..........................................................................   Passed    0.63 sec
+        Start 236: test type promotion
+236/798 Test #236: test type promotion ...........................................................................   Passed    0.04 sec
+        Start 237: test normalize axis
+237/798 Test #237: test normalize axis ...........................................................................   Passed    0.03 sec
+        Start 238: test finfo
+238/798 Test #238: test finfo ....................................................................................   Passed    0.03 sec
+        Start 239: test iinfo
+239/798 Test #239: test iinfo ....................................................................................   Passed    0.03 sec
+        Start 240: test simple vmap
+240/798 Test #240: test simple vmap ..............................................................................   Passed    0.09 sec
+        Start 241: test vmap with eval
+241/798 Test #241: test vmap with eval ...........................................................................   Passed    0.07 sec
+        Start 242: test vmap comparison ops
+242/798 Test #242: test vmap comparison ops ......................................................................   Passed    0.05 sec
+        Start 243: test vmap creation ops
+243/798 Test #243: test vmap creation ops ........................................................................   Passed    0.05 sec
+        Start 244: test vmap slice
+244/798 Test #244: test vmap slice ...............................................................................   Passed    0.05 sec
+        Start 245: test vmap concatenate
+245/798 Test #245: test vmap concatenate .........................................................................   Passed    0.05 sec
+        Start 246: test vmap gather
+246/798 Test #246: test vmap gather ..............................................................................   Passed    0.04 sec
+        Start 247: test vmap take_along_axis with unmapped input and mapped index
+247/798 Test #247: test vmap take_along_axis with unmapped input and mapped index ................................   Passed    0.04 sec
+        Start 248: test vmap scatter
+248/798 Test #248: test vmap scatter .............................................................................   Passed    0.06 sec
+        Start 249: test vmap SVD
+249/798 Test #249: test vmap SVD .................................................................................   Passed    0.04 sec
+        Start 250: test vmap dynamic slices
+250/798 Test #250: test vmap dynamic slices ......................................................................   Passed    0.06 sec
+        Start 251: test vmap floor_divide integer
+251/798 Test #251: test vmap floor_divide integer ................................................................   Passed    0.05 sec
+        Start 252: tests
+252/798 Test #252: tests .........................................................................................   Passed    2.18 sec
+        Start 253: discovery classifies supported and unsupported hardware
+253/798 Test #253: discovery classifies supported and unsupported hardware .......................................   Passed    0.01 sec
+        Start 254: gpu is unavailable reports a reason and refuses selection
+254/798 Test #254: gpu is unavailable reports a reason and refuses selection .....................................   Passed    0.04 sec
+        Start 255: mx.gpu selects the Omarchy device
+255/798 Test #255: mx.gpu selects the Omarchy device .............................................................   Passed    0.04 sec
+        Start 256: allocator tracks buffers and reuses the cache
+256/798 Test #256: allocator tracks buffers and reuses the cache .................................................   Passed    0.04 sec
+        Start 257: freeing an in-flight buffer drops accounting but quarantines reuse
+257/798 Test #257: freeing an in-flight buffer drops accounting but quarantines reuse ............................   Passed    0.04 sec
+        Start 258: buffer round trip through the Vulkan encoder
+258/798 Test #258: buffer round trip through the Vulkan encoder ..................................................   Passed    0.04 sec
+        Start 259: events synchronize between streams
+259/798 Test #259: events synchronize between streams ............................................................   Passed    0.04 sec
+        Start 260: queued event wait survives destruction of the Event
+260/798 Test #260: queued event wait survives destruction of the Event ...........................................   Passed    0.04 sec
+        Start 261: cross-stream event ordering is preserved
+261/798 Test #261: cross-stream event ordering is preserved ......................................................   Passed    0.03 sec
+        Start 262: handler-only commit runs handlers after prior queue work
+262/798 Test #262: handler-only commit runs handlers after prior queue work ......................................   Passed    0.03 sec
+        Start 263: wait joins a handler the background drain is still running
+263/798 Test #263: wait joins a handler the background drain is still running ....................................   Passed    6.37 sec
+        Start 264: wait serializes against the background drain to preserve handler order
+264/798 Test #264: wait serializes against the background drain to preserve handler order ........................   Passed    0.19 sec
+        Start 265: freed arrays release promptly while buffers stay quarantined in flight
+265/798 Test #265: freed arrays release promptly while buffers stay quarantined in flight ........................   Passed    0.21 sec
+        Start 266: eager per-node commits reuse ring slots without host joins
+266/798 Test #266: eager per-node commits reuse ring slots without host joins ....................................   Passed    0.05 sec
+        Start 267: Event::wait joins completion handlers without polling
+267/798 Test #267: Event::wait joins completion handlers without polling .........................................   Passed    0.04 sec
+        Start 268: sub-word zero fill then copy stays zero without syncs
+268/798 Test #268: sub-word zero fill then copy stays zero without syncs .........................................   Passed    0.04 sec
+        Start 269: zero-scalar fast path refuses GPU-produced scalars
+269/798 Test #269: zero-scalar fast path refuses GPU-produced scalars ............................................   Passed    0.05 sec
+        Start 270: host event bridges a GPU-stream signal
+270/798 Test #270: host event bridges a GPU-stream signal ........................................................   Passed    0.14 sec
+        Start 271: CPU-produced event gates a GPU consumer without blocking eval
+271/798 Test #271: CPU-produced event gates a GPU consumer without blocking eval .................................   Passed    0.14 sec
+        Start 272: GPU wait before CPU signal keeps producer stream order
+272/798 Test #272: GPU wait before CPU signal keeps producer stream order ........................................   Passed    0.14 sec
+        Start 273: CPU-only event keeps scheduler errors and needs no GPU
+273/798 Test #273: CPU-only event keeps scheduler errors and needs no GPU ........................................   Passed    0.04 sec
+        Start 274: device_info returns stable references under concurrent access
+274/798 Test #274: device_info returns stable references under concurrent access .................................   Passed    0.04 sec
+        Start 275: independent streams measure against the serialized sum
+275/798 Test #275: independent streams measure against the serialized sum ........................................   Passed    0.04 sec
+        Start 276: a fresh process reopens the Vulkan device
+276/798 Test #276: a fresh process reopens the Vulkan device .....................................................   Passed    0.08 sec
+        Start 277: a hung submit returns a bounded Omarchy error
+277/798 Test #277: a hung submit returns a bounded Omarchy error .................................................   Passed   10.09 sec
+        Start 278: a long-but-progressing submission completes without a hang
+278/798 Test #278: a long-but-progressing submission completes without a hang ....................................   Passed    0.24 sec
+        Start 279: a watchdog throw unwinds cleanly through process teardown
+279/798 Test #279: a watchdog throw unwinds cleanly through process teardown .....................................   Passed    0.18 sec
+        Start 280: tensor ops dispatch on Vulkan and never silently on CPU
+280/798 Test #280: tensor ops dispatch on Vulkan and never silently on CPU .......................................   Passed    0.06 sec
+        Start 281: small eager output stays ordered across deep submit boundaries
+281/798 Test #281: small eager output stays ordered across deep submit boundaries ................................   Passed    1.02 sec
+        Start 282: workless evals submit nothing and pin nothing
+282/798 Test #282: workless evals submit nothing and pin nothing .................................................   Passed    0.05 sec
+        Start 283: one graph evaluation batches into bounded submissions
+283/798 Test #283: one graph evaluation batches into bounded submissions .........................................   Passed    0.08 sec
+        Start 284: vector copy honors the source slice offset
+284/798 Test #284: vector copy honors the source slice offset ....................................................   Passed    0.05 sec
+        Start 285: vector copy honors explicit item offsets on both sides
+285/798 Test #285: vector copy honors explicit item offsets on both sides ........................................   Passed    0.04 sec
+        Start 286: zero fill honors a slice view offset
+286/798 Test #286: zero fill honors a slice view offset ..........................................................   Passed    0.04 sec
+        Start 287: zero fill honors an explicit destination item offset
+287/798 Test #287: zero fill honors an explicit destination item offset ..........................................   Passed    0.04 sec
+        Start 288: zero fill handles a 2-byte-aligned destination
+288/798 Test #288: zero fill handles a 2-byte-aligned destination ................................................   Passed    0.04 sec
+        Start 289: zero fill covers sub-word outputs
+289/798 Test #289: zero fill covers sub-word outputs .............................................................   Passed    0.04 sec
+        Start 290: nonzero scalar fill honors a slice view offset
+290/798 Test #290: nonzero scalar fill honors a slice view offset ................................................   Passed    0.05 sec
+        Start 291: nonzero scalar fill keeps negative and large int32 exact
+291/798 Test #291: nonzero scalar fill keeps negative and large int32 exact ......................................   Passed    0.04 sec
+        Start 292: nonzero scalar fill writes uint32 max bit-exact
+292/798 Test #292: nonzero scalar fill writes uint32 max bit-exact ...............................................   Passed    0.04 sec
+        Start 293: nonzero integer scalar fills keep named refusals elsewhere
+293/798 Test #293: nonzero integer scalar fills keep named refusals elsewhere ....................................   Passed    0.04 sec
+        Start 294: nonzero scalar fill leaves an empty output untouched
+294/798 Test #294: nonzero scalar fill leaves an empty output untouched ..........................................   Passed    0.04 sec
+        Start 295: full ones and full_like fill exact integers
+295/798 Test #295: full ones and full_like fill exact integers ...................................................   Passed    0.04 sec
+        Start 296: reshape shares lazily and copies with the source offset
+296/798 Test #296: reshape shares lazily and copies with the source offset .......................................   Passed    0.04 sec
+        Start 297: dtype converting copies cover the integer family and bool
+297/798 Test #297: dtype converting copies cover the integer family and bool .....................................   Passed    0.08 sec
+        Start 298: byte dtype casts write packed edge words exactly
+298/798 Test #298: byte dtype casts write packed edge words exactly ..............................................   Passed    0.04 sec
+        Start 299: nonzero scalar fills cover bool and the 8-bit integers
+299/798 Test #299: nonzero scalar fills cover bool and the 8-bit integers ........................................   Passed    0.04 sec
+        Start 300: arange covers uint32
+300/798 Test #300: arange covers uint32 ..........................................................................   Passed    0.04 sec
+        Start 301: negative strides flip through the strided copy engine
+301/798 Test #301: negative strides flip through the strided copy engine .........................................   Passed    0.04 sec
+        Start 302: strided copy covers bool
+302/798 Test #302: strided copy covers bool ......................................................................   Passed    0.04 sec
+        Start 303: strided copies cover the narrow and 64-bit integers
+303/798 Test #303: strided copies cover the narrow and 64-bit integers ...........................................   Passed    0.04 sec
+        Start 304: FP32 elementwise primitives dispatch through Vulkan compute
+304/798 Test #304: FP32 elementwise primitives dispatch through Vulkan compute ...................................   Passed    0.08 sec
+        Start 305: FP32 unary primitives dispatch through Vulkan compute
+305/798 Test #305: FP32 unary primitives dispatch through Vulkan compute .........................................   Passed    0.06 sec
+        Start 306: Log bases match host references at several magnitudes
+306/798 Test #306: Log bases match host references at several magnitudes .........................................   Passed    0.06 sec
+        Start 307: FP16 casts and elementwise primitives use Vulkan compute
+307/798 Test #307: FP16 casts and elementwise primitives use Vulkan compute ......................................   Passed    0.07 sec
+        Start 308: BF16 primitives use emulated conversion through Vulkan compute
+308/798 Test #308: BF16 primitives use emulated conversion through Vulkan compute ................................   Passed    0.08 sec
+        Start 309: suffix Sum and Max reductions use Vulkan compute
+309/798 Test #309: suffix Sum and Max reductions use Vulkan compute ..............................................   Passed    0.04 sec
+        Start 310: elementwise on broadcast-expanded views matches host values
+310/798 Test #310: elementwise on broadcast-expanded views matches host values ...................................   Passed    0.07 sec
+        Start 311: compute indexing stays inside Vulkan and uint32 limits
+311/798 Test #311: compute indexing stays inside Vulkan and uint32 limits ........................................   Passed    0.00 sec
+        Start 312: compute shaders handle offsets, multiple workgroups, and NaN
+312/798 Test #312: compute shaders handle offsets, multiple workgroups, and NaN ..................................   Passed    0.06 sec
+        Start 313: FP32 and FP16 Matmul support dense and transposed weights
+313/798 Test #313: FP32 and FP16 Matmul support dense and transposed weights .....................................   Passed    0.05 sec
+        Start 314: Matmul flattens leading batches and AddMM broadcasts bias
+314/798 Test #314: Matmul flattens leading batches and AddMM broadcasts bias .....................................   Passed    0.06 sec
+        Start 315: Matmul handles tiled edges, offsets, and empty K
+315/798 Test #315: Matmul handles tiled edges, offsets, and empty K ..............................................   Passed    0.04 sec
+        Start 316: non-zero scalar fills dispatch through Vulkan compute
+316/798 Test #316: non-zero scalar fills dispatch through Vulkan compute .........................................   Passed    0.04 sec
+        Start 317: general strided copies materialize through Vulkan compute
+317/798 Test #317: general strided copies materialize through Vulkan compute .....................................   Passed    0.04 sec
+        Start 318: value_and_grad computes matmul and subtract gradients on device
+318/798 Test #318: value_and_grad computes matmul and subtract gradients on device ...............................   Passed    0.08 sec
+        Start 319: jvp computes forward-mode tangents through Vulkan compute
+319/798 Test #319: jvp computes forward-mode tangents through Vulkan compute .....................................   Passed    0.06 sec
+        Start 320: vmap batches closures over the leading axis through Vulkan compute
+320/798 Test #320: vmap batches closures over the leading axis through Vulkan compute ............................   Passed    0.06 sec
+        Start 321: mx.compile evaluates the elementwise tape and no_fuse still matches
+321/798 Test #321: mx.compile evaluates the elementwise tape and no_fuse still matches ...........................   Passed    0.06 sec
+        Start 322: unsupported compute shapes and dtypes refuse by name
+322/798 Test #322: unsupported compute shapes and dtypes refuse by name ..........................................   Passed    0.09 sec
+        Start 323: integer Add Multiply Square cover scalar broadcast, transposed views, and empty arrays
+323/798 Test #323: integer Add Multiply Square cover scalar broadcast, transposed views, and empty arrays ........   Passed    0.06 sec
+        Start 324: softmax normalizes rows through Vulkan compute
+324/798 Test #324: softmax normalizes rows through Vulkan compute ................................................   Passed    0.54 sec
+        Start 325: FP16 and BF16 softmax match host references
+325/798 Test #325: FP16 and BF16 softmax match host references ...................................................   Passed    0.05 sec
+        Start 326: logsumexp reduces last-axis rows through Vulkan compute
+326/798 Test #326: logsumexp reduces last-axis rows through Vulkan compute .......................................   Passed    0.05 sec
+        Start 327: Log matches host references through Vulkan compute
+327/798 Test #327: Log matches host references through Vulkan compute ............................................   Passed    0.10 sec
+        Start 328: take gathers table rows through Vulkan compute
+328/798 Test #328: take gathers table rows through Vulkan compute ................................................   Passed    0.06 sec
+        Start 329: take gathers N-D index arrays as flat row sequences
+329/798 Test #329: take gathers N-D index arrays as flat row sequences ...........................................   Passed    0.05 sec
+        Start 330: take gathers uint32 argmax indices through Vulkan compute
+330/798 Test #330: take gathers uint32 argmax indices through Vulkan compute .....................................   Passed    0.04 sec
+        Start 331: take gathers int64 indices and zeroes wide values
+331/798 Test #331: take gathers int64 indices and zeroes wide values .............................................   Passed    0.04 sec
+        Start 332: take gathers uint32 and int32 tables as raw words
+332/798 Test #332: take gathers uint32 and int32 tables as raw words .............................................   Passed    0.05 sec
+        Start 333: general broadcast elementwise matches host references
+333/798 Test #333: general broadcast elementwise matches host references .........................................   Passed    0.08 sec
+        Start 334: broadcast divide carries collapsed ranks 5 through 8
+334/798 Test #334: broadcast divide carries collapsed ranks 5 through 8 ..........................................   Passed    0.06 sec
+        Start 335: value_and_grad runs softmax times input through broadcast views
+335/798 Test #335: value_and_grad runs softmax times input through broadcast views ...............................   Passed    0.06 sec
+        Start 336: batched Matmul matches host references across layouts
+336/798 Test #336: batched Matmul matches host references across layouts .........................................   Passed    0.05 sec
+        Start 337: scaled_dot_product_attention matches a batched matmul reference
+337/798 Test #337: scaled_dot_product_attention matches a batched matmul reference ...............................   Passed    0.06 sec
+        Start 338: scaled_dot_product_attention expands kv heads through a rank-5 score matmul
+338/798 Test #338: scaled_dot_product_attention expands kv heads through a rank-5 score matmul ...................   Passed    0.06 sec
+        Start 339: cold-cache GQA decode matmul runs over cache slice views
+339/798 Test #339: cold-cache GQA decode matmul runs over cache slice views ......................................   Passed    0.07 sec
+        Start 340: causal scaled_dot_product_attention masks future keys
+340/798 Test #340: causal scaled_dot_product_attention masks future keys .........................................   Passed    0.06 sec
+        Start 341: scaled_dot_product_attention keeps ~600-magnitude float16 scores exact
+341/798 Test #341: scaled_dot_product_attention keeps ~600-magnitude float16 scores exact ........................   Passed    0.07 sec
+        Start 342: causal scaled_dot_product_attention keeps large float16 scores exact across a cache offset
+342/798 Test #342: causal scaled_dot_product_attention keeps large float16 scores exact across a cache offset ....   Passed    0.08 sec
+        Start 343: scaled_dot_product_attention keeps ~600-magnitude bfloat16 scores exact
+343/798 Test #343: scaled_dot_product_attention keeps ~600-magnitude bfloat16 scores exact .......................   Passed    0.07 sec
+        Start 344: repeat materializes broadcast reshapes through the strided copy engine
+344/798 Test #344: repeat materializes broadcast reshapes through the strided copy engine ........................   Passed    0.04 sec
+        Start 345: argmax reduces last-axis rows through Vulkan compute
+345/798 Test #345: argmax reduces last-axis rows through Vulkan compute ..........................................   Passed    0.05 sec
+        Start 346: argmin matches first-occurrence ties through Vulkan compute
+346/798 Test #346: argmin matches first-occurrence ties through Vulkan compute ...................................   Passed    0.04 sec
+        Start 347: RandomBits matches the host threefry reference bit for bit
+347/798 Test #347: RandomBits matches the host threefry reference bit for bit ....................................   Passed    0.05 sec
+        Start 348: RandomBits widths match the CPU stream bit for bit
+348/798 Test #348: RandomBits widths match the CPU stream bit for bit ............................................   Passed    0.04 sec
+        Start 349: uniform with a pinned key is deterministic through Vulkan
+349/798 Test #349: uniform with a pinned key is deterministic through Vulkan .....................................   Passed    0.06 sec
+        Start 350: categorical samples every class through Vulkan compute
+350/798 Test #350: categorical samples every class through Vulkan compute ........................................   Passed    0.08 sec
+        Start 351: RandomBits maps every width to its upstream dtype
+351/798 Test #351: RandomBits maps every width to its upstream dtype .............................................   Passed    0.04 sec
+        Start 352: FP16 argmax matches host references
+352/798 Test #352: FP16 argmax matches host references ...........................................................   Passed    0.04 sec
+        Start 353: Cos and Sin match host references through Vulkan compute
+353/798 Test #353: Cos and Sin match host references through Vulkan compute ......................................   Passed    0.06 sec
+        Start 354: Arange fills start plus step times index through Vulkan compute
+354/798 Test #354: Arange fills start plus step times index through Vulkan compute ...............................   Passed    0.05 sec
+        Start 355: grad of sum sin matches cos through Vulkan compute
+355/798 Test #355: grad of sum sin matches cos through Vulkan compute ............................................   Passed    0.06 sec
+        Start 356: sort and argsort order last-axis rows through Vulkan compute
+356/798 Test #356: sort and argsort order last-axis rows through Vulkan compute ..................................   Passed    0.04 sec
+        Start 357: sort places NaN after every number through Vulkan compute
+357/798 Test #357: sort places NaN after every number through Vulkan compute .....................................   Passed    0.05 sec
+        Start 358: sort and argsort handle wide rows through Vulkan compute
+358/798 Test #358: sort and argsort handle wide rows through Vulkan compute ......................................   Passed    0.05 sec
+        Start 359: sort rejects non-float dtypes with named errors
+359/798 Test #359: sort rejects non-float dtypes with named errors ...............................................   Passed    0.04 sec
+        Start 360: sort and argsort merge long rows exactly through global memory
+360/798 Test #360: sort and argsort merge long rows exactly through global memory ................................   Passed    0.70 sec
+        Start 361: integer sort and argsort match the host stable order through Vulkan compute
+361/798 Test #361: integer sort and argsort match the host stable order through Vulkan compute ...................   Passed    0.08 sec
+        Start 362: partition redirects to sort and topk returns the right set
+362/798 Test #362: partition redirects to sort and topk returns the right set ....................................   Passed    0.05 sec
+        Start 363: strided slice views materialize exact values
+363/798 Test #363: strided slice views materialize exact values ..................................................   Passed    0.05 sec
+        Start 364: elementwise ops over strided slice views match host values
+364/798 Test #364: elementwise ops over strided slice views match host values ....................................   Passed    0.06 sec
+        Start 365: FP16 sort and argsort match host references
+365/798 Test #365: FP16 sort and argsort match host references ...................................................   Passed    0.05 sec
+        Start 366: Equal matches host references across dtypes and broadcast shapes
+366/798 Test #366: Equal matches host references across dtypes and broadcast shapes ..............................   Passed    0.07 sec
+        Start 367: bool Abs and Sign are the identity through the byte lanes
+367/798 Test #367: bool Abs and Sign are the identity through the byte lanes .....................................   Passed    0.04 sec
+        Start 368: sin and cos on an empty argument return empty
+368/798 Test #368: sin and cos on an empty argument return empty .................................................   Passed    0.04 sec
+        Start 369: RandomBits batched keys keep every key's elements in place
+369/798 Test #369: RandomBits batched keys keep every key's elements in place ....................................   Passed    0.05 sec
+        Start 370: isinf composes Equal and LogicalOr through Vulkan compute
+370/798 Test #370: isinf composes Equal and LogicalOr through Vulkan compute .....................................   Passed    0.05 sec
+        Start 371: Select picks between two row-contiguous values under a scalar condition
+371/798 Test #371: Select picks between two row-contiguous values under a scalar condition .......................   Passed    0.04 sec
+        Start 372: bool to float32 casts exact zero and one through Vulkan compute
+372/798 Test #372: bool to float32 casts exact zero and one through Vulkan compute ...............................   Passed    0.05 sec
+        Start 373: CumSum scans suffix rows against host references
+373/798 Test #373: CumSum scans suffix rows against host references ..............................................   Passed    0.04 sec
+        Start 374: searchsorted matches the upstream binary search on both sides
+374/798 Test #374: searchsorted matches the upstream binary search on both sides .................................   Passed    0.05 sec
+        Start 375: categorical samples in range with a pinned key over 32 classes
+375/798 Test #375: categorical samples in range with a pinned key over 32 classes ................................   Passed    0.09 sec
+        Start 376: temp sampling chain runs the vocab-wide categorical on device
+376/798 Test #376: temp sampling chain runs the vocab-wide categorical on device .................................   Passed    0.14 sec
+        Start 377: quantized matmul matches dequant and host references
+377/798 Test #377: quantized matmul matches dequant and host references ..........................................   Passed    0.07 sec
+        Start 378: quantized matmul runs f16 and bf16 activations
+378/798 Test #378: quantized matmul runs f16 and bf16 activations ................................................   Passed    0.06 sec
+        Start 379: quantized matmul pins named errors outside the linear shape
+379/798 Test #379: quantized matmul pins named errors outside the linear shape ...................................   Passed    0.05 sec
+        Start 380: dequantize reproduces hand-packed affine words
+380/798 Test #380: dequantize reproduces hand-packed affine words ................................................   Passed    0.08 sec
+        Start 381: quantize matches the pinned Metal-source affine reference
+381/798 Test #381: quantize matches the pinned Metal-source affine reference .....................................   Passed    0.06 sec
+        Start 382: quantize and dequantize pin named errors outside the affine gate
+382/798 Test #382: quantize and dequantize pin named errors outside the affine gate ..............................   Passed    0.04 sec
+        Start 383: Convolution matches host references through Vulkan compute
+383/798 Test #383: Convolution matches host references through Vulkan compute ....................................   Passed    0.07 sec
+        Start 384: FP16 Convolution matches host references
+384/798 Test #384: FP16 Convolution matches host references ......................................................   Passed    0.05 sec
+        Start 385: mx.compile evaluates a four-op elementwise chain
+385/798 Test #385: mx.compile evaluates a four-op elementwise chain ..............................................   Passed    0.06 sec
+        Start 386: mx.compile pins the named bfloat16 tape gate
+386/798 Test #386: mx.compile pins the named bfloat16 tape gate ..................................................   Passed    0.08 sec
+        Start 387: Wave3 ArcCos ArcSin ArcTan ArcTan2 and hyperbolic match host references
+387/798 Test #387: Wave3 ArcCos ArcSin ArcTan ArcTan2 and hyperbolic match host references .......................   Passed    0.06 sec
+        Start 388: Wave3 Expm1 Log1p Erf ErfInv match host references
+388/798 Test #388: Wave3 Expm1 Log1p Erf ErfInv match host references ............................................   Passed    0.08 sec
+        Start 389: Wave3 Ceil Floor Round and LogAddExp match host references
+389/798 Test #389: Wave3 Ceil Floor Round and LogAddExp match host references ....................................   Passed    0.06 sec
+        Start 390: Wave3 Conjugate Real Imag mirror upstream on real dtypes and compute on complex
+390/798 Test #390: Wave3 Conjugate Real Imag mirror upstream on real dtypes and compute on complex ...............   Passed    0.05 sec
+        Start 391: Wave3 Conjugate Real Imag mirror is exact for real dtypes across views and broadcasts
+391/798 Test #391: Wave3 Conjugate Real Imag mirror is exact for real dtypes across views and broadcasts .........   Passed    0.05 sec
+        Start 392: Less, LessEqual, Greater, and NotEqual match host references and the NaN matrix
+392/798 Test #392: Less, LessEqual, Greater, and NotEqual match host references and the NaN matrix ...............   Passed    0.06 sec
+        Start 393: LogicalAnd and LogicalNot match host references
+393/798 Test #393: LogicalAnd and LogicalNot match host references ...............................................   Passed    0.04 sec
+        Start 394: BitwiseBinary and BitwiseInvert match host references
+394/798 Test #394: BitwiseBinary and BitwiseInvert match host references .........................................   Passed    0.05 sec
+        Start 395: integer Remainder, DivMod, Power, Sign, and Abs match host references
+395/798 Test #395: integer Remainder, DivMod, Power, Sign, and Abs match host references .........................   Passed    0.07 sec
+        Start 396: float Remainder, Power, Sign, Abs, and DivMod match host references
+396/798 Test #396: float Remainder, Power, Sign, Abs, and DivMod match host references ...........................   Passed    0.10 sec
+        Start 397: int8 comparisons read one byte per element
+397/798 Test #397: int8 comparisons read one byte per element ....................................................   Passed    0.08 sec
+        Start 398: valid bundle exposes its exact contracts
+398/798 Test #398: valid bundle exposes its exact contracts ......................................................   Passed    0.01 sec
+        Start 399: state channels bind as both source and destination
+399/798 Test #399: state channels bind as both source and destination ............................................   Passed    0.00 sec
+        Start 400: missing bundle directory returns not_found
+400/798 Test #400: missing bundle directory returns not_found ....................................................   Passed    0.00 sec
+        Start 401: directory without manifest.json is a manifest error
+401/798 Test #401: directory without manifest.json is a manifest error ...........................................   Passed    0.00 sec
+        Start 402: sha256_file matches the manifest descriptor digest
+402/798 Test #402: sha256_file matches the manifest descriptor digest ............................................   Passed    0.00 sec
+        Start 403: single-field mutations fail before payload access
+403/798 Test #403: single-field mutations fail before payload access .............................................   Passed    0.02 sec
+        Start 404: descriptor hash mismatch fails after field checks
+404/798 Test #404: descriptor hash mismatch fails after field checks .............................................   Passed    0.00 sec
+        Start 405: payload byte size mismatch fails before hashing
+405/798 Test #405: payload byte size mismatch fails before hashing ...............................................   Passed    0.00 sec
+        Start 406: ANEC task count mismatch fails after digest verification
+406/798 Test #406: ANEC task count mismatch fails after digest verification ......................................   Passed    0.00 sec
+        Start 407: ANEC source and destination counts must match manifest channels
+407/798 Test #407: ANEC source and destination counts must match manifest channels ...............................   Passed    0.00 sec
+        Start 408: ANEC channel count arithmetic cannot wrap
+408/798 Test #408: ANEC channel count arithmetic cannot wrap .....................................................   Passed    0.00 sec
+        Start 409: ANEC executable payload envelope is checked after digest verification
+409/798 Test #409: ANEC executable payload envelope is checked after digest verification .........................   Passed    0.00 sec
+        Start 410: ANEC command channel must hold the payload copied by libane
+410/798 Test #410: ANEC command channel must hold the payload copied by libane ...................................   Passed    0.00 sec
+        Start 411: ANEC kernel channel must stay unbound for the packed command buffer
+411/798 Test #411: ANEC kernel channel must stay unbound for the packed command buffer ...........................   Passed    0.00 sec
+        Start 412: ANEC task descriptor bytes must fit the loaded payload
+412/798 Test #412: ANEC task descriptor bytes must fit the loaded payload ........................................   Passed    0.00 sec
+        Start 413: ANEC task size must satisfy the driver command buffer contract
+413/798 Test #413: ANEC task size must satisfy the driver command buffer contract ................................   Passed    0.00 sec
+        Start 414: ANEC kernel bytes start at the aligned task boundary
+414/798 Test #414: ANEC kernel bytes start at the aligned task boundary ..........................................   Passed    0.00 sec
+        Start 415: ANEC task descriptor size must match the driver's word unit
+415/798 Test #415: ANEC task descriptor size must match the driver's word unit ...................................   Passed    0.00 sec
+        Start 416: ANEC tiled channels reject non-16-bit manifest tensors
+416/798 Test #416: ANEC tiled channels reject non-16-bit manifest tensors ........................................   Passed    0.00 sec
+        Start 417: manifest workspace is separate from libane's bootstrap allocation
+417/798 Test #417: manifest workspace is separate from libane's bootstrap allocation .............................   Passed    0.00 sec
+        Start 418: ANEC NCHW must match manifest shape
+418/798 Test #418: ANEC NCHW must match manifest shape ...........................................................   Passed    0.00 sec
+        Start 419: missing payload file is named
+419/798 Test #419: missing payload file is named .................................................................   Passed    0.00 sec
+        Start 420: unknown extra payload file is rejected
+420/798 Test #420: unknown extra payload file is rejected ........................................................   Passed    0.00 sec
+        Start 421: payload path traversal is rejected
+421/798 Test #421: payload path traversal is rejected ............................................................   Passed    0.00 sec
+        Start 422: bundle without an anec payload is rejected
+422/798 Test #422: bundle without an anec payload is rejected ....................................................   Passed    0.00 sec
+        Start 423: Concatenate axis 0 and axis -1 of 2D fp32 arrays
+423/798 Test #423: Concatenate axis 0 and axis -1 of 2D fp32 arrays ..............................................   Passed    0.06 sec
+        Start 424: Concatenate 3D KV-cache shape along axis 1
+424/798 Test #424: Concatenate 3D KV-cache shape along axis 1 ....................................................   Passed    0.04 sec
+        Start 425: Concatenate fp16 KV blocks
+425/798 Test #425: Concatenate fp16 KV blocks ....................................................................   Passed    0.04 sec
+        Start 426: SliceUpdate row window keeps surrounding data
+426/798 Test #426: SliceUpdate row window keeps surrounding data .................................................   Passed    0.04 sec
+        Start 427: KV cache growth: slice_update steps then concatenate when full
+427/798 Test #427: KV cache growth: slice_update steps then concatenate when full ................................   Passed    0.04 sec
+        Start 428: SliceUpdate add folds the update into the copied window
+428/798 Test #428: SliceUpdate add folds the update into the copied window .......................................   Passed    0.04 sec
+        Start 429: int32 to float32 and back round-trips exactly
+429/798 Test #429: int32 to float32 and back round-trips exactly .................................................   Passed    0.04 sec
+        Start 430: float32 to int32 truncates toward zero
+430/798 Test #430: float32 to int32 truncates toward zero ........................................................   Passed    0.04 sec
+        Start 431: scalar int32 astype to float32
+431/798 Test #431: scalar int32 astype to float32 ................................................................   Passed    0.04 sec
+        Start 432: int32 and float16 casts convert through the 16-bit gates
+432/798 Test #432: int32 and float16 casts convert through the 16-bit gates ......................................   Passed    0.04 sec
+        Start 433: int32 and bfloat16 casts convert through the 16-bit gates
+433/798 Test #433: int32 and bfloat16 casts convert through the 16-bit gates .....................................   Passed    0.04 sec
+        Start 434: mx.fast.rope matches a host rotation on the composed fallback
+434/798 Test #434: mx.fast.rope matches a host rotation on the composed fallback .................................   Passed    0.04 sec
+        Start 435: safetensors load round-trips float32 through the gpu stream
+435/798 Test #435: safetensors load round-trips float32 through the gpu stream ...................................   Passed    0.04 sec
+        Start 436: safetensors load round-trips bf16 bit patterns
+436/798 Test #436: safetensors load round-trips bf16 bit patterns ................................................   Passed    0.04 sec
+        Start 437: unsupported primitive raises a catchable named error
+437/798 Test #437: unsupported primitive raises a catchable named error ..........................................   Passed    0.06 sec
+        Start 438: zero-size array saves and loads round-trip
+438/798 Test #438: zero-size array saves and loads round-trip ....................................................   Passed    0.04 sec
+        Start 439: access stream in other thread raises runtime_error
+439/798 Test #439: access stream in other thread raises runtime_error ............................................   Passed    0.04 sec
+        Start 440: AsStrided shares a row-contiguous buffer with exact strides
+440/798 Test #440: AsStrided shares a row-contiguous buffer with exact strides ...................................   Passed    0.05 sec
+        Start 441: AsType casts values exactly through the copy engine
+441/798 Test #441: AsType casts values exactly through the copy engine ...........................................   Passed    0.05 sec
+        Start 442: Broadcast expands zero-stride views with exact values
+442/798 Test #442: Broadcast expands zero-stride views with exact values .........................................   Passed    0.04 sec
+        Start 443: BroadcastAxes aligns arrays through zero-stride views
+443/798 Test #443: BroadcastAxes aligns arrays through zero-stride views .........................................   Passed    0.04 sec
+        Start 444: Concatenate joins arrays through the copy engine
+444/798 Test #444: Concatenate joins arrays through the copy engine ..............................................   Passed    0.04 sec
+        Start 445: Contiguous materializes a strided view with exact values
+445/798 Test #445: Contiguous materializes a strided view with exact values ......................................   Passed    0.04 sec
+        Start 446: Copy clones the buffer with exact values
+446/798 Test #446: Copy clones the buffer with exact values ......................................................   Passed    0.06 sec
+        Start 447: CustomTransforms redefines the transform of a function
+447/798 Test #447: CustomTransforms redefines the transform of a function ........................................   Passed    0.06 sec
+        Start 448: Depends forces evaluation of its dependencies
+448/798 Test #448: Depends forces evaluation of its dependencies .................................................   Passed    0.05 sec
+        Start 449: DynamicSlice resolves device start indices through the window
+449/798 Test #449: DynamicSlice resolves device start indices through the window .................................   Passed    0.04 sec
+        Start 450: DynamicSliceUpdate writes through device start indices
+450/798 Test #450: DynamicSliceUpdate writes through device start indices ........................................   Passed    0.04 sec
+        Start 451: ExpandDims inserts length-one axes in place
+451/798 Test #451: ExpandDims inserts length-one axes in place ...................................................   Passed    0.04 sec
+        Start 452: Flatten collapses axes with exact values
+452/798 Test #452: Flatten collapses axes with exact values ......................................................   Passed    0.04 sec
+        Start 453: Full fills exact scalar values
+453/798 Test #453: Full fills exact scalar values ................................................................   Passed    0.04 sec
+        Start 454: NumberOfElements evaluates inside a shapeless compile
+454/798 Test #454: NumberOfElements evaluates inside a shapeless compile .........................................   Passed    0.06 sec
+        Start 455: Pad zero-fills boundaries with exact values
+455/798 Test #455: Pad zero-fills boundaries with exact values ...................................................   Passed    0.04 sec
+        Start 456: Reshape shares buffers and copies strided views
+456/798 Test #456: Reshape shares buffers and copies strided views ...............................................   Passed    0.04 sec
+        Start 457: Slice cuts exact windows with steps
+457/798 Test #457: Slice cuts exact windows with steps ...........................................................   Passed    0.04 sec
+        Start 458: Split returns exact per-part views
+458/798 Test #458: Split returns exact per-part views ............................................................   Passed    0.04 sec
+        Start 459: Squeeze drops length-one axes with exact values
+459/798 Test #459: Squeeze drops length-one axes with exact values ...............................................   Passed    0.04 sec
+        Start 460: StopGradient passes values and detaches the tape
+460/798 Test #460: StopGradient passes values and detaches the tape ..............................................   Passed    0.06 sec
+        Start 461: Transpose permutes strides as a zero-copy view
+461/798 Test #461: Transpose permutes strides as a zero-copy view ................................................   Passed    0.04 sec
+        Start 462: Unflatten splits one axis into exact values
+462/798 Test #462: Unflatten splits one axis into exact values ...................................................   Passed    0.04 sec
+        Start 463: View reinterprets the buffer with exact bit patterns
+463/798 Test #463: View reinterprets the buffer with exact bit patterns ..........................................   Passed    0.04 sec
+        Start 464: int32 Sum, Prod, Min, Max wrap exactly like the CPU contract
+464/798 Test #464: int32 Sum, Prod, Min, Max wrap exactly like the CPU contract ..................................   Passed    0.06 sec
+        Start 465: uint32 Sum, Prod, Min, Max order and wrap unsigned
+465/798 Test #465: uint32 Sum, Prod, Min, Max order and wrap unsigned ............................................   Passed    0.05 sec
+        Start 466: integer reductions over leading and middle axes match host loops
+466/798 Test #466: integer reductions over leading and middle axes match host loops ..............................   Passed    0.05 sec
+        Start 467: rank-4 float reductions hit every axis position and keepdims
+467/798 Test #467: rank-4 float reductions hit every axis position and keepdims ..................................   Passed    0.05 sec
+        Start 468: float reductions over strided views match host references
+468/798 Test #468: float reductions over strided views match host references .....................................   Passed    0.05 sec
+        Start 469: empty reductions return the upstream identity values
+469/798 Test #469: empty reductions return the upstream identity values ..........................................   Passed    0.07 sec
+        Start 470: any and all reduce bool, integer, and float truthiness
+470/798 Test #470: any and all reduce bool, integer, and float truthiness ........................................   Passed    0.08 sec
+        Start 471: bool Min, Max, and Prod follow the upstream logical mapping
+471/798 Test #471: bool Min, Max, and Prod follow the upstream logical mapping ...................................   Passed    0.06 sec
+        Start 472: bool Any and All stay exact across word and chunk boundaries
+472/798 Test #472: bool Any and All stay exact across word and chunk boundaries ..................................   Passed    0.11 sec
+        Start 473: float scans match host references across all flag combinations
+473/798 Test #473: float scans match host references across all flag combinations ................................   Passed    0.05 sec
+        Start 474: int32 scans wrap and stay exact
+474/798 Test #474: int32 scans wrap and stay exact ...............................................................   Passed    0.04 sec
+        Start 475: scans walk strided views correctly
+475/798 Test #475: scans walk strided views correctly ............................................................   Passed    0.04 sec
+        Start 476: hadamard matches an independent Kronecker reference
+476/798 Test #476: hadamard matches an independent Kronecker reference ...........................................   Passed    0.06 sec
+        Start 477: hadamard order-12 rows match the reference
+477/798 Test #477: hadamard order-12 rows match the reference ....................................................   Passed    0.05 sec
+        Start 478: FP16 hadamard matches the reference within half precision
+478/798 Test #478: FP16 hadamard matches the reference within half precision .....................................   Passed    0.05 sec
+        Start 479: rank-5 general reductions preserve every operation
+479/798 Test #479: rank-5 general reductions preserve every operation ............................................   Passed    0.06 sec
+        Start 480: rank-5 strided and broadcast reductions preserve logical order
+480/798 Test #480: rank-5 strided and broadcast reductions preserve logical order ................................   Passed    0.05 sec
+        Start 481: rank-6 empty reductions retain upstream identities
+481/798 Test #481: rank-6 empty reductions retain upstream identities ............................................   Passed    0.05 sec
+        Start 482: bool sum and product preserve numeric promotion across layouts
+482/798 Test #482: bool sum and product preserve numeric promotion across layouts ................................   Passed    0.05 sec
+        Start 483: out-of-scope dtypes and shapes keep their named errors
+483/798 Test #483: out-of-scope dtypes and shapes keep their named errors ........................................   Passed    0.06 sec
+        Start 484: int32 multi-axis sum visits every reduced element
+484/798 Test #484: int32 multi-axis sum visits every reduced element .............................................   Passed    0.06 sec
+        Start 485: int multi-axis sum agrees with int64 reference across ranks
+485/798 Test #485: int multi-axis sum agrees with int64 reference across ranks ...................................   Passed    0.04 sec
+        Start 486: uint32 multi-axis sum covers the trip-cap boundary
+486/798 Test #486: uint32 multi-axis sum covers the trip-cap boundary ............................................   Passed    0.05 sec
+        Start 487: float non-suffix reductions propagate NaN through Min and Max
+487/798 Test #487: float non-suffix reductions propagate NaN through Min and Max .................................   Passed    0.06 sec
+        Start 488: cummax and cummin hold NaN once it appears
+488/798 Test #488: cummax and cummin hold NaN once it appears ....................................................   Passed    0.04 sec
+        Start 489: Prod, Any, and All cover the full reduction span
+489/798 Test #489: Prod, Any, and All cover the full reduction span ..............................................   Passed    0.07 sec
+        Start 490: suffix reductions cover rows larger than the driver trip cap
+490/798 Test #490: suffix reductions cover rows larger than the driver trip cap ..................................   Passed    0.07 sec
+        Start 491: narrow integers sum in 32 bits and keep Min/Max width
+491/798 Test #491: narrow integers sum in 32 bits and keep Min/Max width .........................................   Passed    0.06 sec
+        Start 492: 64-bit and complex64 reductions match host references
+492/798 Test #492: 64-bit and complex64 reductions match host references .........................................   Passed    0.06 sec
+        Start 493: integer argreduces pick exact native comparisons
+493/798 Test #493: integer argreduces pick exact native comparisons ..............................................   Passed    0.05 sec
+        Start 494: scans cover int64, complex64, and bool cumsum widths
+494/798 Test #494: scans cover int64, complex64, and bool cumsum widths ..........................................   Passed    0.06 sec
+        Start 495: reductions over flip views materialize negative strides
+495/798 Test #495: reductions over flip views materialize negative strides .......................................   Passed    0.05 sec
+        Start 496: take_along_axis gathers along axis 1 with int32 indices
+496/798 Test #496: take_along_axis gathers along axis 1 with int32 indices .......................................   Passed    0.06 sec
+        Start 497: take_along_axis wraps negative indices
+497/798 Test #497: take_along_axis wraps negative indices ........................................................   Passed    0.04 sec
+        Start 498: take_along_axis gathers along axis 0 with trailing dims
+498/798 Test #498: take_along_axis gathers along axis 0 with trailing dims .......................................   Passed    0.04 sec
+        Start 499: take_along_axis gathers int64 indices along axis 0
+499/798 Test #499: take_along_axis gathers int64 indices along axis 0 ............................................   Passed    0.04 sec
+        Start 500: take_along_axis out-of-range indices read zero (documented)
+500/798 Test #500: take_along_axis out-of-range indices read zero (documented) ...................................   Passed    0.04 sec
+        Start 501: take_along_axis handles float16 and bfloat16 sources
+501/798 Test #501: take_along_axis handles float16 and bfloat16 sources ..........................................   Passed    0.05 sec
+        Start 502: take_along_axis broadcasts the source on non-axis dims
+502/798 Test #502: take_along_axis broadcasts the source on non-axis dims ........................................   Passed    0.04 sec
+        Start 503: take_along_axis gathers 3-D axis 1 with trailing dims
+503/798 Test #503: take_along_axis gathers 3-D axis 1 with trailing dims .........................................   Passed    0.04 sec
+        Start 504: take_along_axis rejects rank beyond the four-slot table
+504/798 Test #504: take_along_axis rejects rank beyond the four-slot table .......................................   Passed    0.05 sec
+        Start 505: scatter without indices applies update blocks and reducers
+505/798 Test #505: scatter without indices applies update blocks and reducers ....................................   Passed    0.06 sec
+        Start 506: scatter none writes every slot of an eight-slot permutation
+506/798 Test #506: scatter none writes every slot of an eight-slot permutation ...................................   Passed    0.04 sec
+        Start 507: scatter none resolves duplicate indices last-write-wins
+507/798 Test #507: scatter none resolves duplicate indices last-write-wins .......................................   Passed    0.05 sec
+        Start 508: scatter none writes integer data
+508/798 Test #508: scatter none writes integer data ..............................................................   Passed    0.05 sec
+        Start 509: scatter none writes update blocks across every element
+509/798 Test #509: scatter none writes update blocks across every element ........................................   Passed    0.05 sec
+        Start 510: scatter none writes 16-bit float copies
+510/798 Test #510: scatter none writes 16-bit float copies .......................................................   Passed    0.06 sec
+        Start 511: scatter max keeps the largest update across duplicates
+511/798 Test #511: scatter max keeps the largest update across duplicates ........................................   Passed    0.05 sec
+        Start 512: scatter max keys negative values correctly
+512/798 Test #512: scatter max keys negative values correctly ....................................................   Passed    0.05 sec
+        Start 513: scatter min keeps the smallest update across duplicates
+513/798 Test #513: scatter min keeps the smallest update across duplicates .......................................   Passed    0.06 sec
+        Start 514: scatter max handles integer data with duplicates
+514/798 Test #514: scatter max handles integer data with duplicates ..............................................   Passed    0.05 sec
+        Start 515: scatter skips out-of-range indices (documented)
+515/798 Test #515: scatter skips out-of-range indices (documented) ...............................................   Passed    0.05 sec
+        Start 516: scatter max drops out-of-range slots in mixed updates
+516/798 Test #516: scatter max drops out-of-range slots in mixed updates .........................................   Passed    0.04 sec
+        Start 517: scatter prod multiplies integer updates exactly
+517/798 Test #517: scatter prod multiplies integer updates exactly ...............................................   Passed    0.04 sec
+        Start 518: scatter float Sum and Prod compute without atomic float
+518/798 Test #518: scatter float Sum and Prod compute without atomic float .......................................   Passed    0.00 sec
+        Start 519:  multi-index stays rejected
+519/798 Test #519:  multi-index stays rejected ...................................................................   Passed    0.00 sec
+        Start 520: multi-index scatter none addresses two axes with update blocks
+520/798 Test #520: multi-index scatter none addresses two axes with update blocks ................................   Passed    0.04 sec
+        Start 521: multi-index scatter none resolves duplicates last write wins
+521/798 Test #521: multi-index scatter none resolves duplicates last write wins ..................................   Passed    0.05 sec
+        Start 522: multi-index scatter max and min keep extreme updates
+522/798 Test #522: multi-index scatter max and min keep extreme updates ..........................................   Passed    0.04 sec
+        Start 523: multi-index scatter add accumulates integer duplicates
+523/798 Test #523: multi-index scatter add accumulates integer duplicates ........................................   Passed    0.04 sec
+        Start 524: multi-index scatter skips slots with any out-of-range axis
+524/798 Test #524: multi-index scatter skips slots with any out-of-range axis ....................................   Passed    0.04 sec
+        Start 525: multi-index scatter writes int32 data through uint32 words
+525/798 Test #525: multi-index scatter writes int32 data through uint32 words ....................................   Passed    0.05 sec
+        Start 526: multi-index scatter decodes int64 index pairs per axis
+526/798 Test #526: multi-index scatter decodes int64 index pairs per axis ........................................   Passed    0.04 sec
+        Start 527: put_along_axis writes 2-D axis 1 slots
+527/798 Test #527: put_along_axis writes 2-D axis 1 slots ........................................................   Passed    0.05 sec
+        Start 528: put_along_axis writes 3-D axis 1 with duplicates and skips
+528/798 Test #528: put_along_axis writes 3-D axis 1 with duplicates and skips ....................................   Passed    0.04 sec
+        Start 529: scatter_add_axis accumulates integer duplicates
+529/798 Test #529: scatter_add_axis accumulates integer duplicates ...............................................   Passed    0.04 sec
+        Start 530: scatter_add_axis float Sum computes on the atomic and CAS paths
+530/798 Test #530: scatter_add_axis float Sum computes on the atomic and CAS paths ...............................   Passed    0.04 sec
+        Start 531: masked_scatter fills true positions from the source in order
+531/798 Test #531: masked_scatter fills true positions from the source in order ..................................   Passed    0.04 sec
+        Start 532: masked_scatter ignores surplus source elements
+532/798 Test #532: masked_scatter ignores surplus source elements ................................................   Passed    0.04 sec
+        Start 533: masked_scatter broadcasts a scalar value
+533/798 Test #533: masked_scatter broadcasts a scalar value ......................................................   Passed    0.04 sec
+        Start 534: masked_scatter skips writes when the source runs out
+534/798 Test #534: masked_scatter skips writes when the source runs out ..........................................   Passed    0.05 sec
+        Start 535: masked_scatter carries the scan across chunks and rows
+535/798 Test #535: masked_scatter carries the scan across chunks and rows ........................................   Passed    0.04 sec
+        Start 536: masked_scatter supports int32 and float16 data
+536/798 Test #536: masked_scatter supports int32 and float16 data ................................................   Passed    0.04 sec
+        Start 537: masked_scatter broadcast mask fills whole leading rows
+537/798 Test #537: masked_scatter broadcast mask fills whole leading rows ........................................   Passed    0.04 sec
+        Start 538: argpartition small rows partition exactly on the bitonic path
+538/798 Test #538: argpartition small rows partition exactly on the bitonic path .................................   Passed    0.05 sec
+        Start 539: argpartition partitions over a non-suffix axis
+539/798 Test #539: argpartition partitions over a non-suffix axis ................................................   Passed    0.04 sec
+        Start 540: argpartition wide rows partition exactly
+540/798 Test #540: argpartition wide rows partition exactly ......................................................   Passed    0.06 sec
+        Start 541: block masked mm zeroes and scales blocks
+541/798 Test #541: block masked mm zeroes and scales blocks ......................................................   Passed    0.08 sec
+        Start 542: gather mm gathers operand matrices
+542/798 Test #542: gather mm gathers operand matrices ............................................................   Passed    0.05 sec
+        Start 543: segmented mm writes per-segment contractions
+543/798 Test #543: segmented mm writes per-segment contractions ..................................................   Passed    0.05 sec
+        Start 544: gather qmm gathers experts with scales and biases
+544/798 Test #544: gather qmm gathers experts with scales and biases .............................................   Passed    0.05 sec
+        Start 545: gather qqmm dequants with scales only
+545/798 Test #545: gather qqmm dequants with scales only .........................................................   Passed    0.04 sec
+        Start 546: qq matmul matches scale-only quantized and float paths
+546/798 Test #546: qq matmul matches scale-only quantized and float paths ........................................   Passed    0.05 sec
+        Start 547: qmm_vec subgroup dispatch matches host reference across decode shapes
+547/798 Test #547: qmm_vec subgroup dispatch matches host reference across decode shapes .........................   Passed    0.04 sec
+        Start 548: qmm tile matches host reference and qmm.comp across prefill shapes
+548/798 Test #548: qmm tile matches host reference and qmm.comp across prefill shapes ............................   Passed  366.70 sec
+        Start 549: ring links
+549/798 Test #549: ring links ....................................................................................   Passed    0.01 sec
+        Start 550:  nccl and jaccl do not
+550/798 Test #550:  nccl and jaccl do not ........................................................................   Passed    0.01 sec
+        Start 551:  init is the singleton
+551/798 Test #551:  init is the singleton ........................................................................   Passed    0.01 sec
+        Start 552: all_sum is identity at one rank (op-layer short-circuit)
+552/798 Test #552: all_sum is identity at one rank (op-layer short-circuit) ......................................   Passed    0.09 sec
+        Start 553: all_max and all_min are identity at one rank
+553/798 Test #553: all_max and all_min are identity at one rank ..................................................   Passed    0.07 sec
+        Start 554: all_gather is identity at one rank (shape stays rank-one)
+554/798 Test #554: all_gather is identity at one rank (shape stays rank-one) .....................................   Passed    0.06 sec
+        Start 555: sum_scatter is identity at one rank (shape stays whole)
+555/798 Test #555: sum_scatter is identity at one rank (shape stays whole) .......................................   Passed    0.07 sec
+        Start 556: send to a singleton group throws invalid_argument
+556/798 Test #556: send to a singleton group throws invalid_argument .............................................   Passed    0.08 sec
+        Start 557: recv from a singleton group throws invalid_argument
+557/798 Test #557: recv from a singleton group throws invalid_argument ...........................................   Passed    0.00 sec
+        Start 558: strict init: ring demands env, mpi and nccl still refuse, jaccl quirks
+558/798 Test #558: strict init: ring demands env, mpi and nccl still refuse, jaccl quirks ........................   Passed    0.00 sec
+        Start 559: non-strict init of ungrouped backends yields a one-rank group
+559/798 Test #559: non-strict init of ungrouped backends yields a one-rank group .................................   Passed    0.01 sec
+        Start 560: compiled tape matches eager for every float unary class
+560/798 Test #560: compiled tape matches eager for every float unary class .......................................   Passed    0.11 sec
+        Start 561: compiled tape matches eager for every float binary class
+561/798 Test #561: compiled tape matches eager for every float binary class ......................................   Passed    0.08 sec
+        Start 562: compiled tape matches eager for integer and bitwise classes
+562/798 Test #562: compiled tape matches eager for integer and bitwise classes ...................................   Passed    0.06 sec
+        Start 563: compiled tape matches eager for comparison, logical, select, and cast classes
+563/798 Test #563: compiled tape matches eager for comparison, logical, select, and cast classes .................   Passed    0.10 sec
+        Start 564: compiled tape returns multiple outputs exactly
+564/798 Test #564: compiled tape returns multiple outputs exactly ................................................   Passed    0.07 sec
+        Start 565: compiled tape interleaves proven and widened classes in f16
+565/798 Test #565: compiled tape interleaves proven and widened classes in f16 ...................................   Passed    0.08 sec
+        Start 566: bf16 tapes stay gated for the widened op set
+566/798 Test #566: bf16 tapes stay gated for the widened op set ..................................................   Passed    0.05 sec
+        Start 567: compiled tape computes Real, Imag, and Conjugate on complex64
+567/798 Test #567: compiled tape computes Real, Imag, and Conjugate on complex64 .................................   Passed    0.08 sec
+        Start 568: compiled-tape debug switches stay inert by default and correct when set
+568/798 Test #568: compiled-tape debug switches stay inert by default and correct when set .......................   Passed    0.07 sec
+        Start 569: shapeless compiled tape reused at a new shape matches eager (stale-traced-shape regression)
+569/798 Test #569: shapeless compiled tape reused at a new shape matches eager (stale-traced-shape regression) ...   Passed    0.06 sec
+        Start 570: shapeless reuse works on the default path with no override set
+570/798 Test #570: shapeless reuse works on the default path with no override set ................................   Passed    0.06 sec
+        Start 571: fftn delta and constant analytic cases
+571/798 Test #571: fftn delta and constant analytic cases ........................................................   Passed    0.06 sec
+        Start 572: fftn single sinusoid lands in exactly one bin
+572/798 Test #572: fftn single sinusoid lands in exactly one bin .................................................   Passed    0.05 sec
+        Start 573: fftn matches naive DFT across length classes
+573/798 Test #573: fftn matches naive DFT across length classes ..................................................   Passed    0.16 sec
+        Start 574: ifftn matches naive inverse including the 1/n scale
+574/798 Test #574: ifftn matches naive inverse including the 1/n scale ...........................................   Passed    0.13 sec
+        Start 575: fftn then ifftn round-trips to the input
+575/798 Test #575: fftn then ifftn round-trips to the input ......................................................   Passed    0.05 sec
+        Start 576: Parseval identity: sum |x|^2 = (1/n) sum |X|^2
+576/798 Test #576: Parseval identity: sum |x|^2 = (1/n) sum |X|^2 ................................................   Passed    0.04 sec
+        Start 577: multi-axis fftn over axes {0,1} matches naive 2-D reference
+577/798 Test #577: multi-axis fftn over axes {0,1} matches naive 2-D reference ...................................   Passed    0.04 sec
+        Start 578: fftn over a middle axis uses strided samples
+578/798 Test #578: fftn over a middle axis uses strided samples ..................................................   Passed    0.05 sec
+        Start 579: batched last-axis fftn transforms each row independently
+579/798 Test #579: batched last-axis fftn transforms each row independently ......................................   Passed    0.04 sec
+        Start 580: rfftn returns n/2+1 bins matching the full DFT
+580/798 Test #580: rfftn returns n/2+1 bins matching the full DFT ................................................   Passed    0.13 sec
+        Start 581: irfftn recovers the real signal from the half spectrum
+581/798 Test #581: irfftn recovers the real signal from the half spectrum ........................................   Passed    0.14 sec
+        Start 582: rfftn then irfftn round-trips a real signal
+582/798 Test #582: rfftn then irfftn round-trips a real signal ...................................................   Passed    0.05 sec
+        Start 583: rfftn over axes {0,1} keeps n/2+1 on the real axis
+583/798 Test #583: rfftn over axes {0,1} keeps n/2+1 on the real axis ............................................   Passed    0.05 sec
+        Start 584: fft2 and ifft2 route through the same primitive
+584/798 Test #584: fft2 and ifft2 route through the same primitive ...............................................   Passed    0.05 sec
+        Start 585: lengths beyond the general-length bounds keep the named error
+585/798 Test #585: lengths beyond the general-length bounds keep the named error .................................   Passed    0.25 sec
+        Start 586: explicit n pads with zeros or slices the input
+586/798 Test #586: explicit n pads with zeros or slices the input ................................................   Passed    0.05 sec
+        Start 587: rfft and irfft work on a non-trailing axis
+587/798 Test #587: rfft and irfft work on a non-trailing axis ....................................................   Passed    0.05 sec
+        Start 588: native RMSNorm matches host math on f32 rows
+588/798 Test #588: native RMSNorm matches host math on f32 rows ..................................................   Passed    0.06 sec
+        Start 589: native LayerNorm matches host math on f32 rows
+589/798 Test #589: native LayerNorm matches host math on f32 rows ................................................   Passed    0.04 sec
+        Start 590: fused norm forward on f16 and bf16 storage
+590/798 Test #590: fused norm forward on f16 and bf16 storage ....................................................   Passed    0.06 sec
+        Start 591: RMSNormVJP matches finite differences and the composed formula
+591/798 Test #591: RMSNormVJP matches finite differences and the composed formula ................................   Passed    0.09 sec
+        Start 592: LayerNormVJP matches finite differences and the composed formula
+592/798 Test #592: LayerNormVJP matches finite differences and the composed formula ..............................   Passed    0.08 sec
+        Start 593: cross_entropy forward matches host math on the composed path
+593/798 Test #593: cross_entropy forward matches host math on the composed path ..................................   Passed    0.05 sec
+        Start 594: CrossEntropyVJP matches finite differences and the composed formula
+594/798 Test #594: CrossEntropyVJP matches finite differences and the composed formula ...........................   Passed    0.08 sec
+        Start 595: scaled_dot_product_attention backward matches finite differences
+595/798 Test #595: scaled_dot_product_attention backward matches finite differences ..............................   Passed    0.07 sec
+        Start 596: fp8 conversion matches the upstream bit algorithm
+596/798 Test #596: fp8 conversion matches the upstream bit algorithm .............................................   Passed    0.06 sec
+        Start 597: norm kernels normalize non-contiguous inputs exactly
+597/798 Test #597: norm kernels normalize non-contiguous inputs exactly ..........................................   Passed    0.06 sec
+        Start 598: CustomKernel reports the Metal-source incompatibility
+598/798 Test #598: CustomKernel reports the Metal-source incompatibility .........................................   Passed    0.04 sec
+        Start 599: fused rope matches the composed fallback bit for bit
+599/798 Test #599: fused rope matches the composed fallback bit for bit ..........................................   Passed    0.19 sec
+        Start 600: fused rope decode shapes match the composed fallback
+600/798 Test #600: fused rope decode shapes match the composed fallback ..........................................   Passed    0.10 sec
+        Start 601: fused rope partial dims keep the passthrough exact
+601/798 Test #601: fused rope partial dims keep the passthrough exact ............................................   Passed    0.11 sec
+        Start 602: fused rope boundary shapes match the composed fallback
+602/798 Test #602: fused rope boundary shapes match the composed fallback ........................................   Passed    0.08 sec
+        Start 603: fused rope bf16 direct bind matches wrapped and composed paths
+603/798 Test #603: fused rope bf16 direct bind matches wrapped and composed paths ................................   Passed    0.13 sec
+        Start 604: fused rope strided and transposed inputs match the composed fallback
+604/798 Test #604: fused rope strided and transposed inputs match the composed fallback ..........................   Passed    0.08 sec
+        Start 605: fused rope bf16 noncontiguous layouts match the f64 reference
+605/798 Test #605: fused rope bf16 noncontiguous layouts match the f64 reference .................................   Passed    0.05 sec
+        Start 606: fused rope bf16 chunked input matches the whole-input slice
+606/798 Test #606: fused rope bf16 chunked input matches the whole-input slice ...................................   Passed    0.05 sec
+        Start 607: fused rope vector and int64 offsets match the composed fallback
+607/798 Test #607: fused rope vector and int64 offsets match the composed fallback ...............................   Passed    0.08 sec
+        Start 608: fused rope vjp gradient rides the fence to the composition
+608/798 Test #608: fused rope vjp gradient rides the fence to the composition ....................................   Passed    0.07 sec
+        Start 609: fused rope offset sweep validates every tolerance band
+609/798 Test #609: fused rope offset sweep validates every tolerance band ........................................   Passed    0.12 sec
+        Start 610: fused rope refuses beyond the trig argument limit by name
+610/798 Test #610: fused rope refuses beyond the trig argument limit by name .....................................   Passed    0.10 sec
+        Start 611: cholesky lower matches host reference
+611/798 Test #611: cholesky lower matches host reference .........................................................   Passed    0.07 sec
+        Start 612: cholesky upper is the transposed factor
+612/798 Test #612: cholesky upper is the transposed factor .......................................................   Passed    0.05 sec
+        Start 613: cholesky batched
+613/798 Test #613: cholesky batched ..............................................................................   Passed    0.05 sec
+        Start 614: cholesky rejects a non-positive-definite matrix
+614/798 Test #614: cholesky rejects a non-positive-definite matrix ...............................................   Passed    0.06 sec
+        Start 615: cholesky rejects float16 at the API layer
+615/798 Test #615: cholesky rejects float16 at the API layer .....................................................   Passed    0.05 sec
+        Start 616: inverse general satisfies A A^-1 = I
+616/798 Test #616: inverse general satisfies A A^-1 = I ..........................................................   Passed    0.05 sec
+        Start 617: inverse batched
+617/798 Test #617: inverse batched ...............................................................................   Passed    0.05 sec
+        Start 618: triangular inverse lower and upper
+618/798 Test #618: triangular inverse lower and upper ............................................................   Passed    0.05 sec
+        Start 619: inverse rejects a singular matrix
+619/798 Test #619: inverse rejects a singular matrix .............................................................   Passed    0.05 sec
+        Start 620: luf packed factor matches host getrf reference
+620/798 Test #620: luf packed factor matches host getrf reference ................................................   Passed    0.05 sec
+        Start 621: luf batched matches host reference per matrix
+621/798 Test #621: luf batched matches host reference per matrix .................................................   Passed    0.05 sec
+        Start 622: luf is deterministic across repeated evaluation
+622/798 Test #622: luf is deterministic across repeated evaluation ...............................................   Passed    0.05 sec
+        Start 623: luf rejects a singular matrix by name
+623/798 Test #623: luf rejects a singular matrix by name .........................................................   Passed    0.05 sec
+        Start 624: luf pivot search holds past one workgroup stride
+624/798 Test #624: luf pivot search holds past one workgroup stride ..............................................   Passed    0.29 sec
+        Start 625: composed lu exposes the upstream scatter permutation
+625/798 Test #625: composed lu exposes the upstream scatter permutation ..........................................   Passed    0.09 sec
+        Start 626: qr reconstruction tall square and wide
+626/798 Test #626: qr reconstruction tall square and wide ........................................................   Passed    0.05 sec
+        Start 627: qr batched stays gated
+627/798 Test #627: qr batched stays gated ........................................................................   Passed    0.04 sec
+        Start 628: eigh known spectrum and reconstruction
+628/798 Test #628: eigh known spectrum and reconstruction ........................................................   Passed    0.05 sec
+        Start 629: eigh random 4x4 matches the host Jacobi spectrum
+629/798 Test #629: eigh random 4x4 matches the host Jacobi spectrum ..............................................   Passed    0.05 sec
+        Start 630: eigh batched and values-only
+630/798 Test #630: eigh batched and values-only ..................................................................   Passed    0.05 sec
+        Start 631: eigh rejects complex64 input
+631/798 Test #631: eigh rejects complex64 input ..................................................................   Passed    0.04 sec
+        Start 632: svd full factors reconstruct a random tall 4x3
+632/798 Test #632: svd full factors reconstruct a random tall 4x3 ................................................   Passed    0.06 sec
+        Start 633: svd values only matches the host singular values
+633/798 Test #633: svd values only matches the host singular values ..............................................   Passed    0.05 sec
+        Start 634: svd rejects complex64 and float16
+634/798 Test #634: svd rejects complex64 and float16 .............................................................   Passed    0.04 sec
+        Start 635: eig values path moved to test_eig_ops.cpp
+635/798 Test #635: eig values path moved to test_eig_ops.cpp .....................................................   Passed    0.00 sec
+        Start 636:  gate stays dtype-only
+636/798 Test #636:  gate stays dtype-only ........................................................................   Passed    0.00 sec
+        Start 637: eigvalsh values-only matches the analytic spectrum
+637/798 Test #637: eigvalsh values-only matches the analytic spectrum ............................................   Passed    0.05 sec
+        Start 638: pinv square equals the analytic inverse
+638/798 Test #638: pinv square equals the analytic inverse .......................................................   Passed    0.09 sec
+        Start 639: pinv rectangular satisfies the Moore-Penrose identity
+639/798 Test #639: pinv rectangular satisfies the Moore-Penrose identity .........................................   Passed    0.09 sec
+        Start 640: svd full factors reconstruct the matrix
+640/798 Test #640: svd full factors reconstruct the matrix .......................................................   Passed    0.05 sec
+        Start 641: cholesky_inv matches the analytic inverse
+641/798 Test #641: cholesky_inv matches the analytic inverse .....................................................   Passed    0.06 sec
+        Start 642: eig diagonal matrix exact spectrum and eigenvectors
+642/798 Test #642: eig diagonal matrix exact spectrum and eigenvectors ...........................................   Passed    0.10 sec
+        Start 643: eig symmetric matrix matches host Jacobi and the eigh path
+643/798 Test #643: eig symmetric matrix matches host Jacobi and the eigh path ....................................   Passed    0.08 sec
+        Start 644: eig rotation matrix conjugate pair on the unit circle
+644/798 Test #644: eig rotation matrix conjugate pair on the unit circle .........................................   Passed    0.08 sec
+        Start 645: eig similarity transform recovers the exact spectrum
+645/798 Test #645: eig similarity transform recovers the exact spectrum ..........................................   Passed    0.09 sec
+        Start 646: eig repeated eigenvalues stay correct
+646/798 Test #646: eig repeated eigenvalues stay correct .........................................................   Passed    0.07 sec
+        Start 647: eig batched matrices match per-matrix references
+647/798 Test #647: eig batched matrices match per-matrix references ..............................................   Passed    0.07 sec
+        Start 648: eig values-only matches the full path bit for bit
+648/798 Test #648: eig values-only matches the full path bit for bit .............................................   Passed    0.08 sec
+        Start 649: eig rejects non-float32 dtypes with the contract error
+649/798 Test #649: eig rejects non-float32 dtypes with the contract error ........................................   Passed    0.05 sec
+        Start 650: eig zero matrix converges with zero values
+650/798 Test #650: eig zero matrix converges with zero values ....................................................   Passed    0.07 sec
+        Start 651: take wraps negative indices along axis 0 for int32
+651/798 Test #651: take wraps negative indices along axis 0 for int32 ............................................   Passed    0.06 sec
+        Start 652: take wraps negative indices for float32 and float16 tables
+652/798 Test #652: take wraps negative indices for float32 and float16 tables ....................................   Passed    0.06 sec
+        Start 653: take wraps negative int64 indices
+653/798 Test #653: take wraps negative int64 indices .............................................................   Passed    0.04 sec
+        Start 654: take along non-suffix axes keeps the zero-fill rule
+654/798 Test #654: take along non-suffix axes keeps the zero-fill rule ...........................................   Passed    0.04 sec
+        Start 655: take_along_axis wraps negative indices at the -axis_size boundary
+655/798 Test #655: take_along_axis wraps negative indices at the -axis_size boundary .............................   Passed    0.05 sec
+        Start 656: full_like array fill with dtype cast fills every element
+656/798 Test #656: full_like array fill with dtype cast fills every element ......................................   Passed    0.05 sec
+        Start 657: full with an array value and dtype cast fills every element
+657/798 Test #657: full with an array value and dtype cast fills every element ...................................   Passed    0.05 sec
+        Start 658: full_like same-dtype array fill still fills every element
+658/798 Test #658: full_like same-dtype array fill still fills every element .....................................   Passed    0.04 sec
+        Start 659: [conv-gaps] grouped 2-D Convolution matches host reference
+659/798 Test #659: [conv-gaps] grouped 2-D Convolution matches host reference ....................................   Passed    0.08 sec
+        Start 660: [conv-gaps] 1-D Convolution matches host reference
+660/798 Test #660: [conv-gaps] 1-D Convolution matches host reference ............................................   Passed    0.05 sec
+        Start 661: [conv-gaps] transposed 2-D Convolution matches host reference
+661/798 Test #661: [conv-gaps] transposed 2-D Convolution matches host reference .................................   Passed    0.05 sec
+        Start 662: [conv-gaps] transposed 1-D Convolution matches host reference
+662/798 Test #662: [conv-gaps] transposed 1-D Convolution matches host reference .................................   Passed    0.06 sec
+        Start 663: [conv-gaps] input-dilated 2-D Convolution matches host reference
+663/798 Test #663: [conv-gaps] input-dilated 2-D Convolution matches host reference ..............................   Passed    0.05 sec
+        Start 664: [conv-gaps] FP16 grouped 2-D Convolution matches host reference
+664/798 Test #664: [conv-gaps] FP16 grouped 2-D Convolution matches host reference ...............................   Passed    0.06 sec
+        Start 665: [conv-gaps] BF16 grouped 2-D Convolution matches host reference
+665/798 Test #665: [conv-gaps] BF16 grouped 2-D Convolution matches host reference ...............................   Passed    0.05 sec
+        Start 666: [conv-gaps] 3-D Convolution matches host reference
+666/798 Test #666: [conv-gaps] 3-D Convolution matches host reference ............................................   Passed    0.06 sec
+        Start 667: [conv-gaps] transposed 3-D Convolution matches host reference
+667/798 Test #667: [conv-gaps] transposed 3-D Convolution matches host reference .................................   Passed    0.05 sec
+        Start 668: complex64 host construction and allocation round trip
+668/798 Test #668: complex64 host construction and allocation round trip .........................................   Passed    0.06 sec
+        Start 669: astype float32 to complex64 promotes with zero imaginary
+669/798 Test #669: astype float32 to complex64 promotes with zero imaginary ......................................   Passed    0.04 sec
+        Start 670: astype complex64 to float32 keeps the real part
+670/798 Test #670: astype complex64 to float32 keeps the real part ...............................................   Passed    0.04 sec
+        Start 671: astype integer and bool sources promote to (x, 0)
+671/798 Test #671: astype integer and bool sources promote to (x, 0) .............................................   Passed    0.04 sec
+        Start 672: strided reshape materializes complex64 values
+672/798 Test #672: strided reshape materializes complex64 values .................................................   Passed    0.04 sec
+        Start 673: transposed view reshaped to dense agrees with the reference
+673/798 Test #673: transposed view reshaped to dense agrees with the reference ...................................   Passed    0.04 sec
+        Start 674: strided slice of a complex array materializes exactly
+674/798 Test #674: strided slice of a complex array materializes exactly .........................................   Passed    0.04 sec
+        Start 675: broadcast view reshaped to dense materializes every element
+675/798 Test #675: broadcast view reshaped to dense materializes every element ...................................   Passed    0.04 sec
+        Start 676: full and zeros fill complex64 scalars
+676/798 Test #676: full and zeros fill complex64 scalars .........................................................   Passed    0.04 sec
+        Start 677: conjugate negates the imaginary component
+677/798 Test #677: conjugate negates the imaginary component .....................................................   Passed    0.05 sec
+        Start 678: real and imag extract their components
+678/798 Test #678: real and imag extract their components ........................................................   Passed    0.05 sec
+        Start 679: complex add subtract and negate are componentwise
+679/798 Test #679: complex add subtract and negate are componentwise .............................................   Passed    0.05 sec
+        Start 680: complex multiply matches a double reference
+680/798 Test #680: complex multiply matches a double reference ...................................................   Passed    0.05 sec
+        Start 681: complex divide matches a double reference
+681/798 Test #681: complex divide matches a double reference .....................................................   Passed    0.04 sec
+        Start 682: complex pad and concatenate transport
+682/798 Test #682: complex pad and concatenate transport .........................................................   Passed    0.04 sec
+        Start 683: fft accepts a non-contiguous complex64 input
+683/798 Test #683: fft accepts a non-contiguous complex64 input ..................................................   Passed    0.04 sec
+        Start 684: complex square, logaddexp, and equality match host references
+684/798 Test #684: complex square, logaddexp, and equality match host references .................................   Passed    0.07 sec
+        Start 685: fft of a small real signal is exact at quarter-turn twiddles
+685/798 Test #685: fft of a small real signal is exact at quarter-turn twiddles ..................................   Passed    0.05 sec
+        Start 686: complex abs matches host reference including overflow-scale
+686/798 Test #686: complex abs matches host reference including overflow-scale ...................................   Passed    0.04 sec
+        Start 687: complex select copies whole elements by condition
+687/798 Test #687: complex select copies whole elements by condition .............................................   Passed    0.05 sec
+        Start 688: complex power matches host reference with zero-base cases
+688/798 Test #688: complex power matches host reference with zero-base cases .....................................   Passed    0.05 sec
+        Start 689: complex exp matches host reference
+689/798 Test #689: complex exp matches host reference ............................................................   Passed    0.05 sec
+        Start 690: complex exp matches C99 for infinite arguments
+690/798 Test #690: complex exp matches C99 for infinite arguments ................................................   Passed    0.05 sec
+        Start 691: complex sin matches host reference
+691/798 Test #691: complex sin matches host reference ............................................................   Passed    0.05 sec
+        Start 692: complex cos matches host reference
+692/798 Test #692: complex cos matches host reference ............................................................   Passed    0.05 sec
+        Start 693: complex maximum orders lexicographically
+693/798 Test #693: complex maximum orders lexicographically ......................................................   Passed    0.05 sec
+        Start 694: where picks transposed operands for the tril and triu pair
+694/798 Test #694: where picks transposed operands for the tril and triu pair ....................................   Passed    0.07 sec
+        Start 695: where with a broadcast condition
+695/798 Test #695: where with a broadcast condition ..............................................................   Passed    0.06 sec
+        Start 696: where with mixed operand broadcasts
+696/798 Test #696: where with mixed operand broadcasts ...........................................................   Passed    0.05 sec
+        Start 697: where with a strided condition
+697/798 Test #697: where with a strided condition ................................................................   Passed    0.05 sec
+        Start 698: where with an offset dense condition view
+698/798 Test #698: where with an offset dense condition view .....................................................   Passed    0.05 sec
+        Start 699: where sweeps value dtypes over a transposed operand
+699/798 Test #699: where sweeps value dtypes over a transposed operand ...........................................   Passed    0.08 sec
+        Start 700: where stays exact across word boundaries
+700/798 Test #700: where stays exact across word boundaries ......................................................   Passed    0.06 sec
+        Start 701: where selects between packed-bool operands
+701/798 Test #701: where selects between packed-bool operands ....................................................   Passed    0.05 sec
+        Start 702: composed lu computes and reconstructs the input
+702/798 Test #702: composed lu computes and reconstructs the input ...............................................   Passed    0.08 sec
+        Start 703: composed solve computes A x == b through the uint32 ArgSort chain
+703/798 Test #703: composed solve computes A x == b through the uint32 ArgSort chain .............................   Passed    0.09 sec
+        Start 704: composed pinv satisfies the Moore-Penrose conditions
+704/798 Test #704: composed pinv satisfies the Moore-Penrose conditions ..........................................   Passed    0.10 sec
+        Start 705: c2c general lengths match the naive DFT
+705/798 Test #705: c2c general lengths match the naive DFT .......................................................   Passed    2.08 sec
+        Start 706: inverse round-trips at general lengths
+706/798 Test #706: inverse round-trips at general lengths ........................................................   Passed    0.47 sec
+        Start 707: c2c batched general lengths
+707/798 Test #707: c2c batched general lengths ...................................................................   Passed    0.07 sec
+        Start 708: c2c on a middle axis matches the naive reference
+708/798 Test #708: c2c on a middle axis matches the naive reference ..............................................   Passed    0.07 sec
+        Start 709: multi-axis fftn over mixed general lengths
+709/798 Test #709: multi-axis fftn over mixed general lengths ....................................................   Passed    0.07 sec
+        Start 710: analytic delta and constant on a prime length
+710/798 Test #710: analytic delta and constant on a prime length .................................................   Passed    0.06 sec
+        Start 711: single sinusoid lands in exactly one bin at a general length
+711/798 Test #711: single sinusoid lands in exactly one bin at a general length ..................................   Passed    0.08 sec
+        Start 712: Parseval identity holds at general lengths
+712/798 Test #712: Parseval identity holds at general lengths ....................................................   Passed    0.18 sec
+        Start 713: non-trailing rfftn matches a naive reference and round-trips
+713/798 Test #713: non-trailing rfftn matches a naive reference and round-trips ..................................   Passed    0.05 sec
+        Start 714: trailing-axis rfftn round-trips at a decomposed length
+714/798 Test #714: trailing-axis rfftn round-trips at a decomposed length ........................................   Passed    0.08 sec
+        Start 715: n equals 1 stays identity
+715/798 Test #715: n equals 1 stays identity .....................................................................   Passed    0.04 sec
+        Start 716: large lengths round-trip and keep analytic magnitudes
+716/798 Test #716: large lengths round-trip and keep analytic magnitudes .........................................   Passed    3.74 sec
+        Start 717: named refusal pins above the chirp bound
+717/798 Test #717: named refusal pins above the chirp bound ......................................................   Passed    0.05 sec
+        Start 718: accuracy sweep measures the observed max relative error
+718/798 Test #718: accuracy sweep measures the observed max relative error .......................................   Passed    1.91 sec
+        Start 719: sdpa GQA matches host math at the upstream failing shapes
+719/798 Test #719: sdpa GQA matches host math at the upstream failing shapes .....................................   Passed    0.35 sec
+        Start 720: LayerNorm VJP dw matches host math at the upstream shapes
+720/798 Test #720: LayerNorm VJP dw matches host math at the upstream shapes .....................................   Passed    0.07 sec
+        Start 721: scatter_add float32 duplicate indices exact total
+721/798 Test #721: scatter_add float32 duplicate indices exact total .............................................   Passed    0.07 sec
+        Start 722: scatter_add float32 run twice is bitwise identical
+722/798 Test #722: scatter_add float32 run twice is bitwise identical ............................................   Passed    0.05 sec
+        Start 723: scatter_add float32 fractional duplicates hit total
+723/798 Test #723: scatter_add float32 fractional duplicates hit total ...........................................   Passed    0.05 sec
+        Start 724: scatter_add float32 update blocks with trailing dims
+724/798 Test #724: scatter_add float32 update blocks with trailing dims ..........................................   Passed    0.05 sec
+        Start 725: scatter_add float16 and bfloat16 duplicate indices
+725/798 Test #725: scatter_add float16 and bfloat16 duplicate indices ............................................   Passed    0.05 sec
+        Start 726: scatter_add float32 broadcast updates materialize
+726/798 Test #726: scatter_add float32 broadcast updates materialize .............................................   Passed    0.04 sec
+        Start 727: scatter_add float32 strided updates materialize
+727/798 Test #727: scatter_add float32 strided updates materialize ...............................................   Passed    0.04 sec
+        Start 728: scatter_add float32 non-contiguous indices materialize
+728/798 Test #728: scatter_add float32 non-contiguous indices materialize ........................................   Passed    0.05 sec
+        Start 729: scatter_prod float32 duplicate indices exact product
+729/798 Test #729: scatter_prod float32 duplicate indices exact product ..........................................   Passed    0.05 sec
+        Start 730: scatter_max floats key-select with duplicates
+730/798 Test #730: scatter_max floats key-select with duplicates .................................................   Passed    0.05 sec
+        Start 731: scatter_min floats key-select with unique indices
+731/798 Test #731: scatter_min floats key-select with unique indices .............................................   Passed    0.04 sec
+        Start 732: scatter bool none duplicate indices last slot wins
+732/798 Test #732: scatter bool none duplicate indices last slot wins ............................................   Passed    0.05 sec
+        Start 733: scatter bool add saturates like upstream
+733/798 Test #733: scatter bool add saturates like upstream ......................................................   Passed    0.04 sec
+        Start 734: scatter bool prod and min and max
+734/798 Test #734: scatter bool prod and min and max .............................................................   Passed    0.05 sec
+        Start 735: scatter bool across word lanes keeps siblings intact
+735/798 Test #735: scatter bool across word lanes keeps siblings intact ..........................................   Passed    0.05 sec
+        Start 736: scatter_add_axis float32 duplicate rows exact
+736/798 Test #736: scatter_add_axis float32 duplicate rows exact .................................................   Passed    0.05 sec
+        Start 737: scatter_add_axis float16 and bool
+737/798 Test #737: scatter_add_axis float16 and bool .............................................................   Passed    0.06 sec
+        Start 738: put_along_axis bool none across lanes
+738/798 Test #738: put_along_axis bool none across lanes .........................................................   Passed    0.04 sec
+        Start 739: multi index float32 scatter add works
+739/798 Test #739: multi index float32 scatter add works .........................................................   Passed    0.04 sec
+        Start 740: multi index bool scatter add works
+740/798 Test #740: multi index bool scatter add works ............................................................   Passed    0.05 sec
+        Start 741: float scatter without atomic float takes the CAS path
+741/798 Test #741: float scatter without atomic float takes the CAS path .........................................   Passed    0.04 sec
+        Start 742: W2 array_equal with equal_nan maps NaN to NaN as True
+742/798 Test #742: W2 array_equal with equal_nan maps NaN to NaN as True .........................................   Passed    0.11 sec
+        Start 743: W2 bool Equal and NotEqual match host references
+743/798 Test #743: W2 bool Equal and NotEqual match host references ..............................................   Passed    0.06 sec
+        Start 744: W5 log10 returns exact integer for f32-exact powers of ten
+744/798 Test #744: W5 log10 returns exact integer for f32-exact powers of ten ....................................   Passed    0.07 sec
+        Start 745: W5 log10 pin and non-power inputs agree with numpy f32
+745/798 Test #745: W5 log10 pin and non-power inputs agree with numpy f32 ........................................   Passed    0.06 sec
+        Start 746: trig gate refuses huge arguments by name with the true magnitude
+746/798 Test #746: trig gate refuses huge arguments by name with the true magnitude ..............................   Passed    0.07 sec
+        Start 747: W8 sin/cos/tan common path matches numpy f32
+747/798 Test #747: W8 sin/cos/tan common path matches numpy f32 ..................................................   Passed    0.06 sec
+        Start 748: W8 sin/cos accurate to 1e5 and refused by name above it
+748/798 Test #748: W8 sin/cos accurate to 1e5 and refused by name above it .......................................   Passed    0.07 sec
+        Start 749: fused swiglu-shaped chain matches eager (f32)
+749/798 Test #749: fused swiglu-shaped chain matches eager (f32) .................................................   Passed    0.09 sec
+        Start 750: fused swiglu-shaped chain matches eager (f16, bit-exact)
+750/798 Test #750: fused swiglu-shaped chain matches eager (f16, bit-exact) ......................................   Passed    0.09 sec
+        Start 751: chain with tiled row leaf (mod-last) matches eager
+751/798 Test #751: chain with tiled row leaf (mod-last) matches eager ............................................   Passed    0.07 sec
+        Start 752: chain with row-broadcast leaf (div-last) matches eager
+752/798 Test #752: chain with row-broadcast leaf (div-last) matches eager ........................................   Passed    0.07 sec
+        Start 753: chain with scalar leaf matches eager
+753/798 Test #753: chain with scalar leaf matches eager ..........................................................   Passed    0.06 sec
+        Start 754: chain with offset (sliced) leaf matches eager
+754/798 Test #754: chain with offset (sliced) leaf matches eager .................................................   Passed    0.07 sec
+        Start 755: special values carry through the chain bit-exactly
+755/798 Test #755: special values carry through the chain bit-exactly ............................................   Passed    0.09 sec
+        Start 756: independent same-shape siblings close and reopen chains
+756/798 Test #756: independent same-shape siblings close and reopen chains .......................................   Passed    0.07 sec
+        Start 757: fused chain kernel strides one forced workgroup
+757/798 Test #757: fused chain kernel strides one forced workgroup ...............................................   Passed    0.06 sec
+        Start 758: residual add chain (tape-input leaf) matches eager
+758/798 Test #758: residual add chain (tape-input leaf) matches eager ............................................   Passed    0.07 sec
+        Start 759: shape-changing node closes the chain without breaking values
+759/798 Test #759: shape-changing node closes the chain without breaking values ..................................   Passed    0.07 sec
+        Start 760: gated-in fused chain collapses 3 swiglu dispatches to 1
+760/798 Test #760: gated-in fused chain collapses 3 swiglu dispatches to 1 .......................................   Passed    0.07 sec
+        Start 761: gate off keeps the per-node dispatch stream
+761/798 Test #761: gate off keeps the per-node dispatch stream ...................................................   Passed    0.06 sec
+        Start 762: bf16 compiled tape stays refused
+762/798 Test #762: bf16 compiled tape stays refused ..............................................................   Passed    0.07 sec
+        Start 763: shapeless swiglu fragment collapses identity broadcast pairs (f32)
+763/798 Test #763: shapeless swiglu fragment collapses identity broadcast pairs (f32) ............................   Passed    0.07 sec
+        Start 764: shapeless swiglu fragment collapses identity broadcast pairs (f16)
+764/798 Test #764: shapeless swiglu fragment collapses identity broadcast pairs (f16) ............................   Passed    0.09 sec
+        Start 765: shapeless fragment serves new shapes with one dispatch each
+765/798 Test #765: shapeless fragment serves new shapes with one dispatch each ...................................   Passed    0.07 sec
+        Start 766: broadcast identity is reclassified per eval shape
+766/798 Test #766: broadcast identity is reclassified per eval shape .............................................   Passed    0.07 sec
+        Start 767: identity broadcast as tape output resolves through the alias
+767/798 Test #767: identity broadcast as tape output resolves through the alias ..................................   Passed    0.07 sec
+        Start 768: identity broadcast as tape output resolves through the alias
+768/798 Test #768: identity broadcast as tape output resolves through the alias ..................................   Passed    0.07 sec
+        Start 769: nonidentity broadcast keeps the per-node fallback (shapeless)
+769/798 Test #769: nonidentity broadcast keeps the per-node fallback (shapeless) .................................   Passed    0.07 sec
+        Start 770: incompatible call-time shapes refuse like eager (shapeless)
+770/798 Test #770: incompatible call-time shapes refuse like eager (shapeless) ...................................   Passed    0.07 sec
+        Start 771: zero-sized inputs stay correct end to end (shapeless)
+771/798 Test #771: zero-sized inputs stay correct end to end (shapeless) .........................................   Passed    0.04 sec
+        Start 772: omarchy_runtime_tests
+772/798 Test #772: omarchy_runtime_tests .........................................................................   Passed   18.51 sec
+        Start 773: omarchy_copy_offset_tests
+773/798 Test #773: omarchy_copy_offset_tests .....................................................................   Passed    0.10 sec
+        Start 774: omarchy_primitive_tests
+774/798 Test #774: omarchy_primitive_tests .......................................................................   Passed    1.72 sec
+        Start 775: omarchy_ane_bundle_tests
+775/798 Test #775: omarchy_ane_bundle_tests ......................................................................   Passed    0.04 sec
+        Start 776: omarchy_kv_ops_tests
+776/798 Test #776: omarchy_kv_ops_tests ..........................................................................   Passed    0.06 sec
+        Start 777: omarchy_error_contract_tests
+777/798 Test #777: omarchy_error_contract_tests ..................................................................   Passed    0.04 sec
+        Start 778: omarchy_shape_ops_tests
+778/798 Test #778: omarchy_shape_ops_tests .......................................................................   Passed    0.07 sec
+        Start 779: omarchy_reduce_ops_tests
+779/798 Test #779: omarchy_reduce_ops_tests ......................................................................   Passed    0.33 sec
+        Start 780: omarchy_indexing_ops_tests
+780/798 Test #780: omarchy_indexing_ops_tests ....................................................................   Passed    0.14 sec
+        Start 781: omarchy_matmul_family_tests
+781/798 Test #781: omarchy_matmul_family_tests ...................................................................   Passed  390.25 sec
+        Start 782: omarchy_distributed_tests
+782/798 Test #782: omarchy_distributed_tests .....................................................................   Passed    0.09 sec
+        Start 783: omarchy_compiled_tape_tests
+783/798 Test #783: omarchy_compiled_tape_tests ...................................................................   Passed    0.30 sec
+        Start 784: omarchy_fft_ops_tests
+784/798 Test #784: omarchy_fft_ops_tests .........................................................................   Passed    0.71 sec
+        Start 785: omarchy_fast_ops_tests
+785/798 Test #785: omarchy_fast_ops_tests ........................................................................   Passed    0.61 sec
+        Start 786: omarchy_linalg_ops_tests
+786/798 Test #786: omarchy_linalg_ops_tests ......................................................................   Passed    0.63 sec
+        Start 787: omarchy_eig_ops_tests
+787/798 Test #787: omarchy_eig_ops_tests .........................................................................   Passed    0.24 sec
+        Start 788: omarchy_take_fill_tests
+788/798 Test #788: omarchy_take_fill_tests .......................................................................   Passed    0.13 sec
+        Start 789: omarchy_conv_tests
+789/798 Test #789: omarchy_conv_tests ............................................................................   Passed    0.14 sec
+        Start 790: omarchy_complex_ops_tests
+790/798 Test #790: omarchy_complex_ops_tests .....................................................................   Passed    0.15 sec
+        Start 791: omarchy_select_layout_tests
+791/798 Test #791: omarchy_select_layout_tests ...................................................................   Passed    0.38 sec
+        Start 792: omarchy_fft_general_tests
+792/798 Test #792: omarchy_fft_general_tests .....................................................................   Passed   14.64 sec
+        Start 793: omarchy_fast_regression_tests
+793/798 Test #793: omarchy_fast_regression_tests .................................................................   Passed    0.87 sec
+        Start 794: omarchy_scatter_determinism_tests
+794/798 Test #794: omarchy_scatter_determinism_tests .............................................................   Passed    0.24 sec
+        Start 795: omarchy_eq_math_tests
+795/798 Test #795: omarchy_eq_math_tests .........................................................................   Passed    0.21 sec
+        Start 796: omarchy_decode_dispatch_count
+796/798 Test #796: omarchy_decode_dispatch_count .................................................................   Passed  448.85 sec
+        Start 797: omarchy_fused_chain_tests
+797/798 Test #797: omarchy_fused_chain_tests .....................................................................   Passed    0.71 sec
+        Start 798: omarchy_two_rank_harness
+798/798 Test #798: omarchy_two_rank_harness ......................................................................   Passed    0.86 sec
+
+100% tests passed, 0 tests failed out of 798
+
+Total Test time (real) = 1324.00 sec
