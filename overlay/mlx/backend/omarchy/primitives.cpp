@@ -803,17 +803,35 @@ void dispatch_comparison(
   }
   std::array<omarchy::ComputeBinding, 3> bindings{
       binding(lhs), binding(rhs), binding(out)};
-  auto kernel = lhs.dtype() == float16
-      ? omarchy::ComputeKernel::CompareF16
-      : lhs.dtype() == bfloat16 ? omarchy::ComputeKernel::CompareBF16
-          : lhs.dtype() == int32 ? omarchy::ComputeKernel::CompareI32
-          : lhs.dtype() == uint32 ? omarchy::ComputeKernel::CompareU32
-          : lhs.dtype() == int64 ? omarchy::ComputeKernel::CompareI64
-          : lhs.dtype() == uint8 ? omarchy::ComputeKernel::CompareU8
-          : lhs.dtype() == int16 ? omarchy::ComputeKernel::CompareI16
-          : lhs.dtype() == uint16 ? omarchy::ComputeKernel::CompareU16
-          : lhs.dtype() == complex64 ? omarchy::ComputeKernel::CompareComplex
-          : omarchy::ComputeKernel::CompareF32;
+  // Every admitted dtype names its kernel; a dtype with no entry refuses
+  // rather than reaching a kernel that reads the wrong element width
+  // (int8 once fell through to CompareF32 and overread 4x).
+  omarchy::ComputeKernel kernel;
+  if (lhs.dtype() == float32) {
+    kernel = omarchy::ComputeKernel::CompareF32;
+  } else if (lhs.dtype() == float16) {
+    kernel = omarchy::ComputeKernel::CompareF16;
+  } else if (lhs.dtype() == bfloat16) {
+    kernel = omarchy::ComputeKernel::CompareBF16;
+  } else if (lhs.dtype() == int32) {
+    kernel = omarchy::ComputeKernel::CompareI32;
+  } else if (lhs.dtype() == uint32) {
+    kernel = omarchy::ComputeKernel::CompareU32;
+  } else if (lhs.dtype() == int64) {
+    kernel = omarchy::ComputeKernel::CompareI64;
+  } else if (lhs.dtype() == int8) {
+    kernel = omarchy::ComputeKernel::CompareI8;
+  } else if (lhs.dtype() == uint8) {
+    kernel = omarchy::ComputeKernel::CompareU8;
+  } else if (lhs.dtype() == int16) {
+    kernel = omarchy::ComputeKernel::CompareI16;
+  } else if (lhs.dtype() == uint16) {
+    kernel = omarchy::ComputeKernel::CompareU16;
+  } else if (lhs.dtype() == complex64) {
+    kernel = omarchy::ComputeKernel::CompareComplex;
+  } else {
+    omarchy::unsupported(name + " dtype", out);
+  }
   encoder.dispatch_compute(
       kernel,
       bindings,
