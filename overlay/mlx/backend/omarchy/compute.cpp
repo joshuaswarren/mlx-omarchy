@@ -305,6 +305,9 @@
 #include "gather_qmm_nb_f32.h"
 #include "gather_qmm_nb_f16.h"
 #include "gather_qmm_nb_bf16.h"
+#include "gather_qmm_nb_fp_f32.h"
+#include "gather_qmm_nb_fp_f16.h"
+#include "gather_qmm_nb_fp_bf16.h"
 #include "fft_f32.h"
 #include "fft_real_f32.h"
 #include "fft_stage_f32.h"
@@ -1101,6 +1104,12 @@ ShaderBytes shader_bytes(ComputeKernel kernel) {
       return {qmm_tile_fp_f16, qmm_tile_fp_f16_size};
     case ComputeKernel::QmmTileFpBF16:
       return {qmm_tile_fp_bf16, qmm_tile_fp_bf16_size};
+    case ComputeKernel::GatherQmmNbFpF32:
+      return {gather_qmm_nb_fp_f32, gather_qmm_nb_fp_f32_size};
+    case ComputeKernel::GatherQmmNbFpF16:
+      return {gather_qmm_nb_fp_f16, gather_qmm_nb_fp_f16_size};
+    case ComputeKernel::GatherQmmNbFpBF16:
+      return {gather_qmm_nb_fp_bf16, gather_qmm_nb_fp_bf16_size};
     case ComputeKernel::Count:
       break;
   }

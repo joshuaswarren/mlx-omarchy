@@ -2282,17 +2282,20 @@ void dispatch_block_mask(
       omarchy::compute_dispatch_group_count(params.count));
 }
 
-// Shared body for the gathered affine quantized matmuls: GatherQMM
-// (scale + bias), GatherQQMM and the quantized-weight QQMatmul path
-// (scale only, no_bias). lhs/rhs with a single zero index serve the
-// un-gathered case. The packed word buffer carries [scales bytes |
-// (bias bytes) | lhs index words | rhs index words]; every region sits
-// on a 4-byte boundary and padding stays zeroed, so 16-bit parameters
-// decode from whole words with no 16-bit storage reads. transpose
-// selects the packed weight layout (transposed rows [batch, N, Kp] or
-// non-transposed columns [batch, Kp, N]) routed to the kernel through
-// flags bit 0; x accepts any rank >= 2 and w/scales any equal batch
-// rank, because lhs/rhs indices index x/w batch slices flat.
+// Shared body for the gathered quantized matmuls: GatherQMM (scale +
+// bias), GatherQQMM and the quantized-weight QQMatmul path (scale
+// only, no_bias) in the affine modes, and GatherQMM / GatherQQMM in
+// the non-affine modes (fp_mode: mxfp4 / nvfp4 / mxfp8, always
+// no-bias, one uint8 scale byte per group). lhs/rhs with a single
+// zero index serve the un-gathered case. The packed word buffer
+// carries [scales bytes | (bias bytes) | lhs index words | rhs index
+// words]; every region sits on a 4-byte boundary and padding stays
+// zeroed, so 16-bit parameters decode from whole words with no
+// 16-bit storage reads. transpose selects the packed weight layout
+// (transposed rows [batch, N, Kp] or non-transposed columns
+// [batch, Kp, N]) routed to the kernel through flags bit 0; x accepts
+// any rank >= 2 and w/scales any equal batch rank, because lhs/rhs
+// indices index x/w batch slices flat.
 void dispatch_gather_qmm(
     const std::string& tag,
     const array& x,
@@ -2304,6 +2307,7 @@ void dispatch_gather_qmm(
     int group_size,
     int bits,
     bool transpose,
+    bool fp_mode,
     array& out,
     const Stream& s) {
   auto& encoder = omarchy::get_command_encoder(s);
@@ -2311,15 +2315,17 @@ void dispatch_gather_qmm(
   if (bits != 4 && bits != 8) {
     omarchy::unsupported(tag + " bits", out);
   }
-  if (group_size != 32 && group_size != 64 && group_size != 128) {
+  if (group_size != 32 && group_size != 64 && group_size != 128 &&
+      !(fp_mode && group_size == 16)) {
     omarchy::unsupported(tag + " group size", out);
   }
   if (w.dtype() != uint32) {
     omarchy::unsupported(tag + " weight dtype", out);
   }
-  if (scales.dtype() != out.dtype() ||
+  if (scales.dtype() != (fp_mode ? uint8 : out.dtype()) ||
       (biases && biases->dtype() != out.dtype())) {
-    // ops.cpp promotes scales and biases to the output dtype.
+    // ops.cpp promotes affine scales and biases to the output dtype;
+    // fp modes keep one uint8 scale byte per group.
     omarchy::unsupported(tag + " scales dtype", out);
   }
   if (x.ndim() < 2 || w.ndim() < 2 || scales.ndim() != w.ndim()) {
@@ -2469,9 +2475,19 @@ void dispatch_gather_qmm(
   }
   std::array<omarchy::ComputeBinding, 4> bindings{
       binding(x_d), binding(packed), binding(w_d), binding(out)};
+  // fp modes have no bias term; their kernels are the FP_MODE
+  // no-bias variants.
   bool no_bias = !biases.has_value();
   omarchy::ComputeKernel kernel;
-  if (out.dtype() == float32) {
+  if (fp_mode) {
+    if (out.dtype() == float32) {
+      kernel = omarchy::ComputeKernel::GatherQmmNbFpF32;
+    } else if (out.dtype() == float16) {
+      kernel = omarchy::ComputeKernel::GatherQmmNbFpF16;
+    } else {
+      kernel = omarchy::ComputeKernel::GatherQmmNbFpBF16;
+    }
+  } else if (out.dtype() == float32) {
     kernel = no_bias ? omarchy::ComputeKernel::GatherQmmNbF32
                      : omarchy::ComputeKernel::GatherQmmF32;
   } else if (out.dtype() == float16) {
@@ -4952,22 +4968,39 @@ void GatherAxis::eval_gpu(const std::vector<array>& inputs, array& out) {
 
 void GatherQMM::eval_gpu(const std::vector<array>& inputs, array& out) {
   const std::string tag = name();
-  if (mode_ != QuantizationMode::Affine) {
-    omarchy::unsupported(tag + " mode", out);
+  if (mode_ == QuantizationMode::Affine) {
+    // Affine inputs: [x, w, scales, biases, lhs, rhs]. Both transpose
+    // layouts are first-class.
+    dispatch_gather_qmm(
+        tag,
+        inputs[0],
+        inputs[1],
+        inputs[2],
+        inputs[3],
+        inputs[4],
+        inputs[5],
+        group_size_,
+        bits_,
+        transpose_,
+        /* fp_mode = */ false,
+        out,
+        out.primitive().stream());
+    return;
   }
-  // Affine inputs: [x, w, scales, biases, lhs, rhs]. Both transpose
-  // layouts are first-class.
+  // Non-affine inputs: [x, w, scales(uint8), lhs, rhs]; no bias, no
+  // global scale reaches this primitive through gather_qmm.
   dispatch_gather_qmm(
       tag,
       inputs[0],
       inputs[1],
       inputs[2],
+      std::nullopt,
       inputs[3],
       inputs[4],
-      inputs[5],
       group_size_,
       bits_,
       transpose_,
+      /* fp_mode = */ true,
       out,
       out.primitive().stream());
 }
@@ -4976,10 +5009,19 @@ void GatherQMM::eval_gpu(const std::vector<array>& inputs, array& out) {
 void GatherQQMM::eval_gpu(const std::vector<array>& inputs, array& out) {
   const std::string tag = name();
   if (mode_ != QuantizationMode::Affine) {
-    omarchy::unsupported(tag + " mode", out);
+    // qqmm quantizes the x operand as well as w (fp4/fp8 activation
+    // codes with per-group e8m0/e4m3 scales and, for nvfp4, a global
+    // scale). Computing raw-float x against dequantized w returns
+    // silently wrong values, so the non-affine modes keep a named
+    // refusal until in-kernel x quantization exists.
+    omarchy::unsupported(tag + " x quantization", out);
   }
   // Affine inputs: [x, w, lhs, rhs, scales_w]. A float w would need the
-  // quantize direction, which this backend does not implement.
+  // quantize direction, which this backend does not implement; the
+  // nvfp4 global-scale pair rides past the affine check above.
+  if (inputs.size() > 5) {
+    omarchy::unsupported(tag + " global scale", out);
+  }
   if (inputs[1].dtype() != uint32) {
     omarchy::unsupported(tag + " weight dtype", out);
   }
@@ -4994,6 +5036,7 @@ void GatherQQMM::eval_gpu(const std::vector<array>& inputs, array& out) {
       group_size_,
       bits_,
       true,
+      /* fp_mode = */ false,
       out,
       out.primitive().stream());
 }
@@ -5042,6 +5085,7 @@ void QQMatmul::eval_gpu(const std::vector<array>& inputs, array& out) {
       group_size_,
       bits_,
       true,
+      /* fp_mode = */ false,
       out,
       s);
 }
@@ -9116,38 +9160,46 @@ void Quantize::eval_gpu(
     // elements, group 32). Conversions mirror the pinned Metal
     // fp4.h / fp8.h helpers bit for bit.
     const array& in_w = inputs.at(0);
-    array& scales = outputs.at(1);
     if (bits_ != 4 && bits_ != 8) {
       omarchy::unsupported(tag + " bits", out);
     }
     if (group_size_ != 16 && group_size_ != 32) {
       omarchy::unsupported(tag + " group size", out);
     }
-    if (
-        in_w.dtype() != float16 && in_w.dtype() != bfloat16 &&
-        in_w.dtype() != float32) {
-      omarchy::unsupported(tag + " input dtype", out);
+    // ops.cpp binds the global scale to nvfp4 only. The operand count
+    // that signals a bound global scale differs by direction: quantize
+    // receives {w} plus the optional global scale, dequantize
+    // {w, scales} plus it.
+    if (!dequantize_ && inputs.size() > 1 && group_size_ != 16) {
+      omarchy::unsupported(tag + " global scale", out);
     }
-    const auto& fp_caps = encoder.device().capabilities();
-    if (in_w.dtype() == float16 &&
-        (!fp_caps.shader_float16 ||
-         !fp_caps.storage_buffer_16bit_access)) {
-      omarchy::unsupported(tag + " float16 capability", out);
-    }
-    if (in_w.dtype() == bfloat16 &&
-        (!fp_caps.storage_buffer_16bit_access ||
-         !fp_caps.shader_int16)) {
-      omarchy::unsupported(tag + " bfloat16 capability", out);
-    }
-    bool has_global_scale = inputs.size() > 1;
-    // ops.cpp binds the global scale to nvfp4 only.
-    if (has_global_scale && group_size_ != 16) {
+    if (dequantize_ && inputs.size() > 2 && group_size_ != 16) {
       omarchy::unsupported(tag + " global scale", out);
     }
     if (!dequantize_) {
       // Quantize direction: outputs {packed words, one scale byte per
       // group}. Scale bytes insert through the word view with lane
       // atomics, so rhs_offset carries the byte offset.
+      // The quantize input is a floating matrix; the 16-bit paths need
+      // the matching storage capabilities.
+      if (
+          in_w.dtype() != float16 && in_w.dtype() != bfloat16 &&
+          in_w.dtype() != float32) {
+        omarchy::unsupported(tag + " input dtype", out);
+      }
+      const auto& fp_caps = encoder.device().capabilities();
+      if (in_w.dtype() == float16 &&
+          (!fp_caps.shader_float16 ||
+           !fp_caps.storage_buffer_16bit_access)) {
+        omarchy::unsupported(tag + " float16 capability", out);
+      }
+      if (in_w.dtype() == bfloat16 &&
+          (!fp_caps.storage_buffer_16bit_access ||
+           !fp_caps.shader_int16)) {
+        omarchy::unsupported(tag + " bfloat16 capability", out);
+      }
+      array& scales = outputs.at(1);
+      bool has_global_scale = inputs.size() > 1;
       Shape packed_shape = in_w.shape();
       packed_shape.back() = packed_shape.back() * bits_ / 32;
       Shape parameter_shape = in_w.shape();
@@ -9197,6 +9249,7 @@ void Quantize::eval_gpu(
     // Dequantize direction: inputs {packed words, scale bytes} plus the
     // optional global scale; the output dtype is the ops-promoted
     // floating type (float16, bfloat16, or float32).
+    bool has_global_scale = inputs.size() > 2;
     const array& in_scales = inputs.at(1);
     if (in_w.dtype() != uint32 || in_scales.dtype() != uint8) {
       omarchy::unsupported(tag + " weight dtype", out);
@@ -9205,6 +9258,20 @@ void Quantize::eval_gpu(
         out.dtype() != float16 && out.dtype() != bfloat16 &&
         out.dtype() != float32) {
       omarchy::unsupported(tag + " scales dtype", out);
+    }
+    {
+      // The 16-bit outputs need the matching storage capabilities.
+      const auto& fp_caps = encoder.device().capabilities();
+      if (out.dtype() == float16 &&
+          (!fp_caps.shader_float16 ||
+           !fp_caps.storage_buffer_16bit_access)) {
+        omarchy::unsupported(tag + " float16 capability", out);
+      }
+      if (out.dtype() == bfloat16 &&
+          (!fp_caps.storage_buffer_16bit_access ||
+           !fp_caps.shader_int16)) {
+        omarchy::unsupported(tag + " bfloat16 capability", out);
+      }
     }
     if (
         in_w.shape().size() != in_scales.shape().size() ||
@@ -9245,7 +9312,7 @@ void Quantize::eval_gpu(
     params.aux_offset =
         checked_item_offset(scales_d, scales_d.size(), tag, out);
     params.rhs_size =
-        has_global_scale ? checked_item_offset(inputs.at(1), 1, tag, out) : 0;
+        has_global_scale ? checked_item_offset(inputs.at(2), 1, tag, out) : 0;
     params.output_offset = checked_item_offset(out, out.size(), tag, out);
     params.matrix_n = checked_u32(bytes_per_row, tag, out);
     params.matrix_k = checked_u32(
@@ -9254,7 +9321,7 @@ void Quantize::eval_gpu(
     std::array<omarchy::ComputeBinding, 4> bindings{
         binding(w),
         binding(scales_d),
-        has_global_scale ? binding(inputs.at(1)) : binding(w),
+        has_global_scale ? binding(inputs.at(2)) : binding(w),
         binding(out)};
     auto kernel = select_float_kernel(
         out.dtype(),
