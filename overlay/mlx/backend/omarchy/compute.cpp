@@ -13,6 +13,8 @@
 #include "arange_f16.h"
 #include "arange_f32.h"
 #include "arange_i32.h"
+#include "arange_i64.h"
+#include "arange_u64.h"
 #include "argreduce_f32.h"
 #include "argreduce_bf16.h"
 #include "argreduce_f16.h"
@@ -74,6 +76,10 @@
 #include "take_multi_f32.h"
 #include "take_multi_u32.h"
 #include "take_u32.h"
+#include "take_u16.h"
+#include "take_i64.h"
+#include "take_multi_u16.h"
+#include "take_multi_i64.h"
 #include "slice_update_reduce_bf16.h"
 #include "slice_update_reduce_f16.h"
 #include "slice_update_reduce_f32.h"
@@ -164,8 +170,16 @@
 #include "argsort_f32.h"
 #include "sort_i32.h"
 #include "sort_u32.h"
+#include "sort_i8.h"
+#include "sort_u8.h"
+#include "sort_i16.h"
+#include "sort_u16.h"
 #include "argsort_i32.h"
 #include "argsort_u32.h"
+#include "argsort_i8.h"
+#include "argsort_u8.h"
+#include "argsort_i16.h"
+#include "argsort_u16.h"
 #include "logical_or_bool.h"
 #include "compare_bool.h"
 #include "scan_bf16.h"
@@ -402,6 +416,10 @@ ShaderBytes shader_bytes(ComputeKernel kernel) {
       return {arange_i32, arange_i32_size};
     case ComputeKernel::ArangeU32:
       return {arange_u32, arange_u32_size};
+    case ComputeKernel::ArangeI64:
+      return {arange_i64, arange_i64_size};
+    case ComputeKernel::ArangeU64:
+      return {arange_u64, arange_u64_size};
     case ComputeKernel::ReduceF32:
       return {reduce_f32, reduce_f32_size};
     case ComputeKernel::ReduceF16:
@@ -560,6 +578,10 @@ ShaderBytes shader_bytes(ComputeKernel kernel) {
       return {take_bf16, take_bf16_size};
     case ComputeKernel::TakeU32:
       return {take_u32, take_u32_size};
+    case ComputeKernel::TakeU16:
+      return {take_u16, take_u16_size};
+    case ComputeKernel::TakeI64:
+      return {take_i64, take_i64_size};
     case ComputeKernel::TakeMultiF32:
       return {take_multi_f32, take_multi_f32_size};
     case ComputeKernel::TakeMultiF16:
@@ -568,6 +590,10 @@ ShaderBytes shader_bytes(ComputeKernel kernel) {
       return {take_multi_bf16, take_multi_bf16_size};
     case ComputeKernel::TakeMultiU32:
       return {take_multi_u32, take_multi_u32_size};
+    case ComputeKernel::TakeMultiU16:
+      return {take_multi_u16, take_multi_u16_size};
+    case ComputeKernel::TakeMultiI64:
+      return {take_multi_i64, take_multi_i64_size};
     case ComputeKernel::SliceUpdateReduceF32:
       return {slice_update_reduce_f32, slice_update_reduce_f32_size};
     case ComputeKernel::SliceUpdateReduceF16:
@@ -610,10 +636,26 @@ ShaderBytes shader_bytes(ComputeKernel kernel) {
       return {sort_i32, sort_i32_size};
     case ComputeKernel::SortU32:
       return {sort_u32, sort_u32_size};
+    case ComputeKernel::SortI8:
+      return {sort_i8, sort_i8_size};
+    case ComputeKernel::SortU8:
+      return {sort_u8, sort_u8_size};
+    case ComputeKernel::SortI16:
+      return {sort_i16, sort_i16_size};
+    case ComputeKernel::SortU16:
+      return {sort_u16, sort_u16_size};
     case ComputeKernel::ArgSortI32:
       return {argsort_i32, argsort_i32_size};
     case ComputeKernel::ArgSortU32:
       return {argsort_u32, argsort_u32_size};
+    case ComputeKernel::ArgSortI8:
+      return {argsort_i8, argsort_i8_size};
+    case ComputeKernel::ArgSortU8:
+      return {argsort_u8, argsort_u8_size};
+    case ComputeKernel::ArgSortI16:
+      return {argsort_i16, argsort_i16_size};
+    case ComputeKernel::ArgSortU16:
+      return {argsort_u16, argsort_u16_size};
     case ComputeKernel::RandomBitsU32:
       return {random_bits_u32, random_bits_u32_size};
     case ComputeKernel::QmmF32:

@@ -127,6 +127,11 @@ void require_float_dtype(
        !capabilities.shader_int16)) {
     omarchy::unsupported(name + " bfloat16 capability", out);
   }
+  if ((input.dtype() == int16 || input.dtype() == uint16) &&
+      (!capabilities.storage_buffer_16bit_access ||
+       !capabilities.shader_int16)) {
+    omarchy::unsupported(name + " 16-bit capability", out);
+  }
 }
 
 omarchy::ComputeKernel select_float_kernel(
@@ -933,16 +938,30 @@ enum IntElementwiseOperation : uint32_t {
   IntMinimumOperation,
   IntMaximumOperation,
   IntDivideOperation,
+  IntNegateOperation,
 };
 
-// The int elementwise blob per output dtype: the 32-bit word kernels
-// carry the full op set, the 8/16/64-bit widened kernels the bitwise
-// ops only.
+// Every integer dtype the elementwise family serves. Bool rides the
+// byte lanes too, but only for the logical ops (the call sites gate
+// that subset), so it stays out of this check.
+bool is_int_elementwise_dtype(Dtype dtype) {
+  return dtype == int8 || dtype == uint8 || dtype == int16 ||
+      dtype == uint16 || dtype == int32 || dtype == uint32 ||
+      dtype == int64 || dtype == uint64;
+}
+
+// The int elementwise blob per output dtype: every variant carries the
+// full op set - the 32-bit word kernels inline, the 8/16/64-bit
+// widened kernels through the shared INT_ARITH_CASES block.
 omarchy::ComputeKernel elementwise_kernel(Dtype dtype) {
   switch (dtype) {
     case int8:
       return omarchy::ComputeKernel::ElementwiseI8;
     case uint8:
+    case bool_:
+      // Bool arrays are one byte per element, so the unsigned byte
+      // lanes serve them; values are 0/1 and only the call-site-gated
+      // logical ops reach this kernel.
       return omarchy::ComputeKernel::ElementwiseU8;
     case int16:
       return omarchy::ComputeKernel::ElementwiseI16;
@@ -1007,40 +1026,44 @@ void dispatch_int_elementwise(
   auto is_word_dtype = [](Dtype dtype) {
     return dtype == int32 || dtype == uint32;
   };
-  // The 8/16/64-bit family rides the widened-word bitwise variants;
-  // every other operation keeps the named refusal for them, and the
-  // inputs must already share the output dtype (upstream's
-  // bitwise_impl astype's both operands to the result type).
+  // The 8/16/64-bit family runs the full operation set on the widened
+  // variants; the inputs must already share the output dtype (upstream
+  // astype's both operands to the result type), and anything mixed
+  // keeps the named refusal.
   auto is_widened_dtype = [](Dtype dtype) {
     return dtype == int8 || dtype == uint8 || dtype == int16 ||
         dtype == uint16 || dtype == int64 || dtype == uint64;
   };
-  auto is_bitwise_op = [](uint32_t op) {
-    switch (op) {
+  // Bool rides the unsigned byte lanes (values are 0/1); only the
+  // logical ops compute: BitwiseAnd/Or/Xor, Add as the logical or, and
+  // Maximum/Minimum. Everything else keeps the named refusal.
+  if (out.dtype() == bool_) {
+    switch (operation) {
       case IntBitwiseAndOperation:
       case IntBitwiseOrOperation:
       case IntBitwiseXorOperation:
-      case IntLeftShiftOperation:
-      case IntRightShiftOperation:
-      case IntInvertOperation:
-        return true;
+      case IntAddOperation:
+      case IntMaximumOperation:
+      case IntMinimumOperation:
+        break;
       default:
-        return false;
+        omarchy::unsupported(name + " dtype", out);
     }
-  };
-  if ((is_widened_dtype(in_lhs.dtype()) || is_widened_dtype(in_rhs.dtype()) ||
-       is_widened_dtype(out.dtype())) &&
-      (!is_bitwise_op(operation) || !is_widened_dtype(out.dtype()) ||
-       in_lhs.dtype() != out.dtype() ||
-       (binary && in_rhs.dtype() != out.dtype()))) {
-    omarchy::unsupported(name + " dtype", out);
-  }
-  if (!is_widened_dtype(in_lhs.dtype()) && !is_widened_dtype(in_rhs.dtype()) &&
-      !is_widened_dtype(out.dtype())) {
-    if (!is_word_dtype(in_lhs.dtype()) || !is_word_dtype(in_rhs.dtype()) ||
-        !is_word_dtype(out.dtype())) {
+    if (in_lhs.dtype() != bool_ ||
+        (binary && in_rhs.dtype() != bool_)) {
       omarchy::unsupported(name + " dtype", out);
     }
+  } else if (is_widened_dtype(in_lhs.dtype()) ||
+             is_widened_dtype(in_rhs.dtype()) ||
+             is_widened_dtype(out.dtype())) {
+    if (in_lhs.dtype() != out.dtype() ||
+        (binary && in_rhs.dtype() != out.dtype())) {
+      omarchy::unsupported(name + " dtype", out);
+    }
+  } else if (!is_word_dtype(in_lhs.dtype()) ||
+             !is_word_dtype(in_rhs.dtype()) ||
+             !is_word_dtype(out.dtype())) {
+    omarchy::unsupported(name + " dtype", out);
   }
   auto& encoder = omarchy::get_command_encoder(out.primitive().stream());
   if (out.dtype() == int16 || out.dtype() == uint16) {
@@ -1084,10 +1107,11 @@ void dispatch_int_elementwise(
   dispatch_int_elementwise_to(name, operation, lhs, rhs, out);
 }
 
-// Sort and ArgSort accept float32/float16/bfloat16 plus int32/uint32.
-// ArgSort and ArgPartition emit uint32 indices, so the output must be
-// uint32 and the dtype checks apply to the input only, the way ArgReduce
-// checks its input. The value variants Sort and Partition keep the input
+// Sort and ArgSort accept float32/float16/bfloat16 plus the 8/16/32-bit
+// integer family; the 64-bit sorts keep the named refusal. ArgSort and
+// ArgPartition emit uint32 indices, so the output must be uint32 and
+// the dtype checks apply to the input only, the way ArgReduce checks
+// its input. The value variants Sort and Partition keep the input
 // dtype in the output.
 void require_sort_dtype(
     const std::string& name,
@@ -1095,9 +1119,12 @@ void require_sort_dtype(
     const array& out,
     bool argsort,
     omarchy::CommandEncoder& encoder) {
+  bool sortable_int =
+      input.dtype() == int8 || input.dtype() == uint8 ||
+      input.dtype() == int16 || input.dtype() == uint16 ||
+      input.dtype() == int32 || input.dtype() == uint32;
   if (input.dtype() != float16 && input.dtype() != float32 &&
-      input.dtype() != bfloat16 && input.dtype() != int32 &&
-      input.dtype() != uint32) {
+      input.dtype() != bfloat16 && !sortable_int) {
     omarchy::unsupported(name + " dtype", out);
   }
   const auto& capabilities = encoder.device().capabilities();
@@ -1110,6 +1137,11 @@ void require_sort_dtype(
       (!capabilities.storage_buffer_16bit_access ||
        !capabilities.shader_int16)) {
     omarchy::unsupported(name + " bfloat16 capability", out);
+  }
+  if ((input.dtype() == int16 || input.dtype() == uint16) &&
+      (!capabilities.storage_buffer_16bit_access ||
+       !capabilities.shader_int16)) {
+    omarchy::unsupported(name + " 16-bit capability", out);
   }
   if (argsort) {
     if (out.dtype() != uint32) {
@@ -1157,26 +1189,44 @@ void dispatch_sort(
   std::array<omarchy::ComputeBinding, 3> bindings{
       binding(src), binding(src), binding(out)};
   omarchy::ComputeKernel kernel;
-  if (input.dtype() == int32 || input.dtype() == uint32) {
-    // 32-bit integer storage buffers need no capability extension.
-    kernel = argsort ? (input.dtype() == int32
-                            ? omarchy::ComputeKernel::ArgSortI32
-                            : omarchy::ComputeKernel::ArgSortU32)
-                     : (input.dtype() == int32
-                            ? omarchy::ComputeKernel::SortI32
-                            : omarchy::ComputeKernel::SortU32);
-  } else if (argsort) {
-    kernel = select_float_kernel(
-        input.dtype(),
-        omarchy::ComputeKernel::ArgSortF32,
-        omarchy::ComputeKernel::ArgSortF16,
-        omarchy::ComputeKernel::ArgSortBF16);
-  } else {
-    kernel = select_float_kernel(
-        input.dtype(),
-        omarchy::ComputeKernel::SortF32,
-        omarchy::ComputeKernel::SortF16,
-        omarchy::ComputeKernel::SortBF16);
+  switch (input.dtype()) {
+    case int32:
+      kernel = argsort ? omarchy::ComputeKernel::ArgSortI32
+                       : omarchy::ComputeKernel::SortI32;
+      break;
+    case uint32:
+      kernel = argsort ? omarchy::ComputeKernel::ArgSortU32
+                       : omarchy::ComputeKernel::SortU32;
+      break;
+    case int8:
+      // Byte rows ride uint32 words with the sign-bit-flip key map.
+      kernel = argsort ? omarchy::ComputeKernel::ArgSortI8
+                       : omarchy::ComputeKernel::SortI8;
+      break;
+    case uint8:
+      kernel = argsort ? omarchy::ComputeKernel::ArgSortU8
+                       : omarchy::ComputeKernel::SortU8;
+      break;
+    case int16:
+      kernel = argsort ? omarchy::ComputeKernel::ArgSortI16
+                       : omarchy::ComputeKernel::SortI16;
+      break;
+    case uint16:
+      kernel = argsort ? omarchy::ComputeKernel::ArgSortU16
+                       : omarchy::ComputeKernel::SortU16;
+      break;
+    default:
+      kernel = argsort ? select_float_kernel(
+                             input.dtype(),
+                             omarchy::ComputeKernel::ArgSortF32,
+                             omarchy::ComputeKernel::ArgSortF16,
+                             omarchy::ComputeKernel::ArgSortBF16)
+                       : select_float_kernel(
+                             input.dtype(),
+                             omarchy::ComputeKernel::SortF32,
+                             omarchy::ComputeKernel::SortF16,
+                             omarchy::ComputeKernel::SortBF16);
+      break;
   }
   encoder.dispatch_compute(
       kernel,
@@ -1356,6 +1406,11 @@ void require_float_input(
       (!capabilities.storage_buffer_16bit_access ||
        !capabilities.shader_int16)) {
     omarchy::unsupported(name + " bfloat16 capability", out);
+  }
+  if ((input.dtype() == int16 || input.dtype() == uint16) &&
+      (!capabilities.storage_buffer_16bit_access ||
+       !capabilities.shader_int16)) {
+    omarchy::unsupported(name + " 16-bit capability", out);
   }
 }
 
@@ -2315,7 +2370,7 @@ void Abs::eval_gpu(const std::vector<array>& inputs, array& out) {
     dispatch_complex_extract(name(), 2, inputs, out, out.primitive().stream());
     return;
   }
-  if (out.dtype() == int32 || out.dtype() == uint32) {
+  if (is_int_elementwise_dtype(out.dtype())) {
     dispatch_int_elementwise(name(), IntAbsOperation, inputs, out);
     return;
   }
@@ -2328,7 +2383,13 @@ void Add::eval_gpu(const std::vector<array>& inputs, array& out) {
         name(), ComplexAdd, inputs, out, out.primitive().stream());
     return;
   }
-  if (out.dtype() == int32 || out.dtype() == uint32) {
+  if (out.dtype() == bool_) {
+    // Upstream bool add is the logical or over {0,1}: bitwise or on the
+    // byte lanes is exact and cannot leave a non-0/1 byte behind.
+    dispatch_int_elementwise(name(), IntBitwiseOrOperation, inputs, out);
+    return;
+  }
+  if (is_int_elementwise_dtype(out.dtype())) {
     dispatch_int_elementwise(name(), IntAddOperation, inputs, out);
     return;
   }
@@ -2343,10 +2404,17 @@ void Arange::eval_gpu(const std::vector<array>& inputs, array& out) {
   auto& encoder = omarchy::get_command_encoder(out.primitive().stream());
   bool is_int32 = out.dtype() == int32;
   bool is_uint32 = out.dtype() == uint32;
-  if (!is_int32 && !is_uint32) {
+  bool is_int64 = out.dtype() == int64;
+  bool is_uint64 = out.dtype() == uint64;
+  bool is_int_arange = is_int32 || is_uint32 || is_int64 || is_uint64;
+  if (!is_int_arange) {
     require_float_dtype("Arange", out, out, encoder);
   }
-  if ((is_int32 || is_uint32) && out.size() > 0) {
+  if ((is_int64 || is_uint64) &&
+      !encoder.device().capabilities().shader_int64) {
+    omarchy::unsupported("Arange int64 capability", out);
+  }
+  if (is_int_arange && out.size() > 0) {
     // The shader computes int(alpha) + index * int(beta) (the uint32
     // kernel stores the same two's-complement bits), so the float
     // transport is only exact while every value and the one-past-last
@@ -2375,6 +2443,10 @@ void Arange::eval_gpu(const std::vector<array>& inputs, array& out) {
       ? omarchy::ComputeKernel::ArangeI32
       : is_uint32
       ? omarchy::ComputeKernel::ArangeU32
+      : is_int64
+      ? omarchy::ComputeKernel::ArangeI64
+      : is_uint64
+      ? omarchy::ComputeKernel::ArangeU64
       : select_float_kernel(
             out.dtype(),
             omarchy::ComputeKernel::ArangeF32,
@@ -3244,7 +3316,7 @@ void Divide::eval_gpu(const std::vector<array>& inputs, array& out) {
         name(), ComplexDivide, inputs, out, out.primitive().stream());
     return;
   }
-  if (out.dtype() == int32 || out.dtype() == uint32) {
+  if (is_int_elementwise_dtype(out.dtype())) {
     // Integer-output Divide is what upstream floor_divide emits for
     // promoted integer inputs; the kernel truncates like the upstream
     // C++ operator/.
@@ -3282,9 +3354,7 @@ void DivMod::eval_gpu(
       rhs_temp,
       encoder,
       quotient.primitive().stream());
-  auto is_int_dtype = [](Dtype dtype) {
-    return dtype == int32 || dtype == uint32;
-  };
+  auto is_int_dtype = is_int_elementwise_dtype;
   if (is_int_dtype(lhs.dtype()) && is_int_dtype(rhs.dtype()) &&
       is_int_dtype(quotient.dtype()) && is_int_dtype(remainder.dtype())) {
     auto binary_type = get_binary_op_type(lhs, rhs);
@@ -4273,15 +4343,27 @@ void Gather::eval_gpu(const std::vector<array>& inputs, array& out) {
   auto [axes, slice_sizes] = state();
   auto& encoder = omarchy::get_command_encoder(out.primitive().stream());
   // QuantizedEmbedding gathers rows of a packed uint32 weight matrix.
-  // The u32 kernel copies raw 32-bit words with no float conversion, so
-  // words above 2^31 stay bit-exact. An int32 table shares that kernel
-  // unchanged: the copy is bitwise and signedness never participates.
-  // Float tables keep the float kernels and the float dtype gate;
-  // remaining dtypes keep the named error.
+  // The raw table kernels copy elements bitwise with no float
+  // conversion (32-bit words, 16-bit halfwords, 64-bit word pairs), so
+  // packed bits above 2^31 stay exact and signedness never
+  // participates; the output must share the table dtype. Float tables
+  // keep the float kernels and the float dtype gate; remaining dtypes
+  // keep the named error.
   bool raw_word_table = table.dtype() == uint32 || table.dtype() == int32;
-  if (raw_word_table) {
+  bool raw_half_table = table.dtype() == uint16 || table.dtype() == int16;
+  bool raw_i64_table = table.dtype() == int64 || table.dtype() == uint64;
+  if (raw_word_table || raw_half_table || raw_i64_table) {
     if (out.dtype() != table.dtype()) {
       omarchy::unsupported("Take dtype", out);
+    }
+    if (raw_half_table &&
+        (!encoder.device().capabilities().storage_buffer_16bit_access ||
+         !encoder.device().capabilities().shader_int16)) {
+      omarchy::unsupported("Take 16-bit capability", out);
+    }
+    if (raw_i64_table &&
+        !encoder.device().capabilities().shader_int64) {
+      omarchy::unsupported("Take int64 capability", out);
     }
   } else {
     require_float_dtype("Take", table, out, encoder);
@@ -4303,9 +4385,11 @@ void Gather::eval_gpu(const std::vector<array>& inputs, array& out) {
     copy_gpu(table, out, CopyType::General, out.primitive().stream());
     return;
   }
-  // gather_take.comp reads index words selected by params.operation:
-  // 0 = int32, 1 = uint32, 2 = int64 as two little-endian words. Other
-  // index dtypes keep the named rejection.
+  // gather_take.comp decodes index elements selected by
+  // params.operation: 0 = int32, 1 = uint32, 2 = int64 as two
+  // little-endian words, 3 = uint8, 4 = int8, 5 = uint16, 6 = int16
+  // (the narrow modes ride the word transport). Other index dtypes
+  // keep the named rejection.
   uint32_t index_mode;
   switch (inputs.at(1).dtype()) {
     case int32:
@@ -4316,6 +4400,18 @@ void Gather::eval_gpu(const std::vector<array>& inputs, array& out) {
       break;
     case int64:
       index_mode = 2;
+      break;
+    case uint8:
+      index_mode = 3;
+      break;
+    case int8:
+      index_mode = 4;
+      break;
+    case uint16:
+      index_mode = 5;
+      break;
+    case int16:
+      index_mode = 6;
       break;
     default:
       omarchy::unsupported("indexed Take dtype", out);
@@ -4340,7 +4436,11 @@ void Gather::eval_gpu(const std::vector<array>& inputs, array& out) {
   // names, so test data_size against size like the scatter path does.
   const array* idx0_ptr = &idx0;
   std::optional<array> idx0_mat;
-  if (!idx0.flags().row_contiguous || idx0.data_size() != idx0.size()) {
+  // The decode addresses words, so a contiguous view at a byte offset
+  // that is not word-aligned materializes dense first; the copy lands
+  // at offset zero and keeps every mode word-granular.
+  if (!idx0.flags().row_contiguous || idx0.data_size() != idx0.size() ||
+      idx0.offset() % 4 != 0) {
     idx0_mat = array(idx0.shape(), idx0.dtype(), nullptr, {});
     copy_gpu(idx0, *idx0_mat, CopyType::General, out.primitive().stream());
     encoder.add_temporary(*idx0_mat);
@@ -4349,7 +4449,8 @@ void Gather::eval_gpu(const std::vector<array>& inputs, array& out) {
   const array* idx1_ptr = &idx1;
   std::optional<array> idx1_mat;
   if (nidx == 2 &&
-      (!idx1.flags().row_contiguous || idx1.data_size() != idx1.size())) {
+      (!idx1.flags().row_contiguous || idx1.data_size() != idx1.size() ||
+       idx1.offset() % 4 != 0)) {
     idx1_mat = array(idx1.shape(), idx1.dtype(), nullptr, {});
     copy_gpu(idx1, *idx1_mat, CopyType::General, out.primitive().stream());
     encoder.add_temporary(*idx1_mat);
@@ -4377,8 +4478,14 @@ void Gather::eval_gpu(const std::vector<array>& inputs, array& out) {
       checked_u32(table_d.strides()[axes[0]], "Take", out);
   params.lhs_offset =
       checked_item_offset(table_d, table_d.size(), "Take", out);
-  params.rhs_offset =
-      checked_item_offset(*idx0_ptr, idx0_ptr->size(), "Take", out);
+  // The index decode rides the word transport, so the array's element
+  // offset converts to a word offset here; the alignment guard above
+  // keeps the multiplication exact.
+  auto index_word_offset = [&](const array& idx) {
+    uint64_t item = checked_item_offset(idx, idx.size(), "Take", out);
+    return static_cast<uint32_t>(item * idx.itemsize() / 4);
+  };
+  params.rhs_offset = index_word_offset(*idx0_ptr);
   params.output_offset = checked_item_offset(out, out.size(), "Take", out);
   // The window decode walks every table dim through slice_sizes.
   params.flags = checked_u32(table_d.ndim(), "Take", out);
@@ -4402,8 +4509,7 @@ void Gather::eval_gpu(const std::vector<array>& inputs, array& out) {
         checked_u32(table_d.shape(axes[1]), "Take", out);
     params.matrix_k =
         checked_u32(table_d.strides()[axes[1]], "Take", out);
-    params.aux_offset =
-        checked_item_offset(*idx1_ptr, idx1_ptr->size(), "Take", out);
+    params.aux_offset = index_word_offset(*idx1_ptr);
   }
   // The multi-index kernel moves the output to binding 3 and reads the
   // second index array at binding 2; the single-index kernel reads the
@@ -4416,6 +4522,12 @@ void Gather::eval_gpu(const std::vector<array>& inputs, array& out) {
   auto kernel = raw_word_table
       ? (nidx == 2 ? omarchy::ComputeKernel::TakeMultiU32
                    : omarchy::ComputeKernel::TakeU32)
+      : raw_half_table
+      ? (nidx == 2 ? omarchy::ComputeKernel::TakeMultiU16
+                   : omarchy::ComputeKernel::TakeU16)
+      : raw_i64_table
+      ? (nidx == 2 ? omarchy::ComputeKernel::TakeMultiI64
+                   : omarchy::ComputeKernel::TakeI64)
       : select_float_kernel(
             out.dtype(),
             nidx == 2 ? omarchy::ComputeKernel::TakeMultiF32
@@ -4937,7 +5049,13 @@ void Maximum::eval_gpu(const std::vector<array>& inputs, array& out) {
         name(), ComplexMaximum, inputs, out, out.primitive().stream());
     return;
   }
-  if (out.dtype() == int32 || out.dtype() == uint32) {
+  if (out.dtype() == bool_) {
+    // Bool maximum is the logical or over {0,1}; min/max on the byte
+    // lanes stays within 0/1.
+    dispatch_int_elementwise(name(), IntMaximumOperation, inputs, out);
+    return;
+  }
+  if (is_int_elementwise_dtype(out.dtype())) {
     dispatch_int_elementwise(name(), IntMaximumOperation, inputs, out);
     return;
   }
@@ -5017,7 +5135,12 @@ void MaskedScatter::eval_gpu(const std::vector<array>& inputs, array& out) {
       kernel, bindings, params, checked_u32(rows, "MaskedScatter", out));
 }
 void Minimum::eval_gpu(const std::vector<array>& inputs, array& out) {
-  if (out.dtype() == int32 || out.dtype() == uint32) {
+  if (out.dtype() == bool_) {
+    // Bool minimum is the logical and over {0,1}.
+    dispatch_int_elementwise(name(), IntMinimumOperation, inputs, out);
+    return;
+  }
+  if (is_int_elementwise_dtype(out.dtype())) {
     dispatch_int_elementwise(name(), IntMinimumOperation, inputs, out);
     return;
   }
@@ -5030,7 +5153,7 @@ void Multiply::eval_gpu(const std::vector<array>& inputs, array& out) {
         name(), ComplexMultiply, inputs, out, out.primitive().stream());
     return;
   }
-  if (out.dtype() == int32 || out.dtype() == uint32) {
+  if (is_int_elementwise_dtype(out.dtype())) {
     dispatch_int_elementwise(name(), IntMultiplyOperation, inputs, out);
     return;
   }
@@ -5041,6 +5164,13 @@ void Negative::eval_gpu(const std::vector<array>& inputs, array& out) {
   if (out.dtype() == complex64) {
     dispatch_complex(
         name(), ComplexNegative, inputs, out, out.primitive().stream());
+    return;
+  }
+  if (is_int_elementwise_dtype(out.dtype())) {
+    // Wraparound negation on the widened variants, op 18 in the
+    // shader; INT_MIN stays itself the way upstream's C++ unary minus
+    // does on this platform.
+    dispatch_int_elementwise(name(), IntNegateOperation, inputs, out);
     return;
   }
   dispatch_elementwise(
@@ -5088,7 +5218,7 @@ void Power::eval_gpu(const std::vector<array>& inputs, array& out) {
     dispatch_compare_bool_to(name(), 6u, lhs, rhs, out, encoder);
     return;
   }
-  if (out.dtype() == int32 || out.dtype() == uint32) {
+  if (is_int_elementwise_dtype(out.dtype())) {
     dispatch_int_elementwise(name(), IntPowerOperation, inputs, out);
     return;
   }
@@ -5607,7 +5737,7 @@ void Reduce::eval_gpu(const std::vector<array>& inputs, array& out) {
 // reproduces the upstream integral_op / remainder value contract
 // (result takes the divisor's sign) for both operand orders.
 void Remainder::eval_gpu(const std::vector<array>& inputs, array& out) {
-  if (out.dtype() == int32 || out.dtype() == uint32) {
+  if (is_int_elementwise_dtype(out.dtype())) {
     dispatch_int_elementwise(name(), IntModuloOperation, inputs, out);
     return;
   }
@@ -5615,6 +5745,7 @@ void Remainder::eval_gpu(const std::vector<array>& inputs, array& out) {
       name(), RemainderFloatOperation, inputs, out, out.primitive().stream());
 }
 OMARCHY_UNARY(Round, RoundOperation)
+
 // Scan serves cumsum, cumprod, cummax, and cummin over any axis, direction,
 // and inclusivity: one invocation owns one line along the scan axis and
 // walks it serially, which keeps the shared-buffer transport simple. The
@@ -6825,7 +6956,7 @@ OMARCHY_UNARY(Sigmoid, SigmoidOperation)
 // (unsigned 0/1) through the integer kernel. Everything else keeps the
 // named float-dtype rejection from dispatch_elementwise.
 void Sign::eval_gpu(const std::vector<array>& inputs, array& out) {
-  if (out.dtype() == int32 || out.dtype() == uint32) {
+  if (is_int_elementwise_dtype(out.dtype())) {
     dispatch_int_elementwise(name(), IntSignOperation, inputs, out);
     return;
   }
@@ -7032,7 +7163,7 @@ void Subtract::eval_gpu(const std::vector<array>& inputs, array& out) {
         name(), ComplexSubtract, inputs, out, out.primitive().stream());
     return;
   }
-  if (out.dtype() == int32 || out.dtype() == uint32) {
+  if (is_int_elementwise_dtype(out.dtype())) {
     dispatch_int_elementwise(name(), IntSubtractOperation, inputs, out);
     return;
   }

@@ -83,6 +83,45 @@ void check_uint32_values(
   }
 }
 
+void check_uint16_values(
+    array value,
+    const std::vector<uint16_t>& expected,
+    const Stream& stream) {
+  value.eval();
+  omarchy::get_command_encoder(stream).synchronize();
+  REQUIRE_EQ(value.size(), expected.size());
+  const uint16_t* values = value.data<uint16_t>();
+  for (size_t index = 0; index < expected.size(); ++index) {
+    CHECK_EQ(values[index], expected[index]);
+  }
+}
+
+void check_int64_values(
+    array value,
+    const std::vector<int64_t>& expected,
+    const Stream& stream) {
+  value.eval();
+  omarchy::get_command_encoder(stream).synchronize();
+  REQUIRE_EQ(value.size(), expected.size());
+  const int64_t* values = value.data<int64_t>();
+  for (size_t index = 0; index < expected.size(); ++index) {
+    CHECK_EQ(values[index], expected[index]);
+  }
+}
+
+void check_uint64_values(
+    array value,
+    const std::vector<uint64_t>& expected,
+    const Stream& stream) {
+  value.eval();
+  omarchy::get_command_encoder(stream).synchronize();
+  REQUIRE_EQ(value.size(), expected.size());
+  const uint64_t* values = value.data<uint64_t>();
+  for (size_t index = 0; index < expected.size(); ++index) {
+    CHECK_EQ(values[index], expected[index]);
+  }
+}
+
 
 // Checks one batch matrix of a rank-5 output against a host vector.
 void check_values(
@@ -1582,14 +1621,38 @@ TEST_CASE("take gathers table rows through Vulkan compute") {
        13.0f},
       stream);
 
-  // Every integral index dtype outside int32, uint32, and int64 pins the
-  // named backend error. Boolean and float indices are rejected one
-  // layer up by the shared gather op itself.
-  for (Dtype dtype : {int16, uint16, int8, uint8}) {
-    std::string error =
-        evaluation_error(take(table, array({0}, dtype), 0, stream));
-    CHECK(error.find("indexed Take dtype") != std::string::npos);
+  // The narrow index dtypes decode through the word transport: the
+  // same {2, 0, 2} row lookup computes for every one of them.
+  for (Dtype dtype : {int8, uint8, int16, uint16}) {
+    check_values(
+        take(table, array({2, 0, 2}, dtype), 0, stream),
+        {30.0f,
+         31.0f,
+         32.0f,
+         33.0f,
+         10.0f,
+         11.0f,
+         12.0f,
+         13.0f,
+         30.0f,
+         31.0f,
+         32.0f,
+         33.0f},
+        stream);
   }
+  // Signed narrow indices wrap like the 32-bit mode: -1 reads the last
+  // row.
+  check_values(
+      take(table, array({-1, 0}, int16), 0, stream),
+      {30.0f,
+       31.0f,
+       32.0f,
+       33.0f,
+       10.0f,
+       11.0f,
+       12.0f,
+       13.0f},
+      stream);
   // Boolean and float indices are rejected one layer up by the shared
   // gather op itself, at graph build time.
   std::string float_error;
@@ -1963,16 +2026,19 @@ TEST_CASE("take gathers uint32 and int32 tables as raw words") {
   check_uint32_values(
       take(wide_table, l_indices, 0, stream), l_expected, stream);
 
-  // Remaining table dtypes keep the named dtype error at the backend
-  // gate; uint16 pins it. A float64 table cannot even hold a GPU
-  // buffer: the core dtype gate rejects it one layer up with its own
-  // named error.
+  // A uint16 table rides the raw halfword copy: rows land bit-exact.
   std::vector<uint16_t> hv = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10,
                               11, 12, 13, 14, 15, 16, 17, 18, 19, 20};
   array u16_table(hv.begin(), Shape{5, 4}, uint16);
-  std::string u16_error =
-      evaluation_error(take(u16_table, indices, 0, stream));
-  CHECK(u16_error.find("Take dtype") != std::string::npos);
+  std::vector<uint16_t> u16_expected;
+  for (uint32_t row : uv) {
+    u16_expected.insert(
+        u16_expected.end(),
+        hv.begin() + row * 4,
+        hv.begin() + row * 4 + 4);
+  }
+  check_uint16_values(
+      take(u16_table, indices, 0, stream), u16_expected, stream);
 
   array f64_table(tv.begin(), Shape{5, 4}, float64);
   std::string f64_error;
@@ -3456,11 +3522,20 @@ TEST_CASE("Arange fills start plus step times index through Vulkan compute") {
       evaluation_error(arange(16777216, 0, -1, int32, stream));
   CHECK(start_error.find("[omarchy] Arange range") != std::string::npos);
 
-  // Other non-float dtypes keep the named dtype error.
-  std::string dtype_error =
-      evaluation_error(arange(0, 4, 1, int64, stream));
-  CHECK(dtype_error.find("[omarchy] Arange dtype") != std::string::npos);
-  CHECK(dtype_error.find("no silent CPU fallback") != std::string::npos);
+  // int64 and uint64 ride the same exact int path under the shared
+  // 2^24 float-transport bound, and the bound refusal carries over.
+  std::vector<int64_t> i64_expected;
+  for (int64_t value = 0; value < 10; ++value) {
+    i64_expected.push_back(value);
+  }
+  check_int64_values(arange(0, 10, 1, int64, stream), i64_expected, stream);
+  check_int64_values(
+      arange(10, 0, -2, int64, stream), {10, 8, 6, 4, 2}, stream);
+  check_uint64_values(
+      arange(0, 18, 3, uint64, stream), {0ull, 3ull, 6ull, 9ull, 12ull, 15ull}, stream);
+  std::string i64_range_error =
+      evaluation_error(arange(0, 16777217, 1, int64, stream));
+  CHECK(i64_range_error.find("[omarchy] Arange range") != std::string::npos);
 
   const auto& capabilities = omarchy::device(0).capabilities();
   if (!capabilities.shader_float16 ||
@@ -3697,6 +3772,53 @@ TEST_CASE(
   for (size_t index = 0; index < sorted_uv.size(); ++index) {
     CHECK_EQ(got_uints[index], sorted_uv[index]);
   }
+
+  // The 8/16-bit families ride the widened key maps: sign-bit flips
+  // for the signed modes, magnitude order for the unsigned ones.
+  auto narrow_sort_case = [&](Dtype dtype, auto values, Shape shape) {
+    using T = typename decltype(values)::value_type;
+    array input(values.begin(), shape, dtype);
+    size_t row_length = shape.back();
+    size_t rows = values.size() / row_length;
+    std::vector<T> sorted;
+    for (size_t r = 0; r < rows; ++r) {
+      std::vector<T> row(
+          values.begin() + r * row_length,
+          values.begin() + (r + 1) * row_length);
+      std::stable_sort(row.begin(), row.end());
+      sorted.insert(sorted.end(), row.begin(), row.end());
+    }
+    array out = sort(input, -1, stream);
+    out.eval();
+    omarchy::get_command_encoder(stream).synchronize();
+    REQUIRE_EQ(out.size(), sorted.size());
+    const T* got = out.data<T>();
+    for (size_t index = 0; index < sorted.size(); ++index) {
+      CHECK_EQ(got[index], sorted[index]);
+    }
+  };
+  narrow_sort_case(
+      int8,
+      std::vector<int8_t>{7, -7, 0, 7,
+                          std::numeric_limits<int8_t>::min(), 5,
+                          std::numeric_limits<int8_t>::max(), -1},
+      Shape{2, 4});
+  narrow_sort_case(
+      uint8,
+      std::vector<uint8_t>{5, 0, std::numeric_limits<uint8_t>::max(), 5, 0,
+                           1, 3, std::numeric_limits<uint8_t>::max()},
+      Shape{2, 4});
+  narrow_sort_case(
+      int16,
+      std::vector<int16_t>{-300, 300, 0, -300, 7,
+                           std::numeric_limits<int16_t>::min(),
+                           std::numeric_limits<int16_t>::max(), 7},
+      Shape{2, 4});
+  narrow_sort_case(
+      uint16,
+      std::vector<uint16_t>{5, 0, std::numeric_limits<uint16_t>::max(), 5, 0,
+                            1, 3, std::numeric_limits<uint16_t>::max()},
+      Shape{2, 4});
 
   // A 1000-wide int32 row pads to 1024 inside the kernel; the signed
   // transform must stay monotone across the whole padded width.
@@ -6068,12 +6190,27 @@ TEST_CASE("BitwiseBinary and BitwiseInvert match host references") {
   check_int32_values(bitwise_invert(a, stream), {~av[0], ~av[1], ~av[2], ~av[3]}, stream);
   check_uint32_values(bitwise_invert(u, stream), {~uv[0], ~uv[1], ~uv[2]}, stream);
 
-  // Boolean inputs reach the primitive and keep the named rejection;
-  // float inputs are rejected one level up by the upstream op gate.
-  array t = array(true);
-  CHECK(
-      evaluation_error(bitwise_and(t, t, stream))
-          .find("[omarchy] BitwiseAnd dtype") != std::string::npos);
+  // Boolean inputs compute as the logical ops on the byte lanes: the
+  // truth tables land exactly, never a non-0/1 byte.
+  std::array<bool, 4> tbv = {true, false, true, false};
+  std::array<bool, 4> tbv2 = {true, true, false, false};
+  array bt(tbv.begin(), Shape{4}, bool_);
+  array bt2(tbv2.begin(), Shape{4}, bool_);
+  auto check_bool = [&](array value, std::array<bool, 4> expected) {
+    value.eval();
+    omarchy::get_command_encoder(stream).synchronize();
+    const bool* words = value.data<bool>();
+    for (size_t i = 0; i < 4; ++i) {
+      CHECK_EQ(words[i], expected[i]);
+    }
+  };
+  check_bool(bitwise_and(bt, bt2, stream), {true, false, false, false});
+  check_bool(bitwise_or(bt, bt2, stream), {true, true, true, false});
+  check_bool(bitwise_xor(bt, bt2, stream), {false, true, true, false});
+  // Upstream bool add is the logical or, and bool max/min keep {0,1}.
+  check_bool(add(bt, bt2, stream), {true, true, true, false});
+  check_bool(maximum(bt, bt2, stream), {true, true, true, false});
+  check_bool(minimum(bt, bt2, stream), {true, false, false, false});
   // Float inputs are rejected one level up by the upstream op gate,
   // which throws at graph-build time rather than eval time.
   REQUIRE_THROWS_AS(
@@ -6147,15 +6284,33 @@ TEST_CASE("integer Remainder, DivMod, Power, Sign, and Abs match host references
       stream);
   check_uint32_values(abs(u, stream), uv, stream);
 
-  // Widths outside the integer kernel keep the named rejection.
-  std::vector<int64_t> lv = {7};
-  array l(lv.begin(), Shape{1}, int64);
-  CHECK(
-      evaluation_error(remainder(l, l, stream))
-          .find("[omarchy] Remainder dtype") != std::string::npos);
-  CHECK(
-      evaluation_error(divmod(l, l, stream)[0])
-          .find("[omarchy] DivMod dtype") != std::string::npos);
+  // The 64-bit family rides the widened kernel: remainder and divmod
+  // match the host fixups sign-for-sign.
+  std::vector<int64_t> lv = {7, -7, 7, -7, 5};
+  std::vector<int64_t> lv2 = {3, 3, -3, -3, 5};
+  std::vector<int64_t> lmod_expected(5);
+  std::vector<int64_t> lquot_expected(5);
+  for (size_t i = 0; i < 5; ++i) {
+    lmod_expected[i] =
+        host_python_mod(static_cast<int>(lv[i]), static_cast<int>(lv2[i]));
+    lquot_expected[i] =
+        host_floor_div(static_cast<int>(lv[i]), static_cast<int>(lv2[i]));
+  }
+  array l(lv.begin(), Shape{5}, int64);
+  array l2(lv2.begin(), Shape{5}, int64);
+  check_int64_values(remainder(l, l2, stream), lmod_expected, stream);
+  auto ldivmod = divmod(l, l2, stream);
+  REQUIRE_EQ(ldivmod.size(), 2u);
+  check_int64_values(ldivmod[0], lquot_expected, stream);
+  check_int64_values(ldivmod[1], lmod_expected, stream);
+  std::vector<uint64_t> ulv = {7ull, 0xFFFFFFFFFFull};
+  std::vector<uint64_t> ulv2 = {3ull, 16ull};
+  array ul(ulv.begin(), Shape{2}, uint64);
+  array ul2(ulv2.begin(), Shape{2}, uint64);
+  check_uint64_values(remainder(ul, ul2, stream), {1ull, 15ull}, stream);
+  auto uldivmod = divmod(ul, ul2, stream);
+  check_uint64_values(uldivmod[0], {2ull, 0xFFFFFFFFFull}, stream);
+  check_uint64_values(uldivmod[1], {1ull, 15ull}, stream);
 }
 
 TEST_CASE("float Remainder, Power, Sign, Abs, and DivMod match host references") {

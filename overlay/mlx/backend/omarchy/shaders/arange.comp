@@ -1,5 +1,8 @@
 #version 460
 
+#if defined(USE_I64) || defined(USE_U64)
+#extension GL_EXT_shader_explicit_arithmetic_types_int64 : require
+#endif
 #if defined(USE_I32)
 #define STORAGE_TYPE int
 #define LOAD_VALUE(x) (x)
@@ -9,6 +12,18 @@
 #define STORAGE_TYPE uint
 #define LOAD_VALUE(x) (x)
 #define STORE_VALUE(f) uint(f)
+#define USE_INT_MATH 1
+#elif defined(USE_I64)
+// 64-bit storage needs the int64 feature; the host gates dispatch on
+// the device's shaderInt64 and the same 2^24 float-transport bound.
+#define STORAGE_TYPE int64_t
+#define LOAD_VALUE(x) (x)
+#define STORE_VALUE(f) int64_t(f)
+#define USE_INT_MATH 1
+#elif defined(USE_U64)
+#define STORAGE_TYPE uint64_t
+#define LOAD_VALUE(x) (x)
+#define STORE_VALUE(f) uint64_t(f)
 #define USE_INT_MATH 1
 #elif defined(USE_FP16)
 #extension GL_EXT_shader_16bit_storage : require
