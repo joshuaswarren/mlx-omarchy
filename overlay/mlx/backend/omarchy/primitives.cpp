@@ -166,7 +166,7 @@ uint32_t checked_item_offset(
 omarchy::ComputeBinding binding(const array& value) {
   auto* buffer =
       static_cast<const omarchy::VulkanBuffer*>(value.buffer().ptr());
-  return {buffer->buffer, 0, buffer->size};
+  return {buffer->buffer, 0, buffer->size, buffer};
 }
 
 // Consumer-boundary dense normalization. Returns |value| itself when
@@ -2405,6 +2405,8 @@ void dispatch_gather_qmm(
       0);
   encoder.add_temporary(packed);
   encoder.fill_buffer(binding(packed).buffer, 0, packed_bytes, 0);
+  encoder.add_temporary(scales_d);
+  encoder.add_temporary(packed);
   encoder.copy_buffer(
       binding(scales_d).buffer,
       binding(packed).buffer,
@@ -2412,6 +2414,8 @@ void dispatch_gather_qmm(
       static_cast<VkDeviceSize>(scales_d.offset()),
       0);
   if (biases_d) {
+    encoder.add_temporary(*biases_d);
+    encoder.add_temporary(packed);
     encoder.copy_buffer(
         binding(*biases_d).buffer,
         binding(packed).buffer,
@@ -2419,12 +2423,16 @@ void dispatch_gather_qmm(
         static_cast<VkDeviceSize>(biases_d->offset()),
         static_cast<VkDeviceSize>(bias_base));
   }
+  encoder.add_temporary(lhs_d);
+  encoder.add_temporary(packed);
   encoder.copy_buffer(
       binding(lhs_d).buffer,
       binding(packed).buffer,
       index_count * 4,
       static_cast<VkDeviceSize>(lhs_d.offset()),
       static_cast<VkDeviceSize>(index_base));
+  encoder.add_temporary(rhs_d);
+  encoder.add_temporary(packed);
   encoder.copy_buffer(
       binding(rhs_d).buffer,
       binding(packed).buffer,
@@ -3117,6 +3125,8 @@ void GatherMM::eval_gpu(const std::vector<array>& inputs, array& out) {
       index_flags,
       0);
   encoder.add_temporary(indices);
+  encoder.add_temporary(lhs_d);
+  encoder.add_temporary(rhs_d);
   encoder.copy_buffer(
       binding(lhs_d).buffer,
       binding(indices).buffer,
@@ -5101,6 +5111,8 @@ void Hadamard::eval_gpu(const std::vector<array>& inputs, array& out) {
     omarchy::unsupported("Hadamard row count", out);
   }
   // Copy the input bytes into the fresh output, then transform in place.
+  encoder.add_temporary(src);
+  encoder.add_temporary(out);
   encoder.copy_buffer(
       binding(src).buffer,
       binding(out).buffer,
@@ -5664,6 +5676,9 @@ void QuantizedMatmul::eval_gpu(const std::vector<array>& inputs, array& out) {
       0);
   encoder.add_temporary(combined);
   VkDeviceSize scale_bytes = static_cast<VkDeviceSize>(scales.nbytes());
+  encoder.add_temporary(scales_d);
+  encoder.add_temporary(biases_d);
+  encoder.add_temporary(combined);
   encoder.copy_buffer(
       binding(scales_d).buffer,
       binding(combined).buffer,
