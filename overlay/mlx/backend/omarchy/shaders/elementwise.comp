@@ -504,18 +504,61 @@ float float_modulo(float a, float b) {
   return r;
 }
 
+// Host pow over positive bases. The special cases mirror the glibc/IEEE
+// contract the CPU backend delivers: x^0 = 1 including x = 0 and x =
+// NaN, 1^y = 1 including NaN exponents, and +0^y is 0 for y > 0 and
+// +inf for y < 0 (signed zero bases keep the treat-as-positive rule
+// documented below). Integral exponents within 128 take a binary-
+// exponentiation product, exact whenever the result is exactly
+// representable; raw GLSL pow misses both the special cases (0^0 = 0
+// on lavapipe) and integral exactness (3^1 = 3.0000002), and the Power
+// vjp evaluates a^(b-1) at a = 0 expecting 0^0 = 1. Non-integral
+// exponents keep raw GLSL pow.
+float pow_positive(float base, float exp) {
+  if (exp == 0.0) {
+    return 1.0;
+  }
+  if (base == 1.0) {
+    return 1.0;
+  }
+  const float QNAN = uintBitsToFloat(0x7fc00000u);
+  const float POS_INF = uintBitsToFloat(0x7f800000u);
+  if (isnan(base) || isnan(exp)) {
+    return QNAN;
+  }
+  if (base == 0.0) {
+    return exp < 0.0 ? POS_INF : 0.0;
+  }
+  if (exp == floor(exp) && abs(exp) <= 128.0) {
+    float p = 1.0;
+    float b = base;
+    int n = int(abs(exp));
+    while (n > 0) {
+      if ((n & 1) == 1) {
+        p *= b;
+      }
+      b *= b;
+      n >>= 1;
+    }
+    return exp < 0.0 ? 1.0 / p : p;
+  }
+  return pow(base, exp);
+}
+
 // std::pow semantics for negative bases, which raw GLSL pow leaves
 // undefined: a non-integer exponent produces NaN and an odd integer
-// exponent negates. Signed zero inputs behave as for positive bases.
+// exponent negates. Signed zero inputs behave as for positive bases,
+// and an infinite exponent is even-parity (pow(-1, inf) = 1).
 float float_power(float base, float exp) {
   if (base < 0.0) {
     if (exp != floor(exp)) {
       return uintBitsToFloat(0x7fc00000u);
     }
-    float p = pow(-base, exp);
-    return (mod(exp, 2.0) != 0.0) ? -p : p;
+    float p = pow_positive(-base, exp);
+    bool negate = isinf(exp) ? false : (mod(exp, 2.0) != 0.0);
+    return negate ? -p : p;
   }
-  return pow(base, exp);
+  return pow_positive(base, exp);
 }
 
 void main() {
