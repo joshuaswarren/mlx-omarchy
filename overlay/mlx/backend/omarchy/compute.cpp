@@ -1044,8 +1044,6 @@ VkPipeline ComputeRuntime::pipeline(ComputeKernel kernel) {
 VkPipeline ComputeRuntime::create_pipeline(ComputeKernel kernel) {
   auto& dt = vk::device_table();
   auto [bytes, size] = shader_bytes(kernel);
-  std::fprintf(stderr, "[probe] pipeline kernel=%d bytes=%p size=%zu\n",
-               static_cast<int>(kernel), (const void*)bytes, size);
   if (size == 0 || size % sizeof(uint32_t) != 0) {
     throw std::runtime_error("[omarchy] embedded SPIR-V has an invalid size.");
   }
