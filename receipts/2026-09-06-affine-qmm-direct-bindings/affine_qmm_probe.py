@@ -37,23 +37,27 @@ def run_variant(name, m, n, k, gs, bits, dtype, transpose, batched, tile_env):
     import numpy as np
     rs = np.random.default_rng(hash((name)) % (2**32))
     groups = k // gs
+    batch_shape = (2,) if batched else ()
     if transpose:
-        w_words = mx.array(rs.integers(0, 2**31, size=(n, k * bits // 32)).astype(np.uint32))
-        param_shape = (n, groups)
+        w_words = mx.array(rs.integers(0, 2**31, size=batch_shape + (n, k * bits // 32)).astype(np.uint32))
+        param_shape = batch_shape + (n, groups)
     else:
-        w_words = mx.array(rs.integers(0, 2**31, size=(k, n * bits // 32)).astype(np.uint32))
-        param_shape = (k, n // gs)
+        w_words = mx.array(rs.integers(0, 2**31, size=batch_shape + (k, n * bits // 32)).astype(np.uint32))
+        param_shape = batch_shape + (k, n // gs)
     scales = (mx.array(rs.standard_normal(param_shape).astype(np.float32) * 0.05)).astype(dtype)
     biases = (mx.array(rs.standard_normal(param_shape).astype(np.float32) * 0.05)).astype(dtype)
-    x = rng((m, k), 1234, dtype)
+    x = rng(batch_shape + (m, k), 1234, dtype)
+    mx.eval(x, w_words, scales, biases)
     before = counters()
     out = mx.quantized_matmul(x, w_words, scales, biases, transpose=transpose,
                               group_size=gs, bits=bits, mode="affine")
     mx.eval(out)
-    mx.eval(mx.zeros((1,)))  # drain batch
     after = counters()
     return {
         "name": name,
+        "input_shape": list(x.shape),
+        "weight_shape": list(w_words.shape),
+        "output_shape": list(out.shape),
         "copies_delta": after["vk_buffer_copies"] - before["vk_buffer_copies"],
         "dispatch_delta": after["vk_compute_dispatches"] - before["vk_compute_dispatches"],
         "out_sha256": hashlib.sha256(np.asarray(out.astype(mx.float32)).tobytes()).hexdigest(),
@@ -105,8 +109,10 @@ def main():
     cases.append(run_variant("scalar_f32_m7_T", 7, 37, 128, 64, 4, mx.float32, True, False, "0"))
     cases.append(run_variant("vec_f16_m1_T", 1, 37, 128, 64, 4, mx.float16, True, False, "1"))
     cases.append(run_variant("tile_f16_m7_NT", 7, 32, 128, 32, 4, mx.float16, False, False, "1"))
-    cases.append(run_variant("tile_f32_batched", 7, 32, 128, 32, 8, mx.float32, True, False, "1"))
+    cases.append(run_variant("tile_f32_batched", 7, 32, 128, 32, 8, mx.float32, True, True, "1"))
     cases.append(run_variant("bits6_m7_T", 7, 40, 192, 32, 6, mx.float32, True, False, "1"))
+    cases.append(run_variant("vec_f16_batched", 1, 37, 128, 64, 4, mx.float16, True, True, "1"))
+    cases.append(run_variant("scalar_f32_batched_NT", 7, 32, 128, 32, 4, mx.float32, False, True, "0"))
     cases.append(nonaffine_probe())
     result = {"cases": cases}
     if "--odd-offset-negative" in sys.argv:

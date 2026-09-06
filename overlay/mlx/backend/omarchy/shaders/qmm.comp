@@ -71,10 +71,6 @@ layout(set = 0, binding = 3, std430) writeonly buffer Output {
   STORAGE_TYPE values[];
 } output_data;
 #else
-// Affine: the scale and bias streams bind directly (bindings 2 and 3);
-// no packed [scales | biases] staging buffer exists. Each stream is
-// indexed from its own storage offset: aux_offset rides the scale base
-// item and aux_size the bias base item.
 layout(set = 0, binding = 2, std430) readonly buffer Scales {
   STORAGE_TYPE values[];
 } scales;

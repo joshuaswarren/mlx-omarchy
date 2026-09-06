@@ -1,0 +1,182 @@
+{
+  "cases": [
+    {
+      "name": "vec_f32_m1_T",
+      "input_shape": [
+        1,
+        128
+      ],
+      "weight_shape": [
+        37,
+        16
+      ],
+      "output_shape": [
+        1,
+        37
+      ],
+      "copies_delta": 2,
+      "dispatch_delta": 1,
+      "out_sha256": "8348380ca2a6b86cfdcec16026b05176a1d997f5c2a559dced946fed8ddb59be"
+    },
+    {
+      "name": "tile_f32_m7_T",
+      "input_shape": [
+        7,
+        128
+      ],
+      "weight_shape": [
+        37,
+        16
+      ],
+      "output_shape": [
+        7,
+        37
+      ],
+      "copies_delta": 2,
+      "dispatch_delta": 1,
+      "out_sha256": "23cdede2d6512a8bb0e4adbc8276cb4775074a549416130198d671bba9416831"
+    },
+    {
+      "name": "scalar_f32_m7_T",
+      "input_shape": [
+        7,
+        128
+      ],
+      "weight_shape": [
+        37,
+        16
+      ],
+      "output_shape": [
+        7,
+        37
+      ],
+      "copies_delta": 2,
+      "dispatch_delta": 1,
+      "out_sha256": "f811dfb8fa88755ae2ffdfbece2c021666ea94bd6a4ddf7b9731b0ead747c416"
+    },
+    {
+      "name": "vec_f16_m1_T",
+      "input_shape": [
+        1,
+        128
+      ],
+      "weight_shape": [
+        37,
+        16
+      ],
+      "output_shape": [
+        1,
+        37
+      ],
+      "copies_delta": 2,
+      "dispatch_delta": 1,
+      "out_sha256": "1d28c9e80ec462f3dd6235e897c9e7377799ca297989db542bcbb9846321a551"
+    },
+    {
+      "name": "tile_f16_m7_NT",
+      "input_shape": [
+        7,
+        128
+      ],
+      "weight_shape": [
+        128,
+        4
+      ],
+      "output_shape": [
+        7,
+        32
+      ],
+      "copies_delta": 2,
+      "dispatch_delta": 1,
+      "out_sha256": "968ee69d5f1f4c596e0b57398eee6905732e052a6d2e65183b53f9a72a632221"
+    },
+    {
+      "name": "tile_f32_batched",
+      "input_shape": [
+        2,
+        7,
+        128
+      ],
+      "weight_shape": [
+        2,
+        32,
+        32
+      ],
+      "output_shape": [
+        2,
+        7,
+        32
+      ],
+      "copies_delta": 2,
+      "dispatch_delta": 1,
+      "out_sha256": "0e069924e7b9c273ca0cbfca8e7b71001c0e26f4184d78c79d07ea138755331d"
+    },
+    {
+      "name": "bits6_m7_T",
+      "input_shape": [
+        7,
+        192
+      ],
+      "weight_shape": [
+        40,
+        36
+      ],
+      "output_shape": [
+        7,
+        40
+      ],
+      "copies_delta": 2,
+      "dispatch_delta": 1,
+      "out_sha256": "f5937ec08e6b496eb94d2a7acd8a7bdbe9276a374b1172d8905d0395718253c6"
+    },
+    {
+      "name": "vec_f16_batched",
+      "input_shape": [
+        2,
+        1,
+        128
+      ],
+      "weight_shape": [
+        2,
+        37,
+        16
+      ],
+      "output_shape": [
+        2,
+        1,
+        37
+      ],
+      "copies_delta": 2,
+      "dispatch_delta": 1,
+      "out_sha256": "989f84327d2641ad28f63c7dc24e43ff89a4e6a30e7cee1c5e6c3fc450c202db"
+    },
+    {
+      "name": "scalar_f32_batched_NT",
+      "input_shape": [
+        2,
+        7,
+        128
+      ],
+      "weight_shape": [
+        2,
+        128,
+        4
+      ],
+      "output_shape": [
+        2,
+        7,
+        32
+      ],
+      "copies_delta": 2,
+      "dispatch_delta": 1,
+      "out_sha256": "d60753f5c997bdfda132baf7eafe7f58fd5bd3c9967ff9571177b901426a2ec3"
+    },
+    {
+      "name": "nonaffine_mxfp4",
+      "copies_delta": 0
+    }
+  ],
+  "odd_offset": {
+    "refused": "[omarchy] QuantizedMatmul scales byte offset is not implemented for the Omarchy Vulkan backend (dtype=float16, shape=[1,20]). No GPU kernel exists for it; no silent CPU fallback occurs. Run it on an explicit CPU stream to use the CPU implementation."
+  }
+}

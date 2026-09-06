@@ -5042,11 +5042,6 @@ TEST_CASE("quantized matmul binds affine streams at storage offsets") {
     skip("Vulkan device lacks required FP16 shader and storage features.");
     return;
   }
-  // Scales and biases bind as separate streams indexed from each
-  // buffer's own storage offset (aux_offset / aux_size item bases).
-  // F16 views at odd element offsets exercise both push-constant bases
-  // and used to trip the packed-copy 4-byte word-alignment refusal,
-  // which was retired with the staging copies.
   constexpr int n = 20;
   constexpr int k = 128;
   constexpr int group_size = 64;
@@ -5085,9 +5080,6 @@ TEST_CASE("quantized matmul binds affine streams at storage offsets") {
     std::vector<float> expected = host_quantized_matmul(
         rounded_host, x_rounded, m, n, k, group_size, bits);
 
-    // Pad each stream by a distinct odd element count, cast to f16
-    // first, then slice: the views stay row-contiguous with storage
-    // offsets 2 and 6 bytes (item bases 1 and 3).
     std::vector<float> scales_pad(1 + n * groups, 0.0f);
     std::vector<float> biases_pad(3 + n * groups, 0.0f);
     std::copy(

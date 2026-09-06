@@ -33,8 +33,8 @@ four bindings. It now binds the two streams directly:
   `#ifdef FP_MODE` arms, separate eval branch with its own four bindings),
   gather qmm (`shaders/gather_qmm.comp`, separate source + its own packing
   copies owned by ActivationQuantParity), dequantize/quantize kernels.
-- all 24 shader define-variants (3 sources x 3 dtypes x FP_MODE x
-  USE_SUBGROUP) compile clean under `glslangValidator -V -Os
+- all 24 shader variants (three storage dtypes across scalar, tiled,
+  tree-vector and subgroup-vector kernels, each in affine and FP_MODE) compile clean under `glslangValidator -V -Os
   --target-env vulkan1.3`; SPIR-V disassembly of the affine f16 vec variant
   shows bindings scales=2, biases=3, output=4; the FP_MODE variant keeps
   scale_bias=2, output=3.
@@ -49,42 +49,47 @@ C++ battery (fixed seeds, host double-precision references):
 | omarchy_matmul_family_tests | 8/8, 18,114 | 8/8, 18,114 (identical) |
 | omarchy_runtime_tests | (not run at baseline) | 34/34 on quiet reruns; one timing flake during a -j10 build (llvmpipe watchdog teardown), clean twice after |
 
-Python A/B probe (`affine_qmm_probe.py`, PYTHONHASHSEED=0, identical inputs
-both sides, output bytes hashed after f32 cast):
+Parent-corrected Python A/B probe (`affine_qmm_probe.py`, PYTHONHASHSEED=0,
+identical inputs, output bytes hashed after f32 cast): operands are evaluated
+before sampling counters. The original worker probe ignored its `batched`
+argument; its batch claim was invalid. The corrected probe records input,
+weight and output shapes and tests three genuine two-batch cases. Results
+are in `probe-before-parent.json` and `probe-after-parent.json`.
 
 | case (path) | copies before | copies after | dispatch before/after | output parity |
 |---|---|---|---|---|
 | vec_f32_m1_T | 2 | 0 | 1 / 1 | bitwise-identical |
 | tile_f32_m7_T | 2 | 0 | 1 / 1 | bitwise-identical |
 | scalar_f32_m7_T | 2 | 0 | 1 / 1 | bitwise-identical |
-| vec_f16_m1_T | 2 | 0 | 4 / 4 | bitwise-identical |
-| tile_f16_m7_NT | 2 | 0 | 4 / 4 | bitwise-identical |
+| vec_f16_m1_T | 2 | 0 | 1 / 1 | bitwise-identical |
+| tile_f16_m7_NT | 2 | 0 | 1 / 1 | bitwise-identical |
 | tile_f32_batched | 2 | 0 | 1 / 1 | bitwise-identical |
 | bits6_m7_T | 2 | 0 | 1 / 1 | bitwise-identical |
+| vec_f16_batched | 2 | 0 | 1 / 1 | bitwise-identical |
+| scalar_f32_batched_NT | 2 | 0 | 1 / 1 | bitwise-identical |
 | nonaffine_mxfp4 (untouched) | 0 | 0 | - | n/a |
 
 Exactly the two packing copies per affine eval are gone; every dispatch
 count is unchanged; outputs are byte-identical across builds.
 
-## Offset/stride edge regression (new test)
+## Storage-offset regression (new test)
 
 "quantized matmul binds affine streams at storage offsets"
 (overlay/tests/omarchy/test_primitives.cpp): f16 scale/bias views at storage
-offsets 2 and 6 bytes (item bases 1 and 3, both distinct, both odd byte
-offsets), decode m=1 and tile m=7, checked against the host reference.
+offsets 2 and 6 bytes (distinct odd item bases 1 and 3), decode m=1 and tile m=7, checked against the host reference.
 
 - baseline wheel: refuses with the exact named error
   "[omarchy] QuantizedMatmul scales byte offset is not implemented ..."
-  (probe-before-unseeded.json, "odd_offset.refused").
+  (probe-before-parent.json, "odd_offset.refused").
 - candidate wheel: computes; view vs compact-storage reference are
-  byte-identical (probe-after-unseeded.json, odd_offset.match = true).
+  byte-identical (probe-after-parent.json, odd_offset.match = true).
 
 ## Trace evidence
 
 Backend trace counters via the exported C ABI
 `mlx_omarchy_trace_snapshot` (same mechanism as
 scripts/fragmentation_probe.py): `vk_buffer_copies` delta per affine eval
-drops 2 -> 0 across vec, subgroup-source, tile, and scalar paths and f16/f32;
+drops 2 -> 0 across executed vec, tile, and scalar paths and f16/f32;
 `vk_compute_dispatches` delta unchanged; non-affine delta 0 -> 0.
 
 ## Subgroup variant note
@@ -109,8 +114,8 @@ Run once per wheel (baseline c8618f53 wheel, then candidate cad495ec wheel),
 same M1, same shell, machine otherwise idle; the script prints the wheel
 stamp per side (assert the stamps differ before comparing: 0.32.2.dev...+c8618f53
 vs 0.32.2.dev...+cad495ec), median-of-N ms for decode gemv f16 m=1 n=k=4096
-(50 iters) and prefill tile f16 m=1023 (15 iters). Do not run remotely; the
-parent owns the M1 window.
+(50 iters) and prefill tile f16 m=1023 (15 iters). This command has not been run. The compiler session owns the M1
+exclusively; native qualification requires explicit hardware handback.
 
 ## Wheels
 
