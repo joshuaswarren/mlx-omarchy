@@ -99,6 +99,9 @@
 #include "copy_general_f32.h"
 #include "copy_general_u32.h"
 #include "copy_general_bool.h"
+#include "copy_general_u8.h"
+#include "copy_general_u16.h"
+#include "copy_general_u64.h"
 #include "fill_bf16.h"
 #include "fill_f16.h"
 #include "fill_f32.h"
@@ -591,6 +594,12 @@ ShaderBytes shader_bytes(ComputeKernel kernel) {
       return {copy_general_u32, copy_general_u32_size};
     case ComputeKernel::CopyGeneralBool:
       return {copy_general_bool, copy_general_bool_size};
+    case ComputeKernel::CopyGeneralU8:
+      return {copy_general_u8, copy_general_u8_size};
+    case ComputeKernel::CopyGeneralU16:
+      return {copy_general_u16, copy_general_u16_size};
+    case ComputeKernel::CopyGeneralU64:
+      return {copy_general_u64, copy_general_u64_size};
     case ComputeKernel::ArgSortF32:
       return {argsort_f32, argsort_f32_size};
     case ComputeKernel::ArgSortF16:
