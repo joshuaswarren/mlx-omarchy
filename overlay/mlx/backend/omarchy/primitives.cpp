@@ -6270,13 +6270,6 @@ void QuantizedMatmul::eval_gpu(const std::vector<array>& inputs, array& out) {
     return;
   }
 
-  // The affine group parameters bind directly: binding 2 is the scale
-  // stream and binding 3 the bias stream, each indexed by the shaders
-  // from its own storage offset, pushed as the aux_offset / aux_size
-  // item bases below. No [scales | biases] staging buffer and no
-  // per-eval packing copies; checked_item_offset enforces item
-  // alignment, so odd 16-bit views are first-class and the old
-  // vkCmdCopyBuffer word-alignment refusal no longer applies.
 
   // Push-constant routing for the qmm shaders: operation carries bits,
   // reduce_size the group size, shape[0] the batch count, flags bit 0
