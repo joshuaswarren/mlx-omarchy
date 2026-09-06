@@ -1110,6 +1110,54 @@ TEST_CASE("scaled_dot_product_attention causal matches on sliced cache K/V") {
       "sdpa sliced cache causal");
 }
 
+TEST_CASE("scaled_dot_product_attention floors a fully masked bool mask") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  const int B = 1, H = 4, qL = 8, kL = 8, D = 128;
+  const float scale = 1.0f / std::sqrt(float(D));
+  auto q_data = pattern(B * H * qL * D, 193);
+  auto k_data = pattern(B * H * kL * D, 197);
+  auto v_data = pattern(B * H * kL * D, 199);
+  array q = array(q_data.begin(), Shape{B, H, qL, D}, float32);
+  array k = array(k_data.begin(), Shape{B, H, kL, D}, float32);
+  array v = array(v_data.begin(), Shape{B, H, kL, D}, float32);
+  // A scalar false bool mask broadcasts to every position: fast.cpp
+  // converts it to an additive mask, so the floor value decides the
+  // outcome. At -infinity a fully masked row softmaxes to inf - inf
+  // NaN; at the dtype's finite minimum the row is constant and softmax
+  // yields the uniform distribution - the output equals the per-head
+  // value mean (pinned test_sdpa_fully_masked asserts no NaN).
+  array mask = array(false);
+  auto out = fast::scaled_dot_product_attention(
+      q, k, v, scale, "", mask, std::nullopt, false, stream);
+  auto got = flat(out, stream);
+  for (size_t index = 0; index < got.size(); ++index) {
+    CHECK_MESSAGE(
+        std::isfinite(got[index]),
+        "fully masked output ",
+        index,
+        " must stay finite");
+  }
+  std::vector<double> want;
+  want.reserve(got.size());
+  for (int b = 0; b < B; ++b) {
+    for (int h = 0; h < H; ++h) {
+      for (int qi = 0; qi < qL; ++qi) {
+        for (int d = 0; d < D; ++d) {
+          double acc = 0.0;
+          for (int ki = 0; ki < kL; ++ki) {
+            acc += v_data[((b * H + h) * kL + ki) * D + d];
+          }
+          want.push_back(acc / kL);
+        }
+      }
+    }
+  }
+  require_close(got, want, 1e-5, "sdpa fully masked uniform mean");
+}
+
 TEST_CASE("fp8 conversion matches the upstream bit algorithm") {
   if (!compute_available()) {
     return;
