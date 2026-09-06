@@ -1635,7 +1635,9 @@ void dispatch_softmax(
     const std::string& name,
     const array& input,
     array& out,
-    const Stream& s) {
+    const Stream& s,
+    const array* sinks = nullptr,
+    int q_len = 0) {
   auto& encoder = omarchy::get_command_encoder(s);
   require_float_dtype(name, input, out, encoder);
   std::optional<array> dense_temp;
@@ -1654,8 +1656,22 @@ void dispatch_softmax(
   params.output_size = output_size;
   params.lhs_offset = checked_item_offset(src, src.size(), name, out);
   params.output_offset = checked_item_offset(out, out.size(), name, out);
+  // Sinks ride the softmax denominator, not a scores column: the shader
+  // folds exp(sink - row_max) into the max and the sum, so the output
+  // keeps the scores' own column count and the following matmul needs
+  // no slice. matrix_m maps a flattened row to its batch-head index and
+  // matrix_n bounds it back to the query head (one sink per query head;
+  // the GQA regroup flattens (kv, repeat) into that order).
+  if (sinks != nullptr) {
+    params.operation = 1u;
+    params.rhs_offset = checked_item_offset(*sinks, sinks->size(), name, out);
+    params.matrix_m = checked_u32(q_len, name, out);
+    params.matrix_n = checked_u32(sinks->size(), name, out);
+  }
   std::array<omarchy::ComputeBinding, 3> bindings{
-      binding(src), binding(src), binding(out)};
+      binding(src),
+      sinks != nullptr ? binding(*sinks) : binding(src),
+      binding(out)};
   auto kernel = select_float_kernel(
       out.dtype(),
       omarchy::ComputeKernel::SoftmaxF32,
@@ -9310,10 +9326,20 @@ void ScaledDotProductAttention::eval_gpu(
     encoder.add_temporary(scores);
 
     std::optional<array> masked;
+    // Upstream input layout: {q, k, v} + optional pre-broadcast mask +
+    // optional sinks. has_sinks_ disambiguates a 4-input call (sinks
+    // only) from a mask, and the sinks array is always the last input.
+    const array* sinks =
+        has_sinks_ ? &inputs.at(inputs.size() - 1) : nullptr;
+    if (sinks != nullptr && (*sinks).dtype() != storage_dtype) {
+      omarchy::unsupported("attention sinks dtype " + tag, out);
+    }
+    const bool has_arr_mask =
+        (inputs.size() == 5) || (inputs.size() == 4 && !has_sinks_);
     if (do_causal_) {
-      if (k_len < q_len) {
-        omarchy::unsupported("causal offset " + tag, out);
-      }
+      // A negative offset (k_len < q_len) fully masks the leading rows;
+      // the constant floor keeps them defined (uniform after softmax)
+      // and upstream's contract leaves those rows out of the comparison.
       // The same 0 / -1e30 additive shape the f32 path builds, stored
       // in the storage dtype at its finite maximum (f16 -65504, bf16
       // -3.3895313892515355e38), not -inf: softmax still maps masked
@@ -9350,7 +9376,7 @@ void ScaledDotProductAttention::eval_gpu(
       encoder.add_temporary(mask);
       masked = array(scores.shape(), storage_dtype, nullptr, {});
       dispatch_elementwise(tag, AddOperation, {scores, mask}, *masked, s);
-    } else if (inputs.size() == 4) {
+    } else if (has_arr_mask) {
       // Upstream delivers the additive mask pre-broadcast in the
       // output dtype, so the f16 and bf16 fast paths consume it
       // without a cast.
@@ -9377,7 +9403,7 @@ void ScaledDotProductAttention::eval_gpu(
     encoder.add_temporary(logits);
 
     array probs(logits.shape(), storage_dtype, nullptr, {});
-    dispatch_softmax(tag, logits, probs, s);
+    dispatch_softmax(tag, logits, probs, s, sinks, q_len);
     encoder.add_temporary(probs);
 
     Shape result_shape = probs.shape();
@@ -9454,10 +9480,18 @@ void ScaledDotProductAttention::eval_gpu(
   encoder.add_temporary(scores);
 
   std::optional<array> masked;
+  // The same input-layout rule the f16 path uses: sinks, when present,
+  // are the last input and disambiguate a 4-input call.
+  const array* sinks = has_sinks_ ? &inputs.at(inputs.size() - 1) : nullptr;
+  if (sinks != nullptr && (*sinks).dtype() != float32) {
+    omarchy::unsupported("attention sinks dtype " + tag, out);
+  }
+  const bool has_arr_mask =
+      (inputs.size() == 5) || (inputs.size() == 4 && !has_sinks_);
   if (do_causal_) {
-    if (k_len < q_len) {
-      omarchy::unsupported("causal offset " + tag, out);
-    }
+    // A negative offset (k_len < q_len) fully masks the leading rows;
+    // the constant floor keeps them defined (uniform after softmax)
+    // and upstream's contract leaves those rows out of the comparison.
     // The additive causal mask holds 0 for attended positions and
     // -1e30 elsewhere: the same float32 tensor the validated
     // composition built from arange/greater_equal and
@@ -9474,7 +9508,7 @@ void ScaledDotProductAttention::eval_gpu(
     encoder.add_temporary(mask);
     masked = array(scores.shape(), float32, nullptr, {});
     dispatch_elementwise(tag, AddOperation, {scores, mask}, *masked, s);
-  } else if (inputs.size() == 4) {
+  } else if (has_arr_mask) {
     // Upstream pre-broadcasts an array mask to
     // [B, heads, q_len, k_len] in the output dtype and converts bool
     // masks to additive values before the primitive runs.
@@ -9494,7 +9528,7 @@ void ScaledDotProductAttention::eval_gpu(
   encoder.add_temporary(logits);
 
   array probs(logits.shape(), float32, nullptr, {});
-  dispatch_softmax(tag, logits, probs, s);
+  dispatch_softmax(tag, logits, probs, s, sinks, q_len);
   encoder.add_temporary(probs);
 
   Shape result_shape = probs.shape();

@@ -21,6 +21,7 @@
 #include <cstring>
 #include <functional>
 #include <string>
+#include <tuple>
 #include <vector>
 
 #include "mlx/backend/gpu/device_info.h"
@@ -813,6 +814,300 @@ TEST_CASE("scaled_dot_product_attention backward matches finite differences") {
     fd_dq[index] = central_difference(q_host, index, h, objective_q);
   }
   require_close(got_dq, fd_dq, 2e-2, "sdpa dq finite difference");
+}
+
+
+// ---- SDPA host reference (double) ----
+
+// Host attention in double precision. q: [B,H,qL,D]; k,v: [B,KV,kL,D],
+// both compact row-major. causal applies the upstream offset kL-qL
+// (negative offsets fully mask the leading rows); sinks carries one
+// logit per query head and rides the softmax denominator the way
+// upstream's concatenate-softmax-slice composition does.
+std::vector<double> host_sdpa(
+    const std::vector<float>& q_data,
+    const std::vector<float>& k_data,
+    const std::vector<float>& v_data,
+    int B,
+    int H,
+    int KV,
+    int qL,
+    int kL,
+    int D,
+    float scale,
+    bool causal,
+    const std::vector<float>& sinks = {}) {
+  const int rep = H / KV;
+  const int offset = kL - qL;
+  std::vector<double> out(B * H * qL * D, 0.0);
+  for (int b = 0; b < B; ++b) {
+    for (int kv = 0; kv < KV; ++kv) {
+      for (int r = 0; r < rep; ++r) {
+        int head = kv * rep + r;
+        for (int qi = 0; qi < qL; ++qi) {
+          double max_score = -1e30;
+          std::vector<double> scores(kL);
+          for (int ki = 0; ki < kL; ++ki) {
+            double dot = 0.0;
+            for (int d = 0; d < D; ++d) {
+              dot += q_data[((b * H + head) * qL + qi) * D + d] *
+                  k_data[((b * KV + kv) * kL + ki) * D + d];
+            }
+            scores[ki] = dot * scale;
+            if (causal && offset + qi < ki) {
+              scores[ki] = -1e30;
+            }
+            max_score = std::max(max_score, scores[ki]);
+          }
+          double sink_exp = 0.0;
+          if (!sinks.empty()) {
+            max_score = std::max(max_score, static_cast<double>(sinks[head]));
+            sink_exp = std::exp(
+                static_cast<double>(sinks[head]) - max_score);
+          }
+          double sum = 0.0;
+          for (auto& score : scores) {
+            score = std::exp(score - max_score);
+            sum += score;
+          }
+          sum += sink_exp;
+          for (int d = 0; d < D; ++d) {
+            double acc = 0.0;
+            for (int ki = 0; ki < kL; ++ki) {
+              acc += scores[ki] / sum *
+                  v_data[((b * KV + kv) * kL + ki) * D + d];
+            }
+            out[((b * H + head) * qL + qi) * D + d] = acc;
+          }
+        }
+      }
+    }
+  }
+  return out;
+}
+
+TEST_CASE("scaled_dot_product_attention causal offset keeps kL below qL") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  const int B = 2, H = 4, KV = 2, qL = 5, kL = 3, D = 8;
+  const float scale = 1.0f / std::sqrt(float(D));
+  auto q_data = pattern(B * H * qL * D, 101);
+  auto k_data = pattern(B * KV * kL * D, 103);
+  auto v_data = pattern(B * KV * kL * D, 107);
+  array q = array(q_data.begin(), Shape{B, H, qL, D}, float32);
+  array k = array(k_data.begin(), Shape{B, KV, kL, D}, float32);
+  array v = array(v_data.begin(), Shape{B, KV, kL, D}, float32);
+  auto out = fast::scaled_dot_product_attention(
+      q, k, v, scale, "causal", {}, std::nullopt, false, stream);
+  auto got = flat(out, stream);
+  auto want = host_sdpa(
+      q_data, k_data, v_data, B, H, KV, qL, kL, D, scale, true);
+  // Rows fully masked under the negative offset are uniform in both the
+  // backend (constant additive floor) and this host reference; upstream
+  // leaves them out of the comparison, so check the valid rows only -
+  // across every batch and head, not just the first.
+  const int valid_from = qL - kL; // rows 0..valid_from-1 fully masked
+  std::vector<double> want_valid;
+  std::vector<float> got_valid;
+  for (int b = 0; b < B; ++b) {
+    for (int h = 0; h < H; ++h) {
+      for (int qi = valid_from; qi < qL; ++qi) {
+        for (int d = 0; d < D; ++d) {
+          size_t index = ((b * H + h) * qL + qi) * D + d;
+          got_valid.push_back(got[index]);
+          want_valid.push_back(want[index]);
+        }
+      }
+    }
+  }
+  require_close(got_valid, want_valid, 1e-5, "sdpa causal offset f32");
+  // The leading rows stay defined in every batch and head: the additive
+  // floor cannot NaN.
+  for (int b = 0; b < B; ++b) {
+    for (int h = 0; h < H; ++h) {
+      for (int qi = 0; qi < valid_from; ++qi) {
+        for (int d = 0; d < D; ++d) {
+          size_t index = ((b * H + h) * qL + qi) * D + d;
+          CHECK_MESSAGE(
+              std::isfinite(got[index]),
+              "fully masked row ",
+              index,
+              " must stay finite");
+        }
+      }
+    }
+  }
+}
+
+TEST_CASE("scaled_dot_product_attention folds sinks into the denominator") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  // f32 MHA with two batches: the sink index must fold the batch-head
+  // flattening back to the per-query-head sink row.
+  {
+    const int B = 2, H = 4, KV = 4, qL = 3, kL = 7, D = 8;
+    const float scale = 1.0f / std::sqrt(float(D));
+    auto q_data = pattern(B * H * qL * D, 113);
+    auto k_data = pattern(B * KV * kL * D, 127);
+    auto v_data = pattern(B * KV * kL * D, 131);
+    auto sink_data = pattern(H, 137);
+    array q = array(q_data.begin(), Shape{B, H, qL, D}, float32);
+    array k = array(k_data.begin(), Shape{B, KV, kL, D}, float32);
+    array v = array(v_data.begin(), Shape{B, KV, kL, D}, float32);
+    array sinks = array(sink_data.begin(), Shape{H}, float32);
+    auto out = fast::scaled_dot_product_attention(
+        q, k, v, scale, "", {}, sinks, false, stream);
+    require_close(
+        flat(out, stream),
+        host_sdpa(
+            q_data,
+            k_data,
+            v_data,
+            B,
+            H,
+            KV,
+            qL,
+            kL,
+            D,
+            scale,
+            false,
+            sink_data),
+        1e-5,
+        "sdpa sinks f32");
+  }
+  // f16 GQA with a long key sequence.
+  {
+    const int B = 1, H = 4, KV = 2, qL = 1, kL = 96, D = 16;
+    const float scale = 1.0f / std::sqrt(float(D));
+    auto q_data = pattern(B * H * qL * D, 139);
+    auto k_data = pattern(B * KV * kL * D, 149);
+    auto v_data = pattern(B * KV * kL * D, 151);
+    auto sink_data = pattern(H, 157);
+    array q = astype(
+        array(q_data.begin(), Shape{B, H, qL, D}, float32), float16, stream);
+    array k = astype(
+        array(k_data.begin(), Shape{B, KV, kL, D}, float32), float16, stream);
+    array v = astype(
+        array(v_data.begin(), Shape{B, KV, kL, D}, float32), float16, stream);
+    array sinks = astype(
+        array(sink_data.begin(), Shape{H}, float32), float16, stream);
+    auto out = fast::scaled_dot_product_attention(
+        q, k, v, scale, "", {}, sinks, false, stream);
+    require_close(
+        flat(out, stream),
+        host_sdpa(
+            q_data,
+            k_data,
+            v_data,
+            B,
+            H,
+            KV,
+            qL,
+            kL,
+            D,
+            scale,
+            false,
+            sink_data),
+        2e-2,
+        "sdpa sinks f16 gqa");
+  }
+}
+
+TEST_CASE("scaled_dot_product_attention causal matches host on head dims 72 and 96") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  for (auto [D, dtype, tolerance] :
+       std::vector<std::tuple<int, Dtype, double>>{
+           {96, float32, 1e-5},
+           {96, float16, 2e-2},
+           {72, float16, 2e-2}}) {
+    const int B = 1, H = 4, KV = 2, qL = 6, kL = 11;
+    const float scale = 1.0f / std::sqrt(float(D));
+    auto q_data = pattern(B * H * qL * D, 163 + D);
+    auto k_data = pattern(B * KV * kL * D, 167 + D);
+    auto v_data = pattern(B * KV * kL * D, 173 + D);
+    array q = astype(
+        array(q_data.begin(), Shape{B, H, qL, D}, float32), dtype, stream);
+    array k = astype(
+        array(k_data.begin(), Shape{B, KV, kL, D}, float32), dtype, stream);
+    array v = astype(
+        array(v_data.begin(), Shape{B, KV, kL, D}, float32), dtype, stream);
+    auto out = fast::scaled_dot_product_attention(
+        q, k, v, scale, "causal", {}, std::nullopt, false, stream);
+    require_close(
+        flat(out, stream),
+        host_sdpa(q_data, k_data, v_data, B, H, KV, qL, kL, D, scale, true),
+        tolerance,
+        "sdpa causal head dim");
+  }
+}
+
+TEST_CASE("scaled_dot_product_attention causal matches on sliced cache K/V") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  const int B = 1, H = 4, KV = 2, qL = 3, kL = 11, D = 8;
+  const int cache_len = 16;
+  const float scale = 1.0f / std::sqrt(float(D));
+  auto q_data = pattern(B * H * qL * D, 179);
+  auto k_wide = pattern(B * KV * cache_len * D, 181);
+  auto v_wide = pattern(B * KV * cache_len * D, 191);
+  array q = array(q_data.begin(), Shape{B, H, qL, D}, float32);
+  array kw = array(k_wide.begin(), Shape{B, KV, cache_len, D}, float32);
+  array vw = array(v_wide.begin(), Shape{B, KV, cache_len, D}, float32);
+  array k = astype(
+      slice(kw, {0, 0, 0, 0}, {B, KV, kL, D}, {1, 1, 1, 1}, stream),
+      float16,
+      stream);
+  array v = astype(
+      slice(vw, {0, 0, 0, 0}, {B, KV, kL, D}, {1, 1, 1, 1}, stream),
+      float16,
+      stream);
+  array q16 = astype(q, float16, stream);
+  auto out = fast::scaled_dot_product_attention(
+      q16, k, v, scale, "causal", {}, std::nullopt, false, stream);
+  // The sliced K/V keep the wide cache's strides, so the host reference
+  // must read them with the cache stride (cache_len), not the sliced
+  // length: index the wide layout compactly into cache-length rows
+  // first.
+  auto compact = [&](const std::vector<float>& wide) {
+    std::vector<float> rows;
+    rows.reserve(size_t(B * KV * kL * D));
+    for (int b = 0; b < B; ++b) {
+      for (int kv = 0; kv < KV; ++kv) {
+        for (int ki = 0; ki < kL; ++ki) {
+          for (int d = 0; d < D; ++d) {
+            rows.push_back(
+                wide[((b * KV + kv) * cache_len + ki) * D + d]);
+          }
+        }
+      }
+    }
+    return rows;
+  };
+  require_close(
+      flat(out, stream),
+      host_sdpa(
+          q_data,
+          compact(k_wide),
+          compact(v_wide),
+          B,
+          H,
+          KV,
+          qL,
+          kL,
+          D,
+          scale,
+          true),
+      2e-2,
+      "sdpa sliced cache causal");
 }
 
 TEST_CASE("fp8 conversion matches the upstream bit algorithm") {
