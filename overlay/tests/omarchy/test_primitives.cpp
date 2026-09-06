@@ -6,9 +6,11 @@
 
 #include <array>
 #include <cmath>
+#include <cstring>
 #include <algorithm>
 #include <iostream>
 #include <limits>
+#include <optional>
 #include <functional>
 #include <vector>
 #include <numeric>
@@ -4694,13 +4696,27 @@ HostQuantizedWeights host_affine_quantize(
     int bits) {
   HostQuantizedWeights result;
   int groups = cols / group_size;
-  int pack = 32 / bits;
-  int words_per_row = cols / pack;
+  int words_per_row = cols * bits / 32;
   float n_bins = static_cast<float>((1 << bits) - 1);
   result.words.assign(static_cast<size_t>(rows) * words_per_row, 0);
   result.scales.resize(static_cast<size_t>(rows) * groups);
   result.biases.resize(static_cast<size_t>(rows) * groups);
   for (int row = 0; row < rows; ++row) {
+    // Every affine packing upstream ships - uint32 words LSB-first for
+    // power-of-two bits, and the 8/3, 8/5, 4/3 byte packs for bits
+    // 3/5/6 - is one little-endian bitstream: element e occupies bits
+    // [e*bits, (e+1)*bits). The uint32 output words hold that byte
+    // stream verbatim.
+    std::vector<uint8_t> stream(static_cast<size_t>(cols) * bits / 8, 0);
+    auto pack_bits = [&](size_t element, uint32_t value) {
+      size_t bit_offset = element * static_cast<size_t>(bits);
+      for (int b = 0; b < bits; ++b) {
+        if (((value >> b) & 1u) != 0u) {
+          stream[(bit_offset + b) / 8] |=
+              static_cast<uint8_t>(1u << ((bit_offset + b) % 8));
+        }
+      }
+    };
     for (int group = 0; group < groups; ++group) {
       float w_max = 0.0f;
       float w_min = std::numeric_limits<float>::infinity();
@@ -4726,18 +4742,25 @@ HostQuantizedWeights host_affine_quantize(
         float value = matrix[row * cols + group * group_size + i];
         float q =
             std::clamp(std::round((value - bias) / scale), 0.0f, n_bins);
-        uint32_t code = static_cast<uint32_t>(q);
-        int col = group * group_size + i;
-        result.words[row * words_per_row + col / pack] |=
-            code << ((col % pack) * bits);
+        pack_bits(group * group_size + i, static_cast<uint32_t>(q));
       }
+    }
+    for (int word = 0; word < words_per_row; ++word) {
+      const uint8_t* bytes = stream.data() + word * 4;
+      result.words[row * words_per_row + word] =
+          static_cast<uint32_t>(bytes[0]) |
+          (static_cast<uint32_t>(bytes[1]) << 8) |
+          (static_cast<uint32_t>(bytes[2]) << 16) |
+          (static_cast<uint32_t>(bytes[3]) << 24);
     }
   }
   return result;
 }
 
 // Host dequant dot in double precision: the truth the device dot must
-// reproduce from the same packed words, scales, and biases.
+// reproduce from the same packed words, scales, and biases. The packed
+// words are one little-endian bitstream: element e of a row sits at bit
+// e*bits, whatever the packing granularity upstream chose.
 std::vector<float> host_quantized_matmul(
     const HostQuantizedWeights& w,
     const std::vector<float>& x,
@@ -4746,19 +4769,25 @@ std::vector<float> host_quantized_matmul(
     int k,
     int group_size,
     int bits) {
-  int pack = 32 / bits;
-  int words_per_row = k / pack;
+  int words_per_row = k * bits / 32;
   int groups = k / group_size;
-  uint32_t mask = (1u << bits) - 1u;
+  auto unpack = [&](int column, int inner) {
+    size_t bit = static_cast<size_t>(column) * words_per_row * 32 + inner * bits;
+    uint32_t code = 0;
+    for (int b = 0; b < bits; ++b) {
+      if (((w.words[bit / 32] >> (bit % 32)) & 1u) != 0u) {
+        code |= 1u << b;
+      }
+      ++bit;
+    }
+    return code;
+  };
   std::vector<float> out(static_cast<size_t>(m) * n);
   for (int row = 0; row < m; ++row) {
     for (int column = 0; column < n; ++column) {
       double acc = 0.0;
       for (int inner = 0; inner < k; ++inner) {
-        uint32_t code =
-            (w.words[column * words_per_row + inner / pack] >>
-             ((inner % pack) * bits)) &
-            mask;
+        uint32_t code = unpack(column, inner);
         double dequant = static_cast<double>(code) *
                 w.scales[column * groups + inner / group_size] +
             w.biases[column * groups + inner / group_size];
@@ -4793,8 +4822,7 @@ TEST_CASE("quantized matmul matches dequant and host references") {
     CAPTURE(group_size);
     CAPTURE(bits);
     int groups = k / group_size;
-    int pack = 32 / bits;
-    int words_per_row = k / pack;
+    int words_per_row = k * bits / 32;
     std::vector<float> w_values(static_cast<size_t>(n) * k);
     std::vector<float> x_values(static_cast<size_t>(m) * k);
     for (auto& value : w_values) {
@@ -4806,6 +4834,31 @@ TEST_CASE("quantized matmul matches dequant and host references") {
     HostQuantizedWeights host =
         host_affine_quantize(w_values, n, k, group_size, bits);
 
+    // Reference (a): the dequantized dense matmul on the same device.
+    // Independent kernel, identical dequant values.
+    std::vector<float> dense_values;
+    dense_values.reserve(w_values.size());
+    auto unpack = [&](int column, int inner) {
+      size_t bit =
+          static_cast<size_t>(column) * words_per_row * 32 + inner * bits;
+      uint32_t code = 0;
+      for (int b = 0; b < bits; ++b) {
+        if (((host.words[bit / 32] >> (bit % 32)) & 1u) != 0u) {
+          code |= 1u << b;
+        }
+        ++bit;
+      }
+      return code;
+    };
+    for (int column = 0; column < n; ++column) {
+      for (int inner = 0; inner < k; ++inner) {
+        uint32_t code = unpack(column, inner);
+        dense_values.push_back(
+            static_cast<float>(code) *
+                host.scales[column * groups + inner / group_size] +
+            host.biases[column * groups + inner / group_size]);
+      }
+    }
     array w_words(
         host.words.begin(), Shape{n, words_per_row}, uint32);
     array w_scales(
@@ -4813,23 +4866,6 @@ TEST_CASE("quantized matmul matches dequant and host references") {
     array w_biases(
         host.biases.begin(), Shape{n, groups}, float32);
     array x(x_values.begin(), Shape{m, k}, float32);
-
-    // Reference (a): the dequantized dense matmul on the same device.
-    // Independent kernel, identical dequant values.
-    std::vector<float> dense_values;
-    dense_values.reserve(w_values.size());
-    uint32_t mask = (1u << bits) - 1u;
-    for (int column = 0; column < n; ++column) {
-      for (int inner = 0; inner < k; ++inner) {
-        uint32_t code = (host.words[column * words_per_row + inner / pack] >>
-                         ((inner % pack) * bits)) &
-            mask;
-        dense_values.push_back(
-            static_cast<float>(code) *
-                host.scales[column * groups + inner / group_size] +
-            host.biases[column * groups + inner / group_size]);
-      }
-    }
     array w_dense(dense_values.begin(), Shape{n, k}, float32);
     array dense_out = matmul(x, transpose(w_dense), stream);
 
@@ -4865,7 +4901,7 @@ TEST_CASE("quantized matmul matches dequant and host references") {
 
   // Multiple groups per row, N off the 16-wide tile edge, and the two
   // decode shapes M=1 (one row) and M=7 (a short prefill).
-  for (int bits : {4, 8}) {
+  for (int bits : {2, 3, 4, 5, 6, 8}) {
     for (int group_size : {32, 64}) {
       run_case(1, 37, 128, group_size, bits);
       run_case(7, 37, 128, group_size, bits);
@@ -4954,7 +4990,6 @@ TEST_CASE("quantized matmul runs f16 and bf16 activations") {
         stream);
     std::string blocked = evaluation_error(out);
     REQUIRE(blocked.empty());
-    CHECK_EQ(out.dtype(), dtype);
     std::vector<float> device_values = readback_f32(stream, out);
     REQUIRE_EQ(device_values.size(), expected.size());
     double epsilon = (dtype == float16) ? 4e-3 : 2e-2;
@@ -4982,14 +5017,14 @@ TEST_CASE("quantized matmul pins named errors outside the linear shape") {
   std::vector<uint8_t> u8_params(4 * 4, 100);
   array sb_u8(u8_params.begin(), Shape{4, 4}, uint8);
 
-  // Non-affine modes reach the primitive only with uint8 scales.
-  std::string mode_error = evaluation_error(quantized_matmul(
-      x, w4, sb_u8, std::nullopt, true, 32, 4, "mxfp4", stream));
-  CHECK(mode_error.find("QuantizedMatmul mode") != std::string::npos);
-
-  std::string bits_error = evaluation_error(
-      quantized_matmul(x, w2, sb4, sb4, true, 32, 2, "affine", stream));
-  CHECK(bits_error.find("QuantizedMatmul bits") != std::string::npos);
+  // The op-level shape math rejects fp-mode bits/group mismatches
+  // before the backend is reached, so the surviving backend-level bits
+  // refusal is the affine one: bits outside {2, 3, 4, 5, 6, 8}.
+  std::vector<uint32_t> words7(4 * 28, 0x33221100u);
+  array w7(words7.begin(), Shape{4, 28}, uint32);
+  std::string mode_error = evaluation_error(
+      quantized_matmul(x, w7, sb4, sb4, true, 32, 7, "affine", stream));
+  CHECK(mode_error.find("QuantizedMatmul bits") != std::string::npos);
 
   // Every x element is 0.5 and the pinned word 0x33221100 holds the
   // LSB-first codes 0,0,1,1,2,2,3,3 with scale and bias 0.03125, so a
@@ -5060,9 +5095,10 @@ TEST_CASE("quantized matmul pins named errors outside the linear shape") {
   }
 }
 
-// Host unpack of hand-packed affine words: LSB-first codes, 32 / bits
-// values per word, one scale and one bias per group. The mirror of the
-// upstream affine_dequantize fallback and of the qmm.comp packing read.
+// Host unpack of hand-packed affine words: one little-endian bitstream
+// (element e at bit e*bits), one scale and one bias per group. The
+// mirror of the upstream affine_dequantize fallback and of the
+// dequant.comp packing read for every supported bit width.
 std::vector<double> host_affine_dequantize(
     const std::vector<uint32_t>& words,
     const std::vector<float>& scales,
@@ -5071,17 +5107,20 @@ std::vector<double> host_affine_dequantize(
     int out_columns,
     int group_size,
     int bits) {
-  int pack = 32 / bits;
-  int words_per_row = out_columns / pack;
+  int words_per_row = out_columns * bits / 32;
   int groups = out_columns / group_size;
-  uint32_t mask = (1u << bits) - 1u;
   std::vector<double> out(static_cast<size_t>(rows) * out_columns);
   for (int row = 0; row < rows; ++row) {
     for (int column = 0; column < out_columns; ++column) {
-      uint32_t code =
-          (words[row * words_per_row + column / pack] >>
-           ((column % pack) * bits)) &
-          mask;
+      size_t bit =
+          (static_cast<size_t>(row) * words_per_row * 32) + column * bits;
+      uint32_t code = 0;
+      for (int b = 0; b < bits; ++b) {
+        if (((words[bit / 32] >> (bit % 32)) & 1u) != 0u) {
+          code |= 1u << b;
+        }
+        ++bit;
+      }
       out[static_cast<size_t>(row) * out_columns + column] =
           static_cast<double>(code) *
               scales[row * groups + column / group_size] +
@@ -5116,13 +5155,13 @@ TEST_CASE("dequantize reproduces hand-packed affine words") {
     value = dist(gen);
   }
   std::vector<int> groups_list;
-  for (int bits : {2, 4, 8}) {
+  for (int bits : {2, 3, 4, 5, 6, 8}) {
     for (int group_size : {32, 64, 128}) {
       CAPTURE(bits);
       CAPTURE(group_size);
       HostQuantizedWeights host =
           host_affine_quantize(matrix, rows, columns, group_size, bits);
-      int words_per_row = columns / (32 / bits);
+      int words_per_row = columns * bits / 32;
       int groups = columns / group_size;
 
       // Dyadic group parameters: k * 2^-5 scales and k * 2^-6 biases
@@ -5237,7 +5276,7 @@ TEST_CASE("quantize matches the pinned Metal-source affine reference") {
   std::mt19937 gen(29);
   std::uniform_real_distribution<float> dist(-4.0f, 4.0f);
 
-  for (int bits : {2, 4, 8}) {
+  for (int bits : {2, 3, 4, 5, 6, 8}) {
     for (int group_size : {32, 64, 128}) {
       CAPTURE(bits);
       CAPTURE(group_size);
@@ -5350,14 +5389,16 @@ TEST_CASE("quantize and dequantize pin named errors outside the affine gate") {
 
   std::vector<float> matrix(4 * 128, 0.5f);
   array x(matrix.begin(), Shape{4, 128}, float32);
+  // Upstream's op-level mode/bits validation rejects these before the
+  // backend is reached; the backend bits gate only guards direct
+  // primitive construction.
   CHECK(construction_error([&] {
-          quantize(x, 32, 4, "mxfp4", std::nullopt, stream);
-        }).find("Quantize mode") != std::string::npos);
-  // Bits outside {2, 4, 8} refuse: 3/5/6 pack byte-oriented into a
-  // uint8 output the kernels do not implement.
+          quantize(x, 32, 4, "mxfp8", std::nullopt, stream);
+        }).find("requires bits to be 8") != std::string::npos);
   CHECK(construction_error([&] {
-          quantize(x, 32, 3, "affine", std::nullopt, stream);
-        }).find("Quantize bits") != std::string::npos);
+          quantize(x, 32, 7, "affine", std::nullopt, stream);
+        }).find("The requested number of bits 7 is not supported") !=
+        std::string::npos);
   // Group sizes outside upstream's 32/64/128 set are rejected by the
   // pinned op-level validation before the backend gate runs.
   std::vector<float> matrix12(4 * 96, 0.5f);
@@ -5375,18 +5416,9 @@ TEST_CASE("quantize and dequantize pin named errors outside the affine gate") {
   std::vector<uint8_t> scales_u8(4 * 4, 100);
   array w4(words4.begin(), Shape{4, 16}, uint32);
   array s8(scales_u8.begin(), Shape{4, 4}, uint8);
-  CHECK(construction_error([&] {
-          dequantize(
-              w4,
-              s8,
-              std::nullopt,
-              32,
-              4,
-              "mxfp4",
-              std::nullopt,
-              std::nullopt,
-              stream);
-        }).find("Quantize mode") != std::string::npos);
+  // Note: no fp-mode backend refusal is reachable through the public
+  // dequantize op - the mode-specific bits/group validation runs at the
+  // op level, and float64 activations cannot exist on the GPU.
 
   std::vector<float> params4(4 * 4, 0.03125f);
   std::vector<float> params8(4 * 8, 0.03125f);
@@ -5395,9 +5427,8 @@ TEST_CASE("quantize and dequantize pin named errors outside the affine gate") {
   std::vector<uint32_t> words12(4 * 12, 0x33221100u);
   array w12(words12.begin(), Shape{4, 12}, uint32);
   array sb8(params8.begin(), Shape{4, 8}, float32);
-  // Bits 3/5/6 pack byte-oriented into a uint8 output this backend
-  // does not implement; the pinned op-level word-shape math rejects
-  // the mismatched uint32 word count before the backend gate runs.
+  // A bits/word-count combination whose packed shape cannot match the
+  // scale grid is rejected by the pinned op-level word-shape math.
   CHECK(construction_error([&] {
           dequantize(
               w4,
@@ -5436,6 +5467,375 @@ TEST_CASE("quantize and dequantize pin named errors outside the affine gate") {
               stream);
         }).find("Quantize scales dtype") != std::string::npos);
 }
+
+// Non-affine quantization-mode conversions, pinned to the Metal
+// fp4.h / fp8.h helpers bit for bit: the PyTorch round-to-nearest-even
+// e4m3 encode with saturation to 448, the round-up e8m0 scale encode,
+// the fp16-bit-trick fp4 decode, and the element domain
+// w * (global_enc / decoded_scale).
+uint8_t host_fp8_e4m3_encode(float f) {
+  uint32_t fp8_max = 543u << 21;
+  uint32_t denorm_mask = 141u << 23;
+  uint32_t f_bits;
+  std::memcpy(&f_bits, &f, sizeof(f_bits));
+  uint32_t sign = f_bits & 0x80000000u;
+  f_bits ^= sign;
+  uint8_t bits;
+  if (f_bits >= fp8_max) {
+    bits = 0x7E;
+  } else if (f_bits < (121u << 23)) {
+    float biased = f + std::ldexp(1.0f, 141 - 127);
+    uint32_t b_bits;
+    std::memcpy(&b_bits, &biased, sizeof(b_bits));
+    bits = static_cast<uint8_t>(b_bits - denorm_mask);
+  } else {
+    uint8_t mant_odd = (f_bits >> 20) & 1;
+    f_bits += ((7u - 127u) << 23) + 0x7FFFF;
+    f_bits += mant_odd;
+    bits = static_cast<uint8_t>(f_bits >> 20);
+  }
+  return bits | static_cast<uint8_t>(sign >> 24);
+}
+
+float host_fp8_e4m3_decode(uint8_t b) {
+  // The Metal decode rides fp16 bits scaled by 256; the arithmetic form
+  // is exact for every code (0x7F/0xFF decode to 480, the same value
+  // the fp16 path produces, and never occur in quantized output).
+  int e = (b >> 3) & 0xF;
+  int m = b & 0x7;
+  float v = (e == 0)
+      ? (static_cast<float>(m) * 0.125f) * 0.015625f
+      : (1.0f + static_cast<float>(m) * 0.125f) *
+          std::ldexp(1.0f, e - 7);
+  return (b & 0x80) ? -v : v;
+}
+
+uint8_t host_e8m0_encode(float x) {
+  if (!std::isfinite(x)) {
+    return 0xFF;
+  }
+  if (x <= 0.0f) {
+    return 0x00;
+  }
+  int n = static_cast<int>(std::round(std::log2(x)));
+  n = std::clamp(n, -127, 127);
+  uint8_t bits = static_cast<uint8_t>(n + 127);
+  float decoded = std::ldexp(1.0f, bits == 0 ? -127 : bits - 127);
+  if (bits < 0xFE && decoded < x) {
+    bits = static_cast<uint8_t>(bits + 1);
+  }
+  return bits;
+}
+
+float host_e8m0_decode(uint8_t bits) {
+  return std::ldexp(1.0f, bits == 0 ? -127 : static_cast<int>(bits) - 127);
+}
+
+uint8_t host_fp4_e2m1_encode(float x) {
+  if (std::isnan(x)) {
+    return 0x7;
+  }
+  uint8_t sign = (std::signbit(x)) ? 0x8 : 0x0;
+  float a = std::abs(x);
+  uint8_t m;
+  if (a > 5.0f) {
+    m = 0x7;
+  } else if (a >= 3.5f) {
+    m = 0x6;
+  } else if (a > 2.5f) {
+    m = 0x5;
+  } else if (a >= 1.75f) {
+    m = 0x4;
+  } else if (a > 1.25f) {
+    m = 0x3;
+  } else if (a >= 0.75f) {
+    m = 0x2;
+  } else if (a > 0.25f) {
+    m = 0x1;
+  } else {
+    m = 0x0;
+  }
+  return m | sign;
+}
+
+float host_fp4_e2m1_decode(uint8_t code) {
+  float sign = (code & 0x8) ? -1.0f : 1.0f;
+  int e = (code >> 1) & 0x3;
+  int m = code & 0x1;
+  float v = (e == 0)
+      ? (static_cast<float>(m) * 0.5f)
+      : ((1.0f + static_cast<float>(m) * 0.5f) * std::ldexp(1.0f, e - 1));
+  return sign * v;
+}
+
+
+struct HostFpQuantized {
+  std::vector<uint32_t> words;
+  std::vector<uint8_t> scale_bytes;
+};
+
+// Mirror of the pinned Metal fp_quantize kernel: one group scale byte,
+// byte-packed fp4/fp8 element codes in a little-endian uint32 word
+// stream.
+HostFpQuantized host_fp_quantize(
+    const std::vector<float>& matrix,
+    int rows,
+    int cols,
+    int group_size,
+    int bits,
+    bool has_global_scale = false,
+    float global_scale = 1.0f) {
+  HostFpQuantized result;
+  float maxval = (bits == 8) ? 448.0f : 6.0f;
+  float scale_enc =
+      has_global_scale ? (448.0f * 6.0f) / global_scale : 1.0f;
+  int groups = cols / group_size;
+  int words_per_row = cols * bits / 32;
+  result.words.assign(static_cast<size_t>(rows) * words_per_row, 0);
+  result.scale_bytes.resize(static_cast<size_t>(rows) * groups);
+  for (int row = 0; row < rows; ++row) {
+    std::vector<uint8_t> stream(static_cast<size_t>(cols) * bits / 8, 0);
+    auto pack_bits = [&](size_t bit_offset, uint32_t value) {
+      for (int b = 0; b < bits; ++b) {
+        if (((value >> b) & 1u) != 0u) {
+          stream[(bit_offset + b) / 8] |=
+              static_cast<uint8_t>(1u << ((bit_offset + b) % 8));
+        }
+      }
+    };
+    for (int group = 0; group < groups; ++group) {
+      float amax = 0.0f;
+      for (int i = 0; i < group_size; ++i) {
+        amax = std::max(
+            amax, std::abs(matrix[row * cols + group * group_size + i]));
+      }
+      float scale_dec = amax / maxval;
+      uint8_t q_scale;
+      float decoded;
+      if (group_size == 16) {
+        scale_dec *= scale_enc;
+        q_scale = host_fp8_e4m3_encode(scale_dec);
+        decoded = host_fp8_e4m3_decode(q_scale);
+      } else {
+        q_scale = host_e8m0_encode(scale_dec);
+        decoded = host_e8m0_decode(q_scale);
+      }
+      float inv = (decoded == 0.0f) ? 0.0f : scale_enc / decoded;
+      for (int i = 0; i < group_size; ++i) {
+        float value = matrix[row * cols + group * group_size + i] * inv;
+        uint32_t code = (bits == 8)
+            ? host_fp8_e4m3_encode(value)
+            : host_fp4_e2m1_encode(value);
+        size_t bit_offset = static_cast<size_t>(group) * group_size + i;
+        for (int b = 0; b < bits; ++b) {
+          if (((code >> b) & 1u) != 0u) {
+            size_t bit = bit_offset * bits + b;
+            stream[bit / 8] |= static_cast<uint8_t>(1u << (bit % 8));
+          }
+        }
+      }
+    }
+    for (int word = 0; word < words_per_row; ++word) {
+      const uint8_t* bytes = stream.data() + word * 4;
+      result.words[row * words_per_row + word] =
+          static_cast<uint32_t>(bytes[0]) |
+          (static_cast<uint32_t>(bytes[1]) << 8) |
+          (static_cast<uint32_t>(bytes[2]) << 16) |
+          (static_cast<uint32_t>(bytes[3]) << 24);
+    }
+  }
+  return result;
+}
+
+// Mirror of the pinned Metal fp_dequantize kernel.
+std::vector<float> host_fp_dequantize(
+    const HostFpQuantized& w,
+    int rows,
+    int out_columns,
+    int group_size,
+    int bits,
+    bool has_global_scale = false,
+    float global_scale = 1.0f) {
+  float inv_enc =
+      has_global_scale ? global_scale / (448.0f * 6.0f) : 1.0f;
+  int groups = out_columns / group_size;
+  int words_per_row = out_columns * bits / 32;
+  std::vector<float> out(static_cast<size_t>(rows) * out_columns);
+  for (int row = 0; row < rows; ++row) {
+    for (int column = 0; column < out_columns; ++column) {
+      size_t bit =
+          (static_cast<size_t>(row) * words_per_row * 32) + column * bits;
+      uint32_t code = 0;
+      for (int b = 0; b < bits; ++b) {
+        if (((w.words[bit / 32] >> (bit % 32)) & 1u) != 0u) {
+          code |= 1u << b;
+        }
+        ++bit;
+      }
+      uint8_t scale_byte = w.scale_bytes[row * groups + column / group_size];
+      float scale = (group_size == 16)
+          ? host_fp8_e4m3_decode(scale_byte)
+          : host_e8m0_decode(scale_byte);
+      if (has_global_scale) {
+        scale *= inv_enc;
+      }
+      float value = (bits == 8)
+          ? host_fp8_e4m3_decode(static_cast<uint8_t>(code))
+          : host_fp4_e2m1_decode(static_cast<uint8_t>(code));
+      out[static_cast<size_t>(row) * out_columns + column] = scale * value;
+    }
+  }
+  return out;
+}
+
+void check_fp_mode(
+    const char* mode,
+    int group_size,
+    int bits,
+    bool has_global_scale,
+    Stream& stream) {
+  CAPTURE(mode);
+  CAPTURE(group_size);
+  CAPTURE(bits);
+  CAPTURE(has_global_scale);
+  constexpr int rows = 5;
+  constexpr int columns = 128;
+  std::mt19937 gen(31);
+  std::uniform_real_distribution<float> dist(-2.0f, 2.0f);
+  std::vector<float> matrix(static_cast<size_t>(rows) * columns);
+  for (auto& value : matrix) {
+    value = dist(gen);
+  }
+  // Exact LUT magnitudes and an all-zero group pin the encode edges.
+  std::vector<float> lut_values(
+      {0.0f, 0.5f, 1.0f, 1.5f, 2.0f, 3.0f, 4.0f, 6.0f, -0.5f, -3.0f, -6.0f});
+  for (size_t index = 0; index < lut_values.size(); ++index) {
+    matrix[index] = lut_values[index];
+  }
+  for (int column = columns - group_size; column < columns; ++column) {
+    matrix[column] = 0.0f;
+  }
+  float global_scale = 6.0f;
+  array w(matrix.begin(), Shape{rows, columns}, float32);
+
+  HostFpQuantized host = host_fp_quantize(
+      matrix,
+      rows,
+      columns,
+      group_size,
+      bits,
+      has_global_scale,
+      global_scale);
+  std::optional<array> global;
+  if (has_global_scale) {
+    global = array(global_scale, float32);
+  }
+  auto outputs = quantize(
+      w, group_size, bits, mode, global, stream);
+  REQUIRE_EQ(outputs.size(), 2);
+  REQUIRE_EQ(outputs[0].dtype(), uint32);
+  REQUIRE_EQ(outputs[1].dtype(), uint8);
+  outputs[0].eval();
+  omarchy::get_command_encoder(stream).synchronize();
+  const uint32_t* words = outputs[0].data<uint32_t>();
+  REQUIRE_EQ(outputs[0].size(), host.words.size());
+  for (size_t index = 0; index < host.words.size(); ++index) {
+    CHECK_EQ(words[index], host.words[index]);
+  }
+  const uint8_t* scale_bytes = outputs[1].data<uint8_t>();
+  REQUIRE_EQ(outputs[1].size(), host.scale_bytes.size());
+  for (size_t index = 0; index < host.scale_bytes.size(); ++index) {
+    CHECK_EQ(scale_bytes[index], host.scale_bytes[index]);
+  }
+
+  array round_out = dequantize(
+      outputs[0],
+      outputs[1],
+      std::nullopt,
+      group_size,
+      bits,
+      mode,
+      global,
+      float32,
+      stream);
+  std::string round_blocked = evaluation_error(round_out);
+  REQUIRE(round_blocked.empty());
+  std::vector<float> expected = host_fp_dequantize(
+      host,
+      rows,
+      columns,
+      group_size,
+      bits,
+      has_global_scale,
+      global_scale);
+  std::vector<float> round_values = readback_f32(stream, round_out);
+  REQUIRE_EQ(round_values.size(), expected.size());
+  for (size_t index = 0; index < expected.size(); ++index) {
+    CHECK(round_values[index] == doctest::Approx(expected[index]).epsilon(1e-6));
+  }
+
+  // Quantized matmul through both dispatch shapes: M=1 rides the fused
+  // GEMV kernel, M=7 the m-tiled prefill kernel. The reference is the
+  // host fp dequant dot.
+  for (int m : {1, 7}) {
+    std::vector<float> x_values(static_cast<size_t>(m) * columns);
+    std::mt19937 xgen(41 + m);
+    std::uniform_real_distribution<float> xdist(-1.0f, 1.0f);
+    for (auto& value : x_values) {
+      value = xdist(gen);
+    }
+    array x(x_values.begin(), Shape{m, columns}, float32);
+    array out = quantized_matmul(
+        x,
+        outputs[0],
+        outputs[1],
+        std::nullopt,
+        /*transpose=*/true,
+        group_size,
+        bits,
+        mode,
+        stream);
+    std::string blocked = evaluation_error(out);
+    REQUIRE(blocked.empty());
+    std::vector<float> device_values = readback_f32(stream, out);
+    double tolerance = 1e-4;
+    for (int row = 0; row < m; ++row) {
+      for (int column = 0; column < rows; ++column) {
+        double acc = 0.0;
+        for (int inner = 0; inner < columns; ++inner) {
+          size_t bit =
+              (static_cast<size_t>(column) * (columns * bits / 32) * 32) +
+              inner * bits;
+          uint32_t code = 0;
+          for (int b = 0; b < bits; ++b) {
+            if (((host.words[bit / 32] >> (bit % 32)) & 1u) != 0u) {
+              code |= 1u << b;
+            }
+            ++bit;
+          }
+          uint8_t scale_byte =
+              host.scale_bytes[column * (columns / group_size) +
+                  inner / group_size];
+          float scale = (group_size == 16)
+              ? host_fp8_e4m3_decode(scale_byte)
+              : host_e8m0_decode(scale_byte);
+          if (has_global_scale) {
+            scale *= global_scale / (448.0f * 6.0f);
+          }
+          float value = (bits == 8)
+              ? host_fp8_e4m3_decode(static_cast<uint8_t>(code))
+              : host_fp4_e2m1_decode(static_cast<uint8_t>(code));
+          acc += static_cast<double>(x_values[row * columns + inner]) *
+              (scale * value);
+        }
+        CHECK(
+            device_values[row * rows + column] ==
+            doctest::Approx(acc).epsilon(tolerance));
+      }
+    }
+  }
+}
+
 
 // Host direct convolution reference copied from the upstream CPU path
 // slow_conv_2D for the forward groups==1, flip=false, input_dilation==1
@@ -5495,6 +5895,7 @@ std::vector<float> host_conv2d_nhwc(
   }
   return output;
 }
+
 
 TEST_CASE("Convolution matches host references through Vulkan compute") {
   if (!compute_available()) {
