@@ -23,6 +23,7 @@
 #include <filesystem>
 #include <string>
 #include <thread>
+#include <vector>
 
 #include "mlx/backend/gpu/device_info.h"
 #include "mlx/device.h"
@@ -41,10 +42,15 @@ TEST_CASE("unsupported primitive raises a catchable named error") {
 
   // This case asserts the CONTRACT, not one primitive. Pinning a specific
   // unsupported operation goes stale every time a coverage wave implements
-  // it: the pin moved from Abs to Hadamard, then broke again when wave 4
-  // landed Hadamard. Reject on a dtype this backend does not carry, which
-  // stays true, and check the message shape every rejection promises.
-  array a = sum(array({int64_t{1}, int64_t{2}}, int64), false);
+  // it: the pin moved from Abs to Hadamard to int64 sum, and each fell to
+  // a later wave. Reject on a rank-9 broadcast instead: the transport
+  // stops at 8 axes because push constants are 128 bytes on every
+  // device, so this refusal outlives dtype coverage.
+  std::vector<float> lhs_values(32, 1.0f);
+  array lhs(lhs_values.begin(), Shape{2, 1, 2, 1, 2, 1, 2, 1, 2}, float32);
+  std::vector<float> rhs_values(512, 1.0f);
+  array rhs(rhs_values.begin(), Shape{2, 2, 2, 2, 2, 2, 2, 2, 2}, float32);
+  array a = add(lhs, rhs);
   bool caught = false;
   std::string message;
   try {
