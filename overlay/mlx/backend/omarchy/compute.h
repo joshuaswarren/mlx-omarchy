@@ -501,6 +501,11 @@ enum class ComputeKernel : uint16_t {
   GatherQmmNbFpF32,
   GatherQmmNbFpF16,
   GatherQmmNbFpBF16,
+  // GatherQmmNbFp plus the nvfp4 output global-scale correction: a
+  // fifth binding carries the float32 global_scale_w word.
+  GatherQmmNbFpHgsF32,
+  GatherQmmNbFpHgsF16,
+  GatherQmmNbFpHgsBF16,
   Count,
 };
 
