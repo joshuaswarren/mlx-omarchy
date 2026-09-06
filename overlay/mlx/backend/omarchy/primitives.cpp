@@ -2712,6 +2712,12 @@ void dispatch_gather_qmm(
         binding(w_d),
         binding(out),
         binding(*out_global_scale)};
+    // binding() pins the whole buffer at word zero, so the scalar
+    // view's own storage offset rides in aux_size - the same
+    // checked_item_offset routing the quantize/dequantize global-scale
+    // siblings use. Valid aligned scalar views compute; unaligned ones
+    // refuse by name.
+    params.aux_size = checked_item_offset(*out_global_scale, 1, tag, out);
     omarchy::ComputeKernel hgs_kernel;
     if (out.dtype() == float32) {
       hgs_kernel = omarchy::ComputeKernel::GatherQmmNbFpHgsF32;
@@ -5358,6 +5364,17 @@ void GatherQQMM::eval_gpu(const std::vector<array>& inputs, array& out) {
   if (group_size_ != 16 && group_size_ != 32) {
     omarchy::unsupported(tag + " group size", out);
   }
+  // The scale-byte encoding is mode-fixed, so a noncanonical
+  // mode/group/bits combo silently misreads the stream: nvfp4 is
+  // (16, 4), mxfp4 is (32, 4), mxfp8 is (32, 8).
+  bool canonical_combo =
+      (mode_ == QuantizationMode::Nvfp4 && group_size_ == 16 &&
+       bits_ == 4) ||
+      (mode_ == QuantizationMode::Mxfp4 && group_size_ == 32 && bits_ == 4) ||
+      (mode_ == QuantizationMode::Mxfp8 && group_size_ == 32 && bits_ == 8);
+  if (!canonical_combo) {
+    omarchy::unsupported(tag + " mode", out);
+  }
   bool w_quantized = inputs[1].dtype() == uint32;
   size_t base_size = w_quantized ? 5 : 4;
   bool has_global_scales =
@@ -5410,6 +5427,19 @@ void QQMatmul::eval_gpu(const std::vector<array>& inputs, array& out) {
     }
     if (group_size_ != 16 && group_size_ != 32) {
       omarchy::unsupported(tag + " group size", out);
+    }
+    // The scale-byte encoding is mode-fixed, so a noncanonical
+    // mode/group/bits combo silently misreads the stream: nvfp4 is
+    // (16, 4), mxfp4 is (32, 4), mxfp8 is (32, 8).
+    bool canonical_combo =
+        (mode_ == QuantizationMode::Nvfp4 && group_size_ == 16 &&
+         bits_ == 4) ||
+        (mode_ == QuantizationMode::Mxfp4 && group_size_ == 32 &&
+         bits_ == 4) ||
+        (mode_ == QuantizationMode::Mxfp8 && group_size_ == 32 &&
+         bits_ == 8);
+    if (!canonical_combo) {
+      omarchy::unsupported(tag + " mode", out);
     }
     bool w_quantized = inputs[1].dtype() == uint32;
     size_t base_size = w_quantized ? 3 : 2;
