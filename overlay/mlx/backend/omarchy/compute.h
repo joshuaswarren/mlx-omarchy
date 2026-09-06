@@ -403,11 +403,9 @@ enum class ComputeKernel : uint16_t {
   QuantizeF32,
   QuantizeF16,
   ReduceGeneralBool,
-  // CopyEngineDtypes: integer-family flat casts, one blob per (source,
-  // destination) element-width pair. Runtime dtype codes inside the blob
-  // pick bool/u8/i8 (W1), u16/i16 (W2), u32/i32 (W4), u64/i64 (W8), so
-  // no per-dtype kernel forks. W8 blobs ride little-endian word pairs
-  // and dispatch only behind the device's shaderInt64 feature.
+  // Numeric casts: one blob per source/destination storage-width pair.
+  // Runtime dtype codes preserve integer signedness, floating conversion,
+  // and complex real-part projection without a per-dtype kernel matrix.
   CastIntW1W1,
   CastIntW1W2,
   CastIntW1W4,

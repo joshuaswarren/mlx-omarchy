@@ -12,7 +12,10 @@
 #include <cstdint>
 #include <cstring>
 #include <iostream>
+#include <limits>
 #include <vector>
+
+#include "mlx/types/complex.h"
 
 #include "mlx/backend/gpu/copy.h"
 #include "mlx/backend/gpu/device_info.h"
@@ -486,7 +489,7 @@ TEST_CASE("nonzero scalar fill writes uint32 max bit-exact") {
   CHECK(words_equal(out, {4294967295u, 4294967295u, 4294967295u}));
 }
 
-TEST_CASE("nonzero integer scalar fills keep named refusals elsewhere") {
+TEST_CASE("nonzero integer scalar fills convert without host evaluation") {
   if (!gpu::is_available()) {
     skip("no qualifying Vulkan device.");
     return;
@@ -503,29 +506,23 @@ TEST_CASE("nonzero integer scalar fills keep named refusals elsewhere") {
   CHECK_EQ(wide.data<int64_t>()[0], int64_t(5));
   CHECK_EQ(wide.data<int64_t>()[1], int64_t(5));
 
-  // A scalar dtype the destination does not share refuses by name too.
   array out = full({4}, 0.0f, float32, s);
   out.eval();
   array seven(7, int32);
-  bool caught = false;
-  std::string message;
-  try {
-    copy_gpu_inplace(
-        seven,
-        out,
-        out.shape(),
-        seven.strides(),
-        out.strides(),
-        0,
-        0,
-        CopyType::Scalar,
-        s);
-  } catch (const std::runtime_error& e) {
-    caught = true;
-    message = e.what();
+  copy_gpu_inplace(
+      seven,
+      out,
+      out.shape(),
+      seven.strides(),
+      out.strides(),
+      0,
+      0,
+      CopyType::Scalar,
+      s);
+  omarchy::get_command_encoder(s).synchronize();
+  for (int i = 0; i < 4; ++i) {
+    CHECK(out.data<float>()[i] == 7.0f);
   }
-  REQUIRE(caught);
-  CHECK(message.find("non-zero scalar fill dtype") != std::string::npos);
 }
 
 TEST_CASE("nonzero scalar fill leaves an empty output untouched") {
@@ -710,6 +707,23 @@ std::vector<uint8_t> expected_cast_bytes(
   return out;
 }
 
+array small_numeric_array(
+    const std::vector<float>& values,
+    Dtype dtype,
+    bool nonzero_imaginary = false) {
+  Shape shape{static_cast<int>(values.size())};
+  if (dtype == complex64) {
+    std::vector<complex64_t> complex_values;
+    complex_values.reserve(values.size());
+    for (size_t i = 0; i < values.size(); ++i) {
+      complex_values.emplace_back(
+          values[i], nonzero_imaginary ? static_cast<float>(i + 1) : 0.0f);
+    }
+    return array(complex_values.begin(), shape, complex64);
+  }
+  return array(values.begin(), shape, dtype);
+}
+
 } // namespace
 
 TEST_CASE("dtype converting copies cover the integer family and bool") {
@@ -754,6 +768,162 @@ TEST_CASE("dtype converting copies cover the integer family and bool") {
                 out->data<uint8_t>(), expected.data(), expected.size()) == 0);
     }
   }
+}
+
+TEST_CASE("dtype converting copies cover every numeric dtype pair") {
+  if (!gpu::is_available()) {
+    skip("no qualifying Vulkan device.");
+    return;
+  }
+  Stream s = gpu_stream();
+  const std::vector<Dtype> dtypes = {
+      bool_, uint8, int8, uint16, int16, uint32, int32,
+      uint64, int64, float16, float32, bfloat16, complex64};
+  const std::vector<float> values = {0.0f, 1.0f, 2.0f, 127.0f};
+  for (Dtype src : dtypes) {
+    std::vector<float> expected_values = src == bool_
+        ? std::vector<float>{0.0f, 1.0f, 1.0f, 1.0f}
+        : values;
+    array in = small_numeric_array(values, src, src == complex64);
+    in.eval();
+    for (Dtype dst : dtypes) {
+      if (src == dst) {
+        continue;
+      }
+      array out = astype(in, dst, s);
+      out.eval();
+      omarchy::get_command_encoder(s).synchronize();
+      array expected = small_numeric_array(expected_values, dst);
+      CHECK(std::memcmp(
+                out.data<uint8_t>(),
+                expected.data<uint8_t>(),
+                expected.nbytes()) == 0);
+    }
+  }
+}
+
+TEST_CASE("numeric casts preserve signed width and floating conversion") {
+  if (!gpu::is_available()) {
+    skip("no qualifying Vulkan device.");
+    return;
+  }
+  Stream s = gpu_stream();
+  auto check_float32 = [&](array in, const std::vector<float>& expected) {
+    array out = astype(in, float32, s);
+    out.eval();
+    omarchy::get_command_encoder(s).synchronize();
+    REQUIRE(out.size() == expected.size());
+    for (size_t i = 0; i < expected.size(); ++i) {
+      CHECK(out.data<float>()[i] == expected[i]);
+    }
+  };
+
+  check_float32(
+      array({int8_t(-128), int8_t(127)}, {2}, int8), {-128.0f, 127.0f});
+  check_float32(
+      array({uint8_t(0), uint8_t(255)}, {2}, uint8), {0.0f, 255.0f});
+  check_float32(
+      array({int16_t(-32768), int16_t(32767)}, {2}, int16),
+      {-32768.0f, 32767.0f});
+  check_float32(
+      array({uint16_t(0), uint16_t(65535)}, {2}, uint16),
+      {0.0f, 65535.0f});
+  check_float32(
+      array(
+          {std::numeric_limits<int32_t>::min(),
+           std::numeric_limits<int32_t>::max()},
+          {2},
+          int32),
+      {static_cast<float>(std::numeric_limits<int32_t>::min()),
+       static_cast<float>(std::numeric_limits<int32_t>::max())});
+  check_float32(
+      array(
+          {uint32_t(0), std::numeric_limits<uint32_t>::max()}, {2}, uint32),
+      {0.0f, static_cast<float>(std::numeric_limits<uint32_t>::max())});
+  check_float32(
+      array(
+          {std::numeric_limits<int64_t>::min(),
+           std::numeric_limits<int64_t>::max()},
+          {2},
+          int64),
+      {static_cast<float>(std::numeric_limits<int64_t>::min()),
+       static_cast<float>(std::numeric_limits<int64_t>::max())});
+  check_float32(
+      array(
+          {uint64_t(0), std::numeric_limits<uint64_t>::max()}, {2}, uint64),
+      {0.0f, static_cast<float>(std::numeric_limits<uint64_t>::max())});
+
+  array fractional = array({-127.75f, -1.9f, 0.0f, 126.9f}, float32);
+  array signed_out = astype(fractional, int8, s);
+  signed_out.eval();
+  omarchy::get_command_encoder(s).synchronize();
+  const int8_t signed_expected[] = {-127, -1, 0, 126};
+  CHECK(std::memcmp(
+            signed_out.data<int8_t>(), signed_expected, sizeof(signed_expected)) ==
+      0);
+
+  array half_out = astype(
+      array({int64_t(2049), int64_t(-2049)}, {2}, int64), float16, s);
+  array brain_out = astype(
+      array({int64_t(257), int64_t(-257)}, {2}, int64), bfloat16, s);
+  half_out.eval();
+  brain_out.eval();
+  omarchy::get_command_encoder(s).synchronize();
+  CHECK(static_cast<float>(half_out.data<float16_t>()[0]) == 2048.0f);
+  CHECK(static_cast<float>(half_out.data<float16_t>()[1]) == -2048.0f);
+  CHECK(static_cast<float>(brain_out.data<bfloat16_t>()[0]) == 256.0f);
+  CHECK(static_cast<float>(brain_out.data<bfloat16_t>()[1]) == -256.0f);
+}
+
+TEST_CASE("scalar and strided numeric copies use GPU casts") {
+  if (!gpu::is_available()) {
+    skip("no qualifying Vulkan device.");
+    return;
+  }
+  Stream s = gpu_stream();
+  array scalar_out = zeros({5}, float32, s);
+  scalar_out.eval();
+  array scalar(int64_t(-7), int64);
+  copy_gpu_inplace(
+      scalar,
+      scalar_out,
+      scalar_out.shape(),
+      scalar_out.strides(),
+      scalar_out.strides(),
+      0,
+      0,
+      CopyType::Scalar,
+      s);
+  omarchy::get_command_encoder(s).synchronize();
+  for (int i = 0; i < 5; ++i) {
+    CHECK(scalar_out.data<float>()[i] == -7.0f);
+  }
+
+  array base = reshape(
+      array({int64_t(1), int64_t(2), int64_t(3), int64_t(4),
+             int64_t(5), int64_t(6)},
+            {6},
+            int64),
+      {2, 3},
+      s);
+  array src = transpose(base, {1, 0}, s);
+  src.eval();
+  array parent = full({8}, -9.0f, float32, s);
+  array dst = reshape(slice(parent, {1}, {7}, {1}, s), {3, 2}, s);
+  dst.eval();
+  copy_gpu_inplace(
+      src,
+      dst,
+      src.shape(),
+      src.strides(),
+      dst.strides(),
+      0,
+      0,
+      CopyType::GeneralGeneral,
+      s);
+  omarchy::get_command_encoder(s).synchronize();
+  const float expected[] = {-9.0f, 1.0f, 4.0f, 2.0f, 5.0f, 3.0f, 6.0f, -9.0f};
+  CHECK(std::memcmp(parent.data<float>(), expected, sizeof(expected)) == 0);
 }
 
 TEST_CASE("byte dtype casts write packed edge words exactly") {
