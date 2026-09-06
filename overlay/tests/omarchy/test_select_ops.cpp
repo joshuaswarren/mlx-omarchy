@@ -241,8 +241,8 @@ TEST_CASE("where with a broadcast condition") {
     return;
   }
   auto stream = gpu_stream();
-  int m = 3;
-  int n = 7;
+  int m = 9;
+  int n = 129;
   std::mt19937 gen(11);
   std::uniform_real_distribution<double> dist(-2.0, 2.0);
   std::vector<double> x_host(m * n);
