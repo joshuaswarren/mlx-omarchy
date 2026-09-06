@@ -481,6 +481,11 @@ struct ComputeParams {
   uint32_t matrix_m{0};
   uint32_t matrix_n{0};
   uint32_t matrix_k{0};
+  // Elementwise-style broadcast transport selector: 0 keeps the inline
+  // push-constant arrays; nonzero carries the collapsed rank and reads
+  // [extents | lhs strides | rhs strides] from the axis-metadata
+  // storage buffer (the reduce_general.comp binding-3 convention).
+  // Matmul reuses the field as its inner-matrix K.
   // Matmul flag bits: 1 = rhs transposed, 2 = bias c used,
   // 4 = lhs transposed. Batch routing is data-driven: dims is the batch
   // axis count, shape[] the batch extents, and in_strides/out_strides[]
