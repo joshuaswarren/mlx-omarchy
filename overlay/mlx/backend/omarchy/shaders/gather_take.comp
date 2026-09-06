@@ -27,19 +27,22 @@
 // USE_U32 selects raw uint32 storage: words copy with no float
 // conversion, so int32/uint32 tables and packed words above 2^31 stay
 // bit-exact. USE_U16 copies raw halfwords the same way; USE_I64 copies
-// raw 8-byte elements. USE_MULTI_INDEX compiles the second index array
-// at binding 2 and moves the output to binding 3; params.matrix_n /
-// matrix_k carry the second axis's dim and stride and aux_offset the
-// second array's word offset. The dims tables cap at four entries each
-// (table dims, broadcast index dims); the host refuses deeper ranks by
-// name.
+// raw 8-byte elements. USE_MULTI_INDEX packs every broadcast index
+// array into binding 1, stores [axis extents | table strides | packed
+// word offsets] at binding 2, and moves output to binding 3. The push-
+// constant tables cap table and broadcast-index ranks at four; gathered
+// axes use the external metadata table.
 #version 460
 
 #if defined(USE_I64)
 #extension GL_EXT_shader_explicit_arithmetic_types_int64 : require
 #endif
 
-#ifdef USE_FP16
+#ifdef USE_COMPLEX
+#define STORAGE_TYPE vec2
+#define LOAD_VALUE(x) (x)
+#define STORE_VALUE(x) (x)
+#elif defined(USE_FP16)
 #extension GL_EXT_shader_16bit_storage : require
 #extension GL_EXT_shader_explicit_arithmetic_types_float16 : require
 #define STORAGE_TYPE float16_t
@@ -94,9 +97,9 @@ layout(set = 0, binding = 1, std430) readonly buffer Indices {
   int values[];
 } indices_data;
 #ifdef USE_MULTI_INDEX
-layout(set = 0, binding = 2, std430) readonly buffer IndicesB {
-  int values[];
-} indices_b_data;
+layout(set = 0, binding = 2, std430) readonly buffer AxisMetadata {
+  uint values[];
+} axis_metadata;
 layout(set = 0, binding = 3, std430) writeonly buffer Output {
   STORAGE_TYPE values[];
 } output_data;
@@ -204,13 +207,24 @@ void main() {
       scale *= dim;
     }
 
-    // First gathered axis. word_slot is the element position; only
-    // the 64-bit mode widens to two words, and the byte and half modes
-    // scale inside DECODE_INDEX.
     uint word_slot =
         params.operation == 2u ? idx_lin + idx_lin : idx_lin;
     bool valid = true;
     uint src = 0u;
+#ifdef USE_MULTI_INDEX
+    for (uint axis = 0u; axis < params.aux_size; ++axis) {
+      uint dim = axis_metadata.values[axis];
+      uint index;
+      DECODE_INDEX(indices_data,
+                   axis_metadata.values[2u * params.aux_size + axis],
+                   word_slot,
+                   params.operation,
+                   dim,
+                   index);
+      valid = valid && index < dim;
+      src += index * axis_metadata.values[params.aux_size + axis];
+    }
+#else
     {
       uint dim = params.reduce_size;
       uint index;
@@ -223,21 +237,8 @@ void main() {
       valid = index < dim;
       src = index * params.matrix_m;
     }
-#ifdef USE_MULTI_INDEX
-    {
-      uint dim = params.matrix_n;
-      uint index;
-      DECODE_INDEX(indices_b_data,
-                   params.aux_offset,
-                   word_slot,
-                   params.operation,
-                   dim,
-                   index);
-      valid = valid && index < dim;
-      src += index * params.matrix_k;
-    }
 #endif
-#if defined(USE_U32) || defined(USE_U16) || defined(USE_I64)
+#if defined(USE_COMPLEX) || defined(USE_U32) || defined(USE_U16) || defined(USE_I64)
     STORAGE_TYPE value = STORAGE_TYPE(0);
 #else
     float value = 0.0;

@@ -80,6 +80,8 @@
 #include "take_u32.h"
 #include "take_u16.h"
 #include "take_i64.h"
+#include "take_c64.h"
+#include "take_multi_c64.h"
 #include "take_multi_u16.h"
 #include "take_multi_i64.h"
 #include "slice_update_reduce_bf16.h"
@@ -102,6 +104,11 @@
 #include "scatter_triple_i16.h"
 #include "scatter_triple_bf16.h"
 #include "scatter_bool_triple.h"
+#include "gather_axis_c64.h"
+#include "scatter_c64.h"
+#include "scatter_axis_c64.h"
+#include "scatter_fadd_triple_f32.h"
+#include "scatter_fcas_triple_f32.h"
 #include "copy_general_bf16.h"
 #include "copy_general_f16.h"
 #include "copy_general_f32.h"
@@ -622,6 +629,8 @@ ShaderBytes shader_bytes(ComputeKernel kernel) {
       return {take_u16, take_u16_size};
     case ComputeKernel::TakeI64:
       return {take_i64, take_i64_size};
+    case ComputeKernel::TakeComplex64:
+      return {take_c64, take_c64_size};
     case ComputeKernel::TakeMultiF32:
       return {take_multi_f32, take_multi_f32_size};
     case ComputeKernel::TakeMultiF16:
@@ -634,6 +643,8 @@ ShaderBytes shader_bytes(ComputeKernel kernel) {
       return {take_multi_u16, take_multi_u16_size};
     case ComputeKernel::TakeMultiI64:
       return {take_multi_i64, take_multi_i64_size};
+    case ComputeKernel::TakeMultiComplex64:
+      return {take_multi_c64, take_multi_c64_size};
     case ComputeKernel::SliceUpdateReduceF32:
       return {slice_update_reduce_f32, slice_update_reduce_f32_size};
     case ComputeKernel::SliceUpdateReduceF16:
@@ -726,12 +737,16 @@ ShaderBytes shader_bytes(ComputeKernel kernel) {
       return {gather_axis_f16, gather_axis_f16_size};
     case ComputeKernel::GatherAxisBF16:
       return {gather_axis_bf16, gather_axis_bf16_size};
+    case ComputeKernel::GatherAxisComplex64:
+      return {gather_axis_c64, gather_axis_c64_size};
     case ComputeKernel::ScatterU32:
       return {scatter_u32, scatter_u32_size};
     case ComputeKernel::ScatterF16:
       return {scatter_f16, scatter_f16_size};
     case ComputeKernel::ScatterBF16:
       return {scatter_bf16, scatter_bf16_size};
+    case ComputeKernel::ScatterComplex64:
+      return {scatter_c64, scatter_c64_size};
     case ComputeKernel::ScatterMultiU32:
       return {scatter_multi_u32, scatter_multi_u32_size};
     case ComputeKernel::ScatterMultiF16:
@@ -744,6 +759,8 @@ ShaderBytes shader_bytes(ComputeKernel kernel) {
       return {scatter_axis_f16, scatter_axis_f16_size};
     case ComputeKernel::ScatterAxisBF16:
       return {scatter_axis_bf16, scatter_axis_bf16_size};
+    case ComputeKernel::ScatterAxisComplex64:
+      return {scatter_axis_c64, scatter_axis_c64_size};
     case ComputeKernel::MaskedScatterU32:
       return {masked_scatter_u32, masked_scatter_u32_size};
     case ComputeKernel::MaskedScatterF16:
@@ -1029,6 +1046,8 @@ ShaderBytes shader_bytes(ComputeKernel kernel) {
       return {scatter_fadd_bf16, scatter_fadd_bf16_size};
     case ComputeKernel::ScatterFAddMultiF32:
       return {scatter_fadd_multi_f32, scatter_fadd_multi_f32_size};
+    case ComputeKernel::ScatterFAddTripleF32:
+      return {scatter_fadd_triple_f32, scatter_fadd_triple_f32_size};
     case ComputeKernel::ScatterFCasF32:
       return {scatter_fcas_f32, scatter_fcas_f32_size};
     case ComputeKernel::ScatterFCasF16:
@@ -1037,6 +1056,8 @@ ShaderBytes shader_bytes(ComputeKernel kernel) {
       return {scatter_fcas_bf16, scatter_fcas_bf16_size};
     case ComputeKernel::ScatterFCasMultiF32:
       return {scatter_fcas_multi_f32, scatter_fcas_multi_f32_size};
+    case ComputeKernel::ScatterFCasTripleF32:
+      return {scatter_fcas_triple_f32, scatter_fcas_triple_f32_size};
     case ComputeKernel::ScatterBool:
       return {scatter_bool, scatter_bool_size};
     case ComputeKernel::ScatterBoolMulti:

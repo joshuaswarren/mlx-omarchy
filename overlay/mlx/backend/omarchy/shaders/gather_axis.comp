@@ -18,7 +18,11 @@
 
 #version 460
 
-#ifdef USE_FP16
+#ifdef USE_COMPLEX
+#define STORAGE_TYPE vec2
+#define LOAD_VALUE(x) (x)
+#define STORE_VALUE(x) (x)
+#elif defined(USE_FP16)
 #extension GL_EXT_shader_16bit_storage : require
 #extension GL_EXT_shader_explicit_arithmetic_types_float16 : require
 #define STORAGE_TYPE float16_t
@@ -135,8 +139,8 @@ void main() {
         index = axis_extent + word;
       }
     }
-#ifdef USE_U32
-    STORAGE_TYPE value = 0u;
+#if defined(USE_COMPLEX) || defined(USE_U32)
+    STORAGE_TYPE value = STORAGE_TYPE(0);
 #else
     float value = 0.0;
 #endif

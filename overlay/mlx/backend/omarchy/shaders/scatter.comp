@@ -93,7 +93,11 @@
 #endif
 
 
-#ifdef USE_FP16
+#ifdef USE_COMPLEX
+#define STORAGE_TYPE vec2
+#define LOAD_VALUE(x) (x)
+#define STORE_VALUE(x) (x)
+#elif defined(USE_FP16)
 #extension GL_EXT_shader_16bit_storage : require
 #extension GL_EXT_shader_explicit_arithmetic_types_float16 : require
 #define STORAGE_TYPE float16_t
@@ -208,11 +212,15 @@ layout(set = 0, binding = 3, std430) buffer Scratch {
   uint values[];
 } scratch_data;
 #endif
-#if defined(USE_FADD) && defined(USE_MULTI_INDEX)
-// fp32 view of the multi-index accumulation scratch, aliased on the
+#if defined(USE_FADD) && defined(USE_TRIPLE_INDEX)
+// fp32 view of the triple-index accumulation scratch, aliased on the
 // same binding as the uint rank view; ops 11-13 address it per output
 // element. The uint view stays available for the op-13 compare-exchange,
 // which the float-atomic extension does not provide on float storage.
+layout(set = 0, binding = 5, std430) buffer ScratchF {
+  float values[];
+} scratch_f_data;
+#elif defined(USE_FADD) && defined(USE_MULTI_INDEX)
 layout(set = 0, binding = 4, std430) buffer ScratchF {
   float values[];
 } scratch_f_data;
@@ -250,7 +258,9 @@ layout(push_constant) uniform Params {
   uint rhs_gap;
 } params;
 
-#if defined(USE_U32) || defined(USE_BOOL) || defined(USE_U8) || \
+#if defined(USE_COMPLEX)
+
+#elif defined(USE_U32) || defined(USE_BOOL) || defined(USE_U8) || \
     defined(USE_I8) || defined(USE_U16) || defined(USE_I16)
 
 uint key_of(uint raw) {
@@ -287,6 +297,20 @@ STORAGE_TYPE value_of_key(uint key) {
 
 #endif
 
+#ifdef USE_COMPLEX
+void atomic_add_component(uint element, float value) {
+  uint assumed = scratch_data.values[element];
+  for (;;) {
+    uint next = floatBitsToUint(uintBitsToFloat(assumed) + value);
+    uint previous = atomicCompSwap(scratch_data.values[element], assumed, next);
+    if (previous == assumed) {
+      break;
+    }
+    assumed = previous;
+  }
+}
+#endif
+
 void main() {
   uint t = gl_GlobalInvocationID.x;
   uint stride = gl_NumWorkGroups.x * gl_WorkGroupSize.x;
@@ -295,12 +319,9 @@ void main() {
     if (op == 4u || op == 5u || op == 8u) {
       // Finalize: one thread per output element.
       uint element = params.output_offset + t;
+#ifndef USE_COMPLEX
       uint key = scratch_data.values[element];
       if (op == 8u) {
-        // Prod: multiply the copied src word by the product of every
-        // update targeted here. Wrap-around integer multiply is
-        // order-independent, so the result stays deterministic. The
-        // host dispatches Prod only through the U32 kernel.
 #ifdef USE_U32
         if (key != 1u) {
           out_data.values[element] = out_data.values[element] * key;
@@ -312,6 +333,15 @@ void main() {
           out_data.values[element] = value_of_key(key);
         }
       }
+#endif
+    } else if (op == 19u) {
+#ifdef USE_COMPLEX
+      uint element = params.output_offset + t;
+      vec2 accumulated = vec2(
+          uintBitsToFloat(scratch_data.values[2u * element]),
+          uintBitsToFloat(scratch_data.values[2u * element + 1u]));
+      out_data.values[element] += accumulated;
+#endif
     } else if (op == 12u) {
 #ifdef USE_FADD
       // FADD Sum finalize: one thread per output element adds the fp32
@@ -471,6 +501,7 @@ void main() {
                 upd_data.values[params.lhs_offset + t];
 #endif
           }
+#ifndef USE_COMPLEX
         } else if (op == 2u) {
           atomicMax(
               scratch_data.values[target],
@@ -479,6 +510,13 @@ void main() {
           atomicMin(
               scratch_data.values[target],
               key_of(upd_data.values[params.lhs_offset + t]));
+#endif
+#ifdef USE_COMPLEX
+        } else if (op == 18u) {
+          vec2 update = upd_data.values[params.lhs_offset + t];
+          atomic_add_component(2u * target, update.x);
+          atomic_add_component(2u * target + 1u, update.y);
+#endif
 #ifdef USE_U32
         } else if (op == 6u) {
           atomicAdd(
