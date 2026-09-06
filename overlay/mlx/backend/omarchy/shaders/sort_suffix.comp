@@ -14,6 +14,11 @@
 
 #version 460
 
+#if defined(USE_I16) || defined(USE_U16)
+#extension GL_EXT_shader_16bit_storage : require
+#extension GL_EXT_shader_explicit_arithmetic_types_int16 : require
+#endif
+
 #if defined(USE_FP16)
 #extension GL_EXT_shader_16bit_storage : require
 #extension GL_EXT_shader_explicit_arithmetic_types_float16 : require
@@ -41,6 +46,43 @@ uint16_t bf16_store(float value) {
 #define LOAD_KEY(x) (uint(x) ^ 0x80000000u)
 #define STORE_KEY(k) int((k) ^ 0x80000000u)
 #define PAD_KEY 0xFFFFFFFFu
+#elif defined(USE_I8) || defined(USE_U8)
+// Byte elements ride uint32 words (one element per byte lane); the
+// load widens to the compute word, int8 sign-extending first. Keys
+// use the same order-preserving sign-bit flip as int32; uint8 keys
+// compare by magnitude directly. The value-sort output inserts bytes
+// with the commuting atomicAnd/atomicOr lane pair, so the output
+// buffer is read-modify-write.
+#define BYTE_STORAGE 1
+#define KEY_TYPE uint
+#define PAD_KEY 0xFFFFFFFFu
+#ifdef USE_I8
+#define LOAD_KEY(word, lane)                                                  \
+  (uint(((BYTE_AT(word, lane) & 0x80u) != 0u                                  \
+             ? int(BYTE_AT(word, lane) | 0xFFFFFF00u)                         \
+             : int(BYTE_AT(word, lane))))                                     \
+   ^ 0x80000000u)
+#define STORE_BITS(key) ((key) ^ 0x80000000u)
+#else
+#define LOAD_KEY(word, lane) BYTE_AT(word, lane)
+#define STORE_BITS(key) (key)
+#endif
+#elif defined(USE_I16) || defined(USE_U16)
+// Half elements ride uint16_t storage (16-bit storage feature); the
+// int16 load sign-extends. Same key maps as the 32-bit integer pair.
+#define HALF_STORAGE 1
+#define KEY_TYPE uint
+#define PAD_KEY 0xFFFFFFFFu
+#ifdef USE_I16
+#define LOAD_KEY(h)                                                           \
+  (uint((((h) & 0x8000u) != 0u ? int(uint(h) | 0xFFFF0000u) : int(uint(h))))  \
+   ^ 0x80000000u)
+#define STORE_BITS(key) ((key) ^ 0x80000000u)
+#else
+#define LOAD_KEY(h) (uint(h))
+#define STORE_BITS(key) (key)
+#endif
+#define STORE_KEY(k) uint16_t(STORE_BITS(k))
 #elif defined(USE_U32)
 #define STORAGE_TYPE uint
 #define KEY_TYPE uint
@@ -52,6 +94,21 @@ uint16_t bf16_store(float value) {
 #define LOAD_KEY(x) float(x)
 #define STORE_KEY(k) STORAGE_TYPE(k)
 #endif
+
+#ifdef BYTE_STORAGE
+#define STORAGE_TYPE uint
+#elif defined(HALF_STORAGE)
+#define STORAGE_TYPE uint16_t
+#endif
+
+// Honeykrisp miscompiles data-dependent shift-then-mask byte
+// extraction; four constant shifts picked by a select chain are the
+// receipt-proven equivalent (scatter.comp BYTE_AT).
+#define BYTE_AT(word, lane)                                                   \
+  ((lane) == 0u ? ((word) & 0xFFu)                                            \
+       : (lane) == 1u ? (((word) >> 8u) & 0xFFu)                              \
+       : (lane) == 2u ? (((word) >> 16u) & 0xFFu)                             \
+                      : (((word) >> 24u) & 0xFFu))
 
 #ifndef KEY_TYPE
 #define KEY_TYPE float
@@ -68,6 +125,10 @@ layout(set = 0, binding = 0, std430) readonly buffer Input {
 } input_data;
 #ifdef ARGSORT
 layout(set = 0, binding = 2, std430) writeonly buffer Output {
+  uint values[];
+} output_data;
+#elif defined(BYTE_STORAGE)
+layout(set = 0, binding = 2, std430) buffer Output {
   uint values[];
 } output_data;
 #else
@@ -91,7 +152,8 @@ layout(push_constant) uniform Params {
 shared KEY_TYPE row_keys[1024];
 shared uint row_indices[1024];
 
-#if defined(USE_I32) || defined(USE_U32)
+#if defined(USE_I32) || defined(USE_U32) || defined(BYTE_STORAGE) ||           \
+    defined(HALF_STORAGE)
 // Strict order on (key, index). Equal keys break on the smaller source
 // index, so duplicates keep the unique stable order.
 bool key_less(KEY_TYPE key_a, uint index_a, KEY_TYPE key_b, uint index_b) {
@@ -126,7 +188,13 @@ void main() {
     uint start = params.lhs_offset + row * row_length;
     for (uint index = thread; index < padded; index += 256u) {
       if (index < row_length) {
+#ifdef BYTE_STORAGE
+        uint li = start + index;
+        row_keys[index] =
+            LOAD_KEY(input_data.values[li >> 2u], li & 3u);
+#else
         row_keys[index] = LOAD_KEY(input_data.values[start + index]);
+#endif
       } else {
         row_keys[index] = PAD_KEY;
       }
@@ -162,6 +230,14 @@ void main() {
 #ifdef ARGSORT
       output_data.values[params.output_offset + row * row_length + index] =
           row_indices[index];
+#elif defined(BYTE_STORAGE)
+      {
+        uint si = params.output_offset + row * row_length + index;
+        uint sshift = (si & 3u) * 8u;
+        atomicAnd(output_data.values[si >> 2u], ~(0xFFu << sshift));
+        atomicOr(output_data.values[si >> 2u],
+            (uint(STORE_BITS(row_keys[index])) & 0xFFu) << sshift);
+      }
 #else
       output_data.values[params.output_offset + row * row_length + index] =
           STORE_KEY(row_keys[index]);

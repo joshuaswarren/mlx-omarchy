@@ -5,7 +5,7 @@
 //   0 subtract  1 and  2 or  3 xor  4 left shift  5 right shift
 //   6 invert  7 divmod quotient  8 modulo  9 power  10 sign
 //   11 abs  12 add  13 multiply  14 square  15 minimum  16 maximum
-//   17 divide
+//   17 divide  18 negate
 //
 // The default blobs (no define) serve int32/uint32 with the full op
 // set: wraparound subtraction, bitwise logic, and shifts are identical
@@ -15,16 +15,14 @@
 // compile for uint32 too and are constant-false there.
 //
 // The widened variants (USE_I8/USE_U8/USE_I16/USE_U16/USE_I64/USE_U64)
-// serve the BitwiseBinary and BitwiseInvert primitives on the narrow
-// and 64-bit integer family. Every operand widens to the full compute
-// word on load, the op runs there, and the store truncates to the
-// element width - the same modular result as the C++ operators on the
-// narrow types. Byte lanes use the receipt-proven constant-shift
-// BYTE_AT chain and the commuting atomicAnd/atomicOr lane pair from
-// cast_int.comp (Honeykrisp miscompiles data-dependent shift-then-mask
-// extraction; see docs/known-defects.md). The widened blobs implement
-// only ops 1-6; the host refuses every other operation on these
-// dtypes by name.
+// serve the whole integer elementwise family on the narrow and 64-bit
+// dtypes. Every operand widens to the full compute word on load, the
+// op runs there, and the store truncates to the element width - the
+// same modular result as the C++ operators on the narrow types. Byte
+// lanes use the receipt-proven constant-shift BYTE_AT chain and the
+// commuting atomicAnd/atomicOr lane pair from cast_int.comp
+// (Honeykrisp miscompiles data-dependent shift-then-mask extraction;
+// see docs/known-defects.md).
 
 #ifdef USE_U32
 #define STORAGE_TYPE uint
@@ -153,45 +151,46 @@ uint rhs_index_for(uint index) {
   }
   return result;
 }
-
-#if !defined(USE_I8) && !defined(USE_U8) && !defined(USE_I16) && \
-    !defined(USE_U16) && !defined(USE_I64) && !defined(USE_U64)
+// The compute word every variant calculates in: VALUE_TYPE on the
+// widened builds, the storage word on the 32-bit builds.
+#ifndef VALUE_TYPE
+#define VALUE_TYPE STORAGE_TYPE
+#endif
 
 // Python-style floor division. The C++ quotient adjusted so the
 // remainder takes the divisor's sign (upstream DivMod integral_op).
 // Uses only SDiv (truncating, sign-of-dividend) plus signs of a and b:
 // r = a - q*b is exact in modular arithmetic and carries the same
 // sign information as a % b regardless of how the driver maps SRem.
- STORAGE_TYPE floor_quotient(STORAGE_TYPE a, STORAGE_TYPE b) {
-   STORAGE_TYPE q = a / b;
-  STORAGE_TYPE r = a - q * b;
-  if (r != STORAGE_TYPE(0) && (a < STORAGE_TYPE(0)) != (b < STORAGE_TYPE(0))) {
-     q -= STORAGE_TYPE(1);
-   }
-   return q;
- }
+VALUE_TYPE floor_quotient(VALUE_TYPE a, VALUE_TYPE b) {
+  VALUE_TYPE q = a / b;
+  VALUE_TYPE r = a - q * b;
+  if (r != VALUE_TYPE(0) && (a < VALUE_TYPE(0)) != (b < VALUE_TYPE(0))) {
+    q -= VALUE_TYPE(1);
+  }
+  return q;
+}
 
 // Python-style modulo: truncating remainder adjusted by one divisor
 // when the signs of remainder and divisor differ. Unsigned stays the
 // raw remainder, which is already the upstream unsigned result.
-STORAGE_TYPE python_modulo(STORAGE_TYPE a, STORAGE_TYPE b) {
-  STORAGE_TYPE r = a % b;
-  if (r != STORAGE_TYPE(0) && (r < STORAGE_TYPE(0)) != (b < STORAGE_TYPE(0))) {
+VALUE_TYPE python_modulo(VALUE_TYPE a, VALUE_TYPE b) {
+  VALUE_TYPE r = a % b;
+  if (r != VALUE_TYPE(0) && (r < VALUE_TYPE(0)) != (b < VALUE_TYPE(0))) {
     r += b;
   }
   return r;
 }
-
 // Exponentiation by squaring with wraparound, mirroring the upstream
 // integer pow. A signed negative exponent yields 0; the unsigned
 // guard is constant-false.
-STORAGE_TYPE integer_power(STORAGE_TYPE base, STORAGE_TYPE exp) {
-  STORAGE_TYPE res = STORAGE_TYPE(1);
-  if (exp < STORAGE_TYPE(0)) {
-    return STORAGE_TYPE(0);
+VALUE_TYPE integer_power(VALUE_TYPE base, VALUE_TYPE exp) {
+  VALUE_TYPE res = VALUE_TYPE(1);
+  if (exp < VALUE_TYPE(0)) {
+    return VALUE_TYPE(0);
   }
-  while (exp != STORAGE_TYPE(0)) {
-    if ((exp & STORAGE_TYPE(1)) != STORAGE_TYPE(0)) {
+  while (exp != VALUE_TYPE(0)) {
+    if ((exp & VALUE_TYPE(1)) != VALUE_TYPE(0)) {
       res *= base;
     }
     exp >>= 1;
@@ -202,17 +201,65 @@ STORAGE_TYPE integer_power(STORAGE_TYPE base, STORAGE_TYPE exp) {
 
 // Upstream Sign: -1, 0, or 1 by comparison with zero; unsigned is
 // 0 or 1 (comparison with a negative constant is constant-false).
-STORAGE_TYPE integer_sign(STORAGE_TYPE a) {
-  if (a > STORAGE_TYPE(0)) {
-    return STORAGE_TYPE(1);
+VALUE_TYPE integer_sign(VALUE_TYPE a) {
+  if (a > VALUE_TYPE(0)) {
+    return VALUE_TYPE(1);
   }
-  if (a < STORAGE_TYPE(0)) {
-    return STORAGE_TYPE(-1);
+  if (a < VALUE_TYPE(0)) {
+    return VALUE_TYPE(-1);
   }
-  return STORAGE_TYPE(0);
+  return VALUE_TYPE(0);
 }
 
-#endif // word-dtype-only helpers
+// The arithmetic family on top of the bitwise cases, shared by every
+// variant: the cases run on the enclosing scope's VALUE_TYPE a/b and
+// write VALUE_TYPE value. Semantics mirror the upstream C++
+// operators on the element type: wraparound arithmetic, truncating
+// divide (zero divisor is undefined upstream), Python floor/modulo
+// fixups for the DivMod pair, exponentiation by squaring, Sign by
+// comparison with zero (unsigned: 0 or 1), Abs by negation, and
+// wraparound Negate (INT_MIN stays itself, as upstream's C++
+// negation does on this platform).
+#define INT_ARITH_CASES                                                       \
+  case 0:                                                                     \
+    value = a - b;                                                            \
+    break;                                                                    \
+  case 7:                                                                     \
+    value = floor_quotient(a, b);                                             \
+    break;                                                                    \
+  case 8:                                                                     \
+    value = python_modulo(a, b);                                              \
+    break;                                                                    \
+  case 9:                                                                     \
+    value = integer_power(a, b);                                              \
+    break;                                                                    \
+  case 10:                                                                    \
+    value = integer_sign(a);                                                  \
+    break;                                                                    \
+  case 11:                                                                    \
+    value = a < VALUE_TYPE(0) ? -a : a;                                       \
+    break;                                                                    \
+  case 12:                                                                    \
+    value = a + b;                                                            \
+    break;                                                                    \
+  case 13:                                                                    \
+    value = a * b;                                                            \
+    break;                                                                    \
+  case 14:                                                                    \
+    value = a * a;                                                            \
+    break;                                                                    \
+  case 15:                                                                    \
+    value = a < b ? a : b;                                                    \
+    break;                                                                    \
+  case 16:                                                                    \
+    value = a > b ? a : b;                                                    \
+    break;                                                                    \
+  case 17:                                                                    \
+    value = a / b;                                                            \
+    break;                                                                    \
+  case 18:                                                                    \
+    value = -a;                                                               \
+    break;
 
 // Honeykrisp miscompiles shift-then-mask byte extraction with a
 // data-dependent shift amount (receipt 2026-09-02-masked-scatter-m1-fix).
@@ -266,6 +313,7 @@ void main() {
       case 6:
         value = ~a;
         break;
+      INT_ARITH_CASES
       default:
         return;
     }
@@ -277,10 +325,12 @@ void main() {
     VALUE_TYPE a = VALUE_TYPE(input_a.values[lhs_index_for(index)]);
     VALUE_TYPE b = VALUE_TYPE(input_b.values[rhs_index_for(index)]);
 #ifdef USE_I16
-    if (a < VALUE_TYPE(0)) {
+    // uint16_t reads zero-extend, so the sign bit is bit 15, not the
+    // compute word's sign - extend on the loaded pattern.
+    if ((a & VALUE_TYPE(0x8000)) != VALUE_TYPE(0)) {
       a |= VALUE_TYPE(0xFFFF0000u);
     }
-    if (b < VALUE_TYPE(0)) {
+    if ((b & VALUE_TYPE(0x8000)) != VALUE_TYPE(0)) {
       b |= VALUE_TYPE(0xFFFF0000u);
     }
 #endif
@@ -304,6 +354,7 @@ void main() {
       case 6:
         value = ~a;
         break;
+      INT_ARITH_CASES
       default:
         return;
     }
@@ -344,6 +395,7 @@ void main() {
       case 6:
         value = ~a;
         break;
+      INT_ARITH_CASES
       default:
         return;
     }
@@ -423,6 +475,11 @@ void main() {
         // implementation-defined value on Metal, so the raw SDiv/UDiv
         // matches the reference family; no guard is added.
         value = a / b;
+        break;
+      case 18:
+        // Negative: wraparound negation, matching upstream's C++
+        // unary minus (INT_MIN stays itself, unsigned wraps).
+        value = -a;
         break;
       default:
         return;
