@@ -632,6 +632,33 @@ TEST_CASE("triple-index float scatter reductions and complex scatter add") {
       stream);
 }
 
+TEST_CASE("general scatter packs four broadcast index arrays") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  array src = zeros({2, 3, 4, 5}, float32, stream);
+  Shape index_shape{2, 2, 3};
+  std::vector<int> zeros_index(12, 0);
+  std::vector<int> axis_one{0, 0, 0, 1, 1, 1, 0, 0, 0, 1, 1, 1};
+  std::vector<int> axis_two{0, 1, 2, 0, 1, 2, 0, 1, 2, 0, 1, 2};
+  std::vector<int> axis_three(12, 4);
+  std::vector<array> indices{
+      array(zeros_index.data(), index_shape, int32),
+      array(axis_one.data(), index_shape, int32),
+      array(axis_two.data(), index_shape, int32),
+      array(axis_three.data(), index_shape, int32)};
+  array updates = ones({2, 2, 3, 1, 1, 1, 1}, float32, stream);
+  std::vector<float> expected(120, 0.0f);
+  for (int axis_one = 0; axis_one < 2; ++axis_one) {
+    for (int axis_two = 0; axis_two < 3; ++axis_two) {
+      expected[axis_one * 20 + axis_two * 5 + 4] = 1.0f;
+    }
+  }
+  check_floats(
+      scatter(src, indices, updates, {0, 1, 2, 3}, stream), expected, stream);
+}
+
 // ---------------------------------------------------------------------------
 // Scatter with two index arrays (multi-index): one index array per axis,
 // None / Sum / Max / Min, against hand-computed host references.

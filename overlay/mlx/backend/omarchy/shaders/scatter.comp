@@ -163,7 +163,23 @@ uint16_t bf16_store(float value) {
                       : (((word) >> 24u) & 0xFFu))
 layout(local_size_x = 256) in;
 
-#if defined(USE_TRIPLE_INDEX)
+#if defined(USE_GENERAL_INDEX)
+layout(set = 0, binding = 0, std430) buffer Output {
+  STORAGE_TYPE values[];
+} out_data;
+layout(set = 0, binding = 1, std430) readonly buffer Updates {
+  STORAGE_TYPE values[];
+} upd_data;
+layout(set = 0, binding = 2, std430) readonly buffer Indices {
+  int values[];
+} indices_data;
+layout(set = 0, binding = 3, std430) buffer Scratch {
+  uint values[];
+} scratch_data;
+layout(set = 0, binding = 4, std430) readonly buffer AxisMetadata {
+  uint values[];
+} axis_metadata;
+#elif defined(USE_TRIPLE_INDEX)
 layout(set = 0, binding = 0, std430) buffer Output {
   STORAGE_TYPE values[];
 } out_data;
@@ -389,6 +405,31 @@ void main() {
       uint block = t - slot * params.output_size;
       uint word_slot = params.aux_size == 2u ? slot + slot : slot;
       uint index = 0u;
+      bool in_range = true;
+      uint axis_b_offset = 0u;
+#ifdef USE_GENERAL_INDEX
+      for (uint axis = 0u; axis < params.matrix_n; ++axis) {
+        uint dim = axis_metadata.values[axis];
+        uint base = axis_metadata.values[2u * params.matrix_n + axis];
+        uint decoded = dim;
+        uint word = uint(indices_data.values[base + word_slot]);
+        if (params.aux_size == 0u) {
+          if (word < 0x80000000u) {
+            decoded = word;
+          }
+        } else if (params.aux_size == 1u) {
+          decoded = word;
+        } else {
+          uint high = uint(indices_data.values[base + word_slot + 1u]);
+          if (high == 0u) {
+            decoded = word;
+          }
+        }
+        in_range = in_range && decoded < dim;
+        axis_b_offset +=
+            decoded * axis_metadata.values[params.matrix_n + axis];
+      }
+#else
       if (params.rhs_size == 0u) {
         uint word = uint(indices_data.values[params.rhs_offset + word_slot]);
         index = params.reduce_size;
@@ -399,18 +440,15 @@ void main() {
         } else if (params.aux_size == 1u) {
           index = word;
         } else {
-          uint high = uint(indices_data.values[params.rhs_offset + word_slot + 1u]);
+          uint high =
+              uint(indices_data.values[params.rhs_offset + word_slot + 1u]);
           if (high == 0u) {
             index = word;
           }
         }
       }
-      bool in_range = index < params.reduce_size;
-      uint axis_b_offset = 0u;
+      in_range = index < params.reduce_size;
 #if defined(USE_MULTI_INDEX) || defined(USE_TRIPLE_INDEX)
-      // Second axis: same decode rule against the second index array,
-      // the axis dim in matrix_n, and the axis stride in matrix_k. A
-      // slot lands only when both axes decode in range.
       uint index_b = params.matrix_n;
       uint word_b = uint(indices_b_data.values[params.lhs_size + word_slot]);
       if (params.aux_size == 0u) {
@@ -429,10 +467,6 @@ void main() {
       in_range = in_range && index_b < params.matrix_n;
       axis_b_offset = index_b * params.matrix_k;
 #ifdef USE_TRIPLE_INDEX
-      // Third axis: the same decode rule against the third index
-      // array; the dim, stride, and word offset ride lhs_gap, rhs_gap,
-      // and out_strides[0] (see the binding notes above). A slot lands
-      // only when every axis decodes in range.
       uint index_c = params.lhs_gap;
       uint word_c =
           uint(indices_c_data.values[params.out_strides[0] + word_slot]);
@@ -451,6 +485,7 @@ void main() {
       }
       in_range = in_range && index_c < params.lhs_gap;
       axis_b_offset += index_c * params.rhs_gap;
+#endif
 #endif
 #endif
       if (in_range) {

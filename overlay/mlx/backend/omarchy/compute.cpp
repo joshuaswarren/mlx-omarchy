@@ -109,6 +109,16 @@
 #include "scatter_axis_c64.h"
 #include "scatter_fadd_triple_f32.h"
 #include "scatter_fcas_triple_f32.h"
+#include "scatter_general_u32.h"
+#include "scatter_general_f16.h"
+#include "scatter_general_bf16.h"
+#include "scatter_general_bool.h"
+#include "scatter_general_u8.h"
+#include "scatter_general_i8.h"
+#include "scatter_general_u16.h"
+#include "scatter_general_i16.h"
+#include "scatter_fadd_general_f32.h"
+#include "scatter_fcas_general_f32.h"
 #include "copy_general_bf16.h"
 #include "copy_general_f16.h"
 #include "copy_general_f32.h"
@@ -661,6 +671,22 @@ ShaderBytes shader_bytes(ComputeKernel kernel) {
       return {scatter_triple_bf16, scatter_triple_bf16_size};
     case ComputeKernel::ScatterBoolTriple:
       return {scatter_bool_triple, scatter_bool_triple_size};
+    case ComputeKernel::ScatterGeneralU32:
+      return {scatter_general_u32, scatter_general_u32_size};
+    case ComputeKernel::ScatterGeneralF16:
+      return {scatter_general_f16, scatter_general_f16_size};
+    case ComputeKernel::ScatterGeneralBF16:
+      return {scatter_general_bf16, scatter_general_bf16_size};
+    case ComputeKernel::ScatterGeneralBool:
+      return {scatter_general_bool, scatter_general_bool_size};
+    case ComputeKernel::ScatterGeneralU8:
+      return {scatter_general_u8, scatter_general_u8_size};
+    case ComputeKernel::ScatterGeneralI8:
+      return {scatter_general_i8, scatter_general_i8_size};
+    case ComputeKernel::ScatterGeneralU16:
+      return {scatter_general_u16, scatter_general_u16_size};
+    case ComputeKernel::ScatterGeneralI16:
+      return {scatter_general_i16, scatter_general_i16_size};
     case ComputeKernel::CopyGeneralF32:
       return {copy_general_f32, copy_general_f32_size};
     case ComputeKernel::CopyGeneralF16:
@@ -1048,6 +1074,8 @@ ShaderBytes shader_bytes(ComputeKernel kernel) {
       return {scatter_fadd_multi_f32, scatter_fadd_multi_f32_size};
     case ComputeKernel::ScatterFAddTripleF32:
       return {scatter_fadd_triple_f32, scatter_fadd_triple_f32_size};
+    case ComputeKernel::ScatterFAddGeneralF32:
+      return {scatter_fadd_general_f32, scatter_fadd_general_f32_size};
     case ComputeKernel::ScatterFCasF32:
       return {scatter_fcas_f32, scatter_fcas_f32_size};
     case ComputeKernel::ScatterFCasF16:
@@ -1058,6 +1086,8 @@ ShaderBytes shader_bytes(ComputeKernel kernel) {
       return {scatter_fcas_multi_f32, scatter_fcas_multi_f32_size};
     case ComputeKernel::ScatterFCasTripleF32:
       return {scatter_fcas_triple_f32, scatter_fcas_triple_f32_size};
+    case ComputeKernel::ScatterFCasGeneralF32:
+      return {scatter_fcas_general_f32, scatter_fcas_general_f32_size};
     case ComputeKernel::ScatterBool:
       return {scatter_bool, scatter_bool_size};
     case ComputeKernel::ScatterBoolMulti:

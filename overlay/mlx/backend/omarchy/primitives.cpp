@@ -6947,14 +6947,9 @@ void Scatter::eval_gpu(const std::vector<array>& inputs, array& out) {
   const array& indices = inputs.at(1);
   const array& updates = inputs.back();
   auto& encoder = omarchy::get_command_encoder(out.primitive().stream());
-  if (axes.size() > 3) {
-    omarchy::unsupported(
-        "multi-index Scatter with " + std::to_string(axes.size()) +
-            " index arrays",
-        out);
-  }
   const bool multi_index = axes.size() >= 2;
   const bool triple_index = axes.size() == 3;
+  const bool general_index = axes.size() > 3;
   bool is_sum = reduce_type == Scatter::Sum;
   bool is_prod = reduce_type == Scatter::Prod;
   const bool float_reduce =
@@ -6967,8 +6962,9 @@ void Scatter::eval_gpu(const std::vector<array>& inputs, array& out) {
     // scratch: three to six slots against the budget the device
     // reported at initialization.
     uint32_t base = triple_index ? 5u : (multi_index ? 4u : 3u);
-    uint32_t needed =
-        (is_sum && !float_reduce && out.dtype() != bool_) ? base : base + 1u;
+    uint32_t needed = general_index ? 5u
+        : (is_sum && !float_reduce && out.dtype() != bool_) ? base
+                                                            : base + 1u;
     uint32_t allowed = encoder.device().compute().binding_limit();
     if (needed > allowed) {
       omarchy::unsupported(
@@ -7016,7 +7012,10 @@ void Scatter::eval_gpu(const std::vector<array>& inputs, array& out) {
     case float32:
       map_code = 0;
       if (is_sum || is_prod) {
-        kernel = triple_index
+        kernel = general_index
+            ? (hw_atomic_add ? omarchy::ComputeKernel::ScatterFAddGeneralF32
+                             : omarchy::ComputeKernel::ScatterFCasGeneralF32)
+            : triple_index
             ? (hw_atomic_add ? omarchy::ComputeKernel::ScatterFAddTripleF32
                              : omarchy::ComputeKernel::ScatterFCasTripleF32)
             : multi_index
@@ -7025,16 +7024,19 @@ void Scatter::eval_gpu(const std::vector<array>& inputs, array& out) {
             : (hw_atomic_add ? omarchy::ComputeKernel::ScatterFAddF32
                              : omarchy::ComputeKernel::ScatterFCasF32);
       } else {
-        kernel = scatter_word_kernel(multi_index, triple_index, out.dtype());
+        kernel = general_index ? omarchy::ComputeKernel::ScatterGeneralU32
+                               : scatter_word_kernel(multi_index, triple_index, out.dtype());
       }
       break;
     case int32:
       map_code = 1;
-      kernel = scatter_word_kernel(multi_index, triple_index, out.dtype());
+      kernel = general_index ? omarchy::ComputeKernel::ScatterGeneralU32
+                             : scatter_word_kernel(multi_index, triple_index, out.dtype());
       break;
     case uint32:
       map_code = 2;
-      kernel = scatter_word_kernel(multi_index, triple_index, out.dtype());
+      kernel = general_index ? omarchy::ComputeKernel::ScatterGeneralU32
+                             : scatter_word_kernel(multi_index, triple_index, out.dtype());
       break;
     case float16:
       map_code = 0;
@@ -7042,7 +7044,8 @@ void Scatter::eval_gpu(const std::vector<array>& inputs, array& out) {
         kernel = hw_atomic_add ? omarchy::ComputeKernel::ScatterFAddF16
                                : omarchy::ComputeKernel::ScatterFCasF16;
       } else {
-        kernel = scatter_word_kernel(multi_index, triple_index, out.dtype());
+        kernel = general_index ? omarchy::ComputeKernel::ScatterGeneralF16
+                               : scatter_word_kernel(multi_index, triple_index, out.dtype());
       }
       break;
     case bfloat16:
@@ -7051,12 +7054,14 @@ void Scatter::eval_gpu(const std::vector<array>& inputs, array& out) {
         kernel = hw_atomic_add ? omarchy::ComputeKernel::ScatterFAddBF16
                                : omarchy::ComputeKernel::ScatterFCasBF16;
       } else {
-        kernel = scatter_word_kernel(multi_index, triple_index, out.dtype());
+        kernel = general_index ? omarchy::ComputeKernel::ScatterGeneralBF16
+                               : scatter_word_kernel(multi_index, triple_index, out.dtype());
       }
       break;
     case bool_:
       map_code = 1;
-      kernel = scatter_word_kernel(multi_index, triple_index, out.dtype());
+      kernel = general_index ? omarchy::ComputeKernel::ScatterGeneralBool
+                             : scatter_word_kernel(multi_index, triple_index, out.dtype());
       break;
     case complex64:
       map_code = 0;
@@ -7079,7 +7084,14 @@ void Scatter::eval_gpu(const std::vector<array>& inputs, array& out) {
         }
       }
       map_code = (out.dtype() == int8 || out.dtype() == int16) ? 1 : 2;
-      kernel = scatter_word_kernel(multi_index, triple_index, out.dtype());
+      if (general_index) {
+        kernel = out.dtype() == uint8 ? omarchy::ComputeKernel::ScatterGeneralU8
+            : out.dtype() == int8 ? omarchy::ComputeKernel::ScatterGeneralI8
+            : out.dtype() == uint16 ? omarchy::ComputeKernel::ScatterGeneralU16
+                                    : omarchy::ComputeKernel::ScatterGeneralI16;
+      } else {
+        kernel = scatter_word_kernel(multi_index, triple_index, out.dtype());
+      }
       break;
     }
     default:
@@ -7120,6 +7132,17 @@ void Scatter::eval_gpu(const std::vector<array>& inputs, array& out) {
       omarchy::unsupported("Scatter index dtype", out);
     }
   }
+  if (general_index) {
+    for (size_t i = 1; i < axes.size(); ++i) {
+      const array& current = inputs.at(i + 1);
+      if (current.size() != indices.size()) {
+        omarchy::unsupported("Scatter index shape", out);
+      }
+      if (current.dtype() != indices.dtype()) {
+        omarchy::unsupported("Scatter index dtype", out);
+      }
+    }
+  }
   if (triple_index) {
     if (indices_c.size() != indices.size()) {
       omarchy::unsupported("Scatter index shape", out);
@@ -7130,7 +7153,7 @@ void Scatter::eval_gpu(const std::vector<array>& inputs, array& out) {
   }
   const array* idx_b = &indices_b;
   std::optional<array> idx_b_mat;
-  if (multi_index &&
+  if (multi_index && !general_index &&
       (!indices_b.flags().row_contiguous ||
        indices_b.data_size() != indices_b.size())) {
     idx_b_mat =
@@ -7175,6 +7198,73 @@ void Scatter::eval_gpu(const std::vector<array>& inputs, array& out) {
   if (no_index) {
     idx = upd;
   }
+  std::optional<array> packed_indices;
+  std::optional<array> axis_metadata;
+  if (general_index) {
+    size_t segment_bytes = (indices.nbytes() + 3u) & ~size_t{3};
+    size_t segment_items = segment_bytes / indices.itemsize();
+    packed_indices.emplace(
+        Shape{static_cast<int>(segment_items * axes.size())},
+        indices.dtype(),
+        nullptr,
+        std::vector<array>{});
+    array::Flags flags;
+    flags.contiguous = true;
+    flags.row_contiguous = true;
+    flags.col_contiguous = true;
+    packed_indices->set_data(
+        allocate_omarchy(packed_indices->nbytes()),
+        packed_indices->size(),
+        Strides{1},
+        flags,
+        0);
+    encoder.add_temporary(*packed_indices);
+    Strides dense_strides(indices.ndim(), 1);
+    for (int axis = indices.ndim() - 2; axis >= 0; --axis) {
+      dense_strides[axis] =
+          dense_strides[axis + 1] * indices.shape(axis + 1);
+    }
+    for (size_t i = 0; i < axes.size(); ++i) {
+      const array& current = inputs.at(i + 1);
+      copy_gpu_inplace(
+          current,
+          *packed_indices,
+          current.shape(),
+          current.strides(),
+          dense_strides,
+          0,
+          i * segment_items,
+          CopyType::GeneralGeneral,
+          out.primitive().stream());
+    }
+    std::vector<uint32_t> words;
+    words.reserve(3 * axes.size());
+    for (size_t axis : axes) {
+      words.push_back(checked_u32(out.shape(axis), "Scatter", out));
+    }
+    for (size_t axis : axes) {
+      words.push_back(checked_u32(out.strides(axis), "Scatter", out));
+    }
+    for (size_t i = 0; i < axes.size(); ++i) {
+      words.push_back(checked_u32(i * segment_bytes / 4, "Scatter", out));
+    }
+    axis_metadata.emplace(
+        Shape{static_cast<int>(words.size())},
+        uint32,
+        nullptr,
+        std::vector<array>{});
+    axis_metadata->set_data(
+        allocate_omarchy(axis_metadata->nbytes()),
+        axis_metadata->size(),
+        Strides{1},
+        flags,
+        0);
+    auto* metadata_buffer = static_cast<omarchy::VulkanBuffer*>(
+        axis_metadata->buffer().ptr());
+    std::memcpy(metadata_buffer->data, words.data(), axis_metadata->nbytes());
+    encoder.add_temporary(*axis_metadata);
+    idx = &*packed_indices;
+  }
   uint32_t index_mode = no_index ? 0u : scatter_index_mode(*idx, out, "Scatter");
   size_t index_ndim = no_index ? 0u : indices.ndim();
   size_t update_ndim = updates.ndim() - index_ndim;
@@ -7190,7 +7280,7 @@ void Scatter::eval_gpu(const std::vector<array>& inputs, array& out) {
   params.rhs_size = no_index ? 1u : 0u;
   params.reduce_size = no_index ? 1u : checked_u32(out.shape(axes[0]), "Scatter", out);
   params.output_size = checked_u32(updates.size() / count, "Scatter", out);
-  if (multi_index) {
+  if (multi_index && !general_index) {
     // Axis-1 addressing rides fields the single-index kernel never
     // reads: the axis dim in matrix_n, the axis stride in matrix_k,
     // and the second array's word offset in lhs_size.
@@ -7208,7 +7298,12 @@ void Scatter::eval_gpu(const std::vector<array>& inputs, array& out) {
     params.out_strides[0] = scatter_index_offset(*idx_c, out, "Scatter");
   }
   params.matrix_m = no_index ? 0u : checked_u32(out.strides(axes[0]), "Scatter", out);
-  params.rhs_offset = no_index ? 0u : scatter_index_offset(*idx, out, "Scatter");
+  params.rhs_offset = no_index || general_index
+      ? 0u
+      : scatter_index_offset(*idx, out, "Scatter");
+  if (general_index) {
+    params.matrix_n = checked_u32(axes.size(), "Scatter", out);
+  }
   params.output_offset = checked_item_offset(out, out.size(), "Scatter", out);
   params.aux_size = index_mode;
   params.aux_offset = map_code;
@@ -7238,10 +7333,17 @@ void Scatter::eval_gpu(const std::vector<array>& inputs, array& out) {
     // array stay unbound for the narrower paths.
     std::array<omarchy::ComputeBinding, 5> bindings{
         binding(out), binding(*upd), binding(*idx), binding(*idx_b)};
-    if (triple_index) {
-      bindings[4] = binding(*idx_c);
+    uint32_t bound;
+    if (general_index) {
+      bindings[3] = binding(out);
+      bindings[4] = binding(*axis_metadata);
+      bound = 5;
+    } else {
+      if (triple_index) {
+        bindings[4] = binding(*idx_c);
+      }
+      bound = triple_index ? 5u : (multi_index ? 4u : 3u);
     }
-    uint32_t bound = triple_index ? 5u : (multi_index ? 4u : 3u);
     params.operation = 6;
     encoder.dispatch_compute(
         kernel,
@@ -7280,15 +7382,19 @@ void Scatter::eval_gpu(const std::vector<array>& inputs, array& out) {
         binding(*idx_b),
         binding(*idx_c),
         binding(scratch)};
-    // Scratch rides the last bound slot of each variant: binding 3 for
-    // the single-index kernel, 4 for the multi-index kernel, 5 for the
-    // triple-index kernel.
-    if (!multi_index) {
+    uint32_t bound;
+    if (general_index) {
       bindings[3] = binding(scratch);
-    } else if (!triple_index) {
-      bindings[4] = binding(scratch);
+      bindings[4] = binding(*axis_metadata);
+      bound = 5;
+    } else {
+      if (!multi_index) {
+        bindings[3] = binding(scratch);
+      } else if (!triple_index) {
+        bindings[4] = binding(scratch);
+      }
+      bound = triple_index ? 6u : (multi_index ? 5u : 4u);
     }
-    uint32_t bound = triple_index ? 6u : (multi_index ? 5u : 4u);
     uint32_t accumulate;
     uint32_t finalize;
     if (complex_reduce) {
@@ -7351,19 +7457,19 @@ void Scatter::eval_gpu(const std::vector<array>& inputs, array& out) {
       binding(*idx_b),
       binding(*idx_c),
       binding(scratch)};
-  // Scratch rides the last bound slot of each variant: binding 3 for
-  // the single-index kernel, 4 for the multi-index kernel, 5 for the
-  // triple-index kernel.
-  // Without this rebind, binding 3 carries the indices buffer: pass 1
-  // atomically maxes rank words into the indices and pass 2 reads its
-  // ranks back out of them, so updates land only where an index value
-  // collides with a rank and the indices array is corrupted.
-  if (!multi_index) {
+  uint32_t bound;
+  if (general_index) {
     bindings[3] = binding(scratch);
-  } else if (!triple_index) {
-    bindings[4] = binding(scratch);
+    bindings[4] = binding(*axis_metadata);
+    bound = 5;
+  } else {
+    if (!multi_index) {
+      bindings[3] = binding(scratch);
+    } else if (!triple_index) {
+      bindings[4] = binding(scratch);
+    }
+    bound = triple_index ? 6u : (multi_index ? 5u : 4u);
   }
-  uint32_t bound = triple_index ? 6u : (multi_index ? 5u : 4u);
   params.operation = phase1;
   encoder.dispatch_compute(
       kernel,
