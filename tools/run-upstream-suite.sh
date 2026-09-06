@@ -124,8 +124,11 @@ import sys
 with open(sys.argv[1]) as source:
     provenance = json.load(source)
 stamp = (provenance.get("dist_version") or "").partition("+")[2].split(".")[-1]
-if provenance.get("verified") != "match" or stamp != sys.argv[2][:7]:
-    raise SystemExit(f"Unqualified wheel provenance: expected source {sys.argv[2][:7]}, got {stamp!r}")
+# git's default abbreviation length grows with the repository, so the stamp
+# is a prefix of at least seven characters, not a fixed width.
+if (provenance.get("verified") != "match" or len(stamp) < 7
+        or not sys.argv[2].startswith(stamp)):
+    raise SystemExit(f"Unqualified wheel provenance: expected source {sys.argv[2]}, got {stamp!r}")
 print(f"SOURCE-VERIFIED {sys.argv[2]} wheel={provenance['dist_version']}")
 PYPIN
   mkdir -p "$OUT_DIR/py" || exit 1
