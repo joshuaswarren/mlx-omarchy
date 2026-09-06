@@ -472,6 +472,28 @@ enum class ComputeKernel : uint16_t {
   ArgSortMergeBF16,
   ArgSortMergeI32,
   ArgSortMergeU32,
+  // Quantize-mode kernels (mxfp4 / nvfp4 / mxfp8): the affine shaders
+  // compiled with -DFP_MODE=1. Byte-packed fp4/fp8 element codes, byte
+  // scales through a uint word view, no bias term. Appended at the end
+  // so older indices stay stable for the GPU-profile NDJSON stream.
+  QuantizeFpF32,
+  QuantizeFpF16,
+  QuantizeFpBF16,
+  DequantFpF32,
+  DequantFpF16,
+  DequantFpBF16,
+  QmmFpF32,
+  QmmFpF16,
+  QmmFpBF16,
+  QmmVecFpF32,
+  QmmVecFpF16,
+  QmmVecFpBF16,
+  QmmVecSubgroupFpF32,
+  QmmVecSubgroupFpF16,
+  QmmVecSubgroupFpBF16,
+  QmmTileFpF32,
+  QmmTileFpF16,
+  QmmTileFpBF16,
   Count,
 };
 

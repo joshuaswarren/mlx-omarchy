@@ -238,6 +238,24 @@
 #include "dequant_f16.h"
 #include "quantize_f32.h"
 #include "quantize_f16.h"
+#include "quantize_fp_f32.h"
+#include "quantize_fp_f16.h"
+#include "quantize_fp_bf16.h"
+#include "dequant_fp_f32.h"
+#include "dequant_fp_f16.h"
+#include "dequant_fp_bf16.h"
+#include "qmm_fp_f32.h"
+#include "qmm_fp_f16.h"
+#include "qmm_fp_bf16.h"
+#include "qmm_vec_fp_f32.h"
+#include "qmm_vec_fp_f16.h"
+#include "qmm_vec_fp_bf16.h"
+#include "qmm_vec_subgroup_fp_f32.h"
+#include "qmm_vec_subgroup_fp_f16.h"
+#include "qmm_vec_subgroup_fp_bf16.h"
+#include "qmm_tile_fp_f32.h"
+#include "qmm_tile_fp_f16.h"
+#include "qmm_tile_fp_bf16.h"
 #include "conv_bf16.h"
 #include "clear_u32.h"
 #include "gather_axis_bf16.h"
@@ -1047,6 +1065,42 @@ ShaderBytes shader_bytes(ComputeKernel kernel) {
       return {fused_chain_f32, fused_chain_f32_size};
     case ComputeKernel::FusedChainF16:
       return {fused_chain_f16, fused_chain_f16_size};
+    case ComputeKernel::QuantizeFpF32:
+      return {quantize_fp_f32, quantize_fp_f32_size};
+    case ComputeKernel::QuantizeFpF16:
+      return {quantize_fp_f16, quantize_fp_f16_size};
+    case ComputeKernel::QuantizeFpBF16:
+      return {quantize_fp_bf16, quantize_fp_bf16_size};
+    case ComputeKernel::DequantFpF32:
+      return {dequant_fp_f32, dequant_fp_f32_size};
+    case ComputeKernel::DequantFpF16:
+      return {dequant_fp_f16, dequant_fp_f16_size};
+    case ComputeKernel::DequantFpBF16:
+      return {dequant_fp_bf16, dequant_fp_bf16_size};
+    case ComputeKernel::QmmFpF32:
+      return {qmm_fp_f32, qmm_fp_f32_size};
+    case ComputeKernel::QmmFpF16:
+      return {qmm_fp_f16, qmm_fp_f16_size};
+    case ComputeKernel::QmmFpBF16:
+      return {qmm_fp_bf16, qmm_fp_bf16_size};
+    case ComputeKernel::QmmVecFpF32:
+      return {qmm_vec_fp_f32, qmm_vec_fp_f32_size};
+    case ComputeKernel::QmmVecFpF16:
+      return {qmm_vec_fp_f16, qmm_vec_fp_f16_size};
+    case ComputeKernel::QmmVecFpBF16:
+      return {qmm_vec_fp_bf16, qmm_vec_fp_bf16_size};
+    case ComputeKernel::QmmVecSubgroupFpF32:
+      return {qmm_vec_subgroup_fp_f32, qmm_vec_subgroup_fp_f32_size};
+    case ComputeKernel::QmmVecSubgroupFpF16:
+      return {qmm_vec_subgroup_fp_f16, qmm_vec_subgroup_fp_f16_size};
+    case ComputeKernel::QmmVecSubgroupFpBF16:
+      return {qmm_vec_subgroup_fp_bf16, qmm_vec_subgroup_fp_bf16_size};
+    case ComputeKernel::QmmTileFpF32:
+      return {qmm_tile_fp_f32, qmm_tile_fp_f32_size};
+    case ComputeKernel::QmmTileFpF16:
+      return {qmm_tile_fp_f16, qmm_tile_fp_f16_size};
+    case ComputeKernel::QmmTileFpBF16:
+      return {qmm_tile_fp_bf16, qmm_tile_fp_bf16_size};
     case ComputeKernel::Count:
       break;
   }

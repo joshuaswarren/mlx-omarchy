@@ -5577,7 +5577,142 @@ void QuantizedMatmul::eval_gpu(const std::vector<array>& inputs, array& out) {
   // Non-affine modes pass three inputs, so the mode check must land
   // before the biases operand is bound.
   if (mode_ != QuantizationMode::Affine) {
-    omarchy::unsupported(tag + " mode", out);
+    // Non-affine modes: one scale byte per group (round-up e8m0 for
+    // mxfp4/mxfp8 at group 32, e4m3 for nvfp4 at group 16) and fp4
+    // e2m1 or fp8 e4m3 element bytes packed little-endian into the
+    // uint32 words, no bias term. Inputs {x, packed words, scale
+    // bytes}; the output dtype is x's dtype (ops.cpp).
+    const array& x = inputs[0];
+    const array& w = inputs[1];
+    const array& scales = inputs[2];
+    if (bits_ != 4 && bits_ != 8) {
+      omarchy::unsupported(tag + " bits", out);
+    }
+    if (group_size_ != 16 && group_size_ != 32) {
+      omarchy::unsupported(tag + " group size", out);
+    }
+    auto& fp_encoder = omarchy::get_command_encoder(out.primitive().stream());
+    require_float_dtype(tag, x, out, fp_encoder);
+    if (
+        w.dtype() != uint32 || w.ndim() != 2 || scales.dtype() != uint8 ||
+        scales.ndim() != 2 || scales.shape(0) != w.shape(0)) {
+      omarchy::unsupported(tag + " weight layout", out);
+    }
+    std::optional<array> x_temp;
+    std::optional<array> w_temp;
+    std::optional<array> scales_temp;
+    const array& x_d = ensure_dense(
+        x, x.flags().row_contiguous, x_temp, fp_encoder, stream());
+    const array& w_d = ensure_dense(
+        w, w.flags().row_contiguous, w_temp, fp_encoder, stream());
+    const array& scales_d = ensure_dense(
+        scales,
+        scales.flags().row_contiguous,
+        scales_temp,
+        fp_encoder,
+        stream());
+    int k = x.shape(-1);
+    int n = out.shape(-1);
+    size_t m = x.size() / k;
+    // mx.quantize packs along the dequantized last axis: transposed w
+    // is [N, Kp] with scales [N, K / group_size]; non-transposed w is
+    // [K, Np] with scales [K, N / group_size]; Np = N * bits / 32.
+    // Both layouts are first-class; the shaders route on flags bit 0.
+    uint64_t packed_outer =
+        static_cast<uint64_t>(w_d.shape(1)) * 32u / bits_;
+    uint64_t scale_outer =
+        static_cast<uint64_t>(scales_d.shape(1)) * group_size_;
+    bool shape_ok = transpose_
+        ? (w_d.shape(0) == static_cast<uint32_t>(n) &&
+              packed_outer == static_cast<uint64_t>(k) &&
+              scale_outer == static_cast<uint64_t>(k))
+        : (w_d.shape(0) == static_cast<uint32_t>(k) &&
+              packed_outer == static_cast<uint64_t>(n) &&
+              scale_outer == static_cast<uint64_t>(n));
+    if (!shape_ok) {
+      omarchy::unsupported(tag + " shape", out);
+    }
+    out.set_data(allocate_omarchy(out.nbytes()));
+    if (out.size() == 0) {
+      return;
+    }
+    uint64_t total = static_cast<uint64_t>(m) * static_cast<uint64_t>(n);
+    omarchy::ComputeParams params;
+    params.count = checked_u32(total, tag, out);
+    params.operation = static_cast<uint32_t>(bits_);
+    params.reduce_size = static_cast<uint32_t>(group_size_);
+    params.output_size = params.count;
+    params.lhs_offset = checked_item_offset(x_d, x_d.size(), tag, out);
+    params.rhs_offset = checked_item_offset(w_d, w_d.size(), tag, out);
+    // The scale stream is bytes; the shader reads it through the word
+    // view with the constant-shift select chain, so the byte offset
+    // rides in aux_offset.
+    params.aux_offset =
+        checked_item_offset(scales_d, scales_d.size(), tag, out);
+    params.flags = transpose_ ? 0u : 1u;
+    params.matrix_m = checked_u32(m, tag, out);
+    params.matrix_n = checked_u32(n, tag, out);
+    params.matrix_k = checked_u32(k, tag, out);
+    params.output_offset = checked_item_offset(out, out.size(), tag, out);
+    std::array<omarchy::ComputeBinding, 4> bindings{
+        binding(x_d), binding(w_d), binding(scales_d), binding(out)};
+    constexpr uint32_t kFpGemvColumnsPerGroup = 8u;
+    auto fp_vec_groups = (params.matrix_n + kFpGemvColumnsPerGroup - 1u) /
+        kFpGemvColumnsPerGroup;
+    if (params.matrix_m == 1u) {
+      const auto& caps = fp_encoder.device().capabilities();
+      bool subgroup_ready =
+          caps.subgroup_size == 32u &&
+          (caps.subgroup_operations & VK_SUBGROUP_FEATURE_ARITHMETIC_BIT) != 0;
+      auto vec_kernel = subgroup_ready
+          ? select_float_kernel(
+                out.dtype(),
+                omarchy::ComputeKernel::QmmVecSubgroupFpF32,
+                omarchy::ComputeKernel::QmmVecSubgroupFpF16,
+                omarchy::ComputeKernel::QmmVecSubgroupFpBF16)
+          : select_float_kernel(
+                out.dtype(),
+                omarchy::ComputeKernel::QmmVecFpF32,
+                omarchy::ComputeKernel::QmmVecFpF16,
+                omarchy::ComputeKernel::QmmVecFpBF16);
+      fp_encoder.dispatch_compute(
+          vec_kernel,
+          bindings,
+          params,
+          std::min(fp_vec_groups, omarchy::kMaxComputeGroupCountX),
+          1u,
+          1u);
+      return;
+    }
+    if (const char* tile_env = std::getenv("MLX_OMARCHY_QMM_TILE");
+        tile_env == nullptr || std::strcmp(tile_env, "0") != 0) {
+      auto tile_kernel = select_float_kernel(
+          out.dtype(),
+          omarchy::ComputeKernel::QmmTileFpF32,
+          omarchy::ComputeKernel::QmmTileFpF16,
+          omarchy::ComputeKernel::QmmTileFpBF16);
+      uint32_t m_groups = (params.matrix_m + 15u) / 16u;
+      uint32_t n_groups = (params.matrix_n + 15u) / 16u;
+      fp_encoder.dispatch_compute(
+          tile_kernel,
+          bindings,
+          params,
+          std::min(n_groups, omarchy::kMaxComputeGroupCountX),
+          std::min(m_groups, omarchy::kMaxComputeGroupCountX),
+          1u);
+      return;
+    }
+    auto fp_kernel = select_float_kernel(
+        out.dtype(),
+        omarchy::ComputeKernel::QmmFpF32,
+        omarchy::ComputeKernel::QmmFpF16,
+        omarchy::ComputeKernel::QmmFpBF16);
+    fp_encoder.dispatch_compute(
+        fp_kernel,
+        bindings,
+        params,
+        omarchy::compute_dispatch_group_count(params.count));
+    return;
   }
   const array& x = inputs[0];
   const array& w = inputs[1];
@@ -5589,7 +5724,8 @@ void QuantizedMatmul::eval_gpu(const std::vector<array>& inputs, array& out) {
   // computes x @ w. Batched weights (3D) arrive broadcast-materialized
   // from ops.cpp, so every batch slice is contiguous and pairs with an
   // x batch slice of matrix_m rows.
-  if (bits_ != 4 && bits_ != 8) {
+  if (bits_ != 2 && bits_ != 3 && bits_ != 4 && bits_ != 5 && bits_ != 6 &&
+      bits_ != 8) {
     omarchy::unsupported(tag + " bits", out);
   }
   if (group_size_ != 32 && group_size_ != 64 && group_size_ != 128) {
@@ -8972,20 +9108,180 @@ void Quantize::eval_gpu(
     std::vector<array>& outputs) {
   const std::string tag = name();
   array& out = outputs.at(0);
+  auto& encoder = omarchy::get_command_encoder(out.primitive().stream());
   if (mode_ != QuantizationMode::Affine) {
-    omarchy::unsupported(tag + " mode", out);
+    // Non-affine modes: mxfp4 (round-up e8m0 scale, fp4 e2m1 elements,
+    // group 32), nvfp4 (e4m3 scale, fp4 elements, group 16, optional
+    // float32 global scale), mxfp8 (round-up e8m0 scale, fp8 e4m3
+    // elements, group 32). Conversions mirror the pinned Metal
+    // fp4.h / fp8.h helpers bit for bit.
+    const array& in_w = inputs.at(0);
+    array& scales = outputs.at(1);
+    if (bits_ != 4 && bits_ != 8) {
+      omarchy::unsupported(tag + " bits", out);
+    }
+    if (group_size_ != 16 && group_size_ != 32) {
+      omarchy::unsupported(tag + " group size", out);
+    }
+    if (
+        in_w.dtype() != float16 && in_w.dtype() != bfloat16 &&
+        in_w.dtype() != float32) {
+      omarchy::unsupported(tag + " input dtype", out);
+    }
+    const auto& fp_caps = encoder.device().capabilities();
+    if (in_w.dtype() == float16 &&
+        (!fp_caps.shader_float16 ||
+         !fp_caps.storage_buffer_16bit_access)) {
+      omarchy::unsupported(tag + " float16 capability", out);
+    }
+    if (in_w.dtype() == bfloat16 &&
+        (!fp_caps.storage_buffer_16bit_access ||
+         !fp_caps.shader_int16)) {
+      omarchy::unsupported(tag + " bfloat16 capability", out);
+    }
+    bool has_global_scale = inputs.size() > 1;
+    // ops.cpp binds the global scale to nvfp4 only.
+    if (has_global_scale && group_size_ != 16) {
+      omarchy::unsupported(tag + " global scale", out);
+    }
+    if (!dequantize_) {
+      // Quantize direction: outputs {packed words, one scale byte per
+      // group}. Scale bytes insert through the word view with lane
+      // atomics, so rhs_offset carries the byte offset.
+      Shape packed_shape = in_w.shape();
+      packed_shape.back() = packed_shape.back() * bits_ / 32;
+      Shape parameter_shape = in_w.shape();
+      parameter_shape.back() /= group_size_;
+      if (
+          out.dtype() != uint32 || out.shape() != packed_shape ||
+          scales.dtype() != uint8 || scales.shape() != parameter_shape) {
+        omarchy::unsupported(tag + " shape", out);
+      }
+      std::optional<array> w_temp;
+      const array& w = ensure_dense(
+          in_w, in_w.flags().row_contiguous, w_temp, encoder, stream());
+      out.set_data(allocate_omarchy(out.nbytes()));
+      scales.set_data(allocate_omarchy(scales.nbytes()));
+      if (w.size() == 0) {
+        return;
+      }
+      omarchy::ComputeParams params;
+      params.count = checked_u32(w.size() / group_size_, tag, out);
+      params.operation = static_cast<uint32_t>(bits_);
+      params.reduce_size = static_cast<uint32_t>(group_size_);
+      params.lhs_offset = checked_item_offset(w, w.size(), tag, out);
+      params.rhs_offset =
+          checked_item_offset(scales, scales.size(), tag, out);
+      params.output_offset = checked_item_offset(out, out.size(), tag, out);
+      if (has_global_scale) {
+        params.flags = 2u; // bit 1: bound global scale
+        params.aux_size = checked_item_offset(inputs.at(1), 1, tag, out);
+      }
+      std::array<omarchy::ComputeBinding, 4> bindings{
+          binding(w),
+          binding(out),
+          binding(scales),
+          has_global_scale ? binding(inputs.at(1)) : binding(scales)};
+      auto kernel = select_float_kernel(
+          in_w.dtype(),
+          omarchy::ComputeKernel::QuantizeFpF32,
+          omarchy::ComputeKernel::QuantizeFpF16,
+          omarchy::ComputeKernel::QuantizeFpBF16);
+      encoder.dispatch_compute(
+          kernel,
+          bindings,
+          params,
+          omarchy::compute_dispatch_group_count(params.count));
+      return;
+    }
+    // Dequantize direction: inputs {packed words, scale bytes} plus the
+    // optional global scale; the output dtype is the ops-promoted
+    // floating type (float16, bfloat16, or float32).
+    const array& in_scales = inputs.at(1);
+    if (in_w.dtype() != uint32 || in_scales.dtype() != uint8) {
+      omarchy::unsupported(tag + " weight dtype", out);
+    }
+    if (
+        out.dtype() != float16 && out.dtype() != bfloat16 &&
+        out.dtype() != float32) {
+      omarchy::unsupported(tag + " scales dtype", out);
+    }
+    if (
+        in_w.shape().size() != in_scales.shape().size() ||
+        in_scales.shape(-1) * static_cast<uint64_t>(group_size_) !=
+            static_cast<uint64_t>(in_w.shape(-1)) * 32u / bits_) {
+      omarchy::unsupported(tag + " shape", out);
+    }
+    if (!std::equal(
+            in_w.shape().begin(),
+            in_w.shape().end() - 1,
+            in_scales.shape().begin())) {
+      omarchy::unsupported(tag + " shape", out);
+    }
+    std::optional<array> w_temp;
+    std::optional<array> scales_temp;
+    const array& w = ensure_dense(
+        in_w, in_w.flags().row_contiguous, w_temp, encoder, stream());
+    const array& scales_d = ensure_dense(
+        in_scales,
+        in_scales.flags().row_contiguous,
+        scales_temp,
+        encoder,
+        stream());
+    out.set_data(allocate_omarchy(out.nbytes()));
+    if (out.size() == 0 || w.size() == 0) {
+      return;
+    }
+    // One thread per byte pack: fp4 pairs two elements per byte, fp8
+    // is one byte per element.
+    uint32_t pack_factor = (bits_ == 8) ? 1u : 2u;
+    uint64_t bytes_per_row =
+        static_cast<uint64_t>(in_w.shape(-1)) * 4u;
+    omarchy::ComputeParams params;
+    params.count = checked_u32(w.size() * 4u, tag, out);
+    params.operation = static_cast<uint32_t>(bits_);
+    params.reduce_size = static_cast<uint32_t>(group_size_);
+    params.lhs_offset = checked_item_offset(w, w.size(), tag, out);
+    params.aux_offset =
+        checked_item_offset(scales_d, scales_d.size(), tag, out);
+    params.rhs_size =
+        has_global_scale ? checked_item_offset(inputs.at(1), 1, tag, out) : 0;
+    params.output_offset = checked_item_offset(out, out.size(), tag, out);
+    params.matrix_n = checked_u32(bytes_per_row, tag, out);
+    params.matrix_k = checked_u32(
+        static_cast<uint64_t>(in_scales.shape(-1)), tag, out);
+    params.flags = has_global_scale ? 2u : 0u;
+    std::array<omarchy::ComputeBinding, 4> bindings{
+        binding(w),
+        binding(scales_d),
+        has_global_scale ? binding(inputs.at(1)) : binding(w),
+        binding(out)};
+    auto kernel = select_float_kernel(
+        out.dtype(),
+        omarchy::ComputeKernel::DequantFpF32,
+        omarchy::ComputeKernel::DequantFpF16,
+        omarchy::ComputeKernel::DequantFpBF16);
+    encoder.dispatch_compute(
+        kernel,
+        bindings,
+        params,
+        omarchy::compute_dispatch_group_count(params.count));
+    return;
   }
-  // Aligned affine packing only: the kernels fill uint32 words LSB
-  // first with 32/bits values each (upstream's power-of-2 bit path,
-  // quantized.cpp dispatch_quantize<T, uint32_t>). Bits 3/5/6 pack
-  // byte-oriented into a uint8 output and keep the named rejection.
-  if (bits_ != 2 && bits_ != 4 && bits_ != 8) {
+  // Aligned affine packing: bits 2/4/8 pack uint32 words LSB first with
+  // 32/bits values each; bits 3/5/6 pack byte-oriented - 8 values span
+  // 3 bytes (bits 3), 8 values span 5 bytes (bits 5), 4 values span 3
+  // bytes (bits 6) - into the same uint32 output typed words (upstream
+  // CPU quantized.cpp / Metal affine_quantize). The byte stream is
+  // exact whenever (group_size * bits) % 32 == 0, which the op-level
+  // validation guarantees together with k % group_size == 0.
+  if (bits_ != 2 && bits_ != 3 && bits_ != 4 && bits_ != 5 && bits_ != 6 &&
+      bits_ != 8) {
     omarchy::unsupported(tag + " bits", out);
   }
-  if (group_size_ <= 0 || group_size_ % (32 / bits_) != 0) {
+  if (group_size_ <= 0 || (group_size_ * bits_) % 32 != 0) {
     omarchy::unsupported(tag + " group size", out);
   }
-  auto& encoder = omarchy::get_command_encoder(out.primitive().stream());
   if (!dequantize_) {
     const array& in_w = inputs.at(0);
     array& scales = outputs.at(1);
@@ -9091,12 +9387,17 @@ void Quantize::eval_gpu(
   if (out.size() == 0 || w.size() == 0) {
     return;
   }
-  // One thread owns one packed word. Every word in a row-contiguous
-  // weight maps to a unique output span, so the word load is linear in
-  // the thread index and the group parameters reuse one address for
-  // the whole word.
+  // One thread owns one packed unit: a uint32 word for bits 2/4/8, or
+  // one byte pack (3 bytes for bits 3/6, 5 bytes for bits 5) inside the
+  // little-endian byte stream. Every unit in a row-contiguous weight
+  // maps to a unique output span, so the unit load is linear in the
+  // thread index and the group parameters reuse one address for the
+  // whole unit.
+  bool byte_bits = (bits_ == 3 || bits_ == 5 || bits_ == 6);
+  uint32_t bytes_per_pack = byte_bits ? ((bits_ == 5) ? 5u : 3u) : 4u;
   omarchy::ComputeParams params;
-  params.count = checked_u32(w.size(), tag, out);
+  params.count =
+      checked_u32(w.size() * 4u / bytes_per_pack, tag, out);
   params.operation = static_cast<uint32_t>(bits_);
   params.lhs_size = params.count;
   params.rhs_size = checked_u32(scales.size(), tag, out);
@@ -9107,7 +9408,10 @@ void Quantize::eval_gpu(
   params.aux_size = checked_u32(biases.size(), tag, out);
   params.aux_offset = checked_item_offset(biases, biases.size(), tag, out);
   params.output_offset = checked_item_offset(out, out.size(), tag, out);
-  params.matrix_n = checked_u32(words_per_row, tag, out);
+  params.matrix_n =
+      checked_u32(static_cast<uint64_t>(words_per_row) * 4u / bytes_per_pack,
+          tag,
+          out);
   params.matrix_k = checked_u32(groups_per_row, tag, out);
   std::array<omarchy::ComputeBinding, 4> bindings{
       binding(w), binding(scales), binding(biases), binding(out)};

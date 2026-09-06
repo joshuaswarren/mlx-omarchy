@@ -1,14 +1,18 @@
 #version 460
 
 // Fused matrix-vector path for QuantizedMatmul when x is a single row:
-// out[1, n] = x[1, k] @ dequant(w)[n, k].T with w packed uint32 words
-// holding 32/bits values along K, low bits first, one affine scale and
-// bias per group_size elements. Decode is this shape on every layer, and
-// the general kernel serializes it: one thread per output column walks
-// the whole row serially, so its 32-lane reads sit words-per-row*4 bytes
-// apart - every lane a separate cache line. Here one of the workgroup's
-// eight 32-lane subgroups owns one weight row and lanes stride single k
-// steps, so consecutive lanes read consecutive x elements, consecutive
+// out[1, n] = x[1, k] @ dequant(w) with w packed uint32 words holding
+// 32/bits affine values along the packed axis in the low bits first
+// (bits 2/4/8) or lane-atomic little-endian byte packs of 8/3, 8/5,
+// or 4/3 bytes (bits 3/5/6), one affine scale and bias per group_size
+// elements; with -DFP_MODE the fp modes instead (fp4 e2m1 / fp8 e4m3
+// element bytes, one scale byte per group, no bias). Decode is this
+// shape on every layer, and the general kernel serializes it: one
+// thread per output column walks the whole row serially, so its
+// 32-lane reads sit words-per-row*4 bytes apart - every lane a
+// separate cache line. Here one of the workgroup's eight 32-lane
+// subgroups owns one weight row and lanes stride single k steps, so
+// consecutive lanes read consecutive x elements, consecutive
 // weight-row words, and one shared cache line of row bytes per step.
 // Dequantization happens in registers inside the dot product - no
 // dequantized intermediate tensor, no extra pass over memory, one
@@ -73,9 +77,16 @@ layout(set = 0, binding = 0, std430) readonly buffer InputX {
 layout(set = 0, binding = 1, std430) readonly buffer InputW {
   uint values[];
 } input_w;
+#ifdef FP_MODE
+// Scale bytes addressed through the word view; no bias term.
+layout(set = 0, binding = 2, std430) readonly buffer ScaleBias {
+  uint values[];
+} scale_bias;
+#else
 layout(set = 0, binding = 2, std430) readonly buffer ScaleBias {
   STORAGE_TYPE values[];
 } scale_bias;
+#endif
 layout(set = 0, binding = 3, std430) writeonly buffer Output {
   STORAGE_TYPE values[];
 } output_data;
@@ -106,22 +117,94 @@ layout(push_constant) uniform Params {
 
 shared float reduce_scratch[256];
 
+// Push-constant routing: operation carries bits (2, 3, 4, 5, 6, or 8),
+// reduce_size the group size, flags bit 0 the non-transposed layout.
+// Affine binding 2 packs the group parameters as two halves of one
+// buffer ([all scales | all biases], group values per row). FP_MODE
+// binding 2 is the scale-byte stream (one byte per group, aux_offset =
+// byte offset into it).
+
+// Constant-shift select chain from scatter.comp: runtime word and lane,
+// constant shift per lane.
+uint byte_at(uint word, uint lane) {
+  return (lane == 0u)
+      ? (word & 0xFFu)
+      : (lane == 1u)
+      ? ((word >> 8u) & 0xFFu)
+      : (lane == 2u)
+      ? ((word >> 16u) & 0xFFu)
+      : ((word >> 24u) & 0xFFu);
+}
+
+#ifdef FP_MODE
+float fp8_decode(uint bits) {
+  float magnitude = unpackHalf2x16((bits & 127u) << 7u).x * 256.0;
+  return ((bits & 128u) != 0u) ? -magnitude : magnitude;
+}
+
+float e8m0_decode(uint bits) {
+  return uintBitsToFloat(bits == 0u ? 0x400000u : bits << 23u);
+}
+
+// FP4 E2M1 decode via the fp16 bit trick from the Metal fp4_e2m1
+// constructor: (bits & 7) << 9 reinterprets the exponent and mantissa
+// as fp16 subnormals, the missing 2^14 lands in the scale factor.
+float fp4_decode(uint code) {
+  float magnitude = unpackHalf2x16((code & 7u) << 9u).x * 16384.0;
+  return ((code & 8u) != 0u) ? -magnitude : magnitude;
+}
+#else
+// Affine byte-pack decode: element e of a pack, upstream extract table
+// (all constant shifts; e routes between constant expressions).
+uint q3_at(uint e, uint c0, uint c1, uint c2) {
+  if (e == 0u) return c0 & 0x7u;
+  if (e == 1u) return (c0 >> 3) & 0x7u;
+  if (e == 2u) return ((c0 >> 6) & 0x3u) + ((c1 & 0x1u) << 2);
+  if (e == 3u) return (c1 >> 1) & 0x7u;
+  if (e == 4u) return (c1 >> 4) & 0x7u;
+  if (e == 5u) return ((c1 >> 7) & 0x1u) + ((c2 & 0x3u) << 1);
+  if (e == 6u) return (c2 >> 2) & 0x7u;
+  return (c2 >> 5) & 0x7u;
+}
+
+uint q5_at(uint e, uint c0, uint c1, uint c2, uint c3, uint c4) {
+  if (e == 0u) return c0 & 0x1fu;
+  if (e == 1u) return ((c0 >> 5) & 0x7u) + ((c1 & 0x3u) << 3);
+  if (e == 2u) return (c1 >> 2) & 0x1fu;
+  if (e == 3u) return ((c1 >> 7) & 0x1u) + ((c2 & 0xfu) << 1);
+  if (e == 4u) return ((c2 >> 4) & 0xfu) + ((c3 & 0x1u) << 4);
+  if (e == 5u) return (c3 >> 1) & 0x1fu;
+  if (e == 6u) return ((c3 >> 6) & 0x3u) + ((c4 & 0x7u) << 2);
+  return (c4 >> 3) & 0x1fu;
+}
+
+uint q6_at(uint e, uint c0, uint c1, uint c2) {
+  if (e == 0u) return c0 & 0x3fu;
+  if (e == 1u) return ((c0 >> 6) & 0x3u) + ((c1 & 0xfu) << 2);
+  if (e == 2u) return ((c1 >> 4) & 0xfu) + ((c2 & 0x3u) << 4);
+  return (c2 >> 2) & 0x3fu;
+}
+#endif
+
 // Weight layout routing mirrors qmm.comp. Transposed (flags bit 0
 // clear): w batch slice [N, Kp], groups along K, scale [n][k / gs].
 // Non-transposed (bit 0 set): w batch slice [K, Np], packed N per row,
 // groups along N, scale [k][n / gs]. shape[0] carries the batch count
 // B and the per-slot work runs once per batch slice; each thread's
 // lane nibble and scale column stay fixed for the whole reduction.
+// FP_MODE dispatches only a single x row against a 2D w (batch = 1).
 void main() {
   uint lane = gl_LocalInvocationID.x;
   uint column_slot = lane / LANES;
   uint lane_in_slot = lane % LANES;
   uint bits = params.operation;
-  uint pack_factor = 32u / bits;
-  uint value_mask = (1u << bits) - 1u;
   uint group_size = params.reduce_size;
   bool non_transposed = (params.flags & 1u) != 0u;
+#ifdef FP_MODE
+  uint batch = 1u;
+#else
   uint batch = params.shape[0];
+#endif
   uint w_batch_words = params.shape[1];
   uint param_batch = params.shape[2];
   uint scale_total = params.shape[3];
@@ -135,15 +218,114 @@ void main() {
       // Runtime trip count and runtime shift/mask: lane-uniform per
       // step, never unrolled, so the unpack state stays out of
       // registers.
+#ifdef FP_MODE
+      uint fp_pack_factor = (bits == 8u) ? 1u : 2u;
       if (non_transposed) {
-        uint word_index = w_row + column / pack_factor;
-        uint lane_shift = (column % pack_factor) * bits;
+        // FP_MODE non-transposed: w [K, Np] with fp bytes packed along
+        // N (2 nibbles per byte little-endian), scale bytes
+        // [k][column / group_size]. Fixed column per lane, walk k.
+        uint n_bytes_per_row = params.matrix_n * bits / 8u;
+        uint col_byte = column / fp_pack_factor;
+        uint col_group = column / group_size;
+        uint nibble = column & 1u;
+        uint groups_per_col_row = params.matrix_n / group_size;
+        for (uint k = lane_in_slot; k < params.matrix_k; k += LANES) {
+          uint scale_addr =
+              p_base + k * groups_per_col_row + col_group;
+          uint scale_byte = byte_at(
+              scale_bias.values[scale_addr >> 2u], scale_addr & 3u);
+          float scale = (group_size == 16u) ? fp8_decode(scale_byte)
+                                            : e8m0_decode(scale_byte);
+          uint byte_addr =
+              w_row * 4u + k * n_bytes_per_row + col_byte;
+          uint packed_byte = byte_at(
+              input_w.values[byte_addr >> 2u], byte_addr & 3u);
+          uint code = (bits == 8u)
+              ? packed_byte
+              : ((nibble == 0u) ? (packed_byte & 0xFu)
+                                : (packed_byte >> 4u));
+          float value =
+              (bits == 8u) ? fp8_decode(code) : fp4_decode(code);
+          float x_value = LOAD_VALUE(input_x.values[
+              params.lhs_offset + b * params.matrix_k + k]);
+          accumulator += x_value * (scale * value);
+        }
+      } else {
+        // FP_MODE transposed: w [N, Kp], scale bytes
+        // [column][k / group_size].
+        uint groups_per_row = params.matrix_k / group_size;
+        uint w_base =
+            w_row + column * (params.matrix_k / (fp_pack_factor * 4u));
+        for (uint k = lane_in_slot; k < params.matrix_k; k += LANES) {
+          uint scale_addr = p_base + column * groups_per_row +
+              k / group_size;
+          uint scale_byte = byte_at(
+              scale_bias.values[scale_addr >> 2u], scale_addr & 3u);
+          float scale = (group_size == 16u) ? fp8_decode(scale_byte)
+                                            : e8m0_decode(scale_byte);
+          uint byte_addr = w_base * 4u + k / fp_pack_factor;
+          uint packed_byte = byte_at(
+              input_w.values[byte_addr >> 2u], byte_addr & 3u);
+          uint code = (bits == 8u)
+              ? packed_byte
+              : (((k & 1u) == 0u) ? (packed_byte & 0xFu)
+                                  : (packed_byte >> 4u));
+          float value =
+              (bits == 8u) ? fp8_decode(code) : fp4_decode(code);
+          float x_value = LOAD_VALUE(input_x.values[
+              params.lhs_offset + b * params.matrix_k + k]);
+          accumulator += x_value * (scale * value);
+        }
+      }
+#else
+      bool is_byte_bits =
+          (bits == 3u || bits == 5u || bits == 6u);
+      uint pack_factor = is_byte_bits
+          ? (bits == 6u ? 4u : 8u)
+          : (32u / bits);
+      uint bytes_per_pack = is_byte_bits ? (bits == 5u ? 5u : 3u) : 1u;
+      uint value_mask = (1u << bits) - 1u;
+      if (non_transposed) {
+        // Non-transposed: fixed lane nibble and fixed scale column per
+        // lane, walking the k rows. Byte bits decode the lane from the
+        // byte packs in the w row; word bits keep the fixed lane shift.
+        uint n_bytes_per_row = params.matrix_n * bits / 8u;
+        uint n_words_per_row = params.matrix_n * bits / 32u;
+        uint group_bytes = (group_size / pack_factor) * bytes_per_pack;
+        uint col_byte_off = (column / group_size) * group_bytes +
+            ((column % group_size) / pack_factor) * bytes_per_pack;
+        uint lane_n = column % pack_factor;
+        uint col_word_off = column / pack_factor;
+        uint lane_shift = lane_n * bits;
         uint param_step = params.matrix_n / group_size;
         uint param_col = p_base + column / group_size;
         for (uint k = lane_in_slot; k < params.matrix_k; k += LANES) {
-          uint word = input_w.values[word_index +
-              k * (params.matrix_n / pack_factor)];
-          uint q = (word >> lane_shift) & value_mask;
+          uint q;
+          if (is_byte_bits) {
+            uint byte_addr =
+                w_row * 4u + k * n_bytes_per_row + col_byte_off;
+            uint c0 = byte_at(
+                input_w.values[byte_addr >> 2u], byte_addr & 3u);
+            uint c1 = byte_at(
+                input_w.values[(byte_addr + 1u) >> 2u],
+                (byte_addr + 1u) & 3u);
+            uint c2 = byte_at(
+                input_w.values[(byte_addr + 2u) >> 2u],
+                (byte_addr + 2u) & 3u);
+            q = (bits == 3u)
+                ? q3_at(lane_n, c0, c1, c2)
+                : (bits == 5u)
+                ? q5_at(lane_n, c0, c1, c2, byte_at(
+                      input_w.values[(byte_addr + 3u) >> 2u],
+                      (byte_addr + 3u) & 3u), byte_at(
+                      input_w.values[(byte_addr + 4u) >> 2u],
+                      (byte_addr + 4u) & 3u))
+                : q6_at(lane_n, c0, c1, c2);
+          } else {
+            uint word = input_w.values[
+                w_row + k * n_words_per_row + col_word_off];
+            q = (word >> lane_shift) & value_mask;
+          }
           float x_value = LOAD_VALUE(
               input_x.values[params.lhs_offset + b * params.matrix_k + k]);
           accumulator += x_value *
@@ -153,22 +335,50 @@ void main() {
                     param_col + scale_total + k * param_step]));
         }
       } else {
-        uint w_base = w_row + column * (params.matrix_k / pack_factor);
-        uint scale_base = p_base + column * (params.matrix_k / group_size);
+        uint words_per_row = params.matrix_k * bits / 32u;
+        uint groups_per_row = params.matrix_k / group_size;
+        uint w_base = w_row + column * words_per_row;
+        uint scale_base = p_base + column * groups_per_row;
+        uint bias_base = p_base + scale_total + column * groups_per_row;
         for (uint k = lane_in_slot; k < params.matrix_k; k += LANES) {
-          uint word = input_w.values[
-              w_base + k / pack_factor];
-          uint q = (word >> ((k % pack_factor) * bits)) & value_mask;
           uint group = k / group_size;
           float x_value = LOAD_VALUE(
               input_x.values[params.lhs_offset + b * params.matrix_k + k]);
+          float dequant;
+          if (is_byte_bits) {
+            uint byte_addr =
+                w_base * 4u + (k / pack_factor) * bytes_per_pack;
+            uint c0 = byte_at(
+                input_w.values[byte_addr >> 2u], byte_addr & 3u);
+            uint c1 = byte_at(
+                input_w.values[(byte_addr + 1u) >> 2u],
+                (byte_addr + 1u) & 3u);
+            uint c2 = byte_at(
+                input_w.values[(byte_addr + 2u) >> 2u],
+                (byte_addr + 2u) & 3u);
+            uint e = k % pack_factor;
+            uint q = (bits == 3u)
+                ? q3_at(e, c0, c1, c2)
+                : (bits == 5u)
+                ? q5_at(e, c0, c1, c2, byte_at(
+                      input_w.values[(byte_addr + 3u) >> 2u],
+                      (byte_addr + 3u) & 3u), byte_at(
+                      input_w.values[(byte_addr + 4u) >> 2u],
+                      (byte_addr + 4u) & 3u))
+                : q6_at(e, c0, c1, c2);
+            dequant = float(q);
+          } else {
+            uint word = input_w.values[w_base + k / pack_factor];
+            uint q = (word >> ((k % pack_factor) * bits)) & value_mask;
+            dequant = float(q);
+          }
           accumulator += x_value *
               (LOAD_VALUE(scale_bias.values[scale_base + group]) *
-                    float(q) +
-                LOAD_VALUE(scale_bias.values[
-                    scale_base + scale_total + group]));
+                    dequant +
+                  LOAD_VALUE(scale_bias.values[bias_base + group]));
         }
       }
+#endif
     }
     // Every lane reaches the reduction, including inactive slots
     // (accumulator 0), so the barriers stay uniform across the
