@@ -494,6 +494,13 @@ enum class ComputeKernel : uint16_t {
   QmmTileFpF32,
   QmmTileFpF16,
   QmmTileFpBF16,
+  // Gathered fp-mode matmul (gather_qmm.comp with -DFP_MODE=1
+  // -DNO_BIAS=1): GatherQMM and GatherQQMM in the mxfp4 / nvfp4 /
+  // mxfp8 modes, no bias term. Appended after the affine fp kernels
+  // so older indices stay stable for the GPU-profile NDJSON stream.
+  GatherQmmNbFpF32,
+  GatherQmmNbFpF16,
+  GatherQmmNbFpBF16,
   Count,
 };
 

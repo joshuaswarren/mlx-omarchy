@@ -4,7 +4,7 @@
 // Gathered affine quantized matmul (GatherQMM, GatherQQMM, and the
 // quantized-weight QQMatmul path). One thread owns one output element:
 // out[b, m, n] contracts the x row (lhs[b], m, :) with the dequantized
-// packed-w row (rhs[b], n, :), where packed uint32 words hold 32/bits
+// packed-w row (rhs[b], n, :), where packed uint32 words hold 32 / bits
 // quantized values along K in the low bits first and each group of
 // group_size elements shares one scale (and one bias unless NO_BIAS).
 // Binding 1 is a raw uint32 word buffer packing [all scale bytes |
@@ -94,6 +94,53 @@ layout(push_constant) uniform Params {
   uint out_strides[4];
 } params;
 
+// With -DFP_MODE the shader gathers the non-affine modes instead
+// (mxfp4 / nvfp4 / mxfp8; always bias-free). The packed buffer carries
+// [all scale bytes | all lhs index words | all rhs index words] like
+// the NO_BIAS affine layout, but each group parameter is one byte: a
+// round-up e8m0 code at group 32 (mxfp4/mxfp8) or an e4m3 code at
+// group 16 (nvfp4). Element codes are fp4 e2m1 nibbles (bits 4, two
+// per byte, low element low - the same lane positions as affine 4-bit
+// words) or fp8 e4m3 bytes (bits 8, one per byte). Conversions mirror
+// the pinned Metal fp4.h / fp8.h helpers bit for bit.
+#ifdef FP_MODE
+uint byte_at(uint word, uint lane) {
+  return (lane == 0u)
+      ? (word & 0xFFu)
+      : (lane == 1u)
+      ? ((word >> 8u) & 0xFFu)
+      : (lane == 2u)
+      ? ((word >> 16u) & 0xFFu)
+      : ((word >> 24u) & 0xFFu);
+}
+
+float fp8_decode(uint bits) {
+  float magnitude = unpackHalf2x16((bits & 127u) << 7u).x * 256.0;
+  return ((bits & 128u) != 0u) ? -magnitude : magnitude;
+}
+
+float e8m0_decode(uint bits) {
+  return uintBitsToFloat(bits == 0u ? 0x400000u : bits << 23u);
+}
+
+float fp4_decode(uint code) {
+  float magnitude = unpackHalf2x16((code & 7u) << 9u).x * 16384.0;
+  return ((code & 8u) != 0u) ? -magnitude : magnitude;
+}
+
+// One scale byte per group at byte_offset in the packed word buffer.
+float decode_param(uint byte_offset) {
+  uint word = packed_params.values[params.aux_offset + byte_offset / 4u];
+  uint code = byte_at(word, byte_offset & 3u);
+  return (params.reduce_size == 16u) ? fp8_decode(code) : e8m0_decode(code);
+}
+
+float decode_element(uint q) {
+  return (params.operation == 4u) ? fp4_decode(q) : fp8_decode(q);
+}
+
+#define DECODE_VALUE(q) decode_element(q)
+#else
 // Decode one group parameter stored at byte_offset in the packed word
 // buffer, in the output dtype.
 float decode_param(uint byte_offset) {
@@ -110,6 +157,9 @@ float decode_param(uint byte_offset) {
   return uintBitsToFloat(word);
 #endif
 }
+
+#define DECODE_VALUE(q) float(q)
+#endif
 
 // Weight layout routing mirrors qmm.comp: flags bit 0 set means
 // non-transposed weights (w batch slice [Kp, N], scales slice
@@ -128,7 +178,13 @@ void main() {
   uint words_per_row = params.matrix_k / pack_factor;
   uint groups_per_row = params.matrix_k / group_size;
   uint matrix = params.matrix_m * params.matrix_n;
+#ifdef FP_MODE
+  // fp scale codes are one byte per group; the affine kernels step in
+  // PARAM_BYTES units, the fp kernel in single bytes.
+  uint param_bytes = 1u;
+#else
   uint param_bytes = PARAM_BYTES;
+#endif
   uint w_row_words = params.matrix_n * words_per_row;
   uint scale_row_words = non_transposed
       ? params.matrix_k * (params.matrix_n / group_size)
@@ -181,7 +237,7 @@ void main() {
             (scale_base + k * param_step) * param_bytes);
 #endif
         accumulator += LOAD_VALUE(input_x.values[x_base + k]) *
-            (scale * float(q) + bias);
+            (scale * DECODE_VALUE(q) + bias);
       }
     } else {
       // w batch slice [N, Kp]: groups along K, scale [n][k / group_size].
@@ -206,7 +262,7 @@ void main() {
             (scale_base + group) * param_bytes);
 #endif
         accumulator += LOAD_VALUE(input_x.values[x_base + k]) *
-            (scale * float(q) + bias);
+            (scale * DECODE_VALUE(q) + bias);
       }
     }
     output_data.values[params.output_offset + index] =
