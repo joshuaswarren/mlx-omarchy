@@ -1,13 +1,87 @@
 #version 460
 
+// Integer elementwise kernel variants. The selector matches
+// IntElementwiseOperation in primitives.cpp:
+//   0 subtract  1 and  2 or  3 xor  4 left shift  5 right shift
+//   6 invert  7 divmod quotient  8 modulo  9 power  10 sign
+//   11 abs  12 add  13 multiply  14 square  15 minimum  16 maximum
+//   17 divide
+//
+// The default blobs (no define) serve int32/uint32 with the full op
+// set: wraparound subtraction, bitwise logic, and shifts are identical
+// for both signednesses, so one SPIR-V variant serves both dtypes; `>>`
+// follows the operand signedness (arithmetic for int32, logical for
+// uint32), which is the upstream C++ behavior. The signed fixups
+// compile for uint32 too and are constant-false there.
+//
+// The widened variants (USE_I8/USE_U8/USE_I16/USE_U16/USE_I64/USE_U64)
+// serve the BitwiseBinary and BitwiseInvert primitives on the narrow
+// and 64-bit integer family. Every operand widens to the full compute
+// word on load, the op runs there, and the store truncates to the
+// element width - the same modular result as the C++ operators on the
+// narrow types. Byte lanes use the receipt-proven constant-shift
+// BYTE_AT chain and the commuting atomicAnd/atomicOr lane pair from
+// cast_int.comp (Honeykrisp miscompiles data-dependent shift-then-mask
+// extraction; see docs/known-defects.md). The widened blobs implement
+// only ops 1-6; the host refuses every other operation on these
+// dtypes by name.
+
 #ifdef USE_U32
 #define STORAGE_TYPE uint
 #else
 #define STORAGE_TYPE int
 #endif
 
-layout(local_size_x = 256) in;
+#if defined(USE_I16) || defined(USE_U16)
+#extension GL_EXT_shader_16bit_storage : require
+#extension GL_EXT_shader_explicit_arithmetic_types_int16 : require
+#endif
+#if defined(USE_I64) || defined(USE_U64)
+#extension GL_EXT_shader_explicit_arithmetic_types_int64 : require
+#endif
 
+#if defined(USE_I8) || defined(USE_U8)
+// Byte lanes ride uint32 words; the output lane insert needs
+// read-modify-write atomics, so the output buffer is not writeonly.
+#define VALUE_TYPE int
+layout(set = 0, binding = 0, std430) readonly buffer InputA {
+  uint values[];
+} input_a;
+layout(set = 0, binding = 1, std430) readonly buffer InputB {
+  uint values[];
+} input_b;
+layout(set = 0, binding = 2, std430) buffer Output {
+  uint values[];
+} output_data;
+#elif defined(USE_I16) || defined(USE_U16)
+#define VALUE_TYPE int
+layout(set = 0, binding = 0, std430) readonly buffer InputA {
+  uint16_t values[];
+} input_a;
+layout(set = 0, binding = 1, std430) readonly buffer InputB {
+  uint16_t values[];
+} input_b;
+layout(set = 0, binding = 2, std430) writeonly buffer Output {
+  uint16_t values[];
+} output_data;
+#elif defined(USE_I64) || defined(USE_U64)
+// 64-bit elements ride little-endian uint32 word pairs; dispatch is
+// gated on the device's shaderInt64 feature.
+#ifdef USE_U64
+#define VALUE_TYPE uint64_t
+#else
+#define VALUE_TYPE int64_t
+#endif
+layout(set = 0, binding = 0, std430) readonly buffer InputA {
+  uint values[];
+} input_a;
+layout(set = 0, binding = 1, std430) readonly buffer InputB {
+  uint values[];
+} input_b;
+layout(set = 0, binding = 2, std430) writeonly buffer Output {
+  uint values[];
+} output_data;
+#else
 layout(set = 0, binding = 0, std430) readonly buffer InputA {
   STORAGE_TYPE values[];
 } input_a;
@@ -17,6 +91,7 @@ layout(set = 0, binding = 1, std430) readonly buffer InputB {
 layout(set = 0, binding = 2, std430) writeonly buffer Output {
   STORAGE_TYPE values[];
 } output_data;
+#endif
 
 layout(push_constant) uniform Params {
   uint count;
@@ -77,13 +152,8 @@ uint rhs_index_for(uint index) {
   return result;
 }
 
-// Integer elementwise kernel. The selector matches
-// IntElementwiseOperation in primitives.cpp. Wraparound subtraction,
-// bitwise logic, and shifts are identical for int32 and uint32, so one
-// SPIR-V variant serves both dtypes; `>>` follows the operand
-// signedness (arithmetic for int32, logical for uint32), which is the
-// upstream C++ behavior. The signed fixups compile for uint32 too and
-// are constant-false there, matching upstream's unsigned no-ops.
+#if !defined(USE_I8) && !defined(USE_U8) && !defined(USE_I16) && \
+    !defined(USE_U16) && !defined(USE_I64) && !defined(USE_U64)
 
 // Python-style floor division. The C++ quotient adjusted so the
 // remainder takes the divisor's sign (upstream DivMod integral_op).
@@ -140,10 +210,150 @@ STORAGE_TYPE integer_sign(STORAGE_TYPE a) {
   return STORAGE_TYPE(0);
 }
 
+#endif // word-dtype-only helpers
+
+// Honeykrisp miscompiles shift-then-mask byte extraction with a
+// data-dependent shift amount (receipt 2026-09-02-masked-scatter-m1-fix).
+// Four constant shifts picked by a select chain are the receipt-proven
+// equivalent. A macro, not a helper function: the same receipt keeps
+// per-thread helper calls out of the hot path on this driver.
+#define BYTE_AT(word, lane)                                                  \
+  ((lane) == 0u ? ((word) & 0xFFu)                                           \
+       : (lane) == 1u ? (((word) >> 8u) & 0xFFu)                             \
+       : (lane) == 2u ? (((word) >> 16u) & 0xFFu)                            \
+                      : (((word) >> 24u) & 0xFFu))
+
 void main() {
   uint index = gl_GlobalInvocationID.x;
   uint stride = gl_NumWorkGroups.x * gl_WorkGroupSize.x;
   while (index < params.count) {
+#if defined(USE_I8) || defined(USE_U8)
+    uint aaddr = lhs_index_for(index);
+    uint baddr = rhs_index_for(index);
+    VALUE_TYPE a = VALUE_TYPE(BYTE_AT(
+        input_a.values[aaddr >> 2u], aaddr & 3u));
+    VALUE_TYPE b = VALUE_TYPE(BYTE_AT(
+        input_b.values[baddr >> 2u], baddr & 3u));
+#ifdef USE_I8
+    // Sign-extend the byte into the compute word; the unsigned build
+    // keeps the zero-extended byte.
+    if ((a & VALUE_TYPE(0x80)) != VALUE_TYPE(0)) {
+      a |= VALUE_TYPE(0xFFFFFF00u);
+    }
+    if ((b & VALUE_TYPE(0x80)) != VALUE_TYPE(0)) {
+      b |= VALUE_TYPE(0xFFFFFF00u);
+    }
+#endif
+    VALUE_TYPE value;
+    switch (params.operation) {
+      case 1:
+        value = a & b;
+        break;
+      case 2:
+        value = a | b;
+        break;
+      case 3:
+        value = a ^ b;
+        break;
+      case 4:
+        value = VALUE_TYPE(a << b);
+        break;
+      case 5:
+        value = VALUE_TYPE(a >> b);
+        break;
+      case 6:
+        value = ~a;
+        break;
+      default:
+        return;
+    }
+    uint daddr = params.output_offset + index;
+    uint shift = (daddr & 3u) * 8u;
+    atomicAnd(output_data.values[daddr >> 2u], ~(0xFFu << shift));
+    atomicOr(output_data.values[daddr >> 2u], (uint(value) & 0xFFu) << shift);
+#elif defined(USE_I16) || defined(USE_U16)
+    VALUE_TYPE a = VALUE_TYPE(input_a.values[lhs_index_for(index)]);
+    VALUE_TYPE b = VALUE_TYPE(input_b.values[rhs_index_for(index)]);
+#ifdef USE_I16
+    if (a < VALUE_TYPE(0)) {
+      a |= VALUE_TYPE(0xFFFF0000u);
+    }
+    if (b < VALUE_TYPE(0)) {
+      b |= VALUE_TYPE(0xFFFF0000u);
+    }
+#endif
+    VALUE_TYPE value;
+    switch (params.operation) {
+      case 1:
+        value = a & b;
+        break;
+      case 2:
+        value = a | b;
+        break;
+      case 3:
+        value = a ^ b;
+        break;
+      case 4:
+        value = VALUE_TYPE(a << b);
+        break;
+      case 5:
+        value = VALUE_TYPE(a >> b);
+        break;
+      case 6:
+        value = ~a;
+        break;
+      default:
+        return;
+    }
+    output_data.values[params.output_offset + index] = uint16_t(value);
+#elif defined(USE_I64) || defined(USE_U64)
+    uint aaddr = lhs_index_for(index);
+    uint baddr = rhs_index_for(index);
+#ifdef USE_U64
+    VALUE_TYPE a = packUint2x32(uvec2(
+        input_a.values[2u * aaddr], input_a.values[2u * aaddr + 1u]));
+    VALUE_TYPE b = packUint2x32(uvec2(
+        input_b.values[2u * baddr], input_b.values[2u * baddr + 1u]));
+#else
+    VALUE_TYPE a = packInt2x32(ivec2(
+        int(input_a.values[2u * aaddr]),
+        int(input_a.values[2u * aaddr + 1u])));
+    VALUE_TYPE b = packInt2x32(ivec2(
+        int(input_b.values[2u * baddr]),
+        int(input_b.values[2u * baddr + 1u])));
+#endif
+    VALUE_TYPE value;
+    switch (params.operation) {
+      case 1:
+        value = a & b;
+        break;
+      case 2:
+        value = a | b;
+        break;
+      case 3:
+        value = a ^ b;
+        break;
+      case 4:
+        value = VALUE_TYPE(a << b);
+        break;
+      case 5:
+        value = VALUE_TYPE(a >> b);
+        break;
+      case 6:
+        value = ~a;
+        break;
+      default:
+        return;
+    }
+    uint daddr = params.output_offset + index;
+#ifdef USE_U64
+    uvec2 halves = unpackUint2x32(value);
+#else
+    uvec2 halves = uvec2(unpackInt2x32(value));
+#endif
+    output_data.values[2u * daddr] = halves.x;
+    output_data.values[2u * daddr + 1u] = halves.y;
+#else
     STORAGE_TYPE a = input_a.values[lhs_index_for(index)];
     STORAGE_TYPE b = input_b.values[rhs_index_for(index)];
     STORAGE_TYPE value;
@@ -216,6 +426,7 @@ void main() {
         return;
     }
     output_data.values[params.output_offset + index] = value;
+#endif
     if (params.count - index <= stride) {
       break;
     }

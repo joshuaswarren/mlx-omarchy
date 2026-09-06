@@ -122,6 +122,23 @@ uint16_t bf16_store(float value) {
 #define STORAGE_TYPE uint
 #define LOAD_VALUE(x) (x)
 #define STORE_VALUE(x) (x)
+#elif defined(USE_U8) || defined(USE_I8)
+// The 8-bit ints share the packed word transport: one raw byte lane
+// per element, no canonicalization (unlike bool). Updates decode
+// through the BYTE_AT chain; the winner insert lands through the
+// commuting atomicAnd/atomicOr lane pair.
+#define STORAGE_TYPE uint
+#define LOAD_VALUE(x) (x)
+#define STORE_VALUE(x) (x)
+#elif defined(USE_U16) || defined(USE_I16)
+// The 16-bit ints store raw 16-bit words; only the storage width
+// differs from the u32 variant, so the winner write is a plain store
+// (one winner per target under the rank protocol).
+#extension GL_EXT_shader_16bit_storage : require
+#extension GL_EXT_shader_explicit_arithmetic_types_int16 : require
+#define STORAGE_TYPE uint16_t
+#define LOAD_VALUE(x) (x)
+#define STORE_VALUE(x) (x)
 #else
 #define STORAGE_TYPE float
 #define LOAD_VALUE(x) float(x)
@@ -233,7 +250,8 @@ layout(push_constant) uniform Params {
   uint rhs_gap;
 } params;
 
-#if defined(USE_U32) || defined(USE_BOOL)
+#if defined(USE_U32) || defined(USE_BOOL) || defined(USE_U8) || \
+    defined(USE_I8) || defined(USE_U16) || defined(USE_I16)
 
 uint key_of(uint raw) {
   if (params.aux_offset == 0u) {
@@ -247,12 +265,12 @@ uint key_of(uint raw) {
 STORAGE_TYPE value_of_key(uint key) {
   if (params.aux_offset == 0u) {
     uint bits = (key & 0x80000000u) != 0u ? (key & 0x7FFFFFFFu) : ~key;
-    return bits;
+    return STORAGE_TYPE(bits);
   }
   if (params.aux_offset == 1u) {
-    return key ^ 0x80000000u;
+    return STORAGE_TYPE(key ^ 0x80000000u);
   }
-  return key;
+  return STORAGE_TYPE(key);
 }
 
 #else
@@ -425,7 +443,7 @@ void main() {
           atomicMax(scratch_data.values[target], slot + 1u);
         } else if (op == 1u) {
           if (scratch_data.values[target] == slot + 1u) {
-#ifdef USE_BOOL
+#if defined(USE_BOOL)
             // Winner writes its packed byte: clear the lane, then set
             // the canonical update bit. Commuting atomics, so two
             // winners in one word cannot lose either lane.
@@ -437,6 +455,17 @@ void main() {
             atomicOr(
                 out_data.values[target >> 2u],
                 (ubyte != 0u ? 1u : 0u) << lane);
+#elif defined(USE_U8) || defined(USE_I8)
+            // Winner writes its raw byte lane (int8 keeps the raw
+            // two's-complement byte, no canonicalization): clear the
+            // lane, then set it. Commuting atomics, so two winners in
+            // one word cannot lose either lane.
+            uint ue8 = params.lhs_offset + t;
+            uint ubyte8 =
+                BYTE_AT(upd_data.values[ue8 >> 2u], ue8 & 3u);
+            uint lane8 = (target & 3u) * 8u;
+            atomicAnd(out_data.values[target >> 2u], ~(0xFFu << lane8));
+            atomicOr(out_data.values[target >> 2u], ubyte8 << lane8);
 #else
             out_data.values[target] =
                 upd_data.values[params.lhs_offset + t];

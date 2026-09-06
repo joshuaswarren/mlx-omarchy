@@ -19,6 +19,22 @@ uint16_t bf16_store(float value) {
   return uint16_t((bits + 0x7fffu + ((bits >> 16) & 1u)) >> 16);
 }
 #define STORE_VALUE(f) bf16_store(f)
+#elif defined(USE_U16)
+// 16-bit fill: the raw halfword rides in the low 16 bits of the alpha
+// push-constant slot bit-exactly.
+#extension GL_EXT_shader_16bit_storage : require
+#define STORAGE_TYPE uint16_t
+#define LOAD_VALUE(x) (x)
+#define STORE_VALUE(f) uint16_t(floatBitsToUint(params.alpha) & 0xFFFFu)
+#elif defined(USE_U64)
+// 64-bit fill, dispatched only behind the device's shaderInt64
+// feature. The two little-endian words ride the alpha/beta float
+// push-constant slots bit-exactly: every uint32 is a valid float bit
+// pattern, so no value is unreachable.
+#extension GL_EXT_shader_explicit_arithmetic_types_int64 : require
+#define STORAGE_TYPE uint
+#define LOAD_VALUE(x) (x)
+#define STORE_VALUE(f) (f)
 #elif defined(USE_COMPLEX64)
 // Complex64 fill: one element is a vec2 (re, im). The host packs the
 // scalar's real part into alpha and the imaginary part into beta; a
@@ -59,12 +75,25 @@ layout(push_constant) uniform Params {
   float beta;
 } params;
 
+#ifdef USE_U64
+uint64_t fill_word() {
+  return uint64_t(floatBitsToUint(params.alpha)) |
+      (uint64_t(floatBitsToUint(params.beta)) << 32ul);
+}
+#endif
+
 void main() {
   uint index = gl_GlobalInvocationID.x;
   uint stride = gl_NumWorkGroups.x * gl_WorkGroupSize.x;
   while (index < params.count) {
+#ifdef USE_U64
+    uvec2 halves = unpackUint2x32(fill_word());
+    output_data.values[2u * (params.output_offset + index)] = halves.x;
+    output_data.values[2u * (params.output_offset + index) + 1u] = halves.y;
+#else
     output_data.values[params.output_offset + index] =
         STORE_VALUE(params.alpha);
+#endif
     if (params.count - index <= stride) {
       break;
     }

@@ -6,7 +6,7 @@
 // carries the runtime dtype codes as (source | destination << 16)
 // inside one uniform value:
 //   0 bool  1 uint8  2 int8  3 uint16  4 int16  5 uint32  6 int32
-//   7 uint64  8 int64
+//   7 uint64  8 int64  9 float32  10 float16  11 bfloat16
 //
 // Conversion mirrors the C++ static_cast chain: a source canonicalizes
 // to a (low, high) uint word pair - the low word always carries the
@@ -16,6 +16,15 @@
 // (!= 0 -> 1) and on store (nonzero -> 1). int64/uint64 ride as
 // little-endian word pairs, so no 64-bit arithmetic compiles into the
 // blob; dispatch is gated on the device's shaderInt64 feature anyway.
+//
+// Float sources follow the arm64 static_cast reference: truncation
+// toward zero, NaN -> 0, out-of-range saturation at the 32/64-bit
+// boundary; narrower stores then take the same modular low bits the
+// C++ reference produces on arm64. The bool destination keeps the
+// static_cast<bool> rule (x != 0, so NaN -> 1) through a separate
+// fbool bit computed before the integer truncation. DST_W == 8 blobs
+// canonicalize in int64 arithmetic and therefore require the int64
+// types extension; dispatch gates those legs on shaderInt64.
 //
 // Shape discipline (docs/known-defects.md byte-extraction family): one
 // thread per item in a straight-line while loop, every step inlined -
@@ -30,6 +39,9 @@
 #extension GL_EXT_shader_16bit_storage : require
 #extension GL_EXT_shader_explicit_arithmetic_types_int16 : require
 #endif
+#if DST_W == 8
+#extension GL_EXT_shader_explicit_arithmetic_types_int64 : require
+#endif
 
 #define CODE_BOOL 0u
 #define CODE_U8 1u
@@ -40,6 +52,9 @@
 #define CODE_I32 6u
 #define CODE_U64 7u
 #define CODE_I64 8u
+#define CODE_F32 9u
+#define CODE_F16 10u
+#define CODE_BF16 11u
 
 #define SRC_CODE (params.operation & 0xFFFFu)
 #define DST_CODE (params.operation >> 16u)
@@ -91,6 +106,10 @@ void main() {
     uint addr = params.lhs_offset + index;
     uint lo;
     uint hi;
+    // Bool destination bit. Integer sources derive it from the
+    // canonicalized words; float sources override it with (x != 0)
+    // before the integer truncation erases the NaN distinction.
+    uint fbool;
 #if SRC_W == 1
     // Packed byte at addr: gather-style word load, then the
     // constant-shift select chain from scatter.comp BYTE_AT.
@@ -112,6 +131,7 @@ void main() {
     if (SRC_CODE == CODE_BOOL) {
       lo = (b != 0u) ? 1u : 0u;
     }
+    fbool = ((lo | hi) != 0u) ? 1u : 0u;
 #elif SRC_W == 2
     uint16_t h = in_h.values[addr];
     lo = uint(h);
@@ -120,16 +140,85 @@ void main() {
       lo = lo | 0xFFFF0000u;
       hi = 0xFFFFFFFFu;
     }
+    fbool = ((lo | hi) != 0u) ? 1u : 0u;
+    if (SRC_CODE == CODE_F16 || SRC_CODE == CODE_BF16) {
+      // unpackHalf2x16 decodes the low half of a packed word, so the
+      // raw uint16 rides in the low 16 bits; bfloat16 shifts into the
+      // float32 exponent position. Both are core instructions.
+      float f = (SRC_CODE == CODE_F16)
+          ? unpackHalf2x16(uint(h)).x
+          : uintBitsToFloat(uint(h) << 16u);
+      fbool = (f != 0.0) ? 1u : 0u;
+#if DST_W == 8
+      int64_t t64;
+      if (f != f) {
+        t64 = 0l;
+      } else if (f >= 9223372036854775808.0) {
+        t64 = 9223372036854775807l;
+      } else if (f <= -9223372036854775808.0) {
+        t64 = -9223372036854775807l - 1l;
+      } else {
+        t64 = int64_t(f);
+      }
+      lo = uint(uint64_t(t64) & 0xFFFFFFFFul);
+      hi = uint(uint64_t(t64) >> 32ul);
+#else
+      int t;
+      if (f != f) {
+        t = 0;
+      } else if (f >= 2147483648.0) {
+        t = 2147483647;
+      } else if (f <= -2147483648.0) {
+        t = -2147483647 - 1;
+      } else {
+        t = int(f);
+      }
+      lo = uint(t);
+      hi = (t < 0) ? 0xFFFFFFFFu : 0u;
+#endif
+    }
 #elif SRC_W == 4
     lo = in_w.values[addr];
     hi = (SRC_CODE == CODE_I32 && (lo & 0x80000000u) != 0u) ? 0xFFFFFFFFu : 0u;
+    fbool = ((lo | hi) != 0u) ? 1u : 0u;
+    if (SRC_CODE == CODE_F32) {
+      float f = uintBitsToFloat(lo);
+      fbool = (f != 0.0) ? 1u : 0u;
+#if DST_W == 8
+      int64_t t64;
+      if (f != f) {
+        t64 = 0l;
+      } else if (f >= 9223372036854775808.0) {
+        t64 = 9223372036854775807l;
+      } else if (f <= -9223372036854775808.0) {
+        t64 = -9223372036854775807l - 1l;
+      } else {
+        t64 = int64_t(f);
+      }
+      lo = uint(uint64_t(t64) & 0xFFFFFFFFul);
+      hi = uint(uint64_t(t64) >> 32ul);
+#else
+      int t;
+      if (f != f) {
+        t = 0;
+      } else if (f >= 2147483648.0) {
+        t = 2147483647;
+      } else if (f <= -2147483648.0) {
+        t = -2147483647 - 1;
+      } else {
+        t = int(f);
+      }
+      lo = uint(t);
+      hi = (t < 0) ? 0xFFFFFFFFu : 0u;
+#endif
+    }
 #else
     lo = in_w.values[2u * addr];
     hi = in_w.values[2u * addr + 1u];
+    fbool = ((lo | hi) != 0u) ? 1u : 0u;
 #endif
 #if DST_W == 1
-    uint v = (DST_CODE == CODE_BOOL) ? (((lo | hi) != 0u) ? 1u : 0u)
-                                     : (lo & 0xFFu);
+    uint v = (DST_CODE == CODE_BOOL) ? fbool : (lo & 0xFFu);
     uint daddr = params.output_offset + index;
     uint shift = (daddr & 3u) * 8u;
     atomicAnd(out_w.values[daddr >> 2u], ~(0xFFu << shift));

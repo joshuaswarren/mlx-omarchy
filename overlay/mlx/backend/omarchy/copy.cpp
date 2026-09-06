@@ -226,7 +226,9 @@ int int_width(Dtype dtype) {
 
 // Dtype codes cast_int.comp understands (the same numbering the
 // shader embeds); the pair rides in params.operation as
-// (source | destination << 16).
+// (source | destination << 16). The integer family shares the
+// static_cast-chain semantics; float32/float16/bfloat16 sources carry
+// the arm64 static_cast rules (truncation toward zero, NaN -> 0).
 uint32_t cast_int_code(Dtype dtype) {
   switch (dtype) {
     case bool_:
@@ -247,6 +249,12 @@ uint32_t cast_int_code(Dtype dtype) {
       return 7;
     case int64:
       return 8;
+    case float32:
+      return 9;
+    case float16:
+      return 10;
+    case bfloat16:
+      return 11;
     default:
       return 0xFFFFFFFFu;
   }
@@ -262,9 +270,23 @@ std::optional<omarchy::ComputeKernel> cast_int_kernel(
     Dtype in_dtype,
     Dtype out_dtype,
     const omarchy::CapabilityReport& capabilities) {
+  // Float sources share the integer blobs at their element width:
+  // float32 rides the W4 source side, float16/bfloat16 the W2 side,
+  // so every flat conversion whose destination is in the integer
+  // family routes here. Destinations wider than one word need no
+  // float-specific blob.
   int sw = int_width(in_dtype);
+  if (sw == 0) {
+    if (in_dtype == float32) {
+      sw = 4;
+    } else if (in_dtype == float16 || in_dtype == bfloat16) {
+      sw = 2;
+    } else {
+      return std::nullopt;
+    }
+  }
   int dw = int_width(out_dtype);
-  if (sw == 0 || dw == 0) {
+  if (dw == 0) {
     return std::nullopt;
   }
   if ((sw == 8 || dw == 8) && !capabilities.shader_int64) {
@@ -382,6 +404,69 @@ void copy_gpu_inplace(
           sizeof(uint32_t);
       encoder.fill_buffer(
           buffer_handle(out), word, count * sizeof(uint32_t), start);
+      return;
+    }
+    if (in.dtype() == int16 || in.dtype() == uint16) {
+      if (in.dtype() != out.dtype()) {
+        omarchy::unsupported("non-zero scalar fill dtype", out);
+      }
+      if (!encoder.device().capabilities().storage_buffer_16bit_access ||
+          !encoder.device().capabilities().shader_int16) {
+        omarchy::unsupported("non-zero scalar fill 16-bit capability", out);
+      }
+      uint32_t count = checked_u32(out.data_size(), "scalar fill", out);
+      omarchy::ComputeParams params;
+      params.count = count;
+      params.output_size = count;
+      params.output_offset =
+          compute_item_offset(out, o_offset, "scalar fill", out);
+      if (!omarchy::compute_index_span_fits(params.output_offset, count)) {
+        omarchy::unsupported("scalar fill index span", out);
+      }
+      // The raw halfword rides the alpha slot's low 16 bits.
+      uint16_t half = 0;
+      std::memcpy(
+          &half, in.data<char>() + i_offset * in.itemsize(), sizeof(half));
+      uint32_t word = half;
+      std::memcpy(&params.alpha, &word, sizeof(float));
+      std::array<omarchy::ComputeBinding, 1> bindings{compute_binding(out)};
+      encoder.dispatch_compute(
+          omarchy::ComputeKernel::FillU16,
+          bindings,
+          params,
+          omarchy::compute_dispatch_group_count(count));
+      return;
+    }
+    if (in.dtype() == int64 || in.dtype() == uint64) {
+      if (in.dtype() != out.dtype()) {
+        omarchy::unsupported("non-zero scalar fill dtype", out);
+      }
+      if (!encoder.device().capabilities().shader_int64) {
+        omarchy::unsupported("non-zero scalar fill int64 capability", out);
+      }
+      uint32_t count = checked_u32(out.data_size(), "scalar fill", out);
+      omarchy::ComputeParams params;
+      params.count = count;
+      params.output_size = count;
+      params.output_offset =
+          compute_item_offset(out, o_offset, "scalar fill", out);
+      if (!omarchy::compute_index_span_fits(
+              2ull * params.output_offset, 2ull * count)) {
+        omarchy::unsupported("scalar fill index span", out);
+      }
+      // The two little-endian words ride the float push-constant slots
+      // bit-exactly: every uint32 is a valid float bit pattern.
+      uint32_t words[2] = {0, 0};
+      std::memcpy(
+          words, in.data<char>() + i_offset * in.itemsize(), sizeof(words));
+      std::memcpy(&params.alpha, &words[0], sizeof(float));
+      std::memcpy(&params.beta, &words[1], sizeof(float));
+      std::array<omarchy::ComputeBinding, 1> bindings{compute_binding(out)};
+      encoder.dispatch_compute(
+          omarchy::ComputeKernel::FillU64,
+          bindings,
+          params,
+          omarchy::compute_dispatch_group_count(count));
       return;
     }
     if (in.dtype() != float32 && in.dtype() != float16 &&
