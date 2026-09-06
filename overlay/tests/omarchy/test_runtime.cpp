@@ -550,6 +550,122 @@ TEST_CASE(
   alloc.free(dst);
 }
 
+TEST_CASE("re-recording a drained buffer stamps it pending again") {
+  if (!gpu::is_available()) {
+    skip("no qualifying Vulkan device.");
+    return;
+  }
+  auto& alloc = omarchy::allocator();
+  Stream s = new_stream(Device::gpu);
+  auto& encoder = omarchy::get_command_encoder(s);
+
+  constexpr size_t kBytes = 1 << 16;
+  auto src = alloc.malloc(kBytes);
+  auto dst = alloc.malloc(kBytes);
+  auto* src_buf = static_cast<omarchy::VulkanBuffer*>(src.ptr());
+  auto* dst_buf = static_cast<omarchy::VulkanBuffer*>(dst.ptr());
+
+  // Give the buffer a real, drained completion stamp the way any
+  // earlier submission of the same array does.
+  array src_view(
+      Shape{static_cast<int>(kBytes / sizeof(float))},
+      float32,
+      nullptr,
+      {});
+  src_view.set_data(
+      allocator::Buffer{src_buf},
+      src_view.size(),
+      src_view.strides(),
+      src_view.flags(),
+      0,
+      [](allocator::Buffer) {});
+  encoder.add_temporary(src_view);
+  encoder.copy_buffer(src_buf->buffer, dst_buf->buffer, kBytes);
+  encoder.commit();
+  encoder.synchronize();
+  REQUIRE(src_buf->completion != 0);
+  REQUIRE(src_buf->completion != omarchy::kPendingCompletion);
+
+  // Record the SAME buffer into a NEW open batch. Recording must stamp
+  // it kPendingCompletion even though the old stamp names a drained
+  // generation: this batch has not submitted yet, so a free now must
+  // not recycle the buffer under the old generation's rule while this
+  // open command buffer still references it. Under live commands that
+  // aliasing corrupts the replacement allocation's data.
+  encoder.add_temporary(src_view);
+  CHECK(src_buf->completion == omarchy::kPendingCompletion);
+  encoder.fill_buffer(dst_buf->buffer, 0, 4);
+
+  size_t cache_before = alloc.get_cache_memory();
+  alloc.free(src);
+  CHECK(alloc.get_cache_memory() == cache_before);
+  auto* replacement = static_cast<omarchy::VulkanBuffer*>(
+      alloc.malloc(kBytes).ptr());
+  CHECK(replacement != src_buf);
+
+  // Submit this batch (drain V2), then push one more submission so the
+  // drain runs through V2+1 and release_quarantine recycles the buffer.
+  encoder.commit();
+  encoder.synchronize();
+  encoder.fill_buffer(dst_buf->buffer, 0, 4);
+  encoder.commit();
+  CHECK(src_buf->completion != omarchy::kPendingCompletion);
+  CHECK(src_buf->completion != 0);
+  size_t cache_mid = alloc.get_cache_memory();
+  encoder.synchronize();
+  CHECK(src_buf->completion == 0);
+  CHECK(alloc.get_cache_memory() == cache_mid + kBytes);
+  alloc.free(allocator::Buffer{replacement});
+  alloc.free(dst);
+}
+
+TEST_CASE("dispatch bindings stamp their owners against the open batch") {
+  if (!gpu::is_available()) {
+    skip("no qualifying Vulkan device.");
+    return;
+  }
+  auto& alloc = omarchy::allocator();
+  Stream s = new_stream(Device::gpu);
+  auto& encoder = omarchy::get_command_encoder(s);
+
+  constexpr size_t kBytes = 1 << 16;
+  constexpr uint32_t kFloats = kBytes / sizeof(float);
+  auto src = alloc.malloc(kBytes);
+  auto dst = alloc.malloc(kBytes);
+  auto* src_buf = static_cast<omarchy::VulkanBuffer*>(src.ptr());
+  auto* dst_buf = static_cast<omarchy::VulkanBuffer*>(dst.ptr());
+
+  // A dispatch whose binding is the buffer's only reference: no array
+  // feeds add_temporary here. dispatch_compute must stamp the binding
+  // owner, or a free before submit hands the live VkBuffer handle back
+  // to the cache or the destroyer while the batch is still open.
+  omarchy::ComputeParams params;
+  params.count = kFloats;
+  params.output_size = kFloats;
+  std::array<omarchy::ComputeBinding, 1> bindings{
+      omarchy::ComputeBinding{src_buf->buffer, 0, kBytes, src_buf}};
+  encoder.dispatch_compute(
+      omarchy::ComputeKernel::FillF32,
+      bindings,
+      params,
+      omarchy::compute_dispatch_group_count(kFloats));
+  CHECK(src_buf->completion == omarchy::kPendingCompletion);
+
+  size_t cache_before = alloc.get_cache_memory();
+  alloc.free(src);
+  CHECK(alloc.get_cache_memory() == cache_before);
+
+  // Submit (drain V), then push one more submission so the drain runs
+  // through V+1 and release_quarantine recycles the buffer.
+  encoder.commit();
+  encoder.synchronize();
+  encoder.fill_buffer(dst_buf->buffer, 0, 4);
+  encoder.commit();
+  encoder.synchronize();
+  CHECK(alloc.get_cache_memory() >= cache_before + kBytes);
+  alloc.free(dst);
+}
+
 TEST_CASE("buffer round trip through the Vulkan encoder") {
   if (!gpu::is_available()) {
     skip("no qualifying Vulkan device.");
