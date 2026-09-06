@@ -108,6 +108,41 @@ modes (mxfp4 / nvfp4 / mxfp8):
    their before-control. These rows are batched-fp-qmm territory
    (fix/batched-fp-qmm-v2).
 
+## Integration-review fixes (747efd55)
+
+Read-only integration review of 7b778d29 found two defects; both fixed
+and re-verified in 747efd55:
+
+1. High: the HGS shader read word zero of the bound global-scale
+   buffer, but binding() pins a whole buffer while a valid scalar view
+   (a slice of a wider array) lives at a nonzero storage offset, so
+   global_scale_w silently read the wrong word. Fixed by routing
+   checked_item_offset(*out_global_scale, 1) through params.aux_size -
+   the same scalar-view offset routing the quantize/dequantize
+   global-scale siblings use; the shader now reads
+   values[params.aux_size]. Aligned views compute; unaligned ones
+   refuse by name ("byte offset").
+2. Canonical non-affine mode/group/bits tuples are enforced (nvfp4 =
+   16/4, mxfp4 = 32/4, mxfp8 = 32/8): the scale-byte encoding is
+   mode-fixed, so an off-combo silently misread the stream.
+   Noncanonical combos refuse by mode tag; the group-size and bits
+   tags keep their existing roles.
+
+Re-verification at 747efd55 (targeted scope, no broad sweeps):
+
+- C++ (rebuild .work/aq-build, cases '*fake-quantize*,*qqmm*,
+  qq matmul*'): 3 test cases, 1536/1536 assertions passed. New
+  coverage: an nvfp4 qqmm whose global_scale_w is a nonzero-offset
+  slice view (discriminates the word-zero read: the correction would
+  read 9.0f instead of the scale and miss by the gs ratio), plus
+  named-refusal checks for nvfp4@group32, mxfp8@bits4, and the
+  gathered nvfp4 combo.
+- Wheel: dist/mlx_omarchy-0.32.2.dev202609061312+747efd55
+  sha256 c1c5f6b04d45cfa67d97439daecf416339a9485a956a506c63135ff265b2372b
+  provenance verified: match.
+- Upstream targeted: test_qqmm + test_qqmv + test_gather_qqmm
+  3 passed, 130 subtests passed in 8.59s.
+
 ## Remaining known failures (not this task's scope)
 
 - test_qmm_non_transposed (fp16), test_qmv_wide (mxfp8),
