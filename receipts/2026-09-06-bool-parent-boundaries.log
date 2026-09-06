@@ -1,0 +1,1 @@
+PASS bool->f16/bf16: short, offset, word/workgroup tail, transpose, strided, reversed

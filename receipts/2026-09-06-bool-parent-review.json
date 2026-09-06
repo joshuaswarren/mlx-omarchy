@@ -1,0 +1,36 @@
+{
+  "status": "integrated_and_locally_verified_native_pending",
+  "source_commit": "b04c7952",
+  "gpu_fix_commit": "eff03928",
+  "worker_commit": "3fa2fc06",
+  "wheel": "/home/joshuawarren/.config/superpowers/worktrees/mlx-omarchy/performance-expansion/dist/mlx_omarchy-0.32.2.dev202609062139+b04c795-cp311-cp311-linux_x86_64.whl",
+  "wheel_sha256": "00eee7e0948e93940b3eb854afe67942109134e8619b49d9a62083e21820b499",
+  "parent_checks": {
+    "primitive_cases_passed": 95,
+    "primitive_assertions_passed": 2580612,
+    "fast_ops_cases_passed": 29,
+    "fast_ops_assertions_passed": 57151,
+    "upstream_gradient_log": ".                                                                        [100%]\n1 passed, 22 deselected in 73.87s (0:01:13)\n",
+    "boundary_probe": "import mlx.core as mx\nimport numpy as np\nmx.set_default_device(mx.gpu)\nfor dtype in (mx.float16, mx.bfloat16):\n    for n, offset in ((1,0),(3,1),(7,2),(1025,3)):\n        host = np.arange(n+offset+4) % 3 == 1\n        base = mx.array(host)\n        mx.eval(base)\n        view = base[offset:offset+n]\n        out = view.astype(dtype).astype(mx.float32)\n        mx.eval(out)\n        np.testing.assert_array_equal(np.array(out),host[offset:offset+n].astype(np.float32))\n    base = mx.array((np.arange(30).reshape(5,6)%3)==1)\n    for view in (base.T,base[:,::2],base[::-1]):\n        out=view.astype(dtype).astype(mx.float32)\n        mx.eval(out)\n        np.testing.assert_array_equal(np.array(out),np.array(view).astype(np.float32))\nprint('PASS bool->f16/bf16: short, offset, word/workgroup tail, transpose, strided, reversed')\n",
+    "boundary_result": "PASS bool->f16/bf16: short, offset, word/workgroup tail, transpose, strided, reversed\n",
+    "provenance_receipt": "receipts/2026-09-06-bool-parent-wheel-provenance.json"
+  },
+  "environment": {
+    "device": "lavapipe GPU, not native M1",
+    "DEVICE": "gpu",
+    "LP_NUM_THREADS": 4,
+    "MLX_OMARCHY_HANG_NO_PROGRESS_NS": 10000000000
+  },
+  "packaging": {
+    "before": "pip rejected expected .dev202609061630+eff0392, got .dev202609061631+eff0392",
+    "fix": "Stable prepared setup.py mtime or SOURCE_DATE_EPOCH in UTC; no per-hook wall-clock version",
+    "regression_before_exit": 1,
+    "regression_after_exit": 0,
+    "full_build_after_exit": 0
+  },
+  "remaining": [
+    "Native M1 qualification awaits compiler ownership handback",
+    "Affine QMM optimization and watchdog correction remain with active workers",
+    "No new release uploaded"
+  ]
+}

@@ -1,0 +1,96 @@
+{
+  "skill_commit": "458a7a7",
+  "rule_chezmoi_commit": "8ff5de8",
+  "monitor_script": "/home/joshuawarren/.config/skillshare/skills/orchestrate-omp/scripts/worker_watch.py",
+  "config": "/home/joshuawarren/.omp/agent/sessions/-src-ane-linux-experiments/2026-08-29T22-28-06-964Z_01a04fa3-24b4-72fe-99c0-c9b792f248f7/worker-health.json",
+  "status": {
+    "pid": 3505256,
+    "checked_at": 1788729626.1466331,
+    "agents": {
+      "AffineQmmRecovered": {
+        "finished": false,
+        "pending_tools": 0,
+        "last_progress": 1788729535.199,
+        "offset": 1028352
+      },
+      "SdpaGradientRecovered": {
+        "finished": false,
+        "pending_tools": 1,
+        "last_progress": 1788729575.905,
+        "offset": 719655
+      },
+      "WatchdogRecovered": {
+        "finished": false,
+        "pending_tools": 2,
+        "last_progress": 1788729603.682,
+        "offset": 613168
+      }
+    },
+    "issues": {
+      "AffineQmmRecovered": null,
+      "SdpaGradientRecovered": null,
+      "WatchdogRecovered": null
+    },
+    "sent": {}
+  },
+  "verification": {
+    "regression_tests": "5 passed (unittest exit 0)",
+    "real_stale_transcript": "AffineQmmCopyElimination: pending edit detected after session exit",
+    "real_notification": "herdr acknowledged and owning user pane received self-test",
+    "duplicate_monitor": "exclusive lock rejected second process",
+    "quiet_check": "all three recovered worker issues null; no health alerts sent"
+  },
+  "sync": [
+    ".agents/skills/orchestrate-omp",
+    ".claude/skills/orchestrate-omp",
+    ".codex/skills/orchestrate-omp (canonical symlink)",
+    ".openclaw/skills/orchestrate-omp"
+  ],
+  "thresholds_seconds": {
+    "poll": 60,
+    "pending_tool": 180,
+    "idle": 600,
+    "repeat_alert": 900
+  },
+  "note": "chezmoi add automatically committed/pushed three other existing rule edits together with delegate-dont-do; those edits were not authored by this monitor task.",
+  "terminal_yield_correction": {
+    "commit": "7b609e7",
+    "regression": "failed before, 6 tests passed after",
+    "live_replay": "completed SdpaGradientRecovered yields no alert; canceled AffineQmmCopyElimination still alerts on edit",
+    "live_status": {
+      "pid": 3551185,
+      "checked_at": 1788730498.2576358,
+      "agents": {
+        "AffineQmmRecovered": {
+          "finished": false,
+          "pending_tools": 0,
+          "last_progress": 1788730498.201,
+          "offset": 1176971
+        },
+        "SdpaGradientRecovered": {
+          "finished": true,
+          "pending_tools": 0,
+          "last_progress": 1788730122.215,
+          "offset": 805732
+        },
+        "WatchdogRecovered": {
+          "finished": false,
+          "pending_tools": 0,
+          "last_progress": 1788730442.23,
+          "offset": 861292
+        }
+      },
+      "issues": {
+        "AffineQmmRecovered": null,
+        "SdpaGradientRecovered": null,
+        "WatchdogRecovered": null
+      },
+      "sent": {
+        "SdpaGradientRecovered": {
+          "key": "tool:call_7984119ea9ae4c5b805946bf",
+          "at": 1788730346.1806326
+        }
+      }
+    }
+  }
+}

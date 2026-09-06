@@ -1,0 +1,25 @@
+{
+  "dist": "mlx-omarchy",
+  "verified": "match",
+  "mismatch": null,
+  "files": [
+    {
+      "path": "mlx/core.cpython-311-x86_64-linux-gnu.so",
+      "label": "mlx.core extension",
+      "sha256": "d8bfcf627df57a07a75fed49dd989ae5321323c5008cb768ea46f619409ca442",
+      "record_sha256": "d8bfcf627df57a07a75fed49dd989ae5321323c5008cb768ea46f619409ca442",
+      "match": true
+    },
+    {
+      "path": "mlx/lib/libmlx.so",
+      "label": "mlx/lib/libmlx.so",
+      "sha256": "b88c5b9dd6c05af0c46b3b3de496286e9c35571c51c54709616432dacdf9f440",
+      "record_sha256": "b88c5b9dd6c05af0c46b3b3de496286e9c35571c51c54709616432dacdf9f440",
+      "match": true
+    }
+  ],
+  "dist_version": "0.32.2.dev202609062139+b04c795",
+  "mx_version": "0.32.2.dev202609062139+b04c795",
+  "version_match": true,
+  "expected_wheel": "/home/joshuawarren/.config/superpowers/worktrees/mlx-omarchy/performance-expansion/dist/mlx_omarchy-0.32.2.dev202609062139+b04c795-cp311-cp311-linux_x86_64.whl"
+}
