@@ -904,10 +904,6 @@ TEST_CASE("scaled_dot_product_attention causal offset keeps kL below qL") {
   auto got = flat(out, stream);
   auto want = host_sdpa(
       q_data, k_data, v_data, B, H, KV, qL, kL, D, scale, true);
-  // Rows fully masked under the negative offset are uniform in both the
-  // backend (constant additive floor) and this host reference; upstream
-  // leaves them out of the comparison, so check the valid rows only -
-  // across every batch and head, not just the first.
   const int valid_from = qL - kL; // rows 0..valid_from-1 fully masked
   std::vector<double> want_valid;
   std::vector<float> got_valid;
@@ -923,8 +919,6 @@ TEST_CASE("scaled_dot_product_attention causal offset keeps kL below qL") {
     }
   }
   require_close(got_valid, want_valid, 1e-5, "sdpa causal offset f32");
-  // The leading rows stay defined in every batch and head: the additive
-  // floor cannot NaN.
   for (int b = 0; b < B; ++b) {
     for (int h = 0; h < H; ++h) {
       for (int qi = 0; qi < valid_from; ++qi) {
@@ -946,8 +940,6 @@ TEST_CASE("scaled_dot_product_attention folds sinks into the denominator") {
     return;
   }
   Stream stream = gpu_stream();
-  // f32 MHA with two batches: the sink index must fold the batch-head
-  // flattening back to the per-query-head sink row.
   {
     const int B = 2, H = 4, KV = 4, qL = 3, kL = 7, D = 8;
     const float scale = 1.0f / std::sqrt(float(D));
@@ -979,7 +971,6 @@ TEST_CASE("scaled_dot_product_attention folds sinks into the denominator") {
         1e-5,
         "sdpa sinks f32");
   }
-  // f16 GQA with a long key sequence.
   {
     const int B = 1, H = 4, KV = 2, qL = 1, kL = 96, D = 16;
     const float scale = 1.0f / std::sqrt(float(D));
@@ -1073,10 +1064,6 @@ TEST_CASE("scaled_dot_product_attention causal matches on sliced cache K/V") {
   array q16 = astype(q, float16, stream);
   auto out = fast::scaled_dot_product_attention(
       q16, k, v, scale, "causal", {}, std::nullopt, false, stream);
-  // The sliced K/V keep the wide cache's strides, so the host reference
-  // must read them with the cache stride (cache_len), not the sliced
-  // length: index the wide layout compactly into cache-length rows
-  // first.
   auto compact = [&](const std::vector<float>& wide) {
     std::vector<float> rows;
     rows.reserve(size_t(B * KV * kL * D));
@@ -1110,6 +1097,27 @@ TEST_CASE("scaled_dot_product_attention causal matches on sliced cache K/V") {
       "sdpa sliced cache causal");
 }
 
+TEST_CASE("scaled_dot_product_attention respects strided sink storage") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  array q = zeros({2, 4, 2, 8}, float32, stream);
+  array k = zeros({2, 2, 3, 8}, float32, stream);
+  array v = ones({2, 2, 3, 8}, float32, stream);
+  array storage = array({99.0f, 0.0f, 99.0f, 1.0f, 99.0f, 2.0f, 99.0f, 3.0f});
+  array sinks = slice(storage, {1}, {8}, {2}, stream);
+  auto out = fast::scaled_dot_product_attention(
+      q, k, v, 1.0f, "", {}, sinks, false, stream);
+  std::vector<double> want;
+  for (int batch = 0; batch < 2; ++batch) {
+    for (int head = 0; head < 4; ++head) {
+      want.insert(want.end(), 16, 3.0 / (3.0 + std::exp(double(head))));
+    }
+  }
+  require_close(flat(out, stream), want, 1e-5, "sdpa strided sinks");
+}
+
 TEST_CASE("scaled_dot_product_attention floors a fully masked bool mask") {
   if (!compute_available()) {
     return;
@@ -1123,12 +1131,6 @@ TEST_CASE("scaled_dot_product_attention floors a fully masked bool mask") {
   array q = array(q_data.begin(), Shape{B, H, qL, D}, float32);
   array k = array(k_data.begin(), Shape{B, H, kL, D}, float32);
   array v = array(v_data.begin(), Shape{B, H, kL, D}, float32);
-  // A scalar false bool mask broadcasts to every position: fast.cpp
-  // converts it to an additive mask, so the floor value decides the
-  // outcome. At -infinity a fully masked row softmaxes to inf - inf
-  // NaN; at the dtype's finite minimum the row is constant and softmax
-  // yields the uniform distribution - the output equals the per-head
-  // value mean (pinned test_sdpa_fully_masked asserts no NaN).
   array mask = array(false);
   auto out = fast::scaled_dot_product_attention(
       q, k, v, scale, "", mask, std::nullopt, false, stream);

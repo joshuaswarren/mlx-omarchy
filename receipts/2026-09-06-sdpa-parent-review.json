@@ -1,0 +1,31 @@
+{
+  "status": "local_cpp_verified_native_pending",
+  "integrated_commits": [
+    "aaaaba29",
+    "b3fdf225",
+    "1dc9eaaa"
+  ],
+  "parent_correction": "Materialize non-row-contiguous sinks once in shared dispatch_softmax via existing ensure_dense; no extra allocation for dense sinks",
+  "before_probe": {
+    "code": "import mlx.core as mx\nimport numpy as np\nmx.set_default_device(mx.gpu)\nq=mx.zeros((2,4,2,8)); k=mx.zeros((2,2,3,8)); v=mx.ones((2,2,3,8))\np=mx.array([0.,99.,1.,99.,2.,99.,3.,99.]); sinks=p[::2]\nmx.eval(q,k,v,p,sinks)\na=mx.fast.scaled_dot_product_attention(q,k,v,scale=1.,sinks=sinks)\nmx.eval(a)\nw=3/(3+np.exp(np.arange(4,dtype=np.float32)))\ng=np.array(a)[:, :, 0, 0]\nprint('actual',g.tolist(), 'expected', w.tolist(),flush=True)\nnp.testing.assert_allclose(g,np.broadcast_to(w,g.shape),rtol=1e-5,atol=1e-6)\n",
+    "exit_code": 1,
+    "stdout": "actual [[0.75, 0.0, 0.5246331691741943, 0.0], [0.75, 0.0, 0.5246331691741943, 0.0]] expected [0.75, 0.5246331095695496, 0.28876543045043945, 0.12995149195194244]\n",
+    "stderr": "Traceback (most recent call last):\n  File \"<string>\", line 12, in <module>\n  File \"/home/joshuawarren/.config/superpowers/worktrees/mlx-omarchy/sdpa-final-qual/.work/venv-py/lib/python3.11/site-packages/numpy/testing/_private/utils.py\", line 1768, in assert_allclose\n    assert_array_compare(compare, actual, desired, err_msg=str(err_msg),\n  File \"/home/joshuawarren/.config/superpowers/worktrees/mlx-omarchy/sdpa-final-qual/.work/venv-py/lib/python3.11/site-packages/numpy/testing/_private/utils.py\", line 983, in assert_array_compare\n    raise AssertionError(msg)\nAssertionError: \nNot equal to tolerance rtol=1e-05, atol=1e-06\n\nMismatched elements: 6 / 8 (75%)\nFirst 5 mismatches are at indices:\n [0, 1]: 0.0 (ACTUAL), 0.5246331095695496 (DESIRED)\n [0, 2]: 0.5246331691741943 (ACTUAL), 0.28876543045043945 (DESIRED)\n [0, 3]: 0.0 (ACTUAL), 0.12995149195194244 (DESIRED)\n [1, 1]: 0.0 (ACTUAL), 0.5246331095695496 (DESIRED)\n [1, 2]: 0.5246331691741943 (ACTUAL), 0.28876543045043945 (DESIRED)\nMax absolute difference among violations: 0.5246331\nMax relative difference among violations: 1.\n ACTUAL: array([[0.75    , 0.      , 0.524633, 0.      ],\n       [0.75    , 0.      , 0.524633, 0.      ]], dtype=float32)\n DESIRED: array([[0.75    , 0.524633, 0.288765, 0.129951],\n       [0.75    , 0.524633, 0.288765, 0.129951]], dtype=float32)\n",
+    "environment": "worker wheel71e0716, lavapipe, LP_NUM_THREADS4, explicit10s watchdog"
+  },
+  "after_check": {
+    "command": "MLX_OMARCHY_ALLOW_NON_APPLE=1 LP_NUM_THREADS=4 MLX_OMARCHY_HANG_NO_PROGRESS_NS=10000000000 .work/verify-build/tests/omarchy/omarchy_fast_ops_tests",
+    "log": "receipts/2026-09-06-sdpa-parent-tests.log",
+    "cases_passed": 29,
+    "assertions_passed": 57151,
+    "failures": 0,
+    "regression": "scaled_dot_product_attention respects strided sink storage: offset1 stride2; two batches, four heads, grouped-query attention; analytic output3/(3+exp(head))"
+  },
+  "remaining": [
+    "Native M1 qualification deferred to compiler ownership",
+    "Gradient dtype-copy refusal assigned SdpaGradientCopyClosure",
+    "Watchdog candidate review assigned WatchdogCandidateFinalReview"
+  ],
+  "hardware_actions": false,
+  "cleanup": "Removed46 new inline narrative comment lines; rebuilt and reran full fastops target after cleanup, exit0"
+}
