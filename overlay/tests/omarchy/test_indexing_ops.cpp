@@ -616,7 +616,7 @@ TEST_CASE("triple-index float scatter reductions and complex scatter add") {
       {complex64_t{1, 1}, complex64_t{2, 2}, complex64_t{3, 3}},
       {3},
       complex64);
-  array complex_indices = array({1, 1}, {2}, int32);
+  array complex_indices = array({-2, -2}, {2}, int32);
   array complex_updates = array(
       {complex64_t{4, 5}, complex64_t{6, 7}},
       {2, 1},
@@ -657,6 +657,38 @@ TEST_CASE("general scatter packs four broadcast index arrays") {
   }
   check_floats(
       scatter(src, indices, updates, {0, 1, 2, 3}, stream), expected, stream);
+}
+
+TEST_CASE("general scatter wraps signed negative indices and skips out of range") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  array src = zeros({2, 2, 2, 2}, float32, stream);
+  array updates = array({5.0f, 6.0f, 7.0f}, {3, 1, 1, 1, 1}, float32);
+  std::vector<float> expected(16, 0.0f);
+  expected.front() = 7.0f;
+  expected.back() = 5.0f;
+
+  std::vector<array> indices_i32{
+      array({-1, -3, 0}, {3}, int32),
+      array({-1, 0, 0}, {3}, int32),
+      array({-1, 0, 0}, {3}, int32),
+      array({-1, 0, 0}, {3}, int32)};
+  check_floats(
+      scatter(src, indices_i32, updates, {0, 1, 2, 3}, stream),
+      expected,
+      stream);
+
+  std::vector<array> indices_i64{
+      array({int64_t(-1), int64_t(-3), int64_t(0)}, {3}, int64),
+      array({int64_t(-1), int64_t(0), int64_t(0)}, {3}, int64),
+      array({int64_t(-1), int64_t(0), int64_t(0)}, {3}, int64),
+      array({int64_t(-1), int64_t(0), int64_t(0)}, {3}, int64)};
+  check_floats(
+      scatter(src, indices_i64, updates, {0, 1, 2, 3}, stream),
+      expected,
+      stream);
 }
 
 // ---------------------------------------------------------------------------
@@ -859,7 +891,8 @@ TEST_CASE("scatter_add_axis accumulates both complex components") {
   Stream stream = gpu_stream();
   array src = array(
       {complex64_t{1, 1}, complex64_t{2, 2}}, {2}, complex64);
-  array indices = array({0, 0}, {2}, int32);
+  array indices =
+      array({int64_t(-2), int64_t(-2)}, {2}, int64);
   array updates = array(
       {complex64_t{3, 4}, complex64_t{5, 6}}, {2}, complex64);
   check_complex(

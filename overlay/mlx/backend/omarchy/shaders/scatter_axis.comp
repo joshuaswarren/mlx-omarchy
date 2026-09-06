@@ -191,9 +191,7 @@ void main() {
         indices_data.values[params.rhs_offset + word_slot]);
     uint index = params.reduce_size;
     if (params.aux_offset == 0u) {
-      if (word < 0x80000000u) {
-        index = word;
-      }
+      index = word < 0x80000000u ? word : params.reduce_size + word;
     } else if (params.aux_offset == 1u) {
       index = word;
     } else {
@@ -201,6 +199,8 @@ void main() {
           uint(indices_data.values[params.rhs_offset + word_slot + 1u]);
       if (high == 0u) {
         index = word;
+      } else if (high == 0xFFFFFFFFu) {
+        index = params.reduce_size + word;
       }
     }
     if (index < params.reduce_size) {
