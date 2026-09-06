@@ -501,29 +501,6 @@ enum class ComputeKernel : uint16_t {
   GatherQmmNbFpF32,
   GatherQmmNbFpF16,
   GatherQmmNbFpBF16,
-  // DecodeGemvVariants: qmm_vec.comp with the MLX_OMARCHY_QMM_VEC_VARIANT
-  // defines (lowpress / wordpack / ksplit, tree and subgroup reduction).
-  // Appended after GatherQmmNb* so older indices stay stable for the
-  // GPU-profile NDJSON stream; selected only by the env-gated affine
-  // m==1 dispatch (primitives.cpp), never by default.
-  QmmVecLowpressF32,
-  QmmVecLowpressF16,
-  QmmVecLowpressBF16,
-  QmmVecLowpressSubgroupF32,
-  QmmVecLowpressSubgroupF16,
-  QmmVecLowpressSubgroupBF16,
-  QmmVecWordpackF32,
-  QmmVecWordpackF16,
-  QmmVecWordpackBF16,
-  QmmVecWordpackSubgroupF32,
-  QmmVecWordpackSubgroupF16,
-  QmmVecWordpackSubgroupBF16,
-  QmmVecKsplitF32,
-  QmmVecKsplitF16,
-  QmmVecKsplitBF16,
-  QmmVecKsplitSubgroupF32,
-  QmmVecKsplitSubgroupF16,
-  QmmVecKsplitSubgroupBF16,
   Count,
 };
 
