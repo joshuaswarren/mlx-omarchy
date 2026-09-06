@@ -1058,7 +1058,17 @@ TEST_CASE("gather qmm gathers experts with scales and biases") {
         "mxfp4",
         false,
         stream));
-    CHECK(mode_error.find("GatherQMM mode") != std::string::npos);
+    // mxfp4 gather computes now: zero codes decode to 0.0 under any e8m0
+    // scale, so the gathered product is all zeros.
+    REQUIRE(mode_error.empty());
+    array fp_out = gather_qmm(
+        x, w_words, scales8, std::nullopt, lhs0, rhs, true, std::nullopt,
+        std::nullopt, "mxfp4", false, stream);
+    std::vector<float> fp_values = readback_f32(stream, fp_out);
+    REQUIRE_EQ(fp_values.size(), static_cast<size_t>(2 * 8));
+    for (float v : fp_values) {
+      CHECK(v == 0.0f);
+    }
 
     // Non-transposed weights are a value path now: w reads as (k, n)
     // with k == 64, groups along n. Codes are zero and every
@@ -1246,7 +1256,7 @@ TEST_CASE("gather qqmm dequants with scales only") {
     std::string mode_error = evaluation_error(gather_qqmm(
         x, w_words, scales, idx, idx, 64, 4, "mxfp4", std::nullopt,
         std::nullopt, false, stream));
-    CHECK(mode_error.find("GatherQQMM mode") != std::string::npos);
+    CHECK(mode_error.find("GatherQQMM x quantization") != std::string::npos);
 
     std::string weight_error = evaluation_error(gather_qqmm(
         x, w_float, scales, idx, idx, 64, 4, "affine", std::nullopt,
