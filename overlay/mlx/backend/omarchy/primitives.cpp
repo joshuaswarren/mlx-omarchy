@@ -7318,7 +7318,7 @@ void Select::eval_gpu(const std::vector<array>& inputs, array& out) {
         omarchy::ComputeKernel::LogicalOrBool,
         material_bindings,
         material_params,
-        omarchy::compute_dispatch_group_count(material_words));
+        omarchy::compute_dispatch_group_count(material_count));
     encoder.add_temporary(dense);
     return dense;
   };
