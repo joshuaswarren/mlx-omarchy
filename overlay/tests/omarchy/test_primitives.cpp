@@ -6231,3 +6231,44 @@ TEST_CASE("float Remainder, Power, Sign, Abs, and DivMod match host references")
   array bf(hv.begin(), Shape{2}, bfloat16);
   check_values(astype(abs(bf, stream), float32, stream), {1.5f, 2.0f}, stream, 1e-6);
 }
+
+TEST_CASE("int8 comparisons read one byte per element") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  // A comparison dispatched to a wider kernel reads past the int8
+  // buffer into recycled pages; isolated probes on fresh zero pages
+  // passed while in-context gguf and scatter compares failed. Warm the
+  // allocator with non-zero float words first so a wrong-width read
+  // cannot pass by luck.
+  {
+    array warm = full({256}, 1.5f, float32, stream);
+    warm.eval();
+    omarchy::get_command_encoder(stream).synchronize();
+  }
+  std::vector<int8_t> av = {-128, -1, 0, 1, 2, 3, 100, 127, 5, -5, 7, -7, 9, 11, 13, 127};
+  std::vector<int8_t> bv = av;
+  bv[3] = 2;
+  bv[13] = -11;
+  array a(av.begin(), Shape{16}, int8);
+  array b(bv.begin(), Shape{16}, int8);
+  std::vector<uint8_t> expected_eq(16, 1);
+  expected_eq[3] = 0;
+  expected_eq[13] = 0;
+  array eq = equal(a, b, stream);
+  eq.eval();
+  omarchy::get_command_encoder(stream).synchronize();
+  for (int i = 0; i < 16; ++i) {
+    INFO("index ", i);
+    CHECK_EQ(static_cast<int>(eq.data<bool>()[i]), static_cast<int>(expected_eq[i]));
+  }
+  array lt = less(a, b, stream);
+  lt.eval();
+  omarchy::get_command_encoder(stream).synchronize();
+  for (int i = 0; i < 16; ++i) {
+    INFO("index ", i);
+    CHECK_EQ(static_cast<int>(lt.data<bool>()[i]), static_cast<int>(av[i] < bv[i]));
+  }
+  CHECK(all(equal(a, a, stream), stream).item<bool>());
+}
