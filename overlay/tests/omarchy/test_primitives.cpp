@@ -7319,6 +7319,42 @@ TEST_CASE("float Remainder, Power, Sign, Abs, and DivMod match host references")
   check_values(astype(abs(bf, stream), float32, stream), {1.5f, 2.0f}, stream, 1e-6);
 }
 
+TEST_CASE("Power keeps the host libm zero-base and integral contract") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+
+  // The Power vjp forms a^(b-1): d/dx (x-y)^x at x = 1, y = 1 is
+  // b * a^(b-1) = 1 * 0^0, so the whole gradient depends on pow
+  // delivering the IEEE 0^0 = 1 the host libm computes. Raw GLSL pow
+  // maps 0^0 to 0 on this backend and the gradient collapsed to 0.
+  array one(1.0f, float32);
+  auto zero_fun = [&](const std::vector<array>& inputs) {
+    return power(
+        subtract(inputs[0], inputs[1], stream), inputs[0], stream);
+  };
+  auto [zero_value, zero_grads] =
+      value_and_grad(zero_fun, std::vector<int>{0})({one, one});
+  zero_grads.at(0).eval();
+  omarchy::get_command_encoder(stream).synchronize();
+  CHECK_EQ(zero_grads.at(0).data<float>()[0], 1.0f);
+
+  // Integral exponents are exact wherever the result is exactly
+  // representable: raw GLSL pow returned 3.0000002 for 3^1 and
+  // 124.99998 for 5^3, errors the vjp multiplies straight into every
+  // integer-power gradient.
+  std::vector<float> pv = {3.0f, 5.0f, 2.0f, 7.5f, 1.0f, 0.0f};
+  std::vector<float> qv = {1.0f, 3.0f, 11.0f, 2.0f, -4.0f, 0.0f};
+  array p(pv.begin(), Shape{6}, float32);
+  array q(qv.begin(), Shape{6}, float32);
+  check_values(
+      power(p, q, stream),
+      {3.0f, 125.0f, 2048.0f, 56.25f, 1.0f, 1.0f},
+      stream,
+      0.0);
+}
+
 TEST_CASE("int8 comparisons read one byte per element") {
   if (!compute_available()) {
     return;

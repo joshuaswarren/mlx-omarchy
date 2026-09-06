@@ -704,3 +704,112 @@ TEST_CASE("complex maximum orders lexicographically") {
   auto got = read_complex(maximum(a, b, stream), stream);
   check_exact(got, {{2, -100}, {1, 6}, {0, 0}, {1, 2}});
 }
+
+namespace {
+
+// Checks one complex unary against a host double-precision reference
+// evaluated on the float32-quantized input, the same comparison the
+// sin/cos cases above use.
+void check_unary_vs_host(
+    const char* label,
+    array out,
+    const Stream& stream,
+    cdouble (*fn)(cdouble),
+    const std::vector<cdouble>& vals) {
+  auto got = read_complex(out, stream);
+  for (size_t i = 0; i < vals.size(); ++i) {
+    cdouble want = fn(cdouble(float(vals[i].real()), float(vals[i].imag())));
+    INFO(label, " index ", i, " got (", got[i].real(), ", ", got[i].imag(),
+         ") want (", want.real(), ", ", want.imag(), ")");
+    CHECK(got[i].real() == doctest::Approx(want.real()).epsilon(1e-5));
+    CHECK(got[i].imag() == doctest::Approx(want.imag()).epsilon(1e-5));
+  }
+}
+
+cdouble host_sinh(cdouble z) {
+  return std::sinh(z);
+}
+cdouble host_cosh(cdouble z) {
+  return std::cosh(z);
+}
+cdouble host_tan(cdouble z) {
+  return std::tan(z);
+}
+cdouble host_tanh(cdouble z) {
+  return std::tanh(z);
+}
+cdouble host_log1p(cdouble z) {
+  // The upstream simd::log1p complex reference: atan2 argument and a
+  // small-|z| magnitude branch that keeps log1p(r) exact.
+  double x = float(z.real());
+  double y = float(z.imag());
+  double theta = std::atan2(y, x + 1.0);
+  if (std::abs(z) < 0.5) {
+    double r = x * (2.0 + x) + y * y;
+    if (r == 0.0) {
+      return {0.0, theta};
+    }
+    return {0.5 * std::log1p(r), theta};
+  }
+  return {std::log(std::hypot(x + 1.0, y)), theta};
+}
+
+} // namespace
+
+TEST_CASE("complex sinh/cosh/tan/tanh/log1p match host references") {
+  if (!compute_available()) {
+    return;
+  }
+  auto stream = gpu_stream();
+  // {0, 0} pins zero handling, {-0.25, 0.1} exercises the log1p
+  // small-magnitude branch, and the rest cross quadrants at moderate
+  // magnitude.
+  std::vector<cdouble> vals{
+      {0, 0}, {0.5, 0.25}, {-0.25, 0.1}, {1, -1}, {0, 1}, {2, -1}};
+  std::vector<complex64_t> host(vals.size());
+  for (size_t i = 0; i < vals.size(); ++i) {
+    host[i] = complex64_t(float(vals[i].real()), float(vals[i].imag()));
+  }
+  array z(host.begin(), Shape{6}, complex64);
+
+  check_unary_vs_host("sinh", sinh(z, stream), stream, host_sinh, vals);
+  check_unary_vs_host("cosh", cosh(z, stream), stream, host_cosh, vals);
+  check_unary_vs_host("tan", tan(z, stream), stream, host_tan, vals);
+  check_unary_vs_host("tanh", tanh(z, stream), stream, host_tanh, vals);
+  check_unary_vs_host("log1p", log1p(z, stream), stream, host_log1p, vals);
+
+  // x = -1 maps to a -inf magnitude with a zero argument, the
+  // atan2(0, 0) = 0 convention the logaddexp case pins too.
+  array neg1({complex64_t{-1.0f, 0.0f}}, {1});
+  auto l1 = read_complex(log1p(neg1, stream), stream);
+  CHECK(std::isinf(l1[0].real()));
+  CHECK(l1[0].real() < 0.0);
+  CHECK_EQ(l1[0].imag(), 0.0);
+}
+
+TEST_CASE("complex sign maps zero to itself and z to z/abs(z)") {
+  if (!compute_available()) {
+    return;
+  }
+  auto stream = gpu_stream();
+  std::vector<cdouble> vals{
+      {0, 0}, {0.5, -0.25}, {-1, 0}, {0, 0.75}, {-3, 4}, {2, 2}};
+  std::vector<complex64_t> host(vals.size());
+  for (size_t i = 0; i < vals.size(); ++i) {
+    host[i] = complex64_t(float(vals[i].real()), float(vals[i].imag()));
+  }
+  array z(host.begin(), Shape{6}, complex64);
+  auto got = read_complex(sign(z, stream), stream);
+  // The zero element maps to itself; everything else to z/|z| with
+  // unit modulus.
+  CHECK_EQ(got[0].real(), 0.0);
+  CHECK_EQ(got[0].imag(), 0.0);
+  for (size_t i = 1; i < vals.size(); ++i) {
+    cdouble want = cdouble(float(vals[i].real()), float(vals[i].imag())) /
+        std::abs(cdouble(float(vals[i].real()), float(vals[i].imag())));
+    INFO("sign index ", i, " got (", got[i].real(), ", ", got[i].imag(),
+         ") want (", want.real(), ", ", want.imag(), ")");
+    CHECK(got[i].real() == doctest::Approx(want.real()).epsilon(1e-6));
+    CHECK(got[i].imag() == doctest::Approx(want.imag()).epsilon(1e-6));
+  }
+}

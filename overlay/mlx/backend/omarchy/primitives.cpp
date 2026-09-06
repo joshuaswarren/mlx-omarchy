@@ -2789,6 +2789,12 @@ enum ComplexOperation : uint32_t {
   ComplexSin,
   ComplexCos,
   ComplexMaximum,
+  ComplexSinh,
+  ComplexCosh,
+  ComplexTan,
+  ComplexTanh,
+  ComplexLog1p,
+  ComplexSign,
 };
 
 // The params fill and dispatch behind the complex64 elementwise
@@ -3900,7 +3906,15 @@ void Cos::eval_gpu(const std::vector<array>& inputs, array& out) {
   dispatch_elementwise(
       name(), CosOperation, inputs, out, out.primitive().stream());
 }
-OMARCHY_UNARY(Cosh, CoshOperation)
+void Cosh::eval_gpu(const std::vector<array>& inputs, array& out) {
+  if (out.dtype() == complex64) {
+    dispatch_complex(
+        name(), ComplexCosh, inputs, out, out.primitive().stream());
+    return;
+  }
+  dispatch_elementwise(
+      name(), CoshOperation, inputs, out, out.primitive().stream());
+}
 void Divide::eval_gpu(const std::vector<array>& inputs, array& out) {
   if (out.dtype() == complex64) {
     dispatch_complex(
@@ -5707,7 +5721,15 @@ void Log::eval_gpu(const std::vector<array>& inputs, array& out) {
   }
   dispatch_elementwise(name(), operation, inputs, out, stream());
 }
-OMARCHY_UNARY(Log1p, Log1pOperation)
+void Log1p::eval_gpu(const std::vector<array>& inputs, array& out) {
+  if (out.dtype() == complex64) {
+    dispatch_complex(
+        name(), ComplexLog1p, inputs, out, out.primitive().stream());
+    return;
+  }
+  dispatch_elementwise(
+      name(), Log1pOperation, inputs, out, out.primitive().stream());
+}
 void LogicalAnd::eval_gpu(const std::vector<array>& inputs, array& out) {
   dispatch_logical(name(), LogicalAndOperation, inputs, out);
 }
@@ -7932,10 +7954,16 @@ void Select::eval_gpu(const std::vector<array>& inputs, array& out) {
 
 OMARCHY_UNARY(Sigmoid, SigmoidOperation)
 // Sign keeps the upstream three-way rule (-1, 0, 1 by comparison with
-// zero, NaN mapping to 0) for float dtypes, and the integer rule
+// zero, NaN mapping to 0) for float dtypes, the complex64 rule z/|z|
+// with the zero element mapping to itself, and the integer rule
 // (unsigned 0/1) through the integer kernel. Everything else keeps the
 // named float-dtype rejection from dispatch_elementwise.
 void Sign::eval_gpu(const std::vector<array>& inputs, array& out) {
+  if (out.dtype() == complex64) {
+    dispatch_complex(
+        name(), ComplexSign, inputs, out, out.primitive().stream());
+    return;
+  }
   if (inputs.at(0).dtype() == bool_ && out.dtype() == bool_) {
     // Upstream sign on bool is x != 0, which is the value itself for
     // the 0/1 byte lanes.
@@ -7964,7 +7992,15 @@ void Sin::eval_gpu(const std::vector<array>& inputs, array& out) {
   dispatch_elementwise(
       name(), SinOperation, inputs, out, out.primitive().stream());
 }
-OMARCHY_UNARY(Sinh, SinhOperation)
+void Sinh::eval_gpu(const std::vector<array>& inputs, array& out) {
+  if (out.dtype() == complex64) {
+    dispatch_complex(
+        name(), ComplexSinh, inputs, out, out.primitive().stream());
+    return;
+  }
+  dispatch_elementwise(
+      name(), SinhOperation, inputs, out, out.primitive().stream());
+}
 void Softmax::eval_gpu(const std::vector<array>& inputs, array& out) {
   dispatch_softmax(name(), inputs.at(0), out, stream());
 }
@@ -8262,8 +8298,24 @@ void SVD::eval_gpu(
         s);
   }
 }
-OMARCHY_UNARY(Tan, TanOperation)
-OMARCHY_UNARY(Tanh, TanhOperation)
+void Tan::eval_gpu(const std::vector<array>& inputs, array& out) {
+  if (out.dtype() == complex64) {
+    dispatch_complex(
+        name(), ComplexTan, inputs, out, out.primitive().stream());
+    return;
+  }
+  dispatch_elementwise(
+      name(), TanOperation, inputs, out, out.primitive().stream());
+}
+void Tanh::eval_gpu(const std::vector<array>& inputs, array& out) {
+  if (out.dtype() == complex64) {
+    dispatch_complex(
+        name(), ComplexTanh, inputs, out, out.primitive().stream());
+    return;
+  }
+  dispatch_elementwise(
+      name(), TanhOperation, inputs, out, out.primitive().stream());
+}
 void Eig::eval_gpu(
     const std::vector<array>& inputs,
     std::vector<array>& outputs) {

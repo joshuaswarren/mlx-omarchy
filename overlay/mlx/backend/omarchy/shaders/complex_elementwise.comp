@@ -5,7 +5,11 @@
 // offset in the params is an item offset. Operation codes match the
 // ComplexOperation enum in ../primitives.cpp: 0 conjugate, 1 add,
 // 2 subtract, 3 multiply, 4 divide, 5 negate, 6 logaddexp, 7 power,
-// 8 exp, 9 sin, 10 cos, 11 maximum. Division multiplies by the
+// 8 exp, 9 sin, 10 cos, 11 maximum, 12 sinh, 13 cosh, 14 tan,
+// 15 tanh, 16 log1p, 17 sign. Sinh/cosh/tan/tanh mirror the glibc
+// formulas the CPU backend reaches through std::complex, log1p the
+// upstream simd::log1p complex branch, and sign the upstream
+// z/|z| rule with the zero element mapping to itself. Division multiplies by the
 // conjugate over the squared magnitude; at float32 with test
 // magnitudes near 1 the naive form and Smith's algorithm agree to a
 // few ulps, and a zero denominator gives inf/NaN exactly like the
@@ -123,6 +127,17 @@ float precise_div(float a, float b) {
   precise float r = (a - p) - err;
   precise float correction = r * (1.0 / b);
   return q + correction;
+}
+
+// Kahan log1p: log(1+v) alone cancels for small v; the rescaled form
+// log(u) * v/(u-1) is exact at v = 0 and keeps full precision
+// elsewhere, matching std::log1p on the CPU reference.
+float log1p_f(float v) {
+  float u = 1.0 + v;
+  if (u == 1.0) {
+    return v;
+  }
+  return log(u) * (v / (u - 1.0));
 }
 
 void main() {
@@ -279,6 +294,60 @@ void main() {
           value_out = maxv + vec2(log(length(one_plus)), arg);
         }
         value = value_out;
+        break;
+      }
+      case 12: {
+        // sinh(a + bi) = (sinh a cos b, cosh a sin b); the glibc
+        // csinhf formula for normal-range arguments.
+        float sh = sinh(lhs.x);
+        float ch = cosh(lhs.x);
+        value = vec2(sh * cos(lhs.y), ch * sin(lhs.y));
+        break;
+      }
+      case 13: {
+        // cosh(a + bi) = (cosh a cos b, sinh a sin b); glibc ccoshf.
+        float ch = cosh(lhs.x);
+        float sh = sinh(lhs.x);
+        value = vec2(ch * cos(lhs.y), sh * sin(lhs.y));
+        break;
+      }
+      case 14: {
+        // tan(a + bi) = (sin 2a, sinh 2b) / (cos 2a + cosh 2b); the
+        // glibc ctanf core formula for moderate arguments.
+        float den = cos(2.0 * lhs.x) + cosh(2.0 * lhs.y);
+        value = vec2(sin(2.0 * lhs.x) / den, sinh(2.0 * lhs.y) / den);
+        break;
+      }
+      case 15: {
+        // tanh(a + bi) = (sinh 2a, sin 2b) / (cosh 2a + cos 2b); the
+        // glibc ctanhf core formula for moderate arguments.
+        float den = cosh(2.0 * lhs.x) + cos(2.0 * lhs.y);
+        value = vec2(sinh(2.0 * lhs.x) / den, sin(2.0 * lhs.y) / den);
+        break;
+      }
+      case 16: {
+        // log1p(z): the upstream simd::log1p complex branch. The
+        // argument is atan2(y, x + 1) with the (0, 0) argument 0 by
+        // convention; the magnitude is 0.5*log1p(x(2+x) + y^2) when
+        // |z| < 0.5 with r == 0 mapping to a zero real part, and
+        // log(hypot(x + 1, y)) otherwise.
+        bool zero_arg = lhs.y == 0.0 && lhs.x == -1.0;
+        float theta = zero_arg ? 0.0 : atan(lhs.y, lhs.x + 1.0);
+        if (length(lhs) < 0.5) {
+          float r = lhs.x * (2.0 + lhs.x) + lhs.y * lhs.y;
+          value = r == 0.0 ? vec2(0.0, theta)
+                           : vec2(0.5 * log1p_f(r), theta);
+        } else {
+          value = vec2(log(length(vec2(lhs.x + 1.0, lhs.y))), theta);
+        }
+        break;
+      }
+      case 17: {
+        // Upstream simd::Sign complex rule: sign(z) = z / |z| with
+        // the zero element mapping to itself.
+        value = (lhs.x == 0.0 && lhs.y == 0.0)
+            ? lhs
+            : lhs / length(lhs);
         break;
       }
       default:
