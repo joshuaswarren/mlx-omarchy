@@ -10,6 +10,53 @@ Two of the worst v0.3.0 defects never appeared on a Linux development box. They 
 
 ## Fixed in development
 
+### Dispatch bindings left their buffers unstamped, corrupting the heap under reuse
+
+Observed on: real M1 (Honeykrisp) in `test_fast_sdpa.py` (`TestFastSDPA::
+test_sdpa`), with the same run also crashing on lavapipe on the same
+machine. Status: OPEN; the dispatch-binding half of the lifetime hole is
+repaired on this branch, and the Honeykrisp `test_sdpa` SIGBUS still
+reproduces with that repair installed. The affected release range is not
+established; published wheels have not been qualified against either
+state.
+
+Only `add_temporary` recorded buffers into an encoder batch. A dispatch
+input or output whose array carried no temporary registration — the
+common case for eager op inputs — was freed with `completion == 0` the
+moment its array died, which happens while the batch is still in flight
+because eval is asynchronous. `VulkanAllocator::free` then sent the
+buffer straight to the reuse cache or to `destroy_buffer` while queued
+commands still referenced its `VkBuffer`. In-flight device writes landed
+in recycled memory, and the freed `VulkanBuffer` struct itself overlapped
+later allocations: the observed crash was `SIGBUS` with pc = fault
+address = a completion value (`0x4b`, submission 75) where
+`ArrayDesc::~ArrayDesc` dereferenced an `array::Data` control block whose
+vptr slot the freed struct's `completion` field had overwritten.
+
+The failure needed accumulated allocation churn, which is why single
+operations never reproduced: `test_sdpa` crashed deterministically at
+the same subtest on Honeykrisp, rarely and at varying subtests on
+lavapipe, and never with `MLX_OMARCHY_NO_BUFFER_CACHE=1`. An x86
+layer_norm SIGSEGV from the same family (test_fast.py) was caught by the
+suites only after a dispatcher Data pin was removed, which had been
+masking the lifetime hole.
+
+The fix stamps every dispatch binding into the batch:
+`ComputeBinding` carries its owning `VulkanBuffer`, `dispatch_compute`
+calls `note_binding_owner` for each binding, and the raw `copy_buffer`
+and `fill_buffer` sites note their arrays, so `free()` quarantines
+in-flight buffers on every path instead of only on temporaries.
+
+Status after that fix: the concrete heap-clobber signature (completion
+value over a Data control block vptr) is closed by construction for
+host-side writers, and the sibling x86 layer_norm SIGSEGV of the same
+family is under the same repair. The Honeykrisp `test_sdpa` SIGBUS still
+reproduced at the identical subtest with the fix installed
+(`mlx_omarchy-0.32.2.dev202609060114+70183d3`), so a second writer or a
+device-side write into recycled mapped memory remains open. Per-test
+isolation counts and the class-c receipts live in
+`after2-classc-m1.txt` / `after2-classc-ct.txt` on jwm1-linux.
+
 ### Idle-stream events destroyed their semaphore while a submit still used it
 
 Observed on: llvmpipe development host, in every release through v0.3.5

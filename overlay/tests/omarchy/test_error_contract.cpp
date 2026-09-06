@@ -41,10 +41,13 @@ TEST_CASE("unsupported primitive raises a catchable named error") {
 
   // This case asserts the CONTRACT, not one primitive. Pinning a specific
   // unsupported operation goes stale every time a coverage wave implements
-  // it: the pin moved from Abs to Hadamard, then broke again when wave 4
-  // landed Hadamard. Reject on a dtype this backend does not carry, which
-  // stays true, and check the message shape every rejection promises.
-  array a = sum(array({int64_t{1}, int64_t{2}}, int64), false);
+  // it: the pin moved from Abs to Hadamard, broke again when wave 4 landed
+  // Hadamard, and int64 Sum stopped being a rejection when Reduce gained
+  // int64 behind shaderInt64. Reject on a dtype this backend does not
+  // carry, which stays true on every supported device regardless of
+  // capability bits, and check the message shape every rejection promises:
+  // int64 sort refuses by dtype (require_sort_dtype).
+  array a = sort(array({int64_t{1}, int64_t{2}}, int64), -1);
   bool caught = false;
   std::string message;
   try {

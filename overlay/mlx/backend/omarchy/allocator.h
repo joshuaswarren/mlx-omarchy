@@ -91,10 +91,17 @@ class VulkanAllocator : public allocator::Allocator {
   // free() time, matching upstream Metal.
   void release_quarantine(uint64_t cleanup_done_through);
 
-  // Record a buffer referenced by an open batch (encoder add_temporary).
+  // Record a buffer referenced by an open batch (encoder add_temporary
+  // and dispatch binding owners). The pending stamp is unconditional:
+  // a buffer already carrying a drained completion from an earlier
+  // batch must not keep it, or free() could recycle it under the old
+  // generation's rule while this open batch still records it. submit()
+  // replaces the stamp with the real completion value; a batch that
+  // never submits leaks the buffer in quarantine instead of recycling
+  // it mid-flight.
   void note_batch_buffer(VulkanBuffer* buf) {
     std::unique_lock lk(mutex_);
-    if (buf && buf->completion == 0) {
+    if (buf) {
       buf->completion = kPendingCompletion;
     }
   }

@@ -240,6 +240,9 @@ void CommandEncoder::dispatch_compute(
         " storage-buffer bindings; this device allows " +
         std::to_string(binding_limit) + ".");
   }
+  for (const auto& item : bindings) {
+    note_binding_owner(item.owner);
+  }
   group_count_x = std::min(group_count_x, kMaxComputeGroupCountX);
   group_count_y = std::min(group_count_y, kMaxComputeGroupCountX);
   group_count_z = std::min(group_count_z, kMaxComputeGroupCountX);
