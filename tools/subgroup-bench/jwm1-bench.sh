@@ -40,6 +40,8 @@ LOG=/tmp/subgroup-bench.log
   /tmp/subgroup-bench
   echo "=== bench --quick ==="
   /tmp/subgroup-bench --quick
+  echo "=== bench --qmm-vec (qmm_vec variant legs, GPU timestamps) ==="
+  /tmp/subgroup-bench --qmm-vec
 } 2>&1 | tee "$LOG"
 
 echo "BENCH_DONE log=$LOG"
