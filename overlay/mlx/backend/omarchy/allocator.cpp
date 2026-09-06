@@ -193,6 +193,22 @@ void VulkanAllocator::free(Buffer buffer) {
   size_t sz = buf->size;
   std::unique_lock lk(mutex_);
   active_memory_ -= sz;
+  // A buffer stamped with a completion value has recorded GPU work that
+  // may still touch it (kPendingCompletion = an open batch). Freeing the
+  // array drops the accounting here — upstream Metal semantics — but the
+  // raw buffer skips the reuse cache and waits in the quarantine until
+  // release_quarantine proves the driver finished its submission. A
+  // buffer whose generation drained at least one generation ago needs
+  // no wait; without this an idle process parks every freed buffer
+  // until the next submission.
+  if (buf->completion != 0) {
+    if (buf->completion == kPendingCompletion || !runtime_alive() ||
+        buf->completion + 1 > device().completions().drained_value()) {
+      quarantine_.push_back(buf);
+      return;
+    }
+    buf->completion = 0;
+  }
   if (sz > 0 && !tape_no_reuse() && !buffer_cache_disabled() &&
       buffer_cache_.cache_size() + sz <= cache_limit_) {
     // Buffers stay mapped for their whole lifetime (malloc maps at
@@ -208,6 +224,38 @@ void VulkanAllocator::free(Buffer buffer) {
   // The lock stays held: destroy_buffer deregisters the buffer from
   // noncoherent_ under the same lock the cache paths already hold.
   destroy_buffer(buf);
+}
+
+void VulkanAllocator::release_quarantine(uint64_t cleanup_done_through) {
+  // Called from the completion drain holding drain_mutex_, so calls are
+  // serialized. Drain order proves that submit-final cleanup for values
+  // <= |cleanup_done_through| has run (Mesa signals a submission's
+  // semaphores before its cleanup retires the timeline points, so a
+  // buffer is released only one generation after its own completion).
+  std::unique_lock lk(mutex_);
+  if (quarantine_.empty()) {
+    return;
+  }
+  std::vector<VulkanBuffer*> still_quarantined;
+  for (auto* buf : quarantine_) {
+    if (buf->completion == kPendingCompletion ||
+        buf->completion > cleanup_done_through) {
+      still_quarantined.push_back(buf);
+      continue;
+    }
+    buf->completion = 0;
+    size_t sz = buf->size;
+    if (sz > 0 && !tape_no_reuse() && !buffer_cache_disabled() &&
+        buffer_cache_.cache_size() + sz <= cache_limit_) {
+      if (poison_freed()) {
+        poison_freed_buffer(buf->data, sz);
+      }
+      buffer_cache_.recycle_to_cache(buf);
+    } else {
+      destroy_buffer(buf);
+    }
+  }
+  quarantine_ = std::move(still_quarantined);
 }
 
 size_t VulkanAllocator::size(Buffer buffer) const {

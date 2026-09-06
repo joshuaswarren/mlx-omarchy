@@ -14,6 +14,7 @@
 #include <utility>
 #include <vector>
 #include "mlx/array.h"
+#include "mlx/backend/omarchy/allocator.h"
 #include "mlx/backend/omarchy/compute.h"
 #include "mlx/backend/omarchy/device.h"
 #include "mlx/stream.h"
@@ -59,9 +60,23 @@ class MLX_API CommandEncoder {
   CommandEncoder(const CommandEncoder&) = delete;
   CommandEncoder& operator=(const CommandEncoder&) = delete;
 
-  // Keep the array's buffer alive until the committed work completes.
+  // Record the array's buffer as referenced by the open batch. The raw
+  // buffer is stamped kPendingCompletion now and with the submission's
+  // completion value at submit(); the allocator quarantine keeps a
+  // buffer whose array died mid-flight out of the reuse cache until the
+  // driver provably finished that submission. No shared_ptr is held:
+  // eager donation (is_donatable) must see the input's refcount at 1.
   void add_temporary(const array& arr) {
-    temporaries_.push_back(arr.data_shared_ptr());
+    auto data = arr.data_shared_ptr();
+    if (!data) {
+      return;
+    }
+    auto* buf = static_cast<VulkanBuffer*>(data->buffer.ptr());
+    if (!buf) {
+      return;
+    }
+    allocator().note_batch_buffer(buf);
+    batch_buffers_.push_back(buf);
   }
 
   // Handlers run on the device completion thread when this submission's
@@ -89,16 +104,17 @@ class MLX_API CommandEncoder {
   }
 
   // True when nothing is recorded, nothing is queued for submission, and
-  // no temporaries are pending flush: the encoder owns no GPU work and
-  // no lifetime obligations. An Event::signal issued on this state moves
-  // the target timeline counter from the host instead of submitting a
-  // signal-only command buffer; the temporaries check is what makes the
-  // flush contract explicit — a signal on an encoder that still owes a
-  // temporaries flush takes the queued path, which submits and releases.
+  // no batch buffers are pending stamping: the encoder owns no GPU work
+  // and no lifetime obligations. An Event::signal issued on this state
+  // moves the target timeline counter from the host instead of
+  // submitting a signal-only command buffer; the batch-buffer check is
+  // what makes the flush contract explicit — a signal on an encoder that
+  // still owes a batch flush takes the queued path, which submits and
+  // releases.
   bool idle() const {
     return !recording_ && wait_semaphores_.empty() &&
         signal_semaphores_.empty() && completed_handlers_.empty() &&
-        temporaries_.empty();
+        batch_buffers_.empty();
   }
 
   // Record a device-to-device buffer copy. Both buffers must have
@@ -230,7 +246,14 @@ class MLX_API CommandEncoder {
   uint32_t desc_pool_remaining_{0};
   std::vector<PendingSemaphore> wait_semaphores_;
   std::vector<PendingSemaphore> signal_semaphores_;
-  std::vector<std::shared_ptr<void>> temporaries_;
+  // Raw buffers referenced by the open batch. Owned by their arrays or,
+  // after free(), by the allocator quarantine; this list only carries
+  // the completion stamp at submit time.
+  std::vector<VulkanBuffer*> batch_buffers_;
+  // Descriptor pools retired during recording. They ride the dispatcher
+  // payload (one-generation retire) so a set allocated from them cannot
+  // outlive its pool.
+  std::vector<std::shared_ptr<void>> retired_pools_;
   std::vector<std::function<void()>> completed_handlers_;
 };
 
