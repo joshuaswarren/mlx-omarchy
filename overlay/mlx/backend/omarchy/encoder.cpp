@@ -168,7 +168,7 @@ VkDescriptorSet CommandEncoder::acquire_descriptor_set(
     VkDescriptorPool pool{VK_NULL_HANDLE};
     VKX_CHECK(dt.CreateDescriptorPool(
         device_.handle(), &pool_info, nullptr, &pool));
-    temporaries_.push_back(std::shared_ptr<VkDescriptorPool>(
+    retired_pools_.push_back(std::shared_ptr<VkDescriptorPool>(
         new VkDescriptorPool(pool),
         [device = device_.handle()](VkDescriptorPool* owned) {
           vk::device_table().DestroyDescriptorPool(device, *owned, nullptr);
@@ -187,7 +187,7 @@ VkDescriptorSet CommandEncoder::acquire_descriptor_set(
   }
   if (desc_pool_ == VK_NULL_HANDLE || desc_pool_remaining_ == 0) {
     if (desc_pool_ != VK_NULL_HANDLE) {
-      temporaries_.push_back(std::shared_ptr<VkDescriptorPool>(
+      retired_pools_.push_back(std::shared_ptr<VkDescriptorPool>(
           new VkDescriptorPool(desc_pool_),
           [device = device_.handle()](VkDescriptorPool* owned) {
             vk::device_table().DestroyDescriptorPool(device, *owned, nullptr);
@@ -458,12 +458,17 @@ void CommandEncoder::submit() {
     signal_values.push_back(pending.value);
   }
 
-  // Ownership moves to the dispatcher entry: buffer temporaries keep the
-  // arrays' backing alive, each pending-semaphore keepalive keeps its Event
-  // alive, and handlers run on the completion thread. All of it releases
-  // exactly when the GPU work finishes.
-  std::vector<std::shared_ptr<void>> keepalive = std::move(temporaries_);
-  temporaries_.clear();
+  // Ownership moves to the dispatcher entry: each pending-semaphore
+  // keepalive keeps its Event alive, and handlers run on the completion
+  // thread. The batch's buffers need no shared_ptr: they were stamped
+  // with the completion value below, and the allocator quarantine keeps
+  // any freed-but-in-flight buffer out of the reuse cache until its
+  // generation drains.
+  std::vector<std::shared_ptr<void>> keepalive;
+  for (auto& pool : retired_pools_) {
+    keepalive.push_back(std::move(pool));
+  }
+  retired_pools_.clear();
   for (auto& pending : wait_semaphores_) {
     keepalive.push_back(std::move(pending.keepalive));
   }
@@ -481,6 +486,17 @@ void CommandEncoder::submit() {
     // explicit flush before submission.
     omarchy::allocator().flush_noncoherent(device_.handle());
     uint64_t completion_value = device_.completions().reserve();
+    // Stamp every buffer referenced by this batch with the completion
+    // value just reserved. Free-before-drain sends such buffers to the
+    // allocator quarantine; release_quarantine recycles them one
+    // generation later. Semaphore keepalives still move into the
+    // dispatcher payload below.
+    for (auto* buf : batch_buffers_) {
+      if (buf) {
+        buf->completion = completion_value;
+      }
+    }
+    batch_buffers_.clear();
     VkSemaphore completion_sem = device_.completions().semaphore();
     signal_sems.push_back(completion_sem);
     signal_values.push_back(completion_value);
@@ -496,7 +512,10 @@ void CommandEncoder::submit() {
       // and the pending semaphore lists are dead (their keepalives have
       // already moved into the local payload and die with this frame).
       // Reset the encoder so it can be reused or destroyed cleanly; the
-      // typed error propagates to the stream's error handling.
+      // typed error propagates to the stream's error handling. The
+      // batch's buffer stamps are harmless: those buffers stay alive via
+      // their arrays or the quarantine.
+      batch_buffers_.clear();
       recording_ = false;
       node_count_ = 0;
       wait_semaphores_.clear();

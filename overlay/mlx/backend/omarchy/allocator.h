@@ -6,6 +6,7 @@
 #include <vulkan/vulkan.h>
 
 #include <cstddef>
+#include <cstdint>
 #include <mutex>
 #include <utility>
 #include <vector>
@@ -30,7 +31,16 @@ struct VulkanBuffer {
   size_t size{0};
   // False when the memory type lacks HOST_COHERENT.
   bool coherent{true};
+  // Completion-timeline stamp of the submission that references this
+  // buffer. 0 = no in-flight window; kPendingCompletion = recorded by an
+  // open (not yet submitted) batch. Written by the encoder (add_temporary
+  // and submit), consumed by the allocator quarantine (see free()).
+  uint64_t completion{0};
 };
+
+// Stamp written by add_temporary for buffers recorded into an open
+// batch; submit() replaces it with the real completion value.
+inline constexpr uint64_t kPendingCompletion = UINT64_MAX;
 
 class VulkanAllocator : public allocator::Allocator {
  public:
@@ -73,6 +83,22 @@ class VulkanAllocator : public allocator::Allocator {
   void flush_noncoherent(VkDevice device);
   void invalidate_noncoherent(VkDevice device);
 
+  // Quarantine for buffers whose last reference died while recorded GPU
+  // work may still touch them. free() routes such buffers here instead of
+  // the reuse cache; release_quarantine recycles them one completion
+  // generation later, once the driver's submit-final cleanup for their
+  // submission has provably run. Accounting (active_memory_) drops at
+  // free() time, matching upstream Metal.
+  void release_quarantine(uint64_t cleanup_done_through);
+
+  // Record a buffer referenced by an open batch (encoder add_temporary).
+  void note_batch_buffer(VulkanBuffer* buf) {
+    std::unique_lock lk(mutex_);
+    if (buf && buf->completion == 0) {
+      buf->completion = kPendingCompletion;
+    }
+  }
+
  private:
   VulkanAllocator();
   friend VulkanAllocator& allocator();
@@ -90,6 +116,9 @@ class VulkanAllocator : public allocator::Allocator {
   size_t peak_memory_{0};
   mutable BufferCache<VulkanBuffer> buffer_cache_;
   std::vector<VulkanBuffer*> noncoherent_;
+  // Freed buffers whose recorded GPU work may still reference them (see
+  // release_quarantine). Held outside the reuse cache until released.
+  std::vector<VulkanBuffer*> quarantine_;
 };
 
 MLX_API VulkanAllocator& allocator();

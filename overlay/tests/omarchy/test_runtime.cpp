@@ -486,6 +486,69 @@ TEST_CASE("allocator tracks buffers and reuses the cache") {
   alloc.free(allocator::Buffer{c});
   CHECK(alloc.get_active_memory() == before);
 }
+TEST_CASE(
+    "freeing an in-flight buffer drops accounting but quarantines reuse") {
+  if (!gpu::is_available()) {
+    skip("no qualifying Vulkan device.");
+    return;
+  }
+  auto& alloc = omarchy::allocator();
+  Stream s = new_stream(Device::gpu);
+  auto& encoder = omarchy::get_command_encoder(s);
+
+  constexpr size_t kBytes = 1 << 16;
+  auto src = alloc.malloc(kBytes);
+  auto dst = alloc.malloc(kBytes);
+  auto* src_buf = static_cast<omarchy::VulkanBuffer*>(src.ptr());
+  auto* dst_buf = static_cast<omarchy::VulkanBuffer*>(dst.ptr());
+  REQUIRE(src_buf->data != nullptr);
+  REQUIRE(dst_buf->data != nullptr);
+
+  // Record (do not submit) a dispatch reading src and register the
+  // buffer with the open batch the way primitive eval does: a
+  // non-owning array view feeds encoder.add_temporary, which stamps the
+  // buffer kPendingCompletion and queues it for the submit-time stamp.
+  array src_view(
+      Shape{static_cast<int>(kBytes / sizeof(float))},
+      float32,
+      nullptr,
+      {});
+  src_view.set_data(
+      allocator::Buffer{src_buf},
+      src_view.size(),
+      src_view.strides(),
+      src_view.flags(),
+      0,
+      [](allocator::Buffer) {});
+  encoder.add_temporary(src_view);
+  CHECK(src_buf->completion == omarchy::kPendingCompletion);
+  encoder.copy_buffer(src_buf->buffer, dst_buf->buffer, kBytes);
+
+  size_t active_with_src = alloc.get_active_memory();
+  size_t cache_before = alloc.get_cache_memory();
+  alloc.free(src);
+  // Accounting drops at free() (upstream Metal semantics) even though
+  // the recorded dispatch still references the buffer.
+  CHECK(alloc.get_active_memory() == active_with_src - kBytes);
+  // The buffer is quarantined, not recycled: the reuse cache must not
+  // have grown, so the next malloc cannot alias the recorded dispatch.
+  CHECK(alloc.get_cache_memory() == cache_before);
+  auto* replacement = static_cast<omarchy::VulkanBuffer*>(
+      alloc.malloc(kBytes).ptr());
+  CHECK(replacement != src_buf);
+
+  // Submit, synchronize (drain V), then push one more submission so the
+  // drain runs through V+1: cleanup for the buffer's generation has run
+  // and release_quarantine recycles it into the reuse cache.
+  encoder.commit();
+  encoder.synchronize();
+  encoder.fill_buffer(dst_buf->buffer, 0, 4);
+  encoder.commit();
+  encoder.synchronize();
+  CHECK(alloc.get_cache_memory() >= cache_before + kBytes);
+  alloc.free(allocator::Buffer{replacement});
+  alloc.free(dst);
+}
 
 TEST_CASE("buffer round trip through the Vulkan encoder") {
   if (!gpu::is_available()) {
@@ -823,13 +886,16 @@ TEST_CASE(
   omarchy::allocator().free(buf);
 }
 
-TEST_CASE("temporaries release one completion after their submission") {
+TEST_CASE(
+    "freed arrays release promptly while buffers stay quarantined in"
+    " flight") {
   if (!gpu::is_available()) {
     skip("no qualifying Vulkan device.");
     return;
   }
   Stream s = new_stream(Device::gpu);
   auto& enc = omarchy::get_command_encoder(s);
+  auto& alloc = omarchy::allocator();
 
   auto arr = zeros({1024}, float32);
   arr.eval();
@@ -841,32 +907,30 @@ TEST_CASE("temporaries release one completion after their submission") {
   // would stall the queue: the satisfying signal itself travels on the
   // same single queue.)
   constexpr VkDeviceSize kBigBytes = 256ull << 20;
-  auto scratch = omarchy::allocator().malloc(kBigBytes);
+  auto scratch = alloc.malloc(kBigBytes);
   auto* scratch_buf = static_cast<omarchy::VulkanBuffer*>(scratch.ptr());
   enc.fill_buffer(scratch_buf->buffer, 0x11, kBigBytes);
   enc.fill_buffer(arr_buf->buffer, 0x33, 4096);
-  enc.add_temporary(arr); // the ownership under test
+  enc.add_temporary(arr); // register the buffer with the open batch
   enc.commit(); // in flight
 
+  size_t cache_before = alloc.get_cache_memory();
   // Drop the caller's reference while work is queued (arrays have no
-  // default ctor: reassign to a fresh array).
+  // default ctor: reassign to a fresh array). Array lifetime is
+  // independent of in-flight work: the Data releases immediately, while
+  // the raw buffer is quarantined out of the reuse cache until a
+  // generation after its submission drains.
   arr = zeros({1}, float32);
-  CHECK_FALSE(observed.expired()); // retention outlived destruction
+  CHECK(observed.expired());
+  CHECK(alloc.get_cache_memory() == cache_before);
 
   enc.synchronize(); // bounded completion wait; joins handler execution
-  // Mesa's queue thread signals a submission's semaphores (including the
-  // completion timeline) before its submit-final cleanup retires the
-  // submission's timeline points, so a payload of this submission must
-  // still be alive here: destroying it now races the driver.
-  CHECK_FALSE(observed.expired());
+  // The reassignment above evaluated a fresh zeros, so a later
+  // generation drained during this synchronize: cleanup for the
+  // buffer's own submission has run and the quarantine recycled it.
+  CHECK(alloc.get_cache_memory() >= cache_before + 4096);
 
-  // The next completion proves the driver finished this submission's
-  // cleanup; the retired payload releases then, and never leaks.
-  enc.fill_buffer(scratch_buf->buffer, 0x44, 4096);
-  enc.commit();
-  enc.synchronize();
-  CHECK(observed.expired());
-  omarchy::allocator().free(scratch);
+  alloc.free(scratch);
 }
 
 TEST_CASE(

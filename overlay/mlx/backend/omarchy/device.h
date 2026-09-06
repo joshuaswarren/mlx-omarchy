@@ -286,6 +286,10 @@ int device_count();
 // Access the live device for a supported index. Initializes on first use and
 // throws std::runtime_error with the discovery reason when unavailable.
 MLX_API Device& device(uint32_t index = 0);
+// False once the process-wide Vulkan runtime has been destroyed; callers
+// that may run during static teardown (allocator::free) must not touch
+// the device after this.
+MLX_API bool runtime_alive();
 
 // Capability facts for a supported index without creating a VkDevice.
 // Throws std::runtime_error when the index is out of range or discovery

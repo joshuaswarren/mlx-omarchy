@@ -93,6 +93,8 @@ struct PhysicalDeviceInfo {
 
 // Process-wide Vulkan state. The VkInstance lives as long as the process;
 // VkDevices are created lazily per used index.
+std::atomic<bool> g_runtime_destroyed{false};
+
 struct Runtime {
   std::mutex mutex;
   VkInstance instance{VK_NULL_HANDLE};
@@ -129,6 +131,7 @@ struct Runtime {
   bool init_impl();
 
   ~Runtime() {
+    g_runtime_destroyed.store(true, std::memory_order_release);
     devices.clear();
     if (instance != VK_NULL_HANDLE) {
       if (auto& it = vk::instance_table(); it.DestroyInstance) {
@@ -142,6 +145,7 @@ Runtime& runtime() {
   static Runtime rt;
   return rt;
 }
+
 
 CapabilityReport collect_capabilities(
     vk::InstanceTable& it,
@@ -455,6 +459,10 @@ bool Runtime::init_impl() {
 }
 
 } // namespace
+
+bool runtime_alive() {
+  return !g_runtime_destroyed.load(std::memory_order_acquire);
+}
 
 // Compiled-tape debug switch plumbing (device.h). At omarchy scope, not
 // in the anonymous namespace above: the encoder and allocator call these
@@ -1050,12 +1058,20 @@ void CompletionDispatcher::drain_through(uint64_t max_value) {
       handler();
     }
   }
-  // Mesa's queue thread signals a submission's semaphores (including the
-  // completion timeline read above) BEFORE the submit-final cleanup
-  // releases that submission's timeline points, so observing this
-  // timeline does not prove the driver finished the submission. Retire
-  // payloads one generation late: submits execute serially in value
-  // order, so once completion V+1 is observable, cleanup for V has run.
+  // Completion boundary: buffers freed since their submissions recorded
+  // leave the quarantine here. Cleanup for ready_value - 1 has provably
+  // run once this value is observable (Mesa signals a submission's
+  // semaphores before its submit-final cleanup retires the timeline
+  // points), so quarantined buffers recycle exactly one generation after
+  // their own completion.
+  omarchy::allocator().release_quarantine(ready_value - 1);
+  // Semaphore-keepalive payloads retire one completion generation late:
+  // Mesa signals a submission's semaphores (including the completion
+  // timeline read above) BEFORE its submit-final cleanup releases that
+  // submission's timeline points, so observing this timeline does not
+  // prove the driver finished the submission. Submits execute serially
+  // in value order, so once completion V+1 is observable, cleanup for V
+  // has run. Buffer payloads use the allocator quarantine instead.
   std::vector<std::shared_ptr<void>> retired;
   for (auto& completion : ready) {
     retired.insert(
