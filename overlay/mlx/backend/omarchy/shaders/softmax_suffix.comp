@@ -38,6 +38,9 @@ layout(local_size_x = 256) in;
 layout(set = 0, binding = 0, std430) readonly buffer Input {
   STORAGE_TYPE values[];
 } input_data;
+layout(set = 0, binding = 1, std430) readonly buffer Sink {
+  STORAGE_TYPE values[];
+} sink_data;
 layout(set = 0, binding = 2, std430) writeonly buffer Output {
   STORAGE_TYPE values[];
 } output_data;
@@ -52,6 +55,14 @@ layout(push_constant) uniform Params {
   uint lhs_offset;
   uint rhs_offset;
   uint output_offset;
+  // The encoder always pushes sizeof(ComputeParams); these trailing
+  // fields follow the shared struct's byte layout (aux_size 36,
+  // aux_offset 40, matrix_m 44, matrix_n 48) and stay unused outside
+  // the sink path.
+  uint aux_size;
+  uint aux_offset;
+  uint matrix_m;
+  uint matrix_n;
 } params;
 
 shared float block_values[256];
@@ -59,9 +70,24 @@ shared float block_values[256];
 void main() {
   uint thread = gl_LocalInvocationID.x;
   uint row_length = params.reduce_size;
+  // operation == 1 folds one attention sink per query head into the
+  // denominator: row_max absorbs max(row_max, sink) and the sum gains
+  // exp(sink - row_max). matrix_m carries q_len so row / matrix_m is
+  // the flattened batch-head index and matrix_n (the query-head count)
+  // maps it back to the per-head sink row - the GQA regroup flattens
+  // (kv, repeat) into query-head order, matching upstream's layout.
+  bool has_sink = params.operation == 1u;
   for (uint row = gl_WorkGroupID.x; row < params.output_size;
        row += gl_NumWorkGroups.x) {
     uint start = params.lhs_offset + row * row_length;
+    float sink_value = 0.0;
+    if (has_sink) {
+      uint head = params.matrix_m == 0u
+          ? 0u
+          : (row / params.matrix_m) % params.matrix_n;
+      sink_value = LOAD_VALUE(
+          sink_data.values[params.rhs_offset + head]);
+    }
 
     float local_max = uintBitsToFloat(0xff800000u);
     for (uint index = thread; index < row_length; index += 256u) {
@@ -80,11 +106,17 @@ void main() {
       barrier();
     }
     float row_max = block_values[0];
+    if (has_sink && sink_value > row_max) {
+      row_max = sink_value;
+    }
     barrier();
 
     float local_sum = 0.0;
     for (uint index = thread; index < row_length; index += 256u) {
       local_sum += exp(LOAD_VALUE(input_data.values[start + index]) - row_max);
+    }
+    if (has_sink && thread == 0u) {
+      local_sum += exp(sink_value - row_max);
     }
     block_values[thread] = local_sum;
     barrier();
