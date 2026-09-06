@@ -231,24 +231,6 @@
 #include "qmm_vec_subgroup_bf16.h"
 #include "qmm_vec_subgroup_f16.h"
 #include "qmm_vec_subgroup_f32.h"
-#include "qmm_vec_lowpress_bf16.h"
-#include "qmm_vec_lowpress_f16.h"
-#include "qmm_vec_lowpress_f32.h"
-#include "qmm_vec_lowpress_subgroup_bf16.h"
-#include "qmm_vec_lowpress_subgroup_f16.h"
-#include "qmm_vec_lowpress_subgroup_f32.h"
-#include "qmm_vec_wordpack_bf16.h"
-#include "qmm_vec_wordpack_f16.h"
-#include "qmm_vec_wordpack_f32.h"
-#include "qmm_vec_wordpack_subgroup_bf16.h"
-#include "qmm_vec_wordpack_subgroup_f16.h"
-#include "qmm_vec_wordpack_subgroup_f32.h"
-#include "qmm_vec_ksplit_bf16.h"
-#include "qmm_vec_ksplit_f16.h"
-#include "qmm_vec_ksplit_f32.h"
-#include "qmm_vec_ksplit_subgroup_bf16.h"
-#include "qmm_vec_ksplit_subgroup_f16.h"
-#include "qmm_vec_ksplit_subgroup_f32.h"
 #include "qmm_tile_bf16.h"
 #include "qmm_tile_f16.h"
 #include "qmm_tile_f32.h"
@@ -1110,58 +1092,6 @@ ShaderBytes shader_bytes(ComputeKernel kernel) {
       return {qmm_vec_fp_f16, qmm_vec_fp_f16_size};
     case ComputeKernel::QmmVecFpBF16:
       return {qmm_vec_fp_bf16, qmm_vec_fp_bf16_size};
-    case ComputeKernel::QmmVecLowpressF32:
-      return {qmm_vec_lowpress_f32, qmm_vec_lowpress_f32_size};
-    case ComputeKernel::QmmVecLowpressF16:
-      return {qmm_vec_lowpress_f16, qmm_vec_lowpress_f16_size};
-    case ComputeKernel::QmmVecLowpressBF16:
-      return {qmm_vec_lowpress_bf16, qmm_vec_lowpress_bf16_size};
-    case ComputeKernel::QmmVecLowpressSubgroupF32:
-      return {
-          qmm_vec_lowpress_subgroup_f32,
-          qmm_vec_lowpress_subgroup_f32_size};
-    case ComputeKernel::QmmVecLowpressSubgroupF16:
-      return {
-          qmm_vec_lowpress_subgroup_f16,
-          qmm_vec_lowpress_subgroup_f16_size};
-    case ComputeKernel::QmmVecLowpressSubgroupBF16:
-      return {
-          qmm_vec_lowpress_subgroup_bf16,
-          qmm_vec_lowpress_subgroup_bf16_size};
-    case ComputeKernel::QmmVecWordpackF32:
-      return {qmm_vec_wordpack_f32, qmm_vec_wordpack_f32_size};
-    case ComputeKernel::QmmVecWordpackF16:
-      return {qmm_vec_wordpack_f16, qmm_vec_wordpack_f16_size};
-    case ComputeKernel::QmmVecWordpackBF16:
-      return {qmm_vec_wordpack_bf16, qmm_vec_wordpack_bf16_size};
-    case ComputeKernel::QmmVecWordpackSubgroupF32:
-      return {
-          qmm_vec_wordpack_subgroup_f32,
-          qmm_vec_wordpack_subgroup_f32_size};
-    case ComputeKernel::QmmVecWordpackSubgroupF16:
-      return {
-          qmm_vec_wordpack_subgroup_f16,
-          qmm_vec_wordpack_subgroup_f16_size};
-    case ComputeKernel::QmmVecWordpackSubgroupBF16:
-      return {
-          qmm_vec_wordpack_subgroup_bf16,
-          qmm_vec_wordpack_subgroup_bf16_size};
-    case ComputeKernel::QmmVecKsplitF32:
-      return {qmm_vec_ksplit_f32, qmm_vec_ksplit_f32_size};
-    case ComputeKernel::QmmVecKsplitF16:
-      return {qmm_vec_ksplit_f16, qmm_vec_ksplit_f16_size};
-    case ComputeKernel::QmmVecKsplitBF16:
-      return {qmm_vec_ksplit_bf16, qmm_vec_ksplit_bf16_size};
-    case ComputeKernel::QmmVecKsplitSubgroupF32:
-      return {
-          qmm_vec_ksplit_subgroup_f32, qmm_vec_ksplit_subgroup_f32_size};
-    case ComputeKernel::QmmVecKsplitSubgroupF16:
-      return {
-          qmm_vec_ksplit_subgroup_f16, qmm_vec_ksplit_subgroup_f16_size};
-    case ComputeKernel::QmmVecKsplitSubgroupBF16:
-      return {
-          qmm_vec_ksplit_subgroup_bf16,
-          qmm_vec_ksplit_subgroup_bf16_size};
     case ComputeKernel::QmmVecSubgroupFpF32:
       return {qmm_vec_subgroup_fp_f32, qmm_vec_subgroup_fp_f32_size};
     case ComputeKernel::QmmVecSubgroupFpF16:

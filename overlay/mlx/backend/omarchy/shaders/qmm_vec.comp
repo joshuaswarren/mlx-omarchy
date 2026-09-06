@@ -29,51 +29,6 @@
 //     device. Dispatch is gated on caps.subgroup_size == 32 and the
 //     ARITHMETIC subgroup-feature bit, so a device that lacks either
 //     falls back to the tree path unchanged.
-//
-// Variant defines compile additional GEMV shapes from this same source,
-// selected at dispatch by MLX_OMARCHY_QMM_VEC_VARIANT (see
-// QuantizedMatmul::eval_gpu). Variant 0 (no define) is the shipped
-// kernel; the variants exist so the M1 microbench
-// (tools/subgroup-bench --qmm-vec) can rank them with GPU timestamps
-// on the real decode shapes. All variants keep the push-constant
-// layout, bindings, and dispatch contract identical, and all are
-// covered by omarchy_matmul_family_tests for bits 4/8, group sizes
-// 32/64/128, both layouts, and the f32/f16/bf16 storage types.
-//
-// QMM_VEC_STAGED_X=1 (variant 1, "lowpress"): the x vector is staged
-// into shared memory once per workgroup (one barrier), so the eight
-// column slots read x from shared instead of re-reading global memory
-// eight times per workgroup, and the per-lane k-loop carries one
-// shared-memory operand instead of an address chain. The arithmetic
-// per lane (operand order, FMA sequence) is unchanged, so this
-// variant is bit-exact against variant 0. Note on the "no-unroll"
-// framing from the plan: the unroll pragma is a no-op in this
-// toolchain (glslang ignores it; verified via spirv-dis that the
-// k-loop emits OpLoopMerge with no LoopControl bits, and glslc wraps
-// the same front end), so the register-pressure lever is delivered by
-// staging instead - the k trip counts were already runtime-uniform,
-// which is what keeps unrolling off today.
-//
-// QMM_VEC_WORDPACK=1 (variant 2): for the transposed layout (the
-// nn.Linear decode shape) with word-aligned bits (2/4/8), each lane
-// dequantizes a whole packed word per step (8 nibbles at bits 4)
-// instead of one element, with x still staged in shared memory. Fewer,
-// wider weight reads per lane; accumulation order changes, so results
-// are within the qmm ulp tolerance, not bit-exact. The non-transposed
-// layout and the byte-packed bits (3/5/6) keep the variant-1 staged
-// loop, because their packing axis is not the walked axis.
-//
-// QMM_VEC_KSPLIT=8 (variant 3): one output column per workgroup; each
-// 32-lane slot reduces one eighth of K, so the serial chain per lane
-// shrinks 8x and the workgroup count grows 8x (group count = N; the
-// host refuses the variant when N exceeds the dispatch limit). The
-// five-round tree doubles as the second-stage reduce over the eight
-// slot partials; the subgroup flavor combines the eight slot sums
-// through one extra shared-memory round. Accumulation order changes
-// (ulp tolerance, not bit-exact).
-//
-// The fp4/fp8 (FP_MODE) kernels are not variant-able; the variant
-// dispatch leaves them on the default kernel.
 
 #ifdef USE_FP16
 #extension GL_EXT_shader_16bit_storage : require
@@ -110,11 +65,6 @@ uint16_t bf16_store(float value) {
 #extension GL_KHR_shader_subgroup_basic : require
 #extension GL_KHR_shader_subgroup_arithmetic : require
 #endif
-#if defined(FP_MODE) && (defined(QMM_VEC_STAGED_X) || \
-    defined(QMM_VEC_WORDPACK) || defined(QMM_VEC_KSPLIT))
-#error "qmm_vec variants apply to the affine kernels only"
-#endif
-
 
 const uint COLUMNS_PER_GROUP = 8u;
 const uint LANES = 32u;
@@ -166,26 +116,6 @@ layout(push_constant) uniform Params {
 } params;
 
 shared float reduce_scratch[256];
-#if defined(QMM_VEC_STAGED_X) || defined(QMM_VEC_WORDPACK)
-// One batch slice of x, staged cooperatively by the whole workgroup.
-// The dispatch gates variants 1/2 to matrix_k <= 2048 and
-// 4 * matrix_k + sizeof(reduce_scratch) <= maxComputeSharedMemorySize,
-// so 8 KiB here fits the Vulkan guaranteed floor (16 KiB) with the
-// tree scratch alongside it.
-#define QMM_VEC_STAGED 1
-shared float staged_x[2048];
-#define QMM_X_VALUE(b, k) staged_x[(k)]
-#else
-#define QMM_X_VALUE(b, k) \
-  LOAD_VALUE(input_x.values[ \
-      params.lhs_offset + (b) * params.matrix_k + (k)])
-#endif
-
-#ifdef QMM_VEC_KSPLIT
-#ifndef QMM_VEC_KSPLIT_SLOTS
-#define QMM_VEC_KSPLIT_SLOTS 8u
-#endif
-#endif
 
 // Push-constant routing: operation carries bits (2, 3, 4, 5, 6, or 8),
 // reduce_size the group size, flags bit 0 the non-transposed layout.
@@ -278,29 +208,10 @@ void main() {
   uint w_batch_words = params.shape[1];
   uint param_batch = params.shape[2];
   uint scale_total = params.shape[3];
-#ifdef QMM_VEC_KSPLIT
-  // One column per workgroup; the slot id selects the K chunk instead.
-  uint column = gl_WorkGroupID.x;
-#else
   uint column = gl_WorkGroupID.x * COLUMNS_PER_GROUP + column_slot;
-#endif
   bool column_active = column < params.matrix_n;
   for (uint b = 0u; b < batch; ++b) {
     float accumulator = 0.0;
-    // Stage this batch slice of x into shared memory before any slot
-    // reads it. The barrier sits inside the batch loop (uniform across
-    // the workgroup) and is skipped for the first slice, which cannot
-    // race an earlier read.
-#ifdef QMM_VEC_STAGED
-    if (b > 0u) {
-      barrier();
-    }
-    for (uint i = lane; i < params.matrix_k; i += 256u) {
-      staged_x[i] = LOAD_VALUE(input_x.values[
-          params.lhs_offset + b * params.matrix_k + i]);
-    }
-    barrier();
-#endif
     if (column_active) {
       uint w_row = params.rhs_offset + b * w_batch_words;
       uint p_base = params.aux_offset + b * param_batch;
@@ -374,19 +285,6 @@ void main() {
           : (32u / bits);
       uint bytes_per_pack = is_byte_bits ? (bits == 5u ? 5u : 3u) : 1u;
       uint value_mask = (1u << bits) - 1u;
-#ifdef QMM_VEC_KSPLIT
-      // Slot s reduces the s-th chunk of K; the workgroup tree folds
-      // the chunk partials.
-      uint k_chunk =
-          (params.matrix_k + QMM_VEC_KSPLIT_SLOTS - 1u) /
-          QMM_VEC_KSPLIT_SLOTS;
-      uint k_chunk_base = column_slot * k_chunk;
-      uint k_start = k_chunk_base + lane_in_slot;
-      uint k_stop = min(k_chunk_base + k_chunk, params.matrix_k);
-#else
-      uint k_start = lane_in_slot;
-      uint k_stop = params.matrix_k;
-#endif
       if (non_transposed) {
         // Non-transposed: fixed lane nibble and fixed scale column per
         // lane, walking the k rows. Byte bits decode the lane from the
@@ -401,7 +299,7 @@ void main() {
         uint lane_shift = lane_n * bits;
         uint param_step = params.matrix_n / group_size;
         uint param_col = p_base + column / group_size;
-        for (uint k = k_start; k < k_stop; k += LANES) {
+        for (uint k = lane_in_slot; k < params.matrix_k; k += LANES) {
           uint q;
           if (is_byte_bits) {
             uint byte_addr =
@@ -428,7 +326,8 @@ void main() {
                 w_row + k * n_words_per_row + col_word_off];
             q = (word >> lane_shift) & value_mask;
           }
-          float x_value = QMM_X_VALUE(b, k);
+          float x_value = LOAD_VALUE(
+              input_x.values[params.lhs_offset + b * params.matrix_k + k]);
           accumulator += x_value *
               (LOAD_VALUE(scale_bias.values[param_col + k * param_step]) *
                     float(q) +
@@ -441,32 +340,10 @@ void main() {
         uint w_base = w_row + column * words_per_row;
         uint scale_base = p_base + column * groups_per_row;
         uint bias_base = p_base + scale_total + column * groups_per_row;
-#ifdef QMM_VEC_WORDPACK
-        // Whole-word dequant for the word-aligned bits in the
-        // transposed layout: one packed weight word per lane step
-        // instead of one element. Everything else (staged x, scale and
-        // bias addressing, workgroup split) is unchanged. Byte-packed
-        // bits and the non-transposed layout keep the per-element loop
-        // below because their packing axis is not the walked axis.
-        if (!is_byte_bits) {
-          for (uint w = lane_in_slot; w < words_per_row; w += LANES) {
-            uint word = input_w.values[w_base + w];
-            uint k0 = w * pack_factor;
-            for (uint e = 0u; e < pack_factor; ++e) {
-              uint k = k0 + e;
-              uint q = (word >> (e * bits)) & value_mask;
-              uint group = k / group_size;
-              accumulator += staged_x[k] *
-                  (LOAD_VALUE(scale_bias.values[scale_base + group]) *
-                        float(q) +
-                    LOAD_VALUE(scale_bias.values[bias_base + group]));
-            }
-          }
-        } else
-#endif
-        for (uint k = k_start; k < k_stop; k += LANES) {
+        for (uint k = lane_in_slot; k < params.matrix_k; k += LANES) {
           uint group = k / group_size;
-          float x_value = QMM_X_VALUE(b, k);
+          float x_value = LOAD_VALUE(
+              input_x.values[params.lhs_offset + b * params.matrix_k + k]);
           float dequant;
           if (is_byte_bits) {
             uint byte_addr =
@@ -506,27 +383,7 @@ void main() {
     // Every lane reaches the reduction, including inactive slots
     // (accumulator 0), so the barriers stay uniform across the
     // workgroup.
-#if defined(USE_SUBGROUP) && defined(QMM_VEC_KSPLIT)
-    // K-split subgroup reduction: subgroupAdd folds each slot's K
-    // chunk into one partial; the eight partials land in the shared
-    // scratch and lane 0 sums them in fixed slot order (the
-    // second-stage reduce). The tree flavor below needs no extra stage:
-    // its rounds already fold all 256 lanes, so slot partials combine
-    // for free.
-    float slot_total = subgroupAdd(accumulator);
-    if (lane_in_slot == 0u) {
-      reduce_scratch[lane] = slot_total;
-    }
-    barrier();
-    if (lane == 0u && column_active) {
-      float total = 0.0;
-      for (uint s = 0u; s < QMM_VEC_KSPLIT_SLOTS; ++s) {
-        total += reduce_scratch[s * LANES];
-      }
-      output_data.values[params.output_offset + b * params.matrix_n +
-          column] = STORE_VALUE(total);
-    }
-#elif defined(USE_SUBGROUP)
+#ifdef USE_SUBGROUP
     // Subgroup reduction path. Each 32-lane slot is one hardware
     // subgroup; subgroupAdd folds the per-lane accumulators inside the
     // subgroup without shared-memory scratch or barriers. The

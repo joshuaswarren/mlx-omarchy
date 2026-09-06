@@ -7,7 +7,7 @@
 #include <array>
 #include <cmath>
 #include <cstdint>
-#include <cstdlib>
+#include <cstdio>
 #include <cstring>
 #include <optional>
 #include <numeric>
@@ -5924,105 +5924,24 @@ void QuantizedMatmul::eval_gpu(const std::vector<array>& inputs, array& out) {
     bool subgroup_ready =
         caps.subgroup_size == 32u &&
         (caps.subgroup_operations & VK_SUBGROUP_FEATURE_ARITHMETIC_BIT) != 0;
-
-    // MLX_OMARCHY_QMM_VEC_VARIANT selects the decode GEMV kernel shape
-    // (0 = shipped default; 1 = lowpress shared-x staging; 2 = whole-
-    // word dequant; 3 = K-split across slots). Default 0 keeps the
-    // byte-identical production path; the variants exist for the M1
-    // microbench A/B (tools/subgroup-bench --qmm-vec) and are read
-    // per dispatch, matching the MLX_OMARCHY_QMM_TILE convention.
-    uint32_t vec_variant = 0;
-    if (const char* variant_env =
-            std::getenv("MLX_OMARCHY_QMM_VEC_VARIANT");
-        variant_env != nullptr) {
-      long parsed = std::strtol(variant_env, nullptr, 10);
-      if (parsed >= 0 && parsed <= 3) {
-        vec_variant = static_cast<uint32_t>(parsed);
-      }
-    }
-    // Variants 1/2 stage x in workgroup-shared memory: refuse them
-    // (fall back to the default kernel) when the slice does not fit
-    // the device's shared-memory budget. Variant 3 issues one
-    // workgroup per output column; refuse it when that exceeds the
-    // dispatch limit instead of silently dropping columns.
-    bool staged_fits =
-        params.matrix_k <= 2048u &&
-        4u * params.matrix_k + 1024u <= caps.max_compute_shared_memory_size;
-    bool ksplit_fits = params.matrix_n <= omarchy::kMaxComputeGroupCountX;
-    if (vec_variant == 1u && !staged_fits) {
-      vec_variant = 0u;
-    }
-    if (vec_variant == 2u &&
-        (!staged_fits || params.matrix_k * bits_ < 32u)) {
-      vec_variant = 0u;
-    }
-    if (vec_variant == 3u && !ksplit_fits) {
-      vec_variant = 0u;
-    }
-
-    auto vec_kernel = [&]() {
-      if (subgroup_ready) {
-        switch (vec_variant) {
-          case 1u:
-            return select_float_kernel(
-                out.dtype(),
-                omarchy::ComputeKernel::QmmVecLowpressSubgroupF32,
-                omarchy::ComputeKernel::QmmVecLowpressSubgroupF16,
-                omarchy::ComputeKernel::QmmVecLowpressSubgroupBF16);
-          case 2u:
-            return select_float_kernel(
-                out.dtype(),
-                omarchy::ComputeKernel::QmmVecWordpackSubgroupF32,
-                omarchy::ComputeKernel::QmmVecWordpackSubgroupF16,
-                omarchy::ComputeKernel::QmmVecWordpackSubgroupBF16);
-          case 3u:
-            return select_float_kernel(
-                out.dtype(),
-                omarchy::ComputeKernel::QmmVecKsplitSubgroupF32,
-                omarchy::ComputeKernel::QmmVecKsplitSubgroupF16,
-                omarchy::ComputeKernel::QmmVecKsplitSubgroupBF16);
-          default:
-            return select_float_kernel(
-                out.dtype(),
-                omarchy::ComputeKernel::QmmVecSubgroupF32,
-                omarchy::ComputeKernel::QmmVecSubgroupF16,
-                omarchy::ComputeKernel::QmmVecSubgroupBF16);
-        }
-      }
-      switch (vec_variant) {
-        case 1u:
-          return select_float_kernel(
+    auto vec_kernel = subgroup_ready
+        ? select_float_kernel(
               out.dtype(),
-              omarchy::ComputeKernel::QmmVecLowpressF32,
-              omarchy::ComputeKernel::QmmVecLowpressF16,
-              omarchy::ComputeKernel::QmmVecLowpressBF16);
-        case 2u:
-          return select_float_kernel(
-              out.dtype(),
-              omarchy::ComputeKernel::QmmVecWordpackF32,
-              omarchy::ComputeKernel::QmmVecWordpackF16,
-              omarchy::ComputeKernel::QmmVecWordpackBF16);
-        case 3u:
-          return select_float_kernel(
-              out.dtype(),
-              omarchy::ComputeKernel::QmmVecKsplitF32,
-              omarchy::ComputeKernel::QmmVecKsplitF16,
-              omarchy::ComputeKernel::QmmVecKsplitBF16);
-        default:
-          return select_float_kernel(
+              omarchy::ComputeKernel::QmmVecSubgroupF32,
+              omarchy::ComputeKernel::QmmVecSubgroupF16,
+              omarchy::ComputeKernel::QmmVecSubgroupBF16)
+        : select_float_kernel(
               out.dtype(),
               omarchy::ComputeKernel::QmmVecF32,
               omarchy::ComputeKernel::QmmVecF16,
               omarchy::ComputeKernel::QmmVecBF16);
-      }
-    }();
-    // Variant 3 owns one column per workgroup; the others keep the
-    // COLUMNS_PER_GROUP split.
-    uint32_t gemv_groups =
-        vec_variant == 3u
-            ? params.matrix_n
-            : std::min(n_groups_qmm_vec, omarchy::kMaxComputeGroupCountX);
-    encoder.dispatch_compute(vec_kernel, bindings, params, gemv_groups, 1u, 1u);
+    encoder.dispatch_compute(
+        vec_kernel,
+        bindings,
+        params,
+        std::min(n_groups_qmm_vec, omarchy::kMaxComputeGroupCountX),
+        1u,
+        1u);
     return;
   }
   if (const char* tile_env = std::getenv("MLX_OMARCHY_QMM_TILE");

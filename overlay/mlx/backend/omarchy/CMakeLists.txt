@@ -215,29 +215,6 @@ omarchy_shader(qmm_vec_bf16 shaders/qmm_vec.comp -DUSE_BF16=1)
 omarchy_shader(qmm_vec_subgroup_f32 shaders/qmm_vec.comp -DUSE_SUBGROUP=1)
 omarchy_shader(qmm_vec_subgroup_f16 shaders/qmm_vec.comp -DUSE_FP16=1 -DUSE_SUBGROUP=1)
 omarchy_shader(qmm_vec_subgroup_bf16 shaders/qmm_vec.comp -DUSE_BF16=1 -DUSE_SUBGROUP=1)
-# DecodeGemvVariants: qmm_vec.comp compiled with the MLX_OMARCHY_QMM_VEC_VARIANT
-# selection defines (primitives.cpp routes to these; variant 0 above is the
-# default). lowpress stages x in shared memory (bit-exact vs default);
-# wordpack dequantizes whole packed words in the transposed layout; ksplit
-# gives each 32-lane slot an eighth of K with the reduce as second stage.
-omarchy_shader(qmm_vec_lowpress_f32 shaders/qmm_vec.comp -DQMM_VEC_STAGED_X=1)
-omarchy_shader(qmm_vec_lowpress_f16 shaders/qmm_vec.comp -DUSE_FP16=1 -DQMM_VEC_STAGED_X=1)
-omarchy_shader(qmm_vec_lowpress_bf16 shaders/qmm_vec.comp -DUSE_BF16=1 -DQMM_VEC_STAGED_X=1)
-omarchy_shader(qmm_vec_lowpress_subgroup_f32 shaders/qmm_vec.comp -DUSE_SUBGROUP=1 -DQMM_VEC_STAGED_X=1)
-omarchy_shader(qmm_vec_lowpress_subgroup_f16 shaders/qmm_vec.comp -DUSE_FP16=1 -DUSE_SUBGROUP=1 -DQMM_VEC_STAGED_X=1)
-omarchy_shader(qmm_vec_lowpress_subgroup_bf16 shaders/qmm_vec.comp -DUSE_BF16=1 -DUSE_SUBGROUP=1 -DQMM_VEC_STAGED_X=1)
-omarchy_shader(qmm_vec_wordpack_f32 shaders/qmm_vec.comp -DQMM_VEC_WORDPACK=1)
-omarchy_shader(qmm_vec_wordpack_f16 shaders/qmm_vec.comp -DUSE_FP16=1 -DQMM_VEC_WORDPACK=1)
-omarchy_shader(qmm_vec_wordpack_bf16 shaders/qmm_vec.comp -DUSE_BF16=1 -DQMM_VEC_WORDPACK=1)
-omarchy_shader(qmm_vec_wordpack_subgroup_f32 shaders/qmm_vec.comp -DUSE_SUBGROUP=1 -DQMM_VEC_WORDPACK=1)
-omarchy_shader(qmm_vec_wordpack_subgroup_f16 shaders/qmm_vec.comp -DUSE_FP16=1 -DUSE_SUBGROUP=1 -DQMM_VEC_WORDPACK=1)
-omarchy_shader(qmm_vec_wordpack_subgroup_bf16 shaders/qmm_vec.comp -DUSE_BF16=1 -DUSE_SUBGROUP=1 -DQMM_VEC_WORDPACK=1)
-omarchy_shader(qmm_vec_ksplit_f32 shaders/qmm_vec.comp -DQMM_VEC_KSPLIT=8)
-omarchy_shader(qmm_vec_ksplit_f16 shaders/qmm_vec.comp -DUSE_FP16=1 -DQMM_VEC_KSPLIT=8)
-omarchy_shader(qmm_vec_ksplit_bf16 shaders/qmm_vec.comp -DUSE_BF16=1 -DQMM_VEC_KSPLIT=8)
-omarchy_shader(qmm_vec_ksplit_subgroup_f32 shaders/qmm_vec.comp -DUSE_SUBGROUP=1 -DQMM_VEC_KSPLIT=8)
-omarchy_shader(qmm_vec_ksplit_subgroup_f16 shaders/qmm_vec.comp -DUSE_FP16=1 -DUSE_SUBGROUP=1 -DQMM_VEC_KSPLIT=8)
-omarchy_shader(qmm_vec_ksplit_subgroup_bf16 shaders/qmm_vec.comp -DUSE_BF16=1 -DUSE_SUBGROUP=1 -DQMM_VEC_KSPLIT=8)
 # PrefillQmmTile: m-tiled quantized matmul for prefill (matrix_m > 1);
 # one workgroup dequantizes each 16 x 16 weight block into shared f32
 # once and applies it to a 16-row tile of x, amortizing the inline
