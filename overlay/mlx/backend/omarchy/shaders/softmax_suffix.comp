@@ -55,10 +55,6 @@ layout(push_constant) uniform Params {
   uint lhs_offset;
   uint rhs_offset;
   uint output_offset;
-  // The encoder always pushes sizeof(ComputeParams); these trailing
-  // fields follow the shared struct's byte layout (aux_size 36,
-  // aux_offset 40, matrix_m 44, matrix_n 48) and stay unused outside
-  // the sink path.
   uint aux_size;
   uint aux_offset;
   uint matrix_m;
@@ -70,12 +66,6 @@ shared float block_values[256];
 void main() {
   uint thread = gl_LocalInvocationID.x;
   uint row_length = params.reduce_size;
-  // operation == 1 folds one attention sink per query head into the
-  // denominator: row_max absorbs max(row_max, sink) and the sum gains
-  // exp(sink - row_max). matrix_m carries q_len so row / matrix_m is
-  // the flattened batch-head index and matrix_n (the query-head count)
-  // maps it back to the per-head sink row - the GQA regroup flattens
-  // (kv, repeat) into query-head order, matching upstream's layout.
   bool has_sink = params.operation == 1u;
   for (uint row = gl_WorkGroupID.x; row < params.output_size;
        row += gl_NumWorkGroups.x) {

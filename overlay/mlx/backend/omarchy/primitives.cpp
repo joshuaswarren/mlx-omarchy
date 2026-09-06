@@ -1656,13 +1656,10 @@ void dispatch_softmax(
   params.output_size = output_size;
   params.lhs_offset = checked_item_offset(src, src.size(), name, out);
   params.output_offset = checked_item_offset(out, out.size(), name, out);
-  // Sinks ride the softmax denominator, not a scores column: the shader
-  // folds exp(sink - row_max) into the max and the sum, so the output
-  // keeps the scores' own column count and the following matmul needs
-  // no slice. matrix_m maps a flattened row to its batch-head index and
-  // matrix_n bounds it back to the query head (one sink per query head;
-  // the GQA regroup flattens (kv, repeat) into that order).
+  std::optional<array> dense_sinks;
   if (sinks != nullptr) {
+    sinks = &ensure_dense(
+        *sinks, sinks->flags().row_contiguous, dense_sinks, encoder, s);
     params.operation = 1u;
     params.rhs_offset = checked_item_offset(*sinks, sinks->size(), name, out);
     params.matrix_m = checked_u32(q_len, name, out);
@@ -9326,9 +9323,6 @@ void ScaledDotProductAttention::eval_gpu(
     encoder.add_temporary(scores);
 
     std::optional<array> masked;
-    // Upstream input layout: {q, k, v} + optional pre-broadcast mask +
-    // optional sinks. has_sinks_ disambiguates a 4-input call (sinks
-    // only) from a mask, and the sinks array is always the last input.
     const array* sinks =
         has_sinks_ ? &inputs.at(inputs.size() - 1) : nullptr;
     if (sinks != nullptr && (*sinks).dtype() != storage_dtype) {
@@ -9337,9 +9331,6 @@ void ScaledDotProductAttention::eval_gpu(
     const bool has_arr_mask =
         (inputs.size() == 5) || (inputs.size() == 4 && !has_sinks_);
     if (do_causal_) {
-      // A negative offset (k_len < q_len) fully masks the leading rows;
-      // the constant floor keeps them defined (uniform after softmax)
-      // and upstream's contract leaves those rows out of the comparison.
       // The same 0 / -1e30 additive shape the f32 path builds, stored
       // in the storage dtype at its finite maximum (f16 -65504, bf16
       // -3.3895313892515355e38), not -inf: softmax still maps masked
@@ -9480,8 +9471,6 @@ void ScaledDotProductAttention::eval_gpu(
   encoder.add_temporary(scores);
 
   std::optional<array> masked;
-  // The same input-layout rule the f16 path uses: sinks, when present,
-  // are the last input and disambiguate a 4-input call.
   const array* sinks = has_sinks_ ? &inputs.at(inputs.size() - 1) : nullptr;
   if (sinks != nullptr && (*sinks).dtype() != float32) {
     omarchy::unsupported("attention sinks dtype " + tag, out);
@@ -9489,9 +9478,6 @@ void ScaledDotProductAttention::eval_gpu(
   const bool has_arr_mask =
       (inputs.size() == 5) || (inputs.size() == 4 && !has_sinks_);
   if (do_causal_) {
-    // A negative offset (k_len < q_len) fully masks the leading rows;
-    // the constant floor keeps them defined (uniform after softmax)
-    // and upstream's contract leaves those rows out of the comparison.
     // The additive causal mask holds 0 for attended positions and
     // -1e30 elsewhere: the same float32 tensor the validated
     // composition built from arange/greater_equal and
