@@ -1,0 +1,10 @@
+============================= test session starts ==============================
+platform linux -- Python 3.11.2, pytest-9.1.1, pluggy-1.6.0
+rootdir: /tmp/mlx-worker-recovery-20260906-m1bs1t8t/gradient/.work/mlx
+configfile: pyproject.toml
+plugins: hydra-core-1.3.2, anyio-4.14.2
+collected 23 items / 22 deselected / 1 selected
+
+python/tests/test_fast_sdpa.py .                                         [100%]
+
+================= 1 passed, 22 deselected in 78.69s (0:01:18) ==================

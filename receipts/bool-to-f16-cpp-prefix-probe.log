@@ -1,0 +1,14 @@
+rc=1
+[doctest] doctest version is "2.4.12"
+[doctest] run with "--help" for options
+===============================================================================
+/tmp/mlx-worker-recovery-20260906-m1bs1t8t/gradient/.work/mlx/tests/omarchy/test_primitives.cpp:4494:
+TEST CASE:  PROBE bool to float16 cast before fix
+
+/tmp/mlx-worker-recovery-20260906-m1bs1t8t/gradient/.work/mlx/tests/omarchy/test_primitives.cpp:4494: ERROR: test case THREW exception: [omarchy] dtype converting copy is not implemented for the Omarchy Vulkan backend (dtype=float16, shape=[4]). No GPU kernel exists for it; no silent CPU fallback occurs. Run it on an explicit CPU stream to use the CPU implementation.
+
+===============================================================================
+[doctest] test cases:  3 |  2 passed | 1 failed | 92 skipped
+[doctest] assertions: 21 | 21 passed | 0 failed |
+[doctest] Status: FAILURE!
+

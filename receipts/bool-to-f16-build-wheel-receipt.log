@@ -1,0 +1,12 @@
+Successfully installed setuptools-84.0.0
+Successfully built mlx-omarchy
+[receipt] wheel: /tmp/mlx-worker-recovery-20260906-m1bs1t8t/gradient/dist/mlx_omarchy-0.32.2.dev202609061617+ec5380b2-cp311-cp311-linux_x86_64.whl
+[receipt] size: 7302604 bytes
+[receipt] sha256: bc8ab29d30f3ad09019a4f2ac8941f5f3aba3fee741b874e941396636a6a4239
+[receipt] source commit: ec5380b
+[receipt] NEXT STEP - do not skip: after you upload this wheel to a
+[receipt] release, verify the UPLOADED asset with
+[receipt]   python3 scripts/verify-release-assets.py <tag>
+[receipt] It must print VERIFIED before the release is announced as
+[receipt] usable. See docs/release.md. A local build check does not
+[receipt] verify what users download.
