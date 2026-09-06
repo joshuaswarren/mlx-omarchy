@@ -298,12 +298,13 @@ The `omarchy_kv_ops_tests` binary covers exact-value 2D and 3D concatenates, fp1
 The kernel keeps one (value, index) pair per thread in shared memory and writes uint32 indices.
 Ties keep the first occurrence, and NaN never wins a comparison, which matches the upstream CPU and Metal comparators.
 Non-suffix axes, non-contiguous inputs, and non-float inputs fail with named errors.
-`mx.sort` and `mx.argsort` pass the development gate for a last-axis sort of row-contiguous FP32 and FP16 rows up to 1024 elements.
-The bitonic kernel sorts one row per workgroup in shared memory and pads the row to a power of two with NaN keys.
+`mx.sort` and `mx.argsort` pass the development gate for a last-axis sort of row-contiguous FP32 and FP16 rows of any length.
+Rows up to 1024 elements sort in one workgroup: the bitonic kernel keeps the row in shared memory and pads it to a power of two with NaN keys.
+Longer rows sort through the wide-row path: the padded row is sliced into 1024-element chunks that the same suffix kernel sorts, then one global-memory compare-exchange dispatch per bitonic network stage finishes each padded row in place; the argsort carries source indices in a parallel buffer, so the stable order survives every stage.
 The comparator orders NaN after every number and breaks value ties on the smaller source index, which mirrors the upstream CPU `stable_sort` rule.
 ArgSort writes uint32 source indices, and the tie rule makes the index order unique.
-`mx.partition` and `mx.argpartition` route to the same full sort, the redirect the upstream Metal backend makes, so every kth position holds the sorted value.
-Rows beyond 1024, non-suffix axes, non-contiguous inputs, and non-float inputs fail with named errors.
+`mx.partition` and `mx.argpartition` route to the same full sort, the redirect the upstream Metal backend makes, so every kth position holds the sorted value; the full-sort redirect covers wide rows too.
+Non-suffix axes, non-contiguous inputs, and non-float inputs fail with named errors.
 `mx.topk` returns the k largest values in ascending order through the partition path, and the strided tail slice now passes for 2-D inputs.
 The BF16 sort variants build, but they have no gate receipt yet.
 `mx.cos` and `mx.sin` pass the development gate for FP32 against host references at `1e-5`, including negative inputs.
@@ -358,11 +359,9 @@ intermediates bit for bit.
 The full mlx-lm temp sampling shape also passes: one `[1, 151936]`
 bfloat16 logprob row scaled by `1/temp` and sampled in range.
 Temp-only sampling needs no `ArgPartition`: with the sampler defaults
-`make_sampler` chains nothing but `categorical_sampling`, so `--temp`
-works while the row-length limit holds.
-Wide-row `ArgPartition` and `top-k` stay unsupported: rows beyond 1024
-fail with the named `sort row length` error, which is the one remaining
-mlx-lm sampler limitation.
+`make_sampler` chains nothing but `categorical_sampling`.
+Wide-row `ArgPartition` and `top-k` now ride the wide-row sort path, so
+vocabulary-width rows partition without a row-length limit.
 The BF16 arange kernel variant builds, but it has no gate receipt yet.
 The gradient of `sum(sin(x))` matches `cos(x)` at `1e-5`.
 The Sin vjp lowers to Cos and Multiply only, so the gradient stays inside supported operations.

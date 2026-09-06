@@ -457,6 +457,21 @@ enum class ComputeKernel : uint16_t {
   // variant rides shaderInt64, the U16 variant 16-bit storage.
   FillU64,
   FillU16,
+  // MultiBlockSort: one global-memory bitonic compare-exchange stage
+  // (shaders/sort_merge.comp) that continues sort_suffix past 1024-wide
+  // rows. The host launches one dispatch per network stage and
+  // alternates a ping-pong buffer pair; ARGSORT variants carry the
+  // source positions in a parallel index buffer for the stable order.
+  SortMergeF32,
+  SortMergeF16,
+  SortMergeBF16,
+  SortMergeI32,
+  SortMergeU32,
+  ArgSortMergeF32,
+  ArgSortMergeF16,
+  ArgSortMergeBF16,
+  ArgSortMergeI32,
+  ArgSortMergeU32,
   Count,
 };
 
