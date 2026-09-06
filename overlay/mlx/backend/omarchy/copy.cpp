@@ -123,7 +123,7 @@ uint32_t compute_item_offset(
 omarchy::ComputeBinding compute_binding(const array& value) {
   auto* buffer =
       static_cast<const omarchy::VulkanBuffer*>(value.buffer().ptr());
-  return {buffer->buffer, 0, buffer->size};
+  return {buffer->buffer, 0, buffer->size, buffer};
 }
 
 // Fill an allocated output region at its destination offset with a
@@ -155,6 +155,7 @@ void fill_pattern(
     std::memset(base + start + lead + words_bytes, byte, tail);
   }
   if (words_bytes > 0) {
+    encoder.add_temporary(out);
     encoder.fill_buffer(
         buffer_handle(out), 0x01010101u * byte, words_bytes, start + lead);
   }
@@ -418,6 +419,7 @@ void copy_gpu_inplace(
       VkDeviceSize start = static_cast<VkDeviceSize>(
           compute_item_offset(out, o_offset, "scalar fill", out)) *
           sizeof(uint32_t);
+      encoder.add_temporary(out);
       encoder.fill_buffer(
           buffer_handle(out), word, count * sizeof(uint32_t), start);
       return;
@@ -722,6 +724,8 @@ void copy_gpu_inplace(
     return;
   }
 
+  encoder.add_temporary(in);
+  encoder.add_temporary(out);
   encoder.copy_buffer(
       buffer_handle(in),
       buffer_handle(out),

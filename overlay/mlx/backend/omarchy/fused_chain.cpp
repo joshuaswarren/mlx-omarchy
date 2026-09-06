@@ -98,7 +98,7 @@ std::optional<uint32_t> chain_op_for(const Primitive& p) {
 
 ComputeBinding chain_binding(const array& value) {
   auto* buffer = static_cast<const VulkanBuffer*>(value.buffer().ptr());
-  return {buffer->buffer, 0, buffer->size};
+  return {buffer->buffer, 0, buffer->size, buffer};
 }
 
 // Leaf broadcast addressing modes; lockstep with fused_chain.comp.

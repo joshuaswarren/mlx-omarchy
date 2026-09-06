@@ -79,6 +79,21 @@ class MLX_API CommandEncoder {
     batch_buffers_.push_back(buf);
   }
 
+  // Record one dispatch binding's owning buffer exactly like
+  // add_temporary records an array: ComputeBinding::owner covers the
+  // buffers a dispatch binds that no add_temporary call registered
+  // (plain input and output arrays), which otherwise could be freed
+  // with completion == 0 while the queued commands still reference
+  // them, and then be recycled or destroyed mid-flight.
+  void note_binding_owner(const void* owner) {
+    auto* buf = static_cast<VulkanBuffer*>(const_cast<void*>(owner));
+    if (!buf) {
+      return;
+    }
+    allocator().note_batch_buffer(buf);
+    batch_buffers_.push_back(buf);
+  }
+
   // Handlers run on the device completion thread when this submission's
   // GPU work finishes.
   void add_completed_handler(std::function<void()> task) {

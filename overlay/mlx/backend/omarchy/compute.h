@@ -479,6 +479,12 @@ struct ComputeBinding {
   VkBuffer buffer;
   VkDeviceSize offset;
   VkDeviceSize range;
+  // Owning VulkanBuffer for batch stamping; null for placeholder slots.
+  // A dispatch binds buffers that no add_temporary recorded (plain input
+  // and output arrays), and an unstamped buffer whose array dies before
+  // the batch drains would be recycled or destroyed while the queued
+  // commands still reference it.
+  const void* owner{nullptr};
 };
 
 struct ComputeParams {
