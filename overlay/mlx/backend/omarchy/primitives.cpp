@@ -1238,23 +1238,29 @@ void dispatch_sort_wide(
     const array& src,
     array& out,
     bool argsort,
-    omarchy::CommandEncoder& encoder);
+    omarchy::CommandEncoder& encoder,
+    const Stream& s);
 void dispatch_sort(
     const std::string& name,
     const array& input,
     array& out,
     bool argsort,
-    omarchy::CommandEncoder& encoder) {
+    omarchy::CommandEncoder& encoder,
+    const Stream& s) {
+  // |s| comes from the caller's primitive-bearing output array. The
+  // any-axis wrapper dispatches on temps built with no primitive, so
+  // out.primitive().stream() is not a legal way to recover the stream
+  // down here.
   std::optional<array> dense_temp;
   const array& src = ensure_dense(
       input,
       input.flags().row_contiguous,
       dense_temp,
       encoder,
-      out.primitive().stream());
+      s);
   size_t row_length = src.shape(-1);
   if (row_length > kSortMaxRowLength) {
-    dispatch_sort_wide(name, src, out, argsort, encoder);
+    dispatch_sort_wide(name, src, out, argsort, encoder, s);
     return;
   }
   out.set_data(allocate_omarchy(out.nbytes()));
@@ -1337,8 +1343,8 @@ void dispatch_sort_wide(
     const array& src,
     array& out,
     bool argsort,
-    omarchy::CommandEncoder& encoder) {
-  const Stream& s = out.primitive().stream();
+    omarchy::CommandEncoder& encoder,
+    const Stream& s) {
   size_t row_length = src.shape(-1);
   size_t rows = src.size() / row_length;
   size_t padded = 1;
@@ -1573,12 +1579,14 @@ void dispatch_sort_any_axis(
     int axis,
     bool argsort,
     omarchy::CommandEncoder& encoder) {
+  // |out| carries the Sort/ArgSort/Partition primitive here, so its
+  // stream is the authoritative one for every temp and sub-dispatch.
+  auto& s = out.primitive().stream();
   if (axis == input.ndim() - 1) {
-    dispatch_sort(name, input, out, argsort, encoder);
+    dispatch_sort(name, input, out, argsort, encoder, s);
     return;
   }
   AxisMoveTables tables = axis_move_tables(input, axis);
-  auto& s = out.primitive().stream();
   out.set_data(allocate_omarchy(out.nbytes()));
   array moved(tables.shape, input.dtype(), nullptr, {});
   moved.set_data(allocate_omarchy(moved.nbytes()));
@@ -1594,7 +1602,7 @@ void dispatch_sort_any_axis(
         /* o_offset = */ 0,
         CopyType::GeneralGeneral,
         s);
-    dispatch_sort(name, moved, sorted, argsort, encoder);
+    dispatch_sort(name, moved, sorted, argsort, encoder, s);
     copy_gpu_inplace(
         sorted,
         out,
