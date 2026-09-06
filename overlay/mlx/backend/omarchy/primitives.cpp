@@ -1226,11 +1226,19 @@ void require_sort_dtype(
   }
 }
 
-// One workgroup bitonic-sorts one row of up to 1024 elements.
-// Partition and ArgPartition route here too: a full sort satisfies the
-// partition contract, the same redirect the upstream Metal backend makes.
+// One workgroup bitonic-sorts one row of up to 1024 elements, and the
+// wide-row stage below sorts longer rows by slicing each padded row into
+// 1024-element chunks. Partition and ArgPartition route here too: a full
+// sort satisfies the partition contract, the same redirect the upstream
+// Metal backend makes.
 constexpr size_t kSortMaxRowLength = 1024;
 
+void dispatch_sort_wide(
+    const std::string& name,
+    const array& src,
+    array& out,
+    bool argsort,
+    omarchy::CommandEncoder& encoder);
 void dispatch_sort(
     const std::string& name,
     const array& input,
@@ -1246,7 +1254,8 @@ void dispatch_sort(
       out.primitive().stream());
   size_t row_length = src.shape(-1);
   if (row_length > kSortMaxRowLength) {
-    omarchy::unsupported("sort row length " + name, out);
+    dispatch_sort_wide(name, src, out, argsort, encoder);
+    return;
   }
   out.set_data(allocate_omarchy(out.nbytes()));
   if (out.size() == 0) {
@@ -1307,6 +1316,206 @@ void dispatch_sort(
       bindings,
       params,
       std::min(output_size, omarchy::kMaxComputeGroupCountX));
+}
+
+// Wide-row sort: the multi-block continuation of the suffix kernel. Each
+// padded row is a power-of-two length P with the PAD sentinel in
+// [row_length, P), sliced into 1024-element chunks that the suffix
+// kernel sorts. Chunk mode runs the chunk-local bitonic network with the
+// final k stage directed by chunk parity, which is exactly the state the
+// k <= 1024 stages of the full bitonic network leave behind: even chunks
+// ascending, odd chunks descending. One merge dispatch per network stage
+// (block k, sub-stage j) then sorts each padded row in place over global
+// memory - a compare-exchange stage touches disjoint pairs, so no
+// ping-pong buffer is needed - and the real prefix is copied out. Any
+// row length sorts; the hard ceilings are the backend-wide u32
+// element-count and index-span limits plus the int-typed Shape dims, so
+// a padded element count over INT32_MAX refuses by name instead of
+// wrapping.
+void dispatch_sort_wide(
+    const std::string& name,
+    const array& src,
+    array& out,
+    bool argsort,
+    omarchy::CommandEncoder& encoder) {
+  const Stream& s = out.primitive().stream();
+  size_t row_length = src.shape(-1);
+  size_t rows = src.size() / row_length;
+  size_t padded = 1;
+  while (padded < row_length) {
+    padded <<= 1;
+  }
+  constexpr size_t chunk = kSortMaxRowLength;
+  size_t chunks_per_row = padded / chunk;
+  if (rows * padded >
+      static_cast<size_t>(std::numeric_limits<int32_t>::max())) {
+    omarchy::unsupported(name + " row element count", out);
+  }
+  uint32_t padded_elems = checked_u32(rows * padded, name, out);
+  uint32_t chunk_count = checked_u32(rows * chunks_per_row, name, out);
+
+  out.set_data(allocate_omarchy(out.nbytes()));
+  if (out.size() == 0) {
+    return;
+  }
+
+  // The chunk stage always sorts a value pipeline (the keys the merge
+  // stages compare); argsort adds an index pipeline through the ArgSort
+  // chunk kernel and then rides the ArgSortMerge variant, which moves
+  // keys and indices in lockstep.
+  omarchy::ComputeKernel value_kernel;
+  omarchy::ComputeKernel arg_kernel;
+  omarchy::ComputeKernel merge_kernel;
+  if (src.dtype() == int32 || src.dtype() == uint32) {
+    value_kernel = src.dtype() == int32 ? omarchy::ComputeKernel::SortI32
+                                        : omarchy::ComputeKernel::SortU32;
+    arg_kernel = src.dtype() == int32 ? omarchy::ComputeKernel::ArgSortI32
+                                      : omarchy::ComputeKernel::ArgSortU32;
+    merge_kernel = argsort
+        ? (src.dtype() == int32 ? omarchy::ComputeKernel::ArgSortMergeI32
+                                : omarchy::ComputeKernel::ArgSortMergeU32)
+        : (src.dtype() == int32 ? omarchy::ComputeKernel::SortMergeI32
+                                : omarchy::ComputeKernel::SortMergeU32);
+  } else {
+    value_kernel = select_float_kernel(
+        src.dtype(),
+        omarchy::ComputeKernel::SortF32,
+        omarchy::ComputeKernel::SortF16,
+        omarchy::ComputeKernel::SortBF16);
+    arg_kernel = select_float_kernel(
+        src.dtype(),
+        omarchy::ComputeKernel::ArgSortF32,
+        omarchy::ComputeKernel::ArgSortF16,
+        omarchy::ComputeKernel::ArgSortBF16);
+    merge_kernel = argsort
+        ? select_float_kernel(
+              src.dtype(),
+              omarchy::ComputeKernel::ArgSortMergeF32,
+              omarchy::ComputeKernel::ArgSortMergeF16,
+              omarchy::ComputeKernel::ArgSortMergeBF16)
+        : select_float_kernel(
+              src.dtype(),
+              omarchy::ComputeKernel::SortMergeF32,
+              omarchy::ComputeKernel::SortMergeF16,
+              omarchy::ComputeKernel::SortMergeBF16);
+  }
+
+  // The chunk stage reads the source copy and writes the sorted keys
+  // (plus, for argsort, the source indices carried alongside). The
+  // sentinel word pads every dtype: float words become NaN keys (the
+  // comparator sends NaN after every number), int32 reads 0x7fffffff
+  // whose sign-flip mapping is the largest key, uint32 reads the largest
+  // key directly, and the 16-bit halves repeat the same NaN property.
+  // The suffix kernel binds its input read-only and its output
+  // write-only, so the chunk stage needs a second padded buffer: the
+  // pad-and-copy lands in |padded_src| and the sorted chunks land in
+  // |keys|, where the merge stages then run in place.
+  array padded_src(
+      Shape{static_cast<int>(rows), static_cast<int>(padded)},
+      src.dtype(),
+      nullptr,
+      {});
+  array keys(
+      Shape{static_cast<int>(rows), static_cast<int>(padded)},
+      src.dtype(),
+      nullptr,
+      {});
+  padded_src.set_data(allocate_omarchy(padded_src.nbytes()));
+  keys.set_data(allocate_omarchy(keys.nbytes()));
+  encoder.add_temporary(padded_src);
+  encoder.add_temporary(keys);
+  uint32_t pad_word = src.dtype() == int32 ? 0x7fffffffu : 0xffffffffu;
+  auto* src_storage =
+      static_cast<omarchy::VulkanBuffer*>(padded_src.buffer().ptr());
+  encoder.fill_buffer(src_storage->buffer, pad_word, padded_src.nbytes(), 0);
+  copy_gpu_inplace(
+      src,
+      padded_src,
+      Shape{static_cast<int>(rows), static_cast<int>(row_length)},
+      Strides{static_cast<int>(row_length), 1},
+      Strides{static_cast<int>(padded), 1},
+      /* i_offset = */ 0,
+      /* o_offset = */ 0,
+      CopyType::GeneralGeneral,
+      s);
+  array idx = array(Shape{0}, uint32, nullptr, {});
+  if (argsort) {
+    idx = array(
+        Shape{static_cast<int>(rows), static_cast<int>(padded)},
+        uint32,
+        nullptr,
+        {});
+    idx.set_data(allocate_omarchy(idx.nbytes()));
+    encoder.add_temporary(idx);
+  }
+
+  // In-block stage: one suffix dispatch sorts every 1024-element chunk.
+  // rhs_size carries the chunks-per-row count that directs each chunk's
+  // final stage and, for argsort, turns chunk-local positions into row
+  // positions.
+  omarchy::ComputeParams params;
+  params.count = padded_elems;
+  params.reduce_size = static_cast<uint32_t>(chunk);
+  params.rhs_size = checked_u32(chunks_per_row, name, out);
+  params.output_size = chunk_count;
+  std::array<omarchy::ComputeBinding, 3> sort_bindings{
+      binding(padded_src), binding(padded_src), binding(keys)};
+  encoder.dispatch_compute(
+      value_kernel,
+      sort_bindings,
+      params,
+      std::min(chunk_count, omarchy::kMaxComputeGroupCountX));
+  if (argsort) {
+    std::array<omarchy::ComputeBinding, 3> arg_bindings{
+        binding(padded_src), binding(padded_src), binding(idx)};
+    encoder.dispatch_compute(
+        arg_kernel,
+        arg_bindings,
+        params,
+        std::min(chunk_count, omarchy::kMaxComputeGroupCountX));
+  }
+
+  // Merge stages: one in-place dispatch per (k, j) pair, values and the
+  // argsort index buffer in lockstep.
+  omarchy::ComputeParams merge_params;
+  merge_params.count = padded_elems;
+  merge_params.reduce_size = checked_u32(padded, name, out);
+  for (uint64_t k = 2 * chunk; k <= padded; k <<= 1) {
+    for (uint64_t j = k >> 1; j >= 1; j >>= 1) {
+      merge_params.lhs_size = static_cast<uint32_t>(k);
+      merge_params.rhs_size = static_cast<uint32_t>(j);
+      if (argsort) {
+        std::array<omarchy::ComputeBinding, 2> merge_bindings{
+            binding(keys), binding(idx)};
+        encoder.dispatch_compute(
+            merge_kernel,
+            merge_bindings,
+            merge_params,
+            omarchy::compute_dispatch_group_count(padded_elems));
+      } else {
+        std::array<omarchy::ComputeBinding, 1> merge_bindings{binding(keys)};
+        encoder.dispatch_compute(
+            merge_kernel,
+            merge_bindings,
+            merge_params,
+            omarchy::compute_dispatch_group_count(padded_elems));
+      }
+    }
+  }
+
+  // The first row_length positions of each padded row are the sorted
+  // row: values for the value variant, source indices for argsort.
+  const array& result = argsort ? idx : keys;
+  copy_gpu_inplace(
+      result,
+      out,
+      Shape{static_cast<int>(rows), static_cast<int>(row_length)},
+      Strides{static_cast<int>(padded), 1},
+      Strides{static_cast<int>(row_length), 1},
+      /* i_offset = */ 0,
+      /* o_offset = */ 0,
+      CopyType::GeneralGeneral,
+      s);
 }
 // Any-axis sort family. The suffix kernel sorts one row-contiguous row
 // per workgroup, so a non-suffix axis rides the general strided-copy
@@ -1400,14 +1609,6 @@ void dispatch_sort_any_axis(
   encoder.add_temporary(moved);
   encoder.add_temporary(sorted);
 }
-// Wide-row ArgPartition. One workgroup per row runs a binary search over
-// the monotone unsigned key (with canonical -0.0 and NaN handling) and
-// serially emits the indices. The shader handles any row length; the
-// dispatch caps the row count at kMaxComputeGroupCountX (batches spill
-// into a second batch loop, but no vocabulary-width model needs more than
-// one batch of 65535 rows).
-
-
 // Last-axis softmax. The Softmax primitive is only constructed for a
 // last-axis reduction (mlx/ops.cpp softmax), so no suffix-axis check is
 // needed here. The shader accumulates in float32 for every dtype, which
@@ -1872,11 +2073,6 @@ void dispatch_clear_u32(
       omarchy::compute_dispatch_group_count(params.count));
 }
 
-// Wide-row ArgPartition: an 8-bit radix select finds the kth smallest
-// monotone key over four passes, then one workgroup per row emits the
-// stable partition order. Deterministic end to end: the histogram
-// counts through order-free integer atomics, the bucket walk is a
-// fixed shared-memory scan, and the emit is one fixed serial pass.
 // --- Wave 6: matmul family --------------------------------------------
 
 // True when walking the strides from the last axis meets either the
@@ -2546,16 +2742,9 @@ void ArgPartition::eval_gpu(const std::vector<array>& inputs, array& out) {
   auto& encoder = omarchy::get_command_encoder(out.primitive().stream());
   require_sort_dtype("ArgPartition", input, out, true, encoder);
   // Ops layer (mlx/ops.cpp argpartition) already validated kth in
-  // [0, axis_size) so the row axis is non-empty.
-  size_t row_length = input.shape(axis);
-  if (row_length > kSortMaxRowLength) {
-    // Wide-row vocabulary widths (top-k sampling for real language
-    // models) need a selection algorithm rather than a full sort. A
-    // radix-select kernel was in flight on 2026-09-02 but its shader
-    // source was lost before it computed correct values, so this
-    // refuses by name rather than returning a wrong kth.
-    omarchy::unsupported("sort row length ArgPartition", out);
-  }
+  // [0, axis_size) so the row axis is non-empty. The full-sort redirect
+  // covers any row length: the wide-row sort path sorts the row and the
+  // argsort indices are the partition order.
   dispatch_sort_any_axis("ArgPartition", input, out, axis, true, encoder);
 }
 // One thread per output row sweeps the row-contiguous suffix row of

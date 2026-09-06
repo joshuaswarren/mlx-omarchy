@@ -10,7 +10,11 @@
 // bits into an order-preserving key by flipping the sign bit. Equal keys
 // order by source index, so both the value variant and the ARGSORT index
 // variant produce the unique stable order. Rows up to 1024 elements fit
-// the shared arrays.
+// the shared arrays. The wide-row path (dispatch_sort_wide) reuses this
+// kernel as its in-block stage: chunk mode slices each padded row into
+// reduce_size-element chunks, passes the chunks-per-row count in
+// rhs_size, and sorts each chunk with the block-parity direction the
+// k <= 1024 network stages leave behind.
 
 #version 460
 
@@ -176,6 +180,17 @@ bool key_less(float value_a, uint index_a, float value_b, uint index_b) {
 }
 #endif
 
+// Chunk mode turns chunk-local load positions into row positions: the
+// chunk's base inside its padded row is the chunk-within-row index times
+// the chunk length, which rhs_size carries as chunks per row. Row mode
+// keeps plain load positions.
+uint index_base(uint row, uint index) {
+  if (params.rhs_size == 0u) {
+    return index;
+  }
+  return (row % params.rhs_size) * params.reduce_size + index;
+}
+
 void main() {
   uint thread = gl_LocalInvocationID.x;
   uint row_length = params.reduce_size;
@@ -198,7 +213,7 @@ void main() {
       } else {
         row_keys[index] = PAD_KEY;
       }
-      row_indices[index] = index;
+      row_indices[index] = index_base(row, index);
     }
     barrier();
     for (uint k = 2u; k <= padded; k <<= 1u) {
@@ -211,7 +226,16 @@ void main() {
             uint index_key = row_indices[index];
             KEY_TYPE partner_key = row_keys[partner];
             uint partner_index_key = row_indices[partner];
+            // Row mode runs the full bitonic network, so the direction
+            // flips with each k-block: (index & k) == 0. Chunk mode runs
+            // the same local network, but its final stage (k == padded)
+            // must leave the chunk in the direction the global merge
+            // network's first stages produce: even chunks ascending,
+            // odd chunks descending.
             bool ascending = (index & k) == 0u;
+            if (params.rhs_size != 0u && k == padded) {
+              ascending = (row & 1u) == 0u;
+            }
             bool swap = ascending
                 ? key_less(partner_key, partner_index_key, key, index_key)
                 : key_less(key, index_key, partner_key, partner_index_key);

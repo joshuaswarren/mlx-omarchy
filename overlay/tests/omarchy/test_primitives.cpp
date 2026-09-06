@@ -3771,24 +3771,14 @@ TEST_CASE("sort and argsort handle wide rows through Vulkan compute") {
   check_indices(argsort(y, -1, stream), exact_order, stream);
 }
 
-TEST_CASE("sort rejects long rows and non-float dtypes with named errors") {
+TEST_CASE("sort rejects non-float dtypes with named errors") {
   if (!compute_available()) {
     return;
   }
   Stream stream = gpu_stream();
 
-  std::vector<float> wide(1025, 1.0f);
-  array x(wide.begin(), Shape{1, 1025}, float32);
-  std::string length_error = evaluation_error(sort(x, -1, stream));
-  CHECK(length_error.find("sort row length Sort") != std::string::npos);
-  CHECK(length_error.find("no silent CPU fallback") != std::string::npos);
-  std::string index_length_error =
-      evaluation_error(argsort(x, -1, stream));
-  CHECK(
-      index_length_error.find("sort row length ArgSort") != std::string::npos);
-
-  // int32 and uint32 sort through Vulkan compute now; int64 still
-  // refuses by name.
+  // Long rows sort now (the merge cases below); int64 still refuses by
+  // name.
   array ints({3, 1, 2}, int64);
   std::string dtype_error = evaluation_error(sort(ints, -1, stream));
   CHECK(dtype_error.find("[omarchy] Sort dtype") != std::string::npos);
@@ -3800,6 +3790,166 @@ TEST_CASE("sort rejects long rows and non-float dtypes with named errors") {
   array matrix({1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f}, {2, 3}, float32);
   check_values(sort(matrix, 0, stream), {1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f}, stream);
   check_indices(argsort(matrix, 0, stream), {0, 0, 0, 1, 1, 1}, stream);
+}
+
+TEST_CASE("sort and argsort merge long rows exactly through global memory") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+
+  // Every length crosses the 1024-element chunk stage and one or more
+  // global merge stages; 65537 pads to 131072. Two rows per length keep
+  // the padded rows from contaminating each other, and the generator
+  // repeats values so stability is observable through the argsort.
+  auto make_row = [](size_t length, int seed) {
+    std::vector<float> row(length);
+    for (size_t i = 0; i < length; ++i) {
+      row[i] = static_cast<float>((i * i + 3 * i + seed * 571) % 997) *
+              0.25f -
+          100.0f;
+    }
+    return row;
+  };
+  auto reference = [](const std::vector<float>& row) {
+    std::vector<uint32_t> order(row.size());
+    std::iota(order.begin(), order.end(), 0u);
+    std::stable_sort(order.begin(), order.end(), [&](uint32_t a, uint32_t b) {
+      float va = row[a];
+      float vb = row[b];
+      bool nan_a = std::isnan(va);
+      bool nan_b = std::isnan(vb);
+      if (nan_a != nan_b) {
+        return nan_b;
+      }
+      if (nan_a) {
+        return a < b;
+      }
+      return va < vb || (va == vb && a < b);
+    });
+    std::vector<float> values(row.size());
+    for (size_t i = 0; i < row.size(); ++i) {
+      values[i] = row[order[i]];
+    }
+    return std::make_pair(values, order);
+  };
+
+  for (size_t length : {size_t{1025}, size_t{4097}, size_t{32769},
+                        size_t{65537}}) {
+    CAPTURE(length);
+    std::vector<float> rows = make_row(length, 1);
+    std::vector<float> row_two = make_row(length, 2);
+    rows.insert(rows.end(), row_two.begin(), row_two.end());
+    array x(rows.begin(), Shape{2, static_cast<int>(length)}, float32);
+
+    array sorted = sort(x, -1, stream);
+    array order = argsort(x, -1, stream);
+    sorted.eval();
+    order.eval();
+    omarchy::get_command_encoder(stream).synchronize();
+    for (int repeat = 0; repeat < 2; ++repeat) {
+      auto [expected_values, expected_order] =
+          reference(make_row(length, repeat == 0 ? 1 : 2));
+      const float* values =
+          sorted.data<float>() + repeat * length;
+      const uint32_t* indices =
+          order.data<uint32_t>() + repeat * length;
+      for (size_t i = 0; i < length; ++i) {
+        CHECK_EQ(values[i], expected_values[i]);
+        CHECK_EQ(indices[i], expected_order[i]);
+      }
+    }
+  }
+
+  // NaNs and a signed-zero pair placed across chunk boundaries: the
+  // NaNs must land after every number in source order and the pads
+  // (which are NaN words) must stay above every real element.
+  {
+    constexpr size_t length = 4097;
+    std::vector<float> row = make_row(length, 3);
+    row[5] = std::numeric_limits<float>::quiet_NaN();
+    row[1024] = std::numeric_limits<float>::quiet_NaN();
+    row[1025] = -0.0f;
+    row[2048] = 0.0f;
+    row[4096] = std::numeric_limits<float>::quiet_NaN();
+    array x(row.begin(), Shape{1, static_cast<int>(length)}, float32);
+    array sorted = sort(x, -1, stream);
+    array order = argsort(x, -1, stream);
+    sorted.eval();
+    order.eval();
+    omarchy::get_command_encoder(stream).synchronize();
+    auto [expected_values, expected_order] = reference(row);
+    const float* values = sorted.data<float>();
+    const uint32_t* indices = order.data<uint32_t>();
+    for (size_t i = 0; i < length; ++i) {
+      bool value_ok =
+          values[i] == expected_values[i] ||
+          (std::isnan(values[i]) && std::isnan(expected_values[i]));
+      CHECK(value_ok);
+      CHECK_EQ(indices[i], expected_order[i]);
+    }
+    CHECK(std::isnan(values[length - 1]));
+    CHECK(std::isnan(values[length - 2]));
+    CHECK(std::isnan(values[length - 3]));
+  }
+
+  // int32 through the same merge path: negatives flip to order-preserving
+  // unsigned keys, duplicates tie on source index, and a real INT32_MAX
+  // element shares the pad key but must stay inside the row.
+  {
+    constexpr size_t length = 4097;
+    std::vector<int32_t> row(length);
+    for (size_t i = 0; i < length; ++i) {
+      row[i] = static_cast<int32_t>((i * 48271 + 13) % 2009) - 1000;
+    }
+    row[17] = std::numeric_limits<int32_t>::max();
+    row[2048] = -1;
+    row[4096] = std::numeric_limits<int32_t>::max();
+    array x(row.begin(), Shape{1, static_cast<int>(length)}, int32);
+    std::vector<uint32_t> order(length);
+    std::iota(order.begin(), order.end(), 0u);
+    std::stable_sort(order.begin(), order.end(), [&](uint32_t a, uint32_t b) {
+      uint32_t ka = static_cast<uint32_t>(row[a]) ^ 0x80000000u;
+      uint32_t kb = static_cast<uint32_t>(row[b]) ^ 0x80000000u;
+      return ka < kb || (ka == kb && a < b);
+    });
+    array sorted_order = argsort(x, -1, stream);
+    sorted_order.eval();
+    omarchy::get_command_encoder(stream).synchronize();
+    const uint32_t* indices = sorted_order.data<uint32_t>();
+    for (size_t i = 0; i < length; ++i) {
+      CHECK_EQ(indices[i], order[i]);
+    }
+    array sorted_values = sort(x, -1, stream);
+    sorted_values.eval();
+    omarchy::get_command_encoder(stream).synchronize();
+    const int32_t* values = sorted_values.data<int32_t>();
+    for (size_t i = 0; i < length; ++i) {
+      CHECK_EQ(values[i], row[order[i]]);
+    }
+  }
+
+  // FP16 rides the same merge kernel family with 16-bit storage; gated
+  // like the narrow FP16 case above.
+  const auto& capabilities = omarchy::device(0).capabilities();
+  if (capabilities.shader_float16 &&
+      capabilities.storage_buffer_16bit_access) {
+    constexpr size_t length = 1031;
+    std::vector<float> row = make_row(length, 4);
+    array x(row.begin(), Shape{1, static_cast<int>(length)}, float16);
+    array order = argsort(x, -1, stream);
+    order.eval();
+    omarchy::get_command_encoder(stream).synchronize();
+    std::vector<uint32_t> expected(length);
+    std::iota(expected.begin(), expected.end(), 0u);
+    std::stable_sort(expected.begin(), expected.end(), [&](uint32_t a, uint32_t b) {
+      return row[a] < row[b] || (row[a] == row[b] && a < b);
+    });
+    const uint32_t* indices = order.data<uint32_t>();
+    for (size_t i = 0; i < length; ++i) {
+      CHECK_EQ(indices[i], expected[i]);
+    }
+  }
 }
 
 TEST_CASE(

@@ -180,6 +180,16 @@
 #include "argsort_u8.h"
 #include "argsort_i16.h"
 #include "argsort_u16.h"
+#include "sort_merge_bf16.h"
+#include "sort_merge_f16.h"
+#include "sort_merge_f32.h"
+#include "sort_merge_i32.h"
+#include "sort_merge_u32.h"
+#include "argsort_merge_bf16.h"
+#include "argsort_merge_f16.h"
+#include "argsort_merge_f32.h"
+#include "argsort_merge_i32.h"
+#include "argsort_merge_u32.h"
 #include "logical_or_bool.h"
 #include "compare_bool.h"
 #include "scan_bf16.h"
@@ -656,6 +666,26 @@ ShaderBytes shader_bytes(ComputeKernel kernel) {
       return {argsort_i16, argsort_i16_size};
     case ComputeKernel::ArgSortU16:
       return {argsort_u16, argsort_u16_size};
+    case ComputeKernel::SortMergeF32:
+      return {sort_merge_f32, sort_merge_f32_size};
+    case ComputeKernel::SortMergeF16:
+      return {sort_merge_f16, sort_merge_f16_size};
+    case ComputeKernel::SortMergeBF16:
+      return {sort_merge_bf16, sort_merge_bf16_size};
+    case ComputeKernel::SortMergeI32:
+      return {sort_merge_i32, sort_merge_i32_size};
+    case ComputeKernel::SortMergeU32:
+      return {sort_merge_u32, sort_merge_u32_size};
+    case ComputeKernel::ArgSortMergeF32:
+      return {argsort_merge_f32, argsort_merge_f32_size};
+    case ComputeKernel::ArgSortMergeF16:
+      return {argsort_merge_f16, argsort_merge_f16_size};
+    case ComputeKernel::ArgSortMergeBF16:
+      return {argsort_merge_bf16, argsort_merge_bf16_size};
+    case ComputeKernel::ArgSortMergeI32:
+      return {argsort_merge_i32, argsort_merge_i32_size};
+    case ComputeKernel::ArgSortMergeU32:
+      return {argsort_merge_u32, argsort_merge_u32_size};
     case ComputeKernel::RandomBitsU32:
       return {random_bits_u32, random_bits_u32_size};
     case ComputeKernel::QmmF32:

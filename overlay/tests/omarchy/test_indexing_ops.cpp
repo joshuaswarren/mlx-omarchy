@@ -927,75 +927,51 @@ TEST_CASE("argpartition partitions over a non-suffix axis") {
   CHECK_EQ(v[3], 1u);
 }
 
-TEST_CASE("argpartition wide rows keep the named refusal until a selection "
-          "kernel lands") {
+TEST_CASE("argpartition wide rows partition exactly") {
   if (!compute_available()) {
     return;
   }
   Stream stream = gpu_stream();
-  // kSortMaxRowLength is 1024: the bitonic sort caps there, and real
-  // vocabulary widths (32k to 150k columns) need a selection algorithm
-  // rather than a full sort. A radix-select kernel was in flight on
-  // 2026-09-02 but its shader was lost before it computed correct
-  // values, so the gate must keep refusing by name. This pin fails the
-  // moment the gate moves or the refusal is renamed, forcing whoever
-  // lands the selection kernel to flip this case to the value test
-  // kept verbatim at the bottom of this file.
+  // Any row length now sorts: the wide-row sort path carries
+  // ArgPartition's full-sort redirect past the old 1024 cap, so this
+  // value test replaced the refusal pin in the same change.
   std::vector<float> row(2000);
   for (int i = 0; i < 2000; ++i) {
     row[i] = float((i * 48271) % 2009) - 1000.0f;
   }
   array a = array(row.data(), Shape({1, 2000}), float32);
-  std::string error = evaluation_error(argpartition(a, 999, -1, stream));
-  CHECK(error.find("sort row length ArgPartition") != std::string::npos);
+  // kth = 0: position 0 names the minimum's index.
+  {
+    array out = argpartition(a, 0, -1, stream);
+    out.eval();
+    sync_gpu(stream);
+    const uint32_t* indices = out.data<uint32_t>();
+    float smallest = *std::min_element(row.begin(), row.end());
+    CHECK_EQ(row[indices[0]], smallest);
+  }
+  // kth = N-1: position N-1 names the maximum's index.
+  {
+    array out = argpartition(a, 1999, -1, stream);
+    out.eval();
+    sync_gpu(stream);
+    const uint32_t* indices = out.data<uint32_t>();
+    float largest = *std::max_element(row.begin(), row.end());
+    CHECK_EQ(row[indices[1999]], largest);
+  }
+  // kth = 1000: the partition property must hold exactly, like the
+  // CPU reference: nothing right of kth is smaller than value[kth],
+  // nothing left of kth is larger.
+  {
+    array out = argpartition(a, 1000, -1, stream);
+    out.eval();
+    sync_gpu(stream);
+    const uint32_t* indices = out.data<uint32_t>();
+    float pivot = row[indices[1000]];
+    for (int i = 0; i < 1000; ++i) {
+      CHECK(row[indices[i]] <= pivot);
+    }
+    for (int i = 1001; i < 2000; ++i) {
+      CHECK(row[indices[i]] >= pivot);
+    }
+  }
 }
-
-// Wide-row value expectations, ready to re-enable when a correct
-// selection kernel lands. Delete the refusal pin above and uncomment
-// this case in the same change; both halves must flip together.
-//
-// TEST_CASE("argpartition wide rows partition exactly") {
-//   if (!compute_available()) {
-//     return;
-//   }
-//   Stream stream = gpu_stream();
-//   std::vector<float> row(2000);
-//   for (int i = 0; i < 2000; ++i) {
-//     row[i] = float((i * 48271) % 2009) - 1000.0f;
-//   }
-//   array a = array(row.data(), Shape({1, 2000}), float32);
-//   // kth = 0: position 0 names the minimum's index.
-//   {
-//     array out = argpartition(a, 0, -1, stream);
-//     out.eval();
-//     sync_gpu(stream);
-//     const uint32_t* indices = out.data<uint32_t>();
-//     float smallest = *std::min_element(row.begin(), row.end());
-//     CHECK_EQ(row[indices[0]], smallest);
-//   }
-//   // kth = N-1: position N-1 names the maximum's index.
-//   {
-//     array out = argpartition(a, 1999, -1, stream);
-//     out.eval();
-//     sync_gpu(stream);
-//     const uint32_t* indices = out.data<uint32_t>();
-//     float largest = *std::max_element(row.begin(), row.end());
-//     CHECK_EQ(row[indices[1999]], largest);
-//   }
-//   // kth = 1000: the partition property must hold exactly, like the
-//   // CPU reference: nothing right of kth is smaller than value[kth],
-//   // nothing left of kth is larger.
-//   {
-//     array out = argpartition(a, 1000, -1, stream);
-//     out.eval();
-//     sync_gpu(stream);
-//     const uint32_t* indices = out.data<uint32_t>();
-//     float pivot = row[indices[1000]];
-//     for (int i = 0; i < 1000; ++i) {
-//       CHECK(row[indices[i]] <= pivot);
-//     }
-//     for (int i = 1001; i < 2000; ++i) {
-//       CHECK(row[indices[i]] >= pivot);
-//     }
-//   }
-// }
