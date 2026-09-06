@@ -92,6 +92,22 @@ void check_ints(
   }
 }
 
+void check_complex(
+    array value,
+    const std::vector<complex64_t>& expected,
+    const Stream& stream) {
+  auto dense = contiguous(value);
+  dense.eval();
+  sync_gpu(stream);
+  REQUIRE_EQ(dense.size(), expected.size());
+  const complex64_t* values = dense.data<complex64_t>();
+  for (size_t index = 0; index < expected.size(); ++index) {
+    INFO("index ", index);
+    CHECK_EQ(values[index].real(), expected[index].real());
+    CHECK_EQ(values[index].imag(), expected[index].imag());
+  }
+}
+
 std::string evaluation_error(array value) {
   try {
     value.eval();
@@ -244,6 +260,47 @@ TEST_CASE("take_along_axis gathers 3-D axis 1 with trailing dims") {
       {100, 111, 122, 113, 120, 121, 112, 103,
        210, 211, 202, 203, 200, 201, 212, 213},
       stream);
+}
+
+TEST_CASE("take_along_axis transports complex values") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  array src = array(
+      {complex64_t{1, 2}, complex64_t{3, 4}, complex64_t{5, 6},
+       complex64_t{7, 8}},
+      {2, 2},
+      complex64);
+  array indices = array({1, 0, 0, 1}, {2, 2}, int32);
+  check_complex(
+      take_along_axis(src, indices, 1, stream),
+      {{3, 4}, {1, 2}, {5, 6}, {7, 8}},
+      stream);
+}
+
+TEST_CASE("gather uses metadata for four index arrays and complex values") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  std::vector<complex64_t> values;
+  for (int i = 0; i < 24; ++i) {
+    values.emplace_back(float(i), float(-i));
+  }
+  array table(values.data(), Shape{2, 3, 2, 2}, complex64);
+  array i0 = array({1, 0}, {2}, int32);
+  array i1 = array({2, 1}, {2}, int32);
+  array i2 = array({0, 1}, {2}, int32);
+  array i3 = array({1, 0}, {2}, int32);
+  array out = gather(
+      table,
+      {i0, i1, i2, i3},
+      {0, 1, 2, 3},
+      {1, 1, 1, 1},
+      stream);
+  CHECK_EQ(out.shape(), Shape({2, 1, 1, 1, 1}));
+  check_complex(out, {{21, -21}, {6, -6}}, stream);
 }
 
 TEST_CASE("take_along_axis rejects rank beyond the four-slot table") {
@@ -536,6 +593,45 @@ TEST_CASE("scatter float Sum and Prod compute without atomic float; multi-index 
   // coverage lives in omarchy_scatter_determinism_tests.
 }
 
+TEST_CASE("triple-index float scatter reductions and complex scatter add") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  array src = ones({2, 2, 2}, float32, stream);
+  array i0 = array({1, 1}, {2}, int32);
+  array i1 = array({0, 0}, {2}, int32);
+  array i2 = array({1, 1}, {2}, int32);
+  array updates = array({2.0f, 3.0f}, {2, 1, 1, 1}, float32);
+  check_floats(
+      scatter_add(src, {i0, i1, i2}, updates, {0, 1, 2}, stream),
+      {1, 1, 1, 1, 1, 6, 1, 1},
+      stream);
+  check_floats(
+      scatter_prod(src, {i0, i1, i2}, updates, {0, 1, 2}, stream),
+      {1, 1, 1, 1, 1, 6, 1, 1},
+      stream);
+
+  array complex_src = array(
+      {complex64_t{1, 1}, complex64_t{2, 2}, complex64_t{3, 3}},
+      {3},
+      complex64);
+  array complex_indices = array({1, 1}, {2}, int32);
+  array complex_updates = array(
+      {complex64_t{4, 5}, complex64_t{6, 7}},
+      {2, 1},
+      complex64);
+  check_complex(
+      scatter_add(
+          complex_src,
+          {complex_indices},
+          complex_updates,
+          {0},
+          stream),
+      {{1, 1}, {12, 14}, {3, 3}},
+      stream);
+}
+
 // ---------------------------------------------------------------------------
 // Scatter with two index arrays (multi-index): one index array per axis,
 // None / Sum / Max / Min, against hand-computed host references.
@@ -727,6 +823,22 @@ TEST_CASE("scatter_add_axis float Sum computes on the atomic and CAS paths") {
   array values = array({1.0f, 2.0f}, {2}, float32);
   array out = scatter_add_axis(src, indices, values, 0, stream);
   check_floats(out, {3.0f, 0.0f}, stream);
+}
+
+TEST_CASE("scatter_add_axis accumulates both complex components") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  array src = array(
+      {complex64_t{1, 1}, complex64_t{2, 2}}, {2}, complex64);
+  array indices = array({0, 0}, {2}, int32);
+  array updates = array(
+      {complex64_t{3, 4}, complex64_t{5, 6}}, {2}, complex64);
+  check_complex(
+      scatter_add_axis(src, indices, updates, 0, stream),
+      {{9, 11}, {2, 2}},
+      stream);
 }
 
 // ---------------------------------------------------------------------------

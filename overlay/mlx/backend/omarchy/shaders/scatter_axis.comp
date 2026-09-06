@@ -17,8 +17,8 @@
 //     accumulation rounds once at the op-12 finalize.
 //  11 FADD Sum pass: fp32 atomicAdd of the decoded update into the
 //     fp32 per-element scratch.
-//  12 FADD Sum finalize (one thread per output element): store the
-//     fp32 accumulation converted once to the output dtype.
+//  12 FADD Sum finalize (one thread per output element): add the fp32
+//     accumulation to the copied source and convert once.
 //  17 FCAS Sum pass: the no-hardware-atomic-float twin of op 11, a
 //     compare-exchange add through the uint view of the fp32 scratch.
 //  14 BOOL Sum/Max finalize: write the OR bit into the packed byte
@@ -43,7 +43,11 @@
 #extension GL_EXT_shader_atomic_float : require
 #endif
 
-#ifdef USE_FP16
+#ifdef USE_COMPLEX
+#define STORAGE_TYPE vec2
+#define LOAD_VALUE(x) (x)
+#define STORE_VALUE(x) (x)
+#elif defined(USE_FP16)
 #extension GL_EXT_shader_16bit_storage : require
 #extension GL_EXT_shader_explicit_arithmetic_types_float16 : require
 #define STORAGE_TYPE float16_t
@@ -103,6 +107,20 @@ layout(set = 0, binding = 3, std430) buffer ScratchF {
 } scratch_f_data;
 #endif
 
+#ifdef USE_COMPLEX
+void atomic_add_component(uint element, float value) {
+  uint assumed = scratch_data.values[element];
+  for (;;) {
+    uint next = floatBitsToUint(uintBitsToFloat(assumed) + value);
+    uint previous = atomicCompSwap(scratch_data.values[element], assumed, next);
+    if (previous == assumed) {
+      break;
+    }
+    assumed = previous;
+  }
+}
+#endif
+
 layout(push_constant) uniform Params {
   uint count;
   uint operation;
@@ -134,12 +152,20 @@ void main() {
   uint m_axis = params.aux_size;
   uint post_size = params.output_size;
   while (t < params.count) {
-    if (op == 12u) {
+    if (op == 19u) {
+#ifdef USE_COMPLEX
+      uint element = params.output_offset + t;
+      vec2 accumulated = vec2(
+          uintBitsToFloat(scratch_data.values[2u * element]),
+          uintBitsToFloat(scratch_data.values[2u * element + 1u]));
+      out_data.values[element] += accumulated;
+#endif
+    } else if (op == 12u) {
 #ifdef USE_FADD
-      // FADD Sum finalize: one thread per output element stores the
-      // fp32 accumulation converted once to the output dtype.
-      out_data.values[params.output_offset + t] =
-          STORE_VALUE(scratch_f_data.values[params.output_offset + t]);
+      // FADD Sum finalize adds the fp32 accumulation to copied source.
+      uint element = params.output_offset + t;
+      out_data.values[element] = STORE_VALUE(
+          LOAD_VALUE(out_data.values[element]) + scratch_f_data.values[element]);
 #endif
     } else if (op == 14u) {
 #ifdef USE_BOOL
@@ -221,6 +247,13 @@ void main() {
               .values[params.lhs_offset + upd_elem + ax * params.matrix_n];
 #endif
         }
+#ifdef USE_COMPLEX
+      } else if (op == 18u) {
+        vec2 update = upd_data.values[
+            params.lhs_offset + upd_elem + ax * params.matrix_n];
+        atomic_add_component(2u * target, update.x);
+        atomic_add_component(2u * target + 1u, update.y);
+#endif
 #ifdef USE_U32
       } else if (op == 6u) {
         atomicAdd(
