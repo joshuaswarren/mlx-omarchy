@@ -551,6 +551,17 @@ void CommandEncoder::submit() {
   uint64_t submitted = 0;
 
   if (recording_) {
+    if (gated_barriers()) {
+      VkMemoryBarrier readback{VK_STRUCTURE_TYPE_MEMORY_BARRIER};
+      readback.srcAccessMask = VK_ACCESS_MEMORY_WRITE_BIT;
+      readback.dstAccessMask = VK_ACCESS_HOST_READ_BIT;
+      dt.CmdPipelineBarrier(
+          cmd_, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
+          VK_PIPELINE_STAGE_HOST_BIT, 0, 1, &readback,
+          0, nullptr, 0, nullptr);
+      trace::counters().barriers_emitted++;
+      prof::get().on_barrier(true);
+    }
     VKX_CHECK(dt.EndCommandBuffer(cmd_));
   }
 

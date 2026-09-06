@@ -38,8 +38,10 @@ Dispatches record unconditional pre+post memory barriers by default.
 `MLX_OMARCHY_GATED_BARRIERS=1` replaces them with dependency-gated
 barriers: the encoder tracks per open batch which buffer ranges were
 read or written since the last barrier and records one barrier only
-when a dispatch, copy, or fill overlaps an unsynced range. It defaults
-off pending the M1 A/B (`docs/plans/2026-09-06-decode-gap-plan.md`,
+when a dispatch, copy, or fill overlaps an unsynced range. Each recorded
+submission ends with a device-to-host visibility barrier before its
+completion signal; waiting and invalidating host caches do not replace
+that memory-domain transfer. The mode defaults off pending the M1 A/B (`docs/plans/2026-09-06-decode-gap-plan.md`,
 TOP-1); skip and emit counts appear in the GPU profile and in the
 runtime-test trace counters.
 
