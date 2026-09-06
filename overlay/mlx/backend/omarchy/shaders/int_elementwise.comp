@@ -40,6 +40,8 @@
 #extension GL_EXT_shader_explicit_arithmetic_types_int64 : require
 #endif
 
+layout(local_size_x = 256) in;
+
 #if defined(USE_I8) || defined(USE_U8)
 // Byte lanes ride uint32 words; the output lane insert needs
 // read-modify-write atomics, so the output buffer is not writeonly.
