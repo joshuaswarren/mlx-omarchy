@@ -76,7 +76,8 @@ layout(set = 0, binding = 3, std430) writeonly buffer Output {
 // factor 2688 / global_scale_w (quantize.comp folds it in, dequant.comp
 // divides it back out), and this kernel decodes the bytes raw, so the
 // correction is applied to the finished dot product here - the same
-// per-output-row multiply the pinned Metal _hgs variants perform.
+// per-output-row multiply the pinned Metal _hgs variants perform. The
+// scalar view's own storage offset rides in aux_size.
 layout(set = 0, binding = 4, std430) readonly buffer OutGlobalScale {
   uint values[];
 } out_global_scale_data;
@@ -206,8 +207,8 @@ void main() {
   uint rhs_word_base = params.out_strides[0];
   uint total = index_count * matrix;
 #ifdef USE_OUT_GLOBAL_SCALE
-  float out_global_dec =
-      uintBitsToFloat(out_global_scale_data.values[0]) / 2688.0;
+  float out_global_dec = uintBitsToFloat(
+      out_global_scale_data.values[params.aux_size]) / 2688.0;
 #endif
   uint stride = gl_NumWorkGroups.x * 256u;
 

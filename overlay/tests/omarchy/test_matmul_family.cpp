@@ -1889,6 +1889,93 @@ TEST_CASE("qqmm fp modes fake-quantize the activation") {
     REQUIRE_EQ(out.shape(), Shape{m, n});
     expect_close_tol(readback_f32(stream, out), expected, 1e-4, 1e-3);
   }
+
+  // The nvfp4 global_scale_w reaches the kernel as a scalar VIEW whose
+  // storage offset inside its buffer is nonzero (a slice of a wider
+  // array): the HGS binding pins the whole buffer at word zero, so the
+  // offset must ride through aux_size like the quantize/dequantize
+  // global-scale siblings, or the correction reads the wrong word.
+  {
+    int m = 2, k = 64, n = 4;
+    std::vector<float> x_values(static_cast<size_t>(m) * k);
+    for (auto& value : x_values) {
+      value = dist(gen);
+    }
+    std::vector<float> w_values(static_cast<size_t>(n) * k);
+    for (auto& value : w_values) {
+      value = dist(gen);
+    }
+    float global_scale_x = 0.0f;
+    float global_scale_w = 0.0f;
+    for (float value : x_values) {
+      global_scale_x = std::max(global_scale_x, std::abs(value));
+    }
+    for (float value : w_values) {
+      global_scale_w = std::max(global_scale_w, std::abs(value));
+    }
+    auto x_hat =
+        host_fp_fake_quantize(x_values, 16, 4, &global_scale_x);
+    auto packed =
+        host_fp_quantize_packed(w_values, n, k, 16, 4, &global_scale_w);
+    auto w_hat =
+        host_fp_dequantize_packed(packed, n, k, 16, 4, &global_scale_w);
+    auto expected = host_fp_matmul(x_hat, w_hat, m, n, k);
+
+    // The real scale sits at element 3 of a wider evaluated array.
+    std::vector<float> padding{9.0f, 8.0f, 7.0f, global_scale_w, 5.0f};
+    array flat(padding.begin(), Shape{5}, float32);
+    array gs_w_view = slice(flat, Shape{3}, Shape{4});
+    gs_w_view.eval();
+    REQUIRE_EQ(gs_w_view.size(), 1);
+    array x_arr(x_values.begin(), Shape{m, k}, float32);
+    array w_words(packed.words.begin(), Shape{n, k * 4 / 32}, uint32);
+    array w_scales(packed.scales.begin(), Shape{n, k / 16}, uint8);
+    array gs_x_arr(global_scale_x);
+    array out = qqmm(
+        x_arr,
+        w_words,
+        w_scales,
+        16,
+        4,
+        "nvfp4",
+        std::optional<array>(gs_x_arr),
+        std::optional<array>(gs_w_view),
+        stream);
+    REQUIRE(evaluation_error(out).empty());
+    REQUIRE_EQ(out.shape(), Shape{m, n});
+    expect_close_tol(readback_f32(stream, out), expected, 1e-4, 1e-3);
+  }
+
+  // Named errors: a noncanonical mode/group/bits combo keeps its mode
+  // tag instead of silently misreading the mode-fixed scale stream.
+  {
+    int k = 32;
+    std::vector<float> matrix(static_cast<size_t>(4) * k, 0.5f);
+    auto host = host_fp_quantize_packed(matrix, 4, k, 32, 4, nullptr);
+    array w_words(host.words.begin(), Shape{4, k * 4 / 32}, uint32);
+    array w_scales(host.scales.begin(), Shape{4, k / 32}, uint8);
+    std::vector<float> x_values(static_cast<size_t>(2) * k, 0.25f);
+    array x(x_values.begin(), Shape{2, k}, float32);
+
+    // nvfp4 labelled but packed at group 32.
+    std::string nvfp4_error = evaluation_error(qqmm(
+        x, w_words, w_scales, 32, 4, "nvfp4", std::nullopt, std::nullopt,
+        stream));
+    CHECK(nvfp4_error.find("QQMatmul mode") != std::string::npos);
+
+    // mxfp8 labelled but 4-bit words.
+    std::string mxfp8_error = evaluation_error(qqmm(
+        x, w_words, w_scales, 32, 4, "mxfp8", std::nullopt, std::nullopt,
+        stream));
+    CHECK(mxfp8_error.find("QQMatmul mode") != std::string::npos);
+
+    std::vector<uint32_t> idx_v{0u};
+    array idx(idx_v.begin(), Shape{1}, uint32);
+    std::string gather_error = evaluation_error(gather_qqmm(
+        x, w_words, w_scales, idx, idx, 32, 4, "nvfp4", std::nullopt,
+        std::nullopt, false, stream));
+    CHECK(gather_error.find("GatherQQMM mode") != std::string::npos);
+  }
 }
 
 // DecodeGemvSubgroup equivalence: with caps.subgroup_size==32 the
