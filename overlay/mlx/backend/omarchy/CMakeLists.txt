@@ -346,6 +346,11 @@ omarchy_shader(gather_qmm_nb_bf16 shaders/gather_qmm.comp -DUSE_BF16=1 -DNO_BIAS
 omarchy_shader(gather_qmm_nb_fp_f32 shaders/gather_qmm.comp -DFP_MODE=1 -DNO_BIAS=1)
 omarchy_shader(gather_qmm_nb_fp_f16 shaders/gather_qmm.comp -DFP_MODE=1 -DUSE_FP16=1 -DNO_BIAS=1)
 omarchy_shader(gather_qmm_nb_fp_bf16 shaders/gather_qmm.comp -DFP_MODE=1 -DUSE_BF16=1 -DNO_BIAS=1)
+# qqmm: the fp variants plus the nvfp4 output global-scale correction
+# (binding 4 carries the float32 global_scale_w word).
+omarchy_shader(gather_qmm_nb_fp_hgs_f32 shaders/gather_qmm.comp -DFP_MODE=1 -DNO_BIAS=1 -DUSE_OUT_GLOBAL_SCALE=1)
+omarchy_shader(gather_qmm_nb_fp_hgs_f16 shaders/gather_qmm.comp -DFP_MODE=1 -DUSE_FP16=1 -DNO_BIAS=1 -DUSE_OUT_GLOBAL_SCALE=1)
+omarchy_shader(gather_qmm_nb_fp_hgs_bf16 shaders/gather_qmm.comp -DFP_MODE=1 -DUSE_BF16=1 -DNO_BIAS=1 -DUSE_OUT_GLOBAL_SCALE=1)
 omarchy_shader(fft_f32 shaders/fft_c2c.comp)
 omarchy_shader(fft_real_f32 shaders/fft_real_extract.comp)
 omarchy_shader(fft_stage_f32 shaders/fft_stage.comp)

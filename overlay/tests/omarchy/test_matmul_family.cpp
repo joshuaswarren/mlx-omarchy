@@ -13,9 +13,11 @@
 #include <cmath>
 #include <cstdint>
 #include <cstdio>
+#include <cstring>
 #include <iostream>
 #include <limits>
 #include <random>
+#include <tuple>
 #include <vector>
 
 #include "mlx/backend/gpu/device_info.h"
@@ -1240,7 +1242,9 @@ TEST_CASE("gather qqmm dequants with scales only") {
   run_case(5, 192, 37, 64, 4);
   run_case(1, 128, 16, 32, 8);
 
-  // Named errors: non-affine modes and float weights keep their tags.
+  // Named errors: a non-affine mode outside its group-size family and
+  // affine float weights keep named tags; mxfp4 at its own group size
+  // computes (covered by the fp qqmm test case below).
   {
     int k = 64, n = 8;
     std::vector<float> matrix(static_cast<size_t>(n) * k, 0.5f);
@@ -1256,7 +1260,7 @@ TEST_CASE("gather qqmm dequants with scales only") {
     std::string mode_error = evaluation_error(gather_qqmm(
         x, w_words, scales, idx, idx, 64, 4, "mxfp4", std::nullopt,
         std::nullopt, false, stream));
-    CHECK(mode_error.find("GatherQQMM x quantization") != std::string::npos);
+    CHECK(mode_error.find("GatherQQMM group size") != std::string::npos);
 
     std::string weight_error = evaluation_error(gather_qqmm(
         x, w_float, scales, idx, idx, 64, 4, "affine", std::nullopt,
@@ -1331,7 +1335,9 @@ TEST_CASE("qq matmul matches scale-only quantized and float paths") {
     (void)n;
   }
 
-  // Named error: mxfp4 keeps its mode tag.
+  // Named error: a non-affine mode outside its group-size family keeps
+  // a named tag; mxfp4 at its own group size computes (covered by the
+  // fp qqmm test case below).
   {
     std::vector<float> matrix(4 * 32, 0.5f);
     array w(matrix.begin(), Shape{4, 32}, float32);
@@ -1340,7 +1346,548 @@ TEST_CASE("qq matmul matches scale-only quantized and float paths") {
     std::string mode_error = evaluation_error(
         qqmm(x, w, std::nullopt, 64, 4, "mxfp4", std::nullopt, std::nullopt,
              stream));
-    CHECK(mode_error.find("QQMatmul mode") != std::string::npos);
+    CHECK(mode_error.find("QQMatmul group size") != std::string::npos);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// fp qqmm: host bit-reference for mxfp4 / mxfp8 / nvfp4.
+//
+// The conversions transcribe quantize.comp / dequant.comp (which mirror
+// the pinned Metal fp4.h / fp8.h bit for bit): e4m3 scale encode is
+// round-to-nearest-even with saturation at 448, round-up e8m0 keeps a
+// group maximum representable, fp4 e2m1 uses the threshold table, and
+// the nvfp4 global scale rides in as the 2688 / global_scale encode
+// factor on both the scale byte and the element domain. The expected
+// products fold dequant(quant(x)) against dequant(quant(w)) in double
+// precision - exactly the upstream python contract
+// (test_quantized.py::test_qqmm / test_gather_qqmm): a wrong scale, a
+// wrong code, or raw-float activations against dequantized weights all
+// miss by O(1).
+namespace {
+
+uint32_t host_bits_of(float value) {
+  uint32_t bits;
+  std::memcpy(&bits, &value, sizeof(bits));
+  return bits;
+}
+
+float host_float_of(uint32_t bits) {
+  float value;
+  std::memcpy(&value, &bits, sizeof(value));
+  return value;
+}
+
+float host_half_bits_to_float(uint32_t h) {
+  uint32_t sign = (h & 0x8000u) << 16u;
+  uint32_t exponent = (h >> 10u) & 0x1Fu;
+  uint32_t mantissa = h & 0x3FFu;
+  float value;
+  if (exponent == 0u) {
+    value = std::ldexp(static_cast<float>(mantissa), -24);
+  } else if (exponent == 31u) {
+    value = mantissa == 0u
+        ? std::numeric_limits<float>::infinity()
+        : std::numeric_limits<float>::quiet_NaN();
+  } else {
+    value = std::ldexp(
+        static_cast<float>(mantissa | 0x400u),
+        static_cast<int>(exponent) - 25);
+  }
+  return sign != 0u ? -value : value;
+}
+
+uint8_t host_fp8_encode(float value) {
+  const uint32_t fp8_max = 543u << 21u;
+  const uint32_t denorm_mask = 141u << 23u;
+  uint32_t f_bits = host_bits_of(value);
+  uint32_t sign = f_bits & 0x80000000u;
+  f_bits ^= sign;
+
+  uint32_t f_bits_low = host_bits_of(
+      host_float_of(f_bits) + host_float_of(denorm_mask));
+  uint32_t result_low = (f_bits_low - denorm_mask) & 0xFFu;
+
+  uint32_t mant_odd = (f_bits >> 20u) & 1u;
+  uint32_t f_bits_high = f_bits + (((7u - 127u) << 23u) + 0x7FFFFu);
+  f_bits_high += mant_odd;
+  uint32_t result_high = (f_bits_high >> 20u) & 0xFFu;
+
+  uint32_t result = (f_bits < (121u << 23u)) ? result_low : result_high;
+  result = (f_bits >= fp8_max) ? 0x7Eu : result;
+  return static_cast<uint8_t>(result | (sign >> 24u));
+}
+
+float host_fp8_decode(uint32_t bits) {
+  float magnitude = host_half_bits_to_float((bits & 127u) << 7u) * 256.0f;
+  return (bits & 128u) != 0u ? -magnitude : magnitude;
+}
+
+uint8_t host_e8m0_encode(float x) {
+  if (std::isnan(x) || std::isinf(x)) {
+    return 0xFF;
+  }
+  if (x <= 0.0f) {
+    return 0x00;
+  }
+  int n = static_cast<int>(std::round(std::log2(x)));
+  n = std::max(-127, std::min(127, n));
+  uint8_t bits = static_cast<uint8_t>(n + 127);
+  float decoded = host_float_of(static_cast<uint32_t>(
+      bits == 0 ? 0x400000u : static_cast<uint32_t>(bits) << 23u));
+  if (bits < 0xFE && decoded < x) {
+    bits += 1;
+  }
+  return bits;
+}
+
+float host_e8m0_decode(uint8_t bits) {
+  return host_float_of(bits == 0
+          ? 0x400000u
+          : static_cast<uint32_t>(bits) << 23u);
+}
+
+uint8_t host_fp4_encode(float x) {
+  if (std::isnan(x)) {
+    return 0x7;
+  }
+  uint8_t sign = std::signbit(x) ? 0x8 : 0x0;
+  float a = std::abs(x);
+  uint8_t m;
+  if (a > 5.0f) {
+    m = 0x7;
+  } else if (a >= 3.5f) {
+    m = 0x6;
+  } else if (a > 2.5f) {
+    m = 0x5;
+  } else if (a >= 1.75f) {
+    m = 0x4;
+  } else if (a > 1.25f) {
+    m = 0x3;
+  } else if (a >= 0.75f) {
+    m = 0x2;
+  } else if (a > 0.25f) {
+    m = 0x1;
+  } else {
+    m = 0x0;
+  }
+  return m | sign;
+}
+
+float host_fp4_decode(uint8_t code) {
+  static const float lut[8] = {
+      0.0f, 0.5f, 1.0f, 1.5f, 2.0f, 3.0f, 4.0f, 6.0f};
+  float magnitude = lut[code & 7u];
+  return (code & 8u) != 0u ? -magnitude : magnitude;
+}
+
+// dequant(quant(x)) across both kernels: one scale byte per group
+// (fp8 e4m3 at group 16 carrying the 2688 / global_scale encode
+// factor, round-up e8m0 at group 32), elements e2m1 / e4m3.
+std::vector<float> host_fp_fake_quantize(
+    const std::vector<float>& x,
+    int group_size,
+    int bits,
+    const float* global_scale) {
+  float maxval = bits == 8 ? 448.0f : 6.0f;
+  float global_enc =
+      global_scale != nullptr ? 2688.0f / *global_scale : 1.0f;
+  float global_dec =
+      global_scale != nullptr ? *global_scale / 2688.0f : 1.0f;
+  std::vector<float> out(x.size(), 0.0f);
+  size_t groups = x.size() / static_cast<size_t>(group_size);
+  for (size_t g = 0; g < groups; ++g) {
+    size_t base = g * static_cast<size_t>(group_size);
+    float amax = 0.0f;
+    for (int lane = 0; lane < group_size; ++lane) {
+      amax = std::max(amax, std::abs(x[base + lane]));
+    }
+    float scale_dec = amax / maxval;
+    uint8_t q_scale;
+    float decoded;
+    if (group_size == 16) {
+      scale_dec *= global_enc;
+      q_scale = host_fp8_encode(scale_dec);
+      decoded = host_fp8_decode(q_scale);
+    } else {
+      q_scale = host_e8m0_encode(scale_dec);
+      decoded = host_e8m0_decode(q_scale);
+    }
+    float inv = (decoded == 0.0f) ? 0.0f : global_enc / decoded;
+    for (int lane = 0; lane < group_size; ++lane) {
+      float value = x[base + lane] * inv;
+      float code = bits == 8
+          ? host_fp8_decode(host_fp8_encode(value))
+          : host_fp4_decode(host_fp4_encode(value));
+      out[base + lane] = decoded * global_dec * code;
+    }
+  }
+  return out;
+}
+
+// Packed codes plus scale bytes exactly as the quantize kernels store
+// them: fp4 pairs two elements per byte (low element low nibble), fp8
+// one byte per element, bytes LSB-first inside uint32 words.
+struct HostFpWeights {
+  std::vector<uint32_t> words;
+  std::vector<uint8_t> scales;
+};
+
+HostFpWeights host_fp_quantize_packed(
+    const std::vector<float>& w,
+    int rows,
+    int cols,
+    int group_size,
+    int bits,
+    const float* global_scale) {
+  float maxval = bits == 8 ? 448.0f : 6.0f;
+  float global_enc =
+      global_scale != nullptr ? 2688.0f / *global_scale : 1.0f;
+  int groups_per_row = cols / group_size;
+  HostFpWeights result;
+  result.words.assign(static_cast<size_t>(rows) * (cols * bits / 32), 0u);
+  result.scales.assign(static_cast<size_t>(rows) * groups_per_row, 0u);
+  for (int row = 0; row < rows; ++row) {
+    for (int g = 0; g < groups_per_row; ++g) {
+      size_t base = static_cast<size_t>(row) * cols +
+          static_cast<size_t>(g) * group_size;
+      float amax = 0.0f;
+      for (int lane = 0; lane < group_size; ++lane) {
+        amax = std::max(amax, std::abs(w[base + lane]));
+      }
+      float scale_dec = amax / maxval;
+      uint8_t q_scale;
+      if (group_size == 16) {
+        scale_dec *= global_enc;
+        q_scale = host_fp8_encode(scale_dec);
+      } else {
+        q_scale = host_e8m0_encode(scale_dec);
+      }
+      result.scales[static_cast<size_t>(row) * groups_per_row + g] =
+          q_scale;
+      float decoded = group_size == 16
+          ? host_fp8_decode(q_scale)
+          : host_e8m0_decode(q_scale);
+      float inv = (decoded == 0.0f) ? 0.0f : global_enc / decoded;
+      for (int lane = 0; lane < group_size; ++lane) {
+        float value = w[base + lane] * inv;
+        uint8_t code = bits == 8 ? host_fp8_encode(value)
+                                 : host_fp4_encode(value);
+        size_t flat = base + lane;
+        if (bits == 8) {
+          result.words[flat / 4u] |=
+              static_cast<uint32_t>(code) << ((flat % 4u) * 8u);
+        } else {
+          result.words[flat / 8u] |=
+              static_cast<uint32_t>(code) << ((flat % 8u) * 4u);
+        }
+      }
+    }
+  }
+  return result;
+}
+
+std::vector<float> host_fp_dequantize_packed(
+    const HostFpWeights& packed,
+    int rows,
+    int cols,
+    int group_size,
+    int bits,
+    const float* global_scale) {
+  float global_dec =
+      global_scale != nullptr ? *global_scale / 2688.0f : 1.0f;
+  int groups_per_row = cols / group_size;
+  std::vector<float> out(static_cast<size_t>(rows) * cols, 0.0f);
+  for (int row = 0; row < rows; ++row) {
+    for (int g = 0; g < groups_per_row; ++g) {
+      uint8_t q_scale =
+          packed.scales[static_cast<size_t>(row) * groups_per_row + g];
+      float scale = group_size == 16
+          ? host_fp8_decode(q_scale)
+          : host_e8m0_decode(q_scale);
+      scale *= global_dec;
+      size_t base = static_cast<size_t>(row) * cols +
+          static_cast<size_t>(g) * group_size;
+      for (int lane = 0; lane < group_size; ++lane) {
+        size_t flat = base + lane;
+        uint8_t code;
+        if (bits == 8) {
+          code = (packed.words[flat / 4u] >> ((flat % 4u) * 8u)) & 0xFFu;
+        } else {
+          code = (packed.words[flat / 8u] >> ((flat % 8u) * 4u)) & 0xFu;
+        }
+        float value = bits == 8 ? host_fp8_decode(code)
+                                : host_fp4_decode(code);
+        out[flat] = scale * value;
+      }
+    }
+  }
+  return out;
+}
+
+std::vector<float> host_fp_matmul(
+    const std::vector<float>& x_hat,
+    const std::vector<float>& w_hat,
+    int m,
+    int n,
+    int k) {
+  std::vector<float> out(static_cast<size_t>(m) * n, 0.0f);
+  for (int row = 0; row < m; ++row) {
+    for (int col = 0; col < n; ++col) {
+      double acc = 0.0;
+      for (int i = 0; i < k; ++i) {
+        acc += static_cast<double>(x_hat[static_cast<size_t>(row) * k + i]) *
+            static_cast<double>(w_hat[static_cast<size_t>(col) * k + i]);
+      }
+      out[static_cast<size_t>(row) * n + col] = static_cast<float>(acc);
+    }
+  }
+  return out;
+}
+
+} // namespace
+
+TEST_CASE("qqmm fp modes fake-quantize the activation") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  std::mt19937 gen(97);
+  std::uniform_real_distribution<float> dist(-2.0f, 2.0f);
+
+  // Exact quant/dequant reference values through the product: an
+  // identity weight exposes each fake-quantized activation element as
+  // one output entry, threshold-boundary inputs included.
+  {
+    int k = 32, m = 1;
+    std::vector<float> x(k, 0.0f);
+    x[0] = 0.25f;
+    x[1] = 0.26f;
+    x[2] = 0.74f;
+    x[3] = 0.76f;
+    x[4] = 1.75f;
+    x[5] = 2.5f;
+    x[6] = 5.0f;
+    x[7] = 6.0f;
+    x[8] = -0.25f;
+    x[9] = -0.5f;
+    x[10] = -1.5f;
+    x[11] = -6.0f;
+    for (int i = 12; i < k; ++i) {
+      x[i] = std::ldexp(1.0f, -3 + (i % 5)) * ((i % 2) == 0 ? 1.0f : -1.0f);
+    }
+    std::vector<float> w(static_cast<size_t>(k) * k, 0.0f);
+    for (int i = 0; i < k; ++i) {
+      w[static_cast<size_t>(i) * k + i] = 1.0f;
+    }
+    auto x_hat = host_fp_fake_quantize(x, 32, 4, nullptr);
+    auto packed = host_fp_quantize_packed(w, k, k, 32, 4, nullptr);
+    auto w_hat = host_fp_dequantize_packed(packed, k, k, 32, 4, nullptr);
+    auto expected = host_fp_matmul(x_hat, w_hat, m, k, k);
+
+    array w_words(packed.words.begin(), Shape{k, k * 4 / 32}, uint32);
+    array w_scales(packed.scales.begin(), Shape{k, k / 32}, uint8);
+    array x_arr(x.begin(), Shape{m, k}, float32);
+    array out = qqmm(
+        x_arr,
+        w_words,
+        w_scales,
+        32,
+        4,
+        "mxfp4",
+        std::nullopt,
+        std::nullopt,
+        stream);
+    REQUIRE(evaluation_error(out).empty());
+    REQUIRE_EQ(out.shape(), Shape{m, k});
+    expect_close_tol(readback_f32(stream, out), expected, 1e-5, 1e-4);
+  }
+
+  // Un-gathered random products, quantized weights, all three modes;
+  // nvfp4 binds both global scales and requires the HGS correction.
+  {
+    int m = 2, n = 5;
+    for (auto [mode, group_size, bits, use_gs] :
+        std::vector<std::tuple<const char*, int, int, bool>>{
+            {"mxfp8", 32, 8, false},
+            {"mxfp4", 32, 4, false},
+            {"nvfp4", 16, 4, true}}) {
+      CAPTURE(mode);
+      int k = group_size * 4;
+      std::vector<float> x_values(static_cast<size_t>(m) * k);
+      for (auto& value : x_values) {
+        value = dist(gen);
+      }
+      std::vector<float> w_values(static_cast<size_t>(n) * k);
+      for (auto& value : w_values) {
+        value = dist(gen);
+      }
+      float global_scale_x = 0.0f;
+      float global_scale_w = 0.0f;
+      for (float value : x_values) {
+        global_scale_x = std::max(global_scale_x, std::abs(value));
+      }
+      for (float value : w_values) {
+        global_scale_w = std::max(global_scale_w, std::abs(value));
+      }
+      const float* gs_x = use_gs ? &global_scale_x : nullptr;
+      const float* gs_w = use_gs ? &global_scale_w : nullptr;
+
+      auto x_hat = host_fp_fake_quantize(x_values, group_size, bits, gs_x);
+      auto packed =
+          host_fp_quantize_packed(w_values, n, k, group_size, bits, gs_w);
+      auto w_hat =
+          host_fp_dequantize_packed(packed, n, k, group_size, bits, gs_w);
+      auto expected = host_fp_matmul(x_hat, w_hat, m, n, k);
+
+      array x_arr(x_values.begin(), Shape{m, k}, float32);
+      array w_words(packed.words.begin(), Shape{n, k * bits / 32}, uint32);
+      array w_scales(
+          packed.scales.begin(), Shape{n, k / group_size}, uint8);
+      array gs_x_arr(global_scale_x);
+      array gs_w_arr(global_scale_w);
+      array out = qqmm(
+          x_arr,
+          w_words,
+          w_scales,
+          group_size,
+          bits,
+          mode,
+          use_gs ? std::optional<array>(gs_x_arr) : std::nullopt,
+          use_gs ? std::optional<array>(gs_w_arr) : std::nullopt,
+          stream);
+      REQUIRE(evaluation_error(out).empty());
+      REQUIRE_EQ(out.shape(), Shape{m, n});
+      expect_close_tol(readback_f32(stream, out), expected, 1e-4, 1e-3);
+    }
+  }
+
+  // Gathered fp qqmm across batch slices with expert weights; the
+  // gathered product must use the same fake-quantized activation. The
+  // nvfp4 w global scale is one float32 scalar for the whole tensor
+  // (the pinned upstream python contract), pinned here to 1.0f so the
+  // packed scale bytes carry the 2688 encode factor and the HGS output
+  // correction divides it back out against the reference, which
+  // applies the same factor per group.
+  {
+    int experts = 2, x_batch = 2, m = 3, n = 5;
+    for (auto [mode, group_size, bits, use_gs] :
+        std::vector<std::tuple<const char*, int, int, bool>>{
+            {"mxfp8", 32, 8, false},
+            {"nvfp4", 16, 4, true}}) {
+      CAPTURE(mode);
+      int k = group_size * 4;
+      float global_scale_w = 1.0f;
+      const float* gs_w = use_gs ? &global_scale_w : nullptr;
+
+      std::vector<std::vector<float>> x_batches;
+      std::vector<float> x_all;
+      for (int b = 0; b < x_batch; ++b) {
+        std::vector<float> matrix(static_cast<size_t>(m) * k);
+        for (auto& value : matrix) {
+          value = dist(gen);
+        }
+        x_batches.push_back(matrix);
+        x_all.insert(x_all.end(), matrix.begin(), matrix.end());
+      }
+      float global_scale_x = 0.0f;
+      for (float value : x_all) {
+        global_scale_x = std::max(global_scale_x, std::abs(value));
+      }
+      const float* gs_x = use_gs ? &global_scale_x : nullptr;
+
+      std::vector<HostFpWeights> packed_experts;
+      std::vector<uint32_t> w_all;
+      std::vector<uint8_t> scales_all;
+      for (int e = 0; e < experts; ++e) {
+        std::vector<float> matrix(static_cast<size_t>(n) * k);
+        for (auto& value : matrix) {
+          value = dist(gen);
+        }
+        auto packed = host_fp_quantize_packed(matrix, n, k, group_size, bits, gs_w);
+        packed_experts.push_back(packed);
+        w_all.insert(w_all.end(), packed.words.begin(), packed.words.end());
+        scales_all.insert(
+            scales_all.end(), packed.scales.begin(), packed.scales.end());
+      }
+
+      std::vector<uint32_t> lhs_v{0u, 1u, 0u};
+      std::vector<uint32_t> rhs_v{1u, 0u, 1u};
+      array x_arr(x_all.begin(), Shape{x_batch, m, k}, float32);
+      array w_words(
+          w_all.begin(), Shape{experts, n, k * bits / 32}, uint32);
+      array w_scales(
+          scales_all.begin(), Shape{experts, n, k / group_size}, uint8);
+      array lhs(lhs_v.begin(), Shape{3}, uint32);
+      array rhs(rhs_v.begin(), Shape{3}, uint32);
+      array gs_x_arr(global_scale_x);
+      array gs_w_arr(global_scale_w);
+      array out = gather_qqmm(
+          x_arr,
+          w_words,
+          w_scales,
+          lhs,
+          rhs,
+          group_size,
+          bits,
+          mode,
+          use_gs ? std::optional<array>(gs_x_arr) : std::nullopt,
+          use_gs ? std::optional<array>(gs_w_arr) : std::nullopt,
+          false,
+          stream);
+      REQUIRE(evaluation_error(out).empty());
+      REQUIRE_EQ(out.shape(), Shape{3, m, n});
+
+      std::vector<float> expected(3 * static_cast<size_t>(m) * n, 0.0f);
+      for (size_t p = 0; p < lhs_v.size(); ++p) {
+        auto xb = host_fp_fake_quantize(
+            x_batches[lhs_v[p]], group_size, bits, gs_x);
+        auto wh = host_fp_dequantize_packed(
+            packed_experts[rhs_v[p]], n, k, group_size, bits, gs_w);
+        auto piece = host_fp_matmul(xb, wh, m, n, k);
+        std::copy(
+            piece.begin(),
+            piece.end(),
+            expected.begin() +
+                static_cast<ptrdiff_t>(p) * static_cast<ptrdiff_t>(m) * n);
+      }
+      expect_close_tol(readback_f32(stream, out), expected, 1e-4, 1e-3);
+    }
+  }
+
+  // Float weights: the backend packs w with the same kernels it backs
+  // mx.quantize with, so the product still contracts quantized-x codes
+  // against quantized-w codes.
+  {
+    int m = 2, k = 32, n = 4;
+    std::vector<float> x_values(static_cast<size_t>(m) * k);
+    for (auto& value : x_values) {
+      value = dist(gen);
+    }
+    std::vector<float> w_values(static_cast<size_t>(n) * k);
+    for (auto& value : w_values) {
+      value = dist(gen);
+    }
+    auto x_hat = host_fp_fake_quantize(x_values, 32, 8, nullptr);
+    auto packed = host_fp_quantize_packed(w_values, n, k, 32, 8, nullptr);
+    auto w_hat = host_fp_dequantize_packed(packed, n, k, 32, 8, nullptr);
+    auto expected = host_fp_matmul(x_hat, w_hat, m, n, k);
+
+    array x_arr(x_values.begin(), Shape{m, k}, float32);
+    array w_arr(w_values.begin(), Shape{n, k}, float32);
+    array out = qqmm(
+        x_arr,
+        w_arr,
+        std::nullopt,
+        32,
+        8,
+        "mxfp8",
+        std::nullopt,
+        std::nullopt,
+        stream);
+    REQUIRE(evaluation_error(out).empty());
+    REQUIRE_EQ(out.shape(), Shape{m, n});
+    expect_close_tol(readback_f32(stream, out), expected, 1e-4, 1e-3);
   }
 }
 
