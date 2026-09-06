@@ -4489,32 +4489,48 @@ TEST_CASE("quantized matmul pins named errors outside the linear shape") {
       quantized_matmul(x, w2, sb4, sb4, true, 32, 2, "affine", stream));
   CHECK(bits_error.find("QuantizedMatmul bits") != std::string::npos);
 
-  std::string group_error = evaluation_error(
-      quantized_matmul(x, w4, sb1, sb1, true, 128, 4, "affine", stream));
-  CHECK(group_error.find("QuantizedMatmul group size") != std::string::npos);
+  // Every x element is 0.5 and the pinned word 0x33221100 holds the
+  // LSB-first codes 0,0,1,1,2,2,3,3 with scale and bias 0.03125, so a
+  // transposed K=128 dot product is 0.5 * (192 + 128) * 0.03125 = 5.
+  // Group size 128 computes now (e286c0b).
+  check_values(
+      quantized_matmul(x, w4, sb1, sb1, true, 128, 4, "affine", stream),
+      std::vector<float>(2 * 4, 5.0f),
+      stream,
+      1e-5);
 
   // transpose=false quantizes w as [K, N]: words [128, 4], params [128, 1].
+  // Output column n reads code n % 8 from every k, so the row is
+  // 0.5 * 128 * 0.03125 * (code + 1) = 2 * (code + 1).
   std::vector<uint32_t> nt_words(128 * 4, 0x33221100u);
   std::vector<float> nt_params(128, 0.03125f);
   array w_nt(nt_words.begin(), Shape{128, 4}, uint32);
   array sb_nt(nt_params.begin(), Shape{128, 1}, float32);
-  std::string transpose_error = evaluation_error(quantized_matmul(
-      x, w_nt, sb_nt, sb_nt, false, 32, 4, "affine", stream));
-  CHECK(
-      transpose_error.find("QuantizedMatmul transpose") !=
-      std::string::npos);
+  std::vector<float> nt_expected;
+  for (int row = 0; row < 2; ++row) {
+    for (int n = 0; n < 32; ++n) {
+      const int code = (n % 8) / 2;
+      nt_expected.push_back(2.0f * static_cast<float>(code + 1));
+    }
+  }
+  check_values(
+      quantized_matmul(x, w_nt, sb_nt, sb_nt, false, 32, 4, "affine", stream),
+      nt_expected,
+      stream,
+      1e-5);
 
-  // Batched weights stay rejected: rank-3 w never matches the 2D Linear.
-  array xb(x_values.begin(), Shape{2, 2, 128}, float32);
+  // Batched rank-3 weights pair with batched x.
+  std::vector<float> xb_values(2 * 2 * 128, 0.5f);
+  array xb(xb_values.begin(), Shape{2, 2, 128}, float32);
   std::vector<uint32_t> batched_words(2 * 4 * 16, 0x33221100u);
   std::vector<float> batched_params(2 * 4 * 4, 0.03125f);
   array wb(batched_words.begin(), Shape{2, 4, 16}, uint32);
   array sbb(batched_params.begin(), Shape{2, 4, 4}, float32);
-  std::string batched_error = evaluation_error(quantized_matmul(
-      xb, wb, sbb, sbb, true, 32, 4, "affine", stream));
-  CHECK(
-      batched_error.find("QuantizedMatmul weight layout") !=
-      std::string::npos);
+  check_values(
+      quantized_matmul(xb, wb, sbb, sbb, true, 32, 4, "affine", stream),
+      std::vector<float>(2 * 2 * 4, 5.0f),
+      stream,
+      1e-5);
 
   // A transposed x view is not row-contiguous; the consumer-boundary
   // normalization (3b30130) materializes it, so pin the result against
