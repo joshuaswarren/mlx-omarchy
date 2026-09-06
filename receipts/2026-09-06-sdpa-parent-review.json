@@ -1,5 +1,5 @@
 {
-  "status": "local_cpp_verified_native_pending",
+  "status": "local_cpp_and_installed_wheel_verified_native_pending",
   "integrated_commits": [
     "aaaaba29",
     "b3fdf225",
@@ -27,5 +27,44 @@
     "Watchdog candidate review assigned WatchdogCandidateFinalReview"
   ],
   "hardware_actions": false,
-  "cleanup": "Removed46 new inline narrative comment lines; rebuilt and reran full fastops target after cleanup, exit0"
+  "cleanup": "Removed46 new inline narrative comment lines; rebuilt and reran full fastops target after cleanup, exit0",
+  "wheel_check": {
+    "source_commit": "de662bd9",
+    "wheel": "mlx_omarchy-0.32.2.dev202609061434+de662bd9-cp311-cp311-linux_x86_64.whl",
+    "provenance": "match",
+    "provenance_receipt": "receipts/2026-09-06-sdpa-parent-wheel-provenance.json",
+    "same_before_probe_after_fix": {
+      "exit_code": 0,
+      "stdout": "actual [[0.75, 0.5246331691741943, 0.28876540064811707, 0.12995152175426483], [0.75, 0.5246331691741943, 0.28876540064811707, 0.12995152175426483]] expected [0.75, 0.5246331095695496, 0.28876543045043945, 0.12995149195194244]\n",
+      "log": "receipts/2026-09-06-sdpa-parent-wheel-sinks.log"
+    },
+    "upstream_isolated_tests": [
+      {
+        "case": "test_sdpa_fully_masked",
+        "exit_code": 0,
+        "log": "receipts/2026-09-06-sdpa-parent-test_sdpa_fully_masked.log"
+      },
+      {
+        "case": "test_sdpa_nan_bug",
+        "exit_code": 0,
+        "log": "receipts/2026-09-06-sdpa-parent-test_sdpa_nan_bug.log"
+      },
+      {
+        "case": "test_sdpa_promote_mask",
+        "exit_code": 0,
+        "log": "receipts/2026-09-06-sdpa-parent-test_sdpa_promote_mask.log"
+      },
+      {
+        "case": "test_sdpa_inf_score",
+        "exit_code": 0,
+        "log": "receipts/2026-09-06-sdpa-parent-test_sdpa_inf_score.log"
+      },
+      {
+        "case": "test_sdpa_broadcast_mask",
+        "exit_code": 0,
+        "log": "receipts/2026-09-06-sdpa-parent-test_sdpa_broadcast_mask.log"
+      }
+    ],
+    "environment": "lavapipe, LP_NUM_THREADS4, GPU device, explicit normal10s watchdog; no M1 access"
+  }
 }
