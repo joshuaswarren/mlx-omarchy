@@ -32,6 +32,12 @@
 #include "cast_int_w8_w2.h"
 #include "cast_int_w8_w4.h"
 #include "cast_int_w8_w8.h"
+#include "elementwise_i8.h"
+#include "elementwise_u8.h"
+#include "elementwise_i16.h"
+#include "elementwise_u16.h"
+#include "elementwise_i64.h"
+#include "elementwise_u64.h"
 #include "cast_bf16_f16.h"
 #include "cast_bool_f32.h"
 #include "cast_bool_i32.h"
@@ -66,6 +72,18 @@
 #include "slice_update_reduce_u32.h"
 #include "scatter_triple_u32.h"
 #include "scatter_triple_f16.h"
+#include "scatter_u8.h"
+#include "scatter_i8.h"
+#include "scatter_u16.h"
+#include "scatter_i16.h"
+#include "scatter_multi_u8.h"
+#include "scatter_multi_i8.h"
+#include "scatter_multi_u16.h"
+#include "scatter_multi_i16.h"
+#include "scatter_triple_u8.h"
+#include "scatter_triple_i8.h"
+#include "scatter_triple_u16.h"
+#include "scatter_triple_i16.h"
 #include "scatter_triple_bf16.h"
 #include "scatter_bool_triple.h"
 #include "copy_general_bf16.h"
@@ -84,6 +102,10 @@
 #include "compare_i32.h"
 #include "compare_i64.h"
 #include "compare_u32.h"
+#include "compare_i8.h"
+#include "compare_u8.h"
+#include "compare_i16.h"
+#include "compare_u16.h"
 #include "matmul_f16.h"
 #include "matmul_f32.h"
 #include "select_bf16.h"
@@ -273,6 +295,9 @@
 #include "cast_c64_f32.h"
 #include "fill_c64.h"
 #include "copy_general_c64.h"
+#include "fill_u64.h"
+#include "fill_u16.h"
+#include "compare_u64.h"
 
 namespace mlx::core::omarchy {
 
@@ -764,6 +789,56 @@ ShaderBytes shader_bytes(ComputeKernel kernel) {
       return {cast_c64_f32, cast_c64_f32_size};
     case ComputeKernel::FillComplex64:
       return {fill_c64, fill_c64_size};
+    case ComputeKernel::FillU64:
+      return {fill_u64, fill_u64_size};
+    case ComputeKernel::FillU16:
+      return {fill_u16, fill_u16_size};
+    case ComputeKernel::CompareU64:
+      return {compare_u64, compare_u64_size};
+    case ComputeKernel::ElementwiseI8:
+      return {elementwise_i8, elementwise_i8_size};
+    case ComputeKernel::ElementwiseU8:
+      return {elementwise_u8, elementwise_u8_size};
+    case ComputeKernel::ElementwiseI16:
+      return {elementwise_i16, elementwise_i16_size};
+    case ComputeKernel::ElementwiseU16:
+      return {elementwise_u16, elementwise_u16_size};
+    case ComputeKernel::ElementwiseI64:
+      return {elementwise_i64, elementwise_i64_size};
+    case ComputeKernel::ElementwiseU64:
+      return {elementwise_u64, elementwise_u64_size};
+    case ComputeKernel::CompareI8:
+      return {compare_i8, compare_i8_size};
+    case ComputeKernel::CompareU8:
+      return {compare_u8, compare_u8_size};
+    case ComputeKernel::CompareI16:
+      return {compare_i16, compare_i16_size};
+    case ComputeKernel::CompareU16:
+      return {compare_u16, compare_u16_size};
+    case ComputeKernel::ScatterU8:
+      return {scatter_u8, scatter_u8_size};
+    case ComputeKernel::ScatterI8:
+      return {scatter_i8, scatter_i8_size};
+    case ComputeKernel::ScatterU16:
+      return {scatter_u16, scatter_u16_size};
+    case ComputeKernel::ScatterI16:
+      return {scatter_i16, scatter_i16_size};
+    case ComputeKernel::ScatterMultiU8:
+      return {scatter_multi_u8, scatter_multi_u8_size};
+    case ComputeKernel::ScatterMultiI8:
+      return {scatter_multi_i8, scatter_multi_i8_size};
+    case ComputeKernel::ScatterMultiU16:
+      return {scatter_multi_u16, scatter_multi_u16_size};
+    case ComputeKernel::ScatterMultiI16:
+      return {scatter_multi_i16, scatter_multi_i16_size};
+    case ComputeKernel::ScatterTripleU8:
+      return {scatter_triple_u8, scatter_triple_u8_size};
+    case ComputeKernel::ScatterTripleI8:
+      return {scatter_triple_i8, scatter_triple_i8_size};
+    case ComputeKernel::ScatterTripleU16:
+      return {scatter_triple_u16, scatter_triple_u16_size};
+    case ComputeKernel::ScatterTripleI16:
+      return {scatter_triple_i16, scatter_triple_i16_size};
     case ComputeKernel::CopyGeneralComplex64:
       return {copy_general_c64, copy_general_c64_size};
     case ComputeKernel::ScatterFAddF32:

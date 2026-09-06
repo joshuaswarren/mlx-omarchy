@@ -382,6 +382,41 @@ enum class ComputeKernel : uint16_t {
   CastIntW8W2,
   CastIntW8W4,
   CastIntW8W8,
+  // NarrowIntTail: widened-word bitwise variants for the 8/16/64-bit
+  // integer family (BitwiseBinary and BitwiseInvert only; the host
+  // refuses every other operation on these dtypes by name). W2 blobs
+  // need 16-bit storage, W8 blobs the shaderInt64 feature.
+  CompareU64,
+  ElementwiseI8,
+  ElementwiseU8,
+  ElementwiseI16,
+  ElementwiseU16,
+  ElementwiseI64,
+  ElementwiseU64,
+  // NarrowIntTail: narrow-int comparisons. Byte variants ride the
+  // packed word transport; 16-bit variants need 16-bit storage.
+  CompareI8,
+  CompareU8,
+  CompareI16,
+  CompareU16,
+  // NarrowIntTail: 8/16-bit Scatter through the packed byte-insert
+  // (8-bit) and plain 16-bit store winner writes, NONE reduce only.
+  ScatterU8,
+  ScatterI8,
+  ScatterU16,
+  ScatterI16,
+  ScatterMultiU8,
+  ScatterMultiI8,
+  ScatterMultiU16,
+  ScatterMultiI16,
+  ScatterTripleU8,
+  ScatterTripleI8,
+  ScatterTripleU16,
+  ScatterTripleI16,
+  // NarrowIntTail: 64-bit and 16-bit non-zero scalar fills; the U64
+  // variant rides shaderInt64, the U16 variant 16-bit storage.
+  FillU64,
+  FillU16,
   Count,
 };
 

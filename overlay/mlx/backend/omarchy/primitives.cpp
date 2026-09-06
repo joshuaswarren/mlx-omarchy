@@ -744,12 +744,23 @@ void dispatch_comparison(
     dispatch_compare_bool_to(name, bool_op, lhs, rhs, out, encoder);
     return;
   }
+  // uint64 stays a named refusal here (CompareU64 is staged but its
+  // in-graph path is not yet proven); the narrow int family is proven.
   if (lhs.dtype() != rhs.dtype() ||
       (lhs.dtype() != float32 && lhs.dtype() != float16 &&
        lhs.dtype() != bfloat16 && lhs.dtype() != int32 &&
        lhs.dtype() != uint32 && lhs.dtype() != int64 &&
+       lhs.dtype() != int8 && lhs.dtype() != uint8 &&
+       lhs.dtype() != int16 && lhs.dtype() != uint16 &&
        lhs.dtype() != complex64)) {
     omarchy::unsupported(name + " dtype", out);
+  }
+  // The 8-bit variants decode packed byte lanes from uint32 words; the
+  // 16-bit variants need 16-bit storage.
+  if ((lhs.dtype() == int16 || lhs.dtype() == uint16) &&
+      (!encoder.device().capabilities().storage_buffer_16bit_access ||
+       !encoder.device().capabilities().shader_int16)) {
+    omarchy::unsupported(name + " 16-bit capability", out);
   }
   const auto& capabilities = encoder.device().capabilities();
   if (lhs.dtype() == float16 &&
@@ -798,6 +809,9 @@ void dispatch_comparison(
           : lhs.dtype() == int32 ? omarchy::ComputeKernel::CompareI32
           : lhs.dtype() == uint32 ? omarchy::ComputeKernel::CompareU32
           : lhs.dtype() == int64 ? omarchy::ComputeKernel::CompareI64
+          : lhs.dtype() == uint8 ? omarchy::ComputeKernel::CompareU8
+          : lhs.dtype() == int16 ? omarchy::ComputeKernel::CompareI16
+          : lhs.dtype() == uint16 ? omarchy::ComputeKernel::CompareU16
           : lhs.dtype() == complex64 ? omarchy::ComputeKernel::CompareComplex
           : omarchy::ComputeKernel::CompareF32;
   encoder.dispatch_compute(
@@ -902,6 +916,30 @@ enum IntElementwiseOperation : uint32_t {
   IntDivideOperation,
 };
 
+// The int elementwise blob per output dtype: the 32-bit word kernels
+// carry the full op set, the 8/16/64-bit widened kernels the bitwise
+// ops only.
+omarchy::ComputeKernel elementwise_kernel(Dtype dtype) {
+  switch (dtype) {
+    case int8:
+      return omarchy::ComputeKernel::ElementwiseI8;
+    case uint8:
+      return omarchy::ComputeKernel::ElementwiseU8;
+    case int16:
+      return omarchy::ComputeKernel::ElementwiseI16;
+    case uint16:
+      return omarchy::ComputeKernel::ElementwiseU16;
+    case int64:
+      return omarchy::ComputeKernel::ElementwiseI64;
+    case uint64:
+      return omarchy::ComputeKernel::ElementwiseU64;
+    case uint32:
+      return omarchy::ComputeKernel::ElementwiseU32;
+    default:
+      return omarchy::ComputeKernel::ElementwiseI32;
+  }
+}
+
 // The params fill and dispatch behind dispatch_int_elementwise,
 // callable with a caller-allocated output so the two-output DivMod can
 // target quotient and remainder in turn.
@@ -929,9 +967,9 @@ void dispatch_int_elementwise_to(
       binding(lhs), binding(rhs), binding(out)};
   // Signed and unsigned run separate SPIR-V variants: `>>` arithmetic
   // versus logical, and the sign fixups compare against a signed zero.
-  auto kernel = out.dtype() == uint32
-      ? omarchy::ComputeKernel::ElementwiseU32
-      : omarchy::ComputeKernel::ElementwiseI32;
+  // The widened variants serve the 8/16/64-bit integer family with the
+  // widened-word bitwise ops only.
+  auto kernel = elementwise_kernel(out.dtype());
   encoder.dispatch_compute(
       kernel,
       bindings,
@@ -947,14 +985,56 @@ void dispatch_int_elementwise(
   const array& in_lhs = inputs.at(0);
   const bool binary = inputs.size() == 2;
   const array& in_rhs = binary ? inputs.at(1) : in_lhs;
-  auto is_int_dtype = [](Dtype dtype) {
+  auto is_word_dtype = [](Dtype dtype) {
     return dtype == int32 || dtype == uint32;
   };
-  if (!is_int_dtype(in_lhs.dtype()) || !is_int_dtype(in_rhs.dtype()) ||
-      !is_int_dtype(out.dtype())) {
+  // The 8/16/64-bit family rides the widened-word bitwise variants;
+  // every other operation keeps the named refusal for them, and the
+  // inputs must already share the output dtype (upstream's
+  // bitwise_impl astype's both operands to the result type).
+  auto is_widened_dtype = [](Dtype dtype) {
+    return dtype == int8 || dtype == uint8 || dtype == int16 ||
+        dtype == uint16 || dtype == int64 || dtype == uint64;
+  };
+  auto is_bitwise_op = [](uint32_t op) {
+    switch (op) {
+      case IntBitwiseAndOperation:
+      case IntBitwiseOrOperation:
+      case IntBitwiseXorOperation:
+      case IntLeftShiftOperation:
+      case IntRightShiftOperation:
+      case IntInvertOperation:
+        return true;
+      default:
+        return false;
+    }
+  };
+  if ((is_widened_dtype(in_lhs.dtype()) || is_widened_dtype(in_rhs.dtype()) ||
+       is_widened_dtype(out.dtype())) &&
+      (!is_bitwise_op(operation) || !is_widened_dtype(out.dtype()) ||
+       in_lhs.dtype() != out.dtype() ||
+       (binary && in_rhs.dtype() != out.dtype()))) {
     omarchy::unsupported(name + " dtype", out);
   }
+  if (!is_widened_dtype(in_lhs.dtype()) && !is_widened_dtype(in_rhs.dtype()) &&
+      !is_widened_dtype(out.dtype())) {
+    if (!is_word_dtype(in_lhs.dtype()) || !is_word_dtype(in_rhs.dtype()) ||
+        !is_word_dtype(out.dtype())) {
+      omarchy::unsupported(name + " dtype", out);
+    }
+  }
   auto& encoder = omarchy::get_command_encoder(out.primitive().stream());
+  if (out.dtype() == int16 || out.dtype() == uint16) {
+    const auto& capabilities = encoder.device().capabilities();
+    if (!capabilities.storage_buffer_16bit_access ||
+        !capabilities.shader_int16) {
+      omarchy::unsupported(name + " 16-bit capability", out);
+    }
+  }
+  if ((out.dtype() == int64 || out.dtype() == uint64) &&
+      !encoder.device().capabilities().shader_int64) {
+    omarchy::unsupported(name + " int64 capability", out);
+  }
   std::optional<array> lhs_temp;
   std::optional<array> rhs_temp;
   const array& lhs = ensure_dense(
@@ -5488,6 +5568,14 @@ omarchy::ComputeKernel scatter_word_kernel(
         return omarchy::ComputeKernel::ScatterTripleBF16;
       case bool_:
         return omarchy::ComputeKernel::ScatterBoolTriple;
+      case uint8:
+        return omarchy::ComputeKernel::ScatterTripleU8;
+      case int8:
+        return omarchy::ComputeKernel::ScatterTripleI8;
+      case uint16:
+        return omarchy::ComputeKernel::ScatterTripleU16;
+      case int16:
+        return omarchy::ComputeKernel::ScatterTripleI16;
       default:
         return omarchy::ComputeKernel::ScatterTripleU32;
     }
@@ -5500,6 +5588,14 @@ omarchy::ComputeKernel scatter_word_kernel(
         return omarchy::ComputeKernel::ScatterMultiBF16;
       case bool_:
         return omarchy::ComputeKernel::ScatterBoolMulti;
+      case uint8:
+        return omarchy::ComputeKernel::ScatterMultiU8;
+      case int8:
+        return omarchy::ComputeKernel::ScatterMultiI8;
+      case uint16:
+        return omarchy::ComputeKernel::ScatterMultiU16;
+      case int16:
+        return omarchy::ComputeKernel::ScatterMultiI16;
       default:
         return omarchy::ComputeKernel::ScatterMultiU32;
     }
@@ -5511,6 +5607,14 @@ omarchy::ComputeKernel scatter_word_kernel(
       return omarchy::ComputeKernel::ScatterBF16;
     case bool_:
       return omarchy::ComputeKernel::ScatterBool;
+    case uint8:
+      return omarchy::ComputeKernel::ScatterU8;
+    case int8:
+      return omarchy::ComputeKernel::ScatterI8;
+    case uint16:
+      return omarchy::ComputeKernel::ScatterU16;
+    case int16:
+      return omarchy::ComputeKernel::ScatterI16;
     default:
       return omarchy::ComputeKernel::ScatterU32;
   }
@@ -5632,6 +5736,26 @@ void Scatter::eval_gpu(const std::vector<array>& inputs, array& out) {
       map_code = 1;
       kernel = scatter_word_kernel(multi_index, triple_index, out.dtype());
       break;
+    case uint8:
+    case int8:
+    case uint16:
+    case int16: {
+      // The narrow variants implement the rank-slot NONE path only;
+      // Max/Min would need widened key scratch and Sum/Prod a widened
+      // accumulation, so those reductions keep the named refusal.
+      if (!no_index && reduce_type != Scatter::None) {
+        omarchy::unsupported("Scatter dtype", out);
+      }
+      if (out.dtype() == uint16 || out.dtype() == int16) {
+        const auto& caps = encoder.device().capabilities();
+        if (!caps.storage_buffer_16bit_access || !caps.shader_int16) {
+          omarchy::unsupported("Scatter 16-bit capability", out);
+        }
+      }
+      map_code = (out.dtype() == int8 || out.dtype() == int16) ? 1 : 2;
+      kernel = scatter_word_kernel(multi_index, triple_index, out.dtype());
+      break;
+    }
     default:
       omarchy::unsupported("Scatter dtype", out);
   }
