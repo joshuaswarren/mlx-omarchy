@@ -19,6 +19,7 @@
 #include <vector>
 
 #include "mlx/backend/gpu/device_info.h"
+#include "mlx/backend/omarchy/encoder.h"
 #include "mlx/primitives.h"
 #include "mlx/device.h"
 #include "mlx/ops.h"
@@ -350,16 +351,26 @@ TEST_CASE("Full fills exact scalar values") {
       {7.5f, 7.5f, 7.5f, 7.5f, 7.5f, 7.5f});
   // Zero fill of any dtype rides the byte-write fast path.
   check_exact<int32_t>(full({3}, 0, int32, stream), {0, 0, 0});
-  // A non-zero int32 fill rides the raw-word fill path bit-exactly,
-  // including words a float32 transport would round; the named refusal
-  // remains for widths the backend does not carry.
+  // IntegerScalarFills: int32 and uint32 fill through the raw-word
+  // path bit-exactly, including words a float32 transport would
+  // round; int64 rides the 64-bit fill behind shaderInt64.
   check_exact<int32_t>(full({2}, 7, int32, stream), {7, 7});
   check_exact<int32_t>(
       full({2}, 16777217, int32, stream),
       {16777217, 16777217});
   array wide = full({2}, 7, int64, stream);
-  auto message = caught_message(wide);
-  CHECK(message.find("non-zero scalar fill") != std::string::npos);
+  wide.eval();
+  omarchy::get_command_encoder(stream).synchronize();
+  CHECK_EQ(wide.data<int64_t>()[0], int64_t(7));
+  CHECK_EQ(wide.data<int64_t>()[1], int64_t(7));
+  // A value that spans both little-endian words fills bit-exactly.
+  array spanned = full({2}, int64_t(0x123456789ABCDEF), int64, stream);
+  spanned.eval();
+  omarchy::get_command_encoder(stream).synchronize();
+  CHECK_EQ(
+      spanned.data<int64_t>()[0], int64_t(0x123456789ABCDEF));
+  CHECK_EQ(
+      spanned.data<int64_t>()[1], int64_t(0x123456789ABCDEF));
 }
 
 TEST_CASE("NumberOfElements evaluates inside a shapeless compile") {
