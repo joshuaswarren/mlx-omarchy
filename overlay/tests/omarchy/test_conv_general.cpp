@@ -785,6 +785,51 @@ TEST_CASE("[conv-gaps] input-dilated 2-D Convolution matches host reference") {
 }
 
 TEST_CASE(
+    "[conv-gaps] flipped strided input-dilated Convolution matches host reference") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  std::mt19937 rng(181);
+  std::uniform_real_distribution<float> dist(-1.0f, 1.0f);
+  Shape in_shape{1, 4, 4, 2};
+  Shape wt_shape{3, 2, 3, 2};
+  std::vector<float> in(1 * 4 * 4 * 2);
+  std::vector<float> wt(3 * 2 * 3 * 2);
+  for (auto& v : in) {
+    v = dist(rng);
+  }
+  for (auto& v : wt) {
+    v = dist(rng);
+  }
+  Conv2DSpec spec;
+  spec.stride_h = 2;
+  spec.stride_w = 3;
+  spec.pad_lo_h = 1;
+  spec.pad_lo_w = 2;
+  spec.pad_hi_h = 2;
+  spec.pad_hi_w = 1;
+  spec.kernel_dilation_h = 3;
+  spec.kernel_dilation_w = 1;
+  spec.input_dilation_h = 2;
+  spec.input_dilation_w = 5;
+  spec.flip = true;
+  auto expected = host_conv2d_general(in, wt, in_shape, wt_shape, spec);
+  auto actual = conv_general(
+      array(in.begin(), in_shape, float32),
+      array(wt.begin(), wt_shape, float32),
+      {spec.stride_h, spec.stride_w},
+      {spec.pad_lo_h, spec.pad_lo_w},
+      {spec.pad_hi_h, spec.pad_hi_w},
+      {spec.kernel_dilation_h, spec.kernel_dilation_w},
+      {spec.input_dilation_h, spec.input_dilation_w},
+      /*groups=*/1,
+      spec.flip,
+      stream);
+  check_close(actual, expected, stream, 1e-5);
+}
+
+TEST_CASE(
     "[conv-gaps] FP16 grouped 2-D Convolution matches host reference") {
   if (!compute_available()) {
     return;

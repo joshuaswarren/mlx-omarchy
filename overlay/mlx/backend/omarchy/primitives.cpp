@@ -3766,24 +3766,6 @@ void Convolution::eval_gpu(const std::vector<array>& inputs, array& out) {
   if (spatial < 1 || spatial > 3 || in.ndim() != wt.ndim()) {
     omarchy::unsupported("Convolution shapes", out);
   }
-  // conv_transpose_general is the only flip producer and it always
-  // passes kernel strides of one, so a strided flip keeps the named
-  // rejection. 3-D input dilation stays refused because the fixed
-  // ComputeParams layout has no slot for it (upstream conv3d never
-  // builds one; only the public conv_general could).
-  const std::vector<int> unit_strides(spatial, 1);
-  if (flip_ && kernel_strides_ != unit_strides) {
-    omarchy::unsupported("transposed (flip) Convolution stride", out);
-  }
-  // Forward 3-D with non-unit input dilation keeps a named rejection:
-  // the fixed ComputeParams layout has no slot for it once the stride
-  // slots carry the kernel stride (the transposed path needs no slot
-  // there because flip always pairs with unit kernel stride).
-  const std::vector<int> unit_dilation(3, 1);
-  if (spatial == 3 && !flip_ && input_dilation_ != unit_dilation) {
-    omarchy::unsupported("3-D input dilation", out);
-  }
-
   // Materialize operands whose strides are not the standard
   // channels-last and O(HKW) row-major layouts; cache slices and
   // transposes compose that way. The engine keeps each temp alive
@@ -3843,11 +3825,17 @@ void Convolution::eval_gpu(const std::vector<array>& inputs, array& out) {
   params.rhs_offset = checked_item_offset(w, w.size(), "Convolution", out);
   params.output_offset =
       checked_item_offset(out, out.size(), "Convolution", out);
-  params.matrix_m = checked_u32(batch, "Convolution", out);
+  params.matrix_m =
+      checked_u32(out.shape(out.ndim() - 2), "Convolution", out);
   params.matrix_n = checked_u32(out_channels, "Convolution", out);
   params.rhs_gap = checked_u32(groups_, "Convolution", out);
   params.flags = flip_ ? 1u : 0u;
   params.dims = checked_u32(spatial, "Convolution", out);
+  params.lhs_size = axis_or_one(input_dilation_, 0);
+  params.rhs_size = axis_or_one(input_dilation_, 1);
+  uint32_t input_dilation_axis_2 = axis_or_one(input_dilation_, 2);
+  std::memcpy(
+      &params.alpha, &input_dilation_axis_2, sizeof(input_dilation_axis_2));
   // Input extents: depth, height, width.
   params.output_size =
       checked_u32(spatial == 3 ? in_ext[0] : 1, "Convolution", out);
@@ -3862,20 +3850,15 @@ void Convolution::eval_gpu(const std::vector<array>& inputs, array& out) {
       checked_u32(spatial >= 2 ? kern_ext[spatial - 2] : 1, "Convolution", out);
   params.operation =
       checked_u32(kern_ext[spatial - 1], "Convolution", out);
-  // Output extents above the innermost axis; the shader derives the
-  // innermost extent from count. Axis 0 is depth (3-D) or height
-  // (2-D); axis 1 holds height under a 3-D rank only.
+  // Output extents outermost-first. The innermost axis rides
+  // matrix_m; shape[0..1] carry depth/height when present.
   params.shape[0] =
       checked_u32(spatial >= 2 ? out.shape(1) : 1, "Convolution", out);
   params.shape[1] =
       checked_u32(spatial == 3 ? out.shape(2) : 1, "Convolution", out);
-  // Kernel stride and low padding per axis. The transposed path
-  // always pairs the flip with unit kernel stride, so its stride
-  // slots carry the conv stride expressed as input dilation instead.
+  // Kernel stride and low padding remain independent of kernel flip.
   for (int axis = 0; axis < 3; ++axis) {
-    params.in_strides[axis] = flip_
-        ? axis_or_one(input_dilation_, axis)
-        : axis_or_one(kernel_strides_, axis);
+    params.in_strides[axis] = axis_or_one(kernel_strides_, axis);
     params.out_strides[axis] = pad_lo_axis(axis);
   }
   // Kernel dilation: depth, height, width.
@@ -3883,15 +3866,6 @@ void Convolution::eval_gpu(const std::vector<array>& inputs, array& out) {
   params.shape[3] =
       axis_or_one(kernel_dilation_, spatial >= 2 ? spatial - 2 : 3);
   params.out_strides[3] = axis_or_one(kernel_dilation_, spatial - 1);
-  // Forward input dilation rides the slots the 3-D packing leaves
-  // unused; 3-D forward refused non-unit input dilation above, so
-  // those slots keep their depth placeholders there.
-  if (!flip_ && spatial == 2) {
-    params.lhs_gap = checked_u32(input_dilation_[0], "Convolution", out);
-    params.output_size = checked_u32(input_dilation_[1], "Convolution", out);
-  } else if (!flip_ && spatial == 1) {
-    params.output_size = checked_u32(input_dilation_[0], "Convolution", out);
-  }
   auto kernel = select_float_kernel(
       out.dtype(),
       omarchy::ComputeKernel::ConvF32,
@@ -3938,8 +3912,6 @@ void Convolution::eval_gpu(const std::vector<array>& inputs, array& out) {
     params = base_params;
     params.flags = (flip_ ? 1u : 0u) | 2u;
     params.in_strides[3] = output_base;
-    params.lhs_size = chunks;
-    params.rhs_size = total;
     params.beta = static_cast<float>(kConvChunkProducts);
     params.count = tile_count * chunks;
     encoder.dispatch_compute(
