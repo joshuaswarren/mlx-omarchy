@@ -280,6 +280,7 @@
 #include "clear_u32.h"
 #include "gather_axis_bf16.h"
 #include "gather_axis_f16.h"
+#include "gather_axis_i64.h"
 #include "gather_axis_u32.h"
 #include "masked_scatter_bf16.h"
 #include "masked_scatter_f16.h"
@@ -760,6 +761,8 @@ ShaderBytes shader_bytes(ComputeKernel kernel) {
       return {qmm_f32, qmm_f32_size};
     case ComputeKernel::GatherAxisU32:
       return {gather_axis_u32, gather_axis_u32_size};
+    case ComputeKernel::GatherAxisI64:
+      return {gather_axis_i64, gather_axis_i64_size};
     case ComputeKernel::GatherAxisF16:
       return {gather_axis_f16, gather_axis_f16_size};
     case ComputeKernel::GatherAxisBF16:
