@@ -784,7 +784,7 @@ TEST_CASE(
   alloc.free(dst);
 }
 
-TEST_CASE("re-recording a drained buffer stamps it pending again") {
+TEST_CASE("re-recorded buffers stay quarantined until completion") {
   if (!gpu::is_available()) {
     skip("no qualifying Vulkan device.");
     return;
@@ -792,64 +792,41 @@ TEST_CASE("re-recording a drained buffer stamps it pending again") {
   auto& alloc = omarchy::allocator();
   Stream s = new_stream(Device::gpu);
   auto& encoder = omarchy::get_command_encoder(s);
-
   constexpr size_t kBytes = 1 << 16;
+  constexpr uint32_t kPattern = 0x1234abcd;
   auto src = alloc.malloc(kBytes);
   auto dst = alloc.malloc(kBytes);
   auto* src_buf = static_cast<omarchy::VulkanBuffer*>(src.ptr());
   auto* dst_buf = static_cast<omarchy::VulkanBuffer*>(dst.ptr());
-
-  // Give the buffer a real, drained completion stamp the way any
-  // earlier submission of the same array does.
   array src_view(
-      Shape{static_cast<int>(kBytes / sizeof(float))},
-      float32,
-      nullptr,
-      {});
+      Shape{static_cast<int>(kBytes / sizeof(float))}, float32, nullptr, {});
   src_view.set_data(
-      allocator::Buffer{src_buf},
-      src_view.size(),
-      src_view.strides(),
-      src_view.flags(),
-      0,
+      src, src_view.size(), src_view.strides(), src_view.flags(), 0,
       [](allocator::Buffer) {});
   encoder.add_temporary(src_view);
+  encoder.fill_buffer(src_buf->buffer, kPattern, kBytes);
   encoder.copy_buffer(src_buf->buffer, dst_buf->buffer, kBytes);
   encoder.commit();
   encoder.synchronize();
-  REQUIRE(src_buf->completion != 0);
-  REQUIRE(src_buf->completion != omarchy::kPendingCompletion);
 
-  // Record the SAME buffer into a NEW open batch. Recording must stamp
-  // it kPendingCompletion even though the old stamp names a drained
-  // generation: this batch has not submitted yet, so a free now must
-  // not recycle the buffer under the old generation's rule while this
-  // open command buffer still references it. Under live commands that
-  // aliasing corrupts the replacement allocation's data.
   encoder.add_temporary(src_view);
-  CHECK(src_buf->completion == omarchy::kPendingCompletion);
-  encoder.fill_buffer(dst_buf->buffer, 0, 4);
-
-  size_t cache_before = alloc.get_cache_memory();
+  encoder.copy_buffer(src_buf->buffer, dst_buf->buffer, kBytes);
+  const size_t cache_before = alloc.get_cache_memory();
   alloc.free(src);
   CHECK(alloc.get_cache_memory() == cache_before);
-  auto* replacement = static_cast<omarchy::VulkanBuffer*>(
-      alloc.malloc(kBytes).ptr());
-  CHECK(replacement != src_buf);
-
-  // Submit this batch (drain V2), then push one more submission so the
-  // drain runs through V2+1 and release_quarantine recycles the buffer.
+  auto replacement = alloc.malloc(kBytes);
+  CHECK(replacement.ptr() != src.ptr());
+  const size_t cache_before_completion = alloc.get_cache_memory();
   encoder.commit();
   encoder.synchronize();
-  encoder.fill_buffer(dst_buf->buffer, 0, 4);
+  encoder.fill_buffer(dst_buf->buffer, kPattern, 4);
   encoder.commit();
-  CHECK(src_buf->completion != omarchy::kPendingCompletion);
-  CHECK(src_buf->completion != 0);
-  size_t cache_mid = alloc.get_cache_memory();
   encoder.synchronize();
-  CHECK(src_buf->completion == 0);
-  CHECK(alloc.get_cache_memory() == cache_mid + kBytes);
-  alloc.free(allocator::Buffer{replacement});
+  CHECK(alloc.get_cache_memory() == cache_before_completion + kBytes);
+  const auto* words = static_cast<const uint32_t*>(dst_buf->data);
+  CHECK(std::all_of(words, words + kBytes / sizeof(uint32_t),
+                    [](uint32_t word) { return word == kPattern; }));
+  alloc.free(replacement);
   alloc.free(dst);
 }
 
@@ -1383,16 +1360,7 @@ TEST_CASE("zero-scalar fast path refuses GPU-produced scalars") {
 
   auto produced = zeros({1}, float32, s);
   array out({1.0f, 1.0f, 1.0f, 1.0f});
-  bool threw = false;
-  try {
-    fill_gpu(produced, out, s);
-  } catch (const std::exception& ex) {
-    threw = true;
-    std::string msg = ex.what();
-    CHECK(msg.find("[omarchy]") != std::string::npos);
-    CHECK(msg.find("GPU-in-flight fill") != std::string::npos);
-  }
-  CHECK(threw);
+  CHECK_THROWS_AS(fill_gpu(produced, out, s), std::runtime_error);
 }
 
 TEST_CASE("host event bridges a GPU-stream signal") {

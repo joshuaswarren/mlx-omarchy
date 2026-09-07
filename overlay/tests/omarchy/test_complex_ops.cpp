@@ -107,6 +107,15 @@ std::vector<double> read_real(array a, const Stream& stream) {
   return std::vector<double>(data, data + dense.size());
 }
 
+template <typename T>
+std::vector<T> read_values(array a, const Stream& stream) {
+  auto dense = contiguous(a);
+  dense.eval();
+  sync(stream);
+  const T* data = dense.data<T>();
+  return std::vector<T>(data, data + dense.size());
+}
+
 // Exact component comparison at float32 precision: transport carries
 // float32 words unchanged, so the reference quantized through float32
 // must equal the readback bit for bit.
@@ -738,6 +747,33 @@ cdouble host_tan(cdouble z) {
 cdouble host_tanh(cdouble z) {
   return std::tanh(z);
 }
+cdouble host_arccos(cdouble z) {
+  return std::acos(z);
+}
+cdouble host_arcsin(cdouble z) {
+  return std::asin(z);
+}
+cdouble host_arctan(cdouble z) {
+  return std::atan(z);
+}
+cdouble host_sqrt(cdouble z) {
+  return std::sqrt(z);
+}
+cdouble host_rsqrt(cdouble z) {
+  return 1.0 / std::sqrt(z);
+}
+cdouble host_log(cdouble z) {
+  return std::log(z);
+}
+cdouble host_log2(cdouble z) {
+  return std::log(z) / std::log(2.0);
+}
+cdouble host_log10(cdouble z) {
+  return std::log(z) / std::log(10.0);
+}
+cdouble host_round(cdouble z) {
+  return {std::nearbyint(z.real()), std::nearbyint(z.imag())};
+}
 cdouble host_log1p(cdouble z) {
   // The upstream simd::log1p complex reference: atan2 argument and a
   // small-|z| magnitude branch that keeps log1p(r) exact.
@@ -785,6 +821,380 @@ TEST_CASE("complex sinh/cosh/tan/tanh/log1p match host references") {
   CHECK(std::isinf(l1[0].real()));
   CHECK(l1[0].real() < 0.0);
   CHECK_EQ(l1[0].imag(), 0.0);
+}
+
+TEST_CASE("integer round preserves identity ties and dtype wrap") {
+  if (!compute_available()) {
+    return;
+  }
+  auto stream = gpu_stream();
+
+  std::vector<int8_t> i8_values{
+      -128, -125, -115, -25, -15, -5, 5, 15, 25, 115, 125, 127};
+  array i8(i8_values.begin(), Shape{12}, int8);
+  CHECK_EQ(read_values<int8_t>(round(i8, stream), stream), i8_values);
+  CHECK_EQ(
+      read_values<int8_t>(round(i8, -1, stream), stream),
+      std::vector<int8_t>{126, -120, -120, -20, -20, 0, 0, 20, 20, 120, 120, -126});
+  CHECK_EQ(
+      read_values<int8_t>(round(i8, -2, stream), stream),
+      std::vector<int8_t>{-100, -100, -100, 0, 0, 0, 0, 0, 0, 100, 100, 100});
+
+  std::vector<uint8_t> u8_values{0, 5, 15, 25, 115, 125, 245, 250, 255};
+  array u8(u8_values.begin(), Shape{9}, uint8);
+  CHECK_EQ(read_values<uint8_t>(round(u8, stream), stream), u8_values);
+  CHECK_EQ(
+      read_values<uint8_t>(round(u8, -1, stream), stream),
+      std::vector<uint8_t>{0, 0, 20, 20, 120, 120, 240, 250, 4});
+  CHECK_EQ(
+      read_values<uint8_t>(round(u8, -2, stream), stream),
+      std::vector<uint8_t>{0, 0, 0, 0, 100, 100, 200, 200, 44});
+
+  std::vector<int32_t> i32_values{
+      std::numeric_limits<int32_t>::min(), -250, -150, -50,
+      50, 150, 250, std::numeric_limits<int32_t>::max()};
+  array i32(i32_values.begin(), Shape{8}, int32);
+  CHECK_EQ(read_values<int32_t>(round(i32, stream), stream), i32_values);
+  CHECK_EQ(
+      read_values<int32_t>(round(i32, -1, stream), stream),
+      std::vector<int32_t>{
+          std::numeric_limits<int32_t>::min(), -250, -150, -50,
+          50, 150, 250, std::numeric_limits<int32_t>::min()});
+  CHECK_EQ(
+      read_values<int32_t>(round(i32, -2, stream), stream),
+      std::vector<int32_t>{
+          std::numeric_limits<int32_t>::min(), -200, -200, 0,
+          0, 200, 200, std::numeric_limits<int32_t>::min()});
+}
+
+TEST_CASE("complex inverse trig roots logs and round match host references") {
+  if (!compute_available()) {
+    return;
+  }
+  auto stream = gpu_stream();
+  std::vector<cdouble> vals{
+      {3, 4}, {-5, 12}, {-8, 0}, {0, 9}, {0.25, -0.5}, {1, 1}};
+  auto z = complex_array(vals, Shape{6});
+
+  check_unary_vs_host("arccos", arccos(z, stream), stream, host_arccos, vals);
+  check_unary_vs_host("arcsin", arcsin(z, stream), stream, host_arcsin, vals);
+  check_unary_vs_host("arctan", arctan(z, stream), stream, host_arctan, vals);
+  check_unary_vs_host("sqrt", sqrt(z, stream), stream, host_sqrt, vals);
+  check_unary_vs_host("rsqrt", rsqrt(z, stream), stream, host_rsqrt, vals);
+  check_unary_vs_host("log", log(z, stream), stream, host_log, vals);
+  check_unary_vs_host("log2", log2(z, stream), stream, host_log2, vals);
+  check_unary_vs_host("log10", log10(z, stream), stream, host_log10, vals);
+
+  std::vector<cdouble> round_vals{
+      {22.2, 3.6}, {18.5, 98.2}, {0.5, -0.5}, {1.5, -1.5}};
+  auto round_input = complex_array(round_vals, Shape{4});
+  check_unary_vs_host(
+      "round", round(round_input, stream), stream, host_round, round_vals);
+}
+
+TEST_CASE("complex sqrt and log preserve signed branch cuts") {
+  if (!compute_available()) {
+    return;
+  }
+  auto stream = gpu_stream();
+  array roots(
+      {complex64_t{-4.0f, 0.0f}, complex64_t{-4.0f, -0.0f},
+       complex64_t{0.0f, 0.0f}, complex64_t{0.0f, -0.0f}},
+      {4});
+  auto square_roots = read_complex(sqrt(roots, stream), stream);
+  CHECK_EQ(square_roots[0].real(), 0.0);
+  CHECK_EQ(square_roots[0].imag(), 2.0);
+  CHECK_FALSE(std::signbit(square_roots[0].imag()));
+  CHECK_EQ(square_roots[1].real(), 0.0);
+  CHECK_EQ(square_roots[1].imag(), -2.0);
+  CHECK(std::signbit(square_roots[1].imag()));
+  CHECK_FALSE(std::signbit(square_roots[2].imag()));
+  CHECK(std::signbit(square_roots[3].imag()));
+
+  array cuts(
+      {complex64_t{-1.0f, 0.0f}, complex64_t{-1.0f, -0.0f}}, {2});
+  auto logs = read_complex(log(cuts, stream), stream);
+  CHECK(logs[0].imag() == doctest::Approx(std::acos(-1.0)).epsilon(1e-6));
+  CHECK(logs[1].imag() == doctest::Approx(-std::acos(-1.0)).epsilon(1e-6));
+}
+
+TEST_CASE("complex inverse functions preserve finite and signed edge semantics") {
+  if (!compute_available()) {
+    return;
+  }
+  auto stream = gpu_stream();
+  auto check_component = [](float got, float want) {
+    if (std::isnan(want)) {
+      CHECK(std::isnan(got));
+    } else if (std::isinf(want)) {
+      CHECK(std::isinf(got));
+      CHECK_EQ(std::signbit(got), std::signbit(want));
+    } else {
+      CHECK(got == doctest::Approx(want).epsilon(1e-5).scale(1e-6));
+      if (want == 0.0f) {
+        CHECK_EQ(std::signbit(got), std::signbit(want));
+      }
+    }
+  };
+  auto check_values = [&](
+                          const char* label,
+                          const std::vector<cdouble>& got,
+                          const std::vector<complex64_t>& inputs,
+                          std::complex<float> (*fn)(const std::complex<float>&)) {
+    REQUIRE_EQ(got.size(), inputs.size());
+    for (size_t i = 0; i < inputs.size(); ++i) {
+      std::complex<float> source(inputs[i].real(), inputs[i].imag());
+      std::complex<float> want = fn(source);
+      INFO(label, " index ", i);
+      check_component(float(got[i].real()), want.real());
+      check_component(float(got[i].imag()), want.imag());
+    }
+  };
+
+  std::vector<complex64_t> signed_zeros{
+      {0.0f, 0.0f}, {0.0f, -0.0f}, {-0.0f, 0.0f}, {-0.0f, -0.0f}};
+  array zeros(signed_zeros.begin(), Shape{4}, complex64);
+  check_values(
+      "arccos signed zero", read_complex(arccos(zeros, stream), stream),
+      signed_zeros, static_cast<std::complex<float> (*)(const std::complex<float>&)>(std::acos));
+  check_values(
+      "arcsin signed zero", read_complex(arcsin(zeros, stream), stream),
+      signed_zeros, static_cast<std::complex<float> (*)(const std::complex<float>&)>(std::asin));
+  check_values(
+      "arctan signed zero", read_complex(arctan(zeros, stream), stream),
+      signed_zeros, static_cast<std::complex<float> (*)(const std::complex<float>&)>(std::atan));
+
+  std::vector<complex64_t> endpoints{
+      {1.0f, 0.0f}, {1.0f, -0.0f}, {-1.0f, 0.0f}, {-1.0f, -0.0f}};
+  array endpoint_values(endpoints.begin(), Shape{4}, complex64);
+  check_values(
+      "arccos endpoints", read_complex(arccos(endpoint_values, stream), stream),
+      endpoints, static_cast<std::complex<float> (*)(const std::complex<float>&)>(std::acos));
+  check_values(
+      "arcsin endpoints", read_complex(arcsin(endpoint_values, stream), stream),
+      endpoints, static_cast<std::complex<float> (*)(const std::complex<float>&)>(std::asin));
+
+  std::vector<complex64_t> real_axis{
+      {0.25f, 0.0f}, {0.25f, -0.0f}, {-0.25f, 0.0f}, {-0.25f, -0.0f},
+      {0.5f, 0.0f}, {0.5f, -0.0f}, {-0.5f, 0.0f}, {-0.5f, -0.0f}};
+  array real_axis_values(real_axis.begin(), Shape{8}, complex64);
+  auto real_axis_asin = read_complex(arcsin(real_axis_values, stream), stream);
+  auto real_axis_acos = read_complex(arccos(real_axis_values, stream), stream);
+  check_values(
+      "arcsin real axis", real_axis_asin, real_axis,
+      static_cast<std::complex<float> (*)(const std::complex<float>&)>(std::asin));
+  check_values(
+      "arccos real axis", real_axis_acos, real_axis,
+      static_cast<std::complex<float> (*)(const std::complex<float>&)>(std::acos));
+  for (size_t i = 0; i < real_axis.size(); ++i) {
+    INFO("real-axis signed zero index ", i);
+    CHECK_EQ(real_axis_asin[i].imag(), 0.0);
+    CHECK_EQ(std::signbit(real_axis_asin[i].imag()), std::signbit(real_axis[i].imag()));
+    CHECK_EQ(real_axis_acos[i].imag(), 0.0);
+    CHECK_EQ(std::signbit(real_axis_acos[i].imag()), !std::signbit(real_axis[i].imag()));
+  }
+
+  std::vector<complex64_t> imaginary_axis{
+      {0.0f, 0.5f}, {-0.0f, 0.5f}, {0.0f, -0.5f}, {-0.0f, -0.5f},
+      {0.0f, 2.0f}, {-0.0f, 2.0f}, {0.0f, -2.0f}, {-0.0f, -2.0f}};
+  array imaginary_axis_values(imaginary_axis.begin(), Shape{8}, complex64);
+  auto imaginary_axis_asin =
+      read_complex(arcsin(imaginary_axis_values, stream), stream);
+  check_values(
+      "arcsin imaginary axis", imaginary_axis_asin, imaginary_axis,
+      static_cast<std::complex<float> (*)(const std::complex<float>&)>(std::asin));
+  for (size_t i = 0; i < imaginary_axis.size(); ++i) {
+    INFO("imaginary-axis signed zero index ", i);
+    CHECK_EQ(imaginary_axis_asin[i].real(), 0.0);
+    CHECK_EQ(
+        std::signbit(imaginary_axis_asin[i].real()),
+        std::signbit(imaginary_axis[i].real()));
+  }
+
+  std::vector<float> near_real_x{-0.9f, -0.5f, 0.25f, 0.5f, 0.9f};
+  std::vector<float> near_real_y{
+      0.0f, -0.0f, 1.0e-10f, -1.0e-10f,
+      1.0e-7f, -1.0e-7f, 1.0e-4f, -1.0e-4f};
+  std::vector<complex64_t> near_real;
+  for (float real : near_real_x) {
+    for (float imag : near_real_y) {
+      near_real.emplace_back(real, imag);
+    }
+  }
+  array near_real_values(near_real.begin(), Shape{static_cast<int>(near_real.size())}, complex64);
+  auto near_real_asin = read_complex(arcsin(near_real_values, stream), stream);
+  auto near_real_acos = read_complex(arccos(near_real_values, stream), stream);
+  auto check_sensitive_values = [&](
+                                    const char* label,
+                                    const std::vector<cdouble>& got,
+                                    const std::vector<complex64_t>& inputs,
+                                    std::complex<float> (*fn)(const std::complex<float>&)) {
+    for (size_t i = 0; i < inputs.size(); ++i) {
+      std::complex<float> source(inputs[i].real(), inputs[i].imag());
+      std::complex<float> want = fn(source);
+      INFO(std::string(label), " index ", i);
+      CHECK(float(got[i].real()) ==
+            doctest::Approx(want.real()).epsilon(3e-5).scale(1e-20));
+      if (want.imag() == 0.0f) {
+        CHECK_EQ(float(got[i].imag()), 0.0f);
+        CHECK_EQ(std::signbit(float(got[i].imag())), std::signbit(want.imag()));
+      } else {
+        CHECK(float(got[i].imag()) ==
+              doctest::Approx(want.imag()).epsilon(3e-5).scale(1e-20));
+      }
+    }
+  };
+  check_sensitive_values(
+      "arcsin near real", near_real_asin, near_real,
+      static_cast<std::complex<float> (*)(const std::complex<float>&)>(std::asin));
+  check_sensitive_values(
+      "arccos near real", near_real_acos, near_real,
+      static_cast<std::complex<float> (*)(const std::complex<float>&)>(std::acos));
+
+  float below_one = std::nextafter(1.0f, 0.0f);
+  std::vector<complex64_t> branch_endpoints;
+  for (float real : {-1.0f, 1.0f}) {
+    for (float imag : {
+             1.0e-7f, -1.0e-7f, 1.0e-10f, -1.0e-10f,
+             1.0e-20f, -1.0e-20f}) {
+      branch_endpoints.emplace_back(real, imag);
+    }
+  }
+  for (float imag : {1.0e-10f, -1.0e-10f, 1.0e-20f, -1.0e-20f}) {
+    branch_endpoints.emplace_back(below_one, imag);
+  }
+  array branch_endpoint_values(
+      branch_endpoints.begin(),
+      Shape{static_cast<int>(branch_endpoints.size())}, complex64);
+  check_sensitive_values(
+      "arcsin branch endpoints",
+      read_complex(arcsin(branch_endpoint_values, stream), stream),
+      branch_endpoints,
+      static_cast<std::complex<float> (*)(const std::complex<float>&)>(std::asin));
+  check_sensitive_values(
+      "arccos branch endpoints",
+      read_complex(arccos(branch_endpoint_values, stream), stream),
+      branch_endpoints,
+      static_cast<std::complex<float> (*)(const std::complex<float>&)>(std::acos));
+
+  std::vector<complex64_t> atan_cuts{{-0.0f, 2.0f}, {-0.0f, -2.0f}};
+  array cut_values(atan_cuts.begin(), Shape{2}, complex64);
+  check_values(
+      "arctan imaginary cut", read_complex(arctan(cut_values, stream), stream),
+      atan_cuts, static_cast<std::complex<float> (*)(const std::complex<float>&)>(std::atan));
+
+  std::vector<cdouble> large{
+      {1.0e20, 1.0e20}, {-1.0e20, 1.0e20}, {1.0e20, -1.0e20}};
+  auto large_values = complex_array(large, Shape{3});
+  check_unary_vs_host(
+      "arccos large", arccos(large_values, stream), stream, host_arccos, large);
+  check_unary_vs_host(
+      "arcsin large", arcsin(large_values, stream), stream, host_arcsin, large);
+  check_unary_vs_host(
+      "arctan large", arctan(large_values, stream), stream, host_arctan, large);
+
+  float max_value = std::numeric_limits<float>::max();
+  std::vector<cdouble> finite_logs{
+      {max_value, max_value}, {max_value, -max_value}};
+  auto finite_log_values = complex_array(finite_logs, Shape{2});
+  check_unary_vs_host(
+      "log finite max", log(finite_log_values, stream), stream, host_log, finite_logs);
+  check_unary_vs_host(
+      "log2 finite max", log2(finite_log_values, stream), stream, host_log2, finite_logs);
+  check_unary_vs_host(
+      "log10 finite max", log10(finite_log_values, stream), stream, host_log10, finite_logs);
+
+  std::vector<complex64_t> finite_roots{
+      {max_value, 0.0f}, {-max_value, 0.0f},
+      {max_value, -0.0f}, {-max_value, -0.0f}};
+  array finite_root_values(finite_roots.begin(), Shape{4}, complex64);
+  check_values(
+      "sqrt finite extremes", read_complex(sqrt(finite_root_values, stream), stream),
+      finite_roots, static_cast<std::complex<float> (*)(const std::complex<float>&)>(std::sqrt));
+
+  float inf = std::numeric_limits<float>::infinity();
+  float nan = std::numeric_limits<float>::quiet_NaN();
+  std::vector<complex64_t> classified_specials{
+      {1.0f, nan}, {nan, 1.0f}, {inf, nan}, {-inf, nan},
+      {nan, inf}, {nan, -inf}};
+  array classified_special_values(
+      classified_specials.begin(), Shape{6}, complex64);
+  auto special_logs = read_complex(log(classified_special_values, stream), stream);
+  auto special_log2s =
+      read_complex(log2(classified_special_values, stream), stream);
+  auto special_log10s =
+      read_complex(log10(classified_special_values, stream), stream);
+  for (size_t i = 0; i < classified_specials.size(); ++i) {
+    std::complex<float> source(
+        classified_specials[i].real(), classified_specials[i].imag());
+    std::complex<float> want_log = std::log(source);
+    INFO("log mixed special index ", i);
+    check_component(float(special_logs[i].real()), want_log.real());
+    check_component(float(special_logs[i].imag()), want_log.imag());
+    std::complex<float> want_log2 = want_log / std::log(2.0f);
+    INFO("log2 mixed special index ", i);
+    check_component(float(special_log2s[i].real()), want_log2.real());
+    check_component(float(special_log2s[i].imag()), want_log2.imag());
+    std::complex<float> want_log10 = want_log / std::log(10.0f);
+    INFO("log10 mixed special index ", i);
+    check_component(float(special_log10s[i].real()), want_log10.real());
+    check_component(float(special_log10s[i].imag()), want_log10.imag());
+  }
+  check_values(
+      "arcsin mixed specials",
+      read_complex(arcsin(classified_special_values, stream), stream),
+      classified_specials,
+      static_cast<std::complex<float> (*)(const std::complex<float>&)>(std::asin));
+  check_values(
+      "arccos mixed specials",
+      read_complex(arccos(classified_special_values, stream), stream),
+      classified_specials,
+      static_cast<std::complex<float> (*)(const std::complex<float>&)>(std::acos));
+
+  std::vector<complex64_t> atan_extremes{
+      {0.0f, max_value}, {0.0f, -max_value}, {-0.0f, max_value},
+      {-0.0f, -max_value}, {nan, inf}, {nan, -inf}, {inf, nan},
+      {-inf, nan}, {1.0e-4f, -1.0f}, {1.0e-8f, -1.0f},
+      {1.0e-20f, 1.0f}, {0.0f, 1.0f}, {-0.0f, 1.0f},
+      {0.0f, -1.0f}, {-0.0f, -1.0f}};
+  array atan_extreme_values(atan_extremes.begin(), Shape{15}, complex64);
+  check_values(
+      "arctan finite and mixed extremes",
+      read_complex(arctan(atan_extreme_values, stream), stream), atan_extremes,
+      static_cast<std::complex<float> (*)(const std::complex<float>&)>(std::atan));
+
+  array mixed(
+      {complex64_t{inf, nan}, complex64_t{-inf, nan}}, {2});
+  auto mixed_roots = read_complex(sqrt(mixed, stream), stream);
+  CHECK(std::isinf(mixed_roots[0].real()));
+  CHECK(std::isnan(mixed_roots[0].imag()));
+  CHECK(std::isnan(mixed_roots[1].real()));
+  CHECK(std::isinf(mixed_roots[1].imag()));
+
+  std::vector<complex64_t> infinite_roots{
+      {inf, 0.0f}, {inf, -0.0f}, {-inf, 0.0f}, {-inf, -0.0f}};
+  array infinite_root_values(infinite_roots.begin(), Shape{4}, complex64);
+  auto reciprocals = read_complex(rsqrt(infinite_root_values, stream), stream);
+  for (size_t i = 0; i < infinite_roots.size(); ++i) {
+    std::complex<float> source(
+        infinite_roots[i].real(), infinite_roots[i].imag());
+    std::complex<float> want = 1.0f / std::sqrt(source);
+    INFO("rsqrt infinite index ", i);
+    check_component(float(reciprocals[i].real()), want.real());
+    check_component(float(reciprocals[i].imag()), want.imag());
+  }
+
+  std::vector<complex64_t> zero_roots{
+      {0.0f, 0.0f}, {0.0f, -0.0f}, {-0.0f, 0.0f}, {-0.0f, -0.0f}};
+  array zero_root_values(zero_roots.begin(), Shape{4}, complex64);
+  auto zero_reciprocals = read_complex(rsqrt(zero_root_values, stream), stream);
+  for (size_t i = 0; i < zero_roots.size(); ++i) {
+    std::complex<float> source(zero_roots[i].real(), zero_roots[i].imag());
+    std::complex<float> want = 1.0f / std::sqrt(source);
+    INFO("rsqrt zero index ", i);
+    check_component(float(zero_reciprocals[i].real()), want.real());
+    check_component(float(zero_reciprocals[i].imag()), want.imag());
+  }
 }
 
 TEST_CASE("complex sign maps zero to itself and z to z/abs(z)") {

@@ -9,6 +9,7 @@
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
+#include <initializer_list>
 #include <optional>
 #include <numeric>
 #include <string>
@@ -360,6 +361,38 @@ void classify_matmul_operand(
   }
 }
 
+std::tuple<Shape, std::vector<Strides>> collapse_matmul_batches(
+    const array& out,
+    std::initializer_list<const array*> operands) {
+  const int batch_rank = static_cast<int>(out.ndim()) - 2;
+  Shape batch_shape(out.shape().begin(), out.shape().end() - 2);
+  std::vector<Strides> batch_strides;
+  batch_strides.reserve(operands.size());
+  for (const array* operand : operands) {
+    const int operand_batch_rank =
+        std::max(static_cast<int>(operand->ndim()) - 2, 0);
+    const int axis_offset = batch_rank - operand_batch_rank;
+    Strides strides(batch_rank, 0);
+    for (int axis = std::max(axis_offset, 0); axis < batch_rank; ++axis) {
+      const int operand_axis = axis - axis_offset;
+      if (operand->shape(operand_axis) != 1) {
+        strides[axis] = operand->strides()[operand_axis];
+      }
+    }
+    batch_strides.push_back(std::move(strides));
+  }
+  auto collapsed = collapse_contiguous_dims(batch_shape, batch_strides);
+  auto& collapsed_shape = std::get<0>(collapsed);
+  auto& collapsed_strides = std::get<1>(collapsed);
+  if (collapsed_shape.empty()) {
+    collapsed_shape.push_back(1);
+    for (auto& strides : collapsed_strides) {
+      strides.push_back(0);
+    }
+  }
+  return collapsed;
+}
+
 void dispatch_matmul(
     const std::string& name,
     const std::vector<array>& inputs,
@@ -416,16 +449,18 @@ void dispatch_matmul(
   Strides a_batch_strides;
   Strides b_batch_strides;
   Strides c_batch_strides;
-  if (use_c) {
-    std::tie(
-        batch_shape,
-        a_batch_strides,
-        b_batch_strides,
-        c_batch_strides) = collapse_batches(*a, *b, *c);
-  } else {
-    std::tie(batch_shape, a_batch_strides, b_batch_strides) =
-        collapse_batches(*a, *b);
-  }
+  auto collapse = [&]() {
+    auto [shape, strides] = use_c
+        ? collapse_matmul_batches(out, {a, b, c})
+        : collapse_matmul_batches(out, {a, b});
+    batch_shape = std::move(shape);
+    a_batch_strides = std::move(strides[0]);
+    b_batch_strides = std::move(strides[1]);
+    if (use_c) {
+      c_batch_strides = std::move(strides[2]);
+    }
+  };
+  collapse();
   if (batch_shape.size() > 4) {
     if (!a_materialized) {
       a_materialized = materialize_batched_matrix(*a, name, out, s);
@@ -443,16 +478,7 @@ void dispatch_matmul(
     b_transposed = false;
     a_gap = checked_u32(a->shape(-1), name, out);
     b_gap = checked_u32(b->shape(-1), name, out);
-    if (use_c) {
-      std::tie(
-          batch_shape,
-          a_batch_strides,
-          b_batch_strides,
-          c_batch_strides) = collapse_batches(*a, *b, *c);
-    } else {
-      std::tie(batch_shape, a_batch_strides, b_batch_strides) =
-          collapse_batches(*a, *b);
-    }
+    collapse();
   }
   if (batch_shape.size() > 4) {
     omarchy::unsupported("matrix batch rank " + name, out);
@@ -2849,6 +2875,15 @@ enum ComplexOperation : uint32_t {
   ComplexTanh,
   ComplexLog1p,
   ComplexSign,
+  ComplexArcCos,
+  ComplexArcSin,
+  ComplexArcTan,
+  ComplexSqrt,
+  ComplexRsqrt,
+  ComplexLog,
+  ComplexLog2,
+  ComplexLog10,
+  ComplexRound,
 };
 
 // The params fill and dispatch behind the complex64 elementwise
@@ -3109,11 +3144,29 @@ void Arange::eval_gpu(const std::vector<array>& inputs, array& out) {
   encoder.dispatch_compute(
       kernel, bindings, params, omarchy::compute_dispatch_group_count(count));
 }
-OMARCHY_UNARY(ArcCos, ArcCosOperation)
+void ArcCos::eval_gpu(const std::vector<array>& inputs, array& out) {
+  if (out.dtype() == complex64) {
+    dispatch_complex(name(), ComplexArcCos, inputs, out, stream());
+    return;
+  }
+  dispatch_elementwise(name(), ArcCosOperation, inputs, out, stream());
+}
 OMARCHY_UNARY(ArcCosh, ArcCoshOperation)
-OMARCHY_UNARY(ArcSin, ArcSinOperation)
+void ArcSin::eval_gpu(const std::vector<array>& inputs, array& out) {
+  if (out.dtype() == complex64) {
+    dispatch_complex(name(), ComplexArcSin, inputs, out, stream());
+    return;
+  }
+  dispatch_elementwise(name(), ArcSinOperation, inputs, out, stream());
+}
 OMARCHY_UNARY(ArcSinh, ArcSinhOperation)
-OMARCHY_UNARY(ArcTan, ArcTanOperation)
+void ArcTan::eval_gpu(const std::vector<array>& inputs, array& out) {
+  if (out.dtype() == complex64) {
+    dispatch_complex(name(), ComplexArcTan, inputs, out, stream());
+    return;
+  }
+  dispatch_elementwise(name(), ArcTanOperation, inputs, out, stream());
+}
 OMARCHY_BINARY(ArcTan2, ArcTan2Operation)
 OMARCHY_UNARY(ArcTanh, ArcTanhOperation)
 void ArgPartition::eval_gpu(const std::vector<array>& inputs, array& out) {
@@ -5832,22 +5885,27 @@ void Load::eval_gpu(const std::vector<array>& inputs, array& out) {
 }
 
 void Log::eval_gpu(const std::vector<array>& inputs, array& out) {
-  // Upstream log2/log10 are the Log primitive carrying Log::Base; the
-  // base picks the shader case (GLSL log2 for base two, log scaled by
-  // 1/ln(10) for base ten).
-  uint32_t operation;
+  uint32_t real_operation;
+  uint32_t complex_operation;
   switch (state()) {
     case Log::Base::two:
-      operation = Log2Operation;
+      real_operation = Log2Operation;
+      complex_operation = ComplexLog2;
       break;
     case Log::Base::ten:
-      operation = Log10Operation;
+      real_operation = Log10Operation;
+      complex_operation = ComplexLog10;
       break;
     default:
-      operation = LogOperation;
+      real_operation = LogOperation;
+      complex_operation = ComplexLog;
       break;
   }
-  dispatch_elementwise(name(), operation, inputs, out, stream());
+  if (out.dtype() == complex64) {
+    dispatch_complex(name(), complex_operation, inputs, out, stream());
+    return;
+  }
+  dispatch_elementwise(name(), real_operation, inputs, out, stream());
 }
 void Log1p::eval_gpu(const std::vector<array>& inputs, array& out) {
   if (out.dtype() == complex64) {
@@ -6801,7 +6859,17 @@ void Remainder::eval_gpu(const std::vector<array>& inputs, array& out) {
   dispatch_elementwise(
       name(), RemainderFloatOperation, inputs, out, out.primitive().stream());
 }
-OMARCHY_UNARY(Round, RoundOperation)
+void Round::eval_gpu(const std::vector<array>& inputs, array& out) {
+  if (out.dtype() == complex64) {
+    dispatch_complex(name(), ComplexRound, inputs, out, stream());
+    return;
+  }
+  if (!issubdtype(out.dtype(), inexact)) {
+    out.copy_shared_buffer(inputs.at(0));
+    return;
+  }
+  dispatch_elementwise(name(), RoundOperation, inputs, out, stream());
+}
 
 // Scan serves cumsum, cumprod, cummax, and cummin over any axis, direction,
 // and inclusivity: one invocation owns one line along the scan axis and
@@ -8416,12 +8484,13 @@ void Square::eval_gpu(const std::vector<array>& inputs, array& out) {
       name(), SquareOperation, inputs, out, out.primitive().stream());
 }
 void Sqrt::eval_gpu(const std::vector<array>& inputs, array& out) {
+  if (out.dtype() == complex64) {
+    dispatch_complex(
+        name(), state() ? ComplexRsqrt : ComplexSqrt, inputs, out, stream());
+    return;
+  }
   dispatch_elementwise(
-      name(),
-      state() ? RsqrtOperation : SqrtOperation,
-      inputs,
-      out,
-      out.primitive().stream());
+      name(), state() ? RsqrtOperation : SqrtOperation, inputs, out, stream());
 }
 void Subtract::eval_gpu(const std::vector<array>& inputs, array& out) {
   if (out.dtype() == complex64) {
