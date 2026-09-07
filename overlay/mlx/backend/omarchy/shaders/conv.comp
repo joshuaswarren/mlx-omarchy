@@ -23,12 +23,14 @@
 //   flags & 2          write convolution partials
 //   flags & 4          reduce a partial level
 //   flags & 8          store the final partial level to output
-//   matrix_m           batch count            matrix_n  out channels
-//   reduce_size        channels per group     rhs_gap   group count
+//   matrix_m           innermost output extent (partial reduction: tile count)
+//   matrix_n           output channels        rhs_gap   group count
+//   reduce_size        channels per group
 //   lhs_offset         input element offset   rhs_offset weight element
 //   output_offset      output element offset
-//   lhs_size           partial count          (large kernels)
-//   rhs_size           logical output count   (large kernels)
+//   lhs_size           input dilation axis 0  (partial reduction: source count)
+//   rhs_size           input dilation axis 1  (partial reduction: source offset)
+//   alpha bits         input dilation axis 2
 //   beta               products per partial   (large kernels)
 //   output_size        input depth            (3-D; reduction dst offset)
 //   matrix_k           input height           (2-D and 3-D)
@@ -36,18 +38,13 @@
 //   lhs_gap            kernel depth           (3-D)
 //   aux_offset         kernel height          (2-D and 3-D)
 //   operation          kernel width
-//   shape[0..dims-2]   output extents above the innermost axis; the
-//                      innermost extent is derived from count
-//   in_strides[0..2]   kernel stride per axis (transposed convs: all 1)
+//   shape[0..dims-2]   output extents above the innermost axis
+//   in_strides[0..2]   kernel stride per axis
 //   in_strides[3]      output tile base       (large kernels)
 //   out_strides[0..2]  low padding per axis
 //   shape[2]           kernel dilation, depth (3-D)
 //   shape[3]           kernel dilation, above-innermost axis
 //   out_strides[3]     kernel dilation, innermost axis
-//   lhs_gap            forward input dilation, above-innermost axis
-//                      (1-D/2-D)
-//   output_size        forward input dilation, innermost axis (1-D/
-//                      2-D; 3-D forward refuses non-unit dilation)
 #ifdef USE_FP16
 #extension GL_EXT_shader_16bit_storage : require
 #extension GL_EXT_shader_explicit_arithmetic_types_float16 : require
@@ -145,9 +142,9 @@ uint kern_axis(uint a) {
   return 1u;
 }
 
-uint out_axis(uint a, uint innermost) {
+uint out_axis(uint a) {
   if (a + 1u == params.dims) {
-    return innermost;
+    return params.matrix_m;
   }
   if (a >= params.dims) {
     return 1u;
@@ -155,11 +152,6 @@ uint out_axis(uint a, uint innermost) {
   return params.shape[a];
 }
 uint stride_axis(uint a) {
-  // The transposed path always pairs the flip with unit kernel
-  // stride; its conv stride arrives as input dilation below.
-  if ((params.flags & 1u) != 0u) {
-    return 1u;
-  }
   return a < params.dims ? params.in_strides[a] : 1u;
 }
 
@@ -181,24 +173,16 @@ uint kdil_axis(uint a) {
 }
 
 uint idil_axis(uint a) {
-  // Under the flip the stride slots carry the conv stride (upstream
-  // conv_transpose_general passes it as input dilation). The forward
-  // path reads its input dilation from the slots the 3-D packing
-  // leaves unused; 3-D forward refuses non-unit input dilation on
-  // the host.
-  if ((params.flags & 1u) != 0u) {
-    return a < params.dims ? params.in_strides[a] : 1u;
-  }
-  if (params.dims == 3u) {
+  if (a >= params.dims) {
     return 1u;
   }
-  if (a + 1u == params.dims) {
-    return params.output_size;
+  if (a == 0u) {
+    return params.lhs_size;
   }
-  if (a + 2u == params.dims) {
-    return params.lhs_gap;
+  if (a == 1u) {
+    return params.rhs_size;
   }
-  return 1u;
+  return floatBitsToUint(params.alpha);
 }
 
 void main() {
@@ -243,14 +227,6 @@ void main() {
   uint in_channels = in_channels_per_group * groups;
   uint out_channels_per_group = out_channels / groups;
   uint flip = params.flags & 1u;
-  uint output_count = write_partial ? params.rhs_size : params.count;
-  uint tile_count = write_partial ? params.count / params.lhs_size : params.count;
-
-  uint stored_out = params.dims == 3u
-      ? params.shape[0u] * params.shape[1u]
-      : (params.dims == 2u ? params.shape[0u] : 1u);
-  uint innermost =
-      output_count / (params.matrix_m * params.matrix_n * stored_out);
 
   uint in_ext[3];
   uint kern_ext[3];
@@ -262,7 +238,7 @@ void main() {
   for (uint a = 0u; a < 3u; ++a) {
     in_ext[a] = in_axis(a);
     kern_ext[a] = kern_axis(a);
-    out_ext[a] = out_axis(a, innermost);
+    out_ext[a] = out_axis(a);
     stride[a] = stride_axis(a);
     pad_lo[a] = pad_lo_axis(a);
     kdil[a] = kdil_axis(a);
@@ -278,7 +254,12 @@ void main() {
   }
   uint kernel_spatial = kern_ext[0u] * kern_ext[1u] * kern_ext[2u];
   uint kernel_products = kernel_spatial * in_channels_per_group;
-  uint chunk_products = write_partial ? uint(params.beta) : kernel_products;
+  const uint max_chunk_products = 4096u;
+  uint chunks = kernel_products == 0u
+      ? 1u
+      : 1u + (kernel_products - 1u) / max_chunk_products;
+  uint tile_count = write_partial ? params.count / chunks : params.count;
+  uint chunk_products = write_partial ? max_chunk_products : kernel_products;
 
   for (uint work_index = gl_GlobalInvocationID.x; work_index < params.count;
        work_index += stride_threads) {
