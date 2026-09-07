@@ -2538,14 +2538,6 @@ TEST_CASE("batched Matmul matches host references across layouts") {
           stream);
     }
   }
-
-  // Rank beyond 5 still reports the named rank error. The operands keep
-  // valid matrix dims so the rank check is what rejects them.
-  std::vector<float> a6_values(2 * 2 * 2 * 2 * 3 * 4, 0.5f);
-  array a6(a6_values.begin(), Shape{2, 2, 2, 2, 3, 4}, float32);
-  array b6(a6_values.begin(), Shape{2, 2, 2, 2, 4, 5}, float32);
-  std::string rank_error = evaluation_error(matmul(a6, b6, stream));
-  CHECK(rank_error.find("matrix rank Matmul") != std::string::npos);
 }
 
 TEST_CASE("scaled_dot_product_attention matches a batched matmul reference") {

@@ -6,14 +6,15 @@
 // ComplexOperation enum in ../primitives.cpp: 0 conjugate, 1 add,
 // 2 subtract, 3 multiply, 4 divide, 5 negate, 6 logaddexp, 7 power,
 // 8 exp, 9 sin, 10 cos, 11 maximum, 12 sinh, 13 cosh, 14 tan,
-// 15 tanh, 16 log1p, 17 sign. Sinh/cosh/tan/tanh mirror the glibc
-// formulas the CPU backend reaches through std::complex, log1p the
+// 15 tanh, 16 log1p, 17 sign, 18 arccos, 19 arcsin, 20 arctan,
+// 21 sqrt, 22 rsqrt, 23 log, 24 log2, 25 log10, 26 round.
+// Sinh/cosh/tan/tanh mirror the glibc formulas the CPU backend reaches
+// through std::complex, log1p the
 // upstream simd::log1p complex branch, and sign the upstream
-// z/|z| rule with the zero element mapping to itself. Division multiplies by the
-// conjugate over the squared magnitude; at float32 with test
-// magnitudes near 1 the naive form and Smith's algorithm agree to a
-// few ulps, and a zero denominator gives inf/NaN exactly like the
-// upstream std::complex<float> division. Power mirrors glibc cpowf
+// z/|z| rule with the zero element mapping to itself. Division uses
+// Smith's scaled algorithm to avoid avoidable overflow and underflow while
+// retaining upstream std::complex<float> zero-denominator semantics. Power
+// mirrors glibc cpowf
 // (principal branch on the negative axis, zero-base special cases).
 // Broadcast indexing mirrors elementwise.comp: dims == 0 selects the
 // modulo fast path, otherwise the output index unravels over shape[]
@@ -138,6 +139,255 @@ float log1p_f(float v) {
     return v;
   }
   return log(u) * (v / (u - 1.0));
+}
+
+bool negative_sign(float value) {
+  return (floatBitsToUint(value) & 0x80000000u) != 0u;
+}
+
+float copy_sign(float magnitude, float sign_source) {
+  uint bits = floatBitsToUint(magnitude) & 0x7fffffffu;
+  bits |= floatBitsToUint(sign_source) & 0x80000000u;
+  return uintBitsToFloat(bits);
+}
+
+vec2 complex_multiply(vec2 lhs, vec2 rhs) {
+  return vec2(
+      lhs.x * rhs.x - lhs.y * rhs.y,
+      lhs.x * rhs.y + lhs.y * rhs.x);
+}
+
+vec2 complex_divide(vec2 lhs, vec2 rhs) {
+  float rhs_real = abs(rhs.x);
+  float rhs_imag = abs(rhs.y);
+  if (rhs_real >= rhs_imag) {
+    float ratio = rhs.y / rhs.x;
+    float denominator = rhs.x + rhs.y * ratio;
+    return vec2(
+        precise_div(lhs.x + lhs.y * ratio, denominator),
+        precise_div(lhs.y - lhs.x * ratio, denominator));
+  }
+  float ratio = rhs.x / rhs.y;
+  float denominator = rhs.y + rhs.x * ratio;
+  return vec2(
+      precise_div(lhs.x * ratio + lhs.y, denominator),
+      precise_div(lhs.y * ratio - lhs.x, denominator));
+}
+
+vec2 complex_reciprocal(vec2 value) {
+  if (value.x == 0.0 && value.y == 0.0) {
+    return vec2(
+        uintBitsToFloat(0x7f800000u), uintBitsToFloat(0xffc00000u));
+  }
+  if (isinf(value.x)) {
+    return vec2(0.0, isinf(value.y) ? copy_sign(0.0, -value.y) : 0.0);
+  }
+  if (isinf(value.y)) {
+    return vec2(0.0, copy_sign(0.0, -value.y));
+  }
+  return complex_divide(vec2(1.0, 0.0), value);
+}
+
+float complex_argument(vec2 value) {
+  if (isnan(value.x) || isnan(value.y)) {
+    return uintBitsToFloat(0x7fc00000u);
+  }
+  if (value.y == 0.0) {
+    if (value.x < 0.0 || (value.x == 0.0 && negative_sign(value.x))) {
+      return copy_sign(3.14159265358979323846, value.y);
+    }
+    return value.y;
+  }
+  return atan(value.y, value.x);
+}
+
+float complex_hypot(vec2 value) {
+  if (isinf(value.x) || isinf(value.y)) {
+    return uintBitsToFloat(0x7f800000u);
+  }
+  if (isnan(value.x) || isnan(value.y)) {
+    return uintBitsToFloat(0x7fc00000u);
+  }
+  float scale = max(abs(value.x), abs(value.y));
+  return scale == 0.0 ? 0.0 : scale * length(value / scale);
+}
+
+// Evaluate log(hypot(x, y)) from the C99 complex-log identity without
+// forming hypot. Scaling keeps finite float32 inputs finite.
+float complex_log_magnitude(vec2 value) {
+  if (isinf(value.x) || isinf(value.y)) {
+    return uintBitsToFloat(0x7f800000u);
+  }
+  if (isnan(value.x) || isnan(value.y)) {
+    return uintBitsToFloat(0x7fc00000u);
+  }
+  float maximum = max(abs(value.x), abs(value.y));
+  float minimum = min(abs(value.x), abs(value.y));
+  if (maximum == 0.0) {
+    return log(maximum);
+  }
+  float ratio = minimum / maximum;
+  return log(maximum) + 0.5 * log1p_f(ratio * ratio);
+}
+
+vec2 complex_log(vec2 value) {
+  return vec2(complex_log_magnitude(value), complex_argument(value));
+}
+
+vec2 complex_sqrt(vec2 value) {
+  const float POS_INF = uintBitsToFloat(0x7f800000u);
+  const float QNAN = uintBitsToFloat(0x7fc00000u);
+  if (isinf(value.y)) {
+    return vec2(POS_INF, value.y);
+  }
+  if (isinf(value.x)) {
+    if (value.x > 0.0) {
+      return vec2(POS_INF, isnan(value.y) ? value.y : copy_sign(0.0, value.y));
+    }
+    return vec2(
+        isnan(value.y) ? QNAN : 0.0, copy_sign(POS_INF, value.y));
+  }
+  if (isnan(value.x) || isnan(value.y)) {
+    return vec2(QNAN, QNAN);
+  }
+  if (value.x == 0.0 && value.y == 0.0) {
+    return vec2(0.0, value.y);
+  }
+  float scale = max(abs(value.x), abs(value.y));
+  vec2 normalized = value / scale;
+  float magnitude = length(normalized);
+  float root_scale = sqrt(scale);
+  if (value.x >= 0.0) {
+    float real_part = sqrt(0.5 * (magnitude + normalized.x));
+    return root_scale * vec2(real_part, normalized.y / (2.0 * real_part));
+  }
+  float imag_abs = sqrt(0.5 * (magnitude - normalized.x));
+  return root_scale * vec2(
+      abs(normalized.y) / (2.0 * imag_abs), copy_sign(imag_abs, value.y));
+}
+
+float real_asinh(float value) {
+  float magnitude = abs(value);
+  if (isinf(magnitude) || isnan(magnitude)) {
+    return value;
+  }
+  if (magnitude < 0.125) {
+    float squared = value * value;
+    return value * (1.0 - squared / 6.0 + 3.0 * squared * squared / 40.0);
+  }
+  float root = sqrt(1.0 + magnitude * magnitude);
+  float argument = magnitude + magnitude * magnitude / (1.0 + root);
+  return copy_sign(log1p_f(argument), value);
+}
+
+vec2 complex_inverse_trig_factors(vec2 value) {
+  vec2 lhs = complex_sqrt(vec2(1.0 + value.x, value.y));
+  vec2 rhs = complex_sqrt(vec2(1.0 - value.x, -value.y));
+  return vec2(
+      lhs.x * rhs.x - lhs.y * rhs.y,
+      lhs.y * rhs.x - lhs.x * rhs.y);
+}
+
+// The finite moderate path uses Kahan's sqrt-product formulation. It avoids
+// the cancellation from taking log of a near-unit complex value.
+vec2 complex_asin(vec2 value) {
+  const float LN2 = 0.69314718055994530942;
+  const float QNAN = uintBitsToFloat(0x7fc00000u);
+  if (isinf(value.x) || isinf(value.y)) {
+    float real_part = isnan(value.x) || isnan(value.y)
+        ? QNAN : atan(value.x, abs(value.y));
+    return vec2(real_part, copy_sign(uintBitsToFloat(0x7f800000u), value.y));
+  }
+  if (isnan(value.x) || isnan(value.y)) {
+    return vec2(QNAN, QNAN);
+  }
+  float scale = max(abs(value.x), abs(value.y));
+  if (scale > 1048576.0) {
+    float real_part = atan(value.x, abs(value.y));
+    float imag_magnitude = complex_log_magnitude(value) + LN2;
+    return vec2(real_part, copy_sign(imag_magnitude, value.y));
+  }
+  vec2 factors = complex_inverse_trig_factors(value);
+  return vec2(
+      copy_sign(abs(atan(value.x, factors.x)), value.x),
+      copy_sign(abs(real_asinh(factors.y)), value.y));
+}
+
+vec2 complex_acos(vec2 value) {
+  if (isinf(value.x) || isinf(value.y) ||
+      isnan(value.x) || isnan(value.y)) {
+    vec2 inverse_sine = complex_asin(value);
+    return vec2(1.57079632679489661923 - inverse_sine.x, -inverse_sine.y);
+  }
+  float scale = max(abs(value.x), abs(value.y));
+  if (scale > 1048576.0) {
+    float edge_angle = atan(abs(value.y), abs(value.x));
+    float real_part = value.x >= 0.0
+        ? edge_angle : 3.14159265358979323846 - edge_angle;
+    float imag_magnitude = complex_log_magnitude(value) + 0.69314718055994530942;
+    return vec2(real_part, copy_sign(imag_magnitude, -value.y));
+  }
+  vec2 factors = complex_inverse_trig_factors(value);
+  return vec2(
+      atan(factors.x, value.x),
+      copy_sign(abs(real_asinh(factors.y)), -value.y));
+}
+
+vec2 complex_atan(vec2 value) {
+  const float HALF_PI = 1.57079632679489661923;
+  const float QNAN = uintBitsToFloat(0x7fc00000u);
+  if (value.x == 0.0 && value.y == 0.0) {
+    return value;
+  }
+  if (isnan(value.x) && isinf(value.y)) {
+    return vec2(QNAN, copy_sign(0.0, value.y));
+  }
+  if (isinf(value.x) && isnan(value.y)) {
+    return vec2(copy_sign(HALF_PI, value.x), 0.0);
+  }
+  if (isinf(value.x)) {
+    return vec2(copy_sign(HALF_PI, value.x), copy_sign(0.0, value.y));
+  }
+  if (isinf(value.y)) {
+    return vec2(copy_sign(HALF_PI, value.x), copy_sign(0.0, value.y));
+  }
+  if (isnan(value.x) || isnan(value.y)) {
+    return vec2(QNAN, QNAN);
+  }
+  float scale = max(1.0, max(abs(value.x), abs(value.y)));
+  float inverse_scale = 1.0 / scale;
+  vec2 normalized = value / scale;
+  float numerator = 2.0 * normalized.x * inverse_scale;
+  float denominator =
+      (inverse_scale - normalized.y) * (inverse_scale + normalized.y) -
+      normalized.x * normalized.x;
+  float real_part;
+  if (scale > 1048576.0 || isinf(scale)) {
+    real_part = copy_sign(1.57079632679489661923, value.x);
+  } else {
+    float angle = numerator == 0.0 && denominator < 0.0
+        ? copy_sign(3.14159265358979323846, numerator)
+        : (numerator == 0.0 && denominator == 0.0
+              ? numerator : atan(numerator, denominator));
+    real_part = 0.5 * angle;
+  }
+
+  if (value.x == 0.0 && abs(value.y) == 1.0) {
+    return vec2(value.x, copy_sign(uintBitsToFloat(0x7f800000u), value.y));
+  }
+  float log_plus = complex_log_magnitude(vec2(value.x, value.y + 1.0));
+  float log_minus = complex_log_magnitude(vec2(value.x, value.y - 1.0));
+  float log_difference = log_plus - log_minus;
+  if (abs(log_difference) > 0.25) {
+    return vec2(real_part, 0.5 * log_difference);
+  }
+  float imag_scale = max(abs(value.x), abs(value.y - 1.0));
+  vec2 denominator_value = vec2(value.x, value.y - 1.0) / imag_scale;
+  float scaled_numerator =
+      (value.y / imag_scale) * (4.0 / imag_scale);
+  float delta =
+      scaled_numerator / dot(denominator_value, denominator_value);
+  return vec2(real_part, 0.25 * log1p_f(delta));
 }
 
 void main() {
@@ -369,6 +619,35 @@ void main() {
             ? normalized : normalized / length(normalized);
         break;
       }
+      case 18:
+        value = complex_acos(lhs);
+        break;
+      case 19:
+        value = complex_asin(lhs);
+        break;
+      case 20:
+        value = complex_atan(lhs);
+        break;
+      case 21:
+        value = complex_sqrt(lhs);
+        break;
+      case 22:
+        value = complex_reciprocal(complex_sqrt(lhs));
+        break;
+      case 23:
+      case 24:
+      case 25: {
+        value = complex_log(lhs);
+        if (params.operation == 24u) {
+          value /= 0.69314718055994530942;
+        } else if (params.operation == 25u) {
+          value /= 2.30258509299404568402;
+        }
+        break;
+      }
+      case 26:
+        value = roundEven(lhs);
+        break;
       default:
         value = vec2(0.0);
         break;

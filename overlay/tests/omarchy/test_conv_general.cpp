@@ -924,8 +924,7 @@ TEST_CASE("[conv-gaps] BF16 grouped 2-D Convolution matches host reference") {
 
 // General 3-D host reference: the upstream slow_conv rules extended
 // with a depth axis over channels-last [N, D, H, W, C] input and
-// [O, kD, kH, kW, Cpg] weight. Input dilation is 1 in 3-D on this
-// backend (the named rejection covers the rest).
+// [O, kD, kH, kW, Cpg] weight.
 std::vector<double> host_conv3d_general(
     const std::vector<float>& input,
     const std::vector<float>& weight,
@@ -1156,6 +1155,17 @@ TEST_CASE("[conv-gaps] 3-D Convolution matches host reference") {
         std::tuple<int, int, int>(2, 1, 2),
         1,
         stream);
+    check_close(actual, expected, stream, 1e-5);
+
+    expected = host_conv3d_general(
+        in, wt, in_shape, wt_shape,
+        {2, 2, 2}, {0, 1, 0}, {0, 1, 0}, {2, 1, 2}, {2, 3, 2},
+        1, false);
+    actual = conv_general(
+        array(in.begin(), in_shape, float32),
+        array(wt.begin(), wt_shape, float32),
+        {2, 2, 2}, {0, 1, 0}, {0, 1, 0}, {2, 1, 2}, {2, 3, 2},
+        1, false, stream);
     check_close(actual, expected, stream, 1e-5);
   }
 }
