@@ -9065,21 +9065,27 @@ void CrossEntropyVJP::eval_gpu(
     std::vector<array>& outputs) {
   const std::string tag = name();
   array& out = outputs.at(0);
-  const array& x = inputs.at(0);
-  const array& y = inputs.at(1);
+  const array& in_x = inputs.at(0);
+  const array& in_y = inputs.at(1);
   const array& loss = inputs.at(2);
-  const array& g = inputs.at(3);
+  const array& in_g = inputs.at(3);
   auto s = stream();
   auto& encoder = omarchy::get_command_encoder(s);
+  std::optional<array> x_temp;
+  std::optional<array> y_temp;
+  std::optional<array> g_temp;
+  const array& x = ensure_dense(
+      in_x, in_x.flags().row_contiguous, x_temp, encoder, s);
+  const array& y = ensure_dense(
+      in_y, in_y.flags().row_contiguous, y_temp, encoder, s);
+  const array& g = ensure_dense(
+      in_g, in_g.flags().row_contiguous, g_temp, encoder, s);
   require_norm_input(tag, x, out, encoder);
   if (y.dtype() != int32) {
     omarchy::unsupported(tag + " targets dtype", out);
   }
   if (g.dtype() != float32 || loss.dtype() != float32) {
     omarchy::unsupported(tag + " cotangent dtype", out);
-  }
-  if (!y.flags().row_contiguous || !g.flags().row_contiguous) {
-    omarchy::unsupported("non-contiguous " + tag, out);
   }
   size_t row_length = x.shape(-1);
   out.set_data(allocate_omarchy(out.nbytes()));
