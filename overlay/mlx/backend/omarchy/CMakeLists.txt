@@ -244,9 +244,12 @@ omarchy_shader(qmm_vec_q4_word_subgroup_bf16 shaders/qmm_vec.comp -DUSE_BF16=1 -
 # one workgroup dequantizes each 16 x 16 weight block into shared f32
 # once and applies it to a 16-row tile of x, amortizing the inline
 # unpack the per-element qmm kernel repeats per output row. Dispatch is
-# env-gated in primitives.cpp (MLX_OMARCHY_QMM_TILE).
+# env-gated in primitives.cpp (MLX_OMARCHY_QMM_TILE). The f16 affine
+# 4-bit/group-64 transposed candidate uses MLX_OMARCHY_QMM_TILE_RB;
+# set it to 0 to retain this 16x16 tile as the native A/B baseline.
 omarchy_shader(qmm_tile_f32 shaders/qmm_tile.comp)
 omarchy_shader(qmm_tile_f16 shaders/qmm_tile.comp -DUSE_FP16=1)
+omarchy_shader(qmm_tile_rb_f16 shaders/qmm_tile.comp -DUSE_FP16=1 -DREGISTER_BLOCK=1)
 omarchy_shader(qmm_tile_bf16 shaders/qmm_tile.comp -DUSE_BF16=1)
 omarchy_shader(dequant_f32 shaders/dequant.comp)
 omarchy_shader(dequant_f16 shaders/dequant.comp -DUSE_FP16=1)

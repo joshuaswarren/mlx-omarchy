@@ -2410,18 +2410,23 @@ struct QmmVecQ4WordGate {
   }
 };
 
-// Flips the PrefillQmmTile dispatch gate and always restores the unset
-// (default OFF) state, so an aborting REQUIRE cannot leak the switch
-// into later cases in the process.
+// Forces the PrefillQmmTile dispatch gate while keeping its register-blocked
+// candidate off unless requested. Always restores both variables to unset, so
+// an aborting REQUIRE cannot leak either switch into later cases.
 struct QmmTileGate {
-  explicit QmmTileGate(bool on) {
+  explicit QmmTileGate(bool on, bool register_block = false) {
     set(on);
+    set_register_block(register_block);
   }
   ~QmmTileGate() {
     unsetenv("MLX_OMARCHY_QMM_TILE");
+    unsetenv("MLX_OMARCHY_QMM_TILE_RB");
   }
   void set(bool on) {
     setenv("MLX_OMARCHY_QMM_TILE", on ? "1" : "0", 1);
+  }
+  void set_register_block(bool on) {
+    setenv("MLX_OMARCHY_QMM_TILE_RB", on ? "1" : "0", 1);
   }
 };
 
@@ -2805,5 +2810,105 @@ TEST_CASE("qmm tile matches host reference and qmm.comp across prefill shapes") 
         run_tile_case(dtype, 64, 8, 4864, 4864, m, seed++);
       }
     }
+  }
+}
+
+TEST_CASE("qmm register-block prefill matches baseline tile and host") {
+  if (!compute_available() || !float16_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+
+  for (auto [m, n, k, seed] : {
+           std::tuple{32, 32, 128, 71u},
+           std::tuple{33, 17, 64, 73u}}) {
+    constexpr int group_size = 64;
+    constexpr int bits = 4;
+    constexpr int pack = 32 / bits;
+    const int words_per_row = k / pack;
+    const int groups_per_row = k / group_size;
+    std::mt19937 gen(seed);
+    std::uniform_real_distribution<float> dist(-2.0f, 2.0f);
+    std::vector<float> matrix(static_cast<size_t>(n) * k);
+    std::vector<float> x_values(static_cast<size_t>(m) * k);
+    for (auto& value : matrix) {
+      value = dist(gen);
+    }
+    for (auto& value : x_values) {
+      value = dist(gen);
+    }
+
+    HostQuantizedWeights weights =
+        host_affine_quantize(matrix, n, k, group_size, bits);
+    weights.scales = round_trip(stream, weights.scales, float16);
+    weights.biases = round_trip(stream, weights.biases, float16);
+    x_values = round_trip(stream, x_values, float16);
+    const std::vector<float> expected = host_quantized_matmul(
+        weights, x_values, m, n, k, group_size, bits);
+
+    array x(x_values.begin(), Shape{m, k}, float16);
+    array w_words(weights.words.begin(), Shape{n, words_per_row}, uint32);
+    array scales(
+        weights.scales.begin(), Shape{n, groups_per_row}, float16);
+    array biases(
+        weights.biases.begin(), Shape{n, groups_per_row}, float16);
+
+    QmmTileGate gate(true, true);
+    array candidate = quantized_matmul(
+        x, w_words, scales, biases, true, group_size, bits, "affine", stream);
+    INFO("register-block candidate m=" << m << " n=" << n << " k=" << k);
+    const auto candidate_error = evaluation_error(candidate);
+    REQUIRE_MESSAGE(candidate_error.empty(), candidate_error);
+    const std::vector<float> candidate_values = readback_f32(stream, candidate);
+
+    gate.set_register_block(false);
+    array baseline = quantized_matmul(
+        x, w_words, scales, biases, true, group_size, bits, "affine", stream);
+    const auto baseline_error = evaluation_error(baseline);
+    REQUIRE_MESSAGE(baseline_error.empty(), baseline_error);
+    const std::vector<float> baseline_values = readback_f32(stream, baseline);
+
+    REQUIRE_EQ(candidate_values.size(), baseline_values.size());
+    REQUIRE_EQ(candidate_values.size(), expected.size());
+    double max_abs = 1.0;
+    double candidate_baseline_max = 0.0;
+    for (size_t index = 0; index < expected.size(); ++index) {
+      REQUIRE(std::isfinite(candidate_values[index]));
+      REQUIRE(std::isfinite(baseline_values[index]));
+      REQUIRE(std::isfinite(expected[index]));
+      max_abs = std::max({
+          max_abs,
+          std::fabs(static_cast<double>(candidate_values[index])),
+          std::fabs(static_cast<double>(baseline_values[index])),
+          std::fabs(static_cast<double>(expected[index]))});
+      candidate_baseline_max = std::max(
+          candidate_baseline_max,
+          std::fabs(static_cast<double>(candidate_values[index]) -
+              baseline_values[index]));
+      CHECK_EQ(candidate_values[index], baseline_values[index]);
+    }
+    const double bound =
+        (3.0 * k + 1.0) * (2.0 * max_abs) * std::ldexp(1.0, -23) +
+        (2.0 * max_abs) * std::ldexp(1.0, -11);
+    double candidate_host_max = 0.0;
+    double baseline_host_max = 0.0;
+    for (size_t index = 0; index < expected.size(); ++index) {
+      const double candidate_error = std::fabs(
+          static_cast<double>(candidate_values[index]) - expected[index]);
+      const double baseline_error = std::fabs(
+          static_cast<double>(baseline_values[index]) - expected[index]);
+      candidate_host_max = std::max(candidate_host_max, candidate_error);
+      baseline_host_max = std::max(baseline_host_max, baseline_error);
+      INFO("index=" << index << " candidate=" << candidate_values[index]
+           << " baseline=" << baseline_values[index]
+           << " expected=" << expected[index] << " bound=" << bound);
+      CHECK(candidate_error <= bound);
+      CHECK(baseline_error <= bound);
+    }
+    std::cout << "[qmm-rb] m=" << m << " n=" << n << " k=" << k
+              << " candidate_vs_baseline_max=" << candidate_baseline_max
+              << " candidate_vs_host_max=" << candidate_host_max
+              << " baseline_vs_host_max=" << baseline_host_max
+              << " bound=" << bound << "\n";
   }
 }

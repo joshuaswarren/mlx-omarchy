@@ -6567,6 +6567,21 @@ void QuantizedMatmul::eval_gpu(const std::vector<array>& inputs, array& out) {
   }
   if (const char* tile_env = std::getenv("MLX_OMARCHY_QMM_TILE");
       tile_env == nullptr || std::strcmp(tile_env, "0") != 0) {
+    const char* rb_env = std::getenv("MLX_OMARCHY_QMM_TILE_RB");
+    bool rb_enabled = rb_env == nullptr || std::strcmp(rb_env, "0") != 0;
+    if (rb_enabled && out.dtype() == float16 && transpose_ && bits_ == 4 &&
+        group_size_ == 64) {
+      uint32_t m_groups = (params.matrix_m + 31u) / 32u;
+      uint32_t n_groups = (params.matrix_n + 15u) / 16u;
+      encoder.dispatch_compute(
+          omarchy::ComputeKernel::QmmTileRbF16,
+          bindings,
+          params,
+          std::min(n_groups, omarchy::kMaxComputeGroupCountX),
+          std::min(m_groups, omarchy::kMaxComputeGroupCountX),
+          1u);
+      return;
+    }
     auto tile_kernel = select_float_kernel(
         out.dtype(),
         omarchy::ComputeKernel::QmmTileF32,
