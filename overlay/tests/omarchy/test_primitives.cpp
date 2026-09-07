@@ -3968,21 +3968,11 @@ TEST_CASE("sort and argsort handle wide rows through Vulkan compute") {
   check_indices(argsort(y, -1, stream), exact_order, stream);
 }
 
-TEST_CASE("sort rejects non-float dtypes with named errors") {
+TEST_CASE("sort handles non-suffix axes through Vulkan compute") {
   if (!compute_available()) {
     return;
   }
   Stream stream = gpu_stream();
-
-  // Long rows sort now (the merge cases below); int64 still refuses by
-  // name.
-  array ints({3, 1, 2}, int64);
-  std::string dtype_error = evaluation_error(sort(ints, -1, stream));
-  CHECK(dtype_error.find("[omarchy] Sort dtype") != std::string::npos);
-  std::string index_dtype_error =
-      evaluation_error(argsort(ints, -1, stream));
-  CHECK(
-      index_dtype_error.find("[omarchy] ArgSort dtype") != std::string::npos);
 
   array matrix({1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f}, {2, 3}, float32);
   check_values(sort(matrix, 0, stream), {1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f}, stream);

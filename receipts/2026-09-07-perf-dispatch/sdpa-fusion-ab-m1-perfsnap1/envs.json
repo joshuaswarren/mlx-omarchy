@@ -1,0 +1,8 @@
+{
+  "baseline": {
+    "MLX_OMARCHY_SDPA_FUSED": "0"
+  },
+  "candidate": {
+    "MLX_OMARCHY_SDPA_FUSED": "1"
+  }
+}

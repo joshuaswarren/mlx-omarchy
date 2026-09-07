@@ -1,0 +1,55 @@
+{
+  "date": "2026-09-07",
+  "agent_model": "openai-codex/gpt-5.6-sol",
+  "routing_fallback": false,
+  "repository_head": "4e116e540ac78e9ad8ba6ecef813a13b7ff1455b",
+  "upstream_mlx_commit": "1f8e74e3f12f31365464a6867c6579f0e9b29d85",
+  "upstream_mlx_version": "0.32.2",
+  "qualification_input": "/tmp/mlx-py-parity-f5ba1c8/quant-fast-recovered-1788798226483/quantized-failure-groups.json",
+  "owned_files": [
+    "overlay/mlx/backend/omarchy/primitives.cpp (QuantizedMatmul::eval_gpu only)",
+    "overlay/mlx/backend/omarchy/shaders/qmm.comp",
+    "overlay/mlx/backend/omarchy/shaders/qmm_vec.comp",
+    "overlay/mlx/backend/omarchy/shaders/qmm_tile.comp",
+    "overlay/tests/omarchy/test_quantized_batch_layout.cpp"
+  ],
+  "implementation": [
+    "Accept rank-N packed weights and scale streams after ops.cpp broadcast materialization instead of restricting non-affine weights to rank 2 and affine weights to rank <=3.",
+    "Treat rank-2 weights as shared and flatten all x leading rows, preserving the existing unbatched vector/tile paths.",
+    "Treat rank-N weights as paired batch slices, derive M from x[-2], flatten the broadcast batch prefix, validate dense slice sizes, and pass batch/weight/scale strides in shape[0..2].",
+    "Accept affine rank-1 x with shared rank-2 weights as M=1.",
+    "Apply FP batch and stride offsets in qmm.comp and enable the existing batch loops in qmm_vec.comp and qmm_tile.comp."
+  ],
+  "red": {
+    "receipt": "receipts/2026-09-07-quant-parity-fixes/quantized-batch-red.log",
+    "result": "exit 1; 4 test cases failed with the prior named rank/weight-layout refusals"
+  },
+  "green": {
+    "receipt": "receipts/2026-09-07-quant-parity-fixes/quantized-batch-green.log",
+    "focused_result": "exit 0; 4/4 cases and 1488/1488 assertions passed",
+    "existing_unbatched_result": "exit 0; 1 focused case and 7438/7438 assertions passed",
+    "existing_error_and_batched_result": "exit 0; 1 focused case and 109/109 assertions passed"
+  },
+  "test_contracts": [
+    "Affine non-transposed rank-1 vector output rank and values",
+    "Affine rank-4 broadcast across independent x and weight batch axes",
+    "Non-affine transposed and non-transposed batched M=1 vector paths with distinct per-batch weights",
+    "Non-affine rank-4 broadcast on the tiled path",
+    "Non-affine batched qmm.comp reference path with MLX_OMARCHY_QMM_TILE=0",
+    "Shared rank-2 FP weights across rank-2 and rank-3 x inputs"
+  ],
+  "verification_environment": {
+    "host": "omp-studio-local",
+    "kernel": "Linux 6.17.2-1-pve x86_64",
+    "device": "llvmpipe (LLVM 15.0.6, 256 bits)",
+    "driver": "Mesa llvmpipe",
+    "vulkan_api": "1.3.230",
+    "shader_compiler": "glslangValidator 12.0.0",
+    "cpu_tensor_backend_built": false
+  },
+  "original_qualification_environment_mutated": false,
+  "python_upstream_methods_run": false,
+  "python_upstream_methods_note": "The private verification build intentionally omitted Python bindings; the focused CPU-disabled Vulkan reproducer covers the refused vector, batch, broadcast, tile, and qmm.comp contracts without changing the original qualification environment.",
+  "native_status": "Not run. No M1/Honeykrisp numerical or portability claim; parent owns native scheduling and glslc 2026.3 review.",
+  "integration_prerequisite": "Parent must register overlay/tests/omarchy/test_quantized_batch_layout.cpp in tests/omarchy/CMakeLists.txt. No CMake edit was made in this slice."
+}

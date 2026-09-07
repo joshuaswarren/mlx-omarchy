@@ -1,0 +1,34 @@
+Source: repo HEAD 4e116e540ac78e9ad8ba6ecef813a13b7ff1455b; upstream MLX 1f8e74e3f12f31365464a6867c6579f0e9b29d85
+Command: MLX_OMARCHY_ALLOW_NON_APPLE=1 /tmp/mlx-quant-batch-work/build-red/tests/omarchy/omarchy_complex_extract_tests --no-skip
+Exit: 1
+
+[doctest] doctest version is "2.4.12"
+[doctest] run with "--help" for options
+===============================================================================
+/tmp/mlx-quant-batch-work/mlx/tests/omarchy/test_complex_extract_layout.cpp:72:
+TEST CASE:  affine qvm accepts a rank-one vector
+
+/tmp/mlx-quant-batch-work/mlx/tests/omarchy/test_complex_extract_layout.cpp:72: ERROR: test case THREW exception: [omarchy] QuantizedMatmul rank is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[32]). No GPU kernel exists for it; no silent CPU fallback occurs. Run it on an explicit CPU stream to use the CPU implementation.
+
+===============================================================================
+/tmp/mlx-quant-batch-work/mlx/tests/omarchy/test_complex_extract_layout.cpp:99:
+TEST CASE:  fp vector paths pair each x row with its weight batch
+
+/tmp/mlx-quant-batch-work/mlx/tests/omarchy/test_complex_extract_layout.cpp:99: ERROR: test case THREW exception: [omarchy] QuantizedMatmul weight layout is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[2,1,32]). No GPU kernel exists for it; no silent CPU fallback occurs. Run it on an explicit CPU stream to use the CPU implementation.
+
+===============================================================================
+/tmp/mlx-quant-batch-work/mlx/tests/omarchy/test_complex_extract_layout.cpp:148:
+TEST CASE:  fp tiled path broadcasts arbitrary batch ranks
+
+/tmp/mlx-quant-batch-work/mlx/tests/omarchy/test_complex_extract_layout.cpp:148: ERROR: test case THREW exception: [omarchy] QuantizedMatmul weight layout is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[2,3,3,32]). No GPU kernel exists for it; no silent CPU fallback occurs. Run it on an explicit CPU stream to use the CPU implementation.
+
+===============================================================================
+/tmp/mlx-quant-batch-work/mlx/tests/omarchy/test_complex_extract_layout.cpp:186:
+TEST CASE:  fp reference path keeps batched weight offsets
+
+/tmp/mlx-quant-batch-work/mlx/tests/omarchy/test_complex_extract_layout.cpp:186: ERROR: test case THREW exception: [omarchy] QuantizedMatmul weight layout is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[2,2,32]). No GPU kernel exists for it; no silent CPU fallback occurs. Run it on an explicit CPU stream to use the CPU implementation.
+
+===============================================================================
+[doctest] test cases: 4 | 0 passed | 4 failed | 0 skipped
+[doctest] assertions: 3 | 3 passed | 0 failed |
+[doctest] Status: FAILURE!

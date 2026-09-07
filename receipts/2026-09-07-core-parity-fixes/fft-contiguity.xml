@@ -1,0 +1,1 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="0" skipped="0" tests="1" time="0.421" timestamp="2026-09-07T12:28:15.500906-05:00" hostname="omp-studio-local"><testcase classname="test_fft.TestFFT" name="test_fft_contiguity" time="0.140" /></testsuite></testsuites>

@@ -216,7 +216,7 @@ uint q6_at(uint e, uint c0, uint c1, uint c2) {
 // groups along N, scale [k][n / gs]. shape[0] carries the batch count
 // B and the per-slot work runs once per batch slice; each thread's
 // lane nibble and scale column stay fixed for the whole reduction.
-// FP_MODE dispatches only a single x row against a 2D w (batch = 1).
+// FP_MODE uses the same batch strides as affine mode.
 void main() {
   uint lane = gl_LocalInvocationID.x;
   uint column_slot = lane / LANES;
@@ -224,11 +224,7 @@ void main() {
   uint bits = params.operation;
   uint group_size = params.reduce_size;
   bool non_transposed = (params.flags & 1u) != 0u;
-#ifdef FP_MODE
-  uint batch = 1u;
-#else
   uint batch = params.shape[0];
-#endif
   uint w_batch_words = params.shape[1];
   uint param_batch = params.shape[2];
   uint column = gl_WorkGroupID.x * COLUMNS_PER_GROUP + column_slot;

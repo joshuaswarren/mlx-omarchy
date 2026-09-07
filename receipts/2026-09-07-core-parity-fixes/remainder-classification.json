@@ -1,0 +1,47 @@
+{
+  "source": "f5ba1c827b93b81263b8d4611016bc2e19f307aa",
+  "raw_counts": {
+    "cases": 200,
+    "skipped": 9,
+    "failed": 10,
+    "passed": 181
+  },
+  "classification": {
+    "compiled_bfloat16_refusal": 3,
+    "numpy_1_26_missing_asarray_copy": 1,
+    "custom_kernel_unbound_local": 6
+  },
+  "custom_kernel_cases": [
+    {
+      "file": "test_export_import.py.xml",
+      "name": "test_export_import_custom_kernel"
+    },
+    {
+      "file": "test_fast.py.xml",
+      "name": "test_custom_kernel_args"
+    },
+    {
+      "file": "test_fast.py.xml",
+      "name": "test_custom_kernel_attributes"
+    },
+    {
+      "file": "test_fast.py.xml",
+      "name": "test_custom_kernel_basic"
+    },
+    {
+      "file": "test_fast.py.xml",
+      "name": "test_custom_kernel_helper"
+    },
+    {
+      "file": "test_fast.py.xml",
+      "name": "test_custom_kernel_strides"
+    }
+  ],
+  "platform": {
+    "gpu": true,
+    "metal": false,
+    "cuda": false
+  },
+  "mechanism": "These six upstream custom-kernel tests skip only when no GPU exists, then assign custom_kernel only for Metal or CUDA. Vulkan reaches the call with that local unbound. No test or backend flag was changed to hide these errors.",
+  "oracle_recheck": "numpy2-ops-compile.json proves compile_donates_input_buffer passes with NumPy2.2.6; compiled bf16 remains refused."
+}

@@ -1,0 +1,171 @@
+{
+  "source": "f5ba1c827b93b81263b8d4611016bc2e19f307aa",
+  "environment": "original unchanged NumPy1.26.4 qualification environment",
+  "files": [
+    {
+      "file": "test_bf16.py.xml",
+      "cases": 7,
+      "skipped": 0,
+      "cases_with_failure": 0,
+      "failure_records": 0,
+      "failures": []
+    },
+    {
+      "file": "test_compile.py.xml",
+      "cases": 67,
+      "skipped": 0,
+      "cases_with_failure": 4,
+      "failure_records": 4,
+      "failures": [
+        {
+          "name": "test_compile_donates_input_buffer",
+          "message": "TypeError: asarray() got an unexpected keyword argument 'copy'",
+          "text": "self = <test_compile.TestCompile testMethod=test_compile_donates_input_buffer>\n\n    def test_compile_donates_input_buffer(self):\n        mx.set_default_device(mx.cpu)\n    \n        def fun(x):\n            return mx.sin(x) + 1\n    \n        compiled_fn = mx.compile(fun)\n    \n        input = mx.arange(16, dtype=mx.float32)\n        mx.eval(input)\n>       in_ptr = np.asarray(input, copy=False).__array_interface__[\"data\"][0]\n                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nE       TypeError: asarray() got an unexpected keyword argument 'copy'\n\n../tests/test_compile.py:1562: TypeError"
+        },
+        {
+          "name": "test_compile_nonfinite_constants",
+          "message": "RuntimeError: [omarchy] Compiled tape bfloat16 is refused: bf16 fragments corrupt nondeterministically on Honeykrisp. Re-run with MLX_DISABLE_COMPILE=1. No GPU kernel exists for it; no silent CPU fallback occurs.",
+          "text": "self = <test_compile.TestCompile testMethod=test_compile_nonfinite_constants>\n\n    def test_compile_nonfinite_constants(self):\n        # Regression test: a non-finite scalar constant (NaN / infinity) baked\n        # into a fused compiled kernel used to stream a bare token (e.g. `nan`)\n        # into the generated kernel source, which is not a valid identifier and\n        # broke compilation (notably on the Metal backend).\n        x = mx.array([1.0, -1.0])\n    \n        for dtype in (mx.float32, mx.float16, mx.bfloat16):\n            xd = x.astype(dtype)\n    \n            nan_fn = mx.compile(\n                lambda a: mx.where(a > 0, a, mx.array(float(\"nan\"), dtype=a.dtype))\n            )\n            out = nan_fn(xd)\n>           mx.eval(out)\nE           RuntimeError: [omarchy] Compiled tape bfloat16 is refused: bf16 fragments corrupt nondeterministically on Honeykrisp. Re-run with MLX_DISABLE_COMPILE=1. No GPU kernel exists for it; no silent CPU fallback occurs.\n\n../tests/test_compile.py:62: RuntimeError"
+        },
+        {
+          "name": "test_compiled_subnormal_bool_cast",
+          "message": "RuntimeError: [omarchy] Compiled tape bfloat16 is refused: bf16 fragments corrupt nondeterministically on Honeykrisp. Re-run with MLX_DISABLE_COMPILE=1. No GPU kernel exists for it; no silent CPU fallback occurs.",
+          "text": "self = <test_compile.TestCompile testMethod=test_compiled_subnormal_bool_cast>\n\n    def test_compiled_subnormal_bool_cast(self):\n        f32_sub = mx.array(np.array([0x00000001] * 4, dtype=np.uint32)).view(mx.float32)\n        f16_sub = mx.array(np.array([0x0001] * 4, dtype=np.uint16)).view(mx.float16)\n        bf16_sub = mx.array(np.array([0x0001] * 4, dtype=np.uint16)).view(mx.bfloat16)\n    \n        # A single-op compile does not fuse; the fused path needs >= 2 ops.\n        fn = mx.compile(lambda x: mx.broadcast_to(x, (2, 4)).astype(mx.bool_))\n        for sub in (f32_sub, f16_sub, bf16_sub):\n>           self.assertTrue(mx.all(fn(sub)).item())\n                            ^^^^^^^^^^^^^^^^^^^^^^\nE           RuntimeError: [omarchy] Compiled tape bfloat16 is refused: bf16 fragments corrupt nondeterministically on Honeykrisp. Re-run with MLX_DISABLE_COMPILE=1. No GPU kernel exists for it; no silent CPU fallback occurs.\n\n../tests/test_compile.py:1634: RuntimeError"
+        },
+        {
+          "name": "test_inf_constant",
+          "message": "RuntimeError: [omarchy] Compiled tape bfloat16 is refused: bf16 fragments corrupt nondeterministically on Honeykrisp. Re-run with MLX_DISABLE_COMPILE=1. No GPU kernel exists for it; no silent CPU fallback occurs.",
+          "text": "self = <test_compile.TestCompile testMethod=test_inf_constant>\n\n    def test_inf_constant(self):\n        def fn(x):\n            return mx.where(mx.isinf(x), 0, 1)\n    \n        x = mx.array([0, float(\"inf\"), 1], dtype=mx.bfloat16)\n>       self.assertTrue(mx.array_equal(mx.compile(fn)(x), fn(x)))\nE       RuntimeError: [omarchy] Compiled tape bfloat16 is refused: bf16 fragments corrupt nondeterministically on Honeykrisp. Re-run with MLX_DISABLE_COMPILE=1. No GPU kernel exists for it; no silent CPU fallback occurs.\n\n../tests/test_compile.py:968: RuntimeError"
+        }
+      ]
+    },
+    {
+      "file": "test_constants.py.xml",
+      "cases": 3,
+      "skipped": 0,
+      "cases_with_failure": 0,
+      "failure_records": 0,
+      "failures": []
+    },
+    {
+      "file": "test_device.py.xml",
+      "cases": 10,
+      "skipped": 0,
+      "cases_with_failure": 0,
+      "failure_records": 0,
+      "failures": []
+    },
+    {
+      "file": "test_double.py.xml",
+      "cases": 11,
+      "skipped": 0,
+      "cases_with_failure": 0,
+      "failure_records": 0,
+      "failures": []
+    },
+    {
+      "file": "test_eval.py.xml",
+      "cases": 15,
+      "skipped": 1,
+      "cases_with_failure": 0,
+      "failure_records": 0,
+      "failures": []
+    },
+    {
+      "file": "test_export_import.py.xml",
+      "cases": 22,
+      "skipped": 0,
+      "cases_with_failure": 1,
+      "failure_records": 1,
+      "failures": [
+        {
+          "name": "test_export_import_custom_kernel",
+          "message": "UnboundLocalError: cannot access local variable 'custom_kernel' where it is not associated with a value",
+          "text": "self = <test_export_import.TestExportImport testMethod=test_export_import_custom_kernel>\n\n    @unittest.skipIf(not mx.is_available(mx.gpu), \"No GPU available\")\n    def test_export_import_custom_kernel(self):\n        if mx.metal.is_available():\n            source = \"\"\"\n                uint elem = thread_position_in_grid.x;\n                out1[elem] = a[elem];\n            \"\"\"\n            custom_kernel = mx.fast.metal_kernel\n        elif mx.cuda.is_available():\n            source = \"\"\"\n                auto elem = cooperative_groups::this_grid().thread_rank();\n                out1[elem] = a[elem];\n            \"\"\"\n            custom_kernel = mx.fast.cuda_kernel\n    \n>       kernel = custom_kernel(\n                 ^^^^^^^^^^^^^\n            name=\"basic\",\n            input_names=[\"a\"],\n            output_names=[\"out1\"],\n            source=source,\n        )\nE       UnboundLocalError: cannot access local variable 'custom_kernel' where it is not associated with a value\n\n../tests/test_export_import.py:574: UnboundLocalError"
+        }
+      ]
+    },
+    {
+      "file": "test_fast.py.xml",
+      "cases": 31,
+      "skipped": 5,
+      "cases_with_failure": 5,
+      "failure_records": 5,
+      "failures": [
+        {
+          "name": "test_custom_kernel_args",
+          "message": "UnboundLocalError: cannot access local variable 'custom_kernel' where it is not associated with a value",
+          "text": "self = <test_fast.TestFast testMethod=test_custom_kernel_args>\n\n    @unittest.skipIf(not mx.is_available(mx.gpu), \"No GPU available\")\n    def test_custom_kernel_args(self):\n        if mx.metal.is_available():\n            source = \"\"\"\n                uint elem = thread_position_in_grid.x;\n                T tmp = a[0];\n                if (e) {\n                    out1[elem] = a[1] + b[2] + c[3] + d + f;\n                } else {\n                    out1[elem] = 1;\n                }\n                out2[elem] = a[1] + b[2] + c[1] - d;\n            \"\"\"\n            custom_kernel = mx.fast.metal_kernel\n        elif mx.cuda.is_available():\n            source = \"\"\"\n                auto elem = cooperative_groups::this_grid().thread_rank();\n                T tmp = a[0];\n                if (e) {\n                    out1[elem] = a[1] + b[2] + static_cast<float>(c[3]) + d[0] + f;\n                } else {\n                    out1[elem] = 1;\n                }\n                out2[elem] = a[1] + b[2] + static_cast<float>(c[1]) - d[0];\n            \"\"\"\n            custom_kernel = mx.fast.cuda_kernel\n    \n        mx.random.seed(7)\n        a = mx.random.normal(shape=(3, 6))\n        c = mx.random.normal(shape=(2, 2)).astype(mx.bfloat16)\n    \n>       kernel = custom_kernel(\n                 ^^^^^^^^^^^^^\n            name=\"arg_test\",\n            input_names=[\"a\", \"b\", \"c\", \"d\"],\n            output_names=[\"out1\", \"out2\"],\n            source=source,\n        )\nE       UnboundLocalError: cannot access local variable 'custom_kernel' where it is not associated with a value\n\n../tests/test_fast.py:901: UnboundLocalError"
+        },
+        {
+          "name": "test_custom_kernel_attributes",
+          "message": "UnboundLocalError: cannot access local variable 'custom_kernel' where it is not associated with a value",
+          "text": "self = <test_fast.TestFast testMethod=test_custom_kernel_attributes>\n\n    @unittest.skipIf(not mx.is_available(mx.gpu), \"No GPU available\")\n    def test_custom_kernel_attributes(self):\n        if mx.metal.is_available():\n            source = \"out[0] = threads_per_threadgroup.x;\"\n            custom_kernel = mx.fast.metal_kernel\n        elif mx.cuda.is_available():\n            source = \"out[0] = blockDim.x;\"\n            custom_kernel = mx.fast.cuda_kernel\n    \n        a = mx.zeros(shape=(1, 1))\n>       kernel = custom_kernel(\n                 ^^^^^^^^^^^^^\n            name=\"test_fun\",\n            input_names=[\"a\"],\n            output_names=[\"out\"],\n            source=source,\n        )\nE       UnboundLocalError: cannot access local variable 'custom_kernel' where it is not associated with a value\n\n../tests/test_fast.py:1039: UnboundLocalError"
+        },
+        {
+          "name": "test_custom_kernel_basic",
+          "message": "UnboundLocalError: cannot access local variable 'custom_kernel' where it is not associated with a value",
+          "text": "self = <test_fast.TestFast testMethod=test_custom_kernel_basic>\n\n    @unittest.skipIf(not mx.is_available(mx.gpu), \"No GPU available\")\n    def test_custom_kernel_basic(self):\n        if mx.metal.is_available():\n            source = \"\"\"\n                uint elem = thread_position_in_grid.x;\n                out1[elem] = a[elem];\n            \"\"\"\n            custom_kernel = mx.fast.metal_kernel\n        elif mx.cuda.is_available():\n            source = \"\"\"\n                auto elem = cooperative_groups::this_grid().thread_rank();\n                out1[elem] = a[elem];\n            \"\"\"\n            custom_kernel = mx.fast.cuda_kernel\n    \n        mx.random.seed(7)\n        a = mx.random.normal(shape=(2, 2))\n>       kernel = custom_kernel(\n                 ^^^^^^^^^^^^^\n            name=\"basic\",\n            input_names=[\"a\"],\n            output_names=[\"out1\"],\n            source=source,\n        )\nE       UnboundLocalError: cannot access local variable 'custom_kernel' where it is not associated with a value\n\n../tests/test_fast.py:854: UnboundLocalError"
+        },
+        {
+          "name": "test_custom_kernel_helper",
+          "message": "UnboundLocalError: cannot access local variable 'custom_kernel' where it is not associated with a value",
+          "text": "self = <test_fast.TestFast testMethod=test_custom_kernel_helper>\n\n    @unittest.skipIf(not mx.is_available(mx.gpu), \"No GPU available\")\n    def test_custom_kernel_helper(self):\n        if mx.metal.is_available():\n            header = \"\"\"\n            template <typename T>\n            T do_exp(T x) {\n                return metal::precise::exp(x);\n            }\n            \"\"\"\n            source = \"\"\"\n                uint elem = thread_position_in_grid.x;\n                out1[elem] = do_exp(a[elem]);\n            \"\"\"\n            custom_kernel = mx.fast.metal_kernel\n        elif mx.cuda.is_available():\n            header = \"\"\"\n            template <typename T>\n            __device__ T do_exp(T x) {\n                return exp(x);\n            }\n            \"\"\"\n            source = \"\"\"\n                auto elem = cooperative_groups::this_grid().thread_rank();\n                out1[elem] = do_exp(a[elem]);\n            \"\"\"\n            custom_kernel = mx.fast.cuda_kernel\n    \n        mx.random.seed(7)\n        a = mx.random.normal(shape=(2, 2))\n>       kernel = custom_kernel(\n                 ^^^^^^^^^^^^^\n            name=\"helper\",\n            input_names=[\"a\"],\n            output_names=[\"out1\"],\n            header=header,\n            source=source,\n        )\nE       UnboundLocalError: cannot access local variable 'custom_kernel' where it is not associated with a value\n\n../tests/test_fast.py:1012: UnboundLocalError"
+        },
+        {
+          "name": "test_custom_kernel_strides",
+          "message": "UnboundLocalError: cannot access local variable 'custom_kernel' where it is not associated with a value",
+          "text": "self = <test_fast.TestFast testMethod=test_custom_kernel_strides>\n\n    @unittest.skipIf(not mx.is_available(mx.gpu), \"No GPU available\")\n    def test_custom_kernel_strides(self):\n        if mx.metal.is_available():\n            source = \"\"\"\n                uint elem = thread_position_in_grid.x;\n                uint loc = elem_to_loc(elem, inp_shape, inp_strides, inp_ndim);\n                T tmp = inp[loc];\n                out[elem] = metal::precise::exp(tmp) * threads_per_simdgroup;\n            \"\"\"\n            source_contig = \"\"\"\n                uint elem = thread_position_in_grid.x;\n                T tmp = inp[elem];\n                out[elem] = metal::precise::exp(tmp) * threads_per_simdgroup;\n            \"\"\"\n            custom_kernel = mx.fast.metal_kernel\n        elif mx.cuda.is_available():\n            source = \"\"\"\n                auto elem = cooperative_groups::this_grid().thread_rank();\n                auto loc = elem_to_loc(elem, inp_shape.data(), inp_strides.data(), inp_ndim);\n                T tmp = inp[loc];\n                out[elem] = exp(tmp) * WARP_SIZE;\n            \"\"\"\n            source_contig = \"\"\"\n                auto elem = cooperative_groups::this_grid().thread_rank();\n                T tmp = inp[elem];\n                out[elem] = exp(tmp) * WARP_SIZE;\n            \"\"\"\n            custom_kernel = mx.fast.cuda_kernel\n    \n        mx.random.seed(7)\n        a = mx.random.normal(shape=(3, 6))\n    \n        # non contiguous\n        a = mx.tile(a[::2], [4, 1])\n    \n        for contig in [True, False]:\n>           kernel = custom_kernel(\n                     ^^^^^^^^^^^^^\n                name=\"myexp\" + str(contig),\n                input_names=[\"inp\"],\n                output_names=[\"out\"],\n                source=source_contig if contig else source,\n                ensure_row_contiguous=contig,\n            )\nE           UnboundLocalError: cannot access local variable 'custom_kernel' where it is not associated with a value\n\n../tests/test_fast.py:965: UnboundLocalError"
+        }
+      ]
+    },
+    {
+      "file": "test_graph.py.xml",
+      "cases": 1,
+      "skipped": 0,
+      "cases_with_failure": 0,
+      "failure_records": 0,
+      "failures": []
+    },
+    {
+      "file": "test_load.py.xml",
+      "cases": 16,
+      "skipped": 0,
+      "cases_with_failure": 0,
+      "failure_records": 0,
+      "failures": []
+    },
+    {
+      "file": "test_memory.py.xml",
+      "cases": 3,
+      "skipped": 1,
+      "cases_with_failure": 0,
+      "failure_records": 0,
+      "failures": []
+    },
+    {
+      "file": "test_threads.py.xml",
+      "cases": 2,
+      "skipped": 0,
+      "cases_with_failure": 0,
+      "failure_records": 0,
+      "failures": []
+    },
+    {
+      "file": "test_tree.py.xml",
+      "cases": 6,
+      "skipped": 0,
+      "cases_with_failure": 0,
+      "failure_records": 0,
+      "failures": []
+    },
+    {
+      "file": "test_zero_copy.py.xml",
+      "cases": 6,
+      "skipped": 2,
+      "cases_with_failure": 0,
+      "failure_records": 0,
+      "failures": []
+    }
+  ]
+}

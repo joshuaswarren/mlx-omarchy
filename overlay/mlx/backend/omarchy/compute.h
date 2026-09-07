@@ -10,6 +10,7 @@
 #include <cstdint>
 #include <limits>
 #include <mutex>
+#include <unordered_map>
 
 namespace mlx::core::omarchy {
 
@@ -539,6 +540,29 @@ enum class ComputeKernel : uint16_t {
   // Prefill register block for the transposed affine 4-bit/group-64 f16
   // path. Appended so existing GPU-profile kernel ids stay stable.
   QmmTileRbF16,
+  // Affine bfloat16 quantize/dequantize variants append for GPU-profile
+  // kernel-id stability.
+  QuantizeBF16,
+  DequantBF16,
+  SortI64,
+  SortU64,
+  ArgSortI64,
+  ArgSortU64,
+  SortMergeI64,
+  SortMergeU64,
+  ArgSortMergeI64,
+  ArgSortMergeU64,
+  // Fused float16 decode attention (shaders/sdpa_decode.comp).
+  SdpaDecodeF16,
+  // DecodeQ4Vec: uvec4-per-lane, rows-per-slot variant of the transposed
+  // affine 4-bit/group-64 decode GEMV (shaders/qmm_vec_q4.comp), opt-in
+  // via MLX_OMARCHY_QMM_VEC_Q4_V2=1.
+  QmmVecQ4V2F32,
+  QmmVecQ4V2F16,
+  QmmVecQ4V2BF16,
+  QmmVecQ4V2SubgroupF32,
+  QmmVecQ4V2SubgroupF16,
+  QmmVecQ4V2SubgroupBF16,
   Count,
 };
 
@@ -598,13 +622,20 @@ struct ComputeParams {
 
 class ComputeRuntime {
  public:
-  explicit ComputeRuntime(VkDevice device, uint32_t binding_limit);
+  // push_descriptors: build the descriptor set layout for
+  // vkCmdPushDescriptorSetKHR (Device::push_descriptors()); such a layout
+  // cannot allocate pooled sets, so the encoder picks one path per device.
+  ComputeRuntime(VkDevice device, uint32_t binding_limit, bool push_descriptors);
   ~ComputeRuntime();
 
   ComputeRuntime(const ComputeRuntime&) = delete;
   ComputeRuntime& operator=(const ComputeRuntime&) = delete;
 
-  VkPipeline pipeline(ComputeKernel kernel);
+  // Pipeline for a kernel. `operation` is the dispatch's
+  // ComputeParams::operation; kernels that declare specialization
+  // constant 0 (elementwise.comp) get one pipeline per operation, with
+  // only that operation's code and preamble. Other kernels ignore it.
+  VkPipeline pipeline(ComputeKernel kernel, uint32_t operation = 0);
   VkPipelineLayout pipeline_layout() const {
     return pipeline_layout_;
   }
@@ -618,16 +649,22 @@ class ComputeRuntime {
   VkDescriptorSetLayout descriptor_layout() const {
     return descriptor_layout_;
   }
+  bool push_descriptors() const {
+    return push_descriptors_;
+  }
 
  private:
-  VkPipeline create_pipeline(ComputeKernel kernel);
+  VkPipeline create_pipeline(ComputeKernel kernel, const uint32_t* operation);
 
   uint32_t binding_limit_{0};
+  bool push_descriptors_{false};
 
   VkDevice device_;
   VkDescriptorSetLayout descriptor_layout_{VK_NULL_HANDLE};
   VkPipelineLayout pipeline_layout_{VK_NULL_HANDLE};
   std::array<VkPipeline, static_cast<size_t>(ComputeKernel::Count)> pipelines_{};
+  // Operation-specialized pipelines keyed by (kernel << 32 | operation).
+  std::unordered_map<uint64_t, VkPipeline> specialized_;
   std::mutex mutex_;
 };
 

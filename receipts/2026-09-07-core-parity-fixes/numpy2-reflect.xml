@@ -1,0 +1,1 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="0" skipped="0" tests="1" time="0.871" timestamp="2026-09-07T12:09:26.817984-05:00" hostname="omp-studio-local"><testcase classname="mlx-py-parity-f5ba1c8.tests.test_ops.TestOps" name="test_pad_reflect_symmetric" time="0.108" /></testsuite></testsuites>

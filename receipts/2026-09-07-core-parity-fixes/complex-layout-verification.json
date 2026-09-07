@@ -1,0 +1,54 @@
+{
+  "actual_model_identity": "openai-codex/gpt-5.6-sol",
+  "qualification_report": "/tmp/mlx-py-parity-f5ba1c8/core/result.json",
+  "worktree_head_at_final_verification": "4e116e540ac78e9ad8ba6ecef813a13b7ff1455b",
+  "private_work_dir": "/tmp/mlx-complex-extract-layout-work",
+  "changed_paths": [
+    "overlay/mlx/backend/omarchy/primitives.cpp",
+    "overlay/tests/omarchy/test_complex_extract_layout.cpp"
+  ],
+  "cause": "dispatch_complex_extract read lhs_offset + flat_index from the original complex view, so it ignored transpose, slice, and zero-stride broadcast metadata. Complex Abs therefore corrupted its complex intermediate before the downstream float cast and FFT.",
+  "fix": "Reuse ensure_dense with row-contiguous and data_size guards, retain the temporary through the existing encoder protocol, bind and validate the selected input, and allocate output storage before the empty return.",
+  "configure_command": "cmake -S /tmp/mlx-complex-extract-layout-work/mlx -B /tmp/mlx-complex-extract-layout-work/build -DMLX_BUILD_OMARCHY=ON -DMLX_BUILD_CPU=ON -DMLX_BUILD_METAL=OFF -DMLX_BUILD_CUDA=OFF -DMLX_BUILD_TESTS=ON -DMLX_BUILD_EXAMPLES=OFF -DMLX_BUILD_BENCHMARKS=OFF -DCMAKE_BUILD_TYPE=Release",
+  "build_command": "cmake --build /tmp/mlx-complex-extract-layout-work/build --target omarchy_complex_extract_layout_tests -j 8",
+  "build_result": {
+    "exit_code": 0,
+    "last_lines": [
+      "[100%] Built target mlx",
+      "[100%] Linking CXX executable omarchy_complex_extract_layout_tests",
+      "[100%] Built target omarchy_complex_extract_layout_tests"
+    ]
+  },
+  "negative_control": {
+    "command": "MLX_OMARCHY_ALLOW_NON_APPLE=1 /tmp/mlx-complex-extract-layout-work/build/tests/omarchy/omarchy_complex_extract_layout_tests --no-skip",
+    "exit_code": 1,
+    "test_cases": 1,
+    "passed_assertions": 21,
+    "failed_assertions": 15,
+    "terminal_failure": "SIGSEGV - Segmentation violation signal",
+    "log": "complex-layout-red.log"
+  },
+  "software_vulkan_verification": {
+    "command": "VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/lvp_icd.x86_64.json MLX_OMARCHY_ALLOW_NON_APPLE=1 /tmp/mlx-complex-extract-layout-work/build/tests/omarchy/omarchy_complex_extract_layout_tests --no-skip",
+    "icd": "/usr/share/vulkan/icd.d/lvp_icd.x86_64.json",
+    "exit_code": 0,
+    "test_cases": 1,
+    "passed_test_cases": 1,
+    "assertions": 39,
+    "passed_assertions": 39,
+    "failed_assertions": 0,
+    "skipped_test_cases": 0,
+    "log": "complex-layout-green.log"
+  },
+  "coverage": [
+    "dense complex64",
+    "transposed complex64 view",
+    "positive-stride sliced complex64 view",
+    "zero-stride broadcast complex64 view",
+    "Real",
+    "Imag",
+    "Abs complex-to-real intermediate",
+    "empty output allocation"
+  ],
+  "integration": "The parent registered the new test target in CMake and owns the integrated build. This worker did not commit or push."
+}

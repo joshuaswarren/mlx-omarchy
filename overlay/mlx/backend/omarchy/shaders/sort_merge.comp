@@ -14,7 +14,7 @@
 // slots hold the PAD sentinel, which sorts after every real element, so
 // the finished row keeps its real prefix in [0, row_length). The
 // comparator matches sort_suffix.comp exactly: integer modes compare
-// order-preserving unsigned keys, while float and complex modes place NaNs
+// order-preserving one- or two-word unsigned keys, while float and complex modes place NaNs
 // after every non-NaN and complex values otherwise use lexicographic order. ARGSORT
 // mode carries those source positions in a parallel index buffer, which
 // keeps the unique stable order across every stage; value mode ties on
@@ -39,6 +39,16 @@
 #define STORAGE_TYPE uint16_t
 #define LOAD_KEY(x) uintBitsToFloat(uint(x) << 16u)
 #define STORE_KEY(k) uint16_t(floatBitsToUint(k) >> 16)
+#elif defined(USE_I64) || defined(USE_U64)
+#define STORAGE_TYPE uvec2
+#define KEY_TYPE uvec2
+#ifdef USE_I64
+#define LOAD_KEY(v) uvec2((v).x, (v).y ^ 0x80000000u)
+#define STORE_KEY(k) uvec2((k).x, (k).y ^ 0x80000000u)
+#else
+#define LOAD_KEY(x) (x)
+#define STORE_KEY(k) (k)
+#endif
 #elif defined(USE_I32)
 #define STORAGE_TYPE int
 #define KEY_TYPE uint
@@ -84,7 +94,13 @@ layout(push_constant) uniform Params {
   uint output_offset;
 } params;
 
-#if defined(USE_I32) || defined(USE_U32)
+#if defined(USE_I64) || defined(USE_U64)
+bool key_less(KEY_TYPE key_a, uint index_a, KEY_TYPE key_b, uint index_b) {
+  bool less = key_a.y < key_b.y ||
+      (key_a.y == key_b.y && key_a.x < key_b.x);
+  return less || (all(equal(key_a, key_b)) && index_a < index_b);
+}
+#elif defined(USE_I32) || defined(USE_U32)
 // Strict order on (key, index). Equal keys break on the smaller source
 // index, so duplicates keep the unique stable order.
 bool key_less(KEY_TYPE key_a, uint index_a, KEY_TYPE key_b, uint index_b) {

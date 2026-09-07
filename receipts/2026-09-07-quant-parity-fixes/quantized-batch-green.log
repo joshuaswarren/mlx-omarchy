@@ -1,0 +1,37 @@
+Source: repo HEAD 4e116e540ac78e9ad8ba6ecef813a13b7ff1455b plus current assigned overlay edits; upstream MLX 1f8e74e3f12f31365464a6867c6579f0e9b29d85
+Build configuration: cmake -S /tmp/mlx-quant-batch-work/mlx -B /tmp/mlx-quant-batch-work/build-red -G Ninja -DCMAKE_BUILD_TYPE=Release -DMLX_BUILD_OMARCHY=ON -DMLX_BUILD_CPU=OFF -DMLX_BUILD_METAL=OFF -DMLX_BUILD_CUDA=OFF -DMLX_BUILD_TESTS=ON -DMLX_BUILD_EXAMPLES=OFF -DMLX_BUILD_BENCHMARKS=OFF -DMLX_BUILD_PYTHON_BINDINGS=OFF
+Build command: cmake --build /tmp/mlx-quant-batch-work/build-red --target omarchy_complex_extract_tests -j8
+Build exit: 0
+Build output:
+[1/2] Building CXX object tests/omarchy/CMakeFiles/omarchy_complex_extract_tests.dir/test_complex_extract_layout.cpp.o
+[2/2] Linking CXX executable tests/omarchy/omarchy_complex_extract_tests
+
+Command: MLX_OMARCHY_ALLOW_NON_APPLE=1 /tmp/mlx-quant-batch-work/build-red/tests/omarchy/omarchy_complex_extract_tests --no-skip
+Exit: 0
+Output:
+[doctest] doctest version is "2.4.12"
+[doctest] run with "--help" for options
+===============================================================================
+[doctest] test cases:    4 |    4 passed | 0 failed | 0 skipped
+[doctest] assertions: 1488 | 1488 passed | 0 failed |
+[doctest] Status: SUCCESS!
+
+Existing unbatched optimized-path control:
+Command: MLX_OMARCHY_ALLOW_NON_APPLE=1 /tmp/mlx-quant-batch-work/build-red/tests/omarchy/omarchy_primitive_tests --test-case=*quantized matmul matches dequant and host references*
+Exit: 0
+Output:
+[doctest] test cases:    1 |    1 passed | 0 failed | 97 skipped
+[doctest] assertions: 7438 | 7438 passed | 0 failed |
+[doctest] Status: SUCCESS!
+
+Existing affine error/batched control:
+Command: MLX_OMARCHY_ALLOW_NON_APPLE=1 /tmp/mlx-quant-batch-work/build-red/tests/omarchy/omarchy_primitive_tests --test-case=*quantized matmul pins named errors*
+Exit: 0
+Output:
+[doctest] test cases:   1 |   1 passed | 0 failed | 97 skipped
+[doctest] assertions: 109 | 109 passed | 0 failed |
+[doctest] Status: SUCCESS!
+
+Local device: llvmpipe (LLVM 15.0.6, 256 bits), Mesa llvmpipe, Vulkan API 1.3.230, development-only non-Apple device.
+Shader compiler: glslangValidator 12.0.0. The post-fix build generated all registered qmm, qmm_vec, and qmm_tile affine/FP f32/f16/bf16 and subgroup variants before compiling and linking the test target.
+No M1/Honeykrisp run and no native numerical claim. Parent owns glslc 2026.3 portability and native scheduling.

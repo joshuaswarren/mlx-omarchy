@@ -1,0 +1,136 @@
+Start testing: Sep 07 12:28 CDT
+----------------------------------------------------------
+68/93 Testing: omarchy_complex_extract_tests
+68/93 Test: omarchy_complex_extract_tests
+Command: "/home/joshuawarren/benchq/corefix-20260907/build/tests/omarchy/omarchy_complex_extract_tests"
+Directory: /home/joshuawarren/benchq/corefix-20260907/build/tests/omarchy
+"omarchy_complex_extract_tests" start time: Sep 07 12:28 CDT
+Output:
+----------------------------------------------------------
+[doctest] doctest version is "2.4.12"
+[doctest] run with "--help" for options
+===============================================================================
+[doctest] test cases:  1 |  1 passed | 0 failed | 0 skipped
+[doctest] assertions: 39 | 39 passed | 0 failed |
+[doctest] Status: SUCCESS!
+<end of output>
+Test time =   0.02 sec
+----------------------------------------------------------
+Test Passed.
+"omarchy_complex_extract_tests" end time: Sep 07 12:28 CDT
+"omarchy_complex_extract_tests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+73/93 Testing: omarchy_shape_ops_tests
+73/93 Test: omarchy_shape_ops_tests
+Command: "/home/joshuawarren/benchq/corefix-20260907/build/tests/omarchy/omarchy_shape_ops_tests"
+Directory: /home/joshuawarren/benchq/corefix-20260907/build/tests/omarchy
+"omarchy_shape_ops_tests" start time: Sep 07 12:28 CDT
+Output:
+----------------------------------------------------------
+[doctest] doctest version is "2.4.12"
+[doctest] run with "--help" for options
+===============================================================================
+[doctest] test cases:  24 |  24 passed | 0 failed | 0 skipped
+[doctest] assertions: 466 | 466 passed | 0 failed |
+[doctest] Status: SUCCESS!
+<end of output>
+Test time =   0.05 sec
+----------------------------------------------------------
+Test Passed.
+"omarchy_shape_ops_tests" end time: Sep 07 12:28 CDT
+"omarchy_shape_ops_tests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+87/93 Testing: omarchy_fft_general_tests
+87/93 Test: omarchy_fft_general_tests
+Command: "/home/joshuawarren/benchq/corefix-20260907/build/tests/omarchy/omarchy_fft_general_tests"
+Directory: /home/joshuawarren/benchq/corefix-20260907/build/tests/omarchy
+"omarchy_fft_general_tests" start time: Sep 07 12:28 CDT
+Output:
+----------------------------------------------------------
+[doctest] doctest version is "2.4.12"
+[doctest] run with "--help" for options
+[fft accuracy] worst relative error 1.26376e-06 at n=4099
+===============================================================================
+[doctest] test cases:   15 |   15 passed | 0 failed | 0 skipped
+[doctest] assertions: 4246 | 4246 passed | 0 failed |
+[doctest] Status: SUCCESS!
+<end of output>
+Test time =   2.37 sec
+----------------------------------------------------------
+Test Passed.
+"omarchy_fft_general_tests" end time: Sep 07 12:28 CDT
+"omarchy_fft_general_tests" time elapsed: 00:00:02
+----------------------------------------------------------
+
+End testing: Sep 07 12:28 CDT
+==========
+VULKANINFO
+==========
+
+Vulkan Instance Version: 1.4.357
+
+
+Instance Extensions: count = 26
+-------------------------------
+VK_EXT_acquire_drm_display             : extension revision 1
+VK_EXT_acquire_xlib_display            : extension revision 1
+VK_EXT_debug_report                    : extension revision 10
+VK_EXT_debug_utils                     : extension revision 2
+VK_EXT_direct_mode_display             : extension revision 1
+VK_EXT_display_surface_counter         : extension revision 1
+VK_EXT_headless_surface                : extension revision 1
+VK_EXT_layer_settings                  : extension revision 2
+VK_EXT_surface_maintenance1            : extension revision 1
+VK_EXT_swapchain_colorspace            : extension revision 5
+VK_KHR_device_group_creation           : extension revision 1
+VK_KHR_display                         : extension revision 23
+VK_KHR_external_fence_capabilities     : extension revision 1
+VK_KHR_external_memory_capabilities    : extension revision 1
+VK_KHR_external_semaphore_capabilities : extension revision 1
+VK_KHR_get_display_properties2         : extension revision 1
+VK_KHR_get_physical_device_properties2 : extension revision 2
+VK_KHR_get_surface_capabilities2       : extension revision 1
+VK_KHR_portability_enumeration         : extension revision 1
+VK_KHR_surface                         : extension revision 25
+VK_KHR_surface_maintenance1            : extension revision 1
+VK_KHR_surface_protected_capabilities  : extension revision 1
+VK_KHR_wayland_surface                 : extension revision 6
+VK_KHR_xcb_surface                     : extension revision 6
+VK_KHR_xlib_surface                    : extension revision 6
+VK_LUNARG_direct_driver_loading        : extension revision 1
+
+Instance Layers: count = 2
+--------------------------
+VK_LAYER_KHRONOS_validation Khronos Validation Layer     1.4.357  version 1
+VK_LAYER_MESA_device_select Linux device selection layer 1.4.303  version 1
+
+Devices:
+========
+GPU0:
+	apiVersion         = 1.4.354
+	driverVersion      = 26.1.7
+	vendorID           = 0x10005
+	deviceID           = 0x0000
+	deviceType         = PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU
+	deviceName         = Apple M1 (G13G B1)
+	driverID           = DRIVER_ID_MESA_HONEYKRISP
+	driverName         = Honeykrisp
+	driverInfo         = Mesa 26.1.7
+	conformanceVersion = 1.4.0.0
+	deviceUUID         = 95db668a-5eef-fafb-0bfa-d44184cb8c59
+	driverUUID         = eebb7346-3896-37da-cfcd-e403717bbb81
+GPU1:
+	apiVersion         = 1.4.354
+	driverVersion      = 26.1.7
+	vendorID           = 0x10005
+	deviceID           = 0x0000
+	deviceType         = PHYSICAL_DEVICE_TYPE_CPU
+	deviceName         = llvmpipe (LLVM 22.1.8, 128 bits)
+	driverID           = DRIVER_ID_MESA_LLVMPIPE
+	driverName         = llvmpipe
+	driverInfo         = Mesa 26.1.7 (LLVM 22.1.8)
+	conformanceVersion = 1.3.1.1
+	deviceUUID         = 6d657361-3236-2e31-2e37-000000000000
+	driverUUID         = 6c6c766d-7069-7065-5555-494400000000

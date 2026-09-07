@@ -186,19 +186,16 @@ shared float tile_w[16][16];
 // N]); shape[0] carries the batch count B and the tile loops run once
 // per batch slice with per-slice x/w/scale bases. Only strides differ
 // between the layouts, selected as uniform values before the loops.
-// FP_MODE dispatches a flat 2D w shared across the flattened x rows
-// (batch = 1), both layouts first-class via the same flag.
+// FP_MODE uses the same batch strides as affine mode.
 void main() {
   uint lx = gl_LocalInvocationID.x;
   uint ly = gl_LocalInvocationID.y;
   uint bits = params.operation;
   uint group_size = params.reduce_size;
   bool non_transposed = (params.flags & 1u) != 0u;
-#ifdef FP_MODE
-  uint batch = 1u;
-  uint fp_pack_factor = (bits == 8u) ? 1u : 2u;
-#else
   uint batch = params.shape[0];
+#ifdef FP_MODE
+  uint fp_pack_factor = (bits == 8u) ? 1u : 2u;
 #endif
   uint w_batch_words = params.shape[1];
   uint param_batch = params.shape[2];

@@ -1,0 +1,22 @@
+{
+  "model": "openai-codex/gpt-5.6-sol",
+  "repository_commit": "4e116e540ac78e9ad8ba6ecef813a13b7ff1455b",
+  "upstream_mlx_commit": "1f8e74e3f12f31365464a6867c6579f0e9b29d85",
+  "prepared_source": "/tmp/mlx-quantize-bfloat-contract-work/mlx",
+  "build_directory": "/tmp/mlx-quantize-bfloat-contract-build",
+  "cpu_tensor_backend": false,
+  "development_vulkan_override": true,
+  "shader_compiler": "glslangValidator 12.0.0",
+  "tested_snapshot_sha256": {
+    "mlx/backend/omarchy/primitives.cpp": "fdde69c57f5e548edfc778de1c941d775d864fe02ddc8f4ac60563f6f247482f",
+    "mlx/backend/omarchy/compute.h": "2888b0cf2ffd99d4a1bf7492a5ded409be0434c3f8bc79fd24ad55380a263161",
+    "mlx/backend/omarchy/compute.cpp": "5c1275e5a0987ee074b8d726451a2b99b3e7aa29e2390a3ba79c5aa8154764f8",
+    "mlx/backend/omarchy/CMakeLists.txt": "533bce6e8571498a0dc47f67ae553b4c4ac259c435ff0b1998e19cdb2fbe0678",
+    "mlx/backend/omarchy/shaders/quantize.comp": "6fea3a28947b491ac55700b6be9c7d02c058f5bcde08f14baba64a589074a03b",
+    "mlx/backend/omarchy/shaders/dequant.comp": "26f5814b1a40611139593d5cd24ebcdae6407d0324da0b5cfa2689ff847ff4d0",
+    "mlx/ops.cpp": "e8aa3f3565790df79876f8b5085379042541e7297d93f0ade6cf7961b2ec3108",
+    "tests/omarchy/test_quantize_bfloat_contract.cpp": "189b690c218658213fba18c8356783056ff872ef2f0d7fb2499f00536906c53f",
+    "tests/omarchy/omarchy_quantize_bfloat_contract_tests": "f1e55be4fe64bbc48374ddc3b1ad8d989db4e3e795bf053b878f099bf69b36ea"
+  },
+  "project_patch_sha256": "3077e2ddca65cdfba4b4b38b084e11e39392151b791f3ef1894808e275e67b67"
+}

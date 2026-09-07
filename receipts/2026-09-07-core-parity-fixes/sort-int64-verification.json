@@ -1,0 +1,76 @@
+{
+  "source_root": "/tmp/mlx-release-f5-final",
+  "private_work_dir": "/tmp/mlx-sort-int64-work",
+  "source_commit": "4e116e540ac78e9ad8ba6ecef813a13b7ff1455b",
+  "upstream_commit": "1f8e74e3f12f31365464a6867c6579f0e9b29d85",
+  "model": "openai-codex/gpt-5.6-sol",
+  "runtime": {
+    "device_route": "llvmpipe via VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/lvp_icd.x86_64.json",
+    "backend_gate": "MLX_OMARCHY_ALLOW_NON_APPLE=1",
+    "red": {
+      "setup": "The private prepared source reinstated the original require_sort_dtype int64/uint64 refusal only.",
+      "command": "/tmp/mlx-sort-int64-work/build/tests/omarchy/omarchy_sort_int64_contract_tests --no-skip",
+      "exit": 1,
+      "test_cases": "0 passed, 4 failed",
+      "assertions": "4 passed, 8 failed",
+      "cause": "Sort, ArgSort, and Partition named dtype refusals for int64/uint64",
+      "log": "/tmp/mlx-sort-int64-red.log"
+    },
+    "green": {
+      "build": "cmake --build /tmp/mlx-sort-int64-work/build --target omarchy_sort_int64_contract_tests -j 8",
+      "command": "/tmp/mlx-sort-int64-work/build/tests/omarchy/omarchy_sort_int64_contract_tests --no-skip",
+      "exit": 0,
+      "test_cases": "4 passed, 0 failed, 0 skipped",
+      "assertions": "12757 passed, 0 failed",
+      "log": "/tmp/mlx-sort-int64-green.log"
+    },
+    "existing_sort_cases": {
+      "build": "cmake --build /tmp/mlx-sort-int64-work/build --target omarchy_primitive_tests -j 8",
+      "command": "/tmp/mlx-sort-int64-work/build/tests/omarchy/omarchy_primitive_tests --test-case=*sort* --no-skip",
+      "exit": 0,
+      "test_cases": "10 passed, 0 failed, 88 filtered/skipped",
+      "assertions": "444669 passed, 0 failed",
+      "log": "/tmp/mlx-sort-int64-primitive-sort.log"
+    },
+    "observed_values": {
+      "signed": [
+        -9223372036854775808,
+        -9223372036854775807,
+        -8589934592,
+        -8589934591,
+        8589934591,
+        8589934592,
+        9223372036854775807
+      ],
+      "unsigned": [
+        8589934591,
+        8589934592,
+        9223372036854775808,
+        18446744069414584320,
+        18446744073709551615
+      ],
+      "evidence": "/tmp/mlx-sort-int64-exact-values.log"
+    }
+  },
+  "shader_verification": {
+    "variants": [
+      "sort_i64",
+      "sort_u64",
+      "argsort_i64",
+      "argsort_u64",
+      "sort_merge_i64",
+      "sort_merge_u64",
+      "argsort_merge_i64",
+      "argsort_merge_u64"
+    ],
+    "compile": "all eight glslangValidator -V invocations exited 0",
+    "spirv": "all eight report only OpCapability Shader; none contain OpCapability Int64, OpTypeInt 64, or integer/float conversion operations",
+    "artifacts": "/tmp/mlx-sort-int64-shaders"
+  },
+  "source_verification": {
+    "primitives_syntax": "existing compile_commands.json invocation redirected to overlay primitives.cpp with -fsyntax-only: exit 0",
+    "contract_syntax": "g++ -std=c++20 -fsyntax-only: exit 0",
+    "registry": "each appended kernel has one enum, switch case, generated-header include, CMake shader target, and host dispatch route"
+  },
+  "red_origin": "/tmp/mlx-numpy2-oracle/ops-compile.xml also records TestOps.test_sort failing at the zero-stride np.int64 case because np.array_equal swallowed the lazy named refusal during conversion."
+}

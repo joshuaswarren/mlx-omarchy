@@ -17,6 +17,53 @@ target_link_options(omarchy_copy_offset_tests PRIVATE ${SANITIZER_LINK_FLAGS})
 doctest_discover_tests(omarchy_copy_offset_tests)
 add_test(NAME omarchy_copy_offset_tests COMMAND omarchy_copy_offset_tests)
 
+add_executable(omarchy_complex_extract_tests
+               ${CMAKE_CURRENT_SOURCE_DIR}/test_complex_extract_layout.cpp)
+target_link_libraries(omarchy_complex_extract_tests PRIVATE mlx doctest)
+target_compile_options(omarchy_complex_extract_tests
+                       PRIVATE ${SANITIZER_COMPILE_FLAGS})
+target_link_options(omarchy_complex_extract_tests
+                    PRIVATE ${SANITIZER_LINK_FLAGS})
+
+doctest_discover_tests(omarchy_complex_extract_tests)
+add_test(NAME omarchy_complex_extract_tests COMMAND omarchy_complex_extract_tests)
+
+add_executable(omarchy_quantize_bfloat_contract_tests
+               ${CMAKE_CURRENT_SOURCE_DIR}/test_quantize_bfloat_contract.cpp)
+target_link_libraries(omarchy_quantize_bfloat_contract_tests PRIVATE mlx doctest)
+target_compile_options(omarchy_quantize_bfloat_contract_tests
+                       PRIVATE ${SANITIZER_COMPILE_FLAGS})
+target_link_options(omarchy_quantize_bfloat_contract_tests
+                    PRIVATE ${SANITIZER_LINK_FLAGS})
+
+doctest_discover_tests(omarchy_quantize_bfloat_contract_tests)
+add_test(NAME omarchy_quantize_bfloat_contract_tests
+         COMMAND omarchy_quantize_bfloat_contract_tests)
+
+add_executable(omarchy_quantized_batch_layout_tests
+               ${CMAKE_CURRENT_SOURCE_DIR}/test_quantized_batch_layout.cpp)
+target_link_libraries(omarchy_quantized_batch_layout_tests PRIVATE mlx doctest)
+target_compile_options(omarchy_quantized_batch_layout_tests
+                       PRIVATE ${SANITIZER_COMPILE_FLAGS})
+target_link_options(omarchy_quantized_batch_layout_tests
+                    PRIVATE ${SANITIZER_LINK_FLAGS})
+
+doctest_discover_tests(omarchy_quantized_batch_layout_tests)
+add_test(NAME omarchy_quantized_batch_layout_tests
+         COMMAND omarchy_quantized_batch_layout_tests)
+
+add_executable(omarchy_sort_int64_contract_tests
+               ${CMAKE_CURRENT_SOURCE_DIR}/test_sort_int64_contract.cpp)
+target_link_libraries(omarchy_sort_int64_contract_tests PRIVATE mlx doctest)
+target_compile_options(omarchy_sort_int64_contract_tests
+                       PRIVATE ${SANITIZER_COMPILE_FLAGS})
+target_link_options(omarchy_sort_int64_contract_tests
+                    PRIVATE ${SANITIZER_LINK_FLAGS})
+
+doctest_discover_tests(omarchy_sort_int64_contract_tests)
+add_test(NAME omarchy_sort_int64_contract_tests
+         COMMAND omarchy_sort_int64_contract_tests)
+
 add_executable(omarchy_primitive_tests
                ${CMAKE_CURRENT_SOURCE_DIR}/test_primitives.cpp)
 target_link_libraries(omarchy_primitive_tests PRIVATE mlx doctest)
@@ -311,3 +358,27 @@ target_link_options(omarchy_two_rank_harness PRIVATE ${SANITIZER_LINK_FLAGS})
 add_test(NAME omarchy_two_rank_harness
          COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/distributed/run-two-rank.sh
                  $<TARGET_FILE:omarchy_two_rank_harness>)
+
+# DispatchFloor: per-dispatch fixed-cost microbench (raw Vulkan, encoder,
+# and op levels). A benchmark, not a test: not registered with ctest.
+add_executable(omarchy_dispatch_floor_bench
+               ${CMAKE_CURRENT_SOURCE_DIR}/bench_dispatch_floor.cpp)
+target_link_libraries(omarchy_dispatch_floor_bench PRIVATE mlx)
+
+# QmmBandwidth: weight-streaming bandwidth of the affine q4 decode GEMV
+# on the five Qwen2.5-0.5B shapes (see bench_qmm_bandwidth.cpp). A
+# benchmark, not a test: not registered with ctest.
+add_executable(omarchy_qmm_bandwidth_bench
+               ${CMAKE_CURRENT_SOURCE_DIR}/bench_qmm_bandwidth.cpp)
+target_link_libraries(omarchy_qmm_bandwidth_bench PRIVATE mlx)
+
+# SdpaDecode: the single-dispatch float16 decode attention kernel against
+# the composed path (bit-exact) and host double math.
+add_executable(omarchy_sdpa_decode_tests
+               ${CMAKE_CURRENT_SOURCE_DIR}/test_sdpa_decode.cpp)
+target_link_libraries(omarchy_sdpa_decode_tests PRIVATE mlx doctest)
+target_compile_options(omarchy_sdpa_decode_tests PRIVATE ${SANITIZER_COMPILE_FLAGS})
+target_link_options(omarchy_sdpa_decode_tests PRIVATE ${SANITIZER_LINK_FLAGS})
+
+doctest_discover_tests(omarchy_sdpa_decode_tests)
+add_test(NAME omarchy_sdpa_decode_tests COMMAND omarchy_sdpa_decode_tests)

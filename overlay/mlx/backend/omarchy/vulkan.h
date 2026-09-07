@@ -72,6 +72,7 @@ struct DeviceTable {
   PFN_vkDestroyDescriptorSetLayout DestroyDescriptorSetLayout{nullptr};
   PFN_vkCreateDescriptorPool CreateDescriptorPool{nullptr};
   PFN_vkDestroyDescriptorPool DestroyDescriptorPool{nullptr};
+  PFN_vkResetDescriptorPool ResetDescriptorPool{nullptr};
   PFN_vkAllocateDescriptorSets AllocateDescriptorSets{nullptr};
   PFN_vkUpdateDescriptorSets UpdateDescriptorSets{nullptr};
   PFN_vkCreatePipelineLayout CreatePipelineLayout{nullptr};
@@ -80,6 +81,8 @@ struct DeviceTable {
   PFN_vkDestroyPipeline DestroyPipeline{nullptr};
   PFN_vkCmdBindPipeline CmdBindPipeline{nullptr};
   PFN_vkCmdBindDescriptorSets CmdBindDescriptorSets{nullptr};
+  // VK_KHR_push_descriptor; null when the device lacks the extension.
+  PFN_vkCmdPushDescriptorSetKHR CmdPushDescriptorSetKHR{nullptr};
   PFN_vkCmdPushConstants CmdPushConstants{nullptr};
   PFN_vkCmdDispatch CmdDispatch{nullptr};
   PFN_vkCmdPipelineBarrier CmdPipelineBarrier{nullptr};

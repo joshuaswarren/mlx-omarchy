@@ -1,0 +1,21 @@
+source_commit=4e116e540ac78e9ad8ba6ecef813a13b7ff1455b
+upstream_commit=1f8e74e3f12f31365464a6867c6579f0e9b29d85
+model=openai-codex/gpt-5.6-sol
+prepared_source=/tmp/mlx-quantize-bfloat-contract-work/mlx
+build_dir=/tmp/mlx-quantize-bfloat-contract-build
+configure=cmake -S /tmp/mlx-quantize-bfloat-contract-work/mlx -B /tmp/mlx-quantize-bfloat-contract-build -G Ninja -DMLX_BUILD_OMARCHY=ON -DMLX_BUILD_CPU=OFF -DMLX_BUILD_METAL=OFF -DMLX_BUILD_CUDA=OFF -DMLX_BUILD_TESTS=ON -DMLX_BUILD_EXAMPLES=OFF -DMLX_BUILD_BENCHMARKS=OFF -DCMAKE_BUILD_TYPE=Release
+command=MLX_OMARCHY_ALLOW_NON_APPLE=1 /tmp/mlx-quantize-bfloat-contract-build/tests/omarchy/omarchy_quantize_bfloat_contract_tests --no-skip
+exit_code=1
+[doctest] doctest version is "2.4.12"
+[doctest] run with "--help" for options
+===============================================================================
+/tmp/mlx-quantize-bfloat-contract-work/mlx/tests/omarchy/test_quantize_bfloat_contract.cpp:128:
+TEST CASE:  affine bfloat16 quantize and dequantize match the pinned contract
+
+/tmp/mlx-quantize-bfloat-contract-work/mlx/tests/omarchy/test_quantize_bfloat_contract.cpp:128: ERROR: test case THREW exception: [omarchy] Quantize input dtype is not implemented for the Omarchy Vulkan backend (dtype=uint32, shape=[1,2]). No GPU kernel exists for it; no silent CPU fallback occurs. Run it on an explicit CPU stream to use the CPU implementation.
+  logged: bits := 2
+
+===============================================================================
+[doctest] test cases: 1 | 0 passed | 1 failed | 0 skipped
+[doctest] assertions: 0 | 0 passed | 0 failed |
+[doctest] Status: FAILURE!

@@ -1,0 +1,13 @@
+[doctest] doctest version is "2.4.12"
+[doctest] run with "--help" for options
+===============================================================================
+/tmp/mlx-fft-dispatch-check/mlx/tests/omarchy/test_fft_general.cpp:674:
+TEST CASE:  FFT elementwise stages cover multidimensional dispatches
+
+/tmp/mlx-fft-dispatch-check/mlx/tests/omarchy/test_fft_general.cpp:706: ERROR: CHECK( correct ) is NOT correct!
+  values: CHECK( false )
+
+===============================================================================
+[doctest] test cases: 1 | 0 passed | 1 failed | 14 skipped
+[doctest] assertions: 1 | 0 passed | 1 failed |
+[doctest] Status: FAILURE!

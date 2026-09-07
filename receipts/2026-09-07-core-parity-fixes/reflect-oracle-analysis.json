@@ -1,0 +1,58 @@
+{
+  "date": "2026-09-07",
+  "actual_model_identity": "openai-codex/gpt-5.6-sol",
+  "subject": "reflect and symmetric padding oracle version drift",
+  "reproduction": {
+    "input": [0, 1, 2],
+    "pad_width": [9, 1],
+    "mode": "reflect",
+    "numpy_1_26_4": [1, 2, 1, 2, 1, 0, 1, 2, 1, 0, 1, 2, 1],
+    "numpy_2_2_6": [1, 0, 1, 2, 1, 0, 1, 2, 1, 0, 1, 2, 1],
+    "pinned_mlx_actual": [1, 0, 1, 2, 1, 0, 1, 2, 1, 0, 1, 2, 1]
+  },
+  "qualification_environment": {
+    "numpy": "1.26.4",
+    "evidence": "/tmp/mlx-py-parity-f5ba1c8/core/result.json",
+    "classification": "The qualification expected NumPy 1.26.4 behavior that NumPy later classified and fixed as a multi-reflection bug."
+  },
+  "numpy_fix_history": {
+    "issue": {
+      "url": "https://github.com/numpy/numpy/issues/25926",
+      "title": "BUG: np.pad reflect and symmetric sometimes drop values for multiple reflections",
+      "reported_version": "1.26.4",
+      "status": "closed"
+    },
+    "main_pull_request": {
+      "url": "https://github.com/numpy/numpy/pull/25963",
+      "merged_at": "2024-06-14T17:55:49Z",
+      "merge_commit": "6f428f2e0cbd2b809ce9ba76a531e01d6c983b9c",
+      "commit_url": "https://github.com/numpy/numpy/commit/6f428f2e0cbd2b809ce9ba76a531e01d6c983b9c"
+    },
+    "numpy_2_0_backport": {
+      "url": "https://github.com/numpy/numpy/pull/26697",
+      "base_branch": "maintenance/2.0.x",
+      "merged_at": "2024-06-15T02:35:01Z",
+      "merge_commit": "103f4dd40725bcf610b3ff19a324e1ca099a47c4",
+      "commit_url": "https://github.com/numpy/numpy/commit/103f4dd40725bcf610b3ff19a324e1ca099a47c4",
+      "release_ancestry": "The merge commit is an ancestor of NumPy v2.0.0."
+    },
+    "mechanism": "The fix constrains each reflected source span to a multiple of the original axis period. Reflect uses period 2(n-1); symmetric uses period 2n. This prevents an asymmetric opposite-side pad from shifting the repeated-reflection phase."
+  },
+  "mlx_source_history": {
+    "pinned_version": "0.32.2",
+    "pinned_commit": "1f8e74e3f12f31365464a6867c6579f0e9b29d85",
+    "introduction_pull_request": {
+      "url": "https://github.com/ml-explore/mlx/pull/3608",
+      "merged_at": "2026-08-11T23:48:20Z",
+      "merge_commit": "9f35f77427a681a99125d886925f1cd9ca745181",
+      "commit_url": "https://github.com/ml-explore/mlx/commit/9f35f77427a681a99125d886925f1cd9ca745181"
+    },
+    "declared_contract": "The merged MLX change explicitly defines reflect as period 2(n-1), symmetric as period 2n, supports arbitrary pad sizes, and uses backend-neutral MLX operations.",
+    "source_assessment": "The pinned fixed-tile implementation conforms to the corrected periodic contract. A local exhaustive index-model check covered axis lengths 1 through 9, left and right pads 0 through 24, and both modes without a mismatch."
+  },
+  "decision": {
+    "classification": "invalid_versioned_oracle",
+    "recommendation": "Do not patch pinned MLX to reproduce NumPy 1.26.4's known bug. Qualify against NumPy 2.x or an explicit corrected periodic fixture.",
+    "repository_action": "The proposed mlx-reflect-padding.patch, its prepare-mlx.sh registration, and its focused regression were removed before integration."
+  }
+}

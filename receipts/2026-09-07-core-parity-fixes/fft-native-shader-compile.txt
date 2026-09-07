@@ -1,0 +1,3 @@
+Host: jwm1-linux
+Command: glslc --target-env=vulkan1.3 -fshader-stage=compute /tmp/mlx-fft-stage-multidimensional.comp -o /tmp/mlx-fft-stage-multidimensional.spv
+Result: exit 0; FFT stage: native glslc compilation passed

@@ -1,0 +1,10 @@
+Command:
+VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/lvp_icd.x86_64.json MLX_OMARCHY_ALLOW_NON_APPLE=1 /tmp/mlx-complex-extract-layout-work/build/tests/omarchy/omarchy_complex_extract_layout_tests --no-skip
+
+[doctest] doctest version is "2.4.12"
+[doctest] run with "--help" for options
+===============================================================================
+[doctest] test cases:  1 |  1 passed | 0 failed | 0 skipped
+[doctest] assertions: 39 | 39 passed | 0 failed |
+[doctest] Status: SUCCESS!
+Exit: 0

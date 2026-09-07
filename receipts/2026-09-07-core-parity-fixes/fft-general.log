@@ -1,0 +1,8 @@
+[doctest] doctest version is "2.4.12"
+[doctest] run with "--help" for options
+[fft accuracy] worst relative error 4.35855e-07 at n=1000
+===============================================================================
+[doctest] test cases:   15 |   15 passed | 0 failed | 0 skipped
+[doctest] assertions: 4246 | 4246 passed | 0 failed |
+[doctest] Status: SUCCESS!
+[fft-general-regression: exited; cursor=361]

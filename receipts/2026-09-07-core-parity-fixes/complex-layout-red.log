@@ -1,0 +1,61 @@
+Command:
+MLX_OMARCHY_ALLOW_NON_APPLE=1 /tmp/mlx-complex-extract-layout-work/build/tests/omarchy/omarchy_complex_extract_layout_tests --no-skip
+
+[doctest] doctest version is "2.4.12"
+[doctest] run with "--help" for options
+===============================================================================
+/tmp/mlx-complex-extract-layout-work/mlx/tests/omarchy/test_complex_extract_layout.cpp:55:
+TEST CASE:  complex extraction follows logical layouts
+
+/tmp/mlx-complex-extract-layout-work/mlx/tests/omarchy/test_complex_extract_layout.cpp:39: ERROR: CHECK( read(real(input, stream), stream) == real_values ) is NOT correct!
+  values: CHECK( {?} == {?} )
+
+/tmp/mlx-complex-extract-layout-work/mlx/tests/omarchy/test_complex_extract_layout.cpp:40: ERROR: CHECK( read(imag(input, stream), stream) == imag_values ) is NOT correct!
+  values: CHECK( {?} == {?} )
+
+/tmp/mlx-complex-extract-layout-work/mlx/tests/omarchy/test_complex_extract_layout.cpp:49: ERROR: CHECK( actual[i] == doctest::Approx(magnitudes[i]).epsilon(1e-6) ) is NOT correct!
+  values: CHECK( 20.0998 == Approx( 40.1995 ) )
+
+/tmp/mlx-complex-extract-layout-work/mlx/tests/omarchy/test_complex_extract_layout.cpp:49: ERROR: CHECK( actual[i] == doctest::Approx(magnitudes[i]).epsilon(1e-6) ) is NOT correct!
+  values: CHECK( 30.1496 == Approx( 20.0998 ) )
+
+/tmp/mlx-complex-extract-layout-work/mlx/tests/omarchy/test_complex_extract_layout.cpp:49: ERROR: CHECK( actual[i] == doctest::Approx(magnitudes[i]).epsilon(1e-6) ) is NOT correct!
+  values: CHECK( 40.1995 == Approx( 50.2494 ) )
+
+/tmp/mlx-complex-extract-layout-work/mlx/tests/omarchy/test_complex_extract_layout.cpp:49: ERROR: CHECK( actual[i] == doctest::Approx(magnitudes[i]).epsilon(1e-6) ) is NOT correct!
+  values: CHECK( 50.2494 == Approx( 30.1496 ) )
+
+/tmp/mlx-complex-extract-layout-work/mlx/tests/omarchy/test_complex_extract_layout.cpp:39: ERROR: CHECK( read(real(input, stream), stream) == real_values ) is NOT correct!
+  values: CHECK( {?} == {?} )
+
+/tmp/mlx-complex-extract-layout-work/mlx/tests/omarchy/test_complex_extract_layout.cpp:40: ERROR: CHECK( read(imag(input, stream), stream) == imag_values ) is NOT correct!
+  values: CHECK( {?} == {?} )
+
+/tmp/mlx-complex-extract-layout-work/mlx/tests/omarchy/test_complex_extract_layout.cpp:49: ERROR: CHECK( actual[i] == doctest::Approx(magnitudes[i]).epsilon(1e-6) ) is NOT correct!
+  values: CHECK( 30.1496 == Approx( 40.1995 ) )
+
+/tmp/mlx-complex-extract-layout-work/mlx/tests/omarchy/test_complex_extract_layout.cpp:49: ERROR: CHECK( actual[i] == doctest::Approx(magnitudes[i]).epsilon(1e-6) ) is NOT correct!
+  values: CHECK( 40.1995 == Approx( 60.2993 ) )
+
+/tmp/mlx-complex-extract-layout-work/mlx/tests/omarchy/test_complex_extract_layout.cpp:39: ERROR: CHECK( read(real(input, stream), stream) == real_values ) is NOT correct!
+  values: CHECK( {?} == {?} )
+
+/tmp/mlx-complex-extract-layout-work/mlx/tests/omarchy/test_complex_extract_layout.cpp:40: ERROR: CHECK( read(imag(input, stream), stream) == imag_values ) is NOT correct!
+  values: CHECK( {?} == {?} )
+
+/tmp/mlx-complex-extract-layout-work/mlx/tests/omarchy/test_complex_extract_layout.cpp:49: ERROR: CHECK( actual[i] == doctest::Approx(magnitudes[i]).epsilon(1e-6) ) is NOT correct!
+  values: CHECK( 40.1995 == Approx( 10.0499 ) )
+
+/tmp/mlx-complex-extract-layout-work/mlx/tests/omarchy/test_complex_extract_layout.cpp:49: ERROR: CHECK( actual[i] == doctest::Approx(magnitudes[i]).epsilon(1e-6) ) is NOT correct!
+  values: CHECK( 50.2494 == Approx( 20.0998 ) )
+
+/tmp/mlx-complex-extract-layout-work/mlx/tests/omarchy/test_complex_extract_layout.cpp:49: ERROR: CHECK( actual[i] == doctest::Approx(magnitudes[i]).epsilon(1e-6) ) is NOT correct!
+  values: CHECK( 60.2993 == Approx( 30.1496 ) )
+
+/tmp/mlx-complex-extract-layout-work/mlx/tests/omarchy/test_complex_extract_layout.cpp:55: FATAL ERROR: test case CRASHED: SIGSEGV - Segmentation violation signal
+
+===============================================================================
+[doctest] test cases:  1 |  0 passed |  1 failed | 0 skipped
+[doctest] assertions: 36 | 21 passed | 15 failed |
+[doctest] Status: FAILURE!
+Exit: 1

@@ -1,0 +1,13 @@
+{
+  "base_commit": "4e116e540ac78e9ad8ba6ecef813a13b7ff1455b",
+  "label": "uncommitted corefix snapshot, not release build",
+  "upstream_commit": "1f8e74e3f12f31365464a6867c6579f0e9b29d85",
+  "prepared_sources": {
+    "mlx/backend/omarchy/primitives.cpp": "0d32e35bb74534767bf00ff7caf9feec24dbd1c23bec2371ad8392e6d7619fd5",
+    "mlx/backend/omarchy/shaders/fft_stage.comp": "76c8cbd4562b9606dbe6e2c988c1b81d723e969636c4ed9d0f0100efdbedd84d",
+    "tests/omarchy/CMakeLists.txt": "658577f02ecaa2a2b2ea512abbe57c1bb882c01d7f01f7f7653e5d42312d11a1",
+    "tests/omarchy/test_complex_extract_layout.cpp": "871ae7de4691f27591e01401dea262402fe53d577f151f2bc8b55030f1c6dcc5",
+    "tests/omarchy/test_fft_general.cpp": "4cfda7907283e55bf649e9d9e36a98d79a7c5de7140b94cca2cc82c43d35f2ac"
+  },
+  "wheel_sha256": "1099983532a8ba4c4b84c6870dd20d08a7c6d1b2d5e6da8b032af97a07e2261f"
+}

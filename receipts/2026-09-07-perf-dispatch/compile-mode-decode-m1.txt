@@ -1,0 +1,56 @@
+# M1 Honeykrisp, wheel 38950db (f5ba1c8 defaults), Qwen2.5-0.5B-4bit, 41-token prompt, 64 pinned tokens, flock-guarded, 3 reps each.
+# eager = MLX_DISABLE_COMPILE=1; compile = compile on, fused chain off; compile_fused = compile on + MLX_OMARCHY_FUSED_CHAIN=1
+== compile-1.json
+provenance: mlx-omarchy 0.32.2.dev202609071439+38950db mx=0.32.2.dev202609071439+38950db verified=match harness=417c06e-dirty core.cpython-314-aarch64-linux-gnu.so=sha256:4ad850da16c300ea libmlx.so=sha256:63e793e7edbd30c1
+decode 68.34 tok/s over 63 tokens (64 requested, EOS suppressed)
+prefill 0.464s (reported separately, excluded from decode)
+prompt_tokens 41
+decode mean per-token 14.6 ms
+== compile-2.json
+provenance: mlx-omarchy 0.32.2.dev202609071439+38950db mx=0.32.2.dev202609071439+38950db verified=match harness=417c06e-dirty core.cpython-314-aarch64-linux-gnu.so=sha256:4ad850da16c300ea libmlx.so=sha256:63e793e7edbd30c1
+decode 68.63 tok/s over 63 tokens (64 requested, EOS suppressed)
+prefill 0.464s (reported separately, excluded from decode)
+prompt_tokens 41
+decode mean per-token 14.6 ms
+== compile-3.json
+provenance: mlx-omarchy 0.32.2.dev202609071439+38950db mx=0.32.2.dev202609071439+38950db verified=match harness=417c06e-dirty core.cpython-314-aarch64-linux-gnu.so=sha256:4ad850da16c300ea libmlx.so=sha256:63e793e7edbd30c1
+decode 68.35 tok/s over 63 tokens (64 requested, EOS suppressed)
+prefill 0.458s (reported separately, excluded from decode)
+prompt_tokens 41
+decode mean per-token 14.6 ms
+== compile_fused-1.json
+provenance: mlx-omarchy 0.32.2.dev202609071439+38950db mx=0.32.2.dev202609071439+38950db verified=match harness=417c06e-dirty core.cpython-314-aarch64-linux-gnu.so=sha256:4ad850da16c300ea libmlx.so=sha256:63e793e7edbd30c1
+decode 70.20 tok/s over 63 tokens (64 requested, EOS suppressed)
+prefill 0.449s (reported separately, excluded from decode)
+prompt_tokens 41
+decode mean per-token 14.2 ms
+== compile_fused-2.json
+provenance: mlx-omarchy 0.32.2.dev202609071439+38950db mx=0.32.2.dev202609071439+38950db verified=match harness=417c06e-dirty core.cpython-314-aarch64-linux-gnu.so=sha256:4ad850da16c300ea libmlx.so=sha256:63e793e7edbd30c1
+decode 70.45 tok/s over 63 tokens (64 requested, EOS suppressed)
+prefill 0.449s (reported separately, excluded from decode)
+prompt_tokens 41
+decode mean per-token 14.2 ms
+== compile_fused-3.json
+provenance: mlx-omarchy 0.32.2.dev202609071439+38950db mx=0.32.2.dev202609071439+38950db verified=match harness=417c06e-dirty core.cpython-314-aarch64-linux-gnu.so=sha256:4ad850da16c300ea libmlx.so=sha256:63e793e7edbd30c1
+decode 70.55 tok/s over 63 tokens (64 requested, EOS suppressed)
+prefill 0.450s (reported separately, excluded from decode)
+prompt_tokens 41
+decode mean per-token 14.2 ms
+== eager-1.json
+provenance: mlx-omarchy 0.32.2.dev202609071439+38950db mx=0.32.2.dev202609071439+38950db verified=match harness=417c06e-dirty core.cpython-314-aarch64-linux-gnu.so=sha256:4ad850da16c300ea libmlx.so=sha256:63e793e7edbd30c1
+decode 68.73 tok/s over 63 tokens (64 requested, EOS suppressed)
+prefill 0.450s (reported separately, excluded from decode)
+prompt_tokens 41
+decode mean per-token 14.5 ms
+== eager-2.json
+provenance: mlx-omarchy 0.32.2.dev202609071439+38950db mx=0.32.2.dev202609071439+38950db verified=match harness=417c06e-dirty core.cpython-314-aarch64-linux-gnu.so=sha256:4ad850da16c300ea libmlx.so=sha256:63e793e7edbd30c1
+decode 68.51 tok/s over 63 tokens (64 requested, EOS suppressed)
+prefill 0.447s (reported separately, excluded from decode)
+prompt_tokens 41
+decode mean per-token 14.6 ms
+== eager-3.json
+provenance: mlx-omarchy 0.32.2.dev202609071439+38950db mx=0.32.2.dev202609071439+38950db verified=match harness=417c06e-dirty core.cpython-314-aarch64-linux-gnu.so=sha256:4ad850da16c300ea libmlx.so=sha256:63e793e7edbd30c1
+decode 68.67 tok/s over 63 tokens (64 requested, EOS suppressed)
+prefill 0.444s (reported separately, excluded from decode)
+prompt_tokens 41
+decode mean per-token 14.6 ms

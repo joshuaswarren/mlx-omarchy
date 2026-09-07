@@ -1,0 +1,39 @@
+{
+  "source": "f5ba1c827b93b81263b8d4611016bc2e19f307aa",
+  "numpy": "2.2.6",
+  "cases": 229,
+  "skipped": 1,
+  "failures": [
+    {
+      "class": "mlx-py-parity-f5ba1c8.tests.test_ops.TestOps",
+      "name": "test_sin",
+      "message": "RuntimeError: [omarchy] Sin argument magnitude 1000000015047466219876688855040.000000 exceeds the built-in accuracy limit 100000.000000 on this backend: the Vulkan driver's sin/cos range reduction is untrusted above it, the software Payne-Hanek fallback miscompiles on this driver, and no other accurate kernel exists. No silent wrong value and no silent CPU fallback occurs. Run it on an explicit CPU stream to use the CPU implementation."
+    },
+    {
+      "class": "mlx-py-parity-f5ba1c8.tests.test_ops.TestOps",
+      "name": "test_sort",
+      "message": "AssertionError: False is not true"
+    },
+    {
+      "class": "mlx-py-parity-f5ba1c8.tests.test_compile.TestCompile",
+      "name": "test_compile_nonfinite_constants",
+      "message": "RuntimeError: [omarchy] Compiled tape bfloat16 is refused: bf16 fragments corrupt nondeterministically on Honeykrisp. Re-run with MLX_DISABLE_COMPILE=1. No GPU kernel exists for it; no silent CPU fallback occurs."
+    },
+    {
+      "class": "mlx-py-parity-f5ba1c8.tests.test_compile.TestCompile",
+      "name": "test_compiled_subnormal_bool_cast",
+      "message": "RuntimeError: [omarchy] Compiled tape bfloat16 is refused: bf16 fragments corrupt nondeterministically on Honeykrisp. Re-run with MLX_DISABLE_COMPILE=1. No GPU kernel exists for it; no silent CPU fallback occurs."
+    },
+    {
+      "class": "mlx-py-parity-f5ba1c8.tests.test_compile.TestCompile",
+      "name": "test_inf_constant",
+      "message": "RuntimeError: [omarchy] Compiled tape bfloat16 is refused: bf16 fragments corrupt nondeterministically on Honeykrisp. Re-run with MLX_DISABLE_COMPILE=1. No GPU kernel exists for it; no silent CPU fallback occurs."
+    }
+  ],
+  "resolved_oracle_cases": [
+    "TestOps.test_pad_reflect_symmetric",
+    "TestOps.test_unstack",
+    "TestCompile.test_compile_donates_input_buffer"
+  ],
+  "passed": 223
+}

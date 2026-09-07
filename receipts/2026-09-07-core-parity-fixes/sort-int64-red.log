@@ -1,0 +1,46 @@
+[doctest] doctest version is "2.4.12"
+[doctest] run with "--help" for options
+===============================================================================
+/tmp/mlx-sort-int64-work/mlx/tests/omarchy/test_sort_int64_contract.cpp:137:
+TEST CASE:  int64 and uint64 sorting preserves both words and extrema
+
+/tmp/mlx-sort-int64-work/mlx/tests/omarchy/test_sort_int64_contract.cpp:79: ERROR: CHECK_EQ( read_values<T>(sort(input, axis, stream), stream), expected_values ) THREW exception: "[omarchy] Sort dtype is not implemented for the Omarchy Vulkan backend (dtype=int64, shape=[12]). No GPU kernel exists for it; no silent CPU fallback occurs. Run it on an explicit CPU stream to use the CPU implementation."
+
+/tmp/mlx-sort-int64-work/mlx/tests/omarchy/test_sort_int64_contract.cpp:80: ERROR: CHECK_EQ( read_values<uint32_t>(argsort(input, axis, stream), stream), expected_indices ) THREW exception: "[omarchy] ArgSort dtype is not implemented for the Omarchy Vulkan backend (dtype=uint32, shape=[12]). No GPU kernel exists for it; no silent CPU fallback occurs. Run it on an explicit CPU stream to use the CPU implementation."
+
+/tmp/mlx-sort-int64-work/mlx/tests/omarchy/test_sort_int64_contract.cpp:137: ERROR: test case THREW exception: [omarchy] Partition dtype is not implemented for the Omarchy Vulkan backend (dtype=int64, shape=[12]). No GPU kernel exists for it; no silent CPU fallback occurs. Run it on an explicit CPU stream to use the CPU implementation.
+
+===============================================================================
+/tmp/mlx-sort-int64-work/mlx/tests/omarchy/test_sort_int64_contract.cpp:160:
+TEST CASE:  int64 sorting handles zero-stride and non-suffix axes
+
+/tmp/mlx-sort-int64-work/mlx/tests/omarchy/test_sort_int64_contract.cpp:79: ERROR: CHECK_EQ( read_values<T>(sort(input, axis, stream), stream), expected_values ) THREW exception: "[omarchy] Sort dtype is not implemented for the Omarchy Vulkan backend (dtype=int64, shape=[4,8]). No GPU kernel exists for it; no silent CPU fallback occurs. Run it on an explicit CPU stream to use the CPU implementation."
+
+/tmp/mlx-sort-int64-work/mlx/tests/omarchy/test_sort_int64_contract.cpp:80: ERROR: CHECK_EQ( read_values<uint32_t>(argsort(input, axis, stream), stream), expected_indices ) THREW exception: "[omarchy] ArgSort dtype is not implemented for the Omarchy Vulkan backend (dtype=uint32, shape=[4,8]). No GPU kernel exists for it; no silent CPU fallback occurs. Run it on an explicit CPU stream to use the CPU implementation."
+
+/tmp/mlx-sort-int64-work/mlx/tests/omarchy/test_sort_int64_contract.cpp:160: ERROR: test case THREW exception: [omarchy] Partition dtype is not implemented for the Omarchy Vulkan backend (dtype=int64, shape=[4,8]). No GPU kernel exists for it; no silent CPU fallback occurs. Run it on an explicit CPU stream to use the CPU implementation.
+
+===============================================================================
+/tmp/mlx-sort-int64-work/mlx/tests/omarchy/test_sort_int64_contract.cpp:179:
+TEST CASE:  uint64 sorting handles strided layouts and a non-suffix axis
+
+/tmp/mlx-sort-int64-work/mlx/tests/omarchy/test_sort_int64_contract.cpp:79: ERROR: CHECK_EQ( read_values<T>(sort(input, axis, stream), stream), expected_values ) THREW exception: "[omarchy] Sort dtype is not implemented for the Omarchy Vulkan backend (dtype=uint64, shape=[3,4]). No GPU kernel exists for it; no silent CPU fallback occurs. Run it on an explicit CPU stream to use the CPU implementation."
+
+/tmp/mlx-sort-int64-work/mlx/tests/omarchy/test_sort_int64_contract.cpp:80: ERROR: CHECK_EQ( read_values<uint32_t>(argsort(input, axis, stream), stream), expected_indices ) THREW exception: "[omarchy] ArgSort dtype is not implemented for the Omarchy Vulkan backend (dtype=uint32, shape=[3,4]). No GPU kernel exists for it; no silent CPU fallback occurs. Run it on an explicit CPU stream to use the CPU implementation."
+
+/tmp/mlx-sort-int64-work/mlx/tests/omarchy/test_sort_int64_contract.cpp:179: ERROR: test case THREW exception: [omarchy] Partition dtype is not implemented for the Omarchy Vulkan backend (dtype=uint64, shape=[3,4]). No GPU kernel exists for it; no silent CPU fallback occurs. Run it on an explicit CPU stream to use the CPU implementation.
+
+===============================================================================
+/tmp/mlx-sort-int64-work/mlx/tests/omarchy/test_sort_int64_contract.cpp:199:
+TEST CASE:  int64 and uint64 sorting crosses the 1024-element merge boundary
+
+/tmp/mlx-sort-int64-work/mlx/tests/omarchy/test_sort_int64_contract.cpp:79: ERROR: CHECK_EQ( read_values<T>(sort(input, axis, stream), stream), expected_values ) THREW exception: "[omarchy] Sort dtype is not implemented for the Omarchy Vulkan backend (dtype=int64, shape=[2051]). No GPU kernel exists for it; no silent CPU fallback occurs. Run it on an explicit CPU stream to use the CPU implementation."
+
+/tmp/mlx-sort-int64-work/mlx/tests/omarchy/test_sort_int64_contract.cpp:80: ERROR: CHECK_EQ( read_values<uint32_t>(argsort(input, axis, stream), stream), expected_indices ) THREW exception: "[omarchy] ArgSort dtype is not implemented for the Omarchy Vulkan backend (dtype=uint32, shape=[2051]). No GPU kernel exists for it; no silent CPU fallback occurs. Run it on an explicit CPU stream to use the CPU implementation."
+
+/tmp/mlx-sort-int64-work/mlx/tests/omarchy/test_sort_int64_contract.cpp:199: ERROR: test case THREW exception: [omarchy] Partition dtype is not implemented for the Omarchy Vulkan backend (dtype=int64, shape=[2051]). No GPU kernel exists for it; no silent CPU fallback occurs. Run it on an explicit CPU stream to use the CPU implementation.
+
+===============================================================================
+[doctest] test cases:  4 | 0 passed | 4 failed | 0 skipped
+[doctest] assertions: 12 | 4 passed | 8 failed |
+[doctest] Status: FAILURE!

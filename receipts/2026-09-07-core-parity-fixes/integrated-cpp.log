@@ -1,0 +1,12 @@
+Internal ctest changing into directory: /tmp/mlx-fft-dispatch-check/build
+Test project /tmp/mlx-fft-dispatch-check/build
+    Start 68: omarchy_complex_extract_tests
+1/3 Test #68: omarchy_complex_extract_tests ....   Passed    0.08 sec
+    Start 73: omarchy_shape_ops_tests
+2/3 Test #73: omarchy_shape_ops_tests ..........   Passed    0.18 sec
+    Start 87: omarchy_fft_general_tests
+3/3 Test #87: omarchy_fft_general_tests ........   Passed   24.45 sec
+
+100% tests passed, 0 tests failed out of 3
+
+Total Test time (real) =  24.74 sec
