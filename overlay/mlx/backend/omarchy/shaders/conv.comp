@@ -20,6 +20,9 @@
 // read back as extent one with unit parameters:
 //   dims               spatial rank (1, 2, or 3)
 //   flags & 1          kernel flip (the transposed path)
+//   flags & 2          write convolution partials
+//   flags & 4          reduce a partial level
+//   flags & 8          store the final partial level to output
 //   matrix_m           batch count            matrix_n  out channels
 //   reduce_size        channels per group     rhs_gap   group count
 //   lhs_offset         input element offset   rhs_offset weight element
@@ -27,7 +30,7 @@
 //   lhs_size           partial count          (large kernels)
 //   rhs_size           logical output count   (large kernels)
 //   beta               products per partial   (large kernels)
-//   output_size        input depth            (3-D)
+//   output_size        input depth            (3-D; reduction dst offset)
 //   matrix_k           input height           (2-D and 3-D)
 //   aux_size           input width
 //   lhs_gap            kernel depth           (3-D)
@@ -204,17 +207,32 @@ void main() {
   uint stride_threads = gl_NumWorkGroups.x * 256u;
 
   if (reduce_partials) {
-    for (uint local_index = gl_GlobalInvocationID.x;
-         local_index < params.count;
-         local_index += stride_threads) {
+    uint source_chunks = params.lhs_size;
+    uint tile_count = params.matrix_m;
+    uint chunk_terms = uint(params.beta);
+    bool store_output = (params.flags & 8u) != 0u;
+    for (uint work_index = gl_GlobalInvocationID.x;
+         work_index < params.count;
+         work_index += stride_threads) {
+      uint group = work_index / tile_count;
+      uint local_index = work_index % tile_count;
+      uint source_begin = group * chunk_terms;
+      uint source_end = source_begin +
+          min(chunk_terms, source_chunks - source_begin);
       float accumulator = 0.0;
-      for (uint chunk = 0u; chunk < params.lhs_size; ++chunk) {
-        accumulator +=
-            partial_data.values[chunk * params.count + local_index];
+      for (uint source_chunk = source_begin;
+           source_chunk < source_end;
+           ++source_chunk) {
+        accumulator += partial_data.values[
+            params.rhs_size + source_chunk * tile_count + local_index];
       }
-      uint output_index = params.in_strides[3u] + local_index;
-      output_data.values[params.output_offset + output_index] =
-          STORE_VALUE(accumulator);
+      if (store_output) {
+        uint output_index = params.in_strides[3u] + local_index;
+        output_data.values[params.output_offset + output_index] =
+            STORE_VALUE(accumulator);
+      } else {
+        partial_data.values[params.output_size + work_index] = accumulator;
+      }
     }
     return;
   }
