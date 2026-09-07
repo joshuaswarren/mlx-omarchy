@@ -4662,6 +4662,18 @@ TEST_CASE("searchsorted matches the upstream binary search on both sides") {
   array right = searchsorted(sorted, values, "right", stream);
   check_indices(right, {1, 1, 3, 3, 6, 6}, stream);
 
+  const float nan = std::numeric_limits<float>::quiet_NaN();
+  const float inf = std::numeric_limits<float>::infinity();
+  for (Dtype dtype : {float32, float16, bfloat16}) {
+    auto ordered = astype(
+        array({-inf, -0.0f, 0.0f, 1.0f, inf, nan, nan}), dtype, stream);
+    auto queries = astype(array({-inf, 0.0f, inf, nan}), dtype, stream);
+    check_indices(
+        searchsorted(ordered, queries, "left", stream), {0, 1, 4, 5}, stream);
+    check_indices(
+        searchsorted(ordered, queries, "right", stream), {1, 3, 5, 7}, stream);
+  }
+
   // uint32 indices minus one, the exact epilogue random.cpp composes.
   check_uint32_values(
       subtract(right, array(1u, uint32), stream),
