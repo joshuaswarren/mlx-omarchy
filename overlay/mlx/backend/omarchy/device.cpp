@@ -731,6 +731,10 @@ Device::Device(uint32_t physical_device_index) {
   VKX_LOAD_DEVICE_FN(CmdPushConstants, vkCmdPushConstants)
   VKX_LOAD_DEVICE_FN(CmdDispatch, vkCmdDispatch)
   VKX_LOAD_DEVICE_FN(CmdPipelineBarrier, vkCmdPipelineBarrier)
+  VKX_LOAD_DEVICE_FN(CreateEvent, vkCreateEvent)
+  VKX_LOAD_DEVICE_FN(GetEventStatus, vkGetEventStatus)
+  VKX_LOAD_DEVICE_FN(ResetEvent, vkResetEvent)
+  VKX_LOAD_DEVICE_FN(CmdSetEvent, vkCmdSetEvent)
   VKX_LOAD_DEVICE_FN(CreateQueryPool, vkCreateQueryPool)
   VKX_LOAD_DEVICE_FN(GetQueryPoolResults, vkGetQueryPoolResults)
   VKX_LOAD_DEVICE_FN(CmdResetQueryPool, vkCmdResetQueryPool)
@@ -858,51 +862,23 @@ uint64_t submit_max_wall_ns() {
 void wait_for_timeline_progress(
     VkDevice device,
     VkSemaphore semaphore,
-    uint64_t target_value) {
+    uint64_t target_value,
+    CompletionDispatcher* progress,
+    uint64_t progress_through) {
   using clock = std::chrono::steady_clock;
   const uint64_t hang_ns = submit_hang_no_progress_ns();
   const uint64_t max_wall_ns = submit_max_wall_ns();
   const auto start = clock::now();
   const auto wall_deadline = start + std::chrono::nanoseconds(max_wall_ns);
-
-  // No counter read before the first wait: WaitSemaphores returns at once
-  // when the value is already reached, so a read here is a driver call
-  // paid on every wait for nothing. The counter is read only after a
-  // wait outlives the poll interval.
   uint64_t last_observed = 0;
   auto last_advance = start;
 
-  // Block on the semaphore for one poll interval at a time. A completed
-  // signal returns VK_SUCCESS immediately, so a normal wait costs nothing
-  // beyond the wait itself; only a wait that outlives the interval reads
-  // the counter to decide whether the device is slow or stalled. The
-  // previous form slept for the interval unconditionally, which charged
-  // every host wait up to 100 ms and took 4-bit decode from 14.56 to
-  // 0.21 tok/s on the M1 (about 48 waits per token).
   VkSemaphoreWaitInfo info{VK_STRUCTURE_TYPE_SEMAPHORE_WAIT_INFO};
   info.semaphoreCount = 1;
   info.pSemaphores = &semaphore;
   info.pValues = &target_value;
 
-  while (last_observed < target_value) {
-    const auto now = clock::now();
-    if (now >= wall_deadline) {
-      throw std::runtime_error(
-          std::string(
-              "[omarchy] Vulkan submission did not complete within ") +
-          std::to_string(max_wall_ns / 1000000ull) +
-          " ms (Timeout). The device may be hung; no CPU fallback is"
-          " available.");
-    }
-    if ((now - last_advance) > std::chrono::nanoseconds(hang_ns)) {
-      throw std::runtime_error(
-          std::string(
-              "[omarchy] Vulkan timeline counter failed to advance for ") +
-          std::to_string(hang_ns / 1000000ull) + " ms (last observed=" +
-          std::to_string(last_observed) + ", target=" +
-          std::to_string(target_value) +
-          "). The device may be hung; no CPU fallback is available.");
-    }
+  for (;;) {
     VkResult res = vk::device_table().WaitSemaphores(
         device, &info, kHangWatchPollNs);
     if (res == VK_SUCCESS) {
@@ -914,16 +890,38 @@ void wait_for_timeline_progress(
           vk::result_string(res) +
           "). The device may be lost; no CPU fallback is available.");
     }
+
     uint64_t current = 0;
     if (vk::device_table().GetSemaphoreCounterValue(
-            device, semaphore, &current) == VK_SUCCESS) {
-      if (current > last_observed) {
-        last_observed = current;
-        last_advance = clock::now();
-      }
+            device, semaphore, &current) == VK_SUCCESS &&
+        current > last_observed) {
+      last_observed = current;
+      last_advance = clock::now();
     }
-    // Driver failure mid-wait: do not advance last_advance; the next
-    // iteration's hang check will pick up the stall.
+
+    const auto now = clock::now();
+    if (now >= wall_deadline) {
+      throw std::runtime_error(
+          std::string(
+              "[omarchy] Vulkan submission did not complete within ") +
+          std::to_string(max_wall_ns / 1000000ull) +
+          " ms (Timeout). The device may be hung; no CPU fallback is"
+          " available.");
+    }
+
+    const bool executing = progress &&
+        progress->has_active_submission(progress_through);
+    if (executing) {
+      last_advance = now;
+    } else if ((now - last_advance) > std::chrono::nanoseconds(hang_ns)) {
+      throw std::runtime_error(
+          std::string(
+              "[omarchy] Vulkan timeline counter failed to advance for ") +
+          std::to_string(hang_ns / 1000000ull) + " ms (last observed=" +
+          std::to_string(last_observed) + ", target=" +
+          std::to_string(target_value) +
+          "). The device may be hung; no CPU fallback is available.");
+    }
   }
 }
 CompletionDispatcher::CompletionDispatcher(VkDevice device) : device_(device) {
@@ -948,7 +946,7 @@ void CompletionDispatcher::wait(uint64_t value) {
   // wall-clock cap that misclassifies long legitimate work as a hang;
   // observing the counter's motion avoids that failure mode without
   // giving up on real hang detection.
-  wait_for_timeline_progress(device_, semaphore_, value);
+  wait_for_timeline_progress(device_, semaphore_, value, this, value);
   // Inline fast path: drain and run every ready completion whose value
   // is <= |value| on this thread, serialized end-to-end through
   // drain_mutex_ with the background thread so handlers cannot interleave
@@ -1027,13 +1025,33 @@ uint64_t CompletionDispatcher::reserve() {
 void CompletionDispatcher::enqueue(
     uint64_t value,
     std::vector<std::shared_ptr<void>> temporaries,
-    std::vector<std::function<void()>> handlers) {
+    std::vector<std::function<void()>> handlers,
+    VkEvent started) {
   std::lock_guard<std::mutex> lk(mutex_);
-  pending_.push_back(
-      Completion{value, std::move(temporaries), std::move(handlers)});
+  pending_.push_back(Completion{
+      value, std::move(temporaries), std::move(handlers), started});
   cv_.notify_all();
 }
 
+void CompletionDispatcher::reset_progress_event(VkEvent event) {
+  std::lock_guard<std::mutex> lk(mutex_);
+  VKX_CHECK(vk::device_table().ResetEvent(device_, event));
+}
+
+bool CompletionDispatcher::has_active_submission(uint64_t through_value) {
+  std::lock_guard<std::mutex> lk(mutex_);
+  for (const auto& completion : pending_) {
+    if (through_value != 0 && completion.value > through_value) {
+      break;
+    }
+    if (completion.started != VK_NULL_HANDLE &&
+        vk::device_table().GetEventStatus(device_, completion.started) ==
+            VK_EVENT_SET) {
+      return true;
+    }
+  }
+  return false;
+}
 
 void CompletionDispatcher::drain_through(uint64_t max_value) {
   std::lock_guard<std::mutex> drain_lk(drain_mutex_);

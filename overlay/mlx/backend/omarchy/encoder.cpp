@@ -118,8 +118,11 @@ CommandEncoder::CommandEncoder(Device& device) : device_(device) {
   ai.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
   ai.commandBufferCount = kInFlightCommandBuffers;
   VKX_CHECK(dt.AllocateCommandBuffers(device_.handle(), &ai, buffers.data()));
+  VkEventCreateInfo event_info{VK_STRUCTURE_TYPE_EVENT_CREATE_INFO};
   for (int i = 0; i < kInFlightCommandBuffers; ++i) {
     slots_[i].cmd = buffers[i];
+    VKX_CHECK(dt.CreateEvent(
+        device_.handle(), &event_info, nullptr, &slots_[i].started));
   }
   prof::get().attach(this, device_);
 }
@@ -196,9 +199,12 @@ void CommandEncoder::ensure_recording() {
   }
   current_slot_ = chosen;
   cmd_ = slots_[chosen].cmd;
+  completions.reset_progress_event(slots_[chosen].started);
   VkCommandBufferBeginInfo bi{VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
   bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
   VKX_CHECK(vk::device_table().BeginCommandBuffer(cmd_, &bi));
+  vk::device_table().CmdSetEvent(
+      cmd_, slots_[chosen].started, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT);
   prof::get().on_begin(
       this, chosen, cmd_, begin_t0 != 0 ? prof::host_ns() - begin_t0 : 0);
   recording_ = true;
@@ -682,7 +688,10 @@ void CommandEncoder::submit() {
     // Publish only after the submit: the dispatcher must never wait on a
     // value whose submission has not been handed to the driver.
     device_.completions().enqueue(
-        completion_value, std::move(keepalive), std::move(completed_handlers_));
+        completion_value,
+        std::move(keepalive),
+        std::move(completed_handlers_),
+        was_recording ? slots_[current_slot_].started : VK_NULL_HANDLE);
     last_completion_ = completion_value;
     submitted = completion_value;
     if (was_recording) {

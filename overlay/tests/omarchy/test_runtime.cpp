@@ -297,6 +297,58 @@ int run_child_scenario(const std::string& mode) {
     }
     return correct ? 0 : 22;
   }
+  if (mode == "reused_slot_blocked_dependency") {
+    setenv("MLX_OMARCHY_HANG_NO_PROGRESS_NS", "200000000", 1);
+    setenv("MLX_OMARCHY_MAX_WALL_NS", "5000000000", 1);
+    Stream s = new_stream(Device::gpu);
+    auto& enc = omarchy::get_command_encoder(s);
+    auto buffer = omarchy::allocator().malloc(4096);
+    auto* p = static_cast<omarchy::VulkanBuffer*>(buffer.ptr());
+    for (int i = 0; i < 8; ++i) {
+      enc.fill_buffer(p->buffer, static_cast<uint32_t>(i), 4096);
+      enc.commit();
+    }
+    enc.synchronize();
+
+    Event unsignaled{new_stream(Device::gpu)};
+    unsignaled.set_value(42);
+    unsignaled.wait(s);
+    enc.fill_buffer(p->buffer, 99, 4096);
+    try {
+      enc.synchronize();
+      std::_Exit(33);
+    } catch (const std::exception& ex) {
+      std::string message = ex.what();
+      std::cout << "[child/reused_slot_blocked_dependency] " << message
+                << std::endl;
+      std::_Exit(
+          message.find("failed to advance") != std::string::npos ? 0 : 34);
+    }
+  }
+  if (mode == "long_matmul_progress") {
+    setenv("MLX_OMARCHY_HANG_NO_PROGRESS_NS", "1", 1);
+    Stream s = new_stream(Device::gpu);
+    set_default_device(Device::gpu);
+    set_default_stream(s);
+    try {
+      constexpr int kSize = 1024;
+      auto x = ones({kSize, kSize}, float32, s);
+      auto y = matmul(x, x, s);
+      y.eval();
+      omarchy::get_command_encoder(s).synchronize();
+      const auto* values = y.data<float>();
+      if (values[0] != kSize || values[y.size() - 1] != kSize) {
+        std::_Exit(31);
+      }
+      std::cout << "[child/long_matmul_progress] valid matmul completed"
+                << std::endl;
+      std::_Exit(0);
+    } catch (const std::exception& ex) {
+      std::cout << "[child/long_matmul_progress] " << ex.what()
+                << std::endl;
+      std::_Exit(32);
+    }
+  }
   return 126;
 }
 
@@ -1441,6 +1493,30 @@ TEST_CASE("a long-but-progressing submission completes without a hang") {
   CHECK_MESSAGE(
       r.code == 0,
       "child progressing_long scenario failed with code " << r.code);
+}
+
+TEST_CASE("slot reuse cannot lend stale progress to a blocked dependency") {
+  if (!gpu::is_available()) {
+    skip("no qualifying Vulkan device.");
+    return;
+  }
+  auto r = run_child("reused_slot_blocked_dependency", 10);
+  REQUIRE_FALSE(r.timed_out);
+  CHECK_MESSAGE(
+      r.code == 0,
+      "child reused_slot_blocked_dependency failed with code " << r.code);
+}
+
+TEST_CASE("an executing long matmul is not mistaken for a stalled queue") {
+  if (!gpu::is_available()) {
+    skip("no qualifying Vulkan device.");
+    return;
+  }
+  auto r = run_child("long_matmul_progress", 60);
+  REQUIRE_FALSE(r.timed_out);
+  CHECK_MESSAGE(
+      r.code == 0,
+      "child long_matmul_progress scenario failed with code " << r.code);
 }
 
 TEST_CASE("a watchdog throw unwinds cleanly through process teardown") {

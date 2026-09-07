@@ -110,34 +110,12 @@ struct CapabilityReport {
   uint32_t subgroup_operations{0};
 };
 
-// Bounded wait for any submission or completion (plan R16): a hung
-// submission returns control with a typed error instead of blocking
-// forever. No CPU fallback exists.
-//
-// The watchdog distinguishes slow work from a wedged device. The GPU
-// timeline counter advances on every signaled submission; a long MLX
-// prefill keeps the counter moving steadily, while a wedged device stops
-// it. The detector polls the counter and declares a hang only when no
-// progress is observed across a bounded interval, not when total wall
-// time exceeds a constant. Slow work advances; a stuck device does not.
-//
-// Two knobs control the detector:
-//
-//   kSubmitHangNoProgressNs - the no-progress interval that declares a
-//     hang. The counter must advance at least once across this interval,
-//     otherwise we treat the queue as wedged. Default: 10 s. Matches the
-//     previous wall-clock cap reinterpreted as "10 s of stalled counter
-//     advance" - the same detection latency for a wedged device, while
-//     permitting arbitrarily long legitimate work as long as the counter
-//     keeps moving.
-//   kSubmitMaxWallNs - an outer safety bound that fires even if the
-//     counter keeps moving. Default: 30 minutes. Protects against a
-//     pathological driver that returns advancing counter values while
-//     the queue is logically stuck (no observed case on Honeykrisp or
-//     llvmpipe; this is a belt-and-braces ceiling).
-//
-// Both are overridable via MLX_OMARCHY_HANG_NO_PROGRESS_NS and
-// MLX_OMARCHY_MAX_WALL_NS, parsed once at first use by the helpers below.
+// A pending wait fails after 10 seconds with neither completion progress nor
+// a submission that reached device execution. Recorded submissions set a
+// VkEvent after their semaphore waits; vkGetEventStatus checks it without
+// blocking. Vulkan has no portable intra-dispatch progress query, so started
+// work remains subject to the 30-minute wall bound. Tests can override both
+// limits with MLX_OMARCHY_HANG_NO_PROGRESS_NS and MLX_OMARCHY_MAX_WALL_NS.
 inline constexpr uint64_t kSubmitHangNoProgressNsDefault =
     10ull * 1000 * 1000 * 1000;
 inline constexpr uint64_t kSubmitMaxWallNsDefault =
@@ -148,16 +126,17 @@ inline constexpr uint64_t kSubmitMaxWallNsDefault =
 uint64_t submit_hang_no_progress_ns();
 uint64_t submit_max_wall_ns();
 
-// Poll a timeline semaphore and block until its counter reaches
-// |target_value|, throwing a typed std::runtime_error if either no
-// counter advance is observed across |submit_hang_no_progress_ns|, or
-// |submit_max_wall_ns| of wall time elapses first. Returns once the
-// counter reaches the target. Used by CompletionDispatcher::wait and
-// by both host-side Event::wait call sites.
+class CompletionDispatcher;
+
+// Wait for a timeline value with bounded, nonblocking progress observation.
+// |progress_through| limits execution markers to submissions no newer than the
+// work that can satisfy this wait; zero scans all currently pending work.
 void wait_for_timeline_progress(
     VkDevice device,
     VkSemaphore semaphore,
-    uint64_t target_value);
+    uint64_t target_value,
+    CompletionDispatcher* progress = nullptr,
+    uint64_t progress_through = 0);
 
 class CommandEncoder;
 class ComputeRuntime;
@@ -186,15 +165,19 @@ class CompletionDispatcher {
     uint64_t value;
     std::vector<std::shared_ptr<void>> temporaries;
     std::vector<std::function<void()>> handlers;
+    VkEvent started;
   };
 
   uint64_t reserve();
   void enqueue(
       uint64_t value,
       std::vector<std::shared_ptr<void>> temporaries,
-      std::vector<std::function<void()>> handlers);
+      std::vector<std::function<void()>> handlers,
+      VkEvent started = VK_NULL_HANDLE);
   void wait(uint64_t value);
   uint64_t drained_value();
+  void reset_progress_event(VkEvent event);
+  bool has_active_submission(uint64_t through_value);
   void shutdown();
 
  private:
