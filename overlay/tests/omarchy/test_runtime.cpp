@@ -1888,10 +1888,6 @@ TEST_CASE("one graph evaluation batches into bounded submissions") {
   auto& counters = omarchy::trace::counters();
   uint64_t subs0 = counters.vk_submissions.load();
 
-  // One decode-sized chain must fit in at most four bounded batches. This
-  // fails with the historical 100-node limit (six budget/final submits) and
-  // leaves room for one evaluator boundary submit without pinning an exact
-  // scheduler implementation detail.
   constexpr int kAdds = 585;
   for (int i = 0; i < kAdds; ++i) {
     y = y + w;
