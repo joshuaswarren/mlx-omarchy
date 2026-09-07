@@ -1,0 +1,9 @@
+RUN ['.work/verify-build/tests/omarchy/omarchy_primitive_tests']
+[doctest] doctest version is "2.4.12"
+[doctest] run with "--help" for options
+===============================================================================
+[doctest] test cases:      98 |      98 passed | 0 failed | 0 skipped
+[doctest] assertions: 2699373 | 2699373 passed | 0 failed |
+[doctest] Status: SUCCESS!
+
+EXIT 0

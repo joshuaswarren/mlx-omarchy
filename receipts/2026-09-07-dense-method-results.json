@@ -1,0 +1,97 @@
+[
+  {
+    "method": "matmul_unaligned",
+    "exit": 0,
+    "seconds": 1.6413856339640915
+  },
+  {
+    "method": "matvec_unaligned",
+    "exit": 0,
+    "seconds": 0.6224365900270641
+  },
+  {
+    "method": "matrix_vector",
+    "exit": 0,
+    "seconds": 39.88855215488002
+  },
+  {
+    "method": "matrix_vector_broadcast",
+    "exit": 0,
+    "seconds": 1.584501347038895
+  },
+  {
+    "method": "matrix_vector_attn",
+    "exit": 0,
+    "seconds": 4.500926813110709
+  },
+  {
+    "method": "matrix_vector_edgecases",
+    "exit": 0,
+    "seconds": 1.3892833800055087
+  },
+  {
+    "method": "dot_product",
+    "exit": 0,
+    "seconds": 51.32323046354577
+  },
+  {
+    "method": "wide_matmul",
+    "exit": 0,
+    "seconds": 28.864645966794342
+  },
+  {
+    "method": "mismatch_stride_mm",
+    "exit": 0,
+    "seconds": 0.48117233300581574
+  },
+  {
+    "method": "addmm_grad",
+    "exit": 0,
+    "seconds": 1.230417963117361
+  },
+  {
+    "method": "block_masked_matmul",
+    "exit": 1,
+    "seconds": 3.489142998121679
+  },
+  {
+    "method": "gather_matmul",
+    "exit": 0,
+    "seconds": 0.672998980153352
+  },
+  {
+    "method": "gather_mm_blocks",
+    "exit": 0,
+    "seconds": 76.26939990231767
+  },
+  {
+    "method": "gather_matmul_grad",
+    "exit": 0,
+    "seconds": 1.230198404751718
+  },
+  {
+    "method": "gather_matmul_index_vjp_requires_stop_gradient",
+    "exit": 0,
+    "seconds": 0.975860089994967
+  },
+  {
+    "method": "gather_mm_sorted",
+    "exit": 0,
+    "seconds": 2.333297250792384
+  },
+  {
+    "method": "gather_mm_sorted_vjp",
+    "exit": 0,
+    "seconds": 4.134336534887552
+  },
+  {
+    "method": "segmented_mm",
+    "exit": "timeout",
+    "seconds": 300.06520267389715
+  },
+  {
+    "method": "gemv_gemm_same_precision",
+    "exit": 0,
+    "seconds": 0.5194037756882608
+  }
+]

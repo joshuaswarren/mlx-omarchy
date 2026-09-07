@@ -1,0 +1,47 @@
+{
+  "source_commit": "ba9938a6",
+  "runtime": "x86_64 Mesa llvmpipe software Vulkan",
+  "native_qualified": false,
+  "full_suite_qualified": false,
+  "wheel": "mlx_omarchy-0.32.2.dev202609070141+ba9938a6-cp311-cp311-linux_x86_64.whl",
+  "wheel_sha256": "2c121768a70ebe2ac588ed0245b26542e578cd94096d8b2dc0b97ee6af8fe617",
+  "selection": "The 19 TestBlas methods not included in the earlier ten-method dense qualification",
+  "passed_methods": [
+    "test_matmul_unaligned",
+    "test_matvec_unaligned",
+    "test_matrix_vector",
+    "test_matrix_vector_broadcast",
+    "test_matrix_vector_attn",
+    "test_matrix_vector_edgecases",
+    "test_dot_product",
+    "test_wide_matmul",
+    "test_mismatch_stride_mm",
+    "test_addmm_grad",
+    "test_gather_matmul",
+    "test_gather_mm_blocks",
+    "test_gather_matmul_grad",
+    "test_gather_matmul_index_vjp_requires_stop_gradient",
+    "test_gather_mm_sorted",
+    "test_gather_mm_sorted_vjp",
+    "test_gemv_gemm_same_precision",
+    "test_segmented_mm"
+  ],
+  "failed_method": {
+    "name": "test_block_masked_matmul",
+    "failed_subtests": 7,
+    "reason": "Gradient paths reject noncontiguous boolean block masks.",
+    "xml": "2026-09-07-block-mask-before.xml"
+  },
+  "segmented_mm": {
+    "initial_result": "Unqualified: 300-second outer timeout",
+    "diagnosis": "The exact test compares reference and segmented matmuls for three segmentation layouts and four transpose combinations, including 1000x1000x1000 matrices. An isolated large case completed both paths with allclose=True; no hang was observed.",
+    "rerun_timeout_seconds": 1800,
+    "passed": 1,
+    "seconds": 323.61,
+    "exit_code": 0,
+    "supervisor": "segmented-exact-1800",
+    "xml": "2026-09-07-segmented-matmul.xml"
+  },
+  "method_results": "2026-09-07-dense-method-results.json",
+  "note": "The segmented rerun resolves the initial timeout. Eighteen selected methods pass on this exact wheel; the block-mask failure remains in this snapshot. Later block-mask source changes have separate receipts. These selections are not a new complete upstream-suite result."
+}

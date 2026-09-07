@@ -1,0 +1,1947 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="9" skipped="19" tests="641" time="295.184" timestamp="2026-09-06T21:32:48.848543-05:00" hostname="omp-studio-local"><testcase classname="tests.test_ops.TestOps" name="test_arange_overload_dispatch" time="0.012" /><testcase classname="tests.test_ops.TestOps" name="test_arange_inferred_dtype" time="0.003" /><testcase classname="tests.test_ops.TestOps" name="test_arange_corner_cases_cast" time="0.002" /><testcase classname="tests.test_ops.TestOps" name="test_searchsorted" time="0.125" /><testcase classname="tests.test_ops.TestOps" name="test_hadamard" time="38.496" /><testcase classname="tests.test_ops.TestOps" name="test_hadamard_grad_vmap" time="113.185" /><testcase classname="tests.test_ops.TestOps" name="test_take" time="0.020" /><testcase classname="tests.test_ops.TestOps" name="test_masked_scatter" time="0.013" /><testcase classname="tests.test_conv.TestConv" name="test_asymmetric_padding" time="0.210" /><testcase classname="tests.test_conv.TestConv" name="test_basic_grad_shapes" time="0.001" /><testcase classname="tests.test_conv.TestConv" name="test_conv2d_large_filter_small_channels" time="0.048" /><testcase classname="tests.test_conv.TestConv" name="test_conv2d_unaligned_channels" time="0.417" /><testcase classname="tests.test_conv.TestConv" name="test_conv2d_winograd_batch_tiling" time="0.001"><skipped type="pytest.skip" message="requires Metal">/tmp/mlx-python-23180e66/tests/test_conv.py:1218: requires Metal</skipped></testcase><testcase classname="tests.test_conv.TestConv" name="test_conv_1d_groups_flipped" time="0.008" /><testcase classname="tests.test_conv.TestConv" name="test_conv_1d_with_2d" time="0.016" /><testcase classname="tests.test_conv.TestConv" name="test_conv_3D_small_kd_decomposition" time="1.417" /><testcase classname="tests.test_conv.TestConv" name="test_conv_general_flip_grad" time="0.253" /><testcase classname="tests.test_conv.TestConv" name="test_conv_groups_grad" time="0.062" /><testcase classname="tests.test_conv.TestConv" name="test_numpy_conv" time="0.023" /><testcase classname="tests.test_conv.TestConv" name="test_repeated_conv" time="2.331" /><testcase classname="tests.test_conv.TestConv" name="test_torch_conv_1D" time="0.998" /><testcase classname="tests.test_conv.TestConv" name="test_torch_conv_1D_grad" time="0.470" /><testcase classname="tests.test_conv.TestConv" name="test_torch_conv_2D" time="9.145" /><testcase classname="tests.test_conv.TestConv" name="test_torch_conv_2D_grad" time="10.200" /><testcase classname="tests.test_conv.TestConv" name="test_torch_conv_3D" time="1.464" /><testcase classname="tests.test_conv.TestConv" name="test_torch_conv_3D_grad" time="25.286" /><testcase classname="tests.test_conv.TestConv" name="test_torch_conv_depthwise" time="16.593"><failure message="RuntimeError: [omarchy] transposed (flip) Convolution stride is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[2,9,9,32]). No GPU kernel exists for it; no silent CPU fallback occurs. Run it on an explicit CPU stream to use the CPU implementation.">self = &lt;test_conv.TestConv testMethod=test_torch_conv_depthwise&gt;
+in_shape = (2, 16, 16, 32), wt_shape = (32, 1, 1, 1), stride = (2, 2)
+padding = (1, 1), kernel_dilation = 1, input_dilation = 1, groups = 32
+flip = True, np_dtype = &lt;class 'numpy.float32'&gt;, atol = 2e-05
+
+    def __conv_general_test(
+        self,
+        in_shape,
+        wt_shape,
+        stride=1,
+        padding=0,
+        kernel_dilation=1,
+        input_dilation=1,
+        groups=1,
+        flip=False,
+        np_dtype=np.float32,
+        atol=1e-5,
+    ):
+        with self.subTest(
+            in_shape=in_shape,
+            wt_shape=wt_shape,
+            stride=stride,
+            padding=padding,
+            kernel_dilation=kernel_dilation,
+            input_dilation=input_dilation,
+            groups=groups,
+            flip=flip,
+            np_dtype=np_dtype,
+        ):
+            np.random.seed(0)
+            scale = 1.0 / math.sqrt(np.prod(wt_shape[1:]))
+            scale = min(0.3, scale)
+            in_np = np.random.normal(0, scale, in_shape).astype(np_dtype)
+            wt_np = np.random.normal(0, scale, wt_shape).astype(np_dtype)
+    
+            in_mx, wt_mx = map(mx.array, (in_np, wt_np))
+    
+            in_pt, wt_pt = map(
+                lambda x: torch.from_numpy(np.moveaxis(x, -1, 1)).to("cpu"),
+                (in_np, wt_np),
+            )
+    
+            out_mx = mx.conv_general(
+                in_mx,
+                wt_mx,
+                stride=stride,
+                padding=padding,
+                kernel_dilation=kernel_dilation,
+                input_dilation=input_dilation,
+                groups=groups,
+                flip=flip,
+            )
+    
+            def conv_general_pt(
+                inp, wt, stride, padding, kernel_dilation, input_dilation, groups, flip
+            ):
+                C = inp.size()[1]
+                ndim = inp.ndim - 2
+                map_ints = lambda x: [x] * ndim if isinstance(x, int) else x
+    
+                stride, padding, kernel_dilation, input_dilation = map(
+                    map_ints, (stride, padding, kernel_dilation, input_dilation)
+                )
+    
+                torch_convt_list = (
+                    F.conv_transpose1d,
+                    F.conv_transpose2d,
+                    F.conv_transpose3d,
+                )
+                torch_conv_list = (F.conv1d, F.conv2d, F.conv3d)
+    
+                conv_f = torch_conv_list[ndim - 1]
+                convt_f = torch_convt_list[ndim - 1]
+    
+                if flip:
+                    wt = torch.flip(wt, tuple(np.arange(2, wt.ndim)))
+    
+                if not np.all(input_dilation == 1):
+                    ones = torch.ones(
+                        [C]
+                        + [
+                            1,
+                        ]
+                        * (ndim + 1)
+                    ).to(inp.dtype)
+                    inp = convt_f(inp, ones, stride=input_dilation, groups=C)
+    
+                return conv_f(
+                    inp,
+                    wt,
+                    stride=stride,
+                    padding=padding,
+                    dilation=kernel_dilation,
+                    groups=groups,
+                )
+    
+            out_pt = conv_general_pt(
+                in_pt,
+                wt_pt,
+                stride=stride,
+                padding=padding,
+                kernel_dilation=kernel_dilation,
+                input_dilation=input_dilation,
+                groups=groups,
+                flip=flip,
+            )
+    
+            out_pt = np.moveaxis(out_pt.numpy(), 1, -1)
+    
+            self.assertEqual(out_mx.shape, out_pt.shape)
+&gt;           self.assertTrue(np.allclose(out_mx, out_pt, atol=atol))
+                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_conv.py:808: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/home/joshuawarren/.local/lib/python3.11/site-packages/numpy/core/numeric.py:2241: in allclose
+    res = all(isclose(a, b, rtol=rtol, atol=atol, equal_nan=equal_nan))
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+a = &lt;[RuntimeError('[omarchy] transposed (flip) Convolution stride is not implemented for the Omarchy Vulkan backend (dtyp...rs. Run it on an explicit CPU stream to use the CPU implementation.') raised in repr()] array object at 0x739cb1463340&gt;
+b = array([[[[ 0.00000000e+00,  0.00000000e+00,  0.00000000e+00, ...,
+           0.00000000e+00,  0.00000000e+00,  0.00000...622467e-02, -6.89256191e-02, ...,
+           1.60570648e-02,  3.96174975e-02,  2.30675749e-02]]]],
+      dtype=float32)
+rtol = 1e-05, atol = 2e-05, equal_nan = False
+
+    @array_function_dispatch(_isclose_dispatcher)
+    def isclose(a, b, rtol=1.e-5, atol=1.e-8, equal_nan=False):
+        """
+        Returns a boolean array where two arrays are element-wise equal within a
+        tolerance.
+    
+        The tolerance values are positive, typically very small numbers.  The
+        relative difference (`rtol` * abs(`b`)) and the absolute difference
+        `atol` are added together to compare against the absolute difference
+        between `a` and `b`.
+    
+        .. warning:: The default `atol` is not appropriate for comparing numbers
+                     that are much smaller than one (see Notes).
+    
+        Parameters
+        ----------
+        a, b : array_like
+            Input arrays to compare.
+        rtol : float
+            The relative tolerance parameter (see Notes).
+        atol : float
+            The absolute tolerance parameter (see Notes).
+        equal_nan : bool
+            Whether to compare NaN's as equal.  If True, NaN's in `a` will be
+            considered equal to NaN's in `b` in the output array.
+    
+        Returns
+        -------
+        y : array_like
+            Returns a boolean array of where `a` and `b` are equal within the
+            given tolerance. If both `a` and `b` are scalars, returns a single
+            boolean value.
+    
+        See Also
+        --------
+        allclose
+        math.isclose
+    
+        Notes
+        -----
+        .. versionadded:: 1.7.0
+    
+        For finite values, isclose uses the following equation to test whether
+        two floating point values are equivalent.
+    
+         absolute(`a` - `b`) &lt;= (`atol` + `rtol` * absolute(`b`))
+    
+        Unlike the built-in `math.isclose`, the above equation is not symmetric
+        in `a` and `b` -- it assumes `b` is the reference value -- so that
+        `isclose(a, b)` might be different from `isclose(b, a)`. Furthermore,
+        the default value of atol is not zero, and is used to determine what
+        small values should be considered close to zero. The default value is
+        appropriate for expected values of order unity: if the expected values
+        are significantly smaller than one, it can result in false positives.
+        `atol` should be carefully selected for the use case at hand. A zero value
+        for `atol` will result in `False` if either `a` or `b` is zero.
+    
+        `isclose` is not defined for non-numeric data types.
+        `bool` is considered a numeric data-type for this purpose.
+    
+        Examples
+        --------
+        &gt;&gt;&gt; np.isclose([1e10,1e-7], [1.00001e10,1e-8])
+        array([ True, False])
+        &gt;&gt;&gt; np.isclose([1e10,1e-8], [1.00001e10,1e-9])
+        array([ True, True])
+        &gt;&gt;&gt; np.isclose([1e10,1e-8], [1.0001e10,1e-9])
+        array([False,  True])
+        &gt;&gt;&gt; np.isclose([1.0, np.nan], [1.0, np.nan])
+        array([ True, False])
+        &gt;&gt;&gt; np.isclose([1.0, np.nan], [1.0, np.nan], equal_nan=True)
+        array([ True, True])
+        &gt;&gt;&gt; np.isclose([1e-8, 1e-7], [0.0, 0.0])
+        array([ True, False])
+        &gt;&gt;&gt; np.isclose([1e-100, 1e-7], [0.0, 0.0], atol=0.0)
+        array([False, False])
+        &gt;&gt;&gt; np.isclose([1e-10, 1e-10], [1e-20, 0.0])
+        array([ True,  True])
+        &gt;&gt;&gt; np.isclose([1e-10, 1e-10], [1e-20, 0.999999e-10], atol=0.0)
+        array([False,  True])
+        """
+        def within_tol(x, y, atol, rtol):
+            with errstate(invalid='ignore'), _no_nep50_warning():
+                return less_equal(abs(x-y), atol + rtol * abs(y))
+    
+&gt;       x = asanyarray(a)
+            ^^^^^^^^^^^^^
+E       RuntimeError: [omarchy] transposed (flip) Convolution stride is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[2,9,9,32]). No GPU kernel exists for it; no silent CPU fallback occurs. Run it on an explicit CPU stream to use the CPU implementation.
+
+/home/joshuawarren/.local/lib/python3.11/site-packages/numpy/core/numeric.py:2334: RuntimeError</failure><failure message="RuntimeError: [omarchy] transposed (flip) Convolution stride is not implemented for the Omarchy Vulkan backend (dtype=float16, shape=[2,9,9,32]). No GPU kernel exists for it; no silent CPU fallback occurs. Run it on an explicit CPU stream to use the CPU implementation.">self = &lt;test_conv.TestConv testMethod=test_torch_conv_depthwise&gt;
+in_shape = (2, 16, 16, 32), wt_shape = (32, 1, 1, 1), stride = (2, 2)
+padding = (1, 1), kernel_dilation = 1, input_dilation = 1, groups = 32
+flip = True, np_dtype = &lt;class 'numpy.float16'&gt;, atol = 0.005
+
+    def __conv_general_test(
+        self,
+        in_shape,
+        wt_shape,
+        stride=1,
+        padding=0,
+        kernel_dilation=1,
+        input_dilation=1,
+        groups=1,
+        flip=False,
+        np_dtype=np.float32,
+        atol=1e-5,
+    ):
+        with self.subTest(
+            in_shape=in_shape,
+            wt_shape=wt_shape,
+            stride=stride,
+            padding=padding,
+            kernel_dilation=kernel_dilation,
+            input_dilation=input_dilation,
+            groups=groups,
+            flip=flip,
+            np_dtype=np_dtype,
+        ):
+            np.random.seed(0)
+            scale = 1.0 / math.sqrt(np.prod(wt_shape[1:]))
+            scale = min(0.3, scale)
+            in_np = np.random.normal(0, scale, in_shape).astype(np_dtype)
+            wt_np = np.random.normal(0, scale, wt_shape).astype(np_dtype)
+    
+            in_mx, wt_mx = map(mx.array, (in_np, wt_np))
+    
+            in_pt, wt_pt = map(
+                lambda x: torch.from_numpy(np.moveaxis(x, -1, 1)).to("cpu"),
+                (in_np, wt_np),
+            )
+    
+            out_mx = mx.conv_general(
+                in_mx,
+                wt_mx,
+                stride=stride,
+                padding=padding,
+                kernel_dilation=kernel_dilation,
+                input_dilation=input_dilation,
+                groups=groups,
+                flip=flip,
+            )
+    
+            def conv_general_pt(
+                inp, wt, stride, padding, kernel_dilation, input_dilation, groups, flip
+            ):
+                C = inp.size()[1]
+                ndim = inp.ndim - 2
+                map_ints = lambda x: [x] * ndim if isinstance(x, int) else x
+    
+                stride, padding, kernel_dilation, input_dilation = map(
+                    map_ints, (stride, padding, kernel_dilation, input_dilation)
+                )
+    
+                torch_convt_list = (
+                    F.conv_transpose1d,
+                    F.conv_transpose2d,
+                    F.conv_transpose3d,
+                )
+                torch_conv_list = (F.conv1d, F.conv2d, F.conv3d)
+    
+                conv_f = torch_conv_list[ndim - 1]
+                convt_f = torch_convt_list[ndim - 1]
+    
+                if flip:
+                    wt = torch.flip(wt, tuple(np.arange(2, wt.ndim)))
+    
+                if not np.all(input_dilation == 1):
+                    ones = torch.ones(
+                        [C]
+                        + [
+                            1,
+                        ]
+                        * (ndim + 1)
+                    ).to(inp.dtype)
+                    inp = convt_f(inp, ones, stride=input_dilation, groups=C)
+    
+                return conv_f(
+                    inp,
+                    wt,
+                    stride=stride,
+                    padding=padding,
+                    dilation=kernel_dilation,
+                    groups=groups,
+                )
+    
+            out_pt = conv_general_pt(
+                in_pt,
+                wt_pt,
+                stride=stride,
+                padding=padding,
+                kernel_dilation=kernel_dilation,
+                input_dilation=input_dilation,
+                groups=groups,
+                flip=flip,
+            )
+    
+            out_pt = np.moveaxis(out_pt.numpy(), 1, -1)
+    
+            self.assertEqual(out_mx.shape, out_pt.shape)
+&gt;           self.assertTrue(np.allclose(out_mx, out_pt, atol=atol))
+                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_conv.py:808: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/home/joshuawarren/.local/lib/python3.11/site-packages/numpy/core/numeric.py:2241: in allclose
+    res = all(isclose(a, b, rtol=rtol, atol=atol, equal_nan=equal_nan))
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+a = &lt;[RuntimeError('[omarchy] transposed (flip) Convolution stride is not implemented for the Omarchy Vulkan backend (dtyp...rs. Run it on an explicit CPU stream to use the CPU implementation.') raised in repr()] array object at 0x739cb1463340&gt;
+b = array([[[[ 0.0000e+00,  0.0000e+00,  0.0000e+00, ...,  0.0000e+00,
+           0.0000e+00,  0.0000e+00],
+         [ 0.0...       [ 4.5052e-03,  2.9160e-02, -6.8970e-02, ...,  1.6068e-02,
+           3.9612e-02,  2.3071e-02]]]], dtype=float16)
+rtol = 1e-05, atol = 0.005, equal_nan = False
+
+    @array_function_dispatch(_isclose_dispatcher)
+    def isclose(a, b, rtol=1.e-5, atol=1.e-8, equal_nan=False):
+        """
+        Returns a boolean array where two arrays are element-wise equal within a
+        tolerance.
+    
+        The tolerance values are positive, typically very small numbers.  The
+        relative difference (`rtol` * abs(`b`)) and the absolute difference
+        `atol` are added together to compare against the absolute difference
+        between `a` and `b`.
+    
+        .. warning:: The default `atol` is not appropriate for comparing numbers
+                     that are much smaller than one (see Notes).
+    
+        Parameters
+        ----------
+        a, b : array_like
+            Input arrays to compare.
+        rtol : float
+            The relative tolerance parameter (see Notes).
+        atol : float
+            The absolute tolerance parameter (see Notes).
+        equal_nan : bool
+            Whether to compare NaN's as equal.  If True, NaN's in `a` will be
+            considered equal to NaN's in `b` in the output array.
+    
+        Returns
+        -------
+        y : array_like
+            Returns a boolean array of where `a` and `b` are equal within the
+            given tolerance. If both `a` and `b` are scalars, returns a single
+            boolean value.
+    
+        See Also
+        --------
+        allclose
+        math.isclose
+    
+        Notes
+        -----
+        .. versionadded:: 1.7.0
+    
+        For finite values, isclose uses the following equation to test whether
+        two floating point values are equivalent.
+    
+         absolute(`a` - `b`) &lt;= (`atol` + `rtol` * absolute(`b`))
+    
+        Unlike the built-in `math.isclose`, the above equation is not symmetric
+        in `a` and `b` -- it assumes `b` is the reference value -- so that
+        `isclose(a, b)` might be different from `isclose(b, a)`. Furthermore,
+        the default value of atol is not zero, and is used to determine what
+        small values should be considered close to zero. The default value is
+        appropriate for expected values of order unity: if the expected values
+        are significantly smaller than one, it can result in false positives.
+        `atol` should be carefully selected for the use case at hand. A zero value
+        for `atol` will result in `False` if either `a` or `b` is zero.
+    
+        `isclose` is not defined for non-numeric data types.
+        `bool` is considered a numeric data-type for this purpose.
+    
+        Examples
+        --------
+        &gt;&gt;&gt; np.isclose([1e10,1e-7], [1.00001e10,1e-8])
+        array([ True, False])
+        &gt;&gt;&gt; np.isclose([1e10,1e-8], [1.00001e10,1e-9])
+        array([ True, True])
+        &gt;&gt;&gt; np.isclose([1e10,1e-8], [1.0001e10,1e-9])
+        array([False,  True])
+        &gt;&gt;&gt; np.isclose([1.0, np.nan], [1.0, np.nan])
+        array([ True, False])
+        &gt;&gt;&gt; np.isclose([1.0, np.nan], [1.0, np.nan], equal_nan=True)
+        array([ True, True])
+        &gt;&gt;&gt; np.isclose([1e-8, 1e-7], [0.0, 0.0])
+        array([ True, False])
+        &gt;&gt;&gt; np.isclose([1e-100, 1e-7], [0.0, 0.0], atol=0.0)
+        array([False, False])
+        &gt;&gt;&gt; np.isclose([1e-10, 1e-10], [1e-20, 0.0])
+        array([ True,  True])
+        &gt;&gt;&gt; np.isclose([1e-10, 1e-10], [1e-20, 0.999999e-10], atol=0.0)
+        array([False,  True])
+        """
+        def within_tol(x, y, atol, rtol):
+            with errstate(invalid='ignore'), _no_nep50_warning():
+                return less_equal(abs(x-y), atol + rtol * abs(y))
+    
+&gt;       x = asanyarray(a)
+            ^^^^^^^^^^^^^
+E       RuntimeError: [omarchy] transposed (flip) Convolution stride is not implemented for the Omarchy Vulkan backend (dtype=float16, shape=[2,9,9,32]). No GPU kernel exists for it; no silent CPU fallback occurs. Run it on an explicit CPU stream to use the CPU implementation.
+
+/home/joshuawarren/.local/lib/python3.11/site-packages/numpy/core/numeric.py:2334: RuntimeError</failure><failure message="RuntimeError: [omarchy] transposed (flip) Convolution stride is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[1,8,8,32]). No GPU kernel exists for it; no silent CPU fallback occurs. Run it on an explicit CPU stream to use the CPU implementation.">self = &lt;test_conv.TestConv testMethod=test_torch_conv_depthwise&gt;
+in_shape = (1, 16, 16, 32), wt_shape = (32, 3, 3, 1), stride = (2, 2)
+padding = (1, 1), kernel_dilation = 1, input_dilation = 1, groups = 32
+flip = True, np_dtype = &lt;class 'numpy.float32'&gt;, atol = 2e-05
+
+    def __conv_general_test(
+        self,
+        in_shape,
+        wt_shape,
+        stride=1,
+        padding=0,
+        kernel_dilation=1,
+        input_dilation=1,
+        groups=1,
+        flip=False,
+        np_dtype=np.float32,
+        atol=1e-5,
+    ):
+        with self.subTest(
+            in_shape=in_shape,
+            wt_shape=wt_shape,
+            stride=stride,
+            padding=padding,
+            kernel_dilation=kernel_dilation,
+            input_dilation=input_dilation,
+            groups=groups,
+            flip=flip,
+            np_dtype=np_dtype,
+        ):
+            np.random.seed(0)
+            scale = 1.0 / math.sqrt(np.prod(wt_shape[1:]))
+            scale = min(0.3, scale)
+            in_np = np.random.normal(0, scale, in_shape).astype(np_dtype)
+            wt_np = np.random.normal(0, scale, wt_shape).astype(np_dtype)
+    
+            in_mx, wt_mx = map(mx.array, (in_np, wt_np))
+    
+            in_pt, wt_pt = map(
+                lambda x: torch.from_numpy(np.moveaxis(x, -1, 1)).to("cpu"),
+                (in_np, wt_np),
+            )
+    
+            out_mx = mx.conv_general(
+                in_mx,
+                wt_mx,
+                stride=stride,
+                padding=padding,
+                kernel_dilation=kernel_dilation,
+                input_dilation=input_dilation,
+                groups=groups,
+                flip=flip,
+            )
+    
+            def conv_general_pt(
+                inp, wt, stride, padding, kernel_dilation, input_dilation, groups, flip
+            ):
+                C = inp.size()[1]
+                ndim = inp.ndim - 2
+                map_ints = lambda x: [x] * ndim if isinstance(x, int) else x
+    
+                stride, padding, kernel_dilation, input_dilation = map(
+                    map_ints, (stride, padding, kernel_dilation, input_dilation)
+                )
+    
+                torch_convt_list = (
+                    F.conv_transpose1d,
+                    F.conv_transpose2d,
+                    F.conv_transpose3d,
+                )
+                torch_conv_list = (F.conv1d, F.conv2d, F.conv3d)
+    
+                conv_f = torch_conv_list[ndim - 1]
+                convt_f = torch_convt_list[ndim - 1]
+    
+                if flip:
+                    wt = torch.flip(wt, tuple(np.arange(2, wt.ndim)))
+    
+                if not np.all(input_dilation == 1):
+                    ones = torch.ones(
+                        [C]
+                        + [
+                            1,
+                        ]
+                        * (ndim + 1)
+                    ).to(inp.dtype)
+                    inp = convt_f(inp, ones, stride=input_dilation, groups=C)
+    
+                return conv_f(
+                    inp,
+                    wt,
+                    stride=stride,
+                    padding=padding,
+                    dilation=kernel_dilation,
+                    groups=groups,
+                )
+    
+            out_pt = conv_general_pt(
+                in_pt,
+                wt_pt,
+                stride=stride,
+                padding=padding,
+                kernel_dilation=kernel_dilation,
+                input_dilation=input_dilation,
+                groups=groups,
+                flip=flip,
+            )
+    
+            out_pt = np.moveaxis(out_pt.numpy(), 1, -1)
+    
+            self.assertEqual(out_mx.shape, out_pt.shape)
+&gt;           self.assertTrue(np.allclose(out_mx, out_pt, atol=atol))
+                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_conv.py:808: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/home/joshuawarren/.local/lib/python3.11/site-packages/numpy/core/numeric.py:2241: in allclose
+    res = all(isclose(a, b, rtol=rtol, atol=atol, equal_nan=equal_nan))
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+a = &lt;[RuntimeError('[omarchy] transposed (flip) Convolution stride is not implemented for the Omarchy Vulkan backend (dtyp...rs. Run it on an explicit CPU stream to use the CPU implementation.') raised in repr()] array object at 0x739cb1463340&gt;
+b = array([[[[ 0.32487836, -0.21261393,  0.28185055, ..., -0.44712335,
+          -0.04326514,  0.14837778],
+         [ 0.1...       [ 0.14846385, -0.05297096, -0.4718708 , ...,  0.20477393,
+           0.27346185,  0.67460036]]]], dtype=float32)
+rtol = 1e-05, atol = 2e-05, equal_nan = False
+
+    @array_function_dispatch(_isclose_dispatcher)
+    def isclose(a, b, rtol=1.e-5, atol=1.e-8, equal_nan=False):
+        """
+        Returns a boolean array where two arrays are element-wise equal within a
+        tolerance.
+    
+        The tolerance values are positive, typically very small numbers.  The
+        relative difference (`rtol` * abs(`b`)) and the absolute difference
+        `atol` are added together to compare against the absolute difference
+        between `a` and `b`.
+    
+        .. warning:: The default `atol` is not appropriate for comparing numbers
+                     that are much smaller than one (see Notes).
+    
+        Parameters
+        ----------
+        a, b : array_like
+            Input arrays to compare.
+        rtol : float
+            The relative tolerance parameter (see Notes).
+        atol : float
+            The absolute tolerance parameter (see Notes).
+        equal_nan : bool
+            Whether to compare NaN's as equal.  If True, NaN's in `a` will be
+            considered equal to NaN's in `b` in the output array.
+    
+        Returns
+        -------
+        y : array_like
+            Returns a boolean array of where `a` and `b` are equal within the
+            given tolerance. If both `a` and `b` are scalars, returns a single
+            boolean value.
+    
+        See Also
+        --------
+        allclose
+        math.isclose
+    
+        Notes
+        -----
+        .. versionadded:: 1.7.0
+    
+        For finite values, isclose uses the following equation to test whether
+        two floating point values are equivalent.
+    
+         absolute(`a` - `b`) &lt;= (`atol` + `rtol` * absolute(`b`))
+    
+        Unlike the built-in `math.isclose`, the above equation is not symmetric
+        in `a` and `b` -- it assumes `b` is the reference value -- so that
+        `isclose(a, b)` might be different from `isclose(b, a)`. Furthermore,
+        the default value of atol is not zero, and is used to determine what
+        small values should be considered close to zero. The default value is
+        appropriate for expected values of order unity: if the expected values
+        are significantly smaller than one, it can result in false positives.
+        `atol` should be carefully selected for the use case at hand. A zero value
+        for `atol` will result in `False` if either `a` or `b` is zero.
+    
+        `isclose` is not defined for non-numeric data types.
+        `bool` is considered a numeric data-type for this purpose.
+    
+        Examples
+        --------
+        &gt;&gt;&gt; np.isclose([1e10,1e-7], [1.00001e10,1e-8])
+        array([ True, False])
+        &gt;&gt;&gt; np.isclose([1e10,1e-8], [1.00001e10,1e-9])
+        array([ True, True])
+        &gt;&gt;&gt; np.isclose([1e10,1e-8], [1.0001e10,1e-9])
+        array([False,  True])
+        &gt;&gt;&gt; np.isclose([1.0, np.nan], [1.0, np.nan])
+        array([ True, False])
+        &gt;&gt;&gt; np.isclose([1.0, np.nan], [1.0, np.nan], equal_nan=True)
+        array([ True, True])
+        &gt;&gt;&gt; np.isclose([1e-8, 1e-7], [0.0, 0.0])
+        array([ True, False])
+        &gt;&gt;&gt; np.isclose([1e-100, 1e-7], [0.0, 0.0], atol=0.0)
+        array([False, False])
+        &gt;&gt;&gt; np.isclose([1e-10, 1e-10], [1e-20, 0.0])
+        array([ True,  True])
+        &gt;&gt;&gt; np.isclose([1e-10, 1e-10], [1e-20, 0.999999e-10], atol=0.0)
+        array([False,  True])
+        """
+        def within_tol(x, y, atol, rtol):
+            with errstate(invalid='ignore'), _no_nep50_warning():
+                return less_equal(abs(x-y), atol + rtol * abs(y))
+    
+&gt;       x = asanyarray(a)
+            ^^^^^^^^^^^^^
+E       RuntimeError: [omarchy] transposed (flip) Convolution stride is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[1,8,8,32]). No GPU kernel exists for it; no silent CPU fallback occurs. Run it on an explicit CPU stream to use the CPU implementation.
+
+/home/joshuawarren/.local/lib/python3.11/site-packages/numpy/core/numeric.py:2334: RuntimeError</failure><failure message="RuntimeError: [omarchy] transposed (flip) Convolution stride is not implemented for the Omarchy Vulkan backend (dtype=float16, shape=[1,8,8,32]). No GPU kernel exists for it; no silent CPU fallback occurs. Run it on an explicit CPU stream to use the CPU implementation.">self = &lt;test_conv.TestConv testMethod=test_torch_conv_depthwise&gt;
+in_shape = (1, 16, 16, 32), wt_shape = (32, 3, 3, 1), stride = (2, 2)
+padding = (1, 1), kernel_dilation = 1, input_dilation = 1, groups = 32
+flip = True, np_dtype = &lt;class 'numpy.float16'&gt;, atol = 0.005
+
+    def __conv_general_test(
+        self,
+        in_shape,
+        wt_shape,
+        stride=1,
+        padding=0,
+        kernel_dilation=1,
+        input_dilation=1,
+        groups=1,
+        flip=False,
+        np_dtype=np.float32,
+        atol=1e-5,
+    ):
+        with self.subTest(
+            in_shape=in_shape,
+            wt_shape=wt_shape,
+            stride=stride,
+            padding=padding,
+            kernel_dilation=kernel_dilation,
+            input_dilation=input_dilation,
+            groups=groups,
+            flip=flip,
+            np_dtype=np_dtype,
+        ):
+            np.random.seed(0)
+            scale = 1.0 / math.sqrt(np.prod(wt_shape[1:]))
+            scale = min(0.3, scale)
+            in_np = np.random.normal(0, scale, in_shape).astype(np_dtype)
+            wt_np = np.random.normal(0, scale, wt_shape).astype(np_dtype)
+    
+            in_mx, wt_mx = map(mx.array, (in_np, wt_np))
+    
+            in_pt, wt_pt = map(
+                lambda x: torch.from_numpy(np.moveaxis(x, -1, 1)).to("cpu"),
+                (in_np, wt_np),
+            )
+    
+            out_mx = mx.conv_general(
+                in_mx,
+                wt_mx,
+                stride=stride,
+                padding=padding,
+                kernel_dilation=kernel_dilation,
+                input_dilation=input_dilation,
+                groups=groups,
+                flip=flip,
+            )
+    
+            def conv_general_pt(
+                inp, wt, stride, padding, kernel_dilation, input_dilation, groups, flip
+            ):
+                C = inp.size()[1]
+                ndim = inp.ndim - 2
+                map_ints = lambda x: [x] * ndim if isinstance(x, int) else x
+    
+                stride, padding, kernel_dilation, input_dilation = map(
+                    map_ints, (stride, padding, kernel_dilation, input_dilation)
+                )
+    
+                torch_convt_list = (
+                    F.conv_transpose1d,
+                    F.conv_transpose2d,
+                    F.conv_transpose3d,
+                )
+                torch_conv_list = (F.conv1d, F.conv2d, F.conv3d)
+    
+                conv_f = torch_conv_list[ndim - 1]
+                convt_f = torch_convt_list[ndim - 1]
+    
+                if flip:
+                    wt = torch.flip(wt, tuple(np.arange(2, wt.ndim)))
+    
+                if not np.all(input_dilation == 1):
+                    ones = torch.ones(
+                        [C]
+                        + [
+                            1,
+                        ]
+                        * (ndim + 1)
+                    ).to(inp.dtype)
+                    inp = convt_f(inp, ones, stride=input_dilation, groups=C)
+    
+                return conv_f(
+                    inp,
+                    wt,
+                    stride=stride,
+                    padding=padding,
+                    dilation=kernel_dilation,
+                    groups=groups,
+                )
+    
+            out_pt = conv_general_pt(
+                in_pt,
+                wt_pt,
+                stride=stride,
+                padding=padding,
+                kernel_dilation=kernel_dilation,
+                input_dilation=input_dilation,
+                groups=groups,
+                flip=flip,
+            )
+    
+            out_pt = np.moveaxis(out_pt.numpy(), 1, -1)
+    
+            self.assertEqual(out_mx.shape, out_pt.shape)
+&gt;           self.assertTrue(np.allclose(out_mx, out_pt, atol=atol))
+                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_conv.py:808: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/home/joshuawarren/.local/lib/python3.11/site-packages/numpy/core/numeric.py:2241: in allclose
+    res = all(isclose(a, b, rtol=rtol, atol=atol, equal_nan=equal_nan))
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+a = &lt;[RuntimeError('[omarchy] transposed (flip) Convolution stride is not implemented for the Omarchy Vulkan backend (dtyp...rs. Run it on an explicit CPU stream to use the CPU implementation.') raised in repr()] array object at 0x739cb1463340&gt;
+b = array([[[[ 0.325   , -0.2128  ,  0.282   , ..., -0.4473  , -0.04327 ,
+           0.1484  ],
+         [ 0.1136  , -0.10....03653 ],
+         [ 0.1484  , -0.05292 , -0.4717  , ...,  0.2047  ,  0.2734  ,
+           0.675   ]]]], dtype=float16)
+rtol = 1e-05, atol = 0.005, equal_nan = False
+
+    @array_function_dispatch(_isclose_dispatcher)
+    def isclose(a, b, rtol=1.e-5, atol=1.e-8, equal_nan=False):
+        """
+        Returns a boolean array where two arrays are element-wise equal within a
+        tolerance.
+    
+        The tolerance values are positive, typically very small numbers.  The
+        relative difference (`rtol` * abs(`b`)) and the absolute difference
+        `atol` are added together to compare against the absolute difference
+        between `a` and `b`.
+    
+        .. warning:: The default `atol` is not appropriate for comparing numbers
+                     that are much smaller than one (see Notes).
+    
+        Parameters
+        ----------
+        a, b : array_like
+            Input arrays to compare.
+        rtol : float
+            The relative tolerance parameter (see Notes).
+        atol : float
+            The absolute tolerance parameter (see Notes).
+        equal_nan : bool
+            Whether to compare NaN's as equal.  If True, NaN's in `a` will be
+            considered equal to NaN's in `b` in the output array.
+    
+        Returns
+        -------
+        y : array_like
+            Returns a boolean array of where `a` and `b` are equal within the
+            given tolerance. If both `a` and `b` are scalars, returns a single
+            boolean value.
+    
+        See Also
+        --------
+        allclose
+        math.isclose
+    
+        Notes
+        -----
+        .. versionadded:: 1.7.0
+    
+        For finite values, isclose uses the following equation to test whether
+        two floating point values are equivalent.
+    
+         absolute(`a` - `b`) &lt;= (`atol` + `rtol` * absolute(`b`))
+    
+        Unlike the built-in `math.isclose`, the above equation is not symmetric
+        in `a` and `b` -- it assumes `b` is the reference value -- so that
+        `isclose(a, b)` might be different from `isclose(b, a)`. Furthermore,
+        the default value of atol is not zero, and is used to determine what
+        small values should be considered close to zero. The default value is
+        appropriate for expected values of order unity: if the expected values
+        are significantly smaller than one, it can result in false positives.
+        `atol` should be carefully selected for the use case at hand. A zero value
+        for `atol` will result in `False` if either `a` or `b` is zero.
+    
+        `isclose` is not defined for non-numeric data types.
+        `bool` is considered a numeric data-type for this purpose.
+    
+        Examples
+        --------
+        &gt;&gt;&gt; np.isclose([1e10,1e-7], [1.00001e10,1e-8])
+        array([ True, False])
+        &gt;&gt;&gt; np.isclose([1e10,1e-8], [1.00001e10,1e-9])
+        array([ True, True])
+        &gt;&gt;&gt; np.isclose([1e10,1e-8], [1.0001e10,1e-9])
+        array([False,  True])
+        &gt;&gt;&gt; np.isclose([1.0, np.nan], [1.0, np.nan])
+        array([ True, False])
+        &gt;&gt;&gt; np.isclose([1.0, np.nan], [1.0, np.nan], equal_nan=True)
+        array([ True, True])
+        &gt;&gt;&gt; np.isclose([1e-8, 1e-7], [0.0, 0.0])
+        array([ True, False])
+        &gt;&gt;&gt; np.isclose([1e-100, 1e-7], [0.0, 0.0], atol=0.0)
+        array([False, False])
+        &gt;&gt;&gt; np.isclose([1e-10, 1e-10], [1e-20, 0.0])
+        array([ True,  True])
+        &gt;&gt;&gt; np.isclose([1e-10, 1e-10], [1e-20, 0.999999e-10], atol=0.0)
+        array([False,  True])
+        """
+        def within_tol(x, y, atol, rtol):
+            with errstate(invalid='ignore'), _no_nep50_warning():
+                return less_equal(abs(x-y), atol + rtol * abs(y))
+    
+&gt;       x = asanyarray(a)
+            ^^^^^^^^^^^^^
+E       RuntimeError: [omarchy] transposed (flip) Convolution stride is not implemented for the Omarchy Vulkan backend (dtype=float16, shape=[1,8,8,32]). No GPU kernel exists for it; no silent CPU fallback occurs. Run it on an explicit CPU stream to use the CPU implementation.
+
+/home/joshuawarren/.local/lib/python3.11/site-packages/numpy/core/numeric.py:2334: RuntimeError</failure><failure message="RuntimeError: [omarchy] transposed (flip) Convolution stride is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[3,28,14,32]). No GPU kernel exists for it; no silent CPU fallback occurs. Run it on an explicit CPU stream to use the CPU implementation.">self = &lt;test_conv.TestConv testMethod=test_torch_conv_depthwise&gt;
+in_shape = (3, 32, 32, 32), wt_shape = (32, 5, 5, 1), stride = (1, 2)
+padding = (0, 0), kernel_dilation = 1, input_dilation = 1, groups = 32
+flip = True, np_dtype = &lt;class 'numpy.float32'&gt;, atol = 2e-05
+
+    def __conv_general_test(
+        self,
+        in_shape,
+        wt_shape,
+        stride=1,
+        padding=0,
+        kernel_dilation=1,
+        input_dilation=1,
+        groups=1,
+        flip=False,
+        np_dtype=np.float32,
+        atol=1e-5,
+    ):
+        with self.subTest(
+            in_shape=in_shape,
+            wt_shape=wt_shape,
+            stride=stride,
+            padding=padding,
+            kernel_dilation=kernel_dilation,
+            input_dilation=input_dilation,
+            groups=groups,
+            flip=flip,
+            np_dtype=np_dtype,
+        ):
+            np.random.seed(0)
+            scale = 1.0 / math.sqrt(np.prod(wt_shape[1:]))
+            scale = min(0.3, scale)
+            in_np = np.random.normal(0, scale, in_shape).astype(np_dtype)
+            wt_np = np.random.normal(0, scale, wt_shape).astype(np_dtype)
+    
+            in_mx, wt_mx = map(mx.array, (in_np, wt_np))
+    
+            in_pt, wt_pt = map(
+                lambda x: torch.from_numpy(np.moveaxis(x, -1, 1)).to("cpu"),
+                (in_np, wt_np),
+            )
+    
+            out_mx = mx.conv_general(
+                in_mx,
+                wt_mx,
+                stride=stride,
+                padding=padding,
+                kernel_dilation=kernel_dilation,
+                input_dilation=input_dilation,
+                groups=groups,
+                flip=flip,
+            )
+    
+            def conv_general_pt(
+                inp, wt, stride, padding, kernel_dilation, input_dilation, groups, flip
+            ):
+                C = inp.size()[1]
+                ndim = inp.ndim - 2
+                map_ints = lambda x: [x] * ndim if isinstance(x, int) else x
+    
+                stride, padding, kernel_dilation, input_dilation = map(
+                    map_ints, (stride, padding, kernel_dilation, input_dilation)
+                )
+    
+                torch_convt_list = (
+                    F.conv_transpose1d,
+                    F.conv_transpose2d,
+                    F.conv_transpose3d,
+                )
+                torch_conv_list = (F.conv1d, F.conv2d, F.conv3d)
+    
+                conv_f = torch_conv_list[ndim - 1]
+                convt_f = torch_convt_list[ndim - 1]
+    
+                if flip:
+                    wt = torch.flip(wt, tuple(np.arange(2, wt.ndim)))
+    
+                if not np.all(input_dilation == 1):
+                    ones = torch.ones(
+                        [C]
+                        + [
+                            1,
+                        ]
+                        * (ndim + 1)
+                    ).to(inp.dtype)
+                    inp = convt_f(inp, ones, stride=input_dilation, groups=C)
+    
+                return conv_f(
+                    inp,
+                    wt,
+                    stride=stride,
+                    padding=padding,
+                    dilation=kernel_dilation,
+                    groups=groups,
+                )
+    
+            out_pt = conv_general_pt(
+                in_pt,
+                wt_pt,
+                stride=stride,
+                padding=padding,
+                kernel_dilation=kernel_dilation,
+                input_dilation=input_dilation,
+                groups=groups,
+                flip=flip,
+            )
+    
+            out_pt = np.moveaxis(out_pt.numpy(), 1, -1)
+    
+            self.assertEqual(out_mx.shape, out_pt.shape)
+&gt;           self.assertTrue(np.allclose(out_mx, out_pt, atol=atol))
+                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_conv.py:808: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/home/joshuawarren/.local/lib/python3.11/site-packages/numpy/core/numeric.py:2241: in allclose
+    res = all(isclose(a, b, rtol=rtol, atol=atol, equal_nan=equal_nan))
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+a = &lt;[RuntimeError('[omarchy] transposed (flip) Convolution stride is not implemented for the Omarchy Vulkan backend (dtyp...rs. Run it on an explicit CPU stream to use the CPU implementation.') raised in repr()] array object at 0x739cb1463340&gt;
+b = array([[[[ 1.49518833e-01,  2.71373004e-01, -1.33951351e-01, ...,
+           5.18853068e-02, -1.40427068e-01, -1.47634...503163e-01, -2.18304321e-01, ...,
+           2.68501937e-01, -6.07854687e-02, -3.69011402e-01]]]],
+      dtype=float32)
+rtol = 1e-05, atol = 2e-05, equal_nan = False
+
+    @array_function_dispatch(_isclose_dispatcher)
+    def isclose(a, b, rtol=1.e-5, atol=1.e-8, equal_nan=False):
+        """
+        Returns a boolean array where two arrays are element-wise equal within a
+        tolerance.
+    
+        The tolerance values are positive, typically very small numbers.  The
+        relative difference (`rtol` * abs(`b`)) and the absolute difference
+        `atol` are added together to compare against the absolute difference
+        between `a` and `b`.
+    
+        .. warning:: The default `atol` is not appropriate for comparing numbers
+                     that are much smaller than one (see Notes).
+    
+        Parameters
+        ----------
+        a, b : array_like
+            Input arrays to compare.
+        rtol : float
+            The relative tolerance parameter (see Notes).
+        atol : float
+            The absolute tolerance parameter (see Notes).
+        equal_nan : bool
+            Whether to compare NaN's as equal.  If True, NaN's in `a` will be
+            considered equal to NaN's in `b` in the output array.
+    
+        Returns
+        -------
+        y : array_like
+            Returns a boolean array of where `a` and `b` are equal within the
+            given tolerance. If both `a` and `b` are scalars, returns a single
+            boolean value.
+    
+        See Also
+        --------
+        allclose
+        math.isclose
+    
+        Notes
+        -----
+        .. versionadded:: 1.7.0
+    
+        For finite values, isclose uses the following equation to test whether
+        two floating point values are equivalent.
+    
+         absolute(`a` - `b`) &lt;= (`atol` + `rtol` * absolute(`b`))
+    
+        Unlike the built-in `math.isclose`, the above equation is not symmetric
+        in `a` and `b` -- it assumes `b` is the reference value -- so that
+        `isclose(a, b)` might be different from `isclose(b, a)`. Furthermore,
+        the default value of atol is not zero, and is used to determine what
+        small values should be considered close to zero. The default value is
+        appropriate for expected values of order unity: if the expected values
+        are significantly smaller than one, it can result in false positives.
+        `atol` should be carefully selected for the use case at hand. A zero value
+        for `atol` will result in `False` if either `a` or `b` is zero.
+    
+        `isclose` is not defined for non-numeric data types.
+        `bool` is considered a numeric data-type for this purpose.
+    
+        Examples
+        --------
+        &gt;&gt;&gt; np.isclose([1e10,1e-7], [1.00001e10,1e-8])
+        array([ True, False])
+        &gt;&gt;&gt; np.isclose([1e10,1e-8], [1.00001e10,1e-9])
+        array([ True, True])
+        &gt;&gt;&gt; np.isclose([1e10,1e-8], [1.0001e10,1e-9])
+        array([False,  True])
+        &gt;&gt;&gt; np.isclose([1.0, np.nan], [1.0, np.nan])
+        array([ True, False])
+        &gt;&gt;&gt; np.isclose([1.0, np.nan], [1.0, np.nan], equal_nan=True)
+        array([ True, True])
+        &gt;&gt;&gt; np.isclose([1e-8, 1e-7], [0.0, 0.0])
+        array([ True, False])
+        &gt;&gt;&gt; np.isclose([1e-100, 1e-7], [0.0, 0.0], atol=0.0)
+        array([False, False])
+        &gt;&gt;&gt; np.isclose([1e-10, 1e-10], [1e-20, 0.0])
+        array([ True,  True])
+        &gt;&gt;&gt; np.isclose([1e-10, 1e-10], [1e-20, 0.999999e-10], atol=0.0)
+        array([False,  True])
+        """
+        def within_tol(x, y, atol, rtol):
+            with errstate(invalid='ignore'), _no_nep50_warning():
+                return less_equal(abs(x-y), atol + rtol * abs(y))
+    
+&gt;       x = asanyarray(a)
+            ^^^^^^^^^^^^^
+E       RuntimeError: [omarchy] transposed (flip) Convolution stride is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[3,28,14,32]). No GPU kernel exists for it; no silent CPU fallback occurs. Run it on an explicit CPU stream to use the CPU implementation.
+
+/home/joshuawarren/.local/lib/python3.11/site-packages/numpy/core/numeric.py:2334: RuntimeError</failure><failure message="RuntimeError: [omarchy] transposed (flip) Convolution stride is not implemented for the Omarchy Vulkan backend (dtype=float16, shape=[3,28,14,32]). No GPU kernel exists for it; no silent CPU fallback occurs. Run it on an explicit CPU stream to use the CPU implementation.">self = &lt;test_conv.TestConv testMethod=test_torch_conv_depthwise&gt;
+in_shape = (3, 32, 32, 32), wt_shape = (32, 5, 5, 1), stride = (1, 2)
+padding = (0, 0), kernel_dilation = 1, input_dilation = 1, groups = 32
+flip = True, np_dtype = &lt;class 'numpy.float16'&gt;, atol = 0.005
+
+    def __conv_general_test(
+        self,
+        in_shape,
+        wt_shape,
+        stride=1,
+        padding=0,
+        kernel_dilation=1,
+        input_dilation=1,
+        groups=1,
+        flip=False,
+        np_dtype=np.float32,
+        atol=1e-5,
+    ):
+        with self.subTest(
+            in_shape=in_shape,
+            wt_shape=wt_shape,
+            stride=stride,
+            padding=padding,
+            kernel_dilation=kernel_dilation,
+            input_dilation=input_dilation,
+            groups=groups,
+            flip=flip,
+            np_dtype=np_dtype,
+        ):
+            np.random.seed(0)
+            scale = 1.0 / math.sqrt(np.prod(wt_shape[1:]))
+            scale = min(0.3, scale)
+            in_np = np.random.normal(0, scale, in_shape).astype(np_dtype)
+            wt_np = np.random.normal(0, scale, wt_shape).astype(np_dtype)
+    
+            in_mx, wt_mx = map(mx.array, (in_np, wt_np))
+    
+            in_pt, wt_pt = map(
+                lambda x: torch.from_numpy(np.moveaxis(x, -1, 1)).to("cpu"),
+                (in_np, wt_np),
+            )
+    
+            out_mx = mx.conv_general(
+                in_mx,
+                wt_mx,
+                stride=stride,
+                padding=padding,
+                kernel_dilation=kernel_dilation,
+                input_dilation=input_dilation,
+                groups=groups,
+                flip=flip,
+            )
+    
+            def conv_general_pt(
+                inp, wt, stride, padding, kernel_dilation, input_dilation, groups, flip
+            ):
+                C = inp.size()[1]
+                ndim = inp.ndim - 2
+                map_ints = lambda x: [x] * ndim if isinstance(x, int) else x
+    
+                stride, padding, kernel_dilation, input_dilation = map(
+                    map_ints, (stride, padding, kernel_dilation, input_dilation)
+                )
+    
+                torch_convt_list = (
+                    F.conv_transpose1d,
+                    F.conv_transpose2d,
+                    F.conv_transpose3d,
+                )
+                torch_conv_list = (F.conv1d, F.conv2d, F.conv3d)
+    
+                conv_f = torch_conv_list[ndim - 1]
+                convt_f = torch_convt_list[ndim - 1]
+    
+                if flip:
+                    wt = torch.flip(wt, tuple(np.arange(2, wt.ndim)))
+    
+                if not np.all(input_dilation == 1):
+                    ones = torch.ones(
+                        [C]
+                        + [
+                            1,
+                        ]
+                        * (ndim + 1)
+                    ).to(inp.dtype)
+                    inp = convt_f(inp, ones, stride=input_dilation, groups=C)
+    
+                return conv_f(
+                    inp,
+                    wt,
+                    stride=stride,
+                    padding=padding,
+                    dilation=kernel_dilation,
+                    groups=groups,
+                )
+    
+            out_pt = conv_general_pt(
+                in_pt,
+                wt_pt,
+                stride=stride,
+                padding=padding,
+                kernel_dilation=kernel_dilation,
+                input_dilation=input_dilation,
+                groups=groups,
+                flip=flip,
+            )
+    
+            out_pt = np.moveaxis(out_pt.numpy(), 1, -1)
+    
+            self.assertEqual(out_mx.shape, out_pt.shape)
+&gt;           self.assertTrue(np.allclose(out_mx, out_pt, atol=atol))
+                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_conv.py:808: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/home/joshuawarren/.local/lib/python3.11/site-packages/numpy/core/numeric.py:2241: in allclose
+    res = all(isclose(a, b, rtol=rtol, atol=atol, equal_nan=equal_nan))
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+a = &lt;[RuntimeError('[omarchy] transposed (flip) Convolution stride is not implemented for the Omarchy Vulkan backend (dtyp...rs. Run it on an explicit CPU stream to use the CPU implementation.') raised in repr()] array object at 0x739cb1463340&gt;
+b = array([[[[ 1.4941e-01,  2.7148e-01, -1.3403e-01, ...,  5.1910e-02,
+          -1.4038e-01, -1.4758e-01],
+         [ 4.1...       [ 1.2622e-01,  1.2360e-01, -2.1838e-01, ...,  2.6855e-01,
+          -6.0699e-02, -3.6890e-01]]]], dtype=float16)
+rtol = 1e-05, atol = 0.005, equal_nan = False
+
+    @array_function_dispatch(_isclose_dispatcher)
+    def isclose(a, b, rtol=1.e-5, atol=1.e-8, equal_nan=False):
+        """
+        Returns a boolean array where two arrays are element-wise equal within a
+        tolerance.
+    
+        The tolerance values are positive, typically very small numbers.  The
+        relative difference (`rtol` * abs(`b`)) and the absolute difference
+        `atol` are added together to compare against the absolute difference
+        between `a` and `b`.
+    
+        .. warning:: The default `atol` is not appropriate for comparing numbers
+                     that are much smaller than one (see Notes).
+    
+        Parameters
+        ----------
+        a, b : array_like
+            Input arrays to compare.
+        rtol : float
+            The relative tolerance parameter (see Notes).
+        atol : float
+            The absolute tolerance parameter (see Notes).
+        equal_nan : bool
+            Whether to compare NaN's as equal.  If True, NaN's in `a` will be
+            considered equal to NaN's in `b` in the output array.
+    
+        Returns
+        -------
+        y : array_like
+            Returns a boolean array of where `a` and `b` are equal within the
+            given tolerance. If both `a` and `b` are scalars, returns a single
+            boolean value.
+    
+        See Also
+        --------
+        allclose
+        math.isclose
+    
+        Notes
+        -----
+        .. versionadded:: 1.7.0
+    
+        For finite values, isclose uses the following equation to test whether
+        two floating point values are equivalent.
+    
+         absolute(`a` - `b`) &lt;= (`atol` + `rtol` * absolute(`b`))
+    
+        Unlike the built-in `math.isclose`, the above equation is not symmetric
+        in `a` and `b` -- it assumes `b` is the reference value -- so that
+        `isclose(a, b)` might be different from `isclose(b, a)`. Furthermore,
+        the default value of atol is not zero, and is used to determine what
+        small values should be considered close to zero. The default value is
+        appropriate for expected values of order unity: if the expected values
+        are significantly smaller than one, it can result in false positives.
+        `atol` should be carefully selected for the use case at hand. A zero value
+        for `atol` will result in `False` if either `a` or `b` is zero.
+    
+        `isclose` is not defined for non-numeric data types.
+        `bool` is considered a numeric data-type for this purpose.
+    
+        Examples
+        --------
+        &gt;&gt;&gt; np.isclose([1e10,1e-7], [1.00001e10,1e-8])
+        array([ True, False])
+        &gt;&gt;&gt; np.isclose([1e10,1e-8], [1.00001e10,1e-9])
+        array([ True, True])
+        &gt;&gt;&gt; np.isclose([1e10,1e-8], [1.0001e10,1e-9])
+        array([False,  True])
+        &gt;&gt;&gt; np.isclose([1.0, np.nan], [1.0, np.nan])
+        array([ True, False])
+        &gt;&gt;&gt; np.isclose([1.0, np.nan], [1.0, np.nan], equal_nan=True)
+        array([ True, True])
+        &gt;&gt;&gt; np.isclose([1e-8, 1e-7], [0.0, 0.0])
+        array([ True, False])
+        &gt;&gt;&gt; np.isclose([1e-100, 1e-7], [0.0, 0.0], atol=0.0)
+        array([False, False])
+        &gt;&gt;&gt; np.isclose([1e-10, 1e-10], [1e-20, 0.0])
+        array([ True,  True])
+        &gt;&gt;&gt; np.isclose([1e-10, 1e-10], [1e-20, 0.999999e-10], atol=0.0)
+        array([False,  True])
+        """
+        def within_tol(x, y, atol, rtol):
+            with errstate(invalid='ignore'), _no_nep50_warning():
+                return less_equal(abs(x-y), atol + rtol * abs(y))
+    
+&gt;       x = asanyarray(a)
+            ^^^^^^^^^^^^^
+E       RuntimeError: [omarchy] transposed (flip) Convolution stride is not implemented for the Omarchy Vulkan backend (dtype=float16, shape=[3,28,14,32]). No GPU kernel exists for it; no silent CPU fallback occurs. Run it on an explicit CPU stream to use the CPU implementation.
+
+/home/joshuawarren/.local/lib/python3.11/site-packages/numpy/core/numeric.py:2334: RuntimeError</failure><failure message="RuntimeError: [omarchy] transposed (flip) Convolution stride is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[1,14,32,32]). No GPU kernel exists for it; no silent CPU fallback occurs. Run it on an explicit CPU stream to use the CPU implementation.">self = &lt;test_conv.TestConv testMethod=test_torch_conv_depthwise&gt;
+in_shape = (1, 32, 32, 32), wt_shape = (32, 7, 7, 1), stride = (2, 1)
+padding = (1, 3), kernel_dilation = 1, input_dilation = 1, groups = 32
+flip = True, np_dtype = &lt;class 'numpy.float32'&gt;, atol = 2e-05
+
+    def __conv_general_test(
+        self,
+        in_shape,
+        wt_shape,
+        stride=1,
+        padding=0,
+        kernel_dilation=1,
+        input_dilation=1,
+        groups=1,
+        flip=False,
+        np_dtype=np.float32,
+        atol=1e-5,
+    ):
+        with self.subTest(
+            in_shape=in_shape,
+            wt_shape=wt_shape,
+            stride=stride,
+            padding=padding,
+            kernel_dilation=kernel_dilation,
+            input_dilation=input_dilation,
+            groups=groups,
+            flip=flip,
+            np_dtype=np_dtype,
+        ):
+            np.random.seed(0)
+            scale = 1.0 / math.sqrt(np.prod(wt_shape[1:]))
+            scale = min(0.3, scale)
+            in_np = np.random.normal(0, scale, in_shape).astype(np_dtype)
+            wt_np = np.random.normal(0, scale, wt_shape).astype(np_dtype)
+    
+            in_mx, wt_mx = map(mx.array, (in_np, wt_np))
+    
+            in_pt, wt_pt = map(
+                lambda x: torch.from_numpy(np.moveaxis(x, -1, 1)).to("cpu"),
+                (in_np, wt_np),
+            )
+    
+            out_mx = mx.conv_general(
+                in_mx,
+                wt_mx,
+                stride=stride,
+                padding=padding,
+                kernel_dilation=kernel_dilation,
+                input_dilation=input_dilation,
+                groups=groups,
+                flip=flip,
+            )
+    
+            def conv_general_pt(
+                inp, wt, stride, padding, kernel_dilation, input_dilation, groups, flip
+            ):
+                C = inp.size()[1]
+                ndim = inp.ndim - 2
+                map_ints = lambda x: [x] * ndim if isinstance(x, int) else x
+    
+                stride, padding, kernel_dilation, input_dilation = map(
+                    map_ints, (stride, padding, kernel_dilation, input_dilation)
+                )
+    
+                torch_convt_list = (
+                    F.conv_transpose1d,
+                    F.conv_transpose2d,
+                    F.conv_transpose3d,
+                )
+                torch_conv_list = (F.conv1d, F.conv2d, F.conv3d)
+    
+                conv_f = torch_conv_list[ndim - 1]
+                convt_f = torch_convt_list[ndim - 1]
+    
+                if flip:
+                    wt = torch.flip(wt, tuple(np.arange(2, wt.ndim)))
+    
+                if not np.all(input_dilation == 1):
+                    ones = torch.ones(
+                        [C]
+                        + [
+                            1,
+                        ]
+                        * (ndim + 1)
+                    ).to(inp.dtype)
+                    inp = convt_f(inp, ones, stride=input_dilation, groups=C)
+    
+                return conv_f(
+                    inp,
+                    wt,
+                    stride=stride,
+                    padding=padding,
+                    dilation=kernel_dilation,
+                    groups=groups,
+                )
+    
+            out_pt = conv_general_pt(
+                in_pt,
+                wt_pt,
+                stride=stride,
+                padding=padding,
+                kernel_dilation=kernel_dilation,
+                input_dilation=input_dilation,
+                groups=groups,
+                flip=flip,
+            )
+    
+            out_pt = np.moveaxis(out_pt.numpy(), 1, -1)
+    
+            self.assertEqual(out_mx.shape, out_pt.shape)
+&gt;           self.assertTrue(np.allclose(out_mx, out_pt, atol=atol))
+                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_conv.py:808: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/home/joshuawarren/.local/lib/python3.11/site-packages/numpy/core/numeric.py:2241: in allclose
+    res = all(isclose(a, b, rtol=rtol, atol=atol, equal_nan=equal_nan))
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+a = &lt;[RuntimeError('[omarchy] transposed (flip) Convolution stride is not implemented for the Omarchy Vulkan backend (dtyp...rs. Run it on an explicit CPU stream to use the CPU implementation.') raised in repr()] array object at 0x739cb1463340&gt;
+b = array([[[[-0.15894552,  0.02451135,  0.1282881 , ..., -0.09229907,
+           0.04379044, -0.06617706],
+         [ 0.1...       [ 0.14350134,  0.10140761,  0.08221333, ...,  0.03276531,
+          -0.17322002,  0.05215847]]]], dtype=float32)
+rtol = 1e-05, atol = 2e-05, equal_nan = False
+
+    @array_function_dispatch(_isclose_dispatcher)
+    def isclose(a, b, rtol=1.e-5, atol=1.e-8, equal_nan=False):
+        """
+        Returns a boolean array where two arrays are element-wise equal within a
+        tolerance.
+    
+        The tolerance values are positive, typically very small numbers.  The
+        relative difference (`rtol` * abs(`b`)) and the absolute difference
+        `atol` are added together to compare against the absolute difference
+        between `a` and `b`.
+    
+        .. warning:: The default `atol` is not appropriate for comparing numbers
+                     that are much smaller than one (see Notes).
+    
+        Parameters
+        ----------
+        a, b : array_like
+            Input arrays to compare.
+        rtol : float
+            The relative tolerance parameter (see Notes).
+        atol : float
+            The absolute tolerance parameter (see Notes).
+        equal_nan : bool
+            Whether to compare NaN's as equal.  If True, NaN's in `a` will be
+            considered equal to NaN's in `b` in the output array.
+    
+        Returns
+        -------
+        y : array_like
+            Returns a boolean array of where `a` and `b` are equal within the
+            given tolerance. If both `a` and `b` are scalars, returns a single
+            boolean value.
+    
+        See Also
+        --------
+        allclose
+        math.isclose
+    
+        Notes
+        -----
+        .. versionadded:: 1.7.0
+    
+        For finite values, isclose uses the following equation to test whether
+        two floating point values are equivalent.
+    
+         absolute(`a` - `b`) &lt;= (`atol` + `rtol` * absolute(`b`))
+    
+        Unlike the built-in `math.isclose`, the above equation is not symmetric
+        in `a` and `b` -- it assumes `b` is the reference value -- so that
+        `isclose(a, b)` might be different from `isclose(b, a)`. Furthermore,
+        the default value of atol is not zero, and is used to determine what
+        small values should be considered close to zero. The default value is
+        appropriate for expected values of order unity: if the expected values
+        are significantly smaller than one, it can result in false positives.
+        `atol` should be carefully selected for the use case at hand. A zero value
+        for `atol` will result in `False` if either `a` or `b` is zero.
+    
+        `isclose` is not defined for non-numeric data types.
+        `bool` is considered a numeric data-type for this purpose.
+    
+        Examples
+        --------
+        &gt;&gt;&gt; np.isclose([1e10,1e-7], [1.00001e10,1e-8])
+        array([ True, False])
+        &gt;&gt;&gt; np.isclose([1e10,1e-8], [1.00001e10,1e-9])
+        array([ True, True])
+        &gt;&gt;&gt; np.isclose([1e10,1e-8], [1.0001e10,1e-9])
+        array([False,  True])
+        &gt;&gt;&gt; np.isclose([1.0, np.nan], [1.0, np.nan])
+        array([ True, False])
+        &gt;&gt;&gt; np.isclose([1.0, np.nan], [1.0, np.nan], equal_nan=True)
+        array([ True, True])
+        &gt;&gt;&gt; np.isclose([1e-8, 1e-7], [0.0, 0.0])
+        array([ True, False])
+        &gt;&gt;&gt; np.isclose([1e-100, 1e-7], [0.0, 0.0], atol=0.0)
+        array([False, False])
+        &gt;&gt;&gt; np.isclose([1e-10, 1e-10], [1e-20, 0.0])
+        array([ True,  True])
+        &gt;&gt;&gt; np.isclose([1e-10, 1e-10], [1e-20, 0.999999e-10], atol=0.0)
+        array([False,  True])
+        """
+        def within_tol(x, y, atol, rtol):
+            with errstate(invalid='ignore'), _no_nep50_warning():
+                return less_equal(abs(x-y), atol + rtol * abs(y))
+    
+&gt;       x = asanyarray(a)
+            ^^^^^^^^^^^^^
+E       RuntimeError: [omarchy] transposed (flip) Convolution stride is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[1,14,32,32]). No GPU kernel exists for it; no silent CPU fallback occurs. Run it on an explicit CPU stream to use the CPU implementation.
+
+/home/joshuawarren/.local/lib/python3.11/site-packages/numpy/core/numeric.py:2334: RuntimeError</failure><failure message="RuntimeError: [omarchy] transposed (flip) Convolution stride is not implemented for the Omarchy Vulkan backend (dtype=float16, shape=[1,14,32,32]). No GPU kernel exists for it; no silent CPU fallback occurs. Run it on an explicit CPU stream to use the CPU implementation.">self = &lt;test_conv.TestConv testMethod=test_torch_conv_depthwise&gt;
+in_shape = (1, 32, 32, 32), wt_shape = (32, 7, 7, 1), stride = (2, 1)
+padding = (1, 3), kernel_dilation = 1, input_dilation = 1, groups = 32
+flip = True, np_dtype = &lt;class 'numpy.float16'&gt;, atol = 0.005
+
+    def __conv_general_test(
+        self,
+        in_shape,
+        wt_shape,
+        stride=1,
+        padding=0,
+        kernel_dilation=1,
+        input_dilation=1,
+        groups=1,
+        flip=False,
+        np_dtype=np.float32,
+        atol=1e-5,
+    ):
+        with self.subTest(
+            in_shape=in_shape,
+            wt_shape=wt_shape,
+            stride=stride,
+            padding=padding,
+            kernel_dilation=kernel_dilation,
+            input_dilation=input_dilation,
+            groups=groups,
+            flip=flip,
+            np_dtype=np_dtype,
+        ):
+            np.random.seed(0)
+            scale = 1.0 / math.sqrt(np.prod(wt_shape[1:]))
+            scale = min(0.3, scale)
+            in_np = np.random.normal(0, scale, in_shape).astype(np_dtype)
+            wt_np = np.random.normal(0, scale, wt_shape).astype(np_dtype)
+    
+            in_mx, wt_mx = map(mx.array, (in_np, wt_np))
+    
+            in_pt, wt_pt = map(
+                lambda x: torch.from_numpy(np.moveaxis(x, -1, 1)).to("cpu"),
+                (in_np, wt_np),
+            )
+    
+            out_mx = mx.conv_general(
+                in_mx,
+                wt_mx,
+                stride=stride,
+                padding=padding,
+                kernel_dilation=kernel_dilation,
+                input_dilation=input_dilation,
+                groups=groups,
+                flip=flip,
+            )
+    
+            def conv_general_pt(
+                inp, wt, stride, padding, kernel_dilation, input_dilation, groups, flip
+            ):
+                C = inp.size()[1]
+                ndim = inp.ndim - 2
+                map_ints = lambda x: [x] * ndim if isinstance(x, int) else x
+    
+                stride, padding, kernel_dilation, input_dilation = map(
+                    map_ints, (stride, padding, kernel_dilation, input_dilation)
+                )
+    
+                torch_convt_list = (
+                    F.conv_transpose1d,
+                    F.conv_transpose2d,
+                    F.conv_transpose3d,
+                )
+                torch_conv_list = (F.conv1d, F.conv2d, F.conv3d)
+    
+                conv_f = torch_conv_list[ndim - 1]
+                convt_f = torch_convt_list[ndim - 1]
+    
+                if flip:
+                    wt = torch.flip(wt, tuple(np.arange(2, wt.ndim)))
+    
+                if not np.all(input_dilation == 1):
+                    ones = torch.ones(
+                        [C]
+                        + [
+                            1,
+                        ]
+                        * (ndim + 1)
+                    ).to(inp.dtype)
+                    inp = convt_f(inp, ones, stride=input_dilation, groups=C)
+    
+                return conv_f(
+                    inp,
+                    wt,
+                    stride=stride,
+                    padding=padding,
+                    dilation=kernel_dilation,
+                    groups=groups,
+                )
+    
+            out_pt = conv_general_pt(
+                in_pt,
+                wt_pt,
+                stride=stride,
+                padding=padding,
+                kernel_dilation=kernel_dilation,
+                input_dilation=input_dilation,
+                groups=groups,
+                flip=flip,
+            )
+    
+            out_pt = np.moveaxis(out_pt.numpy(), 1, -1)
+    
+            self.assertEqual(out_mx.shape, out_pt.shape)
+&gt;           self.assertTrue(np.allclose(out_mx, out_pt, atol=atol))
+                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_conv.py:808: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/home/joshuawarren/.local/lib/python3.11/site-packages/numpy/core/numeric.py:2241: in allclose
+    res = all(isclose(a, b, rtol=rtol, atol=atol, equal_nan=equal_nan))
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+a = &lt;[RuntimeError('[omarchy] transposed (flip) Convolution stride is not implemented for the Omarchy Vulkan backend (dtyp...rs. Run it on an explicit CPU stream to use the CPU implementation.') raised in repr()] array object at 0x739cb1463340&gt;
+b = array([[[[-0.1589   ,  0.0245   ,  0.1283   , ..., -0.09235  ,
+           0.04373  , -0.0662   ],
+         [ 0.1088   ... ],
+         [ 0.1434   ,  0.1014   ,  0.0822   , ...,  0.03278  ,
+          -0.1732   ,  0.05212  ]]]], dtype=float16)
+rtol = 1e-05, atol = 0.005, equal_nan = False
+
+    @array_function_dispatch(_isclose_dispatcher)
+    def isclose(a, b, rtol=1.e-5, atol=1.e-8, equal_nan=False):
+        """
+        Returns a boolean array where two arrays are element-wise equal within a
+        tolerance.
+    
+        The tolerance values are positive, typically very small numbers.  The
+        relative difference (`rtol` * abs(`b`)) and the absolute difference
+        `atol` are added together to compare against the absolute difference
+        between `a` and `b`.
+    
+        .. warning:: The default `atol` is not appropriate for comparing numbers
+                     that are much smaller than one (see Notes).
+    
+        Parameters
+        ----------
+        a, b : array_like
+            Input arrays to compare.
+        rtol : float
+            The relative tolerance parameter (see Notes).
+        atol : float
+            The absolute tolerance parameter (see Notes).
+        equal_nan : bool
+            Whether to compare NaN's as equal.  If True, NaN's in `a` will be
+            considered equal to NaN's in `b` in the output array.
+    
+        Returns
+        -------
+        y : array_like
+            Returns a boolean array of where `a` and `b` are equal within the
+            given tolerance. If both `a` and `b` are scalars, returns a single
+            boolean value.
+    
+        See Also
+        --------
+        allclose
+        math.isclose
+    
+        Notes
+        -----
+        .. versionadded:: 1.7.0
+    
+        For finite values, isclose uses the following equation to test whether
+        two floating point values are equivalent.
+    
+         absolute(`a` - `b`) &lt;= (`atol` + `rtol` * absolute(`b`))
+    
+        Unlike the built-in `math.isclose`, the above equation is not symmetric
+        in `a` and `b` -- it assumes `b` is the reference value -- so that
+        `isclose(a, b)` might be different from `isclose(b, a)`. Furthermore,
+        the default value of atol is not zero, and is used to determine what
+        small values should be considered close to zero. The default value is
+        appropriate for expected values of order unity: if the expected values
+        are significantly smaller than one, it can result in false positives.
+        `atol` should be carefully selected for the use case at hand. A zero value
+        for `atol` will result in `False` if either `a` or `b` is zero.
+    
+        `isclose` is not defined for non-numeric data types.
+        `bool` is considered a numeric data-type for this purpose.
+    
+        Examples
+        --------
+        &gt;&gt;&gt; np.isclose([1e10,1e-7], [1.00001e10,1e-8])
+        array([ True, False])
+        &gt;&gt;&gt; np.isclose([1e10,1e-8], [1.00001e10,1e-9])
+        array([ True, True])
+        &gt;&gt;&gt; np.isclose([1e10,1e-8], [1.0001e10,1e-9])
+        array([False,  True])
+        &gt;&gt;&gt; np.isclose([1.0, np.nan], [1.0, np.nan])
+        array([ True, False])
+        &gt;&gt;&gt; np.isclose([1.0, np.nan], [1.0, np.nan], equal_nan=True)
+        array([ True, True])
+        &gt;&gt;&gt; np.isclose([1e-8, 1e-7], [0.0, 0.0])
+        array([ True, False])
+        &gt;&gt;&gt; np.isclose([1e-100, 1e-7], [0.0, 0.0], atol=0.0)
+        array([False, False])
+        &gt;&gt;&gt; np.isclose([1e-10, 1e-10], [1e-20, 0.0])
+        array([ True,  True])
+        &gt;&gt;&gt; np.isclose([1e-10, 1e-10], [1e-20, 0.999999e-10], atol=0.0)
+        array([False,  True])
+        """
+        def within_tol(x, y, atol, rtol):
+            with errstate(invalid='ignore'), _no_nep50_warning():
+                return less_equal(abs(x-y), atol + rtol * abs(y))
+    
+&gt;       x = asanyarray(a)
+            ^^^^^^^^^^^^^
+E       RuntimeError: [omarchy] transposed (flip) Convolution stride is not implemented for the Omarchy Vulkan backend (dtype=float16, shape=[1,14,32,32]). No GPU kernel exists for it; no silent CPU fallback occurs. Run it on an explicit CPU stream to use the CPU implementation.
+
+/home/joshuawarren/.local/lib/python3.11/site-packages/numpy/core/numeric.py:2334: RuntimeError</failure></testcase><testcase classname="tests.test_conv.TestConv" name="test_torch_conv_general" time="2.943"><failure message="RuntimeError: [omarchy] transposed (flip) Convolution stride is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[2,26,51,32]). No GPU kernel exists for it; no silent CPU fallback occurs. Run it on an explicit CPU stream to use the CPU implementation.">self = &lt;test_conv.TestConv testMethod=test_torch_conv_general&gt;
+in_shape = (2, 32, 32, 16), wt_shape = (32, 5, 5, 16), stride = (2, 3)
+padding = (0, 0), kernel_dilation = (3, 1), input_dilation = (2, 5), groups = 1
+flip = True, np_dtype = &lt;class 'numpy.float32'&gt;, atol = 1e-05
+
+    def __conv_general_test(
+        self,
+        in_shape,
+        wt_shape,
+        stride=1,
+        padding=0,
+        kernel_dilation=1,
+        input_dilation=1,
+        groups=1,
+        flip=False,
+        np_dtype=np.float32,
+        atol=1e-5,
+    ):
+        with self.subTest(
+            in_shape=in_shape,
+            wt_shape=wt_shape,
+            stride=stride,
+            padding=padding,
+            kernel_dilation=kernel_dilation,
+            input_dilation=input_dilation,
+            groups=groups,
+            flip=flip,
+            np_dtype=np_dtype,
+        ):
+            np.random.seed(0)
+            scale = 1.0 / math.sqrt(np.prod(wt_shape[1:]))
+            scale = min(0.3, scale)
+            in_np = np.random.normal(0, scale, in_shape).astype(np_dtype)
+            wt_np = np.random.normal(0, scale, wt_shape).astype(np_dtype)
+    
+            in_mx, wt_mx = map(mx.array, (in_np, wt_np))
+    
+            in_pt, wt_pt = map(
+                lambda x: torch.from_numpy(np.moveaxis(x, -1, 1)).to("cpu"),
+                (in_np, wt_np),
+            )
+    
+            out_mx = mx.conv_general(
+                in_mx,
+                wt_mx,
+                stride=stride,
+                padding=padding,
+                kernel_dilation=kernel_dilation,
+                input_dilation=input_dilation,
+                groups=groups,
+                flip=flip,
+            )
+    
+            def conv_general_pt(
+                inp, wt, stride, padding, kernel_dilation, input_dilation, groups, flip
+            ):
+                C = inp.size()[1]
+                ndim = inp.ndim - 2
+                map_ints = lambda x: [x] * ndim if isinstance(x, int) else x
+    
+                stride, padding, kernel_dilation, input_dilation = map(
+                    map_ints, (stride, padding, kernel_dilation, input_dilation)
+                )
+    
+                torch_convt_list = (
+                    F.conv_transpose1d,
+                    F.conv_transpose2d,
+                    F.conv_transpose3d,
+                )
+                torch_conv_list = (F.conv1d, F.conv2d, F.conv3d)
+    
+                conv_f = torch_conv_list[ndim - 1]
+                convt_f = torch_convt_list[ndim - 1]
+    
+                if flip:
+                    wt = torch.flip(wt, tuple(np.arange(2, wt.ndim)))
+    
+                if not np.all(input_dilation == 1):
+                    ones = torch.ones(
+                        [C]
+                        + [
+                            1,
+                        ]
+                        * (ndim + 1)
+                    ).to(inp.dtype)
+                    inp = convt_f(inp, ones, stride=input_dilation, groups=C)
+    
+                return conv_f(
+                    inp,
+                    wt,
+                    stride=stride,
+                    padding=padding,
+                    dilation=kernel_dilation,
+                    groups=groups,
+                )
+    
+            out_pt = conv_general_pt(
+                in_pt,
+                wt_pt,
+                stride=stride,
+                padding=padding,
+                kernel_dilation=kernel_dilation,
+                input_dilation=input_dilation,
+                groups=groups,
+                flip=flip,
+            )
+    
+            out_pt = np.moveaxis(out_pt.numpy(), 1, -1)
+    
+            self.assertEqual(out_mx.shape, out_pt.shape)
+&gt;           self.assertTrue(np.allclose(out_mx, out_pt, atol=atol))
+                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_conv.py:808: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/home/joshuawarren/.local/lib/python3.11/site-packages/numpy/core/numeric.py:2241: in allclose
+    res = all(isclose(a, b, rtol=rtol, atol=atol, equal_nan=equal_nan))
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+a = &lt;[RuntimeError('[omarchy] transposed (flip) Convolution stride is not implemented for the Omarchy Vulkan backend (dtyp...rs. Run it on an explicit CPU stream to use the CPU implementation.') raised in repr()] array object at 0x739cb1462c40&gt;
+b = array([[[[-8.62766802e-03,  1.68207136e-03,  1.42395040e-02, ...,
+           9.52063315e-03, -3.96527303e-03,  1.16682...494963e-02,  2.68691573e-02, ...,
+          -5.99277858e-03,  1.76447630e-02,  2.30770800e-02]]]],
+      dtype=float32)
+rtol = 1e-05, atol = 1e-05, equal_nan = False
+
+    @array_function_dispatch(_isclose_dispatcher)
+    def isclose(a, b, rtol=1.e-5, atol=1.e-8, equal_nan=False):
+        """
+        Returns a boolean array where two arrays are element-wise equal within a
+        tolerance.
+    
+        The tolerance values are positive, typically very small numbers.  The
+        relative difference (`rtol` * abs(`b`)) and the absolute difference
+        `atol` are added together to compare against the absolute difference
+        between `a` and `b`.
+    
+        .. warning:: The default `atol` is not appropriate for comparing numbers
+                     that are much smaller than one (see Notes).
+    
+        Parameters
+        ----------
+        a, b : array_like
+            Input arrays to compare.
+        rtol : float
+            The relative tolerance parameter (see Notes).
+        atol : float
+            The absolute tolerance parameter (see Notes).
+        equal_nan : bool
+            Whether to compare NaN's as equal.  If True, NaN's in `a` will be
+            considered equal to NaN's in `b` in the output array.
+    
+        Returns
+        -------
+        y : array_like
+            Returns a boolean array of where `a` and `b` are equal within the
+            given tolerance. If both `a` and `b` are scalars, returns a single
+            boolean value.
+    
+        See Also
+        --------
+        allclose
+        math.isclose
+    
+        Notes
+        -----
+        .. versionadded:: 1.7.0
+    
+        For finite values, isclose uses the following equation to test whether
+        two floating point values are equivalent.
+    
+         absolute(`a` - `b`) &lt;= (`atol` + `rtol` * absolute(`b`))
+    
+        Unlike the built-in `math.isclose`, the above equation is not symmetric
+        in `a` and `b` -- it assumes `b` is the reference value -- so that
+        `isclose(a, b)` might be different from `isclose(b, a)`. Furthermore,
+        the default value of atol is not zero, and is used to determine what
+        small values should be considered close to zero. The default value is
+        appropriate for expected values of order unity: if the expected values
+        are significantly smaller than one, it can result in false positives.
+        `atol` should be carefully selected for the use case at hand. A zero value
+        for `atol` will result in `False` if either `a` or `b` is zero.
+    
+        `isclose` is not defined for non-numeric data types.
+        `bool` is considered a numeric data-type for this purpose.
+    
+        Examples
+        --------
+        &gt;&gt;&gt; np.isclose([1e10,1e-7], [1.00001e10,1e-8])
+        array([ True, False])
+        &gt;&gt;&gt; np.isclose([1e10,1e-8], [1.00001e10,1e-9])
+        array([ True, True])
+        &gt;&gt;&gt; np.isclose([1e10,1e-8], [1.0001e10,1e-9])
+        array([False,  True])
+        &gt;&gt;&gt; np.isclose([1.0, np.nan], [1.0, np.nan])
+        array([ True, False])
+        &gt;&gt;&gt; np.isclose([1.0, np.nan], [1.0, np.nan], equal_nan=True)
+        array([ True, True])
+        &gt;&gt;&gt; np.isclose([1e-8, 1e-7], [0.0, 0.0])
+        array([ True, False])
+        &gt;&gt;&gt; np.isclose([1e-100, 1e-7], [0.0, 0.0], atol=0.0)
+        array([False, False])
+        &gt;&gt;&gt; np.isclose([1e-10, 1e-10], [1e-20, 0.0])
+        array([ True,  True])
+        &gt;&gt;&gt; np.isclose([1e-10, 1e-10], [1e-20, 0.999999e-10], atol=0.0)
+        array([False,  True])
+        """
+        def within_tol(x, y, atol, rtol):
+            with errstate(invalid='ignore'), _no_nep50_warning():
+                return less_equal(abs(x-y), atol + rtol * abs(y))
+    
+&gt;       x = asanyarray(a)
+            ^^^^^^^^^^^^^
+E       RuntimeError: [omarchy] transposed (flip) Convolution stride is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[2,26,51,32]). No GPU kernel exists for it; no silent CPU fallback occurs. Run it on an explicit CPU stream to use the CPU implementation.
+
+/home/joshuawarren/.local/lib/python3.11/site-packages/numpy/core/numeric.py:2334: RuntimeError</failure></testcase><testcase classname="tests.test_array.TestVersion" name="test_version" time="0.001" /><testcase classname="tests.test_array.TestArrayNamespsceInfo" name="test" time="0.001" /><testcase classname="tests.test_array.TestDtypes" name="test_can_cast" time="0.001" /><testcase classname="tests.test_array.TestDtypes" name="test_dtypes" time="0.001" /><testcase classname="tests.test_array.TestDtypes" name="test_finfo" time="0.001" /><testcase classname="tests.test_array.TestDtypes" name="test_iinfo" time="0.001" /><testcase classname="tests.test_array.TestDtypes" name="test_isdtype" time="0.001" /><testcase classname="tests.test_array.TestDtypes" name="test_result_type" time="0.001" /><testcase classname="tests.test_array.TestDtypes" name="test_scalar_conversion" time="0.007" /><testcase classname="tests.test_array.TestEquality" name="test_array_eq_array" time="0.005" /><testcase classname="tests.test_array.TestEquality" name="test_array_eq_scalar" time="0.002" /><testcase classname="tests.test_array.TestEquality" name="test_list_equals_array" time="0.001" /><testcase classname="tests.test_array.TestEquality" name="test_tuple_equals_array" time="0.001" /><testcase classname="tests.test_array.TestInequality" name="test_array_ne_array" time="0.005" /><testcase classname="tests.test_array.TestInequality" name="test_array_ne_scalar" time="0.001" /><testcase classname="tests.test_array.TestInequality" name="test_dlx_device_type" time="0.000" /><testcase classname="tests.test_array.TestInequality" name="test_invalid_op_on_array" time="0.001" /><testcase classname="tests.test_array.TestInequality" name="test_list_not_equals_array" time="0.000" /><testcase classname="tests.test_array.TestInequality" name="test_obj_inequality_array" time="0.003" /><testcase classname="tests.test_array.TestInequality" name="test_tuple_not_equals_array" time="0.004" /><testcase classname="tests.test_array.TestArray" name="test_add_numpy" time="0.010" /><testcase classname="tests.test_array.TestArray" name="test_api" time="0.198" /><testcase classname="tests.test_array.TestArray" name="test_array_at" time="0.105" /><testcase classname="tests.test_array.TestArray" name="test_array_at_complex_add_gpu" time="0.051" /><testcase classname="tests.test_array.TestArray" name="test_array_at_slice_update_extensive" time="0.038" /><testcase classname="tests.test_array.TestArray" name="test_array_basics" time="0.001" /><testcase classname="tests.test_array.TestArray" name="test_array_comparison" time="0.002" /><testcase classname="tests.test_array.TestArray" name="test_array_copy" time="0.315" /><testcase classname="tests.test_array.TestArray" name="test_array_from_noncontiguous_np" time="0.003" /><testcase classname="tests.test_array.TestArray" name="test_array_iteration" time="0.001" /><testcase classname="tests.test_array.TestArray" name="test_array_namespace" time="0.001" /><testcase classname="tests.test_array.TestArray" name="test_array_namespace_asarray" time="0.001" /><testcase classname="tests.test_array.TestArray" name="test_array_neg" time="0.001" /><testcase classname="tests.test_array.TestArray" name="test_array_np_conversion" time="0.001" /><testcase classname="tests.test_array.TestArray" name="test_array_np_dtype_conversion" time="0.060" /><testcase classname="tests.test_array.TestArray" name="test_array_np_shape_dim_check" time="0.001" /><testcase classname="tests.test_array.TestArray" name="test_array_pickle" time="0.049" /><testcase classname="tests.test_array.TestArray" name="test_array_repr" time="0.001" /><testcase classname="tests.test_array.TestArray" name="test_array_repr_precision" time="0.007" /><testcase classname="tests.test_array.TestArray" name="test_array_to_list" time="0.001" /><testcase classname="tests.test_array.TestArray" name="test_array_type_cast" time="0.008" /><testcase classname="tests.test_array.TestArray" name="test_array_view_ref_counting" time="0.001" /><testcase classname="tests.test_array.TestArray" name="test_asarray" time="0.001" /><testcase classname="tests.test_array.TestArray" name="test_asarray_copy" time="0.001" /><testcase classname="tests.test_array.TestArray" name="test_bool_conversion" time="0.001" /><testcase classname="tests.test_array.TestArray" name="test_buffer_protocol" time="0.008" /><testcase classname="tests.test_array.TestArray" name="test_buffer_protocol_ref_counting" time="0.002" /><testcase classname="tests.test_array.TestArray" name="test_buffer_protocol_tf" time="0.220" /><testcase classname="tests.test_array.TestArray" name="test_construction_from_lists" time="0.004" /><testcase classname="tests.test_array.TestArray" name="test_construction_from_lists_of_mlx_arrays" time="1.602" /><testcase classname="tests.test_array.TestArray" name="test_construction_from_lists_wide_ints" time="0.025" /><testcase classname="tests.test_array.TestArray" name="test_create_from_buffer" time="0.001" /><testcase classname="tests.test_array.TestArray" name="test_deep_graphs" time="51.903" /><testcase classname="tests.test_array.TestArray" name="test_dlpack" time="0.002" /><testcase classname="tests.test_array.TestArray" name="test_dlpack_cpu_dtype_mapping" time="0.013" /><testcase classname="tests.test_array.TestArray" name="test_double_keeps_precision" time="0.001" /><testcase classname="tests.test_array.TestArray" name="test_dtype_promotion" time="0.017" /><testcase classname="tests.test_array.TestArray" name="test_dtype_python_scalar_promotion" time="0.001" /><testcase classname="tests.test_array.TestArray" name="test_format" time="0.001" /><testcase classname="tests.test_array.TestArray" name="test_from_dlpack_cpu" time="0.001" /><testcase classname="tests.test_array.TestArray" name="test_from_dlpack_cpu_strided" time="0.001" /><testcase classname="tests.test_array.TestArray" name="test_from_dlpack_torch_mps_copy_false_shares_updates" time="0.001"><skipped type="pytest.skip" message="PyTorch MPS is required">/tmp/mlx-python-23180e66/tests/test_array.py:2591: PyTorch MPS is required</skipped></testcase><testcase classname="tests.test_array.TestArray" name="test_from_dlpack_torch_mps_copy_none_shares_updates" time="0.001"><skipped type="pytest.skip" message="PyTorch MPS is required">/tmp/mlx-python-23180e66/tests/test_array.py:2576: PyTorch MPS is required</skipped></testcase><testcase classname="tests.test_array.TestArray" name="test_from_dlpack_torch_mps_copy_true_copies" time="0.001"><skipped type="pytest.skip" message="PyTorch MPS is required">/tmp/mlx-python-23180e66/tests/test_array.py:2602: PyTorch MPS is required</skipped></testcase><testcase classname="tests.test_array.TestArray" name="test_getitem_with_list" time="0.009" /><testcase classname="tests.test_array.TestArray" name="test_indexing" time="0.862" /><testcase classname="tests.test_array.TestArray" name="test_indexing_grad" time="0.005" /><testcase classname="tests.test_array.TestArray" name="test_init_from_array" time="0.004" /><testcase classname="tests.test_array.TestArray" name="test_inplace" time="0.007" /><testcase classname="tests.test_array.TestArray" name="test_inplace_preserves_ids" time="0.001" /><testcase classname="tests.test_array.TestArray" name="test_int_type" time="0.001" /><testcase classname="tests.test_array.TestArray" name="test_large_indices" time="0.004" /><testcase classname="tests.test_array.TestArray" name="test_load_from_pickled_np" time="0.004" /><testcase classname="tests.test_array.TestArray" name="test_logical_overloads" time="0.002" /><testcase classname="tests.test_array.TestArray" name="test_memoryless_copy" time="0.001" /><testcase classname="tests.test_array.TestArray" name="test_mlx_dlpack_export_torch_update_writes_mlx_buffer" time="0.001"><skipped type="pytest.skip" message="PyTorch MPS is required">/tmp/mlx-python-23180e66/tests/test_array.py:2561: PyTorch MPS is required</skipped></testcase><testcase classname="tests.test_array.TestArray" name="test_mlx_dlpack_exports_mps_tensor_to_torch" time="0.004"><skipped type="pytest.skip" message="PyTorch MPS is required">/tmp/mlx-python-23180e66/tests/test_array.py:2537: PyTorch MPS is required</skipped></testcase><testcase classname="tests.test_array.TestArray" name="test_mlx_dlpack_exports_mps_tensor_to_torch_tensor" time="0.001"><skipped type="pytest.skip" message="PyTorch MPS is required">/tmp/mlx-python-23180e66/tests/test_array.py:2549: PyTorch MPS is required</skipped></testcase><testcase classname="tests.test_array.TestArray" name="test_multi_output_leak" time="0.005" /><testcase classname="tests.test_array.TestArray" name="test_np_array_conversion_copies_by_default" time="0.001" /><testcase classname="tests.test_array.TestArray" name="test_real_imag" time="0.010" /><testcase classname="tests.test_array.TestArray" name="test_scalar_integer_conversion_overflow" time="0.001" /><testcase classname="tests.test_array.TestArray" name="test_setitem" time="0.051" /><testcase classname="tests.test_array.TestArray" name="test_setitem_with_boolean_mask" time="0.007" /><testcase classname="tests.test_array.TestArray" name="test_setitem_with_list" time="0.007" /><testcase classname="tests.test_array.TestArray" name="test_slice_negative_step" time="0.001" /><testcase classname="tests.test_array.TestArray" name="test_slice_update_contiguous_2d" time="0.058" /><testcase classname="tests.test_array.TestArray" name="test_to_scalar" time="0.001" /><testcase classname="tests.test_array.TestArray" name="test_torch_mps_array_copies_dlpack_input" time="0.001"><skipped type="pytest.skip" message="PyTorch MPS is required">/tmp/mlx-python-23180e66/tests/test_array.py:2377: PyTorch MPS is required</skipped></testcase><testcase classname="tests.test_array.TestArray" name="test_torch_mps_array_operand" time="0.001"><skipped type="pytest.skip" message="PyTorch MPS is required">/tmp/mlx-python-23180e66/tests/test_array.py:2526: PyTorch MPS is required</skipped></testcase><testcase classname="tests.test_array.TestArray" name="test_torch_mps_asarray_copy_true_copies_dlpack_input" time="0.001"><skipped type="pytest.skip" message="PyTorch MPS is required">/tmp/mlx-python-23180e66/tests/test_array.py:2388: PyTorch MPS is required</skipped></testcase><testcase classname="tests.test_array.TestArray" name="test_torch_mps_dlpack_bfloat16" time="0.001"><skipped type="pytest.skip" message="PyTorch MPS is required">/tmp/mlx-python-23180e66/tests/test_array.py:2512: PyTorch MPS is required</skipped></testcase><testcase classname="tests.test_array.TestArray" name="test_torch_mps_dlpack_broadcast_stride" time="0.001"><skipped type="pytest.skip" message="PyTorch MPS is required">/tmp/mlx-python-23180e66/tests/test_array.py:2499: PyTorch MPS is required</skipped></testcase><testcase classname="tests.test_array.TestArray" name="test_torch_mps_dlpack_data_offset" time="0.001"><skipped type="pytest.skip" message="PyTorch MPS is required">/tmp/mlx-python-23180e66/tests/test_array.py:2444: PyTorch MPS is required</skipped></testcase><testcase classname="tests.test_array.TestArray" name="test_torch_mps_dlpack_different_dtype_argument_copies" time="0.001"><skipped type="pytest.skip" message="PyTorch MPS is required">/tmp/mlx-python-23180e66/tests/test_array.py:2426: PyTorch MPS is required</skipped></testcase><testcase classname="tests.test_array.TestArray" name="test_torch_mps_dlpack_import" time="0.001"><skipped type="pytest.skip" message="PyTorch MPS is required">/tmp/mlx-python-23180e66/tests/test_array.py:2363: PyTorch MPS is required</skipped></testcase><testcase classname="tests.test_array.TestArray" name="test_torch_mps_dlpack_matching_dtype_argument_shares_updates" time="0.001"><skipped type="pytest.skip" message="PyTorch MPS is required">/tmp/mlx-python-23180e66/tests/test_array.py:2414: PyTorch MPS is required</skipped></testcase><testcase classname="tests.test_array.TestArray" name="test_torch_mps_dlpack_stepped_view" time="0.001"><skipped type="pytest.skip" message="PyTorch MPS is required">/tmp/mlx-python-23180e66/tests/test_array.py:2481: PyTorch MPS is required</skipped></testcase><testcase classname="tests.test_array.TestArray" name="test_torch_mps_dlpack_strided_view" time="0.001"><skipped type="pytest.skip" message="PyTorch MPS is required">/tmp/mlx-python-23180e66/tests/test_array.py:2452: PyTorch MPS is required</skipped></testcase><testcase classname="tests.test_array.TestArray" name="test_torch_mps_dlpack_zero_copy_shares_updates" time="0.004"><skipped type="pytest.skip" message="PyTorch MPS is required">/tmp/mlx-python-23180e66/tests/test_array.py:2399: PyTorch MPS is required</skipped></testcase><testcase classname="tests.test_autograd.TestAutograd" name="test_autograd_types" time="0.007" /><testcase classname="tests.test_autograd.TestAutograd" name="test_auxiliary_values" time="0.007" /><testcase classname="tests.test_autograd.TestAutograd" name="test_captured" time="0.001" /><testcase classname="tests.test_autograd.TestAutograd" name="test_complex_abs_grad" time="0.020" /><testcase classname="tests.test_autograd.TestAutograd" name="test_complex_exp_vjp" time="0.015" /><testcase classname="tests.test_autograd.TestAutograd" name="test_complex_log_vjp" time="0.008" /><testcase classname="tests.test_autograd.TestAutograd" name="test_complex_prod_vjp" time="0.015" /><testcase classname="tests.test_autograd.TestAutograd" name="test_complex_unary_vjps" time="0.026" /><testcase classname="tests.test_autograd.TestAutograd" name="test_complex_vjps" time="0.009" /><testcase classname="tests.test_autograd.TestAutograd" name="test_concatenate_vjps" time="0.008" /><testcase classname="tests.test_autograd.TestAutograd" name="test_cummax_cummin_grad_vs_torch" time="0.184" /><testcase classname="tests.test_autograd.TestAutograd" name="test_cummax_grad" time="0.029" /><testcase classname="tests.test_autograd.TestAutograd" name="test_cummin_grad" time="0.026" /><testcase classname="tests.test_autograd.TestAutograd" name="test_cumprod_grad" time="0.038" /><testcase classname="tests.test_autograd.TestAutograd" name="test_custom_function" time="0.044" /><testcase classname="tests.test_autograd.TestAutograd" name="test_eval_in_grad" time="0.002" /><testcase classname="tests.test_autograd.TestAutograd" name="test_flatten_unflatten_vjps" time="0.001" /><testcase classname="tests.test_autograd.TestAutograd" name="test_grad" time="0.003" /><testcase classname="tests.test_autograd.TestAutograd" name="test_grad_ids_pre_post" time="0.001" /><testcase classname="tests.test_autograd.TestAutograd" name="test_grad_kwargs" time="0.003" /><testcase classname="tests.test_autograd.TestAutograd" name="test_grad_trees" time="0.003" /><testcase classname="tests.test_autograd.TestAutograd" name="test_grad_with_copies" time="0.001" /><testcase classname="tests.test_autograd.TestAutograd" name="test_grad_with_inplace_update" time="0.001" /><testcase classname="tests.test_autograd.TestAutograd" name="test_index_vjp_requires_stop_gradient" time="0.001" /><testcase classname="tests.test_autograd.TestAutograd" name="test_jvp" time="0.002" /><testcase classname="tests.test_autograd.TestAutograd" name="test_jvp_comparison_tangent_dtype" time="0.001" /><testcase classname="tests.test_autograd.TestAutograd" name="test_jvp_through_bitwise_ops" time="0.003" /><testcase classname="tests.test_autograd.TestAutograd" name="test_jvp_with_constant_inputs" time="0.007" /><testcase classname="tests.test_autograd.TestAutograd" name="test_jvp_with_partly_traced_inputs" time="0.006" /><testcase classname="tests.test_autograd.TestAutograd" name="test_leaks" time="6.357" /><testcase classname="tests.test_autograd.TestAutograd" name="test_logsumexp_grad" time="0.020" /><testcase classname="tests.test_autograd.TestAutograd" name="test_matmul_jvps" time="0.037" /><testcase classname="tests.test_autograd.TestAutograd" name="test_power_grad" time="0.002" /><testcase classname="tests.test_autograd.TestAutograd" name="test_put_along_axis_grads" time="0.035" /><testcase classname="tests.test_autograd.TestAutograd" name="test_reduce_jvp" time="0.029" /><testcase classname="tests.test_autograd.TestAutograd" name="test_scatter_add_vjp" time="0.015" /><testcase classname="tests.test_autograd.TestAutograd" name="test_scatter_max_vjp" time="0.019" /><testcase classname="tests.test_autograd.TestAutograd" name="test_scatter_min_vjp" time="0.012" /><testcase classname="tests.test_autograd.TestAutograd" name="test_scatter_vjp" time="0.006" /><testcase classname="tests.test_autograd.TestAutograd" name="test_second_order_permutation_ops" time="0.141" /><testcase classname="tests.test_autograd.TestAutograd" name="test_slice_grads" time="0.031" /><testcase classname="tests.test_autograd.TestAutograd" name="test_slice_update_add_vjp" time="0.007" /><testcase classname="tests.test_autograd.TestAutograd" name="test_slice_update_max_vjp" time="0.012" /><testcase classname="tests.test_autograd.TestAutograd" name="test_slice_update_min_vjp" time="0.015" /><testcase classname="tests.test_autograd.TestAutograd" name="test_slice_update_multiply_vjp" time="0.006" /><testcase classname="tests.test_autograd.TestAutograd" name="test_sort_grad" time="0.019" /><testcase classname="tests.test_autograd.TestAutograd" name="test_split_against_slice" time="0.057" /><testcase classname="tests.test_autograd.TestAutograd" name="test_stop_gradient" time="0.011" /><testcase classname="tests.test_autograd.TestAutograd" name="test_stop_gradient_computed_indices" time="0.021" /><testcase classname="tests.test_autograd.TestAutograd" name="test_take_along_axis_complex_vjp" time="0.010" /><testcase classname="tests.test_autograd.TestAutograd" name="test_topk_grad" time="0.003" /><testcase classname="tests.test_autograd.TestAutograd" name="test_update_state" time="0.010" /><testcase classname="tests.test_autograd.TestAutograd" name="test_vjp" time="0.002" /><testcase classname="tests.test_autograd.TestAutograd" name="test_vjp_types" time="0.001" /></testsuite></testsuites>

@@ -1,0 +1,86 @@
+{
+  "source_commit": "1947f2e52cbc5ca4d6e8790748e1abbf1ed87050",
+  "runtime": "x86_64 Mesa llvmpipe software Vulkan",
+  "native_qualified": false,
+  "full_suite_qualified": false,
+  "build": {
+    "command": "bash scripts/prepare-mlx.sh && cmake --build .work/verify-build --target omarchy_complex_ops_tests omarchy_primitive_tests omarchy_conv_tests omarchy_runtime_tests -j4",
+    "supervisor": "parent-complex-matmul-wave",
+    "build_exit": 0
+  },
+  "environment": {
+    "MLX_OMARCHY_ALLOW_NON_APPLE": "1",
+    "LP_NUM_THREADS": "4",
+    "DEVICE": "gpu"
+  },
+  "suites": [
+    {
+      "name": "omarchy_complex_ops_tests",
+      "passed": 33,
+      "failed": 0,
+      "assertions": 1514,
+      "exit": 0,
+      "log": "2026-09-07-parent-omarchy_complex_ops_tests.log"
+    },
+    {
+      "name": "omarchy_primitive_tests",
+      "passed": 98,
+      "failed": 0,
+      "assertions": 2699373,
+      "exit": 0,
+      "log": "2026-09-07-parent-omarchy_primitive_tests.log"
+    },
+    {
+      "name": "omarchy_conv_tests",
+      "passed": 13,
+      "failed": 0,
+      "assertions": 3450,
+      "exit": 0,
+      "log": "2026-09-07-parent-omarchy_conv_tests.log"
+    },
+    {
+      "name": "omarchy_runtime_tests",
+      "run": 1,
+      "passed": 40,
+      "failed": 0,
+      "assertions": 6304,
+      "exit": 0,
+      "log": "2026-09-07-parent-runtime-contracts-1.log"
+    },
+    {
+      "name": "omarchy_runtime_tests",
+      "run": 2,
+      "passed": 40,
+      "failed": 0,
+      "assertions": 6304,
+      "exit": 0,
+      "log": "2026-09-07-parent-runtime-contracts-2.log"
+    },
+    {
+      "name": "omarchy_runtime_tests",
+      "run": 3,
+      "passed": 40,
+      "failed": 0,
+      "assertions": 6304,
+      "exit": 0,
+      "log": "2026-09-07-parent-runtime-contracts-3.log"
+    }
+  ],
+  "runtime_initial": {
+    "passed": 38,
+    "failed": 2,
+    "assertions_passed": 6308,
+    "assertions_total": 6311,
+    "exit": 1,
+    "log": "2026-09-07-parent-omarchy_runtime_tests.log"
+  },
+  "runtime_correction": "Removed timing-dependent inspection of an asynchronously recycled buffer and exact error-wording assertion. Retained observable buffer quarantine, copied values, and GPU-produced scalar rejection checks. Runtime production code unchanged.",
+  "review_provenance": {
+    "complex": "c7142e1602944cef8cfd38fd4123526f890ad2ea, NumericCastRecovery; reviewed by TimelineReview",
+    "matmul": "02e459b62b3adfe1612a5d7af704ec426a03e491, DenseParity"
+  },
+  "limitations": [
+    "Runtime suite prints software-device omissions despite doctest skipped=0.",
+    "No native M1 execution; no installed-wheel or complete upstream-suite qualification for this source."
+  ]
+}

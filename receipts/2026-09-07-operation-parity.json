@@ -1,0 +1,72 @@
+{
+  "source_commit": "23180e66",
+  "runtime": "x86_64 Mesa llvmpipe software Vulkan",
+  "native_qualified": false,
+  "full_suite_qualified": false,
+  "wheel": "mlx_omarchy-0.32.2.dev202609070224+23180e66-cp311-cp311-linux_x86_64.whl",
+  "wheel_sha256": "fe267f1e63057c5b1520eb2590db50dd4070ec3d29d954cf5afdbac6edda057d",
+  "provenance_gate": "scripts/mlx_provenance.py --expect-wheel: verified=match, exit 0",
+  "cpp": {
+    "Arange and searchsorted": {"passed": 2, "assertions": 174},
+    "omarchy_conv_tests": {"passed": 12, "assertions": 1648},
+    "Hadamard cases": {"passed": 5, "assertions": 1152},
+    "omarchy_indexing_ops_tests": {"passed": 53, "assertions": 4085},
+    "supervisor": "conv-arange-hadamard-clean-qualification",
+    "exit_code": 0
+  },
+  "python": {
+    "selection": [
+      "test_ops.py::TestOps::test_arange_overload_dispatch",
+      "test_ops.py::TestOps::test_arange_inferred_dtype",
+      "test_ops.py::TestOps::test_arange_corner_cases_cast",
+      "test_ops.py::TestOps::test_searchsorted",
+      "test_ops.py::TestOps::test_hadamard",
+      "test_ops.py::TestOps::test_hadamard_grad_vmap",
+      "test_ops.py::TestOps::test_take",
+      "test_ops.py::TestOps::test_masked_scatter",
+      "complete test_conv.py with Torch available",
+      "complete test_array.py",
+      "complete test_autograd.py"
+    ],
+    "device": "DEVICE=gpu",
+    "passed": 163,
+    "failed_outcomes": 9,
+    "skipped": 19,
+    "subtests_passed": 450,
+    "seconds": 295.46,
+    "exit_code": 1,
+    "xml": "2026-09-07-operation-parity.xml",
+    "remaining_failures": {
+      "test_torch_conv_depthwise": 8,
+      "test_torch_conv_general": 1,
+      "reason": "Existing Convolution refusal conflates kernel flip with the transposed-convolution calling convention and rejects nonunit kernel strides. These failures are not qualified support."
+    }
+  },
+  "large_binary": {
+    "selection": "test_ops.py::TestOps::test_large_binary",
+    "passed": 1,
+    "seconds": 56.60,
+    "exit_code": 0,
+    "xml": "2026-09-07-large-binary.xml",
+    "note": "Exact 2,147,484,000-element int8 arithmetic case; LOW_MEMORY unset."
+  },
+  "later_cpp_follow_up": {
+    "source_commit": "ce536680",
+    "supervisor": "gather-blockmask-parent-qualification",
+    "exit_code": 0,
+    "omarchy_indexing_ops_tests": {"passed": 53, "assertions": 4085},
+    "block_masked_mm": {"passed": 1, "assertions": 28476},
+    "changes": [
+      "Raw 64-bit Gather and GatherAxis payloads use two uint32 words without shaderInt64.",
+      "Transposed boolean block masks materialize in logical order before casting."
+    ],
+    "note": "This later source is not the wheel identified above."
+  },
+  "invalid_attempts": [
+    "Initial BLAS launch omitted the software-device opt-in; all device-policy failures were discarded and rerun with MLX_OMARCHY_ALLOW_NON_APPLE=1.",
+    "First convolution build selected nonexistent omarchy_conv_general_tests. A subsequent clean staging/build used registered omarchy_conv_tests and passed.",
+    "An indexing worker violated worktree isolation and committed 28f706cd to the parent. Its changes were reviewed, its parent writes stopped, and the parent was restaged and rebuilt before any counts above were accepted.",
+    "Wheel creation and provenance passed, but first Python launch lacked pytest. After installing dependencies, collection exposed nonexistent test_arange. Both attempts ran no tests and contribute no qualification counts; the recorded run uses the three actual Arange methods."
+  ],
+  "hardware": "Compiler retains exclusive M1 ownership; no native access performed."
+}
