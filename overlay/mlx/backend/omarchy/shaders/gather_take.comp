@@ -34,10 +34,6 @@
 // axes use the external metadata table.
 #version 460
 
-#if defined(USE_I64)
-#extension GL_EXT_shader_explicit_arithmetic_types_int64 : require
-#endif
-
 #ifdef USE_COMPLEX
 #define STORAGE_TYPE vec2
 #define LOAD_VALUE(x) (x)
@@ -75,13 +71,9 @@ uint16_t bf16_store(float value) {
 #define LOAD_VALUE(x) (x)
 #define STORE_VALUE(x) (x)
 #elif defined(USE_I64)
-// Raw 64-bit table storage: elements copy bitwise as int64_t loads and
-// stores, so words above 2^31 stay bit-exact. Dispatch is gated on the
-// device's shaderInt64 feature.
-#define STORAGE_TYPE int64_t
+#define STORAGE_TYPE uvec2
 #define LOAD_VALUE(x) (x)
 #define STORE_VALUE(x) (x)
-#extension GL_EXT_shader_explicit_arithmetic_types_int64 : require
 #else
 #define STORAGE_TYPE float
 #define LOAD_VALUE(x) float(x)
