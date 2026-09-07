@@ -389,7 +389,7 @@ TEST_CASE("NumberOfElements evaluates inside a shapeless compile") {
   check_values(mean_fn({array({10.0f, 20.0f, 30.0f}, float32)})[0], {20.0f});
 }
 
-TEST_CASE("Pad zero-fills boundaries with exact values") {
+TEST_CASE("Pad fills multidimensional boundaries with exact values") {
   if (!compute_available()) {
     return;
   }
@@ -401,6 +401,19 @@ TEST_CASE("Pad zero-fills boundaries with exact values") {
   check_values(
       pad(m, std::vector<int>{1}, Shape{1}, Shape{1}),
       {0.0f, 1.0f, 2.0f, 0.0f});
+
+  array square = array({1.0f, 2.0f, 3.0f, 4.0f}, {2, 2}, float32);
+  check_values(
+      pad(
+          square,
+          std::vector<std::pair<int, int>>{{1, 1}, {2, 1}},
+          array(-7.0f),
+          "constant",
+          stream),
+      {-7.0f, -7.0f, -7.0f, -7.0f, -7.0f,
+       -7.0f, -7.0f,  1.0f,  2.0f, -7.0f,
+       -7.0f, -7.0f,  3.0f,  4.0f, -7.0f,
+       -7.0f, -7.0f, -7.0f, -7.0f, -7.0f});
 }
 
 TEST_CASE("Reshape shares buffers and copies strided views") {
@@ -533,4 +546,17 @@ TEST_CASE("View reinterprets the buffer with exact bit patterns") {
   array wide = view(i, int64, stream);
   CHECK_EQ(wide.shape(), Shape({1}));
   check_exact<int64_t>(wide, {(static_cast<int64_t>(6) << 32) | 5});
+
+  array base = array({1, -2, 3, -4, 5, -6, 7, -8}, {2, 4}, int32);
+  array repeated = broadcast_to(base, {4, 2, 4}, stream);
+  const std::vector<int32_t> expected{
+      1, -2, 3, -4, 5, -6, 7, -8,
+      1, -2, 3, -4, 5, -6, 7, -8,
+      1, -2, 3, -4, 5, -6, 7, -8,
+      1, -2, 3, -4, 5, -6, 7, -8};
+  for (Dtype dtype : {bool_, int16, float32, int64}) {
+    array round_trip = view(view(repeated, dtype, stream), int32, stream);
+    CHECK_EQ(round_trip.shape(), repeated.shape());
+    check_exact<int32_t>(round_trip, expected);
+  }
 }
