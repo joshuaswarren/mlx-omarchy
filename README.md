@@ -57,21 +57,24 @@ python -m mlx_lm generate \
 
 ## Performance
 
-Same Apple M1 (8-core GPU), same model revisions, prompts, and output lengths, measured under both operating systems. Native is upstream MLX 0.32.2 on macOS 14.8.9 with Metal; Linux is mlx-omarchy on Omarchy with Mesa Honeykrisp. `Qwen2.5-0.5B-Instruct`, greedy decoding, fixed output lengths, medians of five runs.
+The default Q4 kernels at `417c06e6` improve Linux decode by 73% to 118% and prefill by 13% to 29% against `348919c8`. Five alternating baseline/candidate pairs ran on the same Apple M1 with Honeykrisp, AC power, the pinned Qwen2.5-0.5B-Instruct-4bit snapshot, greedy decoding, and fixed output lengths. All generated token IDs matched exactly in every pair. These runs use eager execution, `MLX_DISABLE_COMPILE=1`.
 
-| Model | Prompt / generated tokens | Native decode tok/s | Linux decode tok/s | Native prefill tok/s | Linux prefill tok/s |
-|---|---|---|---|---|---|
-| 4-bit | 30 / 32 | 150.8 | 31.1 | 294 | 79 |
-| 4-bit | 262 / 128 | 146.6 | 28.3 | 1213 | 188 |
-| 4-bit | 1053 / 32 | 140.3 | 23.5 | 1838 | 198 |
-| bf16 | 30 / 32 | 56.2 | see note | 233 | see note |
+| Prompt / generated tokens | Before decode tok/s | Current decode tok/s | Before prefill tok/s | Current prefill tok/s |
+|---|---:|---:|---:|---:|
+| 30 / 32 | 30.25 | 65.97 | 77.720 | 87.719 |
+| 262 / 128 | 28.09 | 56.29 | 168.706 | 209.600 |
+| 1053 / 32 | 23.63 | 40.80 | 176.411 | 227.873 |
 
-Linux decode runs at roughly one fifth of native and prefill at one sixth to one ninth; closing that gap is the current performance work. The historical short and 1024-context 4-bit token-ID hashes match across systems, but the long-prompt hashes differ: native `254d73fd93164b98`, Linux `4cc08910089477fd`. These timings do not establish numerical parity. bf16 on Linux runs eagerly (compiled bf16 graphs are refused, see below) and is not yet measured under the matched protocol. Native receipts: [receipts/native-baseline-2026-09-06](receipts/native-baseline-2026-09-06); Linux receipts: [receipts/2026-09-04-m1-performance-gates.md](receipts/2026-09-04-m1-performance-gates.md).
+Values are medians of five runs. The packed-word decode kernel reuses each Q4 word and its scale/bias across eight values. The prefill kernel computes four rows per invocation in a 32-by-16 tile. Both paths default on for their supported layouts; the numerical check covers float16, bfloat16, and float32 Q4 matmul against an independent host reference. A pipeline-cache change produced no material improvement and was removed.
 
-To reproduce a leg, use the pinned-length harness (it suppresses EOS so every run decodes the same number of tokens):
+[Raw runs, full token arrays, paired statistics, numerical checks, and source reviews](receipts/2026-09-07-q4-kernel-gains). Set `MLX_OMARCHY_QMM_VEC_Q4_WORD=0` or `MLX_OMARCHY_QMM_TILE_RB=0` to disable the respective optimization for comparison.
+
+Performance parity is still open. Historical macOS MLX 0.32.2 medians on this M1 were 150.8 / 146.6 / 140.3 decode tok/s and 294 / 1213 / 1838 prefill tok/s for the same three workloads. The historical short and 1024-context token-ID hashes match Linux, but the long-prompt hashes differ: native `254d73fd93164b98`, Linux `4cc08910089477fd`. These cross-OS timings do not establish numerical parity. [macOS receipts](receipts/native-baseline-2026-09-06).
+
+To reproduce a leg, use the fixed-length runner, which suppresses EOS:
 
 ```bash
-python3 scripts/bench_decode.py \
+MLX_DISABLE_COMPILE=1 python3 scripts/bench_decode.py \
   --model mlx-community/Qwen2.5-0.5B-Instruct-4bit \
   --prompt "What is the capital of France? Answer in one word." \
   --tokens 64
