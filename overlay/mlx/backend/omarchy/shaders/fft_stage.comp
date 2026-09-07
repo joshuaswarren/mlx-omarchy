@@ -112,7 +112,12 @@ uint dense_address(uint t, uint j, uint n, uint stride) {
 }
 
 void main() {
-  uint p = gl_GlobalInvocationID.x;
+  uint group = gl_WorkGroupID.z * gl_NumWorkGroups.y * gl_NumWorkGroups.x +
+      gl_WorkGroupID.y * gl_NumWorkGroups.x + gl_WorkGroupID.x;
+  if (params.count == 0u || group > (params.count - 1u) / gl_WorkGroupSize.x) {
+    return;
+  }
+  uint p = group * gl_WorkGroupSize.x + gl_LocalInvocationID.x;
   if (p >= params.count) {
     return;
   }

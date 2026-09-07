@@ -16,6 +16,10 @@ Observed on M1 Honeykrisp in v0.3.7 (`417c06e6`) and `f5ba1c82`. Both installed 
 
 ## Fixed in development
 
+### Complex extraction ignored logical tensor layouts
+
+Observed on software Vulkan at `f5ba1c82`: `real`, `imag`, and `abs` read complex inputs as flat storage even when the input was transposed, sliced, or broadcast. Empty extraction could also crash before allocating an output. The fix materializes only layouts that need it through the existing GPU copy path and retains the temporary until dispatch completes. The focused regression fails before the fix and passes all 39 assertions after it; the unchanged upstream FFT contiguity case also passes in the integrated wheel. The native M1 regression also passes all 39 assertions on Honeykrisp Mesa 26.1.7. [Native suites and device](../receipts/2026-09-07-core-parity-fixes/native-cpp-and-device.log), [red/green evidence](../receipts/2026-09-07-core-parity-fixes/complex-layout-verification.json), [upstream case](../receipts/2026-09-07-core-parity-fixes/fft-contiguity.xml).
+
 ### AGX float division is one ulp off the correctly rounded quotient
 
 Observed on: real M1, Honeykrisp Mesa 26.1.7. Status: FIXED at `dcc4b664`

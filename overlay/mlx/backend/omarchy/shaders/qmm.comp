@@ -19,9 +19,7 @@
 // packed [scales | biases] staging buffer exists.
 // With -DFP_MODE the kernel runs the non-affine modes instead: one
 // scale byte per group through a uint word view, fp4 e2m1 or fp8 e4m3
-// elements, no bias. FP_MODE is flat over the m x n output against a
-// 2D transposed or non-transposed w (both layouts first-class, flags
-// bit 0).
+// elements, no bias.
 // Every load is a straight-line per-thread word or element read at a
 // linear address inside uniform-trip-count loops (Honeykrisp caution:
 // no per-lane divergent word loads, no broadcast-unravel addressing).
@@ -195,14 +193,7 @@ void main() {
   uint param_batch = params.shape[2];
   uint matrix = params.matrix_m * params.matrix_n;
   uint x_batch_rows = params.matrix_m * params.matrix_k;
-#ifdef FP_MODE
-  // FP_MODE has no w batch: a 2D w is shared across the flattened x
-  // rows, so shape[0] stays 0 and the batch decomposition below
-  // degenerates to b = 0.
-  uint total = params.matrix_m * params.matrix_n;
-#else
   uint total = batch * matrix;
-#endif
   uint stride = gl_NumWorkGroups.x * 256u;
 
   for (uint index = gl_GlobalInvocationID.x; index < total;
@@ -226,13 +217,13 @@ void main() {
       uint nibble = column & 1u;
       uint groups_per_col_row = params.matrix_n / group_size;
       for (uint k = 0u; k < params.matrix_k; ++k) {
-        uint scale_addr = params.aux_offset +
+        uint scale_addr = params.aux_offset + b * param_batch +
             k * groups_per_col_row + col_group;
         uint scale_byte = byte_at(
             scale_bias.values[scale_addr >> 2u], scale_addr & 3u);
         float scale = (group_size == 16u) ? fp8_decode(scale_byte)
                                           : e8m0_decode(scale_byte);
-        uint byte_addr = params.rhs_offset * 4u +
+        uint byte_addr = (params.rhs_offset + b * w_batch_words) * 4u +
             k * n_bytes_per_row + col_byte;
         uint packed_byte = byte_at(
             input_w.values[byte_addr >> 2u], byte_addr & 3u);
@@ -248,14 +239,14 @@ void main() {
       // FP_MODE transposed: w [N, Kp], scales [N, k / group_size].
       for (uint k = 0u; k < params.matrix_k; ++k) {
         uint group = k / group_size;
-        uint scale_addr = params.aux_offset +
+        uint scale_addr = params.aux_offset + b * param_batch +
             column * groups_per_row + group;
         uint scale_byte = byte_at(
             scale_bias.values[scale_addr >> 2u], scale_addr & 3u);
         float scale = (group_size == 16u) ? fp8_decode(scale_byte)
                                           : e8m0_decode(scale_byte);
-        uint byte_addr = (params.rhs_offset + column * words_per_row) *
-                4u +
+        uint byte_addr = (params.rhs_offset + b * w_batch_words +
+                              column * words_per_row) * 4u +
             k / fp_pack_factor;
         uint packed_byte = byte_at(
             input_w.values[byte_addr >> 2u], byte_addr & 3u);

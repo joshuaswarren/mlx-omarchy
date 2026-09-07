@@ -22,6 +22,7 @@
 #include "doctest/doctest.h"
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <complex>
 #include <cstdint>
@@ -668,4 +669,39 @@ TEST_CASE("accuracy sweep measures the observed max relative error") {
   REQUIRE_MESSAGE(
       worst <= 5e-5,
       "accuracy bound violated: worst " << worst << " at n=" << worst_n);
+}
+
+TEST_CASE("FFT elementwise stages cover multidimensional dispatches") {
+  if (!compute_available()) {
+    return;
+  }
+  auto stream = gpu_stream();
+  auto& encoder = omarchy::get_command_encoder(stream);
+  auto& alloc = omarchy::allocator();
+  constexpr uint32_t count = 7 * 256 + 13;
+  constexpr uint32_t capacity = 8 * 256;
+  constexpr size_t bytes = capacity * sizeof(complex64_t);
+  auto storage = alloc.malloc(bytes);
+  auto* buffer = static_cast<omarchy::VulkanBuffer*>(storage.ptr());
+  auto* values = static_cast<complex64_t*>(buffer->data);
+  std::fill_n(values, capacity, complex64_t(0.0f, 0.0f));
+  omarchy::ComputeParams params;
+  params.count = count;
+  params.reduce_size = 2;
+  params.lhs_size = 1;
+  params.output_size = 256;
+  std::array<omarchy::ComputeBinding, 4> bindings{
+      omarchy::ComputeBinding{buffer->buffer, 0, bytes, buffer},
+      omarchy::ComputeBinding{},
+      omarchy::ComputeBinding{buffer->buffer, 0, bytes, buffer},
+      omarchy::ComputeBinding{}};
+  encoder.dispatch_compute(
+      omarchy::ComputeKernel::FftStageF32, bindings, params, 2, 2, 2);
+  encoder.synchronize();
+  bool correct = true;
+  for (uint32_t i = 0; i < capacity; ++i) {
+    correct &= values[i] == complex64_t(i < count ? 1.0f : 0.0f, 0.0f);
+  }
+  alloc.free(storage);
+  CHECK(correct);
 }

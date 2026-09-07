@@ -3,6 +3,8 @@
 
 #include "mlx/backend/omarchy/encoder.h"
 #include <stdexcept>
+#include <chrono>
+#include <cstdio>
 
 #include "mlx/backend/omarchy/allocator.h"
 #include "mlx/backend/omarchy/device.h"
@@ -15,6 +17,16 @@
 namespace mlx::core::omarchy {
 
 namespace {
+
+// DF2_TIMING (temporary instrumentation, removed after measurement)
+std::array<uint64_t, 10> df2_phase_ns{};
+uint64_t df2_dispatches = 0;
+inline uint64_t df2_now() {
+  return std::chrono::duration_cast<std::chrono::nanoseconds>(
+             std::chrono::steady_clock::now().time_since_epoch())
+      .count();
+}
+#define DF2_MARK(i) do { uint64_t n_ = df2_now(); df2_phase_ns[i] += n_ - df2_t; df2_t = n_; } while (0)
 
 // Saturating byte-range end for dependency tracking. VK_WHOLE_SIZE and
 // overflowing sizes clamp to the address space so a tracked range never
@@ -271,7 +283,8 @@ void CommandEncoder::fill_buffer(
   trace::counters().vk_buffer_fills++;
 }
 
-// Allocate one descriptor set from the cached pool. A pool serves up to
+// Allocate one descriptor set from the cached pool (pooled-set devices
+// only; push-descriptor layouts cannot allocate sets). A pool serves up to
 // kDescriptorSetsPerPool dispatches; on exhaustion it is retired into the
 // currently-recording submission's temporaries, so it is destroyed only
 // after that submission completes — which is strictly after every earlier
@@ -360,6 +373,8 @@ void CommandEncoder::dispatch_compute(
   if (group_count_x == 0 || group_count_y == 0 || group_count_z == 0) {
     return;
   }
+  uint64_t df2_t = df2_now();
+  df2_dispatches++;
   auto& compute = device_.compute();
   uint32_t binding_limit = compute.binding_limit();
   if (bindings.empty() || bindings.size() > binding_limit) {
@@ -375,11 +390,19 @@ void CommandEncoder::dispatch_compute(
   group_count_x = std::min(group_count_x, kMaxComputeGroupCountX);
   group_count_y = std::min(group_count_y, kMaxComputeGroupCountX);
   group_count_z = std::min(group_count_z, kMaxComputeGroupCountX);
+  DF2_MARK(0);
 
   auto& dt = vk::device_table();
-  VkPipeline pipeline = compute.pipeline(kernel);
+  VkPipeline pipeline = compute.pipeline(kernel, params.operation);
+  DF2_MARK(1);
 
-  VkDescriptorSet descriptor_set = acquire_descriptor_set(compute);
+  // Push descriptors (Device::push_descriptors()): the writes go straight
+  // into the command buffer below, no set is allocated or bound. Pooled
+  // sets otherwise: one set per dispatch from the cached pool.
+  const bool push = compute.push_descriptors();
+  VkDescriptorSet descriptor_set =
+      push ? VK_NULL_HANDLE : acquire_descriptor_set(compute);
+  DF2_MARK(2);
 
   std::array<VkDescriptorBufferInfo, kComputeBindingBudget> buffer_info{};
   std::array<VkWriteDescriptorSet, kComputeBindingBudget> writes{};
@@ -393,15 +416,19 @@ void CommandEncoder::dispatch_compute(
     writes[index].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
     writes[index].pBufferInfo = &buffer_info[index];
   }
-  dt.UpdateDescriptorSets(
-      device_.handle(),
-      static_cast<uint32_t>(bindings.size()),
-      writes.data(),
-      0,
-      nullptr);
+  if (!push) {
+    dt.UpdateDescriptorSets(
+        device_.handle(),
+        static_cast<uint32_t>(bindings.size()),
+        writes.data(),
+        0,
+        nullptr);
+  }
   trace::counters().vk_descriptor_update_writes += bindings.size();
+  DF2_MARK(3);
 
   ensure_recording();
+  DF2_MARK(4);
   uint64_t host_t0 = prof::get().profiling() ? prof::host_ns() : 0;
   // MLX_OMARCHY_TAPE_FULL_BARRIERS (diagnostic, docs/install-omarchy.md):
   // the heaviest correct dependency - all commands, all memory access,
@@ -468,18 +495,30 @@ void CommandEncoder::dispatch_compute(
     barrier_recorded = true;
   }
   prof::get().before_dispatch(this, current_slot_, cmd_, barrier_recorded);
+  DF2_MARK(5);
 
   VkPipelineLayout pipeline_layout = compute.pipeline_layout();
   dt.CmdBindPipeline(cmd_, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline);
-  dt.CmdBindDescriptorSets(
-      cmd_,
-      VK_PIPELINE_BIND_POINT_COMPUTE,
-      pipeline_layout,
-      0,
-      1,
-      &descriptor_set,
-      0,
-      nullptr);
+  DF2_MARK(6);
+  if (push) {
+    dt.CmdPushDescriptorSetKHR(
+        cmd_,
+        VK_PIPELINE_BIND_POINT_COMPUTE,
+        pipeline_layout,
+        0,
+        static_cast<uint32_t>(bindings.size()),
+        writes.data());
+  } else {
+    dt.CmdBindDescriptorSets(
+        cmd_,
+        VK_PIPELINE_BIND_POINT_COMPUTE,
+        pipeline_layout,
+        0,
+        1,
+        &descriptor_set,
+        0,
+        nullptr);
+  }
   dt.CmdPushConstants(
       cmd_,
       pipeline_layout,
@@ -487,7 +526,9 @@ void CommandEncoder::dispatch_compute(
       0,
       sizeof(params),
       &params);
+  DF2_MARK(7);
   dt.CmdDispatch(cmd_, group_count_x, group_count_y, group_count_z);
+  DF2_MARK(8);
   prof::get().after_dispatch(
       this,
       current_slot_,
@@ -533,6 +574,22 @@ void CommandEncoder::dispatch_compute(
 
   node_count_++;
   trace::counters().vk_compute_dispatches++;
+  DF2_MARK(9);
+}
+
+extern "C" __attribute__((visibility("default"))) void
+mlx_omarchy_df2_timing_dump() {
+  const char* names[10] = {"check+note_owner", "pipeline()", "acquire_set",
+                           "update_set", "ensure_recording", "pre_barrier",
+                           "bind_pipeline", "bind_set+push", "dispatch",
+                           "post_barrier+tail"};
+  for (int i = 0; i < 10; ++i) {
+    std::printf("{\"phase\": \"%s\", \"ns_per_dispatch\": %.1f}\n", names[i],
+                df2_dispatches ? double(df2_phase_ns[i]) / df2_dispatches : 0.0);
+  }
+  std::fflush(stdout);
+  df2_phase_ns.fill(0);
+  df2_dispatches = 0;
 }
 
 void CommandEncoder::commit() {

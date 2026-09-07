@@ -27,6 +27,12 @@ uint16_t bf16_store(float value) {
 
 layout(local_size_x = 256) in;
 
+// Operation selector, specialized per pipeline (ComputeRuntime::pipeline
+// with params.operation): the switch below then folds to one case and
+// the pipeline carries only that case's code, constants, and preamble.
+// Unspecialized (the default) it reads params.operation at runtime.
+layout(constant_id = 0) const uint OPERATION = 0xffffffffu;
+
 layout(set = 0, binding = 0, std430) readonly buffer InputA {
   STORAGE_TYPE values[];
 } input_a;
@@ -187,18 +193,9 @@ float asinh_impl(float x) {
   return copysignf(log1p_impl(abs(x) + scaled), x);
 }
 
-// Payne-Hanek range reduction for sin/cos/tan. The accumulator below
-// produces (2/pi) * |x| * 2^128 in an 8-word uvec; quadrant bits land
-// at positions 128-129 and the fraction at 104..127 (hi) plus 80..103
-// (lo). Building the reduced angle as double-float keeps sin near
-// k*pi/2 within relative accuracy, and the CEPHES single-precision
-// polynomial finishes the last ulp.
-const uint PIO2_TABLE[10] = uint[10](
-    0xA2F983u, 0x6E4E44u, 0x1529FCu, 0x2757D1u, 0xF534DDu, 0xC0DB62u,
-    0x95993Cu, 0x439041u, 0xFE5163u, 0xABDEBBu);
-
 const float PIO4 = 0.78539816339744830961566084581987572104f;
-const float PIO2 = 1.5707963267948966192313216916397514421f;
+const float PIO2_HI = 1.57079625129699707031f;
+const float PIO2_LO = 7.54978941586159635335e-08f;
 
 // CEPHES single-precision coefficients (max abs error ~5.8e-8 over
 // [-pi/4, pi/4]; fine for f32 final rounding).
@@ -230,7 +227,7 @@ float cos_poly(float r) {
   p = fma(p, z, COS_C3);
   p = fma(p, z, COS_C2);
   p = fma(p, z, COS_C1);
-  return fma(p, z, fma(-0.5f, z, 1.0f));
+  return fma(p, z * z, fma(-0.5f, z, 1.0f));
 }
 
 // 21 f32-exact powers of ten (10^-10 through 10^10). The snap path
@@ -248,96 +245,94 @@ const float LOG10_SNAP_K[21] = float[21](
     0.0f,
     1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f, 7.0f, 8.0f, 9.0f, 10.0f);
 
-// Returns (n, r): n is the nearest integer to |x| * 2/pi and r the
-// reduced angle in [-pi/4, pi/4]. r is computed in dd so it tracks
-// the high bits correctly even when the exact fraction is near +/- 0.5
-// and the quadrant boundary matters.
-void payne_hanek(float ax, out float n_out, out float r_out) {
-  uint bits = floatBitsToUint(ax);
-  int e = int((bits >> 23u) & 0xffu) - 150;
-  uint m = (bits & 0x7fffffu) | 0x800000u;
-  // Accumulator for the 256-bit product tail: word 0 is the least
-  // significant. Declared as an array because the carry loop below
-  // indexes it dynamically; the quadrant extraction reads w[2..4].
-  uint w[8] = uint[8](0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u);
-  uint hi; uint lo;
-  for (int i = 0; i < 10; ++i) {
-    int s = e + 104 - 24 * i;
-    if (s < 0) break;
-    umulExtended(m, PIO2_TABLE[i], hi, lo);
-    int k = s >> 5;
-    int sub = s & 31;
-    uint a0; uint a1; uint a2; uint a3;
-    if (sub == 0) {
-      a0 = lo; a1 = hi; a2 = 0u; a3 = 0u;
-    } else {
-      a0 = lo << sub;
-      a1 = (lo >> (32 - sub)) | (hi << sub);
-      a2 = hi >> (32 - sub);
-      a3 = 0u;
-    }
-    // Multi-word add (a0,a1,a2,a3) into w[k..k+3] with carry chain.
-    // Words above 7 are silently dropped: the quadrant sits at bits
-    // 128-129, comfortably inside the kept range, and the table tail
-    // contributes at most 2^-80 to P so its overflow is irrelevant.
-    uint idx = uint(k);
-    uint t; uint c; uint c1;
-    t = w[idx] + a0; w[idx] = t; c = (t < a0) ? 1u : 0u;
-    idx = idx + 1u;
-    t = w[idx] + a1; c1 = (t < a1) ? 1u : 0u;
-    t = t + c; w[idx] = t; c = ((c1 == 1u) || (t < c)) ? 1u : 0u;
-    idx = idx + 1u;
-    t = w[idx] + a2; c1 = (t < a2) ? 1u : 0u;
-    t = t + c; w[idx] = t; c = ((c1 == 1u) || (t < c)) ? 1u : 0u;
-    idx = idx + 1u;
-    t = w[idx] + a3; c1 = (t < a3) ? 1u : 0u;
-    t = t + c; w[idx] = t; c = ((c1 == 1u) || (t < c)) ? 1u : 0u;
-    if (idx + 1u <= 7u) {
-      idx = idx + 1u;
-      t = w[idx] + c; w[idx] = t; c = (t < c) ? 1u : 0u;
-    }
-    if (idx + 1u <= 7u) {
-      idx = idx + 1u;
-      t = w[idx] + c; w[idx] = t; c = (t < c) ? 1u : 0u;
-    }
-    if (idx + 1u <= 7u) {
-      idx = idx + 1u;
-      t = w[idx] + c; w[idx] = t; c = (t < c) ? 1u : 0u;
-    }
-    if (idx + 1u <= 7u) {
-      idx = idx + 1u;
-      w[idx] = w[idx] + c;
-    }
+// Fixed-point Payne-Hanek reduction. The 256 fractional bits of 2/pi
+// come from Sun fdlibm's permissively licensed two_over_pi table
+// (k_rem_pio2.c). Named 32-bit limbs replace the old dynamically indexed
+// accumulator, which is not portable across the supported shader compilers.
+struct UInt288 {
+  uint w0; uint w1; uint w2; uint w3; uint w4;
+  uint w5; uint w6; uint w7; uint w8;
+};
+
+uint multiply_limb(
+    uint mantissa, uint limb, uint carry_in, out uint word) {
+  uint high;
+  uint low;
+  umulExtended(mantissa, limb, high, low);
+  word = low + carry_in;
+  return high + (word < low ? 1u : 0u);
+}
+
+UInt288 multiply_two_over_pi(uint mantissa) {
+  UInt288 product;
+  uint carry = 0u;
+  carry = multiply_limb(mantissa, 0xdebbc561u, carry, product.w0);
+  carry = multiply_limb(mantissa, 0xfe5163abu, carry, product.w1);
+  carry = multiply_limb(mantissa, 0x3c439041u, carry, product.w2);
+  carry = multiply_limb(mantissa, 0xdb629599u, carry, product.w3);
+  carry = multiply_limb(mantissa, 0xf534ddc0u, carry, product.w4);
+  carry = multiply_limb(mantissa, 0xfc2757d1u, carry, product.w5);
+  carry = multiply_limb(mantissa, 0x4e441529u, carry, product.w6);
+  carry = multiply_limb(mantissa, 0xa2f9836eu, carry, product.w7);
+  product.w8 = carry;
+  return product;
+}
+
+uint product_limb(UInt288 product, int index) {
+  if (index == 0) return product.w0;
+  if (index == 1) return product.w1;
+  if (index == 2) return product.w2;
+  if (index == 3) return product.w3;
+  if (index == 4) return product.w4;
+  if (index == 5) return product.w5;
+  if (index == 6) return product.w6;
+  if (index == 7) return product.w7;
+  if (index == 8) return product.w8;
+  return 0u;
+}
+
+uint shifted_product_word(UInt288 product, int bit) {
+  int index = bit >> 5;
+  uint shift = uint(bit & 31);
+  uint low = product_limb(product, index);
+  if (shift == 0u) {
+    return low;
   }
-  // Quadrant bits at positions 128 (w4 bit 0) and 129 (w4 bit 1);
-  // fraction round bit at position 127 (w3 bit 31).
-  uint qb_lo = (w[4] >> 0u) & 1u;
-  uint qb_hi = (w[4] >> 1u) & 1u;
-  uint fbit = (w[3] >> 31u) & 1u;
-  // Fraction bits at P positions -1..-24 (round bit fbit above
-  // covers position -1): they live in w[3] bits 8..31 for Fhi and split
-  // across w[2] bits 16..31 (low 16) plus w[3] bits 0..7 (high 8) for Flo.
-  // The P*2^128 anchor puts P bit 0 in w[4].0, P bit -1 in w[3].31,
-  // P bit -24 in w[3].8, P bit -48 in w[2].16. Earlier w[1]/w[2] picks
-  // read bits that were 32 positions too low and produced fractional
-  // arguments of magnitude ~1e9 instead of the intended [-1, 1].
-  uint Fhi = (w[3] >> 8u) & 0x00fffffu;
-  uint Flo = ((w[2] >> 16u) & 0xffffu) | ((w[3] & 0xffu) << 16u);
-  float frac_hi = float(Fhi) * (1.0f / float(1u << 24));
-  float frac_lo = float(Flo) * (1.0f / float(1u << 48));
-  float s1 = frac_hi - (fbit == 1u ? 1.0f : 0.0f);
-  r_out = fma(frac_lo, PIO2, s1 * PIO2);
-  n_out = float(qb_lo | (qb_hi << 1u) | fbit);
+  return (low >> shift) |
+      (product_limb(product, index + 1) << (32u - shift));
+}
+
+void payne_hanek(float ax, out uint quadrant, out float reduced) {
+  uint bits = floatBitsToUint(ax);
+  int exponent = int((bits >> 23u) & 0xffu) - 127;
+  uint mantissa = (bits & 0x7fffffu) | 0x800000u;
+  UInt288 product = multiply_two_over_pi(mantissa);
+  int binary_point = 279 - exponent;
+  uint round_up = shifted_product_word(product, binary_point - 1) & 1u;
+  quadrant = (shifted_product_word(product, binary_point) + round_up) & 3u;
+
+  uint fraction_high =
+      shifted_product_word(product, binary_point - 24) & 0x00ffffffu;
+  uint fraction_low =
+      shifted_product_word(product, binary_point - 48) & 0x00ffffffu;
+  float high = float(fraction_high) * 5.9604644775390625e-8f;
+  if (round_up != 0u) {
+    high -= 1.0f;
+  }
+  float fraction = fma(float(fraction_low), 3.5527136788005009e-15f, high);
+  reduced = fma(fraction, PIO2_HI, fraction * PIO2_LO);
 }
 
 float sin_impl(float x) {
+  if (isnan(x) || isinf(x)) {
+    return x - x;
+  }
   float ax = abs(x);
   if (ax < PIO4) {
     return sin_poly(x);
   }
-  float n_f; float r_f;
-  payne_hanek(ax, n_f, r_f);
-  uint n = uint(n_f);
+  uint n; float r_f;
+  payne_hanek(ax, n, r_f);
   uint j = n & 3u;
   float s;
   if (j == 0u) {
@@ -353,13 +348,15 @@ float sin_impl(float x) {
 }
 
 float cos_impl(float x) {
+  if (isnan(x) || isinf(x)) {
+    return x - x;
+  }
   float ax = abs(x);
   if (ax < PIO4) {
     return cos_poly(x);
   }
-  float n_f; float r_f;
-  payne_hanek(ax, n_f, r_f);
-  uint n = uint(n_f);
+  uint n; float r_f;
+  payne_hanek(ax, n, r_f);
   uint j = n & 3u;
   if (j == 0u) {
     return cos_poly(r_f);
@@ -373,13 +370,15 @@ float cos_impl(float x) {
 }
 
 float tan_impl(float x) {
+  if (isnan(x) || isinf(x)) {
+    return x - x;
+  }
   float ax = abs(x);
   if (ax < PIO4) {
     return sin_poly(x) / cos_poly(x);
   }
-  float n_f; float r_f;
-  payne_hanek(ax, n_f, r_f);
-  uint n = uint(n_f);
+  uint n; float r_f;
+  payne_hanek(ax, n, r_f);
   uint j = n & 3u;
   float s;
   if (j == 0u || j == 2u) {
@@ -576,7 +575,7 @@ void main() {
     float lhs = LOAD_VALUE(input_a.values[lhs_index]);
     float rhs = LOAD_VALUE(input_b.values[rhs_index]);
     float value;
-    switch (params.operation) {
+    switch (OPERATION == 0xffffffffu ? params.operation : OPERATION) {
       case 0:
         value = lhs + rhs;
         break;
@@ -613,22 +612,10 @@ void main() {
         value = -lhs;
         break;
       case 11:
-        // GLSL built-in cos. The host refuses arguments whose maximum
-        // magnitude exceeds kTrigArgumentLimit (primitives.cpp,
-        // 1e5) because the Honeykrisp built-in range reduction
-        // degrades through that band and collapses from ~1e6 (probe
-        // 2026-09-02). The in-source Payne-Hanek fallback was probed
-        // on the same device and produces garbage of magnitude 1e15+
-        // - its carry chain rides the dynamic-indexing shapes this
-        // driver miscompiles - so it stays dead code and the op
-        // refuses above the limit instead. RoPE note: fast::RoPE is a
-        // fallback composition of these sin/cos calls with
-        // inv_freq[0] = 1.0, so 1e5 is the positional ceiling; it
-        // covers Qwen-class 32k contexts with margin.
-        value = cos(lhs);
+        value = cos_impl(lhs);
         break;
       case 12:
-        value = sin(lhs);
+        value = sin_impl(lhs);
         break;
       case 13:
         value = log(lhs);
@@ -676,7 +663,7 @@ void main() {
         value = sinh(lhs);
         break;
       case 26:
-        value = tan(lhs);
+        value = tan_impl(lhs);
         break;
       case 27:
         value = tanh(lhs);

@@ -8,6 +8,14 @@
 
 #include "mlx/backend/omarchy/vulkan.h"
 
+#include "sdpa_decode_f16.h"
+#include "qmm_vec_q4_v2_bf16.h"
+#include "qmm_vec_q4_v2_f16.h"
+#include "qmm_vec_q4_v2_f32.h"
+#include "qmm_vec_q4_v2_subgroup_bf16.h"
+#include "qmm_vec_q4_v2_subgroup_f16.h"
+#include "qmm_vec_q4_v2_subgroup_f32.h"
+
 #include "arange_u32.h"
 #include "arange_bf16.h"
 #include "arange_f16.h"
@@ -196,23 +204,31 @@
 #include "sort_u8.h"
 #include "sort_i16.h"
 #include "sort_u16.h"
+#include "sort_i64.h"
+#include "sort_u64.h"
 #include "argsort_i32.h"
 #include "argsort_u32.h"
 #include "argsort_i8.h"
 #include "argsort_u8.h"
 #include "argsort_i16.h"
 #include "argsort_u16.h"
+#include "argsort_i64.h"
+#include "argsort_u64.h"
 #include "sort_merge_bf16.h"
 #include "sort_merge_f16.h"
 #include "sort_merge_f32.h"
 #include "sort_merge_i32.h"
 #include "sort_merge_u32.h"
+#include "sort_merge_i64.h"
+#include "sort_merge_u64.h"
 #include "argsort_merge_bf16.h"
 #include "argsort_merge_f16.h"
 #include "argsort_merge_f32.h"
 #include "argsort_merge_c64.h"
 #include "argsort_merge_i32.h"
 #include "argsort_merge_u32.h"
+#include "argsort_merge_i64.h"
+#include "argsort_merge_u64.h"
 #include "logical_or_bool.h"
 #include "compare_bool.h"
 #include "scan_bf16.h"
@@ -266,8 +282,10 @@
 #include "qmm_tile_f32.h"
 #include "dequant_f32.h"
 #include "dequant_f16.h"
+#include "dequant_bf16.h"
 #include "quantize_f32.h"
 #include "quantize_f16.h"
+#include "quantize_bf16.h"
 #include "quantize_fp_f32.h"
 #include "quantize_fp_f16.h"
 #include "quantize_fp_bf16.h"
@@ -747,6 +765,10 @@ ShaderBytes shader_bytes(ComputeKernel kernel) {
       return {argsort_i16, argsort_i16_size};
     case ComputeKernel::ArgSortU16:
       return {argsort_u16, argsort_u16_size};
+    case ComputeKernel::ArgSortI64:
+      return {argsort_i64, argsort_i64_size};
+    case ComputeKernel::ArgSortU64:
+      return {argsort_u64, argsort_u64_size};
     case ComputeKernel::SortMergeF32:
       return {sort_merge_f32, sort_merge_f32_size};
     case ComputeKernel::SortMergeF16:
@@ -757,6 +779,10 @@ ShaderBytes shader_bytes(ComputeKernel kernel) {
       return {sort_merge_i32, sort_merge_i32_size};
     case ComputeKernel::SortMergeU32:
       return {sort_merge_u32, sort_merge_u32_size};
+    case ComputeKernel::SortMergeI64:
+      return {sort_merge_i64, sort_merge_i64_size};
+    case ComputeKernel::SortMergeU64:
+      return {sort_merge_u64, sort_merge_u64_size};
     case ComputeKernel::ArgSortMergeF32:
       return {argsort_merge_f32, argsort_merge_f32_size};
     case ComputeKernel::ArgSortMergeF16:
@@ -769,6 +795,10 @@ ShaderBytes shader_bytes(ComputeKernel kernel) {
       return {argsort_merge_i32, argsort_merge_i32_size};
     case ComputeKernel::ArgSortMergeU32:
       return {argsort_merge_u32, argsort_merge_u32_size};
+    case ComputeKernel::ArgSortMergeI64:
+      return {argsort_merge_i64, argsort_merge_i64_size};
+    case ComputeKernel::ArgSortMergeU64:
+      return {argsort_merge_u64, argsort_merge_u64_size};
     case ComputeKernel::RandomBitsU32:
       return {random_bits_u32, random_bits_u32_size};
     case ComputeKernel::QmmF32:
@@ -821,10 +851,14 @@ ShaderBytes shader_bytes(ComputeKernel kernel) {
       return {dequant_f32, dequant_f32_size};
     case ComputeKernel::DequantF16:
       return {dequant_f16, dequant_f16_size};
+    case ComputeKernel::DequantBF16:
+      return {dequant_bf16, dequant_bf16_size};
     case ComputeKernel::QuantizeF32:
       return {quantize_f32, quantize_f32_size};
     case ComputeKernel::QuantizeF16:
       return {quantize_f16, quantize_f16_size};
+    case ComputeKernel::QuantizeBF16:
+      return {quantize_bf16, quantize_bf16_size};
     case ComputeKernel::ConvF32:
       return {conv_f32, conv_f32_size};
     case ComputeKernel::ConvF16:
@@ -839,6 +873,10 @@ ShaderBytes shader_bytes(ComputeKernel kernel) {
       return {sort_bf16, sort_bf16_size};
     case ComputeKernel::SortC64:
       return {sort_c64, sort_c64_size};
+    case ComputeKernel::SortI64:
+      return {sort_i64, sort_i64_size};
+    case ComputeKernel::SortU64:
+      return {sort_u64, sort_u64_size};
     case ComputeKernel::BlockMaskF32:
       return {block_mask_f32, block_mask_f32_size};
     case ComputeKernel::GatherMmF32:
@@ -1218,6 +1256,20 @@ ShaderBytes shader_bytes(ComputeKernel kernel) {
       return {gather_qmm_nb_fp_hgs_bf16, gather_qmm_nb_fp_hgs_bf16_size};
     case ComputeKernel::MatmulComplex64:
       return {matmul_complex64, matmul_complex64_size};
+    case ComputeKernel::SdpaDecodeF16:
+      return {sdpa_decode_f16, sdpa_decode_f16_size};
+    case ComputeKernel::QmmVecQ4V2F32:
+      return {qmm_vec_q4_v2_f32, qmm_vec_q4_v2_f32_size};
+    case ComputeKernel::QmmVecQ4V2F16:
+      return {qmm_vec_q4_v2_f16, qmm_vec_q4_v2_f16_size};
+    case ComputeKernel::QmmVecQ4V2BF16:
+      return {qmm_vec_q4_v2_bf16, qmm_vec_q4_v2_bf16_size};
+    case ComputeKernel::QmmVecQ4V2SubgroupF32:
+      return {qmm_vec_q4_v2_subgroup_f32, qmm_vec_q4_v2_subgroup_f32_size};
+    case ComputeKernel::QmmVecQ4V2SubgroupF16:
+      return {qmm_vec_q4_v2_subgroup_f16, qmm_vec_q4_v2_subgroup_f16_size};
+    case ComputeKernel::QmmVecQ4V2SubgroupBF16:
+      return {qmm_vec_q4_v2_subgroup_bf16, qmm_vec_q4_v2_subgroup_bf16_size};
     case ComputeKernel::Count:
       break;
   }
@@ -1226,8 +1278,13 @@ ShaderBytes shader_bytes(ComputeKernel kernel) {
 
 } // namespace
 
-ComputeRuntime::ComputeRuntime(VkDevice device, uint32_t binding_limit)
-    : device_(device), binding_limit_(binding_limit) {
+ComputeRuntime::ComputeRuntime(
+    VkDevice device,
+    uint32_t binding_limit,
+    bool push_descriptors)
+    : device_(device),
+      binding_limit_(binding_limit),
+      push_descriptors_(push_descriptors) {
   auto& dt = vk::device_table();
   if (binding_limit_ == 0 || binding_limit_ > kComputeBindingBudget) {
     throw std::invalid_argument("[omarchy] invalid compute binding budget.");
@@ -1244,6 +1301,10 @@ ComputeRuntime::ComputeRuntime(VkDevice device, uint32_t binding_limit)
       VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO};
   descriptor_info.bindingCount = binding_limit_;
   descriptor_info.pBindings = bindings.data();
+  if (push_descriptors_) {
+    descriptor_info.flags =
+        VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR;
+  }
   VKX_CHECK(dt.CreateDescriptorSetLayout(
       device_, &descriptor_info, nullptr, &descriptor_layout_));
 
@@ -1273,6 +1334,9 @@ ComputeRuntime::~ComputeRuntime() {
       dt.DestroyPipeline(device_, pipeline, nullptr);
     }
   }
+  for (auto& [key, pipeline] : specialized_) {
+    dt.DestroyPipeline(device_, pipeline, nullptr);
+  }
   if (pipeline_layout_ != VK_NULL_HANDLE) {
     dt.DestroyPipelineLayout(device_, pipeline_layout_, nullptr);
   }
@@ -1281,19 +1345,46 @@ ComputeRuntime::~ComputeRuntime() {
   }
 }
 
-VkPipeline ComputeRuntime::pipeline(ComputeKernel kernel) {
+namespace {
+
+// Kernels whose shader declares specialization constant 0 as the
+// operation selector (elementwise.comp).
+bool specializes_operation(ComputeKernel kernel) {
+  switch (kernel) {
+    case ComputeKernel::ElementwiseF32:
+    case ComputeKernel::ElementwiseF16:
+    case ComputeKernel::ElementwiseBF16:
+      return true;
+    default:
+      return false;
+  }
+}
+
+} // namespace
+
+VkPipeline ComputeRuntime::pipeline(ComputeKernel kernel, uint32_t operation) {
   size_t index = static_cast<size_t>(kernel);
   if (index >= pipelines_.size()) {
     throw std::invalid_argument("[omarchy] invalid compute kernel.");
   }
   std::lock_guard<std::mutex> lock(mutex_);
+  if (specializes_operation(kernel)) {
+    uint64_t key = (static_cast<uint64_t>(index) << 32) | operation;
+    auto it = specialized_.find(key);
+    if (it == specialized_.end()) {
+      it = specialized_.emplace(key, create_pipeline(kernel, &operation)).first;
+    }
+    return it->second;
+  }
   if (pipelines_[index] == VK_NULL_HANDLE) {
-    pipelines_[index] = create_pipeline(kernel);
+    pipelines_[index] = create_pipeline(kernel, nullptr);
   }
   return pipelines_[index];
 }
 
-VkPipeline ComputeRuntime::create_pipeline(ComputeKernel kernel) {
+VkPipeline ComputeRuntime::create_pipeline(
+    ComputeKernel kernel,
+    const uint32_t* operation) {
   auto& dt = vk::device_table();
   auto [bytes, size] = shader_bytes(kernel);
   if (size == 0 || size % sizeof(uint32_t) != 0) {
@@ -1312,6 +1403,15 @@ VkPipeline ComputeRuntime::create_pipeline(ComputeKernel kernel) {
   stage.stage = VK_SHADER_STAGE_COMPUTE_BIT;
   stage.module = shader;
   stage.pName = "main";
+  VkSpecializationMapEntry map_entry{0, 0, sizeof(uint32_t)};
+  VkSpecializationInfo specialization{};
+  specialization.mapEntryCount = 1;
+  specialization.pMapEntries = &map_entry;
+  specialization.dataSize = sizeof(uint32_t);
+  specialization.pData = operation;
+  if (operation != nullptr) {
+    stage.pSpecializationInfo = &specialization;
+  }
   VkComputePipelineCreateInfo pipeline_info{
       VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO};
   pipeline_info.stage = stage;

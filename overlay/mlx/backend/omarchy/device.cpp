@@ -242,6 +242,7 @@ CapabilityReport collect_capabilities(
   // feature must be enabled; llvmpipe advertises the extension name and
   // clears the feature bit only when the device truly supports it.
   caps.shader_atomic_float_add = false;
+  caps.push_descriptor = false;
   {
     uint32_t ext_count = 0;
     if (it.EnumerateDeviceExtensionProperties &&
@@ -256,7 +257,9 @@ CapabilityReport collect_capabilities(
               0) {
             caps.shader_atomic_float_add =
                 fa.shaderBufferFloat32AtomicAdd == VK_TRUE;
-            break;
+          } else if (
+              std::strcmp(e.extensionName, "VK_KHR_push_descriptor") == 0) {
+            caps.push_descriptor = true;
           }
         }
       }
@@ -665,11 +668,20 @@ Device::Device(uint32_t physical_device_index) {
   // query saw the extension and the buffer-add feature bit; the
   // scatter float Sum/Prod kernels are dispatched only behind that
   // same flag.
-  const char* atomic_float_ext = "VK_EXT_shader_atomic_float";
+  // MLX_OMARCHY_NO_PUSH_DESCRIPTORS (diagnostic, docs/install-omarchy.md)
+  // keeps the pooled descriptor-set path on a device that exposes
+  // VK_KHR_push_descriptor; read once here, the layout is built to match.
+  push_descriptors_ =
+      caps_.push_descriptor && !env_flag("MLX_OMARCHY_NO_PUSH_DESCRIPTORS");
+  std::vector<const char*> extensions;
   if (caps_.shader_atomic_float_add) {
-    dci.enabledExtensionCount = 1;
-    dci.ppEnabledExtensionNames = &atomic_float_ext;
+    extensions.push_back("VK_EXT_shader_atomic_float");
   }
+  if (push_descriptors_) {
+    extensions.push_back("VK_KHR_push_descriptor");
+  }
+  dci.enabledExtensionCount = static_cast<uint32_t>(extensions.size());
+  dci.ppEnabledExtensionNames = extensions.data();
   VKX_CHECK(it.CreateDevice(pd, &dci, nullptr, &device_));
 
   auto& dt = vk::device_table();
@@ -720,6 +732,7 @@ Device::Device(uint32_t physical_device_index) {
   VKX_LOAD_DEVICE_FN(DestroyDescriptorSetLayout, vkDestroyDescriptorSetLayout)
   VKX_LOAD_DEVICE_FN(CreateDescriptorPool, vkCreateDescriptorPool)
   VKX_LOAD_DEVICE_FN(DestroyDescriptorPool, vkDestroyDescriptorPool)
+  VKX_LOAD_DEVICE_FN(ResetDescriptorPool, vkResetDescriptorPool)
   VKX_LOAD_DEVICE_FN(AllocateDescriptorSets, vkAllocateDescriptorSets)
   VKX_LOAD_DEVICE_FN(UpdateDescriptorSets, vkUpdateDescriptorSets)
   VKX_LOAD_DEVICE_FN(CreatePipelineLayout, vkCreatePipelineLayout)
@@ -755,6 +768,17 @@ Device::Device(uint32_t physical_device_index) {
 
 #undef VKX_LOAD_DEVICE_FN
 
+  dt.CmdPushDescriptorSetKHR = nullptr;
+  if (push_descriptors_) {
+    dt.CmdPushDescriptorSetKHR = reinterpret_cast<PFN_vkCmdPushDescriptorSetKHR>(
+        dt.GetDeviceProcAddr(device_, "vkCmdPushDescriptorSetKHR"));
+    if (dt.CmdPushDescriptorSetKHR == nullptr) {
+      throw std::runtime_error(
+          "[omarchy] Vulkan device advertises VK_KHR_push_descriptor but "
+          "is missing vkCmdPushDescriptorSetKHR.");
+    }
+  }
+
   dt.GetDeviceQueue(device_, caps_.queue_family_index, 0, &queue_);
   // The live binding budget: what the backend wants, clamped by what this
   // physical device actually reports. The spec floor (4) always passes
@@ -764,7 +788,8 @@ Device::Device(uint32_t physical_device_index) {
       std::min(
           caps_.max_per_stage_descriptor_storage_buffers,
           caps_.max_descriptor_set_storage_buffers));
-  compute_ = std::make_unique<ComputeRuntime>(device_, binding_limit);
+  compute_ =
+      std::make_unique<ComputeRuntime>(device_, binding_limit, push_descriptors_);
   completions_ = std::make_unique<CompletionDispatcher>(device_);
 }
 

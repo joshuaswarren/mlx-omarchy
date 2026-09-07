@@ -85,6 +85,12 @@ struct CapabilityReport {
   // scatter Sum hardware-atomicAdd kernels and the FCAS
   // compare-exchange twins.
   bool shader_atomic_float_add{false};
+  // True when the device exposes VK_KHR_push_descriptor (Honeykrisp on
+  // the M1 and llvmpipe both do, revision 2). The compute descriptor
+  // set layout is then created with the push-descriptor flag and every
+  // dispatch pushes its storage-buffer bindings inline instead of
+  // allocating, writing, and binding a pooled descriptor set.
+  bool push_descriptor{false};
   size_t total_memory{0};
   VkDeviceSize max_allocation_size{0};
   VkDeviceSize max_buffer_size{0};
@@ -243,6 +249,15 @@ class Device {
     return *compute_;
   }
 
+  // True when dispatches bind through vkCmdPushDescriptorSetKHR: the
+  // capability is present and MLX_OMARCHY_NO_PUSH_DESCRIPTORS was not
+  // set at device creation (docs/install-omarchy.md). Fixed for the
+  // device's lifetime because the descriptor set layout is built once
+  // to match.
+  bool push_descriptors() const {
+    return push_descriptors_;
+  }
+
   uint64_t signal_timeline(VkSemaphore semaphore, uint64_t value);
 
   CapabilityReport caps_;
@@ -252,6 +267,7 @@ class Device {
   std::mutex queue_mutex_;
   std::unique_ptr<ComputeRuntime> compute_;
   std::unique_ptr<CompletionDispatcher> completions_;
+  bool push_descriptors_{false};
 };
 
 // --- Process-wide runtime -------------------------------------------------
