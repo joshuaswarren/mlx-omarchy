@@ -1,0 +1,50 @@
+{
+  "source_commit": "53ea9bb5",
+  "platform": "linux_x86_64 development llvmpipe",
+  "native_qualification": false,
+  "cpp": {
+    "copy_offset": {
+      "cases": 23,
+      "assertions": 482,
+      "failed": 0
+    },
+    "complex_ops": {
+      "cases": 29,
+      "assertions": 744,
+      "failed": 0
+    },
+    "primitives": {
+      "cases": 97,
+      "assertions": 2580783,
+      "failed": 0
+    }
+  },
+  "python": {
+    "passed": 7,
+    "failed": 0,
+    "cases": [
+      "test_array_copy",
+      "test_array_pickle",
+      "test_construction_from_lists_of_mlx_arrays",
+      "test_complex_abs_grad",
+      "test_complex_unary_vjps",
+      "test_eval_in_grad",
+      "test_power_grad"
+    ],
+    "seconds": 1.76,
+    "wheel": "mlx_omarchy-0.32.2.dev202609062338+53ea9bb5-cp311-cp311-linux_x86_64.whl",
+    "verification_directory": "/tmp/mlx-parent-53-python"
+  },
+  "runtime_watchdog": {
+    "query_pool_candidate": "14efabfe",
+    "accepted": false,
+    "reason": "Final reused-slot and started-wall controls both externally timed out (124). Timeline-only replacement under independent review and verification."
+  },
+  "remaining": [
+    "Indexing review correction and integration",
+    "Tensor layout and dense matmul gaps",
+    "Full pinned suite",
+    "Native matched performance",
+    "Compiler-owned M1 handoff and ANE qualification"
+  ]
+}

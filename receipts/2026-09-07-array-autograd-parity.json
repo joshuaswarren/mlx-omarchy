@@ -1,0 +1,46 @@
+{
+  "source_commit": "9992b34e",
+  "platform": "Linux x86_64 llvmpipe development Vulkan",
+  "native_hardware_qualification": false,
+  "wheel": {
+    "name": "mlx_omarchy-0.32.2.dev202609070029+9992b34e-cp311-cp311-linux_x86_64.whl",
+    "bytes": 7366656,
+    "sha256": "26dc73cb7acc721ca829f31fcd4e79f6b2246e40e49575bb64ad576c12ea3804"
+  },
+  "python": {
+    "command": "DEVICE=gpu MLX_OMARCHY_ALLOW_NON_APPLE=1 LP_NUM_THREADS=4 MLX_ENABLE_TF32=0 /tmp/mlx-python-9992b34e/venv/bin/python -m pytest tests/test_array.py tests/test_autograd.py -v --no-header -p no:cacheprovider --junitxml=/tmp/mlx-python-9992b34e/results.xml",
+    "cwd": "/tmp/mlx-python-9992b34e",
+    "passed": 134,
+    "skipped": 20,
+    "subtests_passed": 127,
+    "failed": 0,
+    "seconds": 35.79,
+    "exit": 0,
+    "junit": "2026-09-07-array-autograd-parity.xml"
+  },
+  "indexing_cpp": {
+    "command": "MLX_OMARCHY_ALLOW_NON_APPLE=1 LP_NUM_THREADS=4 .work/verify-build/tests/omarchy/omarchy_indexing_ops_tests",
+    "cases": 50,
+    "assertions": 4069,
+    "failed": 0,
+    "exit": 0
+  },
+  "portability": {
+    "command": "cmake --build /tmp/mlx-glslc-verification-9992b34e --target omarchy_shaders -j4",
+    "compiler": "glslc shaderc 2023.2-1",
+    "exit": 0,
+    "scope": "All registered Omarchy shader variants; M1 glslc 2026.3 not tested"
+  },
+  "review": {
+    "indexing_finding": "Signed-negative indices silently skipped in generic/complex scatter",
+    "fixed_by": "9992b34e",
+    "regressions": "Four-axis signed int32/int64 negative and out-of-range indexing; complex Scatter and ScatterAxis duplicate addition"
+  },
+  "remaining": [
+    "General layout and broadcasting limits",
+    "Dense matmul coverage",
+    "Watchdog progress implementation",
+    "Full pinned upstream suite",
+    "M1 qualification and matched native performance"
+  ]
+}

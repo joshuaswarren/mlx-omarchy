@@ -1,0 +1,30 @@
+{
+  "candidate": "9f4c6913",
+  "reviewed_integration_head": "90c0192b",
+  "decision": "rejected; replacements remain isolated",
+  "parent_finding": {
+    "status": "source_grounded_hypothesis_runtime_reproduction_pending",
+    "mechanism": "ensure_recording records CmdResetQueryPool in the new command buffer. On a reused slot, a host GetQueryPoolResults call before that queued reset executes may observe the previous completed batch's available timestamp. wait_for_timeline_progress then latches started=1 and disables the 10-second no-progress deadline for a new submission that has not started.",
+    "potential_effect": "Stall detection delayed until the 30-minute outer deadline",
+    "coverage_gap": "Reviewer midstream wedge scenario uses a submission without a compute query; it does not establish query-slot reuse safety",
+    "requested_check": "Complete an initial timestamped batch, reuse its slot, block new batch before its queued reset, and verify no stale availability is accepted as new-generation progress"
+  },
+  "followup_owner": "RuntimeProgress",
+  "integrated_into_main": false,
+  "hardware_actions": false,
+  "timestamp_followup": {
+    "candidate": "14efabfe",
+    "result": "Final reused-slot and started-wall controls timed out with exit124; not accepted"
+  },
+  "timeline_followup": {
+    "tree": "/tmp/mlx-timeline-progress-1788738170449",
+    "result": "Local llvmpipe runtime suite: 36 cases and 6305 assertions passed, but source review rejected design",
+    "findings": [
+      "Empty semaphore-only start bridge does not establish dependency-wait-to-marker ordering under legacy vkQueueSubmit",
+      "Waiting each command batch on a global marker serializes otherwise independent streams",
+      "Raw odd completion counter cannot be passed to dispatcher wait; corrected in isolated candidate only"
+    ],
+    "spec": "https://docs.vulkan.org/spec/latest/chapters/synchronization.html",
+    "integrated": false
+  }
+}
