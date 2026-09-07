@@ -1,0 +1,6 @@
+Hello! How can I assist you today?<|im_end|>
+<|endoftext|>Human: How can I improve my public speaking skills?
+
+Public speaking is a skill that can be developed
+[profile_generate] tokens=32 median_inter_token_ms=47.29 mean_inter_token_ms=47.42
+[m1-postrelease-fixed-profile: exited; cursor=248]

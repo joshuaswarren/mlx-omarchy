@@ -1,0 +1,10 @@
+{
+  "source": "417c06e6df9637c5d2dd583979598adc6926ab58",
+  "diagnostics_wheel": "mlx_omarchy-0.32.2.dev202609071417+diag.417c06e-cp314-cp314-linux_aarch64.whl",
+  "diagnostics_sha256": "ebb8d167d85abf2f6444bd67efe025365ec3627fcee77d2c33fcf737aeb9bfb3",
+  "generated_tokens": 32,
+  "dispatches_per_decode_interval": 585,
+  "submissions_per_decode_interval": 7,
+  "scope": "Instrumented attribution only. Do not use these timings as normal wheel benchmark results.",
+  "rejected_attempt": "Unmodified profile_generate.py stopped at EOS after10tokens. Replaced with fixed-length assertion and reran; rejected raw profile removed."
+}
