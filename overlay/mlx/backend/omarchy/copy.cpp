@@ -899,21 +899,7 @@ void copy_gpu(const array& input, array& out, CopyType ctype, const Stream& s) {
 }
 
 void fill_gpu(const array& val, array& out, const Stream& s) {
-  if (out.size() == 0) {
-    return;
-  }
-  if (out.nbytes() > 0) {
-    out.set_data(omarchy::allocator().malloc(out.nbytes()));
-  }
-  if (val.has_primitive()) {
-    omarchy::unsupported("GPU-in-flight fill", out);
-  }
-  auto& encoder = omarchy::get_command_encoder(s);
-  encoder.synchronize();
-  if (!scalar_is_zero(val, 0)) {
-    omarchy::unsupported("non-zero fill", out);
-  }
-  fill_pattern(s, out, 0, 0);
+  copy_gpu(val, out, CopyType::Scalar, s);
 }
 
 
