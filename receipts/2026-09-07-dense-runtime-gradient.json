@@ -1,0 +1,49 @@
+{
+  "source_commit": "856bfed6",
+  "runtime": "x86_64 Mesa llvmpipe software Vulkan",
+  "native_qualified": false,
+  "full_suite_qualified": false,
+  "wheel": "mlx_omarchy-0.32.2.dev202609070133+856bfed6-cp311-cp311-linux_x86_64.whl",
+  "wheel_sha256": "b2566491469919aad9751935182eef760ee5a028affbc72249176bdd479b68de",
+  "cpp": [
+    {
+      "command": "omarchy_runtime_tests",
+      "passed": 40,
+      "assertions": 6311,
+      "notes": [
+        "Independent GPU execution case returned early on software Vulkan.",
+        "Watchdog teardown control completed before watchdog fired; not evidence of post-hang hardware teardown."
+      ]
+    },
+    {
+      "command": "omarchy_matmul_family_tests --test-case=dense matmul*",
+      "passed": 2,
+      "assertions": 75
+    },
+    {
+      "command": "omarchy_fast_ops_tests --test-case=*ross*ntropy*",
+      "passed": 3,
+      "assertions": 44
+    }
+  ],
+  "python": {
+    "provenance_gate": "scripts/mlx_provenance.py --expect-wheel: exit 0",
+    "selection": [
+      "test_blas: addmm, complex_gemm, complex_gemv, matrix_vector_batched, wide_addmm, matmul_shapes, matmul, matmul_batched, matmul_dtypes, empty_matmul",
+      "test_fast: cross_entropy_grad",
+      "test_eval: donation_for_noops",
+      "complete test_array.py and test_autograd.py"
+    ],
+    "passed": 146,
+    "skipped": 20,
+    "subtests_passed": 321,
+    "seconds": 173.14,
+    "exit_code": 0,
+    "xml": "2026-09-07-dense-runtime-gradient.xml"
+  },
+  "review": "TimelineReview final static review: no findings after coherent producer publication, completed-marker filtering and CPU-origin Event signal association fixes.",
+  "not_qualified": [
+    "Full matmul-family C++ run was stopped after 15m27s supervisor uptime before a suite result; process exit and child absence confirmed. Focused tests do not replace that missing full-suite result.",
+    "Native M1 correctness and performance remain blocked by exclusive compiler ownership."
+  ]
+}

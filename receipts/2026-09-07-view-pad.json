@@ -1,0 +1,48 @@
+{
+  "source_commit": "ba9938a6",
+  "runtime": "x86_64 Mesa llvmpipe software Vulkan",
+  "native_qualified": false,
+  "full_suite_qualified": false,
+  "wheel": "mlx_omarchy-0.32.2.dev202609070141+ba9938a6-cp311-cp311-linux_x86_64.whl",
+  "wheel_sha256": "2c121768a70ebe2ac588ed0245b26542e578cd94096d8b2dc0b97ee6af8fe617",
+  "cpp": {
+    "omarchy_shape_ops_tests": {
+      "passed": 24,
+      "assertions": 466
+    },
+    "omarchy_copy_offset_tests": {
+      "passed": 25,
+      "assertions": 626
+    }
+  },
+  "python": {
+    "selection": [
+      "test_ops.py::TestOps::test_view",
+      "test_ops.py::TestOps::test_pad",
+      "complete test_array.py",
+      "complete test_autograd.py"
+    ],
+    "provenance_gate": "scripts/mlx_provenance.py --expect-wheel: exit 0",
+    "passed": 136,
+    "skipped": 20,
+    "subtests_passed": 132,
+    "seconds": 24.31,
+    "exit_code": 0,
+    "xml": "2026-09-07-view-pad.xml"
+  },
+  "shader_compile": "glslc 2023.2 USE_BOOL=1 and USE_U8=1 copy_general.comp variants: both exit 0",
+  "fixed": [
+    "Preserve raw bool byte lanes across irregular-stride dtype-view materialization.",
+    "Reuse GPU scalar copy for typed nonzero padding instead of synchronizing and accepting only zero."
+  ],
+  "compile_layout": {
+    "selection": [
+      "TestCompile::test_compile_dynamic_dims",
+      "TestCompile::test_shapeless_compile_with_reshape"
+    ],
+    "passed": 2,
+    "seconds": 0.34,
+    "exit_code": 0,
+    "xml": "2026-09-07-compile-layout.xml"
+  }
+}

@@ -257,8 +257,7 @@ void swap_endianness(uint8_t* data_bytes, size_t n) {
 // row-major nor the column-major gap form; concatenate results compose
 // this way. The general strided-copy engine writes a standard row-major
 // batch, and the encoder keeps the temp alive until the committed work
-// completes. Engine limits (negative strides, collapsed rank beyond 4,
-// span overflow) keep their named errors.
+// completes. Index-span overflow keeps its named error.
 array materialize_batched_matrix(
     const array& value,
     const std::string& name,

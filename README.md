@@ -89,18 +89,20 @@ Primitive coverage and upstream test coverage measure different things:
 | Upstream MLX C++ test cases passing on the GPU device | 251 / 251 | 2026-09-06 |
 | Upstream MLX Python test cases passing on the GPU device | 10,767 / 11,437 | 2026-09-06 |
 
-The first counts operations: a primitive counts once it computes on the GPU and a test verifies its values against a host reference. The other two run upstream's own test suites, pinned at the commit the backend is built from (MLX 0.32.2, `1f8e74e3`); one test case exercises many primitives across many dtypes and layouts, so they are the stricter measure. The open Python cases are mostly fp-mode quantized matmul over batched weights, attention-mask variants in `test_fast_sdpa`, and the Metal-only custom-kernel tests.
+The first counts operations: a primitive counts once it computes on the GPU and a test verifies its values against a host reference. The other two run upstream's own test suites, pinned at the commit the backend is built from (MLX 0.32.2, `1f8e74e3`); one test case exercises many primitives across many dtypes and layouts, so they are the stricter measure. The table is a dated full-suite snapshot, not a qualification of the current development branch.
 
 The [Python failure classification](receipts/upstream-suite-2026-09-06-py4/case-classification.csv) at `ef188d58` records 471 named refusals, 149 assertion failures, and 50 other errors, including 40 watchdog timeouts. All 670 remain failures in that snapshot; a named refusal does not count as support. GPU operations never fall back silently to CPU execution. Per-primitive status is generated from source in [docs/compatibility-matrix.md](docs/compatibility-matrix.md).
 
-The current development build also passes the complete upstream array and autograd files: 134 tests and 127 subtests, with 20 upstream skips. Numeric casts, complex derivatives, and general multi-axis scatter now pass those checks. This is x86_64 software-Vulkan verification, not M1 qualification or full-suite parity. See the [source and test receipt](receipts/2026-09-07-array-autograd-parity.json).
+Current development checks run on x86_64 software Vulkan, not the M1. The [latest focused run](receipts/2026-09-07-dense-runtime-gradient.json) passes 146 Python tests and 321 subtests, with 20 upstream skips. It covers complete array/autograd files, ten dense BLAS methods, cross-entropy gradients, and the previously timing-out no-op donation test. The runtime suite passes 40 cases with 6,311 assertions.
+
+The [broader layout and ops run](receipts/2026-09-07-layout-parity.json) retains 32 failed outcomes alongside 277 passes, 21 skips, and 372 passed subtests. That snapshot includes failures in integer and complex dtype coverage, Hadamard, padding, sorting, view layouts, and watchdog timeouts. A [later view/padding check](receipts/2026-09-07-view-pad.json) passes both repaired cases together with array/autograd regressions: 136 tests and 132 subtests, with 20 skips. These runs have different source revisions and selections; their counts cannot be combined into a full-suite result. Neither establishes native parity.
 
 ### What works
 
 - Arrays, elementwise math with general broadcasting, reductions (including bool sums), softmax, logsumexp, cumulative sum, searchsorted
 - Comparisons over float, integer, bool, int64 (where the device supports it), and complex64
-- Dense, transposed, and batched matmul up to rank 5; grouped-query attention; convolution in 1-D, 2-D, and 3-D, forward and transposed, with groups and dilation
-- Quantized matmul and dequantize: affine, 2/4/8-bit, group sizes 32/64/128, plus gathered expert matmul
+- Real and complex dense matmul, including transposed and high-rank batched inputs; grouped-query attention; convolution in 1-D, 2-D, and 3-D, forward and transposed, with groups and dilation
+- Quantized matmul and dequantize: affine, 2/3/4/5/6/8-bit, group sizes 32/64/128, plus gathered expert matmul
 - Autograd: `value_and_grad`, `vjp`, `jvp` on device; `vmap`
 - `mx.compile` for every operation class upstream fuses
 - Sort, argsort, argpartition, top-k, argmax, argmin; bit-exact threefry random generation at 8/16/32-bit widths
@@ -116,7 +118,7 @@ The current development build also passes the complete upstream array and autogr
 
 - Compiled bfloat16 graphs are refused (`MLX_DISABLE_COMPILE=1` runs them eagerly); see the [ledger entry](docs/known-defects.md).
 - A single `mx.eval` over a very long full-sequence forward (about 2,048 tokens in one operation) can wedge the GPU queue; chunked prefill, which mlx-lm uses, is unaffected.
-- Quantization at 3, 5, and 6 bits, and `ReduceScatter`, refuse by name.
+- `ReduceScatter` remains unavailable with the Linux ring transport.
 
 The full list of open defects, with the platform each was observed on, is in [docs/known-defects.md](docs/known-defects.md).
 

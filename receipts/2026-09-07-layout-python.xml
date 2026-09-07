@@ -1,0 +1,1198 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="32" skipped="21" tests="702" time="163.680" timestamp="2026-09-06T20:09:24.437953-05:00" hostname="omp-studio-local"><testcase classname="tests.test_array.TestVersion" name="test_version" time="0.001" /><testcase classname="tests.test_array.TestArrayNamespsceInfo" name="test" time="0.001" /><testcase classname="tests.test_array.TestDtypes" name="test_can_cast" time="0.006" /><testcase classname="tests.test_array.TestDtypes" name="test_dtypes" time="0.001" /><testcase classname="tests.test_array.TestDtypes" name="test_finfo" time="0.001" /><testcase classname="tests.test_array.TestDtypes" name="test_iinfo" time="0.001" /><testcase classname="tests.test_array.TestDtypes" name="test_isdtype" time="0.001" /><testcase classname="tests.test_array.TestDtypes" name="test_result_type" time="0.001" /><testcase classname="tests.test_array.TestDtypes" name="test_scalar_conversion" time="0.004" /><testcase classname="tests.test_array.TestEquality" name="test_array_eq_array" time="0.021" /><testcase classname="tests.test_array.TestEquality" name="test_array_eq_scalar" time="0.007" /><testcase classname="tests.test_array.TestEquality" name="test_list_equals_array" time="0.001" /><testcase classname="tests.test_array.TestEquality" name="test_tuple_equals_array" time="0.001" /><testcase classname="tests.test_array.TestInequality" name="test_array_ne_array" time="0.001" /><testcase classname="tests.test_array.TestInequality" name="test_array_ne_scalar" time="0.002" /><testcase classname="tests.test_array.TestInequality" name="test_dlx_device_type" time="0.000" /><testcase classname="tests.test_array.TestInequality" name="test_invalid_op_on_array" time="0.001" /><testcase classname="tests.test_array.TestInequality" name="test_list_not_equals_array" time="0.001" /><testcase classname="tests.test_array.TestInequality" name="test_obj_inequality_array" time="0.001" /><testcase classname="tests.test_array.TestInequality" name="test_tuple_not_equals_array" time="0.000" /><testcase classname="tests.test_array.TestArray" name="test_add_numpy" time="0.008" /><testcase classname="tests.test_array.TestArray" name="test_api" time="0.177" /><testcase classname="tests.test_array.TestArray" name="test_array_at" time="0.139" /><testcase classname="tests.test_array.TestArray" name="test_array_at_complex_add_gpu" time="0.045" /><testcase classname="tests.test_array.TestArray" name="test_array_at_slice_update_extensive" time="0.024" /><testcase classname="tests.test_array.TestArray" name="test_array_basics" time="0.001" /><testcase classname="tests.test_array.TestArray" name="test_array_comparison" time="0.001" /><testcase classname="tests.test_array.TestArray" name="test_array_copy" time="0.424" /><testcase classname="tests.test_array.TestArray" name="test_array_from_noncontiguous_np" time="0.003" /><testcase classname="tests.test_array.TestArray" name="test_array_iteration" time="0.001" /><testcase classname="tests.test_array.TestArray" name="test_array_namespace" time="0.001" /><testcase classname="tests.test_array.TestArray" name="test_array_namespace_asarray" time="0.001" /><testcase classname="tests.test_array.TestArray" name="test_array_neg" time="0.001" /><testcase classname="tests.test_array.TestArray" name="test_array_np_conversion" time="0.001" /><testcase classname="tests.test_array.TestArray" name="test_array_np_dtype_conversion" time="0.030" /><testcase classname="tests.test_array.TestArray" name="test_array_np_shape_dim_check" time="0.001" /><testcase classname="tests.test_array.TestArray" name="test_array_pickle" time="0.042" /><testcase classname="tests.test_array.TestArray" name="test_array_repr" time="0.001" /><testcase classname="tests.test_array.TestArray" name="test_array_repr_precision" time="0.001" /><testcase classname="tests.test_array.TestArray" name="test_array_to_list" time="0.001" /><testcase classname="tests.test_array.TestArray" name="test_array_type_cast" time="0.001" /><testcase classname="tests.test_array.TestArray" name="test_array_view_ref_counting" time="0.001" /><testcase classname="tests.test_array.TestArray" name="test_asarray" time="0.001" /><testcase classname="tests.test_array.TestArray" name="test_asarray_copy" time="0.001" /><testcase classname="tests.test_array.TestArray" name="test_bool_conversion" time="0.001" /><testcase classname="tests.test_array.TestArray" name="test_buffer_protocol" time="0.010" /><testcase classname="tests.test_array.TestArray" name="test_buffer_protocol_ref_counting" time="0.001" /><testcase classname="tests.test_array.TestArray" name="test_buffer_protocol_tf" time="0.001"><skipped type="pytest.skip" message="requires TensorFlow">/tmp/mlx-python-ce508aa9/tests/test_array.py:2036: requires TensorFlow</skipped></testcase><testcase classname="tests.test_array.TestArray" name="test_construction_from_lists" time="0.002" /><testcase classname="tests.test_array.TestArray" name="test_construction_from_lists_of_mlx_arrays" time="0.899" /><testcase classname="tests.test_array.TestArray" name="test_construction_from_lists_wide_ints" time="0.022" /><testcase classname="tests.test_array.TestArray" name="test_create_from_buffer" time="0.001" /><testcase classname="tests.test_array.TestArray" name="test_deep_graphs" time="39.813" /><testcase classname="tests.test_array.TestArray" name="test_dlpack" time="0.013" /><testcase classname="tests.test_array.TestArray" name="test_dlpack_cpu_dtype_mapping" time="0.018" /><testcase classname="tests.test_array.TestArray" name="test_double_keeps_precision" time="0.000" /><testcase classname="tests.test_array.TestArray" name="test_dtype_promotion" time="0.024" /><testcase classname="tests.test_array.TestArray" name="test_dtype_python_scalar_promotion" time="0.000" /><testcase classname="tests.test_array.TestArray" name="test_format" time="0.002" /><testcase classname="tests.test_array.TestArray" name="test_from_dlpack_cpu" time="0.002" /><testcase classname="tests.test_array.TestArray" name="test_from_dlpack_cpu_strided" time="0.001" /><testcase classname="tests.test_array.TestArray" name="test_from_dlpack_torch_mps_copy_false_shares_updates" time="0.000"><skipped type="pytest.skip" message="PyTorch MPS is required">/tmp/mlx-python-ce508aa9/tests/test_array.py:2591: PyTorch MPS is required</skipped></testcase><testcase classname="tests.test_array.TestArray" name="test_from_dlpack_torch_mps_copy_none_shares_updates" time="0.000"><skipped type="pytest.skip" message="PyTorch MPS is required">/tmp/mlx-python-ce508aa9/tests/test_array.py:2576: PyTorch MPS is required</skipped></testcase><testcase classname="tests.test_array.TestArray" name="test_from_dlpack_torch_mps_copy_true_copies" time="0.000"><skipped type="pytest.skip" message="PyTorch MPS is required">/tmp/mlx-python-ce508aa9/tests/test_array.py:2602: PyTorch MPS is required</skipped></testcase><testcase classname="tests.test_array.TestArray" name="test_getitem_with_list" time="0.012" /><testcase classname="tests.test_array.TestArray" name="test_indexing" time="0.894" /><testcase classname="tests.test_array.TestArray" name="test_indexing_grad" time="0.005" /><testcase classname="tests.test_array.TestArray" name="test_init_from_array" time="0.001" /><testcase classname="tests.test_array.TestArray" name="test_inplace" time="0.006" /><testcase classname="tests.test_array.TestArray" name="test_inplace_preserves_ids" time="0.000" /><testcase classname="tests.test_array.TestArray" name="test_int_type" time="0.000" /><testcase classname="tests.test_array.TestArray" name="test_large_indices" time="0.000" /><testcase classname="tests.test_array.TestArray" name="test_load_from_pickled_np" time="0.001" /><testcase classname="tests.test_array.TestArray" name="test_logical_overloads" time="0.004" /><testcase classname="tests.test_array.TestArray" name="test_memoryless_copy" time="0.001" /><testcase classname="tests.test_array.TestArray" name="test_mlx_dlpack_export_torch_update_writes_mlx_buffer" time="0.000"><skipped type="pytest.skip" message="PyTorch MPS is required">/tmp/mlx-python-ce508aa9/tests/test_array.py:2561: PyTorch MPS is required</skipped></testcase><testcase classname="tests.test_array.TestArray" name="test_mlx_dlpack_exports_mps_tensor_to_torch" time="0.004"><skipped type="pytest.skip" message="PyTorch MPS is required">/tmp/mlx-python-ce508aa9/tests/test_array.py:2537: PyTorch MPS is required</skipped></testcase><testcase classname="tests.test_array.TestArray" name="test_mlx_dlpack_exports_mps_tensor_to_torch_tensor" time="0.000"><skipped type="pytest.skip" message="PyTorch MPS is required">/tmp/mlx-python-ce508aa9/tests/test_array.py:2549: PyTorch MPS is required</skipped></testcase><testcase classname="tests.test_array.TestArray" name="test_multi_output_leak" time="0.001" /><testcase classname="tests.test_array.TestArray" name="test_np_array_conversion_copies_by_default" time="0.002" /><testcase classname="tests.test_array.TestArray" name="test_real_imag" time="0.003" /><testcase classname="tests.test_array.TestArray" name="test_scalar_integer_conversion_overflow" time="0.001" /><testcase classname="tests.test_array.TestArray" name="test_setitem" time="0.066" /><testcase classname="tests.test_array.TestArray" name="test_setitem_with_boolean_mask" time="0.011" /><testcase classname="tests.test_array.TestArray" name="test_setitem_with_list" time="0.008" /><testcase classname="tests.test_array.TestArray" name="test_slice_negative_step" time="0.001" /><testcase classname="tests.test_array.TestArray" name="test_slice_update_contiguous_2d" time="0.040" /><testcase classname="tests.test_array.TestArray" name="test_to_scalar" time="0.001" /><testcase classname="tests.test_array.TestArray" name="test_torch_mps_array_copies_dlpack_input" time="0.000"><skipped type="pytest.skip" message="PyTorch MPS is required">/tmp/mlx-python-ce508aa9/tests/test_array.py:2377: PyTorch MPS is required</skipped></testcase><testcase classname="tests.test_array.TestArray" name="test_torch_mps_array_operand" time="0.000"><skipped type="pytest.skip" message="PyTorch MPS is required">/tmp/mlx-python-ce508aa9/tests/test_array.py:2526: PyTorch MPS is required</skipped></testcase><testcase classname="tests.test_array.TestArray" name="test_torch_mps_asarray_copy_true_copies_dlpack_input" time="0.000"><skipped type="pytest.skip" message="PyTorch MPS is required">/tmp/mlx-python-ce508aa9/tests/test_array.py:2388: PyTorch MPS is required</skipped></testcase><testcase classname="tests.test_array.TestArray" name="test_torch_mps_dlpack_bfloat16" time="0.000"><skipped type="pytest.skip" message="PyTorch MPS is required">/tmp/mlx-python-ce508aa9/tests/test_array.py:2512: PyTorch MPS is required</skipped></testcase><testcase classname="tests.test_array.TestArray" name="test_torch_mps_dlpack_broadcast_stride" time="0.000"><skipped type="pytest.skip" message="PyTorch MPS is required">/tmp/mlx-python-ce508aa9/tests/test_array.py:2499: PyTorch MPS is required</skipped></testcase><testcase classname="tests.test_array.TestArray" name="test_torch_mps_dlpack_data_offset" time="0.000"><skipped type="pytest.skip" message="PyTorch MPS is required">/tmp/mlx-python-ce508aa9/tests/test_array.py:2444: PyTorch MPS is required</skipped></testcase><testcase classname="tests.test_array.TestArray" name="test_torch_mps_dlpack_different_dtype_argument_copies" time="0.001"><skipped type="pytest.skip" message="PyTorch MPS is required">/tmp/mlx-python-ce508aa9/tests/test_array.py:2426: PyTorch MPS is required</skipped></testcase><testcase classname="tests.test_array.TestArray" name="test_torch_mps_dlpack_import" time="0.000"><skipped type="pytest.skip" message="PyTorch MPS is required">/tmp/mlx-python-ce508aa9/tests/test_array.py:2363: PyTorch MPS is required</skipped></testcase><testcase classname="tests.test_array.TestArray" name="test_torch_mps_dlpack_matching_dtype_argument_shares_updates" time="0.000"><skipped type="pytest.skip" message="PyTorch MPS is required">/tmp/mlx-python-ce508aa9/tests/test_array.py:2414: PyTorch MPS is required</skipped></testcase><testcase classname="tests.test_array.TestArray" name="test_torch_mps_dlpack_stepped_view" time="0.000"><skipped type="pytest.skip" message="PyTorch MPS is required">/tmp/mlx-python-ce508aa9/tests/test_array.py:2481: PyTorch MPS is required</skipped></testcase><testcase classname="tests.test_array.TestArray" name="test_torch_mps_dlpack_strided_view" time="0.000"><skipped type="pytest.skip" message="PyTorch MPS is required">/tmp/mlx-python-ce508aa9/tests/test_array.py:2452: PyTorch MPS is required</skipped></testcase><testcase classname="tests.test_array.TestArray" name="test_torch_mps_dlpack_zero_copy_shares_updates" time="0.000"><skipped type="pytest.skip" message="PyTorch MPS is required">/tmp/mlx-python-ce508aa9/tests/test_array.py:2399: PyTorch MPS is required</skipped></testcase><testcase classname="tests.test_autograd.TestAutograd" name="test_autograd_types" time="0.005" /><testcase classname="tests.test_autograd.TestAutograd" name="test_auxiliary_values" time="0.002" /><testcase classname="tests.test_autograd.TestAutograd" name="test_captured" time="0.001" /><testcase classname="tests.test_autograd.TestAutograd" name="test_complex_abs_grad" time="0.013" /><testcase classname="tests.test_autograd.TestAutograd" name="test_complex_exp_vjp" time="0.003" /><testcase classname="tests.test_autograd.TestAutograd" name="test_complex_log_vjp" time="0.003" /><testcase classname="tests.test_autograd.TestAutograd" name="test_complex_prod_vjp" time="0.009" /><testcase classname="tests.test_autograd.TestAutograd" name="test_complex_unary_vjps" time="0.015" /><testcase classname="tests.test_autograd.TestAutograd" name="test_complex_vjps" time="0.004" /><testcase classname="tests.test_autograd.TestAutograd" name="test_concatenate_vjps" time="0.004" /><testcase classname="tests.test_autograd.TestAutograd" name="test_cummax_cummin_grad_vs_torch" time="0.001"><skipped type="pytest.skip" message="requires Torch">/tmp/mlx-python-ce508aa9/tests/test_autograd.py:914: requires Torch</skipped></testcase><testcase classname="tests.test_autograd.TestAutograd" name="test_cummax_grad" time="0.020" /><testcase classname="tests.test_autograd.TestAutograd" name="test_cummin_grad" time="0.015" /><testcase classname="tests.test_autograd.TestAutograd" name="test_cumprod_grad" time="0.038" /><testcase classname="tests.test_autograd.TestAutograd" name="test_custom_function" time="0.078" /><testcase classname="tests.test_autograd.TestAutograd" name="test_eval_in_grad" time="0.002" /><testcase classname="tests.test_autograd.TestAutograd" name="test_flatten_unflatten_vjps" time="0.001" /><testcase classname="tests.test_autograd.TestAutograd" name="test_grad" time="0.002" /><testcase classname="tests.test_autograd.TestAutograd" name="test_grad_ids_pre_post" time="0.000" /><testcase classname="tests.test_autograd.TestAutograd" name="test_grad_kwargs" time="0.002" /><testcase classname="tests.test_autograd.TestAutograd" name="test_grad_trees" time="0.002" /><testcase classname="tests.test_autograd.TestAutograd" name="test_grad_with_copies" time="0.000" /><testcase classname="tests.test_autograd.TestAutograd" name="test_grad_with_inplace_update" time="0.000" /><testcase classname="tests.test_autograd.TestAutograd" name="test_index_vjp_requires_stop_gradient" time="0.001" /><testcase classname="tests.test_autograd.TestAutograd" name="test_jvp" time="0.001" /><testcase classname="tests.test_autograd.TestAutograd" name="test_jvp_comparison_tangent_dtype" time="0.000" /><testcase classname="tests.test_autograd.TestAutograd" name="test_jvp_through_bitwise_ops" time="0.002" /><testcase classname="tests.test_autograd.TestAutograd" name="test_jvp_with_constant_inputs" time="0.008" /><testcase classname="tests.test_autograd.TestAutograd" name="test_jvp_with_partly_traced_inputs" time="0.006" /><testcase classname="tests.test_autograd.TestAutograd" name="test_leaks" time="0.108" /><testcase classname="tests.test_autograd.TestAutograd" name="test_logsumexp_grad" time="0.010" /><testcase classname="tests.test_autograd.TestAutograd" name="test_matmul_jvps" time="0.017" /><testcase classname="tests.test_autograd.TestAutograd" name="test_power_grad" time="0.001" /><testcase classname="tests.test_autograd.TestAutograd" name="test_put_along_axis_grads" time="0.011" /><testcase classname="tests.test_autograd.TestAutograd" name="test_reduce_jvp" time="0.011" /><testcase classname="tests.test_autograd.TestAutograd" name="test_scatter_add_vjp" time="0.005" /><testcase classname="tests.test_autograd.TestAutograd" name="test_scatter_max_vjp" time="0.007" /><testcase classname="tests.test_autograd.TestAutograd" name="test_scatter_min_vjp" time="0.007" /><testcase classname="tests.test_autograd.TestAutograd" name="test_scatter_vjp" time="0.001" /><testcase classname="tests.test_autograd.TestAutograd" name="test_second_order_permutation_ops" time="0.051" /><testcase classname="tests.test_autograd.TestAutograd" name="test_slice_grads" time="0.010" /><testcase classname="tests.test_autograd.TestAutograd" name="test_slice_update_add_vjp" time="0.003" /><testcase classname="tests.test_autograd.TestAutograd" name="test_slice_update_max_vjp" time="0.010" /><testcase classname="tests.test_autograd.TestAutograd" name="test_slice_update_min_vjp" time="0.010" /><testcase classname="tests.test_autograd.TestAutograd" name="test_slice_update_multiply_vjp" time="0.009" /><testcase classname="tests.test_autograd.TestAutograd" name="test_sort_grad" time="0.013" /><testcase classname="tests.test_autograd.TestAutograd" name="test_split_against_slice" time="0.054" /><testcase classname="tests.test_autograd.TestAutograd" name="test_stop_gradient" time="0.012" /><testcase classname="tests.test_autograd.TestAutograd" name="test_stop_gradient_computed_indices" time="0.005" /><testcase classname="tests.test_autograd.TestAutograd" name="test_take_along_axis_complex_vjp" time="0.009" /><testcase classname="tests.test_autograd.TestAutograd" name="test_topk_grad" time="0.001" /><testcase classname="tests.test_autograd.TestAutograd" name="test_update_state" time="0.002" /><testcase classname="tests.test_autograd.TestAutograd" name="test_vjp" time="0.001" /><testcase classname="tests.test_autograd.TestAutograd" name="test_vjp_types" time="0.001" /><testcase classname="tests.test_ops.TestOps" name="test_abs" time="0.001" /><testcase classname="tests.test_ops.TestOps" name="test_add" time="0.002" /><testcase classname="tests.test_ops.TestOps" name="test_all" time="0.001" /><testcase classname="tests.test_ops.TestOps" name="test_allclose" time="0.008" /><testcase classname="tests.test_ops.TestOps" name="test_along_axis_invalid_axis" time="0.001" /><testcase classname="tests.test_ops.TestOps" name="test_any" time="0.001" /><testcase classname="tests.test_ops.TestOps" name="test_arange_corner_cases_cast" time="0.001"><failure message="RuntimeError: [omarchy] Arange range is not implemented for the Omarchy Vulkan backend (dtype=int64, shape=[4]). No GPU kernel exists for it; no silent CPU fallback occurs. Run it on an explicit CPU stream to use the CPU implementation.">self = &lt;test_ops.TestOps testMethod=test_arange_corner_cases_cast&gt;
+
+    def test_arange_corner_cases_cast(self):
+        a = mx.arange(0, 3, 0.2, dtype=mx.int32)
+        expected = [0] * 15
+        self.assertListEqual(a.tolist(), expected)
+        self.assertEqual(a.dtype, mx.int32)
+    
+        a = mx.arange(-1, -4, -0.9, dtype=mx.int32)
+        expected = [-1] * 4
+        self.assertListEqual(a.tolist(), expected)
+        self.assertEqual(a.dtype, mx.int32)
+    
+        a = mx.arange(-1, -20, -1.2, dtype=mx.int32)
+        expected = [
+            -1,
+            -2,
+            -3,
+            -4,
+            -5,
+            -6,
+            -7,
+            -8,
+            -9,
+            -10,
+            -11,
+            -12,
+            -13,
+            -14,
+            -15,
+            -16,
+        ]
+        self.assertListEqual(a.tolist(), expected)
+        self.assertEqual(a.dtype, mx.int32)
+    
+        a = mx.arange(0, 10, 100)
+        expected = [0]
+        self.assertListEqual(a.tolist(), expected)
+        self.assertEqual(a.dtype, mx.int32)
+    
+        a = mx.arange(10, 0, 1)
+        expected = []
+        self.assertListEqual(a.tolist(), expected)
+    
+        a = mx.arange(10, 0, float("inf"))
+        expected = []
+        self.assertListEqual(a.tolist(), expected)
+    
+        a = mx.arange(0, 10, float("inf"))
+        expected = [0]
+        self.assertListEqual(a.tolist(), expected)
+    
+        a = mx.arange(0, -10, float("-inf"))
+        expected = [0]
+        self.assertListEqual(a.tolist(), expected)
+    
+        # The range crossing the int32 limit widens the dtype to int64 instead
+        # of saturating or wrapping.
+        n = mx.iinfo(mx.int32).max
+        result = mx.arange(n - 1, n + 3)
+        self.assertEqual(result.shape, (4,))
+        self.assertEqual(result.dtype, mx.int64)
+&gt;       self.assertEqual(result.tolist(), [n - 1, n, n + 1, n + 2])
+                         ^^^^^^^^^^^^^^^
+E       RuntimeError: [omarchy] Arange range is not implemented for the Omarchy Vulkan backend (dtype=int64, shape=[4]). No GPU kernel exists for it; no silent CPU fallback occurs. Run it on an explicit CPU stream to use the CPU implementation.
+
+tests/test_ops.py:1905: RuntimeError</failure></testcase><testcase classname="tests.test_ops.TestOps" name="test_arange_inferred_dtype" time="0.001"><failure message="RuntimeError: [omarchy] Arange range is not implemented for the Omarchy Vulkan backend (dtype=int64, shape=[3]). No GPU kernel exists for it; no silent CPU fallback occurs. Run it on an explicit CPU stream to use the CPU implementation.">self = &lt;test_ops.TestOps testMethod=test_arange_inferred_dtype&gt;
+
+    def test_arange_inferred_dtype(self):
+        a = mx.arange(5)
+        self.assertEqual(a.dtype, mx.int32)
+    
+        a = mx.arange(5.0)
+        self.assertEqual(a.dtype, mx.float32)
+    
+        a = mx.arange(1, 3.0)
+        self.assertEqual(a.dtype, mx.float32)
+    
+        a = mx.arange(1, 3, dtype=mx.float32)
+        self.assertEqual(a.dtype, mx.float32)
+    
+        a = mx.arange(1, 5, 1)
+        self.assertEqual(a.dtype, mx.int32)
+    
+        a = mx.arange(1.0, 5, 1)
+        self.assertEqual(a.dtype, mx.float32)
+    
+        a = mx.arange(1, 5.0, 1)
+        self.assertEqual(a.dtype, mx.float32)
+    
+        a = mx.arange(1, 5, 1.0)
+        self.assertEqual(a.dtype, mx.float32)
+    
+        a = mx.arange(1.0, 3.0, 0.2, dtype=mx.int32)
+        self.assertEqual(a.dtype, mx.int32)
+    
+        # Integers that do not fit in int32 widen the inferred dtype to int64,
+        # matching the scalar inference of mx.array and numpy.
+        a = mx.arange(2**40, 2**40 + 3)
+        self.assertEqual(a.dtype, mx.int64)
+&gt;       self.assertListEqual(a.tolist(), [2**40, 2**40 + 1, 2**40 + 2])
+                             ^^^^^^^^^^
+E       RuntimeError: [omarchy] Arange range is not implemented for the Omarchy Vulkan backend (dtype=int64, shape=[3]). No GPU kernel exists for it; no silent CPU fallback occurs. Run it on an explicit CPU stream to use the CPU implementation.
+
+tests/test_ops.py:1798: RuntimeError</failure></testcase><testcase classname="tests.test_ops.TestOps" name="test_arange_overload_dispatch" time="0.001" /><testcase classname="tests.test_ops.TestOps" name="test_argmin_argmax" time="0.095" /><testcase classname="tests.test_ops.TestOps" name="test_argpartition" time="0.013" /><testcase classname="tests.test_ops.TestOps" name="test_argsort_nan" time="0.024" /><testcase classname="tests.test_ops.TestOps" name="test_array_equal" time="0.006" /><testcase classname="tests.test_ops.TestOps" name="test_as_strided" time="0.002" /><testcase classname="tests.test_ops.TestOps" name="test_atleast_1d" time="0.005" /><testcase classname="tests.test_ops.TestOps" name="test_atleast_2d" time="0.009" /><testcase classname="tests.test_ops.TestOps" name="test_atleast_3d" time="0.004" /><testcase classname="tests.test_ops.TestOps" name="test_bartlett_general" time="0.001" /><testcase classname="tests.test_ops.TestOps" name="test_binary_ops" time="0.706" /><testcase classname="tests.test_ops.TestOps" name="test_bitwise_grad" time="0.001" /><testcase classname="tests.test_ops.TestOps" name="test_bitwise_ops" time="0.044" /><testcase classname="tests.test_ops.TestOps" name="test_blackman_general" time="0.001" /><testcase classname="tests.test_ops.TestOps" name="test_broadcast" time="0.001" /><testcase classname="tests.test_ops.TestOps" name="test_broadcast_arrays" time="0.000" /><testcase classname="tests.test_ops.TestOps" name="test_broadcast_shapes" time="0.000" /><testcase classname="tests.test_ops.TestOps" name="test_ceil" time="0.001" /><testcase classname="tests.test_ops.TestOps" name="test_clip" time="0.002" /><testcase classname="tests.test_ops.TestOps" name="test_comparisons" time="0.002" /><testcase classname="tests.test_ops.TestOps" name="test_complex_ops" time="0.603"><failure message="RuntimeError: [omarchy] ArcCos dtype is not implemented for the Omarchy Vulkan backend (dtype=complex64, shape=[5]). No GPU kernel exists for it; no silent CPU fallback occurs. Run it on an explicit CPU stream to use the CPU implementation.">self = &lt;test_ops.TestOps testMethod=test_complex_ops&gt;
+
+    def test_complex_ops(self):
+        x = mx.array(
+            [
+                3.0 + 4.0j,
+                -5.0 + 12.0j,
+                -8.0 + 0.0j,
+                0.0 + 9.0j,
+                0.0 + 0.0j,
+            ]
+        )
+    
+        ops = ["arccos", "arcsin", "arctan", "square", "sqrt"]
+        for op in ops:
+            with self.subTest(op=op):
+                np_op = getattr(np, op)
+                mx_op = getattr(mx, op)
+&gt;               self.assertTrue(np.allclose(mx_op(x), np_op(x)))
+                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_ops.py:4045: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+venv/lib/python3.11/site-packages/numpy/_core/numeric.py:2376: in allclose
+    res = all(isclose(a, b, rtol=rtol, atol=atol, equal_nan=equal_nan))
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv/lib/python3.11/site-packages/numpy/_core/numeric.py:2476: in isclose
+    x, y, atol, rtol = (
+    ^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+.0 = &lt;tuple_iterator object at 0x7952ab55dde0&gt;
+
+    x, y, atol, rtol = (
+&gt;       a if isinstance(a, (int, float, complex)) else asanyarray(a)
+                                                       ^^^^^^^^^^^^^
+        for a in (a, b, atol, rtol))
+E   RuntimeError: [omarchy] ArcCos dtype is not implemented for the Omarchy Vulkan backend (dtype=complex64, shape=[5]). No GPU kernel exists for it; no silent CPU fallback occurs. Run it on an explicit CPU stream to use the CPU implementation.
+
+venv/lib/python3.11/site-packages/numpy/_core/numeric.py:2477: RuntimeError</failure><failure message="RuntimeError: [omarchy] ArcSin dtype is not implemented for the Omarchy Vulkan backend (dtype=complex64, shape=[5]). No GPU kernel exists for it; no silent CPU fallback occurs. Run it on an explicit CPU stream to use the CPU implementation.">self = &lt;test_ops.TestOps testMethod=test_complex_ops&gt;
+
+    def test_complex_ops(self):
+        x = mx.array(
+            [
+                3.0 + 4.0j,
+                -5.0 + 12.0j,
+                -8.0 + 0.0j,
+                0.0 + 9.0j,
+                0.0 + 0.0j,
+            ]
+        )
+    
+        ops = ["arccos", "arcsin", "arctan", "square", "sqrt"]
+        for op in ops:
+            with self.subTest(op=op):
+                np_op = getattr(np, op)
+                mx_op = getattr(mx, op)
+&gt;               self.assertTrue(np.allclose(mx_op(x), np_op(x)))
+                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_ops.py:4045: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+venv/lib/python3.11/site-packages/numpy/_core/numeric.py:2376: in allclose
+    res = all(isclose(a, b, rtol=rtol, atol=atol, equal_nan=equal_nan))
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv/lib/python3.11/site-packages/numpy/_core/numeric.py:2476: in isclose
+    x, y, atol, rtol = (
+    ^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+.0 = &lt;tuple_iterator object at 0x79527130dba0&gt;
+
+    x, y, atol, rtol = (
+&gt;       a if isinstance(a, (int, float, complex)) else asanyarray(a)
+                                                       ^^^^^^^^^^^^^
+        for a in (a, b, atol, rtol))
+E   RuntimeError: [omarchy] ArcSin dtype is not implemented for the Omarchy Vulkan backend (dtype=complex64, shape=[5]). No GPU kernel exists for it; no silent CPU fallback occurs. Run it on an explicit CPU stream to use the CPU implementation.
+
+venv/lib/python3.11/site-packages/numpy/_core/numeric.py:2477: RuntimeError</failure><failure message="RuntimeError: [omarchy] ArcTan dtype is not implemented for the Omarchy Vulkan backend (dtype=complex64, shape=[5]). No GPU kernel exists for it; no silent CPU fallback occurs. Run it on an explicit CPU stream to use the CPU implementation.">self = &lt;test_ops.TestOps testMethod=test_complex_ops&gt;
+
+    def test_complex_ops(self):
+        x = mx.array(
+            [
+                3.0 + 4.0j,
+                -5.0 + 12.0j,
+                -8.0 + 0.0j,
+                0.0 + 9.0j,
+                0.0 + 0.0j,
+            ]
+        )
+    
+        ops = ["arccos", "arcsin", "arctan", "square", "sqrt"]
+        for op in ops:
+            with self.subTest(op=op):
+                np_op = getattr(np, op)
+                mx_op = getattr(mx, op)
+&gt;               self.assertTrue(np.allclose(mx_op(x), np_op(x)))
+                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_ops.py:4045: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+venv/lib/python3.11/site-packages/numpy/_core/numeric.py:2376: in allclose
+    res = all(isclose(a, b, rtol=rtol, atol=atol, equal_nan=equal_nan))
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv/lib/python3.11/site-packages/numpy/_core/numeric.py:2476: in isclose
+    x, y, atol, rtol = (
+    ^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+.0 = &lt;tuple_iterator object at 0x7952ab157f10&gt;
+
+    x, y, atol, rtol = (
+&gt;       a if isinstance(a, (int, float, complex)) else asanyarray(a)
+                                                       ^^^^^^^^^^^^^
+        for a in (a, b, atol, rtol))
+E   RuntimeError: [omarchy] ArcTan dtype is not implemented for the Omarchy Vulkan backend (dtype=complex64, shape=[5]). No GPU kernel exists for it; no silent CPU fallback occurs. Run it on an explicit CPU stream to use the CPU implementation.
+
+venv/lib/python3.11/site-packages/numpy/_core/numeric.py:2477: RuntimeError</failure><failure message="RuntimeError: [omarchy] Sqrt dtype is not implemented for the Omarchy Vulkan backend (dtype=complex64, shape=[5]). No GPU kernel exists for it; no silent CPU fallback occurs. Run it on an explicit CPU stream to use the CPU implementation.">self = &lt;test_ops.TestOps testMethod=test_complex_ops&gt;
+
+    def test_complex_ops(self):
+        x = mx.array(
+            [
+                3.0 + 4.0j,
+                -5.0 + 12.0j,
+                -8.0 + 0.0j,
+                0.0 + 9.0j,
+                0.0 + 0.0j,
+            ]
+        )
+    
+        ops = ["arccos", "arcsin", "arctan", "square", "sqrt"]
+        for op in ops:
+            with self.subTest(op=op):
+                np_op = getattr(np, op)
+                mx_op = getattr(mx, op)
+&gt;               self.assertTrue(np.allclose(mx_op(x), np_op(x)))
+                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_ops.py:4045: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+venv/lib/python3.11/site-packages/numpy/_core/numeric.py:2376: in allclose
+    res = all(isclose(a, b, rtol=rtol, atol=atol, equal_nan=equal_nan))
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv/lib/python3.11/site-packages/numpy/_core/numeric.py:2476: in isclose
+    x, y, atol, rtol = (
+    ^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+.0 = &lt;tuple_iterator object at 0x7952ab38dc30&gt;
+
+    x, y, atol, rtol = (
+&gt;       a if isinstance(a, (int, float, complex)) else asanyarray(a)
+                                                       ^^^^^^^^^^^^^
+        for a in (a, b, atol, rtol))
+E   RuntimeError: [omarchy] Sqrt dtype is not implemented for the Omarchy Vulkan backend (dtype=complex64, shape=[5]). No GPU kernel exists for it; no silent CPU fallback occurs. Run it on an explicit CPU stream to use the CPU implementation.
+
+venv/lib/python3.11/site-packages/numpy/_core/numeric.py:2477: RuntimeError</failure><failure message="RuntimeError: [omarchy] Rsqrt dtype is not implemented for the Omarchy Vulkan backend (dtype=complex64, shape=[5]). No GPU kernel exists for it; no silent CPU fallback occurs. Run it on an explicit CPU stream to use the CPU implementation.">self = &lt;test_ops.TestOps testMethod=test_complex_ops&gt;
+
+    def test_complex_ops(self):
+        x = mx.array(
+            [
+                3.0 + 4.0j,
+                -5.0 + 12.0j,
+                -8.0 + 0.0j,
+                0.0 + 9.0j,
+                0.0 + 0.0j,
+            ]
+        )
+    
+        ops = ["arccos", "arcsin", "arctan", "square", "sqrt"]
+        for op in ops:
+            with self.subTest(op=op):
+                np_op = getattr(np, op)
+                mx_op = getattr(mx, op)
+                self.assertTrue(np.allclose(mx_op(x), np_op(x)))
+    
+        x = mx.array(
+            [
+                3.0 + 4.0j,
+                -5.0 + 12.0j,
+                -8.0 + 0.0j,
+                0.0 + 9.0j,
+                9.0 + 1.0j,
+            ]
+        )
+&gt;       self.assertTrue(np.allclose(mx.rsqrt(x), 1.0 / np.sqrt(x)))
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_ops.py:4056: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+venv/lib/python3.11/site-packages/numpy/_core/numeric.py:2376: in allclose
+    res = all(isclose(a, b, rtol=rtol, atol=atol, equal_nan=equal_nan))
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv/lib/python3.11/site-packages/numpy/_core/numeric.py:2476: in isclose
+    x, y, atol, rtol = (
+    ^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+.0 = &lt;tuple_iterator object at 0x7952ab377460&gt;
+
+    x, y, atol, rtol = (
+&gt;       a if isinstance(a, (int, float, complex)) else asanyarray(a)
+                                                       ^^^^^^^^^^^^^
+        for a in (a, b, atol, rtol))
+E   RuntimeError: [omarchy] Rsqrt dtype is not implemented for the Omarchy Vulkan backend (dtype=complex64, shape=[5]). No GPU kernel exists for it; no silent CPU fallback occurs. Run it on an explicit CPU stream to use the CPU implementation.
+
+venv/lib/python3.11/site-packages/numpy/_core/numeric.py:2477: RuntimeError</failure></testcase><testcase classname="tests.test_ops.TestOps" name="test_complex_power" time="0.001" /><testcase classname="tests.test_ops.TestOps" name="test_concatenate" time="0.058" /><testcase classname="tests.test_ops.TestOps" name="test_conjugate" time="0.002" /><testcase classname="tests.test_ops.TestOps" name="test_cos" time="0.001" /><testcase classname="tests.test_ops.TestOps" name="test_count_nonzero" time="0.001" /><testcase classname="tests.test_ops.TestOps" name="test_cross_invalid_axis" time="0.001" /><testcase classname="tests.test_ops.TestOps" name="test_cummax_cummin_nan" time="0.016" /><testcase classname="tests.test_ops.TestOps" name="test_degrees" time="0.001" /><testcase classname="tests.test_ops.TestOps" name="test_depends" time="0.001" /><testcase classname="tests.test_ops.TestOps" name="test_diag" time="0.004" /><testcase classname="tests.test_ops.TestOps" name="test_diag_zero_size" time="0.002" /><testcase classname="tests.test_ops.TestOps" name="test_diagonal" time="0.001" /><testcase classname="tests.test_ops.TestOps" name="test_diff" time="0.001" /><testcase classname="tests.test_ops.TestOps" name="test_divide" time="0.001" /><testcase classname="tests.test_ops.TestOps" name="test_divmod" time="0.022" /><testcase classname="tests.test_ops.TestOps" name="test_dynamic_slicing" time="0.007" /><testcase classname="tests.test_ops.TestOps" name="test_empty_matmuls" time="0.001" /><testcase classname="tests.test_ops.TestOps" name="test_erf" time="0.001" /><testcase classname="tests.test_ops.TestOps" name="test_erfinv" time="0.006" /><testcase classname="tests.test_ops.TestOps" name="test_exp" time="0.001" /><testcase classname="tests.test_ops.TestOps" name="test_expm1" time="0.003" /><testcase classname="tests.test_ops.TestOps" name="test_eye" time="0.009" /><testcase classname="tests.test_ops.TestOps" name="test_flatten" time="0.000" /><testcase classname="tests.test_ops.TestOps" name="test_flip" time="0.001" /><testcase classname="tests.test_ops.TestOps" name="test_floor" time="0.001" /><testcase classname="tests.test_ops.TestOps" name="test_full_ones_zeros" time="0.004" /><testcase classname="tests.test_ops.TestOps" name="test_hadamard" time="0.058"><failure message="AssertionError: 64.8560791015625 not less than 5e-06">self = &lt;test_ops.TestOps testMethod=test_hadamard&gt;
+
+    @unittest.skipIf("CI" in os.environ, "too slow in CI")
+    def test_hadamard(self):
+        with self.assertRaises(ValueError):
+            mx.hadamard_transform(mx.array([]))
+    
+        h28_str = """
+        +------++----++-+--+-+--++--
+        -+-----+++-----+-+--+-+--++-
+        --+-----+++---+-+-+----+--++
+        ---+-----+++---+-+-+-+--+--+
+        ----+-----+++---+-+-+++--+--
+        -----+-----++++--+-+--++--+-
+        ------++----++-+--+-+--++--+
+        --++++-+-------++--+++-+--+-
+        ---++++-+-----+-++--+-+-+--+
+        +---+++--+----++-++--+-+-+--
+        ++---++---+----++-++--+-+-+-
+        +++---+----+----++-++--+-+-+
+        ++++--------+-+--++-++--+-+-
+        -++++--------+++--++--+--+-+
+        -+-++-++--++--+--------++++-
+        +-+-++--+--++--+--------++++
+        -+-+-++--+--++--+----+---+++
+        +-+-+-++--+--+---+---++---++
+        ++-+-+-++--+------+--+++---+
+        -++-+-+-++--+------+-++++---
+        +-++-+---++--+------+-++++--
+        -++--++-+-++-+++----++------
+        +-++--++-+-++-+++-----+-----
+        ++-++---+-+-++-+++-----+----
+        -++-++-+-+-+-+--+++-----+---
+        --++-++++-+-+----+++-----+--
+        +--++-+-++-+-+----+++-----+-
+        ++--++-+-++-+-+----++------+
+        """
+    
+        def parse_h_string(h_str):
+            return np.array(
+                [[1 if s == "+" else -1 for s in row] for row in h_str.split()]
+            )
+    
+        h28 = parse_h_string(h28_str)
+    
+        x = mx.array(5)
+        y = mx.hadamard_transform(x)
+        self.assertEqual(y.item(), 5)
+    
+        x = mx.array(5)
+        y = mx.hadamard_transform(x, scale=0.2)
+        self.assertEqual(y.item(), 1)
+    
+        x = mx.random.normal((8, 8, 1))
+        y = mx.hadamard_transform(x)
+        self.assertTrue(mx.all(y == x).item())
+    
+        # Too slow to compare to numpy so let's compare CPU to GPU
+        if mx.default_device() == mx.gpu:
+            rk = mx.random.key(42)
+            for k in range(14, 17):
+                for m in [1, 3, 5, 7]:
+                    x = mx.random.normal((4, m * 2**k), key=rk)
+                    y1 = mx.hadamard_transform(x, stream=mx.cpu)
+                    y2 = mx.hadamard_transform(x, stream=mx.gpu)
+&gt;                   self.assertLess(mx.abs(y1 - y2).max().item(), 5e-6)
+E                   AssertionError: 64.8560791015625 not less than 5e-06
+
+tests/test_ops.py:3840: AssertionError</failure></testcase><testcase classname="tests.test_ops.TestOps" name="test_hadamard_grad_vmap" time="28.903"><failure message="AssertionError: &#10;Not equal to tolerance rtol=1e-07, atol=0.0001&#10;&#10;nan location mismatch:&#10; ACTUAL: array([[[-1.544429e+01, -3.477468e+00, -4.792014e-01, ...,&#10;          8.713587e+00, -1.636061e+00, -5.783769e+00],&#10;        [-4.949675e-01, -5.258893e+00,  1.215912e+01, ...,...&#10; DESIRED: array([[[ 0.000000e+00,  0.000000e+00,  0.000000e+00, ...,&#10;          0.000000e+00,  0.000000e+00,  0.000000e+00],&#10;        [-3.510157e-13,  4.352153e-41,  0.000000e+00, ...,...">self = &lt;test_ops.TestOps testMethod=test_hadamard_grad_vmap&gt;
+
+    def test_hadamard_grad_vmap(self):
+        np.random.seed(4)
+    
+        for k in range(2, 8):
+            n = 2**k
+            x = np.random.normal(size=(n,))
+            h = self._hadamard(n)
+            c = np.random.normal(size=(n,))
+            x = mx.array(x).astype(mx.float32)
+            h = mx.array(h).astype(mx.float32)
+            c = mx.array(c).astype(mx.float32)
+    
+            def hadamard_transform(x):
+                return h @ x / mx.sqrt(x.shape[-1])
+    
+            out = mx.vjp(hadamard_transform, [x], [c])
+            out_t = mx.vjp(mx.hadamard_transform, [x], [c])
+            np.testing.assert_allclose(out, out_t, atol=1e-4)
+    
+            for axis in (0, 1, 2):
+                vht = mx.vmap(mx.vmap(hadamard_transform, 0, 0), axis, axis)
+                vht_t = mx.vmap(mx.vmap(mx.hadamard_transform, 0, 0), axis, axis)
+    
+                xb = mx.array(np.random.normal(size=(n, n, n)))
+                out = vht(xb)
+                out_t = vht_t(xb)
+&gt;               np.testing.assert_allclose(out, out_t, atol=1e-4)
+E               AssertionError: 
+E               Not equal to tolerance rtol=1e-07, atol=0.0001
+E               
+E               nan location mismatch:
+E                ACTUAL: array([[[-1.544429e+01, -3.477468e+00, -4.792014e-01, ...,
+E                         8.713587e+00, -1.636061e+00, -5.783769e+00],
+E                       [-4.949675e-01, -5.258893e+00,  1.215912e+01, ...,...
+E                DESIRED: array([[[ 0.000000e+00,  0.000000e+00,  0.000000e+00, ...,
+E                         0.000000e+00,  0.000000e+00,  0.000000e+00],
+E                       [-3.510157e-13,  4.352153e-41,  0.000000e+00, ...,...
+
+tests/test_ops.py:3926: AssertionError</failure></testcase><testcase classname="tests.test_ops.TestOps" name="test_hadamard_m_only" time="0.001"><skipped type="pytest.skip" message="Metal only">/tmp/mlx-python-ce508aa9/tests/test_ops.py:3873: Metal only</skipped></testcase><testcase classname="tests.test_ops.TestOps" name="test_hamming_general" time="15.889" /><testcase classname="tests.test_ops.TestOps" name="test_hanning_general" time="0.006" /><testcase classname="tests.test_ops.TestOps" name="test_inner" time="0.029" /><testcase classname="tests.test_ops.TestOps" name="test_integer_index_protocol" time="0.001" /><testcase classname="tests.test_ops.TestOps" name="test_integer_power" time="0.022" /><testcase classname="tests.test_ops.TestOps" name="test_irregular_alignments" time="0.008" /><testcase classname="tests.test_ops.TestOps" name="test_irregular_binary_ops" time="7.503" /><testcase classname="tests.test_ops.TestOps" name="test_isclose" time="0.007" /><testcase classname="tests.test_ops.TestOps" name="test_isfinite" time="0.006" /><testcase classname="tests.test_ops.TestOps" name="test_isinf" time="0.005" /><testcase classname="tests.test_ops.TestOps" name="test_isnan" time="0.002" /><testcase classname="tests.test_ops.TestOps" name="test_isneginf" time="0.002" /><testcase classname="tests.test_ops.TestOps" name="test_isposinf" time="0.002" /><testcase classname="tests.test_ops.TestOps" name="test_issubdtype" time="0.003" /><testcase classname="tests.test_ops.TestOps" name="test_kron" time="0.008" /><testcase classname="tests.test_ops.TestOps" name="test_large_binary" time="10.049"><failure message="RuntimeError: [omarchy] Vulkan timeline counter failed to advance for 10000 ms (last observed=0, target=1). The device may be hung; no CPU fallback is available.">self = &lt;test_ops.TestOps testMethod=test_large_binary&gt;
+
+    @unittest.skipIf(
+        os.getenv("LOW_MEMORY", None) is not None,
+        "This test requires a lot of memory",
+    )
+    def test_large_binary(self):
+        a = mx.ones([1000, 2147484], mx.int8)
+        b = mx.ones([2147484], mx.int8)
+&gt;       self.assertEqual((a + b)[0, 0].item(), 2)
+                         ^^^^^^^^^^^^^^^^^^^^
+E       RuntimeError: [omarchy] Vulkan timeline counter failed to advance for 10000 ms (last observed=0, target=1). The device may be hung; no CPU fallback is available.
+
+tests/test_ops.py:3092: RuntimeError</failure></testcase><testcase classname="tests.test_ops.TestOps" name="test_linspace" time="43.249" /><testcase classname="tests.test_ops.TestOps" name="test_linspace_endpoint" time="2.780" /><testcase classname="tests.test_ops.TestOps" name="test_log" time="0.002"><failure message="RuntimeError: [omarchy] Log dtype is not implemented for the Omarchy Vulkan backend (dtype=complex64, shape=[]). No GPU kernel exists for it; no silent CPU fallback occurs. Run it on an explicit CPU stream to use the CPU implementation.">self = &lt;test_ops.TestOps testMethod=test_log&gt;
+
+    def test_log(self):
+        a = mx.array([1, 0.5, 10, 100])
+        result = mx.log(a)
+        expected = np.log(a, dtype=np.float32)
+    
+        self.assertTrue(np.allclose(result, expected))
+    
+        a = mx.array(1.0) + 1j * mx.array(2.0)
+        result = mx.log(a)
+        expected = np.log(np.array(a))
+&gt;       self.assertTrue(np.allclose(result, expected))
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_ops.py:1202: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+venv/lib/python3.11/site-packages/numpy/_core/numeric.py:2376: in allclose
+    res = all(isclose(a, b, rtol=rtol, atol=atol, equal_nan=equal_nan))
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv/lib/python3.11/site-packages/numpy/_core/numeric.py:2476: in isclose
+    x, y, atol, rtol = (
+    ^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+.0 = &lt;tuple_iterator object at 0x7952ab5a3640&gt;
+
+    x, y, atol, rtol = (
+&gt;       a if isinstance(a, (int, float, complex)) else asanyarray(a)
+                                                       ^^^^^^^^^^^^^
+        for a in (a, b, atol, rtol))
+E   RuntimeError: [omarchy] Log dtype is not implemented for the Omarchy Vulkan backend (dtype=complex64, shape=[]). No GPU kernel exists for it; no silent CPU fallback occurs. Run it on an explicit CPU stream to use the CPU implementation.
+
+venv/lib/python3.11/site-packages/numpy/_core/numeric.py:2477: RuntimeError</failure></testcase><testcase classname="tests.test_ops.TestOps" name="test_log10" time="0.004"><failure message="RuntimeError: [omarchy] Log10 dtype is not implemented for the Omarchy Vulkan backend (dtype=complex64, shape=[]). No GPU kernel exists for it; no silent CPU fallback occurs. Run it on an explicit CPU stream to use the CPU implementation.">self = &lt;test_ops.TestOps testMethod=test_log10&gt;
+
+    def test_log10(self):
+        a = mx.array([0.1, 1, 10, 20, 100])
+        result = mx.log10(a)
+        expected = np.log10(a, dtype=np.float32)
+    
+        self.assertTrue(np.allclose(result, expected))
+    
+        a = mx.array(1.0) + 1j * mx.array(2.0)
+        result = mx.log10(a)
+        expected = np.log10(np.array(a))
+&gt;       self.assertTrue(np.allclose(result, expected))
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_ops.py:1226: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+venv/lib/python3.11/site-packages/numpy/_core/numeric.py:2376: in allclose
+    res = all(isclose(a, b, rtol=rtol, atol=atol, equal_nan=equal_nan))
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv/lib/python3.11/site-packages/numpy/_core/numeric.py:2476: in isclose
+    x, y, atol, rtol = (
+    ^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+.0 = &lt;tuple_iterator object at 0x7952ab595180&gt;
+
+    x, y, atol, rtol = (
+&gt;       a if isinstance(a, (int, float, complex)) else asanyarray(a)
+                                                       ^^^^^^^^^^^^^
+        for a in (a, b, atol, rtol))
+E   RuntimeError: [omarchy] Log10 dtype is not implemented for the Omarchy Vulkan backend (dtype=complex64, shape=[]). No GPU kernel exists for it; no silent CPU fallback occurs. Run it on an explicit CPU stream to use the CPU implementation.
+
+venv/lib/python3.11/site-packages/numpy/_core/numeric.py:2477: RuntimeError</failure></testcase><testcase classname="tests.test_ops.TestOps" name="test_log1p" time="0.001" /><testcase classname="tests.test_ops.TestOps" name="test_log2" time="0.001"><failure message="RuntimeError: [omarchy] Log2 dtype is not implemented for the Omarchy Vulkan backend (dtype=complex64, shape=[]). No GPU kernel exists for it; no silent CPU fallback occurs. Run it on an explicit CPU stream to use the CPU implementation.">self = &lt;test_ops.TestOps testMethod=test_log2&gt;
+
+    def test_log2(self):
+        a = mx.array([0.5, 1, 2, 10, 16])
+        result = mx.log2(a)
+        expected = np.log2(a, dtype=np.float32)
+    
+        self.assertTrue(np.allclose(result, expected))
+    
+        a = mx.array(1.0) + 1j * mx.array(2.0)
+        result = mx.log2(a)
+        expected = np.log2(np.array(a))
+&gt;       self.assertTrue(np.allclose(result, expected))
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_ops.py:1214: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+venv/lib/python3.11/site-packages/numpy/_core/numeric.py:2376: in allclose
+    res = all(isclose(a, b, rtol=rtol, atol=atol, equal_nan=equal_nan))
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv/lib/python3.11/site-packages/numpy/_core/numeric.py:2476: in isclose
+    x, y, atol, rtol = (
+    ^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+.0 = &lt;tuple_iterator object at 0x7952ab3d0460&gt;
+
+    x, y, atol, rtol = (
+&gt;       a if isinstance(a, (int, float, complex)) else asanyarray(a)
+                                                       ^^^^^^^^^^^^^
+        for a in (a, b, atol, rtol))
+E   RuntimeError: [omarchy] Log2 dtype is not implemented for the Omarchy Vulkan backend (dtype=complex64, shape=[]). No GPU kernel exists for it; no silent CPU fallback occurs. Run it on an explicit CPU stream to use the CPU implementation.
+
+venv/lib/python3.11/site-packages/numpy/_core/numeric.py:2477: RuntimeError</failure></testcase><testcase classname="tests.test_ops.TestOps" name="test_logaddexp" time="0.005" /><testcase classname="tests.test_ops.TestOps" name="test_logcumsumexp" time="0.015" /><testcase classname="tests.test_ops.TestOps" name="test_logical_and" time="0.001" /><testcase classname="tests.test_ops.TestOps" name="test_logical_not" time="0.001" /><testcase classname="tests.test_ops.TestOps" name="test_logical_or" time="0.001" /><testcase classname="tests.test_ops.TestOps" name="test_logical_xor" time="0.004" /><testcase classname="tests.test_ops.TestOps" name="test_logsumexp" time="0.014" /><testcase classname="tests.test_ops.TestOps" name="test_logsumexp_shape" time="0.012" /><testcase classname="tests.test_ops.TestOps" name="test_masked_scatter" time="0.002"><failure message="AssertionError: array(False, dtype=bool) is not true">self = &lt;test_ops.TestOps testMethod=test_masked_scatter&gt;
+
+    def test_masked_scatter(self):
+        # boolean mask updates matching numpy semantics
+        a = mx.array([1.0, 2.0, 3.0])
+        mask = mx.array([True, False, True])
+        src = mx.array([5.0, 6.0])
+        expected = mx.array([5.0, 2.0, 6.0])
+        a[mask] = src
+        self.assertTrue(mx.array_equal(a, expected))
+    
+        # non-boolean mask raises
+        b = mx.array([1.0, 2.0, 3.0])
+        bad_mask = mx.array([1, 0, 1])
+        src = mx.array([4.0, 5.0])
+        with self.assertRaises((TypeError, ValueError)):
+            b[bad_mask] = src
+    
+        # mask matching leading dimension selects entire trailing slices
+        c = mx.array([[0.0, 0.0, 0.0], [1.0, 1.0, 1.0]])
+        mask = mx.array([True, False])
+        src = mx.array([2.0, 3.0, 4.0])
+        expected = mx.array([[2.0, 3.0, 4.0], [1.0, 1.0, 1.0]])
+        c[mask] = src
+&gt;       self.assertTrue(mx.array_equal(c, expected))
+E       AssertionError: array(False, dtype=bool) is not true
+
+tests/test_ops.py:4131: AssertionError</failure></testcase><testcase classname="tests.test_ops.TestOps" name="test_maximum" time="0.003" /><testcase classname="tests.test_ops.TestOps" name="test_mean" time="0.005" /><testcase classname="tests.test_ops.TestOps" name="test_median" time="0.032" /><testcase classname="tests.test_ops.TestOps" name="test_median_nan" time="0.032"><failure message="RuntimeError: [omarchy] Sort dtype is not implemented for the Omarchy Vulkan backend (dtype=complex64, shape=[3]). No GPU kernel exists for it; no silent CPU fallback occurs. Run it on an explicit CPU stream to use the CPU implementation.">self = &lt;test_ops.TestOps testMethod=test_median_nan&gt;
+
+    def test_median_nan(self):
+        nan = float("nan")
+    
+        # Odd and even lengths, with the NaN in a few different positions.
+        for vals in ([1.0, nan, 0.0], [nan, 1.0, 0.0], [1.0, 2.0, nan, 4.0]):
+            for dtype in (mx.float16, mx.bfloat16, mx.float32):
+                out = mx.median(mx.array(vals, dtype=dtype))
+                self.assertTrue(mx.isnan(out).item(), msg=f"{vals} {dtype}")
+    
+        x = mx.array([[1.0, nan, 3.0], [4.0, 5.0, 6.0]])
+        self.assertTrue(
+            np.array_equal(
+                np.array(mx.median(x, axis=1)), np.median(x, axis=1), equal_nan=True
+            )
+        )
+        self.assertTrue(
+            np.array_equal(
+                np.array(mx.median(x, axis=0)), np.median(x, axis=0), equal_nan=True
+            )
+        )
+        self.assertTrue(mx.isnan(mx.median(x)).item())
+        self.assertEqual(mx.median(x, axis=1, keepdims=True).shape, (2, 1))
+    
+        # Complex NaN propagates too, matching NumPy.
+        out = mx.median(mx.array([complex(1, 0), complex(nan, 0), complex(0, 0)]))
+&gt;       self.assertTrue(mx.isnan(out).item())
+                        ^^^^^^^^^^^^^^^^^^^^
+E       RuntimeError: [omarchy] Sort dtype is not implemented for the Omarchy Vulkan backend (dtype=complex64, shape=[3]). No GPU kernel exists for it; no silent CPU fallback occurs. Run it on an explicit CPU stream to use the CPU implementation.
+
+tests/test_ops.py:1033: RuntimeError</failure></testcase><testcase classname="tests.test_ops.TestOps" name="test_meshgrid" time="0.044" /><testcase classname="tests.test_ops.TestOps" name="test_min_and_max" time="0.003" /><testcase classname="tests.test_ops.TestOps" name="test_minimum" time="0.004" /><testcase classname="tests.test_ops.TestOps" name="test_move_swap_axes" time="0.000" /><testcase classname="tests.test_ops.TestOps" name="test_multiply" time="0.001" /><testcase classname="tests.test_ops.TestOps" name="test_nan_to_num" time="0.003" /><testcase classname="tests.test_ops.TestOps" name="test_negative" time="0.006" /><testcase classname="tests.test_ops.TestOps" name="test_outer" time="0.011" /><testcase classname="tests.test_ops.TestOps" name="test_pad" time="0.311"><failure message="RuntimeError: [omarchy] non-zero fill is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[18,18,18]). No GPU kernel exists for it; no silent CPU fallback occurs. Run it on an explicit CPU stream to use the CPU implementation.">self = &lt;test_ops.TestOps testMethod=test_pad&gt;
+
+    def test_pad(self):
+        pad_width_and_values = [
+            ([(1, 1), (1, 1), (1, 1)], 0),
+            ([(1, 1), (1, 1), (1, 1)], 5),
+            ([(3, 0), (0, 2), (5, 7)], 0),
+            ([(3, 0), (0, 2), (5, 7)], -7),
+            ([(0, 0), (0, 0), (0, 0)], 0),
+        ]
+    
+        for pw, v in pad_width_and_values:
+            with self.subTest(pad_width=pw, value=v):
+                a_npy = np.random.randn(16, 16, 16).astype(np.float32)
+                a_mlx = mx.array(a_npy)
+    
+                b_npy = np.pad(a_npy, pw, constant_values=v)
+                b_mlx = mx.pad(a_mlx, pw, constant_values=v)
+    
+                self.assertEqual(list(b_npy.shape), list(b_mlx.shape))
+&gt;               self.assertTrue(np.allclose(b_npy, b_mlx, atol=1e-6))
+                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_ops.py:2401: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+venv/lib/python3.11/site-packages/numpy/_core/numeric.py:2376: in allclose
+    res = all(isclose(a, b, rtol=rtol, atol=atol, equal_nan=equal_nan))
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv/lib/python3.11/site-packages/numpy/_core/numeric.py:2476: in isclose
+    x, y, atol, rtol = (
+    ^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+.0 = &lt;tuple_iterator object at 0x7952ab735d50&gt;
+
+    x, y, atol, rtol = (
+&gt;       a if isinstance(a, (int, float, complex)) else asanyarray(a)
+                                                       ^^^^^^^^^^^^^
+        for a in (a, b, atol, rtol))
+E   RuntimeError: [omarchy] non-zero fill is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[18,18,18]). No GPU kernel exists for it; no silent CPU fallback occurs. Run it on an explicit CPU stream to use the CPU implementation.
+
+venv/lib/python3.11/site-packages/numpy/_core/numeric.py:2477: RuntimeError</failure><failure message="RuntimeError: [omarchy] non-zero fill is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[19,18,28]). No GPU kernel exists for it; no silent CPU fallback occurs. Run it on an explicit CPU stream to use the CPU implementation.">self = &lt;test_ops.TestOps testMethod=test_pad&gt;
+
+    def test_pad(self):
+        pad_width_and_values = [
+            ([(1, 1), (1, 1), (1, 1)], 0),
+            ([(1, 1), (1, 1), (1, 1)], 5),
+            ([(3, 0), (0, 2), (5, 7)], 0),
+            ([(3, 0), (0, 2), (5, 7)], -7),
+            ([(0, 0), (0, 0), (0, 0)], 0),
+        ]
+    
+        for pw, v in pad_width_and_values:
+            with self.subTest(pad_width=pw, value=v):
+                a_npy = np.random.randn(16, 16, 16).astype(np.float32)
+                a_mlx = mx.array(a_npy)
+    
+                b_npy = np.pad(a_npy, pw, constant_values=v)
+                b_mlx = mx.pad(a_mlx, pw, constant_values=v)
+    
+                self.assertEqual(list(b_npy.shape), list(b_mlx.shape))
+&gt;               self.assertTrue(np.allclose(b_npy, b_mlx, atol=1e-6))
+                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_ops.py:2401: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+venv/lib/python3.11/site-packages/numpy/_core/numeric.py:2376: in allclose
+    res = all(isclose(a, b, rtol=rtol, atol=atol, equal_nan=equal_nan))
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv/lib/python3.11/site-packages/numpy/_core/numeric.py:2476: in isclose
+    x, y, atol, rtol = (
+    ^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+.0 = &lt;tuple_iterator object at 0x7952ab2d0400&gt;
+
+    x, y, atol, rtol = (
+&gt;       a if isinstance(a, (int, float, complex)) else asanyarray(a)
+                                                       ^^^^^^^^^^^^^
+        for a in (a, b, atol, rtol))
+E   RuntimeError: [omarchy] non-zero fill is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[19,18,28]). No GPU kernel exists for it; no silent CPU fallback occurs. Run it on an explicit CPU stream to use the CPU implementation.
+
+venv/lib/python3.11/site-packages/numpy/_core/numeric.py:2477: RuntimeError</failure></testcase><testcase classname="tests.test_ops.TestOps" name="test_pad_reflect_symmetric" time="0.013" /><testcase classname="tests.test_ops.TestOps" name="test_partition" time="0.044" /><testcase classname="tests.test_ops.TestOps" name="test_prod" time="0.004" /><testcase classname="tests.test_ops.TestOps" name="test_put_along_axis" time="0.003" /><testcase classname="tests.test_ops.TestOps" name="test_radians" time="0.001" /><testcase classname="tests.test_ops.TestOps" name="test_real_imag" time="0.003" /><testcase classname="tests.test_ops.TestOps" name="test_reciprocal" time="0.001" /><testcase classname="tests.test_ops.TestOps" name="test_remainder" time="0.008" /><testcase classname="tests.test_ops.TestOps" name="test_repeat" time="0.009" /><testcase classname="tests.test_ops.TestOps" name="test_roll" time="0.016" /><testcase classname="tests.test_ops.TestOps" name="test_roll_errors" time="0.001" /><testcase classname="tests.test_ops.TestOps" name="test_round" time="0.001"><failure message="RuntimeError: [omarchy] Round dtype is not implemented for the Omarchy Vulkan backend (dtype=complex64, shape=[2]). No GPU kernel exists for it; no silent CPU fallback occurs. Run it on an explicit CPU stream to use the CPU implementation.">self = &lt;test_ops.TestOps testMethod=test_round&gt;
+
+    def test_round(self):
+        # float
+        x = mx.array(
+            [0.5, -0.5, 1.5, -1.5, -21.03, 19.98, -27, 9, 0.0, -np.inf, np.inf]
+        )
+        expected = [0, -0, 2, -2, -21, 20, -27, 9, 0, -np.inf, np.inf]
+        self.assertListEqual(mx.round(x).tolist(), expected)
+    
+        # complex
+        y = mx.round(mx.array([22.2 + 3.6j, 18.5 + 98.2j]))
+&gt;       self.assertListEqual(y.tolist(), [22 + 4j, 18 + 98j])
+                             ^^^^^^^^^^
+E       RuntimeError: [omarchy] Round dtype is not implemented for the Omarchy Vulkan backend (dtype=complex64, shape=[2]). No GPU kernel exists for it; no silent CPU fallback occurs. Run it on an explicit CPU stream to use the CPU implementation.
+
+tests/test_ops.py:680: RuntimeError</failure></testcase><testcase classname="tests.test_ops.TestOps" name="test_rsqrt" time="0.001" /><testcase classname="tests.test_ops.TestOps" name="test_scalar_inputs" time="0.053" /><testcase classname="tests.test_ops.TestOps" name="test_scan_size_one_axis" time="0.006" /><testcase classname="tests.test_ops.TestOps" name="test_scans" time="1.086" /><testcase classname="tests.test_ops.TestOps" name="test_scans_complex_exclusive" time="0.059" /><testcase classname="tests.test_ops.TestOps" name="test_searchsorted" time="0.032"><failure message="AssertionError: array(False, dtype=bool) is not true : got array([0], dtype=uint32)">self = &lt;test_ops.TestOps testMethod=test_searchsorted&gt;
+
+    def test_searchsorted(self):
+        def expect(out, want):
+            self.assertTrue(mx.array_equal(out, mx.array(want)), f"got {out}")
+    
+        a = mx.array([1, 2, 2, 4], mx.float32)
+        v = mx.array([0, 1, 2, 3, 5], mx.float32)
+        expect(mx.searchsorted(a, v), [0, 0, 1, 3, 4])
+        expect(mx.searchsorted(a, v, side="right"), [0, 1, 3, 3, 4])
+        self.assertEqual(mx.searchsorted(a, v).dtype, mx.uint32)
+    
+        # a local generator, so this stays deterministic without shifting the
+        # global numpy stream that later tests draw from
+        rng = np.random.RandomState(0)
+        for n in (1, 2, 7, 8, 9, 33, 1000):
+            for m in (1, 5, 64, 257):
+                for side in ("left", "right"):
+                    a_np = np.sort(rng.randn(n).astype(np.float32))
+                    v_np = (rng.randn(m) * 2).astype(np.float32)
+                    out = mx.searchsorted(mx.array(a_np), mx.array(v_np), side=side)
+                    expected = np.searchsorted(a_np, v_np, side=side)
+                    self.assertTrue(np.array_equal(np.array(out), expected))
+    
+        # output takes the shape of the values. Compare values too, since
+        # checking .shape alone never forces an eval, and the 0-d case is the
+        # one both GPU backends special case.
+        a = mx.arange(16, dtype=mx.float32)
+        for shape in [(), (1,), (3, 4), (2, 3, 4)]:
+            v_np = np.asarray(rng.rand(*shape) * 20, dtype=np.float32)
+            out = mx.searchsorted(a, mx.array(v_np))
+            self.assertEqual(out.shape, shape)
+            self.assertTrue(
+                np.array_equal(np.array(out), np.searchsorted(np.array(a), v_np))
+            )
+    
+        # non row contiguous values: transposed, sliced and broadcast views all
+        # have to be read in the output's order rather than the buffer's
+        base_np = (rng.rand(4, 6) * 20).astype(np.float32)
+        base = mx.array(base_np)
+        for v_mx, v_np in [
+            (base.T, base_np.T),
+            (base[::2], base_np[::2]),
+            (base[:, ::3], base_np[:, ::3]),
+            (mx.broadcast_to(base[0], (3, 6)), np.broadcast_to(base_np[0], (3, 6))),
+        ]:
+            out = mx.searchsorted(a, v_mx)
+            expected = np.searchsorted(np.array(a), np.ascontiguousarray(v_np))
+            self.assertTrue(np.array_equal(np.array(out), expected))
+    
+        # a strided sorted sequence, including a reversed view
+        wide = mx.array(np.repeat(np.arange(8, dtype=np.float32) * 3, 2))
+        v = mx.array([-1.0, 3.0, 7.0, 100.0])
+        for a_mx in [wide[::2], wide[1::2]]:
+            out = mx.searchsorted(a_mx, v)
+            expected = np.searchsorted(np.array(a_mx), np.array(v))
+            self.assertTrue(np.array_equal(np.array(out), expected))
+    
+        desc = mx.array(np.arange(8, dtype=np.float32)[::-1].copy())
+        out = mx.searchsorted(desc[::-1], v)
+        self.assertTrue(
+            np.array_equal(np.array(out), np.searchsorted(np.arange(8), np.array(v)))
+        )
+    
+        # integer and mixed dtypes
+        ai = mx.array([1, 3, 5, 7], mx.int32)
+        expect(mx.searchsorted(ai, mx.array([0, 4, 8], mx.int32)), [0, 2, 4])
+        # promoted, not truncated: the sequence has a 4, so 4.5 lands after it
+        # at 3 while a truncated 4 would land before it at 2
+        expect(
+            mx.searchsorted(
+                mx.array([1, 3, 4, 7], mx.int32), mx.array([4.5], mx.float32)
+            ),
+            [3],
+        )
+    
+        # empty inputs on either side
+        empty = mx.array([], mx.float32)
+        expect(mx.searchsorted(empty, mx.array([1.0, -1.0])), [0, 0])
+        self.assertEqual(mx.searchsorted(mx.arange(4, dtype=mx.float32), empty).size, 0)
+    
+        # ordering follows sort, so NaN compares greater than everything
+        nan = mx.array([float("nan")])
+&gt;       expect(mx.searchsorted(mx.array([1, 2, 3], mx.float32), nan), [3])
+
+tests/test_ops.py:3062: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/test_ops.py:2983: in expect
+    self.assertTrue(mx.array_equal(out, mx.array(want)), f"got {out}")
+E   AssertionError: array(False, dtype=bool) is not true : got array([0], dtype=uint32)</failure></testcase><testcase classname="tests.test_ops.TestOps" name="test_shape_overflow_error" time="0.001" /><testcase classname="tests.test_ops.TestOps" name="test_sigmoid" time="0.003" /><testcase classname="tests.test_ops.TestOps" name="test_sign" time="0.002" /><testcase classname="tests.test_ops.TestOps" name="test_sin" time="0.002"><failure message="RuntimeError: [omarchy] Sin argument magnitude 1000000015047466219876688855040.000000 exceeds the built-in accuracy limit 100000.000000 on this backend: the Vulkan driver's sin/cos range reduction is untrusted above it, the software Payne-Hanek fallback miscompiles on this driver, and no other accurate kernel exists. No silent wrong value and no silent CPU fallback occurs. Run it on an explicit CPU stream to use the CPU implementation.">self = &lt;test_ops.TestOps testMethod=test_sin&gt;
+
+    def test_sin(self):
+        a = mx.array(
+            [0, math.pi / 4, math.pi / 2, math.pi, 3 * math.pi / 4, 2 * math.pi]
+        )
+        result = mx.sin(a)
+        expected = np.sin(a, dtype=np.float32)
+    
+        self.assertTrue(np.allclose(result, expected))
+    
+        # Large arguments still have to land in [-1, 1]
+        big = np.array([1e8, 1e9, 1e10, 1e20, 1e30], dtype=np.float32)
+        for op, npop in [(mx.sin, np.sin), (mx.cos, np.cos)]:
+&gt;           out = np.array(op(mx.array(big)))
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           RuntimeError: [omarchy] Sin argument magnitude 1000000015047466219876688855040.000000 exceeds the built-in accuracy limit 100000.000000 on this backend: the Vulkan driver's sin/cos range reduction is untrusted above it, the software Payne-Hanek fallback miscompiles on this driver, and no other accurate kernel exists. No silent wrong value and no silent CPU fallback occurs. Run it on an explicit CPU stream to use the CPU implementation.
+
+tests/test_ops.py:1300: RuntimeError</failure></testcase><testcase classname="tests.test_ops.TestOps" name="test_slice_update_reversed" time="0.005" /><testcase classname="tests.test_ops.TestOps" name="test_slice_with_negative_stride" time="0.001" /><testcase classname="tests.test_ops.TestOps" name="test_softmax" time="0.241" /><testcase classname="tests.test_ops.TestOps" name="test_sort" time="4.079"><failure message="AssertionError: False is not true">self = &lt;test_ops.TestOps testMethod=test_sort&gt;
+
+    def test_sort(self):
+        shape = (6, 4, 10)
+        tests = product(
+            ("int32", "float32", "complex64"),  # type
+            (None, 0, 1, 2),  # axis
+            (True, False),  # strided
+        )
+        for dtype, axis, strided in tests:
+            with self.subTest(dtype=dtype, axis=axis, strided=strided):
+                np.random.seed(0)
+                np_dtype = getattr(np, dtype)
+                if np.issubdtype(np_dtype, np.complexfloating):
+                    a_np = (
+                        np.random.uniform(0, 100, size=shape)
+                        + 1j * np.random.uniform(0, 100, size=shape)
+                    ).astype(np_dtype)
+                else:
+                    a_np = np.random.uniform(0, 100, size=shape).astype(np_dtype)
+                a_mx = mx.array(a_np)
+                if strided:
+                    a_mx = a_mx[::2, :, ::2]
+                    a_np = a_np[::2, :, ::2]
+    
+                b_np = np.sort(a_np, axis=axis)
+                b_mx = mx.sort(a_mx, axis=axis)
+    
+&gt;               self.assertTrue(np.array_equal(b_np, b_mx))
+E               AssertionError: False is not true
+
+tests/test_ops.py:2819: AssertionError</failure><failure message="AssertionError: False is not true">self = &lt;test_ops.TestOps testMethod=test_sort&gt;
+
+    def test_sort(self):
+        shape = (6, 4, 10)
+        tests = product(
+            ("int32", "float32", "complex64"),  # type
+            (None, 0, 1, 2),  # axis
+            (True, False),  # strided
+        )
+        for dtype, axis, strided in tests:
+            with self.subTest(dtype=dtype, axis=axis, strided=strided):
+                np.random.seed(0)
+                np_dtype = getattr(np, dtype)
+                if np.issubdtype(np_dtype, np.complexfloating):
+                    a_np = (
+                        np.random.uniform(0, 100, size=shape)
+                        + 1j * np.random.uniform(0, 100, size=shape)
+                    ).astype(np_dtype)
+                else:
+                    a_np = np.random.uniform(0, 100, size=shape).astype(np_dtype)
+                a_mx = mx.array(a_np)
+                if strided:
+                    a_mx = a_mx[::2, :, ::2]
+                    a_np = a_np[::2, :, ::2]
+    
+                b_np = np.sort(a_np, axis=axis)
+                b_mx = mx.sort(a_mx, axis=axis)
+    
+&gt;               self.assertTrue(np.array_equal(b_np, b_mx))
+E               AssertionError: False is not true
+
+tests/test_ops.py:2819: AssertionError</failure><failure message="AssertionError: False is not true">self = &lt;test_ops.TestOps testMethod=test_sort&gt;
+
+    def test_sort(self):
+        shape = (6, 4, 10)
+        tests = product(
+            ("int32", "float32", "complex64"),  # type
+            (None, 0, 1, 2),  # axis
+            (True, False),  # strided
+        )
+        for dtype, axis, strided in tests:
+            with self.subTest(dtype=dtype, axis=axis, strided=strided):
+                np.random.seed(0)
+                np_dtype = getattr(np, dtype)
+                if np.issubdtype(np_dtype, np.complexfloating):
+                    a_np = (
+                        np.random.uniform(0, 100, size=shape)
+                        + 1j * np.random.uniform(0, 100, size=shape)
+                    ).astype(np_dtype)
+                else:
+                    a_np = np.random.uniform(0, 100, size=shape).astype(np_dtype)
+                a_mx = mx.array(a_np)
+                if strided:
+                    a_mx = a_mx[::2, :, ::2]
+                    a_np = a_np[::2, :, ::2]
+    
+                b_np = np.sort(a_np, axis=axis)
+                b_mx = mx.sort(a_mx, axis=axis)
+    
+&gt;               self.assertTrue(np.array_equal(b_np, b_mx))
+E               AssertionError: False is not true
+
+tests/test_ops.py:2819: AssertionError</failure><failure message="AssertionError: False is not true">self = &lt;test_ops.TestOps testMethod=test_sort&gt;
+
+    def test_sort(self):
+        shape = (6, 4, 10)
+        tests = product(
+            ("int32", "float32", "complex64"),  # type
+            (None, 0, 1, 2),  # axis
+            (True, False),  # strided
+        )
+        for dtype, axis, strided in tests:
+            with self.subTest(dtype=dtype, axis=axis, strided=strided):
+                np.random.seed(0)
+                np_dtype = getattr(np, dtype)
+                if np.issubdtype(np_dtype, np.complexfloating):
+                    a_np = (
+                        np.random.uniform(0, 100, size=shape)
+                        + 1j * np.random.uniform(0, 100, size=shape)
+                    ).astype(np_dtype)
+                else:
+                    a_np = np.random.uniform(0, 100, size=shape).astype(np_dtype)
+                a_mx = mx.array(a_np)
+                if strided:
+                    a_mx = a_mx[::2, :, ::2]
+                    a_np = a_np[::2, :, ::2]
+    
+                b_np = np.sort(a_np, axis=axis)
+                b_mx = mx.sort(a_mx, axis=axis)
+    
+&gt;               self.assertTrue(np.array_equal(b_np, b_mx))
+E               AssertionError: False is not true
+
+tests/test_ops.py:2819: AssertionError</failure><failure message="AssertionError: False is not true">self = &lt;test_ops.TestOps testMethod=test_sort&gt;
+
+    def test_sort(self):
+        shape = (6, 4, 10)
+        tests = product(
+            ("int32", "float32", "complex64"),  # type
+            (None, 0, 1, 2),  # axis
+            (True, False),  # strided
+        )
+        for dtype, axis, strided in tests:
+            with self.subTest(dtype=dtype, axis=axis, strided=strided):
+                np.random.seed(0)
+                np_dtype = getattr(np, dtype)
+                if np.issubdtype(np_dtype, np.complexfloating):
+                    a_np = (
+                        np.random.uniform(0, 100, size=shape)
+                        + 1j * np.random.uniform(0, 100, size=shape)
+                    ).astype(np_dtype)
+                else:
+                    a_np = np.random.uniform(0, 100, size=shape).astype(np_dtype)
+                a_mx = mx.array(a_np)
+                if strided:
+                    a_mx = a_mx[::2, :, ::2]
+                    a_np = a_np[::2, :, ::2]
+    
+                b_np = np.sort(a_np, axis=axis)
+                b_mx = mx.sort(a_mx, axis=axis)
+    
+&gt;               self.assertTrue(np.array_equal(b_np, b_mx))
+E               AssertionError: False is not true
+
+tests/test_ops.py:2819: AssertionError</failure><failure message="AssertionError: False is not true">self = &lt;test_ops.TestOps testMethod=test_sort&gt;
+
+    def test_sort(self):
+        shape = (6, 4, 10)
+        tests = product(
+            ("int32", "float32", "complex64"),  # type
+            (None, 0, 1, 2),  # axis
+            (True, False),  # strided
+        )
+        for dtype, axis, strided in tests:
+            with self.subTest(dtype=dtype, axis=axis, strided=strided):
+                np.random.seed(0)
+                np_dtype = getattr(np, dtype)
+                if np.issubdtype(np_dtype, np.complexfloating):
+                    a_np = (
+                        np.random.uniform(0, 100, size=shape)
+                        + 1j * np.random.uniform(0, 100, size=shape)
+                    ).astype(np_dtype)
+                else:
+                    a_np = np.random.uniform(0, 100, size=shape).astype(np_dtype)
+                a_mx = mx.array(a_np)
+                if strided:
+                    a_mx = a_mx[::2, :, ::2]
+                    a_np = a_np[::2, :, ::2]
+    
+                b_np = np.sort(a_np, axis=axis)
+                b_mx = mx.sort(a_mx, axis=axis)
+    
+&gt;               self.assertTrue(np.array_equal(b_np, b_mx))
+E               AssertionError: False is not true
+
+tests/test_ops.py:2819: AssertionError</failure><failure message="AssertionError: False is not true">self = &lt;test_ops.TestOps testMethod=test_sort&gt;
+
+    def test_sort(self):
+        shape = (6, 4, 10)
+        tests = product(
+            ("int32", "float32", "complex64"),  # type
+            (None, 0, 1, 2),  # axis
+            (True, False),  # strided
+        )
+        for dtype, axis, strided in tests:
+            with self.subTest(dtype=dtype, axis=axis, strided=strided):
+                np.random.seed(0)
+                np_dtype = getattr(np, dtype)
+                if np.issubdtype(np_dtype, np.complexfloating):
+                    a_np = (
+                        np.random.uniform(0, 100, size=shape)
+                        + 1j * np.random.uniform(0, 100, size=shape)
+                    ).astype(np_dtype)
+                else:
+                    a_np = np.random.uniform(0, 100, size=shape).astype(np_dtype)
+                a_mx = mx.array(a_np)
+                if strided:
+                    a_mx = a_mx[::2, :, ::2]
+                    a_np = a_np[::2, :, ::2]
+    
+                b_np = np.sort(a_np, axis=axis)
+                b_mx = mx.sort(a_mx, axis=axis)
+    
+&gt;               self.assertTrue(np.array_equal(b_np, b_mx))
+E               AssertionError: False is not true
+
+tests/test_ops.py:2819: AssertionError</failure><failure message="AssertionError: False is not true">self = &lt;test_ops.TestOps testMethod=test_sort&gt;
+
+    def test_sort(self):
+        shape = (6, 4, 10)
+        tests = product(
+            ("int32", "float32", "complex64"),  # type
+            (None, 0, 1, 2),  # axis
+            (True, False),  # strided
+        )
+        for dtype, axis, strided in tests:
+            with self.subTest(dtype=dtype, axis=axis, strided=strided):
+                np.random.seed(0)
+                np_dtype = getattr(np, dtype)
+                if np.issubdtype(np_dtype, np.complexfloating):
+                    a_np = (
+                        np.random.uniform(0, 100, size=shape)
+                        + 1j * np.random.uniform(0, 100, size=shape)
+                    ).astype(np_dtype)
+                else:
+                    a_np = np.random.uniform(0, 100, size=shape).astype(np_dtype)
+                a_mx = mx.array(a_np)
+                if strided:
+                    a_mx = a_mx[::2, :, ::2]
+                    a_np = a_np[::2, :, ::2]
+    
+                b_np = np.sort(a_np, axis=axis)
+                b_mx = mx.sort(a_mx, axis=axis)
+    
+&gt;               self.assertTrue(np.array_equal(b_np, b_mx))
+E               AssertionError: False is not true
+
+tests/test_ops.py:2819: AssertionError</failure><failure message="AssertionError: False is not true">self = &lt;test_ops.TestOps testMethod=test_sort&gt;
+
+    def test_sort(self):
+        shape = (6, 4, 10)
+        tests = product(
+            ("int32", "float32", "complex64"),  # type
+            (None, 0, 1, 2),  # axis
+            (True, False),  # strided
+        )
+        for dtype, axis, strided in tests:
+            with self.subTest(dtype=dtype, axis=axis, strided=strided):
+                np.random.seed(0)
+                np_dtype = getattr(np, dtype)
+                if np.issubdtype(np_dtype, np.complexfloating):
+                    a_np = (
+                        np.random.uniform(0, 100, size=shape)
+                        + 1j * np.random.uniform(0, 100, size=shape)
+                    ).astype(np_dtype)
+                else:
+                    a_np = np.random.uniform(0, 100, size=shape).astype(np_dtype)
+                a_mx = mx.array(a_np)
+                if strided:
+                    a_mx = a_mx[::2, :, ::2]
+                    a_np = a_np[::2, :, ::2]
+    
+                b_np = np.sort(a_np, axis=axis)
+                b_mx = mx.sort(a_mx, axis=axis)
+    
+                self.assertTrue(np.array_equal(b_np, b_mx))
+                self.assertEqual(b_mx.dtype, a_mx.dtype)
+    
+                c_np = np.argsort(a_np, axis=axis)
+                c_mx = mx.argsort(a_mx, axis=axis)
+                d_np = np.take_along_axis(a_np, c_np, axis=axis)
+                d_mx = mx.take_along_axis(a_mx, c_mx, axis=axis)
+    
+                self.assertTrue(np.array_equal(d_np, d_mx))
+                self.assertEqual(c_mx.dtype, mx.uint32)
+    
+        # Set random seed
+        np.random.seed(0)
+    
+        # Test multi-block sort
+        for strided in (False, True):
+            with self.subTest(strided=strided):
+                a_np = np.random.normal(size=(32769,)).astype(np.float32)
+                a_mx = mx.array(a_np)
+    
+                if strided:
+                    a_mx = a_mx[::3]
+                    a_np = a_np[::3]
+    
+                b_np = np.sort(a_np)
+                b_mx = mx.sort(a_mx)
+    
+                self.assertTrue(np.array_equal(b_np, b_mx))
+                self.assertEqual(b_mx.dtype, a_mx.dtype)
+    
+                # Test multi-dum multi-block sort
+                a_np = np.random.normal(size=(2, 4, 32769)).astype(np.float32)
+                a_mx = mx.array(a_np)
+    
+                if strided:
+                    a_mx = a_mx[..., ::3]
+                    a_np = a_np[..., ::3]
+    
+                b_np = np.sort(a_np, axis=-1)
+                b_mx = mx.sort(a_mx, axis=-1)
+    
+                self.assertTrue(np.array_equal(b_np, b_mx))
+                self.assertEqual(b_mx.dtype, a_mx.dtype)
+    
+                a_np = np.random.normal(size=(2, 32769, 4)).astype(np.float32)
+                a_mx = mx.array(a_np)
+    
+                if strided:
+                    a_mx = a_mx[:, ::3]
+                    a_np = a_np[:, ::3]
+    
+                b_np = np.sort(a_np, axis=1)
+                b_mx = mx.sort(a_mx, axis=1)
+    
+                self.assertTrue(np.array_equal(b_np, b_mx))
+                self.assertEqual(b_mx.dtype, a_mx.dtype)
+    
+        # test 0 strides
+        a_np = np.array([1, 0, 2, 1, 3, 0, 4, 0])
+        a_mx = mx.array(a_np)
+        b_np = np.broadcast_to(a_np, (16, 8))
+        b_mx = mx.broadcast_to(a_mx, (16, 8))
+        mx.eval(b_mx)
+        for axis in (0, 1):
+            c_np = np.sort(b_np, axis=axis)
+            c_mx = mx.sort(b_mx, axis=axis)
+&gt;           self.assertTrue(np.array_equal(c_np, c_mx))
+E           AssertionError: False is not true
+
+tests/test_ops.py:2885: AssertionError</failure></testcase><testcase classname="tests.test_ops.TestOps" name="test_sort_nan" time="0.005"><failure message="RuntimeError: [omarchy] Sort dtype is not implemented for the Omarchy Vulkan backend (dtype=complex64, shape=[4]). No GPU kernel exists for it; no silent CPU fallback occurs. Run it on an explicit CPU stream to use the CPU implementation.">self = &lt;test_ops.TestOps testMethod=test_sort_nan&gt;
+
+    def test_sort_nan(self):
+        for dtype in [mx.float32, mx.float16, mx.bfloat16]:
+            with self.subTest(dtype=dtype):
+                x = mx.array([3.0, mx.nan, 2.0, 0.0], dtype=dtype)
+                expected = mx.array([0.0, 2.0, 3.0, mx.nan], dtype=dtype)
+                self.assertTrue(mx.array_equal(mx.sort(x), expected, equal_nan=True))
+    
+        x = mx.array([3.0 + 1j, mx.nan + 2j, 2.0 + 1j, 0.0 + 1j])
+        expected = mx.array([0.0 + 1j, 2.0 + 1j, 3.0 + 1j, mx.nan + 2j])
+&gt;       self.assertTrue(mx.array_equal(mx.sort(x), expected, equal_nan=True))
+E       RuntimeError: [omarchy] Sort dtype is not implemented for the Omarchy Vulkan backend (dtype=complex64, shape=[4]). No GPU kernel exists for it; no silent CPU fallback occurs. Run it on an explicit CPU stream to use the CPU implementation.
+
+tests/test_ops.py:4217: RuntimeError</failure></testcase><testcase classname="tests.test_ops.TestOps" name="test_split" time="0.001" /><testcase classname="tests.test_ops.TestOps" name="test_split_invalid_num_splits" time="0.000" /><testcase classname="tests.test_ops.TestOps" name="test_sqrt" time="0.001" /><testcase classname="tests.test_ops.TestOps" name="test_square" time="0.001" /><testcase classname="tests.test_ops.TestOps" name="test_squeeze_expand" time="0.000" /><testcase classname="tests.test_ops.TestOps" name="test_squeeze_expand_invalid_axes" time="0.000" /><testcase classname="tests.test_ops.TestOps" name="test_stack" time="0.001" /><testcase classname="tests.test_ops.TestOps" name="test_std" time="0.011" /><testcase classname="tests.test_ops.TestOps" name="test_stop_gradient" time="0.001" /><testcase classname="tests.test_ops.TestOps" name="test_subnormal_bool_cast" time="0.004" /><testcase classname="tests.test_ops.TestOps" name="test_subtract" time="0.001" /><testcase classname="tests.test_ops.TestOps" name="test_sum" time="0.004" /><testcase classname="tests.test_ops.TestOps" name="test_take" time="0.003" /><testcase classname="tests.test_ops.TestOps" name="test_take_along_axis" time="0.001"><failure message="RuntimeError: [omarchy] Take dtype is not implemented for the Omarchy Vulkan backend (dtype=int64, shape=[12]). No GPU kernel exists for it; no silent CPU fallback occurs. Run it on an explicit CPU stream to use the CPU implementation.">self = &lt;test_ops.TestOps testMethod=test_take_along_axis&gt;
+
+    def test_take_along_axis(self):
+        a_np = np.arange(8).reshape(2, 2, 2)
+        a_mlx = mx.array(a_np)
+        idx_np = np.array([1, 0, 0, 1, 1, 0, 0, 0, 0, 1, 1, 0])
+        idx_mlx = mx.array(idx_np)
+    
+        for ax in [None, 0, 1, 2]:
+            if ax == None:
+                shape = [-1]
+            else:
+                shape = [2] * 3
+                shape[ax] = 3
+            out_np = np.take_along_axis(a_np, idx_np.reshape(shape), axis=ax)
+            out_mlx = mx.take_along_axis(a_mlx, mx.reshape(idx_mlx, shape), axis=ax)
+&gt;           self.assertTrue(np.array_equal(out_np, np.array(out_mlx)))
+                                                   ^^^^^^^^^^^^^^^^^
+E           RuntimeError: [omarchy] Take dtype is not implemented for the Omarchy Vulkan backend (dtype=int64, shape=[12]). No GPU kernel exists for it; no silent CPU fallback occurs. Run it on an explicit CPU stream to use the CPU implementation.
+
+tests/test_ops.py:1554: RuntimeError</failure></testcase><testcase classname="tests.test_ops.TestOps" name="test_tensordot" time="0.014" /><testcase classname="tests.test_ops.TestOps" name="test_tile" time="0.020" /><testcase classname="tests.test_ops.TestOps" name="test_to_from_fp8" time="0.012" /><testcase classname="tests.test_ops.TestOps" name="test_trace" time="0.043" /><testcase classname="tests.test_ops.TestOps" name="test_transpose_axis" time="0.001" /><testcase classname="tests.test_ops.TestOps" name="test_transpose_noargs" time="0.000" /><testcase classname="tests.test_ops.TestOps" name="test_tri" time="0.039" /><testcase classname="tests.test_ops.TestOps" name="test_trig_ops" time="0.124" /><testcase classname="tests.test_ops.TestOps" name="test_tril" time="0.018" /><testcase classname="tests.test_ops.TestOps" name="test_triu" time="0.029" /><testcase classname="tests.test_ops.TestOps" name="test_trunc" time="0.002" /><testcase classname="tests.test_ops.TestOps" name="test_unary_ops" time="0.037" /><testcase classname="tests.test_ops.TestOps" name="test_unary_ops_from_non_array" time="0.043" /><testcase classname="tests.test_ops.TestOps" name="test_unstack" time="0.003" /><testcase classname="tests.test_ops.TestOps" name="test_var" time="0.020" /><testcase classname="tests.test_ops.TestOps" name="test_vecdot" time="0.006" /><testcase classname="tests.test_ops.TestOps" name="test_view" time="0.011"><failure message="AssertionError: array(False, dtype=bool) is not true">self = &lt;test_ops.TestOps testMethod=test_view&gt;
+
+    def test_view(self):
+        # Check scalar
+        out = mx.array(1, mx.int8).view(mx.uint8).item()
+        self.assertEqual(out, 1)
+    
+        a = mx.random.randint(shape=(4, 2, 4), low=-100, high=100)
+        a_np = np.array(a)
+    
+        for t in ["bool_", "int16", "float32", "int64"]:
+            out = a.view(getattr(mx, t))
+            expected = a_np.view(getattr(np, t))
+            self.assertTrue(np.array_equal(out, expected, equal_nan=True))
+    
+        # Irregular strides
+        a = mx.random.randint(shape=(2, 4), low=-100, high=100)
+        a = mx.broadcast_to(a, shape=(4, 2, 4))
+    
+        for t in ["bool_", "int16", "float32", "int64"]:
+            out = a.view(getattr(mx, t))
+            a_out = out.view(mx.int32)
+&gt;           self.assertTrue(mx.array_equal(a_out, a, equal_nan=True))
+E           AssertionError: array(False, dtype=bool) is not true
+
+tests/test_ops.py:3762: AssertionError</failure></testcase><testcase classname="tests.test_ops.TestOps" name="test_where" time="0.017" /><testcase classname="tests.test_ops.TestOps" name="test_zeros_ones_empty_like_dtype" time="0.008" /></testsuite></testsuites>

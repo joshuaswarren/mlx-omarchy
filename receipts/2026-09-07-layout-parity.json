@@ -1,0 +1,43 @@
+{
+  "source_commit": "ce508aa9",
+  "pinned_mlx_commit": "1f8e74e3f12f31365464a6867c6579f0e9b29d85",
+  "runtime": "x86_64 Mesa llvmpipe software Vulkan",
+  "native_qualified": false,
+  "full_suite_qualified": false,
+  "wheel": "mlx_omarchy-0.32.2.dev202609070100+ce508aa9-cp311-cp311-linux_x86_64.whl",
+  "wheel_sha256": "f81c6e330e0d857038c9513633f863870936fde3a8899900f82e8444a067c8ed",
+  "provenance_gate": "scripts/mlx_provenance.py --expect-wheel: exit 0",
+  "cpp": {
+    "omarchy_copy_offset_tests": {
+      "passed": 25,
+      "assertions": 626
+    },
+    "omarchy_primitive_tests": {
+      "passed": 97,
+      "assertions": 2693062
+    },
+    "omarchy_error_contract_tests": {
+      "passed": 3,
+      "assertions": 14
+    }
+  },
+  "python": {
+    "command": "python -m pytest -q tests/test_array.py tests/test_autograd.py tests/test_ops.py --junitxml=results.xml",
+    "exit_code": 1,
+    "pytest_summary": "32 failed, 277 passed, 21 skipped, 372 subtests passed in 163.89s",
+    "xml": "2026-09-07-layout-python.xml",
+    "array_autograd": "134 passed and 20 skipped; no failures in XML",
+    "note": "Pytest subtest outcomes and JUnit parent test counts are not interchangeable. This run retains all failures."
+  },
+  "open_failures": [
+    "int64 arange range and Take dtype",
+    "complex transcendental, rounding and sorting coverage",
+    "Hadamard arithmetic",
+    "large binary watchdog timeout",
+    "masked scatter",
+    "nonzero multidimensional padding",
+    "searchsorted",
+    "large-argument sin refusal",
+    "view roundtrip for irregular strides"
+  ]
+}
