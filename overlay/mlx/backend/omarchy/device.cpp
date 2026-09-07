@@ -788,17 +788,22 @@ Device::~Device() {
   }
 }
 
-void Device::signal_timeline(VkSemaphore semaphore, uint64_t value) {
+uint64_t Device::signal_timeline(VkSemaphore semaphore, uint64_t value) {
+  std::lock_guard<std::mutex> lk(queue_mutex_);
+  uint64_t completion_value = completions().reserve();
+  VkSemaphore semaphores[]{semaphore, completions().semaphore()};
+  uint64_t values[]{value, completion_value};
   VkTimelineSemaphoreSubmitInfo timeline{
       VK_STRUCTURE_TYPE_TIMELINE_SEMAPHORE_SUBMIT_INFO};
-  timeline.signalSemaphoreValueCount = 1;
-  timeline.pSignalSemaphoreValues = &value;
+  timeline.signalSemaphoreValueCount = 2;
+  timeline.pSignalSemaphoreValues = values;
   VkSubmitInfo si{VK_STRUCTURE_TYPE_SUBMIT_INFO};
   si.pNext = &timeline;
-  si.signalSemaphoreCount = 1;
-  si.pSignalSemaphores = &semaphore;
-  std::lock_guard<std::mutex> lk(queue_mutex_);
+  si.signalSemaphoreCount = 2;
+  si.pSignalSemaphores = semaphores;
   VKX_CHECK(vk::device_table().QueueSubmit(queue_, 1, &si, VK_NULL_HANDLE));
+  completions().enqueue(completion_value, {}, {});
+  return completion_value;
 }
 
 void Device::join_completed_handlers() {
@@ -864,7 +869,7 @@ void wait_for_timeline_progress(
     VkSemaphore semaphore,
     uint64_t target_value,
     CompletionDispatcher* progress,
-    uint64_t progress_through) {
+    std::function<uint64_t()> progress_generation) {
   using clock = std::chrono::steady_clock;
   const uint64_t hang_ns = submit_hang_no_progress_ns();
   const uint64_t max_wall_ns = submit_max_wall_ns();
@@ -909,7 +914,9 @@ void wait_for_timeline_progress(
           " available.");
     }
 
-    const bool executing = progress &&
+    const uint64_t progress_through =
+        progress_generation ? progress_generation() : 0;
+    const bool executing = progress && progress_through != 0 &&
         progress->has_active_submission(progress_through);
     if (executing) {
       last_advance = now;
@@ -946,7 +953,8 @@ void CompletionDispatcher::wait(uint64_t value) {
   // wall-clock cap that misclassifies long legitimate work as a hang;
   // observing the counter's motion avoids that failure mode without
   // giving up on real hang detection.
-  wait_for_timeline_progress(device_, semaphore_, value, this, value);
+  wait_for_timeline_progress(
+      device_, semaphore_, value, this, [value] { return value; });
   // Inline fast path: drain and run every ready completion whose value
   // is <= |value| on this thread, serialized end-to-end through
   // drain_mutex_ with the background thread so handlers cannot interleave
@@ -1039,10 +1047,16 @@ void CompletionDispatcher::reset_progress_event(VkEvent event) {
 }
 
 bool CompletionDispatcher::has_active_submission(uint64_t through_value) {
+  uint64_t reached = 0;
+  VKX_CHECK(vk::device_table().GetSemaphoreCounterValue(
+      device_, semaphore_, &reached));
   std::lock_guard<std::mutex> lk(mutex_);
   for (const auto& completion : pending_) {
-    if (through_value != 0 && completion.value > through_value) {
+    if (completion.value > through_value) {
       break;
+    }
+    if (completion.value <= reached) {
+      continue;
     }
     if (completion.started != VK_NULL_HANDLE &&
         vk::device_table().GetEventStatus(device_, completion.started) ==
