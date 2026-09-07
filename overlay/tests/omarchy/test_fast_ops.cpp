@@ -734,6 +734,26 @@ TEST_CASE("CrossEntropyVJP matches finite differences and the composed formula")
       "cross entropy vjp host math");
 }
 
+TEST_CASE("CrossEntropyVJP accepts strided inputs and a broadcast cotangent") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  array logits = transpose(
+      array({1.0f, 4.0f, 2.0f, 5.0f, 3.0f, 6.0f}, Shape{3, 2}), stream);
+  array targets = slice(array({0, 99, 2, 99}, int32), {0}, {4}, {2}, stream);
+  array cot = broadcast_to(array(0.5f), Shape{2}, stream);
+  auto fun = [&](const std::vector<array>& inputs) {
+    return std::vector<array>{fast::cross_entropy(inputs[0], targets, stream)};
+  };
+  auto [outputs, grads] = vjp(fun, std::vector<array>{logits}, {cot});
+  require_close(
+      flat(grads[0], stream),
+      host_cross_entropy_vjp({1, 2, 3, 4, 5, 6}, {0, 2}, {0.5, 0.5}, 2, 3),
+      1e-5,
+      "strided cross entropy vjp host math");
+}
+
 TEST_CASE("scaled_dot_product_attention backward matches finite differences") {
   if (!compute_available()) {
     return;
