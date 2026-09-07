@@ -1,19 +1,6 @@
-// Hadamard transform, matching mlx/backend/cpu/hadamard.cpp exactly: one
-// invocation owns one row of the last axis, the host having copied the input
-// into the output buffer first. The row of length n*m decomposes into a 2^k
-// component n and a Sylvester or embedded-Hadamard component m in
-// (1, 12, 20, 28). The Walsh-Hadamard butterfly runs over each n segment in
-// place, with the global scale applied on the final stage when m is 1; for
-// m above 1 the dense H_m rows mix the n segments and apply the scale, the
-// same order the CPU kernel uses so float results round identically.
-//
-// Push-constant routing: reduce_size carries n, matrix_m carries m,
-// output_size the row count, and alpha the scale. The kernel mutates one
-// buffer in place through a single read_write binding; rows are disjoint so
-// no invocation sees another's writes.
-//
-// Serial per-row cost is n*log2(n) butterflies; sizes above 2^16 stay a
-// named host-side error.
+// Parallel in-place Hadamard transform. Each host dispatch covers one
+// butterfly stage through a bounded grid-stride loop, then the optional dense
+// H_m transform assigns independent row/column positions the same way.
 #version 460
 
 #ifdef USE_FP16
@@ -41,7 +28,7 @@ uint16_t bf16_store(float value) {
 #define STORE_VALUE(f) STORAGE_TYPE(f)
 #endif
 
-layout(local_size_x = 1) in;
+layout(local_size_x = 256) in;
 
 layout(set = 0, binding = 0, std430) buffer Row {
   STORAGE_TYPE values[];
@@ -102,57 +89,50 @@ uint matrix_row(uint m, uint j) {
 }
 
 void main() {
-  uint row = gl_GlobalInvocationID.x;
-  if (row >= params.output_size) {
-    return;
-  }
-  uint n = params.reduce_size;
-  uint m = params.matrix_m;
-  uint base = row * n * m;
-
-  // Walsh-Hadamard butterfly over each n segment, the upstream index math:
-  // pairs (j, j+h) combine as (x+y, x-y) for h walking 1, 2, ..., n/2.
-  // Upstream hadamard_n walks b over size/n contiguous groups; within one
-  // row that is each of the m segments below, so segment k=0 alone is not
-  // enough when the dense H_m stage mixes segments.
-  float row_scale = m > 1u ? 1.0 : params.alpha;
-  for (uint seg = 0u; seg < m; ++seg) {
-    uint seg_base = base + seg * n;
-    for (uint h = 1u; h < n; h <<= 1u) {
-      for (uint i = 0u; i < n / 2u; ++i) {
-        uint k = i & (h - 1u);
-        uint j = ((i - k) << 1u) + k;
-        float x = LOAD_VALUE(row_data.values[seg_base + j]);
-        float y = LOAD_VALUE(row_data.values[seg_base + j + h]);
-        float a = x + y;
-        float b = x - y;
-        if (h == n / 2u) {
-          a *= row_scale;
-          b *= row_scale;
+  uint gid = gl_GlobalInvocationID.x;
+  uint grid_size = gl_NumWorkGroups.x * gl_WorkGroupSize.x;
+  while (gid < params.count) {
+    uint n = params.reduce_size;
+    uint m = params.matrix_m;
+    if (params.operation == 0u) {
+      uint half_n = n / 2u;
+      uint pair = gid % half_n;
+      uint segment_base = (gid / half_n) * n;
+      uint h = params.aux_size;
+      uint k = pair & (h - 1u);
+      uint j = ((pair - k) << 1u) + k;
+      float x = LOAD_VALUE(row_data.values[segment_base + j]);
+      float y = LOAD_VALUE(row_data.values[segment_base + j + h]);
+      float a = x + y;
+      float b = x - y;
+      if (m == 1u && h == half_n) {
+        a *= params.alpha;
+        b *= params.alpha;
+      }
+      row_data.values[segment_base + j] = STORE_VALUE(a);
+      row_data.values[segment_base + j + h] = STORE_VALUE(b);
+    } else {
+      uint row = gid / n;
+      uint i = gid - row * n;
+      uint base = row * n * m;
+      float acc[28];
+      for (uint j = 0u; j < m; ++j) {
+        uint bits = matrix_row(m, j);
+        float sum = 0.0;
+        for (uint k = 0u; k < m; ++k) {
+          float x = LOAD_VALUE(row_data.values[base + i + k * n]);
+          sum += ((bits >> k) & 1u) == 1u ? x : -x;
         }
-        row_data.values[seg_base + j] = STORE_VALUE(a);
-        row_data.values[seg_base + j + h] = STORE_VALUE(b);
+        acc[j] = sum;
+      }
+      for (uint j = 0u; j < m; ++j) {
+        row_data.values[base + i + j * n] =
+            STORE_VALUE(acc[j] * params.alpha);
       }
     }
-  }
-
-  if (m <= 1u) {
-    return;
-  }
-  // Dense H_m mixing over the m segments, stride n between rows.
-  for (uint i = 0u; i < n; ++i) {
-    float acc[28];
-    for (uint j = 0u; j < m; ++j) {
-      uint bits = matrix_row(m, j);
-      float sum = 0.0;
-      for (uint k = 0u; k < m; ++k) {
-        float x = LOAD_VALUE(row_data.values[base + i + k * n]);
-        sum += ((bits >> k) & 1u) == 1u ? x : -x;
-      }
-      acc[j] = sum;
+    if (params.count - gid <= grid_size) {
+      break;
     }
-    for (uint j = 0u; j < m; ++j) {
-      row_data.values[base + i + j * n] = STORE_VALUE(acc[j] * params.alpha);
-    }
+    gid += grid_size;
   }
 }

@@ -5684,14 +5684,9 @@ void GreaterEqual::eval_gpu(
     array& out) {
   dispatch_comparison(name(), CompareGreaterEqual, inputs, out);
 }
-// Hadamard runs the fast Walsh-Hadamard transform over the last axis, the
-// GPU twin of mlx/backend/cpu/hadamard.cpp: the row of length n*m decomposes
-// into a 2^k component and an embedded-Hadamard component m in
-// (1, 12, 20, 28); the butterfly applies the scale on its final stage when
-// m is 1 and the dense H_m rows carry it otherwise, the same order the CPU
-// kernel uses so float rounding matches. One invocation owns one row and
-// walks it serially, so sizes whose 2^k component exceeds 2^16 stay a named
-// error rather than a silent stall.
+// Hadamard runs the fast Walsh-Hadamard transform over the last axis.
+// Separate stage dispatches expose every butterfly pair to the GPU while the
+// encoder barriers preserve the in-place dependency between stages.
 void Hadamard::eval_gpu(const std::vector<array>& inputs, array& out) {
   const array& input = inputs.at(0);
   auto& encoder = omarchy::get_command_encoder(out.primitive().stream());
@@ -5729,11 +5724,6 @@ void Hadamard::eval_gpu(const std::vector<array>& inputs, array& out) {
   if (out.size() == 0) {
     return;
   }
-  uint32_t row_count = checked_u32(rows, "Hadamard", out);
-  if (row_count > omarchy::kMaxComputeGroupCountX) {
-    omarchy::unsupported("Hadamard row count", out);
-  }
-  // Copy the input bytes into the fresh output, then transform in place.
   encoder.add_temporary(src);
   encoder.add_temporary(out);
   encoder.copy_buffer(
@@ -5742,10 +5732,11 @@ void Hadamard::eval_gpu(const std::vector<array>& inputs, array& out) {
       static_cast<VkDeviceSize>(src.nbytes()),
       static_cast<VkDeviceSize>(src.offset()),
       static_cast<VkDeviceSize>(out.offset()));
+
+  uint32_t element_count = checked_u32(out.size(), "Hadamard", out);
   omarchy::ComputeParams params;
-  params.count = checked_u32(out.size(), "Hadamard", out);
   params.reduce_size = static_cast<uint32_t>(n);
-  params.output_size = row_count;
+  params.output_size = checked_u32(rows, "Hadamard", out);
   params.matrix_m = static_cast<uint32_t>(m);
   params.alpha = scale_;
   std::array<omarchy::ComputeBinding, 1> bindings{binding(out)};
@@ -5754,7 +5745,26 @@ void Hadamard::eval_gpu(const std::vector<array>& inputs, array& out) {
       omarchy::ComputeKernel::HadamardF32,
       omarchy::ComputeKernel::HadamardF16,
       omarchy::ComputeKernel::HadamardBF16);
-  encoder.dispatch_compute(kernel, bindings, params, row_count);
+  auto dispatch = [&](size_t count, uint32_t operation, uint32_t stage) {
+    params.count = checked_u32(count, "Hadamard", out);
+    params.operation = operation;
+    params.aux_size = stage;
+    encoder.dispatch_compute(
+        kernel,
+        bindings,
+        params,
+        omarchy::compute_dispatch_group_count(params.count));
+  };
+
+  if (n > 1) {
+    uint32_t pair_count = element_count / 2;
+    for (uint32_t h = 1; h < static_cast<uint32_t>(n); h <<= 1) {
+      dispatch(pair_count, 0, h);
+    }
+  }
+  if (m > 1) {
+    dispatch(rows * static_cast<size_t>(n), 1, 0);
+  }
 }
 void Imag::eval_gpu(const std::vector<array>& inputs, array& out) {
   // Upstream imag() returns zeros_like for real input before a
