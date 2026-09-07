@@ -1,0 +1,67 @@
+{
+  "source": "38950db5ea55746f793ff45845c7a0b966fdd6f3",
+  "summary": {
+    "source": {
+      "baseline": "417c06e",
+      "candidate": "38950db"
+    },
+    "pairs": 5,
+    "exact_ids_equal_all_pairs": true,
+    "workloads": [
+      {
+        "workload": "short-decode-32",
+        "decode_tok_s": {
+          "baseline_median": 65.99,
+          "candidate_median": 70.26,
+          "paired_gain_median_pct": 6.425215941809381,
+          "paired_gain_mad_pct": 0.35289955971038456,
+          "positive_pairs": 5
+        },
+        "prefill_tok_s": {
+          "baseline_median": 87.977,
+          "candidate_median": 90.361,
+          "paired_gain_median_pct": 2.4159284035436768,
+          "paired_gain_mad_pct": 0.30848851925511234,
+          "positive_pairs": 5
+        }
+      },
+      {
+        "workload": "long-decode-128",
+        "decode_tok_s": {
+          "baseline_median": 56.27,
+          "candidate_median": 59.05,
+          "paired_gain_median_pct": 4.911906033101987,
+          "paired_gain_mad_pct": 0.11374739287535185,
+          "positive_pairs": 5
+        },
+        "prefill_tok_s": {
+          "baseline_median": 209.768,
+          "candidate_median": 210.104,
+          "paired_gain_median_pct": 0.24074215323595105,
+          "paired_gain_mad_pct": 0.7183184891138117,
+          "positive_pairs": 3
+        }
+      },
+      {
+        "workload": "longctx-1024-decode-32",
+        "decode_tok_s": {
+          "baseline_median": 40.77,
+          "candidate_median": 42.18,
+          "paired_gain_median_pct": 3.360313956340444,
+          "paired_gain_mad_pct": 0.3470270699301281,
+          "positive_pairs": 5
+        },
+        "prefill_tok_s": {
+          "baseline_median": 227.823,
+          "candidate_median": 227.283,
+          "paired_gain_median_pct": -0.3017927718876545,
+          "paired_gain_mad_pct": 0.08587219426300363,
+          "positive_pairs": 1
+        }
+      }
+    ]
+  },
+  "decision": "Eligible for combined qualification: decode gains3.36-6.43%, small -0.302% long-context prefill tradeoff, exact IDs throughout. Not yet integrated or released.",
+  "parent_runtime_cases": 7,
+  "parent_runtime_assertions": 118
+}

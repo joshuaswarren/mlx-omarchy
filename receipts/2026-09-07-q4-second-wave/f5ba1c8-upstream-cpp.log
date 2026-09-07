@@ -1,0 +1,14 @@
+[omarchy] shapeless compiled fragment reused at a new shape: traced [2], serving [4]
+[doctest] doctest version is "2.4.12"
+[doctest] run with "--help" for options
+===============================================================================
+/home/joshuawarren/src/mlx-perf-next-20260907/.work/mlx/tests/ops_tests.cpp:1349:
+TEST CASE:  test arithmetic unary ops
+
+/home/joshuawarren/src/mlx-perf-next-20260907/.work/mlx/tests/ops_tests.cpp:1697: ERROR: CHECK( array_equal(log(x), expected).item<bool>() ) is NOT correct!
+  values: CHECK( false )
+
+===============================================================================
+[doctest] test cases:  251 |  250 passed | 1 failed | 0 skipped
+[doctest] assertions: 3347 | 3346 passed | 1 failed |
+[doctest] Status: FAILURE!

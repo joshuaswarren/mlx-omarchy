@@ -1,0 +1,50 @@
+{
+  "device": "Device(gpu, 0)",
+  "cases": [
+    {
+      "dtype": "mlx.core.float16",
+      "shape": [
+        2,
+        7,
+        64
+      ],
+      "host_max_error": 0.0018947133794426918,
+      "host_max_bound": 0.008005690971417387,
+      "baseline_max_difference": 0
+    },
+    {
+      "dtype": "mlx.core.float16",
+      "shape": [
+        15,
+        17,
+        192
+      ],
+      "host_max_error": 0.00752093642950058,
+      "host_max_bound": 0.01784129438573664,
+      "baseline_max_difference": 0
+    },
+    {
+      "dtype": "mlx.core.float16",
+      "shape": [
+        32,
+        32,
+        128
+      ],
+      "host_max_error": 0.006976082921028137,
+      "host_max_bound": 0.01666023441247282,
+      "baseline_max_difference": 0
+    },
+    {
+      "dtype": "mlx.core.float16",
+      "shape": [
+        33,
+        17,
+        64
+      ],
+      "host_max_error": 0.003571726381778717,
+      "host_max_bound": 0.015969009302759584,
+      "baseline_max_difference": 0
+    }
+  ],
+  "passed": 4
+}

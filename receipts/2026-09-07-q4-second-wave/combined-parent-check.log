@@ -1,0 +1,15 @@
+[doctest] doctest version is "2.4.12"
+[doctest] run with "--help" for options
+[doctest] test cases:   7 |   7 passed | 0 failed | 33 skipped
+[doctest] assertions: 118 | 118 passed | 0 failed |
+[doctest] Status: SUCCESS!
+[doctest] doctest version is "2.4.12"
+[doctest] run with "--help" for options
+[qmm-rb-word] m=2 n=7 k=64 candidate_vs_baseline_max=0 candidate_vs_host_max=0.00719643 baseline_vs_host_max=0.00719643 bound=0.025325
+[qmm-rb-word] m=15 n=17 k=192 candidate_vs_baseline_max=0 candidate_vs_host_max=0.0147629 baseline_vs_host_max=0.0147629 bound=0.0594667
+[qmm-rb-word] m=32 n=32 k=128 candidate_vs_baseline_max=0 candidate_vs_host_max=0.0153732 baseline_vs_host_max=0.0153732 bound=0.0515481
+[qmm-rb-word] m=33 n=17 k=64 candidate_vs_baseline_max=0 candidate_vs_host_max=0.0130997 baseline_vs_host_max=0.0130997 bound=0.0350047
+[doctest] test cases:     1 |     1 passed | 0 failed | 12 skipped
+[doctest] assertions: 11140 | 11140 passed | 0 failed |
+[doctest] Status: SUCCESS!
+[second-wave-clean-cutover-check: exited; cursor=135303]

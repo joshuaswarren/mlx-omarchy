@@ -1,0 +1,10 @@
+{
+  "source": "f5ba1c827b93b81263b8d4611016bc2e19f307aa",
+  "upstream": "1f8e74e3f12f31365464a6867c6579f0e9b29d85",
+  "numpy": "2.2.6",
+  "test": "test_ops.py::TestOps::test_unstack",
+  "passed": 1,
+  "failures": 0,
+  "scope": "Separate software-Vulkan oracle check; does not alter the NumPy 1.26 full-file result",
+  "original_junit": "/tmp/mlx-numpy2-oracle/unstack.xml"
+}

@@ -1,0 +1,719 @@
+{
+  "actual_model_identity": "openai-codex/gpt-5.6-sol",
+  "aggregate_junit_derived_counts": {
+    "failures": 6,
+    "passed": 582,
+    "skipped": 24,
+    "tests": 612
+  },
+  "execution": {
+    "assigned": 17,
+    "environment": {
+      "DEVICE": "gpu",
+      "LOW_MEMORY": null,
+      "LP_NUM_THREADS": "4",
+      "MLX_ENABLE_TF32": "0",
+      "MLX_OMARCHY_ALLOW_NON_APPLE": "1",
+      "OMP_NUM_THREADS": "1",
+      "OPENBLAS_NUM_THREADS": "1",
+      "TF_NUM_INTEROP_THREADS": "1",
+      "TF_NUM_INTRAOP_THREADS": "1",
+      "default_compilation_preserved": true,
+      "per_file_timeout_seconds": 1800
+    },
+    "executed": 17,
+    "finished_at": "2026-09-07T16:16:15.630689+00:00",
+    "remaining_not_run": 0,
+    "started_at": "2026-09-07T15:48:35.310813+00:00",
+    "stopped_reason": null
+  },
+  "failure_clusters": [
+    {
+      "area": "FFT",
+      "classification": "confirmed_backend_defect",
+      "cluster_id": "fft-stage-multidimensional-dispatch-indexing",
+      "evidence": [
+        {
+          "lines": "4224-4226, 4444-4456, 4461-4504",
+          "observation": "The planner accepts lengths through 2^24. dispatch_fft_stage computes group_x/group_y/group_z for workgroups=(elements+255)/256 and dispatches all three dimensions. For 2^24 elements this is 65,536 workgroups, one more than a 65,535 x limit.",
+          "path": "/tmp/mlx-second-wave-integration/overlay/mlx/backend/omarchy/primitives.cpp"
+        },
+        {
+          "lines": "114-118",
+          "observation": "The shader sets p = gl_GlobalInvocationID.x and never incorporates y or z.",
+          "path": "/tmp/mlx-second-wave-integration/overlay/mlx/backend/omarchy/shaders/fft_stage.comp"
+        },
+        {
+          "observation": "The 2^24 case reports 8,191 mismatched bins and the final expected nonzero bin is 0+0j in the GPU output.",
+          "path": "/tmp/mlx-py-parity-f5ba1c8/core/test_fft.log"
+        }
+      ],
+      "failed_test_names": [
+        "tests.test_fft.TestFFT::test_fft_big_powers_of_two"
+      ],
+      "root_cause": "The host splits an elementwise FFT stage across x/y/z workgroup dimensions once the stage exceeds the x-dimension limit, but fft_stage.comp indexes only gl_GlobalInvocationID.x. At the accepted 2^24 boundary, an elementwise stage needs 65,536 workgroups, so dispatch_fft_stage uses more than one y group while the shader repeats x addresses and leaves part of the destination unwritten. Later stages amplify the incomplete stage.",
+      "support_implication": "Power-of-two FFT at the accepted upper boundary is not numerically qualified on software Vulkan."
+    },
+    {
+      "area": "array/ops feeding FFT",
+      "classification": "confirmed_backend_defect",
+      "cluster_id": "complex-abs-broadcast-strides",
+      "evidence": [
+        {
+          "lines": "3039-3056, 2982-3025",
+          "observation": "Complex Abs routes to dispatch_complex_extract. That helper binds the original input and count/offset only; unlike dispatch_complex at lines 2949-2970, it has no general-broadcast transport or materialization.",
+          "path": "/tmp/mlx-second-wave-integration/overlay/mlx/backend/omarchy/primitives.cpp"
+        },
+        {
+          "observation": "On Device(gpu, 0), the broadcast view itself matched NumPy, but mx.abs(view)+4 mismatched 511 of 512 elements; the downstream FFT mismatched 377 bins.",
+          "path": "/tmp/mlx-py-parity-f5ba1c8/core/fft-contiguity-diagnostic.log"
+        },
+        {
+          "observation": "The pinned test reports 332 of 512 FFT elements mismatched after mx.abs on the broadcast complex view.",
+          "path": "/tmp/mlx-py-parity-f5ba1c8/core/test_fft.log"
+        }
+      ],
+      "failed_test_names": [
+        "tests.test_fft.TestFFT::test_fft_contiguity"
+      ],
+      "root_cause": "The failure occurs before FFT. Abs::eval_gpu routes complex64 magnitude through dispatch_complex_extract, which dispatches a flat count and offsets but carries no shape or stride metadata. A broadcast complex input is therefore read as contiguous storage instead of through its zero strides, and FFT receives incorrect dense values.",
+      "support_implication": "Complex magnitude over broadcast layouts is not qualified; this is an array/ops stride bug rather than an FFT contiguity defect."
+    },
+    {
+      "area": "array/ops",
+      "classification": "confirmed_operation_defect",
+      "cluster_id": "reflect-pad-multireflect-phase",
+      "evidence": [
+        {
+          "lines": "1458-1540, especially 1491-1515",
+          "observation": "reflect_pad uses tile=n-1 and repeatedly slices [filled_start+offset, filled_start+offset+chunk), flips it, and moves filled_start left.",
+          "path": "/tmp/mlx-second-wave-integration/.work/mlx/mlx/ops.cpp"
+        },
+        {
+          "observation": "For [0,1,2] with reflect pad [(9,1)], output index 1 was 0 while NumPy expected 2; all other listed values expose the shifted repeated-reflection phase.",
+          "path": "/tmp/mlx-py-parity-f5ba1c8/core/diagnostic-smoke.log"
+        },
+        {
+          "observation": "The full pinned file fails first at mode=reflect, shape=(3,), pad=[(9,1)].",
+          "path": "/tmp/mlx-py-parity-f5ba1c8/core/test_ops.log"
+        }
+      ],
+      "failed_test_names": [
+        "tests.test_ops.TestOps::test_pad_reflect_symmetric"
+      ],
+      "root_cause": "The iterative left-pad loop reflects fixed-size chunks from the moving filled_start boundary in the already-padded array. For reflect mode with n=3 and a left pad of 9, the chunk source crosses the original/padded boundary with the wrong phase after repeated reflections. The generated period duplicates the low edge where NumPy's period requires the high edge.",
+      "support_implication": "Reflect padding larger than the axis is not qualified."
+    },
+    {
+      "area": "array/ops",
+      "classification": "intentional_named_refusal",
+      "cluster_id": "large-trig-named-refusal",
+      "evidence": [
+        {
+          "lines": "3999-4051",
+          "observation": "kTrigArgumentLimit is 1e5 and trig_argument_gate throws the exact named RuntimeError observed by the test.",
+          "path": "/tmp/mlx-second-wave-integration/overlay/mlx/backend/omarchy/primitives.cpp"
+        },
+        {
+          "observation": "The test receives the named Sin magnitude refusal at an input near 1e30.",
+          "path": "/tmp/mlx-py-parity-f5ba1c8/core/test_ops.log"
+        }
+      ],
+      "failed_test_names": [
+        "tests.test_ops.TestOps::test_sin"
+      ],
+      "root_cause": "This backend deliberately refuses real sin/cos inputs whose magnitude exceeds 1e5 because the Vulkan driver's built-in range reduction is not accurate there and the attempted software Payne-Hanek path miscompiles. The upstream test expects values through 1e30, so it reaches the named refusal rather than a numerical comparison.",
+      "support_implication": "Large-magnitude real sin/cos remains an explicit unsupported range, not a silent numerical implementation."
+    },
+    {
+      "area": "array/ops",
+      "classification": "unsupported_contract_with_inconsistent_full_file_symptom",
+      "cluster_id": "sort-final-oracle-uses-unsupported-int64",
+      "evidence": [
+        {
+          "lines": "2876-2886",
+          "observation": "The final section creates np.array([...]) with no dtype and sorts its broadcast view.",
+          "path": "/tmp/mlx-py-parity-f5ba1c8/tests/test_ops.py"
+        },
+        {
+          "lines": "1265-1308",
+          "observation": "require_sort_dtype accepts 8/16/32-bit integers and rejects int64.",
+          "path": "/tmp/mlx-second-wave-integration/overlay/mlx/backend/omarchy/primitives.cpp"
+        },
+        {
+          "observation": "NumPy dtype and MLX dtype were int64; both axis=0 and axis=1 produced the named 'Sort dtype is not implemented' RuntimeError on Device(gpu, 0).",
+          "path": "/tmp/mlx-py-parity-f5ba1c8/core/sort-api-diagnostic.log"
+        },
+        {
+          "observation": "The same broadcast sort with an explicit int32 input matched NumPy on both axes.",
+          "path": "/tmp/mlx-py-parity-f5ba1c8/core/diagnostic-smoke.log"
+        },
+        {
+          "observation": "The full-file run shows all 24 typed regular subtests and both wide-sort subtests passed before the final bare assertion failed.",
+          "path": "/tmp/mlx-py-parity-f5ba1c8/core/test_ops.log"
+        }
+      ],
+      "failed_test_names": [
+        "tests.test_ops.TestOps::test_sort"
+      ],
+      "root_cause": "All reported int32, float32, complex64, strided, and wide-sort subtests passed. The final zero-stride section constructs a NumPy array without dtype, which is int64 here. The Omarchy sort contract explicitly excludes int64. A clean same-environment reproduction returns the named int64 refusal for both axes. The full-file run instead recorded a bare equality failure, so that symptom is state-dependent or otherwise inconsistent and does not establish int64 or zero-stride support.",
+      "support_implication": "Do not convert this test outcome into an int64-sort support claim. Supported typed paths in this file passed, but the final int64 case remains unsupported and the full-file symptom needs separate state-reproduction work."
+    },
+    {
+      "area": "array/ops",
+      "classification": "invalid_oracle",
+      "cluster_id": "numpy-1-26-unstack-oracle-missing",
+      "evidence": [
+        {
+          "lines": "1675-1680",
+          "observation": "expected = np.unstack(a_np, axis=axis) raises AttributeError.",
+          "path": "/tmp/mlx-py-parity-f5ba1c8/tests/test_ops.py"
+        },
+        {
+          "observation": "The pinned environment identifies NumPy 1.26.4.",
+          "path": "/tmp/mlx-py-parity-f5ba1c8/core/identity.log"
+        },
+        {
+          "observation": "The preserved traceback is AttributeError: module 'numpy' has no attribute 'unstack'.",
+          "path": "/tmp/mlx-py-parity-f5ba1c8/core/test_ops.log"
+        }
+      ],
+      "failed_test_names": [
+        "tests.test_ops.TestOps::test_unstack"
+      ],
+      "root_cause": "The test calls np.unstack, but the pinned NumPy 1.26.4 environment does not provide that function. The failure occurs while building the expected result before any MLX result comparison.",
+      "support_implication": "This case provides no MLX unstack qualification signal and must not be counted as either support or a backend numerical defect."
+    }
+  ],
+  "files": [
+    {
+      "command": "/tmp/mlx-py-parity-f5ba1c8/core/test_array.command.json",
+      "duration_seconds": 47.036,
+      "failed_test_names": [],
+      "file": "test_array.py",
+      "finished_at": "2026-09-07T15:49:22.347302+00:00",
+      "junit": "/tmp/mlx-py-parity-f5ba1c8/core/test_array.xml",
+      "junit_counts": {
+        "errors": null,
+        "failures": null,
+        "skipped": null,
+        "tests": null,
+        "time": null
+      },
+      "junit_derived_counts": {
+        "passed": 82,
+        "skipped": 18,
+        "tests": 100
+      },
+      "log": "/tmp/mlx-py-parity-f5ba1c8/core/test_array.log",
+      "pytest_summary": "82 passed, 18 skipped, 127 subtests passed in 45.01s",
+      "rc": 0,
+      "skip_reasons": [
+        {
+          "count": 18,
+          "reason": "PyTorch MPS is required"
+        }
+      ],
+      "started_at": "2026-09-07T15:48:35.311347+00:00",
+      "status": "executed",
+      "stop_reason": null
+    },
+    {
+      "command": "/tmp/mlx-py-parity-f5ba1c8/core/test_autograd.command.json",
+      "duration_seconds": 18.008,
+      "failed_test_names": [],
+      "file": "test_autograd.py",
+      "finished_at": "2026-09-07T15:49:40.356133+00:00",
+      "junit": "/tmp/mlx-py-parity-f5ba1c8/core/test_autograd.xml",
+      "junit_counts": {
+        "errors": null,
+        "failures": null,
+        "skipped": null,
+        "tests": null,
+        "time": null
+      },
+      "junit_derived_counts": {
+        "passed": 54,
+        "tests": 54
+      },
+      "log": "/tmp/mlx-py-parity-f5ba1c8/core/test_autograd.log",
+      "pytest_summary": "54 passed, 48 subtests passed in 16.01s",
+      "rc": 0,
+      "skip_reasons": [],
+      "started_at": "2026-09-07T15:49:22.347878+00:00",
+      "status": "executed",
+      "stop_reason": null
+    },
+    {
+      "command": "/tmp/mlx-py-parity-f5ba1c8/core/test_blas.command.json",
+      "duration_seconds": 573.315,
+      "failed_test_names": [],
+      "file": "test_blas.py",
+      "finished_at": "2026-09-07T15:59:13.765076+00:00",
+      "junit": "/tmp/mlx-py-parity-f5ba1c8/core/test_blas.xml",
+      "junit_counts": {
+        "errors": null,
+        "failures": null,
+        "skipped": null,
+        "tests": null,
+        "time": null
+      },
+      "junit_derived_counts": {
+        "passed": 29,
+        "tests": 29
+      },
+      "log": "/tmp/mlx-py-parity-f5ba1c8/core/test_blas.log",
+      "pytest_summary": "29 passed, 1020 subtests passed in 571.76s (0:09:31)",
+      "rc": 0,
+      "skip_reasons": [],
+      "started_at": "2026-09-07T15:49:40.449996+00:00",
+      "status": "executed",
+      "stop_reason": null
+    },
+    {
+      "command": "/tmp/mlx-py-parity-f5ba1c8/core/test_conv.command.json",
+      "duration_seconds": 42.04,
+      "failed_test_names": [],
+      "file": "test_conv.py",
+      "finished_at": "2026-09-07T15:59:55.805761+00:00",
+      "junit": "/tmp/mlx-py-parity-f5ba1c8/core/test_conv.xml",
+      "junit_counts": {
+        "errors": null,
+        "failures": null,
+        "skipped": null,
+        "tests": null,
+        "time": null
+      },
+      "junit_derived_counts": {
+        "passed": 19,
+        "skipped": 1,
+        "tests": 20
+      },
+      "log": "/tmp/mlx-py-parity-f5ba1c8/core/test_conv.log",
+      "pytest_summary": "19 passed, 1 skipped, 221 subtests passed in 40.57s",
+      "rc": 0,
+      "skip_reasons": [
+        {
+          "count": 1,
+          "reason": "requires Metal"
+        }
+      ],
+      "started_at": "2026-09-07T15:59:13.765727+00:00",
+      "status": "executed",
+      "stop_reason": null
+    },
+    {
+      "command": "/tmp/mlx-py-parity-f5ba1c8/core/test_conv_transpose.command.json",
+      "duration_seconds": 227.214,
+      "failed_test_names": [],
+      "file": "test_conv_transpose.py",
+      "finished_at": "2026-09-07T16:03:43.026597+00:00",
+      "junit": "/tmp/mlx-py-parity-f5ba1c8/core/test_conv_transpose.xml",
+      "junit_counts": {
+        "errors": null,
+        "failures": null,
+        "skipped": null,
+        "tests": null,
+        "time": null
+      },
+      "junit_derived_counts": {
+        "passed": 9,
+        "skipped": 1,
+        "tests": 10
+      },
+      "log": "/tmp/mlx-py-parity-f5ba1c8/core/test_conv_transpose.log",
+      "pytest_summary": "9 passed, 1 skipped, 147 subtests passed in 225.59s (0:03:45)",
+      "rc": 0,
+      "skip_reasons": [
+        {
+          "count": 1,
+          "reason": "requires Metal"
+        }
+      ],
+      "started_at": "2026-09-07T15:59:55.812695+00:00",
+      "status": "executed",
+      "stop_reason": null
+    },
+    {
+      "command": "/tmp/mlx-py-parity-f5ba1c8/core/test_einsum.command.json",
+      "duration_seconds": 2.001,
+      "failed_test_names": [],
+      "file": "test_einsum.py",
+      "finished_at": "2026-09-07T16:03:45.028642+00:00",
+      "junit": "/tmp/mlx-py-parity-f5ba1c8/core/test_einsum.xml",
+      "junit_counts": {
+        "errors": null,
+        "failures": null,
+        "skipped": null,
+        "tests": null,
+        "time": null
+      },
+      "junit_derived_counts": {
+        "passed": 12,
+        "tests": 12
+      },
+      "log": "/tmp/mlx-py-parity-f5ba1c8/core/test_einsum.log",
+      "pytest_summary": "12 passed in 0.87s",
+      "rc": 0,
+      "skip_reasons": [],
+      "started_at": "2026-09-07T16:03:43.027821+00:00",
+      "status": "executed",
+      "stop_reason": null
+    },
+    {
+      "command": "/tmp/mlx-py-parity-f5ba1c8/core/test_fft.command.json",
+      "duration_seconds": 487.352,
+      "failed_test_names": [
+        "tests.test_fft.TestFFT::test_fft_big_powers_of_two",
+        "tests.test_fft.TestFFT::test_fft_contiguity"
+      ],
+      "file": "test_fft.py",
+      "finished_at": "2026-09-07T16:11:52.383739+00:00",
+      "junit": "/tmp/mlx-py-parity-f5ba1c8/core/test_fft.xml",
+      "junit_counts": {
+        "errors": null,
+        "failures": null,
+        "skipped": null,
+        "tests": null,
+        "time": null
+      },
+      "junit_derived_counts": {
+        "failures": 2,
+        "passed": 15,
+        "skipped": 3,
+        "tests": 20
+      },
+      "log": "/tmp/mlx-py-parity-f5ba1c8/core/test_fft.log",
+      "pytest_summary": "2 failed, 15 passed, 3 skipped in 485.58s (0:08:05)",
+      "rc": 1,
+      "skip_reasons": [
+        {
+          "count": 1,
+          "reason": "Metal is not available"
+        },
+        {
+          "count": 1,
+          "reason": "Too slow for CI but useful for local testing."
+        },
+        {
+          "count": 1,
+          "reason": "the size limit is specific to the Metal FFT plan"
+        }
+      ],
+      "started_at": "2026-09-07T16:03:45.031343+00:00",
+      "status": "executed",
+      "stop_reason": null
+    },
+    {
+      "command": "/tmp/mlx-py-parity-f5ba1c8/core/test_init.command.json",
+      "duration_seconds": 1.007,
+      "failed_test_names": [],
+      "file": "test_init.py",
+      "finished_at": "2026-09-07T16:11:53.391700+00:00",
+      "junit": "/tmp/mlx-py-parity-f5ba1c8/core/test_init.xml",
+      "junit_counts": {
+        "errors": null,
+        "failures": null,
+        "skipped": null,
+        "tests": null,
+        "time": null
+      },
+      "junit_derived_counts": {
+        "passed": 11,
+        "tests": 11
+      },
+      "log": "/tmp/mlx-py-parity-f5ba1c8/core/test_init.log",
+      "pytest_summary": "11 passed, 43 subtests passed in 0.48s",
+      "rc": 0,
+      "skip_reasons": [],
+      "started_at": "2026-09-07T16:11:52.384594+00:00",
+      "status": "executed",
+      "stop_reason": null
+    },
+    {
+      "command": "/tmp/mlx-py-parity-f5ba1c8/core/test_linalg.command.json",
+      "duration_seconds": 2.002,
+      "failed_test_names": [],
+      "file": "test_linalg.py",
+      "finished_at": "2026-09-07T16:11:55.394723+00:00",
+      "junit": "/tmp/mlx-py-parity-f5ba1c8/core/test_linalg.xml",
+      "junit_counts": {
+        "errors": null,
+        "failures": null,
+        "skipped": null,
+        "tests": null,
+        "time": null
+      },
+      "junit_derived_counts": {
+        "passed": 18,
+        "tests": 18
+      },
+      "log": "/tmp/mlx-py-parity-f5ba1c8/core/test_linalg.log",
+      "pytest_summary": "18 passed, 266 subtests passed in 1.59s",
+      "rc": 0,
+      "skip_reasons": [],
+      "started_at": "2026-09-07T16:11:53.392355+00:00",
+      "status": "executed",
+      "stop_reason": null
+    },
+    {
+      "command": "/tmp/mlx-py-parity-f5ba1c8/core/test_losses.command.json",
+      "duration_seconds": 1.005,
+      "failed_test_names": [],
+      "file": "test_losses.py",
+      "finished_at": "2026-09-07T16:11:56.400698+00:00",
+      "junit": "/tmp/mlx-py-parity-f5ba1c8/core/test_losses.xml",
+      "junit_counts": {
+        "errors": null,
+        "failures": null,
+        "skipped": null,
+        "tests": null,
+        "time": null
+      },
+      "junit_derived_counts": {
+        "passed": 14,
+        "tests": 14
+      },
+      "log": "/tmp/mlx-py-parity-f5ba1c8/core/test_losses.log",
+      "pytest_summary": "14 passed in 0.49s",
+      "rc": 0,
+      "skip_reasons": [],
+      "started_at": "2026-09-07T16:11:55.395366+00:00",
+      "status": "executed",
+      "stop_reason": null
+    },
+    {
+      "command": "/tmp/mlx-py-parity-f5ba1c8/core/test_nn.command.json",
+      "duration_seconds": 4.005,
+      "failed_test_names": [],
+      "file": "test_nn.py",
+      "finished_at": "2026-09-07T16:12:00.406275+00:00",
+      "junit": "/tmp/mlx-py-parity-f5ba1c8/core/test_nn.xml",
+      "junit_counts": {
+        "errors": null,
+        "failures": null,
+        "skipped": null,
+        "tests": null,
+        "time": null
+      },
+      "junit_derived_counts": {
+        "passed": 73,
+        "tests": 73
+      },
+      "log": "/tmp/mlx-py-parity-f5ba1c8/core/test_nn.log",
+      "pytest_summary": "73 passed, 3 subtests passed in 2.89s",
+      "rc": 0,
+      "skip_reasons": [],
+      "started_at": "2026-09-07T16:11:56.401350+00:00",
+      "status": "executed",
+      "stop_reason": null
+    },
+    {
+      "command": "/tmp/mlx-py-parity-f5ba1c8/core/test_ops.command.json",
+      "duration_seconds": 216.135,
+      "failed_test_names": [
+        "tests.test_ops.TestOps::test_pad_reflect_symmetric",
+        "tests.test_ops.TestOps::test_sin",
+        "tests.test_ops.TestOps::test_sort",
+        "tests.test_ops.TestOps::test_unstack"
+      ],
+      "file": "test_ops.py",
+      "finished_at": "2026-09-07T16:15:36.541808+00:00",
+      "junit": "/tmp/mlx-py-parity-f5ba1c8/core/test_ops.xml",
+      "junit_counts": {
+        "errors": null,
+        "failures": null,
+        "skipped": null,
+        "tests": null,
+        "time": null
+      },
+      "junit_derived_counts": {
+        "failures": 4,
+        "passed": 157,
+        "skipped": 1,
+        "tests": 162
+      },
+      "log": "/tmp/mlx-py-parity-f5ba1c8/core/test_ops.log",
+      "pytest_summary": "4 failed, 157 passed, 1 skipped, 322 subtests passed in 215.09s (0:03:35)",
+      "rc": 1,
+      "skip_reasons": [
+        {
+          "count": 1,
+          "reason": "Metal only"
+        }
+      ],
+      "started_at": "2026-09-07T16:12:00.407178+00:00",
+      "status": "executed",
+      "stop_reason": null
+    },
+    {
+      "command": "/tmp/mlx-py-parity-f5ba1c8/core/test_optimizers.command.json",
+      "duration_seconds": 5.006,
+      "failed_test_names": [],
+      "file": "test_optimizers.py",
+      "finished_at": "2026-09-07T16:15:41.548651+00:00",
+      "junit": "/tmp/mlx-py-parity-f5ba1c8/core/test_optimizers.xml",
+      "junit_counts": {
+        "errors": null,
+        "failures": null,
+        "skipped": null,
+        "tests": null,
+        "time": null
+      },
+      "junit_derived_counts": {
+        "passed": 26,
+        "tests": 26
+      },
+      "log": "/tmp/mlx-py-parity-f5ba1c8/core/test_optimizers.log",
+      "pytest_summary": "26 passed in 3.77s",
+      "rc": 0,
+      "skip_reasons": [],
+      "started_at": "2026-09-07T16:15:36.542547+00:00",
+      "status": "executed",
+      "stop_reason": null
+    },
+    {
+      "command": "/tmp/mlx-py-parity-f5ba1c8/core/test_random.command.json",
+      "duration_seconds": 3.006,
+      "failed_test_names": [],
+      "file": "test_random.py",
+      "finished_at": "2026-09-07T16:15:44.555886+00:00",
+      "junit": "/tmp/mlx-py-parity-f5ba1c8/core/test_random.xml",
+      "junit_counts": {
+        "errors": null,
+        "failures": null,
+        "skipped": null,
+        "tests": null,
+        "time": null
+      },
+      "junit_derived_counts": {
+        "passed": 14,
+        "tests": 14
+      },
+      "log": "/tmp/mlx-py-parity-f5ba1c8/core/test_random.log",
+      "pytest_summary": "14 passed in 2.62s",
+      "rc": 0,
+      "skip_reasons": [],
+      "started_at": "2026-09-07T16:15:41.549420+00:00",
+      "status": "executed",
+      "stop_reason": null
+    },
+    {
+      "command": "/tmp/mlx-py-parity-f5ba1c8/core/test_reduce.command.json",
+      "duration_seconds": 21.014,
+      "failed_test_names": [],
+      "file": "test_reduce.py",
+      "finished_at": "2026-09-07T16:16:05.570659+00:00",
+      "junit": "/tmp/mlx-py-parity-f5ba1c8/core/test_reduce.xml",
+      "junit_counts": {
+        "errors": null,
+        "failures": null,
+        "skipped": null,
+        "tests": null,
+        "time": null
+      },
+      "junit_derived_counts": {
+        "passed": 13,
+        "tests": 13
+      },
+      "log": "/tmp/mlx-py-parity-f5ba1c8/core/test_reduce.log",
+      "pytest_summary": "13 passed, 5070 subtests passed in 19.59s",
+      "rc": 0,
+      "skip_reasons": [],
+      "started_at": "2026-09-07T16:15:44.556534+00:00",
+      "status": "executed",
+      "stop_reason": null
+    },
+    {
+      "command": "/tmp/mlx-py-parity-f5ba1c8/core/test_upsample.command.json",
+      "duration_seconds": 8.051,
+      "failed_test_names": [],
+      "file": "test_upsample.py",
+      "finished_at": "2026-09-07T16:16:13.623334+00:00",
+      "junit": "/tmp/mlx-py-parity-f5ba1c8/core/test_upsample.xml",
+      "junit_counts": {
+        "errors": null,
+        "failures": null,
+        "skipped": null,
+        "tests": null,
+        "time": null
+      },
+      "junit_derived_counts": {
+        "passed": 6,
+        "tests": 6
+      },
+      "log": "/tmp/mlx-py-parity-f5ba1c8/core/test_upsample.log",
+      "pytest_summary": "6 passed, 152 subtests passed in 6.64s",
+      "rc": 0,
+      "skip_reasons": [],
+      "started_at": "2026-09-07T16:16:05.571928+00:00",
+      "status": "executed",
+      "stop_reason": null
+    },
+    {
+      "command": "/tmp/mlx-py-parity-f5ba1c8/core/test_vmap.command.json",
+      "duration_seconds": 2.006,
+      "failed_test_names": [],
+      "file": "test_vmap.py",
+      "finished_at": "2026-09-07T16:16:15.630138+00:00",
+      "junit": "/tmp/mlx-py-parity-f5ba1c8/core/test_vmap.xml",
+      "junit_counts": {
+        "errors": null,
+        "failures": null,
+        "skipped": null,
+        "tests": null,
+        "time": null
+      },
+      "junit_derived_counts": {
+        "passed": 30,
+        "tests": 30
+      },
+      "log": "/tmp/mlx-py-parity-f5ba1c8/core/test_vmap.log",
+      "pytest_summary": "30 passed, 35 subtests passed in 1.27s",
+      "rc": 0,
+      "skip_reasons": [],
+      "started_at": "2026-09-07T16:16:13.624302+00:00",
+      "status": "executed",
+      "stop_reason": null
+    }
+  ],
+  "interpreter_identity": {
+    "default_device": "Device(gpu, 0)",
+    "mlx": "0.32.2.dev202609071536+f5ba1c82",
+    "numpy": "1.26.4",
+    "python": "3.11.2",
+    "tensorflow": "2.15.1",
+    "torch": "2.14.0+cpu"
+  },
+  "qualification_scope": "software Vulkan/reference checks; not native parity",
+  "schema_version": 1,
+  "source": {
+    "mlx_omarchy_commit": "f5ba1c827b93b81263b8d4611016bc2e19f307aa",
+    "upstream_tests_commit": "1f8e74e3f12f31365464a6867c6579f0e9b29d85",
+    "wheel_provenance": {
+      "dist": "mlx-omarchy",
+      "dist_version": "0.32.2.dev202609071536+f5ba1c82",
+      "expected_wheel": "/tmp/mlx-second-wave-integration/dist/mlx_omarchy-0.32.2.dev202609071536+f5ba1c82-cp311-cp311-linux_x86_64.whl",
+      "files": [
+        {
+          "label": "mlx.core extension",
+          "match": true,
+          "path": "mlx/core.cpython-311-x86_64-linux-gnu.so",
+          "record_sha256": "d8bfcf627df57a07a75fed49dd989ae5321323c5008cb768ea46f619409ca442",
+          "sha256": "d8bfcf627df57a07a75fed49dd989ae5321323c5008cb768ea46f619409ca442"
+        },
+        {
+          "label": "mlx/lib/libmlx.so",
+          "match": true,
+          "path": "mlx/lib/libmlx.so",
+          "record_sha256": "bae04d3e694b7f29a3a0818db5986cedc6b676e322be0e223d4cf94d3557295c",
+          "sha256": "bae04d3e694b7f29a3a0818db5986cedc6b676e322be0e223d4cf94d3557295c"
+        }
+      ],
+      "mismatch": null,
+      "mx_version": "0.32.2.dev202609071536+f5ba1c82",
+      "verified": "match",
+      "version_match": true
+    }
+  }
+}

@@ -1,0 +1,20 @@
+[
+  {
+    "leg": "qwen25-0.5b-4bit:short-decode-32",
+    "generated": 32,
+    "hash": "7fd25a869ff21678",
+    "matches_eager": true
+  },
+  {
+    "leg": "qwen25-0.5b-4bit:long-decode-128",
+    "generated": 128,
+    "hash": "4cc08910089477fd",
+    "matches_eager": true
+  },
+  {
+    "leg": "qwen25-0.5b-4bit:longctx-1024-decode-32",
+    "generated": 32,
+    "hash": "7da83f06ec9f001d",
+    "matches_eager": true
+  }
+]

@@ -1,0 +1,28 @@
+{
+  "source": "f5ba1c827b93b81263b8d4611016bc2e19f307aa",
+  "upstream_cpp": {
+    "passed": 250,
+    "failed": 1,
+    "assertions_passed": 3346,
+    "assertions_total": 3347,
+    "log": "f5ba1c8-upstream-cpp.log"
+  },
+  "runtime": {
+    "passed": 40,
+    "assertions": 6307,
+    "log": "f5ba1c8-runtime.log"
+  },
+  "prefill": {
+    "passed": 1,
+    "assertions": 11140,
+    "log": "f5ba1c8-prefill-cpp.log"
+  },
+  "failure": "test arithmetic unary ops: exact float32 log comparison at ops_tests.cpp:1697",
+  "baseline_version": "0.32.2.dev202609071347+417c06e",
+  "candidate_version": "0.32.2.dev202609071529+f5ba1c8",
+  "actual_log3_both": 1.0986121892929077,
+  "expected_host_log3": 1.0986123085021973,
+  "actual_bits_both": 1066180435,
+  "expected_bits": 1066180436,
+  "classification": "Existing native precision gap; retained as failure. Both installed wheels return the same value."
+}

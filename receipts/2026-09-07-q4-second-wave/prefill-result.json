@@ -1,0 +1,65 @@
+{
+  "source": "a6c7629851da7bae7a095522b222f55f2a77add5",
+  "summary": {
+    "source": {
+      "baseline": "417c06e",
+      "candidate": "a6c7629"
+    },
+    "pairs": 5,
+    "exact_ids_equal_all_pairs": true,
+    "workloads": [
+      {
+        "workload": "short-decode-32",
+        "decode_tok_s": {
+          "baseline_median": 65.94,
+          "candidate_median": 66.13,
+          "paired_gain_median_pct": 0.015098897780441156,
+          "paired_gain_mad_pct": 0.09065042392129019,
+          "positive_pairs": 3
+        },
+        "prefill_tok_s": {
+          "baseline_median": 87.719,
+          "candidate_median": 95.238,
+          "paired_gain_median_pct": 9.841416296638016,
+          "paired_gain_mad_pct": 1.198381238673619,
+          "positive_pairs": 5
+        }
+      },
+      {
+        "workload": "long-decode-128",
+        "decode_tok_s": {
+          "baseline_median": 56.42,
+          "candidate_median": 56.41,
+          "paired_gain_median_pct": -0.07085916740479092,
+          "paired_gain_mad_pct": 0.2835874070786115,
+          "positive_pairs": 2
+        },
+        "prefill_tok_s": {
+          "baseline_median": 209.432,
+          "candidate_median": 252.166,
+          "paired_gain_median_pct": 20.733041836905365,
+          "paired_gain_mad_pct": 0.24876046887154502,
+          "positive_pairs": 5
+        }
+      },
+      {
+        "workload": "longctx-1024-decode-32",
+        "decode_tok_s": {
+          "baseline_median": 40.78,
+          "candidate_median": 40.82,
+          "paired_gain_median_pct": -0.02449179524858236,
+          "paired_gain_mad_pct": 0.24540490275962723,
+          "positive_pairs": 2
+        },
+        "prefill_tok_s": {
+          "baseline_median": 227.528,
+          "candidate_median": 274.076,
+          "paired_gain_median_pct": 20.442646567929867,
+          "paired_gain_mad_pct": 0.11935086314012366,
+          "positive_pairs": 5
+        }
+      }
+    ]
+  },
+  "decision": "Eligible for combined qualification; prefill9.84-20.73% faster, decode unchanged within noise, full IDs equal in every pair."
+}
