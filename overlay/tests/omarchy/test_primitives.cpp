@@ -3682,9 +3682,6 @@ TEST_CASE("Arange fills start plus step times index through Vulkan compute") {
       {2.5f, 2.25f, 2.0f, 1.75f, 1.5f, 1.25f, 1.0f, 0.75f},
       stream);
 
-  // int32 aranges compute int(start) + index * int(step) in exact int
-  // arithmetic; the host guards |start|, |step|, and the one-past-last
-  // value below 2^24 so the float transport stays exact.
   std::vector<int32_t> int_expected;
   for (int32_t value = 0; value < 10; ++value) {
     int_expected.push_back(value);
@@ -3692,27 +3689,50 @@ TEST_CASE("Arange fills start plus step times index through Vulkan compute") {
   check_int32_values(arange(0, 10, 1, int32, stream), int_expected, stream);
   check_int32_values(
       arange(10, 0, -2, int32, stream), {10, 8, 6, 4, 2}, stream);
-  std::string range_error =
-      evaluation_error(arange(0, 16777217, 1, int32, stream));
-  CHECK(range_error.find("[omarchy] Arange range") != std::string::npos);
-  std::string start_error =
-      evaluation_error(arange(16777216, 0, -1, int32, stream));
-  CHECK(start_error.find("[omarchy] Arange range") != std::string::npos);
 
-  // int64 and uint64 ride the same exact int path under the shared
-  // 2^24 float-transport bound, and the bound refusal carries over.
-  std::vector<int64_t> i64_expected;
-  for (int64_t value = 0; value < 10; ++value) {
-    i64_expected.push_back(value);
-  }
-  check_int64_values(arange(0, 10, 1, int64, stream), i64_expected, stream);
+  check_int32_values(
+      arange(0, 3, 0.2, int32, stream), std::vector<int32_t>(15, 0), stream);
+  check_int32_values(
+      arange(-1, -4, -0.9, int32, stream), {-1, -1, -1, -1}, stream);
+  check_int32_values(
+      arange(-1, -20, -1.2, int32, stream),
+      {-1, -2, -3, -4, -5, -6, -7, -8,
+       -9, -10, -11, -12, -13, -14, -15, -16},
+      stream);
+  check_int32_values(
+      arange(0.9, 2.1, 0.2, int32, stream), {0, 1, 2, 3, 4, 5, 6}, stream);
+
+  constexpr int64_t kWide = int64_t{1} << 40;
   check_int64_values(
-      arange(10, 0, -2, int64, stream), {10, 8, 6, 4, 2}, stream);
+      arange(kWide, kWide + 3, 1, int64, stream),
+      {kWide, kWide + 1, kWide + 2},
+      stream);
+  check_int64_values(
+      arange(-kWide, -kWide + 3, 1, int64, stream),
+      {-kWide, -kWide + 1, -kWide + 2},
+      stream);
+  check_int64_values(
+      arange(kWide + 3, kWide, -1, int64, stream),
+      {kWide + 3, kWide + 2, kWide + 1},
+      stream);
   check_uint64_values(
-      arange(0, 18, 3, uint64, stream), {0ull, 3ull, 6ull, 9ull, 12ull, 15ull}, stream);
-  std::string i64_range_error =
-      evaluation_error(arange(0, 16777217, 1, int64, stream));
-  CHECK(i64_range_error.find("[omarchy] Arange range") != std::string::npos);
+      arange(kWide, kWide + 3, 1, uint64, stream),
+      {uint64_t(kWide), uint64_t(kWide + 1), uint64_t(kWide + 2)},
+      stream);
+
+  constexpr int32_t kMaxI32 = std::numeric_limits<int32_t>::max();
+  check_int32_values(
+      arange(
+          static_cast<double>(kMaxI32) - 1.0,
+          static_cast<double>(kMaxI32) + 3.0,
+          1.0,
+          int32,
+          stream),
+      {kMaxI32 - 1, kMaxI32, std::numeric_limits<int32_t>::min(),
+       std::numeric_limits<int32_t>::min() + 1},
+      stream);
+  check_int32_values(
+      arange(kWide, kWide + 3, 1, int32, stream), {0, 1, 2}, stream);
 
   const auto& capabilities = omarchy::device(0).capabilities();
   if (!capabilities.shader_float16 ||
