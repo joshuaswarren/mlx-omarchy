@@ -2,7 +2,7 @@
 # Run pinned upstream suites once per file, retaining failures and raw reports.
 # Explicit upstream CPU cases remain CPU cases; this is not GPU-only coverage.
 # Usage: tools/run-upstream-suite.sh [--cpp-only | --py-only]
-# OUT_DIR, CPP_TIMEOUT, PY_TIMEOUT, WHEEL, MLX_OMARCHY_WORK_DIR override defaults.
+# OUT_DIR, CPP_TIMEOUT, PY_TIMEOUT, WHEEL, PYTEST_VENV, MLX_OMARCHY_WORK_DIR override defaults.
 # Development hosts must explicitly set MLX_OMARCHY_ALLOW_NON_APPLE=1.
 set -uo pipefail
 
@@ -111,7 +111,7 @@ if [[ $RUN_PY -eq 1 ]]; then
     WHEEL="${wheels[0]}"
   fi
   [[ -f "$WHEEL" ]] || { echo "Wheel not found: $WHEEL" >&2; exit 1; }
-  VENV_DIR="$OUT_DIR/venv-pytest"
+  VENV_DIR="${PYTEST_VENV:-$OUT_DIR/venv-pytest}"
   if [[ ! -x "$VENV_DIR/bin/python" ]]; then
     python3 -m venv "$VENV_DIR" || exit 1
   fi
