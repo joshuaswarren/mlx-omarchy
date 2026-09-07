@@ -5202,17 +5202,16 @@ void GatherAxis::eval_gpu(const std::vector<array>& inputs, array& out) {
   const array& indices = inputs.at(1);
   int axis = axis_;
   auto& encoder = omarchy::get_command_encoder(out.primitive().stream());
-  // The raw-word kernel copies uint32, int32, and float32 tables with
-  // no conversion, so packed words above 2^31 stay bit-exact and a
-  // zero row is the zero word in all three interpretations. Float16
-  // and bfloat16 use their storage kernels; the rest keep the named
-  // rejection.
   bool raw_word = src.dtype() == uint32 || src.dtype() == int32 ||
       src.dtype() == float32;
+  bool raw_i64 = src.dtype() == int64 || src.dtype() == uint64;
   bool complex = src.dtype() == complex64;
-  if (raw_word || complex) {
+  if (raw_word || raw_i64 || complex) {
     if (out.dtype() != src.dtype()) {
       omarchy::unsupported("Take dtype", out);
+    }
+    if (raw_i64 && !encoder.device().capabilities().shader_int64) {
+      omarchy::unsupported("Take int64 capability", out);
     }
   } else {
     require_float_dtype("Take", src, out, encoder);
@@ -5289,6 +5288,7 @@ void GatherAxis::eval_gpu(const std::vector<array>& inputs, array& out) {
   std::array<omarchy::ComputeBinding, 3> bindings{
       binding(src), binding(indices_d), binding(out)};
   auto kernel = complex ? omarchy::ComputeKernel::GatherAxisComplex64
+      : raw_i64 ? omarchy::ComputeKernel::GatherAxisI64
       : src.dtype() == float16 ? omarchy::ComputeKernel::GatherAxisF16
       : src.dtype() == bfloat16 ? omarchy::ComputeKernel::GatherAxisBF16
                                 : omarchy::ComputeKernel::GatherAxisU32;
@@ -5962,19 +5962,11 @@ void MaskedScatter::eval_gpu(const std::vector<array>& inputs, array& out) {
   if (mask_word_offset % 4 != 0) {
     omarchy::unsupported("MaskedScatter mask alignment", out);
   }
-  // A broadcast value materializes into a dense source segment first.
   const array* src_dense = &src;
   std::optional<array> materialized;
-  if (src.data_size() != src.size()) {
-    // A broadcast value materializes by scalar broadcast; Vector would
-    // flat-copy past the single source element.
+  if (src.data_size() != src.size() || !src.flags().row_contiguous) {
     materialized = array(src.shape(), src.dtype(), nullptr, {});
-    copy_gpu(src, *materialized, CopyType::Scalar, out.primitive().stream());
-    encoder.add_temporary(*materialized);
-    src_dense = &*materialized;
-  } else if (!src.flags().row_contiguous) {
-    materialized = array(src.shape(), src.dtype(), nullptr, {});
-    copy_gpu(src, *materialized, CopyType::Vector, out.primitive().stream());
+    copy_gpu(src, *materialized, CopyType::General, out.primitive().stream());
     encoder.add_temporary(*materialized);
     src_dense = &*materialized;
   }

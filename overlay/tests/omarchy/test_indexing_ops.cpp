@@ -92,6 +92,21 @@ void check_ints(
   }
 }
 
+void check_i64(
+    array value,
+    const std::vector<int64_t>& expected,
+    const Stream& stream) {
+  auto dense = contiguous(value);
+  dense.eval();
+  sync_gpu(stream);
+  REQUIRE_EQ(dense.size(), expected.size());
+  const int64_t* values = dense.data<int64_t>();
+  for (size_t index = 0; index < expected.size(); ++index) {
+    INFO("index ", index, " got ", values[index], " want ", expected[index]);
+    CHECK_EQ(values[index], expected[index]);
+  }
+}
+
 void check_complex(
     array value,
     const std::vector<complex64_t>& expected,
@@ -146,6 +161,43 @@ TEST_CASE("take_along_axis gathers along axis 1 with int32 indices") {
   CHECK_EQ(out.dtype(), float32);
   CHECK_EQ(out.shape(), Shape({3, 2}));
   check_floats(out, {13, 10, 21, 21, 32, 30}, stream);
+}
+
+TEST_CASE("take_along_axis preserves int64 table payloads") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  array src = array(
+      {int64_t(9007199254740993LL), int64_t(-9007199254740995LL),
+       int64_t(4611686018427387907LL), int64_t(-4611686018427387901LL),
+       int64_t(17), int64_t(-19)},
+      {2, 3},
+      int64);
+  array indices = array({2, 0, 1, 2}, {2, 2}, int32);
+  check_i64(
+      take_along_axis(src, indices, 1, stream),
+      {int64_t(4611686018427387907LL), int64_t(9007199254740993LL),
+       int64_t(17), int64_t(-19)},
+      stream);
+}
+
+TEST_CASE("take preserves int64 table payloads") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  array src = array(
+      {int64_t(9007199254740993LL), int64_t(-9007199254740995LL),
+       int64_t(4611686018427387907LL)},
+      {3},
+      int64);
+  array indices = array({2, 0, 1}, {3}, int32);
+  check_i64(
+      take(src, indices, 0, stream),
+      {int64_t(4611686018427387907LL), int64_t(9007199254740993LL),
+       int64_t(-9007199254740995LL)},
+      stream);
 }
 
 TEST_CASE("take_along_axis wraps negative indices") {
@@ -918,6 +970,20 @@ TEST_CASE("masked_scatter fills true positions from the source in order") {
   // Row 0: positions 1, 2 get -1, -2; row 1: position 1 gets -4, the
   // first element of row 1's own source segment.
   check_floats(out, {1, -1, -2, 4, -3, 6}, stream);
+}
+
+TEST_CASE("masked_scatter materializes a broadcast source slice") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  array dst = zeros({2, 3}, float32, stream);
+  array mask = array({1, 0}, {2}, bool_);
+  array src = array({2.0f, 3.0f, 4.0f}, {3}, float32);
+  check_floats(
+      masked_scatter(dst, mask, src, stream),
+      {2, 3, 4, 0, 0, 0},
+      stream);
 }
 
 TEST_CASE("masked_scatter ignores surplus source elements") {

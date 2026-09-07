@@ -195,6 +195,7 @@ enum class ComputeKernel : uint16_t {
   // Wave 5: indexing and scatter. The U32 kernels carry bitwise word
   // storage, so float32 shares them with int32 and uint32.
   GatherAxisU32,
+  GatherAxisI64,
   GatherAxisF16,
   GatherAxisBF16,
   GatherAxisComplex64,
