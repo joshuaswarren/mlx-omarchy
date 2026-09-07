@@ -986,6 +986,39 @@ TEST_CASE("hadamard matches an independent Kronecker reference") {
       hadamard_transform(wide, 1.0f, stream), wide_expected, stream, 1e-4);
 }
 
+TEST_CASE("size-one Hadamard honors a custom scale") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  std::vector<float> raw{3.0f};
+  array x(raw.begin(), Shape{1}, float32);
+  check_values(hadamard_transform(x, 2.0f, stream), {6.0f}, stream);
+}
+
+TEST_CASE("large Hadamard rows complete every butterfly stage") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  for (int n : {16384, 32768, 65536}) {
+    std::vector<float> input(static_cast<size_t>(n), 1.0f);
+    array x(input.begin(), Shape{1, n}, float32);
+    auto y = hadamard_transform(x, std::nullopt, stream);
+    y.eval();
+    sync(stream);
+    REQUIRE_EQ(y.size(), static_cast<size_t>(n));
+    const float* values = y.data<float>();
+    CHECK(values[0] == doctest::Approx(std::sqrt(static_cast<float>(n)))
+                           .epsilon(1e-5));
+    float max_tail = 0.0f;
+    for (int i = 1; i < n; ++i) {
+      max_tail = std::max(max_tail, std::fabs(values[i]));
+    }
+    CHECK_EQ(max_tail, 0.0f);
+  }
+}
+
 TEST_CASE("hadamard order-12 rows match the reference") {
   if (!compute_available()) {
     return;
