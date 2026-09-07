@@ -1136,19 +1136,50 @@ TEST_CASE("unsupported compute shapes and dtypes refuse by name") {
       stream,
       1e-4);
 
-  // Inner-axis broadcast is supported through the 8-axis metadata
-  // transport; a broadcast pattern whose stride runs still collapse to
-  // rank above 8 pins the named rank error with the limit in it.
-  array lhs({1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f, 7.0f, 8.0f,
-             9.0f, 10.0f, 11.0f, 12.0f, 13.0f, 14.0f, 15.0f, 16.0f,
-             17.0f, 18.0f, 19.0f, 20.0f, 21.0f, 22.0f, 23.0f, 24.0f,
-             25.0f, 26.0f, 27.0f, 28.0f, 29.0f, 30.0f, 31.0f, 32.0f},
-            {2, 1, 2, 1, 2, 1, 2, 1, 2}, float32);
-  std::vector<float> wide_values(512, 1.0f);
-  array rhs(wide_values.begin(), Shape{2, 2, 2, 2, 2, 2, 2, 2, 2}, float32);
-  std::string broadcast_error = evaluation_error(add(lhs, rhs, stream));
-  CHECK(broadcast_error.find("broadcast rank Add") != std::string::npos);
-  CHECK(broadcast_error.find("8-axis transport limit") != std::string::npos);
+  // Ten-axis float and integer broadcasts use external axis metadata
+  // rather than a fixed-rank push-constant table.
+  const Shape base_shape{2, 1, 2, 1, 2, 1, 2, 1, 2, 1};
+  const Shape broadcast_shape{2, 2, 2, 2, 2, 2, 2, 2, 2, 2};
+  std::vector<float> lhs_values(32);
+  std::iota(lhs_values.begin(), lhs_values.end(), 1.0f);
+  array lhs(lhs_values.begin(), base_shape, float32);
+  std::vector<float> wide_values(1024, 1.0f);
+  array rhs(wide_values.begin(), broadcast_shape, float32);
+  std::vector<float> broadcast_expected(1024);
+  std::vector<size_t> broadcast_sources(1024);
+  for (size_t flat = 0; flat < broadcast_expected.size(); ++flat) {
+    size_t rem = flat;
+    size_t source = 0;
+    size_t source_stride = 16;
+    for (size_t axis = 0; axis < 10; ++axis) {
+      size_t coord = rem >> (9 - axis);
+      rem &= (size_t{1} << (9 - axis)) - 1;
+      if (axis % 2 == 0) {
+        source += coord * source_stride;
+        source_stride >>= 1;
+      }
+    }
+    broadcast_sources[flat] = source;
+    broadcast_expected[flat] = lhs_values[source] + 1.0f;
+  }
+  check_values(add(lhs, rhs, stream), broadcast_expected, stream);
+
+  std::vector<int32_t> int_lhs_values(32);
+  std::iota(int_lhs_values.begin(), int_lhs_values.end(), -16);
+  std::vector<int32_t> int_rhs_values(1024);
+  std::vector<int32_t> int_expected(1024);
+  for (size_t flat = 0; flat < int_rhs_values.size(); ++flat) {
+    int_rhs_values[flat] = static_cast<int32_t>(flat % 23) - 11;
+    int_expected[flat] =
+        int_lhs_values[broadcast_sources[flat]] + int_rhs_values[flat];
+  }
+  check_int32_values(
+      add(
+          array(int_lhs_values.begin(), base_shape, int32),
+          array(int_rhs_values.begin(), broadcast_shape, int32),
+          stream),
+      int_expected,
+      stream);
 
   // Leading-axis reduction now computes through the general kernel.
   array matrix({1.0f, 2.0f, 3.0f, 4.0f}, {2, 2}, float32);
@@ -3271,6 +3302,13 @@ TEST_CASE("repeat materializes broadcast reshapes through the strided copy engin
   for (size_t index = 0; index < kv_values.size(); ++index) {
     kv_values[index] = pattern(index + 3);
   }
+  array tiled = tile(array({1, 2, 3}, {3}, int32), {2, 2, 2}, stream);
+  check_int32_values(
+      tiled,
+      {1, 2, 3, 1, 2, 3, 1, 2, 3, 1, 2, 3,
+       1, 2, 3, 1, 2, 3, 1, 2, 3, 1, 2, 3},
+      stream);
+
   array source(
       kv_values.begin(),
       Shape{1, 2, 41, 64},
@@ -3309,20 +3347,59 @@ TEST_CASE("repeat materializes broadcast reshapes through the strided copy engin
   }
   check_int32_values(int_expanded, int_expected, stream);
 
-  // Words outside one uint32 slot keep the named rejection: int64
-  // needs two-word loads and 8-bit dtypes need sub-word packing.
-  std::vector<int64_t> wide_values(kv_heads * seq_length * head_dim, 5);
+  // The same strided reshape handles wide, narrow, and packed-bool storage.
+  std::vector<int64_t> wide_values(kv_heads * seq_length * head_dim);
+  for (size_t index = 0; index < wide_values.size(); ++index) {
+    wide_values[index] = (int64_t{1} << 40) + static_cast<int64_t>(index);
+  }
   array wide_source(wide_values.begin(), Shape{1, 2, 41, 64}, int64);
   array wide_expanded = repeat(wide_source, repeats, 1, stream);
-  std::string wide_error = evaluation_error(wide_expanded);
-  CHECK(wide_error.find("strided reshape") != std::string::npos);
-  CHECK(wide_error.find("no silent CPU fallback") != std::string::npos);
+  std::vector<int64_t> wide_expected;
+  wide_expected.reserve(14 * seq_length * head_dim);
+  for (size_t head = 0; head < 14; ++head) {
+    size_t kv_head = head / repeats;
+    wide_expected.insert(
+        wide_expected.end(),
+        wide_values.begin() + kv_head * seq_length * head_dim,
+        wide_values.begin() + (kv_head + 1) * seq_length * head_dim);
+  }
+  check_int64_values(wide_expanded, wide_expected, stream);
 
-  std::vector<uint8_t> byte_values(kv_heads * seq_length * head_dim, 7);
+  std::vector<uint8_t> byte_values(kv_heads * seq_length * head_dim);
+  for (size_t index = 0; index < byte_values.size(); ++index) {
+    byte_values[index] = static_cast<uint8_t>(index % 251);
+  }
   array byte_source(byte_values.begin(), Shape{1, 2, 41, 64}, uint8);
   array byte_expanded = repeat(byte_source, repeats, 1, stream);
-  std::string byte_error = evaluation_error(byte_expanded);
-  CHECK(byte_error.find("strided reshape") != std::string::npos);
+  byte_expanded.eval();
+  omarchy::get_command_encoder(stream).synchronize();
+  const auto* byte_result = byte_expanded.data<uint8_t>();
+  for (size_t head = 0; head < 14; ++head) {
+    size_t kv_head = head / repeats;
+    for (size_t index = 0; index < seq_length * head_dim; ++index) {
+      CHECK_EQ(
+          byte_result[head * seq_length * head_dim + index],
+          byte_values[kv_head * seq_length * head_dim + index]);
+    }
+  }
+
+  std::vector<uint8_t> bool_values(kv_heads * seq_length * head_dim);
+  for (size_t index = 0; index < bool_values.size(); ++index) {
+    bool_values[index] = static_cast<uint8_t>((index % 5) == 0);
+  }
+  array bool_source(bool_values.begin(), Shape{1, 2, 41, 64}, bool_);
+  array bool_expanded = repeat(bool_source, repeats, 1, stream);
+  bool_expanded.eval();
+  omarchy::get_command_encoder(stream).synchronize();
+  const auto* bool_result = bool_expanded.data<bool>();
+  for (size_t head = 0; head < 14; ++head) {
+    size_t kv_head = head / repeats;
+    for (size_t index = 0; index < seq_length * head_dim; ++index) {
+      CHECK_EQ(
+          bool_result[head * seq_length * head_dim + index],
+          bool_values[kv_head * seq_length * head_dim + index] != 0);
+    }
+  }
 }
 
 namespace {

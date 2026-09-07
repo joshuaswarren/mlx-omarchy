@@ -85,6 +85,26 @@ layout(push_constant) uniform Params {
   uint out_strides[4];
 } params;
 
+layout(set = 0, binding = 3, std430) readonly buffer AxisMetadata {
+  uint values[];
+} axis_data;
+
+uint axis_extent(uint index) {
+  return params.matrix_k == 0u ? params.shape[index] : axis_data.values[index];
+}
+
+uint in_stride_at(uint index) {
+  return params.matrix_k == 0u
+      ? params.in_strides[index]
+      : axis_data.values[params.matrix_k + index];
+}
+
+uint out_stride_at(uint index) {
+  return params.matrix_k == 0u
+      ? params.out_strides[index]
+      : axis_data.values[2u * params.matrix_k + index];
+}
+
 void main() {
   uint index = gl_GlobalInvocationID.x;
   uint stride = gl_NumWorkGroups.x * gl_WorkGroupSize.x;
@@ -94,10 +114,10 @@ void main() {
     if ((params.flags & FLAG_GENERAL) != 0u) {
       uint rem = index;
       for (int dim = int(params.dims) - 1; dim >= 0; --dim) {
-        uint coord = rem % params.shape[dim];
-        rem /= params.shape[dim];
-        in_index += int(coord) * int(params.in_strides[dim]);
-        out_index += int(coord) * int(params.out_strides[dim]);
+        uint coord = rem % axis_extent(uint(dim));
+        rem /= axis_extent(uint(dim));
+        in_index += int(coord) * int(in_stride_at(uint(dim)));
+        out_index += int(coord) * int(out_stride_at(uint(dim)));
       }
     } else {
       if ((params.flags & FLAG_SCALAR) == 0u) {

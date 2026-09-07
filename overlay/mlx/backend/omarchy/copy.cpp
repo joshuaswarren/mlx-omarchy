@@ -124,6 +124,37 @@ omarchy::ComputeBinding compute_binding(const array& value) {
   return {buffer->buffer, 0, buffer->size, buffer};
 }
 
+array make_copy_axis_metadata(
+    const Shape& shape,
+    const std::vector<Strides>& strides,
+    omarchy::CommandEncoder& encoder) {
+  size_t rank = shape.size();
+  std::vector<uint32_t> words;
+  words.reserve(3 * rank);
+  for (int extent : shape) {
+    words.push_back(static_cast<uint32_t>(extent));
+  }
+  for (const auto& operand_strides : strides) {
+    for (int64_t stride : operand_strides) {
+      words.push_back(static_cast<uint32_t>(stride));
+    }
+  }
+  array metadata(Shape{static_cast<int>(words.size())}, uint32, nullptr, {});
+  array::Flags flags;
+  flags.contiguous = true;
+  flags.row_contiguous = true;
+  flags.col_contiguous = true;
+  metadata.set_data(
+      omarchy::allocator().malloc(metadata.nbytes()),
+      metadata.size(),
+      Strides{1},
+      flags,
+      0);
+  std::memcpy(metadata.data<uint32_t>(), words.data(), metadata.nbytes());
+  encoder.add_temporary(metadata);
+  return metadata;
+}
+
 // Fill an allocated output region at its destination offset with a
 // repeated byte: whole 4-byte words on the device with vkCmdFillBuffer,
 // misaligned lead and trailing bytes on the host. When edges exist,
@@ -424,8 +455,11 @@ void copy_gpu_inplace(
         omarchy::unsupported("dtype converting copy index span", out);
       }
       params.flags = 1;
-      std::array<omarchy::ComputeBinding, 3> bindings{
-          compute_binding(scalar), compute_binding(scalar), compute_binding(out)};
+      std::array<omarchy::ComputeBinding, 4> bindings{
+          compute_binding(scalar),
+          compute_binding(scalar),
+          compute_binding(out),
+          compute_binding(out)};
       encoder.dispatch_compute(
           *kernel,
           bindings,
@@ -577,9 +611,6 @@ void copy_gpu_inplace(
     auto [collapsed_shape, collapsed_strides] = collapse_contiguous_dims(
         data_shape, std::vector<Strides>{i_strides, o_strides});
     size_t rank = collapsed_shape.size();
-    if (rank > 4) {
-      omarchy::unsupported("rank>4 strided copy", out);
-    }
     size_t total = 1;
     for (size_t axis = 0; axis < rank; ++axis) {
       total *= static_cast<size_t>(collapsed_shape[axis]);
@@ -596,20 +627,23 @@ void copy_gpu_inplace(
     int64_t out_lo = 0;
     int64_t out_hi = 0;
     for (size_t axis = 0; axis < rank; ++axis) {
-      params.shape[axis] = static_cast<uint32_t>(collapsed_shape[axis]);
-      params.in_strides[axis] =
+      uint32_t extent = static_cast<uint32_t>(collapsed_shape[axis]);
+      uint32_t in_stride =
           static_cast<uint32_t>(collapsed_strides[0][axis]);
-      params.out_strides[axis] =
+      uint32_t out_stride =
           static_cast<uint32_t>(collapsed_strides[1][axis]);
-      int64_t extent = static_cast<int64_t>(params.shape[axis]) - 1;
-      int64_t ist =
-          static_cast<int64_t>(static_cast<int32_t>(params.in_strides[axis]));
-      int64_t ost =
-          static_cast<int64_t>(static_cast<int32_t>(params.out_strides[axis]));
-      in_lo += std::min<int64_t>(0, ist * extent);
-      in_hi += std::max<int64_t>(0, ist * extent);
-      out_lo += std::min<int64_t>(0, ost * extent);
-      out_hi += std::max<int64_t>(0, ost * extent);
+      if (rank <= 4) {
+        params.shape[axis] = extent;
+        params.in_strides[axis] = in_stride;
+        params.out_strides[axis] = out_stride;
+      }
+      int64_t distance = static_cast<int64_t>(extent) - 1;
+      int64_t ist = static_cast<int64_t>(static_cast<int32_t>(in_stride));
+      int64_t ost = static_cast<int64_t>(static_cast<int32_t>(out_stride));
+      in_lo += std::min<int64_t>(0, ist * distance);
+      in_hi += std::max<int64_t>(0, ist * distance);
+      out_lo += std::min<int64_t>(0, ost * distance);
+      out_hi += std::max<int64_t>(0, ost * distance);
     }
     params.lhs_offset =
         compute_item_offset(in, i_offset, "strided copy", out);
@@ -625,8 +659,17 @@ void copy_gpu_inplace(
                 static_cast<int64_t>(params.output_offset)) {
       omarchy::unsupported("strided copy index span", out);
     }
-    std::array<omarchy::ComputeBinding, 3> bindings{
-        compute_binding(in), compute_binding(in), compute_binding(out)};
+    std::optional<array> axis_metadata;
+    if (rank > 4) {
+      axis_metadata =
+          make_copy_axis_metadata(collapsed_shape, collapsed_strides, encoder);
+      params.matrix_k = static_cast<uint32_t>(rank);
+    }
+    std::array<omarchy::ComputeBinding, 4> bindings{
+        compute_binding(in),
+        compute_binding(in),
+        compute_binding(out),
+        compute_binding(axis_metadata ? *axis_metadata : out)};
     omarchy::ComputeKernel kernel;
     if (in.dtype() == out.dtype()) {
       kernel = copy_general_kernel(in.dtype(), out);
@@ -651,6 +694,7 @@ void copy_gpu_inplace(
   if (in.dtype() != out.dtype()) {
     const auto& capabilities = encoder.device().capabilities();
     omarchy::ComputeKernel kernel;
+    bool numeric_transport = false;
     if (in.dtype() == bool_ && out.dtype() == float32) {
       kernel = omarchy::ComputeKernel::CastBoolF32;
     } else if (in.dtype() == bool_ && out.dtype() == int32) {
@@ -703,6 +747,7 @@ void copy_gpu_inplace(
         auto int_kernel = cast_numeric_kernel(in.dtype(), out.dtype(),
                                           capabilities)) {
       kernel = *int_kernel;
+      numeric_transport = true;
     } else {
       omarchy::unsupported("dtype converting copy", out);
     }
@@ -746,8 +791,6 @@ void copy_gpu_inplace(
         omarchy::unsupported("dtype converting copy index span", out);
       }
     }
-    std::array<omarchy::ComputeBinding, 3> bindings{
-        compute_binding(in), compute_binding(in), compute_binding(out)};
     // The legacy bool-source kernels dispatch one thread per word
     // window (cast.comp SOURCE_BOOL shape); the cast_int blobs run one
     // thread per item.
@@ -765,11 +808,26 @@ void copy_gpu_inplace(
               "dtype converting copy",
               out)
         : count;
-    encoder.dispatch_compute(
-        kernel,
-        bindings,
-        params,
-        omarchy::compute_dispatch_group_count(dispatch_count));
+    if (numeric_transport) {
+      std::array<omarchy::ComputeBinding, 4> bindings{
+          compute_binding(in),
+          compute_binding(in),
+          compute_binding(out),
+          compute_binding(out)};
+      encoder.dispatch_compute(
+          kernel,
+          bindings,
+          params,
+          omarchy::compute_dispatch_group_count(dispatch_count));
+    } else {
+      std::array<omarchy::ComputeBinding, 3> bindings{
+          compute_binding(in), compute_binding(in), compute_binding(out)};
+      encoder.dispatch_compute(
+          kernel,
+          bindings,
+          params,
+          omarchy::compute_dispatch_group_count(dispatch_count));
+    }
     return;
   }
 
@@ -870,15 +928,8 @@ void reshape_gpu(const array& in, array& out, Stream s) {
   // permute strides; both report flags().contiguous under the
   // span-based definition while size() exceeds data_size(), so the
   // old flat buffer copy here read past the source allocation. The
-  // strided-copy engine expresses both shapes for 4-byte words (floats
-  // converted, int32/uint32 raw); rank limits and non-4-byte dtypes
-  // keep the named error for the rest.
-  if (
-      in.dtype() != float32 && in.dtype() != float16 &&
-      in.dtype() != bfloat16 && in.dtype() != int32 &&
-      in.dtype() != uint32 && in.dtype() != complex64) {
-    omarchy::unsupported("strided reshape", out);
-  }
+  // strided-copy engine expresses both shapes for every supported
+  // numeric storage width.
   if (out.nbytes() > 0) {
     out.set_data(omarchy::allocator().malloc(out.nbytes()));
   }

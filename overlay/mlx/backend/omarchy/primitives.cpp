@@ -502,12 +502,11 @@ void dispatch_matmul(
 // with stride-0 axes, so the view strides index the sources directly;
 // collapse_contiguous_dims merges the linear runs, and a stride of 0
 // breaks every merge around a broadcast axis. Up to four collapsed axes
-// ride the inline push-constant arrays. Ranks 5 through 8 carry
-// [extents | lhs strides | rhs strides] in an axis-metadata storage
-// buffer - the reduce_general.comp binding-3 word order - and set
-// matrix_k to the collapsed rank; the shader routes its unravel through
-// the metadata whenever matrix_k is nonzero. Above 8 the primitive is
-// refused by name with the limit in the message. Callers set the
+// ride the inline push-constant arrays. Higher ranks carry [extents | lhs
+// strides | rhs strides] in an axis-metadata storage buffer - the
+// reduce_general.comp binding-3 word order - and set matrix_k to the
+// collapsed rank; the shader routes its unravel through the metadata
+// whenever matrix_k is nonzero. Callers set the
 // offsets before calling, because the span check uses them, and bind
 // the returned metadata array in the kernel's metadata slot (or a
 // placeholder buffer when it is empty: the slot must hold a valid
@@ -524,12 +523,6 @@ std::optional<array> fill_broadcast_transport(
   }
   auto [collapsed_shape, collapsed_strides] = collapse_contiguous_dims(
       out.shape(), std::vector<Strides>{lhs.strides(), rhs.strides()});
-  if (collapsed_shape.size() > 8) {
-    omarchy::unsupported(
-        "broadcast rank " + error_name + " exceeds the 8-axis transport"
-        " limit",
-        out);
-  }
   params.dims = static_cast<uint32_t>(collapsed_shape.size());
   uint64_t lhs_span = 0;
   uint64_t rhs_span = 0;
