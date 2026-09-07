@@ -1,0 +1,10 @@
+{"k_len": 45, "q_len": 1, "path": "composed", "reps": 48, "us_per_call": 137.18, "max_abs_diff": 0.0004883, "ok": true}
+{"k_len": 45, "q_len": 1, "path": "fused", "reps": 48, "us_per_call": 58.65, "max_abs_diff": 0.0004883, "ok": true}
+{"k_len": 280, "q_len": 1, "path": "composed", "reps": 48, "us_per_call": 152.19, "max_abs_diff": 0.0002441, "ok": true}
+{"k_len": 280, "q_len": 1, "path": "fused", "reps": 48, "us_per_call": 99.58, "max_abs_diff": 0.0002441, "ok": true}
+{"k_len": 390, "q_len": 1, "path": "composed", "reps": 48, "us_per_call": 193.32, "max_abs_diff": 0.0002441, "ok": true}
+{"k_len": 390, "q_len": 1, "path": "fused", "reps": 48, "us_per_call": 100.02, "max_abs_diff": 0.0002441, "ok": true}
+{"k_len": 1024, "q_len": 1, "path": "composed", "reps": 48, "us_per_call": 414.30, "max_abs_diff": 0.0001526, "ok": true}
+{"k_len": 1024, "q_len": 1, "path": "fused", "reps": 48, "us_per_call": 149.08, "max_abs_diff": 0.0001526, "ok": true}
+{"k_len": 4096, "q_len": 1, "path": "composed", "reps": 48, "us_per_call": 1527.81, "max_abs_diff": 6.104e-05, "ok": true}
+{"k_len": 4096, "q_len": 1, "path": "fused", "reps": 48, "us_per_call": 553.42, "max_abs_diff": 6.104e-05, "ok": true}

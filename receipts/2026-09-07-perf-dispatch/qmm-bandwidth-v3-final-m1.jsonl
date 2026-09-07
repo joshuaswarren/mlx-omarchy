@@ -1,0 +1,52 @@
+# load=1.69 configs=old,r2t128,env,r8t64 trials=7 2026-09-07T16:40:24-05:00 bench=repo
+{"case": "floor 8x64", "config": "old", "n": 8, "k": 64, "weight_bytes": 288, "us_per_dispatch": 17.03, "GBps": 0.02, "max_abs_err": 0.003704, "max_abs_ref": 18.16, "ok": true}
+{"case": "floor 8x64", "config": "r2t128", "n": 8, "k": 64, "weight_bytes": 288, "us_per_dispatch": 14.81, "GBps": 0.02, "max_abs_err": 0.003704, "max_abs_ref": 18.16, "ok": true}
+{"case": "floor 8x64", "config": "env", "n": 8, "k": 64, "weight_bytes": 288, "us_per_dispatch": 14.53, "GBps": 0.02, "max_abs_err": 0.006061, "max_abs_ref": 18.16, "ok": true}
+{"case": "floor 8x64", "config": "r8t64", "n": 8, "k": 64, "weight_bytes": 288, "us_per_dispatch": 23.17, "GBps": 0.01, "max_abs_err": 0.006061, "max_abs_ref": 18.16, "ok": true}
+{"case": "k_proj 57KB", "config": "old", "n": 128, "k": 896, "weight_bytes": 64512, "us_per_dispatch": 17.87, "GBps": 3.61, "max_abs_err": 0.03771, "max_abs_ref": 131.5, "ok": true}
+{"case": "k_proj 57KB", "config": "r2t128", "n": 128, "k": 896, "weight_bytes": 64512, "us_per_dispatch": 14.98, "GBps": 4.31, "max_abs_err": 0.03771, "max_abs_ref": 131.5, "ok": true}
+{"case": "k_proj 57KB", "config": "env", "n": 128, "k": 896, "weight_bytes": 64512, "us_per_dispatch": 12.49, "GBps": 5.17, "max_abs_err": 0.04025, "max_abs_ref": 131.5, "ok": true}
+{"case": "k_proj 57KB", "config": "r8t64", "n": 128, "k": 896, "weight_bytes": 64512, "us_per_dispatch": 20.79, "GBps": 3.10, "max_abs_err": 0.04025, "max_abs_ref": 131.5, "ok": true}
+{"case": "q_proj 401KB", "config": "old", "n": 896, "k": 896, "weight_bytes": 451584, "us_per_dispatch": 24.38, "GBps": 18.53, "max_abs_err": 0.03762, "max_abs_ref": 132.7, "ok": true}
+{"case": "q_proj 401KB", "config": "r2t128", "n": 896, "k": 896, "weight_bytes": 451584, "us_per_dispatch": 16.29, "GBps": 27.73, "max_abs_err": 0.03762, "max_abs_ref": 132.7, "ok": true}
+{"case": "q_proj 401KB", "config": "env", "n": 896, "k": 896, "weight_bytes": 451584, "us_per_dispatch": 15.95, "GBps": 28.32, "max_abs_err": 0.05945, "max_abs_ref": 132.7, "ok": true}
+{"case": "q_proj 401KB", "config": "r8t64", "n": 896, "k": 896, "weight_bytes": 451584, "us_per_dispatch": 19.62, "GBps": 23.02, "max_abs_err": 0.05945, "max_abs_ref": 132.7, "ok": true}
+{"case": "gate 2.18MB", "config": "old", "n": 4864, "k": 896, "weight_bytes": 2451456, "us_per_dispatch": 84.35, "GBps": 29.06, "max_abs_err": 0.03823, "max_abs_ref": 183.9, "ok": true}
+{"case": "gate 2.18MB", "config": "r2t128", "n": 4864, "k": 896, "weight_bytes": 2451456, "us_per_dispatch": 48.67, "GBps": 50.37, "max_abs_err": 0.03823, "max_abs_ref": 183.9, "ok": true}
+{"case": "gate 2.18MB", "config": "env", "n": 4864, "k": 896, "weight_bytes": 2451456, "us_per_dispatch": 48.04, "GBps": 51.03, "max_abs_err": 0.05513, "max_abs_ref": 183.9, "ok": true}
+{"case": "gate 2.18MB", "config": "r8t64", "n": 4864, "k": 896, "weight_bytes": 2451456, "us_per_dispatch": 62.72, "GBps": 39.09, "max_abs_err": 0.05513, "max_abs_ref": 183.9, "ok": true}
+{"case": "down 2.18MB", "config": "old", "n": 896, "k": 4864, "weight_bytes": 2451456, "us_per_dispatch": 71.43, "GBps": 34.32, "max_abs_err": 0.08321, "max_abs_ref": 309.7, "ok": true}
+{"case": "down 2.18MB", "config": "r2t128", "n": 896, "k": 4864, "weight_bytes": 2451456, "us_per_dispatch": 40.31, "GBps": 60.81, "max_abs_err": 0.08321, "max_abs_ref": 309.7, "ok": true}
+{"case": "down 2.18MB", "config": "env", "n": 896, "k": 4864, "weight_bytes": 2451456, "us_per_dispatch": 40.12, "GBps": 61.11, "max_abs_err": 0.1116, "max_abs_ref": 309.7, "ok": true}
+{"case": "down 2.18MB", "config": "r8t64", "n": 896, "k": 4864, "weight_bytes": 2451456, "us_per_dispatch": 50.52, "GBps": 48.52, "max_abs_err": 0.1116, "max_abs_ref": 309.7, "ok": true}
+{"case": "lm_head 68MB", "config": "old", "n": 151936, "k": 896, "weight_bytes": 76575744, "us_per_dispatch": 2233.38, "GBps": 34.29, "max_abs_err": 0.04498, "max_abs_ref": 204.2, "ok": true}
+{"case": "lm_head 68MB", "config": "r2t128", "n": 151936, "k": 896, "weight_bytes": 76575744, "us_per_dispatch": 1204.15, "GBps": 63.59, "max_abs_err": 0.04498, "max_abs_ref": 204.2, "ok": true}
+{"case": "lm_head 68MB", "config": "env", "n": 151936, "k": 896, "weight_bytes": 76575744, "us_per_dispatch": 1216.11, "GBps": 62.97, "max_abs_err": 0.07909, "max_abs_ref": 204.2, "ok": true}
+{"case": "lm_head 68MB", "config": "r8t64", "n": 151936, "k": 896, "weight_bytes": 76575744, "us_per_dispatch": 1336.41, "GBps": 57.30, "max_abs_err": 0.07909, "max_abs_ref": 204.2, "ok": true}
+# DONE rc=0
+# load=1.09 configs=r8t64,env,r2t128,old trials=7 2026-09-07T16:40:46-05:00 bench=repo
+{"case": "floor 8x64", "config": "r8t64", "n": 8, "k": 64, "weight_bytes": 288, "us_per_dispatch": 23.79, "GBps": 0.01, "max_abs_err": 0.003704, "max_abs_ref": 18.16, "ok": true}
+{"case": "floor 8x64", "config": "env", "n": 8, "k": 64, "weight_bytes": 288, "us_per_dispatch": 23.71, "GBps": 0.01, "max_abs_err": 0.003704, "max_abs_ref": 18.16, "ok": true}
+{"case": "floor 8x64", "config": "r2t128", "n": 8, "k": 64, "weight_bytes": 288, "us_per_dispatch": 15.22, "GBps": 0.02, "max_abs_err": 0.006061, "max_abs_ref": 18.16, "ok": true}
+{"case": "floor 8x64", "config": "old", "n": 8, "k": 64, "weight_bytes": 288, "us_per_dispatch": 17.71, "GBps": 0.02, "max_abs_err": 0.006061, "max_abs_ref": 18.16, "ok": true}
+{"case": "k_proj 57KB", "config": "r8t64", "n": 128, "k": 896, "weight_bytes": 64512, "us_per_dispatch": 36.58, "GBps": 1.76, "max_abs_err": 0.03771, "max_abs_ref": 131.5, "ok": true}
+{"case": "k_proj 57KB", "config": "env", "n": 128, "k": 896, "weight_bytes": 64512, "us_per_dispatch": 36.62, "GBps": 1.76, "max_abs_err": 0.03771, "max_abs_ref": 131.5, "ok": true}
+{"case": "k_proj 57KB", "config": "r2t128", "n": 128, "k": 896, "weight_bytes": 64512, "us_per_dispatch": 21.93, "GBps": 2.94, "max_abs_err": 0.04025, "max_abs_ref": 131.5, "ok": true}
+{"case": "k_proj 57KB", "config": "old", "n": 128, "k": 896, "weight_bytes": 64512, "us_per_dispatch": 28.58, "GBps": 2.26, "max_abs_err": 0.04025, "max_abs_ref": 131.5, "ok": true}
+{"case": "q_proj 401KB", "config": "r8t64", "n": 896, "k": 896, "weight_bytes": 451584, "us_per_dispatch": 37.16, "GBps": 12.15, "max_abs_err": 0.03762, "max_abs_ref": 132.7, "ok": true}
+{"case": "q_proj 401KB", "config": "env", "n": 896, "k": 896, "weight_bytes": 451584, "us_per_dispatch": 37.16, "GBps": 12.15, "max_abs_err": 0.03762, "max_abs_ref": 132.7, "ok": true}
+{"case": "q_proj 401KB", "config": "r2t128", "n": 896, "k": 896, "weight_bytes": 451584, "us_per_dispatch": 27.90, "GBps": 16.19, "max_abs_err": 0.05945, "max_abs_ref": 132.7, "ok": true}
+{"case": "q_proj 401KB", "config": "old", "n": 896, "k": 896, "weight_bytes": 451584, "us_per_dispatch": 54.63, "GBps": 8.27, "max_abs_err": 0.05945, "max_abs_ref": 132.7, "ok": true}
+{"case": "gate 2.18MB", "config": "r8t64", "n": 4864, "k": 896, "weight_bytes": 2451456, "us_per_dispatch": 83.31, "GBps": 29.43, "max_abs_err": 0.03823, "max_abs_ref": 183.9, "ok": true}
+{"case": "gate 2.18MB", "config": "env", "n": 4864, "k": 896, "weight_bytes": 2451456, "us_per_dispatch": 83.22, "GBps": 29.46, "max_abs_err": 0.03823, "max_abs_ref": 183.9, "ok": true}
+{"case": "gate 2.18MB", "config": "r2t128", "n": 4864, "k": 896, "weight_bytes": 2451456, "us_per_dispatch": 69.39, "GBps": 35.33, "max_abs_err": 0.05513, "max_abs_ref": 183.9, "ok": true}
+{"case": "gate 2.18MB", "config": "old", "n": 4864, "k": 896, "weight_bytes": 2451456, "us_per_dispatch": 104.88, "GBps": 23.37, "max_abs_err": 0.05513, "max_abs_ref": 183.9, "ok": true}
+{"case": "down 2.18MB", "config": "r8t64", "n": 896, "k": 4864, "weight_bytes": 2451456, "us_per_dispatch": 52.46, "GBps": 46.73, "max_abs_err": 0.08321, "max_abs_ref": 309.7, "ok": true}
+{"case": "down 2.18MB", "config": "env", "n": 896, "k": 4864, "weight_bytes": 2451456, "us_per_dispatch": 52.97, "GBps": 46.28, "max_abs_err": 0.08321, "max_abs_ref": 309.7, "ok": true}
+{"case": "down 2.18MB", "config": "r2t128", "n": 896, "k": 4864, "weight_bytes": 2451456, "us_per_dispatch": 42.12, "GBps": 58.21, "max_abs_err": 0.1116, "max_abs_ref": 309.7, "ok": true}
+{"case": "down 2.18MB", "config": "old", "n": 896, "k": 4864, "weight_bytes": 2451456, "us_per_dispatch": 71.34, "GBps": 34.36, "max_abs_err": 0.1116, "max_abs_ref": 309.7, "ok": true}
+{"case": "lm_head 68MB", "config": "r8t64", "n": 151936, "k": 896, "weight_bytes": 76575744, "us_per_dispatch": 1342.62, "GBps": 57.03, "max_abs_err": 0.04498, "max_abs_ref": 204.2, "ok": true}
+{"case": "lm_head 68MB", "config": "env", "n": 151936, "k": 896, "weight_bytes": 76575744, "us_per_dispatch": 1342.78, "GBps": 57.03, "max_abs_err": 0.04498, "max_abs_ref": 204.2, "ok": true}
+{"case": "lm_head 68MB", "config": "r2t128", "n": 151936, "k": 896, "weight_bytes": 76575744, "us_per_dispatch": 1220.82, "GBps": 62.72, "max_abs_err": 0.07909, "max_abs_ref": 204.2, "ok": true}
+{"case": "lm_head 68MB", "config": "old", "n": 151936, "k": 896, "weight_bytes": 76575744, "us_per_dispatch": 2226.40, "GBps": 34.39, "max_abs_err": 0.07909, "max_abs_ref": 204.2, "ok": true}
+# DONE rc=0

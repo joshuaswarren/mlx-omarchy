@@ -12,8 +12,20 @@
 //
 // A scalar weight or bias (element count 1, the weightless upstream form)
 // broadcasts to every column. eps arrives in params.alpha.
+//
+// USE_SUBGROUP=1 (FastRmsNormSubgroup*, gated in RMSNorm::eval_gpu on
+// subgroupSize == 32 and the SHUFFLE_RELATIVE feature bit;
+// MLX_OMARCHY_RMS_NORM_SUBGROUP=0 disables) finishes each 256-lane tree
+// reduction inside subgroup 0 once 32 partials remain: the same pairwise
+// adds in the same order as the shared-memory stages (lane t adds lane
+// t + stride), just through register shuffles, so the sum is bit-identical
+// and six workgroup barriers per row replace eleven.
 
 #version 460
+#ifdef USE_SUBGROUP
+#extension GL_KHR_shader_subgroup_basic : require
+#extension GL_KHR_shader_subgroup_shuffle_relative : require
+#endif
 
 #ifdef USE_FP16
 #extension GL_EXT_shader_16bit_storage : require
@@ -79,6 +91,43 @@ layout(push_constant) uniform Params {
 
 shared float block_values[256];
 
+// Sum block_values[0..255] into block_values[0] in the fixed tree order
+// (t += t + stride, stride 128 -> 1). Every lane must call it; the caller
+// has stored its partial and passed one barrier.
+void block_reduce() {
+#ifdef USE_SUBGROUP
+  uint thread = gl_LocalInvocationID.x;
+  for (uint stride = 128u; stride > 16u; stride >>= 1u) {
+    if (thread < stride) {
+      block_values[thread] += block_values[thread + stride];
+    }
+    barrier();
+  }
+  if (gl_SubgroupID == 0u) {
+    uint lane = gl_SubgroupInvocationID;
+    float value = block_values[lane];
+    for (uint stride = 16u; stride > 0u; stride >>= 1u) {
+      float other = subgroupShuffleDown(value, stride);
+      if (lane < stride) {
+        value += other;
+      }
+    }
+    if (lane == 0u) {
+      block_values[0] = value;
+    }
+  }
+  barrier();
+#else
+  uint thread = gl_LocalInvocationID.x;
+  for (uint stride = 128u; stride > 0u; stride >>= 1u) {
+    if (thread < stride) {
+      block_values[thread] += block_values[thread + stride];
+    }
+    barrier();
+  }
+#endif
+}
+
 void main() {
   uint thread = gl_LocalInvocationID.x;
   uint row_length = params.reduce_size;
@@ -96,12 +145,7 @@ void main() {
     }
     block_values[thread] = local_sum;
     barrier();
-    for (uint stride = 128u; stride > 0u; stride >>= 1u) {
-      if (thread < stride) {
-        block_values[thread] += block_values[thread + stride];
-      }
-      barrier();
-    }
+    block_reduce();
     float mu = block_values[0] / float(row_length);
     barrier();
 #endif
@@ -113,14 +157,10 @@ void main() {
     }
     block_values[thread] = local_sq;
     barrier();
-    for (uint stride = 128u; stride > 0u; stride >>= 1u) {
-      if (thread < stride) {
-        block_values[thread] += block_values[thread + stride];
-      }
-      barrier();
-    }
+    block_reduce();
+    // The next write to block_values is the next row's partial store,
+    // behind the row-loop barrier below, so no barrier follows this read.
     float mean_square = block_values[0] / float(row_length);
-    barrier();
 #ifdef LAYER_NORM
     float variance = mean_square - mu * mu;
 #else
@@ -146,6 +186,10 @@ void main() {
       output_data.values[params.output_offset + row * row_length + index] =
           STORE_VALUE(result);
     }
-    barrier();
+    // Protects block_values for the next row; the condition is uniform
+    // across the workgroup.
+    if (row + gl_NumWorkGroups.x < params.output_size) {
+      barrier();
+    }
   }
 }

@@ -1,0 +1,70 @@
+// Copyright © 2026 Joshua Warren / mlx-omarchy contributors.
+// SPDX-License-Identifier: MIT
+//
+// Second pass of the split-K decode attention (sdpa_decode.comp with
+// PARTIAL): one workgroup per query row merges its n_blocks partials
+// (o[v_dim], max, sum) with the usual max rescale and writes the
+// normalized float16 output.
+
+#version 460
+#extension GL_EXT_shader_16bit_storage : require
+#extension GL_EXT_shader_explicit_arithmetic_types_float16 : require
+
+layout(local_size_x = 256) in;
+
+layout(set = 0, binding = 0, std430) readonly buffer Partial {
+  float values[];
+} partial_data;
+layout(set = 0, binding = 1, std430) writeonly buffer Output {
+  float16_t values[];
+} output_data;
+
+layout(push_constant) uniform Params {
+  uint v_dim; // count
+  uint operation;
+  uint lhs_size;
+  uint rhs_size;
+  uint reduce_size;
+  uint rows; // output_size
+  uint lhs_offset;
+  uint rhs_offset;
+  uint out_offset; // output_offset
+  uint aux_size;
+  uint aux_offset;
+  uint matrix_m;
+  uint matrix_n;
+  uint matrix_k;
+  uint flags;
+  float alpha;
+  float beta;
+  uint dims;
+  uint shape[4];
+  uint in_strides[4];
+  uint out_strides[4];
+  uint n_blocks; // lhs_gap
+  uint rhs_gap;
+} params;
+
+void main() {
+  uint t = gl_LocalInvocationID.x;
+  uint row = gl_WorkGroupID.x;
+  if (t >= params.v_dim) {
+    return;
+  }
+  uint stats_base = params.rows * params.n_blocks * params.v_dim;
+  uint first = row * params.n_blocks;
+  float row_max = uintBitsToFloat(0xff800000u);
+  for (uint b = 0u; b < params.n_blocks; ++b) {
+    row_max = max(row_max, partial_data.values[stats_base + (first + b) * 2u]);
+  }
+  float total = 0.0;
+  float o = 0.0;
+  for (uint b = 0u; b < params.n_blocks; ++b) {
+    uint stats = stats_base + (first + b) * 2u;
+    float weight = exp(partial_data.values[stats] - row_max);
+    total += partial_data.values[stats + 1u] * weight;
+    o += partial_data.values[(first + b) * params.v_dim + t] * weight;
+  }
+  output_data.values[params.out_offset + row * params.v_dim + t] =
+      float16_t(o / total);
+}

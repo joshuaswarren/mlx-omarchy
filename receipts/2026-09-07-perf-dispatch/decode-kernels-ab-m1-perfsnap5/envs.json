@@ -1,0 +1,10 @@
+{
+  "baseline": {
+    "MLX_OMARCHY_ROPE_GRID": "0",
+    "MLX_OMARCHY_COPY_GRID": "0",
+    "MLX_OMARCHY_RMS_NORM_SUBGROUP": "0"
+  },
+  "candidate": {
+    "MLX_OMARCHY_ROPE_GRID": "1"
+  }
+}

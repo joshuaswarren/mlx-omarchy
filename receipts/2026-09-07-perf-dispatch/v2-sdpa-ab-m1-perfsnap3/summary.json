@@ -1,0 +1,61 @@
+{
+  "wheel": "/home/joshuawarren/benchq/perfsnap3/dist/mlx_omarchy-0.32.2.dev202609071955+perfsnap3-cp314-cp314-linux_aarch64.whl",
+  "envs": {
+    "baseline": {
+      "MLX_OMARCHY_QMM_VEC_Q4_V2": "1"
+    },
+    "candidate": {
+      "MLX_OMARCHY_QMM_VEC_Q4_V2": "1",
+      "MLX_OMARCHY_SDPA_FUSED": "1"
+    }
+  },
+  "pairs": 3,
+  "exact_ids_equal_all_pairs": true,
+  "workloads": [
+    {
+      "workload": "short-decode-32",
+      "decode_tok_s": {
+        "baseline_median": 95.99,
+        "candidate_median": 100.09,
+        "paired_gain_median_pct": 4.534057668198921,
+        "positive_pairs": 3
+      },
+      "prefill_tok_s": {
+        "baseline_median": 103.093,
+        "candidate_median": 102.74,
+        "paired_gain_median_pct": -0.6844018250715345,
+        "positive_pairs": 0
+      }
+    },
+    {
+      "workload": "long-decode-128",
+      "decode_tok_s": {
+        "baseline_median": 76.55,
+        "candidate_median": 86.82,
+        "paired_gain_median_pct": 13.416067929457864,
+        "positive_pairs": 3
+      },
+      "prefill_tok_s": {
+        "baseline_median": 267.347,
+        "candidate_median": 268.718,
+        "paired_gain_median_pct": 0.5128166764542197,
+        "positive_pairs": 2
+      }
+    },
+    {
+      "workload": "longctx-1024-decode-32",
+      "decode_tok_s": {
+        "baseline_median": 51.09,
+        "candidate_median": 72.67,
+        "paired_gain_median_pct": 42.43672748675691,
+        "positive_pairs": 3
+      },
+      "prefill_tok_s": {
+        "baseline_median": 297.374,
+        "candidate_median": 297.458,
+        "paired_gain_median_pct": 0.02824725766206182,
+        "positive_pairs": 2
+      }
+    }
+  ]
+}

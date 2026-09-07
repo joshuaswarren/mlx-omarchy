@@ -1,0 +1,307 @@
+#version 460
+
+// Decode GEMV for the transposed affine 4-bit / group-64 contract:
+// out[1, n] = x[1, k] @ dequant(w), w packed [n][k / 8] uint32 words,
+// low nibble first, one f16/bf16/f32 scale and bias per 64 elements.
+// This is every linear layer of a 4-bit decode step, so the kernel is
+// shaped around streaming the weight bytes at DRAM speed:
+//
+//   * One lane owns one uvec4 (16 B, 32 nibbles = half a group) per
+//     step, so a 32-lane slot streams 512 contiguous bytes of one row
+//     per load instruction and each lane fetches one scale/bias pair
+//     per 16 weight bytes instead of one per word.
+//   * Each slot owns `rows` consecutive output rows (shape[3], 1..4
+//     chosen by dispatch from n so the workgroup count still covers
+//     the GPU). The per-row loads of a step are issued back to back
+//     before any math, so a lane keeps up to four 16 B loads in
+//     flight; that is where the bandwidth comes from on a small GPU.
+//   * The activation block a lane needs (32 elements, 64 B as f16) is
+//     read straight from the cached x buffer as uvec4 words, once per
+//     step and shared across the slot's rows in registers. There is no
+//     shared-memory staging and no barrier: on this GPU a transposed
+//     shared staging of x cost more than the weight stream itself
+//     (32 two-byte shared loads per lane per step).
+//
+// Dequantization uses the affine identity
+//   sum_i x_i * (s * q_i + b) = s * sum_i (x_i * q_i) + b * sum_i x_i
+// per 32-element half group (the Metal qmv kernel's qdot order), and
+// masks nibbles in place instead of shifting them: element j of a word
+// is x_j * 2^-4j times float(word & (0xF << 4j)). Both factors are
+// exact power-of-two rescalings, so every product equals x_j * q_j
+// exactly and only the summation order differs from the serial
+// kernels: 32-term f32 dot per half group, then s * dot + b * xsum,
+// accumulated per lane over that lane's half groups, then one
+// subgroupAdd (or the shared-memory tree) across the 32 lanes.
+//
+// USE_SUBGROUP=1 compiles the subgroupAdd flavor (gated in dispatch on
+// subgroupSize == 32 and the ARITHMETIC feature bit); the default
+// flavor reduces through shared memory and is correct on any subgroup
+// size (llvmpipe).
+
+#ifdef USE_FP16
+#extension GL_EXT_shader_16bit_storage : require
+#extension GL_EXT_shader_explicit_arithmetic_types_float16 : require
+#define STORAGE_TYPE float16_t
+#define LOAD_VALUE(x) float(x)
+#define STORE_VALUE(f) STORAGE_TYPE(f)
+#elif defined(USE_BF16)
+#extension GL_EXT_shader_16bit_storage : require
+#extension GL_EXT_shader_explicit_arithmetic_types_int16 : require
+#define STORAGE_TYPE uint16_t
+#define LOAD_VALUE(x) uintBitsToFloat(uint(x) << 16u)
+uint16_t bf16_store(float value) {
+  uint bits = floatBitsToUint(value);
+  if (isnan(value)) {
+    return uint16_t((bits >> 16) | 0x40u);
+  }
+  return uint16_t((bits + 0x7fffu + ((bits >> 16) & 1u)) >> 16);
+}
+#define STORE_VALUE(f) bf16_store(f)
+#else
+#define STORAGE_TYPE float
+#define LOAD_VALUE(x) float(x)
+#define STORE_VALUE(f) STORAGE_TYPE(f)
+#endif
+
+#ifdef USE_SUBGROUP
+#extension GL_KHR_shader_subgroup_basic : require
+#extension GL_KHR_shader_subgroup_arithmetic : require
+#endif
+
+const uint LANES = 32u;
+const uint SLOTS = 8u;
+const uint THREADS = LANES * SLOTS;
+const uint MAX_ROWS = 2u;
+
+layout(local_size_x = 256) in;
+
+// x is read through a uvec4 view: dispatch guarantees the element
+// offset is 16-byte aligned and k is a multiple of 32.
+layout(set = 0, binding = 0, std430) readonly buffer InputX {
+  uvec4 values[];
+} input_x;
+layout(set = 0, binding = 1, std430) readonly buffer InputW {
+  uvec4 values[];
+} input_w;
+layout(set = 0, binding = 2, std430) readonly buffer Scales {
+  STORAGE_TYPE values[];
+} scales;
+layout(set = 0, binding = 3, std430) readonly buffer Biases {
+  STORAGE_TYPE values[];
+} biases;
+layout(set = 0, binding = 4, std430) writeonly buffer Output {
+  STORAGE_TYPE values[];
+} output_data;
+
+// Same block as qmm_vec.comp: operation = bits (4), reduce_size = group
+// size (64), lhs/rhs/output offsets in elements (lhs_offset 16-byte
+// aligned, rhs_offset a multiple of 4 words), aux_offset the scale
+// base, aux_size the bias base, shape[0] the batch count, shape[1] the
+// per-batch weight words, shape[2] the per-batch scale/bias elements,
+// shape[3] the rows per slot.
+layout(push_constant) uniform Params {
+  uint count;
+  uint operation;
+  uint lhs_size;
+  uint rhs_size;
+  uint reduce_size;
+  uint output_size;
+  uint lhs_offset;
+  uint rhs_offset;
+  uint output_offset;
+  uint aux_size;
+  uint aux_offset;
+  uint matrix_m;
+  uint matrix_n;
+  uint matrix_k;
+  uint flags;
+  float alpha;
+  float beta;
+  uint dims;
+  uint shape[4];
+  uint in_strides[4];
+  uint out_strides[4];
+} params;
+
+#ifndef USE_SUBGROUP
+shared float reduce_scratch[MAX_ROWS * THREADS];
+#endif
+
+const float NIBBLE_SCALE[8] = float[8](
+    1.0, 0.0625, 0.00390625, 0.000244140625, 1.52587890625e-05,
+    9.5367431640625e-07, 5.9604644775390625e-08, 3.725290298461914e-09);
+
+// Eight consecutive x elements starting at a word-aligned element,
+// scaled for the in-place nibble masks below.
+#ifdef USE_FP16
+#define X_VECS_PER_BLOCK 4u
+void load_x8(uint vec_index, out float x[8]) {
+  uvec4 raw = input_x.values[vec_index];
+  vec2 p0 = unpackHalf2x16(raw.x);
+  vec2 p1 = unpackHalf2x16(raw.y);
+  vec2 p2 = unpackHalf2x16(raw.z);
+  vec2 p3 = unpackHalf2x16(raw.w);
+  x[0] = p0.x;
+  x[1] = p0.y * NIBBLE_SCALE[1];
+  x[2] = p1.x * NIBBLE_SCALE[2];
+  x[3] = p1.y * NIBBLE_SCALE[3];
+  x[4] = p2.x * NIBBLE_SCALE[4];
+  x[5] = p2.y * NIBBLE_SCALE[5];
+  x[6] = p3.x * NIBBLE_SCALE[6];
+  x[7] = p3.y * NIBBLE_SCALE[7];
+}
+#elif defined(USE_BF16)
+#define X_VECS_PER_BLOCK 4u
+void load_x8(uint vec_index, out float x[8]) {
+  uvec4 raw = input_x.values[vec_index];
+  x[0] = uintBitsToFloat(raw.x << 16u);
+  x[1] = uintBitsToFloat(raw.x & 0xffff0000u) * NIBBLE_SCALE[1];
+  x[2] = uintBitsToFloat(raw.y << 16u) * NIBBLE_SCALE[2];
+  x[3] = uintBitsToFloat(raw.y & 0xffff0000u) * NIBBLE_SCALE[3];
+  x[4] = uintBitsToFloat(raw.z << 16u) * NIBBLE_SCALE[4];
+  x[5] = uintBitsToFloat(raw.z & 0xffff0000u) * NIBBLE_SCALE[5];
+  x[6] = uintBitsToFloat(raw.w << 16u) * NIBBLE_SCALE[6];
+  x[7] = uintBitsToFloat(raw.w & 0xffff0000u) * NIBBLE_SCALE[7];
+}
+#else
+#define X_VECS_PER_BLOCK 8u
+void load_x8(uint vec_index, out float x[8]) {
+  uvec4 lo = input_x.values[vec_index];
+  uvec4 hi = input_x.values[vec_index + 1u];
+  x[0] = uintBitsToFloat(lo.x);
+  x[1] = uintBitsToFloat(lo.y) * NIBBLE_SCALE[1];
+  x[2] = uintBitsToFloat(lo.z) * NIBBLE_SCALE[2];
+  x[3] = uintBitsToFloat(lo.w) * NIBBLE_SCALE[3];
+  x[4] = uintBitsToFloat(hi.x) * NIBBLE_SCALE[4];
+  x[5] = uintBitsToFloat(hi.y) * NIBBLE_SCALE[5];
+  x[6] = uintBitsToFloat(hi.z) * NIBBLE_SCALE[6];
+  x[7] = uintBitsToFloat(hi.w) * NIBBLE_SCALE[7];
+}
+#endif
+
+// One packed word against its eight pre-scaled activations; the
+// masked word is q_j * 2^4j exactly, so each product is x_j * q_j.
+float word_dot(uint w, float x[8]) {
+  float d = x[0] * float(w & 0xfu);
+  d += x[1] * float(w & 0xf0u);
+  d += x[2] * float(w & 0xf00u);
+  d += x[3] * float(w & 0xf000u);
+  d += x[4] * float(w & 0xf0000u);
+  d += x[5] * float(w & 0xf00000u);
+  d += x[6] * float(w & 0xf000000u);
+  d += x[7] * float(w & 0xf0000000u);
+  return d;
+}
+
+// Unscaled sum of the eight elements (the pre-scale is a power of two,
+// so dividing it back out is exact).
+float x8_sum(float x[8]) {
+  float s = x[0];
+  s += x[1] * 16.0;
+  s += x[2] * 256.0;
+  s += x[3] * 4096.0;
+  s += x[4] * 65536.0;
+  s += x[5] * 1048576.0;
+  s += x[6] * 16777216.0;
+  s += x[7] * 268435456.0;
+  return s;
+}
+
+void main() {
+#ifdef USE_SUBGROUP
+  // Slot == hardware subgroup: the final reduction folds over subgroup
+  // lanes, so the lane split follows the subgroup ids.
+  uint slot = gl_SubgroupID;
+  uint li = gl_SubgroupInvocationID;
+#else
+  uint slot = gl_LocalInvocationID.x / LANES;
+  uint li = gl_LocalInvocationID.x % LANES;
+#endif
+  uint lane = slot * LANES + li;
+  uint n = params.matrix_n;
+  uint k = params.matrix_k;
+  uint row_vecs = k / 32u;
+  uint groups_per_row = k / 64u;
+  uint rows = params.shape[3];
+  uint batch = params.shape[0];
+  uint w_batch_words = params.shape[1];
+  uint param_batch = params.shape[2];
+  uint row0 = (gl_WorkGroupID.x * SLOTS + slot) * rows;
+
+  for (uint b = 0u; b < batch; ++b) {
+    uint x_base = (params.lhs_offset + b * k) * X_VECS_PER_BLOCK / 32u;
+    uint w_base = (params.rhs_offset + b * w_batch_words) / 4u;
+    uint scale_base = params.aux_offset + b * param_batch;
+    uint bias_base = params.aux_size + b * param_batch;
+    uint out_base = params.output_offset + b * n;
+    for (uint c = 0u; c < rows; c += MAX_ROWS) {
+      float acc[MAX_ROWS];
+      for (uint r = 0u; r < MAX_ROWS; ++r) {
+        acc[r] = 0.0;
+      }
+      for (uint v = li; v < row_vecs; v += LANES) {
+        uint g = v >> 1u;
+        uvec4 w[MAX_ROWS];
+        float s[MAX_ROWS];
+        float bias[MAX_ROWS];
+        for (uint r = 0u; r < MAX_ROWS; ++r) {
+          uint row = row0 + c + r;
+          if (c + r < rows && row < n) {
+            w[r] = input_w.values[w_base + row * row_vecs + v];
+            s[r] = LOAD_VALUE(scales.values[scale_base + row * groups_per_row + g]);
+            bias[r] = LOAD_VALUE(biases.values[bias_base + row * groups_per_row + g]);
+          } else {
+            w[r] = uvec4(0u);
+            s[r] = 0.0;
+            bias[r] = 0.0;
+          }
+        }
+        float x0[8];
+        float x1[8];
+        float x2[8];
+        float x3[8];
+        uint xv = x_base + v * X_VECS_PER_BLOCK;
+        load_x8(xv, x0);
+        load_x8(xv + X_VECS_PER_BLOCK / 4u, x1);
+        load_x8(xv + X_VECS_PER_BLOCK / 2u, x2);
+        load_x8(xv + 3u * X_VECS_PER_BLOCK / 4u, x3);
+        float xs = x8_sum(x0) + x8_sum(x1) + x8_sum(x2) + x8_sum(x3);
+        for (uint r = 0u; r < MAX_ROWS; ++r) {
+          float d = word_dot(w[r].x, x0);
+          d += word_dot(w[r].y, x1);
+          d += word_dot(w[r].z, x2);
+          d += word_dot(w[r].w, x3);
+          acc[r] += s[r] * d + bias[r] * xs;
+        }
+      }
+#ifdef USE_SUBGROUP
+      for (uint r = 0u; r < MAX_ROWS; ++r) {
+        float total = subgroupAdd(acc[r]);
+        if (li == 0u && c + r < rows && row0 + c + r < n) {
+          output_data.values[out_base + row0 + c + r] = STORE_VALUE(total);
+        }
+      }
+#else
+      if (b > 0u || c > 0u) {
+        barrier();
+      }
+      for (uint r = 0u; r < MAX_ROWS; ++r) {
+        reduce_scratch[r * THREADS + lane] = acc[r];
+      }
+      barrier();
+      if (lane < SLOTS * MAX_ROWS) {
+        uint out_slot = lane / MAX_ROWS;
+        uint r = lane % MAX_ROWS;
+        uint row = (gl_WorkGroupID.x * SLOTS + out_slot) * rows + c + r;
+        if (c + r < rows && row < n) {
+          float total = 0.0;
+          for (uint i = 0u; i < LANES; ++i) {
+            total += reduce_scratch[r * THREADS + out_slot * LANES + i];
+          }
+          output_data.values[out_base + row] = STORE_VALUE(total);
+        }
+      }
+#endif
+    }
+  }
+}

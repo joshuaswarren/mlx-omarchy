@@ -240,17 +240,18 @@ omarchy_shader(qmm_vec_subgroup_f32 shaders/qmm_vec.comp -DUSE_SUBGROUP=1)
 omarchy_shader(qmm_vec_subgroup_f16 shaders/qmm_vec.comp -DUSE_FP16=1 -DUSE_SUBGROUP=1)
 omarchy_shader(qmm_vec_subgroup_bf16 shaders/qmm_vec.comp -DUSE_BF16=1 -DUSE_SUBGROUP=1)
 # DecodeQ4Word: transposed affine 4-bit/group-64 GEMV with one packed word
-# per lane load and one shared activation staging pass. It is opt-in until
-# the M1 timing gate selects it.
+# per lane load and one shared activation staging pass; the
+# MLX_OMARCHY_QMM_VEC_Q4_V2=0 fallback for that contract.
 omarchy_shader(qmm_vec_q4_word_f32 shaders/qmm_vec.comp -DQMM_VEC_Q4_WORD=1)
 omarchy_shader(qmm_vec_q4_word_f16 shaders/qmm_vec.comp -DUSE_FP16=1 -DQMM_VEC_Q4_WORD=1)
 omarchy_shader(qmm_vec_q4_word_bf16 shaders/qmm_vec.comp -DUSE_BF16=1 -DQMM_VEC_Q4_WORD=1)
 omarchy_shader(qmm_vec_q4_word_subgroup_f32 shaders/qmm_vec.comp -DUSE_SUBGROUP=1 -DQMM_VEC_Q4_WORD=1)
 omarchy_shader(qmm_vec_q4_word_subgroup_f16 shaders/qmm_vec.comp -DUSE_FP16=1 -DUSE_SUBGROUP=1 -DQMM_VEC_Q4_WORD=1)
 omarchy_shader(qmm_vec_q4_word_subgroup_bf16 shaders/qmm_vec.comp -DUSE_BF16=1 -DUSE_SUBGROUP=1 -DQMM_VEC_Q4_WORD=1)
-# DecodeQ4Vec: the same contract streaming one uvec4 per lane with up to
-# four rows per slot (shaders/qmm_vec_q4.comp), opt-in behind
-# MLX_OMARCHY_QMM_VEC_Q4_V2=1 until it measures faster on the M1.
+# DecodeQ4Vec: the same contract in the qmv_fast shape, a uvec2 per lane
+# per row per step with rows per slot in registers
+# (shaders/qmm_vec_q4.comp); the default decode kernel for that
+# contract on the M1.
 omarchy_shader(qmm_vec_q4_v2_f32 shaders/qmm_vec_q4.comp)
 omarchy_shader(qmm_vec_q4_v2_f16 shaders/qmm_vec_q4.comp -DUSE_FP16=1)
 omarchy_shader(qmm_vec_q4_v2_bf16 shaders/qmm_vec_q4.comp -DUSE_BF16=1)
@@ -268,6 +269,27 @@ omarchy_shader(qmm_tile_f32 shaders/qmm_tile.comp)
 omarchy_shader(qmm_tile_f16 shaders/qmm_tile.comp -DUSE_FP16=1)
 omarchy_shader(qmm_tile_rb_f16 shaders/qmm_tile.comp -DUSE_FP16=1 -DREGISTER_BLOCK=1)
 omarchy_shader(qmm_tile_bf16 shaders/qmm_tile.comp -DUSE_BF16=1)
+# PrefillGemm: blocked GEMMs with register micro-tiles per thread
+# (shaders/qmm_gemm.comp for the transposed word-packed affine
+# QuantizedMatmul, shaders/matmul_gemm.comp for the dense matmul
+# contract). qmm_gemm_64 (4x4 per thread, 64x64 tile) and qmm_gemm_64x128
+# (4x8, 64x128) keep the exact ascending-k order; qmm_gemm_32k4 is the
+# 32x32 tile with four in-workgroup k-partitions for tiny grids (opt-in:
+# rounding order changes). Dispatch is env-gated in primitives.cpp
+# (MLX_OMARCHY_QMM_TILE_V2, MLX_OMARCHY_QMM_GEMM_SPLITK,
+# MLX_OMARCHY_MATMUL_GEMM).
+omarchy_shader(qmm_gemm_64_f16 shaders/qmm_gemm.comp -DUSE_FP16=1 -DTX=16 -DTY=16 -DTM=4 -DTN=4 -DBK=32 -DKS=1)
+omarchy_shader(qmm_gemm_64x128_f16 shaders/qmm_gemm.comp -DUSE_FP16=1 -DTX=16 -DTY=16 -DTM=4 -DTN=8 -DBK=32 -DKS=1)
+omarchy_shader(qmm_gemm_32k4_f16 shaders/qmm_gemm.comp -DUSE_FP16=1 -DTX=8 -DTY=8 -DTM=4 -DTN=4 -DBK=16 -DKS=4)
+omarchy_shader(matmul_gemm_f32 shaders/matmul_gemm.comp)
+omarchy_shader(matmul_gemm_f16 shaders/matmul_gemm.comp -DUSE_FP16=1)
+omarchy_shader(matmul_gemm_bf16 shaders/matmul_gemm.comp -DUSE_BF16=1)
+# PrefillCols: column-batched decode-shaped GEMV for 2 <= m <= 64 on the
+# transposed affine 4-bit/group-64 float16 contract
+# (shaders/qmm_vec_cols.comp); gated in primitives.cpp
+# (MLX_OMARCHY_QMM_VEC_COLS, MLX_OMARCHY_QMM_VEC_COLS_MAX_M).
+omarchy_shader(qmm_vec_cols_f16 shaders/qmm_vec_cols.comp)
+omarchy_shader(qmm_vec_cols_subgroup_f16 shaders/qmm_vec_cols.comp -DUSE_SUBGROUP=1)
 omarchy_shader(dequant_f32 shaders/dequant.comp)
 omarchy_shader(dequant_f16 shaders/dequant.comp -DUSE_FP16=1)
 omarchy_shader(dequant_bf16 shaders/dequant.comp -DUSE_BF16=1)
@@ -425,7 +447,14 @@ omarchy_shader(fast_rms_norm_bf16 shaders/fast_norm.comp -DUSE_BF16=1)
 omarchy_shader(fast_layer_norm_f32 shaders/fast_norm.comp -DLAYER_NORM=1)
 omarchy_shader(fast_layer_norm_f16 shaders/fast_norm.comp -DUSE_FP16=1 -DLAYER_NORM=1)
 omarchy_shader(fast_layer_norm_bf16 shaders/fast_norm.comp -DUSE_BF16=1 -DLAYER_NORM=1)
+omarchy_shader(fast_rms_norm_sg_f32 shaders/fast_norm.comp -DUSE_SUBGROUP=1)
+omarchy_shader(fast_rms_norm_sg_f16 shaders/fast_norm.comp -DUSE_FP16=1 -DUSE_SUBGROUP=1)
+omarchy_shader(fast_rms_norm_sg_bf16 shaders/fast_norm.comp -DUSE_BF16=1 -DUSE_SUBGROUP=1)
 omarchy_shader(sdpa_decode_f16 shaders/sdpa_decode.comp)
+omarchy_shader(sdpa_decode_partial_f16 shaders/sdpa_decode.comp -DPARTIAL=1)
+omarchy_shader(sdpa_decode_combine_f16 shaders/sdpa_decode_combine.comp)
+omarchy_shader(sdpa_decode_subgroup_f16 shaders/sdpa_decode.comp -DUSE_SUBGROUP=1)
+omarchy_shader(sdpa_decode_partial_subgroup_f16 shaders/sdpa_decode.comp -DPARTIAL=1 -DUSE_SUBGROUP=1)
 omarchy_shader(fast_rms_norm_vjp_dx_f32 shaders/fast_norm_vjp_dx.comp)
 omarchy_shader(fast_rms_norm_vjp_dx_f16 shaders/fast_norm_vjp_dx.comp -DUSE_FP16=1)
 omarchy_shader(fast_rms_norm_vjp_dx_bf16 shaders/fast_norm_vjp_dx.comp -DUSE_BF16=1)

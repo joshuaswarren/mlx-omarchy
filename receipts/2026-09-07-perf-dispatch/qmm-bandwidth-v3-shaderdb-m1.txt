@@ -1,0 +1,6 @@
+# AGX_MESA_DEBUG=shaderdb MESA_SHADER_CACHE_DISABLE=1, repo-state build, bench k_proj case with configs old,r2t128,r1t128,r4t128,r8t64 (last 5 pipeline lines). The DecodeQ4Vec (qmm_vec_q4.comp, QmmVecQ4V2SubgroupF16) specializations are the four lines with 73 / 51 / 115 / 179 gprs = rows 2 / 1 / 4 / 8; the first line is another pipeline of the bench. Previous uvec4 kernel (same enum, scratch capture 2026-09-07 16:17): 382 instrs, 111 gprs, 108 uniforms, 896 threads, 54 preamble. DecodeQ4Word (dispatch-floor-shaderdb-m1.txt): 114 instrs, 27 gprs, 66 uniforms, 45 preamble.
+CS shader: 212 instrs, 140 alu, 140 fscib, 70 ic, 1676 code size, 35 gprs, 130 uniforms, 0 scratch, 1024 threads, 4 loops, 0:0 spills:fills, 102 preamble inst
+CS shader: 211 instrs, 200 alu, 200 fscib, 44 ic, 1544 code size, 73 gprs, 88 uniforms, 0 scratch, 1024 threads, 2 loops, 0:0 spills:fills, 45 preamble inst
+CS shader: 134 instrs, 125 alu, 125 fscib, 36 ic, 1016 code size, 51 gprs, 84 uniforms, 0 scratch, 1024 threads, 2 loops, 0:0 spills:fills, 44 preamble inst
+CS shader: 360 instrs, 348 alu, 348 fscib, 60 ic, 2560 code size, 115 gprs, 96 uniforms, 0 scratch, 832 threads, 2 loops, 0:0 spills:fills, 47 preamble inst
+CS shader: 658 instrs, 644 alu, 644 fscib, 92 ic, 4604 code size, 179 gprs, 112 uniforms, 0 scratch, 576 threads, 2 loops, 0:0 spills:fills, 51 preamble inst

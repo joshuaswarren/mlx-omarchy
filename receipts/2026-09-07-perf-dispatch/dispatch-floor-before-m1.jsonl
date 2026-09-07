@@ -1,0 +1,22 @@
+{"level": "raw", "label": "production", "n": 1000, "barrier": "prepost", "desc": "alloc", "push_bytes": 128, "rebind": true, "submits": 1, "serial": false, "record_us": 0.54, "gpu_us": 8.71}
+{"level": "raw", "label": "floor", "n": 1000, "barrier": "none", "desc": "reuse", "push_bytes": 0, "rebind": false, "submits": 1, "serial": false, "record_us": 0.16, "gpu_us": 8.71}
+{"level": "raw", "label": "no-barrier", "n": 1000, "barrier": "none", "desc": "alloc", "push_bytes": 128, "rebind": true, "submits": 1, "serial": false, "record_us": 0.62, "gpu_us": 8.67}
+{"level": "raw", "label": "pre-only", "n": 1000, "barrier": "pre", "desc": "alloc", "push_bytes": 128, "rebind": true, "submits": 1, "serial": false, "record_us": 1.29, "gpu_us": 9.06}
+{"level": "raw", "label": "full-per-dispatch", "n": 1000, "barrier": "full", "desc": "alloc", "push_bytes": 128, "rebind": true, "submits": 1, "serial": false, "record_us": 2.05, "gpu_us": 9.18}
+{"level": "raw", "label": "narrow-per-dispatch", "n": 1000, "barrier": "narrow", "desc": "alloc", "push_bytes": 128, "rebind": true, "submits": 1, "serial": false, "record_us": 1.75, "gpu_us": 9.18}
+{"level": "raw", "label": "desc-bind-only", "n": 1000, "barrier": "prepost", "desc": "bind", "push_bytes": 128, "rebind": true, "submits": 1, "serial": false, "record_us": 2.66, "gpu_us": 9.15}
+{"level": "raw", "label": "desc-reuse", "n": 1000, "barrier": "prepost", "desc": "reuse", "push_bytes": 128, "rebind": true, "submits": 1, "serial": false, "record_us": 2.61, "gpu_us": 9.16}
+{"level": "raw", "label": "push16", "n": 1000, "barrier": "prepost", "desc": "alloc", "push_bytes": 16, "rebind": true, "submits": 1, "serial": false, "record_us": 2.12, "gpu_us": 9.13}
+{"level": "raw", "label": "push0", "n": 1000, "barrier": "prepost", "desc": "alloc", "push_bytes": 0, "rebind": true, "submits": 1, "serial": false, "record_us": 3.16, "gpu_us": 9.15}
+{"level": "raw", "label": "no-rebind", "n": 1000, "barrier": "prepost", "desc": "alloc", "push_bytes": 128, "rebind": false, "submits": 1, "serial": false, "record_us": 1.94, "gpu_us": 9.13}
+{"level": "raw", "label": "floor-10-submits", "n": 1000, "barrier": "none", "desc": "reuse", "push_bytes": 0, "rebind": false, "submits": 10, "serial": false, "record_us": 0.70, "gpu_us": 8.98}
+{"level": "raw", "label": "floor-100-submits", "n": 1000, "barrier": "none", "desc": "reuse", "push_bytes": 0, "rebind": false, "submits": 100, "serial": false, "record_us": 0.86, "gpu_us": 10.93}
+{"level": "raw", "label": "floor-1-per-submit", "n": 1000, "barrier": "none", "desc": "reuse", "push_bytes": 0, "rebind": false, "submits": 1000, "serial": false, "record_us": 0.75, "gpu_us": 35.38}
+{"level": "raw", "label": "floor-100-serial", "n": 1000, "barrier": "none", "desc": "reuse", "push_bytes": 0, "rebind": false, "submits": 100, "serial": true, "record_us": 0.48, "gpu_us": 27.49}
+{"level": "raw", "label": "floor-1-per-submit-serial", "n": 1000, "barrier": "none", "desc": "reuse", "push_bytes": 0, "rebind": false, "submits": 1000, "serial": true, "record_us": 2.72, "gpu_us": 206.53}
+{"level": "raw", "label": "production-10-submits", "n": 1000, "barrier": "prepost", "desc": "alloc", "push_bytes": 128, "rebind": true, "submits": 10, "serial": false, "record_us": 1.04, "gpu_us": 8.96}
+{"level": "raw", "label": "production-100-serial", "n": 1000, "barrier": "prepost", "desc": "alloc", "push_bytes": 128, "rebind": true, "submits": 100, "serial": true, "record_us": 1.46, "gpu_us": 28.82}
+{"level": "encoder", "n": 1000, "gated_barriers": false, "record_us": 11.62, "total_us": 23.08}
+{"level": "ops", "label": "chain", "n": 1000, "submits": 4, "total_us": 17.43}
+{"level": "ops", "label": "independent", "n": 1000, "submits": 4, "total_us": 16.81}
+rc=0

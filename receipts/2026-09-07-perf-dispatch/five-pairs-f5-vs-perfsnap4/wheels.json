@@ -1,0 +1,10 @@
+{
+  "pythons": {
+    "baseline": "/home/joshuawarren/benchq/venv-bw/bin/python",
+    "candidate": "/home/joshuawarren/benchq/perfsnap4/venv/bin/python"
+  },
+  "wheels": {
+    "baseline": "/home/joshuawarren/benchq/morning-20260907/wheels/mlx_omarchy-0.32.2.dev202609071439+38950db-cp314-cp314-linux_aarch64.whl",
+    "candidate": "/home/joshuawarren/benchq/perfsnap4/dist/mlx_omarchy-0.32.2.dev202609072005+perfsnap4-cp314-cp314-linux_aarch64.whl"
+  }
+}

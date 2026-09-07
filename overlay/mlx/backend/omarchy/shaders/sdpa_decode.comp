@@ -1,46 +1,53 @@
 // Copyright © 2026 Joshua Warren / mlx-omarchy contributors.
 // SPDX-License-Identifier: MIT
 //
-// Single-dispatch decode attention over float16 storage: one workgroup per
-// (batch, kv head); the query rows of that kv head (every GQA repeat times
-// every query position, q_len <= 8) are the workgroup's rows. Replaces the
-// composed matmul -> (mask add) -> softmax -> matmul path for the decode
-// shape and reproduces its values bit for bit: every intermediate rounds
-// to float16 exactly where the composed kernels store one, and every float
-// reduction runs in the order those kernels use.
+// Decode attention (q_len <= 8) over float16 storage, flash-decoding
+// style: one workgroup per (batch, q head, query row, 256-key block).
+// The block's 256 lanes each own one key: score = scale * q.k in float,
+// mask, block max and exp-sum through shared-memory trees, then the
+// lanes regroup as (key split, output dim) to accumulate probs @ v.
+// Scores and probs never round to float16 (the composed
+// matmul -> softmax -> matmul path stores both in float16), so this is
+// the closer path to the float32 reference; only the output rounds.
 //
-//   score = f16(scale * sum_d q[d] * k[d])        matmul.comp, alpha = scale
-//   score = f16(score + mask)                      elementwise add (masked)
-//   max   = max_k score;  sum = tree(sum_t exp(score - max))
-//                                                  softmax_suffix.comp
-//   prob  = f16(exp(score - max) * (1 / sum))
-//   out   = f16(sum_k prob[k] * v[k][d])           matmul.comp, alpha = 1
+// Without PARTIAL the kernel covers k_len <= 256 and writes the
+// normalized float16 output itself (one dispatch). With PARTIAL each
+// block writes (o[v_dim], max, sum) to a float scratch buffer and
+// sdpa_decode_combine.comp merges the blocks of a row.
 //
-// The reduction order matters: softmax_suffix sums per thread over keys
-// t, t + 256, ... and then tree-reduces 256 partials; this kernel does
-// the same, so the normalizer is identical. q, k, v and the mask read
-// through their own strides; a KV-cache slice needs no copy.
-//
-// Scores are recomputed per pass (max, sum, probs) instead of staged, so
-// shared memory stays fixed at ~16 KB for any k_len. ponytail: 3x the
-// q.k FLOPs; stage f16 scores in shared memory when k_len fits if a long
-// context decode profile shows the recompute.
+// Masks: causal positions and additive mask values at or below the
+// float16 minimum (-65504, what fast.cpp writes for a false bool mask)
+// become -1e30, the composed f32 path's floor: they take exactly zero
+// weight against any attended key, and a fully masked row softmaxes to
+// the uniform average like the composed paths. Other additive values
+// add in float.
 
 #version 460
 #extension GL_EXT_shader_16bit_storage : require
 #extension GL_EXT_shader_explicit_arithmetic_types_float16 : require
+#ifdef USE_SUBGROUP
+// One subgroupMax / subgroupAdd per subgroup, then a shared pass over
+// the gl_NumSubgroups partials: five barriers per workgroup instead of
+// eighteen. The host picks this variant when the device reports
+// subgroup arithmetic.
+#extension GL_KHR_shader_subgroup_basic : require
+#extension GL_KHR_shader_subgroup_arithmetic : require
+#endif
 
 const uint THREADS = 256u;
-const uint ROW_GROUP = 8u;
 const uint MAX_HEAD_DIM = 256u;
+const uint MAX_SPLITS = 4u;
+const float MASK_FLOOR = -1e30;
 
 layout(local_size_x = 256) in;
 
 layout(set = 0, binding = 0, std430) readonly buffer Query {
   float16_t values[];
 } query_data;
+// Keys load four halves at a time: the host only takes this path when
+// head_dim and every key element offset are multiples of four.
 layout(set = 0, binding = 1, std430) readonly buffer Key {
-  float16_t values[];
+  f16vec4 values[];
 } key_data;
 layout(set = 0, binding = 2, std430) readonly buffer Value {
   float16_t values[];
@@ -48,9 +55,17 @@ layout(set = 0, binding = 2, std430) readonly buffer Value {
 layout(set = 0, binding = 3, std430) readonly buffer Mask {
   float16_t values[];
 } mask_data;
+#ifdef PARTIAL
+// [P * v_dim] block outputs, then [P * 2] (max, sum) pairs; P = the
+// dispatch's workgroup count.
+layout(set = 0, binding = 4, std430) writeonly buffer Partial {
+  float values[];
+} partial_data;
+#else
 layout(set = 0, binding = 4, std430) writeonly buffer Output {
   float16_t values[];
 } output_data;
+#endif
 
 // Same 128-byte layout as ComputeParams; the names are this kernel's
 // roles for each slot (host mapping in ScaledDotProductAttention::eval_gpu).
@@ -76,180 +91,151 @@ layout(push_constant) uniform Params {
   uint k_strides[4]; // shape: batch, kv head, key row
   uint q_strides[4]; // in_strides: batch, head, query row
   uint v_strides[4]; // out_strides: batch, kv head, key row
-  uint lhs_gap;
+  uint n_blocks; // lhs_gap
   uint rhs_gap;
 } params;
 
-// Reduction partials for up to ROW_GROUP rows; doubles as the probs
-// chunk (THREADS keys per row) for the p @ v pass.
-shared float scratch[ROW_GROUP][THREADS];
-shared float q_rows[ROW_GROUP][MAX_HEAD_DIM];
-shared float row_max[ROW_GROUP];
-shared float row_norm[ROW_GROUP];
-
-// The composed path's masked score for one (row, key), as the float
-// value of the float16 it stored.
-float masked_score(
-    uint row_in_group,
-    uint qi,
-    uint head,
-    uint batch,
-    uint key,
-    uint k_base) {
-  float acc = 0.0;
-  uint k_index = k_base + key * params.k_strides[2];
-  for (uint d = 0u; d < params.head_dim; ++d) {
-    acc += q_rows[row_in_group][d] * float(key_data.values[k_index + d]);
-  }
-  float16_t score = float16_t(params.scale * acc);
-  if ((params.operation & 1u) != 0u) {
-    // f16 finite minimum, the same additive floor the composed causal
-    // mask stores.
-    float mask =
-        int(params.k_len) - int(params.q_len) + int(qi) >= int(key)
-        ? 0.0
-        : -65504.0;
-    score = float16_t(float(score) + mask);
-  } else if ((params.operation & 2u) != 0u) {
-    uint mask_index = params.mask_offset + batch * params.mask_stride_b +
-        head * params.mask_stride_h + qi * params.mask_stride_q +
-        key * params.mask_stride_k;
-    score = float16_t(float(score) + float(mask_data.values[mask_index]));
-  }
-  return float(score);
-}
+shared float q_row[MAX_HEAD_DIM];
+shared float reduce[THREADS];
+shared float probs[THREADS];
+shared float o_part[MAX_SPLITS][MAX_HEAD_DIM];
 
 void main() {
   uint t = gl_LocalInvocationID.x;
   uint group = gl_WorkGroupID.x;
-  uint batch = group / params.kv_heads;
-  uint kv_head = group - batch * params.kv_heads;
+  uint row = group / params.n_blocks;
+  uint block = group - row * params.n_blocks;
   uint heads = params.kv_heads * params.repeats;
-  uint rows = params.repeats * params.q_len;
-  // Rows per pass: the p @ v pass gives each row v_dim threads.
-  uint group_size = min(ROW_GROUP, THREADS / params.v_dim);
-  uint k_base = params.k_offset + batch * params.k_strides[0] +
-      kv_head * params.k_strides[1];
-  uint v_base = params.v_offset + batch * params.v_strides[0] +
-      kv_head * params.v_strides[1];
-  uint pv_row = t / params.v_dim;
-  uint pv_dim = t - pv_row * params.v_dim;
+  uint qi = row % params.q_len;
+  uint bh = row / params.q_len;
+  uint head = bh % heads;
+  uint batch = bh / heads;
+  uint kv_head = head / params.repeats;
 
-  uint row_qi[ROW_GROUP];
-  uint row_head[ROW_GROUP];
-  float local_stat[ROW_GROUP];
+  if (t < params.head_dim) {
+    q_row[t] = float(query_data.values
+                         [params.q_offset + batch * params.q_strides[0] +
+                          head * params.q_strides[1] +
+                          qi * params.q_strides[2] + t]);
+  }
+  barrier();
 
-  for (uint row0 = 0u; row0 < rows; row0 += group_size) {
-    uint group_rows = min(group_size, rows - row0);
-    for (uint r = 0u; r < ROW_GROUP; ++r) {
-      uint row = row0 + r;
-      uint rep = row / params.q_len;
-      row_qi[r] = row - rep * params.q_len;
-      row_head[r] = kv_head * params.repeats + rep;
-    }
-    for (uint index = t; index < group_rows * params.head_dim;
-         index += THREADS) {
-      uint r = index / params.head_dim;
-      uint d = index - r * params.head_dim;
-      q_rows[r][d] = float(query_data.values
-                               [params.q_offset + batch * params.q_strides[0] +
-                                row_head[r] * params.q_strides[1] +
-                                row_qi[r] * params.q_strides[2] + d]);
-    }
-    barrier();
-
-    // Pass 1: row max, softmax_suffix's NaN-propagating compare.
-    for (uint r = 0u; r < ROW_GROUP; ++r) {
-      local_stat[r] = uintBitsToFloat(0xff800000u);
-    }
-    for (uint key = t; key < params.k_len; key += THREADS) {
-      for (uint r = 0u; r < group_rows; ++r) {
-        float next =
-            masked_score(r, row_qi[r], row_head[r], batch, key, k_base);
-        if (isnan(next) || next > local_stat[r]) {
-          local_stat[r] = next;
-        }
-      }
-    }
-    for (uint r = 0u; r < group_rows; ++r) {
-      scratch[r][t] = local_stat[r];
-    }
-    barrier();
-    for (uint stride = THREADS / 2u; stride > 0u; stride >>= 1u) {
-      if (t < stride) {
-        for (uint r = 0u; r < group_rows; ++r) {
-          scratch[r][t] = max(scratch[r][t], scratch[r][t + stride]);
-        }
-      }
-      barrier();
-    }
-    if (t < group_rows) {
-      row_max[t] = scratch[t][0];
-    }
-    barrier();
-
-    // Pass 2: exp sum in softmax_suffix's order (per-thread strided
-    // keys, then the 256-partial tree).
-    for (uint r = 0u; r < ROW_GROUP; ++r) {
-      local_stat[r] = 0.0;
-    }
-    for (uint key = t; key < params.k_len; key += THREADS) {
-      for (uint r = 0u; r < group_rows; ++r) {
-        local_stat[r] += exp(
-            masked_score(r, row_qi[r], row_head[r], batch, key, k_base) -
-            row_max[r]);
-      }
-    }
-    for (uint r = 0u; r < group_rows; ++r) {
-      scratch[r][t] = local_stat[r];
-    }
-    barrier();
-    for (uint stride = THREADS / 2u; stride > 0u; stride >>= 1u) {
-      if (t < stride) {
-        for (uint r = 0u; r < group_rows; ++r) {
-          scratch[r][t] += scratch[r][t + stride];
-        }
-      }
-      barrier();
-    }
-    if (t < group_rows) {
-      row_norm[t] = 1.0 / scratch[t][0];
-    }
-    barrier();
-
-    // Pass 3: f16 probs per THREADS-key chunk, then the sequential
-    // p @ v accumulation matmul.comp performs for each output element.
+  uint key = block * THREADS + t;
+  bool valid = key < params.k_len;
+  float score = uintBitsToFloat(0xff800000u);
+  if (valid) {
+    uint k_index = (params.k_offset + batch * params.k_strides[0] +
+                    kv_head * params.k_strides[1] +
+                    key * params.k_strides[2]) /
+        4u;
     float acc = 0.0;
-    for (uint chunk = 0u; chunk < params.k_len; chunk += THREADS) {
-      uint chunk_len = min(THREADS, params.k_len - chunk);
-      if (t < chunk_len) {
-        uint key = chunk + t;
-        for (uint r = 0u; r < group_rows; ++r) {
-          float value = exp(masked_score(
-                                r, row_qi[r], row_head[r], batch, key, k_base) -
-                            row_max[r]) *
-              row_norm[r];
-          scratch[r][t] = float(float16_t(value));
-        }
-      }
-      barrier();
-      if (pv_row < group_rows) {
-        uint v_index = v_base + chunk * params.v_strides[2] + pv_dim;
-        for (uint j = 0u; j < chunk_len; ++j) {
-          acc += scratch[pv_row][j] *
-              float(value_data.values[v_index + j * params.v_strides[2]]);
-        }
-      }
-      barrier();
+    for (uint d = 0u; d < params.head_dim; d += 4u) {
+      vec4 keys = vec4(key_data.values[k_index + d / 4u]);
+      acc += q_row[d] * keys.x;
+      acc += q_row[d + 1u] * keys.y;
+      acc += q_row[d + 2u] * keys.z;
+      acc += q_row[d + 3u] * keys.w;
     }
-    if (pv_row < group_rows) {
-      uint out_index = params.out_offset +
-          ((batch * heads + row_head[pv_row]) * params.q_len +
-           row_qi[pv_row]) *
-              params.v_dim +
-          pv_dim;
-      output_data.values[out_index] = float16_t(acc);
+    score = params.scale * acc;
+    if ((params.operation & 1u) != 0u) {
+      if (int(params.k_len) - int(params.q_len) + int(qi) < int(key)) {
+        score = MASK_FLOOR;
+      }
+    } else if ((params.operation & 2u) != 0u) {
+      float mask = float(mask_data.values
+                             [params.mask_offset +
+                              batch * params.mask_stride_b +
+                              head * params.mask_stride_h +
+                              qi * params.mask_stride_q +
+                              key * params.mask_stride_k]);
+      score = mask <= -65504.0 ? MASK_FLOOR : score + mask;
+    }
+  }
+
+#ifdef USE_SUBGROUP
+  float subgroup_max = subgroupMax(score);
+  if (subgroupElect()) {
+    reduce[gl_SubgroupID] = subgroup_max;
+  }
+  barrier();
+  float block_max = reduce[0];
+  for (uint i = 1u; i < gl_NumSubgroups; ++i) {
+    block_max = max(block_max, reduce[i]);
+  }
+  barrier();
+
+  float prob = valid ? exp(score - block_max) : 0.0;
+  probs[t] = prob;
+  float subgroup_sum = subgroupAdd(prob);
+  if (subgroupElect()) {
+    reduce[gl_SubgroupID] = subgroup_sum;
+  }
+  barrier();
+  float block_sum = 0.0;
+  for (uint i = 0u; i < gl_NumSubgroups; ++i) {
+    block_sum += reduce[i];
+  }
+#else
+  reduce[t] = score;
+  barrier();
+  for (uint stride = THREADS / 2u; stride > 0u; stride >>= 1u) {
+    if (t < stride) {
+      reduce[t] = max(reduce[t], reduce[t + stride]);
     }
     barrier();
+  }
+  float block_max = reduce[0];
+  barrier();
+
+  float prob = valid ? exp(score - block_max) : 0.0;
+  probs[t] = prob;
+  reduce[t] = prob;
+  barrier();
+  for (uint stride = THREADS / 2u; stride > 0u; stride >>= 1u) {
+    if (t < stride) {
+      reduce[t] += reduce[t + stride];
+    }
+    barrier();
+  }
+  float block_sum = reduce[0];
+#endif
+
+  // probs @ v: `splits` lane groups each take a run of the block's
+  // keys for every output dim, then the runs add in shared memory.
+  uint block_len = min(THREADS, params.k_len - block * THREADS);
+  uint splits = min(MAX_SPLITS, THREADS / params.v_dim);
+  uint split = t / params.v_dim;
+  uint dim = t - split * params.v_dim;
+  if (split < splits) {
+    uint per_split = (block_len + splits - 1u) / splits;
+    uint first = split * per_split;
+    uint last = min(block_len, first + per_split);
+    uint v_index = params.v_offset + batch * params.v_strides[0] +
+        kv_head * params.v_strides[1] +
+        (block * THREADS + first) * params.v_strides[2] + dim;
+    float acc = 0.0;
+    for (uint j = first; j < last; ++j) {
+      acc += probs[j] * float(value_data.values[v_index]);
+      v_index += params.v_strides[2];
+    }
+    o_part[split][dim] = acc;
+  }
+  barrier();
+  if (t < params.v_dim) {
+    float o = 0.0;
+    for (uint s = 0u; s < splits; ++s) {
+      o += o_part[s][t];
+    }
+#ifdef PARTIAL
+    partial_data.values[group * params.v_dim + t] = o;
+    if (t == 0u) {
+      uint stats = gl_NumWorkGroups.x * params.v_dim + group * 2u;
+      partial_data.values[stats] = block_max;
+      partial_data.values[stats + 1u] = block_sum;
+    }
+#else
+    output_data.values[params.out_offset + row * params.v_dim + t] =
+        float16_t(o / block_sum);
+#endif
   }
 }

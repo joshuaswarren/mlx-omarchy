@@ -1,0 +1,366 @@
+#version 460
+
+// PrefillGemm: blocked GEMM for the m > 1 affine QuantizedMatmul with
+// transposed word-packed weights (bits 2/4/8: w [batch, N, K*bits/32]
+// uint32 words, low bits first; scales/biases [batch, N, K/group_size]).
+// out[m, n] = sum_k x[m, k] * (scale * q + bias), the same affine
+// dequant qmm_tile.comp applies.
+//
+// Geometry (compile-time TX, TY, TM, TN, BK, KS): a workgroup of
+// KS * TX * TY threads owns a BM x BN = (TY * TM) x (TX * TN) output
+// tile. The threads split into KS k-partitions of TX x TY threads; every
+// thread owns a TM x TN register micro-tile (TM, TN multiples of 4, held
+// as vec4s; 4x4 and 4x8 are compiled) and partition p walks the BK-wide
+// slice p of each KS * BK-wide k step. Per step the workgroup stages
+// x[BM][KT] (float16_t for float16 storage, exact; float otherwise) and
+// dequant(w)[KT][BN] as f32 (scale * q + bias at f32, once per weight
+// element per m-tile) into shared vec4 tiles, then each thread runs BK
+// outer products from TM / 4 + TN / 4 shared vec4 loads per TM * TN FMAs.
+// Stage loads are branch-free (clamped index, select) so they issue back
+// to back.
+//
+// Accumulation order: every output element is one f32 accumulator per
+// partition summing x[r][k] * dequant[k][c] over that partition's k
+// ascending. KS == 1 is therefore the same ascending-k single-accumulator
+// order as qmm_tile.comp (bit-identical outputs, receipts/2026-09-07-
+// perf-dispatch/prefill-gemm-*). KS > 1 combines the partition partials
+// in shared memory as ((p0 + p1) + p2) + ... (a rounding-order change;
+// the dispatch keeps it opt-in).
+//
+// Measured on the M1 (Honeykrisp, Mesa 26.1.7): 8x4 / 8x8 micro-tiles,
+// BK 16, register prefetch, k-loop unrolling with fences, and a rolled k
+// loop were all neutral or slower than 4x4 / 4x8 at 256 threads; the
+// driver sinks every shared load to its first use, so the shared-load
+// latency per k is the ceiling (~0.6 TFLOP/s at L = 1053).
+//
+// Push constants match qmm_tile.comp (operation = bits, reduce_size =
+// group size, shape[0] batch, shape[1] words per w batch slice, shape[2]
+// items per scale/bias batch slice, aux_offset/aux_size the scale/bias
+// base items). Only the transposed layout is compiled here; the dispatch
+// keeps flags bit 0 (non-transposed) on the generic tile kernel.
+
+#ifdef USE_FP16
+#extension GL_EXT_shader_16bit_storage : require
+#extension GL_EXT_shader_explicit_arithmetic_types_float16 : require
+#define STORAGE_TYPE float16_t
+#define LOAD_VALUE(x) float(x)
+#define STORE_VALUE(f) STORAGE_TYPE(f)
+#define X_SHARED_TYPE f16vec4
+#define X_SHARED_STORE(v) float16_t(v)
+#define X_SHARED_LOAD(v) vec4(v)
+#elif defined(USE_BF16)
+#extension GL_EXT_shader_16bit_storage : require
+#extension GL_EXT_shader_explicit_arithmetic_types_int16 : require
+#define STORAGE_TYPE uint16_t
+#define LOAD_VALUE(x) uintBitsToFloat(uint(x) << 16u)
+uint16_t bf16_store(float value) {
+  uint bits = floatBitsToUint(value);
+  if (isnan(value)) {
+    return uint16_t((bits >> 16) | 0x40u);
+  }
+  return uint16_t((bits + 0x7fffu + ((bits >> 16) & 1u)) >> 16);
+}
+#define STORE_VALUE(f) bf16_store(f)
+#define X_SHARED_TYPE vec4
+#define X_SHARED_STORE(v) (v)
+#define X_SHARED_LOAD(v) (v)
+#else
+#define STORAGE_TYPE float
+#define LOAD_VALUE(x) float(x)
+#define STORE_VALUE(f) STORAGE_TYPE(f)
+#define X_SHARED_TYPE vec4
+#define X_SHARED_STORE(v) (v)
+#define X_SHARED_LOAD(v) (v)
+#endif
+
+#ifndef TX
+#define TX 16
+#endif
+#ifndef TY
+#define TY 16
+#endif
+#ifndef TM
+#define TM 4
+#endif
+#ifndef TN
+#define TN 4
+#endif
+#ifndef BK
+#define BK 32
+#endif
+#ifndef KS
+#define KS 1
+#endif
+
+const uint kTX = uint(TX);
+const uint kTY = uint(TY);
+const uint kTM = uint(TM);
+const uint kTN = uint(TN);
+const uint kBK = uint(BK);
+const uint kKS = uint(KS);
+const uint AV = kTM / 4u;
+const uint WV = kTN / 4u;
+const uint BM = kTY * kTM;
+const uint BN = kTX * kTN;
+const uint TPP = kTX * kTY;
+const uint THREADS = TPP * kKS;
+const uint KT = kKS * kBK;
+const uint X_PER_THREAD = (BM * KT + THREADS - 1u) / THREADS;
+const uint W_OCTETS = BN * KT / 8u;
+const uint W_OCTETS_PER_THREAD = (W_OCTETS + THREADS - 1u) / THREADS;
+const uint OCTETS_PER_COLUMN = KT / 8u;
+
+layout(local_size_x = TX * TY * KS) in;
+
+layout(set = 0, binding = 0, std430) readonly buffer InputX {
+  STORAGE_TYPE values[];
+} input_x;
+layout(set = 0, binding = 1, std430) readonly buffer InputW {
+  uint values[];
+} input_w;
+layout(set = 0, binding = 2, std430) readonly buffer Scales {
+  STORAGE_TYPE values[];
+} scales;
+layout(set = 0, binding = 3, std430) readonly buffer Biases {
+  STORAGE_TYPE values[];
+} biases;
+layout(set = 0, binding = 4, std430) writeonly buffer Output {
+  STORAGE_TYPE values[];
+} output_data;
+
+layout(push_constant) uniform Params {
+  uint count;
+  uint operation;
+  uint lhs_size;
+  uint rhs_size;
+  uint reduce_size;
+  uint output_size;
+  uint lhs_offset;
+  uint rhs_offset;
+  uint output_offset;
+  uint aux_size;
+  uint aux_offset;
+  uint matrix_m;
+  uint matrix_n;
+  uint matrix_k;
+  uint flags;
+  float alpha;
+  float beta;
+  uint dims;
+  uint shape[4];
+  uint in_strides[4];
+  uint out_strides[4];
+} params;
+
+// sx[kk][row quad] holds x rows 4q..4q+3 at k = kk; sw[kk][column quad]
+// holds dequantized columns 4q..4q+3 at k = kk.
+shared X_SHARED_TYPE sx[KT][BM / 4u];
+shared vec4 sw[KT][BN / 4u];
+#if KS > 1
+shared vec4 partial[kKS - 1u][BM][BN / 4u];
+#endif
+
+// STORE_ROW(r, j, v): output row ty * TM + r, column quad tx * WV + j.
+#define STORE_ROW(r, j, v)                                                   \
+        {                                                                    \
+          uint row = row0 + ty * kTM + (r);                                  \
+          uint col = col0 + (tx * WV + (j)) * 4u;                            \
+          if (row < params.matrix_m) {                                       \
+            uint o = out_base + row * params.matrix_n + col;                 \
+            if (col + 3u < params.matrix_n) {                                \
+              output_data.values[o + 0u] = STORE_VALUE((v).x);               \
+              output_data.values[o + 1u] = STORE_VALUE((v).y);               \
+              output_data.values[o + 2u] = STORE_VALUE((v).z);               \
+              output_data.values[o + 3u] = STORE_VALUE((v).w);               \
+            } else {                                                         \
+              for (uint e = 0u; e < 4u; ++e) {                               \
+                if (col + e < params.matrix_n) {                             \
+                  output_data.values[o + e] = STORE_VALUE((v)[e]);           \
+                }                                                            \
+              }                                                              \
+            }                                                                \
+          }                                                                  \
+        }
+
+// Explicit vec4 accumulators per geometry: the driver keeps these in
+// registers, where indexed private arrays spilled.
+#if TM == 4 && TN == 4
+#define DECLARE_ACC \
+        vec4 acc0_0 = vec4(0.0); vec4 acc1_0 = vec4(0.0); vec4 acc2_0 = vec4(0.0); vec4 acc3_0 = vec4(0.0);
+#define MICRO_STEP \
+            vec4 a0 = X_SHARED_LOAD(sx[kp + kk][ty * 1u + 0u]); \
+            vec4 w0 = sw[kp + kk][tx * 1u + 0u]; \
+            acc0_0 += a0.x * w0; \
+            acc1_0 += a0.y * w0; \
+            acc2_0 += a0.z * w0; \
+            acc3_0 += a0.w * w0;
+#define PARTIAL_STORE \
+          partial[p - 1u][ty * 4u + 0u][tx * 1u + 0u] = acc0_0; \
+          partial[p - 1u][ty * 4u + 1u][tx * 1u + 0u] = acc1_0; \
+          partial[p - 1u][ty * 4u + 2u][tx * 1u + 0u] = acc2_0; \
+          partial[p - 1u][ty * 4u + 3u][tx * 1u + 0u] = acc3_0;
+#define PARTIAL_LOAD \
+            acc0_0 += partial[q][ty * 4u + 0u][tx * 1u + 0u]; \
+            acc1_0 += partial[q][ty * 4u + 1u][tx * 1u + 0u]; \
+            acc2_0 += partial[q][ty * 4u + 2u][tx * 1u + 0u]; \
+            acc3_0 += partial[q][ty * 4u + 3u][tx * 1u + 0u];
+#define STORE_ALL \
+          STORE_ROW(0u, 0u, acc0_0) \
+          STORE_ROW(1u, 0u, acc1_0) \
+          STORE_ROW(2u, 0u, acc2_0) \
+          STORE_ROW(3u, 0u, acc3_0)
+#endif
+#if TM == 4 && TN == 8
+#define DECLARE_ACC \
+        vec4 acc0_0 = vec4(0.0); vec4 acc0_1 = vec4(0.0); vec4 acc1_0 = vec4(0.0); vec4 acc1_1 = vec4(0.0); vec4 acc2_0 = vec4(0.0); vec4 acc2_1 = vec4(0.0); vec4 acc3_0 = vec4(0.0); vec4 acc3_1 = vec4(0.0);
+#define MICRO_STEP \
+            vec4 a0 = X_SHARED_LOAD(sx[kp + kk][ty * 1u + 0u]); \
+            vec4 w0 = sw[kp + kk][tx * 2u + 0u]; \
+            vec4 w1 = sw[kp + kk][tx * 2u + 1u]; \
+            acc0_0 += a0.x * w0; \
+            acc0_1 += a0.x * w1; \
+            acc1_0 += a0.y * w0; \
+            acc1_1 += a0.y * w1; \
+            acc2_0 += a0.z * w0; \
+            acc2_1 += a0.z * w1; \
+            acc3_0 += a0.w * w0; \
+            acc3_1 += a0.w * w1;
+#define PARTIAL_STORE \
+          partial[p - 1u][ty * 4u + 0u][tx * 2u + 0u] = acc0_0; \
+          partial[p - 1u][ty * 4u + 0u][tx * 2u + 1u] = acc0_1; \
+          partial[p - 1u][ty * 4u + 1u][tx * 2u + 0u] = acc1_0; \
+          partial[p - 1u][ty * 4u + 1u][tx * 2u + 1u] = acc1_1; \
+          partial[p - 1u][ty * 4u + 2u][tx * 2u + 0u] = acc2_0; \
+          partial[p - 1u][ty * 4u + 2u][tx * 2u + 1u] = acc2_1; \
+          partial[p - 1u][ty * 4u + 3u][tx * 2u + 0u] = acc3_0; \
+          partial[p - 1u][ty * 4u + 3u][tx * 2u + 1u] = acc3_1;
+#define PARTIAL_LOAD \
+            acc0_0 += partial[q][ty * 4u + 0u][tx * 2u + 0u]; \
+            acc0_1 += partial[q][ty * 4u + 0u][tx * 2u + 1u]; \
+            acc1_0 += partial[q][ty * 4u + 1u][tx * 2u + 0u]; \
+            acc1_1 += partial[q][ty * 4u + 1u][tx * 2u + 1u]; \
+            acc2_0 += partial[q][ty * 4u + 2u][tx * 2u + 0u]; \
+            acc2_1 += partial[q][ty * 4u + 2u][tx * 2u + 1u]; \
+            acc3_0 += partial[q][ty * 4u + 3u][tx * 2u + 0u]; \
+            acc3_1 += partial[q][ty * 4u + 3u][tx * 2u + 1u];
+#define STORE_ALL \
+          STORE_ROW(0u, 0u, acc0_0) \
+          STORE_ROW(0u, 1u, acc0_1) \
+          STORE_ROW(1u, 0u, acc1_0) \
+          STORE_ROW(1u, 1u, acc1_1) \
+          STORE_ROW(2u, 0u, acc2_0) \
+          STORE_ROW(2u, 1u, acc2_1) \
+          STORE_ROW(3u, 0u, acc3_0) \
+          STORE_ROW(3u, 1u, acc3_1)
+#endif
+
+void main() {
+  uint t = gl_LocalInvocationID.x;
+  uint p = t / TPP;
+  uint tx = (t % TPP) % kTX;
+  uint ty = (t % TPP) / kTX;
+  uint bits = params.operation;
+  uint group_size = params.reduce_size;
+  uint pack_factor = 32u / bits;
+  uint value_mask = (1u << bits) - 1u;
+  uint words_per_row = params.matrix_k * bits / 32u;
+  uint groups_per_row = params.matrix_k / group_size;
+  uint batch = params.shape[0];
+  uint w_batch_words = params.shape[1];
+  uint param_batch = params.shape[2];
+  uint x_batch = params.matrix_m * params.matrix_k;
+  uint m_tiles = (params.matrix_m + BM - 1u) / BM;
+  uint n_tiles = (params.matrix_n + BN - 1u) / BN;
+  uint k_steps = (params.matrix_k + KT - 1u) / KT;
+
+  for (uint b = 0u; b < batch; ++b) {
+    uint x_base = params.lhs_offset + b * x_batch;
+    uint w_base = params.rhs_offset + b * w_batch_words;
+    uint scale_base = params.aux_offset + b * param_batch;
+    uint bias_base = params.aux_size + b * param_batch;
+    uint out_base = params.output_offset + b * params.matrix_m * params.matrix_n;
+    for (uint tile_row = gl_WorkGroupID.y; tile_row < m_tiles;
+         tile_row += gl_NumWorkGroups.y) {
+      for (uint tile_col = gl_WorkGroupID.x; tile_col < n_tiles;
+           tile_col += gl_NumWorkGroups.x) {
+        uint row0 = tile_row * BM;
+        uint col0 = tile_col * BN;
+        DECLARE_ACC
+        for (uint step = 0u; step < k_steps; ++step) {
+          uint k0 = step * KT;
+          // x stage: consecutive lanes take consecutive k of one row.
+          for (uint i = 0u; i < X_PER_THREAD; ++i) {
+            uint idx = t + i * THREADS;
+            if (idx < BM * KT) {
+              uint kk = idx % KT;
+              uint r = idx / KT;
+              uint row = row0 + r;
+              uint k = k0 + kk;
+              bool valid = row < params.matrix_m && k < params.matrix_k;
+              uint row_c = min(row, params.matrix_m - 1u);
+              uint k_c = min(k, params.matrix_k - 1u);
+              float loaded = LOAD_VALUE(
+                  input_x.values[x_base + row_c * params.matrix_k + k_c]);
+              sx[kk][r >> 2u][r & 3u] = X_SHARED_STORE(valid ? loaded : 0.0);
+            }
+          }
+          // w stage: one thread dequantizes 8 consecutive k of one
+          // column; consecutive lanes take consecutive octets of the
+          // same column, so the word loads stream along the packed row.
+          // 8 | group_size, so one scale/bias pair covers the octet. Word
+          // bits: 4-bit nibbles of word0; 8-bit bytes of word0 then
+          // word1; 2-bit pairs of the low or high half of word0 by the
+          // octet's parity.
+          for (uint i = 0u; i < W_OCTETS_PER_THREAD; ++i) {
+            uint o = t + i * THREADS;
+            if (o < W_OCTETS) {
+              uint c = o / OCTETS_PER_COLUMN;
+              uint k8 = (o % OCTETS_PER_COLUMN) * 8u;
+              uint col = col0 + c;
+              uint k = k0 + k8;
+              bool valid = col < params.matrix_n && k < params.matrix_k;
+              uint col_c = min(col, params.matrix_n - 1u);
+              uint k_c = min(k, params.matrix_k - 1u);
+              uint sb = col_c * groups_per_row + k_c / group_size;
+              float scale = LOAD_VALUE(scales.values[scale_base + sb]);
+              float bias = LOAD_VALUE(biases.values[bias_base + sb]);
+              uint w_word = w_base + col_c * words_per_row + k_c / pack_factor;
+              uint word0 = input_w.values[w_word];
+              uint word1 = input_w.values[w_word + ((bits == 8u) ? 1u : 0u)];
+              scale = valid ? scale : 0.0;
+              bias = valid ? bias : 0.0;
+              uint shift0 = (bits == 2u && ((k8 & 8u) != 0u)) ? 16u : 0u;
+              for (uint e = 0u; e < 8u; ++e) {
+                uint word = (bits == 8u && e >= 4u) ? word1 : word0;
+                uint shift = shift0 + (e % pack_factor) * bits;
+                uint q = (word >> shift) & value_mask;
+                sw[k8 + e][c >> 2u][c & 3u] = scale * float(q) + bias;
+              }
+            }
+          }
+          barrier();
+          uint kp = p * kBK;
+          for (uint kk = 0u; kk < kBK; ++kk) {
+            MICRO_STEP
+          }
+          barrier();
+        }
+#if KS > 1
+        if (p > 0u) {
+          PARTIAL_STORE
+        }
+        barrier();
+        if (p == 0u) {
+          for (uint q = 0u; q < kKS - 1u; ++q) {
+            PARTIAL_LOAD
+          }
+        }
+        barrier();
+#endif
+        if (p == 0u) {
+          STORE_ALL
+        }
+      }
+    }
+  }
+}

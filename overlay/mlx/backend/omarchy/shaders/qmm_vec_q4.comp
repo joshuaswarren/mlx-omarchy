@@ -4,34 +4,43 @@
 // out[1, n] = x[1, k] @ dequant(w), w packed [n][k / 8] uint32 words,
 // low nibble first, one f16/bf16/f32 scale and bias per 64 elements.
 // This is every linear layer of a 4-bit decode step, so the kernel is
-// shaped around streaming the weight bytes at DRAM speed:
+// shaped like the AGX consensus GEMV (MLX `qmv_fast`, ggml-Metal
+// `mul_mv_q4_0`): small workgroups, a few rows per subgroup, 8 B per
+// lane per row per K-step, x read once per step and reused across the
+// rows, subgroupAdd epilogue.
 //
-//   * One lane owns one uvec4 (16 B, 32 nibbles = half a group) per
-//     step, so a 32-lane slot streams 512 contiguous bytes of one row
-//     per load instruction and each lane fetches one scale/bias pair
-//     per 16 weight bytes instead of one per word.
-//   * Each slot owns `rows` consecutive output rows (shape[3], 1..4
-//     chosen by dispatch from n so the workgroup count still covers
-//     the GPU). The per-row loads of a step are issued back to back
-//     before any math, so a lane keeps up to four 16 B loads in
-//     flight; that is where the bandwidth comes from on a small GPU.
-//   * The activation block a lane needs (32 elements, 64 B as f16) is
-//     read straight from the cached x buffer as uvec4 words, once per
-//     step and shared across the slot's rows in registers. There is no
-//     shared-memory staging and no barrier: on this GPU a transposed
-//     shared staging of x cost more than the weight stream itself
-//     (32 two-byte shared loads per lane per step).
+//   * A workgroup is THREADS / 32 slots of 32 lanes; on the subgroup
+//     flavor a slot is one hardware subgroup. Each slot owns ROWS
+//     consecutive output rows. Both are specialization constants
+//     (constant 0 = ROWS, constant 1 = THREADS, keyed from shape[3] and
+//     in_strides[0]) so the row loop unrolls and registers are
+//     allocated for exactly the rows in use; dispatch picks them
+//     (QuantizedMatmul::eval_gpu). On the M1 ROWS = 2 wins on every
+//     decode shape: 73 GPRs keeps a full 1024 threads per core, while
+//     4 and 8 rows cost 115 / 179 GPRs (832 / 576 threads) and lose
+//     more to occupancy than they gain from x reuse (receipts
+//     2026-09-07-perf-dispatch/qmm-bandwidth-v3-m1.md).
+//   * Per K-step a lane streams one uvec2 (8 B = 16 elements) of every
+//     row, so a slot covers 512 contiguous elements per step and each
+//     lane fetches one scale/bias pair per row per step. All ROWS
+//     loads of a step are issued before the first FMA, so a lane keeps
+//     ROWS independent loads in flight.
+//   * The 16 activations a lane needs are read straight from the
+//     cached x buffer as uvec4 words, pre-scaled once per step and
+//     shared across the slot's rows in registers. No shared-memory
+//     staging, no barrier, no multiply in the K loop: every row base is
+//     computed once before it.
 //
 // Dequantization uses the affine identity
 //   sum_i x_i * (s * q_i + b) = s * sum_i (x_i * q_i) + b * sum_i x_i
-// per 32-element half group (the Metal qmv kernel's qdot order), and
-// masks nibbles in place instead of shifting them: element j of a word
-// is x_j * 2^-4j times float(word & (0xF << 4j)). Both factors are
-// exact power-of-two rescalings, so every product equals x_j * q_j
-// exactly and only the summation order differs from the serial
-// kernels: 32-term f32 dot per half group, then s * dot + b * xsum,
-// accumulated per lane over that lane's half groups, then one
-// subgroupAdd (or the shared-memory tree) across the 32 lanes.
+// per lane step (the Metal qmv kernel's qdot order), and masks nibbles
+// in place instead of shifting them: element j of a word is
+// x_j * 2^-4j times float(word & (0xF << 4j)). Both factors are exact
+// power-of-two rescalings, so every product equals x_j * q_j exactly.
+// Accumulation order: per lane per step, an f32 dot of 16 terms (one
+// 8-term chain per word, the two chains summed), then s * dot + b * xsum
+// accumulated per lane over that lane's steps, then one subgroupAdd
+// (or the shared-memory tree) across the 32 lanes.
 //
 // USE_SUBGROUP=1 compiles the subgroupAdd flavor (gated in dispatch on
 // subgroupSize == 32 and the ARITHMETIC feature bit); the default
@@ -68,20 +77,25 @@ uint16_t bf16_store(float value) {
 #extension GL_KHR_shader_subgroup_arithmetic : require
 #endif
 
-const uint LANES = 32u;
-const uint SLOTS = 8u;
-const uint THREADS = LANES * SLOTS;
-const uint MAX_ROWS = 4u;
+layout(constant_id = 0) const uint ROWS = 2u;
+layout(constant_id = 1) const uint THREADS = 128u;
+layout(local_size_x_id = 1) in;
 
-layout(local_size_x = 256) in;
+const uint LANES = 32u;
+const uint SLOTS = THREADS / LANES;
+const uint MAX_ROWS = 8u;
+const uint MAX_THREADS = 256u;
+// Packed words and elements per lane per step.
+const uint LANE_WORDS = 2u;
+const uint LANE_ELEMS = 8u * LANE_WORDS;
 
 // x is read through a uvec4 view: dispatch guarantees the element
-// offset is 16-byte aligned and k is a multiple of 32.
+// offset is 16-byte aligned and k is a multiple of 64.
 layout(set = 0, binding = 0, std430) readonly buffer InputX {
   uvec4 values[];
 } input_x;
 layout(set = 0, binding = 1, std430) readonly buffer InputW {
-  uvec4 values[];
+  uvec2 values[];
 } input_w;
 layout(set = 0, binding = 2, std430) readonly buffer Scales {
   STORAGE_TYPE values[];
@@ -97,8 +111,9 @@ layout(set = 0, binding = 4, std430) writeonly buffer Output {
 // size (64), lhs/rhs/output offsets in elements (lhs_offset 16-byte
 // aligned, rhs_offset a multiple of 4 words), aux_offset the scale
 // base, aux_size the bias base, shape[0] the batch count, shape[1] the
-// per-batch weight words, shape[2] the per-batch scale/bias elements,
-// shape[3] the rows per slot.
+// per-batch weight words, shape[2] the per-batch scale/bias elements.
+// shape[3] (rows per slot) and in_strides[0] (workgroup threads) key
+// the specialization constants above and are not read here.
 layout(push_constant) uniform Params {
   uint count;
   uint operation;
@@ -124,17 +139,17 @@ layout(push_constant) uniform Params {
 } params;
 
 #ifndef USE_SUBGROUP
-shared float reduce_scratch[MAX_ROWS * THREADS];
+shared float reduce_scratch[MAX_ROWS * MAX_THREADS];
 #endif
 
 const float NIBBLE_SCALE[8] = float[8](
     1.0, 0.0625, 0.00390625, 0.000244140625, 1.52587890625e-05,
     9.5367431640625e-07, 5.9604644775390625e-08, 3.725290298461914e-09);
 
-// Eight consecutive x elements starting at a word-aligned element,
+// Eight consecutive x elements from one uvec4 (f16/bf16) or two (f32),
 // scaled for the in-place nibble masks below.
 #ifdef USE_FP16
-#define X_VECS_PER_BLOCK 4u
+#define X_VECS_PER_8 1u
 void load_x8(uint vec_index, out float x[8]) {
   uvec4 raw = input_x.values[vec_index];
   vec2 p0 = unpackHalf2x16(raw.x);
@@ -151,7 +166,7 @@ void load_x8(uint vec_index, out float x[8]) {
   x[7] = p3.y * NIBBLE_SCALE[7];
 }
 #elif defined(USE_BF16)
-#define X_VECS_PER_BLOCK 4u
+#define X_VECS_PER_8 1u
 void load_x8(uint vec_index, out float x[8]) {
   uvec4 raw = input_x.values[vec_index];
   x[0] = uintBitsToFloat(raw.x << 16u);
@@ -164,7 +179,7 @@ void load_x8(uint vec_index, out float x[8]) {
   x[7] = uintBitsToFloat(raw.w & 0xffff0000u) * NIBBLE_SCALE[7];
 }
 #else
-#define X_VECS_PER_BLOCK 8u
+#define X_VECS_PER_8 2u
 void load_x8(uint vec_index, out float x[8]) {
   uvec4 lo = input_x.values[vec_index];
   uvec4 hi = input_x.values[vec_index + 1u];
@@ -220,84 +235,81 @@ void main() {
   uint lane = slot * LANES + li;
   uint n = params.matrix_n;
   uint k = params.matrix_k;
-  uint row_vecs = k / 32u;
+  // Packed words per row, lane chunks per row, groups per row.
+  uint row_words = k / 8u;
+  uint row_chunks = k / LANE_ELEMS;
   uint groups_per_row = k / 64u;
-  uint rows = params.shape[3];
   uint batch = params.shape[0];
   uint w_batch_words = params.shape[1];
   uint param_batch = params.shape[2];
-  uint row0 = (gl_WorkGroupID.x * SLOTS + slot) * rows;
+  uint row0 = (gl_WorkGroupID.x * SLOTS + slot) * ROWS;
+  // Rows past n read the last row (a valid address) and are never
+  // written, so the K loop carries no row guard.
+  uint row_index[MAX_ROWS];
+  for (uint r = 0u; r < ROWS; ++r) {
+    row_index[r] = min(row0 + r, n - 1u);
+  }
 
   for (uint b = 0u; b < batch; ++b) {
     float acc[MAX_ROWS];
-    for (uint r = 0u; r < MAX_ROWS; ++r) {
-      acc[r] = 0.0;
-    }
-    uint x_base = (params.lhs_offset + b * k) * X_VECS_PER_BLOCK / 32u;
-    uint w_base = (params.rhs_offset + b * w_batch_words) / 4u;
+    // Row bases in lane chunks (weights) and groups (scale/bias),
+    // computed once: no multiply survives in the K loop.
+    uint w_row[MAX_ROWS];
+    uint p_row[MAX_ROWS];
+    uint w_base = (params.rhs_offset + b * w_batch_words) / LANE_WORDS;
     uint scale_base = params.aux_offset + b * param_batch;
     uint bias_base = params.aux_size + b * param_batch;
-    for (uint v = li; v < row_vecs; v += LANES) {
-      uint g = v >> 1u;
-      uvec4 w[MAX_ROWS];
+    for (uint r = 0u; r < ROWS; ++r) {
+      acc[r] = 0.0;
+      w_row[r] = w_base + row_index[r] * (row_words / LANE_WORDS);
+      p_row[r] = row_index[r] * groups_per_row;
+    }
+    uint x_base = (params.lhs_offset + b * k) * X_VECS_PER_8 / 8u;
+    for (uint v = li; v < row_chunks; v += LANES) {
+      // Group of this lane's chunk: LANE_ELEMS divides 64.
+      uint g = v / (64u / LANE_ELEMS);
+      uvec2 w[MAX_ROWS];
       float s[MAX_ROWS];
       float bias[MAX_ROWS];
-      for (uint r = 0u; r < MAX_ROWS; ++r) {
-        uint row = row0 + r;
-        if (r < rows && row < n) {
-          w[r] = input_w.values[w_base + row * row_vecs + v];
-          s[r] = LOAD_VALUE(scales.values[scale_base + row * groups_per_row + g]);
-          bias[r] = LOAD_VALUE(biases.values[bias_base + row * groups_per_row + g]);
-        } else {
-          w[r] = uvec4(0u);
-          s[r] = 0.0;
-          bias[r] = 0.0;
-        }
+      for (uint r = 0u; r < ROWS; ++r) {
+        w[r] = input_w.values[w_row[r] + v];
+        s[r] = LOAD_VALUE(scales.values[scale_base + p_row[r] + g]);
+        bias[r] = LOAD_VALUE(biases.values[bias_base + p_row[r] + g]);
       }
+      uint xv = x_base + v * (LANE_ELEMS / 8u) * X_VECS_PER_8;
       float x0[8];
       float x1[8];
-      float x2[8];
-      float x3[8];
-      uint xv = x_base + v * X_VECS_PER_BLOCK;
       load_x8(xv, x0);
-      load_x8(xv + X_VECS_PER_BLOCK / 4u, x1);
-      load_x8(xv + X_VECS_PER_BLOCK / 2u, x2);
-      load_x8(xv + 3u * X_VECS_PER_BLOCK / 4u, x3);
-      float xs = x8_sum(x0) + x8_sum(x1) + x8_sum(x2) + x8_sum(x3);
-      for (uint r = 0u; r < MAX_ROWS; ++r) {
-        if (r < rows) {
-          float d = word_dot(w[r].x, x0);
-          d += word_dot(w[r].y, x1);
-          d += word_dot(w[r].z, x2);
-          d += word_dot(w[r].w, x3);
-          acc[r] += s[r] * d + bias[r] * xs;
-        }
+      load_x8(xv + X_VECS_PER_8, x1);
+      float xs = x8_sum(x0) + x8_sum(x1);
+      for (uint r = 0u; r < ROWS; ++r) {
+        float d = word_dot(w[r].x, x0);
+        d += word_dot(w[r].y, x1);
+        acc[r] += s[r] * d + bias[r] * xs;
       }
     }
 
     uint out_base = params.output_offset + b * n;
 #ifdef USE_SUBGROUP
-    for (uint r = 0u; r < MAX_ROWS; ++r) {
-      if (r < rows) {
-        float total = subgroupAdd(acc[r]);
-        if (li == 0u && row0 + r < n) {
-          output_data.values[out_base + row0 + r] = STORE_VALUE(total);
-        }
+    for (uint r = 0u; r < ROWS; ++r) {
+      float total = subgroupAdd(acc[r]);
+      if (li == 0u && row0 + r < n) {
+        output_data.values[out_base + row0 + r] = STORE_VALUE(total);
       }
     }
 #else
     if (b > 0u) {
       barrier();
     }
-    for (uint r = 0u; r < MAX_ROWS; ++r) {
+    for (uint r = 0u; r < ROWS; ++r) {
       reduce_scratch[r * THREADS + lane] = acc[r];
     }
     barrier();
-    if (lane < SLOTS * MAX_ROWS) {
-      uint out_slot = lane / MAX_ROWS;
-      uint r = lane % MAX_ROWS;
-      uint row = (gl_WorkGroupID.x * SLOTS + out_slot) * rows + r;
-      if (r < rows && row < n) {
+    if (lane < SLOTS * ROWS) {
+      uint out_slot = lane / ROWS;
+      uint r = lane % ROWS;
+      uint row = (gl_WorkGroupID.x * SLOTS + out_slot) * ROWS + r;
+      if (row < n) {
         float total = 0.0;
         for (uint i = 0u; i < LANES; ++i) {
           total += reduce_scratch[r * THREADS + out_slot * LANES + i];

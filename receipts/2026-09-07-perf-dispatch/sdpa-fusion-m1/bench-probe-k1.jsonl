@@ -1,0 +1,12 @@
+{"k_len": 1, "q_len": 1, "path": "composed", "reps": 200, "us_per_call": 40.84, "max_abs_diff": 0, "ok": true}
+{"k_len": 1, "q_len": 1, "path": "fused", "reps": 200, "us_per_call": 20.29, "max_abs_diff": 0, "ok": true}
+{"k_len": 1, "q_len": 1, "path": "fused_tree", "reps": 200, "us_per_call": 24.04, "max_abs_diff": 0, "ok": true}
+{"k_len": 16, "q_len": 1, "path": "composed", "reps": 200, "us_per_call": 48.30, "max_abs_diff": 0.0009766, "ok": true}
+{"k_len": 16, "q_len": 1, "path": "fused", "reps": 200, "us_per_call": 24.61, "max_abs_diff": 0.0009766, "ok": true}
+{"k_len": 16, "q_len": 1, "path": "fused_tree", "reps": 200, "us_per_call": 26.93, "max_abs_diff": 0.0009766, "ok": true}
+{"k_len": 45, "q_len": 1, "path": "composed", "reps": 200, "us_per_call": 57.35, "max_abs_diff": 0.0004883, "ok": true}
+{"k_len": 45, "q_len": 1, "path": "fused", "reps": 200, "us_per_call": 29.04, "max_abs_diff": 0.0004883, "ok": true}
+{"k_len": 45, "q_len": 1, "path": "fused_tree", "reps": 200, "us_per_call": 30.30, "max_abs_diff": 0.0004883, "ok": true}
+{"k_len": 256, "q_len": 1, "path": "composed", "reps": 200, "us_per_call": 131.01, "max_abs_diff": 0.0003052, "ok": true}
+{"k_len": 256, "q_len": 1, "path": "fused", "reps": 200, "us_per_call": 59.91, "max_abs_diff": 0.0003052, "ok": true}
+{"k_len": 256, "q_len": 1, "path": "fused_tree", "reps": 200, "us_per_call": 60.34, "max_abs_diff": 0.0003052, "ok": true}

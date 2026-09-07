@@ -1,0 +1,9 @@
+{
+  "baseline": {
+    "MLX_OMARCHY_QMM_TILE_V2": "0",
+    "MLX_OMARCHY_MATMUL_GEMM": "0"
+  },
+  "candidate": {
+    "MLX_OMARCHY_QMM_TILE_V2": "1"
+  }
+}

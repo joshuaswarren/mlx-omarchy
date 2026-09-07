@@ -36,7 +36,6 @@
 #include "mlx/backend/omarchy/vulkan.h"
 #include "mlx/mlx.h"
 
-extern "C" void mlx_omarchy_df2_timing_dump();
 using namespace mlx::core;
 using Clock = std::chrono::steady_clock;
 
@@ -49,9 +48,86 @@ double seconds_since(Clock::time_point t0) {
   return std::chrono::duration<double>(Clock::now() - t0).count();
 }
 
+// Host-timed levels spin the CPU first: a ~5 ms recording burst after a
+// GPU wait otherwise runs at whatever frequency the governor left the
+// core at (measured 0.9-13 us/dispatch for the same code on the M1).
+void warm_cpu() {
+  // DISPATCH_FLOOR_NO_WARM=1 skips the spin (A/B of the spin itself).
+  static const bool skip = omarchy::env_flag("DISPATCH_FLOOR_NO_WARM");
+  if (skip) {
+    return;
+  }
+  volatile uint64_t sink = 0;
+  auto t0 = Clock::now();
+  while (seconds_since(t0) < 0.3) {
+    for (int i = 0; i < 100000; ++i) {
+      sink = sink * 6364136223846793005ull + 1442695040888963407ull;
+    }
+  }
+}
+
 omarchy::ComputeBinding binding(const array& value) {
   auto* buf = static_cast<const omarchy::VulkanBuffer*>(value.buffer().ptr());
   return {buf->buffer, 0, buf->size, buf};
+}
+
+omarchy::ComputeParams rope_params() {
+  omarchy::ComputeParams p;
+  p.count = 14 * 32; // heads x half_dims, one time step
+  p.flags = 1u; // forward, half-split, no transpose, no passthrough
+  p.alpha = 1.0f;
+  p.beta = 0.28782f; // log(10000)/32
+  p.dims = 32;
+  p.shape[0] = 14;
+  p.shape[1] = 1;
+  p.matrix_m = 0;
+  p.in_strides[0] = 64;
+  p.in_strides[1] = 896;
+  p.in_strides[2] = 1;
+  p.out_strides[0] = 64;
+  p.out_strides[1] = 896;
+  p.out_strides[2] = 1;
+  return p;
+}
+
+// The same query rope on the three-axis grid (x = pairs, y = head, z =
+// batch): RoPE::eval_gpu's default since the HALF_DIMS specialization.
+omarchy::ComputeParams rope_grid_params() {
+  omarchy::ComputeParams p = rope_params();
+  p.flags |= omarchy::kRopeGridFlag;
+  return p;
+}
+
+// The decode KV-cache row paste: SliceUpdate of a [2 heads, 64] f16 row
+// into the (2, 256, 64) cache, collapsed to rank 2 by copy_gpu_inplace.
+omarchy::ComputeParams copy_params() {
+  omarchy::ComputeParams p;
+  p.count = 128;
+  p.dims = 2;
+  p.shape[0] = 2;
+  p.shape[1] = 64;
+  p.in_strides[0] = 64;
+  p.in_strides[1] = 1;
+  p.out_strides[0] = 256 * 64;
+  p.out_strides[1] = 1;
+  return p;
+}
+
+omarchy::ComputeParams copy_grid_params() {
+  omarchy::ComputeParams p = copy_params();
+  p.flags |= omarchy::kCopyGridFlag;
+  return p;
+}
+
+// mx.fast.rms_norm of one 896-wide decode row (RMSNorm::eval_gpu shape).
+omarchy::ComputeParams rms_norm_params() {
+  omarchy::ComputeParams p;
+  p.count = kCount;
+  p.lhs_size = kCount;
+  p.reduce_size = kCount;
+  p.output_size = 1;
+  p.alpha = 1e-6f;
+  return p;
 }
 
 omarchy::ComputeParams add_params() {
@@ -69,12 +145,15 @@ struct Fixture {
   array a;
   array b;
   array out;
+  // A (2, 256, 64) f16 KV-cache buffer for the copy rows.
+  array cache;
   Fixture()
       : stream(new_stream(Device::gpu)),
         a(ones(Shape{kCount}, float16, stream)),
         b(ones(Shape{kCount}, float16, stream)),
-        out(zeros(Shape{kCount}, float16, stream)) {
-    eval(a, b, out);
+        out(zeros(Shape{kCount}, float16, stream)),
+        cache(zeros(Shape{2 * 256 * 64}, float16, stream)) {
+    eval(a, b, out, cache);
     omarchy::get_command_encoder(stream).synchronize();
   }
   std::array<omarchy::ComputeBinding, 4> bindings() const {
@@ -100,6 +179,14 @@ enum class Desc { Alloc, Bind, Reuse };
 
 enum class Node { Dispatch, Copy, Fill };
 
+// Which production kernel a dispatch row measures, each on its decode
+// shape: Add = ElementwiseF16 add (896), Fill = FillF16 (a 14-instruction
+// shader isolating the launch cost), Rope = FastRopeF16 query rope on the
+// 1-D unravel, RopeGrid = the same on the three-axis grid, CopyRows =
+// CopyGeneralF16 KV-cache row paste on the runtime unravel, CopyGrid =
+// the same on the two-axis grid, RmsNorm = FastRmsNormF16 on one row.
+enum class Kernel { Add, Fill, Rope, RopeGrid, CopyRows, CopyGrid, RmsNorm, RmsNormSg };
+
 struct RawConfig {
   Barrier barrier{Barrier::PrePost};
   Desc desc{Desc::Alloc};
@@ -112,14 +199,104 @@ struct RawConfig {
   // kind when the row measures a transfer command instead.
   uint32_t groups{0};
   Node node{Node::Dispatch};
-  // FillF16 (a 14-instruction shader) instead of ElementwiseF16 (1120
-  // instructions, 250 preamble instructions): isolates the shader's own
-  // launch cost from the dispatch mechanism.
-  bool fill_kernel{false};
-  // params.count = 0: every invocation exits at once, so the row measures
-  // launch plus preamble with no main-body work.
+  Kernel kernel{Kernel::Add};
+  // params.count = 0 (shape[1] = 0 for the grid rows): every invocation
+  // exits at once, so the row measures launch plus preamble with no
+  // main-body work.
   bool count0{false};
+  // Cycle through kAlternate (a decode-like mix of pipelines, bindings
+  // and grids) instead of repeating one kernel: production decode never
+  // dispatches the same pipeline twice in a row.
+  bool alternate{false};
 };
+
+constexpr Kernel kAlternate[] = {
+    Kernel::Add, Kernel::RmsNorm, Kernel::RopeGrid, Kernel::CopyGrid,
+    Kernel::Fill};
+constexpr int kAlternateCount = sizeof(kAlternate) / sizeof(*kAlternate);
+
+const char* kernel_name(Kernel k) {
+  switch (k) {
+    case Kernel::Add:
+      return "ElementwiseF16";
+    case Kernel::Fill:
+      return "FillF16";
+    case Kernel::Rope:
+      return "FastRopeF16";
+    case Kernel::RopeGrid:
+      return "FastRopeF16/grid";
+    case Kernel::CopyRows:
+      return "CopyGeneralF16";
+    case Kernel::CopyGrid:
+      return "CopyGeneralF16/grid";
+    case Kernel::RmsNorm:
+      return "FastRmsNormF16";
+    case Kernel::RmsNormSg:
+      return "FastRmsNormSubgroupF16";
+  }
+  return "?";
+}
+
+omarchy::ComputeParams kernel_params(Kernel k) {
+  switch (k) {
+    case Kernel::Add:
+      return add_params();
+    case Kernel::Fill: {
+      auto p = add_params();
+      p.alpha = 0.0f; // halfword 0x0000 in the low 16 bits
+      return p;
+    }
+    case Kernel::Rope:
+      return rope_params();
+    case Kernel::RopeGrid:
+      return rope_grid_params();
+    case Kernel::CopyRows:
+      return copy_params();
+    case Kernel::CopyGrid:
+      return copy_grid_params();
+    case Kernel::RmsNorm:
+    case Kernel::RmsNormSg:
+      return rms_norm_params();
+  }
+  return add_params();
+}
+
+omarchy::ComputeKernel kernel_enum(Kernel k) {
+  switch (k) {
+    case Kernel::Add:
+      return omarchy::ComputeKernel::ElementwiseF16;
+    case Kernel::Fill:
+      return omarchy::ComputeKernel::FillF16;
+    case Kernel::Rope:
+    case Kernel::RopeGrid:
+      return omarchy::ComputeKernel::FastRopeF16;
+    case Kernel::CopyRows:
+    case Kernel::CopyGrid:
+      return omarchy::ComputeKernel::CopyGeneralF16;
+    case Kernel::RmsNorm:
+      return omarchy::ComputeKernel::FastRmsNormF16;
+    case Kernel::RmsNormSg:
+      return omarchy::ComputeKernel::FastRmsNormSubgroupF16;
+  }
+  return omarchy::ComputeKernel::ElementwiseF16;
+}
+
+// Workgroup grid of one dispatch row.
+std::array<uint32_t, 3> kernel_groups(Kernel k, const omarchy::ComputeParams& p) {
+  switch (k) {
+    case Kernel::RopeGrid:
+      return {omarchy::compute_dispatch_group_count(p.dims * p.shape[1]),
+              p.shape[0], 1u};
+    case Kernel::CopyGrid:
+      return {omarchy::compute_dispatch_group_count(p.shape[1]), p.shape[0],
+              1u};
+    case Kernel::RmsNorm:
+    case Kernel::RmsNormSg:
+      return {1u, 1u, 1u};
+    default:
+      return {omarchy::compute_dispatch_group_count(p.count), 1u, 1u};
+  }
+}
 
 const char* barrier_name(Barrier b) {
   switch (b) {
@@ -151,7 +328,8 @@ const char* desc_name(Desc d) {
 
 class RawBench {
  public:
-  RawBench(Fixture& fx, int n) : fx_(fx), n_(n), dev_(omarchy::device()) {
+  RawBench(Fixture& fx, int n)
+      : fx_(fx), n_(n), dev_(omarchy::device()), cache_(binding(fx.cache)) {
     auto& dt = omarchy::vk::device_table();
     VkCommandPoolCreateInfo pci{VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO};
     pci.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
@@ -178,8 +356,6 @@ class RawBench {
       dpi.pPoolSizes = &ps;
       VKX_CHECK(dt.CreateDescriptorPool(dev_.handle(), &dpi, nullptr, &dpool_));
     }
-    pipeline_ = dev_.compute().pipeline(omarchy::ComputeKernel::ElementwiseF16);
-    fill_pipeline_ = dev_.compute().pipeline(omarchy::ComputeKernel::FillF16);
     layout_ = dev_.compute().pipeline_layout();
     set_layout_ = dev_.compute().descriptor_layout();
     bindings_ = fx.bindings();
@@ -208,22 +384,19 @@ class RawBench {
       shared_set_ = alloc_set();
     }
     const std::array<omarchy::ComputeBinding, 4> saved = bindings_;
-    if (cfg.fill_kernel) {
-      // FillF16 writes binding 0: bind `out` in every slot.
-      bindings_ = {saved[2], saved[2], saved[2], saved[2]};
+    std::vector<Slot> slots;
+    if (cfg.alternate) {
+      for (Kernel k : kAlternate) {
+        slots.push_back(prepare(k, cfg.count0, saved));
+      }
+    } else {
+      slots.push_back(prepare(cfg.kernel, cfg.count0, saved));
     }
+    bindings_ = slots[0].bindings;
     if (!push_) {
       write_set(shared_set_);
     }
-    const VkPipeline pipeline = cfg.fill_kernel ? fill_pipeline_ : pipeline_;
     const int per_submit = n_ / cfg.submits;
-    omarchy::ComputeParams params = add_params();
-    if (cfg.fill_kernel) {
-      params.alpha = 0.0f; // halfword 0x0000 in the low 16 bits
-    }
-    if (cfg.count0) {
-      params.count = 0;
-    }
 
     auto t0 = Clock::now();
     for (int s = 0; s < cfg.submits; ++s) {
@@ -231,12 +404,17 @@ class RawBench {
       VkCommandBufferBeginInfo bi{VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
       bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
       VKX_CHECK(dt.BeginCommandBuffer(cmd, &bi));
-      dt.CmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline);
+      dt.CmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, slots[0].pipeline);
       bind_shared(cmd);
       dt.CmdPushConstants(
-          cmd, layout_, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(params),
-          &params);
+          cmd, layout_, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(slots[0].params),
+          &slots[0].params);
       for (int i = 0; i < per_submit; ++i) {
+        const Slot& slot = slots[cfg.alternate ? i % kAlternateCount : 0];
+        const VkPipeline pipeline = slot.pipeline;
+        const omarchy::ComputeParams& params = slot.params;
+        const std::array<uint32_t, 3>& grid = slot.grid;
+        bindings_ = slot.bindings;
         if (cfg.barrier == Barrier::PrePost || cfg.barrier == Barrier::Pre) {
           pre_barrier(cmd);
         } else if (cfg.barrier == Barrier::Full) {
@@ -270,10 +448,7 @@ class RawBench {
           dt.CmdFillBuffer(cmd, bindings_[2].buffer, 0, kCount * sizeof(uint16_t), 0x3c003c00u);
         } else {
           dt.CmdDispatch(
-              cmd,
-              cfg.groups ? cfg.groups
-                         : omarchy::compute_dispatch_group_count(kCount),
-              1, 1);
+              cmd, cfg.groups ? cfg.groups : grid[0], grid[1], grid[2]);
         }
         if (cfg.barrier == Barrier::PrePost) {
           post_barrier(cmd);
@@ -297,6 +472,60 @@ class RawBench {
   }
 
  private:
+  // One kernel's dispatch recipe on its decode shape.
+  struct Slot {
+    std::array<omarchy::ComputeBinding, 4> bindings;
+    omarchy::ComputeParams params;
+    VkPipeline pipeline;
+    std::array<uint32_t, 3> grid;
+  };
+
+  Slot prepare(
+      Kernel kernel,
+      bool count0,
+      const std::array<omarchy::ComputeBinding, 4>& saved) {
+    Slot slot;
+    switch (kernel) {
+      case Kernel::Fill:
+        // FillF16 writes binding 0: bind `out` in every slot.
+        slot.bindings = {saved[2], saved[2], saved[2], saved[2]};
+        break;
+      case Kernel::Rope:
+      case Kernel::RopeGrid:
+        // FastRopeF16: input, output, int32 offsets (b's bytes), freqs unused.
+        slot.bindings = {saved[0], saved[2], saved[1], saved[1]};
+        break;
+      case Kernel::CopyRows:
+      case Kernel::CopyGrid:
+        // CopyGeneralF16: input, input, cache output, axis metadata unused.
+        slot.bindings = {saved[0], saved[0], cache_, cache_};
+        break;
+      case Kernel::RmsNorm:
+      case Kernel::RmsNormSg:
+        // FastRmsNormF16: input, weight, (bias unused), output.
+        slot.bindings = {saved[0], saved[1], saved[1], saved[2]};
+        break;
+      default:
+        slot.bindings = saved;
+        break;
+    }
+    slot.params = kernel_params(kernel);
+    // Pairs the driver's shaderdb line (AGX_MESA_DEBUG=shaderdb) with the
+    // pipeline it describes; a cached pipeline prints no shaderdb line.
+    std::fprintf(stderr, "PIPELINE %s\n", kernel_name(kernel));
+    std::fflush(stderr);
+    slot.pipeline = dev_.compute().pipeline(kernel_enum(kernel), slot.params);
+    // The grid keeps its full size: count0 measures launch plus preamble
+    // with every invocation exiting at once, not an empty dispatch.
+    slot.grid = kernel_groups(kernel, slot.params);
+    if (count0) {
+      slot.params.count = 0;
+      slot.params.shape[1] = 0;
+      slot.params.output_size = 0;
+    }
+    return slot;
+  }
+
   VkDescriptorSet alloc_set() {
     VkDescriptorSetAllocateInfo ai{
         VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO};
@@ -418,9 +647,8 @@ class RawBench {
   std::vector<VkCommandBuffer> cmds_;
   VkFence fence_{VK_NULL_HANDLE};
   VkDescriptorPool dpool_{VK_NULL_HANDLE};
-  VkPipeline pipeline_{VK_NULL_HANDLE};
-  VkPipeline fill_pipeline_{VK_NULL_HANDLE};
   VkPipelineLayout layout_{VK_NULL_HANDLE};
+  omarchy::ComputeBinding cache_{};
   VkDescriptorSetLayout set_layout_{VK_NULL_HANDLE};
   VkDescriptorSet shared_set_{VK_NULL_HANDLE};
   std::array<omarchy::ComputeBinding, 4> bindings_{};
@@ -439,8 +667,9 @@ void print_raw(const RawConfig& cfg, int n, double record, double gpu) {
       cfg.serial ? "true" : "false",
       cfg.groups ? cfg.groups : omarchy::compute_dispatch_group_count(kCount),
       cfg.node == Node::Copy ? "copy" : cfg.node == Node::Fill ? "fill" : "dispatch",
-      cfg.fill_kernel ? (cfg.count0 ? "FillF16/count0" : "FillF16")
-                      : (cfg.count0 ? "ElementwiseF16/count0" : "ElementwiseF16"),
+      (std::string(cfg.alternate ? "alternate" : kernel_name(cfg.kernel)) +
+       (cfg.count0 ? "/count0" : ""))
+          .c_str(),
       omarchy::device().push_descriptors() ? "true" : "false", record, gpu);
   std::fflush(stdout);
 }
@@ -476,15 +705,36 @@ int run_raw(Fixture& fx, int n) {
       {Barrier::PrePost, Desc::Reuse, 0, false, 1, false, "copy-prepost", 0, Node::Copy},
       {Barrier::None, Desc::Reuse, 0, false, 1, false, "fill-no-barrier", 0, Node::Fill},
       {Barrier::PrePost, Desc::Reuse, 0, false, 1, false, "fill-prepost", 0, Node::Fill},
-      {Barrier::None, Desc::Reuse, full, false, 1, false, "fillkernel-floor", 0, Node::Dispatch, true},
-      {Barrier::PrePost, Desc::Alloc, full, true, 1, false, "fillkernel-production", 0, Node::Dispatch, true},
-      {Barrier::PrePost, Desc::Alloc, full, true, 1, false, "fillkernel-production-64-groups", 64, Node::Dispatch, true},
-      {Barrier::PrePost, Desc::Alloc, full, true, 1, false, "production-count0", 0, Node::Dispatch, false, true},
-      {Barrier::PrePost, Desc::Alloc, full, true, 1, false, "fillkernel-production-count0", 0, Node::Dispatch, true, true},
+      {Barrier::None, Desc::Reuse, full, false, 1, false, "fillkernel-floor", 0, Node::Dispatch, Kernel::Fill},
+      {Barrier::PrePost, Desc::Alloc, full, true, 1, false, "fillkernel-production", 0, Node::Dispatch, Kernel::Fill},
+      {Barrier::PrePost, Desc::Alloc, full, true, 1, false, "fillkernel-production-64-groups", 64, Node::Dispatch, Kernel::Fill},
+      {Barrier::PrePost, Desc::Alloc, full, true, 1, false, "production-count0", 0, Node::Dispatch, Kernel::Add, true},
+      {Barrier::PrePost, Desc::Alloc, full, true, 1, false, "fillkernel-production-count0", 0, Node::Dispatch, Kernel::Fill, true},
+      {Barrier::PrePost, Desc::Alloc, full, true, 1, false, "rope-production", 0, Node::Dispatch, Kernel::Rope},
+      {Barrier::PrePost, Desc::Alloc, full, true, 1, false, "rope-production-count0", 0, Node::Dispatch, Kernel::Rope, true},
+      {Barrier::PrePost, Desc::Alloc, full, true, 1, false, "rope-grid-production", 0, Node::Dispatch, Kernel::RopeGrid},
+      {Barrier::PrePost, Desc::Alloc, full, true, 1, false, "rope-grid-production-count0", 0, Node::Dispatch, Kernel::RopeGrid, true},
+      {Barrier::PrePost, Desc::Alloc, full, true, 1, false, "copy-rows-production", 0, Node::Dispatch, Kernel::CopyRows},
+      {Barrier::PrePost, Desc::Alloc, full, true, 1, false, "copy-rows-production-count0", 0, Node::Dispatch, Kernel::CopyRows, true},
+      {Barrier::PrePost, Desc::Alloc, full, true, 1, false, "copy-grid-production", 0, Node::Dispatch, Kernel::CopyGrid},
+      {Barrier::PrePost, Desc::Alloc, full, true, 1, false, "copy-grid-production-count0", 0, Node::Dispatch, Kernel::CopyGrid, true},
+      {Barrier::PrePost, Desc::Alloc, full, true, 1, false, "rmsnorm-production", 0, Node::Dispatch, Kernel::RmsNorm},
+      {Barrier::PrePost, Desc::Alloc, full, true, 1, false, "rmsnorm-production-count0", 0, Node::Dispatch, Kernel::RmsNorm, true},
+      {Barrier::PrePost, Desc::Alloc, full, true, 1, false, "rmsnorm-sg-production", 0, Node::Dispatch, Kernel::RmsNormSg},
+      {Barrier::PrePost, Desc::Alloc, full, true, 1, false, "rmsnorm-sg-production-count0", 0, Node::Dispatch, Kernel::RmsNormSg, true},
+      {Barrier::PrePost, Desc::Alloc, full, true, 1, false, "alternate-production", 0, Node::Dispatch, Kernel::Add, false, true},
+      {Barrier::PrePost, Desc::Alloc, full, true, 1, false, "alternate-production-count0", 0, Node::Dispatch, Kernel::Add, true, true},
+      {Barrier::None, Desc::Alloc, full, true, 1, false, "alternate-no-barrier", 0, Node::Dispatch, Kernel::Add, false, true},
   };
   bench.run(configs[0]);
+  const auto& caps = omarchy::device().capabilities();
+  const bool subgroup32 = caps.subgroup_size == 32u &&
+      (caps.subgroup_operations & VK_SUBGROUP_FEATURE_SHUFFLE_RELATIVE_BIT) != 0;
   for (const auto& cfg : configs) {
     if (n % cfg.submits != 0) {
+      continue;
+    }
+    if (cfg.kernel == Kernel::RmsNormSg && !subgroup32) {
       continue;
     }
     double best_record = 1e30;
@@ -509,6 +759,7 @@ int run_encoder(Fixture& fx, int n) {
   const auto params = add_params();
   auto bindings = fx.bindings();
   auto run = [&]() {
+    warm_cpu();
     auto t0 = Clock::now();
     for (int i = 0; i < n; ++i) {
       encoder.dispatch_compute(
@@ -535,7 +786,6 @@ int run_encoder(Fixture& fx, int n) {
       omarchy::device().push_descriptors() ? "true" : "false",
       best_record / n * 1e6, best_total / n * 1e6);
   std::fflush(stdout);
-  mlx_omarchy_df2_timing_dump();
   return fx.check() ? 0 : 2;
 }
 
@@ -951,6 +1201,29 @@ static const char* const kKernelNames[] = {
     "ArgSortMergeI64",
     "ArgSortMergeU64",
     "SdpaDecodeF16",
+    "SdpaDecodePartialF16",
+    "SdpaDecodeCombineF16",
+    "SdpaDecodeSubgroupF16",
+    "SdpaDecodePartialSubgroupF16",
+    "QmmVecQ4V2F32",
+    "QmmVecQ4V2F16",
+    "QmmVecQ4V2BF16",
+    "QmmVecQ4V2SubgroupF32",
+    "QmmVecQ4V2SubgroupF16",
+    "QmmVecQ4V2SubgroupBF16",
+    "QmmGemm64F16",
+    "QmmGemm32K4F16",
+    "MatmulGemmF32",
+    "MatmulGemmF16",
+    "MatmulGemmBF16",
+    "QmmGemm64T84F16",
+    "QmmGemm128x64T84F16",
+    "QmmGemm64T88F16",
+    "QmmGemm128T88F16",
+    "QmmGemm64Bk16F16",
+    "FastRmsNormSubgroupF32",
+    "FastRmsNormSubgroupF16",
+    "FastRmsNormSubgroupBF16",
 };
 
 int run_shaderdb(int first) {
@@ -981,6 +1254,7 @@ int run_ops(Fixture& fx, int n) {
     uint64_t submits = 0;
     for (int t = 0; t < kTrials; ++t) {
       uint64_t s0 = counters.vk_submissions.load();
+      warm_cpu();
       auto t0 = Clock::now();
       build();
       double total = seconds_since(t0);

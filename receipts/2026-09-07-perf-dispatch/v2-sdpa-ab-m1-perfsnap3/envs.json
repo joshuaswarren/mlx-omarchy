@@ -1,0 +1,9 @@
+{
+  "baseline": {
+    "MLX_OMARCHY_QMM_VEC_Q4_V2": "1"
+  },
+  "candidate": {
+    "MLX_OMARCHY_QMM_VEC_Q4_V2": "1",
+    "MLX_OMARCHY_SDPA_FUSED": "1"
+  }
+}

@@ -59,19 +59,19 @@ python -m mlx_lm generate \
 
 ## Performance
 
-The default kernels at `f5ba1c82` improve Linux decode by 3.5% to 6.5% and prefill by 12.9% to 21.1% over v0.3.7 (`417c06e6`). Five alternating baseline/candidate pairs ran on the same Apple M1 with Honeykrisp, AC power, the pinned Qwen2.5-0.5B-Instruct-4bit snapshot, greedy decoding, and fixed output lengths. Every generated token ID matched in every pair. These measurements use eager execution, `MLX_DISABLE_COMPILE=1`.
+The development branch raises Linux decode by 75% to 156% and prefill by 60% to 165% over `f5ba1c82` on the same Apple M1 with Honeykrisp (Mesa 26.1.7), AC power, the pinned Qwen2.5-0.5B-Instruct-4bit snapshot, greedy decoding, fixed output lengths, and eager execution (`MLX_DISABLE_COMPILE=1`). Each step was measured as alternating same-wheel or cross-wheel pairs on an otherwise idle machine; values are medians of the latest pairs.
 
-| Prompt / generated tokens | v0.3.7 decode tok/s | Current decode tok/s | v0.3.7 prefill tok/s | Current prefill tok/s |
-|---|---:|---:|---:|---:|
-| 30 / 32 | 66.02 | 70.28 | 87.464 | 99.010 |
-| 262 / 128 | 56.25 | 59.12 | 210.104 | 254.122 |
-| 1053 / 32 | 40.77 | 42.27 | 227.725 | 273.294 |
+| Prompt / generated tokens | f5ba1c82 decode tok/s | Current decode tok/s | f5ba1c82 prefill tok/s | Current prefill tok/s | macOS MLX 0.32.2 decode / prefill |
+|---|---:|---:|---:|---:|---:|
+| 30 / 32 | 68.2 | 119.6 | 85.2 | 135.8 | 150.8 / 294 |
+| 262 / 128 | 55.8 | 111.8 | 207.0 | 462.9 | 146.6 / 1213 |
+| 1053 / 32 | 41.3 | 105.8 | 225.8 | 598.6 | 140.3 / 1838 |
 
-Values are medians of five runs; percentage gains are medians of the paired ratios. Prefill now unpacks each Q4 word once for eight weights. Increasing the bounded graph batch from 100 to 256 nodes reduces submission overhead without changing synchronization or buffer ownership. The temporary comparison kernel and its switch were removed.
+What changed, in order of effect. The 4-bit decode matrix-vector kernel now streams 8 bytes per lane with two rows per subgroup in 128-thread workgroups; the 68 MB output projection moved from 34 to 64 GB/s. Elementwise, RoPE, copy, and RMSNorm kernels compile one pipeline per operation and layout through specialization constants, which cuts a small dispatch from 8.7 to about 3.4 microseconds of GPU time; Honeykrisp flushes after every dispatch, so this floor is the driver's, not the barrier's. Decode attention runs as one flash-decoding dispatch per layer (two above 256 keys) with float32 scores. The prefill matmuls use 64x64 and 64x128 register-blocked tiles (0.28 to 0.60 TFLOP/s at 1,053 tokens; the Honeykrisp compiler serializes shared-memory loads, which caps exact fp32 GEMM near 0.6 TFLOP/s). KV-cache growth no longer joins the GPU queue for each of the 48 zero-filled buffers per prefill, and cache updates donate their buffer instead of copying it. Kill switches: `MLX_OMARCHY_QMM_VEC_Q4_V2=0`, `MLX_OMARCHY_SDPA_FUSED=0`, `MLX_OMARCHY_QMM_TILE_V2=0`, `MLX_OMARCHY_MATMUL_GEMM=0`, `MLX_OMARCHY_ROPE_GRID=0`, `MLX_OMARCHY_COPY_GRID=0`, `MLX_OMARCHY_RMS_NORM_SUBGROUP=0`, `MLX_OMARCHY_COPY_DONATE=0`, `MLX_OMARCHY_NO_PUSH_DESCRIPTORS=1`.
 
-[Raw comparisons, token arrays, numerical checks, and runtime receipts](receipts/2026-09-07-q4-second-wave) cover the new changes. [Earlier Q4 results](receipts/2026-09-07-q4-kernel-gains) retain the v0.3.7 measurements. The existing `MLX_OMARCHY_QMM_VEC_Q4_WORD=0` and `MLX_OMARCHY_QMM_TILE_RB=0` switches disable the decode and prefill optimizations for comparison.
+Short and 1,024-context token IDs are byte-identical to `f5ba1c82`; the 262-token workload diverges at generated token 48, where the float32 attention scores flip a near tie (the fused path has lower error than the old path against a double-precision reference on every tested shape; [evidence](receipts/2026-09-07-perf-dispatch/sdpa-fusion-report.md)). Neither the old nor the new long-prompt output matches the macOS hash `254d73fd93164b98`. Native C++ suites: 863 of 869 pass; the six failures (float32 `log(3)` one ULP off, three complex-number edge cases, and their two aggregates) fail identically on `f5ba1c82` on this GPU. [Step-by-step paired runs](receipts/2026-09-07-perf-dispatch), [prior-art survey](receipts/2026-09-07-perf-dispatch/prior-art-survey.md), [native suite log](receipts/2026-09-07-perf-dispatch/perfsnap8-native-ctest.log).
 
-Performance parity is still open. Historical macOS MLX 0.32.2 medians on this M1 were 150.8 / 146.6 / 140.3 decode tok/s and 294 / 1213 / 1838 prefill tok/s for the same three workloads. The historical short and 1024-context token-ID hashes match Linux, but the long-prompt hashes differ: native `254d73fd93164b98`, Linux `4cc08910089477fd`. These cross-OS timings do not establish numerical parity. [macOS receipts](receipts/native-baseline-2026-09-06).
+Performance parity is still open: decode is at 75% to 79% of macOS and prefill at 33% to 46%. Every remaining dispatch pays Honeykrisp's per-dispatch cache flush (Mesa `hk_cmd_dispatch.c`), so the next steps are fewer dispatches per token and a higher-throughput GEMM, both documented in the survey. [macOS receipts](receipts/native-baseline-2026-09-06). Earlier Q4 results: [second wave](receipts/2026-09-07-q4-second-wave), [first wave](receipts/2026-09-07-q4-kernel-gains).
 
 To reproduce a leg, use the fixed-length runner, which suppresses EOS:
 

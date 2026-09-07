@@ -1,0 +1,15 @@
+{"k_len": 45, "q_len": 1, "path": "composed", "reps": 48, "us_per_call": 131.77, "max_abs_diff": 0.0004883, "ok": true}
+{"k_len": 45, "q_len": 1, "path": "fused", "reps": 48, "us_per_call": 39.80, "max_abs_diff": 0.0004883, "ok": true}
+{"k_len": 45, "q_len": 1, "path": "fused_tree", "reps": 48, "us_per_call": 46.10, "max_abs_diff": 0.0004883, "ok": true}
+{"k_len": 280, "q_len": 1, "path": "composed", "reps": 48, "us_per_call": 158.86, "max_abs_diff": 0.0002441, "ok": true}
+{"k_len": 280, "q_len": 1, "path": "fused", "reps": 48, "us_per_call": 101.01, "max_abs_diff": 0.0002441, "ok": true}
+{"k_len": 280, "q_len": 1, "path": "fused_tree", "reps": 48, "us_per_call": 101.47, "max_abs_diff": 0.0002441, "ok": true}
+{"k_len": 390, "q_len": 1, "path": "composed", "reps": 48, "us_per_call": 238.01, "max_abs_diff": 0.0002441, "ok": true}
+{"k_len": 390, "q_len": 1, "path": "fused", "reps": 48, "us_per_call": 117.23, "max_abs_diff": 0.0002441, "ok": true}
+{"k_len": 390, "q_len": 1, "path": "fused_tree", "reps": 48, "us_per_call": 119.96, "max_abs_diff": 0.0002441, "ok": true}
+{"k_len": 1024, "q_len": 1, "path": "composed", "reps": 48, "us_per_call": 435.06, "max_abs_diff": 0.0001526, "ok": true}
+{"k_len": 1024, "q_len": 1, "path": "fused", "reps": 48, "us_per_call": 156.36, "max_abs_diff": 0.0001526, "ok": true}
+{"k_len": 1024, "q_len": 1, "path": "fused_tree", "reps": 48, "us_per_call": 155.22, "max_abs_diff": 0.0001526, "ok": true}
+{"k_len": 4096, "q_len": 1, "path": "composed", "reps": 48, "us_per_call": 1535.77, "max_abs_diff": 6.104e-05, "ok": true}
+{"k_len": 4096, "q_len": 1, "path": "fused", "reps": 48, "us_per_call": 585.65, "max_abs_diff": 6.104e-05, "ok": true}
+{"k_len": 4096, "q_len": 1, "path": "fused_tree", "reps": 48, "us_per_call": 580.16, "max_abs_diff": 6.104e-05, "ok": true}

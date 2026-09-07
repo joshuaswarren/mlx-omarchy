@@ -1,0 +1,18 @@
+[doctest] doctest version is "2.4.12"
+[doctest] run with "--help" for options
+qwen decode: max|err| fused 7.32656e-05 composed 8.4772e-05; mean|err| fused 1.235e-05 composed 1.99634e-05
+qwen decode causal: max|err| fused 7.32656e-05 composed 8.4772e-05; mean|err| fused 1.235e-05 composed 1.99634e-05
+q8 causal d128: max|err| fused 3.0495e-05 composed 5.21508e-05; mean|err| fused 4.78762e-06 composed 8.33398e-06
+d96 causal k257: max|err| fused 3.04591e-05 composed 4.59724e-05; mean|err| fused 5.58822e-06 composed 9.20689e-06
+mha d32 k1: max|err| fused 0 composed 0; mean|err| fused 0 composed 0
+additive mask d80: max|err| fused 0.000104178 composed 0.000108876; mean|err| fused 1.17108e-05 composed 2.32304e-05
+bool mask: max|err| fused 0.000121216 composed 0.000166843; mean|err| fused 1.72202e-05 composed 2.8492e-05
+d16 k520: max|err| fused 1.50527e-05 composed 2.34426e-05; mean|err| fused 4.01763e-06 composed 7.70909e-06
+qwen k1000: max|err| fused 1.50745e-05 composed 2.15882e-05; mean|err| fused 2.95159e-06 composed 4.88276e-06
+qwen q8 k1100 causal: max|err| fused 1.50782e-05 composed 2.22389e-05; mean|err| fused 2.4207e-06 composed 4.25016e-06
+additive mask k700: max|err| fused 2.96271e-05 composed 4.14638e-05; mean|err| fused 4.03364e-06 composed 7.94783e-06
+batch3: max|err| fused 0.000121108 composed 0.000171157; mean|err| fused 2.23137e-05 composed 3.59633e-05
+===============================================================================
+[doctest] test cases:   2 |   2 passed | 0 failed | 0 skipped
+[doctest] assertions: 189 | 189 passed | 0 failed |
+[doctest] Status: SUCCESS!

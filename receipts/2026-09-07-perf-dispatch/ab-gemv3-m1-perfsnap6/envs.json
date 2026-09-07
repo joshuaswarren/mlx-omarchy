@@ -1,0 +1,8 @@
+{
+  "baseline": {
+    "MLX_OMARCHY_QMM_VEC_Q4_V2": "0"
+  },
+  "candidate": {
+    "MLX_OMARCHY_QMM_VEC_Q4_V2": "1"
+  }
+}

@@ -554,15 +554,46 @@ enum class ComputeKernel : uint16_t {
   ArgSortMergeU64,
   // Fused float16 decode attention (shaders/sdpa_decode.comp).
   SdpaDecodeF16,
-  // DecodeQ4Vec: uvec4-per-lane, rows-per-slot variant of the transposed
-  // affine 4-bit/group-64 decode GEMV (shaders/qmm_vec_q4.comp), opt-in
-  // via MLX_OMARCHY_QMM_VEC_Q4_V2=1.
+  // Split-K legs: per-block float partials, then the row combine
+  // (shaders/sdpa_decode.comp -DPARTIAL=1, sdpa_decode_combine.comp).
+  SdpaDecodePartialF16,
+  SdpaDecodeCombineF16,
+  // Subgroup-reduction variants of the two block kernels (-DUSE_SUBGROUP=1).
+  SdpaDecodeSubgroupF16,
+  SdpaDecodePartialSubgroupF16,
+  // DecodeQ4Vec: qmv_fast-shaped transposed affine 4-bit/group-64 decode
+  // GEMV (shaders/qmm_vec_q4.comp; rows per slot and workgroup threads
+  // are specialization constants), the default for that contract;
+  // MLX_OMARCHY_QMM_VEC_Q4_V2=0 falls back to QmmVecQ4Word.
   QmmVecQ4V2F32,
   QmmVecQ4V2F16,
   QmmVecQ4V2BF16,
   QmmVecQ4V2SubgroupF32,
   QmmVecQ4V2SubgroupF16,
   QmmVecQ4V2SubgroupBF16,
+  // PrefillGemm: blocked register-micro-tile GEMMs (shaders/qmm_gemm.comp
+  // for the transposed word-packed affine QuantizedMatmul: the 64x64 and
+  // 64x128 tiles keep the ascending-k order of QmmTile, the 32x32 tile
+  // splits k four ways inside the workgroup; shaders/matmul_gemm.comp is
+  // the dense 64x64 tile with the matmul.comp contract). Appended for
+  // GPU-profile kernel-id stability.
+  QmmGemm64F16,
+  QmmGemm32K4F16,
+  MatmulGemmF32,
+  MatmulGemmF16,
+  MatmulGemmBF16,
+  QmmGemm64x128F16,
+  // DecodeKernels: fast_norm.comp -DUSE_SUBGROUP=1, the RMSNorm default
+  // on subgroupSize-32 devices with SHUFFLE_RELATIVE
+  // (MLX_OMARCHY_RMS_NORM_SUBGROUP=0 falls back to FastRmsNorm*).
+  FastRmsNormSubgroupF32,
+  FastRmsNormSubgroupF16,
+  FastRmsNormSubgroupBF16,
+  // PrefillCols: column-batched q4/group-64 GEMV for 2 <= m <= 64
+  // (shaders/qmm_vec_cols.comp), the decode GEMV arithmetic applied to
+  // eight activation rows per weight pass.
+  QmmVecColsF16,
+  QmmVecColsSubgroupF16,
   Count,
 };
 
@@ -577,6 +608,15 @@ struct ComputeBinding {
   // commands still reference it.
   const void* owner{nullptr};
 };
+
+// ComputeParams::flags bits that select a specialized grid pipeline
+// (ComputeRuntime::pipeline(kernel, params)); the shader ignores them.
+// fast_rope.comp: three-axis grid, x = (time, frequency) pairs of one
+// head matrix, y = head, z = batch (RoPE::eval_gpu).
+inline constexpr uint32_t kRopeGridFlag = 16u;
+// copy_general.comp: two-axis grid, x = inner element, y = outer row
+// (copy_gpu_inplace).
+inline constexpr uint32_t kCopyGridFlag = 4u;
 
 struct ComputeParams {
   uint32_t count{0};
@@ -631,11 +671,13 @@ class ComputeRuntime {
   ComputeRuntime(const ComputeRuntime&) = delete;
   ComputeRuntime& operator=(const ComputeRuntime&) = delete;
 
-  // Pipeline for a kernel. `operation` is the dispatch's
-  // ComputeParams::operation; kernels that declare specialization
-  // constant 0 (elementwise.comp) get one pipeline per operation, with
-  // only that operation's code and preamble. Other kernels ignore it.
-  VkPipeline pipeline(ComputeKernel kernel, uint32_t operation = 0);
+  // Pipeline for a dispatch. Kernels with specialization constants
+  // (elementwise.comp: operation and index layout) get one pipeline per
+  // distinct key derived from params, carrying only that variant's code
+  // and per-dispatch preamble; other kernels share one pipeline and
+  // ignore params. The params-less form is the unspecialized pipeline.
+  VkPipeline pipeline(ComputeKernel kernel, const ComputeParams& params);
+  VkPipeline pipeline(ComputeKernel kernel);
   VkPipelineLayout pipeline_layout() const {
     return pipeline_layout_;
   }
@@ -654,7 +696,8 @@ class ComputeRuntime {
   }
 
  private:
-  VkPipeline create_pipeline(ComputeKernel kernel, const uint32_t* operation);
+  // key: nullptr for the unspecialized pipeline, else {operation, layout}.
+  VkPipeline create_pipeline(ComputeKernel kernel, const uint32_t* key);
 
   uint32_t binding_limit_{0};
   bool push_descriptors_{false};
@@ -663,7 +706,7 @@ class ComputeRuntime {
   VkDescriptorSetLayout descriptor_layout_{VK_NULL_HANDLE};
   VkPipelineLayout pipeline_layout_{VK_NULL_HANDLE};
   std::array<VkPipeline, static_cast<size_t>(ComputeKernel::Count)> pipelines_{};
-  // Operation-specialized pipelines keyed by (kernel << 32 | operation).
+  // Specialized pipelines keyed by (kernel << 32 | layout << 16 | operation).
   std::unordered_map<uint64_t, VkPipeline> specialized_;
   std::mutex mutex_;
 };

@@ -1,0 +1,12 @@
+run 1 donate=0 exit=0 errors=0 
+run 1 donate=1 exit=0 errors=0 
+run 2 donate=0 exit=0 errors=0 
+run 2 donate=1 exit=0 errors=0 
+run 3 donate=0 exit=1 errors=1 /tmp/dk-work/mlx/tests/omarchy/test_primitives.cpp:4898: ERROR: CHECK_EQ( repeat.data<uint32_t>()[0], token.data<uint32_t>()[0] ) is NOT correct!
+run 3 donate=1 exit=1 errors=1 /tmp/dk-work/mlx/tests/omarchy/test_primitives.cpp:4898: ERROR: CHECK_EQ( repeat.data<uint32_t>()[0], token.data<uint32_t>()[0] ) is NOT correct!
+run 4 donate=0 exit=1 errors=1 /tmp/dk-work/mlx/tests/omarchy/test_primitives.cpp:4898: ERROR: CHECK_EQ( repeat.data<uint32_t>()[0], token.data<uint32_t>()[0] ) is NOT correct!
+run 4 donate=1 exit=1 errors=1 /tmp/dk-work/mlx/tests/omarchy/test_primitives.cpp:4898: ERROR: CHECK_EQ( repeat.data<uint32_t>()[0], token.data<uint32_t>()[0] ) is NOT correct!
+run 5 donate=0 exit=1 errors=1 /tmp/dk-work/mlx/tests/omarchy/test_primitives.cpp:4898: ERROR: CHECK_EQ( repeat.data<uint32_t>()[0], token.data<uint32_t>()[0] ) is NOT correct!
+run 5 donate=1 exit=1 errors=1 /tmp/dk-work/mlx/tests/omarchy/test_primitives.cpp:4898: ERROR: CHECK_EQ( repeat.data<uint32_t>()[0], token.data<uint32_t>()[0] ) is NOT correct!
+run 6 donate=0 exit=0 errors=0 
+run 6 donate=1 exit=1 errors=1 /tmp/dk-work/mlx/tests/omarchy/test_primitives.cpp:4898: ERROR: CHECK_EQ( repeat.data<uint32_t>()[0], token.data<uint32_t>()[0] ) is NOT correct!

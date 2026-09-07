@@ -9,12 +9,24 @@
 #include "mlx/backend/omarchy/vulkan.h"
 
 #include "sdpa_decode_f16.h"
+#include "sdpa_decode_partial_f16.h"
+#include "sdpa_decode_combine_f16.h"
+#include "sdpa_decode_subgroup_f16.h"
+#include "sdpa_decode_partial_subgroup_f16.h"
 #include "qmm_vec_q4_v2_bf16.h"
 #include "qmm_vec_q4_v2_f16.h"
 #include "qmm_vec_q4_v2_f32.h"
 #include "qmm_vec_q4_v2_subgroup_bf16.h"
 #include "qmm_vec_q4_v2_subgroup_f16.h"
 #include "qmm_vec_q4_v2_subgroup_f32.h"
+#include "qmm_gemm_64_f16.h"
+#include "qmm_gemm_32k4_f16.h"
+#include "qmm_gemm_64x128_f16.h"
+#include "qmm_vec_cols_f16.h"
+#include "qmm_vec_cols_subgroup_f16.h"
+#include "matmul_gemm_f32.h"
+#include "matmul_gemm_f16.h"
+#include "matmul_gemm_bf16.h"
 
 #include "arange_u32.h"
 #include "arange_bf16.h"
@@ -234,6 +246,9 @@
 #include "scan_bf16.h"
 #include "fused_chain_f32.h"
 #include "fused_chain_f16.h"
+#include "fast_rms_norm_sg_bf16.h"
+#include "fast_rms_norm_sg_f16.h"
+#include "fast_rms_norm_sg_f32.h"
 #include "fast_rope_bf16.h"
 #include "fast_rope_f16.h"
 #include "fast_rope_f32.h"
@@ -915,6 +930,12 @@ ShaderBytes shader_bytes(ComputeKernel kernel) {
       return {fast_rms_norm_f16, fast_rms_norm_f16_size};
     case ComputeKernel::FastRmsNormBF16:
       return {fast_rms_norm_bf16, fast_rms_norm_bf16_size};
+    case ComputeKernel::FastRmsNormSubgroupF32:
+      return {fast_rms_norm_sg_f32, fast_rms_norm_sg_f32_size};
+    case ComputeKernel::FastRmsNormSubgroupF16:
+      return {fast_rms_norm_sg_f16, fast_rms_norm_sg_f16_size};
+    case ComputeKernel::FastRmsNormSubgroupBF16:
+      return {fast_rms_norm_sg_bf16, fast_rms_norm_sg_bf16_size};
     case ComputeKernel::FastLayerNormF32:
       return {fast_layer_norm_f32, fast_layer_norm_f32_size};
     case ComputeKernel::FastLayerNormF16:
@@ -1258,6 +1279,14 @@ ShaderBytes shader_bytes(ComputeKernel kernel) {
       return {matmul_complex64, matmul_complex64_size};
     case ComputeKernel::SdpaDecodeF16:
       return {sdpa_decode_f16, sdpa_decode_f16_size};
+    case ComputeKernel::SdpaDecodePartialF16:
+      return {sdpa_decode_partial_f16, sdpa_decode_partial_f16_size};
+    case ComputeKernel::SdpaDecodeCombineF16:
+      return {sdpa_decode_combine_f16, sdpa_decode_combine_f16_size};
+    case ComputeKernel::SdpaDecodeSubgroupF16:
+      return {sdpa_decode_subgroup_f16, sdpa_decode_subgroup_f16_size};
+    case ComputeKernel::SdpaDecodePartialSubgroupF16:
+      return {sdpa_decode_partial_subgroup_f16, sdpa_decode_partial_subgroup_f16_size};
     case ComputeKernel::QmmVecQ4V2F32:
       return {qmm_vec_q4_v2_f32, qmm_vec_q4_v2_f32_size};
     case ComputeKernel::QmmVecQ4V2F16:
@@ -1270,6 +1299,22 @@ ShaderBytes shader_bytes(ComputeKernel kernel) {
       return {qmm_vec_q4_v2_subgroup_f16, qmm_vec_q4_v2_subgroup_f16_size};
     case ComputeKernel::QmmVecQ4V2SubgroupBF16:
       return {qmm_vec_q4_v2_subgroup_bf16, qmm_vec_q4_v2_subgroup_bf16_size};
+    case ComputeKernel::QmmGemm64F16:
+      return {qmm_gemm_64_f16, qmm_gemm_64_f16_size};
+    case ComputeKernel::QmmGemm32K4F16:
+      return {qmm_gemm_32k4_f16, qmm_gemm_32k4_f16_size};
+    case ComputeKernel::MatmulGemmF32:
+      return {matmul_gemm_f32, matmul_gemm_f32_size};
+    case ComputeKernel::MatmulGemmF16:
+      return {matmul_gemm_f16, matmul_gemm_f16_size};
+    case ComputeKernel::MatmulGemmBF16:
+      return {matmul_gemm_bf16, matmul_gemm_bf16_size};
+    case ComputeKernel::QmmGemm64x128F16:
+      return {qmm_gemm_64x128_f16, qmm_gemm_64x128_f16_size};
+    case ComputeKernel::QmmVecColsF16:
+      return {qmm_vec_cols_f16, qmm_vec_cols_f16_size};
+    case ComputeKernel::QmmVecColsSubgroupF16:
+      return {qmm_vec_cols_subgroup_f16, qmm_vec_cols_subgroup_f16_size};
     case ComputeKernel::Count:
       break;
   }
@@ -1347,13 +1392,60 @@ ComputeRuntime::~ComputeRuntime() {
 
 namespace {
 
-// Kernels whose shader declares specialization constant 0 as the
-// operation selector (elementwise.comp).
-bool specializes_operation(ComputeKernel kernel) {
+// Specialization constants a dispatch of `kernel` selects from its
+// params, or false when the kernel's shader declares none or the
+// dispatch takes the unspecialized runtime path.
+// elementwise.comp: constant 0 = operation (folds the op switch),
+// constant 1 = index layout (1: both operands dense and count-long).
+// fast_rope.comp: flag bit 16 (kRopeGridFlag) selects the three-axis
+// grid; constant 0 = dims/2, constant 1 = traditional | transpose bits.
+// copy_general.comp: flag bit 4 (kCopyGridFlag) selects the two-axis
+// grid; constant 1 = 1.
+// qmm_vec_q4.comp: constant 0 = rows per 32-lane slot (shape[3]),
+// constant 1 = workgroup threads (in_strides[0]).
+bool specialization(
+    ComputeKernel kernel,
+    const ComputeParams& params,
+    std::array<uint32_t, 2>& key) {
   switch (kernel) {
     case ComputeKernel::ElementwiseF32:
     case ComputeKernel::ElementwiseF16:
-    case ComputeKernel::ElementwiseBF16:
+    case ComputeKernel::ElementwiseBF16: {
+      bool contiguous = params.dims == 0 && params.matrix_k == 0 &&
+          params.lhs_size == params.count && params.rhs_size == params.count;
+      key = {params.operation, contiguous ? 1u : 0u};
+      return true;
+    }
+    case ComputeKernel::FastRopeF32:
+    case ComputeKernel::FastRopeF16:
+    case ComputeKernel::FastRopeBF16:
+    case ComputeKernel::FastRopeFreqsF32:
+    case ComputeKernel::FastRopeFreqsF16:
+    case ComputeKernel::FastRopeFreqsBF16:
+      if ((params.flags & kRopeGridFlag) == 0 || params.dims == 0) {
+        return false;
+      }
+      key = {params.dims, (params.flags >> 1) & 3u};
+      return true;
+    case ComputeKernel::CopyGeneralF32:
+    case ComputeKernel::CopyGeneralF16:
+    case ComputeKernel::CopyGeneralBF16:
+    case ComputeKernel::CopyGeneralU32:
+    case ComputeKernel::CopyGeneralU16:
+    case ComputeKernel::CopyGeneralU64:
+    case ComputeKernel::CopyGeneralComplex64:
+      if ((params.flags & kCopyGridFlag) == 0) {
+        return false;
+      }
+      key = {0u, 1u};
+      return true;
+    case ComputeKernel::QmmVecQ4V2F32:
+    case ComputeKernel::QmmVecQ4V2F16:
+    case ComputeKernel::QmmVecQ4V2BF16:
+    case ComputeKernel::QmmVecQ4V2SubgroupF32:
+    case ComputeKernel::QmmVecQ4V2SubgroupF16:
+    case ComputeKernel::QmmVecQ4V2SubgroupBF16:
+      key = {params.shape[3], params.in_strides[0]};
       return true;
     default:
       return false;
@@ -1362,29 +1454,44 @@ bool specializes_operation(ComputeKernel kernel) {
 
 } // namespace
 
-VkPipeline ComputeRuntime::pipeline(ComputeKernel kernel, uint32_t operation) {
+VkPipeline ComputeRuntime::pipeline(ComputeKernel kernel) {
   size_t index = static_cast<size_t>(kernel);
   if (index >= pipelines_.size()) {
     throw std::invalid_argument("[omarchy] invalid compute kernel.");
   }
   std::lock_guard<std::mutex> lock(mutex_);
-  if (specializes_operation(kernel)) {
-    uint64_t key = (static_cast<uint64_t>(index) << 32) | operation;
-    auto it = specialized_.find(key);
-    if (it == specialized_.end()) {
-      it = specialized_.emplace(key, create_pipeline(kernel, &operation)).first;
-    }
-    return it->second;
-  }
   if (pipelines_[index] == VK_NULL_HANDLE) {
     pipelines_[index] = create_pipeline(kernel, nullptr);
   }
   return pipelines_[index];
 }
 
+VkPipeline ComputeRuntime::pipeline(
+    ComputeKernel kernel,
+    const ComputeParams& params) {
+  std::array<uint32_t, 2> key{};
+  if (!specialization(kernel, params, key) || key[0] > 0xffffu ||
+      key[1] > 0xffffu) {
+    return pipeline(kernel);
+  }
+  size_t index = static_cast<size_t>(kernel);
+  if (index >= pipelines_.size()) {
+    throw std::invalid_argument("[omarchy] invalid compute kernel.");
+  }
+  uint64_t map_key = (static_cast<uint64_t>(index) << 32) |
+      (static_cast<uint64_t>(key[1]) << 16) | key[0];
+  std::lock_guard<std::mutex> lock(mutex_);
+  auto it = specialized_.find(map_key);
+  if (it == specialized_.end()) {
+    it = specialized_.emplace(map_key, create_pipeline(kernel, key.data()))
+             .first;
+  }
+  return it->second;
+}
+
 VkPipeline ComputeRuntime::create_pipeline(
     ComputeKernel kernel,
-    const uint32_t* operation) {
+    const uint32_t* key) {
   auto& dt = vk::device_table();
   auto [bytes, size] = shader_bytes(kernel);
   if (size == 0 || size % sizeof(uint32_t) != 0) {
@@ -1403,13 +1510,14 @@ VkPipeline ComputeRuntime::create_pipeline(
   stage.stage = VK_SHADER_STAGE_COMPUTE_BIT;
   stage.module = shader;
   stage.pName = "main";
-  VkSpecializationMapEntry map_entry{0, 0, sizeof(uint32_t)};
+  const VkSpecializationMapEntry map_entries[2] = {
+      {0, 0, sizeof(uint32_t)}, {1, sizeof(uint32_t), sizeof(uint32_t)}};
   VkSpecializationInfo specialization{};
-  specialization.mapEntryCount = 1;
-  specialization.pMapEntries = &map_entry;
-  specialization.dataSize = sizeof(uint32_t);
-  specialization.pData = operation;
-  if (operation != nullptr) {
+  specialization.mapEntryCount = 2;
+  specialization.pMapEntries = map_entries;
+  specialization.dataSize = 2 * sizeof(uint32_t);
+  specialization.pData = key;
+  if (key != nullptr) {
     stage.pSpecializationInfo = &specialization;
   }
   VkComputePipelineCreateInfo pipeline_info{

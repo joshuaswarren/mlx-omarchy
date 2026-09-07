@@ -1,0 +1,816 @@
+CS shader: 14 instrs, 8 alu, 8 fscib, 0 ic, 98 code size, 5 gprs, 24 uniforms, 0 scratch, 1024 threads, 1 loops, 0:0 spills:fills, 22 preamble inst
+KERNEL ElementwiseF32
+CS shader: 1120 instrs, 996 alu, 996 fscib, 500 ic, 9100 code size, 73 gprs, 392 uniforms, 0 scratch, 1024 threads, 3 loops, 0:0 spills:fills, 250 preamble inst
+KERNEL ElementwiseF16
+CS shader: 1120 instrs, 996 alu, 996 fscib, 500 ic, 9092 code size, 73 gprs, 392 uniforms, 0 scratch, 1024 threads, 3 loops, 0:0 spills:fills, 250 preamble inst
+KERNEL ElementwiseBF16
+CS shader: 1129 instrs, 1005 alu, 1005 fscib, 508 ic, 9164 code size, 73 gprs, 394 uniforms, 0 scratch, 1024 threads, 3 loops, 0:0 spills:fills, 250 preamble inst
+KERNEL CastF16F32
+CS shader: 17 instrs, 9 alu, 9 fscib, 0 ic, 116 code size, 7 gprs, 28 uniforms, 0 scratch, 1024 threads, 1 loops, 0:0 spills:fills, 24 preamble inst
+KERNEL CastBoolF32
+CS shader: 29 instrs, 15 alu, 15 fscib, 4 ic, 200 code size, 11 gprs, 32 uniforms, 0 scratch, 1024 threads, 1 loops, 0:0 spills:fills, 29 preamble inst
+KERNEL CastBoolI32
+CS shader: 28 instrs, 15 alu, 15 fscib, 4 ic, 194 code size, 11 gprs, 32 uniforms, 0 scratch, 1024 threads, 1 loops, 0:0 spills:fills, 29 preamble inst
+KERNEL CastBoolF16
+CS shader: 29 instrs, 15 alu, 15 fscib, 4 ic, 200 code size, 11 gprs, 32 uniforms, 0 scratch, 1024 threads, 1 loops, 0:0 spills:fills, 29 preamble inst
+KERNEL CastBoolBF16
+CS shader: 34 instrs, 20 alu, 20 fscib, 4 ic, 362 code size, 13 gprs, 34 uniforms, 0 scratch, 1024 threads, 1 loops, 0:0 spills:fills, 29 preamble inst
+KERNEL CastF32F16
+CS shader: 17 instrs, 9 alu, 9 fscib, 0 ic, 116 code size, 5 gprs, 28 uniforms, 0 scratch, 1024 threads, 1 loops, 0:0 spills:fills, 24 preamble inst
+KERNEL CastBF16F32
+CS shader: 17 instrs, 9 alu, 9 fscib, 4 ic, 118 code size, 7 gprs, 28 uniforms, 0 scratch, 1024 threads, 1 loops, 0:0 spills:fills, 24 preamble inst
+KERNEL CastF32BF16
+CS shader: 23 instrs, 15 alu, 15 fscib, 0 ic, 286 code size, 11 gprs, 30 uniforms, 0 scratch, 1024 threads, 1 loops, 0:0 spills:fills, 24 preamble inst
+KERNEL CastBF16F16
+CS shader: 18 instrs, 10 alu, 10 fscib, 4 ic, 124 code size, 5 gprs, 28 uniforms, 0 scratch, 1024 threads, 1 loops, 0:0 spills:fills, 24 preamble inst
+KERNEL CastF16BF16
+CS shader: 24 instrs, 16 alu, 16 fscib, 0 ic, 292 code size, 11 gprs, 30 uniforms, 0 scratch, 1024 threads, 1 loops, 0:0 spills:fills, 24 preamble inst
+KERNEL CastI32F32
+CS shader: 17 instrs, 8 alu, 8 fscib, 0 ic, 116 code size, 7 gprs, 28 uniforms, 0 scratch, 1024 threads, 1 loops, 0:0 spills:fills, 24 preamble inst
+KERNEL CastU32F32
+CS shader: 17 instrs, 8 alu, 8 fscib, 0 ic, 116 code size, 7 gprs, 28 uniforms, 0 scratch, 1024 threads, 1 loops, 0:0 spills:fills, 24 preamble inst
+KERNEL CastF32I32
+CS shader: 17 instrs, 8 alu, 8 fscib, 0 ic, 116 code size, 7 gprs, 28 uniforms, 0 scratch, 1024 threads, 1 loops, 0:0 spills:fills, 24 preamble inst
+KERNEL CastI32F16
+CS shader: 17 instrs, 8 alu, 8 fscib, 0 ic, 116 code size, 5 gprs, 28 uniforms, 0 scratch, 1024 threads, 1 loops, 0:0 spills:fills, 24 preamble inst
+KERNEL CastF16I32
+CS shader: 17 instrs, 8 alu, 8 fscib, 0 ic, 116 code size, 7 gprs, 28 uniforms, 0 scratch, 1024 threads, 1 loops, 0:0 spills:fills, 24 preamble inst
+KERNEL CastI32BF16
+CS shader: 22 instrs, 13 alu, 13 fscib, 0 ic, 278 code size, 7 gprs, 30 uniforms, 0 scratch, 1024 threads, 1 loops, 0:0 spills:fills, 24 preamble inst
+KERNEL CastBF16I32
+CS shader: 18 instrs, 9 alu, 9 fscib, 4 ic, 124 code size, 7 gprs, 28 uniforms, 0 scratch, 1024 threads, 1 loops, 0:0 spills:fills, 24 preamble inst
+KERNEL ReduceF32
+CS shader: 87 instrs, 51 alu, 51 fscib, 24 ic, 600 code size, 19 gprs, 72 uniforms, 0 scratch, 1024 threads, 4 loops, 0:0 spills:fills, 96 preamble inst
+KERNEL ReduceF16
+CS shader: 90 instrs, 54 alu, 54 fscib, 24 ic, 618 code size, 19 gprs, 72 uniforms, 0 scratch, 1024 threads, 4 loops, 0:0 spills:fills, 96 preamble inst
+KERNEL ReduceBF16
+CS shader: 102 instrs, 66 alu, 66 fscib, 28 ic, 832 code size, 19 gprs, 74 uniforms, 0 scratch, 1024 threads, 4 loops, 0:0 spills:fills, 96 preamble inst
+KERNEL MatmulF32
+CS shader: 212 instrs, 140 alu, 140 fscib, 70 ic, 1676 code size, 35 gprs, 130 uniforms, 0 scratch, 1024 threads, 4 loops, 0:0 spills:fills, 102 preamble inst
+KERNEL MatmulF16
+CS shader: 216 instrs, 143 alu, 143 fscib, 70 ic, 1696 code size, 35 gprs, 130 uniforms, 0 scratch, 1024 threads, 4 loops, 0:0 spills:fills, 102 preamble inst
+KERNEL MatmulBF16
+CS shader: 225 instrs, 150 alu, 150 fscib, 82 ic, 1766 code size, 35 gprs, 132 uniforms, 0 scratch, 1024 threads, 4 loops, 0:0 spills:fills, 102 preamble inst
+KERNEL FillF32
+CS shader: 14 instrs, 8 alu, 8 fscib, 0 ic, 98 code size, 7 gprs, 24 uniforms, 0 scratch, 1024 threads, 1 loops, 0:0 spills:fills, 21 preamble inst
+KERNEL FillF16
+KERNEL FillBF16
+CS shader: 14 instrs, 8 alu, 8 fscib, 0 ic, 98 code size, 5 gprs, 24 uniforms, 0 scratch, 1024 threads, 1 loops, 0:0 spills:fills, 29 preamble inst
+KERNEL SoftmaxF32
+CS shader: 233 instrs, 100 alu, 100 fscib, 38 ic, 1652 code size, 21 gprs, 80 uniforms, 0 scratch, 1024 threads, 4 loops, 0:0 spills:fills, 74 preamble inst
+KERNEL SoftmaxF16
+CS shader: 235 instrs, 102 alu, 102 fscib, 38 ic, 1662 code size, 21 gprs, 80 uniforms, 0 scratch, 1024 threads, 4 loops, 0:0 spills:fills, 74 preamble inst
+KERNEL SoftmaxBF16
+CS shader: 244 instrs, 111 alu, 111 fscib, 54 ic, 1732 code size, 23 gprs, 82 uniforms, 0 scratch, 1024 threads, 4 loops, 0:0 spills:fills, 74 preamble inst
+KERNEL LogSumExpF32
+CS shader: 189 instrs, 66 alu, 66 fscib, 12 ic, 1352 code size, 17 gprs, 56 uniforms, 0 scratch, 1024 threads, 3 loops, 0:0 spills:fills, 28 preamble inst
+KERNEL LogSumExpF16
+CS shader: 191 instrs, 68 alu, 68 fscib, 12 ic, 1364 code size, 17 gprs, 56 uniforms, 0 scratch, 1024 threads, 3 loops, 0:0 spills:fills, 28 preamble inst
+KERNEL LogSumExpBF16
+CS shader: 198 instrs, 75 alu, 75 fscib, 20 ic, 1416 code size, 17 gprs, 58 uniforms, 0 scratch, 1024 threads, 3 loops, 0:0 spills:fills, 27 preamble inst
+KERNEL SelectF32
+CS shader: 215 instrs, 120 alu, 120 fscib, 112 ic, 1576 code size, 27 gprs, 110 uniforms, 0 scratch, 1024 threads, 3 loops, 0:0 spills:fills, 96 preamble inst
+KERNEL SelectF16
+CS shader: 215 instrs, 120 alu, 120 fscib, 112 ic, 1576 code size, 27 gprs, 110 uniforms, 0 scratch, 1024 threads, 3 loops, 0:0 spills:fills, 96 preamble inst
+KERNEL SelectBF16
+CS shader: 224 instrs, 129 alu, 129 fscib, 120 ic, 1640 code size, 27 gprs, 112 uniforms, 0 scratch, 1024 threads, 3 loops, 0:0 spills:fills, 96 preamble inst
+KERNEL SelectI32
+CS shader: 215 instrs, 120 alu, 120 fscib, 112 ic, 1576 code size, 27 gprs, 110 uniforms, 0 scratch, 1024 threads, 3 loops, 0:0 spills:fills, 96 preamble inst
+KERNEL SelectBool
+CS shader: 61 instrs, 51 alu, 51 fscib, 36 ic, 564 code size, 21 gprs, 56 uniforms, 0 scratch, 1024 threads, 0 loops, 0:0 spills:fills, 35 preamble inst
+KERNEL SelectComplex64
+CS shader: 215 instrs, 120 alu, 120 fscib, 112 ic, 1576 code size, 27 gprs, 110 uniforms, 0 scratch, 1024 threads, 3 loops, 0:0 spills:fills, 96 preamble inst
+KERNEL CompareF32
+CS shader: 223 instrs, 139 alu, 139 fscib, 116 ic, 1670 code size, 27 gprs, 102 uniforms, 0 scratch, 1024 threads, 4 loops, 0:0 spills:fills, 120 preamble inst
+KERNEL CompareF16
+CS shader: 223 instrs, 139 alu, 139 fscib, 116 ic, 1670 code size, 27 gprs, 102 uniforms, 0 scratch, 1024 threads, 4 loops, 0:0 spills:fills, 120 preamble inst
+KERNEL CompareBF16
+CS shader: 225 instrs, 141 alu, 141 fscib, 124 ic, 1686 code size, 27 gprs, 102 uniforms, 0 scratch, 1024 threads, 4 loops, 0:0 spills:fills, 120 preamble inst
+KERNEL CompareI32
+CS shader: 219 instrs, 135 alu, 135 fscib, 116 ic, 1636 code size, 27 gprs, 102 uniforms, 0 scratch, 1024 threads, 4 loops, 0:0 spills:fills, 110 preamble inst
+KERNEL CompareU32
+CS shader: 219 instrs, 135 alu, 135 fscib, 116 ic, 1636 code size, 27 gprs, 102 uniforms, 0 scratch, 1024 threads, 4 loops, 0:0 spills:fills, 110 preamble inst
+KERNEL CompareI64
+CS shader: 225 instrs, 141 alu, 141 fscib, 116 ic, 1680 code size, 31 gprs, 102 uniforms, 0 scratch, 1024 threads, 4 loops, 0:0 spills:fills, 110 preamble inst
+KERNEL CompareComplex
+CS shader: 235 instrs, 151 alu, 151 fscib, 116 ic, 1764 code size, 31 gprs, 102 uniforms, 0 scratch, 1024 threads, 4 loops, 0:0 spills:fills, 120 preamble inst
+KERNEL LogicalOrBool
+CS shader: 154 instrs, 105 alu, 105 fscib, 100 ic, 1202 code size, 23 gprs, 78 uniforms, 0 scratch, 1024 threads, 1 loops, 0:0 spills:fills, 90 preamble inst
+KERNEL CompareBool
+CS shader: 246 instrs, 162 alu, 162 fscib, 140 ic, 1836 code size, 27 gprs, 102 uniforms, 0 scratch, 1024 threads, 4 loops, 0:0 spills:fills, 112 preamble inst
+KERNEL CopyGeneralF32
+CS shader: 97 instrs, 53 alu, 53 fscib, 52 ic, 774 code size, 23 gprs, 54 uniforms, 0 scratch, 1024 threads, 2 loops, 0:0 spills:fills, 41 preamble inst
+KERNEL CopyGeneralF16
+CS shader: 97 instrs, 53 alu, 53 fscib, 52 ic, 774 code size, 23 gprs, 54 uniforms, 0 scratch, 1024 threads, 2 loops, 0:0 spills:fills, 41 preamble inst
+KERNEL CopyGeneralBF16
+CS shader: 104 instrs, 60 alu, 60 fscib, 56 ic, 824 code size, 23 gprs, 56 uniforms, 0 scratch, 1024 threads, 2 loops, 0:0 spills:fills, 41 preamble inst
+KERNEL CopyGeneralU32
+CS shader: 97 instrs, 53 alu, 53 fscib, 52 ic, 774 code size, 23 gprs, 54 uniforms, 0 scratch, 1024 threads, 2 loops, 0:0 spills:fills, 41 preamble inst
+KERNEL CopyGeneralBool
+CS shader: 117 instrs, 76 alu, 70 fscib, 76 ic, 912 code size, 23 gprs, 54 uniforms, 0 scratch, 1024 threads, 2 loops, 0:0 spills:fills, 41 preamble inst
+KERNEL CopyGeneralU8
+KERNEL CopyGeneralU16
+CS shader: 97 instrs, 53 alu, 53 fscib, 52 ic, 774 code size, 23 gprs, 54 uniforms, 0 scratch, 1024 threads, 2 loops, 0:0 spills:fills, 41 preamble inst
+KERNEL CopyGeneralU64
+CS shader: 97 instrs, 53 alu, 53 fscib, 52 ic, 774 code size, 23 gprs, 54 uniforms, 0 scratch, 1024 threads, 2 loops, 0:0 spills:fills, 41 preamble inst
+KERNEL ArgReduceF32
+CS shader: 227 instrs, 91 alu, 91 fscib, 4 ic, 1702 code size, 17 gprs, 64 uniforms, 0 scratch, 1024 threads, 2 loops, 0:0 spills:fills, 34 preamble inst
+KERNEL ArgReduceF16
+CS shader: 228 instrs, 92 alu, 92 fscib, 4 ic, 1708 code size, 17 gprs, 64 uniforms, 0 scratch, 1024 threads, 2 loops, 0:0 spills:fills, 34 preamble inst
+KERNEL ArgReduceBF16
+CS shader: 228 instrs, 92 alu, 92 fscib, 8 ic, 1710 code size, 17 gprs, 64 uniforms, 0 scratch, 1024 threads, 2 loops, 0:0 spills:fills, 34 preamble inst
+KERNEL ArgReduceI8
+CS shader: 240 instrs, 104 alu, 104 fscib, 16 ic, 1796 code size, 21 gprs, 66 uniforms, 0 scratch, 1024 threads, 2 loops, 0:0 spills:fills, 34 preamble inst
+KERNEL ArgReduceU8
+CS shader: 237 instrs, 101 alu, 101 fscib, 16 ic, 1774 code size, 21 gprs, 64 uniforms, 0 scratch, 1024 threads, 2 loops, 0:0 spills:fills, 33 preamble inst
+KERNEL ArgReduceI16
+CS shader: 231 instrs, 95 alu, 95 fscib, 4 ic, 1730 code size, 19 gprs, 68 uniforms, 0 scratch, 1024 threads, 2 loops, 0:0 spills:fills, 34 preamble inst
+KERNEL ArgReduceU16
+CS shader: 228 instrs, 92 alu, 92 fscib, 4 ic, 1708 code size, 17 gprs, 64 uniforms, 0 scratch, 1024 threads, 2 loops, 0:0 spills:fills, 33 preamble inst
+KERNEL ArgReduceI32
+CS shader: 227 instrs, 91 alu, 91 fscib, 4 ic, 1702 code size, 17 gprs, 64 uniforms, 0 scratch, 1024 threads, 2 loops, 0:0 spills:fills, 34 preamble inst
+KERNEL ArgReduceU32
+CS shader: 227 instrs, 91 alu, 91 fscib, 4 ic, 1702 code size, 17 gprs, 64 uniforms, 0 scratch, 1024 threads, 2 loops, 0:0 spills:fills, 33 preamble inst
+KERNEL ArgReduceI64
+CS shader: 302 instrs, 166 alu, 166 fscib, 4 ic, 2260 code size, 24 gprs, 70 uniforms, 0 scratch, 1024 threads, 2 loops, 0:0 spills:fills, 36 preamble inst
+KERNEL ArgReduceU64
+CS shader: 302 instrs, 166 alu, 166 fscib, 4 ic, 2260 code size, 24 gprs, 70 uniforms, 0 scratch, 1024 threads, 2 loops, 0:0 spills:fills, 34 preamble inst
+KERNEL ArangeF32
+CS shader: 15 instrs, 8 alu, 8 fscib, 0 ic, 106 code size, 7 gprs, 24 uniforms, 0 scratch, 1024 threads, 1 loops, 0:0 spills:fills, 22 preamble inst
+KERNEL ArangeF16
+CS shader: 15 instrs, 8 alu, 8 fscib, 0 ic, 106 code size, 5 gprs, 24 uniforms, 0 scratch, 1024 threads, 1 loops, 0:0 spills:fills, 22 preamble inst
+KERNEL ArangeBF16
+CS shader: 22 instrs, 15 alu, 15 fscib, 0 ic, 282 code size, 11 gprs, 26 uniforms, 0 scratch, 1024 threads, 1 loops, 0:0 spills:fills, 21 preamble inst
+KERNEL ArangeI32
+CS shader: 14 instrs, 8 alu, 8 fscib, 4 ic, 100 code size, 7 gprs, 24 uniforms, 0 scratch, 1024 threads, 1 loops, 0:0 spills:fills, 24 preamble inst
+KERNEL ArangeU32
+KERNEL ArangeI64
+CS shader: 18 instrs, 12 alu, 12 fscib, 8 ic, 128 code size, 11 gprs, 28 uniforms, 0 scratch, 1024 threads, 1 loops, 0:0 spills:fills, 23 preamble inst
+KERNEL ArangeU64
+KERNEL SortF32
+CS shader: 127 instrs, 75 alu, 75 fscib, 36 ic, 1018 code size, 31 gprs, 58 uniforms, 0 scratch, 1024 threads, 7 loops, 0:0 spills:fills, 55 preamble inst
+KERNEL SortF16
+CS shader: 129 instrs, 77 alu, 77 fscib, 36 ic, 1030 code size, 31 gprs, 58 uniforms, 0 scratch, 1024 threads, 7 loops, 0:0 spills:fills, 55 preamble inst
+KERNEL SortBF16
+CS shader: 135 instrs, 83 alu, 83 fscib, 40 ic, 1074 code size, 31 gprs, 60 uniforms, 0 scratch, 1024 threads, 7 loops, 0:0 spills:fills, 55 preamble inst
+KERNEL SortC64
+CS shader: 137 instrs, 84 alu, 84 fscib, 36 ic, 1090 code size, 43 gprs, 60 uniforms, 0 scratch, 1024 threads, 7 loops, 0:0 spills:fills, 55 preamble inst
+KERNEL ArgSortF32
+CS shader: 127 instrs, 75 alu, 75 fscib, 36 ic, 1018 code size, 31 gprs, 58 uniforms, 0 scratch, 1024 threads, 7 loops, 0:0 spills:fills, 55 preamble inst
+KERNEL ArgSortF16
+CS shader: 128 instrs, 76 alu, 76 fscib, 36 ic, 1024 code size, 31 gprs, 58 uniforms, 0 scratch, 1024 threads, 7 loops, 0:0 spills:fills, 55 preamble inst
+KERNEL ArgSortBF16
+CS shader: 128 instrs, 76 alu, 76 fscib, 40 ic, 1026 code size, 31 gprs, 58 uniforms, 0 scratch, 1024 threads, 7 loops, 0:0 spills:fills, 55 preamble inst
+KERNEL ArgSortC64
+CS shader: 137 instrs, 84 alu, 84 fscib, 36 ic, 1090 code size, 43 gprs, 60 uniforms, 0 scratch, 1024 threads, 7 loops, 0:0 spills:fills, 55 preamble inst
+KERNEL SortI32
+CS shader: 123 instrs, 71 alu, 71 fscib, 36 ic, 982 code size, 29 gprs, 60 uniforms, 0 scratch, 1024 threads, 7 loops, 0:0 spills:fills, 55 preamble inst
+KERNEL SortU32
+CS shader: 121 instrs, 69 alu, 69 fscib, 36 ic, 970 code size, 29 gprs, 58 uniforms, 0 scratch, 1024 threads, 7 loops, 0:0 spills:fills, 55 preamble inst
+KERNEL SortI8
+CS shader: 222 instrs, 120 alu, 108 fscib, 120 ic, 1598 code size, 29 gprs, 106 uniforms, 0 scratch, 1024 threads, 7 loops, 0:0 spills:fills, 66 preamble inst
+KERNEL SortU8
+CS shader: 158 instrs, 87 alu, 87 fscib, 72 ic, 1204 code size, 29 gprs, 70 uniforms, 0 scratch, 1024 threads, 7 loops, 0:0 spills:fills, 58 preamble inst
+KERNEL SortI16
+CS shader: 127 instrs, 75 alu, 75 fscib, 36 ic, 1008 code size, 29 gprs, 64 uniforms, 0 scratch, 1024 threads, 7 loops, 0:0 spills:fills, 55 preamble inst
+KERNEL SortU16
+CS shader: 122 instrs, 70 alu, 70 fscib, 36 ic, 976 code size, 29 gprs, 58 uniforms, 0 scratch, 1024 threads, 7 loops, 0:0 spills:fills, 55 preamble inst
+KERNEL ArgSortI32
+CS shader: 122 instrs, 70 alu, 70 fscib, 36 ic, 976 code size, 29 gprs, 60 uniforms, 0 scratch, 1024 threads, 7 loops, 0:0 spills:fills, 55 preamble inst
+KERNEL ArgSortU32
+CS shader: 121 instrs, 69 alu, 69 fscib, 36 ic, 970 code size, 29 gprs, 58 uniforms, 0 scratch, 1024 threads, 7 loops, 0:0 spills:fills, 55 preamble inst
+KERNEL ArgSortI8
+CS shader: 212 instrs, 108 alu, 100 fscib, 108 ic, 1532 code size, 29 gprs, 106 uniforms, 0 scratch, 1024 threads, 7 loops, 0:0 spills:fills, 66 preamble inst
+KERNEL ArgSortU8
+CS shader: 148 instrs, 79 alu, 79 fscib, 60 ic, 1138 code size, 29 gprs, 70 uniforms, 0 scratch, 1024 threads, 7 loops, 0:0 spills:fills, 58 preamble inst
+KERNEL ArgSortI16
+CS shader: 126 instrs, 74 alu, 74 fscib, 36 ic, 1002 code size, 29 gprs, 64 uniforms, 0 scratch, 1024 threads, 7 loops, 0:0 spills:fills, 55 preamble inst
+KERNEL ArgSortU16
+CS shader: 122 instrs, 70 alu, 70 fscib, 36 ic, 976 code size, 29 gprs, 58 uniforms, 0 scratch, 1024 threads, 7 loops, 0:0 spills:fills, 55 preamble inst
+KERNEL RandomBitsU32
+CS shader: 164 instrs, 149 alu, 149 fscib, 120 ic, 1332 code size, 25 gprs, 58 uniforms, 0 scratch, 1024 threads, 2 loops, 0:0 spills:fills, 113 preamble inst
+KERNEL ElementwiseI32
+CS shader: 293 instrs, 204 alu, 204 fscib, 166 ic, 2220 code size, 23 gprs, 118 uniforms, 0 scratch, 1024 threads, 4 loops, 0:0 spills:fills, 155 preamble inst
+KERNEL ElementwiseU32
+CS shader: 265 instrs, 179 alu, 179 fscib, 162 ic, 2004 code size, 23 gprs, 118 uniforms, 0 scratch, 1024 threads, 4 loops, 0:0 spills:fills, 155 preamble inst
+KERNEL ScanF32
+CS shader: 30 instrs, 15 alu, 15 fscib, 4 ic, 198 code size, 13 gprs, 40 uniforms, 0 scratch, 1024 threads, 1 loops, 0:0 spills:fills, 25 preamble inst
+KERNEL ScanF16
+CS shader: 32 instrs, 17 alu, 17 fscib, 4 ic, 210 code size, 11 gprs, 40 uniforms, 0 scratch, 1024 threads, 1 loops, 0:0 spills:fills, 25 preamble inst
+KERNEL ScanBF16
+CS shader: 46 instrs, 30 alu, 30 fscib, 8 ic, 436 code size, 17 gprs, 42 uniforms, 0 scratch, 1024 threads, 1 loops, 0:0 spills:fills, 25 preamble inst
+KERNEL SearchSortedF32
+CS shader: 41 instrs, 27 alu, 27 fscib, 4 ic, 286 code size, 15 gprs, 36 uniforms, 0 scratch, 1024 threads, 2 loops, 0:0 spills:fills, 37 preamble inst
+KERNEL SearchSortedF16
+CS shader: 41 instrs, 27 alu, 27 fscib, 4 ic, 286 code size, 13 gprs, 36 uniforms, 0 scratch, 1024 threads, 2 loops, 0:0 spills:fills, 37 preamble inst
+KERNEL SearchSortedBF16
+CS shader: 43 instrs, 29 alu, 29 fscib, 12 ic, 302 code size, 15 gprs, 36 uniforms, 0 scratch, 1024 threads, 2 loops, 0:0 spills:fills, 37 preamble inst
+KERNEL SearchSortedI32
+CS shader: 34 instrs, 20 alu, 20 fscib, 4 ic, 236 code size, 13 gprs, 36 uniforms, 0 scratch, 1024 threads, 2 loops, 0:0 spills:fills, 37 preamble inst
+KERNEL SearchSortedU32
+CS shader: 34 instrs, 20 alu, 20 fscib, 4 ic, 236 code size, 13 gprs, 36 uniforms, 0 scratch, 1024 threads, 2 loops, 0:0 spills:fills, 37 preamble inst
+KERNEL ReduceGeneralF32
+CS shader: 314 instrs, 208 alu, 208 fscib, 196 ic, 2378 code size, 31 gprs, 182 uniforms, 0 scratch, 1024 threads, 6 loops, 0:0 spills:fills, 364 preamble inst
+KERNEL ReduceGeneralF16
+CS shader: 317 instrs, 211 alu, 211 fscib, 196 ic, 2396 code size, 31 gprs, 182 uniforms, 0 scratch, 1024 threads, 6 loops, 0:0 spills:fills, 364 preamble inst
+KERNEL ReduceGeneralBF16
+CS shader: 329 instrs, 223 alu, 223 fscib, 200 ic, 2482 code size, 31 gprs, 184 uniforms, 0 scratch, 1024 threads, 6 loops, 0:0 spills:fills, 364 preamble inst
+KERNEL ReduceGeneralI32
+CS shader: 310 instrs, 204 alu, 204 fscib, 204 ic, 2354 code size, 31 gprs, 182 uniforms, 0 scratch, 1024 threads, 6 loops, 0:0 spills:fills, 363 preamble inst
+KERNEL ReduceGeneralU32
+CS shader: 310 instrs, 204 alu, 204 fscib, 204 ic, 2354 code size, 31 gprs, 182 uniforms, 0 scratch, 1024 threads, 6 loops, 0:0 spills:fills, 362 preamble inst
+KERNEL ReduceGeneralI8
+CS shader: 371 instrs, 252 alu, 235 fscib, 252 ic, 2742 code size, 31 gprs, 212 uniforms, 0 scratch, 1024 threads, 6 loops, 0:0 spills:fills, 373 preamble inst
+KERNEL ReduceGeneralU8
+CS shader: 368 instrs, 252 alu, 232 fscib, 252 ic, 2720 code size, 31 gprs, 210 uniforms, 0 scratch, 1024 threads, 6 loops, 0:0 spills:fills, 372 preamble inst
+KERNEL ReduceGeneralI16
+CS shader: 344 instrs, 228 alu, 224 fscib, 228 ic, 2574 code size, 31 gprs, 204 uniforms, 0 scratch, 1024 threads, 6 loops, 0:0 spills:fills, 370 preamble inst
+KERNEL ReduceGeneralU16
+CS shader: 341 instrs, 228 alu, 221 fscib, 228 ic, 2552 code size, 31 gprs, 200 uniforms, 0 scratch, 1024 threads, 6 loops, 0:0 spills:fills, 369 preamble inst
+KERNEL ReduceGeneralI64
+CS shader: 345 instrs, 239 alu, 239 fscib, 220 ic, 2622 code size, 31 gprs, 190 uniforms, 0 scratch, 1024 threads, 6 loops, 0:0 spills:fills, 366 preamble inst
+KERNEL ReduceGeneralU64
+CS shader: 345 instrs, 239 alu, 239 fscib, 220 ic, 2622 code size, 31 gprs, 190 uniforms, 0 scratch, 1024 threads, 6 loops, 0:0 spills:fills, 366 preamble inst
+KERNEL ReduceGeneralComplex
+CS shader: 365 instrs, 255 alu, 255 fscib, 196 ic, 2770 code size, 31 gprs, 190 uniforms, 0 scratch, 1024 threads, 6 loops, 0:0 spills:fills, 367 preamble inst
+KERNEL AnyAllF32
+CS shader: 596 instrs, 393 alu, 393 fscib, 380 ic, 4372 code size, 31 gprs, 294 uniforms, 0 scratch, 1024 threads, 12 loops, 0:0 spills:fills, 604 preamble inst
+KERNEL AnyAllF16
+CS shader: 596 instrs, 393 alu, 393 fscib, 380 ic, 4372 code size, 31 gprs, 294 uniforms, 0 scratch, 1024 threads, 12 loops, 0:0 spills:fills, 604 preamble inst
+KERNEL AnyAllBF16
+CS shader: 598 instrs, 395 alu, 395 fscib, 388 ic, 4388 code size, 31 gprs, 294 uniforms, 0 scratch, 1024 threads, 12 loops, 0:0 spills:fills, 604 preamble inst
+KERNEL AnyAllI32
+CS shader: 596 instrs, 393 alu, 393 fscib, 380 ic, 4372 code size, 31 gprs, 294 uniforms, 0 scratch, 1024 threads, 12 loops, 0:0 spills:fills, 604 preamble inst
+KERNEL AnyAllU32
+CS shader: 596 instrs, 393 alu, 393 fscib, 380 ic, 4372 code size, 31 gprs, 294 uniforms, 0 scratch, 1024 threads, 12 loops, 0:0 spills:fills, 604 preamble inst
+KERNEL AnyAllBool
+CS shader: 616 instrs, 413 alu, 413 fscib, 404 ic, 4516 code size, 31 gprs, 294 uniforms, 0 scratch, 1024 threads, 12 loops, 0:0 spills:fills, 604 preamble inst
+KERNEL ScanGeneralF32
+CS shader: 126 instrs, 95 alu, 95 fscib, 58 ic, 1004 code size, 23 gprs, 72 uniforms, 0 scratch, 1024 threads, 2 loops, 0:0 spills:fills, 70 preamble inst
+KERNEL ScanGeneralF16
+CS shader: 129 instrs, 98 alu, 98 fscib, 58 ic, 1022 code size, 23 gprs, 72 uniforms, 0 scratch, 1024 threads, 2 loops, 0:0 spills:fills, 70 preamble inst
+KERNEL ScanGeneralBF16
+CS shader: 141 instrs, 110 alu, 110 fscib, 62 ic, 1108 code size, 23 gprs, 74 uniforms, 0 scratch, 1024 threads, 2 loops, 0:0 spills:fills, 70 preamble inst
+KERNEL ScanGeneralI32
+CS shader: 90 instrs, 59 alu, 59 fscib, 50 ic, 756 code size, 19 gprs, 62 uniforms, 0 scratch, 1024 threads, 2 loops, 0:0 spills:fills, 66 preamble inst
+KERNEL ScanGeneralU32
+CS shader: 90 instrs, 59 alu, 59 fscib, 50 ic, 756 code size, 19 gprs, 62 uniforms, 0 scratch, 1024 threads, 2 loops, 0:0 spills:fills, 65 preamble inst
+KERNEL ScanGeneralBool
+CS shader: 184 instrs, 119 alu, 119 fscib, 106 ic, 1376 code size, 25 gprs, 94 uniforms, 0 scratch, 1024 threads, 2 loops, 0:0 spills:fills, 75 preamble inst
+KERNEL ScanGeneralI8
+CS shader: 139 instrs, 98 alu, 88 fscib, 98 ic, 1072 code size, 19 gprs, 76 uniforms, 0 scratch, 1024 threads, 2 loops, 0:0 spills:fills, 69 preamble inst
+KERNEL ScanGeneralU8
+CS shader: 136 instrs, 98 alu, 85 fscib, 98 ic, 1050 code size, 19 gprs, 74 uniforms, 0 scratch, 1024 threads, 2 loops, 0:0 spills:fills, 68 preamble inst
+KERNEL ScanGeneralI16
+CS shader: 96 instrs, 65 alu, 65 fscib, 50 ic, 796 code size, 19 gprs, 66 uniforms, 0 scratch, 1024 threads, 2 loops, 0:0 spills:fills, 66 preamble inst
+KERNEL ScanGeneralU16
+CS shader: 93 instrs, 62 alu, 62 fscib, 50 ic, 774 code size, 19 gprs, 62 uniforms, 0 scratch, 1024 threads, 2 loops, 0:0 spills:fills, 65 preamble inst
+KERNEL ScanGeneralI64
+CS shader: 129 instrs, 98 alu, 98 fscib, 66 ic, 1042 code size, 31 gprs, 66 uniforms, 0 scratch, 1024 threads, 2 loops, 0:0 spills:fills, 69 preamble inst
+KERNEL ScanGeneralU64
+CS shader: 129 instrs, 98 alu, 98 fscib, 66 ic, 1042 code size, 31 gprs, 66 uniforms, 0 scratch, 1024 threads, 2 loops, 0:0 spills:fills, 69 preamble inst
+KERNEL ScanGeneralComplex
+CS shader: 318 instrs, 252 alu, 252 fscib, 130 ic, 2304 code size, 29 gprs, 100 uniforms, 0 scratch, 1024 threads, 2 loops, 0:0 spills:fills, 73 preamble inst
+KERNEL HadamardF32
+CS shader: 482 instrs, 299 alu, 299 fscib, 40 ic, 3888 code size, 77 gprs, 284 uniforms, 0 scratch, 1024 threads, 4 loops, 0:0 spills:fills, 182 preamble inst
+KERNEL HadamardF16
+CS shader: 485 instrs, 302 alu, 302 fscib, 40 ic, 3900 code size, 77 gprs, 284 uniforms, 0 scratch, 1024 threads, 4 loops, 0:0 spills:fills, 182 preamble inst
+KERNEL HadamardBF16
+CS shader: 697 instrs, 512 alu, 512 fscib, 52 ic, 5420 code size, 77 gprs, 286 uniforms, 0 scratch, 1024 threads, 4 loops, 0:0 spills:fills, 182 preamble inst
+KERNEL QmmF32
+CS shader: 456 instrs, 404 alu, 356 fscib, 404 ic, 3262 code size, 45 gprs, 160 uniforms, 0 scratch, 1024 threads, 6 loops, 0:0 spills:fills, 216 preamble inst
+KERNEL QmmF16
+CS shader: 458 instrs, 404 alu, 358 fscib, 404 ic, 3268 code size, 43 gprs, 160 uniforms, 0 scratch, 1024 threads, 6 loops, 0:0 spills:fills, 216 preamble inst
+KERNEL QmmBF16
+CS shader: 470 instrs, 432 alu, 370 fscib, 432 ic, 3494 code size, 45 gprs, 162 uniforms, 0 scratch, 1024 threads, 6 loops, 0:0 spills:fills, 216 preamble inst
+KERNEL DequantF32
+CS shader: 271 instrs, 181 alu, 181 fscib, 164 ic, 1890 code size, 27 gprs, 92 uniforms, 0 scratch, 1024 threads, 2 loops, 0:0 spills:fills, 135 preamble inst
+KERNEL DequantF16
+CS shader: 271 instrs, 181 alu, 181 fscib, 164 ic, 1848 code size, 25 gprs, 92 uniforms, 0 scratch, 1024 threads, 2 loops, 0:0 spills:fills, 135 preamble inst
+KERNEL ConvF32
+CS shader: 298 instrs, 254 alu, 254 fscib, 196 ic, 2374 code size, 43 gprs, 256 uniforms, 0 scratch, 1024 threads, 4 loops, 0:0 spills:fills, 655 preamble inst
+KERNEL ConvF16
+CS shader: 300 instrs, 256 alu, 256 fscib, 196 ic, 2386 code size, 43 gprs, 256 uniforms, 0 scratch, 1024 threads, 4 loops, 0:0 spills:fills, 655 preamble inst
+KERNEL ConvBF16
+CS shader: 314 instrs, 270 alu, 270 fscib, 204 ic, 2614 code size, 43 gprs, 258 uniforms, 0 scratch, 1024 threads, 4 loops, 0:0 spills:fills, 655 preamble inst
+KERNEL GatherAxisU32
+CS shader: 169 instrs, 132 alu, 124 fscib, 132 ic, 1336 code size, 23 gprs, 70 uniforms, 0 scratch, 1024 threads, 3 loops, 0:0 spills:fills, 87 preamble inst
+KERNEL GatherAxisI64
+CS shader: 170 instrs, 132 alu, 125 fscib, 132 ic, 1342 code size, 23 gprs, 70 uniforms, 0 scratch, 1024 threads, 3 loops, 0:0 spills:fills, 87 preamble inst
+KERNEL GatherAxisF16
+CS shader: 169 instrs, 132 alu, 124 fscib, 132 ic, 1334 code size, 23 gprs, 70 uniforms, 0 scratch, 1024 threads, 3 loops, 0:0 spills:fills, 87 preamble inst
+KERNEL GatherAxisBF16
+CS shader: 177 instrs, 136 alu, 132 fscib, 136 ic, 1392 code size, 23 gprs, 72 uniforms, 0 scratch, 1024 threads, 3 loops, 0:0 spills:fills, 87 preamble inst
+KERNEL GatherAxisComplex64
+CS shader: 170 instrs, 132 alu, 125 fscib, 132 ic, 1342 code size, 23 gprs, 70 uniforms, 0 scratch, 1024 threads, 3 loops, 0:0 spills:fills, 87 preamble inst
+KERNEL ScatterU32
+CS shader: 227 instrs, 112 alu, 112 fscib, 76 ic, 1632 code size, 27 gprs, 164 uniforms, 0 scratch, 1024 threads, 3 loops, 0:0 spills:fills, 139 preamble inst
+KERNEL ScatterF16
+CS shader: 183 instrs, 99 alu, 99 fscib, 68 ic, 1352 code size, 27 gprs, 126 uniforms, 0 scratch, 1024 threads, 2 loops, 0:0 spills:fills, 119 preamble inst
+KERNEL ScatterBF16
+CS shader: 189 instrs, 105 alu, 105 fscib, 80 ic, 1400 code size, 27 gprs, 130 uniforms, 0 scratch, 1024 threads, 2 loops, 0:0 spills:fills, 119 preamble inst
+KERNEL ScatterComplex64
+CS shader: 180 instrs, 88 alu, 88 fscib, 68 ic, 1320 code size, 27 gprs, 110 uniforms, 0 scratch, 1024 threads, 4 loops, 0:0 spills:fills, 106 preamble inst
+KERNEL ScatterAxisU32
+CS shader: 204 instrs, 148 alu, 133 fscib, 148 ic, 1552 code size, 31 gprs, 94 uniforms, 0 scratch, 1024 threads, 3 loops, 0:0 spills:fills, 108 preamble inst
+KERNEL ScatterAxisF16
+CS shader: 194 instrs, 144 alu, 131 fscib, 144 ic, 1492 code size, 31 gprs, 82 uniforms, 0 scratch, 1024 threads, 3 loops, 0:0 spills:fills, 103 preamble inst
+KERNEL ScatterAxisBF16
+CS shader: 194 instrs, 144 alu, 131 fscib, 144 ic, 1492 code size, 31 gprs, 82 uniforms, 0 scratch, 1024 threads, 3 loops, 0:0 spills:fills, 103 preamble inst
+KERNEL ScatterAxisComplex64
+CS shader: 245 instrs, 148 alu, 146 fscib, 148 ic, 1798 code size, 31 gprs, 106 uniforms, 0 scratch, 1024 threads, 5 loops, 0:0 spills:fills, 112 preamble inst
+KERNEL MaskedScatterU32
+CS shader: 152 instrs, 59 alu, 59 fscib, 20 ic, 1100 code size, 23 gprs, 54 uniforms, 0 scratch, 1024 threads, 1 loops, 0:0 spills:fills, 29 preamble inst
+KERNEL MaskedScatterF16
+CS shader: 152 instrs, 59 alu, 59 fscib, 20 ic, 1100 code size, 23 gprs, 54 uniforms, 0 scratch, 1024 threads, 1 loops, 0:0 spills:fills, 29 preamble inst
+KERNEL MaskedScatterBF16
+CS shader: 152 instrs, 59 alu, 59 fscib, 20 ic, 1100 code size, 23 gprs, 54 uniforms, 0 scratch, 1024 threads, 1 loops, 0:0 spills:fills, 29 preamble inst
+KERNEL ScatterMultiU32
+CS shader: 246 instrs, 122 alu, 122 fscib, 80 ic, 1768 code size, 27 gprs, 176 uniforms, 0 scratch, 1024 threads, 3 loops, 0:0 spills:fills, 150 preamble inst
+KERNEL ScatterMultiF16
+CS shader: 202 instrs, 109 alu, 109 fscib, 72 ic, 1486 code size, 27 gprs, 138 uniforms, 0 scratch, 1024 threads, 2 loops, 0:0 spills:fills, 130 preamble inst
+KERNEL ScatterMultiBF16
+CS shader: 208 instrs, 115 alu, 115 fscib, 84 ic, 1534 code size, 27 gprs, 142 uniforms, 0 scratch, 1024 threads, 2 loops, 0:0 spills:fills, 130 preamble inst
+KERNEL ScatterTripleU32
+CS shader: 264 instrs, 131 alu, 131 fscib, 84 ic, 1896 code size, 31 gprs, 188 uniforms, 0 scratch, 1024 threads, 3 loops, 0:0 spills:fills, 166 preamble inst
+KERNEL ScatterTripleF16
+CS shader: 220 instrs, 118 alu, 118 fscib, 76 ic, 1614 code size, 31 gprs, 150 uniforms, 0 scratch, 1024 threads, 2 loops, 0:0 spills:fills, 146 preamble inst
+KERNEL ScatterTripleBF16
+CS shader: 226 instrs, 124 alu, 124 fscib, 88 ic, 1662 code size, 31 gprs, 154 uniforms, 0 scratch, 1024 threads, 2 loops, 0:0 spills:fills, 146 preamble inst
+KERNEL ScatterBoolTriple
+CS shader: 365 instrs, 179 alu, 179 fscib, 176 ic, 2544 code size, 31 gprs, 236 uniforms, 0 scratch, 1024 threads, 2 loops, 0:0 spills:fills, 180 preamble inst
+KERNEL ScatterGeneralU32
+CS shader: 242 instrs, 120 alu, 120 fscib, 76 ic, 1726 code size, 27 gprs, 164 uniforms, 0 scratch, 1024 threads, 4 loops, 0:0 spills:fills, 131 preamble inst
+KERNEL ScatterGeneralF16
+CS shader: 198 instrs, 107 alu, 107 fscib, 68 ic, 1446 code size, 27 gprs, 122 uniforms, 0 scratch, 1024 threads, 3 loops, 0:0 spills:fills, 111 preamble inst
+KERNEL ScatterGeneralBF16
+CS shader: 204 instrs, 113 alu, 113 fscib, 80 ic, 1494 code size, 27 gprs, 126 uniforms, 0 scratch, 1024 threads, 3 loops, 0:0 spills:fills, 111 preamble inst
+KERNEL ScatterGeneralBool
+CS shader: 343 instrs, 168 alu, 168 fscib, 168 ic, 2372 code size, 27 gprs, 212 uniforms, 0 scratch, 1024 threads, 3 loops, 0:0 spills:fills, 145 preamble inst
+KERNEL ScatterGeneralU8
+CS shader: 243 instrs, 132 alu, 132 fscib, 104 ic, 1752 code size, 27 gprs, 148 uniforms, 0 scratch, 1024 threads, 3 loops, 0:0 spills:fills, 124 preamble inst
+KERNEL ScatterGeneralI8
+KERNEL ScatterGeneralU16
+CS shader: 209 instrs, 118 alu, 118 fscib, 68 ic, 1536 code size, 27 gprs, 136 uniforms, 0 scratch, 1024 threads, 3 loops, 0:0 spills:fills, 121 preamble inst
+KERNEL ScatterGeneralI16
+KERNEL SliceUpdateReduceF32
+CS shader: 69 instrs, 47 alu, 47 fscib, 30 ic, 604 code size, 19 gprs, 34 uniforms, 0 scratch, 1024 threads, 2 loops, 0:0 spills:fills, 36 preamble inst
+KERNEL SliceUpdateReduceF16
+CS shader: 73 instrs, 51 alu, 51 fscib, 30 ic, 628 code size, 19 gprs, 34 uniforms, 0 scratch, 1024 threads, 2 loops, 0:0 spills:fills, 36 preamble inst
+KERNEL SliceUpdateReduceBF16
+CS shader: 99 instrs, 77 alu, 77 fscib, 38 ic, 812 code size, 19 gprs, 36 uniforms, 0 scratch, 1024 threads, 2 loops, 0:0 spills:fills, 36 preamble inst
+KERNEL SliceUpdateReduceU32
+CS shader: 71 instrs, 49 alu, 49 fscib, 34 ic, 624 code size, 19 gprs, 34 uniforms, 0 scratch, 1024 threads, 2 loops, 0:0 spills:fills, 40 preamble inst
+KERNEL TakeF32
+CS shader: 202 instrs, 137 alu, 137 fscib, 120 ic, 1530 code size, 23 gprs, 96 uniforms, 0 scratch, 1024 threads, 3 loops, 0:0 spills:fills, 79 preamble inst
+KERNEL TakeF16
+CS shader: 202 instrs, 137 alu, 137 fscib, 120 ic, 1528 code size, 23 gprs, 96 uniforms, 0 scratch, 1024 threads, 3 loops, 0:0 spills:fills, 79 preamble inst
+KERNEL TakeBF16
+CS shader: 210 instrs, 145 alu, 145 fscib, 124 ic, 1586 code size, 23 gprs, 98 uniforms, 0 scratch, 1024 threads, 3 loops, 0:0 spills:fills, 79 preamble inst
+KERNEL TakeU32
+CS shader: 202 instrs, 137 alu, 137 fscib, 120 ic, 1530 code size, 23 gprs, 96 uniforms, 0 scratch, 1024 threads, 3 loops, 0:0 spills:fills, 79 preamble inst
+KERNEL TakeU16
+CS shader: 202 instrs, 137 alu, 137 fscib, 120 ic, 1528 code size, 23 gprs, 96 uniforms, 0 scratch, 1024 threads, 3 loops, 0:0 spills:fills, 79 preamble inst
+KERNEL TakeI64
+CS shader: 203 instrs, 138 alu, 138 fscib, 120 ic, 1536 code size, 23 gprs, 96 uniforms, 0 scratch, 1024 threads, 3 loops, 0:0 spills:fills, 79 preamble inst
+KERNEL TakeComplex64
+CS shader: 203 instrs, 138 alu, 138 fscib, 120 ic, 1536 code size, 23 gprs, 96 uniforms, 0 scratch, 1024 threads, 3 loops, 0:0 spills:fills, 79 preamble inst
+KERNEL TakeMultiF32
+CS shader: 229 instrs, 148 alu, 148 fscib, 120 ic, 1696 code size, 23 gprs, 96 uniforms, 0 scratch, 1024 threads, 4 loops, 0:0 spills:fills, 78 preamble inst
+KERNEL TakeMultiF16
+CS shader: 229 instrs, 148 alu, 148 fscib, 120 ic, 1694 code size, 23 gprs, 96 uniforms, 0 scratch, 1024 threads, 4 loops, 0:0 spills:fills, 78 preamble inst
+KERNEL TakeMultiBF16
+CS shader: 237 instrs, 156 alu, 156 fscib, 124 ic, 1752 code size, 23 gprs, 98 uniforms, 0 scratch, 1024 threads, 4 loops, 0:0 spills:fills, 78 preamble inst
+KERNEL TakeMultiU32
+CS shader: 229 instrs, 148 alu, 148 fscib, 120 ic, 1696 code size, 23 gprs, 96 uniforms, 0 scratch, 1024 threads, 4 loops, 0:0 spills:fills, 78 preamble inst
+KERNEL TakeMultiU16
+CS shader: 229 instrs, 148 alu, 148 fscib, 120 ic, 1694 code size, 23 gprs, 96 uniforms, 0 scratch, 1024 threads, 4 loops, 0:0 spills:fills, 78 preamble inst
+KERNEL TakeMultiI64
+CS shader: 230 instrs, 149 alu, 149 fscib, 120 ic, 1702 code size, 23 gprs, 96 uniforms, 0 scratch, 1024 threads, 4 loops, 0:0 spills:fills, 78 preamble inst
+KERNEL TakeMultiComplex64
+CS shader: 230 instrs, 149 alu, 149 fscib, 120 ic, 1702 code size, 23 gprs, 96 uniforms, 0 scratch, 1024 threads, 4 loops, 0:0 spills:fills, 78 preamble inst
+KERNEL ClearU32
+CS shader: 14 instrs, 8 alu, 8 fscib, 0 ic, 98 code size, 7 gprs, 24 uniforms, 0 scratch, 1024 threads, 1 loops, 0:0 spills:fills, 19 preamble inst
+KERNEL BlockMaskF32
+CS shader: 106 instrs, 86 alu, 84 fscib, 86 ic, 904 code size, 23 gprs, 62 uniforms, 0 scratch, 1024 threads, 2 loops, 0:0 spills:fills, 88 preamble inst
+KERNEL GatherMmF32
+CS shader: 162 instrs, 101 alu, 101 fscib, 40 ic, 1318 code size, 35 gprs, 108 uniforms, 0 scratch, 1024 threads, 3 loops, 0:0 spills:fills, 73 preamble inst
+KERNEL GatherMmF16
+CS shader: 164 instrs, 103 alu, 103 fscib, 40 ic, 1326 code size, 35 gprs, 108 uniforms, 0 scratch, 1024 threads, 3 loops, 0:0 spills:fills, 73 preamble inst
+KERNEL GatherMmBF16
+CS shader: 171 instrs, 110 alu, 110 fscib, 48 ic, 1382 code size, 35 gprs, 110 uniforms, 0 scratch, 1024 threads, 3 loops, 0:0 spills:fills, 73 preamble inst
+KERNEL SegmentedMmF32
+CS shader: 169 instrs, 108 alu, 108 fscib, 36 ic, 1372 code size, 37 gprs, 104 uniforms, 0 scratch, 1024 threads, 3 loops, 0:0 spills:fills, 65 preamble inst
+KERNEL SegmentedMmF16
+CS shader: 171 instrs, 110 alu, 110 fscib, 36 ic, 1380 code size, 39 gprs, 104 uniforms, 0 scratch, 1024 threads, 3 loops, 0:0 spills:fills, 65 preamble inst
+KERNEL SegmentedMmBF16
+CS shader: 178 instrs, 117 alu, 117 fscib, 44 ic, 1436 code size, 37 gprs, 106 uniforms, 0 scratch, 1024 threads, 3 loops, 0:0 spills:fills, 65 preamble inst
+KERNEL GatherQmmF32
+CS shader: 154 instrs, 128 alu, 114 fscib, 128 ic, 1248 code size, 23 gprs, 118 uniforms, 0 scratch, 1024 threads, 3 loops, 0:0 spills:fills, 195 preamble inst
+KERNEL GatherQmmF16
+CS shader: 175 instrs, 136 alu, 134 fscib, 136 ic, 1382 code size, 27 gprs, 116 uniforms, 0 scratch, 1024 threads, 3 loops, 0:0 spills:fills, 195 preamble inst
+KERNEL GatherQmmBF16
+CS shader: 182 instrs, 160 alu, 141 fscib, 160 ic, 1446 code size, 27 gprs, 120 uniforms, 0 scratch, 1024 threads, 3 loops, 0:0 spills:fills, 195 preamble inst
+KERNEL GatherQmmNbF32
+CS shader: 145 instrs, 120 alu, 108 fscib, 120 ic, 1178 code size, 23 gprs, 110 uniforms, 0 scratch, 1024 threads, 3 loops, 0:0 spills:fills, 191 preamble inst
+KERNEL GatherQmmNbF16
+CS shader: 157 instrs, 128 alu, 120 fscib, 128 ic, 1262 code size, 25 gprs, 108 uniforms, 0 scratch, 1024 threads, 3 loops, 0:0 spills:fills, 191 preamble inst
+KERNEL GatherQmmNbBF16
+CS shader: 164 instrs, 144 alu, 127 fscib, 144 ic, 1318 code size, 25 gprs, 112 uniforms, 0 scratch, 1024 threads, 3 loops, 0:0 spills:fills, 191 preamble inst
+KERNEL FftF32
+CS shader: 259 instrs, 203 alu, 203 fscib, 176 ic, 1964 code size, 31 gprs, 104 uniforms, 0 scratch, 1024 threads, 5 loops, 0:0 spills:fills, 85 preamble inst
+KERNEL FftRealF32
+CS shader: 12 instrs, 6 alu, 6 fscib, 0 ic, 82 code size, 5 gprs, 24 uniforms, 0 scratch, 1024 threads, 0 loops, 0:0 spills:fills, 20 preamble inst
+KERNEL FftStageF32
+CS shader: 713 instrs, 605 alu, 605 fscib, 536 ic, 5366 code size, 19 gprs, 340 uniforms, 0 scratch, 1024 threads, 1 loops, 0:0 spills:fills, 245 preamble inst
+KERNEL FastRmsNormF32
+CS shader: 116 instrs, 42 alu, 42 fscib, 12 ic, 870 code size, 17 gprs, 68 uniforms, 0 scratch, 1024 threads, 3 loops, 0:0 spills:fills, 46 preamble inst
+KERNEL FastRmsNormF16
+CS shader: 116 instrs, 42 alu, 42 fscib, 12 ic, 870 code size, 17 gprs, 64 uniforms, 0 scratch, 1024 threads, 3 loops, 0:0 spills:fills, 46 preamble inst
+KERNEL FastRmsNormBF16
+CS shader: 126 instrs, 52 alu, 52 fscib, 24 ic, 942 code size, 21 gprs, 70 uniforms, 0 scratch, 1024 threads, 3 loops, 0:0 spills:fills, 47 preamble inst
+KERNEL FastLayerNormF32
+CS shader: 205 instrs, 67 alu, 67 fscib, 12 ic, 1436 code size, 21 gprs, 84 uniforms, 0 scratch, 1024 threads, 4 loops, 0:0 spills:fills, 60 preamble inst
+KERNEL FastLayerNormF16
+CS shader: 205 instrs, 67 alu, 67 fscib, 12 ic, 1434 code size, 19 gprs, 80 uniforms, 0 scratch, 1024 threads, 4 loops, 0:0 spills:fills, 60 preamble inst
+KERNEL FastLayerNormBF16
+CS shader: 217 instrs, 79 alu, 79 fscib, 32 ic, 1524 code size, 23 gprs, 86 uniforms, 0 scratch, 1024 threads, 4 loops, 0:0 spills:fills, 62 preamble inst
+KERNEL FastRmsNormVjpDxF32
+CS shader: 215 instrs, 73 alu, 73 fscib, 12 ic, 1498 code size, 27 gprs, 88 uniforms, 0 scratch, 1024 threads, 4 loops, 0:0 spills:fills, 58 preamble inst
+KERNEL FastRmsNormVjpDxF16
+CS shader: 215 instrs, 73 alu, 73 fscib, 12 ic, 1498 code size, 25 gprs, 84 uniforms, 0 scratch, 1024 threads, 4 loops, 0:0 spills:fills, 58 preamble inst
+KERNEL FastRmsNormVjpDxBF16
+CS shader: 229 instrs, 87 alu, 87 fscib, 40 ic, 1602 code size, 27 gprs, 90 uniforms, 0 scratch, 1024 threads, 4 loops, 0:0 spills:fills, 59 preamble inst
+KERNEL FastLayerNormVjpDxF32
+CS shader: 384 instrs, 121 alu, 121 fscib, 12 ic, 2576 code size, 29 gprs, 112 uniforms, 0 scratch, 1024 threads, 6 loops, 0:0 spills:fills, 65 preamble inst
+KERNEL FastLayerNormVjpDxF16
+CS shader: 384 instrs, 121 alu, 121 fscib, 12 ic, 2576 code size, 29 gprs, 100 uniforms, 0 scratch, 1024 threads, 6 loops, 0:0 spills:fills, 65 preamble inst
+KERNEL FastLayerNormVjpDxBF16
+CS shader: 401 instrs, 138 alu, 138 fscib, 52 ic, 2704 code size, 31 gprs, 114 uniforms, 0 scratch, 1024 threads, 6 loops, 0:0 spills:fills, 66 preamble inst
+KERNEL FastRmsNormVjpDwF32
+CS shader: 113 instrs, 42 alu, 42 fscib, 12 ic, 854 code size, 19 gprs, 60 uniforms, 0 scratch, 1024 threads, 3 loops, 0:0 spills:fills, 34 preamble inst
+KERNEL FastRmsNormVjpDwF16
+CS shader: 113 instrs, 42 alu, 42 fscib, 12 ic, 854 code size, 19 gprs, 60 uniforms, 0 scratch, 1024 threads, 3 loops, 0:0 spills:fills, 34 preamble inst
+KERNEL FastRmsNormVjpDwBF16
+CS shader: 116 instrs, 45 alu, 45 fscib, 24 ic, 878 code size, 21 gprs, 60 uniforms, 0 scratch, 1024 threads, 3 loops, 0:0 spills:fills, 34 preamble inst
+KERNEL FastLayerNormVjpDwF32
+CS shader: 195 instrs, 65 alu, 65 fscib, 12 ic, 1376 code size, 21 gprs, 64 uniforms, 0 scratch, 1024 threads, 4 loops, 0:0 spills:fills, 35 preamble inst
+KERNEL FastLayerNormVjpDwF16
+CS shader: 195 instrs, 65 alu, 65 fscib, 12 ic, 1376 code size, 21 gprs, 64 uniforms, 0 scratch, 1024 threads, 4 loops, 0:0 spills:fills, 35 preamble inst
+KERNEL FastLayerNormVjpDwBF16
+CS shader: 199 instrs, 69 alu, 69 fscib, 28 ic, 1408 code size, 23 gprs, 64 uniforms, 0 scratch, 1024 threads, 4 loops, 0:0 spills:fills, 35 preamble inst
+KERNEL CrossEntropyVjpF32
+CS shader: 210 instrs, 78 alu, 78 fscib, 16 ic, 1480 code size, 21 gprs, 76 uniforms, 0 scratch, 1024 threads, 4 loops, 0:0 spills:fills, 38 preamble inst
+KERNEL CrossEntropyVjpF16
+CS shader: 211 instrs, 79 alu, 79 fscib, 16 ic, 1486 code size, 21 gprs, 76 uniforms, 0 scratch, 1024 threads, 4 loops, 0:0 spills:fills, 38 preamble inst
+KERNEL CrossEntropyVjpBF16
+CS shader: 220 instrs, 88 alu, 88 fscib, 28 ic, 1552 code size, 25 gprs, 78 uniforms, 0 scratch, 1024 threads, 4 loops, 0:0 spills:fills, 38 preamble inst
+KERNEL CrossEntropyF32
+CS shader: 195 instrs, 68 alu, 68 fscib, 12 ic, 1386 code size, 17 gprs, 62 uniforms, 0 scratch, 1024 threads, 3 loops, 0:0 spills:fills, 29 preamble inst
+KERNEL CrossEntropyF16
+CS shader: 196 instrs, 69 alu, 69 fscib, 12 ic, 1392 code size, 17 gprs, 62 uniforms, 0 scratch, 1024 threads, 3 loops, 0:0 spills:fills, 29 preamble inst
+KERNEL CrossEntropyBF16
+CS shader: 198 instrs, 71 alu, 71 fscib, 24 ic, 1410 code size, 17 gprs, 62 uniforms, 0 scratch, 1024 threads, 3 loops, 0:0 spills:fills, 29 preamble inst
+KERNEL FastRopeF32
+CS shader: 243 instrs, 236 alu, 201 fscib, 236 ic, 1838 code size, 19 gprs, 182 uniforms, 0 scratch, 1024 threads, 1 loops, 0:0 spills:fills, 203 preamble inst
+KERNEL FastRopeF16
+CS shader: 244 instrs, 236 alu, 202 fscib, 236 ic, 1844 code size, 19 gprs, 182 uniforms, 0 scratch, 1024 threads, 1 loops, 0:0 spills:fills, 203 preamble inst
+KERNEL FastRopeBF16
+CS shader: 369 instrs, 327 alu, 327 fscib, 324 ic, 2720 code size, 25 gprs, 184 uniforms, 0 scratch, 1024 threads, 1 loops, 0:0 spills:fills, 203 preamble inst
+KERNEL FastRopeFreqsF32
+CS shader: 245 instrs, 240 alu, 201 fscib, 240 ic, 1850 code size, 19 gprs, 190 uniforms, 0 scratch, 1024 threads, 1 loops, 0:0 spills:fills, 203 preamble inst
+KERNEL FastRopeFreqsF16
+CS shader: 246 instrs, 240 alu, 202 fscib, 240 ic, 1856 code size, 19 gprs, 190 uniforms, 0 scratch, 1024 threads, 1 loops, 0:0 spills:fills, 203 preamble inst
+KERNEL FastRopeFreqsBF16
+CS shader: 371 instrs, 328 alu, 327 fscib, 328 ic, 2732 code size, 25 gprs, 192 uniforms, 0 scratch, 1024 threads, 1 loops, 0:0 spills:fills, 203 preamble inst
+KERNEL Fp8ToF32
+CS shader: 59 instrs, 38 alu, 38 fscib, 24 ic, 522 code size, 17 gprs, 64 uniforms, 0 scratch, 1024 threads, 1 loops, 0:0 spills:fills, 36 preamble inst
+KERNEL Fp8ToF16
+CS shader: 63 instrs, 42 alu, 42 fscib, 24 ic, 546 code size, 17 gprs, 64 uniforms, 0 scratch, 1024 threads, 1 loops, 0:0 spills:fills, 36 preamble inst
+KERNEL Fp8ToBF16
+CS shader: 87 instrs, 66 alu, 66 fscib, 24 ic, 714 code size, 17 gprs, 66 uniforms, 0 scratch, 1024 threads, 1 loops, 0:0 spills:fills, 36 preamble inst
+KERNEL Fp8FromF32
+CS shader: 91 instrs, 69 alu, 69 fscib, 60 ic, 764 code size, 15 gprs, 68 uniforms, 0 scratch, 1024 threads, 1 loops, 0:0 spills:fills, 36 preamble inst
+KERNEL Fp8FromF16
+CS shader: 95 instrs, 73 alu, 73 fscib, 60 ic, 788 code size, 15 gprs, 68 uniforms, 0 scratch, 1024 threads, 1 loops, 0:0 spills:fills, 36 preamble inst
+KERNEL Fp8FromBF16
+CS shader: 95 instrs, 76 alu, 73 fscib, 76 ic, 796 code size, 15 gprs, 68 uniforms, 0 scratch, 1024 threads, 1 loops, 0:0 spills:fills, 36 preamble inst
+KERNEL LinalgCholeskyF32
+CS shader: 277 instrs, 76 alu, 76 fscib, 54 ic, 1542 code size, 27 gprs, 56 uniforms, 0 scratch, 1024 threads, 7 loops, 0:0 spills:fills, 40 preamble inst
+KERNEL LinalgInverseF32
+CS shader: 501 instrs, 145 alu, 145 fscib, 86 ic, 2916 code size, 25 gprs, 146 uniforms, 0 scratch, 1024 threads, 12 loops, 0:0 spills:fills, 62 preamble inst
+KERNEL LinalgLuF32
+CS shader: 368 instrs, 94 alu, 94 fscib, 42 ic, 2130 code size, 27 gprs, 86 uniforms, 0 scratch, 1024 threads, 7 loops, 0:0 spills:fills, 27 preamble inst
+KERNEL LinalgQrF32
+CS shader: 497 instrs, 140 alu, 140 fscib, 96 ic, 2668 code size, 27 gprs, 98 uniforms, 0 scratch, 1024 threads, 12 loops, 0:0 spills:fills, 63 preamble inst
+KERNEL LinalgEighF32
+CS shader: 430 instrs, 168 alu, 168 fscib, 116 ic, 2612 code size, 37 gprs, 104 uniforms, 0 scratch, 1024 threads, 14 loops, 0:0 spills:fills, 60 preamble inst
+KERNEL LinalgEigF32
+CS shader: 1768 instrs, 844 alu, 844 fscib, 586 ic, 10812 code size, 57 gprs, 180 uniforms, 0 scratch, 1024 threads, 47 loops, 0:0 spills:fills, 74 preamble inst
+KERNEL LinalgSvdF32
+CS shader: 555 instrs, 173 alu, 173 fscib, 90 ic, 3248 code size, 33 gprs, 118 uniforms, 0 scratch, 1024 threads, 13 loops, 0:0 spills:fills, 48 preamble inst
+KERNEL LinalgSvdFinalizeF32
+CS shader: 747 instrs, 213 alu, 213 fscib, 150 ic, 4118 code size, 21 gprs, 162 uniforms, 0 scratch, 1024 threads, 23 loops, 0:0 spills:fills, 50 preamble inst
+KERNEL FastRmsNormVjpDwReduceF32
+CS shader: 23 instrs, 14 alu, 14 fscib, 8 ic, 280 code size, 9 gprs, 34 uniforms, 0 scratch, 1024 threads, 1 loops, 0:0 spills:fills, 23 preamble inst
+KERNEL FastRmsNormVjpDwReduceF16
+CS shader: 24 instrs, 15 alu, 15 fscib, 8 ic, 286 code size, 9 gprs, 34 uniforms, 0 scratch, 1024 threads, 1 loops, 0:0 spills:fills, 23 preamble inst
+KERNEL FastRmsNormVjpDwReduceBF16
+CS shader: 30 instrs, 21 alu, 21 fscib, 8 ic, 328 code size, 11 gprs, 36 uniforms, 0 scratch, 1024 threads, 1 loops, 0:0 spills:fills, 23 preamble inst
+KERNEL ComplexElementwise
+CS shader: 1765 instrs, 1608 alu, 1608 fscib, 952 ic, 12152 code size, 43 gprs, 176 uniforms, 0 scratch, 1024 threads, 2 loops, 0:0 spills:fills, 171 preamble inst
+KERNEL ComplexReal
+CS shader: 29 instrs, 21 alu, 21 fscib, 14 ic, 194 code size, 13 gprs, 28 uniforms, 0 scratch, 1024 threads, 1 loops, 0:0 spills:fills, 28 preamble inst
+KERNEL ComplexImag
+KERNEL CastF32Complex64
+CS shader: 18 instrs, 10 alu, 10 fscib, 0 ic, 250 code size, 11 gprs, 30 uniforms, 0 scratch, 1024 threads, 1 loops, 0:0 spills:fills, 24 preamble inst
+KERNEL CastI32Complex64
+CS shader: 19 instrs, 10 alu, 10 fscib, 0 ic, 256 code size, 11 gprs, 30 uniforms, 0 scratch, 1024 threads, 1 loops, 0:0 spills:fills, 24 preamble inst
+KERNEL CastU32Complex64
+CS shader: 19 instrs, 10 alu, 10 fscib, 0 ic, 256 code size, 11 gprs, 30 uniforms, 0 scratch, 1024 threads, 1 loops, 0:0 spills:fills, 24 preamble inst
+KERNEL CastBoolComplex64
+CS shader: 30 instrs, 16 alu, 16 fscib, 4 ic, 334 code size, 15 gprs, 34 uniforms, 0 scratch, 1024 threads, 1 loops, 0:0 spills:fills, 29 preamble inst
+KERNEL CastF16Complex64
+CS shader: 19 instrs, 11 alu, 11 fscib, 0 ic, 256 code size, 11 gprs, 30 uniforms, 0 scratch, 1024 threads, 1 loops, 0:0 spills:fills, 24 preamble inst
+KERNEL CastBF16Complex64
+CS shader: 19 instrs, 11 alu, 11 fscib, 4 ic, 258 code size, 11 gprs, 30 uniforms, 0 scratch, 1024 threads, 1 loops, 0:0 spills:fills, 24 preamble inst
+KERNEL CastComplex64F32
+CS shader: 16 instrs, 8 alu, 8 fscib, 0 ic, 110 code size, 7 gprs, 28 uniforms, 0 scratch, 1024 threads, 1 loops, 0:0 spills:fills, 24 preamble inst
+KERNEL FillComplex64
+CS shader: 15 instrs, 9 alu, 9 fscib, 0 ic, 104 code size, 11 gprs, 24 uniforms, 0 scratch, 1024 threads, 1 loops, 0:0 spills:fills, 21 preamble inst
+KERNEL CopyGeneralComplex64
+CS shader: 97 instrs, 53 alu, 53 fscib, 52 ic, 774 code size, 23 gprs, 54 uniforms, 0 scratch, 1024 threads, 2 loops, 0:0 spills:fills, 41 preamble inst
+KERNEL ComplexAbs
+KERNEL ComplexAbsAsComplex
+CS shader: 31 instrs, 23 alu, 23 fscib, 14 ic, 334 code size, 13 gprs, 30 uniforms, 0 scratch, 1024 threads, 1 loops, 0:0 spills:fills, 28 preamble inst
+KERNEL ScatterFAddF32
+timeout: the monitored command dumped core
+CS shader: 14 instrs, 8 alu, 8 fscib, 0 ic, 98 code size, 5 gprs, 24 uniforms, 0 scratch, 1024 threads, 1 loops, 0:0 spills:fills, 22 preamble inst
+KERNEL ScatterFAddF16
+Packing assertion failed for instruction:
+
+   _ = atomic r4l...r4h, u76:u77, r3, #0x3, slot 0
+
+no 64-bit atomics yet: index.size == AGX_SIZE_32
+timeout: the monitored command dumped core
+CS shader: 14 instrs, 8 alu, 8 fscib, 0 ic, 98 code size, 5 gprs, 24 uniforms, 0 scratch, 1024 threads, 1 loops, 0:0 spills:fills, 22 preamble inst
+KERNEL ScatterFAddBF16
+Packing assertion failed for instruction:
+
+   _ = atomic r4l...r4h, u76:u77, r3, #0x3, slot 0
+
+no 64-bit atomics yet: index.size == AGX_SIZE_32
+timeout: the monitored command dumped core
+CS shader: 14 instrs, 8 alu, 8 fscib, 0 ic, 98 code size, 5 gprs, 24 uniforms, 0 scratch, 1024 threads, 1 loops, 0:0 spills:fills, 22 preamble inst
+KERNEL ScatterFAddMultiF32
+timeout: the monitored command dumped core
+CS shader: 14 instrs, 8 alu, 8 fscib, 0 ic, 98 code size, 5 gprs, 24 uniforms, 0 scratch, 1024 threads, 1 loops, 0:0 spills:fills, 22 preamble inst
+KERNEL ScatterFAddTripleF32
+timeout: the monitored command dumped core
+CS shader: 14 instrs, 8 alu, 8 fscib, 0 ic, 98 code size, 5 gprs, 24 uniforms, 0 scratch, 1024 threads, 1 loops, 0:0 spills:fills, 22 preamble inst
+KERNEL ScatterFAddGeneralF32
+timeout: the monitored command dumped core
+CS shader: 14 instrs, 8 alu, 8 fscib, 0 ic, 98 code size, 5 gprs, 24 uniforms, 0 scratch, 1024 threads, 1 loops, 0:0 spills:fills, 22 preamble inst
+KERNEL ScatterFCasF32
+CS shader: 242 instrs, 107 alu, 107 fscib, 68 ic, 1692 code size, 27 gprs, 176 uniforms, 0 scratch, 1024 threads, 4 loops, 0:0 spills:fills, 137 preamble inst
+KERNEL ScatterFCasF16
+CS shader: 246 instrs, 111 alu, 111 fscib, 68 ic, 1716 code size, 27 gprs, 174 uniforms, 0 scratch, 1024 threads, 4 loops, 0:0 spills:fills, 137 preamble inst
+KERNEL ScatterFCasBF16
+CS shader: 270 instrs, 135 alu, 135 fscib, 96 ic, 1892 code size, 27 gprs, 178 uniforms, 0 scratch, 1024 threads, 4 loops, 0:0 spills:fills, 137 preamble inst
+KERNEL ScatterFCasMultiF32
+CS shader: 261 instrs, 117 alu, 117 fscib, 72 ic, 1830 code size, 27 gprs, 188 uniforms, 0 scratch, 1024 threads, 4 loops, 0:0 spills:fills, 148 preamble inst
+KERNEL ScatterFCasTripleF32
+CS shader: 279 instrs, 126 alu, 126 fscib, 76 ic, 1958 code size, 31 gprs, 200 uniforms, 0 scratch, 1024 threads, 4 loops, 0:0 spills:fills, 164 preamble inst
+KERNEL ScatterFCasGeneralF32
+CS shader: 257 instrs, 115 alu, 115 fscib, 68 ic, 1786 code size, 27 gprs, 172 uniforms, 0 scratch, 1024 threads, 5 loops, 0:0 spills:fills, 129 preamble inst
+KERNEL ScatterBool
+CS shader: 328 instrs, 168 alu, 160 fscib, 168 ic, 2278 code size, 27 gprs, 212 uniforms, 0 scratch, 1024 threads, 2 loops, 0:0 spills:fills, 153 preamble inst
+KERNEL ScatterBoolMulti
+CS shader: 347 instrs, 172 alu, 170 fscib, 172 ic, 2416 code size, 27 gprs, 224 uniforms, 0 scratch, 1024 threads, 2 loops, 0:0 spills:fills, 164 preamble inst
+KERNEL ScatterAxisFAddF32
+timeout: the monitored command dumped core
+CS shader: 14 instrs, 8 alu, 8 fscib, 0 ic, 98 code size, 5 gprs, 24 uniforms, 0 scratch, 1024 threads, 1 loops, 0:0 spills:fills, 22 preamble inst
+KERNEL ScatterAxisFAddF16
+timeout: the monitored command dumped core
+CS shader: 14 instrs, 8 alu, 8 fscib, 0 ic, 98 code size, 5 gprs, 24 uniforms, 0 scratch, 1024 threads, 1 loops, 0:0 spills:fills, 22 preamble inst
+KERNEL ScatterAxisFAddBF16
+timeout: the monitored command dumped core
+CS shader: 14 instrs, 8 alu, 8 fscib, 0 ic, 98 code size, 5 gprs, 24 uniforms, 0 scratch, 1024 threads, 1 loops, 0:0 spills:fills, 22 preamble inst
+KERNEL ScatterAxisFCasF32
+CS shader: 228 instrs, 148 alu, 138 fscib, 148 ic, 1690 code size, 31 gprs, 106 uniforms, 0 scratch, 1024 threads, 4 loops, 0:0 spills:fills, 113 preamble inst
+KERNEL ScatterAxisFCasF16
+CS shader: 228 instrs, 148 alu, 138 fscib, 148 ic, 1690 code size, 31 gprs, 106 uniforms, 0 scratch, 1024 threads, 4 loops, 0:0 spills:fills, 113 preamble inst
+KERNEL ScatterAxisFCasBF16
+CS shader: 237 instrs, 156 alu, 147 fscib, 156 ic, 1754 code size, 31 gprs, 108 uniforms, 0 scratch, 1024 threads, 4 loops, 0:0 spills:fills, 113 preamble inst
+KERNEL ScatterAxisBool
+CS shader: 286 instrs, 216 alu, 169 fscib, 216 ic, 2070 code size, 31 gprs, 130 uniforms, 0 scratch, 1024 threads, 3 loops, 0:0 spills:fills, 118 preamble inst
+KERNEL QmmVecF32
+CS shader: 470 instrs, 376 alu, 349 fscib, 376 ic, 3332 code size, 47 gprs, 148 uniforms, 0 scratch, 1024 threads, 3 loops, 0:0 spills:fills, 205 preamble inst
+KERNEL QmmVecF16
+CS shader: 471 instrs, 376 alu, 350 fscib, 376 ic, 3334 code size, 47 gprs, 148 uniforms, 0 scratch, 1024 threads, 3 loops, 0:0 spills:fills, 205 preamble inst
+KERNEL QmmVecBF16
+CS shader: 483 instrs, 400 alu, 362 fscib, 400 ic, 3556 code size, 47 gprs, 150 uniforms, 0 scratch, 1024 threads, 3 loops, 0:0 spills:fills, 205 preamble inst
+KERNEL QmmVecSubgroupF32
+CS shader: 422 instrs, 376 alu, 358 fscib, 376 ic, 3018 code size, 45 gprs, 148 uniforms, 0 scratch, 1024 threads, 3 loops, 0:0 spills:fills, 205 preamble inst
+KERNEL QmmVecSubgroupF16
+CS shader: 423 instrs, 376 alu, 359 fscib, 376 ic, 3020 code size, 45 gprs, 148 uniforms, 0 scratch, 1024 threads, 3 loops, 0:0 spills:fills, 205 preamble inst
+KERNEL QmmVecSubgroupBF16
+CS shader: 435 instrs, 400 alu, 371 fscib, 400 ic, 3242 code size, 45 gprs, 150 uniforms, 0 scratch, 1024 threads, 3 loops, 0:0 spills:fills, 205 preamble inst
+KERNEL QmmTileF32
+CS shader: 534 instrs, 407 alu, 407 fscib, 400 ic, 4010 code size, 53 gprs, 184 uniforms, 0 scratch, 1024 threads, 4 loops, 0:0 spills:fills, 223 preamble inst
+KERNEL QmmTileF16
+CS shader: 536 instrs, 409 alu, 409 fscib, 400 ic, 4018 code size, 51 gprs, 184 uniforms, 0 scratch, 1024 threads, 4 loops, 0:0 spills:fills, 223 preamble inst
+KERNEL QmmTileBF16
+CS shader: 549 instrs, 422 alu, 422 fscib, 420 ic, 4116 code size, 51 gprs, 186 uniforms, 0 scratch, 1024 threads, 4 loops, 0:0 spills:fills, 223 preamble inst
+KERNEL FusedChainF32
+CS shader: 245 instrs, 186 alu, 186 fscib, 90 ic, 1858 code size, 37 gprs, 88 uniforms, 0 scratch, 1024 threads, 2 loops, 0:0 spills:fills, 74 preamble inst
+KERNEL FusedChainF16
+CS shader: 258 instrs, 199 alu, 199 fscib, 90 ic, 1936 code size, 37 gprs, 90 uniforms, 0 scratch, 1024 threads, 2 loops, 0:0 spills:fills, 74 preamble inst
+KERNEL QuantizeF32
+CS shader: 349 instrs, 295 alu, 295 fscib, 88 ic, 2530 code size, 35 gprs, 98 uniforms, 0 scratch, 1024 threads, 7 loops, 0:0 spills:fills, 120 preamble inst
+KERNEL QuantizeF16
+CS shader: 353 instrs, 299 alu, 299 fscib, 88 ic, 2556 code size, 35 gprs, 98 uniforms, 0 scratch, 1024 threads, 7 loops, 0:0 spills:fills, 120 preamble inst
+KERNEL ReduceGeneralBool
+CS shader: 321 instrs, 215 alu, 215 fscib, 212 ic, 2434 code size, 31 gprs, 182 uniforms, 0 scratch, 1024 threads, 6 loops, 0:0 spills:fills, 363 preamble inst
+KERNEL CastIntW1W1
+CS shader: 161 instrs, 99 alu, 99 fscib, 76 ic, 1232 code size, 23 gprs, 88 uniforms, 0 scratch, 1024 threads, 2 loops, 0:0 spills:fills, 74 preamble inst
+KERNEL CastIntW1W2
+CS shader: 145 instrs, 87 alu, 87 fscib, 64 ic, 1116 code size, 23 gprs, 92 uniforms, 0 scratch, 1024 threads, 2 loops, 0:0 spills:fills, 72 preamble inst
+KERNEL CastIntW1W4
+CS shader: 137 instrs, 79 alu, 79 fscib, 64 ic, 1062 code size, 23 gprs, 88 uniforms, 0 scratch, 1024 threads, 2 loops, 0:0 spills:fills, 70 preamble inst
+KERNEL CastIntW1W8
+CS shader: 172 instrs, 105 alu, 105 fscib, 64 ic, 1328 code size, 23 gprs, 94 uniforms, 0 scratch, 1024 threads, 2 loops, 0:0 spills:fills, 68 preamble inst
+KERNEL CastIntW2W1
+CS shader: 159 instrs, 97 alu, 97 fscib, 68 ic, 1218 code size, 23 gprs, 94 uniforms, 0 scratch, 1024 threads, 2 loops, 0:0 spills:fills, 80 preamble inst
+KERNEL CastIntW2W2
+CS shader: 144 instrs, 86 alu, 86 fscib, 56 ic, 1108 code size, 23 gprs, 98 uniforms, 0 scratch, 1024 threads, 2 loops, 0:0 spills:fills, 76 preamble inst
+KERNEL CastIntW2W4
+CS shader: 134 instrs, 76 alu, 76 fscib, 56 ic, 1040 code size, 23 gprs, 94 uniforms, 0 scratch, 1024 threads, 2 loops, 0:0 spills:fills, 74 preamble inst
+KERNEL CastIntW2W8
+CS shader: 172 instrs, 104 alu, 104 fscib, 56 ic, 1328 code size, 25 gprs, 100 uniforms, 0 scratch, 1024 threads, 2 loops, 0:0 spills:fills, 74 preamble inst
+KERNEL CastIntW4W1
+CS shader: 149 instrs, 87 alu, 87 fscib, 64 ic, 1146 code size, 23 gprs, 90 uniforms, 0 scratch, 1024 threads, 2 loops, 0:0 spills:fills, 76 preamble inst
+KERNEL CastIntW4W2
+CS shader: 135 instrs, 77 alu, 77 fscib, 52 ic, 1044 code size, 23 gprs, 90 uniforms, 0 scratch, 1024 threads, 2 loops, 0:0 spills:fills, 72 preamble inst
+KERNEL CastIntW4W4
+CS shader: 125 instrs, 67 alu, 67 fscib, 52 ic, 976 code size, 23 gprs, 86 uniforms, 0 scratch, 1024 threads, 2 loops, 0:0 spills:fills, 70 preamble inst
+KERNEL CastIntW4W8
+CS shader: 162 instrs, 94 alu, 94 fscib, 52 ic, 1256 code size, 23 gprs, 92 uniforms, 0 scratch, 1024 threads, 2 loops, 0:0 spills:fills, 70 preamble inst
+KERNEL CastIntW8W1
+CS shader: 256 instrs, 186 alu, 186 fscib, 136 ic, 1926 code size, 31 gprs, 86 uniforms, 0 scratch, 1024 threads, 2 loops, 0:0 spills:fills, 74 preamble inst
+KERNEL CastIntW8W2
+CS shader: 246 instrs, 180 alu, 180 fscib, 124 ic, 1854 code size, 31 gprs, 90 uniforms, 0 scratch, 1024 threads, 2 loops, 0:0 spills:fills, 72 preamble inst
+KERNEL CastIntW8W4
+CS shader: 235 instrs, 169 alu, 169 fscib, 124 ic, 1780 code size, 31 gprs, 86 uniforms, 0 scratch, 1024 threads, 2 loops, 0:0 spills:fills, 70 preamble inst
+KERNEL CastIntW8W8
+CS shader: 269 instrs, 193 alu, 193 fscib, 124 ic, 2036 code size, 31 gprs, 92 uniforms, 0 scratch, 1024 threads, 2 loops, 0:0 spills:fills, 68 preamble inst
+KERNEL CompareU64
+CS shader: 225 instrs, 141 alu, 141 fscib, 116 ic, 1680 code size, 31 gprs, 102 uniforms, 0 scratch, 1024 threads, 4 loops, 0:0 spills:fills, 110 preamble inst
+KERNEL ElementwiseI8
+CS shader: 361 instrs, 238 alu, 238 fscib, 226 ic, 2650 code size, 23 gprs, 144 uniforms, 0 scratch, 1024 threads, 4 loops, 0:0 spills:fills, 164 preamble inst
+KERNEL ElementwiseU8
+CS shader: 355 instrs, 232 alu, 232 fscib, 226 ic, 2610 code size, 23 gprs, 142 uniforms, 0 scratch, 1024 threads, 4 loops, 0:0 spills:fills, 164 preamble inst
+KERNEL ElementwiseI16
+CS shader: 302 instrs, 213 alu, 213 fscib, 166 ic, 2278 code size, 23 gprs, 122 uniforms, 0 scratch, 1024 threads, 4 loops, 0:0 spills:fills, 158 preamble inst
+KERNEL ElementwiseU16
+CS shader: 296 instrs, 207 alu, 207 fscib, 166 ic, 2238 code size, 23 gprs, 118 uniforms, 0 scratch, 1024 threads, 4 loops, 0:0 spills:fills, 158 preamble inst
+KERNEL ElementwiseI64
+CS shader: 1877 instrs, 1639 alu, 1639 fscib, 552 ic, 14574 code size, 255 gprs, 166 uniforms, 168 scratch, 384 threads, 4 loops, 38:48 spills:fills, 158 preamble inst
+KERNEL ElementwiseU64
+CS shader: 1769 instrs, 1574 alu, 1574 fscib, 536 ic, 13772 code size, 255 gprs, 166 uniforms, 136 scratch, 384 threads, 4 loops, 28:30 spills:fills, 158 preamble inst
+KERNEL CompareI8
+CS shader: 1373 instrs, 851 alu, 851 fscib, 836 ic, 9536 code size, 27 gprs, 484 uniforms, 0 scratch, 1024 threads, 16 loops, 0:0 spills:fills, 272 preamble inst
+KERNEL CompareU8
+CS shader: 1367 instrs, 845 alu, 845 fscib, 836 ic, 9496 code size, 27 gprs, 482 uniforms, 0 scratch, 1024 threads, 16 loops, 0:0 spills:fills, 272 preamble inst
+KERNEL CompareI16
+CS shader: 227 instrs, 143 alu, 143 fscib, 116 ic, 1688 code size, 27 gprs, 106 uniforms, 0 scratch, 1024 threads, 4 loops, 0:0 spills:fills, 110 preamble inst
+KERNEL CompareU16
+CS shader: 221 instrs, 137 alu, 137 fscib, 116 ic, 1648 code size, 27 gprs, 102 uniforms, 0 scratch, 1024 threads, 4 loops, 0:0 spills:fills, 110 preamble inst
+KERNEL ScatterU8
+CS shader: 228 instrs, 124 alu, 124 fscib, 104 ic, 1658 code size, 27 gprs, 148 uniforms, 0 scratch, 1024 threads, 2 loops, 0:0 spills:fills, 132 preamble inst
+KERNEL ScatterI8
+KERNEL ScatterU16
+CS shader: 194 instrs, 110 alu, 110 fscib, 68 ic, 1442 code size, 27 gprs, 136 uniforms, 0 scratch, 1024 threads, 2 loops, 0:0 spills:fills, 129 preamble inst
+KERNEL ScatterI16
+KERNEL ScatterMultiU8
+CS shader: 247 instrs, 134 alu, 134 fscib, 108 ic, 1792 code size, 27 gprs, 160 uniforms, 0 scratch, 1024 threads, 2 loops, 0:0 spills:fills, 143 preamble inst
+KERNEL ScatterMultiI8
+KERNEL ScatterMultiU16
+CS shader: 213 instrs, 120 alu, 120 fscib, 72 ic, 1576 code size, 27 gprs, 148 uniforms, 0 scratch, 1024 threads, 2 loops, 0:0 spills:fills, 140 preamble inst
+KERNEL ScatterMultiI16
+KERNEL ScatterTripleU8
+CS shader: 265 instrs, 143 alu, 143 fscib, 112 ic, 1920 code size, 31 gprs, 172 uniforms, 0 scratch, 1024 threads, 2 loops, 0:0 spills:fills, 159 preamble inst
+KERNEL ScatterTripleI8
+KERNEL ScatterTripleU16
+CS shader: 231 instrs, 129 alu, 129 fscib, 76 ic, 1704 code size, 31 gprs, 160 uniforms, 0 scratch, 1024 threads, 2 loops, 0:0 spills:fills, 156 preamble inst
+KERNEL ScatterTripleI16
+KERNEL FillU64
+CS shader: 19 instrs, 11 alu, 11 fscib, 0 ic, 130 code size, 7 gprs, 24 uniforms, 0 scratch, 1024 threads, 1 loops, 0:0 spills:fills, 22 preamble inst
+KERNEL FillU16
+CS shader: 14 instrs, 8 alu, 8 fscib, 0 ic, 98 code size, 5 gprs, 24 uniforms, 0 scratch, 1024 threads, 1 loops, 0:0 spills:fills, 21 preamble inst
+KERNEL SortMergeF32
+CS shader: 45 instrs, 29 alu, 29 fscib, 8 ic, 318 code size, 14 gprs, 30 uniforms, 0 scratch, 1024 threads, 1 loops, 0:0 spills:fills, 38 preamble inst
+KERNEL SortMergeF16
+CS shader: 45 instrs, 29 alu, 29 fscib, 8 ic, 318 code size, 12 gprs, 30 uniforms, 0 scratch, 1024 threads, 1 loops, 0:0 spills:fills, 38 preamble inst
+KERNEL SortMergeBF16
+CS shader: 47 instrs, 31 alu, 31 fscib, 16 ic, 334 code size, 15 gprs, 30 uniforms, 0 scratch, 1024 threads, 1 loops, 0:0 spills:fills, 38 preamble inst
+KERNEL SortMergeI32
+CS shader: 41 instrs, 25 alu, 25 fscib, 8 ic, 410 code size, 17 gprs, 32 uniforms, 0 scratch, 1024 threads, 1 loops, 0:0 spills:fills, 38 preamble inst
+KERNEL SortMergeU32
+CS shader: 38 instrs, 23 alu, 23 fscib, 8 ic, 264 code size, 13 gprs, 30 uniforms, 0 scratch, 1024 threads, 1 loops, 0:0 spills:fills, 38 preamble inst
+KERNEL ArgSortMergeF32
+CS shader: 49 instrs, 29 alu, 29 fscib, 8 ic, 350 code size, 18 gprs, 34 uniforms, 0 scratch, 1024 threads, 1 loops, 0:0 spills:fills, 41 preamble inst
+KERNEL ArgSortMergeF16
+CS shader: 49 instrs, 29 alu, 29 fscib, 8 ic, 350 code size, 16 gprs, 34 uniforms, 0 scratch, 1024 threads, 1 loops, 0:0 spills:fills, 41 preamble inst
+KERNEL ArgSortMergeBF16
+CS shader: 51 instrs, 31 alu, 31 fscib, 16 ic, 366 code size, 19 gprs, 34 uniforms, 0 scratch, 1024 threads, 1 loops, 0:0 spills:fills, 41 preamble inst
+KERNEL ArgSortMergeC64
+CS shader: 55 instrs, 35 alu, 35 fscib, 8 ic, 398 code size, 23 gprs, 34 uniforms, 0 scratch, 1024 threads, 1 loops, 0:0 spills:fills, 41 preamble inst
+KERNEL ArgSortMergeI32
+CS shader: 45 instrs, 25 alu, 25 fscib, 8 ic, 442 code size, 20 gprs, 36 uniforms, 0 scratch, 1024 threads, 1 loops, 0:0 spills:fills, 41 preamble inst
+KERNEL ArgSortMergeU32
+CS shader: 43 instrs, 23 alu, 23 fscib, 8 ic, 302 code size, 16 gprs, 34 uniforms, 0 scratch, 1024 threads, 1 loops, 0:0 spills:fills, 41 preamble inst
+KERNEL QuantizeFpF32
+CS shader: 140 instrs, 108 alu, 108 fscib, 90 ic, 1120 code size, 23 gprs, 80 uniforms, 0 scratch, 1024 threads, 3 loops, 0:0 spills:fills, 67 preamble inst
+KERNEL QuantizeFpF16
+CS shader: 140 instrs, 108 alu, 108 fscib, 90 ic, 1120 code size, 23 gprs, 80 uniforms, 0 scratch, 1024 threads, 3 loops, 0:0 spills:fills, 67 preamble inst
+KERNEL QuantizeFpBF16
+CS shader: 142 instrs, 110 alu, 110 fscib, 98 ic, 1136 code size, 23 gprs, 80 uniforms, 0 scratch, 1024 threads, 3 loops, 0:0 spills:fills, 67 preamble inst
+KERNEL DequantFpF32
+CS shader: 99 instrs, 83 alu, 83 fscib, 76 ic, 828 code size, 17 gprs, 70 uniforms, 0 scratch, 1024 threads, 1 loops, 0:0 spills:fills, 97 preamble inst
+KERNEL DequantFpF16
+CS shader: 99 instrs, 83 alu, 83 fscib, 76 ic, 828 code size, 17 gprs, 70 uniforms, 0 scratch, 1024 threads, 1 loops, 0:0 spills:fills, 97 preamble inst
+KERNEL DequantFpBF16
+CS shader: 120 instrs, 104 alu, 104 fscib, 76 ic, 972 code size, 17 gprs, 72 uniforms, 0 scratch, 1024 threads, 1 loops, 0:0 spills:fills, 97 preamble inst
+KERNEL QmmFpF32
+CS shader: 201 instrs, 176 alu, 170 fscib, 176 ic, 1570 code size, 29 gprs, 114 uniforms, 0 scratch, 1024 threads, 3 loops, 0:0 spills:fills, 134 preamble inst
+KERNEL QmmFpF16
+CS shader: 203 instrs, 176 alu, 172 fscib, 176 ic, 1582 code size, 29 gprs, 114 uniforms, 0 scratch, 1024 threads, 3 loops, 0:0 spills:fills, 134 preamble inst
+KERNEL QmmFpBF16
+CS shader: 210 instrs, 184 alu, 179 fscib, 184 ic, 1634 code size, 29 gprs, 116 uniforms, 0 scratch, 1024 threads, 3 loops, 0:0 spills:fills, 134 preamble inst
+KERNEL QmmVecFpF32
+CS shader: 237 instrs, 168 alu, 168 fscib, 152 ic, 1766 code size, 35 gprs, 110 uniforms, 0 scratch, 1024 threads, 3 loops, 0:0 spills:fills, 103 preamble inst
+KERNEL QmmVecFpF16
+CS shader: 238 instrs, 169 alu, 169 fscib, 152 ic, 1772 code size, 35 gprs, 110 uniforms, 0 scratch, 1024 threads, 3 loops, 0:0 spills:fills, 103 preamble inst
+KERNEL QmmVecFpBF16
+CS shader: 246 instrs, 177 alu, 177 fscib, 160 ic, 1830 code size, 35 gprs, 112 uniforms, 0 scratch, 1024 threads, 3 loops, 0:0 spills:fills, 103 preamble inst
+KERNEL QmmVecSubgroupFpF32
+CS shader: 189 instrs, 177 alu, 177 fscib, 152 ic, 1452 code size, 33 gprs, 110 uniforms, 0 scratch, 1024 threads, 3 loops, 0:0 spills:fills, 103 preamble inst
+KERNEL QmmVecSubgroupFpF16
+CS shader: 190 instrs, 178 alu, 178 fscib, 152 ic, 1458 code size, 33 gprs, 110 uniforms, 0 scratch, 1024 threads, 3 loops, 0:0 spills:fills, 103 preamble inst
+KERNEL QmmVecSubgroupFpBF16
+CS shader: 198 instrs, 186 alu, 186 fscib, 160 ic, 1516 code size, 33 gprs, 112 uniforms, 0 scratch, 1024 threads, 3 loops, 0:0 spills:fills, 103 preamble inst
+KERNEL QmmTileFpF32
+CS shader: 299 instrs, 221 alu, 221 fscib, 164 ic, 2298 code size, 39 gprs, 146 uniforms, 0 scratch, 1024 threads, 4 loops, 0:0 spills:fills, 125 preamble inst
+KERNEL QmmTileFpF16
+CS shader: 301 instrs, 223 alu, 223 fscib, 164 ic, 2308 code size, 39 gprs, 146 uniforms, 0 scratch, 1024 threads, 4 loops, 0:0 spills:fills, 125 preamble inst
+KERNEL QmmTileFpBF16
+CS shader: 307 instrs, 229 alu, 229 fscib, 168 ic, 2354 code size, 39 gprs, 148 uniforms, 0 scratch, 1024 threads, 4 loops, 0:0 spills:fills, 125 preamble inst
+KERNEL GatherQmmNbFpF32
+CS shader: 205 instrs, 176 alu, 170 fscib, 176 ic, 1614 code size, 31 gprs, 130 uniforms, 0 scratch, 1024 threads, 3 loops, 0:0 spills:fills, 197 preamble inst
+KERNEL GatherQmmNbFpF16
+CS shader: 207 instrs, 176 alu, 172 fscib, 176 ic, 1626 code size, 29 gprs, 130 uniforms, 0 scratch, 1024 threads, 3 loops, 0:0 spills:fills, 197 preamble inst
+KERNEL GatherQmmNbFpBF16
+CS shader: 214 instrs, 184 alu, 179 fscib, 184 ic, 1678 code size, 29 gprs, 132 uniforms, 0 scratch, 1024 threads, 3 loops, 0:0 spills:fills, 197 preamble inst
+KERNEL GatherQmmNbFpHgsF32
+CS shader: 206 instrs, 176 alu, 171 fscib, 176 ic, 1620 code size, 31 gprs, 130 uniforms, 0 scratch, 1024 threads, 3 loops, 0:0 spills:fills, 206 preamble inst
+KERNEL GatherQmmNbFpHgsF16
+CS shader: 206 instrs, 176 alu, 171 fscib, 176 ic, 1620 code size, 29 gprs, 130 uniforms, 0 scratch, 1024 threads, 3 loops, 0:0 spills:fills, 206 preamble inst
+KERNEL GatherQmmNbFpHgsBF16
+CS shader: 215 instrs, 184 alu, 180 fscib, 184 ic, 1684 code size, 29 gprs, 132 uniforms, 0 scratch, 1024 threads, 3 loops, 0:0 spills:fills, 206 preamble inst
+KERNEL MatmulComplex64
+CS shader: 398 instrs, 227 alu, 227 fscib, 70 ic, 3274 code size, 49 gprs, 162 uniforms, 0 scratch, 1024 threads, 4 loops, 0:0 spills:fills, 102 preamble inst
+KERNEL QmmVecQ4WordF32
+CS shader: 161 instrs, 82 alu, 82 fscib, 60 ic, 1238 code size, 31 gprs, 78 uniforms, 0 scratch, 1024 threads, 3 loops, 0:0 spills:fills, 45 preamble inst
+KERNEL QmmVecQ4WordF16
+CS shader: 162 instrs, 83 alu, 83 fscib, 56 ic, 1228 code size, 29 gprs, 78 uniforms, 0 scratch, 1024 threads, 3 loops, 0:0 spills:fills, 45 preamble inst
+KERNEL QmmVecQ4WordBF16
+CS shader: 179 instrs, 99 alu, 99 fscib, 96 ic, 1372 code size, 33 gprs, 80 uniforms, 0 scratch, 1024 threads, 3 loops, 0:0 spills:fills, 45 preamble inst
+KERNEL QmmVecQ4WordSubgroupF32
+CS shader: 113 instrs, 91 alu, 91 fscib, 60 ic, 922 code size, 31 gprs, 66 uniforms, 0 scratch, 1024 threads, 3 loops, 0:0 spills:fills, 45 preamble inst
+KERNEL QmmVecQ4WordSubgroupF16
+CS shader: 114 instrs, 92 alu, 92 fscib, 56 ic, 912 code size, 27 gprs, 66 uniforms, 0 scratch, 1024 threads, 3 loops, 0:0 spills:fills, 45 preamble inst
+KERNEL QmmVecQ4WordSubgroupBF16
+CS shader: 130 instrs, 108 alu, 108 fscib, 96 ic, 1050 code size, 33 gprs, 68 uniforms, 0 scratch, 1024 threads, 3 loops, 0:0 spills:fills, 45 preamble inst
+KERNEL QmmTileRbF16
+CS shader: 455 instrs, 289 alu, 289 fscib, 144 ic, 3500 code size, 53 gprs, 172 uniforms, 0 scratch, 1024 threads, 4 loops, 0:0 spills:fills, 90 preamble inst
+KERNEL QuantizeBF16
+CS shader: 366 instrs, 312 alu, 312 fscib, 100 ic, 2650 code size, 35 gprs, 100 uniforms, 0 scratch, 1024 threads, 7 loops, 0:0 spills:fills, 120 preamble inst
+KERNEL DequantBF16
+CS shader: 421 instrs, 330 alu, 330 fscib, 172 ic, 3048 code size, 27 gprs, 94 uniforms, 0 scratch, 1024 threads, 2 loops, 0:0 spills:fills, 135 preamble inst
+KERNEL SortI64
+CS shader: 141 instrs, 85 alu, 85 fscib, 36 ic, 1110 code size, 41 gprs, 62 uniforms, 0 scratch, 1024 threads, 7 loops, 0:0 spills:fills, 55 preamble inst
+KERNEL SortU64
+CS shader: 133 instrs, 80 alu, 80 fscib, 36 ic, 1058 code size, 41 gprs, 60 uniforms, 0 scratch, 1024 threads, 7 loops, 0:0 spills:fills, 55 preamble inst
+KERNEL ArgSortI64
+CS shader: 137 instrs, 82 alu, 82 fscib, 36 ic, 1082 code size, 41 gprs, 62 uniforms, 0 scratch, 1024 threads, 7 loops, 0:0 spills:fills, 55 preamble inst
+KERNEL ArgSortU64
+CS shader: 133 instrs, 80 alu, 80 fscib, 36 ic, 1058 code size, 41 gprs, 60 uniforms, 0 scratch, 1024 threads, 7 loops, 0:0 spills:fills, 55 preamble inst
+KERNEL SortMergeI64
+CS shader: 53 instrs, 35 alu, 35 fscib, 8 ic, 506 code size, 23 gprs, 32 uniforms, 0 scratch, 1024 threads, 1 loops, 0:0 spills:fills, 38 preamble inst
+KERNEL SortMergeU64
+CS shader: 47 instrs, 31 alu, 31 fscib, 8 ic, 334 code size, 19 gprs, 30 uniforms, 0 scratch, 1024 threads, 1 loops, 0:0 spills:fills, 38 preamble inst
+KERNEL ArgSortMergeI64
+CS shader: 59 instrs, 35 alu, 35 fscib, 8 ic, 542 code size, 23 gprs, 36 uniforms, 0 scratch, 1024 threads, 1 loops, 0:0 spills:fills, 41 preamble inst
+KERNEL ArgSortMergeU64
+CS shader: 53 instrs, 31 alu, 31 fscib, 8 ic, 370 code size, 21 gprs, 34 uniforms, 0 scratch, 1024 threads, 1 loops, 0:0 spills:fills, 41 preamble inst

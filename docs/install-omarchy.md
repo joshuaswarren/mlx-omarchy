@@ -26,6 +26,19 @@ still disables compilation because upstream checks its presence.
 Development builds use tiled quantized prefill by default. Set
 `MLX_OMARCHY_QMM_TILE=0` to compare with the untiled path; single-row
 decode still uses GEMV. This change is not in the v0.3.5 wheels.
+The float16 transposed affine prefill matmul and dense matmuls with 64
+or more rows run the blocked 64-wide GEMM kernels
+(`shaders/qmm_gemm.comp`, `shaders/matmul_gemm.comp`), which produce the
+same bits as the 16-wide tiles at about twice the throughput on M1
+(`receipts/2026-09-07-perf-dispatch/prefill-gemm-ab-m1.jsonl`). Set
+`MLX_OMARCHY_QMM_TILE_V2=0` or `MLX_OMARCHY_MATMUL_GEMM=0` to return to
+the 16-wide tiles. `MLX_OMARCHY_QMM_GEMM_SPLITK=1` adds an in-workgroup
+split-K tile for tiny grids; it changes the summation order and stays
+off by default. `MLX_OMARCHY_QMM_VEC_COLS=1` routes short prefill (2
+to 16 rows, or up to 64 rows on narrow projections) to the
+column-batched decode GEMV (`shaders/qmm_vec_cols.comp`), whose columns
+match the single-row decode kernel bit for bit but not the tile order;
+it also stays off by default.
 The experimental `MLX_OMARCHY_ROPE_BF16_DIRECT` and
 `MLX_OMARCHY_SDPA_BF16_FAST` flags remain off: both changed generated
 token IDs on M1. See the [hardware gate receipt](../receipts/2026-09-04-m1-performance-gates.md).
@@ -34,16 +47,44 @@ Compiled-tape elementwise chains can fuse into one dispatch behind
 `MLX_OMARCHY_FUSED_CHAIN`. It defaults off pending the native paired
 gate (`receipts/2026-09-04-swiglu-fused-chain.md`).
 
-Dispatches record unconditional pre+post memory barriers by default.
+Every dispatch, copy, and fill records one unconditional memory barrier
+ahead of itself by default (a node's writes are published by the next
+node's barrier; there is no post-dispatch barrier).
 `MLX_OMARCHY_GATED_BARRIERS=1` replaces them with dependency-gated
 barriers: the encoder tracks per open batch which buffer ranges were
 read or written since the last barrier and records one barrier only
-when a dispatch, copy, or fill overlaps an unsynced range. Each recorded
-submission ends with a device-to-host visibility barrier before its
-completion signal; waiting and invalidating host caches do not replace
-that memory-domain transfer. The mode defaults off pending the M1 A/B (`docs/plans/2026-09-06-decode-gap-plan.md`,
-TOP-1); skip and emit counts appear in the GPU profile and in the
-runtime-test trace counters.
+when a dispatch, copy, or fill overlaps an unsynced range. In both modes
+each recorded submission ends with a device-to-host visibility barrier
+before its completion signal; waiting and invalidating host caches do
+not replace that memory-domain transfer. The gated mode defaults off
+pending the M1 A/B (`docs/plans/2026-09-06-decode-gap-plan.md`, TOP-1);
+skip and emit counts appear in the GPU profile and in the runtime-test
+trace counters.
+
+Dispatches bind their storage buffers with `VK_KHR_push_descriptor`
+when the device exposes it (Honeykrisp and llvmpipe do);
+`MLX_OMARCHY_NO_PUSH_DESCRIPTORS=1` keeps the pooled descriptor-set
+path (also required for the `MLX_OMARCHY_TAPE_NO_REUSE` diagnostic to
+give every dispatch its own descriptor pool; with push descriptors that
+switch only affects the allocator). Elementwise float kernels compile
+one pipeline per (operation, index layout) through specialization
+constants, so a dispatch carries only its own operation's code and
+per-dispatch preamble (M1: 8.7 us to 3.4 us per 896-element f16 add,
+`receipts/2026-09-07-perf-dispatch/dispatch-floor-m1.md`).
+
+The small decode kernels take the same route
+(`receipts/2026-09-07-perf-dispatch/decode-kernels-m1.md`): forward RoPE
+dispatches a three-axis grid specialized on dims/2 (no uniform division,
+`MLX_OMARCHY_ROPE_GRID=0` keeps the 1-D unravel); a same-dtype strided
+copy whose window collapses to rank 2 with at most 64 rows dispatches a
+two-axis grid (`MLX_OMARCHY_COPY_GRID=0` keeps the runtime unravel);
+`fast.rms_norm` finishes its 256-lane tree reduction with subgroup
+shuffles in the same pairwise order on subgroup-32 devices
+(`MLX_OMARCHY_RMS_NORM_SUBGROUP=0` keeps the shared-memory tree); and a
+same-dtype vector copy of an input nobody else references reuses the
+input's buffer, which makes the KV-cache `slice_update` in place instead
+of copying the whole cache first (`MLX_OMARCHY_COPY_DONATE=0` restores the
+copy). All four produce the same bits as the paths they replace.
 
 ## Build the wheel
 
