@@ -81,7 +81,7 @@ The full matrix runs through `scripts/bench_matrix.py --mode run` on either oper
 
 ## Feature parity
 
-Two numbers, measured differently:
+Primitive coverage and upstream test coverage measure different things:
 
 | Measure | Result | Date |
 |---|---|---|
@@ -92,6 +92,8 @@ Two numbers, measured differently:
 The first counts operations: a primitive counts once it computes on the GPU and a test verifies its values against a host reference. The other two run upstream's own test suites, pinned at the commit the backend is built from (MLX 0.32.2, `1f8e74e3`); one test case exercises many primitives across many dtypes and layouts, so they are the stricter measure. The open Python cases are mostly fp-mode quantized matmul over batched weights, attention-mask variants in `test_fast_sdpa`, and the Metal-only custom-kernel tests.
 
 The [Python failure classification](receipts/upstream-suite-2026-09-06-py4/case-classification.csv) at `ef188d58` records 471 named refusals, 149 assertion failures, and 50 other errors, including 40 watchdog timeouts. All 670 remain failures in that snapshot; a named refusal does not count as support. GPU operations never fall back silently to CPU execution. Per-primitive status is generated from source in [docs/compatibility-matrix.md](docs/compatibility-matrix.md).
+
+The current development build also passes the complete upstream array and autograd files: 134 tests and 127 subtests, with 20 upstream skips. Numeric casts, complex derivatives, and general multi-axis scatter now pass those checks. This is x86_64 software-Vulkan verification, not M1 qualification or full-suite parity. See the [source and test receipt](receipts/2026-09-07-array-autograd-parity.json).
 
 ### What works
 
@@ -120,7 +122,7 @@ The full list of open defects, with the platform each was observed on, is in [do
 
 ## Neural Engine
 
-The Apple Neural Engine is a planned internal accelerator for static graph regions, not a user-facing device. The open-source [MIL-to-HWX compiler](https://github.com/joshuaswarren/mil-hwx-compiler) builds on Linux and emits HWX programs without Apple's toolchain; its current backend targets the M4, and M1 code generation is in progress. Design and bundle contract: [docs/architecture.md](docs/architecture.md), [docs/ane-bundles.md](docs/ane-bundles.md).
+The Apple Neural Engine is a planned internal accelerator for static graph regions, not a user-facing device. The open-source [MIL-to-HWX compiler](https://github.com/joshuaswarren/mil-hwx-compiler) builds on Linux and emits HWX programs without Apple's toolchain. Its M1 backend now has partial native operation and program-chain receipts; connected MLX graph integration remains unqualified. Design and bundle contract: [docs/architecture.md](docs/architecture.md), [docs/ane-bundles.md](docs/ane-bundles.md).
 
 ## Contributing
 
