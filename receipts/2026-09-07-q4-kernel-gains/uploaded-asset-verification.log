@@ -1,0 +1,22 @@
+release v0.3.7 (stable) tag commit 417c06e6df9637c5d2dd583979598adc6926ab58
+
+== mlx_omarchy-0.32.2.dev202609071347+417c06e-cp314-cp314-linux_aarch64.whl (7341844 bytes, platform linux_aarch64)
+   recorded sha256: 4ef6145cbe756f03223313195da97d44c6c9c12eb1c5892970e65636ff083c7a (release notes)
+   PASS sha256 matches recorded (4ef6145cbe756f03223313195da97d44c6c9c12eb1c5892970e65636ff083c7a)
+   PASS version consistent across filename/dist-info/METADATA: 0.32.2.dev202609071347+417c06e
+   PASS records build commit 417c06e, matching tag v0.3.7
+   PASS feature strings correct for a stable build (control MLX_DISABLE_COMPILE present; profile absent)
+   PASS platform tag agrees: linux_aarch64
+   PASS records build commit 417c06e (found in: mlx/lib/libmlx.so, mlx/share/cmake/MLX/MLXConfigVersion.cmake, mlx_omarchy-0.32.2.dev202609071347+417c06e.dist-info/METADATA, mlx_omarchy-0.32.2.dev202609071347+417c06e.dist-info/RECORD); matches tag v0.3.7
+
+== mlx_omarchy-0.32.2.dev202609071401+417c06e-cp311-cp311-linux_x86_64.whl (7421407 bytes, platform linux_x86_64)
+   recorded sha256: f38d0760d7ff1ecb770b2f036eca561e9814c70f9f904d3bd5080241ffa96e11 (release notes)
+   PASS sha256 matches recorded (f38d0760d7ff1ecb770b2f036eca561e9814c70f9f904d3bd5080241ffa96e11)
+   PASS version consistent across filename/dist-info/METADATA: 0.32.2.dev202609071401+417c06e
+   PASS records build commit 417c06e, matching tag v0.3.7
+   PASS feature strings correct for a stable build (control MLX_DISABLE_COMPILE present; profile absent)
+   PASS platform tag agrees: linux_x86_64
+   PASS records build commit 417c06e (found in: mlx/lib/libmlx.so, mlx/share/cmake/MLX/MLXConfigVersion.cmake, mlx_omarchy-0.32.2.dev202609071401+417c06e.dist-info/METADATA, mlx_omarchy-0.32.2.dev202609071401+417c06e.dist-info/RECORD); matches tag v0.3.7
+
+== summary
+VERIFIED: every uploaded asset matches what the release claims

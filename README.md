@@ -12,18 +12,18 @@ This is early, actively developed software. Check the [compatibility table](docs
 
 Supported today: Apple M1 running [Omarchy](https://github.com/omarchy-mac/omarchy-mac) (Asahi-based) with Mesa Honeykrisp. Later Apple Silicon generations follow once the M1 path is complete.
 
-## Install (v0.3.6)
+## Install (v0.3.7)
 
 ```bash
 # Apple Silicon (M1, Honeykrisp) - Python 3.14
 python3.14 -m venv ~/.venvs/mlx
 ~/.venvs/mlx/bin/pip install \
-  https://github.com/joshuaswarren/mlx-omarchy/releases/download/v0.3.6/mlx_omarchy-0.32.2.dev202609060917%2B218f876-cp314-cp314-linux_aarch64.whl
+  https://github.com/joshuaswarren/mlx-omarchy/releases/download/v0.3.7/mlx_omarchy-0.32.2.dev202609071347%2B417c06e-cp314-cp314-linux_aarch64.whl
 
 # Any Linux box (x86_64, software Vulkan, development only) - Python 3.11
 python3.11 -m venv ~/.venvs/mlx
 ~/.venvs/mlx/bin/pip install \
-  https://github.com/joshuaswarren/mlx-omarchy/releases/download/v0.3.6/mlx_omarchy-0.32.2.dev202609060910%2B218f876-cp311-cp311-linux_x86_64.whl
+  https://github.com/joshuaswarren/mlx-omarchy/releases/download/v0.3.7/mlx_omarchy-0.32.2.dev202609071401%2B417c06e-cp311-cp311-linux_x86_64.whl
 ```
 
 Building from source is covered in [docs/install-omarchy.md](docs/install-omarchy.md). Build dependencies: Python 3.10+, CMake 3.25+, Vulkan headers, a C++ compiler, and LAPACK/BLAS development packages; the wheel needs `liblapack.so.3` and `libblas.so.3` at runtime.

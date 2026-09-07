@@ -1,0 +1,16 @@
+Collecting mlx-omarchy==0.32.2.dev202609071347+417c06e
+  Downloading mlx_omarchy-0.32.2.dev202609071347%2B417c06e-cp314-cp314-linux_aarch64.whl (7.3 MB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 7.3/7.3 MB 4.2 MB/s  0:00:01
+Installing collected packages: mlx-omarchy
+  Attempting uninstall: mlx-omarchy
+    Found existing installation: mlx-omarchy 0.32.2.dev202609071347+417c06e
+    Uninstalling mlx-omarchy-0.32.2.dev202609071347+417c06e:
+      Successfully uninstalled mlx-omarchy-0.32.2.dev202609071347+417c06e
+Successfully installed mlx-omarchy-0.32.2.dev202609071347+417c06e
+{
+  "schema": "bench-matrix/1",
+  "mode": "run",
+  "started_utc": "2026-09-07T14:08:02Z",
+  "host_label": null,
+  "manifest": "/tmp/mlx-morning-q4-eager.json",
+[m1-public-v037-smoke: exited; cursor=14932]

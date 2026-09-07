@@ -1,0 +1,171 @@
+{
+  "device": "Device(gpu, 0)",
+  "cases": [
+    {
+      "dtype": "mlx.core.float16",
+      "shape": [
+        1,
+        17,
+        64
+      ],
+      "host_max_error": 0.0015506669878959656,
+      "host_max_bound": 0.004223951481380439,
+      "baseline_max_difference": 0.0
+    },
+    {
+      "dtype": "mlx.core.float16",
+      "shape": [
+        1,
+        37,
+        896
+      ],
+      "host_max_error": 0.014208292705006897,
+      "host_max_bound": 0.06352326982466637,
+      "baseline_max_difference": 0.0
+    },
+    {
+      "dtype": "mlx.core.float16",
+      "shape": [
+        1,
+        9,
+        4864
+      ],
+      "host_max_error": 0.013635137478559045,
+      "host_max_bound": 0.8758278526953303,
+      "baseline_max_difference": 0.0
+    },
+    {
+      "dtype": "mlx.core.float16",
+      "shape": [
+        32,
+        32,
+        128
+      ],
+      "host_max_error": 0.007100093178451061,
+      "host_max_bound": 0.01685089684672506,
+      "baseline_max_difference": 0.0
+    },
+    {
+      "dtype": "mlx.core.float16",
+      "shape": [
+        33,
+        17,
+        64
+      ],
+      "host_max_error": 0.004037392325699329,
+      "host_max_bound": 0.016062699006376503,
+      "baseline_max_difference": 0.0
+    },
+    {
+      "dtype": "mlx.core.bfloat16",
+      "shape": [
+        1,
+        17,
+        64
+      ],
+      "host_max_error": 0.013330340385437012,
+      "host_max_bound": 0.03141749959707503,
+      "baseline_max_difference": 0.0
+    },
+    {
+      "dtype": "mlx.core.bfloat16",
+      "shape": [
+        1,
+        37,
+        896
+      ],
+      "host_max_error": 0.0640178918838501,
+      "host_max_bound": 0.2871675367101342,
+      "baseline_max_difference": 0.0
+    },
+    {
+      "dtype": "mlx.core.bfloat16",
+      "shape": [
+        1,
+        9,
+        4864
+      ],
+      "host_max_error": 0.11335588293150067,
+      "host_max_bound": 1.1758323360196714,
+      "baseline_max_difference": 0.0
+    },
+    {
+      "dtype": "mlx.core.bfloat16",
+      "shape": [
+        32,
+        32,
+        128
+      ],
+      "host_max_error": 0.060186028480529785,
+      "host_max_bound": 0.12630544919475103,
+      "baseline_max_difference": 0.0
+    },
+    {
+      "dtype": "mlx.core.bfloat16",
+      "shape": [
+        33,
+        17,
+        64
+      ],
+      "host_max_error": 0.05184514820575714,
+      "host_max_bound": 0.12530795421835805,
+      "baseline_max_difference": 0.0
+    },
+    {
+      "dtype": "mlx.core.float32",
+      "shape": [
+        1,
+        17,
+        64
+      ],
+      "host_max_error": 7.662665950647352e-07,
+      "host_max_bound": 0.0002821648195774554,
+      "baseline_max_difference": 8.344650268554688e-07
+    },
+    {
+      "dtype": "mlx.core.float32",
+      "shape": [
+        1,
+        37,
+        896
+      ],
+      "host_max_error": 6.070836782612332e-06,
+      "host_max_bound": 0.04096449638409711,
+      "baseline_max_difference": 4.76837158203125e-06
+    },
+    {
+      "dtype": "mlx.core.float32",
+      "shape": [
+        1,
+        9,
+        4864
+      ],
+      "host_max_error": 9.473440428564572e-06,
+      "host_max_bound": 0.9418624213815748,
+      "baseline_max_difference": 1.049041748046875e-05
+    },
+    {
+      "dtype": "mlx.core.float32",
+      "shape": [
+        32,
+        32,
+        128
+      ],
+      "host_max_error": 9.280369868136518e-06,
+      "host_max_bound": 0.00138947341167896,
+      "baseline_max_difference": 0.0
+    },
+    {
+      "dtype": "mlx.core.float32",
+      "shape": [
+        33,
+        17,
+        64
+      ],
+      "host_max_error": 2.503524020980308e-06,
+      "host_max_bound": 0.00026409289443217563,
+      "baseline_max_difference": 0.0
+    }
+  ],
+  "passed": 15
+}

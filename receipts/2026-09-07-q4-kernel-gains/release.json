@@ -1,0 +1,48 @@
+{
+  "release": "v0.3.7",
+  "url": "https://github.com/joshuaswarren/mlx-omarchy/releases/tag/v0.3.7",
+  "source": "417c06e6df9637c5d2dd583979598adc6926ab58",
+  "asset_gate": "VERIFIED: every uploaded asset matches what the release claims",
+  "aarch64_url": "https://github.com/joshuaswarren/mlx-omarchy/releases/download/v0.3.7/mlx_omarchy-0.32.2.dev202609071347%2B417c06e-cp314-cp314-linux_aarch64.whl",
+  "uploaded_asset_smoke": [
+    {
+      "workload": "short-decode-32",
+      "decode_tok_s": 65.97,
+      "prefill_tok_s": 87.209,
+      "token_hash": "7fd25a869ff21678"
+    },
+    {
+      "workload": "long-decode-128",
+      "decode_tok_s": 56.41,
+      "prefill_tok_s": 208.931,
+      "token_hash": "4cc08910089477fd"
+    },
+    {
+      "workload": "longctx-1024-decode-32",
+      "decode_tok_s": 40.68,
+      "prefill_tok_s": 228.07,
+      "token_hash": "7da83f06ec9f001d"
+    }
+  ],
+  "default_runtime_smoke": [
+    {
+      "workload": "short-decode-32",
+      "decode_tok_s": 65.43,
+      "prefill_tok_s": 86.207,
+      "token_hash": "7fd25a869ff21678"
+    },
+    {
+      "workload": "long-decode-128",
+      "decode_tok_s": 56.16,
+      "prefill_tok_s": 210.104,
+      "token_hash": "4cc08910089477fd"
+    },
+    {
+      "workload": "longctx-1024-decode-32",
+      "decode_tok_s": 40.62,
+      "prefill_tok_s": 227.381,
+      "token_hash": "7da83f06ec9f001d"
+    }
+  ],
+  "no_rendered_surface": "Headless GPU backend; installed release model generation and numerical checks are runtime proof."
+}

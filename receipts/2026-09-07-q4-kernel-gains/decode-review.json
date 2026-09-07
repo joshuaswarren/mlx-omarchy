@@ -1,0 +1,57 @@
+{
+  "result": "No actionable introduced correctness defects found.",
+  "review_range": {
+    "base": "348919c89a6fb0bbb314a53a614f7e57bc058f30",
+    "candidate": "417c06e6df9637c5d2dd583979598adc6926ab58"
+  },
+  "coverage": [
+    {
+      "area": "Packed Q4 decode",
+      "evidence": "qmm_vec.comp:314-343",
+      "checked": "Transposed affine 4-bit/group-64 word indexing, low-nibble-first extraction, one scale/bias per 64 values, staged activation addressing, exact eight-value word tails."
+    },
+    {
+      "area": "Dtypes",
+      "evidence": "qmm_vec.comp:41-63, 138-140; primitives.cpp:6415-6421, 6533-6559",
+      "checked": "f32, f16, and bf16 storage/load/store paths; dtype equality and capability gates; matching shader selection for tree and subgroup variants."
+    },
+    {
+      "area": "Shared memory and K guard",
+      "evidence": "qmm_vec.comp:82-84, 138-140, 238-246; primitives.cpp:6532-6539",
+      "checked": "Fixed staged_x[4864] allocation plus 256-float reduction scratch is included in the device byte-limit check. Dispatch requires matrix_k <= 4864. Shape validation at primitives.cpp:6458-6465 makes Q4/group-64 K divisible by 64, so the shader's k+7 reads are bounded."
+    },
+    {
+      "area": "Batch and tails",
+      "evidence": "qmm_vec.comp:232-250, 315-343, 450-482",
+      "checked": "Per-batch x/weight/scale/bias offsets, N not divisible by eight via column_active, inactive tree slots contributing zero, and no partial packed-word K tail under the validated shape contract."
+    },
+    {
+      "area": "Reduction paths",
+      "evidence": "qmm_vec.comp:236-246, 453-482; primitives.cpp:6526-6529, 6540-6559",
+      "checked": "Subgroup dispatch requires subgroup size 32 and arithmetic support; subgroupAdd is subgroup-uniform because each 32-lane slot shares column_active. Tree barriers remain workgroup-uniform. The pre-staging barrier between batches prevents the subgroup path from overwriting staged_x while another subgroup still reads the prior batch."
+    },
+    {
+      "area": "Registration",
+      "evidence": "CMakeLists.txt:237-242; compute.h:531-538; compute.cpp:1141-1158",
+      "checked": "All six Q4-word binaries (f32/f16/bf16 × tree/subgroup) are compiled, appended to the stable enum, and mapped to the matching embedded shader bytes."
+    },
+    {
+      "area": "Tests",
+      "evidence": "test_matmul_family.cpp:2435-2561",
+      "checked": "Candidate-versus-baseline-versus-host coverage for f32/f16/bf16 at K=64, 896, and 4864; N=7, 9, and 37 covers short and partial final workgroups; bits=8 verifies the specialization guard falls back. The suite reaches whichever reduction path the device capability gate selects."
+    }
+  ],
+  "coverage_note": "There is no explicit runtime case above K=4864. The source guard is present and correct; I did not propose or execute an unsafe over-limit fixture under the assignment constraints.",
+  "commands_observed": [
+    "git show -s --format=fuller 417c06e6",
+    "git show -s --format=fuller 348919c8",
+    "git diff --name-status 348919c8 417c06e6",
+    "git status --short",
+    "git diff --stat 348919c8 417c06e6",
+    "git diff --numstat 348919c8 417c06e6",
+    "targeted git diff and source reads for qmm_vec.comp, primitives.cpp, compute.h, compute.cpp, CMakeLists.txt, and test_matmul_family.cpp"
+  ],
+  "verification": "Read-only source review only. No build, shader compilation, subprocess test, GPU call, SSH call, or hardware execution was performed, as assigned.",
+  "workspace_state": "The candidate worktree was clean when inspected.",
+  "model_identity": "openai-codex/gpt-5.6-sol"
+}

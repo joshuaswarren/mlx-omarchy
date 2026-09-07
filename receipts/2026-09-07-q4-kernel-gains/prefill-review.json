@@ -1,0 +1,83 @@
+{
+  "result": "No actionable correctness findings.",
+  "source": {
+    "candidate": "417c06e6df9637c5d2dd583979598adc6926ab58",
+    "base": "348919c89a6fb0bbb314a53a614f7e57bc058f30",
+    "register_block_commit": "f3534e467d584b8901b0532e4fb1dd54a7ad79db",
+    "working_tree": "Clean at review start"
+  },
+  "coverage": [
+    {
+      "area": "Exact dispatch guard",
+      "evidence": "overlay/mlx/backend/omarchy/primitives.cpp:6569-6585 selects QmmTileRbF16 only when the tile path is enabled, RB is enabled, output/input dtype is float16, transpose_ is true, bits_ == 4, and group_size_ == 64. The 32-row by 16-column dispatch at lines 6575-6583 matches the shader tile."
+    },
+    {
+      "area": "Register-block mapping",
+      "evidence": "overlay/mlx/backend/omarchy/shaders/qmm_tile.comp:57-67 defines TILE_M=32, ROWS_PER_THREAD=4, W_ROWS_PER_THREAD=2, and a 16x8 workgroup. Static enumeration showed each shared-X row 0..31 and each shared-weight row 0..15 has exactly one writer. The baseline macro branch still maps rows 0..15 and weight rows 0..15 exactly once."
+    },
+    {
+      "area": "Indexing and numerical order",
+      "evidence": "qmm_tile.comp:307-389 matches the transposed affine addressing in qmm.comp:325-370: words_per_row=K*bits/32, parameter index column*(K/group)+k/group, packed word column*words_per_row+k/pack, and low-bit-first lane extraction. Each output accumulator still visits k in ascending order."
+    },
+    {
+      "area": "Grid and tails",
+      "evidence": "qmm_tile.comp:206-222 computes ceil(M/32), ceil(N/16), and grid-strides both axes. Lines 236-243 zero-fill out-of-range M/K loads; lines 249-250 guard N and non-transposed K; lines 405-412 guard final M/N stores. For the selected transposed group-64 path, the validated shape makes K a multiple of 64 and therefore 16, so no K tail exists."
+    },
+    {
+      "area": "Shared-memory synchronization",
+      "evidence": "qmm_tile.comp:394 places a barrier after all tile_x/tile_w writes; line 403 places a barrier after all consumers finish and before the next K tile can overwrite shared storage. Both barriers execute under uniform loop control."
+    },
+    {
+      "area": "Build and runtime registration",
+      "evidence": "CMakeLists.txt:252 builds qmm_tile_rb_f16 with USE_FP16 and REGISTER_BLOCK; compute.h:539-542 appends QmmTileRbF16 before Count; compute.cpp:265 includes the generated header and lines 1163-1164 return its bytes. The enum append preserves prior kernel IDs."
+    },
+    {
+      "area": "Tests",
+      "evidence": "test_matmul_family.cpp:2816-2914 enables the exact candidate and compares it with both the baseline tile and a host reference. Cases 32x32x128 and 33x17x64 cover a full tile and simultaneous M/N tails; finite checks prevent NaN/Inf false passes; candidate and baseline are required to be bit-identical."
+    }
+  ],
+  "coverage_gaps": [
+    "The register-block-specific test does not directly exercise M<32, batched weights, or dispatch-clamped grid-stride iteration. Source analysis found the same guards and indexing cover these cases, so this is not a proven defect."
+  ],
+  "commands_observed": [
+    "git status --short",
+    "git rev-parse HEAD",
+    "git show -s --format=%H%n%P%n%B 417c06e6",
+    "git diff --stat 348919c8 417c06e6",
+    "git diff --name-status 348919c8 417c06e6",
+    "git diff --unified=8 348919c8 417c06e6 -- overlay/mlx/backend/omarchy/shaders/qmm_tile.comp",
+    "git diff --unified=8 348919c8 417c06e6 -- overlay/mlx/backend/omarchy/primitives.cpp",
+    "git log --oneline --decorate 348919c8..417c06e6",
+    "git show 417c06e6:<reviewed source path>"
+  ],
+  "verification": {
+    "type": "Read-only source and in-memory static mapping review",
+    "measured_results": {
+      "barriers_per_k_tile": 2,
+      "register_block_x_rows": {
+        "count": 32,
+        "range": "0..31",
+        "unique_writers": true
+      },
+      "register_block_weight_rows": {
+        "count": 16,
+        "range": "0..15",
+        "unique_writers": true
+      },
+      "baseline_x_rows": {
+        "count": 16,
+        "range": "0..15",
+        "unique_writers": true
+      },
+      "baseline_weight_rows": {
+        "count": 16,
+        "range": "0..15",
+        "unique_writers": true
+      }
+    },
+    "not_run": "No builds, subprocess tests, GPU calls, SSH, or hardware validation were run, as assigned."
+  },
+  "unresolved_prerequisites": [],
+  "model_identity": "openai-codex/gpt-5.6-sol",
+  "routing": "No non-OpenAI fallback observed."
+}
