@@ -1272,10 +1272,8 @@ TEST_CASE(
   auto buf = omarchy::allocator().malloc(kBytes);
   auto* p = static_cast<omarchy::VulkanBuffer*>(buf.ptr());
 
-  // Eager-flush contract (kBatchNodeBudget = 1, measured: deeper batching
-  // defeats the evaluator's task pipeline and regresses tok/s heavily).
-  // Every commit submits, but the in-flight ring means a commit never
-  // host-joins the previous submission the way the pre-ring encoder did
+  // Explicit-commit contract: every commit submits. The in-flight ring does
+  // not host-join the previous submission as the pre-ring encoder did
   // (that join was the dominant decode cost in the 2026-09-02 profile).
   // Ordering still holds end to end (each node carries its full barrier
   // pair), so the final bytes carry the last iteration's value.
@@ -1890,7 +1888,11 @@ TEST_CASE("one graph evaluation batches into bounded submissions") {
   auto& counters = omarchy::trace::counters();
   uint64_t subs0 = counters.vk_submissions.load();
 
-  constexpr int kAdds = 300;
+  // One decode-sized chain must fit in at most four bounded batches. This
+  // fails with the historical 100-node limit (six budget/final submits) and
+  // leaves room for one evaluator boundary submit without pinning an exact
+  // scheduler implementation detail.
+  constexpr int kAdds = 585;
   for (int i = 0; i < kAdds; ++i) {
     y = y + w;
   }
@@ -1898,7 +1900,7 @@ TEST_CASE("one graph evaluation batches into bounded submissions") {
   synchronize(s);
   uint64_t subs = counters.vk_submissions.load() - subs0;
   CHECK(subs >= 1);
-  CHECK(subs <= (kAdds / omarchy::kBatchNodeBudget) + 6);
+  CHECK(subs <= 4);
   synchronize(s);
   const auto* data = y.data<float>();
   for (int i = 0; i < 64; ++i) {
