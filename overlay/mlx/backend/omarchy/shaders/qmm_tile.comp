@@ -66,6 +66,10 @@ const uint W_ROWS_PER_THREAD = 1u;
 layout(local_size_x = 16, local_size_y = 16) in;
 #endif
 
+#if defined(QMM_TILE_Q4_WORD) && (!defined(REGISTER_BLOCK) || defined(FP_MODE))
+#error QMM_TILE_Q4_WORD requires affine REGISTER_BLOCK
+#endif
+
 layout(set = 0, binding = 0, std430) readonly buffer InputX {
   STORAGE_TYPE values[];
 } input_x;
@@ -242,6 +246,42 @@ void main() {
                     b * x_batch_rows + row * params.matrix_k + x_k])
               : 0.0;
         }
+#ifdef QMM_TILE_Q4_WORD
+        // Two y lanes unpack one eight-weight word each. Tail columns still
+        // initialize their shared slots, so no invocation reads undefined data.
+        if (ly < 2u) {
+          uint local_k = ly * 8u;
+          uint k = k_base + local_k;
+          uint words_per_row = params.matrix_k / 8u;
+          uint groups_per_row = params.matrix_k / 64u;
+          uint packed = 0u;
+          float scale = 0.0;
+          float bias = 0.0;
+          if (column < params.matrix_n) {
+            packed = input_w.values[
+                w_slice + column * words_per_row + k / 8u];
+            scale = LOAD_VALUE(scales.values[
+                p_slice + column * groups_per_row + k / 64u]);
+            bias = LOAD_VALUE(biases.values[
+                params.aux_size + b * param_batch +
+                column * groups_per_row + k / 64u]);
+          }
+          tile_w[local_k + 0u][lx] = scale * float(packed & 0xFu) + bias;
+          tile_w[local_k + 1u][lx] =
+              scale * float((packed >> 4u) & 0xFu) + bias;
+          tile_w[local_k + 2u][lx] =
+              scale * float((packed >> 8u) & 0xFu) + bias;
+          tile_w[local_k + 3u][lx] =
+              scale * float((packed >> 12u) & 0xFu) + bias;
+          tile_w[local_k + 4u][lx] =
+              scale * float((packed >> 16u) & 0xFu) + bias;
+          tile_w[local_k + 5u][lx] =
+              scale * float((packed >> 20u) & 0xFu) + bias;
+          tile_w[local_k + 6u][lx] =
+              scale * float((packed >> 24u) & 0xFu) + bias;
+          tile_w[local_k + 7u][lx] = scale * float(packed >> 28u) + bias;
+        }
+#else
         for (uint w_part = 0u; w_part < W_ROWS_PER_THREAD; ++w_part) {
           uint local_k = ly + w_part * gl_WorkGroupSize.y;
           uint k = k_base + local_k;
@@ -391,6 +431,7 @@ void main() {
           }
           tile_w[local_k][lx] = dequant;
         }
+#endif
         barrier();
 
         for (uint index = 0u; index < TILE; ++index) {

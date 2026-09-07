@@ -263,6 +263,7 @@
 #include "qmm_tile_bf16.h"
 #include "qmm_tile_f16.h"
 #include "qmm_tile_rb_f16.h"
+#include "qmm_tile_rb_q4_word_f16.h"
 #include "qmm_tile_f32.h"
 #include "dequant_f32.h"
 #include "dequant_f16.h"
@@ -1162,6 +1163,8 @@ ShaderBytes shader_bytes(ComputeKernel kernel) {
       return {qmm_tile_f16, qmm_tile_f16_size};
     case ComputeKernel::QmmTileRbF16:
       return {qmm_tile_rb_f16, qmm_tile_rb_f16_size};
+    case ComputeKernel::QmmTileRbQ4WordF16:
+      return {qmm_tile_rb_q4_word_f16, qmm_tile_rb_q4_word_f16_size};
     case ComputeKernel::QmmTileBF16:
       return {qmm_tile_bf16, qmm_tile_bf16_size};
     case ComputeKernel::FusedChainF32:
