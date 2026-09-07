@@ -10,9 +10,9 @@
 // and applies scale/bias INLINE PER MAC, so unpack work is m x n x k
 // per matmul - at m=1023 that dominates prefill
 // (receipts/2026-09-04-prefill-census.md lever 1). Here one 16x16
-// workgroup owns a 16-row m-tile x 16-column n-tile of the output and
+// workgroup owns an m-tile x 16-column n-tile of the output and
 // dequantizes each 16 x 16 weight block ONCE into shared float before
-// every row-thread consumes it, amortizing the unpack across 16 rows.
+// every row-thread consumes it, amortizing the unpack across the m-tile.
 // MAC count and per-output accumulation order are unchanged: each
 // output element is still one thread summing x[r][k] * (scale*q + bias)
 // over ascending k in a single f32 accumulator.
@@ -54,8 +54,17 @@ uint16_t bf16_store(float value) {
 #endif
 
 const uint TILE = 16u;
-
+#ifdef REGISTER_BLOCK
+const uint TILE_M = 32u;
+const uint ROWS_PER_THREAD = 4u;
+const uint W_ROWS_PER_THREAD = 2u;
+layout(local_size_x = 16, local_size_y = 8) in;
+#else
+const uint TILE_M = 16u;
+const uint ROWS_PER_THREAD = 1u;
+const uint W_ROWS_PER_THREAD = 1u;
 layout(local_size_x = 16, local_size_y = 16) in;
+#endif
 
 layout(set = 0, binding = 0, std430) readonly buffer InputX {
   STORAGE_TYPE values[];
@@ -169,7 +178,7 @@ uint q6_at(uint e, uint c0, uint c1, uint c2) {
 }
 #endif
 
-shared float tile_x[16][16];
+shared float tile_x[TILE_M][16];
 shared float tile_w[16][16];
 
 // Weight layout routing mirrors qmm.comp: flags bit 0 set means
@@ -194,8 +203,8 @@ void main() {
   uint w_batch_words = params.shape[1];
   uint param_batch = params.shape[2];
   uint x_batch_rows = params.matrix_m * params.matrix_k;
-  uint m_tiles = params.matrix_m / TILE +
-      uint(params.matrix_m % TILE != 0u);
+  uint m_tiles = params.matrix_m / TILE_M +
+      uint(params.matrix_m % TILE_M != 0u);
   uint n_tiles = params.matrix_n / TILE +
       uint(params.matrix_n % TILE != 0u);
   // Transposed: groups run along K, so K is a multiple of group_size
@@ -209,7 +218,6 @@ void main() {
   for (uint b = 0u; b < batch; ++b) {
   for (uint tile_row = gl_WorkGroupID.y; tile_row < m_tiles;
        tile_row += gl_NumWorkGroups.y) {
-    uint row = tile_row * TILE + ly;
     for (uint tile_col = gl_WorkGroupID.x; tile_col < n_tiles;
          tile_col += gl_NumWorkGroups.x) {
       uint column = tile_col * TILE + lx;
@@ -218,18 +226,28 @@ void main() {
       // groups along K, scale [n][k / gs].
       uint w_slice = params.rhs_offset + b * w_batch_words;
       uint p_slice = params.aux_offset + b * param_batch;
-      float accumulator = 0.0;
+      float accumulators[ROWS_PER_THREAD];
+      for (uint row_part = 0u; row_part < ROWS_PER_THREAD; ++row_part) {
+        accumulators[row_part] = 0.0;
+      }
       for (uint tile = 0u; tile < k_tiles; ++tile) {
         uint k_base = tile * TILE;
         uint x_k = k_base + lx;
-        tile_x[ly][lx] = row < params.matrix_m && x_k < params.matrix_k
-            ? LOAD_VALUE(input_x.values[params.lhs_offset +
-                  b * x_batch_rows + row * params.matrix_k + x_k])
-            : 0.0;
-        float dequant = 0.0;
-        if (column < params.matrix_n &&
-            (!non_transposed || (k_base + ly) < params.matrix_k)) {
-          uint k = k_base + ly;
+        for (uint row_part = 0u; row_part < ROWS_PER_THREAD; ++row_part) {
+          uint local_row = ly * ROWS_PER_THREAD + row_part;
+          uint row = tile_row * TILE_M + local_row;
+          tile_x[local_row][lx] =
+              row < params.matrix_m && x_k < params.matrix_k
+              ? LOAD_VALUE(input_x.values[params.lhs_offset +
+                    b * x_batch_rows + row * params.matrix_k + x_k])
+              : 0.0;
+        }
+        for (uint w_part = 0u; w_part < W_ROWS_PER_THREAD; ++w_part) {
+          uint local_k = ly + w_part * gl_WorkGroupSize.y;
+          uint k = k_base + local_k;
+          float dequant = 0.0;
+          if (column < params.matrix_n &&
+              (!non_transposed || k < params.matrix_k)) {
 #ifdef FP_MODE
           if (non_transposed) {
             // FP_MODE non-transposed: w [K, Np] fp bytes packed along
@@ -370,19 +388,28 @@ void main() {
           }
           dequant = scale * float(q) + bias;
 #endif
+          }
+          tile_w[local_k][lx] = dequant;
         }
-        tile_w[ly][lx] = dequant;
         barrier();
 
         for (uint index = 0u; index < TILE; ++index) {
-          accumulator += tile_x[ly][index] * tile_w[index][lx];
+          float weight = tile_w[index][lx];
+          for (uint row_part = 0u; row_part < ROWS_PER_THREAD; ++row_part) {
+            uint local_row = ly * ROWS_PER_THREAD + row_part;
+            accumulators[row_part] += tile_x[local_row][index] * weight;
+          }
         }
         barrier();
       }
-      if (row < params.matrix_m && column < params.matrix_n) {
-        output_data.values[params.output_offset +
-            b * params.matrix_m * params.matrix_n +
-            row * params.matrix_n + column] = STORE_VALUE(accumulator);
+      for (uint row_part = 0u; row_part < ROWS_PER_THREAD; ++row_part) {
+        uint row = tile_row * TILE_M + ly * ROWS_PER_THREAD + row_part;
+        if (row < params.matrix_m && column < params.matrix_n) {
+          output_data.values[params.output_offset +
+              b * params.matrix_m * params.matrix_n +
+              row * params.matrix_n + column] =
+              STORE_VALUE(accumulators[row_part]);
+        }
       }
     }
   }
