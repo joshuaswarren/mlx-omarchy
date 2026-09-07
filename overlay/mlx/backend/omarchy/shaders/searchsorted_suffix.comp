@@ -50,11 +50,14 @@ layout(push_constant) uniform Params {
   uint output_offset;
 } params;
 
-// One invocation binary-searches one value against the sorted row.
-// reduce_size is the sequence length. operation 0 is side "left" (the
-// first index with sequence[index] >= value) and operation 1 is side
-// "right" (the first index with sequence[index] > value), which
-// matches the upstream CPU comparator.
+bool ordered_less(VALUE_TYPE lhs, VALUE_TYPE rhs) {
+#if defined(USE_I32) || defined(USE_U32)
+  return lhs < rhs;
+#else
+  return lhs < rhs || (!isnan(lhs) && isnan(rhs));
+#endif
+}
+
 void main() {
   uint index = gl_GlobalInvocationID.x;
   uint stride = gl_NumWorkGroups.x * gl_WorkGroupSize.x;
@@ -65,7 +68,9 @@ void main() {
     while (low < high) {
       uint mid = low + (high - low) / 2u;
       VALUE_TYPE m = LOAD_VALUE(sequence.values[params.lhs_offset + mid]);
-      bool below = params.operation == 1u ? !(x < m) : (m < x);
+      bool below = params.operation == 1u
+          ? !ordered_less(x, m)
+          : ordered_less(m, x);
       if (below) {
         low = mid + 1u;
       } else {
