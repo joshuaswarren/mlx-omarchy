@@ -9,7 +9,7 @@
 // no bias). The per-element kernel (qmm.comp) unpacks the weight word
 // and applies scale/bias INLINE PER MAC, so unpack work is m x n x k
 // per matmul - at m=1023 that dominates prefill
-// (receipts/2026-09-04-prefill-census.md lever 1). Here one 16x16
+// (receipts/2026-09-04-prefill-census.md lever 1). Here one
 // workgroup owns an m-tile x 16-column n-tile of the output and
 // dequantizes each 16 x 16 weight block ONCE into shared float before
 // every row-thread consumes it, amortizing the unpack across the m-tile.
@@ -64,10 +64,6 @@ const uint TILE_M = 16u;
 const uint ROWS_PER_THREAD = 1u;
 const uint W_ROWS_PER_THREAD = 1u;
 layout(local_size_x = 16, local_size_y = 16) in;
-#endif
-
-#if defined(QMM_TILE_Q4_WORD) && (!defined(REGISTER_BLOCK) || defined(FP_MODE))
-#error QMM_TILE_Q4_WORD requires affine REGISTER_BLOCK
 #endif
 
 layout(set = 0, binding = 0, std430) readonly buffer InputX {
@@ -246,9 +242,7 @@ void main() {
                     b * x_batch_rows + row * params.matrix_k + x_k])
               : 0.0;
         }
-#ifdef QMM_TILE_Q4_WORD
-        // Two y lanes unpack one eight-weight word each. Tail columns still
-        // initialize their shared slots, so no invocation reads undefined data.
+#ifdef REGISTER_BLOCK
         if (ly < 2u) {
           uint local_k = ly * 8u;
           uint k = k_base + local_k;

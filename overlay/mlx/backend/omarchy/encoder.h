@@ -50,12 +50,8 @@ namespace mlx::core::omarchy {
 // timeline semaphore waits and signals carried in the submissions;
 // handler-only submissions (no recorded commands) still signal the
 // timeline, so ordering with prior queue work is preserved.
-// Nodes recorded in one open command buffer before the evaluator flushes
-// it. A 256-node cap reduces a 585-node chain from six budget/final
-// submissions to three while keeping work and buffer lifetimes bounded. This
-// raises the pinned-work ceiling 2.56x over the historical 100-node cap; an
-// unbounded batch could pin an entire graph and put all of its work behind one
-// completion subject to the submission watchdog's finite max-wall bound.
+// Caps recorded work and pinned buffers per submission. Larger batches reduce
+// submit overhead but extend buffer lifetimes and watchdog exposure.
 inline constexpr int kBatchNodeBudget = 256;
 
 class MLX_API CommandEncoder {

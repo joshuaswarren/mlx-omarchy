@@ -2413,25 +2413,19 @@ struct QmmVecQ4WordGate {
 // Forces the PrefillQmmTile dispatch gates. Always restores every variable to
 // unset, so an aborting REQUIRE cannot leak a switch into later cases.
 struct QmmTileGate {
-  explicit QmmTileGate(
-      bool on, bool register_block = false, bool packed_word = false) {
+  explicit QmmTileGate(bool on, bool register_block = false) {
     set(on);
     set_register_block(register_block);
-    set_packed_word(packed_word);
   }
   ~QmmTileGate() {
     unsetenv("MLX_OMARCHY_QMM_TILE");
     unsetenv("MLX_OMARCHY_QMM_TILE_RB");
-    unsetenv("MLX_OMARCHY_QMM_TILE_RB_Q4_WORD");
   }
   void set(bool on) {
     setenv("MLX_OMARCHY_QMM_TILE", on ? "1" : "0", 1);
   }
   void set_register_block(bool on) {
     setenv("MLX_OMARCHY_QMM_TILE_RB", on ? "1" : "0", 1);
-  }
-  void set_packed_word(bool on) {
-    setenv("MLX_OMARCHY_QMM_TILE_RB_Q4_WORD", on ? "1" : "0", 1);
   }
 };
 
@@ -2819,7 +2813,7 @@ TEST_CASE("qmm tile matches host reference and qmm.comp across prefill shapes") 
 }
 
 TEST_CASE(
-    "qmm packed-word register-block prefill matches register-block and host") {
+    "qmm packed-word register-block prefill matches baseline tile and host") {
   if (!compute_available() || !float16_available()) {
     return;
   }
@@ -2861,7 +2855,7 @@ TEST_CASE(
     array biases(
         weights.biases.begin(), Shape{n, groups_per_row}, float16);
 
-    QmmTileGate gate(true, true, true);
+    QmmTileGate gate(true, true);
     array candidate = quantized_matmul(
         x, w_words, scales, biases, true, group_size, bits, "affine", stream);
     INFO("packed-word candidate m=" << m << " n=" << n << " k=" << k);
@@ -2869,7 +2863,7 @@ TEST_CASE(
     REQUIRE_MESSAGE(candidate_error.empty(), candidate_error);
     const std::vector<float> candidate_values = readback_f32(stream, candidate);
 
-    gate.set_packed_word(false);
+    gate.set_register_block(false);
     array baseline = quantized_matmul(
         x, w_words, scales, biases, true, group_size, bits, "affine", stream);
     const auto baseline_error = evaluation_error(baseline);
