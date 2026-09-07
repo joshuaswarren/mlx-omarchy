@@ -3705,8 +3705,10 @@ void Conjugate::eval_gpu(const std::vector<array>& inputs, array& out) {
 // General direct convolution for the channels-last layouts upstream
 // hands this primitive: input [N, (D,) (H,) W, C] and weight
 // [O, (kD,) (kH,) kW, C_per_group], both row-major. One thread owns
-// one output element; a float32 accumulator walks the kernel window
-// and index guards contribute zero for padding. The kernel covers
+// each output element for ordinary kernels. Large windows split into
+// bounded per-output chunks and a float32 scratch reduction so shader
+// trip limits cannot truncate the result. Index guards contribute zero
+// for padding. The kernel covers
 // every combination the public ops build: groups including the
 // depthwise case, the flip that conv_transpose uses, input dilation,
 // kernel dilation, strides, and asymmetric padding, over 1D, 2D, and
@@ -3794,9 +3796,6 @@ void Convolution::eval_gpu(const std::vector<array>& inputs, array& out) {
   auto pad_lo_axis = [&](int axis) {
     return axis_or_one(padding_lo_, axis);
   };
-  auto pad_hi_axis = [&](int axis) {
-    return axis_or_one(padding_hi_, axis);
-  };
   params.count = total;
   params.reduce_size = checked_u32(in_channels_per_group, "Convolution", out);
   params.lhs_offset = checked_item_offset(x, x.size(), "Convolution", out);
@@ -3838,10 +3837,6 @@ void Convolution::eval_gpu(const std::vector<array>& inputs, array& out) {
         : axis_or_one(kernel_strides_, axis);
     params.out_strides[axis] = pad_lo_axis(axis);
   }
-  // High padding: depth, height, width.
-  params.in_strides[3] = pad_hi_axis(spatial == 3 ? 0 : 3);
-  params.lhs_size = pad_hi_axis(spatial >= 2 ? spatial - 2 : 3);
-  params.rhs_size = pad_hi_axis(spatial - 1);
   // Kernel dilation: depth, height, width.
   params.shape[2] = axis_or_one(kernel_dilation_, spatial == 3 ? 0 : 3);
   params.shape[3] =
@@ -3856,13 +3851,50 @@ void Convolution::eval_gpu(const std::vector<array>& inputs, array& out) {
   } else if (!flip_ && spatial == 1) {
     params.output_size = checked_u32(input_dilation_[0], "Convolution", out);
   }
-  std::array<omarchy::ComputeBinding, 4> bindings{
-      binding(x), binding(w), binding(x), binding(out)};
   auto kernel = select_float_kernel(
       out.dtype(),
       omarchy::ComputeKernel::ConvF32,
       omarchy::ComputeKernel::ConvF16,
       omarchy::ComputeKernel::ConvBF16);
+  constexpr uint32_t kConvChunkTrips = 4096;
+  uint32_t kernel_elements = checked_u32(
+      w.size() / static_cast<size_t>(out_channels), "Convolution", out);
+  uint32_t chunks = kernel_elements == 0
+      ? 1u
+      : 1u + (kernel_elements - 1u) / kConvChunkTrips;
+  if (chunks == 1) {
+    std::array<omarchy::ComputeBinding, 4> bindings{
+        binding(x), binding(w), binding(x), binding(out)};
+    encoder.dispatch_compute(
+        kernel,
+        bindings,
+        params,
+        omarchy::compute_dispatch_group_count(total));
+    return;
+  }
+
+  uint64_t partial_count = static_cast<uint64_t>(total) * chunks;
+  if (partial_count > (1ull << 25)) {
+    omarchy::unsupported("Convolution split exceeds scratch budget", out);
+  }
+  array partials(
+      Shape{static_cast<int>(partial_count)}, float32, nullptr, {});
+  partials.set_data(allocate_omarchy(partials.nbytes()));
+  encoder.add_temporary(partials);
+  std::array<omarchy::ComputeBinding, 4> bindings{
+      binding(x), binding(w), binding(partials), binding(out)};
+  params.flags |= 2u;
+  params.in_strides[3] = kConvChunkTrips;
+  params.lhs_size = chunks;
+  params.rhs_size = total;
+  params.count = static_cast<uint32_t>(partial_count);
+  encoder.dispatch_compute(
+      kernel,
+      bindings,
+      params,
+      omarchy::compute_dispatch_group_count(params.count));
+  params.flags = 4u;
+  params.count = total;
   encoder.dispatch_compute(
       kernel,
       bindings,
