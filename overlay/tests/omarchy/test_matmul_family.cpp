@@ -11,6 +11,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <complex>
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
@@ -147,6 +148,43 @@ void expect_close_tol(
 
 double host_at(const std::vector<float>& values, size_t index) {
   return static_cast<double>(values[index]);
+}
+
+using cdouble = std::complex<double>;
+
+array complex_array(const std::vector<cdouble>& values, Shape shape) {
+  std::vector<complex64_t> host(values.size());
+  for (size_t i = 0; i < values.size(); ++i) {
+    host[i] = complex64_t(
+        static_cast<float>(values[i].real()),
+        static_cast<float>(values[i].imag()));
+  }
+  return array(host.begin(), std::move(shape), complex64);
+}
+
+std::vector<cdouble> readback_complex(const Stream& stream, array value) {
+  value = contiguous(value, false, stream);
+  value.eval();
+  omarchy::get_command_encoder(stream).synchronize();
+  const complex64_t* data = value.data<complex64_t>();
+  std::vector<cdouble> out(value.size());
+  for (size_t i = 0; i < value.size(); ++i) {
+    out[i] = {data[i].real(), data[i].imag()};
+  }
+  return out;
+}
+
+void expect_complex_close(
+    const std::vector<cdouble>& device,
+    const std::vector<cdouble>& expected,
+    double atol,
+    double rtol) {
+  REQUIRE_EQ(device.size(), expected.size());
+  for (size_t index = 0; index < expected.size(); ++index) {
+    INFO("index ", index, " got ", device[index], " expected ", expected[index]);
+    CHECK(std::abs(device[index] - expected[index]) <=
+        atol + rtol * std::abs(expected[index]));
+  }
 }
 
 // Host affine quantizer matching the upstream affine_quantize kernel:
@@ -340,6 +378,145 @@ std::vector<float> host_matmul(
 }
 
 } // namespace
+
+TEST_CASE("dense matmul supports complex64 values") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  uint64_t dispatches_before =
+      omarchy::trace::counters().vk_compute_dispatches.load();
+  std::vector<cdouble> a_values{
+      {1.0, 2.0}, {-0.5, 0.25}, {2.0, -1.0},
+      {0.75, -0.5}, {1.5, 0.0}, {-1.0, 1.25}};
+  std::vector<cdouble> b_values{
+      {0.5, -1.0}, {1.0, 0.25},
+      {-2.0, 0.5}, {0.75, -0.25},
+      {1.25, 1.5}, {-0.5, 2.0}};
+  std::vector<cdouble> expected(4);
+  for (int row = 0; row < 2; ++row) {
+    for (int column = 0; column < 2; ++column) {
+      cdouble sum{};
+      for (int inner = 0; inner < 3; ++inner) {
+        sum += a_values[row * 3 + inner] * b_values[inner * 2 + column];
+      }
+      expected[row * 2 + column] = sum;
+    }
+  }
+  array out = matmul(
+      complex_array(a_values, Shape{2, 3}),
+      complex_array(b_values, Shape{3, 2}),
+      stream);
+  expect_complex_close(readback_complex(stream, out), expected, 1e-6, 1e-5);
+  CHECK(omarchy::trace::counters().vk_compute_dispatches.load() >
+      dispatches_before);
+}
+
+TEST_CASE("dense matmul supports general bias rank and half values") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+
+  SUBCASE("general AddMM broadcast") {
+    std::vector<float> a_values(2 * 3 * 4);
+    std::vector<float> b_values(2 * 4 * 5);
+    std::vector<float> c_values(2 * 5);
+    for (size_t i = 0; i < a_values.size(); ++i) {
+      a_values[i] = static_cast<float>(static_cast<int>(i % 9) - 4) / 8.0f;
+    }
+    for (size_t i = 0; i < b_values.size(); ++i) {
+      b_values[i] = static_cast<float>(static_cast<int>(i % 7) - 3) / 8.0f;
+    }
+    for (size_t i = 0; i < c_values.size(); ++i) {
+      c_values[i] = static_cast<float>(i + 1) / 16.0f;
+    }
+    std::vector<float> expected(2 * 3 * 5);
+    for (int batch = 0; batch < 2; ++batch) {
+      for (int row = 0; row < 3; ++row) {
+        for (int column = 0; column < 5; ++column) {
+          double sum = 0.0;
+          for (int inner = 0; inner < 4; ++inner) {
+            sum += host_at(a_values, (batch * 3 + row) * 4 + inner) *
+                host_at(b_values, (batch * 4 + inner) * 5 + column);
+          }
+          expected[(batch * 3 + row) * 5 + column] =
+              static_cast<float>(0.5 * sum + 2.0 * c_values[batch * 5 + column]);
+        }
+      }
+    }
+    array a(a_values.begin(), Shape{2, 3, 4}, float32);
+    array b(b_values.begin(), Shape{2, 4, 5}, float32);
+    array c(c_values.begin(), Shape{2, 1, 5}, float32);
+    expect_close(
+        readback_f32(stream, addmm(c, a, b, 0.5f, 2.0f, stream)),
+        expected,
+        1e-6);
+  }
+
+  SUBCASE("rank six broadcasted matrix vector") {
+    std::vector<float> a_values(2 * 2 * 3 * 4);
+    std::vector<float> b_values(2 * 2 * 2 * 4);
+    for (size_t i = 0; i < a_values.size(); ++i) {
+      a_values[i] = static_cast<float>(static_cast<int>(i % 11) - 5) / 8.0f;
+    }
+    for (size_t i = 0; i < b_values.size(); ++i) {
+      b_values[i] = static_cast<float>(static_cast<int>(i % 5) - 2) / 4.0f;
+    }
+    std::vector<float> expected;
+    expected.reserve(2 * 2 * 2 * 3);
+    for (int batch0 = 0; batch0 < 2; ++batch0) {
+      for (int batch2 = 0; batch2 < 2; ++batch2) {
+        for (int batch3 = 0; batch3 < 2; ++batch3) {
+          for (int row = 0; row < 3; ++row) {
+            double sum = 0.0;
+            for (int inner = 0; inner < 4; ++inner) {
+              size_t a_index = ((batch0 * 2 + batch2) * 3 + row) * 4 + inner;
+              size_t b_index =
+                  ((batch0 * 2 + batch2) * 2 + batch3) * 4 + inner;
+              sum += host_at(a_values, a_index) * host_at(b_values, b_index);
+            }
+            expected.push_back(static_cast<float>(sum));
+          }
+        }
+      }
+    }
+    array a(a_values.begin(), Shape{2, 1, 2, 1, 3, 4}, float32);
+    array b_column(b_values.begin(), Shape{2, 1, 2, 2, 1, 4}, float32);
+    array b = swapaxes(b_column, -1, -2, stream);
+    expect_close(readback_f32(stream, matmul(a, b, stream)), expected, 1e-6);
+  }
+
+  SUBCASE("float16 transposed lhs and wide AddMM") {
+    std::vector<float> a_storage{
+        0.25f, -0.5f, 0.75f, 1.0f, -0.25f, 0.5f};
+    std::vector<float> b_values{
+        0.5f, -0.25f, 1.0f, 0.75f,
+        -1.0f, 0.5f, 0.25f, -0.5f};
+    std::vector<float> c_values{0.125f, -0.25f, 0.5f, 0.75f};
+    array a_dense(a_storage.begin(), Shape{2, 3}, float32);
+    array a = astype(swapaxes(a_dense, -1, -2, stream), float16, stream);
+    array b = astype(
+        array(b_values.begin(), Shape{2, 4}, float32), float16, stream);
+    array c = astype(array(c_values.begin(), Shape{4}, float32), float16, stream);
+    std::vector<float> expected(3 * 4);
+    for (int row = 0; row < 3; ++row) {
+      for (int column = 0; column < 4; ++column) {
+        double sum = 0.0;
+        for (int inner = 0; inner < 2; ++inner) {
+          sum += host_at(a_storage, inner * 3 + row) *
+              host_at(b_values, inner * 4 + column);
+        }
+        expected[row * 4 + column] =
+            static_cast<float>(sum + c_values[column]);
+      }
+    }
+    expect_close(
+        readback_f32(stream, addmm(c, a, b, 1.0f, 1.0f, stream)),
+        expected,
+        1e-5);
+  }
+}
 
 TEST_CASE("block masked mm zeroes and scales blocks") {
   if (!compute_available()) {

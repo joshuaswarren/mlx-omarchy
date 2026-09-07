@@ -15,6 +15,7 @@
 #include <utility>
 
 #include "mlx/backend/common/binary.h"
+#include "mlx/backend/common/matmul.h"
 #include "mlx/backend/common/slicing.h"
 #include "mlx/backend/common/unary.h"
 #include "mlx/backend/omarchy/allocator.h"
@@ -356,23 +357,27 @@ void dispatch_matmul(
     const Stream& s) {
   const array& a_in = inputs.at(0);
   const array& b_in = inputs.at(1);
-  const array& c = use_c ? inputs.at(2) : out;
+  const array& c_in = use_c ? inputs.at(2) : out;
   auto& encoder = omarchy::get_command_encoder(s);
-  require_float_dtype(name, a_in, out, encoder);
-  require_float_dtype(name, b_in, out, encoder);
-  if (use_c) {
-    require_float_dtype(name, c, out, encoder);
+  if (out.dtype() == complex64) {
+    if (a_in.dtype() != complex64 || b_in.dtype() != complex64 ||
+        (use_c && c_in.dtype() != complex64)) {
+      omarchy::unsupported(name + " dtype", out);
+    }
+  } else {
+    require_float_dtype(name, a_in, out, encoder);
+    require_float_dtype(name, b_in, out, encoder);
+    if (use_c) {
+      require_float_dtype(name, c_in, out, encoder);
+    }
   }
 
-  if (a_in.ndim() < 2 || a_in.ndim() != b_in.ndim() || a_in.ndim() > 5) {
+  if (a_in.ndim() < 2 || a_in.ndim() != b_in.ndim()) {
     omarchy::unsupported("matrix rank " + name, out);
   }
-  // Each operand's inner 2-D matrix rides the shader's gap indexing
-  // and its batch axes ride their actual strides, so a cache slice
-  // consumes zero copies; only an inner layout fitting neither the
-  // row-major nor the column-major form materializes to a dense batch.
   std::optional<array> a_materialized;
   std::optional<array> b_materialized;
+  std::optional<array> c_materialized;
   uint32_t a_gap = 0;
   uint32_t b_gap = 0;
   bool a_transposed = false;
@@ -381,39 +386,83 @@ void dispatch_matmul(
       a_in, a_transposed, a_gap, a_materialized, name, out, s);
   classify_matmul_operand(
       b_in, b_transposed, b_gap, b_materialized, name, out, s);
-  const array& a = a_materialized ? *a_materialized : a_in;
-  const array& b = b_materialized ? *b_materialized : b_in;
-  size_t k = a.shape(-1);
-  size_t n = b.shape(-1);
-  if (b.shape(-2) != k) {
+  const array* a = a_materialized ? &*a_materialized : &a_in;
+  const array* b = b_materialized ? &*b_materialized : &b_in;
+  if (use_c && !is_trailing_broadcast(c_in, out)) {
+    c_materialized = materialize_batched_matrix(c_in, name, out, s);
+  }
+  const array* c = c_materialized ? &*c_materialized : &c_in;
+
+  size_t k = a->shape(-1);
+  size_t n = b->shape(-1);
+  if (b->shape(-2) != k) {
     omarchy::unsupported("matrix dimensions " + name, out);
   }
-  if (use_c && !is_trailing_broadcast(c, out)) {
-    omarchy::unsupported("broadcast " + name, out);
+
+  Shape batch_shape;
+  Strides a_batch_strides;
+  Strides b_batch_strides;
+  Strides c_batch_strides;
+  if (use_c) {
+    std::tie(
+        batch_shape,
+        a_batch_strides,
+        b_batch_strides,
+        c_batch_strides) = collapse_batches(*a, *b, *c);
+  } else {
+    std::tie(batch_shape, a_batch_strides, b_batch_strides) =
+        collapse_batches(*a, *b);
+  }
+  if (batch_shape.size() > 4) {
+    if (!a_materialized) {
+      a_materialized = materialize_batched_matrix(*a, name, out, s);
+    }
+    if (!b_materialized) {
+      b_materialized = materialize_batched_matrix(*b, name, out, s);
+    }
+    if (use_c && !c_materialized) {
+      c_materialized = materialize_batched_matrix(*c, name, out, s);
+    }
+    a = &*a_materialized;
+    b = &*b_materialized;
+    c = use_c ? &*c_materialized : &c_in;
+    a_transposed = false;
+    b_transposed = false;
+    a_gap = checked_u32(a->shape(-1), name, out);
+    b_gap = checked_u32(b->shape(-1), name, out);
+    if (use_c) {
+      std::tie(
+          batch_shape,
+          a_batch_strides,
+          b_batch_strides,
+          c_batch_strides) = collapse_batches(*a, *b, *c);
+    } else {
+      std::tie(batch_shape, a_batch_strides, b_batch_strides) =
+          collapse_batches(*a, *b);
+    }
+  }
+  if (batch_shape.size() > 4) {
+    omarchy::unsupported("matrix batch rank " + name, out);
   }
 
   out.set_data(allocate_omarchy(out.nbytes()));
   if (out.size() == 0) {
     return;
   }
-  size_t batch_count = 1;
-  int batch_axes = a.ndim() - 2;
-  for (int axis = 0; axis < batch_axes; ++axis) {
-    batch_count *= a.shape(axis);
-  }
+  size_t m = a->shape(-2);
+  size_t batch_count = out.size() / (m * n);
   if (batch_count > omarchy::kMaxComputeGroupCountX) {
     omarchy::unsupported("batch count " + name, out);
   }
-  size_t m = a.shape(-2);
 
   uint32_t output_size = checked_u32(out.size(), name, out);
   omarchy::ComputeParams params;
   params.count = output_size;
-  params.lhs_size = checked_u32(a.size(), name, out);
-  params.rhs_size = checked_u32(b.size(), name, out);
+  params.lhs_size = checked_u32(a->size(), name, out);
+  params.rhs_size = checked_u32(b->size(), name, out);
   params.reduce_size = checked_u32(k, name, out);
   params.output_size = output_size;
-  params.aux_size = use_c ? checked_u32(c.data_size(), name, out) : 0;
+  params.aux_size = use_c ? checked_u32(c->data_size(), name, out) : 0;
   params.matrix_m = checked_u32(m, name, out);
   params.matrix_n = checked_u32(n, name, out);
   params.matrix_k = params.reduce_size;
@@ -423,51 +472,42 @@ void dispatch_matmul(
       (a_transposed ? 4u : 0u);
   params.lhs_gap = a_gap;
   params.rhs_gap = b_gap;
-  // The shader unravels workgroup z over the batch shape and offsets
-  // each operand by its own strides; a singleton axis never indexes, so
-  // its stride is pinned to 0 (broadcast).
-  params.dims = static_cast<uint32_t>(batch_axes);
+  params.dims = static_cast<uint32_t>(batch_shape.size());
   uint64_t a_span = 0;
   uint64_t b_span = 0;
-  for (int axis = 0; axis < batch_axes; ++axis) {
-    uint32_t extent = static_cast<uint32_t>(out.shape(axis));
-    uint32_t a_stride = a.shape(axis) == 1
-        ? 0u
-        : static_cast<uint32_t>(a.strides()[axis]);
-    uint32_t b_stride = b.shape(axis) == 1
-        ? 0u
-        : static_cast<uint32_t>(b.strides()[axis]);
+  for (size_t axis = 0; axis < batch_shape.size(); ++axis) {
+    int64_t a_stride = a_batch_strides[axis];
+    int64_t b_stride = b_batch_strides[axis];
+    if (a_stride < 0 || b_stride < 0 ||
+        static_cast<uint64_t>(a_stride) > std::numeric_limits<uint32_t>::max() ||
+        static_cast<uint64_t>(b_stride) > std::numeric_limits<uint32_t>::max()) {
+      omarchy::unsupported(name + " batch stride", out);
+    }
+    uint32_t extent = checked_u32(batch_shape[axis], name, out);
     params.shape[axis] = extent;
-    params.in_strides[axis] = a_stride;
-    params.out_strides[axis] = b_stride;
-    a_span += (extent - 1u) * a_stride;
-    b_span += (extent - 1u) * b_stride;
+    params.in_strides[axis] = static_cast<uint32_t>(a_stride);
+    params.out_strides[axis] = static_cast<uint32_t>(b_stride);
+    a_span += static_cast<uint64_t>(extent - 1u) * params.in_strides[axis];
+    b_span += static_cast<uint64_t>(extent - 1u) * params.out_strides[axis];
   }
-  const array& bound_a = a.size() == 0 ? out : a;
-  const array& bound_b = b.size() == 0 ? out : b;
-  const array& bound_c = use_c ? c : out;
-  params.lhs_offset = checked_item_offset(
-      bound_a, bound_a.size(), name, out);
-  params.rhs_offset = checked_item_offset(
-      bound_b, bound_b.size(), name, out);
+  const array& bound_a = a->size() == 0 ? out : *a;
+  const array& bound_b = b->size() == 0 ? out : *b;
+  const array& bound_c = use_c ? *c : out;
+  params.lhs_offset = checked_item_offset(bound_a, bound_a.size(), name, out);
+  params.rhs_offset = checked_item_offset(bound_b, bound_b.size(), name, out);
   params.aux_offset = checked_item_offset(
       bound_c, use_c ? params.aux_size : out.size(), name, out);
   params.output_offset = checked_item_offset(out, out.size(), name, out);
 
   std::array<omarchy::ComputeBinding, 4> bindings{
       binding(bound_a), binding(bound_b), binding(bound_c), binding(out)};
-  auto kernel = select_float_kernel(
-      out.dtype(),
-      omarchy::ComputeKernel::MatmulF32,
-      omarchy::ComputeKernel::MatmulF16,
-      omarchy::ComputeKernel::MatmulBF16);
-  // Inner spans use the actual gaps: (rows - 1) * gap + cols elements
-  // past the operand offset. A degenerate inner dimension (m, n, or k
-  // == 0) touches no elements, but the uint32 subtraction would wrap
-  // zero into a huge span and spuriously refuse valid empty-K
-  // matmuls, so those terms are zeroed outright. The shader's
-  // per-element tile guards then load nothing and accumulate the
-  // zero fill the empty-K contract requires.
+  auto kernel = out.dtype() == complex64
+      ? omarchy::ComputeKernel::MatmulComplex64
+      : select_float_kernel(
+            out.dtype(),
+            omarchy::ComputeKernel::MatmulF32,
+            omarchy::ComputeKernel::MatmulF16,
+            omarchy::ComputeKernel::MatmulBF16);
   uint64_t a_inner = params.matrix_m == 0u || params.matrix_k == 0u
       ? 0u
       : (a_transposed

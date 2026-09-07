@@ -144,6 +144,7 @@
 #include "compare_u16.h"
 #include "matmul_f16.h"
 #include "matmul_f32.h"
+#include "matmul_complex64.h"
 #include "select_bf16.h"
 #include "select_f16.h"
 #include "select_f32.h"
@@ -1176,6 +1177,8 @@ ShaderBytes shader_bytes(ComputeKernel kernel) {
       return {gather_qmm_nb_fp_hgs_f16, gather_qmm_nb_fp_hgs_f16_size};
     case ComputeKernel::GatherQmmNbFpHgsBF16:
       return {gather_qmm_nb_fp_hgs_bf16, gather_qmm_nb_fp_hgs_bf16_size};
+    case ComputeKernel::MatmulComplex64:
+      return {matmul_complex64, matmul_complex64_size};
     case ComputeKernel::Count:
       break;
   }
