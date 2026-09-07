@@ -202,7 +202,7 @@ def verify(wheel_path, expected_hash, expected_version_note, tag,
         passes.append(f"version consistent across filename/dist-info/"
                       f"METADATA: {fn_ver}")
     claim = re.search(r"\+(?:[a-z0-9]+\.)?([0-9a-f]{7,40})$", md_ver or "")
-    if claim and claim.group(1) not in (tag_short, tag_full):
+    if claim and not tag_full.startswith(claim.group(1)):
         failures.append(
             f"artifact records build commit {claim.group(1)} but tag "
             f"{tag} is {tag_short}; the asset was not built from the "
