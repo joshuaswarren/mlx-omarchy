@@ -6532,10 +6532,11 @@ void QuantizedMatmul::eval_gpu(const std::vector<array>& inputs, array& out) {
     constexpr uint32_t kQ4WordMaxK = 4864u;
     size_t q4_word_shared_bytes =
         kQ4WordMaxK * x_d.itemsize() + 256u * sizeof(float);
-    bool use_q4_word = q4_word_env != nullptr && q4_word_env[0] == '1' &&
-        q4_word_env[1] == '\0' && transpose_ && bits_ == 4 &&
-        group_size_ == 64 && params.matrix_k <= kQ4WordMaxK &&
-        q4_word_shared_bytes <= caps.max_compute_shared_memory_size;
+    bool use_q4_word =
+            (q4_word_env == nullptr || std::strcmp(q4_word_env, "1") == 0) &&
+            transpose_ && bits_ == 4 && group_size_ == 64 &&
+            params.matrix_k <= kQ4WordMaxK &&
+            q4_word_shared_bytes <= caps.max_compute_shared_memory_size;
     auto vec_kernel = subgroup_ready
         ? select_float_kernel(
               out.dtype(),
