@@ -1,12 +1,13 @@
 // Copyright © 2026 Joshua Warren / mlx-omarchy contributors.
 // SPDX-License-Identifier: MIT
 
-// The single-dispatch float16 decode attention kernel
-// (shaders/sdpa_decode.comp) against the composed matmul -> softmax ->
-// matmul path it replaces (MLX_OMARCHY_SDPA_FUSED=1 selects the kernel)
-// and against host double math. The fused kernel reproduces the composed
-// path's float16 rounding points and reduction order, so the two are
-// compared bit for bit; the host reference bounds both.
+// The fused float16 decode attention kernels (shaders/sdpa_decode.comp,
+// sdpa_decode_combine.comp; MLX_OMARCHY_SDPA_FUSED=0 forces the composed path)
+// against host double math and against the composed matmul -> softmax ->
+// matmul path they replace. The fused path keeps scores and probs in
+// float where the composed path stores float16, so it is held to the
+// double reference and required to track it at least as well as the
+// composed path; each case prints both errors for the record.
 
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include "doctest/doctest.h"
@@ -135,10 +136,10 @@ struct FusedGate {
   // The primitive reads the variable per call, so flipping it between
   // two evaluations selects the path.
   static void composed() {
-    unsetenv("MLX_OMARCHY_SDPA_FUSED");
+    setenv("MLX_OMARCHY_SDPA_FUSED", "0", 1);
   }
   static void fused() {
-    setenv("MLX_OMARCHY_SDPA_FUSED", "1", 1);
+    unsetenv("MLX_OMARCHY_SDPA_FUSED");
   }
 };
 
@@ -220,46 +221,51 @@ void run_case(const Case& c, Stream stream) {
 
   REQUIRE_EQ(fused.size(), composed.size());
   REQUIRE_EQ(fused.size(), size_t(c.batch) * c.heads * c.q_len * c.head_dim);
-  size_t mismatched = 0;
-  float worst = 0.0f;
-  for (size_t index = 0; index < fused.size(); ++index) {
-    if (fused[index] != composed[index]) {
-      ++mismatched;
-      worst = std::max(worst, std::abs(fused[index] - composed[index]));
-    }
-  }
-  CHECK_MESSAGE(
-      mismatched == 0,
-      c.name,
-      ": fused vs composed differ on ",
-      mismatched,
-      " of ",
-      fused.size(),
-      " elements; largest gap ",
-      worst);
-
   auto want = host_attention(c, q_h, k_h, v_h, scale, additive, bools);
-  size_t bad = 0;
-  double worst_host = 0.0;
+  double worst_fused = 0.0;
+  double worst_composed = 0.0;
+  double sum_fused = 0.0;
+  double sum_composed = 0.0;
+  size_t nan_count = 0;
   for (size_t index = 0; index < want.size(); ++index) {
-    double diff = std::abs(double(fused[index]) - want[index]);
-    worst_host = std::max(worst_host, diff);
-    if (std::isnan(fused[index]) || diff > 2e-2) {
-      ++bad;
+    if (std::isnan(fused[index])) {
+      ++nan_count;
+      continue;
     }
+    double fused_diff = std::abs(double(fused[index]) - want[index]);
+    double composed_diff = std::abs(double(composed[index]) - want[index]);
+    worst_fused = std::max(worst_fused, fused_diff);
+    worst_composed = std::max(worst_composed, composed_diff);
+    sum_fused += fused_diff;
+    sum_composed += composed_diff;
   }
+  double mean_fused = sum_fused / double(want.size());
+  double mean_composed = sum_composed / double(want.size());
+  std::cout << c.name << ": max|err| fused " << worst_fused << " composed "
+            << worst_composed << "; mean|err| fused " << mean_fused
+            << " composed " << mean_composed << "\n";
+  CHECK_MESSAGE(nan_count == 0, c.name, ": ", nan_count, " NaN outputs");
+  // Outputs are averages of values in [-1, 1) stored in float16 (ulp
+  // 2^-11 below 1): one storage rounding plus float accumulation.
   CHECK_MESSAGE(
-      bad == 0,
+      worst_fused <= 2e-3,
       c.name,
-      ": fused vs host double: ",
-      bad,
-      " elements over 2e-2; worst ",
-      worst_host);
+      ": fused vs host double worst ",
+      worst_fused);
+  // Float scores and probs must not lose to the composed path's float16
+  // score/prob storage; a float16 output ulp of slack covers ties.
+  CHECK_MESSAGE(
+      mean_fused <= mean_composed + 5e-4,
+      c.name,
+      ": fused mean error ",
+      mean_fused,
+      " exceeds composed ",
+      mean_composed);
 }
 
 } // namespace
 
-TEST_CASE("fused decode sdpa matches the composed path bit for bit") {
+TEST_CASE("fused decode sdpa tracks the double reference at least as well as the composed path") {
   if (!compute_available()) {
     return;
   }
@@ -278,8 +284,13 @@ TEST_CASE("fused decode sdpa matches the composed path bit for bit") {
       {"additive mask d80", 1, 4, 1, 3, 70, 80, "additive"},
       // Bool mask: broadcast additive mask with stride-0 axes.
       {"bool mask", 2, 4, 2, 4, 40, 64, "bool"},
-      // head_dim 16 (matmul tile padding), three chunks.
+      // head_dim 16 (matmul tile padding), three key blocks.
       {"d16 k520", 1, 2, 1, 1, 520, 16, ""},
+      // Qwen shapes at four and five key blocks (split-K combine).
+      {"qwen k1000", 1, 14, 2, 1, 1000, 64, ""},
+      {"qwen q8 k1100 causal", 1, 14, 2, 8, 1100, 64, "causal"},
+      // Additive mask across blocks.
+      {"additive mask k700", 1, 4, 2, 2, 700, 64, "additive"},
       // Every kv head of batch 3 lands on its own workgroup.
       {"batch3", 3, 4, 2, 2, 17, 64, "causal"},
   };
@@ -312,7 +323,7 @@ TEST_CASE("fused decode sdpa keeps a fully masked row uniform") {
   auto v_h = flat(v, stream);
   REQUIRE_EQ(fused.size(), size_t(B * H * qL * D));
   for (size_t index = 0; index < fused.size(); ++index) {
-    CHECK_EQ(fused[index], composed[index]);
+    CHECK(std::abs(double(fused[index]) - double(composed[index])) < 2e-3);
     double mean = 0.0;
     for (int ki = 0; ki < kL; ++ki) {
       mean += v_h[ki * D + (index % D)];

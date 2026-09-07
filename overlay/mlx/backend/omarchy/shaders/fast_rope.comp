@@ -70,6 +70,18 @@
 //   lhs/output/rhs/aux_offset   item offsets of input/output/offset/freqs
 //   in_strides   input strides (head matrix, time, feature)
 //   out_strides  output strides (head matrix, time, feature)
+//
+// Grid specialization (RoPE::eval_gpu, MLX_OMARCHY_ROPE_GRID=0 disables):
+// constant 0 = dims/2 and constant 1 = layout bits (1 traditional, 2
+// head-seq transpose) select a three-axis dispatch, x = the T*(dims/2)
+// (time, frequency) pairs of one head matrix, y = head, z = batch. Every
+// division is then by a compile-time constant, so the eight uniform
+// reciprocals the driver otherwise hoists into the per-dispatch preamble
+// (203 preamble instructions, dispatch-floor-m1.md) disappear. The grid
+// path serves forward, no-passthrough dispatches only and computes the
+// same expressions in the same order as the 1-D unravel, so the two are
+// bit-identical. Constant 0 = 0 (the unspecialized pipeline) keeps the
+// runtime 1-D path.
 
 #version 460
 
@@ -160,6 +172,9 @@ layout(set = 0, binding = 3, std430) readonly buffer Freqs {
 
 layout(local_size_x = 256, local_size_y = 1, local_size_z = 1) in;
 
+layout(constant_id = 0) const uint HALF_DIMS = 0u;
+layout(constant_id = 1) const uint GRID_FLAGS = 0u;
+
 layout(push_constant) uniform Params {
   uint count;
   uint operation;
@@ -184,7 +199,71 @@ layout(push_constant) uniform Params {
   uint out_strides[4];
 } params;
 
+void rope_grid() {
+  uint x = gl_GlobalInvocationID.x;
+  uint time = params.shape[1];
+  if (x >= HALF_DIMS * time) {
+    return;
+  }
+  uint i = x % HALF_DIMS;
+  uint t = x / HALF_DIMS;
+  uint head = gl_WorkGroupID.y;
+  uint b = gl_WorkGroupID.z;
+  uint mat = b * params.shape[0] + head;
+  bool forward = (params.flags & 1u) != 0u;
+  bool traditional = (GRID_FLAGS & 1u) != 0u;
+  bool head_seq_transpose = (GRID_FLAGS & 2u) != 0u;
+  float offset =
+      float(offset_data.values[params.rhs_offset + b * params.matrix_m]);
+  float position = params.alpha * (float(t) + offset);
+#ifdef USE_FREQS
+  float inv_freq = 1.0f / freqs_data.values[params.aux_offset + i];
+#else
+  float inv_freq = exp(-float(i) * params.beta);
+#endif
+  float theta = position * inv_freq;
+  float cos_t = rope_round(cos(theta));
+  float sin_t = rope_round(sin(theta));
+  uint in_base;
+  if (head_seq_transpose) {
+    in_base = b * (time * params.in_strides[1]) +
+        t * params.in_strides[1] + head * params.in_strides[0];
+  } else {
+    in_base = t * params.in_strides[1] + mat * params.in_strides[0];
+  }
+  uint out_base = t * params.out_strides[1] + mat * params.out_strides[0];
+  uint in_index_1;
+  uint in_index_2;
+  uint out_index_1;
+  uint out_index_2;
+  if (traditional) {
+    in_index_1 = in_base + (2u * i) * params.in_strides[2];
+    in_index_2 = in_index_1 + params.in_strides[2];
+    out_index_1 = out_base + (2u * i) * params.out_strides[2];
+    out_index_2 = out_index_1 + params.out_strides[2];
+  } else {
+    in_index_1 = in_base + i * params.in_strides[2];
+    in_index_2 = in_index_1 + HALF_DIMS * params.in_strides[2];
+    out_index_1 = out_base + i * params.out_strides[2];
+    out_index_2 = out_index_1 + HALF_DIMS * params.out_strides[2];
+  }
+  float x1 = rope_load(params.lhs_offset + in_index_1);
+  float x2 = rope_load(params.lhs_offset + in_index_2);
+  float xa = rope_round(x1 * cos_t);
+  float xb = rope_round(x2 * sin_t);
+  float xc = rope_round(x1 * sin_t);
+  float xd = rope_round(x2 * cos_t);
+  float r1 = forward ? (xa - xb) : (xb + xa);
+  float r2 = forward ? (xc + xd) : (xd - xa);
+  rope_store(params.output_offset + out_index_1, r1);
+  rope_store(params.output_offset + out_index_2, r2);
+}
+
 void main() {
+  if (HALF_DIMS != 0u) {
+    rope_grid();
+    return;
+  }
   uint index = gl_GlobalInvocationID.x;
   uint stride = gl_NumWorkGroups.x * gl_WorkGroupSize.x;
   uint half_dims = params.dims;

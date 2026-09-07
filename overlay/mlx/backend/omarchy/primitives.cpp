@@ -251,6 +251,13 @@ uint32_t matrix_group_count(uint32_t dimension) {
   return std::min(groups, omarchy::kMaxComputeGroupCountX);
 }
 
+// PrefillGemm tile grids (shaders/qmm_gemm.comp, matmul_gemm.comp): both
+// kernels grid-stride, so clamping stays correct.
+uint32_t gemm_group_count(uint32_t dimension, uint32_t tile) {
+  return std::min(
+      (dimension + tile - 1u) / tile, omarchy::kMaxComputeGroupCountX);
+}
+
 // Byte-swap scalars in place for big-endian source files. Mirrors the
 // shared and CUDA Load implementations.
 template <const uint8_t scalar_size>
@@ -540,13 +547,28 @@ void dispatch_matmul(
 
   std::array<omarchy::ComputeBinding, 4> bindings{
       binding(bound_a), binding(bound_b), binding(bound_c), binding(out)};
+  // PrefillGemm (shaders/matmul_gemm.comp): 64x64 blocked tile with the
+  // same per-element ascending-k accumulation as matmul.comp (bit-identical
+  // outputs), the default for m >= 64 (MLX_OMARCHY_MATMUL_GEMM=0 keeps the
+  // 16x16 tile); below that the 16x16 tile measured faster on the M1
+  // (receipts/2026-09-07-perf-dispatch/prefill-gemm-*).
+  bool gemm = false;
+  if (out.dtype() != complex64 && params.matrix_m >= 64u) {
+    const char* gemm_env = std::getenv("MLX_OMARCHY_MATMUL_GEMM");
+    gemm = gemm_env == nullptr || std::strcmp(gemm_env, "0") != 0;
+  }
   auto kernel = out.dtype() == complex64
       ? omarchy::ComputeKernel::MatmulComplex64
-      : select_float_kernel(
-            out.dtype(),
-            omarchy::ComputeKernel::MatmulF32,
-            omarchy::ComputeKernel::MatmulF16,
-            omarchy::ComputeKernel::MatmulBF16);
+      : gemm ? select_float_kernel(
+                   out.dtype(),
+                   omarchy::ComputeKernel::MatmulGemmF32,
+                   omarchy::ComputeKernel::MatmulGemmF16,
+                   omarchy::ComputeKernel::MatmulGemmBF16)
+             : select_float_kernel(
+                   out.dtype(),
+                   omarchy::ComputeKernel::MatmulF32,
+                   omarchy::ComputeKernel::MatmulF16,
+                   omarchy::ComputeKernel::MatmulBF16);
   uint64_t a_inner = params.matrix_m == 0u || params.matrix_k == 0u
       ? 0u
       : (a_transposed
@@ -571,8 +593,10 @@ void dispatch_matmul(
       kernel,
       bindings,
       params,
-      matrix_group_count(params.matrix_n),
-      matrix_group_count(params.matrix_m),
+      gemm ? gemm_group_count(params.matrix_n, 64u)
+           : matrix_group_count(params.matrix_n),
+      gemm ? gemm_group_count(params.matrix_m, 64u)
+           : matrix_group_count(params.matrix_m),
       checked_u32(batch_count, name, out));
 }
 
@@ -6552,37 +6576,53 @@ void QuantizedMatmul::eval_gpu(const std::vector<array>& inputs, array& out) {
         (q4_word_env == nullptr || std::strcmp(q4_word_env, "1") == 0) &&
         transpose_ && bits_ == 4 && group_size_ == 64 &&
         params.matrix_k <= kQ4WordMaxK;
-    // DecodeQ4Vec (shaders/qmm_vec_q4.comp), opt-in via
-    // MLX_OMARCHY_QMM_VEC_Q4_V2=1: streams x and w as uvec4, so both
-    // element offsets must be 16-byte aligned. Each 32-lane slot owns
-    // `rows` consecutive output rows; rows is the largest of 4/2/1 that
-    // still leaves at least kQ4V2MinGroups workgroups so small n keeps
-    // every core busy (MLX_OMARCHY_QMM_Q4_ROWS pins it for measurement).
+    // DecodeQ4Vec (shaders/qmm_vec_q4.comp), the default for this
+    // contract (MLX_OMARCHY_QMM_VEC_Q4_V2=0 is the kill switch back to
+    // DecodeQ4Word): reads x as uvec4 and w as uvec2, so the x element
+    // offset must be 16-byte aligned and the w word offset a multiple
+    // of 4. Rows per 32-lane slot and threads per workgroup are the
+    // shader's specialization constants (shape[3], in_strides[0]); on
+    // the M1 two rows and 128 threads win or tie on every decode shape
+    // (receipts 2026-09-07-perf-dispatch/qmm-bandwidth-v3-m1.md).
+    // MLX_OMARCHY_QMM_Q4_ROWS (1..8) and MLX_OMARCHY_QMM_Q4_WG
+    // (32..256) pin them for measurement; the workgroup then grows
+    // until the grid fits one dispatch axis.
     const char* q4_v2_env = std::getenv("MLX_OMARCHY_QMM_VEC_Q4_V2");
-    constexpr uint32_t kQ4V2MaxRows = 4u;
-    constexpr uint32_t kQ4V2MinGroups = 64u;
-    size_t q4_v2_shared_bytes = 32u * (kQ4WordMaxK / 32u + 1u) *
-            x_d.itemsize() +
-        (kQ4WordMaxK / 32u) * sizeof(float) +
-        (subgroup_ready ? 0u : kQ4V2MaxRows * 256u * sizeof(float));
-    if (q4_contract && q4_v2_env != nullptr &&
-        std::strcmp(q4_v2_env, "1") == 0 && (params.rhs_offset & 3u) == 0u &&
+    constexpr uint32_t kQ4V2MaxRows = 8u;
+    constexpr uint32_t kQ4V2MaxThreads = 256u;
+    size_t q4_v2_shared_bytes = subgroup_ready
+        ? 0u
+        : kQ4V2MaxRows * kQ4V2MaxThreads * sizeof(float);
+    if (q4_contract &&
+        (q4_v2_env == nullptr || std::strcmp(q4_v2_env, "0") != 0) &&
+        (params.rhs_offset & 3u) == 0u &&
         (params.lhs_offset * x_d.itemsize()) % 16u == 0u &&
         q4_v2_shared_bytes <= caps.max_compute_shared_memory_size) {
-      uint32_t rows = kQ4V2MaxRows;
+      uint32_t rows = 2u;
       if (const char* rows_env = std::getenv("MLX_OMARCHY_QMM_Q4_ROWS")) {
         rows = std::clamp<uint32_t>(std::atoi(rows_env), 1u, kQ4V2MaxRows);
-      } else {
-        while (rows > 1u &&
-               (params.matrix_n + rows * kGemvColumnsPerGroup - 1u) /
-                       (rows * kGemvColumnsPerGroup) <
-                   kQ4V2MinGroups) {
-          rows /= 2u;
-        }
       }
+      uint32_t threads = 128u;
+      if (const char* wg_env = std::getenv("MLX_OMARCHY_QMM_Q4_WG")) {
+        threads =
+            std::clamp<uint32_t>(std::atoi(wg_env), 32u, kQ4V2MaxThreads) &
+            ~31u;
+      }
+      auto q4_groups = [&]() {
+        uint32_t per_group = (threads / 32u) * rows;
+        return (params.matrix_n + per_group - 1u) / per_group;
+      };
+      while (q4_groups() > omarchy::kMaxComputeGroupCountX &&
+             rows < kQ4V2MaxRows) {
+        rows *= 2u;
+      }
+      while (q4_groups() > omarchy::kMaxComputeGroupCountX &&
+             threads < kQ4V2MaxThreads) {
+        threads *= 2u;
+      }
+      uint32_t n_groups = q4_groups();
       params.shape[3] = rows;
-      uint32_t n_groups = (params.matrix_n + rows * kGemvColumnsPerGroup - 1u) /
-          (rows * kGemvColumnsPerGroup);
+      params.in_strides[0] = threads;
       auto q4_kernel = subgroup_ready
           ? select_float_kernel(
                 out.dtype(),
@@ -6594,14 +6634,10 @@ void QuantizedMatmul::eval_gpu(const std::vector<array>& inputs, array& out) {
                 omarchy::ComputeKernel::QmmVecQ4V2F32,
                 omarchy::ComputeKernel::QmmVecQ4V2F16,
                 omarchy::ComputeKernel::QmmVecQ4V2BF16);
-      encoder.dispatch_compute(
-          q4_kernel,
-          bindings,
-          params,
-          std::min(n_groups, omarchy::kMaxComputeGroupCountX),
-          1u,
-          1u);
-      return;
+      if (n_groups <= omarchy::kMaxComputeGroupCountX) {
+        encoder.dispatch_compute(q4_kernel, bindings, params, n_groups, 1u, 1u);
+        return;
+      }
     }
     size_t q4_word_shared_bytes =
         kQ4WordMaxK * x_d.itemsize() + 256u * sizeof(float);
@@ -6636,8 +6672,94 @@ void QuantizedMatmul::eval_gpu(const std::vector<array>& inputs, array& out) {
         1u);
     return;
   }
-  if (const char* tile_env = std::getenv("MLX_OMARCHY_QMM_TILE");
-      tile_env == nullptr || std::strcmp(tile_env, "0") != 0) {
+  // PrefillGemm (shaders/qmm_gemm.comp): blocked GEMM for the transposed
+  // word-packed affine float16 contract, the default (MLX_OMARCHY_QMM_TILE_V2=0
+  // keeps the 16-wide tile kernels; MLX_OMARCHY_QMM_TILE=0 still selects
+  // the per-element kernel). The 64x64 and 64x128 (large grids) tiles
+  // keep the ascending-k single-accumulator order of the tile kernels
+  // bit for bit; the 32x32 tile with four
+  // in-workgroup k-partitions (a rounding-order change) is opt-in via
+  // MLX_OMARCHY_QMM_GEMM_SPLITK=1 and then takes grids under eight 64x64
+  // tiles, where it measured 2.1x on the M1 k/v projection at L = 41
+  // (receipts/2026-09-07-perf-dispatch/prefill-gemm-*).
+  const char* tile_env = std::getenv("MLX_OMARCHY_QMM_TILE");
+  bool tiles_enabled = tile_env == nullptr || std::strcmp(tile_env, "0") != 0;
+  // PrefillCols (shaders/qmm_vec_cols.comp): for short prefill on the
+  // decode contract (transposed affine 4-bit/group-64 float16, 16-byte
+  // aligned x, word-aligned w) the decode GEMV shape applied to eight
+  // activation rows per weight pass; every column comes out bit-identical
+  // to the m == 1 GEMV, which is a different summation order from the
+  // tile kernels. On the M1 it beats the blocked GEMM up to m = 16 on
+  // every projection (qo_proj 262 -> 70 us at m = 8, gate_up 1053 ->
+  // 299, down 1334 -> 235) and up to m = 64 where the GEMM grid has
+  // fewer than eight 64x64 tiles (kv_proj 226 -> 65 us at m = 41), and
+  // loses above that (receipts/2026-09-07-perf-dispatch/prefill-gemm-cols-m1.jsonl).
+  // Opt-in via MLX_OMARCHY_QMM_VEC_COLS=1 until the paired token check
+  // accepts the order change (the tile-vs-untiled bound tests trip on it:
+  // 168 + 29 assertions with it default-on); MLX_OMARCHY_QMM_VEC_COLS_MAX_M
+  // (default 16) moves the m bound.
+  {
+    const char* cols_env = std::getenv("MLX_OMARCHY_QMM_VEC_COLS");
+    uint32_t cols_max_m = 16u;
+    if (const char* max_env = std::getenv("MLX_OMARCHY_QMM_VEC_COLS_MAX_M")) {
+      cols_max_m = static_cast<uint32_t>(std::max(0, std::atoi(max_env)));
+    }
+    uint32_t gemm_tiles =
+        ((params.matrix_m + 63u) / 64u) * ((params.matrix_n + 63u) / 64u);
+    if (tiles_enabled && cols_env != nullptr &&
+        std::strcmp(cols_env, "0") != 0 && params.matrix_m >= 2u &&
+        (params.matrix_m <= cols_max_m ||
+         (params.matrix_m <= 64u && gemm_tiles < 8u)) &&
+        out.dtype() == float16 && transpose_ && bits_ == 4 &&
+        group_size_ == 64 && params.matrix_k <= 4864u &&
+        (params.rhs_offset & 3u) == 0u &&
+        (params.lhs_offset * x_d.itemsize()) % 16u == 0u) {
+      const auto& caps = encoder.device().capabilities();
+      bool subgroup_ready =
+          caps.subgroup_size == 32u &&
+          (caps.subgroup_operations & VK_SUBGROUP_FEATURE_ARITHMETIC_BIT) != 0;
+      // Shader geometry: eight columns per block, eight slots of two rows.
+      constexpr uint32_t kColsPerBlock = 8u;
+      constexpr uint32_t kRowsPerGroup = 16u;
+      encoder.dispatch_compute(
+          subgroup_ready ? omarchy::ComputeKernel::QmmVecColsSubgroupF16
+                         : omarchy::ComputeKernel::QmmVecColsF16,
+          bindings,
+          params,
+          gemm_group_count(params.matrix_n, kRowsPerGroup),
+          gemm_group_count(params.matrix_m, kColsPerBlock),
+          1u);
+      return;
+    }
+  }
+  const char* v2_env = std::getenv("MLX_OMARCHY_QMM_TILE_V2");
+  if (tiles_enabled && (v2_env == nullptr || std::strcmp(v2_env, "0") != 0) &&
+      out.dtype() == float16 && transpose_ &&
+      (bits_ == 2 || bits_ == 4 || bits_ == 8)) {
+    uint32_t m_tiles = (params.matrix_m + 63u) / 64u;
+    uint32_t n_tiles = (params.matrix_n + 63u) / 64u;
+    const char* splitk_env = std::getenv("MLX_OMARCHY_QMM_GEMM_SPLITK");
+    bool splitk = splitk_env != nullptr && std::strcmp(splitk_env, "0") != 0 &&
+        m_tiles * n_tiles < 8u;
+    // The 64x128 tile only pays once the grid still fills the eight cores
+    // several workgroups deep (64 tiles); below that its halved grid loses
+    // more than its shared-load ratio gains.
+    bool wide = !splitk && params.matrix_m > 64u &&
+        m_tiles * ((params.matrix_n + 127u) / 128u) >= 64u;
+    uint32_t bm = splitk ? 32u : 64u;
+    uint32_t bn = splitk ? 32u : (wide ? 128u : 64u);
+    encoder.dispatch_compute(
+        splitk ? omarchy::ComputeKernel::QmmGemm32K4F16
+               : (wide ? omarchy::ComputeKernel::QmmGemm64x128F16
+                       : omarchy::ComputeKernel::QmmGemm64F16),
+        bindings,
+        params,
+        gemm_group_count(params.matrix_n, bn),
+        gemm_group_count(params.matrix_m, bm),
+        1u);
+    return;
+  }
+  if (tiles_enabled) {
     const char* rb_env = std::getenv("MLX_OMARCHY_QMM_TILE_RB");
     bool rb_enabled = rb_env == nullptr || std::strcmp(rb_env, "0") != 0;
     if (rb_enabled && out.dtype() == float16 && transpose_ && bits_ == 4 &&
@@ -9024,11 +9146,27 @@ void RMSNorm::eval_gpu(
   params.lhs_size = checked_u32(w.size(), tag, out);
   std::array<omarchy::ComputeBinding, 4> bindings{
       binding(x), binding(w), binding(w), binding(out)};
-  auto kernel = select_float_kernel(
-      out.dtype(),
-      omarchy::ComputeKernel::FastRmsNormF32,
-      omarchy::ComputeKernel::FastRmsNormF16,
-      omarchy::ComputeKernel::FastRmsNormBF16);
+  // The subgroup flavor finishes the tree reduction with register
+  // shuffles in the same pairwise order (bit-identical sums), six
+  // barriers per row instead of eleven; MLX_OMARCHY_RMS_NORM_SUBGROUP=0
+  // keeps the shared-memory tree.
+  const auto& caps = encoder.device().capabilities();
+  const char* subgroup_env = std::getenv("MLX_OMARCHY_RMS_NORM_SUBGROUP");
+  const bool subgroup = caps.subgroup_size == 32u &&
+      (caps.subgroup_operations & VK_SUBGROUP_FEATURE_SHUFFLE_RELATIVE_BIT) !=
+          0 &&
+      (subgroup_env == nullptr || std::strcmp(subgroup_env, "0") != 0);
+  auto kernel = subgroup
+      ? select_float_kernel(
+            out.dtype(),
+            omarchy::ComputeKernel::FastRmsNormSubgroupF32,
+            omarchy::ComputeKernel::FastRmsNormSubgroupF16,
+            omarchy::ComputeKernel::FastRmsNormSubgroupBF16)
+      : select_float_kernel(
+            out.dtype(),
+            omarchy::ComputeKernel::FastRmsNormF32,
+            omarchy::ComputeKernel::FastRmsNormF16,
+            omarchy::ComputeKernel::FastRmsNormBF16);
   encoder.dispatch_compute(
       kernel,
       bindings,
@@ -9629,25 +9767,54 @@ void RoPE::eval_gpu(
         with_freqs ? omarchy::ComputeKernel::FastRopeFreqsBF16
                    : omarchy::ComputeKernel::FastRopeBF16);
   }
-  encoder.dispatch_compute(
-      kernel,
-      bindings,
-      params,
-      omarchy::compute_dispatch_group_count(params.count));
+  // Three-axis grid (fast_rope.comp, HALF_DIMS specialization): x walks
+  // the T*half_dims pairs of one head matrix, y the N heads, z the B
+  // batches, so no index division by a uniform remains and the
+  // per-dispatch preamble drops from 203 to the floor. Forward and
+  // no-passthrough only; MLX_OMARCHY_ROPE_GRID=0 keeps the 1-D unravel.
+  const char* grid_env = std::getenv("MLX_OMARCHY_ROPE_GRID");
+  const bool grid_enabled =
+      grid_env == nullptr || std::strcmp(grid_env, "0") != 0;
+  uint64_t pairs = static_cast<uint64_t>(T) * half_dims;
+  uint32_t groups_x = omarchy::compute_dispatch_group_count(
+      pairs > std::numeric_limits<uint32_t>::max()
+          ? std::numeric_limits<uint32_t>::max()
+          : static_cast<uint32_t>(pairs));
+  if (grid_enabled && forward_ && !passthrough && half_dims > 0 &&
+      pairs <= static_cast<uint64_t>(omarchy::kMaxComputeGroupCountX) *
+              omarchy::kComputeThreadsPerGroup &&
+      N <= static_cast<int>(omarchy::kMaxComputeGroupCountX) &&
+      B <= static_cast<int>(omarchy::kMaxComputeGroupCountX)) {
+    params.flags |= omarchy::kRopeGridFlag;
+    encoder.dispatch_compute(
+        kernel,
+        bindings,
+        params,
+        groups_x,
+        static_cast<uint32_t>(N),
+        static_cast<uint32_t>(B));
+  } else {
+    encoder.dispatch_compute(
+        kernel,
+        bindings,
+        params,
+        omarchy::compute_dispatch_group_count(params.count));
+  }
   if (f32_to_bf16) {
     copy_gpu(*f32_to_bf16, out, CopyType::Vector, s);
   }
 }
-// Single-dispatch decode attention (shaders/sdpa_decode.comp): float16
-// storage, q_len <= 8, one workgroup per (batch, kv head) that owns every
-// GQA query row of that kv head. q, k, v and the additive mask are read
-// through their own strides, so a KV-cache slice needs no copy. The
-// kernel rounds to float16 exactly where the composed matmul -> (mask
-// add) -> softmax -> matmul path stores a value and reduces in the same
-// order, so its output is bit-identical to that path; MLX_OMARCHY_SDPA_FUSED=0
-// routes to the composed path for A/B measurement only. Returns false
-// for every shape it does not cover (sinks, wider q_len, head dims over
-// 256, strided head_dim, oversized index spans), which then take the
+// Decode attention in one or two dispatches (shaders/sdpa_decode.comp,
+// sdpa_decode_combine.comp): float16 storage, q_len <= 8, no sinks. One
+// workgroup per (batch, q head, query row, 256-key block) computes float
+// scores, the block softmax statistics and probs @ v; k_len <= 256 writes
+// the float16 output directly, longer contexts write float partials that
+// the combine dispatch merges. q, k, v and the additive mask are read
+// through their own strides, so a KV-cache slice needs no copy. Scores
+// and probs stay float (the composed matmul -> softmax -> matmul path
+// rounds both to float16), so values differ from that path within its
+// own float16 rounding. Default on; MLX_OMARCHY_SDPA_FUSED=0 forces the composed path.
+// Returns false for every case it does not cover, which then takes the
 // composed path.
 bool sdpa_decode_fused(
     const std::string& tag,
@@ -9659,20 +9826,22 @@ bool sdpa_decode_fused(
     float scale,
     array& out,
     const Stream& s) {
-  // Default off until the M1 A/B is positive with equal greedy token IDs;
-  // MLX_OMARCHY_SDPA_FUSED=1 enables the fused path.
-  const char* env = std::getenv("MLX_OMARCHY_SDPA_FUSED");
-  if (env == nullptr || std::strcmp(env, "1") != 0) {
+  // Default on (M1 A/B 2026-09-07 perfsnap3: +4.5/+13.4/+42.4% decode,
+  // token IDs equal); MLX_OMARCHY_SDPA_FUSED=0 is the kill switch.
+  if (const char* env = std::getenv("MLX_OMARCHY_SDPA_FUSED");
+      env != nullptr && std::strcmp(env, "0") == 0) {
     return false;
   }
   auto& encoder = omarchy::get_command_encoder(s);
-  // 5 bindings; ~16 KB of shared memory (two 8 x 256 float tiles).
-  constexpr size_t kSharedBytes = (2u * 8u * 256u + 16u) * sizeof(float);
+  // 5 bindings; ~7 KB of shared memory (q row, two 256-lane reduction
+  // arrays, four 256-wide partial output rows).
+  constexpr size_t kSharedBytes = (3u * 256u + 4u * 256u) * sizeof(float);
   if (encoder.device().compute().binding_limit() < 5 ||
       encoder.device().capabilities().max_compute_shared_memory_size <
           kSharedBytes) {
     return false;
   }
+  constexpr uint32_t kBlockKeys = 256;
   const int batch = q.shape(0);
   const int heads = q.shape(1);
   const int q_len = q.shape(2);
@@ -9689,11 +9858,21 @@ bool sdpa_decode_fused(
        mask->shape() != Shape{batch, heads, q_len, k_len})) {
     return false;
   }
-  const uint64_t groups = static_cast<uint64_t>(batch) * kv_heads;
+  const uint64_t rows = static_cast<uint64_t>(batch) * heads * q_len;
+  const uint32_t n_blocks = (static_cast<uint32_t>(k_len) + kBlockKeys - 1) /
+      kBlockKeys;
+  const uint64_t groups = rows * n_blocks;
   if (groups > omarchy::kMaxComputeGroupCountX) {
     return false;
   }
   if (q.strides()[3] != 1 || k.strides()[3] != 1 || v.strides()[3] != 1) {
+    return false;
+  }
+  // The kernel loads keys as f16vec4: head_dim and every key element
+  // offset must be multiples of four.
+  if (head_dim % 4 != 0 || k.strides()[0] % 4 != 0 ||
+      k.strides()[1] % 4 != 0 || k.strides()[2] % 4 != 0 ||
+      (k.offset() / static_cast<int64_t>(k.itemsize())) % 4 != 0) {
     return false;
   }
   // Element offset and the last index the strides reach; false when
@@ -9738,6 +9917,7 @@ bool sdpa_decode_fused(
   params.flags = mask_offset;
   params.alpha = scale;
   params.dims = static_cast<uint32_t>(kv_heads);
+  params.lhs_gap = n_blocks;
   for (int axis = 0; axis < 3; ++axis) {
     params.shape[axis] = static_cast<uint32_t>(k.strides()[axis]);
     params.in_strides[axis] = static_cast<uint32_t>(q.strides()[axis]);
@@ -9749,17 +9929,57 @@ bool sdpa_decode_fused(
     params.output_size = static_cast<uint32_t>(mask->strides()[2]);
     params.aux_size = static_cast<uint32_t>(mask->strides()[3]);
   }
+  // Subgroup reductions when the device has them (MLX_OMARCHY_SDPA_SUBGROUP=0
+  // forces the shared-memory trees for measurement).
+  const char* subgroup_env = std::getenv("MLX_OMARCHY_SDPA_SUBGROUP");
+  const bool subgroup =
+      (encoder.device().capabilities().subgroup_operations &
+       VK_SUBGROUP_FEATURE_ARITHMETIC_BIT) != 0 &&
+      (subgroup_env == nullptr || std::strcmp(subgroup_env, "0") != 0);
+  if (n_blocks == 1) {
+    std::array<omarchy::ComputeBinding, 5> bindings{
+        binding(q),
+        binding(k),
+        binding(v),
+        mask != nullptr ? binding(*mask) : binding(q),
+        binding(out)};
+    encoder.dispatch_compute(
+        subgroup ? omarchy::ComputeKernel::SdpaDecodeSubgroupF16
+                 : omarchy::ComputeKernel::SdpaDecodeF16,
+        bindings,
+        params,
+        static_cast<uint32_t>(groups));
+    return true;
+  }
+  // Split-K: [groups * v_dim] block outputs then [groups * 2] (max, sum).
+  array partials(
+      Shape{static_cast<int>(groups * (v_dim + 2))}, float32, nullptr, {});
+  partials.set_data(allocate_omarchy(partials.nbytes()));
+  encoder.add_temporary(partials);
   std::array<omarchy::ComputeBinding, 5> bindings{
       binding(q),
       binding(k),
       binding(v),
       mask != nullptr ? binding(*mask) : binding(q),
-      binding(out)};
+      binding(partials)};
   encoder.dispatch_compute(
-      omarchy::ComputeKernel::SdpaDecodeF16,
+      subgroup ? omarchy::ComputeKernel::SdpaDecodePartialSubgroupF16
+               : omarchy::ComputeKernel::SdpaDecodePartialF16,
       bindings,
       params,
       static_cast<uint32_t>(groups));
+  omarchy::ComputeParams combine;
+  combine.count = params.count;
+  combine.output_size = static_cast<uint32_t>(rows);
+  combine.output_offset = params.output_offset;
+  combine.lhs_gap = n_blocks;
+  std::array<omarchy::ComputeBinding, 2> combine_bindings{
+      binding(partials), binding(out)};
+  encoder.dispatch_compute(
+      omarchy::ComputeKernel::SdpaDecodeCombineF16,
+      combine_bindings,
+      combine,
+      static_cast<uint32_t>(rows));
   return true;
 }
 

@@ -3,8 +3,6 @@
 
 #include "mlx/backend/omarchy/encoder.h"
 #include <stdexcept>
-#include <chrono>
-#include <cstdio>
 
 #include "mlx/backend/omarchy/allocator.h"
 #include "mlx/backend/omarchy/device.h"
@@ -17,16 +15,6 @@
 namespace mlx::core::omarchy {
 
 namespace {
-
-// DF2_TIMING (temporary instrumentation, removed after measurement)
-std::array<uint64_t, 10> df2_phase_ns{};
-uint64_t df2_dispatches = 0;
-inline uint64_t df2_now() {
-  return std::chrono::duration_cast<std::chrono::nanoseconds>(
-             std::chrono::steady_clock::now().time_since_epoch())
-      .count();
-}
-#define DF2_MARK(i) do { uint64_t n_ = df2_now(); df2_phase_ns[i] += n_ - df2_t; df2_t = n_; } while (0)
 
 // Saturating byte-range end for dependency tracking. VK_WHOLE_SIZE and
 // overflowing sizes clamp to the address space so a tracked range never
@@ -113,6 +101,38 @@ void CommandEncoder::reset_dependency_tracking() {
   tracked_reads_.clear();
   tracked_writes_.clear();
   head_synced_ = false;
+}
+
+// Unconditional-mode node barrier (MLX_OMARCHY_GATED_BARRIERS off): one
+// barrier ahead of every node, making every earlier host, transfer, and
+// shader write in the batch visible to this node's stage. A node never
+// records a barrier after itself: the next node's pre-barrier orders
+// and publishes its writes, and submit() ends the batch with the
+// device-to-host barrier. Two barriers per dispatch (pre + post) cost
+// 0.6 us of the 3.4 us a specialized ElementwiseF16 dispatch takes on
+// the M1 (receipts/2026-09-07-perf-dispatch/dispatch-floor-m1.md).
+void CommandEncoder::record_node_barrier(
+    VkPipelineStageFlags dst_stage,
+    VkAccessFlags dst_access) {
+  VkMemoryBarrier before{VK_STRUCTURE_TYPE_MEMORY_BARRIER};
+  before.srcAccessMask = VK_ACCESS_HOST_WRITE_BIT |
+      VK_ACCESS_TRANSFER_WRITE_BIT | VK_ACCESS_SHADER_WRITE_BIT;
+  before.dstAccessMask = dst_access;
+  vk::device_table().CmdPipelineBarrier(
+      cmd_,
+      VK_PIPELINE_STAGE_HOST_BIT | VK_PIPELINE_STAGE_TRANSFER_BIT |
+          VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+      dst_stage,
+      0,
+      1,
+      &before,
+      0,
+      nullptr,
+      0,
+      nullptr);
+  head_synced_ = true;
+  trace::counters().barriers_emitted++;
+  prof::get().on_barrier(true);
 }
 
 CommandEncoder::CommandEncoder(Device& device) : device_(device) {
@@ -247,6 +267,10 @@ void CommandEncoder::copy_buffer(
     }
     tracked_reads_.push_back(read);
     tracked_writes_.push_back(write);
+  } else {
+    record_node_barrier(
+        VK_PIPELINE_STAGE_TRANSFER_BIT,
+        VK_ACCESS_TRANSFER_READ_BIT | VK_ACCESS_TRANSFER_WRITE_BIT);
   }
   VkBufferCopy region{};
   region.srcOffset = src_offset;
@@ -277,6 +301,9 @@ void CommandEncoder::fill_buffer(
       prof::get().on_barrier(false);
     }
     tracked_writes_.push_back(write);
+  } else {
+    record_node_barrier(
+        VK_PIPELINE_STAGE_TRANSFER_BIT, VK_ACCESS_TRANSFER_WRITE_BIT);
   }
   vk::device_table().CmdFillBuffer(cmd_, dst, offset, size, value);
   node_count_++;
@@ -373,8 +400,6 @@ void CommandEncoder::dispatch_compute(
   if (group_count_x == 0 || group_count_y == 0 || group_count_z == 0) {
     return;
   }
-  uint64_t df2_t = df2_now();
-  df2_dispatches++;
   auto& compute = device_.compute();
   uint32_t binding_limit = compute.binding_limit();
   if (bindings.empty() || bindings.size() > binding_limit) {
@@ -390,11 +415,9 @@ void CommandEncoder::dispatch_compute(
   group_count_x = std::min(group_count_x, kMaxComputeGroupCountX);
   group_count_y = std::min(group_count_y, kMaxComputeGroupCountX);
   group_count_z = std::min(group_count_z, kMaxComputeGroupCountX);
-  DF2_MARK(0);
 
   auto& dt = vk::device_table();
-  VkPipeline pipeline = compute.pipeline(kernel, params.operation);
-  DF2_MARK(1);
+  VkPipeline pipeline = compute.pipeline(kernel, params);
 
   // Push descriptors (Device::push_descriptors()): the writes go straight
   // into the command buffer below, no set is allocated or bound. Pooled
@@ -402,7 +425,6 @@ void CommandEncoder::dispatch_compute(
   const bool push = compute.push_descriptors();
   VkDescriptorSet descriptor_set =
       push ? VK_NULL_HANDLE : acquire_descriptor_set(compute);
-  DF2_MARK(2);
 
   std::array<VkDescriptorBufferInfo, kComputeBindingBudget> buffer_info{};
   std::array<VkWriteDescriptorSet, kComputeBindingBudget> writes{};
@@ -425,10 +447,8 @@ void CommandEncoder::dispatch_compute(
         nullptr);
   }
   trace::counters().vk_descriptor_update_writes += bindings.size();
-  DF2_MARK(3);
 
   ensure_recording();
-  DF2_MARK(4);
   uint64_t host_t0 = prof::get().profiling() ? prof::host_ns() : 0;
   // MLX_OMARCHY_TAPE_FULL_BARRIERS (diagnostic, docs/install-omarchy.md):
   // the heaviest correct dependency - all commands, all memory access,
@@ -471,35 +491,15 @@ void CommandEncoder::dispatch_compute(
       tracked_writes_.push_back(ranges[i]);
     }
   } else {
-    VkMemoryBarrier before{VK_STRUCTURE_TYPE_MEMORY_BARRIER};
-    before.srcAccessMask =
-        VK_ACCESS_HOST_WRITE_BIT | VK_ACCESS_TRANSFER_WRITE_BIT |
-        VK_ACCESS_SHADER_WRITE_BIT;
-    before.dstAccessMask =
-        VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT;
-    dt.CmdPipelineBarrier(
-        cmd_,
-        VK_PIPELINE_STAGE_HOST_BIT | VK_PIPELINE_STAGE_TRANSFER_BIT |
-            VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+    record_node_barrier(
         VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
-        0,
-        1,
-        &before,
-        0,
-        nullptr,
-        0,
-        nullptr);
-    head_synced_ = true;
-    trace::counters().barriers_emitted++;
-    prof::get().on_barrier(true);
+        VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT);
     barrier_recorded = true;
   }
   prof::get().before_dispatch(this, current_slot_, cmd_, barrier_recorded);
-  DF2_MARK(5);
 
   VkPipelineLayout pipeline_layout = compute.pipeline_layout();
   dt.CmdBindPipeline(cmd_, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline);
-  DF2_MARK(6);
   if (push) {
     dt.CmdPushDescriptorSetKHR(
         cmd_,
@@ -526,9 +526,7 @@ void CommandEncoder::dispatch_compute(
       0,
       sizeof(params),
       &params);
-  DF2_MARK(7);
   dt.CmdDispatch(cmd_, group_count_x, group_count_y, group_count_z);
-  DF2_MARK(8);
   prof::get().after_dispatch(
       this,
       current_slot_,
@@ -542,29 +540,6 @@ void CommandEncoder::dispatch_compute(
       host_t0 != 0 ? prof::host_ns() - host_t0 : 0,
       in_tape_recording ? 1u : 0u);
 
-  // Gated mode tracks this dispatch's writes instead of recording a
-  // post barrier; the next node's overlap test consumes the tracking.
-  if (!gated_barriers()) {
-    VkMemoryBarrier after{VK_STRUCTURE_TYPE_MEMORY_BARRIER};
-    after.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
-    after.dstAccessMask =
-        VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_TRANSFER_READ_BIT |
-        VK_ACCESS_HOST_READ_BIT;
-    dt.CmdPipelineBarrier(
-        cmd_,
-        VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
-        VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_TRANSFER_BIT |
-            VK_PIPELINE_STAGE_HOST_BIT,
-        0,
-        1,
-        &after,
-        0,
-        nullptr,
-        0,
-        nullptr);
-    trace::counters().barriers_emitted++;
-    prof::get().on_barrier(true);
-  }
   if (tape_full_barriers()) {
     // Diagnostic: matching full barrier out of this dispatch, so every
     // dependency between two dispatches is the heaviest form (see the
@@ -574,22 +549,6 @@ void CommandEncoder::dispatch_compute(
 
   node_count_++;
   trace::counters().vk_compute_dispatches++;
-  DF2_MARK(9);
-}
-
-extern "C" __attribute__((visibility("default"))) void
-mlx_omarchy_df2_timing_dump() {
-  const char* names[10] = {"check+note_owner", "pipeline()", "acquire_set",
-                           "update_set", "ensure_recording", "pre_barrier",
-                           "bind_pipeline", "bind_set+push", "dispatch",
-                           "post_barrier+tail"};
-  for (int i = 0; i < 10; ++i) {
-    std::printf("{\"phase\": \"%s\", \"ns_per_dispatch\": %.1f}\n", names[i],
-                df2_dispatches ? double(df2_phase_ns[i]) / df2_dispatches : 0.0);
-  }
-  std::fflush(stdout);
-  df2_phase_ns.fill(0);
-  df2_dispatches = 0;
 }
 
 void CommandEncoder::commit() {
@@ -614,17 +573,18 @@ void CommandEncoder::submit() {
   uint64_t submitted = 0;
 
   if (recording_) {
-    if (gated_barriers()) {
-      VkMemoryBarrier readback{VK_STRUCTURE_TYPE_MEMORY_BARRIER};
-      readback.srcAccessMask = VK_ACCESS_MEMORY_WRITE_BIT;
-      readback.dstAccessMask = VK_ACCESS_HOST_READ_BIT;
-      dt.CmdPipelineBarrier(
-          cmd_, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
-          VK_PIPELINE_STAGE_HOST_BIT, 0, 1, &readback,
-          0, nullptr, 0, nullptr);
-      trace::counters().barriers_emitted++;
-      prof::get().on_barrier(true);
-    }
+    // Device-to-host visibility for the batch's last writes: the host
+    // reads them after the completion wait, and no later node's
+    // pre-barrier covers them.
+    VkMemoryBarrier readback{VK_STRUCTURE_TYPE_MEMORY_BARRIER};
+    readback.srcAccessMask = VK_ACCESS_MEMORY_WRITE_BIT;
+    readback.dstAccessMask = VK_ACCESS_HOST_READ_BIT;
+    dt.CmdPipelineBarrier(
+        cmd_, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
+        VK_PIPELINE_STAGE_HOST_BIT, 0, 1, &readback,
+        0, nullptr, 0, nullptr);
+    trace::counters().barriers_emitted++;
+    prof::get().on_barrier(true);
     VKX_CHECK(dt.EndCommandBuffer(cmd_));
   }
 

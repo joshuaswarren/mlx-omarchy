@@ -372,8 +372,8 @@ add_executable(omarchy_qmm_bandwidth_bench
                ${CMAKE_CURRENT_SOURCE_DIR}/bench_qmm_bandwidth.cpp)
 target_link_libraries(omarchy_qmm_bandwidth_bench PRIVATE mlx)
 
-# SdpaDecode: the single-dispatch float16 decode attention kernel against
-# the composed path (bit-exact) and host double math.
+# SdpaDecode: the fused float16 decode attention kernels against the
+# composed path and host double math.
 add_executable(omarchy_sdpa_decode_tests
                ${CMAKE_CURRENT_SOURCE_DIR}/test_sdpa_decode.cpp)
 target_link_libraries(omarchy_sdpa_decode_tests PRIVATE mlx doctest)
@@ -382,3 +382,16 @@ target_link_options(omarchy_sdpa_decode_tests PRIVATE ${SANITIZER_LINK_FLAGS})
 
 doctest_discover_tests(omarchy_sdpa_decode_tests)
 add_test(NAME omarchy_sdpa_decode_tests COMMAND omarchy_sdpa_decode_tests)
+
+# SdpaDecode microbench: fused vs composed wall time per call. A benchmark,
+# not a test: not registered with ctest.
+add_executable(omarchy_sdpa_decode_bench
+               ${CMAKE_CURRENT_SOURCE_DIR}/bench_sdpa_decode.cpp)
+target_link_libraries(omarchy_sdpa_decode_bench PRIVATE mlx)
+
+# PrefillGemm microbench: m > 1 affine q4 QuantizedMatmul and the batched
+# float16 SDPA matmuls at L = 41 / 262 / 1053 (see bench_prefill_gemm.cpp).
+# A benchmark, not a test: not registered with ctest.
+add_executable(omarchy_prefill_gemm_bench
+               ${CMAKE_CURRENT_SOURCE_DIR}/bench_prefill_gemm.cpp)
+target_link_libraries(omarchy_prefill_gemm_bench PRIVATE mlx)

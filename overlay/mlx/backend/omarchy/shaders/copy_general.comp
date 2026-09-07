@@ -14,6 +14,14 @@
 // The load stays one straight-line per-thread read at a linear address,
 // the shape the Honeykrisp driver reads correctly (see gather_rows.comp
 // and docs/known-defects.md).
+//
+// Grid specialization (constant 1 = 1; copy_gpu_inplace sets it for a
+// same-dtype window that collapses to rank <= 2 with a small outer
+// extent, MLX_OMARCHY_COPY_GRID=0 disables): y = outer row, x = inner
+// element, shape[0]/shape[1] and the two stride pairs describe the
+// window (a rank-1 window rides as one row). No division remains, so the
+// per-axis reciprocals the driver hoists into the per-dispatch preamble
+// disappear. The unspecialized pipeline keeps the runtime unravel.
 #version 460
 
 #ifdef USE_FP16
@@ -69,6 +77,8 @@ uint16_t bf16_store(float value) {
 #endif
 
 layout(local_size_x = 256) in;
+
+layout(constant_id = 1) const uint GRID = 0u;
 
 layout(set = 0, binding = 0, std430) readonly buffer InputA {
   STORAGE_TYPE values[];
@@ -164,6 +174,24 @@ void main() {
     index += stride;
   }
 #else
+  if (GRID == 1u) {
+    int row = int(gl_WorkGroupID.y);
+    int in_row = int(params.lhs_offset) + row * int(params.in_strides[0]);
+    int out_row = int(params.output_offset) + row * int(params.out_strides[0]);
+    uint inner = params.shape[1];
+    uint stride = gl_NumWorkGroups.x * gl_WorkGroupSize.x;
+    uint x = gl_GlobalInvocationID.x;
+    while (x < inner) {
+      output_data.values[out_row + int(x) * int(params.out_strides[1])] =
+          STORE_VALUE(LOAD_VALUE(
+              input_a.values[in_row + int(x) * int(params.in_strides[1])]));
+      if (inner - x <= stride) {
+        break;
+      }
+      x += stride;
+    }
+    return;
+  }
   uint index = gl_GlobalInvocationID.x;
   uint stride = gl_NumWorkGroups.x * gl_WorkGroupSize.x;
   while (index < params.count) {

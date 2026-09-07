@@ -32,6 +32,11 @@ layout(local_size_x = 256) in;
 // the pipeline carries only that case's code, constants, and preamble.
 // Unspecialized (the default) it reads params.operation at runtime.
 layout(constant_id = 0) const uint OPERATION = 0xffffffffu;
+// Index layout, specialized the same way: 1 means both operands are
+// dense and exactly `count` long (no broadcast, no external metadata),
+// so the index math and the broadcast reciprocals the driver hoists
+// into the per-dispatch preamble disappear. 0 keeps the runtime paths.
+layout(constant_id = 1) const uint LAYOUT = 0u;
 
 layout(set = 0, binding = 0, std430) readonly buffer InputA {
   STORAGE_TYPE values[];
@@ -554,7 +559,10 @@ void main() {
   while (index < params.count) {
     uint lhs_index;
     uint rhs_index;
-    if (params.dims == 0u) {
+    if (LAYOUT == 1u) {
+      lhs_index = params.lhs_offset + index;
+      rhs_index = params.rhs_offset + index;
+    } else if (params.dims == 0u) {
       lhs_index = params.lhs_offset + (params.lhs_size == 1
           ? 0u
           : (params.lhs_size == params.count ? index : index % params.lhs_size));

@@ -30,8 +30,9 @@ struct Counters {
   // write per binding). Structural: moves with vk_compute_dispatches.
   std::atomic<uint64_t> vk_descriptor_update_writes{0};
   // Dependency-barrier decisions (MLX_OMARCHY_GATED_BARRIERS accounting;
-  // the default unconditional path counts every pre+post dispatch
-  // barrier as emitted, never skipped). Excludes the TAPE_FULL_BARRIERS
+  // the default unconditional path counts every node's pre-barrier and
+  // each batch's closing device-to-host barrier as emitted, never
+  // skipped). Excludes the TAPE_FULL_BARRIERS
   // diagnostic barriers.
   std::atomic<uint64_t> barriers_emitted{0};
   std::atomic<uint64_t> barriers_skipped{0};

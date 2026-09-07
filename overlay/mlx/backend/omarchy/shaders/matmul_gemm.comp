@@ -1,0 +1,205 @@
+#version 460
+
+// PrefillGemm: blocked dense GEMM with the matmul.comp contract (alpha,
+// beta * C with flags bit 1, transposed operand views through
+// lhs_gap/rhs_gap with flags bits 2 and 0, up to four collapsed batch
+// axes unravelled from gl_WorkGroupID.z). A 256-thread workgroup owns a
+// 64 x 64 output tile: every thread a 4 x 4 register micro-tile fed by
+// two shared vec4 loads per 16 FMAs, with a[64][32] and b[32][64] staged
+// per 32-wide k step (as float16_t for float16 storage, exact; float
+// otherwise). Stage loads are branch-free (clamped index, select).
+// Accumulation order is the same ascending-k single f32 accumulator per
+// output element as matmul.comp (bit-identical outputs); only the dense
+// float storage dtypes are compiled here (complex64 keeps matmul.comp).
+
+#ifdef USE_FP16
+#extension GL_EXT_shader_16bit_storage : require
+#extension GL_EXT_shader_explicit_arithmetic_types_float16 : require
+#define STORAGE_TYPE float16_t
+#define LOAD_VALUE(x) float(x)
+#define STORE_VALUE(f) STORAGE_TYPE(f)
+#define SHARED_TYPE f16vec4
+#define SHARED_STORE(v) float16_t(v)
+#define SHARED_LOAD(v) vec4(v)
+#elif defined(USE_BF16)
+#extension GL_EXT_shader_16bit_storage : require
+#extension GL_EXT_shader_explicit_arithmetic_types_int16 : require
+#define STORAGE_TYPE uint16_t
+#define LOAD_VALUE(x) uintBitsToFloat(uint(x) << 16u)
+uint16_t bf16_store(float value) {
+  uint bits = floatBitsToUint(value);
+  if (isnan(value)) {
+    return uint16_t((bits >> 16) | 0x40u);
+  }
+  return uint16_t((bits + 0x7fffu + ((bits >> 16) & 1u)) >> 16);
+}
+#define STORE_VALUE(f) bf16_store(f)
+#define SHARED_TYPE vec4
+#define SHARED_STORE(v) (v)
+#define SHARED_LOAD(v) (v)
+#else
+#define STORAGE_TYPE float
+#define LOAD_VALUE(x) float(x)
+#define STORE_VALUE(f) STORAGE_TYPE(f)
+#define SHARED_TYPE vec4
+#define SHARED_STORE(v) (v)
+#define SHARED_LOAD(v) (v)
+#endif
+
+const uint BM = 64u;
+const uint BN = 64u;
+const uint BK = 32u;
+const uint THREADS = 256u;
+const uint TX = BN / 4u;
+const uint A_PER_THREAD = BM * BK / THREADS;
+const uint B_PER_THREAD = BK * BN / THREADS;
+
+layout(local_size_x = 256) in;
+
+layout(set = 0, binding = 0, std430) readonly buffer InputA {
+  STORAGE_TYPE values[];
+} input_a;
+layout(set = 0, binding = 1, std430) readonly buffer InputB {
+  STORAGE_TYPE values[];
+} input_b;
+layout(set = 0, binding = 2, std430) readonly buffer InputC {
+  STORAGE_TYPE values[];
+} input_c;
+layout(set = 0, binding = 3, std430) writeonly buffer Output {
+  STORAGE_TYPE values[];
+} output_data;
+
+layout(push_constant) uniform Params {
+  uint count;
+  uint operation;
+  uint lhs_size;
+  uint rhs_size;
+  uint reduce_size;
+  uint output_size;
+  uint lhs_offset;
+  uint rhs_offset;
+  uint output_offset;
+  uint aux_size;
+  uint aux_offset;
+  uint matrix_m;
+  uint matrix_n;
+  uint matrix_k;
+  uint flags;
+  float alpha;
+  float beta;
+  uint dims;
+  uint shape[4];
+  uint in_strides[4];
+  uint out_strides[4];
+  uint lhs_gap;
+  uint rhs_gap;
+} params;
+
+// sa[kk][row quad]: a rows 4q..4q+3 at k = kk; sb[kk][column quad]: b
+// columns 4q..4q+3 at k = kk.
+shared SHARED_TYPE sa[BK][BM / 4u];
+shared SHARED_TYPE sb[BK][BN / 4u];
+
+void main() {
+  uint t = gl_LocalInvocationID.x;
+  uint tx = t % TX;
+  uint ty = t / TX;
+  uint batch_index = gl_WorkGroupID.z;
+  uint remaining = batch_index;
+  uint a_batch = 0u;
+  uint b_batch = 0u;
+  for (uint axis = params.dims; axis > 0u; --axis) {
+    uint coord = remaining % params.shape[axis - 1u];
+    remaining /= params.shape[axis - 1u];
+    a_batch += coord * params.in_strides[axis - 1u];
+    b_batch += coord * params.out_strides[axis - 1u];
+  }
+  bool a_t = (params.flags & 4u) != 0u;
+  bool b_t = (params.flags & 1u) != 0u;
+  uint out_matrix = params.matrix_m * params.matrix_n;
+  uint m_tiles = (params.matrix_m + BM - 1u) / BM;
+  uint n_tiles = (params.matrix_n + BN - 1u) / BN;
+  uint k_steps = (params.matrix_k + BK - 1u) / BK;
+
+  for (uint tile_row = gl_WorkGroupID.y; tile_row < m_tiles;
+       tile_row += gl_NumWorkGroups.y) {
+    for (uint tile_col = gl_WorkGroupID.x; tile_col < n_tiles;
+         tile_col += gl_NumWorkGroups.x) {
+      uint row0 = tile_row * BM;
+      uint col0 = tile_col * BN;
+      vec4 acc0 = vec4(0.0);
+      vec4 acc1 = vec4(0.0);
+      vec4 acc2 = vec4(0.0);
+      vec4 acc3 = vec4(0.0);
+      for (uint step = 0u; step < k_steps; ++step) {
+        uint k0 = step * BK;
+        // a stage: for a row-major a consecutive lanes take consecutive
+        // k of one row; for a transposed view consecutive rows of one k.
+        for (uint i = 0u; i < A_PER_THREAD; ++i) {
+          uint idx = t + i * THREADS;
+          uint kk = a_t ? idx / BM : idx % BK;
+          uint r = a_t ? idx % BM : idx / BK;
+          uint row = row0 + r;
+          uint k = k0 + kk;
+          bool valid = row < params.matrix_m && k < params.matrix_k;
+          uint row_c = min(row, params.matrix_m - 1u);
+          uint k_c = min(k, params.matrix_k - 1u);
+          uint a_index = params.lhs_offset + a_batch +
+              (a_t ? k_c * params.lhs_gap + row_c : row_c * params.lhs_gap + k_c);
+          float v = LOAD_VALUE(input_a.values[a_index]);
+          sa[kk][r >> 2u][r & 3u] = SHARED_STORE(valid ? v : 0.0);
+        }
+        // b stage: for a row-major b consecutive lanes take consecutive
+        // columns of one k; for a transposed view consecutive k of one
+        // column.
+        for (uint i = 0u; i < B_PER_THREAD; ++i) {
+          uint idx = t + i * THREADS;
+          uint kk = b_t ? idx % BK : idx / BN;
+          uint c = b_t ? idx / BK : idx % BN;
+          uint col = col0 + c;
+          uint k = k0 + kk;
+          bool valid = col < params.matrix_n && k < params.matrix_k;
+          uint col_c = min(col, params.matrix_n - 1u);
+          uint k_c = min(k, params.matrix_k - 1u);
+          uint b_index = params.rhs_offset + b_batch +
+              (b_t ? col_c * params.rhs_gap + k_c : k_c * params.rhs_gap + col_c);
+          float v = LOAD_VALUE(input_b.values[b_index]);
+          sb[kk][c >> 2u][c & 3u] = SHARED_STORE(valid ? v : 0.0);
+        }
+        barrier();
+        for (uint kk = 0u; kk < BK; ++kk) {
+          vec4 a = SHARED_LOAD(sa[kk][ty]);
+          vec4 b = SHARED_LOAD(sb[kk][tx]);
+          acc0 += a.x * b;
+          acc1 += a.y * b;
+          acc2 += a.z * b;
+          acc3 += a.w * b;
+        }
+        barrier();
+      }
+      uint col = col0 + tx * 4u;
+      vec4 accs[4] = vec4[4](acc0, acc1, acc2, acc3);
+      for (uint i = 0u; i < 4u; ++i) {
+        uint row = row0 + ty * 4u + i;
+        if (row < params.matrix_m) {
+          for (uint j = 0u; j < 4u; ++j) {
+            if (col + j < params.matrix_n) {
+              uint output_index =
+                  batch_index * out_matrix + row * params.matrix_n + col + j;
+              float value = params.alpha * accs[i][j];
+              if ((params.flags & 2u) != 0u) {
+                uint c_index = params.aux_size == 1u
+                    ? 0u
+                    : output_index % params.aux_size;
+                value += params.beta *
+                    LOAD_VALUE(input_c.values[params.aux_offset + c_index]);
+              }
+              output_data.values[params.output_offset + output_index] =
+                  STORE_VALUE(value);
+            }
+          }
+        }
+      }
+    }
+  }
+}

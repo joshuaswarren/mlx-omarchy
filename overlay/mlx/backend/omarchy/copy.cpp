@@ -11,6 +11,7 @@
 #include <algorithm>
 #include <array>
 #include <cstdint>
+#include <cstdlib>
 #include <cstring>
 #include <limits>
 #include <optional>
@@ -421,7 +422,30 @@ void copy_gpu_inplace(
     if (in.has_primitive()) {
       omarchy::unsupported("GPU-in-flight scalar fill", out);
     }
-    encoder.synchronize();
+    // The fill paths below read the scalar on the host, which is only
+    // free for a buffer the GPU never touched (completion stamp 0).
+    // Draining the queue for every other scalar cost one full join per
+    // KV-cache growth (48 per prefill on Qwen2).
+    const auto* scalar_buffer =
+        static_cast<const omarchy::VulkanBuffer*>(in.buffer().ptr());
+    if (scalar_buffer != nullptr && scalar_buffer->completion != 0) {
+      // GPU-produced scalar (mx.zeros casts its 0 on the device):
+      // broadcast it with a zero-stride device copy instead of joining
+      // the queue to read it here.
+      Shape bshape = out.ndim() == 0 ? Shape{1} : out.shape();
+      Strides bstrides = out.ndim() == 0 ? Strides{1} : out.strides();
+      copy_gpu_inplace(
+          in,
+          out,
+          bshape,
+          Strides(bshape.size(), 0),
+          bstrides,
+          i_offset,
+          o_offset,
+          CopyType::General,
+          s);
+      return;
+    }
     if (scalar_is_zero(in, i_offset)) {
       fill_pattern(s, out, o_offset, 0);
       return;
@@ -683,6 +707,36 @@ void copy_gpu_inplace(
           (cast_code(out.dtype()) << 16);
       params.flags = 2;
     }
+    // Two-axis grid (copy_general.comp GRID specialization): a same-dtype
+    // window of rank <= 2 with a few outer rows (the decode KV-cache row
+    // paste is [heads, head_dim]) dispatches y = row, x = element, so no
+    // index division by a uniform remains and the dispatch runs at the
+    // preamble floor. Packed-byte dtypes keep their atomic lane path;
+    // MLX_OMARCHY_COPY_GRID=0 keeps the runtime unravel for every copy.
+    const char* grid_env = std::getenv("MLX_OMARCHY_COPY_GRID");
+    const bool grid_enabled =
+        grid_env == nullptr || std::strcmp(grid_env, "0") != 0;
+    constexpr uint32_t kCopyGridMaxRows = 64;
+    if (grid_enabled && in.dtype() == out.dtype() && in.itemsize() != 1 &&
+        rank <= 2 && count > 0 &&
+        (rank < 2 || params.shape[0] <= kCopyGridMaxRows)) {
+      if (rank < 2) {
+        params.shape[1] = rank == 1 ? params.shape[0] : 1u;
+        params.in_strides[1] = rank == 1 ? params.in_strides[0] : 0u;
+        params.out_strides[1] = rank == 1 ? params.out_strides[0] : 0u;
+        params.shape[0] = 1u;
+        params.in_strides[0] = 0u;
+        params.out_strides[0] = 0u;
+      }
+      params.flags |= omarchy::kCopyGridFlag;
+      encoder.dispatch_compute(
+          kernel,
+          bindings,
+          params,
+          omarchy::compute_dispatch_group_count(params.shape[1]),
+          params.shape[0]);
+      return;
+    }
     encoder.dispatch_compute(
         kernel,
         bindings,
@@ -888,6 +942,21 @@ void copy_gpu(const array& input, array& out, CopyType ctype, const Stream& s) {
     // strided-copy refusal even though nothing strided remains (the
     // db10f53 slice views). Vector reaches the flat cast path.
     ctype = CopyType::Vector;
+  }
+  // Donation, as upstream set_copy_output_data does it: a same-dtype
+  // vector copy of an input nobody else references reuses the input's
+  // buffer and records nothing. SliceUpdate rides this for the decode
+  // KV-cache update (mlx-lm's `cache[..., n:n+1, :] = k`): the whole cache
+  // used to be copied through copy_buffer before every row paste, one
+  // transfer node per cache per layer. The encoder's temporaries contract
+  // covers donated storage (eval.cpp pins the output too).
+  // MLX_OMARCHY_COPY_DONATE=0 restores the always-copy behavior.
+  const char* donate_env = std::getenv("MLX_OMARCHY_COPY_DONATE");
+  if (ctype == CopyType::Vector && in->dtype() == out.dtype() &&
+      (donate_env == nullptr || std::strcmp(donate_env, "0") != 0) &&
+      is_donatable(*in, out)) {
+    out.copy_shared_buffer(*in);
+    return;
   }
   // Upstream's set_copy_output_data always gives the output a buffer, even
   // for zero-size outputs (malloc(0) yields a valid empty VulkanBuffer).

@@ -25,9 +25,10 @@ namespace mlx::core::omarchy {
 // is BATCHED: primitive evals append to an open command buffer and the
 // buffer is submitted when a node/work budget is reached, a flush is
 // demanded (semaphore operation, host read), or the in-flight ring is
-// exhausted. Batching is order-safe because every dispatch is separated
-// from its neighbors by a full dependency (MLX_OMARCHY_GATED_BARRIERS=0,
-// the default: unconditional pre+post memory barriers per dispatch;
+// exhausted. Batching is order-safe because every node is separated
+// from its predecessors by a full dependency (MLX_OMARCHY_GATED_BARRIERS=0,
+// the default: one unconditional memory barrier ahead of every dispatch,
+// copy, and fill, plus a device-to-host barrier closing the batch;
 // =1: a barrier only when the node's ranges overlap work recorded since
 // the last barrier, tracked per open batch), every submission waits on
 // the completion-timeline value of this stream's previous submission
@@ -275,6 +276,9 @@ class MLX_API CommandEncoder {
       std::span<const TrackedRange> writes) const;
   void record_dependency_barrier();
   void reset_dependency_tracking();
+  void record_node_barrier(
+      VkPipelineStageFlags dst_stage,
+      VkAccessFlags dst_access);
   std::vector<TrackedRange> tracked_reads_;
   std::vector<TrackedRange> tracked_writes_;
   bool head_synced_{false};

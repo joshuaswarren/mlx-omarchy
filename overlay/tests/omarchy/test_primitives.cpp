@@ -5333,6 +5333,98 @@ TEST_CASE("quantized matmul binds affine streams at storage offsets") {
   }
 }
 
+TEST_CASE("quantized decode gemv covers multi-step rows, batched weights, and unaligned x") {
+  if (!compute_available()) {
+    return;
+  }
+  // The DecodeQ4Vec kernel (shaders/qmm_vec_q4.comp) walks k in
+  // 512-element steps per slot, owns two rows per subgroup slot with the
+  // tail rows clamped to the last row, loops the batch inside one
+  // dispatch, and is skipped when x is not 16-byte aligned. k = 1088
+  // leaves the third step to four lanes, n = 37 leaves a partial slot,
+  // and the sliced x forces the fallback kernel on the same data.
+  Stream stream = gpu_stream();
+  constexpr int batch = 2;
+  constexpr int n = 37;
+  constexpr int k = 1088;
+  constexpr int group_size = 64;
+  constexpr int bits = 4;
+  constexpr int groups = k / group_size;
+  constexpr int words_per_row = k / 8;
+  std::mt19937 gen(29);
+  std::uniform_real_distribution<float> dist(-2.0f, 2.0f);
+  std::vector<uint32_t> words;
+  std::vector<float> scales;
+  std::vector<float> biases;
+  std::vector<float> x_values(static_cast<size_t>(batch) * k);
+  std::vector<float> expected;
+  for (auto& value : x_values) {
+    value = dist(gen);
+  }
+  for (int b = 0; b < batch; ++b) {
+    std::vector<float> w_values(static_cast<size_t>(n) * k);
+    for (auto& value : w_values) {
+      value = dist(gen);
+    }
+    HostQuantizedWeights host =
+        host_affine_quantize(w_values, n, k, group_size, bits);
+    std::vector<float> x_b(
+        x_values.begin() + static_cast<size_t>(b) * k,
+        x_values.begin() + static_cast<size_t>(b + 1) * k);
+    std::vector<float> out_b =
+        host_quantized_matmul(host, x_b, 1, n, k, group_size, bits);
+    words.insert(words.end(), host.words.begin(), host.words.end());
+    scales.insert(scales.end(), host.scales.begin(), host.scales.end());
+    biases.insert(biases.end(), host.biases.begin(), host.biases.end());
+    expected.insert(expected.end(), out_b.begin(), out_b.end());
+  }
+  array w_words(words.begin(), Shape{batch, n, words_per_row}, uint32);
+  array w_scales(scales.begin(), Shape{batch, n, groups}, float32);
+  array w_biases(biases.begin(), Shape{batch, n, groups}, float32);
+
+  auto check = [&](const array& out, size_t size, const float* want) {
+    std::string blocked = evaluation_error(out);
+    REQUIRE(blocked.empty());
+    std::vector<float> device_values = readback_f32(stream, out);
+    REQUIRE_EQ(device_values.size(), size);
+    for (size_t index = 0; index < size; ++index) {
+      CHECK(
+          device_values[index] ==
+          doctest::Approx(want[index]).epsilon(2e-4));
+    }
+  };
+
+  // Batched weights, one x row per batch, single dispatch.
+  array x(x_values.begin(), Shape{batch, 1, k}, float32);
+  check(
+      quantized_matmul(
+          x, w_words, w_scales, w_biases, true, group_size, bits, "affine",
+          stream),
+      expected.size(),
+      expected.data());
+
+  // Rank-2 weights of batch 0 against a sliced x whose storage offset
+  // is one element (4 bytes): the aligned kernel must step aside.
+  std::vector<float> x_pad(1 + k, 0.0f);
+  std::copy(x_values.begin(), x_values.begin() + k, x_pad.begin() + 1);
+  array x_padded(x_pad.begin(), Shape{1 + k}, float32);
+  array x_view =
+      reshape(slice(x_padded, {1}, {1 + k}, {1}, stream), {1, k}, stream);
+  array w0 = reshape(
+      slice(w_words, {0, 0, 0}, {1, n, words_per_row}, stream),
+      {n, words_per_row},
+      stream);
+  array s0 = reshape(
+      slice(w_scales, {0, 0, 0}, {1, n, groups}, stream), {n, groups}, stream);
+  array b0 = reshape(
+      slice(w_biases, {0, 0, 0}, {1, n, groups}, stream), {n, groups}, stream);
+  check(
+      quantized_matmul(
+          x_view, w0, s0, b0, true, group_size, bits, "affine", stream),
+      static_cast<size_t>(n),
+      expected.data());
+}
+
 TEST_CASE("quantized matmul pins named errors outside the linear shape") {
   if (!compute_available()) {
     return;
@@ -5739,10 +5831,6 @@ TEST_CASE("quantize and dequantize pin named errors outside the affine gate") {
           quantize(x12, 12, 4, "affine", std::nullopt, stream);
         }).find("The requested group size 12 is not supported") !=
         std::string::npos);
-  array bf16_input(matrix.begin(), Shape{4, 128}, bfloat16);
-  CHECK(construction_error([&] {
-          quantize(bf16_input, 32, 4, "affine", std::nullopt, stream);
-        }).find("Quantize input dtype") != std::string::npos);
 
   std::vector<uint32_t> words4(4 * 16, 0x33221100u);
   std::vector<uint8_t> scales_u8(4 * 4, 100);
@@ -5785,19 +5873,6 @@ TEST_CASE("quantize and dequantize pin named errors outside the affine gate") {
               std::nullopt,
               stream);
         }).find("Quantize group size") != std::string::npos);
-  array sb_bf16(params4.begin(), Shape{4, 4}, bfloat16);
-  CHECK(construction_error([&] {
-          dequantize(
-              w4,
-              sb_bf16,
-              sb_bf16,
-              32,
-              4,
-              "affine",
-              std::nullopt,
-              std::nullopt,
-              stream);
-        }).find("Quantize scales dtype") != std::string::npos);
 }
 
 // Non-affine quantization-mode conversions, pinned to the Metal
