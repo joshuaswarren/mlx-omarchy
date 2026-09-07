@@ -1236,9 +1236,9 @@ void dispatch_int_elementwise(
   dispatch_int_elementwise_to(name, operation, lhs, rhs, out);
 }
 
-// Sort and ArgSort accept float32/float16/bfloat16 plus the 8/16/32-bit
-// integer family; the 64-bit sorts keep the named refusal. ArgSort and
-// ArgPartition emit uint32 indices, so the output must be uint32 and
+// Sort and ArgSort accept float32/float16/bfloat16/complex64 plus the
+// 8/16/32-bit integer family; the 64-bit sorts keep the named refusal.
+// ArgSort and ArgPartition emit uint32 indices, so the output must be uint32 and
 // the dtype checks apply to the input only, the way ArgReduce checks
 // its input. The value variants Sort and Partition keep the input
 // dtype in the output.
@@ -1253,7 +1253,8 @@ void require_sort_dtype(
       input.dtype() == int16 || input.dtype() == uint16 ||
       input.dtype() == int32 || input.dtype() == uint32;
   if (input.dtype() != float16 && input.dtype() != float32 &&
-      input.dtype() != bfloat16 && !sortable_int) {
+      input.dtype() != bfloat16 && input.dtype() != complex64 &&
+      !sortable_int) {
     omarchy::unsupported(name + " dtype", out);
   }
   const auto& capabilities = encoder.device().capabilities();
@@ -1342,6 +1343,10 @@ void dispatch_sort(
       kernel = argsort ? omarchy::ComputeKernel::ArgSortU32
                        : omarchy::ComputeKernel::SortU32;
       break;
+    case complex64:
+      kernel = argsort ? omarchy::ComputeKernel::ArgSortC64
+                       : omarchy::ComputeKernel::SortC64;
+      break;
     case int8:
       // Byte rows ride uint32 words with the sign-bit-flip key map.
       kernel = argsort ? omarchy::ComputeKernel::ArgSortI8
@@ -1420,10 +1425,9 @@ void dispatch_sort_wide(
     return;
   }
 
-  // The chunk stage always sorts a value pipeline (the keys the merge
-  // stages compare); argsort adds an index pipeline through the ArgSort
-  // chunk kernel and then rides the ArgSortMerge variant, which moves
-  // keys and indices in lockstep.
+  // The chunk stage always sorts a value pipeline. ArgSort adds an index
+  // pipeline; complex value sort also keeps it because distinct NaNs are
+  // equivalent keys whose source order remains observable in the output.
   omarchy::ComputeKernel value_kernel;
   omarchy::ComputeKernel arg_kernel;
   omarchy::ComputeKernel merge_kernel;
@@ -1437,6 +1441,10 @@ void dispatch_sort_wide(
                                 : omarchy::ComputeKernel::ArgSortMergeU32)
         : (src.dtype() == int32 ? omarchy::ComputeKernel::SortMergeI32
                                 : omarchy::ComputeKernel::SortMergeU32);
+  } else if (src.dtype() == complex64) {
+    value_kernel = omarchy::ComputeKernel::SortC64;
+    arg_kernel = omarchy::ComputeKernel::ArgSortC64;
+    merge_kernel = omarchy::ComputeKernel::ArgSortMergeC64;
   } else {
     value_kernel = select_float_kernel(
         src.dtype(),
@@ -1462,11 +1470,10 @@ void dispatch_sort_wide(
   }
 
   // The chunk stage reads the source copy and writes the sorted keys
-  // (plus, for argsort, the source indices carried alongside). The
-  // sentinel word pads every dtype: float words become NaN keys (the
-  // comparator sends NaN after every number), int32 reads 0x7fffffff
-  // whose sign-flip mapping is the largest key, uint32 reads the largest
-  // key directly, and the 16-bit halves repeat the same NaN property.
+  // (plus source indices when the merge must preserve them). The
+  // sentinel word pads every dtype: float words become NaN keys, both
+  // complex components become NaN, int32 reads 0x7fffffff whose sign-flip
+  // mapping is the largest key, and unsigned words are already maximal.
   // The suffix kernel binds its input read-only and its output
   // write-only, so the chunk stage needs a second padded buffer: the
   // pad-and-copy lands in |padded_src| and the sorted chunks land in
@@ -1499,8 +1506,9 @@ void dispatch_sort_wide(
       /* o_offset = */ 0,
       CopyType::GeneralGeneral,
       s);
+  bool track_indices = argsort || src.dtype() == complex64;
   array idx = array(Shape{0}, uint32, nullptr, {});
-  if (argsort) {
+  if (track_indices) {
     idx = array(
         Shape{static_cast<int>(rows), static_cast<int>(padded)},
         uint32,
@@ -1526,7 +1534,7 @@ void dispatch_sort_wide(
       sort_bindings,
       params,
       std::min(chunk_count, omarchy::kMaxComputeGroupCountX));
-  if (argsort) {
+  if (track_indices) {
     std::array<omarchy::ComputeBinding, 3> arg_bindings{
         binding(padded_src), binding(padded_src), binding(idx)};
     encoder.dispatch_compute(
@@ -1536,8 +1544,8 @@ void dispatch_sort_wide(
         std::min(chunk_count, omarchy::kMaxComputeGroupCountX));
   }
 
-  // Merge stages: one in-place dispatch per (k, j) pair, values and the
-  // argsort index buffer in lockstep.
+  // Merge stages: one in-place dispatch per (k, j) pair, with the index
+  // buffer in lockstep when stable source order remains observable.
   omarchy::ComputeParams merge_params;
   merge_params.count = padded_elems;
   merge_params.reduce_size = checked_u32(padded, name, out);
@@ -1545,7 +1553,7 @@ void dispatch_sort_wide(
     for (uint64_t j = k >> 1; j >= 1; j >>= 1) {
       merge_params.lhs_size = static_cast<uint32_t>(k);
       merge_params.rhs_size = static_cast<uint32_t>(j);
-      if (argsort) {
+      if (track_indices) {
         std::array<omarchy::ComputeBinding, 2> merge_bindings{
             binding(keys), binding(idx)};
         encoder.dispatch_compute(

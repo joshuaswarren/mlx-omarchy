@@ -185,9 +185,11 @@
 #include "sort_bf16.h"
 #include "sort_f16.h"
 #include "sort_f32.h"
+#include "sort_c64.h"
 #include "argsort_bf16.h"
 #include "argsort_f16.h"
 #include "argsort_f32.h"
+#include "argsort_c64.h"
 #include "sort_i32.h"
 #include "sort_u32.h"
 #include "sort_i8.h"
@@ -208,6 +210,7 @@
 #include "argsort_merge_bf16.h"
 #include "argsort_merge_f16.h"
 #include "argsort_merge_f32.h"
+#include "argsort_merge_c64.h"
 #include "argsort_merge_i32.h"
 #include "argsort_merge_u32.h"
 #include "logical_or_bool.h"
@@ -711,6 +714,8 @@ ShaderBytes shader_bytes(ComputeKernel kernel) {
       return {argsort_f16, argsort_f16_size};
     case ComputeKernel::ArgSortBF16:
       return {argsort_bf16, argsort_bf16_size};
+    case ComputeKernel::ArgSortC64:
+      return {argsort_c64, argsort_c64_size};
     case ComputeKernel::SortI32:
       return {sort_i32, sort_i32_size};
     case ComputeKernel::SortU32:
@@ -751,6 +756,8 @@ ShaderBytes shader_bytes(ComputeKernel kernel) {
       return {argsort_merge_f16, argsort_merge_f16_size};
     case ComputeKernel::ArgSortMergeBF16:
       return {argsort_merge_bf16, argsort_merge_bf16_size};
+    case ComputeKernel::ArgSortMergeC64:
+      return {argsort_merge_c64, argsort_merge_c64_size};
     case ComputeKernel::ArgSortMergeI32:
       return {argsort_merge_i32, argsort_merge_i32_size};
     case ComputeKernel::ArgSortMergeU32:
@@ -823,6 +830,8 @@ ShaderBytes shader_bytes(ComputeKernel kernel) {
       return {sort_f16, sort_f16_size};
     case ComputeKernel::SortBF16:
       return {sort_bf16, sort_bf16_size};
+    case ComputeKernel::SortC64:
+      return {sort_c64, sort_c64_size};
     case ComputeKernel::BlockMaskF32:
       return {block_mask_f32, block_mask_f32_size};
     case ComputeKernel::GatherMmF32:
