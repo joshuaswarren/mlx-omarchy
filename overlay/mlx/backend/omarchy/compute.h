@@ -523,6 +523,7 @@ enum class ComputeKernel : uint16_t {
   GatherQmmNbFpHgsF32,
   GatherQmmNbFpHgsF16,
   GatherQmmNbFpHgsBF16,
+  MatmulComplex64,
   Count,
 };
 

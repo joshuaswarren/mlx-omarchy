@@ -1,6 +1,10 @@
 #version 460
 
-#ifdef USE_FP16
+#ifdef USE_COMPLEX64
+#define STORAGE_TYPE vec2
+#define LOAD_VALUE(x) (x)
+#define STORE_VALUE(f) (f)
+#elif defined(USE_FP16)
 #extension GL_EXT_shader_16bit_storage : require
 #extension GL_EXT_shader_explicit_arithmetic_types_float16 : require
 #define STORAGE_TYPE float16_t
@@ -23,6 +27,17 @@ uint16_t bf16_store(float value) {
 #define STORAGE_TYPE float
 #define LOAD_VALUE(x) float(x)
 #define STORE_VALUE(f) STORAGE_TYPE(f)
+#endif
+
+#ifdef USE_COMPLEX64
+#define ACCUM_TYPE vec2
+#define ZERO_VALUE vec2(0.0)
+#define ACCUMULATE(acc, a, b) \
+  acc += vec2(a.x * b.x - a.y * b.y, a.x * b.y + a.y * b.x)
+#else
+#define ACCUM_TYPE float
+#define ZERO_VALUE 0.0
+#define ACCUMULATE(acc, a, b) acc += a * b
 #endif
 
 const uint TILE_SIZE = 16u;
@@ -75,8 +90,8 @@ layout(push_constant) uniform Params {
   uint rhs_gap;
 } params;
 
-shared float tile_a[16][16];
-shared float tile_b[16][16];
+shared ACCUM_TYPE tile_a[16][16];
+shared ACCUM_TYPE tile_b[16][16];
 
 void main() {
   uint local_x = gl_LocalInvocationID.x;
@@ -114,7 +129,7 @@ void main() {
     for (uint tile_column = gl_WorkGroupID.x; tile_column < tile_columns;
          tile_column += gl_NumWorkGroups.x) {
       uint column = tile_column * TILE_SIZE + local_x;
-      float accumulator = 0.0;
+      ACCUM_TYPE accumulator = ZERO_VALUE;
 
       for (uint tile = 0; tile < k_tiles; ++tile) {
         uint a_column = tile * TILE_SIZE + local_x;
@@ -126,7 +141,7 @@ void main() {
         tile_a[local_y][local_x] = row < params.matrix_m &&
                 a_column < params.matrix_k
             ? LOAD_VALUE(input_a.values[a_index])
-            : 0.0;
+            : ZERO_VALUE;
         uint b_index = params.rhs_offset + b_batch +
             ((params.flags & 1u) != 0u
                 ? column * params.rhs_gap + b_row
@@ -134,11 +149,12 @@ void main() {
         tile_b[local_y][local_x] = b_row < params.matrix_k &&
                 column < params.matrix_n
             ? LOAD_VALUE(input_b.values[b_index])
-            : 0.0;
+            : ZERO_VALUE;
         barrier();
 
         for (uint index = 0; index < TILE_SIZE; ++index) {
-          accumulator += tile_a[local_y][index] * tile_b[index][local_x];
+          ACCUMULATE(
+              accumulator, tile_a[local_y][index], tile_b[index][local_x]);
         }
         barrier();
       }
@@ -146,7 +162,7 @@ void main() {
       if (row < params.matrix_m && column < params.matrix_n) {
         uint output_index = batch_index * out_matrix +
             row * params.matrix_n + column;
-        float value = params.alpha * accumulator;
+        ACCUM_TYPE value = params.alpha * accumulator;
         if ((params.flags & 2u) != 0u) {
           uint c_index = params.aux_size == 1u
               ? 0u
