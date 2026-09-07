@@ -6,6 +6,7 @@
 #include <vulkan/vulkan.h>
 
 #include <array>
+#include <atomic>
 #include <cstddef>
 #include <cstdint>
 #include <limits>
@@ -616,7 +617,8 @@ class ComputeRuntime {
   VkDevice device_;
   VkDescriptorSetLayout descriptor_layout_{VK_NULL_HANDLE};
   VkPipelineLayout pipeline_layout_{VK_NULL_HANDLE};
-  std::array<VkPipeline, static_cast<size_t>(ComputeKernel::Count)> pipelines_{};
+  std::array<std::atomic<VkPipeline>, static_cast<size_t>(ComputeKernel::Count)>
+      pipelines_{};
   std::mutex mutex_;
 };
 
