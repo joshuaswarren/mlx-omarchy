@@ -167,8 +167,14 @@ void Event::wait() {
   if (event.host) {
     event.host->wait(value());
   } else {
+    const uint64_t progress_through =
+        event.signaled_completion.load(std::memory_order_acquire);
     omarchy::wait_for_timeline_progress(
-        event.gpu->device.handle(), event.gpu->semaphore, value_);
+        event.gpu->device.handle(),
+        event.gpu->semaphore,
+        value_,
+        &event.gpu->device.completions(),
+        progress_through);
     for (int join_attempt = 0; join_attempt < 8; ++join_attempt) {
       uint64_t generation =
           event.signaled_completion.load(std::memory_order_acquire);
@@ -208,8 +214,14 @@ void Event::wait(Stream s) {
     uint64_t target_value = value();
     scheduler::wait_event(s, *this, [target_value](Event& self) {
       auto& impl = self.cast<EventImpl>();
+      const uint64_t progress_through =
+          impl.signaled_completion.load(std::memory_order_acquire);
       omarchy::wait_for_timeline_progress(
-          impl.gpu->device.handle(), impl.gpu->semaphore, target_value);
+          impl.gpu->device.handle(),
+          impl.gpu->semaphore,
+          target_value,
+          &impl.gpu->device.completions(),
+          progress_through);
       impl.gpu->device.join_completed_handlers();
     });
   }

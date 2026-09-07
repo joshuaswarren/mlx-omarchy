@@ -225,11 +225,15 @@ class MLX_API CommandEncoder {
     std::shared_ptr<void> keepalive;
   };
 
-  // One command buffer of the in-flight ring. in_flight is the completion
-  // timeline value of the submission currently executing it (0 = free).
+  // One command buffer and one reusable execution-start marker. The event
+  // is reset from the host only after this slot's prior completion drained,
+  // then set by the device at the head of the next command buffer. It is not
+  // destroyed with the encoder because a watchdog error can leave it pending;
+  // vkDestroyDevice releases it with the command pool.
   static constexpr int kInFlightCommandBuffers = 4;
   struct Slot {
     VkCommandBuffer cmd{VK_NULL_HANDLE};
+    VkEvent started{VK_NULL_HANDLE};
     uint64_t in_flight{0};
   };
 

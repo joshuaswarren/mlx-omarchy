@@ -83,6 +83,10 @@ struct DeviceTable {
   PFN_vkCmdPushConstants CmdPushConstants{nullptr};
   PFN_vkCmdDispatch CmdDispatch{nullptr};
   PFN_vkCmdPipelineBarrier CmdPipelineBarrier{nullptr};
+  PFN_vkCreateEvent CreateEvent{nullptr};
+  PFN_vkGetEventStatus GetEventStatus{nullptr};
+  PFN_vkResetEvent ResetEvent{nullptr};
+  PFN_vkCmdSetEvent CmdSetEvent{nullptr};
   // Core-1.0 timestamp query functions; loaded for the GPU profiling
   // harness (gpu_profiler.h) and otherwise unused.
   PFN_vkCreateQueryPool CreateQueryPool{nullptr};
