@@ -288,6 +288,36 @@ std::pair<Conv2DSpec, Shape> transpose1d_to_conv_spec(
   return {wrapped.first, expected_1d};
 }
 
+
+void check_ones_chunked_conv2d(
+    int input_extent,
+    int kernel_extent,
+    int channels,
+    const Stream& stream) {
+  Shape in_shape{1, input_extent, input_extent, channels};
+  Shape wt_shape{1, kernel_extent, kernel_extent, channels};
+  std::vector<float> input(
+      static_cast<size_t>(input_extent) * input_extent * channels, 1.0f);
+  std::vector<float> weight(
+      static_cast<size_t>(kernel_extent) * kernel_extent * channels, 1.0f);
+  Conv2DSpec spec;
+  spec.pad_lo_h = 1;
+  spec.pad_lo_w = 1;
+  spec.pad_hi_h = 1;
+  spec.pad_hi_w = 1;
+  auto expected =
+      host_conv2d_general(input, weight, in_shape, wt_shape, spec);
+  auto actual = conv2d(
+      array(input.begin(), in_shape, float32),
+      array(weight.begin(), wt_shape, float32),
+      {1, 1},
+      {1, 1},
+      {1, 1},
+      1,
+      stream);
+  check_close(actual, expected, stream, 1e-6);
+}
+
 } // namespace
 
 TEST_CASE("[conv-gaps] grouped 2-D Convolution matches host reference") {
@@ -430,6 +460,21 @@ TEST_CASE(
       1,
       stream);
   check_close(actual, expected, stream, 1e-3);
+}
+
+
+TEST_CASE("[conv-gaps] convolution chunks channel products") {
+  if (!compute_available()) {
+    return;
+  }
+  check_ones_chunked_conv2d(55, 56, 4, gpu_stream());
+}
+
+TEST_CASE("[conv-gaps] convolution chunks more than 65536 products") {
+  if (!compute_available()) {
+    return;
+  }
+  check_ones_chunked_conv2d(128, 129, 4, gpu_stream());
 }
 
 TEST_CASE("[conv-gaps] 1-D Convolution matches host reference") {

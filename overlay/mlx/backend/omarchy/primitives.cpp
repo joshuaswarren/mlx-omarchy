@@ -3856,12 +3856,12 @@ void Convolution::eval_gpu(const std::vector<array>& inputs, array& out) {
       omarchy::ComputeKernel::ConvF32,
       omarchy::ComputeKernel::ConvF16,
       omarchy::ComputeKernel::ConvBF16);
-  constexpr uint32_t kConvChunkTrips = 4096;
-  uint32_t kernel_elements = checked_u32(
+  constexpr uint32_t kConvChunkProducts = 4096;
+  uint32_t kernel_products = checked_u32(
       w.size() / static_cast<size_t>(out_channels), "Convolution", out);
-  uint32_t chunks = kernel_elements == 0
+  uint32_t chunks = kernel_products == 0
       ? 1u
-      : 1u + (kernel_elements - 1u) / kConvChunkTrips;
+      : 1u + (kernel_products - 1u) / kConvChunkProducts;
   if (chunks == 1) {
     std::array<omarchy::ComputeBinding, 4> bindings{
         binding(x), binding(w), binding(x), binding(out)};
@@ -3873,33 +3873,38 @@ void Convolution::eval_gpu(const std::vector<array>& inputs, array& out) {
     return;
   }
 
-  uint64_t partial_count = static_cast<uint64_t>(total) * chunks;
-  if (partial_count > (1ull << 25)) {
-    omarchy::unsupported("Convolution split exceeds scratch budget", out);
-  }
+  constexpr uint32_t kConvScratchElements = 1u << 20;
+  uint32_t output_tile = std::min(
+      total, std::max(1u, kConvScratchElements / chunks));
+  uint32_t scratch_elements = output_tile * chunks;
   array partials(
-      Shape{static_cast<int>(partial_count)}, float32, nullptr, {});
+      Shape{static_cast<int>(scratch_elements)}, float32, nullptr, {});
   partials.set_data(allocate_omarchy(partials.nbytes()));
   encoder.add_temporary(partials);
   std::array<omarchy::ComputeBinding, 4> bindings{
       binding(x), binding(w), binding(partials), binding(out)};
-  params.flags |= 2u;
-  params.in_strides[3] = kConvChunkTrips;
   params.lhs_size = chunks;
   params.rhs_size = total;
-  params.count = static_cast<uint32_t>(partial_count);
-  encoder.dispatch_compute(
-      kernel,
-      bindings,
-      params,
-      omarchy::compute_dispatch_group_count(params.count));
-  params.flags = 4u;
-  params.count = total;
-  encoder.dispatch_compute(
-      kernel,
-      bindings,
-      params,
-      omarchy::compute_dispatch_group_count(total));
+  params.beta = static_cast<float>(kConvChunkProducts);
+  for (uint32_t output_base = 0; output_base < total;
+       output_base += output_tile) {
+    uint32_t tile_count = std::min(output_tile, total - output_base);
+    params.flags = (flip_ ? 1u : 0u) | 2u;
+    params.in_strides[3] = output_base;
+    params.count = tile_count * chunks;
+    encoder.dispatch_compute(
+        kernel,
+        bindings,
+        params,
+        omarchy::compute_dispatch_group_count(params.count));
+    params.flags = 4u;
+    params.count = tile_count;
+    encoder.dispatch_compute(
+        kernel,
+        bindings,
+        params,
+        omarchy::compute_dispatch_group_count(params.count));
+  }
 }
 // The GLSL built-in sin/cos keep upstream-grade accuracy only for
 // arguments the driver's range reduction survives. Measured on the M1
