@@ -4,9 +4,9 @@
 // Sort/ArgSort over the last axis. One workgroup handles one row: it loads
 // the row into shared memory as (key, index) pairs, pads the row to a
 // power of two with a key that sorts after every real element, and runs a
-// bitonic sort. Float modes keep float keys: NaN sorts after every number,
-// mirroring the upstream CPU stable_sort rule. Integer modes sort as
-// unsigned keys: uint32 compares by magnitude, and int32 reinterprets its
+// bitonic sort. Float and complex modes place NaNs after every non-NaN;
+// other complex values compare lexicographically by real then imaginary.
+// Integer modes sort as unsigned keys: uint32 compares by magnitude, and int32 reinterprets its
 // bits into an order-preserving key by flipping the sign bit. Equal keys
 // order by source index, so both the value variant and the ARGSORT index
 // variant produce the unique stable order. Rows up to 1024 elements fit
@@ -23,7 +23,13 @@
 #extension GL_EXT_shader_explicit_arithmetic_types_int16 : require
 #endif
 
-#if defined(USE_FP16)
+#if defined(USE_C64)
+#define STORAGE_TYPE vec2
+#define KEY_TYPE vec2
+#define LOAD_KEY(x) (x)
+#define STORE_KEY(k) (k)
+#define PAD_KEY vec2(uintBitsToFloat(0x7fc00000u))
+#elif defined(USE_FP16)
 #extension GL_EXT_shader_16bit_storage : require
 #extension GL_EXT_shader_explicit_arithmetic_types_float16 : require
 #define STORAGE_TYPE float16_t
@@ -162,6 +168,21 @@ shared uint row_indices[1024];
 // index, so duplicates keep the unique stable order.
 bool key_less(KEY_TYPE key_a, uint index_a, KEY_TYPE key_b, uint index_b) {
   return key_a < key_b || (key_a == key_b && index_a < index_b);
+}
+#elif defined(USE_C64)
+bool key_less(vec2 value_a, uint index_a, vec2 value_b, uint index_b) {
+  bool nan_a = isnan(value_a.x) || isnan(value_a.y);
+  bool nan_b = isnan(value_b.x) || isnan(value_b.y);
+  if (nan_a != nan_b) {
+    return nan_b;
+  }
+  if (nan_a) {
+    return index_a < index_b;
+  }
+  return value_a.x < value_b.x ||
+      (value_a.x == value_b.x &&
+       (value_a.y < value_b.y ||
+        (value_a.y == value_b.y && index_a < index_b)));
 }
 #else
 // Strict order on (value, index) keys. A NaN key sorts after every number,

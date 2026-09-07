@@ -3826,6 +3826,112 @@ TEST_CASE("sort places NaN after every number through Vulkan compute") {
   CHECK(std::isnan(values[4]));
 }
 
+TEST_CASE("complex sort and argsort keep the stable MLX order through Vulkan compute") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  float nan = std::numeric_limits<float>::quiet_NaN();
+  auto same_component = [](float lhs, float rhs) {
+    return lhs == rhs || (std::isnan(lhs) && std::isnan(rhs));
+  };
+  auto check_result = [&](const array& input,
+                          int axis,
+                          const std::vector<complex64_t>& expected_values,
+                          const std::vector<uint32_t>& expected_order) {
+    array sorted = sort(input, axis, stream);
+    array order = argsort(input, axis, stream);
+    sorted.eval();
+    order.eval();
+    omarchy::get_command_encoder(stream).synchronize();
+    REQUIRE_EQ(sorted.size(), expected_values.size());
+    REQUIRE_EQ(order.size(), expected_order.size());
+    const complex64_t* actual_values = sorted.data<complex64_t>();
+    const uint32_t* actual_order = order.data<uint32_t>();
+    for (size_t i = 0; i < expected_values.size(); ++i) {
+      CHECK(same_component(actual_values[i].real(), expected_values[i].real()));
+      CHECK(same_component(actual_values[i].imag(), expected_values[i].imag()));
+      CHECK_EQ(actual_order[i], expected_order[i]);
+    }
+  };
+  auto check_row = [&](const std::vector<complex64_t>& values) {
+    std::vector<uint32_t> expected_order(values.size());
+    std::iota(expected_order.begin(), expected_order.end(), 0u);
+    std::stable_sort(
+        expected_order.begin(),
+        expected_order.end(),
+        [&](uint32_t lhs, uint32_t rhs) {
+          const auto& a = values[lhs];
+          const auto& b = values[rhs];
+          bool nan_a = std::isnan(a.real()) || std::isnan(a.imag());
+          bool nan_b = std::isnan(b.real()) || std::isnan(b.imag());
+          if (nan_a != nan_b) {
+            return nan_b;
+          }
+          if (nan_a) {
+            return lhs < rhs;
+          }
+          if (a.real() != b.real()) {
+            return a.real() < b.real();
+          }
+          return a.imag() < b.imag() ||
+              (a.imag() == b.imag() && lhs < rhs);
+        });
+    std::vector<complex64_t> expected_values(values.size());
+    for (size_t i = 0; i < values.size(); ++i) {
+      expected_values[i] = values[expected_order[i]];
+    }
+    array input(values.begin(), Shape{static_cast<int>(values.size())}, complex64);
+    check_result(input, -1, expected_values, expected_order);
+  };
+
+  check_row({
+      complex64_t{2.0f, 1.0f},
+      complex64_t{1.0f, 3.0f},
+      complex64_t{1.0f, -2.0f},
+      complex64_t{nan, 4.0f},
+      complex64_t{0.0f, nan},
+      complex64_t{1.0f, -2.0f},
+      complex64_t{nan, -1.0f}});
+  check_row({
+      complex64_t{3.0f, 1.0f},
+      complex64_t{nan, 2.0f},
+      complex64_t{2.0f, 1.0f},
+      complex64_t{0.0f, 1.0f}});
+  check_row({
+      complex64_t{1.0f, 0.0f},
+      complex64_t{nan, 0.0f},
+      complex64_t{0.0f, 0.0f}});
+
+  std::vector<complex64_t> matrix_values = {
+      {2.0f, 1.0f}, {1.0f, 3.0f}, {1.0f, -2.0f},
+      {9.0f, 9.0f}, {9.0f, 9.0f}, {9.0f, 9.0f},
+      {0.0f, 4.0f}, {2.0f, -1.0f}, {0.0f, -2.0f},
+      {8.0f, 8.0f}, {8.0f, 8.0f}, {8.0f, 8.0f},
+      {1.0f, 0.0f}, {1.0f, -4.0f}, {0.0f, -2.0f}};
+  array matrix(matrix_values.begin(), Shape{5, 3}, complex64);
+  array strided = slice(matrix, {0, 0}, {5, 3}, {2, 1}, stream);
+  check_result(
+      strided,
+      0,
+      {{0.0f, 4.0f}, {1.0f, -4.0f}, {0.0f, -2.0f},
+       {1.0f, 0.0f}, {1.0f, 3.0f}, {0.0f, -2.0f},
+       {2.0f, 1.0f}, {2.0f, -1.0f}, {1.0f, -2.0f}},
+      {1, 2, 1, 2, 0, 2, 0, 1, 0});
+
+  constexpr size_t length = 2051;
+  std::vector<complex64_t> wide(length);
+  for (size_t i = 0; i < length; ++i) {
+    wide[i] = complex64_t{
+        static_cast<float>(static_cast<int>((i * 37) % 29) - 14),
+        static_cast<float>(static_cast<int>((i * 17) % 11) - 5)};
+  }
+  wide[5] = complex64_t{nan, 4.0f};
+  wide[1024] = complex64_t{0.0f, nan};
+  wide[2050] = complex64_t{nan, -1.0f};
+  check_row(wide);
+}
+
 TEST_CASE("sort and argsort handle wide rows through Vulkan compute") {
   if (!compute_available()) {
     return;

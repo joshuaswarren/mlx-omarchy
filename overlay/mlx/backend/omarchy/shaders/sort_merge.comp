@@ -14,15 +14,20 @@
 // slots hold the PAD sentinel, which sorts after every real element, so
 // the finished row keeps its real prefix in [0, row_length). The
 // comparator matches sort_suffix.comp exactly: integer modes compare
-// order-preserving unsigned keys, float modes keep float keys with NaN
-// after every number, and equal keys tie on the source index. ARGSORT
+// order-preserving unsigned keys, while float and complex modes place NaNs
+// after every non-NaN and complex values otherwise use lexicographic order. ARGSORT
 // mode carries those source positions in a parallel index buffer, which
 // keeps the unique stable order across every stage; value mode ties on
 // the current position, which never reorders equal keys.
 
 #version 460
 
-#if defined(USE_FP16)
+#if defined(USE_C64)
+#define STORAGE_TYPE vec2
+#define KEY_TYPE vec2
+#define LOAD_KEY(x) (x)
+#define STORE_KEY(k) (k)
+#elif defined(USE_FP16)
 #extension GL_EXT_shader_16bit_storage : require
 #extension GL_EXT_shader_explicit_arithmetic_types_float16 : require
 #define STORAGE_TYPE float16_t
@@ -84,6 +89,21 @@ layout(push_constant) uniform Params {
 // index, so duplicates keep the unique stable order.
 bool key_less(KEY_TYPE key_a, uint index_a, KEY_TYPE key_b, uint index_b) {
   return key_a < key_b || (key_a == key_b && index_a < index_b);
+}
+#elif defined(USE_C64)
+bool key_less(vec2 value_a, uint index_a, vec2 value_b, uint index_b) {
+  bool nan_a = isnan(value_a.x) || isnan(value_a.y);
+  bool nan_b = isnan(value_b.x) || isnan(value_b.y);
+  if (nan_a != nan_b) {
+    return nan_b;
+  }
+  if (nan_a) {
+    return index_a < index_b;
+  }
+  return value_a.x < value_b.x ||
+      (value_a.x == value_b.x &&
+       (value_a.y < value_b.y ||
+        (value_a.y == value_b.y && index_a < index_b)));
 }
 #else
 // Strict order on (value, index) keys. A NaN key sorts after every number,
