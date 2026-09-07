@@ -325,6 +325,185 @@ int run_child_scenario(const std::string& mode) {
           message.find("failed to advance") != std::string::npos ? 0 : 34);
     }
   }
+  if (mode == "late_reused_event_publication") {
+    setenv("MLX_OMARCHY_HANG_NO_PROGRESS_NS", "1", 1);
+    setenv("MLX_OMARCHY_MAX_WALL_NS", "30000000000", 1);
+    Stream s = new_stream(Device::gpu);
+    auto& enc = omarchy::get_command_encoder(s);
+    auto buffer = omarchy::allocator().malloc(4096);
+    auto* p = static_cast<omarchy::VulkanBuffer*>(buffer.ptr());
+    Event event{s};
+    event.set_value(1);
+    enc.fill_buffer(p->buffer, 1, 4096);
+    event.signal(s);
+    event.wait();
+
+    constexpr int kSize = 1024;
+    auto x = ones({kSize, kSize}, float32, s);
+    auto y = matmul(x, x, s);
+    y.eval();
+
+    event.set_value(2);
+    std::atomic<bool> waiter_started{false};
+    std::string wait_error;
+    std::thread waiter([&]() {
+      waiter_started.store(true, std::memory_order_release);
+      try {
+        event.wait();
+      } catch (const std::exception& ex) {
+        wait_error = ex.what();
+      }
+    });
+    while (!waiter_started.load(std::memory_order_acquire)) {
+      std::this_thread::yield();
+    }
+    std::this_thread::sleep_for(std::chrono::milliseconds(20));
+    event.signal(s);
+    waiter.join();
+    enc.synchronize();
+    const auto* values = y.data<float>();
+    const bool correct =
+        values[0] == kSize && values[y.size() - 1] == kSize;
+    omarchy::allocator().free(buffer);
+    if (!wait_error.empty()) {
+      std::cout << "[child/late_reused_event_publication] " << wait_error
+                << std::endl;
+      std::_Exit(35);
+    }
+    std::_Exit(correct ? 0 : 36);
+  }
+  if (mode == "unrelated_work_event_wait") {
+    setenv("MLX_OMARCHY_HANG_NO_PROGRESS_NS", "100000000", 1);
+    setenv("MLX_OMARCHY_MAX_WALL_NS", "30000000000", 1);
+    Stream busy = new_stream(Device::gpu);
+    constexpr int kSize = 1024;
+    auto x = ones({kSize, kSize}, float32, busy);
+    auto y = matmul(x, x, busy);
+    y.eval();
+
+    Event unsignaled{new_stream(Device::gpu)};
+    unsignaled.set_value(1);
+    const auto start = std::chrono::steady_clock::now();
+    std::string message;
+    try {
+      unsignaled.wait();
+      std::_Exit(37);
+    } catch (const std::exception& ex) {
+      message = ex.what();
+    }
+    const auto elapsed = std::chrono::steady_clock::now() - start;
+    omarchy::get_command_encoder(busy).synchronize();
+    const auto* values = y.data<float>();
+    const bool correct =
+        values[0] == kSize && values[y.size() - 1] == kSize;
+    const bool bounded = elapsed < std::chrono::milliseconds(600);
+    std::cout << "[child/unrelated_work_event_wait] " << message << std::endl;
+    std::_Exit(
+        correct && bounded &&
+                message.find("failed to advance") != std::string::npos
+            ? 0
+            : 38);
+  }
+  if (mode == "completed_marker_behind_handler") {
+    setenv("MLX_OMARCHY_HANG_NO_PROGRESS_NS", "100000000", 1);
+    setenv("MLX_OMARCHY_MAX_WALL_NS", "1000000000", 1);
+    Stream s = new_stream(Device::gpu);
+    auto& enc = omarchy::get_command_encoder(s);
+    auto buffer = omarchy::allocator().malloc(4096);
+    auto* p = static_cast<omarchy::VulkanBuffer*>(buffer.ptr());
+    std::promise<void> handler_started;
+    auto started = handler_started.get_future();
+    std::promise<void> release_handler;
+    auto release = release_handler.get_future().share();
+    enc.add_completed_handler([&handler_started, release]() {
+      handler_started.set_value();
+      release.wait();
+    });
+    enc.fill_buffer(p->buffer, 1, 4096);
+    enc.commit();
+    if (started.wait_for(std::chrono::seconds(2)) !=
+        std::future_status::ready) {
+      std::_Exit(39);
+    }
+
+    enc.fill_buffer(p->buffer, 2, 4096);
+    enc.commit();
+    const uint64_t completed_value = enc.last_submitted_completion();
+    auto& device = omarchy::device(s.device.index);
+    auto deadline =
+        std::chrono::steady_clock::now() + std::chrono::seconds(2);
+    uint64_t reached = 0;
+    while (reached < completed_value &&
+           std::chrono::steady_clock::now() < deadline) {
+      VKX_CHECK(omarchy::vk::device_table().GetSemaphoreCounterValue(
+          device.handle(), device.completions().semaphore(), &reached));
+      std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+    if (reached < completed_value) {
+      release_handler.set_value();
+      std::_Exit(40);
+    }
+
+    Event unsignaled{new_stream(Device::gpu)};
+    unsignaled.set_value(42);
+    unsignaled.wait(s);
+    enc.fill_buffer(p->buffer, 3, 4096);
+    const auto start = std::chrono::steady_clock::now();
+    std::string message;
+    try {
+      enc.synchronize();
+      release_handler.set_value();
+      std::_Exit(41);
+    } catch (const std::exception& ex) {
+      message = ex.what();
+    }
+    const auto elapsed = std::chrono::steady_clock::now() - start;
+    release_handler.set_value();
+    std::cout << "[child/completed_marker_behind_handler] " << message
+              << std::endl;
+    std::_Exit(
+        elapsed < std::chrono::milliseconds(700) &&
+                message.find("failed to advance") != std::string::npos
+            ? 0
+            : 42);
+  }
+  if (mode == "gpu_event_cpu_signal_progress") {
+    setenv("MLX_OMARCHY_HANG_NO_PROGRESS_NS", "1", 1);
+    setenv("MLX_OMARCHY_MAX_WALL_NS", "30000000000", 1);
+    if (!cpu::is_available()) {
+      std::_Exit(77);
+    }
+    Stream gpu_stream = new_stream(Device::gpu);
+    Stream cpu_stream = new_stream(Device::cpu);
+    Event event{gpu_stream};
+    event.wait();
+
+    constexpr int kSize = 1024;
+    auto x = ones({kSize, kSize}, float32, gpu_stream);
+    auto y = x;
+    for (int i = 0; i < 3; ++i) {
+      y = matmul(y, x, gpu_stream) / static_cast<float>(kSize);
+    }
+    y.eval();
+    event.set_value(1);
+    event.signal(cpu_stream);
+    std::string wait_error;
+    try {
+      event.wait();
+    } catch (const std::exception& ex) {
+      wait_error = ex.what();
+    }
+    omarchy::get_command_encoder(gpu_stream).synchronize();
+    const auto* values = y.data<float>();
+    const bool correct =
+        values[0] == 1.0f && values[y.size() - 1] == 1.0f;
+    if (!wait_error.empty()) {
+      std::cout << "[child/gpu_event_cpu_signal_progress] " << wait_error
+                << std::endl;
+      std::_Exit(43);
+    }
+    std::_Exit(correct ? 0 : 44);
+  }
   if (mode == "long_matmul_progress") {
     setenv("MLX_OMARCHY_HANG_NO_PROGRESS_NS", "1", 1);
     Stream s = new_stream(Device::gpu);
@@ -1505,6 +1684,54 @@ TEST_CASE("slot reuse cannot lend stale progress to a blocked dependency") {
   CHECK_MESSAGE(
       r.code == 0,
       "child reused_slot_blocked_dependency failed with code " << r.code);
+}
+
+TEST_CASE("a reused Event accepts a later published producer generation") {
+  if (!gpu::is_available()) {
+    skip("no qualifying Vulkan device.");
+    return;
+  }
+  auto r = run_child("late_reused_event_publication", 60);
+  REQUIRE_FALSE(r.timed_out);
+  CHECK_MESSAGE(
+      r.code == 0,
+      "child late_reused_event_publication failed with code " << r.code);
+}
+
+TEST_CASE("unrelated active work does not extend an unsignaled Event wait") {
+  if (!gpu::is_available()) {
+    skip("no qualifying Vulkan device.");
+    return;
+  }
+  auto r = run_child("unrelated_work_event_wait", 60);
+  REQUIRE_FALSE(r.timed_out);
+  CHECK_MESSAGE(
+      r.code == 0,
+      "child unrelated_work_event_wait failed with code " << r.code);
+}
+
+TEST_CASE("completed markers behind a blocked handler do not report progress") {
+  if (!gpu::is_available()) {
+    skip("no qualifying Vulkan device.");
+    return;
+  }
+  auto r = run_child("completed_marker_behind_handler", 10);
+  REQUIRE_FALSE(r.timed_out);
+  CHECK_MESSAGE(
+      r.code == 0,
+      "child completed_marker_behind_handler failed with code " << r.code);
+}
+
+TEST_CASE("a CPU signal of a GPU Event tracks earlier GPU work") {
+  if (!gpu::is_available() || !cpu::is_available()) {
+    skip("GPU and CPU devices are required.");
+    return;
+  }
+  auto r = run_child("gpu_event_cpu_signal_progress", 60);
+  REQUIRE_FALSE(r.timed_out);
+  CHECK_MESSAGE(
+      r.code == 0,
+      "child gpu_event_cpu_signal_progress failed with code " << r.code);
 }
 
 TEST_CASE("an executing long matmul is not mistaken for a stalled queue") {

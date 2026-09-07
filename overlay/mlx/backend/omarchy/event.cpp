@@ -104,9 +104,24 @@ struct EventImpl {
   std::unique_ptr<HostCounter> host;
   mutable std::mutex bridge_mtx;
   uint64_t host_value_on_gpu{0};
-  std::atomic<uint64_t> signaled_completion{0};
-  std::atomic<uint64_t> signaled_value{0};
+  mutable std::mutex signal_mtx;
+  uint64_t signaled_completion{0};
+  uint64_t signaled_value{0};
   std::atomic<bool> queued_signal{false};
+
+  void publish_signal(uint64_t value, uint64_t completion) {
+    std::lock_guard<std::mutex> lk(signal_mtx);
+    if (value > signaled_value ||
+        (value == signaled_value && completion > signaled_completion)) {
+      signaled_value = value;
+      signaled_completion = completion;
+    }
+  }
+
+  uint64_t completion_for(uint64_t target) const {
+    std::lock_guard<std::mutex> lk(signal_mtx);
+    return signaled_value >= target ? signaled_completion : 0;
+  }
 
   bool is_created() const {
     std::lock_guard<std::mutex> lk(bridge_mtx);
@@ -167,22 +182,18 @@ void Event::wait() {
   if (event.host) {
     event.host->wait(value());
   } else {
-    const uint64_t progress_through =
-        event.signaled_completion.load(std::memory_order_acquire);
     omarchy::wait_for_timeline_progress(
         event.gpu->device.handle(),
         event.gpu->semaphore,
         value_,
         &event.gpu->device.completions(),
-        progress_through);
+        [&event, target = value_] { return event.completion_for(target); });
     for (int join_attempt = 0; join_attempt < 8; ++join_attempt) {
-      uint64_t generation =
-          event.signaled_completion.load(std::memory_order_acquire);
+      uint64_t generation = event.completion_for(value_);
       if (generation != 0) {
         event.gpu->device.completions().wait(generation);
       }
-      if (event.signaled_completion.load(std::memory_order_acquire) ==
-          generation) {
+      if (event.completion_for(value_) == generation) {
         break;
       }
       std::this_thread::yield();
@@ -214,14 +225,14 @@ void Event::wait(Stream s) {
     uint64_t target_value = value();
     scheduler::wait_event(s, *this, [target_value](Event& self) {
       auto& impl = self.cast<EventImpl>();
-      const uint64_t progress_through =
-          impl.signaled_completion.load(std::memory_order_acquire);
       omarchy::wait_for_timeline_progress(
           impl.gpu->device.handle(),
           impl.gpu->semaphore,
           target_value,
           &impl.gpu->device.completions(),
-          progress_through);
+          [&impl, target_value] {
+            return impl.completion_for(target_value);
+          });
       impl.gpu->device.join_completed_handlers();
     });
   }
@@ -259,40 +270,18 @@ void Event::signal(Stream s) {
     // with work in flight lets a GPU-stream waiter run ahead of it.
     if (!event.queued_signal.load(std::memory_order_acquire) &&
         encoder.idle() && encoder.synchronized()) {
-      uint64_t generation = encoder.last_submitted_completion();
-      uint64_t prior_gen =
-          event.signaled_completion.load(std::memory_order_relaxed);
-      while (generation > prior_gen &&
-             !event.signaled_completion.compare_exchange_weak(
-                 prior_gen, generation, std::memory_order_release)) {
-      }
-      uint64_t prior_val =
-          event.signaled_value.load(std::memory_order_relaxed);
-      while (value() > prior_val &&
-             !event.signaled_value.compare_exchange_weak(
-                 prior_val, value(), std::memory_order_release)) {
-      }
       event.gpu->signal_from_host(value());
+      event.publish_signal(value(), encoder.last_submitted_completion());
     } else {
       event.queued_signal.store(true, std::memory_order_release);
       encoder.add_semaphore_signal(event.gpu->semaphore, value(), event_);
       encoder.commit();
-      uint64_t generation = encoder.last_submitted_completion();
-      uint64_t prior_gen =
-          event.signaled_completion.load(std::memory_order_relaxed);
-      while (generation > prior_gen &&
-             !event.signaled_completion.compare_exchange_weak(
-                 prior_gen, generation, std::memory_order_release)) {
-      }
-      uint64_t prior_val =
-          event.signaled_value.load(std::memory_order_relaxed);
-      while (value() > prior_val &&
-             !event.signaled_value.compare_exchange_weak(
-                 prior_val, value(), std::memory_order_release)) {
-      }
+      event.publish_signal(value(), encoder.last_submitted_completion());
     }
   } else {
-    event.gpu->device.signal_timeline(event.gpu->semaphore, value());
+    uint64_t generation =
+        event.gpu->device.signal_timeline(event.gpu->semaphore, value());
+    event.publish_signal(value(), generation);
   }
 }
 

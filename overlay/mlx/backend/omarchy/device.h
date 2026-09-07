@@ -129,14 +129,14 @@ uint64_t submit_max_wall_ns();
 class CompletionDispatcher;
 
 // Wait for a timeline value with bounded, nonblocking progress observation.
-// |progress_through| limits execution markers to submissions no newer than the
-// work that can satisfy this wait; zero scans all currently pending work.
+// The callback returns the latest completion generation known to satisfy the
+// waited value. Zero means no matching producer has been published.
 void wait_for_timeline_progress(
     VkDevice device,
     VkSemaphore semaphore,
     uint64_t target_value,
     CompletionDispatcher* progress = nullptr,
-    uint64_t progress_through = 0);
+    std::function<uint64_t()> progress_generation = {});
 
 class CommandEncoder;
 class ComputeRuntime;
@@ -243,7 +243,7 @@ class Device {
     return *compute_;
   }
 
-  void signal_timeline(VkSemaphore semaphore, uint64_t value);
+  uint64_t signal_timeline(VkSemaphore semaphore, uint64_t value);
 
   CapabilityReport caps_;
   VkPhysicalDeviceMemoryProperties mem_props_{};
