@@ -12,23 +12,25 @@ This is early, actively developed software. Check the [compatibility table](docs
 
 Supported today: Apple M1 running [Omarchy](https://github.com/omarchy-mac/omarchy-mac) (Asahi-based) with Mesa Honeykrisp. Later Apple Silicon generations follow once the M1 path is complete.
 
-## Install (v0.3.7)
+## Install (v0.3.8)
 
 ```bash
 # Apple Silicon (M1, Honeykrisp) - Python 3.14
 python3.14 -m venv ~/.venvs/mlx
 ~/.venvs/mlx/bin/pip install \
-  https://github.com/joshuaswarren/mlx-omarchy/releases/download/v0.3.7/mlx_omarchy-0.32.2.dev202609071347%2B417c06e-cp314-cp314-linux_aarch64.whl
+  https://github.com/joshuaswarren/mlx-omarchy/releases/download/v0.3.8/mlx_omarchy-0.32.2.dev202609071529%2Bf5ba1c8-cp314-cp314-linux_aarch64.whl
 
 # Any Linux box (x86_64, software Vulkan, development only) - Python 3.11
 python3.11 -m venv ~/.venvs/mlx
 ~/.venvs/mlx/bin/pip install \
-  https://github.com/joshuaswarren/mlx-omarchy/releases/download/v0.3.7/mlx_omarchy-0.32.2.dev202609071401%2B417c06e-cp311-cp311-linux_x86_64.whl
+  https://github.com/joshuaswarren/mlx-omarchy/releases/download/v0.3.8/mlx_omarchy-0.32.2.dev202609071536%2Bf5ba1c82-cp311-cp311-linux_x86_64.whl
 ```
 
 Building from source is covered in [docs/install-omarchy.md](docs/install-omarchy.md). Build dependencies: Python 3.10+, CMake 3.25+, Vulkan headers, a C++ compiler, and LAPACK/BLAS development packages; the wheel needs `liblapack.so.3` and `libblas.so.3` at runtime.
 
 Do not install the upstream `mlx` package beside this wheel; both provide the `mlx` module.
+
+The published aarch64 v0.3.8 wheel completed all three pinned Qwen workloads on M1 with the normal compilation settings and default kernels. Generated-token counts and hashes match the paired eager runs. [Public-wheel smoke results](receipts/2026-09-07-q4-second-wave/public-v038-default.json) and [output comparison](receipts/2026-09-07-q4-second-wave/public-default-comparison.json).
 
 ## Quick start
 
@@ -57,17 +59,17 @@ python -m mlx_lm generate \
 
 ## Performance
 
-The default Q4 kernels at `417c06e6` improve Linux decode by 73% to 118% and prefill by 13% to 29% against `348919c8`. Five alternating baseline/candidate pairs ran on the same Apple M1 with Honeykrisp, AC power, the pinned Qwen2.5-0.5B-Instruct-4bit snapshot, greedy decoding, and fixed output lengths. All generated token IDs matched exactly in every pair. These runs use eager execution, `MLX_DISABLE_COMPILE=1`.
+The default kernels at `f5ba1c82` improve Linux decode by 3.5% to 6.5% and prefill by 12.9% to 21.1% over v0.3.7 (`417c06e6`). Five alternating baseline/candidate pairs ran on the same Apple M1 with Honeykrisp, AC power, the pinned Qwen2.5-0.5B-Instruct-4bit snapshot, greedy decoding, and fixed output lengths. Every generated token ID matched in every pair. These measurements use eager execution, `MLX_DISABLE_COMPILE=1`.
 
-| Prompt / generated tokens | Before decode tok/s | Current decode tok/s | Before prefill tok/s | Current prefill tok/s |
+| Prompt / generated tokens | v0.3.7 decode tok/s | Current decode tok/s | v0.3.7 prefill tok/s | Current prefill tok/s |
 |---|---:|---:|---:|---:|
-| 30 / 32 | 30.25 | 65.97 | 77.720 | 87.719 |
-| 262 / 128 | 28.09 | 56.29 | 168.706 | 209.600 |
-| 1053 / 32 | 23.63 | 40.80 | 176.411 | 227.873 |
+| 30 / 32 | 66.02 | 70.28 | 87.464 | 99.010 |
+| 262 / 128 | 56.25 | 59.12 | 210.104 | 254.122 |
+| 1053 / 32 | 40.77 | 42.27 | 227.725 | 273.294 |
 
-Values are medians of five runs. The packed-word decode kernel reuses each Q4 word and its scale/bias across eight values. The prefill kernel computes four rows per invocation in a 32-by-16 tile. Both paths default on for their supported layouts; the numerical check covers float16, bfloat16, and float32 Q4 matmul against an independent host reference. A pipeline-cache change produced no material improvement and was removed.
+Values are medians of five runs; percentage gains are medians of the paired ratios. Prefill now unpacks each Q4 word once for eight weights. Increasing the bounded graph batch from 100 to 256 nodes reduces submission overhead without changing synchronization or buffer ownership. The temporary comparison kernel and its switch were removed.
 
-[Raw runs, full token arrays, paired statistics, numerical checks, and source reviews](receipts/2026-09-07-q4-kernel-gains). Set `MLX_OMARCHY_QMM_VEC_Q4_WORD=0` or `MLX_OMARCHY_QMM_TILE_RB=0` to disable the respective optimization for comparison.
+[Raw comparisons, token arrays, numerical checks, and runtime receipts](receipts/2026-09-07-q4-second-wave) cover the new changes. [Earlier Q4 results](receipts/2026-09-07-q4-kernel-gains) retain the v0.3.7 measurements. The existing `MLX_OMARCHY_QMM_VEC_Q4_WORD=0` and `MLX_OMARCHY_QMM_TILE_RB=0` switches disable the decode and prefill optimizations for comparison.
 
 Performance parity is still open. Historical macOS MLX 0.32.2 medians on this M1 were 150.8 / 146.6 / 140.3 decode tok/s and 294 / 1213 / 1838 prefill tok/s for the same three workloads. The historical short and 1024-context token-ID hashes match Linux, but the long-prompt hashes differ: native `254d73fd93164b98`, Linux `4cc08910089477fd`. These cross-OS timings do not establish numerical parity. [macOS receipts](receipts/native-baseline-2026-09-06).
 
@@ -96,9 +98,11 @@ The first counts operations: a primitive counts once it computes on the GPU and 
 
 The [Python failure classification](receipts/upstream-suite-2026-09-06-py4/case-classification.csv) at `ef188d58` records 471 named refusals, 149 assertion failures, and 50 other errors, including 40 watchdog timeouts. All 670 remain failures in that snapshot; a named refusal does not count as support. GPU operations never fall back silently to CPU execution. Per-primitive status is generated from source in [docs/compatibility-matrix.md](docs/compatibility-matrix.md).
 
-Current development checks run on x86_64 software Vulkan, not the M1. The [fresh parent build](receipts/2026-09-07-complex-matmul-parent.json) at `1947f2e5` passes all 33 complex-number cases, 98 primitive cases, and 13 convolution cases. It includes the complex unary fixes, singleton-batch matmul broadcasting, and separate convolution flip, stride, and dilation handling. The runtime suite passes all 40 cases on three runs after replacing timing-dependent and exact-wording assertions with observable contract checks.
+At `f5ba1c82`, fresh native M1 checks pass all 40 runtime cases and the packed-word prefill case (11,140 assertions). The full native upstream C++ run passes 250 of 251 cases. Its remaining exact-equality failure is `log(3)`, one float32 ULP below the host result; an installed-wheel comparison reproduces the same value in v0.3.7. It remains a failure, not qualified parity.
 
-Earlier installed-wheel [operation checks](receipts/2026-09-07-operation-parity.json) and [expanded BLAS checks](receipts/2026-09-07-dense-coverage.json) retain their failures and source identities. Those wheels predate these fixes. A fresh installed-wheel run is still required; focused checks across different revisions do not establish full upstream or native parity.
+Earlier development checks ran on x86_64 software Vulkan. The [fresh parent build](receipts/2026-09-07-complex-matmul-parent.json) at `1947f2e5` passes all 33 complex-number cases, 98 primitive cases, and 13 convolution cases. It includes the complex unary fixes, singleton-batch matmul broadcasting, and separate convolution flip, stride, and dilation handling. The runtime suite passes all 40 cases on three runs after replacing timing-dependent and exact-wording assertions with observable contract checks.
+
+Earlier installed-wheel [operation checks](receipts/2026-09-07-operation-parity.json) and [expanded BLAS checks](receipts/2026-09-07-dense-coverage.json) retain their failures and source identities. Those wheels predate these fixes. The [fresh 17-file core Python qualification](receipts/2026-09-07-q4-second-wave/core-python-qualification.json) at `f5ba1c82` records 582 passed, 24 skipped, and six failed on software Vulkan. Three failures expose FFT dispatch, complex broadcast extraction, and repeated reflect-padding defects; large sine and int64 sorting remain unsupported. The sixth fails because NumPy 1.26 lacks `unstack`; that unchanged test [passes separately with NumPy 2.2.6](receipts/2026-09-07-q4-second-wave/numpy2-unstack.json). The quantized/fast partition remains in progress. These separate checks do not establish full upstream or native parity.
 
 ### What works
 

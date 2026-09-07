@@ -8,6 +8,12 @@ The backend must refuse unsupported operations by name rather than return a wron
 
 Two of the worst v0.3.0 defects never appeared on a Linux development box. They are real-M1-only, and the full dev-box battery - 24 binaries, 407 cases, 828,139 assertions - was green the whole night they shipped. A Vulkan capability query, a shader miscompile, and a submit-thread ordering are all per-driver questions: llvmpipe, lavapipe, and Honeykrisp answer them differently. **A green run on a software driver is not proof about the Apple GPU, and this ledger now records where every defect was observed.** Anyone contributing: your llvmpipe battery passing is the start of verification on this project, not the end of it.
 
+## Open native precision gaps
+
+### Float32 log differs from the host by one ULP
+
+Observed on M1 Honeykrisp in v0.3.7 (`417c06e6`) and `f5ba1c82`. Both installed wheels return `1.0986121892929077` for `log(3)`, while the correctly rounded host float32 value is `1.0986123085021973`. This fails upstream's exact-equality assertion for an irregularly strided input. The full native C++ run at `f5ba1c82` passes 250 of 251 cases; the failing case remains open. [Values, bit patterns, and native suite logs](../receipts/2026-09-07-q4-second-wave/native-log-gap.json).
+
 ## Fixed in development
 
 ### AGX float division is one ulp off the correctly rounded quotient
