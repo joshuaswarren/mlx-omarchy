@@ -856,7 +856,10 @@ std::vector<double> host_sdpa(
     int D,
     float scale,
     bool causal,
-    const std::vector<float>& sinks = {}) {
+    const std::vector<float>& sinks = {},
+    const std::vector<float>& mask = {},
+    int mask_batches = 1,
+    int mask_heads = 1) {
   const int rep = H / KV;
   const int offset = kL - qL;
   std::vector<double> out(B * H * qL * D, 0.0);
@@ -876,6 +879,12 @@ std::vector<double> host_sdpa(
             scores[ki] = dot * scale;
             if (causal && offset + qi < ki) {
               scores[ki] = -1e30;
+            }
+            if (!mask.empty()) {
+              int mb = mask_batches == 1 ? 0 : b;
+              int mh = mask_heads == 1 ? 0 : head;
+              scores[ki] +=
+                  mask[((mb * mask_heads + mh) * qL + qi) * kL + ki];
             }
             max_score = std::max(max_score, scores[ki]);
           }
@@ -906,6 +915,145 @@ std::vector<double> host_sdpa(
   return out;
 }
 
+TEST_CASE("scaled_dot_product_attention primitive broadcasts additive masks") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  const int B = 2, H = 4, KV = 2, qL = 3, kL = 5, D = 8;
+  const int repeats = H / KV;
+  const float scale = 1.0f / std::sqrt(float(D));
+  auto q_data = pattern(B * H * qL * D, 233);
+  auto k_data = pattern(B * KV * kL * D, 239);
+  auto v_data = pattern(B * KV * kL * D, 241);
+  auto mask_data = pattern(B * qL * kL, 251);
+  array q(q_data.begin(), Shape{B, H, qL, D}, float32);
+  array k(k_data.begin(), Shape{B, KV, kL, D}, float32);
+  array v(v_data.begin(), Shape{B, KV, kL, D}, float32);
+  array mask(mask_data.begin(), Shape{B, 1, qL, kL}, float32);
+  auto fallback = [=](std::vector<array> inputs) {
+    auto fq = reshape(
+        multiply(inputs[0], array(scale, float32), stream),
+        Shape{B, KV, repeats, qL, D},
+        stream);
+    auto fk = expand_dims(inputs[1], 2, stream);
+    auto fv = expand_dims(inputs[2], 2, stream);
+    auto fm = expand_dims(inputs[3], -3, stream);
+    auto scores = add(
+        matmul(fq, swapaxes(fk, -1, -2, stream), stream), fm, stream);
+    scores = softmax(scores, std::vector<int>{-1}, true, stream);
+    auto result = matmul(scores, fv, stream);
+    return std::vector<array>{
+        reshape(result, Shape{B, H, qL, D}, stream)};
+  };
+  auto primitive = std::make_shared<fast::ScaledDotProductAttention>(
+      stream, fallback, scale, false, false, false, false);
+  array out(
+      Shape{B, H, qL, D},
+      float32,
+      primitive,
+      std::vector<array>{q, k, v, mask});
+  require_close(
+      flat(out, stream),
+      host_sdpa(
+          q_data,
+          k_data,
+          v_data,
+          B,
+          H,
+          KV,
+          qL,
+          kL,
+          D,
+          scale,
+          false,
+          {},
+          mask_data,
+          B,
+          1),
+      1e-5,
+      "sdpa primitive additive mask batch/head broadcast gqa");
+}
+
+TEST_CASE("scaled_dot_product_attention broadcasts additive masks through GQA") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  const int B = 2, H = 4, KV = 1, qL = 3, kL = 5, D = 8;
+  const float scale = 1.0f / std::sqrt(float(D));
+  auto q_data = pattern(B * H * qL * D, 211);
+  auto k_data = pattern(B * KV * kL * D, 223);
+  auto v_data = pattern(B * KV * kL * D, 227);
+  auto mask_data = pattern(B * qL * kL, 229);
+  for (size_t index = 0; index < mask_data.size(); ++index) {
+    mask_data[index] *= (index % 3 == 0) ? 8.0f : 0.25f;
+  }
+  struct Bf16FastGuard {
+    Bf16FastGuard() {
+      if (const char* value = std::getenv("MLX_OMARCHY_SDPA_BF16_FAST")) {
+        original = value;
+      }
+      unsetenv("MLX_OMARCHY_SDPA_BF16_FAST");
+    }
+    ~Bf16FastGuard() {
+      if (original.empty()) {
+        unsetenv("MLX_OMARCHY_SDPA_BF16_FAST");
+      } else {
+        setenv("MLX_OMARCHY_SDPA_BF16_FAST", original.c_str(), 1);
+      }
+    }
+    std::string original;
+  } bf16_guard;
+  auto check = [&](Dtype dtype, double tolerance, const char* label) {
+    array q = astype(
+        array(q_data.begin(), Shape{B, H, qL, D}, float32), dtype, stream);
+    array k = astype(
+        array(k_data.begin(), Shape{B, KV, kL, D}, float32), dtype, stream);
+    array v = astype(
+        array(v_data.begin(), Shape{B, KV, kL, D}, float32), dtype, stream);
+    array mask = astype(
+        swapaxes(
+            array(mask_data.begin(), Shape{1, B, qL, kL}, float32),
+            0,
+            1,
+            stream),
+        dtype,
+        stream);
+    auto q_ref = flat(q, stream);
+    auto k_ref = flat(k, stream);
+    auto v_ref = flat(v, stream);
+    auto mask_ref = flat(mask, stream);
+    auto out = fast::scaled_dot_product_attention(
+        q, k, v, scale, "", mask, std::nullopt, false, stream);
+    require_close(
+        flat(out, stream),
+        host_sdpa(
+            q_ref,
+            k_ref,
+            v_ref,
+            B,
+            H,
+            KV,
+            qL,
+            kL,
+            D,
+            scale,
+            false,
+            {},
+            mask_ref,
+            B,
+            1),
+        tolerance,
+        label);
+  };
+  check(float32, 1e-5, "sdpa additive mask broadcast gqa f32");
+  check(float16, 2e-2, "sdpa additive mask broadcast gqa f16");
+  check(bfloat16, 5e-2, "sdpa additive mask broadcast gqa bf16 wide");
+  setenv("MLX_OMARCHY_SDPA_BF16_FAST", "1", 1);
+  check(bfloat16, 5e-2, "sdpa additive mask broadcast gqa bf16 fast");
+}
+
 TEST_CASE("scaled_dot_product_attention causal offset keeps kL below qL") {
   if (!compute_available()) {
     return;
@@ -924,35 +1072,7 @@ TEST_CASE("scaled_dot_product_attention causal offset keeps kL below qL") {
   auto got = flat(out, stream);
   auto want = host_sdpa(
       q_data, k_data, v_data, B, H, KV, qL, kL, D, scale, true);
-  const int valid_from = qL - kL; // rows 0..valid_from-1 fully masked
-  std::vector<double> want_valid;
-  std::vector<float> got_valid;
-  for (int b = 0; b < B; ++b) {
-    for (int h = 0; h < H; ++h) {
-      for (int qi = valid_from; qi < qL; ++qi) {
-        for (int d = 0; d < D; ++d) {
-          size_t index = ((b * H + h) * qL + qi) * D + d;
-          got_valid.push_back(got[index]);
-          want_valid.push_back(want[index]);
-        }
-      }
-    }
-  }
-  require_close(got_valid, want_valid, 1e-5, "sdpa causal offset f32");
-  for (int b = 0; b < B; ++b) {
-    for (int h = 0; h < H; ++h) {
-      for (int qi = 0; qi < valid_from; ++qi) {
-        for (int d = 0; d < D; ++d) {
-          size_t index = ((b * H + h) * qL + qi) * D + d;
-          CHECK_MESSAGE(
-              std::isfinite(got[index]),
-              "fully masked row ",
-              index,
-              " must stay finite");
-        }
-      }
-    }
-  }
+  require_close(got, want, 1e-5, "sdpa causal offset including fully masked rows");
 }
 
 TEST_CASE("scaled_dot_product_attention folds sinks into the denominator") {
@@ -1143,15 +1263,15 @@ TEST_CASE("scaled_dot_product_attention floors a fully masked bool mask") {
     return;
   }
   Stream stream = gpu_stream();
-  const int B = 1, H = 4, qL = 8, kL = 8, D = 128;
+  const int B = 2, H = 4, KV = 2, qL = 8, kL = 8, D = 128;
   const float scale = 1.0f / std::sqrt(float(D));
   auto q_data = pattern(B * H * qL * D, 193);
-  auto k_data = pattern(B * H * kL * D, 197);
-  auto v_data = pattern(B * H * kL * D, 199);
+  auto k_data = pattern(B * KV * kL * D, 197);
+  auto v_data = pattern(B * KV * kL * D, 199);
   array q = array(q_data.begin(), Shape{B, H, qL, D}, float32);
-  array k = array(k_data.begin(), Shape{B, H, kL, D}, float32);
-  array v = array(v_data.begin(), Shape{B, H, kL, D}, float32);
-  array mask = array(false);
+  array k = array(k_data.begin(), Shape{B, KV, kL, D}, float32);
+  array v = array(v_data.begin(), Shape{B, KV, kL, D}, float32);
+  array mask = swapaxes(zeros({1, B, qL, kL}, bool_, stream), 0, 1, stream);
   auto out = fast::scaled_dot_product_attention(
       q, k, v, scale, "", mask, std::nullopt, false, stream);
   auto got = flat(out, stream);
@@ -1170,14 +1290,15 @@ TEST_CASE("scaled_dot_product_attention floors a fully masked bool mask") {
         for (int d = 0; d < D; ++d) {
           double acc = 0.0;
           for (int ki = 0; ki < kL; ++ki) {
-            acc += v_data[((b * H + h) * kL + ki) * D + d];
+            int kv = h / (H / KV);
+            acc += v_data[((b * KV + kv) * kL + ki) * D + d];
           }
           want.push_back(acc / kL);
         }
       }
     }
   }
-  require_close(got, want, 1e-5, "sdpa fully masked uniform mean");
+  require_close(got, want, 1e-5, "sdpa fully masked broadcast gqa mean");
 }
 
 TEST_CASE("fp8 conversion matches the upstream bit algorithm") {
