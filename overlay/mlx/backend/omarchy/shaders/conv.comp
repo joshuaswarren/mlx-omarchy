@@ -1,11 +1,12 @@
 #version 460
 
-// Direct convolution for channels-last arrays. One thread owns one
-// output element out[n, d?, h?, w, o] and walks the kernel window with
-// a float32 accumulator; every load is a straight-line per-thread read
-// at a linear address (Honeykrisp caution: no divergent per-lane word
-// loads). Out-of-range input coordinates contribute zero via index
-// guards, so padding needs no materialized buffer.
+// Direct convolution for channels-last arrays. One thread owns an
+// output element out[n, d?, h?, w, o] or one bounded chunk of its kernel
+// window. Large windows reduce float32 partials in a second dispatch;
+// every input load remains a straight-line per-thread read at a linear
+// address (Honeykrisp caution: no divergent per-lane word loads).
+// Out-of-range coordinates contribute zero via index guards, so padding
+// needs no materialized buffer.
 //
 // The kernel is the general upstream Convolution semantics over 1-D,
 // 2-D, and 3-D spatial ranks: groups (each output channel reads its
@@ -23,6 +24,8 @@
 //   reduce_size        channels per group     rhs_gap   group count
 //   lhs_offset         input element offset   rhs_offset weight element
 //   output_offset      output element offset
+//   lhs_size           partial count          (large kernels)
+//   rhs_size           logical output count   (large kernels)
 //   output_size        input depth            (3-D)
 //   matrix_k           input height           (2-D and 3-D)
 //   aux_size           input width
@@ -32,10 +35,8 @@
 //   shape[0..dims-2]   output extents above the innermost axis; the
 //                      innermost extent is derived from count
 //   in_strides[0..2]   kernel stride per axis (transposed convs: all 1)
+//   in_strides[3]      partial chunk trips    (large kernels)
 //   out_strides[0..2]  low padding per axis
-//   in_strides[3]      high padding, depth    (3-D)
-//   lhs_size           high padding, height   (2-D and 3-D)
-//   rhs_size           high padding, width
 //   shape[2]           kernel dilation, depth (3-D)
 //   shape[3]           kernel dilation, above-innermost axis
 //   out_strides[3]     kernel dilation, innermost axis
@@ -76,9 +77,9 @@ layout(set = 0, binding = 0, std430) readonly buffer InputX {
 layout(set = 0, binding = 1, std430) readonly buffer Weight {
   STORAGE_TYPE values[];
 } weight;
-layout(set = 0, binding = 2, std430) readonly buffer Unused {
-  STORAGE_TYPE values[];
-} unused;
+layout(set = 0, binding = 2, std430) buffer Partials {
+  float values[];
+} partial_data;
 layout(set = 0, binding = 3, std430) writeonly buffer Output {
   STORAGE_TYPE values[];
 } output_data;
@@ -162,19 +163,6 @@ uint pad_lo_axis(uint a) {
   return a < params.dims ? params.out_strides[a] : 0u;
 }
 
-uint pad_hi_axis(uint a) {
-  if (a + 1u == params.dims) {
-    return params.rhs_size;
-  }
-  if (a + 2u == params.dims) {
-    return params.lhs_size;
-  }
-  if (a == 0u && params.dims == 3u) {
-    return params.in_strides[3u];
-  }
-  return 0u;
-}
-
 uint kdil_axis(uint a) {
   if (a + 1u == params.dims) {
     return params.out_strides[3u];
@@ -210,25 +198,42 @@ uint idil_axis(uint a) {
 }
 
 void main() {
+  const bool write_partial = (params.flags & 2u) != 0u;
+  const bool reduce_partials = (params.flags & 4u) != 0u;
+  uint stride_threads = gl_NumWorkGroups.x * 256u;
+
+  if (reduce_partials) {
+    for (uint index = gl_GlobalInvocationID.x; index < params.count;
+         index += stride_threads) {
+      float accumulator = 0.0;
+      for (uint chunk = 0u; chunk < params.lhs_size; ++chunk) {
+        accumulator += partial_data.values[chunk * params.count + index];
+      }
+      output_data.values[params.output_offset + index] =
+          STORE_VALUE(accumulator);
+    }
+    return;
+  }
+
   uint out_channels = params.matrix_n;
   uint in_channels_per_group = params.reduce_size;
   uint groups = params.rhs_gap;
   uint in_channels = in_channels_per_group * groups;
   uint out_channels_per_group = out_channels / groups;
   uint flip = params.flags & 1u;
+  uint output_count = write_partial ? params.rhs_size : params.count;
 
   uint stored_out = params.dims == 3u
       ? params.shape[0u] * params.shape[1u]
       : (params.dims == 2u ? params.shape[0u] : 1u);
   uint innermost =
-      params.count / (params.matrix_m * params.matrix_n * stored_out);
+      output_count / (params.matrix_m * params.matrix_n * stored_out);
 
   uint in_ext[3];
   uint kern_ext[3];
   uint out_ext[3];
   uint stride[3];
   uint pad_lo[3];
-  uint pad_hi[3];
   uint kdil[3];
   uint idil[3];
   for (uint a = 0u; a < 3u; ++a) {
@@ -237,20 +242,24 @@ void main() {
     out_ext[a] = out_axis(a, innermost);
     stride[a] = stride_axis(a);
     pad_lo[a] = pad_lo_axis(a);
-    pad_hi[a] = pad_hi_axis(a);
     kdil[a] = kdil_axis(a);
     idil[a] = idil_axis(a);
   }
   uint in_ext_dilated[3];
   uint total_out_spatial = 1u;
   for (uint a = 0u; a < 3u; ++a) {
-    in_ext_dilated[a] = in_ext[a] * idil[a];
+    in_ext_dilated[a] = in_ext[a] == 0u
+        ? 0u
+        : 1u + (in_ext[a] - 1u) * idil[a];
     total_out_spatial *= out_ext[a];
   }
+  uint kernel_elements = kern_ext[0u] * kern_ext[1u] * kern_ext[2u];
+  uint chunk_trips = write_partial ? params.in_strides[3u] : kernel_elements;
 
-  uint stride_threads = gl_NumWorkGroups.x * 256u;
-  for (uint index = gl_GlobalInvocationID.x; index < params.count;
-       index += stride_threads) {
+  for (uint work_index = gl_GlobalInvocationID.x; work_index < params.count;
+       work_index += stride_threads) {
+    uint chunk = write_partial ? work_index / output_count : 0u;
+    uint index = write_partial ? work_index % output_count : work_index;
     uint batch = index / (total_out_spatial * out_channels);
     uint remainder = index % (total_out_spatial * out_channels);
     uint out_channel = remainder % out_channels;
@@ -262,55 +271,53 @@ void main() {
     }
     uint group = out_channel / out_channels_per_group;
     float accumulator = 0.0;
+    uint tap_begin = chunk * chunk_trips;
+    uint tap_end = min(tap_begin + chunk_trips, kernel_elements);
 
-    for (uint k0 = 0u; k0 < kern_ext[0u]; ++k0) {
+    for (uint flat_tap = tap_begin; flat_tap < tap_end; ++flat_tap) {
+      uint remaining_tap = flat_tap;
+      uint k2 = remaining_tap % kern_ext[2u];
+      remaining_tap /= kern_ext[2u];
+      uint k1 = remaining_tap % kern_ext[1u];
+      uint k0 = remaining_tap / kern_ext[1u];
       uint k0_window = flip != 0u ? (kern_ext[0u] - 1u - k0) : k0;
+      uint k1_window = flip != 0u ? (kern_ext[1u] - 1u - k1) : k1;
+      uint k2_window = flip != 0u ? (kern_ext[2u] - 1u - k2) : k2;
       int in_0 = int(coord[0u] * stride[0u]) - int(pad_lo[0u]) +
           int(k0_window * kdil[0u]);
+      int in_1 = int(coord[1u] * stride[1u]) - int(pad_lo[1u]) +
+          int(k1_window * kdil[1u]);
+      int in_2 = int(coord[2u] * stride[2u]) - int(pad_lo[2u]) +
+          int(k2_window * kdil[2u]);
       if (in_0 < 0 || in_0 >= int(in_ext_dilated[0u]) ||
-          in_0 % int(idil[0u]) != 0) {
+          in_0 % int(idil[0u]) != 0 || in_1 < 0 ||
+          in_1 >= int(in_ext_dilated[1u]) ||
+          in_1 % int(idil[1u]) != 0 || in_2 < 0 ||
+          in_2 >= int(in_ext_dilated[2u]) ||
+          in_2 % int(idil[2u]) != 0) {
         continue;
       }
       uint tap_0 = uint(in_0) / idil[0u];
-      for (uint k1 = 0u; k1 < kern_ext[1u]; ++k1) {
-        uint k1_window = flip != 0u ? (kern_ext[1u] - 1u - k1) : k1;
-        int in_1 = int(coord[1u] * stride[1u]) - int(pad_lo[1u]) +
-            int(k1_window * kdil[1u]);
-        if (in_1 < 0 || in_1 >= int(in_ext_dilated[1u]) ||
-            in_1 % int(idil[1u]) != 0) {
-          continue;
-        }
-        uint tap_1 = uint(in_1) / idil[1u];
-        for (uint k2 = 0u; k2 < kern_ext[2u]; ++k2) {
-          uint k2_window = flip != 0u ? (kern_ext[2u] - 1u - k2) : k2;
-          int in_2 = int(coord[2u] * stride[2u]) - int(pad_lo[2u]) +
-              int(k2_window * kdil[2u]);
-          if (in_2 < 0 || in_2 >= int(in_ext_dilated[2u]) ||
-              in_2 % int(idil[2u]) != 0) {
-            continue;
-          }
-          uint tap_2 = uint(in_2) / idil[2u];
-          uint input_base = params.lhs_offset +
-              (((batch * in_ext[0u] + tap_0) * in_ext[1u] + tap_1) *
-                          in_ext[2u] +
-                      tap_2) *
-                  in_channels +
-              group * in_channels_per_group;
-          uint weight_base = params.rhs_offset +
-              (((out_channel * kern_ext[0u] + k0) * kern_ext[1u] + k1) *
-                          kern_ext[2u] +
-                      k2) *
-                  in_channels_per_group;
-          for (uint channel = 0u; channel < in_channels_per_group;
-               ++channel) {
-            accumulator +=
-                LOAD_VALUE(input_x.values[input_base + channel]) *
-                LOAD_VALUE(weight.values[weight_base + channel]);
-          }
-        }
+      uint tap_1 = uint(in_1) / idil[1u];
+      uint tap_2 = uint(in_2) / idil[2u];
+      uint input_base = params.lhs_offset +
+          (((batch * in_ext[0u] + tap_0) * in_ext[1u] + tap_1) *
+                    in_ext[2u] +
+                tap_2) *
+              in_channels +
+          group * in_channels_per_group;
+      uint weight_base = params.rhs_offset +
+          (out_channel * kernel_elements + flat_tap) * in_channels_per_group;
+      for (uint channel = 0u; channel < in_channels_per_group; ++channel) {
+        accumulator += LOAD_VALUE(input_x.values[input_base + channel]) *
+            LOAD_VALUE(weight.values[weight_base + channel]);
       }
     }
-    output_data.values[params.output_offset + index] =
-        STORE_VALUE(accumulator);
+    if (write_partial) {
+      partial_data.values[work_index] = accumulator;
+    } else {
+      output_data.values[params.output_offset + index] =
+          STORE_VALUE(accumulator);
+    }
   }
 }

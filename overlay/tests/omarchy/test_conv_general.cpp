@@ -397,6 +397,41 @@ TEST_CASE("[conv-gaps] grouped 2-D Convolution matches host reference") {
   }
 }
 
+TEST_CASE(
+    "[conv-gaps] large-filter single-channel Convolution matches host reference") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  std::mt19937 rng(1310);
+  std::normal_distribution<float> dist(0.0f, 1.0f);
+  Shape in_shape{1, 181, 181, 1};
+  Shape wt_shape{1, 182, 182, 1};
+  std::vector<float> in(181 * 181);
+  std::vector<float> wt(182 * 182);
+  for (auto& value : in) {
+    value = dist(rng);
+  }
+  for (auto& value : wt) {
+    value = dist(rng);
+  }
+  Conv2DSpec spec;
+  spec.pad_lo_h = 1;
+  spec.pad_lo_w = 1;
+  spec.pad_hi_h = 1;
+  spec.pad_hi_w = 1;
+  auto expected = host_conv2d_general(in, wt, in_shape, wt_shape, spec);
+  auto actual = conv2d(
+      array(in.begin(), in_shape, float32),
+      array(wt.begin(), wt_shape, float32),
+      {1, 1},
+      {1, 1},
+      {1, 1},
+      1,
+      stream);
+  check_close(actual, expected, stream, 1e-3);
+}
+
 TEST_CASE("[conv-gaps] 1-D Convolution matches host reference") {
   if (!compute_available()) {
     return;
