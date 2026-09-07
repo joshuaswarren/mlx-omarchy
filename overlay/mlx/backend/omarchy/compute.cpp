@@ -1228,9 +1228,6 @@ ShaderBytes shader_bytes(ComputeKernel kernel) {
 
 ComputeRuntime::ComputeRuntime(VkDevice device, uint32_t binding_limit)
     : device_(device), binding_limit_(binding_limit) {
-  for (auto& pipeline : pipelines_) {
-    pipeline.store(VK_NULL_HANDLE, std::memory_order_relaxed);
-  }
   auto& dt = vk::device_table();
   if (binding_limit_ == 0 || binding_limit_ > kComputeBindingBudget) {
     throw std::invalid_argument("[omarchy] invalid compute binding budget.");
@@ -1271,8 +1268,7 @@ ComputeRuntime::ComputeRuntime(VkDevice device, uint32_t binding_limit)
 
 ComputeRuntime::~ComputeRuntime() {
   auto& dt = vk::device_table();
-  for (const auto& slot : pipelines_) {
-    VkPipeline pipeline = slot.load(std::memory_order_relaxed);
+  for (VkPipeline pipeline : pipelines_) {
     if (pipeline != VK_NULL_HANDLE) {
       dt.DestroyPipeline(device_, pipeline, nullptr);
     }
@@ -1290,17 +1286,11 @@ VkPipeline ComputeRuntime::pipeline(ComputeKernel kernel) {
   if (index >= pipelines_.size()) {
     throw std::invalid_argument("[omarchy] invalid compute kernel.");
   }
-  VkPipeline pipeline = pipelines_[index].load(std::memory_order_acquire);
-  if (pipeline != VK_NULL_HANDLE) {
-    return pipeline;
-  }
   std::lock_guard<std::mutex> lock(mutex_);
-  pipeline = pipelines_[index].load(std::memory_order_relaxed);
-  if (pipeline == VK_NULL_HANDLE) {
-    pipeline = create_pipeline(kernel);
-    pipelines_[index].store(pipeline, std::memory_order_release);
+  if (pipelines_[index] == VK_NULL_HANDLE) {
+    pipelines_[index] = create_pipeline(kernel);
   }
-  return pipeline;
+  return pipelines_[index];
 }
 
 VkPipeline ComputeRuntime::create_pipeline(ComputeKernel kernel) {
