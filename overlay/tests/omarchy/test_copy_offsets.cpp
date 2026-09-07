@@ -599,6 +599,30 @@ TEST_CASE("reshape shares lazily and copies with the source offset") {
   omarchy::get_command_encoder(s).synchronize();
   CHECK(r.buffer().ptr() != x.buffer().ptr());
   CHECK(values_equal(r, {101, 104, 102, 105, 103, 106}));
+
+  std::vector<uint16_t> half_values{999, 1, 2, 3, 4, 5, 6, 777};
+  array half_parent(half_values.begin(), Shape{8}, uint16);
+  array half_view = transpose(
+      reshape(slice(half_parent, {1}, {7}, {1}, s), {2, 3}, s), s);
+  array half_reshaped = reshape(half_view, {2, 3}, s);
+  half_reshaped.eval();
+  omarchy::get_command_encoder(s).synchronize();
+  const uint16_t half_expected[6] = {1, 4, 2, 5, 3, 6};
+  for (size_t i = 0; i < 6; ++i) {
+    CHECK_EQ(half_reshaped.data<uint16_t>()[i], half_expected[i]);
+  }
+
+  std::vector<uint8_t> bool_values{1, 1, 0, 1, 0, 0, 1, 1};
+  array bool_parent(bool_values.begin(), Shape{8}, bool_);
+  array bool_view = transpose(
+      reshape(slice(bool_parent, {1}, {7}, {1}, s), {2, 3}, s), s);
+  array bool_reshaped = reshape(bool_view, {2, 3}, s);
+  bool_reshaped.eval();
+  omarchy::get_command_encoder(s).synchronize();
+  const bool bool_expected[6] = {true, false, false, false, true, true};
+  for (size_t i = 0; i < 6; ++i) {
+    CHECK_EQ(bool_reshaped.data<bool>()[i], bool_expected[i]);
+  }
 }
 
 namespace {
@@ -1284,4 +1308,90 @@ TEST_CASE("strided copies cover the narrow and 64-bit integers") {
   CHECK(gp[5] == 0);
   CHECK(gp[6] == 0);
   CHECK(gp[7] == 0);
+}
+
+
+TEST_CASE("rank-six byte copies use external metadata and nonzero offsets") {
+  if (!gpu::is_available()) {
+    skip("no qualifying Vulkan device.");
+    return;
+  }
+  Stream s = gpu_stream();
+  const Shape base_shape{2, 1, 2, 1, 2, 1};
+  const Shape output_shape{2, 2, 2, 2, 2, 2};
+
+  std::vector<uint8_t> source_values{99, 1, 0, 1, 1, 0, 0, 1, 0, 77};
+  array source_parent(source_values.begin(), Shape{10}, bool_);
+  array source = reshape(slice(source_parent, {1}, {9}, {1}, s), base_shape, s);
+  array expanded = broadcast_to(source, output_shape, s);
+  expanded.eval();
+  std::vector<uint8_t> destination_values(66, 1);
+  array destination_parent(destination_values.begin(), Shape{66}, bool_);
+  array destination = reshape(
+      slice(destination_parent, {1}, {65}, {1}, s), output_shape, s);
+  destination.eval();
+  copy_gpu_inplace(
+      expanded,
+      destination,
+      output_shape,
+      expanded.strides(),
+      destination.strides(),
+      0,
+      0,
+      CopyType::GeneralGeneral,
+      s);
+  omarchy::get_command_encoder(s).synchronize();
+
+  const auto* result = destination_parent.data<bool>();
+  CHECK(result[0]);
+  CHECK(result[65]);
+  for (size_t flat = 0; flat < 64; ++flat) {
+    size_t source_index = ((flat >> 5) & 1u) * 4u +
+        ((flat >> 3) & 1u) * 2u + ((flat >> 1) & 1u);
+    CHECK_EQ(result[flat + 1], source_values[source_index + 1] != 0);
+  }
+}
+
+TEST_CASE("rank-six strided casts preserve narrow values and offsets") {
+  if (!gpu::is_available()) {
+    skip("no qualifying Vulkan device.");
+    return;
+  }
+  Stream s = gpu_stream();
+  const Shape base_shape{2, 1, 2, 1, 2, 1};
+  const Shape output_shape{2, 2, 2, 2, 2, 2};
+
+  std::vector<int8_t> source_values{
+      42, -128, 127, -7, 0, 3, -4, 99, -1, 24};
+  array source_parent(source_values.begin(), Shape{10}, int8);
+  array source = reshape(slice(source_parent, {1}, {9}, {1}, s), base_shape, s);
+  array expanded = broadcast_to(source, output_shape, s);
+  expanded.eval();
+  std::vector<int16_t> destination_values(66, -1234);
+  array destination_parent(destination_values.begin(), Shape{66}, int16);
+  array destination = reshape(
+      slice(destination_parent, {1}, {65}, {1}, s), output_shape, s);
+  destination.eval();
+  copy_gpu_inplace(
+      expanded,
+      destination,
+      output_shape,
+      expanded.strides(),
+      destination.strides(),
+      0,
+      0,
+      CopyType::GeneralGeneral,
+      s);
+  omarchy::get_command_encoder(s).synchronize();
+
+  const auto* result = destination_parent.data<int16_t>();
+  CHECK_EQ(result[0], -1234);
+  CHECK_EQ(result[65], -1234);
+  for (size_t flat = 0; flat < 64; ++flat) {
+    size_t source_index = ((flat >> 5) & 1u) * 4u +
+        ((flat >> 3) & 1u) * 2u + ((flat >> 1) & 1u);
+    CHECK_EQ(
+        result[flat + 1],
+        static_cast<int16_t>(source_values[source_index + 1]));
+  }
 }

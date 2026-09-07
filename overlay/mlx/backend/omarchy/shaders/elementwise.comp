@@ -67,7 +67,7 @@ layout(set = 0, binding = 3, std430) readonly buffer AxisMetadata {
   uint values[];
 } axis_data;
 
-// Rank>4 broadcast transport: matrix_k carries the collapsed axis count
+// External broadcast transport: matrix_k carries the collapsed axis count
 // and axis_data holds [extents | lhs strides | rhs strides], the
 // reduce_general.comp binding-3 word order. matrix_k == 0 keeps the
 // inline push-constant arrays; the host always binds the metadata slot
