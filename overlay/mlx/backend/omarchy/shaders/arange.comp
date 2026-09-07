@@ -3,39 +3,23 @@
 #if defined(USE_I64) || defined(USE_U64)
 #extension GL_EXT_shader_explicit_arithmetic_types_int64 : require
 #endif
-#if defined(USE_I32)
-#define STORAGE_TYPE int
-#define LOAD_VALUE(x) (x)
-#define STORE_VALUE(f) (f)
-#define USE_INT_MATH 1
-#elif defined(USE_U32)
+#if defined(USE_I32) || defined(USE_U32)
 #define STORAGE_TYPE uint
-#define LOAD_VALUE(x) (x)
-#define STORE_VALUE(f) uint(f)
-#define USE_INT_MATH 1
-#elif defined(USE_I64)
-// 64-bit storage needs the int64 feature; the host gates dispatch on
-// the device's shaderInt64 and the same 2^24 float-transport bound.
-#define STORAGE_TYPE int64_t
-#define LOAD_VALUE(x) (x)
-#define STORE_VALUE(f) int64_t(f)
-#define USE_INT_MATH 1
-#elif defined(USE_U64)
+#define STORE_VALUE(value) (value)
+#define USE_I32_MATH 1
+#elif defined(USE_I64) || defined(USE_U64)
 #define STORAGE_TYPE uint64_t
-#define LOAD_VALUE(x) (x)
-#define STORE_VALUE(f) uint64_t(f)
-#define USE_INT_MATH 1
+#define STORE_VALUE(value) (value)
+#define USE_I64_MATH 1
 #elif defined(USE_FP16)
 #extension GL_EXT_shader_16bit_storage : require
 #extension GL_EXT_shader_explicit_arithmetic_types_float16 : require
 #define STORAGE_TYPE float16_t
-#define LOAD_VALUE(x) float(x)
-#define STORE_VALUE(f) STORAGE_TYPE(f)
+#define STORE_VALUE(value) STORAGE_TYPE(value)
 #elif defined(USE_BF16)
 #extension GL_EXT_shader_16bit_storage : require
 #extension GL_EXT_shader_explicit_arithmetic_types_int16 : require
 #define STORAGE_TYPE uint16_t
-#define LOAD_VALUE(x) uintBitsToFloat(uint(x) << 16u)
 uint16_t bf16_store(float value) {
   uint bits = floatBitsToUint(value);
   if (isnan(value)) {
@@ -43,11 +27,10 @@ uint16_t bf16_store(float value) {
   }
   return uint16_t((bits + 0x7fffu + ((bits >> 16) & 1u)) >> 16);
 }
-#define STORE_VALUE(f) bf16_store(f)
+#define STORE_VALUE(value) bf16_store(value)
 #else
 #define STORAGE_TYPE float
-#define LOAD_VALUE(x) float(x)
-#define STORE_VALUE(f) STORAGE_TYPE(f)
+#define STORE_VALUE(value) STORAGE_TYPE(value)
 #endif
 
 layout(local_size_x = 256) in;
@@ -80,11 +63,14 @@ void main() {
   uint index = gl_GlobalInvocationID.x;
   uint stride = gl_NumWorkGroups.x * gl_WorkGroupSize.x;
   while (index < params.count) {
-#if defined(USE_INT_MATH)
-    // The host keeps |start|, |step|, and |start + step * count| below
-    // 2^24, so alpha and beta transport exactly and the int math is
-    // exact for every index.
-    int value = int(params.alpha) + int(index) * int(params.beta);
+#if defined(USE_I32_MATH)
+    uint value = params.lhs_size + index * params.reduce_size;
+#elif defined(USE_I64_MATH)
+    uint64_t start =
+        uint64_t(params.lhs_size) | (uint64_t(params.rhs_size) << 32u);
+    uint64_t step =
+        uint64_t(params.reduce_size) | (uint64_t(params.aux_size) << 32u);
+    uint64_t value = start + uint64_t(index) * step;
 #else
     float value = params.alpha + params.beta * float(index);
 #endif

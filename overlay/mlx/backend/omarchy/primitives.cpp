@@ -108,6 +108,20 @@ uint32_t checked_u32(size_t value, const std::string& name, const array& out) {
   return static_cast<uint32_t>(value);
 }
 
+uint64_t integer_arange_bits(double value, const array& out) {
+  if (!std::isfinite(value)) {
+    omarchy::unsupported("Arange integer parameter", out);
+  }
+
+  constexpr double kWord = 4294967296.0;
+  constexpr double kRange = kWord * kWord;
+  double magnitude = std::fmod(std::trunc(std::abs(value)), kRange);
+  auto high = static_cast<uint64_t>(std::floor(magnitude / kWord));
+  auto low = static_cast<uint64_t>(magnitude - high * kWord);
+  uint64_t bits = (high << 32) | low;
+  return std::signbit(value) ? uint64_t{0} - bits : bits;
+}
+
 void require_float_dtype(
     const std::string& name,
     const array& input,
@@ -3042,19 +3056,6 @@ void Arange::eval_gpu(const std::vector<array>& inputs, array& out) {
       !encoder.device().capabilities().shader_int64) {
     omarchy::unsupported("Arange int64 capability", out);
   }
-  if (is_int_arange && out.size() > 0) {
-    // The shader computes int(alpha) + index * int(beta) (the uint32
-    // kernel stores the same two's-complement bits), so the float
-    // transport is only exact while every value and the one-past-last
-    // value stay under 2^24.
-    constexpr double kArangeIntLimit = 16777216.0;
-    double last = start_ + step_ * static_cast<double>(out.size());
-    if (std::abs(start_) >= kArangeIntLimit ||
-        std::abs(step_) >= kArangeIntLimit ||
-        std::abs(last) >= kArangeIntLimit) {
-      omarchy::unsupported("Arange range", out);
-    }
-  }
   out.set_data(allocate_omarchy(out.nbytes()));
   if (out.size() == 0) {
     return;
@@ -3064,8 +3065,25 @@ void Arange::eval_gpu(const std::vector<array>& inputs, array& out) {
   params.count = count;
   params.output_size = count;
   params.output_offset = checked_item_offset(out, count, "Arange", out);
-  params.alpha = static_cast<float>(start_);
-  params.beta = static_cast<float>(step_);
+  if (is_int_arange) {
+    uint64_t start_bits = integer_arange_bits(start_, out);
+    uint64_t next_bits = integer_arange_bits(start_ + step_, out);
+    if (is_int32 || is_uint32) {
+      uint32_t start = static_cast<uint32_t>(start_bits);
+      uint32_t next = static_cast<uint32_t>(next_bits);
+      params.lhs_size = start;
+      params.reduce_size = next - start;
+    } else {
+      uint64_t step_bits = next_bits - start_bits;
+      params.lhs_size = static_cast<uint32_t>(start_bits);
+      params.rhs_size = static_cast<uint32_t>(start_bits >> 32);
+      params.reduce_size = static_cast<uint32_t>(step_bits);
+      params.aux_size = static_cast<uint32_t>(step_bits >> 32);
+    }
+  } else {
+    params.alpha = static_cast<float>(start_);
+    params.beta = static_cast<float>(step_);
+  }
   std::array<omarchy::ComputeBinding, 1> bindings{binding(out)};
   auto kernel = is_int32
       ? omarchy::ComputeKernel::ArangeI32
