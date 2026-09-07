@@ -6527,17 +6527,35 @@ void QuantizedMatmul::eval_gpu(const std::vector<array>& inputs, array& out) {
     bool subgroup_ready =
         caps.subgroup_size == 32u &&
         (caps.subgroup_operations & VK_SUBGROUP_FEATURE_ARITHMETIC_BIT) != 0;
+    const char* q4_word_env =
+        std::getenv("MLX_OMARCHY_QMM_VEC_Q4_WORD");
+    constexpr uint32_t kQ4WordMaxK = 4864u;
+    size_t q4_word_shared_bytes =
+        kQ4WordMaxK * x_d.itemsize() + 256u * sizeof(float);
+    bool use_q4_word = q4_word_env != nullptr && q4_word_env[0] == '1' &&
+        q4_word_env[1] == '\0' && transpose_ && bits_ == 4 &&
+        group_size_ == 64 && params.matrix_k <= kQ4WordMaxK &&
+        q4_word_shared_bytes <= caps.max_compute_shared_memory_size;
     auto vec_kernel = subgroup_ready
         ? select_float_kernel(
               out.dtype(),
-              omarchy::ComputeKernel::QmmVecSubgroupF32,
-              omarchy::ComputeKernel::QmmVecSubgroupF16,
-              omarchy::ComputeKernel::QmmVecSubgroupBF16)
+              use_q4_word
+                  ? omarchy::ComputeKernel::QmmVecQ4WordSubgroupF32
+                  : omarchy::ComputeKernel::QmmVecSubgroupF32,
+              use_q4_word
+                  ? omarchy::ComputeKernel::QmmVecQ4WordSubgroupF16
+                  : omarchy::ComputeKernel::QmmVecSubgroupF16,
+              use_q4_word
+                  ? omarchy::ComputeKernel::QmmVecQ4WordSubgroupBF16
+                  : omarchy::ComputeKernel::QmmVecSubgroupBF16)
         : select_float_kernel(
               out.dtype(),
-              omarchy::ComputeKernel::QmmVecF32,
-              omarchy::ComputeKernel::QmmVecF16,
-              omarchy::ComputeKernel::QmmVecBF16);
+              use_q4_word ? omarchy::ComputeKernel::QmmVecQ4WordF32
+                          : omarchy::ComputeKernel::QmmVecF32,
+              use_q4_word ? omarchy::ComputeKernel::QmmVecQ4WordF16
+                          : omarchy::ComputeKernel::QmmVecF16,
+              use_q4_word ? omarchy::ComputeKernel::QmmVecQ4WordBF16
+                          : omarchy::ComputeKernel::QmmVecBF16);
     encoder.dispatch_compute(
         vec_kernel,
         bindings,

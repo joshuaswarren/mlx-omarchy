@@ -529,6 +529,14 @@ enum class ComputeKernel : uint16_t {
   GatherQmmNbFpHgsF16,
   GatherQmmNbFpHgsBF16,
   MatmulComplex64,
+  // DecodeQ4Word is appended for GPU-profile enum stability. The six
+  // binaries share one affine transposed 4-bit/group-64 kernel shape.
+  QmmVecQ4WordF32,
+  QmmVecQ4WordF16,
+  QmmVecQ4WordBF16,
+  QmmVecQ4WordSubgroupF32,
+  QmmVecQ4WordSubgroupF16,
+  QmmVecQ4WordSubgroupBF16,
   Count,
 };
 
