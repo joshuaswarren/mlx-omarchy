@@ -2398,6 +2398,18 @@ TEST_CASE("qmm_vec subgroup dispatch matches host reference across decode shapes
 
 namespace {
 
+struct QmmVecQ4WordGate {
+  explicit QmmVecQ4WordGate(bool on) {
+    set(on);
+  }
+  ~QmmVecQ4WordGate() {
+    unsetenv("MLX_OMARCHY_QMM_VEC_Q4_WORD");
+  }
+  void set(bool on) {
+    setenv("MLX_OMARCHY_QMM_VEC_Q4_WORD", on ? "1" : "0", 1);
+  }
+};
+
 // Flips the PrefillQmmTile dispatch gate and always restores the unset
 // (default OFF) state, so an aborting REQUIRE cannot leak the switch
 // into later cases in the process.
@@ -2414,6 +2426,135 @@ struct QmmTileGate {
 };
 
 } // namespace
+
+TEST_CASE("qmm_vec packed-word candidate matches baseline and host reference") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  const auto& caps = omarchy::device(0).capabilities();
+  std::vector<Dtype> dtypes{float32};
+  if (float16_available()) {
+    dtypes.push_back(float16);
+  }
+  dtypes.push_back(bfloat16);
+
+  auto finite_max = [](const std::vector<float>& values, double& max_abs) {
+    max_abs = 0.0;
+    for (float v : values) {
+      if (!std::isfinite(v)) {
+        return false;
+      }
+      max_abs = std::max(max_abs, std::fabs(static_cast<double>(v)));
+    }
+    return true;
+  };
+  auto max_diff = [](
+      const std::vector<float>& lhs, const std::vector<float>& rhs) {
+    double result = 0.0;
+    for (size_t i = 0; i < lhs.size(); ++i) {
+      result = std::max(
+          result, std::fabs(static_cast<double>(lhs[i]) - rhs[i]));
+    }
+    return result;
+  };
+  auto storage_mantissa = [](Dtype dtype) {
+    return dtype == float32 ? 23 : (dtype == float16 ? 10 : 7);
+  };
+
+  const std::vector<std::pair<int, int>> shapes{
+      {64, 7}, {896, 9}, {4864, 37}};
+  for (auto dtype : dtypes) {
+    for (auto [k, n] : shapes) {
+      INFO("dtype=" << dtype << " n=" << n << " k=" << k);
+      std::mt19937 gen(static_cast<unsigned>(k + n * 101));
+      std::uniform_real_distribution<float> dist(-2.0f, 2.0f);
+      std::vector<float> matrix(static_cast<size_t>(n) * k);
+      std::vector<float> x_values(k);
+      for (auto& v : matrix) v = dist(gen);
+      for (auto& v : x_values) v = dist(gen);
+
+      HostQuantizedWeights host = host_affine_quantize(matrix, n, k, 64, 4);
+      HostQuantizedWeights rounded = host;
+      rounded.scales = round_trip(stream, host.scales, dtype);
+      rounded.biases = round_trip(stream, host.biases, dtype);
+      std::vector<float> x_rt = round_trip(stream, x_values, dtype);
+      std::vector<float> expected =
+          host_quantized_matmul(rounded, x_rt, 1, n, k, 64, 4);
+
+      array x(x_rt.begin(), Shape{1, k}, dtype);
+      size_t required_shared = 4864u * x.itemsize() + 256u * sizeof(float);
+      REQUIRE_MESSAGE(required_shared <= caps.max_compute_shared_memory_size,
+          "device cannot exercise the packed-word shader");
+      array w_words(host.words.begin(), Shape{n, k / 8}, uint32);
+      array scales(rounded.scales.begin(), Shape{n, k / 64}, dtype);
+      array biases(rounded.biases.begin(), Shape{n, k / 64}, dtype);
+
+      QmmVecQ4WordGate gate(false);
+      array base = quantized_matmul(
+          x, w_words, scales, biases, true, 64, 4, "affine", stream);
+      const auto base_error = evaluation_error(base);
+      REQUIRE_MESSAGE(base_error.empty(), base_error);
+      std::vector<float> base_v = readback_f32(stream, base);
+
+      gate.set(true);
+      array candidate = quantized_matmul(
+          x, w_words, scales, biases, true, 64, 4, "affine", stream);
+      const auto candidate_error = evaluation_error(candidate);
+      REQUIRE_MESSAGE(candidate_error.empty(), candidate_error);
+      std::vector<float> candidate_v = readback_f32(stream, candidate);
+
+      REQUIRE_EQ(candidate_v.size(), base_v.size());
+      REQUIRE_EQ(candidate_v.size(), expected.size());
+      double base_max = 0.0;
+      double candidate_max = 0.0;
+      double host_max = 0.0;
+      REQUIRE_MESSAGE(finite_max(base_v, base_max),
+          "baseline qmm_vec produced a non-finite output");
+      REQUIRE_MESSAGE(finite_max(candidate_v, candidate_max),
+          "packed-word qmm_vec produced a non-finite output");
+      REQUIRE_MESSAGE(finite_max(expected, host_max),
+          "host reference produced a non-finite output");
+
+      double magnitude =
+          std::max({base_max, candidate_max, host_max, 1.0}) * 2.0;
+      double f32_error = (3.0 * k / 32.0 + 32.0) * magnitude *
+          std::ldexp(1.0, -23);
+      double storage_error =
+          magnitude * std::ldexp(1.0, -(storage_mantissa(dtype) + 1));
+      double host_bound = std::max(f32_error + storage_error, 1e-6);
+      double pair_bound = 2.0 * host_bound;
+      double candidate_host_diff = max_diff(candidate_v, expected);
+      double base_host_diff = max_diff(base_v, expected);
+      double pair_diff = max_diff(candidate_v, base_v);
+      INFO("candidate_host_diff=" << candidate_host_diff
+           << " base_host_diff=" << base_host_diff
+           << " pair_diff=" << pair_diff
+           << " host_bound=" << host_bound
+           << " pair_bound=" << pair_bound);
+      CHECK(candidate_host_diff <= host_bound);
+      CHECK(base_host_diff <= host_bound);
+      CHECK(pair_diff <= pair_bound);
+    }
+  }
+
+  const int k = 64;
+  const int n = 9;
+  std::vector<float> matrix(static_cast<size_t>(n) * k, 0.25f);
+  std::vector<float> x_values(k, -0.5f);
+  HostQuantizedWeights host = host_affine_quantize(matrix, n, k, 64, 8);
+  array x(x_values.begin(), Shape{1, k}, float32);
+  array w_words(host.words.begin(), Shape{n, k / 4}, uint32);
+  array scales(host.scales.begin(), Shape{n, 1}, float32);
+  array biases(host.biases.begin(), Shape{n, 1}, float32);
+  QmmVecQ4WordGate gate(false);
+  std::vector<float> base_v = readback_f32(stream, quantized_matmul(
+      x, w_words, scales, biases, true, 64, 8, "affine", stream));
+  gate.set(true);
+  std::vector<float> gated_v = readback_f32(stream, quantized_matmul(
+      x, w_words, scales, biases, true, 64, 8, "affine", stream));
+  CHECK_EQ(gated_v, base_v);
+}
 
 // PrefillQmmTile equivalence: the env-gated m-tiled kernel must match
 // the general qmm.comp kernel it stands in for at matrix_m > 1. Both
