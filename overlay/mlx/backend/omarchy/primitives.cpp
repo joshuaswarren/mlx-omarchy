@@ -9629,6 +9629,56 @@ void ScaledDotProductAttention::eval_gpu(
     }
   };
 
+  auto make_mask_view = [&](const array& base, Shape shape, Strides strides) {
+    array view(std::move(shape), base.dtype(), nullptr, {});
+    array::Flags flags;
+    flags.contiguous = base.flags().contiguous;
+    flags.row_contiguous = false;
+    flags.col_contiguous = false;
+    view.copy_shared_buffer(base, strides, flags, base.data_size());
+    encoder.add_temporary(view);
+    return view;
+  };
+  auto prepare_mask = [&](const array& input, const Shape& score_shape) {
+    array mask = input;
+    if (repeats > 1 && mask.ndim() >= 3) {
+      int head_axis = mask.ndim() - 3;
+      Shape shape = mask.shape();
+      Strides strides = mask.strides();
+      int64_t head_stride = strides[head_axis];
+      if (shape[head_axis] == 1) {
+        shape.insert(shape.begin() + head_axis + 1, 1);
+        strides.insert(strides.begin() + head_axis + 1, 0);
+      } else {
+        if (shape[head_axis] != heads) {
+          omarchy::unsupported("attention mask shape " + tag, out);
+        }
+        shape[head_axis] = kv_heads;
+        shape.insert(shape.begin() + head_axis + 1, repeats);
+        strides[head_axis] = head_stride * repeats;
+        strides.insert(strides.begin() + head_axis + 1, head_stride);
+      }
+      mask = make_mask_view(mask, std::move(shape), std::move(strides));
+    }
+    if (mask.ndim() > score_shape.size()) {
+      omarchy::unsupported("attention mask shape " + tag, out);
+    }
+    Strides strides(score_shape.size(), 0);
+    int offset = static_cast<int>(score_shape.size()) - mask.ndim();
+    for (int axis = 0; axis < mask.ndim(); ++axis) {
+      int target_axis = offset + axis;
+      if (mask.shape(axis) == score_shape[target_axis]) {
+        strides[target_axis] = mask.strides()[axis];
+      } else if (mask.shape(axis) != 1) {
+        omarchy::unsupported("attention mask shape " + tag, out);
+      }
+    }
+    if (mask.shape() != score_shape || mask.strides() != strides) {
+      mask = make_mask_view(mask, score_shape, std::move(strides));
+    }
+    return mask;
+  };
+
   // f16 runs at f16 storage end to end: the scores and probs matmuls
   // keep f16 operands and accumulate in float inside the shader
   // (matmul.comp), the scale rides the scores matmul's alpha, and the
@@ -9740,23 +9790,11 @@ void ScaledDotProductAttention::eval_gpu(
       masked = array(scores.shape(), storage_dtype, nullptr, {});
       dispatch_elementwise(tag, AddOperation, {scores, mask}, *masked, s);
     } else if (has_arr_mask) {
-      // Upstream delivers the additive mask pre-broadcast in the
-      // output dtype, so the f16 and bf16 fast paths consume it
-      // without a cast.
       const array& mask = inputs.at(3);
       if (mask.dtype() != storage_dtype) {
         omarchy::unsupported("attention mask dtype " + tag, out);
       }
-      if (repeats > 1) {
-        masked = reshape_in_eval(
-            mask, Shape{batch, kv_heads, repeats, q_len, k_len}, s);
-        encoder.add_temporary(*masked);
-      } else {
-        masked = mask;
-      }
-      if ((*masked).shape() != scores.shape()) {
-        omarchy::unsupported("attention mask shape " + tag, out);
-      }
+      masked = prepare_mask(mask, scores.shape());
       array added(scores.shape(), storage_dtype, nullptr, {});
       dispatch_elementwise(tag, AddOperation, {scores, *masked}, added, s);
       masked = added;
@@ -9867,18 +9905,10 @@ void ScaledDotProductAttention::eval_gpu(
     masked = array(scores.shape(), float32, nullptr, {});
     dispatch_elementwise(tag, AddOperation, {scores, mask}, *masked, s);
   } else if (has_arr_mask) {
-    // Upstream pre-broadcasts an array mask to
-    // [B, heads, q_len, k_len] in the output dtype and converts bool
-    // masks to additive values before the primitive runs.
-    array mask = to_f32(inputs.at(3));
-    if (repeats > 1) {
-      mask = reshape_in_eval(
-          mask, Shape{batch, kv_heads, repeats, q_len, k_len}, s);
-      encoder.add_temporary(mask);
-    }
-    if (mask.shape() != scores.shape()) {
-      omarchy::unsupported("attention mask shape " + tag, out);
-    }
+    array mask = inputs.at(3).dtype() == float32
+        ? inputs.at(3)
+        : to_f32(inputs.at(3));
+    mask = prepare_mask(mask, scores.shape());
     masked = array(scores.shape(), float32, nullptr, {});
     dispatch_elementwise(tag, AddOperation, {scores, mask}, *masked, s);
   }
