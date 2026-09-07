@@ -3877,33 +3877,57 @@ void Convolution::eval_gpu(const std::vector<array>& inputs, array& out) {
   uint32_t output_tile = std::min(
       total, std::max(1u, kConvScratchElements / chunks));
   uint32_t scratch_elements = output_tile * chunks;
+  uint32_t second_level_chunks =
+      1u + (chunks - 1u) / kConvChunkProducts;
+  uint32_t secondary_elements = chunks > kConvChunkProducts
+      ? output_tile * second_level_chunks
+      : 0u;
   array partials(
-      Shape{static_cast<int>(scratch_elements)}, float32, nullptr, {});
+      Shape{static_cast<int>(scratch_elements + secondary_elements)},
+      float32,
+      nullptr,
+      {});
   partials.set_data(allocate_omarchy(partials.nbytes()));
   encoder.add_temporary(partials);
   std::array<omarchy::ComputeBinding, 4> bindings{
       binding(x), binding(w), binding(partials), binding(out)};
-  params.lhs_size = chunks;
-  params.rhs_size = total;
-  params.beta = static_cast<float>(kConvChunkProducts);
-  for (uint32_t output_base = 0; output_base < total;
-       output_base += output_tile) {
+  const auto base_params = params;
+  for (uint32_t output_base = 0; output_base < total;) {
     uint32_t tile_count = std::min(output_tile, total - output_base);
+    params = base_params;
     params.flags = (flip_ ? 1u : 0u) | 2u;
     params.in_strides[3] = output_base;
+    params.lhs_size = chunks;
+    params.rhs_size = total;
+    params.beta = static_cast<float>(kConvChunkProducts);
     params.count = tile_count * chunks;
     encoder.dispatch_compute(
         kernel,
         bindings,
         params,
         omarchy::compute_dispatch_group_count(params.count));
-    params.flags = 4u;
-    params.count = tile_count;
-    encoder.dispatch_compute(
-        kernel,
-        bindings,
-        params,
-        omarchy::compute_dispatch_group_count(params.count));
+
+    uint32_t source_chunks = chunks;
+    uint32_t source_offset = 0;
+    uint32_t destination_offset = scratch_elements;
+    while (source_chunks > 1u) {
+      uint32_t next_chunks =
+          1u + (source_chunks - 1u) / kConvChunkProducts;
+      params.flags = 4u | (next_chunks == 1u ? 8u : 0u);
+      params.lhs_size = source_chunks;
+      params.rhs_size = source_offset;
+      params.output_size = destination_offset;
+      params.matrix_m = tile_count;
+      params.count = tile_count * next_chunks;
+      encoder.dispatch_compute(
+          kernel,
+          bindings,
+          params,
+          omarchy::compute_dispatch_group_count(params.count));
+      source_chunks = next_chunks;
+      std::swap(source_offset, destination_offset);
+    }
+    output_base += tile_count;
   }
 }
 // The GLSL built-in sin/cos keep upstream-grade accuracy only for
