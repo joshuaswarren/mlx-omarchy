@@ -566,6 +566,59 @@ TEST_CASE("block masked mm zeroes and scales blocks") {
     expect_close(readback_f32(stream, out), expected, 1e-5);
   }
 
+  // Bool masks with transposed block axes and a broadcast batch must be
+  // normalized in logical order before their flat bool-to-float cast.
+  {
+    int batch = 4, m = 64, k = 96, n = 64;
+    int tm = 2, tk = 3, tn = 2;
+    std::vector<float> a_values(static_cast<size_t>(batch) * m * k);
+    std::vector<float> b_values(static_cast<size_t>(batch) * k * n);
+    for (auto& value : a_values) {
+      value = dist(gen);
+    }
+    for (auto& value : b_values) {
+      value = dist(gen);
+    }
+
+    std::vector<uint8_t> lhs_base{1, 0, 0, 1, 1, 0};
+    std::vector<uint8_t> rhs_base{1, 0, 1, 0, 1, 1};
+    std::vector<uint8_t> out_base{1, 0, 1, 1};
+    std::vector<uint8_t> lhs_one{1, 0, 1, 0, 1, 0};
+    std::vector<uint8_t> rhs_one{1, 0, 0, 1, 1, 1};
+    std::vector<uint8_t> out_one{1, 1, 0, 1};
+    std::vector<uint8_t> lhs_v;
+    std::vector<uint8_t> rhs_v;
+    std::vector<float> out_v;
+    for (int i = 0; i < batch; ++i) {
+      lhs_v.insert(lhs_v.end(), lhs_one.begin(), lhs_one.end());
+      rhs_v.insert(rhs_v.end(), rhs_one.begin(), rhs_one.end());
+      out_v.insert(out_v.end(), out_one.begin(), out_one.end());
+    }
+
+    array a(a_values.begin(), Shape{batch, m, k}, float32);
+    array b(b_values.begin(), Shape{batch, k, n}, float32);
+    array lhs = broadcast_to(
+        swapaxes(
+            array(lhs_base.begin(), Shape{1, tk, tm}, bool_), -1, -2, stream),
+        Shape{batch, tm, tk},
+        stream);
+    array rhs = broadcast_to(
+        swapaxes(
+            array(rhs_base.begin(), Shape{1, tn, tk}, bool_), -1, -2, stream),
+        Shape{batch, tk, tn},
+        stream);
+    array out_mask = broadcast_to(
+        swapaxes(
+            array(out_base.begin(), Shape{1, tn, tm}, bool_), -1, -2, stream),
+        Shape{batch, tm, tn},
+        stream);
+    array out = block_masked_mm(a, b, bs, out_mask, lhs, rhs, stream);
+    REQUIRE(evaluation_error(out).empty());
+    std::vector<float> expected = block_masked_reference(
+        a_values, b_values, lhs_v, rhs_v, &out_v, batch, m, k, n, bs);
+    expect_close(readback_f32(stream, out), expected, 1e-5);
+  }
+
   // Float32 out mask only, unbatched: block factors 0.0, 0.5, 1.0, and
   // 2.0 exercise zeroing, attenuation, identity, and gain.
   {

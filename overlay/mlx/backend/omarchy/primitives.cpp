@@ -3330,24 +3330,39 @@ void BlockMaskedMM::eval_gpu(const std::vector<array>& inputs, array& out) {
   const array& lhs_mask = inputs[count - 2];
   const array& rhs_mask = inputs[count - 1];
 
-  // Resolve every present mask to float32 values. Bool casts through the
-  // flat word kernel; float32 masks bind through their logical strides.
+  // Bool casts read packed words in physical order. Preserve the zero-copy
+  // path for dense and broadcast masks; materialize transposed layouts first
+  // so the cast values and the strides used by the block-mask kernel describe
+  // the same logical order.
+  std::optional<array> lhs_dense;
+  std::optional<array> rhs_dense;
+  std::optional<array> out_dense;
   std::optional<array> lhs_values;
   std::optional<array> rhs_values;
   std::optional<array> out_values;
-  auto resolve_mask = [&](const array& mask, std::optional<array>& temp) {
+  const array* lhs_logical = &lhs_mask;
+  const array* rhs_logical = &rhs_mask;
+  const array* out_logical = &out_mask;
+  auto resolve_mask = [&](
+                          const array& mask,
+                          std::optional<array>& dense,
+                          std::optional<array>& values,
+                          const array*& logical) {
     if (mask.dtype() == bool_) {
-      if (!is_flat_readable(mask)) {
-        omarchy::unsupported(tag + " bool mask layout", out);
-      }
-      temp = cast_bool_mask(mask, tag, out, encoder);
+      logical = &ensure_dense(
+          mask, is_flat_readable(mask), dense, encoder, s);
+      values = cast_bool_mask(*logical, tag, out, encoder);
     } else if (mask.dtype() != float32) {
       omarchy::unsupported(tag + " mask dtype", out);
     }
   };
-  resolve_mask(lhs_mask, lhs_values);
-  resolve_mask(rhs_mask, rhs_values);
-  resolve_mask(out_mask, out_values);
+  if (has_op_mask) {
+    resolve_mask(lhs_mask, lhs_dense, lhs_values, lhs_logical);
+    resolve_mask(rhs_mask, rhs_dense, rhs_values, rhs_logical);
+  }
+  if (has_out_mask) {
+    resolve_mask(out_mask, out_dense, out_values, out_logical);
+  }
   const array& lhs_values_ref = lhs_values ? *lhs_values : lhs_mask;
   const array& rhs_values_ref = rhs_values ? *rhs_values : rhs_mask;
   const array& out_values_ref = out_values ? *out_values : out_mask;
@@ -3369,7 +3384,7 @@ void BlockMaskedMM::eval_gpu(const std::vector<array>& inputs, array& out) {
     dispatch_block_mask(
         a_in,
         lhs_values_ref,
-        lhs_mask,
+        *lhs_logical,
         a_masked,
         m,
         k,
@@ -3380,7 +3395,7 @@ void BlockMaskedMM::eval_gpu(const std::vector<array>& inputs, array& out) {
     dispatch_block_mask(
         b_in,
         rhs_values_ref,
-        rhs_mask,
+        *rhs_logical,
         b_masked,
         k,
         n,
@@ -3391,7 +3406,7 @@ void BlockMaskedMM::eval_gpu(const std::vector<array>& inputs, array& out) {
   dispatch_matmul(tag, {a_masked, b_masked}, out, 1.0f, 0.0f, false, s);
   if (has_out_mask) {
     dispatch_block_mask(
-        out, out_values_ref, out_mask, out, m, n, block_size_, tag, out);
+        out, out_values_ref, *out_logical, out, m, n, block_size_, tag, out);
   }
 }
 
