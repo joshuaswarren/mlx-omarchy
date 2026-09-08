@@ -29,20 +29,22 @@ historical long-prompt digest divergence.
   model-serving processes; contended runs are labeled, and this
   baseline's runner asserts clean. Power state is recorded from
   pmset/`/sys/class/power_supply`, never inferred. Host facts include
-  vulkaninfo `driverName`/`deviceName` on Linux and
-  `system_profiler` chipset/GPU-core facts on macOS. Paths are
-  sanitized ($HOME → `~`) before they reach reports.
+  vulkaninfo `driverName`/`deviceName` on Linux and `system_profiler`
+  chipset/GPU-core facts on macOS. Paths are sanitized ($HOME → `~`)
+  before they reach reports.
 
 `scripts/bench_matrix.json` (schema bench-matrix/1):
 
 - Generation: temp 0.0, seed 0, warmup 4 tokens, engine bench_decode,
   env `MLX_DISABLE_COMPILE=1` (eager policy on BOTH platforms).
-- Models: `qwen25-0.5b-4bit` pinned `a5339a4131f135d0fdc6a5c8b5bbed2753bbe0f3`;
-  `qwen25-0.5b-bf16` pinned `56d07e766edd7159fbe12ed12d9cf114bf38bf1e`;
-  7B/14B optional resolve-or-skip (absent on this M1 → skipped).
+- Models: `qwen25-0.5b-4bit` pinned
+  `a5339a4131f135d0fdc6a5c8b5bbed2753bbe0f3`; `qwen25-0.5b-bf16` pinned
+  `56d07e766edd7159fbe12ed12d9cf114bf38bf1e`; 7B/14B optional
+  resolve-or-skip (absent on this M1 → skipped).
 - Prompts: short = `Hi` (30 chat-template tokens); long = embedded
-  deterministic text (262 tokens); ctx1024 = numbered template, 20
-  entries (1053 tokens); ctx4096 = explicit-selection only.
+  deterministic text, 1208 chars (262 tokens); ctx1024 = numbered
+  template, 20 entries, 4759 chars (1053 tokens); ctx4096 =
+  explicit-selection only.
 - Workloads: `short-decode-32` (30/32), `long-decode-128` (262/128),
   `longctx-1024-decode-32` (1053/32). Cross-platform identity key is
   the generated-IDs digest, never decoded text.
@@ -57,6 +59,8 @@ historical long-prompt digest divergence.
   compares the loaded `libmlx.so`/core extension hashes against the
   `--wheel` file; mismatch refuses to emit numbers (exit 3).
 - Exact IDs travel with every run (digest line + JSON line).
+- `ids_digest` = sha256 over the comma-joined ASCII token IDs, first
+  16 hex chars.
 
 `scripts/profile_generate.py` / `scripts/profile_analyze.py`:
 
@@ -76,6 +80,18 @@ historical long-prompt digest divergence.
   dependency proxy. Dispatch records are written delayed, so phase
   attribution follows the SUBMIT record's marker window; the two
   unknown categories are kept distinct rather than folded into phases.
+
+### Compile-policy matching (explicit)
+
+`bench_matrix.execute_leg` applies `env.update(manifest.generation.env)`
+to every leg on BOTH platforms, and `bench_matrix.json` sets
+`generation.env.MLX_DISABLE_COMPILE=1`. The native "default" bundle
+therefore already ran eager under the same manifest as the Linux runs —
+it is the matched-policy oracle. The "nocompile" bundle re-exported the
+same variable in the outer shell (belt and braces); identical digests
+across all 5+5 native reps confirm the policies coincide. The default
+bundle's medians are the authoritative target set; the nocompile bundle
+is the policy robustness confirmation, not a different policy.
 
 Audit verdict: the harness enforces pinned weights, fixed lengths,
 greedy policy, eager compile policy, clean contention, AC power, binary
@@ -98,7 +114,7 @@ actual target machine, booted macOS:
 - 5 isolated reps each; every leg digest stable across reps AND
   across both compile policies; medians agree within ~0.3%.
 
-Native oracle (target M1, medians of 5):
+Native oracle (target M1, medians of 5, DEFAULT bundle = authoritative):
 
 | leg | decode tok/s | prefill tok/s | ids digest |
 |---|---:|---:|---|
@@ -109,8 +125,9 @@ Native oracle (target M1, medians of 5):
 | bf16 long 262/128 | 55.62 | 1007.7 | `407b7624ed1b3b29` |
 | bf16 ctx1024 1053/32 | 54.25 | 1653.1 | `ff502900d2a179a5` |
 
-(bf16 row from the nocompile summary; the default-policy bf16 medians
-differ by ≤0.4% with identical digests.)
+(bf16 row quoted from the nocompile summary per the coordinator's
+request; the default-policy bf16 medians differ by ≤0.4% with identical
+digests. Q4 rows are from the default summary.)
 
 Explicit provenance gap: the native receipts record
 `binary_provenance.omarchy.verified = no-metadata` and
@@ -135,12 +152,13 @@ stand, but its native side is superseded by the on-target receipts.
 No M1 Pro/Max receipt is used as a baseline number anywhere in this
 assignment.
 
-## Long-prompt digest divergence (facts)
+## Long-prompt digest divergence (facts and status)
 
 - Linux `4cc08910089477fd` is deterministic across wheels
-  (4f27136, a34cdc5, 348919c, 417c06e), across days (09-03 → 09-07),
-  and across every 5-rep batch; native `254d73fd93164b98` is
-  deterministic across 5 reps, both compile policies, and the M1 Max.
+  (4f27136, a34cdc5, 348919c, 417c06e, c2548675), across days
+  (09-03 → 09-08), and across every 5-rep batch (this window: 5/5);
+  native `254d73fd93164b98` is deterministic across 5 reps, both
+  compile policies, and the M1 Max.
 - 4bit short and ctx1024 digests MATCH cross-OS exactly; only long128
   differs. First difference at zero-based index 20 (20-token identical
   prefix); streams re-align for indices 24-44 and diverge again from
@@ -150,35 +168,45 @@ assignment.
   made Linux bf16 diverge from the first token; after the fix the
   eager stream matches native through EOS+4 tokens and diverges in the
   EOS-suppressed continuation (first difference index 14, EOS at 9).
+  bf16 ctx1024 matches native exactly; bf16 short/long128 carry their
+  own known stream differences.
+- bf16 decode 8.6/8.4/7.7 tok/s at c2548675 is the known eager
+  dispatch explosion, not a new regression:
+  `receipts/2026-09-04-bf16-decode-census.md` pins ~774 dispatches per
+  token with the direct-RoPE/SDPA-fast gates default OFF; at
+  Honeykrisp per-dispatch floors that composition is
+  dispatch-overhead-bound. Baseline records it; waves must not regress
+  it further.
+- CPU-oracle attempt: the fork's CPU backend cannot run the pinned
+  4-bit model through mlx-lm's cached decode — `RuntimeError: NYI`
+  while evaluating the prompt-cache state
+  (`oracle-cpu-long.out`/`window2-cpu-nyi.log`). Recorded as evidence
+  of a CPU-path gap; the Vulkan-vs-reference question is carried by
+  the margin probe instead.
 
-Working explanation (to be closed by in-window evidence, no tolerance
-relaxation): identical digests on two of three workloads plus a
-deterministic low-index fork on the third is the signature of
-backend-level floating-point reduction-order differences that only
-become visible where an argmax sits on a near tie. The in-window
-experiments quantify this: (1) `cpu-oracle.py` runs the same engine on
-the stock CPU backend of the SAME Linux wheel — if CPU yields the
-Linux digest, the fork's tokenizer/template/sampling path is
-consistent and the divergence lives in GPU kernel numerics; (2)
-`margin-probe.py` measures the per-step top-2 logit margin on the GPU
-stream — a near-zero margin at the fork index proves a tie-break
-sensitive to ULP-level differences, which cross-backend comparisons
-routinely produce and which token-identity checks cannot "pass"
-without making the kernels bit-identical (out of scope for a
-performance-parity effort and not required by any gate).
+Working explanation (no tolerance relaxation): identical digests on two
+of three workloads plus a deterministic low-index fork on the third is
+the signature of backend-level floating-point reduction-order
+differences that only become visible where an argmax sits on a near
+tie. The margin probe quantifies this directly; making the digests
+match would require bit-identical kernel numerics across Metal and
+Vulkan — out of scope for a performance-parity effort and not required
+by any gate. The full margin distribution accompanies this audit.
 
-## Window plan (single flock, /tmp/m1-gpu.lock)
+## Window record
 
-1. Claim lock; print hostname; verify load quiet.
-2. Metadata receipt (bench_matrix --mode metadata) + vulkaninfo
-   driverInfo snapshot (Honeykrisp Mesa 26.3.0-devel git-6f6afc8968,
-   Apple M1 (G13G B1)) — verified before the window.
-3. `run-baseline.py` — 5 reps × 6 legs (2 models × 3 workloads), full
-   IDs per rep via MLX_PAIR_IDS (unique file per rep), provenance
-   asserts per rep.
-4. `run-profile.py` on the -diag wheel — profile_generate + analyze
-   for short-32, long-128, ctx1024-32.
-5. `cpu-oracle.py` legs (long128 + short control + ctx1024 control).
-6. `margin-probe.py` long128.
-7. Release lock; notify DecodeParity / PrefillParity / ANEParity /
-   Main with paths.
+- window.log (attempt 4): metadata + vulkaninfo receipt, baseline
+  5x3x2 complete, profiling legs complete. Attempts 1-3 retained as
+  `window-attempt{1,2,3}-*.log` with their failure causes (venv
+  interpreter symlink resolution, engine hook path, manifest path) —
+  process evidence, not measurement evidence; no numbers were emitted
+  by any failed attempt (bench_matrix refuses to emit without legs).
+- window2: CPU oracle legs → long leg NYI (above); log retained.
+- window3: margin probe on GPU (margins-long128.json).
+- Profile artifacts: `profile/{short-32,long-128,ctx1024-32}.{
+  analysis.txt,profile.jsonl,markers.jsonl}` + `profile-summary.json`
+  on the -diag wheel (`5e201380…`, `MLX_OMARCHY_GPU_PROFILING=ON`,
+  verified: 3 harness symbols present in wheel `libmlx.so`).
+- Release wheel: `255c2f93…7e02`
+  (`mlx_omarchy-0.32.2.dev202609081618+c254867`), provenance
+  verified=match on every measured leg.

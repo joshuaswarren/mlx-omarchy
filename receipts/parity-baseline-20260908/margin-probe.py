@@ -65,8 +65,7 @@ def main():
             "top2_id": vals[1][1], "top2_logit": vals[1][0],
             "margin": vals[0][0] - vals[1][0],
         })
-        tid_arr = mx.array([tid]) if not hasattr(token, "item") else token
-        logits = model(tid_arr[None], cache=cache)
+        logits = model(mx.array([[tid]]), cache=cache)
 
     tokenizer.eos_token_ids = saved_eos
     digest_ids = [s["token_id"] for s in steps]
