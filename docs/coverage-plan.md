@@ -94,6 +94,3 @@ the interpreted subset beyond elementwise.
   connected full-graph parity receipt, not on hardware access.
 - Driver, `libane`, and MLX changes land in the `joshuaswarren` forks;
   upstreaming is a separate later decision, not a gate.
-- `docs/upstream-report-mx-save-npy-suffix.md` is a draft for ml-explore/mlx;
-  whether it is a real, unreported bug is being checked before anyone files
-  it. It gates nothing.
