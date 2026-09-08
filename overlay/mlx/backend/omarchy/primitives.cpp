@@ -546,33 +546,28 @@ void dispatch_matmul(
             omarchy::ComputeKernel::MatmulF32,
             omarchy::ComputeKernel::MatmulF16,
             omarchy::ComputeKernel::MatmulBF16);
-  // Honeykrisp's 8x8x8 fp32 subgroup cooperative matrix (behind
-  // AGX_SIMDMAT on the honeykrisp-coopmat branch; stock Mesa and llvmpipe
-  // report the capability false and keep the 16x16 tile). The coopmat
-  // kernel has no edge masking, alpha scaling, or bias path, so it only
-  // takes exact tile multiples with alpha 1 and no C. coopMatLoad/Store
-  // pointers and strides must be 16-byte aligned (VUID-RuntimeSpirv-
-  // OpCooperativeMatrixLoadKHR-08986), so every element offset, row gap,
-  // and batch stride must be a multiple of four floats; an odd slice
-  // offset takes the tiled kernel.
   static const bool coopmat_disabled =
       omarchy::env_flag("MLX_OMARCHY_NO_COOPMAT");
   const auto& caps = encoder.device().capabilities();
-  bool coopmat = kernel == omarchy::ComputeKernel::MatmulF32 &&
-      caps.cooperative_matrix_f32_8 && caps.subgroup_size == 32 &&
-      !coopmat_disabled && (params.matrix_m % 8u) == 0u &&
-      (params.matrix_n % 8u) == 0u && (params.matrix_k % 8u) == 0u &&
-      alpha == 1.0f && !use_c && (params.lhs_offset % 4u) == 0u &&
-      (params.rhs_offset % 4u) == 0u && (params.output_offset % 4u) == 0u &&
-      (a_gap % 4u) == 0u && (b_gap % 4u) == 0u;
-  for (uint32_t axis = 0; coopmat && axis < params.dims; ++axis) {
-    coopmat = (params.in_strides[axis] % 4u) == 0u &&
-        (params.out_strides[axis] % 4u) == 0u;
+  const bool coopmat_base = caps.cooperative_matrix_f32_8 &&
+      caps.subgroup_size == 32 && !coopmat_disabled &&
+      params.matrix_m > 1u && (params.matrix_k % 8u) == 0u &&
+      alpha == 1.0f && !use_c;
+  bool bf16_aligned = ((params.lhs_offset | params.rhs_offset |
+      params.output_offset | a_gap | b_gap | params.matrix_n) & 1u) == 0u;
+  for (uint32_t axis = 0; bf16_aligned && axis < params.dims; ++axis) {
+    bf16_aligned = ((params.in_strides[axis] |
+        params.out_strides[axis]) & 1u) == 0u;
   }
+  const bool coopmat = coopmat_base &&
+      (kernel == omarchy::ComputeKernel::MatmulF32 ||
+       (kernel == omarchy::ComputeKernel::MatmulBF16 && bf16_aligned));
   if (coopmat) {
-    kernel = omarchy::ComputeKernel::MatmulF32Coopmat;
+    kernel = kernel == omarchy::ComputeKernel::MatmulF32
+        ? omarchy::ComputeKernel::MatmulF32Coopmat
+        : omarchy::ComputeKernel::MatmulBF16Coopmat;
   }
-  const uint32_t tile = coopmat ? 8u : 16u;
+  const uint32_t tile = coopmat ? 32u : 16u;
   uint64_t a_inner = params.matrix_m == 0u || params.matrix_k == 0u
       ? 0u
       : (a_transposed

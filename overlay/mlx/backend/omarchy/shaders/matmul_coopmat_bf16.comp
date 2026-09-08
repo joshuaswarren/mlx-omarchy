@@ -197,7 +197,7 @@ void main() {
         barrier();
         uint pair = lane % 16u;
         uint r0 = lane / 16u;
-        for (uint rr = 0u; rr < 2u; ++rr) {
+        for (uint rr = 0u; rr < MAT / 2u; ++rr) {
           uint r = r0 + 2u * rr;
           uint c0 = pair * 2u;
           uint cb = c0 / MAT;
@@ -212,6 +212,7 @@ void main() {
                 bf16_store(v0) | (bf16_store(v1) << 16u);
           }
         }
+        barrier();
       }
     }
   }

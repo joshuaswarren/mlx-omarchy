@@ -554,6 +554,7 @@ enum class ComputeKernel : uint16_t {
   // Prefill on the 8x8x8 fp32 cooperative matrix, same layout as
   // QmmTileRbF16 (shaders/qmm_coopmat.comp).
   QmmPrefillCoopmatF16,
+  MatmulBF16Coopmat,
   Count,
 };
 
