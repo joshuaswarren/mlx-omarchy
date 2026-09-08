@@ -1,0 +1,94 @@
+{
+  "task": "hk/byte-extract: Honeykrisp dynamic shift-then-mask byte extraction miscompile",
+  "date": "2026-09-08",
+  "machine": "jwm1-linux, Apple M1 (G13G B1), Honeykrisp; stock driver Mesa 26.1.7, fixed driver Mesa 26.3.0-devel built from this branch",
+  "fork": "https://github.com/joshuaswarren/mesa.git",
+  "branch": "hk/byte-extract",
+  "base_commit": "5bb2b28c",
+  "fix_commit": "149c44d",
+  "files": [
+    "src/asahi/compiler/agx_nir_algebraic.py"
+  ],
+  "pass": "agx_nir_fuse_algebraic_late (fuse_ubfe rules in agx_nir_algebraic.py), run before agx_nir_lower_algebraic_late/lower_sm5_shift",
+  "root_cause": "iand(ushr(a, b), (1<<bits)-1) was fused into ubitfield_extract(a, b, bits) for any b. NIR ushr masks its count to 5 bits and the main nir_opt_algebraic has already stripped explicit masks on that basis (ushr(a, iand(b,31)) -> ushr(a,b); ushr(a, ishl(iand(b,3),3)) -> ushr(a, ishl(b,3))). ubitfield_extract/bfeil does not wrap: hardware returns 0 for offsets >= 32 (measured: any count with a bit above bit 4 set). lower_sm5_shift masks surviving shifts but runs after the fusion.",
+  "fix": "Fuse directly only for constant counts < 32 ('#b(is_ult_32)'); for non-constant counts fuse with an explicit iand(b, 31) on the offset.",
+  "ir_diff_excerpt": {
+    "variant": "byte_dyn_const: (0x00010001u >> ((g & 3u) * 8u)) & 0xFFu",
+    "before_nir": "%11 = imadshl_agx 0, 1, %3, 3   ; g << 3 (the & 3 already stripped by nir_opt_algebraic)\n%12 = ubitfield_extract 0x10001, %11, 8",
+    "before_asm": "iadd $r2, 0, r1.sx, lsl 3\nbfeil r2, 0, u8, r2, 8",
+    "after_nir": "%11 = imadshl_agx 0, 1, %3, 3\n%13 = iand %11, 0x1f\n%14 = ubitfield_extract 0x10001, %13, 8",
+    "after_asm": "iadd $r2, 0, r1.sx, lsl 3\nand $r2, r2, 31\nbfeil r2, 0, u8, r2, 8"
+  },
+  "reproducer": {
+    "location_m1": "~/bx (bx.cpp harness + <variant>.comp; glslangValidator -V --target-env vulkan1.3; g++ -O1 bx.cpp -lvulkan)",
+    "run": "flock /tmp/m1-gpu.lock ./bx <variant>.spv <variant> 1024 [VK_ICD_FILENAMES=/tmp/asahi_byte_extract_icd.json for the fixed driver]",
+    "stock_results": {
+      "FAIL": {
+        "byte_dyn": 765,
+        "byte_dyn_const": 384,
+        "byte_dyn_gid": 765,
+        "scan_dyn": 1008,
+        "scan_dyn_const": 1008,
+        "scan_dyn_rand": 1008,
+        "select_bcast": 768,
+        "select_dyn": 765,
+        "shift_dyn_mask": 744,
+        "bound32": 1016,
+        "bound63": 516,
+        "uniform40": 1020,
+        "divergent8_40": 509
+      },
+      "PASS": [
+        "loop_wordbase",
+        "scan_dyn_bit",
+        "shift_dyn",
+        "shl_dyn",
+        "ushr_raw",
+        "ishl_raw",
+        "ishr_raw"
+      ],
+      "note": "mismatch counts are out of 1024 lanes; loop_wordbase and the raw/unmasked shifts pass because lower_sm5_shift masks plain shifts and the word_base loop never forms the fused pattern"
+    },
+    "fixed_results": "20 of 20 variants PASS, 0 mismatches",
+    "logs_m1": [
+      "~/log/bx-all-stock.log",
+      "~/log/bx-all-fixed.log",
+      "~/log/bx-boundary.log",
+      "~/log/bx-byte_dyn_const-head.log",
+      "~/log/bx-byte_dyn_const-fixed.log",
+      "~/log/bx-shift_dyn_mask-head.log"
+    ]
+  },
+  "suites": {
+    "binaries": "~/src/mlx-coopmat-dense-20260908/.work/build/tests/omarchy/omarchy_<x>_tests (Release, AGX_SIMDMAT=1, flock /tmp/m1-gpu.lock)",
+    "stock": {
+      "primitive": "98/98 cases, 2699373/2699373",
+      "reduce_ops": "34/34, 7152/7152",
+      "runtime": "40/40, 6307/6307",
+      "indexing_ops": "53/53, 4093/4093",
+      "select_layout": "11/11, 1908/1908",
+      "scatter_determinism": "21/21, 127/127"
+    },
+    "fixed": {
+      "primitive": "98/98 cases, 2699373/2699373",
+      "reduce_ops": "34/34, 7152/7152",
+      "runtime": "40/40, 6307/6307",
+      "indexing_ops": "53/53, 4093/4093",
+      "select_layout": "11/11, 1908/1908",
+      "scatter_determinism": "21/21, 127/127"
+    },
+    "regressions": "none; the suites are green on both because mlx-omarchy still carries its shader workarounds (not removed here, per task)",
+    "logs_m1": "~/log/suite-<name>-{stock,fixed}.log"
+  },
+  "driver_identity": {
+    "stock": "driverInfo = Mesa 26.1.7",
+    "fixed": "driverInfo = Mesa 26.3.0-devel (git-5bb2b28c95), library ~/src/mesa-wt-byte-extract/build/src/asahi/vulkan/libvulkan_asahi.so via /tmp/asahi_byte_extract_icd.json"
+  },
+  "deviations": [
+    "Task listed candidates in agx_optimizer/8-bit lowering/subgroups/store coalescing; the defect is entirely in the NIR-level fuse rule, none of those were touched.",
+    "loop_wordbase (gather_qmm word_base induction) did not reproduce on stock: its comment attributes the original miscompile to Lavapipe 22.3, not Honeykrisp.",
+    "cast.comp bool-word-load-in-loop and elementwise Payne-Hanek were not separately reproduced; both are shift-then-mask consumers and are covered by the same fused pattern, but no dedicated variant was written.",
+    "Compiler unit test not added: src/asahi/compiler/test covers AGX IR passes only, not the generated NIR algebraic passes."
+  ],
+  "receipt_commit_note": "receipt commit is the branch tip after this file"
+}

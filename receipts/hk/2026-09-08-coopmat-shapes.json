@@ -1,0 +1,86 @@
+{
+  "date": "2026-09-08",
+  "title": "Honeykrisp VK_KHR_cooperative_matrix: 16x16x16 and fp16 shapes on the G13 simd_matrix unit",
+  "repo": "github.com:joshuaswarren/mesa.git",
+  "branch": "hk/coopmat-shapes",
+  "base": "5bb2b28c95c6650a2b62fa44b1257c6d138165a0",
+  "commits": {
+    "driver": "794aac3",
+    "receipt": "see git log hk/coopmat-shapes"
+  },
+  "machine": "jwm1-linux, Apple M1 (G13G B1)",
+  "driver": {
+    "worktree": "/home/joshuawarren/src/mesa-wt-coopmat-shapes",
+    "library": "/home/joshuawarren/src/mesa-wt-coopmat-shapes/build/src/asahi/vulkan/libvulkan_asahi.so",
+    "icd": "/home/joshuawarren/src/cmshape/icd-shapes.json",
+    "driverInfo": "Mesa 26.3.0-devel (git-5bb2b28c95)",
+    "gate": "AGX_SIMDMAT=1",
+    "build": "meson debugoptimized, vulkan-drivers=asahi, gallium-drivers=asahi, ninja -j2"
+  },
+  "files_changed": [
+    "src/asahi/vulkan/hk_physical_device.c (advertise 6 shapes)",
+    "src/asahi/compiler/agx_nir_lower_simdmat.c (pass A/B at own width, fmadd16/32 by accumulator type)",
+    "src/asahi/compiler/agx_compile.c (emit simd_matrix_fmadd16 for 16-bit dest)",
+    "src/compiler/nir/nir_intrinsics.py (simd_matrix_fmadd_agx bit_sizes=[16,32])",
+    "src/asahi/compiler/agx_register_allocate.c (no early-kill of A/B for simd_matrix: D must not overlap A/B)"
+  ],
+  "isa_evidence": {
+    "opcode": "0x6f, bit27=1, bit63=1; bit26=1 fmadd32 (fp32 accumulate) / 0 fmadd16 (fp16 accumulate)",
+    "operands": "dougallj/applegpu SimdMatrixFMadd{32,16}InstructionDesc: PairedFloatSrcDesc A/B/C accept 16- or 32-bit paired registers",
+    "apple_mixed_form": "asahi-agx-llm-perf/oracle/apple_mul_mm_f16.asm line 152: ef3da2cc099e0285 simd_matrix_fmadd32 r15_r16.cache, r49l_r49h.cache, r46l_r46h.cache, r15_r16.cache (fp16 A/B pairs, fp32 C/D pair); decoded: src0/src1 size flag 0 (16-bit), src2 size flag 2 (32-bit), dst size32=1; identical field layout to Mesa's generic ALU packer",
+    "prior_fork": "asahi-agx-llm-perf LAB_NOTEBOOK 2026-06-19: fmadd16 8x8 fp16 3/3 bit-exact, 16x16 tiling 948/948 MUL_MAT oracle (re-proven here, not relied on)",
+    "int8": "NEGATIVE, not implemented: no integer form of opcode 0x6f is described by applegpu, appears in any Apple oracle disassembly in the corpus, or was found by the earlier RE; no encodings were guessed or probed",
+    "fp32_ab_fp16_acc": "not advertised, not verified"
+  },
+  "advertised_shapes": [
+    {"M": 8, "N": 8, "K": 8, "A": "FLOAT32", "B": "FLOAT32", "C": "FLOAT32", "Result": "FLOAT32", "scope": "SUBGROUP", "hw": "1x simd_matrix_fmadd32 (32-bit pairs)"},
+    {"M": 8, "N": 8, "K": 8, "A": "FLOAT16", "B": "FLOAT16", "C": "FLOAT32", "Result": "FLOAT32", "scope": "SUBGROUP", "hw": "1x simd_matrix_fmadd32 (16-bit A/B pairs, 32-bit C/D)"},
+    {"M": 8, "N": 8, "K": 8, "A": "FLOAT16", "B": "FLOAT16", "C": "FLOAT16", "Result": "FLOAT16", "scope": "SUBGROUP", "hw": "1x simd_matrix_fmadd16"},
+    {"M": 16, "N": 16, "K": 16, "A": "FLOAT32", "B": "FLOAT32", "C": "FLOAT32", "Result": "FLOAT32", "scope": "SUBGROUP", "hw": "8x simd_matrix_fmadd32"},
+    {"M": 16, "N": 16, "K": 16, "A": "FLOAT16", "B": "FLOAT16", "C": "FLOAT32", "Result": "FLOAT32", "scope": "SUBGROUP", "hw": "8x simd_matrix_fmadd32 mixed"},
+    {"M": 16, "N": 16, "K": 16, "A": "FLOAT16", "B": "FLOAT16", "C": "FLOAT16", "Result": "FLOAT16", "scope": "SUBGROUP", "hw": "8x simd_matrix_fmadd16"}
+  ],
+  "enumeration_via_api": "vkGetPhysicalDeviceCooperativeMatrixPropertiesKHR (cmshape 'advertised' field): ['8x8x8 A1 B1 C1 R1 sc3', '8x8x8 A0 B0 C1 R1 sc3', '8x8x8 A0 B0 C0 R0 sc3', '16x16x16 A1 B1 C1 R1 sc3', '16x16x16 A0 B0 C1 R1 sc3', '16x16x16 A0 B0 C0 R0 sc3'] (0=FLOAT16, 1=FLOAT32, sc3=SUBGROUP)",
+  "vulkaninfo": {
+    "note": "vulkaninfo on the box prints the extension and feature but no per-shape list; the per-shape enumeration is the API call above",
+    "mine": "VK_KHR_cooperative_matrix : extension revision 2; cooperativeMatrix = true; cooperativeMatrixSupportedStages: count = 1 (~/log/vulkaninfo-shapes.txt)",
+    "stock_26_1_7": "cooperativeMatrix = false on the Apple M1 device (~/log/vulkaninfo-stock.txt)"
+  },
+  "reproducer": {
+    "source": "receipts/cmshape.c (this branch); one coopMatMulAdd per run, 32-lane workgroup, host reference in double, integer-valued inputs are bit-exact in every format, randf tolerance 1e-4 fp32 / 2e-2 fp16 accumulate",
+    "matrix": "receipts/run_matrix.sh: 2 sizes x 3 type sets x {row,col} x {identity,ones,randint,randf} = 48 runs; receipts/run_seeds.sh: randint seeds 1,7,12345,99991 = 48 runs",
+    "stock_mesa_26_1_7": "FAIL rc=2 'VK_KHR_cooperative_matrix not exposed' (with and without AGX_SIMDMAT=1)",
+    "unfixed_5bb2b28c": "8x8x8 fp32: 8/8 PASS (row/col x 4 modes); 16x16x16 fp32: FAIL rc=3 'shape not advertised'",
+    "fixed_without_ra_guard": "40/48 PASS; all 8 16x16x16 f16/f32 runs FAIL, every element of sub-block rows 8-15 x cols 8-15 = 0 (post-RA: r12...r13 = simd_matrix_fmadd32 ^r12l...r12h, ^r15l...r15h, ^r20...r21, D overlaps A)",
+    "fixed": "48/48 PASS (maxerr 0 for identity/ones/randint; randf maxerr 2.33e-07 8x8 f32, 1.28e-07 8x8 f16/f32, 1.34e-03 8x8 f16, 3.84e-07 16x16 f32, 1.24e-06 16x16 f16/f32, 4.05e-03 16x16 f16); seeds 48/48 PASS",
+    "post_fix_ra": "r20...r21 = simd_matrix_fmadd32 ^r12l...r12h, ^r15l...r15h, ^r20...r21 (D == C only)"
+  },
+  "mlx_omarchy_suites": {
+    "tree": "/home/joshuawarren/src/mlx-coopmat-dense-20260908/.work/build/tests/omarchy",
+    "stock_icd": {
+      "omarchy_primitive_tests": "98/98 cases, 2699373 assertions, 0 failed",
+      "omarchy_reduce_ops_tests": "34/34 cases, 7152 assertions, 0 failed",
+      "omarchy_runtime_tests": "40/40 cases, 6307 assertions, 0 failed",
+      "omarchy_matmul_family_tests": "14/14 cases, 46271 assertions, 0 failed"
+    },
+    "coopmat_shapes_icd_AGX_SIMDMAT_1": {
+      "omarchy_primitive_tests": "98/98 cases, 2699373 assertions, 0 failed",
+      "omarchy_reduce_ops_tests": "34/34 cases, 7152 assertions, 0 failed",
+      "omarchy_runtime_tests": "40/40 cases, 6307 assertions, 0 failed",
+      "omarchy_matmul_family_tests": "14/14 cases, 46271 assertions, 0 failed"
+    },
+    "mlx_coopmat_path_active": "/tmp/coopmat_bench 3 under this ICD reports coopmat_f32_8=1 (stock: 0); MLX consumes only the 8x8x8 fp32 shape today"
+  },
+  "logs": [
+    "~/log/coopmat-shapes-build-{base,v1,v2,v3}.log",
+    "~/log/mixed16.log (failing dump, before RA guard)",
+    "~/log/mixed16-fixed.log, ~/log/f16all16.log",
+    "~/log/suite-{stock,shapes}-omarchy_*_tests.log",
+    "~/log/vulkaninfo-{shapes,stock}.txt"
+  ],
+  "not_done": [
+    "mlx-omarchy shader workarounds untouched; MLX GEMM still consumes only 8x8x8 fp32 (later wave)",
+    "no int8 matrix op (no ISA evidence; nothing probed)",
+    "disassembler prints the fixed bits 26/27 of fmadd32 as src0 '.abs.neg' (cosmetic, ISA XML untouched)"
+  ]
+}
