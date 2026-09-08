@@ -201,15 +201,16 @@ float complex_argument(vec2 value) {
   return atan(value.y, value.x);
 }
 
-float complex_hypot(vec2 value) {
-  if (isinf(value.x) || isinf(value.y)) {
-    return uintBitsToFloat(0x7f800000u);
-  }
-  if (isnan(value.x) || isnan(value.y)) {
-    return uintBitsToFloat(0x7fc00000u);
-  }
-  float scale = max(abs(value.x), abs(value.y));
-  return scale == 0.0 ? 0.0 : scale * length(value / scale);
+// Scale by the largest component through its binary exponent instead
+// of dividing by it. value / scale is a * rcp(scale) on AGX, and Vulkan
+// only promises fdiv precision for divisors up to 2^126, so a scale
+// near FLT_MAX reads a flushed-denormal reciprocal and the quotient is
+// 0 (FLT_MAX / FLT_MAX = 0 on Honeykrisp). ldexp keeps the scaled
+// components exact, with the largest in [0.5, 1) after frexp.
+int scale_exponent(float scale) {
+  int exponent;
+  frexp(scale, exponent);
+  return exponent;
 }
 
 // Evaluate log(hypot(x, y)) from the C99 complex-log identity without
@@ -226,7 +227,9 @@ float complex_log_magnitude(vec2 value) {
   if (maximum == 0.0) {
     return log(maximum);
   }
-  float ratio = minimum / maximum;
+  int exponent;
+  float mantissa = frexp(maximum, exponent);
+  float ratio = ldexp(minimum, -exponent) / mantissa;
   return log(maximum) + 0.5 * log1p_f(ratio * ratio);
 }
 
@@ -253,10 +256,12 @@ vec2 complex_sqrt(vec2 value) {
   if (value.x == 0.0 && value.y == 0.0) {
     return vec2(0.0, value.y);
   }
-  float scale = max(abs(value.x), abs(value.y));
-  vec2 normalized = value / scale;
+  // An even exponent makes sqrt(2^e) = 2^(e/2) exact.
+  int exponent = scale_exponent(max(abs(value.x), abs(value.y)));
+  exponent += exponent & 1;
+  vec2 normalized = ldexp(value, ivec2(-exponent));
   float magnitude = length(normalized);
-  float root_scale = sqrt(scale);
+  float root_scale = ldexp(1.0, exponent / 2);
   if (value.x >= 0.0) {
     float real_part = sqrt(0.5 * (magnitude + normalized.x));
     return root_scale * vec2(real_part, normalized.y / (2.0 * real_part));
@@ -381,10 +386,11 @@ vec2 complex_atan(vec2 value) {
   if (abs(log_difference) > 0.25) {
     return vec2(real_part, 0.5 * log_difference);
   }
-  float imag_scale = max(abs(value.x), abs(value.y - 1.0));
-  vec2 denominator_value = vec2(value.x, value.y - 1.0) / imag_scale;
+  vec2 shifted = vec2(value.x, value.y - 1.0);
+  int exponent = scale_exponent(max(abs(shifted.x), abs(shifted.y)));
+  vec2 denominator_value = ldexp(shifted, ivec2(-exponent));
   float scaled_numerator =
-      (value.y / imag_scale) * (4.0 / imag_scale);
+      ldexp(value.y, -exponent) * ldexp(4.0, -exponent);
   float delta =
       scaled_numerator / dot(denominator_value, denominator_value);
   return vec2(real_part, 0.25 * log1p_f(delta));
@@ -556,13 +562,19 @@ void main() {
           value = params.operation == 12u
               ? vec2(sh * cx, ch * sx) : vec2(ch * cx, sh * sx);
         } else {
+          // The two half-exponent multiplies keep e^|x| out of the
+          // pipeline for |x| up to 2 ln(FLT_MAX). precise pins that
+          // order: NIR otherwise hoists the 0.5 in sh out past both h
+          // multiplies and (1 - inverse) * cx * h * h overflows first
+          // (sinh(89 + 0.25i) read inf on Honeykrisp).
           float h = exp(0.5 * abs(lhs.x));
           float inverse = exp(-2.0 * abs(lhs.x));
           float sh = 0.5 * (1.0 - inverse) * sign(lhs.x);
           float ch = 0.5 * (1.0 + inverse);
           vec2 factors = params.operation == 12u
               ? vec2(sh * cx, ch * sx) : vec2(ch * cx, sh * sx);
-          value = (factors * h) * h;
+          precise vec2 scaled = (factors * h) * h;
+          value = scaled;
           if (factors.x == 0.0) value.x = factors.x;
           if (factors.y == 0.0) value.y = factors.y;
         }
@@ -602,11 +614,7 @@ void main() {
           value = r == 0.0 ? vec2(0.0, theta)
                            : vec2(0.5 * log1p_f(r), theta);
         } else {
-          vec2 shifted = vec2(lhs.x + 1.0, lhs.y);
-          float scale = max(abs(shifted.x), abs(shifted.y));
-          float log_magnitude = scale == 0.0 || isinf(scale)
-              ? log(scale) : log(scale) + log(length(shifted / scale));
-          value = vec2(log_magnitude, theta);
+          value = vec2(complex_log_magnitude(vec2(lhs.x + 1.0, lhs.y)), theta);
         }
         break;
       }
@@ -614,9 +622,12 @@ void main() {
         // Upstream simd::Sign complex rule: sign(z) = z / |z| with
         // the zero element mapping to itself.
         float scale = max(abs(lhs.x), abs(lhs.y));
-        vec2 normalized = scale == 0.0 ? lhs : lhs / scale;
-        value = scale == 0.0 || isinf(scale)
-            ? normalized : normalized / length(normalized);
+        if (scale == 0.0 || isinf(scale)) {
+          value = scale == 0.0 ? lhs : lhs / scale;
+        } else {
+          vec2 normalized = ldexp(lhs, ivec2(-scale_exponent(scale)));
+          value = normalized / length(normalized);
+        }
         break;
       }
       case 18:
