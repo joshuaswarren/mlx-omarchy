@@ -265,6 +265,7 @@
 #include "qmm_tile_f16.h"
 #include "qmm_tile_rb_f16.h"
 #include "qmm_coopmat_f16.h"
+#include "qmm_inline_coopmat_f16.h"
 #include "qmm_tile_f32.h"
 #include "dequant_f32.h"
 #include "dequant_f16.h"
@@ -1168,6 +1169,8 @@ ShaderBytes shader_bytes(ComputeKernel kernel) {
       return {qmm_tile_rb_f16, qmm_tile_rb_f16_size};
     case ComputeKernel::QmmPrefillCoopmatF16:
       return {qmm_coopmat_f16, qmm_coopmat_f16_size};
+    case ComputeKernel::QmmInlineCoopmatF16:
+      return {qmm_inline_coopmat_f16, qmm_inline_coopmat_f16_size};
     case ComputeKernel::QmmTileBF16:
       return {qmm_tile_bf16, qmm_tile_bf16_size};
     case ComputeKernel::FusedChainF32:
