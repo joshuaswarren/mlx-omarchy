@@ -18,6 +18,7 @@
 #include <iostream>
 #include <limits>
 #include <random>
+#include <thread>
 #include <tuple>
 #include <vector>
 
@@ -596,6 +597,7 @@ TEST_CASE("dense f32 matmul matches host across coopmat-gated shapes") {
     REQUIRE_EQ(got.size(), expected.size());
     float max_abs_err = 0.0f;
     for (size_t i = 0; i < expected.size(); ++i) {
+      REQUIRE(std::isfinite(got[i]));
       max_abs_err = std::max(max_abs_err, std::fabs(got[i] - expected[i]));
     }
     std::cout << "[matmul-f32] " << label << " " << batch << "x" << m << "x"
@@ -661,6 +663,7 @@ TEST_CASE("dense f32 matmul matches host across coopmat-gated shapes") {
       REQUIRE_EQ(got.size(), expected.size());
       float max_abs_err = 0.0f;
       for (size_t i = 0; i < expected.size(); ++i) {
+        REQUIRE(std::isfinite(got[i]));
         max_abs_err = std::max(max_abs_err, std::fabs(got[i] - expected[i]));
       }
       std::cout << "[matmul-f32] slice col" << column0 << " " << m << "x" << k
@@ -669,6 +672,369 @@ TEST_CASE("dense f32 matmul matches host across coopmat-gated shapes") {
                 << " max_abs_err=" << max_abs_err << "\n";
       CHECK_EQ(max_abs_err, 0.0f);
     }
+  }
+}
+
+// Round-to-nearest-even bf16 quantization of an f32 value: the exact
+// arithmetic of the kernel drain's bf16_store (NaN quiet bit included),
+// so a host f32 sum can be folded onto the bf16 grid the way the shader
+// folds it.
+float host_bf16_round(float value) {
+  uint32_t bits;
+  std::memcpy(&bits, &value, sizeof(bits));
+  if (std::isnan(value)) {
+    bits = (bits >> 16) | 0x40u;
+  } else {
+    bits = (bits + 0x7fffu + ((bits >> 16) & 1u)) >> 16;
+  }
+  bits <<= 16;
+  std::memcpy(&value, &bits, sizeof(value));
+  return value;
+}
+
+// Double-precision host matmul over (batch, m, k) x (batch, k, n), k
+// innermost per row for cache locality, rows split across threads so the
+// 1053x4864x4864 model shapes stay inside a single GPU-lock window.
+std::vector<float> host_matmul_bf16_reference(
+    const std::vector<float>& a, // (batch, m, k)
+    const std::vector<float>& b, // (batch, k, n)
+    int batch,
+    int m,
+    int k,
+    int n) {
+  std::vector<float> out(static_cast<size_t>(batch) * m * n, 0.0f);
+  unsigned threads = std::thread::hardware_concurrency();
+  if (threads == 0u) {
+    threads = 4u;
+  }
+  threads = std::min(threads, static_cast<unsigned>(m));
+  auto worker = [&](unsigned t) {
+    size_t row_begin = static_cast<size_t>(m) * t / threads;
+    size_t row_end = static_cast<size_t>(m) * (t + 1u) / threads;
+    for (int bt = 0; bt < batch; ++bt) {
+      for (size_t r = row_begin; r < row_end; ++r) {
+        std::vector<double> acc(n, 0.0);
+        const float* a_row =
+            &a[(static_cast<size_t>(bt) * m + r) * k];
+        for (int inner = 0; inner < k; ++inner) {
+          double av = a_row[inner];
+          const float* b_row = &b[(static_cast<size_t>(bt) * k + inner) * n];
+          for (int c = 0; c < n; ++c) {
+            acc[c] += av * b_row[c];
+          }
+        }
+        for (int c = 0; c < n; ++c) {
+          out[(static_cast<size_t>(bt) * m + r) * n + c] =
+              static_cast<float>(acc[c]);
+        }
+      }
+    }
+  };
+  std::vector<std::thread> pool;
+  for (unsigned t = 1u; t < threads; ++t) {
+    pool.emplace_back(worker, t);
+  }
+  worker(0u);
+  for (auto& thread : pool) {
+    thread.join();
+  }
+  return out;
+}
+
+// Dense bf16 matmul against an independent host reference, proving EVERY
+// output row and column of the staged 32x32 cooperative-matrix kernel
+// (MatmulBF16Coopmat) across tile tails, the Qwen2.5-0.5B prefill shapes,
+// all four transpose orientations, and the even-element offset/batch
+// gates. Operands are small integers: exactly representable in bf16 with
+// f32-exact partial sums (|sum| < 2^24), so every accumulation order -
+// coopmat 8-wide blocks and the 16x16 tiled fallback alike - lands on
+// the same f32 value and the comparison is exact equality after one
+// round-to-nearest-even bf16 quantization. An earlier verification of
+// this kernel passed while checking row 0 only, but the drain then wrote
+// only 4 rows of each 8-row block and left the rest stale, so this case
+// pins the full matrix and asserts each expected row carries a nonzero
+// element: an unwritten or stale row cannot pass.
+TEST_CASE("dense bf16 matmul matches host on every row across coopmat shapes") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  const auto& caps = omarchy::device(0).capabilities();
+  const bool coopmat_device =
+      caps.cooperative_matrix_f32_8 && caps.subgroup_size == 32;
+  std::cout << "[provenance] cooperative_matrix_f32_8="
+            << (caps.cooperative_matrix_f32_8 ? 1 : 0)
+            << " subgroup_size=" << caps.subgroup_size << "\n";
+
+  std::mt19937 rng(20260908);
+  std::uniform_int_distribution<int> small(-4, 4);
+  auto integers = [&](size_t count) {
+    std::vector<float> values(count);
+    for (auto& v : values) {
+      v = static_cast<float>(small(rng));
+    }
+    return values;
+  };
+  // Operand a is (batch, m, k) row-major on the host; the transposed
+  // device view carries the column-major flag with the same values.
+  auto bf16_operand = [&](const std::vector<float>& values,
+                          int batch,
+                          int rows,
+                          int cols,
+                          bool transposed) {
+    if (!transposed) {
+      return astype(
+          array(values.begin(), Shape{batch, rows, cols}, float32),
+          bfloat16,
+          stream);
+    }
+    std::vector<float> swapped(values.size());
+    for (int bt = 0; bt < batch; ++bt) {
+      for (int r = 0; r < rows; ++r) {
+        for (int c = 0; c < cols; ++c) {
+          swapped[(static_cast<size_t>(bt) * cols + c) * rows + r] =
+              values[(static_cast<size_t>(bt) * rows + r) * cols + c];
+        }
+      }
+    }
+    return transpose(
+        astype(
+            array(swapped.begin(), Shape{batch, cols, rows}, float32),
+            bfloat16,
+            stream),
+        {0, 2, 1},
+        stream);
+  };
+  // One host reference per VALUE array pair; every orientation of the
+  // same shape reuses it, then each device result is compared over the
+  // full matrix with per-row diagnostics.
+  auto run = [&](const char* label,
+                 int batch,
+                 int m,
+                 int k,
+                 int n,
+                 const std::vector<float>& a_values,
+                 const std::vector<float>& b_values) {
+    std::vector<float> expected(
+        static_cast<size_t>(batch) * m * n);
+    {
+      auto sums =
+          host_matmul_bf16_reference(a_values, b_values, batch, m, k, n);
+      for (size_t i = 0; i < sums.size(); ++i) {
+        expected[i] = host_bf16_round(sums[i]);
+      }
+    }
+    size_t dead_rows = 0;
+    for (size_t i = 0; i < expected.size(); i += static_cast<size_t>(n)) {
+      float row_max = 0.0f;
+      for (int c = 0; c < n; ++c) {
+        row_max = std::max(row_max, std::fabs(expected[i + c]));
+      }
+      if (row_max == 0.0f) {
+        ++dead_rows;
+      }
+    }
+    CHECK_EQ(dead_rows, size_t{0});
+    for (bool a_t : {false, true}) {
+      for (bool b_t : {false, true}) {
+        std::vector<float> got = readback_f32(
+            stream,
+            matmul(
+                bf16_operand(a_values, batch, m, k, a_t),
+                bf16_operand(b_values, batch, k, n, b_t),
+                stream));
+        REQUIRE_EQ(got.size(), expected.size());
+        float max_abs_err = 0.0f;
+        size_t bad_rows = 0;
+        for (size_t base = 0, i = 0; base < expected.size();
+             base += static_cast<size_t>(n)) {
+          float row_err = 0.0f;
+          for (int c = 0; c < n; ++c, ++i) {
+            REQUIRE(std::isfinite(got[i]));
+            row_err = std::max(row_err, std::fabs(got[i] - expected[i]));
+          }
+          if (row_err > 0.0f) {
+            ++bad_rows;
+            if (bad_rows <= 4u) {
+              std::cout << "  [row-mismatch] " << label << " row="
+                        << (base / static_cast<size_t>(n))
+                        << " max_err=" << row_err << "\n";
+            }
+          }
+          max_abs_err = std::max(max_abs_err, row_err);
+        }
+        std::cout << "[matmul-bf16] " << label << " " << batch << "x" << m
+                  << "x" << k << "x" << n << (a_t ? " aT" : " a")
+                  << (b_t ? " bT" : " b")
+                  << " max_abs_err=" << max_abs_err << "\n";
+        CHECK_EQ(max_abs_err, 0.0f);
+      }
+    }
+  };
+
+  // Tile tails: m tails, n tails across two tile columns, single and
+  // multi k steps, and the batch unravel. m8 keeps every row of the one
+  // 8-row block honest - rows 4..7 were exactly the old drain's
+  // casualties. K is a multiple of 8 and n stays even (bf16 word
+  // packing), matching the gate.
+  struct TailCase {
+    const char* label;
+    int batch, m, k, n;
+  };
+  const TailCase tails[] = {
+      {"tail-m8", 1, 8, 8, 8},
+      {"tail-m9", 1, 9, 8, 8},
+      {"tail-m33-n40", 1, 33, 8, 40},
+      {"tile32", 1, 32, 32, 32},
+      {"tail-m17-k24-n34", 1, 17, 24, 34},
+      {"batch2", 2, 40, 8, 40},
+  };
+  for (const auto& t : tails) {
+    run(
+        t.label,
+        t.batch,
+        t.m,
+        t.k,
+        t.n,
+        integers(static_cast<size_t>(t.batch) * t.m * t.k),
+        integers(static_cast<size_t>(t.batch) * t.k * t.n));
+  }
+
+  // Gate refusals must take the 16x16 tiled kernel on every device.
+  run("single-row", 1, 1, 8, 8, integers(8), integers(64));
+  run("k12", 1, 17, 12, 34, integers(17 * 12), integers(12 * 34));
+  run("odd-n", 1, 17, 8, 17, integers(17 * 8), integers(8 * 17));
+
+  // Qwen2.5-0.5B prefill shapes: token counts M in {30, 262, 1053} against
+  // hidden/intermediate K and N in {896, 4864}, every combination, all
+  // four orientations. On the coopmat device these run MatmulBF16Coopmat;
+  // the tiled fallback needs minutes per jumbo run on llvmpipe, so
+  // software devices prove the shape plumbing on the smallest combination
+  // only and the full sweep is a hardware leg.
+  for (int m : {30, 262, 1053}) {
+    for (int k : {896, 4864}) {
+      for (int n : {896, 4864}) {
+        if (!coopmat_device && (m != 30 || k != 896 || n != 896)) {
+          continue;
+        }
+        run(
+            "model",
+            1,
+            m,
+            k,
+            n,
+            integers(static_cast<size_t>(m) * k),
+            integers(static_cast<size_t>(k) * n));
+      }
+    }
+  }
+
+  // Nonzero element offsets through slices of a larger bf16 parent. An
+  // even slice offset with even row gaps keeps the coopmat gate; one
+  // column over makes the element offset odd and must take the tiled
+  // kernel on every device.
+  {
+    const int m = 32, k = 40, n = 24;
+    const int pad_rows = 8, pad_cols = 12;
+    auto parent_a_values = integers(static_cast<size_t>(m + pad_rows) * (k + pad_cols));
+    auto parent_b_values = integers(static_cast<size_t>(k + pad_rows) * (n + pad_cols));
+    for (int column0 : {4, 5}) {
+      std::vector<float> a_values(static_cast<size_t>(m) * k);
+      std::vector<float> b_values(static_cast<size_t>(k) * n);
+      for (int r = 0; r < m; ++r) {
+        for (int c = 0; c < k; ++c) {
+          a_values[static_cast<size_t>(r) * k + c] = parent_a_values
+              [static_cast<size_t>(r + pad_rows) * (k + pad_cols) + c + column0];
+        }
+      }
+      for (int r = 0; r < k; ++r) {
+        for (int c = 0; c < n; ++c) {
+          b_values[static_cast<size_t>(r) * n + c] = parent_b_values
+              [static_cast<size_t>(r + pad_rows) * (n + pad_cols) + c + column0];
+        }
+      }
+      std::vector<float> expected(static_cast<size_t>(m) * n);
+      {
+        auto sums = host_matmul_bf16_reference(a_values, b_values, 1, m, k, n);
+        for (size_t i = 0; i < sums.size(); ++i) {
+          expected[i] = host_bf16_round(sums[i]);
+        }
+      }
+      array parent_a = astype(
+          array(parent_a_values.begin(),
+                Shape{m + pad_rows, k + pad_cols},
+                float32),
+          bfloat16,
+          stream);
+      array parent_b = astype(
+          array(parent_b_values.begin(),
+                Shape{k + pad_rows, n + pad_cols},
+                float32),
+          bfloat16,
+          stream);
+      array a = slice(
+          parent_a, {pad_rows, column0}, {pad_rows + m, column0 + k}, stream);
+      array b = slice(
+          parent_b, {pad_rows, column0}, {pad_rows + k, column0 + n}, stream);
+      std::vector<float> got = readback_f32(stream, matmul(a, b, stream));
+      REQUIRE_EQ(got.size(), expected.size());
+      float max_abs_err = 0.0f;
+      for (size_t i = 0; i < expected.size(); ++i) {
+        REQUIRE(std::isfinite(got[i]));
+        max_abs_err = std::max(max_abs_err, std::fabs(got[i] - expected[i]));
+      }
+      std::cout << "[matmul-bf16] slice col" << column0 << " " << m << "x" << k
+                << "x" << n
+                << " max_abs_err=" << max_abs_err << "\n";
+      CHECK_EQ(max_abs_err, 0.0f);
+    }
+  }
+
+  // Fractional bf16 operands (pre-quantized to the bf16 grid so host and
+  // device widen identical values): accumulation order now rounds in f32,
+  // so the check moves from exact equality to the documented anchor bound
+  // |got - exact| <= P*(k_steps*4.5*2^-23) + ulp_bf16 amplification, with
+  // P the largest partial-sum magnitude. The recorded err against the
+  // exact double reference is the evidence; the bound is never tuned to
+  // pass.
+  {
+    const int m = 33, k = 24, n = 40;
+    std::uniform_real_distribution<float> frac(-2.0f, 2.0f);
+    auto grid = [&](size_t count) {
+      std::vector<float> values(count);
+      for (auto& v : values) {
+        v = host_bf16_round(frac(rng));
+      }
+      return values;
+    };
+    auto a_values = grid(static_cast<size_t>(m) * k);
+    auto b_values = grid(static_cast<size_t>(k) * n);
+    auto sums = host_matmul_bf16_reference(a_values, b_values, 1, m, k, n);
+    std::vector<float> expected(sums.size());
+    float partial_max = 0.0f;
+    for (size_t i = 0; i < sums.size(); ++i) {
+      partial_max = std::max(partial_max, std::fabs(sums[i]));
+      expected[i] = host_bf16_round(sums[i]);
+    }
+    const float bound = partial_max *
+            (static_cast<float>(k / 8) * 4.5f * 0x1p-23f + 2.0f / 256.0f) +
+        2.0f / 256.0f;
+    std::vector<float> got = readback_f32(
+        stream,
+        matmul(
+            bf16_operand(a_values, 1, m, k, false),
+            bf16_operand(b_values, 1, k, n, false),
+            stream));
+    REQUIRE_EQ(got.size(), expected.size());
+    float max_abs_err = 0.0f;
+    for (size_t i = 0; i < expected.size(); ++i) {
+      REQUIRE(std::isfinite(got[i]));
+      max_abs_err = std::max(max_abs_err, std::fabs(got[i] - expected[i]));
+    }
+    std::cout << "[matmul-bf16] fractional 33x24x40 bound=" << bound
+              << " max_abs_err=" << max_abs_err << " partial_max="
+              << partial_max << "\n";
+    CHECK(max_abs_err <= bound);
   }
 }
 
