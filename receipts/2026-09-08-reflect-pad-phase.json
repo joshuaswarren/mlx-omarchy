@@ -1,0 +1,57 @@
+{
+  "receipt": "reflect-pad-phase",
+  "date": "2026-09-08",
+  "source_commit": "4e116e54",
+  "worktree": "/home/joshuawarren/.config/superpowers/worktrees/mlx-omarchy/wave-reflect-pad-phase",
+  "branch": "wave/reflect-pad-phase",
+  "runtime": "x86_64 llvmpipe (software Vulkan) on AMD EPYC 7443P 24-Core, Linux 6.17.2-1-pve; test env MLX_OMARCHY_ALLOW_NON_APPLE=1 LP_NUM_THREADS=4",
+  "defect": "receipts/2026-09-07-q4-second-wave/core-python-qualification.json cluster reflect-pad-multireflect-phase: upstream mlx/ops.cpp reflect_pad reflected a fixed-size tile (n-1 for reflect, n for symmetric) from the moving filled boundary. NumPy's _set_reflect_both re-derives the reflectable chunk from the whole current filled region each iteration, so the chunk grows as the region fills. With a fixed tile the repeated reflection drifts out of phase once a pad outgrows one tile and duplicates the low edge where NumPy needs the high edge. Confirmed on device: [0,1,2] reflect (9,1) produced 0 at output index 1 where np.pad gives 2.",
+  "fix": "patches/mlx-reflect-pad-phase.patch rewrites reflect_pad in mlx/ops.cpp: per padded axis it builds a source index table on host (plain int32 positions, no tensor values) and gathers values with one take() per padded axis. The table replays NumPy's placement exactly: each iteration uses old_length = total - left_rem - right_rem - (reflect?1:0), mirrors chunk = min(old_length, remaining) elements from just inside the filled boundary (reflect skips the boundary element, symmetric includes it), interleaving left and right per iteration. The old slice/flip/slice_update chunk loop is gone; no CPU tensor evaluation exists in the path.",
+  "deviation_from_task": {
+    "task_prescription": "closed-form fold with reflect period 2(n-1) and symmetric period 2n",
+    "why_not": "The idealized period fold does not reproduce np.pad and would keep the cited case failing: for [0,1,2] reflect (9,1) the idealized fold maps output index 1 to element 0 (the exact wrong value the defect receipt cites) while np.pad gives element 2. The coupling is structural, not fixable per coordinate: NumPy's left extension depends on the right pad width (for n=3, L=8 the left index map for H=0 is [0,1,2,1,0,1,2,1] but for H=1 it is [2,1,2,1,0,1,2,1]), so no coordinate-only closed form exists.",
+    "what_shipped": "Host builds the index table by replaying NumPy's chunk placement on plain ints; values are gathered on device by one take() kernel per padded axis. This is the index-buffer option the task explicitly allows: host may build index tables but must not compute tensor values.",
+    "n_equals_1": "np.pad fills a singleton axis with the edge value in both modes (legacy singleton path); the removed upstream loop did the same. New code maps every position to index 0."
+  },
+  "reference_validation": "Before porting, the exact index algorithm was validated in Python against numpy 1.26.4 np.pad: 8026 comparisons (all 13 upstream test_pad_reflect_symmetric cases plus 4000 random configs, 1-D to 3-D, axis length 1-8, pads 0-24, both modes) all exactly equal via np.array_equal.",
+  "red_before": {
+    "suite": "omarchy_shape_ops_tests with the final test file, staged tree at pinned upstream reflect_pad (patch reversed)",
+    "build": "cmake --build .work/build --target omarchy_shape_ops_tests -j4",
+    "command": "MLX_OMARCHY_ALLOW_NON_APPLE=1 LP_NUM_THREADS=4 .work/build/tests/omarchy/omarchy_shape_ops_tests",
+    "result": "27 test cases: 25 passed, 2 failed; 3545 assertions: 3540 passed, 5 failed; Status FAILURE",
+    "failing_cases": [
+      "Pad reflect matches NumPy on multi-period widths: 2 value failures ((3,) pad (9,1) and (5,) pad (29,7))",
+      "Pad symmetric matches NumPy on multi-period widths: 3 value failures ((2,) pad (1,8) and (8,) pad (29,3))"
+    ],
+    "note": "The bounded/degenerate case passes under the old code: in-bounds pads were already correct, isolating the defect to multi-period widths."
+  },
+  "green_after": {
+    "suite": "omarchy_shape_ops_tests (patch applied via scripts/prepare-mlx.sh)",
+    "build": "cmake --build .work/build --target omarchy_shape_ops_tests omarchy_runtime_tests -j4",
+    "command": "MLX_OMARCHY_ALLOW_NON_APPLE=1 LP_NUM_THREADS=4 .work/build/tests/omarchy/omarchy_shape_ops_tests",
+    "result": "27 test cases: 27 passed, 0 failed; 3545 assertions: 3545 passed, 0 failed; Status SUCCESS"
+  },
+  "runtime_tests": {
+    "command": "MLX_OMARCHY_ALLOW_NON_APPLE=1 LP_NUM_THREADS=4 .work/build/tests/omarchy/omarchy_runtime_tests",
+    "result": "40 test cases: 40 passed, 0 failed; 6304 assertions: 6304 passed, 0 failed; Status SUCCESS",
+    "flake_note": "One earlier runtime invocation in this session reported 1 failed assertion while the shape suite was building on the same box; two consecutive clean reruns (40/40, 6304/6304, zero ERROR lines) followed. Not reproducible; not related to pad code paths."
+  },
+  "coverage": [
+    "1-D reflect: (3,(9,1)) the cited defect, (3,(29,7)) asymmetric multi-period, (4,(20,20)) several periods both sides, (8,(7,8)), (8,(2,3)), (5,(3,0)), (4,(0,4)), (2,(5,6)), (2,(0,5)), (3,(2,2)), (4,(10,7)) via upstream matrix",
+    "1-D symmetric: same width list plus (2,(1,8)) and (8,(29,3)) which are red under the old algorithm",
+    "n=2 and n=1 singleton behavior",
+    "2-D (5,6): pads ((2,3),(1,2)) and ((9,9),(11,0)) both modes; 3-D (3,4,5): pads ((1,1),(0,0),(2,2)) and ((4,4),(0,0),(7,3)) both modes",
+    "hardcoded anchor for the cited case: [0,1,2] reflect (9,1) must equal [1,2,1,2,1,0,1,2,1,0,1,2,1]"
+  ],
+  "prepare_reproducibility": "MLX_OMARCHY_WORK_DIR pointed at a fresh directory: scripts/prepare-mlx.sh output mlx/ops.cpp and tests/omarchy/test_shape_ops.cpp byte-identical to the staged .work/mlx tree used for the runs.",
+  "limitations": [
+    "Values verified on x86_64 llvmpipe (software Vulkan); M1 Honeykrisp not exercised by this wave.",
+    "Only float32 device results asserted bit-for-bit; other dtypes ride the same take() gather path but were not value-checked here.",
+    "NumPy-parity is by construction of the index table plus the 8026-case Python validation; the C++ test asserts device output against the same algorithm, not directly against NumPy."
+  ],
+  "files_changed": [
+    "patches/mlx-reflect-pad-phase.patch (new)",
+    "scripts/prepare-mlx.sh (append patch to chain)",
+    "overlay/tests/omarchy/test_shape_ops.cpp (3 new TEST_CASEs + NumPy placement reference)"
+  ]
+}
