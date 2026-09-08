@@ -3011,9 +3011,9 @@ void dispatch_complex_extract(
     const std::vector<array>& inputs,
     array& out,
     const Stream& s) {
-  const array& in = inputs.at(0);
+  const array& in_raw = inputs.at(0);
   auto& encoder = omarchy::get_command_encoder(s);
-  if (in.dtype() != complex64) {
+  if (in_raw.dtype() != complex64) {
     omarchy::unsupported(name + " dtype", out);
   }
   // Operations 0 and 1 (real/imag) target float32 out; operation 2
@@ -3027,6 +3027,20 @@ void dispatch_complex_extract(
       out.dtype() != complex64) {
     omarchy::unsupported(name + " dtype", out);
   }
+  // The flat count/offset binding below reads the input as dense
+  // row-major storage. Upstream keeps the no-gaps `contiguous` flag
+  // set across broadcast (stride-0) and transposed views, so
+  // row_contiguous is what separates a flat read from a re-read in a
+  // different order; anything else is materialized once through the
+  // same strided-copy engine dispatch_complex uses. Abs, Real, and
+  // Imag all route here, so the layout transport is fixed once.
+  std::optional<array> in_temp;
+  const array& in = ensure_dense(
+      in_raw,
+      in_raw.flags().contiguous && in_raw.flags().row_contiguous,
+      in_temp,
+      encoder,
+      s);
   uint32_t count = checked_u32(out.size(), name, out);
   omarchy::ComputeParams params;
   params.count = count;
