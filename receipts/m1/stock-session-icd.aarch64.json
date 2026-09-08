@@ -1,0 +1,8 @@
+{
+  "file_format_version": "1.0.1",
+  "ICD": {
+    "api_version": "1.4.354",
+    "library_arch": "64",
+    "library_path": "/home/joshuawarren/src/xbuild-drivers/stock-26.1.7/libvulkan_asahi.so"
+  }
+}

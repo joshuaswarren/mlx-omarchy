@@ -1,0 +1,6 @@
+test_sdpa_full_head_dim_256 (test_fast_sdpa.TestFastSDPA.test_sdpa_full_head_dim_256) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 8.030s
+
+OK
