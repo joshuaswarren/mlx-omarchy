@@ -1,0 +1,89 @@
+{
+  "receipt": "hk/queue-lifetime",
+  "date": "2026-09-08",
+  "agent": "HkQueueWedgeSigbus",
+  "machine": "jwm1-linux (Apple M1 G13G B1, 8 cores, 16 GiB, Linux 7.1.6-1-1-ARCH asahi)",
+  "mesa": {
+    "fork": "https://github.com/joshuaswarren/mesa.git",
+    "base_branch": "honeykrisp-coopmat",
+    "base_commit": "5bb2b28c95",
+    "branch": "hk/queue-lifetime",
+    "worktree": "jwm1:~/src/mesa-wt-queue-lifetime (build/, debugoptimized, vulkan-drivers=asahi, gallium-drivers=asahi)",
+    "driver_source_changes": "none - both defects root-caused to mlx-omarchy; the temporary env-gated diagnostics used for the investigation are preserved as receipts/hk-queue-lifetime/hk-ql-diagnostics.patch and are not committed to driver sources",
+    "icd_private": "/tmp/asahi_queue_lifetime_icd.json -> ~/src/mesa-wt-queue-lifetime/build/src/asahi/vulkan/libvulkan_asahi.so (pristine rebuild sha256 prefix 287fd7ffc4e6e043)",
+    "icd_stock": "/usr/share/vulkan/icd.d/asahi_icd.aarch64.json (system Mesa 26.1.7)"
+  },
+  "verdict": {
+    "a_single_large_eval_wedges_queue": "NOT A DRIVER DEFECT, NOT A GPU WEDGE. The GPU completed every job in every run (queue syncobj advanced in lockstep with submissions, no dmesg GPU fault/timeout). The reported wedge is the 2026-09-04 mlx-omarchy counter-only watchdog firing on one legitimately long submission (~28 s lm_head matmul at 2048 tokens); the 'last observed=0, target=1' semaphore was the eval's Event timeline semaphore created just before that submission, not the device completion timeline. The current wheel (f5ba1c8, event-based progress d052b92a) runs the same eval in 12 s with no watchdog trip, but only when the Vulkan heap budget is raised: its 257-node batches hold 8.11 GB against Honeykrisp's default 7.56 GiB heap (heap_memory_percent 50% of RAM) and fail with VK_ERROR_OUT_OF_DEVICE_MEMORY on both stock and fork drivers.",
+    "b_test_sdpa_sigbus": "NOT A DRIVER DEFECT, NO DEVICE-SIDE WRITER. Host-side use-after-free in mlx-omarchy: VulkanAllocator::free released a VulkanBuffer whose raw pointer was still in CommandEncoder::batch_buffers_ (stale drained stamp 0x58 not re-stamped kPendingCompletion because note_batch_buffer only stamped when completion == 0); the next submit() wrote the new completion value (0x5a = 90) through the dangling pointer into a glibc-heap chunk that by then held an array::Data control block (the deleter std::function's _M_manager), and the array destructor jumped to pc=0x5a. Fixed in mlx-omarchy 9cef4d3d (note_batch_buffer stamps unconditionally), which is absent from the cited wheel 70183d3 and present in f5ba1c8; test_sdpa passes on stock Honeykrisp with f5ba1c8.",
+    "gelu_approx_1e13": "not reproducible on Honeykrisp: test_nn.py -k gelu passes (1 passed) with f5ba1c8 on stock driver; llvmpipe-only observation, not driver-side here.",
+    "sdpa_vector_decomposition": "not reproducible on Honeykrisp: test_fast_sdpa.py::TestFastSDPA::test_sdpa_vector passes (1 passed), test_sdpa_fully_masked passes (1 passed) with f5ba1c8 on stock driver.",
+    "new_finding_sdpa_full_head_dim_256": "mlx-omarchy kernel bug, not driver: 14 subtests (mask='causal', kL >= 2048, float32 and bfloat16) fail identically on stock, honeykrisp-coopmat, hk/byte-extract, hk/precise-math AND llvmpipe (lvp_icd.aarch64.json, 14 failed / 1 passed in 193.99 s)."
+  },
+  "evidence_a": {
+    "wheels": {
+      "old_receipt_era": "venv-bqm1-wedge: mlx-omarchy 0.32.2.dev202609040815+94c1dfc (libmlx.so sha256 prefix 208719b13cfe33ce); counter-only watchdog, predates d052b92a",
+      "current": "venv-hkql-f5ba: mlx-omarchy 0.32.2.dev202609071529+f5ba1c8 (wheel sha256 prefix bc6f96a531669ed2) + mlx-lm 0.31.3"
+    },
+    "probe": "receipts/hk-queue-lifetime/fwd_probe.py: Qwen2.5-0.5B-Instruct-4bit, 2048 tokens from ~/benchq/long-prompt-2k.txt, compile disabled, one model() + mx.eval(logits[:, -1, :])",
+    "old_wheel_default_watchdog": {
+      "stock": "rc=2 wall_s=72.65 error='[omarchy] Vulkan timeline counter failed to advance for 10000 ms (last observed=0, target=1)'",
+      "fork_with_diag": "rc=2 wall_s=72.80/72.83/72.82 same error (three runs)"
+    },
+    "old_wheel_watchdog_300s": {
+      "stock": "status ok wall_s=90.81 argmax=3974",
+      "fork_with_diag": "status ok wall_s=90.68 argmax=3974; the Event semaphore (syncobj 3, value 1, signaled as out-sync of submission 49) read 0 for 280 consecutive 100 ms polls then 1: submission 49 (24 API calls / 34 dispatches, the lm_head matmul) ran ~28 s on the GPU"
+    },
+    "gpu_progress_at_each_submit": "driver diagnostic drmSyncobjQuery of the queue's own syncobj at every submit: gpu_done = timeline-1 for all 49 submissions (e.g. timeline=12 gpu_done=11 ... timeline=48 gpu_done=47), i.e. the GPU had finished every prior job before the next was submitted; log fwd2048-old-gpudone-wd10.log",
+    "sync_identity": "submission 49 out-syncs: signal[0] syncobj=3 (Event semaphore, created 5 ms earlier) value=1, signal[1] syncobj=2 (device completion) value=49, plus queue syncobj@49; mlx polled syncobj 3 -> 0 for 10 s and threw; syncobj 2 reached 49 by process exit",
+    "current_wheel": {
+      "stock_default_heap": "rc=2 wall_s=6.41 error=VK_ERROR_OUT_OF_DEVICE_MEMORY at AllocateMemory",
+      "fork_default_heap": "rc=2 wall_s=6.80; driver diag: OOM(heap): req=8388608 used=8114569216 heap=8113881088",
+      "fork_HK_SYSMEM_14000000000": "status ok wall_s=11.97 argmax=3974, 4 submissions (257/256/69/1 API calls), 77 progress-event polls all VK_EVENT_SET, watchdog never fired"
+    },
+    "standalone_reproducer": {
+      "source": "receipts/hk-queue-lifetime/evprobe.cpp + spin.comp (glslangValidator -V), ./evprobe <iters> <dispatches> <groups> spin.spv",
+      "stock_11s_job": "./evprobe 100000000 4 64: submit returned at 0.1 ms; event SET observed at 106.3 ms (counter=0); counter reached 1 at 11267.9 ms; VERDICT: PROGRESS_VISIBLE",
+      "fork_short_job": "./evprobe 2000000 2 64: counter reached 1 at 122.6 ms (event=SET)",
+      "meaning": "inside a single job the timeline counter cannot advance; a counter-only watchdog with a 10 s bound misclassifies any >10 s job as a wedge. The head-of-batch vkCmdSetEvent is host-visible within the first 100 ms poll on both drivers, so the event-based watchdog (d052b92a) sees progress."
+    },
+    "multi_signal_reproducer": "receipts/hk-queue-lifetime/sigprobe.cpp: one submit signaling 1, 2 or 3 fresh timeline semaphores (values 1/1, 1/5, 1/1/1): ALL_SIGNALED on stock",
+    "dmesg": "journalctl -k during every run: no asahi/GPU fault, timeout or reset lines (only UFW/audit noise)",
+    "post_wedge_slow_decode": "[INFERENCE] the 0.214 tok/s decode after a wedged run is the previous process's ~28 s lm_head job still occupying the GPU; not measured directly"
+  },
+  "evidence_b": {
+    "reproducer_wheel": "jwm1:~/mlx-omarchy-qual/receipts-m1/upstream-suite-py/venv-pytest: mlx-omarchy 0.32.2.dev202609052254+111dbcd (libmlx.so sha256 prefix c87ceaf6353d060c), predates both 70183d3 and 9cef4d3d; test tree ~/src/mlx-coopmat-dense-20260908/.work/mlx/python/tests",
+    "command": "DEVICE=gpu MLX_OMARCHY_ALLOW_NON_APPLE=1 VK_ICD_FILENAMES=<icd> flock /tmp/m1-gpu.lock timeout 900 python -m pytest -q -p no:cacheprovider test_fast_sdpa.py::TestFastSDPA::test_sdpa",
+    "stock": "rc=139 wall=9 s: 'Fatal Python error: Bus error' at test_fast_sdpa.py line 596 in test_sdpa (also line 569 in one run); gdb: pc=0x5a, frame #1 std::_Sp_counted_ptr_inplace<mlx::core::array::Data>::_M_dispose, #2 ArrayDesc::~ArrayDesc, #3 array::~array",
+    "fork_HK_QL_NOCACHE": "driver patched so every freed BO is munmapped and GEM-closed immediately (no BO cache): rc=139 wall=2 s, identical Bus error; dmesg shows no GPU fault, so no device write reached freed memory",
+    "corrupted_word": "x0=0xaaaaab5d5af8 (glibc brk heap, never GPU-mapped); x/12gx: +0x00 0xfffff3e3a2e0 (deleter functor), +0x10 0x000000000000005a (std::function _M_manager), +0x18 0xfffff3e3a140 (_M_invoker); ~Data calls _M_manager -> pc 0x5a. 0x5a = 90 = the completion value of the 90th submission (driver diag: signal[1] syncobj=2 value=90 immediately before the crash; a second run crashed with pc=0x4b after 75 submissions, matching the known-defects.md signature)",
+    "hardware_watchpoint_trace": "gdb watch *(unsigned long*)0xaaaaab5d5b08 (stock, ASLR off), last four writes before the SIGBUS: (1) CommandEncoder::submit() <- synchronize <- copy_gpu_inplace <- Full::eval_gpu writes 0x58 [VulkanBuffer::completion stamp, submission 88]; (2) VulkanAllocator::free() <- ~Data <- ~ArrayDesc <- array::detach <- eval_impl writes 0x0 [completion=0, buffer released/destroyed]; (3) array::set_data <- dispatch_matmul <- Matmul::eval_gpu writes 0xfffff3e3a320 [new array::Data constructed in the same chunk]; (4) CommandEncoder::submit() <- Event::signal <- eval_impl writes 0x5a [stamp through the dangling VulkanBuffer* still in batch_buffers_]; then SIGBUS at pc 0x5a from ~Data. Log: receipts/hk-queue-lifetime/gdbwatch-stock-111dbcd-b08.log",
+    "mechanism_in_mlx_source": "overlay/mlx/backend/omarchy/allocator.h note_batch_buffer(): at 111dbcd and 70183d3 it reads 'if (buf && buf->completion == 0) buf->completion = kPendingCompletion;' - a buffer re-recorded into the open batch while carrying a stale drained stamp (0x58) keeps that stamp, so allocator.cpp free() (completion+1 > drained_value() false) sets completion=0 and destroys it although encoder.cpp submit()'s 'for (auto* buf : batch_buffers_) buf->completion = completion_value;' will still dereference it. 9cef4d3d (2026-09-06 02:18) makes the stamp unconditional; 70183d3 (2026-09-06 01:14) predates it.",
+    "current_wheel_on_stock": "f5ba1c8 (contains 9cef4d3d): test_fast_sdpa.py::TestFastSDPA::test_sdpa -> 1 passed, 240 subtests passed in 2.34 s, rc=0"
+  },
+  "suites": {
+    "tree": "jwm1:~/src/mlx-coopmat-dense-20260908/.work/build/tests/omarchy (Release), run as VK_ICD_FILENAMES=<icd> AGX_SIMDMAT=1 flock /tmp/m1-gpu.lock ./omarchy_<x>_tests",
+    "stock": {
+      "omarchy_runtime_tests": "40/40 passed, 6307/6307 assertions",
+      "omarchy_fast_ops_tests": "30/30 passed, 45211/45211 assertions",
+      "omarchy_fast_regression_tests": "2/2 passed, 16/16 assertions",
+      "omarchy_primitive_tests": "98/98 passed, 2699373/2699373 assertions",
+      "omarchy_reduce_ops_tests": "34/34 passed, 7152/7152 assertions"
+    },
+    "hk_queue_lifetime_build": {
+      "omarchy_runtime_tests": "40/40 passed, 6307/6307 assertions",
+      "omarchy_fast_ops_tests": "30/30 passed, 45211/45211 assertions",
+      "omarchy_fast_regression_tests": "2/2 passed, 16/16 assertions",
+      "omarchy_primitive_tests": "98/98 passed, 2699373/2699373 assertions",
+      "omarchy_reduce_ops_tests": "34/34 passed, 7152/7152 assertions"
+    },
+    "note": "no driver source differs between the two builds (base 5bb2b28c95 both); identical counts are the expected null result"
+  },
+  "mlx_omarchy_followups": [
+    "docs/known-defects.md 'A single large evaluation can wedge the GPU queue': close as a watchdog false positive fixed by d052b92a (event-based progress); the receipts/2026-09-04-hang-watchdog-hardware.md interpretation ('genuine hang', 'hardware refuted the too-short bound') is wrong: the GPU was running a ~28 s lm_head submission and the 10 s counter-only bound fired.",
+    "docs/known-defects.md 'Dispatch bindings left their buffers unstamped': close; the remaining Honeykrisp test_sdpa SIGBUS was the stale-stamp half fixed by 9cef4d3d (note_batch_buffer unconditional), a host-side use-after-free; no device-side writer exists (freed BOs unmapped/GEM-closed at free produced no GPU fault).",
+    "New: with f5ba1c8 a 2048-token single eval of Qwen2.5-0.5B-4bit needs 8.11 GB of VkDeviceMemory (257-node batches) and fails with VK_ERROR_OUT_OF_DEVICE_MEMORY against Honeykrisp's default heap (50% of RAM = 7.56 GiB on 16 GiB). Either honour VK_EXT_memory_budget / the heap size when sizing kBatchNodeBudget, or document HK_SYSMEM=<bytes> / drirc heap_memory_percent as the workaround.",
+    "New: test_fast_sdpa.py::TestFastSDPA::test_sdpa_full_head_dim_256 fails 14 subtests (mask='causal', kL >= 2048, both dtypes) identically on Honeykrisp (stock and every fork build) and on llvmpipe: an mlx-omarchy SDPA kernel defect at the 2048-key boundary, not a driver defect."
+  ],
+  "logs": "jwm1:~/hkql/ (fwd2048-*.log, sdpa-*.log, gdb-*.log, gdbwatch-*.log, py-*.log, suite-*.log, hk-ql-diagnostics.patch); copies of the decisive ones under receipts/hk-queue-lifetime/"
+}
