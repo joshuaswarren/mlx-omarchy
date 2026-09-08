@@ -149,9 +149,6 @@ corroborative only. The target-M1 09-06 receipts independently
 reproduce its long128 digest (`254d73fd93164b98`) on the right
 hardware, so the historical comparison's identity conclusions happen to
 stand, but its native side is superseded by the on-target receipts.
-No M1 Pro/Max receipt is used as a baseline number anywhere in this
-assignment.
-
 ## Long-prompt digest divergence (facts and status)
 
 - Linux `4cc08910089477fd` is deterministic across wheels
@@ -184,14 +181,62 @@ assignment.
   of a CPU-path gap; the Vulkan-vs-reference question is carried by
   the margin probe instead.
 
-Working explanation (no tolerance relaxation): identical digests on two
-of three workloads plus a deterministic low-index fork on the third is
-the signature of backend-level floating-point reduction-order
-differences that only become visible where an argmax sits on a near
-tie. The margin probe quantifies this directly; making the digests
-match would require bit-identical kernel numerics across Metal and
-Vulkan — out of scope for a performance-parity effort and not required
-by any gate. The full margin distribution accompanies this audit.
+Working explanation — RESOLVED to mechanism by the margin probe
+(margins-long128.json, digest `4cc08910089477fd`, independently
+reproducing the exact Linux stream): the long128 fork sits on an EXACT
+float32 argmax tie at generated index 20 — top1 and top2 logits both
+20.953125 (` review`=3395 vs ` carefully`=15516, margin 0.0000).
+Any ULP-level backend difference flips that argmax, and both
+continuations are then distinct-but-coherent greedy rollouts through
+further near-ties (index 23 margin 0.125). Short and ctx1024 match
+native outright because no generated position in their streams hits an
+exact tie. Making the digests match would require bit-identical kernel
+numerics across Metal and Vulkan — out of scope for a
+performance-parity effort and not required by any gate. Per-backend
+determinism (5/5 Linux reps at c2548675; 5/5 native reps, both
+compile policies) plus the exact-tie mechanism is the closure of this
+historical question; no tolerance was relaxed and no model, prompt, or
+length changed.
+
+Open observations (recorded, not blockers): bf16 long128 Linux digest
+`ad964232ee67fecd` differs from native `407b7624ed1b3b29` — same
+tie-cascade signature, not margin-probed (bf16 is not the pinned gate
+model); bf16 short32 `f26175202f3dabe9` is the known post-`2f54fcb`
+stream whose divergence from native starts after the EOS position in
+the EOS-suppressed continuation (docs/known-defects.md).
+
+## Ranked costs (GPU-timestamp profile, diag wheel)
+
+Wall→GPU attribution across the three profiled legs (span covers load +
+prefill + decode; phases separated by markers in the .analysis.txt
+files):
+
+| leg | dispatches | GPU busy | intra-submission gap p50 | share of span idle |
+|---|---:|---:|---:|---:|
+| short-32 | 7,045 | 19.8% | 42.0 µs | ~69% intra gaps |
+| long-128 | 76,075 | 22.6% | 37.5 µs | ~74% intra gaps |
+| ctx1024-32 | 19,915 | 9.1% | 34.9 µs (p90 183 µs, p99 5.1 ms) | ~86% intra gaps |
+
+The dominant cost is dispatch overhead, not kernel time: at ~35-42 µs
+median gap per dispatch × 70-76k dispatches, the GPU idles most of the
+span. Kernel busy-time ranking (share of GPU-busy, consistent across
+legs):
+
+1. ElementwiseF16 31-35%
+2. QmmVecQ4WordSubgroupF16 21-23%
+3. CopyGeneralF16 10.7-11.7%
+4. FastRopeF16 9.7-11.3%
+5. FastRmsNormF16 7.0-10.7%
+6. MatmulF16 5.5-7.9%
+7. SoftmaxF16 ~3%
+
+Implication for the waves: kernel-side wins are bounded by the busy
+fraction (~10-23% of wall); the larger lever is per-dispatch
+submission/floor cost and dispatch count, consistent with the decode
+A/B floors (~54 µs fixed + ~23 µs/dispatch host submit + ~21 µs GPU
+floor) DecodeParity measured. Raw evidence:
+`profile/*.analysis.txt`, `profile/*.profile.jsonl`,
+`profile/*.markers.jsonl`.
 
 ## Window record
 
@@ -202,7 +247,11 @@ by any gate. The full margin distribution accompanies this audit.
   process evidence, not measurement evidence; no numbers were emitted
   by any failed attempt (bench_matrix refuses to emit without legs).
 - window2: CPU oracle legs → long leg NYI (above); log retained.
-- window3: margin probe on GPU (margins-long128.json).
+- window3: margin probe attempt, failed on a probe-side token-feed
+  shape bug (margins-long128.err); no numbers claimed.
+- window4: margin probe on GPU — exact tie found at index 20
+  (margins-long128.json); log `window4.log`. Lock verified free after
+  release (fuser empty) before sibling windows opened.
 - Profile artifacts: `profile/{short-32,long-128,ctx1024-32}.{
   analysis.txt,profile.jsonl,markers.jsonl}` + `profile-summary.json`
   on the -diag wheel (`5e201380…`, `MLX_OMARCHY_GPU_PROFILING=ON`,
