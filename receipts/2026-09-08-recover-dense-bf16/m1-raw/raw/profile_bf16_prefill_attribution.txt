@@ -1,0 +1,24 @@
+Per-phase kernel attribution for profile_bf16_ctx1024.jsonl
+(method: dispatch d["e"] -> ComputeKernel enum name; phase = last marker
+before the SUBMIT record's host time t, matching profile_analyze.py
+contract; computed by RecoverDensePrefill 2026-09-08)
+
+== window 'prefill_start' (prefill phase): 2434 dispatches
+   MatmulBF16Coopmat        n=   92  gpu=   4.089 ms   <- ALL 92 dispatches of this kernel are in prefill
+   MatmulF32Coopmat         n=   23  gpu=   0.848 ms   <- all in prefill
+   MatmulBF16               n=  409  gpu=  12.900 ms
+   CastBF16F32              n=  356  gpu=  10.376 ms
+   CopyGeneralBF16          n=  404  gpu=   9.105 ms
+   ElementwiseBF16          n=  357  gpu=   7.575 ms
+   CastF32BF16              n=  214  gpu=   5.848 ms
+
+== decode windows ('tok'): 23994 dispatches
+   MatmulBF16Coopmat        n=    0  (m=1 refused by gate -> tiled path)
+   MatmulF32Coopmat         n=    0
+   MatmulBF16               n= 5239  gpu= 167.653 ms
+   MatmulF32                n= 1488  gpu=  22.545 ms
+
+Conclusion: activation proven - the real Qwen2.5-0.5B-bf16 ctx1024
+prefill dispatches MatmulBF16Coopmat (92 dispatches, 4.089 ms GPU),
+decode never does. Profiling harness ON for this run (diag wheel);
+NOT a performance measurement.

@@ -1,0 +1,123 @@
+{
+  "date": "2026-09-08",
+  "title": "Prefill parity batch 1: inline-fragment Q4 QMM, staged dense f32/bf16 coopmat, batch-budget tunable; root-cause evidence for the dispatch-bound prefill",
+  "branch": "perf/prefill-parity",
+  "base": "c2548675",
+  "source_commits": [
+    "82ececc6 Q4 prefill QMM inline-fragment coopmat (pairs with mesa hk/prefill-parity 323b747d6b0)",
+    "5c7876ac staged dense coopmat f32+bf16 rewrite + MLX_OMARCHY_BATCH_BYTES_DIVISOR env",
+    "6d55a054 five-pair A/B driver (scripts-local/prefill_inline_ab.py)",
+    "driver: mesa-xbuild ~/mesa-prefill-parity branch hk/prefill-parity commit 323b747d6b0 (AGX_QMM_INLINE_A / AGX_QMM_INLINE_B fragment-load hooks, env-gated, defaults off)"
+  ],
+  "root_cause_evidence": {
+    "source": "parity-baseline @ 6b240b0d, profile/ctx1024-32.analysis.txt (c2548675 diag wheel, GPU timestamps)",
+    "finding": "ctx1024 Q4 prefill wall 2512 ms (1053 tok / 419.5 tok/s): GPU busy 38.8 ms (1.5%), QmmPrefillCoopmatF16 total 6.1 ms over 163 dispatches (mean 37.5 us), join_wait 2256.7 ms over 48 joins (p90 97.7 ms), submit() 591 ms over 148 calls (p50 4.5 ms), intra-submission gaps p50 34.9 us with a full pre+post memory barrier per dispatch (19915 emitted, 0 skipped).",
+    "causal_chain_static": "kBatchByteBudgetDivisor=16 (allocator limit/16 ~= 320 MB quarantine) flushes every ~25 dispatches -> ~70 batches per pass -> mlx transforms.cpp MAX_ACTIVE_TASKS=10 throttles -> gpu::finalize + scheduler::wait_for_one join stalls; every submission waits on the previous via completion timeline (in-order, no cross-submission overlap).",
+    "caveat_from_main": "profiled attribution is not unprofiled proof; the divisor sweep below measures unprofiled wall time with settings controlled (MLX_OMARCHY_BATCH_BYTES_DIVISOR env on the same wheel)."
+  },
+  "candidates": {
+    "kept_pending_gpu_results": [
+      "82ececc6 inline-fragment Q4 prefill: A fragments unpack f16 word pairs, B fragments dequantize fused 9-word blocks per (column, 64-group) inside the coopmat fragment load; k loop has no shared staging and no barriers; dequant stays f32 scale*nibble+bias (ffma) - the qmm tile contract, never f16.",
+      "5c7876ac dense f32 coopmat rewritten from the 8x8 global-load tile (0.28 TFLOP/s, dense receipt) to a staged 32x32 tile (2 KiB shared, 16 MMA per k step, tails masked, alignment gates dropped); bf16 dense rides MatmulBF16Coopmat with exact bf16->f32 widening and matmul.comp bf16_store RNE word packing (no numerics change vs the 16x16 tile)."
+    ],
+    "budget": "MLX_OMARCHY_BATCH_BYTES_DIVISOR env (default 16 unchanged; sweep 16/4/2). Heap/byte cap RETAINED - the 2026-09-08 2048-token 8.11 GiB single-batch OOM caps the divisor; any default flip requires a memory proof (ctx4096/2048 prefill leg + allocator high-watermark) per Main.",
+    "rejected_or_unproven": [
+      "f0cc2735 descriptor-freelist branch exists unmerged targeting the same submit() 4.5 ms p50; not folded into this branch (owner integration).",
+      "fp16/bf16 dequant-to-f16 of weights: forbidden (contract), not attempted.",
+      "20 KiB shared staging: rejected earlier (0.55x, occupancy)."
+    ]
+  },
+  "verification": {
+    "llvmpipe_leg": {
+      "commit": "5c7876ac",
+      "omarchy_matmul_family_tests": {
+        "cases": "15/15",
+        "assertions": "18430759/18430759",
+        "exit": 0
+      },
+      "omarchy_runtime_tests": {
+        "cases": "41/41",
+        "assertions": "22691/22691",
+        "exit": 0
+      },
+      "note": "cooperative matrix capability 0 on llvmpipe so inline/staged coopmat paths are not dispatched; suites prove the gate fallbacks and the runtime divisor plumbing are regression-free"
+    },
+    "m1_window": {
+      "script": "scripts-local/m1_window.sh (one flock /tmp/m1-gpu.lock per process tree, never unlinked, hostname printed)",
+      "phase1": [
+        "wheel build at 5c7876ac (DEV_RELEASE=1, source commit stamped)",
+        "16-shape QMM correctness vs host reference under the qmm tile anchor bound (3k+1)*2*maxabs*2^-23 + 2*maxabs*2^-11, inline hooks ON and OFF",
+        "bf16 matmul vs fp32 reference at 5 shapes",
+        "unprofiled divisor sweep ctx1024 prefill: 16/4/2 x 3 runs, same wheel, env-only toggle"
+      ],
+      "status_at_yield": "running in background (bg_17); results print per-run prefill lines tagged divisor=N run=i"
+    }
+  },
+  "coordination": {
+    "decodeparity": "m==1 lane theirs (matmul_vec + MatmulVec enums planned before QmmTileRbF16); my QmmInlineCoopmatF16 appended after QmmPrefillCoopmatF16, MatmulBF16Coopmat after that; integration order recorded",
+    "aneparity": "overlap check answered: no timed M1 work of mine in 17:22:08-17:25:24Z",
+    "paritybaseline": "baseline + profiles consumed from parity-baseline @ 6b240b0d; window taken after release DM",
+    "main": "pivot report sent; heap-cap protection retained; scheduler max tuning only as bounded memory-safe A/B"
+  },
+  "open_items": [
+    "read divisor sweep results; pick winner; rerun the three-workload five-pair A/B (scripts-local/prefill_inline_ab.py) unprofiled at the winning divisor",
+    "inline-fragment Q4 A/B at winning divisor; keep or discard per protocol",
+    "BF16 prefill A/B (MLX_OMARCHY_NO_COOPMAT toggles) on the three workloads vs baseline 56.1/169.4/187.0",
+    "memory proof leg (ctx4096 prefill) before any divisor default flip",
+    "Q4 short-workload occupancy (28 subgroups) k-split or narrow-tile candidate - deferred until dispatch costs are fixed",
+    "C++ M1 suite legs skipped this batch for window time; python host-reference bound used instead - rerun C++ suites on M1 before final integration",
+    "cross_driver_failure: the cross-built libvulkan_asahi.so (mesa-xbuild, aarch64, ldd clean on the M1) fails vkCreateInstance with VK_ERROR_UNKNOWN on jwm1-linux; wheel 0.32.2.dev202609081733+5c7876ac built OK; correctness legs and divisor sweep aborted at instance creation. Fallback: apply mesa 323b747d6b0 (one file) onto a native mesa checkout on the M1, rebuild natively, rerun phase-1 unchanged; the divisor sweep alone runs on the stock system driver (no hooks needed)",
+    "llvmpipe reruns at 5c7876ac land in /tmp/mm_suite_d.log and /tmp/rt_suite_d.log on the dev box"
+  ],
+  "submit_cost_hypothesis": "submit() p50 4.5 ms suspect #1: allocator.cpp flush_noncoherent runs on EVERY submit and vkFlushMappedMemoryRanges each live non-coherent allocation at VK_WHOLE_SIZE with no dirty tracking (noncoherent_ is a live-set, erased only at destroy_buffer; allocator.cpp:166/176/305) - repeated full-range cache maintenance whether or not the host wrote anything since the last submit. Candidate fix: dirty-flag per allocation set at host write / record time, or flush at first-use instead of every submit. Unmeasured - needs a leg of its own.",
+  "divisor_sweep_result": {
+    "protocol": "unprofiled bench_decode.py ctx1024 prefill (1053 prompt tokens, 32 greedy), same wheel, MLX_OMARCHY_BATCH_BYTES_DIVISOR env-only toggle, 3 runs each, lock held, quiet CPU",
+    "table_prefill_tps": {
+      "divisor=16 (default)": [
+        422.6,
+        422.7,
+        422.8
+      ],
+      "divisor=4": [
+        412.2,
+        415.9,
+        421.5
+      ],
+      "divisor=2": [
+        412.8,
+        417.8,
+        420.3
+      ]
+    },
+    "verdict": "REJECTED. Default 16 is fastest; smaller divisors are marginally slower. The profiled join-stall attribution (2.26 s) does not survive unprofiled measurement - instrumentation perturbs submission/join costs (Main's causality warning confirmed). The prefill wall cost is real host-side dispatch work (~2.4 s for ~40 ms GPU), and the lever is per-dispatch host cost / dispatch count, not batch budgets. Divisor env stays as diagnostic plumbing, default unchanged."
+  },
+  "bf16_status": {
+    "clean_run_verification": "battery2 stage diagnostic: out vs ref at (1,8,8),(8,64,64),(8,64,32),(64,64,64) all agree to bf16 quantization (e.g. 2.281 vs 2.282) - the staged bf16 coopmat kernel computes correctly",
+    "earlier_fail_explained": "the first battery's BF16_FAIL (rel=1.0/nan) ran immediately after an inline-hook compile aborted the AGX compiler in a sibling process; suspect poisoned on-disk shader/pipeline cache state - recheck on a cleared cache is required before integration, and the compiler assert itself must be fixed",
+    "inline_assert": "AGX_QMM_INLINE_B 9-word layout (umod-imm-9 kstep reconstruction) crashes agx_compile.c:3507 'Disassembly error hit' - the compiler emits an instruction its own disassembler rejects. Fix committed on the MLX side (cf5eba0b): paired 16-word fused blocks [sb0 w0 sb1 w1 ...], base lands directly on the w_ks word, no modulo; the matching driver rework is written into mesa hk/prefill-parity working tree (needs commit + cross build + M1 verify)"
+  },
+  "sweep_infra_fix": "bench_decode takes the prompt via --prompt; --raw-prompt is a flag (be139d3c) - the first sweep silently produced no rows because every run died in argparse",
+  "inline_assert_bisect": {
+    "battery3": "paired 16-word layout (no umod, driver b56d19bd + wheel cf5eba0b) STILL trips agx_compile.c:3507 'Disassembly error hit' on the M1; staged kernel re-verified 16/16 under the same lock window (worst err/bound 0.256)",
+    "remaining_suspects_ranked": [
+      "variable-position shift: nir_ushr(packed, nir_ishl_imm(lr,2)) -- next test: ubitfield_extract or an 8-way immediate select chain",
+      "ffma(f32-unpacked-scale, u2f32, bias) operand mix",
+      "unpack_half_2x16 feeding channels in a hook context"
+    ],
+    "repro": "qmm_correctness.py with AGX_QMM_INLINE_A/B=1 on the private ICD; assert aborts the process at first dispatch",
+    "note": "bisect can run fully offline on mesa-xbuild by compiling the SPIR-V through agx_compile with the selftest disassembler -- no M1 needed; next window should start there"
+  },
+  "final_disposition": {
+    "inline_candidate": "REVERTED from deliverable branch (d0033a5c) and mesa hk/prefill-parity (b9283beedd3 reverts both hook commits, cross-build green). Failed receipt preserved (d923a96e). Not retried without an offline-validated compiler fix.",
+    "bf16_metric_correction": "battery4 short rows (on 2.1-2.3 / off 2.7-2.8 tok/s) were treated as prefill against the 56.1 baseline prefill - Main identified the comparison as a metric mix; the rerun must use the exact baseline bench_matrix capture hook with decode/prefill metrics separated and full stderr (no 2>/dev/null). The 2.x numbers themselves are unexplained and unevaluated.",
+    "bf16fail_causality": "cache-poison explanation DOWNGRADED to hypothesis: battery4 observed clean-pass -> crash -> fail, but matching cache keys / actual driver cache flags were not recorded, so no causal claim is made.",
+    "divisor": "env plumbing removed (543a31c1), default 16 retained, rejection stands on unprofiled evidence.",
+    "shipped_state": "staged QMM coopmat (baseline behaviour, 16/16 verified), dense f32 coopmat staged rewrite + bf16 dense coopmat kernel (clean-cache correct at 4 shapes) - all gated, defaults unchanged from c2548675 behaviour for non-bf16 paths; dense/bf16 pending the proper bench_matrix rerun.",
+    "open_work": [
+      "inline: offline AGX bisect on mesa-xbuild before any retry",
+      "bf16: full paired matrix via scripts/bench_matrix.py harness with separated metrics + raw stderr",
+      "coherent-flags check for the flush hypothesis",
+      "C++ M1 suite legs before integration"
+    ]
+  }
+}

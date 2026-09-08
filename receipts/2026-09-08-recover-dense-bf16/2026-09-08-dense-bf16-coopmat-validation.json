@@ -1,0 +1,103 @@
+{
+    "date": "2026-09-08",
+    "title": "Repaired dense BF16 cooperative-matmul: full-matrix hardware proof, activation attribution, 5-rep matrix - measured improvement",
+    "worker": "RecoverDensePrefill",
+    "branch": "recover/dense-bf16-validation",
+    "base": "2de96dcd (perf/prefill-parity repair: MatmulBF16Coopmat include/enum/switch registration restored, 32-tile staged dispatch gate m>1 + K%8 + alpha1 + noC, BF16 even offset/gap/stride/N, drain rr<MAT/2 + barrier after all reads)",
+    "final_source_commit": "65630524 (6563052 short; tests: dense bf16 matmul full-matrix coopmat proof)",
+    "host": "jwm1-linux (Apple M1 G13G B1, aarch64, python 3.14.7), SYSTEM Honeykrisp driver 6f6afc8968 unchanged, cooperative_matrix_f32_8=1 subgroup_size=32, no custom ICD, AGX_SIMDMAT not required",
+    "corrections_of_failed_receipt": {
+        "failed_receipt": "perf/prefill-parity receipts/2026-09-08-prefill-parity-batch1.json",
+        "cache_poison_claim_false": "batch1 bf16_status.earlier_fail_explained attributed battery1 BF16_FAIL (rel=1.0/nan) to 'suspect poisoned on-disk shader/pipeline cache state'. FALSE CAUSALITY: the failure is the deterministic drain bug - at 5c7876ac (the commit batch1 cites) shaders/matmul_coopmat_bf16.comp line 200 reads 'for (uint rr = 0u; rr < 2u; ++rr)', so the drain wrote only rows {r0, r0+2} = rows 0..3 of each 8-row block and left rows 4..7 stale. A full-matrix check fails on shader source alone; no cache state is required to explain it, so no cache-poison hypothesis survives. 2de96dcd fixes it (rr < MAT/2u plus barrier() after all reads). The final_disposition downgrade to 'hypothesis' is superseded: the bug is proven, cache is irrelevant.",
+        "row0_only_false_pass_false": "batch1 bf16_status.clean_run_verification ('out vs ref at (1,8,8),(8,64,64),(8,64,32),(64,64,64) all agree - the staged bf16 coopmat kernel computes correctly') is void: with the rr<2 drain, any check exercising the full output matrix at those shapes fails (half of every 8-row block is stale), so the pass can only have come from a row-0-only (or subset) comparison. All previous correctness claims for this kernel are disregarded; this receipt replaces them with an every-element proof.",
+        "source_commit_mismatch": "batch1 lists source_commits [82ececc6, 5c7876ac, 6d55a054] and 'wheel build at 5c7876ac (DEV_RELEASE=1, source commit stamped)'. scripts-local/m1_window.sh stamps via export MLX_OMARCHY_SOURCE_COMMIT=5c7876ac on an rsync tree built with --exclude .git, so the stamp is an operator override, not content provenance. The worktree at window time carried uncommitted repair work (committed later as 2de96dcd, 2026-09-08 19:26:13 UTC, after the batch1 receipt file mtime 14:06 -0500), so the tested content was neither 5c7876ac nor any recorded commit. This validation builds from a real git clone (git bundle 6049968..branch fetched into ~/src/mlx-omarchy on the M1, worktree checkout) with build-wheel.sh resolving the stamp from git rev-parse - no MLX_OMARCHY_SOURCE_COMMIT override used anywhere."
+    },
+    "wheels": {
+        "release": {
+            "path_on_m1": "~/src/recover-release-wheel/mlx_omarchy-0.32.2.dev202609082006+6563052-cp314-cp314-linux_aarch64.whl",
+            "sha256": "fffacbb205c4b30dd2689016467a886f9d63c60b225f352ecbf0c9a640329072",
+            "stamp_source": "git rev-parse in real clone (build-wheel.sh resolve_commit, no override)"
+        },
+        "diag": {
+            "path_on_m1": "~/src/recover-diag-wheel/mlx_omarchy-0.32.2.dev202609082003+diag.6563052-cp314-cp314-linux_aarch64.whl",
+            "sha256": "0dbd55558a15646f8085e09df93fc7ee0ee22af31805a72568324ae72a4e691e",
+            "profiling_harness": "compiled IN (build-wheel receipt line verified)",
+            "note": "first diag wheel (dev202609081955+diag.6563052) built 19:55:50-19:58:24Z then deleted by the release build-wheel's rm -rf $DIST_DIR (dist/ is wiped at the start of every wheel build; sibling RecoverAttentionPrefill identified the line). Rebuilt 20:03 and parked outside dist/. Do not store artifacts in dist/ across builds."
+        },
+        "baseline_reference": "mlx_omarchy-0.32.2.dev202609081618+c254867-cp314-cp314-linux_aarch64.whl sha256 255c2f932569f4e794387adbef0b99394a933b42589cb7ec6e97cac6e3579e02 (parity-baseline receipt)"
+    },
+    "test_added": {
+        "commit": "65630524",
+        "file": "overlay/tests/omarchy/test_matmul_family.cpp",
+        "case": "dense bf16 matmul matches host on every row across coopmat shapes",
+        "regression_pinned": "missing drain rows (rr<2 wrote 4 of each 8-row block): every expected row must carry a nonzero element and the FULL matrix is compared per row with per-row mismatch diagnostics",
+        "coverage": "tails m8/m9/m33-n40/tile32/m17-k24-n34/batch2; gate refusals m1, k12, odd-n; all 12 model combos M{30,262,1053} x K{896,4864} x N{896,4864}; 4 orientations each; even-offset slice (coopmat) vs odd-offset slice (tiled); integer operands exact-equality via RNE bf16 quantization both sides; one fractional bf16 case under the documented f32-order anchor bound (err 0 <= bound)",
+        "llvmpipe_note": "jumbo model sweep is hardware-only; llvmpipe runs the smallest model combo plus tails/refusals/slices through the tiled fallback"
+    },
+    "hardware_proof_m1": {
+        "filtered_case": "exit 0, 195/195 assertions; ALL gated shapes path=coopmat max_abs_err=0 (every row, every column, all four orientations): tails + 12 model combos + even-offset slice; refusals m1/k12/odd-n and odd-offset slice path=tiled max_abs_err=0; fractional bound=0.17928 max_abs_err=0",
+        "full_family_suite": "16/16 cases, 18429316/18429316 assertions, exit 0",
+        "primitive_suite": "98/98 cases, 2699373/2699373 assertions, exit 0",
+        "runtime_suite": "41/41 cases, 22694/22694 assertions, exit 0",
+        "local_llvmpipe_leg": "full family suite 16/16 cases, 18430855 assertions, exit 0 (dev box, MLX_OMARCHY_ALLOW_NON_APPLE=1)",
+        "raw": "raw/bf16_case.log, raw/matmul_family_full.log, raw/primitive_full.log, raw/runtime_full.log"
+    },
+    "activation_proof": {
+        "method": "diag wheel + MLX_OMARCHY_GPU_PROFILE + scripts/profile_generate.py (ctx1024 prompt, bf16 pinned snapshot 56d07e76, 32 tokens, temp 0 seed 0, MLX_DISABLE_COMPILE=1) + scripts/profile_analyze.py + per-window attribution from the raw stream (dispatch -> submit host time -> last marker)",
+        "result": "prefill window: MatmulBF16Coopmat n=92 gpu=4.089ms mean=44.5us - ALL 92 dispatches, i.e. 100% of the kernel's dispatches, attribute to the prefill window; MatmulF32Coopmat n=23 also prefill; decode windows contain NO coopmat dispatches (m=1 refused, tiled MatmulBF16 n=5239 / MatmulF32 n=1488)",
+        "activation_not_performance": "profiling harness was ON during this run only to prove activation; all performance numbers in this receipt come from the unprofiled release wheel",
+        "raw": "raw/profile_bf16_ctx1024.jsonl, raw/profile_bf16_markers.jsonl, raw/profile_bf16_analysis.txt"
+    },
+    "matrix_1rep": {
+        "runner": "receipts/2026-09-08-recover-dense-bf16/run-baseline.py (proven runner copied from parity-baseline-20260908; STRIPS ALL MLX_* env before children; candidate needs no env gate - coopmat dispatch is capability-gated by default)",
+        "asserts": "runner_exit=0: clean_check=clean, power AC, binary_provenance verified=match, 6/6 legs measured, 6 id records, prompt token counts match",
+        "legs": {
+            "qwen25-0.5b-4bit:short-decode-32": {"prefill": 112.78, "decode": 65.90, "ids": "7fd25a869ff21678"},
+            "qwen25-0.5b-4bit:long-decode-128": {"prefill": 408.10, "decode": 56.04, "ids": "4cc08910089477fd"},
+            "qwen25-0.5b-4bit:longctx-1024-decode-32": {"prefill": 430.32, "decode": 40.96, "ids": "7da83f06ec9f001d"},
+            "qwen25-0.5b-bf16:short-decode-32": {"prefill": 53.76, "decode": 8.58, "ids": "f26175202f3dabe9"},
+            "qwen25-0.5b-bf16:long-decode-128": {"prefill": 235.82, "decode": 8.40, "ids": "ad964232ee67fecd"},
+            "qwen25-0.5b-bf16:longctx-1024-decode-32": {"prefill": 297.79, "decode": 7.67, "ids": "ff502900d2a179a5"}
+        },
+        "verdict": "IMPROVES (bf16 prefill long +39%, ctx +59%; everything else flat) -> 5-rep triggered per protocol",
+        "artifact_note": "1-rep raw files rescued to onerep/1rep-* before the 5-rep reused the receipt dir (1rep-rep1.log was truncated by the 5-rep before rescue; 1rep-rep1.json + ids survive)"
+    },
+    "matrix_5rep": {
+        "runner_exit": 0,
+        "asserts": "5/5 reps ok; every leg ids_stable_across_reps=true; clean/power/provenance asserts green each rep",
+        "table_medians_min_max": {
+            "qwen25-0.5b-4bit:short-decode-32": {"prefill": [112.36, 109.09, 114.07], "decode": [65.99, 65.83, 66.02]},
+            "qwen25-0.5b-4bit:long-decode-128": {"prefill": [410.66, 403.08, 413.90], "decode": [56.02, 55.53, 56.14]},
+            "qwen25-0.5b-4bit:longctx-1024-decode-32": {"prefill": [428.57, 423.74, 430.85], "decode": [40.96, 40.77, 41.00]},
+            "qwen25-0.5b-bf16:short-decode-32": {"prefill": [54.25, 54.05, 54.65], "decode": [8.58, 8.47, 8.58]},
+            "qwen25-0.5b-bf16:long-decode-128": {"prefill": [237.10, 235.40, 239.05], "decode": [8.34, 8.33, 8.35]},
+            "qwen25-0.5b-bf16:longctx-1024-decode-32": {"prefill": [297.37, 297.12, 297.79], "decode": [7.69, 7.68, 7.71]}
+        },
+        "vs_baseline_medians": {
+            "baseline_source": "parity-baseline-20260908/baseline-summary.json (5 reps, c254867 wheel)",
+            "q4_short": {"prefill": "112.36 vs 111.11 (+1.1%)", "decode": "65.99 vs 65.92 (+0.1%)"},
+            "q4_long": {"prefill": "410.66 vs 411.30 (-0.2%)", "decode": "56.02 vs 56.01 (+0.0%)"},
+            "q4_ctx": {"prefill": "428.57 vs 419.52 (+2.2%)", "decode": "40.96 vs 40.57 (+1.0%)"},
+            "bf16_short": {"prefill": "54.25 vs 56.08 (-3.3%) - recorded regression at M=30, tight ranges both sides; 32x32 tile granularity cost on a single-m-tile shape [INFERENCE on mechanism]", "decode": "8.58 vs 8.58 (0.0%)"},
+            "bf16_long": {"prefill": "237.10 vs 169.36 (+40.0%)", "decode": "8.34 vs 8.36 (-0.2%)"},
+            "bf16_ctx": {"prefill": "297.37 vs 187.03 (+59.0%)", "decode": "7.69 vs 7.70 (-0.1%)"}
+        },
+        "generated_id_identity": "ALL 6 legs, ALL 5 reps: generated_ids_sha256_16 identical to the baseline digests (7fd25a869ff21678, 4cc08910089477fd, 7da83f06ec9f001d, f26175202f3dabe9, ad964232ee67fecd, ff502900d2a179a5) - bit-exact greedy generation through the kernel swap on every workload; no parity concern"
+    },
+    "disposition": "MEASURED IMPROVEMENT - KEEP candidate (65630524) for parent integration: BF16 prefill +40%/+59% at 262/1053 tokens with bit-identical generated ids, Q4 and decode lanes flat, full C++ suites green on hardware, every-element kernel proof on real M1 coopmat. Recorded cost: bf16 short-prompt prefill -3.3%. Not pushed public; private worktree recover/dense-bf16-validation only.",
+    "window_coordination": {
+        "m1_footprint_exact_timestamps": {
+            "bundle_fetch_worktree": "19:48:01Z (FETCH_HEAD mtime)",
+            "light_cmake_configure": "19:48:19-19:48:28Z (CMakeCache.txt mtime 19:48:27Z, 8.78s job, no -j compile)",
+            "cpp_suites_build": "19:53:00-19:55:50Z (/tmp/recover_m1_build.log birth/mtime)",
+            "diag_wheel_v1": "19:55:50-19:58:24Z",
+            "release_wheel_v1": "19:58:24-20:01Z",
+            "diag_wheel_v2": "rebuild after rm -rf dist discovery, ~20:03-20:06Z",
+            "release_wheel_v2_and_venvs": "~20:06-20:09Z",
+            "gpu_phases": "20:19Z onward under flock /tmp/m1-gpu.lock, one flock per process tree, lock never unlinked"
+        },
+        "off_phase_194934_195058Z": "no process of mine on jwm1-linux in that window (bounded by log mtimes above); contamination attributable to RecoverAttentionPrefill gate leg 19:49:16-19:50:35Z and their -j8 cmake build from ~19:50Z, whose flock was later found (parent ruling) to lock their own log inode instead of /tmp/m1-gpu.lock",
+        "queue_after_me": "parent HK_PERF nobarrier probe, then Bf16DirectRope (RecoverAttentionPrefill 5-rep cancelled: candidate 9ed828ef rejected on greedy-parity fail)"
+    },
+    "raw_files_local": "receipts/2026-09-08-recover-dense-bf16/m1-raw/ (full mirror of the M1 receipt dir incl raw/ suite logs, profile stream, per-rep json/log/ids, onerep/ rescue)"
+}

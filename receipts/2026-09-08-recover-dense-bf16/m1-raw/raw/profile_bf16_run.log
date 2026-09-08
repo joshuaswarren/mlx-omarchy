@@ -1,0 +1,4 @@
+<frozen site>:101: RuntimeWarning: Unexpected value in sys.prefix, expected /home/joshuawarren/src/recover-venv-diag, got /home/joshuawarren/src/mlx-recover-dense-20260908/../recover-venv-diag
+<frozen site>:101: RuntimeWarning: Unexpected value in sys.exec_prefix, expected /home/joshuawarren/src/recover-venv-diag, got /home/joshuawarren/src/mlx-recover-dense-20260908/../recover-venv-diag
+Checkpoint: the runner records the prefill duration, the pinned decode length, the generated token identity, and the peak memory before the next workload starts. The
+[profile_generate] tokens=32 median_inter_token_ms=180.67 mean_inter_token_ms=183.13
