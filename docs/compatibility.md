@@ -502,6 +502,31 @@ Regression coverage lives in
 references at several magnitudes" and "elementwise on broadcast-expanded
 views matches host values" (`omarchy_primitive_tests`, 77 cases).
 
+### Dense f32 matmul on the G13 matrix unit
+
+`MatmulF32Coopmat` (`shaders/matmul_coopmat.comp`) runs dense float32
+matmul on the hardware 8x8x8 cooperative matrix through
+`VK_KHR_cooperative_matrix`. The dispatch takes it only when the device
+reports `cooperative_matrix_f32_8` with subgroup size 32, M, N, and K
+are multiples of 8, alpha is 1, there is no bias C, and every element
+offset, row gap, and batch stride is a multiple of four floats (the
+16-byte `coopMatLoad` alignment rule). Everything else, including an
+odd-offset slice, keeps the 16x16 tile. `MLX_OMARCHY_NO_COOPMAT=1`
+forces the tile for A/B runs. Compiling the shader needs a
+`GL_KHR_cooperative_matrix`-aware compiler: glslang 13 or newer (the M1
+ships 16.4.0; a glslang 12 image fails at `#extension` with the
+extension named).
+
+Stock Mesa 26.1.7 Honeykrisp does not advertise the extension, so
+released wheels take the tile on every shape until the
+[`honeykrisp-coopmat`](https://github.com/joshuaswarren/mesa/tree/honeykrisp-coopmat)
+branch (commit `5bb2b28c`, behind `AGX_SIMDMAT=1`) merges upstream.
+llvmpipe reports the capability false. On that branch the M1 f32 square
+matmul median moved from 0.0935/0.1680/0.1906 to 0.1251/0.2535/0.2816
+TFLOP/s at 256/512/1024 with max_abs_err 0.0 against a host reference
+on every gated shape; receipt
+`receipts/2026-09-08-coopmat-dense.json`.
+
 ## ANE
 
 mlx-omarchy ANE bundle validation is device-free and fail-closed. The Linux

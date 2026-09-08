@@ -69,6 +69,7 @@ enum class ComputeKernel : uint16_t {
   ReduceF16,
   ReduceBF16,
   MatmulF32,
+  MatmulF32Coopmat,
   MatmulF16,
   MatmulBF16,
   FillF32,

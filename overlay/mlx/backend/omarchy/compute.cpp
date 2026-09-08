@@ -144,6 +144,7 @@
 #include "compare_u16.h"
 #include "matmul_f16.h"
 #include "matmul_f32.h"
+#include "matmul_f32_coopmat.h"
 #include "matmul_complex64.h"
 #include "select_bf16.h"
 #include "select_f16.h"
@@ -497,6 +498,8 @@ ShaderBytes shader_bytes(ComputeKernel kernel) {
       return {reduce_bf16, reduce_bf16_size};
     case ComputeKernel::MatmulF32:
       return {matmul_f32, matmul_f32_size};
+    case ComputeKernel::MatmulF32Coopmat:
+      return {matmul_f32_coopmat, matmul_f32_coopmat_size};
     case ComputeKernel::MatmulF16:
       return {matmul_f16, matmul_f16_size};
     case ComputeKernel::MatmulBF16:
