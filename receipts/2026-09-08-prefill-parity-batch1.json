@@ -96,5 +96,15 @@
     "earlier_fail_explained": "the first battery's BF16_FAIL (rel=1.0/nan) ran immediately after an inline-hook compile aborted the AGX compiler in a sibling process; suspect poisoned on-disk shader/pipeline cache state - recheck on a cleared cache is required before integration, and the compiler assert itself must be fixed",
     "inline_assert": "AGX_QMM_INLINE_B 9-word layout (umod-imm-9 kstep reconstruction) crashes agx_compile.c:3507 'Disassembly error hit' - the compiler emits an instruction its own disassembler rejects. Fix committed on the MLX side (cf5eba0b): paired 16-word fused blocks [sb0 w0 sb1 w1 ...], base lands directly on the w_ks word, no modulo; the matching driver rework is written into mesa hk/prefill-parity working tree (needs commit + cross build + M1 verify)"
   },
-  "sweep_infra_fix": "bench_decode takes the prompt via --prompt; --raw-prompt is a flag (be139d3c) - the first sweep silently produced no rows because every run died in argparse"
+  "sweep_infra_fix": "bench_decode takes the prompt via --prompt; --raw-prompt is a flag (be139d3c) - the first sweep silently produced no rows because every run died in argparse",
+  "inline_assert_bisect": {
+    "battery3": "paired 16-word layout (no umod, driver b56d19bd + wheel cf5eba0b) STILL trips agx_compile.c:3507 'Disassembly error hit' on the M1; staged kernel re-verified 16/16 under the same lock window (worst err/bound 0.256)",
+    "remaining_suspects_ranked": [
+      "variable-position shift: nir_ushr(packed, nir_ishl_imm(lr,2)) -- next test: ubitfield_extract or an 8-way immediate select chain",
+      "ffma(f32-unpacked-scale, u2f32, bias) operand mix",
+      "unpack_half_2x16 feeding channels in a hook context"
+    ],
+    "repro": "qmm_correctness.py with AGX_QMM_INLINE_A/B=1 on the private ICD; assert aborts the process at first dispatch",
+    "note": "bisect can run fully offline on mesa-xbuild by compiling the SPIR-V through agx_compile with the selftest disassembler -- no M1 needed; next window should start there"
+  }
 }
