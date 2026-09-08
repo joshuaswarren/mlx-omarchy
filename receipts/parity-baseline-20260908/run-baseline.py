@@ -35,8 +35,9 @@ def main():
         sys.exit(f"missing python {py} or wheel {wheel}")
 
     manifest = json.loads((ROOT / "scripts" / "bench_matrix.json").read_text())
-    manifest["generation"]["engine_script"] = str(HERE / "capture-ids.py")
-    mpath = HERE / "manifest-baseline.json"
+    manifest["generation"]["engine_script"] = "capture-ids-parity.py"
+    hook = ROOT / "scripts" / "capture-ids-parity.py"
+    hook.write_text((HERE / "capture-ids.py").read_text())
     mpath.write_text(json.dumps(manifest, indent=2))
 
     summary = {
