@@ -1,0 +1,2 @@
+Thank you for providing the measurement protocol for the small language-model benchmark. I will review this protocol to ensure it aligns with the specifications and guidelines provided by the
+[profile_generate] tokens=32 median_inter_token_ms=48.45 mean_inter_token_ms=48.34

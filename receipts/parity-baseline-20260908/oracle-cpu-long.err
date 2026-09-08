@@ -1,0 +1,21 @@
+mx.metal.device_info is deprecated and will be removed in a future version. Use mx.device_info instead.
+Traceback (most recent call last):
+  File "/home/joshuawarren/src/mlx-parity-baseline-20260908/receipts/parity-baseline-20260908/cpu-oracle.py", line 72, in <module>
+    main()
+    ~~~~^^
+  File "/home/joshuawarren/src/mlx-parity-baseline-20260908/receipts/parity-baseline-20260908/cpu-oracle.py", line 68, in main
+    raise SystemExit(bench_decode.main())
+                     ~~~~~~~~~~~~~~~~~^^
+  File "/home/joshuawarren/src/mlx-parity-baseline-20260908/scripts/bench_decode.py", line 304, in main
+    for _ in generate(args.warmup_tokens):
+             ~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+  File "/home/joshuawarren/src/mlx-parity-baseline-20260908/.venv-benchmark/lib/python3.14/site-packages/mlx_lm/generate.py", line 716, in stream_generate
+    for n, (token, logprobs, from_draft) in enumerate(token_generator):
+                                            ~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/home/joshuawarren/src/mlx-parity-baseline-20260908/.venv-benchmark/lib/python3.14/site-packages/mlx_lm/generate.py", line 706, in <genexpr>
+    (token, logprobs, False) for token, logprobs in token_generator
+                                                    ^^^^^^^^^^^^^^^
+  File "/home/joshuawarren/src/mlx-parity-baseline-20260908/.venv-benchmark/lib/python3.14/site-packages/mlx_lm/generate.py", line 442, in generate_step
+    mx.eval([c.state for c in prompt_cache])
+    ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+RuntimeError: NYI

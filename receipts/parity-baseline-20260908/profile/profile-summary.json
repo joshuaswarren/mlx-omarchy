@@ -1,0 +1,28 @@
+{
+  "schema": "parity-baseline-profile/1",
+  "workloads": [
+    {
+      "workload": "short-32",
+      "prompt_id": "short",
+      "max_tokens": 32,
+      "profile_lines": 7260,
+      "stdout": "Hello! How can I assist you today?\n[profile_generate] tokens=10 median_inter_token_ms=47.55 mean_inter_token_ms=47.73"
+    },
+    {
+      "workload": "long-128",
+      "prompt_id": "long",
+      "max_tokens": 128,
+      "profile_lines": 76998,
+      "stdout": "ement protocols for benchmarks and the guidelines for such benchmarks. I will also ensure that I am following best practices for data collection and analysis.\n\nOnce I have reviewed the protocol, I will make any necessary adjustments to ensure that the protocol is compliant with the guidelines and best practices for\n[profile_generate] tokens=128 median_inter_token_ms=47.40 mean_inter_token_ms=47.41"
+    },
+    {
+      "workload": "ctx1024-32",
+      "prompt_id": "ctx1024",
+      "max_tokens": 32,
+      "profile_lines": 20262,
+      "stdout": "Thank you for providing the measurement protocol for the small language-model benchmark. I will review this protocol to ensure it aligns with the specifications and guidelines provided by the\n[profile_generate] tokens=32 median_inter_token_ms=48.45 mean_inter_token_ms=48.34"
+    }
+  ],
+  "diag_wheel": "/home/joshuawarren/src/mlx-parity-baseline-20260908/dist-parity-diag/mlx_omarchy-0.32.2.dev202609081624+diag.c254867-cp314-cp314-linux_aarch64.whl",
+  "diag_wheel_sha256": "5e2013804611c204d77244c2a5d6e1ccbe492e398b2b9f8901d54d03c47dbc0e"
+}

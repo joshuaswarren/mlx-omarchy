@@ -1,0 +1,19 @@
+hostname: jwm1-linux
+window3 start: 2026-09-08T17:11:33Z
+MARGIN-FAILED
+Traceback (most recent call last):
+  File "/home/joshuawarren/src/mlx-parity-baseline-20260908/receipts/parity-baseline-20260908/margin-probe.py", line 89, in <module>
+    main()
+    ~~~~^^
+  File "/home/joshuawarren/src/mlx-parity-baseline-20260908/receipts/parity-baseline-20260908/margin-probe.py", line 69, in main
+    logits = model(tid_arr[None], cache=cache)
+  File "/home/joshuawarren/src/mlx-parity-baseline-20260908/.venv-benchmark/lib/python3.14/site-packages/mlx_lm/models/qwen2.py", line 173, in __call__
+    out = self.model(inputs, cache, input_embeddings)
+  File "/home/joshuawarren/src/mlx-parity-baseline-20260908/.venv-benchmark/lib/python3.14/site-packages/mlx_lm/models/qwen2.py", line 153, in __call__
+    h = layer(h, mask, c)
+  File "/home/joshuawarren/src/mlx-parity-baseline-20260908/.venv-benchmark/lib/python3.14/site-packages/mlx_lm/models/qwen2.py", line 117, in __call__
+    r = self.self_attn(self.input_layernorm(x), mask, cache)
+  File "/home/joshuawarren/src/mlx-parity-baseline-20260908/.venv-benchmark/lib/python3.14/site-packages/mlx_lm/models/qwen2.py", line 63, in __call__
+    B, L, D = x.shape
+    ^^^^^^^
+ValueError: not enough values to unpack (expected 3, got 2)

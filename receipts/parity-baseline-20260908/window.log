@@ -1,0 +1,119 @@
+hostname: jwm1-linux
+== window start: 2026-09-08T16:56:53Z ==
+ 11:56:53 up 1 day, 14:05,  2 users,  load average: 0.00, 0.01, 0.18
+== [1/6] driver + metadata receipt ==
+	apiVersion         = 1.4.359
+	deviceName         = Apple M1 (G13G B1)
+	driverID           = DRIVER_ID_MESA_HONEYKRISP
+	driverName         = Honeykrisp
+	driverInfo         = Mesa 26.3.0-devel (git-6f6afc8968)
+	apiVersion         = 1.4.359
+host: {'device': 'Apple M1 (G13G B1)', 'vulkan_driver': 'Honeykrisp'} Omarchy 7.1.6-1-1-ARCH
+power: {'raw': 'macsmc-ac: online', 'source': 'AC', 'percent': None, 'charging': True}
+clean: clean
+packages: {'mlx': None, 'mlx-omarchy': '0.32.2.dev202609081618+c254867', 'mlx-lm': '0.31.3', 'transformers': '5.16.1', 'numpy': '2.5.2'}
+== [2/6] baseline 5x3x2 ==
+rep 1: ok
+rep 2: ok
+rep 3: ok
+rep 4: ok
+rep 5: ok
+[
+ {
+  "leg_id": "qwen25-0.5b-4bit:long-decode-128",
+  "reps": 5,
+  "decode_tok_s_median": 56.01,
+  "decode_tok_s_min": 55.82,
+  "decode_tok_s_max": 56.13,
+  "prefill_tok_s_median": 411.303,
+  "prefill_tok_s_min": 406.832,
+  "prefill_tok_s_max": 413.249,
+  "prompt_tokens": 262,
+  "generated_ids_sha256_16": [
+   "4cc08910089477fd"
+  ],
+  "ids_stable_across_reps": true
+ },
+ {
+  "leg_id": "qwen25-0.5b-4bit:longctx-1024-decode-32",
+  "reps": 5,
+  "decode_tok_s_median": 40.57,
+  "decode_tok_s_min": 40.45,
+  "decode_tok_s_max": 40.93,
+  "prefill_tok_s_median": 419.522,
+  "prefill_tok_s_min": 416.7,
+  "prefill_tok_s_max": 429.445,
+  "prompt_tokens": 1053,
+  "generated_ids_sha256_16": [
+   "7da83f06ec9f001d"
+  ],
+  "ids_stable_across_reps": true
+ },
+ {
+  "leg_id": "qwen25-0.5b-4bit:short-decode-32",
+  "reps": 5,
+  "decode_tok_s_median": 65.92,
+  "decode_tok_s_min": 65.73,
+  "decode_tok_s_max": 65.95,
+  "prefill_tok_s_median": 111.111,
+  "prefill_tok_s_min": 109.89,
+  "prefill_tok_s_max": 112.782,
+  "prompt_tokens": 30,
+  "generated_ids_sha256_16": [
+   "7fd25a869ff21678"
+  ],
+  "ids_stable_across_reps": true
+ },
+ {
+  "leg_id": "qwen25-0.5b-bf16:long-decode-128",
+  "reps": 5,
+  "decode_tok_s_median": 8.36,
+  "decode_tok_s_min": 8.34,
+  "decode_tok_s_max": 8.4,
+  "prefill_tok_s_median": 169.36,
+  "prefill_tok_s_min": 169.032,
+  "prefill_tok_s_max": 170.24,
+  "prompt_tokens": 262,
+  "generated_ids_sha256_16": [
+   "ad964232ee67fecd"
+  ],
+  "ids_stable_across_reps": true
+ },
+ {
+  "leg_id": "qwen25-0.5b-bf16:longctx-1024-decode-32",
+  "reps": 5,
+  "decode_tok_s_median": 7.7,
+  "decode_tok_s_min": 7.6,
+  "decode_tok_s_max": 7.72,
+  "prefill_tok_s_median": 187.034,
+  "prefill_tok_s_min": 186.702,
+  "prefill_tok_s_max": 187.5,
+  "prompt_tokens": 1053,
+  "generated_ids_sha256_16": [
+   "ff502900d2a179a5"
+  ],
+  "ids_stable_across_reps": true
+ },
+ {
+  "leg_id": "qwen25-0.5b-bf16:short-decode-32",
+  "reps": 5,
+  "decode_tok_s_median": 8.58,
+  "decode_tok_s_min": 8.45,
+  "decode_tok_s_max": 8.63,
+  "prefill_tok_s_median": 56.075,
+  "prefill_tok_s_min": 55.97,
+  "prefill_tok_s_max": 56.604,
+  "prompt_tokens": 30,
+  "generated_ids_sha256_16": [
+   "f26175202f3dabe9"
+  ],
+  "ids_stable_across_reps": true
+ }
+]
+== [3/6] profiling legs (diag wheel) ==
+profile short-32: 7260 events
+profile long-128: 76998 events
+profile ctx1024-32: 20262 events
+profile: done
+== [4/6] CPU oracle legs ==
+receipts/parity-baseline-20260908/window-run.sh: line 46: SNAP: unbound variable

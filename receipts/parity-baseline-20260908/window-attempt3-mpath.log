@@ -1,0 +1,23 @@
+hostname: jwm1-linux
+== window start: 2026-09-08T16:53:42Z ==
+ 11:53:42 up 1 day, 14:02,  2 users,  load average: 0.00, 0.01, 0.24
+== [1/6] driver + metadata receipt ==
+	apiVersion         = 1.4.359
+	deviceName         = Apple M1 (G13G B1)
+	driverID           = DRIVER_ID_MESA_HONEYKRISP
+	driverName         = Honeykrisp
+	driverInfo         = Mesa 26.3.0-devel (git-6f6afc8968)
+	apiVersion         = 1.4.359
+host: {'device': 'Apple M1 (G13G B1)', 'vulkan_driver': 'Honeykrisp'} Omarchy 7.1.6-1-1-ARCH
+power: {'raw': 'macsmc-ac: online', 'source': 'AC', 'percent': None, 'charging': True}
+clean: clean
+packages: {'mlx': None, 'mlx-omarchy': '0.32.2.dev202609081618+c254867', 'mlx-lm': '0.31.3', 'transformers': '5.16.1', 'numpy': '2.5.2'}
+== [2/6] baseline 5x3x2 ==
+Traceback (most recent call last):
+  File "/home/joshuawarren/src/mlx-parity-baseline-20260908/receipts/parity-baseline-20260908/run-baseline.py", line 120, in <module>
+    main()
+    ~~~~^^
+  File "/home/joshuawarren/src/mlx-parity-baseline-20260908/receipts/parity-baseline-20260908/run-baseline.py", line 41, in main
+    mpath.write_text(json.dumps(manifest, indent=2))
+    ^^^^^
+NameError: name 'mpath' is not defined. Did you mean: 'Path'?
