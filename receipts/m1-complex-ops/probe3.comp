@@ -1,0 +1,47 @@
+#version 450
+layout(local_size_x = 64) in;
+layout(std430, binding = 0) readonly buffer In { vec4 v[]; } inp;
+layout(std430, binding = 1) writeonly buffer Out { float o[]; } outp;
+void main() {
+  uint i = gl_GlobalInvocationID.x;
+  vec4 x = inp.v[i];
+  vec2 lhs = x.xy;
+  uint op = uint(x.z);
+  float sx = sin(lhs.y);
+  float cx = cos(lhs.y);
+  vec2 value;
+  float h = 0.0, inverse = 0.0, sh = 0.0, ch = 0.0;
+  vec2 factors = vec2(0.0);
+  if (abs(lhs.x) <= 1.0) {
+    sh = sinh(lhs.x);
+    ch = cosh(lhs.x);
+    value = op == 12u ? vec2(sh * cx, ch * sx) : vec2(ch * cx, sh * sx);
+  } else {
+    h = exp(0.5 * abs(lhs.x));
+    inverse = exp(-2.0 * abs(lhs.x));
+    sh = 0.5 * (1.0 - inverse) * sign(lhs.x);
+    ch = 0.5 * (1.0 + inverse);
+    factors = op == 12u ? vec2(sh * cx, ch * sx) : vec2(ch * cx, sh * sx);
+    value = (factors * h) * h;
+    if (factors.x == 0.0) value.x = factors.x;
+    if (factors.y == 0.0) value.y = factors.y;
+  }
+  outp.o[i * 16 + 0] = value.x;
+  outp.o[i * 16 + 1] = value.y;
+  outp.o[i * 16 + 2] = h;
+  outp.o[i * 16 + 3] = inverse;
+  outp.o[i * 16 + 4] = sh;
+  outp.o[i * 16 + 5] = ch;
+  outp.o[i * 16 + 6] = factors.x;
+  outp.o[i * 16 + 7] = factors.y;
+  vec2 fh = factors * h;
+  outp.o[i * 16 + 8] = fh.x;
+  outp.o[i * 16 + 9] = fh.y;
+  float t = exp(-2.0 * abs(lhs.x));
+  outp.o[i * 16 + 10] = t;
+  outp.o[i * 16 + 11] = exp(abs(lhs.x));
+  outp.o[i * 16 + 12] = exp2(0.5 * abs(lhs.x) * 1.4426950408889634);
+  outp.o[i * 16 + 13] = sx;
+  outp.o[i * 16 + 14] = cx;
+  outp.o[i * 16 + 15] = sign(lhs.x);
+}

@@ -1,0 +1,7 @@
+[doctest] doctest version is "2.4.12"
+[doctest] run with "--help" for options
+Skipping: tan(fl(pi/2)): builtin cos(fl(pi/2)) is 0 on this driver; needs the hk/precise-math Honeykrisp trig
+===============================================================================
+[doctest] test cases:   34 |   34 passed | 0 failed | 0 skipped
+[doctest] assertions: 1713 | 1713 passed | 0 failed |
+[doctest] Status: SUCCESS!

@@ -929,21 +929,22 @@ TEST_CASE("integer round preserves identity ties and dtype wrap") {
       read_values<uint8_t>(round(u8, -2, stream), stream),
       std::vector<uint8_t>{0, 0, 0, 0, 100, 100, 200, 200, 44});
 
+  // No INT32_MAX element: its round trip passes through 2147483648.0f,
+  // whose int32 conversion is undefined (x86 and llvmpipe wrap to
+  // INT32_MIN, aarch64 and the AGX saturate to INT32_MAX). INT32_MIN
+  // is exact in float32 and pins the negative extreme.
   std::vector<int32_t> i32_values{
-      std::numeric_limits<int32_t>::min(), -250, -150, -50,
-      50, 150, 250, std::numeric_limits<int32_t>::max()};
-  array i32(i32_values.begin(), Shape{8}, int32);
+      std::numeric_limits<int32_t>::min(), -250, -150, -50, 50, 150, 250};
+  array i32(i32_values.begin(), Shape{7}, int32);
   CHECK_EQ(read_values<int32_t>(round(i32, stream), stream), i32_values);
   CHECK_EQ(
       read_values<int32_t>(round(i32, -1, stream), stream),
       std::vector<int32_t>{
-          std::numeric_limits<int32_t>::min(), -250, -150, -50,
-          50, 150, 250, std::numeric_limits<int32_t>::min()});
+          std::numeric_limits<int32_t>::min(), -250, -150, -50, 50, 150, 250});
   CHECK_EQ(
       read_values<int32_t>(round(i32, -2, stream), stream),
       std::vector<int32_t>{
-          std::numeric_limits<int32_t>::min(), -200, -200, 0,
-          0, 200, 200, std::numeric_limits<int32_t>::min()});
+          std::numeric_limits<int32_t>::min(), -200, -200, 0, 0, 200, 200});
 }
 
 TEST_CASE("complex inverse trig roots logs and round match host references") {
@@ -1310,10 +1311,25 @@ TEST_CASE("complex unary operations retain finite large-magnitude results") {
   auto h = complex_array(hyper, Shape{2});
   check_unary_vs_host("sinh large", sinh(h, stream), stream, host_sinh, hyper);
   check_unary_vs_host("cosh large", cosh(h, stream), stream, host_cosh, hyper);
-  std::vector<cdouble> trig{{0.5, 100.0}, {100.0, -0.5}, {float(1.5707963267948966), 0.0}};
+  const float half_pi = 1.5707963267948966f;
+  std::vector<cdouble> trig{{0.5, 100.0}, {100.0, -0.5}, {half_pi, 0.0}};
   auto t = complex_array(trig, Shape{3});
-  check_unary_vs_host("tan large", tan(t, stream), stream, host_tan, trig);
   check_unary_vs_host("tanh large", tanh(t, stream), stream, host_tanh, trig);
+  // tan(fl(pi/2) + 0i) = -2.2877e7 needs cos(fl(pi/2)) = -4.3711e-8 to
+  // full relative accuracy. The stock Honeykrisp builtin returns 0
+  // there (inside the Vulkan 2^-11 absolute envelope) and the quotient
+  // reads NaN; the hk/precise-math fork trig (979453d) reduces exactly.
+  // Probe the builtin and name that driver requirement instead of
+  // widening the tolerance.
+  std::vector<cdouble> tan_vals(trig.begin(), trig.end() - 1);
+  if (read_values<float>(cos(array(half_pi), stream), stream)[0] != 0.0f) {
+    tan_vals.push_back(trig.back());
+  } else {
+    skip("tan(fl(pi/2)): builtin cos(fl(pi/2)) is 0 on this driver; needs"
+         " the hk/precise-math Honeykrisp trig");
+  }
+  auto tan_in = complex_array(tan_vals, Shape{int(tan_vals.size())});
+  check_unary_vs_host("tan large", tan(tan_in, stream), stream, host_tan, tan_vals);
   std::vector<cdouble> large{{1e30, 1e30}, {-1e30, 1e30}};
   auto z = complex_array(large, Shape{2});
   check_unary_vs_host("log1p large", log1p(z, stream), stream, host_log1p, large);

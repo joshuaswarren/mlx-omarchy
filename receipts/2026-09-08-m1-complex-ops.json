@@ -1,0 +1,99 @@
+{
+  "wave": "m1-complex-ops",
+  "date": "2026-09-08",
+  "base_commit": "a22e4821",
+  "branch": "wave/m1-complex-ops",
+  "machines": {
+    "jwm1-linux": "Apple M1 (G13G B1); stock Mesa 26.1.7 asahi ICD, honeykrisp-coopmat-5bb2b28 (26.2.99), honeykrisp-omarchy-e10be72 (26.2.99, merged fork incl. hk/precise-math); every GPU run under flock /tmp/m1-gpu.lock; private tree ~/src/mlx-complex-ops-20260908 (Release, glslc), the shared coopmat-dense tree untouched",
+    "x86_64": "llvmpipe, MLX_OMARCHY_ALLOW_NON_APPLE=1 LP_NUM_THREADS=4, glslangValidator"
+  },
+  "starting_point": {
+    "receipt": "receipts/hk/2026-09-08-precise-math.json suites.stock.complex_ops",
+    "logs": "jwm1 ~/log/pm-suite-{stock,fixed}-complex_ops.log",
+    "failing_cases": [
+      "integer round preserves identity ties and dtype wrap (int32 round -1/-2 vectors)",
+      "complex inverse functions preserve finite and signed edge semantics (log/log2/log10 of (FLT_MAX, +-FLT_MAX), sqrt of (+-FLT_MAX, +-0), arctan of (+-0, +-FLT_MAX))",
+      "complex unary operations retain finite large-magnitude results (sinh/cosh of +-(89 + 0.25i); tan(fl(pi/2) + 0i) on stock only)"
+    ],
+    "note": "the receipt's 'uint64 edge' label was a misread of the third case; there is no uint64 assertion in the failing set"
+  },
+  "probes": {
+    "harness": "receipts/m1-complex-ops/probe.comp + probe.py (mathrepro from HkPreciseMath, /tmp/pm/mathrepro copied to ~/probe-cops); probe3.comp/probe4.comp + probe2.py for the sinh block",
+    "division_by_large_scale": {
+      "stock_and_coopmat_identical": true,
+      "FLT_MAX / FLT_MAX": "0.0 (want 1.0)",
+      "4.0 / FLT_MAX": "0.0 (want 1.1755e-38, a normal)",
+      "1.0 / 1e38": "0.0 (denormal, flush-to-zero, acceptable)",
+      "1.0 / 8e37": "1.25e-38 (correct; divisor below 2^126)",
+      "ldexp(FLT_MAX, -128) / frexp_mantissa(FLT_MAX)": "1.0 (correct)",
+      "classification": "shader relied on fdiv with divisors above 2^126, outside the Vulkan fdiv precision guarantee; AGX computes a * rcp(b) and the reciprocal underflows to a flushed denormal. hk/precise-math fdiv inherits the 0. Reported to HkIntegrateDriver as a precision gap, fixed here in the shader (category b)."
+    },
+    "float_to_int32": {
+      "int(2147483648.0f)": {"agx_stock": 2147483647, "agx_coopmat": 2147483647, "aarch64_host_gcc": 2147483647, "x86_64_host_gcc": -2147483648},
+      "int8(130.0f)": {"aarch64_host": -126, "note": "wraps through int32 on both ISAs, so the int8/uint8 wrap pins hold everywhere"},
+      "classification": "test oracle pinned x86 wrap for the INT32_MAX round trip; OpConvertFToS out of range is undefined and upstream CPU on aarch64 saturates (category c)"
+    },
+    "sinh_reassociation": {
+      "isolated_block": "2.175017456999337e+38 (correct)",
+      "with_sinh_cosh_branch_in_same_shader": "inf",
+      "with_precise_on_the_product": "2.175017456999337e+38 on stock and coopmat",
+      "mechanism": "nir_opt_algebraic inexact fmul constant reassociation (rules '~fmul(fmul(a,#b),c) -> fmul(fmul(a,c),b)' and its mirror, mesa e10be728 nir_opt_algebraic.py lines 2405/3624) hoists the 0.5 in sh past both h multiplies; (1 - inverse) * cx * h * h = 0.97 * e^89 overflows before the 0.5. Spec-legal without NoContraction (category b)."
+    },
+    "tan_at_fl_pi_over_2": {
+      "stock": "cos(1.5707964f) = 0 -> complex tan denominator sh^2 + cb^2 = 0 -> NaN; inside the Vulkan 2^-11 absolute envelope for cos, so not a defect",
+      "precise_math": "cos(1.5707964f) = -4.3711e-8 -> tan = -2.2877e7 matches host",
+      "in_source_payne_hanek": "elementwise.comp's sin_impl/cos_impl are documented dead on this driver (2026-09-02, dynamic-index shift miscompile), so the complex shader cannot borrow them",
+      "classification": "driver precision requirement (hk/precise-math, fork 979453d); test probes the builtin and names the requirement (category a, already handed over in the precise-math receipt)"
+    }
+  },
+  "fix": {
+    "overlay/mlx/backend/omarchy/shaders/complex_elementwise.comp": [
+      "scale_exponent(): frexp-based power-of-two scaling helper",
+      "complex_log_magnitude: ratio = ldexp(min, -e) / mantissa instead of min / max",
+      "complex_sqrt: normalize with ldexp by an even exponent, root_scale = 2^(e/2)",
+      "complex_atan small-log-difference branch: ldexp scaling of (x, y - 1), y and 4",
+      "case 16 log1p large branch: reuse complex_log_magnitude(x + 1, y) (drops the scale division)",
+      "case 17 sign: ldexp normalization",
+      "case 12/13 sinh/cosh: precise on (factors * h) * h",
+      "deleted complex_hypot (no callers)"
+    ],
+    "overlay/tests/omarchy/test_complex_ops.cpp": [
+      "integer round: drop the INT32_MAX element whose float round trip has undefined int32 conversion; INT32_MIN stays",
+      "large-magnitude tan: probe cos(fl(pi/2)) on the device; when the builtin returns exactly 0 skip that single point with the named hk/precise-math requirement, otherwise keep the -2.2877e7 pin; tanh keeps all three points"
+    ]
+  },
+  "results": {
+    "llvmpipe": {
+      "complex_ops": "34/34 cases, 1715/1715 assertions (unchanged count; tan pin exercised)",
+      "primitive": "98/98, 2699373/2699373",
+      "eq_math": "7/7, 116/116",
+      "runtime": "40/40, 6304/6304"
+    },
+    "jwm1_stock_26.1.7": {
+      "complex_ops": "34/34 cases, 1713/1713 assertions, 1 named skip (tan(fl(pi/2)))",
+      "primitive": "98/98, 2699373/2699373",
+      "eq_math": "7/7, 116/116",
+      "runtime": "40/40, 6307/6307"
+    },
+    "jwm1_honeykrisp-coopmat-5bb2b28": {
+      "complex_ops": "34/34 cases, 1713/1713 assertions, 1 named skip (no precise-math on this branch)"
+    },
+    "jwm1_honeykrisp-omarchy-e10be72": {
+      "complex_ops": "34/34 cases, 1715/1715 assertions, no skip",
+      "primitive": "98/98, 2699373/2699373",
+      "eq_math": "7/7, 116/116",
+      "runtime": "40/40, 6307/6307"
+    },
+    "logs": "receipts/m1-complex-ops/suite-*.log (copies of jwm1 ~/log/cops-*.log)"
+  },
+  "commands": [
+    "rsync worktree -> jwm1:~/src/mlx-complex-ops-20260908; bash scripts/prepare-mlx.sh; cmake -S .work/mlx -B .work/build -DCMAKE_BUILD_TYPE=Release -DMLX_BUILD_OMARCHY=ON -DMLX_BUILD_CPU=ON -DMLX_BUILD_METAL=OFF -DMLX_BUILD_CUDA=OFF -DMLX_BUILD_TESTS=ON -DMLX_BUILD_EXAMPLES=OFF -DMLX_BUILD_BENCHMARKS=OFF -DMLX_BUILD_PYTHON_BINDINGS=OFF -DOMARCHY_GLSLANG=/usr/bin/glslangValidator; make -C .work/build omarchy_{complex_ops,primitive,eq_math,runtime}_tests -j4",
+    "bash ~/probe-cops/run-suite.sh <tag> <icd.json> complex_ops primitive eq_math runtime  (VK_ICD_FILENAMES=<icd> AGX_SIMDMAT=1 flock /tmp/m1-gpu.lock ./omarchy_<suite>_tests)",
+    "python3 probe.py <icd.json> <tag>; python3 probe2.py <icd.json> <tag> (probe3.comp = sinh block with both branches, probe4.comp = same with precise)",
+    "local: cmake --build .work/build --target omarchy_{complex_ops,primitive,eq_math,runtime}_tests -j8; MLX_OMARCHY_ALLOW_NON_APPLE=1 LP_NUM_THREADS=4 .work/build/tests/omarchy/omarchy_<suite>_tests"
+  ],
+  "handoff": "HkIntegrateDriver notified via hub (FLT_MAX/FLT_MAX = 0 on precise-math fdiv; reproducer jwm1 ~/probe-cops/probe.comp). No Mesa change made here.",
+  "open": [
+    "elementwise.comp still carries the dead Payne-Hanek sin/cos/tan (documented 2026-09-02 miscompile); its shift-by-(32 - sub) carry chain looks like the ubfe mod-32 defect hk/byte-extract fixes, worth re-probing on the merged driver before deleting or reviving"
+  ]
+}
