@@ -43,15 +43,8 @@ constexpr bool compute_index_span_fits(uint64_t offset, uint64_t count) {
   return count <= max_index && offset <= max_index &&
       (count == 0 || count - 1 <= max_index - offset);
 }
-// logical_or.comp covers one element per invocation with no grid-stride
-// loop, so outputs past kMaxComputeGroupCountX * kComputeThreadsPerGroup
-// elements dispatch in back-to-back chunks with the chunk's first
-// element in matrix_m. The cursor advances by min(remaining, chunk) --
-// never a bare += chunk -- so a count near UINT32_MAX (a 4 GiB bool
-// tensor is allocatable) cannot wrap the uint32 accumulator into an
-// endless loop. The shader-side index stays bounded: the last chunk's
-// base is a multiple of the cap and the rounded group extent adds at
-// most one full group, so base + rounded <= UINT32_MAX exactly.
+
+// Clamp the final advance so a near-UINT32_MAX count cannot wrap.
 inline constexpr uint32_t kLogicalChunkElements =
     kMaxComputeGroupCountX * kComputeThreadsPerGroup;
 
