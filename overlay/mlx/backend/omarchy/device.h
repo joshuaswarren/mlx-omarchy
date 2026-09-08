@@ -85,6 +85,10 @@ struct CapabilityReport {
   // scatter Sum hardware-atomicAdd kernels and the FCAS
   // compare-exchange twins.
   bool shader_atomic_float_add{false};
+  // True when VK_KHR_cooperative_matrix is present, the cooperativeMatrix
+  // feature is on, and the device lists an 8x8x8 all-fp32 subgroup shape.
+  // Honeykrisp advertises this behind AGX_SIMDMAT; llvmpipe does not.
+  bool cooperative_matrix_f32_8{false};
   size_t total_memory{0};
   VkDeviceSize max_allocation_size{0};
   VkDeviceSize max_buffer_size{0};

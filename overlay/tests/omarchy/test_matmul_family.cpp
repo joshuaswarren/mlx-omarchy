@@ -518,6 +518,160 @@ TEST_CASE("dense matmul supports general bias rank and half values") {
   }
 }
 
+// Dense f32 matmul across the shapes the 8x8x8 cooperative-matrix gate
+// accepts (dispatch_matmul, primitives.cpp) plus the shapes it must
+// refuse. On a device reporting cooperative_matrix_f32_8 (Honeykrisp
+// honeykrisp-coopmat branch, AGX_SIMDMAT=1) the gated cases run
+// MatmulF32Coopmat; on llvmpipe and stock Mesa every case runs the 16x16
+// tile. Operands are small integers so both kernels are exact and the
+// comparison is equality, not a tolerance.
+TEST_CASE("dense f32 matmul matches host across coopmat-gated shapes") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  const auto& caps = omarchy::device(0).capabilities();
+  const bool coopmat_device =
+      caps.cooperative_matrix_f32_8 && caps.subgroup_size == 32;
+  std::cout << "[provenance] cooperative_matrix_f32_8="
+            << (caps.cooperative_matrix_f32_8 ? 1 : 0)
+            << " subgroup_size=" << caps.subgroup_size << " -> gated shapes run "
+            << (coopmat_device ? "MatmulF32Coopmat" : "MatmulF32 (16x16 tile)")
+            << "\n";
+
+  std::mt19937 rng(20260908);
+  std::uniform_int_distribution<int> small(-4, 4);
+  auto integers = [&](size_t count) {
+    std::vector<float> values(count);
+    for (auto& v : values) {
+      v = static_cast<float>(small(rng));
+    }
+    return values;
+  };
+  // Operand a is (batch, m, k) row-major on the host; the device view is
+  // either that array or a transposed view of its (batch, k, m) copy so
+  // the kernel sees the column-major flag with the same values.
+  auto operand = [&](const std::vector<float>& values,
+                     int batch,
+                     int rows,
+                     int cols,
+                     bool transposed) {
+    if (!transposed) {
+      return array(values.begin(), Shape{batch, rows, cols}, float32);
+    }
+    std::vector<float> swapped(values.size());
+    for (int bt = 0; bt < batch; ++bt) {
+      for (int r = 0; r < rows; ++r) {
+        for (int c = 0; c < cols; ++c) {
+          swapped[(static_cast<size_t>(bt) * cols + c) * rows + r] =
+              values[(static_cast<size_t>(bt) * rows + r) * cols + c];
+        }
+      }
+    }
+    return transpose(
+        array(swapped.begin(), Shape{batch, cols, rows}, float32),
+        {0, 2, 1},
+        stream);
+  };
+  auto run = [&](const char* label,
+                 int batch,
+                 int m,
+                 int k,
+                 int n,
+                 bool a_t,
+                 bool b_t,
+                 bool gated) {
+    INFO(label, " batch=", batch, " m=", m, " k=", k, " n=", n,
+         " a_t=", a_t, " b_t=", b_t, " path=",
+         (gated && coopmat_device ? "coopmat" : "tiled"));
+    auto a_values = integers(static_cast<size_t>(batch) * m * k);
+    auto b_values = integers(static_cast<size_t>(batch) * k * n);
+    std::vector<float> expected = host_matmul(a_values, b_values, batch, m, k, n);
+    std::vector<float> got = readback_f32(
+        stream,
+        matmul(
+            operand(a_values, batch, m, k, a_t),
+            operand(b_values, batch, k, n, b_t),
+            stream));
+    REQUIRE_EQ(got.size(), expected.size());
+    float max_abs_err = 0.0f;
+    for (size_t i = 0; i < expected.size(); ++i) {
+      max_abs_err = std::max(max_abs_err, std::fabs(got[i] - expected[i]));
+    }
+    std::cout << "[matmul-f32] " << label << " " << batch << "x" << m << "x"
+              << k << "x" << n << (a_t ? " aT" : " a") << (b_t ? " bT" : " b")
+              << " path=" << (gated && coopmat_device ? "coopmat" : "tiled")
+              << " max_abs_err=" << max_abs_err << "\n";
+    CHECK_EQ(max_abs_err, 0.0f);
+  };
+
+  struct Case {
+    const char* label;
+    int batch, m, k, n;
+    bool gated;
+  };
+  const Case cases[] = {
+      {"cube8", 1, 8, 8, 8, true},
+      {"cube64", 1, 64, 64, 64, true},
+      {"cube128", 1, 128, 128, 128, true},
+      {"batched4x32", 4, 32, 32, 32, true},
+      {"odd17x23x19", 1, 17, 23, 19, false},
+  };
+  for (const auto& c : cases) {
+    for (bool a_t : {false, true}) {
+      for (bool b_t : {false, true}) {
+        run(c.label, c.batch, c.m, c.k, c.n, a_t, b_t, c.gated);
+      }
+    }
+  }
+
+  // Nonzero element offsets through slices of a larger parent. A slice at
+  // a 16-byte aligned offset with 4-aligned row gaps keeps the coopmat
+  // gate; a slice one column over breaks the alignment and must take the
+  // tiled kernel on every device.
+  {
+    const int m = 32, k = 40, n = 24;
+    const int pad_rows = 8, pad_cols = 12;
+    auto parent_a = integers(static_cast<size_t>(m + pad_rows) * (k + pad_cols));
+    auto parent_b = integers(static_cast<size_t>(k + pad_rows) * (n + pad_cols));
+    array pa(parent_a.begin(), Shape{m + pad_rows, k + pad_cols}, float32);
+    array pb(parent_b.begin(), Shape{k + pad_rows, n + pad_cols}, float32);
+    for (int column0 : {4, 5}) {
+      const bool gated = column0 % 4 == 0;
+      INFO("slice column offset ", column0, " path=",
+           (gated && coopmat_device ? "coopmat" : "tiled"));
+      std::vector<float> a_values(static_cast<size_t>(m) * k);
+      std::vector<float> b_values(static_cast<size_t>(k) * n);
+      for (int r = 0; r < m; ++r) {
+        for (int c = 0; c < k; ++c) {
+          a_values[static_cast<size_t>(r) * k + c] = parent_a
+              [static_cast<size_t>(r + pad_rows) * (k + pad_cols) + c + column0];
+        }
+      }
+      for (int r = 0; r < k; ++r) {
+        for (int c = 0; c < n; ++c) {
+          b_values[static_cast<size_t>(r) * n + c] = parent_b
+              [static_cast<size_t>(r + pad_rows) * (n + pad_cols) + c + column0];
+        }
+      }
+      std::vector<float> expected = host_matmul(a_values, b_values, 1, m, k, n);
+      array a = slice(pa, {pad_rows, column0}, {pad_rows + m, column0 + k}, stream);
+      array b = slice(pb, {pad_rows, column0}, {pad_rows + k, column0 + n}, stream);
+      std::vector<float> got = readback_f32(stream, matmul(a, b, stream));
+      REQUIRE_EQ(got.size(), expected.size());
+      float max_abs_err = 0.0f;
+      for (size_t i = 0; i < expected.size(); ++i) {
+        max_abs_err = std::max(max_abs_err, std::fabs(got[i] - expected[i]));
+      }
+      std::cout << "[matmul-f32] slice col" << column0 << " " << m << "x" << k
+                << "x" << n << " path="
+                << (gated && coopmat_device ? "coopmat" : "tiled")
+                << " max_abs_err=" << max_abs_err << "\n";
+      CHECK_EQ(max_abs_err, 0.0f);
+    }
+  }
+}
+
 TEST_CASE("block masked mm zeroes and scales blocks") {
   if (!compute_available()) {
     return;
