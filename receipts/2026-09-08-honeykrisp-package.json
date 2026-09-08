@@ -91,7 +91,24 @@
         "generated_ids_sha256": "7fd25a869ff21678",
         "tokens": 32
       },
-      "matrix_status": "not emitted: bench_matrix invokes mlx-paired-capture without MLX_PAIR_IDS, whose required capture hook raises KeyError; all three legs measured=false and exit 1. No fabricated 5x matrix numbers."
+      "matrix_status": "complete: 5 passes x 3 README workloads, all 15 legs measured rc=0",
+      "capture_dir": "~/benchq/hk-package-system-20260908-qmm-capture/",
+      "token_ids": "ids-1.jsonl through ids-5.jsonl, 3 records per pass; short hash 7fd25a869ff21678; all records are pinned Qwen revision a5339a4131f135d0fdc6a5c8b5bbed2753bbe0f3",
+      "medians": {
+        "short-decode-32": {
+          "decode_tok_s": 65.51,
+          "prefill_s": 0.231
+        },
+        "long-decode-128": {
+          "decode_tok_s": 55.72,
+          "prefill_s": 0.624
+        },
+        "longctx-1024-decode-32": {
+          "decode_tok_s": 40.74,
+          "prefill_s": 2.445
+        }
+      },
+      "note": "MLX_PAIR_IDS was set uniquely per pass so the capture hook emitted exact IDs; matching +5935a01 wheel was installed in venv-qmmcm and hashes verified."
     }
   }
 }
