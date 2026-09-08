@@ -82,8 +82,14 @@ void eval(array& arr) {
     }
     encoder.add_temporary(arr);
     // Node budget: flush the batch so a long graph cannot pin unbounded
-    // temporaries behind one open command buffer.
-    if (encoder.nodes() >= omarchy::kBatchNodeBudget) {
+    // temporaries behind one open command buffer. Byte budget: flush
+    // once the intermediates freed under this batch, which nothing can
+    // recycle before it submits, reach their share of the memory limit
+    // (kBatchByteBudgetDivisor).
+    auto& alloc = omarchy::allocator();
+    if (encoder.nodes() >= omarchy::kBatchNodeBudget ||
+        alloc.pending_quarantine_bytes() >=
+            alloc.get_memory_limit() / omarchy::kBatchByteBudgetDivisor) {
       encoder.commit();
     }
   }
