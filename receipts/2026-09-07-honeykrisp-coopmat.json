@@ -1,0 +1,40 @@
+{
+  "date": "2026-09-07",
+  "title": "Honeykrisp VK_KHR_cooperative_matrix via G13 simd_matrix_fmadd32",
+  "branch": "honeykrisp-coopmat",
+  "repo": "github.com:joshuaswarren/mesa.git",
+  "commits": [
+    "efcec0f8245dc60e4cc337ced86c39c6bb84721b",
+    "e3e69f5a214"
+  ],
+  "machine": "jwm1-linux",
+  "driver": {
+    "path": "/home/joshuawarren/src/mesa-coopmat/build/src/asahi/vulkan/libvulkan_asahi.so",
+    "icd": "/tmp/asahi_coopmat_icd.json",
+    "driverInfo": "Mesa 26.3.0-devel (git-e3e69f5a21)",
+    "deviceName": "Apple M1 (G13G B1)"
+  },
+  "gate": "AGX_SIMDMAT",
+  "probe": {
+    "off": {"count": 0},
+    "on": {
+      "count": 1,
+      "shape": {
+        "M": 8, "N": 8, "K": 8,
+        "AType": 1, "BType": 1, "CType": 1, "ResultType": 1,
+        "saturatingAccumulation": 0,
+        "scope": 3,
+        "notes": "VK_COMPONENT_TYPE_FLOAT32_KHR=1, VK_SCOPE_SUBGROUP_KHR=3"
+      }
+    }
+  },
+  "vulkaninfo_on": {
+    "VK_KHR_cooperative_matrix": "extension revision 2",
+    "cooperativeMatrix": true,
+    "cooperativeMatrixRobustBufferAccess": false
+  },
+  "not_done": [
+    "mlx-omarchy GEMM shader does not yet consume the extension",
+    "16x16 / fp16 shapes not advertised (8x8 fp32 is the GPU-verified path)"
+  ]
+}

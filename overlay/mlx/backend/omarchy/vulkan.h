@@ -5,6 +5,63 @@
 
 #include <vulkan/vulkan.h>
 
+// VK_KHR_cooperative_matrix landed in Vulkan-Headers 1.3.255. The M1
+// Omarchy toolchain ships newer headers; the x86_64 llvmpipe development
+// image (header 239) does not, so declare the four definitions the
+// capability probe needs, verbatim from the registry.
+#ifndef VK_KHR_cooperative_matrix
+#define VK_KHR_cooperative_matrix 1
+#define VK_KHR_COOPERATIVE_MATRIX_EXTENSION_NAME "VK_KHR_cooperative_matrix"
+#define VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COOPERATIVE_MATRIX_FEATURES_KHR \
+  ((VkStructureType)1000506000)
+#define VK_STRUCTURE_TYPE_COOPERATIVE_MATRIX_PROPERTIES_KHR \
+  ((VkStructureType)1000506001)
+typedef enum VkScopeKHR {
+  VK_SCOPE_DEVICE_KHR = 1,
+  VK_SCOPE_WORKGROUP_KHR = 2,
+  VK_SCOPE_SUBGROUP_KHR = 3,
+  VK_SCOPE_QUEUE_FAMILY_KHR = 5,
+  VK_SCOPE_MAX_ENUM_KHR = 0x7FFFFFFF
+} VkScopeKHR;
+typedef enum VkComponentTypeKHR {
+  VK_COMPONENT_TYPE_FLOAT16_KHR = 0,
+  VK_COMPONENT_TYPE_FLOAT32_KHR = 1,
+  VK_COMPONENT_TYPE_FLOAT64_KHR = 2,
+  VK_COMPONENT_TYPE_SINT8_KHR = 3,
+  VK_COMPONENT_TYPE_SINT16_KHR = 4,
+  VK_COMPONENT_TYPE_SINT32_KHR = 5,
+  VK_COMPONENT_TYPE_SINT64_KHR = 6,
+  VK_COMPONENT_TYPE_UINT8_KHR = 7,
+  VK_COMPONENT_TYPE_UINT16_KHR = 8,
+  VK_COMPONENT_TYPE_UINT32_KHR = 9,
+  VK_COMPONENT_TYPE_UINT64_KHR = 10,
+  VK_COMPONENT_TYPE_MAX_ENUM_KHR = 0x7FFFFFFF
+} VkComponentTypeKHR;
+typedef struct VkCooperativeMatrixPropertiesKHR {
+  VkStructureType sType;
+  void* pNext;
+  uint32_t MSize;
+  uint32_t NSize;
+  uint32_t KSize;
+  VkComponentTypeKHR AType;
+  VkComponentTypeKHR BType;
+  VkComponentTypeKHR CType;
+  VkComponentTypeKHR ResultType;
+  VkBool32 saturatingAccumulation;
+  VkScopeKHR scope;
+} VkCooperativeMatrixPropertiesKHR;
+typedef struct VkPhysicalDeviceCooperativeMatrixFeaturesKHR {
+  VkStructureType sType;
+  void* pNext;
+  VkBool32 cooperativeMatrix;
+  VkBool32 cooperativeMatrixRobustBufferAccess;
+} VkPhysicalDeviceCooperativeMatrixFeaturesKHR;
+typedef VkResult(VKAPI_PTR* PFN_vkGetPhysicalDeviceCooperativeMatrixPropertiesKHR)(
+    VkPhysicalDevice physicalDevice,
+    uint32_t* pPropertyCount,
+    VkCooperativeMatrixPropertiesKHR* pProperties);
+#endif
+
 #include <stdexcept>
 #include <string>
 
@@ -37,6 +94,8 @@ struct InstanceTable {
   PFN_vkGetPhysicalDeviceQueueFamilyProperties
       GetPhysicalDeviceQueueFamilyProperties{nullptr};
   PFN_vkCreateDevice CreateDevice{nullptr};
+  PFN_vkGetPhysicalDeviceCooperativeMatrixPropertiesKHR
+      GetPhysicalDeviceCooperativeMatrixPropertiesKHR{nullptr};
   PFN_vkDestroyInstance DestroyInstance{nullptr};
 };
 

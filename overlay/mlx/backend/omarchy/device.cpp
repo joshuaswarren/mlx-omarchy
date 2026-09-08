@@ -157,6 +157,7 @@ CapabilityReport collect_capabilities(
     const VkPhysicalDeviceVulkan12Features& f12,
     const VkPhysicalDeviceVulkan13Features& f13,
     const VkPhysicalDeviceShaderAtomicFloatFeaturesEXT& fa,
+    const VkPhysicalDeviceCooperativeMatrixFeaturesKHR& cm,
     const VkPhysicalDevice16BitStorageFeatures& f16,
     const VkPhysicalDeviceMaintenance3Properties& m3,
     const VkPhysicalDeviceMaintenance4Properties& m4,
@@ -238,24 +239,56 @@ CapabilityReport collect_capabilities(
       break;
     }
   }
-  // The extension must be present AND the buffer float32 atomic-add
-  // feature must be enabled; llvmpipe advertises the extension name and
-  // clears the feature bit only when the device truly supports it.
+  // Extension-gated features: the extension name must be listed AND the
+  // feature bit must be on. llvmpipe advertises VK_EXT_shader_atomic_float
+  // and clears the float32 buffer-add bit only when it truly lacks it;
+  // Honeykrisp lists VK_KHR_cooperative_matrix only on the
+  // honeykrisp-coopmat branch behind AGX_SIMDMAT, and stock Mesa 26.1.7
+  // does not list it at all.
   caps.shader_atomic_float_add = false;
-  {
-    uint32_t ext_count = 0;
-    if (it.EnumerateDeviceExtensionProperties &&
-        it.EnumerateDeviceExtensionProperties(pd, nullptr, &ext_count,
-                                              nullptr) == VK_SUCCESS &&
-        ext_count > 0) {
-      std::vector<VkExtensionProperties> exts(ext_count);
-      if (it.EnumerateDeviceExtensionProperties(
-              pd, nullptr, &ext_count, exts.data()) == VK_SUCCESS) {
-        for (const auto& e : exts) {
-          if (std::strcmp(e.extensionName, "VK_EXT_shader_atomic_float") ==
-              0) {
-            caps.shader_atomic_float_add =
-                fa.shaderBufferFloat32AtomicAdd == VK_TRUE;
+  caps.cooperative_matrix_f32_8 = false;
+  bool has_coopmat_ext = false;
+  uint32_t ext_count = 0;
+  if (it.EnumerateDeviceExtensionProperties &&
+      it.EnumerateDeviceExtensionProperties(pd, nullptr, &ext_count, nullptr) ==
+          VK_SUCCESS &&
+      ext_count > 0) {
+    std::vector<VkExtensionProperties> exts(ext_count);
+    if (it.EnumerateDeviceExtensionProperties(
+            pd, nullptr, &ext_count, exts.data()) == VK_SUCCESS) {
+      for (const auto& e : exts) {
+        if (std::strcmp(e.extensionName, "VK_EXT_shader_atomic_float") == 0) {
+          caps.shader_atomic_float_add =
+              fa.shaderBufferFloat32AtomicAdd == VK_TRUE;
+        } else if (
+            std::strcmp(
+                e.extensionName, VK_KHR_COOPERATIVE_MATRIX_EXTENSION_NAME) ==
+            0) {
+          has_coopmat_ext = cm.cooperativeMatrix == VK_TRUE;
+        }
+      }
+    }
+  }
+  // The matmul kernel is written for exactly one shape: 8x8x8, all fp32,
+  // subgroup scope, non-saturating.
+  if (has_coopmat_ext && it.GetPhysicalDeviceCooperativeMatrixPropertiesKHR) {
+    uint32_t n = 0;
+    if (it.GetPhysicalDeviceCooperativeMatrixPropertiesKHR(pd, &n, nullptr) ==
+            VK_SUCCESS &&
+        n > 0) {
+      std::vector<VkCooperativeMatrixPropertiesKHR> shapes(
+          n, {VK_STRUCTURE_TYPE_COOPERATIVE_MATRIX_PROPERTIES_KHR});
+      if (it.GetPhysicalDeviceCooperativeMatrixPropertiesKHR(
+              pd, &n, shapes.data()) == VK_SUCCESS) {
+        for (const auto& p : shapes) {
+          if (p.MSize == 8 && p.NSize == 8 && p.KSize == 8 &&
+              p.AType == VK_COMPONENT_TYPE_FLOAT32_KHR &&
+              p.BType == VK_COMPONENT_TYPE_FLOAT32_KHR &&
+              p.CType == VK_COMPONENT_TYPE_FLOAT32_KHR &&
+              p.ResultType == VK_COMPONENT_TYPE_FLOAT32_KHR &&
+              p.saturatingAccumulation == VK_FALSE &&
+              p.scope == VK_SCOPE_SUBGROUP_KHR) {
+            caps.cooperative_matrix_f32_8 = true;
             break;
           }
         }
@@ -333,6 +366,10 @@ bool Runtime::init_impl() {
               instance, "vkGetPhysicalDeviceQueueFamilyProperties"));
   it.CreateDevice = reinterpret_cast<PFN_vkCreateDevice>(
       vk::GetInstanceProcAddr(instance, "vkCreateDevice"));
+  it.GetPhysicalDeviceCooperativeMatrixPropertiesKHR =
+      reinterpret_cast<PFN_vkGetPhysicalDeviceCooperativeMatrixPropertiesKHR>(
+          vk::GetInstanceProcAddr(
+              instance, "vkGetPhysicalDeviceCooperativeMatrixPropertiesKHR"));
   it.DestroyInstance = reinterpret_cast<PFN_vkDestroyInstance>(
       vk::GetInstanceProcAddr(instance, "vkDestroyInstance"));
   if (!it.EnumeratePhysicalDevices || !it.GetPhysicalDeviceProperties2 ||
@@ -391,11 +428,14 @@ bool Runtime::init_impl() {
         VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES};
     VkPhysicalDeviceShaderAtomicFloatFeaturesEXT fa{
         VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_ATOMIC_FLOAT_FEATURES_EXT};
+    VkPhysicalDeviceCooperativeMatrixFeaturesKHR cm{
+        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COOPERATIVE_MATRIX_FEATURES_KHR};
     VkPhysicalDeviceFeatures2 feats2{
         VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2};
     f16.pNext = &f12;
     f12.pNext = &f13;
     f13.pNext = &fa;
+    fa.pNext = &cm;
     feats2.pNext = &f16;
     it.GetPhysicalDeviceFeatures2(pd, &feats2);
 
@@ -427,6 +467,7 @@ bool Runtime::init_impl() {
         f12,
         f13,
         fa,
+        cm,
         f16,
         m3,
         m4,
@@ -630,6 +671,10 @@ Device::Device(uint32_t physical_device_index) {
       VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_ATOMIC_FLOAT_FEATURES_EXT};
   enabled_fa.shaderBufferFloat32AtomicAdd =
       caps_.shader_atomic_float_add ? VK_TRUE : VK_FALSE;
+  VkPhysicalDeviceCooperativeMatrixFeaturesKHR enabled_cm{
+      VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COOPERATIVE_MATRIX_FEATURES_KHR};
+  enabled_cm.cooperativeMatrix =
+      caps_.cooperative_matrix_f32_8 ? VK_TRUE : VK_FALSE;
   VkPhysicalDevice16BitStorageFeatures enabled16{
       VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_16BIT_STORAGE_FEATURES};
   enabled16.storageBuffer16BitAccess =
@@ -647,6 +692,9 @@ Device::Device(uint32_t physical_device_index) {
   enabled16.pNext = &enabled12;
   enabled12.pNext = &enabled13;
   enabled13.pNext = &enabled_fa;
+  if (caps_.cooperative_matrix_f32_8) {
+    enabled_fa.pNext = &enabled_cm;
+  }
   enabled2.pNext = &enabled16;
 
   // M1 receipt: Mesa Honeykrisp exposes one compute queue (family 0,
@@ -665,10 +713,16 @@ Device::Device(uint32_t physical_device_index) {
   // query saw the extension and the buffer-add feature bit; the
   // scatter float Sum/Prod kernels are dispatched only behind that
   // same flag.
-  const char* atomic_float_ext = "VK_EXT_shader_atomic_float";
+  std::vector<const char*> device_exts;
   if (caps_.shader_atomic_float_add) {
-    dci.enabledExtensionCount = 1;
-    dci.ppEnabledExtensionNames = &atomic_float_ext;
+    device_exts.push_back("VK_EXT_shader_atomic_float");
+  }
+  if (caps_.cooperative_matrix_f32_8) {
+    device_exts.push_back(VK_KHR_COOPERATIVE_MATRIX_EXTENSION_NAME);
+  }
+  if (!device_exts.empty()) {
+    dci.enabledExtensionCount = static_cast<uint32_t>(device_exts.size());
+    dci.ppEnabledExtensionNames = device_exts.data();
   }
   VKX_CHECK(it.CreateDevice(pd, &dci, nullptr, &device_));
 

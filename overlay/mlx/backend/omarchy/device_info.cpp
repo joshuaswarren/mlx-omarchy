@@ -61,6 +61,8 @@ device_info(int device_index) {
     info["shader_int64"] = static_cast<size_t>(caps.shader_int64 ? 1 : 0);
     info["storage_buffer_16bit_access"] =
         static_cast<size_t>(caps.storage_buffer_16bit_access ? 1 : 0);
+    info["cooperative_matrix_f32_8"] =
+        static_cast<size_t>(caps.cooperative_matrix_f32_8 ? 1 : 0);
     info["max_compute_shared_memory_size"] =
         static_cast<size_t>(caps.max_compute_shared_memory_size);
     info["max_compute_work_group_invocations"] =

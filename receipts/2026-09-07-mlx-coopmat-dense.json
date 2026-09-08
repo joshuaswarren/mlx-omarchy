@@ -1,0 +1,30 @@
+{
+  "date": "2026-09-07",
+  "title": "mlx-omarchy dense f32 matmul consumes Honeykrisp 8x8x8 coopmat",
+  "machine": "jwm1-linux",
+  "driver": {
+    "icd": "/tmp/asahi_coopmat_icd.json",
+    "so": "/home/joshuawarren/src/mesa-coopmat/build/src/asahi/vulkan/libvulkan_asahi.so",
+    "commit": "5bb2b28c95c",
+    "env": ["AGX_SIMDMAT=1"]
+  },
+  "mlx": {
+    "tree": "/home/joshuawarren/src/mlx-perf-next-20260907",
+    "kernel": "MatmulF32Coopmat",
+    "shader": "overlay/mlx/backend/omarchy/shaders/matmul_coopmat.comp",
+    "gate": "cooperative_matrix_f32_8 && subgroup_size==32 && M,N,K % 8 == 0 && alpha==1 && no bias C && dtype float32"
+  },
+  "checks": {
+    "ones_8x8": {"value": 8.0, "pass": true},
+    "A_times_2I": {"row0": [0.0, 2.0, 4.0, 6.0], "pass": true},
+    "random_8x8x8_max_abs_err": 0.0,
+    "random_64x64x64_max_abs_err": 0.0,
+    "random_128x128x128_max_abs_err": 0.0,
+    "batched_4x32x32_max_abs_err": 0.0,
+    "fallback_17x19x23_max_abs_err": 0.0
+  },
+  "notes": [
+    "glslang 16.4.0 asserts if coopMatLoad layout is a runtime value; branches with constant layouts are required",
+    "debugoptimized Honeykrisp aborts unless AGX2.xml exact-mask includes opcode bit6 of 0x6f"
+  ]
+}
