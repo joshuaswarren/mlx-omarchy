@@ -1,0 +1,78 @@
+{
+  "schema": "bench-matrix/1",
+  "mode": "metadata",
+  "started_utc": "2026-09-08T16:56:54Z",
+  "host_label": "jwm1-linux-parity-baseline",
+  "manifest": "~/src/mlx-parity-baseline-20260908/scripts/bench_matrix.json",
+  "host": {
+    "system": "Linux",
+    "machine": "aarch64",
+    "python": "3.14.7",
+    "os": "Omarchy",
+    "kernel": "7.1.6-1-1-ARCH",
+    "memsize_bytes": 16228417536,
+    "gpu": {
+      "device": "Apple M1 (G13G B1)",
+      "vulkan_driver": "Honeykrisp"
+    }
+  },
+  "packages": {
+    "mlx": null,
+    "mlx-omarchy": "0.32.2.dev202609081618+c254867",
+    "mlx-lm": "0.31.3",
+    "transformers": "5.16.1",
+    "numpy": "2.5.2"
+  },
+  "binary_provenance": {
+    "omarchy": {
+      "dist": "mlx-omarchy",
+      "verified": "match",
+      "mismatch": null,
+      "files": [
+        {
+          "path": "mlx/core.cpython-314-aarch64-linux-gnu.so",
+          "label": "mlx.core extension",
+          "sha256": "4ad850da16c300ea9f60aa7247f034f358aa16d7ba2fd146979a01c867e3cfa5",
+          "record_sha256": "4ad850da16c300ea9f60aa7247f034f358aa16d7ba2fd146979a01c867e3cfa5",
+          "match": true
+        },
+        {
+          "path": "mlx/lib/libmlx.so",
+          "label": "mlx/lib/libmlx.so",
+          "sha256": "a602f260dc9fe75df263b83ada0ccc2e55b87bccdc0bc3daf1e935e2d9dec76a",
+          "record_sha256": "a602f260dc9fe75df263b83ada0ccc2e55b87bccdc0bc3daf1e935e2d9dec76a",
+          "match": true
+        }
+      ],
+      "dist_version": "0.32.2.dev202609081618+c254867",
+      "mx_version": "0.32.2.dev202609081618+c254867",
+      "version_match": true
+    },
+    "upstream_mlx": {
+      "dist": "mlx",
+      "verified": "no-metadata",
+      "mismatch": "no mlx distribution metadata: mlx appears to be a source install, so installed-binary provenance cannot be checked here. Record the source commit instead.",
+      "files": [],
+      "dist_version": null,
+      "mx_version": "0.32.2.dev202609081618+c254867",
+      "version_match": null
+    },
+    "harness_commit": "8da67c0-dirty",
+    "line_omarchy": "provenance: mlx-omarchy 0.32.2.dev202609081618+c254867 mx=0.32.2.dev202609081618+c254867 verified=match harness=8da67c0-dirty core.cpython-314-aarch64-linux-gnu.so=sha256:4ad850da16c300ea libmlx.so=sha256:a602f260dc9fe75d"
+  },
+  "power": {
+    "raw": "macsmc-ac: online",
+    "source": "AC",
+    "percent": null,
+    "charging": true
+  },
+  "clean_check": {
+    "status": "clean",
+    "matched": [],
+    "scanned": 261
+  },
+  "source": {
+    "harness_commit": "8da67c0-dirty",
+    "note": "commit captured by scripts/mlx_provenance.py"
+  }
+}
