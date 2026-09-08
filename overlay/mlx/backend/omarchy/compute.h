@@ -554,14 +554,6 @@ enum class ComputeKernel : uint16_t {
   // Prefill on the 8x8x8 fp32 cooperative matrix, same layout as
   // QmmTileRbF16 (shaders/qmm_coopmat.comp).
   QmmPrefillCoopmatF16,
-  // Prefill on the 8x8x8 cooperative matrix with inline fragment
-  // loads (shaders/qmm_coopmat_inline.comp): f16 x unpack and fused
-  // affine Q4 B decode in the driver lowering, no staging barriers.
-  QmmInlineCoopmatF16,
-  // Dense bf16 m>1 matmul on the 8x8x8 cooperative matrix, staged
-  // f32 fragments (shaders/matmul_coopmat_bf16.comp); exact bf16
-  // widening, bf16_store RNE output packing.
-  MatmulBF16Coopmat,
   Count,
 };
 
