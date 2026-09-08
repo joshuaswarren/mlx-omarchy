@@ -269,27 +269,25 @@ Evidence: [original full-token comparison](../receipts/2026-09-04-native-output-
 
 Open in the current release.
 
-### bf16 decode still requires the RoPE synchronization guard
+### Historical BF16 RoPE scalar corruption and queue-drain workaround
 
-Observed on: real M1 (Honeykrisp), in the development experiment that
-removed the bf16 queue drain. Status: OPEN, guard retained. The affected
-release range has not been established.
+The September 4 experiment without the BF16 queue drain observed overwritten
+scalar offset storage; the trig accuracy gate refused rather than accepting
+the corrupt argument. Its exact writer was not identified.
 
-Without the drain, the scalar RoPE offset contained unexpected words
-such as `be450000 3f670000 3fc90000`, and the accuracy gate refused the
-argument. Interpreted as float32, those words have zero low 16 bits and
-are exactly representable in bf16. They do not identify the writer or
-prove premature release. Ownership, aliasing, and producer ordering
-remain candidate causes. The recorded 4-bit runs did not show this
-failure; that is not proof that all f16/f32 paths are unaffected.
+Current buffer ownership stamps recorded work and quarantines freed storage
+until completion cleanup. On September 8, source `770ae465` removed only the
+BF16-specific drain for available, primitive-free scalar offsets. Five paired
+six-workload runs preserved all complete generated-ID arrays, and another
+six-workload run with freed-memory poisoning also preserved them. All 74 M1
+fast-op/runtime cases passed. BF16 decode improved 22.3–24.0%.
 
-`rope_trig_gate` retains synchronization for bf16 output. The same change
-also pinned the dense temporary used by `copy_gpu` for strided dtype
-casts, but that fix did not resolve the bf16 observation without the
-drain. Keep the guard until the relevant lifetime and readiness
-contracts are established and ordinary numerical checks pass.
+The workaround is removed on main; non-host-constant offsets still synchronize,
+and all trig limits remain enforced. This acceptance does not identify the
+historical writer or establish native numerical parity.
 
-Evidence: [RoPE gate receipt](../receipts/2026-09-04-rope-gate-drain.md).
+Evidence: [original observation](../receipts/2026-09-04-rope-gate-drain.md) and
+[current paired receipts](../receipts/2026-09-08-rope-drain-current/).
 
 
 ### 4-bit decode runs at 0.21 tok/s (v0.3.4 only)
