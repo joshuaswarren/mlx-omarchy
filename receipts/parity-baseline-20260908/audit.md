@@ -149,31 +149,63 @@ corroborative only. The target-M1 09-06 receipts independently
 reproduce its long128 digest (`254d73fd93164b98`) on the right
 hardware, so the historical comparison's identity conclusions happen to
 stand, but its native side is superseded by the on-target receipts.
-## Long-prompt digest divergence (facts and status)
+## Long-prompt digest divergence (facts and partial mechanism)
 
-- Linux `4cc08910089477fd` is deterministic across wheels
-  (4f27136, a34cdc5, 348919c, 417c06e, c2548675), across days
-  (09-03 → 09-08), and across every 5-rep batch (this window: 5/5);
-  native `254d73fd93164b98` is deterministic across 5 reps, both
-  compile policies, and the M1 Max.
-- 4bit short and ctx1024 digests MATCH cross-OS exactly; only long128
-  differs. First difference at zero-based index 20 (20-token identical
-  prefix); streams re-align for indices 24-44 and diverge again from
-  index 45; 86 of 108 tail positions differ; both continuations are
-  coherent, no garbage (2026-09-04 comparison receipt).
-- bf16: the RoPE dense-promotion stride defect (fixed at `2f54fcb`)
-  made Linux bf16 diverge from the first token; after the fix the
-  eager stream matches native through EOS+4 tokens and diverges in the
-  EOS-suppressed continuation (first difference index 14, EOS at 9).
-  bf16 ctx1024 matches native exactly; bf16 short/long128 carry their
-  own known stream differences.
-- bf16 decode 8.6/8.4/7.7 tok/s at c2548675 is the known eager
-  dispatch explosion, not a new regression:
-  `receipts/2026-09-04-bf16-decode-census.md` pins ~774 dispatches per
-  token with the direct-RoPE/SDPA-fast gates default OFF; at
-  Honeykrisp per-dispatch floors that composition is
-  dispatch-overhead-bound. Baseline records it; waves must not regress
-  it further.
+Deterministic per-backend (5/5 Linux reps at c2548675; 5/5 native
+reps, both compile policies on the target M1). 4bit short and ctx1024
+digests MATCH cross-OS exactly; only long128 differs. First difference
+at zero-based index 20 (20-token identical prefix); streams re-align
+at indices 22-23 and diverge again from index 45; 86 of 108 tail
+positions differ; both continuations coherent, no garbage (2026-09-04
+comparison receipt; native IDs in that receipt are from an M1 Max,
+but the long128 digest and divergence pattern reproduce on the target
+M1 — corroborative, not on-target identity proof).
+
+### Plausible mechanism, NOT closure
+
+Linux margin probe (margins-long128.json, digest independently
+reproduces the exact Linux stream `4cc08910089477fd`): the long128
+fork sits on an EXACT float32 argmax tie at generated index 20 — top1
+and top2 logits both 20.953125 (` review`=3395 vs ` carefully`=15516,
+margin 0.0000).
+
+This is a plausible mechanism, not a closure of the numerical gate:
+
+- We have only Linux-side logit evidence. The native-side logit pair at
+  index 20 has not been captured on the target M1 (would require a
+  coordinated macOS reboot + a probe-side harness analogous to
+  margin-probe.py; not in this window). Linux showing an exact tie
+  does not prove native shows an exact tie — native could legitimately
+  have a strict ordering on the same pair and pick 15516 deterministically
+  while Linux (under different ULP rounding) hits the tie.
+- Standard MLX argmax tie-breaking is lowest-index-first. Token 3395
+  has the lower index. Linux picked 3395 (consistent with lowest-index
+  tie-break on a tied pair). Native picked 15516, which is INCONSISTENT
+  with a naive lowest-index tie-break on a tied pair — strongly
+  suggesting either (a) native logits at this position are NOT actually
+  tied (some ULP difference picks 15516 outright), or (b) the two
+  backends use different argmax tie-break conventions. Both branches
+  are unresolved without paired native logits.
+- 2/3 workloads matching cross-OS outright (short + ctx1024) still
+  suggests that the fork's reduction-order noise is bounded, but it
+  does not prove bit-identical numerics — only that no generated
+  position in those workloads hit a disagreement.
+
+Conclusion: the Linux exact-tie at index 20 is necessary evidence
+that a backend ULP difference COULD flip this argmax; the native side
+is the missing half of the proof. The numerical gate is UNRESOLVED
+without a paired native-margin probe or an existing native-golden
+evidence at the same position. No tolerance was relaxed and no
+model, prompt, or length changed (the gate explicitly forbids that),
+but the question remains open.
+
+bf16 observations (recorded, not blockers): bf16 long128 Linux digest
+`ad964232ee67fecd` differs from native `407b7624ed1b3b29` — same
+tie-cascade signature expected, not margin-probed; bf16 short32
+`f26175202f3dabe9` is the known post-`2f54fcb` stream whose divergence
+from native starts after the EOS position in the EOS-suppressed
+continuation (docs/known-defects.md); bf16 ctx1024 matches native
+exactly.
 - CPU-oracle attempt: the fork's CPU backend cannot run the pinned
   4-bit model through mlx-lm's cached decode — `RuntimeError: NYI`
   while evaluating the prompt-cache state
@@ -181,33 +213,19 @@ stand, but its native side is superseded by the on-target receipts.
   of a CPU-path gap; the Vulkan-vs-reference question is carried by
   the margin probe instead.
 
-Working explanation — RESOLVED to mechanism by the margin probe
-(margins-long128.json, digest `4cc08910089477fd`, independently
-reproducing the exact Linux stream): the long128 fork sits on an EXACT
-float32 argmax tie at generated index 20 — top1 and top2 logits both
-20.953125 (` review`=3395 vs ` carefully`=15516, margin 0.0000).
-Any ULP-level backend difference flips that argmax, and both
-continuations are then distinct-but-coherent greedy rollouts through
-further near-ties (index 23 margin 0.125). Short and ctx1024 match
-native outright because no generated position in their streams hits an
-exact tie. Making the digests match would require bit-identical kernel
-numerics across Metal and Vulkan — out of scope for a
-performance-parity effort and not required by any gate. Per-backend
-determinism (5/5 Linux reps at c2548675; 5/5 native reps, both
-compile policies) plus the exact-tie mechanism is the closure of this
-historical question; no tolerance was relaxed and no model, prompt, or
-length changed.
+## Ranked costs (GPU-timestamp profile, diag wheel) — INSTRUMENTED ONLY
 
-Open observations (recorded, not blockers): bf16 long128 Linux digest
-`ad964232ee67fecd` differs from native `407b7624ed1b3b29` — same
-tie-cascade signature, not margin-probed (bf16 is not the pinned gate
-model); bf16 short32 `f26175202f3dabe9` is the known post-`2f54fcb`
-stream whose divergence from native starts after the EOS position in
-the EOS-suppressed continuation (docs/known-defects.md).
 
-## Ranked costs (GPU-timestamp profile, diag wheel)
+The profiling harness is intrusive: on long-128 the instrumented span
 
-Wall→GPU attribution across the three profiled legs (span covers load +
+is 6.718 s versus ~2.27 s decode + ~0.64 s prefill on the unprofiled
+release wheel — i.e. the profile roughly doubles wall time. ALL
+GPU-busy/gap fractions below are therefore instrumented-build metrics,
+NOT unprofiled GPU utilization; the kernel-share ranking (which kernel
+consumes the most GPU-busy time) is the robust part, while absolute
+busy/gap splits must be re-derived from an unprofiled scaling benchmark
+before any "dispatch-bound" claim is treated as native behavior. The
+coordinator owns that cross-check (assigned to DecodeParity).
 prefill + decode; phases separated by markers in the .analysis.txt
 files):
 
