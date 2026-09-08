@@ -68,7 +68,7 @@ def run_leg(prompt, tokens, env_extra):
     env.update(env_extra)
     cmd = [sys.executable, str(BENCH),
            "--model", MODEL,
-           "--raw-prompt", prompt,
+           "--raw-prompt", "--prompt", prompt,
            "--tokens", str(tokens),
            "--wheel", env["MLX_BENCH_WHEEL"]]
     started = time.time()

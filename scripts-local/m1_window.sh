@@ -97,7 +97,7 @@ for D in 16 4 2; do
   for i in 1 2 3; do
     MLX_OMARCHY_BATCH_BYTES_DIVISOR=$D $W scripts/bench_decode.py \
       --model mlx-community/Qwen2.5-0.5B-Instruct-4bit \
-      --raw-prompt "$PROMPT" --tokens 32 \
+      --raw-prompt --prompt "$PROMPT" --tokens 32 \
       --wheel "$WHL" 2>/dev/null \
       | grep -E "prefill" | tail -1 \
       | sed "s/^/divisor=$D run=$i /"
