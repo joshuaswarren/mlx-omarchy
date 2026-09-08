@@ -58,5 +58,6 @@
     "C++ M1 suite legs skipped this batch for window time; python host-reference bound used instead - rerun C++ suites on M1 before final integration",
     "cross_driver_failure: the cross-built libvulkan_asahi.so (mesa-xbuild, aarch64, ldd clean on the M1) fails vkCreateInstance with VK_ERROR_UNKNOWN on jwm1-linux; wheel 0.32.2.dev202609081733+5c7876ac built OK; correctness legs and divisor sweep aborted at instance creation. Fallback: apply mesa 323b747d6b0 (one file) onto a native mesa checkout on the M1, rebuild natively, rerun phase-1 unchanged; the divisor sweep alone runs on the stock system driver (no hooks needed)",
     "llvmpipe reruns at 5c7876ac land in /tmp/mm_suite_d.log and /tmp/rt_suite_d.log on the dev box"
-  ]
+  ],
+  "submit_cost_hypothesis": "submit() p50 4.5 ms suspect #1: allocator.cpp flush_noncoherent runs on EVERY submit and vkFlushMappedMemoryRanges each live non-coherent allocation at VK_WHOLE_SIZE with no dirty tracking (noncoherent_ is a live-set, erased only at destroy_buffer; allocator.cpp:166/176/305) - repeated full-range cache maintenance whether or not the host wrote anything since the last submit. Candidate fix: dirty-flag per allocation set at host write / record time, or flush at first-use instead of every submit. Unmeasured - needs a leg of its own."
 }
