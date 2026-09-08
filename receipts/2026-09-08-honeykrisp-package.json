@@ -1,0 +1,114 @@
+{
+  "title": "Honeykrisp-omarchy Mesa package qualification",
+  "date": "2026-09-08",
+  "machine": "jwm1, Apple M1 (G13G B1), Omarchy Asahi Arch",
+  "package": {
+    "path": "~/src/mesa-pkg-20260908/mesa-honeykrisp-omarchy-26.3.0.devel.hk6f6afc8-1-aarch64.pkg.tar.xz",
+    "sha256": "cef58afea49c39852dc023bf0eb0f7179166119f53c6d4b7db29be50d7ef0519",
+    "version": "26.3.0.devel.hk6f6afc8-1",
+    "fork_commit": "6f6afc896844730f6d6c47f12a91145351cb4c28",
+    "pkgbuild_sha256": "44d31562ae39a5afedb466ff26a573752af1813b320f6591b3497686088d487f",
+    "source_recipe": "AsahiLinux/PKGBUILDs mesa at 28229b8, matching stock Mesa 26.1.7-1",
+    "build": {
+      "mode": "clean native makepkg -C -f",
+      "wall_seconds": 151,
+      "log": "~/log/mesa-pkg-build.log",
+      "result": "success"
+    }
+  },
+  "rollback": {
+    "package": "~/src/xbuild-drivers/stock-26.1.7/mesa-26.1.7-1-aarch64.pkg.tar.xz",
+    "sha256": "821c82648373faf63db6daad9e04e1d27c37e6572d0096db9a4ffc2755244525",
+    "stock_library_backup": "~/src/xbuild-drivers/stock-26.1.7/libvulkan_asahi.so",
+    "stock_icd_backup": "~/src/xbuild-drivers/stock-26.1.7/asahi_icd.aarch64.json",
+    "command": "sudo pacman -U /var/cache/pacman/pkg/mesa-26.1.7-1-aarch64.pkg.tar.xz"
+  },
+  "install": {
+    "command": "sudo pacman -U ~/src/mesa-pkg-20260908/mesa-honeykrisp-omarchy-26.3.0.devel.hk6f6afc8-1-aarch64.pkg.tar.xz",
+    "installed_package": "mesa-honeykrisp-omarchy 26.3.0.devel.hk6f6afc8-1",
+    "driver_name": "Honeykrisp",
+    "driver_info": "Mesa 26.3.0-devel (git-6f6afc8968)",
+    "system_icd": "/usr/share/vulkan/icd.d/asahi_icd.aarch64.json",
+    "environment": "VK_ICD_FILENAMES and AGX_SIMDMAT unset",
+    "verified_at": "2026-09-08T09:51:47-05:00"
+  },
+  "prior_evidence": {
+    "integration_receipt": "receipts/hk/2026-09-08-honeykrisp-omarchy-integration.json",
+    "battery_verdict": "25/25 suites; merged fork matched stock case-for-case; complex_ops has the documented shared red cases",
+    "coopmat_gate": "AGX_SIMDMAT defaults on in fork; AGX_SIMDMAT=0 disables the extension",
+    "distribution": {
+      "repository": "omarchy-mac/omarchy-pkgs-aarch64",
+      "owner": "omarchy-mac",
+      "viewer_permission": "READ",
+      "published": false
+    },
+    "d256_stock": {
+      "host": "jwm1-linux",
+      "icd": "~/src/xbuild-drivers/stock-26.1.7/stock-session-icd.aarch64.json",
+      "icd_sha256": "0a5110c5becddca9ecd5bf565fec827daa5ae26b5317dc3809b30b34122b698a",
+      "driverInfo": "Mesa 26.1.7",
+      "select_layout": "12/12, 1912 assertions",
+      "fast_ops": "33/33, 1102946 assertions",
+      "primitive": "98/98, 2699373 assertions",
+      "result": "pass"
+    }
+  },
+  "post_install": {
+    "status": "qualified with documented shared suite exceptions",
+    "verification_script": "~/log/hk-pkg-verify.sh",
+    "output_directory": "~/log/hk-pkg/",
+    "notes": "Do not count stock runs using the preserved ICD verbatim after package install; that JSON points at /usr/lib/libvulkan_asahi.so. True stock A/B runs must use a session ICD whose library_path is the preserved stock libvulkan_asahi.so.",
+    "system_driver_battery": {
+      "host": "jwm1-linux",
+      "driver_info": "Mesa 26.3.0-devel (git-6f6afc8968)",
+      "suite_count": 25,
+      "result": "latest d80be15e complex_ops and runtime binaries pass; prior stale battery binaries had 3 complex edge failures and 1 runtime watchdog timing failure",
+      "latest_reruns": {
+        "complex_ops": "34/34 cases, 1715/1715 assertions, rc=0",
+        "runtime": "40/40 cases, 6307/6307 assertions, rc=0"
+      },
+      "stale_summary": "~/log/hk-integrate-summary-pkg-system.log"
+    },
+    "coopmat_probe": {
+      "host": "jwm1-linux",
+      "driver": "Mesa Honeykrisp, driverInfo Mesa 26.3.0-devel (git-6f6afc8968)",
+      "method": "/tmp/coopmat_bench 8 under flock /tmp/m1-gpu.lock",
+      "rounds": 5,
+      "result": "5/5 real completion probes reported coopmat_f32_8=1, subgroup=32",
+      "note": "AGX_SIMDMAT=0 hides the extension; default gate is on"
+    },
+    "lock": "/tmp/m1-gpu.lock on jwm1-linux, inode 43453; one flock per GPU command, no nested flock; lockfile preserved",
+    "qmm_matrix": {
+      "host": "jwm1-linux",
+      "venv": "~/venv-qmmcm",
+      "wheel": "~/src/mlx-qmm-prefill-coopmat-20260908/dist/mlx_omarchy-0.32.2.dev202609081308+5935a01-cp314-cp314-linux_aarch64.whl",
+      "wheel_provenance": "loaded extension and libmlx hashes match wheel; mlx-omarchy 0.32.2.dev202609081308+5935a01",
+      "manifest": "~/benchq/morning-20260907/five-pairs-f5ba1c8-vs-v037/manifest.json",
+      "direct_short_run": {
+        "rc": 0,
+        "decode_tps": 64.0724,
+        "prefill_s": 0.479,
+        "generated_ids_sha256": "7fd25a869ff21678",
+        "tokens": 32
+      },
+      "matrix_status": "complete: 5 passes x 3 README workloads, all 15 legs measured rc=0",
+      "capture_dir": "~/benchq/hk-package-system-20260908-qmm-capture/",
+      "token_ids": "ids-1.jsonl through ids-5.jsonl, 3 records per pass; short hash 7fd25a869ff21678; all records are pinned Qwen revision a5339a4131f135d0fdc6a5c8b5bbed2753bbe0f3",
+      "medians": {
+        "short-decode-32": {
+          "decode_tok_s": 65.51,
+          "prefill_s": 0.231
+        },
+        "long-decode-128": {
+          "decode_tok_s": 55.72,
+          "prefill_s": 0.624
+        },
+        "longctx-1024-decode-32": {
+          "decode_tok_s": 40.74,
+          "prefill_s": 2.445
+        }
+      },
+      "note": "MLX_PAIR_IDS was set uniquely per pass so the capture hook emitted exact IDs; matching +5935a01 wheel was installed in venv-qmmcm and hashes verified."
+    }
+  }
+}
