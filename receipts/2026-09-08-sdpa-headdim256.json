@@ -1,0 +1,72 @@
+{
+  "wave": "sdpa-headdim256-rec",
+  "source_commit": "3f3dd665",
+  "change_commit": "9c58ad86",
+  "docs_commit": "57297d5e",
+  "rebased_from": "wave/sdpa-headdim256 (old tree, recovered via cherry-pick at 3f3dd665; M1 tree content == old wip 00c8f757, byte-identical to 9c58ad86)",
+  "runtime_local": "x86_64 Mesa llvmpipe software Vulkan (MLX_OMARCHY_ALLOW_NON_APPLE=1, LP_NUM_THREADS=4)",
+  "runtime_remote": "jwm1-linux, Apple M1 (G13G B1), 8 cores, real Vulkan (stock 26.1.7 and fork 26.3.0-devel legs both run)",
+  "change": [
+    "logical_or.comp: add params.matrix_m offset so each chunked dispatch starts at its base element (one invocation per output element stays; no grid-stride loop).",
+    "primitives.cpp: dispatch_logical_chunked helper reuses kMaxComputeGroupCountX*256 as the chunk cap and is shared by dispatch_logical and the broadcast-bool materialization in Select::eval_gpu.",
+    "test_select_ops.cpp: 'broadcast bool operands past the 65,535-group dispatch limit' regression (18,000,000 elements where / logical_and with broadcast operands, mismatches counted on the host).",
+    "test_fast_ops.cpp: 'scaled_dot_product_attention causal head dim 256 at kL 2048 and 4096' regression (1x4x2 GQA head_dim 256 causal, qL 512, compared against the double host reference; the upstream test fails only because of its own mx.where reference, not the kernel).",
+    "docs/known-defects.md: ledger entry under 'Fixed in development'."
+  ],
+  "overlay_identity": "diff -r wave-sdpa-headdim256/overlay wave-sdpa-headdim256-rec/overlay = empty (OVERLAY-IDENTICAL). sha256(primitives.cpp, logical_or.comp, test_select_ops.cpp, test_fast_ops.cpp) match between local recover tree and remote private tree at jwm1:~/src/mlx-sdpa-headdim256-20260908.",
+  "local_suites_llvmpipe": {
+    "omarchy_select_layout_tests":  { "passed": 12, "failed": 0, "assertions": 1912,    "exit_code": 0, "log": "receipts/sdpa256-suite-omarchy_select_layout_tests.log" },
+    "omarchy_fast_ops_tests":       { "passed": 33, "failed": 0, "assertions": 1114893, "exit_code": 0, "log": "receipts/sdpa256-suite-omarchy_fast_ops_tests.log" },
+    "omarchy_fast_regression_tests":{ "passed": 2,  "failed": 0, "assertions": 16,      "exit_code": 0, "log": "receipts/sdpa256-suite-omarchy_fast_regression_tests.log" },
+    "omarchy_runtime_tests":        { "passed": 40, "failed": 0, "assertions": 6304,    "exit_code": 0, "log": "receipts/sdpa256-suite-omarchy_runtime_tests.log" }
+  },
+  "wheels_local_x86_64": {
+    "pre_fix":  { "file": "mlx_omarchy-0.32.2.dev202609081401+3f3dd665-cp311-cp311-linux_x86_64.whl", "sha256": "c3e55fea703ead474298e8415f3351158cba5ed6e117898694547428a4d0f108" },
+    "post_fix": { "file": "mlx_omarchy-0.32.2.dev202609081417+00c8f757-cp311-cp311-linux_x86_64.whl", "sha256": "697d44ccba421102a46a73ade430b3b8647d376693e80cfdf138ddd0c924bac6" }
+  },
+  "python_d256_local": {
+    "command": "DEVICE=gpu ./venv-post/bin/python python/tests/test_fast_sdpa.py -k full_head_dim_256",
+    "result": "14/14 subtests passed on post-fix wheel; 14/14 failed on pre-fix wheel (A/B)",
+    "logs": "receipts/sdpa256-wheel-pre.log, receipts/sdpa256-wheel-post.log"
+  },
+  "m1_stock_private_icd": {
+    "host": "jwm1-linux",
+    "vk_icd_filenames": "/home/joshuawarren/src/xbuild-drivers/stock-26.1.7/stock-session-icd.aarch64.json",
+    "icd_sha256": "0a5110c5becddca9ecd5bf565fec827daa5ae26b5317dc3809b30b34122b698a",
+    "icd_library_path": "/home/joshuawarren/src/xbuild-drivers/stock-26.1.7/libvulkan_asahi.so (Aug 19, 14053976 bytes, preserved pre-install)",
+    "vulkaninfo": { "deviceName": "Apple M1 (G13G B1)", "driverName": "Honeykrisp", "driverInfo": "Mesa 26.1.7" },
+    "lock": "/tmp/m1-gpu.lock, blocking flock, one outer flock per command",
+    "env": "OMARCHY_GPU_DRIVER=stock LP_NUM_THREADS=8 MLX_OMARCHY_ALLOW_NON_APPLE=1",
+    "results": {
+      "omarchy_select_layout_tests": { "passed": 12, "failed": 0, "skipped": 0, "assertions": 1912,    "exit_code": 0 },
+      "omarchy_fast_ops_tests":      { "passed": 33, "failed": 0, "skipped": 0, "assertions": 1102946, "exit_code": 0 },
+      "omarchy_primitive_tests":     { "passed": 98, "failed": 0, "skipped": 0, "assertions": 2699373, "exit_code": 0 }
+    },
+    "logs": "receipts/m1/final-stock-{driver.txt,select.log,fast.log,prim.log,rc}"
+  },
+  "m1_system_driver": {
+    "host": "jwm1-linux",
+    "vk_icd_filenames": "unset; loader resolves /usr/share/vulkan/icd.d/asahi_icd.aarch64.json -> /usr/lib/libvulkan_asahi.so (post-install, mtime Sep 8 09:19)",
+    "vulkaninfo": { "deviceName": "Apple M1 (G13G B1)", "driverName": "Honeykrisp", "driverInfo": "Mesa 26.3.0-devel (git-6f6afc8968)" },
+    "lock": "/tmp/m1-gpu.lock, blocking flock, one outer flock per command",
+    "env": "OMARCHY_GPU_DRIVER=fork-system LP_NUM_THREADS=8 MLX_OMARCHY_ALLOW_NON_APPLE=1",
+    "results": {
+      "omarchy_select_layout_tests": { "passed": 12, "failed": 0, "skipped": 0, "assertions": 1912,    "exit_code": 0 },
+      "omarchy_fast_ops_tests":      { "passed": 33, "failed": 0, "skipped": 0, "assertions": 1102946, "exit_code": 0 },
+      "omarchy_primitive_tests":     { "passed": 98, "failed": 0, "skipped": 0, "assertions": 2699373, "exit_code": 0 }
+    },
+    "logs": "receipts/m1/final-sys-{driver.txt,select.log,fast.log,prim.log,rc}"
+  },
+  "python_d256_m1": {
+    "status": "wheel build in progress on jwm1 (attempt 1 failed: setup.py git rev-parse needs a .git; fix = DEV_RELEASE=1 MLX_OMARCHY_SOURCE_COMMIT=9c58ad86, the honest content-identical stamp). Python test runs under flock after install.",
+    "tbd": ["venv install", "pytest -k full_head_dim_256 exit code + pass count"]
+  },
+  "invalid_runs_superseded": [
+    "Pre-release runs at 09:53-09:58 (stock.*, stock2.*, sys.*): raced sibling lock holders (flock -n rc=1) or ran without the GPU device bound (0 passed / N skipped = compute_available() guard). All superseded by final-stock-* / final-sys-* full-suite runs."
+  ],
+  "coordination": {
+    "sibling_recover_eval_heap": "Confirmed lock unlink caused no harm to her fwd A/B (new inode re-acquired); she held exclusivity until AB_DONE.",
+    "sibling_recover_driver_package": "Install complete (Mesa 26.3.0-devel git-6f6afc8968); restored /tmp/m1-gpu.lock; posted explicit READY; battery completed before my legs.",
+    "parent_main": "HOLD LIFTED authoritative; blocking flock authorized; no unlink ever again; full suites required (no guessed filters); receipt must carry observed pass or exact failure."
+  }
+}
