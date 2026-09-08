@@ -29,6 +29,7 @@ runnable references, not the provenance.
    which runs, inside the lock:
        sudo insmod /home/joshuawarren/src/ane-eightcore-20260906/runtime-lifecycle5/ane/ane.ko
        python3 /home/joshuawarren/src/ane-eightcore-20260906/benchmark-packages.py \
+
            /home/joshuawarren/src/ane-eightcore-20260906/compiler \
            /tmp/parity-ane-candidates \
            /home/joshuawarren/src/ane-eightcore-20260906/runtime-abi1/bindings/python/dylib/libane_python.so \
@@ -68,5 +69,9 @@ runnable references, not the provenance.
   llvmpipe on the x86 dev box) -- no overlap, no invalidation needed.
 - ParityBaseline: window released before 17:22Z (GO message), no timed
   baseline activity in 17:22-17:26Z per their release DM.
-- PrefillParity / AttentionDecodeParity: notification sent 2026-09-08;
-  no overlap reported.
+- AttentionDecodeParity: timed work had not started (candidate window
+  launch broken, relaunched after 17:32Z) -- 17:22:08-17:25:24Z overlapped
+  nothing of theirs; no invalidation needed.
+- PrefillParity: only CPU-light SSH file reads of baseline profile files
+  in the span; timed runs not started -- no overlap. Their own window
+  started after 17:26Z under a fresh flock.
