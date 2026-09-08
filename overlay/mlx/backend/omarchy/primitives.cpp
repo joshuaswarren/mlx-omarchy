@@ -4457,7 +4457,10 @@ std::vector<FftStage> plan_fft_axis(uint64_t n, const std::string& name, array& 
   return stages;
 }
 
-// One elementwise fft_stage_f32 dispatch: one thread per element.
+// One elementwise fft_stage_f32 dispatch: one thread per element. The
+// shader grid-strides over params.count, so one x dimension capped at
+// the guaranteed group limit covers any element count (n = 2^24 needs
+// 65,536 workgroups of 256, one past that limit).
 void dispatch_fft_stage(
     const array& src,
     array& dst,
@@ -4480,16 +4483,6 @@ void dispatch_fft_stage(
   params.output_size = aux;
   params.lhs_offset = checked_item_offset(src, 0, name, out);
   params.output_offset = checked_item_offset(dst, 0, name, out);
-  uint32_t workgroups = checked_u32((elements + 255) / 256, name, out);
-  uint32_t group_x =
-      std::min<uint32_t>(workgroups, omarchy::kMaxComputeGroupCountX);
-  uint32_t remaining = (workgroups + group_x - 1) / group_x;
-  uint32_t group_y =
-      std::min<uint32_t>(remaining, omarchy::kMaxComputeGroupCountX);
-  uint32_t group_z = (remaining + group_y - 1) / group_y;
-  if (group_z > omarchy::kMaxComputeGroupCountX) {
-    omarchy::unsupported(name + " stage element count", out);
-  }
   std::array<omarchy::ComputeBinding, 4> bindings{
       binding(src),
       omarchy::ComputeBinding{},
@@ -4499,9 +4492,9 @@ void dispatch_fft_stage(
       omarchy::ComputeKernel::FftStageF32,
       bindings,
       params,
-      group_x,
-      group_y,
-      group_z);
+      omarchy::compute_dispatch_group_count(params.count),
+      1u,
+      1u);
 }
 
 // Bluestein chirp-z: embeds the n-point transform in a circular
