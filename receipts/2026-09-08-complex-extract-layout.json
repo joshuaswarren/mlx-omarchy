@@ -1,0 +1,54 @@
+{
+  "wave": "complex-extract-layout",
+  "date": "2026-09-08",
+  "source_commit": "4e116e54",
+  "branch": "wave/complex-extract-layout",
+  "runtime": {
+    "arch": "x86_64",
+    "vulkan": "software (llvmpipe/lavapipe), MLX_OMARCHY_ALLOW_NON_APPLE=1",
+    "note": "structure and correctness only; no hardware timing claim"
+  },
+  "defect": {
+    "id": "complex-abs-broadcast-strides",
+    "receipt": "receipts/2026-09-07-q4-second-wave/core-python-qualification.json",
+    "summary": "dispatch_complex_extract bound the raw input with a flat count/offset and no shape/stride metadata, so broadcast (stride-0) and transposed complex64 inputs were read as dense storage. Abs::eval_gpu routes here, so upstream test_fft_contiguity failed before FFT ran.",
+    "root_cause": "Upstream MLX 0.32.2 keeps the no-gaps `contiguous` flag set across broadcast and transposed views (flags.contiguous means gap-free, not row-major); the flat read additionally needs row_contiguous. dispatch_complex handled this with ensure_dense + fill_broadcast_transport; the extract helper had neither."
+  },
+  "fix": "dispatch_complex_extract now normalizes its input through the same ensure_dense materialization path dispatch_complex uses, gated on flags().contiguous && flags().row_contiguous. Non-row-contiguous inputs are materialized once via contiguous_copy_gpu (strided-copy engine, complex64 proven); row-contiguous views with a nonzero offset keep the existing flat-offset read. All three callers (Abs, Real, Imag) go through this one helper; Conjugate already routes through dispatch_complex.",
+  "files": [
+    "overlay/mlx/backend/omarchy/primitives.cpp",
+    "overlay/tests/omarchy/test_complex_ops.cpp"
+  ],
+  "commands": [
+    "bash scripts/prepare-mlx.sh",
+    "cmake -S .work/mlx -B .work/build -DMLX_BUILD_OMARCHY=ON -DMLX_BUILD_CPU=ON -DMLX_BUILD_METAL=OFF -DMLX_BUILD_CUDA=OFF -DMLX_BUILD_TESTS=ON -DMLX_BUILD_EXAMPLES=OFF -DMLX_BUILD_BENCHMARKS=OFF -DMLX_BUILD_PYTHON_BINDINGS=OFF",
+    "cmake --build .work/build --target omarchy_complex_ops_tests -j4",
+    "cmake --build .work/build --target omarchy_runtime_tests -j4",
+    "MLX_OMARCHY_ALLOW_NON_APPLE=1 LP_NUM_THREADS=4 .work/build/tests/omarchy/omarchy_complex_ops_tests",
+    "MLX_OMARCHY_ALLOW_NON_APPLE=1 LP_NUM_THREADS=4 .work/build/tests/omarchy/omarchy_runtime_tests"
+  ],
+  "results": {
+    "before_fix": {
+      "omarchy_complex_ops_tests": {
+        "test_cases": "33 passed | 1 failed (34 total)",
+        "assertions": "1649 passed | 66 failed (1715 total)",
+        "note": "the new case 'complex extract and abs agree on broadcast transposed and offset views' failed on Abs/Real/Imag over broadcast and transposed views; Conjugate and the offset slice already agreed"
+      }
+    },
+    "after_fix": {
+      "omarchy_complex_ops_tests": {
+        "test_cases": "34 passed | 0 failed",
+        "assertions": "1715 passed | 0 failed"
+      },
+      "omarchy_runtime_tests": {
+        "test_cases": "40 passed | 0 failed",
+        "assertions": "6304 passed | 0 failed"
+      }
+    }
+  },
+  "limitations": [
+    "Values verified on llvmpipe; no M1/Honeykrisp run in this wave (task scope is the x86 dev box).",
+    "No shader files changed, so the glslc/glslangValidator compiler-split rule does not apply.",
+    "Broadcast inputs to Abs/Real/Imag now pay one dense materialization; a stride-carrying extract kernel would avoid the copy but was out of scope (task prefers reusing the existing materialization path over a second stride convention)."
+  ]
+}

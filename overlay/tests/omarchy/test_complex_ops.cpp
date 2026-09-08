@@ -549,6 +549,85 @@ TEST_CASE("complex abs matches host reference including overflow-scale") {
   }
 }
 
+TEST_CASE("complex extract and abs agree on broadcast transposed and offset views") {
+  if (!compute_available()) {
+    return;
+  }
+  auto stream = gpu_stream();
+  std::mt19937 gen(14);
+  auto ref = random_complex(12, gen);
+
+  // Checks Real/Imag/Conjugate bit-exactly and Abs at float32 hypot
+  // precision against host references computed from the view's
+  // underlying dense values.
+  auto check_view = [&](const array& view, const std::vector<cdouble>& dense) {
+    std::vector<double> real_expect(dense.size());
+    std::vector<double> imag_expect(dense.size());
+    std::vector<cdouble> conj_expect(dense.size());
+    for (size_t i = 0; i < dense.size(); ++i) {
+      real_expect[i] = dense[i].real();
+      imag_expect[i] = dense[i].imag();
+      conj_expect[i] = {dense[i].real(), -dense[i].imag()};
+    }
+    check_exact_real(read_real(real(view, stream), stream), real_expect);
+    check_exact_real(read_real(imag(view, stream), stream), imag_expect);
+    check_exact(read_complex(conjugate(view, stream), stream), conj_expect);
+    auto got_abs = read_real(abs(view, stream), stream);
+    REQUIRE_EQ(got_abs.size(), dense.size());
+    for (size_t i = 0; i < dense.size(); ++i) {
+      double want = std::abs(dense[i]);
+      INFO("abs index ", i, " got ", got_abs[i], " want ", want);
+      CHECK(got_abs[i] == doctest::Approx(want).epsilon(1e-5));
+    }
+  };
+
+  // (a) Broadcast views: a (1, 4) row fanned to (3, 4) and a scalar
+  // fanned to (5). The views keep stride-0 axes over a one-row (or
+  // one-item) buffer, so a flat dense read lands outside the row.
+  auto row = complex_array({ref[0], ref[1], ref[2], ref[3]}, Shape{1, 4});
+  auto wide = broadcast_to(row, Shape{3, 4});
+  std::vector<cdouble> wide_expect;
+  for (int r = 0; r < 3; ++r) {
+    wide_expect.insert(wide_expect.end(), ref.begin(), ref.begin() + 4);
+  }
+  check_view(wide, wide_expect);
+
+  auto scalar = complex_array({ref[4]}, Shape{});
+  auto fan = broadcast_to(scalar, Shape{5});
+  check_view(fan, std::vector<cdouble>(5, ref[4]));
+
+  // (b) A transposed 2-D view: storage order is the transpose of the
+  // logical order, so a flat dense read permutes the elements.
+  auto src = complex_array(
+      {ref[0],
+       ref[1],
+       ref[2],
+       ref[3],
+       ref[4],
+       ref[5],
+       ref[6],
+       ref[7],
+       ref[8],
+       ref[9],
+       ref[10],
+       ref[11]},
+      Shape{4, 3});
+  auto transposed = transpose(src);
+  std::vector<cdouble> transposed_expect(12);
+  for (int r = 0; r < 4; ++r) {
+    for (int c = 0; c < 3; ++c) {
+      transposed_expect[c * 4 + r] = ref[r * 3 + c];
+    }
+  }
+  check_view(transposed, transposed_expect);
+
+  // (c) A sliced view with a nonzero offset stays row-contiguous and
+  // must keep reading from the offset rather than the buffer base.
+  auto sliced = slice(complex_array(ref, Shape{12}), Shape{3}, Shape{11});
+  std::vector<cdouble> sliced_expect(ref.begin() + 3, ref.begin() + 11);
+  check_view(sliced, sliced_expect);
+}
+
 TEST_CASE("complex select copies whole elements by condition") {
   if (!compute_available()) {
     return;
