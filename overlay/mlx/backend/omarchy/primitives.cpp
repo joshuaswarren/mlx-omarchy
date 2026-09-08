@@ -5114,9 +5114,6 @@ void FFT::eval_gpu(const std::vector<array>& inputs, array& out) {
           out,
           s);
     }
-    if (out.size() > 65535ull * 256ull) {
-      omarchy::unsupported(tag + " output size", out);
-    }
     omarchy::ComputeParams extract_params;
     extract_params.count = checked_u32(out.size(), tag, out);
     extract_params.lhs_offset = checked_item_offset(full, 0, tag, out);
