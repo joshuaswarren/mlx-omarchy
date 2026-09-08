@@ -83,12 +83,15 @@ semantics first, which is what upstream reduces to at one rank.
 Root-cause the bfloat16 corruption that the tape currently refuses, then widen
 the interpreted subset beyond elementwise.
 
-## Blocked on the owner
+## Outside these waves
 
-These do not gate any wave above and are skipped until Joshua acts.
-
-- ANE bundle execution on Linux needs `/dev/accel` on jwm1: a verified T8103
-  device-tree node, a recoverable boot entry, and a KMD load.
-- The `eiln/ane` patch series needs approval to open the PR.
-- The upstream MLX report on `mx.save` extension handling needs approval to
-  file.
+- ANE bundle execution on Linux is a hardware gate, not an approval gate: the
+  ANE node appears only under a boot entry that replaces the device tree and
+  left one of eight cores online, and loading the out-of-tree KMD resets the
+  machine. It needs a boot entry that carries the T8103 node without dropping
+  m1n1's per-boot patches, and a KMD load that survives. It follows v0.5.0 on
+  the roadmap.
+- Driver, `libane`, and MLX changes land in the `joshuaswarren` forks;
+  upstreaming is a separate later decision, not a gate.
+- `docs/upstream-report-mx-save-npy-suffix.md` is a draft for ml-explore/mlx
+  that only the owner files; it gates nothing.
