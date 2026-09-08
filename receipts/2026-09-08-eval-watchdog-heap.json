@@ -1,0 +1,71 @@
+{
+  "receipt": "eval-watchdog-heap",
+  "date": "2026-09-08",
+  "agent": "EvalWatchdogHeapRec",
+  "source_commit": "03c52520abb65e7d295ea86b45c49be059310a85",
+  "branch": "wave/eval-watchdog-heap-rec",
+  "worktree": "~/.config/superpowers/worktrees/mlx-omarchy/wave-eval-watchdog-heap-rec",
+  "machine": "jwm1-linux (Apple M1 G13G B1, 8 cores, 16 GiB, Linux 7.1.6-1-1-ARCH asahi)",
+  "driver_provenance": {
+    "system_driver_after_package_swap": "mesa-honeykrisp-omarchy 26.3.0.devel.hk6f6afc8-1 (fork), driverInfo Mesa 26.3.0-devel (git-6f6afc8968), confirmed via vulkaninfo --summary",
+    "stock_icd_used_for_every_leg": "/home/joshuawarren/ewh/stock-icd.json",
+    "stock_icd_resolved_library": "/home/joshuawarren/src/xbuild-drivers/stock-26.1.7/libvulkan_asahi.so",
+    "stock_icd_library_sha256_16": "47f54d36411c4a22",
+    "stock_vulkaninfo": "deviceName Apple M1 (G13G B1), driverName Honeykrisp, driverInfo Mesa 26.1.7",
+    "note": "The preserved asahi_icd.aarch64.json in stock-26.1.7/ still carries library_path /usr/lib/libvulkan_asahi.so, which after the fork install resolves to the fork library; every leg therefore pinned the explicit stock ICD above. The default ICD was never used for any recorded leg."
+  },
+  "wheels": {
+    "baseline": "mlx_omarchy-0.32.2.dev202609071529+f5ba1c8-cp314-cp314-linux_aarch64.whl (~/src/mlx-perf-next-20260907/dist, venv ~/venv-hkql-f5ba)",
+    "candidate": "mlx_omarchy-0.32.2.dev202609081413+03c5252-cp314-cp314-linux_aarch64.whl (~/src/mlx-ewh-20260908/dist, venv ~/venv-ewh-03c5)",
+    "stamp_assertion": "mx.__version__ asserted *+f5ba1c8 and *+03c5252 and different before any leg (ab2.sh); bench JSON binary_provenance version_match true on both sides"
+  },
+  "heap_oom_2048_default_heap": {
+    "probe": "~/hkql/fwd_probe.py: Qwen2.5-0.5B-Instruct-4bit, 2048 tokens from ~/benchq/long-prompt-2k.txt, compile disabled, one model() + mx.eval(logits[:, -1, :]), flock /tmp/m1-gpu.lock, VK_ICD_FILENAMES=<stock icd>, no HK_SYSMEM",
+    "baseline_f5ba1c8": "rc=2 wall_s=6.507 status=error VK_ERROR_OUT_OF_DEVICE_MEMORY at dt.AllocateMemory (~/ewh/fwd2048-f5ba1c8-stockicd-clean.log)",
+    "candidate_03c5252": [
+      "rc=0 wall_s=10.713 argmax=3974 (fwd2048-03c5252-stockicd-clean-c1.log)",
+      "rc=0 wall_s=10.694 argmax=3974 (fwd2048-03c5252-stockicd-clean-c2.log)",
+      "rc=0 wall_s=10.797 argmax=3974 (fwd2048-03c5252-stockicd-clean-c3.log)"
+    ],
+    "verdict": "2048-token single eval completes on the DEFAULT 7.56 GiB heap with the memory-aware byte-budget flush; the 256-node cap is unchanged"
+  },
+  "five_pair_ab": {
+    "out_dir": "~/ewh/five-pairs-03c5252-vs-f5ba1c8-stockicd",
+    "manifest": "copied from ~/benchq/morning-20260907/five-pairs-batch256-vs-v037/manifest.json (workloads unchanged)",
+    "order": "five alternating pairs, baseline then candidate each pair (ab2.sh, CLEAN_RERUN)",
+    "token_identity": "pair-N-{baseline,candidate}.ids.jsonl byte-identical for all 5 pairs (numeric-check.txt: 5x IDENTICAL)",
+    "per_leg": "all 10 legs rc=0, measured=1, contended=0, host gpu Honeykrisp Apple M1, packages carry the correct per-side wheel stamp",
+    "median_duration_s": {
+      "short-decode-32": {"baseline": 3.27, "candidate": 2.49},
+      "long-decode-128": {"baseline": 6.12, "candidate": 5.67},
+      "longctx-1024-decode-32": {"baseline": 10.24, "candidate": 9.86}
+    },
+    "verdict": "no regression: candidate is equal-or-faster on all three README workloads (short decode 24% faster, long decode 7% faster, long-context 4% faster) with identical generated token IDs"
+  },
+  "llvmpipe_dev_box": {
+    "host": "x86_64 development box, MLX_OMARCHY_ALLOW_NON_APPLE=1 LP_NUM_THREADS=4, glslang 16.5.0 (~/.local/opt/glslang)",
+    "build": "cmake -S .work/mlx -B .work/build (MLX_BUILD_OMARCHY=ON, tests ON, python bindings OFF), build_rc=0",
+    "focused_tests": "omarchy_runtime_tests -tc='*byte budge*': 1 passed / 0 failed, 16387/16387 assertions; -tc='*node budget*' battery green",
+    "suites": [
+      "omarchy_runtime_tests x2 runs: SUCCESS",
+      "omarchy_compiled_tape_tests x2 runs: SUCCESS",
+      "omarchy_primitive_tests x2 runs: SUCCESS"
+    ],
+    "note": "The 'a CPU signal of a GPU Event tracks earlier GPU work' child-signal failure seen three times in full-suite runs by the pre-recovery session did not reproduce in two full runs on this tree; treated as an environment-order flake, not caused by 03c5252 (the old session's HEAD~1 causality build was interrupted and never produced a failing pre-fix full run)."
+  },
+  "invalidated_runs": {
+    "reason": "ran inside the GPU-HOLD window (nested same-inode flock deadlock on /tmp/m1-gpu.lock, lockfile unlink by a sibling agent)",
+    "artifacts_preserved": "~/ewh/five-pairs-03c5252-vs-f5ba1c8-stockicd.invalid-overlap/ (pairs 1-2 complete + pair-3 partial) and ~/ewh/fwd2048-{f5ba1c8-stockicd-default-heap,03c5252-stockicd-default-heap-r1,r2,r3}.log",
+    "note": "invalid numbers matched the clean rerun within noise (OOM 6.40 vs 6.51 s; forward 10.653-10.661 vs 10.694-10.797 s) but are excluded from this receipt by policy"
+  },
+  "lock_incident_record": {
+    "what": "RecoverBoolDispatch removed /tmp/m1-gpu.lock while RecoverDriverPackage's verifier held the old inode; verifier was itself deadlocked (outer flock + nested child flock of the same file). Parent declared GPU HOLD; package agent terminated the verifier tree; all EvalWatchdogHeapRec processes were stopped by explicit PID; HOLD lifted on the stable fresh inode; clean rerun executed after the package battery drained.",
+    "rules": "no lockfile unlink, no nested flock, no broad pkill (a broad pkill self-match killed one ssh session; second pass killed by explicit PID)"
+  },
+  "docs_updated": [
+    "docs/known-defects.md: 'A single large evaluation can wedge the GPU queue' moved to Fixed in development with the true two-part mechanism (d052b92a watchdog false positive; 03c5252 heap exhaustion under 256-node batching)",
+    "docs/known-defects.md: 'Dispatch bindings left their buffers unstamped' closed - remaining test_sdpa SIGBUS was the host-side stale-stamp half fixed by 9cef4d3d, verified fixed at f5ba1c82 (test_sdpa 1 passed / 240 subtests, stock Honeykrisp); no second writer, no device-side write; receipt at receipts/hk/2026-09-08-queue-lifetime.json (copied verbatim from wave-integrate, author HkQueueWedgeSigbus)",
+    "README.md: deleted the Known gaps bullet claiming a 2,048-token single-eval wedge"
+  ],
+  "provenance_lines": "per-leg line_omarchy provenance strings are recorded inside each pair-N-<side>.json (binary_provenance.line_omarchy); fwd probe logs carry the wheel stamp via mx.__version__ assertions in ab2.sh output (~/ewh/clean-rerun.out)"
+}

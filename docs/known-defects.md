@@ -60,15 +60,53 @@ The fix routes those divisions through a `precise`-qualified Dekker
 exact-residual correction, which is a no-op where the native quotient is
 already correct. Receipts: M1 log `receipts-m1/11-bitexact-fix-aa66b1af.log`
 in the qualification checkout; the two cases pin the exact inputs.
+### A single large evaluation can wedge the GPU queue
+
+Affected: v0.3.4 through `f5ba1c82`. Observed on: real M1 (Honeykrisp).
+Status: FIXED - two stacked causes. The "wedge" itself was a watchdog false
+positive, closed by the event-based progress check (`d052b92a`); with the
+watchdog fixed the same eval failed cleanly with
+VK_ERROR_OUT_OF_DEVICE_MEMORY, which the memory-aware batch flush
+(`03c5252`) closes.
+
+A single `mx.eval` over a full-sequence forward at 2,048 tokens appeared to
+wedge the queue: the completion counter read 0 and the counter-only
+watchdog declared a hang at its ten-second bound. The earlier reading
+("genuine hang",
+[receipts/2026-09-04-hang-watchdog-hardware.md](../receipts/2026-09-04-hang-watchdog-hardware.md))
+was wrong. The GPU completed every job: the queue's syncobj advanced in
+lockstep with submissions, dmesg showed no fault or timeout, and a
+standalone reproducer showed the timeline counter cannot advance inside a
+single long job at all. The watchdog was firing on one legitimate ~28 s
+lm_head submission; the event-based watchdog (`d052b92a`) observes
+head-of-batch progress within its first 100 ms poll and completes the same
+forward without tripping. The 0.21 tok/s decode measured "after a wedge"
+was the previous process's ~28 s job still occupying the GPU, not queue
+poison.
+
+With the watchdog fixed, the same forward failed cleanly about 6.4 s in
+with VK_ERROR_OUT_OF_DEVICE_MEMORY at `vkAllocateMemory`. The 256-node
+batch budget (`fff9f5be`) bounds nodes, not bytes: the forward's first
+257-node batch held 8.11 GB of freed-but-pinned intermediates in allocator
+quarantine against Honeykrisp's default 7.56 GiB heap (50% of 16 GiB RAM;
+`HK_SYSMEM=14000000000` worked around it). The evaluator now flushes the
+open batch once quarantined freed bytes exceed 1/16 of the allocator's
+memory limit (`kBatchByteBudgetDivisor`, encoder.h), recycling freed
+intermediates one generation earlier while the 256-node cap remains the
+upper bound. The 2,048-token forward now completes on the default heap in
+about 10.7 s with argmax 3974, and five alternating pairs against
+`f5ba1c82` on the stock driver show no decode/prefill regression with
+identical generated token IDs. Chunked prefill, which `mlx_lm` uses, was
+never affected. Receipt:
+[`receipts/2026-09-08-eval-watchdog-heap.json`](../receipts/2026-09-08-eval-watchdog-heap.json).
+
 ### Dispatch bindings left their buffers unstamped, corrupting the heap under reuse
 
 Observed on: real M1 (Honeykrisp) in `test_fast_sdpa.py` (`TestFastSDPA::
 test_sdpa`), with the same run also crashing on lavapipe on the same
-machine. Status: OPEN; the dispatch-binding half of the lifetime hole is
-repaired on this branch, and the Honeykrisp `test_sdpa` SIGBUS still
-reproduces with that repair installed. The affected release range is not
-established; published wheels have not been qualified against either
-state.
+machine. Status: FIXED at `9cef4d3d`; the status note at the end of this
+entry records the close-out. The affected release range is not established;
+published wheels have not been qualified against either state.
 
 Only `add_temporary` recorded buffers into an encoder batch. A dispatch
 input or output whose array carried no temporary registration — the
@@ -97,15 +135,22 @@ calls `note_binding_owner` for each binding, and the raw `copy_buffer`
 and `fill_buffer` sites note their arrays, so `free()` quarantines
 in-flight buffers on every path instead of only on temporaries.
 
-Status after that fix: the concrete heap-clobber signature (completion
-value over a Data control block vptr) is closed by construction for
-host-side writers, and the sibling x86 layer_norm SIGSEGV of the same
-family is under the same repair. The Honeykrisp `test_sdpa` SIGBUS still
-reproduced at the identical subtest with the fix installed
-(`mlx_omarchy-0.32.2.dev202609060114+70183d3`), so a second writer or a
-device-side write into recycled mapped memory remains open. Per-test
-isolation counts and the class-c receipts live in
-`after2-classc-m1.txt` / `after2-classc-ct.txt` on jwm1-linux.
+The remaining Honeykrisp `test_sdpa` SIGBUS was the second, host-side half
+of this same lifetime hole, not a second writer and not a device write:
+with `note_batch_buffer` stamping only when `completion == 0` (wheels
+through `70183d3`), a buffer re-recorded into the open batch while carrying
+a stale drained stamp kept that stamp, `free()` destroyed it, and
+`submit()` stamped through the dangling `VulkanBuffer*` (hardware-watchpoint
+trace in the receipt below). `9cef4d3d` makes the batch stamp
+unconditional. `f5ba1c82` contains that fix, and
+`test_fast_sdpa.py::TestFastSDPA::test_sdpa` passes on stock Honeykrisp
+Mesa 26.1.7 - 1 passed, 240 subtests. With the driver BO cache disabled
+(every freed BO unmapped and GEM-closed at free) the identical bus error
+reproduced with no GPU fault in dmesg, so no device-side writer into
+recycled memory exists. Per-test isolation counts and the class-c receipts
+remain in `after2-classc-m1.txt` / `after2-classc-ct.txt` on jwm1-linux.
+Receipt:
+[`receipts/hk/2026-09-08-queue-lifetime.json`](../receipts/hk/2026-09-08-queue-lifetime.json).
 
 ### Idle-stream events destroyed their semaphore while a submit still used it
 
@@ -219,34 +264,6 @@ cherry-picked in; nobody measured the uploaded wheel. Do not use v0.3.4 for
 decode; v0.3.3 is unaffected. Three-arm measurement, fix, and the release
 rule it produced: [receipts/2026-09-04-v0.3.4-decode-regression.md](../receipts/2026-09-04-v0.3.4-decode-regression.md).
 
-### A single large evaluation can wedge the GPU queue
-
-Affected: v0.3.4, and every earlier release - the watchdog change in v0.3.4
-altered how the failure is reported, not whether it happens. Observed on: real
-M1 (Honeykrisp). Status: OPEN, cause unknown.
-
-A single `mx.eval` over a full-sequence forward at 2,048 tokens wedges the
-queue. The completion timeline counter stays frozen at 0 - no work retires -
-and the submission watchdog correctly declares a hang after ten seconds of no
-progress, failing by name with no CPU fallback. This is a genuine hang, not
-slow work being misclassified: an earlier reading of this failure assumed the
-ten-second bound was simply too short, and hardware testing refuted that.
-
-Chunked work at the same or greater length is unaffected. `mlx_lm` chunks
-prefill, so ordinary generation does not reach it - a 6,009-token context
-completed normally in 183 seconds. What reaches it is a hand-written
-full-sequence forward, which is why no user has reported it and no test caught
-it. Evidence and the protocol that produced it:
-[receipts/2026-09-04-hang-watchdog-hardware.md](../receipts/2026-09-04-hang-watchdog-hardware.md).
-
-The named failure is not a clean, recoverable error: the wedge poisons the rest
-of the process. The decode run immediately after a wedged evaluation measured
-0.214 tok/s, roughly twenty times slow, from residual wedged-queue state. So a
-process that has hit the wedge must be restarted before any further work in it
-is trusted, and any number it produces afterwards is void.
-
-Until the cause is found, evaluate long sequences in chunks rather than in one
-operation, and restart the process if a wedge is hit.
 
 ## Live in v0.3.1
 

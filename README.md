@@ -124,7 +124,6 @@ Earlier installed-wheel [operation checks](receipts/2026-09-07-operation-parity.
 ### Known gaps
 
 - Compiled bfloat16 graphs are refused (`MLX_DISABLE_COMPILE=1` runs them eagerly); see the [ledger entry](docs/known-defects.md).
-- A single `mx.eval` over a very long full-sequence forward (about 2,048 tokens in one operation) can wedge the GPU queue; chunked prefill, which mlx-lm uses, is unaffected.
 - `ReduceScatter` remains unavailable with the Linux ring transport.
 
 The full list of open defects, with the platform each was observed on, is in [docs/known-defects.md](docs/known-defects.md).
