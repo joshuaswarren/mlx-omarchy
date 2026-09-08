@@ -1237,6 +1237,36 @@ TEST_CASE("scaled_dot_product_attention causal matches on sliced cache K/V") {
       "sdpa sliced cache causal");
 }
 
+// Upstream test_sdpa_full_head_dim_256's shape class: head_dim 256,
+// GQA, causal, keys at and past 2048. The composed path was already
+// correct here (the upstream failure was the test's own mx.where
+// reference, see test_select_ops.cpp); this pins it against the double
+// host reference. qL 512 with the causal offset keeps the llvmpipe
+// matmuls and the host reference under a minute.
+TEST_CASE("scaled_dot_product_attention causal head dim 256 at kL 2048 and 4096") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  const int B = 1, H = 4, KV = 2, qL = 512, D = 256;
+  const float scale = 1.0f / std::sqrt(float(D));
+  for (int kL : {2048, 4096}) {
+    auto q_data = pattern(size_t(B) * H * qL * D, 211 + kL);
+    auto k_data = pattern(size_t(B) * KV * kL * D, 223 + kL);
+    auto v_data = pattern(size_t(B) * KV * kL * D, 227 + kL);
+    array q = array(q_data.begin(), Shape{B, H, qL, D}, float32);
+    array k = array(k_data.begin(), Shape{B, KV, kL, D}, float32);
+    array v = array(v_data.begin(), Shape{B, KV, kL, D}, float32);
+    auto out = fast::scaled_dot_product_attention(
+        q, k, v, scale, "causal", {}, std::nullopt, false, stream);
+    require_close(
+        flat(out, stream),
+        host_sdpa(q_data, k_data, v_data, B, H, KV, qL, kL, D, scale, true),
+        1e-4,
+        "sdpa causal head dim 256 kL " + std::to_string(kL));
+  }
+}
+
 TEST_CASE("scaled_dot_product_attention respects strided sink storage") {
   if (!compute_available()) {
     return;
