@@ -14,6 +14,14 @@ Two of the worst v0.3.0 defects never appeared on a Linux development box. They 
 
 Observed on M1 Honeykrisp in v0.3.7 (`417c06e6`) and `f5ba1c82`. Both installed wheels return `1.0986121892929077` for `log(3)`, while the correctly rounded host float32 value is `1.0986123085021973`. This fails upstream's exact-equality assertion for an irregularly strided input. The full native C++ run at `f5ba1c82` passes 250 of 251 cases; the failing case remains open. [Values, bit patterns, and native suite logs](../receipts/2026-09-07-q4-second-wave/native-log-gap.json).
 
+Fixed in the `honeykrisp-omarchy` driver: the fork's `log` and `log2`
+are correctly rounded on every probe input (4,107 of 4,107 exact,
+1,048,558 of 1,048,561 exact in the stress sweep, worst case one ULP;
+[receipt](../receipts/hk/2026-09-08-honeykrisp-omarchy-integration.json)).
+Stock Mesa keeps the gap; see
+[docs/install-omarchy.md](install-omarchy.md#honeykrisp-driver-with-the-fork-fixes)
+for the package.
+
 ### Complex tan at fl(pi/2) needs the precise-math Honeykrisp trig
 
 Observed on: real M1, stock Honeykrisp Mesa 26.1.7. The builtin
@@ -60,6 +68,13 @@ The fix routes those divisions through a `precise`-qualified Dekker
 exact-residual correction, which is a no-op where the native quotient is
 already correct. Receipts: M1 log `receipts-m1/11-bitexact-fix-aa66b1af.log`
 in the qualification checkout; the two cases pin the exact inputs.
+
+Fixed in the `honeykrisp-omarchy` driver (`hk/precise-math`): division
+and reciprocal are correctly rounded on all 1,048,561 stress inputs
+([receipt](../receipts/hk/2026-09-08-honeykrisp-omarchy-integration.json)).
+The Dekker correction stays in the two pinned shaders for stock Mesa,
+where it is a no-op on the fork.
+
 ### Dispatch bindings left their buffers unstamped, corrupting the heap under reuse
 
 Observed on: real M1 (Honeykrisp) in `test_fast_sdpa.py` (`TestFastSDPA::
@@ -402,6 +417,11 @@ The fourth Honeykrisp miscompile family: shift-then-mask byte extraction with a 
 
 The workaround is per-site and probe-pinned, and that is the finding worth reading. In `select.comp`'s packed-bool path the constant-shift select-chain form is WRONG and the original helper form is correct - the exact inverse of every other site. An eight-variant device probe pins it: macro form wrong at 5 of 17 positions, helper form wrong nowhere. Neither form is safe by default on this hardware, so every byte-extraction site is probed individually. Gates on the M1 after the fix: scatter 21/21, select 11/11, eq_math 6/6, primitive 86/86, 604,733 assertions, three repeated runs each.
 
+Fixed in the `honeykrisp-omarchy` driver (`hk/byte-extract`): all 20
+shift-then-mask variants pass on the fork where stock fails 13
+([receipt](../receipts/hk/2026-09-08-honeykrisp-omarchy-integration.json)).
+The per-site probed workarounds stay in the shaders for stock Mesa.
+
 ### Real-M1-only float scatter refusals
 
 Affected: v0.3.0. Observed on: real M1 (Honeykrisp). Fixed in v0.3.1 (commit `959c7a0`).
@@ -420,6 +440,12 @@ The M1 built-in's range reduction degrades measurably: error 4.5e-4 at an argume
 The limit is chosen for the consumer that matters: `fast::RoPE` composes exactly these calls, its largest term is the position itself, and 1e5 clears a 32k context with threefold margin. Rope at positions 12345 and 100000 matches its reference on the M1. A software Payne-Hanek reduction was tried first and discarded on evidence: on the M1 it returns -7.9e15 for sin(5e6), because its carry chain rides the same dynamic-indexing miscompile class above.
 
 Inside `mx.compile` the same gate applies - see the correction section above, which retracts an earlier claim that compiled tapes bypassed it.
+
+Fixed in the `honeykrisp-omarchy` driver (`hk/precise-math`): the fork
+reduces exactly, worst case one ULP for |x| up to 1e8 and for |x| >=
+2^22 in the stress sweep
+([receipt](../receipts/hk/2026-09-08-honeykrisp-omarchy-integration.json)).
+The 1e5 refusal stays in the shaders for stock Mesa.
 
 ## Shipped in v0.3.0-alpha.1 - fixed in v0.3.0 unless marked otherwise
 
