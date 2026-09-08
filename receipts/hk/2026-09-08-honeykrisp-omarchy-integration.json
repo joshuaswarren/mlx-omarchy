@@ -1,0 +1,681 @@
+{
+ "title": "honeykrisp-omarchy: integrated Honeykrisp driver branch (coopmat + byte-extract + precise-math + coopmat-shapes + queue-lifetime receipts)",
+ "date": "2026-09-08",
+ "fork": "github.com/joshuaswarren/mesa",
+ "branch": "honeykrisp-omarchy",
+ "base": "honeykrisp-coopmat 5bb2b28c95c6650a2b62fa44b1257c6d138165a0",
+ "merged": {
+  "hk/byte-extract": "d15ee114258d6be7dad14f811958103ae744895c (merge b2b4f48e5cb)",
+  "hk/precise-math": "979453d744a8a71d2915e6b7b7a2c8e038399a86 (merge a2e7f3fb1ef), then e93242f3a61 (merge b76db09cb52)",
+  "hk/coopmat-shapes": "90f925ad770f4dd072217fff7b4e1526aad54864 (merge e10be728123)",
+  "hk/queue-lifetime": "daece8ba84e98bbf8e2033dfafa672771b645bf1 (merge c650b75f4a4); receipts only, zero src/ changes (git diff --stat HEAD~1 HEAD -- src is empty)"
+ },
+ "head": "c650b75f4a4 (branch tip); driver under test built from b76db09cb523de8fb746decff7a5ce6392771a46, whose src/ tree is identical to c650b75",
+ "conflicts": "none; all four merges applied cleanly (--no-ff)",
+ "src_diff_vs_base": "10 files changed, 694 insertions(+), 137 deletions(-): agx_compile.c/h, agx_nir.h, agx_nir_algebraic.py, agx_nir_lower_math.c (new), agx_nir_lower_simdmat.c, agx_register_allocate.c, compiler/meson.build, hk_physical_device.c, nir_intrinsics.py",
+ "build": {
+  "host": "mesa-xbuild (CT 362), ~/src/mesa, cross build per containers/mesa-xbuild/README.md, ninja -C build -j20 (25 s incremental)",
+  "artifact": "build/src/asahi/vulkan/libvulkan_asahi.so",
+  "sha256": "f2ae22d60b41dc5136b3d0d88c3d16d175b8de1775743174abe42b1ae6e8095d",
+  "m1_path": "~/src/xbuild-drivers/honeykrisp-omarchy-b76db09/{libvulkan_asahi.so,icd.json}",
+  "vulkaninfo": "deviceName Apple M1 (G13G B1), driverName Honeykrisp, driverInfo Mesa 26.3.0-devel (git-b76db09cb5)",
+  "deviation": "asahi_clc/mesa_clc used for precompiled internal (libagx) shaders are the stage-1 native tools built from 5bb2b28; only application shaders go through the merged compiler"
+ },
+ "regression_found_and_fixed": {
+  "symptom": "first merged driver e10be728123: omarchy_copy_offset_tests rc=134, case 'dtype converting copies cover the integer family and bool' SIGABRT with 'Unhandled ALU op fdiv' (agx_compile.c agx_emit_alu); stock 25/25",
+  "bisect": "the same test case run against each branch driver on jwm1: byte-extract (/tmp/asahi_byte_extract_icd.json) PASS, coopmat-shapes (~/src/cmshape/icd-shapes.json) PASS, base 5bb2b28 PASS, precise-math worktree build (/tmp/asahi_precise_math_icd.json) aborts identically -> hk/precise-math alone",
+  "cause": "2022ddeae30 removed .lower_fdiv and only lowers fdiv in agx_preprocess_nir; nir_lower_int64 (f2u64/f2i64 divide by 2^32 + lower_fmod's frem->fdiv) and agx_nir_lower_interpolation (perspective divide) run after preprocessing, so their fdiv reached a backend with no fdiv. NIR dump: ~/log/hk-integrate-copy_offset-nirdump.log on jwm1 (fdiv %151, 4.294967e+09 inside f2u64 lowering)",
+  "fix": "e93242f3a61 on hk/precise-math: agx_nir_lower_fdiv_late (fdiv only, frcp untouched so first-pass and log reciprocals are not refined twice) runs in agx_optimize_nir after the int64 cleanup loop",
+  "verification": "precise-math+fix driver alone (~/src/xbuild-drivers/precise-math-e93242f): omarchy_copy_offset_tests 25/25 cases, 626/626 assertions (~/log/hk-integrate-copy_offset-pm-e93242f.log); merged b76db09 full battery below"
+ },
+ "battery": {
+  "tree": "jwm1 ~/src/mlx-coopmat-dense-20260908/.work/build/tests/omarchy (Release); 15 missing omarchy_*_tests targets built with make -j4 (~/log/hk-integrate-build-tests.log)",
+  "how": "~/log/battery.sh <tag> [icd]; every suite under flock /tmp/m1-gpu.lock, timeout 1800, AGX_SIMDMAT=1; stock = system Mesa 26.1.7 ICD (no VK_ICD_FILENAMES); merged = honeykrisp-omarchy-b76db09 icd.json; logs ~/log/hk-integrate-<suite>-{stock,merged}.log, summaries ~/log/hk-integrate-summary-{stock,merged}.log",
+  "skipped": [
+   "omarchy_two_rank_harness",
+   "omarchy_decode_dispatch_count"
+  ],
+  "suites": {
+   "ane_bundle": {
+    "stock": {
+     "rc": 0,
+     "cases": 25,
+     "cases_passed": 25,
+     "cases_failed": 0,
+     "assertions": 2719,
+     "assertions_passed": 2719,
+     "assertions_failed": 0
+    },
+    "merged": {
+     "rc": 0,
+     "cases": 25,
+     "cases_passed": 25,
+     "cases_failed": 0,
+     "assertions": 2719,
+     "assertions_passed": 2719,
+     "assertions_failed": 0
+    }
+   },
+   "compiled_tape": {
+    "stock": {
+     "rc": 0,
+     "cases": 11,
+     "cases_passed": 11,
+     "cases_failed": 0,
+     "assertions": 1781,
+     "assertions_passed": 1781,
+     "assertions_failed": 0
+    },
+    "merged": {
+     "rc": 0,
+     "cases": 11,
+     "cases_passed": 11,
+     "cases_failed": 0,
+     "assertions": 1781,
+     "assertions_passed": 1781,
+     "assertions_failed": 0
+    }
+   },
+   "complex_ops": {
+    "stock": {
+     "rc": 1,
+     "cases": 33,
+     "cases_passed": 30,
+     "cases_failed": 3,
+     "assertions": 1514,
+     "assertions_passed": 1483,
+     "assertions_failed": 31
+    },
+    "merged": {
+     "rc": 1,
+     "cases": 33,
+     "cases_passed": 30,
+     "cases_failed": 3,
+     "assertions": 1514,
+     "assertions_passed": 1485,
+     "assertions_failed": 29
+    }
+   },
+   "conv": {
+    "stock": {
+     "rc": 0,
+     "cases": 13,
+     "cases_passed": 13,
+     "cases_failed": 0,
+     "assertions": 3450,
+     "assertions_passed": 3450,
+     "assertions_failed": 0
+    },
+    "merged": {
+     "rc": 0,
+     "cases": 13,
+     "cases_passed": 13,
+     "cases_failed": 0,
+     "assertions": 3450,
+     "assertions_passed": 3450,
+     "assertions_failed": 0
+    }
+   },
+   "copy_offset": {
+    "stock": {
+     "rc": 0,
+     "cases": 25,
+     "cases_passed": 25,
+     "cases_failed": 0,
+     "assertions": 626,
+     "assertions_passed": 626,
+     "assertions_failed": 0
+    },
+    "merged": {
+     "rc": 0,
+     "cases": 25,
+     "cases_passed": 25,
+     "cases_failed": 0,
+     "assertions": 626,
+     "assertions_passed": 626,
+     "assertions_failed": 0
+    }
+   },
+   "distributed": {
+    "stock": {
+     "rc": 0,
+     "cases": 9,
+     "cases_passed": 9,
+     "cases_failed": 0,
+     "assertions": 36,
+     "assertions_passed": 36,
+     "assertions_failed": 0
+    },
+    "merged": {
+     "rc": 0,
+     "cases": 9,
+     "cases_passed": 9,
+     "cases_failed": 0,
+     "assertions": 36,
+     "assertions_passed": 36,
+     "assertions_failed": 0
+    }
+   },
+   "eig_ops": {
+    "stock": {
+     "rc": 0,
+     "cases": 9,
+     "cases_passed": 9,
+     "cases_failed": 0,
+     "assertions": 264,
+     "assertions_passed": 264,
+     "assertions_failed": 0
+    },
+    "merged": {
+     "rc": 0,
+     "cases": 9,
+     "cases_passed": 9,
+     "cases_failed": 0,
+     "assertions": 264,
+     "assertions_passed": 264,
+     "assertions_failed": 0
+    }
+   },
+   "eq_math": {
+    "stock": {
+     "rc": 0,
+     "cases": 7,
+     "cases_passed": 7,
+     "cases_failed": 0,
+     "assertions": 116,
+     "assertions_passed": 116,
+     "assertions_failed": 0
+    },
+    "merged": {
+     "rc": 0,
+     "cases": 7,
+     "cases_passed": 7,
+     "cases_failed": 0,
+     "assertions": 116,
+     "assertions_passed": 116,
+     "assertions_failed": 0
+    }
+   },
+   "error_contract": {
+    "stock": {
+     "rc": 0,
+     "cases": 3,
+     "cases_passed": 3,
+     "cases_failed": 0,
+     "assertions": 14,
+     "assertions_passed": 14,
+     "assertions_failed": 0
+    },
+    "merged": {
+     "rc": 0,
+     "cases": 3,
+     "cases_passed": 3,
+     "cases_failed": 0,
+     "assertions": 14,
+     "assertions_passed": 14,
+     "assertions_failed": 0
+    }
+   },
+   "fast_ops": {
+    "stock": {
+     "rc": 0,
+     "cases": 30,
+     "cases_passed": 30,
+     "cases_failed": 0,
+     "assertions": 45211,
+     "assertions_passed": 45211,
+     "assertions_failed": 0
+    },
+    "merged": {
+     "rc": 0,
+     "cases": 30,
+     "cases_passed": 30,
+     "cases_failed": 0,
+     "assertions": 45211,
+     "assertions_passed": 45211,
+     "assertions_failed": 0
+    }
+   },
+   "fast_regression": {
+    "stock": {
+     "rc": 0,
+     "cases": 2,
+     "cases_passed": 2,
+     "cases_failed": 0,
+     "assertions": 16,
+     "assertions_passed": 16,
+     "assertions_failed": 0
+    },
+    "merged": {
+     "rc": 0,
+     "cases": 2,
+     "cases_passed": 2,
+     "cases_failed": 0,
+     "assertions": 16,
+     "assertions_passed": 16,
+     "assertions_failed": 0
+    }
+   },
+   "fft_general": {
+    "stock": {
+     "rc": 0,
+     "cases": 14,
+     "cases_passed": 14,
+     "cases_failed": 0,
+     "assertions": 4245,
+     "assertions_passed": 4245,
+     "assertions_failed": 0
+    },
+    "merged": {
+     "rc": 0,
+     "cases": 14,
+     "cases_passed": 14,
+     "cases_failed": 0,
+     "assertions": 4245,
+     "assertions_passed": 4245,
+     "assertions_failed": 0
+    }
+   },
+   "fft_ops": {
+    "stock": {
+     "rc": 0,
+     "cases": 17,
+     "cases_passed": 17,
+     "cases_failed": 0,
+     "assertions": 1374,
+     "assertions_passed": 1374,
+     "assertions_failed": 0
+    },
+    "merged": {
+     "rc": 0,
+     "cases": 17,
+     "cases_passed": 17,
+     "cases_failed": 0,
+     "assertions": 1374,
+     "assertions_passed": 1374,
+     "assertions_failed": 0
+    }
+   },
+   "fused_chain": {
+    "stock": {
+     "rc": 0,
+     "cases": 23,
+     "cases_passed": 23,
+     "cases_failed": 0,
+     "assertions": 5014,
+     "assertions_passed": 5014,
+     "assertions_failed": 0
+    },
+    "merged": {
+     "rc": 0,
+     "cases": 23,
+     "cases_passed": 23,
+     "cases_failed": 0,
+     "assertions": 5014,
+     "assertions_passed": 5014,
+     "assertions_failed": 0
+    }
+   },
+   "indexing_ops": {
+    "stock": {
+     "rc": 0,
+     "cases": 53,
+     "cases_passed": 53,
+     "cases_failed": 0,
+     "assertions": 4093,
+     "assertions_passed": 4093,
+     "assertions_failed": 0
+    },
+    "merged": {
+     "rc": 0,
+     "cases": 53,
+     "cases_passed": 53,
+     "cases_failed": 0,
+     "assertions": 4093,
+     "assertions_passed": 4093,
+     "assertions_failed": 0
+    }
+   },
+   "kv_ops": {
+    "stock": {
+     "rc": 0,
+     "cases": 14,
+     "cases_passed": 14,
+     "cases_failed": 0,
+     "assertions": 410,
+     "assertions_passed": 410,
+     "assertions_failed": 0
+    },
+    "merged": {
+     "rc": 0,
+     "cases": 14,
+     "cases_passed": 14,
+     "cases_failed": 0,
+     "assertions": 410,
+     "assertions_passed": 410,
+     "assertions_failed": 0
+    }
+   },
+   "linalg_ops": {
+    "stock": {
+     "rc": 0,
+     "cases": 30,
+     "cases_passed": 30,
+     "cases_failed": 0,
+     "assertions": 181118,
+     "assertions_passed": 181118,
+     "assertions_failed": 0
+    },
+    "merged": {
+     "rc": 0,
+     "cases": 30,
+     "cases_passed": 30,
+     "cases_failed": 0,
+     "assertions": 181118,
+     "assertions_passed": 181118,
+     "assertions_failed": 0
+    }
+   },
+   "matmul_family": {
+    "stock": {
+     "rc": 0,
+     "cases": 14,
+     "cases_passed": 14,
+     "cases_failed": 0,
+     "assertions": 46271,
+     "assertions_passed": 46271,
+     "assertions_failed": 0
+    },
+    "merged": {
+     "rc": 0,
+     "cases": 14,
+     "cases_passed": 14,
+     "cases_failed": 0,
+     "assertions": 46271,
+     "assertions_passed": 46271,
+     "assertions_failed": 0
+    }
+   },
+   "primitive": {
+    "stock": {
+     "rc": 0,
+     "cases": 98,
+     "cases_passed": 98,
+     "cases_failed": 0,
+     "assertions": 2699373,
+     "assertions_passed": 2699373,
+     "assertions_failed": 0
+    },
+    "merged": {
+     "rc": 0,
+     "cases": 98,
+     "cases_passed": 98,
+     "cases_failed": 0,
+     "assertions": 2699373,
+     "assertions_passed": 2699373,
+     "assertions_failed": 0
+    }
+   },
+   "reduce_ops": {
+    "stock": {
+     "rc": 0,
+     "cases": 34,
+     "cases_passed": 34,
+     "cases_failed": 0,
+     "assertions": 7152,
+     "assertions_passed": 7152,
+     "assertions_failed": 0
+    },
+    "merged": {
+     "rc": 0,
+     "cases": 34,
+     "cases_passed": 34,
+     "cases_failed": 0,
+     "assertions": 7152,
+     "assertions_passed": 7152,
+     "assertions_failed": 0
+    }
+   },
+   "runtime": {
+    "stock": {
+     "rc": 0,
+     "cases": 40,
+     "cases_passed": 40,
+     "cases_failed": 0,
+     "assertions": 6307,
+     "assertions_passed": 6307,
+     "assertions_failed": 0
+    },
+    "merged": {
+     "rc": 0,
+     "cases": 40,
+     "cases_passed": 40,
+     "cases_failed": 0,
+     "assertions": 6307,
+     "assertions_passed": 6307,
+     "assertions_failed": 0
+    }
+   },
+   "scatter_determinism": {
+    "stock": {
+     "rc": 0,
+     "cases": 21,
+     "cases_passed": 21,
+     "cases_failed": 0,
+     "assertions": 127,
+     "assertions_passed": 127,
+     "assertions_failed": 0
+    },
+    "merged": {
+     "rc": 0,
+     "cases": 21,
+     "cases_passed": 21,
+     "cases_failed": 0,
+     "assertions": 127,
+     "assertions_passed": 127,
+     "assertions_failed": 0
+    }
+   },
+   "select_layout": {
+    "stock": {
+     "rc": 0,
+     "cases": 11,
+     "cases_passed": 11,
+     "cases_failed": 0,
+     "assertions": 1908,
+     "assertions_passed": 1908,
+     "assertions_failed": 0
+    },
+    "merged": {
+     "rc": 0,
+     "cases": 11,
+     "cases_passed": 11,
+     "cases_failed": 0,
+     "assertions": 1908,
+     "assertions_passed": 1908,
+     "assertions_failed": 0
+    }
+   },
+   "shape_ops": {
+    "stock": {
+     "rc": 0,
+     "cases": 24,
+     "cases_passed": 24,
+     "cases_failed": 0,
+     "assertions": 466,
+     "assertions_passed": 466,
+     "assertions_failed": 0
+    },
+    "merged": {
+     "rc": 0,
+     "cases": 24,
+     "cases_passed": 24,
+     "cases_failed": 0,
+     "assertions": 466,
+     "assertions_passed": 466,
+     "assertions_failed": 0
+    }
+   },
+   "take_fill": {
+    "stock": {
+     "rc": 0,
+     "cases": 8,
+     "cases_passed": 8,
+     "cases_failed": 0,
+     "assertions": 1109,
+     "assertions_passed": 1109,
+     "assertions_failed": 0
+    },
+    "merged": {
+     "rc": 0,
+     "cases": 8,
+     "cases_passed": 8,
+     "cases_failed": 0,
+     "assertions": 1109,
+     "assertions_passed": 1109,
+     "assertions_failed": 0
+    }
+   }
+  },
+  "verdict": "25/25 suites: merged matches stock case-for-case; complex_ops is red on both with the same 3 cases (complex inverse edge semantics, complex unary large-magnitude, integer round ties) and merged fails 2 fewer assertions (29 vs 31: test_complex_ops.cpp:733-734 now pass, same as the precise-math branch receipt). No suite red on merged and green on stock."
+ },
+ "reproducers_on_merged_driver": {
+  "byte_extract": {
+   "where": "jwm1 ~/bx, ./bx <variant>.spv <variant> 1024 under flock",
+   "result": "20/20 variants PASS, mismatches=0 (stock fails 13 of them per hk/byte-extract receipt)",
+   "lines": [
+    "byte_dyn: PASS device=Apple M1 (G13G B1) variant=byte_dyn N=1024 mismatches=0",
+    "byte_dyn_const: PASS device=Apple M1 (G13G B1) variant=byte_dyn_const N=1024 mismatches=0",
+    "byte_dyn_gid: PASS device=Apple M1 (G13G B1) variant=byte_dyn_gid N=1024 mismatches=0",
+    "scan_dyn: PASS device=Apple M1 (G13G B1) variant=scan_dyn N=1024 mismatches=0",
+    "scan_dyn_const: PASS device=Apple M1 (G13G B1) variant=scan_dyn_const N=1024 mismatches=0",
+    "scan_dyn_rand: PASS device=Apple M1 (G13G B1) variant=scan_dyn_rand N=1024 mismatches=0",
+    "select_bcast: PASS device=Apple M1 (G13G B1) variant=select_bcast N=1024 mismatches=0",
+    "select_dyn: PASS device=Apple M1 (G13G B1) variant=select_dyn N=1024 mismatches=0",
+    "shift_dyn_mask: PASS device=Apple M1 (G13G B1) variant=shift_dyn_mask N=1024 mismatches=0",
+    "bound32: PASS device=Apple M1 (G13G B1) variant=bound32 N=1024 mismatches=0",
+    "bound63: PASS device=Apple M1 (G13G B1) variant=bound63 N=1024 mismatches=0",
+    "uniform40: PASS device=Apple M1 (G13G B1) variant=uniform40 N=1024 mismatches=0",
+    "divergent8_40: PASS device=Apple M1 (G13G B1) variant=divergent8_40 N=1024 mismatches=0",
+    "loop_wordbase: PASS device=Apple M1 (G13G B1) variant=loop_wordbase N=1024 mismatches=0",
+    "scan_dyn_bit: PASS device=Apple M1 (G13G B1) variant=scan_dyn_bit N=1024 mismatches=0",
+    "shift_dyn: PASS device=Apple M1 (G13G B1) variant=shift_dyn N=1024 mismatches=0",
+    "shl_dyn: PASS device=Apple M1 (G13G B1) variant=shl_dyn N=1024 mismatches=0",
+    "ushr_raw: PASS device=Apple M1 (G13G B1) variant=ushr_raw N=1024 mismatches=0",
+    "ishl_raw: PASS device=Apple M1 (G13G B1) variant=ishl_raw N=1024 mismatches=0",
+    "ishr_raw: PASS device=Apple M1 (G13G B1) variant=ishr_raw N=1024 mismatches=0"
+   ]
+  },
+  "coopmat_shapes": {
+   "where": "jwm1 ~/src/cmshape run_matrix.sh + run_seeds.sh with merged icd",
+   "result": "SUMMARY pass=48 fail=0; SEEDS pass=48 fail=0",
+   "logs": [
+    "~/log/hk-integrate-cmshape-matrix-merged.log",
+    "~/log/hk-integrate-cmshape-seeds-merged.log"
+   ]
+  },
+  "precise_math": {
+   "where": "jwm1 ~/src/mesa-wt-precise-math/receipts/precise-math probe.py + stress.py (mathrepro/probe.spv rebuilt: glslangValidator -V --target-env vulkan1.3; g++ -O1 mathrepro.cpp -lvulkan)",
+   "result": "probe and stress JSON identical to the branch receipt (probe-fixed.json, stress-fixed.json) except tag/device fields",
+   "probe": {
+    "div": {
+     "n": 1008,
+     "mismatches": 0,
+     "ulp_hist": {
+      "0": 1008
+     }
+    },
+    "rcp": {
+     "n": 1008,
+     "mismatches": 0,
+     "ulp_hist": {
+      "0": 1008
+     }
+    },
+    "fma": {
+     "n": 1000,
+     "mismatches": 0,
+     "ulp_hist": {
+      "0": 1000
+     }
+    },
+    "log": {
+     "n": 4107,
+     "mismatches": 0,
+     "ulp_hist": {
+      "0": 4107
+     }
+    },
+    "log2": {
+     "n": 4107,
+     "mismatches": 0,
+     "ulp_hist": {
+      "0": 4107
+     }
+    }
+   },
+   "probe_sin_cos": {
+    "sin": {
+     "ulp_hist_small_|x|<8": {
+      "0": 507,
+      "1": 5
+     },
+     "ulp_hist_large_1e2..1e8": {
+      "0": 723,
+      "1": 45
+     },
+     "max_ulp_large": 1
+    },
+    "cos": {
+     "ulp_hist_small_|x|<8": {
+      "0": 500,
+      "1": 12
+     },
+     "ulp_hist_large_1e2..1e8": {
+      "0": 724,
+      "1": 44
+     },
+     "max_ulp_large": 1
+    }
+   },
+   "stress": {
+    "n": 1048561,
+    "div": {
+     "0": 1048561
+    },
+    "rcp": {
+     "0": 1048561
+    },
+    "log": {
+     "0": 1048558,
+     "1": 3
+    },
+    "log2": {
+     "0": 1048547,
+     "1": 14
+    },
+    "sin": {
+     "0": 1006215,
+     "1": 42346
+    },
+    "cos": {
+     "0": 1007377,
+     "1": 41184
+    },
+    "sin_|x|>=2^22": {
+     "0": 175671,
+     "1": 30612
+    },
+    "n_|x|>=2^22": 206283
+   },
+   "logs": [
+    "~/log/probe-merged.json",
+    "~/log/stress-merged.json"
+   ]
+  }
+ },
+ "not_done": [
+  "no graphics (fragment shader) test of the perspective-divide path; the late fdiv lowering is exercised only through the int64 conversion path in copy_offset",
+  "driverInfo string of the tested artifact says b76db09 (tip is c650b75, receipts-only merge on top; src identical, not rebuilt)"
+ ]
+}
