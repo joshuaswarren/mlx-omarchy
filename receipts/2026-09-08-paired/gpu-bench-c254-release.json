@@ -1,0 +1,214 @@
+{
+  "host": {
+    "hostname": "jwm1-linux",
+    "uname": "Linux-7.1.6-1-1-ARCH-aarch64-with-glibc2.43",
+    "python": "3.14.7",
+    "kernel": "7.1.6-1-1-ARCH",
+    "pacman_mesa": "mesa-honeykrisp-omarchy 26.3.0.devel.hk6f6afc8-1",
+    "vulkan_icds": "total 12\n-rw-r--r-- 1 root root 176 Sep  8 09:19 asahi_icd.aarch64.json\n-rw-r--r-- 1 root root 174 Sep  8 09:19 lvp_icd.aarch64.json\n-rw-r--r-- 1 root root 177 Sep  8 09:19 virtio_icd.aarch64.json\n{\n    \"ICD\": {\n        \"api_version\": \"1.4.359\",\n        \"library_arch\": \"64\",\n        \"library_path\": \"/usr/lib/libvulkan_asahi.so\"\n    },\n    \"file_format_version\": \"1.0.1\"\n}{\n    \"ICD\": {\n        \"api_version\": \"1.4.359\",\n        \"library_arch\": \"64\",\n        \"library_path\": \"/usr/lib/libvulkan_lvp.so\"\n    },\n    \"file_format_version\": \"1.0.1\"\n}{\n    \"ICD\": {\n        \"api_version\": \"1.4.359\",\n        \"library_arch\": \"64\",\n        \"library_path\": \"/usr/lib/libvulkan_virtio.so\"\n    },\n    \"file_format_version\": \"1.0.1\"\n}",
+    "vulkan_summary": "==========\nVULKANINFO\n==========\n\nVulkan Instance Version: 1.4.357\n\n\nInstance Extensions: count = 26\n-------------------------------\nVK_EXT_acquire_drm_display             : extension revision 1\nVK_EXT_acquire_xlib_display            : extension revision 1\nVK_EXT_debug_report                    : extension revision 10\nVK_EXT_debug_utils                     : extension revision 2\nVK_EXT_direct_mode_display             : extension revision 1\nVK_EXT_display_surface_counter         : extension revision 1\nVK_EXT_headless_surface                : extension revision 1\nVK_EXT_layer_settings                  : extension revision 2\nVK_EXT_surface_maintenance1            : extension revision 1\nVK_EXT_swapchain_colorspace            : extension revision 5\nVK_KHR_device_group_creation           : extension revision 1\nVK_KHR_display                         : extension revision 23\nVK_KHR_external_fence_capabilities     : extension revision 1\nVK_KHR_external_memory_capabilities    : extension revision 1\nVK_KHR_external_semaphore_capabilities : extension revision 1\nVK_KHR_get_display_properties2         : extension revision 1\nVK_KHR_get_physical_device_properties2 : extension revision 2\nVK_KHR_get_surface_capabilities2       : extension revision 1\nVK_KHR_portability_enumeration         : extension revision 1\nVK_KHR_surface                         : extension revision 25\nVK_KHR_surface_maintenance1            : extension revision 1\nVK_KHR_surface_protected_capabilities  : extension revision 1\nVK_KHR_wayland_surface                 : extension revision 6\nVK_KHR_xcb_surface                     : extension revision 6\nVK_KHR_xlib_surface                    : extension revision 6\nVK_LUNARG_direct_driver_loading        : extension revision 1\n\nInstance Layers: count = 2\n--------------------------\nVK_LAYER_KHRONOS_validation Khronos Validation Layer     1.4.357  version 1\nVK_LAYER_MESA_device_select Linux device selection layer 1.4.303  version 1\n\nDevices:\n========\nGPU0:\n\tapiVersion         = 1.4.359\n\tdriverVersion      = 26.2.99\n\tvendorID           = 0x10005\n\tdeviceID           = 0x0000\n\tdeviceType         = PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU\n\tdeviceName         = Apple M1 (G13G B1)\n\tdriverID           = DRIVER_ID_MESA_HONEYKRISP\n\tdriverName         = Honeykrisp\n\tdriverInfo         = Mesa 26.3.0-devel (git-6f6afc8968)\n\tconformanceVersion = 1.4.0.0\n\tdeviceUUID         = 95db668a-5eef-fafb-0bfa-d44184cb8c59\n\tdriverUUID         = 1ea6de0a-755f-6b67-2ae6-5d68a5167ce8\nGPU1:\n\tapiVersion         = 1.4.359\n\tdriverVersion      = 26.2.99\n\tvendorID           = 0x10005\n\tdeviceID           = 0x0000\n\tdeviceType         = PHYSICAL_DEVICE_TYPE_CPU\n\tdeviceName         = llvmpipe (LLVM 22.1.8, 128 bits)\n\tdriverID           = DRIVER_ID_MESA_LLVMPIPE\n\tdriverName         = llvmpipe\n\tdriverInfo         = Mesa 26.3.0-devel (git-6f6afc8968) (LLVM 22.1.8)\n\tconformanceVersion = 1.3.1.1\n\tdeviceUUID         = 6d657361-3236-2e33-2e30-2d6465766500\n\tdriverUUID         = 6c6c766d-7069-7065-5555-494400000000",
+    "mlx_version": "0.32.2.dev202609081618+c254867",
+    "mx_default_device": "Device(gpu, 0)"
+  },
+  "warmup": 3,
+  "iterations": 30,
+  "cases": [
+    {
+      "name": "add512_fp16",
+      "shape": [
+        1,
+        512
+      ],
+      "op": "add",
+      "dtype": "fp16",
+      "median_ms": 0.25330849166493863,
+      "min_ms": 0.21470498177222908,
+      "n": 30
+    },
+    {
+      "name": "add512_bf16",
+      "shape": [
+        1,
+        512
+      ],
+      "op": "add",
+      "dtype": "bf16",
+      "median_ms": 0.25035050930455327,
+      "min_ms": 0.1858309842646122,
+      "n": 30
+    },
+    {
+      "name": "softmax512_fp16",
+      "shape": [
+        1,
+        512
+      ],
+      "op": "softmax",
+      "dtype": "fp16",
+      "median_ms": 0.17614400712773204,
+      "min_ms": 0.17012198804877698,
+      "n": 30
+    },
+    {
+      "name": "matvec_k256_n512_fp16",
+      "shape": [
+        1,
+        256,
+        512
+      ],
+      "op": "matmul_T",
+      "dtype": "fp16",
+      "median_ms": 0.29414148593787104,
+      "min_ms": 0.28382899472489953,
+      "n": 30
+    },
+    {
+      "name": "matvec_k256_n512_bf16",
+      "shape": [
+        1,
+        256,
+        512
+      ],
+      "op": "matmul_T",
+      "dtype": "bf16",
+      "median_ms": 0.3186000103596598,
+      "min_ms": 0.30295399483293295,
+      "n": 30
+    },
+    {
+      "name": "mlp768_fp16_relu",
+      "shape": [
+        1,
+        768,
+        1024,
+        768
+      ],
+      "op": "mlp",
+      "dtype": "fp16",
+      "median_ms": 1.4338754990603775,
+      "min_ms": 1.3683559955097735,
+      "n": 30
+    },
+    {
+      "name": "gemv_q0_fp16_k896_n4864",
+      "shape": [
+        1,
+        896,
+        4864
+      ],
+      "op": "matmul_T",
+      "dtype": "fp16",
+      "median_ms": 1.0211109911324456,
+      "min_ms": 0.9253620228264481,
+      "n": 30
+    },
+    {
+      "name": "gemv_q0_bf16_k896_n4864",
+      "shape": [
+        1,
+        896,
+        4864
+      ],
+      "op": "matmul_T",
+      "dtype": "bf16",
+      "median_ms": 1.0511930013308302,
+      "min_ms": 0.8982370200101286,
+      "n": 30
+    },
+    {
+      "name": "gemv_down_fp16_k4864_n896",
+      "shape": [
+        1,
+        4864,
+        896
+      ],
+      "op": "matmul_T",
+      "dtype": "fp16",
+      "median_ms": 1.0611304896883667,
+      "min_ms": 0.9331119945272803,
+      "n": 30
+    },
+    {
+      "name": "gemv_down_bf16_k4864_n896",
+      "shape": [
+        1,
+        4864,
+        896
+      ],
+      "op": "matmul_T",
+      "dtype": "bf16",
+      "median_ms": 0.9893605019897223,
+      "min_ms": 0.9341120021417737,
+      "n": 30
+    },
+    {
+      "name": "qmm4_g64_q0_k896_n4864",
+      "shape": [
+        1,
+        896,
+        4864
+      ],
+      "op": "quantized_matmul",
+      "dtype": "qmm4_g64",
+      "median_ms": 0.4388899978948757,
+      "min_ms": 0.41803502244874835,
+      "n": 30,
+      "device": "Device(gpu, 0)"
+    },
+    {
+      "name": "qmm4_g64_down_k4864_n896",
+      "shape": [
+        1,
+        4864,
+        896
+      ],
+      "op": "quantized_matmul",
+      "dtype": "qmm4_g64",
+      "median_ms": 0.38659900019411,
+      "min_ms": 0.37762001738883555,
+      "n": 30,
+      "device": "Device(gpu, 0)"
+    },
+    {
+      "name": "mlp_block_qwen_fp16",
+      "shape": [
+        1,
+        896,
+        4864,
+        896
+      ],
+      "op": "silu_gemm",
+      "dtype": "fp16",
+      "median_ms": 2.5343605084344745,
+      "min_ms": 2.442548982799053,
+      "n": 30
+    },
+    {
+      "name": "qkv_k896_n1152_fp16",
+      "shape": [
+        1,
+        896,
+        1152
+      ],
+      "op": "matmul_T",
+      "dtype": "fp16",
+      "median_ms": 0.3813070070464164,
+      "min_ms": 0.37282801349647343,
+      "n": 30
+    },
+    {
+      "name": "rmsnorm896_fp16",
+      "shape": [
+        1,
+        896
+      ],
+      "op": "rms_norm",
+      "dtype": "fp16",
+      "median_ms": 0.40813999657984823,
+      "min_ms": 0.4022439825348556,
+      "n": 30
+    }
+  ],
+  "method": "host->mx.array->op->mx.eval->np.array; per-iter perf_counter; median of 30",
+  "ane_compare_note": "GPU medians here vs ANE lifecycle6-benchmarks medians (already measured) and parity-ane-candidates/b1/b2 (compiled 2026-09-08, measured at next window)"
+}
