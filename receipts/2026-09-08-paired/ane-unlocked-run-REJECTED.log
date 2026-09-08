@@ -1,0 +1,32 @@
+jwm1-linux
+hostname: jwm1-linux
+== baseline: module absent check
+no /dev/accel (expected)
+== module hash/vermagic/version (pre-load)
+83819510cae37e5c748ff7586bf009d038866e5bfb657372646533a07b0ce0f0  /home/joshuawarren/src/ane-eightcore-20260906/runtime-lifecycle5/ane/ane.ko
+filename:       /home/joshuawarren/src/ane-eightcore-20260906/runtime-lifecycle5/ane/ane.ko
+version:        f2a3e5e+lifecycle6
+depends:        
+vermagic:       7.1.6-1-1-ARCH SMP preempt mod_unload aarch64
+== insmod
+== post-load
+f2a3e5e+lifecycle6
+crw-rw-rw- 1 root render 261, 0 Sep  8 12:23 /dev/accel/accel0
+== benchmark candidates
+{"case": "b1-gemv-k896-n4864", "programs": 96, "warmup": 3, "iterations": 30, "median_ms": 512.87429399963, "status": "every output matched on every iteration"}
+{"case": "b2-gemv-k4864-n896", "programs": 146, "warmup": 3, "iterations": 30, "median_ms": 100.61806697922293, "status": "every output matched on every iteration"}
+benchmark rc=0
+== cleanup: rmmod + absence verify (runs on success AND failure)
+CLEANUP_OK: ane verified absent 2026-09-08T17:24:02.839851Z
+no /dev/accel (expected after unload)
+
+--- PROVENANCE / STATUS: REJECTED AS EVIDENCE ---
+This run executed /tmp/ane_timed.sh directly WITHOUT acquiring
+/tmp/m1-gpu.lock -- a violation of the window contract. Disclosed to Main,
+ParityBaseline, and DecodeParity on 2026-09-08. Its numbers (512.87 /
+100.62 ms) are NOT evidence and are not cited anywhere. The receipted
+locked run is ane-locked-run.log in this directory. Cause of the
+difference from the locked run is unknown; no thermal or power
+instrumentation was attached, and no cause is claimed.
+Module loaded ~2026-09-08T17:23:35Z (approx; node mtime 12:23 local),
+unload verified 2026-09-08T17:24:02.839851Z UTC.

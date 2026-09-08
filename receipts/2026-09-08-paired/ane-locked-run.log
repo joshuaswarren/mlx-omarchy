@@ -1,0 +1,24 @@
+jwm1-linux
+hostname: jwm1-linux
+window-start 2026-09-08T17:25:07Z (approx; 16.26 s window, start line not
+captured in the tail view below; end timestamps exact)
+lock acquired (fd 9, tree of /tmp/ane_window.sh)
+--- captured tail (last 15 lines of run output) ---
+vermagic:       7.1.6-1-1-ARCH SMP preempt mod_unload aarch64
+== insmod
+== post-load
+f2a3e5e+lifecycle6
+crw-rw-rw- 1 root render 261, 0 Sep  8 12:25 /dev/accel/accel0
+== benchmark candidates
+{"case": "b1-gemv-k896-n4864", "programs": 96, "warmup": 3, "iterations": 30, "median_ms": 200.95138100441545, "status": "every output matched on every iteration"}
+{"case": "b2-gemv-k4864-n896", "programs": 146, "warmup": 3, "iterations": 30, "median_ms": 80.98068201798014, "status": "every output matched on every iteration"}
+benchmark rc=0
+== cleanup: rmmod + absence verify (runs on success AND failure)
+CLEANUP_OK: ane verified absent 2026-09-08T17:25:23.234637Z
+no /dev/accel (expected after unload)
+ane rc=0
+window-end 2026-09-08T17:25:23.237210Z
+lock released
+--- END: THIS IS THE RECEIPTED RUN ---
+Full per-iteration samples: b1-gemv-k896-n4864.json,
+b2-gemv-k4864-n896.json (same directory).

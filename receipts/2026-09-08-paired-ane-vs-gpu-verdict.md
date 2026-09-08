@@ -8,7 +8,10 @@ baseline release wheel mlx_omarchy-0.32.2.dev202609081618+c254867
 83819510cae37e5c748ff7586bf009d038866e5bfb657372646533a07b0ce0f0) via the
 proven benchmark-packages.py harness. Raw JSON in this directory:
 gpu-bench-c254-release.json, b1-gemv-k896-n4864.json,
-b2-gemv-k4864-n896.json (+ device y.fp16 outputs).
+b2-gemv-k4864-n896.json (+ device y.fp16 outputs), plus
+ane-locked-run.log (the receipted ANE run) and
+ane-unlocked-run-REJECTED.log (a window-contract violation, excluded as
+evidence, disclosed below).
 
 ## Head-to-head (warm, 3 warmups + 30 samples, median, transfer->readback)
 
@@ -17,64 +20,77 @@ b2-gemv-k4864-n896.json (+ device y.fp16 outputs).
 | gate/up [1,896] x W[4864,896]^T | 200.95 ms | 1.021 ms | 0.439 ms | ~458x slower |
 | down [1,4864] x W[896,4864]^T | 80.98 ms | 1.061 ms | 0.387 ms | ~209x slower |
 
-Every ANE iteration matched exact fp16 outputs -- the stack is numerically
-correct, it is only slow. An earlier unlocked ANE run the same hour
-measured 512.87 / 100.62 ms for the same packages (run-to-run power/thermal
-variance); the receipted locked-run numbers above are the evidence. Both
-runs agree on the verdict by two orders of magnitude.
+Every iteration of these two packages on these tested inputs matched exact
+fp16 outputs. No broader numerical-correctness claim is made.
 
-## Why the ANE loses: program-slice dispatch, not compute
+Per-token arithmetic from the measured medians, if all 72 decode
+projections (24 layers x gate+up+down) ran at these rates:
+24 x (2 x 200.95 + 80.98) = ~11.6 s/token, versus the baseline's measured
+4-bit whole-model decode of 56 tok/s = 17.9 ms/token. This is arithmetic
+on this stack's measured numbers, not a claim about ANE hardware limits.
 
-The H13 backend lowers one large matmul into 96 (gate/up) / 146 (down)
-per-op program slices; the ABI1 driver serializes submissions. At the
-measured fixed floor of ~0.15-0.4 ms per program dispatch (lifecycle6
-MLP slices, add-relu fused single program 0.160 ms), a decode GEMV cannot
-beat the GPU's single-kernel 0.39-0.44 ms. Even hypothetical Apple-style
-whole-chain fusion (one program, ~96 tasks at the measured ~20-40 us/task
-from the multi-task softmax program) lands at 2-4 ms per projection --
-still 5-10x slower than the GPU qmm4 kernel, and that fusion does not
-exist in this fork's backend today (eltwise chain fusion only; M>1 GEMM
-is refused outright with "H13 intermediate physical writes must not
-overlap", so prefill is compiler-blocked at model shapes).
+## Disclosure: window-contract violation (excluded run)
 
-Per-token ceiling if ANE ran all 72 decode projections (24 layers x
-gate+up+down): 24 x (2 x 200.95 + 80.98) = ~11.6 s/token, versus the
-baseline's measured 4-bit whole-model decode of 56 tok/s = 17.9 ms/token
--- ~650x slower on projections alone, before attention, norms, or lm_head.
+An intermediate ANE run at ~2026-09-08T17:23:35Z-17:24:02.839851Z UTC
+executed without acquiring /tmp/m1-gpu.lock. It is a violation of the
+window contract. Its outputs (512.87 / 100.62 ms) are excluded as
+evidence and are not cited anywhere; the raw log is committed as
+ane-unlocked-run-REJECTED.log. The cause of its difference from the
+locked run is unknown -- no thermal, power, or occupancy instrumentation
+was attached, and no cause is claimed. Exact timeline of all ANE/GPU
+activity in this session (UTC):
+- 17:22:08.525053Z paired window start, lock acquired (GPU bench + failed
+  ANE preflight)
+- 17:22:10.423963Z paired window end (ANE half aborted on a wrong
+  device-node check; module left loaded)
+- 17:23:15.223145Z manual rmmod, module VERIFIED_ABSENT
+- ~17:23:35Z (approx) unlocked ANE run started (VIOLATION)
+- 17:24:02.839851Z unlocked run unload VERIFIED_ABSENT
+- ~17:25:07Z (approx, 16.26 s window) locked ANE run started
+- 17:25:23.234637Z locked run unload VERIFIED_ABSENT
+- 17:25:23.237210Z locked window end
+Overlap confirmation requested from Main, ParityBaseline, and
+DecodeParity for the 17:22:08-17:25:24Z span.
 
-## Verdict
+## Measured rejection
 
-The ANE acceleration candidate for Qwen2.5-0.5B on this stack is STOPPED
-with paired measured evidence. No MLX connected-graph integration is
-warranted: there is no hot static region where this ANE path wins warm
-end-to-end, and the small-op shapes where ANE did win (add/softmax/matvec
-at <=512 elements, ~1.2-4x) are noise-level contributors to per-token
-time (transfer-dominated, exactly the class the assignment excludes).
+For the tested decode-projection candidates (gate/up, down; batch 1,
+model shapes, warm, weights resident on device), the ANE path on this
+stack measured 200.95 ms and 80.98 ms per projection against the GPU's
+0.439 ms and 0.387 ms for the real 4-bit model op. That alone is
+sufficient to stop this candidate: no MLX connected-graph integration is
+warranted for these regions. Other model regions (attention, norms,
+softmax, lm_head, prefill tiles) were not benchmarked on ANE in this
+session and no claim is made about them. Two structural facts observed
+while preparing candidates, for the record: the H13 backend lowered each
+of these matmuls into 96/146 per-op program slices, and M in
+{2,8,16,32,64} GEMM at K=896 N=4864 was refused by the compiler
+("H13 intermediate physical writes must not overlap").
 
-## Higher-value cross-layer route (from the baseline's own profile)
+## Higher-value direction (recommendation, not a measured result)
 
-ParityBaseline's c2548675 profile shows the GPU dispatch-bound, not
-compute-bound: GPU busy 19.8/22.6/9.1%, intra-submission gap p50
-42.0/37.5/34.9 us, dispatches 7045/76075/19915 for the three workloads.
-Kernel busy share: ElementwiseF16 31-35%, QmmVecQ4WordSubgroupF16 21-23%,
-CopyGeneralF16 10.7-11.7%, FastRopeF16 9.7-11.3%, FastRmsNormF16 7.0-10.7%.
-The lever that moves end-to-end throughput is cutting GPU dispatch count
-and submission gaps (fusing elementwise chains -- RoPE/RMSNorm/SiLU-mul/
-residual adds -- into fewer kernels and fewer submissions), not ANE
-offload. That work lives in mlx-omarchy's graph/scheduler layer and
-directly attacks the 77-91% idle GPU time; it benefits both the 4-bit and
-bf16 models.
+ParityBaseline's diagnostic profile (intrusive instrumentation, diag
+wheel 5e201380) recorded GPU busy 19.8/22.6/9.1%, intra-submission gap
+p50 42.0/37.5/34.9 us, and dispatches 7045/76075/19915, with
+ElementwiseF16 31-35% and QmmVecQ4WordSubgroupF16 21-23% of kernel busy
+share. These are instrumented values; uninstrumented idle share is not
+established by this session (DecodeParity is validating). If that
+validation holds, reducing GPU dispatch count and submission gaps --
+e.g. fusing elementwise chains (RoPE/RMSNorm/SiLU-mul/residual adds) in
+mlx-omarchy's graph layer -- is the recommended next direction to
+evaluate, as it would benefit both the 4-bit and bf16 models.
 
 ## Provenance chain
 
 - GPU: release wheel mlx_omarchy-0.32.2.dev202609081618+c254867
   (255c2f93...7e02), script /tmp/gpu_bench.py (qmm on default device, no
   forced CPU), window 17:22:08-17:22:10Z UTC under flock.
-- ANE: benchmark-packages.py (lifecycle6 harness, requires
-  /sys/module/ane/version == f2a3e5e+lifecycle6), window 17:25:07-17:25:23Z
-  UTC under flock; sudo insmod pre-load hash recorded; sudo rmmod +
-  VERIFIED_ABSENT captured at 2026-09-08T17:25:23.234637Z (CLEANUP_OK);
-  /dev/accel node confirmed present while loaded, absent after unload.
+- ANE (receipted): benchmark-packages.py (lifecycle6 harness, requires
+  /sys/module/ane/version == f2a3e5e+lifecycle6), window ending
+  17:25:23.237210Z UTC under flock; sudo insmod pre-load hash recorded;
+  sudo rmmod + VERIFIED_ABSENT captured at 2026-09-08T17:25:23.234637Z
+  (CLEANUP_OK, raw log committed); /dev/accel node present while loaded,
+  absent after unload.
 - GPU-side earlier smoke on the stale Sept-3 18f59e3 wheel is REJECTED
   and recorded in receipts/2026-09-08-stale-wheel-smoke-rejected.md
   (window 16:33:02-11Z, overlapped only ParityBaseline's pip install;
