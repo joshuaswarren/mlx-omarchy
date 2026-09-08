@@ -51,7 +51,10 @@ layout(push_constant) uniform Params {
   float beta;
   // dims == 0 selects the modulo fast path below. Otherwise the output
   // is unraveled over shape[] and lhs_strides/rhs_strides index the
-  // operands; a stride of 0 broadcasts the axis.
+  // operands; a stride of 0 broadcasts the axis. matrix_m carries the
+  // first output element of this dispatch: one invocation covers one
+  // element with no grid-stride loop, so outputs past the 65,535-group
+  // limit run as back-to-back chunks (the select.comp pattern).
   uint dims;
   uint shape[4];
   uint lhs_strides[4];
@@ -100,7 +103,7 @@ uint rhs_stride_at(uint index) {
        : (lane) == 2u ? (((word) >> 16u) & 0xFFu)                            \
                       : (((word) >> 24u) & 0xFFu))
 void main() {
-  uint index = gl_GlobalInvocationID.x;
+  uint index = params.matrix_m + gl_GlobalInvocationID.x;
   if (index >= params.count) {
     return;
   }

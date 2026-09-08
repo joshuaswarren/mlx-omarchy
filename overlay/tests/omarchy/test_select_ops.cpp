@@ -304,6 +304,60 @@ TEST_CASE("where with mixed operand broadcasts") {
   expect_values(got, expected, 1e-6, "mixed broadcast");
 }
 
+// A broadcast bool operand materializes through logical_or.comp, which
+// covers one element per invocation with no grid-stride loop. Past
+// 65,535 groups * 256 = 16,776,960 elements a single dispatch left the
+// tail unwritten (false), which is how upstream
+// test_sdpa_full_head_dim_256's mx.where(causal_mask, p, min) over
+// [8, 2048, 2048] scores lost its last four heads. The output stays a
+// cheap [m, 1] x [1, n] broadcast so only the bool transport is large;
+// mismatches are counted on the host instead of asserted per element.
+TEST_CASE("broadcast bool operands past the 65,535-group dispatch limit") {
+  if (!compute_available()) {
+    return;
+  }
+  auto stream = gpu_stream();
+  const int m = 3;
+  const int n = 6000000; // m * n = 18,000,000 > 16,776,960
+  // Condition row (j % 3) < 2, broadcast over m rows; x[i] = i + 1.
+  array cond_row = less(
+      remainder(index_ramp(stream, Shape{1, n}), array(3, int32), stream),
+      array(2, int32),
+      stream);
+  array x = device_values(stream, {1.0, 2.0, 3.0}, Shape{m, 1}, float32);
+  auto count_mismatches = [&](const std::vector<float>& got,
+                              auto expected,
+                              const std::string& label) {
+    REQUIRE_EQ(got.size(), size_t(m) * n);
+    size_t mismatches = 0;
+    size_t first = got.size();
+    for (size_t index = 0; index < got.size(); ++index) {
+      if (got[index] != expected(index / n, index % n)) {
+        if (mismatches++ == 0) {
+          first = index;
+        }
+      }
+    }
+    CHECK_MESSAGE(
+        mismatches == 0, label, ": ", mismatches, " mismatches, first at ", first);
+  };
+  count_mismatches(
+      readback_f32(stream, where(cond_row, x, array(0.0f), stream)),
+      [](size_t i, size_t j) { return (j % 3) < 2 ? float(i + 1) : 0.0f; },
+      "where broadcast condition");
+  // The logical family shares the dispatch: and(row, column) broadcast
+  // over the same extent, with column[i] = i is even, so the last row
+  // (the one past the limit) expects ones where the row pattern holds.
+  array col_even = equal(
+      bitwise_and(index_ramp(stream, Shape{m, 1}), array(1, int32), stream),
+      array(0, int32),
+      stream);
+  count_mismatches(
+      readback_f32(stream, logical_and(cond_row, col_even, stream)),
+      [](size_t i, size_t j) { return ((j % 3) < 2 && (i % 2) == 0) ? 1.0f : 0.0f; },
+      "logical_and broadcast operands");
+}
+
 TEST_CASE("where with a strided condition") {
   if (!compute_available()) {
     return;
