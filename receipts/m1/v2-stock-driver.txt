@@ -1,0 +1,4 @@
+jwm1-linux
+	deviceName         = Apple M1 (G13G B1)
+	driverName         = Honeykrisp
+	driverInfo         = Mesa 26.1.7

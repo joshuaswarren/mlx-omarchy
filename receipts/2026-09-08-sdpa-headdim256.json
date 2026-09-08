@@ -1,0 +1,74 @@
+{
+  "wave": "sdpa-headdim256-rec",
+  "source_commit": "3f3dd665",
+  "commits": {
+    "fix": "52b62213 sdpa: chunk the logical_or.comp dispatch past the 65,535-group limit",
+    "docs": "2a31bc80 docs: ledger the logical_or dispatch truncation as fixed in wave/sdpa-headdim256-rec",
+    "receipts_v1": "788a0453 receipts: carry llvmpipe evidence and honest M1-pending state",
+    "boundary_fix": "8a0ab901 sdpa: min-advance the logical chunk cursor so near-UINT32_MAX counts terminate",
+    "author": "Joshua Warren <816217+joshuaswarren@users.noreply.github.com> (repo-configured; placeholder sdpa <x@x> authorship from the interrupted session rewritten; fix and docs trees proven bit-identical to the pre-rewrite commits via empty git diff against 9c58ad86 / 57297d5e)"
+  },
+  "base": "3f3dd665 (same base as the interrupted wave/sdpa-headdim256 tree; M1 private tree content == old wip 00c8f757, byte-identical to 9c58ad86)",
+  "runtime_local": "x86_64 Mesa llvmpipe software Vulkan (MLX_OMARCHY_ALLOW_NON_APPLE=1, LP_NUM_THREADS=8)",
+  "runtime_remote": "jwm1-linux, Apple M1 (G13G B1), real Vulkan, both driver legs",
+  "change": [
+    "logical_or.comp: params.matrix_m offsets each chunked dispatch to its base element (one invocation per element, no grid-stride loop).",
+    "primitives.cpp: dispatch_logical_chunked dispatches back-to-back chunks through omarchy::next_logical_chunk_end (min-advance), wired into dispatch_logical and the broadcast-bool materialization in Select::eval_gpu.",
+    "compute.h: kLogicalChunkElements cap + constexpr next_logical_chunk_end cursor (min(remaining, cap) advance) so near-UINT32_MAX counts terminate; shader index proven bounded (last base <= 256*cap, rounded extent <= +65536, sum <= UINT32_MAX exactly).",
+    "test_select_ops.cpp: dispatch-limit regression (18,000,000-element broadcast where/logical_and) + pure-host uint32 boundary walk of the real helper (counts up to UINT32_MAX, no allocation).",
+    "test_fast_ops.cpp: causal head_dim 256 GQA kL {2048,4096} against the double host reference.",
+    "docs/known-defects.md: ledger entry under 'Fixed in development'."
+  ],
+  "overlay_identity": "diff -r wave-sdpa-headdim256/overlay wave-sdpa-headdim256-rec/overlay was empty at recovery (proven before the boundary-fix commit); sha256 of primitives.cpp, logical_or.comp, test_select_ops.cpp, test_fast_ops.cpp matched the old tree and the M1 private tree. The boundary-fix commit 8a0ab901 then changed compute.h, primitives.cpp, test_select_ops.cpp (documented above) and was itself re-verified end to end on llvmpipe and both M1 legs.",
+  "local_suites_llvmpipe_post_boundary_fix": {
+    "omarchy_select_layout_tests":  { "passed": 13, "failed": 0, "skipped": 0, "assertions": 4500,    "exit_code": 0, "log": "/tmp/sdpa256-boundary-omarchy_select_layout_tests.log" },
+    "omarchy_fast_ops_tests":       { "passed": 33, "failed": 0, "skipped": 0, "assertions": 1114893, "exit_code": 0, "log": "/tmp/sdpa256-boundary-omarchy_fast_ops_tests.log" },
+    "omarchy_fast_regression_tests":{ "passed": 2,  "failed": 0, "skipped": 0, "assertions": 16,      "exit_code": 0, "log": "/tmp/sdpa256-boundary-omarchy_fast_regression_tests.log" },
+    "omarchy_runtime_tests":        { "passed": 40, "failed": 0, "skipped": 0, "assertions": 6304,    "exit_code": 0, "log": "/tmp/sdpa256-boundary-omarchy_runtime_tests.log" }
+  },
+  "local_llvmpipe_carryover_pre_boundary_fix": {
+    "note": "Recovery-identity evidence from the interrupted session (source then byte-identical to 9c58ad86): select 12/12@1912, fast_ops 33/33@1114893, fast_regression 2/2, runtime 40/40; Python D256 14/14 on post-fix wheel 697d44cc, 14/14 failed on pre-fix wheel c3e55fea.",
+    "logs": "receipts/sdpa256-suite-*.log, receipts/sdpa256-wheel-{pre,post}.log"
+  },
+  "wheels": {
+    "local_x86_64_pre_fix":  { "file": "mlx_omarchy-0.32.2.dev202609081401+3f3dd665-cp311-cp311-linux_x86_64.whl", "sha256": "c3e55fea703ead474298e8415f3351158cba5ed6e117898694547428a4d0f108" },
+    "local_x86_64_post_fix": { "file": "mlx_omarchy-0.32.2.dev202609081417+00c8f757-cp311-cp311-linux_x86_64.whl", "sha256": "697d44ccba421102a46a73ade430b3b8647d376693e80cfdf138ddd0c924bac6" },
+    "m1_aarch64_final": { "file": "mlx_omarchy-0.32.2.dev202609081522+8a0ab901-cp314-cp314-linux_aarch64.whl", "sha256": "f9ff8bed86bbb48b53130caf37919e58309964d6fa320bc3d062d65f9da0d0e2", "built_on": "jwm1 dist/ (DEV_RELEASE=1 MLX_OMARCHY_SOURCE_COMMIT=8a0ab901 honest stamp; setup.py git rev-parse unusable there because the private tree has no .git)", "installed_to": "jwm1:~/src/mlx-sdpa-headdim256-20260908/.work/venv-d256" }
+  },
+  "m1_stock_private_icd": {
+    "host": "jwm1-linux",
+    "vk_icd_filenames": "/home/joshuawarren/src/xbuild-drivers/stock-26.1.7/stock-session-icd.aarch64.json (sha256 0a5110c5becddca9ecd5bf565fec827daa5ae26b5317dc3809b30b34122b698a)",
+    "icd_library_path": "/home/joshuawarren/src/xbuild-drivers/stock-26.1.7/libvulkan_asahi.so (Aug 19 preserved)",
+    "vulkaninfo": { "deviceName": "Apple M1 (G13G B1)", "driverName": "Honeykrisp", "driverInfo": "Mesa 26.1.7" },
+    "lock": "/tmp/m1-gpu.lock, blocking flock, one outer flock per command",
+    "results_post_boundary_fix": {
+      "omarchy_select_layout_tests": { "passed": 13, "failed": 0, "skipped": 0, "assertions": 4500,    "exit_code": 0 },
+      "omarchy_fast_ops_tests":      { "passed": 33, "failed": 0, "skipped": 0, "assertions": 1102946, "exit_code": 0 },
+      "omarchy_primitive_tests":     { "passed": 98, "failed": 0, "skipped": 0, "assertions": 2699373, "exit_code": 0 },
+      "python_test_fast_sdpa_full_head_dim_256": { "result": "ok", "exit_code": 0, "seconds": 7.588 }
+    },
+    "logs": "receipts/m1/v2-stock-{driver.txt,select.log,fast.log,prim.log,rc}, receipts/m1/v2-py-stock.log"
+  },
+  "m1_system_driver": {
+    "host": "jwm1-linux",
+    "vk_icd_filenames": "unset; loader resolves /usr/share/vulkan/icd.d/asahi_icd.aarch64.json -> /usr/lib/libvulkan_asahi.so (post-install fork)",
+    "vulkaninfo": { "deviceName": "Apple M1 (G13G B1)", "driverName": "Honeykrisp", "driverInfo": "Mesa 26.3.0-devel (git-6f6afc8968)" },
+    "lock": "/tmp/m1-gpu.lock, blocking flock, one outer flock per command",
+    "results_post_boundary_fix": {
+      "omarchy_select_layout_tests": { "passed": 13, "failed": 0, "skipped": 0, "assertions": 4500,    "exit_code": 0 },
+      "omarchy_fast_ops_tests":      { "passed": 33, "failed": 0, "skipped": 0, "assertions": 1102946, "exit_code": 0 },
+      "omarchy_primitive_tests":     { "passed": 98, "failed": 0, "skipped": 0, "assertions": 2699373, "exit_code": 0 },
+      "python_test_fast_sdpa_full_head_dim_256": { "result": "ok", "exit_code": 0, "seconds": 8.03 }
+    },
+    "logs": "receipts/m1/v2-sys-{driver.txt,select.log,fast.log,prim.log,rc}, receipts/m1/v2-py-sys.log"
+  },
+  "invalid_runs_superseded": [
+    "09:53-09:58 pre-release runs (stock.*, stock2.*, sys.*): raced sibling lock holders (flock -n rc=1) or ran with no qualifying device (0 passed / N skipped compute_available() guard).",
+    "final-stock-* / final-sys-* runs at ~10:00: real execution but from the pre-boundary-fix source; superseded by v2-* runs of the final tree."
+  ],
+  "coordination": {
+    "sibling_recover_eval_heap": "Held exclusivity until AB_DONE (clean five-pair A/B, 10/10 rc=0); lock unlink incident acknowledged as contained.",
+    "sibling_recover_driver_package": "Driver install (Mesa 26.3.0-devel git-6f6afc8968), stock artifact preservation incl. libvulkan_asahi.so, lock restoration, explicit READY; flagged the preserved-ICD library_path staleness that forced the session-ICD fix.",
+    "parent_main": "HOLD LIFTED; authorship correction applied; uint32 wrap finding confirmed, fixed in 8a0ab901 with host-arithmetic proof; full suites + python run on final tree on both M1 drivers."
+  }
+}
