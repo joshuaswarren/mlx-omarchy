@@ -1014,6 +1014,31 @@ void dispatch_comparison(
       omarchy::compute_dispatch_group_count(word_count));
 }
 
+// logical_or.comp runs one invocation per output element with no
+// grid-stride loop (its atomicOr byte store is the Honeykrisp-safe
+// form), so an output past kMaxComputeGroupCountX * 256 elements
+// dispatches in back-to-back chunks with the chunk's first element in
+// matrix_m; every other parameter, including count, stays global.
+// Before this loop the single capped dispatch silently left every
+// element from 16,776,960 on unwritten (the zero-filled destination
+// read as false): mx.where over a broadcast [2048, 2048] mask against
+// eight heads lost its last four heads.
+void dispatch_logical_chunked(
+    omarchy::CommandEncoder& encoder,
+    const std::array<omarchy::ComputeBinding, 4>& bindings,
+    omarchy::ComputeParams params) {
+  for (uint32_t first = 0; first < params.count;) {
+    const uint32_t end = omarchy::next_logical_chunk_end(first, params.count);
+    params.matrix_m = first;
+    encoder.dispatch_compute(
+        omarchy::ComputeKernel::LogicalOrBool,
+        bindings,
+        params,
+        omarchy::compute_dispatch_group_count(end - first));
+    first = end;
+  }
+}
+
 // The logical family serves the isinf composition (Or) and now And and
 // Not: bool inputs, a bool output, and the same 32-bit word transport
 // the comparisons use. The operation selector matches logical_or.comp;
@@ -1085,11 +1110,7 @@ void dispatch_logical(
       binding(rhs),
       binding(out),
       binding(axis_metadata ? *axis_metadata : out)};
-  encoder.dispatch_compute(
-      omarchy::ComputeKernel::LogicalOrBool,
-      bindings,
-      params,
-      omarchy::compute_dispatch_group_count(count));
+  dispatch_logical_chunked(encoder, bindings, params);
 }
 
 // Integer twin of the binary elementwise path. The shader carries the
@@ -8132,11 +8153,7 @@ void Select::eval_gpu(const std::vector<array>& inputs, array& out) {
         binding(value),
         binding(dense),
         binding(axis_metadata ? *axis_metadata : dense)};
-    encoder.dispatch_compute(
-        omarchy::ComputeKernel::LogicalOrBool,
-        material_bindings,
-        material_params,
-        omarchy::compute_dispatch_group_count(material_count));
+    dispatch_logical_chunked(encoder, material_bindings, material_params);
     encoder.add_temporary(dense);
     return dense;
   };

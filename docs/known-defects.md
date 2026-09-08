@@ -36,6 +36,31 @@ and skips the single pin by name on drivers that return 0. Receipt:
 
 ## Fixed in development
 
+### Bool logical ops and broadcast `where` conditions went unwritten past 16,776,960 elements
+
+Observed on: llvmpipe and real M1 (stock Honeykrisp and every fork
+build) as 14 failing subtests of upstream
+`test_fast_sdpa.py::test_sdpa_full_head_dim_256`. Status: FIXED in
+`wave/sdpa-headdim256`. The attention was never wrong: at head_dim
+256, GQA 8/2, causal, qL = kL = 2048, `fast.scaled_dot_product_attention`
+matches a CPU-stream reference to 1.5e-7 on all eight heads. The test's
+own reference, `mx.where(causal_mask, p, finfo.min)` over `[1, 8, 2048,
+2048]` scores, was wrong from element 16,776,960 on: heads 4 through 7
+fully masked (uniform softmax, error 1.49) and the last 256 columns of
+head 3's last row. That number is 65,535 groups times 256 threads.
+`logical_or.comp` covers one element per invocation with no grid-stride
+loop (its atomicOr byte store is the Honeykrisp-safe form), and both
+callers - `dispatch_logical` and the broadcast bool materialization
+inside `Select::eval_gpu` - issued one dispatch capped at the group
+limit, so the zero-filled tail read as false. Any `mx.logical_and`,
+`logical_or`, `logical_not`, or `where` with a broadcast or strided
+bool condition above that size was affected; nothing smaller was. The
+fix is the `select.comp` pattern: back-to-back chunks with the chunk's
+first element in `matrix_m`. Regression:
+`test_select_ops.cpp` "broadcast bool operands past the 65,535-group
+dispatch limit" (18,000,000 elements, red at exactly 16,776,960 before
+the fix). Receipt: `receipts/2026-09-08-sdpa-headdim256.json`.
+
 ### Complex scaling divided by magnitudes above 2^126 and read zero
 
 Observed on: real M1, Honeykrisp 26.1.7 and the coopmat fork. Status:
