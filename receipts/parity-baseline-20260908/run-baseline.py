@@ -49,6 +49,7 @@ def main():
         "legs": [],
     }
     summary["wheel"] = str(wheel)
+    summary["wheel_sha256"] = hashlib.sha256(wheel.read_bytes()).hexdigest()
     per_workload = {}
     for rep in range(1, reps + 1):
         prefix = HERE / f"rep{rep}"
