@@ -448,8 +448,8 @@ omarchy defect: the save binding is byte-identical to pinned upstream
 `1f8e74e`, and upstream `main` carries the same code (2026-09-01). The
 correct API for the safetensors format is `mx.save_safetensors("x.safetensors", {"w": a})`,
 which also round-trips zero-size arrays. A silent-rename fix would diverge
-from upstream, so none was made. The upstream report draft is
-[`upstream-report-mx-save-npy-suffix.md`](upstream-report-mx-save-npy-suffix.md).
+from upstream, so none was made. The append mirrors NumPy's documented
+`np.save` behaviour and is intentional upstream; no report was filed.
 
 Evaluating a stream created on another thread raises the upstream
 `std::runtime_error` contract: `There is no Stream(gpu, N) in current
