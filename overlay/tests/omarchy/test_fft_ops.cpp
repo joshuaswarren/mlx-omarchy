@@ -2,12 +2,14 @@
 // SPDX-License-Identifier: MIT
 
 // Wave 8 FFT coverage: complex-to-complex (fftn/ifftn), real-to-complex
-// (rfftn) and complex-to-real (irfftn) over power-of-two lengths 2 to 2048,
-// batched and on chosen axes of multi-dimensional arrays. Every value test
-// compares against a naive O(n^2) DFT computed in double precision inside
-// this file, plus analytic cases (delta, constant, single sinusoid),
-// forward/inverse round-trips, Parseval's identity, and the n/2+1 output
-// shape of the real variants.
+// (rfftn) and complex-to-real (irfftn) over power-of-two lengths 2 to
+// 2048, batched and on chosen axes of multi-dimensional arrays, plus the
+// 2^24 length that crosses the 65,535 workgroup-per-dimension dispatch
+// limit. Every value test compares against a naive O(n^2) DFT computed
+// in double precision inside this file (an exact analytic reference for
+// the 2^24 delta), plus analytic cases (delta, constant, single
+// sinusoid), forward/inverse round-trips, Parseval's identity, and the
+// n/2+1 output shape of the real variants.
 //
 // Tolerance: 2e-4 relative to the reference infinity norm, with a 1e-5
 // absolute floor for near-zero references. The kernel computes twiddles on
@@ -691,4 +693,64 @@ TEST_CASE("rfft and irfft work on a non-trailing axis") {
   REQUIRE_MESSAGE(
       diff <= 1e-3,
       "non-trailing rfft/irfft round-trip: max abs diff " << diff);
+}
+
+TEST_CASE("fftn at 2^24 exercises the second dispatch dimension") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  // One elementwise fft stage covers n elements in 256-thread workgroups;
+  // n = 2^24 needs 65,536 of them, one past the guaranteed 65,535
+  // x-dimension limit, so the host spills the last group into a second
+  // dispatch dimension. A stage that reads only gl_GlobalInvocationID.x
+  // repeats the first 65,535 * 256 element addresses and never writes the
+  // trailing 256. A delta at element n - 1 (inside that trailing window)
+  // transforms to the flat unit-magnitude spectrum X[k] = e^(2*pi*i*k/n),
+  // so both the unwritten output tail and the stage temporaries the
+  // downstream passes inherit land orders of magnitude outside float32
+  // round-off. With the bug, fresh page-zeroed buffers make every bin 0.
+  const uint64_t n = 1ull << 24;
+  const uint64_t delta_at = n - 1;
+
+  std::vector<complex64_t> host(n, complex64_t(0.0f, 0.0f));
+  host[delta_at] = complex64_t(1.0f, 0.0f);
+  array input = array(host.begin(), Shape{int(n)}, complex64);
+  array output = fftn(input, FFTNorm::Backward, stream);
+  output.eval();
+  sync(stream);
+  const complex64_t* bins = output.data<complex64_t>();
+
+  auto reference = [&](uint64_t k) {
+    uint64_t phase = (k * (delta_at % n)) % n;
+    double angle = -2.0 * M_PI * double(phase) / double(n);
+    return cdouble(std::cos(angle), std::sin(angle));
+  };
+  // Same 2e-4 relative budget as the value cases: the delta keeps every
+  // intermediate magnitude at one, so round-off stays around 1e-5 no
+  // matter how large n grows.
+  const double tolerance = 2e-4;
+  double worst = 0.0;
+  uint64_t worst_at = 0;
+  auto check = [&](uint64_t k) {
+    double diff = std::abs(
+        cdouble(bins[k].real(), bins[k].imag()) - reference(k));
+    if (diff > worst) {
+      worst = diff;
+      worst_at = k;
+    }
+  };
+  // Dense over the trailing window a broken stage leaves unwritten.
+  for (uint64_t k = n - 2048; k < n; ++k) {
+    check(k);
+  }
+  // Decimated over the rest of the spectrum, which inherits the stage's
+  // missing elements through the downstream passes.
+  for (uint64_t k = 0; k < n; k += 4096) {
+    check(k);
+  }
+  REQUIRE_MESSAGE(
+      worst <= tolerance,
+      "2^24 delta: max abs diff " << worst << " at bin " << worst_at
+                                  << " exceeds tolerance " << tolerance);
 }

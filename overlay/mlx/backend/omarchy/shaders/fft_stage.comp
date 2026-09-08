@@ -111,11 +111,7 @@ uint dense_address(uint t, uint j, uint n, uint stride) {
   return (t / stride) * n * stride + (t % stride) + j * stride;
 }
 
-void main() {
-  uint p = gl_GlobalInvocationID.x;
-  if (p >= params.count) {
-    return;
-  }
+void process(uint p) {
   uint n = params.lhs_size;
   uint stride = params.rhs_size;
   uint mode = params.reduce_size;
@@ -248,5 +244,18 @@ void main() {
         fft_in_complex.values[params.lhs_offset + dense_address(t, j, n, stride)];
     fft_out_complex.values[params.output_offset +
                            dense_address(t, permuted, n, stride)] = value;
+  }
+}
+
+void main() {
+  // One element per iteration across the full dispatch. An elementwise
+  // stage over n = 2^24 elements needs 65,536 workgroups of 256, one past
+  // the guaranteed 65,535 x-workgroup limit, so the host caps the x
+  // dimension and every invocation grid-strides through params.count
+  // (same convention as elementwise.comp).
+  uint stride_threads = gl_NumWorkGroups.x * gl_WorkGroupSize.x;
+  for (uint p = gl_GlobalInvocationID.x; p < params.count;
+       p += stride_threads) {
+    process(p);
   }
 }
