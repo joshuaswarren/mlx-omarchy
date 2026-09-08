@@ -164,28 +164,17 @@ M1 — corroborative, not on-target identity proof).
 ### Plausible mechanism, NOT closure
 
 Linux margin probe (margins-long128.json, digest independently
-reproduces the exact Linux stream `4cc08910089477fd`): the long128
-fork sits on an EXACT float32 argmax tie at generated index 20 — top1
-and top2 logits both 20.953125 (` review`=3395 vs ` carefully`=15516,
-margin 0.0000).
-
-This is a plausible mechanism, not a closure of the numerical gate:
-
-- We have only Linux-side logit evidence. The native-side logit pair at
-  index 20 has not been captured on the target M1 (would require a
-  coordinated macOS reboot + a probe-side harness analogous to
-  margin-probe.py; not in this window). Linux showing an exact tie
-  does not prove native shows an exact tie — native could legitimately
-  have a strict ordering on the same pair and pick 15516 deterministically
-  while Linux (under different ULP rounding) hits the tie.
 - Standard MLX argmax tie-breaking is lowest-index-first. Token 3395
   has the lower index. Linux picked 3395 (consistent with lowest-index
-  tie-break on a tied pair). Native picked 15516, which is INCONSISTENT
-  with a naive lowest-index tie-break on a tied pair — strongly
-  suggesting either (a) native logits at this position are NOT actually
-  tied (some ULP difference picks 15516 outright), or (b) the two
-  backends use different argmax tie-break conventions. Both branches
-  are unresolved without paired native logits.
+  tie-break on a tied pair). The 2026-09-04 comparison receipt's native
+  side (M1 Max 32-core, contended window, **NOT the target M1**) recorded
+  token 15516 at index 20 — which would be inconsistent with a naive
+  lowest-index tie-break on a tied pair. This is suggestive but does NOT
+  prove the target M1 native chose 15516: the target M1 receipts
+  (native-baseline-2026-09-06) carry digests only, not per-token IDs.
+  Without a paired target-M1 probe or an existing target-M1 golden token
+  array, the native side's tie-break behavior is unknown and may differ
+  from either the M1 Max receipt or from a lowest-index convention.
 - 2/3 workloads matching cross-OS outright (short + ctx1024) still
   suggests that the fork's reduction-order noise is bounded, but it
   does not prove bit-identical numerics — only that no generated
