@@ -31,10 +31,15 @@ layout(push_constant) uniform Params {
 } params;
 
 void main() {
-  uint index = gl_GlobalInvocationID.x;
-  if (index >= params.count) {
-    return;
+  // One element per iteration across the full dispatch. An irfft over
+  // n = 2^24 real outputs needs 65,536 workgroups of 256, one past the
+  // guaranteed 65,535 x-workgroup limit, so the host caps the x dimension
+  // and every invocation grid-strides through params.count (same
+  // convention as fft_stage.comp).
+  uint stride_threads = gl_NumWorkGroups.x * gl_WorkGroupSize.x;
+  for (uint index = gl_GlobalInvocationID.x; index < params.count;
+       index += stride_threads) {
+    fft_out_real.values[params.output_offset + index] =
+        fft_in_complex.values[params.lhs_offset + index].x;
   }
-  fft_out_real.values[params.output_offset + index] =
-      fft_in_complex.values[params.lhs_offset + index].x;
 }
