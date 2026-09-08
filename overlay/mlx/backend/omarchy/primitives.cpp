@@ -9390,9 +9390,12 @@ void rope_trig_gate(
     // token (receipts/2026-09-04-rope-gate-drain.md).
     bool host_constant = offset.status() == array::Status::available &&
         !offset.has_primitive();
-    // bf16 still needs this guard: the unexpected scalar writer is unknown.
-    // Keep it until the readiness defect in docs/known-defects.md is resolved.
-    if (!host_constant || out.dtype() == bfloat16) {
+    // EXPERIMENTAL (rope-drain-candidate): the bf16-only drain is removed.
+    // receipts/2026-09-04-rope-gate-drain.md recorded unexpected scalar
+    // writes under bf16 without the drain; allocator/queue lifetime has
+    // since changed. This candidate exists to re-measure, not to claim
+    // the defect fixed.
+    if (!host_constant) {
       omarchy::get_command_encoder(stream).synchronize();
     }
     worst_offset = std::abs(static_cast<float>(offset.item<int>()));
