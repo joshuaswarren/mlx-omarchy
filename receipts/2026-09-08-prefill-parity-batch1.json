@@ -69,5 +69,32 @@
     "cross_driver_failure: the cross-built libvulkan_asahi.so (mesa-xbuild, aarch64, ldd clean on the M1) fails vkCreateInstance with VK_ERROR_UNKNOWN on jwm1-linux; wheel 0.32.2.dev202609081733+5c7876ac built OK; correctness legs and divisor sweep aborted at instance creation. Fallback: apply mesa 323b747d6b0 (one file) onto a native mesa checkout on the M1, rebuild natively, rerun phase-1 unchanged; the divisor sweep alone runs on the stock system driver (no hooks needed)",
     "llvmpipe reruns at 5c7876ac land in /tmp/mm_suite_d.log and /tmp/rt_suite_d.log on the dev box"
   ],
-  "submit_cost_hypothesis": "submit() p50 4.5 ms suspect #1: allocator.cpp flush_noncoherent runs on EVERY submit and vkFlushMappedMemoryRanges each live non-coherent allocation at VK_WHOLE_SIZE with no dirty tracking (noncoherent_ is a live-set, erased only at destroy_buffer; allocator.cpp:166/176/305) - repeated full-range cache maintenance whether or not the host wrote anything since the last submit. Candidate fix: dirty-flag per allocation set at host write / record time, or flush at first-use instead of every submit. Unmeasured - needs a leg of its own."
+  "submit_cost_hypothesis": "submit() p50 4.5 ms suspect #1: allocator.cpp flush_noncoherent runs on EVERY submit and vkFlushMappedMemoryRanges each live non-coherent allocation at VK_WHOLE_SIZE with no dirty tracking (noncoherent_ is a live-set, erased only at destroy_buffer; allocator.cpp:166/176/305) - repeated full-range cache maintenance whether or not the host wrote anything since the last submit. Candidate fix: dirty-flag per allocation set at host write / record time, or flush at first-use instead of every submit. Unmeasured - needs a leg of its own.",
+  "divisor_sweep_result": {
+    "protocol": "unprofiled bench_decode.py ctx1024 prefill (1053 prompt tokens, 32 greedy), same wheel, MLX_OMARCHY_BATCH_BYTES_DIVISOR env-only toggle, 3 runs each, lock held, quiet CPU",
+    "table_prefill_tps": {
+      "divisor=16 (default)": [
+        422.6,
+        422.7,
+        422.8
+      ],
+      "divisor=4": [
+        412.2,
+        415.9,
+        421.5
+      ],
+      "divisor=2": [
+        412.8,
+        417.8,
+        420.3
+      ]
+    },
+    "verdict": "REJECTED. Default 16 is fastest; smaller divisors are marginally slower. The profiled join-stall attribution (2.26 s) does not survive unprofiled measurement - instrumentation perturbs submission/join costs (Main's causality warning confirmed). The prefill wall cost is real host-side dispatch work (~2.4 s for ~40 ms GPU), and the lever is per-dispatch host cost / dispatch count, not batch budgets. Divisor env stays as diagnostic plumbing, default unchanged."
+  },
+  "bf16_status": {
+    "clean_run_verification": "battery2 stage diagnostic: out vs ref at (1,8,8),(8,64,64),(8,64,32),(64,64,64) all agree to bf16 quantization (e.g. 2.281 vs 2.282) - the staged bf16 coopmat kernel computes correctly",
+    "earlier_fail_explained": "the first battery's BF16_FAIL (rel=1.0/nan) ran immediately after an inline-hook compile aborted the AGX compiler in a sibling process; suspect poisoned on-disk shader/pipeline cache state - recheck on a cleared cache is required before integration, and the compiler assert itself must be fixed",
+    "inline_assert": "AGX_QMM_INLINE_B 9-word layout (umod-imm-9 kstep reconstruction) crashes agx_compile.c:3507 'Disassembly error hit' - the compiler emits an instruction its own disassembler rejects. Fix committed on the MLX side (cf5eba0b): paired 16-word fused blocks [sb0 w0 sb1 w1 ...], base lands directly on the w_ks word, no modulo; the matching driver rework is written into mesa hk/prefill-parity working tree (needs commit + cross build + M1 verify)"
+  },
+  "sweep_infra_fix": "bench_decode takes the prompt via --prompt; --raw-prompt is a flag (be139d3c) - the first sweep silently produced no rows because every run died in argparse"
 }
