@@ -204,6 +204,9 @@ void VulkanAllocator::free(Buffer buffer) {
   if (buf->completion != 0) {
     if (buf->completion == kPendingCompletion || !runtime_alive() ||
         buf->completion + 1 > device().completions().drained_value()) {
+      if (buf->completion == kPendingCompletion) {
+        pending_quarantine_bytes_ += sz;
+      }
       quarantine_.push_back(buf);
       return;
     }
@@ -256,6 +259,27 @@ void VulkanAllocator::release_quarantine(uint64_t cleanup_done_through) {
     }
   }
   quarantine_ = std::move(still_quarantined);
+}
+
+void VulkanAllocator::stamp_batch(
+    const std::vector<VulkanBuffer*>& bufs,
+    uint64_t completion) {
+  std::unique_lock lk(mutex_);
+  for (auto* buf : bufs) {
+    if (buf) {
+      buf->completion = completion;
+    }
+  }
+  // Recount instead of subtracting per buffer: a buffer can sit in
+  // several open batches (one per stream), and only a scan knows which
+  // quarantined buffers still carry the pending stamp.
+  size_t pending = 0;
+  for (auto* buf : quarantine_) {
+    if (buf->completion == kPendingCompletion) {
+      pending += buf->size;
+    }
+  }
+  pending_quarantine_bytes_ = pending;
 }
 
 size_t VulkanAllocator::size(Buffer buffer) const {

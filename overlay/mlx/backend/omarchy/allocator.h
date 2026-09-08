@@ -105,6 +105,22 @@ class VulkanAllocator : public allocator::Allocator {
     }
   }
 
+  // Stamp a submitted batch's buffers with their real completion value
+  // and refresh pending_quarantine_bytes(): freed buffers of the batch
+  // stop counting against the open-batch budget once they can drain.
+  void stamp_batch(const std::vector<VulkanBuffer*>& bufs, uint64_t completion);
+
+  // Bytes of freed buffers pinned by a batch that has not yet been
+  // submitted (quarantined at kPendingCompletion). Nothing can recycle
+  // them until the batch reaches the queue, so the evaluator flushes the
+  // batch once this passes get_memory_limit() / kBatchByteBudgetDivisor
+  // (encoder.h). Weights and live intermediates are not counted: their
+  // memory is owed to the graph, not to batching.
+  size_t pending_quarantine_bytes() const {
+    std::unique_lock lk(mutex_);
+    return pending_quarantine_bytes_;
+  }
+
  private:
   VulkanAllocator();
   friend VulkanAllocator& allocator();
@@ -125,6 +141,7 @@ class VulkanAllocator : public allocator::Allocator {
   // Freed buffers whose recorded GPU work may still reference them (see
   // release_quarantine). Held outside the reuse cache until released.
   std::vector<VulkanBuffer*> quarantine_;
+  size_t pending_quarantine_bytes_{0};
 };
 
 MLX_API VulkanAllocator& allocator();
