@@ -29,8 +29,18 @@
   },
   "verification": {
     "llvmpipe_leg": {
-      "omarchy_matmul_family_tests": "15/15 cases, 18430759/18430759 assertions, exit 0 at 82ececc6 (inline kernel in tree; coopmat capability 0 so inline/staged paths not dispatched); runtime suite pending in the same leg",
-      "note": "rerun at 5c7876ac launched; results land in /tmp/mm_suite_d.log and /tmp/rt_suite_d.log on the dev box"
+      "commit": "5c7876ac",
+      "omarchy_matmul_family_tests": {
+        "cases": "15/15",
+        "assertions": "18430759/18430759",
+        "exit": 0
+      },
+      "omarchy_runtime_tests": {
+        "cases": "41/41",
+        "assertions": "22691/22691",
+        "exit": 0
+      },
+      "note": "cooperative matrix capability 0 on llvmpipe so inline/staged coopmat paths are not dispatched; suites prove the gate fallbacks and the runtime divisor plumbing are regression-free"
     },
     "m1_window": {
       "script": "scripts-local/m1_window.sh (one flock /tmp/m1-gpu.lock per process tree, never unlinked, hostname printed)",
