@@ -85,13 +85,15 @@ the interpreted subset beyond elementwise.
 
 ## Outside these waves
 
-- ANE bundle execution on Linux is a hardware gate, not an approval gate: the
-  ANE node appears only under a boot entry that replaces the device tree and
-  left one of eight cores online, and loading the out-of-tree KMD resets the
-  machine. It needs a boot entry that carries the T8103 node without dropping
-  m1n1's per-boot patches, and a KMD load that survives. It follows v0.5.0 on
-  the roadmap.
+- ANE on Linux runs. On 2026-09-06 the M1 booted with all eight cores and the
+  `apple,t8103-ane` node in the live device tree; the ABI-1 driver and
+  `libane` in the `joshuaswarren/omarchy-ane` fork executed all eight
+  `mil-hwx-compiler` qualification packages with exact fp16 output over three
+  warmups and 30 measured iterations each (`~/src/ane-eightcore-20260906` on
+  jwm1). MLX graph-region integration is roadmap v0.6.0 and waits on the
+  connected full-graph parity receipt, not on hardware access.
 - Driver, `libane`, and MLX changes land in the `joshuaswarren` forks;
   upstreaming is a separate later decision, not a gate.
-- `docs/upstream-report-mx-save-npy-suffix.md` is a draft for ml-explore/mlx
-  that only the owner files; it gates nothing.
+- `docs/upstream-report-mx-save-npy-suffix.md` is a draft for ml-explore/mlx;
+  whether it is a real, unreported bug is being checked before anyone files
+  it. It gates nothing.
