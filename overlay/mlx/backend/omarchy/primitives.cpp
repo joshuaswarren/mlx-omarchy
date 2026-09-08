@@ -13,6 +13,7 @@
 #include <optional>
 #include <numeric>
 #include <string>
+#include <unordered_map>
 #include <utility>
 
 #include "mlx/backend/common/binary.h"
@@ -6303,6 +6304,48 @@ void QRF::eval_gpu(
   encoder.dispatch_compute(
       omarchy::ComputeKernel::LinalgQrF32, bindings, params, batch);
 }
+// Fused affine 4-bit / group-64 weight layout for the inline-decode
+// coopmat prefill kernel (shaders/qmm_coopmat_inline.comp): per
+// (chunk, column) one 9-word block, word 0 packing scale | bias as a
+// single f16x2 word and words 1..8 holding the eight nibble words.
+// Byte count is identical to the packed words plus the separate scale
+// and bias streams. Built once per weight tensor and cached for the
+// process lifetime -- a load-time transform whose cost amortizes out
+// of steady-state prefill; the cache holds the extra fused copy, so
+// resident weights roughly double while an inline-gated model runs.
+// 64 weights per group at 4 bits: eight nibbles per 32-bit word.
+static constexpr int kInlineQ4WordsPerGroup = 8;
+static const array& fused_affine_q4_words(
+    const array& w,
+    const array& scales,
+    const array& biases,
+    int groups,
+    Stream stream) {
+  static std::unordered_map<size_t, array> cache;
+  auto it = cache.find(w.id());
+  if (it != cache.end()) {
+    return it->second;
+  }
+  int n = w.shape(-2);
+  int words_per_group = kInlineQ4WordsPerGroup;
+  array scale_words = view(transpose(scales, {1, 0}, stream), uint16, stream);
+  array bias_words = view(transpose(biases, {1, 0}, stream), uint16, stream);
+  array sb_words = add(
+      astype(scale_words, uint32, stream),
+      multiply(
+          astype(bias_words, uint32, stream),
+          array(static_cast<uint32_t>(65536u)),
+          stream),
+      stream);
+  array words = transpose(
+      reshape(w, {n, groups, words_per_group}, stream), {1, 0, 2}, stream);
+  array fused = reshape(
+      concatenate({expand_dims(sb_words, 2, stream), words}, 2, stream),
+      {groups * n * (words_per_group + 1)},
+      stream);
+  fused.eval();
+  return cache.emplace(w.id(), std::move(fused)).first->second;
+}
 void QuantizedMatmul::eval_gpu(const std::vector<array>& inputs, array& out) {
   const std::string tag = name();
   // Non-affine modes pass three inputs, so the mode check must land
@@ -6638,9 +6681,43 @@ void QuantizedMatmul::eval_gpu(const std::vector<array>& inputs, array& out) {
           kQmmCoopmatSharedBytes <= caps.max_compute_shared_memory_size &&
           (params.lhs_offset % 2u) == 0u &&
           (params.output_offset % 2u) == 0u;
+      // Inline-fragment variant (shaders/qmm_coopmat_inline.comp): the
+      // driver lowering AGX_QMM_INLINE_A / AGX_QMM_INLINE_B unpacks x
+      // f16 pairs and dequantizes the fused weight blocks inside the
+      // fragment loads, so the k loop runs with no staging barriers.
+      // Requires the private mesa hooks (both envs), batch == 1, and
+      // k covered by whole 64-weight groups; MLX_OMARCHY_NO_QMM_INLINE
+      // =1 forces the staged kernel. Default on so the A/B is a pure
+      // env toggle of the same wheel.
+      static const bool inline_disabled =
+          omarchy::env_flag("MLX_OMARCHY_NO_QMM_INLINE");
+      bool inline_ok = coopmat && !inline_disabled && batch == 1 &&
+          params.matrix_k >= 64u && (params.matrix_k % 64u) == 0u &&
+          std::getenv("AGX_QMM_INLINE_A") != nullptr &&
+          std::getenv("AGX_QMM_INLINE_B") != nullptr;
       uint32_t m_groups = (params.matrix_m + 31u) / 32u;
       uint32_t n_groups = coopmat ? (params.matrix_n + 31u) / 32u
                                   : (params.matrix_n + 15u) / 16u;
+      if (inline_ok) {
+        const array& fused =
+            fused_affine_q4_words(w_d, scales_d, biases_d, scales_d.shape(-1), stream());
+        auto inline_params = params;
+        inline_params.rhs_offset = 0;
+        std::array<omarchy::ComputeBinding, 5> inline_bindings{
+            binding(x_d),
+            binding(fused),
+            binding(scales_d),
+            binding(biases_d),
+            binding(out)};
+        encoder.dispatch_compute(
+            omarchy::ComputeKernel::QmmInlineCoopmatF16,
+            inline_bindings,
+            inline_params,
+            std::min(n_groups, omarchy::kMaxComputeGroupCountX),
+            std::min(m_groups, omarchy::kMaxComputeGroupCountX),
+            1u);
+        return;
+      }
       encoder.dispatch_compute(
           coopmat ? omarchy::ComputeKernel::QmmPrefillCoopmatF16
                   : omarchy::ComputeKernel::QmmTileRbF16,

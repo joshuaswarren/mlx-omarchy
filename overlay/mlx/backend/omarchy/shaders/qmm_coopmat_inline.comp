@@ -1,0 +1,166 @@
+#version 460
+#extension GL_KHR_cooperative_matrix : require
+#extension GL_KHR_memory_scope_semantics : require
+#extension GL_EXT_shader_16bit_storage : require
+#extension GL_EXT_shader_explicit_arithmetic_types_float16 : require
+
+// Prefill QuantizedMatmul (matrix_m > 1) on the G13 8x8x8 fp32
+// cooperative matrix with INLINE fragment loads. The driver lowering
+// (mesa hk/prefill-parity, AGX_QMM_INLINE_A / AGX_QMM_INLINE_B) builds
+// the A fragments by unpacking f16 word pairs straight from the x
+// buffer and the B fragments by dequantizing fused 9-word blocks per
+// (column, 64-weight group) straight from the prepacked weight buffer.
+// The k loop has NO shared-memory staging and NO barriers: each 8-wide
+// k step is four A loads, four B loads, and sixteen coopMatMulAdd.
+// Accumulation is f32; the dequant is f32 scale * f32 nibble + f32
+// bias (the qmm tile contract, never rounded to f16). The finished
+// tile drains through 1 KiB of shared with the m and n tails masked,
+// rounding to f16 once.
+//
+// input_w is the fused layout built by primitives.cpp: for chunk c,
+// column n, k step ks, the weight word index is
+//   c * (matrix_n * 9) + n * 9 + 1 + ks
+// and word - 1 - ks packs scale | bias as one f16x2 word. Scales and
+// biases are still bound (signature parity with qmm_coopmat.comp) but
+// unused. Dispatch gate (primitives.cpp): cooperative_matrix_f32_8,
+// subgroup size 32, f16 output, transposed affine 4-bit/group-64,
+// batch == 1, driver inline hooks present, and !MLX_OMARCHY_NO_QMM_INLINE.
+
+const uint TILE_M = 32u;
+const uint TILE_N = 32u;
+const uint CHUNK_K = 64u;
+const uint MAT = 8u;
+
+layout(local_size_x = 32) in;
+
+layout(set = 0, binding = 0, std430) readonly buffer InputX {
+  uint values[];
+} input_x;
+layout(set = 0, binding = 1, std430) readonly buffer InputW {
+  uint values[];
+} input_w;
+layout(set = 0, binding = 2, std430) readonly buffer Scales {
+  float16_t values[];
+} scales;
+layout(set = 0, binding = 3, std430) readonly buffer Biases {
+  float16_t values[];
+} biases;
+layout(set = 0, binding = 4, std430) writeonly buffer Output {
+  float16_t values[];
+} output_data;
+
+layout(push_constant) uniform Params {
+  uint count;
+  uint operation;
+  uint lhs_size;
+  uint rhs_size;
+  uint reduce_size;
+  uint output_size;
+  uint lhs_offset;
+  uint rhs_offset;
+  uint output_offset;
+  uint aux_size;
+  uint aux_offset;
+  uint matrix_m;
+  uint matrix_n;
+  uint matrix_k;
+  uint flags;
+  float alpha;
+  float beta;
+  uint dims;
+  uint shape[4];
+  uint in_strides[4];
+  uint out_strides[4];
+} params;
+
+// Drain-only shared staging (4 x 8x8 f32 block per store round).
+shared float x_s[TILE_M * MAT];
+
+void main() {
+  uint lane = gl_LocalInvocationID.x;
+  uint x_batch_rows = params.matrix_m * params.matrix_k;
+  uint m_tiles = (params.matrix_m + TILE_M - 1u) / TILE_M;
+  uint n_tiles = (params.matrix_n + TILE_N - 1u) / TILE_N;
+  uint k_chunks = params.matrix_k / CHUNK_K;
+  uint x_words_per_row = params.matrix_k / 2u;
+  uint fused_words_per_chunk = params.matrix_n * 9u;
+
+  uint x_slice = params.lhs_offset / 2u;
+  uint out_slice = params.output_offset;
+  uint fused_slice = params.rhs_offset;
+  for (uint tile_row = gl_WorkGroupID.y; tile_row < m_tiles;
+       tile_row += gl_NumWorkGroups.y) {
+    uint row_base = tile_row * TILE_M;
+    for (uint tile_col = gl_WorkGroupID.x; tile_col < n_tiles;
+         tile_col += gl_NumWorkGroups.x) {
+      uint column = tile_col * TILE_N + lane;
+      bool column_ok = column < params.matrix_n;
+
+      coopmat<float, gl_ScopeSubgroup, MAT, MAT, gl_MatrixUseAccumulator>
+          acc[4][4];
+      for (uint rb = 0u; rb < 4u; ++rb) {
+        for (uint cb = 0u; cb < 4u; ++cb) {
+          acc[rb][cb] = coopmat<float, gl_ScopeSubgroup, MAT, MAT,
+              gl_MatrixUseAccumulator>(0.0);
+        }
+      }
+
+      for (uint chunk = 0u; chunk < k_chunks; ++chunk) {
+        uint chunk_base = fused_slice + chunk * fused_words_per_chunk;
+        for (uint ks = 0u; ks < CHUNK_K / MAT; ++ks) {
+          uint k_base = chunk * CHUNK_K + ks * MAT;
+          coopmat<float, gl_ScopeSubgroup, MAT, MAT, gl_MatrixUseA> mat_a[4];
+          coopmat<float, gl_ScopeSubgroup, MAT, MAT, gl_MatrixUseB> mat_b[4];
+          for (uint rb = 0u; rb < 4u; ++rb) {
+            uint row = row_base + rb * MAT;
+            // A: row-major f16 word pairs; the driver hook requires an
+            // even element base (guaranteed by the dispatch gate).
+            coopMatLoad(
+                mat_a[rb],
+                input_x.values,
+                x_slice + row * x_words_per_row + k_base / 2u,
+                x_words_per_row,
+                gl_CooperativeMatrixLayoutRowMajor);
+          }
+          for (uint cb = 0u; cb < 4u; ++cb) {
+            uint col = tile_col * TILE_N + cb * MAT;
+            // B: column-major, stride 9 words, base in the fused block.
+            coopMatLoad(
+                mat_b[cb],
+                input_w.values,
+                chunk_base + col * 9u + 1u + ks,
+                9u,
+                gl_CooperativeMatrixLayoutColumnMajor);
+          }
+          for (uint rb = 0u; rb < 4u; ++rb) {
+            for (uint cb = 0u; cb < 4u; ++cb) {
+              acc[rb][cb] = coopMatMulAdd(mat_a[rb], mat_b[cb], acc[rb][cb]);
+            }
+          }
+        }
+      }
+
+      // Drain one 8-row block at a time through x_s (4 x 8x8 floats):
+      // lane = column, cb = lane / 8, block-local column = lane % 8.
+      for (uint rb = 0u; rb < 4u; ++rb) {
+        for (uint cb = 0u; cb < 4u; ++cb) {
+          coopMatStore(
+              acc[rb][cb], x_s, cb * MAT * MAT, MAT,
+              gl_CooperativeMatrixLayoutRowMajor);
+        }
+        barrier();
+        if (column_ok) {
+          for (uint r = 0u; r < MAT; ++r) {
+            uint row = row_base + rb * MAT + r;
+            if (row < params.matrix_m) {
+              output_data.values[out_slice + row * params.matrix_n + column] =
+                  float16_t(x_s[(lane / 8u) * MAT * MAT + r * MAT +
+                                (lane % 8u)]);
+            }
+          }
+        }
+        barrier();
+      }
+    }
+  }
+}
