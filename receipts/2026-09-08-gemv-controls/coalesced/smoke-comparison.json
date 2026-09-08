@@ -1,0 +1,44 @@
+{
+  "all_ids_equal": true,
+  "per_leg_ids_equal": [
+    true,
+    true,
+    true,
+    true,
+    true,
+    true
+  ],
+  "ratios": [
+    {
+      "leg_id": "qwen25-0.5b-4bit:long-decode-128",
+      "decode_ratio": 0.8523477950366006,
+      "prefill_ratio": 0.9922125537620684
+    },
+    {
+      "leg_id": "qwen25-0.5b-4bit:longctx-1024-decode-32",
+      "decode_ratio": 0.7493221592309588,
+      "prefill_ratio": 1.0141422857442517
+    },
+    {
+      "leg_id": "qwen25-0.5b-4bit:short-decode-32",
+      "decode_ratio": 0.9400788834951456,
+      "prefill_ratio": 1.0
+    },
+    {
+      "leg_id": "qwen25-0.5b-bf16:long-decode-128",
+      "decode_ratio": 0.583732057416268,
+      "prefill_ratio": 0.9025684931506849
+    },
+    {
+      "leg_id": "qwen25-0.5b-bf16:longctx-1024-decode-32",
+      "decode_ratio": 0.5935064935064935,
+      "prefill_ratio": 0.9706898211020456
+    },
+    {
+      "leg_id": "qwen25-0.5b-bf16:short-decode-32",
+      "decode_ratio": 0.5827505827505828,
+      "prefill_ratio": 0.7731252786446723
+    }
+  ],
+  "scope": "one candidate repetition versus the recorded five-repetition baseline; not final acceptance"
+}

@@ -1,0 +1,32 @@
+{
+  "status": "local correctness verified; M1 acceptance pending",
+  "source_commit": "fff2531a",
+  "baseline_commit": "c2548675",
+  "serial_control_commit": "64dea25b",
+  "wide_output_reproduction": {
+    "runtime": "x86 Linux, llvmpipe, installed diagnostic wheel 0.32.2.dev202609081730+diag.c254867",
+    "shape": [1, 2097121],
+    "operation": "float32 [[2.5]] @ ones((1, 2097121))",
+    "expected_last": 2.5,
+    "observed_last": 0.0,
+    "assertion_exit_code": 1
+  },
+  "serial_control_validation": {
+    "command": "MLX_OMARCHY_ALLOW_NON_APPLE=1 .work/build-serial/tests/omarchy/omarchy_matmul_family_tests",
+    "cases_passed": 16,
+    "assertions_passed": 20527881,
+    "failed": 0,
+    "skipped": 0
+  },
+  "coalesced_validation": {
+    "command": "cmake --build .work/build-serial --target omarchy_matmul_family_tests -j 12 </dev/null && MLX_OMARCHY_ALLOW_NON_APPLE=1 .work/build-serial/tests/omarchy/omarchy_matmul_family_tests </dev/null",
+    "cases_passed": 16,
+    "assertions_passed": 20527881,
+    "failed": 0,
+    "skipped": 0,
+    "exit_code": 0,
+    "output": "[doctest] test cases: 16 | 16 passed | 0 failed | 0 skipped\n[doctest] assertions: 20527881 | 20527881 passed | 0 failed |\n[doctest] Status: SUCCESS!"
+  },
+  "interrupted_attempt": "The first coalesced build stopped with exit 148 and no test result. Its remaining processes were confirmed gone before resuming the build with stdin disconnected. Only the subsequent successful run is acceptance evidence.",
+  "scope": "No M1 performance or generated-token claim yet. Shared staging retains sequential 16-element accumulation and padding; the full model matrix must still verify numerical identity and throughput."
+}

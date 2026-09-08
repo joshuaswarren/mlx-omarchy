@@ -1,0 +1,32 @@
+{
+ "qwen25-0.5b-4bit:long-decode-128": {
+  "leg": "qwen25-0.5b-4bit:long-decode-128",
+  "oracle_digest": "f873dc2bdd34c0fe",
+  "linux_digest": "4cc08910089477fd",
+  "linux_first_diff_index": 20,
+  "n_linux": 128,
+  "native_digest": "254d73fd93164b98",
+  "native_matches_oracle": false,
+  "linux_matches_oracle": false
+ },
+ "qwen25-0.5b-4bit:longctx-1024-decode-32": {
+  "leg": "qwen25-0.5b-4bit:longctx-1024-decode-32",
+  "oracle_digest": "7da83f06ec9f001d",
+  "linux_digest": "7da83f06ec9f001d",
+  "linux_first_diff_index": null,
+  "n_linux": 32,
+  "native_digest": "7da83f06ec9f001d",
+  "native_matches_oracle": true,
+  "linux_matches_oracle": true
+ },
+ "qwen25-0.5b-4bit:short-decode-32": {
+  "leg": "qwen25-0.5b-4bit:short-decode-32",
+  "oracle_digest": "7fd25a869ff21678",
+  "linux_digest": "7fd25a869ff21678",
+  "linux_first_diff_index": null,
+  "n_linux": 32,
+  "native_digest": "7fd25a869ff21678",
+  "native_matches_oracle": true,
+  "linux_matches_oracle": true
+ }
+}

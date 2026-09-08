@@ -1,0 +1,32 @@
+{
+ "qwen25-0.5b-bf16:long-decode-128": {
+  "leg": "qwen25-0.5b-bf16:long-decode-128",
+  "oracle_digest": "5934a0a897d1bb8e",
+  "linux_digest": "ad964232ee67fecd",
+  "linux_first_diff_index": 14,
+  "n_linux": 128,
+  "native_digest": "407b7624ed1b3b29",
+  "native_matches_oracle": false,
+  "linux_matches_oracle": false
+ },
+ "qwen25-0.5b-bf16:longctx-1024-decode-32": {
+  "leg": "qwen25-0.5b-bf16:longctx-1024-decode-32",
+  "oracle_digest": "ff502900d2a179a5",
+  "linux_digest": "ff502900d2a179a5",
+  "linux_first_diff_index": null,
+  "n_linux": 32,
+  "native_digest": "ff502900d2a179a5",
+  "native_matches_oracle": true,
+  "linux_matches_oracle": true
+ },
+ "qwen25-0.5b-bf16:short-decode-32": {
+  "leg": "qwen25-0.5b-bf16:short-decode-32",
+  "oracle_digest": "7fc0f968789b1882",
+  "linux_digest": "f26175202f3dabe9",
+  "linux_first_diff_index": 14,
+  "n_linux": 32,
+  "native_digest": "7fc0f968789b1882",
+  "native_matches_oracle": true,
+  "linux_matches_oracle": false
+ }
+}

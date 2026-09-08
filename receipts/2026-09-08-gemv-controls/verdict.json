@@ -1,0 +1,21 @@
+{
+  "decision": "Do not integrate either GEMV control",
+  "baseline": "c2548675, recorded five-repetition M1 matrix",
+  "protocol": "One full six-leg smoke run per control, both pinned models and all required workloads; separate clean source checkouts and wheel-matched environments; one shared GPU lock covering each build and run.",
+  "coalesced": {
+    "source_commit": "01b28eb615b01bb190e88c97d9074746d5002e3e",
+    "kernel_commit": "fff2531a",
+    "all_generated_ids_equal": true,
+    "bf16_decode_short_long_ctx1024": [5.0, 4.88, 4.57],
+    "decision": "Rejected: BF16 decode is about 41 percent slower than the recorded baseline; Q4 decode also regresses."
+  },
+  "serial": {
+    "source_commit": "64dea25b6ff5f72759b930e471e003c919fb148a",
+    "all_generated_ids_equal": true,
+    "bf16_decode_short_long_ctx1024": [8.79, 8.58, 7.86],
+    "q4_decode_short_long_ctx1024": [66.35, 55.86, 38.87],
+    "decision": "Not integrated: the small BF16 differences do not establish a material gain from one run, and Q4 long-context decode was 4.2 percent slower."
+  },
+  "local_correctness": "Both controls passed 16 matrix-family cases and 20,527,881 assertions on llvmpipe, including the prior wide-output truncation reproducer.",
+  "limitations": "These smoke runs reject or screen candidates; they are not five-pair acceptance measurements. Exact token identity here means identity with the Linux baseline, not full native Metal identity."
+}

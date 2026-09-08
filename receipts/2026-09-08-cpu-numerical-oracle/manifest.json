@@ -1,0 +1,53 @@
+{
+ "schema": "cpu-oracle-run-manifest/1",
+ "date": "2026-09-08",
+ "host": "x86_64 CT (linux 6.17.2-1-pve), 16 threads, torch 2.4.0+cu121 CPU, transformers 4.46.3, numpy 1.26.4",
+ "constraint": "independent CPU fp32 mathematical oracle; NO M1/SSH activity; NOT timing evidence and NOT native numerical identity proof",
+ "code_at_capture": {
+  "oracle.py": "ae72a556713d2d5d381851469c8af67ba68ed55f90ce37d014280e9316b5c520",
+  "q4dequant.py": "0ade18f93efb65aac2642e59432ba4ae8b4105125eeed6f18f95406681964ec6"
+ },
+ "reproduction_code": {
+  "oracle.py": "f169c8f764ba66863b9d39fcf73538ccf7aa09d6fddbd355ce2fd529bd66c5e7",
+  "q4dequant.py": "aef40a6fcc07bfc3da1b0dda21d69465b7f709a5f3c298be55d0a110f0ba62a0"
+ },
+ "portability_change": "Repository path is now relative; Q4 validation descriptions now state the actual per-tensor max-scale-plus-1e-3 bound. Model arithmetic is unchanged. The captured q4-dequant-check.json spec text overstated this as a per-element bound; its measured data is preserved unchanged.",
+ "parent_verification": {
+  "captured_artifacts_verified": 17,
+  "finite_float32_full_vocab_vectors": 4,
+  "generated_sequences_checked": 6,
+  "rerun": "Portable FP32 oracle reproduced all 32 BF16 short IDs: 7fc0f968789b1882 prompt_tokens: 30",
+  "scope": "One generation rerun, plus integrity and data-validity checks on all captured artifacts; no new performance measurement."
+ },
+ "snapshots": {
+  "bf16": {
+   "revision": "56d07e766edd7159fbe12ed12d9cf114bf38bf1e",
+   "model_safetensors_sha256": "39da1e4174f12953ad7ace17239da672aa2b4b9ba723a09835963484c5a05b41"
+  },
+  "q4": {
+   "revision": "a5339a4131f135d0fdc6a5c8b5bbed2753bbe0f3",
+   "model_safetensors_sha256": "ddffab9cbc7bf6dde941c6724841eeca8981fcfa81ca20ff8efff1396326d153"
+  }
+ },
+ "digest_formula": "sha256(','.join(ids))[:16] (bench_decode.ids_digest)",
+ "generation_policy": "chat template applied (add_generation_prompt=True), greedy temp0 argmax, EOS ids allowed in logits (bench_decode suppresses stopping only), pinned lengths, 4 warmup tokens run in a separate discarded stream_generate call (no KV state carries into the measured generation)",
+ "artifacts": {
+  "compare-bf16.json": "a4c09f3cb3335021bb55b75b84eafed91d068db6c31c61b34bd09bbbf8b8ecf0",
+  "compare-q4.json": "44c4cd9a69a7eb9f6acbe14732d78e2494a03498288bccbd9188edeab1ebf651",
+  "oracle-bf16-ctx1024.json": "b3e782c7b33960fff4fa5974c16bfd0ba48ebf709c14ea7ba9a0f8ebe78ac1bb",
+  "oracle-bf16-long.json": "6a704f2a54428bcde5aecde2894b9eb8c6f888374374d711ba67f40918fc6bd0",
+  "oracle-bf16-short.json": "5d243c0329de71669b8ffe79104b500a5e4db1d0a6e9b2b665023438d9d1864a",
+  "oracle-q4-ctx1024.json": "0da7c236b809be7f788f15d2b9cfc52651acec251b0ced90c58e38b655c6449d",
+  "oracle-q4-long.json": "63614ada68e762b65bccf7bb9dbda3a6d127f3635f41a397766d174c5c17deb3",
+  "oracle-q4-short.json": "1e275a3ea5a9e19021e5bdcf0c11b8ca23df51caf2116dbdd8aeb3cefefeb204",
+  "probe-bf16-long-idx14.json": "c54018f0aca30332d2595283b526de28f2f8cf507f177500067f5b2d8057ccd5",
+  "probe-bf16-long-idx33.json": "395e52f4044f77bc054f1f48f3669a1ce0aeed8ff011972c8323f715e26b300d",
+  "probe-bf16-short-idx14.json": "f26c466a743fd897db9bc4a69e6ad00fd1dc12a107e06ec4483bd9f1152cf0bc",
+  "probe-q4-long-idx20.json": "39c354d1e50d404091f1ce995a7a1c14c8f75c0b89d6e94e36b25aab4a500344",
+  "q4-dequant-check.json": "a1676562b546363da1deed80a54b6f58d4ad22d535b33e4c50ea592506165e0d",
+  "probe-bf16-long-idx14-logits.npy": "a12f56c4aae8a1fd3e7165c2c41201af1dff7bf7d1d374872706250ff562e92f",
+  "probe-bf16-long-idx33-logits.npy": "a4ae979cc4240859267ffd6c29905e0c5437260f1746127767975fa3f4c552ca",
+  "probe-bf16-short-idx14-logits.npy": "3fc7eecdac3939972b8f1273800b375ba08ec9931a2986272a4290eede220ca3",
+  "probe-q4-long-idx20-logits.npy": "842f8de29599edfc47e347513f2af4b523d50f703301e8d67c788a928ddfeb67"
+ }
+}

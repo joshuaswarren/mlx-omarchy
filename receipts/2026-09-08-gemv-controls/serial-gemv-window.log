@@ -1,0 +1,161 @@
+jwm1-linux
+jwm1-linux
+2026-09-08T22:23:10Z
+Note: switching to '01b28eb615b01bb190e88c97d9074746d5002e3e'.
+
+You are in 'detached HEAD' state. You can look around, make experimental
+changes and commit them, and you can discard any commits you make in this
+state without impacting any branches by switching back to a branch.
+
+If you want to create a new branch to retain commits you create, you may
+do so (now or later) by using -c with the switch command. Example:
+
+  git switch -c <new-branch-name>
+
+Or undo this operation with:
+
+  git switch -
+
+Turn off this advice by setting config variable advice.detachedHead to false
+
+SOURCE=64dea25b6ff5f72759b930e471e003c919fb148a
+rep 1: ok
+[
+ {
+  "leg_id": "qwen25-0.5b-4bit:long-decode-128",
+  "reps": 1,
+  "decode_tok_s_median": 55.86,
+  "decode_tok_s_min": 55.86,
+  "decode_tok_s_max": 55.86,
+  "prefill_tok_s_median": 413.249,
+  "prefill_tok_s_min": 413.249,
+  "prefill_tok_s_max": 413.249,
+  "prompt_tokens": 262,
+  "generated_ids_sha256_16": [
+   "4cc08910089477fd"
+  ],
+  "ids_stable_across_reps": true
+ },
+ {
+  "leg_id": "qwen25-0.5b-4bit:longctx-1024-decode-32",
+  "reps": 1,
+  "decode_tok_s_median": 38.87,
+  "decode_tok_s_min": 38.87,
+  "decode_tok_s_max": 38.87,
+  "prefill_tok_s_median": 429.621,
+  "prefill_tok_s_min": 429.621,
+  "prefill_tok_s_max": 429.621,
+  "prompt_tokens": 1053,
+  "generated_ids_sha256_16": [
+   "7da83f06ec9f001d"
+  ],
+  "ids_stable_across_reps": true
+ },
+ {
+  "leg_id": "qwen25-0.5b-4bit:short-decode-32",
+  "reps": 1,
+  "decode_tok_s_median": 66.35,
+  "decode_tok_s_min": 66.35,
+  "decode_tok_s_max": 66.35,
+  "prefill_tok_s_median": 113.208,
+  "prefill_tok_s_min": 113.208,
+  "prefill_tok_s_max": 113.208,
+  "prompt_tokens": 30,
+  "generated_ids_sha256_16": [
+   "7fd25a869ff21678"
+  ],
+  "ids_stable_across_reps": true
+ },
+ {
+  "leg_id": "qwen25-0.5b-bf16:long-decode-128",
+  "reps": 1,
+  "decode_tok_s_median": 8.58,
+  "decode_tok_s_min": 8.58,
+  "decode_tok_s_max": 8.58,
+  "prefill_tok_s_median": 169.909,
+  "prefill_tok_s_min": 169.909,
+  "prefill_tok_s_max": 169.909,
+  "prompt_tokens": 262,
+  "generated_ids_sha256_16": [
+   "ad964232ee67fecd"
+  ],
+  "ids_stable_across_reps": true
+ },
+ {
+  "leg_id": "qwen25-0.5b-bf16:longctx-1024-decode-32",
+  "reps": 1,
+  "decode_tok_s_median": 7.86,
+  "decode_tok_s_min": 7.86,
+  "decode_tok_s_max": 7.86,
+  "prefill_tok_s_median": 187.133,
+  "prefill_tok_s_min": 187.133,
+  "prefill_tok_s_max": 187.133,
+  "prompt_tokens": 1053,
+  "generated_ids_sha256_16": [
+   "ff502900d2a179a5"
+  ],
+  "ids_stable_across_reps": true
+ },
+ {
+  "leg_id": "qwen25-0.5b-bf16:short-decode-32",
+  "reps": 1,
+  "decode_tok_s_median": 8.79,
+  "decode_tok_s_min": 8.79,
+  "decode_tok_s_max": 8.79,
+  "prefill_tok_s_median": 56.926,
+  "prefill_tok_s_min": 56.926,
+  "prefill_tok_s_max": 56.926,
+  "prompt_tokens": 30,
+  "generated_ids_sha256_16": [
+   "f26175202f3dabe9"
+  ],
+  "ids_stable_across_reps": true
+ }
+]
+{
+  "all_ids_equal": true,
+  "per_leg_ids_equal": [
+    true,
+    true,
+    true,
+    true,
+    true,
+    true
+  ],
+  "ratios": [
+    {
+      "leg_id": "qwen25-0.5b-4bit:long-decode-128",
+      "decode_ratio": 0.9973219068023568,
+      "prefill_ratio": 1.004731305144869
+    },
+    {
+      "leg_id": "qwen25-0.5b-4bit:longctx-1024-decode-32",
+      "decode_ratio": 0.9580971160956371,
+      "prefill_ratio": 1.024072635046553
+    },
+    {
+      "leg_id": "qwen25-0.5b-4bit:short-decode-32",
+      "decode_ratio": 1.0065230582524272,
+      "prefill_ratio": 1.0188730188730188
+    },
+    {
+      "leg_id": "qwen25-0.5b-bf16:long-decode-128",
+      "decode_ratio": 1.0263157894736843,
+      "prefill_ratio": 1.003241615493623
+    },
+    {
+      "leg_id": "qwen25-0.5b-bf16:longctx-1024-decode-32",
+      "decode_ratio": 1.0207792207792208,
+      "prefill_ratio": 1.0005293155255195
+    },
+    {
+      "leg_id": "qwen25-0.5b-bf16:short-decode-32",
+      "decode_ratio": 1.0244755244755244,
+      "prefill_ratio": 1.0151761034329023
+    }
+  ],
+  "scope": "one candidate repetition versus the recorded five-repetition baseline; not final acceptance"
+}
+2026-09-08T22:27:17Z
+SERIAL_GEMV_SMOKE_DONE
+SERIAL_GEMV_EXIT=0

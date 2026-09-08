@@ -1,0 +1,30 @@
+{
+  "decision": "Accept the staged dense-prefill change; native parity remains unmet",
+  "source_commit": "c19e1ecd59511adff8153fd3d7ea902acdee3a7d",
+  "baseline_commit": "c2548675",
+  "wheel_sha256": "aa942780d3c49fac800fcf7ef8468e4aaf2a8d9f0b4f76bcb2aa1b46cabbb3f0",
+  "hardware": "jwm1-linux, Apple M1, Honeykrisp",
+  "window_utc": ["2026-09-08T22:38:03Z", "2026-09-08T22:55:03Z"],
+  "protocol": "One shared GPU lock covering source-faithful builds, C++ checks, and five alternating baseline/candidate pairs; both pinned Qwen2.5-0.5B models and all three required workloads.",
+  "verification": {
+    "measured_legs": 60,
+    "all_full_generated_ids_equal_to_linux_baseline": true,
+    "every_leg_clean_ac_wheel_matched": true,
+    "every_id_record_digest_matches_its_measured_leg": true,
+    "every_timing_finite_and_positive": true,
+    "m1_cpp_cases": {"matmul_family": 16, "runtime": 41, "primitives": 98},
+    "m1_cpp_failures": 0,
+    "m1_cpp_skipped": 0
+  },
+  "bf16_prefill_tokens_per_second": {
+    "262_prompt_tokens": {"baseline": 169.579, "candidate": 236.249, "gain_percent": 39.315},
+    "1053_prompt_tokens": {"baseline": 186.934, "candidate": 297.458, "gain_percent": 59.125},
+    "30_prompt_tokens": {"baseline": 56.18, "candidate": 55.659, "change_percent": -0.927}
+  },
+  "other_results": "Every remaining decode/prefill median changed by less than one percent in these five pairs. This is a measured range, not proof of zero regression.",
+  "native_reference": "../native-baseline-2026-09-06/native-2026-09-06-summary.json",
+  "remaining_gap": "The accepted build still misses every native throughput target and matches native full generated-ID digests on only three of six model/workload legs. No native-parity claim is made.",
+  "scope": "BF16 matrices shorter than 32 rows retain the existing tiled path. Rejected GEMV, direct-RoPE, barrier, and batch-budget experiments are not enabled. No numerical tolerance or benchmark workload was relaxed.",
+  "reproduction": "Build c19e1ecd and c2548675 separately with scripts/build-wheel.sh, create wheel-matched environments using requirements-baseline.txt, and run final_dense_matrix.py with candidate root, baseline root, candidate Python, and candidate wheel. Baseline root must contain its dist-parity-release wheel and receipts/parity-baseline-20260908 artifacts. The recorded machine-specific bootstrap is dense-prefill-final-m1.sh.",
+  "raw_evidence": ["paired-summary.json", "pair-1-baseline/ through pair-5-candidate/", "omarchy_matmul_family_tests.log", "omarchy_runtime_tests.log", "omarchy_primitive_tests.log", "dense-prefill-final-window.log"]
+}

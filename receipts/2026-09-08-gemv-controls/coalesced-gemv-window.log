@@ -1,0 +1,144 @@
+jwm1-linux
+jwm1-linux
+2026-09-08T22:02:01Z
+SOURCE=01b28eb615b01bb190e88c97d9074746d5002e3e
+rep 1: ok
+[
+ {
+  "leg_id": "qwen25-0.5b-4bit:long-decode-128",
+  "reps": 1,
+  "decode_tok_s_median": 47.74,
+  "decode_tok_s_min": 47.74,
+  "decode_tok_s_max": 47.74,
+  "prefill_tok_s_median": 408.1,
+  "prefill_tok_s_min": 408.1,
+  "prefill_tok_s_max": 408.1,
+  "prompt_tokens": 262,
+  "generated_ids_sha256_16": [
+   "4cc08910089477fd"
+  ],
+  "ids_stable_across_reps": true
+ },
+ {
+  "leg_id": "qwen25-0.5b-4bit:longctx-1024-decode-32",
+  "reps": 1,
+  "decode_tok_s_median": 30.4,
+  "decode_tok_s_min": 30.4,
+  "decode_tok_s_max": 30.4,
+  "prefill_tok_s_median": 425.455,
+  "prefill_tok_s_min": 425.455,
+  "prefill_tok_s_max": 425.455,
+  "prompt_tokens": 1053,
+  "generated_ids_sha256_16": [
+   "7da83f06ec9f001d"
+  ],
+  "ids_stable_across_reps": true
+ },
+ {
+  "leg_id": "qwen25-0.5b-4bit:short-decode-32",
+  "reps": 1,
+  "decode_tok_s_median": 61.97,
+  "decode_tok_s_min": 61.97,
+  "decode_tok_s_max": 61.97,
+  "prefill_tok_s_median": 111.111,
+  "prefill_tok_s_min": 111.111,
+  "prefill_tok_s_max": 111.111,
+  "prompt_tokens": 30,
+  "generated_ids_sha256_16": [
+   "7fd25a869ff21678"
+  ],
+  "ids_stable_across_reps": true
+ },
+ {
+  "leg_id": "qwen25-0.5b-bf16:long-decode-128",
+  "reps": 1,
+  "decode_tok_s_median": 4.88,
+  "decode_tok_s_min": 4.88,
+  "decode_tok_s_max": 4.88,
+  "prefill_tok_s_median": 152.859,
+  "prefill_tok_s_min": 152.859,
+  "prefill_tok_s_max": 152.859,
+  "prompt_tokens": 262,
+  "generated_ids_sha256_16": [
+   "ad964232ee67fecd"
+  ],
+  "ids_stable_across_reps": true
+ },
+ {
+  "leg_id": "qwen25-0.5b-bf16:longctx-1024-decode-32",
+  "reps": 1,
+  "decode_tok_s_median": 4.57,
+  "decode_tok_s_min": 4.57,
+  "decode_tok_s_max": 4.57,
+  "prefill_tok_s_median": 181.552,
+  "prefill_tok_s_min": 181.552,
+  "prefill_tok_s_max": 181.552,
+  "prompt_tokens": 1053,
+  "generated_ids_sha256_16": [
+   "ff502900d2a179a5"
+  ],
+  "ids_stable_across_reps": true
+ },
+ {
+  "leg_id": "qwen25-0.5b-bf16:short-decode-32",
+  "reps": 1,
+  "decode_tok_s_median": 5.0,
+  "decode_tok_s_min": 5.0,
+  "decode_tok_s_max": 5.0,
+  "prefill_tok_s_median": 43.353,
+  "prefill_tok_s_min": 43.353,
+  "prefill_tok_s_max": 43.353,
+  "prompt_tokens": 30,
+  "generated_ids_sha256_16": [
+   "f26175202f3dabe9"
+  ],
+  "ids_stable_across_reps": true
+ }
+]
+{
+  "all_ids_equal": true,
+  "per_leg_ids_equal": [
+    true,
+    true,
+    true,
+    true,
+    true,
+    true
+  ],
+  "ratios": [
+    {
+      "leg_id": "qwen25-0.5b-4bit:long-decode-128",
+      "decode_ratio": 0.8523477950366006,
+      "prefill_ratio": 0.9922125537620684
+    },
+    {
+      "leg_id": "qwen25-0.5b-4bit:longctx-1024-decode-32",
+      "decode_ratio": 0.7493221592309588,
+      "prefill_ratio": 1.0141422857442517
+    },
+    {
+      "leg_id": "qwen25-0.5b-4bit:short-decode-32",
+      "decode_ratio": 0.9400788834951456,
+      "prefill_ratio": 1.0
+    },
+    {
+      "leg_id": "qwen25-0.5b-bf16:long-decode-128",
+      "decode_ratio": 0.583732057416268,
+      "prefill_ratio": 0.9025684931506849
+    },
+    {
+      "leg_id": "qwen25-0.5b-bf16:longctx-1024-decode-32",
+      "decode_ratio": 0.5935064935064935,
+      "prefill_ratio": 0.9706898211020456
+    },
+    {
+      "leg_id": "qwen25-0.5b-bf16:short-decode-32",
+      "decode_ratio": 0.5827505827505828,
+      "prefill_ratio": 0.7731252786446723
+    }
+  ],
+  "scope": "one candidate repetition versus the recorded five-repetition baseline; not final acceptance"
+}
+2026-09-08T22:06:27Z
+COALESCED_GEMV_SMOKE_DONE
+COALESCED_GEMV_EXIT=0
