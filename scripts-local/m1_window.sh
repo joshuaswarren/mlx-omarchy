@@ -22,7 +22,16 @@ rsync -a --delete --exclude .work --exclude .git --exclude dist \
 ssh mesa-xbuild 'cat ~/mesa-prefill-parity/build/src/asahi/vulkan/libvulkan_asahi.so' \
   > /tmp/libvk_prefill.so
 scp -q /tmp/libvk_prefill.so "$M1:~/src/mesa-prefill-parity-libvulkan_asahi.so"
-ssh "$M1" "printf '%s\n' '{\"ICD\":{\"library_path\":\"/home/joshuawarren/src/mesa-prefill-parity-libvulkan_asahi.so\",\"api_version\":\"1.4.359\"}}' > $ICD"
+cat > /tmp/asahi_prefill_icd_local.json <<'EOF'
+{
+    "file_format_version": "1.0.0",
+    "ICD": {
+        "library_path": "/home/joshuawarren/src/mesa-prefill-parity-libvulkan_asahi.so",
+        "api_version": "1.4.359"
+    }
+}
+EOF
+scp -q /tmp/asahi_prefill_icd_local.json "$M1:$ICD"
 
 run_locked "wheel build" '
 cd ~/'"$DEST"' || exit 1
