@@ -1,0 +1,12 @@
+{
+  "decision": "Do not enable dependency-gated barriers by default",
+  "source_commit": "c19e1ecd59511adff8153fd3d7ea902acdee3a7d",
+  "measured_legs": 12,
+  "all_full_generated_ids_equal_to_accepted_linux_baseline": true,
+  "q4_decode_off_on": {"short": [65.86,65.83], "long": [56.01,55.90], "ctx1024": [40.84,40.59]},
+  "bf16_decode_off_on": {"short": [8.58,8.55], "long": [8.40,8.40], "ctx1024": [7.70,7.63]},
+  "runtime_gate_on": {"cases_passed": 41, "assertions_passed": 22694, "failed": 0, "skipped": 0},
+  "limitations": "One off/on screen, not a statistical equivalence or acceptance study. Environment propagation was inspected through the runner and benchmark source; these unprofiled runs do not supply per-dispatch gate-activation counters. The screen establishes no performance benefit and does not justify changing the default.",
+  "native_parity": "Still unmet. No native numerical or throughput gate was relaxed.",
+  "numerical_review": "No root cause established. The proposed m<32 cooperative-matmul experiment repeats an earlier tested configuration that preserved the BF16 short mismatch. Token identity alone cannot exonerate an operator, and different model weights invalidate isolating an operator solely from Q4 versus BF16 token matches. A CPU FP32 oracle is not a replacement for matched native intermediate tensors."
+}
