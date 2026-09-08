@@ -106,5 +106,18 @@
     ],
     "repro": "qmm_correctness.py with AGX_QMM_INLINE_A/B=1 on the private ICD; assert aborts the process at first dispatch",
     "note": "bisect can run fully offline on mesa-xbuild by compiling the SPIR-V through agx_compile with the selftest disassembler -- no M1 needed; next window should start there"
+  },
+  "final_disposition": {
+    "inline_candidate": "REVERTED from deliverable branch (d0033a5c) and mesa hk/prefill-parity (b9283beedd3 reverts both hook commits, cross-build green). Failed receipt preserved (d923a96e). Not retried without an offline-validated compiler fix.",
+    "bf16_metric_correction": "battery4 short rows (on 2.1-2.3 / off 2.7-2.8 tok/s) were treated as prefill against the 56.1 baseline prefill - Main identified the comparison as a metric mix; the rerun must use the exact baseline bench_matrix capture hook with decode/prefill metrics separated and full stderr (no 2>/dev/null). The 2.x numbers themselves are unexplained and unevaluated.",
+    "bf16fail_causality": "cache-poison explanation DOWNGRADED to hypothesis: battery4 observed clean-pass -> crash -> fail, but matching cache keys / actual driver cache flags were not recorded, so no causal claim is made.",
+    "divisor": "env plumbing removed (543a31c1), default 16 retained, rejection stands on unprofiled evidence.",
+    "shipped_state": "staged QMM coopmat (baseline behaviour, 16/16 verified), dense f32 coopmat staged rewrite + bf16 dense coopmat kernel (clean-cache correct at 4 shapes) - all gated, defaults unchanged from c2548675 behaviour for non-bf16 paths; dense/bf16 pending the proper bench_matrix rerun.",
+    "open_work": [
+      "inline: offline AGX bisect on mesa-xbuild before any retry",
+      "bf16: full paired matrix via scripts/bench_matrix.py harness with separated metrics + raw stderr",
+      "coherent-flags check for the flush hypothesis",
+      "C++ M1 suite legs before integration"
+    ]
   }
 }
