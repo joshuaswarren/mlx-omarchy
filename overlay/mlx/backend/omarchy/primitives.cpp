@@ -6310,10 +6310,14 @@ void QRF::eval_gpu(
 }
 // Fused affine 4-bit / group-64 weight layout for the inline-decode
 // coopmat prefill kernel (shaders/qmm_coopmat_inline.comp): per
-// (chunk, column) one 9-word block, word 0 packing scale | bias as a
-// single f16x2 word and words 1..8 holding the eight nibble words.
-// Byte count is identical to the packed words plus the separate scale
-// and bias streams. Built once per weight tensor and cached for the
+// (chunk, column) one 16-word PAIRED block [sb0 w0 sb1 w1 ... sb7 w7]
+// with sbj packing scale | bias as one f16x2 word and wj holding the
+// eight nibble words, so the B fragment load addresses the w_ks word
+// directly and its scale word is exactly one below (the first
+// 9-word/block variant needed (base-1) % 9 to recover the k step and
+// tripped the AGX disassembler self-test). 1 byte per weight -- the
+// fused copy is ~1.8x the packed stream. Built once per weight tensor
+// and cached for the
 // process lifetime -- a load-time transform whose cost amortizes out
 // of steady-state prefill; the cache holds the extra fused copy, so
 // resident weights roughly double while an inline-gated model runs.
@@ -6343,9 +6347,13 @@ static const array& fused_affine_q4_words(
       stream);
   array words = transpose(
       reshape(w, {n, groups, words_per_group}, stream), {1, 0, 2}, stream);
+  array sb_pairs = expand_dims(
+      repeat(expand_dims(sb_words, 2, stream), words_per_group, 2, stream),
+      3, stream);
+  array word_pairs = expand_dims(words, 3, stream);
   array fused = reshape(
-      concatenate({expand_dims(sb_words, 2, stream), words}, 2, stream),
-      {groups * n * (words_per_group + 1)},
+      concatenate({sb_pairs, word_pairs}, 3, stream),
+      {groups * n * (2 * words_per_group)},
       stream);
   fused.eval();
   return cache.emplace(w.id(), std::move(fused)).first->second;

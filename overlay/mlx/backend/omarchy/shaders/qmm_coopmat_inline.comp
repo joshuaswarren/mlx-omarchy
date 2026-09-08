@@ -17,12 +17,14 @@
 // tile drains through 1 KiB of shared with the m and n tails masked,
 // rounding to f16 once.
 //
-// input_w is the fused layout built by primitives.cpp: for chunk c,
-// column n, k step ks, the weight word index is
-//   c * (matrix_n * 9) + n * 9 + 1 + ks
-// and word - 1 - ks packs scale | bias as one f16x2 word. Scales and
-// biases are still bound (signature parity with qmm_coopmat.comp) but
-// unused. Dispatch gate (primitives.cpp): cooperative_matrix_f32_8,
+// input_w is the fused layout built by primitives.cpp: per (chunk,
+// column, k step) a PAIRED block -- [sb0 w0 sb1 w1 ... sb7 w7], 16
+// words per 64 weights, sbj packing scale | bias as one f16x2 word
+// and wj the eight nibbles for k = c*64 + j*8 .. +8. For chunk c,
+// column n, k step ks the weight word index is
+//   c * (matrix_n * 16) + n * 16 + 2 * ks + 1
+// and its scale word is exactly one word below. Scales and biases are
+// still bound (signature parity with qmm_coopmat.comp) but unused. Dispatch gate (primitives.cpp): cooperative_matrix_f32_8,
 // subgroup size 32, f16 output, transposed affine 4-bit/group-64,
 // batch == 1, driver inline hooks present, and !MLX_OMARCHY_NO_QMM_INLINE.
 
@@ -83,7 +85,7 @@ void main() {
   uint n_tiles = (params.matrix_n + TILE_N - 1u) / TILE_N;
   uint k_chunks = params.matrix_k / CHUNK_K;
   uint x_words_per_row = params.matrix_k / 2u;
-  uint fused_words_per_chunk = params.matrix_n * 9u;
+  uint fused_words_per_chunk = params.matrix_n * 16u;
 
   uint x_slice = params.lhs_offset / 2u;
   uint out_slice = params.output_offset;
@@ -124,12 +126,13 @@ void main() {
           }
           for (uint cb = 0u; cb < 4u; ++cb) {
             uint col = tile_col * TILE_N + cb * MAT;
-            // B: column-major, stride 9 words, base in the fused block.
+            // B: column-major, stride 16 words, base at the w_ks word
+            // (odd) of the column's paired block.
             coopMatLoad(
                 mat_b[cb],
                 input_w.values,
-                chunk_base + col * 9u + 1u + ks,
-                9u,
+                chunk_base + col * 16u + 2u * ks + 1u,
+                16u,
                 gl_CooperativeMatrixLayoutColumnMajor);
           }
           for (uint rb = 0u; rb < 4u; ++rb) {
