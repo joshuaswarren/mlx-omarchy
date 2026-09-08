@@ -80,6 +80,99 @@ Do not install the upstream `mlx` package beside this wheel. The module name
 is the same, so the two distributions conflict. Remove upstream `mlx` before
 you install `mlx-omarchy`.
 
+## Honeykrisp driver with the fork fixes
+
+Stock Mesa 26.1.7 Honeykrisp has four driver-side defects that this
+backend works around in its shaders (data-dependent byte extraction
+miscompiles, one-ulp float division, one-ULP `log`, and `sin`/`cos` range
+reduction above 1e5), and it does not expose `VK_KHR_cooperative_matrix`.
+The fork branch [`honeykrisp-omarchy`](https://github.com/joshuaswarren/mesa/tree/honeykrisp-omarchy)
+fixes all four in the compiler and turns the G13 8x8x8 matrix unit on by
+default, so an unmodified wheel runs dense f32 matmul on cooperative
+matrices. Every workaround stays in the shaders for stock Mesa; the fork
+only removes the need for them. Driver receipts: the
+[integration receipt](../receipts/hk/2026-09-08-honeykrisp-omarchy-integration.json)
+(25/25 suites, every reproducer) and the
+[package receipt](../receipts/2026-09-08-honeykrisp-package.json).
+
+`packaging/mesa-honeykrisp-omarchy/PKGBUILD` builds the fork as a pacman
+package that replaces `mesa`. It is the asahi-alarm `mesa` recipe
+(AsahiLinux/PKGBUILDs `28229b8`, the PKGBUILD that produced the installed
+`mesa 26.1.7-1`) with the source pointed at fork commit `6f6afc89`, so GL,
+EGL, GBM, llvmpipe, zink, rusticl, teflon, and VA are built with the same
+options as the stock package. The package is Mesa `26.3.0-devel`; the
+desktop runs on Mesa main plus the fork's Asahi changes.
+
+### Build
+
+On the M1 (Omarchy on Asahi Arch, `base-devel` installed), 2 minutes 31 seconds wall time on 8 cores (clean `makepkg -C -f`, 09:19:55–09:22:26 UTC-5):
+
+```sh
+mkdir -p ~/src/mesa-pkg && cp packaging/mesa-honeykrisp-omarchy/* ~/src/mesa-pkg/
+cd ~/src/mesa-pkg
+sudo pacman -Sy            # the makedepends list needs a current package db
+makepkg -s --noconfirm     # installs missing makedepends, clones the fork, builds
+ls mesa-honeykrisp-omarchy-*.pkg.tar.xz
+```
+
+The source is a git clone pinned to the commit, not a tarball, because
+Mesa derives the `git-<sha>` in `driverInfo` from the checkout; that
+string is how you tell the fork from stock later.
+
+### Install
+
+Keep the stock package for rollback (pacman already has it in
+`/var/cache/pacman/pkg/`), then replace the conflicting `mesa` package in
+one interactive pacman transaction. Confirm the `Remove mesa?` prompt:
+
+```sh
+ls /var/cache/pacman/pkg/mesa-26.1.*-aarch64.pkg.tar.xz
+sudo pacman -U mesa-honeykrisp-omarchy-*.pkg.tar.xz
+# answer y to pacman's exact `Remove mesa?` conflict prompt
+env -u VK_ICD_FILENAMES -u AGX_SIMDMAT vulkaninfo --summary | grep -E 'driverName|driverInfo'
+```
+
+`driverInfo` must read `Mesa 26.3.0-devel (git-6f6afc8968)`. Running GL
+clients keep the old libraries mapped until they restart; log out and back
+in (or reboot) for the compositor to pick up the new GL.
+
+### Normal use
+
+Nothing to set. No `VK_ICD_FILENAMES`, no `AGX_SIMDMAT`, no private ICD
+json; the wheel detects `VK_KHR_cooperative_matrix` from the device
+extension list and uses the coopmat matmul kernel on its own.
+`AGX_SIMDMAT=0` turns the extension off again for A/B comparison. The
+`flock /tmp/m1-gpu.lock` wrapper in this project's receipts is a
+multi-agent convention for the shared test machine, not a driver
+requirement.
+
+### Rollback
+
+```sh
+sudo pacman -U /var/cache/pacman/pkg/mesa-26.1.7-1-aarch64.pkg.tar.xz
+```
+
+pacman removes `mesa-honeykrisp-omarchy` as the conflict and restores the
+stock driver. `sudo pacman -S mesa` does the same from the asahi-alarm
+repository. Because the fork package `conflicts=('mesa')` and provides
+`mesa`, `pacman -Syu` never silently swaps it back for a stock release;
+moving to a newer stock Mesa is always this explicit step.
+
+### Distribution
+
+The `[omarchy-aarch64]` pacman repository that Omarchy Mac installs
+(`github.com/omarchy-mac/omarchy-pkgs-aarch64`, release tag `edge`) is
+owned by the `omarchy-mac` organization; this project has read access
+only, so nothing is published there. That repository does accept in-tree
+PKGBUILDs (`pkgbuilds/` plus a `source: local`, `category: compile` entry
+in `packages.json`, built on a native ARM runner), so the path is a pull
+request carrying `packaging/mesa-honeykrisp-omarchy/`. Until then, this
+section's `makepkg` is the supported route, and a personal pacman
+repository is the self-hosted alternative: `repo-add
+mesa-honeykrisp-omarchy.db.tar.gz *.pkg.tar.xz`, upload the package and
+db files to a GitHub release, and point a `Server =` line at the
+release's download URL, exactly as `[omarchy-aarch64]` does.
+
 ## Benchmark matrix
 
 `scripts/bench_matrix.py` runs the declared workload matrix (models x
