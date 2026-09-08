@@ -1,0 +1,35 @@
+== [py] test_array.py ==
+rc=0 executed=81 passed=81 failed=0 skipped=19 :: ======================= 81 passed, 19 skipped in 22.72s ========================
+== [py] test_autograd.py ==
+rc=0 executed=54 passed=54 failed=0 skipped=0 :: ============================== 54 passed in 5.07s ==============================
+== [py] test_blas.py ==
+rc=0 executed=29 passed=29 failed=0 skipped=0 :: ======================== 29 passed in 332.86s (0:05:32) ========================
+== [py] test_conv.py ==
+rc=0 executed=19 passed=19 failed=0 skipped=1 :: ======================== 19 passed, 1 skipped in 26.55s ========================
+== [py] test_conv_transpose.py ==
+rc=0 executed=9 passed=9 failed=0 skipped=1 :: =================== 9 passed, 1 skipped in 182.37s (0:03:02) ===================
+== [py] test_einsum.py ==
+rc=0 executed=12 passed=12 failed=0 skipped=0 :: ============================== 12 passed in 0.39s ==============================
+== [py] test_fft.py ==
+rc=1 executed=17 passed=16 failed=1 skipped=3 :: ============= 1 failed, 16 passed, 3 skipped in 479.14s (0:07:59) ==============
+== [py] test_init.py ==
+rc=0 executed=11 passed=11 failed=0 skipped=0 :: ============================== 11 passed in 0.33s ==============================
+== [py] test_linalg.py ==
+rc=0 executed=18 passed=18 failed=0 skipped=0 :: ============================== 18 passed in 1.03s ==============================
+== [py] test_losses.py ==
+rc=0 executed=14 passed=14 failed=0 skipped=0 :: ============================== 14 passed in 0.25s ==============================
+== [py] test_nn.py ==
+rc=0 executed=73 passed=73 failed=0 skipped=0 :: ============================== 73 passed in 2.11s ==============================
+== [py] test_ops.py ==
+rc=1 executed=160 passed=158 failed=2 skipped=2 :: ============= 2 failed, 158 passed, 2 skipped in 120.72s (0:02:00) =============
+== [py] test_optimizers.py ==
+rc=0 executed=26 passed=26 failed=0 skipped=0 :: ============================== 26 passed in 2.94s ==============================
+== [py] test_random.py ==
+rc=0 executed=14 passed=14 failed=0 skipped=0 :: ============================== 14 passed in 1.77s ==============================
+== [py] test_reduce.py ==
+rc=0 executed=13 passed=13 failed=0 skipped=0 :: ============================== 13 passed in 9.62s ==============================
+== [py] test_upsample.py ==
+rc=0 executed=6 passed=6 failed=0 skipped=0 :: ============================== 6 passed in 2.65s ===============================
+== [py] test_vmap.py ==
+rc=0 executed=30 passed=30 failed=0 skipped=0 :: ============================== 30 passed in 0.56s ==============================
+DONE 17 of 17

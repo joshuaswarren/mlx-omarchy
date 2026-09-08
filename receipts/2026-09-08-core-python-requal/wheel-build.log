@@ -1,0 +1,54 @@
+== prepare upstream tree ==
+patching file CMakeLists.txt
+patching file mlx/CMakeLists.txt
+patching file tests/CMakeLists.txt
+patching file setup.py
+patching file mlx/io/safetensors.cpp
+patching file mlx/io/load.cpp
+patching file mlx/export.cpp
+patching file mlx/linalg.cpp
+patching file python/src/buffer.h
+patching file mlx/ops.cpp
+Hunk #2 succeeded at 5051 (offset 1 line).
+patching file mlx/backend/cpu/distributed.cpp
+patching file mlx/fast.cpp
+patching file setup.py
+/home/joshuawarren/.config/superpowers/worktrees/mlx-omarchy/wave-core-python-requal/.work/mlx
+== build venv (/home/joshuawarren/.config/superpowers/worktrees/mlx-omarchy/wave-core-python-requal/.work/venv-build) ==
+Traceback (most recent call last):
+  File "<stdin>", line 2, in <module>
+AssertionError
+Collecting setuptools>=80
+  Using cached setuptools-84.0.0-py3-none-any.whl (818 kB)
+Requirement already satisfied: typing_extensions in /home/joshuawarren/.local/lib/python3.11/site-packages (4.16.0)
+Installing collected packages: setuptools
+  Attempting uninstall: setuptools
+    Found existing installation: setuptools 66.1.1
+    Uninstalling setuptools-66.1.1:
+      Successfully uninstalled setuptools-66.1.1
+ERROR: pip's dependency resolver does not currently take into account all the packages that are installed. This behaviour is the source of the following dependency conflicts.
+tensorflow 2.15.0.post1 requires protobuf!=4.21.0,!=4.21.1,!=4.21.2,!=4.21.3,!=4.21.4,!=4.21.5,<5.0.0dev,>=3.20.3, but you have protobuf 7.36.0 which is incompatible.
+Successfully installed setuptools-84.0.0
+== wheel build ==
+Processing ./.work/mlx
+  Preparing metadata (pyproject.toml): started
+  Preparing metadata (pyproject.toml): finished with status 'done'
+Building wheels for collected packages: mlx-omarchy
+  Building wheel for mlx-omarchy (pyproject.toml): started
+  Building wheel for mlx-omarchy (pyproject.toml): still running...
+  Building wheel for mlx-omarchy (pyproject.toml): still running...
+  Building wheel for mlx-omarchy (pyproject.toml): finished with status 'done'
+  Created wheel for mlx-omarchy: filename=mlx_omarchy-0.32.2.dev202609081234+e3ee3c51-cp311-cp311-linux_x86_64.whl size=7396108 sha256=bd726ceb966e4b5463398e8bcf04666b2229d08c4d809116cc7ff7ce35e7f437
+  Stored in directory: /tmp/pip-ephem-wheel-cache-g24zs7rz/wheels/7e/4a/d1/e8101f3f328d232e0ca1e5b58ba8a4f57c772c55e733a1a698
+Successfully built mlx-omarchy
+== receipt ==
+[receipt] wheel: /home/joshuawarren/.config/superpowers/worktrees/mlx-omarchy/wave-core-python-requal/dist/mlx_omarchy-0.32.2.dev202609081234+e3ee3c51-cp311-cp311-linux_x86_64.whl
+[receipt] size: 7396108 bytes
+[receipt] sha256: bd726ceb966e4b5463398e8bcf04666b2229d08c4d809116cc7ff7ce35e7f437
+[receipt] source commit: e3ee3c5
+[receipt] NEXT STEP - do not skip: after you upload this wheel to a
+[receipt] release, verify the UPLOADED asset with
+[receipt]   python3 scripts/verify-release-assets.py <tag>
+[receipt] It must print VERIFIED before the release is announced as
+[receipt] usable. See docs/release.md. A local build check does not
+[receipt] verify what users download.

@@ -1,0 +1,347 @@
+[
+  {
+    "file": "test_array.py",
+    "command": "receipts/2026-09-08-core-python-requal/py/test_array.command.json",
+    "log": "receipts/2026-09-08-core-python-requal/py/test_array.log",
+    "junit": "receipts/2026-09-08-core-python-requal/py/test_array.xml",
+    "rc": 0,
+    "status": "executed",
+    "started_at": "2026-09-08T12:44:50+00:00",
+    "finished_at": "2026-09-08T12:45:14+00:00",
+    "duration_seconds": 23.82,
+    "pytest_summary": "======================= 81 passed, 19 skipped in 22.72s ========================",
+    "junit_derived_counts": {
+      "tests": 100,
+      "passed": 81,
+      "failed": 0,
+      "skipped": 19
+    },
+    "failed_test_names": [],
+    "skip_reasons": []
+  },
+  {
+    "file": "test_autograd.py",
+    "command": "receipts/2026-09-08-core-python-requal/py/test_autograd.command.json",
+    "log": "receipts/2026-09-08-core-python-requal/py/test_autograd.log",
+    "junit": "receipts/2026-09-08-core-python-requal/py/test_autograd.xml",
+    "rc": 0,
+    "status": "executed",
+    "started_at": "2026-09-08T12:45:14+00:00",
+    "finished_at": "2026-09-08T12:45:20+00:00",
+    "duration_seconds": 5.976,
+    "pytest_summary": "============================== 54 passed in 5.07s ==============================",
+    "junit_derived_counts": {
+      "tests": 54,
+      "passed": 54,
+      "failed": 0,
+      "skipped": 0
+    },
+    "failed_test_names": [],
+    "skip_reasons": []
+  },
+  {
+    "file": "test_blas.py",
+    "command": "receipts/2026-09-08-core-python-requal/py/test_blas.command.json",
+    "log": "receipts/2026-09-08-core-python-requal/py/test_blas.log",
+    "junit": "receipts/2026-09-08-core-python-requal/py/test_blas.xml",
+    "rc": 0,
+    "status": "executed",
+    "started_at": "2026-09-08T12:45:20+00:00",
+    "finished_at": "2026-09-08T12:50:53+00:00",
+    "duration_seconds": 333.423,
+    "pytest_summary": "======================== 29 passed in 332.86s (0:05:32) ========================",
+    "junit_derived_counts": {
+      "tests": 29,
+      "passed": 29,
+      "failed": 0,
+      "skipped": 0
+    },
+    "failed_test_names": [],
+    "skip_reasons": []
+  },
+  {
+    "file": "test_conv.py",
+    "command": "receipts/2026-09-08-core-python-requal/py/test_conv.command.json",
+    "log": "receipts/2026-09-08-core-python-requal/py/test_conv.log",
+    "junit": "receipts/2026-09-08-core-python-requal/py/test_conv.xml",
+    "rc": 0,
+    "status": "executed",
+    "started_at": "2026-09-08T12:50:53+00:00",
+    "finished_at": "2026-09-08T12:51:21+00:00",
+    "duration_seconds": 27.425,
+    "pytest_summary": "======================== 19 passed, 1 skipped in 26.55s ========================",
+    "junit_derived_counts": {
+      "tests": 20,
+      "passed": 19,
+      "failed": 0,
+      "skipped": 1
+    },
+    "failed_test_names": [],
+    "skip_reasons": []
+  },
+  {
+    "file": "test_conv_transpose.py",
+    "command": "receipts/2026-09-08-core-python-requal/py/test_conv_transpose.command.json",
+    "log": "receipts/2026-09-08-core-python-requal/py/test_conv_transpose.log",
+    "junit": "receipts/2026-09-08-core-python-requal/py/test_conv_transpose.xml",
+    "rc": 0,
+    "status": "executed",
+    "started_at": "2026-09-08T12:51:21+00:00",
+    "finished_at": "2026-09-08T12:54:24+00:00",
+    "duration_seconds": 182.923,
+    "pytest_summary": "=================== 9 passed, 1 skipped in 182.37s (0:03:02) ===================",
+    "junit_derived_counts": {
+      "tests": 10,
+      "passed": 9,
+      "failed": 0,
+      "skipped": 1
+    },
+    "failed_test_names": [],
+    "skip_reasons": []
+  },
+  {
+    "file": "test_einsum.py",
+    "command": "receipts/2026-09-08-core-python-requal/py/test_einsum.command.json",
+    "log": "receipts/2026-09-08-core-python-requal/py/test_einsum.log",
+    "junit": "receipts/2026-09-08-core-python-requal/py/test_einsum.xml",
+    "rc": 0,
+    "status": "executed",
+    "started_at": "2026-09-08T12:54:24+00:00",
+    "finished_at": "2026-09-08T12:54:24+00:00",
+    "duration_seconds": 0.787,
+    "pytest_summary": "============================== 12 passed in 0.39s ==============================",
+    "junit_derived_counts": {
+      "tests": 12,
+      "passed": 12,
+      "failed": 0,
+      "skipped": 0
+    },
+    "failed_test_names": [],
+    "skip_reasons": []
+  },
+  {
+    "file": "test_fft.py",
+    "command": "receipts/2026-09-08-core-python-requal/py/test_fft.command.json",
+    "log": "receipts/2026-09-08-core-python-requal/py/test_fft.log",
+    "junit": "receipts/2026-09-08-core-python-requal/py/test_fft.xml",
+    "rc": 1,
+    "status": "executed",
+    "started_at": "2026-09-08T12:54:24+00:00",
+    "finished_at": "2026-09-08T13:02:24+00:00",
+    "duration_seconds": 479.974,
+    "pytest_summary": "============= 1 failed, 16 passed, 3 skipped in 479.14s (0:07:59) ==============",
+    "junit_derived_counts": {
+      "tests": 20,
+      "passed": 16,
+      "failed": 1,
+      "skipped": 3
+    },
+    "failed_test_names": [
+      "python.tests.test_fft.TestFFT::test_fft_big_powers_of_two"
+    ],
+    "skip_reasons": []
+  },
+  {
+    "file": "test_init.py",
+    "command": "receipts/2026-09-08-core-python-requal/py/test_init.command.json",
+    "log": "receipts/2026-09-08-core-python-requal/py/test_init.log",
+    "junit": "receipts/2026-09-08-core-python-requal/py/test_init.xml",
+    "rc": 0,
+    "status": "executed",
+    "started_at": "2026-09-08T13:02:24+00:00",
+    "finished_at": "2026-09-08T13:02:25+00:00",
+    "duration_seconds": 0.682,
+    "pytest_summary": "============================== 11 passed in 0.33s ==============================",
+    "junit_derived_counts": {
+      "tests": 11,
+      "passed": 11,
+      "failed": 0,
+      "skipped": 0
+    },
+    "failed_test_names": [],
+    "skip_reasons": []
+  },
+  {
+    "file": "test_linalg.py",
+    "command": "receipts/2026-09-08-core-python-requal/py/test_linalg.command.json",
+    "log": "receipts/2026-09-08-core-python-requal/py/test_linalg.log",
+    "junit": "receipts/2026-09-08-core-python-requal/py/test_linalg.xml",
+    "rc": 0,
+    "status": "executed",
+    "started_at": "2026-09-08T13:02:25+00:00",
+    "finished_at": "2026-09-08T13:02:26+00:00",
+    "duration_seconds": 1.337,
+    "pytest_summary": "============================== 18 passed in 1.03s ==============================",
+    "junit_derived_counts": {
+      "tests": 18,
+      "passed": 18,
+      "failed": 0,
+      "skipped": 0
+    },
+    "failed_test_names": [],
+    "skip_reasons": []
+  },
+  {
+    "file": "test_losses.py",
+    "command": "receipts/2026-09-08-core-python-requal/py/test_losses.command.json",
+    "log": "receipts/2026-09-08-core-python-requal/py/test_losses.log",
+    "junit": "receipts/2026-09-08-core-python-requal/py/test_losses.xml",
+    "rc": 0,
+    "status": "executed",
+    "started_at": "2026-09-08T13:02:26+00:00",
+    "finished_at": "2026-09-08T13:02:27+00:00",
+    "duration_seconds": 0.562,
+    "pytest_summary": "============================== 14 passed in 0.25s ==============================",
+    "junit_derived_counts": {
+      "tests": 14,
+      "passed": 14,
+      "failed": 0,
+      "skipped": 0
+    },
+    "failed_test_names": [],
+    "skip_reasons": []
+  },
+  {
+    "file": "test_nn.py",
+    "command": "receipts/2026-09-08-core-python-requal/py/test_nn.command.json",
+    "log": "receipts/2026-09-08-core-python-requal/py/test_nn.log",
+    "junit": "receipts/2026-09-08-core-python-requal/py/test_nn.xml",
+    "rc": 0,
+    "status": "executed",
+    "started_at": "2026-09-08T13:02:27+00:00",
+    "finished_at": "2026-09-08T13:02:30+00:00",
+    "duration_seconds": 2.817,
+    "pytest_summary": "============================== 73 passed in 2.11s ==============================",
+    "junit_derived_counts": {
+      "tests": 73,
+      "passed": 73,
+      "failed": 0,
+      "skipped": 0
+    },
+    "failed_test_names": [],
+    "skip_reasons": []
+  },
+  {
+    "file": "test_ops.py",
+    "command": "receipts/2026-09-08-core-python-requal/py/test_ops.command.json",
+    "log": "receipts/2026-09-08-core-python-requal/py/test_ops.log",
+    "junit": "receipts/2026-09-08-core-python-requal/py/test_ops.xml",
+    "rc": 1,
+    "status": "executed",
+    "started_at": "2026-09-08T13:02:30+00:00",
+    "finished_at": "2026-09-08T13:04:31+00:00",
+    "duration_seconds": 121.064,
+    "pytest_summary": "============= 2 failed, 158 passed, 2 skipped in 120.72s (0:02:00) =============",
+    "junit_derived_counts": {
+      "tests": 162,
+      "passed": 158,
+      "failed": 2,
+      "skipped": 2
+    },
+    "failed_test_names": [
+      "python.tests.test_ops.TestOps::test_sin",
+      "python.tests.test_ops.TestOps::test_sort"
+    ],
+    "skip_reasons": []
+  },
+  {
+    "file": "test_optimizers.py",
+    "command": "receipts/2026-09-08-core-python-requal/py/test_optimizers.command.json",
+    "log": "receipts/2026-09-08-core-python-requal/py/test_optimizers.log",
+    "junit": "receipts/2026-09-08-core-python-requal/py/test_optimizers.xml",
+    "rc": 0,
+    "status": "executed",
+    "started_at": "2026-09-08T13:04:31+00:00",
+    "finished_at": "2026-09-08T13:04:35+00:00",
+    "duration_seconds": 3.929,
+    "pytest_summary": "============================== 26 passed in 2.94s ==============================",
+    "junit_derived_counts": {
+      "tests": 26,
+      "passed": 26,
+      "failed": 0,
+      "skipped": 0
+    },
+    "failed_test_names": [],
+    "skip_reasons": []
+  },
+  {
+    "file": "test_random.py",
+    "command": "receipts/2026-09-08-core-python-requal/py/test_random.command.json",
+    "log": "receipts/2026-09-08-core-python-requal/py/test_random.log",
+    "junit": "receipts/2026-09-08-core-python-requal/py/test_random.xml",
+    "rc": 0,
+    "status": "executed",
+    "started_at": "2026-09-08T13:04:35+00:00",
+    "finished_at": "2026-09-08T13:04:37+00:00",
+    "duration_seconds": 2.099,
+    "pytest_summary": "============================== 14 passed in 1.77s ==============================",
+    "junit_derived_counts": {
+      "tests": 14,
+      "passed": 14,
+      "failed": 0,
+      "skipped": 0
+    },
+    "failed_test_names": [],
+    "skip_reasons": []
+  },
+  {
+    "file": "test_reduce.py",
+    "command": "receipts/2026-09-08-core-python-requal/py/test_reduce.command.json",
+    "log": "receipts/2026-09-08-core-python-requal/py/test_reduce.log",
+    "junit": "receipts/2026-09-08-core-python-requal/py/test_reduce.xml",
+    "rc": 0,
+    "status": "executed",
+    "started_at": "2026-09-08T13:04:37+00:00",
+    "finished_at": "2026-09-08T13:04:47+00:00",
+    "duration_seconds": 9.961,
+    "pytest_summary": "============================== 13 passed in 9.62s ==============================",
+    "junit_derived_counts": {
+      "tests": 13,
+      "passed": 13,
+      "failed": 0,
+      "skipped": 0
+    },
+    "failed_test_names": [],
+    "skip_reasons": []
+  },
+  {
+    "file": "test_upsample.py",
+    "command": "receipts/2026-09-08-core-python-requal/py/test_upsample.command.json",
+    "log": "receipts/2026-09-08-core-python-requal/py/test_upsample.log",
+    "junit": "receipts/2026-09-08-core-python-requal/py/test_upsample.xml",
+    "rc": 0,
+    "status": "executed",
+    "started_at": "2026-09-08T13:04:47+00:00",
+    "finished_at": "2026-09-08T13:04:50+00:00",
+    "duration_seconds": 3.239,
+    "pytest_summary": "============================== 6 passed in 2.65s ===============================",
+    "junit_derived_counts": {
+      "tests": 6,
+      "passed": 6,
+      "failed": 0,
+      "skipped": 0
+    },
+    "failed_test_names": [],
+    "skip_reasons": []
+  },
+  {
+    "file": "test_vmap.py",
+    "command": "receipts/2026-09-08-core-python-requal/py/test_vmap.command.json",
+    "log": "receipts/2026-09-08-core-python-requal/py/test_vmap.log",
+    "junit": "receipts/2026-09-08-core-python-requal/py/test_vmap.xml",
+    "rc": 0,
+    "status": "executed",
+    "started_at": "2026-09-08T13:04:50+00:00",
+    "finished_at": "2026-09-08T13:04:51+00:00",
+    "duration_seconds": 0.873,
+    "pytest_summary": "============================== 30 passed in 0.56s ==============================",
+    "junit_derived_counts": {
+      "tests": 30,
+      "passed": 30,
+      "failed": 0,
+      "skipped": 0
+    },
+    "failed_test_names": [],
+    "skip_reasons": []
+  }
+]

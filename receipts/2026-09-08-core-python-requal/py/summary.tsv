@@ -1,0 +1,18 @@
+file	rc	result
+test_array.py	0	executed=81 passed=81 failed=0 skipped=19
+test_autograd.py	0	executed=54 passed=54 failed=0 skipped=0
+test_blas.py	0	executed=29 passed=29 failed=0 skipped=0
+test_conv.py	0	executed=19 passed=19 failed=0 skipped=1
+test_conv_transpose.py	0	executed=9 passed=9 failed=0 skipped=1
+test_einsum.py	0	executed=12 passed=12 failed=0 skipped=0
+test_fft.py	1	executed=17 passed=16 failed=1 skipped=3
+test_init.py	0	executed=11 passed=11 failed=0 skipped=0
+test_linalg.py	0	executed=18 passed=18 failed=0 skipped=0
+test_losses.py	0	executed=14 passed=14 failed=0 skipped=0
+test_nn.py	0	executed=73 passed=73 failed=0 skipped=0
+test_ops.py	1	executed=161 passed=159 failed=2 skipped=1
+test_optimizers.py	0	executed=26 passed=26 failed=0 skipped=0
+test_random.py	0	executed=14 passed=14 failed=0 skipped=0
+test_reduce.py	0	executed=13 passed=13 failed=0 skipped=0
+test_upsample.py	0	executed=6 passed=6 failed=0 skipped=0
+test_vmap.py	0	executed=30 passed=30 failed=0 skipped=0

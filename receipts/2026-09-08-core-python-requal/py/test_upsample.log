@@ -1,0 +1,12 @@
+============================= test session starts ==============================
+collecting ... collected 6 items
+
+.work/mlx/python/tests/test_upsample.py::TestUpsample::test_antialias_1d_smoke PASSED [ 16%]
+.work/mlx/python/tests/test_upsample.py::TestUpsample::test_antialias_non_integer_scale_smoke PASSED [ 33%]
+.work/mlx/python/tests/test_upsample.py::TestUpsample::test_antialias_upscale_cubic_matches_pytorch PASSED [ 50%]
+.work/mlx/python/tests/test_upsample.py::TestUpsample::test_antialias_upscale_linear_is_noop PASSED [ 66%]
+.work/mlx/python/tests/test_upsample.py::TestUpsample::test_torch_upsample PASSED [ 83%]
+.work/mlx/python/tests/test_upsample.py::TestUpsample::test_torch_upsample_antialias PASSED [100%]
+
+- generated xml file: /home/joshuawarren/.config/superpowers/worktrees/mlx-omarchy/wave-core-python-requal/receipts/2026-09-08-core-python-requal/py/test_upsample.xml -
+============================== 6 passed in 2.65s ===============================

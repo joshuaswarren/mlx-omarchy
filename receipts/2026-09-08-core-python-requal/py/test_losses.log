@@ -1,0 +1,20 @@
+============================= test session starts ==============================
+collecting ... collected 14 items
+
+.work/mlx/python/tests/test_losses.py::TestLosses::test_binary_cross_entropy PASSED [  7%]
+.work/mlx/python/tests/test_losses.py::TestLosses::test_cosine_similarity_loss PASSED [ 14%]
+.work/mlx/python/tests/test_losses.py::TestLosses::test_cross_entropy PASSED [ 21%]
+.work/mlx/python/tests/test_losses.py::TestLosses::test_gaussian_nll_loss PASSED [ 28%]
+.work/mlx/python/tests/test_losses.py::TestLosses::test_hinge_loss PASSED [ 35%]
+.work/mlx/python/tests/test_losses.py::TestLosses::test_huber_loss PASSED [ 42%]
+.work/mlx/python/tests/test_losses.py::TestLosses::test_kl_div_loss PASSED [ 50%]
+.work/mlx/python/tests/test_losses.py::TestLosses::test_l1_loss PASSED   [ 57%]
+.work/mlx/python/tests/test_losses.py::TestLosses::test_log_cosh_loss PASSED [ 64%]
+.work/mlx/python/tests/test_losses.py::TestLosses::test_margin_ranking_loss PASSED [ 71%]
+.work/mlx/python/tests/test_losses.py::TestLosses::test_mse_loss PASSED  [ 78%]
+.work/mlx/python/tests/test_losses.py::TestLosses::test_nll_loss PASSED  [ 85%]
+.work/mlx/python/tests/test_losses.py::TestLosses::test_smooth_l1_loss PASSED [ 92%]
+.work/mlx/python/tests/test_losses.py::TestLosses::test_triplet_loss PASSED [100%]
+
+- generated xml file: /home/joshuawarren/.config/superpowers/worktrees/mlx-omarchy/wave-core-python-requal/receipts/2026-09-08-core-python-requal/py/test_losses.xml -
+============================== 14 passed in 0.25s ==============================

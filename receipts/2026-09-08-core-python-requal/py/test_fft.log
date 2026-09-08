@@ -1,0 +1,73 @@
+============================= test session starts ==============================
+collecting ... collected 20 items
+
+.work/mlx/python/tests/test_fft.py::TestFFT::test_batched_bluestein_twiddle_table SKIPPED [  5%]
+.work/mlx/python/tests/test_fft.py::TestFFT::test_fft PASSED             [ 10%]
+.work/mlx/python/tests/test_fft.py::TestFFT::test_fft_big_powers_of_two FAILED [ 15%]
+.work/mlx/python/tests/test_fft.py::TestFFT::test_fft_contiguity PASSED  [ 20%]
+.work/mlx/python/tests/test_fft.py::TestFFT::test_fft_exhaustive SKIPPED [ 25%]
+.work/mlx/python/tests/test_fft.py::TestFFT::test_fft_grads PASSED       [ 30%]
+.work/mlx/python/tests/test_fft.py::TestFFT::test_fft_into_ifft PASSED   [ 35%]
+.work/mlx/python/tests/test_fft.py::TestFFT::test_fft_jvp PASSED         [ 40%]
+.work/mlx/python/tests/test_fft.py::TestFFT::test_fft_large_numbers PASSED [ 45%]
+.work/mlx/python/tests/test_fft.py::TestFFT::test_fft_norm PASSED        [ 50%]
+.work/mlx/python/tests/test_fft.py::TestFFT::test_fft_shared_mem PASSED  [ 55%]
+.work/mlx/python/tests/test_fft.py::TestFFT::test_fft_throws PASSED      [ 60%]
+.work/mlx/python/tests/test_fft.py::TestFFT::test_fft_too_large SKIPPED  [ 65%]
+.work/mlx/python/tests/test_fft.py::TestFFT::test_fft_vmap PASSED        [ 70%]
+.work/mlx/python/tests/test_fft.py::TestFFT::test_fftfreq PASSED         [ 75%]
+.work/mlx/python/tests/test_fft.py::TestFFT::test_fftn PASSED            [ 80%]
+.work/mlx/python/tests/test_fft.py::TestFFT::test_fftshift PASSED        [ 85%]
+.work/mlx/python/tests/test_fft.py::TestFFT::test_fftshift_errors PASSED [ 90%]
+.work/mlx/python/tests/test_fft.py::TestFFT::test_ifftshift PASSED       [ 95%]
+.work/mlx/python/tests/test_fft.py::TestFFT::test_rfftfreq PASSED        [100%]
+
+=================================== FAILURES ===================================
+______________________ TestFFT.test_fft_big_powers_of_two ______________________
+
+self = <test_fft.TestFFT testMethod=test_fft_big_powers_of_two>
+
+    def test_fft_big_powers_of_two(self):
+        # TODO: improve precision on big powers of two on GPU
+        for k in range(12, 17):
+            self._run_ffts((3, 2**k), atol=1e-3)
+    
+        for k in range(17, 20):
+            self._run_ffts((3, 2**k), atol=1e-2)
+    
+        # Past 2**20 the four step plan has to grow n2 to keep both factors
+        # inside threadgroup memory
+        for k in range(20, 25):
+>           self._run_ffts((1, 2**k), atol=1e-2, rtol=1e-3)
+
+.work/mlx/python/tests/test_fft.py:214: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+.work/mlx/python/tests/test_fft.py:144: in _run_ffts
+    self.check_mx_np(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <test_fft.TestFFT testMethod=test_fft_big_powers_of_two>
+op_mx = <nanobind.nb_func object at 0x738938fc1900>
+op_np = <function irfft at 0x73890aa950b0>
+a_np = array([[ 8.3877775e+06   +0.j      , -1.0925970e+02+2193.9604j  ,
+        -2.3369904e+02  +19.077837j, ...,  1.7672751...13815j ,
+         1.1823135e+03 -108.32566j ,  8.0596149e+02   +0.j      ]],
+      shape=(1, 8388609), dtype=complex64)
+atol = 0.01, rtol = 0.001, kwargs = {'n': 16777216}
+out_np = array([[0.01037408, 0.5018747 , 0.4957731 , ..., 0.42004523, 0.70813465,
+        0.7811976 ]], shape=(1, 16777216), dtype=float32)
+a_mx = array([[8.38778e+06+0j, -109.26+2193.96j, -233.699+19.0778j, ..., 176.728+503.138j, 1182.31-108.326j, 805.961+0j]], dtype=complex64)
+out_mx = <[RuntimeError('[omarchy] FFT output size is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[1,1...rs. Run it on an explicit CPU stream to use the CPU implementation.') raised in repr()] array object at 0x73890ab410c0>
+
+    def check_mx_np(self, op_mx, op_np, a_np, atol=1e-5, rtol=1e-6, **kwargs):
+        out_np = op_np(a_np, **kwargs)
+        a_mx = mx.array(a_np)
+        out_mx = op_mx(a_mx, **kwargs)
+>       np.testing.assert_allclose(out_np, out_mx, atol=atol, rtol=rtol)
+E       RuntimeError: [omarchy] FFT output size is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[1,16777216]). No GPU kernel exists for it; no silent CPU fallback occurs. Run it on an explicit CPU stream to use the CPU implementation.
+
+.work/mlx/python/tests/test_fft.py:23: RuntimeError
+- generated xml file: /home/joshuawarren/.config/superpowers/worktrees/mlx-omarchy/wave-core-python-requal/receipts/2026-09-08-core-python-requal/py/test_fft.xml -
+=========================== short test summary info ============================
+FAILED .work/mlx/python/tests/test_fft.py::TestFFT::test_fft_big_powers_of_two - RuntimeError: [omarchy] FFT output size is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[1,16777216]). No GPU kernel exists for it; no silent CPU fallback occurs. Run it on an explicit CPU stream to use the CPU implementation.
+============= 1 failed, 16 passed, 3 skipped in 479.14s (0:07:59) ==============
