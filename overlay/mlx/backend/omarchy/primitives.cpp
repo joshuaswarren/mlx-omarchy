@@ -6602,10 +6602,27 @@ void QuantizedMatmul::eval_gpu(const std::vector<array>& inputs, array& out) {
     bool rb_enabled = rb_env == nullptr || std::strcmp(rb_env, "0") != 0;
     if (rb_enabled && out.dtype() == float16 && transpose_ && bits_ == 4 &&
         group_size_ == 64) {
+      // Same layout on the 8x8x8 fp32 cooperative matrix when the
+      // device advertises it (shaders/qmm_coopmat.comp: 32x32 output
+      // tile per subgroup, 2 KiB shared staging, x and out read and
+      // written as 32-bit word pairs so their element offsets must be
+      // even). MLX_OMARCHY_NO_COOPMAT=1 forces the register-blocked tile.
+      static const bool coopmat_disabled =
+          omarchy::env_flag("MLX_OMARCHY_NO_COOPMAT");
+      const auto& caps = encoder.device().capabilities();
+      constexpr uint32_t kQmmCoopmatSharedBytes =
+          (32u * 8u + 8u * 32u) * sizeof(float);
+      bool coopmat = caps.cooperative_matrix_f32_8 &&
+          caps.subgroup_size == 32u && !coopmat_disabled &&
+          kQmmCoopmatSharedBytes <= caps.max_compute_shared_memory_size &&
+          (params.lhs_offset % 2u) == 0u &&
+          (params.output_offset % 2u) == 0u;
       uint32_t m_groups = (params.matrix_m + 31u) / 32u;
-      uint32_t n_groups = (params.matrix_n + 15u) / 16u;
+      uint32_t n_groups = coopmat ? (params.matrix_n + 31u) / 32u
+                                  : (params.matrix_n + 15u) / 16u;
       encoder.dispatch_compute(
-          omarchy::ComputeKernel::QmmTileRbF16,
+          coopmat ? omarchy::ComputeKernel::QmmPrefillCoopmatF16
+                  : omarchy::ComputeKernel::QmmTileRbF16,
           bindings,
           params,
           std::min(n_groups, omarchy::kMaxComputeGroupCountX),
