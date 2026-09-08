@@ -527,6 +527,32 @@ TFLOP/s at 256/512/1024 with max_abs_err 0.0 against a host reference
 on every gated shape; receipt
 `receipts/2026-09-08-coopmat-dense.json`.
 
+### Q4 prefill on the G13 matrix unit
+
+`QmmPrefillCoopmatF16` (`shaders/qmm_coopmat.comp`) runs the transposed
+affine 4-bit/group-64 f16 `QuantizedMatmul` at `matrix_m > 1` on the same
+8x8x8 fp32 cooperative matrix. One 32-lane subgroup owns a 32x32 output
+tile as 4x4 accumulators; per 8-wide k step it stages the x rows as f32
+and the weight block dequantized once (the register-blocked tile's
+packed-word unpack, one scale/bias per group) into 2 KiB of shared
+memory and `coopMatLoad`s both from there. Dequantized weights stay f32
+inside the dot, as in every qmm kernel. The register-block gate routes
+to it when `cooperative_matrix_f32_8` holds with subgroup size 32 and
+the x/output element offsets are even; `MLX_OMARCHY_NO_COOPMAT=1` and
+every other device keep `QmmTileRbF16`. Decode (`matrix_m == 1`) is
+untouched.
+
+Shared memory bounds occupancy on AGX: a first cut staging a 64-wide
+chunk (20 KiB per subgroup) ran at 0.55x the tile. At 2 KiB the M1 on
+the `honeykrisp-coopmat` ICD moved Qwen2.5-0.5B-Instruct-4bit prefill
+from 98.7/254.8/272.7 to 114.9/461.5/515.8 tok/s at 30/262/1053 prompt
+tokens (medians of five alternating pairs, paired gains 1.17/1.81/1.89,
+identical generated token ids in every pair, decode unchanged); stock
+Mesa 26.1.7 measures 97.6/254.4/272.7 on the same wheel. The host
+reference case at the Qwen shapes passes under the qmm tile anchor
+bound with the same max error as the tile to three digits; receipt
+`receipts/2026-09-08-qmm-prefill-coopmat.json`.
+
 ## ANE
 
 mlx-omarchy ANE bundle validation is device-free and fail-closed. The Linux
