@@ -257,12 +257,6 @@ omarchy_shader(qmm_tile_rb_f16 shaders/qmm_tile.comp -DUSE_FP16=1 -DREGISTER_BLO
 # device capability in primitives.cpp, MLX_OMARCHY_NO_COOPMAT=1 forces
 # the register-blocked tile.
 omarchy_shader(qmm_coopmat_f16 shaders/qmm_coopmat.comp)
-# QmmInlineCoopmat: the prefill coopmat with inline fragment loads
-# (f16 x unpack + fused affine Q4 decode in the mesa lowering,
-# AGX_QMM_INLINE_A / AGX_QMM_INLINE_B); no staging barriers in the k
-# loop. Gated in primitives.cpp; MLX_OMARCHY_NO_QMM_INLINE=1 forces
-# the staged qmm_coopmat.comp kernel.
-omarchy_shader(qmm_inline_coopmat_f16 shaders/qmm_coopmat_inline.comp)
 omarchy_shader(qmm_tile_bf16 shaders/qmm_tile.comp -DUSE_BF16=1)
 omarchy_shader(dequant_f32 shaders/dequant.comp)
 omarchy_shader(dequant_f16 shaders/dequant.comp -DUSE_FP16=1)

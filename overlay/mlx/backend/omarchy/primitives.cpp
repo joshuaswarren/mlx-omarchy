@@ -13,7 +13,6 @@
 #include <optional>
 #include <numeric>
 #include <string>
-#include <unordered_map>
 #include <utility>
 
 #include "mlx/backend/common/binary.h"
@@ -547,37 +546,33 @@ void dispatch_matmul(
             omarchy::ComputeKernel::MatmulF32,
             omarchy::ComputeKernel::MatmulF16,
             omarchy::ComputeKernel::MatmulBF16);
-  // The staged cooperative-matrix kernels (matmul_coopmat.comp for
-  // f32, matmul_coopmat_bf16.comp for bf16) mask m and n tails and
-  // address A/B with scalar loads, so the old 8x8-tile alignment and
-  // tile-multiple gates are gone: only k must be a multiple of 8
-  // (the staged k step), alpha 1, and no bias C. The bf16 kernel
-  // packs output word pairs, so matrix_n and the output element
-  // offset must be even, and its word-view batch addressing needs
-  // even batch strides.
+  // Honeykrisp's 8x8x8 fp32 subgroup cooperative matrix (behind
+  // AGX_SIMDMAT on the honeykrisp-coopmat branch; stock Mesa and llvmpipe
+  // report the capability false and keep the 16x16 tile). The coopmat
+  // kernel has no edge masking, alpha scaling, or bias path, so it only
+  // takes exact tile multiples with alpha 1 and no C. coopMatLoad/Store
+  // pointers and strides must be 16-byte aligned (VUID-RuntimeSpirv-
+  // OpCooperativeMatrixLoadKHR-08986), so every element offset, row gap,
+  // and batch stride must be a multiple of four floats; an odd slice
+  // offset takes the tiled kernel.
   static const bool coopmat_disabled =
       omarchy::env_flag("MLX_OMARCHY_NO_COOPMAT");
   const auto& caps = encoder.device().capabilities();
-  bool coopmat_base = caps.cooperative_matrix_f32_8 &&
-      caps.subgroup_size == 32 && !coopmat_disabled &&
-      (params.matrix_k % 8u) == 0u && alpha == 1.0f && !use_c;
-  bool bf16_strides_ok = true;
-  for (uint32_t axis = 0; bf16_strides_ok && axis < params.dims; ++axis) {
-    bf16_strides_ok = (params.in_strides[axis] % 2u) == 0u &&
-        (params.out_strides[axis] % 2u) == 0u;
-  }
   bool coopmat = kernel == omarchy::ComputeKernel::MatmulF32 &&
-      coopmat_base;
-  bool coopmat_bf16 = kernel == omarchy::ComputeKernel::MatmulBF16 &&
-      coopmat_base && (params.matrix_n % 2u) == 0u &&
-      (params.output_offset % 2u) == 0u && bf16_strides_ok;
+      caps.cooperative_matrix_f32_8 && caps.subgroup_size == 32 &&
+      !coopmat_disabled && (params.matrix_m % 8u) == 0u &&
+      (params.matrix_n % 8u) == 0u && (params.matrix_k % 8u) == 0u &&
+      alpha == 1.0f && !use_c && (params.lhs_offset % 4u) == 0u &&
+      (params.rhs_offset % 4u) == 0u && (params.output_offset % 4u) == 0u &&
+      (a_gap % 4u) == 0u && (b_gap % 4u) == 0u;
+  for (uint32_t axis = 0; coopmat && axis < params.dims; ++axis) {
+    coopmat = (params.in_strides[axis] % 4u) == 0u &&
+        (params.out_strides[axis] % 4u) == 0u;
+  }
   if (coopmat) {
     kernel = omarchy::ComputeKernel::MatmulF32Coopmat;
   }
-  if (coopmat_bf16) {
-    kernel = omarchy::ComputeKernel::MatmulBF16Coopmat;
-  }
-  const uint32_t tile = (coopmat || coopmat_bf16) ? 32u : 16u;
+  const uint32_t tile = coopmat ? 8u : 16u;
   uint64_t a_inner = params.matrix_m == 0u || params.matrix_k == 0u
       ? 0u
       : (a_transposed
@@ -6308,56 +6303,6 @@ void QRF::eval_gpu(
   encoder.dispatch_compute(
       omarchy::ComputeKernel::LinalgQrF32, bindings, params, batch);
 }
-// Fused affine 4-bit / group-64 weight layout for the inline-decode
-// coopmat prefill kernel (shaders/qmm_coopmat_inline.comp): per
-// (chunk, column) one 16-word PAIRED block [sb0 w0 sb1 w1 ... sb7 w7]
-// with sbj packing scale | bias as one f16x2 word and wj holding the
-// eight nibble words, so the B fragment load addresses the w_ks word
-// directly and its scale word is exactly one below (the first
-// 9-word/block variant needed (base-1) % 9 to recover the k step and
-// tripped the AGX disassembler self-test). 1 byte per weight -- the
-// fused copy is ~1.8x the packed stream. Built once per weight tensor
-// and cached for the
-// process lifetime -- a load-time transform whose cost amortizes out
-// of steady-state prefill; the cache holds the extra fused copy, so
-// resident weights roughly double while an inline-gated model runs.
-// 64 weights per group at 4 bits: eight nibbles per 32-bit word.
-static constexpr int kInlineQ4WordsPerGroup = 8;
-static const array& fused_affine_q4_words(
-    const array& w,
-    const array& scales,
-    const array& biases,
-    int groups,
-    Stream stream) {
-  static std::unordered_map<size_t, array> cache;
-  auto it = cache.find(w.id());
-  if (it != cache.end()) {
-    return it->second;
-  }
-  int n = w.shape(-2);
-  int words_per_group = kInlineQ4WordsPerGroup;
-  array scale_words = view(transpose(scales, {1, 0}, stream), uint16, stream);
-  array bias_words = view(transpose(biases, {1, 0}, stream), uint16, stream);
-  array sb_words = add(
-      astype(scale_words, uint32, stream),
-      multiply(
-          astype(bias_words, uint32, stream),
-          array(static_cast<uint32_t>(65536u)),
-          stream),
-      stream);
-  array words = transpose(
-      reshape(w, {n, groups, words_per_group}, stream), {1, 0, 2}, stream);
-  array sb_pairs = expand_dims(
-      repeat(expand_dims(sb_words, 2, stream), words_per_group, 2, stream),
-      3, stream);
-  array word_pairs = expand_dims(words, 3, stream);
-  array fused = reshape(
-      concatenate({sb_pairs, word_pairs}, 3, stream),
-      {groups * n * (2 * words_per_group)},
-      stream);
-  fused.eval();
-  return cache.emplace(w.id(), std::move(fused)).first->second;
-}
 void QuantizedMatmul::eval_gpu(const std::vector<array>& inputs, array& out) {
   const std::string tag = name();
   // Non-affine modes pass three inputs, so the mode check must land
@@ -6693,43 +6638,9 @@ void QuantizedMatmul::eval_gpu(const std::vector<array>& inputs, array& out) {
           kQmmCoopmatSharedBytes <= caps.max_compute_shared_memory_size &&
           (params.lhs_offset % 2u) == 0u &&
           (params.output_offset % 2u) == 0u;
-      // Inline-fragment variant (shaders/qmm_coopmat_inline.comp): the
-      // driver lowering AGX_QMM_INLINE_A / AGX_QMM_INLINE_B unpacks x
-      // f16 pairs and dequantizes the fused weight blocks inside the
-      // fragment loads, so the k loop runs with no staging barriers.
-      // Requires the private mesa hooks (both envs), batch == 1, and
-      // k covered by whole 64-weight groups; MLX_OMARCHY_NO_QMM_INLINE
-      // =1 forces the staged kernel. Default on so the A/B is a pure
-      // env toggle of the same wheel.
-      static const bool inline_disabled =
-          omarchy::env_flag("MLX_OMARCHY_NO_QMM_INLINE");
-      bool inline_ok = coopmat && !inline_disabled && batch == 1 &&
-          params.matrix_k >= 64u && (params.matrix_k % 64u) == 0u &&
-          std::getenv("AGX_QMM_INLINE_A") != nullptr &&
-          std::getenv("AGX_QMM_INLINE_B") != nullptr;
       uint32_t m_groups = (params.matrix_m + 31u) / 32u;
       uint32_t n_groups = coopmat ? (params.matrix_n + 31u) / 32u
                                   : (params.matrix_n + 15u) / 16u;
-      if (inline_ok) {
-        const array& fused =
-            fused_affine_q4_words(w_d, scales_d, biases_d, scales_d.shape(-1), stream());
-        auto inline_params = params;
-        inline_params.rhs_offset = 0;
-        std::array<omarchy::ComputeBinding, 5> inline_bindings{
-            binding(x_d),
-            binding(fused),
-            binding(scales_d),
-            binding(biases_d),
-            binding(out)};
-        encoder.dispatch_compute(
-            omarchy::ComputeKernel::QmmInlineCoopmatF16,
-            inline_bindings,
-            inline_params,
-            std::min(n_groups, omarchy::kMaxComputeGroupCountX),
-            std::min(m_groups, omarchy::kMaxComputeGroupCountX),
-            1u);
-        return;
-      }
       encoder.dispatch_compute(
           coopmat ? omarchy::ComputeKernel::QmmPrefillCoopmatF16
                   : omarchy::ComputeKernel::QmmTileRbF16,
