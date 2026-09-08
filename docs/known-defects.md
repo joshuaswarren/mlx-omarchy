@@ -62,8 +62,9 @@ GLSL `/` on this driver returns quotients up to one ulp from the
 correctly rounded value (80/25 and 10/25 one ulp low; a quantize
 boundary quotient one ulp high, flipping round-half-away from 219 to
 218). llvmpipe and the CPU/Metal references are correctly rounded.
-`fma()` does not help: the AGX compiler contracts the lowered
-multiply-add into a native fused op that is not the IEEE fused result.
+The earlier attribution to non-IEEE `fma()` was wrong. The isolated driver
+probe found zero mismatches in 1,000 FMA inputs on stock Mesa; see
+`receipts/hk/2026-09-08-precise-math.json`.
 The fix routes those divisions through a `precise`-qualified Dekker
 exact-residual correction, which is a no-op where the native quotient is
 already correct. Receipts: M1 log `receipts-m1/11-bitexact-fix-aa66b1af.log`
