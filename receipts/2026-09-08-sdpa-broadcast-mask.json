@@ -1,0 +1,54 @@
+{
+  "wave": "sdpa-broadcast-mask",
+  "source_commit": "4e116e54",
+  "change_commit": "217ad5a1",
+  "rebased_from": "d3545bf9 (base 348919c8, never reached main)",
+  "runtime": "x86_64 Mesa llvmpipe software Vulkan (MLX_OMARCHY_ALLOW_NON_APPLE=1, LP_NUM_THREADS=4)",
+  "native_qualified": false,
+  "full_suite_qualified": false,
+  "change": [
+    "make_mask_view/prepare_mask lambdas in ScaledDotProductAttention::eval_gpu preserve batch and head broadcasting while regrouping masks for GQA across the f16/bf16 fast path and the f32 composition.",
+    "Main does NOT already accept broadcast masks: both guard sites (primitives.cpp ~9758 f16, ~9880 f32) required an exact shape match after reshape_in_eval, so [B,1,qL,kL] and transposed masks were rejected.",
+    "Sink handling (aaaaba29 strided sink views de662bd9) and the bool-mask floor (b3fdf225, 1dc9eaaa in fast.cpp) survived untouched; git am -3 applied with no conflicts."
+  ],
+  "commands": {
+    "prepare": "bash scripts/prepare-mlx.sh",
+    "configure": "cmake -S .work/mlx -B .work/build -DMLX_BUILD_OMARCHY=ON -DMLX_BUILD_CPU=ON -DMLX_BUILD_METAL=OFF -DMLX_BUILD_CUDA=OFF -DMLX_BUILD_TESTS=ON -DMLX_BUILD_EXAMPLES=OFF -DMLX_BUILD_BENCHMARKS=OFF -DMLX_BUILD_PYTHON_BINDINGS=OFF",
+    "build": "cmake --build .work/build --target omarchy_fast_ops_tests --target omarchy_runtime_tests -j4",
+    "fast_suite": "MLX_OMARCHY_ALLOW_NON_APPLE=1 LP_NUM_THREADS=4 .work/build/tests/omarchy/omarchy_fast_ops_tests",
+    "runtime_suite": "MLX_OMARCHY_ALLOW_NON_APPLE=1 LP_NUM_THREADS=4 .work/build/tests/omarchy/omarchy_runtime_tests"
+  },
+  "cpp": {
+    "omarchy_fast_ops_tests": {
+      "passed": 32,
+      "failed": 0,
+      "assertions": 66315,
+      "exit_code": 0,
+      "new_cases_green": [
+        "scaled_dot_product_attention primitive broadcasts additive masks",
+        "scaled_dot_product_attention broadcasts additive masks through GQA (f32, f16, bf16 wide, bf16 fast)"
+      ],
+      "existing_cases_green": [
+        "scaled_dot_product_attention folds sinks into the denominator",
+        "scaled_dot_product_attention respects strided sink storage",
+        "scaled_dot_product_attention floors a fully masked bool mask",
+        "scaled_dot_product_attention causal offset keeps kL below qL (now exact over fully masked rows)"
+      ]
+    },
+    "omarchy_runtime_tests": {
+      "passed": 40,
+      "failed": 0,
+      "assertions": 6304,
+      "exit_code": 0
+    }
+  },
+  "negative_check": {
+    "method": "Restored pre-fix primitives.cpp (git show HEAD~1) while keeping the new tests, restaged, rebuilt, reran the two new cases.",
+    "result": "exit 1; value-mismatch CHECK failures against the pre-fix exact-shape mask handling - the new tests defend the contract",
+    "post_restore": "Fixed code restored byte-identical (git diff vs HEAD empty), rebuilt, both suites rerun green as reported above."
+  },
+  "limitations": [
+    "Verified on llvmpipe only: numerics and timing on real Honeykrisp (jwm1) are out of scope for this wave; no shaders were touched so no glslc/glslangValidator divergence applies.",
+    "omarchy_runtime_tests and omarchy_fast_ops_tests only, per wave scope; the full battery is the parent's job."
+  ]
+}
