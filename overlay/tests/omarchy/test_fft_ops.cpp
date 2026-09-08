@@ -754,3 +754,97 @@ TEST_CASE("fftn at 2^24 exercises the second dispatch dimension") {
       "2^24 delta: max abs diff " << worst << " at bin " << worst_at
                                   << " exceeds tolerance " << tolerance);
 }
+
+TEST_CASE("rfft and irfft at 2^24 real elements cross the extract limit") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  // The irfft extract kernel takes the .x of the full-length inverse
+  // transform one element per thread; an output of n = 2^24 real elements
+  // needs 65,536 workgroups of 256, one past the guaranteed 65,535
+  // x-dimension limit, so the host refused irfft outputs above
+  // 65,535 * 256 by name before any dispatch (the 2026-09-08 core requal's
+  // real-fft-extract-output-size-cap cluster). A kernel reading only
+  // gl_GlobalInvocationID.x would also leave the trailing 256 outputs
+  // unwritten. A real delta at element n - 1 (inside that trailing window)
+  // has the exact half spectrum X[k] = e^(-2*pi*i*(n-1)*k/n), k = 0..n/2,
+  // and the delta keeps every intermediate magnitude at one, so round-off
+  // stays near 1e-5 no matter how large n grows.
+  const uint64_t n = 1ull << 24;
+  const uint64_t delta_at = n - 1;
+  const uint64_t bins = n / 2 + 1;
+
+  auto phase_bin = [&](uint64_t k) {
+    uint64_t phase = (k * delta_at) % n;
+    double angle = -2.0 * M_PI * double(phase) / double(n);
+    return cdouble(std::cos(angle), std::sin(angle));
+  };
+
+  // Forward: the real delta's half spectrum is pure phase, checked
+  // densely over the top bins and decimated below.
+  std::vector<float> host(n, 0.0f);
+  host[delta_at] = 1.0f;
+  array input = array(host.begin(), Shape{1, int(n)}, float32);
+  auto spectrum = read_complex(
+      rfftn(input, {1}, FFTNorm::Backward, stream), stream);
+  REQUIRE_EQ(spectrum.size(), size_t(bins));
+  const double tolerance = 2e-4;
+  double worst = 0.0;
+  uint64_t worst_at = 0;
+  auto check_bin = [&](uint64_t k) {
+    double diff = std::abs(spectrum[k] - phase_bin(k));
+    if (diff > worst) {
+      worst = diff;
+      worst_at = k;
+    }
+  };
+  for (uint64_t k = bins - 2048; k < bins; ++k) {
+    check_bin(k);
+  }
+  for (uint64_t k = 0; k < bins; k += 4096) {
+    check_bin(k);
+  }
+  REQUIRE_MESSAGE(
+      worst <= tolerance,
+      "2^24 rfft delta: max abs diff " << worst << " at bin " << worst_at
+                                       << " exceeds tolerance " << tolerance);
+
+  // Inverse: the same half spectrum (built on the host) must synthesize
+  // the real delta back. This is the dispatch the extract refusal killed;
+  // with the refusal gone, a broken extract still shows as the missing
+  // delta (diff 1.0) because page-zeroed buffers read as zero.
+  std::vector<complex64_t> spec_host(bins);
+  for (uint64_t k = 0; k < bins; ++k) {
+    cdouble value = phase_bin(k);
+    spec_host[k] = complex64_t(float(value.real()), float(value.imag()));
+  }
+  array spec = array(spec_host.begin(), Shape{1, int(bins)}, complex64);
+  auto back = read_real(
+      irfftn(spec, Shape{int(n)}, {1}, FFTNorm::Backward, stream), stream);
+  REQUIRE_EQ(back.size(), size_t(n));
+  worst = 0.0;
+  worst_at = 0;
+  auto check_sample = [&](uint64_t j) {
+    double ref = j == delta_at ? 1.0 : 0.0;
+    double diff = std::abs(back[j] - ref);
+    if (diff > worst) {
+      worst = diff;
+      worst_at = j;
+    }
+  };
+  // Dense over the trailing window past 65,535 * 256 that a broken
+  // extract leaves unwritten.
+  for (uint64_t j = 65535ull * 256ull; j < n; ++j) {
+    check_sample(j);
+  }
+  // Decimated over the rest.
+  for (uint64_t j = 0; j < 65535ull * 256ull; j += 4096) {
+    check_sample(j);
+  }
+  REQUIRE_MESSAGE(
+      worst <= tolerance,
+      "2^24 irfft delta: max abs diff " << worst << " at element "
+                                        << worst_at << " exceeds tolerance "
+                                        << tolerance);
+}

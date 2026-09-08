@@ -1,0 +1,62 @@
+{
+  "schema_version": 1,
+  "wave": "fft-real-extract-limit",
+  "date": "2026-09-08",
+  "source": {
+    "parent_main_commit": "a22e4821",
+    "branch": "wave/fft-real-extract-limit",
+    "upstream_lock": "mlx-0.32.2-1f8e74e3f12f31365464a6867c6579f0e9b29d85.tar.gz"
+  },
+  "runtime": {
+    "kind": "x86_64 llvmpipe (software Vulkan, lavapipe ICD libvulkan_lvp.so)",
+    "kernel": "6.17.2-1-pve",
+    "mesa_vulkan_drivers": "22.3.6-1+deb12u2",
+    "vulkan_loader": "1.3.239.0-1",
+    "shader_compiler": "glslangValidator 12.0.0 (x86 dev box; M1 glslc not exercised per wave constraints)",
+    "env": ["MLX_OMARCHY_ALLOW_NON_APPLE=1", "LP_NUM_THREADS=4"]
+  },
+  "defect": {
+    "cluster": "real-fft-extract-output-size-cap",
+    "reference": "receipts/2026-09-08-core-python-requal/core-python-qualification.json",
+    "symptom": "irfft with output [1, 16777216] (2^24 real elements) failed upstream test_fft_big_powers_of_two with the named refusal 'FFT output size is not implemented ... shape=[1,16777216]' (requal failure cluster real-fft-extract-output-size-cap).",
+    "cause": "The irfft extract kernel takes the real part of the full-length inverse transform one element per thread in a single x dispatch dimension. An output of 2^24 elements needs 65,536 workgroups of 256, one past the guaranteed 65,535 x-workgroup limit, so the host refused any output above 65,535 * 256 = 16,776,960 elements by name before dispatching."
+  },
+  "change": [
+    "overlay/mlx/backend/omarchy/shaders/fft_real_extract.comp: main() grid-strides over params.count with stride = gl_NumWorkGroups.x * gl_WorkGroupSize.x, the same convention fft_stage.comp adopted at 06116468.",
+    "overlay/mlx/backend/omarchy/primitives.cpp: the out.size() > 65535*256 named refusal before the FftRealF32 dispatch is deleted; the dispatch already went through compute_dispatch_group_count, which caps the single x dimension at the guaranteed limit while the grid-striding kernel covers any element count.",
+    "overlay/tests/omarchy/test_fft_ops.cpp: new case \"rfft and irfft at 2^24 real elements cross the extract limit\" - a real delta at element n-1 (inside the trailing 256-element window past 65,535*256) with the exact analytic half spectrum X[k] = e^(-2*pi*i*(n-1)*k/n), k = 0..n/2. rfftn is checked densely over the top 2048 bins plus every 4096th bin; irfftn of the same host-built spectrum must reproduce the delta, checked densely over the whole trailing window from 65,535*256 to n plus every 4096th element below it, tolerance 2e-4."
+  ],
+  "fft_family_audit": {
+    "extract (fft_real_extract.comp)": "defective, fixed here (refusal removed, kernel grid-strides)",
+    "elementwise stages (fft_stage.comp via dispatch_fft_stage)": "already grid-strided at 06116468; every twiddle, Bluestein a/b/pointwise/epilogue, permute, real-promote and half-synthesis edge dispatch routes through that one helper - no size gate",
+    "radix-2 passes (fft_c2c.comp via dispatch_fft_pass)": "one workgroup per transform, transform count split across x/y/z with flattened ids in the kernel and a named refusal only past 65535^3 transforms - untouched",
+    "Bluestein batch gate (run_fft_bluestein)": "conv_elements > 0x7ffffff refusal is an int-backed Shape bound, not a workgroup-count gate - kept",
+    "remaining 65535 references": "only kMaxComputeGroupCountX itself in compute.h, which is the dispatch cap, not a kernel gate"
+  },
+  "commands_and_results": [
+    {
+      "step": "red - new case on the unfixed kernel (test staged, refusal still present)",
+      "command": "bash scripts/prepare-mlx.sh && cmake --build .work/build --target omarchy_fft_ops_tests -j8 && MLX_OMARCHY_ALLOW_NON_APPLE=1 LP_NUM_THREADS=4 .work/build/tests/omarchy/omarchy_fft_ops_tests -tc=\"rfft and irfft at 2^24*\"",
+      "result": "exit 1; the rfft phase passed (2 assertions) and irfft threw the exact named refusal: '[omarchy] FFT output size is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[1,16777216])' (68.2 s wall)"
+    },
+    {
+      "step": "green - new case on the fixed kernel",
+      "command": "bash scripts/prepare-mlx.sh && cmake --build .work/build --target omarchy_fft_ops_tests -j8 && MLX_OMARCHY_ALLOW_NON_APPLE=1 LP_NUM_THREADS=4 .work/build/tests/omarchy/omarchy_fft_ops_tests -tc=\"rfft and irfft at 2^24*\" (under a getrusage wrapper)",
+      "result": "exit 0; 4 assertions, 4 passed, 73.8 s wall, peak process RSS 1592 MiB"
+    },
+    {
+      "step": "full target suites after the fix",
+      "command": "MLX_OMARCHY_ALLOW_NON_APPLE=1 LP_NUM_THREADS=4 .work/build/tests/omarchy/omarchy_fft_ops_tests; MLX_OMARCHY_ALLOW_NON_APPLE=1 LP_NUM_THREADS=4 .work/build/tests/omarchy/omarchy_fft_general_tests; MLX_OMARCHY_ALLOW_NON_APPLE=1 LP_NUM_THREADS=4 .work/build/tests/omarchy/omarchy_runtime_tests",
+      "result": "fft ops: 19 cases / 1379 assertions, 0 failed (112.6 s wall); fft general: 14 cases / 4245 assertions, 0 failed, worst relative error 4.36e-07 at n=1000; runtime: 40 cases / 6304 assertions, 0 failed"
+    }
+  ],
+  "test_cost": {
+    "memory": "the 2^24 case holds a 64 MiB real input vector plus device copy, a 64 MiB half spectrum (host and device), up to four full-length 128 MiB complex64 pipeline temporaries per direction, and a 128 MiB double readback for the irfft output; measured peak process RSS 1592 MiB (on llvmpipe device buffers share system RAM)",
+    "time": "one 2^24 rfft plus one 2^24 irfft per suite run; the new case is ~74 s of the ~113 s fft_ops suite wall time on this box"
+  },
+  "limitations": [
+    "Everything here ran only on this x86 box against llvmpipe; no M1 hardware run is claimed. Per AGENTS.md the M1's glslc accepts a narrower shader subset, so the M1 wheel build remains the parent's gate.",
+    "The red demonstration fails at the named refusal before any dispatch, so the silent-wrong-value failure mode of a non-grid-strided extract (trailing 256 outputs left unwritten, delta diff 1.0) is guarded only by construction plus the dense trailing-window assertions, not by an observed red of that mode.",
+    "Only omarchy_fft_ops_tests, omarchy_fft_general_tests, and omarchy_runtime_tests were run, per the wave contract; the project-wide battery is the parent's job."
+  ]
+}
