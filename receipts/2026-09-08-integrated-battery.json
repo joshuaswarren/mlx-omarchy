@@ -1,0 +1,216 @@
+{
+  "date": "2026-09-08",
+  "source_commit": "25c823e033fe319a10f75b59ccd7106021db7f91",
+  "runtime": "x86_64 Mesa llvmpipe software Vulkan; MLX_OMARCHY_ALLOW_NON_APPLE=1 LP_NUM_THREADS=4",
+  "scope": "full omarchy C++ battery after merging wave/sdpa-broadcast-mask, wave/fft-stage-index, wave/coopmat-dense, wave/complex-extract-layout, wave/reflect-pad-phase",
+  "build": "cmake --build .work/build --target <25 omarchy_* test binaries> -j8 with -DOMARCHY_GLSLANG=glslang 16.5 (system glslang 12 cannot compile GL_KHR_cooperative_matrix)",
+  "totals": {
+    "binaries": 25,
+    "cases": 575,
+    "failed": 0,
+    "assertions": 3038869
+  },
+  "suites": [
+    {
+      "suite": "omarchy_runtime_tests",
+      "cases": 40,
+      "passed": 40,
+      "failed": 0,
+      "assertions": 6304,
+      "exit": 0
+    },
+    {
+      "suite": "omarchy_copy_offset_tests",
+      "cases": 25,
+      "passed": 25,
+      "failed": 0,
+      "assertions": 626,
+      "exit": 0
+    },
+    {
+      "suite": "omarchy_primitive_tests",
+      "cases": 98,
+      "passed": 98,
+      "failed": 0,
+      "assertions": 2699373,
+      "exit": 0
+    },
+    {
+      "suite": "omarchy_ane_bundle_tests",
+      "cases": 25,
+      "passed": 25,
+      "failed": 0,
+      "assertions": 2719,
+      "exit": 0
+    },
+    {
+      "suite": "omarchy_kv_ops_tests",
+      "cases": 14,
+      "passed": 14,
+      "failed": 0,
+      "assertions": 410,
+      "exit": 0
+    },
+    {
+      "suite": "omarchy_error_contract_tests",
+      "cases": 3,
+      "passed": 3,
+      "failed": 0,
+      "assertions": 14,
+      "exit": 0
+    },
+    {
+      "suite": "omarchy_shape_ops_tests",
+      "cases": 27,
+      "passed": 27,
+      "failed": 0,
+      "assertions": 3545,
+      "exit": 0
+    },
+    {
+      "suite": "omarchy_reduce_ops_tests",
+      "cases": 34,
+      "passed": 34,
+      "failed": 0,
+      "assertions": 7152,
+      "exit": 0
+    },
+    {
+      "suite": "omarchy_indexing_ops_tests",
+      "cases": 53,
+      "passed": 53,
+      "failed": 0,
+      "assertions": 4085,
+      "exit": 0
+    },
+    {
+      "suite": "omarchy_matmul_family_tests",
+      "cases": 14,
+      "passed": 14,
+      "failed": 0,
+      "assertions": 46055,
+      "exit": 0
+    },
+    {
+      "suite": "omarchy_distributed_tests",
+      "cases": 9,
+      "passed": 9,
+      "failed": 0,
+      "assertions": 36,
+      "exit": 0
+    },
+    {
+      "suite": "omarchy_compiled_tape_tests",
+      "cases": 11,
+      "passed": 11,
+      "failed": 0,
+      "assertions": 1781,
+      "exit": 0
+    },
+    {
+      "suite": "omarchy_fft_ops_tests",
+      "cases": 18,
+      "passed": 18,
+      "failed": 0,
+      "assertions": 1375,
+      "exit": 0
+    },
+    {
+      "suite": "omarchy_fast_ops_tests",
+      "cases": 32,
+      "passed": 32,
+      "failed": 0,
+      "assertions": 66315,
+      "exit": 0
+    },
+    {
+      "suite": "omarchy_linalg_ops_tests",
+      "cases": 30,
+      "passed": 30,
+      "failed": 0,
+      "assertions": 181118,
+      "exit": 0
+    },
+    {
+      "suite": "omarchy_eig_ops_tests",
+      "cases": 9,
+      "passed": 9,
+      "failed": 0,
+      "assertions": 264,
+      "exit": 0
+    },
+    {
+      "suite": "omarchy_take_fill_tests",
+      "cases": 8,
+      "passed": 8,
+      "failed": 0,
+      "assertions": 1109,
+      "exit": 0
+    },
+    {
+      "suite": "omarchy_conv_tests",
+      "cases": 13,
+      "passed": 13,
+      "failed": 0,
+      "assertions": 3450,
+      "exit": 0
+    },
+    {
+      "suite": "omarchy_complex_ops_tests",
+      "cases": 34,
+      "passed": 34,
+      "failed": 0,
+      "assertions": 1715,
+      "exit": 0
+    },
+    {
+      "suite": "omarchy_select_layout_tests",
+      "cases": 11,
+      "passed": 11,
+      "failed": 0,
+      "assertions": 1908,
+      "exit": 0
+    },
+    {
+      "suite": "omarchy_fft_general_tests",
+      "cases": 14,
+      "passed": 14,
+      "failed": 0,
+      "assertions": 4245,
+      "exit": 0
+    },
+    {
+      "suite": "omarchy_fast_regression_tests",
+      "cases": 2,
+      "passed": 2,
+      "failed": 0,
+      "assertions": 16,
+      "exit": 0
+    },
+    {
+      "suite": "omarchy_scatter_determinism_tests",
+      "cases": 21,
+      "passed": 21,
+      "failed": 0,
+      "assertions": 124,
+      "exit": 0
+    },
+    {
+      "suite": "omarchy_eq_math_tests",
+      "cases": 7,
+      "passed": 7,
+      "failed": 0,
+      "assertions": 116,
+      "exit": 0
+    },
+    {
+      "suite": "omarchy_fused_chain_tests",
+      "cases": 23,
+      "passed": 23,
+      "failed": 0,
+      "assertions": 5014,
+      "exit": 0
+    }
+  ],
+  "not_covered": "M1 Honeykrisp numerics for the four llvmpipe-only waves (SDPA mask, FFT stage, complex extract, reflect pad); the coopmat wave has its own M1 receipt"
+}
