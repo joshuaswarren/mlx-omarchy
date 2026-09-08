@@ -65,28 +65,6 @@ inline constexpr int kBatchNodeBudget = 256;
 // batch against Honeykrisp's 7.56 GiB heap without this (2026-09-08).
 inline constexpr size_t kBatchByteBudgetDivisor = 16;
 
-// Runtime override for the byte budget divisor. The 2026-09-08 prefill
-// profile (parity-baseline, ctx1024) showed the 1/16 default flushing
-// every ~25 dispatches, which cascaded into the scheduler task throttle
-// (MAX_ACTIVE_TASKS) and 2.26 s of join stalls for 38 ms of GPU work.
-// Larger values (smaller divisor) batch more per submission; they pin
-// more quarantined bytes, so the 2,048-token 8.11 GiB history caps how
-// far this may go. Default stays 16.
-inline size_t batch_byte_budget_divisor() {
-  static const size_t value = [] {
-    const char* e = std::getenv("MLX_OMARCHY_BATCH_BYTES_DIVISOR");
-    if (e == nullptr) {
-      return size_t(kBatchByteBudgetDivisor);
-    }
-    char* end = nullptr;
-    unsigned long long parsed = std::strtoull(e, &end, 10);
-    if (end == e || parsed == 0) {
-      return size_t(kBatchByteBudgetDivisor);
-    }
-    return static_cast<size_t>(parsed);
-  }();
-  return value;
-}
 
 class MLX_API CommandEncoder {
  public:
