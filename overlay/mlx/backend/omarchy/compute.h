@@ -540,6 +540,9 @@ enum class ComputeKernel : uint16_t {
   // Prefill register block for the transposed affine 4-bit/group-64 f16
   // path. Appended so existing GPU-profile kernel ids stay stable.
   QmmTileRbF16,
+  // Prefill on the 8x8x8 fp32 cooperative matrix, same layout as
+  // QmmTileRbF16 (shaders/qmm_coopmat.comp).
+  QmmPrefillCoopmatF16,
   Count,
 };
 
