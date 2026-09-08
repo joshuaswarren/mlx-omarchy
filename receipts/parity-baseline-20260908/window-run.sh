@@ -11,11 +11,10 @@ ROOT="$HOME/src/mlx-parity-baseline-20260908"
 cd "$ROOT"
 REC="receipts/parity-baseline-20260908"
 WHEEL_RELEASE="$ROOT/dist-parity-release/mlx_omarchy-0.32.2.dev202609081618+c254867-cp314-cp314-linux_aarch64.whl"
-WHEEL_DIAG="$ROOT/dist-parity-diag/mlx_omarchy-0.32.2.dev202609082046+diag.c254867-cp314-cp314-linux_aarch64.whl"
+SNAP="$HOME/.cache/huggingface/hub/models--mlx-community--Qwen2.5-0.5B-Instruct-4bit/snapshots/a5339a4131f135d0fdc6a5c8b5bbed2753bbe0f3"
 PYB="$ROOT/.venv-benchmark/bin/python"
 PYP="$ROOT/.venv-profile/bin/python"
 WHEEL_DIAG="$ROOT/dist-parity-diag/mlx_omarchy-0.32.2.dev202609081624+diag.c254867-cp314-cp314-linux_aarch64.whl"
-
 echo "== window start: $(date -u +%FT%TZ) =="
 uptime
 
