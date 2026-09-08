@@ -99,5 +99,6 @@
     }
   ],
   "wheel_sha256": "255c2f932569f4e794387adbef0b99394a933b42589cb7ec6e97cac6e3579e02",
-  "window_note": "attempt4 window; summary wheel_sha256 restored post-hoc from the identical wheel file"
+  "window_note": "attempt4 window; summary wheel_sha256 restored post-hoc from the identical wheel file",
+  "reps": 5
 }

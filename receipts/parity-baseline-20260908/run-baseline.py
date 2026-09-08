@@ -43,6 +43,7 @@ def main():
 
     summary = {
         "schema": "parity-baseline/1",
+        "reps": reps,
         "assignment": "first hardware window baseline at c2548675",
         "wheel": None,
         "pins": {"qwen25-0.5b-4bit": PIN_4BIT, "qwen25-0.5b-bf16": PIN_BF16},
