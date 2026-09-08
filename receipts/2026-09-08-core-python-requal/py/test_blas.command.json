@@ -1,0 +1,26 @@
+{
+  "env": {
+    "DEVICE": "gpu",
+    "MLX_OMARCHY_ALLOW_NON_APPLE": "1",
+    "LP_NUM_THREADS": "4",
+    "OMP_NUM_THREADS": "1",
+    "OPENBLAS_NUM_THREADS": "1",
+    "TF_NUM_INTEROP_THREADS": "1",
+    "TF_NUM_INTRAOP_THREADS": "1",
+    "MLX_ENABLE_TF32": "0"
+  },
+  "timeout_seconds": 1800,
+  "argv_head": [
+    "/home/joshuawarren/.config/superpowers/worktrees/mlx-omarchy/wave-core-python-requal/receipts/2026-09-08-core-python-requal/venv-pytest/bin/python",
+    "-m",
+    "pytest",
+    "/home/joshuawarren/.config/superpowers/worktrees/mlx-omarchy/wave-core-python-requal/.work/mlx/python/tests/test_blas.py"
+  ],
+  "pytest_args": [
+    "-v",
+    "--no-header",
+    "-p",
+    "no:cacheprovider",
+    "--junitxml=receipts/2026-09-08-core-python-requal/py/test_blas.xml"
+  ]
+}

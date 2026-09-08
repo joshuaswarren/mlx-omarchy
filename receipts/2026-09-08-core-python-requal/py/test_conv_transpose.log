@@ -1,0 +1,16 @@
+============================= test session starts ==============================
+collecting ... collected 10 items
+
+.work/mlx/python/tests/test_conv_transpose.py::TestConvTranspose::test_conv_transpose_unfold_tiling SKIPPED [ 10%]
+.work/mlx/python/tests/test_conv_transpose.py::TestConvTranspose::test_torch_conv_tranpose_1d_output_padding PASSED [ 20%]
+.work/mlx/python/tests/test_conv_transpose.py::TestConvTranspose::test_torch_conv_transpose_1D PASSED [ 30%]
+.work/mlx/python/tests/test_conv_transpose.py::TestConvTranspose::test_torch_conv_transpose_1D_grad PASSED [ 40%]
+.work/mlx/python/tests/test_conv_transpose.py::TestConvTranspose::test_torch_conv_transpose_2D PASSED [ 50%]
+.work/mlx/python/tests/test_conv_transpose.py::TestConvTranspose::test_torch_conv_transpose_2D_grad PASSED [ 60%]
+.work/mlx/python/tests/test_conv_transpose.py::TestConvTranspose::test_torch_conv_transpose_2d_output_padding PASSED [ 70%]
+.work/mlx/python/tests/test_conv_transpose.py::TestConvTranspose::test_torch_conv_transpose_3D PASSED [ 80%]
+.work/mlx/python/tests/test_conv_transpose.py::TestConvTranspose::test_torch_conv_transpose_3D_grad PASSED [ 90%]
+.work/mlx/python/tests/test_conv_transpose.py::TestConvTranspose::test_torch_conv_transpose_3d_output_padding PASSED [100%]
+
+- generated xml file: /home/joshuawarren/.config/superpowers/worktrees/mlx-omarchy/wave-core-python-requal/receipts/2026-09-08-core-python-requal/py/test_conv_transpose.xml -
+=================== 9 passed, 1 skipped in 182.37s (0:03:02) ===================

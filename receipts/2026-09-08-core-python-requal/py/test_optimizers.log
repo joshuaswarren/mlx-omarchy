@@ -1,0 +1,32 @@
+============================= test session starts ==============================
+collecting ... collected 26 items
+
+.work/mlx/python/tests/test_optimizers.py::TestOptimizers::test_adadelta PASSED [  3%]
+.work/mlx/python/tests/test_optimizers.py::TestOptimizers::test_adafactor PASSED [  7%]
+.work/mlx/python/tests/test_optimizers.py::TestOptimizers::test_adagrad PASSED [ 11%]
+.work/mlx/python/tests/test_optimizers.py::TestOptimizers::test_adam PASSED [ 15%]
+.work/mlx/python/tests/test_optimizers.py::TestOptimizers::test_adamw_matches_pytorch PASSED [ 19%]
+.work/mlx/python/tests/test_optimizers.py::TestOptimizers::test_compiled_optimizer PASSED [ 23%]
+.work/mlx/python/tests/test_optimizers.py::TestOptimizers::test_epsilon_validation PASSED [ 26%]
+.work/mlx/python/tests/test_optimizers.py::TestOptimizers::test_lion PASSED [ 30%]
+.work/mlx/python/tests/test_optimizers.py::TestOptimizers::test_muon PASSED [ 34%]
+.work/mlx/python/tests/test_optimizers.py::TestOptimizers::test_optimizer_state PASSED [ 38%]
+.work/mlx/python/tests/test_optimizers.py::TestOptimizers::test_optimizers PASSED [ 42%]
+.work/mlx/python/tests/test_optimizers.py::TestOptimizers::test_rmsprop PASSED [ 46%]
+.work/mlx/python/tests/test_optimizers.py::TestOptimizers::test_sgd PASSED [ 50%]
+.work/mlx/python/tests/test_optimizers.py::TestOptimizers::test_types_conserved PASSED [ 53%]
+.work/mlx/python/tests/test_optimizers.py::TestOptimizers::test_update_lr_compiled PASSED [ 57%]
+.work/mlx/python/tests/test_optimizers.py::TestSchedulers::test_clip_grad_norm PASSED [ 61%]
+.work/mlx/python/tests/test_optimizers.py::TestSchedulers::test_compile_with_schedule PASSED [ 65%]
+.work/mlx/python/tests/test_optimizers.py::TestSchedulers::test_cosine_decay PASSED [ 69%]
+.work/mlx/python/tests/test_optimizers.py::TestSchedulers::test_decay_lr PASSED [ 73%]
+.work/mlx/python/tests/test_optimizers.py::TestSchedulers::test_exponential_decay PASSED [ 76%]
+.work/mlx/python/tests/test_optimizers.py::TestSchedulers::test_init_from_state PASSED [ 80%]
+.work/mlx/python/tests/test_optimizers.py::TestSchedulers::test_linear_warmup_with_cosine_decay PASSED [ 84%]
+.work/mlx/python/tests/test_optimizers.py::TestSchedulers::test_multi_optimizer PASSED [ 88%]
+.work/mlx/python/tests/test_optimizers.py::TestSchedulers::test_multi_optimizer_with_parameterless_layers PASSED [ 92%]
+.work/mlx/python/tests/test_optimizers.py::TestSchedulers::test_schedule_joiner PASSED [ 96%]
+.work/mlx/python/tests/test_optimizers.py::TestSchedulers::test_step_decay PASSED [100%]
+
+- generated xml file: /home/joshuawarren/.config/superpowers/worktrees/mlx-omarchy/wave-core-python-requal/receipts/2026-09-08-core-python-requal/py/test_optimizers.xml -
+============================== 26 passed in 2.94s ==============================

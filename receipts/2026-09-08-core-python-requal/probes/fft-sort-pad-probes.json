@@ -1,0 +1,58 @@
+{
+  "fft_2p24_complex": {
+    "allclose": true,
+    "max_abs_err": 0.0056112525053322315
+  },
+  "irfft_2p24_out": {
+    "refused": true,
+    "message": "[omarchy] FFT output size is not implemented for the Omarchy Vulkan backend (dtype=float32, shape=[16777216]). No GPU kernel exists for it; no silent CPU fallback occurs. Run it on an explicit CPU stream to use the CPU i"
+  },
+  "sort_int64": {
+    "refused": true,
+    "message": "[omarchy] Sort dtype is not implemented for the Omarchy Vulkan backend (dtype=int64, shape=[1,5]). No GPU kernel exists for it; no silent CPU fallback occurs. R"
+  },
+  "sort_int32": {
+    "result": [
+      [
+        1,
+        3,
+        5,
+        7,
+        9
+      ]
+    ]
+  },
+  "pad_reflect_9_1": {
+    "got": [
+      1.0,
+      0.0,
+      1.0,
+      2.0,
+      1.0,
+      0.0,
+      1.0,
+      2.0,
+      1.0,
+      0.0,
+      1.0,
+      2.0,
+      1.0
+    ],
+    "expected": [
+      1.0,
+      0.0,
+      1.0,
+      2.0,
+      1.0,
+      0.0,
+      1.0,
+      2.0,
+      1.0,
+      0.0,
+      1.0,
+      2.0,
+      1.0
+    ],
+    "match": true
+  }
+}

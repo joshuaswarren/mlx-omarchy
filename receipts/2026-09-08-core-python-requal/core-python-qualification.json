@@ -1,0 +1,525 @@
+{
+  "schema_version": 1,
+  "qualification_scope": "software Vulkan/reference checks; not native parity",
+  "aggregate_junit_derived_counts": {
+    "tests": 612,
+    "passed": 584,
+    "failed": 3,
+    "skipped": 25
+  },
+  "execution": {
+    "assigned": 17,
+    "executed": 17,
+    "remaining_not_run": 0,
+    "started_at": "2026-09-08T12:44:50+00:00",
+    "finished_at": "2026-09-08T13:14:25+00:00",
+    "stopped_reason": null,
+    "environment": {
+      "DEVICE": "gpu",
+      "LOW_MEMORY": null,
+      "LP_NUM_THREADS": "4",
+      "MLX_ENABLE_TF32": "0",
+      "MLX_OMARCHY_ALLOW_NON_APPLE": "1",
+      "OMP_NUM_THREADS": "1",
+      "OPENBLAS_NUM_THREADS": "1",
+      "TF_NUM_INTEROP_THREADS": "1",
+      "TF_NUM_INTRAOP_THREADS": "1",
+      "CI": "unset for the test_ops.py re-run (see its record note); inherited as CI=true on the first pass",
+      "default_compilation_preserved": true,
+      "per_file_timeout_seconds": 1800
+    }
+  },
+  "interpreter_identity": {
+    "default_device": "Device(gpu, 0)",
+    "mlx": "0.32.2.dev202609081234+e3ee3c51",
+    "numpy": "2.2.6",
+    "python": "3.11.2",
+    "pytest": "8.3.5",
+    "tensorflow": "2.15.1 present but unimportable under numpy 2.2.6 (compiled against numpy 1.x); tf-guarded tests skip",
+    "torch": "2.14.0+cpu"
+  },
+  "wheel": {
+    "path": "dist/mlx_omarchy-0.32.2.dev202609081234+e3ee3c51-cp311-cp311-linux_x86_64.whl",
+    "sha256": "bd726ceb966e4b5463398e8bcf04666b2229d08c4d809116cc7ff7ce35e7f437",
+    "size_bytes": 7396108,
+    "build_command": "PATH=\"$HOME/.local/opt/glslang/bin:$PATH\" bash scripts/build-wheel.sh  (glslang 16.5 first on PATH; system glslang 12 cannot compile GL_KHR_cooperative_matrix)",
+    "build_log": "wheel-build.log"
+  },
+  "source": {
+    "mlx_omarchy_commit": "e3ee3c515df3bc07c0f37c5ac53c5dd564a31d1f",
+    "upstream_tests_commit": "1f8e74e3f12f31365464a6867c6579f0e9b29d85",
+    "prior_run": "receipts/2026-09-07-q4-second-wave/core-python-qualification.json (582 passed, 24 skipped, 6 failed at f5ba1c82)",
+    "wheel_provenance": {
+      "dist": "mlx-omarchy",
+      "verified": "match",
+      "mismatch": null,
+      "files": [
+        {
+          "path": "mlx/core.cpython-311-x86_64-linux-gnu.so",
+          "label": "mlx.core extension",
+          "sha256": "d8bfcf627df57a07a75fed49dd989ae5321323c5008cb768ea46f619409ca442",
+          "record_sha256": "d8bfcf627df57a07a75fed49dd989ae5321323c5008cb768ea46f619409ca442",
+          "match": true
+        },
+        {
+          "path": "mlx/lib/libmlx.so",
+          "label": "mlx/lib/libmlx.so",
+          "sha256": "9e7e30c443c3405d518128960134da0216009faf697496a6c301d358a3a4d9d4",
+          "record_sha256": "9e7e30c443c3405d518128960134da0216009faf697496a6c301d358a3a4d9d4",
+          "match": true
+        }
+      ],
+      "dist_version": "0.32.2.dev202609081234+e3ee3c51",
+      "mx_version": "0.32.2.dev202609081234+e3ee3c51",
+      "version_match": true,
+      "expected_wheel": "dist/mlx_omarchy-0.32.2.dev202609081234+e3ee3c51-cp311-cp311-linux_x86_64.whl"
+    }
+  },
+  "files": [
+    {
+      "file": "test_array.py",
+      "command": "receipts/2026-09-08-core-python-requal/py/test_array.command.json",
+      "log": "receipts/2026-09-08-core-python-requal/py/test_array.log",
+      "junit": "receipts/2026-09-08-core-python-requal/py/test_array.xml",
+      "rc": 0,
+      "status": "executed",
+      "started_at": "2026-09-08T12:44:50+00:00",
+      "finished_at": "2026-09-08T12:45:14+00:00",
+      "duration_seconds": 23.82,
+      "pytest_summary": "======================= 81 passed, 19 skipped in 22.72s ========================",
+      "junit_derived_counts": {
+        "tests": 100,
+        "passed": 81,
+        "failed": 0,
+        "skipped": 19
+      },
+      "failed_test_names": [],
+      "skip_reasons": []
+    },
+    {
+      "file": "test_autograd.py",
+      "command": "receipts/2026-09-08-core-python-requal/py/test_autograd.command.json",
+      "log": "receipts/2026-09-08-core-python-requal/py/test_autograd.log",
+      "junit": "receipts/2026-09-08-core-python-requal/py/test_autograd.xml",
+      "rc": 0,
+      "status": "executed",
+      "started_at": "2026-09-08T12:45:14+00:00",
+      "finished_at": "2026-09-08T12:45:20+00:00",
+      "duration_seconds": 5.976,
+      "pytest_summary": "============================== 54 passed in 5.07s ==============================",
+      "junit_derived_counts": {
+        "tests": 54,
+        "passed": 54,
+        "failed": 0,
+        "skipped": 0
+      },
+      "failed_test_names": [],
+      "skip_reasons": []
+    },
+    {
+      "file": "test_blas.py",
+      "command": "receipts/2026-09-08-core-python-requal/py/test_blas.command.json",
+      "log": "receipts/2026-09-08-core-python-requal/py/test_blas.log",
+      "junit": "receipts/2026-09-08-core-python-requal/py/test_blas.xml",
+      "rc": 0,
+      "status": "executed",
+      "started_at": "2026-09-08T12:45:20+00:00",
+      "finished_at": "2026-09-08T12:50:53+00:00",
+      "duration_seconds": 333.423,
+      "pytest_summary": "======================== 29 passed in 332.86s (0:05:32) ========================",
+      "junit_derived_counts": {
+        "tests": 29,
+        "passed": 29,
+        "failed": 0,
+        "skipped": 0
+      },
+      "failed_test_names": [],
+      "skip_reasons": []
+    },
+    {
+      "file": "test_conv.py",
+      "command": "receipts/2026-09-08-core-python-requal/py/test_conv.command.json",
+      "log": "receipts/2026-09-08-core-python-requal/py/test_conv.log",
+      "junit": "receipts/2026-09-08-core-python-requal/py/test_conv.xml",
+      "rc": 0,
+      "status": "executed",
+      "started_at": "2026-09-08T12:50:53+00:00",
+      "finished_at": "2026-09-08T12:51:21+00:00",
+      "duration_seconds": 27.425,
+      "pytest_summary": "======================== 19 passed, 1 skipped in 26.55s ========================",
+      "junit_derived_counts": {
+        "tests": 20,
+        "passed": 19,
+        "failed": 0,
+        "skipped": 1
+      },
+      "failed_test_names": [],
+      "skip_reasons": []
+    },
+    {
+      "file": "test_conv_transpose.py",
+      "command": "receipts/2026-09-08-core-python-requal/py/test_conv_transpose.command.json",
+      "log": "receipts/2026-09-08-core-python-requal/py/test_conv_transpose.log",
+      "junit": "receipts/2026-09-08-core-python-requal/py/test_conv_transpose.xml",
+      "rc": 0,
+      "status": "executed",
+      "started_at": "2026-09-08T12:51:21+00:00",
+      "finished_at": "2026-09-08T12:54:24+00:00",
+      "duration_seconds": 182.923,
+      "pytest_summary": "=================== 9 passed, 1 skipped in 182.37s (0:03:02) ===================",
+      "junit_derived_counts": {
+        "tests": 10,
+        "passed": 9,
+        "failed": 0,
+        "skipped": 1
+      },
+      "failed_test_names": [],
+      "skip_reasons": []
+    },
+    {
+      "file": "test_einsum.py",
+      "command": "receipts/2026-09-08-core-python-requal/py/test_einsum.command.json",
+      "log": "receipts/2026-09-08-core-python-requal/py/test_einsum.log",
+      "junit": "receipts/2026-09-08-core-python-requal/py/test_einsum.xml",
+      "rc": 0,
+      "status": "executed",
+      "started_at": "2026-09-08T12:54:24+00:00",
+      "finished_at": "2026-09-08T12:54:24+00:00",
+      "duration_seconds": 0.787,
+      "pytest_summary": "============================== 12 passed in 0.39s ==============================",
+      "junit_derived_counts": {
+        "tests": 12,
+        "passed": 12,
+        "failed": 0,
+        "skipped": 0
+      },
+      "failed_test_names": [],
+      "skip_reasons": []
+    },
+    {
+      "file": "test_fft.py",
+      "command": "receipts/2026-09-08-core-python-requal/py/test_fft.command.json",
+      "log": "receipts/2026-09-08-core-python-requal/py/test_fft.log",
+      "junit": "receipts/2026-09-08-core-python-requal/py/test_fft.xml",
+      "rc": 1,
+      "status": "executed",
+      "started_at": "2026-09-08T12:54:24+00:00",
+      "finished_at": "2026-09-08T13:02:24+00:00",
+      "duration_seconds": 479.974,
+      "pytest_summary": "============= 1 failed, 16 passed, 3 skipped in 479.14s (0:07:59) ==============",
+      "junit_derived_counts": {
+        "tests": 20,
+        "passed": 16,
+        "failed": 1,
+        "skipped": 3
+      },
+      "failed_test_names": [
+        "python.tests.test_fft.TestFFT::test_fft_big_powers_of_two"
+      ],
+      "skip_reasons": []
+    },
+    {
+      "file": "test_init.py",
+      "command": "receipts/2026-09-08-core-python-requal/py/test_init.command.json",
+      "log": "receipts/2026-09-08-core-python-requal/py/test_init.log",
+      "junit": "receipts/2026-09-08-core-python-requal/py/test_init.xml",
+      "rc": 0,
+      "status": "executed",
+      "started_at": "2026-09-08T13:02:24+00:00",
+      "finished_at": "2026-09-08T13:02:25+00:00",
+      "duration_seconds": 0.682,
+      "pytest_summary": "============================== 11 passed in 0.33s ==============================",
+      "junit_derived_counts": {
+        "tests": 11,
+        "passed": 11,
+        "failed": 0,
+        "skipped": 0
+      },
+      "failed_test_names": [],
+      "skip_reasons": []
+    },
+    {
+      "file": "test_linalg.py",
+      "command": "receipts/2026-09-08-core-python-requal/py/test_linalg.command.json",
+      "log": "receipts/2026-09-08-core-python-requal/py/test_linalg.log",
+      "junit": "receipts/2026-09-08-core-python-requal/py/test_linalg.xml",
+      "rc": 0,
+      "status": "executed",
+      "started_at": "2026-09-08T13:02:25+00:00",
+      "finished_at": "2026-09-08T13:02:26+00:00",
+      "duration_seconds": 1.337,
+      "pytest_summary": "============================== 18 passed in 1.03s ==============================",
+      "junit_derived_counts": {
+        "tests": 18,
+        "passed": 18,
+        "failed": 0,
+        "skipped": 0
+      },
+      "failed_test_names": [],
+      "skip_reasons": []
+    },
+    {
+      "file": "test_losses.py",
+      "command": "receipts/2026-09-08-core-python-requal/py/test_losses.command.json",
+      "log": "receipts/2026-09-08-core-python-requal/py/test_losses.log",
+      "junit": "receipts/2026-09-08-core-python-requal/py/test_losses.xml",
+      "rc": 0,
+      "status": "executed",
+      "started_at": "2026-09-08T13:02:26+00:00",
+      "finished_at": "2026-09-08T13:02:27+00:00",
+      "duration_seconds": 0.562,
+      "pytest_summary": "============================== 14 passed in 0.25s ==============================",
+      "junit_derived_counts": {
+        "tests": 14,
+        "passed": 14,
+        "failed": 0,
+        "skipped": 0
+      },
+      "failed_test_names": [],
+      "skip_reasons": []
+    },
+    {
+      "file": "test_nn.py",
+      "command": "receipts/2026-09-08-core-python-requal/py/test_nn.command.json",
+      "log": "receipts/2026-09-08-core-python-requal/py/test_nn.log",
+      "junit": "receipts/2026-09-08-core-python-requal/py/test_nn.xml",
+      "rc": 0,
+      "status": "executed",
+      "started_at": "2026-09-08T13:02:27+00:00",
+      "finished_at": "2026-09-08T13:02:30+00:00",
+      "duration_seconds": 2.817,
+      "pytest_summary": "============================== 73 passed in 2.11s ==============================",
+      "junit_derived_counts": {
+        "tests": 73,
+        "passed": 73,
+        "failed": 0,
+        "skipped": 0
+      },
+      "failed_test_names": [],
+      "skip_reasons": []
+    },
+    {
+      "file": "test_ops.py",
+      "command": "/home/joshuawarren/.config/superpowers/worktrees/mlx-omarchy/wave-core-python-requal/receipts/2026-09-08-core-python-requal/py/test_ops.command.json (re-run with CI unset via `env -u CI`; pytest/junit/wheel/env otherwise identical)",
+      "log": "/home/joshuawarren/.config/superpowers/worktrees/mlx-omarchy/wave-core-python-requal/receipts/2026-09-08-core-python-requal/py/test_ops.log",
+      "junit": "/home/joshuawarren/.config/superpowers/worktrees/mlx-omarchy/wave-core-python-requal/receipts/2026-09-08-core-python-requal/py/test_ops.xml",
+      "rc": 1,
+      "status": "executed",
+      "started_at": "2026-09-08T13:12:20+00:00",
+      "finished_at": "2026-09-08T13:14:25+00:00",
+      "duration_seconds": 124.86,
+      "pytest_summary": "============= 2 failed, 159 passed, 1 skipped in 124.86s (0:02:04) =============",
+      "junit_derived_counts": {
+        "tests": 162,
+        "passed": 159,
+        "failed": 2,
+        "skipped": 1
+      },
+      "failed_test_names": [
+        "python.tests.test_ops.TestOps::test_sin",
+        "python.tests.test_ops.TestOps::test_sort"
+      ],
+      "skip_reasons": [],
+      "note": "First pass ran with CI=true inherited from the agent shell, which skips test_hadamard (`skipIf(\"CI\" in os.environ)`). The pinned 2026-09-07 environment had no CI variable, so this file was re-run with CI unset; this record is the re-run."
+    },
+    {
+      "file": "test_optimizers.py",
+      "command": "receipts/2026-09-08-core-python-requal/py/test_optimizers.command.json",
+      "log": "receipts/2026-09-08-core-python-requal/py/test_optimizers.log",
+      "junit": "receipts/2026-09-08-core-python-requal/py/test_optimizers.xml",
+      "rc": 0,
+      "status": "executed",
+      "started_at": "2026-09-08T13:04:31+00:00",
+      "finished_at": "2026-09-08T13:04:35+00:00",
+      "duration_seconds": 3.929,
+      "pytest_summary": "============================== 26 passed in 2.94s ==============================",
+      "junit_derived_counts": {
+        "tests": 26,
+        "passed": 26,
+        "failed": 0,
+        "skipped": 0
+      },
+      "failed_test_names": [],
+      "skip_reasons": []
+    },
+    {
+      "file": "test_random.py",
+      "command": "receipts/2026-09-08-core-python-requal/py/test_random.command.json",
+      "log": "receipts/2026-09-08-core-python-requal/py/test_random.log",
+      "junit": "receipts/2026-09-08-core-python-requal/py/test_random.xml",
+      "rc": 0,
+      "status": "executed",
+      "started_at": "2026-09-08T13:04:35+00:00",
+      "finished_at": "2026-09-08T13:04:37+00:00",
+      "duration_seconds": 2.099,
+      "pytest_summary": "============================== 14 passed in 1.77s ==============================",
+      "junit_derived_counts": {
+        "tests": 14,
+        "passed": 14,
+        "failed": 0,
+        "skipped": 0
+      },
+      "failed_test_names": [],
+      "skip_reasons": []
+    },
+    {
+      "file": "test_reduce.py",
+      "command": "receipts/2026-09-08-core-python-requal/py/test_reduce.command.json",
+      "log": "receipts/2026-09-08-core-python-requal/py/test_reduce.log",
+      "junit": "receipts/2026-09-08-core-python-requal/py/test_reduce.xml",
+      "rc": 0,
+      "status": "executed",
+      "started_at": "2026-09-08T13:04:37+00:00",
+      "finished_at": "2026-09-08T13:04:47+00:00",
+      "duration_seconds": 9.961,
+      "pytest_summary": "============================== 13 passed in 9.62s ==============================",
+      "junit_derived_counts": {
+        "tests": 13,
+        "passed": 13,
+        "failed": 0,
+        "skipped": 0
+      },
+      "failed_test_names": [],
+      "skip_reasons": []
+    },
+    {
+      "file": "test_upsample.py",
+      "command": "receipts/2026-09-08-core-python-requal/py/test_upsample.command.json",
+      "log": "receipts/2026-09-08-core-python-requal/py/test_upsample.log",
+      "junit": "receipts/2026-09-08-core-python-requal/py/test_upsample.xml",
+      "rc": 0,
+      "status": "executed",
+      "started_at": "2026-09-08T13:04:47+00:00",
+      "finished_at": "2026-09-08T13:04:50+00:00",
+      "duration_seconds": 3.239,
+      "pytest_summary": "============================== 6 passed in 2.65s ===============================",
+      "junit_derived_counts": {
+        "tests": 6,
+        "passed": 6,
+        "failed": 0,
+        "skipped": 0
+      },
+      "failed_test_names": [],
+      "skip_reasons": []
+    },
+    {
+      "file": "test_vmap.py",
+      "command": "receipts/2026-09-08-core-python-requal/py/test_vmap.command.json",
+      "log": "receipts/2026-09-08-core-python-requal/py/test_vmap.log",
+      "junit": "receipts/2026-09-08-core-python-requal/py/test_vmap.xml",
+      "rc": 0,
+      "status": "executed",
+      "started_at": "2026-09-08T13:04:50+00:00",
+      "finished_at": "2026-09-08T13:04:51+00:00",
+      "duration_seconds": 0.873,
+      "pytest_summary": "============================== 30 passed in 0.56s ==============================",
+      "junit_derived_counts": {
+        "tests": 30,
+        "passed": 30,
+        "failed": 0,
+        "skipped": 0
+      },
+      "failed_test_names": [],
+      "skip_reasons": []
+    }
+  ],
+  "failure_clusters": [
+    {
+      "area": "FFT",
+      "classification": "intentional_named_refusal",
+      "cluster_id": "real-fft-extract-output-size-cap",
+      "failed_test_names": [
+        "tests.test_fft.TestFFT::test_fft_big_powers_of_two"
+      ],
+      "evidence": [
+        {
+          "lines": "5117-5119",
+          "observation": "The real-FFT extract path refuses out.size() > 65535*256 by name before any dispatch; the failing case is irfft with output [1,16777216] (2^24), 256 elements past the cap.",
+          "path": "overlay/mlx/backend/omarchy/primitives.cpp"
+        },
+        {
+          "observation": "Probe at this commit: complex fft on 2^24 points matches NumPy within the test's own tolerance (atol 1e-2, rtol 1e-3; max abs err 5.6e-3). The f5ba1c82 silent 8,191-bin stage miscompute is gone.",
+          "path": "probes/fft-sort-pad-probes.json (fft_2p24_complex)"
+        },
+        {
+          "observation": "Probe at this commit: irfft with 2^24 output returns the exact named refusal 'FFT output size is not implemented ... shape=[16777216]'.",
+          "path": "probes/fft-sort-pad-probes.json (irfft_2p24_out)"
+        },
+        {
+          "observation": "The output-size gate is new in this wave: `git show f5ba1c82:...primitives.cpp | grep -c 'output size'` = 0; the grid-stride commit 06116468 introduces it together with the grid-strided fft_stage dispatch.",
+          "path": "git history 06116468"
+        }
+      ],
+      "root_cause": "The wave-fft-stage-index fix grid-strides the elementwise FFT stages (complex 2^24 now computes correctly) but the one-thread-per-element real-FFT extract kernel still dispatches a single x dimension, so outputs above 65,535 x 256 refuse by name. The prior confirmed backend defect (silently wrong values at 2^24) is fixed; what remains is an explicit capability boundary, so this is no longer a wrong-value defect but the test stays red.",
+      "support_implication": "Real FFT (irfft/rfft) outputs above 16,776,960 elements are not qualified on software Vulkan; lifting the cap needs the same grid-stride treatment on the extract kernel. Not fixed here."
+    },
+    {
+      "area": "array/ops",
+      "classification": "intentional_named_refusal",
+      "cluster_id": "large-trig-named-refusal",
+      "failed_test_names": [
+        "tests.test_ops.TestOps::test_sin"
+      ],
+      "evidence": [
+        {
+          "observation": "The test receives the named Sin magnitude refusal at an input near 1e30 ('exceeds the built-in accuracy limit 100000'), same as the 2026-09-07 run.",
+          "path": "py/test_ops.log"
+        }
+      ],
+      "root_cause": "Unchanged from the prior run: this backend deliberately refuses real sin/cos above 1e5 because the driver's range reduction is untrusted there and the software Payne-Hanek path miscompiles.",
+      "support_implication": "Large-magnitude real sin/cos remains an explicit unsupported range, not a silent numerical implementation."
+    },
+    {
+      "area": "array/ops",
+      "classification": "unsupported_contract_with_inconsistent_full_file_symptom",
+      "cluster_id": "sort-final-oracle-uses-unsupported-int64",
+      "failed_test_names": [
+        "tests.test_ops.TestOps::test_sort"
+      ],
+      "evidence": [
+        {
+          "observation": "Isolated probe: int64 sort returns the exact named refusal 'Sort dtype is not implemented ... dtype=int64'; the identical int32 input sorts correctly.",
+          "path": "probes/fft-sort-pad-probes.json (sort_int64, sort_int32)"
+        },
+        {
+          "observation": "The full-file run fails the final zero-stride section with a bare 'AssertionError: False is not true', not the named refusal, exactly as the prior run recorded.",
+          "path": "py/test_ops.log"
+        }
+      ],
+      "root_cause": "Unchanged from the prior run: all typed sort subtests pass; the final section builds its oracle without dtype, producing int64, which the Omarchy sort contract excludes; the full-file symptom remains state-dependent.",
+      "support_implication": "Do not convert this outcome into an int64-sort support claim; int64 sorting remains unsupported."
+    }
+  ],
+  "resolved_since_prior_run": [
+    {
+      "prior_cluster": "complex-abs-broadcast-strides (tests.test_fft.TestFFT::test_fft_contiguity, confirmed_backend_defect at f5ba1c82)",
+      "resolution": "PASSES. Fixed by e91d0067 'Materialize non-row-contiguous complex input in dispatch_complex_extract' (wave/complex-extract-layout, merged in e3ee3c51).",
+      "evidence": "py/test_fft.log: test_fft_contiguity PASSED; 16 of 20 fft tests pass, the only failure is the 2^24 real-FFT boundary above."
+    },
+    {
+      "prior_cluster": "numpy-1-26-unstack-oracle-missing (tests.test_ops.TestOps::test_unstack, invalid_oracle at f5ba1c82)",
+      "resolution": "PASSES. This run uses NumPy 2.2.6 per the prior receipt's own recommendation, so the oracle exists and the test runs.",
+      "evidence": "py/test_ops.log: test_unstack PASSED; consistent with receipts/2026-09-07-q4-second-wave/numpy2-unstack.json at f5ba1c8."
+    },
+    {
+      "prior_cluster": "reflect-pad-multireflect-phase (tests.test_ops.TestOps::test_pad_reflect_symmetric, confirmed_operation_defect at f5ba1c82)",
+      "resolution": "PASSES. The exact clean repro recorded by the prior receipt ([0,1,2], reflect, pad [(9,1)]) now matches np.pad element for element, and the full test passes in the file run. No commit in f5ba1c82..e3ee3c51 touches reflect_pad; the cause of the prior failure is not established from this run. Candidate transitive causes are the two transport/broadcast waves (217ad5a1 broadcast masks in GPU evaluation; e91d0067 complex extract materialization); this receipt records the state change, not a mechanism claim.",
+      "evidence": "py/test_ops.log: test_pad_reflect_symmetric PASSED; probes/fft-sort-pad-probes.json (pad_reflect_9_1 match=true)."
+    }
+  ],
+  "deviations_from_prior_protocol": [
+    "NumPy 2.2.6 instead of 1.26.4, per the prior receipt's invalid_oracle finding and this assignment, so test_unstack runs its oracle.",
+    "Consequence: system tensorflow 2.15.1 is compiled against numpy 1.x and cannot import under numpy 2.2.6; one previously passing test (test_array.py::test_buffer_protocol_tf) now skips with the other 18 torch-MPS skips. 25 skips total vs 24 prior.",
+    "pytest pinned to 8.3.5: pytest 9.1.1 emits subtests as separate junit testcases (227 entries for test_array vs the prior schema's 100); 8.3.5 reproduces the prior junit semantics exactly.",
+    "test_hadamard: first pass inherited CI=true from the agent shell, which upstream's skipIf('CI' in os.environ) turns into a skip; the pinned prior environment had no CI variable, so test_ops.py was re-run with CI unset and that record is reported.",
+    "torch pinned to 2.14.0+cpu to match the prior run's interpreter identity (system default was 2.4.0+cu121)."
+  ],
+  "known_defects_ledger": "docs/known-defects.md lists none of the defects whose state changed in this run (the FFT stage dispatch, complex extract, and reflect-pad items were tracked in the prior qualification receipt, not the ledger); no ledger edit is required.",
+  "pytest_venv_recipe": [
+    "python3 -m venv --system-site-packages receipts/2026-09-08-core-python-requal/venv-pytest  (disposable; not committed)",
+    "pip install numpy==2.2.6 pytest==8.3.5",
+    "pip install torch==2.14.0 --index-url https://download.pytorch.org/whl/cpu",
+    "pip install --force-reinstall --no-deps <wheel>",
+    "scripts/mlx_provenance.py --expect-wheel <wheel> + source-stamp check (python-provenance.json)"
+  ]
+}
