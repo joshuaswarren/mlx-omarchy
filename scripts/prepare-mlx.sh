@@ -62,6 +62,8 @@ patch --directory="$STAGING_DIR" --strip=1 --forward --fuzz=0 \
   < "$ROOT/patches/mlx-fast-bool-mask-floor.patch"
 patch --directory="$STAGING_DIR" --strip=1 --forward --fuzz=0 \
   < "$ROOT/patches/mlx-version-time.patch"
+patch --directory="$STAGING_DIR" --strip=1 --forward --fuzz=0 \
+  < "$ROOT/patches/mlx-reflect-pad-phase.patch"
 
 rm -rf "$SOURCE_DIR"
 mv "$STAGING_DIR" "$SOURCE_DIR"
