@@ -1,0 +1,16 @@
+[child/reopen] fresh process device reopen ok
+[child/reused_slot_blocked_dependency] [omarchy] Vulkan timeline counter failed to advance for 200 ms (last observed=8, target=9). The device may be hung; no CPU fallback is available.
+[child/unrelated_work_event_wait] [omarchy] Vulkan timeline counter failed to advance for 100 ms (last observed=0, target=1). The device may be hung; no CPU fallback is available.
+[child/completed_marker_behind_handler] [omarchy] Vulkan timeline counter failed to advance for 100 ms (last observed=2, target=3). The device may be hung; no CPU fallback is available.
+[child/long_matmul_progress] valid matmul completed
+[child/watchdog_teardown] submit completed before the watchdog fired; teardown is the assertion
+[doctest] doctest version is "2.4.12"
+[doctest] run with "--help" for options
+Skipping: a qualifying GPU is present; the refusal path is exercised by the classification tests and this test is meaningless there.
+[receipt] compute queue families expose 1 queue(s)
+[receipt] device exposes 1 queue(s); measuring overlap on one VkQueue
+[receipt] iters=278 serialized_median=0.251997s concurrent_median=0.219406s ratio=1.14854
+===============================================================================
+[doctest] test cases:    41 |    41 passed | 0 failed | 0 skipped
+[doctest] assertions: 22694 | 22694 passed | 0 failed |
+[doctest] Status: SUCCESS!

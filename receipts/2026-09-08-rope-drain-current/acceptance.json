@@ -1,0 +1,26 @@
+{
+  "decision": "Accept removal of the BF16-only host-constant RoPE synchronization workaround",
+  "measured_source_commit": "770ae4653655c2be08b7bcca9649cbb26cb3983f",
+  "integration_source_commit": "7db839eb",
+  "integration_cleanup": "Only experimental comments removed from measured source; no executable changes after measurement.",
+  "baseline_commit": "c19e1ecd59511adff8153fd3d7ea902acdee3a7d",
+  "paired_repetitions": 5,
+  "measured_legs": 60,
+  "additional_poisoned_legs": 6,
+  "all_full_generated_ids_equal": true,
+  "parent_validation": "All 66 legs checked for complete ID equality, token counts, matching record digests, clean contention status, AC power, wheel provenance match and finite positive timing metrics.",
+  "cpp_verification": {"fast_op_cases":33,"runtime_cases":41,"failed":0,"skipped":0},
+  "bf16_decode_tokens_per_second": {
+    "short": {"baseline":8.55,"candidate":10.60,"gain_percent":23.98},
+    "long": {"baseline":8.34,"candidate":10.23,"gain_percent":22.66},
+    "ctx1024": {"baseline":7.67,"candidate":9.38,"gain_percent":22.29}
+  },
+  "bf16_prefill_tokens_per_second": {
+    "short": {"baseline":55.866,"candidate":68.493},
+    "long": {"baseline":235.4,"candidate":256.611},
+    "ctx1024": {"baseline":297.374,"candidate":296.036}
+  },
+  "ownership": "Current dispatch bindings stamp buffer ownership before submission, and allocator free quarantines pending/in-flight buffers until completion cleanup. This protects reused scalar storage; the exact writer in the historical September 4 corruption was not isolated.",
+  "retained_guards": "Non-host-constant scalar offsets, vector offsets and GPU-provided frequencies retain synchronization. Trig limits, shader arithmetic, and numerical acceptance gates unchanged.",
+  "remaining_gap": "Full native parity remains unmet: three of six native generated-ID digests match, and all measured native throughput targets remain above the accepted build."
+}

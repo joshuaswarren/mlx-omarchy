@@ -9390,11 +9390,6 @@ void rope_trig_gate(
     // token (receipts/2026-09-04-rope-gate-drain.md).
     bool host_constant = offset.status() == array::Status::available &&
         !offset.has_primitive();
-    // EXPERIMENTAL (rope-drain-candidate): the bf16-only drain is removed.
-    // receipts/2026-09-04-rope-gate-drain.md recorded unexpected scalar
-    // writes under bf16 without the drain; allocator/queue lifetime has
-    // since changed. This candidate exists to re-measure, not to claim
-    // the defect fixed.
     if (!host_constant) {
       omarchy::get_command_encoder(stream).synchronize();
     }
