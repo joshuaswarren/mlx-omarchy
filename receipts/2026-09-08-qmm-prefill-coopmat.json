@@ -1,0 +1,122 @@
+{
+  "date": "2026-09-08",
+  "title": "Q4 prefill QuantizedMatmul on the Honeykrisp 8x8x8 fp32 cooperative matrix, gated by capability",
+  "branch": "wave/qmm-prefill-coopmat",
+  "parent_main": "e3ee3c51",
+  "source_commit": "5935a011",
+  "prior_receipts": [
+    "receipts/2026-09-08-coopmat-dense.json",
+    "receipts/2026-09-07-honeykrisp-coopmat.json"
+  ],
+  "change": {
+    "kernel": "QmmPrefillCoopmatF16 (overlay/mlx/backend/omarchy/shaders/qmm_coopmat.comp)",
+    "scope": "QuantizedMatmul, matrix_m > 1, transposed affine 4-bit / group-64, f16 x and output (the Qwen2.5-0.5B-4bit layout); decode (matrix_m == 1), other bit widths, group sizes, dtypes, and the non-transposed layout are untouched",
+    "design": "one 32-lane subgroup per workgroup owns a 32x32 output tile as 4x4 fp32 8x8 accumulators; per 8-wide k step the lanes stage the x rows as f32 (unpackHalf2x16 from a 32-bit word view) and the weight block dequantized once (the REGISTER_BLOCK qmm_tile.comp packed-word unpack, one scale/bias load per 64-wide group) into 2 KiB of shared memory; coopMatLoad reads both from shared, 16 coopMatMulAdd per step; the finished tile drains through shared one 8-row block at a time, rounds to f16 once, and masks the m and n tails",
+    "numerics": "dequantized weights stay f32 inside the dot (the qmm_tile.comp contract); the matrix unit sums the 8-wide products in its own order, so there is no bitwise pin against the tile - the host-reference bound is the contract",
+    "gate": "existing register-block gate (MLX_OMARCHY_QMM_TILE and _RB not '0', float16 output, transpose_, bits 4, group 64) && cooperative_matrix_f32_8 && subgroup_size == 32 && 2 KiB <= max_compute_shared_memory_size && lhs_offset % 2 == 0 && output_offset % 2 == 0 && !MLX_OMARCHY_NO_COOPMAT; every other case dispatches QmmTileRbF16 exactly as before. No new env switch.",
+    "files": [
+      "overlay/mlx/backend/omarchy/shaders/qmm_coopmat.comp (new)",
+      "overlay/mlx/backend/omarchy/CMakeLists.txt (qmm_coopmat_f16)",
+      "overlay/mlx/backend/omarchy/compute.h / compute.cpp (ComputeKernel::QmmPrefillCoopmatF16, appended before Count)",
+      "overlay/mlx/backend/omarchy/primitives.cpp (QuantizedMatmul::eval_gpu register-block branch)",
+      "overlay/tests/omarchy/test_matmul_family.cpp (new case; register-block bitwise pin skipped on a coopmat device)",
+      "docs/compatibility.md"
+    ]
+  },
+  "occupancy_finding": {
+    "first_cut": "staged a whole 64-wide k chunk per subgroup: x_s 32x64 + w_s 64x32 + o_s 32x32 floats = 20 KiB shared. Correct (same host-reference errors) but 0.55x the register-blocked tile in bench_decode prefill (short 97.3 -> 78.7, long 254.4 -> 158.1, ctx1024 272.6 -> 169.4 tok/s, five pairs each) and 126-154 GFLOP/s in the microbenchmark against the tile's 211-279. Threadgroup memory bounds occupancy on AGX (32 KiB per core), so 20 KiB per 32-lane workgroup left one subgroup per core.",
+    "kept": "2 KiB shared (one 32x8 x step + one 8x32 weight step, output drained through x_s): 764-832 GFLOP/s at m=1053 in the same microbenchmark. Do not re-try the big-shared design; the win is occupancy, not the MMA."
+  },
+  "test": {
+    "file": "overlay/tests/omarchy/test_matmul_family.cpp",
+    "case": "qmm coopmat prefill matches host reference at Qwen shapes",
+    "shapes": "m in {8, 32, 262, 1053} x (k, n) in {896x896, 896x4864, 4864x896, 896x128}, f16, affine 4-bit / group 64, transposed",
+    "bound": "the qmm tile anchor bound: (3k + 1) * 2 * max_abs * 2^-23 + 2 * max_abs * 2^-11 (same derivation and tolerance as 'qmm tile matches host reference and qmm.comp across prefill shapes'; not loosened)",
+    "max_abs_err_coopmat_vs_host": {
+      "896x896": {"m8": 0.0602875, "m32": 0.0607452, "m262": 0.0624542, "m1053": 0.0623932},
+      "896x4864": {"m8": 0.0622406, "m32": 0.0623932, "m262": 0.0623932, "m1053": 0.062561},
+      "4864x896": {"m8": 0.121582, "m32": 0.124359, "m262": 0.125031, "m1053": 0.125458},
+      "896x128": {"m8": 0.0312576, "m32": 0.0474854, "m262": 0.0619354, "m1053": 0.0617523}
+    },
+    "rel_err_range_coopmat": "0.000226 - 0.000383 (max_abs_err / max |value|)",
+    "bound_range": "0.2239 - 2.0408",
+    "tile_vs_host_same_case": "identical to three digits on every shape (llvmpipe and M1 stock legs); the difference is in the f16 output rounding of the same sums",
+    "register_block_case_on_coopmat_device": "candidate_vs_baseline_max 0 at k in {64, 128, 192} (bitwise equal after f16 rounding); the CHECK_EQ pin is only asserted off a coopmat device"
+  },
+  "legs": {
+    "llvmpipe": {
+      "host": "x86_64 dev box, AMD EPYC 7443P, Mesa llvmpipe, glslang 16.5.0 release binary (system glslang 12.0.0 cannot compile GL_KHR_cooperative_matrix)",
+      "configure": "cmake -S .work/mlx -B .work/build -DMLX_BUILD_OMARCHY=ON -DMLX_BUILD_CPU=ON -DMLX_BUILD_METAL=OFF -DMLX_BUILD_CUDA=OFF -DMLX_BUILD_TESTS=ON -DMLX_BUILD_EXAMPLES=OFF -DMLX_BUILD_BENCHMARKS=OFF -DMLX_BUILD_PYTHON_BINDINGS=OFF -DOMARCHY_GLSLANG=$HOME/.local/opt/glslang/bin/glslangValidator",
+      "build": "cmake --build .work/build --target omarchy_matmul_family_tests omarchy_runtime_tests -j6",
+      "env": "MLX_OMARCHY_ALLOW_NON_APPLE=1 LP_NUM_THREADS=4",
+      "capability": {"cooperative_matrix_f32_8": 0, "subgroup_size": 8},
+      "suites_final_commit": {
+        "omarchy_matmul_family_tests": {"cases": "15/15", "assertions": "18430759/18430759", "exit": 0},
+        "omarchy_runtime_tests": {"cases": "40/40", "assertions": "6304/6304", "exit": 0},
+        "note": "the shader is not dispatched on llvmpipe (capability 0); identical counts on the first-cut commit"
+      },
+      "new_case_path": "QmmTileRbF16 on all 16 shapes, every case under the bound"
+    },
+    "m1_stock": {
+      "host": "jwm1-linux, Apple M1 (G13G B1), kernel 7.1.6-1-1-ARCH, Mesa 26.1.7 Honeykrisp, Vulkan API 1.4.354, glslc 2026.3, GCC 16.1.1",
+      "tree": "/home/joshuawarren/src/mlx-qmm-prefill-coopmat-20260908 (rsync of the worktree)",
+      "configure": "same as llvmpipe minus OMARCHY_GLSLANG, plus -DCMAKE_BUILD_TYPE=Release",
+      "capability": {"cooperative_matrix_f32_8": 0, "subgroup_size": 32},
+      "suites_final_commit": {
+        "omarchy_matmul_family_tests -tc='qmm coopmat prefill*,qmm packed-word*,qmm tile matches*'": {"cases": "3/3", "assertions": "18396232/18396232", "exit": 0}
+      },
+      "new_case_path": "QmmTileRbF16 on all 16 shapes"
+    },
+    "m1_coopmat": {
+      "driver": "Honeykrisp Mesa 26.3.0-devel (git-5bb2b28c95), branch honeykrisp-coopmat of github.com:joshuaswarren/mesa.git, Vulkan API 1.4.359",
+      "env": "VK_ICD_FILENAMES=/tmp/asahi_coopmat_icd.json AGX_SIMDMAT=1",
+      "icd_library": "/home/joshuawarren/src/mesa-coopmat/build/src/asahi/vulkan/libvulkan_asahi.so",
+      "capability": {"cooperative_matrix_f32_8": 1, "subgroup_size": 32},
+      "gpu_lock": "every GPU run wrapped in flock /tmp/m1-gpu.lock (four sibling Mesa agents share the machine)",
+      "suites_final_commit": {
+        "omarchy_matmul_family_tests": {"cases": "15/15", "assertions": "18429121/18429121", "exit": 0},
+        "omarchy_runtime_tests": {"cases": "40/40", "assertions": "6307/6307", "exit": 0}
+      },
+      "new_case_path": "QmmPrefillCoopmatF16 on all 16 shapes, every case under the bound"
+    }
+  },
+  "benchmark": {
+    "method": "scripts/bench_decode.py through a throwaway driver (/tmp/qmmcm_bench.py on the M1, not committed): mlx-community/Qwen2.5-0.5B-Instruct-4bit revision a5339a4131f135d0fdc6a5c8b5bbed2753bbe0f3, the three README prefill workloads from scripts/bench_matrix.json (short 'Hi' 30 prompt tokens / 32 generated, long 262 / 128, ctx1024 1053 / 32), MLX_DISABLE_COMPILE=1, greedy, seed 0, 4 warm-up tokens, --wheel provenance gate. Five alternating process pairs per workload on the coopmat ICD: gate off (MLX_OMARCHY_NO_COOPMAT=1) then gate on, plus one stock Mesa 26.1.7 process per workload. Each pair waited for the 1-minute load average below 1.5 (observed 0.00-0.43 before every pair, 0.07-0.43 after) with no model or test process running; AC power on. Medians of five; paired gain is the median of the five on/off ratios.",
+    "wheel": "dist/mlx_omarchy-0.32.2.dev202609081308+5935a01-cp314-cp314-linux_aarch64.whl (scripts/build-wheel.sh with DEV_RELEASE=1 MLX_OMARCHY_SOURCE_COMMIT=5935a01; provenance line 'mlx-omarchy 0.32.2.dev202609081308+5935a01 ... verified=match libmlx.so=sha256:f97519fcfe96223b' on every run; both sides of every pair are the same wheel with the env toggle, which is the intended A/B here)",
+    "venv": "~/venv-qmmcm (python 3.14, mlx-lm 0.31.3)",
+    "table_prefill_tok_s": {
+      "short_30_32":    {"stock_mesa_26.1.7": 97.63,  "coopmat_icd_gate_off": 98.74,  "coopmat_icd_gate_on": 114.94, "paired_gain_median": 1.175},
+      "long_262_128":   {"stock_mesa_26.1.7": 254.45, "coopmat_icd_gate_off": 254.80, "coopmat_icd_gate_on": 461.52, "paired_gain_median": 1.811},
+      "ctx1024_1053_32": {"stock_mesa_26.1.7": 272.72, "coopmat_icd_gate_off": 272.70, "coopmat_icd_gate_on": 515.83, "paired_gain_median": 1.893}
+    },
+    "table_decode_tok_s": {
+      "short_30_32":    {"stock": 70.28, "off": 70.16, "on": 70.16},
+      "long_262_128":   {"stock": 59.19, "off": 59.09, "on": 59.06},
+      "ctx1024_1053_32": {"stock": 42.05, "off": 42.31, "on": 42.51}
+    },
+    "per_run_prefill_tok_s": {
+      "off": {"short": [97.70, 99.48, 98.74, 98.08, 100.36], "long": [255.26, 255.76, 254.80, 254.79, 254.21], "ctx1024": [272.70, 271.29, 273.11, 273.32, 272.54]},
+      "on":  {"short": [114.94, 114.35, 116.02, 114.86, 117.90], "long": [463.57, 464.62, 454.75, 461.52, 450.10], "ctx1024": [516.26, 515.83, 518.55, 513.79, 514.07]}
+    },
+    "generated_ids": {
+      "short": "sha256:7fd25a869ff21678 n=32 (identical in all 5 pairs and the stock run)",
+      "long": "sha256:4cc08910089477fd n=128 (identical in all 5 pairs and the stock run)",
+      "ctx1024": "sha256:7da83f06ec9f001d n=32 (identical in all 5 pairs and the stock run)"
+    },
+    "stock_unchanged": "stock Mesa 26.1.7 (capability 0) on the same wheel matches the gate-off leg within run noise on all three workloads and produces the same token ids",
+    "microbenchmark_gflops": {
+      "method": "throwaway /tmp/qmm_bench.cpp linked against the M1 Release .work/build libmlx.a: quantized_matmul(f16 x [m,k], quantize(w, 64, 4), transpose) at the four (k, n) pairs, 2 warm evals, 8 timed evals with synchronize, median; not committed",
+      "tile_gate_off": {"896x896": {"m30": 48.4, "m262": 211.1, "m1053": 264.7}, "896x4864": {"m30": 192.7, "m262": 247.1, "m1053": 278.6}, "4864x896": {"m30": 132.7, "m262": 232.2, "m1053": 273.3}, "896x128": {"m30": 11.9, "m262": 102.3, "m1053": 186.1}},
+      "coopmat_20kib_first_cut": {"896x896": {"m30": 62.7, "m262": 126.1, "m1053": 147.3}, "896x4864": {"m30": 112.8, "m262": 138.2, "m1053": 153.8}, "4864x896": {"m30": 73.8, "m262": 124.1, "m1053": 135.3}, "896x128": {"m30": 11.3, "m262": 63.6, "m1053": 111.4}},
+      "coopmat_2kib_kept": {"896x896": {"m30": 92.6, "m262": 462.4, "m1053": 764.1}, "896x4864": {"m30": 400.4, "m262": 692.4, "m1053": 832.1}, "4864x896": {"m30": 140.8, "m262": 572.4, "m1053": 828.5}, "896x128": {"m30": 12.4, "m262": 100.4, "m1053": 377.3}},
+      "note": "the 2 KiB microbenchmark ran with sibling Mesa builds loading the CPU (load 2.6-3.1), which is why it is not the headline; the bench_decode pairs above were taken under the load rule"
+    }
+  },
+  "limitations": [
+    "Only the transposed affine 4-bit/group-64 f16 prefill path; other quantization modes, bf16/f32 activations, the non-transposed layout, and decode keep their current kernels.",
+    "Stock Mesa 26.1.7 users get the register-blocked tile until the honeykrisp-coopmat branch merges upstream; the capability is false there and on llvmpipe.",
+    "The 30-token prefill gains only 1.17x: with one 32-row tile the 896-wide projections dispatch 28 subgroups, too few to fill the GPU; a k-split or a narrower tile at small m is the next lever.",
+    "An f16-A/B variant on the 16x16x16 shape (hk/coopmat-shapes) was considered and rejected with Main: it would round scale*q+bias to f16 before the product, which the qmm kernels explicitly refuse.",
+    "The bench driver and microbenchmark binaries were built outside CMake from the same tree; they are not committed."
+  ]
+}
