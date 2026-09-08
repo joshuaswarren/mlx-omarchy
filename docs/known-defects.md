@@ -14,7 +14,35 @@ Two of the worst v0.3.0 defects never appeared on a Linux development box. They 
 
 Observed on M1 Honeykrisp in v0.3.7 (`417c06e6`) and `f5ba1c82`. Both installed wheels return `1.0986121892929077` for `log(3)`, while the correctly rounded host float32 value is `1.0986123085021973`. This fails upstream's exact-equality assertion for an irregularly strided input. The full native C++ run at `f5ba1c82` passes 250 of 251 cases; the failing case remains open. [Values, bit patterns, and native suite logs](../receipts/2026-09-07-q4-second-wave/native-log-gap.json).
 
+### Complex tan at fl(pi/2) needs the precise-math Honeykrisp trig
+
+Observed on: real M1, stock Honeykrisp Mesa 26.1.7. The builtin
+`cos(1.5707964f)` returns exactly 0 (the true value is -4.3711e-8, and
+the Vulkan envelope for `cos` is 2^-11 absolute, so this is not a
+driver defect), which turns complex `tan(fl(pi/2) + 0i)` into NaN
+instead of -2.2877e7. The `hk/precise-math` fork trig (`979453d`,
+merged in `honeykrisp-omarchy-e10be72`) reduces exactly and the value
+matches the host. `test_complex_ops` probes the builtin at that point
+and skips the single pin by name on drivers that return 0. Receipt:
+[`receipts/2026-09-08-m1-complex-ops.json`](../receipts/2026-09-08-m1-complex-ops.json).
+
 ## Fixed in development
+
+### Complex scaling divided by magnitudes above 2^126 and read zero
+
+Observed on: real M1, Honeykrisp 26.1.7 and the coopmat fork. Status:
+FIXED in `wave/m1-complex-ops`. `FLT_MAX / FLT_MAX` is 0 on AGX: the
+division is `a * rcp(b)` and the reciprocal underflows to a flushed
+denormal; Vulkan only promises `fdiv` for divisors up to 2^126.
+`complex_elementwise.comp` normalized by the largest component with
+that division, so `log`, `sqrt`, `arctan`, `sign`, and `log1p` of
+inputs near `FLT_MAX` lost the scaled term (log(FLT_MAX + i FLT_MAX)
+read ln(FLT_MAX), sqrt(FLT_MAX) read (0, NaN)). The shader now scales
+through `frexp`/`ldexp`, exact for any finite magnitude. In the same
+shader, NIR's inexact constant reassociation hoisted the 0.5 in the
+large-argument `sinh`/`cosh` path past both `exp(|x|/2)` multiplies
+and overflowed at x = 89; the product is `precise` now. Receipt as
+above.
 
 ### AGX float division is one ulp off the correctly rounded quotient
 

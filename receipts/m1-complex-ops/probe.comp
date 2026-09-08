@@ -1,0 +1,30 @@
+#version 450
+layout(local_size_x = 64) in;
+layout(std430, binding = 0) readonly buffer In { vec4 v[]; } inp;
+layout(std430, binding = 1) writeonly buffer Out { float o[]; } outp;
+void main() {
+  uint i = gl_GlobalInvocationID.x;
+  vec4 x = inp.v[i];
+  float a = x.x, b = x.y, c = x.z, d = x.w;
+  int e;
+  float m = frexp(b, e);
+  float h = exp(d);
+  vec2 f = vec2(c, c) * 0.25;
+  vec2 v = (f * h) * h;
+  outp.o[i * 16 + 0] = a / b;
+  outp.o[i * 16 + 1] = 1.0 / b;
+  outp.o[i * 16 + 2] = a * (1.0 / b);
+  outp.o[i * 16 + 3] = h;
+  outp.o[i * 16 + 4] = v.x;
+  outp.o[i * 16 + 5] = intBitsToFloat(int(a));
+  outp.o[i * 16 + 6] = ldexp(a, -e) / m;
+  outp.o[i * 16 + 7] = 4.0 / b;
+  outp.o[i * 16 + 8] = length(vec2(a, c) / b);
+  outp.o[i * 16 + 9] = uintBitsToFloat(uint(a));
+  outp.o[i * 16 + 10] = float(e);
+  outp.o[i * 16 + 11] = m;
+  outp.o[i * 16 + 12] = (c * h) * h;
+  outp.o[i * 16 + 13] = c * (h * h);
+  outp.o[i * 16 + 14] = intBitsToFloat(int(b));
+  outp.o[i * 16 + 15] = a * b;
+}
