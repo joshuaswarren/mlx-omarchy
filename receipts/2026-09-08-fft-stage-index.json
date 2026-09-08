@@ -1,0 +1,66 @@
+{
+  "schema_version": 1,
+  "wave": "fft-stage-index",
+  "date": "2026-09-08",
+  "source": {
+    "parent_main_commit": "4e116e54",
+    "branch": "wave/fft-stage-index",
+    "upstream_lock": "mlx-0.32.2-1f8e74e3f12f31365464a6867c6579f0e9b29d85.tar.gz"
+  },
+  "runtime": {
+    "kind": "x86_64 llvmpipe (software Vulkan, lavapipe ICD libvulkan_lvp.so)",
+    "kernel": "6.17.2-1-pve",
+    "mesa_vulkan_drivers": "22.3.6-1+deb12u2",
+    "vulkan_loader": "1.3.239.0-1",
+    "shader_compiler": "glslangValidator 12.0.0 (x86 dev box; M1 glslc not exercised per wave constraints)",
+    "env": ["MLX_OMARCHY_ALLOW_NON_APPLE=1", "LP_NUM_THREADS=4"]
+  },
+  "defect": {
+    "cluster": "fft-stage-multidimensional-dispatch-indexing",
+    "reference": "receipts/2026-09-07-q4-second-wave/core-python-qualification.json",
+    "symptom": "Upstream test_fft_big_powers_of_two (2^24) failed with 8,191 wrong bins; the final expected nonzero bins read 0+0j.",
+    "cause": "dispatch_fft_stage split an elementwise FFT stage across x/y/z workgroup dimensions once a stage needed more than 65,535 x groups (n = 2^24 needs 65,536 groups of 256), but fft_stage.comp indexed only gl_GlobalInvocationID.x, so with more than one y group it reprocessed the first 65,535*256 element addresses and never wrote the trailing 256 elements of every full-length stage output, including the final destination."
+  },
+  "change": [
+    "overlay/mlx/backend/omarchy/shaders/fft_stage.comp: per-element body moved into process(uint p); main() grid-strides over params.count with stride = gl_NumWorkGroups.x * gl_WorkGroupSize.x, the same >65,535-group convention as elementwise.comp.",
+    "overlay/mlx/backend/omarchy/primitives.cpp: dispatch_fft_stage now dispatches one x dimension capped by compute_dispatch_group_count(params.count); the dead y/z split and its checked group arithmetic are removed.",
+    "overlay/tests/omarchy/test_fft_ops.cpp: new case \"fftn at 2^24 exercises the second dispatch dimension\" - a delta at element n-1 with the exact flat-spectrum reference X[k] = e^(2*pi*i*k/n); asserts every bin in the trailing 2048-bin window (the 256-bin unwritten window sits inside it) plus every 4096th bin across the spectrum, tolerance 2e-4."
+  ],
+  "fft_family_audit": {
+    "fft_stage_f32 (fft_stage.comp)": "defective, fixed here",
+    "fft_f32 (fft_c2c.comp, dispatched by dispatch_fft_pass)": "safe - already flattens transform ids across x/y/z workgroup dimensions (fft_c2c.comp lines 95-97)",
+    "fft_real_f32 (fft_real_extract.comp)": "safe - host refuses out.size() > 65535*256 before dispatch (primitives.cpp), so a single x dimension always suffices",
+    "dispatch_sites": "FftStageF32 is dispatched only from dispatch_fft_stage; every stage caller (twiddle, Bluestein a/b/pointwise/epilogue, permute, real-promote and half-synthesis edges) routes through that one helper"
+  },
+  "commands_and_results": [
+    {
+      "step": "baseline (unmodified tree at 4e116e54)",
+      "command": "cmake --build .work/build --target omarchy_fft_ops_tests omarchy_runtime_tests -j4; MLX_OMARCHY_ALLOW_NON_APPLE=1 LP_NUM_THREADS=4 .work/build/tests/omarchy/omarchy_fft_ops_tests; MLX_OMARCHY_ALLOW_NON_APPLE=1 LP_NUM_THREADS=4 .work/build/tests/omarchy/omarchy_runtime_tests",
+      "result": "fft: 17 cases / 1374 assertions, 0 failed; runtime: 40 cases / 6304 assertions, 0 failed"
+    },
+    {
+      "step": "red - new case on the unfixed shader",
+      "command": "bash scripts/prepare-mlx.sh && cmake --build .work/build --target omarchy_fft_ops_tests -j4 && MLX_OMARCHY_ALLOW_NON_APPLE=1 LP_NUM_THREADS=4 .work/build/tests/omarchy/omarchy_fft_ops_tests -tc=\"fftn at 2^24*\"",
+      "result": "exit 1; 1 assertion, 1 failed: max abs diff 1 at bin 16777215 exceeds tolerance 0.0002 (27.9 s wall); bin 16777215 = n-1 sits in the 256-element window the broken stage leaves unwritten, reading page-zeroed 0 against the unit-magnitude reference"
+    },
+    {
+      "step": "green - new case on the fixed shader",
+      "command": "bash scripts/prepare-mlx.sh && cmake --build .work/build --target omarchy_fft_ops_tests -j4 && MLX_OMARCHY_ALLOW_NON_APPLE=1 LP_NUM_THREADS=4 .work/build/tests/omarchy/omarchy_fft_ops_tests -tc=\"fftn at 2^24*\"",
+      "result": "exit 0; 1 assertion, 1 passed (31.6 s wall)"
+    },
+    {
+      "step": "full target suites after the fix",
+      "command": "MLX_OMARCHY_ALLOW_NON_APPLE=1 LP_NUM_THREADS=4 .work/build/tests/omarchy/omarchy_fft_ops_tests; MLX_OMARCHY_ALLOW_NON_APPLE=1 LP_NUM_THREADS=4 .work/build/tests/omarchy/omarchy_runtime_tests",
+      "result": "fft: 18 cases / 1375 assertions, 0 failed (36.1 s wall); runtime: 40 cases / 6304 assertions, 0 failed"
+    }
+  ],
+  "test_cost": {
+    "memory": "the 2^24 case holds one 128 MiB complex64 input staging vector on the host, a 128 MiB device input, and up to three further full-size device buffers (two stage pings plus the output, ~640 MiB device total on llvmpipe shared system RAM)",
+    "time": "one 2^24 complex64 FFT per suite run, ~30 s of the ~36 s suite wall time on this box"
+  },
+  "limitations": [
+    "The red signature (diff exactly 1.0, all bins zero) depends on this platform's fresh 128 MiB allocations landing on OS-zeroed pages; on an allocator reusing dirty blocks the unwritten elements would read stale garbage instead, which still fails the assertion but with a different reported diff.",
+    "The shader was compiled and run only on this x86 box with glslangValidator 12.0.0; per AGENTS.md the M1's glslc accepts a narrower subset, so the M1 wheel build remains the parent's gate.",
+    "Only omarchy_fft_ops_tests and omarchy_runtime_tests were run, per the wave contract; the project-wide battery is the parent's job."
+  ]
+}
