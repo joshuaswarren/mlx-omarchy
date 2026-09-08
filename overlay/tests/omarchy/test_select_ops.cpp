@@ -23,6 +23,7 @@
 #include <vector>
 
 #include "mlx/backend/gpu/device_info.h"
+#include "mlx/backend/omarchy/compute.h"
 #include "mlx/backend/omarchy/device.h"
 #include "mlx/backend/omarchy/encoder.h"
 #include "mlx/device.h"
@@ -356,6 +357,40 @@ TEST_CASE("broadcast bool operands past the 65,535-group dispatch limit") {
       readback_f32(stream, logical_and(cond_row, col_even, stream)),
       [](size_t i, size_t j) { return ((j % 3) < 2 && (i % 2) == 0) ? 1.0f : 0.0f; },
       "logical_and broadcast operands");
+}
+
+// The chunk cursor advances by min(remaining, cap), never a bare
+// += cap: from 256*cap a bare add wraps 4,294,901,760 + 16,776,960 to
+// 16,711,424 and loops forever on counts a 4 GiB bool tensor can
+// reach. This exercises the real constexpr boundary helper as pure
+// host arithmetic -- no GPU, no allocation.
+TEST_CASE("logical dispatch chunk cursor terminates across the uint32 boundary") {
+  const uint32_t cap = omarchy::kLogicalChunkElements;
+  const std::vector<uint32_t> counts = {
+      1,
+      cap - 1,
+      cap,
+      cap + 1,
+      2 * cap + 7,
+      255 * cap,
+      256 * cap - 1,
+      256 * cap,
+      256 * cap + 1,
+      4294967295u};
+  for (uint32_t count : counts) {
+    uint32_t first = 0;
+    uint32_t steps = 0;
+    while (first < count) {
+      const uint32_t end = omarchy::next_logical_chunk_end(first, count);
+      CHECK_MESSAGE(end > first, "cursor stalled for count ", count);
+      CHECK_MESSAGE(end <= count, "cursor wrapped past count ", count);
+      first = end;
+      steps++;
+    }
+    CHECK_MESSAGE(
+        steps == (uint64_t(count) + cap - 1) / cap,
+        "wrong chunk count ", steps, " for count ", count);
+  }
 }
 
 TEST_CASE("where with a strided condition") {
