@@ -1,0 +1,62 @@
+{
+  "date": "2026-09-08",
+  "title": "Prefill parity batch 1: inline-fragment Q4 QMM, staged dense f32/bf16 coopmat, batch-budget tunable; root-cause evidence for the dispatch-bound prefill",
+  "branch": "perf/prefill-parity",
+  "base": "c2548675",
+  "source_commits": [
+    "82ececc6 Q4 prefill QMM inline-fragment coopmat (pairs with mesa hk/prefill-parity 323b747d6b0)",
+    "5c7876ac staged dense coopmat f32+bf16 rewrite + MLX_OMARCHY_BATCH_BYTES_DIVISOR env",
+    "6d55a054 five-pair A/B driver (scripts-local/prefill_inline_ab.py)",
+    "driver: mesa-xbuild ~/mesa-prefill-parity branch hk/prefill-parity commit 323b747d6b0 (AGX_QMM_INLINE_A / AGX_QMM_INLINE_B fragment-load hooks, env-gated, defaults off)"
+  ],
+  "root_cause_evidence": {
+    "source": "parity-baseline @ 6b240b0d, profile/ctx1024-32.analysis.txt (c2548675 diag wheel, GPU timestamps)",
+    "finding": "ctx1024 Q4 prefill wall 2512 ms (1053 tok / 419.5 tok/s): GPU busy 38.8 ms (1.5%), QmmPrefillCoopmatF16 total 6.1 ms over 163 dispatches (mean 37.5 us), join_wait 2256.7 ms over 48 joins (p90 97.7 ms), submit() 591 ms over 148 calls (p50 4.5 ms), intra-submission gaps p50 34.9 us with a full pre+post memory barrier per dispatch (19915 emitted, 0 skipped).",
+    "causal_chain_static": "kBatchByteBudgetDivisor=16 (allocator limit/16 ~= 320 MB quarantine) flushes every ~25 dispatches -> ~70 batches per pass -> mlx transforms.cpp MAX_ACTIVE_TASKS=10 throttles -> gpu::finalize + scheduler::wait_for_one join stalls; every submission waits on the previous via completion timeline (in-order, no cross-submission overlap).",
+    "caveat_from_main": "profiled attribution is not unprofiled proof; the divisor sweep below measures unprofiled wall time with settings controlled (MLX_OMARCHY_BATCH_BYTES_DIVISOR env on the same wheel)."
+  },
+  "candidates": {
+    "kept_pending_gpu_results": [
+      "82ececc6 inline-fragment Q4 prefill: A fragments unpack f16 word pairs, B fragments dequantize fused 9-word blocks per (column, 64-group) inside the coopmat fragment load; k loop has no shared staging and no barriers; dequant stays f32 scale*nibble+bias (ffma) - the qmm tile contract, never f16.",
+      "5c7876ac dense f32 coopmat rewritten from the 8x8 global-load tile (0.28 TFLOP/s, dense receipt) to a staged 32x32 tile (2 KiB shared, 16 MMA per k step, tails masked, alignment gates dropped); bf16 dense rides MatmulBF16Coopmat with exact bf16->f32 widening and matmul.comp bf16_store RNE word packing (no numerics change vs the 16x16 tile)."
+    ],
+    "budget": "MLX_OMARCHY_BATCH_BYTES_DIVISOR env (default 16 unchanged; sweep 16/4/2). Heap/byte cap RETAINED - the 2026-09-08 2048-token 8.11 GiB single-batch OOM caps the divisor; any default flip requires a memory proof (ctx4096/2048 prefill leg + allocator high-watermark) per Main.",
+    "rejected_or_unproven": [
+      "f0cc2735 descriptor-freelist branch exists unmerged targeting the same submit() 4.5 ms p50; not folded into this branch (owner integration).",
+      "fp16/bf16 dequant-to-f16 of weights: forbidden (contract), not attempted.",
+      "20 KiB shared staging: rejected earlier (0.55x, occupancy)."
+    ]
+  },
+  "verification": {
+    "llvmpipe_leg": {
+      "omarchy_matmul_family_tests": "15/15 cases, 18430759/18430759 assertions, exit 0 at 82ececc6 (inline kernel in tree; coopmat capability 0 so inline/staged paths not dispatched); runtime suite pending in the same leg",
+      "note": "rerun at 5c7876ac launched; results land in /tmp/mm_suite_d.log and /tmp/rt_suite_d.log on the dev box"
+    },
+    "m1_window": {
+      "script": "scripts-local/m1_window.sh (one flock /tmp/m1-gpu.lock per process tree, never unlinked, hostname printed)",
+      "phase1": [
+        "wheel build at 5c7876ac (DEV_RELEASE=1, source commit stamped)",
+        "16-shape QMM correctness vs host reference under the qmm tile anchor bound (3k+1)*2*maxabs*2^-23 + 2*maxabs*2^-11, inline hooks ON and OFF",
+        "bf16 matmul vs fp32 reference at 5 shapes",
+        "unprofiled divisor sweep ctx1024 prefill: 16/4/2 x 3 runs, same wheel, env-only toggle"
+      ],
+      "status_at_yield": "running in background (bg_17); results print per-run prefill lines tagged divisor=N run=i"
+    }
+  },
+  "coordination": {
+    "decodeparity": "m==1 lane theirs (matmul_vec + MatmulVec enums planned before QmmTileRbF16); my QmmInlineCoopmatF16 appended after QmmPrefillCoopmatF16, MatmulBF16Coopmat after that; integration order recorded",
+    "aneparity": "overlap check answered: no timed M1 work of mine in 17:22:08-17:25:24Z",
+    "paritybaseline": "baseline + profiles consumed from parity-baseline @ 6b240b0d; window taken after release DM",
+    "main": "pivot report sent; heap-cap protection retained; scheduler max tuning only as bounded memory-safe A/B"
+  },
+  "open_items": [
+    "read divisor sweep results; pick winner; rerun the three-workload five-pair A/B (scripts-local/prefill_inline_ab.py) unprofiled at the winning divisor",
+    "inline-fragment Q4 A/B at winning divisor; keep or discard per protocol",
+    "BF16 prefill A/B (MLX_OMARCHY_NO_COOPMAT toggles) on the three workloads vs baseline 56.1/169.4/187.0",
+    "memory proof leg (ctx4096 prefill) before any divisor default flip",
+    "Q4 short-workload occupancy (28 subgroups) k-split or narrow-tile candidate - deferred until dispatch costs are fixed",
+    "C++ M1 suite legs skipped this batch for window time; python host-reference bound used instead - rerun C++ suites on M1 before final integration",
+    "cross_driver_failure: the cross-built libvulkan_asahi.so (mesa-xbuild, aarch64, ldd clean on the M1) fails vkCreateInstance with VK_ERROR_UNKNOWN on jwm1-linux; wheel 0.32.2.dev202609081733+5c7876ac built OK; correctness legs and divisor sweep aborted at instance creation. Fallback: apply mesa 323b747d6b0 (one file) onto a native mesa checkout on the M1, rebuild natively, rerun phase-1 unchanged; the divisor sweep alone runs on the stock system driver (no hooks needed)",
+    "llvmpipe reruns at 5c7876ac land in /tmp/mm_suite_d.log and /tmp/rt_suite_d.log on the dev box"
+  ]
+}
