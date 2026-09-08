@@ -1,0 +1,99 @@
+{
+  "date": "2026-09-08",
+  "title": "Dense f32 matmul on the Honeykrisp 8x8x8 cooperative matrix, gated by capability",
+  "branch": "wave/coopmat-dense",
+  "parent_main": "4e116e54",
+  "prior_receipts": [
+    "receipts/2026-09-07-honeykrisp-coopmat.json",
+    "receipts/2026-09-07-mlx-coopmat-dense.json"
+  ],
+  "change": {
+    "kernel": "MatmulF32Coopmat (overlay/mlx/backend/omarchy/shaders/matmul_coopmat.comp)",
+    "capability": "CapabilityReport::cooperative_matrix_f32_8 = VK_KHR_cooperative_matrix listed AND cooperativeMatrix feature on AND an 8x8x8 fp32/fp32/fp32/fp32 non-saturating subgroup-scope shape in vkGetPhysicalDeviceCooperativeMatrixPropertiesKHR",
+    "gate": "dtype float32 && cooperative_matrix_f32_8 && subgroup_size == 32 && M,N,K % 8 == 0 && alpha == 1 && no bias C && lhs/rhs/output element offsets, row gaps, and batch strides % 4 == 0 (16-byte coopMatLoad/Store alignment, VUID-RuntimeSpirv-OpCooperativeMatrixLoadKHR-08986) && !MLX_OMARCHY_NO_COOPMAT",
+    "fallback": "16x16 tiled matmul.comp for every other case, including odd-offset slices",
+    "header_shim": "overlay/mlx/backend/omarchy/vulkan.h declares the VK_KHR_cooperative_matrix types when the system header predates 1.3.255 (llvmpipe dev image ships header 239; M1 ships 357)",
+    "device_info_key": "cooperative_matrix_f32_8"
+  },
+  "test": {
+    "file": "overlay/tests/omarchy/test_matmul_family.cpp",
+    "case": "dense f32 matmul matches host across coopmat-gated shapes",
+    "shapes": "8^3, 64^3, 128^3, batched 4x32x32x32, each with {a, aT} x {b, bT}; 17x23x19 (fallback); 32x40x24 slices of a padded parent at column offset 4 (gated) and 5 (fallback)",
+    "operands": "integers in [-4, 4] so both kernels are exact; check is max_abs_err == 0.0",
+    "assertions": 44
+  },
+  "legs": {
+    "llvmpipe": {
+      "host": "x86_64 dev box, AMD EPYC 7443P, Mesa llvmpipe (LLVM 15.0.6, 256 bits), Vulkan header 239, glslang 16.5.0 (release binary; system glslang 12.0.0 predates GL_KHR_cooperative_matrix)",
+      "configure": "cmake -S .work/mlx -B .work/build -DMLX_BUILD_OMARCHY=ON -DMLX_BUILD_CPU=ON -DMLX_BUILD_METAL=OFF -DMLX_BUILD_CUDA=OFF -DMLX_BUILD_TESTS=ON -DMLX_BUILD_EXAMPLES=OFF -DMLX_BUILD_BENCHMARKS=OFF -DMLX_BUILD_PYTHON_BINDINGS=OFF -DOMARCHY_GLSLANG=$HOME/.local/opt/glslang/bin/glslang",
+      "build": "cmake --build .work/build --target omarchy_matmul_family_tests omarchy_primitive_tests omarchy_runtime_tests -j4",
+      "env": "MLX_OMARCHY_ALLOW_NON_APPLE=1 LP_NUM_THREADS=4",
+      "device_info": {"cooperative_matrix_f32_8": 0},
+      "suites": {
+        "omarchy_matmul_family_tests": {"cases": "14/14", "assertions": "46055/46055", "exit": 0},
+        "omarchy_primitive_tests": {"cases": "98/98", "assertions": "2699373/2699373", "exit": 0},
+        "omarchy_runtime_tests": {"cases": "40/40", "assertions": "6304/6304", "exit": 0}
+      },
+      "new_case_path": "tiled on all 22 shapes, max_abs_err 0 on all"
+    },
+    "m1_stock": {
+      "host": "jwm1-linux, Apple M1 (G13G B1), 8 cores, Mesa 26.1.7 Honeykrisp (pacman mesa 26.1.7-1), Vulkan API 1.4.354, header 357, glslang 16.4.0, GCC 16.1.1",
+      "tree": "/home/joshuawarren/src/mlx-coopmat-dense-20260908 (rsync of the worktree)",
+      "configure": "same as llvmpipe minus OMARCHY_GLSLANG, plus -DCMAKE_BUILD_TYPE=Release",
+      "build": "cmake --build .work/build --target omarchy_matmul_family_tests omarchy_primitive_tests omarchy_runtime_tests -j8",
+      "capability": {"cooperative_matrix_f32_8": 0, "subgroup_size": 32},
+      "suites": {
+        "omarchy_matmul_family_tests": {"cases": "14/14", "assertions": "46271/46271", "exit": 0},
+        "omarchy_primitive_tests": {"cases": "98/98", "assertions": "2699373/2699373", "exit": 0},
+        "omarchy_runtime_tests": {"cases": "40/40", "assertions": "6307/6307", "exit": 0}
+      },
+      "new_case_path": "tiled on all 22 shapes, max_abs_err 0 on all"
+    },
+    "m1_coopmat": {
+      "driver": "Honeykrisp Mesa 26.3.0-devel (git-5bb2b28c95), branch honeykrisp-coopmat of github.com:joshuaswarren/mesa.git, HEAD 5bb2b28c95c6650a2b62fa44b1257c6d138165a0, Vulkan API 1.4.359",
+      "env": "VK_ICD_FILENAMES=/tmp/asahi_coopmat_icd.json AGX_SIMDMAT=1",
+      "icd_library": "/home/joshuawarren/src/mesa-coopmat/build/src/asahi/vulkan/libvulkan_asahi.so",
+      "capability": {"cooperative_matrix_f32_8": 1, "subgroup_size": 32},
+      "suites": {
+        "omarchy_matmul_family_tests": {"cases": "14/14", "assertions": "46271/46271", "exit": 0},
+        "omarchy_primitive_tests": {"cases": "98/98", "assertions": "2699373/2699373", "exit": 0},
+        "omarchy_runtime_tests": {"cases": "40/40", "assertions": "6307/6307", "exit": 0}
+      },
+      "new_case_path": "coopmat on 17 shapes (16 gated + aligned slice), tiled on 5 (17x23x19 x4, odd-offset slice)",
+      "max_abs_err": {
+        "cube8_all_transposes": 0.0,
+        "cube64_all_transposes": 0.0,
+        "cube128_all_transposes": 0.0,
+        "batched4x32_all_transposes": 0.0,
+        "slice_col4_32x40x24": 0.0,
+        "fallback_17x23x19_all_transposes": 0.0,
+        "fallback_slice_col5_32x40x24": 0.0
+      }
+    }
+  },
+  "benchmark": {
+    "method": "throwaway C++ program linked against the M1 Release .work/build libmlx.a, mirroring scripts/collect_deep.py BENCH_PROBE: square f32 matmul, 2 warm-up evals, 8 timed evals with mx::synchronize, median. Five alternating process pairs on the coopmat ICD (gate off via MLX_OMARCHY_NO_COOPMAT=1, then gate on); the table is the median of the five per-process medians. One stock Mesa 26.1.7 process for the README-comparable baseline. Machine idle: load average 0.01, no python/omarchy_ processes.",
+    "wall_clock": "steady_clock around matmul+eval+synchronize (host wall, not GPU timestamps)",
+    "table_tflops": {
+      "256":  {"stock_mesa_26.1.7": 0.0939, "coopmat_icd_gate_off": 0.0935, "coopmat_icd_gate_on": 0.1251, "speedup_on_vs_off": 1.34},
+      "512":  {"stock_mesa_26.1.7": 0.1693, "coopmat_icd_gate_off": 0.1680, "coopmat_icd_gate_on": 0.2535, "speedup_on_vs_off": 1.51},
+      "1024": {"stock_mesa_26.1.7": 0.1902, "coopmat_icd_gate_off": 0.1906, "coopmat_icd_gate_on": 0.2816, "speedup_on_vs_off": 1.48}
+    },
+    "table_median_ms": {
+      "256":  {"stock": 0.357, "off": 0.359, "on": 0.268},
+      "512":  {"stock": 1.586, "off": 1.598, "on": 1.059},
+      "1024": {"stock": 11.293, "off": 11.267, "on": 7.627}
+    },
+    "per_run_tflops": {
+      "off": {"256": [0.039, 0.094, 0.0932, 0.0935, 0.0936], "512": [0.1637, 0.1695, 0.1681, 0.1679, 0.168], "1024": [0.1892, 0.1906, 0.1906, 0.1909, 0.1903]},
+      "on":  {"256": [0.1251, 0.122, 0.1253, 0.121, 0.1256], "512": [0.253, 0.2519, 0.2545, 0.2536, 0.2535], "1024": [0.2798, 0.2816, 0.2879, 0.2822, 0.2808]}
+    },
+    "note_256_round1": "the first gate-off process of the session measured 0.039 TFLOP/s at n=256 (0.860 ms, cold pipeline cache); the other four measured 0.093-0.094. The README's 0.0401 figure at 256 is that cold-process number."
+  },
+  "limitations": [
+    "Stock Mesa 26.1.7 users get the 16x16 tiled kernel on every shape until the honeykrisp-coopmat branch merges upstream; the capability is false there and on llvmpipe.",
+    "Only 8x8x8 all-fp32 subgroup scope is consumed; f16/bf16 matmul and AddMM (alpha != 1 or bias C) stay on the tile.",
+    "The coopmat kernel runs one 8x8 output tile per 32-lane workgroup with no K-blocking through shared memory; the 1.5x is from the matrix unit alone.",
+    "The bench binary was compiled outside CMake from the same libmlx.a; it is not committed."
+  ]
+}
