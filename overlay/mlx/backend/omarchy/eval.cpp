@@ -89,7 +89,7 @@ void eval(array& arr) {
     auto& alloc = omarchy::allocator();
     if (encoder.nodes() >= omarchy::kBatchNodeBudget ||
         alloc.pending_quarantine_bytes() >=
-            alloc.get_memory_limit() / omarchy::kBatchByteBudgetDivisor) {
+        alloc.get_memory_limit() / omarchy::batch_byte_budget_divisor()) {
       encoder.commit();
     }
   }

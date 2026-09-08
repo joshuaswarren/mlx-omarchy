@@ -2,29 +2,26 @@
 #extension GL_KHR_cooperative_matrix : require
 #extension GL_KHR_memory_scope_semantics : require
 
-// Dense f32 matmul on the G13 hardware 8x8x8 matrix unit (VK_KHR_
-// cooperative_matrix, subgroup scope), STAGED: one 32-lane workgroup
-// owns a 32x32 output tile as a 4x4 grid of 8x8 accumulators. Per
-// 8-wide k step the lanes stage an A 32x8 patch and a B 8x32 patch
-// into 2 KiB of shared memory (honouring the transpose flags and the
-// row gaps), then issue 16 coopMatMulAdd from shared. The previous
-// 8x8-tile kernel coopMatLoad'ed both operands straight from global
-// with no reuse and ran ~0.28 TFLOP/s; staging gives 4x operand reuse
-// per load, so the MMA is fed instead of the load unit.
+// Dense bf16 matmul on the G13 hardware 8x8x8 fp32 matrix unit,
+// STAGED. One 32-lane workgroup owns a 32x32 output tile as a 4x4
+// grid of 8x8 accumulators. Per 8-wide k step the lanes stage an A
+// 32x8 patch and a B 8x32 patch into 2 KiB of shared memory, loading
+// bf16 word pairs and widening to f32 (a 16-bit left shift -- exact,
+// no numerics change versus the scalar tile), then issue 16
+// coopMatMulAdd from shared. f32 staging also removes the old scalar
+// tile's repeated bf16-to-f32 conversion from the inner product.
 //
-// Tails in m and n are masked at staging and at the drain, so no M or
-// N alignment is required. K must be a multiple of 8 (dispatch gate).
-// All A/B/output access is scalar, so the 16-byte coopMatLoad
-// alignment constraints of the old kernel no longer apply. Dispatch
-// only when dtype is float32, alpha is 1, there is no bias C, and the
-// device advertises the 8x8x8 fp32 shape; the 16x16 scalar tile
-// remains the fallback for everything else.
+// Tails in m and n are masked at staging and at the drain. The drain
+// packs bf16 output pairs into 32-bit words with the same
+// round-to-nearest-even bf16_store as matmul.comp (NaN quiet bit
+// included), so the output contract matches the 16x16 tile bitwise
+// for the same f32 tile values. K must be a multiple of 8; matrix_n
+// and the output element offset must be even (word packing). A and B
+// loads are scalar element-addressed, so no alignment gates apply.
 //
 // Push-constant layout matches matmul.comp. Transpose flags: 1 = rhs
-// column-major, 4 = lhs column-major (2 = bias C, never set here).
-// Layout arguments to coopMatLoad are compile-time constants (glslang
-// asserts on a runtime layout). Batch unravel matches matmul.comp
-// (workgroup z over shape[]).
+// column-major, 4 = lhs column-major. Batch unravel matches
+// matmul.comp (workgroup z over shape[]).
 
 const uint TILE_M = 32u;
 const uint TILE_N = 32u;
@@ -33,16 +30,16 @@ const uint MAT = 8u;
 layout(local_size_x = 32) in;
 
 layout(set = 0, binding = 0, std430) readonly buffer InputA {
-  float values[];
+  uint values[];
 } input_a;
 layout(set = 0, binding = 1, std430) readonly buffer InputB {
-  float values[];
+  uint values[];
 } input_b;
 layout(set = 0, binding = 2, std430) readonly buffer InputC {
-  float values[];
+  uint values[];
 } input_c;
 layout(set = 0, binding = 3, std430) writeonly buffer Output {
-  float values[];
+  uint values[];
 } output_data;
 
 layout(push_constant) uniform Params {
@@ -71,6 +68,28 @@ layout(push_constant) uniform Params {
   uint rhs_gap;
 } params;
 
+uint bf16_store(float value) {
+  uint bits = floatBitsToUint(value);
+  if (isnan(value)) {
+    return (bits >> 16) | 0x40u;
+  }
+  return (bits + 0x7fffu + ((bits >> 16) & 1u)) >> 16;
+}
+
+float bf16_load(uint element) {
+  uint word = input_a.values[element >> 1u];
+  return uintBitsToFloat(((element & 1u) != 0u)
+      ? (word & 0xFFFF0000u)
+      : (word << 16u));
+}
+
+float bf16_load_b(uint element) {
+  uint word = input_b.values[element >> 1u];
+  return uintBitsToFloat(((element & 1u) != 0u)
+      ? (word & 0xFFFF0000u)
+      : (word << 16u));
+}
+
 // 2 KiB per 32-lane workgroup: one 32x8 A step and one 8x32 B step.
 shared float a_s[TILE_M * MAT];
 shared float b_s[MAT * TILE_N];
@@ -87,10 +106,11 @@ void main() {
     a_batch += coord * params.in_strides[axis - 1u];
     b_batch += coord * params.out_strides[axis - 1u];
   }
-  uint a_slice = params.lhs_offset + a_batch;
-  uint b_slice = params.rhs_offset + b_batch;
+  // Offsets are ELEMENT units; the word view halves them.
+  uint a_slice = params.lhs_offset / 2u + a_batch / 2u;
+  uint b_slice = params.rhs_offset / 2u + b_batch / 2u;
   uint out_matrix = params.matrix_m * params.matrix_n;
-  uint out_slice = params.output_offset + batch_index * out_matrix;
+  uint out_slice = params.output_offset / 2u + batch_index * out_matrix / 2u;
   uint m_tiles = (params.matrix_m + TILE_M - 1u) / TILE_M;
   uint n_tiles = (params.matrix_n + TILE_N - 1u) / TILE_N;
   uint k_steps = params.matrix_k / MAT;
@@ -115,8 +135,7 @@ void main() {
 
       for (uint step = 0u; step < k_steps; ++step) {
         uint k_base = step * MAT;
-        // Stage A (32 rows x 8 k): word i = lane + 32 j covers row
-        // i / 8, k offset i % 8.
+        // Stage A (32 rows x 8 k): i = lane + 32 j covers row i / 8.
         for (uint j = 0u; j < 8u; ++j) {
           uint i = lane + 32u * j;
           uint row_local = i / MAT;
@@ -125,8 +144,8 @@ void main() {
           float v = 0.0;
           if (row < params.matrix_m) {
             v = a_colmaj
-                ? input_a.values[a_slice + k * params.lhs_gap + row]
-                : input_a.values[a_slice + row * params.lhs_gap + k];
+                ? bf16_load(a_slice * 2u + k * params.lhs_gap + row)
+                : bf16_load(a_slice * 2u + row * params.lhs_gap + k);
           }
           a_s[row_local * MAT + (i % MAT)] = v;
         }
@@ -139,8 +158,8 @@ void main() {
           float v = 0.0;
           if (col < params.matrix_n) {
             v = b_colmaj
-                ? input_b.values[b_slice + col * params.rhs_gap + k]
-                : input_b.values[b_slice + k * params.rhs_gap + col];
+                ? bf16_load_b(b_slice * 2u + col * params.rhs_gap + k)
+                : bf16_load_b(b_slice * 2u + k * params.rhs_gap + col);
           }
           b_s[(i % MAT) * TILE_N + col_local] = v;
         }
@@ -167,7 +186,8 @@ void main() {
         barrier();
       }
 
-      // Drain one 8-row block at a time through a_s, tails masked.
+      // Drain one 8-row block at a time through a_s; even lanes pack
+      // bf16 pairs into words, tails masked.
       for (uint rb = 0u; rb < 4u; ++rb) {
         for (uint cb = 0u; cb < 4u; ++cb) {
           coopMatStore(
@@ -175,18 +195,23 @@ void main() {
               gl_CooperativeMatrixLayoutRowMajor);
         }
         barrier();
-        uint column = col_base + lane;
-        if (column < params.matrix_n) {
-          for (uint r = 0u; r < MAT; ++r) {
-            uint row = row_base + rb * MAT + r;
-            if (row < params.matrix_m) {
-              output_data.values[out_slice + row * params.matrix_n +
-                                 column] = a_s[(lane / MAT) * MAT * MAT +
-                                               r * MAT + (lane % MAT)];
-            }
+        uint pair = lane % 16u;
+        uint r0 = lane / 16u;
+        for (uint rr = 0u; rr < 2u; ++rr) {
+          uint r = r0 + 2u * rr;
+          uint c0 = pair * 2u;
+          uint cb = c0 / MAT;
+          uint cc = c0 % MAT;
+          uint row = row_base + rb * MAT + r;
+          uint col = col_base + c0;
+          if (row < params.matrix_m && col + 1u < params.matrix_n) {
+            float v0 = a_s[cb * MAT * MAT + r * MAT + cc];
+            float v1 = a_s[cb * MAT * MAT + r * MAT + cc + 1u];
+            output_data.values[out_slice +
+                               (row * params.matrix_n + col) / 2u] =
+                bf16_store(v0) | (bf16_store(v1) << 16u);
           }
         }
-        barrier();
       }
     }
   }
