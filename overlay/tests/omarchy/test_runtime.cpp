@@ -1904,6 +1904,51 @@ TEST_CASE("one graph evaluation batches into bounded submissions") {
   }
 }
 
+TEST_CASE("one graph evaluation flushes when freed intermediates reach the byte budget") {
+  // The 2048-token forward of 2026-09-08: intermediates freed under an
+  // open batch wait in the allocator quarantine until that batch
+  // submits, so a 257-node batch held 8.11 GB against a 7.56 GiB heap
+  // and vkAllocateMemory failed. The evaluator must flush the batch
+  // once pending quarantine bytes reach memory_limit /
+  // kBatchByteBudgetDivisor, well before the node budget, and the
+  // batched result must still match elementwise. Shrinking the limit
+  // makes the budget reachable with small tensors: 16 MiB / 16 = 1 MiB,
+  // and each add frees one 64 KiB intermediate. The transposed input
+  // is not donatable, so every add allocates fresh (a plain y + w chain
+  // reuses one buffer in place and frees nothing).
+  if (!gpu::is_available()) {
+    skip("no qualifying Vulkan device.");
+    return;
+  }
+  auto s = default_stream(default_device());
+  array w = ones({1}, float32, s);
+  array y = zeros({128, 128}, float32, s);
+  y.eval();
+  synchronize(s);
+  auto& counters = omarchy::trace::counters();
+  auto& alloc = omarchy::allocator();
+  size_t limit0 = alloc.set_memory_limit(16u << 20);
+  uint64_t subs0 = counters.vk_submissions.load();
+
+  constexpr int kAdds = 585;
+  for (int i = 0; i < kAdds; ++i) {
+    y = transpose(y) + w;
+  }
+  y.eval();
+  synchronize(s);
+  uint64_t subs = counters.vk_submissions.load() - subs0;
+  alloc.set_memory_limit(limit0);
+  // Node budget alone gives at most ceil(585 / 256) + 1 submissions; the
+  // byte budget (16 frees per MiB) forces roughly one every 16 adds.
+  CHECK(subs > 4);
+  CHECK(subs <= static_cast<uint64_t>(kAdds));
+  CHECK_EQ(alloc.pending_quarantine_bytes(), static_cast<size_t>(0));
+  const auto* data = y.data<float>();
+  for (int i = 0; i < 128 * 128; ++i) {
+    CHECK_EQ(data[i], static_cast<float>(kAdds));
+  }
+}
+
 TEST_CASE("dependency-gated barriers keep hazard chains correct") {
   // Pins the MLX_OMARCHY_GATED_BARRIERS contract: RAW, WAW, and WAR
   // chains on ONE buffer across consecutive nodes (fills, copies, and

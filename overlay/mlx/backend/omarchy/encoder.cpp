@@ -652,11 +652,7 @@ void CommandEncoder::submit() {
     // allocator quarantine; release_quarantine recycles them one
     // generation later. Semaphore keepalives still move into the
     // dispatcher payload below.
-    for (auto* buf : batch_buffers_) {
-      if (buf) {
-        buf->completion = completion_value;
-      }
-    }
+    omarchy::allocator().stamp_batch(batch_buffers_, completion_value);
     batch_buffers_.clear();
     VkSemaphore completion_sem = device_.completions().semaphore();
     signal_sems.push_back(completion_sem);
