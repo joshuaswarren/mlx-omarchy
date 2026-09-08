@@ -54,7 +54,7 @@ def main():
     for i in range(args.tokens):
         last = logits[0, -1]
         top2 = mx.argpartition(last, -2)[-2:]
-        vals = sorted((float(last[int(t)]), int(t)) for t in top2,
+        vals = sorted(((float(last[int(t)]), int(t)) for t in top2),
                       reverse=True)
         token = sampler(last)
         tid = int(token.item()) if hasattr(token, "item") else int(token)

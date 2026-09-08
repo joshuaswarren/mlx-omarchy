@@ -28,8 +28,8 @@ PIN_BF16 = "56d07e766edd7159fbe12ed12d9cf114bf38bf1e"
 def main():
     if len(sys.argv) < 3:
         sys.exit("usage: run-baseline.py VENV_PYTHON WHEEL [REPS]")
-    py = Path(sys.argv[1]).resolve()
-    wheel = Path(sys.argv[2]).resolve()
+    py = Path(sys.argv[1]).absolute()
+    wheel = Path(sys.argv[2]).absolute()
     reps = int(sys.argv[3]) if len(sys.argv) > 3 else 5
     if not py.is_file() or not wheel.is_file():
         sys.exit(f"missing python {py} or wheel {wheel}")
@@ -42,12 +42,11 @@ def main():
     summary = {
         "schema": "parity-baseline/1",
         "assignment": "first hardware window baseline at c2548675",
-        "reps": reps,
-        "wheel": str(wheel),
-        "wheel_sha256": hashlib.sha256(wheel.read_bytes()).hexdigest(),
+        "wheel": None,
         "pins": {"qwen25-0.5b-4bit": PIN_4BIT, "qwen25-0.5b-bf16": PIN_BF16},
         "legs": [],
     }
+    summary["wheel"] = str(wheel)
     per_workload = {}
     for rep in range(1, reps + 1):
         prefix = HERE / f"rep{rep}"

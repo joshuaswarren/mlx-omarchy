@@ -29,8 +29,8 @@ WORKLOADS = [("short-32", "short", 32), ("long-128", "long", 128),
 def main():
     if len(sys.argv) < 2:
         sys.exit("usage: run-profile.py DIAG_PYTHON DIAG_WHEEL [OUTDIR]")
-    diag_py = Path(sys.argv[1]).resolve()
-    diag_wheel = Path(sys.argv[2]).resolve()
+    diag_py = Path(sys.argv[1]).absolute()
+    diag_wheel = Path(sys.argv[2]).absolute()
     if not diag_wheel.is_file():
         sys.exit(f"diag wheel missing: {diag_wheel}")
     out = Path(sys.argv[3]) if len(sys.argv) > 3 else HERE / "profile"
@@ -45,7 +45,6 @@ def main():
     model = os.path.expanduser(SNAP)
     if not Path(model).is_dir():
         sys.exit(f"model snapshot missing: {SNAP}")
-
     summary = {"schema": "parity-baseline-profile/1", "workloads": []}
     for name, prompt_id, tokens in WORKLOADS:
         prompt = bench_matrix.prompt_text(manifest, prompt_id)
