@@ -38,6 +38,7 @@ def main():
     manifest["generation"]["engine_script"] = "capture-ids-parity.py"
     hook = ROOT / "scripts" / "capture-ids-parity.py"
     hook.write_text((HERE / "capture-ids.py").read_text())
+    mpath = HERE / "manifest-baseline.json"
     mpath.write_text(json.dumps(manifest, indent=2))
 
     summary = {
