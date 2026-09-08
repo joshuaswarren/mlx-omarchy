@@ -2972,6 +2972,13 @@ TEST_CASE(
     return;
   }
   Stream stream = gpu_stream();
+  // On a cooperative_matrix_f32_8 device the register-block gate selects
+  // QmmPrefillCoopmatF16 (a different accumulation order), so the
+  // bitwise pin against the 16x16 tile only holds off such a device; the
+  // host bound below applies everywhere.
+  const auto& caps = omarchy::device(0).capabilities();
+  const bool coopmat_device =
+      caps.cooperative_matrix_f32_8 && caps.subgroup_size == 32;
 
   for (auto [m, n, k, seed] : {
            std::tuple{2, 7, 64, 67u},
@@ -3041,7 +3048,9 @@ TEST_CASE(
           candidate_baseline_max,
           std::fabs(static_cast<double>(candidate_values[index]) -
               baseline_values[index]));
-      CHECK_EQ(candidate_values[index], baseline_values[index]);
+      if (!coopmat_device) {
+        CHECK_EQ(candidate_values[index], baseline_values[index]);
+      }
     }
     const double bound =
         (3.0 * k + 1.0) * (2.0 * max_abs) * std::ldexp(1.0, -23) +
@@ -3066,5 +3075,111 @@ TEST_CASE(
               << " candidate_vs_host_max=" << candidate_host_max
               << " baseline_vs_host_max=" << baseline_host_max
               << " bound=" << bound << "\n";
+  }
+}
+
+// QmmPrefillCoopmat: the transposed affine 4-bit/group-64 f16 prefill at
+// the Qwen2.5-0.5B-4bit shapes (hidden 896, intermediate 4864, kv 128)
+// against the f64 host reference, at m spanning one 8-row block, one
+// full 32-row tile, and the two README prefill lengths (262, 1053) that
+// leave a tail row block. On a cooperative_matrix_f32_8 device with
+// subgroup size 32 the default dispatch runs QmmPrefillCoopmatF16; on
+// llvmpipe and stock Mesa it runs the register-blocked tile, so the
+// case pins both to the same anchor bound as the qmm tile case
+// ((3k + 1) f32 ops plus one f16 store rounding against twice the
+// output magnitude). Coopmat accumulates the 8-wide products in the
+// matrix unit's own order, so there is no bitwise pin against the tile.
+TEST_CASE("qmm coopmat prefill matches host reference at Qwen shapes") {
+  if (!compute_available() || !float16_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  const auto& caps = omarchy::device(0).capabilities();
+  const bool coopmat_device =
+      caps.cooperative_matrix_f32_8 && caps.subgroup_size == 32;
+  std::cout << "[provenance] cooperative_matrix_f32_8="
+            << (caps.cooperative_matrix_f32_8 ? 1 : 0)
+            << " subgroup_size=" << caps.subgroup_size
+            << " -> f16 q4/g64 prefill runs "
+            << (coopmat_device ? "QmmPrefillCoopmatF16" : "QmmTileRbF16")
+            << "\n";
+
+  constexpr int group_size = 64;
+  constexpr int bits = 4;
+  unsigned seed = 90u;
+  for (auto [k, n] : {std::pair{896, 896}, std::pair{896, 4864},
+           std::pair{4864, 896}, std::pair{896, 128}}) {
+    const int words_per_row = k / (32 / bits);
+    const int groups_per_row = k / group_size;
+    std::mt19937 gen(seed++);
+    std::uniform_real_distribution<float> dist(-2.0f, 2.0f);
+    std::vector<float> matrix(static_cast<size_t>(n) * k);
+    for (auto& value : matrix) {
+      value = dist(gen);
+    }
+    HostQuantizedWeights weights =
+        host_affine_quantize(matrix, n, k, group_size, bits);
+    weights.scales = round_trip(stream, weights.scales, float16);
+    weights.biases = round_trip(stream, weights.biases, float16);
+    array w_words(weights.words.begin(), Shape{n, words_per_row}, uint32);
+    array scales(
+        weights.scales.begin(), Shape{n, groups_per_row}, float16);
+    array biases(
+        weights.biases.begin(), Shape{n, groups_per_row}, float16);
+
+    for (int m : {8, 32, 262, 1053}) {
+      std::vector<float> x_values(static_cast<size_t>(m) * k);
+      for (auto& value : x_values) {
+        value = dist(gen);
+      }
+      x_values = round_trip(stream, x_values, float16);
+      const std::vector<float> expected = host_quantized_matmul(
+          weights, x_values, m, n, k, group_size, bits);
+      array x(x_values.begin(), Shape{m, k}, float16);
+
+      QmmTileGate gate(true, true);
+      array out = quantized_matmul(
+          x, w_words, scales, biases, true, group_size, bits, "affine",
+          stream);
+      INFO("coopmat prefill m=" << m << " n=" << n << " k=" << k);
+      const auto error = evaluation_error(out);
+      REQUIRE_MESSAGE(error.empty(), error);
+      REQUIRE_EQ(out.shape(), Shape{m, n});
+      const std::vector<float> device_values = readback_f32(stream, out);
+      REQUIRE_EQ(device_values.size(), expected.size());
+
+      double max_abs = 1.0;
+      for (size_t index = 0; index < expected.size(); ++index) {
+        REQUIRE(std::isfinite(device_values[index]));
+        REQUIRE(std::isfinite(expected[index]));
+        max_abs = std::max({
+            max_abs,
+            std::fabs(static_cast<double>(device_values[index])),
+            std::fabs(static_cast<double>(expected[index]))});
+      }
+      const double bound =
+          (3.0 * k + 1.0) * (2.0 * max_abs) * std::ldexp(1.0, -23) +
+          (2.0 * max_abs) * std::ldexp(1.0, -11);
+      double max_diff = 0.0;
+      size_t worst = 0;
+      for (size_t index = 0; index < expected.size(); ++index) {
+        const double d = std::fabs(
+            static_cast<double>(device_values[index]) - expected[index]);
+        if (d > max_diff) {
+          max_diff = d;
+          worst = index;
+        }
+      }
+      INFO("worst=" << worst << " device=" << device_values[worst]
+           << " expected=" << expected[worst] << " diff=" << max_diff
+           << " bound=" << bound);
+      CHECK(max_diff <= bound);
+      std::cout << "[qmm-coopmat] kernel="
+                << (coopmat_device ? "QmmPrefillCoopmatF16" : "QmmTileRbF16")
+                << " m=" << m << " n=" << n << " k=" << k
+                << " max_abs_err=" << max_diff
+                << " rel_err=" << max_diff / max_abs
+                << " bound=" << bound << "\n";
+    }
   }
 }
