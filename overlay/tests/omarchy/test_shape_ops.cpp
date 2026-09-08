@@ -416,6 +416,200 @@ TEST_CASE("Pad fills multidimensional boundaries with exact values") {
        -7.0f, -7.0f, -7.0f, -7.0f, -7.0f});
 }
 
+namespace {
+
+// Replays NumPy's np.pad reflect/symmetric placement on plain indices. Every
+// iteration re-derives the reflectable chunk from the whole filled region
+// (core plus both pads written so far), so the chunk grows as the region
+// fills; that growth is the placement the device gather must reproduce.
+// Returns one source index into the original axis per padded position.
+std::vector<int32_t> numpy_pad_indices(int n, int low, int high,
+                                       bool include_edge) {
+  int total = n + low + high;
+  std::vector<int32_t> map(total, -1);
+  if (n == 1) {
+    // NumPy fills a singleton axis with the edge value in both modes.
+    std::fill(map.begin(), map.end(), 0);
+    return map;
+  }
+  int edge_offset = include_edge ? 1 : 0;
+  int reflect_adjust = include_edge ? 0 : 1;
+  for (int p = low; p < low + n; ++p) {
+    map[p] = p - low;
+  }
+  int left_rem = low;
+  int right_rem = high;
+  while (left_rem > 0 || right_rem > 0) {
+    int old_length = total - left_rem - right_rem - reflect_adjust;
+    if (left_rem > 0) {
+      int chunk = std::min(old_length, left_rem);
+      int start = left_rem - edge_offset + chunk;
+      for (int k = 0; k < chunk; ++k) {
+        map[left_rem - chunk + k] = map[start - k];
+      }
+      left_rem -= chunk;
+    }
+    if (right_rem > 0) {
+      int chunk = std::min(old_length, right_rem);
+      int start = total - right_rem + edge_offset - 2;
+      for (int k = 0; k < chunk; ++k) {
+        map[total - right_rem + k] = map[start - k];
+      }
+      right_rem -= chunk;
+    }
+  }
+  return map;
+}
+
+// Pads a row-major host array one axis at a time with the NumPy placement and
+// compares the device result bit for bit.
+void check_reflect_pad(
+    const std::vector<float>& data,
+    Shape shape,
+    const std::vector<std::pair<int, int>>& pad_width,
+    const std::string& mode) {
+  Stream stream = gpu_stream();
+  array a = array(data.data(), shape, float32);
+  array out = pad(a, pad_width, array(0.0f), mode, stream);
+
+  Shape want_shape = shape;
+  for (int ax = 0; ax < want_shape.size(); ++ax) {
+    want_shape[ax] += pad_width[ax].first + pad_width[ax].second;
+  }
+  CHECK_EQ(out.shape(), want_shape);
+
+  std::vector<float> current = data;
+  Shape work_shape = shape;
+  for (int ax = 0; ax < shape.size(); ++ax) {
+    int n = work_shape[ax];
+    int low = pad_width[ax].first;
+    int high = pad_width[ax].second;
+    std::vector<int32_t> map =
+        numpy_pad_indices(n, low, high, mode == "symmetric");
+    int stride = 1;
+    for (int d = ax + 1; d < shape.size(); ++d) {
+      stride *= work_shape[d];
+    }
+    int outer = 1;
+    for (int d = 0; d < ax; ++d) {
+      outer *= work_shape[d];
+    }
+    int width = low + n + high;
+    std::vector<float> next(outer * width * stride);
+    for (int o = 0; o < outer; ++o) {
+      for (int p = 0; p < width; ++p) {
+        for (int s = 0; s < stride; ++s) {
+          next[(o * width + p) * stride + s] =
+              current[(o * n + map[p]) * stride + s];
+        }
+      }
+    }
+    work_shape[ax] = width;
+    current = std::move(next);
+  }
+  check_exact<float>(out, current);
+}
+
+} // namespace
+
+TEST_CASE("Pad reflect matches NumPy on multi-period widths") {
+  if (!compute_available()) {
+    return;
+  }
+  // The reported defect: [0 1 2] with a reflect pad of (9, 1) duplicated the
+  // low edge where NumPy's growing chunk needs the high edge. The exact
+  // output is anchored so the phase cannot drift again.
+  check_reflect_pad({0.0f, 1.0f, 2.0f}, Shape{3}, {{9, 1}}, "reflect");
+  array cited = pad(
+      array({0.0f, 1.0f, 2.0f}, float32),
+      std::pair<int, int>{9, 1},
+      array(0.0f),
+      "reflect",
+      gpu_stream());
+  check_exact<float>(
+      cited,
+      {1.0f, 2.0f, 1.0f, 2.0f, 1.0f, 0.0f, 1.0f, 2.0f, 1.0f,
+       0.0f, 1.0f, 2.0f, 1.0f});
+  // Asymmetric pad spanning several reflect periods.
+  check_reflect_pad(
+      {1.0f, -2.0f, 3.0f, -4.0f, 5.0f}, Shape{5}, {{29, 7}}, "reflect");
+}
+
+TEST_CASE("Pad symmetric matches NumPy on multi-period widths") {
+  if (!compute_available()) {
+    return;
+  }
+  // Symmetric drifts the same way once a pad outgrows one tile.
+  check_reflect_pad({3.0f, -1.0f}, Shape{2}, {{1, 8}}, "symmetric");
+  check_reflect_pad(
+      {2.0f, -3.0f, 4.0f, -5.0f, 6.0f, -7.0f, 8.0f, -9.0f},
+      Shape{8},
+      {{29, 3}},
+      "symmetric");
+}
+
+TEST_CASE("Pad reflect and symmetric cover degenerate and bounded widths") {
+  if (!compute_available()) {
+    return;
+  }
+  struct Case {
+    std::vector<float> data;
+    Shape shape;
+    std::vector<std::pair<int, int>> width;
+  };
+  std::vector<Case> cases = {
+      {{0.0f, 1.0f}, Shape{2}, {{5, 6}}},
+      {{0.0f, 1.0f}, Shape{2}, {{0, 5}}},
+      {{0.0f, 1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f, 7.0f},
+       Shape{8},
+       {{7, 8}}},
+      {{0.0f, 1.0f, 2.0f, 3.0f, 4.0f}, Shape{5}, {{3, 0}}},
+      {{0.0f, 1.0f, 2.0f, 3.0f}, Shape{4}, {{0, 4}}},
+      {{9.0f}, Shape{1}, {{3, 2}}},
+      {{0.0f, 1.0f, 2.0f}, Shape{3}, {{2, 2}}},
+      {{0.0f, 1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f, 7.0f},
+       Shape{8},
+       {{2, 3}}},
+      {{0.0f, 1.0f, 2.0f, 3.0f},
+       Shape{4},
+       {{20, 20}}},
+      {{0.0f, 1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f, 7.0f, 8.0f, 9.0f, 10.0f,
+        11.0f, 12.0f, 13.0f, 14.0f, 15.0f, 16.0f, 17.0f, 18.0f, 19.0f,
+        20.0f, 21.0f, 22.0f, 23.0f, 24.0f, 25.0f, 26.0f, 27.0f, 28.0f,
+        29.0f},
+       Shape{5, 6},
+       {{2, 3}, {1, 2}}},
+      {{0.0f, 1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f, 7.0f, 8.0f, 9.0f, 10.0f,
+        11.0f, 12.0f, 13.0f, 14.0f, 15.0f, 16.0f, 17.0f, 18.0f, 19.0f,
+        20.0f, 21.0f, 22.0f, 23.0f, 24.0f, 25.0f, 26.0f, 27.0f, 28.0f,
+        29.0f},
+       Shape{5, 6},
+       {{9, 9}, {11, 0}}},
+      {{0.0f, 1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f, 7.0f, 8.0f, 9.0f, 10.0f,
+        11.0f, 12.0f, 13.0f, 14.0f, 15.0f, 16.0f, 17.0f, 18.0f, 19.0f,
+        20.0f, 21.0f, 22.0f, 23.0f, 24.0f, 25.0f, 26.0f, 27.0f, 28.0f,
+        29.0f, 30.0f, 31.0f, 32.0f, 33.0f, 34.0f, 35.0f, 36.0f, 37.0f,
+        38.0f, 39.0f, 40.0f, 41.0f, 42.0f, 43.0f, 44.0f, 45.0f, 46.0f,
+        47.0f, 48.0f, 49.0f, 50.0f, 51.0f, 52.0f, 53.0f, 54.0f, 55.0f,
+        56.0f, 57.0f, 58.0f, 59.0f},
+       Shape{3, 4, 5},
+       {{1, 1}, {0, 0}, {2, 2}}},
+      {{0.0f, 1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f, 7.0f, 8.0f, 9.0f, 10.0f,
+        11.0f, 12.0f, 13.0f, 14.0f, 15.0f, 16.0f, 17.0f, 18.0f, 19.0f,
+        20.0f, 21.0f, 22.0f, 23.0f, 24.0f, 25.0f, 26.0f, 27.0f, 28.0f,
+        29.0f, 30.0f, 31.0f, 32.0f, 33.0f, 34.0f, 35.0f, 36.0f, 37.0f,
+        38.0f, 39.0f, 40.0f, 41.0f, 42.0f, 43.0f, 44.0f, 45.0f, 46.0f,
+        47.0f, 48.0f, 49.0f, 50.0f, 51.0f, 52.0f, 53.0f, 54.0f, 55.0f,
+        56.0f, 57.0f, 58.0f, 59.0f},
+       Shape{3, 4, 5},
+       {{4, 4}, {0, 0}, {7, 3}}},
+  };
+  for (const auto& c : cases) {
+    check_reflect_pad(c.data, c.shape, c.width, "reflect");
+    check_reflect_pad(c.data, c.shape, c.width, "symmetric");
+  }
+}
+
 TEST_CASE("Reshape shares buffers and copies strided views") {
   if (!compute_available()) {
     return;
