@@ -1027,16 +1027,15 @@ void dispatch_logical_chunked(
     omarchy::CommandEncoder& encoder,
     const std::array<omarchy::ComputeBinding, 4>& bindings,
     omarchy::ComputeParams params) {
-  constexpr uint32_t kElementsPerDispatch =
-      omarchy::kMaxComputeGroupCountX * omarchy::kComputeThreadsPerGroup;
-  for (uint32_t first = 0; first < params.count;
-       first += kElementsPerDispatch) {
+  for (uint32_t first = 0; first < params.count;) {
+    const uint32_t end = omarchy::next_logical_chunk_end(first, params.count);
     params.matrix_m = first;
     encoder.dispatch_compute(
         omarchy::ComputeKernel::LogicalOrBool,
         bindings,
         params,
-        omarchy::compute_dispatch_group_count(params.count - first));
+        omarchy::compute_dispatch_group_count(end - first));
+    first = end;
   }
 }
 
