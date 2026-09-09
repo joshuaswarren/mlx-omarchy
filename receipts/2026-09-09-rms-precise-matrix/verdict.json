@@ -1,0 +1,35 @@
+{
+  "candidate": "417bb7b",
+  "parent": "da9e7f6",
+  "status": "BF16 numerical gate passes; combined candidate remains unqualified",
+  "native_matches": {
+    "qwen25-0.5b-4bit:long-decode-128": false,
+    "qwen25-0.5b-4bit:longctx-1024-decode-32": false,
+    "qwen25-0.5b-4bit:short-decode-32": true,
+    "qwen25-0.5b-bf16:long-decode-128": true,
+    "qwen25-0.5b-bf16:longctx-1024-decode-32": true,
+    "qwen25-0.5b-bf16:short-decode-32": true
+  },
+  "fixed_BF16_RMSNorm": {
+    "weighted_mismatches": 0,
+    "unweighted_mismatches": 0,
+    "float32_mismatches": 65838,
+    "float32_max_error": 4.76837158203125e-07
+  },
+  "regression_suites": {
+    "matmul_family": 17,
+    "fast_ops": 34,
+    "runtime": 41,
+    "failures": 0
+  },
+  "Q4_control": {
+    "identical_input_decode_projection_mismatches": {
+      "q_proj": 174,
+      "k_proj": 13,
+      "v_proj": 103
+    },
+    "native_control_mismatches": 0,
+    "mechanism": "Native sums each four input values in storage precision, then applies scale to the grouped dot product and bias to the input sum; Linux applied affine dequantization independently to each element. CPU reconstruction with rounded input sums and fma(scale,dot,bias_term) matches all three captured native decode products."
+  },
+  "performance_scope": "Single Linux M1 screen, not paired acceptance. No runtime integration."
+}

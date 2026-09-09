@@ -1,0 +1,52 @@
+diff --git a/tmp/mlx-sdpa-baseline/overlay/mlx/backend/omarchy/shaders/fast_norm.comp b/tmp/mlx-sdpa-experiment/overlay/mlx/backend/omarchy/shaders/fast_norm.comp
+index 8bbf154..8d9c385 100644
+--- a/tmp/mlx-sdpa-baseline/overlay/mlx/backend/omarchy/shaders/fast_norm.comp
++++ b/tmp/mlx-sdpa-experiment/overlay/mlx/backend/omarchy/shaders/fast_norm.comp
+@@ -107,18 +107,47 @@ void main() {
+ #endif
+ 
+     float local_sq = 0.0;
++#ifdef LAYER_NORM
+     for (uint index = thread; index < row_length; index += threads) {
+       float value = LOAD_VALUE(input_data.values[start + index]);
+       local_sq += value * value;
+     }
++#else
++    for (uint base = thread * 4u; base < row_length; base += threads * 4u) {
++      for (uint item = 0u; item < 4u && base + item < row_length; ++item) {
++        float value = LOAD_VALUE(input_data.values[start + base + item]);
++        local_sq += value * value;
++      }
++    }
++#endif
+     block_values[thread] = local_sq;
+     barrier();
++#ifdef LAYER_NORM
+     for (uint stride = 128u; stride > 0u; stride >>= 1u) {
+       if (thread < stride) {
+         block_values[thread] += block_values[thread + stride];
+       }
+       barrier();
+     }
++#else
++    uint lane = thread % 32u;
++    for (uint stride = 16u; stride > 0u; stride >>= 1u) {
++      if (lane < stride) {
++        block_values[thread] += block_values[thread + stride];
++      }
++      barrier();
++    }
++    float group_sum = thread < 8u ? block_values[thread * 32u] : 0.0;
++    barrier();
++    block_values[thread] = group_sum;
++    barrier();
++    for (uint stride = 4u; stride > 0u; stride >>= 1u) {
++      if (thread < stride) {
++        block_values[thread] += block_values[thread + stride];
++      }
++      barrier();
++    }
++#endif
+     float mean_square = block_values[0] / float(row_length);
+     barrier();
+ #ifdef LAYER_NORM
