@@ -1,0 +1,3 @@
+CS shader: 17 instrs, 9 alu, 9 fscib, 0 ic, 116 code size, 5 gprs, 28 uniforms, 0 scratch, 1024 threads, 1 loops, 0:0 spills:fills, 24 preamble inst
+CS shader: 332 instrs, 257 alu, 257 fscib, 108 ic, 2230 code size, 39 gprs, 80 uniforms, 0 scratch, 1024 threads, 3 loops, 0:0 spills:fills, 52 preamble inst
+version 0.32.2.dev202609091458+6b39daa
