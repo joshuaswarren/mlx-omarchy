@@ -570,6 +570,10 @@ enum class ComputeKernel : uint16_t {
   // arithmetic as MatmulF16 on a 64x64 tile; dispatch_matmul gates on
   // matrix_m >= 32 and no bias.
   MatmulRbF16,
+  // Straight-line four-wide SwiGLU chain (shaders/swiglu.comp) with the
+  // fused_chain.comp rounding; dispatch_chain pattern-matches it.
+  SwigluF16,
+  SwigluBF16,
   Count,
 };
 
