@@ -1,0 +1,12 @@
+{
+  "status": "Native numerical reference recovered on alternate hardware",
+  "hardware": "Apple M1 Max, not the benchmark M1",
+  "runtime": "MLX 0.32.2 and mlx-lm 0.31.3; installed upstream MLX extension matched its distribution RECORD",
+  "models": "Both pinned Qwen2.5-0.5B-Instruct snapshots already cached; no model download or environment installation",
+  "result": "Both 32-token short output digests match historical same-chip M1 native receipts: Q4 7fd25a869ff21678 and BF16 7fc0f968789b1882.",
+  "alignment": "Warmup disabled for sampler capture. Saved sampler input at zero-based generated index 14; argmax checked against output ID 14. Separate four-token-warmup runs produced identical complete short outputs. The sampler makes one speculative extra call, so raw warmup-call counts must not be inferred from yielded tokens.",
+  "bf16_generated14": {"selected_token": 3555, "score3555": -2.375, "score2585": -2.4375},
+  "q4_generated14": {"selected_token": 2585, "score3555": -2.0546875, "score2585": -1.21875},
+  "scope": "Sampler inputs are normalized scores, not raw model logits. No same-chip performance claim and no proof of cross-hardware intermediate equality. This provides a concrete native numerical debugging reference rather than treating every native investigation as blocked.",
+  "next": "Capture the same aligned sampler inputs and then layer outputs on Linux to localize the BF16 short divergence; extend native capture to the long workloads."
+}
