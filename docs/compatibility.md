@@ -152,7 +152,14 @@ float32, including grouped-query attention (`n_q_heads != n_kv_heads`,
 which emits rank-5 matmuls over stride-0 broadcast batch views), causal
 masks, and cache offsets (`k_len > q_len`). Sinks, the training logsumexp
 output, and `force_fused=True` stay named rejections or the composed
-fallback.
+fallback. float16 inputs (and bfloat16 under `MLX_OMARCHY_SDPA_BF16_FAST`)
+keep the scores, probabilities, and result in the storage dtype with float
+accumulation inside the shaders, and never materialize the causal mask:
+the softmax runs in causal mode (keys past `k_len - q_len + position` are
+excluded and store exact zeros) and the register-blocked scores and probs
+matmuls skip the fully masked tiles, storing the same bits the additive
+storage-floor mask produced ("f16 causal attention equals the additive
+storage-floor mask bit for bit", `omarchy_primitive_tests`).
 `mx.quantized_matmul` passes the gate for the mlx-lm Linear shape:
 affine mode, 4-bit and 8-bit codes, group sizes 32 and 64, transposed
 packed weights `[N, K * bits / 32]`, and f32, f16, and bf16 activations.
@@ -552,6 +559,30 @@ Mesa 26.1.7 measures 97.6/254.4/272.7 on the same wheel. The host
 reference case at the Qwen shapes passes under the qmm tile anchor
 bound with the same max error as the tile to three digits; receipt
 `receipts/2026-09-08-qmm-prefill-coopmat.json`.
+
+### Prefill glue kernels
+
+Three kernels take the f16/bf16 prefill work that ran on general
+one-element-per-thread shaders, each pinned bit-identical to the kernel it
+replaces (`receipts/2026-09-09-prefill-speed/`):
+
+- `BinaryVecF16/BF16` (`shaders/binary_vec.comp`): add, multiply, divide,
+  and subtract on 16-bit storage, four elements per thread, same float math
+  and modulo addressing as `elementwise.comp`. Taken when the count, both
+  operand sizes, and every element offset are multiples of four; scalar
+  operands and general broadcasts keep `elementwise.comp`. Test "four-wide
+  16-bit binary path matches the general kernel bit for bit".
+- `MatmulRbF16` (`shaders/matmul_rb.comp`): dense f16 matmul on a 64x64
+  register-blocked tile for `matrix_m >= 32` without bias, the same
+  per-output k order and zero padding as the 16x16 tile. Decode (`m == 1`)
+  keeps the 16x16 tile and the GEMV paths. Test "register-blocked f16
+  matmul matches the 16x16 tile bit for bit" (`omarchy_matmul_family_tests`).
+- `SwigluF16/BF16` (`shaders/swiglu.comp`): the fused chain's
+  sigmoid / multiply / multiply program with two direct leaves, four
+  elements per thread with the interpreter's per-instruction rounding,
+  materialized intermediates included. Other programs keep the
+  interpreter. The `omarchy_fused_chain_tests` bit-exact cases run through
+  it.
 
 ## ANE
 
