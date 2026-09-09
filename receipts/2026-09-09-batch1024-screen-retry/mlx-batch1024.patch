@@ -1,0 +1,6 @@
+diff --git a/overlay/mlx/backend/omarchy/encoder.h b/overlay/mlx/backend/omarchy/encoder.h
+--- a/overlay/mlx/backend/omarchy/encoder.h
++++ b/overlay/mlx/backend/omarchy/encoder.h
+@@ -55 +55 @@
+-inline constexpr int kBatchNodeBudget = 256;
++inline constexpr int kBatchNodeBudget = 1024;

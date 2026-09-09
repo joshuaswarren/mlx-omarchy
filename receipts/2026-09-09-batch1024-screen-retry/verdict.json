@@ -1,0 +1,14 @@
+{
+  "status": "Not integrated",
+  "source": "798bd6e",
+  "baseline_source": "4d3568e",
+  "wheel_sha256": "325e229011bfaae6ee46832eb6ae2222ff72ae4a6ca9a4022a8b92e0c67cfa7a",
+  "change": "Increase kBatchNodeBudget from 256 to 1024; preserve the existing byte budget, command-buffer ring, synchronization and arithmetic.",
+  "measurement": "Two alternating pairs, six workloads per side, 24 complete measured legs. All full generated-ID arrays equal; AC power, clean census, installed library matched wheel RECORD.",
+  "q4_decode_gain_percent": [1.47, 2.22, 1.11],
+  "bf16_decode_gain_percent": [0.82, 0.86, 0.54],
+  "order": ["short", "long", "context1024"],
+  "decision": "The small decode gain comes with approximately 1.5% lower long BF16 prefill and longer buffer lifetimes. Keep the existing cap; submission count alone does not explain the remaining parity gap. No runtime change accepted from this screen.",
+  "recovery": "Initial combined build-and-screen SSH command hit its 300-second deadline after one pair. Process census confirmed no surviving experiment processes. Complete pairs were rerun into this separate receipt directory with an 1800-second deadline. The build script assumes the isolated clone exists; initial clone was taken from GitHub at 3106bdd8.",
+  "native_parity": "Unmet; preserved Linux outputs are not native numerical equivalence."
+}
