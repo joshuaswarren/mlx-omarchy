@@ -1,0 +1,9 @@
+{
+  "purpose": "One-rep M1 smoke of main c4cf9f88 merged with wave/PrefillSpeed (0dbb1d1) before landing",
+  "source_commit": "e6d7452",
+  "hardware": "jwm1-linux Apple M1, installed Honeykrisp fork driver, AC power",
+  "decode_tok_s": {"q4_short": 87.93, "q4_long": 71.32, "q4_longctx": 48.48, "bf16_short": 11.73, "bf16_long": 11.3, "bf16_longctx": 10.25},
+  "prefill_tok_s": {"q4_short": 112.4, "q4_long": 544.7, "q4_longctx": 854.7, "bf16_short": 70.8, "bf16_long": 284.5, "bf16_longctx": 338.6},
+  "digests_equal_to_main": true,
+  "paired_evidence": "receipts/2026-09-09-prefill-speed/verdict.json (3 pairs, ids identical, M1 suites)"
+}
