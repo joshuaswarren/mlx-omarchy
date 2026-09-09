@@ -1,0 +1,10 @@
+{
+  "scope": "Native M1 Max MLX 0.32.2 numerical oracle, not M1 performance evidence",
+  "control": "Captured layer-zero Q4 prefill inputs; compare quantized_matmul with dequantized matrix products",
+  "split_K_reconstruction_mismatches": {"q_proj": 0, "k_proj": 0, "v_proj": 0},
+  "single_rounded_weight_matmul_mismatches": {"q_proj": 72413, "k_proj": 17646, "v_proj": 22455},
+  "single_unrounded_weight_matmul_mismatches": {"q_proj": 79823, "k_proj": 17868, "v_proj": 22859},
+  "identity_input_effective_weight_mismatches": {"q_proj": 0, "k_proj": 0, "v_proj": 0},
+  "mechanism": "Native qmm_splitk targets 512 threadgroups, partitions K on quantization-group boundaries, writes storage-precision partial products, then reduces them. Reconstructing this with native dequantize, partitioned matmul and sum matches every captured product.",
+  "implementation_status": "Linux prefill kernel still lacks this partition-round-reduce behavior; no integration or parity claim"
+}

@@ -1,0 +1,16 @@
+{
+  "candidate": "2845dbc",
+  "status": "Rejected for integration: incomplete numerical parity and slower prefill",
+  "native_generation_matches": 4,
+  "workloads": 6,
+  "matching_workloads": ["4bit short", "bf16 short", "bf16 long", "bf16 long-context"],
+  "fixed_native_projection_output_mismatches": {
+    "prefill": {"q_proj": 0, "k_proj": 3708, "v_proj": 18817},
+    "decode": {"q_proj": 0, "k_proj": 0, "v_proj": 0}
+  },
+  "Q4_prefill_tokens_per_second": {"short": 95.541, "long": 343.381, "long_context": 349.254},
+  "performance_scope": "Single Linux M1 screen; no paired performance acceptance",
+  "mechanism": "Private shader serializes native-sized K partitions and rounds partial results; Q projection matches but K/V reduction arithmetic remains unmatched. This is not a performance-ready split-K implementation.",
+  "regression_suites": "Not rerun: generation gate already failed; inherited Q4 BF16 regression remains unresolved",
+  "source_receipt": "complete-candidate.patch applies cleanly to public overlay"
+}

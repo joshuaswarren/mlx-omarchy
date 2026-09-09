@@ -1,0 +1,17 @@
+{
+  "dist": "mlx",
+  "verified": "match",
+  "mismatch": null,
+  "files": [
+    {
+      "path": "mlx/core.cpython-312-darwin.so",
+      "label": "mlx.core extension",
+      "sha256": "5ff77c777a73864d2af86defd61b141467746636f0047b76b66a7ae645fa12fb",
+      "record_sha256": "5ff77c777a73864d2af86defd61b141467746636f0047b76b66a7ae645fa12fb",
+      "match": true
+    }
+  ],
+  "dist_version": "0.32.2",
+  "mx_version": "0.32.2",
+  "version_match": true
+}
