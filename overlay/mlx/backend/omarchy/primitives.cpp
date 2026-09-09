@@ -6632,13 +6632,13 @@ void QuantizedMatmul::eval_gpu(const std::vector<array>& inputs, array& out) {
       };
       static constexpr Screen kScreens[] = {
           {"r1s8", omarchy::ComputeKernel::QmmVecQ4ScreenR1S8F16, 8u},
-          {"r1s8u4", omarchy::ComputeKernel::QmmVecQ4ScreenR1S8U4F16, 8u},
           {"r2s4", omarchy::ComputeKernel::QmmVecQ4ScreenR2S4F16, 8u},
-          {"r2s4u2", omarchy::ComputeKernel::QmmVecQ4ScreenR2S4U2F16, 8u},
-          {"r4s2x", omarchy::ComputeKernel::QmmVecQ4ScreenR4S2XF16, 8u},
-          {"r4s2u2", omarchy::ComputeKernel::QmmVecQ4ScreenR4S2U2F16, 8u},
-          {"r4s2u4", omarchy::ComputeKernel::QmmVecQ4ScreenR4S2U4F16, 8u},
-          {"r8s1", omarchy::ComputeKernel::QmmVecQ4ScreenR8S1F16, 8u},
+          {"r4s2p", omarchy::ComputeKernel::QmmVecQ4ScreenR4S2PF16, 8u},
+          {"r2s4p", omarchy::ComputeKernel::QmmVecQ4ScreenR2S4PF16, 8u},
+          {"r4s2alu", omarchy::ComputeKernel::QmmVecQ4ScreenR4S2ALUF16, 8u},
+          {"r4s2mem", omarchy::ComputeKernel::QmmVecQ4ScreenR4S2MEMF16, 8u},
+          {"r1s8alu", omarchy::ComputeKernel::QmmVecQ4ScreenR1S8ALUF16, 8u},
+          {"r1s8mem", omarchy::ComputeKernel::QmmVecQ4ScreenR1S8MEMF16, 8u},
       };
       for (const auto& s : kScreens) {
         if (std::strcmp(screen, s.name) == 0) {

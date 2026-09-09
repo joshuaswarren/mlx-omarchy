@@ -47,21 +47,20 @@ for k, n in shapes + exact:
     mx.eval(y)
     saved[f"q4_{k}x{n}"] = np.array(y.astype(mx.float32))
     if (k, n) in [tuple(t) for t in shapes]:
+        # One submission of `reps` back-to-back dispatches, as the decode
+        # loop submits them, so the GPU clock does not fall between them.
         t0 = time.perf_counter()
-        for _ in range(reps):
-            y = mx.quantized_matmul(x, w, s, b, transpose=True, group_size=64, bits=4)
-            mx.eval(y)
+        mx.eval(*[mx.quantized_matmul(x, w, s, b, transpose=True, group_size=64, bits=4)
+                  for _ in range(reps)])
         wall[f"q4_{k}x{n}"] = (time.perf_counter() - t0) / reps
 # Bandwidth ceilings on the largest per-layer weight (2,179,072 bytes):
-# an f16 elementwise identity (reads N, writes N) and an f32 sum (reads N).
+# unary f16 elementwise (reads N, writes N) and an f32 sum (reads N).
 nbytes = 4864 * 896 // 2
 a16 = mx.array(rng.standard_normal(nbytes // 2).astype(np.float16))
 a32 = mx.array(rng.standard_normal(nbytes // 4).astype(np.float32))
 mx.eval(a16, a32)
-for _ in range(reps):
-    mx.eval(a16 * mx.array(1.0, dtype=mx.float16))
-for _ in range(reps):
-    mx.eval(mx.sum(a32))
+mx.eval(*[mx.abs(a16) for _ in range(reps)])
+mx.eval(*[mx.sum(a32) for _ in range(reps)])
 np.savez(out, **saved)
 json.dump({"version": mx.__version__, "wall_s": wall}, open(out + ".meta.json", "w"))
 '''

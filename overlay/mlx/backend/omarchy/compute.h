@@ -564,13 +564,13 @@ enum class ComputeKernel : uint16_t {
   // Q4 decode GEMV screening shapes (rows x subgroups), f16 subgroup only;
   // selected by MLX_OMARCHY_Q4_GEMV_SCREEN for the bandwidth micro-benchmark.
   QmmVecQ4ScreenR1S8F16,
-  QmmVecQ4ScreenR1S8U4F16,
   QmmVecQ4ScreenR2S4F16,
-  QmmVecQ4ScreenR2S4U2F16,
-  QmmVecQ4ScreenR4S2XF16,
-  QmmVecQ4ScreenR4S2U2F16,
-  QmmVecQ4ScreenR4S2U4F16,
-  QmmVecQ4ScreenR8S1F16,
+  QmmVecQ4ScreenR4S2PF16,
+  QmmVecQ4ScreenR2S4PF16,
+  QmmVecQ4ScreenR4S2ALUF16,
+  QmmVecQ4ScreenR4S2MEMF16,
+  QmmVecQ4ScreenR1S8ALUF16,
+  QmmVecQ4ScreenR1S8MEMF16,
   Count,
 };
 

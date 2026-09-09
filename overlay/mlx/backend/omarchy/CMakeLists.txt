@@ -248,13 +248,13 @@ omarchy_shader(qmm_vec_q4_word_subgroup_bf16 shaders/qmm_vec.comp -DUSE_BF16=1 -
 # Screening shapes for the M1 bandwidth micro-benchmark
 # (MLX_OMARCHY_Q4_GEMV_SCREEN in primitives.cpp); f16 subgroup only.
 omarchy_shader(qmm_vec_q4_screen_r1s8_f16 shaders/qmm_vec.comp -DUSE_FP16=1 -DUSE_SUBGROUP=1 -DQMM_VEC_Q4_WORD=1 -DQ4_ROWS=1 -DQ4_SUBGROUPS=8)
-omarchy_shader(qmm_vec_q4_screen_r1s8u4_f16 shaders/qmm_vec.comp -DUSE_FP16=1 -DUSE_SUBGROUP=1 -DQMM_VEC_Q4_WORD=1 -DQ4_ROWS=1 -DQ4_SUBGROUPS=8 -DQ4_UNROLL=4)
 omarchy_shader(qmm_vec_q4_screen_r2s4_f16 shaders/qmm_vec.comp -DUSE_FP16=1 -DUSE_SUBGROUP=1 -DQMM_VEC_Q4_WORD=1 -DQ4_ROWS=2 -DQ4_SUBGROUPS=4)
-omarchy_shader(qmm_vec_q4_screen_r2s4u2_f16 shaders/qmm_vec.comp -DUSE_FP16=1 -DUSE_SUBGROUP=1 -DQMM_VEC_Q4_WORD=1 -DQ4_ROWS=2 -DQ4_SUBGROUPS=4 -DQ4_UNROLL=2)
-omarchy_shader(qmm_vec_q4_screen_r4s2x_f16 shaders/qmm_vec.comp -DUSE_FP16=1 -DUSE_SUBGROUP=1 -DQMM_VEC_Q4_WORD=1 -DQ4_ROWS=4 -DQ4_SUBGROUPS=2 -DQ4_NO_X_WORDS=1)
-omarchy_shader(qmm_vec_q4_screen_r4s2u2_f16 shaders/qmm_vec.comp -DUSE_FP16=1 -DUSE_SUBGROUP=1 -DQMM_VEC_Q4_WORD=1 -DQ4_ROWS=4 -DQ4_SUBGROUPS=2 -DQ4_UNROLL=2)
-omarchy_shader(qmm_vec_q4_screen_r4s2u4_f16 shaders/qmm_vec.comp -DUSE_FP16=1 -DUSE_SUBGROUP=1 -DQMM_VEC_Q4_WORD=1 -DQ4_ROWS=4 -DQ4_SUBGROUPS=2 -DQ4_UNROLL=4)
-omarchy_shader(qmm_vec_q4_screen_r8s1_f16 shaders/qmm_vec.comp -DUSE_FP16=1 -DUSE_SUBGROUP=1 -DQMM_VEC_Q4_WORD=1 -DQ4_ROWS=8 -DQ4_SUBGROUPS=1)
+omarchy_shader(qmm_vec_q4_screen_r4s2p_f16 shaders/qmm_vec.comp -DUSE_FP16=1 -DUSE_SUBGROUP=1 -DQMM_VEC_Q4_WORD=1 -DQ4_ROWS=4 -DQ4_SUBGROUPS=2 -DQ4_PIPELINE=1)
+omarchy_shader(qmm_vec_q4_screen_r2s4p_f16 shaders/qmm_vec.comp -DUSE_FP16=1 -DUSE_SUBGROUP=1 -DQMM_VEC_Q4_WORD=1 -DQ4_ROWS=2 -DQ4_SUBGROUPS=4 -DQ4_PIPELINE=1)
+omarchy_shader(qmm_vec_q4_screen_r4s2alu_f16 shaders/qmm_vec.comp -DUSE_FP16=1 -DUSE_SUBGROUP=1 -DQMM_VEC_Q4_WORD=1 -DQ4_ROWS=4 -DQ4_SUBGROUPS=2 -DQ4_DIAG_ALU=1)
+omarchy_shader(qmm_vec_q4_screen_r4s2mem_f16 shaders/qmm_vec.comp -DUSE_FP16=1 -DUSE_SUBGROUP=1 -DQMM_VEC_Q4_WORD=1 -DQ4_ROWS=4 -DQ4_SUBGROUPS=2 -DQ4_DIAG_MEM=1)
+omarchy_shader(qmm_vec_q4_screen_r1s8alu_f16 shaders/qmm_vec.comp -DUSE_FP16=1 -DUSE_SUBGROUP=1 -DQMM_VEC_Q4_WORD=1 -DQ4_ROWS=1 -DQ4_SUBGROUPS=8 -DQ4_DIAG_ALU=1)
+omarchy_shader(qmm_vec_q4_screen_r1s8mem_f16 shaders/qmm_vec.comp -DUSE_FP16=1 -DUSE_SUBGROUP=1 -DQMM_VEC_Q4_WORD=1 -DQ4_ROWS=1 -DQ4_SUBGROUPS=8 -DQ4_DIAG_MEM=1)
 # PrefillQmmTile: m-tiled quantized matmul for prefill (matrix_m > 1);
 # one workgroup dequantizes each 16 x 16 weight block into shared f32
 # once and applies it to a 16-row tile of x, amortizing the inline
