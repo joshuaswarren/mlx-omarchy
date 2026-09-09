@@ -93,6 +93,9 @@ Exec=omarchy-launch-floating-terminal-with-presentation $BIN/mlx-omarchy-demo
 Icon=utilities-terminal
 Categories=Development;Utility;
 EOF
+  # The Omarchy shell scans desktop entries at startup; ask it to rescan so
+  # the entry shows up in the launcher (Super+Space) without a re-login.
+  omarchy-menu refresh >/dev/null 2>&1 || true
 fi
 
 # 6. Smoke test on the real GPU: import, device, one matmul.
