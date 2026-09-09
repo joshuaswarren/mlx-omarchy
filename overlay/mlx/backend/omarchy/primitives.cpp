@@ -6580,10 +6580,11 @@ void QuantizedMatmul::eval_gpu(const std::vector<array>& inputs, array& out) {
   // general path runs unchanged. See PROTOCOL.md for the keep rule.
   //
   // Gemv group count: COLUMNS_PER_GROUP output columns per workgroup,
-  // matching the lane split in shaders/qmm_vec.comp.
+  // matching the lane split in shaders/qmm_vec.comp: 8 for the general
+  // kernel (eight one-row subgroups) and Q4_ROWS x Q4_SUBGROUPS = 2 x 4
+  // for the Q4 kernel.
   constexpr uint32_t kGemvColumnsPerGroup = 8u;
-  auto n_groups_qmm_vec = (params.matrix_n + kGemvColumnsPerGroup - 1u) /
-      kGemvColumnsPerGroup;
+  constexpr uint32_t kQ4GemvColumnsPerGroup = 8u;
   if (params.matrix_m == 1u) {
     const auto& caps = encoder.device().capabilities();
     bool subgroup_ready =
@@ -6594,6 +6595,8 @@ void QuantizedMatmul::eval_gpu(const std::vector<array>& inputs, array& out) {
     bool use_q4_word =
         (q4_word_env == nullptr || std::strcmp(q4_word_env, "1") == 0) &&
         transpose_ && bits_ == 4 && group_size_ == 64;
+    uint32_t columns_per_group =
+        use_q4_word ? kQ4GemvColumnsPerGroup : kGemvColumnsPerGroup;
     auto vec_kernel = subgroup_ready
         ? select_float_kernel(
               out.dtype(),
@@ -6614,6 +6617,8 @@ void QuantizedMatmul::eval_gpu(const std::vector<array>& inputs, array& out) {
                           : omarchy::ComputeKernel::QmmVecF16,
               use_q4_word ? omarchy::ComputeKernel::QmmVecQ4WordBF16
                           : omarchy::ComputeKernel::QmmVecBF16);
+    auto n_groups_qmm_vec =
+        (params.matrix_n + columns_per_group - 1u) / columns_per_group;
     encoder.dispatch_compute(
         vec_kernel,
         bindings,
