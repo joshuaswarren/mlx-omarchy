@@ -6559,7 +6559,10 @@ void QuantizedMatmul::eval_gpu(const std::vector<array>& inputs, array& out) {
       checked_u32(w.ndim() == 3 ? w_d.size() / batch : 0, tag, out);
   params.shape[2] =
       checked_u32(scales.ndim() == 3 ? scales_d.size() / batch : 0, tag, out);
-  params.flags = transpose_ ? 0u : 1u;
+  // Bit 1: the x row starts on a 32-bit word, so the Q4 GEMV may read
+  // x as packed 16-bit pairs (k is a multiple of 64, so every batch row
+  // keeps the parity of lhs_offset).
+  params.flags = (transpose_ ? 0u : 1u) | ((params.lhs_offset % 2u == 0u) ? 2u : 0u);
   std::array<omarchy::ComputeBinding, 5> bindings{
       binding(x_d),
       binding(w_d),
@@ -6629,11 +6632,13 @@ void QuantizedMatmul::eval_gpu(const std::vector<array>& inputs, array& out) {
       };
       static constexpr Screen kScreens[] = {
           {"r1s8", omarchy::ComputeKernel::QmmVecQ4ScreenR1S8F16, 8u},
+          {"r1s8u4", omarchy::ComputeKernel::QmmVecQ4ScreenR1S8U4F16, 8u},
           {"r2s4", omarchy::ComputeKernel::QmmVecQ4ScreenR2S4F16, 8u},
+          {"r2s4u2", omarchy::ComputeKernel::QmmVecQ4ScreenR2S4U2F16, 8u},
+          {"r4s2x", omarchy::ComputeKernel::QmmVecQ4ScreenR4S2XF16, 8u},
+          {"r4s2u2", omarchy::ComputeKernel::QmmVecQ4ScreenR4S2U2F16, 8u},
+          {"r4s2u4", omarchy::ComputeKernel::QmmVecQ4ScreenR4S2U4F16, 8u},
           {"r8s1", omarchy::ComputeKernel::QmmVecQ4ScreenR8S1F16, 8u},
-          {"r4s1", omarchy::ComputeKernel::QmmVecQ4ScreenR4S1F16, 4u},
-          {"r4s4", omarchy::ComputeKernel::QmmVecQ4ScreenR4S4F16, 16u},
-          {"r8s2", omarchy::ComputeKernel::QmmVecQ4ScreenR8S2F16, 16u},
       };
       for (const auto& s : kScreens) {
         if (std::strcmp(screen, s.name) == 0) {

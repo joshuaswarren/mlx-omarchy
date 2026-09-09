@@ -102,6 +102,23 @@ layout(local_size_x = WORKGROUP_LANES) in;
 layout(set = 0, binding = 0, std430) readonly buffer InputX {
   STORAGE_TYPE values[];
 } input_x;
+#if defined(QMM_VEC_Q4_WORD) && !defined(Q4_NO_X_WORDS) && \
+    (defined(USE_FP16) || defined(USE_BF16))
+// Same buffer as binding 0 viewed as packed 16-bit pairs; used when the
+// dispatch flags the x row as word aligned (flags bit 1). Both halves
+// convert exactly, so the values equal the element loads.
+#define Q4_X_WORDS 1
+layout(set = 0, binding = 0, std430) readonly buffer InputXWords {
+  uint values[];
+} input_x_words;
+#ifdef USE_FP16
+#define X_LO(word) unpackHalf2x16(word).x
+#define X_HI(word) unpackHalf2x16(word).y
+#else
+#define X_LO(word) uintBitsToFloat((word) << 16u)
+#define X_HI(word) uintBitsToFloat((word) & 0xffff0000u)
+#endif
+#endif
 layout(set = 0, binding = 1, std430) readonly buffer InputW {
   uint values[];
 } input_w;
@@ -462,23 +479,42 @@ void main() {
 // lane diverges before the subgroup reduction. Per row a lane walks
 // words lane_in_slot, +32, ... in order and accumulates
 // x * (scale * q + bias) nibble by nibble, the same chain a one-row
-// subgroup runs, so the output does not depend on Q4_ROWS. The eight x
-// values of a word are loaded once per step and shared by every row.
+// subgroup runs, so the output does not depend on Q4_ROWS or
+// Q4_UNROLL. Each loop iteration first issues every load it needs -
+// Q4_UNROLL words per lane, the eight x values of each, and the
+// scale/bias pair per row - and only then accumulates, because the
+// Honeykrisp scheduler keeps loads in source order and waits on each
+// before the next row's loads issue when they are interleaved with
+// the arithmetic. Steps past the row end clamp their loads to the last
+// word and skip the arithmetic.
+#ifndef Q4_UNROLL
+#define Q4_UNROLL 1
+#endif
 #if Q4_ROWS == 1
-#define Q4_FOR_ROWS(M) M(0)
+#define Q4_FOR_ROWS(M, u) M(0, u)
 #elif Q4_ROWS == 2
-#define Q4_FOR_ROWS(M) M(0) M(1)
+#define Q4_FOR_ROWS(M, u) M(0, u) M(1, u)
 #elif Q4_ROWS == 4
-#define Q4_FOR_ROWS(M) M(0) M(1) M(2) M(3)
+#define Q4_FOR_ROWS(M, u) M(0, u) M(1, u) M(2, u) M(3, u)
 #elif Q4_ROWS == 8
-#define Q4_FOR_ROWS(M) M(0) M(1) M(2) M(3) M(4) M(5) M(6) M(7)
+#define Q4_FOR_ROWS(M, u) \
+  M(0, u) M(1, u) M(2, u) M(3, u) M(4, u) M(5, u) M(6, u) M(7, u)
 #else
 #error "Q4_ROWS must be 1, 2, 4, or 8"
 #endif
+#if Q4_UNROLL == 1
+#define Q4_FOR_STEPS(M) M(0)
+#elif Q4_UNROLL == 2
+#define Q4_FOR_STEPS(M) M(0) M(1)
+#elif Q4_UNROLL == 4
+#define Q4_FOR_STEPS(M) M(0) M(1) M(2) M(3)
+#else
+#error "Q4_UNROLL must be 1, 2, or 4"
+#endif
 
-// Row state lives in arrays indexed only by the literal r each macro
-// receives, so every element resolves to its own register.
-#define Q4_ROW_INIT(r) \
+// Row and step state lives in arrays indexed only by the literals each
+// macro receives, so every element resolves to its own register.
+#define Q4_ROW_INIT(r, u) \
   { \
     uint column = min(column0 + uint(r), last_column); \
     w_base[r] = w_row + column * words_per_row; \
@@ -486,23 +522,88 @@ void main() {
     acc[r] = 0.0; \
   }
 
-#define Q4_ROW_STEP(r) \
+#define Q4_ROW_LOAD(r, u) \
+  word[u * Q4_ROWS + r] = input_w.values[w_base[r] + wu]; \
+  scale[u * Q4_ROWS + r] = \
+      LOAD_VALUE(scales.values[scale_row + param[r] + group]); \
+  bias[u * Q4_ROWS + r] = \
+      LOAD_VALUE(biases.values[bias_row + param[r] + group]);
+
+#define Q4_LOAD_X_ELEMENTS(u, k) \
+  x[u * 8 + 0] = LOAD_VALUE(input_x.values[k]); \
+  x[u * 8 + 1] = LOAD_VALUE(input_x.values[k + 1u]); \
+  x[u * 8 + 2] = LOAD_VALUE(input_x.values[k + 2u]); \
+  x[u * 8 + 3] = LOAD_VALUE(input_x.values[k + 3u]); \
+  x[u * 8 + 4] = LOAD_VALUE(input_x.values[k + 4u]); \
+  x[u * 8 + 5] = LOAD_VALUE(input_x.values[k + 5u]); \
+  x[u * 8 + 6] = LOAD_VALUE(input_x.values[k + 6u]); \
+  x[u * 8 + 7] = LOAD_VALUE(input_x.values[k + 7u]);
+
+#ifdef Q4_X_WORDS
+#define Q4_LOAD_X(u, k) \
+  if (x_word_aligned) { \
+    uint xw0 = input_x_words.values[(k) >> 1u]; \
+    uint xw1 = input_x_words.values[((k) >> 1u) + 1u]; \
+    uint xw2 = input_x_words.values[((k) >> 1u) + 2u]; \
+    uint xw3 = input_x_words.values[((k) >> 1u) + 3u]; \
+    x[u * 8 + 0] = X_LO(xw0); \
+    x[u * 8 + 1] = X_HI(xw0); \
+    x[u * 8 + 2] = X_LO(xw1); \
+    x[u * 8 + 3] = X_HI(xw1); \
+    x[u * 8 + 4] = X_LO(xw2); \
+    x[u * 8 + 5] = X_HI(xw2); \
+    x[u * 8 + 6] = X_LO(xw3); \
+    x[u * 8 + 7] = X_HI(xw3); \
+  } else { \
+    Q4_LOAD_X_ELEMENTS(u, k) \
+  }
+#else
+#define Q4_LOAD_X(u, k) Q4_LOAD_X_ELEMENTS(u, k)
+#endif
+
+#define Q4_LOAD_STEP(u) \
   { \
-    uint word = input_w.values[w_base[r] + w]; \
-    float scale = LOAD_VALUE(scales.values[scale_row + param[r] + group]); \
-    float bias = LOAD_VALUE(biases.values[bias_row + param[r] + group]); \
-    acc[r] += x0 * (scale * float(word & 0xfu) + bias); \
-    acc[r] += x1 * (scale * float((word >> 4u) & 0xfu) + bias); \
-    acc[r] += x2 * (scale * float((word >> 8u) & 0xfu) + bias); \
-    acc[r] += x3 * (scale * float((word >> 12u) & 0xfu) + bias); \
-    acc[r] += x4 * (scale * float((word >> 16u) & 0xfu) + bias); \
-    acc[r] += x5 * (scale * float((word >> 20u) & 0xfu) + bias); \
-    acc[r] += x6 * (scale * float((word >> 24u) & 0xfu) + bias); \
-    acc[r] += x7 * (scale * float(word >> 28u) + bias); \
+    uint wu = min(w + uint(u) * LANES, last_word); \
+    uint k = x_row + wu * 8u; \
+    uint group = wu / 8u; \
+    Q4_LOAD_X(u, k) \
+    Q4_FOR_ROWS(Q4_ROW_LOAD, u) \
+  }
+
+#define Q4_ROW_DOT(r, u) \
+  acc[r] += x[u * 8 + 0] * \
+      (scale[u * Q4_ROWS + r] * float(word[u * Q4_ROWS + r] & 0xfu) + \
+       bias[u * Q4_ROWS + r]); \
+  acc[r] += x[u * 8 + 1] * \
+      (scale[u * Q4_ROWS + r] * float((word[u * Q4_ROWS + r] >> 4u) & 0xfu) + \
+       bias[u * Q4_ROWS + r]); \
+  acc[r] += x[u * 8 + 2] * \
+      (scale[u * Q4_ROWS + r] * float((word[u * Q4_ROWS + r] >> 8u) & 0xfu) + \
+       bias[u * Q4_ROWS + r]); \
+  acc[r] += x[u * 8 + 3] * \
+      (scale[u * Q4_ROWS + r] * float((word[u * Q4_ROWS + r] >> 12u) & 0xfu) + \
+       bias[u * Q4_ROWS + r]); \
+  acc[r] += x[u * 8 + 4] * \
+      (scale[u * Q4_ROWS + r] * float((word[u * Q4_ROWS + r] >> 16u) & 0xfu) + \
+       bias[u * Q4_ROWS + r]); \
+  acc[r] += x[u * 8 + 5] * \
+      (scale[u * Q4_ROWS + r] * float((word[u * Q4_ROWS + r] >> 20u) & 0xfu) + \
+       bias[u * Q4_ROWS + r]); \
+  acc[r] += x[u * 8 + 6] * \
+      (scale[u * Q4_ROWS + r] * float((word[u * Q4_ROWS + r] >> 24u) & 0xfu) + \
+       bias[u * Q4_ROWS + r]); \
+  acc[r] += x[u * 8 + 7] * \
+      (scale[u * Q4_ROWS + r] * float(word[u * Q4_ROWS + r] >> 28u) + \
+       bias[u * Q4_ROWS + r]);
+
+// Step 0 is inside the row by the loop condition; later steps check.
+#define Q4_DOT_STEP(u) \
+  if (uint(u) == 0u || w + uint(u) * LANES < words_per_row) { \
+    Q4_FOR_ROWS(Q4_ROW_DOT, u) \
   }
 
 #ifdef USE_SUBGROUP
-#define Q4_ROW_STORE(r) \
+#define Q4_ROW_STORE(r, u) \
   { \
     float total = subgroupAdd(acc[r]); \
     if (lane_in_slot == 0u && column0 + uint(r) < params.matrix_n) { \
@@ -512,7 +613,7 @@ void main() {
 #else
 // Tree reduction, one row at a time through the shared scratch; the
 // trailing barrier protects the scratch before the next row reuses it.
-#define Q4_ROW_STORE(r) \
+#define Q4_ROW_STORE(r, u) \
   reduce_scratch[lane] = acc[r]; \
   barrier(); \
   for (uint offset = LANES / 2u; offset > 0u; offset >>= 1u) { \
@@ -536,7 +637,11 @@ void main() {
       gl_WorkGroupID.x * COLUMNS_PER_GROUP + column_slot * uint(Q4_ROWS);
   uint last_column = params.matrix_n - 1u;
   uint words_per_row = params.matrix_k / 8u;
+  uint last_word = words_per_row - 1u;
   uint groups_per_row = params.matrix_k / 64u;
+#ifdef Q4_X_WORDS
+  bool x_word_aligned = (params.flags & 2u) != 0u;
+#endif
   for (uint b = 0u; b < params.shape[0]; ++b) {
     uint w_row = params.rhs_offset + b * params.shape[1];
     uint x_row = params.lhs_offset + b * params.matrix_k;
@@ -546,21 +651,16 @@ void main() {
     uint w_base[Q4_ROWS];
     uint param[Q4_ROWS];
     float acc[Q4_ROWS];
-    Q4_FOR_ROWS(Q4_ROW_INIT)
-    for (uint w = lane_in_slot; w < words_per_row; w += LANES) {
-      uint k = x_row + w * 8u;
-      uint group = w / 8u;
-      float x0 = LOAD_VALUE(input_x.values[k]);
-      float x1 = LOAD_VALUE(input_x.values[k + 1u]);
-      float x2 = LOAD_VALUE(input_x.values[k + 2u]);
-      float x3 = LOAD_VALUE(input_x.values[k + 3u]);
-      float x4 = LOAD_VALUE(input_x.values[k + 4u]);
-      float x5 = LOAD_VALUE(input_x.values[k + 5u]);
-      float x6 = LOAD_VALUE(input_x.values[k + 6u]);
-      float x7 = LOAD_VALUE(input_x.values[k + 7u]);
-      Q4_FOR_ROWS(Q4_ROW_STEP)
+    Q4_FOR_ROWS(Q4_ROW_INIT, 0)
+    for (uint w = lane_in_slot; w < words_per_row; w += LANES * Q4_UNROLL) {
+      float x[8 * Q4_UNROLL];
+      uint word[Q4_ROWS * Q4_UNROLL];
+      float scale[Q4_ROWS * Q4_UNROLL];
+      float bias[Q4_ROWS * Q4_UNROLL];
+      Q4_FOR_STEPS(Q4_LOAD_STEP)
+      Q4_FOR_STEPS(Q4_DOT_STEP)
     }
-    Q4_FOR_ROWS(Q4_ROW_STORE)
+    Q4_FOR_ROWS(Q4_ROW_STORE, 0)
   }
 }
 #endif

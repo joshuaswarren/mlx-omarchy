@@ -266,11 +266,13 @@
 #include "qmm_vec_q4_word_subgroup_f16.h"
 #include "qmm_vec_q4_word_subgroup_f32.h"
 #include "qmm_vec_q4_screen_r1s8_f16.h"
+#include "qmm_vec_q4_screen_r1s8u4_f16.h"
 #include "qmm_vec_q4_screen_r2s4_f16.h"
+#include "qmm_vec_q4_screen_r2s4u2_f16.h"
+#include "qmm_vec_q4_screen_r4s2x_f16.h"
+#include "qmm_vec_q4_screen_r4s2u2_f16.h"
+#include "qmm_vec_q4_screen_r4s2u4_f16.h"
 #include "qmm_vec_q4_screen_r8s1_f16.h"
-#include "qmm_vec_q4_screen_r4s1_f16.h"
-#include "qmm_vec_q4_screen_r4s4_f16.h"
-#include "qmm_vec_q4_screen_r8s2_f16.h"
 #include "qmm_tile_bf16.h"
 #include "qmm_tile_f16.h"
 #include "qmm_tile_rb_f16.h"
@@ -1199,16 +1201,20 @@ ShaderBytes shader_bytes(ComputeKernel kernel) {
       return {fused_chain_bf16, fused_chain_bf16_size};
     case ComputeKernel::QmmVecQ4ScreenR1S8F16:
       return {qmm_vec_q4_screen_r1s8_f16, qmm_vec_q4_screen_r1s8_f16_size};
+    case ComputeKernel::QmmVecQ4ScreenR1S8U4F16:
+      return {qmm_vec_q4_screen_r1s8u4_f16, qmm_vec_q4_screen_r1s8u4_f16_size};
     case ComputeKernel::QmmVecQ4ScreenR2S4F16:
       return {qmm_vec_q4_screen_r2s4_f16, qmm_vec_q4_screen_r2s4_f16_size};
+    case ComputeKernel::QmmVecQ4ScreenR2S4U2F16:
+      return {qmm_vec_q4_screen_r2s4u2_f16, qmm_vec_q4_screen_r2s4u2_f16_size};
+    case ComputeKernel::QmmVecQ4ScreenR4S2XF16:
+      return {qmm_vec_q4_screen_r4s2x_f16, qmm_vec_q4_screen_r4s2x_f16_size};
+    case ComputeKernel::QmmVecQ4ScreenR4S2U2F16:
+      return {qmm_vec_q4_screen_r4s2u2_f16, qmm_vec_q4_screen_r4s2u2_f16_size};
+    case ComputeKernel::QmmVecQ4ScreenR4S2U4F16:
+      return {qmm_vec_q4_screen_r4s2u4_f16, qmm_vec_q4_screen_r4s2u4_f16_size};
     case ComputeKernel::QmmVecQ4ScreenR8S1F16:
       return {qmm_vec_q4_screen_r8s1_f16, qmm_vec_q4_screen_r8s1_f16_size};
-    case ComputeKernel::QmmVecQ4ScreenR4S1F16:
-      return {qmm_vec_q4_screen_r4s1_f16, qmm_vec_q4_screen_r4s1_f16_size};
-    case ComputeKernel::QmmVecQ4ScreenR4S4F16:
-      return {qmm_vec_q4_screen_r4s4_f16, qmm_vec_q4_screen_r4s4_f16_size};
-    case ComputeKernel::QmmVecQ4ScreenR8S2F16:
-      return {qmm_vec_q4_screen_r8s2_f16, qmm_vec_q4_screen_r8s2_f16_size};
     case ComputeKernel::QuantizeFpF16:
       return {quantize_fp_f16, quantize_fp_f16_size};
     case ComputeKernel::QuantizeFpBF16:
