@@ -1,0 +1,6 @@
+[  0%] Built target cpu_compiled_preamble
+[  0%] Built target mlx_version
+[  1%] Built target gguflib
+[ 89%] Built target omarchy_shaders
+[100%] Built target mlx
+[100%] Built target omarchy_matmul_family_tests

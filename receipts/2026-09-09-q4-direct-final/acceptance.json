@@ -1,0 +1,20 @@
+{
+  "status": "Accepted for integration",
+  "source_short": "4d3568e",
+  "wheel_sha256": "2fb621ae605a997748eb5b662a6cbcd510fa546f7acbfc5ff2734cd0eb5ea823",
+  "scope": "Remove Q4 activation staging, its allocation limit, and its obsolete shared-memory precondition. Preserve packed-word reduction order.",
+  "paired_repetitions": 5,
+  "measured_legs": 60,
+  "full_ids_equal": true,
+  "verification": {
+    "m1_matrix_cases": 17,
+    "m1_fast_ops_cases": 33,
+    "m1_runtime_cases": 41,
+    "llvmpipe_targeted_cases": 1,
+    "llvmpipe_targeted_assertions": 121,
+    "added_boundary": "K=8192 across the existing three dtype host-reference cases"
+  },
+  "harness_dirty_explanation": "Only untracked receipt output and scripts/capture-ids-parity.py. No tracked source changes on measured checkout; actual capture script preserved here.",
+  "review": "Direct loads retain the original lhs_offset + batch*matrix_k + k address. Each output retains its accumulator order; subgroup and tree reductions are unchanged. Shared scratch remains only in tree builds. No unresolved finding in this diff.",
+  "native_parity": "Still unmet. These gains preserve Linux outputs, including the existing non-native long Q4 output. The experimental BF16 reduction is not integrated."
+}

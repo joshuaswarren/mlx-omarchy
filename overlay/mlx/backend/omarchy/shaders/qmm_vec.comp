@@ -33,10 +33,6 @@
 // QMM_VEC_Q4_WORD compiles the transposed affine 4-bit/group-64 decode
 // candidate. One lane owns one packed word at a time: it loads the word,
 // scale, and bias once, then applies all eight nibbles with constant shifts.
-// The workgroup stages x once so its eight column slots do not each reload
-// the activation vector. Dispatch selects this binary only for that exact
-// quantization/layout contract and when its fixed shared allocation fits;
-// every other case keeps the existing kernel.
 
 #ifdef USE_FP16
 #extension GL_EXT_shader_16bit_storage : require
@@ -79,9 +75,6 @@ uint16_t bf16_store(float value) {
 
 const uint COLUMNS_PER_GROUP = 8u;
 const uint LANES = 32u;
-#ifdef QMM_VEC_Q4_WORD
-const uint QMM_VEC_MAX_K = 4864u;
-#endif
 
 layout(local_size_x = 256) in;
 
@@ -135,9 +128,8 @@ layout(push_constant) uniform Params {
   uint out_strides[4];
 } params;
 
+#ifndef USE_SUBGROUP
 shared float reduce_scratch[256];
-#ifdef QMM_VEC_Q4_WORD
-shared STORAGE_TYPE staged_x[QMM_VEC_MAX_K];
 #endif
 
 // Push-constant routing: operation carries bits (2, 3, 4, 5, 6, or 8),
@@ -235,16 +227,6 @@ void main() {
   bool column_active = column < params.matrix_n;
   for (uint b = 0u; b < batch; ++b) {
     float accumulator = 0.0;
-#ifdef QMM_VEC_Q4_WORD
-    if (b > 0u) {
-      barrier();
-    }
-    for (uint k = lane; k < params.matrix_k; k += 256u) {
-      staged_x[k] = input_x.values[
-          params.lhs_offset + b * params.matrix_k + k];
-    }
-    barrier();
-#endif
     if (column_active) {
       uint w_row = params.rhs_offset + b * w_batch_words;
       uint p_base = params.aux_offset + b * param_batch;
@@ -324,21 +306,21 @@ void main() {
         uint group = w / 8u;
         float scale = LOAD_VALUE(scales.values[scale_base + group]);
         float bias = LOAD_VALUE(biases.values[bias_base + group]);
-        accumulator += LOAD_VALUE(staged_x[k]) *
+        accumulator += LOAD_VALUE(input_x.values[params.lhs_offset + b * params.matrix_k + k]) *
             (scale * float(word & 0xfu) + bias);
-        accumulator += LOAD_VALUE(staged_x[k + 1u]) *
+        accumulator += LOAD_VALUE(input_x.values[params.lhs_offset + b * params.matrix_k + k + 1u]) *
             (scale * float((word >> 4u) & 0xfu) + bias);
-        accumulator += LOAD_VALUE(staged_x[k + 2u]) *
+        accumulator += LOAD_VALUE(input_x.values[params.lhs_offset + b * params.matrix_k + k + 2u]) *
             (scale * float((word >> 8u) & 0xfu) + bias);
-        accumulator += LOAD_VALUE(staged_x[k + 3u]) *
+        accumulator += LOAD_VALUE(input_x.values[params.lhs_offset + b * params.matrix_k + k + 3u]) *
             (scale * float((word >> 12u) & 0xfu) + bias);
-        accumulator += LOAD_VALUE(staged_x[k + 4u]) *
+        accumulator += LOAD_VALUE(input_x.values[params.lhs_offset + b * params.matrix_k + k + 4u]) *
             (scale * float((word >> 16u) & 0xfu) + bias);
-        accumulator += LOAD_VALUE(staged_x[k + 5u]) *
+        accumulator += LOAD_VALUE(input_x.values[params.lhs_offset + b * params.matrix_k + k + 5u]) *
             (scale * float((word >> 20u) & 0xfu) + bias);
-        accumulator += LOAD_VALUE(staged_x[k + 6u]) *
+        accumulator += LOAD_VALUE(input_x.values[params.lhs_offset + b * params.matrix_k + k + 6u]) *
             (scale * float((word >> 24u) & 0xfu) + bias);
-        accumulator += LOAD_VALUE(staged_x[k + 7u]) *
+        accumulator += LOAD_VALUE(input_x.values[params.lhs_offset + b * params.matrix_k + k + 7u]) *
             (scale * float(word >> 28u) + bias);
       }
 #else

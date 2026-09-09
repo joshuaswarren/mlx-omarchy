@@ -2975,7 +2975,6 @@ TEST_CASE("qmm_vec packed-word candidate matches baseline and host reference") {
     return;
   }
   Stream stream = gpu_stream();
-  const auto& caps = omarchy::device(0).capabilities();
   std::vector<Dtype> dtypes{float32};
   if (float16_available()) {
     dtypes.push_back(float16);
@@ -3006,7 +3005,7 @@ TEST_CASE("qmm_vec packed-word candidate matches baseline and host reference") {
   };
 
   const std::vector<std::pair<int, int>> shapes{
-      {64, 7}, {896, 9}, {4864, 37}};
+      {64, 7}, {896, 9}, {4864, 37}, {8192, 7}};
   for (auto dtype : dtypes) {
     for (auto [k, n] : shapes) {
       INFO("dtype=" << dtype << " n=" << n << " k=" << k);
@@ -3026,9 +3025,6 @@ TEST_CASE("qmm_vec packed-word candidate matches baseline and host reference") {
           host_quantized_matmul(rounded, x_rt, 1, n, k, 64, 4);
 
       array x(x_rt.begin(), Shape{1, k}, dtype);
-      size_t required_shared = 4864u * x.itemsize() + 256u * sizeof(float);
-      REQUIRE_MESSAGE(required_shared <= caps.max_compute_shared_memory_size,
-          "device cannot exercise the packed-word shader");
       array w_words(host.words.begin(), Shape{n, k / 8}, uint32);
       array scales(rounded.scales.begin(), Shape{n, k / 64}, dtype);
       array biases(rounded.biases.begin(), Shape{n, k / 64}, dtype);
