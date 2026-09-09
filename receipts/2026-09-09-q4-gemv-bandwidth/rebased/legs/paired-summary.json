@@ -1,0 +1,333 @@
+{
+  "repetitions": 3,
+  "sides": {
+    "base": {
+      "python": "/home/joshuawarren/src/mlx-GemvBandwidth-main/.venv-accept/bin/python",
+      "wheel": "/home/joshuawarren/src/mlx-GemvBandwidth-main/dist/mlx_omarchy-0.32.2.dev202609091907+c4cf9f8-cp314-cp314-linux_aarch64.whl",
+      "stamp": "c4cf9f8",
+      "version": "0.32.2.dev202609091907+c4cf9f8",
+      "sha256": "1b2e46dbbfbc8ff191e81b53fbdebd3bc48d55baa76f26b16ca31e8e6a606bf3"
+    },
+    "cand": {
+      "python": "/home/joshuawarren/src/mlx-GemvBandwidth-c/.venv-accept/bin/python",
+      "wheel": "/home/joshuawarren/src/mlx-GemvBandwidth-c/dist/mlx_omarchy-0.32.2.dev202609091910+5d92fa1-cp314-cp314-linux_aarch64.whl",
+      "stamp": "5d92fa1",
+      "version": "0.32.2.dev202609091910+5d92fa1",
+      "sha256": "762fa8e40623dd6c44a5a966d2052c80cb14a3a47bcaac3fc3d9b51335a06c6a"
+    }
+  },
+  "results": [
+    {
+      "leg_id": "qwen25-0.5b-4bit:long-decode-128",
+      "native_digest": "254d73fd93164b98",
+      "sides": {
+        "base": {
+          "digests": [
+            "4cc08910089477fd"
+          ],
+          "native_match": false,
+          "decode_tok_s": {
+            "samples": [
+              65.18,
+              65.49,
+              65.58
+            ],
+            "median": 65.49
+          },
+          "prefill_tok_s": {
+            "samples": [
+              451.724,
+              450.172,
+              455.652
+            ],
+            "median": 451.724
+          }
+        },
+        "cand": {
+          "digests": [
+            "4cc08910089477fd"
+          ],
+          "native_match": false,
+          "decode_tok_s": {
+            "samples": [
+              64.13,
+              64.49,
+              64.35
+            ],
+            "median": 64.35
+          },
+          "prefill_tok_s": {
+            "samples": [
+              451.724,
+              454.861,
+              447.099
+            ],
+            "median": 451.724
+          },
+          "decode_over_base": 0.9825927622537792,
+          "prefill_over_base": 1.0
+        }
+      }
+    },
+    {
+      "leg_id": "qwen25-0.5b-4bit:longctx-1024-decode-32",
+      "native_digest": "7da83f06ec9f001d",
+      "sides": {
+        "base": {
+          "digests": [
+            "7da83f06ec9f001d"
+          ],
+          "native_match": true,
+          "decode_tok_s": {
+            "samples": [
+              45.49,
+              45.84,
+              45.96
+            ],
+            "median": 45.84
+          },
+          "prefill_tok_s": {
+            "samples": [
+              481.922,
+              478.202,
+              476.686
+            ],
+            "median": 478.202
+          }
+        },
+        "cand": {
+          "digests": [
+            "7da83f06ec9f001d"
+          ],
+          "native_match": true,
+          "decode_tok_s": {
+            "samples": [
+              45.4,
+              45.34,
+              45.36
+            ],
+            "median": 45.36
+          },
+          "prefill_tok_s": {
+            "samples": [
+              478.854,
+              475.61,
+              476.255
+            ],
+            "median": 476.255
+          },
+          "decode_over_base": 0.9895287958115182,
+          "prefill_over_base": 0.9959284988352203
+        }
+      }
+    },
+    {
+      "leg_id": "qwen25-0.5b-4bit:short-decode-32",
+      "native_digest": "7fd25a869ff21678",
+      "sides": {
+        "base": {
+          "digests": [
+            "7fd25a869ff21678"
+          ],
+          "native_match": true,
+          "decode_tok_s": {
+            "samples": [
+              79.1,
+              79.51,
+              79.67
+            ],
+            "median": 79.51
+          },
+          "prefill_tok_s": {
+            "samples": [
+              110.701,
+              110.701,
+              110.294
+            ],
+            "median": 110.701
+          }
+        },
+        "cand": {
+          "digests": [
+            "7fd25a869ff21678"
+          ],
+          "native_match": true,
+          "decode_tok_s": {
+            "samples": [
+              77.86,
+              77.91,
+              77.89
+            ],
+            "median": 77.89
+          },
+          "prefill_tok_s": {
+            "samples": [
+              112.36,
+              109.89,
+              110.294
+            ],
+            "median": 110.294
+          },
+          "decode_over_base": 0.9796252043768079,
+          "prefill_over_base": 0.9963234297793155
+        }
+      }
+    },
+    {
+      "leg_id": "qwen25-0.5b-bf16:long-decode-128",
+      "native_digest": "407b7624ed1b3b29",
+      "sides": {
+        "base": {
+          "digests": [
+            "ad964232ee67fecd"
+          ],
+          "native_match": false,
+          "decode_tok_s": {
+            "samples": [
+              11.21,
+              11.21,
+              11.22
+            ],
+            "median": 11.21
+          },
+          "prefill_tok_s": {
+            "samples": [
+              275.21,
+              272.066,
+              273.201
+            ],
+            "median": 273.201
+          }
+        },
+        "cand": {
+          "digests": [
+            "ad964232ee67fecd"
+          ],
+          "native_match": false,
+          "decode_tok_s": {
+            "samples": [
+              11.21,
+              11.22,
+              11.21
+            ],
+            "median": 11.21
+          },
+          "prefill_tok_s": {
+            "samples": [
+              273.201,
+              272.917,
+              274.059
+            ],
+            "median": 273.201
+          },
+          "decode_over_base": 1.0,
+          "prefill_over_base": 1.0
+        }
+      }
+    },
+    {
+      "leg_id": "qwen25-0.5b-bf16:longctx-1024-decode-32",
+      "native_digest": "ff502900d2a179a5",
+      "sides": {
+        "base": {
+          "digests": [
+            "ff502900d2a179a5"
+          ],
+          "native_match": true,
+          "decode_tok_s": {
+            "samples": [
+              10.2,
+              10.2,
+              10.2
+            ],
+            "median": 10.2
+          },
+          "prefill_tok_s": {
+            "samples": [
+              320.939,
+              323.9,
+              320.743
+            ],
+            "median": 320.939
+          }
+        },
+        "cand": {
+          "digests": [
+            "ff502900d2a179a5"
+          ],
+          "native_match": true,
+          "decode_tok_s": {
+            "samples": [
+              10.2,
+              10.21,
+              10.2
+            ],
+            "median": 10.2
+          },
+          "prefill_tok_s": {
+            "samples": [
+              321.625,
+              321.625,
+              320.45
+            ],
+            "median": 321.625
+          },
+          "decode_over_base": 1.0,
+          "prefill_over_base": 1.0021374778384677
+        }
+      }
+    },
+    {
+      "leg_id": "qwen25-0.5b-bf16:short-decode-32",
+      "native_digest": "7fc0f968789b1882",
+      "sides": {
+        "base": {
+          "digests": [
+            "f26175202f3dabe9"
+          ],
+          "native_match": false,
+          "decode_tok_s": {
+            "samples": [
+              11.66,
+              11.66,
+              11.66
+            ],
+            "median": 11.66
+          },
+          "prefill_tok_s": {
+            "samples": [
+              67.873,
+              69.606,
+              69.124
+            ],
+            "median": 69.124
+          }
+        },
+        "cand": {
+          "digests": [
+            "f26175202f3dabe9"
+          ],
+          "native_match": false,
+          "decode_tok_s": {
+            "samples": [
+              11.65,
+              11.65,
+              11.66
+            ],
+            "median": 11.65
+          },
+          "prefill_tok_s": {
+            "samples": [
+              70.755,
+              69.606,
+              69.93
+            ],
+            "median": 69.93
+          },
+          "decode_over_base": 0.9991423670668954,
+          "prefill_over_base": 1.0116602048492567
+        }
+      }
+    }
+  ]
+}
