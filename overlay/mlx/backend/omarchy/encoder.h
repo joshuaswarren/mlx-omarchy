@@ -52,16 +52,16 @@ namespace mlx::core::omarchy {
 // timeline, so ordering with prior queue work is preserved.
 // Caps recorded work and pinned buffers per submission. Larger batches reduce
 // submit overhead but extend buffer lifetimes and watchdog exposure.
-inline constexpr int kBatchNodeBudget = 256;
+inline constexpr int kBatchNodeBudget = 512;
 // Byte budget for the same batch: freed intermediates stay pinned in the
 // allocator quarantine until their batch submits and drains, so the open
-// batch may hold at most 1/16 of the allocator memory limit in such bytes
-// before the evaluator flushes it. Up to five generations can be pinned at
-// once (four ring slots in flight plus the one-generation-late quarantine
-// release), so the bound keeps batching-owed memory under a third of the
-// limit. A 2,048-token Qwen2.5-0.5B forward held 8.11 GB in one 257-node
-// batch against Honeykrisp's 7.56 GiB heap without this (2026-09-08).
-inline constexpr size_t kBatchByteBudgetDivisor = 16;
+// batch may hold at most 1/8 of the allocator memory limit in such bytes.
+// Up to five generations can be pinned at once (four ring slots in flight
+// plus the one-generation-late quarantine release), keeping batching-owed
+// memory bounded at 5/8 of the limit. A 2,048-token Qwen2.5-0.5B forward
+// held 8.11 GB in one 257-node batch against Honeykrisp's 7.56 GiB heap
+// without any byte bound (2026-09-08).
+inline constexpr size_t kBatchByteBudgetDivisor = 8;
 
 class MLX_API CommandEncoder {
  public:
