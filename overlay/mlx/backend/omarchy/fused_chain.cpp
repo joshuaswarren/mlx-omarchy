@@ -6,7 +6,6 @@
 #include <array>
 #include <cstdint>
 #include <cstdlib>
-#include <cstdio>
 #include <cstring>
 #include <limits>
 #include <memory>
@@ -423,15 +422,15 @@ namespace {
 
 // The SwiGLU program (r0 = sigmoid(g); r1 = g * r0; out = r1 * u, two
 // direct leaves) gets the straight-line four-wide shaders/swiglu.comp
-// with the interpreter's exact rounding. Returns the (gate, up) leaf
-// slots when the chain has that shape and the alignment the kernel
-// needs, else nullopt and the interpreter runs.
+// with the interpreter's exact rounding, materialized intermediates
+// included. Returns the (gate, up) leaf slots when the chain has that
+// shape and the alignment the kernel needs, else nullopt and the
+// interpreter runs.
 std::optional<std::pair<uint32_t, uint32_t>> swiglu_leaves(
-    const FusedChainImpl& chain,
-    bool materialize_intermediates) {
-  if (materialize_intermediates || chain.program.size() != 3 ||
-      chain.leaves.size() != 2 || chain.node_ids.size() != 3 ||
-      (chain.count & 3u) != 0u || chain.dtype == float32) {
+    const FusedChainImpl& chain) {
+  if (chain.program.size() != 3 || chain.leaves.size() != 2 ||
+      chain.node_ids.size() != 3 || (chain.count & 3u) != 0u ||
+      chain.dtype == float32) {
     return std::nullopt;
   }
   for (uint32_t mode : chain.leaf_modes) {
@@ -474,27 +473,27 @@ void dispatch_chain(
     bool materialize_intermediates) {
   auto& encoder = get_command_encoder(stream);
   out.set_data(allocator().malloc(out.nbytes()));
-  if (static const bool dump = std::getenv("MLX_OMARCHY_CHAIN_DUMP") != nullptr;
-      dump) {
-    std::fprintf(stderr, "[chain] count=%u dtype=%d materialize=%d leaves=%zu nodes=%zu program=",
-        chain.count, static_cast<int>(chain.dtype.val()), materialize_intermediates ? 1 : 0,
-        chain.leaves.size(), chain.node_ids.size());
-    for (uint32_t w : chain.program) std::fprintf(stderr, "%08x ", w);
-    std::fprintf(stderr, "modes=");
-    for (uint32_t m : chain.leaf_modes) std::fprintf(stderr, "%u ", m);
-    std::fprintf(stderr, "offsets=");
-    for (uint32_t o : chain.leaf_offsets) std::fprintf(stderr, "%u ", o);
-    std::fprintf(stderr, "\n");
+  if (materialize_intermediates) {
+    for (size_t i = 0; i + 1 < chain.node_arrays.size(); ++i) {
+      chain.node_arrays[i].set_data(
+          allocator().malloc(chain.node_arrays[i].nbytes()));
+    }
   }
-  if (auto leaves = swiglu_leaves(chain, materialize_intermediates)) {
+  const bool materialize_nodes =
+      materialize_intermediates && chain.node_arrays.size() == 3;
+  if (auto leaves = swiglu_leaves(chain);
+      leaves && materialize_nodes == materialize_intermediates) {
     ComputeParams params;
     params.count = chain.count;
     params.operation = chain.leaf_offsets[leaves->first];
     params.lhs_size = chain.leaf_offsets[leaves->second];
-    std::array<ComputeBinding, 3> bindings{
+    params.rhs_size = materialize_nodes ? 1u : 0u;
+    std::array<ComputeBinding, 5> bindings{
         chain_binding(chain.leaves[leaves->first]),
         chain_binding(chain.leaves[leaves->second]),
-        chain_binding(out)};
+        chain_binding(out),
+        chain_binding(materialize_nodes ? chain.node_arrays[0] : out),
+        chain_binding(materialize_nodes ? chain.node_arrays[1] : out)};
     encoder.dispatch_compute(
         out.dtype() == float16 ? ComputeKernel::SwigluF16
                                : ComputeKernel::SwigluBF16,
@@ -502,12 +501,6 @@ void dispatch_chain(
         params,
         compute_dispatch_group_count(chain.count / 4u));
     return;
-  }
-  if (materialize_intermediates) {
-    for (size_t i = 0; i + 1 < chain.node_arrays.size(); ++i) {
-      chain.node_arrays[i].set_data(
-          allocator().malloc(chain.node_arrays[i].nbytes()));
-    }
   }
 
   const size_t program_bytes = chain.program.size() * sizeof(uint32_t);
