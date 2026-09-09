@@ -1,0 +1,10 @@
+[receipt] wheel: /home/joshuawarren/.config/superpowers/worktrees/mlx-omarchy/release-v040/dist/mlx_omarchy-0.32.2.dev202609091355+3c34f2b9-cp311-cp311-linux_x86_64.whl
+[receipt] size: 7411555 bytes
+[receipt] sha256: 9e6e1b610c5ec556442321c9c4968b6d718031e1a383e937783bf885fb245b1b
+[receipt] source commit: 3c34f2b
+[receipt] NEXT STEP - do not skip: after you upload this wheel to a
+[receipt] release, verify the UPLOADED asset with
+[receipt]   python3 scripts/verify-release-assets.py <tag>
+[receipt] It must print VERIFIED before the release is announced as
+[receipt] usable. See docs/release.md. A local build check does not
+[receipt] verify what users download.
