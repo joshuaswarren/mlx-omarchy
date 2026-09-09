@@ -1,0 +1,67 @@
+{
+  "status": "promising M1 experiment, not integrated",
+  "source_short": "87f65de",
+  "wheel_sha256": "7a91d9c2e897cfde85b2b6e3c6c1906afa3c5980b739edaa1dd925df901534cd",
+  "paired_repetitions": 5,
+  "measured_legs": 60,
+  "candidate_output_stability": "All five repetitions matched the initial candidate screen. BF16 long differs from accepted Linux baseline and from native.",
+  "native_comparison": [
+    {
+      "leg": "qwen25-0.5b-4bit:long-decode-128",
+      "digests": [
+        "4cc08910089477fd"
+      ],
+      "native_match": false
+    },
+    {
+      "leg": "qwen25-0.5b-4bit:longctx-1024-decode-32",
+      "digests": [
+        "7da83f06ec9f001d"
+      ],
+      "native_match": true
+    },
+    {
+      "leg": "qwen25-0.5b-4bit:short-decode-32",
+      "digests": [
+        "7fd25a869ff21678"
+      ],
+      "native_match": true
+    },
+    {
+      "leg": "qwen25-0.5b-bf16:long-decode-128",
+      "digests": [
+        "70620253c0c8663c"
+      ],
+      "native_match": false
+    },
+    {
+      "leg": "qwen25-0.5b-bf16:longctx-1024-decode-32",
+      "digests": [
+        "ff502900d2a179a5"
+      ],
+      "native_match": true
+    },
+    {
+      "leg": "qwen25-0.5b-bf16:short-decode-32",
+      "digests": [
+        "f26175202f3dabe9"
+      ],
+      "native_match": false
+    }
+  ],
+  "verification": {
+    "dyadic_shapes": 8,
+    "random_arithmetic_oracle_shapes": 5,
+    "random_oracle_mismatches": 0,
+    "suites": [
+      "omarchy_matmul_family_tests",
+      "omarchy_fast_ops_tests",
+      "omarchy_runtime_tests"
+    ]
+  },
+  "integration_requirements": [
+    "Resolve native output mismatches; native matches remain 3 of 6.",
+    "Add subgroup-size 32 and SHUFFLE_RELATIVE feature dispatch guards before general-device integration; current experiment is M1-only."
+  ],
+  "scope": "Numerically checked acceleration experiment, not native parity acceptance. No default changed."
+}
