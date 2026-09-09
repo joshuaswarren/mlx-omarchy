@@ -1,0 +1,182 @@
+6f38410f1f8916236ff20c3db21eb1a127f73452910048deac908d945492bb9b  dist/mlx_omarchy-0.32.2.dev202609091528+e90b76c-cp314-cp314-linux_aarch64.whl
+{"call": 0, "projection": "q_proj", "m": 261, "k": 896, "n": 896, "dtype": "mlx.core.float16", "group_size": 64, "bits": 4, "different": 24906, "max_error": 0.0625, "first_mismatches": [{"index": 1, "device": -0.1748046875, "native": -0.1749267578125}, {"index": 31, "device": 2.396484375, "native": 2.39453125}, {"index": 35, "device": -0.646484375, "native": -0.64697265625}, {"index": 73, "device": -0.6083984375, "native": -0.609375}, {"index": 81, "device": -0.09130859375, "native": -0.091796875}, {"index": 84, "device": 8.203125, "native": 8.2109375}, {"index": 85, "device": -0.14453125, "native": -0.1484375}, {"index": 86, "device": 2.8203125, "native": 2.8125}]}
+{"call": 35, "projection": "q_proj", "m": 1, "k": 896, "n": 896, "dtype": "mlx.core.float16", "group_size": 64, "bits": 4, "different": 0, "max_error": 0.0}
+{"call": 0, "projection": "k_proj", "m": 261, "k": 896, "n": 128, "dtype": "mlx.core.float16", "group_size": 64, "bits": 4, "different": 4234, "max_error": 0.0625, "first_mismatches": [{"index": 9, "device": -0.15869140625, "native": -0.1585693359375}, {"index": 11, "device": 0.0638427734375, "native": 0.06390380859375}, {"index": 36, "device": 0.0760498046875, "native": 0.076171875}, {"index": 45, "device": -0.04217529296875, "native": -0.042236328125}, {"index": 49, "device": 0.1566162109375, "native": 0.156494140625}, {"index": 58, "device": 11.5625, "native": 11.5703125}, {"index": 67, "device": 5.54296875, "native": 5.5390625}, {"index": 71, "device": -2.95703125, "native": -2.955078125}]}
+{"call": 35, "projection": "k_proj", "m": 1, "k": 896, "n": 128, "dtype": "mlx.core.float16", "group_size": 64, "bits": 4, "different": 0, "max_error": 0.0}
+{"call": 0, "projection": "v_proj", "m": 261, "k": 896, "n": 128, "dtype": "mlx.core.float16", "group_size": 64, "bits": 4, "different": 20759, "max_error": 0.000244140625, "first_mismatches": [{"index": 0, "device": 0.0142364501953125, "native": 0.0142059326171875}, {"index": 1, "device": -0.0457763671875, "native": -0.04571533203125}, {"index": 2, "device": -0.0233612060546875, "native": -0.02337646484375}, {"index": 6, "device": 0.018768310546875, "native": 0.0187530517578125}, {"index": 8, "device": 0.02618408203125, "native": 0.026153564453125}, {"index": 9, "device": 0.0345458984375, "native": 0.034515380859375}, {"index": 10, "device": -0.00960540771484375, "native": -0.00959014892578125}, {"index": 11, "device": 0.050567626953125, "native": 0.050537109375}]}
+{"call": 35, "projection": "v_proj", "m": 1, "k": 896, "n": 128, "dtype": "mlx.core.float16", "group_size": 64, "bits": 4, "different": 0, "max_error": 0.0}
+{"call": 0, "projection": "o_proj", "m": 261, "k": 896, "n": 896, "dtype": "mlx.core.float16", "group_size": 64, "bits": 4, "different": 100546, "max_error": 0.00048828125, "first_mismatches": [{"index": 4, "device": -0.0006856918334960938, "native": -0.0006866455078125}, {"index": 12, "device": 0.0229949951171875, "native": 0.022979736328125}, {"index": 15, "device": -0.007061004638671875, "native": -0.00705718994140625}, {"index": 16, "device": -0.016021728515625, "native": -0.0160064697265625}, {"index": 17, "device": -0.001987457275390625, "native": -0.00199127197265625}, {"index": 18, "device": 0.0011663436889648438, "native": 0.00116729736328125}, {"index": 21, "device": 0.00525665283203125, "native": 0.005260467529296875}, {"index": 24, "device": 0.004886627197265625, "native": 0.0048828125}]}
+{"call": 35, "projection": "o_proj", "m": 1, "k": 896, "n": 896, "dtype": "mlx.core.float16", "group_size": 64, "bits": 4, "different": 0, "max_error": 0.0}
+{"call": 0, "projection": "gate_proj", "m": 261, "k": 896, "n": 4864, "dtype": "mlx.core.float16", "group_size": 64, "bits": 4, "different": 311031, "max_error": 0.00390625, "first_mismatches": [{"index": 1, "device": 0.79052734375, "native": 0.7900390625}, {"index": 5, "device": 0.501953125, "native": 0.50146484375}, {"index": 7, "device": -0.0994873046875, "native": -0.09942626953125}, {"index": 17, "device": 0.86474609375, "native": 0.8642578125}, {"index": 38, "device": -1.060546875, "native": -1.0615234375}, {"index": 44, "device": 0.6611328125, "native": 0.66064453125}, {"index": 52, "device": -0.0227508544921875, "native": -0.0226898193359375}, {"index": 54, "device": -0.032257080078125, "native": -0.032196044921875}]}
+{"call": 35, "projection": "gate_proj", "m": 1, "k": 896, "n": 4864, "dtype": "mlx.core.float16", "group_size": 64, "bits": 4, "different": 0, "max_error": 0.0}
+{"call": 0, "projection": "up_proj", "m": 261, "k": 896, "n": 4864, "dtype": "mlx.core.float16", "group_size": 64, "bits": 4, "different": 383152, "max_error": 0.001953125, "first_mismatches": [{"index": 3, "device": -0.283447265625, "native": -0.283203125}, {"index": 4, "device": 0.1002197265625, "native": 0.10015869140625}, {"index": 7, "device": 0.091064453125, "native": 0.09112548828125}, {"index": 15, "device": 0.1849365234375, "native": 0.18505859375}, {"index": 16, "device": -0.05328369140625, "native": -0.05322265625}, {"index": 20, "device": 0.031341552734375, "native": 0.0313720703125}, {"index": 23, "device": -0.030426025390625, "native": -0.030364990234375}, {"index": 24, "device": -0.09490966796875, "native": -0.0948486328125}]}
+{"call": 35, "projection": "up_proj", "m": 1, "k": 896, "n": 4864, "dtype": "mlx.core.float16", "group_size": 64, "bits": 4, "different": 0, "max_error": 0.0}
+{"call": 0, "projection": "down_proj", "m": 261, "k": 4864, "n": 896, "dtype": "mlx.core.float16", "group_size": 64, "bits": 4, "different": 96017, "max_error": 0.001953125, "first_mismatches": [{"index": 0, "device": 0.374267578125, "native": 0.3740234375}, {"index": 2, "device": -0.422119140625, "native": -0.42236328125}, {"index": 12, "device": 0.288818359375, "native": 0.28857421875}, {"index": 14, "device": -0.57470703125, "native": -0.5751953125}, {"index": 15, "device": -0.0216217041015625, "native": -0.02154541015625}, {"index": 20, "device": 0.045440673828125, "native": 0.04547119140625}, {"index": 21, "device": 0.00373077392578125, "native": 0.0037841796875}, {"index": 27, "device": -0.53662109375, "native": -0.5361328125}]}
+{"call": 35, "projection": "down_proj", "m": 1, "k": 4864, "n": 896, "dtype": "mlx.core.float16", "group_size": 64, "bits": 4, "different": 0, "max_error": 0.0}
+{"decode_mismatches": 0, "prefill_mismatches": 940645}
+device outputs: /tmp/pgp-fixed-projection.Wkvw
+{"stage": "reduce", "outputs": 512, "mismatches": {"quads:fma_scale:xor_up": 0, "quads:fma_scale:xor_down": 0, "quads:fma_scale:sequential": 0, "quads:fma_bias:xor_up": 0, "quads:fma_bias:xor_down": 0, "quads:fma_bias:sequential": 0, "quads:nofma:xor_up": 0, "quads:nofma:xor_down": 0, "quads:nofma:sequential": 0, "sequential:fma_scale:xor_up": 0, "sequential:fma_scale:xor_down": 0, "sequential:fma_scale:sequential": 0, "sequential:fma_bias:xor_up": 0, "sequential:fma_bias:xor_down": 0, "sequential:fma_bias:sequential": 0, "sequential:nofma:xor_up": 0, "sequential:nofma:xor_down": 0, "sequential:nofma:sequential": 0}}
+{"stage": "inputsum", "outputs": 512, "mismatches": {"quads:fma_scale:xor_up": 0, "quads:fma_scale:xor_down": 356, "quads:fma_scale:sequential": 394, "quads:fma_bias:xor_up": 0, "quads:fma_bias:xor_down": 356, "quads:fma_bias:sequential": 394, "quads:nofma:xor_up": 0, "quads:nofma:xor_down": 356, "quads:nofma:sequential": 394, "sequential:fma_scale:xor_up": 0, "sequential:fma_scale:xor_down": 356, "sequential:fma_scale:sequential": 394, "sequential:fma_bias:xor_up": 0, "sequential:fma_bias:xor_down": 356, "sequential:fma_bias:sequential": 394, "sequential:nofma:xor_up": 0, "sequential:nofma:xor_down": 356, "sequential:nofma:sequential": 394}}
+{"stage": "dotonly", "outputs": 512, "mismatches": {"quads:fma_scale:xor_up": 0, "quads:fma_scale:xor_down": 350, "quads:fma_scale:sequential": 398, "quads:fma_bias:xor_up": 0, "quads:fma_bias:xor_down": 350, "quads:fma_bias:sequential": 398, "quads:nofma:xor_up": 0, "quads:nofma:xor_down": 350, "quads:nofma:sequential": 398, "sequential:fma_scale:xor_up": 82, "sequential:fma_scale:xor_down": 357, "sequential:fma_scale:sequential": 412, "sequential:fma_bias:xor_up": 82, "sequential:fma_bias:xor_down": 357, "sequential:fma_bias:sequential": 412, "sequential:nofma:xor_up": 82, "sequential:nofma:xor_down": 357, "sequential:nofma:sequential": 412}}
+{"stage": "scaleonly", "outputs": 512, "mismatches": {"quads:fma_scale:xor_up": 0, "quads:fma_scale:xor_down": 333, "quads:fma_scale:sequential": 380, "quads:fma_bias:xor_up": 0, "quads:fma_bias:xor_down": 333, "quads:fma_bias:sequential": 380, "quads:nofma:xor_up": 0, "quads:nofma:xor_down": 333, "quads:nofma:sequential": 380, "sequential:fma_scale:xor_up": 0, "sequential:fma_scale:xor_down": 333, "sequential:fma_scale:sequential": 380, "sequential:fma_bias:xor_up": 0, "sequential:fma_bias:xor_down": 333, "sequential:fma_bias:sequential": 380, "sequential:nofma:xor_up": 0, "sequential:nofma:xor_down": 333, "sequential:nofma:sequential": 380}}
+{"stage": "dot", "outputs": 512, "mismatches": {"quads:fma_scale:xor_up": 0, "quads:fma_scale:xor_down": 328, "quads:fma_scale:sequential": 402, "quads:fma_bias:xor_up": 0, "quads:fma_bias:xor_down": 328, "quads:fma_bias:sequential": 402, "quads:nofma:xor_up": 0, "quads:nofma:xor_down": 328, "quads:nofma:sequential": 402, "sequential:fma_scale:xor_up": 61, "sequential:fma_scale:xor_down": 330, "sequential:fma_scale:sequential": 398, "sequential:fma_bias:xor_up": 61, "sequential:fma_bias:xor_down": 330, "sequential:fma_bias:sequential": 398, "sequential:nofma:xor_up": 61, "sequential:nofma:xor_down": 330, "sequential:nofma:sequential": 398}}
+{"stage": "full", "outputs": 512, "mismatches": {"quads:fma_scale:xor_up": 0, "quads:fma_scale:xor_down": 341, "quads:fma_scale:sequential": 381, "quads:fma_bias:xor_up": 316, "quads:fma_bias:xor_down": 378, "quads:fma_bias:sequential": 420, "quads:nofma:xor_up": 314, "quads:nofma:xor_down": 369, "quads:nofma:sequential": 404, "sequential:fma_scale:xor_up": 85, "sequential:fma_scale:xor_down": 346, "sequential:fma_scale:sequential": 380, "sequential:fma_bias:xor_up": 311, "sequential:fma_bias:xor_down": 375, "sequential:fma_bias:sequential": 421, "sequential:nofma:xor_up": 305, "sequential:nofma:xor_down": 370, "sequential:nofma:sequential": 414}}
+{"stage": "full", "outputs": 512, "mismatches": {"quads:fma_scale:xor_up": 0, "quads:fma_scale:xor_down": 342, "quads:fma_scale:sequential": 399, "quads:fma_bias:xor_up": 296, "quads:fma_bias:xor_down": 369, "quads:fma_bias:sequential": 391, "quads:nofma:xor_up": 304, "quads:nofma:xor_down": 372, "quads:nofma:sequential": 398, "sequential:fma_scale:xor_up": 193, "sequential:fma_scale:xor_down": 346, "sequential:fma_scale:sequential": 402, "sequential:fma_bias:xor_up": 319, "sequential:fma_bias:xor_down": 380, "sequential:fma_bias:sequential": 404, "sequential:nofma:xor_up": 319, "sequential:nofma:xor_down": 381, "sequential:nofma:sequential": 407}}
+{"stage": "full", "outputs": 256, "mismatches": {"quads:fma_scale:xor_up": 0, "quads:fma_scale:xor_down": 171, "quads:fma_scale:sequential": 176, "quads:fma_bias:xor_up": 182, "quads:fma_bias:xor_down": 187, "quads:fma_bias:sequential": 214, "quads:nofma:xor_up": 172, "quads:nofma:xor_down": 177, "quads:nofma:sequential": 205, "sequential:fma_scale:xor_up": 81, "sequential:fma_scale:xor_down": 178, "sequential:fma_scale:sequential": 188, "sequential:fma_bias:xor_up": 181, "sequential:fma_bias:xor_down": 181, "sequential:fma_bias:sequential": 208, "sequential:nofma:xor_up": 179, "sequential:nofma:xor_down": 181, "sequential:nofma:sequential": 202}}
+{"stage": "full", "outputs": 1024, "mismatches": {"quads:fma_scale:xor_up": 0, "quads:fma_scale:xor_down": 0, "quads:fma_scale:sequential": 0, "quads:fma_bias:xor_up": 1, "quads:fma_bias:xor_down": 0, "quads:fma_bias:sequential": 1, "quads:nofma:xor_up": 1, "quads:nofma:xor_down": 0, "quads:nofma:sequential": 0, "sequential:fma_scale:xor_up": 0, "sequential:fma_scale:xor_down": 0, "sequential:fma_scale:sequential": 0, "sequential:fma_bias:xor_up": 1, "sequential:fma_bias:xor_down": 0, "sequential:fma_bias:sequential": 1, "sequential:nofma:xor_up": 1, "sequential:nofma:xor_down": 0, "sequential:nofma:sequential": 0}}
+6f38410f1f8916236ff20c3db21eb1a127f73452910048deac908d945492bb9b  dist/mlx_omarchy-0.32.2.dev202609091528+e90b76c-cp314-cp314-linux_aarch64.whl
+rep 1: ok
+[
+ {
+  "leg_id": "qwen25-0.5b-4bit:long-decode-128",
+  "reps": 1,
+  "decode_tok_s_median": 62.87,
+  "decode_tok_s_min": 62.87,
+  "decode_tok_s_max": 62.87,
+  "prefill_tok_s_median": 410.658,
+  "prefill_tok_s_min": 410.658,
+  "prefill_tok_s_max": 410.658,
+  "prompt_tokens": 262,
+  "generated_ids_sha256_16": [
+   "4cc08910089477fd"
+  ],
+  "ids_stable_across_reps": true
+ },
+ {
+  "leg_id": "qwen25-0.5b-4bit:longctx-1024-decode-32",
+  "reps": 1,
+  "decode_tok_s_median": 44.45,
+  "decode_tok_s_min": 44.45,
+  "decode_tok_s_max": 44.45,
+  "prefill_tok_s_median": 429.621,
+  "prefill_tok_s_min": 429.621,
+  "prefill_tok_s_max": 429.621,
+  "prompt_tokens": 1053,
+  "generated_ids_sha256_16": [
+   "7da83f06ec9f001d"
+  ],
+  "ids_stable_across_reps": true
+ },
+ {
+  "leg_id": "qwen25-0.5b-4bit:short-decode-32",
+  "reps": 1,
+  "decode_tok_s_median": 75.65,
+  "decode_tok_s_min": 75.65,
+  "decode_tok_s_max": 75.65,
+  "prefill_tok_s_median": 111.94,
+  "prefill_tok_s_min": 111.94,
+  "prefill_tok_s_max": 111.94,
+  "prompt_tokens": 30,
+  "generated_ids_sha256_16": [
+   "7fd25a869ff21678"
+  ],
+  "ids_stable_across_reps": true
+ },
+ {
+  "leg_id": "qwen25-0.5b-bf16:long-decode-128",
+  "reps": 1,
+  "decode_tok_s_median": 11.11,
+  "decode_tok_s_min": 11.11,
+  "decode_tok_s_max": 11.11,
+  "prefill_tok_s_median": 257.62,
+  "prefill_tok_s_min": 257.62,
+  "prefill_tok_s_max": 257.62,
+  "prompt_tokens": 262,
+  "generated_ids_sha256_16": [
+   "ad964232ee67fecd"
+  ],
+  "ids_stable_across_reps": true
+ },
+ {
+  "leg_id": "qwen25-0.5b-bf16:longctx-1024-decode-32",
+  "reps": 1,
+  "decode_tok_s_median": 10.11,
+  "decode_tok_s_min": 10.11,
+  "decode_tok_s_max": 10.11,
+  "prefill_tok_s_median": 299.148,
+  "prefill_tok_s_min": 299.148,
+  "prefill_tok_s_max": 299.148,
+  "prompt_tokens": 1053,
+  "generated_ids_sha256_16": [
+   "ff502900d2a179a5"
+  ],
+  "ids_stable_across_reps": true
+ },
+ {
+  "leg_id": "qwen25-0.5b-bf16:short-decode-32",
+  "reps": 1,
+  "decode_tok_s_median": 11.53,
+  "decode_tok_s_min": 11.53,
+  "decode_tok_s_max": 11.53,
+  "prefill_tok_s_median": 68.027,
+  "prefill_tok_s_min": 68.027,
+  "prefill_tok_s_max": 68.027,
+  "prompt_tokens": 30,
+  "generated_ids_sha256_16": [
+   "f26175202f3dabe9"
+  ],
+  "ids_stable_across_reps": true
+ }
+]
+[
+ {
+  "leg_id": "qwen25-0.5b-4bit:long-decode-128",
+  "decode_tok_s_median": 62.87,
+  "prefill_tok_s_median": 410.658,
+  "generated_ids_sha256_16": [
+   "4cc08910089477fd"
+  ],
+  "native_digest": "254d73fd93164b98",
+  "native_match": false
+ },
+ {
+  "leg_id": "qwen25-0.5b-4bit:longctx-1024-decode-32",
+  "decode_tok_s_median": 44.45,
+  "prefill_tok_s_median": 429.621,
+  "generated_ids_sha256_16": [
+   "7da83f06ec9f001d"
+  ],
+  "native_digest": "7da83f06ec9f001d",
+  "native_match": true
+ },
+ {
+  "leg_id": "qwen25-0.5b-4bit:short-decode-32",
+  "decode_tok_s_median": 75.65,
+  "prefill_tok_s_median": 111.94,
+  "generated_ids_sha256_16": [
+   "7fd25a869ff21678"
+  ],
+  "native_digest": "7fd25a869ff21678",
+  "native_match": true
+ },
+ {
+  "leg_id": "qwen25-0.5b-bf16:long-decode-128",
+  "decode_tok_s_median": 11.11,
+  "prefill_tok_s_median": 257.62,
+  "generated_ids_sha256_16": [
+   "ad964232ee67fecd"
+  ],
+  "native_digest": "407b7624ed1b3b29",
+  "native_match": false
+ },
+ {
+  "leg_id": "qwen25-0.5b-bf16:longctx-1024-decode-32",
+  "decode_tok_s_median": 10.11,
+  "prefill_tok_s_median": 299.148,
+  "generated_ids_sha256_16": [
+   "ff502900d2a179a5"
+  ],
+  "native_digest": "ff502900d2a179a5",
+  "native_match": true
+ },
+ {
+  "leg_id": "qwen25-0.5b-bf16:short-decode-32",
+  "decode_tok_s_median": 11.53,
+  "prefill_tok_s_median": 68.027,
+  "generated_ids_sha256_16": [
+   "f26175202f3dabe9"
+  ],
+  "native_digest": "7fc0f968789b1882",
+  "native_match": false
+ }
+]

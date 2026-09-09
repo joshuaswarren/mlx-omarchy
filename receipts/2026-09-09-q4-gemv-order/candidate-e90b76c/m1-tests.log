@@ -1,0 +1,12 @@
+SUITE_PASS=omarchy_matmul_family_tests
+[doctest] test cases:       17 |       17 passed | 0 failed | 0 skipped
+[doctest] assertions: 82636835 | 82636835 passed | 0 failed |
+[doctest] Status: SUCCESS!
+SUITE_PASS=omarchy_fast_ops_tests
+[doctest] test cases:      33 |      33 passed | 0 failed | 0 skipped
+[doctest] assertions: 1102946 | 1102946 passed | 0 failed |
+[doctest] Status: SUCCESS!
+SUITE_PASS=omarchy_runtime_tests
+[doctest] test cases:    41 |    41 passed | 0 failed | 0 skipped
+[doctest] assertions: 22694 | 22694 passed | 0 failed |
+[doctest] Status: SUCCESS!
