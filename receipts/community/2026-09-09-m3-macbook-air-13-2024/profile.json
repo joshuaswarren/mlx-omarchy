@@ -1,0 +1,30 @@
+{
+  "_redaction": {
+    "home_path": 2
+  },
+  "analysis": null,
+  "available": false,
+  "profile_probe": {
+    "argv": [
+      "[home]/.venvs/mlx-collect/bin/python",
+      "-c",
+      "\nimport json, os\nout = {\"available\": False, \"error\": None}\ntry:\n    import mlx.core as mx\n    a = mx.random.normal((256, 256))\n    b = mx.random.normal((256, 256))\n    for _ in range(3):\n        c = a @ b\n        s = mx.softmax(a)\n        mx.eval(c, s)\n    sync = getattr(mx, \"synchronize\", None)\n    if sync:\n        sync()\n    path = os.environ[\"MLX_OMARCHY_GPU_PROFILE\"]\n    out[\"available\"] = os.path.exists(path) and os.path.getsize(path) > 0\nexcept Exception as exc:\n    out[\"error\"] = f\"{type(exc).__name__}: {exc}\"\nprint(json.dumps(out))\n"
+    ],
+    "available": true,
+    "duration_ms": 42,
+    "error": null,
+    "exit_code": 0,
+    "label": "gpu profile probe",
+    "stderr": "",
+    "stdout": "{\"available\": false, \"error\": \"RuntimeError: [omarchy] device 'llvmpipe (LLVM 22.1.8, 128 bits)' is not an Apple GPU running Omarchy Honeykrisp. Set MLX_OMARCHY_ALLOW_NON_APPLE=1 to use it for development only.\"}"
+  },
+  "stream": {
+    "available": false,
+    "error": "no event stream; the installed wheel may lack MLX_OMARCHY_GPU_PROFILE tracing"
+  },
+  "trace_smoke": {
+    "available": false,
+    "error": "not-found",
+    "label": "mlx-omarchy-info --trace-smoke"
+  }
+}

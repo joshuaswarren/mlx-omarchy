@@ -1,0 +1,15 @@
+{
+  "_redaction": {
+    "home_path": 3
+  },
+  "available": true,
+  "env": [],
+  "executable": "[home]/.venvs/mlx-collect/bin/python",
+  "implementation": "CPython",
+  "machine": "aarch64",
+  "prepared_tree": false,
+  "python": "3.14.7",
+  "repo_dirty": false,
+  "source_commit": "5516b28cc1cc0600396762d4633c75d537585028",
+  "wheels": []
+}

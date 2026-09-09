@@ -1,0 +1,50 @@
+{
+  "archive": "mlx-omarchy-deep-m3.tar.gz",
+  "files": [
+    {
+      "bytes": 4406,
+      "path": "benchmark.json",
+      "sha256": "a438cbe729d86c76c46c59d96a5abbaad13bde0cbed56026995c69ff5ae1bc0b"
+    },
+    {
+      "bytes": 8068,
+      "path": "correctness.json",
+      "sha256": "99e327597b7b68703a3a0adb8d1f129b6fb3e9fb8605bd5973c907dd52855acd"
+    },
+    {
+      "bytes": 340,
+      "path": "environment.json",
+      "sha256": "6341fcb021da4bab7236af9854e870b3e6852488089f9bde4052cf20f960554e"
+    },
+    {
+      "bytes": 1408,
+      "path": "profile.json",
+      "sha256": "c54d0db04844dd245a261e5f96f9e1e827cac3c0e659b4229b19430ce62a40b4"
+    },
+    {
+      "bytes": 9180,
+      "path": "quick.json",
+      "sha256": "61c9557250a842562bc5b8516beb4d5198d7b5a7ec14691a1d9d74b3d545ba09"
+    },
+    {
+      "bytes": 264,
+      "path": "thermal.json",
+      "sha256": "f8b16ac673505f3b3f858a2e074097de0ff4790a69206652ac4cabf331a52f84"
+    }
+  ],
+  "manifest_version": 1,
+  "no_network": true,
+  "redaction_summary": {
+    "home_path": 24
+  },
+  "repo_dirty": false,
+  "schema_note": "one file per section; probe records carry argv, exit code, capped redacted output; the schema does not change with the sharing path",
+  "schema_version": 1,
+  "sections_unavailable": [
+    "benchmark",
+    "profile"
+  ],
+  "source_commit": "5516b28cc1cc0600396762d4633c75d537585028",
+  "tool": "mlx-omarchy collect-deep",
+  "upload": "only after explicit --submit or SUBMIT confirmation"
+}

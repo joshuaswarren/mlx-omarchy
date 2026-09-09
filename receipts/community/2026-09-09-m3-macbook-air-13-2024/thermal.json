@@ -1,0 +1,16 @@
+{
+  "zones": [
+    {
+      "phase": "start",
+      "temp_mc": 28500,
+      "type": "macsmc-battery",
+      "zone": "thermal_zone0"
+    },
+    {
+      "phase": "end",
+      "temp_mc": 28500,
+      "type": "macsmc-battery",
+      "zone": "thermal_zone0"
+    }
+  ]
+}

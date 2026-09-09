@@ -308,6 +308,9 @@ def _receipt(body, deduplicated, status):
     return {"url": url, "deduplicated": deduplicated, "status": status}
 
 
+DEFAULT_ENDPOINT = "https://mlx-omarchy-community-data.joshua-s-warren.workers.dev"
+
+
 def endpoint_from_args(args):
     """Resolve the endpoint: --submit flag first, then the environment."""
     if getattr(args, "submit", None):

@@ -537,12 +537,13 @@ def finalize(files, unavailable, redaction, archive_name, repo):
     return manifest, archive_bytes(files), payload
 
 
-def print_preview(manifest, data, archive_name):
+def print_preview(manifest, data, archive_name, will_write):
     print(dump_preview(manifest), end="")
     print(f"[preview] archive: {archive_name} bytes={len(data)} "
           f"sha256={hashlib.sha256(data).hexdigest()}")
-    print("[preview] nothing written, nothing uploaded; "
-          "rerun with --out FILE to write these exact bytes")
+    if not will_write:
+        print("[preview] nothing written, nothing uploaded; "
+              "rerun with --out FILE to write these exact bytes")
 
 
 def dump_preview(manifest):
@@ -623,7 +624,7 @@ def main():
         else "mlx-omarchy-deep.tar.gz"
     manifest, data, payload = finalize(files, unavailable, redaction,
                                        archive_name, os.path.abspath(args.repo))
-    print_preview(manifest, data, archive_name)
+    print_preview(manifest, data, archive_name, bool(args.out))
     if args.out:
         with open(args.out, "wb") as fh:
             fh.write(data)
@@ -647,6 +648,10 @@ def maybe_submit(args, data, archive_name, out_path, payload):
     import collect_submit
     endpoint = collect_submit.endpoint_from_args(args)
     if endpoint is None:
+        if out_path:
+            print(f"[receipt] done; nothing was uploaded. To share it, rerun with "
+                  f"--submit {collect_submit.DEFAULT_ENDPOINT} or send {out_path} "
+                  f"and its .submission.md by hand.")
         return 0
     if not out_path:
         print("[submit] no --out file; refusing to upload without keeping "
