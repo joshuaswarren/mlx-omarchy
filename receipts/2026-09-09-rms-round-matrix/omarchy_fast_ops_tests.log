@@ -1,0 +1,14 @@
+[doctest] doctest version is "2.4.12"
+[doctest] run with "--help" for options
+===============================================================================
+/home/joshuawarren/src/mlx-rms-round-screen/.work/mlx/tests/omarchy/test_fast_ops.cpp:336:
+TEST CASE:  RMSNorm rounds normalized values before applying low-precision weights
+
+/home/joshuawarren/src/mlx-rms-round-screen/.work/mlx/tests/omarchy/test_fast_ops.cpp:75: ERROR: CHECK( diff <= tolerance ) is NOT correct!
+  values: CHECK( 0.000244141 <= 0 )
+  logged: RMSNorm intermediate rounding element 1: got 0.371094 want 0.37085
+
+===============================================================================
+[doctest] test cases:      34 |      33 passed | 1 failed | 0 skipped
+[doctest] assertions: 1102956 | 1102955 passed | 1 failed |
+[doctest] Status: FAILURE!

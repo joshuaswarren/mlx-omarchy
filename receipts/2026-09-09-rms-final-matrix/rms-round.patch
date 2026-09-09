@@ -1,0 +1,57 @@
+diff --git a/overlay/mlx/backend/omarchy/shaders/fast_norm.comp b/overlay/mlx/backend/omarchy/shaders/fast_norm.comp
+index 7d8d3471..8bbf1548 100644
+--- a/overlay/mlx/backend/omarchy/shaders/fast_norm.comp
++++ b/overlay/mlx/backend/omarchy/shaders/fast_norm.comp
+@@ -4,7 +4,7 @@
+ // Fused RMSNorm (-DRMS default) or LayerNorm (-DLAYER_NORM=1) forward over the
+ // last axis, matching mlx::core::fast fallback math in mlx/fast.cpp. One
+ // workgroup handles one row with shared-memory reductions and a grid-stride
+-// row loop; every arithmetic step runs in float32 for all storage dtypes.
++// row loop. RMSNorm rounds the normalized value before applying the weight.
+ //
+ //   RMS:   n = rsqrt(mean(x^2) + eps);            y = x * n * w
+ //   Layer: mu = mean(x); var = mean(x^2) - mu^2;
+@@ -141,7 +141,12 @@ void main() {
+               : LOAD_VALUE(bias_data.values[params.aux_offset + index]);
+       float result = (value - mu) * norm * weight + bias;
+ #else
+-      float result = value * norm * weight;
++#ifdef USE_FP16
++      float normalized = unpackHalf2x16(packHalf2x16(vec2(value * norm, 0.0))).x;
++#else
++      float normalized = LOAD_VALUE(STORE_VALUE(value * norm));
++#endif
++      float result = normalized * weight;
+ #endif
+       output_data.values[params.output_offset + row * row_length + index] =
+           STORE_VALUE(result);
+diff --git a/overlay/tests/omarchy/test_fast_ops.cpp b/overlay/tests/omarchy/test_fast_ops.cpp
+index 4a65de4c..af951468 100644
+--- a/overlay/tests/omarchy/test_fast_ops.cpp
++++ b/overlay/tests/omarchy/test_fast_ops.cpp
+@@ -333,6 +333,25 @@ TEST_CASE("native RMSNorm matches host math on f32 rows") {
+   require_close(got_bare, want_bare, 1e-5, "rms_norm weightless");
+ }
+ 
++TEST_CASE("RMSNorm rounds normalized values before applying low-precision weights") {
++  if (!compute_available()) {
++    return;
++  }
++  Stream stream = gpu_stream();
++  for (Dtype dtype : {float16, bfloat16}) {
++    auto x = astype(array({0.5f, 1.0f, 2.0f, 3.0f}), dtype, stream);
++    auto w = astype(array({0.3f, 0.7f, 1.3f, 2.1f}), dtype, stream);
++    const std::vector<double> expected = dtype == float16
++        ? std::vector<double>{0.0794677734375, 0.370849609375, 1.376953125, 3.337890625}
++        : std::vector<double>{0.080078125, 0.37109375, 1.375, 3.328125};
++    require_close(
++        flat(fast::rms_norm(x, w, 0.0f, stream), stream),
++        expected,
++        0.0,
++        "RMSNorm intermediate rounding");
++  }
++}
++
+ TEST_CASE("native LayerNorm matches host math on f32 rows") {
+   if (!compute_available()) {
+     return;

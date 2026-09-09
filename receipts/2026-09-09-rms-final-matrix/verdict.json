@@ -1,0 +1,15 @@
+{
+  "status": "Corrected primitive arithmetic; end-to-end numerical gate still fails; not integrated",
+  "source": "6727a9f",
+  "root_cause": "Native RMSNorm casts x*rsqrt(mean(x*x)+eps) back to the storage dtype before multiplying by weight. The Linux shader multiplied the weight in float32 before its only storage cast. Both upstream fast.cpp fallback and rms_norm.metal have the intermediate cast.",
+  "localization": "The first BF16 layer receives identical inputs. Initial RMSNorm differs at 6827/25984 prefill elements and 270/896 elements at model invocation 15. Adding the intermediate BF16 cast makes these captured outputs exactly equal to native and restores the complete native BF16 short output.",
+  "fp16_driver_behavior": "A float16 cast followed by a float32 cast passed the regression on llvmpipe but did not preserve the required rounding on Honeykrisp. Explicit packHalf2x16/unpackHalf2x16 passed the same exact fixture on M1. Native Metal independently produced the fixture's expected values.",
+  "regression": "Before correction, the new scalar fixture failed at FP16 element 1 (0.37109375 instead of 0.370849609375) and BF16 element 0 (0.07958984375 instead of 0.080078125). Corrected full fast-op suite passes 34 cases on llvmpipe and M1.",
+  "m1_suites": {"matmul": 17, "fast_ops": 34, "runtime": 41, "failed": 0},
+  "llvmpipe_suite": {"fast_ops": 34, "assertions": 1114903, "failed": 0},
+  "matrix": "All six workloads completed with clean census, AC power and matched wheel RECORD. Native digests match Q4 short, BF16 short and BF16 context1024. Q4 long, Q4 context1024 and BF16 long remain different. The FP16 correction loses the previous Q4 context1024 digest match, so the candidate stays isolated pending the remaining arithmetic corrections.",
+  "candidate_retention": "Exact source and regression test preserved in rms-round.patch; isolated M1 clone mlx-rms-round-screen retains the built candidate. Integration source restored unchanged.",
+  "trace_alignment": "Call numbers are model invocations, not generated-token indices: initial prefill consumes 29 of 30 prompt tokens; invocation 1 consumes the last prompt token. Invocation 15 predicts generated index 14. Full-layer duplicate arrays were pruned; first-layer operation boundaries and raw final logits remain.",
+  "next": "Use corrected RMSNorm as the numerical investigation baseline, then compare attention and projection arithmetic against native at identical inputs. Do not restore the known-wrong arithmetic inside the candidate to recover an accidental digest match.",
+  "performance_parity": "Unmet. No throughput improvement claimed from this correctness experiment."
+}

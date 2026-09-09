@@ -1,0 +1,12 @@
+diff --git a/overlay/mlx/backend/omarchy/shaders/fast_norm.comp b/overlay/mlx/backend/omarchy/shaders/fast_norm.comp
+--- a/overlay/mlx/backend/omarchy/shaders/fast_norm.comp
++++ b/overlay/mlx/backend/omarchy/shaders/fast_norm.comp
+@@ -141,7 +141,7 @@
+               : LOAD_VALUE(bias_data.values[params.aux_offset + index]);
+       float result = (value - mu) * norm * weight + bias;
+ #else
+-      float result = value * norm * weight;
++      float result = LOAD_VALUE(STORE_VALUE(value * norm)) * weight;
+ #endif
+       output_data.values[params.output_offset + row * row_length + index] =
+           STORE_VALUE(result);
