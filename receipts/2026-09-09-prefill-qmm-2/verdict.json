@@ -13,7 +13,7 @@
   "commit": "8eb24c49711ebb11464a5498f04d26d67d070c11",
   "decision": "reject all four candidates; retain origin/main cooperative Q4 prefill kernel",
   "ids": "identical",
-  "ids_scope": "Deterministic QMM output probe for m=262,k=896,n=128 was byte-identical for direct, subgroup, ring, and bfe against baseline; six model-leg IDs were not run because no candidate qualified for paired benchmarking.",
+  "ids_scope": "Deterministic QMM output probe for m=262,k=896,n=128 was byte-identical for subgroup, ring, and bfe against baseline; the direct variant passed the targeted M1 numerical suite. Six model-leg IDs were not run because no candidate qualified for paired benchmarking.",
   "kernel_ms": {
     "hidden-hidden-m1053": {
       "after": 1.7256665,
