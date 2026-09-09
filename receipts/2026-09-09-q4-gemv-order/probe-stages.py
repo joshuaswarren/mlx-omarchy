@@ -31,7 +31,6 @@ import mlx.core as mx
 
 f32 = np.float32
 SIMD = 32
-BLOCK = 256
 
 
 def h(x):
@@ -61,27 +60,47 @@ def fma(a, b, c):
     return o
 
 
-def lane_partials(x, w, scales, biases, round_quads=True, combine='fma_scale'):
+def lane_partials(x, w, scales, biases, round_quads=True, combine='fma_scale', dot_assoc='quads'):
+    """Per-lane float32 partial sums before the 32-lane reduction.
+
+    Native qmv_impl gives each lane 8 consecutive values per 256-wide
+    block; qmv_fast_impl (K % 512 == 0 and N % 8 == 0) gives 16 values per
+    512-wide block. Either way a lane's values sit in one group.
+    """
     K = x.shape[0]
     N = w.shape[0]
-    nblocks = (K + BLOCK - 1) // BLOCK
-    kk = (np.arange(nblocks)[:, None, None] * BLOCK + np.arange(SIMD)[None, :, None] * 8 + np.arange(8)[None, None, :])
+    vpt = 16 if K % 512 == 0 and N % 8 == 0 else 8
+    nq = vpt // 4
+    block = SIMD * vpt
+    nblocks = (K + block - 1) // block
+    kk = (np.arange(nblocks)[:, None, None] * block + np.arange(SIMD)[None, :, None] * vpt + np.arange(vpt)[None, None, :])
     valid = kk < K
-    xs = np.where(valid, x[np.minimum(kk, K - 1)], f32(0))
-    q0, q1 = xs[..., 0:4], xs[..., 4:8]
+    xs = np.where(valid, x[np.minimum(kk, K - 1)], f32(0)).reshape(nblocks, SIMD, nq, 4)
     r = h if round_quads else (lambda v: v)
-    hs0 = r(r(r(q0[..., 0] + q0[..., 1]) + q0[..., 2]) + q0[..., 3])
-    hs1 = r(r(r(q1[..., 0] + q1[..., 1]) + q1[..., 2]) + q1[..., 3])
-    sum_ = (f32(0) + hs0) + hs1
-    xt = xs / np.array([1, 16, 256, 4096] * 2, np.float32)
-    widx = np.arange(nblocks)[:, None] * SIMD + np.arange(SIMD)[None, :]
-    words = np.where((widx < K // 8)[None], w[:, np.minimum(widx, K // 8 - 1)], np.uint32(0))
-    ws = np.stack([words & 0xFFFF, words >> 16], -1)
-    m = (ws[..., None] & np.array([0x000F, 0x00F0, 0x0F00, 0xF000], np.uint32)).astype(np.float32)
-    p = xt.reshape(nblocks, SIMD, 2, 4)[None] * m
-    inner = ((p[..., 0] + p[..., 1]) + p[..., 2]) + p[..., 3]
-    accum = (f32(0) + inner[..., 0]) + inner[..., 1]
-    gidx = np.arange(nblocks)[:, None] * 4 + np.arange(SIMD)[None, :] // 8
+    hq = r(r(r(xs[..., 0] + xs[..., 1]) + xs[..., 2]) + xs[..., 3])  # (B, 32, nq)
+    sum_ = np.zeros((nblocks, SIMD), f32)
+    for q in range(nq):
+        sum_ = sum_ + hq[..., q]
+    xt = xs / np.array([1, 16, 256, 4096], np.float32)
+    widx = (np.arange(nblocks)[:, None, None] * SIMD + np.arange(SIMD)[None, :, None]) * (vpt // 8) + np.arange(vpt // 8)[None, None, :]
+    words = np.where((widx < K // 8)[None], w[:, np.minimum(widx, K // 8 - 1)], np.uint32(0))  # (N, B, 32, vpt/8)
+    ws = np.stack([words & 0xFFFF, words >> 16], -1).reshape(N, nblocks, SIMD, nq)
+    m = (ws[..., None] & np.array([0x000F, 0x00F0, 0x0F00, 0xF000], np.uint32)).astype(np.float32)  # (N,B,32,nq,4)
+    p = xt[None] * m
+    if dot_assoc == 'quads':
+        # native source order: accum += ((p0 + p1) + p2) + p3 per quad
+        inner = ((p[..., 0] + p[..., 1]) + p[..., 2]) + p[..., 3]
+        accum = np.zeros(inner.shape[:-1], f32)
+        for q in range(nq):
+            accum = accum + inner[..., q]
+    else:
+        # sequential fma ladder over every product (what NIR's inexact
+        # reassociation produced on Honeykrisp before `precise`)
+        pp = p.reshape(p.shape[:-2] + (vpt,))
+        accum = np.zeros(pp.shape[:-1], f32)
+        for i in range(vpt):
+            accum = accum + pp[..., i]
+    gidx = (np.arange(nblocks)[:, None] * block + np.arange(SIMD)[None, :] * vpt) // 64
     gvalid = gidx < K // 64
     sc = np.where(gvalid[None], scales[:, np.minimum(gidx, K // 64 - 1)], f32(0)).astype(np.float32)
     bi = np.where(gvalid[None], biases[:, np.minimum(gidx, K // 64 - 1)], f32(0)).astype(np.float32)
@@ -113,6 +132,7 @@ def reduce_lanes(part, order):
 ORDERS = ['xor_up', 'xor_down', 'sequential']
 DUMP = pathlib.Path(sys.argv[5]) if len(sys.argv) > 5 else None
 COMBINES = ['fma_scale', 'fma_bias', 'nofma']
+DOT_ASSOCS = ['quads', 'sequential']
 
 
 def run_stage(stage, rng, K, N, dtype):
@@ -148,11 +168,12 @@ def run_stage(stage, rng, K, N, dtype):
         np.savez(DUMP / f'{stage}-{K}-{dtype}-{len(list(DUMP.glob(stage + "-*")))}.npz', x=x, words=words, scales=scales, biases=biases, device=device)
     store = h if dtype == 'float16' else (lambda v: v)
     report = {}
-    for combine in COMBINES:
-        part = lane_partials(x, words, scales, biases, round_quads=dtype == 'float16', combine=combine)
-        for order in ORDERS:
-            tot = reduce_lanes(part, order)
-            report[f'{combine}:{order}'] = int(np.count_nonzero(store(tot) != device))
+    for dot_assoc in DOT_ASSOCS:
+        for combine in COMBINES:
+            part = lane_partials(x, words, scales, biases, round_quads=dtype == 'float16', combine=combine, dot_assoc=dot_assoc)
+            for order in ORDERS:
+                tot = reduce_lanes(part, order)
+                report[f'{dot_assoc}:{combine}:{order}'] = int(np.count_nonzero(store(tot) != device))
     return report, device
 
 

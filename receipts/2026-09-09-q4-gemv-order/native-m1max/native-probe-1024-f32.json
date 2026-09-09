@@ -1,0 +1,147 @@
+{
+  "k": 1024,
+  "n": 64,
+  "trials": 8,
+  "dtype": "float32",
+  "device": "Device(gpu, 0)",
+  "stages": {
+    "reduce": {
+      "outputs": 512,
+      "mismatches": {
+        "quads:fma_scale:xor_up": 0,
+        "quads:fma_scale:xor_down": 128,
+        "quads:fma_scale:sequential": 192,
+        "quads:fma_bias:xor_up": 0,
+        "quads:fma_bias:xor_down": 128,
+        "quads:fma_bias:sequential": 192,
+        "quads:nofma:xor_up": 0,
+        "quads:nofma:xor_down": 128,
+        "quads:nofma:sequential": 192,
+        "sequential:fma_scale:xor_up": 0,
+        "sequential:fma_scale:xor_down": 128,
+        "sequential:fma_scale:sequential": 192,
+        "sequential:fma_bias:xor_up": 0,
+        "sequential:fma_bias:xor_down": 128,
+        "sequential:fma_bias:sequential": 192,
+        "sequential:nofma:xor_up": 0,
+        "sequential:nofma:xor_down": 128,
+        "sequential:nofma:sequential": 192
+      }
+    },
+    "inputsum": {
+      "outputs": 512,
+      "mismatches": {
+        "quads:fma_scale:xor_up": 0,
+        "quads:fma_scale:xor_down": 326,
+        "quads:fma_scale:sequential": 392,
+        "quads:fma_bias:xor_up": 0,
+        "quads:fma_bias:xor_down": 326,
+        "quads:fma_bias:sequential": 392,
+        "quads:nofma:xor_up": 0,
+        "quads:nofma:xor_down": 326,
+        "quads:nofma:sequential": 392,
+        "sequential:fma_scale:xor_up": 0,
+        "sequential:fma_scale:xor_down": 326,
+        "sequential:fma_scale:sequential": 392,
+        "sequential:fma_bias:xor_up": 0,
+        "sequential:fma_bias:xor_down": 326,
+        "sequential:fma_bias:sequential": 392,
+        "sequential:nofma:xor_up": 0,
+        "sequential:nofma:xor_down": 326,
+        "sequential:nofma:sequential": 392
+      }
+    },
+    "dotonly": {
+      "outputs": 512,
+      "mismatches": {
+        "quads:fma_scale:xor_up": 0,
+        "quads:fma_scale:xor_down": 329,
+        "quads:fma_scale:sequential": 388,
+        "quads:fma_bias:xor_up": 0,
+        "quads:fma_bias:xor_down": 329,
+        "quads:fma_bias:sequential": 388,
+        "quads:nofma:xor_up": 0,
+        "quads:nofma:xor_down": 329,
+        "quads:nofma:sequential": 388,
+        "sequential:fma_scale:xor_up": 204,
+        "sequential:fma_scale:xor_down": 350,
+        "sequential:fma_scale:sequential": 400,
+        "sequential:fma_bias:xor_up": 204,
+        "sequential:fma_bias:xor_down": 350,
+        "sequential:fma_bias:sequential": 400,
+        "sequential:nofma:xor_up": 204,
+        "sequential:nofma:xor_down": 350,
+        "sequential:nofma:sequential": 400
+      }
+    },
+    "scaleonly": {
+      "outputs": 512,
+      "mismatches": {
+        "quads:fma_scale:xor_up": 0,
+        "quads:fma_scale:xor_down": 350,
+        "quads:fma_scale:sequential": 374,
+        "quads:fma_bias:xor_up": 0,
+        "quads:fma_bias:xor_down": 350,
+        "quads:fma_bias:sequential": 374,
+        "quads:nofma:xor_up": 0,
+        "quads:nofma:xor_down": 350,
+        "quads:nofma:sequential": 374,
+        "sequential:fma_scale:xor_up": 0,
+        "sequential:fma_scale:xor_down": 350,
+        "sequential:fma_scale:sequential": 374,
+        "sequential:fma_bias:xor_up": 0,
+        "sequential:fma_bias:xor_down": 350,
+        "sequential:fma_bias:sequential": 374,
+        "sequential:nofma:xor_up": 0,
+        "sequential:nofma:xor_down": 350,
+        "sequential:nofma:sequential": 374
+      }
+    },
+    "dot": {
+      "outputs": 512,
+      "mismatches": {
+        "quads:fma_scale:xor_up": 0,
+        "quads:fma_scale:xor_down": 338,
+        "quads:fma_scale:sequential": 370,
+        "quads:fma_bias:xor_up": 0,
+        "quads:fma_bias:xor_down": 338,
+        "quads:fma_bias:sequential": 370,
+        "quads:nofma:xor_up": 0,
+        "quads:nofma:xor_down": 338,
+        "quads:nofma:sequential": 370,
+        "sequential:fma_scale:xor_up": 184,
+        "sequential:fma_scale:xor_down": 349,
+        "sequential:fma_scale:sequential": 382,
+        "sequential:fma_bias:xor_up": 184,
+        "sequential:fma_bias:xor_down": 349,
+        "sequential:fma_bias:sequential": 382,
+        "sequential:nofma:xor_up": 184,
+        "sequential:nofma:xor_down": 349,
+        "sequential:nofma:sequential": 382
+      }
+    },
+    "full": {
+      "outputs": 512,
+      "mismatches": {
+        "quads:fma_scale:xor_up": 0,
+        "quads:fma_scale:xor_down": 321,
+        "quads:fma_scale:sequential": 365,
+        "quads:fma_bias:xor_up": 296,
+        "quads:fma_bias:xor_down": 346,
+        "quads:fma_bias:sequential": 393,
+        "quads:nofma:xor_up": 291,
+        "quads:nofma:xor_down": 350,
+        "quads:nofma:sequential": 391,
+        "sequential:fma_scale:xor_up": 193,
+        "sequential:fma_scale:xor_down": 342,
+        "sequential:fma_scale:sequential": 395,
+        "sequential:fma_bias:xor_up": 322,
+        "sequential:fma_bias:xor_down": 352,
+        "sequential:fma_bias:sequential": 402,
+        "sequential:nofma:xor_up": 320,
+        "sequential:nofma:xor_down": 349,
+        "sequential:nofma:sequential": 396
+      }
+    }
+  }
+}
