@@ -344,14 +344,25 @@ uint q6_at(uint e, uint c0, uint c1, uint c2) {
 // the barrier rounds of the tree reduction stay uniform. Each weight's
 // column runs the same Q4_ROW chain the single kernel runs for that
 // weight alone (n is that weight's N, so the qmv_fast tile choice is
-// the same), and stores the same STORE_VALUE(total). The epilogue
-// re-reads that stored value, adds the addend in float, and rounds
-// once, exactly like the elementwise Add it replaces.
-#define Q4_MULTI_STORE(I, stored) { \
-  output##I.values[column] = stored; \
+// the same). The epilogue must add the STORED value: the per-node Add
+// reads the rounded output back from memory. A float16_t round trip
+// in registers does not survive the AGX compiler (the epilogue then
+// added the unrounded total; 270 of 896 sums differed on the M1), so
+// the rounding goes through integer packing, as fused_chain.comp
+// does, and both the output and the sum derive from that rounded
+// value (converting an f16-representable float to float16_t is exact).
+#ifdef USE_FP16
+#define ROUND_STORAGE(f) (unpackHalf2x16(packHalf2x16(vec2(f, 0.0))).x)
+#elif defined(USE_BF16)
+#define ROUND_STORAGE(f) LOAD_VALUE(bf16_store(f))
+#else
+#define ROUND_STORAGE(f) (f)
+#endif
+#define Q4_MULTI_STORE(I, rounded) { \
+  output##I.values[column] = STORE_VALUE(rounded); \
   if ((params.flags & (256u << I)) != 0u) { \
     sum##I.values[column] = STORE_VALUE( \
-        LOAD_VALUE(stored) + LOAD_VALUE(addend##I.values[column])); \
+        (rounded) + LOAD_VALUE(addend##I.values[column])); \
   } \
 }
 void main() {
@@ -410,13 +421,13 @@ void main() {
   float total = reduce_scratch[lane];
 #endif
   if (lane_in_slot == 0u && column_active) {
-    STORAGE_TYPE stored = STORE_VALUE(total);
+    float rounded = ROUND_STORAGE(total);
     if (which == 0u) {
-      Q4_MULTI_STORE(0, stored)
+      Q4_MULTI_STORE(0, rounded)
     } else if (which == 1u) {
-      Q4_MULTI_STORE(1, stored)
+      Q4_MULTI_STORE(1, rounded)
     } else {
-      Q4_MULTI_STORE(2, stored)
+      Q4_MULTI_STORE(2, rounded)
     }
   }
 }
