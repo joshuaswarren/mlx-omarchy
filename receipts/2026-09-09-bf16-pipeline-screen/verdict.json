@@ -1,0 +1,19 @@
+{
+  "decision": "Rejected; accepted shader unchanged",
+  "source_short": "08403ee",
+  "wheel_sha256": "a7745ad2db92a82384e41083a5ab9daabe21725164d8119eabd8a46371229c85",
+  "scope": "One paired six-workload screen",
+  "outputs": "All six full generated-ID arrays matched accepted Linux baseline.",
+  "bf16_prefill": {
+    "prompt262": {
+      "baseline": 259.663,
+      "candidate": 232.064
+    },
+    "prompt1053": {
+      "baseline": 298.978,
+      "candidate": 270.139
+    }
+  },
+  "result": "Double-buffering halved steady-state control-barrier count but regressed longer BF16 prefill by 9.6–10.6%. Reduced source barrier count did not establish faster execution.",
+  "tests": "Further acceptance suites not run because performance screen failed."
+}

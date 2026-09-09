@@ -1,0 +1,113 @@
+--- a/overlay/mlx/backend/omarchy/shaders/matmul_coopmat_bf16.comp
++++ b/overlay/mlx/backend/omarchy/shaders/matmul_coopmat_bf16.comp
+@@ -90,9 +90,8 @@
+       : (word << 16u));
+ }
+ 
+-// 2 KiB per 32-lane workgroup: one 32x8 A step and one 8x32 B step.
+-shared float a_s[TILE_M * MAT];
+-shared float b_s[MAT * TILE_N];
++shared float a_s[2 * TILE_M * MAT];
++shared float b_s[2 * MAT * TILE_N];
+ 
+ void main() {
+   uint lane = gl_LocalInvocationID.x;
+@@ -133,54 +132,54 @@
+         }
+       }
+ 
+-      for (uint step = 0u; step < k_steps; ++step) {
+-        uint k_base = step * MAT;
+-        // Stage A (32 rows x 8 k): i = lane + 32 j covers row i / 8.
+-        for (uint j = 0u; j < 8u; ++j) {
+-          uint i = lane + 32u * j;
+-          uint row_local = i / MAT;
+-          uint row = row_base + row_local;
+-          uint k = k_base + (i % MAT);
+-          float v = 0.0;
+-          if (row < params.matrix_m) {
+-            v = a_colmaj
+-                ? bf16_load(a_slice * 2u + k * params.lhs_gap + row)
+-                : bf16_load(a_slice * 2u + row * params.lhs_gap + k);
++      for (uint step = 0u; step <= k_steps; ++step) {
++        if (step < k_steps) {
++          uint k_base = step * MAT;
++          for (uint j = 0u; j < 8u; ++j) {
++            uint i = lane + 32u * j;
++            uint row_local = i / MAT;
++            uint row = row_base + row_local;
++            uint k = k_base + (i % MAT);
++            float v = 0.0;
++            if (row < params.matrix_m) {
++              v = a_colmaj
++                  ? bf16_load(a_slice * 2u + k * params.lhs_gap + row)
++                  : bf16_load(a_slice * 2u + row * params.lhs_gap + k);
++            }
++            a_s[(step & 1u) * TILE_M * MAT + row_local * MAT + (i % MAT)] = v;
+           }
+-          a_s[row_local * MAT + (i % MAT)] = v;
+-        }
+-        // Stage B (8 k x 32 columns): i covers column i / 8.
+-        for (uint j = 0u; j < 8u; ++j) {
+-          uint i = lane + 32u * j;
+-          uint col_local = i / MAT;
+-          uint col = col_base + col_local;
+-          uint k = k_base + (i % MAT);
+-          float v = 0.0;
+-          if (col < params.matrix_n) {
+-            v = b_colmaj
+-                ? bf16_load_b(b_slice * 2u + col * params.rhs_gap + k)
+-                : bf16_load_b(b_slice * 2u + k * params.rhs_gap + col);
++          for (uint j = 0u; j < 8u; ++j) {
++            uint i = lane + 32u * j;
++            uint col_local = i / MAT;
++            uint col = col_base + col_local;
++            uint k = k_base + (i % MAT);
++            float v = 0.0;
++            if (col < params.matrix_n) {
++              v = b_colmaj
++                  ? bf16_load_b(b_slice * 2u + col * params.rhs_gap + k)
++                  : bf16_load_b(b_slice * 2u + k * params.rhs_gap + col);
++            }
++            b_s[(step & 1u) * MAT * TILE_N + (i % MAT) * TILE_N + col_local] = v;
+           }
+-          b_s[(i % MAT) * TILE_N + col_local] = v;
+         }
+-        barrier();
+-
+-        coopmat<float, gl_ScopeSubgroup, MAT, MAT, gl_MatrixUseA> mat_a[4];
+-        coopmat<float, gl_ScopeSubgroup, MAT, MAT, gl_MatrixUseB> mat_b[4];
+-        for (uint rb = 0u; rb < 4u; ++rb) {
+-          coopMatLoad(
+-              mat_a[rb], a_s, rb * MAT * MAT, MAT,
+-              gl_CooperativeMatrixLayoutRowMajor);
+-        }
+-        for (uint cb = 0u; cb < 4u; ++cb) {
+-          coopMatLoad(
+-              mat_b[cb], b_s, cb * MAT, TILE_N,
+-              gl_CooperativeMatrixLayoutRowMajor);
+-        }
+-        for (uint rb = 0u; rb < 4u; ++rb) {
++        if (step > 0u) {
++          coopmat<float, gl_ScopeSubgroup, MAT, MAT, gl_MatrixUseA> mat_a[4];
++          coopmat<float, gl_ScopeSubgroup, MAT, MAT, gl_MatrixUseB> mat_b[4];
++          for (uint rb = 0u; rb < 4u; ++rb) {
++            coopMatLoad(
++                mat_a[rb], a_s, ((step - 1u) & 1u) * TILE_M * MAT + rb * MAT * MAT, MAT,
++                gl_CooperativeMatrixLayoutRowMajor);
++          }
+           for (uint cb = 0u; cb < 4u; ++cb) {
+-            acc[rb][cb] =
+-                coopMatMulAdd(mat_a[rb], mat_b[cb], acc[rb][cb]);
++            coopMatLoad(
++                mat_b[cb], b_s, ((step - 1u) & 1u) * MAT * TILE_N + cb * MAT, TILE_N,
++                gl_CooperativeMatrixLayoutRowMajor);
++          }
++          for (uint rb = 0u; rb < 4u; ++rb) {
++            for (uint cb = 0u; cb < 4u; ++cb) {
++              acc[rb][cb] =
++                  coopMatMulAdd(mat_a[rb], mat_b[cb], acc[rb][cb]);
++            }
+           }
+         }
+         barrier();
