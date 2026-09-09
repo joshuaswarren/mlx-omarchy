@@ -6,7 +6,7 @@ option(MLX_OMARCHY_GPU_PROFILING
 if(MLX_OMARCHY_GPU_PROFILING)
   target_compile_definitions(mlx PRIVATE MLX_OMARCHY_GPU_PROFILING)
 endif()
-
+target_compile_definitions(mlx PRIVATE MLX_OMARCHY_BACKEND)
 find_program(OMARCHY_GLSLC glslc)
 find_program(OMARCHY_GLSLANG glslangValidator)
 if(NOT OMARCHY_GLSLC AND NOT OMARCHY_GLSLANG)
@@ -222,9 +222,10 @@ omarchy_shader(qmm_f32 shaders/qmm.comp)
 omarchy_shader(qmm_f16 shaders/qmm.comp -DUSE_FP16=1)
 omarchy_shader(qmm_bf16 shaders/qmm.comp -DUSE_BF16=1)
 # FuseDecodeChains: interpreted elementwise-chain kernels (one dispatch
-# per fusable tape chain; bf16 tapes are refused before chains run).
+# per fusable compiled or eager chain).
 omarchy_shader(fused_chain_f32 shaders/fused_chain.comp)
 omarchy_shader(fused_chain_f16 shaders/fused_chain.comp -DUSE_FP16=1)
+omarchy_shader(fused_chain_bf16 shaders/fused_chain.comp -DUSE_BF16=1)
 # DecodeGemv: dedicated matrix-vector kernels for the decode shape
 # (lhs single row); qmm_vec fuses affine dequantization into the dot,
 # the same shader compiled with USE_SUBGROUP=1 produces the

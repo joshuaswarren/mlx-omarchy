@@ -1,14 +1,13 @@
 // Copyright © 2026 Joshua Warren / mlx-omarchy contributors.
 // SPDX-License-Identifier: MIT
 
-// FuseDecodeChains fused-chain coverage. Fusion is DEFAULT OFF
-// (MLX_OMARCHY_FUSED_CHAIN); every equivalence case opts in, and two
-// cases pin the gate behavior itself. The fused path must match the
-// eager path BIT-EXACT for both float32 and float16: the chain shader
-// rounds every intermediate to the storage dtype exactly like the
-// per-node path materializes them, and every op formula mirrors
-// shaders/elementwise.comp case for case (sigmoid, NaN-propagating
-// max/min included). bf16 stays refused by the compiled-tape gate.
+// FuseDecodeChains fused-chain coverage. Fusion defaults on and
+// MLX_OMARCHY_FUSED_CHAIN=0 disables it. Equivalence cases set their intended
+// mode explicitly. The fused path must match the
+// per-node path BIT-EXACT for float32, float16, and eager bfloat16: the
+// chain shader rounds every intermediate to the storage dtype exactly
+// like the per-node path materializes them. Compiled bf16 tapes remain
+// refused independently.
 
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include "doctest/doctest.h"
@@ -82,12 +81,14 @@ void check_compiled_matches_eager(
     const Stream& stream,
     double epsilon,
     bool shapeless = false) {
+  setenv("MLX_OMARCHY_FUSED_CHAIN", "0", 1);
   set_compile_mode(CompileMode::disabled);
   std::vector<array> eager_outputs = fn(inputs);
   for (auto& out : eager_outputs) {
     out.eval();
   }
   sync_stream(stream);
+  enable_fusion();
   set_compile_mode(CompileMode::enabled);
   auto compiled_fn = compile(fn, shapeless);
   std::vector<array> compiled_outputs = compiled_fn(inputs);
@@ -509,7 +510,7 @@ uint64_t counted_dispatches(
 
 } // namespace
 
-TEST_CASE("gated-in fused chain collapses 3 swiglu dispatches to 1") {
+TEST_CASE("gated-in fused chain collapses eager and compiled swiglu") {
   if (!compute_available()) {
     return;
   }
@@ -538,9 +539,84 @@ TEST_CASE("gated-in fused chain collapses 3 swiglu dispatches to 1") {
       [&] { return compiled_fn(inputs)[0]; }, 2, stream);
   set_compile_mode(CompileMode::disabled);
 
-  // The 3-op swiglu chain costs 3 eager dispatches and 1 fused one.
-  CHECK_EQ(eager, 3);
+  CHECK_EQ(eager, 1);
   CHECK_EQ(fused, 1);
+}
+TEST_CASE("eager bf16 swiglu is bit-exact and one dispatch") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  set_compile_mode(CompileMode::disabled);
+  array gate = astype(random::normal(Shape{32, 32}), bfloat16, stream);
+  array up = astype(random::normal(Shape{32, 32}), bfloat16, stream);
+  gate.eval();
+  up.eval();
+  sync_stream(stream);
+
+  setenv("MLX_OMARCHY_FUSED_CHAIN", "0", 1);
+  array baseline = gate * sigmoid(gate) * up;
+  baseline.eval();
+  sync_stream(stream);
+
+  enable_fusion();
+  uint64_t before = counters().vk_compute_dispatches.load();
+  array candidate = gate * sigmoid(gate) * up;
+  candidate.eval();
+  sync_stream(stream);
+  CHECK_EQ(counters().vk_compute_dispatches.load() - before, 1);
+
+  array baseline32 = astype(baseline, float32, stream);
+  array candidate32 = astype(candidate, float32, stream);
+  baseline32.eval();
+  candidate32.eval();
+  sync_stream(stream);
+  for (size_t i = 0; i < baseline32.size(); ++i) {
+    INFO("bf16 mismatch at ", i);
+    CHECK_EQ(baseline32.data<float>()[i], candidate32.data<float>()[i]);
+  }
+}
+TEST_CASE("eager fusion materializes retained intermediate arrays") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  set_compile_mode(CompileMode::disabled);
+  array gate = random::normal(Shape{8, 64}, float16, std::nullopt, stream);
+  array up = random::normal(Shape{8, 64}, float16, std::nullopt, stream);
+  gate.eval();
+  up.eval();
+  sync_stream(stream);
+
+  setenv("MLX_OMARCHY_FUSED_CHAIN", "0", 1);
+  array baseline_sigmoid = sigmoid(gate);
+  array baseline_inner = gate * baseline_sigmoid;
+  array baseline_out = baseline_inner * up;
+  baseline_out.eval();
+  sync_stream(stream);
+
+  enable_fusion();
+  array candidate_sigmoid = sigmoid(gate);
+  array candidate_inner = gate * candidate_sigmoid;
+  array candidate_out = candidate_inner * up;
+  uint64_t before = counters().vk_compute_dispatches.load();
+  candidate_out.eval();
+  sync_stream(stream);
+  CHECK_EQ(counters().vk_compute_dispatches.load() - before, 1);
+
+  for (auto pair : std::array<std::pair<array, array>, 3>{
+           std::pair{baseline_sigmoid, candidate_sigmoid},
+           std::pair{baseline_inner, candidate_inner},
+           std::pair{baseline_out, candidate_out}}) {
+    array baseline32 = astype(pair.first, float32, stream);
+    array candidate32 = astype(pair.second, float32, stream);
+    baseline32.eval();
+    candidate32.eval();
+    sync_stream(stream);
+    for (size_t i = 0; i < baseline32.size(); ++i) {
+      CHECK_EQ(baseline32.data<float>()[i], candidate32.data<float>()[i]);
+    }
+  }
 }
 
 TEST_CASE("gate off keeps the per-node dispatch stream") {
@@ -548,7 +624,7 @@ TEST_CASE("gate off keeps the per-node dispatch stream") {
     return;
   }
   Stream stream = gpu_stream();
-  unsetenv("MLX_OMARCHY_FUSED_CHAIN");
+  setenv("MLX_OMARCHY_FUSED_CHAIN", "0", 1);
   std::vector<array> inputs{random::normal(Shape{32, 32}, float32),
                             random::normal(Shape{32, 32}, float32)};
   for (auto& in : inputs) {
@@ -643,7 +719,7 @@ TEST_CASE("shapeless swiglu fragment collapses identity broadcast pairs (f32)") 
   uint64_t fused = counted_dispatches(
       [&] { return compiled_fn(inputs)[0]; }, 2, stream);
   set_compile_mode(CompileMode::disabled);
-  CHECK_EQ(eager, 3);
+  CHECK_EQ(eager, 1);
   CHECK_EQ(fused, 1);
   check_compiled_matches_eager(fn, inputs, float32, stream, 0.0, true);
 }
@@ -673,7 +749,7 @@ TEST_CASE("shapeless swiglu fragment collapses identity broadcast pairs (f16)") 
   uint64_t fused = counted_dispatches(
       [&] { return compiled_fn(inputs)[0]; }, 2, stream);
   set_compile_mode(CompileMode::disabled);
-  CHECK_EQ(eager, 3);
+  CHECK_EQ(eager, 1);
   CHECK_EQ(fused, 1);
   check_compiled_matches_eager(fn, inputs, float16, stream, -1.0, true);
 }
@@ -885,7 +961,7 @@ TEST_CASE("nonidentity broadcast keeps the per-node fallback (shapeless)") {
   // The scale-side broadcast is real ([64] to [4,64]): the identity prefix
   // still fuses, the scale side keeps the per-node view, and the tail mul
   // refuses the non-contiguous leaf.
-  CHECK_EQ(eager, 3);
+  CHECK_EQ(eager, 1);
   CHECK_EQ(fused, 2);
   check_compiled_matches_eager(fn, inputs, float32, stream, 0.0, true);
 }
