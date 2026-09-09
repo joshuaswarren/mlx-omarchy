@@ -2160,6 +2160,104 @@ TEST_CASE("general broadcast elementwise matches host references") {
   }
 }
 
+TEST_CASE("four-wide 16-bit binary path matches the general kernel bit for bit") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  const auto& capabilities = omarchy::device(0).capabilities();
+  if (!capabilities.storage_buffer_16bit_access ||
+      !capabilities.shader_float16 || !capabilities.shader_int16) {
+    skip("Vulkan device lacks required 16-bit storage and shader features.");
+    return;
+  }
+  // Values chosen so the f32 results land between storage
+  // representables: the host reference rounds once (float op, then one
+  // storage round), the contract both kernels carry, and the check is
+  // on the stored bits. count 288 with period 96 hits the four-wide
+  // path; count 231 and the odd-offset slice keep the general kernel.
+  auto fill = [](size_t n, float seed) {
+    std::vector<float> v(n);
+    for (size_t i = 0; i < n; ++i) {
+      v[i] = std::sin(0.37f * static_cast<float>(i) + seed) * 3.0f +
+          static_cast<float>(i % 7) * 0.001f + 0.5f;
+    }
+    return v;
+  };
+  auto stored_bits = [&](const std::vector<float>& values, Dtype dtype) {
+    std::vector<uint16_t> bits(values.size());
+    for (size_t i = 0; i < values.size(); ++i) {
+      if (dtype == float16) {
+        float16_t h(values[i]);
+        std::memcpy(&bits[i], &h, 2);
+      } else {
+        bfloat16_t h(values[i]);
+        std::memcpy(&bits[i], &h, 2);
+      }
+    }
+    return bits;
+  };
+  auto gpu_bits = [&](array got) {
+    eval(got);
+    return std::vector<uint16_t>(
+        got.data<uint16_t>(), got.data<uint16_t>() + got.size());
+  };
+  auto mismatches = [](const std::vector<uint16_t>& e,
+                       const std::vector<uint16_t>& g) {
+    size_t n = 0;
+    for (size_t i = 0; i < e.size(); ++i) {
+      n += e[i] != g[i];
+    }
+    return n;
+  };
+  for (Dtype dtype : {float16, bfloat16}) {
+    for (const Shape& shape : {Shape{3, 8, 12}, Shape{3, 7, 11}}) {
+      size_t count = shape[0] * shape[1] * shape[2];
+      size_t period = shape[1] * shape[2];
+      array a = astype(
+          array(fill(count, 0.1f).begin(), shape, float32), dtype, stream);
+      array b = astype(
+          array(fill(period, 1.9f).begin(), Shape{shape[1], shape[2]},
+                float32),
+          dtype,
+          stream);
+      array a32 = astype(a, float32, stream);
+      array b32 = astype(b, float32, stream);
+      eval(a32, b32);
+      const float* ap = a32.data<float>();
+      const float* bp = b32.data<float>();
+      for (int op = 0; op < 4; ++op) {
+        std::vector<float> ref(count);
+        for (size_t i = 0; i < count; ++i) {
+          float x = ap[i];
+          float y = bp[i % period];
+          ref[i] = op == 0 ? x + y : op == 1 ? x * y : op == 2 ? x / y : x - y;
+        }
+        array got = op == 0 ? add(a, b, stream)
+            : op == 1     ? multiply(a, b, stream)
+            : op == 2     ? divide(a, b, stream)
+                          : subtract(a, b, stream);
+        INFO("dtype " << dtype << " op " << op << " count " << count);
+        CHECK_EQ(mismatches(stored_bits(ref, dtype), gpu_bits(got)), 0u);
+      }
+      array flat = reshape(a, Shape{static_cast<int>(count)}, stream);
+      array bflat = reshape(b, Shape{static_cast<int>(period)}, stream);
+      for (int start : {12, 13}) {
+        array sl = slice(flat, {start}, {start + 64}, stream);
+        array sb = slice(bflat, {0}, {64}, stream);
+        std::vector<float> ref(64);
+        for (size_t i = 0; i < 64; ++i) {
+          ref[i] = ap[start + i] * bp[i];
+        }
+        INFO("dtype " << dtype << " slice start " << start);
+        CHECK_EQ(
+            mismatches(stored_bits(ref, dtype), gpu_bits(multiply(sl, sb, stream))),
+            0u);
+      }
+    }
+  }
+}
+
 TEST_CASE("broadcast divide carries collapsed ranks 5 through 8") {
   if (!compute_available()) {
     return;

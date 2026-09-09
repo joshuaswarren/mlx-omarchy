@@ -568,7 +568,16 @@ void dispatch_matmul(
         ? omarchy::ComputeKernel::MatmulF32Coopmat
         : omarchy::ComputeKernel::MatmulBF16Coopmat;
   }
-  const uint32_t tile = coopmat ? 32u : 16u;
+  // Register-blocked f16 tile for prefill-sized matrices (the
+  // attention scores and probs matmuls): same per-output arithmetic as
+  // matmul.comp, 64x64 tile. Decode (matrix_m == 1) keeps the 16x16
+  // tile and the GEMV paths untouched.
+  const bool rb = kernel == omarchy::ComputeKernel::MatmulF16 &&
+      params.matrix_m >= 32u && !use_c;
+  if (rb) {
+    kernel = omarchy::ComputeKernel::MatmulRbF16;
+  }
+  const uint32_t tile = coopmat ? 32u : (rb ? 64u : 16u);
   uint64_t a_inner = params.matrix_m == 0u || params.matrix_k == 0u
       ? 0u
       : (a_transposed
@@ -729,6 +738,24 @@ void dispatch_float_elementwise_to(
       binding(rhs),
       binding(out),
       binding(axis_metadata ? *axis_metadata : out)};
+  // Four-wide fast path (shaders/binary_vec.comp) for the hot binary
+  // ops on 16-bit storage: same math and modulo addressing as
+  // elementwise.comp, 8-byte vector loads. Everything else, including
+  // a one-element scalar operand, keeps the general kernel.
+  const bool vec_op = operation == AddOperation ||
+      operation == MultiplyOperation || operation == DivideOperation ||
+      operation == SubtractOperation;
+  if (vec_op && !general_broadcast && out.dtype() != float32 &&
+      ((count | params.lhs_size | params.rhs_size | params.lhs_offset |
+        params.rhs_offset | params.output_offset) & 3u) == 0u) {
+    encoder.dispatch_compute(
+        out.dtype() == float16 ? omarchy::ComputeKernel::BinaryVecF16
+                               : omarchy::ComputeKernel::BinaryVecBF16,
+        bindings,
+        params,
+        omarchy::compute_dispatch_group_count(count / 4u));
+    return;
+  }
   auto kernel = select_float_kernel(
       out.dtype(),
       omarchy::ComputeKernel::ElementwiseF32,
