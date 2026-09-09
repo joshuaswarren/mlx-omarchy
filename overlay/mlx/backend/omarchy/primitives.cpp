@@ -392,6 +392,11 @@ std::tuple<Shape, std::vector<Strides>> collapse_matmul_batches(
   return collapsed;
 }
 
+// causal: attention shortcut for the register-blocked f16 tile
+// (shaders/matmul_rb.comp flags 8 / 16), a (key length - query length,
+// skip mode) pair; the other kernels ignore it. Only meaningful when
+// the consumer never reads the masked output (the causal softmax).
+enum class CausalSkip { None, Columns, K };
 void dispatch_matmul(
     const std::string& name,
     const std::vector<array>& inputs,
@@ -399,7 +404,8 @@ void dispatch_matmul(
     float alpha,
     float beta,
     bool use_c,
-    const Stream& s) {
+    const Stream& s,
+    std::pair<uint32_t, CausalSkip> causal = {0u, CausalSkip::None}) {
   const array& a_in = inputs.at(0);
   const array& b_in = inputs.at(1);
   const array& c_in = use_c ? inputs.at(2) : out;
@@ -576,6 +582,10 @@ void dispatch_matmul(
       params.matrix_m >= 32u && !use_c;
   if (rb) {
     kernel = omarchy::ComputeKernel::MatmulRbF16;
+    if (causal.second != CausalSkip::None) {
+      params.aux_size = causal.first;
+      params.flags |= causal.second == CausalSkip::Columns ? 8u : 16u;
+    }
   }
   const uint32_t tile = coopmat ? 32u : (rb ? 64u : 16u);
   uint64_t a_inner = params.matrix_m == 0u || params.matrix_k == 0u
@@ -1796,13 +1806,16 @@ void dispatch_sort_any_axis(
 // needed here. The shader accumulates in float32 for every dtype, which
 // also covers the precise flag. ScaledDotProductAttention shares this
 // dispatch for its float32 score normalization.
+// causal_offset >= 0 selects the shader's causal mode with that key
+// length minus query length (q_len is the query length).
 void dispatch_softmax(
     const std::string& name,
     const array& input,
     array& out,
     const Stream& s,
     const array* sinks = nullptr,
-    int q_len = 0) {
+    int q_len = 0,
+    int causal_offset = -1) {
   auto& encoder = omarchy::get_command_encoder(s);
   require_float_dtype(name, input, out, encoder);
   std::optional<array> dense_temp;
@@ -1829,6 +1842,11 @@ void dispatch_softmax(
     params.rhs_offset = checked_item_offset(*sinks, sinks->size(), name, out);
     params.matrix_m = checked_u32(q_len, name, out);
     params.matrix_n = checked_u32(sinks->size(), name, out);
+  }
+  if (causal_offset >= 0) {
+    params.flags = 1u;
+    params.aux_size = checked_u32(q_len, name, out);
+    params.aux_offset = checked_u32(causal_offset, name, out);
   }
   std::array<omarchy::ComputeBinding, 3> bindings{
       binding(src),
@@ -9790,11 +9808,10 @@ void ScaledDotProductAttention::eval_gpu(
   // residual adds, and the norm already run - float accumulation inside
   // the shader, bf16 storage with round-to-nearest-even stores on both
   // drivers. Scores store bf16 (2^-8 relative rounding per stored
-  // score), the additive causal floor becomes bf16's finite maximum
-  // (-3.3895313892515355e38 - overflow-immune where the f16 path caps
-  // at 65504), and the output stays bf16 end to end. Deletes the three
+  // score), and the output stays bf16 end to end. Deletes the three
   // q/k/v upcasts, the f32 scale multiply, the f32 softmax, and the
-  // output downcast per call.
+  // output downcast per call. The causal mask is not materialized on
+  // either storage dtype (see the scores matmul below).
   bool bf16_fast = false;
   if (q.dtype() == bfloat16) {
     if (const char* env = std::getenv("MLX_OMARCHY_SDPA_BF16_FAST");
@@ -9835,8 +9852,26 @@ void ScaledDotProductAttention::eval_gpu(
     encoder.add_temporary(keys_t);
     Shape score_shape = qs.shape();
     score_shape.back() = k_len;
+    // The causal case never materializes a mask: the softmax runs in
+    // its causal mode (only keys <= k_len - q_len + position take
+    // part, the rest store exact zeros, the same values the additive
+    // storage-floor mask produced), so the scores matmul may skip the
+    // fully masked column tiles and the probs matmul the k tiles past
+    // every row's last key. That deletes a q_len x k_len host mask
+    // fill and one full read-modify-write of the scores per call.
+    const uint32_t causal_offset =
+        do_causal_ ? static_cast<uint32_t>(k_len - q_len) : 0u;
     array scores(score_shape, storage_dtype, nullptr, {});
-    dispatch_matmul(tag, {qs, keys_t}, scores, scale_, 0.0f, false, s);
+    dispatch_matmul(
+        tag,
+        {qs, keys_t},
+        scores,
+        scale_,
+        0.0f,
+        false,
+        s,
+        {causal_offset,
+         do_causal_ ? CausalSkip::Columns : CausalSkip::None});
     encoder.add_temporary(scores);
 
     std::optional<array> masked;
@@ -9847,44 +9882,7 @@ void ScaledDotProductAttention::eval_gpu(
     }
     const bool has_arr_mask =
         (inputs.size() == 5) || (inputs.size() == 4 && !has_sinks_);
-    if (do_causal_) {
-      // The same 0 / -1e30 additive shape the f32 path builds, stored
-      // in the storage dtype at its finite maximum (f16 -65504, bf16
-      // -3.3895313892515355e38), not -inf: softmax still maps masked
-      // positions to an exact zero, and a fully masked row (padding
-      // masks over padded positions) stays defined - the additive
-      // constant cancels in the max subtraction, so the row reduces to
-      // softmax over its own scores exactly like the f32 path, instead
-      // of inf-minus-inf NaN.
-      constexpr float kF16Floor = -65504.0f;
-      constexpr float kBF16Floor = -3.3895313892515355e38f;
-      array mask(Shape{q_len, k_len}, storage_dtype, nullptr, {});
-      mask.set_data(allocate_omarchy(mask.nbytes()));
-      int offset = k_len - q_len;
-      if (bf16) {
-        bfloat16_t* values = mask.data<bfloat16_t>();
-        for (int row = 0; row < q_len; ++row) {
-          for (int col = 0; col < k_len; ++col) {
-            values[row * k_len + col] =
-                offset + row >= col ? bfloat16_t(0.0f)
-                                    : bfloat16_t(kBF16Floor);
-          }
-        }
-      } else {
-        float16_t* values = mask.data<float16_t>();
-        for (int row = 0; row < q_len; ++row) {
-          for (int col = 0; col < k_len; ++col) {
-            values[row * k_len + col] =
-                offset + row >= col
-                    ? float16_t(0.0f)
-                    : float16_t(kF16Floor);
-          }
-        }
-      }
-      encoder.add_temporary(mask);
-      masked = array(scores.shape(), storage_dtype, nullptr, {});
-      dispatch_elementwise(tag, AddOperation, {scores, mask}, *masked, s);
-    } else if (has_arr_mask) {
+    if (!do_causal_ && has_arr_mask) {
       const array& mask = inputs.at(3);
       if (mask.dtype() != storage_dtype) {
         omarchy::unsupported("attention mask dtype " + tag, out);
@@ -9899,13 +9897,28 @@ void ScaledDotProductAttention::eval_gpu(
     encoder.add_temporary(logits);
 
     array probs(logits.shape(), storage_dtype, nullptr, {});
-    dispatch_softmax(tag, logits, probs, s, sinks, q_len);
+    dispatch_softmax(
+        tag,
+        logits,
+        probs,
+        s,
+        sinks,
+        q_len,
+        do_causal_ ? static_cast<int>(causal_offset) : -1);
     encoder.add_temporary(probs);
 
     Shape result_shape = probs.shape();
     result_shape.back() = v_dim;
     array result(result_shape, storage_dtype, nullptr, {});
-    dispatch_matmul(tag, {probs, vs}, result, 1.0f, 0.0f, false, s);
+    dispatch_matmul(
+        tag,
+        {probs, vs},
+        result,
+        1.0f,
+        0.0f,
+        false,
+        s,
+        {causal_offset, do_causal_ ? CausalSkip::K : CausalSkip::None});
     encoder.add_temporary(result);
     commit_result(result);
     return;

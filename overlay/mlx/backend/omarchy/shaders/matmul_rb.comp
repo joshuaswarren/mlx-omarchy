@@ -12,6 +12,14 @@
 // 0.14-0.20 TFLOP/s on the M1 (2026-09-09 profile); here every pair
 // of 4-wide shared reads feeds sixteen multiply-adds. Dispatch gate
 // (dispatch_matmul): f16, matrix_m >= 32, no bias C.
+//
+// Causal attention shortcuts, with aux_size = key length minus query
+// length and the row as the query position: flags bit 3 skips output
+// tiles whose every column lies past every row's last valid key (the
+// scores matmul; the causal softmax never reads them), flags bit 4
+// stops the k loop after the last k tile any row of the output tile
+// can reach (the probs matmul; the probabilities past it are exact
+// zeros, whose products cannot change an accumulator).
 
 const uint TILE = 64u;
 const uint TILE_K = 16u;
@@ -82,15 +90,25 @@ void main() {
   uint k_tiles = (params.matrix_k + TILE_K - 1u) / TILE_K;
   bool a_t = (params.flags & 4u) != 0u;
   bool b_t = (params.flags & 1u) != 0u;
+  bool causal_columns = (params.flags & 8u) != 0u;
+  bool causal_k = (params.flags & 16u) != 0u;
   uint a_base = params.lhs_offset + a_batch;
   uint b_base = params.rhs_offset + b_batch;
 
   for (uint tile_row = gl_WorkGroupID.y; tile_row < tile_rows;
        tile_row += gl_NumWorkGroups.y) {
     uint row0 = tile_row * TILE;
+    // Last key any row of this tile may attend to.
+    uint last_valid = params.aux_size + row0 + TILE - 1u;
+    uint tile_k_tiles = causal_k
+        ? min(k_tiles, (last_valid + TILE_K) / TILE_K)
+        : k_tiles;
     for (uint tile_column = gl_WorkGroupID.x; tile_column < tile_columns;
          tile_column += gl_NumWorkGroups.x) {
       uint col0 = tile_column * TILE;
+      if (causal_columns && col0 > last_valid) {
+        continue;
+      }
       float acc[4][4];
       for (uint i = 0u; i < 4u; ++i) {
         for (uint j = 0u; j < 4u; ++j) {
@@ -98,7 +116,7 @@ void main() {
         }
       }
 
-      for (uint tile = 0u; tile < k_tiles; ++tile) {
+      for (uint tile = 0u; tile < tile_k_tiles; ++tile) {
         uint k0 = tile * TILE_K;
         // 1024 A elements and 1024 B elements per step, four each per
         // thread; the fast index runs along the stored contiguous axis
