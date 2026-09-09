@@ -23,6 +23,7 @@ HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[1]
 PIN_4BIT = "a5339a4131f135d0fdc6a5c8b5bbed2753bbe0f3"
 PIN_BF16 = "56d07e766edd7159fbe12ed12d9cf114bf38bf1e"
+EXTRA_MLX_ENV = {}
 
 
 def main():
@@ -59,6 +60,7 @@ def main():
         env = {k: v for k, v in os.environ.items() if not k.startswith("MLX_")}
         env.update(HF_HUB_OFFLINE="1", MLX_DISABLE_COMPILE="1",
                    MLX_PAIR_IDS=str(ids_path))
+        env.update(EXTRA_MLX_ENV)
         cmd = [str(py), "scripts/bench_matrix.py", "--mode", "run",
                "--manifest", str(mpath), "--python", str(py),
                "--wheel", str(wheel),
