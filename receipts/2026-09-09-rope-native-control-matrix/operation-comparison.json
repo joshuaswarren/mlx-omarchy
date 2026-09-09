@@ -1,0 +1,30 @@
+{
+  "norm1-output": {
+    "different": 0,
+    "max_error": 0.0
+  },
+  "attn-q_proj-output": {
+    "different": 0,
+    "max_error": 0.0
+  },
+  "attn-k_proj-output": {
+    "different": 0,
+    "max_error": 0.0
+  },
+  "attn-v_proj-output": {
+    "different": 0,
+    "max_error": 0.0
+  },
+  "rope0-output": {
+    "different": 665,
+    "max_error": 0.0078125
+  },
+  "rope1-output": {
+    "different": 104,
+    "max_error": 0.0625
+  },
+  "sdpa-output": {
+    "different": 210587,
+    "max_error": 0.007568359375
+  }
+}

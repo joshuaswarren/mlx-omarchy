@@ -1,0 +1,12 @@
+{
+  "status": "not qualified; 1/6 native generation matches",
+  "scope": "Python sitecustomize precision experiment on 53697db wheel, private native-trig driver; not an integrated runtime fix",
+  "native_fixed_attention_f16_differences": 0,
+  "native_fixed_attention_f32_differences": 0,
+  "linux_fixed_attention_f16_differences": 210563,
+  "linux_fixed_attention_f32_differences": 2405,
+  "linux_fixed_attention_f32_max_error": 6.103515625e-05,
+  "conclusion": "Removing f16 score/probability storage eliminates most prefill discrepancy but not native online-softmax arithmetic differences. Full generation still fails.",
+  "runtime_restored": "8fd73d0",
+  "next": "Reproduce native 32-key-block online softmax and float32 score/probability/output accumulation before another whole-model screen."
+}

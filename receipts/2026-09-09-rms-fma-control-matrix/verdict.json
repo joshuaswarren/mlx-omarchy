@@ -1,0 +1,12 @@
+{
+  "status": "not qualified; generation parity remains 3/6",
+  "candidate": "fea521a",
+  "control": "NoContraction on four RMS GLSL.std.450 Fma results only; no driver modification",
+  "fixed_q4_rms": "Native weighted, unweighted and float32 call0 outputs match exactly; weighted call35 matches exactly.",
+  "live_nir": "Both RMS correction iterations retain all four exact ffma operations.",
+  "first_remaining_prefill_mismatch": "RoPE; preceding norm and Q/K/V projections match exactly.",
+  "performance_scope": "Single-run screen, not paired native M1 performance acceptance.",
+  "restored_runtime": "8fd73d0",
+  "restore_receipt": "mlx-rms-fma-trace-window.log:11-17",
+  "remaining": "RoPE and attention numerical differences; Q4 BF16 regression tests; split-K performance; full generation and matched-native performance gates."
+}

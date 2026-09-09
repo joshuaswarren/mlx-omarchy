@@ -1,0 +1,110 @@
+Processing ./dist/mlx_omarchy-0.32.2.dev202609091045+53697db-cp314-cp314-linux_aarch64.whl
+Installing collected packages: mlx-omarchy
+  Attempting uninstall: mlx-omarchy
+    Found existing installation: mlx-omarchy 0.32.2.dev202609090935+8fd73d0
+    Uninstalling mlx-omarchy-0.32.2.dev202609090935+8fd73d0:
+      Successfully uninstalled mlx-omarchy-0.32.2.dev202609090935+8fd73d0
+Successfully installed mlx-omarchy-0.32.2.dev202609091045+53697db
+mx.metal.device_info is deprecated and will be removed in a future version. Use mx.device_info instead.
+provenance: mlx-omarchy 0.32.2.dev202609091045+53697db mx=0.32.2.dev202609091045+53697db verified=match harness=unknown core.cpython-314-aarch64-linux-gnu.so=sha256:4ad850da16c300ea libmlx.so=sha256:d74c67642e3b42bf
+{"ids": [13060, 498, 369, 8241, 419, 11682, 1995, 911, 279, 18662, 11507, 369, 264, 2613, 4128, 28244, 28431, 13, 358, 686, 15516, 3395, 419, 11507, 311, 5978, 432, 5285, 82, 448, 279, 28703, 323, 17501, 3897, 553, 279, 28431, 287, 12801], "digest": "fb44b1e17877a159", "prompt_tokens": 262, "device": "Apple M1 (G13G B1)", "purpose": "Instrumented numerical trace, no performance claim"}
+rep 1: ok
+[
+ {
+  "leg_id": "qwen25-0.5b-4bit:long-decode-128",
+  "reps": 1,
+  "decode_tok_s_median": 65.19,
+  "decode_tok_s_min": 65.19,
+  "decode_tok_s_max": 65.19,
+  "prefill_tok_s_median": 298.746,
+  "prefill_tok_s_min": 298.746,
+  "prefill_tok_s_max": 298.746,
+  "prompt_tokens": 262,
+  "generated_ids_sha256_16": [
+   "f873dc2bdd34c0fe"
+  ],
+  "ids_stable_across_reps": true
+ },
+ {
+  "leg_id": "qwen25-0.5b-4bit:longctx-1024-decode-32",
+  "reps": 1,
+  "decode_tok_s_median": 63.14,
+  "decode_tok_s_min": 63.14,
+  "decode_tok_s_max": 63.14,
+  "prefill_tok_s_median": 305.927,
+  "prefill_tok_s_min": 305.927,
+  "prefill_tok_s_max": 305.927,
+  "prompt_tokens": 1053,
+  "generated_ids_sha256_16": [
+   "31267e7ed4c6d0dc"
+  ],
+  "ids_stable_across_reps": true
+ },
+ {
+  "leg_id": "qwen25-0.5b-4bit:short-decode-32",
+  "reps": 1,
+  "decode_tok_s_median": 66.61,
+  "decode_tok_s_min": 66.61,
+  "decode_tok_s_max": 66.61,
+  "prefill_tok_s_median": 94.34,
+  "prefill_tok_s_min": 94.34,
+  "prefill_tok_s_max": 94.34,
+  "prompt_tokens": 30,
+  "generated_ids_sha256_16": [
+   "7fd25a869ff21678"
+  ],
+  "ids_stable_across_reps": true
+ },
+ {
+  "leg_id": "qwen25-0.5b-bf16:long-decode-128",
+  "reps": 1,
+  "decode_tok_s_median": 41.07,
+  "decode_tok_s_min": 41.07,
+  "decode_tok_s_max": 41.07,
+  "prefill_tok_s_median": 280.514,
+  "prefill_tok_s_min": 280.514,
+  "prefill_tok_s_max": 280.514,
+  "prompt_tokens": 262,
+  "generated_ids_sha256_16": [
+   "3d7493c8c413670d"
+  ],
+  "ids_stable_across_reps": true
+ },
+ {
+  "leg_id": "qwen25-0.5b-bf16:longctx-1024-decode-32",
+  "reps": 1,
+  "decode_tok_s_median": 39.74,
+  "decode_tok_s_min": 39.74,
+  "decode_tok_s_max": 39.74,
+  "prefill_tok_s_median": 305.927,
+  "prefill_tok_s_min": 305.927,
+  "prefill_tok_s_max": 305.927,
+  "prompt_tokens": 1053,
+  "generated_ids_sha256_16": [
+   "5fd2fe812bf2a4ce"
+  ],
+  "ids_stable_across_reps": true
+ },
+ {
+  "leg_id": "qwen25-0.5b-bf16:short-decode-32",
+  "reps": 1,
+  "decode_tok_s_median": 41.8,
+  "decode_tok_s_min": 41.8,
+  "decode_tok_s_max": 41.8,
+  "prefill_tok_s_median": 89.286,
+  "prefill_tok_s_min": 89.286,
+  "prefill_tok_s_max": 89.286,
+  "prompt_tokens": 30,
+  "generated_ids_sha256_16": [
+   "f26175202f3dabe9"
+  ],
+  "ids_stable_across_reps": true
+ }
+]
+Processing /tmp/mlx-fma-diagnostic-wheel/mlx_omarchy-0.32.2.dev202609090935+8fd73d0-cp314-cp314-linux_aarch64.whl
+Installing collected packages: mlx-omarchy
+  Attempting uninstall: mlx-omarchy
+    Found existing installation: mlx-omarchy 0.32.2.dev202609091045+53697db
+    Uninstalling mlx-omarchy-0.32.2.dev202609091045+53697db:
+      Successfully uninstalled mlx-omarchy-0.32.2.dev202609091045+53697db
+Successfully installed mlx-omarchy-0.32.2.dev202609090935+8fd73d0
