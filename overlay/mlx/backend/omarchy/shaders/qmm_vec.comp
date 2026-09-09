@@ -22,15 +22,21 @@
 //   * default: five-round workgroup-shared tree (correct on any
 //     subgroup size; lane split is plain workgroup arithmetic). The
 //     five barrier rounds are the cost.
-//   * USE_SUBGROUP=1: one xor-shuffle ladder per 32-lane slot
-//     (Honeykrisp's actual subgroupSize). Trades the barriers for five
-//     shuffles; the bench (tools/subgroup-bench) decides whether the
-//     trade pays on this device. Dispatch is gated on
-//     caps.subgroup_size == 32 and the SHUFFLE subgroup-feature bit, so
-//     a device that lacks either falls back to the tree path unchanged.
-// Both flavors pair lanes stride 1 first, then 2, 4, 8, 16: the order
-// native Metal simd_sum reduces in, so the Q4 word path below is
-// bit-identical to native qmv (receipts/2026-09-09-q4-gemv-order).
+//   * USE_SUBGROUP=1: one subgroupAdd(accumulator) per 32-lane slot
+//     (Honeykrisp's actual subgroupSize). Trades the barriers for the
+//     hardware reduction; the bench (tools/subgroup-bench) decides
+//     whether the trade pays on this device. Dispatch is gated on
+//     caps.subgroup_size == 32 and the ARITHMETIC subgroup-feature bit,
+//     so a device that lacks either falls back to the tree path
+//     unchanged.
+// Both flavors pair lanes stride 1 first, then 2, 4, 8, 16. That is the
+// order native Metal simd_sum reduces in, and Honeykrisp's 32-bit float
+// subgroupAdd is the same hardware reduction (agx_nir_lower_subgroups
+// leaves it unlowered) and measured that pairing bit for bit, so the Q4
+// word path below is bit-identical to native qmv
+// (receipts/2026-09-09-q4-gemv-order). subgroupShuffleXor is not used:
+// Honeykrisp emulates arbitrary shuffles with four read_invocation
+// selects per step.
 //
 // QMM_VEC_Q4_WORD compiles the transposed affine 4-bit/group-64 decode
 // path in native qmv arithmetic: one lane owns one packed word per
@@ -69,7 +75,7 @@ uint16_t bf16_store(float value) {
 // subgroup size produces a wrong sum, so the dispatch gate is the
 // load-bearing part of this codepath.
 #extension GL_KHR_shader_subgroup_basic : require
-#extension GL_KHR_shader_subgroup_shuffle : require
+#extension GL_KHR_shader_subgroup_arithmetic : require
 #endif
 #if defined(FP_MODE) && defined(QMM_VEC_Q4_WORD)
 #error "QMM_VEC_Q4_WORD applies to affine quantization only"
@@ -501,17 +507,12 @@ void main() {
     // workgroup.
 #ifdef USE_SUBGROUP
     // Subgroup reduction path. Each 32-lane slot is one hardware
-    // subgroup; an explicit xor-shuffle ladder with strides 1, 2, 4, 8,
-    // 16 folds the per-lane accumulators without scratch or barriers.
-    // The stride order is the arithmetic contract: it is the pairing
-    // native simd_sum uses (receipts/2026-09-09-q4-gemv-order), and
-    // subgroupAdd on Honeykrisp pairs lanes differently. Every lane
-    // runs the ladder (uniform control flow); lane_in_slot == 0 owns
-    // the column output.
-    float total = accumulator;
-    for (uint offset = 1u; offset < LANES; offset <<= 1u) {
-      total += subgroupShuffleXor(total, offset);
-    }
+    // subgroup; subgroupAdd folds the per-lane accumulators inside the
+    // subgroup without shared-memory scratch or barriers, pairing lanes
+    // stride 1 first (see the header). Every lane reaches it (uniform
+    // control flow); the lane_in_slot == 0 thread of each slot owns
+    // that column's output.
+    float total = subgroupAdd(accumulator);
     if (lane_in_slot == 0u && column_active) {
       output_data.values[params.output_offset + b * params.matrix_n +
           column] = STORE_VALUE(total);
@@ -519,8 +520,8 @@ void main() {
 #else
     // Tree reduction path (default). Five rounds of barrier-synchronized
     // shared-memory adds fold the 32-lane per-slot accumulators in the
-    // same stride-1-first pairing as the subgroup ladder; first lane of
-    // each slot owns the column output. Correct on any subgroup size
+    // same stride-1-first pairing as the hardware reduction; first lane
+    // of each slot owns the column output. Correct on any subgroup size
     // because the lane split is plain workgroup arithmetic.
     reduce_scratch[lane] = accumulator;
     barrier();
