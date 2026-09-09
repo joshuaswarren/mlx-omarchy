@@ -1,0 +1,14 @@
+[doctest] doctest version is "2.4.12"
+[doctest] run with "--help" for options
+===============================================================================
+/home/joshuawarren/src/mlx-PrefillSpeed/.work/mlx/tests/omarchy/test_primitives.cpp:5416:
+TEST CASE:  quantized matmul binds affine streams at storage offsets
+
+/home/joshuawarren/src/mlx-PrefillSpeed/.work/mlx/tests/omarchy/test_primitives.cpp:5514: ERROR: CHECK( device_values[index] == doctest::Approx(expected[index]).epsilon(4e-3) ) is NOT correct!
+  values: CHECK( 0.416748 == Approx( 0.409468 ) )
+  logged: m := 1
+
+===============================================================================
+[doctest] test cases:     33 |     32 passed | 1 failed | 67 skipped
+[doctest] assertions: 268643 | 268642 passed | 1 failed |
+[doctest] Status: FAILURE!

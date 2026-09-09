@@ -1,0 +1,45 @@
+== prefill: wall 583.5 ms, 1615 dispatches, 55 submissions, 48 joins
+   slot total 423.7 ms (72.6% of wall), reported t1-t0 total 385.2 ms, join wait 328.6 ms, submit host 46.6 ms
+   kernel                           n   slot ms  share  mean us   rep ms
+   QmmPrefillCoopmatF16           163    269.35  63.6%   1652.5   264.03
+   QmmVecQ4WordSubgroupF16        338     34.96   8.3%    103.4    27.86
+   FusedChainF16                   71     28.63   6.8%    403.2    27.21
+   BinaryVecF16                   357     19.93   4.7%     55.8    11.62
+   MatmulRbF16                     46     14.23   3.4%    309.4    13.33
+   CopyGeneralF16                 167     14.03   3.3%     84.0     8.76
+   MatmulF16                       96     11.92   2.8%    124.1    10.39
+   FastRopeF16                    143     10.46   2.5%     73.1     6.73
+   FastRmsNormF16                 145      9.17   2.2%     63.2     5.92
+   SoftmaxF16                      71      8.74   2.1%    123.1     7.50
+   LogSumExpF16                     2      0.61   0.1%    304.1     0.54
+   TakeF16                          6      0.44   0.1%     73.4     0.32
+   ElementwiseF16                   2      0.43   0.1%    212.8     0.36
+   TakeU32                          3      0.32   0.1%    105.4     0.16
+   ArgReduceF16                     2      0.27   0.1%    136.9     0.27
+   DequantF16                       3      0.27   0.1%     89.2     0.21
+   top signatures (kernel, count, gx, gy, gz):
+   QmmPrefillCoopmatF16         count=1269504   g=(152,9,1) n=  46 slot=  149.39 ms mean=  3247.6 us
+   QmmPrefillCoopmatF16         count=233856    g=(28,9,1) n=  69 slot=  112.10 ms mean=  1624.6 us
+   FusedChainF16                count=1269504   g=(4959,1,1) n=  23 slot=   26.50 ms mean=  1152.0 us
+   QmmVecQ4WordSubgroupF16      count=4864      g=(608,1,1) n=  96 slot=   12.87 ms mean=   134.1 us
+   QmmVecQ4WordSubgroupF16      count=896       g=(112,1,1) n= 144 slot=   11.92 ms mean=    82.8 us
+   BinaryVecF16                 count=896       g=(1,1,1) n= 144 slot=    8.24 ms mean=    57.3 us
+   QmmPrefillCoopmatF16         count=33408     g=(4,9,1) n=  48 slot=    7.87 ms mean=   163.9 us
+   MatmulRbF16                  count=953694    g=(5,5,14) n=  23 slot=    7.49 ms mean=   325.7 us
+   MatmulRbF16                  count=233856    g=(1,5,14) n=  23 slot=    6.74 ms mean=   293.2 us
+   SoftmaxF16                   count=953694    g=(3654,1,1) n=  23 slot=    6.51 ms mean=   283.2 us
+   QmmVecQ4WordSubgroupF16      count=128       g=(16,1,1) n=  96 slot=    6.49 ms mean=    67.6 us
+   CopyGeneralF16               count=128       g=(1,1,1) n=  96 slot=    6.47 ms mean=    67.4 us
+   BinaryVecF16                 count=128       g=(1,1,1) n=  96 slot=    6.42 ms mean=    66.8 us
+   FastRmsNormF16               count=896       g=(1,1,1) n=  98 slot=    6.33 ms mean=    64.6 us
+   MatmulF16                    count=896       g=(4,1,14) n=  48 slot=    5.34 ms mean=   111.3 us
+   CopyGeneralF16               count=33408     g=(131,1,1) n=  48 slot=    4.38 ms mean=    91.2 us
+   FastRopeF16                  count=64        g=(1,1,1) n=  48 slot=    3.82 ms mean=    79.6 us
+   MatmulF16                    count=3668      g=(17,1,14) n=  24 slot=    3.81 ms mean=   158.7 us
+   QmmVecQ4WordSubgroupF16      count=151936    g=(18992,1,1) n=   2 slot=    3.68 ms mean=  1841.3 us
+   BinaryVecF16                 count=233856    g=(229,1,1) n=  69 slot=    3.49 ms mean=    50.7 us
+   FastRopeF16                  count=448       g=(2,1,1) n=  48 slot=    3.49 ms mean=    72.6 us
+   CopyGeneralF16               count=233856    g=(914,1,1) n=  23 slot=    3.18 ms mean=   138.1 us
+   FastRmsNormF16               count=233856    g=(261,1,1) n=  47 slot=    2.84 ms mean=    60.5 us
+   MatmulF16                    count=3682      g=(17,1,14) n=  24 slot=    2.76 ms mean=   115.2 us
+   FusedChainF16                count=4864      g=(19,1,1) n=  48 slot=    2.13 ms mean=    44.4 us

@@ -1,0 +1,2 @@
+usage: mlx_provenance.py [-h] [--expect-wheel EXPECT_WHEEL] [--self-test]
+mlx_provenance.py: error: unrecognized arguments: --wheel dist/mlx_omarchy-0.32.2.dev202609091701+diag.c970d95-cp314-cp314-linux_aarch64.whl

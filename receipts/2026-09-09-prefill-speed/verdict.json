@@ -1,0 +1,349 @@
+{
+ "branch": "wave/PrefillSpeed",
+ "commit": "0dbb1d1",
+ "baseline_commit": "21d6a560",
+ "hardware": "jwm1-linux, Apple M1 (G13G B1), installed Honeykrisp (cooperative_matrix_f32_8=1), AC",
+ "wheels": {
+  "baseline": "mlx_omarchy-0.32.2.dev202609091752+21d6a56 sha256 8d7dd8e7e4885fd7b3f07778446e5e2bcb281c2502b3de8a769ff64ad44381b0",
+  "candidate": "mlx_omarchy-0.32.2.dev202609091754+0dbb1d1 sha256 cf92f9b321a2d82343232f2f00c0ab6fcfb9ffd1d1b2cad0c380d85532f89c78"
+ },
+ "profile_method": "diagnostics wheel, MLX_OMARCHY_GPU_PROFILE, prefill window of profile_generate (4 tokens). Honeykrisp writes the post-dispatch timestamp before long dispatches finish in some recorded runs, so kernels are ranked by slot time (next dispatch t0 minus this t0, barriers included; slot_profile.py); on these runs reported t1-t0 totals agree within 3%. Prefill window includes the last-token step and the first async decode step (QmmVec rows).",
+ "profile_before_main_21d6a56": {
+  "long": {
+   "wall_ms": 674.8,
+   "gpu_slot_ms": 510.4,
+   "gpu_busy_fraction": 0.756,
+   "dispatches": 1638,
+   "submissions": 55,
+   "kernels": {
+    "QmmPrefillCoopmatF16": {
+     "n": 163,
+     "ms": 279.93,
+     "share": 0.548
+    },
+    "ElementwiseF16": {
+     "n": 382,
+     "ms": 66.91,
+     "share": 0.131
+    },
+    "MatmulF16": {
+     "n": 142,
+     "ms": 56.28,
+     "share": 0.11
+    },
+    "QmmVecQ4WordSubgroupF16": {
+     "n": 338,
+     "ms": 33.92,
+     "share": 0.066
+    },
+    "FusedChainF16": {
+     "n": 71,
+     "ms": 28.52,
+     "share": 0.056
+    },
+    "CopyGeneralF16": {
+     "n": 167,
+     "ms": 14.28,
+     "share": 0.028
+    },
+    "FastRopeF16": {
+     "n": 143,
+     "ms": 10.72,
+     "share": 0.021
+    },
+    "FastRmsNormF16": {
+     "n": 145,
+     "ms": 9.17,
+     "share": 0.018
+    },
+    "SoftmaxF16": {
+     "n": 71,
+     "ms": 8.75,
+     "share": 0.017
+    },
+    "LogSumExpF16": {
+     "n": 2,
+     "ms": 0.6,
+     "share": 0.001
+    }
+   }
+  },
+  "ctx1024": {
+   "wall_ms": 2320.3,
+   "gpu_slot_ms": 2103.0,
+   "gpu_busy_fraction": 0.906,
+   "dispatches": 1638,
+   "submissions": 55,
+   "kernels": {
+    "QmmPrefillCoopmatF16": {
+     "n": 163,
+     "ms": 846.7,
+     "share": 0.403
+    },
+    "MatmulF16": {
+     "n": 142,
+     "ms": 591.28,
+     "share": 0.281
+    },
+    "ElementwiseF16": {
+     "n": 382,
+     "ms": 453.67,
+     "share": 0.216
+    },
+    "FusedChainF16": {
+     "n": 71,
+     "ms": 104.18,
+     "share": 0.05
+    },
+    "SoftmaxF16": {
+     "n": 71,
+     "ms": 32.76,
+     "share": 0.016
+    },
+    "QmmVecQ4WordSubgroupF16": {
+     "n": 338,
+     "ms": 29.56,
+     "share": 0.014
+    },
+    "CopyGeneralF16": {
+     "n": 167,
+     "ms": 19.77,
+     "share": 0.009
+    },
+    "FastRopeF16": {
+     "n": 143,
+     "ms": 12.79,
+     "share": 0.006
+    },
+    "FastRmsNormF16": {
+     "n": 145,
+     "ms": 10.22,
+     "share": 0.005
+    },
+    "LogSumExpF16": {
+     "n": 2,
+     "ms": 0.6,
+     "share": 0.0
+    }
+   }
+  }
+ },
+ "profile_after_e5e039a_with_qmm_restored_in_0dbb1d1": {
+  "long": {
+   "wall_ms": 639.2,
+   "gpu_slot_ms": 476.4,
+   "gpu_busy_fraction": 0.745,
+   "dispatches": 1615,
+   "submissions": 55,
+   "kernels": {
+    "QmmPrefillCoopmatF16": {
+     "n": 163,
+     "ms": 342.83,
+     "share": 0.72
+    },
+    "QmmVecQ4WordSubgroupF16": {
+     "n": 338,
+     "ms": 34.72,
+     "share": 0.073
+    },
+    "BinaryVecF16": {
+     "n": 357,
+     "ms": 20.54,
+     "share": 0.043
+    },
+    "CopyGeneralF16": {
+     "n": 167,
+     "ms": 14.23,
+     "share": 0.03
+    },
+    "MatmulRbF16": {
+     "n": 46,
+     "ms": 13.98,
+     "share": 0.029
+    },
+    "MatmulF16": {
+     "n": 96,
+     "ms": 11.14,
+     "share": 0.023
+    },
+    "FastRopeF16": {
+     "n": 143,
+     "ms": 10.76,
+     "share": 0.023
+    },
+    "FastRmsNormF16": {
+     "n": 145,
+     "ms": 9.45,
+     "share": 0.02
+    },
+    "SoftmaxF16": {
+     "n": 71,
+     "ms": 8.71,
+     "share": 0.018
+    },
+    "SwigluF16": {
+     "n": 71,
+     "ms": 7.64,
+     "share": 0.016
+    }
+   }
+  },
+  "ctx1024": {
+   "wall_ms": 1653.3,
+   "gpu_slot_ms": 1459.9,
+   "gpu_busy_fraction": 0.883,
+   "dispatches": 1615,
+   "submissions": 55,
+   "kernels": {
+    "QmmPrefillCoopmatF16": {
+     "n": 163,
+     "ms": 1174.06,
+     "share": 0.804
+    },
+    "MatmulRbF16": {
+     "n": 46,
+     "ms": 109.48,
+     "share": 0.075
+    },
+    "SoftmaxF16": {
+     "n": 71,
+     "ms": 31.27,
+     "share": 0.021
+    },
+    "QmmVecQ4WordSubgroupF16": {
+     "n": 338,
+     "ms": 29.61,
+     "share": 0.02
+    },
+    "MatmulF16": {
+     "n": 96,
+     "ms": 26.77,
+     "share": 0.018
+    },
+    "SwigluF16": {
+     "n": 71,
+     "ms": 22.47,
+     "share": 0.015
+    },
+    "BinaryVecF16": {
+     "n": 357,
+     "ms": 20.22,
+     "share": 0.014
+    },
+    "CopyGeneralF16": {
+     "n": 167,
+     "ms": 19.96,
+     "share": 0.014
+    },
+    "FastRopeF16": {
+     "n": 143,
+     "ms": 13.2,
+     "share": 0.009
+    },
+    "FastRmsNormF16": {
+     "n": 145,
+     "ms": 10.37,
+     "share": 0.007
+    }
+   }
+  }
+ },
+ "profile_note": "The after table is the e5e039a screen; 0dbb1d1 differs from it only by restoring main's qmm_coopmat.comp, whose slot time on main was 280 / 846 ms (long / ctx1024). Main's ElementwiseF16 454 ms (ctx1024) became BinaryVecF16 20 ms plus no mask add; MatmulF16 attention 565 ms became MatmulRbF16 109 ms; FusedChainF16 104 ms became SwigluF16 22 ms. GPU-busy fraction of the prefill wall: 0.906 -> 0.883 (ctx1024), 0.756 -> 0.745 (long); the remaining non-GPU wall (~150 ms per prefill) is mlx-lm generate overhead, not clear_cache (probe: clear_cache 5 ms, decode graph build 9 ms; a 1 GiB cache limit changed prefill eval by 1%).",
+ "qmm_screens_slot_ms_long_ctx1024": {
+  "main single-subgroup 8-k": [
+   280,
+   846
+  ],
+  "32-k staged + prefetch (fabfb604)": [
+   610,
+   1981
+  ],
+  "four subgroups 8-k (ebcd9e4)": [
+   256,
+   884
+  ],
+  "four subgroups 16-k (3ba05fb)": [
+   269,
+   903
+  ],
+  "double-buffered (e5e039a)": [
+   343,
+   1174
+  ]
+ },
+ "paired": {
+  "qwen25-0.5b-4bit:short-decode-32": {
+   "baseline_prefill": 113.208,
+   "candidate_prefill": 112.36,
+   "baseline_decode": 79.58,
+   "candidate_decode": 87.64,
+   "prefill_ratio": 0.993,
+   "decode_ratio": 1.101
+  },
+  "qwen25-0.5b-4bit:long-decode-128": {
+   "baseline_prefill": 447.099,
+   "candidate_prefill": 542.443,
+   "baseline_decode": 65.28,
+   "candidate_decode": 71.1,
+   "prefill_ratio": 1.213,
+   "decode_ratio": 1.089
+  },
+  "qwen25-0.5b-4bit:longctx-1024-decode-32": {
+   "baseline_prefill": 477.768,
+   "candidate_prefill": 863.115,
+   "baseline_decode": 45.83,
+   "candidate_decode": 48.59,
+   "prefill_ratio": 1.807,
+   "decode_ratio": 1.06
+  },
+  "qwen25-0.5b-bf16:short-decode-32": {
+   "baseline_prefill": 69.767,
+   "candidate_prefill": 69.767,
+   "baseline_decode": 11.66,
+   "candidate_decode": 11.74,
+   "prefill_ratio": 1.0,
+   "decode_ratio": 1.007
+  },
+  "qwen25-0.5b-bf16:long-decode-128": {
+   "baseline_prefill": 275.789,
+   "candidate_prefill": 284.783,
+   "baseline_decode": 11.21,
+   "candidate_decode": 11.3,
+   "prefill_ratio": 1.033,
+   "decode_ratio": 1.008
+  },
+  "qwen25-0.5b-bf16:longctx-1024-decode-32": {
+   "baseline_prefill": 320.939,
+   "candidate_prefill": 335.137,
+   "baseline_decode": 10.2,
+   "candidate_decode": 10.27,
+   "prefill_ratio": 1.044,
+   "decode_ratio": 1.007
+  }
+ },
+ "paired_protocol": "3 alternating baseline/candidate pairs, scripts/bench_matrix.py --mode run (six legs each), separate venvs, distinct wheel stamps asserted; medians of 3; raw pair-N-{base,cand}.json in paired-21d6a56-vs-0dbb1d1/",
+ "ids": "identical: every leg and every pair, Q4 7fd25a869ff21678 / 4cc08910089477fd / 7da83f06ec9f001d, bf16 f26175202f3dabe9 / ad964232ee67fecd / ff502900d2a179a5 (fork-driver bf16 long digest as in the 2026-09-09 smoke)",
+ "tests": {
+  "llvmpipe (MLX_OMARCHY_ALLOW_NON_APPLE=1, glslang 16.5)": {
+   "omarchy_primitive_tests": "99/100, the 1 failure is 'quantized matmul binds affine streams at storage offsets' m=1 which fails identically on unmodified 21d6a560 (rebuilt and rerun in this session); it is the decode qmm_vec path this branch never touches",
+   "omarchy_matmul_family_tests": "18/18",
+   "omarchy_fused_chain_tests": "25/25",
+   "omarchy_fast_ops_tests": "33/33",
+   "logs": "llvmpipe/"
+  },
+  "m1 (glslc 2026.3, Release)": {
+   "omarchy_matmul_family_tests -tc register-blocked*,qmm coopmat*,qmm tile*,dense*,qmm_vec*": "9/9",
+   "omarchy_primitive_tests -tc four-wide*,f16 causal*,*attention*,*softmax*,*Matmul*,*matmul*,*elementwise*,*broadcast*": "32/33, same pre-existing m=1 affine-offset case [INFERENCE: baseline not rebuilt on the M1; the llvmpipe baseline run and the untouched code path are the evidence]",
+   "omarchy_fused_chain_tests": "25/25",
+   "omarchy_fast_ops_tests": "33/33",
+   "logs": "screens/0dbb1d1/tests/"
+  },
+  "new_tests": [
+   "four-wide 16-bit binary path matches the general kernel bit for bit",
+   "register-blocked f16 matmul matches the 16x16 tile bit for bit",
+   "f16 causal attention equals the additive storage-floor mask bit for bit"
+  ]
+ },
+ "decision": "integrate: Q4 prefill +21% (262) / +81% (1053) with bit-identical ids on all six legs, Q4 decode +6-10% (BinaryVec on the residual adds), bf16 prefill +0-4%, no leg regressed beyond noise (short Q4 prefill 0.993).",
+ "next": "QmmPrefillCoopmatF16 is now 63-80% of prefill GPU time at 0.6-0.9 TFLOP/s; the four restaging variants screened here all lose on at least one leg, so the lever is inside the step (fragment loads without shared staging need the driver-side inline fragment path, receipts/2026-09-08-prefill-parity-batch1.json) or a driver-level change; after that the attention matmuls (109 ms, 0.46 TFLOP/s scalar, an f16 coopmat kernel would change arithmetic order and needs the native-match gate) and the ~150 ms per-prefill mlx-lm host overhead."
+}
