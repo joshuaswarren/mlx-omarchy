@@ -1,0 +1,16 @@
+{
+  "candidate": "25df125",
+  "status": "Unqualified: captured projections match but full Q4 long generation and performance do not",
+  "fixed_native_projection_output_mismatches": {
+    "prefill": {"q_proj": 0, "k_proj": 0, "v_proj": 0},
+    "decode": {"q_proj": 0, "k_proj": 0, "v_proj": 0}
+  },
+  "native_generation_matches": 4,
+  "workloads": 6,
+  "matching_workloads": ["4bit short", "bf16 short", "bf16 long", "bf16 long-context"],
+  "Q4_prefill_tokens_per_second": {"short": 94.637, "long": 300.115, "long_context": 318.127},
+  "mechanism": "Native small-column reduction uses up to eight lanes. Each lane accumulates interleaved partials in FP16; lane totals combine sequentially in FP16. Matching this fixes captured K/V projections.",
+  "implementation_scope": "Private serial arithmetic control, not parallel split-K performance implementation",
+  "regression_suites": "Not rerun; previously observed BF16 Q4 decode bound failures remain unresolved",
+  "source_receipt": "complete-candidate.patch applies cleanly to public overlay"
+}
