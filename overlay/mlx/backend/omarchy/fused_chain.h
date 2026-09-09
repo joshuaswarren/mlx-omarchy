@@ -120,4 +120,29 @@ class EagerFusionScope {
 // Returns true when the primitive was recorded (or deliberately deferred)
 // by the active eager-fusion scope; false keeps the ordinary eval_gpu path.
 bool try_eval_eager_fusion(array& node, const Stream& stream);
+
+// DecodeFusion: one fused decode GEMV group. Up to kQmmVecMultiWeights
+// affine transposed 4-bit/group-64 QuantizedMatmul nodes that read one
+// single-row x, each optionally followed by the Add that is its only
+// consumer (a bias or residual add), recorded as ONE QmmVecQ4Multi
+// dispatch when the first member evaluates. Every member output and
+// every Add output is materialized, so retained references stay valid.
+struct GemvFusionMember {
+  array node;
+  std::optional<array> epilogue;
+  std::optional<array> addend;
+};
+
+// Validates the group against the kernel contract, allocates every
+// output, and records the dispatch. Returns false having allocated
+// nothing when any member falls outside the contract; the caller then
+// lets every node take its ordinary eval_gpu path. Defined in
+// primitives.cpp beside QuantizedMatmul::eval_gpu.
+bool dispatch_quantized_gemv_group(
+    std::vector<GemvFusionMember>& members,
+    const Stream& stream);
+
+// MLX_OMARCHY_FUSED_GEMV=0 keeps every QuantizedMatmul and Add on the
+// per-node path (the MLX_OMARCHY_FUSED_CHAIN gate also covers it).
+bool fused_gemv_enabled();
 } // namespace mlx::core::omarchy

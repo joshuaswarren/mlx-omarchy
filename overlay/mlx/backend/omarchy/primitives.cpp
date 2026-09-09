@@ -13,6 +13,7 @@
 #include <optional>
 #include <numeric>
 #include <string>
+#include <typeinfo>
 #include <utility>
 
 #include "mlx/backend/common/binary.h"
@@ -24,6 +25,7 @@
 #include "mlx/backend/omarchy/compiled.h"
 #include "mlx/backend/omarchy/device.h"
 #include "mlx/backend/omarchy/encoder.h"
+#include "mlx/backend/omarchy/fused_chain.h"
 #include "mlx/distributed/primitives.h"
 #include "mlx/fast_primitives.h"
 #include "mlx/backend/gpu/copy.h"
@@ -6729,6 +6731,188 @@ void QuantizedMatmul::eval_gpu(const std::vector<array>& inputs, array& out) {
       params,
       omarchy::compute_dispatch_group_count(params.count));
 }
+
+namespace omarchy {
+
+namespace {
+
+// The single-row Q4 word kernel's eligibility, mirrored for the fused
+// group (QuantizedMatmul::eval_gpu keeps the authoritative copy).
+bool q4_word_enabled() {
+  const char* env = std::getenv("MLX_OMARCHY_QMM_VEC_Q4_WORD");
+  return env == nullptr || std::strcmp(env, "1") == 0;
+}
+
+bool float_dtype_supported(Dtype dtype, const CapabilityReport& caps) {
+  if (dtype == float32) {
+    return true;
+  }
+  if (dtype == float16) {
+    return caps.shader_float16 && caps.storage_buffer_16bit_access;
+  }
+  if (dtype == bfloat16) {
+    return caps.storage_buffer_16bit_access && caps.shader_int16;
+  }
+  return false;
+}
+
+// Whole, dense, unoffset buffer of `count` elements: the multi kernel
+// addresses every per-weight stream from element 0.
+bool whole_dense(const array& value, size_t count) {
+  return value.data_shared_ptr() != nullptr && value.offset() == 0 &&
+      value.flags().row_contiguous && value.data_size() == count;
+}
+
+// Ready to be read by a dispatch recorded now on `stream`: evaluated,
+// and not waiting on another stream's unsignaled event (the eval loop
+// performs that wait only ahead of the node's own turn).
+bool input_ready(const array& value, const Stream& stream) {
+  if (value.status() == array::Status::unscheduled) {
+    return false;
+  }
+  if (value.event().valid() && !value.event().is_signaled() &&
+      value.event().stream() != stream) {
+    return false;
+  }
+  return true;
+}
+
+} // namespace
+
+bool dispatch_quantized_gemv_group(
+    std::vector<GemvFusionMember>& members,
+    const Stream& stream) {
+  if (members.empty() || members.size() > kQmmVecMultiWeights ||
+      !q4_word_enabled()) {
+    return false;
+  }
+  auto& encoder = get_command_encoder(stream);
+  const auto& caps = encoder.device().capabilities();
+  if (encoder.device().compute().binding_limit() < kQmmVecMultiBindings) {
+    return false;
+  }
+  const array& x = members[0].node.inputs().at(0);
+  const Dtype dtype = members[0].node.dtype();
+  if (!float_dtype_supported(dtype, caps) || x.dtype() != dtype ||
+      x.ndim() < 2 || x.shape(-2) != 1 || !input_ready(x, stream) ||
+      x.data_shared_ptr() == nullptr || !x.flags().row_contiguous ||
+      x.offset() % x.itemsize() != 0) {
+    return false;
+  }
+  const int k = x.shape(-1);
+  if (k <= 0 || k % 64 != 0 || static_cast<size_t>(k) != x.size()) {
+    return false;
+  }
+  ComputeParams params;
+  uint32_t total_groups = 0;
+  for (size_t i = 0; i < members.size(); ++i) {
+    const array& node = members[i].node;
+    if (node.inputs().size() != 4 || node.inputs()[0].id() != x.id() ||
+        node.dtype() != dtype || node.primitive().stream() != stream ||
+        typeid(node.primitive()) != typeid(QuantizedMatmul)) {
+      return false;
+    }
+    auto [group_size, bits, mode, transpose] =
+        static_cast<const QuantizedMatmul&>(node.primitive()).state();
+    if (mode != QuantizationMode::Affine || !transpose || bits != 4 ||
+        group_size != 64) {
+      return false;
+    }
+    const array& w = node.inputs()[1];
+    const array& scales = node.inputs()[2];
+    const array& biases = node.inputs()[3];
+    if (w.dtype() != uint32 || w.ndim() != 2 || scales.dtype() != dtype ||
+        biases.dtype() != dtype || scales.shape() != biases.shape() ||
+        scales.ndim() != 2) {
+      return false;
+    }
+    const int n = w.shape(0);
+    if (n <= 0 || w.shape(1) != k / 8 || scales.shape(0) != n ||
+        scales.shape(1) != k / 64 || node.size() != static_cast<size_t>(n) ||
+        !whole_dense(w, w.size()) || !whole_dense(scales, scales.size()) ||
+        !whole_dense(biases, biases.size()) || !input_ready(w, stream) ||
+        !input_ready(scales, stream) || !input_ready(biases, stream)) {
+      return false;
+    }
+    if (members[i].epilogue.has_value() != members[i].addend.has_value()) {
+      return false;
+    }
+    if (members[i].epilogue) {
+      const array& add = *members[i].epilogue;
+      const array& addend = *members[i].addend;
+      if (add.dtype() != dtype || add.size() != node.size() ||
+          add.primitive().stream() != stream || addend.dtype() != dtype ||
+          !whole_dense(addend, node.size()) || !input_ready(addend, stream)) {
+        return false;
+      }
+      params.flags |= 256u << i;
+    }
+    params.shape[i] = static_cast<uint32_t>(n);
+    total_groups += (static_cast<uint32_t>(n) + 7u) / 8u;
+  }
+  if (total_groups > kMaxComputeGroupCountX) {
+    return false;
+  }
+  params.operation = 4u;
+  params.reduce_size = 64u;
+  params.matrix_m = 1u;
+  params.matrix_k = static_cast<uint32_t>(k);
+  params.dims = static_cast<uint32_t>(members.size());
+  uint64_t x_offset = x.offset() / x.itemsize();
+  if (!compute_index_span_fits(x_offset, x.size())) {
+    return false;
+  }
+  params.lhs_offset = static_cast<uint32_t>(x_offset);
+  params.count = static_cast<uint32_t>(total_groups);
+
+  // Contract satisfied: allocate every output, then bind. Unused
+  // weight slots bind the first member's output so every binding the
+  // shader declares is a valid buffer.
+  for (auto& member : members) {
+    member.node.set_data(allocator().malloc(member.node.nbytes()));
+    if (member.epilogue) {
+      member.epilogue->set_data(allocator().malloc(member.epilogue->nbytes()));
+    }
+  }
+  std::array<ComputeBinding, kQmmVecMultiBindings> bindings{};
+  bindings[0] = binding(x);
+  const ComputeBinding filler = binding(members[0].node);
+  for (uint32_t i = 0; i < kQmmVecMultiWeights; ++i) {
+    uint32_t base = 1 + i * kQmmVecMultiBindingsPerWeight;
+    if (i < members.size()) {
+      const auto& member = members[i];
+      bindings[base] = binding(member.node.inputs()[1]);
+      bindings[base + 1] = binding(member.node.inputs()[2]);
+      bindings[base + 2] = binding(member.node.inputs()[3]);
+      bindings[base + 3] = binding(member.node);
+      bindings[base + 4] =
+          member.addend ? binding(*member.addend) : binding(member.node);
+      bindings[base + 5] =
+          member.epilogue ? binding(*member.epilogue) : binding(member.node);
+    } else {
+      for (uint32_t j = 0; j < kQmmVecMultiBindingsPerWeight; ++j) {
+        bindings[base + j] = filler;
+      }
+    }
+  }
+  bool subgroup_ready = caps.subgroup_size == 32u &&
+      (caps.subgroup_operations & VK_SUBGROUP_FEATURE_ARITHMETIC_BIT) != 0;
+  auto kernel = subgroup_ready
+      ? select_float_kernel(
+            dtype,
+            ComputeKernel::QmmVecQ4MultiSubgroupF32,
+            ComputeKernel::QmmVecQ4MultiSubgroupF16,
+            ComputeKernel::QmmVecQ4MultiSubgroupBF16)
+      : select_float_kernel(
+            dtype,
+            ComputeKernel::QmmVecQ4MultiF32,
+            ComputeKernel::QmmVecQ4MultiF16,
+            ComputeKernel::QmmVecQ4MultiBF16);
+  encoder.dispatch_compute(kernel, bindings, params, total_groups, 1u, 1u);
+  return true;
+}
+
+} // namespace omarchy
 
 void RandomBits::eval_gpu(const std::vector<array>& inputs, array& out) {
   const array& keys = inputs.at(0);
