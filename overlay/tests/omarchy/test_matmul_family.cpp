@@ -30,6 +30,7 @@
 #include "mlx/fast.h"
 #include "mlx/ops.h"
 #include "mlx/stream.h"
+#include "mlx/transforms.h"
 
 using namespace mlx::core;
 
@@ -545,6 +546,93 @@ TEST_CASE("dense matmul supports general bias rank and half values") {
 // MatmulF32Coopmat; on llvmpipe and stock Mesa every case runs the 16x16
 // tile. Operands are small integers so both kernels are exact and the
 // comparison is equality, not a tolerance.
+TEST_CASE("register-blocked f16 matmul matches the 16x16 tile bit for bit") {
+  if (!compute_available()) {
+    return;
+  }
+  if (!float16_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  // The 64x64 register-blocked kernel takes matrix_m >= 32; the same
+  // product over a 16-row slice of A runs the 16x16 tile. Each output
+  // visits k in the same ascending order with the same zero padding
+  // to a multiple of 16, so the stored f16 bits must agree exactly.
+  // Shapes follow the prefill attention matmuls: probs @ v (k tail
+  // 1052 % 16 = 12, n = 64) and q @ k^T (k = 64, transposed b, n
+  // tail), both with a batch of three.
+  struct Case {
+    int m;
+    int k;
+    int n;
+    bool b_transposed;
+  };
+  auto bits = [](array x) {
+    eval(x);
+    return std::vector<uint16_t>(
+        x.data<uint16_t>(), x.data<uint16_t>() + x.size());
+  };
+  for (const Case& c : {Case{40, 1052, 64, false}, Case{70, 64, 70, true},
+                        Case{32, 16, 128, false}}) {
+    Shape a_shape{3, c.m, c.k};
+    Shape b_shape = c.b_transposed ? Shape{3, c.n, c.k} : Shape{3, c.k, c.n};
+    std::vector<float> av(3 * c.m * c.k);
+    std::vector<float> bv(3 * c.k * c.n);
+    for (size_t i = 0; i < av.size(); ++i) {
+      av[i] = std::sin(0.13f * static_cast<float>(i)) * 0.5f;
+    }
+    for (size_t i = 0; i < bv.size(); ++i) {
+      bv[i] = std::cos(0.29f * static_cast<float>(i)) * 0.5f;
+    }
+    array a = astype(array(av.begin(), a_shape, float32), float16, stream);
+    array b = astype(array(bv.begin(), b_shape, float32), float16, stream);
+    if (c.b_transposed) {
+      b = swapaxes(b, 1, 2, stream);
+    }
+    array full = matmul(a, b, stream);
+    array head = matmul(slice(a, {0, 0, 0}, {3, 16, c.k}, stream), b, stream);
+    auto full_bits = bits(full);
+    auto head_bits = bits(head);
+    size_t mismatches = 0;
+    for (int batch = 0; batch < 3; ++batch) {
+      for (int row = 0; row < 16; ++row) {
+        for (int col = 0; col < c.n; ++col) {
+          mismatches += full_bits[(batch * c.m + row) * c.n + col] !=
+              head_bits[(batch * 16 + row) * c.n + col];
+        }
+      }
+    }
+    INFO("m=" << c.m << " k=" << c.k << " n=" << c.n
+              << " bT=" << c.b_transposed);
+    CHECK_EQ(mismatches, 0u);
+    // Host reference under the f32-order anchor bound, so a shared
+    // wrong answer cannot pass both kernels.
+    array wide = astype(full, float32, stream);
+    eval(wide);
+    const float* got = wide.data<float>();
+    float max_err = 0.0f;
+    for (int batch = 0; batch < 3; ++batch) {
+      for (int row = 0; row < c.m; ++row) {
+        for (int col = 0; col < c.n; ++col) {
+          double sum = 0.0;
+          for (int inner = 0; inner < c.k; ++inner) {
+            float x = float16_t(av[(batch * c.m + row) * c.k + inner]);
+            float y = float16_t(
+                c.b_transposed ? bv[(batch * c.n + col) * c.k + inner]
+                               : bv[(batch * c.k + inner) * c.n + col]);
+            sum += static_cast<double>(x) * y;
+          }
+          max_err = std::max(
+              max_err,
+              std::abs(got[(batch * c.m + row) * c.n + col] -
+                       static_cast<float>(sum)));
+        }
+      }
+    }
+    CHECK_LT(max_err, 0.05f);
+  }
+}
+
 TEST_CASE("dense f32 matmul matches host across coopmat-gated shapes") {
   if (!compute_available()) {
     return;

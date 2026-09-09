@@ -561,6 +561,15 @@ enum class ComputeKernel : uint16_t {
   MatmulBF16Coopmat,
   // Eager BF16 SwiGLU fusion. Appended to keep profile kernel ids stable.
   FusedChainBF16,
+  // Four-wide binary add/mul/div/sub on 16-bit storage
+  // (shaders/binary_vec.comp); dispatch_float_elementwise_to gates on
+  // alignment. Appended to keep profile kernel ids stable.
+  BinaryVecF16,
+  BinaryVecBF16,
+  // Register-blocked f16 matmul (shaders/matmul_rb.comp), same
+  // arithmetic as MatmulF16 on a 64x64 tile; dispatch_matmul gates on
+  // matrix_m >= 32 and no bias.
+  MatmulRbF16,
   Count,
 };
 
