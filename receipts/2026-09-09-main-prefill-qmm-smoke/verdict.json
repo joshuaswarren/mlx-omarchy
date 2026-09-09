@@ -1,0 +1,9 @@
+{
+  "purpose": "One-rep M1 smoke of main 8c2cbaa3 merged with wave/PrefillQmm (kernel 4e26a9a2, receipt 320088ce) before landing",
+  "source_commit": "147bf13",
+  "hardware": "jwm1-linux Apple M1, installed Honeykrisp fork driver, AC power",
+  "decode_tok_s": {"q4_short": 88.37, "q4_long": 71.35, "q4_longctx": 48.53, "bf16_short": 11.75, "bf16_long": 11.29, "bf16_longctx": 10.26},
+  "prefill_tok_s": {"q4_short": 135.7, "q4_long": 632.9, "q4_longctx": 979.5, "bf16_short": 70.4, "bf16_long": 286.0, "bf16_longctx": 332.5},
+  "digests_equal_to_main": true,
+  "paired_evidence": "receipts/2026-09-09-prefill-qmm/verdict.json (3 pairs, ids identical, llvmpipe and M1 suites)"
+}
