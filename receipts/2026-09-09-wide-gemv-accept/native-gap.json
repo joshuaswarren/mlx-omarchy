@@ -1,0 +1,63 @@
+{
+  "status": "all throughput gates unmet",
+  "linux_source_short": "61bbfa4",
+  "native_reference": "receipts/native-baseline-2026-09-06/native-2026-09-06-summary.json",
+  "linux_reference": "paired-summary.json",
+  "workloads": [
+    {
+      "leg": "qwen25-0.5b-4bit:long-decode-128",
+      "linux_decode": 55.98,
+      "native_decode": 146.77,
+      "decode_speedup_still_required": 2.6218292247231156,
+      "linux_prefill": 410.016,
+      "native_prefill": 1213,
+      "prefill_speedup_still_required": 2.958421134784984
+    },
+    {
+      "leg": "qwen25-0.5b-4bit:longctx-1024-decode-32",
+      "linux_decode": 40.9,
+      "native_decode": 140.38,
+      "decode_speedup_still_required": 3.432273838630807,
+      "linux_prefill": 423.572,
+      "native_prefill": 1840.9,
+      "prefill_speedup_still_required": 4.346132416684767
+    },
+    {
+      "leg": "qwen25-0.5b-4bit:short-decode-32",
+      "linux_decode": 65.72,
+      "native_decode": 150.57,
+      "decode_speedup_still_required": 2.2910833840535605,
+      "linux_prefill": 112.36,
+      "native_prefill": 294.1,
+      "prefill_speedup_still_required": 2.61747953008188
+    },
+    {
+      "leg": "qwen25-0.5b-bf16:long-decode-128",
+      "linux_decode": 11.12,
+      "native_decode": 55.72,
+      "decode_speedup_still_required": 5.010791366906475,
+      "linux_prefill": 259.663,
+      "native_prefill": 1007.7,
+      "prefill_speedup_still_required": 3.880799343764803
+    },
+    {
+      "leg": "qwen25-0.5b-bf16:longctx-1024-decode-32",
+      "linux_decode": 10.12,
+      "native_decode": 54.55,
+      "decode_speedup_still_required": 5.390316205533597,
+      "linux_prefill": 298.808,
+      "native_prefill": 1655.7,
+      "prefill_speedup_still_required": 5.5410163047843435
+    },
+    {
+      "leg": "qwen25-0.5b-bf16:short-decode-32",
+      "linux_decode": 11.56,
+      "native_decode": 56.43,
+      "decode_speedup_still_required": 4.881487889273356,
+      "linux_prefill": 68.966,
+      "native_prefill": 232.6,
+      "prefill_speedup_still_required": 3.3726763912652613
+    }
+  ],
+  "investigation": "Inspected the pinned upstream Metal kernels/gemv.h: per-thread tiled partial sums, descending shuffle-down reduction, then optional threadgroup reduction. The accepted Linux GEMV instead preserves sequential K accumulation. Matching upstream reduction topology is a distinct implementation path; unrolling the sequential loop did not improve performance. Source inspection alone does not establish the exact kernel selected by the recorded native run."
+}
