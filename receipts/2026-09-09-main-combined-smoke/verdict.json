@@ -1,0 +1,9 @@
+{
+  "purpose": "One-rep M1 smoke of the merged tree (default-on fused SwiGLU chain de65554d + exact native-order Q4 GEMV e90b76c6) before it lands on main",
+  "source_commit": "12fff2c",
+  "hardware": "jwm1-linux Apple M1, installed Honeykrisp fork driver, AC power",
+  "decode_tok_s": {"q4_short": 79.65, "q4_long": 65.61, "q4_longctx": 45.85, "bf16_short": 11.65, "bf16_long": 11.21, "bf16_longctx": 10.2},
+  "digests_equal_to_each_paired_receipt": true,
+  "paired_evidence": ["receipts/2026-09-09-fused-chain-default/verdict.json", "receipts/2026-09-09-q4-gemv-order/verdict.json"],
+  "note": "BF16 long digest ad964232ee67fecd is the fork-driver output; the v0.4.0 public-wheel run on stock Mesa 26.1.7 recorded c5be9207833d2a26 for the same leg. Q4 digests are identical on both drivers."
+}
