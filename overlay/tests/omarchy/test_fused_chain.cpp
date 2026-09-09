@@ -30,6 +30,7 @@
 #include "mlx/ops.h"
 #include "mlx/random.h"
 #include "mlx/stream.h"
+#include "mlx/transforms.h"
 
 using namespace mlx::core;
 using mlx::core::omarchy::trace::counters;
@@ -1055,4 +1056,194 @@ TEST_CASE("zero-sized inputs stay correct end to end (shapeless)") {
   want.eval();
   sync_stream(stream);
   CHECK_EQ(outs[0].shape(), want.shape());
+}
+
+// DecodeFusion: eager Q4 decode GEMV groups (fused_chain.h
+// GemvFusionMember, primitives.cpp dispatch_quantized_gemv_group). The
+// fused dispatch must be bit-exact against the per-node path for every
+// member output and every folded Add, in every dtype the kernel ships.
+namespace {
+
+struct QuantizedLinear {
+  array w = zeros({1});
+  array scales = zeros({1});
+  array biases = zeros({1});
+  array bias = zeros({1});
+};
+
+QuantizedLinear make_linear(int n, int k, Dtype dtype, const Stream& stream) {
+  QuantizedLinear linear;
+  // Affine quantize runs in float32 here (the GPU quantizer refuses
+  // bf16 input); the packed words are dtype-free and the parameters
+  // cast to the leg's dtype like a converted checkpoint.
+  array w = multiply(
+      random::normal(Shape{n, k}, float32, std::nullopt, stream),
+      array(0.05f), stream);
+  auto parts = quantize(w, 64, 4, "affine", std::nullopt, stream);
+  linear.w = parts[0];
+  linear.scales = astype(parts[1], dtype, stream);
+  linear.biases = astype(parts[2], dtype, stream);
+  linear.bias = astype(
+      random::normal(Shape{n}, float32, std::nullopt, stream), dtype, stream);
+  for (array* a : {&linear.w, &linear.scales, &linear.biases, &linear.bias}) {
+    a->eval();
+  }
+  sync_stream(stream);
+  return linear;
+}
+
+array project(const array& x, const QuantizedLinear& l, const Stream& s) {
+  return quantized_matmul(x, l.w, l.scales, l.biases, true, 64, 4, "affine", s);
+}
+
+void expect_bit_exact(const array& a, const array& b, const Stream& stream) {
+  array a32 = astype(a, float32, stream);
+  array b32 = astype(b, float32, stream);
+  a32.eval();
+  b32.eval();
+  sync_stream(stream);
+  REQUIRE_EQ(a32.size(), b32.size());
+  for (size_t i = 0; i < a32.size(); ++i) {
+    INFO("mismatch at ", i);
+    CHECK_EQ(a32.data<float>()[i], b32.data<float>()[i]);
+  }
+}
+
+} // namespace
+
+TEST_CASE("eager q4 decode gemv group folds q/k/v and their biases") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  enable_fusion();
+  set_compile_mode(CompileMode::disabled);
+  for (Dtype dtype : {float16, bfloat16, float32}) {
+    const int k = 896;
+    auto q = make_linear(896, k, dtype, stream);
+    auto kk = make_linear(128, k, dtype, stream);
+    auto v = make_linear(128, k, dtype, stream);
+    array x = astype(
+        random::normal(Shape{1, 1, k}, float32, std::nullopt, stream), dtype,
+        stream);
+    x.eval();
+    sync_stream(stream);
+    auto forward = [&] {
+      array q_raw = project(x, q, stream);
+      array k_raw = project(x, kk, stream);
+      array v_raw = project(x, v, stream);
+      return std::vector<array>{
+          q_raw, k_raw, v_raw, add(q_raw, q.bias, stream),
+          add(k_raw, kk.bias, stream), add(v_raw, v.bias, stream)};
+    };
+
+    setenv("MLX_OMARCHY_FUSED_GEMV", "0", 1);
+    auto baseline = forward();
+    // Evaluate the three biased outputs; the raw ones ride along.
+    eval({baseline[3], baseline[4], baseline[5]});
+    sync_stream(stream);
+
+    setenv("MLX_OMARCHY_FUSED_GEMV", "1", 1);
+    auto candidate = forward();
+    uint64_t before = counters().vk_compute_dispatches.load();
+    eval({candidate[3], candidate[4], candidate[5]});
+    sync_stream(stream);
+    INFO("dtype ", dtype);
+    CHECK_EQ(counters().vk_compute_dispatches.load() - before, 1);
+    for (size_t i = 0; i < baseline.size(); ++i) {
+      INFO("output ", i);
+      expect_bit_exact(baseline[i], candidate[i], stream);
+    }
+  }
+  unsetenv("MLX_OMARCHY_FUSED_GEMV");
+}
+
+TEST_CASE("eager q4 decode gemv group: gate/up pair and residual fold") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  enable_fusion();
+  set_compile_mode(CompileMode::disabled);
+  const int k = 896;
+  auto gate = make_linear(4864, k, float16, stream);
+  auto up = make_linear(4864, k, float16, stream);
+  auto down = make_linear(k, 4864, float16, stream);
+  array h = astype(
+      random::normal(Shape{1, 1, k}, float32, std::nullopt, stream), float16,
+      stream);
+  h.eval();
+  sync_stream(stream);
+  // mlx-lm's block tail: gate/up share x, SwiGLU, down, residual add
+  // against the tape-computed residual stream h2 (an ancestor of the
+  // GEMV, so it is evaluated before the group dispatches). Per node: 2 gemv + 1 swiglu + 1 gemv +
+  // 1 multiply + 1 add = 6; fused: gate/up (1) + swiglu (1) + down with
+  // the residual folded (1) + multiply (1) = 4.
+  auto forward = [&] {
+    array h2 = multiply(h, array(2.0f, float16), stream);
+    array x = h2;
+    array g = project(x, gate, stream);
+    array u = project(x, up, stream);
+    array act = multiply(multiply(g, sigmoid(g, stream), stream), u, stream);
+    array d = project(act, down, stream);
+    return std::vector<array>{g, u, d, add(h2, d, stream)};
+  };
+  setenv("MLX_OMARCHY_FUSED_GEMV", "0", 1);
+  auto baseline = forward();
+  uint64_t before = counters().vk_compute_dispatches.load();
+  eval({baseline[3]});
+  sync_stream(stream);
+  uint64_t per_node = counters().vk_compute_dispatches.load() - before;
+
+  setenv("MLX_OMARCHY_FUSED_GEMV", "1", 1);
+  auto candidate = forward();
+  before = counters().vk_compute_dispatches.load();
+  eval({candidate[3]});
+  sync_stream(stream);
+  uint64_t fused = counters().vk_compute_dispatches.load() - before;
+  CHECK_EQ(per_node, 6);
+  CHECK_EQ(fused, 4);
+  for (size_t i = 0; i < baseline.size(); ++i) {
+    INFO("output ", i);
+    expect_bit_exact(baseline[i], candidate[i], stream);
+  }
+  unsetenv("MLX_OMARCHY_FUSED_GEMV");
+}
+
+TEST_CASE("eager q4 decode gemv group refuses an addend it has not computed") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  enable_fusion();
+  set_compile_mode(CompileMode::disabled);
+  const int k = 896;
+  auto a = make_linear(256, k, float16, stream);
+  auto b = make_linear(256, k, float16, stream);
+  array x = astype(
+      random::normal(Shape{1, 1, k}, float32, std::nullopt, stream), float16,
+      stream);
+  x.eval();
+  sync_stream(stream);
+  // y_b is y_a's only consumer's other operand and a member of the same
+  // group: unscheduled when the group would dispatch, so the whole
+  // group falls back to the per-node path (3 dispatches, same values).
+  auto forward = [&] {
+    array y_a = project(x, a, stream);
+    array y_b = project(x, b, stream);
+    return std::vector<array>{y_b, add(y_a, y_b, stream)};
+  };
+  setenv("MLX_OMARCHY_FUSED_GEMV", "0", 1);
+  auto baseline = forward();
+  eval({baseline[1]});
+  sync_stream(stream);
+  setenv("MLX_OMARCHY_FUSED_GEMV", "1", 1);
+  auto candidate = forward();
+  uint64_t before = counters().vk_compute_dispatches.load();
+  eval({candidate[1]});
+  sync_stream(stream);
+  CHECK_EQ(counters().vk_compute_dispatches.load() - before, 3);
+  expect_bit_exact(baseline[0], candidate[0], stream);
+  expect_bit_exact(baseline[1], candidate[1], stream);
+  unsetenv("MLX_OMARCHY_FUSED_GEMV");
 }
