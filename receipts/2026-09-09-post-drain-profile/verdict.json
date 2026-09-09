@@ -1,0 +1,15 @@
+{
+  "status": "timestamp attribution unresolved; TOP_OF_PIPE experiment rejected",
+  "baseline_source": "770ae4653655c2be08b7bcca9649cbb26cb3983f",
+  "candidate_source_short": "7a2b628",
+  "candidate_wheel_sha256": "fdc6c72094f787aaf2035825c0da6ea56fa045ef99d6b7ad13aec4afc8f53efc",
+  "baseline_head_wall_ms": 22.4070985,
+  "baseline_head_timestamp_ms": 0.0482495,
+  "candidate_head_wall_ms": 22.4123223,
+  "candidate_head_timestamp_ms": 0.0475625,
+  "full_model_head_preceding_gap_median_ms": 21.964959,
+  "interpretation": "The recorded interval fails to account for wall time. CPU wall measurements include submit/join costs; neither the interval sum nor the preceding gaps establish GPU utilization or idle time. Changing the start stage alone did not resolve this. Driver-level attribution remains unproven.",
+  "runtime_changes": "None. Rejected patch preserved only as evidence.",
+  "native_acceptance": "Not measured by this diagnostic experiment. Native parity remains incomplete.",
+  "spec": "https://docs.vulkan.org/refpages/latest/refpages/source/vkCmdWriteTimestamp.html"
+}

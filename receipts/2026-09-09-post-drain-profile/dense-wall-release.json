@@ -1,0 +1,71 @@
+{
+  "mlx_file": "/home/joshuawarren/src/mlx-rope-drain-770ae465/.venv-accept/lib/python3.14/site-packages/mlx/core.cpython-314-aarch64-linux-gnu.so",
+  "results": [
+    {
+      "n": 896,
+      "k": 896,
+      "samples_ms": [
+        0.3399155,
+        0.3985778,
+        0.42261519999999997,
+        0.3899112,
+        0.4065486
+      ],
+      "median_ms": 0.3985778,
+      "weight_bytes": 1605632
+    },
+    {
+      "n": 128,
+      "k": 896,
+      "samples_ms": [
+        0.3620779,
+        0.3726237,
+        0.3652695,
+        0.3765112,
+        0.3879237
+      ],
+      "median_ms": 0.3726237,
+      "weight_bytes": 229376
+    },
+    {
+      "n": 4864,
+      "k": 896,
+      "samples_ms": [
+        1.0217756,
+        1.0330881,
+        1.0481255,
+        1.050788,
+        1.0522797000000002
+      ],
+      "median_ms": 1.0481255,
+      "weight_bytes": 8716288
+    },
+    {
+      "n": 896,
+      "k": 4864,
+      "samples_ms": [
+        1.0654546,
+        1.0761588,
+        1.1037587,
+        1.0986253,
+        1.0993504
+      ],
+      "median_ms": 1.0986253,
+      "weight_bytes": 8716288
+    },
+    {
+      "n": 151936,
+      "k": 896,
+      "samples_ms": [
+        22.355235099999998,
+        22.3283852,
+        22.3252768,
+        22.335664299999998,
+        22.327631
+      ],
+      "median_ms": 22.3283852,
+      "weight_bytes": 272269312
+    }
+  ],
+  "scope": "Synthetic BF16 matrix-vector wall time, no GPU timestamp instrumentation; not end-to-end performance acceptance."
+}

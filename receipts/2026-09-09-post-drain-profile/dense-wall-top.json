@@ -1,0 +1,71 @@
+{
+  "mlx_file": "/home/joshuawarren/src/mlx-timestamp-top-probe/.venv-profile/lib/python3.14/site-packages/mlx/core.cpython-314-aarch64-linux-gnu.so",
+  "results": [
+    {
+      "n": 896,
+      "k": 896,
+      "samples_ms": [
+        0.46083280000000004,
+        0.4876747,
+        0.5269166000000001,
+        0.5113999,
+        0.5244541
+      ],
+      "median_ms": 0.5113999,
+      "weight_bytes": 1605632
+    },
+    {
+      "n": 128,
+      "k": 896,
+      "samples_ms": [
+        0.5460377000000001,
+        0.5394251,
+        0.571717,
+        0.5793421000000001,
+        0.5680878
+      ],
+      "median_ms": 0.5680878,
+      "weight_bytes": 229376
+    },
+    {
+      "n": 4864,
+      "k": 896,
+      "samples_ms": [
+        1.1201797,
+        1.1058879,
+        1.1068254,
+        1.1031879,
+        1.1113921
+      ],
+      "median_ms": 1.1068254,
+      "weight_bytes": 8716288
+    },
+    {
+      "n": 896,
+      "k": 4864,
+      "samples_ms": [
+        1.1404215,
+        1.1313298,
+        1.1304173,
+        1.123513,
+        1.1342548000000001
+      ],
+      "median_ms": 1.1313298,
+      "weight_bytes": 8716288
+    },
+    {
+      "n": 151936,
+      "k": 896,
+      "samples_ms": [
+        22.4422769,
+        22.4123223,
+        22.4116429,
+        22.4050387,
+        22.4975019
+      ],
+      "median_ms": 22.4123223,
+      "weight_bytes": 272269312
+    }
+  ],
+  "scope": "Synthetic BF16 matrix-vector wall time, no GPU timestamp instrumentation; not end-to-end performance acceptance."
+}

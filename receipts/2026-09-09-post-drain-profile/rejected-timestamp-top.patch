@@ -1,0 +1,12 @@
+diff --git a/overlay/mlx/backend/omarchy/gpu_profiler.h b/overlay/mlx/backend/omarchy/gpu_profiler.h
+--- a/overlay/mlx/backend/omarchy/gpu_profiler.h
++++ b/overlay/mlx/backend/omarchy/gpu_profiler.h
+@@ -171,7 +171,7 @@
+     } else {
+       p.tick_index = s.cursor;
+       vk::device_table().CmdWriteTimestamp(
+-          cmd, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, s.pool, s.cursor);
++          cmd, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, s.pool, s.cursor);
+     }
+     s.pending.push_back(p);
+   }
