@@ -222,6 +222,7 @@
 #include "scan_bf16.h"
 #include "fused_chain_f32.h"
 #include "fused_chain_f16.h"
+#include "fused_chain_bf16.h"
 #include "fast_rope_bf16.h"
 #include "fast_rope_f16.h"
 #include "fast_rope_f32.h"
@@ -1188,6 +1189,8 @@ ShaderBytes shader_bytes(ComputeKernel kernel) {
       return {fused_chain_f16, fused_chain_f16_size};
     case ComputeKernel::QuantizeFpF32:
       return {quantize_fp_f32, quantize_fp_f32_size};
+    case ComputeKernel::FusedChainBF16:
+      return {fused_chain_bf16, fused_chain_bf16_size};
     case ComputeKernel::QuantizeFpF16:
       return {quantize_fp_f16, quantize_fp_f16_size};
     case ComputeKernel::QuantizeFpBF16:

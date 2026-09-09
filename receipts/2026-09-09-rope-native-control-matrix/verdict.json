@@ -1,0 +1,13 @@
+{
+  "status": "not qualified; native generation matches 3/6",
+  "candidate": "53697db",
+  "restored_source": "d535a25",
+  "restored_runtime": "8fd73d0",
+  "basis_change": "No change in float32 rotary basis after switching to Metal-order exp2 frequency construction.",
+  "query_differences": 665,
+  "key_differences": 104,
+  "new_evidence": "For frequency index0, theta is exactly the integer position. Linux trig differs from float64 NumPy reference rounded to float32 by at most one float32 ULP in this sample. Native fast trig errors reach 2.12416e-5. Matching more accurate trig alone will not match native generation.",
+  "native_phase_model": "sin(pi*float32(theta*float32(1/pi))) and cos via a separately rounded +0.5 phase reproduce native within 1.78814e-7 on integer positions0..260; remaining errors are consistent with hardware sine approximation, not yet proven.",
+  "next": "Isolate native hardware sine instruction path in a private driver build; retain accurate general trig and use explicit scoped selection for rotary control.",
+  "restoration_receipt": "mlx-rope-native-control-window.log:109-119"
+}

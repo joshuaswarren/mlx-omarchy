@@ -17,6 +17,20 @@
 // The float16_t round trip failed M1 equality; integer packing preserves
 // the required intermediate rounding. Compiler-pass attribution is unproved.
 #define ROUND_INTERMEDIATE(f) (unpackHalf2x16(packHalf2x16(vec2(f, 0.0))).x)
+#elif defined(USE_BF16)
+#extension GL_EXT_shader_16bit_storage : require
+#extension GL_EXT_shader_explicit_arithmetic_types_int16 : require
+#define STORAGE_TYPE uint16_t
+#define LOAD_VALUE(x) uintBitsToFloat(uint(x) << 16u)
+uint16_t bf16_store(float value) {
+  uint bits = floatBitsToUint(value);
+  if (isnan(value)) {
+    return uint16_t((bits >> 16) | 0x40u);
+  }
+  return uint16_t((bits + 0x7fffu + ((bits >> 16) & 1u)) >> 16);
+}
+#define STORE_VALUE(f) bf16_store(f)
+#define ROUND_INTERMEDIATE(f) LOAD_VALUE(bf16_store(f))
 #else
 #define STORAGE_TYPE float
 #define LOAD_VALUE(x) float(x)
@@ -32,7 +46,7 @@ layout(set = 0, binding = 0, std430) readonly buffer LeafA {
 layout(set = 0, binding = 1, std430) readonly buffer LeafB {
   STORAGE_TYPE values[];
 } leaf_b;
-layout(set = 0, binding = 2, std430) readonly buffer LeafC {
+layout(set = 0, binding = 2, std430) buffer LeafCOrFirstIntermediate {
   STORAGE_TYPE values[];
 } leaf_c;
 layout(set = 0, binding = 3, std430) readonly buffer Program {
@@ -41,15 +55,13 @@ layout(set = 0, binding = 3, std430) readonly buffer Program {
 layout(set = 0, binding = 4, std430) writeonly buffer Output {
   STORAGE_TYPE values[];
 } output_data;
+layout(set = 0, binding = 5, std430) writeonly buffer SecondIntermediate {
+  STORAGE_TYPE values[];
+} second_intermediate;
 
-// The host pushes ComputeParams by value (see compute.h). The ten
-// scalars below occupy the first ten ComputeParams fields in order, so
-// the host mapping (shader name = ComputeParams field) is:
-//   count = count, instr_count = operation, last_dim = lhs_size,
-//   dst_final = rhs_size,
-//   leaf_offset[3] = reduce_size, output_size, lhs_offset
-//   leaf_mode[3] = rhs_offset, output_offset, aux_size
-// Lockstep with ../fused_chain.cpp evaluate().
+// The first eleven ComputeParams scalars carry this compact ABI. aux_offset
+// selects eager materialization of the first two instructions; compiled
+// chains leave it zero.
 layout(push_constant) uniform Params {
   uint count;
   uint instr_count;
@@ -59,6 +71,7 @@ layout(push_constant) uniform Params {
   // Per leaf: 0 = direct, 1 = index % last_dim, 2 = index / last_dim,
   // 3 = scalar (index 0).
   uint leaf_mode[3];
+  uint materialize_intermediates;
 } params;
 
 STORAGE_TYPE load_leaf(uint slot, uint index) {
@@ -158,6 +171,13 @@ void main() {
           return;
       }
       regs[dst] = ROUND_INTERMEDIATE(value);
+      if (params.materialize_intermediates != 0u) {
+        if (i == 0u) {
+          leaf_c.values[index] = STORE_VALUE(regs[dst]);
+        } else if (i == 1u) {
+          second_intermediate.values[index] = STORE_VALUE(regs[dst]);
+        }
+      }
     }
     output_data.values[index] = STORE_VALUE(regs[params.dst_final]);
     if (params.count - index <= stride) {

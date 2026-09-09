@@ -1,0 +1,15 @@
+{
+  "candidate": "d3413fb",
+  "parent": "b4d02d5",
+  "change": "Restore 417bb7b RMS arithmetic; retain grouped Q4 correction",
+  "status": "Unqualified: Q4 long generation differs and Q4 decode is slower",
+  "native_generation_matches": 5,
+  "workloads": 6,
+  "unmatched_workload": "qwen25-0.5b-4bit:long-decode-128",
+  "unmatched_digest": "4cc08910089477fd",
+  "matching_workloads": ["4bit short", "4bit long-context", "bf16 short", "bf16 long", "bf16 long-context"],
+  "Q4_decode_tokens_per_second": {"short": 66.37, "long": 64.54, "long_context": 62.55},
+  "performance_scope": "Single Linux M1 screen, not paired acceptance or native performance parity",
+  "source_receipt": "complete-candidate.patch applies cleanly to public overlay",
+  "regression_suites": {"passed": 90, "failed": 2, "failure_scope": "BF16 Q4 grouped decode exceeds existing host-reference bounds; thresholds unchanged", "receipt": "../2026-09-09-q4-only-tests/omarchy_matmul_family_tests.log"}
+}

@@ -1,0 +1,122 @@
+[detached HEAD eecdbb9] experiment: native-order cooperative prefill attention
+ 8 files changed, 547 insertions(+), 22 deletions(-)
+ create mode 100644 overlay/mlx/backend/omarchy/preserve-rms-fma.py
+ create mode 100644 overlay/mlx/backend/omarchy/shaders/sdpa_prefill_coopmat.comp
+cd50ff5a37359c2cc03827432a8ec77d3bde91d71288c8e924c9d2bccd877880  dist/mlx_omarchy-0.32.2.dev202609091209+eecdbb9-cp314-cp314-linux_aarch64.whl
+Processing ./dist/mlx_omarchy-0.32.2.dev202609091209+eecdbb9-cp314-cp314-linux_aarch64.whl
+Installing collected packages: mlx-omarchy
+  Attempting uninstall: mlx-omarchy
+    Found existing installation: mlx-omarchy 0.32.2.dev202609090935+8fd73d0
+    Uninstalling mlx-omarchy-0.32.2.dev202609090935+8fd73d0:
+      Successfully uninstalled mlx-omarchy-0.32.2.dev202609090935+8fd73d0
+Successfully installed mlx-omarchy-0.32.2.dev202609091209+eecdbb9
+{"dtype": "f16", "different": 0, "max_error": 0.0, "version": "0.32.2.dev202609091209+eecdbb9"}
+{"dtype": "f32", "different": 2405, "max_error": 6.103515625e-05, "version": "0.32.2.dev202609091209+eecdbb9"}
+Native fixed-input prefill: exact match
+mx.metal.device_info is deprecated and will be removed in a future version. Use mx.device_info instead.
+provenance: mlx-omarchy 0.32.2.dev202609091209+eecdbb9 mx=0.32.2.dev202609091209+eecdbb9 verified=match harness=unknown core.cpython-314-aarch64-linux-gnu.so=sha256:4ad850da16c300ea libmlx.so=sha256:2bbc91b125c5d94b
+{"ids": [13060, 498, 369, 8241, 419, 11682, 1995, 911, 279, 18662, 11507, 369, 264, 2613, 4128, 28244, 28431, 13, 358, 686, 15516, 3395, 419, 11507, 311, 5978, 432, 5285, 82, 448, 279, 28703, 323, 17501, 3897, 553, 279, 28431, 287, 12801], "digest": "fb44b1e17877a159", "prompt_tokens": 262, "device": "Apple M1 (G13G B1)", "purpose": "Instrumented numerical trace, no performance claim"}
+rep 1: ok
+[
+ {
+  "leg_id": "qwen25-0.5b-4bit:long-decode-128",
+  "reps": 1,
+  "decode_tok_s_median": 65.29,
+  "decode_tok_s_min": 65.29,
+  "decode_tok_s_max": 65.29,
+  "prefill_tok_s_median": 273.201,
+  "prefill_tok_s_min": 273.201,
+  "prefill_tok_s_max": 273.201,
+  "prompt_tokens": 262,
+  "generated_ids_sha256_16": [
+   "f873dc2bdd34c0fe"
+  ],
+  "ids_stable_across_reps": true
+ },
+ {
+  "leg_id": "qwen25-0.5b-4bit:longctx-1024-decode-32",
+  "reps": 1,
+  "decode_tok_s_median": 62.91,
+  "decode_tok_s_min": 62.91,
+  "decode_tok_s_max": 62.91,
+  "prefill_tok_s_median": 239.373,
+  "prefill_tok_s_min": 239.373,
+  "prefill_tok_s_max": 239.373,
+  "prompt_tokens": 1053,
+  "generated_ids_sha256_16": [
+   "7da83f06ec9f001d"
+  ],
+  "ids_stable_across_reps": true
+ },
+ {
+  "leg_id": "qwen25-0.5b-4bit:short-decode-32",
+  "reps": 1,
+  "decode_tok_s_median": 66.8,
+  "decode_tok_s_min": 66.8,
+  "decode_tok_s_max": 66.8,
+  "prefill_tok_s_median": 94.637,
+  "prefill_tok_s_min": 94.637,
+  "prefill_tok_s_max": 94.637,
+  "prompt_tokens": 30,
+  "generated_ids_sha256_16": [
+   "7fd25a869ff21678"
+  ],
+  "ids_stable_across_reps": true
+ },
+ {
+  "leg_id": "qwen25-0.5b-bf16:long-decode-128",
+  "reps": 1,
+  "decode_tok_s_median": 40.93,
+  "decode_tok_s_min": 40.93,
+  "decode_tok_s_max": 40.93,
+  "prefill_tok_s_median": 280.815,
+  "prefill_tok_s_min": 280.815,
+  "prefill_tok_s_max": 280.815,
+  "prompt_tokens": 262,
+  "generated_ids_sha256_16": [
+   "3d7493c8c413670d"
+  ],
+  "ids_stable_across_reps": true
+ },
+ {
+  "leg_id": "qwen25-0.5b-bf16:longctx-1024-decode-32",
+  "reps": 1,
+  "decode_tok_s_median": 39.84,
+  "decode_tok_s_min": 39.84,
+  "decode_tok_s_max": 39.84,
+  "prefill_tok_s_median": 304.952,
+  "prefill_tok_s_min": 304.952,
+  "prefill_tok_s_max": 304.952,
+  "prompt_tokens": 1053,
+  "generated_ids_sha256_16": [
+   "5fd2fe812bf2a4ce"
+  ],
+  "ids_stable_across_reps": true
+ },
+ {
+  "leg_id": "qwen25-0.5b-bf16:short-decode-32",
+  "reps": 1,
+  "decode_tok_s_median": 41.64,
+  "decode_tok_s_min": 41.64,
+  "decode_tok_s_max": 41.64,
+  "prefill_tok_s_median": 88.757,
+  "prefill_tok_s_min": 88.757,
+  "prefill_tok_s_max": 88.757,
+  "prompt_tokens": 30,
+  "generated_ids_sha256_16": [
+   "f26175202f3dabe9"
+  ],
+  "ids_stable_across_reps": true
+ }
+]
+Processing /tmp/mlx-fma-diagnostic-wheel/mlx_omarchy-0.32.2.dev202609090935+8fd73d0-cp314-cp314-linux_aarch64.whl
+Installing collected packages: mlx-omarchy
+  Attempting uninstall: mlx-omarchy
+    Found existing installation: mlx-omarchy 0.32.2.dev202609091209+eecdbb9
+    Uninstalling mlx-omarchy-0.32.2.dev202609091209+eecdbb9:
+      Successfully uninstalled mlx-omarchy-0.32.2.dev202609091209+eecdbb9
+Successfully installed mlx-omarchy-0.32.2.dev202609090935+8fd73d0
+[detached HEAD fe2eaef] experiment: remove native prefill control after acceptance window
+ 8 files changed, 22 insertions(+), 547 deletions(-)
+ delete mode 100644 overlay/mlx/backend/omarchy/preserve-rms-fma.py
+ delete mode 100644 overlay/mlx/backend/omarchy/shaders/sdpa_prefill_coopmat.comp

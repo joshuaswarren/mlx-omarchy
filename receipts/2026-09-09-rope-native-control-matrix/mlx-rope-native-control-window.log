@@ -1,0 +1,119 @@
+[detached HEAD 53697db] experiment: match native rotary frequency and fused rotation
+ 4 files changed, 50 insertions(+), 22 deletions(-)
+ create mode 100644 overlay/mlx/backend/omarchy/preserve-rms-fma.py
+72cf1bad5fd8cbcbd47b73d81026cd2558338c2e6a6c26cb0d23fc20726e7ba0  dist/mlx_omarchy-0.32.2.dev202609091045+53697db-cp314-cp314-linux_aarch64.whl
+Processing ./dist/mlx_omarchy-0.32.2.dev202609091045+53697db-cp314-cp314-linux_aarch64.whl
+Installing collected packages: mlx-omarchy
+  Attempting uninstall: mlx-omarchy
+    Found existing installation: mlx-omarchy 0.32.2.dev202609090935+8fd73d0
+    Uninstalling mlx-omarchy-0.32.2.dev202609090935+8fd73d0:
+      Successfully uninstalled mlx-omarchy-0.32.2.dev202609090935+8fd73d0
+Successfully installed mlx-omarchy-0.32.2.dev202609091045+53697db
+/tmp/mlx-corrected-rope-basis 0.32.2.dev202609091045+53697db
+mx.metal.device_info is deprecated and will be removed in a future version. Use mx.device_info instead.
+provenance: mlx-omarchy 0.32.2.dev202609091045+53697db mx=0.32.2.dev202609091045+53697db verified=match harness=unknown core.cpython-314-aarch64-linux-gnu.so=sha256:4ad850da16c300ea libmlx.so=sha256:d74c67642e3b42bf
+{"ids": [13060, 498, 369, 8241, 419, 11682, 1995, 911, 279, 18662, 11507, 369, 264, 2613, 4128, 28244, 28431, 13, 358, 686, 15516, 3395, 419, 11507, 311, 5978, 432, 5285, 82, 448, 279, 28703, 323, 17501, 3897, 553, 279, 28431, 287, 12801], "digest": "fb44b1e17877a159", "prompt_tokens": 262, "device": "Apple M1 (G13G B1)", "purpose": "Instrumented numerical trace, no performance claim"}
+rep 1: ok
+[
+ {
+  "leg_id": "qwen25-0.5b-4bit:long-decode-128",
+  "reps": 1,
+  "decode_tok_s_median": 64.67,
+  "decode_tok_s_min": 64.67,
+  "decode_tok_s_max": 64.67,
+  "prefill_tok_s_median": 306.433,
+  "prefill_tok_s_min": 306.433,
+  "prefill_tok_s_max": 306.433,
+  "prompt_tokens": 262,
+  "generated_ids_sha256_16": [
+   "f873dc2bdd34c0fe"
+  ],
+  "ids_stable_across_reps": true
+ },
+ {
+  "leg_id": "qwen25-0.5b-4bit:longctx-1024-decode-32",
+  "reps": 1,
+  "decode_tok_s_median": 62.55,
+  "decode_tok_s_min": 62.55,
+  "decode_tok_s_max": 62.55,
+  "prefill_tok_s_median": 317.935,
+  "prefill_tok_s_min": 317.935,
+  "prefill_tok_s_max": 317.935,
+  "prompt_tokens": 1053,
+  "generated_ids_sha256_16": [
+   "7da83f06ec9f001d"
+  ],
+  "ids_stable_across_reps": true
+ },
+ {
+  "leg_id": "qwen25-0.5b-4bit:short-decode-32",
+  "reps": 1,
+  "decode_tok_s_median": 65.93,
+  "decode_tok_s_min": 65.93,
+  "decode_tok_s_max": 65.93,
+  "prefill_tok_s_median": 96.154,
+  "prefill_tok_s_min": 96.154,
+  "prefill_tok_s_max": 96.154,
+  "prompt_tokens": 30,
+  "generated_ids_sha256_16": [
+   "7fd25a869ff21678"
+  ],
+  "ids_stable_across_reps": true
+ },
+ {
+  "leg_id": "qwen25-0.5b-bf16:long-decode-128",
+  "reps": 1,
+  "decode_tok_s_median": 40.87,
+  "decode_tok_s_min": 40.87,
+  "decode_tok_s_max": 40.87,
+  "prefill_tok_s_median": 285.403,
+  "prefill_tok_s_min": 285.403,
+  "prefill_tok_s_max": 285.403,
+  "prompt_tokens": 262,
+  "generated_ids_sha256_16": [
+   "06b014aebf5d4b66"
+  ],
+  "ids_stable_across_reps": true
+ },
+ {
+  "leg_id": "qwen25-0.5b-bf16:longctx-1024-decode-32",
+  "reps": 1,
+  "decode_tok_s_median": 39.67,
+  "decode_tok_s_min": 39.67,
+  "decode_tok_s_max": 39.67,
+  "prefill_tok_s_median": 310.528,
+  "prefill_tok_s_min": 310.528,
+  "prefill_tok_s_max": 310.528,
+  "prompt_tokens": 1053,
+  "generated_ids_sha256_16": [
+   "ff502900d2a179a5"
+  ],
+  "ids_stable_across_reps": true
+ },
+ {
+  "leg_id": "qwen25-0.5b-bf16:short-decode-32",
+  "reps": 1,
+  "decode_tok_s_median": 41.53,
+  "decode_tok_s_min": 41.53,
+  "decode_tok_s_max": 41.53,
+  "prefill_tok_s_median": 88.496,
+  "prefill_tok_s_min": 88.496,
+  "prefill_tok_s_max": 88.496,
+  "prompt_tokens": 30,
+  "generated_ids_sha256_16": [
+   "a84065aeea1a4996"
+  ],
+  "ids_stable_across_reps": true
+ }
+]
+Processing /tmp/mlx-fma-diagnostic-wheel/mlx_omarchy-0.32.2.dev202609090935+8fd73d0-cp314-cp314-linux_aarch64.whl
+Installing collected packages: mlx-omarchy
+  Attempting uninstall: mlx-omarchy
+    Found existing installation: mlx-omarchy 0.32.2.dev202609091045+53697db
+    Uninstalling mlx-omarchy-0.32.2.dev202609091045+53697db:
+      Successfully uninstalled mlx-omarchy-0.32.2.dev202609091045+53697db
+Successfully installed mlx-omarchy-0.32.2.dev202609090935+8fd73d0
+rm 'overlay/mlx/backend/omarchy/preserve-rms-fma.py'
+[detached HEAD d535a25] experiment: remove native rotary arithmetic control
+ 4 files changed, 22 insertions(+), 50 deletions(-)
+ delete mode 100644 overlay/mlx/backend/omarchy/preserve-rms-fma.py

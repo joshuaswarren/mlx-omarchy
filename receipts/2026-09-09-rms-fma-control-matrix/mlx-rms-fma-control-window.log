@@ -1,0 +1,117 @@
+[detached HEAD fea521a] experiment: constrain forward RMS FMA contraction in SPIR-V
+ 2 files changed, 35 insertions(+)
+ create mode 100644 overlay/mlx/backend/omarchy/preserve-rms-fma.py
+769c71db19900a2c9dfb4028af3bb11c5ee056c642c775b08e7a4e950350395c  dist/mlx_omarchy-0.32.2.dev202609091024+fea521a-cp314-cp314-linux_aarch64.whl
+Processing ./dist/mlx_omarchy-0.32.2.dev202609091024+fea521a-cp314-cp314-linux_aarch64.whl
+Installing collected packages: mlx-omarchy
+  Attempting uninstall: mlx-omarchy
+    Found existing installation: mlx-omarchy 0.32.2.dev202609090935+8fd73d0
+    Uninstalling mlx-omarchy-0.32.2.dev202609090935+8fd73d0:
+      Successfully uninstalled mlx-omarchy-0.32.2.dev202609090935+8fd73d0
+Successfully installed mlx-omarchy-0.32.2.dev202609091024+fea521a
+{"call": 0, "different": 0, "max_error": 0.0}
+{"call": 35, "different": 0, "max_error": 0.0}
+rep 1: ok
+[
+ {
+  "leg_id": "qwen25-0.5b-4bit:long-decode-128",
+  "reps": 1,
+  "decode_tok_s_median": 64.7,
+  "decode_tok_s_min": 64.7,
+  "decode_tok_s_max": 64.7,
+  "prefill_tok_s_median": 302.89,
+  "prefill_tok_s_min": 302.89,
+  "prefill_tok_s_max": 302.89,
+  "prompt_tokens": 262,
+  "generated_ids_sha256_16": [
+   "f873dc2bdd34c0fe"
+  ],
+  "ids_stable_across_reps": true
+ },
+ {
+  "leg_id": "qwen25-0.5b-4bit:longctx-1024-decode-32",
+  "reps": 1,
+  "decode_tok_s_median": 62.42,
+  "decode_tok_s_min": 62.42,
+  "decode_tok_s_max": 62.42,
+  "prefill_tok_s_median": 317.743,
+  "prefill_tok_s_min": 317.743,
+  "prefill_tok_s_max": 317.743,
+  "prompt_tokens": 1053,
+  "generated_ids_sha256_16": [
+   "31267e7ed4c6d0dc"
+  ],
+  "ids_stable_across_reps": true
+ },
+ {
+  "leg_id": "qwen25-0.5b-4bit:short-decode-32",
+  "reps": 1,
+  "decode_tok_s_median": 66.02,
+  "decode_tok_s_min": 66.02,
+  "decode_tok_s_max": 66.02,
+  "prefill_tok_s_median": 94.637,
+  "prefill_tok_s_min": 94.637,
+  "prefill_tok_s_max": 94.637,
+  "prompt_tokens": 30,
+  "generated_ids_sha256_16": [
+   "7fd25a869ff21678"
+  ],
+  "ids_stable_across_reps": true
+ },
+ {
+  "leg_id": "qwen25-0.5b-bf16:long-decode-128",
+  "reps": 1,
+  "decode_tok_s_median": 40.58,
+  "decode_tok_s_min": 40.58,
+  "decode_tok_s_max": 40.58,
+  "prefill_tok_s_median": 285.092,
+  "prefill_tok_s_min": 285.092,
+  "prefill_tok_s_max": 285.092,
+  "prompt_tokens": 262,
+  "generated_ids_sha256_16": [
+   "06b014aebf5d4b66"
+  ],
+  "ids_stable_across_reps": true
+ },
+ {
+  "leg_id": "qwen25-0.5b-bf16:longctx-1024-decode-32",
+  "reps": 1,
+  "decode_tok_s_median": 39.9,
+  "decode_tok_s_min": 39.9,
+  "decode_tok_s_max": 39.9,
+  "prefill_tok_s_median": 312.185,
+  "prefill_tok_s_min": 312.185,
+  "prefill_tok_s_max": 312.185,
+  "prompt_tokens": 1053,
+  "generated_ids_sha256_16": [
+   "ff502900d2a179a5"
+  ],
+  "ids_stable_across_reps": true
+ },
+ {
+  "leg_id": "qwen25-0.5b-bf16:short-decode-32",
+  "reps": 1,
+  "decode_tok_s_median": 41.65,
+  "decode_tok_s_min": 41.65,
+  "decode_tok_s_max": 41.65,
+  "prefill_tok_s_median": 88.496,
+  "prefill_tok_s_min": 88.496,
+  "prefill_tok_s_max": 88.496,
+  "prompt_tokens": 30,
+  "generated_ids_sha256_16": [
+   "7fc0f968789b1882"
+  ],
+  "ids_stable_across_reps": true
+ }
+]
+Processing /tmp/mlx-fma-diagnostic-wheel/mlx_omarchy-0.32.2.dev202609090935+8fd73d0-cp314-cp314-linux_aarch64.whl
+Installing collected packages: mlx-omarchy
+  Attempting uninstall: mlx-omarchy
+    Found existing installation: mlx-omarchy 0.32.2.dev202609091024+fea521a
+    Uninstalling mlx-omarchy-0.32.2.dev202609091024+fea521a:
+      Successfully uninstalled mlx-omarchy-0.32.2.dev202609091024+fea521a
+Successfully installed mlx-omarchy-0.32.2.dev202609090935+8fd73d0
+rm 'overlay/mlx/backend/omarchy/preserve-rms-fma.py'
+[detached HEAD 08486e1] experiment: remove FMA contraction control
+ 2 files changed, 35 deletions(-)
+ delete mode 100644 overlay/mlx/backend/omarchy/preserve-rms-fma.py

@@ -1,0 +1,38 @@
+{
+  "status": "diagnostic-only; parity remains incomplete",
+  "rows": 261,
+  "comparison": {
+    "root": {
+      "mismatches": 0,
+      "max_absolute_error": 0.0
+    },
+    "residual": {
+      "mismatches": 261,
+      "max_absolute_error": 5.9595940626877564e-08
+    },
+    "product_error": {
+      "mismatches": 261,
+      "max_absolute_error": 9.171379211636577e-10
+    }
+  },
+  "compiler_source_revision": "6f6afc896844730f6d6c47f12a91145351cb4c28",
+  "source_findings": [
+    "vtn_glsl450.c maps GLSLstd450Fma to nir_op_ffma_weak.",
+    "nir_opcodes.py permits weak FMA to be fused or unfused, including precise operations provided behavior remains consistent.",
+    "nir_opt_algebraic.py splits contract-enabled weak FMA before later fusion.",
+    "agx_compile.h enables has_ffma and fuse, not keep_weak_ffma.",
+    "rms-two.spvasm has Fma instructions without NoContraction decorations on their result IDs."
+  ],
+  "inference": "Weak FMA splitting and optimization is a candidate explanation, not yet a proven live-driver root cause.",
+  "artifact_scope": {
+    "rms-two.spvasm": "Normal 8fd73d0 shader, not the cedbe0c diagnostic shader.",
+    "diagnostic-only.comp": "Instrumented RMS capture; not a deployable runtime kernel."
+  },
+  "next_check": "Capture live NIR and compare a bounded FMA control with contraction disabled before changing driver or RMS formula.",
+  "live_compiler_evidence": {
+    "file": "live-rms-nir.log",
+    "lines": "304-319",
+    "observation": "RMS product-error term is absent from optimized NIR. Each residual is separate fmul and fadd; final correction remains ffma.",
+    "runtime_version": "8fd73d0 (normal candidate, not diagnostic)"
+  }
+}

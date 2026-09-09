@@ -4,6 +4,7 @@
 #pragma once
 
 #include <cstdint>
+#include <deque>
 #include <memory>
 #include <optional>
 #include <vector>
@@ -23,22 +24,20 @@ namespace mlx::core::omarchy {
 // Any node the chain cannot carry (unsupported op class, shape change,
 // exotic broadcast, too many leaves, no tail dependency) makes the
 // whole run fall back to the per-node tape path: loud refusal
-// semantics are unchanged, and bf16 tapes are refused before chains
-// are ever considered.
+// semantics are unchanged. Compiled bf16 tapes remain refused, while
+// the eager SwiGLU planner below uses the same interpreter with bf16
+// intermediate rounding.
 //
-// DEFAULT OFF: the whole mechanism is gated behind
-// MLX_OMARCHY_FUSED_CHAIN until it is equivalence-proven on M1
-// hardware. With the gate unset the owner passes gate_enabled=false,
-// every try_add refuses, and the tape runs the per-node path exactly
-// as it did before this class existed.
+// Fusion defaults on after exact-ID parity and paired performance validation on
+// M1 hardware. MLX_OMARCHY_FUSED_CHAIN=0 restores the per-node path.
 
 struct FusedChainImpl;
+bool fused_chain_enabled();
 
 class FusedChain {
  public:
-  // gate_enabled carries the DEFAULT-OFF MLX_OMARCHY_FUSED_CHAIN
-  // decision, read ONCE per tape evaluation by the owner; false makes
-  // every try_add refuse and the tape run the per-node path.
+  // gate_enabled carries the fused-chain decision, read once per tape
+  // evaluation; false makes every try_add refuse and preserves the per-node path.
   explicit FusedChain(bool gate_enabled);
   ~FusedChain();
 
@@ -48,7 +47,7 @@ class FusedChain {
   FusedChain& operator=(FusedChain&&);
 
   // Pure op/dtype check (the gate lives in the constructor argument):
-  // a float32/float16 fusable unary or binary elementwise primitive.
+  // a float32/float16/bfloat16 fusable unary or binary elementwise primitive.
   static bool can_start(const array& node);
 
   // Attempts to append `node` with resolved `inputs`. Returns false if
@@ -73,10 +72,13 @@ class FusedChain {
   // Dispatches the accumulated chain (1 or more nodes) as one fused
   // kernel. Returns the fused output carrying the last node's primitive
   // so downstream graph bookkeeping stays valid. Returns nullopt only
-  // for an empty chain: refusals happen in try_add before acceptance,
-  // so an accepted chain always dispatches and the caller never has to
-  // re-evaluate carried members individually.
+  // for an empty chain: refusals happen in try_add before acceptance.
   std::optional<array> evaluate(const Stream& stream);
+
+  // Dispatch into the current tail's graph array. Used by eager fusion,
+  // where the scheduler owns that array and no replacement descriptor may
+  // be substituted for it.
+  void evaluate_tail(const Stream& stream);
 
   // Number of tape nodes currently carried.
   size_t size() const;
@@ -97,4 +99,25 @@ class FusedChain {
   std::unique_ptr<FusedChainImpl> impl_;
 };
 
+
+// One eval_impl graph window. The scope preflights exact eager SwiGLU
+// shapes (gate * sigmoid(gate) * up) whose two interior values have one
+// consumer, then try_eval_eager_fusion defers those interior dispatches
+// and records the three operations as one FusedChain dispatch. With the
+// gate off this is an empty, allocation-free plan.
+class EagerFusionScope {
+ public:
+  explicit EagerFusionScope(const std::deque<array>& tape);
+  ~EagerFusionScope();
+
+  EagerFusionScope(const EagerFusionScope&) = delete;
+  EagerFusionScope& operator=(const EagerFusionScope&) = delete;
+
+ private:
+  void* previous_;
+};
+
+// Returns true when the primitive was recorded (or deliberately deferred)
+// by the active eager-fusion scope; false keeps the ordinary eval_gpu path.
+bool try_eval_eager_fusion(array& node, const Stream& stream);
 } // namespace mlx::core::omarchy

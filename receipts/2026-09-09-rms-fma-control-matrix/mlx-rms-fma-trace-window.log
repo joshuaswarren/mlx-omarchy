@@ -1,0 +1,17 @@
+Processing ./dist/mlx_omarchy-0.32.2.dev202609091024+fea521a-cp314-cp314-linux_aarch64.whl
+Installing collected packages: mlx-omarchy
+  Attempting uninstall: mlx-omarchy
+    Found existing installation: mlx-omarchy 0.32.2.dev202609090935+8fd73d0
+    Uninstalling mlx-omarchy-0.32.2.dev202609090935+8fd73d0:
+      Successfully uninstalled mlx-omarchy-0.32.2.dev202609090935+8fd73d0
+Successfully installed mlx-omarchy-0.32.2.dev202609091024+fea521a
+mx.metal.device_info is deprecated and will be removed in a future version. Use mx.device_info instead.
+provenance: mlx-omarchy 0.32.2.dev202609091024+fea521a mx=0.32.2.dev202609091024+fea521a verified=match harness=unknown core.cpython-314-aarch64-linux-gnu.so=sha256:4ad850da16c300ea libmlx.so=sha256:dc12022c1e04d24d
+{"ids": [13060, 498, 369, 8241, 419, 11682, 1995, 911, 279, 18662, 11507, 369, 264, 2613, 4128, 28244, 28431, 13, 358, 686, 15516, 3395, 419, 11507, 311, 5978, 432, 5285, 82, 448, 279, 28703, 323, 17501, 3897, 553, 279, 28431, 287, 12801], "digest": "fb44b1e17877a159", "prompt_tokens": 262, "device": "Apple M1 (G13G B1)", "purpose": "Instrumented numerical trace, no performance claim"}
+Processing /tmp/mlx-fma-diagnostic-wheel/mlx_omarchy-0.32.2.dev202609090935+8fd73d0-cp314-cp314-linux_aarch64.whl
+Installing collected packages: mlx-omarchy
+  Attempting uninstall: mlx-omarchy
+    Found existing installation: mlx-omarchy 0.32.2.dev202609091024+fea521a
+    Uninstalling mlx-omarchy-0.32.2.dev202609091024+fea521a:
+      Successfully uninstalled mlx-omarchy-0.32.2.dev202609091024+fea521a
+Successfully installed mlx-omarchy-0.32.2.dev202609090935+8fd73d0

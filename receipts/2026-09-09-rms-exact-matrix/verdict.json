@@ -1,0 +1,18 @@
+{
+  "candidate": "1dc0979",
+  "status": "Rejected: precise qualifiers do not resolve RMS discrepancy",
+  "native_generation_matches": 4,
+  "workloads": 6,
+  "fixed_Q4_RMS_weighted_mismatches": {"prefill": 23, "decode": 0},
+  "diagnostic_candidate": "63c2fb6",
+  "diagnostic_rows": 261,
+  "GPU_intermediate_mismatches_against_native_equivalent_CPU": {
+    "sum_of_squares": 0,
+    "mean_square": 0,
+    "denominator_with_epsilon": 0,
+    "reciprocal_square_root": 50
+  },
+  "reciprocal_root_ULP_offsets": {"minus_one": 45, "exact": 211, "plus_one": 5},
+  "diagnostic_cleanup": "Instrumentation removed in 01c5ef3 and normal 25df125 wheel restored before subsequent candidate build",
+  "conclusion": "Remaining captured RMS error is in reciprocal-square-root correction, not reduction or division. Adding GLSL precise qualifiers did not fix the weighted outputs. No native performance parity claim."
+}

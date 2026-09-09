@@ -18,6 +18,7 @@
 #include "mlx/backend/omarchy/encoder.h"
 #include "mlx/backend/omarchy/trace.h"
 #include "mlx/primitives.h"
+#include "mlx/backend/omarchy/fused_chain.h"
 #include "mlx/scheduler.h"
 
 namespace mlx::core::gpu {
@@ -41,12 +42,13 @@ void eval(array& arr) {
   bool batch_open = encoder.needs_commit();
   {
     // If the array is a tracer hold a reference
-    // to its inputs so they don't get donated
     std::vector<array> inputs;
     if (arr.is_tracer()) {
       inputs = arr.inputs();
     }
-    arr.primitive().eval_gpu(arr.inputs(), outputs);
+    if (!omarchy::try_eval_eager_fusion(arr, stream)) {
+      arr.primitive().eval_gpu(arr.inputs(), outputs);
+    }
   }
 
   // Temporaries flush contract. A buffer must be pinned against

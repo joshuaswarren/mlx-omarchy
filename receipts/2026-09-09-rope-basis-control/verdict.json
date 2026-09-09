@@ -1,0 +1,17 @@
+{
+  "status": "diagnostic; no rotary patch applied",
+  "input_shape": [
+    1,
+    14,
+    261,
+    64
+  ],
+  "basis_f32_differences": 15438,
+  "basis_f32_max_error": 2.1241605281829834e-05,
+  "basis_f16_differences": 46,
+  "native_trig_plus_native_order_fma_q_output_differences": 0,
+  "native_trig_unfused_q_output_differences": 17,
+  "linux_trig_unfused_q_output_differences": 663,
+  "conclusion": "Native float32 trig basis plus first-product fused rotation reconstructs all captured native Q RoPE outputs. Linux trig basis differs; current Linux rotation matches unfused reconstruction for this capture.",
+  "next": "Match Metal exp2-based inverse frequency construction and preserve intended rotation FMA; validate against basis and fixed Q/K inputs before full generation."
+}

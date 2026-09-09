@@ -1,0 +1,8 @@
+#version 450
+layout(local_size_x = 256) in;
+layout(set = 0, binding = 0, std430) readonly buffer Input { float x[]; } src;
+layout(set = 0, binding = 1, std430) writeonly buffer Output { float y[]; } dst;
+void main() {
+  uint i = gl_GlobalInvocationID.x;
+  if (i < src.x.length()) dst.y[i] = exp2(src.x[i]);
+}

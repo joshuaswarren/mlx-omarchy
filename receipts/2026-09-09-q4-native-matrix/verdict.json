@@ -1,0 +1,15 @@
+{
+  "candidate": "b4d02d5",
+  "parent": "417bb7b",
+  "status": "Rejected for integration: generation regression and slower Q4 decode",
+  "changes": ["Grouped Q4 input rounding and affine dot arithmetic", "Compensated RMS mean-square division"],
+  "native_generation_matches": 3,
+  "workloads": 6,
+  "matching_workloads": ["4bit short", "bf16 short", "bf16 long"],
+  "regression": "BF16 long-context digest changed from native ff502900d2a179a5 to 5fd2fe812bf2a4ce",
+  "fixed_native_Q4_decode_projection_mismatches": {"q_proj": 0, "k_proj": 0, "v_proj": 0},
+  "fixed_native_Q4_prefill_projection_mismatches": {"q_proj": 24906, "k_proj": 4234, "v_proj": 20759},
+  "Q4_decode_tokens_per_second": {"short": 66.27, "long": 64.57, "long_context": 62.27},
+  "performance_scope": "Single Linux M1 screen, not paired acceptance or native performance parity",
+  "next_control": "Keep Q4 correction and restore RMS shader from 417bb7b; rerun all six workloads"
+}

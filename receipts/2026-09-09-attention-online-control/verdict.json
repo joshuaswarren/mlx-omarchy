@@ -1,0 +1,16 @@
+{
+  "status": "native arithmetic reconstructed; GPU implementation and release gates pending",
+  "source": "Native Q4 long prompt call0 Q/K/V, first layer; shape14x261x64",
+  "cpu_correctly_rounded_exp2_output_differences": 75,
+  "native_fast_exp2_output_differences": 0,
+  "native_fast_exp2_max_output_error": 0.0,
+  "algorithm": "32-key blocks; sequential FP32 FMA dot; scale*log2(e); running max; native fast exp2; 8-element tree reductions summed across four fragments; fused denominator update; rescaled output plus sequential FP32 FMA; final division and FP16 store.",
+  "native_oracle_version": "0.32.2 on M1 Max; numerical evidence only",
+  "next": "Implement the verified online-softmax algorithm using existing cooperative matrix support, retaining this reconstruction as the fixed-input check.",
+  "linux_exp2_probe": {
+    "inputs": 986580,
+    "mismatches": 0,
+    "driver": "Installed Honeykrisp26.2.99, explicit system Asahi ICD",
+    "result": "GLSL exp2 matches native fast exp2 for all reconstruction operands."
+  }
+}

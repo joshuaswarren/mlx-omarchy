@@ -1,0 +1,947 @@
+commit 6be3addcd2b00c7728ebbf546ec6fb58f8e088d6
+Author:     Joshua Warren <816217+joshuaswarren@users.noreply.github.com>
+AuthorDate: Wed Sep 9 08:44:55 2026 -0500
+Commit:     Joshua Warren <816217+joshuaswarren@users.noreply.github.com>
+CommitDate: Wed Sep 9 08:44:55 2026 -0500
+
+    perf: fuse eager SwiGLU dispatch chains
+
+diff --git a/docs/install-omarchy.md b/docs/install-omarchy.md
+index f59b5dde..667dbe86 100644
+--- a/docs/install-omarchy.md
++++ b/docs/install-omarchy.md
+@@ -30,9 +30,11 @@ The experimental `MLX_OMARCHY_ROPE_BF16_DIRECT` and
+ `MLX_OMARCHY_SDPA_BF16_FAST` flags remain off: both changed generated
+ token IDs on M1. See the [hardware gate receipt](../receipts/2026-09-04-m1-performance-gates.md).
+ 
+-Compiled-tape elementwise chains can fuse into one dispatch behind
+-`MLX_OMARCHY_FUSED_CHAIN`. It defaults off pending the native paired
+-gate (`receipts/2026-09-04-swiglu-fused-chain.md`).
++Compiled-tape elementwise chains and exact eager SwiGLU graphs
++(`gate * sigmoid(gate) * up`) can fuse into one dispatch behind
++`MLX_OMARCHY_FUSED_CHAIN`. The eager path supports f32, f16, and bf16
++and materializes retained intermediate arrays; compiled bf16 tapes remain
++refused. The gate defaults off pending the M1 paired acceptance run.
+ 
+ Dispatches record unconditional pre+post memory barriers by default.
+ `MLX_OMARCHY_GATED_BARRIERS=1` replaces them with dependency-gated
+diff --git a/overlay/mlx/backend/omarchy/CMakeLists.txt b/overlay/mlx/backend/omarchy/CMakeLists.txt
+index 2982910d..32e10f3d 100644
+--- a/overlay/mlx/backend/omarchy/CMakeLists.txt
++++ b/overlay/mlx/backend/omarchy/CMakeLists.txt
+@@ -6,7 +6,7 @@ option(MLX_OMARCHY_GPU_PROFILING
+ if(MLX_OMARCHY_GPU_PROFILING)
+   target_compile_definitions(mlx PRIVATE MLX_OMARCHY_GPU_PROFILING)
+ endif()
+-
++target_compile_definitions(mlx PRIVATE MLX_OMARCHY_BACKEND)
+ find_program(OMARCHY_GLSLC glslc)
+ find_program(OMARCHY_GLSLANG glslangValidator)
+ if(NOT OMARCHY_GLSLC AND NOT OMARCHY_GLSLANG)
+@@ -222,9 +222,10 @@ omarchy_shader(qmm_f32 shaders/qmm.comp)
+ omarchy_shader(qmm_f16 shaders/qmm.comp -DUSE_FP16=1)
+ omarchy_shader(qmm_bf16 shaders/qmm.comp -DUSE_BF16=1)
+ # FuseDecodeChains: interpreted elementwise-chain kernels (one dispatch
+-# per fusable tape chain; bf16 tapes are refused before chains run).
++# per fusable compiled or eager chain).
+ omarchy_shader(fused_chain_f32 shaders/fused_chain.comp)
+ omarchy_shader(fused_chain_f16 shaders/fused_chain.comp -DUSE_FP16=1)
++omarchy_shader(fused_chain_bf16 shaders/fused_chain.comp -DUSE_BF16=1)
+ # DecodeGemv: dedicated matrix-vector kernels for the decode shape
+ # (lhs single row); qmm_vec fuses affine dequantization into the dot,
+ # the same shader compiled with USE_SUBGROUP=1 produces the
+diff --git a/overlay/mlx/backend/omarchy/compute.cpp b/overlay/mlx/backend/omarchy/compute.cpp
+index 75f7a48c..cf33807e 100644
+--- a/overlay/mlx/backend/omarchy/compute.cpp
++++ b/overlay/mlx/backend/omarchy/compute.cpp
+@@ -222,6 +222,7 @@
+ #include "scan_bf16.h"
+ #include "fused_chain_f32.h"
+ #include "fused_chain_f16.h"
++#include "fused_chain_bf16.h"
+ #include "fast_rope_bf16.h"
+ #include "fast_rope_f16.h"
+ #include "fast_rope_f32.h"
+@@ -1188,6 +1189,8 @@ ShaderBytes shader_bytes(ComputeKernel kernel) {
+       return {fused_chain_f16, fused_chain_f16_size};
+     case ComputeKernel::QuantizeFpF32:
+       return {quantize_fp_f32, quantize_fp_f32_size};
++    case ComputeKernel::FusedChainBF16:
++      return {fused_chain_bf16, fused_chain_bf16_size};
+     case ComputeKernel::QuantizeFpF16:
+       return {quantize_fp_f16, quantize_fp_f16_size};
+     case ComputeKernel::QuantizeFpBF16:
+diff --git a/overlay/mlx/backend/omarchy/compute.h b/overlay/mlx/backend/omarchy/compute.h
+index 247817dd..e92ebe29 100644
+--- a/overlay/mlx/backend/omarchy/compute.h
++++ b/overlay/mlx/backend/omarchy/compute.h
+@@ -559,6 +559,8 @@ enum class ComputeKernel : uint16_t {
+   // QmmTileRbF16 (shaders/qmm_coopmat.comp).
+   QmmPrefillCoopmatF16,
+   MatmulBF16Coopmat,
++  // Eager BF16 SwiGLU fusion. Appended to keep profile kernel ids stable.
++  FusedChainBF16,
+   Count,
+ };
+ 
+diff --git a/overlay/mlx/backend/omarchy/eval.cpp b/overlay/mlx/backend/omarchy/eval.cpp
+index 8c1b2393..26e1c7be 100644
+--- a/overlay/mlx/backend/omarchy/eval.cpp
++++ b/overlay/mlx/backend/omarchy/eval.cpp
+@@ -18,6 +18,7 @@
+ #include "mlx/backend/omarchy/encoder.h"
+ #include "mlx/backend/omarchy/trace.h"
+ #include "mlx/primitives.h"
++#include "mlx/backend/omarchy/fused_chain.h"
+ #include "mlx/scheduler.h"
+ 
+ namespace mlx::core::gpu {
+@@ -41,12 +42,13 @@ void eval(array& arr) {
+   bool batch_open = encoder.needs_commit();
+   {
+     // If the array is a tracer hold a reference
+-    // to its inputs so they don't get donated
+     std::vector<array> inputs;
+     if (arr.is_tracer()) {
+       inputs = arr.inputs();
+     }
+-    arr.primitive().eval_gpu(arr.inputs(), outputs);
++    if (!omarchy::try_eval_eager_fusion(arr, stream)) {
++      arr.primitive().eval_gpu(arr.inputs(), outputs);
++    }
+   }
+ 
+   // Temporaries flush contract. A buffer must be pinned against
+diff --git a/overlay/mlx/backend/omarchy/fused_chain.cpp b/overlay/mlx/backend/omarchy/fused_chain.cpp
+index f2d151e7..aafc22b7 100644
+--- a/overlay/mlx/backend/omarchy/fused_chain.cpp
++++ b/overlay/mlx/backend/omarchy/fused_chain.cpp
+@@ -3,13 +3,15 @@
+ 
+ #include "mlx/backend/omarchy/fused_chain.h"
+ 
++#include <array>
+ #include <cstdint>
+ #include <cstring>
+ #include <limits>
+-#include <array>
+ #include <memory>
+ #include <optional>
+ #include <typeinfo>
++#include <unordered_map>
++#include <unordered_set>
+ #include <vector>
+ 
+ #include "mlx/backend/omarchy/allocator.h"
+@@ -17,6 +19,7 @@
+ #include "mlx/backend/omarchy/device.h"
+ #include "mlx/backend/omarchy/encoder.h"
+ #include "mlx/primitives.h"
++#include "mlx/utils.h"
+ 
+ namespace mlx::core::omarchy {
+ namespace {
+@@ -130,26 +133,23 @@ std::optional<uint32_t> leaf_mode_for(
+ } // namespace
+ 
+ struct FusedChainImpl {
+-  // Carried nodes and their resolved inputs, in tape order.
+-  std::vector<const array*> nodes;
++  // Stable graph IDs replace references to scheduler tape entries: eager
++  // entries are detached immediately after gpu::eval returns.
++  std::vector<std::uintptr_t> node_ids;
++  std::vector<array> node_arrays;
+   std::vector<std::vector<array>> inputs;
+-  // Packed program words.
+   std::vector<uint32_t> program;
+-  // Leaf arrays with item offset and addressing mode.
+   std::vector<array> leaves;
+   std::vector<uint32_t> leaf_offsets;
+   std::vector<uint32_t> leaf_modes;
+   uint32_t count = 0;
+   uint32_t last_dim = 0;
+-  // Eval-time output shape shared by every carried member (uniform by
+-  // construction; see try_add).
+   Shape eval_shape;
+-  // Gate read ONCE per tape evaluation: try_add runs per node on the
+-  // decode hot path, and the gate must cost nothing when off.
++  Dtype dtype = float32;
++  std::shared_ptr<Primitive> tail_primitive;
++  std::optional<array> tail_array;
+   bool gate_enabled = false;
+   bool open = false;
+-  // A tape output may only be the chain tail; extending past one would
+-  // demote a materialized result into an unmaterialized register.
+   bool saw_tape_output = false;
+ };
+ 
+@@ -181,25 +181,24 @@ bool FusedChain::can_start(const array& node) {
+   if (!node.has_primitive()) {
+     return false;
+   }
+-  if (node.dtype() != float32 && node.dtype() != float16) {
+-    // bf16 tapes are refused before chains ever run; every other dtype
+-    // keeps the per-node tape path.
++  if (node.dtype() != float32 && node.dtype() != float16 &&
++      node.dtype() != bfloat16) {
+     return false;
+   }
+   return chain_op_for(node.primitive()).has_value();
+ }
+ 
+ size_t FusedChain::size() const {
+-  return impl_->nodes.size();
++  return impl_->node_ids.size();
+ }
+ 
+ std::uintptr_t FusedChain::tail_id() const {
+-  return (*impl_->nodes.back()).id();
++  return impl_->node_ids.back();
+ }
+ 
+ bool FusedChain::carries(std::uintptr_t id) const {
+-  for (const auto* node : impl_->nodes) {
+-    if (node->id() == id) {
++  for (auto node_id : impl_->node_ids) {
++    if (node_id == id) {
+       return true;
+     }
+   }
+@@ -213,7 +212,7 @@ bool FusedChain::try_add(
+   if (impl_->saw_tape_output) {
+     return false;
+   }
+-  if (impl_->nodes.size() >= kMaxChainInstrs) {
++  if (impl_->node_ids.size() >= kMaxChainInstrs) {
+     return false;
+   }
+   // Cached gate: read once per tape evaluation (constructor), not once
+@@ -232,7 +231,7 @@ bool FusedChain::try_add(
+   // the dispatch count must key on what actually evaluates. The tail
+   // contributes the chain's eval shape, not its tracing shape.
+   auto is_prev = [&](const array& in) {
+-    return !impl_->nodes.empty() && in.id() == (*impl_->nodes.back()).id();
++    return !impl_->node_ids.empty() && in.id() == impl_->node_ids.back();
+   };
+   Shape eval_shape;
+   {
+@@ -253,8 +252,7 @@ bool FusedChain::try_add(
+     }
+   }
+   if (impl_->open) {
+-    if (eval_shape != impl_->eval_shape ||
+-        node.dtype() != impl_->nodes.front()->dtype()) {
++    if (eval_shape != impl_->eval_shape || node.dtype() != impl_->dtype) {
+       return false;
+     }
+   }
+@@ -280,9 +278,10 @@ bool FusedChain::try_add(
+     last_dim = static_cast<uint32_t>(eval_shape.back());
+   }
+ 
+-  if (!impl_->open && node.dtype() == float16) {
++  if (!impl_->open && node.dtype() != float32) {
+     const auto& capabilities = device().capabilities();
+-    if (!capabilities.shader_float16 ||
++    if ((node.dtype() == float16 && !capabilities.shader_float16) ||
++        (node.dtype() == bfloat16 && !capabilities.shader_int16) ||
+         !capabilities.storage_buffer_16bit_access) {
+       return false;
+     }
+@@ -292,9 +291,6 @@ bool FusedChain::try_add(
+     if (!in.flags().contiguous) {
+       return std::nullopt;
+     }
+-    if (impl_->leaves.size() >= kMaxChainLeaves) {
+-      return std::nullopt;
+-    }
+     const auto mode = leaf_mode_for(in, count, last_dim);
+     if (!mode) {
+       return std::nullopt;
+@@ -303,10 +299,16 @@ bool FusedChain::try_add(
+     if (item_offset > std::numeric_limits<uint32_t>::max() / 2) {
+       return std::nullopt;
+     }
+-    // Every addressed item must sit inside the leaf's buffer. Checked
+-    // HERE, at add time: a leaf the chain cannot carry must close the
+-    // chain while it can still fall back, never at dispatch time when
+-    // carried members are already unmaterialized.
++    for (size_t i = 0; i < impl_->leaves.size(); ++i) {
++      if (impl_->leaves[i].id() == in.id() &&
++          impl_->leaf_offsets[i] == item_offset &&
++          impl_->leaf_modes[i] == mode.value()) {
++        return kChainLeafBase + static_cast<uint32_t>(i);
++      }
++    }
++    if (impl_->leaves.size() >= kMaxChainLeaves) {
++      return std::nullopt;
++    }
+     uint32_t span;
+     switch (mode.value()) {
+       case kLeafDirect:
+@@ -339,7 +341,7 @@ bool FusedChain::try_add(
+ 
+   // Operand resolution: one operand may be the previous member's output
+   // (its register); everything else must be an addressable leaf.
+-  const uint32_t dst = static_cast<uint32_t>(impl_->nodes.size());
++  const uint32_t dst = static_cast<uint32_t>(impl_->node_ids.size());
+   const uint32_t prev_reg = dst > 0 ? dst - 1 : std::numeric_limits<uint32_t>::max();
+   std::optional<uint32_t> a;
+   std::optional<uint32_t> b;
+@@ -387,8 +389,12 @@ bool FusedChain::try_add(
+ 
+ 
+   impl_->program.push_back(pack_instruction(op, a.value(), b.value(), dst));
+-  impl_->nodes.push_back(&node);
++  impl_->node_ids.push_back(node.id());
+   impl_->inputs.push_back(node_inputs);
++  impl_->node_arrays.push_back(node);
++  impl_->dtype = node.dtype();
++  impl_->tail_primitive = node.primitive_ptr();
++  impl_->tail_array = node;
+   if (!impl_->open) {
+     impl_->count = count;
+     impl_->last_dim = last_dim;
+@@ -405,36 +411,28 @@ bool FusedChain::tail_is_tape_output() const {
+   return impl_->saw_tape_output;
+ }
+ 
+-std::optional<array> FusedChain::evaluate(const Stream& stream) {
+-  if (impl_->nodes.empty()) {
+-    return std::nullopt;
+-  }
+-  auto& encoder = get_command_encoder(stream);
++namespace {
+ 
+-  // The fused output carries the LAST node's primitive so the graph
+-  // above the tape stays valid.
+-  const array& tail = *impl_->nodes.back();
+-  // Eval-time shape, not the tail's trace shape (shapeless tapes).
+-  array out(
+-      impl_->eval_shape,
+-      tail.dtype(),
+-      tail.primitive_ptr(),
+-      impl_->inputs.back());
++void dispatch_chain(
++    FusedChainImpl& chain,
++    array& out,
++    const Stream& stream,
++    bool materialize_intermediates) {
++  auto& encoder = get_command_encoder(stream);
+   out.set_data(allocator().malloc(out.nbytes()));
++  if (materialize_intermediates) {
++    for (size_t i = 0; i + 1 < chain.node_arrays.size(); ++i) {
++      chain.node_arrays[i].set_data(
++          allocator().malloc(chain.node_arrays[i].nbytes()));
++    }
++  }
+ 
+-
+-  // Upload the program words. The allocator hands back host-visible
+-  // mapped buffers, so the words land with a plain copy.
+-  const size_t program_bytes = impl_->program.size() * sizeof(uint32_t);
++  const size_t program_bytes = chain.program.size() * sizeof(uint32_t);
+   Buffer program_buffer = allocator().malloc(program_bytes);
+   auto* program_vk = static_cast<VulkanBuffer*>(program_buffer.ptr());
+-  std::memcpy(program_vk->data, impl_->program.data(), program_bytes);
+-  // Keep the program buffer alive until the submission completes.
++  std::memcpy(program_vk->data, chain.program.data(), program_bytes);
+   array program_keeper(
+-      Shape{static_cast<int>(impl_->program.size())},
+-      uint32,
+-      nullptr,
+-      {});
++      Shape{static_cast<int>(chain.program.size())}, uint32, nullptr, {});
+   array::Flags keeper_flags;
+   keeper_flags.contiguous = true;
+   keeper_flags.row_contiguous = true;
+@@ -447,52 +445,199 @@ std::optional<array> FusedChain::evaluate(const Stream& stream) {
+       0);
+   encoder.add_temporary(program_keeper);
+ 
+-  // Leaf bounds and f16 capabilities were refused at add time
+-  // (try_add); a chain that reaches this point always dispatches.
+-  const uint32_t count = impl_->count;
+-  const uint32_t last_dim = impl_->last_dim;
+-
+-  // Push constants. The backend pushes ComputeParams by value; the chain
+-  // shader declares ten scalars whose byte offsets are the first ten
+-  // ComputeParams fields. Lockstep mapping (shader name = host field):
+-  //   count = count, instr_count = operation, last_dim = lhs_size,
+-  //   dst_final = rhs_size,
+-  //   leaf_offset[3] = reduce_size, output_size, lhs_offset
+-  //   leaf_mode[3] = rhs_offset, output_offset, aux_size
+   ComputeParams params;
+-  params.count = count;
+-  params.operation = static_cast<uint32_t>(impl_->program.size());
+-  params.lhs_size = last_dim;
+-  params.rhs_size = static_cast<uint32_t>(impl_->nodes.size() - 1);
+-  params.reduce_size = impl_->leaf_offsets.size() > 0 ? impl_->leaf_offsets[0] : 0;
+-  params.output_size = impl_->leaf_offsets.size() > 1 ? impl_->leaf_offsets[1] : 0;
+-  params.lhs_offset = impl_->leaf_offsets.size() > 2 ? impl_->leaf_offsets[2] : 0;
+-  params.rhs_offset = impl_->leaf_modes.size() > 0 ? impl_->leaf_modes[0] : 0;
+-  params.output_offset = impl_->leaf_modes.size() > 1 ? impl_->leaf_modes[1] : 0;
+-  params.aux_size = impl_->leaf_modes.size() > 2 ? impl_->leaf_modes[2] : 0;
+-
+-  // Bindings are positional (shader: 0-2 leaves, 3 program, 4 output).
+-  // Unused leaf slots are padded with the output buffer; no carried
+-  // program references them.
+-  std::array<ComputeBinding, kMaxChainLeaves + 2> bindings{
++  params.count = chain.count;
++  params.operation = static_cast<uint32_t>(chain.program.size());
++  params.lhs_size = chain.last_dim;
++  params.rhs_size = static_cast<uint32_t>(chain.node_ids.size() - 1);
++  params.reduce_size = chain.leaf_offsets.size() > 0 ? chain.leaf_offsets[0] : 0;
++  params.output_size = chain.leaf_offsets.size() > 1 ? chain.leaf_offsets[1] : 0;
++  params.lhs_offset = chain.leaf_offsets.size() > 2 ? chain.leaf_offsets[2] : 0;
++  params.rhs_offset = chain.leaf_modes.size() > 0 ? chain.leaf_modes[0] : 0;
++  params.output_offset = chain.leaf_modes.size() > 1 ? chain.leaf_modes[1] : 0;
++  params.aux_size = chain.leaf_modes.size() > 2 ? chain.leaf_modes[2] : 0;
++  params.aux_offset = materialize_intermediates ? 1u : 0u;
++
++  std::array<ComputeBinding, kMaxChainLeaves + 3> bindings{
+       chain_binding(out),
+       chain_binding(out),
+       chain_binding(out),
+       chain_binding(program_keeper),
++      chain_binding(out),
+       chain_binding(out)};
+-  for (size_t i = 0; i < impl_->leaves.size(); ++i) {
+-    bindings[i] = chain_binding(impl_->leaves[i]);
++  for (size_t i = 0; i < chain.leaves.size(); ++i) {
++    bindings[i] = chain_binding(chain.leaves[i]);
++  }
++  if (materialize_intermediates && !chain.node_arrays.empty()) {
++    bindings[2] = chain_binding(chain.node_arrays[0]);
++    if (chain.node_arrays.size() > 2) {
++      bindings[5] = chain_binding(chain.node_arrays[1]);
++    }
+   }
+ 
+-  const auto kernel = out.dtype() == float16
+-      ? ComputeKernel::FusedChainF16
+-      : ComputeKernel::FusedChainF32;
++  auto kernel = ComputeKernel::FusedChainF32;
++  if (out.dtype() == float16) {
++    kernel = ComputeKernel::FusedChainF16;
++  } else if (out.dtype() == bfloat16) {
++    kernel = ComputeKernel::FusedChainBF16;
++  }
+   encoder.dispatch_compute(
+       kernel,
+       bindings,
+       params,
+-      compute_dispatch_group_count(count));
++      compute_dispatch_group_count(chain.count));
++}
++
++} // namespace
++
++std::optional<array> FusedChain::evaluate(const Stream& stream) {
++  if (impl_->node_ids.empty()) {
++    return std::nullopt;
++  }
++  array out(
++      impl_->eval_shape,
++      impl_->dtype,
++      impl_->tail_primitive,
++      impl_->inputs.back());
++  dispatch_chain(*impl_, out, stream, false);
+   return out;
+ }
+ 
++void FusedChain::evaluate_tail(const Stream& stream) {
++  if (impl_->node_ids.empty() || !impl_->tail_array) {
++    return;
++  }
++  dispatch_chain(*impl_, *impl_->tail_array, stream, true);
++}
++
++namespace {
++
++enum class EagerStep : uint8_t { sigmoid, gate_mul, output_mul };
++
++struct EagerRole {
++  std::uintptr_t group;
++  EagerStep step;
++};
++
++struct EagerFusionState {
++  std::unordered_map<std::uintptr_t, EagerRole> roles;
++  std::unordered_map<std::uintptr_t, FusedChain> chains;
++};
++
++thread_local EagerFusionState* eager_state = nullptr;
++
++bool is_op(const array* node, const std::type_info& op) {
++  return node && node->has_primitive() && typeid(node->primitive()) == op;
++}
++
++} // namespace
++
++EagerFusionScope::EagerFusionScope(const std::deque<array>& tape)
++    : previous_(eager_state) {
++  eager_state = nullptr;
++  if (!env_flag("MLX_OMARCHY_FUSED_CHAIN")) {
++    return;
++  }
++
++  auto* state = new EagerFusionState;
++  eager_state = state;
++  std::unordered_map<std::uintptr_t, const array*> nodes;
++  std::unordered_map<std::uintptr_t, size_t> uses;
++  nodes.reserve(tape.size());
++  for (const auto& node : tape) {
++    nodes.emplace(node.id(), &node);
++    for (const auto& input : node.inputs()) {
++      ++uses[input.id()];
++    }
++  }
++  auto lookup = [&](const array& ref) -> const array* {
++    auto it = nodes.find(ref.id());
++    return it == nodes.end() ? nullptr : it->second;
++  };
++  std::unordered_set<std::uintptr_t> claimed;
++  for (const auto& tail : tape) {
++    if (!is_op(&tail, typeid(Multiply)) || tail.inputs().size() != 2 ||
++        claimed.count(tail.id())) {
++      continue;
++    }
++    const array* left = lookup(tail.inputs()[0]);
++    const array* right = lookup(tail.inputs()[1]);
++    const array* inner = is_op(left, typeid(Multiply)) ? left :
++        (is_op(right, typeid(Multiply)) ? right : nullptr);
++    if (!inner || inner->inputs().size() != 2 || uses[inner->id()] != 1) {
++      continue;
++    }
++    const array* inner_left = lookup(inner->inputs()[0]);
++    const array* inner_right = lookup(inner->inputs()[1]);
++    const array* sigmoid = is_op(inner_left, typeid(Sigmoid)) ? inner_left :
++        (is_op(inner_right, typeid(Sigmoid)) ? inner_right : nullptr);
++    if (!sigmoid || sigmoid->inputs().size() != 1 ||
++        uses[sigmoid->id()] != 1) {
++      continue;
++    }
++    const array& gate = sigmoid == inner_left ? inner->inputs()[1]
++                                               : inner->inputs()[0];
++    if (gate.id() != sigmoid->inputs()[0].id() ||
++        tail.dtype() != inner->dtype() || tail.dtype() != sigmoid->dtype() ||
++        tail.primitive().stream() != inner->primitive().stream() ||
++        tail.primitive().stream() != sigmoid->primitive().stream() ||
++        claimed.count(inner->id()) || claimed.count(sigmoid->id())) {
++      continue;
++    }
++    const auto group = tail.id();
++    state->roles.emplace(
++        sigmoid->id(), EagerRole{group, EagerStep::sigmoid});
++    state->roles.emplace(
++        inner->id(), EagerRole{group, EagerStep::gate_mul});
++    state->roles.emplace(
++        tail.id(), EagerRole{group, EagerStep::output_mul});
++    claimed.insert(sigmoid->id());
++    claimed.insert(inner->id());
++    claimed.insert(tail.id());
++  }
++}
++
++EagerFusionScope::~EagerFusionScope() {
++  delete eager_state;
++  eager_state = static_cast<EagerFusionState*>(previous_);
++}
++
++bool try_eval_eager_fusion(array& node, const Stream& stream) {
++  if (!eager_state) {
++    return false;
++  }
++  auto role_it = eager_state->roles.find(node.id());
++  if (role_it == eager_state->roles.end()) {
++    return false;
++  }
++  const auto role = role_it->second;
++  if (role.step == EagerStep::sigmoid) {
++    if (device().compute().binding_limit() < kComputeBindingBudget) {
++      return false;
++    }
++    auto [chain_it, inserted] =
++        eager_state->chains.try_emplace(role.group, true);
++    if (!inserted ||
++        !chain_it->second.try_add(node, node.inputs(), false)) {
++      eager_state->chains.erase(role.group);
++      return false;
++    }
++    return true;
++  }
++
++  auto chain_it = eager_state->chains.find(role.group);
++  if (chain_it == eager_state->chains.end()) {
++    return false;
++  }
++  if (!chain_it->second.try_add(node, node.inputs(), false)) {
++    chain_it->second.evaluate_tail(stream);
++    eager_state->chains.erase(chain_it);
++    return false;
++  }
++  if (role.step == EagerStep::output_mul) {
++    chain_it->second.evaluate_tail(stream);
++    eager_state->chains.erase(chain_it);
++  }
++  return true;
++}
+ } // namespace mlx::core::omarchy
+diff --git a/overlay/mlx/backend/omarchy/fused_chain.h b/overlay/mlx/backend/omarchy/fused_chain.h
+index 1ee53e26..eaa84e15 100644
+--- a/overlay/mlx/backend/omarchy/fused_chain.h
++++ b/overlay/mlx/backend/omarchy/fused_chain.h
+@@ -4,6 +4,7 @@
+ #pragma once
+ 
+ #include <cstdint>
++#include <deque>
+ #include <memory>
+ #include <optional>
+ #include <vector>
+@@ -23,8 +24,9 @@ namespace mlx::core::omarchy {
+ // Any node the chain cannot carry (unsupported op class, shape change,
+ // exotic broadcast, too many leaves, no tail dependency) makes the
+ // whole run fall back to the per-node tape path: loud refusal
+-// semantics are unchanged, and bf16 tapes are refused before chains
+-// are ever considered.
++// semantics are unchanged. Compiled bf16 tapes remain refused, while
++// the eager SwiGLU planner below uses the same interpreter with bf16
++// intermediate rounding.
+ //
+ // DEFAULT OFF: the whole mechanism is gated behind
+ // MLX_OMARCHY_FUSED_CHAIN until it is equivalence-proven on M1
+@@ -48,7 +50,7 @@ class FusedChain {
+   FusedChain& operator=(FusedChain&&);
+ 
+   // Pure op/dtype check (the gate lives in the constructor argument):
+-  // a float32/float16 fusable unary or binary elementwise primitive.
++  // a float32/float16/bfloat16 fusable unary or binary elementwise primitive.
+   static bool can_start(const array& node);
+ 
+   // Attempts to append `node` with resolved `inputs`. Returns false if
+@@ -73,11 +75,14 @@ class FusedChain {
+   // Dispatches the accumulated chain (1 or more nodes) as one fused
+   // kernel. Returns the fused output carrying the last node's primitive
+   // so downstream graph bookkeeping stays valid. Returns nullopt only
+-  // for an empty chain: refusals happen in try_add before acceptance,
+-  // so an accepted chain always dispatches and the caller never has to
+-  // re-evaluate carried members individually.
++  // for an empty chain: refusals happen in try_add before acceptance.
+   std::optional<array> evaluate(const Stream& stream);
+ 
++  // Dispatch into the current tail's graph array. Used by eager fusion,
++  // where the scheduler owns that array and no replacement descriptor may
++  // be substituted for it.
++  void evaluate_tail(const Stream& stream);
++
+   // Number of tape nodes currently carried.
+   size_t size() const;
+ 
+@@ -97,4 +102,25 @@ class FusedChain {
+   std::unique_ptr<FusedChainImpl> impl_;
+ };
+ 
+-} // namespace mlx::core::omarchy
++
++// One eval_impl graph window. The scope preflights exact eager SwiGLU
++// shapes (gate * sigmoid(gate) * up) whose two interior values have one
++// consumer, then try_eval_eager_fusion defers those interior dispatches
++// and records the three operations as one FusedChain dispatch. With the
++// gate off this is an empty, allocation-free plan.
++class EagerFusionScope {
++ public:
++  explicit EagerFusionScope(const std::deque<array>& tape);
++  ~EagerFusionScope();
++
++  EagerFusionScope(const EagerFusionScope&) = delete;
++  EagerFusionScope& operator=(const EagerFusionScope&) = delete;
++
++ private:
++  void* previous_;
++};
++
++// Returns true when the primitive was recorded (or deliberately deferred)
++// by the active eager-fusion scope; false keeps the ordinary eval_gpu path.
++bool try_eval_eager_fusion(array& node, const Stream& stream);
++} // namespace mlx::core::omarchy
+\ No newline at end of file
+diff --git a/overlay/mlx/backend/omarchy/shaders/fused_chain.comp b/overlay/mlx/backend/omarchy/shaders/fused_chain.comp
+index f4aebc2c..e40e4c5c 100644
+--- a/overlay/mlx/backend/omarchy/shaders/fused_chain.comp
++++ b/overlay/mlx/backend/omarchy/shaders/fused_chain.comp
+@@ -17,6 +17,20 @@
+ // The float16_t round trip failed M1 equality; integer packing preserves
+ // the required intermediate rounding. Compiler-pass attribution is unproved.
+ #define ROUND_INTERMEDIATE(f) (unpackHalf2x16(packHalf2x16(vec2(f, 0.0))).x)
++#elif defined(USE_BF16)
++#extension GL_EXT_shader_16bit_storage : require
++#extension GL_EXT_shader_explicit_arithmetic_types_int16 : require
++#define STORAGE_TYPE uint16_t
++#define LOAD_VALUE(x) uintBitsToFloat(uint(x) << 16u)
++uint16_t bf16_store(float value) {
++  uint bits = floatBitsToUint(value);
++  if (isnan(value)) {
++    return uint16_t((bits >> 16) | 0x40u);
++  }
++  return uint16_t((bits + 0x7fffu + ((bits >> 16) & 1u)) >> 16);
++}
++#define STORE_VALUE(f) bf16_store(f)
++#define ROUND_INTERMEDIATE(f) LOAD_VALUE(bf16_store(f))
+ #else
+ #define STORAGE_TYPE float
+ #define LOAD_VALUE(x) float(x)
+@@ -32,7 +46,7 @@ layout(set = 0, binding = 0, std430) readonly buffer LeafA {
+ layout(set = 0, binding = 1, std430) readonly buffer LeafB {
+   STORAGE_TYPE values[];
+ } leaf_b;
+-layout(set = 0, binding = 2, std430) readonly buffer LeafC {
++layout(set = 0, binding = 2, std430) buffer LeafCOrFirstIntermediate {
+   STORAGE_TYPE values[];
+ } leaf_c;
+ layout(set = 0, binding = 3, std430) readonly buffer Program {
+@@ -41,15 +55,13 @@ layout(set = 0, binding = 3, std430) readonly buffer Program {
+ layout(set = 0, binding = 4, std430) writeonly buffer Output {
+   STORAGE_TYPE values[];
+ } output_data;
++layout(set = 0, binding = 5, std430) writeonly buffer SecondIntermediate {
++  STORAGE_TYPE values[];
++} second_intermediate;
+ 
+-// The host pushes ComputeParams by value (see compute.h). The ten
+-// scalars below occupy the first ten ComputeParams fields in order, so
+-// the host mapping (shader name = ComputeParams field) is:
+-//   count = count, instr_count = operation, last_dim = lhs_size,
+-//   dst_final = rhs_size,
+-//   leaf_offset[3] = reduce_size, output_size, lhs_offset
+-//   leaf_mode[3] = rhs_offset, output_offset, aux_size
+-// Lockstep with ../fused_chain.cpp evaluate().
++// The first eleven ComputeParams scalars carry this compact ABI. aux_offset
++// selects eager materialization of the first two instructions; compiled
++// chains leave it zero.
+ layout(push_constant) uniform Params {
+   uint count;
+   uint instr_count;
+@@ -59,6 +71,7 @@ layout(push_constant) uniform Params {
+   // Per leaf: 0 = direct, 1 = index % last_dim, 2 = index / last_dim,
+   // 3 = scalar (index 0).
+   uint leaf_mode[3];
++  uint materialize_intermediates;
+ } params;
+ 
+ STORAGE_TYPE load_leaf(uint slot, uint index) {
+@@ -158,6 +171,13 @@ void main() {
+           return;
+       }
+       regs[dst] = ROUND_INTERMEDIATE(value);
++      if (params.materialize_intermediates != 0u) {
++        if (i == 0u) {
++          leaf_c.values[index] = STORE_VALUE(regs[dst]);
++        } else if (i == 1u) {
++          second_intermediate.values[index] = STORE_VALUE(regs[dst]);
++        }
++      }
+     }
+     output_data.values[index] = STORE_VALUE(regs[params.dst_final]);
+     if (params.count - index <= stride) {
+diff --git a/overlay/tests/omarchy/test_fused_chain.cpp b/overlay/tests/omarchy/test_fused_chain.cpp
+index 7fafd8eb..33c481a5 100644
+--- a/overlay/tests/omarchy/test_fused_chain.cpp
++++ b/overlay/tests/omarchy/test_fused_chain.cpp
+@@ -4,11 +4,10 @@
+ // FuseDecodeChains fused-chain coverage. Fusion is DEFAULT OFF
+ // (MLX_OMARCHY_FUSED_CHAIN); every equivalence case opts in, and two
+ // cases pin the gate behavior itself. The fused path must match the
+-// eager path BIT-EXACT for both float32 and float16: the chain shader
+-// rounds every intermediate to the storage dtype exactly like the
+-// per-node path materializes them, and every op formula mirrors
+-// shaders/elementwise.comp case for case (sigmoid, NaN-propagating
+-// max/min included). bf16 stays refused by the compiled-tape gate.
++// per-node path BIT-EXACT for float32, float16, and eager bfloat16: the
++// chain shader rounds every intermediate to the storage dtype exactly
++// like the per-node path materializes them. Compiled bf16 tapes remain
++// refused independently.
+ 
+ #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
+ #include "doctest/doctest.h"
+@@ -82,12 +81,14 @@ void check_compiled_matches_eager(
+     const Stream& stream,
+     double epsilon,
+     bool shapeless = false) {
++  unsetenv("MLX_OMARCHY_FUSED_CHAIN");
+   set_compile_mode(CompileMode::disabled);
+   std::vector<array> eager_outputs = fn(inputs);
+   for (auto& out : eager_outputs) {
+     out.eval();
+   }
+   sync_stream(stream);
++  enable_fusion();
+   set_compile_mode(CompileMode::enabled);
+   auto compiled_fn = compile(fn, shapeless);
+   std::vector<array> compiled_outputs = compiled_fn(inputs);
+@@ -509,7 +510,7 @@ uint64_t counted_dispatches(
+ 
+ } // namespace
+ 
+-TEST_CASE("gated-in fused chain collapses 3 swiglu dispatches to 1") {
++TEST_CASE("gated-in fused chain collapses eager and compiled swiglu") {
+   if (!compute_available()) {
+     return;
+   }
+@@ -538,10 +539,85 @@ TEST_CASE("gated-in fused chain collapses 3 swiglu dispatches to 1") {
+       [&] { return compiled_fn(inputs)[0]; }, 2, stream);
+   set_compile_mode(CompileMode::disabled);
+ 
+-  // The 3-op swiglu chain costs 3 eager dispatches and 1 fused one.
+-  CHECK_EQ(eager, 3);
++  CHECK_EQ(eager, 1);
+   CHECK_EQ(fused, 1);
+ }
++TEST_CASE("eager bf16 swiglu is bit-exact and one dispatch") {
++  if (!compute_available()) {
++    return;
++  }
++  Stream stream = gpu_stream();
++  set_compile_mode(CompileMode::disabled);
++  array gate = astype(random::normal(Shape{32, 32}), bfloat16, stream);
++  array up = astype(random::normal(Shape{32, 32}), bfloat16, stream);
++  gate.eval();
++  up.eval();
++  sync_stream(stream);
++
++  unsetenv("MLX_OMARCHY_FUSED_CHAIN");
++  array baseline = gate * sigmoid(gate) * up;
++  baseline.eval();
++  sync_stream(stream);
++
++  enable_fusion();
++  uint64_t before = counters().vk_compute_dispatches.load();
++  array candidate = gate * sigmoid(gate) * up;
++  candidate.eval();
++  sync_stream(stream);
++  CHECK_EQ(counters().vk_compute_dispatches.load() - before, 1);
++
++  array baseline32 = astype(baseline, float32, stream);
++  array candidate32 = astype(candidate, float32, stream);
++  baseline32.eval();
++  candidate32.eval();
++  sync_stream(stream);
++  for (size_t i = 0; i < baseline32.size(); ++i) {
++    INFO("bf16 mismatch at ", i);
++    CHECK_EQ(baseline32.data<float>()[i], candidate32.data<float>()[i]);
++  }
++}
++TEST_CASE("eager fusion materializes retained intermediate arrays") {
++  if (!compute_available()) {
++    return;
++  }
++  Stream stream = gpu_stream();
++  set_compile_mode(CompileMode::disabled);
++  array gate = random::normal(Shape{8, 64}, float16, std::nullopt, stream);
++  array up = random::normal(Shape{8, 64}, float16, std::nullopt, stream);
++  gate.eval();
++  up.eval();
++  sync_stream(stream);
++
++  unsetenv("MLX_OMARCHY_FUSED_CHAIN");
++  array baseline_sigmoid = sigmoid(gate);
++  array baseline_inner = gate * baseline_sigmoid;
++  array baseline_out = baseline_inner * up;
++  baseline_out.eval();
++  sync_stream(stream);
++
++  enable_fusion();
++  array candidate_sigmoid = sigmoid(gate);
++  array candidate_inner = gate * candidate_sigmoid;
++  array candidate_out = candidate_inner * up;
++  uint64_t before = counters().vk_compute_dispatches.load();
++  candidate_out.eval();
++  sync_stream(stream);
++  CHECK_EQ(counters().vk_compute_dispatches.load() - before, 1);
++
++  for (auto pair : std::array<std::pair<array, array>, 3>{
++           std::pair{baseline_sigmoid, candidate_sigmoid},
++           std::pair{baseline_inner, candidate_inner},
++           std::pair{baseline_out, candidate_out}}) {
++    array baseline32 = astype(pair.first, float32, stream);
++    array candidate32 = astype(pair.second, float32, stream);
++    baseline32.eval();
++    candidate32.eval();
++    sync_stream(stream);
++    for (size_t i = 0; i < baseline32.size(); ++i) {
++      CHECK_EQ(baseline32.data<float>()[i], candidate32.data<float>()[i]);
++    }
++  }
++}
+ 
+ TEST_CASE("gate off keeps the per-node dispatch stream") {
+   if (!compute_available()) {
+@@ -643,7 +719,7 @@ TEST_CASE("shapeless swiglu fragment collapses identity broadcast pairs (f32)")
+   uint64_t fused = counted_dispatches(
+       [&] { return compiled_fn(inputs)[0]; }, 2, stream);
+   set_compile_mode(CompileMode::disabled);
+-  CHECK_EQ(eager, 3);
++  CHECK_EQ(eager, 1);
+   CHECK_EQ(fused, 1);
+   check_compiled_matches_eager(fn, inputs, float32, stream, 0.0, true);
+ }
+@@ -673,7 +749,7 @@ TEST_CASE("shapeless swiglu fragment collapses identity broadcast pairs (f16)")
+   uint64_t fused = counted_dispatches(
+       [&] { return compiled_fn(inputs)[0]; }, 2, stream);
+   set_compile_mode(CompileMode::disabled);
+-  CHECK_EQ(eager, 3);
++  CHECK_EQ(eager, 1);
+   CHECK_EQ(fused, 1);
+   check_compiled_matches_eager(fn, inputs, float16, stream, -1.0, true);
+ }
+@@ -885,7 +961,7 @@ TEST_CASE("nonidentity broadcast keeps the per-node fallback (shapeless)") {
+   // The scale-side broadcast is real ([64] to [4,64]): the identity prefix
+   // still fuses, the scale side keeps the per-node view, and the tail mul
+   // refuses the non-contiguous leaf.
+-  CHECK_EQ(eager, 3);
++  CHECK_EQ(eager, 1);
+   CHECK_EQ(fused, 2);
+   check_compiled_matches_eager(fn, inputs, float32, stream, 0.0, true);
+ }
+diff --git a/patches/mlx-eager-fusion.patch b/patches/mlx-eager-fusion.patch
+new file mode 100644
+index 00000000..de9fa380
+--- /dev/null
++++ b/patches/mlx-eager-fusion.patch
+@@ -0,0 +1,22 @@
++--- a/mlx/transforms.cpp
+++++ b/mlx/transforms.cpp
++@@ -11,6 +11,9 @@
++ 
++ #include "mlx/backend/cpu/eval.h"
++ #include "mlx/backend/gpu/eval.h"
+++#ifdef MLX_OMARCHY_BACKEND
+++#include "mlx/backend/omarchy/fused_chain.h"
+++#endif
++ #include "mlx/fence.h"
++ #include "mlx/memory.h"
++ #include "mlx/ops.h"
++@@ -224,6 +227,9 @@
++     }
++   }
++ 
+++#ifdef MLX_OMARCHY_BACKEND
+++  omarchy::EagerFusionScope eager_fusion_scope(tape);
+++#endif
++   std::set<Stream> open_streams;
++   try {
++     while (!tape.empty()) {
+diff --git a/scripts/prepare-mlx.sh b/scripts/prepare-mlx.sh
+index 188facc9..69e3cc5c 100755
+--- a/scripts/prepare-mlx.sh
++++ b/scripts/prepare-mlx.sh
+@@ -44,6 +44,8 @@ cp -r --preserve=mode "$ROOT/overlay/." "$STAGING_DIR/"
+ find "$STAGING_DIR" -newermt '@0' -exec touch {} +
+ patch --directory="$STAGING_DIR" --strip=1 --forward --fuzz=0 \
+   < "$ROOT/patches/mlx-build.patch"
++patch --directory="$STAGING_DIR" --strip=1 --forward --fuzz=0 \
++  < "$ROOT/patches/mlx-eager-fusion.patch"
+ patch --directory="$STAGING_DIR" --strip=1 --forward --fuzz=0 \
+   < "$ROOT/patches/mlx-python-package.patch"
+ patch --directory="$STAGING_DIR" --strip=1 --forward --fuzz=0 \

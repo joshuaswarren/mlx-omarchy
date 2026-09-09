@@ -1,0 +1,17 @@
+{
+  "candidate": "da9e7f6",
+  "parent": "fb63766",
+  "status": "Unqualified; not integrated",
+  "native_matches": 4,
+  "first_prefill_RMSNorm": {
+    "before_mismatches": 13,
+    "after_mismatches": 13,
+    "elements": 233856,
+    "max_error": 0.001953125
+  },
+  "fixed_float32_RMSNorm": {
+    "native_mismatches": 45770,
+    "max_error": 9.5367431640625e-07
+  },
+  "next": "Test ascending reduction and compensated reciprocal-square-root refinement; CPU reconstruction reproduces the captured native float32 RMSNorm output exactly, but is not GPU verification."
+}

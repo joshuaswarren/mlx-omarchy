@@ -389,11 +389,11 @@ Transform work is in progress.
 Batched matmul under `vmap` passes the gate with value checks.
 `mx.compile` interprets the fused tape on the GPU for every class upstream fuses (`mlx/compile.cpp is_fusable`): the unary, binary, Select, and Broadcast primitives, including Real, Imag, and Conjugate on complex64.
 Compiled chains evaluate and match the uncompiled values at `1e-5`.
-Tape nodes dispatch separately by default. Opt-in `MLX_OMARCHY_FUSED_CHAIN=1`
-combines eligible float32/float16 chains. The pinned M1 model now records
-72 to 24 tape dispatches per decode token with equal full generated arrays
-in all 15 paired comparisons. Gains are small and the default remains off;
-see the [fusion receipt](../receipts/2026-09-04-swiglu-fused-chain.md).
+Tape fusion defaults on. Set `MLX_OMARCHY_FUSED_CHAIN=0` to dispatch eligible
+float32/float16 compiled chains and exact eager f32/f16/bf16 SwiGLU graphs per
+node. The M1 default-on acceptance retained identical generated IDs in all 36
+paired legs and improved Q4 decode by 3.2% to 5.0%; see
+`receipts/2026-09-09-fused-chain-default/`.
 Each tape node runs through its own `eval_gpu`, so an unsupported dtype or layout fails with that primitive's named error; the interpreter keeps no allowlist of its own.
 `CompileMode::no_fuse` keeps the tape unfused and matches the uncompiled values.
 

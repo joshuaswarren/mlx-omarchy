@@ -1,0 +1,36 @@
+{
+  "status": "pass",
+  "decision": "enable exact eager SwiGLU and eligible compiled elementwise fusion by default; MLX_OMARCHY_FUSED_CHAIN=0 disables it",
+  "source_commit": "98e06e9482301edb60e5a29432404496f847fa71",
+  "wheel": {
+    "path": "dist-default/mlx_omarchy-0.32.2.dev202609091517+98e06e9-cp314-cp314-linux_aarch64.whl",
+    "sha256": "971b48470d543993127c277677f3a87ab4a1d2c2b3bb0f181426c30eb4973282"
+  },
+  "models": {
+    "q4": {"identity": "mlx-community/Qwen2.5-0.5B-Instruct-4bit", "revision": "a5339a4131f135d0fdc6a5c8b5bbed2753bbe0f3"},
+    "bf16": {"identity": "mlx-community/Qwen2.5-0.5B-Instruct-bf16", "revision": "56d07e766edd7159fbe12ed12d9cf114bf38bf1e"}
+  },
+  "paired_matrix": {
+    "paired_repetitions": 3,
+    "measured_legs": 36,
+    "all_full_generated_ids_equal": true,
+    "q4_short_decode_tok_s": {"disabled": 73.07, "default": 76.77, "ratio": 1.0506363760777337, "digest": "7fd25a869ff21678"},
+    "q4_long_decode_tok_s": {"disabled": 61.12, "default": 63.58, "ratio": 1.0402486910994764, "digest": "4cc08910089477fd"},
+    "q4_longctx_decode_tok_s": {"disabled": 43.57, "default": 44.89, "ratio": 1.0302960752811567, "digest": "7da83f06ec9f001d"},
+    "bf16_short_decode_tok_s": {"disabled": 11.55, "default": 11.66, "ratio": 1.0095238095238095, "digest": "f26175202f3dabe9"},
+    "bf16_long_decode_tok_s": {"disabled": 11.12, "default": 11.21, "ratio": 1.0080935251798562, "digest": "ad964232ee67fecd"},
+    "bf16_longctx_decode_tok_s": {"disabled": 10.1, "default": 10.2, "ratio": 1.00990099009901, "digest": "ff502900d2a179a5"}
+  },
+  "m1_targeted_tests": {
+    "omarchy_fused_chain_tests": "25 cases, 7576 assertions",
+    "omarchy_runtime_tests": "41 cases, 22694 assertions",
+    "omarchy_primitive_tests": "98 cases, 2699373 assertions",
+    "omarchy_matmul_family_tests": "17 cases, 82636835 assertions"
+  },
+  "commands": [
+    "CMAKE_BUILD_PARALLEL_LEVEL=4 DEV_RELEASE=1 scripts/build-wheel.sh",
+    "cmake --build .work/build-m1-default-tests --target omarchy_fused_chain_tests omarchy_runtime_tests omarchy_primitive_tests omarchy_matmul_family_tests -j4",
+    ".work/build-m1-default-tests/tests/omarchy/{omarchy_fused_chain_tests,omarchy_runtime_tests,omarchy_primitive_tests,omarchy_matmul_family_tests}",
+    ".venv-release/bin/python receipts/2026-09-09-fused-chain-default/paired_default.py <root> <python> <wheel>"
+  ]
+}

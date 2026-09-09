@@ -1,0 +1,244 @@
+{
+  "candidate": "eecdbb9",
+  "fixed_input_f16": "exact native match on M1 GPU",
+  "first_layer": [
+    {
+      "stage": "call0-attn-k_proj-input",
+      "different": 0,
+      "max_error": 0.0
+    },
+    {
+      "stage": "call0-attn-k_proj-output",
+      "different": 0,
+      "max_error": 0.0
+    },
+    {
+      "stage": "call0-attn-o_proj-input",
+      "different": 0,
+      "max_error": 0.0
+    },
+    {
+      "stage": "call0-attn-o_proj-output",
+      "different": 0,
+      "max_error": 0.0
+    },
+    {
+      "stage": "call0-attn-q_proj-input",
+      "different": 0,
+      "max_error": 0.0
+    },
+    {
+      "stage": "call0-attn-q_proj-output",
+      "different": 0,
+      "max_error": 0.0
+    },
+    {
+      "stage": "call0-attn-v_proj-input",
+      "different": 0,
+      "max_error": 0.0
+    },
+    {
+      "stage": "call0-attn-v_proj-output",
+      "different": 0,
+      "max_error": 0.0
+    },
+    {
+      "stage": "call0-mlp-down_proj-input",
+      "different": 0,
+      "max_error": 0.0
+    },
+    {
+      "stage": "call0-mlp-down_proj-output",
+      "different": 0,
+      "max_error": 0.0
+    },
+    {
+      "stage": "call0-mlp-gate_proj-input",
+      "different": 0,
+      "max_error": 0.0
+    },
+    {
+      "stage": "call0-mlp-gate_proj-output",
+      "different": 0,
+      "max_error": 0.0
+    },
+    {
+      "stage": "call0-mlp-up_proj-input",
+      "different": 0,
+      "max_error": 0.0
+    },
+    {
+      "stage": "call0-mlp-up_proj-output",
+      "different": 0,
+      "max_error": 0.0
+    },
+    {
+      "stage": "call0-norm1-input",
+      "different": 0,
+      "max_error": 0.0
+    },
+    {
+      "stage": "call0-norm1-output",
+      "different": 0,
+      "max_error": 0.0
+    },
+    {
+      "stage": "call0-norm2-input",
+      "different": 0,
+      "max_error": 0.0
+    },
+    {
+      "stage": "call0-norm2-output",
+      "different": 0,
+      "max_error": 0.0
+    },
+    {
+      "stage": "call0-rope0-input",
+      "different": 0,
+      "max_error": 0.0
+    },
+    {
+      "stage": "call0-rope0-output",
+      "different": 0,
+      "max_error": 0.0
+    },
+    {
+      "stage": "call0-rope1-input",
+      "different": 0,
+      "max_error": 0.0
+    },
+    {
+      "stage": "call0-rope1-output",
+      "different": 0,
+      "max_error": 0.0
+    },
+    {
+      "stage": "call0-sdpa-k",
+      "different": 0,
+      "max_error": 0.0
+    },
+    {
+      "stage": "call0-sdpa-output",
+      "different": 0,
+      "max_error": 0.0
+    },
+    {
+      "stage": "call0-sdpa-q",
+      "different": 0,
+      "max_error": 0.0
+    },
+    {
+      "stage": "call0-sdpa-v",
+      "different": 0,
+      "max_error": 0.0
+    }
+  ],
+  "generation": [
+    {
+      "leg_id": "qwen25-0.5b-4bit:long-decode-128",
+      "reps": 1,
+      "decode_tok_s_median": 65.29,
+      "decode_tok_s_min": 65.29,
+      "decode_tok_s_max": 65.29,
+      "prefill_tok_s_median": 273.201,
+      "prefill_tok_s_min": 273.201,
+      "prefill_tok_s_max": 273.201,
+      "prompt_tokens": 262,
+      "generated_ids_sha256_16": [
+        "f873dc2bdd34c0fe"
+      ],
+      "ids_stable_across_reps": true,
+      "native_digest": "254d73fd93164b98",
+      "native_match": false
+    },
+    {
+      "leg_id": "qwen25-0.5b-4bit:longctx-1024-decode-32",
+      "reps": 1,
+      "decode_tok_s_median": 62.91,
+      "decode_tok_s_min": 62.91,
+      "decode_tok_s_max": 62.91,
+      "prefill_tok_s_median": 239.373,
+      "prefill_tok_s_min": 239.373,
+      "prefill_tok_s_max": 239.373,
+      "prompt_tokens": 1053,
+      "generated_ids_sha256_16": [
+        "7da83f06ec9f001d"
+      ],
+      "ids_stable_across_reps": true,
+      "native_digest": "7da83f06ec9f001d",
+      "native_match": true
+    },
+    {
+      "leg_id": "qwen25-0.5b-4bit:short-decode-32",
+      "reps": 1,
+      "decode_tok_s_median": 66.8,
+      "decode_tok_s_min": 66.8,
+      "decode_tok_s_max": 66.8,
+      "prefill_tok_s_median": 94.637,
+      "prefill_tok_s_min": 94.637,
+      "prefill_tok_s_max": 94.637,
+      "prompt_tokens": 30,
+      "generated_ids_sha256_16": [
+        "7fd25a869ff21678"
+      ],
+      "ids_stable_across_reps": true,
+      "native_digest": "7fd25a869ff21678",
+      "native_match": true
+    },
+    {
+      "leg_id": "qwen25-0.5b-bf16:long-decode-128",
+      "reps": 1,
+      "decode_tok_s_median": 40.93,
+      "decode_tok_s_min": 40.93,
+      "decode_tok_s_max": 40.93,
+      "prefill_tok_s_median": 280.815,
+      "prefill_tok_s_min": 280.815,
+      "prefill_tok_s_max": 280.815,
+      "prompt_tokens": 262,
+      "generated_ids_sha256_16": [
+        "3d7493c8c413670d"
+      ],
+      "ids_stable_across_reps": true,
+      "native_digest": "407b7624ed1b3b29",
+      "native_match": false
+    },
+    {
+      "leg_id": "qwen25-0.5b-bf16:longctx-1024-decode-32",
+      "reps": 1,
+      "decode_tok_s_median": 39.84,
+      "decode_tok_s_min": 39.84,
+      "decode_tok_s_max": 39.84,
+      "prefill_tok_s_median": 304.952,
+      "prefill_tok_s_min": 304.952,
+      "prefill_tok_s_max": 304.952,
+      "prompt_tokens": 1053,
+      "generated_ids_sha256_16": [
+        "5fd2fe812bf2a4ce"
+      ],
+      "ids_stable_across_reps": true,
+      "native_digest": "ff502900d2a179a5",
+      "native_match": false
+    },
+    {
+      "leg_id": "qwen25-0.5b-bf16:short-decode-32",
+      "reps": 1,
+      "decode_tok_s_median": 41.64,
+      "decode_tok_s_min": 41.64,
+      "decode_tok_s_max": 41.64,
+      "prefill_tok_s_median": 88.757,
+      "prefill_tok_s_min": 88.757,
+      "prefill_tok_s_max": 88.757,
+      "prompt_tokens": 30,
+      "generated_ids_sha256_16": [
+        "f26175202f3dabe9"
+      ],
+      "ids_stable_across_reps": true,
+      "native_digest": "7fc0f968789b1882",
+      "native_match": false
+    }
+  ],
+  "native_baseline": "native-baseline-2026-09-06/native-2026-09-06-nc1.json",
+  "native_generation_matches": 2,
+  "scope": "One repetition; arithmetic control, not release qualification. Scalar QK is slower, not a performance gain. Float32 fallback still differs in 2405 elements. Experimental runtime removed; 8fd73d0 restored.",
+  "next": "Trace subsequent layers/decode for remaining Q4 long mismatch, qualify BF16 separately, then parallelize QK and split-K without changing arithmetic order."
+}

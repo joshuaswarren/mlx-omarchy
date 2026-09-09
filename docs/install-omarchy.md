@@ -30,9 +30,11 @@ The experimental `MLX_OMARCHY_ROPE_BF16_DIRECT` and
 `MLX_OMARCHY_SDPA_BF16_FAST` flags remain off: both changed generated
 token IDs on M1. See the [hardware gate receipt](../receipts/2026-09-04-m1-performance-gates.md).
 
-Compiled-tape elementwise chains can fuse into one dispatch behind
-`MLX_OMARCHY_FUSED_CHAIN`. It defaults off pending the native paired
-gate (`receipts/2026-09-04-swiglu-fused-chain.md`).
+Compiled-tape elementwise chains and exact eager SwiGLU graphs
+([0m[0m`gate * sigmoid(gate) * up`) fuse into one dispatch by default. The eager
+path supports f32, f16, and bf16 and materializes retained intermediate arrays;
+compiled bf16 tapes remain refused. Set `MLX_OMARCHY_FUSED_CHAIN=0` to use
+the per-node path.
 
 Dispatches record unconditional pre+post memory barriers by default.
 `MLX_OMARCHY_GATED_BARRIERS=1` replaces them with dependency-gated

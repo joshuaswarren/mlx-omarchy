@@ -1,0 +1,14 @@
+{
+  "candidate": "8fd73d0",
+  "parent": "1dc0979",
+  "status": "Rejected for integration: second refinement regresses BF16 generation",
+  "change": "Run compensated reciprocal-square-root refinement twice",
+  "fixed_Q4_RMS_weighted_mismatches": {"prefill": 18, "decode": 0},
+  "native_generation_matches": 3,
+  "workloads": 6,
+  "matching_workloads": ["4bit short", "4bit long-context", "bf16 short"],
+  "CPU_control": "A second FP32 FMA-modeled correction of the captured GPU reciprocal roots matches all 261 native-equivalent roots. The GPU implementation does not reproduce that modeled improvement end to end.",
+  "next_investigation": "Isolate individual FMA residual and correction intermediates; do not add more blind refinement iterations",
+  "performance_scope": "Single Linux M1 screen, no performance parity acceptance",
+  "regression_suites": "Not rerun because generation acceptance already regressed"
+}

@@ -559,6 +559,8 @@ enum class ComputeKernel : uint16_t {
   // QmmTileRbF16 (shaders/qmm_coopmat.comp).
   QmmPrefillCoopmatF16,
   MatmulBF16Coopmat,
+  // Eager BF16 SwiGLU fusion. Appended to keep profile kernel ids stable.
+  FusedChainBF16,
   Count,
 };
 

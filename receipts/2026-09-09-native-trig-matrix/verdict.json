@@ -1,0 +1,12 @@
+{
+  "status": "private arithmetic control; native generation matches1/6",
+  "wheel_candidate": "53697db",
+  "driver_source_base": "6f6afc896844730f6d6c47f12a91145351cb4c28",
+  "driver_selection": "VK_DRIVER_FILES=/tmp/mesa-native-trig-icd.json; no system installation",
+  "driver_change": "Temporary global sin/cos lowering to hardware sin in wrapped quadrants; not a scoped production implementation.",
+  "basis_f32_and_f16_differences": 0,
+  "full_first_layer_prefill": "RMS, Q/K/V, RoPE Q/K all exactly native; attention has210563 differing elements.",
+  "runtime_restore": "native-trig-gates.log:104-110 confirms8fd73d0",
+  "driver_source_restore": "mesa-native-trig-window.sh EXIT trap restores pinned source and rebuilds original library; installed driver never modified.",
+  "next": "Native-order attention implementation and scoped native trig selection, then regression and performance gates."
+}
