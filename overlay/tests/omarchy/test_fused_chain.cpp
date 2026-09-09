@@ -1,9 +1,9 @@
 // Copyright © 2026 Joshua Warren / mlx-omarchy contributors.
 // SPDX-License-Identifier: MIT
 
-// FuseDecodeChains fused-chain coverage. Fusion is DEFAULT OFF
-// (MLX_OMARCHY_FUSED_CHAIN); every equivalence case opts in, and two
-// cases pin the gate behavior itself. The fused path must match the
+// FuseDecodeChains fused-chain coverage. Fusion defaults on and
+// MLX_OMARCHY_FUSED_CHAIN=0 disables it. Equivalence cases set their intended
+// mode explicitly. The fused path must match the
 // per-node path BIT-EXACT for float32, float16, and eager bfloat16: the
 // chain shader rounds every intermediate to the storage dtype exactly
 // like the per-node path materializes them. Compiled bf16 tapes remain
@@ -81,7 +81,7 @@ void check_compiled_matches_eager(
     const Stream& stream,
     double epsilon,
     bool shapeless = false) {
-  unsetenv("MLX_OMARCHY_FUSED_CHAIN");
+  setenv("MLX_OMARCHY_FUSED_CHAIN", "0", 1);
   set_compile_mode(CompileMode::disabled);
   std::vector<array> eager_outputs = fn(inputs);
   for (auto& out : eager_outputs) {
@@ -554,7 +554,7 @@ TEST_CASE("eager bf16 swiglu is bit-exact and one dispatch") {
   up.eval();
   sync_stream(stream);
 
-  unsetenv("MLX_OMARCHY_FUSED_CHAIN");
+  setenv("MLX_OMARCHY_FUSED_CHAIN", "0", 1);
   array baseline = gate * sigmoid(gate) * up;
   baseline.eval();
   sync_stream(stream);
@@ -588,7 +588,7 @@ TEST_CASE("eager fusion materializes retained intermediate arrays") {
   up.eval();
   sync_stream(stream);
 
-  unsetenv("MLX_OMARCHY_FUSED_CHAIN");
+  setenv("MLX_OMARCHY_FUSED_CHAIN", "0", 1);
   array baseline_sigmoid = sigmoid(gate);
   array baseline_inner = gate * baseline_sigmoid;
   array baseline_out = baseline_inner * up;
@@ -624,7 +624,7 @@ TEST_CASE("gate off keeps the per-node dispatch stream") {
     return;
   }
   Stream stream = gpu_stream();
-  unsetenv("MLX_OMARCHY_FUSED_CHAIN");
+  setenv("MLX_OMARCHY_FUSED_CHAIN", "0", 1);
   std::vector<array> inputs{random::normal(Shape{32, 32}, float32),
                             random::normal(Shape{32, 32}, float32)};
   for (auto& in : inputs) {

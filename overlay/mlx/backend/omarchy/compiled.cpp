@@ -89,8 +89,7 @@ void eval_compiled_tape(
   // pre-chain per-node loop byte for byte. Per-node submission is a
   // batching bisector and owns the evaluation when set.
   const bool per_node_submit = env_flag("MLX_OMARCHY_TAPE_PER_NODE_SUBMIT");
-  const bool fusion_enabled =
-      env_flag("MLX_OMARCHY_FUSED_CHAIN") && !per_node_submit;
+  const bool fusion_enabled = fused_chain_enabled() && !per_node_submit;
   // Nodes consumed by MORE than one tape consumer (or surfaced as tape
   // outputs) must keep a materialized value, so a fused chain closes
   // after them; only single-consumer nodes may stay interior. This is
