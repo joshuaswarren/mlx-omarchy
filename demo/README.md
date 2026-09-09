@@ -1,6 +1,6 @@
 # Demo: chat on the Apple GPU under Omarchy
 
-Five minutes, one M1 running Omarchy (Asahi Linux). Nothing here changes the
+Five minutes, one M1 running Omarchy (Asahi Linux). Watch it first: [the recorded run](https://joshuaswarren.github.io/mlx-omarchy/) (2:47, unedited). Nothing here changes the
 Mesa driver, Hyprland, or any Omarchy file; everything lands under `$HOME`.
 
 ## 1. Install
