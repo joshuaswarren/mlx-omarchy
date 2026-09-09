@@ -1,0 +1,2 @@
+usage: mlx_provenance.py [-h] [--expect-wheel EXPECT_WHEEL] [--self-test]
+mlx_provenance.py: error: unrecognized arguments: --wheel /home/joshuawarren/src/mlx-PrefillQmm/dist/mlx_omarchy-0.32.2.dev202609092028+diag.4e26a9a-cp314-cp314-linux_aarch64.whl

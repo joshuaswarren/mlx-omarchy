@@ -1,0 +1,1 @@
+{"mode": "dense", "shape": "hidden-kv", "m": 1053, "k": 896, "n": 128, "warmups": 8, "reps": 16, "wall_median_ms": 1.106471}
