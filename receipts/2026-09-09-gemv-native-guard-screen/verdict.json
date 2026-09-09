@@ -1,0 +1,18 @@
+{
+  "status": "guarded experimental candidate; not integrated",
+  "source_short": "6ae2c23",
+  "wheel_sha256": "e4ca0c76b03649eddd9f9ee70b2f25c179e44c2548d7525c6b7e7bcc5b71af13",
+  "guards": [
+    "subgroup_size == 32",
+    "VK_SUBGROUP_FEATURE_SHUFFLE_RELATIVE_BIT"
+  ],
+  "m1_verification": "All six full generated-ID arrays equal the previously measured native-style candidate.",
+  "bf16_decode_short_long_ctx1024": [
+    38.02,
+    33.61,
+    25.84
+  ],
+  "portability": "Fallback branch exists; non-M1 device execution has not been tested.",
+  "setup": "Shared-clone attempt failed because alternate object stores were nested too deeply. A fresh independent GitHub clone completed; no failed-clone benchmark counted.",
+  "native_parity": "Still 3 of 6 output matches; native performance gates unmet."
+}

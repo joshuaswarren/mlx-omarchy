@@ -1,0 +1,9 @@
+diff --git a/overlay/mlx/backend/omarchy/primitives.cpp b/overlay/mlx/backend/omarchy/primitives.cpp
+--- a/overlay/mlx/backend/omarchy/primitives.cpp
++++ b/overlay/mlx/backend/omarchy/primitives.cpp
+@@ -1,1 +1,4 @@
+-  if (out.dtype() == bfloat16 && params.matrix_m == 1u && params.matrix_k > 64u && (params.flags & 1u) != 0u) {
++  if (out.dtype() == bfloat16 && params.matrix_m == 1u &&
++      params.matrix_k > 64u && (params.flags & 1u) != 0u &&
++      caps.subgroup_size == 32u &&
++      (caps.subgroup_operations & VK_SUBGROUP_FEATURE_SHUFFLE_RELATIVE_BIT) != 0u) {
