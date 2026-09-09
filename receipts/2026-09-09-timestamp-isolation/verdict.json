@@ -1,0 +1,11 @@
+{
+  "status": "Diagnostic timestamp isolation verified on M1",
+  "measured_source_short": "95582a2",
+  "wheel_sha256": "3f41bfbc8274aa9ea792a95e636d310bea4b83e564099414db4c0c302b9fef52",
+  "change": "Execution barrier immediately after t0 closes Honeykrisp timestamp-bearing stream before the measured dispatch. Release builds compile the profiler out.",
+  "cause": "Inspected hk_query_pool.c attaches a timestamp to cs->timestamp.end and only splits at a later timestamp; hk_cmd_buffer.c closes compute streams on pipeline barriers. A start timestamp without a following barrier therefore includes the upcoming dispatch in its own stream.",
+  "verification": "Synthetic 151936x896 BF16 projection timestamp approximately 21.99 ms versus 22.416 ms wall time; both real model profiles completed 32 tokens. No native ID acceptance claimed.",
+  "ranking": "Corrected instrumented BF16 trace: MatmulBF16 2987.776 ms, 80.1% of summed intervals. Intervals include instrumentation effects; not release GPU utilization.",
+  "scope": "Profiling correctness only. No inference throughput gain claimed. Native parity incomplete.",
+  "reproduction": "Run build-and-probe.sh under /tmp/m1-gpu.lock on M1; install mlx-lm==0.31.3 --no-deps in .venv-profile before profile-window.py. Initial profile invocation failed because mlx_lm was absent, then rerun successfully after installing it."
+}
