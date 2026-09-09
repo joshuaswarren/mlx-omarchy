@@ -22,17 +22,20 @@
 //   * default: five-round workgroup-shared tree (correct on any
 //     subgroup size; lane split is plain workgroup arithmetic). The
 //     five barrier rounds are the cost.
-//   * USE_SUBGROUP=1: one subgroupAdd(accumulator) per 32-lane slot
-//     (Honeykrisp's actual subgroupSize). Trades the barriers for a
-//     single hardware-or-software reduction; the bench
-//     (tools/subgroup-bench) decides whether the trade pays on this
-//     device. Dispatch is gated on caps.subgroup_size == 32 and the
-//     ARITHMETIC subgroup-feature bit, so a device that lacks either
-//     falls back to the tree path unchanged.
+//   * USE_SUBGROUP=1: one xor-shuffle ladder per 32-lane slot
+//     (Honeykrisp's actual subgroupSize). Trades the barriers for five
+//     shuffles; the bench (tools/subgroup-bench) decides whether the
+//     trade pays on this device. Dispatch is gated on
+//     caps.subgroup_size == 32 and the SHUFFLE subgroup-feature bit, so
+//     a device that lacks either falls back to the tree path unchanged.
+// Both flavors pair lanes stride 1 first, then 2, 4, 8, 16: the order
+// native Metal simd_sum reduces in, so the Q4 word path below is
+// bit-identical to native qmv (receipts/2026-09-09-q4-gemv-order).
 //
 // QMM_VEC_Q4_WORD compiles the transposed affine 4-bit/group-64 decode
-// candidate. One lane owns one packed word at a time: it loads the word,
-// scale, and bias once, then applies all eight nibbles with constant shifts.
+// path in native qmv arithmetic: one lane owns one packed word per
+// block, loads scale and bias once, and applies all eight nibbles with
+// constant shifts.
 
 #ifdef USE_FP16
 #extension GL_EXT_shader_16bit_storage : require
@@ -58,6 +61,14 @@ uint16_t bf16_store(float value) {
 #define LOAD_VALUE(x) float(x)
 #define STORE_VALUE(f) STORAGE_TYPE(f)
 #endif
+// Half rounding of the x quad chain sum: native load_vector adds T=half
+// values before widening to float. f32 x has nothing to round, and the
+// bf16 native quad sum is uncaptured, so only the f16 variant rounds.
+#ifdef USE_FP16
+#define ROUND_INPUT_SUM(v) unpackHalf2x16(packHalf2x16(vec2(v, 0.0))).x
+#else
+#define ROUND_INPUT_SUM(v) (v)
+#endif
 
 #ifdef USE_SUBGROUP
 // The subgroup reduction variant assumes subgroupSize == 32, gated in
@@ -67,7 +78,7 @@ uint16_t bf16_store(float value) {
 // subgroup size produces a wrong sum, so the dispatch gate is the
 // load-bearing part of this codepath.
 #extension GL_KHR_shader_subgroup_basic : require
-#extension GL_KHR_shader_subgroup_arithmetic : require
+#extension GL_KHR_shader_subgroup_shuffle : require
 #endif
 #if defined(FP_MODE) && defined(QMM_VEC_Q4_WORD)
 #error "QMM_VEC_Q4_WORD applies to affine quantization only"
@@ -294,34 +305,51 @@ void main() {
       }
 #else
 #ifdef QMM_VEC_Q4_WORD
+      // Native qmv arithmetic (metal/kernels/quantized.h qmv_impl /
+      // qmv_fast_impl + load_vector + qdot, T=half, U=float): a lane
+      // owns one word (two when K % 512 == 0 and N % 8 == 0, the
+      // qmv_fast tile) per 256- or 512-wide block. Per block it forms
+      // the half-precision chain sum of each x quad, accumulates those
+      // in float, and the dot of x / 16^i against the masked nibbles
+      // (every product exact: 11-bit x times 4-bit nibble), then
+      // result += fma(scale, dot, sum * bias). Metal contracts
+      // scale * accum + sum * bias into that fma but leaves sum * bias
+      // separate (receipts/2026-09-09-q4-gemv-order), so bias_term is
+      // precise.
       uint words_per_row = params.matrix_k / 8u;
       uint groups_per_row = params.matrix_k / 64u;
       uint w_base = w_row + column * words_per_row;
       uint scale_base = p_base + column * groups_per_row;
       uint bias_base =
           params.aux_size + b * param_batch + column * groups_per_row;
-      for (uint w = lane_in_slot; w < words_per_row; w += LANES) {
-        uint word = input_w.values[w_base + w];
-        uint k = w * 8u;
+      uint words_per_lane = params.matrix_k % 512u == 0u &&
+          params.matrix_n % 8u == 0u ? 2u : 1u;
+      for (uint w = lane_in_slot * words_per_lane; w < words_per_row;
+           w += LANES * words_per_lane) {
+        float dot = 0.0;
+        float input_sum = 0.0;
+        for (uint item = 0u; item < words_per_lane; ++item) {
+          uint word = input_w.values[w_base + w + item];
+          uint x_base = params.lhs_offset + b * params.matrix_k + (w + item) * 8u;
+          for (uint quad = 0u; quad < 2u; ++quad) {
+            uint base = x_base + quad * 4u;
+            float x0 = LOAD_VALUE(input_x.values[base]);
+            float x1 = LOAD_VALUE(input_x.values[base + 1u]);
+            float x2 = LOAD_VALUE(input_x.values[base + 2u]);
+            float x3 = LOAD_VALUE(input_x.values[base + 3u]);
+            input_sum += ROUND_INPUT_SUM(ROUND_INPUT_SUM(ROUND_INPUT_SUM(x0 + x1) + x2) + x3);
+            uint packed = word >> (quad * 16u);
+            dot += x0 * float(packed & 0x000fu) +
+                (x1 / 16.0) * float(packed & 0x00f0u) +
+                (x2 / 256.0) * float(packed & 0x0f00u) +
+                (x3 / 4096.0) * float(packed & 0xf000u);
+          }
+        }
         uint group = w / 8u;
         float scale = LOAD_VALUE(scales.values[scale_base + group]);
         float bias = LOAD_VALUE(biases.values[bias_base + group]);
-        accumulator += LOAD_VALUE(input_x.values[params.lhs_offset + b * params.matrix_k + k]) *
-            (scale * float(word & 0xfu) + bias);
-        accumulator += LOAD_VALUE(input_x.values[params.lhs_offset + b * params.matrix_k + k + 1u]) *
-            (scale * float((word >> 4u) & 0xfu) + bias);
-        accumulator += LOAD_VALUE(input_x.values[params.lhs_offset + b * params.matrix_k + k + 2u]) *
-            (scale * float((word >> 8u) & 0xfu) + bias);
-        accumulator += LOAD_VALUE(input_x.values[params.lhs_offset + b * params.matrix_k + k + 3u]) *
-            (scale * float((word >> 12u) & 0xfu) + bias);
-        accumulator += LOAD_VALUE(input_x.values[params.lhs_offset + b * params.matrix_k + k + 4u]) *
-            (scale * float((word >> 16u) & 0xfu) + bias);
-        accumulator += LOAD_VALUE(input_x.values[params.lhs_offset + b * params.matrix_k + k + 5u]) *
-            (scale * float((word >> 20u) & 0xfu) + bias);
-        accumulator += LOAD_VALUE(input_x.values[params.lhs_offset + b * params.matrix_k + k + 6u]) *
-            (scale * float((word >> 24u) & 0xfu) + bias);
-        accumulator += LOAD_VALUE(input_x.values[params.lhs_offset + b * params.matrix_k + k + 7u]) *
-            (scale * float(word >> 28u) + bias);
+        precise float bias_term = input_sum * bias;
+        accumulator += fma(scale, dot, bias_term);
       }
 #else
       bool is_byte_bits =
@@ -434,25 +462,31 @@ void main() {
     // workgroup.
 #ifdef USE_SUBGROUP
     // Subgroup reduction path. Each 32-lane slot is one hardware
-    // subgroup; subgroupAdd folds the per-lane accumulators inside the
-    // subgroup without shared-memory scratch or barriers. The
-    // lane_in_slot == 0 thread of each slot owns that column's output.
-    if (column_active) {
-      float total = subgroupAdd(accumulator);
-      if (lane_in_slot == 0u) {
-        output_data.values[params.output_offset + b * params.matrix_n +
-            column] = STORE_VALUE(total);
-      }
+    // subgroup; an explicit xor-shuffle ladder with strides 1, 2, 4, 8,
+    // 16 folds the per-lane accumulators without scratch or barriers.
+    // The stride order is the arithmetic contract: it is the pairing
+    // native simd_sum uses (receipts/2026-09-09-q4-gemv-order), and
+    // subgroupAdd on Honeykrisp pairs lanes differently. Every lane
+    // runs the ladder (uniform control flow); lane_in_slot == 0 owns
+    // the column output.
+    float total = accumulator;
+    for (uint offset = 1u; offset < LANES; offset <<= 1u) {
+      total += subgroupShuffleXor(total, offset);
+    }
+    if (lane_in_slot == 0u && column_active) {
+      output_data.values[params.output_offset + b * params.matrix_n +
+          column] = STORE_VALUE(total);
     }
 #else
     // Tree reduction path (default). Five rounds of barrier-synchronized
-    // shared-memory adds fold the 32-lane per-slot accumulators; first
-    // lane of each slot owns the column output. Correct on any subgroup
-    // size because the lane split is plain workgroup arithmetic.
+    // shared-memory adds fold the 32-lane per-slot accumulators in the
+    // same stride-1-first pairing as the subgroup ladder; first lane of
+    // each slot owns the column output. Correct on any subgroup size
+    // because the lane split is plain workgroup arithmetic.
     reduce_scratch[lane] = accumulator;
     barrier();
-    for (uint offset = LANES / 2u; offset > 0u; offset >>= 1u) {
-      if (lane_in_slot < offset) {
+    for (uint offset = 1u; offset < LANES; offset <<= 1u) {
+      if ((lane_in_slot & (2u * offset - 1u)) == 0u) {
         reduce_scratch[lane] += reduce_scratch[lane + offset];
       }
       barrier();

@@ -6405,7 +6405,7 @@ void QuantizedMatmul::eval_gpu(const std::vector<array>& inputs, array& out) {
       const auto& caps = fp_encoder.device().capabilities();
       bool subgroup_ready =
           caps.subgroup_size == 32u &&
-          (caps.subgroup_operations & VK_SUBGROUP_FEATURE_ARITHMETIC_BIT) != 0;
+          (caps.subgroup_operations & VK_SUBGROUP_FEATURE_SHUFFLE_BIT) != 0;
       auto vec_kernel = subgroup_ready
           ? select_float_kernel(
                 out.dtype(),
@@ -6568,15 +6568,15 @@ void QuantizedMatmul::eval_gpu(const std::vector<array>& inputs, array& out) {
       binding(out)};
   // DecodeGemv dispatch: when lhs has a single row, the per-row GEMV
   // path replaces the 16x16 tile. The subgroup-reduction variant is
-  // picked when the device reports subgroupSize == 32 AND the ARITHMETIC
+  // picked when the device reports subgroupSize == 32 AND the SHUFFLE
   // subgroup feature bit is set, both queried at device init and held
   // on the capability report. The default fall-through path is the
   // general Qmm kernel (unaffected by this addition).
   //
   // The subgroup variant replaces the five-round workgroup-shared
-  // tree with one subgroupAdd per 32-lane slot. The microbenchmark
-  // tools/subgroup-bench decides whether the trade pays; if the
-  // device lacks subgroup support, this gate is a no-op and the
+  // tree with a five-step xor-shuffle ladder per 32-lane slot. The
+  // microbenchmark tools/subgroup-bench decides whether the trade pays;
+  // if the device lacks subgroup support, this gate is a no-op and the
   // general path runs unchanged. See PROTOCOL.md for the keep rule.
   //
   // Gemv group count: COLUMNS_PER_GROUP output columns per workgroup,
@@ -6588,7 +6588,7 @@ void QuantizedMatmul::eval_gpu(const std::vector<array>& inputs, array& out) {
     const auto& caps = encoder.device().capabilities();
     bool subgroup_ready =
         caps.subgroup_size == 32u &&
-        (caps.subgroup_operations & VK_SUBGROUP_FEATURE_ARITHMETIC_BIT) != 0;
+        (caps.subgroup_operations & VK_SUBGROUP_FEATURE_SHUFFLE_BIT) != 0;
     const char* q4_word_env =
         std::getenv("MLX_OMARCHY_QMM_VEC_Q4_WORD");
     bool use_q4_word =
