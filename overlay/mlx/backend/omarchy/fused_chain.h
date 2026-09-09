@@ -28,19 +28,16 @@ namespace mlx::core::omarchy {
 // the eager SwiGLU planner below uses the same interpreter with bf16
 // intermediate rounding.
 //
-// DEFAULT OFF: the whole mechanism is gated behind
-// MLX_OMARCHY_FUSED_CHAIN until it is equivalence-proven on M1
-// hardware. With the gate unset the owner passes gate_enabled=false,
-// every try_add refuses, and the tape runs the per-node path exactly
-// as it did before this class existed.
+// Fusion defaults on after exact-ID parity and paired performance validation on
+// M1 hardware. MLX_OMARCHY_FUSED_CHAIN=0 restores the per-node path.
 
 struct FusedChainImpl;
+bool fused_chain_enabled();
 
 class FusedChain {
  public:
-  // gate_enabled carries the DEFAULT-OFF MLX_OMARCHY_FUSED_CHAIN
-  // decision, read ONCE per tape evaluation by the owner; false makes
-  // every try_add refuse and the tape run the per-node path.
+  // gate_enabled carries the fused-chain decision, read once per tape
+  // evaluation; false makes every try_add refuse and preserves the per-node path.
   explicit FusedChain(bool gate_enabled);
   ~FusedChain();
 

@@ -5,6 +5,7 @@
 
 #include <array>
 #include <cstdint>
+#include <cstdlib>
 #include <cstring>
 #include <limits>
 #include <memory>
@@ -22,6 +23,11 @@
 #include "mlx/utils.h"
 
 namespace mlx::core::omarchy {
+
+bool fused_chain_enabled() {
+  return std::getenv("MLX_OMARCHY_FUSED_CHAIN") == nullptr ||
+      env_flag("MLX_OMARCHY_FUSED_CHAIN");
+}
 namespace {
 
 // Op codes: lockstep with the switch in shaders/fused_chain.comp. This
@@ -535,7 +541,7 @@ bool is_op(const array* node, const std::type_info& op) {
 EagerFusionScope::EagerFusionScope(const std::deque<array>& tape)
     : previous_(eager_state) {
   eager_state = nullptr;
-  if (!env_flag("MLX_OMARCHY_FUSED_CHAIN")) {
+  if (!fused_chain_enabled()) {
     return;
   }
 

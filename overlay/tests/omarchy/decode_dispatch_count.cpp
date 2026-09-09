@@ -152,6 +152,7 @@ TEST_CASE("decode step dispatch count") {
       array(kScaleStd),
       stream);
   x.eval();
+  setenv("MLX_OMARCHY_FUSED_CHAIN", "0", 1);
 
   uint64_t eager =
       dispatches_for([&] { return decode_token(layers, lm_head, x); }, 1);
@@ -160,18 +161,17 @@ TEST_CASE("decode step dispatch count") {
       [&](const std::vector<array>& in) {
         return std::vector<array>{decode_token(layers, lm_head, in[0])};
       };
-  // "compiled" runs with the fusion gate at its default (off), so it is
-  // the per-node tape stream and must equal eager exactly.
+  // Explicitly disabled fusion preserves the per-node tape stream and must
+  // equal eager exactly.
   set_compile_mode(CompileMode::enabled);
   auto compiled_fn = compile(fn);
   uint64_t compiled =
       dispatches_for([&] { return compiled_fn({x})[0]; }, 1);
   set_compile_mode(CompileMode::disabled);
 
-  // FuseDecodeChains leg: gate on collapses each layer's swiglu chain
-  // (sigmoid + mul + mul) from 3 dispatches to 1 and touches nothing
-  // else - nothing else in the decode graph chains.
-  setenv("MLX_OMARCHY_FUSED_CHAIN", "1", 1);
+  // The default-on path collapses each layer's SwiGLU chain from three
+  // dispatches to one and touches no other decode operation.
+  unsetenv("MLX_OMARCHY_FUSED_CHAIN");
   set_compile_mode(CompileMode::enabled);
   auto fused_fn = compile(fn);
   uint64_t compiled_fused =
