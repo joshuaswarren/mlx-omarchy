@@ -8,6 +8,12 @@ MLX on Apple Silicon Linux.
 
 This is early, actively developed software. Check the [compatibility table](docs/compatibility.md) and the [defect ledger](docs/known-defects.md) before depending on it.
 
+## Demo
+
+[![mlx-omarchy demo: one-command install, then a chat on the Apple M1 GPU under Omarchy](docs/media/demo-v0.4.0.gif)](https://joshuaswarren.github.io/mlx-omarchy/)
+
+Full 2:47 screen capture on an M1 running Omarchy: [joshuaswarren.github.io/mlx-omarchy](https://joshuaswarren.github.io/mlx-omarchy/). The install, the first model download, the streamed answer with its measured tokens per second, and the launcher entry, unedited.
+
 ## Hardware
 
 Supported today: Apple M1 running [Omarchy](https://github.com/omarchy-mac/omarchy-mac) (Asahi-based) with Mesa Honeykrisp. Later Apple Silicon generations follow once the M1 path is complete.
