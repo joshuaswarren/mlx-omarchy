@@ -1,0 +1,44 @@
+{
+  "status": "rejected",
+  "reason": "Wide-output physical transposition regresses BF16 decode and short/long prefill even with sequential GEMV. Do not enable this model-load hook.",
+  "source_short": "61bbfa4",
+  "full_generated_ids_equal_to_linux_baseline": true,
+  "layout_checks": [
+    {
+      "checked_matrices": 0,
+      "all_equal": true
+    },
+    {
+      "checked_matrices": 0,
+      "all_equal": true
+    },
+    {
+      "checked_matrices": 0,
+      "all_equal": true
+    },
+    {
+      "checked_matrices": 49,
+      "all_equal": true
+    },
+    {
+      "checked_matrices": 49,
+      "all_equal": true
+    },
+    {
+      "checked_matrices": 49,
+      "all_equal": true
+    }
+  ],
+  "comparison": "Single six-leg screen versus prior five-pair accepted sequential GEMV medians; not a statistical acceptance run.",
+  "bf16_decode_short_long_ctx1024": [
+    8.75,
+    8.56,
+    7.7
+  ],
+  "accepted_bf16_decode_short_long_ctx1024": [
+    11.56,
+    11.12,
+    10.12
+  ],
+  "runtime_change": "None; hook exists only in this receipt."
+}
