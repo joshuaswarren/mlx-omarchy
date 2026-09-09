@@ -10,9 +10,9 @@ This is early, actively developed software. Check the [compatibility table](docs
 
 ## Demo
 
-[![mlx-omarchy demo: one-command install, then a chat on the Apple M1 GPU under Omarchy](docs/media/demo-v0.4.0.gif)](https://joshuaswarren.github.io/mlx-omarchy/)
+https://github.com/user-attachments/assets/7b2326f0-4679-4784-9622-e403b99be853
 
-Full 2:47 screen capture on an M1 running Omarchy: [joshuaswarren.github.io/mlx-omarchy](https://joshuaswarren.github.io/mlx-omarchy/). The install, the first model download, the streamed answer with its measured tokens per second, and the launcher entry, unedited.
+One-command install on an M1 running Omarchy, the first model download, the streamed answer with its measured tokens per second, and the launcher entry; 2:47, unedited, no narration. Also at [joshuaswarren.github.io/mlx-omarchy](https://joshuaswarren.github.io/mlx-omarchy/).
 
 ## Hardware
 
