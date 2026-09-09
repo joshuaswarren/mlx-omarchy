@@ -11,6 +11,7 @@ the device output against the CPU model of native qmv under several
   inputsum scale 0, bias random               -> half quad-sum chain + reduce
   dot      bias 0, scale random, nibbles random -> dot accumulation + reduce
   full     everything random
+  <stage>_tiny  same with x scaled by 2^-16 (f16 denormal quad sums)
 
 usage: probe-stages.py OUT_JSON [K] [TRIALS] [float16|float32] [DUMP_DIR] [STAGES]
 
@@ -141,6 +142,11 @@ def run_stage(stage, rng, K, N, dtype):
     biases = rng.uniform(-1.0, 1.0, size=(N, K // 64)).astype(np.float16).astype(np.float32)
     # wide dynamic range so the half quad chain and the float adds both round
     x = (rng.standard_normal(K) * np.exp2(rng.uniform(-6, 4, size=K))).astype(np.float16).astype(np.float32)
+    if stage.endswith('_tiny'):
+        # f16 denormal territory (|x| mostly below 2^-14): checks that the
+        # half quad sums flush or preserve denormals the way native does
+        x = (x * np.exp2(-16)).astype(np.float16).astype(np.float32)
+        stage = stage[:-len('_tiny')]
     if stage == 'reduce':
         words[:] = 0x1
         scales[:] = 1.0

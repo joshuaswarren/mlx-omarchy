@@ -204,6 +204,60 @@ uint q6_at(uint e, uint c0, uint c1, uint c2) {
 }
 #endif
 
+#ifdef QMM_VEC_Q4_WORD
+// One x quad against the low 16 bits of `packed` (nibbles low first).
+// The quad's half chain sum joins input_sum; ((p0 + p1) + p2) + p3 joins
+// dot as an fma chain: every product is exact (11-bit x times a 4-bit
+// nibble), so each fma rounds exactly the sum native qdot rounds, and
+// nibble i times x equals native's (x / 16^i) * (word & mask_i).
+#ifdef USE_FP16
+// Native load_vector adds the four T=half values in half.
+#define Q4_QUAD_LOAD(base) \
+  float16_t h0 = input_x.values[base]; \
+  float16_t h1 = input_x.values[(base) + 1u]; \
+  float16_t h2 = input_x.values[(base) + 2u]; \
+  float16_t h3 = input_x.values[(base) + 3u]; \
+  input_sum += float(((h0 + h1) + h2) + h3); \
+  float x0 = float(h0); \
+  float x1 = float(h1); \
+  float x2 = float(h2); \
+  float x3 = float(h3);
+#else
+// f32 x has nothing to round; the bf16 native quad sum is uncaptured,
+// so bf16 keeps the float chain.
+#define Q4_QUAD_LOAD(base) \
+  float x0 = LOAD_VALUE(input_x.values[base]); \
+  float x1 = LOAD_VALUE(input_x.values[(base) + 1u]); \
+  float x2 = LOAD_VALUE(input_x.values[(base) + 2u]); \
+  float x3 = LOAD_VALUE(input_x.values[(base) + 3u]); \
+  input_sum += ((x0 + x1) + x2) + x3;
+#endif
+#define Q4_QUAD(packed, base) { \
+  Q4_QUAD_LOAD(base) \
+  uint p = (packed); \
+  dot += fma(x3, float((p >> 12u) & 0xfu), \
+      fma(x2, float((p >> 8u) & 0xfu), \
+          fma(x1, float((p >> 4u) & 0xfu), \
+              x0 * float(p & 0xfu)))); \
+}
+// One packed word: eight x values from x_base.
+#define Q4_WORD(word, x_base) { \
+  uint word_value = (word); \
+  uint quad_base = (x_base); \
+  Q4_QUAD(word_value, quad_base) \
+  Q4_QUAD(word_value >> 16u, quad_base + 4u) \
+}
+// Block epilogue: result += fma(scale, dot, sum * bias) with the group
+// of word w (every word of a lane's block sits in one group).
+#define Q4_BLOCK_FINISH(w) { \
+  uint group = (w) / 8u; \
+  float scale = LOAD_VALUE(scales.values[scale_base + group]); \
+  float bias = LOAD_VALUE(biases.values[bias_base + group]); \
+  precise float bias_term = input_sum * bias; \
+  accumulator += fma(scale, dot, bias_term); \
+}
+#endif
+
 // Weight layout routing mirrors qmm.comp. Transposed (flags bit 0
 // clear): w batch slice [N, Kp], groups along K, scale [n][k / gs].
 // Non-transposed (bit 0 set): w batch slice [K, Np], packed N per row,
@@ -301,8 +355,7 @@ void main() {
       // owns one word (two when K % 512 == 0 and N % 8 == 0, the
       // qmv_fast tile) per 256- or 512-wide block. Per block it forms
       // the half-precision chain sum of each x quad, accumulates those
-      // in float, and the dot of x / 16^i against the masked nibbles
-      // (every product exact: 11-bit x times 4-bit nibble), then
+      // in float, and the dot against the nibbles in source order, then
       // result += fma(scale, dot, sum * bias). Metal compiles with
       // -fno-fast-math: it contracts scale * accum + sum * bias into
       // that fma, leaves sum * bias separate, and keeps every add in
@@ -315,53 +368,27 @@ void main() {
       uint scale_base = p_base + column * groups_per_row;
       uint bias_base =
           params.aux_size + b * param_batch + column * groups_per_row;
-      uint words_per_lane = params.matrix_k % 512u == 0u &&
-          params.matrix_n % 8u == 0u ? 2u : 1u;
-      for (uint w = lane_in_slot * words_per_lane; w < words_per_row;
-           w += LANES * words_per_lane) {
-        precise float dot = 0.0;
-        precise float input_sum = 0.0;
-        for (uint item = 0u; item < words_per_lane; ++item) {
-          uint word = input_w.values[w_base + w + item];
-          uint x_base = params.lhs_offset + b * params.matrix_k + (w + item) * 8u;
-          for (uint quad = 0u; quad < 2u; ++quad) {
-            uint base = x_base + quad * 4u;
-#ifdef USE_FP16
-            // Native load_vector adds the four T=half values in half.
-            float16_t h0 = input_x.values[base];
-            float16_t h1 = input_x.values[base + 1u];
-            float16_t h2 = input_x.values[base + 2u];
-            float16_t h3 = input_x.values[base + 3u];
-            input_sum += float(((h0 + h1) + h2) + h3);
-            float x0 = float(h0);
-            float x1 = float(h1);
-            float x2 = float(h2);
-            float x3 = float(h3);
-#else
-            float x0 = LOAD_VALUE(input_x.values[base]);
-            float x1 = LOAD_VALUE(input_x.values[base + 1u]);
-            float x2 = LOAD_VALUE(input_x.values[base + 2u]);
-            float x3 = LOAD_VALUE(input_x.values[base + 3u]);
-            // f32 x has nothing to round; the bf16 native quad sum is
-            // uncaptured, so bf16 keeps the float chain.
-            input_sum += ((x0 + x1) + x2) + x3;
-#endif
-            // ((p0 + p1) + p2) + p3 as an fma chain: every product is
-            // exact (11-bit x times a 4-bit nibble), so each fma rounds
-            // exactly the sum native qdot rounds. Nibble i times x
-            // equals native's (x / 16^i) * (word & mask_i).
-            uint packed = word >> (quad * 16u);
-            dot += fma(x3, float((packed >> 12u) & 0xfu),
-                fma(x2, float((packed >> 8u) & 0xfu),
-                    fma(x1, float((packed >> 4u) & 0xfu),
-                        x0 * float(packed & 0xfu))));
-          }
+      uint x_row = params.lhs_offset + b * params.matrix_k;
+      // Straight-line bodies: the qmv_fast tile (two words per lane when
+      // K % 512 == 0 and N % 8 == 0) and the qmv tile (one word) each
+      // get their own loop so no runtime-count inner loop sits between
+      // the loads and the math.
+      if (params.matrix_k % 512u == 0u && params.matrix_n % 8u == 0u) {
+        for (uint w = lane_in_slot * 2u; w < words_per_row;
+             w += LANES * 2u) {
+          precise float dot = 0.0;
+          precise float input_sum = 0.0;
+          Q4_WORD(input_w.values[w_base + w], x_row + w * 8u)
+          Q4_WORD(input_w.values[w_base + w + 1u], x_row + w * 8u + 8u)
+          Q4_BLOCK_FINISH(w)
         }
-        uint group = w / 8u;
-        float scale = LOAD_VALUE(scales.values[scale_base + group]);
-        float bias = LOAD_VALUE(biases.values[bias_base + group]);
-        precise float bias_term = input_sum * bias;
-        accumulator += fma(scale, dot, bias_term);
+      } else {
+        for (uint w = lane_in_slot; w < words_per_row; w += LANES) {
+          precise float dot = 0.0;
+          precise float input_sum = 0.0;
+          Q4_WORD(input_w.values[w_base + w], x_row + w * 8u)
+          Q4_BLOCK_FINISH(w)
+        }
       }
 #else
       bool is_byte_bits =
