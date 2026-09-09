@@ -1,0 +1,21 @@
+{
+  "base_release": {
+    "stamp": "6ca33e0",
+    "version": "0.32.2.dev202609092149+6ca33e0",
+    "sha256": "a723597e25a012bc70720985da143b3ae372d9b51da52cdb1ed9e4f24e8e74a6"
+  },
+  "cand_release": {
+    "stamp": "f6beee3",
+    "version": "0.32.2.dev202609092147+f6beee3",
+    "sha256": "cd0787f99aa22ce368d4528da152eeb7ddbff8be7206383af1121cfd11c6d799"
+  },
+  "base_diagnostics": {
+    "version": "0.32.2.dev202609092017+diag.6ca33e0",
+    "sha256": "9df066e02332abb3c88b55460d84a09eceb83d7f5fa103530595efe19a46b638"
+  },
+  "cand_diagnostics": {
+    "version": "0.32.2.dev202609092141+diag.f6beee3",
+    "sha256": "729a161955e0d9c1631c72b1bbbb4f722b14746400616446f22103101063b66d"
+  },
+  "provenance": "version strings carry the source stamp (+6ca33e0 / +f6beee3, diagnostics +diag.<stamp>); paired-legs.py asserts stamps and that the two differ before reporting Identity-only rewrite 2026-09-10: f6beee3->2339105, 9899e1b->928d84d, a2b8c54->c6002f5; trees unchanged."
+}

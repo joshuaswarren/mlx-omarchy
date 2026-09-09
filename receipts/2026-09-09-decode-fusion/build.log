@@ -1,0 +1,4 @@
+f6beee3 omarchy: round the fused GEMV epilogue through integer packing
+BUILT diagnostics f6beee3 330s 729a161955e0d9c1631c72b1bbbb4f722b14746400616446f22103101063b66d  wheels/diag/mlx_omarchy-0.32.2.dev202609092141+diag.f6beee3-cp314-cp314-linux_aarch64.whl
+BUILT release f6beee3 171s cd0787f99aa22ce368d4528da152eeb7ddbff8be7206383af1121cfd11c6d799  dist/mlx_omarchy-0.32.2.dev202609092147+f6beee3-cp314-cp314-linux_aarch64.whl
+BUILT release 6ca33e0 174s a723597e25a012bc70720985da143b3ae372d9b51da52cdb1ed9e4f24e8e74a6  dist/mlx_omarchy-0.32.2.dev202609092149+6ca33e0-cp314-cp314-linux_aarch64.whl

@@ -1,0 +1,28 @@
+{
+  "base": {
+    "one_workgroup_dispatches_in_layers": 240,
+    "one_workgroup_gpu_us_p50": 29.9,
+    "one_workgroup_gpu_us_min": 17.1,
+    "intra_submission_gap_us_p50": 20.5,
+    "submission_boundary_gaps_us_within_token": [
+      226.0,
+      238.0
+    ],
+    "per_token_gpu_busy_us": 24690,
+    "per_token_gap_us": 17862,
+    "per_token_span_us": 42552
+  },
+  "cand": {
+    "one_workgroup_dispatches_in_layers": 120,
+    "one_workgroup_gpu_us_p50": 27.95,
+    "one_workgroup_gpu_us_min": 17.1,
+    "intra_submission_gap_us_p50": 18.3,
+    "submission_boundary_gaps_us_within_token": [
+      208.7
+    ],
+    "per_token_gpu_busy_us": 18310,
+    "per_token_gap_us": 10184,
+    "per_token_span_us": 28495
+  },
+  "reading": "A one-workgroup dispatch (896-element BinaryVecF16, FastRmsNormF16, CopyGeneralF16) costs ~29-31 us of GPU time plus a ~17-21 us gap before the next dispatch: ~50 us of wall per dispatch that no kernel shape removes. It is not barrier cost: receipts/2026-09-09-native-nobarrier-verified (HK_PERFTEST=nobarrier, every pipeline barrier skipped in hk_cmd_buffer.c) moved decode by under 0.3%, and receipts/2026-09-08-gated-barrier-screen (MLX_OMARCHY_GATED_BARRIERS=1) by nothing measurable. It is not host descriptor/pipeline-bind cost: the profiler's host record time per dispatch is 1.6 us p50 (4bit-analysis.txt). What remains is the device's per-kernel launch and drain on Honeykrisp/AGX, so the only lever is fewer dispatches. A submission boundary inside the token costs a further ~210-240 us; the candidate's 345 nodes cross kBatchNodeBudget (256) once per token, so a 512 budget would remove one boundary (~0.2 ms, ~1.5% of a 13 ms token). Not changed here: extends buffer lifetimes and watchdog exposure for prefill batches; measure it on its own if the 1.5% is wanted."
+}
