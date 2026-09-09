@@ -5,6 +5,14 @@
 // row with a shared-memory max reduction, an exp-sum reduction, and a
 // normalize pass. Workgroups grid-stride over rows. All arithmetic runs in
 // float32 for every storage dtype, which covers the upstream precise flag.
+//
+// Causal mode (flags bit 0, aux_size = query length, aux_offset = key
+// length minus query length): row r is query position r % aux_size and
+// only columns <= aux_offset + position take part; the rest store an
+// exact zero. This is what the additive f16 / bf16 causal mask produced
+// - a masked score plus the storage floor exponentiates to exactly zero
+// and never wins the max - without the mask add pass, so attention's
+// scores matmul may leave masked columns unwritten.
 
 #version 460
 
@@ -59,6 +67,8 @@ layout(push_constant) uniform Params {
   uint aux_offset;
   uint matrix_m;
   uint matrix_n;
+  uint matrix_k;
+  uint flags;
 } params;
 
 shared float block_values[256];
@@ -67,9 +77,13 @@ void main() {
   uint thread = gl_LocalInvocationID.x;
   uint row_length = params.reduce_size;
   bool has_sink = params.operation == 1u;
+  bool causal = (params.flags & 1u) != 0u;
   for (uint row = gl_WorkGroupID.x; row < params.output_size;
        row += gl_NumWorkGroups.x) {
     uint start = params.lhs_offset + row * row_length;
+    uint valid = causal
+        ? min(row_length, params.aux_offset + (row % params.aux_size) + 1u)
+        : row_length;
     float sink_value = 0.0;
     if (has_sink) {
       uint head = params.matrix_m == 0u
@@ -80,7 +94,7 @@ void main() {
     }
 
     float local_max = uintBitsToFloat(0xff800000u);
-    for (uint index = thread; index < row_length; index += 256u) {
+    for (uint index = thread; index < valid; index += 256u) {
       float next = LOAD_VALUE(input_data.values[start + index]);
       if (isnan(next) || next > local_max) {
         local_max = next;
@@ -102,7 +116,7 @@ void main() {
     barrier();
 
     float local_sum = 0.0;
-    for (uint index = thread; index < row_length; index += 256u) {
+    for (uint index = thread; index < valid; index += 256u) {
       local_sum += exp(LOAD_VALUE(input_data.values[start + index]) - row_max);
     }
     if (has_sink && thread == 0u) {
@@ -120,9 +134,10 @@ void main() {
     barrier();
 
     for (uint index = thread; index < row_length; index += 256u) {
-      float value =
-          exp(LOAD_VALUE(input_data.values[start + index]) - row_max) *
-          normalizer;
+      float value = index < valid
+          ? exp(LOAD_VALUE(input_data.values[start + index]) - row_max) *
+              normalizer
+          : 0.0;
       output_data.values[params.output_offset + row * row_length + index] =
           STORE_VALUE(value);
     }

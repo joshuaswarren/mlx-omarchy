@@ -269,6 +269,11 @@
 #include "qmm_tile_f16.h"
 #include "qmm_tile_rb_f16.h"
 #include "qmm_coopmat_f16.h"
+#include "binary_vec_f16.h"
+#include "binary_vec_bf16.h"
+#include "matmul_rb_f16.h"
+#include "swiglu_f16.h"
+#include "swiglu_bf16.h"
 #include "matmul_f32_coopmat_bf16.h"
 #include "qmm_tile_f32.h"
 #include "dequant_f32.h"
@@ -1191,6 +1196,16 @@ ShaderBytes shader_bytes(ComputeKernel kernel) {
       return {quantize_fp_f32, quantize_fp_f32_size};
     case ComputeKernel::FusedChainBF16:
       return {fused_chain_bf16, fused_chain_bf16_size};
+    case ComputeKernel::BinaryVecF16:
+      return {binary_vec_f16, binary_vec_f16_size};
+    case ComputeKernel::BinaryVecBF16:
+      return {binary_vec_bf16, binary_vec_bf16_size};
+    case ComputeKernel::MatmulRbF16:
+      return {matmul_rb_f16, matmul_rb_f16_size};
+    case ComputeKernel::SwigluF16:
+      return {swiglu_f16, swiglu_f16_size};
+    case ComputeKernel::SwigluBF16:
+      return {swiglu_bf16, swiglu_bf16_size};
     case ComputeKernel::QuantizeFpF16:
       return {quantize_fp_f16, quantize_fp_f16_size};
     case ComputeKernel::QuantizeFpBF16:
