@@ -12,25 +12,34 @@ This is early, actively developed software. Check the [compatibility table](docs
 
 Supported today: Apple M1 running [Omarchy](https://github.com/omarchy-mac/omarchy-mac) (Asahi-based) with Mesa Honeykrisp. Later Apple Silicon generations follow once the M1 path is complete.
 
-## Install (v0.3.8)
+## Install (v0.4.0)
+
+On an M1 running Omarchy, one command installs the release wheel into a private
+venv under `~/.local/share/mlx-omarchy`, adds `mlx-omarchy` and
+`mlx-omarchy-demo` to `~/.local/bin`, and registers **MLX Chat (Apple GPU)** in
+the Omarchy launcher. It never replaces Mesa or edits Omarchy files.
 
 ```bash
-# Apple Silicon (M1, Honeykrisp) - Python 3.14
-python3.14 -m venv ~/.venvs/mlx
-~/.venvs/mlx/bin/pip install \
-  https://github.com/joshuaswarren/mlx-omarchy/releases/download/v0.3.8/mlx_omarchy-0.32.2.dev202609071529%2Bf5ba1c8-cp314-cp314-linux_aarch64.whl
-
-# Any Linux box (x86_64, software Vulkan, development only) - Python 3.11
-python3.11 -m venv ~/.venvs/mlx
-~/.venvs/mlx/bin/pip install \
-  https://github.com/joshuaswarren/mlx-omarchy/releases/download/v0.3.8/mlx_omarchy-0.32.2.dev202609071536%2Bf5ba1c82-cp311-cp311-linux_x86_64.whl
+curl -fsSL https://raw.githubusercontent.com/joshuaswarren/mlx-omarchy/main/install.sh | bash
+mlx-omarchy-demo
 ```
+
+[demo/README.md](demo/README.md) walks through what to expect. Remove it all
+with `bash install.sh --uninstall`.
+
+Manual install, or any other Linux box:
+
+```bash
+# Apple Silicon (M1, Honeykrisp) - Python 3.14; any Linux box (x86_64, software Vulkan, development only) - Python 3.11
+python3 -m venv ~/.venvs/mlx
+~/.venvs/mlx/bin/pip install <wheel URL for your platform from https://github.com/joshuaswarren/mlx-omarchy/releases/tag/v0.4.0>
+```
+
+Wheel filenames carry the build commit, so the exact URLs and SHA256 sums are in the release notes and the `SHA256SUMS` asset, not here.
 
 Building from source is covered in [docs/install-omarchy.md](docs/install-omarchy.md). Build dependencies: Python 3.10+, CMake 3.25+, Vulkan headers, a C++ compiler, and LAPACK/BLAS development packages; the wheel needs `liblapack.so.3` and `libblas.so.3` at runtime.
 
-Do not install the upstream `mlx` package beside this wheel; both provide the `mlx` module.
-
-The published aarch64 v0.3.8 wheel completed all three pinned Qwen workloads on M1 with the normal compilation settings and default kernels. Generated-token counts and hashes match the paired eager runs. [Public-wheel smoke results](receipts/2026-09-07-q4-second-wave/public-v038-default.json) and [output comparison](receipts/2026-09-07-q4-second-wave/public-default-comparison.json).
+Do not install the upstream `mlx` package beside this wheel; both provide the `mlx` module. `mlx-lm` depends on upstream `mlx`, so install it with `pip install --no-deps mlx-lm` and add its own dependencies (`transformers[sentencepiece] numpy protobuf pyyaml jinja2 huggingface_hub`) as `install.sh` does.
 
 ## Quick start
 
