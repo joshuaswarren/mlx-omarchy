@@ -1,0 +1,266 @@
+{
+ "qwen25-0.5b-4bit:short-decode-32": {
+  "baseline_prefill": 114.504,
+  "candidate_prefill": 135.747,
+  "baseline_decode": 87.57,
+  "candidate_decode": 87.77,
+  "prefill_ratio": 1.185521903164955,
+  "decode_ratio": 1.0022838871759736,
+  "base_ids": [
+   "7fd25a869ff21678"
+  ],
+  "cand_ids": [
+   "7fd25a869ff21678"
+  ],
+  "samples": {
+   "base": [
+    [
+     115.385,
+     88.07
+    ],
+    [
+     114.504,
+     87.4
+    ],
+    [
+     113.636,
+     87.57
+    ]
+   ],
+   "cand": [
+    [
+     135.747,
+     88.19
+    ],
+    [
+     131.004,
+     87.77
+    ],
+    [
+     135.747,
+     87.38
+    ]
+   ]
+  }
+ },
+ "qwen25-0.5b-4bit:long-decode-128": {
+  "baseline_prefill": 537.988,
+  "candidate_prefill": 631.325,
+  "baseline_decode": 71.29,
+  "candidate_decode": 71.24,
+  "prefill_ratio": 1.1734927173096796,
+  "decode_ratio": 0.9992986393603589,
+  "base_ids": [
+   "4cc08910089477fd"
+  ],
+  "cand_ids": [
+   "4cc08910089477fd"
+  ],
+  "samples": {
+   "base": [
+    [
+     537.988,
+     71.29
+    ],
+    [
+     539.095,
+     71.18
+    ],
+    [
+     532.52,
+     71.41
+    ]
+   ],
+   "cand": [
+    [
+     612.15,
+     71.35
+    ],
+    [
+     631.325,
+     71.09
+    ],
+    [
+     631.325,
+     71.24
+    ]
+   ]
+  }
+ },
+ "qwen25-0.5b-4bit:longctx-1024-decode-32": {
+  "baseline_prefill": 861.702,
+  "candidate_prefill": 974.098,
+  "baseline_decode": 48.55,
+  "candidate_decode": 48.62,
+  "prefill_ratio": 1.1304348835212172,
+  "decode_ratio": 1.0014418125643667,
+  "base_ids": [
+   "7da83f06ec9f001d"
+  ],
+  "cand_ids": [
+   "7da83f06ec9f001d"
+  ],
+  "samples": {
+   "base": [
+    [
+     862.408,
+     48.66
+    ],
+    [
+     858.891,
+     48.37
+    ],
+    [
+     861.702,
+     48.55
+    ]
+   ],
+   "cand": [
+    [
+     943.548,
+     48.44
+    ],
+    [
+     974.098,
+     48.66
+    ],
+    [
+     977.716,
+     48.62
+    ]
+   ]
+  }
+ },
+ "qwen25-0.5b-bf16:short-decode-32": {
+  "baseline_prefill": 70.093,
+  "candidate_prefill": 70.258,
+  "baseline_decode": 11.74,
+  "candidate_decode": 11.74,
+  "prefill_ratio": 1.0023540153795671,
+  "decode_ratio": 1.0,
+  "base_ids": [
+   "f26175202f3dabe9"
+  ],
+  "cand_ids": [
+   "f26175202f3dabe9"
+  ],
+  "samples": {
+   "base": [
+    [
+     70.093,
+     11.74
+    ],
+    [
+     70.755,
+     11.75
+    ],
+    [
+     70.093,
+     11.74
+    ]
+   ],
+   "cand": [
+    [
+     70.258,
+     11.74
+    ],
+    [
+     71.259,
+     11.74
+    ],
+    [
+     69.284,
+     11.74
+    ]
+   ]
+  }
+ },
+ "qwen25-0.5b-bf16:long-decode-128": {
+  "baseline_prefill": 284.783,
+  "candidate_prefill": 284.165,
+  "baseline_decode": 11.29,
+  "candidate_decode": 11.29,
+  "prefill_ratio": 0.9978299266459023,
+  "decode_ratio": 1.0,
+  "base_ids": [
+   "ad964232ee67fecd"
+  ],
+  "cand_ids": [
+   "ad964232ee67fecd"
+  ],
+  "samples": {
+   "base": [
+    [
+     285.714,
+     11.3
+    ],
+    [
+     282.937,
+     11.29
+    ],
+    [
+     284.783,
+     11.29
+    ]
+   ],
+   "cand": [
+    [
+     284.165,
+     11.29
+    ],
+    [
+     284.165,
+     11.3
+    ],
+    [
+     285.714,
+     11.29
+    ]
+   ]
+  }
+ },
+ "qwen25-0.5b-bf16:longctx-1024-decode-32": {
+  "baseline_prefill": 339.13,
+  "candidate_prefill": 338.694,
+  "baseline_decode": 10.27,
+  "candidate_decode": 10.26,
+  "prefill_ratio": 0.9987143573260991,
+  "decode_ratio": 0.9990262901655307,
+  "base_ids": [
+   "ff502900d2a179a5"
+  ],
+  "cand_ids": [
+   "ff502900d2a179a5"
+  ],
+  "samples": {
+   "base": [
+    [
+     339.13,
+     10.26
+    ],
+    [
+     345.586,
+     10.27
+    ],
+    [
+     338.15,
+     10.27
+    ]
+   ],
+   "cand": [
+    [
+     335.03,
+     10.27
+    ],
+    [
+     344.907,
+     10.26
+    ],
+    [
+     338.694,
+     10.25
+    ]
+   ]
+  }
+ }
+}

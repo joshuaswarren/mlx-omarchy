@@ -1,0 +1,53 @@
+== profile /home/joshuawarren/src/mlx-PrefillQmm-base/receipts/2026-09-09-prefill-speed/profiles/baseline-6ca33e0/long.profile.jsonl
+   device=Apple M1 (G13G B1) period=1.0ns valid_bits=64
+   dispatches=3226 submissions=64 joins=49
+   phases=['load_start', 'load_done', 'prefill_start', 'prefill_done', 'decode_start', 'tok', 'decode_done']
+
+== GPU busy fraction: 68.95% (busy 458.775ms / span 665.419ms)
+   gaps intra-submission: n=3162 total=89.435ms p50=20.4us p90=68.7us p99=105.2us max=202.5us
+   gaps inter-submission: n=63 total=117.209ms p50=633.0us p90=807.1us p99=11.366ms max=65.597ms
+   gap histogram (ns decade: count): {'1e4': 36, '1e5': 3081, '1e6': 104, '1e7': 2, '1e8': 2}
+
+== top kernels by cumulative GPU time
+   QmmPrefillCoopmatF16       n=163    total=277.115ms  share= 60.4% mean=1.700ms   p50=701.5us
+   QmmVecQ4WordSubgroupF16    n=845    total=63.203ms   share= 13.8% mean=74.8us    p50=50.1us
+   BinaryVecF16               n=717    total=23.739ms   share=  5.2% mean=33.1us    p50=30.4us
+   MatmulF16                  n=240    total=22.866ms   share=  5.0% mean=95.3us    p50=89.3us
+   CopyGeneralF16             n=311    total=13.415ms   share=  2.9% mean=43.1us    p50=29.5us
+   MatmulRbF16                n=46     total=13.220ms   share=  2.9% mean=287.4us   p50=254.7us
+   FastRopeF16                n=287    total=12.337ms   share=  2.7% mean=43.0us    p50=36.6us
+   FastRmsNormF16             n=292    total=11.450ms   share=  2.5% mean=39.2us    p50=37.0us
+   SoftmaxF16                 n=143    total=9.633ms    share=  2.1% mean=67.4us    p50=26.5us
+   SwigluF16                  n=143    total=7.669ms    share=  1.7% mean=53.6us    p50=19.3us
+   LogSumExpF16               n=5      total=1.357ms    share=  0.3% mean=271.4us   p50=280.6us
+   ElementwiseF16             n=5      total=913.1us    share=  0.2% mean=182.6us   p50=182.1us
+   ArgReduceF16               n=5      total=687.1us    share=  0.1% mean=137.4us   p50=137.1us
+   TakeF16                    n=12     total=544.8us    share=  0.1% mean=45.4us    p50=42.8us
+   TakeU32                    n=6      total=319.9us    share=  0.1% mean=53.3us    p50=49.5us
+   dependency proxy [decode]: 504/1610 consecutive pairs fully disjoint (31.3% - compute-binding disjointness only; transfer/fill/alias deps invisible, not a barrier-correctness bound)
+   dependency proxy [all]: 1007/3225 consecutive pairs fully disjoint (31.2% - compute-binding disjointness only; transfer/fill/alias deps invisible, not a barrier-correctness bound)
+
+== host-side costs (instrumented)
+   join wait    n=49 total=321.412ms p50=418.7us p90=13.562ms max=21.113ms
+   join inval   n=49 total=11.0us p50=250ns max=542ns
+   submit()     n=64 total=68.515ms p50=628.3us max=7.587ms
+   dispatch record (host) n=3226 total=64.742ms p50=792ns mean=20.1us
+
+== dispatches per submission (in submit order)
+   [11, 1, 22, 1, 22, 1, 22, 1, 22, 1, 22, 1, 22, 1, 22, 1, 22, 1, 22, 1, 22, 1, 22, 1, 22, 1, 22, 1, 22, 1, 22, 1, 22, 1, 22, 1, 22, 1, 22, 1, 22, 1, 22, 1, 22, 1, 20, 1, 2, 234, 236, 67, 234, 236, 67, 234, 236, 67, 234, 236, 67, 234, 236, 67]
+
+== dependency-barrier decisions (MLX_OMARCHY_GATED_BARRIERS)
+   dispatch barriers: emitted=3226 skipped=0 (0.0% skipped)
+   all nodes incl. transfer/fill: emitted=6452 skipped=0
+
+== per host-marker window (a dispatch sits in its submission's
+   window; records flush late at joins; windows are NOT
+   semantic phases - an async pipeline can submit the next
+   decode step before the first token yields, so boundary
+   work lands in the earlier window)
+   decode: dispatches=1611 gpu_busy=83.897ms joins=0 join_wait_total=0ns
+   prefill: dispatches=1615 gpu_busy=374.878ms joins=48 join_wait_total=321.403ms
+   dispatches/decode-interval: 537.0 (1611 over 3 inter-token intervals; the first decode submit may sit in the prefill window)
+   submissions/decode-interval: 3.0 (9 over 3 intervals)
+   join wait per decode-interval: 0ns
+   dispatch barriers/decode-interval: 537.0 (1611 emitted over 3 intervals)

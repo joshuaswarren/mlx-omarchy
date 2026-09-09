@@ -1,0 +1,53 @@
+== profile /home/joshuawarren/src/mlx-PrefillQmm-base/receipts/2026-09-09-prefill-speed/profiles/baseline-6ca33e0/ctx1024.profile.jsonl
+   device=Apple M1 (G13G B1) period=1.0ns valid_bits=64
+   dispatches=3226 submissions=64 joins=49
+   phases=['load_start', 'load_done', 'prefill_start', 'prefill_done', 'decode_start', 'tok', 'decode_done']
+
+== GPU busy fraction: 84.42% (busy 1190.384ms / span 1410.113ms)
+   gaps intra-submission: n=3162 total=78.460ms p50=15.2us p90=46.1us p99=109.9us max=171.4us
+   gaps inter-submission: n=63 total=141.269ms p50=874.6us p90=1.527ms p99=10.139ms max=68.428ms
+   gap histogram (ns decade: count): {'1e4': 145, '1e5': 2961, '1e6': 97, '1e7': 20, '1e8': 2}
+
+== top kernels by cumulative GPU time
+   QmmPrefillCoopmatF16       n=163    total=840.494ms  share= 70.6% mean=5.156ms   p50=1.985ms
+   MatmulRbF16                n=46     total=109.668ms  share=  9.2% mean=2.384ms   p50=2.260ms
+   MatmulF16                  n=240    total=57.908ms   share=  4.9% mean=241.3us   p50=249.8us
+   QmmVecQ4WordSubgroupF16    n=845    total=56.045ms   share=  4.7% mean=66.3us    p50=45.9us
+   SoftmaxF16                 n=143    total=32.875ms   share=  2.8% mean=229.9us   p50=27.1us
+   BinaryVecF16               n=717    total=23.134ms   share=  1.9% mean=32.3us    p50=23.1us
+   SwigluF16                  n=143    total=22.421ms   share=  1.9% mean=156.8us   p50=19.4us
+   CopyGeneralF16             n=311    total=17.770ms   share=  1.5% mean=57.1us    p50=24.5us
+   FastRopeF16                n=287    total=14.031ms   share=  1.2% mean=48.9us    p50=36.9us
+   FastRmsNormF16             n=292    total=11.597ms   share=  1.0% mean=39.7us    p50=26.5us
+   LogSumExpF16               n=5      total=1.351ms    share=  0.1% mean=270.1us   p50=274.5us
+   ElementwiseF16             n=5      total=915.4us    share=  0.1% mean=183.1us   p50=182.0us
+   ArgReduceF16               n=5      total=694.6us    share=  0.1% mean=138.9us   p50=139.0us
+   TakeF16                    n=12     total=616.8us    share=  0.1% mean=51.4us    p50=47.9us
+   TakeU32                    n=6      total=502.1us    share=  0.0% mean=83.7us    p50=68.4us
+   dependency proxy [decode]: 504/1610 consecutive pairs fully disjoint (31.3% - compute-binding disjointness only; transfer/fill/alias deps invisible, not a barrier-correctness bound)
+   dependency proxy [all]: 1007/3225 consecutive pairs fully disjoint (31.2% - compute-binding disjointness only; transfer/fill/alias deps invisible, not a barrier-correctness bound)
+
+== host-side costs (instrumented)
+   join wait    n=49 total=1038.161ms p50=476.2us p90=44.349ms max=54.614ms
+   join inval   n=49 total=12.5us p50=250ns max=709ns
+   submit()     n=64 total=75.357ms p50=819.8us max=8.426ms
+   dispatch record (host) n=3226 total=68.257ms p50=792ns mean=21.2us
+
+== dispatches per submission (in submit order)
+   [11, 1, 22, 1, 22, 1, 22, 1, 22, 1, 22, 1, 22, 1, 22, 1, 22, 1, 22, 1, 22, 1, 22, 1, 22, 1, 22, 1, 22, 1, 22, 1, 22, 1, 22, 1, 22, 1, 22, 1, 22, 1, 22, 1, 22, 1, 20, 1, 2, 234, 236, 67, 234, 236, 67, 234, 236, 67, 234, 236, 67, 234, 236, 67]
+
+== dependency-barrier decisions (MLX_OMARCHY_GATED_BARRIERS)
+   dispatch barriers: emitted=3226 skipped=0 (0.0% skipped)
+   all nodes incl. transfer/fill: emitted=6452 skipped=0
+
+== per host-marker window (a dispatch sits in its submission's
+   window; records flush late at joins; windows are NOT
+   semantic phases - an async pipeline can submit the next
+   decode step before the first token yields, so boundary
+   work lands in the earlier window)
+   decode: dispatches=1611 gpu_busy=93.736ms joins=0 join_wait_total=0ns
+   prefill: dispatches=1615 gpu_busy=1096.648ms joins=48 join_wait_total=1038.152ms
+   dispatches/decode-interval: 537.0 (1611 over 3 inter-token intervals; the first decode submit may sit in the prefill window)
+   submissions/decode-interval: 3.0 (9 over 3 intervals)
+   join wait per decode-interval: 0ns
+   dispatch barriers/decode-interval: 537.0 (1611 emitted over 3 intervals)

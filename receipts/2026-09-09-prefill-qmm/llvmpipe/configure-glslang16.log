@@ -1,0 +1,15 @@
+-- Building MLX for x86_64 processor on Linux
+-- Vulkan found: include /usr/include, libs /usr/lib/x86_64-linux-gnu/libvulkan.so
+-- Accelerate not found, using default backend.
+-- Lapack lib /usr/lib/x86_64-linux-gnu/liblapack.so/usr/lib/x86_64-linux-gnu/libblas.so
+-- Lapack include /usr/include
+-- Blas lib /usr/lib/x86_64-linux-gnu/libblas.so
+-- Blas include /usr/include/x86_64-linux-gnu
+-- Downloading json
+-- Using the multi-header code from /home/joshuawarren/.config/superpowers/worktrees/mlx-omarchy/PrefillQmm/.work/build-tests/_deps/json-src/include/
+-- Downloading gguflib
+-- {fmt} version: 12.1.0
+-- Build type: Release
+-- Configuring done
+-- Generating done
+-- Build files have been written to: /home/joshuawarren/.config/superpowers/worktrees/mlx-omarchy/PrefillQmm/.work/build-tests

@@ -1,0 +1,552 @@
+{
+  "bound_analysis": {
+    "table": [
+      {
+        "shape": "hidden-hidden",
+        "m": 262,
+        "k": 896,
+        "n": 896,
+        "before_ms": 0.75175,
+        "after_ms": 0.6188545,
+        "kernel_reduction_percent": 17.678150981044237,
+        "before_weight_GB_s": 5.406393082806784,
+        "after_weight_GB_s": 6.5673853870336245,
+        "before_TFLOP_s": 0.5595950568673096,
+        "after_TFLOP_s": 0.6797649269739494,
+        "dense_f32_same_shape_ms": 1.257813,
+        "dense_f32_same_shape_TFLOP_s": 0.33445002079005387,
+        "after_over_dense_f32_TFLOP_s": 2.032485826636148,
+        "bound": "shared-staging / barrier / issue throughput (not weight bandwidth)"
+      },
+      {
+        "shape": "hidden-intermediate",
+        "m": 262,
+        "k": 896,
+        "n": 4864,
+        "before_ms": 3.0752915,
+        "after_ms": 2.475813,
+        "kernel_reduction_percent": 19.493387862581482,
+        "before_weight_GB_s": 7.174313069183848,
+        "after_weight_GB_s": 8.911458175556877,
+        "before_TFLOP_s": 0.7425856885436714,
+        "after_TFLOP_s": 0.9223909301712205,
+        "dense_f32_same_shape_ms": 5.5687495,
+        "dense_f32_same_shape_TFLOP_s": 0.41008622420527263,
+        "after_over_dense_f32_TFLOP_s": 2.249260949837488,
+        "bound": "shared-staging / barrier / issue throughput (not weight bandwidth)"
+      },
+      {
+        "shape": "hidden-kv",
+        "m": 262,
+        "k": 896,
+        "n": 128,
+        "before_ms": 0.724083,
+        "after_ms": 0.576521,
+        "kernel_reduction_percent": 20.379155428314167,
+        "before_weight_GB_s": 0.8018528262643924,
+        "after_weight_GB_s": 1.0070890739452683,
+        "before_TFLOP_s": 0.08299671722716871,
+        "after_TFLOP_s": 0.10423993575255715,
+        "dense_f32_same_shape_ms": 0.8212915,
+        "dense_f32_same_shape_TFLOP_s": 0.0731731815074185,
+        "after_over_dense_f32_TFLOP_s": 1.4245647600000693,
+        "bound": "dispatch latency / synchronization"
+      },
+      {
+        "shape": "intermediate-hidden",
+        "m": 262,
+        "k": 4864,
+        "n": 896,
+        "before_ms": 3.7423335,
+        "after_ms": 2.461896,
+        "kernel_reduction_percent": 34.21494904182111,
+        "before_weight_GB_s": 5.895547256811826,
+        "after_weight_GB_s": 8.96183429356886,
+        "before_TFLOP_s": 0.6102255333470413,
+        "after_TFLOP_s": 0.927605169349152,
+        "dense_f32_same_shape_ms": 6.8736665,
+        "dense_f32_same_shape_TFLOP_s": 0.3322342531456829,
+        "after_over_dense_f32_TFLOP_s": 2.792021474505828,
+        "bound": "shared-staging / barrier / issue throughput (not weight bandwidth)"
+      },
+      {
+        "shape": "hidden-hidden",
+        "m": 1053,
+        "k": 896,
+        "n": 896,
+        "before_ms": 2.043042,
+        "after_ms": 1.7325005,
+        "kernel_reduction_percent": 15.199956731188092,
+        "before_weight_GB_s": 7.294158416713901,
+        "after_weight_GB_s": 8.601597517576474,
+        "before_TFLOP_s": 0.8275554276417226,
+        "after_TFLOP_s": 0.9758903365395855,
+        "dense_f32_same_shape_ms": 3.755812,
+        "dense_f32_same_shape_TFLOP_s": 0.4501637717755841,
+        "after_over_dense_f32_TFLOP_s": 2.167856228612921,
+        "bound": "shared-staging / barrier / issue throughput (not weight bandwidth)"
+      },
+      {
+        "shape": "hidden-intermediate",
+        "m": 1053,
+        "k": 896,
+        "n": 4864,
+        "before_ms": 10.6339795,
+        "after_ms": 8.625229,
+        "kernel_reduction_percent": 18.88992262962329,
+        "before_weight_GB_s": 7.6075046035211935,
+        "after_weight_GB_s": 9.379234800606454,
+        "before_TFLOP_s": 0.8631059768358591,
+        "after_TFLOP_s": 1.0641168210142595,
+        "dense_f32_same_shape_ms": 20.98675,
+        "dense_f32_same_shape_TFLOP_s": 0.4373355218888108,
+        "after_over_dense_f32_TFLOP_s": 2.4331817740723176,
+        "bound": "shared-staging / barrier / issue throughput (not weight bandwidth)"
+      },
+      {
+        "shape": "hidden-kv",
+        "m": 1053,
+        "k": 896,
+        "n": 128,
+        "before_ms": 0.428042,
+        "after_ms": 0.693688,
+        "kernel_reduction_percent": -62.06073235803963,
+        "before_weight_GB_s": 4.973568014353732,
+        "after_weight_GB_s": 3.0689531893300734,
+        "before_TFLOP_s": 0.5642738983557688,
+        "after_TFLOP_s": 0.34818668911672107,
+        "dense_f32_same_shape_ms": 0.685938,
+        "dense_f32_same_shape_TFLOP_s": 0.35212064064099086,
+        "after_over_dense_f32_TFLOP_s": 0.9888278303790754,
+        "bound": "dispatch latency / synchronization"
+      },
+      {
+        "shape": "intermediate-hidden",
+        "m": 1053,
+        "k": 4864,
+        "n": 896,
+        "before_ms": 10.8208965,
+        "after_ms": 9.130479,
+        "kernel_reduction_percent": 15.6217878989971,
+        "before_weight_GB_s": 7.476094794918333,
+        "after_weight_GB_s": 8.86021949122275,
+        "before_TFLOP_s": 0.8481969367325526,
+        "after_TFLOP_s": 1.005232175004181,
+        "dense_f32_same_shape_ms": 22.155417,
+        "dense_f32_same_shape_TFLOP_s": 0.4142666899025191,
+        "after_over_dense_f32_TFLOP_s": 2.4265339200714444,
+        "bound": "shared-staging / barrier / issue throughput (not weight bandwidth)"
+      }
+    ],
+    "weight_traffic_definition": "Shader-requested Q4 weight bytes: ceil(m/32) times packed n*k/2 plus f16 scale and bias n*(k/64)*4. This counts every 32-row workgroup load, not unique DRAM bytes after cache.",
+    "device_bandwidth_reference_GB_s": 57.5,
+    "device_bandwidth_reference": "Same-host 76 MB CastF32F16 p50 from receipts/2026-09-09-q4-gemv-bandwidth/verdict.json.",
+    "dense_reference": "Diagnostics-wheel MatmulF32Coopmat, identical (m,k,n), 8 warmups + 16 measured dispatches; GPU slot is next dispatch t0 minus target t0.",
+    "conclusion": "Large QMM shapes request only 6.57-9.38 GB/s (11-16% of the 57.5 GB/s practical device ceiling), while the candidate reaches 2.04-2.80x the same-shape dense-f32 TFLOP/s. Dense f32 is itself weight-traffic limited and is not a pure matrix-unit roof. QMM is therefore not DRAM-bandwidth-bound; the response to halving barrier frequency and splitting work over two subgroups identifies shared staging/barrier/issue throughput as the active bound. The n=128 shape is dispatch-latency/synchronization dominated."
+  },
+  "source": {
+    "branch": "wave/PrefillQmm",
+    "baseline_commit": "6ca33e0cdb7f69e30351a1c70b58e46ff17eb391",
+    "candidate_kernel_commit": "4e26a9a2",
+    "hardware": "jwm1-linux, Apple M1 G13G B1, Honeykrisp cooperative_matrix_f32_8=1",
+    "change": "32x32 output tile, two 32-lane subgroups, each owns 16x32; dequantize one 16x32 B tile to shared f32 per 16 k and reuse across 32 m rows; two ascending 8-k MMAs per staging pair preserve accumulator order."
+  },
+  "kernel_screen": {
+    "method": "Diagnostics wheel; profile_generate prefill window; driver-safe slot time (next dispatch t0 - current t0).",
+    "m262": {
+      "before_ms": 282.539668,
+      "after_ms": 211.452338,
+      "reduction_percent": 25.16012371048727
+    },
+    "m1053": {
+      "before_ms": 846.774126,
+      "after_ms": 703.498418,
+      "reduction_percent": 16.920180199270757
+    },
+    "threshold_percent": 15,
+    "passed": true,
+    "rejected_this_wave": {
+      "four_subgroup_32k_e0fac26": {
+        "m262_ms": 306.31,
+        "m1053_ms": 1032.08,
+        "reason": "8 KiB staging/occupancy cost outweighed fourfold barrier reduction"
+      }
+    },
+    "prior_restaging_screens": {
+      "single_subgroup_32k_fabfb604": [
+        610,
+        1981
+      ],
+      "four_subgroup_8k_ebcd9e4": [
+        256,
+        884
+      ],
+      "four_subgroup_16k_3ba05fb": [
+        269,
+        903
+      ],
+      "double_buffered_e5e039a": [
+        343,
+        1174
+      ],
+      "reason": "32-k and double buffering raised shared/register pressure; four-subgroup variants reduced per-lane work but synchronization/occupancy lost on at least one prompt. The accepted two-subgroup/16-k point balances both."
+    }
+  },
+  "paired": {
+    "qwen25-0.5b-4bit:short-decode-32": {
+      "baseline_prefill": 114.504,
+      "candidate_prefill": 135.747,
+      "baseline_decode": 87.57,
+      "candidate_decode": 87.77,
+      "prefill_ratio": 1.185521903164955,
+      "decode_ratio": 1.0022838871759736,
+      "base_ids": [
+        "7fd25a869ff21678"
+      ],
+      "cand_ids": [
+        "7fd25a869ff21678"
+      ],
+      "samples": {
+        "base": [
+          [
+            115.385,
+            88.07
+          ],
+          [
+            114.504,
+            87.4
+          ],
+          [
+            113.636,
+            87.57
+          ]
+        ],
+        "cand": [
+          [
+            135.747,
+            88.19
+          ],
+          [
+            131.004,
+            87.77
+          ],
+          [
+            135.747,
+            87.38
+          ]
+        ]
+      }
+    },
+    "qwen25-0.5b-4bit:long-decode-128": {
+      "baseline_prefill": 537.988,
+      "candidate_prefill": 631.325,
+      "baseline_decode": 71.29,
+      "candidate_decode": 71.24,
+      "prefill_ratio": 1.1734927173096796,
+      "decode_ratio": 0.9992986393603589,
+      "base_ids": [
+        "4cc08910089477fd"
+      ],
+      "cand_ids": [
+        "4cc08910089477fd"
+      ],
+      "samples": {
+        "base": [
+          [
+            537.988,
+            71.29
+          ],
+          [
+            539.095,
+            71.18
+          ],
+          [
+            532.52,
+            71.41
+          ]
+        ],
+        "cand": [
+          [
+            612.15,
+            71.35
+          ],
+          [
+            631.325,
+            71.09
+          ],
+          [
+            631.325,
+            71.24
+          ]
+        ]
+      }
+    },
+    "qwen25-0.5b-4bit:longctx-1024-decode-32": {
+      "baseline_prefill": 861.702,
+      "candidate_prefill": 974.098,
+      "baseline_decode": 48.55,
+      "candidate_decode": 48.62,
+      "prefill_ratio": 1.1304348835212172,
+      "decode_ratio": 1.0014418125643667,
+      "base_ids": [
+        "7da83f06ec9f001d"
+      ],
+      "cand_ids": [
+        "7da83f06ec9f001d"
+      ],
+      "samples": {
+        "base": [
+          [
+            862.408,
+            48.66
+          ],
+          [
+            858.891,
+            48.37
+          ],
+          [
+            861.702,
+            48.55
+          ]
+        ],
+        "cand": [
+          [
+            943.548,
+            48.44
+          ],
+          [
+            974.098,
+            48.66
+          ],
+          [
+            977.716,
+            48.62
+          ]
+        ]
+      }
+    },
+    "qwen25-0.5b-bf16:short-decode-32": {
+      "baseline_prefill": 70.093,
+      "candidate_prefill": 70.258,
+      "baseline_decode": 11.74,
+      "candidate_decode": 11.74,
+      "prefill_ratio": 1.0023540153795671,
+      "decode_ratio": 1.0,
+      "base_ids": [
+        "f26175202f3dabe9"
+      ],
+      "cand_ids": [
+        "f26175202f3dabe9"
+      ],
+      "samples": {
+        "base": [
+          [
+            70.093,
+            11.74
+          ],
+          [
+            70.755,
+            11.75
+          ],
+          [
+            70.093,
+            11.74
+          ]
+        ],
+        "cand": [
+          [
+            70.258,
+            11.74
+          ],
+          [
+            71.259,
+            11.74
+          ],
+          [
+            69.284,
+            11.74
+          ]
+        ]
+      }
+    },
+    "qwen25-0.5b-bf16:long-decode-128": {
+      "baseline_prefill": 284.783,
+      "candidate_prefill": 284.165,
+      "baseline_decode": 11.29,
+      "candidate_decode": 11.29,
+      "prefill_ratio": 0.9978299266459023,
+      "decode_ratio": 1.0,
+      "base_ids": [
+        "ad964232ee67fecd"
+      ],
+      "cand_ids": [
+        "ad964232ee67fecd"
+      ],
+      "samples": {
+        "base": [
+          [
+            285.714,
+            11.3
+          ],
+          [
+            282.937,
+            11.29
+          ],
+          [
+            284.783,
+            11.29
+          ]
+        ],
+        "cand": [
+          [
+            284.165,
+            11.29
+          ],
+          [
+            284.165,
+            11.3
+          ],
+          [
+            285.714,
+            11.29
+          ]
+        ]
+      }
+    },
+    "qwen25-0.5b-bf16:longctx-1024-decode-32": {
+      "baseline_prefill": 339.13,
+      "candidate_prefill": 338.694,
+      "baseline_decode": 10.27,
+      "candidate_decode": 10.26,
+      "prefill_ratio": 0.9987143573260991,
+      "decode_ratio": 0.9990262901655307,
+      "base_ids": [
+        "ff502900d2a179a5"
+      ],
+      "cand_ids": [
+        "ff502900d2a179a5"
+      ],
+      "samples": {
+        "base": [
+          [
+            339.13,
+            10.26
+          ],
+          [
+            345.586,
+            10.27
+          ],
+          [
+            338.15,
+            10.27
+          ]
+        ],
+        "cand": [
+          [
+            335.03,
+            10.27
+          ],
+          [
+            344.907,
+            10.26
+          ],
+          [
+            338.694,
+            10.25
+          ]
+        ]
+      }
+    }
+  },
+  "ids": {
+    "all_six_legs_identical": true,
+    "legs": {
+      "qwen25-0.5b-4bit:short-decode-32": {
+        "baseline": [
+          "7fd25a869ff21678"
+        ],
+        "candidate": [
+          "7fd25a869ff21678"
+        ],
+        "identical": true
+      },
+      "qwen25-0.5b-4bit:long-decode-128": {
+        "baseline": [
+          "4cc08910089477fd"
+        ],
+        "candidate": [
+          "4cc08910089477fd"
+        ],
+        "identical": true
+      },
+      "qwen25-0.5b-4bit:longctx-1024-decode-32": {
+        "baseline": [
+          "7da83f06ec9f001d"
+        ],
+        "candidate": [
+          "7da83f06ec9f001d"
+        ],
+        "identical": true
+      },
+      "qwen25-0.5b-bf16:short-decode-32": {
+        "baseline": [
+          "f26175202f3dabe9"
+        ],
+        "candidate": [
+          "f26175202f3dabe9"
+        ],
+        "identical": true
+      },
+      "qwen25-0.5b-bf16:long-decode-128": {
+        "baseline": [
+          "ad964232ee67fecd"
+        ],
+        "candidate": [
+          "ad964232ee67fecd"
+        ],
+        "identical": true
+      },
+      "qwen25-0.5b-bf16:longctx-1024-decode-32": {
+        "baseline": [
+          "ff502900d2a179a5"
+        ],
+        "candidate": [
+          "ff502900d2a179a5"
+        ],
+        "identical": true
+      }
+    }
+  },
+  "wheels": {
+    "baseline_release": {
+      "file": "mlx_omarchy-0.32.2.dev202609092050+6ca33e0-cp314-cp314-linux_aarch64.whl",
+      "sha256": "02a54f34c42420344b0a456735bb985a2786d642af0c7ade228ce9925bcf9e95"
+    },
+    "candidate_release": {
+      "file": "mlx_omarchy-0.32.2.dev202609092044+4e26a9a-cp314-cp314-linux_aarch64.whl",
+      "sha256": "2c1caa86794d2d6d94f24f34a66eab1a08485846c5e64d6188e7578b486b65e1"
+    },
+    "baseline_diagnostics": {
+      "sha256": "e7c51c0fe379980bd080f517a8c6f39996d49374f9d51f23ba8267800ea64917"
+    },
+    "candidate_diagnostics": {
+      "sha256": "e57f17b3ee199bc8fbaa712ea56593bad063100dae7e4f632ae6a85ff67b1b51"
+    }
+  },
+  "tests": {
+    "llvmpipe": {
+      "command": "MLX_OMARCHY_ALLOW_NON_APPLE=1 omarchy_matmul_family_tests -tc=register-blocked*,qmm coopmat*,qmm tile*,dense*,qmm_vec*",
+      "result": "9 passed, 0 failed, 9 skipped; 18,625,730 assertions passed",
+      "log": "llvmpipe/omarchy_matmul_family_tests.log",
+      "compiler": "locally built glslang 16.1.0"
+    },
+    "m1": {
+      "command": "omarchy_matmul_family_tests -tc=register-blocked*,qmm coopmat*,qmm tile*,dense*,qmm_vec*",
+      "result": "10 passed, 0 failed, 8 skipped; 80,505,411 assertions passed",
+      "log": "m1/omarchy_matmul_family_tests.log",
+      "compiler": "glslc 2026.3, Release"
+    }
+  },
+  "decision": "integrate: screen passed at -25.2% QMM kernel time for m=262 and -16.9% for m=1053; paired Q4 prefill +18.6%, +17.3%, +13.0%; Q4 decode -0.1% to +0.2%; bf16 legs -0.2% to +0.2%; all generated ids identical.",
+  "next_lever": "Screen the same two-subgroup tile at 8-k staging (2 KiB) and a scale/bias broadcast specialization for n=128. Keep only a candidate that clears the same >=15% two-prompt kernel gate and exact-id gate."
+}
