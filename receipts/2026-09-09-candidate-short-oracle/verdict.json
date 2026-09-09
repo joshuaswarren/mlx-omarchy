@@ -1,0 +1,8 @@
+{
+  "status": "Numerical divergence reproduced, root cause not yet localized",
+  "comparison": "M1 Max native MLX 0.32.2, accepted Linux 4d3568e, and guarded experimental Linux 6ae2c23. Both Linux captures ran under /tmp/m1-gpu.lock. All three installed extensions matched distribution RECORD.",
+  "input_alignment": "Same pinned snapshots, 30-token chat prompt, identical generated prefix through index 13. No warmup; saved sampler input at zero-based generation index 14, checked finite and argmax against emitted token. Sampler inputs are normalized scores, not raw logits.",
+  "observation": "Native BF16 selects token 3555 with score -2.375 over token 2585 at -2.4375. Accepted Linux ties both at -2.4375; experimental reduction ties both at -2.5. Lowest-index argmax therefore selects 2585 on both Linux paths. This is an upstream arithmetic divergence, not a sampler tie-breaking defect.",
+  "scope": "The experiment confirms why neither Linux BF16 short output matches native. It does not locate which layer or operation first differs and does not qualify native performance parity. Q4 short generated IDs match despite nonidentical sampler scores.",
+  "next": "Capture matching layer outputs at this shared-prefix step, then isolate the first numerically divergent operation. Keep the experimental reduction excluded pending numerical qualification."
+}

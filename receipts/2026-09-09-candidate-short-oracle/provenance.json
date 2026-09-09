@@ -1,0 +1,24 @@
+{
+  "dist": "mlx-omarchy",
+  "verified": "match",
+  "mismatch": null,
+  "files": [
+    {
+      "path": "mlx/core.cpython-314-aarch64-linux-gnu.so",
+      "label": "mlx.core extension",
+      "sha256": "4ad850da16c300ea9f60aa7247f034f358aa16d7ba2fd146979a01c867e3cfa5",
+      "record_sha256": "4ad850da16c300ea9f60aa7247f034f358aa16d7ba2fd146979a01c867e3cfa5",
+      "match": true
+    },
+    {
+      "path": "mlx/lib/libmlx.so",
+      "label": "mlx/lib/libmlx.so",
+      "sha256": "d64d78a0bf50294a075af0641c01f8d5e5f204d1273cb2c037911e2159819f67",
+      "record_sha256": "d64d78a0bf50294a075af0641c01f8d5e5f204d1273cb2c037911e2159819f67",
+      "match": true
+    }
+  ],
+  "dist_version": "0.32.2.dev202609090242+6ae2c23",
+  "mx_version": "0.32.2.dev202609090242+6ae2c23",
+  "version_match": true
+}

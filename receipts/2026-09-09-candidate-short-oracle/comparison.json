@@ -1,0 +1,50 @@
+[
+  {
+    "runtime": "native",
+    "model": "4bit",
+    "digest": "7fd25a869ff21678",
+    "token14": 2585,
+    "score2585": -1.21875,
+    "score3555": -2.0546875
+  },
+  {
+    "runtime": "native",
+    "model": "bf16",
+    "digest": "7fc0f968789b1882",
+    "token14": 3555,
+    "score2585": -2.4375,
+    "score3555": -2.375
+  },
+  {
+    "runtime": "linux",
+    "model": "4bit",
+    "digest": "7fd25a869ff21678",
+    "token14": 2585,
+    "score2585": -1.21875,
+    "score3555": -2.0234375
+  },
+  {
+    "runtime": "linux",
+    "model": "bf16",
+    "digest": "f26175202f3dabe9",
+    "token14": 2585,
+    "score2585": -2.4375,
+    "score3555": -2.4375
+  },
+  {
+    "runtime": "candidate",
+    "model": "4bit",
+    "digest": "7fd25a869ff21678",
+    "token14": 2585,
+    "score2585": -1.21875,
+    "score3555": -2.0234375
+  },
+  {
+    "runtime": "candidate",
+    "model": "bf16",
+    "digest": "f26175202f3dabe9",
+    "token14": 2585,
+    "score2585": -2.5,
+    "score3555": -2.5
+  }
+]
