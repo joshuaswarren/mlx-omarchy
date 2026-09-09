@@ -146,6 +146,9 @@
 #include "matmul_f32.h"
 #include "matmul_f32_coopmat.h"
 #include "matmul_complex64.h"
+#include "matmul_vec_bf16.h"
+#include "matmul_vec_f16.h"
+#include "matmul_vec_f32.h"
 #include "select_bf16.h"
 #include "select_f16.h"
 #include "select_f32.h"
@@ -265,6 +268,7 @@
 #include "qmm_tile_f16.h"
 #include "qmm_tile_rb_f16.h"
 #include "qmm_coopmat_f16.h"
+#include "matmul_f32_coopmat_bf16.h"
 #include "qmm_tile_f32.h"
 #include "dequant_f32.h"
 #include "dequant_f16.h"
@@ -511,6 +515,12 @@ ShaderBytes shader_bytes(ComputeKernel kernel) {
       return {fill_f16, fill_f16_size};
     case ComputeKernel::FillBF16:
       return {fill_bf16, fill_bf16_size};
+    case ComputeKernel::MatmulVecF32:
+      return {matmul_vec_f32, matmul_vec_f32_size};
+    case ComputeKernel::MatmulVecF16:
+      return {matmul_vec_f16, matmul_vec_f16_size};
+    case ComputeKernel::MatmulVecBF16:
+      return {matmul_vec_bf16, matmul_vec_bf16_size};
     case ComputeKernel::SoftmaxF32:
       return {softmax_f32, softmax_f32_size};
     case ComputeKernel::SoftmaxF16:
@@ -1168,6 +1178,8 @@ ShaderBytes shader_bytes(ComputeKernel kernel) {
       return {qmm_tile_rb_f16, qmm_tile_rb_f16_size};
     case ComputeKernel::QmmPrefillCoopmatF16:
       return {qmm_coopmat_f16, qmm_coopmat_f16_size};
+    case ComputeKernel::MatmulBF16Coopmat:
+      return {matmul_f32_coopmat_bf16, matmul_f32_coopmat_bf16_size};
     case ComputeKernel::QmmTileBF16:
       return {qmm_tile_bf16, qmm_tile_bf16_size};
     case ComputeKernel::FusedChainF32:

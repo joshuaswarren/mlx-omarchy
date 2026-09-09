@@ -83,6 +83,10 @@ enum class ComputeKernel : uint16_t {
   MatmulF32Coopmat,
   MatmulF16,
   MatmulBF16,
+  // Dense single-row GEMV (decode shape); see shaders/matmul_vec.comp.
+  MatmulVecF32,
+  MatmulVecF16,
+  MatmulVecBF16,
   FillF32,
   FillF16,
   FillBF16,
@@ -554,6 +558,7 @@ enum class ComputeKernel : uint16_t {
   // Prefill on the 8x8x8 fp32 cooperative matrix, same layout as
   // QmmTileRbF16 (shaders/qmm_coopmat.comp).
   QmmPrefillCoopmatF16,
+  MatmulBF16Coopmat,
   Count,
 };
 
