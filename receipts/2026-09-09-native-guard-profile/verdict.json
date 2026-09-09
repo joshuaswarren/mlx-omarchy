@@ -1,0 +1,18 @@
+{
+  "scope": "Instrumented bottleneck ranking, not release throughput or native numerical acceptance",
+  "source_short": "6ae2c23",
+  "wheel_sha256": "8bc08ac3f2d9bb95514811fdd9d2545590254c74e6de0a2f3e902c70074a6c3c",
+  "timestamp_isolation": "Includes accepted profiling-only execution barrier at dispatch start",
+  "models": [
+    "4bit",
+    "bf16"
+  ],
+  "generated_tokens_each": 32,
+  "bf16_top_kernel": {
+    "name": "MatmulVecBF16",
+    "dispatches": 5577,
+    "sum_ms": 809.454,
+    "share_percent": 45.7
+  },
+  "next_experiment": "Reuse each vector load across four independent output accumulators without changing per-output reduction order."
+}
