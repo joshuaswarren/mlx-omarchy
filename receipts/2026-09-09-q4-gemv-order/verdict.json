@@ -1,0 +1,91 @@
+{
+  "topic": "Q4 decode GEMV (qmm_vec.comp QMM_VEC_Q4_WORD) arithmetic parity with native Metal qmv",
+  "branch": "wave/PerfGemvParity",
+  "base": "wave/integrate 12574770",
+  "host": "jwm1-linux, Apple M1 (G13G B1), Honeykrisp mesa-honeykrisp-omarchy 26.3.0.devel.hk6f6afc8-1, linux-asahi 7.1.6",
+  "native_oracle": "16m1mbp, Apple M1 Max, macOS 26.6.2, mlx 0.32.2 (Metal), /Users/joshuawarren/src/mlx-bench-20260901/venv",
+  "native_arithmetic_found": {
+    "source": "metal/kernels/quantized.h qmv_impl (K % 512 != 0) / qmv_fast_impl (K % 512 == 0 and N % 8 == 0), load_vector, qdot, T=half U=float, built with -fno-fast-math",
+    "per_lane_block": "sum = float accumulation of half-precision chain sums ((x0+x1)+x2)+x3 per quad; accum = source-order ((p0+p1)+p2)+p3 per quad, quads sequential; result += fma(scale, accum, sum * bias) (Metal contracts scale*accum + sum*bias into that fma, leaves sum*bias separate)",
+    "blocks": "sequential over k, lane owns 8 (qmv) or 16 (qmv_fast) consecutive values",
+    "simd_sum_pairing": "xor strides 1, 2, 4, 8, 16 (stride 1 first); (1,2,4,8,16) is the only one of the 120 stride permutations that reproduces every captured call35 projection (perm_search.py on native captures)",
+    "bit_exact_f32_evidence": "native-m1max/native-probe-{512,896,1024,4864}-f32.json: at f32 dtype the model quads:fma_scale:xor_up reproduces every native output bit for bit in every stage (reduce, inputsum, dotonly, scaleonly, dot, full); every other modelled variant mismatches",
+    "f16_denormals": "native-m1max/native-probe-896-f16-tiny.json: native preserves f16 denormals in the half quad chain"
+  },
+  "capture_model": {
+    "script": "qmv_model.py / perm_search.py on native-call35-projections.npz (native M1 Max layer-0 decode step 35, /tmp/mlx-native-q4-long-operations)",
+    "mismatches_native_vs_model_call35": {"all 7 projections": 0, "combination": "nofma or fma inner dot (products exact), fma(scale, accum, sum*bias), xor 1,2,4,8,16"},
+    "call0": "prefill (M=261) uses the general Qmm path, untouched by this change; the Linux prefill kernels do not match native on this capture (940645 differing elements before and after), out of scope"
+  },
+  "linux_before": {
+    "eecdbb9 private chain / 061e645 ladder-only": {"call35 mismatches": {"o_proj": 1, "up_proj": 3, "down_proj": "0 with native inputs (4 in the traced run were inherited from up_proj)"}},
+    "root_cause": "not the reduction: Honeykrisp NIR inexact algebraic rules (nir_opt_algebraic 'Reassociate add chains for more MAD/FMA-friendly code' and the late ffma reassociation) turned dot + (((p0+p1)+p2)+p3) into a sequential fma ladder and fused sum*bias into the accumulator add; candidate-061e645/probe-stages-896-f32*.json isolates it (reduce/inputsum/scaleonly exact, dotonly 50/256 and dot 583/1024 mismatching; sequential 0..7 association reproduces the GPU exactly, assoc_search)",
+    "subgroupAdd": "Honeykrisp float subgroupAdd already pairs lanes stride 1,2,4,8,16 (candidate-6b39daa/base-1257477-subgroupadd-reduce-probe.json: 0/1024 mismatches vs xor_up, 64 vs xor_down, 128 vs sequential); it is the unlowered AGX hardware reduction"
+  },
+  "candidates": {
+    "061e645": {"change": "candidate body + explicit subgroupShuffleXor ladder", "call35_mismatches": {"o_proj": 1, "up_proj": 3, "others": 0}, "legs_single_rep_decode_tok_s": {"q4_long": 49.16, "q4_longctx": 37.21, "q4_short": 56.58}, "native_match": {"q4_long": false, "q4_longctx": true, "q4_short": true, "bf16_long": false, "bf16_longctx": true, "bf16_short": false}},
+    "6d3a5ef": {"change": "+ precise accumulator/dot/input_sum", "call35_mismatches": 0, "f32_probes": "exact at K=896 all stages, 1024, 4864; f16 full exact", "paired_decode_over_base": {"q4_long": 0.777, "q4_longctx": 0.827, "q4_short": 0.738}},
+    "9f908e9": {"change": "+ native float16_t quad adds and fma chain", "call35_mismatches": 0, "f32_probes": "exact (incl. f16 denormal stages)", "paired_decode_over_base": {"q4_long": 0.795, "q4_longctx": 0.847, "q4_short": 0.771}},
+    "6b39daa": {"change": "+ straight-line loop bodies per tile shape (no runtime-count inner loop)", "call35_mismatches": 0, "f32_probes": "exact (incl. f16 denormal stages)", "paired_decode_over_base": {"q4_long": 0.940, "q4_longctx": 0.962, "q4_short": 0.938}, "shader_stats": "candidate-6b39daa/shader-stats: base 106 instrs/25 gprs vs 332 instrs/39 gprs (two specialised bodies); remaining cost is the shuffle ladder, which Honeykrisp lowers to four read_invocation selects per xor step (~85 ops per column)"},
+    "e90b76c": {
+      "change": "+ subgroupAdd restored (hardware reduction, ARITHMETIC gate)",
+      "source_commit": "e90b76c6",
+      "status": "measured on the M1; fixed-input projections and stage probes are exact, all Q4 paired decode medians exceed base, and all three targeted test binaries pass",
+      "wheel": {
+        "filename": "mlx_omarchy-0.32.2.dev202609091528+e90b76c-cp314-cp314-linux_aarch64.whl",
+        "sha256": "6f38410f1f8916236ff20c3db21eb1a127f73452910048deac908d945492bb9b"
+      },
+      "fixed_projection_call35_mismatches": {"q_proj": 0, "k_proj": 0, "v_proj": 0, "o_proj": 0, "gate_proj": 0, "up_proj": 0, "down_proj": 0},
+      "stage_probe_mismatches_vs_native_model": {
+        "896_f32": {"reduce": 0, "inputsum": 0, "dotonly": 0, "scaleonly": 0, "dot": 0, "full": 0},
+        "1024_f32": {"full": 0},
+        "4864_f32": {"full": 0},
+        "896_f16": {"full": 0}
+      },
+      "paired_repetitions": 3,
+      "paired_decode_tok_s": {
+        "qwen25-0.5b-4bit:long-decode-128": {"base": 61.16, "candidate": 62.79, "candidate_over_base": 1.0266514061478091},
+        "qwen25-0.5b-4bit:longctx-1024-decode-32": {"base": 43.26, "candidate": 44.33, "candidate_over_base": 1.0247341655108646},
+        "qwen25-0.5b-4bit:short-decode-32": {"base": 73.07, "candidate": 75.39, "candidate_over_base": 1.031750376351444},
+        "qwen25-0.5b-bf16:long-decode-128": {"base": 11.12, "candidate": 11.11, "candidate_over_base": 0.9991007194244604},
+        "qwen25-0.5b-bf16:longctx-1024-decode-32": {"base": 10.12, "candidate": 10.12, "candidate_over_base": 1.0},
+        "qwen25-0.5b-bf16:short-decode-32": {"base": 11.54, "candidate": 11.55, "candidate_over_base": 1.0008665511265167}
+      },
+      "digests_vs_native": {
+        "qwen25-0.5b-4bit:long-decode-128": {"candidate": "4cc08910089477fd", "native": "254d73fd93164b98", "match": false},
+        "qwen25-0.5b-4bit:longctx-1024-decode-32": {"candidate": "7da83f06ec9f001d", "native": "7da83f06ec9f001d", "match": true},
+        "qwen25-0.5b-4bit:short-decode-32": {"candidate": "7fd25a869ff21678", "native": "7fd25a869ff21678", "match": true},
+        "qwen25-0.5b-bf16:long-decode-128": {"candidate": "ad964232ee67fecd", "native": "407b7624ed1b3b29", "match": false},
+        "qwen25-0.5b-bf16:longctx-1024-decode-32": {"candidate": "ff502900d2a179a5", "native": "ff502900d2a179a5", "match": true},
+        "qwen25-0.5b-bf16:short-decode-32": {"candidate": "f26175202f3dabe9", "native": "7fc0f968789b1882", "match": false}
+      },
+      "targeted_tests": {
+        "omarchy_matmul_family_tests": {"test_cases_passed": 17, "test_cases_failed": 0, "assertions_passed": 82636835, "assertions_failed": 0},
+        "omarchy_fast_ops_tests": {"test_cases_passed": 33, "test_cases_failed": 0, "assertions_passed": 1102946, "assertions_failed": 0},
+        "omarchy_runtime_tests": {"test_cases_passed": 41, "test_cases_failed": 0, "assertions_passed": 22694, "assertions_failed": 0}
+      },
+      "receipts": "candidate-e90b76c/ (paired summary and three repetitions under candidate-e90b76c/paired/)"
+    }
+  },
+  "paired_legs": {
+    "method": "paired-legs.py: e90b76c uses 3 alternating repetitions; each side has its own venv + wheel, stamps asserted, receipts/parity-baseline-20260908/run-baseline.py per side",
+    "base_wheel": "mlx_omarchy-0.32.2.dev202609091420+1257477 sha256 b0917f31524c5e721b15705a0deba5d4f454597777bbaf8ee53fda4a8eaaff6a",
+    "base_decode_tok_s": {"q4_long": 61.25, "q4_longctx": 43.31, "q4_short": 72.61, "bf16_long": 11.11, "bf16_longctx": 10.12, "bf16_short": 11.54},
+    "6b39daa_decode_tok_s": {"q4_long": 57.57, "q4_longctx": 41.67, "q4_short": 68.14, "bf16_long": 11.12, "bf16_longctx": 10.12, "bf16_short": 11.55},
+    "6b39daa_prefill_tok_s": "unchanged within noise (prefill path untouched)",
+    "e90b76c_receipt": "candidate-e90b76c/paired/paired-summary.json",
+    "native_match_per_leg_all_candidates": {"qwen25-0.5b-4bit:long-decode-128": false, "qwen25-0.5b-4bit:longctx-1024-decode-32": true, "qwen25-0.5b-4bit:short-decode-32": true, "qwen25-0.5b-bf16:long-decode-128": false, "qwen25-0.5b-bf16:longctx-1024-decode-32": true, "qwen25-0.5b-bf16:short-decode-32": false},
+    "q4_long_digest": "4cc08910089477fd for every precise candidate (equals the public wave/integrate digest; native 254d73fd93164b98) - the layer-0 decode projections are now exact, the remaining Q4 long divergence is upstream/downstream of the GEMV (RMS, attention, later layers) and is the private-chain work",
+    "no_regression": "Q4 short, Q4 longctx and BF16 longctx native matches held on every candidate"
+  },
+  "files": {
+    "shader": "overlay/mlx/backend/omarchy/shaders/qmm_vec.comp",
+    "tests_touched": "overlay/tests/omarchy/test_matmul_family.cpp (comments only at e90b76c)",
+    "targeted_test_binaries": "e90b76c: omarchy_matmul_family_tests 17/17, omarchy_fast_ops_tests 33/33, omarchy_runtime_tests 41/41; zero failed or skipped test cases"
+  },
+  "decision": "integrate: e90b76c is exact for all seven call35 projections and every prepared stage probe; Q4 paired decode is 102.47%-103.18% of base on every leg, above the 98% no-regression floor",
+  "next": [
+    "port probe-stages.py 'full' f32 stage into a C++ omarchy test so a driver that reassociates or changes the reduce pairing fails bit-exactly",
+    "the Q4 long leg still needs the rest of the private-chain exact arithmetic (RMS, rotary, attention) to reach 254d73fd93164b98"
+  ]
+}

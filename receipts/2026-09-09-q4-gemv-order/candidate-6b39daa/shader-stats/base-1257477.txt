@@ -1,0 +1,5 @@
+<frozen site>:101: RuntimeWarning: Unexpected value in sys.prefix, expected /home/joshuawarren/src/mlx-PerfGemvParity-base/.venv-accept, got /home/joshuawarren/src/mlx-PerfGemvParity-e/../mlx-PerfGemvParity-base/.venv-accept
+<frozen site>:101: RuntimeWarning: Unexpected value in sys.exec_prefix, expected /home/joshuawarren/src/mlx-PerfGemvParity-base/.venv-accept, got /home/joshuawarren/src/mlx-PerfGemvParity-e/../mlx-PerfGemvParity-base/.venv-accept
+CS shader: 17 instrs, 9 alu, 9 fscib, 0 ic, 116 code size, 5 gprs, 28 uniforms, 0 scratch, 1024 threads, 1 loops, 0:0 spills:fills, 24 preamble inst
+CS shader: 106 instrs, 87 alu, 87 fscib, 56 ic, 710 code size, 25 gprs, 64 uniforms, 0 scratch, 1024 threads, 2 loops, 0:0 spills:fills, 45 preamble inst
+version 0.32.2.dev202609091420+1257477
