@@ -595,9 +595,19 @@ struct EagerRole {
   EagerStep step;
 };
 
+// A planned decode GEMV group: pending until its first member
+// evaluates, then done (every member and epilogue is written by the
+// one dispatch) or failed (every node takes its own path).
+struct GemvGroup {
+  std::vector<GemvFusionMember> members;
+  enum class State : uint8_t { pending, done, failed } state{State::pending};
+};
+
 struct EagerFusionState {
   std::unordered_map<std::uintptr_t, EagerRole> roles;
   std::unordered_map<std::uintptr_t, FusedChain> chains;
+  std::unordered_map<std::uintptr_t, size_t> gemv_roles;
+  std::vector<GemvGroup> gemv_groups;
 };
 
 thread_local EagerFusionState* eager_state = nullptr;
@@ -671,6 +681,111 @@ EagerFusionScope::EagerFusionScope(const std::deque<array>& tape)
     claimed.insert(inner->id());
     claimed.insert(tail.id());
   }
+  if (!fused_gemv_enabled()) {
+    return;
+  }
+
+  // Decode GEMV groups. Candidates: affine transposed 4-bit/group-64
+  // QuantizedMatmul nodes whose x is a single row and whose weight,
+  // scale, and bias inputs were evaluated before this eval began (the
+  // group dispatches when its FIRST member evaluates, so a later
+  // member's inputs must already be readable). Nodes sharing one x form
+  // groups of up to kQmmVecMultiWeights in tape order. A member's Add
+  // epilogue is the Add that is the node's only consumer, same dtype
+  // and size; its other operand may be any array that is ready when the
+  // group dispatches (checked then, refused otherwise). A group of one
+  // member without an epilogue gains nothing and is not planned.
+  std::unordered_map<std::uintptr_t, const array*> single_consumer;
+  for (const auto& node : tape) {
+    for (const auto& input : node.inputs()) {
+      if (uses[input.id()] == 1) {
+        single_consumer[input.id()] = &node;
+      }
+    }
+  }
+  std::unordered_map<std::uintptr_t, std::vector<const array*>> by_x;
+  std::vector<std::uintptr_t> x_order;
+  for (const auto& node : tape) {
+    if (!is_op(&node, typeid(QuantizedMatmul)) ||
+        node.inputs().size() != 4 || claimed.count(node.id())) {
+      continue;
+    }
+    auto [group_size, bits, mode, transpose] =
+        static_cast<const QuantizedMatmul&>(node.primitive()).state();
+    if (mode != QuantizationMode::Affine || !transpose || bits != 4 ||
+        group_size != 64 || lookup(node.inputs()[1]) ||
+        lookup(node.inputs()[2]) || lookup(node.inputs()[3])) {
+      continue;
+    }
+    const array& x = node.inputs()[0];
+    if (x.ndim() < 2 || x.shape(-2) != 1 ||
+        x.size() != static_cast<size_t>(x.shape(-1))) {
+      continue;
+    }
+    auto [it, inserted] = by_x.try_emplace(x.id());
+    if (inserted) {
+      x_order.push_back(x.id());
+    }
+    it->second.push_back(&node);
+  }
+  for (auto x_id : x_order) {
+    const auto& nodes = by_x[x_id];
+    for (size_t start = 0; start < nodes.size();
+         start += kQmmVecMultiWeights) {
+      GemvGroup group;
+      bool worth = false;
+      for (size_t i = start; i < nodes.size() && i < start + kQmmVecMultiWeights;
+           ++i) {
+        const array& node = *nodes[i];
+        GemvFusionMember member{node, std::nullopt, std::nullopt};
+        if (auto consumer = single_consumer.find(node.id());
+            consumer != single_consumer.end()) {
+          const array* add = consumer->second;
+          if (is_op(add, typeid(Add)) && add->inputs().size() == 2 &&
+              add->dtype() == node.dtype() && add->size() == node.size() &&
+              add->primitive().stream() == node.primitive().stream() &&
+              !claimed.count(add->id())) {
+            const array* other = add->inputs()[0].id() == node.id()
+                ? &add->inputs()[1]
+                : &add->inputs()[0];
+            const array* other_node = lookup(*other);
+            // A bias arrives as Broadcast(bias) to the row's rank, a
+            // view that adds no elements; it sits in the tape after
+            // the member in eval order, so read the bias itself.
+            if (is_op(other_node, typeid(Broadcast)) &&
+                other_node->inputs().size() == 1 &&
+                other_node->inputs()[0].size() == other_node->size() &&
+                other_node->inputs()[0].dtype() == other_node->dtype()) {
+              other = &other_node->inputs()[0];
+              other_node = lookup(*other);
+            }
+            if (other->id() != node.id() &&
+                (!other_node ||
+                 other_node->primitive().stream() ==
+                     node.primitive().stream())) {
+              member.epilogue = *add;
+              member.addend = *other;
+            }
+          }
+        }
+        worth = worth || member.epilogue.has_value();
+        group.members.push_back(std::move(member));
+      }
+      if (group.members.size() < 2 && !worth) {
+        continue;
+      }
+      size_t index = state->gemv_groups.size();
+      for (const auto& member : group.members) {
+        state->gemv_roles.emplace(member.node.id(), index);
+        claimed.insert(member.node.id());
+        if (member.epilogue) {
+          state->gemv_roles.emplace(member.epilogue->id(), index);
+          claimed.insert(member.epilogue->id());
+        }
+      }
+      state->gemv_groups.push_back(std::move(group));
+    }
+  }
 }
 
 EagerFusionScope::~EagerFusionScope() {
@@ -678,9 +793,25 @@ EagerFusionScope::~EagerFusionScope() {
   eager_state = static_cast<EagerFusionState*>(previous_);
 }
 
+bool fused_gemv_enabled() {
+  return fused_chain_enabled() &&
+      (std::getenv("MLX_OMARCHY_FUSED_GEMV") == nullptr ||
+       env_flag("MLX_OMARCHY_FUSED_GEMV"));
+}
+
 bool try_eval_eager_fusion(array& node, const Stream& stream) {
   if (!eager_state) {
     return false;
+  }
+  if (auto gemv = eager_state->gemv_roles.find(node.id());
+      gemv != eager_state->gemv_roles.end()) {
+    auto& group = eager_state->gemv_groups[gemv->second];
+    if (group.state == GemvGroup::State::pending) {
+      group.state = dispatch_quantized_gemv_group(group.members, stream)
+          ? GemvGroup::State::done
+          : GemvGroup::State::failed;
+    }
+    return group.state == GemvGroup::State::done;
   }
   auto role_it = eager_state->roles.find(node.id());
   if (role_it == eager_state->roles.end()) {
@@ -688,7 +819,8 @@ bool try_eval_eager_fusion(array& node, const Stream& stream) {
   }
   const auto role = role_it->second;
   if (role.step == EagerStep::sigmoid) {
-    if (device().compute().binding_limit() < kComputeBindingBudget) {
+    // The chain interpreter binds up to kMaxChainLeaves + 3 buffers.
+    if (device().compute().binding_limit() < kMaxChainLeaves + 3) {
       return false;
     }
     auto [chain_it, inserted] =

@@ -265,6 +265,12 @@
 #include "qmm_vec_q4_word_subgroup_bf16.h"
 #include "qmm_vec_q4_word_subgroup_f16.h"
 #include "qmm_vec_q4_word_subgroup_f32.h"
+#include "qmm_vec_q4_multi_bf16.h"
+#include "qmm_vec_q4_multi_f16.h"
+#include "qmm_vec_q4_multi_f32.h"
+#include "qmm_vec_q4_multi_subgroup_bf16.h"
+#include "qmm_vec_q4_multi_subgroup_f16.h"
+#include "qmm_vec_q4_multi_subgroup_f32.h"
 #include "qmm_tile_bf16.h"
 #include "qmm_tile_f16.h"
 #include "qmm_tile_rb_f16.h"
@@ -1206,6 +1212,22 @@ ShaderBytes shader_bytes(ComputeKernel kernel) {
       return {swiglu_f16, swiglu_f16_size};
     case ComputeKernel::SwigluBF16:
       return {swiglu_bf16, swiglu_bf16_size};
+    case ComputeKernel::QmmVecQ4MultiF32:
+      return {qmm_vec_q4_multi_f32, qmm_vec_q4_multi_f32_size};
+    case ComputeKernel::QmmVecQ4MultiF16:
+      return {qmm_vec_q4_multi_f16, qmm_vec_q4_multi_f16_size};
+    case ComputeKernel::QmmVecQ4MultiBF16:
+      return {qmm_vec_q4_multi_bf16, qmm_vec_q4_multi_bf16_size};
+    case ComputeKernel::QmmVecQ4MultiSubgroupF32:
+      return {
+          qmm_vec_q4_multi_subgroup_f32, qmm_vec_q4_multi_subgroup_f32_size};
+    case ComputeKernel::QmmVecQ4MultiSubgroupF16:
+      return {
+          qmm_vec_q4_multi_subgroup_f16, qmm_vec_q4_multi_subgroup_f16_size};
+    case ComputeKernel::QmmVecQ4MultiSubgroupBF16:
+      return {
+          qmm_vec_q4_multi_subgroup_bf16,
+          qmm_vec_q4_multi_subgroup_bf16_size};
     case ComputeKernel::QuantizeFpF16:
       return {quantize_fp_f16, quantize_fp_f16_size};
     case ComputeKernel::QuantizeFpBF16:
