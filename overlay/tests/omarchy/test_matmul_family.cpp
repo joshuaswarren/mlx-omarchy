@@ -3024,9 +3024,9 @@ TEST_CASE("qmm_vec packed-word candidate matches baseline and host reference") {
       std::vector<float> expected =
           host_quantized_matmul(rounded, x_rt, 1, n, k, 64, 4);
 
-      // Odd x offsets take the element-load path of the Q4 kernel
-      // (flags bit 1 clear); even ones read x as packed 16-bit words.
-      const int x_offset = (k / 64 + n) % 2;
+      // Unaligned x offsets take the element-load path of the Q4 kernel
+      // (flags bit 1 clear); 16-byte aligned ones read x as uvec4.
+      const int x_offset = (k / 64 + n) % 2 * 3;
       std::vector<float> x_padded(x_offset, 0.0f);
       x_padded.insert(x_padded.end(), x_rt.begin(), x_rt.end());
       array x_full(x_padded.begin(), Shape{1, k + x_offset}, dtype);
