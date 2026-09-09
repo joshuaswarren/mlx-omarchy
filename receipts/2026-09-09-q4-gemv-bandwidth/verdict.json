@@ -1179,5 +1179,6 @@
   },
   "decision": "integrate the 2 rows x 4 subgroups kernel: Q4 decode +13.1% short (76.86 -> 86.94 tok/s), +10.9% long (63.58 -> 70.51), +7.4% longctx (44.93 -> 48.27), BF16 unchanged, all six generated-id digests identical to main over 3 paired repetitions; targeted suites green on llvmpipe (ceca6ac) and the M1 (ceca6ac; a14e60f differs only in the two default constants and its wheel ran the six legs)",
   "gap": "Native 140-151 tok/s remains far: the remaining Q4 GEMV cost is the ~30 us per-dispatch floor (174 dispatches per token) and the 2 fma + 2 integer ops per element the bit-identity contract fixes; both need graph-level fusion or a different arithmetic contract, not a kernel shape",
-  "pending": "in-model GPU profiles of base and candidate queued on the M1 (/tmp/gb-profile-runner.sh -> /tmp/gb-profile-base, /tmp/gb-profile-cand) after the legs; not yet collected"
+  "pending": "in-model GPU profiles of base and candidate queued on the M1 (/tmp/gb-profile-runner.sh -> /tmp/gb-profile-base, /tmp/gb-profile-cand) after the legs; not yet collected",
+  "superseded_by": "verdict-rebased.json: the same split re-measured on main's native-order kernel is 1-2% slower; decision there is hold"
 }

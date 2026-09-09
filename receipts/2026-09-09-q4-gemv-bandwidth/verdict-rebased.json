@@ -1,0 +1,291 @@
+{
+  "topic": "Q4 decode GEMV multi-row split on top of main's native-order arithmetic (rebase requested by Main after e90b76c6 landed)",
+  "branch": "wave/GemvBandwidth-rebased @ 5d92fa1 kernel (from origin/main c4cf9f8; main later moved to 613079db without touching qmm_vec)",
+  "change": "Two rows per subgroup, four subgroups per 128-lane workgroup; each block's x quads and half-chain input_sum loaded once for both rows before the rows' word loads and dots; per-row native qmv arithmetic, precise chains, fma(scale, dot, sum*bias) and subgroupAdd unchanged. The uvec4 x path of the pre-rebase kernel is dropped (the half chain needs float16_t element loads).",
+  "wheels": {
+    "base": {
+      "python": "/home/joshuawarren/src/mlx-GemvBandwidth-main/.venv-accept/bin/python",
+      "wheel": "/home/joshuawarren/src/mlx-GemvBandwidth-main/dist/mlx_omarchy-0.32.2.dev202609091907+c4cf9f8-cp314-cp314-linux_aarch64.whl",
+      "stamp": "c4cf9f8",
+      "version": "0.32.2.dev202609091907+c4cf9f8",
+      "sha256": "1b2e46dbbfbc8ff191e81b53fbdebd3bc48d55baa76f26b16ca31e8e6a606bf3"
+    },
+    "cand": {
+      "python": "/home/joshuawarren/src/mlx-GemvBandwidth-c/.venv-accept/bin/python",
+      "wheel": "/home/joshuawarren/src/mlx-GemvBandwidth-c/dist/mlx_omarchy-0.32.2.dev202609091910+5d92fa1-cp314-cp314-linux_aarch64.whl",
+      "stamp": "5d92fa1",
+      "version": "0.32.2.dev202609091910+5d92fa1",
+      "sha256": "762fa8e40623dd6c44a5a966d2052c80cb14a3a47bcaac3fc3d9b51335a06c6a"
+    }
+  },
+  "exact_order_checks": {
+    "fixed_projection_call35": {
+      "call35_decode_projections": {
+        "q_proj": 0,
+        "k_proj": 0,
+        "v_proj": 0,
+        "o_proj": 0,
+        "gate_proj": 0,
+        "up_proj": 0,
+        "down_proj": 0
+      },
+      "log_line": "{\"decode_mismatches\": 0, \"prefill_mismatches\": 940645}"
+    },
+    "probe_stages_native_model_quads_fma_scale_xor_up_mismatches": {
+      "gb-probe-4864-f32.json": {
+        "k": 4864,
+        "dtype": "float32",
+        "stages": [
+          "k",
+          "n",
+          "trials",
+          "dtype",
+          "device",
+          "stages"
+        ]
+      },
+      "gb-probe-896-f16.json": {
+        "k": 896,
+        "dtype": "float16",
+        "stages": [
+          "k",
+          "n",
+          "trials",
+          "dtype",
+          "device",
+          "stages"
+        ]
+      },
+      "gb-probe-896-f32.json": {
+        "k": 896,
+        "dtype": "float32",
+        "stages": [
+          "k",
+          "n",
+          "trials",
+          "dtype",
+          "device",
+          "stages"
+        ]
+      }
+    },
+    "criterion": "receipts/2026-09-09-q4-gemv-order/verdict.json: 0 call35 decode mismatches on all 7 projections and 0 mismatches for the quads:fma_scale:xor_up model at every f32 stage; the prefill mismatch count is the known out-of-scope general-Qmm value from that receipt"
+  },
+  "paired_legs": {
+    "repetitions": 3,
+    "legs": {
+      "qwen25-0.5b-4bit:long-decode-128": {
+        "base": {
+          "decode_tok_s_samples": [
+            65.18,
+            65.49,
+            65.58
+          ],
+          "decode_tok_s_median": 65.49,
+          "prefill_tok_s_median": 451.72,
+          "digests": [
+            "4cc08910089477fd"
+          ]
+        },
+        "cand": {
+          "decode_tok_s_samples": [
+            64.13,
+            64.49,
+            64.35
+          ],
+          "decode_tok_s_median": 64.35,
+          "prefill_tok_s_median": 451.72,
+          "digests": [
+            "4cc08910089477fd"
+          ],
+          "decode_over_base": 0.9826
+        },
+        "ids_identical": true
+      },
+      "qwen25-0.5b-4bit:longctx-1024-decode-32": {
+        "base": {
+          "decode_tok_s_samples": [
+            45.49,
+            45.84,
+            45.96
+          ],
+          "decode_tok_s_median": 45.84,
+          "prefill_tok_s_median": 478.2,
+          "digests": [
+            "7da83f06ec9f001d"
+          ]
+        },
+        "cand": {
+          "decode_tok_s_samples": [
+            45.4,
+            45.34,
+            45.36
+          ],
+          "decode_tok_s_median": 45.36,
+          "prefill_tok_s_median": 476.25,
+          "digests": [
+            "7da83f06ec9f001d"
+          ],
+          "decode_over_base": 0.9895
+        },
+        "ids_identical": true
+      },
+      "qwen25-0.5b-4bit:short-decode-32": {
+        "base": {
+          "decode_tok_s_samples": [
+            79.1,
+            79.51,
+            79.67
+          ],
+          "decode_tok_s_median": 79.51,
+          "prefill_tok_s_median": 110.7,
+          "digests": [
+            "7fd25a869ff21678"
+          ]
+        },
+        "cand": {
+          "decode_tok_s_samples": [
+            77.86,
+            77.91,
+            77.89
+          ],
+          "decode_tok_s_median": 77.89,
+          "prefill_tok_s_median": 110.29,
+          "digests": [
+            "7fd25a869ff21678"
+          ],
+          "decode_over_base": 0.9796
+        },
+        "ids_identical": true
+      },
+      "qwen25-0.5b-bf16:long-decode-128": {
+        "base": {
+          "decode_tok_s_samples": [
+            11.21,
+            11.21,
+            11.22
+          ],
+          "decode_tok_s_median": 11.21,
+          "prefill_tok_s_median": 273.2,
+          "digests": [
+            "ad964232ee67fecd"
+          ]
+        },
+        "cand": {
+          "decode_tok_s_samples": [
+            11.21,
+            11.22,
+            11.21
+          ],
+          "decode_tok_s_median": 11.21,
+          "prefill_tok_s_median": 273.2,
+          "digests": [
+            "ad964232ee67fecd"
+          ],
+          "decode_over_base": 1.0
+        },
+        "ids_identical": true
+      },
+      "qwen25-0.5b-bf16:longctx-1024-decode-32": {
+        "base": {
+          "decode_tok_s_samples": [
+            10.2,
+            10.2,
+            10.2
+          ],
+          "decode_tok_s_median": 10.2,
+          "prefill_tok_s_median": 320.94,
+          "digests": [
+            "ff502900d2a179a5"
+          ]
+        },
+        "cand": {
+          "decode_tok_s_samples": [
+            10.2,
+            10.21,
+            10.2
+          ],
+          "decode_tok_s_median": 10.2,
+          "prefill_tok_s_median": 321.62,
+          "digests": [
+            "ff502900d2a179a5"
+          ],
+          "decode_over_base": 1.0
+        },
+        "ids_identical": true
+      },
+      "qwen25-0.5b-bf16:short-decode-32": {
+        "base": {
+          "decode_tok_s_samples": [
+            11.66,
+            11.66,
+            11.66
+          ],
+          "decode_tok_s_median": 11.66,
+          "prefill_tok_s_median": 69.12,
+          "digests": [
+            "f26175202f3dabe9"
+          ]
+        },
+        "cand": {
+          "decode_tok_s_samples": [
+            11.65,
+            11.65,
+            11.66
+          ],
+          "decode_tok_s_median": 11.65,
+          "prefill_tok_s_median": 69.93,
+          "digests": [
+            "f26175202f3dabe9"
+          ],
+          "decode_over_base": 0.9991
+        },
+        "ids_identical": true
+      }
+    },
+    "ids_identical_all_legs": true
+  },
+  "tests_m1": {
+    "omarchy_runtime_tests": {
+      "assertions": 22694,
+      "failed": 0,
+      "status": "SUCCESS"
+    },
+    "omarchy_fast_ops_tests": {
+      "assertions": 1102946,
+      "failed": 0,
+      "status": "SUCCESS"
+    },
+    "omarchy_matmul_family_tests": {
+      "assertions": 82636835,
+      "failed": 0,
+      "status": "SUCCESS"
+    },
+    "source_commit": "5d92fa1"
+  },
+  "tests_llvmpipe": "omarchy_matmul_family_tests packed-word case 121/121 on the rebased kernel; the full three suites on llvmpipe ran at ceca6ac (pre-rebase kernel), not re-run at 5d92fa1",
+  "pre_rebase_result": {
+    "base": "de65554 (one-row plain float kernel)",
+    "candidate": "a14e60f",
+    "q4_decode_medians": {
+      "qwen25-0.5b-4bit:long-decode-128": {
+        "base": 63.58,
+        "cand": 68.84,
+        "candb": 70.51
+      },
+      "qwen25-0.5b-4bit:longctx-1024-decode-32": {
+        "base": 44.93,
+        "cand": 47.41,
+        "candb": 48.27
+      },
+      "qwen25-0.5b-4bit:short-decode-32": {
+        "base": 76.86,
+        "cand": 84.28,
+        "candb": 86.94
+      }
+    },
+    "ids_identical": true
+  },
+  "decision": "hold: on the native-order arithmetic the 2x4 split is 1.0-2.0% slower than main on the three Q4 legs (short 79.51 -> 77.89, long 65.49 -> 64.35, longctx 45.84 -> 45.36 tok/s, BF16 unchanged, all ids identical, exact-order checks 0 mismatches). The +7-13% measured pre-rebase came from sharing x loads across rows in the plain float kernel; main's precise per-block chains are already issue-bound per row and the extra row state costs registers. Keep main's kernel; do not integrate.",
+  "next": "What survives is the measurement: streaming table, per-dispatch floor, issue-bound diagnostics (verdict.json). A future Q4 decode gain needs fewer dispatches per token (fusing q/k/v and gate/up GEMVs, 174 -> ~78 per token against a ~30 us floor) rather than a new lane split."
+}
