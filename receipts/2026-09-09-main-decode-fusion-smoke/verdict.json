@@ -1,0 +1,9 @@
+{
+  "purpose": "One-rep M1 smoke of main 8eb24c49 fast-forwarded with wave/DecodeFusion (0b16ff1e, code head 2339105) before landing",
+  "source_commit": "0b16ff1",
+  "hardware": "jwm1-linux Apple M1, installed Honeykrisp fork driver, AC power",
+  "decode_tok_s": {"q4_short": 95.53, "q4_long": 76.41, "q4_longctx": 50.94, "bf16_short": 11.75, "bf16_long": 11.3, "bf16_longctx": 10.24},
+  "prefill_tok_s": {"q4_short": 136.4, "q4_long": 634.4, "q4_longctx": 980.4, "bf16_short": 70.4, "bf16_long": 281.4, "bf16_longctx": 339.5},
+  "digests_equal_to_main": true,
+  "paired_evidence": "receipts/2026-09-09-decode-fusion/verdict.json (3 pairs, ids identical, dispatches/token 537->345, M1 and llvmpipe suites)"
+}

@@ -84,13 +84,13 @@ Published v0.4.0 aarch64 wheel, installed by `install.sh`, on an Apple M1 with t
 
 The BF16 model decodes at about 11 tok/s on the stock driver and about 40 on the optional [Honeykrisp fork build](docs/install-omarchy.md#honeykrisp-driver-with-the-fork-fixes).
 
-Since that wheel, main carries five paired-verified changes with every generated token unchanged on every measured leg: the exact SwiGLU chain fused into one dispatch by default ([receipt](receipts/2026-09-09-fused-chain-default/verdict.json)), the Q4 GEMV rewritten to native Metal's arithmetic order ([receipt](receipts/2026-09-09-q4-gemv-order/verdict.json)), and the prefill wave: four-wide 16-bit binary kernels, a register-blocked f16 attention matmul, causal softmax without a materialized mask, and a straight-line SwiGLU kernel ([receipt](receipts/2026-09-09-prefill-speed/verdict.json), Q4 prefill +21% at 262 tokens and +81% at 1053), then the prefill quantized matmul retiled toward native `qmm_t` ([receipt](receipts/2026-09-09-prefill-qmm/verdict.json), a further +17% and +13%). Main on the M1 now ([smoke](receipts/2026-09-09-main-prefill-qmm-smoke/verdict.json)):
+Since that wheel, main carries six paired-verified changes with every generated token unchanged on every measured leg: the exact SwiGLU chain fused into one dispatch by default ([receipt](receipts/2026-09-09-fused-chain-default/verdict.json)), the Q4 GEMV rewritten to native Metal's arithmetic order ([receipt](receipts/2026-09-09-q4-gemv-order/verdict.json)), and the prefill wave: four-wide 16-bit binary kernels, a register-blocked f16 attention matmul, causal softmax without a materialized mask, and a straight-line SwiGLU kernel ([receipt](receipts/2026-09-09-prefill-speed/verdict.json), Q4 prefill +21% at 262 tokens and +81% at 1053), then the prefill quantized matmul retiled toward native `qmm_t` ([receipt](receipts/2026-09-09-prefill-qmm/verdict.json), a further +17% and +13%), and grouped Q4 decode GEMVs (q/k/v and gate/up in one dispatch each; [receipt](receipts/2026-09-09-decode-fusion/verdict.json), 537 to 345 dispatches per token). Main on the M1 now ([smoke](receipts/2026-09-09-main-prefill-qmm-smoke/verdict.json)):
 
 | Prompt / generated tokens | Decode tok/s | Prefill tok/s |
 |---|---:|---:|
-| 30 / 32 | 88.37 | 135.7 |
-| 262 / 128 | 71.35 | 632.9 |
-| 1053 / 32 | 48.53 | 979.5 |
+| 30 / 32 | 95.53 | 136.4 |
+| 262 / 128 | 76.41 | 634.4 |
+| 1053 / 32 | 50.94 | 980.4 |
 
 `MLX_OMARCHY_FUSED_CHAIN=0`, `MLX_OMARCHY_QMM_VEC_Q4_WORD=0`, and `MLX_OMARCHY_QMM_TILE_RB=0` disable the fused chain, the decode kernel, and the prefill kernel for comparison.
 
