@@ -1,0 +1,583 @@
+diff --git a/overlay/mlx/backend/omarchy/CMakeLists.txt b/overlay/mlx/backend/omarchy/CMakeLists.txt
+index 2982910d..5277b9de 100644
+--- a/overlay/mlx/backend/omarchy/CMakeLists.txt
++++ b/overlay/mlx/backend/omarchy/CMakeLists.txt
+@@ -489,6 +489,12 @@ omarchy_shader(fill_c64 shaders/fill.comp -DUSE_COMPLEX64=1)
+ omarchy_shader(copy_general_c64 shaders/copy_general.comp -DUSE_COMPLEX64=1)
+ omarchy_shader(fill_u64 shaders/fill.comp -DUSE_U64=1)
+ omarchy_shader(fill_u16 shaders/fill.comp -DUSE_U16=1)
++# SdpaDecode: fused single-query attention decode (q_len=1, 64-wide
++# head/value); one shader, one dtype variant each, dispatched per the
++# eligibility gate in primitives.cpp ScaledDotProductAttention::eval_gpu.
++omarchy_shader(sdpa_decode_f32 shaders/sdpa_decode.comp)
++omarchy_shader(sdpa_decode_f16 shaders/sdpa_decode.comp -DUSE_FP16=1)
++omarchy_shader(sdpa_decode_bf16 shaders/sdpa_decode.comp -DUSE_BF16=1)
+ add_custom_target(omarchy_shaders DEPENDS ${OMARCHY_SHADER_HEADERS})
+ add_dependencies(mlx omarchy_shaders)
+ 
+diff --git a/overlay/mlx/backend/omarchy/compute.cpp b/overlay/mlx/backend/omarchy/compute.cpp
+index 75f7a48c..65d38516 100644
+--- a/overlay/mlx/backend/omarchy/compute.cpp
++++ b/overlay/mlx/backend/omarchy/compute.cpp
+@@ -409,6 +409,9 @@
+ #include "fill_u64.h"
+ #include "fill_u16.h"
+ #include "compare_u64.h"
++#include "sdpa_decode_f32.h"
++#include "sdpa_decode_f16.h"
++#include "sdpa_decode_bf16.h"
+ 
+ namespace mlx::core::omarchy {
+ 
+@@ -1236,6 +1239,12 @@ ShaderBytes shader_bytes(ComputeKernel kernel) {
+       return {gather_qmm_nb_fp_hgs_bf16, gather_qmm_nb_fp_hgs_bf16_size};
+     case ComputeKernel::MatmulComplex64:
+       return {matmul_complex64, matmul_complex64_size};
++    case ComputeKernel::SdpaDecodeF32:
++      return {sdpa_decode_f32, sdpa_decode_f32_size};
++    case ComputeKernel::SdpaDecodeF16:
++      return {sdpa_decode_f16, sdpa_decode_f16_size};
++    case ComputeKernel::SdpaDecodeBF16:
++      return {sdpa_decode_bf16, sdpa_decode_bf16_size};
+     case ComputeKernel::Count:
+       break;
+   }
+diff --git a/overlay/mlx/backend/omarchy/compute.h b/overlay/mlx/backend/omarchy/compute.h
+index 247817dd..557f63e7 100644
+--- a/overlay/mlx/backend/omarchy/compute.h
++++ b/overlay/mlx/backend/omarchy/compute.h
+@@ -559,6 +559,14 @@ enum class ComputeKernel : uint16_t {
+   // QmmTileRbF16 (shaders/qmm_coopmat.comp).
+   QmmPrefillCoopmatF16,
+   MatmulBF16Coopmat,
++  // SdpaDecode: fused single-query attention decode (q_len=1, 64-wide
++  // head and value dims). One 1024-thread workgroup per (batch, query
++  // head) runs the whole scores/softmax/probs chain with float32
++  // intermediates and one native-dtype store; raw k/v strides let a
++  // padded KV-cache slice ride in place. See shaders/sdpa_decode.comp.
++  SdpaDecodeF32,
++  SdpaDecodeF16,
++  SdpaDecodeBF16,
+   Count,
+ };
+ 
+diff --git a/overlay/mlx/backend/omarchy/primitives.cpp b/overlay/mlx/backend/omarchy/primitives.cpp
+index 32a4b340..3c1e40c1 100644
+--- a/overlay/mlx/backend/omarchy/primitives.cpp
++++ b/overlay/mlx/backend/omarchy/primitives.cpp
+@@ -589,7 +589,10 @@ void dispatch_matmul(
+           params.rhs_offset, b_span + b_inner)) {
+     omarchy::unsupported(name + " index span", out);
+   }
+-  if (out.dtype() == bfloat16 && params.matrix_m == 1u && params.matrix_n >= 4096u) {
++  if (out.dtype() == bfloat16 && params.matrix_m == 1u &&
++      params.matrix_k > 64u && (params.flags & 1u) != 0u &&
++      caps.subgroup_size == 32u &&
++      (caps.subgroup_operations & VK_SUBGROUP_FEATURE_SHUFFLE_RELATIVE_BIT) != 0u) {
+     auto vec_kernel = select_float_kernel(
+         out.dtype(),
+         omarchy::ComputeKernel::MatmulVecF32,
+@@ -9673,6 +9676,89 @@ void ScaledDotProductAttention::eval_gpu(
+     return;
+   }
+ 
++  // SdpaDecode: the single-query decode shape (q_len=1, 64-wide head
++  // and value dims, exactly q/k/v, k_len>0) rides one fused kernel: one
++  // 1024-thread workgroup per (batch, query head) computes the whole
++  // scores/softmax/probs chain with float32 intermediates and stores
++  // the result once in the native dtype. With one query row, causal
++  // masking permits every key, so the fused kernel is exact here. The
++  // k/v strides pass raw, so a padded KV-cache slice is read in place
++  // with no materialization. Anything else - other shapes, masks,
++  // sinks, or a device without the 32-lane subgroup, 1024-invocation
++  // workgroup, or 4352-byte shared tile the shader assumes - falls
++  // through to the composition below unchanged.
++  if (inputs.size() == 3 && q_len == 1 && head_dim == 64 && v_dim == 64 &&
++      k_len > 0 && q.strides()[3] == 1 && k.strides()[3] == 1 &&
++      v.strides()[3] == 1) {
++    constexpr uint32_t kSubgroupBits =
++        VK_SUBGROUP_FEATURE_BASIC_BIT | VK_SUBGROUP_FEATURE_ARITHMETIC_BIT;
++    const auto& caps = encoder.device().capabilities();
++    uint64_t groups =
++        static_cast<uint64_t>(batch) * static_cast<uint64_t>(heads);
++    bool decode_ready = caps.subgroup_size == 32u &&
++        (caps.subgroup_operations & kSubgroupBits) == kSubgroupBits &&
++        caps.max_compute_work_group_invocations >= 1024u &&
++        caps.max_compute_work_group_size[0] >= 1024u &&
++        caps.max_compute_shared_memory_size >= 4352u &&
++        groups <= omarchy::kMaxComputeGroupCountX;
++    for (const array* input : {&q, &k, &v}) {
++      if (!decode_ready) {
++        break;
++      }
++      uint64_t span = 1;
++      for (int axis = 0; axis < input->ndim(); ++axis) {
++        int64_t stride = input->strides()[axis];
++        if (stride < 0 || static_cast<uint64_t>(stride) > UINT32_MAX) {
++          decode_ready = false;
++          break;
++        }
++        uint64_t term = static_cast<uint64_t>(input->shape(axis) - 1) * stride;
++        if (term > UINT32_MAX - span) {
++          decode_ready = false;
++          break;
++        }
++        span += term;
++      }
++      uint64_t offset = input->offset() / input->itemsize();
++      decode_ready = decode_ready &&
++          omarchy::compute_index_span_fits(offset, span) &&
++          (offset + span) * input->itemsize() <= binding(*input).range;
++    }
++    if (decode_ready) {
++      out.set_data(allocate_omarchy(out.nbytes()));
++      omarchy::ComputeParams params;
++      params.count = checked_u32(out.size(), tag, out);
++      params.lhs_offset = checked_item_offset(q, q.size(), tag, out);
++      params.rhs_offset = checked_item_offset(k, k.size(), tag, out);
++      params.aux_offset = checked_item_offset(v, v.size(), tag, out);
++      params.output_offset = checked_item_offset(out, out.size(), tag, out);
++      params.matrix_m = checked_u32(heads, tag, out);
++      params.matrix_n = checked_u32(kv_heads, tag, out);
++      params.matrix_k = checked_u32(k_len, tag, out);
++      params.alpha = scale_;
++      params.shape[0] = checked_u32(q.strides()[0], tag, out);
++      params.shape[1] = checked_u32(q.strides()[1], tag, out);
++      params.shape[2] = checked_u32(k.strides()[0], tag, out);
++      params.shape[3] = checked_u32(k.strides()[1], tag, out);
++      params.in_strides[0] = checked_u32(k.strides()[2], tag, out);
++      params.in_strides[1] = checked_u32(v.strides()[0], tag, out);
++      params.in_strides[2] = checked_u32(v.strides()[1], tag, out);
++      params.in_strides[3] = checked_u32(v.strides()[2], tag, out);
++      std::array<omarchy::ComputeBinding, 4> bindings{
++          binding(q), binding(k), binding(v), binding(out)};
++      encoder.dispatch_compute(
++          select_float_kernel(
++              q.dtype(),
++              omarchy::ComputeKernel::SdpaDecodeF32,
++              omarchy::ComputeKernel::SdpaDecodeF16,
++              omarchy::ComputeKernel::SdpaDecodeBF16),
++          bindings,
++          params,
++          static_cast<uint32_t>(groups));
++      return;
++    }
++  }
++
+   // Shared commit of the attention result into the output: with GQA the
+   // result is 5-D (kv, repeat) while out is 4-D (heads). The flat
+   // row-major layouts match, so share the buffer under out's own
+diff --git a/overlay/mlx/backend/omarchy/shaders/elementwise.comp b/overlay/mlx/backend/omarchy/shaders/elementwise.comp
+index 458bff68..66e63d67 100644
+--- a/overlay/mlx/backend/omarchy/shaders/elementwise.comp
++++ b/overlay/mlx/backend/omarchy/shaders/elementwise.comp
+@@ -595,7 +595,19 @@ void main() {
+         value = exp(lhs);
+         break;
+       case 5:
++#ifdef USE_BF16
++        value = LOAD_VALUE(STORE_VALUE(exp(abs(lhs))));
++        value = LOAD_VALUE(STORE_VALUE(1.0 + value));
++        value = LOAD_VALUE(STORE_VALUE(1.0 / value));
++        value = lhs < 0.0 ? value : 1.0 - value;
++#elif defined(USE_FP16)
++        value = unpackHalf2x16(packHalf2x16(vec2(exp(abs(lhs)), 0.0))).x;
++        value = unpackHalf2x16(packHalf2x16(vec2(1.0 + value, 0.0))).x;
++        value = unpackHalf2x16(packHalf2x16(vec2(1.0 / value, 0.0))).x;
++        value = lhs < 0.0 ? value : 1.0 - value;
++#else
+         value = 1.0 / (1.0 + exp(-lhs));
++#endif
+         break;
+       case 6:
+         value = lhs * lhs;
+diff --git a/overlay/mlx/backend/omarchy/shaders/fast_norm.comp b/overlay/mlx/backend/omarchy/shaders/fast_norm.comp
+index 7d8d3471..8bbf1548 100644
+--- a/overlay/mlx/backend/omarchy/shaders/fast_norm.comp
++++ b/overlay/mlx/backend/omarchy/shaders/fast_norm.comp
+@@ -4,7 +4,7 @@
+ // Fused RMSNorm (-DRMS default) or LayerNorm (-DLAYER_NORM=1) forward over the
+ // last axis, matching mlx::core::fast fallback math in mlx/fast.cpp. One
+ // workgroup handles one row with shared-memory reductions and a grid-stride
+-// row loop; every arithmetic step runs in float32 for all storage dtypes.
++// row loop. RMSNorm rounds the normalized value before applying the weight.
+ //
+ //   RMS:   n = rsqrt(mean(x^2) + eps);            y = x * n * w
+ //   Layer: mu = mean(x); var = mean(x^2) - mu^2;
+@@ -141,7 +141,12 @@ void main() {
+               : LOAD_VALUE(bias_data.values[params.aux_offset + index]);
+       float result = (value - mu) * norm * weight + bias;
+ #else
+-      float result = value * norm * weight;
++#ifdef USE_FP16
++      float normalized = unpackHalf2x16(packHalf2x16(vec2(value * norm, 0.0))).x;
++#else
++      float normalized = LOAD_VALUE(STORE_VALUE(value * norm));
++#endif
++      float result = normalized * weight;
+ #endif
+       output_data.values[params.output_offset + row * row_length + index] =
+           STORE_VALUE(result);
+diff --git a/overlay/mlx/backend/omarchy/shaders/fused_chain.comp b/overlay/mlx/backend/omarchy/shaders/fused_chain.comp
+index f4aebc2c..1caaadd8 100644
+--- a/overlay/mlx/backend/omarchy/shaders/fused_chain.comp
++++ b/overlay/mlx/backend/omarchy/shaders/fused_chain.comp
+@@ -124,12 +124,15 @@ void main() {
+         case 4u: // Exp
+           value = exp(lhs);
+           break;
+-        case 5u: // Sigmoid: same unguarded form as elementwise.comp
+-          // case 5. exp underflows to 0 for large positive x and
+-          // overflows to inf for large negative x, both of which the
+-          // division folds to the correct 1.0 / 0.0 without producing
+-          // the inf/inf NaN a sign-guarded form would.
++        case 5u:
++#ifdef USE_FP16
++          value = ROUND_INTERMEDIATE(exp(abs(lhs)));
++          value = ROUND_INTERMEDIATE(1.0 + value);
++          value = ROUND_INTERMEDIATE(1.0 / value);
++          value = lhs < 0.0 ? value : 1.0 - value;
++#else
+           value = 1.0 / (1.0 + exp(-lhs));
++#endif
+           break;
+         case 6u: // Square
+           value = lhs * lhs;
+diff --git a/overlay/mlx/backend/omarchy/shaders/matmul_vec.comp b/overlay/mlx/backend/omarchy/shaders/matmul_vec.comp
+index c39ab94b..0c5fab61 100644
+--- a/overlay/mlx/backend/omarchy/shaders/matmul_vec.comp
++++ b/overlay/mlx/backend/omarchy/shaders/matmul_vec.comp
+@@ -1,6 +1,8 @@
+ #version 460
+ 
+-// One lane per output preserves the tiled kernel's sequential K accumulation.
++// Experimental Metal-style four-element partial sums and shuffle reduction.
++#extension GL_KHR_shader_subgroup_basic : require
++#extension GL_KHR_shader_subgroup_shuffle_relative : require
+ 
+ #ifdef USE_FP16
+ #extension GL_EXT_shader_16bit_storage : require
+@@ -28,7 +30,7 @@ uint16_t bf16_store(float value) {
+ #endif
+ 
+ const uint COLUMNS_PER_GROUP = 32u;
+-layout(local_size_x = 32) in;
++layout(local_size_x = 256) in;
+ 
+ layout(set = 0, binding = 0, std430) readonly buffer InputA {
+   STORAGE_TYPE values[];
+@@ -87,25 +89,38 @@ void main() {
+   uint tiles = params.matrix_n / COLUMNS_PER_GROUP +
+       uint(params.matrix_n % COLUMNS_PER_GROUP != 0u);
+   for (uint tile = gl_WorkGroupID.x; tile < tiles; tile += gl_NumWorkGroups.x) {
+-    uint column = tile * COLUMNS_PER_GROUP + gl_LocalInvocationID.x;
+-    if (column >= params.matrix_n) {
+-      continue;
++    for (uint row = 0u; row < 4u; ++row) {
++      uint column = tile * COLUMNS_PER_GROUP + gl_SubgroupID * 4u + row;
++      if (column >= params.matrix_n) {
++        continue;
++      }
++      float accumulator = 0.0;
++      for (uint block = 0u; block < params.matrix_k; block += 128u) {
++        for (uint item = 0u; item < 4u; ++item) {
++          uint k = block + gl_SubgroupInvocationID * 4u + item;
++          if (k < params.matrix_k) {
++            uint a_index = a_base + (a_transposed ? k * params.lhs_gap : k);
++            uint b_index = b_transposed
++                ? b_base + column * params.rhs_gap + k
++                : b_base + k * params.rhs_gap + column;
++            accumulator += LOAD_VALUE(input_a.values[a_index]) *
++                LOAD_VALUE(input_b.values[b_index]);
++          }
++        }
++      }
++      for (uint offset = 16u; offset > 0u; offset >>= 1u) {
++        accumulator += subgroupShuffleDown(accumulator, offset);
++      }
++      if (gl_SubgroupInvocationID == 0u) {
++        uint output_index = batch_index * params.matrix_n + column;
++        float value = LOAD_VALUE(STORE_VALUE(params.alpha)) * LOAD_VALUE(STORE_VALUE(accumulator));
++        if ((params.flags & 2u) != 0u) {
++          uint c_index = params.aux_size == 1u ? 0u : output_index % params.aux_size;
++          value += LOAD_VALUE(STORE_VALUE(LOAD_VALUE(STORE_VALUE(params.beta)) *
++              LOAD_VALUE(input_c.values[params.aux_offset + c_index])));
++        }
++        output_data.values[params.output_offset + output_index] = STORE_VALUE(value);
++      }
+     }
+-    float accumulator = 0.0;
+-    for (uint k = 0u; k < params.matrix_k; ++k) {
+-      uint a_index = a_base + (a_transposed ? k * params.lhs_gap : k);
+-      uint b_index = b_transposed
+-          ? b_base + column * params.rhs_gap + k
+-          : b_base + k * params.rhs_gap + column;
+-      accumulator += LOAD_VALUE(input_a.values[a_index]) *
+-          LOAD_VALUE(input_b.values[b_index]);
+-    }
+-    uint output_index = batch_index * params.matrix_n + column;
+-    float value = params.alpha * accumulator;
+-    if ((params.flags & 2u) != 0u) {
+-      uint c_index = params.aux_size == 1u ? 0u : output_index % params.aux_size;
+-      value += params.beta * LOAD_VALUE(input_c.values[params.aux_offset + c_index]);
+-    }
+-    output_data.values[params.output_offset + output_index] = STORE_VALUE(value);
+   }
+ }
+diff --git a/overlay/mlx/backend/omarchy/shaders/sdpa_decode.comp b/overlay/mlx/backend/omarchy/shaders/sdpa_decode.comp
+new file mode 100644
+index 00000000..e1d7a265
+--- /dev/null
++++ b/overlay/mlx/backend/omarchy/shaders/sdpa_decode.comp
+@@ -0,0 +1,221 @@
++// Copyright © 2026 Joshua Warren / mlx-omarchy contributors.
++// SPDX-License-Identifier: MIT
++//
++// Fused single-query scaled dot-product attention mirroring the native
++// Metal reference sdpa_vector<T, 64, 64> (mlx/backend/metal/kernels/
++// sdpa_vector.h) for the decode shapes this backend dispatches:
++// q_len = 1, head_dim = v_dim = 64, no mask, no sinks, kv_len >= 1.
++// A length-1 query attends to every key under the causal rule, so key
++// filtering drops out entirely.
++//
++// One workgroup of 1024 threads = 32 subgroups x 32 lanes reproduces
++// the Metal kernel's 32 simdgroups of 32 threads. Subgroup sgid streams
++// the keys t = sgid, sgid+32, ...; its lanes each hold two query
++// features (2*lane, 2*lane+1), so one subgroupAdd completes the 64-wide
++// dot product. The online softmax (running max, rescale factor, running
++// exp sum, two value accumulators) follows the reference statement for
++// statement. The final combine is the reference transpose reduction:
++// shared max_scores[32] and sum_exp_scores[32] plus a 32x32 float tile
++// outputs[1024] let lane l of subgroup s read subgroup l's lane-s
++// partial against subgroup l's own rescale factor; two barriered rounds
++// per accumulator pair. Every one of the 1024 threads executes both
++// barriers unconditionally. A subgroup with no keys (kv_len <= sgid)
++// keeps the reference empty-state invariants - max -FLT_MAX, exp sum 0,
++// zero partials - and contributes exactly nothing to the combine.
++//
++// Everything between load and store is float32; the final store is the
++// one rounding to the storage dtype, matching the Metal kernel's
++// static_cast<T> epilogue. This kernel tracks the fused native path, so
++// there are no per-step storage rounds (unlike the composed-path parity
++// kernels such as fast_rope.comp).
++//
++// bfloat16 rides the repo's proven uint16_t word form (qmm_vec.comp):
++// loads shift the 16-bit lane into the high half of a float, stores
++// round to nearest even with the NaN-preserve tweak.
++//
++// Push-constant mapping (ComputeParams fields):
++//   matrix_m     query heads (per batch)
++//   matrix_n     kv heads
++//   matrix_k     kv length
++//   alpha        softmax scale, premultiplied into the query
++//   lhs_offset / rhs_offset / aux_offset / output_offset
++//                item offsets of q / k / v / out
++//   shape[0..1]  q batch / head strides
++//   shape[2..3]  k batch / head strides
++//   in_strides[0]     k sequence stride
++//   in_strides[1..3]  v batch / head / sequence strides
++//   Feature stride is 1 on every operand; the output is contiguous
++//   (batch, heads, 1, 64) and workgroup g covers batch = g / heads,
++//   head = g % heads, kv head = head / (heads / kv_heads).
++//
++// Dispatch requires subgroupSize == 32, the BASIC and ARITHMETIC
++// subgroup features, a 1024-thread workgroup, and >= 4352 bytes of
++// shared memory. Those caps are probed host-side at dispatch: Vulkan
++// compute cannot branch on subgroup size in-shader (mirroring the
++// USE_SUBGROUP gate in qmm_vec.comp), and any other shape or capability
++// set falls back to the composed elementwise path.
++
++#version 460
++
++#ifdef USE_FP16
++#extension GL_EXT_shader_16bit_storage : require
++#extension GL_EXT_shader_explicit_arithmetic_types_float16 : require
++#define STORAGE_TYPE float16_t
++#define LOAD_VALUE(x) float(x)
++#define STORE_VALUE(f) STORAGE_TYPE(f)
++#elif defined(USE_BF16)
++#extension GL_EXT_shader_16bit_storage : require
++#extension GL_EXT_shader_explicit_arithmetic_types_int16 : require
++#define STORAGE_TYPE uint16_t
++#define LOAD_VALUE(x) uintBitsToFloat(uint(x) << 16u)
++uint16_t bf16_store(float value) {
++  uint bits = floatBitsToUint(value);
++  if (isnan(value)) {
++    return uint16_t((bits >> 16) | 0x40u);
++  }
++  return uint16_t((bits + 0x7fffu + ((bits >> 16) & 1u)) >> 16);
++}
++#define STORE_VALUE(f) bf16_store(f)
++#else
++#define STORAGE_TYPE float
++#define LOAD_VALUE(x) float(x)
++#define STORE_VALUE(f) STORAGE_TYPE(f)
++#endif
++
++#extension GL_KHR_shader_subgroup_basic : require
++#extension GL_KHR_shader_subgroup_arithmetic : require
++
++layout(set = 0, binding = 0, std430) readonly buffer Query {
++  STORAGE_TYPE values[];
++} query_data;
++layout(set = 0, binding = 1, std430) readonly buffer Key {
++  STORAGE_TYPE values[];
++} key_data;
++layout(set = 0, binding = 2, std430) readonly buffer Value {
++  STORAGE_TYPE values[];
++} value_data;
++layout(set = 0, binding = 3, std430) writeonly buffer Output {
++  STORAGE_TYPE values[];
++} output_data;
++
++layout(local_size_x = 1024, local_size_y = 1, local_size_z = 1) in;
++
++layout(push_constant) uniform Params {
++  uint count;
++  uint operation;
++  uint lhs_size;
++  uint rhs_size;
++  uint reduce_size;
++  uint output_size;
++  uint lhs_offset;
++  uint rhs_offset;
++  uint output_offset;
++  uint aux_size;
++  uint aux_offset;
++  uint matrix_m;
++  uint matrix_n;
++  uint matrix_k;
++  uint flags;
++  float alpha;
++  float beta;
++  uint dims;
++  uint shape[4];
++  uint in_strides[4];
++  uint out_strides[4];
++} params;
++
++const uint SUBGROUPS = 32u;
++const uint LANES = 32u;
++// head_dim 64 / 32 lanes: two features per lane on q, k, and v.
++const uint FEATURES_PER_LANE = 2u;
++
++shared float max_scores[SUBGROUPS];
++shared float sum_exp_scores[SUBGROUPS];
++shared float outputs[SUBGROUPS * LANES];
++
++void main() {
++  uint group = gl_WorkGroupID.x;
++  uint heads = params.matrix_m;
++  uint batch = group / heads;
++  uint head = group - batch * heads;
++  uint kv_head = head / (heads / params.matrix_n);
++
++  uint sgid = gl_SubgroupID;
++  uint lane = gl_SubgroupInvocationID;
++
++  // The reference premultiplies the scale into the query once.
++  float q[FEATURES_PER_LANE];
++  uint q_base = params.lhs_offset + batch * params.shape[0] +
++      head * params.shape[1] + FEATURES_PER_LANE * lane;
++  for (uint j = 0u; j < FEATURES_PER_LANE; j++) {
++    q[j] = params.alpha * LOAD_VALUE(query_data.values[q_base + j]);
++  }
++
++  uint k_base = params.rhs_offset + batch * params.shape[2] +
++      kv_head * params.shape[3] + FEATURES_PER_LANE * lane;
++  uint v_base = params.aux_offset + batch * params.in_strides[1] +
++      kv_head * params.in_strides[2] + FEATURES_PER_LANE * lane;
++
++  // -FLT_MAX, the reference Limits<float>::finite_min empty cap.
++  float max_score = uintBitsToFloat(0xff7fffffu);
++  float sum_exp_score = 0.0;
++  float o[FEATURES_PER_LANE];
++  for (uint j = 0u; j < FEATURES_PER_LANE; j++) {
++    o[j] = 0.0;
++  }
++
++  // Each subgroup owns the keys t = sgid, sgid + 32, ... and advances
++  // by 32 sequence strides per step, exactly like the reference's
++  // inner_k_stride / inner_v_stride walk.
++  for (uint t = sgid; t < params.matrix_k; t += SUBGROUPS) {
++    uint k_index = k_base + t * params.in_strides[0];
++    float score = subgroupAdd(
++        q[0] * LOAD_VALUE(key_data.values[k_index]) +
++        q[1] * LOAD_VALUE(key_data.values[k_index + 1u]));
++    float new_max = max(max_score, score);
++    float factor = exp(max_score - new_max);
++    float exp_score = exp(score - new_max);
++    max_score = new_max;
++    sum_exp_score = sum_exp_score * factor + exp_score;
++    uint v_index = v_base + t * params.in_strides[3];
++    o[0] = o[0] * factor + exp_score * LOAD_VALUE(value_data.values[v_index]);
++    o[1] = o[1] * factor +
++        exp_score * LOAD_VALUE(value_data.values[v_index + 1u]);
++  }
++
++  // Combine the per-subgroup online states across the workgroup, the
++  // reference's max/sum exchange. Lane l reads subgroup l's state, so
++  // the subgroup reductions cover all 32 subgroups and every lane ends
++  // with the same global max and weighted exp sum.
++  if (lane == 0u) {
++    max_scores[sgid] = max_score;
++    sum_exp_scores[sgid] = sum_exp_score;
++  }
++  barrier();
++  max_score = max_scores[lane];
++  float new_max = subgroupMax(max_score);
++  float factor = exp(max_score - new_max);
++  sum_exp_score = subgroupAdd(sum_exp_scores[lane] * factor);
++
++  // Aggregate the outputs through the shared transpose: the write puts
++  // subgroup sgid's lane partial at [lane][sgid], the read pairs
++  // subgroup lane's partial with subgroup lane's factor, and the
++  // subgroupAdd folds all 32 subgroups. The trailing barrier keeps the
++  // next round's write off this round's read.
++  for (uint j = 0u; j < FEATURES_PER_LANE; j++) {
++    outputs[LANES * lane + sgid] = o[j];
++    barrier();
++    float combined = subgroupAdd(outputs[LANES * sgid + lane] * factor);
++    combined =
++        (sum_exp_score == 0.0) ? combined : (combined / sum_exp_score);
++    o[j] = combined;
++    barrier();
++  }
++
++  if (lane == 0u) {
++    uint out_base = params.output_offset +
++        group * (SUBGROUPS * FEATURES_PER_LANE) + sgid * FEATURES_PER_LANE;
++    output_data.values[out_base] = STORE_VALUE(o[0]);
++    output_data.values[out_base + 1u] = STORE_VALUE(o[1]);
++  }
++}
+diff --git a/overlay/tests/omarchy/test_fast_ops.cpp b/overlay/tests/omarchy/test_fast_ops.cpp
+index 4a65de4c..af951468 100644
+--- a/overlay/tests/omarchy/test_fast_ops.cpp
++++ b/overlay/tests/omarchy/test_fast_ops.cpp
+@@ -333,6 +333,25 @@ TEST_CASE("native RMSNorm matches host math on f32 rows") {
+   require_close(got_bare, want_bare, 1e-5, "rms_norm weightless");
+ }
+ 
++TEST_CASE("RMSNorm rounds normalized values before applying low-precision weights") {
++  if (!compute_available()) {
++    return;
++  }
++  Stream stream = gpu_stream();
++  for (Dtype dtype : {float16, bfloat16}) {
++    auto x = astype(array({0.5f, 1.0f, 2.0f, 3.0f}), dtype, stream);
++    auto w = astype(array({0.3f, 0.7f, 1.3f, 2.1f}), dtype, stream);
++    const std::vector<double> expected = dtype == float16
++        ? std::vector<double>{0.0794677734375, 0.370849609375, 1.376953125, 3.337890625}
++        : std::vector<double>{0.080078125, 0.37109375, 1.375, 3.328125};
++    require_close(
++        flat(fast::rms_norm(x, w, 0.0f, stream), stream),
++        expected,
++        0.0,
++        "RMSNorm intermediate rounding");
++  }
++}
++
+ TEST_CASE("native LayerNorm matches host math on f32 rows") {
+   if (!compute_available()) {
+     return;

@@ -1,0 +1,43 @@
+{
+  "native": {
+    "dist": "mlx",
+    "verified": "match",
+    "mismatch": null,
+    "files": [
+      {
+        "path": "mlx/core.cpython-312-darwin.so",
+        "label": "mlx.core extension",
+        "sha256": "5ff77c777a73864d2af86defd61b141467746636f0047b76b66a7ae645fa12fb",
+        "record_sha256": "5ff77c777a73864d2af86defd61b141467746636f0047b76b66a7ae645fa12fb",
+        "match": true
+      }
+    ],
+    "dist_version": "0.32.2",
+    "mx_version": "0.32.2",
+    "version_match": true
+  },
+  "candidate": {
+    "dist": "mlx-omarchy",
+    "verified": "match",
+    "mismatch": null,
+    "files": [
+      {
+        "path": "mlx/core.cpython-314-aarch64-linux-gnu.so",
+        "label": "mlx.core extension",
+        "sha256": "4ad850da16c300ea9f60aa7247f034f358aa16d7ba2fd146979a01c867e3cfa5",
+        "record_sha256": "4ad850da16c300ea9f60aa7247f034f358aa16d7ba2fd146979a01c867e3cfa5",
+        "match": true
+      },
+      {
+        "path": "mlx/lib/libmlx.so",
+        "label": "mlx/lib/libmlx.so",
+        "sha256": "52d86217e5846fad52003c3fd4d2dbc22c60b407406f71a167d740050b0cbfdd",
+        "record_sha256": "52d86217e5846fad52003c3fd4d2dbc22c60b407406f71a167d740050b0cbfdd",
+        "match": true
+      }
+    ],
+    "dist_version": "0.32.2.dev202609090708+fb63766",
+    "mx_version": "0.32.2.dev202609090708+fb63766",
+    "version_match": true
+  }
+}
