@@ -39,6 +39,7 @@ for label, name in targets:
         result = layer(x)
         mx.eval(result)
         values = np.array(result.astype(mx.float32))
+        np.save(out / f'call{call}-{label}-{name}-output.npy', values)
         expected = np.load(inputs / f'call{call}-{label}-{name}-output.npy')
         assert values.shape == expected.shape, (values.shape, expected.shape)
         different = int(np.count_nonzero(values != expected))

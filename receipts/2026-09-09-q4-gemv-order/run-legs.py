@@ -11,7 +11,7 @@ import shutil
 import sys
 from pathlib import Path
 
-root, py, wheel, out = (Path(a).resolve() for a in sys.argv[1:5])
+root, py, wheel, out = (Path(a).absolute() for a in sys.argv[1:5])
 source = root / 'receipts/parity-baseline-20260908'
 out.mkdir(exist_ok=True)
 shutil.copyfile(source / 'capture-ids.py', out / 'capture-ids.py')

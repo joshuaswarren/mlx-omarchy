@@ -1,0 +1,41 @@
+{
+  "k": 896,
+  "n": 64,
+  "trials": 16,
+  "dtype": "float16",
+  "device": "gpu",
+  "stages": {
+    "reduce": {
+      "outputs": 1024,
+      "mismatches": {
+        "xor_up": 0,
+        "xor_down": 0,
+        "sequential": 0
+      }
+    },
+    "inputsum": {
+      "outputs": 1024,
+      "mismatches": {
+        "xor_up": 0,
+        "xor_down": 1,
+        "sequential": 1
+      }
+    },
+    "dot": {
+      "outputs": 1024,
+      "mismatches": {
+        "xor_up": 0,
+        "xor_down": 0,
+        "sequential": 0
+      }
+    },
+    "full": {
+      "outputs": 1024,
+      "mismatches": {
+        "xor_up": 1,
+        "xor_down": 1,
+        "sequential": 1
+      }
+    }
+  }
+}

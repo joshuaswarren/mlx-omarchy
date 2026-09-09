@@ -1,0 +1,51 @@
+{
+  "k": 896,
+  "n": 64,
+  "trials": 4,
+  "dtype": "float32",
+  "device": "Device(gpu, 0)",
+  "stages": {
+    "onenibble": {
+      "outputs": 256,
+      "mismatches": {
+        "fma_scale:xor_up": 0,
+        "fma_scale:xor_down": 0,
+        "fma_scale:sequential": 0,
+        "fma_bias:xor_up": 0,
+        "fma_bias:xor_down": 0,
+        "fma_bias:sequential": 0,
+        "nofma:xor_up": 0,
+        "nofma:xor_down": 0,
+        "nofma:sequential": 0
+      }
+    },
+    "dotonly": {
+      "outputs": 256,
+      "mismatches": {
+        "fma_scale:xor_up": 50,
+        "fma_scale:xor_down": 178,
+        "fma_scale:sequential": 202,
+        "fma_bias:xor_up": 50,
+        "fma_bias:xor_down": 178,
+        "fma_bias:sequential": 202,
+        "nofma:xor_up": 50,
+        "nofma:xor_down": 178,
+        "nofma:sequential": 202
+      }
+    },
+    "scaleonly": {
+      "outputs": 256,
+      "mismatches": {
+        "fma_scale:xor_up": 0,
+        "fma_scale:xor_down": 149,
+        "fma_scale:sequential": 191,
+        "fma_bias:xor_up": 0,
+        "fma_bias:xor_down": 149,
+        "fma_bias:sequential": 191,
+        "nofma:xor_up": 0,
+        "nofma:xor_down": 149,
+        "nofma:sequential": 191
+      }
+    }
+  }
+}
