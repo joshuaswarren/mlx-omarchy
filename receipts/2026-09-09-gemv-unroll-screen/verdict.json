@@ -1,0 +1,10 @@
+{
+  "status": "rejected",
+  "source_short": "de7a18e",
+  "wheel_sha256": "d3058828725e5b13e8986531f7fcf36349cd7ab89707bc88b606a4809889566d",
+  "reason": "Four-step sequential loop unrolling regressed BF16 decode in all three workloads. Scalar accumulation order preserved; full generated IDs matched.",
+  "paired_repetitions": 1,
+  "measured_legs": 12,
+  "all_full_generated_ids_equal": true,
+  "scope": "Screening result, not repeated statistical acceptance. No default change."
+}

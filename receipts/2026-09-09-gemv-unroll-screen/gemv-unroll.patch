@@ -1,0 +1,25 @@
+--- a/overlay/mlx/backend/omarchy/shaders/matmul_vec.comp
++++ b/overlay/mlx/backend/omarchy/shaders/matmul_vec.comp
+@@ -92,7 +92,21 @@
+       continue;
+     }
+     float accumulator = 0.0;
+-    for (uint k = 0u; k < params.matrix_k; ++k) {
++    uint a_stride = a_transposed ? params.lhs_gap : 1u;
++    uint b_stride = b_transposed ? 1u : params.rhs_gap;
++    uint b_column = b_base + column * (b_transposed ? params.rhs_gap : 1u);
++    uint k_end = params.matrix_k / 4u * 4u;
++    for (uint k = 0u; k < k_end; k += 4u) {
++      accumulator += LOAD_VALUE(input_a.values[a_base + (k + 0u) * a_stride]) *
++          LOAD_VALUE(input_b.values[b_column + (k + 0u) * b_stride]);
++      accumulator += LOAD_VALUE(input_a.values[a_base + (k + 1u) * a_stride]) *
++          LOAD_VALUE(input_b.values[b_column + (k + 1u) * b_stride]);
++      accumulator += LOAD_VALUE(input_a.values[a_base + (k + 2u) * a_stride]) *
++          LOAD_VALUE(input_b.values[b_column + (k + 2u) * b_stride]);
++      accumulator += LOAD_VALUE(input_a.values[a_base + (k + 3u) * a_stride]) *
++          LOAD_VALUE(input_b.values[b_column + (k + 3u) * b_stride]);
++    }
++    for (uint k = k_end; k < params.matrix_k; ++k) {
+       uint a_index = a_base + (a_transposed ? k * params.lhs_gap : k);
+       uint b_index = b_transposed
+           ? b_base + column * params.rhs_gap + k
