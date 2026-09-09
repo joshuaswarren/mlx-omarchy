@@ -36,10 +36,11 @@
 // declaration order in overlay/mlx/backend/omarchy/compute.h (the
 // analysis script parses that header; no name table lives in C++).
 //
-// The harness only records extra commands: two vkCmdWriteTimestamp per
-// dispatch and one vkCmdResetQueryPool per command buffer. It adds no
-// synchronization and never blocks the queue. Query results are read back
-// during join_last_completion (which completes every in-flight submission
+// Profiling adds two timestamps and an execution barrier per dispatch, plus
+// a query-pool reset per command buffer. The barrier isolates t0 from later
+// compute work in Honeykrisp's timestamp-bearing stream. These commands
+// perturb scheduling; profiled timings are not release performance. Results
+// are read during join_last_completion (which completes every submission
 // of the encoder at once) or when the encoder reuses a completed ring
 // slot, and only then. Every hook is main-thread only (recording and
 // joining both happen on the encoder's thread; the completion thread
@@ -172,6 +173,9 @@ class GpuProfiler {
       p.tick_index = s.cursor;
       vk::device_table().CmdWriteTimestamp(
           cmd, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, s.pool, s.cursor);
+      vk::device_table().CmdPipelineBarrier(
+          cmd, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
+          VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, 0, 0, nullptr, 0, nullptr, 0, nullptr);
     }
     s.pending.push_back(p);
   }
