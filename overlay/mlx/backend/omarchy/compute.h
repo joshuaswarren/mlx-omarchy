@@ -561,6 +561,14 @@ enum class ComputeKernel : uint16_t {
   MatmulBF16Coopmat,
   // Eager BF16 SwiGLU fusion. Appended to keep profile kernel ids stable.
   FusedChainBF16,
+  // Q4 decode GEMV screening shapes (rows x subgroups), f16 subgroup only;
+  // selected by MLX_OMARCHY_Q4_GEMV_SCREEN for the bandwidth micro-benchmark.
+  QmmVecQ4ScreenR1S8F16,
+  QmmVecQ4ScreenR2S4F16,
+  QmmVecQ4ScreenR8S1F16,
+  QmmVecQ4ScreenR4S1F16,
+  QmmVecQ4ScreenR4S4F16,
+  QmmVecQ4ScreenR8S2F16,
   Count,
 };
 

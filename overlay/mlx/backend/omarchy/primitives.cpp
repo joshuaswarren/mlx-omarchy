@@ -6580,10 +6580,11 @@ void QuantizedMatmul::eval_gpu(const std::vector<array>& inputs, array& out) {
   // general path runs unchanged. See PROTOCOL.md for the keep rule.
   //
   // Gemv group count: COLUMNS_PER_GROUP output columns per workgroup,
-  // matching the lane split in shaders/qmm_vec.comp.
+  // matching the lane split in shaders/qmm_vec.comp: 8 for the general
+  // kernel (eight one-row subgroups) and Q4_ROWS x Q4_SUBGROUPS = 4 x 2
+  // for the Q4 kernel.
   constexpr uint32_t kGemvColumnsPerGroup = 8u;
-  auto n_groups_qmm_vec = (params.matrix_n + kGemvColumnsPerGroup - 1u) /
-      kGemvColumnsPerGroup;
+  constexpr uint32_t kQ4GemvColumnsPerGroup = 8u;
   if (params.matrix_m == 1u) {
     const auto& caps = encoder.device().capabilities();
     bool subgroup_ready =
@@ -6594,6 +6595,8 @@ void QuantizedMatmul::eval_gpu(const std::vector<array>& inputs, array& out) {
     bool use_q4_word =
         (q4_word_env == nullptr || std::strcmp(q4_word_env, "1") == 0) &&
         transpose_ && bits_ == 4 && group_size_ == 64;
+    uint32_t columns_per_group =
+        use_q4_word ? kQ4GemvColumnsPerGroup : kGemvColumnsPerGroup;
     auto vec_kernel = subgroup_ready
         ? select_float_kernel(
               out.dtype(),
@@ -6614,6 +6617,33 @@ void QuantizedMatmul::eval_gpu(const std::vector<array>& inputs, array& out) {
                           : omarchy::ComputeKernel::QmmVecF16,
               use_q4_word ? omarchy::ComputeKernel::QmmVecQ4WordBF16
                           : omarchy::ComputeKernel::QmmVecBF16);
+    // Screening shapes for the M1 bandwidth micro-benchmark: f16
+    // subgroup builds of the Q4 kernel at other rows x subgroups splits.
+    if (const char* screen = std::getenv("MLX_OMARCHY_Q4_GEMV_SCREEN");
+        screen != nullptr && use_q4_word && subgroup_ready &&
+        out.dtype() == float16) {
+      struct Screen {
+        const char* name;
+        omarchy::ComputeKernel kernel;
+        uint32_t columns;
+      };
+      static constexpr Screen kScreens[] = {
+          {"r1s8", omarchy::ComputeKernel::QmmVecQ4ScreenR1S8F16, 8u},
+          {"r2s4", omarchy::ComputeKernel::QmmVecQ4ScreenR2S4F16, 8u},
+          {"r8s1", omarchy::ComputeKernel::QmmVecQ4ScreenR8S1F16, 8u},
+          {"r4s1", omarchy::ComputeKernel::QmmVecQ4ScreenR4S1F16, 4u},
+          {"r4s4", omarchy::ComputeKernel::QmmVecQ4ScreenR4S4F16, 16u},
+          {"r8s2", omarchy::ComputeKernel::QmmVecQ4ScreenR8S2F16, 16u},
+      };
+      for (const auto& s : kScreens) {
+        if (std::strcmp(screen, s.name) == 0) {
+          vec_kernel = s.kernel;
+          columns_per_group = s.columns;
+        }
+      }
+    }
+    auto n_groups_qmm_vec =
+        (params.matrix_n + columns_per_group - 1u) / columns_per_group;
     encoder.dispatch_compute(
         vec_kernel,
         bindings,
