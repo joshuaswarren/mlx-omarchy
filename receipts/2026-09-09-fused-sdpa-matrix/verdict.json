@@ -1,0 +1,78 @@
+{
+  "status": "Improved numerical and throughput screen; not integrated",
+  "candidate": "fb63766",
+  "parent": "e646882",
+  "native_matches": 4,
+  "required_native_matches": 6,
+  "legs": [
+    {
+      "leg": "qwen25-0.5b-4bit:long-decode-128",
+      "native_digest": "254d73fd93164b98",
+      "candidate_digest": "f873dc2bdd34c0fe",
+      "matches": false,
+      "screen_decode_tok_s": 76.08
+    },
+    {
+      "leg": "qwen25-0.5b-4bit:longctx-1024-decode-32",
+      "native_digest": "7da83f06ec9f001d",
+      "candidate_digest": "7da83f06ec9f001d",
+      "matches": true,
+      "screen_decode_tok_s": 73.02
+    },
+    {
+      "leg": "qwen25-0.5b-4bit:short-decode-32",
+      "native_digest": "7fd25a869ff21678",
+      "candidate_digest": "7fd25a869ff21678",
+      "matches": true,
+      "screen_decode_tok_s": 78.49
+    },
+    {
+      "leg": "qwen25-0.5b-bf16:long-decode-128",
+      "native_digest": "407b7624ed1b3b29",
+      "candidate_digest": "ce395f433e4a1f6d",
+      "matches": false,
+      "screen_decode_tok_s": 40.68
+    },
+    {
+      "leg": "qwen25-0.5b-bf16:longctx-1024-decode-32",
+      "native_digest": "ff502900d2a179a5",
+      "candidate_digest": "ff502900d2a179a5",
+      "matches": true,
+      "screen_decode_tok_s": 39.61
+    },
+    {
+      "leg": "qwen25-0.5b-bf16:short-decode-32",
+      "native_digest": "7fc0f968789b1882",
+      "candidate_digest": "7fc0f968789b1882",
+      "matches": true,
+      "screen_decode_tok_s": 41.27
+    }
+  ],
+  "behavior": {
+    "numerical_passes": 11,
+    "single_dispatch_cases": 9,
+    "named_rejections": [
+      {
+        "dtype": "mlx.core.float16",
+        "reversed_heads": true,
+        "status": "named_rejection",
+        "error": "[omarchy] ScaledDotProductAttention batch stride is not implemented for the Omarchy Vulkan backend (dtype=float16, shape=[2,2,3,1,44]). No GPU kernel exists for it; no silent CPU fallback occurs. Run it on an explicit CPU stream to use the CPU implementation."
+      }
+    ]
+  },
+  "kernel_suites": {
+    "matmul_family": 17,
+    "fast_ops": 34,
+    "runtime": 41,
+    "failures": 0
+  },
+  "fixed_native_decode_attention": "Captured call15 output now exact; prefill retains 48 mismatches. This is one captured decode input, not proof of general bitwise equivalence.",
+  "remaining_long_generation": {
+    "4bit_first_different_generated_index": 34,
+    "bf16_first_different_generated_index": 35,
+    "native_long_digests_reproduced_on_M1_Max": true
+  },
+  "performance_scope": "One Linux M1 repetition; diagnostic screen, not paired acceptance or performance parity. M1 Max provides numerical evidence only.",
+  "metadata_warning": "baseline-summary.json assignment text is inherited from the old runner; actual candidate identity is the fb63766 wheel and matched installed provenance.",
+  "next": "Match native normalization reduction ordering: identical BF16 prefill inputs differ at 13 of 233856 first RMSNorm outputs."
+}
