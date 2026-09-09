@@ -2777,9 +2777,9 @@ TEST_CASE("qmm_vec subgroup dispatch matches host reference across decode shapes
   }
   const auto& caps = omarchy::device(0).capabilities();
   bool subgroup_ready = caps.subgroup_size == 32u &&
-      (caps.subgroup_operations & VK_SUBGROUP_FEATURE_SHUFFLE_BIT) != 0;
+      (caps.subgroup_operations & VK_SUBGROUP_FEATURE_ARITHMETIC_BIT) != 0;
   if (!subgroup_ready) {
-    skip("subgroup size != 32 or no SHUFFLE; subgroup variant unrunnable on this device");
+    skip("subgroup size != 32 or no ARITHMETIC; subgroup variant unrunnable on this device");
     return;
   }
   Stream stream = gpu_stream();
@@ -2856,7 +2856,7 @@ TEST_CASE("qmm_vec subgroup dispatch matches host reference across decode shapes
         // by f32 vs f64 multiply-add precision across the K
         // elements of one output column, plus cross-lane reduction
         // (32 lanes summed in 5 pairwise-add rounds on both the
-        // tree and the shuffle-ladder path, each add rounding at
+        // tree and the subgroupAdd path, each add rounding at
         // most 1 ulp).
         //
         // Per-element ops: scale * q + bias (2 ops) then x * (...)
