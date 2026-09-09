@@ -6585,7 +6585,7 @@ void QuantizedMatmul::eval_gpu(const std::vector<array>& inputs, array& out) {
   //
   // Gemv group count: COLUMNS_PER_GROUP output columns per workgroup,
   // matching the lane split in shaders/qmm_vec.comp: 8 for the general
-  // kernel (eight one-row subgroups) and Q4_ROWS x Q4_SUBGROUPS = 4 x 2
+  // kernel (eight one-row subgroups) and Q4_ROWS x Q4_SUBGROUPS = 2 x 4
   // for the Q4 kernel.
   constexpr uint32_t kGemvColumnsPerGroup = 8u;
   constexpr uint32_t kQ4GemvColumnsPerGroup = 8u;

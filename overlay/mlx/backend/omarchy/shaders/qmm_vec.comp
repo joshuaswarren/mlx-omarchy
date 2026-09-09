@@ -33,7 +33,8 @@
 // QMM_VEC_Q4_WORD compiles the transposed affine 4-bit/group-64 decode
 // kernel (its own main, below the general one). Each subgroup owns
 // Q4_ROWS consecutive weight rows and Q4_SUBGROUPS subgroups form a
-// workgroup, mirroring the native Metal qmv (4 rows x 2 simdgroups).
+// workgroup (2 x 4 measured fastest on the M1, ahead of the native
+// Metal qmv split of 4 x 2; receipts/2026-09-09-q4-gemv-bandwidth).
 // Per step a lane loads the eight x values of one packed word once and
 // applies them to that word in each of its rows, so x traffic and load
 // instructions are shared across rows while every row keeps the same
@@ -85,10 +86,10 @@ uint16_t bf16_store(float value) {
 // dispatch derives its group count from COLUMNS_PER_GROUP
 // (kQ4GemvColumnsPerGroup in primitives.cpp).
 #ifndef Q4_ROWS
-#define Q4_ROWS 4
+#define Q4_ROWS 2
 #endif
 #ifndef Q4_SUBGROUPS
-#define Q4_SUBGROUPS 2
+#define Q4_SUBGROUPS 4
 #endif
 #define COLUMNS_PER_GROUP uint(Q4_ROWS * Q4_SUBGROUPS)
 #define WORKGROUP_LANES (32 * Q4_SUBGROUPS)
