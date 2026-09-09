@@ -1,0 +1,1 @@
+{"mode": "qmm", "shape": "hidden-intermediate", "m": 262, "k": 896, "n": 4864, "warmups": 8, "reps": 16, "wall_median_ms": 4.944515}
