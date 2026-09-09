@@ -1,6 +1,7 @@
 {
   "status": "pass",
-  "decision": "candidate exact eager SwiGLU fusion is parity-safe and materially improves Q4 decode; retain the opt-in gate for integration control",
+  "decision": "candidate exact eager SwiGLU fusion is parity-safe and materially improves Q4 decode; the subsequent default-on decision is recorded in ../2026-09-09-fused-chain-default/verdict.json",
+  "superseded_by": "../2026-09-09-fused-chain-default/verdict.json",
   "baseline_commit": "12574770870b1edbcf0fe8ec9c15e10fabf323ee",
   "implementation_commit": "6be3addc",
   "acceptance_runner_commit": "2695ce7ddcd5e8c280f20bfb30bf14c9669f8911",
@@ -30,6 +31,6 @@
   },
   "limitations": [
     "Targeted C++ tests ran on the development host; M1 validation used diagnostic profiles and 60 release-wheel benchmark legs.",
-    "MLX_OMARCHY_FUSED_CHAIN remains opt-in so integration can control rollout."
+    "The candidate run used an explicit opt-in; the superseding receipt validates the default-on build."
   ]
 }

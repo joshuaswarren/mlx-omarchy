@@ -1,0 +1,7 @@
+Processing ./dist-default/mlx_omarchy-0.32.2.dev202609091517+98e06e9-cp314-cp314-linux_aarch64.whl
+Installing collected packages: mlx-omarchy
+  Attempting uninstall: mlx-omarchy
+    Found existing installation: mlx-omarchy 0.32.2.dev202609091402+2695ce7
+    Uninstalling mlx-omarchy-0.32.2.dev202609091402+2695ce7:
+      Successfully uninstalled mlx-omarchy-0.32.2.dev202609091402+2695ce7
+Successfully installed mlx-omarchy-0.32.2.dev202609091517+98e06e9
