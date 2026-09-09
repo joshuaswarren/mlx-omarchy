@@ -1,0 +1,24 @@
+{
+  "candidate": "25df125",
+  "first_layer_prefill_trace": {
+    "norm_input_mismatches": 0,
+    "norm_output_mismatches": 23,
+    "q_projection_mismatches": 79,
+    "k_projection_mismatches": 9,
+    "v_projection_mismatches": 19,
+    "rope_output_mismatches": 740,
+    "attention_output_mismatches": 210554
+  },
+  "fixed_native_Q4_RMS": {
+    "native_replay_mismatches": 0,
+    "current_weighted_mismatches": 23,
+    "current_unweighted_mismatches": 41,
+    "current_float32_mismatches": 39262,
+    "compensated_division_weighted_mismatches": 23,
+    "compensated_division_unweighted_mismatches": 41,
+    "compensated_division_float32_mismatches": 41884
+  },
+  "CPU_control": "Native-order sum of squares, FP32 division and correctly rounded reciprocal square root reproduce the native float32 normalization exactly on this capture. Fused and nonfused local sum-of-squares both match.",
+  "conclusion": "Compensated division alone does not fix the remaining RMS discrepancy; GPU denominator/reciprocal-root arithmetic needs direct isolation.",
+  "restoration": "25df125 wheel successfully reinstalled after b4d02d5 control"
+}
