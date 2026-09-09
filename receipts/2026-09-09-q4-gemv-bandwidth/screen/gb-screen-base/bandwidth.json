@@ -1,0 +1,108 @@
+{
+  "python": ".venv-accept/bin/python",
+  "version": "0.32.2.dev202609091554+diag.de65554",
+  "reps": 20,
+  "variants": {
+    "default": {
+      "wall_s": {
+        "q4_896x896": 0.0002046138499281369,
+        "q4_896x128": 0.00016548895073356106,
+        "q4_896x4864": 0.0004181964512099512,
+        "q4_4864x896": 0.00042504845041548835,
+        "q4_896x151936": 0.0025114722491707655
+      },
+      "q4_896x896": {
+        "kernel": [
+          "QmmVecQ4WordSubgroupF16"
+        ],
+        "workgroups": [
+          112
+        ],
+        "dispatches": 21,
+        "bytes": 453376,
+        "p50_us": 61.292,
+        "min_us": 60.5,
+        "gbps_p50": 7.396984924623116,
+        "gbps_min_time": 7.493818181818182
+      },
+      "q4_896x128": {
+        "kernel": [
+          "QmmVecQ4WordSubgroupF16"
+        ],
+        "workgroups": [
+          16
+        ],
+        "dispatches": 21,
+        "bytes": 66304,
+        "p50_us": 33.25,
+        "min_us": 32.458,
+        "gbps_p50": 1.9941052631578948,
+        "gbps_min_time": 2.042762955203648
+      },
+      "q4_896x4864": {
+        "kernel": [
+          "QmmVecQ4WordSubgroupF16"
+        ],
+        "workgroups": [
+          608
+        ],
+        "dispatches": 21,
+        "bytes": 2453248,
+        "p50_us": 217.5,
+        "min_us": 214.875,
+        "gbps_p50": 11.279301149425287,
+        "gbps_min_time": 11.41709365910413
+      },
+      "q4_4864x896": {
+        "kernel": [
+          "QmmVecQ4WordSubgroupF16"
+        ],
+        "workgroups": [
+          112
+        ],
+        "dispatches": 21,
+        "bytes": 2461184,
+        "p50_us": 196.792,
+        "min_us": 188.209,
+        "gbps_p50": 12.5065246554738,
+        "gbps_min_time": 13.076866674813639
+      },
+      "q4_896x151936": {
+        "kernel": [
+          "QmmVecQ4WordSubgroupF16"
+        ],
+        "workgroups": [
+          18992
+        ],
+        "dispatches": 21,
+        "bytes": 76577536,
+        "p50_us": 1845.334,
+        "min_us": 1824.75,
+        "gbps_p50": 41.49792720450607,
+        "gbps_min_time": 41.96604247157145
+      },
+      "ceiling_elementwise_f16": {
+        "kernel": [
+          "ElementwiseF16"
+        ],
+        "dispatches": 20,
+        "bytes_traffic": 4358144,
+        "p50_us": 1476.208,
+        "min_us": 1123.334,
+        "gbps_p50": 2.9522560506378506,
+        "gbps_min_time": 3.879651109999341
+      },
+      "ceiling_reduce_f32": {
+        "kernel": [
+          "ReduceF32"
+        ],
+        "dispatches": 40,
+        "bytes_traffic": 2179072,
+        "p50_us": 336.5205,
+        "min_us": 30.375,
+        "gbps_p50": 6.475302396139314,
+        "gbps_min_time": 71.73899588477366
+      }
+    }
+  }
+}

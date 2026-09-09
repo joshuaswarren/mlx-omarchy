@@ -1,0 +1,1184 @@
+{
+  "topic": "Q4 decode GEMV (qmm_vec.comp QMM_VEC_Q4_WORD) toward memory bandwidth on the M1 under Honeykrisp",
+  "branch": "wave/GemvBandwidth",
+  "baseline": {
+    "commit": "de65554d (main)",
+    "release_wheel_sha256": "5a062f6be7c3941631d282061337ba0c30aa8129ebc6bb27d889657183dd480a",
+    "diagnostics_wheel_sha256": "38358379603016d3b816457e70353330988e7b332cc6ac2b0a394d9f0fa3a300"
+  },
+  "candidate": {
+    "measured_commit": "a14e60f (wave/GemvBandwidth-r2s4: ceca6ac kernel with the 2 rows x 4 subgroups default; the final wave/GemvBandwidth commit carries the same overlay code plus this receipt)",
+    "release_wheel_sha256": "4b746d07b974227c8cefae4ffdf096adeb96b9517c7bba6e31c87130b9f793d6",
+    "also_measured": {
+      "commit": "ceca6ac (4 rows x 2 subgroups)",
+      "release_wheel_sha256": "0a51eff5b1a1e71035fd7bfb6db1f9913ba360b2090849f7ad46e53f89f1d7de"
+    },
+    "change": "Each subgroup owns Q4_ROWS consecutive weight rows (2), Q4_SUBGROUPS (4) subgroups per 128-lane workgroup, x read once per packed word as a uvec4 (flags bit 1 = 16-byte aligned x row, element loads otherwise), every load of a step issued before its arithmetic. Per row the lane->word order, the fma chain and the subgroupAdd are unchanged, so outputs are bit-identical to main."
+  },
+  "host": "jwm1-linux, Apple M1 (G13G B1), Honeykrisp, linux-asahi 7.1.6, glslc 2026.3; dev box llvmpipe for the local suites",
+  "kernel_bandwidth": {
+    "method": "receipts/2026-09-09-q4-gemv-bandwidth/kernel_bandwidth.py on the diagnostics wheels (MLX_OMARCHY_GPU_PROFILE per-dispatch GPU timestamps); bytes = packed words + f16 scales + f16 biases + f16 x. Streaming table: one submission of 4 reps x (24 cold weight copies per shape, 1 for lm_head) after a 30-dispatch clock warm-up, the decode pattern. Isolated table: 20 dispatches per shape submitted together, weights warm, no warm-up (DVFS-confounded: see screen/gb-curve-* where t(896x38912) < t(896x19456)). Candidate here is the 4x2 diagnostics wheel abdf2438 (0dc2074, same kernel body as ceca6ac); the 2x4 split is screen/gb-screen6-cand variant r2s4il (interleaved rows, measured within noise of plain 2x4).",
+    "streaming_baseline_GBps": {
+      "896x896": 8.7,
+      "896x128": 2.7,
+      "896x4864": 29.4,
+      "4864x896": 31.9,
+      "896x151936": 42.0
+    },
+    "streaming_candidate_4x2_GBps": {
+      "896x896": 9.1,
+      "896x128": 2.5,
+      "896x4864": 32.7,
+      "4864x896": 36.4,
+      "896x151936": 55.7
+    },
+    "streaming_candidate_2x4_GBps": {
+      "896x896": 9.5,
+      "896x128": 2.3,
+      "896x4864": 34.8,
+      "4864x896": 37.7,
+      "896x151936": 54.5
+    },
+    "streaming_p50_us": {
+      "896x896": {
+        "baseline": 52.1,
+        "candidate": 50.1
+      },
+      "896x128": {
+        "baseline": 24.6,
+        "candidate": 26.2
+      },
+      "896x4864": {
+        "baseline": 83.4,
+        "candidate": 74.9
+      },
+      "4864x896": {
+        "baseline": 77.0,
+        "candidate": 67.5
+      },
+      "896x151936": {
+        "baseline": 1824.8,
+        "candidate": 1375.1
+      }
+    },
+    "dispatches_per_token": {
+      "896x896": 48,
+      "896x128": 48,
+      "896x4864": 48,
+      "4864x896": 24,
+      "896x151936": 1
+    },
+    "gemv_ms_per_token_from_p50": {
+      "baseline": 11.36,
+      "candidate": 10.25
+    },
+    "device_reference": {
+      "ceiling_cast_76mb": {
+        "p50_us": 3548.7,
+        "GBps_p50": 57.5,
+        "min_us": 3343.7
+      },
+      "floor_cast_4k": {
+        "p50_us": 37.7,
+        "GBps_p50": 0.7,
+        "min_us": 31.1
+      }
+    },
+    "device_reference_note": "CastF32F16 over 76 MB streams at 57-58 GB/s (the practical ceiling any kernel reached here); a 4096-element dispatch costs 26-38 us (per-dispatch floor). Above that floor the candidate's 2.2 MB shapes stream at 54-60 GB/s; 174 GEMV dispatches per token pay ~5 ms of floor that no kernel shape removes.",
+    "isolated_table": {
+      "baseline_version": "0.32.2.dev202609091554+diag.de65554",
+      "candidate_version": "0.32.2.dev202609091630+diag.316bbab",
+      "shapes": {
+        "q4_896x896": {
+          "bytes": 453376,
+          "workgroups": {
+            "baseline": [
+              112
+            ],
+            "candidate": [
+              112
+            ]
+          },
+          "dispatches_sampled": {
+            "baseline": 21,
+            "candidate": 21
+          },
+          "p50_us": {
+            "baseline": 63.1,
+            "candidate": 55.4
+          },
+          "GBps_p50": {
+            "baseline": 7.2,
+            "candidate": 8.2
+          },
+          "candidate_over_baseline_GBps": 1.139,
+          "per_token_dispatches": 48
+        },
+        "q4_896x128": {
+          "bytes": 66304,
+          "workgroups": {
+            "baseline": [
+              16
+            ],
+            "candidate": [
+              16
+            ]
+          },
+          "dispatches_sampled": {
+            "baseline": 21,
+            "candidate": 21
+          },
+          "p50_us": {
+            "baseline": 44.5,
+            "candidate": 48.4
+          },
+          "GBps_p50": {
+            "baseline": 1.5,
+            "candidate": 1.4
+          },
+          "candidate_over_baseline_GBps": 0.921,
+          "per_token_dispatches": 48
+        },
+        "q4_896x4864": {
+          "bytes": 2453248,
+          "workgroups": {
+            "baseline": [
+              608
+            ],
+            "candidate": [
+              608
+            ]
+          },
+          "dispatches_sampled": {
+            "baseline": 21,
+            "candidate": 21
+          },
+          "p50_us": {
+            "baseline": 214.7,
+            "candidate": 167.3
+          },
+          "GBps_p50": {
+            "baseline": 11.4,
+            "candidate": 14.7
+          },
+          "candidate_over_baseline_GBps": 1.283,
+          "per_token_dispatches": 48
+        },
+        "q4_4864x896": {
+          "bytes": 2461184,
+          "workgroups": {
+            "baseline": [
+              112
+            ],
+            "candidate": [
+              112
+            ]
+          },
+          "dispatches_sampled": {
+            "baseline": 21,
+            "candidate": 21
+          },
+          "p50_us": {
+            "baseline": 187.2,
+            "candidate": 151.8
+          },
+          "GBps_p50": {
+            "baseline": 13.1,
+            "candidate": 16.2
+          },
+          "candidate_over_baseline_GBps": 1.233,
+          "per_token_dispatches": 24
+        },
+        "q4_896x151936": {
+          "bytes": 76577536,
+          "workgroups": {
+            "baseline": [
+              18992
+            ],
+            "candidate": [
+              18992
+            ]
+          },
+          "dispatches_sampled": {
+            "baseline": 21,
+            "candidate": 21
+          },
+          "p50_us": {
+            "baseline": 1829.4,
+            "candidate": 1465.2
+          },
+          "GBps_p50": {
+            "baseline": 41.9,
+            "candidate": 52.3
+          },
+          "candidate_over_baseline_GBps": 1.249,
+          "per_token_dispatches": 1
+        }
+      },
+      "gemv_ms_per_token_from_p50": {
+        "baseline": 21.79,
+        "candidate": 18.12
+      },
+      "device_reference": {
+        "ceiling_elementwise_f16": {
+          "p50_us": 1117.2,
+          "GBps_p50": 3.9,
+          "min_us": 1116.3
+        },
+        "ceiling_reduce_f32": {
+          "p50_us": 332.9,
+          "GBps_p50": 6.5,
+          "min_us": 31.4
+        }
+      }
+    },
+    "screens": {
+      "isolated_variants": {
+        "version": "0.32.2.dev202609091630+diag.316bbab",
+        "p50_us_and_GBps": {
+          "default": {
+            "896x896": [
+              55.4,
+              8.2
+            ],
+            "896x128": [
+              48.4,
+              1.4
+            ],
+            "896x4864": [
+              167.3,
+              14.7
+            ],
+            "4864x896": [
+              151.8,
+              16.2
+            ],
+            "896x151936": [
+              1465.2,
+              52.3
+            ]
+          },
+          "r4s2x": {
+            "896x896": [
+              56.1,
+              8.1
+            ],
+            "896x128": [
+              49.4,
+              1.3
+            ],
+            "896x4864": [
+              168.5,
+              14.6
+            ],
+            "4864x896": [
+              156.2,
+              15.8
+            ],
+            "896x151936": [
+              1512.7,
+              50.6
+            ]
+          },
+          "r4s2u2": {
+            "896x896": [
+              58.1,
+              7.8
+            ],
+            "896x128": [
+              48.8,
+              1.4
+            ],
+            "896x4864": [
+              173.8,
+              14.1
+            ],
+            "4864x896": [
+              155.6,
+              15.8
+            ],
+            "896x151936": [
+              1551.4,
+              49.4
+            ]
+          },
+          "r2s4": {
+            "896x896": [
+              53.8,
+              8.4
+            ],
+            "896x128": [
+              44.4,
+              1.5
+            ],
+            "896x4864": [
+              174.7,
+              14.0
+            ],
+            "4864x896": [
+              149.0,
+              16.5
+            ],
+            "896x151936": [
+              1524.0,
+              50.2
+            ]
+          },
+          "r2s4u2": {
+            "896x896": [
+              56.8,
+              8.0
+            ],
+            "896x128": [
+              47.2,
+              1.4
+            ],
+            "896x4864": [
+              173.5,
+              14.1
+            ],
+            "4864x896": [
+              163.7,
+              15.0
+            ],
+            "896x151936": [
+              1538.0,
+              49.8
+            ]
+          },
+          "r1s8": {
+            "896x896": [
+              56.7,
+              8.0
+            ],
+            "896x128": [
+              44.9,
+              1.5
+            ],
+            "896x4864": [
+              196.2,
+              12.5
+            ],
+            "4864x896": [
+              167.5,
+              14.7
+            ],
+            "896x151936": [
+              1690.6,
+              45.3
+            ]
+          },
+          "r1s8u4": {
+            "896x896": [
+              66.7,
+              6.8
+            ],
+            "896x128": [
+              43.4,
+              1.5
+            ],
+            "896x4864": [
+              216.9,
+              11.3
+            ],
+            "4864x896": [
+              187.2,
+              13.1
+            ],
+            "896x151936": [
+              2061.8,
+              37.1
+            ]
+          },
+          "r8s1": {
+            "896x896": [
+              62.8,
+              7.2
+            ],
+            "896x128": [
+              53.0,
+              1.3
+            ],
+            "896x4864": [
+              190.7,
+              12.9
+            ],
+            "4864x896": [
+              199.2,
+              12.4
+            ],
+            "896x151936": [
+              1515.5,
+              50.5
+            ]
+          }
+        }
+      },
+      "streaming_variants": {
+        "version": "0.32.2.dev202609091708+diag.0dc2074",
+        "p50_us_and_GBps": {
+          "default": {
+            "896x896": [
+              50.1,
+              9.1
+            ],
+            "896x128": [
+              26.2,
+              2.5
+            ],
+            "896x4864": [
+              74.9,
+              32.7
+            ],
+            "4864x896": [
+              67.5,
+              36.4
+            ],
+            "896x151936": [
+              1375.1,
+              55.7
+            ]
+          },
+          "r4s2x": {
+            "896x896": [
+              50.5,
+              9.0
+            ],
+            "896x128": [
+              27.1,
+              2.4
+            ],
+            "896x4864": [
+              80.5,
+              30.5
+            ],
+            "4864x896": [
+              72.6,
+              33.9
+            ],
+            "896x151936": [
+              1506.0,
+              50.8
+            ]
+          },
+          "r2s4il": {
+            "896x896": [
+              47.9,
+              9.5
+            ],
+            "896x128": [
+              28.8,
+              2.3
+            ],
+            "896x4864": [
+              70.6,
+              34.8
+            ],
+            "4864x896": [
+              65.2,
+              37.7
+            ],
+            "896x151936": [
+              1404.5,
+              54.5
+            ]
+          },
+          "r4s2il": {
+            "896x896": [
+              52.0,
+              8.7
+            ],
+            "896x128": [
+              27.0,
+              2.5
+            ],
+            "896x4864": [
+              81.5,
+              30.1
+            ],
+            "4864x896": [
+              72.7,
+              33.9
+            ],
+            "896x151936": [
+              1521.0,
+              50.3
+            ]
+          },
+          "r8s1il": {
+            "896x896": [
+              50.6,
+              9.0
+            ],
+            "896x128": [
+              30.3,
+              2.2
+            ],
+            "896x4864": [
+              89.0,
+              27.6
+            ],
+            "4864x896": [
+              83.5,
+              29.5
+            ],
+            "896x151936": [
+              1597.9,
+              47.9
+            ]
+          },
+          "r1s8": {
+            "896x896": [
+              48.9,
+              9.3
+            ],
+            "896x128": [
+              25.3,
+              2.6
+            ],
+            "896x4864": [
+              77.2,
+              31.8
+            ],
+            "4864x896": [
+              66.6,
+              37.0
+            ],
+            "896x151936": [
+              1704.0,
+              44.9
+            ]
+          },
+          "r4s2ilalu": {
+            "896x896": [
+              45.9,
+              9.9
+            ],
+            "896x128": [
+              32.6,
+              2.0
+            ],
+            "896x4864": [
+              64.2,
+              38.2
+            ],
+            "4864x896": [
+              58.2,
+              42.3
+            ],
+            "896x151936": [
+              1390.8,
+              55.1
+            ]
+          }
+        }
+      },
+      "diagnostics": {
+        "version": "0.32.2.dev202609091653+diag.1a1791b",
+        "p50_us_and_GBps": {
+          "default": {
+            "896x896": [
+              54.6,
+              8.3
+            ],
+            "896x128": [
+              50.1,
+              1.3
+            ],
+            "896x4864": [
+              167.0,
+              14.7
+            ],
+            "4864x896": [
+              153.0,
+              16.1
+            ],
+            "896x151936": [
+              1470.8,
+              52.1
+            ]
+          },
+          "r4s2p": {
+            "896x896": [
+              61.9,
+              7.3
+            ],
+            "896x128": [
+              46.4,
+              1.4
+            ],
+            "896x4864": [
+              194.4,
+              12.6
+            ],
+            "4864x896": [
+              167.2,
+              14.7
+            ],
+            "896x151936": [
+              1596.5,
+              48.0
+            ]
+          },
+          "r2s4": {
+            "896x896": [
+              53.5,
+              8.5
+            ],
+            "896x128": [
+              46.9,
+              1.4
+            ],
+            "896x4864": [
+              174.5,
+              14.1
+            ],
+            "4864x896": [
+              148.6,
+              16.6
+            ],
+            "896x151936": [
+              1519.1,
+              50.4
+            ]
+          },
+          "r2s4p": {
+            "896x896": [
+              61.5,
+              7.4
+            ],
+            "896x128": [
+              48.2,
+              1.4
+            ],
+            "896x4864": [
+              190.2,
+              12.9
+            ],
+            "4864x896": [
+              172.6,
+              14.3
+            ],
+            "896x151936": [
+              1593.1,
+              48.1
+            ]
+          },
+          "r4s2alu": {
+            "896x896": [
+              51.2,
+              8.8
+            ],
+            "896x128": [
+              47.8,
+              1.4
+            ],
+            "896x4864": [
+              163.3,
+              15.0
+            ],
+            "4864x896": [
+              146.3,
+              16.8
+            ],
+            "896x151936": [
+              1344.5,
+              57.0
+            ]
+          },
+          "r4s2mem": {
+            "896x896": [
+              47.5,
+              9.5
+            ],
+            "896x128": [
+              47.0,
+              1.4
+            ],
+            "896x4864": [
+              91.0,
+              26.9
+            ],
+            "4864x896": [
+              80.7,
+              30.5
+            ],
+            "896x151936": [
+              1292.2,
+              59.3
+            ]
+          },
+          "r1s8": {
+            "896x896": [
+              56.8,
+              8.0
+            ],
+            "896x128": [
+              44.5,
+              1.5
+            ],
+            "896x4864": [
+              195.9,
+              12.5
+            ],
+            "4864x896": [
+              167.4,
+              14.7
+            ],
+            "896x151936": [
+              1691.8,
+              45.3
+            ]
+          },
+          "r1s8alu": {
+            "896x896": [
+              55.5,
+              8.2
+            ],
+            "896x128": [
+              41.6,
+              1.6
+            ],
+            "896x4864": [
+              199.9,
+              12.3
+            ],
+            "4864x896": [
+              157.2,
+              15.7
+            ],
+            "896x151936": [
+              1725.7,
+              44.4
+            ]
+          },
+          "r1s8mem": {
+            "896x896": [
+              51.0,
+              8.9
+            ],
+            "896x128": [
+              44.0,
+              1.5
+            ],
+            "896x4864": [
+              156.8,
+              15.7
+            ],
+            "4864x896": [
+              117.0,
+              21.0
+            ],
+            "896x151936": [
+              1411.2,
+              54.3
+            ]
+          }
+        }
+      },
+      "findings": [
+        "r1s8 (new code, old one-row split) == main within noise: the gain is the row sharing, not the rewrite",
+        "unroll x2/x4 and software pipelining regress (registers, no latency to hide)",
+        "ALU-only diagnostic (no weight/scale/bias traffic) runs at the full kernel's speed and the loads-only diagnostic 2x faster: the kernel is instruction-issue bound at ~5 instructions per element, the 2 fma + extract + convert per element being fixed by bit identity",
+        "uvec4 x loads beat 16-bit element loads by 7-9% (r4s2x)",
+        "8 rows per subgroup and 16-column workgroups do not help"
+      ]
+    },
+    "bit_identity_micro": {
+      "before_trim": {
+        "screens_1_to_5": {
+          "compared_outputs": 36,
+          "result": "ALL_IDENTICAL"
+        },
+        "screen_6": {
+          "compared_outputs": 6,
+          "result": "ALL_IDENTICAL"
+        },
+        "curve": {
+          "compared_outputs": 1,
+          "result": "ALL_IDENTICAL"
+        }
+      },
+      "screens_1_to_5": {
+        "reference": "screen/gb-screen-base/default.npz",
+        "compared_outputs": 1,
+        "shapes_per_output": 9,
+        "result": "ALL_IDENTICAL"
+      },
+      "screen_6": {
+        "reference": "screen/gb-screen6-base/default.npz",
+        "compared_outputs": 1,
+        "shapes_per_output": 9,
+        "result": "ALL_IDENTICAL"
+      },
+      "curve": {
+        "reference": "screen/gb-curve-base/default.npz",
+        "compared_outputs": 1,
+        "shapes_per_output": 9,
+        "result": "ALL_IDENTICAL"
+      }
+    }
+  },
+  "paired": {
+    "repetitions": 3,
+    "sides": {
+      "base": {
+        "python": "/home/joshuawarren/src/mlx-GemvBandwidth-base/.venv-accept/bin/python",
+        "wheel": "/home/joshuawarren/src/mlx-GemvBandwidth-base/dist/mlx_omarchy-0.32.2.dev202609091557+de65554-cp314-cp314-linux_aarch64.whl",
+        "stamp": "de65554",
+        "version": "0.32.2.dev202609091557+de65554",
+        "sha256": "5a062f6be7c3941631d282061337ba0c30aa8129ebc6bb27d889657183dd480a"
+      },
+      "cand": {
+        "python": "/home/joshuawarren/src/mlx-GemvBandwidth/.venv-accept/bin/python",
+        "wheel": "/home/joshuawarren/src/mlx-GemvBandwidth/dist/mlx_omarchy-0.32.2.dev202609091742+ceca6ac-cp314-cp314-linux_aarch64.whl",
+        "stamp": "ceca6ac",
+        "version": "0.32.2.dev202609091742+ceca6ac",
+        "sha256": "0a51eff5b1a1e71035fd7bfb6db1f9913ba360b2090849f7ad46e53f89f1d7de"
+      },
+      "candb": {
+        "python": "/home/joshuawarren/src/mlx-GemvBandwidth-b/.venv-accept/bin/python",
+        "wheel": "/home/joshuawarren/src/mlx-GemvBandwidth-b/dist/mlx_omarchy-0.32.2.dev202609091749+a14e60f-cp314-cp314-linux_aarch64.whl",
+        "stamp": "a14e60f",
+        "version": "0.32.2.dev202609091749+a14e60f",
+        "sha256": "4b746d07b974227c8cefae4ffdf096adeb96b9517c7bba6e31c87130b9f793d6"
+      }
+    },
+    "legs": {
+      "qwen25-0.5b-4bit:long-decode-128": {
+        "base": {
+          "decode_tok_s_samples": [
+            63.69,
+            63.58,
+            63.5
+          ],
+          "decode_tok_s_median": 63.58,
+          "prefill_tok_s_median": 450.17,
+          "digests": [
+            "4cc08910089477fd"
+          ]
+        },
+        "cand": {
+          "decode_tok_s_samples": [
+            68.84,
+            69.03,
+            68.72
+          ],
+          "decode_tok_s_median": 68.84,
+          "prefill_tok_s_median": 452.5,
+          "digests": [
+            "4cc08910089477fd"
+          ],
+          "decode_over_base": 1.0827,
+          "prefill_over_base": 1.0052
+        },
+        "candb": {
+          "decode_tok_s_samples": [
+            70.75,
+            70.51,
+            70.18
+          ],
+          "decode_tok_s_median": 70.51,
+          "prefill_tok_s_median": 450.95,
+          "digests": [
+            "4cc08910089477fd"
+          ],
+          "decode_over_base": 1.109,
+          "prefill_over_base": 1.0017
+        },
+        "ids_identical_across_sides": true
+      },
+      "qwen25-0.5b-4bit:longctx-1024-decode-32": {
+        "base": {
+          "decode_tok_s_samples": [
+            44.93,
+            44.2,
+            44.95
+          ],
+          "decode_tok_s_median": 44.93,
+          "prefill_tok_s_median": 474.97,
+          "digests": [
+            "7da83f06ec9f001d"
+          ]
+        },
+        "cand": {
+          "decode_tok_s_samples": [
+            47.28,
+            47.41,
+            47.56
+          ],
+          "decode_tok_s_median": 47.41,
+          "prefill_tok_s_median": 477.33,
+          "digests": [
+            "7da83f06ec9f001d"
+          ],
+          "decode_over_base": 1.0552,
+          "prefill_over_base": 1.005
+        },
+        "candb": {
+          "decode_tok_s_samples": [
+            48.31,
+            48.16,
+            48.27
+          ],
+          "decode_tok_s_median": 48.27,
+          "prefill_tok_s_median": 478.64,
+          "digests": [
+            "7da83f06ec9f001d"
+          ],
+          "decode_over_base": 1.0743,
+          "prefill_over_base": 1.0077
+        },
+        "ids_identical_across_sides": true
+      },
+      "qwen25-0.5b-4bit:short-decode-32": {
+        "base": {
+          "decode_tok_s_samples": [
+            76.92,
+            76.82,
+            76.86
+          ],
+          "decode_tok_s_median": 76.86,
+          "prefill_tok_s_median": 111.11,
+          "digests": [
+            "7fd25a869ff21678"
+          ]
+        },
+        "cand": {
+          "decode_tok_s_samples": [
+            84.28,
+            84.22,
+            84.33
+          ],
+          "decode_tok_s_median": 84.28,
+          "prefill_tok_s_median": 111.11,
+          "digests": [
+            "7fd25a869ff21678"
+          ],
+          "decode_over_base": 1.0965,
+          "prefill_over_base": 1.0
+        },
+        "candb": {
+          "decode_tok_s_samples": [
+            87.1,
+            86.94,
+            86.53
+          ],
+          "decode_tok_s_median": 86.94,
+          "prefill_tok_s_median": 111.52,
+          "digests": [
+            "7fd25a869ff21678"
+          ],
+          "decode_over_base": 1.1311,
+          "prefill_over_base": 1.0037
+        },
+        "ids_identical_across_sides": true
+      },
+      "qwen25-0.5b-bf16:long-decode-128": {
+        "base": {
+          "decode_tok_s_samples": [
+            11.21,
+            11.22,
+            11.21
+          ],
+          "decode_tok_s_median": 11.21,
+          "prefill_tok_s_median": 275.5,
+          "digests": [
+            "ad964232ee67fecd"
+          ]
+        },
+        "cand": {
+          "decode_tok_s_samples": [
+            11.21,
+            11.22,
+            11.21
+          ],
+          "decode_tok_s_median": 11.21,
+          "prefill_tok_s_median": 274.35,
+          "digests": [
+            "ad964232ee67fecd"
+          ],
+          "decode_over_base": 1.0,
+          "prefill_over_base": 0.9958
+        },
+        "candb": {
+          "decode_tok_s_samples": [
+            11.21,
+            11.21,
+            11.22
+          ],
+          "decode_tok_s_median": 11.21,
+          "prefill_tok_s_median": 275.21,
+          "digests": [
+            "ad964232ee67fecd"
+          ],
+          "decode_over_base": 1.0,
+          "prefill_over_base": 0.999
+        },
+        "ids_identical_across_sides": true
+      },
+      "qwen25-0.5b-bf16:longctx-1024-decode-32": {
+        "base": {
+          "decode_tok_s_samples": [
+            10.2,
+            10.2,
+            10.16
+          ],
+          "decode_tok_s_median": 10.2,
+          "prefill_tok_s_median": 321.33,
+          "digests": [
+            "ff502900d2a179a5"
+          ]
+        },
+        "cand": {
+          "decode_tok_s_samples": [
+            10.18,
+            10.2,
+            10.2
+          ],
+          "decode_tok_s_median": 10.2,
+          "prefill_tok_s_median": 321.33,
+          "digests": [
+            "ff502900d2a179a5"
+          ],
+          "decode_over_base": 1.0,
+          "prefill_over_base": 1.0
+        },
+        "candb": {
+          "decode_tok_s_samples": [
+            10.2,
+            10.19,
+            10.2
+          ],
+          "decode_tok_s_median": 10.2,
+          "prefill_tok_s_median": 321.43,
+          "digests": [
+            "ff502900d2a179a5"
+          ],
+          "decode_over_base": 1.0,
+          "prefill_over_base": 1.0003
+        },
+        "ids_identical_across_sides": true
+      },
+      "qwen25-0.5b-bf16:short-decode-32": {
+        "base": {
+          "decode_tok_s_samples": [
+            11.66,
+            11.66,
+            11.66
+          ],
+          "decode_tok_s_median": 11.66,
+          "prefill_tok_s_median": 69.28,
+          "digests": [
+            "f26175202f3dabe9"
+          ]
+        },
+        "cand": {
+          "decode_tok_s_samples": [
+            11.64,
+            11.66,
+            11.66
+          ],
+          "decode_tok_s_median": 11.66,
+          "prefill_tok_s_median": 68.81,
+          "digests": [
+            "f26175202f3dabe9"
+          ],
+          "decode_over_base": 1.0,
+          "prefill_over_base": 0.9931
+        },
+        "candb": {
+          "decode_tok_s_samples": [
+            11.65,
+            11.63,
+            11.65
+          ],
+          "decode_tok_s_median": 11.65,
+          "prefill_tok_s_median": 69.61,
+          "digests": [
+            "f26175202f3dabe9"
+          ],
+          "decode_over_base": 0.9991,
+          "prefill_over_base": 1.0046
+        },
+        "ids_identical_across_sides": true
+      }
+    },
+    "q4_decode_medians": {
+      "qwen25-0.5b-4bit:long-decode-128": {
+        "base": 63.58,
+        "cand": 68.84,
+        "candb": 70.51
+      },
+      "qwen25-0.5b-4bit:longctx-1024-decode-32": {
+        "base": 44.93,
+        "cand": 47.41,
+        "candb": 48.27
+      },
+      "qwen25-0.5b-4bit:short-decode-32": {
+        "base": 76.86,
+        "cand": 84.28,
+        "candb": 86.94
+      }
+    }
+  },
+  "ids_identical": true,
+  "required_digests": {
+    "q4_short": "7fd25a869ff21678",
+    "q4_long": "4cc08910089477fd",
+    "q4_longctx": "7da83f06ec9f001d",
+    "bf16_from_baseline": [
+      "ad964232ee67fecd",
+      "ff502900d2a179a5",
+      "f26175202f3dabe9"
+    ]
+  },
+  "tests": {
+    "llvmpipe": {
+      "omarchy_fast_ops_tests": {
+        "assertions": 1114893,
+        "passed": 1114893,
+        "failed": 0,
+        "status": "SUCCESS"
+      },
+      "omarchy_matmul_family_tests": {
+        "assertions": 20768294,
+        "passed": 20768294,
+        "failed": 0,
+        "status": "SUCCESS"
+      },
+      "omarchy_runtime_tests": {
+        "assertions": 22691,
+        "passed": 22691,
+        "failed": 0,
+        "status": "SUCCESS"
+      },
+      "source_commit": "ceca6ac"
+    },
+    "m1": {
+      "omarchy_fast_ops_tests": {
+        "assertions": 1102946,
+        "passed": 1102946,
+        "failed": 0,
+        "status": "SUCCESS"
+      },
+      "omarchy_matmul_family_tests": {
+        "assertions": 82636835,
+        "passed": 82636835,
+        "failed": 0,
+        "status": "SUCCESS"
+      },
+      "omarchy_runtime_tests": {
+        "assertions": 22694,
+        "passed": 22694,
+        "failed": 0,
+        "status": "SUCCESS"
+      },
+      "source_commit": "ceca6ac"
+    }
+  },
+  "decision": "integrate the 2 rows x 4 subgroups kernel: Q4 decode +13.1% short (76.86 -> 86.94 tok/s), +10.9% long (63.58 -> 70.51), +7.4% longctx (44.93 -> 48.27), BF16 unchanged, all six generated-id digests identical to main over 3 paired repetitions; targeted suites green on llvmpipe (ceca6ac) and the M1 (ceca6ac; a14e60f differs only in the two default constants and its wheel ran the six legs)",
+  "gap": "Native 140-151 tok/s remains far: the remaining Q4 GEMV cost is the ~30 us per-dispatch floor (174 dispatches per token) and the 2 fma + 2 integer ops per element the bit-identity contract fixes; both need graph-level fusion or a different arithmetic contract, not a kernel shape",
+  "pending": "in-model GPU profiles of base and candidate queued on the M1 (/tmp/gb-profile-runner.sh -> /tmp/gb-profile-base, /tmp/gb-profile-cand) after the legs; not yet collected",
+  "superseded_by": "verdict-rebased.json: the same split re-measured on main's native-order kernel is 1-2% slower; decision there is hold"
+}
