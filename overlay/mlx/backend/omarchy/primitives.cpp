@@ -6559,10 +6559,11 @@ void QuantizedMatmul::eval_gpu(const std::vector<array>& inputs, array& out) {
       checked_u32(w.ndim() == 3 ? w_d.size() / batch : 0, tag, out);
   params.shape[2] =
       checked_u32(scales.ndim() == 3 ? scales_d.size() / batch : 0, tag, out);
-  // Bit 1: the x row starts on a 32-bit word, so the Q4 GEMV may read
-  // x as packed 16-bit pairs (k is a multiple of 64, so every batch row
-  // keeps the parity of lhs_offset).
-  params.flags = (transpose_ ? 0u : 1u) | ((params.lhs_offset % 2u == 0u) ? 2u : 0u);
+  // Bit 1: the x row starts on a 16-byte boundary, so the Q4 GEMV may
+  // read the eight 16-bit x values of a packed word as one uvec4 (k is
+  // a multiple of 64, so every batch row keeps the alignment of
+  // lhs_offset).
+  params.flags = (transpose_ ? 0u : 1u) | ((params.lhs_offset % 8u == 0u) ? 2u : 0u);
   std::array<omarchy::ComputeBinding, 5> bindings{
       binding(x_d),
       binding(w_d),
@@ -6632,13 +6633,12 @@ void QuantizedMatmul::eval_gpu(const std::vector<array>& inputs, array& out) {
       };
       static constexpr Screen kScreens[] = {
           {"r1s8", omarchy::ComputeKernel::QmmVecQ4ScreenR1S8F16, 8u},
-          {"r2s4", omarchy::ComputeKernel::QmmVecQ4ScreenR2S4F16, 8u},
-          {"r4s2p", omarchy::ComputeKernel::QmmVecQ4ScreenR4S2PF16, 8u},
-          {"r2s4p", omarchy::ComputeKernel::QmmVecQ4ScreenR2S4PF16, 8u},
-          {"r4s2alu", omarchy::ComputeKernel::QmmVecQ4ScreenR4S2ALUF16, 8u},
-          {"r4s2mem", omarchy::ComputeKernel::QmmVecQ4ScreenR4S2MEMF16, 8u},
-          {"r1s8alu", omarchy::ComputeKernel::QmmVecQ4ScreenR1S8ALUF16, 8u},
-          {"r1s8mem", omarchy::ComputeKernel::QmmVecQ4ScreenR1S8MEMF16, 8u},
+          {"r2s4il", omarchy::ComputeKernel::QmmVecQ4ScreenR2S4ILF16, 8u},
+          {"r4s2il", omarchy::ComputeKernel::QmmVecQ4ScreenR4S2ILF16, 8u},
+          {"r4s2ilp", omarchy::ComputeKernel::QmmVecQ4ScreenR4S2ILPF16, 8u},
+          {"r8s1il", omarchy::ComputeKernel::QmmVecQ4ScreenR8S1ILF16, 8u},
+          {"r4s2ilalu", omarchy::ComputeKernel::QmmVecQ4ScreenR4S2ILALUF16, 8u},
+          {"r4s2x", omarchy::ComputeKernel::QmmVecQ4ScreenR4S2XF16, 8u},
       };
       for (const auto& s : kScreens) {
         if (std::strcmp(screen, s.name) == 0) {

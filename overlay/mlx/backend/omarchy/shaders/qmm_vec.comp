@@ -104,13 +104,14 @@ layout(set = 0, binding = 0, std430) readonly buffer InputX {
 } input_x;
 #if defined(QMM_VEC_Q4_WORD) && !defined(Q4_NO_X_WORDS) && \
     (defined(USE_FP16) || defined(USE_BF16))
-// Same buffer as binding 0 viewed as packed 16-bit pairs; used when the
-// dispatch flags the x row as word aligned (flags bit 1). Both halves
-// convert exactly, so the values equal the element loads.
+// Same buffer as binding 0 viewed as 16-byte groups of packed 16-bit
+// pairs, the eight x values of one packed word; used when the dispatch
+// flags the x row as 16-byte aligned (flags bit 1). Both halves of each
+// word convert exactly, so the values equal the element loads.
 #define Q4_X_WORDS 1
-layout(set = 0, binding = 0, std430) readonly buffer InputXWords {
-  uint values[];
-} input_x_words;
+layout(set = 0, binding = 0, std430) readonly buffer InputXVec {
+  uvec4 values[];
+} input_x_vec;
 #ifdef USE_FP16
 #define X_LO(word) unpackHalf2x16(word).x
 #define X_HI(word) unpackHalf2x16(word).y
@@ -549,19 +550,16 @@ void main() {
 
 #ifdef Q4_X_WORDS
 #define Q4_LOAD_X(u, k) \
-  if (x_word_aligned) { \
-    uint xw0 = input_x_words.values[(k) >> 1u]; \
-    uint xw1 = input_x_words.values[((k) >> 1u) + 1u]; \
-    uint xw2 = input_x_words.values[((k) >> 1u) + 2u]; \
-    uint xw3 = input_x_words.values[((k) >> 1u) + 3u]; \
-    x[u * 8 + 0] = X_LO(xw0); \
-    x[u * 8 + 1] = X_HI(xw0); \
-    x[u * 8 + 2] = X_LO(xw1); \
-    x[u * 8 + 3] = X_HI(xw1); \
-    x[u * 8 + 4] = X_LO(xw2); \
-    x[u * 8 + 5] = X_HI(xw2); \
-    x[u * 8 + 6] = X_LO(xw3); \
-    x[u * 8 + 7] = X_HI(xw3); \
+  if (x_vec_aligned) { \
+    uvec4 xw = input_x_vec.values[(k) >> 3u]; \
+    x[u * 8 + 0] = X_LO(xw.x); \
+    x[u * 8 + 1] = X_HI(xw.x); \
+    x[u * 8 + 2] = X_LO(xw.y); \
+    x[u * 8 + 3] = X_HI(xw.y); \
+    x[u * 8 + 4] = X_LO(xw.z); \
+    x[u * 8 + 5] = X_HI(xw.z); \
+    x[u * 8 + 6] = X_LO(xw.w); \
+    x[u * 8 + 7] = X_HI(xw.w); \
   } else { \
     Q4_LOAD_X_ELEMENTS(u, k) \
   }
@@ -624,10 +622,45 @@ void main() {
        bias[u * Q4_ROWS + r]);
 #endif
 
+#ifdef Q4_INTERLEAVE
+// Element-major order: the dequantized value of element i for every
+// row, then every row's accumulate, so the rows' dependent chains
+// interleave in the instruction stream. Per row the operations and
+// their order are the same as Q4_ROW_DOT.
+#define Q4_T(r, u, i) \
+  t[r] = scale[u * Q4_ROWS + r] * \
+      float((word[u * Q4_ROWS + r] >> (4u * uint(i))) & 0xfu) + \
+      bias[u * Q4_ROWS + r];
+#define Q4_A(r, u, i) acc[r] += x[u * 8 + i] * t[r];
+#if Q4_ROWS == 2
+#define Q4_ELEM(u, i) Q4_T(0, u, i) Q4_T(1, u, i) Q4_A(0, u, i) Q4_A(1, u, i)
+#elif Q4_ROWS == 4
+#define Q4_ELEM(u, i) \
+  Q4_T(0, u, i) Q4_T(1, u, i) Q4_T(2, u, i) Q4_T(3, u, i) \
+  Q4_A(0, u, i) Q4_A(1, u, i) Q4_A(2, u, i) Q4_A(3, u, i)
+#elif Q4_ROWS == 8
+#define Q4_ELEM(u, i) \
+  Q4_T(0, u, i) Q4_T(1, u, i) Q4_T(2, u, i) Q4_T(3, u, i) \
+  Q4_T(4, u, i) Q4_T(5, u, i) Q4_T(6, u, i) Q4_T(7, u, i) \
+  Q4_A(0, u, i) Q4_A(1, u, i) Q4_A(2, u, i) Q4_A(3, u, i) \
+  Q4_A(4, u, i) Q4_A(5, u, i) Q4_A(6, u, i) Q4_A(7, u, i)
+#else
+#define Q4_ELEM(u, i) Q4_T(0, u, i) Q4_A(0, u, i)
+#endif
+#define Q4_DOT_ROWS(u) \
+  { \
+    float t[Q4_ROWS]; \
+    Q4_ELEM(u, 0) Q4_ELEM(u, 1) Q4_ELEM(u, 2) Q4_ELEM(u, 3) \
+    Q4_ELEM(u, 4) Q4_ELEM(u, 5) Q4_ELEM(u, 6) Q4_ELEM(u, 7) \
+  }
+#else
+#define Q4_DOT_ROWS(u) Q4_FOR_ROWS(Q4_ROW_DOT, u)
+#endif
+
 // Step 0 is inside the row by the loop condition; later steps check.
 #define Q4_DOT_STEP(u) \
   if (uint(u) == 0u || w + uint(u) * LANES < words_per_row) { \
-    Q4_FOR_ROWS(Q4_ROW_DOT, u) \
+    Q4_DOT_ROWS(u) \
   }
 
 #ifdef USE_SUBGROUP
@@ -668,7 +701,7 @@ void main() {
   uint last_word = words_per_row - 1u;
   uint groups_per_row = params.matrix_k / 64u;
 #ifdef Q4_X_WORDS
-  bool x_word_aligned = (params.flags & 2u) != 0u;
+  bool x_vec_aligned = (params.flags & 2u) != 0u;
 #endif
   for (uint b = 0u; b < params.shape[0]; ++b) {
     uint w_row = params.rhs_offset + b * params.shape[1];
@@ -694,13 +727,13 @@ void main() {
       while (true) {
         uint w1 = w + LANES;
         Q4_LOAD_AT(1, min(w1, last_word))
-        Q4_FOR_ROWS(Q4_ROW_DOT, 0)
+        Q4_DOT_ROWS(0)
         if (w1 >= words_per_row) {
           break;
         }
         uint w2 = w1 + LANES;
         Q4_LOAD_AT(0, min(w2, last_word))
-        Q4_FOR_ROWS(Q4_ROW_DOT, 1)
+        Q4_DOT_ROWS(1)
         if (w2 >= words_per_row) {
           break;
         }
