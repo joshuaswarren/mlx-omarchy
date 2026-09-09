@@ -85,10 +85,10 @@ uint16_t bf16_store(float value) {
 // dispatch derives its group count from COLUMNS_PER_GROUP
 // (kQ4GemvColumnsPerGroup in primitives.cpp).
 #ifndef Q4_ROWS
-#define Q4_ROWS 4
+#define Q4_ROWS 2
 #endif
 #ifndef Q4_SUBGROUPS
-#define Q4_SUBGROUPS 2
+#define Q4_SUBGROUPS 4
 #endif
 #define COLUMNS_PER_GROUP uint(Q4_ROWS * Q4_SUBGROUPS)
 #define WORKGROUP_LANES (32 * Q4_SUBGROUPS)
