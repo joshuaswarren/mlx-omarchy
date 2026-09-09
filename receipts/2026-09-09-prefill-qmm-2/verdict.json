@@ -1,0 +1,182 @@
+{
+  "best_variant_by_shape": {
+    "hidden-hidden-m1053": "bfe",
+    "hidden-hidden-m262": "bfe",
+    "hidden-intermediate-m1053": "bfe",
+    "hidden-intermediate-m262": "bfe",
+    "hidden-kv-m1053": "bfe",
+    "hidden-kv-m262": "subgroup",
+    "intermediate-hidden-m1053": "bfe",
+    "intermediate-hidden-m262": "bfe"
+  },
+  "branch": "wave/prefill-qmm-2",
+  "commit": "8eb24c49711ebb11464a5498f04d26d67d070c11",
+  "decision": "reject all four candidates; retain origin/main cooperative Q4 prefill kernel",
+  "ids": "identical",
+  "ids_scope": "Deterministic QMM output probe for m=262,k=896,n=128 was byte-identical for subgroup, ring, and bfe against baseline; the direct variant passed the targeted M1 numerical suite. Six model-leg IDs were not run because no candidate qualified for paired benchmarking.",
+  "kernel_ms": {
+    "hidden-hidden-m1053": {
+      "after": 1.7256665,
+      "baseline_wheel_sha256": "9d376ccf06fadde93de35dcedd3a34286a999bf8f637499ab38400d516ee1a21",
+      "before": 1.7370415,
+      "candidate": "bfe",
+      "candidate_wheel_sha256": "c1d8550cd03a5b37fba3065cb8764aa708279303fdac0d20cb82179675abfac5"
+    },
+    "hidden-hidden-m262": {
+      "after": 0.6550415,
+      "baseline_wheel_sha256": "9d376ccf06fadde93de35dcedd3a34286a999bf8f637499ab38400d516ee1a21",
+      "before": 0.6058545,
+      "candidate": "bfe",
+      "candidate_wheel_sha256": "c1d8550cd03a5b37fba3065cb8764aa708279303fdac0d20cb82179675abfac5"
+    },
+    "hidden-intermediate-m1053": {
+      "after": 8.617896,
+      "baseline_wheel_sha256": "9d376ccf06fadde93de35dcedd3a34286a999bf8f637499ab38400d516ee1a21",
+      "before": 8.7375205,
+      "candidate": "bfe",
+      "candidate_wheel_sha256": "c1d8550cd03a5b37fba3065cb8764aa708279303fdac0d20cb82179675abfac5"
+    },
+    "hidden-intermediate-m262": {
+      "after": 2.443646,
+      "baseline_wheel_sha256": "9d376ccf06fadde93de35dcedd3a34286a999bf8f637499ab38400d516ee1a21",
+      "before": 2.4668125,
+      "candidate": "bfe",
+      "candidate_wheel_sha256": "c1d8550cd03a5b37fba3065cb8764aa708279303fdac0d20cb82179675abfac5"
+    },
+    "hidden-kv-m1053": {
+      "after": 0.4710415,
+      "baseline_wheel_sha256": "9d376ccf06fadde93de35dcedd3a34286a999bf8f637499ab38400d516ee1a21",
+      "before": 0.6932705,
+      "candidate": "bfe",
+      "candidate_wheel_sha256": "c1d8550cd03a5b37fba3065cb8764aa708279303fdac0d20cb82179675abfac5"
+    },
+    "hidden-kv-m262": {
+      "after": 0.4456665,
+      "baseline_wheel_sha256": "9d376ccf06fadde93de35dcedd3a34286a999bf8f637499ab38400d516ee1a21",
+      "before": 0.444417,
+      "candidate": "bfe",
+      "candidate_wheel_sha256": "c1d8550cd03a5b37fba3065cb8764aa708279303fdac0d20cb82179675abfac5"
+    },
+    "intermediate-hidden-m1053": {
+      "after": 9.1289375,
+      "baseline_wheel_sha256": "9d376ccf06fadde93de35dcedd3a34286a999bf8f637499ab38400d516ee1a21",
+      "before": 9.0773545,
+      "candidate": "bfe",
+      "candidate_wheel_sha256": "c1d8550cd03a5b37fba3065cb8764aa708279303fdac0d20cb82179675abfac5"
+    },
+    "intermediate-hidden-m262": {
+      "after": 2.449854,
+      "baseline_wheel_sha256": "9d376ccf06fadde93de35dcedd3a34286a999bf8f637499ab38400d516ee1a21",
+      "before": 2.4544375,
+      "candidate": "bfe",
+      "candidate_wheel_sha256": "c1d8550cd03a5b37fba3065cb8764aa708279303fdac0d20cb82179675abfac5"
+    }
+  },
+  "next": "Profile compiler-generated AGX ISA and issue occupancy before another source variant; direct fragment fill, subgroup-private B staging, weight-only ring staging, and bitfieldExtract did not produce a qualifying improvement.",
+  "output_probe_sha256": "a8d13ca86c14649010098ec32b4da3387ed1414ae9fd4275cb1581ef027d8be5",
+  "paired": {},
+  "paired_status": "not_run: no candidate reached the required 10% kernel reduction threshold",
+  "receipts": [
+    "receipts/2026-09-09-prefill-qmm-2/profiles/baseline",
+    "receipts/2026-09-09-prefill-qmm-2/profiles/direct",
+    "receipts/2026-09-09-prefill-qmm-2/profiles/subgroup",
+    "receipts/2026-09-09-prefill-qmm-2/profiles/ring",
+    "receipts/2026-09-09-prefill-qmm-2/profiles/bfe",
+    "receipts/2026-09-09-prefill-qmm-2/windows/baseline",
+    "receipts/2026-09-09-prefill-qmm-2/m1/omarchy_matmul_family_tests.log"
+  ],
+  "source_commits": {
+    "baseline": "8eb24c49711ebb11464a5498f04d26d67d070c11",
+    "bfe": "7b83abd5ff9a8b67296d9b083522fd200a42c25a",
+    "direct": "0d5949af17bac7f49f908d8b3322c538bd335ff1",
+    "ring": "19f4f689b00a92272417430200c50e6edf563330",
+    "subgroup": "151a915107a8032acb9cff08a484922245a3d962"
+  },
+  "tests": {
+    "direct_m1_targeted": {
+      "result": "9 passed, 0 failed, 9 skipped; 80,496,125 assertions",
+      "source_commit": "0d5949af17bac7f49f908d8b3322c538bd335ff1"
+    },
+    "final_candidate": "not_run: all candidates rejected by kernel threshold",
+    "llvmpipe": "not_counted: stale prepared source made the recorded run invalid for candidate provenance"
+  },
+  "variants": {
+    "baseline": {
+      "hidden-hidden-m1053": 1.7370415,
+      "hidden-hidden-m262": 0.6058545,
+      "hidden-intermediate-m1053": 8.7375205,
+      "hidden-intermediate-m262": 2.4668125,
+      "hidden-kv-m1053": 0.6932705,
+      "hidden-kv-m262": 0.444417,
+      "intermediate-hidden-m1053": 9.0773545,
+      "intermediate-hidden-m262": 2.4544375
+    },
+    "bfe": {
+      "hidden-hidden-m1053": 1.7256665,
+      "hidden-hidden-m262": 0.6550415,
+      "hidden-intermediate-m1053": 8.617896,
+      "hidden-intermediate-m262": 2.443646,
+      "hidden-kv-m1053": 0.4710415,
+      "hidden-kv-m262": 0.4456665,
+      "intermediate-hidden-m1053": 9.1289375,
+      "intermediate-hidden-m262": 2.449854
+    },
+    "direct": {
+      "hidden-hidden-m1053": 2.4682295,
+      "hidden-hidden-m262": 0.8271665,
+      "hidden-intermediate-m1053": 12.7653955,
+      "hidden-intermediate-m262": 3.5838745,
+      "hidden-kv-m1053": 0.7602915,
+      "hidden-kv-m262": 0.643958,
+      "intermediate-hidden-m1053": 13.018479,
+      "intermediate-hidden-m262": 4.2326875
+    },
+    "ring": {
+      "hidden-hidden-m1053": 2.0501875,
+      "hidden-hidden-m262": 0.7048545,
+      "hidden-intermediate-m1053": 10.523604,
+      "hidden-intermediate-m262": 2.967417,
+      "hidden-kv-m1053": 0.6390215,
+      "hidden-kv-m262": 0.5254165,
+      "intermediate-hidden-m1053": 11.542604,
+      "intermediate-hidden-m262": 3.7725625
+    },
+    "subgroup": {
+      "hidden-hidden-m1053": 2.3561875,
+      "hidden-hidden-m262": 0.826167,
+      "hidden-intermediate-m1053": 11.908125,
+      "hidden-intermediate-m262": 3.3236245,
+      "hidden-kv-m1053": 0.550333,
+      "hidden-kv-m262": 0.4412295,
+      "intermediate-hidden-m1053": 12.4795205,
+      "intermediate-hidden-m262": 4.233104
+    }
+  },
+  "wheels": {
+    "baseline": {
+      "path": "remote:~/src/mlx-PrefillQmm2/receipts/2026-09-09-prefill-qmm-2/wheels/baseline/mlx_omarchy-0.32.2.dev202609092125+diag.8eb24c4-cp314-cp314-linux_aarch64.whl",
+      "sha256": "9d376ccf06fadde93de35dcedd3a34286a999bf8f637499ab38400d516ee1a21",
+      "source_commit": "8eb24c49711ebb11464a5498f04d26d67d070c11"
+    },
+    "bfe": {
+      "path": "remote:~/src/mlx-PrefillQmm2/receipts/2026-09-09-prefill-qmm-2/wheels/bfe/mlx_omarchy-0.32.2.dev202609092231+diag.7b83abd-cp314-cp314-linux_aarch64.whl",
+      "sha256": "c1d8550cd03a5b37fba3065cb8764aa708279303fdac0d20cb82179675abfac5",
+      "source_commit": "7b83abd5ff9a8b67296d9b083522fd200a42c25a"
+    },
+    "direct": {
+      "path": "remote:~/src/mlx-PrefillQmm2/receipts/2026-09-09-prefill-qmm-2/wheels/direct/mlx_omarchy-0.32.2.dev202609092138+diag.0d5949a-cp314-cp314-linux_aarch64.whl",
+      "sha256": "0d763bb07063e51165c2acd6bf087b412a36ac0984e53eb5b24b1687d93086a0",
+      "source_commit": "0d5949af17bac7f49f908d8b3322c538bd335ff1"
+    },
+    "ring": {
+      "path": "remote:~/src/mlx-PrefillQmm2/receipts/2026-09-09-prefill-qmm-2/wheels/ring/mlx_omarchy-0.32.2.dev202609092221+diag.19f4f68-cp314-cp314-linux_aarch64.whl",
+      "sha256": "81c5a4a0a6c0b97caedeb4517a2d08c2657064e9aa10ee672e41537a1072f121",
+      "source_commit": "19f4f689b00a92272417430200c50e6edf563330"
+    },
+    "subgroup": {
+      "path": "remote:~/src/mlx-PrefillQmm2/receipts/2026-09-09-prefill-qmm-2/wheels/subgroup/mlx_omarchy-0.32.2.dev202609092211+diag.151a915-cp314-cp314-linux_aarch64.whl",
+      "sha256": "b1cc653f1479251b946d8baf2958789c5bbf19e591422170bcab8ebbf4ec4d30",
+      "source_commit": "151a915107a8032acb9cff08a484922245a3d962"
+    }
+  }
+}
