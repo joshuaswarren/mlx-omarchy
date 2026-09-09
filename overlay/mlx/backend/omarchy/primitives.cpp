@@ -6676,7 +6676,8 @@ void QuantizedMatmul::eval_gpu(const std::vector<array>& inputs, array& out) {
         group_size_ == 64) {
       // Same layout on the 8x8x8 fp32 cooperative matrix when the
       // device advertises it (shaders/qmm_coopmat.comp: 32x32 output
-      // tile per subgroup, 2 KiB shared staging, x and out read and
+      // tile per four-subgroup workgroup, 2 KiB shared staging, x and
+      // out read and
       // written as 32-bit word pairs so their element offsets must be
       // even). MLX_OMARCHY_NO_COOPMAT=1 forces the register-blocked tile.
       static const bool coopmat_disabled =
