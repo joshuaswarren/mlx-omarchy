@@ -11,12 +11,13 @@
 // the honeykrisp-coopmat branch). One workgroup is four 32-lane
 // subgroups and owns a 32 x 32 output tile; subgroup s owns the 16 x
 // 16 quadrant (s / 2, s % 2) as a 2 x 2 grid of 8x8 accumulators. Per
-// 8-wide k step the 128 lanes stage the x rows as f32 (one word each)
+// 16-wide k step the 128 lanes stage the x rows as f32 (two words each)
 // and the weight block dequantized ONCE into shared memory - the same
 // packed-word unpack and scale/bias addressing as the REGISTER_BLOCK
-// qmm_tile.comp, one scale/bias load per 64-wide quant group, two
+// qmm_tile.comp, one scale/bias load per 64-wide quant group, four
 // nibbles per lane - and each subgroup coopMatLoads its two A and two
-// B fragments from shared for four coopMatMulAdd. Every accumulator
+// B fragments from shared for four coopMatMulAdd per 8-wide sub-step,
+// two sub-steps between one barrier pair. Every accumulator
 // receives the same 8-wide products in the same ascending k order as
 // the one-subgroup 32x32 layout this replaced, so the sums are
 // unchanged; the difference is a quarter of the accumulator and
@@ -40,6 +41,7 @@
 const uint TILE_M = 32u;
 const uint TILE_N = 32u;
 const uint CHUNK_K = 64u;
+const uint STEP_K = 16u;
 const uint MAT = 8u;
 
 layout(local_size_x = 128) in;
@@ -84,13 +86,14 @@ layout(push_constant) uniform Params {
   uint out_strides[4];
 } params;
 
-// 2 KiB of shared per 128-lane workgroup: one 32x8 x step and one 8x32
-// weight step. Threadgroup memory bounds occupancy on AGX (32 KiB per
-// core), so a 64-wide chunk staged at once (20 KiB) left one subgroup
-// per core and ran 0.55x the scalar tile; the output tile is drained
-// through x_s one row block at a time for the same reason.
-shared float x_s[TILE_M * MAT];
-shared float w_s[MAT * TILE_N];
+// 4 KiB of shared per 128-lane workgroup: one 32x16 x step and one
+// 16x32 weight step, row-major. Threadgroup memory bounds occupancy on
+// AGX (32 KiB per core), so a 64-wide chunk staged at once (20 KiB)
+// left one subgroup per core and ran 0.55x the scalar tile; the output
+// tile is drained through x_s one row block at a time for the same
+// reason.
+shared float x_s[TILE_M * STEP_K];
+shared float w_s[STEP_K * TILE_N];
 
 void main() {
   uint lid = gl_LocalInvocationID.x;
@@ -108,11 +111,9 @@ void main() {
   uint words_per_row = params.matrix_k / 8u;
   uint groups_per_row = params.matrix_k / 64u;
   uint x_words_per_row = params.matrix_k / 2u;
-  // Staging roles: x word lid covers row lid / 4, k pair lid % 4;
-  // weight lane lid covers column lid % 32, nibbles 2 (lid / 32) and
-  // 2 (lid / 32) + 1.
-  uint x_local_row = lid / 4u;
-  uint x_pair = lid % 4u;
+  // Staging roles: x word i = lid + 128 j covers row i / 8, k pair
+  // i % 8; weight lane lid covers column lid % 32 and nibbles
+  // 4 (lid / 32) .. 4 (lid / 32) + 3 of the step's two packed words.
   uint w_column_local = lid % 32u;
   uint w_part = lid / 32u;
 
@@ -126,8 +127,6 @@ void main() {
   for (uint tile_row = gl_WorkGroupID.y; tile_row < m_tiles;
        tile_row += gl_NumWorkGroups.y) {
     uint row_base = tile_row * TILE_M;
-    uint x_row = row_base + x_local_row;
-    bool x_row_ok = x_row < params.matrix_m;
     for (uint tile_col = gl_WorkGroupID.x; tile_col < n_tiles;
          tile_col += gl_NumWorkGroups.x) {
       uint column = tile_col * TILE_N + w_column_local;
@@ -152,39 +151,47 @@ void main() {
           scale = float(scales.values[scale_row + chunk]);
           bias = float(biases.values[bias_row + chunk]);
         }
-        for (uint ks = 0u; ks < CHUNK_K / MAT; ++ks) {
-          uint k_base = chunk * CHUNK_K + ks * MAT;
-          vec2 pair = x_row_ok
-              ? unpackHalf2x16(input_x.values[
-                    x_slice + x_row * x_words_per_row + k_base / 2u +
-                    x_pair])
-              : vec2(0.0);
-          x_s[x_local_row * MAT + 2u * x_pair] = pair.x;
-          x_s[x_local_row * MAT + 2u * x_pair + 1u] = pair.y;
+        for (uint step = 0u; step < CHUNK_K / STEP_K; ++step) {
+          uint k_base = chunk * CHUNK_K + step * STEP_K;
+          for (uint j = 0u; j < 2u; ++j) {
+            uint i = lid + 128u * j;
+            uint local_row = i / 8u;
+            uint pair = i % 8u;
+            uint row = row_base + local_row;
+            vec2 value = row < params.matrix_m
+                ? unpackHalf2x16(input_x.values[
+                      x_slice + row * x_words_per_row + k_base / 2u + pair])
+                : vec2(0.0);
+            x_s[local_row * STEP_K + 2u * pair] = value.x;
+            x_s[local_row * STEP_K + 2u * pair + 1u] = value.y;
+          }
           uint packed = column_ok
-              ? input_w.values[w_row + k_base / 8u] : 0u;
-          uint shift = 8u * w_part;
-          w_s[(2u * w_part) * TILE_N + w_column_local] =
-              scale * float((packed >> shift) & 0xFu) + bias;
-          w_s[(2u * w_part + 1u) * TILE_N + w_column_local] =
-              scale * float((packed >> (shift + 4u)) & 0xFu) + bias;
+              ? input_w.values[w_row + k_base / 8u + w_part / 2u] : 0u;
+          uint shift = 16u * (w_part % 2u);
+          for (uint n = 0u; n < 4u; ++n) {
+            w_s[(4u * w_part + n) * TILE_N + w_column_local] =
+                scale * float((packed >> (shift + 4u * n)) & 0xFu) + bias;
+          }
           barrier();
 
-          coopmat<float, gl_ScopeSubgroup, MAT, MAT, gl_MatrixUseA> mat_a[2];
-          coopmat<float, gl_ScopeSubgroup, MAT, MAT, gl_MatrixUseB> mat_b[2];
-          for (uint rb = 0u; rb < 2u; ++rb) {
-            coopMatLoad(
-                mat_a[rb], x_s, (sub_rb + rb) * MAT * MAT, MAT,
-                gl_CooperativeMatrixLayoutRowMajor);
-          }
-          for (uint cb = 0u; cb < 2u; ++cb) {
-            coopMatLoad(
-                mat_b[cb], w_s, (sub_cb + cb) * MAT, TILE_N,
-                gl_CooperativeMatrixLayoutRowMajor);
-          }
-          for (uint rb = 0u; rb < 2u; ++rb) {
+          for (uint ks = 0u; ks < STEP_K / MAT; ++ks) {
+            coopmat<float, gl_ScopeSubgroup, MAT, MAT, gl_MatrixUseA> mat_a[2];
+            coopmat<float, gl_ScopeSubgroup, MAT, MAT, gl_MatrixUseB> mat_b[2];
+            for (uint rb = 0u; rb < 2u; ++rb) {
+              coopMatLoad(
+                  mat_a[rb], x_s, (sub_rb + rb) * MAT * STEP_K + ks * MAT,
+                  STEP_K, gl_CooperativeMatrixLayoutRowMajor);
+            }
             for (uint cb = 0u; cb < 2u; ++cb) {
-              acc[rb][cb] = coopMatMulAdd(mat_a[rb], mat_b[cb], acc[rb][cb]);
+              coopMatLoad(
+                  mat_b[cb], w_s, ks * MAT * TILE_N + (sub_cb + cb) * MAT,
+                  TILE_N, gl_CooperativeMatrixLayoutRowMajor);
+            }
+            for (uint rb = 0u; rb < 2u; ++rb) {
+              for (uint cb = 0u; cb < 2u; ++cb) {
+                acc[rb][cb] =
+                    coopMatMulAdd(mat_a[rb], mat_b[cb], acc[rb][cb]);
+              }
             }
           }
           barrier();
