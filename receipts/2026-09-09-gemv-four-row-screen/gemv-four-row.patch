@@ -1,0 +1,70 @@
+--- a/overlay/mlx/backend/omarchy/shaders/matmul_vec.comp
++++ b/overlay/mlx/backend/omarchy/shaders/matmul_vec.comp
+@@ -89,36 +89,41 @@
+   uint tiles = params.matrix_n / COLUMNS_PER_GROUP +
+       uint(params.matrix_n % COLUMNS_PER_GROUP != 0u);
+   for (uint tile = gl_WorkGroupID.x; tile < tiles; tile += gl_NumWorkGroups.x) {
+-    for (uint row = 0u; row < 4u; ++row) {
+-      uint column = tile * COLUMNS_PER_GROUP + gl_SubgroupID * 4u + row;
+-      if (column >= params.matrix_n) {
+-        continue;
+-      }
+-      float accumulator = 0.0;
+-      for (uint block = 0u; block < params.matrix_k; block += 128u) {
+-        for (uint item = 0u; item < 4u; ++item) {
+-          uint k = block + gl_SubgroupInvocationID * 4u + item;
+-          if (k < params.matrix_k) {
+-            uint a_index = a_base + (a_transposed ? k * params.lhs_gap : k);
+-            uint b_index = b_transposed
+-                ? b_base + column * params.rhs_gap + k
+-                : b_base + k * params.rhs_gap + column;
+-            accumulator += LOAD_VALUE(input_a.values[a_index]) *
+-                LOAD_VALUE(input_b.values[b_index]);
++    uint first_column = tile * COLUMNS_PER_GROUP + gl_SubgroupID * 4u;
++    vec4 accumulators = vec4(0.0);
++    for (uint block = 0u; block < params.matrix_k; block += 128u) {
++      for (uint item = 0u; item < 4u; ++item) {
++        uint k = block + gl_SubgroupInvocationID * 4u + item;
++        if (k < params.matrix_k) {
++          uint a_index = a_base + (a_transposed ? k * params.lhs_gap : k);
++          float a_value = LOAD_VALUE(input_a.values[a_index]);
++          for (uint row = 0u; row < 4u; ++row) {
++            uint column = first_column + row;
++            if (column < params.matrix_n) {
++              uint b_index = b_transposed
++                  ? b_base + column * params.rhs_gap + k
++                  : b_base + k * params.rhs_gap + column;
++              accumulators[row] += a_value * LOAD_VALUE(input_b.values[b_index]);
++            }
+           }
+         }
+       }
+-      for (uint offset = 16u; offset > 0u; offset >>= 1u) {
+-        accumulator += subgroupShuffleDown(accumulator, offset);
+-      }
+-      if (gl_SubgroupInvocationID == 0u) {
+-        uint output_index = batch_index * params.matrix_n + column;
+-        float value = params.alpha * accumulator;
+-        if ((params.flags & 2u) != 0u) {
+-          uint c_index = params.aux_size == 1u ? 0u : output_index % params.aux_size;
+-          value += params.beta * LOAD_VALUE(input_c.values[params.aux_offset + c_index]);
++    }
++    for (uint offset = 16u; offset > 0u; offset >>= 1u) {
++      accumulators += subgroupShuffleDown(accumulators, offset);
++    }
++    if (gl_SubgroupInvocationID == 0u) {
++      for (uint row = 0u; row < 4u; ++row) {
++        uint column = first_column + row;
++        if (column < params.matrix_n) {
++          uint output_index = batch_index * params.matrix_n + column;
++          float value = params.alpha * accumulators[row];
++          if ((params.flags & 2u) != 0u) {
++            uint c_index = params.aux_size == 1u ? 0u : output_index % params.aux_size;
++            value += params.beta * LOAD_VALUE(input_c.values[params.aux_offset + c_index]);
++          }
++          output_data.values[params.output_offset + output_index] = STORE_VALUE(value);
+         }
+-        output_data.values[params.output_offset + output_index] = STORE_VALUE(value);
+       }
+     }
+   }

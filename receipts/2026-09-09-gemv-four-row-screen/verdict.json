@@ -1,0 +1,9 @@
+{
+  "decision": "Rejected; no runtime change",
+  "source_short": "94151fd",
+  "wheel_sha256": "a9252d4e0f1d42a857f51ac4fcfdd19780d59402bbffe57ca7b36772f5cee216",
+  "scope": "One paired six-workload screen against guarded native-style GEMV",
+  "outputs": "All six complete generated-ID arrays matched the candidate baseline.",
+  "result": "Four accumulators shared each input-vector load; BF16 decode regressed 9.8–13.8%.",
+  "tests": "Further acceptance suites not run because the performance screen failed."
+}
