@@ -1,0 +1,205 @@
+{
+  "paired_repetitions": 1,
+  "measured_legs": 12,
+  "all_full_generated_ids_equal": true,
+  "results": [
+    {
+      "leg_id": "qwen25-0.5b-4bit:long-decode-128",
+      "decode_tok_s_median": {
+        "samples": {
+          "baseline": [
+            56.11
+          ],
+          "candidate": [
+            55.71
+          ]
+        },
+        "medians": {
+          "baseline": 56.11,
+          "candidate": 55.71
+        },
+        "candidate_over_baseline": 0.9928711459632864
+      },
+      "prefill_tok_s_median": {
+        "samples": {
+          "baseline": [
+            408.1
+          ],
+          "candidate": [
+            413.902
+          ]
+        },
+        "medians": {
+          "baseline": 408.1,
+          "candidate": 413.902
+        },
+        "candidate_over_baseline": 1.0142171036510659
+      }
+    },
+    {
+      "leg_id": "qwen25-0.5b-4bit:longctx-1024-decode-32",
+      "decode_tok_s_median": {
+        "samples": {
+          "baseline": [
+            40.91
+          ],
+          "candidate": [
+            40.63
+          ]
+        },
+        "medians": {
+          "baseline": 40.91,
+          "candidate": 40.63
+        },
+        "candidate_over_baseline": 0.9931557076509412
+      },
+      "prefill_tok_s_median": {
+        "samples": {
+          "baseline": [
+            428.223
+          ],
+          "candidate": [
+            420.024
+          ]
+        },
+        "medians": {
+          "baseline": 428.223,
+          "candidate": 420.024
+        },
+        "candidate_over_baseline": 0.9808534338417133
+      }
+    },
+    {
+      "leg_id": "qwen25-0.5b-4bit:short-decode-32",
+      "decode_tok_s_median": {
+        "samples": {
+          "baseline": [
+            65.91
+          ],
+          "candidate": [
+            65.38
+          ]
+        },
+        "medians": {
+          "baseline": 65.91,
+          "candidate": 65.38
+        },
+        "candidate_over_baseline": 0.991958731603702
+      },
+      "prefill_tok_s_median": {
+        "samples": {
+          "baseline": [
+            111.524
+          ],
+          "candidate": [
+            111.94
+          ]
+        },
+        "medians": {
+          "baseline": 111.524,
+          "candidate": 111.94
+        },
+        "candidate_over_baseline": 1.0037301388042035
+      }
+    },
+    {
+      "leg_id": "qwen25-0.5b-bf16:long-decode-128",
+      "decode_tok_s_median": {
+        "samples": {
+          "baseline": [
+            11.11
+          ],
+          "candidate": [
+            10.89
+          ]
+        },
+        "medians": {
+          "baseline": 11.11,
+          "candidate": 10.89
+        },
+        "candidate_over_baseline": 0.9801980198019803
+      },
+      "prefill_tok_s_median": {
+        "samples": {
+          "baseline": [
+            259.406
+          ],
+          "candidate": [
+            255.361
+          ]
+        },
+        "medians": {
+          "baseline": 259.406,
+          "candidate": 255.361
+        },
+        "candidate_over_baseline": 0.9844066829603015
+      }
+    },
+    {
+      "leg_id": "qwen25-0.5b-bf16:longctx-1024-decode-32",
+      "decode_tok_s_median": {
+        "samples": {
+          "baseline": [
+            10.12
+          ],
+          "candidate": [
+            9.93
+          ]
+        },
+        "medians": {
+          "baseline": 10.12,
+          "candidate": 9.93
+        },
+        "candidate_over_baseline": 0.9812252964426877
+      },
+      "prefill_tok_s_median": {
+        "samples": {
+          "baseline": [
+            299.063
+          ],
+          "candidate": [
+            297.878
+          ]
+        },
+        "medians": {
+          "baseline": 299.063,
+          "candidate": 297.878
+        },
+        "candidate_over_baseline": 0.9960376241795207
+      }
+    },
+    {
+      "leg_id": "qwen25-0.5b-bf16:short-decode-32",
+      "decode_tok_s_median": {
+        "samples": {
+          "baseline": [
+            11.56
+          ],
+          "candidate": [
+            11.3
+          ]
+        },
+        "medians": {
+          "baseline": 11.56,
+          "candidate": 11.3
+        },
+        "candidate_over_baseline": 0.9775086505190311
+      },
+      "prefill_tok_s_median": {
+        "samples": {
+          "baseline": [
+            68.337
+          ],
+          "candidate": [
+            69.93
+          ]
+        },
+        "medians": {
+          "baseline": 68.337,
+          "candidate": 69.93
+        },
+        "candidate_over_baseline": 1.0233109442907942
+      }
+    }
+  ]
+}

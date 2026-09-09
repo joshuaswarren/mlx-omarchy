@@ -1,0 +1,8 @@
+{
+  "status": "rejected",
+  "measured_source_short": "960f689",
+  "reason": "128-lane GEMV workgroups produced no end-to-end improvement. BF16 decode fell roughly 1.9–2.3% in one paired screen; Q4 control also fell 0.7–0.8%, so do not treat the entire change as causal.",
+  "full_generated_ids_equal": true,
+  "scope": "One paired six-workload screen, not statistical acceptance. Default remains 32 lanes.",
+  "setup": "Initial git apply rejected zero-context hunks. Clone reused; --unidiff-zero applied successfully before build. No benchmark from failed setup counted."
+}

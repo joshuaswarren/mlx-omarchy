@@ -1,0 +1,14 @@
+diff --git a/overlay/mlx/backend/omarchy/shaders/matmul_vec.comp b/overlay/mlx/backend/omarchy/shaders/matmul_vec.comp
+--- a/overlay/mlx/backend/omarchy/shaders/matmul_vec.comp
++++ b/overlay/mlx/backend/omarchy/shaders/matmul_vec.comp
+@@ -30,2 +30,2 @@
+-const uint COLUMNS_PER_GROUP = 32u;
+-layout(local_size_x = 32) in;
++const uint COLUMNS_PER_GROUP = 128u;
++layout(local_size_x = 128) in;
+diff --git a/overlay/mlx/backend/omarchy/primitives.cpp b/overlay/mlx/backend/omarchy/primitives.cpp
+--- a/overlay/mlx/backend/omarchy/primitives.cpp
++++ b/overlay/mlx/backend/omarchy/primitives.cpp
+@@ -1,1 +1,1 @@
+-        matrix_group_count(params.matrix_n, 32u),
++        matrix_group_count(params.matrix_n, 128u),
