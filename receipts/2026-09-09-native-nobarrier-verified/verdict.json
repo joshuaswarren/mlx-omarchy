@@ -1,0 +1,9 @@
+{
+  "decision": "Do not change barrier policy",
+  "source_short": "6ae2c23",
+  "configuration": "baseline: HK_PERFTEST absent; candidate: HK_PERFTEST=nobarrier",
+  "source_confirmation": "hk_device.c:327 parses HK_PERFTEST; hk_cmd_buffer.c:334 skips pipeline barriers for NOBARRIER.",
+  "result": "One paired screen: all six full ID arrays equal. Decode changes below 0.3%; no meaningful gain established.",
+  "scope": "Diagnostic only; not a synchronization-correctness or performance acceptance gate.",
+  "discarded_attempt": "The preceding HK_PERF=nobarrier run used an unrecognized variable and is invalid as a barrier-cost comparison."
+}
