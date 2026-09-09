@@ -23,16 +23,25 @@
 //     subgroup size; lane split is plain workgroup arithmetic). The
 //     five barrier rounds are the cost.
 //   * USE_SUBGROUP=1: one subgroupAdd(accumulator) per 32-lane slot
-//     (Honeykrisp's actual subgroupSize). Trades the barriers for a
-//     single hardware-or-software reduction; the bench
-//     (tools/subgroup-bench) decides whether the trade pays on this
-//     device. Dispatch is gated on caps.subgroup_size == 32 and the
-//     ARITHMETIC subgroup-feature bit, so a device that lacks either
-//     falls back to the tree path unchanged.
+//     (Honeykrisp's actual subgroupSize). Trades the barriers for the
+//     hardware reduction; the bench (tools/subgroup-bench) decides
+//     whether the trade pays on this device. Dispatch is gated on
+//     caps.subgroup_size == 32 and the ARITHMETIC subgroup-feature bit,
+//     so a device that lacks either falls back to the tree path
+//     unchanged.
+// Both flavors pair lanes stride 1 first, then 2, 4, 8, 16. That is the
+// order native Metal simd_sum reduces in, and Honeykrisp's 32-bit float
+// subgroupAdd is the same hardware reduction (agx_nir_lower_subgroups
+// leaves it unlowered) and measured that pairing bit for bit, so the Q4
+// word path below is bit-identical to native qmv
+// (receipts/2026-09-09-q4-gemv-order). subgroupShuffleXor is not used:
+// Honeykrisp emulates arbitrary shuffles with four read_invocation
+// selects per step.
 //
 // QMM_VEC_Q4_WORD compiles the transposed affine 4-bit/group-64 decode
-// candidate. One lane owns one packed word at a time: it loads the word,
-// scale, and bias once, then applies all eight nibbles with constant shifts.
+// path in native qmv arithmetic: one lane owns one packed word per
+// block, loads scale and bias once, and applies all eight nibbles with
+// constant shifts.
 
 #ifdef USE_FP16
 #extension GL_EXT_shader_16bit_storage : require
@@ -58,7 +67,6 @@ uint16_t bf16_store(float value) {
 #define LOAD_VALUE(x) float(x)
 #define STORE_VALUE(f) STORAGE_TYPE(f)
 #endif
-
 #ifdef USE_SUBGROUP
 // The subgroup reduction variant assumes subgroupSize == 32, gated in
 // dispatch (see QuantizedMatmul::eval_gpu). The kernel does not check
@@ -202,6 +210,60 @@ uint q6_at(uint e, uint c0, uint c1, uint c2) {
 }
 #endif
 
+#ifdef QMM_VEC_Q4_WORD
+// One x quad against the low 16 bits of `packed` (nibbles low first).
+// The quad's half chain sum joins input_sum; ((p0 + p1) + p2) + p3 joins
+// dot as an fma chain: every product is exact (11-bit x times a 4-bit
+// nibble), so each fma rounds exactly the sum native qdot rounds, and
+// nibble i times x equals native's (x / 16^i) * (word & mask_i).
+#ifdef USE_FP16
+// Native load_vector adds the four T=half values in half.
+#define Q4_QUAD_LOAD(base) \
+  float16_t h0 = input_x.values[base]; \
+  float16_t h1 = input_x.values[(base) + 1u]; \
+  float16_t h2 = input_x.values[(base) + 2u]; \
+  float16_t h3 = input_x.values[(base) + 3u]; \
+  input_sum += float(((h0 + h1) + h2) + h3); \
+  float x0 = float(h0); \
+  float x1 = float(h1); \
+  float x2 = float(h2); \
+  float x3 = float(h3);
+#else
+// f32 x has nothing to round; the bf16 native quad sum is uncaptured,
+// so bf16 keeps the float chain.
+#define Q4_QUAD_LOAD(base) \
+  float x0 = LOAD_VALUE(input_x.values[base]); \
+  float x1 = LOAD_VALUE(input_x.values[(base) + 1u]); \
+  float x2 = LOAD_VALUE(input_x.values[(base) + 2u]); \
+  float x3 = LOAD_VALUE(input_x.values[(base) + 3u]); \
+  input_sum += ((x0 + x1) + x2) + x3;
+#endif
+#define Q4_QUAD(packed, base) { \
+  Q4_QUAD_LOAD(base) \
+  uint p = (packed); \
+  dot += fma(x3, float((p >> 12u) & 0xfu), \
+      fma(x2, float((p >> 8u) & 0xfu), \
+          fma(x1, float((p >> 4u) & 0xfu), \
+              x0 * float(p & 0xfu)))); \
+}
+// One packed word: eight x values from x_base.
+#define Q4_WORD(word, x_base) { \
+  uint word_value = (word); \
+  uint quad_base = (x_base); \
+  Q4_QUAD(word_value, quad_base) \
+  Q4_QUAD(word_value >> 16u, quad_base + 4u) \
+}
+// Block epilogue: result += fma(scale, dot, sum * bias) with the group
+// of word w (every word of a lane's block sits in one group).
+#define Q4_BLOCK_FINISH(w) { \
+  uint group = (w) / 8u; \
+  float scale = LOAD_VALUE(scales.values[scale_base + group]); \
+  float bias = LOAD_VALUE(biases.values[bias_base + group]); \
+  precise float bias_term = input_sum * bias; \
+  accumulator += fma(scale, dot, bias_term); \
+}
+#endif
+
 // Weight layout routing mirrors qmm.comp. Transposed (flags bit 0
 // clear): w batch slice [N, Kp], groups along K, scale [n][k / gs].
 // Non-transposed (bit 0 set): w batch slice [K, Np], packed N per row,
@@ -226,7 +288,7 @@ void main() {
   uint column = gl_WorkGroupID.x * COLUMNS_PER_GROUP + column_slot;
   bool column_active = column < params.matrix_n;
   for (uint b = 0u; b < batch; ++b) {
-    float accumulator = 0.0;
+    precise float accumulator = 0.0;
     if (column_active) {
       uint w_row = params.rhs_offset + b * w_batch_words;
       uint p_base = params.aux_offset + b * param_batch;
@@ -294,34 +356,45 @@ void main() {
       }
 #else
 #ifdef QMM_VEC_Q4_WORD
+      // Native qmv arithmetic (metal/kernels/quantized.h qmv_impl /
+      // qmv_fast_impl + load_vector + qdot, T=half, U=float): a lane
+      // owns one word (two when K % 512 == 0 and N % 8 == 0, the
+      // qmv_fast tile) per 256- or 512-wide block. Per block it forms
+      // the half-precision chain sum of each x quad, accumulates those
+      // in float, and the dot against the nibbles in source order, then
+      // result += fma(scale, dot, sum * bias). Metal compiles with
+      // -fno-fast-math: it contracts scale * accum + sum * bias into
+      // that fma, leaves sum * bias separate, and keeps every add in
+      // source order. Honeykrisp's NIR reassociates add chains into fma
+      // ladders unless the ops are exact, so accumulator, dot, and
+      // input_sum are precise (receipts/2026-09-09-q4-gemv-order).
       uint words_per_row = params.matrix_k / 8u;
       uint groups_per_row = params.matrix_k / 64u;
       uint w_base = w_row + column * words_per_row;
       uint scale_base = p_base + column * groups_per_row;
       uint bias_base =
           params.aux_size + b * param_batch + column * groups_per_row;
-      for (uint w = lane_in_slot; w < words_per_row; w += LANES) {
-        uint word = input_w.values[w_base + w];
-        uint k = w * 8u;
-        uint group = w / 8u;
-        float scale = LOAD_VALUE(scales.values[scale_base + group]);
-        float bias = LOAD_VALUE(biases.values[bias_base + group]);
-        accumulator += LOAD_VALUE(input_x.values[params.lhs_offset + b * params.matrix_k + k]) *
-            (scale * float(word & 0xfu) + bias);
-        accumulator += LOAD_VALUE(input_x.values[params.lhs_offset + b * params.matrix_k + k + 1u]) *
-            (scale * float((word >> 4u) & 0xfu) + bias);
-        accumulator += LOAD_VALUE(input_x.values[params.lhs_offset + b * params.matrix_k + k + 2u]) *
-            (scale * float((word >> 8u) & 0xfu) + bias);
-        accumulator += LOAD_VALUE(input_x.values[params.lhs_offset + b * params.matrix_k + k + 3u]) *
-            (scale * float((word >> 12u) & 0xfu) + bias);
-        accumulator += LOAD_VALUE(input_x.values[params.lhs_offset + b * params.matrix_k + k + 4u]) *
-            (scale * float((word >> 16u) & 0xfu) + bias);
-        accumulator += LOAD_VALUE(input_x.values[params.lhs_offset + b * params.matrix_k + k + 5u]) *
-            (scale * float((word >> 20u) & 0xfu) + bias);
-        accumulator += LOAD_VALUE(input_x.values[params.lhs_offset + b * params.matrix_k + k + 6u]) *
-            (scale * float((word >> 24u) & 0xfu) + bias);
-        accumulator += LOAD_VALUE(input_x.values[params.lhs_offset + b * params.matrix_k + k + 7u]) *
-            (scale * float(word >> 28u) + bias);
+      uint x_row = params.lhs_offset + b * params.matrix_k;
+      // Straight-line bodies: the qmv_fast tile (two words per lane when
+      // K % 512 == 0 and N % 8 == 0) and the qmv tile (one word) each
+      // get their own loop so no runtime-count inner loop sits between
+      // the loads and the math.
+      if (params.matrix_k % 512u == 0u && params.matrix_n % 8u == 0u) {
+        for (uint w = lane_in_slot * 2u; w < words_per_row;
+             w += LANES * 2u) {
+          precise float dot = 0.0;
+          precise float input_sum = 0.0;
+          Q4_WORD(input_w.values[w_base + w], x_row + w * 8u)
+          Q4_WORD(input_w.values[w_base + w + 1u], x_row + w * 8u + 8u)
+          Q4_BLOCK_FINISH(w)
+        }
+      } else {
+        for (uint w = lane_in_slot; w < words_per_row; w += LANES) {
+          precise float dot = 0.0;
+          precise float input_sum = 0.0;
+          Q4_WORD(input_w.values[w_base + w], x_row + w * 8u)
+          Q4_BLOCK_FINISH(w)
+        }
       }
 #else
       bool is_byte_bits =
@@ -435,24 +508,25 @@ void main() {
 #ifdef USE_SUBGROUP
     // Subgroup reduction path. Each 32-lane slot is one hardware
     // subgroup; subgroupAdd folds the per-lane accumulators inside the
-    // subgroup without shared-memory scratch or barriers. The
-    // lane_in_slot == 0 thread of each slot owns that column's output.
-    if (column_active) {
-      float total = subgroupAdd(accumulator);
-      if (lane_in_slot == 0u) {
-        output_data.values[params.output_offset + b * params.matrix_n +
-            column] = STORE_VALUE(total);
-      }
+    // subgroup without shared-memory scratch or barriers, pairing lanes
+    // stride 1 first (see the header). Every lane reaches it (uniform
+    // control flow); the lane_in_slot == 0 thread of each slot owns
+    // that column's output.
+    float total = subgroupAdd(accumulator);
+    if (lane_in_slot == 0u && column_active) {
+      output_data.values[params.output_offset + b * params.matrix_n +
+          column] = STORE_VALUE(total);
     }
 #else
     // Tree reduction path (default). Five rounds of barrier-synchronized
-    // shared-memory adds fold the 32-lane per-slot accumulators; first
-    // lane of each slot owns the column output. Correct on any subgroup
-    // size because the lane split is plain workgroup arithmetic.
+    // shared-memory adds fold the 32-lane per-slot accumulators in the
+    // same stride-1-first pairing as the hardware reduction; first lane
+    // of each slot owns the column output. Correct on any subgroup size
+    // because the lane split is plain workgroup arithmetic.
     reduce_scratch[lane] = accumulator;
     barrier();
-    for (uint offset = LANES / 2u; offset > 0u; offset >>= 1u) {
-      if (lane_in_slot < offset) {
+    for (uint offset = 1u; offset < LANES; offset <<= 1u) {
+      if ((lane_in_slot & (2u * offset - 1u)) == 0u) {
         reduce_scratch[lane] += reduce_scratch[lane + offset];
       }
       barrier();

@@ -2759,10 +2759,8 @@ TEST_CASE("qqmm fp modes fake-quantize the activation") {
 // and f16 store through the same f32 accumulator inside qmm_vec.comp,
 // so the reduction order determines the f32 sum bit-for-bit; storage
 // quantization then matches both kernels. Where subgroup reduction
-// order legitimately changes rounding (subgroupAdd is
-// implementation-defined; the tree is a strict log2(32) pairwise
-// fold), the tolerance is one f32 ulp at the reduction plus the
-// storage dtype's rtol after STORE_VALUE.
+// order legitimately changes rounding, the tolerance is one f32 ulp
+// at the reduction plus the storage dtype's rtol after STORE_VALUE.
 //
 // Tree-vs-subgroup bit-exact comparison cannot be expressed through
 // the public dispatch API today (the encoder's combined
@@ -2857,9 +2855,9 @@ TEST_CASE("qmm_vec subgroup dispatch matches host reference across decode shapes
         // (host_quantized_matmul). The gap is therefore dominated
         // by f32 vs f64 multiply-add precision across the K
         // elements of one output column, plus cross-lane reduction
-        // (32 lanes summed; 5 pairwise-add rounds for the tree
-        // path, 1 subgroupAdd for the subgroup path - both incur
-        // the same per-add 1-ulp rounding in the worst case).
+        // (32 lanes summed in 5 pairwise-add rounds on both the
+        // tree and the subgroupAdd path, each add rounding at
+        // most 1 ulp).
         //
         // Per-element ops: scale * q + bias (2 ops) then x * (...)
         // (1 op) = 3 ops per k element. Per-lane accumulates
