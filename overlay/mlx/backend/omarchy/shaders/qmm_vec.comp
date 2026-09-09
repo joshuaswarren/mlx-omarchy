@@ -237,7 +237,7 @@ void main() {
   uint column = gl_WorkGroupID.x * COLUMNS_PER_GROUP + column_slot;
   bool column_active = column < params.matrix_n;
   for (uint b = 0u; b < batch; ++b) {
-    float accumulator = 0.0;
+    precise float accumulator = 0.0;
     if (column_active) {
       uint w_row = params.rhs_offset + b * w_batch_words;
       uint p_base = params.aux_offset + b * param_batch;
@@ -312,10 +312,12 @@ void main() {
       // the half-precision chain sum of each x quad, accumulates those
       // in float, and the dot of x / 16^i against the masked nibbles
       // (every product exact: 11-bit x times 4-bit nibble), then
-      // result += fma(scale, dot, sum * bias). Metal contracts
-      // scale * accum + sum * bias into that fma but leaves sum * bias
-      // separate (receipts/2026-09-09-q4-gemv-order), so bias_term is
-      // precise.
+      // result += fma(scale, dot, sum * bias). Metal compiles with
+      // -fno-fast-math: it contracts scale * accum + sum * bias into
+      // that fma, leaves sum * bias separate, and keeps every add in
+      // source order. Honeykrisp's NIR reassociates add chains into fma
+      // ladders unless the ops are exact, so accumulator, dot, and
+      // input_sum are precise (receipts/2026-09-09-q4-gemv-order).
       uint words_per_row = params.matrix_k / 8u;
       uint groups_per_row = params.matrix_k / 64u;
       uint w_base = w_row + column * words_per_row;
@@ -326,8 +328,8 @@ void main() {
           params.matrix_n % 8u == 0u ? 2u : 1u;
       for (uint w = lane_in_slot * words_per_lane; w < words_per_row;
            w += LANES * words_per_lane) {
-        float dot = 0.0;
-        float input_sum = 0.0;
+        precise float dot = 0.0;
+        precise float input_sum = 0.0;
         for (uint item = 0u; item < words_per_lane; ++item) {
           uint word = input_w.values[w_base + w + item];
           uint x_base = params.lhs_offset + b * params.matrix_k + (w + item) * 8u;
@@ -340,9 +342,9 @@ void main() {
             input_sum += ROUND_INPUT_SUM(ROUND_INPUT_SUM(ROUND_INPUT_SUM(x0 + x1) + x2) + x3);
             uint packed = word >> (quad * 16u);
             dot += x0 * float(packed & 0x000fu) +
-                (x1 / 16.0) * float(packed & 0x00f0u) +
-                (x2 / 256.0) * float(packed & 0x0f00u) +
-                (x3 / 4096.0) * float(packed & 0xf000u);
+                (x1 * 0.0625) * float(packed & 0x00f0u) +
+                (x2 * 0.00390625) * float(packed & 0x0f00u) +
+                (x3 * 0.000244140625) * float(packed & 0xf000u);
           }
         }
         uint group = w / 8u;
