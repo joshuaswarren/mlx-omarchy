@@ -3,13 +3,15 @@
 
 #include "mlx/backend/omarchy/fused_chain.h"
 
+#include <array>
 #include <cstdint>
 #include <cstring>
 #include <limits>
-#include <array>
 #include <memory>
 #include <optional>
 #include <typeinfo>
+#include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 #include "mlx/backend/omarchy/allocator.h"
@@ -17,6 +19,7 @@
 #include "mlx/backend/omarchy/device.h"
 #include "mlx/backend/omarchy/encoder.h"
 #include "mlx/primitives.h"
+#include "mlx/utils.h"
 
 namespace mlx::core::omarchy {
 namespace {
@@ -130,26 +133,23 @@ std::optional<uint32_t> leaf_mode_for(
 } // namespace
 
 struct FusedChainImpl {
-  // Carried nodes and their resolved inputs, in tape order.
-  std::vector<const array*> nodes;
+  // Stable graph IDs replace references to scheduler tape entries: eager
+  // entries are detached immediately after gpu::eval returns.
+  std::vector<std::uintptr_t> node_ids;
+  std::vector<array> node_arrays;
   std::vector<std::vector<array>> inputs;
-  // Packed program words.
   std::vector<uint32_t> program;
-  // Leaf arrays with item offset and addressing mode.
   std::vector<array> leaves;
   std::vector<uint32_t> leaf_offsets;
   std::vector<uint32_t> leaf_modes;
   uint32_t count = 0;
   uint32_t last_dim = 0;
-  // Eval-time output shape shared by every carried member (uniform by
-  // construction; see try_add).
   Shape eval_shape;
-  // Gate read ONCE per tape evaluation: try_add runs per node on the
-  // decode hot path, and the gate must cost nothing when off.
+  Dtype dtype = float32;
+  std::shared_ptr<Primitive> tail_primitive;
+  std::optional<array> tail_array;
   bool gate_enabled = false;
   bool open = false;
-  // A tape output may only be the chain tail; extending past one would
-  // demote a materialized result into an unmaterialized register.
   bool saw_tape_output = false;
 };
 
@@ -181,25 +181,24 @@ bool FusedChain::can_start(const array& node) {
   if (!node.has_primitive()) {
     return false;
   }
-  if (node.dtype() != float32 && node.dtype() != float16) {
-    // bf16 tapes are refused before chains ever run; every other dtype
-    // keeps the per-node tape path.
+  if (node.dtype() != float32 && node.dtype() != float16 &&
+      node.dtype() != bfloat16) {
     return false;
   }
   return chain_op_for(node.primitive()).has_value();
 }
 
 size_t FusedChain::size() const {
-  return impl_->nodes.size();
+  return impl_->node_ids.size();
 }
 
 std::uintptr_t FusedChain::tail_id() const {
-  return (*impl_->nodes.back()).id();
+  return impl_->node_ids.back();
 }
 
 bool FusedChain::carries(std::uintptr_t id) const {
-  for (const auto* node : impl_->nodes) {
-    if (node->id() == id) {
+  for (auto node_id : impl_->node_ids) {
+    if (node_id == id) {
       return true;
     }
   }
@@ -213,7 +212,7 @@ bool FusedChain::try_add(
   if (impl_->saw_tape_output) {
     return false;
   }
-  if (impl_->nodes.size() >= kMaxChainInstrs) {
+  if (impl_->node_ids.size() >= kMaxChainInstrs) {
     return false;
   }
   // Cached gate: read once per tape evaluation (constructor), not once
@@ -232,7 +231,7 @@ bool FusedChain::try_add(
   // the dispatch count must key on what actually evaluates. The tail
   // contributes the chain's eval shape, not its tracing shape.
   auto is_prev = [&](const array& in) {
-    return !impl_->nodes.empty() && in.id() == (*impl_->nodes.back()).id();
+    return !impl_->node_ids.empty() && in.id() == impl_->node_ids.back();
   };
   Shape eval_shape;
   {
@@ -253,8 +252,7 @@ bool FusedChain::try_add(
     }
   }
   if (impl_->open) {
-    if (eval_shape != impl_->eval_shape ||
-        node.dtype() != impl_->nodes.front()->dtype()) {
+    if (eval_shape != impl_->eval_shape || node.dtype() != impl_->dtype) {
       return false;
     }
   }
@@ -280,9 +278,10 @@ bool FusedChain::try_add(
     last_dim = static_cast<uint32_t>(eval_shape.back());
   }
 
-  if (!impl_->open && node.dtype() == float16) {
+  if (!impl_->open && node.dtype() != float32) {
     const auto& capabilities = device().capabilities();
-    if (!capabilities.shader_float16 ||
+    if ((node.dtype() == float16 && !capabilities.shader_float16) ||
+        (node.dtype() == bfloat16 && !capabilities.shader_int16) ||
         !capabilities.storage_buffer_16bit_access) {
       return false;
     }
@@ -290,9 +289,6 @@ bool FusedChain::try_add(
 
   auto encode_leaf = [&](const array& in) -> std::optional<uint32_t> {
     if (!in.flags().contiguous) {
-      return std::nullopt;
-    }
-    if (impl_->leaves.size() >= kMaxChainLeaves) {
       return std::nullopt;
     }
     const auto mode = leaf_mode_for(in, count, last_dim);
@@ -303,10 +299,16 @@ bool FusedChain::try_add(
     if (item_offset > std::numeric_limits<uint32_t>::max() / 2) {
       return std::nullopt;
     }
-    // Every addressed item must sit inside the leaf's buffer. Checked
-    // HERE, at add time: a leaf the chain cannot carry must close the
-    // chain while it can still fall back, never at dispatch time when
-    // carried members are already unmaterialized.
+    for (size_t i = 0; i < impl_->leaves.size(); ++i) {
+      if (impl_->leaves[i].id() == in.id() &&
+          impl_->leaf_offsets[i] == item_offset &&
+          impl_->leaf_modes[i] == mode.value()) {
+        return kChainLeafBase + static_cast<uint32_t>(i);
+      }
+    }
+    if (impl_->leaves.size() >= kMaxChainLeaves) {
+      return std::nullopt;
+    }
     uint32_t span;
     switch (mode.value()) {
       case kLeafDirect:
@@ -339,7 +341,7 @@ bool FusedChain::try_add(
 
   // Operand resolution: one operand may be the previous member's output
   // (its register); everything else must be an addressable leaf.
-  const uint32_t dst = static_cast<uint32_t>(impl_->nodes.size());
+  const uint32_t dst = static_cast<uint32_t>(impl_->node_ids.size());
   const uint32_t prev_reg = dst > 0 ? dst - 1 : std::numeric_limits<uint32_t>::max();
   std::optional<uint32_t> a;
   std::optional<uint32_t> b;
@@ -387,8 +389,12 @@ bool FusedChain::try_add(
 
 
   impl_->program.push_back(pack_instruction(op, a.value(), b.value(), dst));
-  impl_->nodes.push_back(&node);
+  impl_->node_ids.push_back(node.id());
   impl_->inputs.push_back(node_inputs);
+  impl_->node_arrays.push_back(node);
+  impl_->dtype = node.dtype();
+  impl_->tail_primitive = node.primitive_ptr();
+  impl_->tail_array = node;
   if (!impl_->open) {
     impl_->count = count;
     impl_->last_dim = last_dim;
@@ -405,36 +411,28 @@ bool FusedChain::tail_is_tape_output() const {
   return impl_->saw_tape_output;
 }
 
-std::optional<array> FusedChain::evaluate(const Stream& stream) {
-  if (impl_->nodes.empty()) {
-    return std::nullopt;
-  }
+namespace {
+
+void dispatch_chain(
+    FusedChainImpl& chain,
+    array& out,
+    const Stream& stream,
+    bool materialize_intermediates) {
   auto& encoder = get_command_encoder(stream);
-
-  // The fused output carries the LAST node's primitive so the graph
-  // above the tape stays valid.
-  const array& tail = *impl_->nodes.back();
-  // Eval-time shape, not the tail's trace shape (shapeless tapes).
-  array out(
-      impl_->eval_shape,
-      tail.dtype(),
-      tail.primitive_ptr(),
-      impl_->inputs.back());
   out.set_data(allocator().malloc(out.nbytes()));
+  if (materialize_intermediates) {
+    for (size_t i = 0; i + 1 < chain.node_arrays.size(); ++i) {
+      chain.node_arrays[i].set_data(
+          allocator().malloc(chain.node_arrays[i].nbytes()));
+    }
+  }
 
-
-  // Upload the program words. The allocator hands back host-visible
-  // mapped buffers, so the words land with a plain copy.
-  const size_t program_bytes = impl_->program.size() * sizeof(uint32_t);
+  const size_t program_bytes = chain.program.size() * sizeof(uint32_t);
   Buffer program_buffer = allocator().malloc(program_bytes);
   auto* program_vk = static_cast<VulkanBuffer*>(program_buffer.ptr());
-  std::memcpy(program_vk->data, impl_->program.data(), program_bytes);
-  // Keep the program buffer alive until the submission completes.
+  std::memcpy(program_vk->data, chain.program.data(), program_bytes);
   array program_keeper(
-      Shape{static_cast<int>(impl_->program.size())},
-      uint32,
-      nullptr,
-      {});
+      Shape{static_cast<int>(chain.program.size())}, uint32, nullptr, {});
   array::Flags keeper_flags;
   keeper_flags.contiguous = true;
   keeper_flags.row_contiguous = true;
@@ -447,52 +445,199 @@ std::optional<array> FusedChain::evaluate(const Stream& stream) {
       0);
   encoder.add_temporary(program_keeper);
 
-  // Leaf bounds and f16 capabilities were refused at add time
-  // (try_add); a chain that reaches this point always dispatches.
-  const uint32_t count = impl_->count;
-  const uint32_t last_dim = impl_->last_dim;
-
-  // Push constants. The backend pushes ComputeParams by value; the chain
-  // shader declares ten scalars whose byte offsets are the first ten
-  // ComputeParams fields. Lockstep mapping (shader name = host field):
-  //   count = count, instr_count = operation, last_dim = lhs_size,
-  //   dst_final = rhs_size,
-  //   leaf_offset[3] = reduce_size, output_size, lhs_offset
-  //   leaf_mode[3] = rhs_offset, output_offset, aux_size
   ComputeParams params;
-  params.count = count;
-  params.operation = static_cast<uint32_t>(impl_->program.size());
-  params.lhs_size = last_dim;
-  params.rhs_size = static_cast<uint32_t>(impl_->nodes.size() - 1);
-  params.reduce_size = impl_->leaf_offsets.size() > 0 ? impl_->leaf_offsets[0] : 0;
-  params.output_size = impl_->leaf_offsets.size() > 1 ? impl_->leaf_offsets[1] : 0;
-  params.lhs_offset = impl_->leaf_offsets.size() > 2 ? impl_->leaf_offsets[2] : 0;
-  params.rhs_offset = impl_->leaf_modes.size() > 0 ? impl_->leaf_modes[0] : 0;
-  params.output_offset = impl_->leaf_modes.size() > 1 ? impl_->leaf_modes[1] : 0;
-  params.aux_size = impl_->leaf_modes.size() > 2 ? impl_->leaf_modes[2] : 0;
+  params.count = chain.count;
+  params.operation = static_cast<uint32_t>(chain.program.size());
+  params.lhs_size = chain.last_dim;
+  params.rhs_size = static_cast<uint32_t>(chain.node_ids.size() - 1);
+  params.reduce_size = chain.leaf_offsets.size() > 0 ? chain.leaf_offsets[0] : 0;
+  params.output_size = chain.leaf_offsets.size() > 1 ? chain.leaf_offsets[1] : 0;
+  params.lhs_offset = chain.leaf_offsets.size() > 2 ? chain.leaf_offsets[2] : 0;
+  params.rhs_offset = chain.leaf_modes.size() > 0 ? chain.leaf_modes[0] : 0;
+  params.output_offset = chain.leaf_modes.size() > 1 ? chain.leaf_modes[1] : 0;
+  params.aux_size = chain.leaf_modes.size() > 2 ? chain.leaf_modes[2] : 0;
+  params.aux_offset = materialize_intermediates ? 1u : 0u;
 
-  // Bindings are positional (shader: 0-2 leaves, 3 program, 4 output).
-  // Unused leaf slots are padded with the output buffer; no carried
-  // program references them.
-  std::array<ComputeBinding, kMaxChainLeaves + 2> bindings{
+  std::array<ComputeBinding, kMaxChainLeaves + 3> bindings{
       chain_binding(out),
       chain_binding(out),
       chain_binding(out),
       chain_binding(program_keeper),
+      chain_binding(out),
       chain_binding(out)};
-  for (size_t i = 0; i < impl_->leaves.size(); ++i) {
-    bindings[i] = chain_binding(impl_->leaves[i]);
+  for (size_t i = 0; i < chain.leaves.size(); ++i) {
+    bindings[i] = chain_binding(chain.leaves[i]);
+  }
+  if (materialize_intermediates && !chain.node_arrays.empty()) {
+    bindings[2] = chain_binding(chain.node_arrays[0]);
+    if (chain.node_arrays.size() > 2) {
+      bindings[5] = chain_binding(chain.node_arrays[1]);
+    }
   }
 
-  const auto kernel = out.dtype() == float16
-      ? ComputeKernel::FusedChainF16
-      : ComputeKernel::FusedChainF32;
+  auto kernel = ComputeKernel::FusedChainF32;
+  if (out.dtype() == float16) {
+    kernel = ComputeKernel::FusedChainF16;
+  } else if (out.dtype() == bfloat16) {
+    kernel = ComputeKernel::FusedChainBF16;
+  }
   encoder.dispatch_compute(
       kernel,
       bindings,
       params,
-      compute_dispatch_group_count(count));
+      compute_dispatch_group_count(chain.count));
+}
+
+} // namespace
+
+std::optional<array> FusedChain::evaluate(const Stream& stream) {
+  if (impl_->node_ids.empty()) {
+    return std::nullopt;
+  }
+  array out(
+      impl_->eval_shape,
+      impl_->dtype,
+      impl_->tail_primitive,
+      impl_->inputs.back());
+  dispatch_chain(*impl_, out, stream, false);
   return out;
 }
 
+void FusedChain::evaluate_tail(const Stream& stream) {
+  if (impl_->node_ids.empty() || !impl_->tail_array) {
+    return;
+  }
+  dispatch_chain(*impl_, *impl_->tail_array, stream, true);
+}
+
+namespace {
+
+enum class EagerStep : uint8_t { sigmoid, gate_mul, output_mul };
+
+struct EagerRole {
+  std::uintptr_t group;
+  EagerStep step;
+};
+
+struct EagerFusionState {
+  std::unordered_map<std::uintptr_t, EagerRole> roles;
+  std::unordered_map<std::uintptr_t, FusedChain> chains;
+};
+
+thread_local EagerFusionState* eager_state = nullptr;
+
+bool is_op(const array* node, const std::type_info& op) {
+  return node && node->has_primitive() && typeid(node->primitive()) == op;
+}
+
+} // namespace
+
+EagerFusionScope::EagerFusionScope(const std::deque<array>& tape)
+    : previous_(eager_state) {
+  eager_state = nullptr;
+  if (!env_flag("MLX_OMARCHY_FUSED_CHAIN")) {
+    return;
+  }
+
+  auto* state = new EagerFusionState;
+  eager_state = state;
+  std::unordered_map<std::uintptr_t, const array*> nodes;
+  std::unordered_map<std::uintptr_t, size_t> uses;
+  nodes.reserve(tape.size());
+  for (const auto& node : tape) {
+    nodes.emplace(node.id(), &node);
+    for (const auto& input : node.inputs()) {
+      ++uses[input.id()];
+    }
+  }
+  auto lookup = [&](const array& ref) -> const array* {
+    auto it = nodes.find(ref.id());
+    return it == nodes.end() ? nullptr : it->second;
+  };
+  std::unordered_set<std::uintptr_t> claimed;
+  for (const auto& tail : tape) {
+    if (!is_op(&tail, typeid(Multiply)) || tail.inputs().size() != 2 ||
+        claimed.count(tail.id())) {
+      continue;
+    }
+    const array* left = lookup(tail.inputs()[0]);
+    const array* right = lookup(tail.inputs()[1]);
+    const array* inner = is_op(left, typeid(Multiply)) ? left :
+        (is_op(right, typeid(Multiply)) ? right : nullptr);
+    if (!inner || inner->inputs().size() != 2 || uses[inner->id()] != 1) {
+      continue;
+    }
+    const array* inner_left = lookup(inner->inputs()[0]);
+    const array* inner_right = lookup(inner->inputs()[1]);
+    const array* sigmoid = is_op(inner_left, typeid(Sigmoid)) ? inner_left :
+        (is_op(inner_right, typeid(Sigmoid)) ? inner_right : nullptr);
+    if (!sigmoid || sigmoid->inputs().size() != 1 ||
+        uses[sigmoid->id()] != 1) {
+      continue;
+    }
+    const array& gate = sigmoid == inner_left ? inner->inputs()[1]
+                                               : inner->inputs()[0];
+    if (gate.id() != sigmoid->inputs()[0].id() ||
+        tail.dtype() != inner->dtype() || tail.dtype() != sigmoid->dtype() ||
+        tail.primitive().stream() != inner->primitive().stream() ||
+        tail.primitive().stream() != sigmoid->primitive().stream() ||
+        claimed.count(inner->id()) || claimed.count(sigmoid->id())) {
+      continue;
+    }
+    const auto group = tail.id();
+    state->roles.emplace(
+        sigmoid->id(), EagerRole{group, EagerStep::sigmoid});
+    state->roles.emplace(
+        inner->id(), EagerRole{group, EagerStep::gate_mul});
+    state->roles.emplace(
+        tail.id(), EagerRole{group, EagerStep::output_mul});
+    claimed.insert(sigmoid->id());
+    claimed.insert(inner->id());
+    claimed.insert(tail.id());
+  }
+}
+
+EagerFusionScope::~EagerFusionScope() {
+  delete eager_state;
+  eager_state = static_cast<EagerFusionState*>(previous_);
+}
+
+bool try_eval_eager_fusion(array& node, const Stream& stream) {
+  if (!eager_state) {
+    return false;
+  }
+  auto role_it = eager_state->roles.find(node.id());
+  if (role_it == eager_state->roles.end()) {
+    return false;
+  }
+  const auto role = role_it->second;
+  if (role.step == EagerStep::sigmoid) {
+    if (device().compute().binding_limit() < kComputeBindingBudget) {
+      return false;
+    }
+    auto [chain_it, inserted] =
+        eager_state->chains.try_emplace(role.group, true);
+    if (!inserted ||
+        !chain_it->second.try_add(node, node.inputs(), false)) {
+      eager_state->chains.erase(role.group);
+      return false;
+    }
+    return true;
+  }
+
+  auto chain_it = eager_state->chains.find(role.group);
+  if (chain_it == eager_state->chains.end()) {
+    return false;
+  }
+  if (!chain_it->second.try_add(node, node.inputs(), false)) {
+    chain_it->second.evaluate_tail(stream);
+    eager_state->chains.erase(chain_it);
+    return false;
+  }
+  if (role.step == EagerStep::output_mul) {
+    chain_it->second.evaluate_tail(stream);
+    eager_state->chains.erase(chain_it);
+  }
+  return true;
+}
 } // namespace mlx::core::omarchy
