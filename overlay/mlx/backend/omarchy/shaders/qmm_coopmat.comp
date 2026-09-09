@@ -7,17 +7,14 @@
 
 // Prefill Q4/group-64 f16 matmul on the G13 8x8x8 fp32 subgroup
 // cooperative matrix. A 64-lane workgroup owns a 32x32 output tile;
-// each subgroup owns a 16x32 half. Each lane fills its two cooperative-
-// matrix fragment elements directly from global operands, avoiding the
-// shared-memory staging and two workgroup barriers per 16-wide k step.
-// Ascending 8-wide updates preserve per-output accumulation order.
-// The direct fragment mapping is the GPU-verified G13 layout documented
-// by Honeykrisp's agx_nir_lower_simdmat.c.
+// each subgroup owns a 16x32 half. Input fragments are filled directly
+// from packed f16 values. Each subgroup dequantizes its private 8x32
+// weight tile and synchronizes without a workgroup barrier. Ascending
+// 8-wide updates preserve per-output accumulation order.
 
 const uint TILE_M = 32u;
 const uint TILE_N = 32u;
 const uint CHUNK_K = 64u;
-const uint STEP_K = 16u;
 const uint MAT = 8u;
 
 layout(local_size_x = 64) in;
@@ -62,12 +59,13 @@ layout(push_constant) uniform Params {
   uint out_strides[4];
 } params;
 
-shared float out_s[4u * MAT * MAT];
+shared float w_s[2][MAT * TILE_N];
 
 void main() {
   uint lid = gl_LocalInvocationID.x;
   uint lane = gl_SubgroupInvocationID;
-  uint sub_rb = 2u * gl_SubgroupID;
+  uint sub = gl_SubgroupID;
+  uint sub_rb = 2u * sub;
   uint frag_row = ((lane >> 4u) & 1u) * 4u + ((lane >> 1u) & 3u);
   uint frag_col = ((lane >> 3u) & 1u) * 4u + (lane & 1u) * 2u;
   uint batch = params.shape[0];
@@ -80,8 +78,6 @@ void main() {
   uint words_per_row = params.matrix_k / 8u;
   uint groups_per_row = params.matrix_k / 64u;
   uint x_words_per_row = params.matrix_k / 2u;
-  uint w_column_local = lid % TILE_N;
-  uint w_part = lid / TILE_N;
 
   for (uint b = 0u; b < batch; ++b) {
     uint w_slice = params.rhs_offset + b * w_batch_words;
@@ -95,9 +91,11 @@ void main() {
       uint row_base = tile_row * TILE_M;
       for (uint tile_col = gl_WorkGroupID.x; tile_col < n_tiles;
            tile_col += gl_NumWorkGroups.x) {
-        uint col_base = tile_col * TILE_N;
-        uint column = col_base + w_column_local;
+        uint column = tile_col * TILE_N + lane;
         bool column_ok = column < params.matrix_n;
+        uint w_row = w_slice + column * words_per_row;
+        uint scale_row = scale_slice + column * groups_per_row;
+        uint bias_row = bias_slice + column * groups_per_row;
 
         coopmat<float, gl_ScopeSubgroup, MAT, MAT, gl_MatrixUseAccumulator>
             acc[2][4];
@@ -109,75 +107,47 @@ void main() {
         }
 
         for (uint chunk = 0u; chunk < k_chunks; ++chunk) {
-          vec2 scale_pair[4];
-          vec2 bias_pair[4];
-          for (uint cb = 0u; cb < 4u; ++cb) {
-            uint c0 = col_base + cb * MAT + frag_col;
-            uint c1 = c0 + 1u;
-            if (c0 < params.matrix_n) {
-              scale_pair[cb].x = float(scales.values[
-                  scale_slice + c0 * groups_per_row + chunk]);
-              bias_pair[cb].x = float(biases.values[
-                  bias_slice + c0 * groups_per_row + chunk]);
-            } else {
-              scale_pair[cb].x = 0.0;
-              bias_pair[cb].x = 0.0;
+          float scale = column_ok
+              ? float(scales.values[scale_row + chunk]) : 0.0;
+          float bias = column_ok
+              ? float(biases.values[bias_row + chunk]) : 0.0;
+          for (uint step = 0u; step < CHUNK_K / MAT; ++step) {
+            uint k_base = chunk * CHUNK_K + step * MAT;
+            uint packed = column_ok
+                ? input_w.values[w_row + k_base / 8u] : 0u;
+            for (uint n = 0u; n < MAT; ++n) {
+              w_s[sub][n * TILE_N + lane] =
+                  scale * float((packed >> (4u * n)) & 0xFu) + bias;
             }
-            if (c1 < params.matrix_n) {
-              scale_pair[cb].y = float(scales.values[
-                  scale_slice + c1 * groups_per_row + chunk]);
-              bias_pair[cb].y = float(biases.values[
-                  bias_slice + c1 * groups_per_row + chunk]);
-            } else {
-              scale_pair[cb].y = 0.0;
-              bias_pair[cb].y = 0.0;
-            }
-          }
+            subgroupBarrier();
 
-          for (uint step = 0u; step < CHUNK_K / STEP_K; ++step) {
-            uint k_base = chunk * CHUNK_K + step * STEP_K;
-            for (uint ks = 0u; ks < STEP_K / MAT; ++ks) {
-              uint mma_k = k_base + ks * MAT;
-              coopmat<float, gl_ScopeSubgroup, MAT, MAT,
-                  gl_MatrixUseA> mat_a[2];
-              coopmat<float, gl_ScopeSubgroup, MAT, MAT,
-                  gl_MatrixUseB> mat_b[4];
-
-              for (uint rb = 0u; rb < 2u; ++rb) {
-                uint row = row_base + (sub_rb + rb) * MAT + frag_row;
-                vec2 pair = vec2(0.0);
-                if (row < params.matrix_m) {
-                  pair = unpackHalf2x16(input_x.values[
-                      x_slice + row * x_words_per_row +
-                      (mma_k + frag_col) / 2u]);
-                }
-                mat_a[rb][0] = pair.x;
-                mat_a[rb][1] = pair.y;
+            coopmat<float, gl_ScopeSubgroup, MAT, MAT,
+                gl_MatrixUseA> mat_a[2];
+            coopmat<float, gl_ScopeSubgroup, MAT, MAT,
+                gl_MatrixUseB> mat_b[4];
+            for (uint rb = 0u; rb < 2u; ++rb) {
+              uint row = row_base + (sub_rb + rb) * MAT + frag_row;
+              vec2 pair = vec2(0.0);
+              if (row < params.matrix_m) {
+                pair = unpackHalf2x16(input_x.values[
+                    x_slice + row * x_words_per_row +
+                    (k_base + frag_col) / 2u]);
               }
-
-              uint shift = 4u * frag_row;
+              mat_a[rb][0] = pair.x;
+              mat_a[rb][1] = pair.y;
+            }
+            for (uint cb = 0u; cb < 4u; ++cb) {
+              coopMatLoad(
+                  mat_b[cb], w_s[sub], cb * MAT, TILE_N,
+                  gl_CooperativeMatrixLayoutRowMajor);
+            }
+            for (uint rb = 0u; rb < 2u; ++rb) {
               for (uint cb = 0u; cb < 4u; ++cb) {
-                uint c0 = col_base + cb * MAT + frag_col;
-                uint c1 = c0 + 1u;
-                uint packed0 = c0 < params.matrix_n
-                    ? input_w.values[w_slice + c0 * words_per_row + mma_k / 8u]
-                    : 0u;
-                uint packed1 = c1 < params.matrix_n
-                    ? input_w.values[w_slice + c1 * words_per_row + mma_k / 8u]
-                    : 0u;
-                mat_b[cb][0] = scale_pair[cb].x *
-                    float((packed0 >> shift) & 0xFu) + bias_pair[cb].x;
-                mat_b[cb][1] = scale_pair[cb].y *
-                    float((packed1 >> shift) & 0xFu) + bias_pair[cb].y;
-              }
-
-              for (uint rb = 0u; rb < 2u; ++rb) {
-                for (uint cb = 0u; cb < 4u; ++cb) {
-                  acc[rb][cb] =
-                      coopMatMulAdd(mat_a[rb], mat_b[cb], acc[rb][cb]);
-                }
+                acc[rb][cb] =
+                    coopMatMulAdd(mat_a[rb], mat_b[cb], acc[rb][cb]);
               }
             }
+            subgroupBarrier();
           }
         }
 
@@ -185,20 +155,20 @@ void main() {
           if (sub_rb == (rb & ~1u)) {
             for (uint cb = 0u; cb < 4u; ++cb) {
               coopMatStore(
-                  acc[rb & 1u][cb], out_s, cb * MAT * MAT, MAT,
+                  acc[rb & 1u][cb], w_s[0], cb * MAT * MAT, MAT,
                   gl_CooperativeMatrixLayoutRowMajor);
             }
           }
           barrier();
           if (column_ok) {
             for (uint pass = 0u; pass < 4u; ++pass) {
-              uint r = 4u * w_part + pass;
+              uint r = 4u * sub + pass;
               uint row = row_base + rb * MAT + r;
               if (row < params.matrix_m) {
                 output_data.values[
                     out_slice + row * params.matrix_n + column] =
-                    float16_t(out_s[(w_column_local / MAT) * MAT * MAT +
-                                    r * MAT + (w_column_local % MAT)]);
+                    float16_t(w_s[0][(lane / MAT) * MAT * MAT +
+                                     r * MAT + (lane % MAT)]);
               }
             }
           }
