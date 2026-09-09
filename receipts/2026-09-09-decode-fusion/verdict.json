@@ -1,6 +1,6 @@
 {
   "topic": "Q4 decode dispatch count: fused q/k/v and gate/up GEMV groups with bias and residual Add epilogues folded into the GEMV store (wave/DecodeFusion)",
-  "source_commit": "c6002f5",
+  "source_commit": "2339105",
   "base_commit": "6ca33e0c (origin/main)",
   "host": "jwm1-linux, Apple M1 (G13G B1), Honeykrisp, linux-asahi 7.1.6, glslc 2026.3; dev box llvmpipe (LLVM 22.1.8) for the local suites",
   "wheels": {
@@ -22,7 +22,7 @@
       "version": "0.32.2.dev202609092141+diag.f6beee3",
       "sha256": "729a161955e0d9c1631c72b1bbbb4f722b14746400616446f22103101063b66d"
     },
-    "provenance": "version strings carry the source stamp (+6ca33e0 / +f6beee3, diagnostics +diag.<stamp>); paired-legs.py asserts stamps and that the two differ before reporting Identity-only rewrite 2026-09-10: commits f6beee3->2339105 (code), 9899e1b->928d84d (code), a2b8c54->c6002f5 (receipt); trees unchanged; wheel file sha256 and embedded +stamp strings unchanged and still name the pre-rewrite hashes."
+    "provenance": "version strings carry the source stamp (+6ca33e0 / +f6beee3, diagnostics +diag.<stamp>); paired-legs.py asserts stamps and that the two differ before reporting Identity-only rewrite 2026-09-10: commits f6beee3->2339105 (code), 9899e1b->928d84d (code), a2b8c54->c6002f5 (receipt); trees unchanged; wheel file sha256 and embedded +stamp strings unchanged and still name the pre-rewrite hashes. source_commit names the measured code head (2339105); the receipt commit itself is separate."
   },
   "profile": {
     "method": "m1-model-profile.sh: diagnostics wheel, MLX_OMARCHY_GPU_PROFILE, 32 tokens of the pinned Qwen2.5-0.5B-Instruct-4bit from one prompt, MLX_DISABLE_COMPILE=1; dispatch-table.py lists every dispatch of inter-token interval 10 with its GPU time and the gap before it, grouped by layer (FastRmsNorm boundaries)",
