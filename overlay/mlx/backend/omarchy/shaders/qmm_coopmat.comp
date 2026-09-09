@@ -7,14 +7,16 @@
 
 // Prefill Q4/group-64 f16 matmul on the G13 8x8x8 fp32 subgroup
 // cooperative matrix. A 64-lane workgroup owns a 32x32 output tile;
-// each subgroup owns a 16x32 half. Input fragments are filled directly
-// from packed f16 values. Each subgroup dequantizes its private 8x32
-// weight tile and synchronizes without a workgroup barrier. Ascending
-// 8-wide updates preserve per-output accumulation order.
+// each subgroup owns a 16x32 half. Input fragments load directly from
+// packed f16 values. Two shared weight stages overlap the next 16-wide
+// dequantization load with the current MMA, reducing synchronization
+// from two workgroup barriers to one per 16 k values. Ascending 8-wide
+// updates preserve per-output accumulation order.
 
 const uint TILE_M = 32u;
 const uint TILE_N = 32u;
 const uint CHUNK_K = 64u;
+const uint STEP_K = 16u;
 const uint MAT = 8u;
 
 layout(local_size_x = 64) in;
@@ -59,13 +61,12 @@ layout(push_constant) uniform Params {
   uint out_strides[4];
 } params;
 
-shared float w_s[2][MAT * TILE_N];
+shared float w_s[2][STEP_K * TILE_N];
 
 void main() {
   uint lid = gl_LocalInvocationID.x;
   uint lane = gl_SubgroupInvocationID;
-  uint sub = gl_SubgroupID;
-  uint sub_rb = 2u * sub;
+  uint sub_rb = 2u * gl_SubgroupID;
   uint frag_row = ((lane >> 4u) & 1u) * 4u + ((lane >> 1u) & 3u);
   uint frag_col = ((lane >> 3u) & 1u) * 4u + (lane & 1u) * 2u;
   uint batch = params.shape[0];
@@ -74,10 +75,12 @@ void main() {
   uint x_batch_rows = params.matrix_m * params.matrix_k;
   uint m_tiles = (params.matrix_m + TILE_M - 1u) / TILE_M;
   uint n_tiles = (params.matrix_n + TILE_N - 1u) / TILE_N;
-  uint k_chunks = params.matrix_k / CHUNK_K;
+  uint steps = params.matrix_k / STEP_K;
   uint words_per_row = params.matrix_k / 8u;
-  uint groups_per_row = params.matrix_k / 64u;
+  uint groups_per_row = params.matrix_k / CHUNK_K;
   uint x_words_per_row = params.matrix_k / 2u;
+  uint w_column_local = lid % TILE_N;
+  uint w_part = lid / TILE_N;
 
   for (uint b = 0u; b < batch; ++b) {
     uint w_slice = params.rhs_offset + b * w_batch_words;
@@ -91,7 +94,7 @@ void main() {
       uint row_base = tile_row * TILE_M;
       for (uint tile_col = gl_WorkGroupID.x; tile_col < n_tiles;
            tile_col += gl_NumWorkGroups.x) {
-        uint column = tile_col * TILE_N + lane;
+        uint column = tile_col * TILE_N + w_column_local;
         bool column_ok = column < params.matrix_n;
         uint w_row = w_slice + column * words_per_row;
         uint scale_row = scale_slice + column * groups_per_row;
@@ -106,21 +109,42 @@ void main() {
           }
         }
 
-        for (uint chunk = 0u; chunk < k_chunks; ++chunk) {
-          float scale = column_ok
-              ? float(scales.values[scale_row + chunk]) : 0.0;
-          float bias = column_ok
-              ? float(biases.values[bias_row + chunk]) : 0.0;
-          for (uint step = 0u; step < CHUNK_K / MAT; ++step) {
-            uint k_base = chunk * CHUNK_K + step * MAT;
-            uint packed = column_ok
-                ? input_w.values[w_row + k_base / 8u] : 0u;
-            for (uint n = 0u; n < MAT; ++n) {
-              w_s[sub][n * TILE_N + lane] =
-                  scale * float((packed >> (4u * n)) & 0xFu) + bias;
-            }
-            subgroupBarrier();
+        uint packed;
+        float scale;
+        float bias;
+        #define LOAD_STEP(s)                                                \
+          {                                                                 \
+            uint k_base = (s) * STEP_K;                                     \
+            packed = column_ok                                              \
+                ? input_w.values[w_row + k_base / 8u + w_part] : 0u;        \
+            uint chunk = (s) / (CHUNK_K / STEP_K);                          \
+            scale = column_ok                                               \
+                ? float(scales.values[scale_row + chunk]) : 0.0;            \
+            bias = column_ok                                                \
+                ? float(biases.values[bias_row + chunk]) : 0.0;             \
+          }
+        #define STORE_STEP(buf)                                             \
+          {                                                                 \
+            uint w_base = 8u * w_part * TILE_N + w_column_local;            \
+            for (uint n = 0u; n < 8u; ++n) {                                \
+              w_s[buf][w_base + n * TILE_N] =                               \
+                  scale * float((packed >> (4u * n)) & 0xFu) + bias;        \
+            }                                                               \
+          }
 
+        LOAD_STEP(0u)
+        STORE_STEP(0u)
+        barrier();
+        for (uint s = 0u; s < steps; ++s) {
+          uint cur = s & 1u;
+          bool more = s + 1u < steps;
+          if (more) {
+            LOAD_STEP(s + 1u)
+          }
+
+          uint k_base = s * STEP_K;
+          for (uint ks = 0u; ks < STEP_K / MAT; ++ks) {
+            uint mma_k = k_base + ks * MAT;
             coopmat<float, gl_ScopeSubgroup, MAT, MAT,
                 gl_MatrixUseA> mat_a[2];
             coopmat<float, gl_ScopeSubgroup, MAT, MAT,
@@ -131,14 +155,14 @@ void main() {
               if (row < params.matrix_m) {
                 pair = unpackHalf2x16(input_x.values[
                     x_slice + row * x_words_per_row +
-                    (k_base + frag_col) / 2u]);
+                    (mma_k + frag_col) / 2u]);
               }
               mat_a[rb][0] = pair.x;
               mat_a[rb][1] = pair.y;
             }
             for (uint cb = 0u; cb < 4u; ++cb) {
               coopMatLoad(
-                  mat_b[cb], w_s[sub], cb * MAT, TILE_N,
+                  mat_b[cb], w_s[cur], ks * MAT * TILE_N + cb * MAT, TILE_N,
                   gl_CooperativeMatrixLayoutRowMajor);
             }
             for (uint rb = 0u; rb < 2u; ++rb) {
@@ -147,9 +171,15 @@ void main() {
                     coopMatMulAdd(mat_a[rb], mat_b[cb], acc[rb][cb]);
               }
             }
-            subgroupBarrier();
           }
+
+          if (more) {
+            STORE_STEP(cur ^ 1u)
+          }
+          barrier();
         }
+        #undef LOAD_STEP
+        #undef STORE_STEP
 
         for (uint rb = 0u; rb < 4u; ++rb) {
           if (sub_rb == (rb & ~1u)) {
@@ -162,13 +192,13 @@ void main() {
           barrier();
           if (column_ok) {
             for (uint pass = 0u; pass < 4u; ++pass) {
-              uint r = 4u * sub + pass;
+              uint r = 4u * w_part + pass;
               uint row = row_base + rb * MAT + r;
               if (row < params.matrix_m) {
                 output_data.values[
                     out_slice + row * params.matrix_n + column] =
-                    float16_t(w_s[0][(lane / MAT) * MAT * MAT +
-                                     r * MAT + (lane % MAT)]);
+                    float16_t(w_s[0][(w_column_local / MAT) * MAT * MAT +
+                                     r * MAT + (w_column_local % MAT)]);
               }
             }
           }
