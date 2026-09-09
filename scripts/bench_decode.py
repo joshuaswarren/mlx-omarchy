@@ -270,7 +270,7 @@ def main():
               file=sys.stderr)
         sys.exit(2)
     from mlx_lm.utils import load
-    from mlx_lm.generate import stream_generate
+    from mlx_lm.generate import generate_step, generation_stream, wired_limit
 
     model, tokenizer = load(args.model)
     import mlx.core as mx
@@ -290,15 +290,21 @@ def main():
         prompt = tokenizer.apply_chat_template(
             [{"role": "user", "content": args.prompt}],
             add_generation_prompt=True)
-
-    # Suppress EOS so the run produces exactly --tokens tokens. The
-    # mlx-lm TokenizerWrapper supports assigning eos_token_ids.
-    saved_eos = getattr(tokenizer, "eos_token_ids", None)
-    tokenizer.eos_token_ids = set()
+    # bench_decode records token IDs, not text. stream_generate constructs a
+    # 150k-entry streaming detokenizer for every warmup and measured call;
+    # that fixed cost is unrelated to prefill and dominates short prompts.
+    add_special_tokens = (getattr(tokenizer, "bos_token", None) is None or
+                          not prompt.startswith(tokenizer.bos_token))
+    prompt_ids = mx.array(tokenizer.encode(
+        prompt, add_special_tokens=add_special_tokens))
 
     def generate(n):
-        return stream_generate(
-            model, tokenizer, prompt, max_tokens=n, sampler=sampler)
+        def ids():
+            with wired_limit(model, [generation_stream]):
+                for token, _ in generate_step(
+                        prompt_ids, model, max_tokens=n, sampler=sampler):
+                    yield token
+        return ids()
 
     if args.warmup_tokens:
         for _ in generate(args.warmup_tokens):
@@ -306,14 +312,10 @@ def main():
 
     t0 = time.monotonic_ns()
     generated_ids = []
-    run_stats = {}
+    run_stats = {"prompt_tokens": int(prompt_ids.size)}
     times, n = run_generation(generate(args.tokens), generated_ids,
                               run_stats)
     prefill_ns = times[0] - t0 if times else 0
-
-    if saved_eos is not None:
-        tokenizer.eos_token_ids = saved_eos
-
     report(prefill_ns, times, args.tokens, generated_ids,
            prompt_tokens=run_stats.get("prompt_tokens"), device=device)
 
