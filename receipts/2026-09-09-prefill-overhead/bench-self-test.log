@@ -1,0 +1,9 @@
+self-test: pinned length 64 honored (64 tokens produced)
+FAILED: requested 32 tokens, generated 3. This is the EOS-truncated short-burst defect; the decode rate below would be invalid, so none is emitted.
+self-test: short-burst assertion fired (exit 1) for 3 tokens vs 32 requested
+decode 9393939.39 tok/s over 31 tokens (32 requested, EOS suppressed)
+prefill 0.001s (reported separately, excluded from decode)
+decode mean per-token 0.0 ms
+self-test: exact generated-ID digest verified (no text round trip possible)
+self-test: prompt_tokens captured from the first response (unknown when absent, never guessed)
+self-test: OK

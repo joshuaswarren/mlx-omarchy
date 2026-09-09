@@ -55,12 +55,13 @@ namespace mlx::core::omarchy {
 inline constexpr int kBatchNodeBudget = 512;
 // Byte budget for the same batch: freed intermediates stay pinned in the
 // allocator quarantine until their batch submits and drains, so the open
-// batch may hold at most 1/4 of the allocator memory limit in such bytes.
-// The byte bound remains mandatory: a 2,048-token Qwen2.5-0.5B forward
-// held 8.11 GB in one 257-node batch against Honeykrisp's 7.56 GiB heap
-// without it (2026-09-08). The 2,048-token hardware check in the prefill
-// overhead receipt is the acceptance gate for this wider calibration.
-inline constexpr size_t kBatchByteBudgetDivisor = 4;
+// batch may hold at most 1/16 of the allocator memory limit in such bytes
+// before the evaluator flushes it. Up to five generations can be pinned at
+// once (four ring slots in flight plus the one-generation-late quarantine
+// release), so the bound keeps batching-owed memory under a third of the
+// limit. A 2,048-token Qwen2.5-0.5B forward held 8.11 GB in one 257-node
+// batch against Honeykrisp's 7.56 GiB heap without this (2026-09-08).
+inline constexpr size_t kBatchByteBudgetDivisor = 16;
 
 class MLX_API CommandEncoder {
  public:
