@@ -81,10 +81,26 @@ uint16_t bf16_store(float value) {
 #error "QMM_VEC_Q4_WORD applies to affine quantization only"
 #endif
 
-const uint COLUMNS_PER_GROUP = 8u;
-const uint LANES = 32u;
+#define LANES 32u
+#ifdef QMM_VEC_Q4_WORD
+// Rows per subgroup and subgroups per workgroup for the Q4 kernel; the
+// dispatch derives its group count from COLUMNS_PER_GROUP
+// (kQ4GemvColumnsPerGroup in primitives.cpp). 2 x 4 measured fastest
+// on the M1 (receipts/2026-09-09-q4-gemv-bandwidth).
+#ifndef Q4_ROWS
+#define Q4_ROWS 2
+#endif
+#ifndef Q4_SUBGROUPS
+#define Q4_SUBGROUPS 4
+#endif
+#define COLUMNS_PER_GROUP uint(Q4_ROWS * Q4_SUBGROUPS)
+#define WORKGROUP_LANES (32 * Q4_SUBGROUPS)
+#else
+#define COLUMNS_PER_GROUP 8u
+#define WORKGROUP_LANES 256
+#endif
 
-layout(local_size_x = 256) in;
+layout(local_size_x = WORKGROUP_LANES) in;
 
 layout(set = 0, binding = 0, std430) readonly buffer InputX {
   STORAGE_TYPE values[];
@@ -137,7 +153,7 @@ layout(push_constant) uniform Params {
 } params;
 
 #ifndef USE_SUBGROUP
-shared float reduce_scratch[256];
+shared float reduce_scratch[WORKGROUP_LANES];
 #endif
 
 // Push-constant routing: operation carries bits (2, 3, 4, 5, 6, or 8),
@@ -238,32 +254,34 @@ uint q6_at(uint e, uint c0, uint c1, uint c2) {
   float x3 = LOAD_VALUE(input_x.values[(base) + 3u]); \
   input_sum += ((x0 + x1) + x2) + x3;
 #endif
-#define Q4_QUAD(packed, base) { \
+// x quad q (0 or 1) of a word is loaded once per step and shared by
+// every row of the subgroup: input_sum depends only on x.
+#define Q4_QUAD_X(q, base) { \
   Q4_QUAD_LOAD(base) \
+  xq[q * 4 + 0] = x0; \
+  xq[q * 4 + 1] = x1; \
+  xq[q * 4 + 2] = x2; \
+  xq[q * 4 + 3] = x3; \
+}
+#define Q4_QUAD_DOT(r, q, packed) { \
   uint p = (packed); \
-  dot += fma(x3, float((p >> 12u) & 0xfu), \
-      fma(x2, float((p >> 8u) & 0xfu), \
-          fma(x1, float((p >> 4u) & 0xfu), \
-              x0 * float(p & 0xfu)))); \
+  dot[r] += fma(xq[q * 4 + 3], float((p >> 12u) & 0xfu), \
+      fma(xq[q * 4 + 2], float((p >> 8u) & 0xfu), \
+          fma(xq[q * 4 + 1], float((p >> 4u) & 0xfu), \
+              xq[q * 4 + 0] * float(p & 0xfu)))); \
 }
-// One packed word: eight x values from x_base.
-#define Q4_WORD(word, x_base) { \
-  uint word_value = (word); \
-  uint quad_base = (x_base); \
-  Q4_QUAD(word_value, quad_base) \
-  Q4_QUAD(word_value >> 16u, quad_base + 4u) \
-}
-// Block epilogue: result += fma(scale, dot, sum * bias) with the group
-// of word w (every word of a lane's block sits in one group).
-#define Q4_BLOCK_FINISH(w) { \
+// Block epilogue per row: result += fma(scale, dot, sum * bias) with
+// the group of word w (every word of a lane's block sits in one group).
+#define Q4_BLOCK_FINISH(r, w) { \
   uint group = (w) / 8u; \
-  float scale = LOAD_VALUE(scales.values[scale_base + group]); \
-  float bias = LOAD_VALUE(biases.values[bias_base + group]); \
+  float scale = LOAD_VALUE(scales.values[scale_base[r] + group]); \
+  float bias = LOAD_VALUE(biases.values[bias_base[r] + group]); \
   precise float bias_term = input_sum * bias; \
-  accumulator += fma(scale, dot, bias_term); \
+  acc[r] += fma(scale, dot[r], bias_term); \
 }
 #endif
 
+#ifndef QMM_VEC_Q4_WORD
 // Weight layout routing mirrors qmm.comp. Transposed (flags bit 0
 // clear): w batch slice [N, Kp], groups along K, scale [n][k / gs].
 // Non-transposed (bit 0 set): w batch slice [K, Np], packed N per row,
@@ -352,48 +370,6 @@ void main() {
           float x_value = LOAD_VALUE(input_x.values[
               params.lhs_offset + b * params.matrix_k + k]);
           accumulator += x_value * (scale * value);
-        }
-      }
-#else
-#ifdef QMM_VEC_Q4_WORD
-      // Native qmv arithmetic (metal/kernels/quantized.h qmv_impl /
-      // qmv_fast_impl + load_vector + qdot, T=half, U=float): a lane
-      // owns one word (two when K % 512 == 0 and N % 8 == 0, the
-      // qmv_fast tile) per 256- or 512-wide block. Per block it forms
-      // the half-precision chain sum of each x quad, accumulates those
-      // in float, and the dot against the nibbles in source order, then
-      // result += fma(scale, dot, sum * bias). Metal compiles with
-      // -fno-fast-math: it contracts scale * accum + sum * bias into
-      // that fma, leaves sum * bias separate, and keeps every add in
-      // source order. Honeykrisp's NIR reassociates add chains into fma
-      // ladders unless the ops are exact, so accumulator, dot, and
-      // input_sum are precise (receipts/2026-09-09-q4-gemv-order).
-      uint words_per_row = params.matrix_k / 8u;
-      uint groups_per_row = params.matrix_k / 64u;
-      uint w_base = w_row + column * words_per_row;
-      uint scale_base = p_base + column * groups_per_row;
-      uint bias_base =
-          params.aux_size + b * param_batch + column * groups_per_row;
-      uint x_row = params.lhs_offset + b * params.matrix_k;
-      // Straight-line bodies: the qmv_fast tile (two words per lane when
-      // K % 512 == 0 and N % 8 == 0) and the qmv tile (one word) each
-      // get their own loop so no runtime-count inner loop sits between
-      // the loads and the math.
-      if (params.matrix_k % 512u == 0u && params.matrix_n % 8u == 0u) {
-        for (uint w = lane_in_slot * 2u; w < words_per_row;
-             w += LANES * 2u) {
-          precise float dot = 0.0;
-          precise float input_sum = 0.0;
-          Q4_WORD(input_w.values[w_base + w], x_row + w * 8u)
-          Q4_WORD(input_w.values[w_base + w + 1u], x_row + w * 8u + 8u)
-          Q4_BLOCK_FINISH(w)
-        }
-      } else {
-        for (uint w = lane_in_slot; w < words_per_row; w += LANES) {
-          precise float dot = 0.0;
-          precise float input_sum = 0.0;
-          Q4_WORD(input_w.values[w_base + w], x_row + w * 8u)
-          Q4_BLOCK_FINISH(w)
         }
       }
 #else
@@ -500,7 +476,6 @@ void main() {
         }
       }
 #endif
-#endif
     }
     // Every lane reaches the reduction, including inactive slots
     // (accumulator 0), so the barriers stay uniform across the
@@ -538,3 +513,132 @@ void main() {
 #endif
   }
 }
+#else
+
+// Q4 decode GEMV. Workgroup g, subgroup s owns rows
+// g * COLUMNS_PER_GROUP + s * Q4_ROWS + r for r < Q4_ROWS. A row past
+// matrix_n clamps its loads to the last row and skips its store, so no
+// lane diverges before the subgroup reduction. Per row a lane runs the
+// native qmv arithmetic above over the same blocks in the same order a
+// one-row subgroup would, so the output does not depend on Q4_ROWS.
+// Each block loads its x quads (and forms input_sum) once for all
+// rows, then every row's word(s), and only then the dots: the
+// Honeykrisp scheduler keeps loads in source order, so loads
+// interleaved with the arithmetic would each wait alone.
+#if Q4_ROWS == 1
+#define Q4_FOR_ROWS(M, a) M(0, a)
+#elif Q4_ROWS == 2
+#define Q4_FOR_ROWS(M, a) M(0, a) M(1, a)
+#elif Q4_ROWS == 4
+#define Q4_FOR_ROWS(M, a) M(0, a) M(1, a) M(2, a) M(3, a)
+#elif Q4_ROWS == 8
+#define Q4_FOR_ROWS(M, a) \
+  M(0, a) M(1, a) M(2, a) M(3, a) M(4, a) M(5, a) M(6, a) M(7, a)
+#else
+#error "Q4_ROWS must be 1, 2, 4, or 8"
+#endif
+
+// Row state lives in arrays indexed only by the literal each macro
+// receives, so every element resolves to its own register.
+#define Q4_ROW_INIT(r, a) { \
+  uint column = min(column0 + uint(r), last_column); \
+  w_base[r] = w_row + column * words_per_row; \
+  scale_base[r] = scale_row + column * groups_per_row; \
+  bias_base[r] = bias_row + column * groups_per_row; \
+  acc[r] = 0.0; \
+}
+#define Q4_ROW_LOAD1(r, w) word0[r] = input_w.values[w_base[r] + (w)];
+#define Q4_ROW_LOAD2(r, w) \
+  word0[r] = input_w.values[w_base[r] + (w)]; \
+  word1[r] = input_w.values[w_base[r] + (w) + 1u];
+#define Q4_ROW_DOT1(r, w) { \
+  dot[r] = 0.0; \
+  Q4_QUAD_DOT(r, 0, word0[r]) \
+  Q4_QUAD_DOT(r, 1, word0[r] >> 16u) \
+  Q4_BLOCK_FINISH(r, w) \
+}
+#define Q4_ROW_DOT2(r, w) { \
+  dot[r] = 0.0; \
+  Q4_QUAD_DOT(r, 0, word0[r]) \
+  Q4_QUAD_DOT(r, 1, word0[r] >> 16u) \
+  Q4_QUAD_DOT(r, 2, word1[r]) \
+  Q4_QUAD_DOT(r, 3, word1[r] >> 16u) \
+  Q4_BLOCK_FINISH(r, w) \
+}
+
+#ifdef USE_SUBGROUP
+#define Q4_ROW_STORE(r, a) { \
+  float total = subgroupAdd(acc[r]); \
+  if (lane_in_slot == 0u && column0 + uint(r) < params.matrix_n) { \
+    output_data.values[out_row + column0 + uint(r)] = STORE_VALUE(total); \
+  } \
+}
+#else
+// Tree reduction, one row at a time through the shared scratch; the
+// trailing barrier protects the scratch before the next row reuses it.
+#define Q4_ROW_STORE(r, a) \
+  reduce_scratch[lane] = acc[r]; \
+  barrier(); \
+  for (uint offset = LANES / 2u; offset > 0u; offset >>= 1u) { \
+    if (lane_in_slot < offset) { \
+      reduce_scratch[lane] += reduce_scratch[lane + offset]; \
+    } \
+    barrier(); \
+  } \
+  if (lane_in_slot == 0u && column0 + uint(r) < params.matrix_n) { \
+    output_data.values[out_row + column0 + uint(r)] = \
+        STORE_VALUE(reduce_scratch[lane]); \
+  } \
+  barrier();
+#endif
+
+void main() {
+  uint lane = gl_LocalInvocationID.x;
+  uint column_slot = lane / LANES;
+  uint lane_in_slot = lane % LANES;
+  uint column0 =
+      gl_WorkGroupID.x * COLUMNS_PER_GROUP + column_slot * uint(Q4_ROWS);
+  uint last_column = params.matrix_n - 1u;
+  uint words_per_row = params.matrix_k / 8u;
+  uint groups_per_row = params.matrix_k / 64u;
+  bool fast_tile = params.matrix_k % 512u == 0u && params.matrix_n % 8u == 0u;
+  for (uint b = 0u; b < params.shape[0]; ++b) {
+    uint w_row = params.rhs_offset + b * params.shape[1];
+    uint x_row = params.lhs_offset + b * params.matrix_k;
+    uint scale_row = params.aux_offset + b * params.shape[2];
+    uint bias_row = params.aux_size + b * params.shape[2];
+    uint out_row = params.output_offset + b * params.matrix_n;
+    uint w_base[Q4_ROWS];
+    uint scale_base[Q4_ROWS];
+    uint bias_base[Q4_ROWS];
+    precise float acc[Q4_ROWS];
+    precise float dot[Q4_ROWS];
+    uint word0[Q4_ROWS];
+    uint word1[Q4_ROWS];
+    Q4_FOR_ROWS(Q4_ROW_INIT, 0)
+    if (fast_tile) {
+      // qmv_fast tile: two words per lane per 512-wide block.
+      for (uint w = lane_in_slot * 2u; w < words_per_row; w += LANES * 2u) {
+        precise float input_sum = 0.0;
+        float xq[16];
+        Q4_QUAD_X(0, x_row + w * 8u)
+        Q4_QUAD_X(1, x_row + w * 8u + 4u)
+        Q4_QUAD_X(2, x_row + w * 8u + 8u)
+        Q4_QUAD_X(3, x_row + w * 8u + 12u)
+        Q4_FOR_ROWS(Q4_ROW_LOAD2, w)
+        Q4_FOR_ROWS(Q4_ROW_DOT2, w)
+      }
+    } else {
+      for (uint w = lane_in_slot; w < words_per_row; w += LANES) {
+        precise float input_sum = 0.0;
+        float xq[8];
+        Q4_QUAD_X(0, x_row + w * 8u)
+        Q4_QUAD_X(1, x_row + w * 8u + 4u)
+        Q4_FOR_ROWS(Q4_ROW_LOAD1, w)
+        Q4_FOR_ROWS(Q4_ROW_DOT1, w)
+      }
+    }
+    Q4_FOR_ROWS(Q4_ROW_STORE, 0)
+  }
+}
+#endif
