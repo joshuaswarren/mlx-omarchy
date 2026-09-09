@@ -74,17 +74,17 @@ python -m mlx_lm generate \
 
 ## Performance
 
-The latest source change removes redundant shared-memory staging from Q4 decode, improving throughput by 6.0% to 11.3% over the preceding source baseline. Five alternating baseline/candidate pairs ran on the same Apple M1 with Honeykrisp, AC power, the pinned Qwen2.5-0.5B-Instruct-4bit snapshot, greedy decoding, and fixed output lengths. These measurements use eager execution, `MLX_DISABLE_COMPILE=1`. This source update is not part of the published v0.3.8 wheel.
+Published v0.4.0 aarch64 wheel, installed by `install.sh`, on an Apple M1 with the stock Omarchy Mesa 26.1.7 Honeykrisp driver, AC power, the pinned Qwen2.5-0.5B-Instruct-4bit snapshot, greedy decoding, fixed output lengths, one run each ([receipt](receipts/2026-09-09-v0.4.0-release.md)):
 
-| Prompt / generated tokens | Baseline decode tok/s | Candidate decode tok/s | Baseline prefill tok/s | Candidate prefill tok/s |
-|---|---:|---:|---:|---:|
-| 30 / 32 | 65.85 | 73.26 | 111.940 | 111.524 |
-| 262 / 128 | 55.96 | 61.16 | 410.658 | 412.598 |
-| 1053 / 32 | 40.89 | 43.34 | 428.746 | 423.742 |
+| Prompt / generated tokens | Decode tok/s | Prefill tok/s |
+|---|---:|---:|
+| 30 / 32 | 78.60 | 100.3 |
+| 262 / 128 | 64.79 | 255.9 |
+| 1053 / 32 | 44.95 | 272.9 |
 
-Values are medians of five runs; gains are ratios of those medians. Q4 prefill changed by -1.17% to +0.47%, while BF16 decode controls stayed within 0.2%. Every generated token ID matched across all 60 measured Q4 and BF16 legs. The M1 matrix, fast-ops, and runtime suites passed 91 cases; the software-Vulkan fallback check passed 121 assertions, including the expanded K=8192 boundary across three dtypes.
+The BF16 model decodes at about 11 tok/s on the stock driver and about 40 on the optional [Honeykrisp fork build](docs/install-omarchy.md#honeykrisp-driver-with-the-fork-fixes).
 
-[Paired measurements, full token arrays, binary provenance, and test logs](receipts/2026-09-09-q4-direct-final) record the accepted change. [Earlier Q4 results](receipts/2026-09-07-q4-second-wave) retain the v0.3.8 measurements. The existing `MLX_OMARCHY_QMM_VEC_Q4_WORD=0` and `MLX_OMARCHY_QMM_TILE_RB=0` switches disable the decode and prefill optimizations for comparison.
+Since that wheel, main carries two paired-verified decode changes with every generated token unchanged across 96 measured legs: the exact SwiGLU chain fused into one dispatch by default ([receipt](receipts/2026-09-09-fused-chain-default/verdict.json), +3.0% to +5.1% Q4 decode) and the Q4 GEMV rewritten to native Metal's arithmetic order, which is also 2.5% to 3.2% faster ([receipt](receipts/2026-09-09-q4-gemv-order/verdict.json)). Together on main: 79.65 / 65.61 / 45.85 Q4 decode tok/s ([smoke](receipts/2026-09-09-main-combined-smoke/verdict.json)). `MLX_OMARCHY_FUSED_CHAIN=0`, `MLX_OMARCHY_QMM_VEC_Q4_WORD=0`, and `MLX_OMARCHY_QMM_TILE_RB=0` disable the fused chain, the decode kernel, and the prefill kernel for comparison.
 
 Performance parity is still open. Historical macOS MLX 0.32.2 medians on this M1 were 150.8 / 146.6 / 140.3 decode tok/s and 294 / 1213 / 1838 prefill tok/s for the same three workloads. The historical short and 1024-context token-ID hashes match Linux, but the long-prompt hashes differ: native `254d73fd93164b98`, Linux `4cc08910089477fd`. These cross-OS timings do not establish numerical parity. [macOS receipts](receipts/native-baseline-2026-09-06).
 
