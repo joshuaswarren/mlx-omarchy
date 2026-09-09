@@ -1,0 +1,7 @@
+[doctest] doctest version is "2.4.12"
+[doctest] run with "--help" for options
+decode dispatches/token (layers=1): eager=22 compiled_pernode=22 compiled_fused=20
+===============================================================================
+[doctest] test cases: 1 | 1 passed | 0 failed | 0 skipped
+[doctest] assertions: 2 | 2 passed | 0 failed |
+[doctest] Status: SUCCESS!

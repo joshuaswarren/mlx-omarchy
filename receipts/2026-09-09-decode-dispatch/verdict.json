@@ -1,0 +1,35 @@
+{
+  "status": "pass",
+  "decision": "candidate exact eager SwiGLU fusion is parity-safe and materially improves Q4 decode; retain the opt-in gate for integration control",
+  "baseline_commit": "12574770870b1edbcf0fe8ec9c15e10fabf323ee",
+  "implementation_commit": "6be3addc",
+  "acceptance_runner_commit": "2695ce7ddcd5e8c280f20bfb30bf14c9669f8911",
+  "baseline_wheel_sha256": "a1daaf0b59c096a698f4d7e2265e325a6f3bfb76643a775f0d4af02c7d49a8b9",
+  "candidate_wheel_sha256": "c3390e3c8d060ce1ce49fe33368c2d776c4f776456c35aa0c6cacb86c249acc3",
+  "candidate_diagnostics_wheel_sha256": "37efad9b909af373f5d8fecc5a50a2e571397281ae5177914ed1cd1f871fe509",
+  "matrix": {
+    "paired_repetitions": 5,
+    "measured_legs": 60,
+    "all_full_generated_ids_equal": true,
+    "q4_short_decode_tok_s": {"baseline": 73.16, "candidate": 76.78, "ratio": 1.0494805904866047, "digest": "7fd25a869ff21678"},
+    "q4_long_decode_tok_s": {"baseline": 61.2, "candidate": 63.67, "ratio": 1.040359477124183, "digest": "4cc08910089477fd"},
+    "q4_longctx_decode_tok_s": {"baseline": 43.55, "candidate": 44.93, "ratio": 1.031687715269805, "digest": "7da83f06ec9f001d"},
+    "bf16_short_decode_tok_s": {"baseline": 11.55, "candidate": 11.66, "ratio": 1.0095238095238095, "digest": "f26175202f3dabe9"},
+    "bf16_long_decode_tok_s": {"baseline": 11.12, "candidate": 11.21, "ratio": 1.0080935251798562, "digest": "ad964232ee67fecd"},
+    "bf16_longctx_decode_tok_s": {"baseline": 10.11, "candidate": 10.2, "ratio": 1.0089020771513353, "digest": "ff502900d2a179a5"}
+  },
+  "profiler": {
+    "q4": {"dispatches_per_decode_interval": {"baseline": 585, "candidate": 537}, "submissions_per_decode_interval": {"baseline": 3, "candidate": 3}},
+    "bf16": {"dispatches_per_decode_interval": {"baseline": 774, "candidate": 726}, "submissions_per_decode_interval": {"baseline": 4, "candidate": 4}}
+  },
+  "tests": {
+    "fused_chain": "25 cases, 7576 assertions",
+    "decode_dispatch_count": "1 case, 2 assertions",
+    "runtime": "41 cases, 22691 assertions",
+    "primitives": "98 cases, 2699373 assertions"
+  },
+  "limitations": [
+    "Targeted C++ tests ran on the development host; M1 validation used diagnostic profiles and 60 release-wheel benchmark legs.",
+    "MLX_OMARCHY_FUSED_CHAIN remains opt-in so integration can control rollout."
+  ]
+}
