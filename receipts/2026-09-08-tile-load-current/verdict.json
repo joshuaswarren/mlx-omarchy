@@ -1,0 +1,10 @@
+{
+  "decision": "Rejected; candidate not integrated",
+  "candidate_commit": "201d78fba5ae7dc031260678858f6af481bb165b",
+  "reason": "Coalescing the transposed tile loads and padding shared tile stride preserved all full generated IDs but did not improve throughput. BF16 decode medians regressed 1.39–1.89% in five paired repetitions.",
+  "bf16_decode_baseline_candidate": {"short":[10.60,10.40],"long":[10.23,10.04],"ctx1024":[9.37,9.24]},
+  "verification": {"full_id_matched_measured_legs":60,"matrix_cases_passed":16,"fast_op_cases_passed":33,"runtime_cases_passed":41,"failed":0,"skipped":0},
+  "parent_validation": "All 60 legs rechecked for full generated-ID equality, ID record digests, token counts, clean contention status, AC power, wheel match, and finite positive timings.",
+  "reproduction": "candidate.patch applies to eff8b2d3. Build and paired-run scripts record the actual machine-specific experiment. Their historical ROPE_DRAIN_* terminal markers are reused labels, not the experiment identity; paths and source commit establish this tiled-load experiment.",
+  "native_parity": "Still unmet. The accepted BF16 queue-drain removal remains published at eff8b2d3; no runtime change comes from this rejected experiment."
+}

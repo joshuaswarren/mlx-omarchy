@@ -1,0 +1,44 @@
+diff --git a/overlay/mlx/backend/omarchy/shaders/matmul.comp b/overlay/mlx/backend/omarchy/shaders/matmul.comp
+index fc89d7a7..0576d086 100644
+--- a/overlay/mlx/backend/omarchy/shaders/matmul.comp
++++ b/overlay/mlx/backend/omarchy/shaders/matmul.comp
+@@ -91,7 +91,7 @@ layout(push_constant) uniform Params {
+ } params;
+ 
+ shared ACCUM_TYPE tile_a[16][16];
+-shared ACCUM_TYPE tile_b[16][16];
++shared ACCUM_TYPE tile_b[16][17];
+ 
+ void main() {
+   uint local_x = gl_LocalInvocationID.x;
+@@ -133,7 +133,6 @@ void main() {
+ 
+       for (uint tile = 0; tile < k_tiles; ++tile) {
+         uint a_column = tile * TILE_SIZE + local_x;
+-        uint b_row = tile * TILE_SIZE + local_y;
+         uint a_index = params.lhs_offset + a_batch +
+             ((params.flags & 4u) != 0u
+                 ? a_column * params.lhs_gap + row
+@@ -142,12 +141,17 @@ void main() {
+                 a_column < params.matrix_k
+             ? LOAD_VALUE(input_a.values[a_index])
+             : ZERO_VALUE;
++        bool b_transposed = (params.flags & 1u) != 0u;
++        uint b_local_row = b_transposed ? local_x : local_y;
++        uint b_local_column = b_transposed ? local_y : local_x;
++        uint b_row = tile * TILE_SIZE + b_local_row;
++        uint b_column = tile_column * TILE_SIZE + b_local_column;
+         uint b_index = params.rhs_offset + b_batch +
+-            ((params.flags & 1u) != 0u
+-                ? column * params.rhs_gap + b_row
+-                : b_row * params.rhs_gap + column);
+-        tile_b[local_y][local_x] = b_row < params.matrix_k &&
+-                column < params.matrix_n
++            (b_transposed
++                ? b_column * params.rhs_gap + b_row
++                : b_row * params.rhs_gap + b_column);
++        tile_b[b_local_row][b_local_column] = b_row < params.matrix_k &&
++                b_column < params.matrix_n
+             ? LOAD_VALUE(input_b.values[b_index])
+             : ZERO_VALUE;
+         barrier();
