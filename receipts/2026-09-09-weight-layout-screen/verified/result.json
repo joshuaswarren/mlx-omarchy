@@ -1,0 +1,4 @@
+{
+  "all_full_ids_equal": true,
+  "scope": "Diagnostic load-time physical layout permutation only; every BF16 matrix checked equal elementwise; default backend unchanged."
+}

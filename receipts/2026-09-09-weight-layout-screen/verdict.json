@@ -1,0 +1,11 @@
+{
+  "decision": "Rejected; no backend or model-loader default changed",
+  "source_commit": "770ae4653655c2be08b7bcca9649cbb26cb3983f",
+  "experiment": "At load time, convert each two-dimensional BF16 model parameter to a column-contiguous physical layout with contiguous(weight.T).T; values and shapes unchanged.",
+  "activation": "verified/rep1.ids.jsonl.layout.jsonl records 169 transformed matrices for each BF16 workload and zero for each Q4 control; every transformed matrix passed elementwise array_equal before update.",
+  "verified_screen_bf16_decode": {"short":6.61,"long":6.46,"ctx1024":5.97},
+  "accepted_baseline_bf16_decode_paired_medians": {"short":10.60,"long":10.23,"ctx1024":9.38},
+  "full_generated_ids_equal": true,
+  "limitations": "Screening runs, not paired statistical acceptance. An intermediate activation-logging attempt failed from a generated Python string-escaping error with zero measured legs; it is excluded. The verified rerun records explicit transformation counts.",
+  "conclusion": "This exact-value layout change is materially slower on the current tiled backend. It does not support adding a packing cache or changing the loader. Native parity remains unmet."
+}

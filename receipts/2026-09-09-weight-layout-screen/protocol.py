@@ -1,0 +1,39 @@
+import json
+import subprocess
+from pathlib import Path
+
+root = Path.home() / 'src/mlx-rope-drain-770ae465'
+out = root / 'receipts/2026-09-09-weight-layout-screen'
+out.mkdir(exist_ok=False)
+source = root / 'receipts/parity-baseline-20260908'
+hook = '''import mlx_lm.utils as _utils
+_original_load = _utils.load
+
+def _layout_load(*args, **kwargs):
+    model, tokenizer = _original_load(*args, **kwargs)
+    import mlx.core as mx
+    from mlx.utils import tree_flatten, tree_unflatten
+    updates = []
+    for key, value in tree_flatten(model.parameters()):
+        if value.ndim == 2 and value.dtype == mx.bfloat16:
+            packed = mx.contiguous(value.T).T
+            mx.eval(packed)
+            assert mx.array_equal(value, packed).item(), key
+            updates.append((key, packed))
+    model.update(tree_unflatten(updates))
+    print("EXACT_WEIGHT_LAYOUT_CHECK", len(updates), flush=True)
+    return model, tokenizer
+
+_utils.load = _layout_load
+'''
+(out / 'capture-ids.py').write_text(hook + (source / 'capture-ids.py').read_text())
+text = (source / 'run-baseline.py').read_text().replace('ROOT = HERE.parents[1]', 'ROOT = Path(' + repr(str(root)) + ')')
+(out / 'run.py').write_text(text)
+py = root / '.venv-accept/bin/python'
+wheels = list((root / 'dist').glob('*.whl'))
+assert len(wheels) == 1
+subprocess.run([str(py), str(out / 'run.py'), str(py), str(wheels[0]), '1'], cwd=root, check=True, timeout=3600)
+ids = lambda p: [json.loads(s)['ids'] for s in p.read_text().splitlines()]
+result = {'all_full_ids_equal': ids(out / 'rep1.ids.jsonl') == ids(root / 'receipts/2026-09-08-rope-drain-current/pair-1-candidate/rep1.ids.jsonl'), 'scope': 'Diagnostic load-time physical layout permutation only; every BF16 matrix checked equal elementwise; default backend unchanged.'}
+(out / 'result.json').write_text(json.dumps(result, indent=2) + '\n')
+print('LAYOUT_SCREEN_DONE', result, flush=True)
