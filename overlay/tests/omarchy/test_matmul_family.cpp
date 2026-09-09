@@ -3024,7 +3024,14 @@ TEST_CASE("qmm_vec packed-word candidate matches baseline and host reference") {
       std::vector<float> expected =
           host_quantized_matmul(rounded, x_rt, 1, n, k, 64, 4);
 
-      array x(x_rt.begin(), Shape{1, k}, dtype);
+      // Odd x offsets take the element-load path of the Q4 kernel
+      // (flags bit 1 clear); even ones read x as packed 16-bit words.
+      const int x_offset = (k / 64 + n) % 2;
+      std::vector<float> x_padded(x_offset, 0.0f);
+      x_padded.insert(x_padded.end(), x_rt.begin(), x_rt.end());
+      array x_full(x_padded.begin(), Shape{1, k + x_offset}, dtype);
+      array x = slice(x_full, {0, x_offset}, {1, k + x_offset});
+      INFO("x_offset=" << x_offset);
       array w_words(host.words.begin(), Shape{n, k / 8}, uint32);
       array scales(rounded.scales.begin(), Shape{n, k / 64}, dtype);
       array biases(rounded.biases.begin(), Shape{n, k / 64}, dtype);
