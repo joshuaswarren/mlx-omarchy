@@ -6,9 +6,9 @@
 #extension GL_EXT_shader_explicit_arithmetic_types_float16 : require
 
 // Prefill Q4/group-64 f16 matmul on the G13 8x8x8 fp32 subgroup
-// cooperative matrix. A 64-lane workgroup owns a 32x32 output tile;
-// each subgroup owns a 16x32 half. It stages 16 k values at a time,
-// dequantizes each 16x32 weight tile once into shared f32, and reuses it
+// cooperative matrix. A 128-lane workgroup owns a 32x64 output tile;
+// each subgroup owns one 16x32 quadrant. It stages 16 k values at a time,
+// dequantizes each 16x64 weight tile once into shared f32, and reuses it
 // across all 32 rows. The two ascending 8-wide coopmat updates preserve
 // the previous kernel's per-output accumulation order and output ids.
 // The dispatch gate requires cooperative_matrix_f32_8, subgroup size 32,
@@ -16,12 +16,12 @@
 // enough shared memory, and !MLX_OMARCHY_NO_COOPMAT.
 
 const uint TILE_M = 32u;
-const uint TILE_N = 32u;
+const uint TILE_N = 64u;
 const uint CHUNK_K = 64u;
 const uint STEP_K = 16u;
 const uint MAT = 8u;
 
-layout(local_size_x = 64) in;
+layout(local_size_x = 128) in;
 
 layout(set = 0, binding = 0, std430) readonly buffer InputX {
   uint values[];
@@ -63,14 +63,15 @@ layout(push_constant) uniform Params {
   uint out_strides[4];
 } params;
 
-// 4 KiB shared: one 32x16 x tile and one 16x32 f32 weight tile.
+// 6 KiB shared: one 32x16 x tile and one 16x64 f32 weight tile.
 shared float x_s[TILE_M * STEP_K];
 shared float w_s[STEP_K * TILE_N];
 
 void main() {
   uint lid = gl_LocalInvocationID.x;
   uint sub = gl_SubgroupID;
-  uint sub_rb = 2u * sub;
+  uint sub_rb = 2u * (sub / 2u);
+  uint sub_cb = 4u * (sub % 2u);
   uint batch = params.shape[0];
   uint w_batch_words = params.shape[1];
   uint param_batch = params.shape[2];
@@ -81,8 +82,8 @@ void main() {
   uint words_per_row = params.matrix_k / 8u;
   uint groups_per_row = params.matrix_k / 64u;
   uint x_words_per_row = params.matrix_k / 2u;
-  uint w_column_local = lid % 32u;
-  uint w_part = lid / 32u;
+  uint w_column_local = lid % TILE_N;
+  uint w_part = lid / TILE_N;
 
   for (uint b = 0u; b < batch; ++b) {
   uint w_slice = params.rhs_offset + b * w_batch_words;
@@ -120,10 +121,10 @@ void main() {
         }
         for (uint step = 0u; step < CHUNK_K / STEP_K; ++step) {
           uint k_base = chunk * CHUNK_K + step * STEP_K;
-          // Four half2 loads per lane cover the 32x16 x tile.
-          uint x_words[4];
-          for (uint j = 0u; j < 4u; ++j) {
-            uint i = lid + 64u * j;
+          // Two half2 loads per lane cover the 32x16 x tile.
+          uint x_words[2];
+          for (uint j = 0u; j < 2u; ++j) {
+            uint i = lid + 128u * j;
             uint local_row = i / 8u;
             uint row = row_base + local_row;
             x_words[j] = row < params.matrix_m
@@ -132,14 +133,14 @@ void main() {
                       (i % 8u)]
                 : 0u;
           }
-          for (uint j = 0u; j < 4u; ++j) {
-            uint i = lid + 64u * j;
+          for (uint j = 0u; j < 2u; ++j) {
+            uint i = lid + 128u * j;
             uint local_row = i / 8u;
             vec2 pair = unpackHalf2x16(x_words[j]);
             x_s[local_row * STEP_K + 2u * (i % 8u)] = pair.x;
             x_s[local_row * STEP_K + 2u * (i % 8u) + 1u] = pair.y;
           }
-          // One packed word per lane covers the 16x32 weight tile.
+          // One packed word per lane covers the 16x64 weight tile.
           uint packed = column_ok
               ? input_w.values[w_row + k_base / 8u + w_part] : 0u;
           uint w_base = 8u * w_part * TILE_N + w_column_local;
@@ -170,7 +171,7 @@ void main() {
             }
             for (uint cb = 0u; cb < 4u; ++cb) {
               coopMatLoad(
-                  mat_b[cb], w_s, ks * MAT * TILE_N + cb * MAT, TILE_N,
+                  mat_b[cb], w_s, ks * MAT * TILE_N + (sub_cb + cb) * MAT, TILE_N,
                   gl_CooperativeMatrixLayoutRowMajor);
             }
             for (uint rb = 0u; rb < 2u; ++rb) {
@@ -184,13 +185,14 @@ void main() {
         }
       }
 
-      // One subgroup stores each 16-row half; duplicated column lanes
-      // each drain their four distinct rows of the selected 8-row block.
+      // The two subgroups owning each 16-row half store their 32-column
+      // quadrants; duplicated column lanes drain four distinct rows each.
       for (uint rb = 0u; rb < 4u; ++rb) {
         if (sub_rb == (rb & ~1u)) {
           for (uint cb = 0u; cb < 4u; ++cb) {
             coopMatStore(
-                acc[rb & 1u][cb], x_s, cb * MAT * MAT, MAT,
+                acc[rb & 1u][cb], x_s,
+                (sub_cb + cb) * MAT * MAT, MAT,
                 gl_CooperativeMatrixLayoutRowMajor);
           }
         }
