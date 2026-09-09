@@ -59,17 +59,17 @@ python -m mlx_lm generate \
 
 ## Performance
 
-The default kernels at `f5ba1c82` improve Linux decode by 3.5% to 6.5% and prefill by 12.9% to 21.1% over v0.3.7 (`417c06e6`). Five alternating baseline/candidate pairs ran on the same Apple M1 with Honeykrisp, AC power, the pinned Qwen2.5-0.5B-Instruct-4bit snapshot, greedy decoding, and fixed output lengths. Every generated token ID matched in every pair. These measurements use eager execution, `MLX_DISABLE_COMPILE=1`.
+The latest source change removes redundant shared-memory staging from Q4 decode, improving throughput by 6.0% to 11.3% over the preceding source baseline. Five alternating baseline/candidate pairs ran on the same Apple M1 with Honeykrisp, AC power, the pinned Qwen2.5-0.5B-Instruct-4bit snapshot, greedy decoding, and fixed output lengths. These measurements use eager execution, `MLX_DISABLE_COMPILE=1`. This source update is not part of the published v0.3.8 wheel.
 
-| Prompt / generated tokens | v0.3.7 decode tok/s | Current decode tok/s | v0.3.7 prefill tok/s | Current prefill tok/s |
+| Prompt / generated tokens | Baseline decode tok/s | Candidate decode tok/s | Baseline prefill tok/s | Candidate prefill tok/s |
 |---|---:|---:|---:|---:|
-| 30 / 32 | 66.02 | 70.28 | 87.464 | 99.010 |
-| 262 / 128 | 56.25 | 59.12 | 210.104 | 254.122 |
-| 1053 / 32 | 40.77 | 42.27 | 227.725 | 273.294 |
+| 30 / 32 | 65.85 | 73.26 | 111.940 | 111.524 |
+| 262 / 128 | 55.96 | 61.16 | 410.658 | 412.598 |
+| 1053 / 32 | 40.89 | 43.34 | 428.746 | 423.742 |
 
-Values are medians of five runs; percentage gains are medians of the paired ratios. Prefill now unpacks each Q4 word once for eight weights. Increasing the bounded graph batch from 100 to 256 nodes reduces submission overhead without changing synchronization or buffer ownership. The temporary comparison kernel and its switch were removed.
+Values are medians of five runs; gains are ratios of those medians. Q4 prefill changed by -1.17% to +0.47%, while BF16 decode controls stayed within 0.2%. Every generated token ID matched across all 60 measured Q4 and BF16 legs. The M1 matrix, fast-ops, and runtime suites passed 91 cases; the software-Vulkan fallback check passed 121 assertions, including the expanded K=8192 boundary across three dtypes.
 
-[Raw comparisons, token arrays, numerical checks, and runtime receipts](receipts/2026-09-07-q4-second-wave) cover the new changes. [Earlier Q4 results](receipts/2026-09-07-q4-kernel-gains) retain the v0.3.7 measurements. The existing `MLX_OMARCHY_QMM_VEC_Q4_WORD=0` and `MLX_OMARCHY_QMM_TILE_RB=0` switches disable the decode and prefill optimizations for comparison.
+[Paired measurements, full token arrays, binary provenance, and test logs](receipts/2026-09-09-q4-direct-final) record the accepted change. [Earlier Q4 results](receipts/2026-09-07-q4-second-wave) retain the v0.3.8 measurements. The existing `MLX_OMARCHY_QMM_VEC_Q4_WORD=0` and `MLX_OMARCHY_QMM_TILE_RB=0` switches disable the decode and prefill optimizations for comparison.
 
 Performance parity is still open. Historical macOS MLX 0.32.2 medians on this M1 were 150.8 / 146.6 / 140.3 decode tok/s and 294 / 1213 / 1838 prefill tok/s for the same three workloads. The historical short and 1024-context token-ID hashes match Linux, but the long-prompt hashes differ: native `254d73fd93164b98`, Linux `4cc08910089477fd`. These cross-OS timings do not establish numerical parity. [macOS receipts](receipts/native-baseline-2026-09-06).
 
