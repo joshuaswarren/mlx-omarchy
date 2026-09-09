@@ -324,8 +324,9 @@ try:
     out["import_ok"] = True
     out["default_device"] = str(mx.default_device())
     out["mlx_version"] = getattr(mx, "__version__", None)
-    import mlx
-    cand = pathlib.Path(mlx.__file__).resolve().parent / "bin" / "mlx-omarchy-info"
+    # mlx is a namespace package (mlx.__file__ is None); anchor on the
+    # extension module, which lives beside the shipped bin/ directory.
+    cand = pathlib.Path(mx.__file__).resolve().parent / "bin" / "mlx-omarchy-info"
     if cand.exists():
         out["info_tool"] = str(cand)
 except Exception as exc:
