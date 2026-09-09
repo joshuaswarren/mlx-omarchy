@@ -143,20 +143,20 @@ void main() {
           uint packed = column_ok
               ? input_w.values[w_row + k_base / 8u + w_part] : 0u;
           uint w_base = 8u * w_part * TILE_N + w_column_local;
-          w_s[w_base + 0u * TILE_N] = scale * float(bitfieldExtract(packed, 0, 4)) + bias;
+          w_s[w_base + 0u * TILE_N] = scale * float(packed & 0xFu) + bias;
           w_s[w_base + 1u * TILE_N] =
-              scale * float(bitfieldExtract(packed, 4, 4)) + bias;
+              scale * float((packed >> 4u) & 0xFu) + bias;
           w_s[w_base + 2u * TILE_N] =
-              scale * float(bitfieldExtract(packed, 8, 4)) + bias;
+              scale * float((packed >> 8u) & 0xFu) + bias;
           w_s[w_base + 3u * TILE_N] =
-              scale * float(bitfieldExtract(packed, 12, 4)) + bias;
+              scale * float((packed >> 12u) & 0xFu) + bias;
           w_s[w_base + 4u * TILE_N] =
-              scale * float(bitfieldExtract(packed, 16, 4)) + bias;
+              scale * float((packed >> 16u) & 0xFu) + bias;
           w_s[w_base + 5u * TILE_N] =
-              scale * float(bitfieldExtract(packed, 20, 4)) + bias;
+              scale * float((packed >> 20u) & 0xFu) + bias;
           w_s[w_base + 6u * TILE_N] =
-              scale * float(bitfieldExtract(packed, 24, 4)) + bias;
-          w_s[w_base + 7u * TILE_N] = scale * float(bitfieldExtract(packed, 28, 4)) + bias;
+              scale * float((packed >> 24u) & 0xFu) + bias;
+          w_s[w_base + 7u * TILE_N] = scale * float(packed >> 28u) + bias;
           barrier();
 
           for (uint ks = 0u; ks < STEP_K / MAT; ++ks) {
