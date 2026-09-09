@@ -1,0 +1,394 @@
+{
+ "phase": "prefill",
+ "wall_ms": 621.808135,
+ "dispatches": 1638,
+ "submissions": 55,
+ "joins": 48,
+ "join_wait_ms": 369.89279,
+ "submit_host_ms": 47.649942,
+ "slot_total_ms": 466.334748,
+ "reported_total_ms": 423.863161,
+ "gpu_busy_fraction_slot": 0.7499656594232239,
+ "kernels": [
+  {
+   "kernel": "QmmPrefillCoopmatF16",
+   "n": 163,
+   "slot_ms": 281.725167,
+   "share": 0.6041264739722977,
+   "mean_us": 1728.3752576687118,
+   "reported_ms": 276.305381
+  },
+  {
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 338,
+   "slot_ms": 35.089167,
+   "share": 0.07524459018009956,
+   "mean_us": 103.81410355029585,
+   "reported_ms": 27.29104
+  },
+  {
+   "kernel": "FusedChainF16",
+   "n": 71,
+   "slot_ms": 28.845251,
+   "share": 0.06185524695234591,
+   "mean_us": 406.2711408450704,
+   "reported_ms": 27.320793
+  },
+  {
+   "kernel": "ElementwiseF16",
+   "n": 25,
+   "slot_ms": 25.981127,
+   "share": 0.055713470015749285,
+   "mean_us": 1039.24508,
+   "reported_ms": 25.16504
+  },
+  {
+   "kernel": "BinaryVecF16",
+   "n": 357,
+   "slot_ms": 19.668384,
+   "share": 0.04217653538440588,
+   "mean_us": 55.093512605042015,
+   "reported_ms": 10.744998
+  },
+  {
+   "kernel": "MatmulRbF16",
+   "n": 46,
+   "slot_ms": 18.598086,
+   "share": 0.03988140725039859,
+   "mean_us": 404.3062173913043,
+   "reported_ms": 17.523542
+  },
+  {
+   "kernel": "CopyGeneralF16",
+   "n": 167,
+   "slot_ms": 13.962207,
+   "share": 0.029940310173926822,
+   "mean_us": 83.60602994011975,
+   "reported_ms": 8.30883
+  },
+  {
+   "kernel": "MatmulF16",
+   "n": 96,
+   "slot_ms": 12.073499,
+   "share": 0.02589019808577507,
+   "mean_us": 125.76561458333333,
+   "reported_ms": 10.484416
+  },
+  {
+   "kernel": "FastRopeF16",
+   "n": 143,
+   "slot_ms": 10.393291,
+   "share": 0.022287189716345135,
+   "mean_us": 72.68035664335665,
+   "reported_ms": 6.392789
+  },
+  {
+   "kernel": "FastRmsNormF16",
+   "n": 145,
+   "slot_ms": 9.081781,
+   "share": 0.019474810828379447,
+   "mean_us": 62.632972413793105,
+   "reported_ms": 5.620878
+  },
+  {
+   "kernel": "SoftmaxF16",
+   "n": 71,
+   "slot_ms": 9.001913,
+   "share": 0.019303543299329692,
+   "mean_us": 126.78750704225352,
+   "reported_ms": 7.29558
+  },
+  {
+   "kernel": "LogSumExpF16",
+   "n": 2,
+   "slot_ms": 0.594125,
+   "share": 0.0012740311601227709,
+   "mean_us": 297.0625,
+   "reported_ms": 0.534417
+  },
+  {
+   "kernel": "TakeF16",
+   "n": 6,
+   "slot_ms": 0.445791,
+   "share": 0.0009559463495094301,
+   "mean_us": 74.2985,
+   "reported_ms": 0.26225
+  },
+  {
+   "kernel": "TakeU32",
+   "n": 3,
+   "slot_ms": 0.324502,
+   "share": 0.0006958563593892857,
+   "mean_us": 108.16733333333333,
+   "reported_ms": 0.172959
+  },
+  {
+   "kernel": "DequantF16",
+   "n": 3,
+   "slot_ms": 0.277124,
+   "share": 0.0005942598126957505,
+   "mean_us": 92.37466666666667,
+   "reported_ms": 0.166915
+  },
+  {
+   "kernel": "ArgReduceF16",
+   "n": 2,
+   "slot_ms": 0.273333,
+   "share": 0.0005861304592296862,
+   "mean_us": 136.6665,
+   "reported_ms": 0.273333
+  }
+ ],
+ "signatures": [
+  {
+   "kernel": "QmmPrefillCoopmatF16",
+   "count": 1269504,
+   "gx": 152,
+   "gy": 9,
+   "gz": 1,
+   "n": 46,
+   "slot_ms": 141.342418,
+   "mean_us": 3072.6612608695655
+  },
+  {
+   "kernel": "QmmPrefillCoopmatF16",
+   "count": 233856,
+   "gx": 28,
+   "gy": 9,
+   "gz": 1,
+   "n": 69,
+   "slot_ms": 121.786291,
+   "mean_us": 1765.0187101449276
+  },
+  {
+   "kernel": "FusedChainF16",
+   "count": 1269504,
+   "gx": 4959,
+   "gy": 1,
+   "gz": 1,
+   "n": 23,
+   "slot_ms": 26.587415,
+   "mean_us": 1155.9745652173913
+  },
+  {
+   "kernel": "ElementwiseF16",
+   "count": 953694,
+   "gx": 3726,
+   "gy": 1,
+   "gz": 1,
+   "n": 23,
+   "slot_ms": 25.563668,
+   "mean_us": 1111.4638260869565
+  },
+  {
+   "kernel": "QmmPrefillCoopmatF16",
+   "count": 33408,
+   "gx": 4,
+   "gy": 9,
+   "gz": 1,
+   "n": 48,
+   "slot_ms": 18.596458,
+   "mean_us": 387.4262083333333
+  },
+  {
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "count": 4864,
+   "gx": 608,
+   "gy": 1,
+   "gz": 1,
+   "n": 96,
+   "slot_ms": 12.87696,
+   "mean_us": 134.135
+  },
+  {
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "count": 896,
+   "gx": 112,
+   "gy": 1,
+   "gz": 1,
+   "n": 144,
+   "slot_ms": 11.90912,
+   "mean_us": 82.70222222222222
+  },
+  {
+   "kernel": "MatmulRbF16",
+   "count": 953694,
+   "gx": 5,
+   "gy": 5,
+   "gz": 14,
+   "n": 23,
+   "slot_ms": 9.977251,
+   "mean_us": 433.7935217391304
+  },
+  {
+   "kernel": "MatmulRbF16",
+   "count": 233856,
+   "gx": 1,
+   "gy": 5,
+   "gz": 14,
+   "n": 23,
+   "slot_ms": 8.620835,
+   "mean_us": 374.8189130434783
+  },
+  {
+   "kernel": "BinaryVecF16",
+   "count": 896,
+   "gx": 1,
+   "gy": 1,
+   "gz": 1,
+   "n": 144,
+   "slot_ms": 8.035668,
+   "mean_us": 55.80325
+  },
+  {
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "count": 128,
+   "gx": 16,
+   "gy": 1,
+   "gz": 1,
+   "n": 96,
+   "slot_ms": 6.607379,
+   "mean_us": 68.82686458333333
+  },
+  {
+   "kernel": "SoftmaxF16",
+   "count": 953694,
+   "gx": 3654,
+   "gy": 1,
+   "gz": 1,
+   "n": 23,
+   "slot_ms": 6.573037,
+   "mean_us": 285.7842173913043
+  },
+  {
+   "kernel": "BinaryVecF16",
+   "count": 128,
+   "gx": 1,
+   "gy": 1,
+   "gz": 1,
+   "n": 96,
+   "slot_ms": 6.457542,
+   "mean_us": 67.2660625
+  },
+  {
+   "kernel": "CopyGeneralF16",
+   "count": 128,
+   "gx": 1,
+   "gy": 1,
+   "gz": 1,
+   "n": 96,
+   "slot_ms": 6.254167,
+   "mean_us": 65.14757291666666
+  },
+  {
+   "kernel": "FastRmsNormF16",
+   "count": 896,
+   "gx": 1,
+   "gy": 1,
+   "gz": 1,
+   "n": 98,
+   "slot_ms": 6.227619,
+   "mean_us": 63.547132653061226
+  },
+  {
+   "kernel": "MatmulF16",
+   "count": 896,
+   "gx": 4,
+   "gy": 1,
+   "gz": 14,
+   "n": 48,
+   "slot_ms": 5.489876,
+   "mean_us": 114.37241666666667
+  },
+  {
+   "kernel": "CopyGeneralF16",
+   "count": 33408,
+   "gx": 131,
+   "gy": 1,
+   "gz": 1,
+   "n": 48,
+   "slot_ms": 4.371749,
+   "mean_us": 91.07810416666668
+  },
+  {
+   "kernel": "MatmulF16",
+   "count": 3668,
+   "gx": 17,
+   "gy": 1,
+   "gz": 14,
+   "n": 24,
+   "slot_ms": 4.010539,
+   "mean_us": 167.10579166666665
+  },
+  {
+   "kernel": "FastRopeF16",
+   "count": 64,
+   "gx": 1,
+   "gy": 1,
+   "gz": 1,
+   "n": 48,
+   "slot_ms": 3.803331,
+   "mean_us": 79.2360625
+  },
+  {
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "count": 151936,
+   "gx": 18992,
+   "gy": 1,
+   "gz": 1,
+   "n": 2,
+   "slot_ms": 3.695708,
+   "mean_us": 1847.854
+  },
+  {
+   "kernel": "FastRopeF16",
+   "count": 448,
+   "gx": 2,
+   "gy": 1,
+   "gz": 1,
+   "n": 48,
+   "slot_ms": 3.475336,
+   "mean_us": 72.40283333333333
+  },
+  {
+   "kernel": "BinaryVecF16",
+   "count": 233856,
+   "gx": 229,
+   "gy": 1,
+   "gz": 1,
+   "n": 69,
+   "slot_ms": 3.415381,
+   "mean_us": 49.49827536231884
+  },
+  {
+   "kernel": "CopyGeneralF16",
+   "count": 233856,
+   "gx": 914,
+   "gy": 1,
+   "gz": 1,
+   "n": 23,
+   "slot_ms": 3.336291,
+   "mean_us": 145.05613043478263
+  },
+  {
+   "kernel": "FastRmsNormF16",
+   "count": 233856,
+   "gx": 261,
+   "gy": 1,
+   "gz": 1,
+   "n": 47,
+   "slot_ms": 2.854162,
+   "mean_us": 60.72685106382979
+  },
+  {
+   "kernel": "MatmulF16",
+   "count": 3682,
+   "gx": 17,
+   "gy": 1,
+   "gz": 14,
+   "n": 24,
+   "slot_ms": 2.573084,
+   "mean_us": 107.21183333333333
+  }
+ ]
+}

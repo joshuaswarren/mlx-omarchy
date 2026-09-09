@@ -2160,6 +2160,104 @@ TEST_CASE("general broadcast elementwise matches host references") {
   }
 }
 
+TEST_CASE("four-wide 16-bit binary path matches the general kernel bit for bit") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  const auto& capabilities = omarchy::device(0).capabilities();
+  if (!capabilities.storage_buffer_16bit_access ||
+      !capabilities.shader_float16 || !capabilities.shader_int16) {
+    skip("Vulkan device lacks required 16-bit storage and shader features.");
+    return;
+  }
+  // Values chosen so the f32 results land between storage
+  // representables: the host reference rounds once (float op, then one
+  // storage round), the contract both kernels carry, and the check is
+  // on the stored bits. count 288 with period 96 hits the four-wide
+  // path; count 231 and the odd-offset slice keep the general kernel.
+  auto fill = [](size_t n, float seed) {
+    std::vector<float> v(n);
+    for (size_t i = 0; i < n; ++i) {
+      v[i] = std::sin(0.37f * static_cast<float>(i) + seed) * 3.0f +
+          static_cast<float>(i % 7) * 0.001f + 0.5f;
+    }
+    return v;
+  };
+  auto stored_bits = [&](const std::vector<float>& values, Dtype dtype) {
+    std::vector<uint16_t> bits(values.size());
+    for (size_t i = 0; i < values.size(); ++i) {
+      if (dtype == float16) {
+        float16_t h(values[i]);
+        std::memcpy(&bits[i], &h, 2);
+      } else {
+        bfloat16_t h(values[i]);
+        std::memcpy(&bits[i], &h, 2);
+      }
+    }
+    return bits;
+  };
+  auto gpu_bits = [&](array got) {
+    eval(got);
+    return std::vector<uint16_t>(
+        got.data<uint16_t>(), got.data<uint16_t>() + got.size());
+  };
+  auto mismatches = [](const std::vector<uint16_t>& e,
+                       const std::vector<uint16_t>& g) {
+    size_t n = 0;
+    for (size_t i = 0; i < e.size(); ++i) {
+      n += e[i] != g[i];
+    }
+    return n;
+  };
+  for (Dtype dtype : {float16, bfloat16}) {
+    for (const Shape& shape : {Shape{3, 8, 12}, Shape{3, 7, 11}}) {
+      size_t count = shape[0] * shape[1] * shape[2];
+      size_t period = shape[1] * shape[2];
+      array a = astype(
+          array(fill(count, 0.1f).begin(), shape, float32), dtype, stream);
+      array b = astype(
+          array(fill(period, 1.9f).begin(), Shape{shape[1], shape[2]},
+                float32),
+          dtype,
+          stream);
+      array a32 = astype(a, float32, stream);
+      array b32 = astype(b, float32, stream);
+      eval(a32, b32);
+      const float* ap = a32.data<float>();
+      const float* bp = b32.data<float>();
+      for (int op = 0; op < 4; ++op) {
+        std::vector<float> ref(count);
+        for (size_t i = 0; i < count; ++i) {
+          float x = ap[i];
+          float y = bp[i % period];
+          ref[i] = op == 0 ? x + y : op == 1 ? x * y : op == 2 ? x / y : x - y;
+        }
+        array got = op == 0 ? add(a, b, stream)
+            : op == 1     ? multiply(a, b, stream)
+            : op == 2     ? divide(a, b, stream)
+                          : subtract(a, b, stream);
+        INFO("dtype " << dtype << " op " << op << " count " << count);
+        CHECK_EQ(mismatches(stored_bits(ref, dtype), gpu_bits(got)), 0u);
+      }
+      array flat = reshape(a, Shape{static_cast<int>(count)}, stream);
+      array bflat = reshape(b, Shape{static_cast<int>(period)}, stream);
+      for (int start : {12, 13}) {
+        array sl = slice(flat, {start}, {start + 64}, stream);
+        array sb = slice(bflat, {0}, {64}, stream);
+        std::vector<float> ref(64);
+        for (size_t i = 0; i < 64; ++i) {
+          ref[i] = ap[start + i] * bp[i];
+        }
+        INFO("dtype " << dtype << " slice start " << start);
+        CHECK_EQ(
+            mismatches(stored_bits(ref, dtype), gpu_bits(multiply(sl, sb, stream))),
+            0u);
+      }
+    }
+  }
+}
+
 TEST_CASE("broadcast divide carries collapsed ranks 5 through 8") {
   if (!compute_available()) {
     return;
@@ -2964,6 +3062,83 @@ TEST_CASE("causal scaled_dot_product_attention masks future keys") {
     }
   }
   check_values(attention, expected, stream, 1e-3);
+}
+
+TEST_CASE("f16 causal attention equals the additive storage-floor mask bit for bit") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  const auto& capabilities = omarchy::device(0).capabilities();
+  if (!capabilities.shader_float16 ||
+      !capabilities.storage_buffer_16bit_access) {
+    skip("Vulkan device lacks required FP16 shader and storage features.");
+    return;
+  }
+  // The causal f16 path runs the softmax in causal mode over unmasked
+  // scores (and lets the register-blocked matmuls skip masked tiles);
+  // the array-mask path still adds the mask to the scores. With the
+  // 0 / -65504 mask the causal composition used to build, both must
+  // store identical bits. q_len 200 exercises the 64-wide column-tile
+  // and k-tile skips (row tile 0 needs keys 0..63 only); q_len 70 with
+  // a 30-key prefix the k_len > q_len offset.
+  auto pattern = [](size_t index, float seed) {
+    return std::sin(0.21f * static_cast<float>(index) + seed) * 2.0f;
+  };
+  for (auto [q_len, k_len] : {std::pair<int, int>{200, 200},
+                              std::pair<int, int>{70, 100}}) {
+    constexpr int q_heads = 4;
+    constexpr int kv_heads = 2;
+    constexpr int head_dim = 64;
+    std::vector<float> qv(q_heads * q_len * head_dim);
+    std::vector<float> kv(kv_heads * k_len * head_dim);
+    std::vector<float> vv(kv_heads * k_len * head_dim);
+    for (size_t i = 0; i < qv.size(); ++i) {
+      qv[i] = pattern(i, 0.3f);
+    }
+    for (size_t i = 0; i < kv.size(); ++i) {
+      kv[i] = pattern(i, 1.1f);
+      vv[i] = pattern(i, 2.7f);
+    }
+    array q = astype(
+        array(qv.begin(), Shape{1, q_heads, q_len, head_dim}, float32),
+        float16,
+        stream);
+    array k = astype(
+        array(kv.begin(), Shape{1, kv_heads, k_len, head_dim}, float32),
+        float16,
+        stream);
+    array v = astype(
+        array(vv.begin(), Shape{1, kv_heads, k_len, head_dim}, float32),
+        float16,
+        stream);
+    std::vector<float16_t> mask_values(q_len * k_len);
+    int offset = k_len - q_len;
+    for (int row = 0; row < q_len; ++row) {
+      for (int col = 0; col < k_len; ++col) {
+        mask_values[row * k_len + col] =
+            float16_t(offset + row >= col ? 0.0f : -65504.0f);
+      }
+    }
+    array mask(mask_values.begin(), Shape{q_len, k_len}, float16);
+    const float scale = 0.125f;
+    array causal = fast::scaled_dot_product_attention(
+        q, k, v, scale, "causal", std::nullopt, std::nullopt, false, stream);
+    array masked = fast::scaled_dot_product_attention(
+        q, k, v, scale, "", mask, std::nullopt, false, stream);
+    eval(causal, masked);
+    const uint16_t* a = causal.data<uint16_t>();
+    const uint16_t* b = masked.data<uint16_t>();
+    size_t mismatches = 0;
+    size_t nonzero = 0;
+    for (size_t i = 0; i < causal.size(); ++i) {
+      mismatches += a[i] != b[i];
+      nonzero += a[i] != 0;
+    }
+    INFO("q_len " << q_len << " k_len " << k_len);
+    CHECK_EQ(mismatches, 0u);
+    CHECK_GT(nonzero, causal.size() / 2);
+  }
 }
 
 // Host float64 attention over f16-representable inputs. The inputs use

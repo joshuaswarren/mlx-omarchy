@@ -1,0 +1,4 @@
+omarchy_primitive_tests exit 1
+omarchy_matmul_family_tests exit 0
+omarchy_fused_chain_tests exit 0
+omarchy_fast_ops_tests exit 0
