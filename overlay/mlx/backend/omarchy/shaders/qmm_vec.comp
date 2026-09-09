@@ -522,12 +522,20 @@ void main() {
     acc[r] = 0.0; \
   }
 
+#ifdef Q4_DIAG_ALU
+// Diagnostic: no weight, scale, or bias memory traffic.
+#define Q4_ROW_LOAD(r, u) \
+  word[u * Q4_ROWS + r] = w_base[r] + wu; \
+  scale[u * Q4_ROWS + r] = float(param[r] + group); \
+  bias[u * Q4_ROWS + r] = 1.0;
+#else
 #define Q4_ROW_LOAD(r, u) \
   word[u * Q4_ROWS + r] = input_w.values[w_base[r] + wu]; \
   scale[u * Q4_ROWS + r] = \
       LOAD_VALUE(scales.values[scale_row + param[r] + group]); \
   bias[u * Q4_ROWS + r] = \
       LOAD_VALUE(biases.values[bias_row + param[r] + group]);
+#endif
 
 #define Q4_LOAD_X_ELEMENTS(u, k) \
   x[u * 8 + 0] = LOAD_VALUE(input_x.values[k]); \
@@ -557,19 +565,38 @@ void main() {
   } else { \
     Q4_LOAD_X_ELEMENTS(u, k) \
   }
+#elif defined(Q4_DIAG_ALU)
+#define Q4_LOAD_X(u, k) \
+  x[u * 8 + 0] = float(k); \
+  x[u * 8 + 1] = float(k + 1u); \
+  x[u * 8 + 2] = float(k + 2u); \
+  x[u * 8 + 3] = float(k + 3u); \
+  x[u * 8 + 4] = float(k + 4u); \
+  x[u * 8 + 5] = float(k + 5u); \
+  x[u * 8 + 6] = float(k + 6u); \
+  x[u * 8 + 7] = float(k + 7u);
 #else
 #define Q4_LOAD_X(u, k) Q4_LOAD_X_ELEMENTS(u, k)
 #endif
 
-#define Q4_LOAD_STEP(u) \
+#define Q4_LOAD_AT(u, windex) \
   { \
-    uint wu = min(w + uint(u) * LANES, last_word); \
+    uint wu = windex; \
     uint k = x_row + wu * 8u; \
     uint group = wu / 8u; \
     Q4_LOAD_X(u, k) \
     Q4_FOR_ROWS(Q4_ROW_LOAD, u) \
   }
 
+#define Q4_LOAD_STEP(u) Q4_LOAD_AT(u, min(w + uint(u) * LANES, last_word))
+
+#ifdef Q4_DIAG_MEM
+// Diagnostic: the loads with almost no arithmetic.
+#define Q4_ROW_DOT(r, u) \
+  acc[r] += x[u * 8 + 0] + x[u * 8 + 7] + \
+      float(word[u * Q4_ROWS + r]) * scale[u * Q4_ROWS + r] + \
+      bias[u * Q4_ROWS + r];
+#else
 #define Q4_ROW_DOT(r, u) \
   acc[r] += x[u * 8 + 0] * \
       (scale[u * Q4_ROWS + r] * float(word[u * Q4_ROWS + r] & 0xfu) + \
@@ -595,6 +622,7 @@ void main() {
   acc[r] += x[u * 8 + 7] * \
       (scale[u * Q4_ROWS + r] * float(word[u * Q4_ROWS + r] >> 28u) + \
        bias[u * Q4_ROWS + r]);
+#endif
 
 // Step 0 is inside the row by the loop condition; later steps check.
 #define Q4_DOT_STEP(u) \
@@ -652,6 +680,34 @@ void main() {
     uint param[Q4_ROWS];
     float acc[Q4_ROWS];
     Q4_FOR_ROWS(Q4_ROW_INIT, 0)
+#ifdef Q4_PIPELINE
+    // Software pipeline: the next step's loads issue before this step's
+    // arithmetic, alternating two register sets; steps stay in
+    // ascending word order per row.
+    float x[16];
+    uint word[Q4_ROWS * 2];
+    float scale[Q4_ROWS * 2];
+    float bias[Q4_ROWS * 2];
+    uint w = lane_in_slot;
+    if (w < words_per_row) {
+      Q4_LOAD_AT(0, w)
+      while (true) {
+        uint w1 = w + LANES;
+        Q4_LOAD_AT(1, min(w1, last_word))
+        Q4_FOR_ROWS(Q4_ROW_DOT, 0)
+        if (w1 >= words_per_row) {
+          break;
+        }
+        uint w2 = w1 + LANES;
+        Q4_LOAD_AT(0, min(w2, last_word))
+        Q4_FOR_ROWS(Q4_ROW_DOT, 1)
+        if (w2 >= words_per_row) {
+          break;
+        }
+        w = w2;
+      }
+    }
+#else
     for (uint w = lane_in_slot; w < words_per_row; w += LANES * Q4_UNROLL) {
       float x[8 * Q4_UNROLL];
       uint word[Q4_ROWS * Q4_UNROLL];
@@ -660,6 +716,7 @@ void main() {
       Q4_FOR_STEPS(Q4_LOAD_STEP)
       Q4_FOR_STEPS(Q4_DOT_STEP)
     }
+#endif
     Q4_FOR_ROWS(Q4_ROW_STORE, 0)
   }
 }
