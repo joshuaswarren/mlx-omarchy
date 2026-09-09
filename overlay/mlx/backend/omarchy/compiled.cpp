@@ -456,28 +456,6 @@ void eval_compiled_tape(
           out_shape[i] = std::max(out_shape[i], in.shape()[i - dd]);
         }
       }
-      static std::atomic<bool> shape_notice{false};
-      if (out_shape != node.shape() &&
-          !shape_notice.exchange(true, std::memory_order_relaxed)) {
-        auto fmt = [](const Shape& s) {
-          std::ostringstream os;
-          os << "[";
-          for (size_t i = 0; i < s.size(); ++i) {
-            if (i) {
-              os << ",";
-            }
-            os << s[i];
-          }
-          os << "]";
-          return os.str();
-        };
-        std::fprintf(
-            stderr,
-            "[omarchy] shapeless compiled fragment reused at a new shape:"
-            " traced %s, serving %s\n",
-            fmt(node.shape()).c_str(),
-            fmt(out_shape).c_str());
-      }
     }
     std::vector<array> outs;
     outs.push_back(
