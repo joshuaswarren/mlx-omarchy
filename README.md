@@ -84,7 +84,15 @@ Published v0.4.0 aarch64 wheel, installed by `install.sh`, on an Apple M1 with t
 
 The BF16 model decodes at about 11 tok/s on the stock driver and about 40 on the optional [Honeykrisp fork build](docs/install-omarchy.md#honeykrisp-driver-with-the-fork-fixes).
 
-Since that wheel, main carries two paired-verified decode changes with every generated token unchanged across 96 measured legs: the exact SwiGLU chain fused into one dispatch by default ([receipt](receipts/2026-09-09-fused-chain-default/verdict.json), +3.0% to +5.1% Q4 decode) and the Q4 GEMV rewritten to native Metal's arithmetic order, which is also 2.5% to 3.2% faster ([receipt](receipts/2026-09-09-q4-gemv-order/verdict.json)). Together on main: 79.65 / 65.61 / 45.85 Q4 decode tok/s ([smoke](receipts/2026-09-09-main-combined-smoke/verdict.json)). `MLX_OMARCHY_FUSED_CHAIN=0`, `MLX_OMARCHY_QMM_VEC_Q4_WORD=0`, and `MLX_OMARCHY_QMM_TILE_RB=0` disable the fused chain, the decode kernel, and the prefill kernel for comparison.
+Since that wheel, main carries four paired-verified changes with every generated token unchanged on every measured leg: the exact SwiGLU chain fused into one dispatch by default ([receipt](receipts/2026-09-09-fused-chain-default/verdict.json)), the Q4 GEMV rewritten to native Metal's arithmetic order ([receipt](receipts/2026-09-09-q4-gemv-order/verdict.json)), and the prefill wave: four-wide 16-bit binary kernels, a register-blocked f16 attention matmul, causal softmax without a materialized mask, and a straight-line SwiGLU kernel ([receipt](receipts/2026-09-09-prefill-speed/verdict.json), Q4 prefill +21% at 262 tokens and +81% at 1053). Main on the M1 now ([smoke](receipts/2026-09-09-main-prefill-smoke/verdict.json)):
+
+| Prompt / generated tokens | Decode tok/s | Prefill tok/s |
+|---|---:|---:|
+| 30 / 32 | 87.93 | 112.4 |
+| 262 / 128 | 71.32 | 544.7 |
+| 1053 / 32 | 48.48 | 854.7 |
+
+`MLX_OMARCHY_FUSED_CHAIN=0`, `MLX_OMARCHY_QMM_VEC_Q4_WORD=0`, and `MLX_OMARCHY_QMM_TILE_RB=0` disable the fused chain, the decode kernel, and the prefill kernel for comparison.
 
 Performance parity is still open. Historical macOS MLX 0.32.2 medians on this M1 were 150.8 / 146.6 / 140.3 decode tok/s and 294 / 1213 / 1838 prefill tok/s for the same three workloads. The historical short and 1024-context token-ID hashes match Linux, but the long-prompt hashes differ: native `254d73fd93164b98`, Linux `4cc08910089477fd`. These cross-OS timings do not establish numerical parity. [macOS receipts](receipts/native-baseline-2026-09-06).
 
