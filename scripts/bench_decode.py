@@ -293,10 +293,12 @@ def main():
     # bench_decode records token IDs, not text. stream_generate constructs a
     # 150k-entry streaming detokenizer for every warmup and measured call;
     # that fixed cost is unrelated to prefill and dominates short prompts.
-    add_special_tokens = (getattr(tokenizer, "bos_token", None) is None or
-                          not prompt.startswith(tokenizer.bos_token))
-    prompt_ids = mx.array(tokenizer.encode(
-        prompt, add_special_tokens=add_special_tokens))
+    if isinstance(prompt, str):
+        add_special_tokens = (getattr(tokenizer, "bos_token", None) is None or
+                              not prompt.startswith(tokenizer.bos_token))
+        prompt = tokenizer.encode(
+            prompt, add_special_tokens=add_special_tokens)
+    prompt_ids = mx.array(prompt)
 
     def generate(n):
         def ids():

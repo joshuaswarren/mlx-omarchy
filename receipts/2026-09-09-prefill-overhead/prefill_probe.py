@@ -47,12 +47,15 @@ def main():
     ap.add_argument("--prompt-file", required=True)
     ap.add_argument("--out", required=True)
     ap.add_argument("--warmup-tokens", type=int, default=4)
+    ap.add_argument("--direct", action="store_true")
     args = ap.parse_args()
 
     out = pathlib.Path(args.out)
     out.parent.mkdir(parents=True, exist_ok=True)
 
-    from mlx_lm.generate import stream_generate
+    from mlx_lm.generate import (
+        generate_step, generation_stream, stream_generate, wired_limit,
+    )
     from mlx_lm.sample_utils import make_sampler
     from mlx_lm.utils import load
     import mlx.core as mx
@@ -66,13 +69,27 @@ def main():
             add_generation_prompt=True,
         )
     sampler = make_sampler(temp=0.0)
-    saved_eos = getattr(tokenizer, "eos_token_ids", None)
-    tokenizer.eos_token_ids = set()
+    if isinstance(prompt, str):
+        add_special_tokens = (getattr(tokenizer, "bos_token", None) is None or
+                              not prompt.startswith(tokenizer.bos_token))
+        prompt = tokenizer.encode(
+            prompt, add_special_tokens=add_special_tokens)
+    prompt_ids = mx.array(prompt)
 
     def generate(n):
-        return stream_generate(
-            model, tokenizer, prompt, max_tokens=n, sampler=sampler
-        )
+        if not args.direct:
+            return stream_generate(
+                model, tokenizer, prompt, max_tokens=n, sampler=sampler
+            )
+
+        def ids():
+            with wired_limit(model, [generation_stream]):
+                yield from (
+                    token for token, _ in generate_step(
+                        prompt_ids, model, max_tokens=n, sampler=sampler
+                    )
+                )
+        return ids()
 
     for _ in generate(args.warmup_tokens):
         pass
@@ -126,14 +143,13 @@ def main():
 
     for obj, name, original in originals:
         setattr(obj, name, original)
-    if saved_eos is not None:
-        tokenizer.eos_token_ids = saved_eos
     mx.synchronize()
 
+    token = first if args.direct else first.token
     result = {
         "wall_ms": (t1 - t0) / 1e6,
-        "prompt_tokens": int(first.prompt_tokens),
-        "first_token": int(first.token),
+        "prompt_tokens": int(prompt_ids.size),
+        "first_token": int(token),
         "counters": {k: end[k] - start[k] for k in end},
         "boundary_events": events,
     }
