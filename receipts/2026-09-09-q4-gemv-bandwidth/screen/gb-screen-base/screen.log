@@ -1,0 +1,2 @@
+default {"q4_896x896": 7.4, "q4_896x128": 1.99, "q4_896x4864": 11.28, "q4_4864x896": 12.51, "q4_896x151936": 41.5, "ceiling_elementwise_f16": 2.95, "ceiling_reduce_f32": 6.48}
+BANDWIDTH_DONE

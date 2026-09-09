@@ -6621,32 +6621,6 @@ void QuantizedMatmul::eval_gpu(const std::vector<array>& inputs, array& out) {
                           : omarchy::ComputeKernel::QmmVecF16,
               use_q4_word ? omarchy::ComputeKernel::QmmVecQ4WordBF16
                           : omarchy::ComputeKernel::QmmVecBF16);
-    // Screening shapes for the M1 bandwidth micro-benchmark: f16
-    // subgroup builds of the Q4 kernel at other rows x subgroups splits.
-    if (const char* screen = std::getenv("MLX_OMARCHY_Q4_GEMV_SCREEN");
-        screen != nullptr && use_q4_word && subgroup_ready &&
-        out.dtype() == float16) {
-      struct Screen {
-        const char* name;
-        omarchy::ComputeKernel kernel;
-        uint32_t columns;
-      };
-      static constexpr Screen kScreens[] = {
-          {"r1s8", omarchy::ComputeKernel::QmmVecQ4ScreenR1S8F16, 8u},
-          {"r2s4il", omarchy::ComputeKernel::QmmVecQ4ScreenR2S4ILF16, 8u},
-          {"r4s2il", omarchy::ComputeKernel::QmmVecQ4ScreenR4S2ILF16, 8u},
-          {"r4s2ilp", omarchy::ComputeKernel::QmmVecQ4ScreenR4S2ILPF16, 8u},
-          {"r8s1il", omarchy::ComputeKernel::QmmVecQ4ScreenR8S1ILF16, 8u},
-          {"r4s2ilalu", omarchy::ComputeKernel::QmmVecQ4ScreenR4S2ILALUF16, 8u},
-          {"r4s2x", omarchy::ComputeKernel::QmmVecQ4ScreenR4S2XF16, 8u},
-      };
-      for (const auto& s : kScreens) {
-        if (std::strcmp(screen, s.name) == 0) {
-          vec_kernel = s.kernel;
-          columns_per_group = s.columns;
-        }
-      }
-    }
     auto n_groups_qmm_vec =
         (params.matrix_n + columns_per_group - 1u) / columns_per_group;
     encoder.dispatch_compute(

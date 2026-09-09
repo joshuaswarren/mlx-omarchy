@@ -1,0 +1,288 @@
+{
+  "python": ".venv-accept/bin/python",
+  "version": "0.32.2.dev202609091554+diag.de65554",
+  "reps": 20,
+  "variants": {
+    "default": {
+      "wall_s": {
+        "q4_896x128": 0.00013522030058084057,
+        "q4_896x256": 8.775590104050934e-05,
+        "q4_896x512": 0.00013039945042692125,
+        "q4_896x896": 9.381214913446456e-05,
+        "q4_896x1792": 0.00017001179949147627,
+        "q4_896x2432": 0.0001751471994793974,
+        "q4_896x4864": 0.00027214055007789283,
+        "q4_896x9728": 0.0004488482009037398,
+        "q4_896x19456": 0.0006485765494289808,
+        "q4_896x38912": 0.0008234175009420141,
+        "q4_896x77824": 0.0010784955986309797,
+        "q4_896x151936": 0.0022989719509496354,
+        "q4_4864x128": 9.585584921296686e-05,
+        "q4_4864x448": 9.574544965289533e-05,
+        "q4_4864x896": 0.00011480370012577623,
+        "q4_4864x1792": 0.00016125349939102306,
+        "q4_4864x3584": 0.00030504249880323184
+      },
+      "q4_896x128": {
+        "kernel": [
+          "QmmVecQ4WordSubgroupF16"
+        ],
+        "workgroups": [
+          16
+        ],
+        "dispatches": 21,
+        "bytes": 66304,
+        "p50_us": 43.417,
+        "min_us": 36.542,
+        "gbps_p50": 1.5271437455374623,
+        "gbps_min_time": 1.814460073340266
+      },
+      "q4_896x256": {
+        "kernel": [
+          "QmmVecQ4WordSubgroupF16"
+        ],
+        "workgroups": [
+          32
+        ],
+        "dispatches": 21,
+        "bytes": 130816,
+        "p50_us": 48.334,
+        "min_us": 36.209,
+        "gbps_p50": 2.7065005999917244,
+        "gbps_min_time": 3.6128034466569083
+      },
+      "q4_896x512": {
+        "kernel": [
+          "QmmVecQ4WordSubgroupF16"
+        ],
+        "workgroups": [
+          64
+        ],
+        "dispatches": 21,
+        "bytes": 259840,
+        "p50_us": 47.0,
+        "min_us": 45.708,
+        "gbps_p50": 5.528510638297872,
+        "gbps_min_time": 5.684781657477903
+      },
+      "q4_896x896": {
+        "kernel": [
+          "QmmVecQ4WordSubgroupF16"
+        ],
+        "workgroups": [
+          112
+        ],
+        "dispatches": 21,
+        "bytes": 453376,
+        "p50_us": 62.333,
+        "min_us": 61.25,
+        "gbps_p50": 7.273450660163958,
+        "gbps_min_time": 7.402057142857143
+      },
+      "q4_896x1792": {
+        "kernel": [
+          "QmmVecQ4WordSubgroupF16"
+        ],
+        "workgroups": [
+          224
+        ],
+        "dispatches": 21,
+        "bytes": 904960,
+        "p50_us": 97.375,
+        "min_us": 95.0,
+        "gbps_p50": 9.293555840821567,
+        "gbps_min_time": 9.525894736842105
+      },
+      "q4_896x2432": {
+        "kernel": [
+          "QmmVecQ4WordSubgroupF16"
+        ],
+        "workgroups": [
+          304
+        ],
+        "dispatches": 21,
+        "bytes": 1227520,
+        "p50_us": 123.5,
+        "min_us": 121.25,
+        "gbps_p50": 9.939433198380566,
+        "gbps_min_time": 10.123876288659794
+      },
+      "q4_896x4864": {
+        "kernel": [
+          "QmmVecQ4WordSubgroupF16"
+        ],
+        "workgroups": [
+          608
+        ],
+        "dispatches": 21,
+        "bytes": 2453248,
+        "p50_us": 215.041,
+        "min_us": 213.042,
+        "gbps_p50": 11.408280281434703,
+        "gbps_min_time": 11.515325616545095
+      },
+      "q4_896x9728": {
+        "kernel": [
+          "QmmVecQ4WordSubgroupF16"
+        ],
+        "workgroups": [
+          1216
+        ],
+        "dispatches": 21,
+        "bytes": 4904704,
+        "p50_us": 403.167,
+        "min_us": 227.75,
+        "gbps_p50": 12.165440127788237,
+        "gbps_min_time": 21.5354731064764
+      },
+      "q4_896x19456": {
+        "kernel": [
+          "QmmVecQ4WordSubgroupF16"
+        ],
+        "workgroups": [
+          2432
+        ],
+        "dispatches": 21,
+        "bytes": 9807616,
+        "p50_us": 586.417,
+        "min_us": 342.875,
+        "gbps_p50": 16.724644749384822,
+        "gbps_min_time": 28.604056872037916
+      },
+      "q4_896x38912": {
+        "kernel": [
+          "QmmVecQ4WordSubgroupF16"
+        ],
+        "workgroups": [
+          4864
+        ],
+        "dispatches": 21,
+        "bytes": 19613440,
+        "p50_us": 843.208,
+        "min_us": 486.916,
+        "gbps_p50": 23.260500374759253,
+        "gbps_min_time": 40.280951950644464
+      },
+      "q4_896x77824": {
+        "kernel": [
+          "QmmVecQ4WordSubgroupF16"
+        ],
+        "workgroups": [
+          9728
+        ],
+        "dispatches": 21,
+        "bytes": 39225088,
+        "p50_us": 962.292,
+        "min_us": 945.25,
+        "gbps_p50": 40.76214704060722,
+        "gbps_min_time": 41.497051573657764
+      },
+      "q4_896x151936": {
+        "kernel": [
+          "QmmVecQ4WordSubgroupF16"
+        ],
+        "workgroups": [
+          18992
+        ],
+        "dispatches": 21,
+        "bytes": 76577536,
+        "p50_us": 1829.084,
+        "min_us": 1821.792,
+        "gbps_p50": 41.86660426749127,
+        "gbps_min_time": 42.03418172875938
+      },
+      "q4_4864x128": {
+        "kernel": [
+          "QmmVecQ4WordSubgroupF16"
+        ],
+        "workgroups": [
+          16
+        ],
+        "dispatches": 21,
+        "bytes": 359936,
+        "p50_us": 48.542,
+        "min_us": 41.875,
+        "gbps_p50": 7.414939639899469,
+        "gbps_min_time": 8.59548656716418
+      },
+      "q4_4864x448": {
+        "kernel": [
+          "QmmVecQ4WordSubgroupF16"
+        ],
+        "workgroups": [
+          56
+        ],
+        "dispatches": 21,
+        "bytes": 1235456,
+        "p50_us": 45.375,
+        "min_us": 41.916,
+        "gbps_p50": 27.22768044077135,
+        "gbps_min_time": 29.47456818398702
+      },
+      "q4_4864x896": {
+        "kernel": [
+          "QmmVecQ4WordSubgroupF16"
+        ],
+        "workgroups": [
+          112
+        ],
+        "dispatches": 21,
+        "bytes": 2461184,
+        "p50_us": 72.792,
+        "min_us": 71.125,
+        "gbps_p50": 33.81118804264205,
+        "gbps_min_time": 34.60364147627416
+      },
+      "q4_4864x1792": {
+        "kernel": [
+          "QmmVecQ4WordSubgroupF16"
+        ],
+        "workgroups": [
+          224
+        ],
+        "dispatches": 21,
+        "bytes": 4912640,
+        "p50_us": 113.666,
+        "min_us": 111.208,
+        "gbps_p50": 43.21996023437087,
+        "gbps_min_time": 44.17523919142508
+      },
+      "q4_4864x3584": {
+        "kernel": [
+          "QmmVecQ4WordSubgroupF16"
+        ],
+        "workgroups": [
+          448
+        ],
+        "dispatches": 21,
+        "bytes": 9815552,
+        "p50_us": 245.958,
+        "min_us": 243.417,
+        "gbps_p50": 39.907431350067895,
+        "gbps_min_time": 40.32402009719946
+      },
+      "ceiling_elementwise_f16": {
+        "kernel": [
+          "ElementwiseF16"
+        ],
+        "dispatches": 20,
+        "bytes_traffic": 4358144,
+        "p50_us": 1149.4995,
+        "min_us": 1120.917,
+        "gbps_p50": 3.7913404921011273,
+        "gbps_min_time": 3.8880166863380605
+      },
+      "ceiling_reduce_f32": {
+        "kernel": [
+          "ReduceF32"
+        ],
+        "dispatches": 40,
+        "bytes_traffic": 2179072,
+        "p50_us": 330.271,
+        "min_us": 31.875,
+        "gbps_p50": 6.597830266659804,
+        "gbps_min_time": 68.3630431372549
+      }
+    }
+  }
+}

@@ -1,0 +1,916 @@
+{
+  "python": ".venv-accept/bin/python",
+  "version": "0.32.2.dev202609091653+diag.1a1791b",
+  "reps": 20,
+  "variants": {
+    "default": {
+      "wall_s": {
+        "q4_896x896": 0.00020310585096012802,
+        "q4_896x128": 0.00010210189939243718,
+        "q4_896x4864": 0.000249412000994198,
+        "q4_4864x896": 0.00020560794946504756,
+        "q4_896x151936": 0.0020317231494118458
+      },
+      "q4_896x896": {
+        "kernel": [
+          "QmmVecQ4WordSubgroupF16"
+        ],
+        "workgroups": [
+          112
+        ],
+        "dispatches": 21,
+        "bytes": 453376,
+        "p50_us": 54.583,
+        "min_us": 53.75,
+        "gbps_p50": 8.30617591557811,
+        "gbps_min_time": 8.434902325581396
+      },
+      "q4_896x128": {
+        "kernel": [
+          "QmmVecQ4WordSubgroupF16"
+        ],
+        "workgroups": [
+          16
+        ],
+        "dispatches": 21,
+        "bytes": 66304,
+        "p50_us": 50.125,
+        "min_us": 38.333,
+        "gbps_p50": 1.3227730673316709,
+        "gbps_min_time": 1.7296846059530953
+      },
+      "q4_896x4864": {
+        "kernel": [
+          "QmmVecQ4WordSubgroupF16"
+        ],
+        "workgroups": [
+          608
+        ],
+        "dispatches": 21,
+        "bytes": 2453248,
+        "p50_us": 167.0,
+        "min_us": 164.166,
+        "gbps_p50": 14.690107784431138,
+        "gbps_min_time": 14.943703324683552
+      },
+      "q4_4864x896": {
+        "kernel": [
+          "QmmVecQ4WordSubgroupF16"
+        ],
+        "workgroups": [
+          112
+        ],
+        "dispatches": 21,
+        "bytes": 2461184,
+        "p50_us": 153.041,
+        "min_us": 150.292,
+        "gbps_p50": 16.0818604164897,
+        "gbps_min_time": 16.37601469140074
+      },
+      "q4_896x151936": {
+        "kernel": [
+          "QmmVecQ4WordSubgroupF16"
+        ],
+        "workgroups": [
+          18992
+        ],
+        "dispatches": 21,
+        "bytes": 76577536,
+        "p50_us": 1470.833,
+        "min_us": 1459.125,
+        "gbps_p50": 52.06405893803036,
+        "gbps_min_time": 52.48182026899683
+      },
+      "ceiling_elementwise_f16": {
+        "kernel": [
+          "ElementwiseF16"
+        ],
+        "dispatches": 20,
+        "bytes_traffic": 4358144,
+        "p50_us": 1153.0,
+        "min_us": 1116.666,
+        "gbps_p50": 3.7798300086730268,
+        "gbps_min_time": 3.902817852428569
+      },
+      "ceiling_reduce_f32": {
+        "kernel": [
+          "ReduceF32"
+        ],
+        "dispatches": 40,
+        "bytes_traffic": 2179072,
+        "p50_us": 332.7085,
+        "min_us": 31.5,
+        "gbps_p50": 6.549493024674753,
+        "gbps_min_time": 69.17688888888888
+      }
+    },
+    "r4s2p": {
+      "wall_s": {
+        "q4_896x896": 0.00013358930009417237,
+        "q4_896x128": 0.00010379145096521825,
+        "q4_896x4864": 0.00027179324970347805,
+        "q4_4864x896": 0.0002185620498494245,
+        "q4_896x151936": 0.0020267460495233536
+      },
+      "q4_896x896": {
+        "kernel": [
+          "QmmVecQ4ScreenR4S2PF16"
+        ],
+        "workgroups": [
+          112
+        ],
+        "dispatches": 21,
+        "bytes": 453376,
+        "p50_us": 61.875,
+        "min_us": 60.375,
+        "gbps_p50": 7.327288888888889,
+        "gbps_min_time": 7.509333333333333
+      },
+      "q4_896x128": {
+        "kernel": [
+          "QmmVecQ4ScreenR4S2PF16"
+        ],
+        "workgroups": [
+          16
+        ],
+        "dispatches": 21,
+        "bytes": 66304,
+        "p50_us": 46.416,
+        "min_us": 42.625,
+        "gbps_p50": 1.4284729403653913,
+        "gbps_min_time": 1.5555190615835777
+      },
+      "q4_896x4864": {
+        "kernel": [
+          "QmmVecQ4ScreenR4S2PF16"
+        ],
+        "workgroups": [
+          608
+        ],
+        "dispatches": 21,
+        "bytes": 2453248,
+        "p50_us": 194.375,
+        "min_us": 192.625,
+        "gbps_p50": 12.6212115755627,
+        "gbps_min_time": 12.735875405580792
+      },
+      "q4_4864x896": {
+        "kernel": [
+          "QmmVecQ4ScreenR4S2PF16"
+        ],
+        "workgroups": [
+          112
+        ],
+        "dispatches": 21,
+        "bytes": 2461184,
+        "p50_us": 167.25,
+        "min_us": 164.0,
+        "gbps_p50": 14.715599402092675,
+        "gbps_min_time": 15.007219512195121
+      },
+      "q4_896x151936": {
+        "kernel": [
+          "QmmVecQ4ScreenR4S2PF16"
+        ],
+        "workgroups": [
+          18992
+        ],
+        "dispatches": 21,
+        "bytes": 76577536,
+        "p50_us": 1596.458,
+        "min_us": 1566.084,
+        "gbps_p50": 47.967147272274,
+        "gbps_min_time": 48.89746399299143
+      },
+      "ceiling_elementwise_f16": {
+        "kernel": [
+          "ElementwiseF16"
+        ],
+        "dispatches": 20,
+        "bytes_traffic": 4358144,
+        "p50_us": 1125.2705,
+        "min_us": 1121.542,
+        "gbps_p50": 3.8729745425655433,
+        "gbps_min_time": 3.8858500172084507
+      },
+      "ceiling_reduce_f32": {
+        "kernel": [
+          "ReduceF32"
+        ],
+        "dispatches": 40,
+        "bytes_traffic": 2179072,
+        "p50_us": 331.3745,
+        "min_us": 31.458,
+        "gbps_p50": 6.5758590356228375,
+        "gbps_min_time": 69.26924788607032
+      }
+    },
+    "r2s4": {
+      "wall_s": {
+        "q4_896x896": 0.0002051537492661737,
+        "q4_896x128": 9.186024981318041e-05,
+        "q4_896x4864": 0.0002493120002327487,
+        "q4_4864x896": 0.00019423920020926743,
+        "q4_896x151936": 0.0019703857498825526
+      },
+      "q4_896x896": {
+        "kernel": [
+          "QmmVecQ4ScreenR2S4F16"
+        ],
+        "workgroups": [
+          112
+        ],
+        "dispatches": 21,
+        "bytes": 453376,
+        "p50_us": 53.5,
+        "min_us": 51.75,
+        "gbps_p50": 8.474317757009345,
+        "gbps_min_time": 8.76088888888889
+      },
+      "q4_896x128": {
+        "kernel": [
+          "QmmVecQ4ScreenR2S4F16"
+        ],
+        "workgroups": [
+          16
+        ],
+        "dispatches": 21,
+        "bytes": 66304,
+        "p50_us": 46.875,
+        "min_us": 42.5,
+        "gbps_p50": 1.4144853333333334,
+        "gbps_min_time": 1.5600941176470589
+      },
+      "q4_896x4864": {
+        "kernel": [
+          "QmmVecQ4ScreenR2S4F16"
+        ],
+        "workgroups": [
+          608
+        ],
+        "dispatches": 21,
+        "bytes": 2453248,
+        "p50_us": 174.542,
+        "min_us": 172.584,
+        "gbps_p50": 14.055344845366731,
+        "gbps_min_time": 14.214805543966996
+      },
+      "q4_4864x896": {
+        "kernel": [
+          "QmmVecQ4ScreenR2S4F16"
+        ],
+        "workgroups": [
+          112
+        ],
+        "dispatches": 21,
+        "bytes": 2461184,
+        "p50_us": 148.583,
+        "min_us": 146.125,
+        "gbps_p50": 16.56437142876372,
+        "gbps_min_time": 16.843004277159967
+      },
+      "q4_896x151936": {
+        "kernel": [
+          "QmmVecQ4ScreenR2S4F16"
+        ],
+        "workgroups": [
+          18992
+        ],
+        "dispatches": 21,
+        "bytes": 76577536,
+        "p50_us": 1519.083,
+        "min_us": 1505.667,
+        "gbps_p50": 50.410369940286344,
+        "gbps_min_time": 50.8595433120338
+      },
+      "ceiling_elementwise_f16": {
+        "kernel": [
+          "ElementwiseF16"
+        ],
+        "dispatches": 20,
+        "bytes_traffic": 4358144,
+        "p50_us": 1178.1455,
+        "min_us": 1120.667,
+        "gbps_p50": 3.6991560040758973,
+        "gbps_min_time": 3.88888403067102
+      },
+      "ceiling_reduce_f32": {
+        "kernel": [
+          "ReduceF32"
+        ],
+        "dispatches": 40,
+        "bytes_traffic": 2179072,
+        "p50_us": 332.0,
+        "min_us": 30.791,
+        "gbps_p50": 6.563469879518072,
+        "gbps_min_time": 70.76977038745088
+      }
+    },
+    "r2s4p": {
+      "wall_s": {
+        "q4_896x896": 0.00013528514973586424,
+        "q4_896x128": 9.085604979190976e-05,
+        "q4_896x4864": 0.00027031405043089764,
+        "q4_4864x896": 0.00022048920072847977,
+        "q4_896x151936": 0.0020602418007911183
+      },
+      "q4_896x896": {
+        "kernel": [
+          "QmmVecQ4ScreenR2S4PF16"
+        ],
+        "workgroups": [
+          112
+        ],
+        "dispatches": 21,
+        "bytes": 453376,
+        "p50_us": 61.541,
+        "min_us": 60.917,
+        "gbps_p50": 7.367056108935507,
+        "gbps_min_time": 7.4425201503685345
+      },
+      "q4_896x128": {
+        "kernel": [
+          "QmmVecQ4ScreenR2S4PF16"
+        ],
+        "workgroups": [
+          16
+        ],
+        "dispatches": 21,
+        "bytes": 66304,
+        "p50_us": 48.25,
+        "min_us": 36.334,
+        "gbps_p50": 1.3741761658031089,
+        "gbps_min_time": 1.824847250509165
+      },
+      "q4_896x4864": {
+        "kernel": [
+          "QmmVecQ4ScreenR2S4PF16"
+        ],
+        "workgroups": [
+          608
+        ],
+        "dispatches": 21,
+        "bytes": 2453248,
+        "p50_us": 190.167,
+        "min_us": 187.958,
+        "gbps_p50": 12.900492724815557,
+        "gbps_min_time": 13.052107385692548
+      },
+      "q4_4864x896": {
+        "kernel": [
+          "QmmVecQ4ScreenR2S4PF16"
+        ],
+        "workgroups": [
+          112
+        ],
+        "dispatches": 21,
+        "bytes": 2461184,
+        "p50_us": 172.625,
+        "min_us": 171.542,
+        "gbps_p50": 14.257401882693701,
+        "gbps_min_time": 14.347413461426356
+      },
+      "q4_896x151936": {
+        "kernel": [
+          "QmmVecQ4ScreenR2S4PF16"
+        ],
+        "workgroups": [
+          18992
+        ],
+        "dispatches": 21,
+        "bytes": 76577536,
+        "p50_us": 1593.083,
+        "min_us": 1575.333,
+        "gbps_p50": 48.068767289588806,
+        "gbps_min_time": 48.610380154545105
+      },
+      "ceiling_elementwise_f16": {
+        "kernel": [
+          "ElementwiseF16"
+        ],
+        "dispatches": 20,
+        "bytes_traffic": 4358144,
+        "p50_us": 1122.9585,
+        "min_us": 1118.75,
+        "gbps_p50": 3.880948405484263,
+        "gbps_min_time": 3.895547709497207
+      },
+      "ceiling_reduce_f32": {
+        "kernel": [
+          "ReduceF32"
+        ],
+        "dispatches": 40,
+        "bytes_traffic": 2179072,
+        "p50_us": 329.8335,
+        "min_us": 30.625,
+        "gbps_p50": 6.606581805668617,
+        "gbps_min_time": 71.15337142857143
+      }
+    },
+    "r4s2alu": {
+      "wall_s": {
+        "q4_896x896": 0.0002276703991810791,
+        "q4_896x128": 9.639979980420321e-05,
+        "q4_896x4864": 0.0002424516002065502,
+        "q4_4864x896": 0.000196312100160867,
+        "q4_896x151936": 0.0018823609498213045
+      },
+      "q4_896x896": {
+        "kernel": [
+          "QmmVecQ4ScreenR4S2ALUF16"
+        ],
+        "workgroups": [
+          112
+        ],
+        "dispatches": 21,
+        "bytes": 453376,
+        "p50_us": 51.25,
+        "min_us": 49.208,
+        "gbps_p50": 8.846360975609755,
+        "gbps_min_time": 9.21346122581694
+      },
+      "q4_896x128": {
+        "kernel": [
+          "QmmVecQ4ScreenR4S2ALUF16"
+        ],
+        "workgroups": [
+          16
+        ],
+        "dispatches": 21,
+        "bytes": 66304,
+        "p50_us": 47.792,
+        "min_us": 41.042,
+        "gbps_p50": 1.3873451623702713,
+        "gbps_min_time": 1.6155158130695386
+      },
+      "q4_896x4864": {
+        "kernel": [
+          "QmmVecQ4ScreenR4S2ALUF16"
+        ],
+        "workgroups": [
+          608
+        ],
+        "dispatches": 21,
+        "bytes": 2453248,
+        "p50_us": 163.333,
+        "min_us": 161.541,
+        "gbps_p50": 15.01991636717626,
+        "gbps_min_time": 15.186534687788239
+      },
+      "q4_4864x896": {
+        "kernel": [
+          "QmmVecQ4ScreenR4S2ALUF16"
+        ],
+        "workgroups": [
+          112
+        ],
+        "dispatches": 21,
+        "bytes": 2461184,
+        "p50_us": 146.333,
+        "min_us": 143.0,
+        "gbps_p50": 16.81906336916485,
+        "gbps_min_time": 17.211076923076924
+      },
+      "q4_896x151936": {
+        "kernel": [
+          "QmmVecQ4ScreenR4S2ALUF16"
+        ],
+        "workgroups": [
+          18992
+        ],
+        "dispatches": 21,
+        "bytes": 76577536,
+        "p50_us": 1344.458,
+        "min_us": 1340.292,
+        "gbps_p50": 56.95792356473761,
+        "gbps_min_time": 57.13496461965005
+      },
+      "ceiling_elementwise_f16": {
+        "kernel": [
+          "ElementwiseF16"
+        ],
+        "dispatches": 20,
+        "bytes_traffic": 4358144,
+        "p50_us": 1134.0,
+        "min_us": 1120.291,
+        "gbps_p50": 3.8431604938271606,
+        "gbps_min_time": 3.890189245472828
+      },
+      "ceiling_reduce_f32": {
+        "kernel": [
+          "ReduceF32"
+        ],
+        "dispatches": 40,
+        "bytes_traffic": 2179072,
+        "p50_us": 331.583,
+        "min_us": 31.417,
+        "gbps_p50": 6.571724123371825,
+        "gbps_min_time": 69.35964605150077
+      }
+    },
+    "r4s2mem": {
+      "wall_s": {
+        "q4_896x896": 0.0002050516995950602,
+        "q4_896x128": 9.915814880514517e-05,
+        "q4_896x4864": 0.00018897044938057662,
+        "q4_4864x896": 0.00012780804972862826,
+        "q4_896x151936": 0.0015640302503015847
+      },
+      "q4_896x896": {
+        "kernel": [
+          "QmmVecQ4ScreenR4S2MEMF16"
+        ],
+        "workgroups": [
+          112
+        ],
+        "dispatches": 21,
+        "bytes": 453376,
+        "p50_us": 47.542,
+        "min_us": 37.125,
+        "gbps_p50": 9.53632577510412,
+        "gbps_min_time": 12.212148148148149
+      },
+      "q4_896x128": {
+        "kernel": [
+          "QmmVecQ4ScreenR4S2MEMF16"
+        ],
+        "workgroups": [
+          16
+        ],
+        "dispatches": 21,
+        "bytes": 66304,
+        "p50_us": 47.042,
+        "min_us": 42.167,
+        "gbps_p50": 1.4094638833382935,
+        "gbps_min_time": 1.572414447316622
+      },
+      "q4_896x4864": {
+        "kernel": [
+          "QmmVecQ4ScreenR4S2MEMF16"
+        ],
+        "workgroups": [
+          608
+        ],
+        "dispatches": 21,
+        "bytes": 2453248,
+        "p50_us": 91.042,
+        "min_us": 89.666,
+        "gbps_p50": 26.946332461940642,
+        "gbps_min_time": 27.359846541609976
+      },
+      "q4_4864x896": {
+        "kernel": [
+          "QmmVecQ4ScreenR4S2MEMF16"
+        ],
+        "workgroups": [
+          112
+        ],
+        "dispatches": 21,
+        "bytes": 2461184,
+        "p50_us": 80.709,
+        "min_us": 77.625,
+        "gbps_p50": 30.494542120457446,
+        "gbps_min_time": 31.706074074074074
+      },
+      "q4_896x151936": {
+        "kernel": [
+          "QmmVecQ4ScreenR4S2MEMF16"
+        ],
+        "workgroups": [
+          18992
+        ],
+        "dispatches": 21,
+        "bytes": 76577536,
+        "p50_us": 1292.166,
+        "min_us": 1282.917,
+        "gbps_p50": 59.26292442302305,
+        "gbps_min_time": 59.690171694661466
+      },
+      "ceiling_elementwise_f16": {
+        "kernel": [
+          "ElementwiseF16"
+        ],
+        "dispatches": 20,
+        "bytes_traffic": 4358144,
+        "p50_us": 1118.313,
+        "min_us": 1116.25,
+        "gbps_p50": 3.897069961629705,
+        "gbps_min_time": 3.904272340425532
+      },
+      "ceiling_reduce_f32": {
+        "kernel": [
+          "ReduceF32"
+        ],
+        "dispatches": 40,
+        "bytes_traffic": 2179072,
+        "p50_us": 331.4795,
+        "min_us": 31.583,
+        "gbps_p50": 6.5737760555328455,
+        "gbps_min_time": 68.99509229648862
+      }
+    },
+    "r1s8": {
+      "wall_s": {
+        "q4_896x896": 0.00022493915021186693,
+        "q4_896x128": 0.00010246229940094053,
+        "q4_896x4864": 0.00027944945031777024,
+        "q4_4864x896": 0.00022152665042085573,
+        "q4_896x151936": 0.002193260350031778
+      },
+      "q4_896x896": {
+        "kernel": [
+          "QmmVecQ4ScreenR1S8F16"
+        ],
+        "workgroups": [
+          112
+        ],
+        "dispatches": 21,
+        "bytes": 453376,
+        "p50_us": 56.833,
+        "min_us": 55.833,
+        "gbps_p50": 7.977337110481586,
+        "gbps_min_time": 8.120215643078467
+      },
+      "q4_896x128": {
+        "kernel": [
+          "QmmVecQ4ScreenR1S8F16"
+        ],
+        "workgroups": [
+          16
+        ],
+        "dispatches": 21,
+        "bytes": 66304,
+        "p50_us": 44.5,
+        "min_us": 41.916,
+        "gbps_p50": 1.4899775280898877,
+        "gbps_min_time": 1.5818303273213092
+      },
+      "q4_896x4864": {
+        "kernel": [
+          "QmmVecQ4ScreenR1S8F16"
+        ],
+        "workgroups": [
+          608
+        ],
+        "dispatches": 21,
+        "bytes": 2453248,
+        "p50_us": 195.917,
+        "min_us": 194.042,
+        "gbps_p50": 12.521874058912703,
+        "gbps_min_time": 12.64287113099226
+      },
+      "q4_4864x896": {
+        "kernel": [
+          "QmmVecQ4ScreenR1S8F16"
+        ],
+        "workgroups": [
+          112
+        ],
+        "dispatches": 21,
+        "bytes": 2461184,
+        "p50_us": 167.416,
+        "min_us": 165.875,
+        "gbps_p50": 14.701008266832321,
+        "gbps_min_time": 14.837582516955539
+      },
+      "q4_896x151936": {
+        "kernel": [
+          "QmmVecQ4ScreenR1S8F16"
+        ],
+        "workgroups": [
+          18992
+        ],
+        "dispatches": 21,
+        "bytes": 76577536,
+        "p50_us": 1691.791,
+        "min_us": 1683.625,
+        "gbps_p50": 45.264182159616645,
+        "gbps_min_time": 45.48372470116564
+      },
+      "ceiling_elementwise_f16": {
+        "kernel": [
+          "ElementwiseF16"
+        ],
+        "dispatches": 20,
+        "bytes_traffic": 4358144,
+        "p50_us": 1167.5625,
+        "min_us": 1119.916,
+        "gbps_p50": 3.7326858305229913,
+        "gbps_min_time": 3.8914918618896417
+      },
+      "ceiling_reduce_f32": {
+        "kernel": [
+          "ReduceF32"
+        ],
+        "dispatches": 40,
+        "bytes_traffic": 2179072,
+        "p50_us": 333.708,
+        "min_us": 31.458,
+        "gbps_p50": 6.52987641890515,
+        "gbps_min_time": 69.26924788607032
+      }
+    },
+    "r1s8alu": {
+      "wall_s": {
+        "q4_896x896": 0.00014282054908107967,
+        "q4_896x128": 8.668735099490732e-05,
+        "q4_896x4864": 0.0002536203508498147,
+        "q4_4864x896": 0.00021680374920833855,
+        "q4_896x151936": 0.002336589198966976
+      },
+      "q4_896x896": {
+        "kernel": [
+          "QmmVecQ4ScreenR1S8ALUF16"
+        ],
+        "workgroups": [
+          112
+        ],
+        "dispatches": 21,
+        "bytes": 453376,
+        "p50_us": 55.542,
+        "min_us": 54.459,
+        "gbps_p50": 8.162759713370063,
+        "gbps_min_time": 8.325088598762372
+      },
+      "q4_896x128": {
+        "kernel": [
+          "QmmVecQ4ScreenR1S8ALUF16"
+        ],
+        "workgroups": [
+          16
+        ],
+        "dispatches": 21,
+        "bytes": 66304,
+        "p50_us": 41.583,
+        "min_us": 28.583,
+        "gbps_p50": 1.5944977514849819,
+        "gbps_min_time": 2.319700521288878
+      },
+      "q4_896x4864": {
+        "kernel": [
+          "QmmVecQ4ScreenR1S8ALUF16"
+        ],
+        "workgroups": [
+          608
+        ],
+        "dispatches": 21,
+        "bytes": 2453248,
+        "p50_us": 199.916,
+        "min_us": 198.541,
+        "gbps_p50": 12.2713939854739,
+        "gbps_min_time": 12.356379790572225
+      },
+      "q4_4864x896": {
+        "kernel": [
+          "QmmVecQ4ScreenR1S8ALUF16"
+        ],
+        "workgroups": [
+          112
+        ],
+        "dispatches": 21,
+        "bytes": 2461184,
+        "p50_us": 157.25,
+        "min_us": 155.917,
+        "gbps_p50": 15.651408585055643,
+        "gbps_min_time": 15.785219058858239
+      },
+      "q4_896x151936": {
+        "kernel": [
+          "QmmVecQ4ScreenR1S8ALUF16"
+        ],
+        "workgroups": [
+          18992
+        ],
+        "dispatches": 21,
+        "bytes": 76577536,
+        "p50_us": 1725.666,
+        "min_us": 1723.458,
+        "gbps_p50": 44.375641636330556,
+        "gbps_min_time": 44.43249327804913
+      },
+      "ceiling_elementwise_f16": {
+        "kernel": [
+          "ElementwiseF16"
+        ],
+        "dispatches": 20,
+        "bytes_traffic": 4358144,
+        "p50_us": 1124.729,
+        "min_us": 1119.75,
+        "gbps_p50": 3.87483918348331,
+        "gbps_min_time": 3.8920687653494084
+      },
+      "ceiling_reduce_f32": {
+        "kernel": [
+          "ReduceF32"
+        ],
+        "dispatches": 40,
+        "bytes_traffic": 2179072,
+        "p50_us": 334.271,
+        "min_us": 31.833,
+        "gbps_p50": 6.518878395074655,
+        "gbps_min_time": 68.45324034806647
+      }
+    },
+    "r1s8mem": {
+      "wall_s": {
+        "q4_896x896": 0.000208470449433662,
+        "q4_896x128": 0.0001012915003229864,
+        "q4_896x4864": 0.00023778910108376294,
+        "q4_4864x896": 0.00016952055011643097,
+        "q4_896x151936": 0.0019318191494676284
+      },
+      "q4_896x896": {
+        "kernel": [
+          "QmmVecQ4ScreenR1S8MEMF16"
+        ],
+        "workgroups": [
+          112
+        ],
+        "dispatches": 21,
+        "bytes": 453376,
+        "p50_us": 51.042,
+        "min_us": 49.834,
+        "gbps_p50": 8.88241056384938,
+        "gbps_min_time": 9.097724445157924
+      },
+      "q4_896x128": {
+        "kernel": [
+          "QmmVecQ4ScreenR1S8MEMF16"
+        ],
+        "workgroups": [
+          16
+        ],
+        "dispatches": 21,
+        "bytes": 66304,
+        "p50_us": 44.0,
+        "min_us": 41.417,
+        "gbps_p50": 1.506909090909091,
+        "gbps_min_time": 1.6008885240360238
+      },
+      "q4_896x4864": {
+        "kernel": [
+          "QmmVecQ4ScreenR1S8MEMF16"
+        ],
+        "workgroups": [
+          608
+        ],
+        "dispatches": 21,
+        "bytes": 2453248,
+        "p50_us": 156.75,
+        "min_us": 155.208,
+        "gbps_p50": 15.650704944178628,
+        "gbps_min_time": 15.806195556930055
+      },
+      "q4_4864x896": {
+        "kernel": [
+          "QmmVecQ4ScreenR1S8MEMF16"
+        ],
+        "workgroups": [
+          112
+        ],
+        "dispatches": 21,
+        "bytes": 2461184,
+        "p50_us": 116.959,
+        "min_us": 114.542,
+        "gbps_p50": 21.043134773724127,
+        "gbps_min_time": 21.487175010039984
+      },
+      "q4_896x151936": {
+        "kernel": [
+          "QmmVecQ4ScreenR1S8MEMF16"
+        ],
+        "workgroups": [
+          18992
+        ],
+        "dispatches": 21,
+        "bytes": 76577536,
+        "p50_us": 1411.208,
+        "min_us": 1346.791,
+        "gbps_p50": 54.26381936610337,
+        "gbps_min_time": 56.85925730124422
+      },
+      "ceiling_elementwise_f16": {
+        "kernel": [
+          "ElementwiseF16"
+        ],
+        "dispatches": 20,
+        "bytes_traffic": 4358144,
+        "p50_us": 1152.542,
+        "min_us": 1120.125,
+        "gbps_p50": 3.781332046901545,
+        "gbps_min_time": 3.890765762749693
+      },
+      "ceiling_reduce_f32": {
+        "kernel": [
+          "ReduceF32"
+        ],
+        "dispatches": 40,
+        "bytes_traffic": 2179072,
+        "p50_us": 332.729,
+        "min_us": 31.083,
+        "gbps_p50": 6.549089499262163,
+        "gbps_min_time": 70.10494482514558
+      }
+    }
+  }
+}

@@ -20,7 +20,7 @@ case "$version" in *"+diag.$commit") ;; *) echo "wheel stamp $version != diag.$c
 echo "$version" > "$out/version.txt"
 args=()
 for v in "$@"; do args+=(--variant "$v"); done
-.venv-accept/bin/python /tmp/gb-kernel_bandwidth.py run .venv-accept/bin/python "$out" . --reps 20 "${args[@]}" 2>&1 | tee "$out/screen.log"
+.venv-accept/bin/python /tmp/gb-kernel_bandwidth.py run .venv-accept/bin/python "$out" . --reps 4 "${args[@]}" 2>&1 | tee "$out/screen.log"
 # Compiler statistics and disassembly of the f16 Q4 kernel at K=N=896.
 for v in "$@"; do
   env_v=()

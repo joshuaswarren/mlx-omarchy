@@ -1,0 +1,1546 @@
+shader: MESA_SHADER_COMPUTE
+source_blake3: {0x4288806c, 0xce140cec, 0x53b59f74, 0x75106dfc, 0xeb582073, 0xb9a7841a, 0x54fae2fe, 0x87ec2403}
+workgroup_size: 256, 1, 1
+num_ssbos: 2
+system_values_read: 0x00000000'00000000'00001000'00000000
+max_subgroup_size: 32
+min_subgroup_size: 32
+bit_sizes_float: 0x30
+bit_sizes_int: 0x61
+flrp_lowered: true
+io_lowered: true
+writes_memory: true
+uniforms: 36
+decl_function main () (entrypoint)
+
+impl main {
+    preamble @preamble
+    block b0:   // preds:
+    32x3   %0 = @load_global_invocation_id
+    32     %1 = @load_preamble (base=8)
+    32     %2 = @load_preamble (base=10)
+    32     %3 = iadd %0.x, %1
+                // succs: b1
+    loop {
+        block b1:   // preds: b0 b7
+        32     %4 = phi b0: %3, b7: %17
+        32     %5 = @load_preamble (base=12)
+        1      %6 = uge %4, %5
+                    // succs: b2 b3
+        if %6 {
+            block b2:// preds: b1
+            break
+            // succs: b8
+        } else {
+            block b3:  // preds: b1, succs: b4
+        }
+        block b4:   // preds: b3
+        32     %7 = @load_preamble (base=14)
+        32     %8 = @load_preamble (base=16)
+        64     %9 = @load_preamble (base=20)
+        32    %10 = iadd %8, %4
+        32    %11 = @load_agx (%9, %10) (access=readonly|reorderable|speculatable, base=0, format=r32_uint, sign_extend=0)
+        16    %12 = f2f16 %11
+        64    %13 = @load_preamble (base=24)
+        32    %14 = iadd %7, %4
+                    @store_agx (%12, %13, %14) (access=writeonly|speculatable, base=0, format=r16_uint, sign_extend=0)
+        32    %15 = isub %5, %4
+        1     %16 = uge %2, %15
+                    // succs: b5 b6
+        if %16 {
+            block b5:// preds: b4
+            break
+            // succs: b8
+        } else {
+            block b6:  // preds: b4, succs: b7
+        }
+        block b7:   // preds: b6
+        32    %17 = iadd %4, %2
+                    // succs: b1
+    }
+    block b8:  // preds: b2 b5, succs: b9
+    block b9:
+}
+
+decl_function @preamble ()
+
+impl @preamble {
+    block b0:   // preds:
+    64     %0 = @load_preamble (base=0)
+    32     %1 = load_const (0x00000008)
+    32     %2 = load_const (0x00000009 = 0.000000)
+    32x3   %3 = @load_constant_agx (%0, %2 (0x9)) (access=speculatable, base=1, format=r32_uint, sign_extend=1)
+    32     %4 = ishl %3.z, %1 (0x8)
+                @store_preamble (%4) (base=8)
+    32     %5 = load_const (0x00000000 = 0.000000)
+    64     %6 = pack_64_2x32_split %3.x, %3.y
+    32x3   %7 = @load_constant_agx (%6, %5 (0x0)) (access=speculatable, base=0, format=r32_uint, sign_extend=0)
+    32     %8 = ishl %7.x, %1 (0x8)
+                @store_preamble (%8) (base=10)
+    32     %9 = load_const (0x0000003d = 0.000000 = 61)
+    32    %10 = @load_constant_agx (%0, %9 (0x3d)) (access=speculatable, base=1, format=r32_uint, sign_extend=1)
+                @store_preamble (%10) (base=12)
+    32    %11 = load_const (0x00000041 = 0.000000 = 65)
+    32    %12 = @load_constant_agx (%0, %11 (0x41)) (access=speculatable, base=1, format=r32_uint, sign_extend=1)
+                @store_preamble (%12) (base=14)
+    32    %13 = load_const (0x00000020 = 0.000000 = 32)
+    32    %14 = @load_constant_agx (%0, %13 (0x20)) (access=speculatable, base=2, format=r32_uint, sign_extend=1)
+                @store_preamble (%14) (base=16)
+    64    %15 = @load_preamble (base=4)
+    32x4  %16 = @load_constant_agx (%15, %5 (0x0)) (access=speculatable, base=0, format=r32_uint, sign_extend=0)
+    64    %17 = pack_64_2x32_split %16.x, %16.y
+                @store_preamble (%17) (base=20)
+    32    %18 = load_const (0x00000002 = 0.000000)
+    32x4  %19 = @load_constant_agx (%15, %18 (0x2)) (access=speculatable, base=2, format=r32_uint, sign_extend=1)
+    64    %20 = pack_64_2x32_split %19.x, %19.y
+                @store_preamble (%20) (base=24)
+                // succs: b1
+    block b1:
+}
+
+CS shader: 17 instrs, 9 alu, 9 fscib, 0 ic, 116 code size, 5 gprs, 28 uniforms, 0 scratch, 1024 threads, 1 loops, 0:0 spills:fills, 24 preamble inst
+block0 {
+   18 = get_sr #0x50
+   3 = iadd 18, u4, #0x0
+   begin_cf 
+} -> block1 
+
+block1 {
+   4 = phi 3, 17
+   if_icmp 4, u6, #0xaaab6c54c030, n=1, inv
+} -> block2 block3  from block0 block7
+
+block2 {
+   break #0xaaab6c54d3e0, n=2
+} -> block8  from block1
+
+block3 {
+   else_fcmp #0.000000, #0.000000, #0xaaab6c54c030, n=1
+   pop_exec #0x0, n=1
+} -> block4  from block1
+
+block4 {
+   10 = iadd u8, 4, #0x0
+   11 = device_load u10:u11, 10.abs, x, #0x0, slot 0
+   12h = fadd 11, #-0.000000
+   14 = iadd u7, 4, #0x0
+   device_store 12h, u12:u13, 14.abs, x, #0x0, slot 0
+   15 = iadd u6, 4.neg, #0x0
+   if_icmp u5, 15, #0xaaab6c5bb510, n=1, inv
+} -> block5 block6  from block3
+
+block5 {
+   break #0xaaab6c54d3e0, n=2
+} -> block8  from block4
+
+block6 {
+   else_fcmp #0.000000, #0.000000, #0xaaab6c5bb510, n=1
+   pop_exec #0x0, n=1
+} -> block7  from block4
+
+block7 {
+   17 = iadd 4, u5, #0x0
+   jmp_exec_any #0xaaab6c54baa0
+   pop_exec #0x0, n=1
+} -> block1  from block6
+
+block8 {
+   stop 
+} from block2 block5
+
+block0 {
+   18 = get_sr #0x50
+   3 = iadd 18, u4, #0x0
+   begin_cf 
+} -> block1 
+
+block1 {
+   4 = phi 3, 17
+   if_icmp 4, u6, #0xaaab6c54c030, n=1, inv
+} -> block2 block3  from block0 block7
+
+block2 {
+   break #0xaaab6c54d3e0, n=2
+} -> block8  from block1
+
+block3 {
+   else_fcmp #0.000000, #0.000000, #0xaaab6c54c030, n=1
+   pop_exec #0x0, n=1
+} -> block4  from block1
+
+block4 {
+   10 = iadd u8, 4, #0x0
+   11 = device_load u10:u11, 10.abs, x, #0x0, slot 0
+   12h = fadd 11, #-0.000000
+   14 = iadd u7, 4, #0x0
+   device_store 12h, u12:u13, 14.abs, x, #0x0, slot 0
+   15 = iadd u6, 4.neg, #0x0
+   if_icmp u5, 15, #0xaaab6c5bb510, n=1, inv
+} -> block5 block6  from block3
+
+block5 {
+   break #0xaaab6c54d3e0, n=2
+} -> block8  from block4
+
+block6 {
+   else_fcmp #0.000000, #0.000000, #0xaaab6c5bb510, n=1
+   pop_exec #0x0, n=1
+} -> block7  from block4
+
+block7 {
+   17 = iadd 4, u5, #0x0
+   jmp_exec_any #0xaaab6c54baa0
+   pop_exec #0x0, n=1
+} -> block1  from block6
+
+block8 {
+   stop 
+} from block2 block5
+
+block0 {
+   $r1 = get_sr #0x50
+   r1 = iadd ^r1, u4, #0x0
+   r0l = mov_imm #0x0
+} -> block1 
+
+block1 {
+} -> block2 block3  from block0 block7
+
+block2 {
+} -> block8  from block1
+
+block3 {
+} -> block4  from block1
+
+block4 {
+   while_icmp $r1, u6, #0x0, n=1
+   r2 = iadd u8, $r1, #0x0
+   $r2 = device_load u10:u11, r2.abs, x, #0x0, slot 0
+   wait #0x0, slot 0
+   r0h = fadd r2, #-0.000000
+   r2 = iadd u7, $r1, #0x0
+   device_store r0h, u12:u13, r2.abs, x, #0x0, slot 0
+   r2 = iadd u6, r1.neg, #0x0
+   wait #0x0, slot 0
+} -> block5 block6  from block3
+
+block5 {
+} -> block8  from block4
+
+block6 {
+} -> block7  from block4
+
+block7 {
+   while_icmp u5, r2, #0x0, n=1
+   r1 = iadd r1, u5, #0x0
+   jmp_exec_any #0xaaab6c54baa0
+   pop_exec #0x0, n=1
+} -> block1  from block6
+
+block8 {
+   stop 
+} from block2 block5
+
+   0: f2051004               mov      $r1, thread_in_grid_x
+   4: 0e05c28658000000       iadd     r1, ^r1.sx, u4.sx
+   c: 62000000               ldimm    r0l, 0
+  10: 522c82c21800           while    $r1, u6, 1, ult
+  16: 0e09902568000000       iadd     r2, u8.sx, $r1.sx
+  1e: 0511440e10c01200       load     r2, du10, r2, i32, x, a
+  26: 3800                   wait     a
+  28: 2a8244020002           fadd     r0h, r2, -0.0
+  2e: 0e098e2568000000       iadd     r2, u7.sx, $r1.sx
+  36: c504480e10c01000       store    r0h, du12, r2, i16, x, a
+  3e: 0e098c2d64000000       isub     r2, u6.sx, r1.sx
+  46: 3800                   wait     a
+  48: 522c8a412400           while    u5, r2, 1, ult
+  4e: 0e0542a658000000       iadd     r1, r1.sx, u5.sx
+  56: 00c0baffffff           jmp_any  -70
+  5c: 520e00000000           pop_exec 1
+  62: 8800                   stop
+block0 {
+   3 = device_load u0:u1, #9, xyz, #0x0, slot 0
+   21, 22, 23 = split 3
+   4 = bfi #0, 23, #8, #0x0
+   uniform_store 4, #8, x, #0x0
+   6d = collect 21, 22
+   7 = device_load 6d, #0, xyz, #0x0, slot 0
+   25, _, _ = split 7
+   8 = bfi #0, 25, #8, #0x0
+   uniform_store 8, #10, x, #0x0
+   10 = device_load u0:u1, #61, x, #0x0, slot 0
+   uniform_store 10, #12, x, #0x0
+   12 = device_load u0:u1, #65, x, #0x0, slot 0
+   uniform_store 12, #14, x, #0x0
+   14 = device_load u0:u1, #32, x, #0x0, slot 0
+   uniform_store 14, #16, x, #0x0
+   16 = device_load u2:u3, #0, xyzw, #0x0, slot 0
+   35, 36, _, _ = split 16
+   17d = collect 35, 36
+   39d = mov 17d
+   uniform_store 39d, #20, x, #0x0
+   19 = device_load u2:u3, #2, xyzw, #0x0, slot 0
+   40, 41, _, _ = split 19
+   20d = collect 40, 41
+   44d = mov 20d
+   uniform_store 44d, #24, x, #0x0
+   stop 
+}
+
+block0 {
+   3 = device_load u0:u1, #9, xyz, #0x0, slot 0
+   21, 22, 23 = split 3
+   4 = bfi #0, 23, #8, #0x0
+   uniform_store 4, #8, x, #0x0
+   6d = collect 21, 22
+   7 = device_load 6d, #0, xyz, #0x0, slot 0
+   25, _, _ = split 7
+   8 = bfi #0, 25, #8, #0x0
+   uniform_store 8, #10, x, #0x0
+   10 = device_load u0:u1, #61, x, #0x0, slot 0
+   uniform_store 10, #12, x, #0x0
+   12 = device_load u0:u1, #65, x, #0x0, slot 0
+   uniform_store 12, #14, x, #0x0
+   14 = device_load u0:u1, #32, x, #0x0, slot 0
+   uniform_store 14, #16, x, #0x0
+   16 = device_load u2:u3, #0, xyzw, #0x0, slot 0
+   35, 36, _, _ = split 16
+   17d = collect 35, 36
+   39d = mov 17d
+   uniform_store 39d, #20, x, #0x0
+   19 = device_load u2:u3, #2, xyzw, #0x0, slot 0
+   40, 41, _, _ = split 19
+   20d = collect 40, 41
+   44d = mov 20d
+   uniform_store 44d, #24, x, #0x0
+   stop 
+}
+
+block0 {
+   r0...r2 = device_load u0:u1, #9, xyz, #0x0, slot 0
+   wait #0x0, slot 0
+   r2 = bfi #0, ^r2, #8, #0x0
+   uniform_store ^r2, #8, x, #0x0
+   $r0...r2 = device_load ^r0:r1, #0, xyz, #0x0, slot 0
+   wait #0x0, slot 0
+   r0 = bfi #0, ^r0, #8, #0x0
+   uniform_store ^r0, #10, x, #0x0
+   r0 = device_load u0:u1, #61, x, #0x0, slot 0
+   wait #0x0, slot 0
+   uniform_store ^r0, #12, x, #0x0
+   r0 = device_load u0:u1, #65, x, #0x0, slot 0
+   wait #0x0, slot 0
+   uniform_store ^r0, #14, x, #0x0
+   r0 = device_load u0:u1, #32, x, #0x0, slot 0
+   wait #0x0, slot 0
+   uniform_store ^r0, #16, x, #0x0
+   r0...r3 = device_load u2:u3, #0, xyzw, #0x0, slot 0
+   wait #0x0, slot 0
+   uniform_store ^r0:r1, #20, x, #0x0
+   r0...r3 = device_load u2:u3, #2, xyzw, #0x0, slot 0
+   wait #0x0, slot 0
+   uniform_store ^r0:r1, #24, x, #0x0
+   stop 
+}
+
+   0: 0501900d00c47200       load     r0_r1_r2, du0, 9, lsl 1, i32, xyz, a
+   8: 3800                   wait     a
+   a: 2e0900402c080000       shl      r2, ^r2, 8
+  12: c510803d00803000       mov      u4, r2
+  1a: 0501000500c07200       load     r0_r1_r2, dr0, 0, i32, xyz, a
+  22: 3800                   wait     a
+  24: 2e0100002c080000       shl      r0, ^r0, 8
+  2c: c500a03d00803000       mov      u5, r0
+  34: 0501d00d03c41200       load     r0, du0, 61, lsl 1, i32, x, a
+  3c: 3800                   wait     a
+  3e: c500c03d00803000       mov      u6, r0
+  46: 0501100d04c41200       load     r0, du0, 65, lsl 1, i32, x, a
+  4e: 3800                   wait     a
+  50: c500e03d00803000       mov      u7, r0
+  58: 0501000d02c81200       load     r0, du0, 32, lsl 2, i32, x, a
+  60: 3800                   wait     a
+  62: c500003d01803000       mov      u8, r0
+  6a: 0501040d00c0f200       load     r0_r1_r2_r3, du2, 0, i32, xyzw, a
+  72: 3800                   wait     a
+  74: c500403d0180f000       mov      du10, dr0
+  7c: 0501240d00c8f200       load     r0_r1_r2_r3, du2, 2, lsl 2, i32, xyzw, a
+  84: 3800                   wait     a
+  86: c500803d0180f000       mov      du12, dr0
+  8e: 8800                   stop
+shader: MESA_SHADER_COMPUTE
+source_blake3: {0xe20d75e7, 0x441bb5e5, 0xa95504c6, 0xc25f3589, 0xedb9168d, 0x5e68b1f1, 0x71831fbe, 0x7af26bc7}
+workgroup_size: 256, 1, 1
+num_ssbos: 6
+system_values_read: 0x00000000'00000000'00008400'00000000
+max_subgroup_size: 32
+min_subgroup_size: 32
+uses_wide_subgroup_intrinsics: true
+bit_sizes_float: 0x30
+bit_sizes_int: 0x71
+flrp_lowered: true
+io_lowered: true
+writes_memory: true
+uniforms: 120
+decl_function main () (entrypoint)
+
+impl main {
+    preamble @preamble
+    block b0:    // preds:
+    32x3    %0 = @load_local_invocation_id
+    32x3    %1 = @load_workgroup_id
+    32x3    %2 = @load_preamble (base=8)
+    32      %3 = load_const (0x00000001)
+    32      %4 = load_const (0x00000005)
+    32      %5 = iadd %1.x, %2.x
+    32      %6 = ushr %0.x, %4 (0x5)
+    32      %7 = load_const (0x00000003)
+    32      %8 = imadshl_agx %6, %3 (0x1), %5, %7 (0x3)
+    32x3    %9 = @load_preamble (base=14)
+    32     %10 = @load_preamble (base=20)
+    1      %11 = @load_preamble (base=22)
+    32     %12 = @load_preamble (base=24)
+    32     %13 = @load_preamble (base=26)
+    32     %14 = @load_preamble (base=28)
+    32     %15 = load_const (0x00000006)
+    32     %16 = load_const (0x00000000 = 0.000000)
+    32     %17 = load_const (0x00000002)
+    32     %18 = load_const (0x00000020 = 32)
+    32     %19 = load_const (0x0000001f = 31)
+    32     %20 = iand %0.x, %19 (0x1f)
+    32     %21 = load_const (0x00000008)
+                 // succs: b1
+    loop {
+        block b1:    // preds: b0 b15
+        32     %22 = phi b0: %16 (0x0), b15: %155
+        32x3   %23 = @load_preamble (base=30)
+        1      %24 = uge %22, %23.x
+                     // succs: b2 b3
+        if %24 {
+            block b2:// preds: b1
+            break
+            // succs: b16
+        } else {
+            block b3:  // preds: b1, succs: b4
+        }
+        block b4:    // preds: b3
+        32x4   %25 = @load_preamble (base=36)
+        32     %26 = @load_preamble (base=44)
+        32     %27 = umin %8, %12
+        32     %28 = imadshl_agx %22, %23.y, %25.y, %16 (0x0)
+        32     %29 = imadshl_agx %27, %13, %28, %16 (0x0)
+        32     %30 = imul %27, %10
+        32     %31 = imadshl_agx %22, %9.y, %25.x, %16 (0x0)
+        32     %32 = imul %22, %23.z
+        32     %33 = iadd %26, %32
+        32     %34 = iadd %25.w, %32
+                     // succs: b5
+        loop {
+            block b5:    // preds: b4 b11
+            32     %35 = phi b4: %16 (0x0), b11: %144
+            32     %36 = phi b4: %20, b11: %145
+            1      %37 = uge %36, %13
+                         // succs: b6 b7
+            if %37 {
+                block b6:// preds: b5
+                break
+                // succs: b12
+            } else {
+                block b7:  // preds: b5, succs: b8
+            }
+            block b8:    // preds: b7
+            32     %38 = umin %36, %14
+            32     %39 = imadshl_agx %31, %3 (0x1), %38, %7 (0x3)
+                         // succs: b9 b10
+            if %11 {
+                block b9:    // preds: b8
+                64     %40 = @load_preamble (base=48)
+                32     %41 = ushr %39, %3 (0x1)
+                32     %42 = @load_agx (%40, %41) (access=readonly|reorderable|speculatable, base=0, format=r32_uint, sign_extend=0)
+                32     %43 = iadd %41, %3 (0x1)
+                32     %44 = @load_agx (%40, %43) (access=readonly|reorderable|speculatable, base=0, format=r32_uint, sign_extend=0)
+                32     %45 = iadd %41, %17 (0x2)
+                32     %46 = @load_agx (%40, %45) (access=readonly|reorderable|speculatable, base=0, format=r32_uint, sign_extend=0)
+                32     %47 = iadd %41, %7 (0x3)
+                32     %48 = @load_agx (%40, %47) (access=readonly|reorderable|speculatable, base=0, format=r32_uint, sign_extend=0)
+                16     %49 = unpack_32_2x16_split_x %48
+                16     %50 = unpack_32_2x16_split_y %48
+                16     %51 = unpack_32_2x16_split_x %42
+                16     %52 = unpack_32_2x16_split_y %42
+                16     %53 = unpack_32_2x16_split_x %44
+                16     %54 = unpack_32_2x16_split_y %44
+                16     %55 = unpack_32_2x16_split_x %46
+                16     %56 = unpack_32_2x16_split_y %46
+                             // succs: b11
+            } else {
+                block b10:   // preds: b8
+                64     %57 = @load_preamble (base=52)
+                16     %58 = @load_agx (%57, %39) (access=readonly|reorderable|speculatable, base=0, format=r16_uint, sign_extend=0)
+                32     %59 = iadd %39, %3 (0x1)
+                16     %60 = @load_agx (%57, %59) (access=readonly|reorderable|speculatable, base=0, format=r16_uint, sign_extend=0)
+                32     %61 = iadd %39, %17 (0x2)
+                16     %62 = @load_agx (%57, %61) (access=readonly|reorderable|speculatable, base=0, format=r16_uint, sign_extend=0)
+                32     %63 = iadd %39, %7 (0x3)
+                16     %64 = @load_agx (%57, %63) (access=readonly|reorderable|speculatable, base=0, format=r16_uint, sign_extend=0)
+                32     %65 = load_const (0x00000004)
+                32     %66 = iadd %39, %65 (0x4)
+                16     %67 = @load_agx (%57, %66) (access=readonly|reorderable|speculatable, base=0, format=r16_uint, sign_extend=0)
+                32     %68 = iadd %39, %4 (0x5)
+                16     %69 = @load_agx (%57, %68) (access=readonly|reorderable|speculatable, base=0, format=r16_uint, sign_extend=0)
+                32     %70 = iadd %39, %15 (0x6)
+                16     %71 = @load_agx (%57, %70) (access=readonly|reorderable|speculatable, base=0, format=r16_uint, sign_extend=0)
+                32     %72 = load_const (0x00000007)
+                32     %73 = iadd %39, %72 (0x7)
+                16     %74 = @load_agx (%57, %73) (access=readonly|reorderable|speculatable, base=0, format=r16_uint, sign_extend=0)
+                             // succs: b11
+            }
+            block b11:   // preds: b9 b10
+            16     %75 = phi b9: %50, b10: %74
+            16     %76 = phi b9: %49, b10: %71
+            16     %77 = phi b9: %56, b10: %69
+            16     %78 = phi b9: %55, b10: %67
+            16     %79 = phi b9: %54, b10: %64
+            16     %80 = phi b9: %53, b10: %62
+            16     %81 = phi b9: %52, b10: %60
+            16     %82 = phi b9: %51, b10: %58
+            32     %83 = iadd %38, %29
+            64     %84 = @load_preamble (base=56)
+            32     %85 = @load_agx (%84, %83) (access=readonly|reorderable|speculatable, base=0, format=r32_uint, sign_extend=0)
+            32     %86 = iadd %33, %30
+            32     %87 = ushr %38, %7 (0x3)
+            32     %88 = iadd %87, %86
+            64     %89 = @load_preamble (base=60)
+            16     %90 = @load_agx (%89, %88) (access=readonly|reorderable|speculatable, base=0, format=r16_uint, sign_extend=0)
+            32     %91 = iadd %34, %30
+            32     %92 = iadd %87, %91
+            64     %93 = @load_preamble (base=64)
+            16     %94 = @load_agx (%93, %92) (access=readonly|reorderable|speculatable, base=0, format=r16_uint, sign_extend=0)
+            32     %95 = f2f32 %94
+            32     %96 = f2f32 %90
+            32     %97 = load_const (0x0000000f = 15)
+            32     %98 = iand %85, %97 (0xf)
+            32     %99 = u2f32 %98
+            32    %100 = ffma %96, %99, %95
+            32    %101 = f2f32 %82
+            32    %102 = ffma %101, %100, %35
+            32    %103 = load_const (0x00000004)
+            32    %104 = ubitfield_extract %85, %103 (0x4), %103 (0x4)
+            32    %105 = u2f32 %104
+            32    %106 = ffma %96, %105, %95
+            32    %107 = f2f32 %81
+            32    %108 = ffma %107, %106, %102
+            32    %109 = ubitfield_extract %85, %21 (0x8), %103 (0x4)
+            32    %110 = u2f32 %109
+            32    %111 = ffma %96, %110, %95
+            32    %112 = f2f32 %80
+            32    %113 = ffma %112, %111, %108
+            32    %114 = load_const (0x0000000c = 12)
+            32    %115 = ubitfield_extract %85, %114 (0xc), %103 (0x4)
+            32    %116 = u2f32 %115
+            32    %117 = ffma %96, %116, %95
+            32    %118 = f2f32 %79
+            32    %119 = ffma %118, %117, %113
+            16    %120 = unpack_32_2x16_split_y %85
+            32    %121 = u2u32 %120
+            32    %122 = iand %121, %97 (0xf)
+            32    %123 = u2f32 %122
+            32    %124 = ffma %96, %123, %95
+            32    %125 = f2f32 %78
+            32    %126 = ffma %125, %124, %119
+            32    %127 = load_const (0x00000014 = 20)
+            32    %128 = ubitfield_extract %85, %127 (0x14), %103 (0x4)
+            32    %129 = u2f32 %128
+            32    %130 = ffma %96, %129, %95
+            32    %131 = f2f32 %77
+            32    %132 = ffma %131, %130, %126
+            32    %133 = load_const (0x00000018 = 24)
+            32    %134 = ubitfield_extract %85, %133 (0x18), %103 (0x4)
+            32    %135 = u2f32 %134
+            32    %136 = ffma %96, %135, %95
+            32    %137 = f2f32 %76
+            32    %138 = ffma %137, %136, %132
+            32    %139 = load_const (0x0000001c = 28)
+            32    %140 = ushr %85, %139 (0x1c)
+            32    %141 = u2f32 %140
+            32    %142 = ffma %96, %141, %95
+            32    %143 = f2f32 %75
+            32    %144 = ffma %143, %142, %138
+            32    %145 = iadd %36, %18 (0x20)
+                         // succs: b5
+        }
+        block b12:   // preds: b6
+        32    %146 = @reduce (%35) (reduction_op=fadd, cluster_size=0)
+        1     %147 = load_const (false)
+        1     %148 = ieq %20, %16 (0x0)
+        1     %149 = ult %8, %9.x
+        1     %150 = bcsel %148, %149, %147 (false)
+                     // succs: b13 b14
+        if %150 {
+            block b13:   // preds: b12
+            32    %151 = imadshl_agx %22, %9.x, %25.z, %16 (0x0)
+            32    %152 = iadd %8, %151
+            16    %153 = f2f16 %146
+            64    %154 = @load_preamble (base=68)
+                         @store_agx (%153, %154, %152) (access=writeonly|speculatable, base=0, format=r16_uint, sign_extend=0)
+                         // succs: b15
+        } else {
+            block b14:  // preds: b12, succs: b15
+        }
+        block b15:   // preds: b13 b14
+        32    %155 = iadd %22, %3 (0x1)
+                     // succs: b1
+    }
+    block b16:  // preds: b2, succs: b17
+    block b17:
+}
+
+decl_function @preamble ()
+
+impl @preamble {
+    block b0:   // preds:
+    64     %0 = @load_preamble (base=0)
+    32     %1 = load_const (0x00000005 = 0.000000)
+    32x3   %2 = @load_constant_agx (%0, %1 (0x5)) (access=speculatable, base=2, format=r32_uint, sign_extend=1)
+                @store_preamble (%2) (base=8)
+    32     %3 = load_const (0x00000043 = 0.000000 = 67)
+    32x3   %4 = @load_constant_agx (%0, %3 (0x43)) (access=speculatable, base=1, format=r32_uint, sign_extend=1)
+                @store_preamble (%4) (base=14)
+    32     %5 = load_const (0x00000006)
+    32     %6 = ushr %4.y, %5 (0x6)
+                @store_preamble (%6) (base=20)
+    32     %7 = load_const (0x00000002)
+    32     %8 = iand %4.z, %7 (0x2)
+    32     %9 = load_const (0x00000000)
+    1     %10 = ine %8, %9 (0x0)
+                @store_preamble (%10) (base=22)
+    32    %11 = load_const (0xffffffff = -1 = 4294967295)
+    32    %12 = iadd %4.x, %11 (0xffffffff)
+                @store_preamble (%12) (base=24)
+    32    %13 = load_const (0x00000003)
+    32    %14 = ushr %4.y, %13 (0x3)
+                @store_preamble (%14) (base=26)
+    32    %15 = iadd %14, %11 (0xffffffff)
+                @store_preamble (%15) (base=28)
+    32    %16 = load_const (0x00000023 = 0.000000 = 35)
+    32x3  %17 = @load_constant_agx (%0, %16 (0x23)) (access=speculatable, base=2, format=r32_uint, sign_extend=1)
+                @store_preamble (%17) (base=30)
+    32    %18 = load_const (0x00000020 = 0.000000 = 32)
+    32x4  %19 = @load_constant_agx (%0, %18 (0x20)) (access=speculatable, base=2, format=r32_uint, sign_extend=1)
+                @store_preamble (%19) (base=36)
+    32    %20 = load_const (0x00000021 = 0.000000 = 33)
+    32    %21 = @load_constant_agx (%0, %20 (0x21)) (access=speculatable, base=2, format=r32_uint, sign_extend=1)
+                @store_preamble (%21) (base=44)
+    64    %22 = @load_preamble (base=4)
+    32x4  %23 = @load_constant_agx (%22, %9 (0x0)) (access=speculatable, base=0, format=r32_uint, sign_extend=0)
+    64    %24 = pack_64_2x32_split %23.x, %23.y
+                @store_preamble (%24) (base=48)
+                @store_preamble (%24) (base=52)
+    32    %25 = load_const (0x00000001 = 0.000000)
+    32x4  %26 = @load_constant_agx (%22, %25 (0x1)) (access=speculatable, base=2, format=r32_uint, sign_extend=1)
+    64    %27 = pack_64_2x32_split %26.x, %26.y
+                @store_preamble (%27) (base=56)
+    32x4  %28 = @load_constant_agx (%22, %7 (0x2)) (access=speculatable, base=2, format=r32_uint, sign_extend=1)
+    64    %29 = pack_64_2x32_split %28.x, %28.y
+                @store_preamble (%29) (base=60)
+    32x4  %30 = @load_constant_agx (%22, %13 (0x3)) (access=speculatable, base=2, format=r32_uint, sign_extend=1)
+    64    %31 = pack_64_2x32_split %30.x, %30.y
+                @store_preamble (%31) (base=64)
+    32    %32 = load_const (0x00000004 = 0.000000)
+    32x4  %33 = @load_constant_agx (%22, %32 (0x4)) (access=speculatable, base=2, format=r32_uint, sign_extend=1)
+    64    %34 = pack_64_2x32_split %33.x, %33.y
+                @store_preamble (%34) (base=68)
+                // succs: b1
+    block b1:
+}
+
+block0 {
+   156 = get_sr #0x30
+   159 = get_sr #0x0
+   5 = iadd 159, u4, #0x0
+   6 = bfeil #0, 156, #5, #0x0
+   8 = iadd 6, 5, #0x0
+   20 = and 156, #31
+   begin_cf 
+} -> block1 
+
+block1 {
+   22 = phi #0, 155
+   if_icmp 22, u15, #0xaaab6c54c210, n=1, inv
+} -> block2 block3  from block0 block15
+
+block2 {
+   break #0xaaab6c54baa0, n=2
+} -> block16  from block1
+
+block3 {
+   else_fcmp #0.000000, #0.000000, #0xaaab6c54c210, n=1
+   pop_exec #0x0, n=1
+} -> block4  from block1
+
+block4 {
+   27 = icmpsel 8, u12, 8, u12, #0x0
+   28 = imad 22, u16, u19, #0x0
+   29 = imad 27, u13, 28, #0x0
+   30 = imad 27, u10, #0, #0x0
+   31 = imad 22, u8, u18, #0x0
+   32 = imad 22, u17, #0, #0x0
+   33 = iadd u22, 32, #0x0
+   34 = iadd u21, 32, #0x0
+   if_fcmp #0.000000, #0.000000, #0x0, n=1
+} -> block5  from block3
+
+block5 {
+   35 = phi #0, 144
+   36 = phi 20, 145
+   if_icmp 36, u13, #0xaaab6c5c2680, n=1, inv
+} -> block6 block7  from block4 block11
+
+block6 {
+   break #0xaaab6c5bb510, n=2
+} -> block12  from block5
+
+block7 {
+   else_fcmp #0.000000, #0.000000, #0xaaab6c5c2680, n=1
+   pop_exec #0x0, n=1
+} -> block8  from block5
+
+block8 {
+   38 = icmpsel 36, u14, 36, u14, #0x0
+   39 = iadd 31, 38, #0x0
+   if_icmp u11l, #0, #0xaaab6c5c9af0, n=1, inv
+} -> block9 block10  from block7
+
+block9 {
+   41 = bfeil #0, 39, #1, #0x0
+   42 = device_load u24:u25, 41.abs, x, #0x0, slot 0
+   43 = iadd 41, #1, #0x0
+   44 = device_load u24:u25, 43.abs, x, #0x0, slot 0
+   45 = iadd 41, #2, #0x0
+   46 = device_load u24:u25, 45.abs, x, #0x0, slot 0
+   47 = iadd 41, #3, #0x0
+   48 = device_load u24:u25, 47.abs, x, #0x0, slot 0
+   49h, _ = split 48
+   _, 50h = split 48
+   51h, _ = split 42
+   _, 52h = split 42
+   53h, _ = split 44
+   _, 54h = split 44
+   55h, _ = split 46
+   _, 56h = split 46
+} -> block11  from block8
+
+block10 {
+   else_fcmp #0.000000, #0.000000, #0xaaab6c5c9af0, n=1
+   58h = device_load u26:u27, 39.abs, x, #0x0, slot 0
+   59 = iadd 39, #1, #0x0
+   60h = device_load u26:u27, 59.abs, x, #0x0, slot 0
+   61 = iadd 39, #2, #0x0
+   62h = device_load u26:u27, 61.abs, x, #0x0, slot 0
+   63 = iadd 39, #3, #0x0
+   64h = device_load u26:u27, 63.abs, x, #0x0, slot 0
+   66 = iadd 39, #4, #0x0
+   67h = device_load u26:u27, 66.abs, x, #0x0, slot 0
+   68 = iadd 39, #5, #0x0
+   69h = device_load u26:u27, 68.abs, x, #0x0, slot 0
+   70 = iadd 39, #6, #0x0
+   71h = device_load u26:u27, 70.abs, x, #0x0, slot 0
+   73 = iadd 39, #7, #0x0
+   74h = device_load u26:u27, 73.abs, x, #0x0, slot 0
+   pop_exec #0x0, n=1
+} -> block11  from block8
+
+block11 {
+   75h = phi 50h, 74h
+   76h = phi 49h, 71h
+   77h = phi 56h, 69h
+   78h = phi 55h, 67h
+   79h = phi 54h, 64h
+   80h = phi 53h, 62h
+   81h = phi 52h, 60h
+   82h = phi 51h, 58h
+   83 = iadd 38, 29, #0x0
+   85 = device_load u28:u29, 83.abs, x, #0x0, slot 0
+   86 = iadd 33, 30, #0x0
+   87 = bfeil #0, 38, #3, #0x0
+   88 = iadd 87, 86, #0x0
+   90h = device_load u30:u31, 88.abs, x, #0x0, slot 0
+   91 = iadd 34, 30, #0x0
+   92 = iadd 87, 91, #0x0
+   94h = device_load u32:u33, 92.abs, x, #0x0, slot 0
+   98 = and 85, #15
+   99 = convert #10, 98, #0x1
+   100 = ffma 90h, 99, 94h
+   102 = ffma 82h, 100, 35
+   104 = bfeil #0, 85, #4, #0x4
+   105 = convert #10, 104, #0x1
+   106 = ffma 90h, 105, 94h
+   108 = ffma 81h, 106, 102
+   109 = bfeil #0, 85, #8, #0x4
+   110 = convert #10, 109, #0x1
+   111 = ffma 90h, 110, 94h
+   113 = ffma 80h, 111, 108
+   115 = bfeil #0, 85, #12, #0x4
+   116 = convert #10, 115, #0x1
+   117 = ffma 90h, 116, 94h
+   119 = ffma 79h, 117, 113
+   _, 120h = split 85
+   122 = and 120h, #15
+   123 = convert #10, 122, #0x1
+   124 = ffma 90h, 123, 94h
+   126 = ffma 78h, 124, 119
+   128 = bfeil #0, 85, #20, #0x4
+   129 = convert #10, 128, #0x1
+   130 = ffma 90h, 129, 94h
+   132 = ffma 77h, 130, 126
+   134 = bfeil #0, 85, #24, #0x4
+   135 = convert #10, 134, #0x1
+   136 = ffma 90h, 135, 94h
+   138 = ffma 76h, 136, 132
+   140 = bfeil #0, 85, #28, #0x0
+   141 = convert #10, 140, #0x1
+   142 = ffma 90h, 141, 94h
+   144 = ffma 75h, 142, 138
+   145 = iadd 36, #32, #0x0
+   jmp_exec_any #0xaaab6c5bb6f0
+   pop_exec #0x0, n=1
+} -> block5  from block9 block10
+
+block12 {
+   146 = simd_reduce 35, #0x1
+   149h = icmp 8, u7, #0x0
+   150h = icmpsel 20, #0, 149h, #0, #0x0
+   if_icmp 150h, #0, #0xaaab6c5c0500, n=1, inv
+} -> block13 block14  from block6
+
+block13 {
+   151 = imad 22, u7, u20, #0x0
+   152 = iadd 8, 151, #0x0
+   153h = fadd 146, #-0.000000
+   device_store 153h, u34:u35, 152.abs, x, #0x0, slot 0
+} -> block15  from block12
+
+block14 {
+   else_fcmp #0.000000, #0.000000, #0xaaab6c5c0500, n=1
+   pop_exec #0x0, n=1
+} -> block15  from block12
+
+block15 {
+   155 = iadd 22, #1, #0x0
+   jmp_exec_any #0xaaab6c54be60
+   pop_exec #0x0, n=1
+} -> block1  from block13 block14
+
+block16 {
+   stop 
+} from block2
+
+block0 {
+   156 = get_sr #0x30
+   159 = get_sr #0x0
+   5 = iadd 159, u4, #0x0
+   6 = bfeil #0, 156, #5, #0x0
+   8 = iadd 6, 5, #0x0
+   20 = and 156, #31
+   begin_cf 
+} -> block1 
+
+block1 {
+   22 = phi #0, 155
+   if_icmp 22, u15, #0xaaab6c54c210, n=1, inv
+} -> block2 block3  from block0 block15
+
+block2 {
+   break #0xaaab6c54baa0, n=2
+} -> block16  from block1
+
+block3 {
+   else_fcmp #0.000000, #0.000000, #0xaaab6c54c210, n=1
+   pop_exec #0x0, n=1
+} -> block4  from block1
+
+block4 {
+   27 = icmpsel 8, u12, 8, u12, #0x0
+   28 = imad 22, u16, u19, #0x0
+   29 = imad 27, u13, 28, #0x0
+   30 = imad 27, u10, #0, #0x0
+   31 = imad 22, u8, u18, #0x0
+   32 = imad 22, u17, #0, #0x0
+   33 = iadd u22, 32, #0x0
+   34 = iadd u21, 32, #0x0
+   if_fcmp #0.000000, #0.000000, #0x0, n=1
+} -> block5  from block3
+
+block5 {
+   35 = phi #0, 144
+   36 = phi 20, 145
+   if_icmp 36, u13, #0xaaab6c5c2680, n=1, inv
+} -> block6 block7  from block4 block11
+
+block6 {
+   break #0xaaab6c5bb510, n=2
+} -> block12  from block5
+
+block7 {
+   else_fcmp #0.000000, #0.000000, #0xaaab6c5c2680, n=1
+   pop_exec #0x0, n=1
+} -> block8  from block5
+
+block8 {
+   38 = icmpsel 36, u14, 36, u14, #0x0
+   39 = iadd 31, 38, #0x0
+   if_icmp u11l, #0, #0xaaab6c5c9af0, n=1, inv
+} -> block9 block10  from block7
+
+block9 {
+   41 = bfeil #0, 39, #1, #0x0
+   42 = device_load u24:u25, 41.abs, x, #0x0, slot 0
+   43 = iadd 41, #1, #0x0
+   44 = device_load u24:u25, 43.abs, x, #0x0, slot 0
+   45 = iadd 41, #2, #0x0
+   46 = device_load u24:u25, 45.abs, x, #0x0, slot 0
+   47 = iadd 41, #3, #0x0
+   48 = device_load u24:u25, 47.abs, x, #0x0, slot 0
+   49h, _ = split 48
+   _, 50h = split 48
+   51h, _ = split 42
+   _, 52h = split 42
+   53h, _ = split 44
+   _, 54h = split 44
+   55h, _ = split 46
+   _, 56h = split 46
+} -> block11  from block8
+
+block10 {
+   else_fcmp #0.000000, #0.000000, #0xaaab6c5c9af0, n=1
+   58h = device_load u26:u27, 39.abs, x, #0x0, slot 0
+   59 = iadd 39, #1, #0x0
+   60h = device_load u26:u27, 59.abs, x, #0x0, slot 0
+   61 = iadd 39, #2, #0x0
+   62h = device_load u26:u27, 61.abs, x, #0x0, slot 0
+   63 = iadd 39, #3, #0x0
+   64h = device_load u26:u27, 63.abs, x, #0x0, slot 0
+   66 = iadd 39, #4, #0x0
+   67h = device_load u26:u27, 66.abs, x, #0x0, slot 0
+   68 = iadd 39, #5, #0x0
+   69h = device_load u26:u27, 68.abs, x, #0x0, slot 0
+   70 = iadd 39, #6, #0x0
+   71h = device_load u26:u27, 70.abs, x, #0x0, slot 0
+   73 = iadd 39, #7, #0x0
+   74h = device_load u26:u27, 73.abs, x, #0x0, slot 0
+   pop_exec #0x0, n=1
+} -> block11  from block8
+
+block11 {
+   75h = phi 50h, 74h
+   76h = phi 49h, 71h
+   77h = phi 56h, 69h
+   78h = phi 55h, 67h
+   79h = phi 54h, 64h
+   80h = phi 53h, 62h
+   81h = phi 52h, 60h
+   82h = phi 51h, 58h
+   83 = iadd 38, 29, #0x0
+   85 = device_load u28:u29, 83.abs, x, #0x0, slot 0
+   86 = iadd 33, 30, #0x0
+   87 = bfeil #0, 38, #3, #0x0
+   88 = iadd 87, 86, #0x0
+   90h = device_load u30:u31, 88.abs, x, #0x0, slot 0
+   91 = iadd 34, 30, #0x0
+   92 = iadd 87, 91, #0x0
+   94h = device_load u32:u33, 92.abs, x, #0x0, slot 0
+   98 = and 85, #15
+   99 = convert #10, 98, #0x1
+   100 = ffma 90h, 99, 94h
+   102 = ffma 82h, 100, 35
+   104 = bfeil #0, 85, #4, #0x4
+   105 = convert #10, 104, #0x1
+   106 = ffma 90h, 105, 94h
+   108 = ffma 81h, 106, 102
+   109 = bfeil #0, 85, #8, #0x4
+   110 = convert #10, 109, #0x1
+   111 = ffma 90h, 110, 94h
+   113 = ffma 80h, 111, 108
+   115 = bfeil #0, 85, #12, #0x4
+   116 = convert #10, 115, #0x1
+   117 = ffma 90h, 116, 94h
+   119 = ffma 79h, 117, 113
+   _, 120h = split 85
+   122 = and 120h, #15
+   123 = convert #10, 122, #0x1
+   124 = ffma 90h, 123, 94h
+   126 = ffma 78h, 124, 119
+   128 = bfeil #0, 85, #20, #0x4
+   129 = convert #10, 128, #0x1
+   130 = ffma 90h, 129, 94h
+   132 = ffma 77h, 130, 126
+   134 = bfeil #0, 85, #24, #0x4
+   135 = convert #10, 134, #0x1
+   136 = ffma 90h, 135, 94h
+   138 = ffma 76h, 136, 132
+   140 = bfeil #0, 85, #28, #0x0
+   141 = convert #10, 140, #0x1
+   142 = ffma 90h, 141, 94h
+   144 = ffma 75h, 142, 138
+   145 = iadd 36, #32, #0x0
+   jmp_exec_any #0xaaab6c5bb6f0
+   pop_exec #0x0, n=1
+} -> block5  from block9 block10
+
+block12 {
+   146 = simd_reduce 35, #0x1
+   149h = icmp 8, u7, #0x0
+   150h = icmpsel 20, #0, 149h, #0, #0x0
+   if_icmp 150h, #0, #0xaaab6c5c0500, n=1, inv
+} -> block13 block14  from block6
+
+block13 {
+   153h = fadd 146, #-0.000000
+   151 = imad 22, u7, u20, #0x0
+   152 = iadd 8, 151, #0x0
+   device_store 153h, u34:u35, 152.abs, x, #0x0, slot 0
+} -> block15  from block12
+
+block14 {
+   else_fcmp #0.000000, #0.000000, #0xaaab6c5c0500, n=1
+   pop_exec #0x0, n=1
+} -> block15  from block12
+
+block15 {
+   155 = iadd 22, #1, #0x0
+   jmp_exec_any #0xaaab6c54be60
+   pop_exec #0x0, n=1
+} -> block1  from block13 block14
+
+block16 {
+   stop 
+} from block2
+
+block0 {
+   $r1 = get_sr #0x30
+   $r2 = get_sr #0x0
+   $r2 = iadd ^r2, u4, #0x0
+   $r3 = bfeil #0, $r1, #5, #0x0
+   r2 = iadd ^r3, ^r2, #0x0
+   r1 = and ^r1, #31
+   r0l = mov_imm #0x0
+   r3 = mov_imm #0x0
+} -> block1 
+
+block1 {
+} -> block2 block3  from block0 block15
+
+block2 {
+} -> block16  from block1
+
+block3 {
+} -> block4  from block1
+
+block4 {
+   while_icmp $r3, u15, #0x0, n=1
+   jmp_exec_none_after #0xaaab6c5c91a0
+   $r4 = icmpsel r2, u12, r2, u12, #0x0
+   $r5 = imad $r3, u16, u19, #0x0
+   r5 = imad $r4, u13, r5, #0x0
+   r4 = imad r4, u10, #0, #0x0
+   r6 = imad $r3, u8, u18, #0x0
+   $r7 = imad r3, u17, #0, #0x0
+   r8 = iadd u22, $r7, #0x0
+   r7 = iadd u21, r7, #0x0
+   r9 = mov_imm #0x0
+   r10 = mov1 r1, #0
+   if_fcmp #0.000000, #0.000000, #0x0, n=1
+} -> block5  from block3
+
+block5 {
+} -> block6 block7  from block4 block11
+
+block6 {
+} -> block12  from block5
+
+block7 {
+} -> block8  from block5
+
+block8 {
+   while_icmp $r10, u13, #0x0, n=1
+   jmp_exec_none_after #0xaaab6c5cb400
+   $r11 = icmpsel r10, u14, r10, u14, #0x0
+   r12 = iadd r6, r11, #0x0
+   if_icmp u11l, #0, #0xaaab6c5c9af0, n=1, inv
+   jmp_exec_none #0xaaab6c5c9af0
+} -> block9 block10  from block7
+
+block9 {
+   $r12 = bfeil #0, r12, #1, #0x0
+   $r13 = device_load u24:u25, $r12.abs, x, #0x0, slot 0
+   r14 = iadd $r12, #1, #0x0
+   $r14 = device_load u24:u25, r14.abs, x, #0x0, slot 1
+   r15 = iadd $r12, #2, #0x0
+   $r15 = device_load u24:u25, r15.abs, x, #0x0, slot 0
+   r12 = iadd r12, #3, #0x0
+   $r12 = device_load u24:u25, r12.abs, x, #0x0, slot 0
+   wait #0x0, slot 0
+   r0h = mov1 r12l, #0
+   r12l = mov1 r13l, #0
+   wait #0x0, slot 1
+   r13l = mov1 r14l, #0
+   r14l = mov1 r15l, #0
+} -> block11  from block8
+
+block10 {
+   else_fcmp #0.000000, #0.000000, #0xaaab6c5c9af0, n=1
+   jmp_exec_none_after #0xaaab6c5c9af0
+   $r0h = device_load u26:u27, $r12.abs, x, #0x0, slot 0
+   r13 = iadd $r12, #1, #0x0
+   r13h = device_load u26:u27, r13.abs, x, #0x0, slot 1
+   r14 = iadd $r12, #2, #0x0
+   r13l = device_load u26:u27, r14.abs, x, #0x0, slot 0
+   r14 = iadd $r12, #3, #0x0
+   r14h = device_load u26:u27, r14.abs, x, #0x0, slot 0
+   r15 = iadd $r12, #4, #0x0
+   r14l = device_load u26:u27, r15.abs, x, #0x0, slot 0
+   r15 = iadd $r12, #5, #0x0
+   r15h = device_load u26:u27, r15.abs, x, #0x0, slot 0
+   r16 = iadd $r12, #6, #0x0
+   $r15l = device_load u26:u27, r16.abs, x, #0x0, slot 0
+   r12 = iadd r12, #7, #0x0
+   r12h = device_load u26:u27, r12.abs, x, #0x0, slot 0
+   wait #0x0, slot 0
+   r12l = mov1 r0h, #0
+   r0h = mov1 r15l, #0
+   wait #0x0, slot 1
+   pop_exec #0x0, n=1
+} -> block11  from block8
+
+block11 {
+   r16 = iadd $r11, r5, #0x0
+   $r16 = device_load u28:u29, r16.abs, x, #0x0, slot 0
+   $r17 = iadd r8, $r4, #0x0
+   $r11 = bfeil #0, r11, #3, #0x0
+   r17 = iadd $r11, r17, #0x0
+   $r15l = device_load u30:u31, r17.abs, x, #0x0, slot 1
+   $r17 = iadd r7, r4, #0x0
+   r11 = iadd r11, r17, #0x0
+   $r11l = device_load u32:u33, r11.abs, x, #0x0, slot 0
+   wait #0x0, slot 0
+   r17 = and $r16, #15
+   $r17 = convert #10, r17, #0x1
+   wait #0x0, slot 1
+   $r17 = ffma $r15l, r17, $r11l
+   $r9 = ffma r12l, r17, r9
+   r17 = bfeil #0, $r16, #4, #0x4
+   $r17 = convert #10, r17, #0x1
+   $r17 = ffma $r15l, r17, $r11l
+   $r9 = ffma r13h, r17, r9
+   r17 = bfeil #0, $r16, #8, #0x4
+   $r17 = convert #10, r17, #0x1
+   $r17 = ffma $r15l, r17, $r11l
+   $r9 = ffma r13l, r17, r9
+   r13 = bfeil #0, $r16, #12, #0x4
+   $r13 = convert #10, r13, #0x1
+   $r13 = ffma $r15l, r13, $r11l
+   $r9 = ffma r14h, r13, r9
+   $r11h = mov1 $r16h, #0
+   r13 = and r11h, #15
+   $r13 = convert #10, r13, #0x1
+   $r13 = ffma $r15l, r13, $r11l
+   $r9 = ffma r14l, r13, r9
+   r13 = bfeil #0, $r16, #20, #0x4
+   $r13 = convert #10, r13, #0x1
+   $r13 = ffma $r15l, r13, $r11l
+   $r9 = ffma r15h, r13, r9
+   r13 = bfeil #0, $r16, #24, #0x4
+   $r13 = convert #10, r13, #0x1
+   $r13 = ffma $r15l, r13, $r11l
+   $r9 = ffma r0h, r13, r9
+   r13 = bfeil #0, r16, #28, #0x0
+   $r13 = convert #10, r13, #0x1
+   $r11 = ffma r15l, r13, r11l
+   r9 = ffma r12h, r11, r9
+   r10 = iadd r10, #32, #0x0
+   jmp_exec_any #0xaaab6c5bb6f0
+   pop_exec #0x0, n=1
+} -> block5  from block9 block10
+
+block12 {
+   r4 = simd_reduce r9, #0x1
+   $r0h = icmpsel r2, u7, #1, #0, #0x0
+   r0h = icmpsel r1, #0, r0h, #0, #0x0
+   if_icmp r0h, #0, #0xaaab6c5c0500, n=1, inv
+} -> block13 block14  from block6
+
+block13 {
+   r0h = fadd r4, #-0.000000
+   $r4 = imad r3, u7, u20, #0x0
+   r4 = iadd r2, r4, #0x0
+   device_store r0h, u34:u35, r4.abs, x, #0x0, slot 0
+   wait #0x0, slot 0
+} -> block15  from block12
+
+block14 {
+   pop_exec #0x0, n=1
+} -> block15  from block12
+
+block15 {
+   r3 = iadd r3, #1, #0x0
+   jmp_exec_any #0xaaab6c54be60
+   pop_exec #0x0, n=1
+} -> block1  from block13 block14
+
+block16 {
+   stop 
+} from block2
+
+   0: f2053000               mov      $r1, thread_in_threadgroup_x
+   4: f2090000               mov      $r2, threadgroup_in_grid_x
+   8: 8e09c48658000000       iadd     $r2, ^r2.sx, u4.sx
+  10: ae8d002028050000       shr      $r3, $r1, 5
+  18: 0e09c646ec001000       iadd     r2, ^r3.sx, ^r2.sx, lsl 3
+  20: 7e05c2f28100           and      r1, ^r1, 31
+  26: 62000000               ldimm    r0l, 0
+  2a: 620d00000000           ldimm    r3, 0
+  30: 522c86e21900           while    $r3, u15, 1, ult
+  36: 20c008030000           jmp_none 776
+  3c: 9211448219448039       csel     $r4, r2, u12, r2, u12, ult
+  44: 9e1586065aa60500       imadd    $r5, $r3.sx, u16.sx, u19.sx
+  4c: 1e1588a6594a0600       imadd    r5, $r4.sx, u13.sx, r5.sx
+  54: 1e11484659000000       imul     r4, r4.sx, u10.sx
+  5c: 1e19860659a40500       imadd    r6, $r3.sx, u8.sx, u18.sx
+  64: 9e1d46265a000000       imul     $r7, r3.sx, u17.sx
+  6c: 0e21ace568000000       iadd     r8, u22.sx, $r7.sx
+  74: 0e1daae564000000       iadd     r7, u21.sx, r7.sx
+  7c: 622500000000           ldimm    r9, 0
+  82: 7e29420a8000           mov      r10, r1
+  88: 420800000000           if       0.0, 0.0, 1, feq
+  8e: 522c94a21900           while    $r10, u13, 1, ult
+  94: 20c054020000           jmp_none 596
+  9a: 922d54c21954c039       csel     $r11, r10, u14, r10, u14, ult
+  a2: 0e314c66e5001000       iadd     r12, r6.sx, r11.sx, lsl 3
+  aa: 520916010000           if       u11l, 0, 1, ine
+  b0: 20c062000000           jmp_none 98
+  b6: aeb1008025010000       shr      $r12, r12, 1
+  be: 0569800e31c01200       load     r13, du24, r12, i32, x, a
+  c6: 0e39981600000000       iadd     r14, $r12.sx, 1
+  ce: 0571c04e31c01200       load     r14, du24, r14, i32, x, b
+  d6: 0e3d982600000000       iadd     r15, $r12.sx, 2
+  de: 0579e00e31c01200       load     r15, du24, r15, i32, x, a
+  e6: 0e31583600000000       iadd     r12, r12.sx, 3
+  ee: 0561800e31c01200       load     r12, du24, r12, i32, x, a
+  f6: 3800                   wait     a
+  f8: 7e0258088000           mov      r0h, r12l
+  fe: 7e305a088000           mov      r12l, r13l
+ 104: 3801                   wait     b
+ 106: 7e345c088000           mov      r13l, r14l
+ 10c: 7e385e088000           mov      r14l, r15l
+ 112: 420a00000000           else     0.0, 0.0, 1, feq
+ 118: 20c08e000000           jmp_none 142
+ 11e: 8504840e31c01000       load     r0h, du26, r12, i16, x, a
+ 126: 0e35981600000000       iadd     r13, $r12.sx, 1
+ 12e: 856ca44e31c01000       load     r13h, du26, r13, i16, x, b
+ 136: 0e39982600000000       iadd     r14, $r12.sx, 2
+ 13e: 8568c40e31c01000       load     r13l, du26, r14, i16, x, a
+ 146: 0e39983600000000       iadd     r14, $r12.sx, 3
+ 14e: 8574c40e31c01000       load     r14h, du26, r14, i16, x, a
+ 156: 0e3d984600000000       iadd     r15, $r12.sx, 4
+ 15e: 8570e40e31c01000       load     r14l, du26, r15, i16, x, a
+ 166: 0e3d985600000000       iadd     r15, $r12.sx, 5
+ 16e: 857ce40e31c01000       load     r15h, du26, r15, i16, x, a
+ 176: 0e41986600000000       iadd     r16, $r12.sx, 6
+ 17e: 8578040e32c01000       load     r15l, du26, r16, i16, x, a
+ 186: 0e31587600000000       iadd     r12, r12.sx, 7
+ 18e: 8564840e31c01000       load     r12h, du26, r12, i16, x, a
+ 196: 3800                   wait     a
+ 198: 7e3041088000           mov      r12l, r0h
+ 19e: 7e025e088000           mov      r0h, r15l
+ 1a4: 3801                   wait     b
+ 1a6: 520e00000000           pop_exec 1
+ 1ac: 0e4196a664000000       iadd     r16, $r11.sx, r5.sx
+ 1b4: 0581080e32c01200       load     r16, du28, r16, i32, x, a
+ 1bc: 8e45508668000000       iadd     $r17, r8.sx, $r4.sx
+ 1c4: aead006025030000       shr      $r11, r11, 3
+ 1cc: 0e45962666000000       iadd     r17, $r11.sx, r17.sx
+ 1d4: 85782c4e32c01000       load     r15l, du30, r17, i16, x, b
+ 1dc: 8e454e8664000000       iadd     $r17, r7.sx, r4.sx
+ 1e4: 0e2d562666000000       iadd     r11, r11.sx, r17.sx
+ 1ec: 8558600e41c01000       load     r11l, du32, r11, i16, x, a
+ 1f4: 3800                   wait     a
+ 1f6: 7e45a0f28000           and      r17, $r16, 15
+ 1fc: bec50a242600           u32_to_f $r17, r17, rte
+ 202: 3801                   wait     b
+ 204: ba459e202696           ffma     $r17, $r15l, r17, $r11l
+ 20a: baa5582026520200       ffma     $r9, r12l, r17, r9
+ 212: 2ec500002a040400       bfeil    r17, 0, $r16, 4, 4
+ 21a: bec50a242600           u32_to_f $r17, r17, rte
+ 220: ba459e202696           ffma     $r17, $r15l, r17, $r11l
+ 226: baa55b2026520200       ffma     $r9, r13h, r17, r9
+ 22e: 2ec500002a080400       bfeil    r17, 0, $r16, 8, 4
+ 236: bec50a242600           u32_to_f $r17, r17, rte
+ 23c: ba459e202696           ffma     $r17, $r15l, r17, $r11l
+ 242: baa55a2026520200       ffma     $r9, r13l, r17, r9
+ 24a: 2eb500002a0c0400       bfeil    r13, 0, $r16, 12, 4
+ 252: beb50aa42500           u32_to_f $r13, r13, rte
+ 258: ba359ea02596           ffma     $r13, $r15l, r13, $r11l
+ 25e: baa55da025520200       ffma     $r9, r14h, r13, r9
+ 266: fe2ea1088000           mov      $r11h, $r16h
+ 26c: 7e3557f08000           and      r13, r11h, 15
+ 272: beb50aa42500           u32_to_f $r13, r13, rte
+ 278: ba359ea02596           ffma     $r13, $r15l, r13, $r11l
+ 27e: baa55ca025520200       ffma     $r9, r14l, r13, r9
+ 286: 2eb500002a140400       bfeil    r13, 0, $r16, 20, 4
+ 28e: beb50aa42500           u32_to_f $r13, r13, rte
+ 294: ba359ea02596           ffma     $r13, $r15l, r13, $r11l
+ 29a: baa55fa025520200       ffma     $r9, r15h, r13, r9
+ 2a2: 2eb500002a180400       bfeil    r13, 0, $r16, 24, 4
+ 2aa: beb50aa42500           u32_to_f $r13, r13, rte
+ 2b0: ba359ea02596           ffma     $r13, $r15l, r13, $r11l
+ 2b6: baa541a025520200       ffma     $r9, r0h, r13, r9
+ 2be: 2eb50000261c0000       shr      r13, r16, 28
+ 2c6: beb50aa42500           u32_to_f $r13, r13, rte
+ 2cc: ba2d5ea02556           ffma     $r11, r15l, r13, r11l
+ 2d2: 3aa5596025520200       ffma     r9, r12h, r11, r9
+ 2da: 0e29540602000000       iadd     r10, r10.sx, 32
+ 2e2: 00c0acfdffff           jmp_any  -596
+ 2e8: 520e00000000           pop_exec 1
+ 2ee: 6f9152320000           simd     r4, r9, fadd
+ 2f4: 920244e218010130       csel     $r0h, r2, u7, 1, 0, ult
+ 2fc: 1202420200410010       csel     r0h, r1, 0, r0h, 0, ieq
+ 304: 520941000000           if       r0h, 0, 1, ine
+ 30a: 2a8248020002           fadd     r0h, r4, -0.0
+ 310: 9e1146e658a80500       imadd    $r4, r3.sx, u7.sx, u20.sx
+ 318: 0e11448664000000       iadd     r4, r2.sx, r4.sx
+ 320: c504840e40c01000       store    r0h, du34, r4, i16, x, a
+ 328: 3800                   wait     a
+ 32a: 520e00000000           pop_exec 1
+ 330: 0e0d461600000000       iadd     r3, r3.sx, 1
+ 338: 00c0f8fcffff           jmp_any  -776
+ 33e: 520e00000000           pop_exec 1
+ 344: 8800                   stop
+block0 {
+   2 = device_load u0:u1, #5, xyz, #0x0, slot 0
+   35, 36, 37 = split 2
+   38 = collect 35, 36
+   uniform_store 38, #8, xy, #0x0
+   uniform_store 37, #12, x, #0x0
+   4 = device_load u0:u1, #67, xyz, #0x0, slot 0
+   40, 41, 42 = split 4
+   43 = collect 40, 41
+   uniform_store 43, #14, xy, #0x0
+   uniform_store 42, #18, x, #0x0
+   6 = bfeil #0, 41, #6, #0x0
+   uniform_store 6, #20, x, #0x0
+   8 = and 42, #2
+   10h = icmp 8, #0, #0x0, inv
+   uniform_store 10h, #22, x, #0x0
+   12 = iadd 40, #1.neg, #0x0
+   uniform_store 12, #24, x, #0x0
+   14 = bfeil #0, 41, #3, #0x0
+   uniform_store 14, #26, x, #0x0
+   15 = iadd 14, #1.neg, #0x0
+   uniform_store 15, #28, x, #0x0
+   17 = device_load u0:u1, #35, xyz, #0x0, slot 0
+   50, 51, 52 = split 17
+   53 = collect 50, 51
+   uniform_store 53, #30, xy, #0x0
+   uniform_store 52, #34, x, #0x0
+   19 = device_load u0:u1, #32, xyzw, #0x0, slot 0
+   55, 56, 57, 58 = split 19
+   59 = collect 55, 56
+   uniform_store 59, #36, xy, #0x0
+   60 = collect 57, 58
+   uniform_store 60, #40, xy, #0x0
+   21 = device_load u0:u1, #33, x, #0x0, slot 0
+   uniform_store 21, #44, x, #0x0
+   23 = device_load u2:u3, #0, xyzw, #0x0, slot 0
+   63, 64, _, _ = split 23
+   24d = collect 63, 64
+   67d = mov 24d
+   uniform_store 67d, #48, x, #0x0
+   uniform_store 67d, #52, x, #0x0
+   26 = device_load u2:u3, #1, xyzw, #0x0, slot 0
+   69, 70, _, _ = split 26
+   27d = collect 69, 70
+   73d = mov 27d
+   uniform_store 73d, #56, x, #0x0
+   28 = device_load u2:u3, #2, xyzw, #0x0, slot 0
+   74, 75, _, _ = split 28
+   29d = collect 74, 75
+   78d = mov 29d
+   uniform_store 78d, #60, x, #0x0
+   30 = device_load u2:u3, #3, xyzw, #0x0, slot 0
+   79, 80, _, _ = split 30
+   31d = collect 79, 80
+   83d = mov 31d
+   uniform_store 83d, #64, x, #0x0
+   33 = device_load u2:u3, #4, xyzw, #0x0, slot 0
+   84, 85, _, _ = split 33
+   34d = collect 84, 85
+   88d = mov 34d
+   uniform_store 88d, #68, x, #0x0
+   stop 
+}
+
+block0 {
+   2 = device_load u0:u1, #5, xyz, #0x0, slot 0
+   35, 36, 37 = split 2
+   38 = collect 35, 36
+   uniform_store 38, #8, xy, #0x0
+   uniform_store 37, #12, x, #0x0
+   4 = device_load u0:u1, #67, xyz, #0x0, slot 0
+   40, 41, 42 = split 4
+   43 = collect 40, 41
+   uniform_store 43, #14, xy, #0x0
+   uniform_store 42, #18, x, #0x0
+   6 = bfeil #0, 41, #6, #0x0
+   uniform_store 6, #20, x, #0x0
+   8 = and 42, #2
+   10h = icmp 8, #0, #0x0, inv
+   uniform_store 10h, #22, x, #0x0
+   12 = iadd 40, #1.neg, #0x0
+   uniform_store 12, #24, x, #0x0
+   14 = bfeil #0, 41, #3, #0x0
+   uniform_store 14, #26, x, #0x0
+   15 = iadd 14, #1.neg, #0x0
+   uniform_store 15, #28, x, #0x0
+   17 = device_load u0:u1, #35, xyz, #0x0, slot 0
+   50, 51, 52 = split 17
+   53 = collect 50, 51
+   uniform_store 53, #30, xy, #0x0
+   uniform_store 52, #34, x, #0x0
+   19 = device_load u0:u1, #32, xyzw, #0x0, slot 0
+   55, 56, 57, 58 = split 19
+   59 = collect 55, 56
+   uniform_store 59, #36, xy, #0x0
+   60 = collect 57, 58
+   uniform_store 60, #40, xy, #0x0
+   21 = device_load u0:u1, #33, x, #0x0, slot 0
+   uniform_store 21, #44, x, #0x0
+   23 = device_load u2:u3, #0, xyzw, #0x0, slot 0
+   63, 64, _, _ = split 23
+   24d = collect 63, 64
+   67d = mov 24d
+   uniform_store 67d, #48, x, #0x0
+   uniform_store 67d, #52, x, #0x0
+   26 = device_load u2:u3, #1, xyzw, #0x0, slot 0
+   69, 70, _, _ = split 26
+   27d = collect 69, 70
+   73d = mov 27d
+   uniform_store 73d, #56, x, #0x0
+   28 = device_load u2:u3, #2, xyzw, #0x0, slot 0
+   74, 75, _, _ = split 28
+   29d = collect 74, 75
+   78d = mov 29d
+   uniform_store CS shader: 124 instrs, 101 alu, 101 fscib, 60 ic, 854 code size, 35 gprs, 72 uniforms, 0 scratch, 1024 threads, 2 loops, 0:0 spills:fills, 49 preamble inst
+version 0.32.2.dev202609091653+diag.1a1791b
+78d, #60, x, #0x0
+   30 = device_load u2:u3, #3, xyzw, #0x0, slot 0
+   79, 80, _, _ = split 30
+   31d = collect 79, 80
+   83d = mov 31d
+   uniform_store 83d, #64, x, #0x0
+   33 = device_load u2:u3, #4, xyzw, #0x0, slot 0
+   84, 85, _, _ = split 33
+   34d = collect 84, 85
+   88d = mov 34d
+   uniform_store 88d, #68, x, #0x0
+   stop 
+}
+
+block0 {
+   r0...r2 = device_load u0:u1, #5, xyz, #0x0, slot 0
+   wait #0x0, slot 0
+   uniform_store ^r0...r1, #8, xy, #0x0
+   uniform_store ^r2, #12, x, #0x0
+   $r0...r2 = device_load u0:u1, #67, xyz, #0x0, slot 0
+   wait #0x0, slot 0
+   r4 = mov1 $r0, #0
+   r5 = mov1 $r1, #0
+   uniform_store ^r4...r5, #14, xy, #0x0
+   uniform_store $r2, #18, x, #0x0
+   r3 = bfeil #0, $r1, #6, #0x0
+   uniform_store ^r3, #20, x, #0x0
+   $r2 = and ^r2, #2
+   r2l = icmpsel ^r2, #0, #0, #1, #0x0
+   uniform_store ^r2l, #22, x, #0x0
+   r0 = iadd ^r0, #1.neg, #0x0
+   uniform_store ^r0, #24, x, #0x0
+   $r0 = bfeil #0, ^r1, #3, #0x0
+   uniform_store $r0, #26, x, #0x0
+   r0 = iadd ^r0, #1.neg, #0x0
+   uniform_store ^r0, #28, x, #0x0
+   r0...r2 = device_load u0:u1, #35, xyz, #0x0, slot 0
+   wait #0x0, slot 0
+   uniform_store ^r0...r1, #30, xy, #0x0
+   uniform_store ^r2, #34, x, #0x0
+   r0...r3 = device_load u0:u1, #32, xyzw, #0x0, slot 0
+   wait #0x0, slot 0
+   uniform_store ^r0...r1, #36, xy, #0x0
+   uniform_store ^r2...r3, #40, xy, #0x0
+   r0 = device_load u0:u1, #33, x, #0x0, slot 0
+   wait #0x0, slot 0
+   uniform_store ^r0, #44, x, #0x0
+   r0...r3 = device_load u2:u3, #0, xyzw, #0x0, slot 0
+   wait #0x0, slot 0
+   uniform_store r0:r1, #48, x, #0x0
+   uniform_store ^r0:r1, #52, x, #0x0
+   r0...r3 = device_load u2:u3, #1, xyzw, #0x0, slot 0
+   wait #0x0, slot 0
+   uniform_store ^r0:r1, #56, x, #0x0
+   r0...r3 = device_load u2:u3, #2, xyzw, #0x0, slot 0
+   wait #0x0, slot 0
+   uniform_store ^r0:r1, #60, x, #0x0
+   r0...r3 = device_load u2:u3, #3, xyzw, #0x0, slot 0
+   wait #0x0, slot 0
+   uniform_store ^r0:r1, #64, x, #0x0
+   r0...r3 = device_load u2:u3, #4, xyzw, #0x0, slot 0
+   wait #0x0, slot 0
+   uniform_store ^r0:r1, #68, x, #0x0
+   stop 
+}
+
+   0: 0501500d00c87200       load     r0_r1_r2, du0, 5, lsl 2, i32, xyz, a
+   8: 3800                   wait     a
+   a: c500803d0080f000       mov      du4, dr0
+  12: c510c03d00803000       mov      u6, r2
+  1a: 0501300d04c47200       load     r0_r1_r2, du0, 67, lsl 1, i32, xyz, a
+  22: 3800                   wait     a
+  24: 7e11800a8000           mov      r4, $r0
+  2a: 7e15820a8000           mov      r5, $r1
+  30: c520e03d0080f000       mov      du7, dr4
+  38: c510203d01803000       mov      u9, r2
+  40: 2e8d002028060000       shr      r3, $r1, 6
+  48: c518403d01803000       mov      u10, r3
+  50: fe09c4228000           and      $r2, ^r2, 2
+  56: 1208c40200001110       csel     r2l, ^r2, 0, 0, 1, ieq
+  5e: c510603d01801000       mov      u11l, r2l
+  66: 0e01c01e00000000       isub     r0, ^r0.sx, 1
+  6e: c500803d01803000       mov      u12, r0
+  76: ae8100202c030000       shr      $r0, ^r1, 3
+  7e: c500a03d01803000       mov      u13, r0
+  86: 0e01c01e00000000       isub     r0, ^r0.sx, 1
+  8e: c500c03d01803000       mov      u14, r0
+  96: 0501300d02c87200       load     r0_r1_r2, du0, 35, lsl 2, i32, xyz, a
+  9e: 3800                   wait     a
+  a0: c500e03d0180f000       mov      du15, dr0
+  a8: c510203d02803000       mov      u17, r2
+  b0: 0501000d02c8f200       load     r0_r1_r2_r3, du0, 32, lsl 2, i32, xyzw, a
+  b8: 3800                   wait     a
+  ba: c500403d0280f000       mov      du18, dr0
+  c2: c510803d0280f000       mov      du20, dr2
+  ca: 0501100d02c81200       load     r0, du0, 33, lsl 2, i32, x, a
+  d2: 3800                   wait     a
+  d4: c500c03d02803000       mov      u22, r0
+  dc: 0501040d00c0f200       load     r0_r1_r2_r3, du2, 0, i32, xyzw, a
+  e4: 3800                   wait     a
+  e6: c500003d0380f000       mov      du24, dr0
+  ee: c500403d0380f000       mov      du26, dr0
+  f6: 0501140d00c8f200       load     r0_r1_r2_r3, du2, 1, lsl 2, i32, xyzw, a
+  fe: 3800                   wait     a
+ 100: c500803d0380f000       mov      du28, dr0
+ 108: 0501240d00c8f200       load     r0_r1_r2_r3, du2, 2, lsl 2, i32, xyzw, a
+ 110: 3800                   wait     a
+ 112: c500c03d0380f000       mov      du30, dr0
+ 11a: 0501340d00c8f200       load     r0_r1_r2_r3, du2, 3, lsl 2, i32, xyzw, a
+ 122: 3800                   wait     a
+ 124: c500003d0480f000       mov      du32, dr0
+ 12c: 0501440d00c8f200       load     r0_r1_r2_r3, du2, 4, lsl 2, i32, xyzw, a
+ 134: 3800                   wait     a
+ 136: c500403d0480f000       mov      du34, dr0
+ 13e: 8800                   stop
