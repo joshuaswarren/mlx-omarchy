@@ -6,6 +6,7 @@
 #include <array>
 #include <cstdint>
 #include <cstdlib>
+#include <cstdio>
 #include <cstring>
 #include <limits>
 #include <memory>
@@ -473,6 +474,18 @@ void dispatch_chain(
     bool materialize_intermediates) {
   auto& encoder = get_command_encoder(stream);
   out.set_data(allocator().malloc(out.nbytes()));
+  if (static const bool dump = std::getenv("MLX_OMARCHY_CHAIN_DUMP") != nullptr;
+      dump) {
+    std::fprintf(stderr, "[chain] count=%u dtype=%d materialize=%d leaves=%zu nodes=%zu program=",
+        chain.count, static_cast<int>(chain.dtype.val()), materialize_intermediates ? 1 : 0,
+        chain.leaves.size(), chain.node_ids.size());
+    for (uint32_t w : chain.program) std::fprintf(stderr, "%08x ", w);
+    std::fprintf(stderr, "modes=");
+    for (uint32_t m : chain.leaf_modes) std::fprintf(stderr, "%u ", m);
+    std::fprintf(stderr, "offsets=");
+    for (uint32_t o : chain.leaf_offsets) std::fprintf(stderr, "%u ", o);
+    std::fprintf(stderr, "\n");
+  }
   if (auto leaves = swiglu_leaves(chain, materialize_intermediates)) {
     ComputeParams params;
     params.count = chain.count;
