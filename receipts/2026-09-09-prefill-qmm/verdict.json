@@ -190,6 +190,20 @@
         1174
       ],
       "reason": "32-k and double buffering raised shared/register pressure; four-subgroup variants reduced per-lane work but synchronization/occupancy lost on at least one prompt. The accepted two-subgroup/16-k point balances both."
+    },
+    "follow_up_after_acceptance": {
+      "commit": "79890ef9 (reverted by b706f5f2)",
+      "change": "32x64 output tile, four subgroups, 16-k staging; halves x workgroup count and reuses X across 64 columns.",
+      "diagnostics_wheel_sha256": "e22754cb436d9786e4e9eee2f2781896243f262491e15832997841d419b3df6e",
+      "m262_ms": 245.021956,
+      "m1053_ms": 793.291961,
+      "versus_accepted_percent": {
+        "m262": -15.875737443962427,
+        "m1053": -12.763858553552566
+      },
+      "passed_15_percent_gate": false,
+      "decision": "reject before paired run: 16% slower at m=262 and 13% slower at m=1053 than the accepted 32x32/two-subgroup tile; 6 KiB/four-subgroup cost exceeds wider X reuse.",
+      "profile": "profiles/n64-79890ef/"
     }
   },
   "paired": {
@@ -548,5 +562,5 @@
     }
   },
   "decision": "integrate: screen passed at -25.2% QMM kernel time for m=262 and -16.9% for m=1053; paired Q4 prefill +18.6%, +17.3%, +13.0%; Q4 decode -0.1% to +0.2%; bf16 legs -0.2% to +0.2%; all generated ids identical.",
-  "next_lever": "Screen the same two-subgroup tile at 8-k staging (2 KiB) and a scale/bias broadcast specialization for n=128. Keep only a candidate that clears the same >=15% two-prompt kernel gate and exact-id gate."
+  "next_lever": "Driver-side inline cooperative-fragment loads that remove shared staging without changing the four ascending 8-k accumulator updates; shader-only wider tiling has now failed the >=15% screen."
 }
