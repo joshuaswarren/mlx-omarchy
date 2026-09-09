@@ -1,0 +1,10453 @@
+{
+ "token_interval": 10,
+ "dispatches": 537,
+ "submissions": [
+  83,
+  84,
+  85
+ ],
+ "gpu_busy_us": 24690,
+ "gap_us": 17862,
+ "span_us": 42552,
+ "by_kernel": {
+  "TakeF16": {
+   "n": 2,
+   "gpu_us": 136,
+   "gap_us": 61
+  },
+  "TakeU32": {
+   "n": 1,
+   "gpu_us": 64,
+   "gap_us": 160
+  },
+  "DequantF16": {
+   "n": 1,
+   "gpu_us": 31,
+   "gap_us": 43
+  },
+  "FastRmsNormF16": {
+   "n": 49,
+   "gpu_us": 1698,
+   "gap_us": 1390
+  },
+  "QmmVecQ4WordSubgroupF16": {
+   "n": 169,
+   "gpu_us": 11648,
+   "gap_us": 4962
+  },
+  "BinaryVecF16": {
+   "n": 120,
+   "gpu_us": 3583,
+   "gap_us": 3986
+  },
+  "FastRopeF16": {
+   "n": 48,
+   "gpu_us": 1841,
+   "gap_us": 2183
+  },
+  "CopyGeneralF16": {
+   "n": 48,
+   "gpu_us": 1487,
+   "gap_us": 2001
+  },
+  "MatmulF16": {
+   "n": 48,
+   "gpu_us": 2309,
+   "gap_us": 1758
+  },
+  "SoftmaxF16": {
+   "n": 24,
+   "gpu_us": 867,
+   "gap_us": 921
+  },
+  "SwigluF16": {
+   "n": 24,
+   "gpu_us": 428,
+   "gap_us": 293
+  },
+  "LogSumExpF16": {
+   "n": 1,
+   "gpu_us": 280,
+   "gap_us": 45
+  },
+  "ElementwiseF16": {
+   "n": 1,
+   "gpu_us": 182,
+   "gap_us": 31
+  },
+  "ArgReduceF16": {
+   "n": 1,
+   "gpu_us": 135,
+   "gap_us": 28
+  }
+ },
+ "rows": [
+  {
+   "layer": 0,
+   "kernel": "TakeF16",
+   "n": 14,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 62.3,
+   "gap_us": 0.0,
+   "submission": 83,
+   "bindings_bytes": [
+    4255744,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 0,
+   "kernel": "TakeF16",
+   "n": 14,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 73.7,
+   "gap_us": 60.9,
+   "submission": 83,
+   "bindings_bytes": [
+    4255744,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 0,
+   "kernel": "TakeU32",
+   "n": 112,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 64.5,
+   "gap_us": 160.2,
+   "submission": 83,
+   "bindings_bytes": [
+    68067328,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 0,
+   "kernel": "DequantF16",
+   "n": 112,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 31.2,
+   "gap_us": 43.2,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 1,
+   "kernel": "FastRmsNormF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 34.8,
+   "gap_us": 25.5,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 1,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 128,
+   "groups": [
+    16,
+    1,
+    1
+   ],
+   "gpu_us": 39.4,
+   "gap_us": 75.4,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    57344,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 1,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 128,
+   "groups": [
+    16,
+    1,
+    1
+   ],
+   "gpu_us": 33.6,
+   "gap_us": 18.7,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    57344,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 1,
+   "kernel": "BinaryVecF16",
+   "n": 128,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 29.2,
+   "gap_us": 20.0,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 1,
+   "kernel": "BinaryVecF16",
+   "n": 128,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 30.5,
+   "gap_us": 62.3,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 1,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 896,
+   "groups": [
+    112,
+    1,
+    1
+   ],
+   "gpu_us": 42.5,
+   "gap_us": 21.8,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    401408,
+    28672,
+    28672,
+    4096
+   ]
+  },
+  {
+   "layer": 1,
+   "kernel": "BinaryVecF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 29.5,
+   "gap_us": 11.2,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 1,
+   "kernel": "FastRopeF16",
+   "n": 64,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 34.7,
+   "gap_us": 60.0,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 1,
+   "kernel": "CopyGeneralF16",
+   "n": 128,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 27.3,
+   "gap_us": 21.2,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    4096,
+    65536,
+    65536
+   ]
+  },
+  {
+   "layer": 1,
+   "kernel": "CopyGeneralF16",
+   "n": 128,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 26.9,
+   "gap_us": 23.9,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    4096,
+    65536,
+    65536
+   ]
+  },
+  {
+   "layer": 1,
+   "kernel": "FastRopeF16",
+   "n": 448,
+   "groups": [
+    2,
+    1,
+    1
+   ],
+   "gpu_us": 33.9,
+   "gap_us": 80.5,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 1,
+   "kernel": "MatmulF16",
+   "n": 784,
+   "groups": [
+    4,
+    1,
+    14
+   ],
+   "gpu_us": 45.3,
+   "gap_us": 19.2,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    65536,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 1,
+   "kernel": "SoftmaxF16",
+   "n": 784,
+   "groups": [
+    14,
+    1,
+    1
+   ],
+   "gpu_us": 31.6,
+   "gap_us": 11.0,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 1,
+   "kernel": "MatmulF16",
+   "n": 896,
+   "groups": [
+    4,
+    1,
+    14
+   ],
+   "gpu_us": 46.7,
+   "gap_us": 65.7,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    65536,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 1,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 896,
+   "groups": [
+    112,
+    1,
+    1
+   ],
+   "gpu_us": 39.4,
+   "gap_us": 10.7,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    401408,
+    28672,
+    28672,
+    4096
+   ]
+  },
+  {
+   "layer": 1,
+   "kernel": "BinaryVecF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 27.0,
+   "gap_us": 10.5,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 1,
+   "kernel": "FastRmsNormF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 35.6,
+   "gap_us": 59.1,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 1,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 4864,
+   "groups": [
+    608,
+    1,
+    1
+   ],
+   "gpu_us": 88.4,
+   "gap_us": 17.6,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    2179072,
+    139264,
+    139264,
+    12288
+   ]
+  },
+  {
+   "layer": 1,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 4864,
+   "groups": [
+    608,
+    1,
+    1
+   ],
+   "gpu_us": 78.7,
+   "gap_us": 13.6,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    2179072,
+    139264,
+    139264,
+    12288
+   ]
+  },
+  {
+   "layer": 1,
+   "kernel": "SwigluF16",
+   "n": 4864,
+   "groups": [
+    5,
+    1,
+    1
+   ],
+   "gpu_us": 18.0,
+   "gap_us": 11.1,
+   "submission": 83,
+   "bindings_bytes": [
+    12288,
+    12288,
+    12288,
+    12288,
+    12288
+   ]
+  },
+  {
+   "layer": 1,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 896,
+   "groups": [
+    112,
+    1,
+    1
+   ],
+   "gpu_us": 69.8,
+   "gap_us": 11.0,
+   "submission": 83,
+   "bindings_bytes": [
+    12288,
+    2179072,
+    139264,
+    139264,
+    4096
+   ]
+  },
+  {
+   "layer": 1,
+   "kernel": "BinaryVecF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 18.4,
+   "gap_us": 11.6,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 2,
+   "kernel": "FastRmsNormF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 34.3,
+   "gap_us": 34.3,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 2,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 128,
+   "groups": [
+    16,
+    1,
+    1
+   ],
+   "gpu_us": 33.0,
+   "gap_us": 18.3,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    57344,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 2,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 128,
+   "groups": [
+    16,
+    1,
+    1
+   ],
+   "gpu_us": 32.3,
+   "gap_us": 19.5,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    57344,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 2,
+   "kernel": "BinaryVecF16",
+   "n": 128,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 29.2,
+   "gap_us": 59.2,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 2,
+   "kernel": "BinaryVecF16",
+   "n": 128,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 30.1,
+   "gap_us": 22.5,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 2,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 896,
+   "groups": [
+    112,
+    1,
+    1
+   ],
+   "gpu_us": 42.6,
+   "gap_us": 24.0,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    401408,
+    28672,
+    28672,
+    4096
+   ]
+  },
+  {
+   "layer": 2,
+   "kernel": "BinaryVecF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 31.0,
+   "gap_us": 61.7,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 2,
+   "kernel": "FastRopeF16",
+   "n": 64,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 35.2,
+   "gap_us": 20.6,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 2,
+   "kernel": "CopyGeneralF16",
+   "n": 128,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 30.5,
+   "gap_us": 13.9,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    4096,
+    65536,
+    65536
+   ]
+  },
+  {
+   "layer": 2,
+   "kernel": "CopyGeneralF16",
+   "n": 128,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 28.5,
+   "gap_us": 61.3,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    4096,
+    65536,
+    65536
+   ]
+  },
+  {
+   "layer": 2,
+   "kernel": "FastRopeF16",
+   "n": 448,
+   "groups": [
+    2,
+    1,
+    1
+   ],
+   "gpu_us": 35.8,
+   "gap_us": 21.4,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 2,
+   "kernel": "MatmulF16",
+   "n": 784,
+   "groups": [
+    4,
+    1,
+    14
+   ],
+   "gpu_us": 47.7,
+   "gap_us": 9.8,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    65536,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 2,
+   "kernel": "SoftmaxF16",
+   "n": 784,
+   "groups": [
+    14,
+    1,
+    1
+   ],
+   "gpu_us": 36.6,
+   "gap_us": 54.3,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 2,
+   "kernel": "MatmulF16",
+   "n": 896,
+   "groups": [
+    4,
+    1,
+    14
+   ],
+   "gpu_us": 46.8,
+   "gap_us": 13.0,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    65536,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 2,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 896,
+   "groups": [
+    112,
+    1,
+    1
+   ],
+   "gpu_us": 37.3,
+   "gap_us": 10.6,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    401408,
+    28672,
+    28672,
+    4096
+   ]
+  },
+  {
+   "layer": 2,
+   "kernel": "BinaryVecF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 42.5,
+   "gap_us": 84.8,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 2,
+   "kernel": "FastRmsNormF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 56.5,
+   "gap_us": 43.5,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 2,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 4864,
+   "groups": [
+    608,
+    1,
+    1
+   ],
+   "gpu_us": 110.0,
+   "gap_us": 43.8,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    2179072,
+    139264,
+    139264,
+    12288
+   ]
+  },
+  {
+   "layer": 2,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 4864,
+   "groups": [
+    608,
+    1,
+    1
+   ],
+   "gpu_us": 111.5,
+   "gap_us": 47.8,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    2179072,
+    139264,
+    139264,
+    12288
+   ]
+  },
+  {
+   "layer": 2,
+   "kernel": "SwigluF16",
+   "n": 4864,
+   "groups": [
+    5,
+    1,
+    1
+   ],
+   "gpu_us": 17.5,
+   "gap_us": 11.0,
+   "submission": 83,
+   "bindings_bytes": [
+    12288,
+    12288,
+    12288,
+    12288,
+    12288
+   ]
+  },
+  {
+   "layer": 2,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 896,
+   "groups": [
+    112,
+    1,
+    1
+   ],
+   "gpu_us": 81.8,
+   "gap_us": 19.1,
+   "submission": 83,
+   "bindings_bytes": [
+    12288,
+    2179072,
+    139264,
+    139264,
+    4096
+   ]
+  },
+  {
+   "layer": 2,
+   "kernel": "BinaryVecF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 25.9,
+   "gap_us": 12.6,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 3,
+   "kernel": "FastRmsNormF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 32.7,
+   "gap_us": 21.1,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 3,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 128,
+   "groups": [
+    16,
+    1,
+    1
+   ],
+   "gpu_us": 31.8,
+   "gap_us": 17.2,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    57344,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 3,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 128,
+   "groups": [
+    16,
+    1,
+    1
+   ],
+   "gpu_us": 35.2,
+   "gap_us": 74.7,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    57344,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 3,
+   "kernel": "BinaryVecF16",
+   "n": 128,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 28.4,
+   "gap_us": 19.8,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 3,
+   "kernel": "BinaryVecF16",
+   "n": 128,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 29.2,
+   "gap_us": 21.9,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 3,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 896,
+   "groups": [
+    112,
+    1,
+    1
+   ],
+   "gpu_us": 40.7,
+   "gap_us": 59.1,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    401408,
+    28672,
+    28672,
+    4096
+   ]
+  },
+  {
+   "layer": 3,
+   "kernel": "BinaryVecF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 29.5,
+   "gap_us": 10.8,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 3,
+   "kernel": "FastRopeF16",
+   "n": 64,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 33.2,
+   "gap_us": 21.5,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 3,
+   "kernel": "CopyGeneralF16",
+   "n": 128,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 29.2,
+   "gap_us": 67.6,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    4096,
+    65536,
+    65536
+   ]
+  },
+  {
+   "layer": 3,
+   "kernel": "CopyGeneralF16",
+   "n": 128,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 28.6,
+   "gap_us": 26.8,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    4096,
+    65536,
+    65536
+   ]
+  },
+  {
+   "layer": 3,
+   "kernel": "FastRopeF16",
+   "n": 448,
+   "groups": [
+    2,
+    1,
+    1
+   ],
+   "gpu_us": 33.8,
+   "gap_us": 20.0,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 3,
+   "kernel": "MatmulF16",
+   "n": 784,
+   "groups": [
+    4,
+    1,
+    14
+   ],
+   "gpu_us": 45.8,
+   "gap_us": 67.6,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    65536,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 3,
+   "kernel": "SoftmaxF16",
+   "n": 784,
+   "groups": [
+    14,
+    1,
+    1
+   ],
+   "gpu_us": 34.5,
+   "gap_us": 11.1,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 3,
+   "kernel": "MatmulF16",
+   "n": 896,
+   "groups": [
+    4,
+    1,
+    14
+   ],
+   "gpu_us": 48.1,
+   "gap_us": 14.5,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    65536,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 3,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 896,
+   "groups": [
+    112,
+    1,
+    1
+   ],
+   "gpu_us": 45.0,
+   "gap_us": 119.7,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    401408,
+    28672,
+    28672,
+    4096
+   ]
+  },
+  {
+   "layer": 3,
+   "kernel": "BinaryVecF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 30.5,
+   "gap_us": 10.5,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 3,
+   "kernel": "FastRmsNormF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 34.4,
+   "gap_us": 20.7,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 3,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 4864,
+   "groups": [
+    608,
+    1,
+    1
+   ],
+   "gpu_us": 88.5,
+   "gap_us": 66.2,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    2179072,
+    139264,
+    139264,
+    12288
+   ]
+  },
+  {
+   "layer": 3,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 4864,
+   "groups": [
+    608,
+    1,
+    1
+   ],
+   "gpu_us": 75.5,
+   "gap_us": 11.5,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    2179072,
+    139264,
+    139264,
+    12288
+   ]
+  },
+  {
+   "layer": 3,
+   "kernel": "SwigluF16",
+   "n": 4864,
+   "groups": [
+    5,
+    1,
+    1
+   ],
+   "gpu_us": 18.0,
+   "gap_us": 15.1,
+   "submission": 83,
+   "bindings_bytes": [
+    12288,
+    12288,
+    12288,
+    12288,
+    12288
+   ]
+  },
+  {
+   "layer": 3,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 896,
+   "groups": [
+    112,
+    1,
+    1
+   ],
+   "gpu_us": 79.3,
+   "gap_us": 18.5,
+   "submission": 83,
+   "bindings_bytes": [
+    12288,
+    2179072,
+    139264,
+    139264,
+    4096
+   ]
+  },
+  {
+   "layer": 3,
+   "kernel": "BinaryVecF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 19.1,
+   "gap_us": 11.4,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 4,
+   "kernel": "FastRmsNormF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 25.3,
+   "gap_us": 10.0,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 4,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 128,
+   "groups": [
+    16,
+    1,
+    1
+   ],
+   "gpu_us": 33.5,
+   "gap_us": 65.4,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    57344,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 4,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 128,
+   "groups": [
+    16,
+    1,
+    1
+   ],
+   "gpu_us": 32.7,
+   "gap_us": 18.0,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    57344,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 4,
+   "kernel": "BinaryVecF16",
+   "n": 128,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 28.3,
+   "gap_us": 18.5,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 4,
+   "kernel": "BinaryVecF16",
+   "n": 128,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 29.3,
+   "gap_us": 58.9,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 4,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 896,
+   "groups": [
+    112,
+    1,
+    1
+   ],
+   "gpu_us": 44.0,
+   "gap_us": 21.2,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    401408,
+    28672,
+    28672,
+    4096
+   ]
+  },
+  {
+   "layer": 4,
+   "kernel": "BinaryVecF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 28.5,
+   "gap_us": 10.8,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 4,
+   "kernel": "FastRopeF16",
+   "n": 64,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 34.6,
+   "gap_us": 75.4,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 4,
+   "kernel": "CopyGeneralF16",
+   "n": 128,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 27.9,
+   "gap_us": 22.0,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    4096,
+    65536,
+    65536
+   ]
+  },
+  {
+   "layer": 4,
+   "kernel": "CopyGeneralF16",
+   "n": 128,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 27.0,
+   "gap_us": 25.2,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    4096,
+    65536,
+    65536
+   ]
+  },
+  {
+   "layer": 4,
+   "kernel": "FastRopeF16",
+   "n": 448,
+   "groups": [
+    2,
+    1,
+    1
+   ],
+   "gpu_us": 33.4,
+   "gap_us": 57.3,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 4,
+   "kernel": "MatmulF16",
+   "n": 784,
+   "groups": [
+    4,
+    1,
+    14
+   ],
+   "gpu_us": 45.0,
+   "gap_us": 19.0,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    65536,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 4,
+   "kernel": "SoftmaxF16",
+   "n": 784,
+   "groups": [
+    14,
+    1,
+    1
+   ],
+   "gpu_us": 32.4,
+   "gap_us": 10.8,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 4,
+   "kernel": "MatmulF16",
+   "n": 896,
+   "groups": [
+    4,
+    1,
+    14
+   ],
+   "gpu_us": 45.4,
+   "gap_us": 72.9,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    65536,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 4,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 896,
+   "groups": [
+    112,
+    1,
+    1
+   ],
+   "gpu_us": 58.9,
+   "gap_us": 18.5,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    401408,
+    28672,
+    28672,
+    4096
+   ]
+  },
+  {
+   "layer": 4,
+   "kernel": "BinaryVecF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 43.1,
+   "gap_us": 31.8,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 4,
+   "kernel": "FastRmsNormF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 56.6,
+   "gap_us": 121.2,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 4,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 4864,
+   "groups": [
+    608,
+    1,
+    1
+   ],
+   "gpu_us": 114.0,
+   "gap_us": 43.3,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    2179072,
+    139264,
+    139264,
+    12288
+   ]
+  },
+  {
+   "layer": 4,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 4864,
+   "groups": [
+    608,
+    1,
+    1
+   ],
+   "gpu_us": 76.9,
+   "gap_us": 11.1,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    2179072,
+    139264,
+    139264,
+    12288
+   ]
+  },
+  {
+   "layer": 4,
+   "kernel": "SwigluF16",
+   "n": 4864,
+   "groups": [
+    5,
+    1,
+    1
+   ],
+   "gpu_us": 17.3,
+   "gap_us": 14.5,
+   "submission": 83,
+   "bindings_bytes": [
+    12288,
+    12288,
+    12288,
+    12288,
+    12288
+   ]
+  },
+  {
+   "layer": 4,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 896,
+   "groups": [
+    112,
+    1,
+    1
+   ],
+   "gpu_us": 79.0,
+   "gap_us": 21.2,
+   "submission": 83,
+   "bindings_bytes": [
+    12288,
+    2179072,
+    139264,
+    139264,
+    4096
+   ]
+  },
+  {
+   "layer": 4,
+   "kernel": "BinaryVecF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 17.4,
+   "gap_us": 12.8,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 5,
+   "kernel": "FastRmsNormF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 33.8,
+   "gap_us": 28.2,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 5,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 128,
+   "groups": [
+    16,
+    1,
+    1
+   ],
+   "gpu_us": 34.6,
+   "gap_us": 18.2,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    57344,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 5,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 128,
+   "groups": [
+    16,
+    1,
+    1
+   ],
+   "gpu_us": 37.3,
+   "gap_us": 19.4,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    57344,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 5,
+   "kernel": "BinaryVecF16",
+   "n": 128,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 41.0,
+   "gap_us": 141.1,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 5,
+   "kernel": "BinaryVecF16",
+   "n": 128,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 28.9,
+   "gap_us": 22.2,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 5,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 896,
+   "groups": [
+    112,
+    1,
+    1
+   ],
+   "gpu_us": 41.2,
+   "gap_us": 22.0,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    401408,
+    28672,
+    28672,
+    4096
+   ]
+  },
+  {
+   "layer": 5,
+   "kernel": "BinaryVecF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 29.5,
+   "gap_us": 68.3,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 5,
+   "kernel": "FastRopeF16",
+   "n": 64,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 33.1,
+   "gap_us": 21.8,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 5,
+   "kernel": "CopyGeneralF16",
+   "n": 128,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 32.2,
+   "gap_us": 24.2,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    4096,
+    65536,
+    65536
+   ]
+  },
+  {
+   "layer": 5,
+   "kernel": "CopyGeneralF16",
+   "n": 128,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 27.2,
+   "gap_us": 62.8,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    4096,
+    65536,
+    65536
+   ]
+  },
+  {
+   "layer": 5,
+   "kernel": "FastRopeF16",
+   "n": 448,
+   "groups": [
+    2,
+    1,
+    1
+   ],
+   "gpu_us": 36.6,
+   "gap_us": 22.1,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 5,
+   "kernel": "MatmulF16",
+   "n": 784,
+   "groups": [
+    4,
+    1,
+    14
+   ],
+   "gpu_us": 45.2,
+   "gap_us": 18.3,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    65536,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 5,
+   "kernel": "SoftmaxF16",
+   "n": 784,
+   "groups": [
+    14,
+    1,
+    1
+   ],
+   "gpu_us": 35.0,
+   "gap_us": 76.0,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 5,
+   "kernel": "MatmulF16",
+   "n": 896,
+   "groups": [
+    4,
+    1,
+    14
+   ],
+   "gpu_us": 44.0,
+   "gap_us": 17.0,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    65536,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 5,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 896,
+   "groups": [
+    112,
+    1,
+    1
+   ],
+   "gpu_us": 38.8,
+   "gap_us": 10.8,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    401408,
+    28672,
+    28672,
+    4096
+   ]
+  },
+  {
+   "layer": 5,
+   "kernel": "BinaryVecF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 28.8,
+   "gap_us": 57.4,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 5,
+   "kernel": "FastRmsNormF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 32.8,
+   "gap_us": 21.2,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 5,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 4864,
+   "groups": [
+    608,
+    1,
+    1
+   ],
+   "gpu_us": 86.8,
+   "gap_us": 17.9,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    2179072,
+    139264,
+    139264,
+    12288
+   ]
+  },
+  {
+   "layer": 5,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 4864,
+   "groups": [
+    608,
+    1,
+    1
+   ],
+   "gpu_us": 76.9,
+   "gap_us": 11.0,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    2179072,
+    139264,
+    139264,
+    12288
+   ]
+  },
+  {
+   "layer": 5,
+   "kernel": "SwigluF16",
+   "n": 4864,
+   "groups": [
+    5,
+    1,
+    1
+   ],
+   "gpu_us": 17.5,
+   "gap_us": 10.5,
+   "submission": 83,
+   "bindings_bytes": [
+    12288,
+    12288,
+    12288,
+    12288,
+    12288
+   ]
+  },
+  {
+   "layer": 5,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 896,
+   "groups": [
+    112,
+    1,
+    1
+   ],
+   "gpu_us": 70.5,
+   "gap_us": 11.7,
+   "submission": 83,
+   "bindings_bytes": [
+    12288,
+    2179072,
+    139264,
+    139264,
+    4096
+   ]
+  },
+  {
+   "layer": 5,
+   "kernel": "BinaryVecF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 27.3,
+   "gap_us": 11.6,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 6,
+   "kernel": "FastRmsNormF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 33.3,
+   "gap_us": 22.3,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 6,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 128,
+   "groups": [
+    16,
+    1,
+    1
+   ],
+   "gpu_us": 32.3,
+   "gap_us": 19.6,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    57344,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 6,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 128,
+   "groups": [
+    16,
+    1,
+    1
+   ],
+   "gpu_us": 33.2,
+   "gap_us": 56.7,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    57344,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 6,
+   "kernel": "BinaryVecF16",
+   "n": 128,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 27.7,
+   "gap_us": 18.5,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 6,
+   "kernel": "BinaryVecF16",
+   "n": 128,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 27.9,
+   "gap_us": 21.5,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 6,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 896,
+   "groups": [
+    112,
+    1,
+    1
+   ],
+   "gpu_us": 41.2,
+   "gap_us": 59.1,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    401408,
+    28672,
+    28672,
+    4096
+   ]
+  },
+  {
+   "layer": 6,
+   "kernel": "BinaryVecF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 27.8,
+   "gap_us": 10.3,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 6,
+   "kernel": "FastRopeF16",
+   "n": 64,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 32.4,
+   "gap_us": 21.3,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 6,
+   "kernel": "CopyGeneralF16",
+   "n": 128,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 28.7,
+   "gap_us": 88.3,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    4096,
+    65536,
+    65536
+   ]
+  },
+  {
+   "layer": 6,
+   "kernel": "CopyGeneralF16",
+   "n": 128,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 27.1,
+   "gap_us": 24.1,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    4096,
+    65536,
+    65536
+   ]
+  },
+  {
+   "layer": 6,
+   "kernel": "FastRopeF16",
+   "n": 448,
+   "groups": [
+    2,
+    1,
+    1
+   ],
+   "gpu_us": 32.5,
+   "gap_us": 20.6,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 6,
+   "kernel": "MatmulF16",
+   "n": 784,
+   "groups": [
+    4,
+    1,
+    14
+   ],
+   "gpu_us": 47.4,
+   "gap_us": 64.8,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    65536,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 6,
+   "kernel": "SoftmaxF16",
+   "n": 784,
+   "groups": [
+    14,
+    1,
+    1
+   ],
+   "gpu_us": 32.7,
+   "gap_us": 10.8,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 6,
+   "kernel": "MatmulF16",
+   "n": 896,
+   "groups": [
+    4,
+    1,
+    14
+   ],
+   "gpu_us": 62.2,
+   "gap_us": 34.6,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    65536,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 6,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 896,
+   "groups": [
+    112,
+    1,
+    1
+   ],
+   "gpu_us": 60.5,
+   "gap_us": 114.7,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    401408,
+    28672,
+    28672,
+    4096
+   ]
+  },
+  {
+   "layer": 6,
+   "kernel": "BinaryVecF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 31.4,
+   "gap_us": 10.2,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 6,
+   "kernel": "FastRmsNormF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 51.2,
+   "gap_us": 38.1,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 6,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 4864,
+   "groups": [
+    608,
+    1,
+    1
+   ],
+   "gpu_us": 118.0,
+   "gap_us": 127.6,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    2179072,
+    139264,
+    139264,
+    12288
+   ]
+  },
+  {
+   "layer": 6,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 4864,
+   "groups": [
+    608,
+    1,
+    1
+   ],
+   "gpu_us": 90.9,
+   "gap_us": 13.4,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    2179072,
+    139264,
+    139264,
+    12288
+   ]
+  },
+  {
+   "layer": 6,
+   "kernel": "SwigluF16",
+   "n": 4864,
+   "groups": [
+    5,
+    1,
+    1
+   ],
+   "gpu_us": 17.0,
+   "gap_us": 10.7,
+   "submission": 83,
+   "bindings_bytes": [
+    12288,
+    12288,
+    12288,
+    12288,
+    12288
+   ]
+  },
+  {
+   "layer": 6,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 896,
+   "groups": [
+    112,
+    1,
+    1
+   ],
+   "gpu_us": 81.3,
+   "gap_us": 11.7,
+   "submission": 83,
+   "bindings_bytes": [
+    12288,
+    2179072,
+    139264,
+    139264,
+    4096
+   ]
+  },
+  {
+   "layer": 6,
+   "kernel": "BinaryVecF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 17.8,
+   "gap_us": 13.1,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 7,
+   "kernel": "FastRmsNormF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 24.5,
+   "gap_us": 10.8,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 7,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 128,
+   "groups": [
+    16,
+    1,
+    1
+   ],
+   "gpu_us": 33.4,
+   "gap_us": 9.7,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    57344,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 7,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 128,
+   "groups": [
+    16,
+    1,
+    1
+   ],
+   "gpu_us": 31.4,
+   "gap_us": 20.5,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    57344,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 7,
+   "kernel": "BinaryVecF16",
+   "n": 128,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 29.5,
+   "gap_us": 20.5,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 7,
+   "kernel": "BinaryVecF16",
+   "n": 128,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 30.7,
+   "gap_us": 68.5,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 7,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 896,
+   "groups": [
+    112,
+    1,
+    1
+   ],
+   "gpu_us": 43.2,
+   "gap_us": 21.4,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    401408,
+    28672,
+    28672,
+    4096
+   ]
+  },
+  {
+   "layer": 7,
+   "kernel": "BinaryVecF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 28.1,
+   "gap_us": 10.8,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 7,
+   "kernel": "FastRopeF16",
+   "n": 64,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 35.8,
+   "gap_us": 60.9,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 7,
+   "kernel": "CopyGeneralF16",
+   "n": 128,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 29.2,
+   "gap_us": 15.0,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    4096,
+    65536,
+    65536
+   ]
+  },
+  {
+   "layer": 7,
+   "kernel": "CopyGeneralF16",
+   "n": 128,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 27.1,
+   "gap_us": 25.8,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    4096,
+    65536,
+    65536
+   ]
+  },
+  {
+   "layer": 7,
+   "kernel": "FastRopeF16",
+   "n": 448,
+   "groups": [
+    2,
+    1,
+    1
+   ],
+   "gpu_us": 35.6,
+   "gap_us": 57.3,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 7,
+   "kernel": "MatmulF16",
+   "n": 784,
+   "groups": [
+    4,
+    1,
+    14
+   ],
+   "gpu_us": 48.2,
+   "gap_us": 11.0,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    65536,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 7,
+   "kernel": "SoftmaxF16",
+   "n": 784,
+   "groups": [
+    14,
+    1,
+    1
+   ],
+   "gpu_us": 33.2,
+   "gap_us": 10.5,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 7,
+   "kernel": "MatmulF16",
+   "n": 896,
+   "groups": [
+    4,
+    1,
+    14
+   ],
+   "gpu_us": 45.8,
+   "gap_us": 83.6,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    65536,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 7,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 896,
+   "groups": [
+    112,
+    1,
+    1
+   ],
+   "gpu_us": 40.5,
+   "gap_us": 10.9,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    401408,
+    28672,
+    28672,
+    4096
+   ]
+  },
+  {
+   "layer": 7,
+   "kernel": "BinaryVecF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 27.6,
+   "gap_us": 10.9,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 7,
+   "kernel": "FastRmsNormF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 34.0,
+   "gap_us": 59.2,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 7,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 4864,
+   "groups": [
+    608,
+    1,
+    1
+   ],
+   "gpu_us": 99.3,
+   "gap_us": 18.0,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    2179072,
+    139264,
+    139264,
+    12288
+   ]
+  },
+  {
+   "layer": 7,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 4864,
+   "groups": [
+    608,
+    1,
+    1
+   ],
+   "gpu_us": 90.2,
+   "gap_us": 13.9,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    2179072,
+    139264,
+    139264,
+    12288
+   ]
+  },
+  {
+   "layer": 7,
+   "kernel": "SwigluF16",
+   "n": 4864,
+   "groups": [
+    5,
+    1,
+    1
+   ],
+   "gpu_us": 17.2,
+   "gap_us": 11.5,
+   "submission": 83,
+   "bindings_bytes": [
+    12288,
+    12288,
+    12288,
+    12288,
+    12288
+   ]
+  },
+  {
+   "layer": 7,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 896,
+   "groups": [
+    112,
+    1,
+    1
+   ],
+   "gpu_us": 81.5,
+   "gap_us": 12.1,
+   "submission": 83,
+   "bindings_bytes": [
+    12288,
+    2179072,
+    139264,
+    139264,
+    4096
+   ]
+  },
+  {
+   "layer": 7,
+   "kernel": "BinaryVecF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 21.3,
+   "gap_us": 14.3,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 8,
+   "kernel": "FastRmsNormF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 38.2,
+   "gap_us": 10.8,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 8,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 128,
+   "groups": [
+    16,
+    1,
+    1
+   ],
+   "gpu_us": 33.0,
+   "gap_us": 18.6,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    57344,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 8,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 128,
+   "groups": [
+    16,
+    1,
+    1
+   ],
+   "gpu_us": 32.0,
+   "gap_us": 18.7,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    57344,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 8,
+   "kernel": "BinaryVecF16",
+   "n": 128,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 30.0,
+   "gap_us": 61.8,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 8,
+   "kernel": "BinaryVecF16",
+   "n": 128,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 27.8,
+   "gap_us": 22.2,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 8,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 896,
+   "groups": [
+    112,
+    1,
+    1
+   ],
+   "gpu_us": 42.5,
+   "gap_us": 21.5,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    401408,
+    28672,
+    28672,
+    4096
+   ]
+  },
+  {
+   "layer": 8,
+   "kernel": "BinaryVecF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 28.5,
+   "gap_us": 55.7,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 8,
+   "kernel": "FastRopeF16",
+   "n": 64,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 35.3,
+   "gap_us": 21.8,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 8,
+   "kernel": "CopyGeneralF16",
+   "n": 128,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 29.2,
+   "gap_us": 17.4,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    4096,
+    65536,
+    65536
+   ]
+  },
+  {
+   "layer": 8,
+   "kernel": "CopyGeneralF16",
+   "n": 128,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 29.6,
+   "gap_us": 74.2,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    4096,
+    65536,
+    65536
+   ]
+  },
+  {
+   "layer": 8,
+   "kernel": "FastRopeF16",
+   "n": 448,
+   "groups": [
+    2,
+    1,
+    1
+   ],
+   "gpu_us": 35.8,
+   "gap_us": 20.1,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 8,
+   "kernel": "MatmulF16",
+   "n": 784,
+   "groups": [
+    4,
+    1,
+    14
+   ],
+   "gpu_us": 62.3,
+   "gap_us": 37.8,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    65536,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 8,
+   "kernel": "SoftmaxF16",
+   "n": 784,
+   "groups": [
+    14,
+    1,
+    1
+   ],
+   "gpu_us": 59.1,
+   "gap_us": 212.3,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 8,
+   "kernel": "MatmulF16",
+   "n": 896,
+   "groups": [
+    4,
+    1,
+    14
+   ],
+   "gpu_us": 63.9,
+   "gap_us": 37.0,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    65536,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 8,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 896,
+   "groups": [
+    112,
+    1,
+    1
+   ],
+   "gpu_us": 43.2,
+   "gap_us": 25.8,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    401408,
+    28672,
+    28672,
+    4096
+   ]
+  },
+  {
+   "layer": 8,
+   "kernel": "BinaryVecF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 29.5,
+   "gap_us": 60.1,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 8,
+   "kernel": "FastRmsNormF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 33.6,
+   "gap_us": 21.2,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 8,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 4864,
+   "groups": [
+    608,
+    1,
+    1
+   ],
+   "gpu_us": 104.5,
+   "gap_us": 18.5,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    2179072,
+    139264,
+    139264,
+    12288
+   ]
+  },
+  {
+   "layer": 8,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 4864,
+   "groups": [
+    608,
+    1,
+    1
+   ],
+   "gpu_us": 90.6,
+   "gap_us": 14.7,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    2179072,
+    139264,
+    139264,
+    12288
+   ]
+  },
+  {
+   "layer": 8,
+   "kernel": "SwigluF16",
+   "n": 4864,
+   "groups": [
+    5,
+    1,
+    1
+   ],
+   "gpu_us": 17.9,
+   "gap_us": 10.8,
+   "submission": 83,
+   "bindings_bytes": [
+    12288,
+    12288,
+    12288,
+    12288,
+    12288
+   ]
+  },
+  {
+   "layer": 8,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 896,
+   "groups": [
+    112,
+    1,
+    1
+   ],
+   "gpu_us": 77.0,
+   "gap_us": 10.9,
+   "submission": 83,
+   "bindings_bytes": [
+    12288,
+    2179072,
+    139264,
+    139264,
+    4096
+   ]
+  },
+  {
+   "layer": 8,
+   "kernel": "BinaryVecF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 17.5,
+   "gap_us": 12.6,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 9,
+   "kernel": "FastRmsNormF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 34.4,
+   "gap_us": 23.9,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 9,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 128,
+   "groups": [
+    16,
+    1,
+    1
+   ],
+   "gpu_us": 31.8,
+   "gap_us": 20.5,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    57344,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 9,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 128,
+   "groups": [
+    16,
+    1,
+    1
+   ],
+   "gpu_us": 33.6,
+   "gap_us": 57.9,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    57344,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 9,
+   "kernel": "BinaryVecF16",
+   "n": 128,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 28.5,
+   "gap_us": 18.7,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 9,
+   "kernel": "BinaryVecF16",
+   "n": 128,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 29.9,
+   "gap_us": 21.4,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 9,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 896,
+   "groups": [
+    112,
+    1,
+    1
+   ],
+   "gpu_us": 43.6,
+   "gap_us": 76.0,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    401408,
+    28672,
+    28672,
+    4096
+   ]
+  },
+  {
+   "layer": 9,
+   "kernel": "BinaryVecF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 28.1,
+   "gap_us": 10.7,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 9,
+   "kernel": "FastRopeF16",
+   "n": 64,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 35.0,
+   "gap_us": 22.7,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 9,
+   "kernel": "CopyGeneralF16",
+   "n": 128,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 28.9,
+   "gap_us": 69.2,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    4096,
+    65536,
+    65536
+   ]
+  },
+  {
+   "layer": 9,
+   "kernel": "CopyGeneralF16",
+   "n": 128,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 28.9,
+   "gap_us": 25.1,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    4096,
+    65536,
+    65536
+   ]
+  },
+  {
+   "layer": 9,
+   "kernel": "FastRopeF16",
+   "n": 448,
+   "groups": [
+    2,
+    1,
+    1
+   ],
+   "gpu_us": 36.5,
+   "gap_us": 21.3,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 9,
+   "kernel": "MatmulF16",
+   "n": 784,
+   "groups": [
+    4,
+    1,
+    14
+   ],
+   "gpu_us": 46.2,
+   "gap_us": 63.2,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    65536,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 9,
+   "kernel": "SoftmaxF16",
+   "n": 784,
+   "groups": [
+    14,
+    1,
+    1
+   ],
+   "gpu_us": 33.0,
+   "gap_us": 10.9,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 9,
+   "kernel": "MatmulF16",
+   "n": 896,
+   "groups": [
+    4,
+    1,
+    14
+   ],
+   "gpu_us": 48.8,
+   "gap_us": 13.4,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    65536,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 9,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 896,
+   "groups": [
+    112,
+    1,
+    1
+   ],
+   "gpu_us": 44.0,
+   "gap_us": 59.7,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    401408,
+    28672,
+    28672,
+    4096
+   ]
+  },
+  {
+   "layer": 9,
+   "kernel": "BinaryVecF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 30.8,
+   "gap_us": 11.2,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 9,
+   "kernel": "FastRmsNormF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 32.7,
+   "gap_us": 21.2,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 9,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 4864,
+   "groups": [
+    608,
+    1,
+    1
+   ],
+   "gpu_us": 91.1,
+   "gap_us": 68.0,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    2179072,
+    139264,
+    139264,
+    12288
+   ]
+  },
+  {
+   "layer": 9,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 4864,
+   "groups": [
+    608,
+    1,
+    1
+   ],
+   "gpu_us": 77.0,
+   "gap_us": 11.7,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    2179072,
+    139264,
+    139264,
+    12288
+   ]
+  },
+  {
+   "layer": 9,
+   "kernel": "SwigluF16",
+   "n": 4864,
+   "groups": [
+    5,
+    1,
+    1
+   ],
+   "gpu_us": 17.8,
+   "gap_us": 11.9,
+   "submission": 83,
+   "bindings_bytes": [
+    12288,
+    12288,
+    12288,
+    12288,
+    12288
+   ]
+  },
+  {
+   "layer": 9,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 896,
+   "groups": [
+    112,
+    1,
+    1
+   ],
+   "gpu_us": 72.3,
+   "gap_us": 10.7,
+   "submission": 83,
+   "bindings_bytes": [
+    12288,
+    2179072,
+    139264,
+    139264,
+    4096
+   ]
+  },
+  {
+   "layer": 9,
+   "kernel": "BinaryVecF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 18.0,
+   "gap_us": 11.0,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 10,
+   "kernel": "FastRmsNormF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 26.6,
+   "gap_us": 10.7,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 10,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 128,
+   "groups": [
+    16,
+    1,
+    1
+   ],
+   "gpu_us": 34.2,
+   "gap_us": 84.8,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    57344,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 10,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 128,
+   "groups": [
+    16,
+    1,
+    1
+   ],
+   "gpu_us": 33.2,
+   "gap_us": 18.7,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    57344,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 10,
+   "kernel": "BinaryVecF16",
+   "n": 128,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 28.7,
+   "gap_us": 18.6,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 10,
+   "kernel": "BinaryVecF16",
+   "n": 128,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 29.4,
+   "gap_us": 60.2,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 10,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 896,
+   "groups": [
+    112,
+    1,
+    1
+   ],
+   "gpu_us": 42.4,
+   "gap_us": 21.7,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    401408,
+    28672,
+    28672,
+    4096
+   ]
+  },
+  {
+   "layer": 10,
+   "kernel": "BinaryVecF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 28.1,
+   "gap_us": 10.6,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 10,
+   "kernel": "FastRopeF16",
+   "n": 64,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 38.1,
+   "gap_us": 66.3,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 10,
+   "kernel": "CopyGeneralF16",
+   "n": 128,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 29.9,
+   "gap_us": 14.8,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    4096,
+    65536,
+    65536
+   ]
+  },
+  {
+   "layer": 10,
+   "kernel": "CopyGeneralF16",
+   "n": 128,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 33.7,
+   "gap_us": 39.8,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    4096,
+    65536,
+    65536
+   ]
+  },
+  {
+   "layer": 10,
+   "kernel": "FastRopeF16",
+   "n": 448,
+   "groups": [
+    2,
+    1,
+    1
+   ],
+   "gpu_us": 36.2,
+   "gap_us": 74.9,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 10,
+   "kernel": "MatmulF16",
+   "n": 784,
+   "groups": [
+    4,
+    1,
+    14
+   ],
+   "gpu_us": 44.7,
+   "gap_us": 17.4,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    65536,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 10,
+   "kernel": "SoftmaxF16",
+   "n": 784,
+   "groups": [
+    14,
+    1,
+    1
+   ],
+   "gpu_us": 30.5,
+   "gap_us": 11.4,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 10,
+   "kernel": "MatmulF16",
+   "n": 896,
+   "groups": [
+    4,
+    1,
+    14
+   ],
+   "gpu_us": 45.6,
+   "gap_us": 65.8,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    65536,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 10,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 896,
+   "groups": [
+    112,
+    1,
+    1
+   ],
+   "gpu_us": 39.2,
+   "gap_us": 10.6,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    401408,
+    28672,
+    28672,
+    4096
+   ]
+  },
+  {
+   "layer": 10,
+   "kernel": "BinaryVecF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 29.2,
+   "gap_us": 11.0,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 10,
+   "kernel": "FastRmsNormF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 35.4,
+   "gap_us": 60.2,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 10,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 4864,
+   "groups": [
+    608,
+    1,
+    1
+   ],
+   "gpu_us": 93.2,
+   "gap_us": 13.5,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    2179072,
+    139264,
+    139264,
+    12288
+   ]
+  },
+  {
+   "layer": 10,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 4864,
+   "groups": [
+    608,
+    1,
+    1
+   ],
+   "gpu_us": 79.1,
+   "gap_us": 11.6,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    2179072,
+    139264,
+    139264,
+    12288
+   ]
+  },
+  {
+   "layer": 10,
+   "kernel": "SwigluF16",
+   "n": 4864,
+   "groups": [
+    5,
+    1,
+    1
+   ],
+   "gpu_us": 17.2,
+   "gap_us": 11.3,
+   "submission": 83,
+   "bindings_bytes": [
+    12288,
+    12288,
+    12288,
+    12288,
+    12288
+   ]
+  },
+  {
+   "layer": 10,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 896,
+   "groups": [
+    112,
+    1,
+    1
+   ],
+   "gpu_us": 70.2,
+   "gap_us": 11.5,
+   "submission": 83,
+   "bindings_bytes": [
+    12288,
+    2179072,
+    139264,
+    139264,
+    4096
+   ]
+  },
+  {
+   "layer": 10,
+   "kernel": "BinaryVecF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 18.0,
+   "gap_us": 12.8,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 11,
+   "kernel": "FastRmsNormF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 36.2,
+   "gap_us": 24.0,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 11,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 128,
+   "groups": [
+    16,
+    1,
+    1
+   ],
+   "gpu_us": 36.6,
+   "gap_us": 10.8,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    57344,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 11,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 128,
+   "groups": [
+    16,
+    1,
+    1
+   ],
+   "gpu_us": 33.0,
+   "gap_us": 21.6,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    57344,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 11,
+   "kernel": "BinaryVecF16",
+   "n": 128,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 30.5,
+   "gap_us": 70.5,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 11,
+   "kernel": "BinaryVecF16",
+   "n": 128,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 31.0,
+   "gap_us": 22.2,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 11,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 896,
+   "groups": [
+    112,
+    1,
+    1
+   ],
+   "gpu_us": 40.8,
+   "gap_us": 21.2,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    401408,
+    28672,
+    28672,
+    4096
+   ]
+  },
+  {
+   "layer": 11,
+   "kernel": "BinaryVecF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 31.1,
+   "gap_us": 75.2,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 11,
+   "kernel": "FastRopeF16",
+   "n": 64,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 37.2,
+   "gap_us": 21.8,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 11,
+   "kernel": "CopyGeneralF16",
+   "n": 128,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 32.5,
+   "gap_us": 14.8,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    4096,
+    65536,
+    65536
+   ]
+  },
+  {
+   "layer": 11,
+   "kernel": "CopyGeneralF16",
+   "n": 128,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 28.1,
+   "gap_us": 62.6,
+   "submission": 83,
+   "bindings_bytes": [
+    4096,
+    4096,
+    65536,
+    65536
+   ]
+  },
+  {
+   "layer": 11,
+   "kernel": "FastRopeF16",
+   "n": 448,
+   "groups": [
+    2,
+    1,
+    1
+   ],
+   "gpu_us": 76.9,
+   "gap_us": 226.0,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 11,
+   "kernel": "MatmulF16",
+   "n": 784,
+   "groups": [
+    4,
+    1,
+    14
+   ],
+   "gpu_us": 65.6,
+   "gap_us": 60.3,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    65536,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 11,
+   "kernel": "SoftmaxF16",
+   "n": 784,
+   "groups": [
+    14,
+    1,
+    1
+   ],
+   "gpu_us": 65.3,
+   "gap_us": 164.3,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 11,
+   "kernel": "MatmulF16",
+   "n": 896,
+   "groups": [
+    4,
+    1,
+    14
+   ],
+   "gpu_us": 48.2,
+   "gap_us": 39.9,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    65536,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 11,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 896,
+   "groups": [
+    112,
+    1,
+    1
+   ],
+   "gpu_us": 41.5,
+   "gap_us": 15.1,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    401408,
+    28672,
+    28672,
+    4096
+   ]
+  },
+  {
+   "layer": 11,
+   "kernel": "BinaryVecF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 31.3,
+   "gap_us": 88.1,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 11,
+   "kernel": "FastRmsNormF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 33.8,
+   "gap_us": 22.0,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 11,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 4864,
+   "groups": [
+    608,
+    1,
+    1
+   ],
+   "gpu_us": 89.8,
+   "gap_us": 19.5,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    2179072,
+    139264,
+    139264,
+    12288
+   ]
+  },
+  {
+   "layer": 11,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 4864,
+   "groups": [
+    608,
+    1,
+    1
+   ],
+   "gpu_us": 78.7,
+   "gap_us": 13.8,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    2179072,
+    139264,
+    139264,
+    12288
+   ]
+  },
+  {
+   "layer": 11,
+   "kernel": "SwigluF16",
+   "n": 4864,
+   "groups": [
+    5,
+    1,
+    1
+   ],
+   "gpu_us": 17.8,
+   "gap_us": 11.6,
+   "submission": 84,
+   "bindings_bytes": [
+    12288,
+    12288,
+    12288,
+    12288,
+    12288
+   ]
+  },
+  {
+   "layer": 11,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 896,
+   "groups": [
+    112,
+    1,
+    1
+   ],
+   "gpu_us": 75.1,
+   "gap_us": 12.1,
+   "submission": 84,
+   "bindings_bytes": [
+    12288,
+    2179072,
+    139264,
+    139264,
+    4096
+   ]
+  },
+  {
+   "layer": 11,
+   "kernel": "BinaryVecF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 26.4,
+   "gap_us": 11.4,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 12,
+   "kernel": "FastRmsNormF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 34.2,
+   "gap_us": 24.5,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 12,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 128,
+   "groups": [
+    16,
+    1,
+    1
+   ],
+   "gpu_us": 32.6,
+   "gap_us": 18.1,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    57344,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 12,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 128,
+   "groups": [
+    16,
+    1,
+    1
+   ],
+   "gpu_us": 34.1,
+   "gap_us": 74.8,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    57344,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 12,
+   "kernel": "BinaryVecF16",
+   "n": 128,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 29.2,
+   "gap_us": 19.9,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 12,
+   "kernel": "BinaryVecF16",
+   "n": 128,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 28.4,
+   "gap_us": 21.3,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 12,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 896,
+   "groups": [
+    112,
+    1,
+    1
+   ],
+   "gpu_us": 42.8,
+   "gap_us": 60.8,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    401408,
+    28672,
+    28672,
+    4096
+   ]
+  },
+  {
+   "layer": 12,
+   "kernel": "BinaryVecF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 31.8,
+   "gap_us": 10.4,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 12,
+   "kernel": "FastRopeF16",
+   "n": 64,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 33.2,
+   "gap_us": 22.7,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 12,
+   "kernel": "CopyGeneralF16",
+   "n": 128,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 28.6,
+   "gap_us": 60.8,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    4096,
+    65536,
+    65536
+   ]
+  },
+  {
+   "layer": 12,
+   "kernel": "CopyGeneralF16",
+   "n": 128,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 27.9,
+   "gap_us": 24.7,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    4096,
+    65536,
+    65536
+   ]
+  },
+  {
+   "layer": 12,
+   "kernel": "FastRopeF16",
+   "n": 448,
+   "groups": [
+    2,
+    1,
+    1
+   ],
+   "gpu_us": 32.4,
+   "gap_us": 21.2,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 12,
+   "kernel": "MatmulF16",
+   "n": 784,
+   "groups": [
+    4,
+    1,
+    14
+   ],
+   "gpu_us": 46.0,
+   "gap_us": 60.8,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    65536,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 12,
+   "kernel": "SoftmaxF16",
+   "n": 784,
+   "groups": [
+    14,
+    1,
+    1
+   ],
+   "gpu_us": 32.4,
+   "gap_us": 10.9,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 12,
+   "kernel": "MatmulF16",
+   "n": 896,
+   "groups": [
+    4,
+    1,
+    14
+   ],
+   "gpu_us": 44.6,
+   "gap_us": 17.1,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    65536,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 12,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 896,
+   "groups": [
+    112,
+    1,
+    1
+   ],
+   "gpu_us": 44.6,
+   "gap_us": 55.4,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    401408,
+    28672,
+    28672,
+    4096
+   ]
+  },
+  {
+   "layer": 12,
+   "kernel": "BinaryVecF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 31.2,
+   "gap_us": 11.0,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 12,
+   "kernel": "FastRmsNormF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 34.1,
+   "gap_us": 22.3,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 12,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 4864,
+   "groups": [
+    608,
+    1,
+    1
+   ],
+   "gpu_us": 88.8,
+   "gap_us": 67.7,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    2179072,
+    139264,
+    139264,
+    12288
+   ]
+  },
+  {
+   "layer": 12,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 4864,
+   "groups": [
+    608,
+    1,
+    1
+   ],
+   "gpu_us": 78.4,
+   "gap_us": 11.6,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    2179072,
+    139264,
+    139264,
+    12288
+   ]
+  },
+  {
+   "layer": 12,
+   "kernel": "SwigluF16",
+   "n": 4864,
+   "groups": [
+    5,
+    1,
+    1
+   ],
+   "gpu_us": 17.3,
+   "gap_us": 14.0,
+   "submission": 84,
+   "bindings_bytes": [
+    12288,
+    12288,
+    12288,
+    12288,
+    12288
+   ]
+  },
+  {
+   "layer": 12,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 896,
+   "groups": [
+    112,
+    1,
+    1
+   ],
+   "gpu_us": 87.2,
+   "gap_us": 10.9,
+   "submission": 84,
+   "bindings_bytes": [
+    12288,
+    2179072,
+    139264,
+    139264,
+    4096
+   ]
+  },
+  {
+   "layer": 12,
+   "kernel": "BinaryVecF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 17.6,
+   "gap_us": 11.0,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 13,
+   "kernel": "FastRmsNormF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 24.7,
+   "gap_us": 10.5,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 13,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 128,
+   "groups": [
+    16,
+    1,
+    1
+   ],
+   "gpu_us": 32.8,
+   "gap_us": 77.2,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    57344,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 13,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 128,
+   "groups": [
+    16,
+    1,
+    1
+   ],
+   "gpu_us": 32.8,
+   "gap_us": 18.7,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    57344,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 13,
+   "kernel": "BinaryVecF16",
+   "n": 128,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 28.4,
+   "gap_us": 19.3,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 13,
+   "kernel": "BinaryVecF16",
+   "n": 128,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 29.5,
+   "gap_us": 59.6,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 13,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 896,
+   "groups": [
+    112,
+    1,
+    1
+   ],
+   "gpu_us": 41.1,
+   "gap_us": 23.2,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    401408,
+    28672,
+    28672,
+    4096
+   ]
+  },
+  {
+   "layer": 13,
+   "kernel": "BinaryVecF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 31.4,
+   "gap_us": 11.9,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 13,
+   "kernel": "FastRopeF16",
+   "n": 64,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 59.3,
+   "gap_us": 164.2,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 13,
+   "kernel": "CopyGeneralF16",
+   "n": 128,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 47.2,
+   "gap_us": 43.7,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    4096,
+    65536,
+    65536
+   ]
+  },
+  {
+   "layer": 13,
+   "kernel": "CopyGeneralF16",
+   "n": 128,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 47.2,
+   "gap_us": 47.1,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    4096,
+    65536,
+    65536
+   ]
+  },
+  {
+   "layer": 13,
+   "kernel": "FastRopeF16",
+   "n": 448,
+   "groups": [
+    2,
+    1,
+    1
+   ],
+   "gpu_us": 51.3,
+   "gap_us": 111.0,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 13,
+   "kernel": "MatmulF16",
+   "n": 784,
+   "groups": [
+    4,
+    1,
+    14
+   ],
+   "gpu_us": 48.5,
+   "gap_us": 35.1,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    65536,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 13,
+   "kernel": "SoftmaxF16",
+   "n": 784,
+   "groups": [
+    14,
+    1,
+    1
+   ],
+   "gpu_us": 33.0,
+   "gap_us": 11.0,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 13,
+   "kernel": "MatmulF16",
+   "n": 896,
+   "groups": [
+    4,
+    1,
+    14
+   ],
+   "gpu_us": 45.2,
+   "gap_us": 67.0,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    65536,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 13,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 896,
+   "groups": [
+    112,
+    1,
+    1
+   ],
+   "gpu_us": 40.5,
+   "gap_us": 11.3,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    401408,
+    28672,
+    28672,
+    4096
+   ]
+  },
+  {
+   "layer": 13,
+   "kernel": "BinaryVecF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 27.7,
+   "gap_us": 10.7,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 13,
+   "kernel": "FastRmsNormF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 33.4,
+   "gap_us": 63.6,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 13,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 4864,
+   "groups": [
+    608,
+    1,
+    1
+   ],
+   "gpu_us": 104.0,
+   "gap_us": 17.8,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    2179072,
+    139264,
+    139264,
+    12288
+   ]
+  },
+  {
+   "layer": 13,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 4864,
+   "groups": [
+    608,
+    1,
+    1
+   ],
+   "gpu_us": 89.2,
+   "gap_us": 12.5,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    2179072,
+    139264,
+    139264,
+    12288
+   ]
+  },
+  {
+   "layer": 13,
+   "kernel": "SwigluF16",
+   "n": 4864,
+   "groups": [
+    5,
+    1,
+    1
+   ],
+   "gpu_us": 17.0,
+   "gap_us": 13.8,
+   "submission": 84,
+   "bindings_bytes": [
+    12288,
+    12288,
+    12288,
+    12288,
+    12288
+   ]
+  },
+  {
+   "layer": 13,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 896,
+   "groups": [
+    112,
+    1,
+    1
+   ],
+   "gpu_us": 79.5,
+   "gap_us": 10.5,
+   "submission": 84,
+   "bindings_bytes": [
+    12288,
+    2179072,
+    139264,
+    139264,
+    4096
+   ]
+  },
+  {
+   "layer": 13,
+   "kernel": "BinaryVecF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 17.1,
+   "gap_us": 12.5,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 14,
+   "kernel": "FastRmsNormF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 34.7,
+   "gap_us": 10.8,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 14,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 128,
+   "groups": [
+    16,
+    1,
+    1
+   ],
+   "gpu_us": 34.7,
+   "gap_us": 19.4,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    57344,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 14,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 128,
+   "groups": [
+    16,
+    1,
+    1
+   ],
+   "gpu_us": 33.7,
+   "gap_us": 18.7,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    57344,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 14,
+   "kernel": "BinaryVecF16",
+   "n": 128,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 29.4,
+   "gap_us": 76.6,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 14,
+   "kernel": "BinaryVecF16",
+   "n": 128,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 28.8,
+   "gap_us": 22.3,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 14,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 896,
+   "groups": [
+    112,
+    1,
+    1
+   ],
+   "gpu_us": 42.3,
+   "gap_us": 22.2,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    401408,
+    28672,
+    28672,
+    4096
+   ]
+  },
+  {
+   "layer": 14,
+   "kernel": "BinaryVecF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 30.0,
+   "gap_us": 57.2,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 14,
+   "kernel": "FastRopeF16",
+   "n": 64,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 36.3,
+   "gap_us": 22.4,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 14,
+   "kernel": "CopyGeneralF16",
+   "n": 128,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 30.0,
+   "gap_us": 14.8,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    4096,
+    65536,
+    65536
+   ]
+  },
+  {
+   "layer": 14,
+   "kernel": "CopyGeneralF16",
+   "n": 128,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 26.6,
+   "gap_us": 61.8,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    4096,
+    65536,
+    65536
+   ]
+  },
+  {
+   "layer": 14,
+   "kernel": "FastRopeF16",
+   "n": 448,
+   "groups": [
+    2,
+    1,
+    1
+   ],
+   "gpu_us": 36.2,
+   "gap_us": 23.1,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 14,
+   "kernel": "MatmulF16",
+   "n": 784,
+   "groups": [
+    4,
+    1,
+    14
+   ],
+   "gpu_us": 44.7,
+   "gap_us": 17.3,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    65536,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 14,
+   "kernel": "SoftmaxF16",
+   "n": 784,
+   "groups": [
+    14,
+    1,
+    1
+   ],
+   "gpu_us": 34.9,
+   "gap_us": 70.9,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 14,
+   "kernel": "MatmulF16",
+   "n": 896,
+   "groups": [
+    4,
+    1,
+    14
+   ],
+   "gpu_us": 43.8,
+   "gap_us": 17.3,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    65536,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 14,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 896,
+   "groups": [
+    112,
+    1,
+    1
+   ],
+   "gpu_us": 40.8,
+   "gap_us": 11.0,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    401408,
+    28672,
+    28672,
+    4096
+   ]
+  },
+  {
+   "layer": 14,
+   "kernel": "BinaryVecF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 29.8,
+   "gap_us": 55.8,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 14,
+   "kernel": "FastRmsNormF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 33.7,
+   "gap_us": 21.9,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 14,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 4864,
+   "groups": [
+    608,
+    1,
+    1
+   ],
+   "gpu_us": 100.8,
+   "gap_us": 17.8,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    2179072,
+    139264,
+    139264,
+    12288
+   ]
+  },
+  {
+   "layer": 14,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 4864,
+   "groups": [
+    608,
+    1,
+    1
+   ],
+   "gpu_us": 89.0,
+   "gap_us": 12.2,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    2179072,
+    139264,
+    139264,
+    12288
+   ]
+  },
+  {
+   "layer": 14,
+   "kernel": "SwigluF16",
+   "n": 4864,
+   "groups": [
+    5,
+    1,
+    1
+   ],
+   "gpu_us": 19.9,
+   "gap_us": 12.3,
+   "submission": 84,
+   "bindings_bytes": [
+    12288,
+    12288,
+    12288,
+    12288,
+    12288
+   ]
+  },
+  {
+   "layer": 14,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 896,
+   "groups": [
+    112,
+    1,
+    1
+   ],
+   "gpu_us": 78.0,
+   "gap_us": 10.5,
+   "submission": 84,
+   "bindings_bytes": [
+    12288,
+    2179072,
+    139264,
+    139264,
+    4096
+   ]
+  },
+  {
+   "layer": 14,
+   "kernel": "BinaryVecF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 17.8,
+   "gap_us": 11.5,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 15,
+   "kernel": "FastRmsNormF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 23.4,
+   "gap_us": 10.3,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 15,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 128,
+   "groups": [
+    16,
+    1,
+    1
+   ],
+   "gpu_us": 30.5,
+   "gap_us": 9.9,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    57344,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 15,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 128,
+   "groups": [
+    16,
+    1,
+    1
+   ],
+   "gpu_us": 35.3,
+   "gap_us": 63.4,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    57344,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 15,
+   "kernel": "BinaryVecF16",
+   "n": 128,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 28.5,
+   "gap_us": 19.0,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 15,
+   "kernel": "BinaryVecF16",
+   "n": 128,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 28.4,
+   "gap_us": 21.4,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 15,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 896,
+   "groups": [
+    112,
+    1,
+    1
+   ],
+   "gpu_us": 43.6,
+   "gap_us": 65.9,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    401408,
+    28672,
+    28672,
+    4096
+   ]
+  },
+  {
+   "layer": 15,
+   "kernel": "BinaryVecF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 29.1,
+   "gap_us": 11.2,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 15,
+   "kernel": "FastRopeF16",
+   "n": 64,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 52.3,
+   "gap_us": 43.2,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 15,
+   "kernel": "CopyGeneralF16",
+   "n": 128,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 49.0,
+   "gap_us": 141.9,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    4096,
+    65536,
+    65536
+   ]
+  },
+  {
+   "layer": 15,
+   "kernel": "CopyGeneralF16",
+   "n": 128,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 46.5,
+   "gap_us": 38.6,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    4096,
+    65536,
+    65536
+   ]
+  },
+  {
+   "layer": 15,
+   "kernel": "FastRopeF16",
+   "n": 448,
+   "groups": [
+    2,
+    1,
+    1
+   ],
+   "gpu_us": 51.9,
+   "gap_us": 37.7,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 15,
+   "kernel": "MatmulF16",
+   "n": 784,
+   "groups": [
+    4,
+    1,
+    14
+   ],
+   "gpu_us": 45.4,
+   "gap_us": 76.8,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    65536,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 15,
+   "kernel": "SoftmaxF16",
+   "n": 784,
+   "groups": [
+    14,
+    1,
+    1
+   ],
+   "gpu_us": 32.2,
+   "gap_us": 10.2,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 15,
+   "kernel": "MatmulF16",
+   "n": 896,
+   "groups": [
+    4,
+    1,
+    14
+   ],
+   "gpu_us": 49.5,
+   "gap_us": 10.6,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    65536,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 15,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 896,
+   "groups": [
+    112,
+    1,
+    1
+   ],
+   "gpu_us": 43.0,
+   "gap_us": 57.2,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    401408,
+    28672,
+    28672,
+    4096
+   ]
+  },
+  {
+   "layer": 15,
+   "kernel": "BinaryVecF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 27.1,
+   "gap_us": 12.9,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 15,
+   "kernel": "FastRmsNormF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 33.0,
+   "gap_us": 21.2,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 15,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 4864,
+   "groups": [
+    608,
+    1,
+    1
+   ],
+   "gpu_us": 102.3,
+   "gap_us": 82.4,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    2179072,
+    139264,
+    139264,
+    12288
+   ]
+  },
+  {
+   "layer": 15,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 4864,
+   "groups": [
+    608,
+    1,
+    1
+   ],
+   "gpu_us": 89.9,
+   "gap_us": 12.2,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    2179072,
+    139264,
+    139264,
+    12288
+   ]
+  },
+  {
+   "layer": 15,
+   "kernel": "SwigluF16",
+   "n": 4864,
+   "groups": [
+    5,
+    1,
+    1
+   ],
+   "gpu_us": 16.8,
+   "gap_us": 10.6,
+   "submission": 84,
+   "bindings_bytes": [
+    12288,
+    12288,
+    12288,
+    12288,
+    12288
+   ]
+  },
+  {
+   "layer": 15,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 896,
+   "groups": [
+    112,
+    1,
+    1
+   ],
+   "gpu_us": 80.9,
+   "gap_us": 10.0,
+   "submission": 84,
+   "bindings_bytes": [
+    12288,
+    2179072,
+    139264,
+    139264,
+    4096
+   ]
+  },
+  {
+   "layer": 15,
+   "kernel": "BinaryVecF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 17.6,
+   "gap_us": 12.8,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 16,
+   "kernel": "FastRmsNormF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 24.6,
+   "gap_us": 11.2,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 16,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 128,
+   "groups": [
+    16,
+    1,
+    1
+   ],
+   "gpu_us": 32.6,
+   "gap_us": 11.5,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    57344,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 16,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 128,
+   "groups": [
+    16,
+    1,
+    1
+   ],
+   "gpu_us": 31.3,
+   "gap_us": 19.0,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    57344,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 16,
+   "kernel": "BinaryVecF16",
+   "n": 128,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 28.3,
+   "gap_us": 18.4,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 16,
+   "kernel": "BinaryVecF16",
+   "n": 128,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 29.5,
+   "gap_us": 70.4,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 16,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 896,
+   "groups": [
+    112,
+    1,
+    1
+   ],
+   "gpu_us": 41.6,
+   "gap_us": 21.5,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    401408,
+    28672,
+    28672,
+    4096
+   ]
+  },
+  {
+   "layer": 16,
+   "kernel": "BinaryVecF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 28.2,
+   "gap_us": 10.7,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 16,
+   "kernel": "FastRopeF16",
+   "n": 64,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 35.7,
+   "gap_us": 61.2,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 16,
+   "kernel": "CopyGeneralF16",
+   "n": 128,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 29.4,
+   "gap_us": 13.8,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    4096,
+    65536,
+    65536
+   ]
+  },
+  {
+   "layer": 16,
+   "kernel": "CopyGeneralF16",
+   "n": 128,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 27.6,
+   "gap_us": 24.8,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    4096,
+    65536,
+    65536
+   ]
+  },
+  {
+   "layer": 16,
+   "kernel": "FastRopeF16",
+   "n": 448,
+   "groups": [
+    2,
+    1,
+    1
+   ],
+   "gpu_us": 36.6,
+   "gap_us": 58.5,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 16,
+   "kernel": "MatmulF16",
+   "n": 784,
+   "groups": [
+    4,
+    1,
+    14
+   ],
+   "gpu_us": 50.0,
+   "gap_us": 10.3,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    65536,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 16,
+   "kernel": "SoftmaxF16",
+   "n": 784,
+   "groups": [
+    14,
+    1,
+    1
+   ],
+   "gpu_us": 32.2,
+   "gap_us": 11.4,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 16,
+   "kernel": "MatmulF16",
+   "n": 896,
+   "groups": [
+    4,
+    1,
+    14
+   ],
+   "gpu_us": 47.1,
+   "gap_us": 83.2,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    65536,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 16,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 896,
+   "groups": [
+    112,
+    1,
+    1
+   ],
+   "gpu_us": 39.2,
+   "gap_us": 10.9,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    401408,
+    28672,
+    28672,
+    4096
+   ]
+  },
+  {
+   "layer": 16,
+   "kernel": "BinaryVecF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 28.2,
+   "gap_us": 12.6,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 16,
+   "kernel": "FastRmsNormF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 36.2,
+   "gap_us": 59.5,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 16,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 4864,
+   "groups": [
+    608,
+    1,
+    1
+   ],
+   "gpu_us": 95.9,
+   "gap_us": 10.6,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    2179072,
+    139264,
+    139264,
+    12288
+   ]
+  },
+  {
+   "layer": 16,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 4864,
+   "groups": [
+    608,
+    1,
+    1
+   ],
+   "gpu_us": 83.9,
+   "gap_us": 11.4,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    2179072,
+    139264,
+    139264,
+    12288
+   ]
+  },
+  {
+   "layer": 16,
+   "kernel": "SwigluF16",
+   "n": 4864,
+   "groups": [
+    5,
+    1,
+    1
+   ],
+   "gpu_us": 18.2,
+   "gap_us": 11.0,
+   "submission": 84,
+   "bindings_bytes": [
+    12288,
+    12288,
+    12288,
+    12288,
+    12288
+   ]
+  },
+  {
+   "layer": 16,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 896,
+   "groups": [
+    112,
+    1,
+    1
+   ],
+   "gpu_us": 74.2,
+   "gap_us": 10.6,
+   "submission": 84,
+   "bindings_bytes": [
+    12288,
+    2179072,
+    139264,
+    139264,
+    4096
+   ]
+  },
+  {
+   "layer": 16,
+   "kernel": "BinaryVecF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 20.8,
+   "gap_us": 12.2,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 17,
+   "kernel": "FastRmsNormF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 35.5,
+   "gap_us": 9.4,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 17,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 128,
+   "groups": [
+    16,
+    1,
+    1
+   ],
+   "gpu_us": 33.9,
+   "gap_us": 18.2,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    57344,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 17,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 128,
+   "groups": [
+    16,
+    1,
+    1
+   ],
+   "gpu_us": 34.5,
+   "gap_us": 20.5,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    57344,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 17,
+   "kernel": "BinaryVecF16",
+   "n": 128,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 30.9,
+   "gap_us": 66.5,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 17,
+   "kernel": "BinaryVecF16",
+   "n": 128,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 28.7,
+   "gap_us": 21.4,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 17,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 896,
+   "groups": [
+    112,
+    1,
+    1
+   ],
+   "gpu_us": 60.5,
+   "gap_us": 32.0,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    401408,
+    28672,
+    28672,
+    4096
+   ]
+  },
+  {
+   "layer": 17,
+   "kernel": "BinaryVecF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 44.9,
+   "gap_us": 109.2,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 17,
+   "kernel": "FastRopeF16",
+   "n": 64,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 49.7,
+   "gap_us": 38.3,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 17,
+   "kernel": "CopyGeneralF16",
+   "n": 128,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 41.9,
+   "gap_us": 36.2,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    4096,
+    65536,
+    65536
+   ]
+  },
+  {
+   "layer": 17,
+   "kernel": "CopyGeneralF16",
+   "n": 128,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 38.5,
+   "gap_us": 128.8,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    4096,
+    65536,
+    65536
+   ]
+  },
+  {
+   "layer": 17,
+   "kernel": "FastRopeF16",
+   "n": 448,
+   "groups": [
+    2,
+    1,
+    1
+   ],
+   "gpu_us": 36.9,
+   "gap_us": 22.0,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 17,
+   "kernel": "MatmulF16",
+   "n": 784,
+   "groups": [
+    4,
+    1,
+    14
+   ],
+   "gpu_us": 46.3,
+   "gap_us": 19.1,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    65536,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 17,
+   "kernel": "SoftmaxF16",
+   "n": 784,
+   "groups": [
+    14,
+    1,
+    1
+   ],
+   "gpu_us": 38.0,
+   "gap_us": 57.8,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 17,
+   "kernel": "MatmulF16",
+   "n": 896,
+   "groups": [
+    4,
+    1,
+    14
+   ],
+   "gpu_us": 47.0,
+   "gap_us": 13.2,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    65536,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 17,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 896,
+   "groups": [
+    112,
+    1,
+    1
+   ],
+   "gpu_us": 40.0,
+   "gap_us": 11.2,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    401408,
+    28672,
+    28672,
+    4096
+   ]
+  },
+  {
+   "layer": 17,
+   "kernel": "BinaryVecF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 30.1,
+   "gap_us": 57.4,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 17,
+   "kernel": "FastRmsNormF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 35.4,
+   "gap_us": 20.9,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 17,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 4864,
+   "groups": [
+    608,
+    1,
+    1
+   ],
+   "gpu_us": 87.8,
+   "gap_us": 16.9,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    2179072,
+    139264,
+    139264,
+    12288
+   ]
+  },
+  {
+   "layer": 17,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 4864,
+   "groups": [
+    608,
+    1,
+    1
+   ],
+   "gpu_us": 87.6,
+   "gap_us": 14.9,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    2179072,
+    139264,
+    139264,
+    12288
+   ]
+  },
+  {
+   "layer": 17,
+   "kernel": "SwigluF16",
+   "n": 4864,
+   "groups": [
+    5,
+    1,
+    1
+   ],
+   "gpu_us": 18.2,
+   "gap_us": 11.2,
+   "submission": 84,
+   "bindings_bytes": [
+    12288,
+    12288,
+    12288,
+    12288,
+    12288
+   ]
+  },
+  {
+   "layer": 17,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 896,
+   "groups": [
+    112,
+    1,
+    1
+   ],
+   "gpu_us": 71.3,
+   "gap_us": 10.4,
+   "submission": 84,
+   "bindings_bytes": [
+    12288,
+    2179072,
+    139264,
+    139264,
+    4096
+   ]
+  },
+  {
+   "layer": 17,
+   "kernel": "BinaryVecF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 28.8,
+   "gap_us": 13.5,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 18,
+   "kernel": "FastRmsNormF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 33.4,
+   "gap_us": 20.9,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 18,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 128,
+   "groups": [
+    16,
+    1,
+    1
+   ],
+   "gpu_us": 34.5,
+   "gap_us": 17.3,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    57344,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 18,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 128,
+   "groups": [
+    16,
+    1,
+    1
+   ],
+   "gpu_us": 34.4,
+   "gap_us": 71.2,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    57344,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 18,
+   "kernel": "BinaryVecF16",
+   "n": 128,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 30.0,
+   "gap_us": 19.3,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 18,
+   "kernel": "BinaryVecF16",
+   "n": 128,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 87.4,
+   "gap_us": 24.5,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 18,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 896,
+   "groups": [
+    112,
+    1,
+    1
+   ],
+   "gpu_us": 45.3,
+   "gap_us": 94.9,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    401408,
+    28672,
+    28672,
+    4096
+   ]
+  },
+  {
+   "layer": 18,
+   "kernel": "BinaryVecF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 32.1,
+   "gap_us": 11.3,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 18,
+   "kernel": "FastRopeF16",
+   "n": 64,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 36.9,
+   "gap_us": 20.2,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 18,
+   "kernel": "CopyGeneralF16",
+   "n": 128,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 29.4,
+   "gap_us": 66.7,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    4096,
+    65536,
+    65536
+   ]
+  },
+  {
+   "layer": 18,
+   "kernel": "CopyGeneralF16",
+   "n": 128,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 28.8,
+   "gap_us": 24.7,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    4096,
+    65536,
+    65536
+   ]
+  },
+  {
+   "layer": 18,
+   "kernel": "FastRopeF16",
+   "n": 448,
+   "groups": [
+    2,
+    1,
+    1
+   ],
+   "gpu_us": 36.2,
+   "gap_us": 21.9,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 18,
+   "kernel": "MatmulF16",
+   "n": 784,
+   "groups": [
+    4,
+    1,
+    14
+   ],
+   "gpu_us": 47.3,
+   "gap_us": 64.5,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    65536,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 18,
+   "kernel": "SoftmaxF16",
+   "n": 784,
+   "groups": [
+    14,
+    1,
+    1
+   ],
+   "gpu_us": 33.8,
+   "gap_us": 11.5,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 18,
+   "kernel": "MatmulF16",
+   "n": 896,
+   "groups": [
+    4,
+    1,
+    14
+   ],
+   "gpu_us": 45.4,
+   "gap_us": 18.1,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    65536,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 18,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 896,
+   "groups": [
+    112,
+    1,
+    1
+   ],
+   "gpu_us": 43.8,
+   "gap_us": 58.0,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    401408,
+    28672,
+    28672,
+    4096
+   ]
+  },
+  {
+   "layer": 18,
+   "kernel": "BinaryVecF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 28.9,
+   "gap_us": 11.0,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 18,
+   "kernel": "FastRmsNormF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 36.5,
+   "gap_us": 23.5,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 18,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 4864,
+   "groups": [
+    608,
+    1,
+    1
+   ],
+   "gpu_us": 88.2,
+   "gap_us": 69.3,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    2179072,
+    139264,
+    139264,
+    12288
+   ]
+  },
+  {
+   "layer": 18,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 4864,
+   "groups": [
+    608,
+    1,
+    1
+   ],
+   "gpu_us": 75.7,
+   "gap_us": 11.4,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    2179072,
+    139264,
+    139264,
+    12288
+   ]
+  },
+  {
+   "layer": 18,
+   "kernel": "SwigluF16",
+   "n": 4864,
+   "groups": [
+    5,
+    1,
+    1
+   ],
+   "gpu_us": 18.4,
+   "gap_us": 13.3,
+   "submission": 84,
+   "bindings_bytes": [
+    12288,
+    12288,
+    12288,
+    12288,
+    12288
+   ]
+  },
+  {
+   "layer": 18,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 896,
+   "groups": [
+    112,
+    1,
+    1
+   ],
+   "gpu_us": 69.6,
+   "gap_us": 10.3,
+   "submission": 84,
+   "bindings_bytes": [
+    12288,
+    2179072,
+    139264,
+    139264,
+    4096
+   ]
+  },
+  {
+   "layer": 18,
+   "kernel": "BinaryVecF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 21.4,
+   "gap_us": 11.9,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 19,
+   "kernel": "FastRmsNormF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 25.9,
+   "gap_us": 10.9,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 19,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 128,
+   "groups": [
+    16,
+    1,
+    1
+   ],
+   "gpu_us": 36.7,
+   "gap_us": 95.2,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    57344,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 19,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 128,
+   "groups": [
+    16,
+    1,
+    1
+   ],
+   "gpu_us": 50.2,
+   "gap_us": 27.7,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    57344,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 19,
+   "kernel": "BinaryVecF16",
+   "n": 128,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 47.8,
+   "gap_us": 37.8,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 19,
+   "kernel": "BinaryVecF16",
+   "n": 128,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 42.9,
+   "gap_us": 106.7,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 19,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 896,
+   "groups": [
+    112,
+    1,
+    1
+   ],
+   "gpu_us": 54.5,
+   "gap_us": 36.2,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    401408,
+    28672,
+    28672,
+    4096
+   ]
+  },
+  {
+   "layer": 19,
+   "kernel": "BinaryVecF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 46.0,
+   "gap_us": 30.6,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 19,
+   "kernel": "FastRopeF16",
+   "n": 64,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 40.4,
+   "gap_us": 90.5,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 19,
+   "kernel": "CopyGeneralF16",
+   "n": 128,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 33.0,
+   "gap_us": 14.4,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    4096,
+    65536,
+    65536
+   ]
+  },
+  {
+   "layer": 19,
+   "kernel": "CopyGeneralF16",
+   "n": 128,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 27.8,
+   "gap_us": 23.8,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    4096,
+    65536,
+    65536
+   ]
+  },
+  {
+   "layer": 19,
+   "kernel": "FastRopeF16",
+   "n": 448,
+   "groups": [
+    2,
+    1,
+    1
+   ],
+   "gpu_us": 37.2,
+   "gap_us": 77.7,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 19,
+   "kernel": "MatmulF16",
+   "n": 784,
+   "groups": [
+    4,
+    1,
+    14
+   ],
+   "gpu_us": 49.4,
+   "gap_us": 9.8,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    65536,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 19,
+   "kernel": "SoftmaxF16",
+   "n": 784,
+   "groups": [
+    14,
+    1,
+    1
+   ],
+   "gpu_us": 32.4,
+   "gap_us": 10.9,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 19,
+   "kernel": "MatmulF16",
+   "n": 896,
+   "groups": [
+    4,
+    1,
+    14
+   ],
+   "gpu_us": 48.5,
+   "gap_us": 64.5,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    65536,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 19,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 896,
+   "groups": [
+    112,
+    1,
+    1
+   ],
+   "gpu_us": 38.5,
+   "gap_us": 10.7,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    401408,
+    28672,
+    28672,
+    4096
+   ]
+  },
+  {
+   "layer": 19,
+   "kernel": "BinaryVecF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 29.5,
+   "gap_us": 10.8,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 19,
+   "kernel": "FastRmsNormF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 34.2,
+   "gap_us": 58.4,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 19,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 4864,
+   "groups": [
+    608,
+    1,
+    1
+   ],
+   "gpu_us": 88.1,
+   "gap_us": 17.2,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    2179072,
+    139264,
+    139264,
+    12288
+   ]
+  },
+  {
+   "layer": 19,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 4864,
+   "groups": [
+    608,
+    1,
+    1
+   ],
+   "gpu_us": 79.3,
+   "gap_us": 12.8,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    2179072,
+    139264,
+    139264,
+    12288
+   ]
+  },
+  {
+   "layer": 19,
+   "kernel": "SwigluF16",
+   "n": 4864,
+   "groups": [
+    5,
+    1,
+    1
+   ],
+   "gpu_us": 18.2,
+   "gap_us": 11.7,
+   "submission": 84,
+   "bindings_bytes": [
+    12288,
+    12288,
+    12288,
+    12288,
+    12288
+   ]
+  },
+  {
+   "layer": 19,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 896,
+   "groups": [
+    112,
+    1,
+    1
+   ],
+   "gpu_us": 71.5,
+   "gap_us": 11.0,
+   "submission": 84,
+   "bindings_bytes": [
+    12288,
+    2179072,
+    139264,
+    139264,
+    4096
+   ]
+  },
+  {
+   "layer": 19,
+   "kernel": "BinaryVecF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 18.6,
+   "gap_us": 13.7,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 20,
+   "kernel": "FastRmsNormF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 43.3,
+   "gap_us": 10.0,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 20,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 128,
+   "groups": [
+    16,
+    1,
+    1
+   ],
+   "gpu_us": 35.2,
+   "gap_us": 18.8,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    57344,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 20,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 128,
+   "groups": [
+    16,
+    1,
+    1
+   ],
+   "gpu_us": 33.5,
+   "gap_us": 18.6,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    57344,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 20,
+   "kernel": "BinaryVecF16",
+   "n": 128,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 31.8,
+   "gap_us": 71.4,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 20,
+   "kernel": "BinaryVecF16",
+   "n": 128,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 31.0,
+   "gap_us": 23.6,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 20,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 896,
+   "groups": [
+    112,
+    1,
+    1
+   ],
+   "gpu_us": 41.7,
+   "gap_us": 22.2,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    401408,
+    28672,
+    28672,
+    4096
+   ]
+  },
+  {
+   "layer": 20,
+   "kernel": "BinaryVecF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 33.3,
+   "gap_us": 76.8,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 20,
+   "kernel": "FastRopeF16",
+   "n": 64,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 38.0,
+   "gap_us": 21.5,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 20,
+   "kernel": "CopyGeneralF16",
+   "n": 128,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 30.8,
+   "gap_us": 16.6,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    4096,
+    65536,
+    65536
+   ]
+  },
+  {
+   "layer": 20,
+   "kernel": "CopyGeneralF16",
+   "n": 128,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 29.3,
+   "gap_us": 64.0,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    4096,
+    65536,
+    65536
+   ]
+  },
+  {
+   "layer": 20,
+   "kernel": "FastRopeF16",
+   "n": 448,
+   "groups": [
+    2,
+    1,
+    1
+   ],
+   "gpu_us": 36.3,
+   "gap_us": 21.2,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 20,
+   "kernel": "MatmulF16",
+   "n": 784,
+   "groups": [
+    4,
+    1,
+    14
+   ],
+   "gpu_us": 52.5,
+   "gap_us": 11.6,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    65536,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 20,
+   "kernel": "SoftmaxF16",
+   "n": 784,
+   "groups": [
+    14,
+    1,
+    1
+   ],
+   "gpu_us": 37.0,
+   "gap_us": 54.3,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 20,
+   "kernel": "MatmulF16",
+   "n": 896,
+   "groups": [
+    4,
+    1,
+    14
+   ],
+   "gpu_us": 45.3,
+   "gap_us": 19.1,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    65536,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 20,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 896,
+   "groups": [
+    112,
+    1,
+    1
+   ],
+   "gpu_us": 41.2,
+   "gap_us": 11.3,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    401408,
+    28672,
+    28672,
+    4096
+   ]
+  },
+  {
+   "layer": 20,
+   "kernel": "BinaryVecF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 31.2,
+   "gap_us": 75.6,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 20,
+   "kernel": "FastRmsNormF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 33.6,
+   "gap_us": 21.8,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 20,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 4864,
+   "groups": [
+    608,
+    1,
+    1
+   ],
+   "gpu_us": 88.0,
+   "gap_us": 17.3,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    2179072,
+    139264,
+    139264,
+    12288
+   ]
+  },
+  {
+   "layer": 20,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 4864,
+   "groups": [
+    608,
+    1,
+    1
+   ],
+   "gpu_us": 76.5,
+   "gap_us": 12.5,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    2179072,
+    139264,
+    139264,
+    12288
+   ]
+  },
+  {
+   "layer": 20,
+   "kernel": "SwigluF16",
+   "n": 4864,
+   "groups": [
+    5,
+    1,
+    1
+   ],
+   "gpu_us": 17.8,
+   "gap_us": 11.2,
+   "submission": 84,
+   "bindings_bytes": [
+    12288,
+    12288,
+    12288,
+    12288,
+    12288
+   ]
+  },
+  {
+   "layer": 20,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 896,
+   "groups": [
+    112,
+    1,
+    1
+   ],
+   "gpu_us": 68.2,
+   "gap_us": 10.8,
+   "submission": 84,
+   "bindings_bytes": [
+    12288,
+    2179072,
+    139264,
+    139264,
+    4096
+   ]
+  },
+  {
+   "layer": 20,
+   "kernel": "BinaryVecF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 31.2,
+   "gap_us": 22.2,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 21,
+   "kernel": "FastRmsNormF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 50.5,
+   "gap_us": 22.5,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 21,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 128,
+   "groups": [
+    16,
+    1,
+    1
+   ],
+   "gpu_us": 32.8,
+   "gap_us": 36.2,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    57344,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 21,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 128,
+   "groups": [
+    16,
+    1,
+    1
+   ],
+   "gpu_us": 34.2,
+   "gap_us": 60.3,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    57344,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 21,
+   "kernel": "BinaryVecF16",
+   "n": 128,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 29.5,
+   "gap_us": 19.2,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 21,
+   "kernel": "BinaryVecF16",
+   "n": 128,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 28.5,
+   "gap_us": 21.4,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 21,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 896,
+   "groups": [
+    112,
+    1,
+    1
+   ],
+   "gpu_us": 43.0,
+   "gap_us": 63.0,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    401408,
+    28672,
+    28672,
+    4096
+   ]
+  },
+  {
+   "layer": 21,
+   "kernel": "BinaryVecF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 30.1,
+   "gap_us": 10.7,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 21,
+   "kernel": "FastRopeF16",
+   "n": 64,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 37.2,
+   "gap_us": 20.4,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 21,
+   "kernel": "CopyGeneralF16",
+   "n": 128,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 28.7,
+   "gap_us": 66.2,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    4096,
+    65536,
+    65536
+   ]
+  },
+  {
+   "layer": 21,
+   "kernel": "CopyGeneralF16",
+   "n": 128,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 28.1,
+   "gap_us": 24.2,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    4096,
+    65536,
+    65536
+   ]
+  },
+  {
+   "layer": 21,
+   "kernel": "FastRopeF16",
+   "n": 448,
+   "groups": [
+    2,
+    1,
+    1
+   ],
+   "gpu_us": 35.7,
+   "gap_us": 20.0,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 21,
+   "kernel": "MatmulF16",
+   "n": 784,
+   "groups": [
+    4,
+    1,
+    14
+   ],
+   "gpu_us": 48.2,
+   "gap_us": 82.0,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    65536,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 21,
+   "kernel": "SoftmaxF16",
+   "n": 784,
+   "groups": [
+    14,
+    1,
+    1
+   ],
+   "gpu_us": 34.3,
+   "gap_us": 10.7,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 21,
+   "kernel": "MatmulF16",
+   "n": 896,
+   "groups": [
+    4,
+    1,
+    14
+   ],
+   "gpu_us": 47.0,
+   "gap_us": 19.2,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    65536,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 21,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 896,
+   "groups": [
+    112,
+    1,
+    1
+   ],
+   "gpu_us": 44.8,
+   "gap_us": 55.9,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    401408,
+    28672,
+    28672,
+    4096
+   ]
+  },
+  {
+   "layer": 21,
+   "kernel": "BinaryVecF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 29.6,
+   "gap_us": 11.0,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 21,
+   "kernel": "FastRmsNormF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 36.5,
+   "gap_us": 21.5,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 21,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 4864,
+   "groups": [
+    608,
+    1,
+    1
+   ],
+   "gpu_us": 88.8,
+   "gap_us": 64.8,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    2179072,
+    139264,
+    139264,
+    12288
+   ]
+  },
+  {
+   "layer": 21,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 4864,
+   "groups": [
+    608,
+    1,
+    1
+   ],
+   "gpu_us": 76.6,
+   "gap_us": 11.5,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    2179072,
+    139264,
+    139264,
+    12288
+   ]
+  },
+  {
+   "layer": 21,
+   "kernel": "SwigluF16",
+   "n": 4864,
+   "groups": [
+    5,
+    1,
+    1
+   ],
+   "gpu_us": 17.2,
+   "gap_us": 17.7,
+   "submission": 84,
+   "bindings_bytes": [
+    12288,
+    12288,
+    12288,
+    12288,
+    12288
+   ]
+  },
+  {
+   "layer": 21,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 896,
+   "groups": [
+    112,
+    1,
+    1
+   ],
+   "gpu_us": 81.5,
+   "gap_us": 10.9,
+   "submission": 84,
+   "bindings_bytes": [
+    12288,
+    2179072,
+    139264,
+    139264,
+    4096
+   ]
+  },
+  {
+   "layer": 21,
+   "kernel": "BinaryVecF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 19.2,
+   "gap_us": 11.1,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 22,
+   "kernel": "FastRmsNormF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 26.0,
+   "gap_us": 10.5,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 22,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 128,
+   "groups": [
+    16,
+    1,
+    1
+   ],
+   "gpu_us": 34.1,
+   "gap_us": 65.3,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    57344,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 22,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 128,
+   "groups": [
+    16,
+    1,
+    1
+   ],
+   "gpu_us": 33.5,
+   "gap_us": 18.4,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    57344,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 22,
+   "kernel": "BinaryVecF16",
+   "n": 128,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 29.9,
+   "gap_us": 18.5,
+   "submission": 84,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 22,
+   "kernel": "BinaryVecF16",
+   "n": 128,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 80.3,
+   "gap_us": 238.0,
+   "submission": 85,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 22,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 896,
+   "groups": [
+    112,
+    1,
+    1
+   ],
+   "gpu_us": 79.5,
+   "gap_us": 66.9,
+   "submission": 85,
+   "bindings_bytes": [
+    4096,
+    401408,
+    28672,
+    28672,
+    4096
+   ]
+  },
+  {
+   "layer": 22,
+   "kernel": "BinaryVecF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 55.2,
+   "gap_us": 156.2,
+   "submission": 85,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 22,
+   "kernel": "FastRopeF16",
+   "n": 64,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 37.9,
+   "gap_us": 23.0,
+   "submission": 85,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 22,
+   "kernel": "CopyGeneralF16",
+   "n": 128,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 29.7,
+   "gap_us": 17.8,
+   "submission": 85,
+   "bindings_bytes": [
+    4096,
+    4096,
+    65536,
+    65536
+   ]
+  },
+  {
+   "layer": 22,
+   "kernel": "CopyGeneralF16",
+   "n": 128,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 31.5,
+   "gap_us": 94.5,
+   "submission": 85,
+   "bindings_bytes": [
+    4096,
+    4096,
+    65536,
+    65536
+   ]
+  },
+  {
+   "layer": 22,
+   "kernel": "FastRopeF16",
+   "n": 448,
+   "groups": [
+    2,
+    1,
+    1
+   ],
+   "gpu_us": 37.5,
+   "gap_us": 22.0,
+   "submission": 85,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 22,
+   "kernel": "MatmulF16",
+   "n": 784,
+   "groups": [
+    4,
+    1,
+    14
+   ],
+   "gpu_us": 46.7,
+   "gap_us": 17.9,
+   "submission": 85,
+   "bindings_bytes": [
+    4096,
+    65536,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 22,
+   "kernel": "SoftmaxF16",
+   "n": 784,
+   "groups": [
+    14,
+    1,
+    1
+   ],
+   "gpu_us": 36.9,
+   "gap_us": 54.0,
+   "submission": 85,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 22,
+   "kernel": "MatmulF16",
+   "n": 896,
+   "groups": [
+    4,
+    1,
+    14
+   ],
+   "gpu_us": 49.5,
+   "gap_us": 10.3,
+   "submission": 85,
+   "bindings_bytes": [
+    4096,
+    65536,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 22,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 896,
+   "groups": [
+    112,
+    1,
+    1
+   ],
+   "gpu_us": 39.6,
+   "gap_us": 10.4,
+   "submission": 85,
+   "bindings_bytes": [
+    4096,
+    401408,
+    28672,
+    28672,
+    4096
+   ]
+  },
+  {
+   "layer": 22,
+   "kernel": "BinaryVecF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 28.8,
+   "gap_us": 56.4,
+   "submission": 85,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 22,
+   "kernel": "FastRmsNormF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 32.7,
+   "gap_us": 21.8,
+   "submission": 85,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 22,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 4864,
+   "groups": [
+    608,
+    1,
+    1
+   ],
+   "gpu_us": 88.7,
+   "gap_us": 17.6,
+   "submission": 85,
+   "bindings_bytes": [
+    4096,
+    2179072,
+    139264,
+    139264,
+    12288
+   ]
+  },
+  {
+   "layer": 22,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 4864,
+   "groups": [
+    608,
+    1,
+    1
+   ],
+   "gpu_us": 79.3,
+   "gap_us": 11.6,
+   "submission": 85,
+   "bindings_bytes": [
+    4096,
+    2179072,
+    139264,
+    139264,
+    12288
+   ]
+  },
+  {
+   "layer": 22,
+   "kernel": "SwigluF16",
+   "n": 4864,
+   "groups": [
+    5,
+    1,
+    1
+   ],
+   "gpu_us": 17.9,
+   "gap_us": 13.7,
+   "submission": 85,
+   "bindings_bytes": [
+    12288,
+    12288,
+    12288,
+    12288,
+    12288
+   ]
+  },
+  {
+   "layer": 22,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 896,
+   "groups": [
+    112,
+    1,
+    1
+   ],
+   "gpu_us": 73.3,
+   "gap_us": 10.3,
+   "submission": 85,
+   "bindings_bytes": [
+    12288,
+    2179072,
+    139264,
+    139264,
+    4096
+   ]
+  },
+  {
+   "layer": 22,
+   "kernel": "BinaryVecF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 30.9,
+   "gap_us": 71.1,
+   "submission": 85,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 23,
+   "kernel": "FastRmsNormF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 40.5,
+   "gap_us": 20.8,
+   "submission": 85,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 23,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 128,
+   "groups": [
+    16,
+    1,
+    1
+   ],
+   "gpu_us": 32.3,
+   "gap_us": 17.4,
+   "submission": 85,
+   "bindings_bytes": [
+    4096,
+    57344,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 23,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 128,
+   "groups": [
+    16,
+    1,
+    1
+   ],
+   "gpu_us": 33.1,
+   "gap_us": 56.4,
+   "submission": 85,
+   "bindings_bytes": [
+    4096,
+    57344,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 23,
+   "kernel": "BinaryVecF16",
+   "n": 128,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 28.2,
+   "gap_us": 18.3,
+   "submission": 85,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 23,
+   "kernel": "BinaryVecF16",
+   "n": 128,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 29.0,
+   "gap_us": 21.6,
+   "submission": 85,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 23,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 896,
+   "groups": [
+    112,
+    1,
+    1
+   ],
+   "gpu_us": 42.4,
+   "gap_us": 84.7,
+   "submission": 85,
+   "bindings_bytes": [
+    4096,
+    401408,
+    28672,
+    28672,
+    4096
+   ]
+  },
+  {
+   "layer": 23,
+   "kernel": "BinaryVecF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 30.6,
+   "gap_us": 11.9,
+   "submission": 85,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 23,
+   "kernel": "FastRopeF16",
+   "n": 64,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 35.8,
+   "gap_us": 23.1,
+   "submission": 85,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 23,
+   "kernel": "CopyGeneralF16",
+   "n": 128,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 28.2,
+   "gap_us": 68.9,
+   "submission": 85,
+   "bindings_bytes": [
+    4096,
+    4096,
+    65536,
+    65536
+   ]
+  },
+  {
+   "layer": 23,
+   "kernel": "CopyGeneralF16",
+   "n": 128,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 26.8,
+   "gap_us": 23.9,
+   "submission": 85,
+   "bindings_bytes": [
+    4096,
+    4096,
+    65536,
+    65536
+   ]
+  },
+  {
+   "layer": 23,
+   "kernel": "FastRopeF16",
+   "n": 448,
+   "groups": [
+    2,
+    1,
+    1
+   ],
+   "gpu_us": 35.0,
+   "gap_us": 21.5,
+   "submission": 85,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 23,
+   "kernel": "MatmulF16",
+   "n": 784,
+   "groups": [
+    4,
+    1,
+    14
+   ],
+   "gpu_us": 45.1,
+   "gap_us": 66.6,
+   "submission": 85,
+   "bindings_bytes": [
+    4096,
+    65536,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 23,
+   "kernel": "SoftmaxF16",
+   "n": 784,
+   "groups": [
+    14,
+    1,
+    1
+   ],
+   "gpu_us": 31.2,
+   "gap_us": 11.0,
+   "submission": 85,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 23,
+   "kernel": "MatmulF16",
+   "n": 896,
+   "groups": [
+    4,
+    1,
+    14
+   ],
+   "gpu_us": 44.0,
+   "gap_us": 17.5,
+   "submission": 85,
+   "bindings_bytes": [
+    4096,
+    65536,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 23,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 896,
+   "groups": [
+    112,
+    1,
+    1
+   ],
+   "gpu_us": 42.9,
+   "gap_us": 71.6,
+   "submission": 85,
+   "bindings_bytes": [
+    4096,
+    401408,
+    28672,
+    28672,
+    4096
+   ]
+  },
+  {
+   "layer": 23,
+   "kernel": "BinaryVecF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 27.9,
+   "gap_us": 10.9,
+   "submission": 85,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 23,
+   "kernel": "FastRmsNormF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 32.7,
+   "gap_us": 21.2,
+   "submission": 85,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 23,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 4864,
+   "groups": [
+    608,
+    1,
+    1
+   ],
+   "gpu_us": 101.3,
+   "gap_us": 66.0,
+   "submission": 85,
+   "bindings_bytes": [
+    4096,
+    2179072,
+    139264,
+    139264,
+    12288
+   ]
+  },
+  {
+   "layer": 23,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 4864,
+   "groups": [
+    608,
+    1,
+    1
+   ],
+   "gpu_us": 90.2,
+   "gap_us": 12.5,
+   "submission": 85,
+   "bindings_bytes": [
+    4096,
+    2179072,
+    139264,
+    139264,
+    12288
+   ]
+  },
+  {
+   "layer": 23,
+   "kernel": "SwigluF16",
+   "n": 4864,
+   "groups": [
+    5,
+    1,
+    1
+   ],
+   "gpu_us": 16.9,
+   "gap_us": 11.2,
+   "submission": 85,
+   "bindings_bytes": [
+    12288,
+    12288,
+    12288,
+    12288,
+    12288
+   ]
+  },
+  {
+   "layer": 23,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 896,
+   "groups": [
+    112,
+    1,
+    1
+   ],
+   "gpu_us": 78.6,
+   "gap_us": 10.0,
+   "submission": 85,
+   "bindings_bytes": [
+    12288,
+    2179072,
+    139264,
+    139264,
+    4096
+   ]
+  },
+  {
+   "layer": 23,
+   "kernel": "BinaryVecF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 17.7,
+   "gap_us": 15.3,
+   "submission": 85,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 24,
+   "kernel": "FastRmsNormF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 26.5,
+   "gap_us": 10.5,
+   "submission": 85,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 24,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 128,
+   "groups": [
+    16,
+    1,
+    1
+   ],
+   "gpu_us": 34.9,
+   "gap_us": 11.7,
+   "submission": 85,
+   "bindings_bytes": [
+    4096,
+    57344,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 24,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 128,
+   "groups": [
+    16,
+    1,
+    1
+   ],
+   "gpu_us": 34.2,
+   "gap_us": 18.3,
+   "submission": 85,
+   "bindings_bytes": [
+    4096,
+    57344,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 24,
+   "kernel": "BinaryVecF16",
+   "n": 128,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 32.2,
+   "gap_us": 19.4,
+   "submission": 85,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 24,
+   "kernel": "BinaryVecF16",
+   "n": 128,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 30.2,
+   "gap_us": 76.0,
+   "submission": 85,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 24,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 896,
+   "groups": [
+    112,
+    1,
+    1
+   ],
+   "gpu_us": 42.8,
+   "gap_us": 23.1,
+   "submission": 85,
+   "bindings_bytes": [
+    4096,
+    401408,
+    28672,
+    28672,
+    4096
+   ]
+  },
+  {
+   "layer": 24,
+   "kernel": "BinaryVecF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 43.0,
+   "gap_us": 18.5,
+   "submission": 85,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 24,
+   "kernel": "FastRopeF16",
+   "n": 64,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 35.2,
+   "gap_us": 60.5,
+   "submission": 85,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 24,
+   "kernel": "CopyGeneralF16",
+   "n": 128,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 30.0,
+   "gap_us": 13.8,
+   "submission": 85,
+   "bindings_bytes": [
+    4096,
+    4096,
+    65536,
+    65536
+   ]
+  },
+  {
+   "layer": 24,
+   "kernel": "CopyGeneralF16",
+   "n": 128,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 26.6,
+   "gap_us": 24.0,
+   "submission": 85,
+   "bindings_bytes": [
+    4096,
+    4096,
+    65536,
+    65536
+   ]
+  },
+  {
+   "layer": 24,
+   "kernel": "FastRopeF16",
+   "n": 448,
+   "groups": [
+    2,
+    1,
+    1
+   ],
+   "gpu_us": 38.4,
+   "gap_us": 77.9,
+   "submission": 85,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 24,
+   "kernel": "MatmulF16",
+   "n": 784,
+   "groups": [
+    4,
+    1,
+    14
+   ],
+   "gpu_us": 46.8,
+   "gap_us": 18.0,
+   "submission": 85,
+   "bindings_bytes": [
+    4096,
+    65536,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 24,
+   "kernel": "SoftmaxF16",
+   "n": 784,
+   "groups": [
+    14,
+    1,
+    1
+   ],
+   "gpu_us": 34.4,
+   "gap_us": 12.6,
+   "submission": 85,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 24,
+   "kernel": "MatmulF16",
+   "n": 896,
+   "groups": [
+    4,
+    1,
+    14
+   ],
+   "gpu_us": 46.5,
+   "gap_us": 65.8,
+   "submission": 85,
+   "bindings_bytes": [
+    4096,
+    65536,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 24,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 896,
+   "groups": [
+    112,
+    1,
+    1
+   ],
+   "gpu_us": 40.7,
+   "gap_us": 10.9,
+   "submission": 85,
+   "bindings_bytes": [
+    4096,
+    401408,
+    28672,
+    28672,
+    4096
+   ]
+  },
+  {
+   "layer": 24,
+   "kernel": "BinaryVecF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 28.9,
+   "gap_us": 11.3,
+   "submission": 85,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 24,
+   "kernel": "FastRmsNormF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 35.1,
+   "gap_us": 59.2,
+   "submission": 85,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 24,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 4864,
+   "groups": [
+    608,
+    1,
+    1
+   ],
+   "gpu_us": 89.1,
+   "gap_us": 17.9,
+   "submission": 85,
+   "bindings_bytes": [
+    4096,
+    2179072,
+    139264,
+    139264,
+    12288
+   ]
+  },
+  {
+   "layer": 24,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 4864,
+   "groups": [
+    608,
+    1,
+    1
+   ],
+   "gpu_us": 78.2,
+   "gap_us": 14.7,
+   "submission": 85,
+   "bindings_bytes": [
+    4096,
+    2179072,
+    139264,
+    139264,
+    12288
+   ]
+  },
+  {
+   "layer": 24,
+   "kernel": "SwigluF16",
+   "n": 4864,
+   "groups": [
+    5,
+    1,
+    1
+   ],
+   "gpu_us": 20.7,
+   "gap_us": 11.5,
+   "submission": 85,
+   "bindings_bytes": [
+    12288,
+    12288,
+    12288,
+    12288,
+    12288
+   ]
+  },
+  {
+   "layer": 24,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 896,
+   "groups": [
+    112,
+    1,
+    1
+   ],
+   "gpu_us": 69.0,
+   "gap_us": 10.7,
+   "submission": 85,
+   "bindings_bytes": [
+    12288,
+    2179072,
+    139264,
+    139264,
+    4096
+   ]
+  },
+  {
+   "layer": 24,
+   "kernel": "BinaryVecF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 19.0,
+   "gap_us": 12.7,
+   "submission": 85,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 25,
+   "kernel": "FastRmsNormF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 36.8,
+   "gap_us": 61.5,
+   "submission": 85,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 25,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 151936,
+   "groups": [
+    18992,
+    1,
+    1
+   ],
+   "gpu_us": 1785.0,
+   "gap_us": 17.8,
+   "submission": 85,
+   "bindings_bytes": [
+    4096,
+    68067328,
+    4255744,
+    4255744,
+    307200
+   ]
+  },
+  {
+   "layer": 25,
+   "kernel": "LogSumExpF16",
+   "n": 1,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 280.0,
+   "gap_us": 45.2,
+   "submission": 85,
+   "bindings_bytes": [
+    307200,
+    307200,
+    4096
+   ]
+  },
+  {
+   "layer": 25,
+   "kernel": "ElementwiseF16",
+   "n": 151936,
+   "groups": [
+    594,
+    1,
+    1
+   ],
+   "gpu_us": 181.8,
+   "gap_us": 31.0,
+   "submission": 85,
+   "bindings_bytes": [
+    307200,
+    4096,
+    307200,
+    307200
+   ]
+  },
+  {
+   "layer": 25,
+   "kernel": "ArgReduceF16",
+   "n": 1,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 135.3,
+   "gap_us": 27.5,
+   "submission": 85,
+   "bindings_bytes": [
+    307200,
+    307200,
+    4096
+   ]
+  }
+ ]
+}

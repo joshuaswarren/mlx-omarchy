@@ -1,0 +1,529 @@
+{
+  "topic": "Q4 decode dispatch count: fused q/k/v and gate/up GEMV groups with bias and residual Add epilogues folded into the GEMV store (wave/DecodeFusion)",
+  "source_commit": "c6002f5",
+  "base_commit": "6ca33e0c (origin/main)",
+  "host": "jwm1-linux, Apple M1 (G13G B1), Honeykrisp, linux-asahi 7.1.6, glslc 2026.3; dev box llvmpipe (LLVM 22.1.8) for the local suites",
+  "wheels": {
+    "base_release": {
+      "stamp": "6ca33e0",
+      "version": "0.32.2.dev202609092149+6ca33e0",
+      "sha256": "a723597e25a012bc70720985da143b3ae372d9b51da52cdb1ed9e4f24e8e74a6"
+    },
+    "cand_release": {
+      "stamp": "f6beee3",
+      "version": "0.32.2.dev202609092147+f6beee3",
+      "sha256": "cd0787f99aa22ce368d4528da152eeb7ddbff8be7206383af1121cfd11c6d799"
+    },
+    "base_diagnostics": {
+      "version": "0.32.2.dev202609092017+diag.6ca33e0",
+      "sha256": "9df066e02332abb3c88b55460d84a09eceb83d7f5fa103530595efe19a46b638"
+    },
+    "cand_diagnostics": {
+      "version": "0.32.2.dev202609092141+diag.f6beee3",
+      "sha256": "729a161955e0d9c1631c72b1bbbb4f722b14746400616446f22103101063b66d"
+    },
+    "provenance": "version strings carry the source stamp (+6ca33e0 / +f6beee3, diagnostics +diag.<stamp>); paired-legs.py asserts stamps and that the two differ before reporting Identity-only rewrite 2026-09-10: commits f6beee3->2339105 (code), 9899e1b->928d84d (code), a2b8c54->c6002f5 (receipt); trees unchanged; wheel file sha256 and embedded +stamp strings unchanged and still name the pre-rewrite hashes."
+  },
+  "profile": {
+    "method": "m1-model-profile.sh: diagnostics wheel, MLX_OMARCHY_GPU_PROFILE, 32 tokens of the pinned Qwen2.5-0.5B-Instruct-4bit from one prompt, MLX_DISABLE_COMPILE=1; dispatch-table.py lists every dispatch of inter-token interval 10 with its GPU time and the gap before it, grouped by layer (FastRmsNorm boundaries)",
+    "before": {
+      "dispatches_per_token": 537,
+      "submissions_per_token": 3,
+      "token_interval_profiled": 10,
+      "gpu_busy_us": 24690,
+      "gap_us": 17862,
+      "span_us": 42552,
+      "by_kernel": {
+        "TakeF16": {
+          "n": 2,
+          "gpu_us": 136,
+          "gap_us": 61
+        },
+        "TakeU32": {
+          "n": 1,
+          "gpu_us": 64,
+          "gap_us": 160
+        },
+        "DequantF16": {
+          "n": 1,
+          "gpu_us": 31,
+          "gap_us": 43
+        },
+        "FastRmsNormF16": {
+          "n": 49,
+          "gpu_us": 1698,
+          "gap_us": 1390
+        },
+        "QmmVecQ4WordSubgroupF16": {
+          "n": 169,
+          "gpu_us": 11648,
+          "gap_us": 4962
+        },
+        "BinaryVecF16": {
+          "n": 120,
+          "gpu_us": 3583,
+          "gap_us": 3986
+        },
+        "FastRopeF16": {
+          "n": 48,
+          "gpu_us": 1841,
+          "gap_us": 2183
+        },
+        "CopyGeneralF16": {
+          "n": 48,
+          "gpu_us": 1487,
+          "gap_us": 2001
+        },
+        "MatmulF16": {
+          "n": 48,
+          "gpu_us": 2309,
+          "gap_us": 1758
+        },
+        "SoftmaxF16": {
+          "n": 24,
+          "gpu_us": 867,
+          "gap_us": 921
+        },
+        "SwigluF16": {
+          "n": 24,
+          "gpu_us": 428,
+          "gap_us": 293
+        },
+        "LogSumExpF16": {
+          "n": 1,
+          "gpu_us": 280,
+          "gap_us": 45
+        },
+        "ElementwiseF16": {
+          "n": 1,
+          "gpu_us": 182,
+          "gap_us": 31
+        },
+        "ArgReduceF16": {
+          "n": 1,
+          "gpu_us": 135,
+          "gap_us": 28
+        }
+      },
+      "layer_1_dispatches": {
+        "FastRmsNormF16": 2,
+        "QmmVecQ4WordSubgroupF16": 7,
+        "BinaryVecF16": 5,
+        "FastRopeF16": 2,
+        "CopyGeneralF16": 2,
+        "MatmulF16": 2,
+        "SoftmaxF16": 1,
+        "SwigluF16": 1
+      },
+      "layer_1_dispatch_count": 22,
+      "profile_dispatches_per_decode_interval": 537.0,
+      "profile_submissions_per_decode_interval": 3.0,
+      "profile_gpu_busy_fraction": "57.85%",
+      "instrumented_median_inter_token_ms": 42.63,
+      "version": "0.32.2.dev202609092017+diag.6ca33e0",
+      "wheel_sha256": "9df066e02332abb3c88b55460d84a09eceb83d7f5fa103530595efe19a46b638",
+      "table": "profile-base/token10-table.txt"
+    },
+    "after": {
+      "dispatches_per_token": 345,
+      "submissions_per_token": 2,
+      "token_interval_profiled": 10,
+      "gpu_busy_us": 18384,
+      "gap_us": 10160,
+      "span_us": 28544,
+      "by_kernel": {
+        "TakeF16": {
+          "n": 2,
+          "gpu_us": 161,
+          "gap_us": 68
+        },
+        "TakeU32": {
+          "n": 1,
+          "gpu_us": 32,
+          "gap_us": 56
+        },
+        "DequantF16": {
+          "n": 1,
+          "gpu_us": 32,
+          "gap_us": 69
+        },
+        "FastRmsNormF16": {
+          "n": 49,
+          "gpu_us": 1554,
+          "gap_us": 1303
+        },
+        "QmmVecQ4MultiSubgroupF16": {
+          "n": 96,
+          "gpu_us": 7804,
+          "gap_us": 2502
+        },
+        "FastRopeF16": {
+          "n": 48,
+          "gpu_us": 1453,
+          "gap_us": 1567
+        },
+        "CopyGeneralF16": {
+          "n": 48,
+          "gpu_us": 1350,
+          "gap_us": 1782
+        },
+        "MatmulF16": {
+          "n": 48,
+          "gpu_us": 2265,
+          "gap_us": 1653
+        },
+        "SoftmaxF16": {
+          "n": 24,
+          "gpu_us": 815,
+          "gap_us": 659
+        },
+        "SwigluF16": {
+          "n": 24,
+          "gpu_us": 546,
+          "gap_us": 392
+        },
+        "QmmVecQ4WordSubgroupF16": {
+          "n": 1,
+          "gpu_us": 1772,
+          "gap_us": 12
+        },
+        "LogSumExpF16": {
+          "n": 1,
+          "gpu_us": 277,
+          "gap_us": 41
+        },
+        "ElementwiseF16": {
+          "n": 1,
+          "gpu_us": 182,
+          "gap_us": 30
+        },
+        "ArgReduceF16": {
+          "n": 1,
+          "gpu_us": 140,
+          "gap_us": 27
+        }
+      },
+      "layer_1_dispatches": {
+        "FastRmsNormF16": 2,
+        "QmmVecQ4MultiSubgroupF16": 4,
+        "FastRopeF16": 2,
+        "CopyGeneralF16": 2,
+        "MatmulF16": 2,
+        "SoftmaxF16": 1,
+        "SwigluF16": 1
+      },
+      "layer_1_dispatch_count": 14,
+      "profile_dispatches_per_decode_interval": 345.0,
+      "profile_submissions_per_decode_interval": 2.0,
+      "profile_gpu_busy_fraction": "62.76%",
+      "instrumented_median_inter_token_ms": 28.72,
+      "version": "0.32.2.dev202609092141+diag.f6beee3",
+      "wheel_sha256": "729a161955e0d9c1631c72b1bbbb4f722b14746400616446f22103101063b66d",
+      "table": "profile-cand/token10-table.txt"
+    }
+  },
+  "per_dispatch_floor": {
+    "base": {
+      "one_workgroup_dispatches_in_layers": 240,
+      "one_workgroup_gpu_us_p50": 29.9,
+      "one_workgroup_gpu_us_min": 17.1,
+      "intra_submission_gap_us_p50": 20.5,
+      "submission_boundary_gaps_us_within_token": [
+        226.0,
+        238.0
+      ],
+      "per_token_gpu_busy_us": 24690,
+      "per_token_gap_us": 17862,
+      "per_token_span_us": 42552
+    },
+    "cand": {
+      "one_workgroup_dispatches_in_layers": 120,
+      "one_workgroup_gpu_us_p50": 27.95,
+      "one_workgroup_gpu_us_min": 17.1,
+      "intra_submission_gap_us_p50": 18.3,
+      "submission_boundary_gaps_us_within_token": [
+        208.7
+      ],
+      "per_token_gpu_busy_us": 18310,
+      "per_token_gap_us": 10184,
+      "per_token_span_us": 28495
+    },
+    "reading": "A one-workgroup dispatch (896-element BinaryVecF16, FastRmsNormF16, CopyGeneralF16) costs ~29-31 us of GPU time plus a ~17-21 us gap before the next dispatch: ~50 us of wall per dispatch that no kernel shape removes. It is not barrier cost: receipts/2026-09-09-native-nobarrier-verified (HK_PERFTEST=nobarrier, every pipeline barrier skipped in hk_cmd_buffer.c) moved decode by under 0.3%, and receipts/2026-09-08-gated-barrier-screen (MLX_OMARCHY_GATED_BARRIERS=1) by nothing measurable. It is not host descriptor/pipeline-bind cost: the profiler's host record time per dispatch is 1.6 us p50 (4bit-analysis.txt). What remains is the device's per-kernel launch and drain on Honeykrisp/AGX, so the only lever is fewer dispatches. A submission boundary inside the token costs a further ~210-240 us; the candidate's 345 nodes cross kBatchNodeBudget (256) once per token, so a 512 budget would remove one boundary (~0.2 ms, ~1.5% of a 13 ms token). Not changed here: extends buffer lifetimes and watchdog exposure for prefill batches; measure it on its own if the 1.5% is wanted."
+  },
+  "fixed_projection_call35": {
+    "per_projection_decode_mismatches": {
+      "q_proj": 0,
+      "k_proj": 0,
+      "v_proj": 0,
+      "o_proj": 0,
+      "gate_proj": 0,
+      "up_proj": 0,
+      "down_proj": 0
+    },
+    "grouped_decode_mismatches": {
+      "q_proj+k_proj+v_proj:q_proj": 0,
+      "q_proj+k_proj+v_proj:k_proj": 0,
+      "q_proj+k_proj+v_proj:v_proj": 0,
+      "gate_proj+up_proj:gate_proj": 0,
+      "gate_proj+up_proj:up_proj": 0
+    },
+    "prefill_mismatches_total": 940645,
+    "criterion": "receipts/2026-09-09-q4-gemv-order/verdict.json: 0 call35 decode mismatches on all 7 projections; the prefill count is the known out-of-scope general-Qmm value",
+    "log": "fixed-projection.log"
+  },
+  "paired_legs": {
+    "repetitions": 3,
+    "sides": {
+      "base": {
+        "python": "/home/joshuawarren/src/mlx-DecodeFusion-base/.venv-accept/bin/python",
+        "wheel": "/home/joshuawarren/src/mlx-DecodeFusion-base/dist/mlx_omarchy-0.32.2.dev202609092149+6ca33e0-cp314-cp314-linux_aarch64.whl",
+        "stamp": "6ca33e0",
+        "version": "0.32.2.dev202609092149+6ca33e0",
+        "sha256": "a723597e25a012bc70720985da143b3ae372d9b51da52cdb1ed9e4f24e8e74a6"
+      },
+      "cand": {
+        "python": "/home/joshuawarren/src/mlx-DecodeFusion/.venv-accept/bin/python",
+        "wheel": "/home/joshuawarren/src/mlx-DecodeFusion/dist/mlx_omarchy-0.32.2.dev202609092147+f6beee3-cp314-cp314-linux_aarch64.whl",
+        "stamp": "f6beee3",
+        "version": "0.32.2.dev202609092147+f6beee3",
+        "sha256": "cd0787f99aa22ce368d4528da152eeb7ddbff8be7206383af1121cfd11c6d799"
+      }
+    },
+    "legs": {
+      "qwen25-0.5b-4bit:long-decode-128": {
+        "sides": {
+          "base": {
+            "decode_tok_s_samples": [
+              71.16,
+              71.82,
+              71.24
+            ],
+            "decode_tok_s_median": 71.24,
+            "prefill_tok_s_median": 551.579,
+            "digests": [
+              "4cc08910089477fd"
+            ]
+          },
+          "cand": {
+            "decode_tok_s_samples": [
+              76.7,
+              76.72,
+              76.47
+            ],
+            "decode_tok_s_median": 76.7,
+            "prefill_tok_s_median": 609.302,
+            "digests": [
+              "4cc08910089477fd"
+            ],
+            "decode_over_base": 1.0766
+          }
+        },
+        "ids_identical": true,
+        "native_digest": "254d73fd93164b98"
+      },
+      "qwen25-0.5b-4bit:longctx-1024-decode-32": {
+        "sides": {
+          "base": {
+            "decode_tok_s_samples": [
+              48.02,
+              48.79,
+              48.74
+            ],
+            "decode_tok_s_median": 48.74,
+            "prefill_tok_s_median": 878.232,
+            "digests": [
+              "7da83f06ec9f001d"
+            ]
+          },
+          "cand": {
+            "decode_tok_s_samples": [
+              51.32,
+              51.06,
+              51.14
+            ],
+            "decode_tok_s_median": 51.14,
+            "prefill_tok_s_median": 872.411,
+            "digests": [
+              "7da83f06ec9f001d"
+            ],
+            "decode_over_base": 1.0492
+          }
+        },
+        "ids_identical": true,
+        "native_digest": "7da83f06ec9f001d"
+      },
+      "qwen25-0.5b-4bit:short-decode-32": {
+        "sides": {
+          "base": {
+            "decode_tok_s_samples": [
+              88.12,
+              87.26,
+              88.24
+            ],
+            "decode_tok_s_median": 88.12,
+            "prefill_tok_s_median": 120.0,
+            "digests": [
+              "7fd25a869ff21678"
+            ]
+          },
+          "cand": {
+            "decode_tok_s_samples": [
+              92.0,
+              94.45,
+              95.28
+            ],
+            "decode_tok_s_median": 94.45,
+            "prefill_tok_s_median": 121.951,
+            "digests": [
+              "7fd25a869ff21678"
+            ],
+            "decode_over_base": 1.0718
+          }
+        },
+        "ids_identical": true,
+        "native_digest": "7fd25a869ff21678"
+      },
+      "qwen25-0.5b-bf16:long-decode-128": {
+        "sides": {
+          "base": {
+            "decode_tok_s_samples": [
+              11.33,
+              11.32,
+              11.32
+            ],
+            "decode_tok_s_median": 11.32,
+            "prefill_tok_s_median": 308.235,
+            "digests": [
+              "ad964232ee67fecd"
+            ]
+          },
+          "cand": {
+            "decode_tok_s_samples": [
+              11.32,
+              11.31,
+              11.29
+            ],
+            "decode_tok_s_median": 11.31,
+            "prefill_tok_s_median": 301.496,
+            "digests": [
+              "ad964232ee67fecd"
+            ],
+            "decode_over_base": 0.9991
+          }
+        },
+        "ids_identical": true,
+        "native_digest": "407b7624ed1b3b29"
+      },
+      "qwen25-0.5b-bf16:longctx-1024-decode-32": {
+        "sides": {
+          "base": {
+            "decode_tok_s_samples": [
+              10.27,
+              10.28,
+              10.29
+            ],
+            "decode_tok_s_median": 10.28,
+            "prefill_tok_s_median": 341.883,
+            "digests": [
+              "ff502900d2a179a5"
+            ]
+          },
+          "cand": {
+            "decode_tok_s_samples": [
+              10.28,
+              10.29,
+              10.27
+            ],
+            "decode_tok_s_median": 10.28,
+            "prefill_tok_s_median": 338.15,
+            "digests": [
+              "ff502900d2a179a5"
+            ],
+            "decode_over_base": 1.0
+          }
+        },
+        "ids_identical": true,
+        "native_digest": "ff502900d2a179a5"
+      },
+      "qwen25-0.5b-bf16:short-decode-32": {
+        "sides": {
+          "base": {
+            "decode_tok_s_samples": [
+              11.79,
+              11.78,
+              11.75
+            ],
+            "decode_tok_s_median": 11.78,
+            "prefill_tok_s_median": 82.418,
+            "digests": [
+              "f26175202f3dabe9"
+            ]
+          },
+          "cand": {
+            "decode_tok_s_samples": [
+              11.78,
+              11.77,
+              11.77
+            ],
+            "decode_tok_s_median": 11.77,
+            "prefill_tok_s_median": 77.32,
+            "digests": [
+              "f26175202f3dabe9"
+            ],
+            "decode_over_base": 0.9992
+          }
+        },
+        "ids_identical": true,
+        "native_digest": "7fc0f968789b1882"
+      }
+    },
+    "ids_identical_all_legs": true
+  },
+  "tests_m1": {
+    "omarchy_fused_chain_tests": {
+      "cases": 28,
+      "assertions": 26550,
+      "failed": 0,
+      "status": "SUCCESS"
+    },
+    "omarchy_matmul_family_tests": {
+      "cases": 18,
+      "assertions": 82636841,
+      "failed": 0,
+      "status": "SUCCESS"
+    },
+    "omarchy_fast_ops_tests": {
+      "cases": 33,
+      "assertions": 1102946,
+      "failed": 0,
+      "status": "SUCCESS"
+    },
+    "omarchy_runtime_tests": {
+      "cases": 41,
+      "assertions": 22694,
+      "failed": 0,
+      "status": "SUCCESS"
+    }
+  },
+  "tests_llvmpipe": {
+    "omarchy_fused_chain_tests": {
+      "cases": 28,
+      "assertions": 26550,
+      "failed": 0,
+      "status": "SUCCESS"
+    },
+    "omarchy_matmul_family_tests": {
+      "cases": 18,
+      "assertions": 20768300,
+      "failed": 0,
+      "status": "SUCCESS"
+    },
+    "omarchy_runtime_tests": {
+      "cases": 41,
+      "assertions": 22691,
+      "failed": 0,
+      "status": "SUCCESS"
+    }
+  },
+  "decision": "integrate: +7.7%/+4.9%/+7.2% Q4 decode, BF16 unchanged, all ids identical, 0 decode mismatches, batteries green on M1 and llvmpipe"
+}

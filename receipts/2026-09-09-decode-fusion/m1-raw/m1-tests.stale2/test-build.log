@@ -1,0 +1,49 @@
+-- Building MLX for aarch64 processor on Linux
+-- Vulkan found: include /usr/include, libs /usr/lib/libvulkan.so
+-- Accelerate not found, using default backend.
+-- Lapack lib /usr/lib/libopenblas.so-lm-ldl
+-- Lapack include /usr/include
+-- Blas lib /usr/lib/libopenblas.so
+-- Blas include /usr/include
+-- Downloading json
+-- Using the multi-header code from /home/joshuawarren/src/mlx-DecodeFusion/.work/build-accept/_deps/json-src/include/
+-- Downloading gguflib
+-- {fmt} version: 12.1.0
+-- Build type: Release
+CMake Warning (deprecated) at /home/joshuawarren/src/mlx-DecodeFusion/.work/build-accept/_deps/doctest-src/CMakeLists.txt:1 (cmake_minimum_required):
+  Compatibility with CMake < 3.10 will be removed from a future version of
+  CMake.
+
+  Update the VERSION argument <min> value.  Or, use the <min>...<max> syntax
+  to tell CMake that the project requires at least <min> but has been updated
+  to work with policies introduced by <max> or earlier.
+This warning is for project developers.  Use -Wno-author or -Wno-deprecated
+to suppress it.
+
+-- Configuring done (1.2s)
+-- Generating done (0.2s)
+-- Build files have been written to: /home/joshuawarren/src/mlx-DecodeFusion/.work/build-accept
+[  0%] Built target mlx_version
+[  0%] Built target cpu_compiled_preamble
+[  1%] Built target gguflib
+[ 89%] Built target omarchy_shaders
+[100%] Built target mlx
+[100%] Built target omarchy_fused_chain_tests
+[  0%] Built target mlx_version
+[  1%] Built target gguflib
+[  1%] Built target cpu_compiled_preamble
+[ 88%] Built target omarchy_shaders
+[ 98%] Built target mlx
+[100%] Built target omarchy_matmul_family_tests
+[  0%] Built target cpu_compiled_preamble
+[  1%] Built target gguflib
+[  1%] Built target mlx_version
+[ 89%] Built target omarchy_shaders
+[100%] Built target mlx
+[100%] Built target omarchy_fast_ops_tests
+[  0%] Built target cpu_compiled_preamble
+[  1%] Built target gguflib
+[  1%] Built target mlx_version
+[ 89%] Built target omarchy_shaders
+[100%] Built target mlx
+[100%] Built target omarchy_runtime_tests

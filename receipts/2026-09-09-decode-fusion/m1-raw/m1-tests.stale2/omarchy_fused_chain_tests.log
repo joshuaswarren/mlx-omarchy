@@ -1,0 +1,3242 @@
+[doctest] doctest version is "2.4.12"
+[doctest] run with "--help" for options
+===============================================================================
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1114:
+TEST CASE:  eager q4 decode gemv group folds q/k/v and their biases
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 0.311523, 0.311768 )
+  logged: dtype float16
+          output 3
+          mismatch at 0
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -0.87793, -0.878418 )
+  logged: dtype float16
+          output 3
+          mismatch at 5
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -0.0390625, -0.0392456 )
+  logged: dtype float16
+          output 3
+          mismatch at 6
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 0.0537109, 0.0536804 )
+  logged: dtype float16
+          output 3
+          mismatch at 7
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 0.238281, 0.238159 )
+  logged: dtype float16
+          output 3
+          mismatch at 8
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 2.69141, 2.68945 )
+  logged: dtype float16
+          output 3
+          mismatch at 13
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 2.61328, 2.61523 )
+  logged: dtype float16
+          output 3
+          mismatch at 16
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -2.21094, -2.21289 )
+  logged: dtype float16
+          output 3
+          mismatch at 21
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 1.67188, 1.67285 )
+  logged: dtype float16
+          output 3
+          mismatch at 27
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -1.61133, -1.61035 )
+  logged: dtype float16
+          output 3
+          mismatch at 29
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -0.125488, -0.12561 )
+  logged: dtype float16
+          output 3
+          mismatch at 32
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 3.24023, 3.23828 )
+  logged: dtype float16
+          output 3
+          mismatch at 34
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -1.28027, -1.2793 )
+  logged: dtype float16
+          output 3
+          mismatch at 36
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -0.0153809, -0.0152664 )
+  logged: dtype float16
+          output 3
+          mismatch at 38
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 2.66992, 2.66797 )
+  logged: dtype float16
+          output 3
+          mismatch at 40
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 0.306641, 0.306396 )
+  logged: dtype float16
+          output 3
+          mismatch at 42
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 0.379883, 0.380127 )
+  logged: dtype float16
+          output 3
+          mismatch at 45
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 2.70703, 2.70508 )
+  logged: dtype float16
+          output 3
+          mismatch at 46
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -1.97852, -1.97754 )
+  logged: dtype float16
+          output 3
+          mismatch at 47
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 0.0761719, 0.0761108 )
+  logged: dtype float16
+          output 3
+          mismatch at 50
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 3.13867, 3.13672 )
+  logged: dtype float16
+          output 3
+          mismatch at 54
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 0.857422, 0.85791 )
+  logged: dtype float16
+          output 3
+          mismatch at 59
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -0.482178, -0.481934 )
+  logged: dtype float16
+          output 3
+          mismatch at 61
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -0.762695, -0.763184 )
+  logged: dtype float16
+          output 3
+          mismatch at 63
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -0.64209, -0.642578 )
+  logged: dtype float16
+          output 3
+          mismatch at 64
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 0.0419922, 0.0421448 )
+  logged: dtype float16
+          output 3
+          mismatch at 69
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -2.97656, -2.97461 )
+  logged: dtype float16
+          output 3
+          mismatch at 72
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -3.76953, -3.76758 )
+  logged: dtype float16
+          output 3
+          mismatch at 73
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -0.65918, -0.658691 )
+  logged: dtype float16
+          output 3
+          mismatch at 76
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -2.19531, -2.19336 )
+  logged: dtype float16
+          output 3
+          mismatch at 79
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -2.01562, -2.01367 )
+  logged: dtype float16
+          output 3
+          mismatch at 82
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 0.134766, 0.13501 )
+  logged: dtype float16
+          output 3
+          mismatch at 90
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 2.35156, 2.35352 )
+  logged: dtype float16
+          output 3
+          mismatch at 94
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -0.587891, -0.588379 )
+  logged: dtype float16
+          output 3
+          mismatch at 95
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 1.38086, 1.37988 )
+  logged: dtype float16
+          output 3
+          mismatch at 96
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -0.00292969, -0.00298882 )
+  logged: dtype float16
+          output 3
+          mismatch at 98
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -0.341797, -0.341553 )
+  logged: dtype float16
+          output 3
+          mismatch at 105
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 0.561523, 0.561035 )
+  logged: dtype float16
+          output 3
+          mismatch at 106
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 1.58887, 1.58789 )
+  logged: dtype float16
+          output 3
+          mismatch at 107
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -0.197754, -0.19751 )
+  logged: dtype float16
+          output 3
+          mismatch at 108
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 1.10938, 1.11035 )
+  logged: dtype float16
+          output 3
+          mismatch at 111
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 3.86328, 3.86523 )
+  logged: dtype float16
+          output 3
+          mismatch at 114
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -0.457031, -0.456787 )
+  logged: dtype float16
+          output 3
+          mismatch at 116
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 0.145508, 0.145264 )
+  logged: dtype float16
+          output 3
+          mismatch at 120
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 1.00977, 1.01074 )
+  logged: dtype float16
+          output 3
+          mismatch at 124
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -1.23047, -1.22949 )
+  logged: dtype float16
+          output 3
+          mismatch at 125
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 2.43555, 2.43359 )
+  logged: dtype float16
+          output 3
+          mismatch at 127
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -0.158691, -0.158936 )
+  logged: dtype float16
+          output 3
+          mismatch at 130
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 4.51562, 4.51172 )
+  logged: dtype float16
+          output 3
+          mismatch at 132
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -2.20312, -2.20117 )
+  logged: dtype float16
+          output 3
+          mismatch at 133
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -0.0456543, -0.0456848 )
+  logged: dtype float16
+          output 3
+          mismatch at 135
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 0.37207, 0.372314 )
+  logged: dtype float16
+          output 3
+          mismatch at 143
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 3.61719, 3.61523 )
+  logged: dtype float16
+          output 3
+          mismatch at 145
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 1.67578, 1.6748 )
+  logged: dtype float16
+          output 3
+          mismatch at 148
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -0.0576172, -0.0577393 )
+  logged: dtype float16
+          output 3
+          mismatch at 149
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -2.53516, -2.5332 )
+  logged: dtype float16
+          output 3
+          mismatch at 153
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -0.0605469, -0.0603943 )
+  logged: dtype float16
+          output 3
+          mismatch at 159
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -0.0498047, -0.0499268 )
+  logged: dtype float16
+          output 3
+          mismatch at 160
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 1.80957, 1.81055 )
+  logged: dtype float16
+          output 3
+          mismatch at 162
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 0.135742, 0.13562 )
+  logged: dtype float16
+          output 3
+          mismatch at 164
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -0.549805, -0.549316 )
+  logged: dtype float16
+          output 3
+          mismatch at 168
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -2.11719, -2.11914 )
+  logged: dtype float16
+          output 3
+          mismatch at 174
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 1.27734, 1.27832 )
+  logged: dtype float16
+          output 3
+          mismatch at 176
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -0.0175781, -0.0179901 )
+  logged: dtype float16
+          output 3
+          mismatch at 183
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -3.49219, -3.49414 )
+  logged: dtype float16
+          output 3
+          mismatch at 185
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -0.0761719, -0.0758057 )
+  logged: dtype float16
+          output 3
+          mismatch at 186
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -0.455078, -0.455322 )
+  logged: dtype float16
+          output 3
+          mismatch at 188
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -3.12891, -3.13086 )
+  logged: dtype float16
+          output 3
+          mismatch at 195
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 0.1875, 0.187622 )
+  logged: dtype float16
+          output 3
+          mismatch at 204
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 0.866699, 0.866211 )
+  logged: dtype float16
+          output 3
+          mismatch at 221
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -0.400391, -0.400879 )
+  logged: dtype float16
+          output 3
+          mismatch at 224
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -1.23828, -1.23926 )
+  logged: dtype float16
+          output 3
+          mismatch at 225
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 1.42773, 1.42871 )
+  logged: dtype float16
+          output 3
+          mismatch at 236
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 2.62695, 2.625 )
+  logged: dtype float16
+          output 3
+          mismatch at 240
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -1.83008, -1.8291 )
+  logged: dtype float16
+          output 3
+          mismatch at 241
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 2.94336, 2.94531 )
+  logged: dtype float16
+          output 3
+          mismatch at 247
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -0.0751953, -0.0748291 )
+  logged: dtype float16
+          output 3
+          mismatch at 248
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -1.29688, -1.29785 )
+  logged: dtype float16
+          output 3
+          mismatch at 249
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -1.97266, -1.97168 )
+  logged: dtype float16
+          output 3
+          mismatch at 261
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -0.219238, -0.219116 )
+  logged: dtype float16
+          output 3
+          mismatch at 265
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 0.15332, 0.153198 )
+  logged: dtype float16
+          output 3
+          mismatch at 267
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 2.71484, 2.71289 )
+  logged: dtype float16
+          output 3
+          mismatch at 271
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 0.0644531, 0.0645752 )
+  logged: dtype float16
+          output 3
+          mismatch at 273
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -0.0152588, -0.0151978 )
+  logged: dtype float16
+          output 3
+          mismatch at 274
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 0.0928345, 0.0928955 )
+  logged: dtype float16
+          output 3
+          mismatch at 275
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 1.06445, 1.06543 )
+  logged: dtype float16
+          output 3
+          mismatch at 282
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -0.389648, -0.38916 )
+  logged: dtype float16
+          output 3
+          mismatch at 284
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -1.76367, -1.76465 )
+  logged: dtype float16
+          output 3
+          mismatch at 286
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 0.204102, 0.204224 )
+  logged: dtype float16
+          output 3
+          mismatch at 288
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 0.236694, 0.236572 )
+  logged: dtype float16
+          output 3
+          mismatch at 290
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -0.0159912, -0.0160217 )
+  logged: dtype float16
+          output 3
+          mismatch at 301
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 4.07031, 4.06641 )
+  logged: dtype float16
+          output 3
+          mismatch at 305
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 1.49805, 1.49707 )
+  logged: dtype float16
+          output 3
+          mismatch at 311
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -0.367188, -0.366699 )
+  logged: dtype float16
+          output 3
+          mismatch at 312
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -1.7832, -1.78418 )
+  logged: dtype float16
+          output 3
+          mismatch at 317
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -0.192871, -0.192749 )
+  logged: dtype float16
+          output 3
+          mismatch at 319
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 1.72461, 1.72559 )
+  logged: dtype float16
+          output 3
+          mismatch at 321
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -0.201294, -0.201416 )
+  logged: dtype float16
+          output 3
+          mismatch at 322
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -0.090332, -0.0905762 )
+  logged: dtype float16
+          output 3
+          mismatch at 330
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 0.205566, 0.205688 )
+  logged: dtype float16
+          output 3
+          mismatch at 333
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -0.764648, -0.76416 )
+  logged: dtype float16
+          output 3
+          mismatch at 334
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 0.410156, 0.409912 )
+  logged: dtype float16
+          output 3
+          mismatch at 342
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 0.181396, 0.181519 )
+  logged: dtype float16
+          output 3
+          mismatch at 344
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -0.638672, -0.638184 )
+  logged: dtype float16
+          output 3
+          mismatch at 351
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -0.676758, -0.67627 )
+  logged: dtype float16
+          output 3
+          mismatch at 357
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -2.72852, -2.73047 )
+  logged: dtype float16
+          output 3
+          mismatch at 358
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -0.279297, -0.279541 )
+  logged: dtype float16
+          output 3
+          mismatch at 370
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 0.839844, 0.839355 )
+  logged: dtype float16
+          output 3
+          mismatch at 372
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 1.24609, 1.24707 )
+  logged: dtype float16
+          output 3
+          mismatch at 374
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 4.52344, 4.52734 )
+  logged: dtype float16
+          output 3
+          mismatch at 388
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -0.0336914, -0.0335388 )
+  logged: dtype float16
+          output 3
+          mismatch at 392
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 2.49609, 2.49805 )
+  logged: dtype float16
+          output 3
+          mismatch at 394
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 0.027832, 0.0278778 )
+  logged: dtype float16
+          output 3
+          mismatch at 396
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -0.522461, -0.521973 )
+  logged: dtype float16
+          output 3
+          mismatch at 399
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 2.34961, 2.34766 )
+  logged: dtype float16
+          output 3
+          mismatch at 401
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 0.0361328, 0.0362244 )
+  logged: dtype float16
+          output 3
+          mismatch at 402
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -1.16016, -1.16113 )
+  logged: dtype float16
+          output 3
+          mismatch at 406
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 0.480469, 0.480713 )
+  logged: dtype float16
+          output 3
+          mismatch at 412
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 1.19922, 1.19824 )
+  logged: dtype float16
+          output 3
+          mismatch at 416
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 0.0617676, 0.0617371 )
+  logged: dtype float16
+          output 3
+          mismatch at 417
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 3.37891, 3.37695 )
+  logged: dtype float16
+          output 3
+          mismatch at 423
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 0.785645, 0.785156 )
+  logged: dtype float16
+          output 3
+          mismatch at 428
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -1.41992, -1.41895 )
+  logged: dtype float16
+          output 3
+          mismatch at 429
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -0.722656, -0.723145 )
+  logged: dtype float16
+          output 3
+          mismatch at 430
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -2.26172, -2.26367 )
+  logged: dtype float16
+          output 3
+          mismatch at 446
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -0.420898, -0.420654 )
+  logged: dtype float16
+          output 3
+          mismatch at 449
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -0.334961, -0.335449 )
+  logged: dtype float16
+          output 3
+          mismatch at 450
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -1.30664, -1.30762 )
+  logged: dtype float16
+          output 3
+          mismatch at 452
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 1.91895, 1.91992 )
+  logged: dtype float16
+          output 3
+          mismatch at 454
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 2.74609, 2.74805 )
+  logged: dtype float16
+          output 3
+          mismatch at 459
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -1.02539, -1.02637 )
+  logged: dtype float16
+          output 3
+          mismatch at 461
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -0.0718994, -0.0719604 )
+  logged: dtype float16
+          output 3
+          mismatch at 462
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -1.80664, -1.80762 )
+  logged: dtype float16
+          output 3
+          mismatch at 467
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 1.63574, 1.63477 )
+  logged: dtype float16
+          output 3
+          mismatch at 470
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -2.36719, -2.36523 )
+  logged: dtype float16
+          output 3
+          mismatch at 471
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -0.842773, -0.842285 )
+  logged: dtype float16
+          output 3
+          mismatch at 474
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 2.49414, 2.49609 )
+  logged: dtype float16
+          output 3
+          mismatch at 475
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -1.49805, -1.49902 )
+  logged: dtype float16
+          output 3
+          mismatch at 477
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 1.38867, 1.3877 )
+  logged: dtype float16
+          output 3
+          mismatch at 479
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 0.420898, 0.420654 )
+  logged: dtype float16
+          output 3
+          mismatch at 492
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 0.361816, 0.361572 )
+  logged: dtype float16
+          output 3
+          mismatch at 494
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -0.878906, -0.879395 )
+  logged: dtype float16
+          output 3
+          mismatch at 496
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -0.182129, -0.181885 )
+  logged: dtype float16
+          output 3
+          mismatch at 498
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 4.61328, 4.61719 )
+  logged: dtype float16
+          output 3
+          mismatch at 499
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 3.35938, 3.35742 )
+  logged: dtype float16
+          output 3
+          mismatch at 508
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -0.235352, -0.235229 )
+  logged: dtype float16
+          output 3
+          mismatch at 510
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 1.91211, 1.91113 )
+  logged: dtype float16
+          output 3
+          mismatch at 512
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -2.16797, -2.16992 )
+  logged: dtype float16
+          output 3
+          mismatch at 516
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -0.405273, -0.405029 )
+  logged: dtype float16
+          output 3
+          mismatch at 517
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 0.500977, 0.501465 )
+  logged: dtype float16
+          output 3
+          mismatch at 524
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -2.38672, -2.38867 )
+  logged: dtype float16
+          output 3
+          mismatch at 525
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -1.14062, -1.1416 )
+  logged: dtype float16
+          output 3
+          mismatch at 526
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -0.0356445, -0.0354614 )
+  logged: dtype float16
+          output 3
+          mismatch at 529
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 0.212891, 0.212524 )
+  logged: dtype float16
+          output 3
+          mismatch at 530
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 0.265381, 0.265137 )
+  logged: dtype float16
+          output 3
+          mismatch at 539
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 0.24707, 0.246582 )
+  logged: dtype float16
+          output 3
+          mismatch at 544
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 0.0561523, 0.0560608 )
+  logged: dtype float16
+          output 3
+          mismatch at 546
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -0.498047, -0.498291 )
+  logged: dtype float16
+          output 3
+          mismatch at 547
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -1.60449, -1.60352 )
+  logged: dtype float16
+          output 3
+          mismatch at 548
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -0.243896, -0.243774 )
+  logged: dtype float16
+          output 3
+          mismatch at 549
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 0.0322266, 0.0324097 )
+  logged: dtype float16
+          output 3
+          mismatch at 552
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -1.9668, -1.96777 )
+  logged: dtype float16
+          output 3
+          mismatch at 554
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 3.625, 3.62695 )
+  logged: dtype float16
+          output 3
+          mismatch at 555
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 1.98828, 1.98926 )
+  logged: dtype float16
+          output 3
+          mismatch at 557
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -1.89844, -1.89746 )
+  logged: dtype float16
+          output 3
+          mismatch at 561
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -3.30078, -3.29883 )
+  logged: dtype float16
+          output 3
+          mismatch at 562
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 0.544922, 0.54541 )
+  logged: dtype float16
+          output 3
+          mismatch at 567
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -1.25, -1.25098 )
+  logged: dtype float16
+          output 3
+          mismatch at 568
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 0.0380859, 0.0379333 )
+  logged: dtype float16
+          output 3
+          mismatch at 572
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 0.195312, 0.194946 )
+  logged: dtype float16
+          output 3
+          mismatch at 573
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 0.175781, 0.175903 )
+  logged: dtype float16
+          output 3
+          mismatch at 578
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -0.762207, -0.761719 )
+  logged: dtype float16
+          output 3
+          mismatch at 580
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 2.62891, 2.62695 )
+  logged: dtype float16
+          output 3
+          mismatch at 581
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 1.23438, 1.23535 )
+  logged: dtype float16
+          output 3
+          mismatch at 584
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 0.155884, 0.156006 )
+  logged: dtype float16
+          output 3
+          mismatch at 588
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -0.260254, -0.260498 )
+  logged: dtype float16
+          output 3
+          mismatch at 589
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -3.69922, -3.70117 )
+  logged: dtype float16
+          output 3
+          mismatch at 591
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 0.334961, 0.334717 )
+  logged: dtype float16
+          output 3
+          mismatch at 592
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -0.111084, -0.111023 )
+  logged: dtype float16
+          output 3
+          mismatch at 593
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 0.196045, 0.195923 )
+  logged: dtype float16
+          output 3
+          mismatch at 597
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 0.0214844, 0.0216827 )
+  logged: dtype float16
+          output 3
+          mismatch at 607
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 2.80859, 2.80664 )
+  logged: dtype float16
+          output 3
+          mismatch at 614
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 0.460938, 0.460693 )
+  logged: dtype float16
+          output 3
+          mismatch at 620
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -3.66992, -3.67188 )
+  logged: dtype float16
+          output 3
+          mismatch at 624
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -1.91211, -1.91309 )
+  logged: dtype float16
+          output 3
+          mismatch at 625
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 1.30859, 1.30957 )
+  logged: dtype float16
+          output 3
+          mismatch at 626
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 1.80859, 1.80762 )
+  logged: dtype float16
+          output 3
+          mismatch at 627
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 0.415039, 0.414795 )
+  logged: dtype float16
+          output 3
+          mismatch at 628
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 0.673828, 0.67334 )
+  logged: dtype float16
+          output 3
+          mismatch at 630
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 0.134766, 0.134399 )
+  logged: dtype float16
+          output 3
+          mismatch at 631
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -1.18848, -1.1875 )
+  logged: dtype float16
+          output 3
+          mismatch at 634
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -3.72656, -3.72852 )
+  logged: dtype float16
+          output 3
+          mismatch at 638
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -0.358398, -0.35791 )
+  logged: dtype float16
+          output 3
+          mismatch at 641
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -0.486816, -0.486572 )
+  logged: dtype float16
+          output 3
+          mismatch at 643
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -0.104004, -0.103821 )
+  logged: dtype float16
+          output 3
+          mismatch at 647
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -0.942871, -0.942383 )
+  logged: dtype float16
+          output 3
+          mismatch at 655
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 0.988281, 0.98877 )
+  logged: dtype float16
+          output 3
+          mismatch at 656
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -2.43359, -2.43555 )
+  logged: dtype float16
+          output 3
+          mismatch at 658
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -0.742188, -0.741699 )
+  logged: dtype float16
+          output 3
+          mismatch at 660
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -0.775391, -0.775879 )
+  logged: dtype float16
+          output 3
+          mismatch at 662
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -1.31348, -1.3125 )
+  logged: dtype float16
+          output 3
+          mismatch at 663
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 1.29492, 1.2959 )
+  logged: dtype float16
+          output 3
+          mismatch at 666
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -1.81445, -1.81348 )
+  logged: dtype float16
+          output 3
+          mismatch at 667
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 0.81543, 0.814941 )
+  logged: dtype float16
+          output 3
+          mismatch at 673
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -0.267578, -0.26709 )
+  logged: dtype float16
+          output 3
+          mismatch at 674
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -3.11133, -3.11328 )
+  logged: dtype float16
+          output 3
+          mismatch at 675
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -1.33105, -1.33008 )
+  logged: dtype float16
+          output 3
+          mismatch at 676
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 0.239258, 0.239136 )
+  logged: dtype float16
+          output 3
+          mismatch at 681
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -2.33594, -2.33398 )
+  logged: dtype float16
+          output 3
+          mismatch at 687
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 0.201904, 0.202026 )
+  logged: dtype float16
+          output 3
+          mismatch at 688
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 1.19043, 1.19141 )
+  logged: dtype float16
+          output 3
+          mismatch at 689
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -5.32031, -5.32422 )
+  logged: dtype float16
+          output 3
+          mismatch at 693
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -0.145996, -0.145874 )
+  logged: dtype float16
+          output 3
+          mismatch at 699
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -1.60938, -1.6084 )
+  logged: dtype float16
+          output 3
+          mismatch at 705
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -0.74707, -0.746582 )
+  logged: dtype float16
+          output 3
+          mismatch at 709
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 2.14844, 2.14648 )
+  logged: dtype float16
+          output 3
+          mismatch at 713
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -0.108398, -0.108459 )
+  logged: dtype float16
+          output 3
+          mismatch at 718
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 3.37891, 3.38086 )
+  logged: dtype float16
+          output 3
+          mismatch at 723
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 0.714355, 0.714844 )
+  logged: dtype float16
+          output 3
+          mismatch at 725
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 0.406738, 0.406982 )
+  logged: dtype float16
+          output 3
+          mismatch at 726
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -0.110352, -0.110291 )
+  logged: dtype float16
+          output 3
+          mismatch at 728
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 0.765137, 0.765625 )
+  logged: dtype float16
+          output 3
+          mismatch at 731
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 0.257812, 0.257568 )
+  logged: dtype float16
+          output 3
+          mismatch at 735
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 0.540039, 0.539551 )
+  logged: dtype float16
+          output 3
+          mismatch at 736
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 0.43335, 0.433105 )
+  logged: dtype float16
+          output 3
+          mismatch at 744
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -0.702148, -0.70166 )
+  logged: dtype float16
+          output 3
+          mismatch at 748
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -0.494141, -0.494385 )
+  logged: dtype float16
+          output 3
+          mismatch at 756
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -0.0965576, -0.0966187 )
+  logged: dtype float16
+          output 3
+          mismatch at 758
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -0.772949, -0.773438 )
+  logged: dtype float16
+          output 3
+          mismatch at 760
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 0.0878906, 0.0881958 )
+  logged: dtype float16
+          output 3
+          mismatch at 768
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -3.13086, -3.13281 )
+  logged: dtype float16
+          output 3
+          mismatch at 769
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -0.848633, -0.849121 )
+  logged: dtype float16
+          output 3
+          mismatch at 771
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -3.2832, -3.28516 )
+  logged: dtype float16
+          output 3
+          mismatch at 776
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 1.7998, 1.79883 )
+  logged: dtype float16
+          output 3
+          mismatch at 777
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 0.850586, 0.851074 )
+  logged: dtype float16
+          output 3
+          mismatch at 786
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -1.26562, -1.2666 )
+  logged: dtype float16
+          output 3
+          mismatch at 789
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 1.5, 1.50098 )
+  logged: dtype float16
+          output 3
+          mismatch at 791
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -1.72656, -1.72754 )
+  logged: dtype float16
+          output 3
+          mismatch at 799
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 2.46875, 2.4707 )
+  logged: dtype float16
+          output 3
+          mismatch at 800
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -1.45312, -1.4541 )
+  logged: dtype float16
+          output 3
+          mismatch at 803
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -3.60938, -3.60742 )
+  logged: dtype float16
+          output 3
+          mismatch at 809
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -1.96289, -1.96387 )
+  logged: dtype float16
+          output 3
+          mismatch at 815
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 2.54492, 2.54297 )
+  logged: dtype float16
+          output 3
+          mismatch at 817
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -0.84375, -0.843262 )
+  logged: dtype float16
+          output 3
+          mismatch at 823
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -0.0341797, -0.0339661 )
+  logged: dtype float16
+          output 3
+          mismatch at 824
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -0.77832, -0.777832 )
+  logged: dtype float16
+          output 3
+          mismatch at 825
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 1.04102, 1.04199 )
+  logged: dtype float16
+          output 3
+          mismatch at 840
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 0.881836, 0.882324 )
+  logged: dtype float16
+          output 3
+          mismatch at 844
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -0.10498, -0.105042 )
+  logged: dtype float16
+          output 3
+          mismatch at 847
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -0.216064, -0.216187 )
+  logged: dtype float16
+          output 3
+          mismatch at 849
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 0.0805664, 0.0805054 )
+  logged: dtype float16
+          output 3
+          mismatch at 850
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 0.2854, 0.285645 )
+  logged: dtype float16
+          output 3
+          mismatch at 851
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 1.19629, 1.19727 )
+  logged: dtype float16
+          output 3
+          mismatch at 853
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 0.426758, 0.427002 )
+  logged: dtype float16
+          output 3
+          mismatch at 854
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -2.66797, -2.66992 )
+  logged: dtype float16
+          output 3
+          mismatch at 864
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -0.282227, -0.282715 )
+  logged: dtype float16
+          output 3
+          mismatch at 865
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -0.168945, -0.169067 )
+  logged: dtype float16
+          output 3
+          mismatch at 868
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 0.245605, 0.245483 )
+  logged: dtype float16
+          output 3
+          mismatch at 871
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -1.89062, -1.8916 )
+  logged: dtype float16
+          output 3
+          mismatch at 873
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 2.04688, 2.04492 )
+  logged: dtype float16
+          output 3
+          mismatch at 874
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 0.514648, 0.515137 )
+  logged: dtype float16
+          output 3
+          mismatch at 878
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 0.0336304, 0.0335693 )
+  logged: dtype float16
+          output 3
+          mismatch at 879
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 0.585938, 0.585449 )
+  logged: dtype float16
+          output 3
+          mismatch at 885
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 0.517578, 0.51709 )
+  logged: dtype float16
+          output 4
+          mismatch at 2
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 0.414062, 0.414307 )
+  logged: dtype float16
+          output 4
+          mismatch at 7
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 0.239014, 0.239136 )
+  logged: dtype float16
+          output 4
+          mismatch at 8
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 0.118164, 0.118042 )
+  logged: dtype float16
+          output 4
+          mismatch at 12
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 0.0307617, 0.0306091 )
+  logged: dtype float16
+          output 4
+          mismatch at 16
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 0.829102, 0.828613 )
+  logged: dtype float16
+          output 4
+          mismatch at 17
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -1.69922, -1.69824 )
+  logged: dtype float16
+          output 4
+          mismatch at 21
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -0.269531, -0.269775 )
+  logged: dtype float16
+          output 4
+          mismatch at 22
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -1.63477, -1.63574 )
+  logged: dtype float16
+          output 4
+          mismatch at 28
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -3.85547, -3.85352 )
+  logged: dtype float16
+          output 4
+          mismatch at 30
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 0.720703, 0.721191 )
+  logged: dtype float16
+          output 4
+          mismatch at 33
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -0.181641, -0.181519 )
+  logged: dtype float16
+          output 4
+          mismatch at 34
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -0.0703125, -0.0702515 )
+  logged: dtype float16
+          output 4
+          mismatch at 36
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -2.83984, -2.83789 )
+  logged: dtype float16
+          output 4
+          mismatch at 37
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -0.524414, -0.523926 )
+  logged: dtype float16
+          output 4
+          mismatch at 39
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -0.133301, -0.133423 )
+  logged: dtype float16
+          output 4
+          mismatch at 41
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 0.617188, 0.617676 )
+  logged: dtype float16
+          output 4
+          mismatch at 43
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 0.0849609, 0.0848389 )
+  logged: dtype float16
+          output 4
+          mismatch at 45
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -1.87793, -1.87891 )
+  logged: dtype float16
+          output 4
+          mismatch at 51
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 0.0627441, 0.0626831 )
+  logged: dtype float16
+          output 4
+          mismatch at 53
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 2.12891, 2.12695 )
+  logged: dtype float16
+          output 4
+          mismatch at 58
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 0.0263672, 0.026062 )
+  logged: dtype float16
+          output 4
+          mismatch at 60
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -2.47461, -2.47656 )
+  logged: dtype float16
+          output 4
+          mismatch at 67
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 2.09375, 2.0918 )
+  logged: dtype float16
+          output 4
+          mismatch at 68
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -0.251953, -0.252197 )
+  logged: dtype float16
+          output 4
+          mismatch at 76
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 2.83594, 2.83398 )
+  logged: dtype float16
+          output 4
+          mismatch at 78
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -1.74219, -1.74316 )
+  logged: dtype float16
+          output 4
+          mismatch at 90
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 0.182129, 0.182007 )
+  logged: dtype float16
+          output 4
+          mismatch at 92
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -0.173828, -0.173706 )
+  logged: dtype float16
+          output 4
+          mismatch at 93
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -1.32812, -1.32715 )
+  logged: dtype float16
+          output 4
+          mismatch at 95
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -0.252441, -0.252686 )
+  logged: dtype float16
+          output 4
+          mismatch at 98
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 0.134277, 0.134033 )
+  logged: dtype float16
+          output 4
+          mismatch at 112
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -0.231201, -0.231323 )
+  logged: dtype float16
+          output 4
+          mismatch at 113
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -0.202637, -0.202759 )
+  logged: dtype float16
+          output 4
+          mismatch at 119
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 0.0712891, 0.071228 )
+  logged: dtype float16
+          output 4
+          mismatch at 120
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -1.67578, -1.6748 )
+  logged: dtype float16
+          output 4
+          mismatch at 126
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -0.953125, -0.953613 )
+  logged: dtype float16
+          output 5
+          mismatch at 1
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -0.722656, -0.723145 )
+  logged: dtype float16
+          output 5
+          mismatch at 2
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -2.08984, -2.0918 )
+  logged: dtype float16
+          output 5
+          mismatch at 5
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 3.30078, 3.29883 )
+  logged: dtype float16
+          output 5
+          mismatch at 7
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 0.117188, 0.116821 )
+  logged: dtype float16
+          output 5
+          mismatch at 8
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -0.270508, -0.270752 )
+  logged: dtype float16
+          output 5
+          mismatch at 15
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -1.43066, -1.42969 )
+  logged: dtype float16
+          output 5
+          mismatch at 18
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 0.268555, 0.268311 )
+  logged: dtype float16
+          output 5
+          mismatch at 25
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -0.0932617, -0.0932007 )
+  logged: dtype float16
+          output 5
+          mismatch at 28
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 0.0383301, 0.0382996 )
+  logged: dtype float16
+          output 5
+          mismatch at 29
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -1.41211, -1.41113 )
+  logged: dtype float16
+          output 5
+          mismatch at 31
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -1.00977, -1.01074 )
+  logged: dtype float16
+          output 5
+          mismatch at 34
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 2.61719, 2.61914 )
+  logged: dtype float16
+          output 5
+          mismatch at 36
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -0.395508, -0.39502 )
+  logged: dtype float16
+          output 5
+          mismatch at 44
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -0.210449, -0.210327 )
+  logged: dtype float16
+          output 5
+          mismatch at 49
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -3.43164, -3.42969 )
+  logged: dtype float16
+          output 5
+          mismatch at 50
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 1.2168, 1.21582 )
+  logged: dtype float16
+          output 5
+          mismatch at 57
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -0.787109, -0.786621 )
+  logged: dtype float16
+          output 5
+          mismatch at 61
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -0.0664062, -0.0662842 )
+  logged: dtype float16
+          output 5
+          mismatch at 73
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -1.80469, -1.80566 )
+  logged: dtype float16
+          output 5
+          mismatch at 79
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -0.30957, -0.309814 )
+  logged: dtype float16
+          output 5
+          mismatch at 81
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 0.40625, 0.406494 )
+  logged: dtype float16
+          output 5
+          mismatch at 82
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -0.0585938, -0.0585632 )
+  logged: dtype float16
+          output 5
+          mismatch at 87
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 0.899414, 0.898926 )
+  logged: dtype float16
+          output 5
+          mismatch at 88
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 0.166992, 0.167114 )
+  logged: dtype float16
+          output 5
+          mismatch at 103
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -0.253418, -0.253662 )
+  logged: dtype float16
+          output 5
+          mismatch at 106
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -1.70312, -1.7041 )
+  logged: dtype float16
+          output 5
+          mismatch at 107
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -0.695312, -0.695801 )
+  logged: dtype float16
+          output 5
+          mismatch at 109
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -1.21875, -1.21973 )
+  logged: dtype float16
+          output 5
+          mismatch at 112
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 0.553223, 0.552734 )
+  logged: dtype float16
+          output 5
+          mismatch at 114
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -0.357422, -0.357666 )
+  logged: dtype float16
+          output 5
+          mismatch at 118
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 0.652344, 0.651855 )
+  logged: dtype float16
+          output 5
+          mismatch at 119
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -0.129395, -0.12915 )
+  logged: dtype float16
+          output 5
+          mismatch at 121
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -0.461914, -0.46167 )
+  logged: dtype float16
+          output 5
+          mismatch at 125
+
+===============================================================================
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1161:
+TEST CASE:  eager q4 decode gemv group: gate/up pair and residual fold
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 27.875, 27.8594 )
+  logged: output 3
+          mismatch at 0
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 12.5, 12.5078 )
+  logged: output 3
+          mismatch at 3
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -0.37793, -0.378418 )
+  logged: output 3
+          mismatch at 8
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -12.7812, -12.7891 )
+  logged: output 3
+          mismatch at 11
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -16.9688, -16.9844 )
+  logged: output 3
+          mismatch at 12
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 9.60938, 9.60156 )
+  logged: output 3
+          mismatch at 17
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -11.875, -11.8672 )
+  logged: output 3
+          mismatch at 19
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -8.39062, -8.38281 )
+  logged: output 3
+          mismatch at 21
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -7.85938, -7.85547 )
+  logged: output 3
+          mismatch at 23
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -5.30469, -5.30859 )
+  logged: output 3
+          mismatch at 27
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 5.625, 5.62891 )
+  logged: output 3
+          mismatch at 35
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -18.4531, -18.4688 )
+  logged: output 3
+          mismatch at 37
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -28.0938, -28.0781 )
+  logged: output 3
+          mismatch at 38
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 15.6484, 15.6406 )
+  logged: output 3
+          mismatch at 43
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 29.2031, 29.1875 )
+  logged: output 3
+          mismatch at 46
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -18.5938, -18.5781 )
+  logged: output 3
+          mismatch at 50
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -1.90625, -1.90527 )
+  logged: output 3
+          mismatch at 53
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -23.3125, -23.3281 )
+  logged: output 3
+          mismatch at 61
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 2.64062, 2.63867 )
+  logged: output 3
+          mismatch at 72
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -25.6562, -25.6719 )
+  logged: output 3
+          mismatch at 73
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -8.27344, -8.28125 )
+  logged: output 3
+          mismatch at 81
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 19.2812, 19.2656 )
+  logged: output 3
+          mismatch at 83
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -11.4141, -11.4062 )
+  logged: output 3
+          mismatch at 90
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -0.291016, -0.290283 )
+  logged: output 3
+          mismatch at 100
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -1.99316, -1.99219 )
+  logged: output 3
+          mismatch at 104
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -8.04688, -8.05469 )
+  logged: output 3
+          mismatch at 105
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -7.04297, -7.04688 )
+  logged: output 3
+          mismatch at 106
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 19.3281, 19.3438 )
+  logged: output 3
+          mismatch at 110
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -0.113281, -0.113342 )
+  logged: output 3
+          mismatch at 113
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -17.7969, -17.7812 )
+  logged: output 3
+          mismatch at 115
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 3.79492, 3.79297 )
+  logged: output 3
+          mismatch at 119
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -13.0938, -13.1016 )
+  logged: output 3
+          mismatch at 123
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -47.9062, -47.875 )
+  logged: output 3
+          mismatch at 128
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 19.5938, 19.6094 )
+  logged: output 3
+          mismatch at 129
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -10.0312, -10.0234 )
+  logged: output 3
+          mismatch at 131
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -15.9375, -15.9453 )
+  logged: output 3
+          mismatch at 138
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -22.6562, -22.6719 )
+  logged: output 3
+          mismatch at 139
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -24.5938, -24.6094 )
+  logged: output 3
+          mismatch at 142
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 8.75, 8.74219 )
+  logged: output 3
+          mismatch at 146
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -3.73633, -3.73438 )
+  logged: output 3
+          mismatch at 155
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -1.68359, -1.68262 )
+  logged: output 3
+          mismatch at 160
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 17.4688, 17.4844 )
+  logged: output 3
+          mismatch at 168
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 7.10938, 7.10547 )
+  logged: output 3
+          mismatch at 171
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -57.0938, -57.0625 )
+  logged: output 3
+          mismatch at 173
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -9.83594, -9.82812 )
+  logged: output 3
+          mismatch at 174
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 15.7891, 15.7812 )
+  logged: output 3
+          mismatch at 179
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -1.26074, -1.25977 )
+  logged: output 3
+          mismatch at 180
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 0.763672, 0.764648 )
+  logged: output 3
+          mismatch at 193
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 14.0156, 14.0078 )
+  logged: output 3
+          mismatch at 197
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -0.917969, -0.91748 )
+  logged: output 3
+          mismatch at 200
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -2.06641, -2.06445 )
+  logged: output 3
+          mismatch at 204
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -21.0312, -21.0156 )
+  logged: output 3
+          mismatch at 205
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -1.09766, -1.09668 )
+  logged: output 3
+          mismatch at 209
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -16.3438, -16.3594 )
+  logged: output 3
+          mismatch at 213
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -35.2812, -35.3125 )
+  logged: output 3
+          mismatch at 214
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -16.1562, -16.1406 )
+  logged: output 3
+          mismatch at 221
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 10.1562, 10.1641 )
+  logged: output 3
+          mismatch at 222
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -7.28125, -7.28516 )
+  logged: output 3
+          mismatch at 223
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 7.95312, 7.94922 )
+  logged: output 3
+          mismatch at 229
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 13.0312, 13.0234 )
+  logged: output 3
+          mismatch at 232
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 11.0703, 11.0781 )
+  logged: output 3
+          mismatch at 234
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 27.9219, 27.9375 )
+  logged: output 3
+          mismatch at 239
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 23.4531, 23.4688 )
+  logged: output 3
+          mismatch at 240
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 15.3906, 15.3828 )
+  logged: output 3
+          mismatch at 248
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 1.60938, 1.6084 )
+  logged: output 3
+          mismatch at 251
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 13.0781, 13.0703 )
+  logged: output 3
+          mismatch at 255
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 0.539062, 0.538574 )
+  logged: output 3
+          mismatch at 256
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 18.25, 18.2656 )
+  logged: output 3
+          mismatch at 260
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -12.1016, -12.0938 )
+  logged: output 3
+          mismatch at 261
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 16.2656, 16.2812 )
+  logged: output 3
+          mismatch at 267
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 27.2031, 27.1875 )
+  logged: output 3
+          mismatch at 273
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -19.4375, -19.4531 )
+  logged: output 3
+          mismatch at 276
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 21.6406, 21.625 )
+  logged: output 3
+          mismatch at 278
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 24.9844, 24.9688 )
+  logged: output 3
+          mismatch at 279
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -15.8516, -15.8594 )
+  logged: output 3
+          mismatch at 281
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -9.22656, -9.21875 )
+  logged: output 3
+          mismatch at 283
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 20.9844, 20.9688 )
+  logged: output 3
+          mismatch at 284
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -0.0234375, -0.0233917 )
+  logged: output 3
+          mismatch at 290
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 7.65625, 7.65234 )
+  logged: output 3
+          mismatch at 295
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -14.0938, -14.0859 )
+  logged: output 3
+          mismatch at 299
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -0.96875, -0.968262 )
+  logged: output 3
+          mismatch at 300
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 20.3438, 20.3594 )
+  logged: output 3
+          mismatch at 308
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -9.42969, -9.42188 )
+  logged: output 3
+          mismatch at 311
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 1.75977, 1.76172 )
+  logged: output 3
+          mismatch at 312
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 38.4062, 38.375 )
+  logged: output 3
+          mismatch at 323
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -0.929199, -0.928711 )
+  logged: output 3
+          mismatch at 325
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 0.55957, 0.559082 )
+  logged: output 3
+          mismatch at 331
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -32.4062, -32.375 )
+  logged: output 3
+          mismatch at 334
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 0.332031, 0.332275 )
+  logged: output 3
+          mismatch at 336
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -18.125, -18.1406 )
+  logged: output 3
+          mismatch at 338
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -6.75, -6.74609 )
+  logged: output 3
+          mismatch at 340
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 0.223633, 0.223145 )
+  logged: output 3
+          mismatch at 345
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -33.2188, -33.1875 )
+  logged: output 3
+          mismatch at 351
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -24.875, -24.8594 )
+  logged: output 3
+          mismatch at 352
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -4.17188, -4.17578 )
+  logged: output 3
+          mismatch at 361
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 3.32031, 3.32227 )
+  logged: output 3
+          mismatch at 366
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 1.54102, 1.54199 )
+  logged: output 3
+          mismatch at 370
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 14.6094, 14.6016 )
+  logged: output 3
+          mismatch at 371
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 9.78906, 9.79688 )
+  logged: output 3
+          mismatch at 375
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 6.67188, 6.67578 )
+  logged: output 3
+          mismatch at 383
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 0.982422, 0.98291 )
+  logged: output 3
+          mismatch at 389
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 20.375, 20.3906 )
+  logged: output 3
+          mismatch at 390
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 7.82031, 7.81641 )
+  logged: output 3
+          mismatch at 391
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 3.54492, 3.54688 )
+  logged: output 3
+          mismatch at 393
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 15.9297, 15.9375 )
+  logged: output 3
+          mismatch at 394
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 22.0938, 22.1094 )
+  logged: output 3
+          mismatch at 398
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -0.362305, -0.362793 )
+  logged: output 3
+          mismatch at 401
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 14.7812, 14.7891 )
+  logged: output 3
+          mismatch at 407
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 13.0547, 13.0469 )
+  logged: output 3
+          mismatch at 410
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 18.7969, 18.8125 )
+  logged: output 3
+          mismatch at 411
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -11.8984, -11.9062 )
+  logged: output 3
+          mismatch at 412
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 2.19336, 2.19141 )
+  logged: output 3
+          mismatch at 413
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 1.73828, 1.73926 )
+  logged: output 3
+          mismatch at 418
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -8.82812, -8.82031 )
+  logged: output 3
+          mismatch at 419
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -1.625, -1.62402 )
+  logged: output 3
+          mismatch at 422
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 5.41406, 5.41016 )
+  logged: output 3
+          mismatch at 427
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -35.7188, -35.6875 )
+  logged: output 3
+          mismatch at 432
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 13.7422, 13.7344 )
+  logged: output 3
+          mismatch at 433
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 1.71387, 1.71289 )
+  logged: output 3
+          mismatch at 434
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -15.5469, -15.5547 )
+  logged: output 3
+          mismatch at 439
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 22.8906, 22.875 )
+  logged: output 3
+          mismatch at 441
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -0.0161133, -0.0159149 )
+  logged: output 3
+          mismatch at 456
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -2.46875, -2.4668 )
+  logged: output 3
+          mismatch at 458
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 19.6719, 19.6875 )
+  logged: output 3
+          mismatch at 462
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -13.1172, -13.1094 )
+  logged: output 3
+          mismatch at 464
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -8.4375, -8.42969 )
+  logged: output 3
+          mismatch at 467
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -15.0703, -15.0781 )
+  logged: output 3
+          mismatch at 471
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -7.19141, -7.19531 )
+  logged: output 3
+          mismatch at 486
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -3.47461, -3.47266 )
+  logged: output 3
+          mismatch at 489
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -18.9531, -18.9375 )
+  logged: output 3
+          mismatch at 494
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 2.47266, 2.4707 )
+  logged: output 3
+          mismatch at 495
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -14.2812, -14.2891 )
+  logged: output 3
+          mismatch at 499
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 3.90625, 3.9082 )
+  logged: output 3
+          mismatch at 502
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -12.2031, -12.2109 )
+  logged: output 3
+          mismatch at 503
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 34.6562, 34.625 )
+  logged: output 3
+          mismatch at 505
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -34.2188, -34.1875 )
+  logged: output 3
+          mismatch at 508
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -7.44531, -7.44922 )
+  logged: output 3
+          mismatch at 520
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -0.230469, -0.230713 )
+  logged: output 3
+          mismatch at 523
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 15.75, 15.7578 )
+  logged: output 3
+          mismatch at 524
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 25.5, 25.5156 )
+  logged: output 3
+          mismatch at 533
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 9.04688, 9.05469 )
+  logged: output 3
+          mismatch at 534
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -6.88281, -6.87891 )
+  logged: output 3
+          mismatch at 535
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -39.125, -39.1562 )
+  logged: output 3
+          mismatch at 539
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -14.9453, -14.9375 )
+  logged: output 3
+          mismatch at 542
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -13.7188, -13.7266 )
+  logged: output 3
+          mismatch at 548
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -7.19531, -7.19922 )
+  logged: output 3
+          mismatch at 550
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 21.0781, 21.0938 )
+  logged: output 3
+          mismatch at 551
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 22.4062, 22.3906 )
+  logged: output 3
+          mismatch at 553
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -8.67188, -8.67969 )
+  logged: output 3
+          mismatch at 559
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -2.1875, -2.18945 )
+  logged: output 3
+          mismatch at 574
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 14.8906, 14.8984 )
+  logged: output 3
+          mismatch at 580
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -6.28125, -6.27734 )
+  logged: output 3
+          mismatch at 583
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 14.6875, 14.6797 )
+  logged: output 3
+          mismatch at 584
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 27.875, 27.8594 )
+  logged: output 3
+          mismatch at 588
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 2.14258, 2.14453 )
+  logged: output 3
+          mismatch at 591
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -0.860352, -0.86084 )
+  logged: output 3
+          mismatch at 592
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -23.4219, -23.4375 )
+  logged: output 3
+          mismatch at 598
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -29, -28.9844 )
+  logged: output 3
+          mismatch at 599
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -27.625, -27.6406 )
+  logged: output 3
+          mismatch at 600
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 0.632324, 0.632812 )
+  logged: output 3
+          mismatch at 602
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 38.25, 38.2812 )
+  logged: output 3
+          mismatch at 604
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 1.10156, 1.10059 )
+  logged: output 3
+          mismatch at 613
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 0.21582, 0.216064 )
+  logged: output 3
+          mismatch at 614
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 28.1875, 28.1719 )
+  logged: output 3
+          mismatch at 615
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -36, -35.9688 )
+  logged: output 3
+          mismatch at 616
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -5.28516, -5.28906 )
+  logged: output 3
+          mismatch at 620
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -23.4375, -23.4219 )
+  logged: output 3
+          mismatch at 626
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -4.38672, -4.39062 )
+  logged: output 3
+          mismatch at 628
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 0.0605469, 0.0606689 )
+  logged: output 3
+          mismatch at 629
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 25.1406, 25.125 )
+  logged: output 3
+          mismatch at 631
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -12.0938, -12.1016 )
+  logged: output 3
+          mismatch at 634
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -18.3594, -18.375 )
+  logged: output 3
+          mismatch at 636
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 12.5469, 12.5547 )
+  logged: output 3
+          mismatch at 639
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -15.7266, -15.7188 )
+  logged: output 3
+          mismatch at 656
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -23.9688, -23.9531 )
+  logged: output 3
+          mismatch at 659
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -4.82031, -4.82422 )
+  logged: output 3
+          mismatch at 663
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -8.6875, -8.67969 )
+  logged: output 3
+          mismatch at 665
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -15.0859, -15.0938 )
+  logged: output 3
+          mismatch at 668
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -12.1797, -12.1719 )
+  logged: output 3
+          mismatch at 670
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -11.3594, -11.3672 )
+  logged: output 3
+          mismatch at 674
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 20.8125, 20.7969 )
+  logged: output 3
+          mismatch at 678
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 0.375, 0.374268 )
+  logged: output 3
+          mismatch at 679
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -3.14258, -3.14062 )
+  logged: output 3
+          mismatch at 681
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -3.70703, -3.70898 )
+  logged: output 3
+          mismatch at 685
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 16.4375, 16.4219 )
+  logged: output 3
+          mismatch at 687
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 14.5469, 14.5391 )
+  logged: output 3
+          mismatch at 688
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -5.11719, -5.12109 )
+  logged: output 3
+          mismatch at 690
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 17.5, 17.4844 )
+  logged: output 3
+          mismatch at 692
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -1.05859, -1.05957 )
+  logged: output 3
+          mismatch at 693
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 5.27344, 5.26953 )
+  logged: output 3
+          mismatch at 700
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -5.42188, -5.42578 )
+  logged: output 3
+          mismatch at 706
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -35.7812, -35.75 )
+  logged: output 3
+          mismatch at 712
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -11.8047, -11.7969 )
+  logged: output 3
+          mismatch at 715
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -1.86133, -1.8623 )
+  logged: output 3
+          mismatch at 716
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 28.8281, 28.8125 )
+  logged: output 3
+          mismatch at 725
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -31.75, -31.7344 )
+  logged: output 3
+          mismatch at 726
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 14.3047, 14.3125 )
+  logged: output 3
+          mismatch at 727
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -20.8281, -20.8438 )
+  logged: output 3
+          mismatch at 728
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 25.8438, 25.8594 )
+  logged: output 3
+          mismatch at 729
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -3.96484, -3.9668 )
+  logged: output 3
+          mismatch at 739
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 16.1094, 16.0938 )
+  logged: output 3
+          mismatch at 741
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 1.30078, 1.2998 )
+  logged: output 3
+          mismatch at 748
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -4.19531, -4.19922 )
+  logged: output 3
+          mismatch at 750
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 0.199219, 0.199341 )
+  logged: output 3
+          mismatch at 752
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 47.25, 47.2812 )
+  logged: output 3
+          mismatch at 753
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -14.9531, -14.9453 )
+  logged: output 3
+          mismatch at 756
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 0.878906, 0.879395 )
+  logged: output 3
+          mismatch at 761
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 2.92773, 2.92578 )
+  logged: output 3
+          mismatch at 763
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 14.8281, 14.8359 )
+  logged: output 3
+          mismatch at 771
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 6.51562, 6.51953 )
+  logged: output 3
+          mismatch at 772
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 7.17578, 7.17188 )
+  logged: output 3
+          mismatch at 774
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 7.95312, 7.95703 )
+  logged: output 3
+          mismatch at 779
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -16.9531, -16.9375 )
+  logged: output 3
+          mismatch at 780
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 4.96484, 4.96094 )
+  logged: output 3
+          mismatch at 783
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -10.3438, -10.3516 )
+  logged: output 3
+          mismatch at 790
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -15.1328, -15.1406 )
+  logged: output 3
+          mismatch at 791
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 4.13281, 4.12891 )
+  logged: output 3
+          mismatch at 792
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -40.5625, -40.5938 )
+  logged: output 3
+          mismatch at 797
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -0.863281, -0.861328 )
+  logged: output 3
+          mismatch at 798
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 37.4688, 37.4375 )
+  logged: output 3
+          mismatch at 800
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 29.0938, 29.0781 )
+  logged: output 3
+          mismatch at 804
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -0.210449, -0.210571 )
+  logged: output 3
+          mismatch at 814
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -7.44531, -7.44922 )
+  logged: output 3
+          mismatch at 815
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -6.76953, -6.77344 )
+  logged: output 3
+          mismatch at 824
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 31.1406, 31.125 )
+  logged: output 3
+          mismatch at 825
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 15.3594, 15.3672 )
+  logged: output 3
+          mismatch at 828
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -0.231445, -0.231323 )
+  logged: output 3
+          mismatch at 829
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 15.0859, 15.0938 )
+  logged: output 3
+          mismatch at 833
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -8.48438, -8.47656 )
+  logged: output 3
+          mismatch at 837
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -39.125, -39.0938 )
+  logged: output 3
+          mismatch at 839
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 9.40625, 9.39844 )
+  logged: output 3
+          mismatch at 841
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 15.6094, 15.6172 )
+  logged: output 3
+          mismatch at 843
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -13.3125, -13.3047 )
+  logged: output 3
+          mismatch at 844
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 7.98438, 7.98828 )
+  logged: output 3
+          mismatch at 848
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 41.8438, 41.8125 )
+  logged: output 3
+          mismatch at 851
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 8.97656, 8.98438 )
+  logged: output 3
+          mismatch at 856
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -23.5938, -23.6094 )
+  logged: output 3
+          mismatch at 859
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -8.59375, -8.60156 )
+  logged: output 3
+          mismatch at 861
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 29.6875, 29.7031 )
+  logged: output 3
+          mismatch at 866
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 0.152344, 0.150879 )
+  logged: output 3
+          mismatch at 867
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 15.6094, 15.6016 )
+  logged: output 3
+          mismatch at 873
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( -15.0859, -15.0781 )
+  logged: output 3
+          mismatch at 875
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 8.09375, 8.08594 )
+  logged: output 3
+          mismatch at 876
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 19.0625, 19.0469 )
+  logged: output 3
+          mismatch at 888
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 16.0938, 16.0781 )
+  logged: output 3
+          mismatch at 891
+
+/home/joshuawarren/src/mlx-DecodeFusion/.work/mlx/tests/omarchy/test_fused_chain.cpp:1108: ERROR: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is NOT correct!
+  values: CHECK_EQ( 45.2812, 45.3125 )
+  logged: output 3
+          mismatch at 895
+
+===============================================================================
+[doctest] test cases:    28 |    26 passed |   2 failed | 0 skipped
+[doctest] assertions: 26550 | 25971 passed | 579 failed |
+[doctest] Status: FAILURE!

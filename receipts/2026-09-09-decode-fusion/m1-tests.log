@@ -1,0 +1,12 @@
+SUITE_PASS=omarchy_fused_chain_tests
+[doctest] assertions: 26550 | 26550 passed | 0 failed |
+[doctest] Status: SUCCESS!
+SUITE_PASS=omarchy_matmul_family_tests
+[doctest] assertions: 82636841 | 82636841 passed | 0 failed |
+[doctest] Status: SUCCESS!
+SUITE_PASS=omarchy_fast_ops_tests
+[doctest] assertions: 1102946 | 1102946 passed | 0 failed |
+[doctest] Status: SUCCESS!
+SUITE_PASS=omarchy_runtime_tests
+[doctest] assertions: 22694 | 22694 passed | 0 failed |
+[doctest] Status: SUCCESS!
