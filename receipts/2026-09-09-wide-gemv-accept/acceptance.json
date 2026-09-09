@@ -1,0 +1,161 @@
+{
+  "measured_source_short": "61bbfa4",
+  "wheel_sha256": "9e02af63860dca9f120337e8036eba1d6f61b846e0d01f11360227e748ab6b7a",
+  "paired_repetitions": 5,
+  "verified_legs": 60,
+  "full_generated_ids_equal_to_linux_baseline": true,
+  "change": "Sequential GEMV only for BF16, m=1, n>=4096; smaller matrices retain tiled matmul.",
+  "decode_results": [
+    {
+      "leg": "qwen25-0.5b-4bit:long-decode-128",
+      "samples": {
+        "baseline": [
+          55.91,
+          55.97,
+          55.98,
+          56.07,
+          55.91
+        ],
+        "candidate": [
+          56,
+          55.23,
+          55.98,
+          56.09,
+          55.95
+        ]
+      },
+      "medians": {
+        "baseline": 55.97,
+        "candidate": 55.98
+      },
+      "candidate_over_baseline": 1.0001786671431123
+    },
+    {
+      "leg": "qwen25-0.5b-4bit:longctx-1024-decode-32",
+      "samples": {
+        "baseline": [
+          40.83,
+          40.86,
+          40.31,
+          40.63,
+          40.96
+        ],
+        "candidate": [
+          40.77,
+          40.66,
+          40.95,
+          40.9,
+          40.92
+        ]
+      },
+      "medians": {
+        "baseline": 40.83,
+        "candidate": 40.9
+      },
+      "candidate_over_baseline": 1.0017144256674013
+    },
+    {
+      "leg": "qwen25-0.5b-4bit:short-decode-32",
+      "samples": {
+        "baseline": [
+          65.89,
+          65.9,
+          65.97,
+          65.92,
+          65.93
+        ],
+        "candidate": [
+          65.91,
+          65.88,
+          65.64,
+          65.72,
+          65.39
+        ]
+      },
+      "medians": {
+        "baseline": 65.92,
+        "candidate": 65.72
+      },
+      "candidate_over_baseline": 0.9969660194174756
+    },
+    {
+      "leg": "qwen25-0.5b-bf16:long-decode-128",
+      "samples": {
+        "baseline": [
+          10.23,
+          10.24,
+          10.24,
+          10.24,
+          10.23
+        ],
+        "candidate": [
+          11.12,
+          11.12,
+          11.12,
+          11.12,
+          11.12
+        ]
+      },
+      "medians": {
+        "baseline": 10.24,
+        "candidate": 11.12
+      },
+      "candidate_over_baseline": 1.0859375
+    },
+    {
+      "leg": "qwen25-0.5b-bf16:longctx-1024-decode-32",
+      "samples": {
+        "baseline": [
+          9.38,
+          9.38,
+          9.39,
+          9.38,
+          9.39
+        ],
+        "candidate": [
+          10.12,
+          10.12,
+          10.12,
+          10.12,
+          10.11
+        ]
+      },
+      "medians": {
+        "baseline": 9.38,
+        "candidate": 10.12
+      },
+      "candidate_over_baseline": 1.0788912579957355
+    },
+    {
+      "leg": "qwen25-0.5b-bf16:short-decode-32",
+      "samples": {
+        "baseline": [
+          10.61,
+          10.6,
+          10.61,
+          10.6,
+          10.6
+        ],
+        "candidate": [
+          11.55,
+          11.55,
+          11.56,
+          11.56,
+          11.56
+        ]
+      },
+      "medians": {
+        "baseline": 10.6,
+        "candidate": 11.56
+      },
+      "candidate_over_baseline": 1.090566037735849
+    }
+  ],
+  "native_parity": "Still incomplete: Linux baseline equality does not establish native equality.",
+  "tests": [
+    "omarchy_matmul_family_tests",
+    "omarchy_fast_ops_tests",
+    "omarchy_runtime_tests"
+  ],
+  "scope": "M1 throughput improvement for unchanged six-workload matrix, not completion of native parity."
+}

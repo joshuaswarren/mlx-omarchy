@@ -589,6 +589,21 @@ void dispatch_matmul(
           params.rhs_offset, b_span + b_inner)) {
     omarchy::unsupported(name + " index span", out);
   }
+  if (out.dtype() == bfloat16 && params.matrix_m == 1u && params.matrix_n >= 4096u) {
+    auto vec_kernel = select_float_kernel(
+        out.dtype(),
+        omarchy::ComputeKernel::MatmulVecF32,
+        omarchy::ComputeKernel::MatmulVecF16,
+        omarchy::ComputeKernel::MatmulVecBF16);
+    encoder.dispatch_compute(
+        vec_kernel,
+        bindings,
+        params,
+        matrix_group_count(params.matrix_n, 32u),
+        1u,
+        checked_u32(batch_count, name, out));
+    return;
+  }
   encoder.dispatch_compute(
       kernel,
       bindings,

@@ -1,0 +1,111 @@
+#version 460
+
+// One lane per output preserves the tiled kernel's sequential K accumulation.
+
+#ifdef USE_FP16
+#extension GL_EXT_shader_16bit_storage : require
+#extension GL_EXT_shader_explicit_arithmetic_types_float16 : require
+#define STORAGE_TYPE float16_t
+#define LOAD_VALUE(x) float(x)
+#define STORE_VALUE(f) STORAGE_TYPE(f)
+#elif defined(USE_BF16)
+#extension GL_EXT_shader_16bit_storage : require
+#extension GL_EXT_shader_explicit_arithmetic_types_int16 : require
+#define STORAGE_TYPE uint16_t
+#define LOAD_VALUE(x) uintBitsToFloat(uint(x) << 16u)
+uint16_t bf16_store(float value) {
+  uint bits = floatBitsToUint(value);
+  if (isnan(value)) {
+    return uint16_t((bits >> 16) | 0x40u);
+  }
+  return uint16_t((bits + 0x7fffu + ((bits >> 16) & 1u)) >> 16);
+}
+#define STORE_VALUE(f) bf16_store(f)
+#else
+#define STORAGE_TYPE float
+#define LOAD_VALUE(x) float(x)
+#define STORE_VALUE(f) STORAGE_TYPE(f)
+#endif
+
+const uint COLUMNS_PER_GROUP = 32u;
+layout(local_size_x = 32) in;
+
+layout(set = 0, binding = 0, std430) readonly buffer InputA {
+  STORAGE_TYPE values[];
+} input_a;
+layout(set = 0, binding = 1, std430) readonly buffer InputB {
+  STORAGE_TYPE values[];
+} input_b;
+layout(set = 0, binding = 2, std430) readonly buffer InputC {
+  STORAGE_TYPE values[];
+} input_c;
+layout(set = 0, binding = 3, std430) writeonly buffer Output {
+  STORAGE_TYPE values[];
+} output_data;
+
+layout(push_constant) uniform Params {
+  uint count;
+  uint operation;
+  uint lhs_size;
+  uint rhs_size;
+  uint reduce_size;
+  uint output_size;
+  uint lhs_offset;
+  uint rhs_offset;
+  uint output_offset;
+  uint aux_size;
+  uint aux_offset;
+  uint matrix_m;
+  uint matrix_n;
+  uint matrix_k;
+  uint flags;
+  float alpha;
+  float beta;
+  uint dims;
+  uint shape[4];
+  uint in_strides[4];
+  uint out_strides[4];
+  uint lhs_gap;
+  uint rhs_gap;
+} params;
+
+void main() {
+  uint batch_index = gl_WorkGroupID.z;
+  uint remaining = batch_index;
+  uint a_batch = 0u;
+  uint b_batch = 0u;
+  for (uint axis = params.dims; axis > 0u; --axis) {
+    uint coord = remaining % params.shape[axis - 1u];
+    remaining /= params.shape[axis - 1u];
+    a_batch += coord * params.in_strides[axis - 1u];
+    b_batch += coord * params.out_strides[axis - 1u];
+  }
+  bool b_transposed = (params.flags & 1u) != 0u;
+  bool a_transposed = (params.flags & 4u) != 0u;
+  uint a_base = params.lhs_offset + a_batch;
+  uint b_base = params.rhs_offset + b_batch;
+  uint tiles = params.matrix_n / COLUMNS_PER_GROUP +
+      uint(params.matrix_n % COLUMNS_PER_GROUP != 0u);
+  for (uint tile = gl_WorkGroupID.x; tile < tiles; tile += gl_NumWorkGroups.x) {
+    uint column = tile * COLUMNS_PER_GROUP + gl_LocalInvocationID.x;
+    if (column >= params.matrix_n) {
+      continue;
+    }
+    float accumulator = 0.0;
+    for (uint k = 0u; k < params.matrix_k; ++k) {
+      uint a_index = a_base + (a_transposed ? k * params.lhs_gap : k);
+      uint b_index = b_transposed
+          ? b_base + column * params.rhs_gap + k
+          : b_base + k * params.rhs_gap + column;
+      accumulator += LOAD_VALUE(input_a.values[a_index]) *
+          LOAD_VALUE(input_b.values[b_index]);
+    }
+    uint output_index = batch_index * params.matrix_n + column;
+    float value = params.alpha * accumulator;
+    if ((params.flags & 2u) != 0u) {
+      uint c_index = params.aux_size == 1u ? 0u : output_index % params.aux_size;
+      value += params.beta * LOAD_VALUE(input_c.values[params.aux_offset + c_index]);
+    }
+    output_data.values[params.output_offset + output_index] = STORE_VALUE(value);
+  }
+}

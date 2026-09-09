@@ -380,6 +380,25 @@ std::vector<float> host_matmul(
 
 } // namespace
 
+TEST_CASE("single-row matmul covers columns beyond the dispatch limit") {
+  if (!compute_available()) {
+    return;
+  }
+  const int n = 32 * 65535 + 1;
+  Stream stream = gpu_stream();
+  std::vector<float> values(n);
+  for (int i = 0; i < n; ++i) {
+    values[i] = float(1 + i % 7);
+  }
+  auto got = readback_f32(stream, matmul(
+      array({2.5f}, Shape{1, 1}),
+      array(values.begin(), Shape{1, n}, float32), stream));
+  REQUIRE_EQ(got.size(), values.size());
+  for (size_t i = 0; i < values.size(); ++i) {
+    CHECK_EQ(got[i], 2.5f * values[i]);
+  }
+}
+
 TEST_CASE("dense matmul supports complex64 values") {
   if (!compute_available()) {
     return;

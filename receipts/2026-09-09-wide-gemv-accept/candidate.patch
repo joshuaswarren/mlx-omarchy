@@ -1,0 +1,229 @@
+diff --git a/overlay/mlx/backend/omarchy/CMakeLists.txt b/overlay/mlx/backend/omarchy/CMakeLists.txt
+index 2fc252f9..d70e0f98 100644
+--- a/overlay/mlx/backend/omarchy/CMakeLists.txt
++++ b/overlay/mlx/backend/omarchy/CMakeLists.txt
+@@ -77,6 +77,9 @@ omarchy_shader(matmul_f32_coopmat shaders/matmul_coopmat.comp)
+ omarchy_shader(matmul_f16 shaders/matmul.comp -DUSE_FP16=1)
+ omarchy_shader(matmul_bf16 shaders/matmul.comp -DUSE_BF16=1)
+ omarchy_shader(matmul_complex64 shaders/matmul.comp -DUSE_COMPLEX64=1)
++omarchy_shader(matmul_vec_f32 shaders/matmul_vec.comp)
++omarchy_shader(matmul_vec_f16 shaders/matmul_vec.comp -DUSE_FP16=1)
++omarchy_shader(matmul_vec_bf16 shaders/matmul_vec.comp -DUSE_BF16=1)
+ omarchy_shader(fill_f32 shaders/fill.comp)
+ omarchy_shader(fill_f16 shaders/fill.comp -DUSE_FP16=1)
+ omarchy_shader(fill_bf16 shaders/fill.comp -DUSE_BF16=1)
+diff --git a/overlay/mlx/backend/omarchy/compute.cpp b/overlay/mlx/backend/omarchy/compute.cpp
+index 4c18b593..19787bf7 100644
+--- a/overlay/mlx/backend/omarchy/compute.cpp
++++ b/overlay/mlx/backend/omarchy/compute.cpp
+@@ -146,6 +146,9 @@
+ #include "matmul_f32.h"
+ #include "matmul_f32_coopmat.h"
+ #include "matmul_complex64.h"
++#include "matmul_vec_bf16.h"
++#include "matmul_vec_f16.h"
++#include "matmul_vec_f32.h"
+ #include "select_bf16.h"
+ #include "select_f16.h"
+ #include "select_f32.h"
+@@ -511,6 +514,12 @@ ShaderBytes shader_bytes(ComputeKernel kernel) {
+       return {fill_f16, fill_f16_size};
+     case ComputeKernel::FillBF16:
+       return {fill_bf16, fill_bf16_size};
++    case ComputeKernel::MatmulVecF32:
++      return {matmul_vec_f32, matmul_vec_f32_size};
++    case ComputeKernel::MatmulVecF16:
++      return {matmul_vec_f16, matmul_vec_f16_size};
++    case ComputeKernel::MatmulVecBF16:
++      return {matmul_vec_bf16, matmul_vec_bf16_size};
+     case ComputeKernel::SoftmaxF32:
+       return {softmax_f32, softmax_f32_size};
+     case ComputeKernel::SoftmaxF16:
+diff --git a/overlay/mlx/backend/omarchy/compute.h b/overlay/mlx/backend/omarchy/compute.h
+index 515e78a6..9bb34552 100644
+--- a/overlay/mlx/backend/omarchy/compute.h
++++ b/overlay/mlx/backend/omarchy/compute.h
+@@ -83,6 +83,10 @@ enum class ComputeKernel : uint16_t {
+   MatmulF32Coopmat,
+   MatmulF16,
+   MatmulBF16,
++  // Dense single-row GEMV (decode shape); see shaders/matmul_vec.comp.
++  MatmulVecF32,
++  MatmulVecF16,
++  MatmulVecBF16,
+   FillF32,
+   FillF16,
+   FillBF16,
+diff --git a/overlay/mlx/backend/omarchy/primitives.cpp b/overlay/mlx/backend/omarchy/primitives.cpp
+index d52eed95..d4b751bc 100644
+--- a/overlay/mlx/backend/omarchy/primitives.cpp
++++ b/overlay/mlx/backend/omarchy/primitives.cpp
+@@ -593,6 +593,21 @@ void dispatch_matmul(
+           params.rhs_offset, b_span + b_inner)) {
+     omarchy::unsupported(name + " index span", out);
+   }
++  if (out.dtype() == bfloat16 && params.matrix_m == 1u && params.matrix_n >= 4096u) {
++    auto vec_kernel = select_float_kernel(
++        out.dtype(),
++        omarchy::ComputeKernel::MatmulVecF32,
++        omarchy::ComputeKernel::MatmulVecF16,
++        omarchy::ComputeKernel::MatmulVecBF16);
++    encoder.dispatch_compute(
++        vec_kernel,
++        bindings,
++        params,
++        matrix_group_count(params.matrix_n, 32u),
++        1u,
++        checked_u32(batch_count, name, out));
++    return;
++  }
+   encoder.dispatch_compute(
+       kernel,
+       bindings,
+diff --git a/overlay/mlx/backend/omarchy/shaders/matmul_vec.comp b/overlay/mlx/backend/omarchy/shaders/matmul_vec.comp
+new file mode 100644
+index 00000000..c39ab94b
+--- /dev/null
++++ b/overlay/mlx/backend/omarchy/shaders/matmul_vec.comp
+@@ -0,0 +1,111 @@
++#version 460
++
++// One lane per output preserves the tiled kernel's sequential K accumulation.
++
++#ifdef USE_FP16
++#extension GL_EXT_shader_16bit_storage : require
++#extension GL_EXT_shader_explicit_arithmetic_types_float16 : require
++#define STORAGE_TYPE float16_t
++#define LOAD_VALUE(x) float(x)
++#define STORE_VALUE(f) STORAGE_TYPE(f)
++#elif defined(USE_BF16)
++#extension GL_EXT_shader_16bit_storage : require
++#extension GL_EXT_shader_explicit_arithmetic_types_int16 : require
++#define STORAGE_TYPE uint16_t
++#define LOAD_VALUE(x) uintBitsToFloat(uint(x) << 16u)
++uint16_t bf16_store(float value) {
++  uint bits = floatBitsToUint(value);
++  if (isnan(value)) {
++    return uint16_t((bits >> 16) | 0x40u);
++  }
++  return uint16_t((bits + 0x7fffu + ((bits >> 16) & 1u)) >> 16);
++}
++#define STORE_VALUE(f) bf16_store(f)
++#else
++#define STORAGE_TYPE float
++#define LOAD_VALUE(x) float(x)
++#define STORE_VALUE(f) STORAGE_TYPE(f)
++#endif
++
++const uint COLUMNS_PER_GROUP = 32u;
++layout(local_size_x = 32) in;
++
++layout(set = 0, binding = 0, std430) readonly buffer InputA {
++  STORAGE_TYPE values[];
++} input_a;
++layout(set = 0, binding = 1, std430) readonly buffer InputB {
++  STORAGE_TYPE values[];
++} input_b;
++layout(set = 0, binding = 2, std430) readonly buffer InputC {
++  STORAGE_TYPE values[];
++} input_c;
++layout(set = 0, binding = 3, std430) writeonly buffer Output {
++  STORAGE_TYPE values[];
++} output_data;
++
++layout(push_constant) uniform Params {
++  uint count;
++  uint operation;
++  uint lhs_size;
++  uint rhs_size;
++  uint reduce_size;
++  uint output_size;
++  uint lhs_offset;
++  uint rhs_offset;
++  uint output_offset;
++  uint aux_size;
++  uint aux_offset;
++  uint matrix_m;
++  uint matrix_n;
++  uint matrix_k;
++  uint flags;
++  float alpha;
++  float beta;
++  uint dims;
++  uint shape[4];
++  uint in_strides[4];
++  uint out_strides[4];
++  uint lhs_gap;
++  uint rhs_gap;
++} params;
++
++void main() {
++  uint batch_index = gl_WorkGroupID.z;
++  uint remaining = batch_index;
++  uint a_batch = 0u;
++  uint b_batch = 0u;
++  for (uint axis = params.dims; axis > 0u; --axis) {
++    uint coord = remaining % params.shape[axis - 1u];
++    remaining /= params.shape[axis - 1u];
++    a_batch += coord * params.in_strides[axis - 1u];
++    b_batch += coord * params.out_strides[axis - 1u];
++  }
++  bool b_transposed = (params.flags & 1u) != 0u;
++  bool a_transposed = (params.flags & 4u) != 0u;
++  uint a_base = params.lhs_offset + a_batch;
++  uint b_base = params.rhs_offset + b_batch;
++  uint tiles = params.matrix_n / COLUMNS_PER_GROUP +
++      uint(params.matrix_n % COLUMNS_PER_GROUP != 0u);
++  for (uint tile = gl_WorkGroupID.x; tile < tiles; tile += gl_NumWorkGroups.x) {
++    uint column = tile * COLUMNS_PER_GROUP + gl_LocalInvocationID.x;
++    if (column >= params.matrix_n) {
++      continue;
++    }
++    float accumulator = 0.0;
++    for (uint k = 0u; k < params.matrix_k; ++k) {
++      uint a_index = a_base + (a_transposed ? k * params.lhs_gap : k);
++      uint b_index = b_transposed
++          ? b_base + column * params.rhs_gap + k
++          : b_base + k * params.rhs_gap + column;
++      accumulator += LOAD_VALUE(input_a.values[a_index]) *
++          LOAD_VALUE(input_b.values[b_index]);
++    }
++    uint output_index = batch_index * params.matrix_n + column;
++    float value = params.alpha * accumulator;
++    if ((params.flags & 2u) != 0u) {
++      uint c_index = params.aux_size == 1u ? 0u : output_index % params.aux_size;
++      value += params.beta * LOAD_VALUE(input_c.values[params.aux_offset + c_index]);
++    }
++    output_data.values[params.output_offset + output_index] = STORE_VALUE(value);
++  }
++}
+diff --git a/overlay/tests/omarchy/test_matmul_family.cpp b/overlay/tests/omarchy/test_matmul_family.cpp
+index d7a9a322..af6ea029 100644
+--- a/overlay/tests/omarchy/test_matmul_family.cpp
++++ b/overlay/tests/omarchy/test_matmul_family.cpp
+@@ -379,6 +379,25 @@ std::vector<float> host_matmul(
+ 
+ } // namespace
+ 
++TEST_CASE("single-row matmul covers columns beyond the dispatch limit") {
++  if (!compute_available()) {
++    return;
++  }
++  const int n = 32 * 65535 + 1;
++  Stream stream = gpu_stream();
++  std::vector<float> values(n);
++  for (int i = 0; i < n; ++i) {
++    values[i] = float(1 + i % 7);
++  }
++  auto got = readback_f32(stream, matmul(
++      array({2.5f}, Shape{1, 1}),
++      array(values.begin(), Shape{1, n}, float32), stream));
++  REQUIRE_EQ(got.size(), values.size());
++  for (size_t i = 0; i < values.size(); ++i) {
++    CHECK_EQ(got[i], 2.5f * values[i]);
++  }
++}
++
+ TEST_CASE("dense matmul supports complex64 values") {
+   if (!compute_available()) {
+     return;
