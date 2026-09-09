@@ -13,6 +13,7 @@
 #include <typeinfo>
 #include <unordered_map>
 #include <unordered_set>
+#include <utility>
 #include <vector>
 
 #include "mlx/backend/omarchy/allocator.h"
@@ -419,6 +420,52 @@ bool FusedChain::tail_is_tape_output() const {
 
 namespace {
 
+// The SwiGLU program (r0 = sigmoid(g); r1 = g * r0; out = r1 * u, two
+// direct leaves) gets the straight-line four-wide shaders/swiglu.comp
+// with the interpreter's exact rounding. Returns the (gate, up) leaf
+// slots when the chain has that shape and the alignment the kernel
+// needs, else nullopt and the interpreter runs.
+std::optional<std::pair<uint32_t, uint32_t>> swiglu_leaves(
+    const FusedChainImpl& chain,
+    bool materialize_intermediates) {
+  if (materialize_intermediates || chain.program.size() != 3 ||
+      chain.leaves.size() != 2 || chain.node_ids.size() != 3 ||
+      (chain.count & 3u) != 0u || chain.dtype == float32) {
+    return std::nullopt;
+  }
+  for (uint32_t mode : chain.leaf_modes) {
+    if (mode != kLeafDirect) {
+      return std::nullopt;
+    }
+  }
+  auto field = [&](size_t i, int shift) {
+    return (chain.program[i] >> shift) & 0xffu;
+  };
+  uint32_t op0 = field(0, 0), a0 = field(0, 8), d0 = field(0, 24);
+  uint32_t op1 = field(1, 0), a1 = field(1, 8), b1 = field(1, 16),
+           d1 = field(1, 24);
+  uint32_t op2 = field(2, 0), a2 = field(2, 8), b2 = field(2, 16),
+           d2 = field(2, 24);
+  if (op0 != ChainSigmoid || op1 != ChainMultiply || op2 != ChainMultiply ||
+      a0 < kChainLeafBase || d2 != chain.node_ids.size() - 1) {
+    return std::nullopt;
+  }
+  uint32_t gate = a0 - kChainLeafBase;
+  // Multiplication commutes exactly, so either operand order matches.
+  bool mul1_ok = (a1 == a0 && b1 == d0) || (a1 == d0 && b1 == a0);
+  uint32_t up = a2 == d1 ? b2 : (b2 == d1 ? a2 : 0u);
+  if (!mul1_ok || up < kChainLeafBase || up - kChainLeafBase == gate) {
+    return std::nullopt;
+  }
+  up -= kChainLeafBase;
+  if (gate >= chain.leaves.size() || up >= chain.leaves.size() ||
+      (chain.leaf_offsets[gate] & 3u) != 0u ||
+      (chain.leaf_offsets[up] & 3u) != 0u) {
+    return std::nullopt;
+  }
+  return std::make_pair(gate, up);
+}
+
 void dispatch_chain(
     FusedChainImpl& chain,
     array& out,
@@ -426,6 +473,23 @@ void dispatch_chain(
     bool materialize_intermediates) {
   auto& encoder = get_command_encoder(stream);
   out.set_data(allocator().malloc(out.nbytes()));
+  if (auto leaves = swiglu_leaves(chain, materialize_intermediates)) {
+    ComputeParams params;
+    params.count = chain.count;
+    params.operation = chain.leaf_offsets[leaves->first];
+    params.lhs_size = chain.leaf_offsets[leaves->second];
+    std::array<ComputeBinding, 3> bindings{
+        chain_binding(chain.leaves[leaves->first]),
+        chain_binding(chain.leaves[leaves->second]),
+        chain_binding(out)};
+    encoder.dispatch_compute(
+        out.dtype() == float16 ? ComputeKernel::SwigluF16
+                               : ComputeKernel::SwigluBF16,
+        bindings,
+        params,
+        compute_dispatch_group_count(chain.count / 4u));
+    return;
+  }
   if (materialize_intermediates) {
     for (size_t i = 0; i + 1 < chain.node_arrays.size(); ++i) {
       chain.node_arrays[i].set_data(
