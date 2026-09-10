@@ -26,6 +26,8 @@
 
 #include "mlx/backend/gpu/device_info.h"
 #include "mlx/backend/omarchy/encoder.h"
+#include "mlx/backend/omarchy/device.h"
+#include "mlx/backend/omarchy/trace.h"
 #include "mlx/fast.h"
 #include "mlx/fast_primitives.h"
 #include "mlx/ops.h"
@@ -752,6 +754,62 @@ TEST_CASE("CrossEntropyVJP accepts strided inputs and a broadcast cotangent") {
       host_cross_entropy_vjp({1, 2, 3, 4, 5, 6}, {0, 2}, {0.5, 0.5}, 2, 3),
       1e-5,
       "strided cross entropy vjp host math");
+}
+
+TEST_CASE("native-order decode SDPA handles the strided Qwen KV cache") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  constexpr int heads = 14;
+  constexpr int kv_heads = 2;
+  constexpr int keys = 263;
+  constexpr int capacity = 320;
+  constexpr int width = 64;
+  std::vector<float> q_values(heads * width, 0.0f);
+  std::vector<float> k_values(kv_heads * capacity * width, 0.0f);
+  std::vector<float> v_values(kv_heads * capacity * width, 0.5f);
+  array q = astype(
+      array(q_values.begin(), Shape{1, heads, 1, width}, float32),
+      float16,
+      stream);
+  array k_cache = astype(
+      array(k_values.begin(), Shape{1, kv_heads, capacity, width}, float32),
+      float16,
+      stream);
+  array v_cache = astype(
+      array(v_values.begin(), Shape{1, kv_heads, capacity, width}, float32),
+      float16,
+      stream);
+  array k = slice(
+      k_cache, {0, 0, 0, 0}, {1, kv_heads, keys, width}, stream);
+  array v = slice(
+      v_cache, {0, 0, 0, 0}, {1, kv_heads, keys, width}, stream);
+  eval({q, k, v});
+  omarchy::get_command_encoder(stream).synchronize();
+
+  setenv("MLX_OMARCHY_SDPA_DECODE_NATIVE", "1", 1);
+  uint64_t before = omarchy::trace::counters().vk_compute_dispatches.load();
+  array output = fast::scaled_dot_product_attention(
+      q, k, v, 1.0f / std::sqrt(float(width)), "", {}, std::nullopt, false,
+      stream);
+  output.eval();
+  omarchy::get_command_encoder(stream).synchronize();
+  uint64_t dispatches =
+      omarchy::trace::counters().vk_compute_dispatches.load() - before;
+  unsetenv("MLX_OMARCHY_SDPA_DECODE_NATIVE");
+
+  const auto& caps = omarchy::device(0).capabilities();
+  constexpr VkSubgroupFeatureFlags required =
+      VK_SUBGROUP_FEATURE_BASIC_BIT | VK_SUBGROUP_FEATURE_ARITHMETIC_BIT |
+      VK_SUBGROUP_FEATURE_SHUFFLE_BIT;
+  if (caps.subgroup_size == 32u &&
+      (caps.subgroup_operations & required) == required) {
+    CHECK_EQ(dispatches, 1);
+  }
+  for (float value : flat(output, stream)) {
+    CHECK_EQ(value, 0.5f);
+  }
 }
 
 TEST_CASE("scaled_dot_product_attention backward matches finite differences") {
