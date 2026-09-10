@@ -6698,9 +6698,103 @@ void QuantizedMatmul::eval_gpu(const std::vector<array>& inputs, array& out) {
           kQmmCoopmatSharedBytes <= caps.max_compute_shared_memory_size &&
           (params.lhs_offset % 2u) == 0u &&
           (params.output_offset % 2u) == 0u;
+      // Scheduling screens (receipt 2026-09-10-qmm-splitk-parity): both
+      // knobs are default-off and inert without cooperative matrix
+      // support. MLX_OMARCHY_QMM_SMALLN_TILE=<n> keeps column counts
+      // <= n on the register-blocked tile kernel, whose single-workgroup
+      // k-walk measured faster than the coopmat kernel on the
+      // concurrency-starved k/v-projection grids.
+      static const uint32_t smalln_tile = [] {
+        const char* v = std::getenv("MLX_OMARCHY_QMM_SMALLN_TILE");
+        if (v == nullptr) {
+          return 0u;
+        }
+        char* end = nullptr;
+        long parsed = std::strtol(v, &end, 10);
+        return (end == v || parsed <= 0) ? 0u : static_cast<uint32_t>(parsed);
+      }();
+      if (smalln_tile > 0u && params.matrix_n <= smalln_tile) {
+        coopmat = false;
+      }
       uint32_t m_groups = (params.matrix_m + 31u) / 32u;
       uint32_t n_groups = coopmat ? (params.matrix_n + 31u) / 32u
                                   : (params.matrix_n + 15u) / 16u;
+      if (coopmat) {
+        // MLX_OMARCHY_QMM_SPLITK=<auto|s>: split the coopmat k-walk
+        // across s CHUNK_K-aligned workgroup planes into f32 partials
+        // (shaders/qmm_coopmat_splitk.comp) and reduce once (shaders/
+        // qmm_splitk_reduce.comp). auto mirrors the native qmm_splitk
+        // policy of targeting ~512 threadgroups, so only grids below
+        // that split; every split keeps whole quantization groups.
+        struct SplitkScreen {
+          bool on{false};
+          bool policy{false};
+          uint32_t forced{0};
+        };
+        static const SplitkScreen splitk = [] {
+          const char* v = std::getenv("MLX_OMARCHY_QMM_SPLITK");
+          if (v == nullptr || std::strcmp(v, "0") == 0) {
+            return SplitkScreen{};
+          }
+          if (std::strcmp(v, "auto") == 0) {
+            return SplitkScreen{true, true, 0u};
+          }
+          char* end = nullptr;
+          long parsed = std::strtol(v, &end, 10);
+          if (end == v || parsed < 2 || parsed > 8) {
+            return SplitkScreen{};
+          }
+          return SplitkScreen{true, false, static_cast<uint32_t>(parsed)};
+        }();
+        if (splitk.on) {
+          uint32_t k_chunks = params.matrix_k / 64u;
+          uint32_t tiles = m_groups * n_groups;
+          uint32_t splits = splitk.policy
+              ? (tiles == 0u ? 1u : (512u + tiles - 1u) / tiles)
+              : splitk.forced;
+          splits = std::min(std::max(splits, 1u), k_chunks);
+          uint64_t partial_words =
+              static_cast<uint64_t>(splits) *
+              static_cast<uint64_t>(params.count);
+          if (splits > 1u && partial_words <= 0x7fffffffull &&
+              omarchy::compute_index_span_fits(0, partial_words)) {
+            array partials(
+                Shape{static_cast<int>(partial_words)},
+                float32,
+                nullptr,
+                {});
+            partials.set_data(allocate_omarchy(partials.nbytes()));
+            encoder.add_temporary(partials);
+            omarchy::ComputeParams split_params = params;
+            split_params.shape[3] = splits;
+            std::array<omarchy::ComputeBinding, 5> split_bindings{
+                bindings[0],
+                bindings[1],
+                bindings[2],
+                bindings[3],
+                binding(partials)};
+            encoder.dispatch_compute(
+                omarchy::ComputeKernel::QmmPrefillCoopmatSplitKF16,
+                split_bindings,
+                split_params,
+                std::min(n_groups, omarchy::kMaxComputeGroupCountX),
+                std::min(m_groups, omarchy::kMaxComputeGroupCountX),
+                splits);
+            omarchy::ComputeParams reduce_params;
+            reduce_params.count = params.count;
+            reduce_params.output_offset = params.output_offset;
+            reduce_params.shape[0] = splits;
+            std::array<omarchy::ComputeBinding, 2> reduce_bindings{
+                binding(partials), binding(out)};
+            encoder.dispatch_compute(
+                omarchy::ComputeKernel::QmmSplitkReduceF16,
+                reduce_bindings,
+                reduce_params,
+                omarchy::compute_dispatch_group_count(params.count));
+            return;
+          }
+        }
+      }
       omarchy::ComputeKernel qmm_kernel = coopmat
           ? omarchy::ComputeKernel::QmmPrefillCoopmatF16
           : params.matrix_m >= 1024u

@@ -30,6 +30,15 @@ The experimental `MLX_OMARCHY_ROPE_BF16_DIRECT` and
 `MLX_OMARCHY_SDPA_BF16_FAST` flags remain off: both changed generated
 token IDs on M1. See the [hardware gate receipt](../receipts/2026-09-04-m1-performance-gates.md).
 
+Two qmm prefill scheduling screens are default-off and inert without
+cooperative-matrix support. `MLX_OMARCHY_QMM_SMALLN_TILE=<n>` keeps
+column counts of at most `n` on the register-blocked tile kernel instead
+of the coopmat kernel. `MLX_OMARCHY_QMM_SPLITK=<auto|2-8>` splits the
+coopmat k-walk across CHUNK_K-aligned workgroup planes into f32 partials
+and reduces them once; `auto` splits only grids under ~512 threadgroups.
+The screens exist for the 2026-09-10 Q4 prefill scheduling
+investigation and change no shape they do not route.
+
 Compiled-tape elementwise chains and exact eager SwiGLU graphs
 ([0m[0m`gate * sigmoid(gate) * up`) fuse into one dispatch by default. The eager
 path supports f32, f16, and bf16 and materializes retained intermediate arrays;

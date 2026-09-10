@@ -3733,3 +3733,123 @@ TEST_CASE("qmm coopmat prefill matches host reference at Qwen shapes") {
     }
   }
 }
+
+// The qmm prefill scheduling screens (MLX_OMARCHY_QMM_SMALLN_TILE,
+// MLX_OMARCHY_QMM_SPLITK) must not change what the qmm path computes:
+// every routed shape stays inside the host-reference error bound the
+// non-split kernels already meet, and the split-K auto policy splits
+// exactly the concurrency-starved grids, visible as one extra reduce
+// dispatch per routed quantized matmul. Run the suite once per env mode;
+// a mode that changes arithmetic or policy breaks a CHECK here.
+TEST_CASE("qmm prefill scheduling knobs keep host parity and dispatch shape") {
+  if (!compute_available() || !float16_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  const auto& caps = omarchy::device(0).capabilities();
+  const bool coopmat_device =
+      caps.cooperative_matrix_f32_8 && caps.subgroup_size == 32;
+  const char* tile_env = std::getenv("MLX_OMARCHY_QMM_SMALLN_TILE");
+  const char* splitk_env = std::getenv("MLX_OMARCHY_QMM_SPLITK");
+  const bool splitk_on =
+      coopmat_device && splitk_env != nullptr &&
+      std::strcmp(splitk_env, "0") != 0;
+  const bool splitk_auto = splitk_on && std::strcmp(splitk_env, "auto") == 0;
+  std::cout << "[provenance] qmm_scheduling coopmat="
+            << (coopmat_device ? 1 : 0)
+            << " SMALLN_TILE=" << (tile_env ? tile_env : "unset")
+            << " SPLITK=" << (splitk_env ? splitk_env : "unset") << "\n";
+  if (!coopmat_device) {
+    // llvmpipe and stock Mesa never take the coopmat route, so the knobs
+    // are inert there by construction; the standard qmm cases cover them.
+    return;
+  }
+
+  constexpr int group_size = 64;
+  constexpr int bits = 4;
+  unsigned seed = 4100u;
+  for (auto [k, n] : {std::pair{896, 128}, std::pair{896, 896}}) {
+    const int words_per_row = k / (32 / bits);
+    const int groups_per_row = k / group_size;
+    std::mt19937 gen(seed++);
+    std::uniform_real_distribution<float> dist(-2.0f, 2.0f);
+    std::vector<float> matrix(static_cast<size_t>(n) * k);
+    for (auto& value : matrix) {
+      value = dist(gen);
+    }
+    HostQuantizedWeights weights =
+        host_affine_quantize(matrix, n, k, group_size, bits);
+    weights.scales = round_trip(stream, weights.scales, float16);
+    weights.biases = round_trip(stream, weights.biases, float16);
+    array w_words(weights.words.begin(), Shape{n, words_per_row}, uint32);
+    array scales(
+        weights.scales.begin(), Shape{n, groups_per_row}, float16);
+    array biases(
+        weights.biases.begin(), Shape{n, groups_per_row}, float16);
+
+    for (int m : {32, 1053}) {
+      std::vector<float> x_values(static_cast<size_t>(m) * k);
+      for (auto& value : x_values) {
+        value = dist(gen);
+      }
+      x_values = round_trip(stream, x_values, float16);
+      const std::vector<float> expected = host_quantized_matmul(
+          weights, x_values, m, n, k, group_size, bits);
+      array x(x_values.begin(), Shape{m, k}, float16);
+
+      // auto targets ~512 threadgroups: (m=1053, n=128) is 132 tiles, so
+      // it splits and gains the reduce dispatch; (m=1053, n=896) is 924
+      // tiles and must stay single-dispatch. A forced split count
+      // reroutes both.
+      uint32_t tiles = ((m + 31) / 32) * ((n + 31) / 32);
+      bool splits_expected =
+          splitk_on && (!splitk_auto || tiles < 512u);
+      const uint64_t dispatches_before =
+          omarchy::trace::counters().vk_compute_dispatches;
+      array out = quantized_matmul(
+          x, w_words, scales, biases, true, group_size, bits, "affine",
+          stream);
+      eval(out);
+      const uint64_t dispatches_delta =
+          omarchy::trace::counters().vk_compute_dispatches -
+          dispatches_before;
+      INFO("scheduling m=" << m << " n=" << n << " tiles=" << tiles
+           << " splitk=" << (splitk_env ? splitk_env : "unset"));
+      CHECK_EQ(dispatches_delta,
+               splits_expected ? 2u : 1u);
+
+      const auto error = evaluation_error(out);
+      REQUIRE_MESSAGE(error.empty(), error);
+      const std::vector<float> device_values = readback_f32(stream, out);
+      REQUIRE_EQ(device_values.size(), expected.size());
+      double max_abs = 1.0;
+      for (size_t index = 0; index < expected.size(); ++index) {
+        max_abs = std::max({
+            max_abs,
+            std::fabs(static_cast<double>(device_values[index])),
+            std::fabs(static_cast<double>(expected[index]))});
+      }
+      const double bound =
+          (3.0 * k + 1.0) * (2.0 * max_abs) * std::ldexp(1.0, -23) +
+          (2.0 * max_abs) * std::ldexp(1.0, -11);
+      double max_diff = 0.0;
+      size_t worst = 0;
+      for (size_t index = 0; index < expected.size(); ++index) {
+        const double d = std::fabs(
+            static_cast<double>(device_values[index]) - expected[index]);
+        if (d > max_diff) {
+          max_diff = d;
+          worst = index;
+        }
+      }
+      INFO("worst=" << worst << " diff=" << max_diff << " bound=" << bound);
+      CHECK(max_diff <= bound);
+      std::cout << "[qmm-scheduling] m=" << m << " n=" << n
+                << " tiles=" << tiles
+                << " splitk=" << (splitk_env ? splitk_env : "unset")
+                << " dispatches=" << dispatches_delta
+                << " max_abs_err=" << max_diff
+                << " bound=" << bound << "\n";
+    }
+  }
+}
