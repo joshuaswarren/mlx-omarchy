@@ -2,8 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 // KV-cache plumbing tests: Concatenate and SliceUpdate (None-reduce) on the
-// Omarchy backend. Every op must route through the shared strided-copy
-// engine; results are checked against exact values.
+// Omarchy backend, including paired independent key/value updates.
 
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include "doctest/doctest.h"
@@ -19,10 +18,12 @@
 #include "mlx/backend/gpu/device_info.h"
 #include "mlx/backend/omarchy/device.h"
 #include "mlx/backend/omarchy/encoder.h"
+#include "mlx/backend/omarchy/trace.h"
 #include "mlx/fast.h"
 #include "mlx/io.h"
 #include "mlx/ops.h"
 #include "mlx/stream.h"
+#include "mlx/transforms.h"
 
 using namespace mlx::core;
 
@@ -132,6 +133,64 @@ TEST_CASE("Concatenate fp16 KV blocks") {
   CHECK_EQ(cache.dtype(), float16);
   check_values(
       astype(cache, float32, stream), {1, 2, 3, 4, 5, 6, 7, 8}, stream, 1e-3);
+}
+
+
+TEST_CASE("paired fp16 KV slice updates use one compute dispatch") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  const auto& capabilities = omarchy::device(0).capabilities();
+  if (!capabilities.shader_float16 ||
+      !capabilities.storage_buffer_16bit_access) {
+    skip("Vulkan device lacks required FP16 shader and storage features.");
+    return;
+  }
+
+  array key_cache = astype(
+      array({0.0f, 1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f, 7.0f},
+            {1, 2, 4},
+            float32),
+      float16,
+      stream);
+  array value_cache = astype(
+      array({10.0f, 11.0f, 12.0f, 13.0f, 14.0f, 15.0f, 16.0f, 17.0f},
+            {1, 2, 4},
+            float32),
+      float16,
+      stream);
+  array key = astype(
+      array({100.0f, 101.0f, 102.0f, 103.0f}, {1, 1, 4}, float32),
+      float16,
+      stream);
+  array value = astype(
+      array({200.0f, 201.0f, 202.0f, 203.0f}, {1, 1, 4}, float32),
+      float16,
+      stream);
+  eval({key_cache, value_cache, key, value});
+  omarchy::get_command_encoder(stream).synchronize();
+
+  array updated_key = slice_update(
+      key_cache, key, Shape{0, 1, 0}, Shape{1, 2, 4}, stream);
+  array updated_value = slice_update(
+      value_cache, value, Shape{0, 1, 0}, Shape{1, 2, 4}, stream);
+  uint64_t before = omarchy::trace::counters().vk_compute_dispatches.load();
+  eval({updated_key, updated_value});
+  omarchy::get_command_encoder(stream).synchronize();
+  CHECK_EQ(
+      omarchy::trace::counters().vk_compute_dispatches.load() - before, 1);
+
+  check_values(
+      astype(updated_key, float32, stream),
+      {0, 1, 2, 3, 100, 101, 102, 103},
+      stream,
+      1e-3);
+  check_values(
+      astype(updated_value, float32, stream),
+      {10, 11, 12, 13, 200, 201, 202, 203},
+      stream,
+      1e-3);
 }
 
 TEST_CASE("SliceUpdate row window keeps surrounding data") {
