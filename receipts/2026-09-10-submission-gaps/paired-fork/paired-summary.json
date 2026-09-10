@@ -1,0 +1,327 @@
+{
+  "provenance": {
+    "base": {
+      "packages": {
+        "mlx": null,
+        "mlx-omarchy": "0.32.2.dev202609101636+2da780a",
+        "mlx-lm": "0.31.3",
+        "transformers": "5.17.0",
+        "numpy": "2.5.2"
+      },
+      "wheel": null,
+      "host": {
+        "system": "Linux",
+        "machine": "aarch64",
+        "python": "3.14.7",
+        "os": "Omarchy",
+        "kernel": "7.1.6-1-1-ARCH",
+        "memsize_bytes": 16228417536,
+        "gpu": {
+          "device": "Apple M1 (G13G B1)",
+          "vulkan_driver": "Honeykrisp"
+        }
+      }
+    },
+    "cand": {
+      "packages": {
+        "mlx": null,
+        "mlx-omarchy": "0.32.2.dev202609101633+59e40e7",
+        "mlx-lm": "0.31.3",
+        "transformers": "5.17.0",
+        "numpy": "2.5.2"
+      },
+      "wheel": null,
+      "host": {
+        "system": "Linux",
+        "machine": "aarch64",
+        "python": "3.14.7",
+        "os": "Omarchy",
+        "kernel": "7.1.6-1-1-ARCH",
+        "memsize_bytes": 16228417536,
+        "gpu": {
+          "device": "Apple M1 (G13G B1)",
+          "vulkan_driver": "Honeykrisp"
+        }
+      }
+    }
+  },
+  "legs": {
+    "qwen25-0.5b-4bit:long-decode-128": {
+      "baseline_prefill": 784.431,
+      "candidate_prefill": 1039.683,
+      "prefill_ratio": 1.3253976449171436,
+      "baseline_decode": 107.92,
+      "candidate_decode": 108.43,
+      "decode_ratio": 1.0047257227575983,
+      "base_digests": [
+        "f873dc2bdd34c0fe"
+      ],
+      "candidate_digests": [
+        "f873dc2bdd34c0fe"
+      ],
+      "ids_same": true,
+      "policy_ok": true,
+      "samples": {
+        "base": [
+          {
+            "prefill": 786.787,
+            "decode": 107.47
+          },
+          {
+            "prefill": 784.431,
+            "decode": 108.2
+          },
+          {
+            "prefill": 782.09,
+            "decode": 107.92
+          }
+        ],
+        "cand": [
+          {
+            "prefill": 1039.683,
+            "decode": 108.1
+          },
+          {
+            "prefill": 1039.683,
+            "decode": 108.43
+          },
+          {
+            "prefill": 1048.0,
+            "decode": 109.7
+          }
+        ]
+      }
+    },
+    "qwen25-0.5b-4bit:longctx-1024-decode-32": {
+      "baseline_prefill": 1061.492,
+      "candidate_prefill": 1111.932,
+      "prefill_ratio": 1.0475180218032731,
+      "baseline_decode": 98.44,
+      "candidate_decode": 97.32,
+      "decode_ratio": 0.9886225111743193,
+      "base_digests": [
+        "31267e7ed4c6d0dc"
+      ],
+      "candidate_digests": [
+        "31267e7ed4c6d0dc"
+      ],
+      "ids_same": true,
+      "policy_ok": false,
+      "samples": {
+        "base": [
+          {
+            "prefill": 1051.948,
+            "decode": 98.44
+          },
+          {
+            "prefill": 1061.492,
+            "decode": 98.24
+          },
+          {
+            "prefill": 1073.394,
+            "decode": 99.01
+          }
+        ],
+        "cand": [
+          {
+            "prefill": 1110.759,
+            "decode": 97.32
+          },
+          {
+            "prefill": 1121.406,
+            "decode": 97.03
+          },
+          {
+            "prefill": 1111.932,
+            "decode": 97.5
+          }
+        ]
+      }
+    },
+    "qwen25-0.5b-4bit:short-decode-32": {
+      "baseline_prefill": 225.564,
+      "candidate_prefill": 337.079,
+      "prefill_ratio": 1.494382968913479,
+      "baseline_decode": 109.95,
+      "candidate_decode": 112.53,
+      "decode_ratio": 1.0234652114597544,
+      "base_digests": [
+        "7fd25a869ff21678"
+      ],
+      "candidate_digests": [
+        "7fd25a869ff21678"
+      ],
+      "ids_same": true,
+      "policy_ok": true,
+      "samples": {
+        "base": [
+          {
+            "prefill": 225.564,
+            "decode": 108.3
+          },
+          {
+            "prefill": 227.273,
+            "decode": 109.95
+          },
+          {
+            "prefill": 223.881,
+            "decode": 110.61
+          }
+        ],
+        "cand": [
+          {
+            "prefill": 333.333,
+            "decode": 112.82
+          },
+          {
+            "prefill": 337.079,
+            "decode": 112.53
+          },
+          {
+            "prefill": 337.079,
+            "decode": 112.4
+          }
+        ]
+      }
+    },
+    "qwen25-0.5b-bf16:long-decode-128": {
+      "baseline_prefill": 306.075,
+      "candidate_prefill": 319.902,
+      "prefill_ratio": 1.0451752021563343,
+      "baseline_decode": 11.32,
+      "candidate_decode": 11.3,
+      "decode_ratio": 0.9982332155477032,
+      "base_digests": [
+        "c5be9207833d2a26"
+      ],
+      "candidate_digests": [
+        "c5be9207833d2a26"
+      ],
+      "ids_same": true,
+      "policy_ok": true,
+      "samples": {
+        "base": [
+          {
+            "prefill": 306.075,
+            "decode": 11.32
+          },
+          {
+            "prefill": 307.151,
+            "decode": 11.32
+          },
+          {
+            "prefill": 303.241,
+            "decode": 11.32
+          }
+        ],
+        "cand": [
+          {
+            "prefill": 319.902,
+            "decode": 11.31
+          },
+          {
+            "prefill": 324.257,
+            "decode": 11.3
+          },
+          {
+            "prefill": 319.123,
+            "decode": 11.3
+          }
+        ]
+      }
+    },
+    "qwen25-0.5b-bf16:longctx-1024-decode-32": {
+      "baseline_prefill": 363.856,
+      "candidate_prefill": 392.764,
+      "prefill_ratio": 1.079449012796271,
+      "baseline_decode": 10.29,
+      "candidate_decode": 10.03,
+      "decode_ratio": 0.9747327502429544,
+      "base_digests": [
+        "ff502900d2a179a5"
+      ],
+      "candidate_digests": [
+        "ff502900d2a179a5"
+      ],
+      "ids_same": true,
+      "policy_ok": false,
+      "samples": {
+        "base": [
+          {
+            "prefill": 363.856,
+            "decode": 10.27
+          },
+          {
+            "prefill": 362.728,
+            "decode": 10.29
+          },
+          {
+            "prefill": 366.516,
+            "decode": 10.3
+          }
+        ],
+        "cand": [
+          {
+            "prefill": 392.764,
+            "decode": 10.02
+          },
+          {
+            "prefill": 393.057,
+            "decode": 10.06
+          },
+          {
+            "prefill": 385.856,
+            "decode": 10.03
+          }
+        ]
+      }
+    },
+    "qwen25-0.5b-bf16:short-decode-32": {
+      "baseline_prefill": 81.301,
+      "candidate_prefill": 86.207,
+      "prefill_ratio": 1.0603436612095791,
+      "baseline_decode": 11.76,
+      "candidate_decode": 11.74,
+      "decode_ratio": 0.9982993197278912,
+      "base_digests": [
+        "f26175202f3dabe9"
+      ],
+      "candidate_digests": [
+        "f26175202f3dabe9"
+      ],
+      "ids_same": true,
+      "policy_ok": true,
+      "samples": {
+        "base": [
+          {
+            "prefill": 81.081,
+            "decode": 11.76
+          },
+          {
+            "prefill": 81.301,
+            "decode": 11.77
+          },
+          {
+            "prefill": 81.301,
+            "decode": 11.74
+          }
+        ],
+        "cand": [
+          {
+            "prefill": 84.034,
+            "decode": 11.61
+          },
+          {
+            "prefill": 86.207,
+            "decode": 11.74
+          },
+          {
+            "prefill": 86.705,
+            "decode": 11.75
+          }
+        ]
+      }
+    }
+  },
+  "policy_ok": false
+}

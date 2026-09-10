@@ -1,0 +1,116 @@
+{
+  "source_commit": "59e40e72",
+  "wheel_sha256": "93a574acc832f48e668a69262c928015f92f481062a06c2e4957e06fdbcd07e4",
+  "baseline": {
+    "source_commit": "2da780a6dd53bc9fe3e139428cb7aa6c78068b6f",
+    "wheel_sha256": "1a197ed7d0ee83e6d947646794e2b870e7ea1e2e3feacffe45de85ff01ad1549"
+  },
+  "diagnostic_profiles": {
+    "before": {
+      "source_commit": "a7b9f4f5",
+      "wheel_sha256": "57ba107bf26e713c6afac3dd339c812a9db9799eee6e41a756f8eecc0901b5cd"
+    },
+    "after": {
+      "source_commit": "5facd59a",
+      "wheel_sha256": "d1bf198152c284c6f171a5f3415183929dfae376fa0dba9290682706fb8ee3bf"
+    }
+  },
+  "models": {
+    "q4": {
+      "repo": "mlx-community/Qwen2.5-0.5B-Instruct-4bit",
+      "revision": "a5339a4131f135d0fdc6a5c8b5bbed2753bbe0f3"
+    },
+    "bf16": {
+      "repo": "mlx-community/Qwen2.5-0.5B-Instruct-bf16",
+      "revision": "56d07e766edd7159fbe12ed12d9cf114bf38bf1e"
+    },
+    "mlx_lm": "0.31.3"
+  },
+  "gap_table": {
+    "before": [
+      {
+        "cause": "CopyType::Scalar host drain before vkCmdFillBuffer",
+        "count": 48,
+        "join_reason": "explicit",
+        "join_wait_ms_262": 251.087783,
+        "evidence": "Every one-dispatch FastRope submission followed an explicit join; trig and RoPE safety tags were absent. copy.cpp synchronized immediately before reading a host scalar and recording the fill."
+      },
+      {
+        "cause": "remaining non-join inter-submission gaps",
+        "count": 4,
+        "inter_total_ms_262": 248.987874
+      }
+    ],
+    "after": [
+      {
+        "cause": "scalar fills remain queue-ordered in the open command buffer",
+        "explicit_join_count": 0,
+        "submissions_262": 7,
+        "inter_total_ms_262": 77.861043
+      },
+      {
+        "cause": "largest remaining boundary has no host join",
+        "largest_inter_gap_ms_262": 39.895125,
+        "largest_inter_gap_ms_1053": 87.300792
+      }
+    ]
+  },
+  "gaps": {
+    "262": {
+      "inter_before_ms": 248.987874,
+      "inter_after_ms": 77.861043,
+      "busy_before": 0.5089016076892948,
+      "busy_after": 0.7191958902264777,
+      "submissions_before": 53,
+      "submissions_after": 7,
+      "host_prefill_before_ms": 666.341491,
+      "host_prefill_after_ms": 546.753384
+    },
+    "1053": {
+      "inter_before_ms": 252.105083,
+      "inter_after_ms": 125.07125,
+      "busy_before": 0.7655793003661676,
+      "busy_after": 0.8547519273563866,
+      "submissions_before": 53,
+      "submissions_after": 10,
+      "host_prefill_before_ms": 1313.629846,
+      "host_prefill_after_ms": 1249.009075
+    }
+  },
+  "submissions": {
+    "prefill_262": 7,
+    "decode_per_token": 2
+  },
+  "paired_fork": [
+    {"leg":"q4-30","baseline_prefill":225.564,"candidate_prefill":337.079,"prefill_ratio":1.4943829689,"baseline_decode":109.95,"candidate_decode":112.53,"decode_ratio":1.0234652115,"digest":"7fd25a869ff21678","relative_digest_same":true,"expected_digest_match":true},
+    {"leg":"q4-262","baseline_prefill":784.431,"candidate_prefill":1039.683,"prefill_ratio":1.3253976449,"baseline_decode":107.92,"candidate_decode":108.43,"decode_ratio":1.0047257228,"digest":"f873dc2bdd34c0fe","relative_digest_same":true,"expected_digest_match":false},
+    {"leg":"q4-1053","baseline_prefill":1061.492,"candidate_prefill":1111.932,"prefill_ratio":1.0475180218,"baseline_decode":98.44,"candidate_decode":97.32,"decode_ratio":0.9886225112,"digest":"31267e7ed4c6d0dc","relative_digest_same":true,"expected_digest_match":false},
+    {"leg":"bf16-30","baseline_prefill":81.301,"candidate_prefill":86.207,"prefill_ratio":1.0603436612,"baseline_decode":11.76,"candidate_decode":11.74,"decode_ratio":0.9982993197,"digest":"f26175202f3dabe9","relative_digest_same":true,"expected_digest_match":true},
+    {"leg":"bf16-262","baseline_prefill":306.075,"candidate_prefill":319.902,"prefill_ratio":1.0451752022,"baseline_decode":11.32,"candidate_decode":11.3,"decode_ratio":0.9982332155,"digest":"c5be9207833d2a26","relative_digest_same":true,"expected_digest_match":false},
+    {"leg":"bf16-1053","baseline_prefill":363.856,"candidate_prefill":392.764,"prefill_ratio":1.0794490128,"baseline_decode":10.29,"candidate_decode":10.03,"decode_ratio":0.9747327502,"digest":"ff502900d2a179a5","relative_digest_same":true,"expected_digest_match":true}
+  ],
+  "paired_stock_digests": {
+    "q4-30": "7fd25a869ff21678",
+    "q4-262": "4cc08910089477fd",
+    "q4-1053": "7da83f06ec9f001d",
+    "bf16-30": "f26175202f3dabe9",
+    "bf16-262": "c5be9207833d2a26",
+    "bf16-1053": "ff502900d2a179a5",
+    "all_match": true
+  },
+  "digests": {
+    "fork_candidate_matches_fork_baseline": true,
+    "fork_matches_required": false,
+    "stock_matches_required": true,
+    "all_match": false,
+    "blocker": "The exact 2da780a baseline wheel and the candidate wheel agree on every fork digest, but the current canonical fork produces non-required digests for q4-262, q4-1053, and bf16-262. The scheduling patch did not introduce this divergence."
+  },
+  "tests": {
+    "llvmpipe": {"passed":true,"copy":"26 cases, 629 assertions","runtime":"41 cases, 22678 assertions","rope_named_error":"1 case, 70 assertions"},
+    "m1_fork": {"passed":true,"copy":"26 cases, 629 assertions","runtime":"41 cases, 22681 assertions","rope_named_error":"1 case, 70 assertions"},
+    "m1_stock": {"passed":true,"copy":"26 cases, 629 assertions","runtime":"41 cases, 22681 assertions","rope_named_error":"1 case, 70 assertions"}
+  },
+  "policy_ok": false,
+  "decision": "HOLD: the scalar-drain removal closes most of the 262-token submission gap and preserves relative output identity, but the fork's required absolute digests fail and BF16 1053 decode is 2.53% below baseline in the three-pair median.",
+  "next": "Integrate with the sibling fork-correctness work, restore the three required fork digests, then rerun paired fork decode; land only when all six absolute digests match and decode is at least 0.99x baseline."
+}
