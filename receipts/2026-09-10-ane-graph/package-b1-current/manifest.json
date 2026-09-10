@@ -1,0 +1,8036 @@
+{
+  "artifactFormat": "anec",
+  "dispatchPlan": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19,
+    20,
+    21,
+    22,
+    23,
+    24,
+    25,
+    26,
+    27,
+    28,
+    29,
+    30,
+    31,
+    32,
+    33,
+    34,
+    35,
+    36,
+    37,
+    38,
+    39,
+    40,
+    41,
+    42,
+    43,
+    44,
+    45,
+    46,
+    47,
+    48,
+    49,
+    50,
+    51,
+    52,
+    53,
+    54,
+    55,
+    56,
+    57,
+    58,
+    59,
+    60,
+    61,
+    62,
+    63,
+    64,
+    65,
+    66,
+    67,
+    68,
+    69,
+    70,
+    71,
+    72,
+    73,
+    74,
+    75,
+    76,
+    77,
+    78,
+    79,
+    80,
+    81,
+    82,
+    83,
+    84,
+    85,
+    86,
+    87,
+    88,
+    89,
+    90,
+    91,
+    92,
+    93,
+    94,
+    95
+  ],
+  "intermediates": [
+    "$h13.y.partial0",
+    "$h13.y.partial1"
+  ],
+  "programs": [
+    {
+      "bytes": 529024,
+      "constantBytes": 524288,
+      "constantInputs": {
+      },
+      "constantOffset": 640,
+      "encoder": "h13-source-qualified",
+      "file": "program-0.anec",
+      "inputs": [
+        {
+          "allocationBytes": 32768,
+          "dtype": "float16",
+          "index": 5,
+          "logicalBytes": 1024,
+          "name": "x",
+          "nchw": [
+            1,
+            512,
+            1,
+            1,
+            64,
+            64
+          ],
+          "shape": [
+            512
+          ],
+          "slice": {
+            "elementCount": 512,
+            "elementOffset": 0,
+            "tensor": "x"
+          }
+        }
+      ],
+      "operation": "matmul",
+      "outputs": [
+        {
+          "allocationBytes": 32768,
+          "dtype": "float16",
+          "index": 4,
+          "logicalBytes": 1024,
+          "name": "$h13.y.partial0",
+          "nchw": [
+            1,
+            512,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            512
+          ],
+          "slice": {
+            "elementCount": 512,
+            "elementOffset": 0,
+            "tensor": "$h13.y.partial0"
+          }
+        }
+      ],
+      "scratchBytes": 0,
+      "taskDescriptors": 1
+    },
+    {
+      "bytes": 529024,
+      "constantBytes": 524288,
+      "constantInputs": {
+      },
+      "constantOffset": 640,
+      "encoder": "h13-source-qualified",
+      "file": "program-1.anec",
+      "inputs": [
+        {
+          "allocationBytes": 32768,
+          "dtype": "float16",
+          "index": 5,
+          "logicalBytes": 1024,
+          "name": "x",
+          "nchw": [
+            1,
+            512,
+            1,
+            1,
+            64,
+            64
+          ],
+          "shape": [
+            512
+          ],
+          "slice": {
+            "elementCount": 512,
+            "elementOffset": 0,
+            "tensor": "x"
+          }
+        }
+      ],
+      "operation": "matmul",
+      "outputs": [
+        {
+          "allocationBytes": 32768,
+          "dtype": "float16",
+          "index": 4,
+          "logicalBytes": 1024,
+          "name": "$h13.y.partial0",
+          "nchw": [
+            1,
+            512,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            512
+          ],
+          "slice": {
+            "elementCount": 512,
+            "elementOffset": 512,
+            "tensor": "$h13.y.partial0"
+          }
+        }
+      ],
+      "scratchBytes": 0,
+      "taskDescriptors": 1
+    },
+    {
+      "bytes": 529024,
+      "constantBytes": 524288,
+      "constantInputs": {
+      },
+      "constantOffset": 640,
+      "encoder": "h13-source-qualified",
+      "file": "program-2.anec",
+      "inputs": [
+        {
+          "allocationBytes": 32768,
+          "dtype": "float16",
+          "index": 5,
+          "logicalBytes": 1024,
+          "name": "x",
+          "nchw": [
+            1,
+            512,
+            1,
+            1,
+            64,
+            64
+          ],
+          "shape": [
+            512
+          ],
+          "slice": {
+            "elementCount": 512,
+            "elementOffset": 0,
+            "tensor": "x"
+          }
+        }
+      ],
+      "operation": "matmul",
+      "outputs": [
+        {
+          "allocationBytes": 32768,
+          "dtype": "float16",
+          "index": 4,
+          "logicalBytes": 1024,
+          "name": "$h13.y.partial0",
+          "nchw": [
+            1,
+            512,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            512
+          ],
+          "slice": {
+            "elementCount": 512,
+            "elementOffset": 1024,
+            "tensor": "$h13.y.partial0"
+          }
+        }
+      ],
+      "scratchBytes": 0,
+      "taskDescriptors": 1
+    },
+    {
+      "bytes": 529024,
+      "constantBytes": 524288,
+      "constantInputs": {
+      },
+      "constantOffset": 640,
+      "encoder": "h13-source-qualified",
+      "file": "program-3.anec",
+      "inputs": [
+        {
+          "allocationBytes": 32768,
+          "dtype": "float16",
+          "index": 5,
+          "logicalBytes": 1024,
+          "name": "x",
+          "nchw": [
+            1,
+            512,
+            1,
+            1,
+            64,
+            64
+          ],
+          "shape": [
+            512
+          ],
+          "slice": {
+            "elementCount": 512,
+            "elementOffset": 0,
+            "tensor": "x"
+          }
+        }
+      ],
+      "operation": "matmul",
+      "outputs": [
+        {
+          "allocationBytes": 32768,
+          "dtype": "float16",
+          "index": 4,
+          "logicalBytes": 1024,
+          "name": "$h13.y.partial0",
+          "nchw": [
+            1,
+            512,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            512
+          ],
+          "slice": {
+            "elementCount": 512,
+            "elementOffset": 1536,
+            "tensor": "$h13.y.partial0"
+          }
+        }
+      ],
+      "scratchBytes": 0,
+      "taskDescriptors": 1
+    },
+    {
+      "bytes": 529024,
+      "constantBytes": 524288,
+      "constantInputs": {
+      },
+      "constantOffset": 640,
+      "encoder": "h13-source-qualified",
+      "file": "program-4.anec",
+      "inputs": [
+        {
+          "allocationBytes": 32768,
+          "dtype": "float16",
+          "index": 5,
+          "logicalBytes": 1024,
+          "name": "x",
+          "nchw": [
+            1,
+            512,
+            1,
+            1,
+            64,
+            64
+          ],
+          "shape": [
+            512
+          ],
+          "slice": {
+            "elementCount": 512,
+            "elementOffset": 0,
+            "tensor": "x"
+          }
+        }
+      ],
+      "operation": "matmul",
+      "outputs": [
+        {
+          "allocationBytes": 32768,
+          "dtype": "float16",
+          "index": 4,
+          "logicalBytes": 1024,
+          "name": "$h13.y.partial0",
+          "nchw": [
+            1,
+            512,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            512
+          ],
+          "slice": {
+            "elementCount": 512,
+            "elementOffset": 2048,
+            "tensor": "$h13.y.partial0"
+          }
+        }
+      ],
+      "scratchBytes": 0,
+      "taskDescriptors": 1
+    },
+    {
+      "bytes": 529024,
+      "constantBytes": 524288,
+      "constantInputs": {
+      },
+      "constantOffset": 640,
+      "encoder": "h13-source-qualified",
+      "file": "program-5.anec",
+      "inputs": [
+        {
+          "allocationBytes": 32768,
+          "dtype": "float16",
+          "index": 5,
+          "logicalBytes": 1024,
+          "name": "x",
+          "nchw": [
+            1,
+            512,
+            1,
+            1,
+            64,
+            64
+          ],
+          "shape": [
+            512
+          ],
+          "slice": {
+            "elementCount": 512,
+            "elementOffset": 0,
+            "tensor": "x"
+          }
+        }
+      ],
+      "operation": "matmul",
+      "outputs": [
+        {
+          "allocationBytes": 32768,
+          "dtype": "float16",
+          "index": 4,
+          "logicalBytes": 1024,
+          "name": "$h13.y.partial0",
+          "nchw": [
+            1,
+            512,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            512
+          ],
+          "slice": {
+            "elementCount": 512,
+            "elementOffset": 2560,
+            "tensor": "$h13.y.partial0"
+          }
+        }
+      ],
+      "scratchBytes": 0,
+      "taskDescriptors": 1
+    },
+    {
+      "bytes": 529024,
+      "constantBytes": 524288,
+      "constantInputs": {
+      },
+      "constantOffset": 640,
+      "encoder": "h13-source-qualified",
+      "file": "program-6.anec",
+      "inputs": [
+        {
+          "allocationBytes": 32768,
+          "dtype": "float16",
+          "index": 5,
+          "logicalBytes": 1024,
+          "name": "x",
+          "nchw": [
+            1,
+            512,
+            1,
+            1,
+            64,
+            64
+          ],
+          "shape": [
+            512
+          ],
+          "slice": {
+            "elementCount": 512,
+            "elementOffset": 0,
+            "tensor": "x"
+          }
+        }
+      ],
+      "operation": "matmul",
+      "outputs": [
+        {
+          "allocationBytes": 32768,
+          "dtype": "float16",
+          "index": 4,
+          "logicalBytes": 1024,
+          "name": "$h13.y.partial0",
+          "nchw": [
+            1,
+            512,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            512
+          ],
+          "slice": {
+            "elementCount": 512,
+            "elementOffset": 3072,
+            "tensor": "$h13.y.partial0"
+          }
+        }
+      ],
+      "scratchBytes": 0,
+      "taskDescriptors": 1
+    },
+    {
+      "bytes": 529024,
+      "constantBytes": 524288,
+      "constantInputs": {
+      },
+      "constantOffset": 640,
+      "encoder": "h13-source-qualified",
+      "file": "program-7.anec",
+      "inputs": [
+        {
+          "allocationBytes": 32768,
+          "dtype": "float16",
+          "index": 5,
+          "logicalBytes": 1024,
+          "name": "x",
+          "nchw": [
+            1,
+            512,
+            1,
+            1,
+            64,
+            64
+          ],
+          "shape": [
+            512
+          ],
+          "slice": {
+            "elementCount": 512,
+            "elementOffset": 0,
+            "tensor": "x"
+          }
+        }
+      ],
+      "operation": "matmul",
+      "outputs": [
+        {
+          "allocationBytes": 32768,
+          "dtype": "float16",
+          "index": 4,
+          "logicalBytes": 1024,
+          "name": "$h13.y.partial0",
+          "nchw": [
+            1,
+            512,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            512
+          ],
+          "slice": {
+            "elementCount": 512,
+            "elementOffset": 3584,
+            "tensor": "$h13.y.partial0"
+          }
+        }
+      ],
+      "scratchBytes": 0,
+      "taskDescriptors": 1
+    },
+    {
+      "bytes": 529024,
+      "constantBytes": 524288,
+      "constantInputs": {
+      },
+      "constantOffset": 640,
+      "encoder": "h13-source-qualified",
+      "file": "program-8.anec",
+      "inputs": [
+        {
+          "allocationBytes": 32768,
+          "dtype": "float16",
+          "index": 5,
+          "logicalBytes": 1024,
+          "name": "x",
+          "nchw": [
+            1,
+            512,
+            1,
+            1,
+            64,
+            64
+          ],
+          "shape": [
+            512
+          ],
+          "slice": {
+            "elementCount": 512,
+            "elementOffset": 0,
+            "tensor": "x"
+          }
+        }
+      ],
+      "operation": "matmul",
+      "outputs": [
+        {
+          "allocationBytes": 32768,
+          "dtype": "float16",
+          "index": 4,
+          "logicalBytes": 1024,
+          "name": "$h13.y.partial0",
+          "nchw": [
+            1,
+            512,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            512
+          ],
+          "slice": {
+            "elementCount": 512,
+            "elementOffset": 4096,
+            "tensor": "$h13.y.partial0"
+          }
+        }
+      ],
+      "scratchBytes": 0,
+      "taskDescriptors": 1
+    },
+    {
+      "bytes": 529024,
+      "constantBytes": 524288,
+      "constantInputs": {
+      },
+      "constantOffset": 640,
+      "encoder": "h13-source-qualified",
+      "file": "program-9.anec",
+      "inputs": [
+        {
+          "allocationBytes": 32768,
+          "dtype": "float16",
+          "index": 5,
+          "logicalBytes": 1024,
+          "name": "x",
+          "nchw": [
+            1,
+            512,
+            1,
+            1,
+            64,
+            64
+          ],
+          "shape": [
+            512
+          ],
+          "slice": {
+            "elementCount": 512,
+            "elementOffset": 0,
+            "tensor": "x"
+          }
+        }
+      ],
+      "operation": "matmul",
+      "outputs": [
+        {
+          "allocationBytes": 32768,
+          "dtype": "float16",
+          "index": 4,
+          "logicalBytes": 512,
+          "name": "$h13.y.partial0",
+          "nchw": [
+            1,
+            512,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            256
+          ],
+          "slice": {
+            "elementCount": 256,
+            "elementOffset": 4608,
+            "physicalElements": 512,
+            "tensor": "$h13.y.partial0"
+          }
+        }
+      ],
+      "scratchBytes": 0,
+      "taskDescriptors": 1
+    },
+    {
+      "bytes": 529024,
+      "constantBytes": 524288,
+      "constantInputs": {
+      },
+      "constantOffset": 640,
+      "encoder": "h13-source-qualified",
+      "file": "program-10.anec",
+      "inputs": [
+        {
+          "allocationBytes": 32768,
+          "dtype": "float16",
+          "index": 5,
+          "logicalBytes": 768,
+          "name": "x",
+          "nchw": [
+            1,
+            512,
+            1,
+            1,
+            64,
+            64
+          ],
+          "shape": [
+            384
+          ],
+          "slice": {
+            "elementCount": 384,
+            "elementOffset": 512,
+            "physicalElements": 512,
+            "tensor": "x"
+          }
+        }
+      ],
+      "operation": "matmul",
+      "outputs": [
+        {
+          "allocationBytes": 32768,
+          "dtype": "float16",
+          "index": 4,
+          "logicalBytes": 1024,
+          "name": "$h13.y.partial1",
+          "nchw": [
+            1,
+            512,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            512
+          ],
+          "slice": {
+            "elementCount": 512,
+            "elementOffset": 0,
+            "tensor": "$h13.y.partial1"
+          }
+        }
+      ],
+      "scratchBytes": 0,
+      "taskDescriptors": 1
+    },
+    {
+      "bytes": 529024,
+      "constantBytes": 524288,
+      "constantInputs": {
+      },
+      "constantOffset": 640,
+      "encoder": "h13-source-qualified",
+      "file": "program-11.anec",
+      "inputs": [
+        {
+          "allocationBytes": 32768,
+          "dtype": "float16",
+          "index": 5,
+          "logicalBytes": 768,
+          "name": "x",
+          "nchw": [
+            1,
+            512,
+            1,
+            1,
+            64,
+            64
+          ],
+          "shape": [
+            384
+          ],
+          "slice": {
+            "elementCount": 384,
+            "elementOffset": 512,
+            "physicalElements": 512,
+            "tensor": "x"
+          }
+        }
+      ],
+      "operation": "matmul",
+      "outputs": [
+        {
+          "allocationBytes": 32768,
+          "dtype": "float16",
+          "index": 4,
+          "logicalBytes": 1024,
+          "name": "$h13.y.partial1",
+          "nchw": [
+            1,
+            512,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            512
+          ],
+          "slice": {
+            "elementCount": 512,
+            "elementOffset": 512,
+            "tensor": "$h13.y.partial1"
+          }
+        }
+      ],
+      "scratchBytes": 0,
+      "taskDescriptors": 1
+    },
+    {
+      "bytes": 529024,
+      "constantBytes": 524288,
+      "constantInputs": {
+      },
+      "constantOffset": 640,
+      "encoder": "h13-source-qualified",
+      "file": "program-12.anec",
+      "inputs": [
+        {
+          "allocationBytes": 32768,
+          "dtype": "float16",
+          "index": 5,
+          "logicalBytes": 768,
+          "name": "x",
+          "nchw": [
+            1,
+            512,
+            1,
+            1,
+            64,
+            64
+          ],
+          "shape": [
+            384
+          ],
+          "slice": {
+            "elementCount": 384,
+            "elementOffset": 512,
+            "physicalElements": 512,
+            "tensor": "x"
+          }
+        }
+      ],
+      "operation": "matmul",
+      "outputs": [
+        {
+          "allocationBytes": 32768,
+          "dtype": "float16",
+          "index": 4,
+          "logicalBytes": 1024,
+          "name": "$h13.y.partial1",
+          "nchw": [
+            1,
+            512,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            512
+          ],
+          "slice": {
+            "elementCount": 512,
+            "elementOffset": 1024,
+            "tensor": "$h13.y.partial1"
+          }
+        }
+      ],
+      "scratchBytes": 0,
+      "taskDescriptors": 1
+    },
+    {
+      "bytes": 529024,
+      "constantBytes": 524288,
+      "constantInputs": {
+      },
+      "constantOffset": 640,
+      "encoder": "h13-source-qualified",
+      "file": "program-13.anec",
+      "inputs": [
+        {
+          "allocationBytes": 32768,
+          "dtype": "float16",
+          "index": 5,
+          "logicalBytes": 768,
+          "name": "x",
+          "nchw": [
+            1,
+            512,
+            1,
+            1,
+            64,
+            64
+          ],
+          "shape": [
+            384
+          ],
+          "slice": {
+            "elementCount": 384,
+            "elementOffset": 512,
+            "physicalElements": 512,
+            "tensor": "x"
+          }
+        }
+      ],
+      "operation": "matmul",
+      "outputs": [
+        {
+          "allocationBytes": 32768,
+          "dtype": "float16",
+          "index": 4,
+          "logicalBytes": 1024,
+          "name": "$h13.y.partial1",
+          "nchw": [
+            1,
+            512,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            512
+          ],
+          "slice": {
+            "elementCount": 512,
+            "elementOffset": 1536,
+            "tensor": "$h13.y.partial1"
+          }
+        }
+      ],
+      "scratchBytes": 0,
+      "taskDescriptors": 1
+    },
+    {
+      "bytes": 529024,
+      "constantBytes": 524288,
+      "constantInputs": {
+      },
+      "constantOffset": 640,
+      "encoder": "h13-source-qualified",
+      "file": "program-14.anec",
+      "inputs": [
+        {
+          "allocationBytes": 32768,
+          "dtype": "float16",
+          "index": 5,
+          "logicalBytes": 768,
+          "name": "x",
+          "nchw": [
+            1,
+            512,
+            1,
+            1,
+            64,
+            64
+          ],
+          "shape": [
+            384
+          ],
+          "slice": {
+            "elementCount": 384,
+            "elementOffset": 512,
+            "physicalElements": 512,
+            "tensor": "x"
+          }
+        }
+      ],
+      "operation": "matmul",
+      "outputs": [
+        {
+          "allocationBytes": 32768,
+          "dtype": "float16",
+          "index": 4,
+          "logicalBytes": 1024,
+          "name": "$h13.y.partial1",
+          "nchw": [
+            1,
+            512,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            512
+          ],
+          "slice": {
+            "elementCount": 512,
+            "elementOffset": 2048,
+            "tensor": "$h13.y.partial1"
+          }
+        }
+      ],
+      "scratchBytes": 0,
+      "taskDescriptors": 1
+    },
+    {
+      "bytes": 529024,
+      "constantBytes": 524288,
+      "constantInputs": {
+      },
+      "constantOffset": 640,
+      "encoder": "h13-source-qualified",
+      "file": "program-15.anec",
+      "inputs": [
+        {
+          "allocationBytes": 32768,
+          "dtype": "float16",
+          "index": 5,
+          "logicalBytes": 768,
+          "name": "x",
+          "nchw": [
+            1,
+            512,
+            1,
+            1,
+            64,
+            64
+          ],
+          "shape": [
+            384
+          ],
+          "slice": {
+            "elementCount": 384,
+            "elementOffset": 512,
+            "physicalElements": 512,
+            "tensor": "x"
+          }
+        }
+      ],
+      "operation": "matmul",
+      "outputs": [
+        {
+          "allocationBytes": 32768,
+          "dtype": "float16",
+          "index": 4,
+          "logicalBytes": 1024,
+          "name": "$h13.y.partial1",
+          "nchw": [
+            1,
+            512,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            512
+          ],
+          "slice": {
+            "elementCount": 512,
+            "elementOffset": 2560,
+            "tensor": "$h13.y.partial1"
+          }
+        }
+      ],
+      "scratchBytes": 0,
+      "taskDescriptors": 1
+    },
+    {
+      "bytes": 529024,
+      "constantBytes": 524288,
+      "constantInputs": {
+      },
+      "constantOffset": 640,
+      "encoder": "h13-source-qualified",
+      "file": "program-16.anec",
+      "inputs": [
+        {
+          "allocationBytes": 32768,
+          "dtype": "float16",
+          "index": 5,
+          "logicalBytes": 768,
+          "name": "x",
+          "nchw": [
+            1,
+            512,
+            1,
+            1,
+            64,
+            64
+          ],
+          "shape": [
+            384
+          ],
+          "slice": {
+            "elementCount": 384,
+            "elementOffset": 512,
+            "physicalElements": 512,
+            "tensor": "x"
+          }
+        }
+      ],
+      "operation": "matmul",
+      "outputs": [
+        {
+          "allocationBytes": 32768,
+          "dtype": "float16",
+          "index": 4,
+          "logicalBytes": 1024,
+          "name": "$h13.y.partial1",
+          "nchw": [
+            1,
+            512,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            512
+          ],
+          "slice": {
+            "elementCount": 512,
+            "elementOffset": 3072,
+            "tensor": "$h13.y.partial1"
+          }
+        }
+      ],
+      "scratchBytes": 0,
+      "taskDescriptors": 1
+    },
+    {
+      "bytes": 529024,
+      "constantBytes": 524288,
+      "constantInputs": {
+      },
+      "constantOffset": 640,
+      "encoder": "h13-source-qualified",
+      "file": "program-17.anec",
+      "inputs": [
+        {
+          "allocationBytes": 32768,
+          "dtype": "float16",
+          "index": 5,
+          "logicalBytes": 768,
+          "name": "x",
+          "nchw": [
+            1,
+            512,
+            1,
+            1,
+            64,
+            64
+          ],
+          "shape": [
+            384
+          ],
+          "slice": {
+            "elementCount": 384,
+            "elementOffset": 512,
+            "physicalElements": 512,
+            "tensor": "x"
+          }
+        }
+      ],
+      "operation": "matmul",
+      "outputs": [
+        {
+          "allocationBytes": 32768,
+          "dtype": "float16",
+          "index": 4,
+          "logicalBytes": 1024,
+          "name": "$h13.y.partial1",
+          "nchw": [
+            1,
+            512,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            512
+          ],
+          "slice": {
+            "elementCount": 512,
+            "elementOffset": 3584,
+            "tensor": "$h13.y.partial1"
+          }
+        }
+      ],
+      "scratchBytes": 0,
+      "taskDescriptors": 1
+    },
+    {
+      "bytes": 529024,
+      "constantBytes": 524288,
+      "constantInputs": {
+      },
+      "constantOffset": 640,
+      "encoder": "h13-source-qualified",
+      "file": "program-18.anec",
+      "inputs": [
+        {
+          "allocationBytes": 32768,
+          "dtype": "float16",
+          "index": 5,
+          "logicalBytes": 768,
+          "name": "x",
+          "nchw": [
+            1,
+            512,
+            1,
+            1,
+            64,
+            64
+          ],
+          "shape": [
+            384
+          ],
+          "slice": {
+            "elementCount": 384,
+            "elementOffset": 512,
+            "physicalElements": 512,
+            "tensor": "x"
+          }
+        }
+      ],
+      "operation": "matmul",
+      "outputs": [
+        {
+          "allocationBytes": 32768,
+          "dtype": "float16",
+          "index": 4,
+          "logicalBytes": 1024,
+          "name": "$h13.y.partial1",
+          "nchw": [
+            1,
+            512,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            512
+          ],
+          "slice": {
+            "elementCount": 512,
+            "elementOffset": 4096,
+            "tensor": "$h13.y.partial1"
+          }
+        }
+      ],
+      "scratchBytes": 0,
+      "taskDescriptors": 1
+    },
+    {
+      "bytes": 529024,
+      "constantBytes": 524288,
+      "constantInputs": {
+      },
+      "constantOffset": 640,
+      "encoder": "h13-source-qualified",
+      "file": "program-19.anec",
+      "inputs": [
+        {
+          "allocationBytes": 32768,
+          "dtype": "float16",
+          "index": 5,
+          "logicalBytes": 768,
+          "name": "x",
+          "nchw": [
+            1,
+            512,
+            1,
+            1,
+            64,
+            64
+          ],
+          "shape": [
+            384
+          ],
+          "slice": {
+            "elementCount": 384,
+            "elementOffset": 512,
+            "physicalElements": 512,
+            "tensor": "x"
+          }
+        }
+      ],
+      "operation": "matmul",
+      "outputs": [
+        {
+          "allocationBytes": 32768,
+          "dtype": "float16",
+          "index": 4,
+          "logicalBytes": 512,
+          "name": "$h13.y.partial1",
+          "nchw": [
+            1,
+            512,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            256
+          ],
+          "slice": {
+            "elementCount": 256,
+            "elementOffset": 4608,
+            "physicalElements": 512,
+            "tensor": "$h13.y.partial1"
+          }
+        }
+      ],
+      "scratchBytes": 0,
+      "taskDescriptors": 1
+    },
+    {
+      "bytes": 4736,
+      "constantBytes": 0,
+      "constantInputs": {
+      },
+      "constantOffset": 640,
+      "encoder": "h13-source-qualified",
+      "file": "program-20.anec",
+      "inputs": [
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 5,
+          "logicalBytes": 128,
+          "name": "$h13.y.partial0",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 0,
+            "tensor": "$h13.y.partial0"
+          }
+        },
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 6,
+          "logicalBytes": 128,
+          "name": "$h13.y.partial1",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 0,
+            "tensor": "$h13.y.partial1"
+          }
+        }
+      ],
+      "operation": "add",
+      "outputs": [
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 4,
+          "logicalBytes": 128,
+          "name": "y",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 0,
+            "tensor": "y"
+          }
+        }
+      ],
+      "scratchBytes": 0,
+      "taskDescriptors": 1
+    },
+    {
+      "bytes": 4736,
+      "constantBytes": 0,
+      "constantInputs": {
+      },
+      "constantOffset": 640,
+      "encoder": "h13-source-qualified",
+      "file": "program-21.anec",
+      "inputs": [
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 5,
+          "logicalBytes": 128,
+          "name": "$h13.y.partial0",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 64,
+            "tensor": "$h13.y.partial0"
+          }
+        },
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 6,
+          "logicalBytes": 128,
+          "name": "$h13.y.partial1",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 64,
+            "tensor": "$h13.y.partial1"
+          }
+        }
+      ],
+      "operation": "add",
+      "outputs": [
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 4,
+          "logicalBytes": 128,
+          "name": "y",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 64,
+            "tensor": "y"
+          }
+        }
+      ],
+      "scratchBytes": 0,
+      "taskDescriptors": 1
+    },
+    {
+      "bytes": 4736,
+      "constantBytes": 0,
+      "constantInputs": {
+      },
+      "constantOffset": 640,
+      "encoder": "h13-source-qualified",
+      "file": "program-22.anec",
+      "inputs": [
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 5,
+          "logicalBytes": 128,
+          "name": "$h13.y.partial0",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 128,
+            "tensor": "$h13.y.partial0"
+          }
+        },
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 6,
+          "logicalBytes": 128,
+          "name": "$h13.y.partial1",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 128,
+            "tensor": "$h13.y.partial1"
+          }
+        }
+      ],
+      "operation": "add",
+      "outputs": [
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 4,
+          "logicalBytes": 128,
+          "name": "y",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 128,
+            "tensor": "y"
+          }
+        }
+      ],
+      "scratchBytes": 0,
+      "taskDescriptors": 1
+    },
+    {
+      "bytes": 4736,
+      "constantBytes": 0,
+      "constantInputs": {
+      },
+      "constantOffset": 640,
+      "encoder": "h13-source-qualified",
+      "file": "program-23.anec",
+      "inputs": [
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 5,
+          "logicalBytes": 128,
+          "name": "$h13.y.partial0",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 192,
+            "tensor": "$h13.y.partial0"
+          }
+        },
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 6,
+          "logicalBytes": 128,
+          "name": "$h13.y.partial1",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 192,
+            "tensor": "$h13.y.partial1"
+          }
+        }
+      ],
+      "operation": "add",
+      "outputs": [
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 4,
+          "logicalBytes": 128,
+          "name": "y",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 192,
+            "tensor": "y"
+          }
+        }
+      ],
+      "scratchBytes": 0,
+      "taskDescriptors": 1
+    },
+    {
+      "bytes": 4736,
+      "constantBytes": 0,
+      "constantInputs": {
+      },
+      "constantOffset": 640,
+      "encoder": "h13-source-qualified",
+      "file": "program-24.anec",
+      "inputs": [
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 5,
+          "logicalBytes": 128,
+          "name": "$h13.y.partial0",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 256,
+            "tensor": "$h13.y.partial0"
+          }
+        },
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 6,
+          "logicalBytes": 128,
+          "name": "$h13.y.partial1",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 256,
+            "tensor": "$h13.y.partial1"
+          }
+        }
+      ],
+      "operation": "add",
+      "outputs": [
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 4,
+          "logicalBytes": 128,
+          "name": "y",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 256,
+            "tensor": "y"
+          }
+        }
+      ],
+      "scratchBytes": 0,
+      "taskDescriptors": 1
+    },
+    {
+      "bytes": 4736,
+      "constantBytes": 0,
+      "constantInputs": {
+      },
+      "constantOffset": 640,
+      "encoder": "h13-source-qualified",
+      "file": "program-25.anec",
+      "inputs": [
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 5,
+          "logicalBytes": 128,
+          "name": "$h13.y.partial0",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 320,
+            "tensor": "$h13.y.partial0"
+          }
+        },
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 6,
+          "logicalBytes": 128,
+          "name": "$h13.y.partial1",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 320,
+            "tensor": "$h13.y.partial1"
+          }
+        }
+      ],
+      "operation": "add",
+      "outputs": [
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 4,
+          "logicalBytes": 128,
+          "name": "y",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 320,
+            "tensor": "y"
+          }
+        }
+      ],
+      "scratchBytes": 0,
+      "taskDescriptors": 1
+    },
+    {
+      "bytes": 4736,
+      "constantBytes": 0,
+      "constantInputs": {
+      },
+      "constantOffset": 640,
+      "encoder": "h13-source-qualified",
+      "file": "program-26.anec",
+      "inputs": [
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 5,
+          "logicalBytes": 128,
+          "name": "$h13.y.partial0",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 384,
+            "tensor": "$h13.y.partial0"
+          }
+        },
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 6,
+          "logicalBytes": 128,
+          "name": "$h13.y.partial1",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 384,
+            "tensor": "$h13.y.partial1"
+          }
+        }
+      ],
+      "operation": "add",
+      "outputs": [
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 4,
+          "logicalBytes": 128,
+          "name": "y",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 384,
+            "tensor": "y"
+          }
+        }
+      ],
+      "scratchBytes": 0,
+      "taskDescriptors": 1
+    },
+    {
+      "bytes": 4736,
+      "constantBytes": 0,
+      "constantInputs": {
+      },
+      "constantOffset": 640,
+      "encoder": "h13-source-qualified",
+      "file": "program-27.anec",
+      "inputs": [
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 5,
+          "logicalBytes": 128,
+          "name": "$h13.y.partial0",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 448,
+            "tensor": "$h13.y.partial0"
+          }
+        },
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 6,
+          "logicalBytes": 128,
+          "name": "$h13.y.partial1",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 448,
+            "tensor": "$h13.y.partial1"
+          }
+        }
+      ],
+      "operation": "add",
+      "outputs": [
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 4,
+          "logicalBytes": 128,
+          "name": "y",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 448,
+            "tensor": "y"
+          }
+        }
+      ],
+      "scratchBytes": 0,
+      "taskDescriptors": 1
+    },
+    {
+      "bytes": 4736,
+      "constantBytes": 0,
+      "constantInputs": {
+      },
+      "constantOffset": 640,
+      "encoder": "h13-source-qualified",
+      "file": "program-28.anec",
+      "inputs": [
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 5,
+          "logicalBytes": 128,
+          "name": "$h13.y.partial0",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 512,
+            "tensor": "$h13.y.partial0"
+          }
+        },
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 6,
+          "logicalBytes": 128,
+          "name": "$h13.y.partial1",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 512,
+            "tensor": "$h13.y.partial1"
+          }
+        }
+      ],
+      "operation": "add",
+      "outputs": [
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 4,
+          "logicalBytes": 128,
+          "name": "y",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 512,
+            "tensor": "y"
+          }
+        }
+      ],
+      "scratchBytes": 0,
+      "taskDescriptors": 1
+    },
+    {
+      "bytes": 4736,
+      "constantBytes": 0,
+      "constantInputs": {
+      },
+      "constantOffset": 640,
+      "encoder": "h13-source-qualified",
+      "file": "program-29.anec",
+      "inputs": [
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 5,
+          "logicalBytes": 128,
+          "name": "$h13.y.partial0",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 576,
+            "tensor": "$h13.y.partial0"
+          }
+        },
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 6,
+          "logicalBytes": 128,
+          "name": "$h13.y.partial1",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 576,
+            "tensor": "$h13.y.partial1"
+          }
+        }
+      ],
+      "operation": "add",
+      "outputs": [
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 4,
+          "logicalBytes": 128,
+          "name": "y",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 576,
+            "tensor": "y"
+          }
+        }
+      ],
+      "scratchBytes": 0,
+      "taskDescriptors": 1
+    },
+    {
+      "bytes": 4736,
+      "constantBytes": 0,
+      "constantInputs": {
+      },
+      "constantOffset": 640,
+      "encoder": "h13-source-qualified",
+      "file": "program-30.anec",
+      "inputs": [
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 5,
+          "logicalBytes": 128,
+          "name": "$h13.y.partial0",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 640,
+            "tensor": "$h13.y.partial0"
+          }
+        },
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 6,
+          "logicalBytes": 128,
+          "name": "$h13.y.partial1",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 640,
+            "tensor": "$h13.y.partial1"
+          }
+        }
+      ],
+      "operation": "add",
+      "outputs": [
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 4,
+          "logicalBytes": 128,
+          "name": "y",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 640,
+            "tensor": "y"
+          }
+        }
+      ],
+      "scratchBytes": 0,
+      "taskDescriptors": 1
+    },
+    {
+      "bytes": 4736,
+      "constantBytes": 0,
+      "constantInputs": {
+      },
+      "constantOffset": 640,
+      "encoder": "h13-source-qualified",
+      "file": "program-31.anec",
+      "inputs": [
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 5,
+          "logicalBytes": 128,
+          "name": "$h13.y.partial0",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 704,
+            "tensor": "$h13.y.partial0"
+          }
+        },
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 6,
+          "logicalBytes": 128,
+          "name": "$h13.y.partial1",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 704,
+            "tensor": "$h13.y.partial1"
+          }
+        }
+      ],
+      "operation": "add",
+      "outputs": [
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 4,
+          "logicalBytes": 128,
+          "name": "y",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 704,
+            "tensor": "y"
+          }
+        }
+      ],
+      "scratchBytes": 0,
+      "taskDescriptors": 1
+    },
+    {
+      "bytes": 4736,
+      "constantBytes": 0,
+      "constantInputs": {
+      },
+      "constantOffset": 640,
+      "encoder": "h13-source-qualified",
+      "file": "program-32.anec",
+      "inputs": [
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 5,
+          "logicalBytes": 128,
+          "name": "$h13.y.partial0",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 768,
+            "tensor": "$h13.y.partial0"
+          }
+        },
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 6,
+          "logicalBytes": 128,
+          "name": "$h13.y.partial1",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 768,
+            "tensor": "$h13.y.partial1"
+          }
+        }
+      ],
+      "operation": "add",
+      "outputs": [
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 4,
+          "logicalBytes": 128,
+          "name": "y",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 768,
+            "tensor": "y"
+          }
+        }
+      ],
+      "scratchBytes": 0,
+      "taskDescriptors": 1
+    },
+    {
+      "bytes": 4736,
+      "constantBytes": 0,
+      "constantInputs": {
+      },
+      "constantOffset": 640,
+      "encoder": "h13-source-qualified",
+      "file": "program-33.anec",
+      "inputs": [
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 5,
+          "logicalBytes": 128,
+          "name": "$h13.y.partial0",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 832,
+            "tensor": "$h13.y.partial0"
+          }
+        },
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 6,
+          "logicalBytes": 128,
+          "name": "$h13.y.partial1",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 832,
+            "tensor": "$h13.y.partial1"
+          }
+        }
+      ],
+      "operation": "add",
+      "outputs": [
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 4,
+          "logicalBytes": 128,
+          "name": "y",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 832,
+            "tensor": "y"
+          }
+        }
+      ],
+      "scratchBytes": 0,
+      "taskDescriptors": 1
+    },
+    {
+      "bytes": 4736,
+      "constantBytes": 0,
+      "constantInputs": {
+      },
+      "constantOffset": 640,
+      "encoder": "h13-source-qualified",
+      "file": "program-34.anec",
+      "inputs": [
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 5,
+          "logicalBytes": 128,
+          "name": "$h13.y.partial0",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 896,
+            "tensor": "$h13.y.partial0"
+          }
+        },
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 6,
+          "logicalBytes": 128,
+          "name": "$h13.y.partial1",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 896,
+            "tensor": "$h13.y.partial1"
+          }
+        }
+      ],
+      "operation": "add",
+      "outputs": [
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 4,
+          "logicalBytes": 128,
+          "name": "y",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 896,
+            "tensor": "y"
+          }
+        }
+      ],
+      "scratchBytes": 0,
+      "taskDescriptors": 1
+    },
+    {
+      "bytes": 4736,
+      "constantBytes": 0,
+      "constantInputs": {
+      },
+      "constantOffset": 640,
+      "encoder": "h13-source-qualified",
+      "file": "program-35.anec",
+      "inputs": [
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 5,
+          "logicalBytes": 128,
+          "name": "$h13.y.partial0",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 960,
+            "tensor": "$h13.y.partial0"
+          }
+        },
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 6,
+          "logicalBytes": 128,
+          "name": "$h13.y.partial1",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 960,
+            "tensor": "$h13.y.partial1"
+          }
+        }
+      ],
+      "operation": "add",
+      "outputs": [
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 4,
+          "logicalBytes": 128,
+          "name": "y",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 960,
+            "tensor": "y"
+          }
+        }
+      ],
+      "scratchBytes": 0,
+      "taskDescriptors": 1
+    },
+    {
+      "bytes": 4736,
+      "constantBytes": 0,
+      "constantInputs": {
+      },
+      "constantOffset": 640,
+      "encoder": "h13-source-qualified",
+      "file": "program-36.anec",
+      "inputs": [
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 5,
+          "logicalBytes": 128,
+          "name": "$h13.y.partial0",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 1024,
+            "tensor": "$h13.y.partial0"
+          }
+        },
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 6,
+          "logicalBytes": 128,
+          "name": "$h13.y.partial1",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 1024,
+            "tensor": "$h13.y.partial1"
+          }
+        }
+      ],
+      "operation": "add",
+      "outputs": [
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 4,
+          "logicalBytes": 128,
+          "name": "y",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 1024,
+            "tensor": "y"
+          }
+        }
+      ],
+      "scratchBytes": 0,
+      "taskDescriptors": 1
+    },
+    {
+      "bytes": 4736,
+      "constantBytes": 0,
+      "constantInputs": {
+      },
+      "constantOffset": 640,
+      "encoder": "h13-source-qualified",
+      "file": "program-37.anec",
+      "inputs": [
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 5,
+          "logicalBytes": 128,
+          "name": "$h13.y.partial0",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 1088,
+            "tensor": "$h13.y.partial0"
+          }
+        },
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 6,
+          "logicalBytes": 128,
+          "name": "$h13.y.partial1",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 1088,
+            "tensor": "$h13.y.partial1"
+          }
+        }
+      ],
+      "operation": "add",
+      "outputs": [
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 4,
+          "logicalBytes": 128,
+          "name": "y",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 1088,
+            "tensor": "y"
+          }
+        }
+      ],
+      "scratchBytes": 0,
+      "taskDescriptors": 1
+    },
+    {
+      "bytes": 4736,
+      "constantBytes": 0,
+      "constantInputs": {
+      },
+      "constantOffset": 640,
+      "encoder": "h13-source-qualified",
+      "file": "program-38.anec",
+      "inputs": [
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 5,
+          "logicalBytes": 128,
+          "name": "$h13.y.partial0",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 1152,
+            "tensor": "$h13.y.partial0"
+          }
+        },
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 6,
+          "logicalBytes": 128,
+          "name": "$h13.y.partial1",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 1152,
+            "tensor": "$h13.y.partial1"
+          }
+        }
+      ],
+      "operation": "add",
+      "outputs": [
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 4,
+          "logicalBytes": 128,
+          "name": "y",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 1152,
+            "tensor": "y"
+          }
+        }
+      ],
+      "scratchBytes": 0,
+      "taskDescriptors": 1
+    },
+    {
+      "bytes": 4736,
+      "constantBytes": 0,
+      "constantInputs": {
+      },
+      "constantOffset": 640,
+      "encoder": "h13-source-qualified",
+      "file": "program-39.anec",
+      "inputs": [
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 5,
+          "logicalBytes": 128,
+          "name": "$h13.y.partial0",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 1216,
+            "tensor": "$h13.y.partial0"
+          }
+        },
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 6,
+          "logicalBytes": 128,
+          "name": "$h13.y.partial1",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 1216,
+            "tensor": "$h13.y.partial1"
+          }
+        }
+      ],
+      "operation": "add",
+      "outputs": [
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 4,
+          "logicalBytes": 128,
+          "name": "y",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 1216,
+            "tensor": "y"
+          }
+        }
+      ],
+      "scratchBytes": 0,
+      "taskDescriptors": 1
+    },
+    {
+      "bytes": 4736,
+      "constantBytes": 0,
+      "constantInputs": {
+      },
+      "constantOffset": 640,
+      "encoder": "h13-source-qualified",
+      "file": "program-40.anec",
+      "inputs": [
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 5,
+          "logicalBytes": 128,
+          "name": "$h13.y.partial0",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 1280,
+            "tensor": "$h13.y.partial0"
+          }
+        },
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 6,
+          "logicalBytes": 128,
+          "name": "$h13.y.partial1",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 1280,
+            "tensor": "$h13.y.partial1"
+          }
+        }
+      ],
+      "operation": "add",
+      "outputs": [
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 4,
+          "logicalBytes": 128,
+          "name": "y",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 1280,
+            "tensor": "y"
+          }
+        }
+      ],
+      "scratchBytes": 0,
+      "taskDescriptors": 1
+    },
+    {
+      "bytes": 4736,
+      "constantBytes": 0,
+      "constantInputs": {
+      },
+      "constantOffset": 640,
+      "encoder": "h13-source-qualified",
+      "file": "program-41.anec",
+      "inputs": [
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 5,
+          "logicalBytes": 128,
+          "name": "$h13.y.partial0",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 1344,
+            "tensor": "$h13.y.partial0"
+          }
+        },
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 6,
+          "logicalBytes": 128,
+          "name": "$h13.y.partial1",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 1344,
+            "tensor": "$h13.y.partial1"
+          }
+        }
+      ],
+      "operation": "add",
+      "outputs": [
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 4,
+          "logicalBytes": 128,
+          "name": "y",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 1344,
+            "tensor": "y"
+          }
+        }
+      ],
+      "scratchBytes": 0,
+      "taskDescriptors": 1
+    },
+    {
+      "bytes": 4736,
+      "constantBytes": 0,
+      "constantInputs": {
+      },
+      "constantOffset": 640,
+      "encoder": "h13-source-qualified",
+      "file": "program-42.anec",
+      "inputs": [
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 5,
+          "logicalBytes": 128,
+          "name": "$h13.y.partial0",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 1408,
+            "tensor": "$h13.y.partial0"
+          }
+        },
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 6,
+          "logicalBytes": 128,
+          "name": "$h13.y.partial1",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 1408,
+            "tensor": "$h13.y.partial1"
+          }
+        }
+      ],
+      "operation": "add",
+      "outputs": [
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 4,
+          "logicalBytes": 128,
+          "name": "y",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 1408,
+            "tensor": "y"
+          }
+        }
+      ],
+      "scratchBytes": 0,
+      "taskDescriptors": 1
+    },
+    {
+      "bytes": 4736,
+      "constantBytes": 0,
+      "constantInputs": {
+      },
+      "constantOffset": 640,
+      "encoder": "h13-source-qualified",
+      "file": "program-43.anec",
+      "inputs": [
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 5,
+          "logicalBytes": 128,
+          "name": "$h13.y.partial0",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 1472,
+            "tensor": "$h13.y.partial0"
+          }
+        },
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 6,
+          "logicalBytes": 128,
+          "name": "$h13.y.partial1",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 1472,
+            "tensor": "$h13.y.partial1"
+          }
+        }
+      ],
+      "operation": "add",
+      "outputs": [
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 4,
+          "logicalBytes": 128,
+          "name": "y",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 1472,
+            "tensor": "y"
+          }
+        }
+      ],
+      "scratchBytes": 0,
+      "taskDescriptors": 1
+    },
+    {
+      "bytes": 4736,
+      "constantBytes": 0,
+      "constantInputs": {
+      },
+      "constantOffset": 640,
+      "encoder": "h13-source-qualified",
+      "file": "program-44.anec",
+      "inputs": [
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 5,
+          "logicalBytes": 128,
+          "name": "$h13.y.partial0",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 1536,
+            "tensor": "$h13.y.partial0"
+          }
+        },
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 6,
+          "logicalBytes": 128,
+          "name": "$h13.y.partial1",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 1536,
+            "tensor": "$h13.y.partial1"
+          }
+        }
+      ],
+      "operation": "add",
+      "outputs": [
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 4,
+          "logicalBytes": 128,
+          "name": "y",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 1536,
+            "tensor": "y"
+          }
+        }
+      ],
+      "scratchBytes": 0,
+      "taskDescriptors": 1
+    },
+    {
+      "bytes": 4736,
+      "constantBytes": 0,
+      "constantInputs": {
+      },
+      "constantOffset": 640,
+      "encoder": "h13-source-qualified",
+      "file": "program-45.anec",
+      "inputs": [
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 5,
+          "logicalBytes": 128,
+          "name": "$h13.y.partial0",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 1600,
+            "tensor": "$h13.y.partial0"
+          }
+        },
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 6,
+          "logicalBytes": 128,
+          "name": "$h13.y.partial1",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 1600,
+            "tensor": "$h13.y.partial1"
+          }
+        }
+      ],
+      "operation": "add",
+      "outputs": [
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 4,
+          "logicalBytes": 128,
+          "name": "y",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 1600,
+            "tensor": "y"
+          }
+        }
+      ],
+      "scratchBytes": 0,
+      "taskDescriptors": 1
+    },
+    {
+      "bytes": 4736,
+      "constantBytes": 0,
+      "constantInputs": {
+      },
+      "constantOffset": 640,
+      "encoder": "h13-source-qualified",
+      "file": "program-46.anec",
+      "inputs": [
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 5,
+          "logicalBytes": 128,
+          "name": "$h13.y.partial0",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 1664,
+            "tensor": "$h13.y.partial0"
+          }
+        },
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 6,
+          "logicalBytes": 128,
+          "name": "$h13.y.partial1",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 1664,
+            "tensor": "$h13.y.partial1"
+          }
+        }
+      ],
+      "operation": "add",
+      "outputs": [
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 4,
+          "logicalBytes": 128,
+          "name": "y",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 1664,
+            "tensor": "y"
+          }
+        }
+      ],
+      "scratchBytes": 0,
+      "taskDescriptors": 1
+    },
+    {
+      "bytes": 4736,
+      "constantBytes": 0,
+      "constantInputs": {
+      },
+      "constantOffset": 640,
+      "encoder": "h13-source-qualified",
+      "file": "program-47.anec",
+      "inputs": [
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 5,
+          "logicalBytes": 128,
+          "name": "$h13.y.partial0",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 1728,
+            "tensor": "$h13.y.partial0"
+          }
+        },
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 6,
+          "logicalBytes": 128,
+          "name": "$h13.y.partial1",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 1728,
+            "tensor": "$h13.y.partial1"
+          }
+        }
+      ],
+      "operation": "add",
+      "outputs": [
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 4,
+          "logicalBytes": 128,
+          "name": "y",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 1728,
+            "tensor": "y"
+          }
+        }
+      ],
+      "scratchBytes": 0,
+      "taskDescriptors": 1
+    },
+    {
+      "bytes": 4736,
+      "constantBytes": 0,
+      "constantInputs": {
+      },
+      "constantOffset": 640,
+      "encoder": "h13-source-qualified",
+      "file": "program-48.anec",
+      "inputs": [
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 5,
+          "logicalBytes": 128,
+          "name": "$h13.y.partial0",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 1792,
+            "tensor": "$h13.y.partial0"
+          }
+        },
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 6,
+          "logicalBytes": 128,
+          "name": "$h13.y.partial1",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 1792,
+            "tensor": "$h13.y.partial1"
+          }
+        }
+      ],
+      "operation": "add",
+      "outputs": [
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 4,
+          "logicalBytes": 128,
+          "name": "y",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 1792,
+            "tensor": "y"
+          }
+        }
+      ],
+      "scratchBytes": 0,
+      "taskDescriptors": 1
+    },
+    {
+      "bytes": 4736,
+      "constantBytes": 0,
+      "constantInputs": {
+      },
+      "constantOffset": 640,
+      "encoder": "h13-source-qualified",
+      "file": "program-49.anec",
+      "inputs": [
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 5,
+          "logicalBytes": 128,
+          "name": "$h13.y.partial0",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 1856,
+            "tensor": "$h13.y.partial0"
+          }
+        },
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 6,
+          "logicalBytes": 128,
+          "name": "$h13.y.partial1",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 1856,
+            "tensor": "$h13.y.partial1"
+          }
+        }
+      ],
+      "operation": "add",
+      "outputs": [
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 4,
+          "logicalBytes": 128,
+          "name": "y",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 1856,
+            "tensor": "y"
+          }
+        }
+      ],
+      "scratchBytes": 0,
+      "taskDescriptors": 1
+    },
+    {
+      "bytes": 4736,
+      "constantBytes": 0,
+      "constantInputs": {
+      },
+      "constantOffset": 640,
+      "encoder": "h13-source-qualified",
+      "file": "program-50.anec",
+      "inputs": [
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 5,
+          "logicalBytes": 128,
+          "name": "$h13.y.partial0",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 1920,
+            "tensor": "$h13.y.partial0"
+          }
+        },
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 6,
+          "logicalBytes": 128,
+          "name": "$h13.y.partial1",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 1920,
+            "tensor": "$h13.y.partial1"
+          }
+        }
+      ],
+      "operation": "add",
+      "outputs": [
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 4,
+          "logicalBytes": 128,
+          "name": "y",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 1920,
+            "tensor": "y"
+          }
+        }
+      ],
+      "scratchBytes": 0,
+      "taskDescriptors": 1
+    },
+    {
+      "bytes": 4736,
+      "constantBytes": 0,
+      "constantInputs": {
+      },
+      "constantOffset": 640,
+      "encoder": "h13-source-qualified",
+      "file": "program-51.anec",
+      "inputs": [
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 5,
+          "logicalBytes": 128,
+          "name": "$h13.y.partial0",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 1984,
+            "tensor": "$h13.y.partial0"
+          }
+        },
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 6,
+          "logicalBytes": 128,
+          "name": "$h13.y.partial1",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 1984,
+            "tensor": "$h13.y.partial1"
+          }
+        }
+      ],
+      "operation": "add",
+      "outputs": [
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 4,
+          "logicalBytes": 128,
+          "name": "y",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 1984,
+            "tensor": "y"
+          }
+        }
+      ],
+      "scratchBytes": 0,
+      "taskDescriptors": 1
+    },
+    {
+      "bytes": 4736,
+      "constantBytes": 0,
+      "constantInputs": {
+      },
+      "constantOffset": 640,
+      "encoder": "h13-source-qualified",
+      "file": "program-52.anec",
+      "inputs": [
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 5,
+          "logicalBytes": 128,
+          "name": "$h13.y.partial0",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 2048,
+            "tensor": "$h13.y.partial0"
+          }
+        },
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 6,
+          "logicalBytes": 128,
+          "name": "$h13.y.partial1",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 2048,
+            "tensor": "$h13.y.partial1"
+          }
+        }
+      ],
+      "operation": "add",
+      "outputs": [
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 4,
+          "logicalBytes": 128,
+          "name": "y",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 2048,
+            "tensor": "y"
+          }
+        }
+      ],
+      "scratchBytes": 0,
+      "taskDescriptors": 1
+    },
+    {
+      "bytes": 4736,
+      "constantBytes": 0,
+      "constantInputs": {
+      },
+      "constantOffset": 640,
+      "encoder": "h13-source-qualified",
+      "file": "program-53.anec",
+      "inputs": [
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 5,
+          "logicalBytes": 128,
+          "name": "$h13.y.partial0",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 2112,
+            "tensor": "$h13.y.partial0"
+          }
+        },
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 6,
+          "logicalBytes": 128,
+          "name": "$h13.y.partial1",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 2112,
+            "tensor": "$h13.y.partial1"
+          }
+        }
+      ],
+      "operation": "add",
+      "outputs": [
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 4,
+          "logicalBytes": 128,
+          "name": "y",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 2112,
+            "tensor": "y"
+          }
+        }
+      ],
+      "scratchBytes": 0,
+      "taskDescriptors": 1
+    },
+    {
+      "bytes": 4736,
+      "constantBytes": 0,
+      "constantInputs": {
+      },
+      "constantOffset": 640,
+      "encoder": "h13-source-qualified",
+      "file": "program-54.anec",
+      "inputs": [
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 5,
+          "logicalBytes": 128,
+          "name": "$h13.y.partial0",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 2176,
+            "tensor": "$h13.y.partial0"
+          }
+        },
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 6,
+          "logicalBytes": 128,
+          "name": "$h13.y.partial1",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 2176,
+            "tensor": "$h13.y.partial1"
+          }
+        }
+      ],
+      "operation": "add",
+      "outputs": [
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 4,
+          "logicalBytes": 128,
+          "name": "y",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 2176,
+            "tensor": "y"
+          }
+        }
+      ],
+      "scratchBytes": 0,
+      "taskDescriptors": 1
+    },
+    {
+      "bytes": 4736,
+      "constantBytes": 0,
+      "constantInputs": {
+      },
+      "constantOffset": 640,
+      "encoder": "h13-source-qualified",
+      "file": "program-55.anec",
+      "inputs": [
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 5,
+          "logicalBytes": 128,
+          "name": "$h13.y.partial0",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 2240,
+            "tensor": "$h13.y.partial0"
+          }
+        },
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 6,
+          "logicalBytes": 128,
+          "name": "$h13.y.partial1",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 2240,
+            "tensor": "$h13.y.partial1"
+          }
+        }
+      ],
+      "operation": "add",
+      "outputs": [
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 4,
+          "logicalBytes": 128,
+          "name": "y",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 2240,
+            "tensor": "y"
+          }
+        }
+      ],
+      "scratchBytes": 0,
+      "taskDescriptors": 1
+    },
+    {
+      "bytes": 4736,
+      "constantBytes": 0,
+      "constantInputs": {
+      },
+      "constantOffset": 640,
+      "encoder": "h13-source-qualified",
+      "file": "program-56.anec",
+      "inputs": [
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 5,
+          "logicalBytes": 128,
+          "name": "$h13.y.partial0",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 2304,
+            "tensor": "$h13.y.partial0"
+          }
+        },
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 6,
+          "logicalBytes": 128,
+          "name": "$h13.y.partial1",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 2304,
+            "tensor": "$h13.y.partial1"
+          }
+        }
+      ],
+      "operation": "add",
+      "outputs": [
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 4,
+          "logicalBytes": 128,
+          "name": "y",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 2304,
+            "tensor": "y"
+          }
+        }
+      ],
+      "scratchBytes": 0,
+      "taskDescriptors": 1
+    },
+    {
+      "bytes": 4736,
+      "constantBytes": 0,
+      "constantInputs": {
+      },
+      "constantOffset": 640,
+      "encoder": "h13-source-qualified",
+      "file": "program-57.anec",
+      "inputs": [
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 5,
+          "logicalBytes": 128,
+          "name": "$h13.y.partial0",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 2368,
+            "tensor": "$h13.y.partial0"
+          }
+        },
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 6,
+          "logicalBytes": 128,
+          "name": "$h13.y.partial1",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 2368,
+            "tensor": "$h13.y.partial1"
+          }
+        }
+      ],
+      "operation": "add",
+      "outputs": [
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 4,
+          "logicalBytes": 128,
+          "name": "y",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 2368,
+            "tensor": "y"
+          }
+        }
+      ],
+      "scratchBytes": 0,
+      "taskDescriptors": 1
+    },
+    {
+      "bytes": 4736,
+      "constantBytes": 0,
+      "constantInputs": {
+      },
+      "constantOffset": 640,
+      "encoder": "h13-source-qualified",
+      "file": "program-58.anec",
+      "inputs": [
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 5,
+          "logicalBytes": 128,
+          "name": "$h13.y.partial0",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 2432,
+            "tensor": "$h13.y.partial0"
+          }
+        },
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 6,
+          "logicalBytes": 128,
+          "name": "$h13.y.partial1",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 2432,
+            "tensor": "$h13.y.partial1"
+          }
+        }
+      ],
+      "operation": "add",
+      "outputs": [
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 4,
+          "logicalBytes": 128,
+          "name": "y",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 2432,
+            "tensor": "y"
+          }
+        }
+      ],
+      "scratchBytes": 0,
+      "taskDescriptors": 1
+    },
+    {
+      "bytes": 4736,
+      "constantBytes": 0,
+      "constantInputs": {
+      },
+      "constantOffset": 640,
+      "encoder": "h13-source-qualified",
+      "file": "program-59.anec",
+      "inputs": [
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 5,
+          "logicalBytes": 128,
+          "name": "$h13.y.partial0",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 2496,
+            "tensor": "$h13.y.partial0"
+          }
+        },
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 6,
+          "logicalBytes": 128,
+          "name": "$h13.y.partial1",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 2496,
+            "tensor": "$h13.y.partial1"
+          }
+        }
+      ],
+      "operation": "add",
+      "outputs": [
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 4,
+          "logicalBytes": 128,
+          "name": "y",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 2496,
+            "tensor": "y"
+          }
+        }
+      ],
+      "scratchBytes": 0,
+      "taskDescriptors": 1
+    },
+    {
+      "bytes": 4736,
+      "constantBytes": 0,
+      "constantInputs": {
+      },
+      "constantOffset": 640,
+      "encoder": "h13-source-qualified",
+      "file": "program-60.anec",
+      "inputs": [
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 5,
+          "logicalBytes": 128,
+          "name": "$h13.y.partial0",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 2560,
+            "tensor": "$h13.y.partial0"
+          }
+        },
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 6,
+          "logicalBytes": 128,
+          "name": "$h13.y.partial1",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 2560,
+            "tensor": "$h13.y.partial1"
+          }
+        }
+      ],
+      "operation": "add",
+      "outputs": [
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 4,
+          "logicalBytes": 128,
+          "name": "y",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 2560,
+            "tensor": "y"
+          }
+        }
+      ],
+      "scratchBytes": 0,
+      "taskDescriptors": 1
+    },
+    {
+      "bytes": 4736,
+      "constantBytes": 0,
+      "constantInputs": {
+      },
+      "constantOffset": 640,
+      "encoder": "h13-source-qualified",
+      "file": "program-61.anec",
+      "inputs": [
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 5,
+          "logicalBytes": 128,
+          "name": "$h13.y.partial0",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 2624,
+            "tensor": "$h13.y.partial0"
+          }
+        },
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 6,
+          "logicalBytes": 128,
+          "name": "$h13.y.partial1",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 2624,
+            "tensor": "$h13.y.partial1"
+          }
+        }
+      ],
+      "operation": "add",
+      "outputs": [
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 4,
+          "logicalBytes": 128,
+          "name": "y",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 2624,
+            "tensor": "y"
+          }
+        }
+      ],
+      "scratchBytes": 0,
+      "taskDescriptors": 1
+    },
+    {
+      "bytes": 4736,
+      "constantBytes": 0,
+      "constantInputs": {
+      },
+      "constantOffset": 640,
+      "encoder": "h13-source-qualified",
+      "file": "program-62.anec",
+      "inputs": [
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 5,
+          "logicalBytes": 128,
+          "name": "$h13.y.partial0",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 2688,
+            "tensor": "$h13.y.partial0"
+          }
+        },
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 6,
+          "logicalBytes": 128,
+          "name": "$h13.y.partial1",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 2688,
+            "tensor": "$h13.y.partial1"
+          }
+        }
+      ],
+      "operation": "add",
+      "outputs": [
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 4,
+          "logicalBytes": 128,
+          "name": "y",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 2688,
+            "tensor": "y"
+          }
+        }
+      ],
+      "scratchBytes": 0,
+      "taskDescriptors": 1
+    },
+    {
+      "bytes": 4736,
+      "constantBytes": 0,
+      "constantInputs": {
+      },
+      "constantOffset": 640,
+      "encoder": "h13-source-qualified",
+      "file": "program-63.anec",
+      "inputs": [
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 5,
+          "logicalBytes": 128,
+          "name": "$h13.y.partial0",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 2752,
+            "tensor": "$h13.y.partial0"
+          }
+        },
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 6,
+          "logicalBytes": 128,
+          "name": "$h13.y.partial1",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 2752,
+            "tensor": "$h13.y.partial1"
+          }
+        }
+      ],
+      "operation": "add",
+      "outputs": [
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 4,
+          "logicalBytes": 128,
+          "name": "y",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 2752,
+            "tensor": "y"
+          }
+        }
+      ],
+      "scratchBytes": 0,
+      "taskDescriptors": 1
+    },
+    {
+      "bytes": 4736,
+      "constantBytes": 0,
+      "constantInputs": {
+      },
+      "constantOffset": 640,
+      "encoder": "h13-source-qualified",
+      "file": "program-64.anec",
+      "inputs": [
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 5,
+          "logicalBytes": 128,
+          "name": "$h13.y.partial0",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 2816,
+            "tensor": "$h13.y.partial0"
+          }
+        },
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 6,
+          "logicalBytes": 128,
+          "name": "$h13.y.partial1",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 2816,
+            "tensor": "$h13.y.partial1"
+          }
+        }
+      ],
+      "operation": "add",
+      "outputs": [
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 4,
+          "logicalBytes": 128,
+          "name": "y",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 2816,
+            "tensor": "y"
+          }
+        }
+      ],
+      "scratchBytes": 0,
+      "taskDescriptors": 1
+    },
+    {
+      "bytes": 4736,
+      "constantBytes": 0,
+      "constantInputs": {
+      },
+      "constantOffset": 640,
+      "encoder": "h13-source-qualified",
+      "file": "program-65.anec",
+      "inputs": [
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 5,
+          "logicalBytes": 128,
+          "name": "$h13.y.partial0",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 2880,
+            "tensor": "$h13.y.partial0"
+          }
+        },
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 6,
+          "logicalBytes": 128,
+          "name": "$h13.y.partial1",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 2880,
+            "tensor": "$h13.y.partial1"
+          }
+        }
+      ],
+      "operation": "add",
+      "outputs": [
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 4,
+          "logicalBytes": 128,
+          "name": "y",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 2880,
+            "tensor": "y"
+          }
+        }
+      ],
+      "scratchBytes": 0,
+      "taskDescriptors": 1
+    },
+    {
+      "bytes": 4736,
+      "constantBytes": 0,
+      "constantInputs": {
+      },
+      "constantOffset": 640,
+      "encoder": "h13-source-qualified",
+      "file": "program-66.anec",
+      "inputs": [
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 5,
+          "logicalBytes": 128,
+          "name": "$h13.y.partial0",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 2944,
+            "tensor": "$h13.y.partial0"
+          }
+        },
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 6,
+          "logicalBytes": 128,
+          "name": "$h13.y.partial1",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 2944,
+            "tensor": "$h13.y.partial1"
+          }
+        }
+      ],
+      "operation": "add",
+      "outputs": [
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 4,
+          "logicalBytes": 128,
+          "name": "y",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 2944,
+            "tensor": "y"
+          }
+        }
+      ],
+      "scratchBytes": 0,
+      "taskDescriptors": 1
+    },
+    {
+      "bytes": 4736,
+      "constantBytes": 0,
+      "constantInputs": {
+      },
+      "constantOffset": 640,
+      "encoder": "h13-source-qualified",
+      "file": "program-67.anec",
+      "inputs": [
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 5,
+          "logicalBytes": 128,
+          "name": "$h13.y.partial0",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 3008,
+            "tensor": "$h13.y.partial0"
+          }
+        },
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 6,
+          "logicalBytes": 128,
+          "name": "$h13.y.partial1",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 3008,
+            "tensor": "$h13.y.partial1"
+          }
+        }
+      ],
+      "operation": "add",
+      "outputs": [
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 4,
+          "logicalBytes": 128,
+          "name": "y",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 3008,
+            "tensor": "y"
+          }
+        }
+      ],
+      "scratchBytes": 0,
+      "taskDescriptors": 1
+    },
+    {
+      "bytes": 4736,
+      "constantBytes": 0,
+      "constantInputs": {
+      },
+      "constantOffset": 640,
+      "encoder": "h13-source-qualified",
+      "file": "program-68.anec",
+      "inputs": [
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 5,
+          "logicalBytes": 128,
+          "name": "$h13.y.partial0",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 3072,
+            "tensor": "$h13.y.partial0"
+          }
+        },
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 6,
+          "logicalBytes": 128,
+          "name": "$h13.y.partial1",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 3072,
+            "tensor": "$h13.y.partial1"
+          }
+        }
+      ],
+      "operation": "add",
+      "outputs": [
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 4,
+          "logicalBytes": 128,
+          "name": "y",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 3072,
+            "tensor": "y"
+          }
+        }
+      ],
+      "scratchBytes": 0,
+      "taskDescriptors": 1
+    },
+    {
+      "bytes": 4736,
+      "constantBytes": 0,
+      "constantInputs": {
+      },
+      "constantOffset": 640,
+      "encoder": "h13-source-qualified",
+      "file": "program-69.anec",
+      "inputs": [
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 5,
+          "logicalBytes": 128,
+          "name": "$h13.y.partial0",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 3136,
+            "tensor": "$h13.y.partial0"
+          }
+        },
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 6,
+          "logicalBytes": 128,
+          "name": "$h13.y.partial1",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 3136,
+            "tensor": "$h13.y.partial1"
+          }
+        }
+      ],
+      "operation": "add",
+      "outputs": [
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 4,
+          "logicalBytes": 128,
+          "name": "y",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 3136,
+            "tensor": "y"
+          }
+        }
+      ],
+      "scratchBytes": 0,
+      "taskDescriptors": 1
+    },
+    {
+      "bytes": 4736,
+      "constantBytes": 0,
+      "constantInputs": {
+      },
+      "constantOffset": 640,
+      "encoder": "h13-source-qualified",
+      "file": "program-70.anec",
+      "inputs": [
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 5,
+          "logicalBytes": 128,
+          "name": "$h13.y.partial0",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 3200,
+            "tensor": "$h13.y.partial0"
+          }
+        },
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 6,
+          "logicalBytes": 128,
+          "name": "$h13.y.partial1",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 3200,
+            "tensor": "$h13.y.partial1"
+          }
+        }
+      ],
+      "operation": "add",
+      "outputs": [
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 4,
+          "logicalBytes": 128,
+          "name": "y",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 3200,
+            "tensor": "y"
+          }
+        }
+      ],
+      "scratchBytes": 0,
+      "taskDescriptors": 1
+    },
+    {
+      "bytes": 4736,
+      "constantBytes": 0,
+      "constantInputs": {
+      },
+      "constantOffset": 640,
+      "encoder": "h13-source-qualified",
+      "file": "program-71.anec",
+      "inputs": [
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 5,
+          "logicalBytes": 128,
+          "name": "$h13.y.partial0",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 3264,
+            "tensor": "$h13.y.partial0"
+          }
+        },
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 6,
+          "logicalBytes": 128,
+          "name": "$h13.y.partial1",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 3264,
+            "tensor": "$h13.y.partial1"
+          }
+        }
+      ],
+      "operation": "add",
+      "outputs": [
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 4,
+          "logicalBytes": 128,
+          "name": "y",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 3264,
+            "tensor": "y"
+          }
+        }
+      ],
+      "scratchBytes": 0,
+      "taskDescriptors": 1
+    },
+    {
+      "bytes": 4736,
+      "constantBytes": 0,
+      "constantInputs": {
+      },
+      "constantOffset": 640,
+      "encoder": "h13-source-qualified",
+      "file": "program-72.anec",
+      "inputs": [
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 5,
+          "logicalBytes": 128,
+          "name": "$h13.y.partial0",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 3328,
+            "tensor": "$h13.y.partial0"
+          }
+        },
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 6,
+          "logicalBytes": 128,
+          "name": "$h13.y.partial1",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 3328,
+            "tensor": "$h13.y.partial1"
+          }
+        }
+      ],
+      "operation": "add",
+      "outputs": [
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 4,
+          "logicalBytes": 128,
+          "name": "y",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 3328,
+            "tensor": "y"
+          }
+        }
+      ],
+      "scratchBytes": 0,
+      "taskDescriptors": 1
+    },
+    {
+      "bytes": 4736,
+      "constantBytes": 0,
+      "constantInputs": {
+      },
+      "constantOffset": 640,
+      "encoder": "h13-source-qualified",
+      "file": "program-73.anec",
+      "inputs": [
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 5,
+          "logicalBytes": 128,
+          "name": "$h13.y.partial0",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 3392,
+            "tensor": "$h13.y.partial0"
+          }
+        },
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 6,
+          "logicalBytes": 128,
+          "name": "$h13.y.partial1",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 3392,
+            "tensor": "$h13.y.partial1"
+          }
+        }
+      ],
+      "operation": "add",
+      "outputs": [
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 4,
+          "logicalBytes": 128,
+          "name": "y",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 3392,
+            "tensor": "y"
+          }
+        }
+      ],
+      "scratchBytes": 0,
+      "taskDescriptors": 1
+    },
+    {
+      "bytes": 4736,
+      "constantBytes": 0,
+      "constantInputs": {
+      },
+      "constantOffset": 640,
+      "encoder": "h13-source-qualified",
+      "file": "program-74.anec",
+      "inputs": [
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 5,
+          "logicalBytes": 128,
+          "name": "$h13.y.partial0",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 3456,
+            "tensor": "$h13.y.partial0"
+          }
+        },
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 6,
+          "logicalBytes": 128,
+          "name": "$h13.y.partial1",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 3456,
+            "tensor": "$h13.y.partial1"
+          }
+        }
+      ],
+      "operation": "add",
+      "outputs": [
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 4,
+          "logicalBytes": 128,
+          "name": "y",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 3456,
+            "tensor": "y"
+          }
+        }
+      ],
+      "scratchBytes": 0,
+      "taskDescriptors": 1
+    },
+    {
+      "bytes": 4736,
+      "constantBytes": 0,
+      "constantInputs": {
+      },
+      "constantOffset": 640,
+      "encoder": "h13-source-qualified",
+      "file": "program-75.anec",
+      "inputs": [
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 5,
+          "logicalBytes": 128,
+          "name": "$h13.y.partial0",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 3520,
+            "tensor": "$h13.y.partial0"
+          }
+        },
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 6,
+          "logicalBytes": 128,
+          "name": "$h13.y.partial1",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 3520,
+            "tensor": "$h13.y.partial1"
+          }
+        }
+      ],
+      "operation": "add",
+      "outputs": [
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 4,
+          "logicalBytes": 128,
+          "name": "y",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 3520,
+            "tensor": "y"
+          }
+        }
+      ],
+      "scratchBytes": 0,
+      "taskDescriptors": 1
+    },
+    {
+      "bytes": 4736,
+      "constantBytes": 0,
+      "constantInputs": {
+      },
+      "constantOffset": 640,
+      "encoder": "h13-source-qualified",
+      "file": "program-76.anec",
+      "inputs": [
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 5,
+          "logicalBytes": 128,
+          "name": "$h13.y.partial0",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 3584,
+            "tensor": "$h13.y.partial0"
+          }
+        },
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 6,
+          "logicalBytes": 128,
+          "name": "$h13.y.partial1",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 3584,
+            "tensor": "$h13.y.partial1"
+          }
+        }
+      ],
+      "operation": "add",
+      "outputs": [
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 4,
+          "logicalBytes": 128,
+          "name": "y",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 3584,
+            "tensor": "y"
+          }
+        }
+      ],
+      "scratchBytes": 0,
+      "taskDescriptors": 1
+    },
+    {
+      "bytes": 4736,
+      "constantBytes": 0,
+      "constantInputs": {
+      },
+      "constantOffset": 640,
+      "encoder": "h13-source-qualified",
+      "file": "program-77.anec",
+      "inputs": [
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 5,
+          "logicalBytes": 128,
+          "name": "$h13.y.partial0",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 3648,
+            "tensor": "$h13.y.partial0"
+          }
+        },
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 6,
+          "logicalBytes": 128,
+          "name": "$h13.y.partial1",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 3648,
+            "tensor": "$h13.y.partial1"
+          }
+        }
+      ],
+      "operation": "add",
+      "outputs": [
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 4,
+          "logicalBytes": 128,
+          "name": "y",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 3648,
+            "tensor": "y"
+          }
+        }
+      ],
+      "scratchBytes": 0,
+      "taskDescriptors": 1
+    },
+    {
+      "bytes": 4736,
+      "constantBytes": 0,
+      "constantInputs": {
+      },
+      "constantOffset": 640,
+      "encoder": "h13-source-qualified",
+      "file": "program-78.anec",
+      "inputs": [
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 5,
+          "logicalBytes": 128,
+          "name": "$h13.y.partial0",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 3712,
+            "tensor": "$h13.y.partial0"
+          }
+        },
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 6,
+          "logicalBytes": 128,
+          "name": "$h13.y.partial1",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 3712,
+            "tensor": "$h13.y.partial1"
+          }
+        }
+      ],
+      "operation": "add",
+      "outputs": [
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 4,
+          "logicalBytes": 128,
+          "name": "y",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 3712,
+            "tensor": "y"
+          }
+        }
+      ],
+      "scratchBytes": 0,
+      "taskDescriptors": 1
+    },
+    {
+      "bytes": 4736,
+      "constantBytes": 0,
+      "constantInputs": {
+      },
+      "constantOffset": 640,
+      "encoder": "h13-source-qualified",
+      "file": "program-79.anec",
+      "inputs": [
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 5,
+          "logicalBytes": 128,
+          "name": "$h13.y.partial0",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 3776,
+            "tensor": "$h13.y.partial0"
+          }
+        },
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 6,
+          "logicalBytes": 128,
+          "name": "$h13.y.partial1",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 3776,
+            "tensor": "$h13.y.partial1"
+          }
+        }
+      ],
+      "operation": "add",
+      "outputs": [
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 4,
+          "logicalBytes": 128,
+          "name": "y",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 3776,
+            "tensor": "y"
+          }
+        }
+      ],
+      "scratchBytes": 0,
+      "taskDescriptors": 1
+    },
+    {
+      "bytes": 4736,
+      "constantBytes": 0,
+      "constantInputs": {
+      },
+      "constantOffset": 640,
+      "encoder": "h13-source-qualified",
+      "file": "program-80.anec",
+      "inputs": [
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 5,
+          "logicalBytes": 128,
+          "name": "$h13.y.partial0",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 3840,
+            "tensor": "$h13.y.partial0"
+          }
+        },
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 6,
+          "logicalBytes": 128,
+          "name": "$h13.y.partial1",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 3840,
+            "tensor": "$h13.y.partial1"
+          }
+        }
+      ],
+      "operation": "add",
+      "outputs": [
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 4,
+          "logicalBytes": 128,
+          "name": "y",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 3840,
+            "tensor": "y"
+          }
+        }
+      ],
+      "scratchBytes": 0,
+      "taskDescriptors": 1
+    },
+    {
+      "bytes": 4736,
+      "constantBytes": 0,
+      "constantInputs": {
+      },
+      "constantOffset": 640,
+      "encoder": "h13-source-qualified",
+      "file": "program-81.anec",
+      "inputs": [
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 5,
+          "logicalBytes": 128,
+          "name": "$h13.y.partial0",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 3904,
+            "tensor": "$h13.y.partial0"
+          }
+        },
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 6,
+          "logicalBytes": 128,
+          "name": "$h13.y.partial1",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 3904,
+            "tensor": "$h13.y.partial1"
+          }
+        }
+      ],
+      "operation": "add",
+      "outputs": [
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 4,
+          "logicalBytes": 128,
+          "name": "y",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 3904,
+            "tensor": "y"
+          }
+        }
+      ],
+      "scratchBytes": 0,
+      "taskDescriptors": 1
+    },
+    {
+      "bytes": 4736,
+      "constantBytes": 0,
+      "constantInputs": {
+      },
+      "constantOffset": 640,
+      "encoder": "h13-source-qualified",
+      "file": "program-82.anec",
+      "inputs": [
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 5,
+          "logicalBytes": 128,
+          "name": "$h13.y.partial0",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 3968,
+            "tensor": "$h13.y.partial0"
+          }
+        },
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 6,
+          "logicalBytes": 128,
+          "name": "$h13.y.partial1",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 3968,
+            "tensor": "$h13.y.partial1"
+          }
+        }
+      ],
+      "operation": "add",
+      "outputs": [
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 4,
+          "logicalBytes": 128,
+          "name": "y",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 3968,
+            "tensor": "y"
+          }
+        }
+      ],
+      "scratchBytes": 0,
+      "taskDescriptors": 1
+    },
+    {
+      "bytes": 4736,
+      "constantBytes": 0,
+      "constantInputs": {
+      },
+      "constantOffset": 640,
+      "encoder": "h13-source-qualified",
+      "file": "program-83.anec",
+      "inputs": [
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 5,
+          "logicalBytes": 128,
+          "name": "$h13.y.partial0",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 4032,
+            "tensor": "$h13.y.partial0"
+          }
+        },
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 6,
+          "logicalBytes": 128,
+          "name": "$h13.y.partial1",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 4032,
+            "tensor": "$h13.y.partial1"
+          }
+        }
+      ],
+      "operation": "add",
+      "outputs": [
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 4,
+          "logicalBytes": 128,
+          "name": "y",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 4032,
+            "tensor": "y"
+          }
+        }
+      ],
+      "scratchBytes": 0,
+      "taskDescriptors": 1
+    },
+    {
+      "bytes": 4736,
+      "constantBytes": 0,
+      "constantInputs": {
+      },
+      "constantOffset": 640,
+      "encoder": "h13-source-qualified",
+      "file": "program-84.anec",
+      "inputs": [
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 5,
+          "logicalBytes": 128,
+          "name": "$h13.y.partial0",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 4096,
+            "tensor": "$h13.y.partial0"
+          }
+        },
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 6,
+          "logicalBytes": 128,
+          "name": "$h13.y.partial1",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 4096,
+            "tensor": "$h13.y.partial1"
+          }
+        }
+      ],
+      "operation": "add",
+      "outputs": [
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 4,
+          "logicalBytes": 128,
+          "name": "y",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 4096,
+            "tensor": "y"
+          }
+        }
+      ],
+      "scratchBytes": 0,
+      "taskDescriptors": 1
+    },
+    {
+      "bytes": 4736,
+      "constantBytes": 0,
+      "constantInputs": {
+      },
+      "constantOffset": 640,
+      "encoder": "h13-source-qualified",
+      "file": "program-85.anec",
+      "inputs": [
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 5,
+          "logicalBytes": 128,
+          "name": "$h13.y.partial0",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 4160,
+            "tensor": "$h13.y.partial0"
+          }
+        },
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 6,
+          "logicalBytes": 128,
+          "name": "$h13.y.partial1",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 4160,
+            "tensor": "$h13.y.partial1"
+          }
+        }
+      ],
+      "operation": "add",
+      "outputs": [
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 4,
+          "logicalBytes": 128,
+          "name": "y",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 4160,
+            "tensor": "y"
+          }
+        }
+      ],
+      "scratchBytes": 0,
+      "taskDescriptors": 1
+    },
+    {
+      "bytes": 4736,
+      "constantBytes": 0,
+      "constantInputs": {
+      },
+      "constantOffset": 640,
+      "encoder": "h13-source-qualified",
+      "file": "program-86.anec",
+      "inputs": [
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 5,
+          "logicalBytes": 128,
+          "name": "$h13.y.partial0",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 4224,
+            "tensor": "$h13.y.partial0"
+          }
+        },
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 6,
+          "logicalBytes": 128,
+          "name": "$h13.y.partial1",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 4224,
+            "tensor": "$h13.y.partial1"
+          }
+        }
+      ],
+      "operation": "add",
+      "outputs": [
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 4,
+          "logicalBytes": 128,
+          "name": "y",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 4224,
+            "tensor": "y"
+          }
+        }
+      ],
+      "scratchBytes": 0,
+      "taskDescriptors": 1
+    },
+    {
+      "bytes": 4736,
+      "constantBytes": 0,
+      "constantInputs": {
+      },
+      "constantOffset": 640,
+      "encoder": "h13-source-qualified",
+      "file": "program-87.anec",
+      "inputs": [
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 5,
+          "logicalBytes": 128,
+          "name": "$h13.y.partial0",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 4288,
+            "tensor": "$h13.y.partial0"
+          }
+        },
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 6,
+          "logicalBytes": 128,
+          "name": "$h13.y.partial1",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 4288,
+            "tensor": "$h13.y.partial1"
+          }
+        }
+      ],
+      "operation": "add",
+      "outputs": [
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 4,
+          "logicalBytes": 128,
+          "name": "y",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 4288,
+            "tensor": "y"
+          }
+        }
+      ],
+      "scratchBytes": 0,
+      "taskDescriptors": 1
+    },
+    {
+      "bytes": 4736,
+      "constantBytes": 0,
+      "constantInputs": {
+      },
+      "constantOffset": 640,
+      "encoder": "h13-source-qualified",
+      "file": "program-88.anec",
+      "inputs": [
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 5,
+          "logicalBytes": 128,
+          "name": "$h13.y.partial0",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 4352,
+            "tensor": "$h13.y.partial0"
+          }
+        },
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 6,
+          "logicalBytes": 128,
+          "name": "$h13.y.partial1",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 4352,
+            "tensor": "$h13.y.partial1"
+          }
+        }
+      ],
+      "operation": "add",
+      "outputs": [
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 4,
+          "logicalBytes": 128,
+          "name": "y",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 4352,
+            "tensor": "y"
+          }
+        }
+      ],
+      "scratchBytes": 0,
+      "taskDescriptors": 1
+    },
+    {
+      "bytes": 4736,
+      "constantBytes": 0,
+      "constantInputs": {
+      },
+      "constantOffset": 640,
+      "encoder": "h13-source-qualified",
+      "file": "program-89.anec",
+      "inputs": [
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 5,
+          "logicalBytes": 128,
+          "name": "$h13.y.partial0",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 4416,
+            "tensor": "$h13.y.partial0"
+          }
+        },
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 6,
+          "logicalBytes": 128,
+          "name": "$h13.y.partial1",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 4416,
+            "tensor": "$h13.y.partial1"
+          }
+        }
+      ],
+      "operation": "add",
+      "outputs": [
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 4,
+          "logicalBytes": 128,
+          "name": "y",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 4416,
+            "tensor": "y"
+          }
+        }
+      ],
+      "scratchBytes": 0,
+      "taskDescriptors": 1
+    },
+    {
+      "bytes": 4736,
+      "constantBytes": 0,
+      "constantInputs": {
+      },
+      "constantOffset": 640,
+      "encoder": "h13-source-qualified",
+      "file": "program-90.anec",
+      "inputs": [
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 5,
+          "logicalBytes": 128,
+          "name": "$h13.y.partial0",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 4480,
+            "tensor": "$h13.y.partial0"
+          }
+        },
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 6,
+          "logicalBytes": 128,
+          "name": "$h13.y.partial1",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 4480,
+            "tensor": "$h13.y.partial1"
+          }
+        }
+      ],
+      "operation": "add",
+      "outputs": [
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 4,
+          "logicalBytes": 128,
+          "name": "y",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 4480,
+            "tensor": "y"
+          }
+        }
+      ],
+      "scratchBytes": 0,
+      "taskDescriptors": 1
+    },
+    {
+      "bytes": 4736,
+      "constantBytes": 0,
+      "constantInputs": {
+      },
+      "constantOffset": 640,
+      "encoder": "h13-source-qualified",
+      "file": "program-91.anec",
+      "inputs": [
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 5,
+          "logicalBytes": 128,
+          "name": "$h13.y.partial0",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 4544,
+            "tensor": "$h13.y.partial0"
+          }
+        },
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 6,
+          "logicalBytes": 128,
+          "name": "$h13.y.partial1",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 4544,
+            "tensor": "$h13.y.partial1"
+          }
+        }
+      ],
+      "operation": "add",
+      "outputs": [
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 4,
+          "logicalBytes": 128,
+          "name": "y",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 4544,
+            "tensor": "y"
+          }
+        }
+      ],
+      "scratchBytes": 0,
+      "taskDescriptors": 1
+    },
+    {
+      "bytes": 4736,
+      "constantBytes": 0,
+      "constantInputs": {
+      },
+      "constantOffset": 640,
+      "encoder": "h13-source-qualified",
+      "file": "program-92.anec",
+      "inputs": [
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 5,
+          "logicalBytes": 128,
+          "name": "$h13.y.partial0",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 4608,
+            "tensor": "$h13.y.partial0"
+          }
+        },
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 6,
+          "logicalBytes": 128,
+          "name": "$h13.y.partial1",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 4608,
+            "tensor": "$h13.y.partial1"
+          }
+        }
+      ],
+      "operation": "add",
+      "outputs": [
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 4,
+          "logicalBytes": 128,
+          "name": "y",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 4608,
+            "tensor": "y"
+          }
+        }
+      ],
+      "scratchBytes": 0,
+      "taskDescriptors": 1
+    },
+    {
+      "bytes": 4736,
+      "constantBytes": 0,
+      "constantInputs": {
+      },
+      "constantOffset": 640,
+      "encoder": "h13-source-qualified",
+      "file": "program-93.anec",
+      "inputs": [
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 5,
+          "logicalBytes": 128,
+          "name": "$h13.y.partial0",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 4672,
+            "tensor": "$h13.y.partial0"
+          }
+        },
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 6,
+          "logicalBytes": 128,
+          "name": "$h13.y.partial1",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 4672,
+            "tensor": "$h13.y.partial1"
+          }
+        }
+      ],
+      "operation": "add",
+      "outputs": [
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 4,
+          "logicalBytes": 128,
+          "name": "y",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 4672,
+            "tensor": "y"
+          }
+        }
+      ],
+      "scratchBytes": 0,
+      "taskDescriptors": 1
+    },
+    {
+      "bytes": 4736,
+      "constantBytes": 0,
+      "constantInputs": {
+      },
+      "constantOffset": 640,
+      "encoder": "h13-source-qualified",
+      "file": "program-94.anec",
+      "inputs": [
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 5,
+          "logicalBytes": 128,
+          "name": "$h13.y.partial0",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 4736,
+            "tensor": "$h13.y.partial0"
+          }
+        },
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 6,
+          "logicalBytes": 128,
+          "name": "$h13.y.partial1",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 4736,
+            "tensor": "$h13.y.partial1"
+          }
+        }
+      ],
+      "operation": "add",
+      "outputs": [
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 4,
+          "logicalBytes": 128,
+          "name": "y",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 4736,
+            "tensor": "y"
+          }
+        }
+      ],
+      "scratchBytes": 0,
+      "taskDescriptors": 1
+    },
+    {
+      "bytes": 4736,
+      "constantBytes": 0,
+      "constantInputs": {
+      },
+      "constantOffset": 640,
+      "encoder": "h13-source-qualified",
+      "file": "program-95.anec",
+      "inputs": [
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 5,
+          "logicalBytes": 128,
+          "name": "$h13.y.partial0",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 4800,
+            "tensor": "$h13.y.partial0"
+          }
+        },
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 6,
+          "logicalBytes": 128,
+          "name": "$h13.y.partial1",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "role": "intermediate",
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 4800,
+            "tensor": "$h13.y.partial1"
+          }
+        }
+      ],
+      "operation": "add",
+      "outputs": [
+        {
+          "allocationBytes": 16384,
+          "dtype": "float16",
+          "index": 4,
+          "logicalBytes": 128,
+          "name": "y",
+          "nchw": [
+            1,
+            64,
+            1,
+            1,
+            64,
+            64
+          ],
+          "shape": [
+            64
+          ],
+          "slice": {
+            "elementCount": 64,
+            "elementOffset": 4800,
+            "tensor": "y"
+          }
+        }
+      ],
+      "scratchBytes": 0,
+      "taskDescriptors": 1
+    }
+  ],
+  "schema": "mil-hwxc.h13-anec-package.v1",
+  "target": "H13",
+  "tensors": {
+    "$h13.y.partial0": {
+      "logicalBytes": 9728,
+      "role": "intermediate",
+      "shape": [
+        1,
+        4864
+      ]
+    },
+    "$h13.y.partial1": {
+      "logicalBytes": 9728,
+      "role": "intermediate",
+      "shape": [
+        1,
+        4864
+      ]
+    },
+    "W": {
+      "logicalBytes": 8716288,
+      "role": "constant",
+      "shape": [
+        4864,
+        896
+      ]
+    },
+    "x": {
+      "logicalBytes": 1792,
+      "role": "input",
+      "shape": [
+        1,
+        896
+      ]
+    },
+    "y": {
+      "accumulation": "chunked-fp16",
+      "logicalBytes": 9728,
+      "role": "output",
+      "shape": [
+        1,
+        4864
+      ]
+    }
+  }
+}

@@ -1,0 +1,75 @@
+{
+  "schema": "mlx-omarchy.ane-crossover-conclusion.v1",
+  "date": "2026-09-10",
+  "hardware": "Apple M1 (G13G B1)",
+  "mlx_build": "0.32.2.dev202609101742+786553",
+  "compiler_commit": "5271ab0b2bc1d9c28b1eb9d3bcfef9773902b57c",
+  "default_path_enabled": false,
+  "env_flag": "MLX_OMARCHY_ANE_REGION",
+  "small_region": {
+    "identity": "MLX fp16 add: [1,512,1,1] + [1,512,1,1] -> [1,512,1,1]",
+    "correctness": "pass: 56 of 56 bit-exact fp16 comparisons against compiled MLX Vulkan",
+    "gpu_median_us": 185.064,
+    "ane_full_median_us": 1225.1995,
+    "ane_to_gpu_ratio": 6.620409696105131,
+    "per_call_pack_unpack_us": 1041.0725,
+    "per_call_pack_unpack_fraction_of_ane_total": 0.8497167196036234,
+    "per_call_pack_unpack_fraction_of_worker_submit": 0.941516966699661,
+    "one_time_worker_setup_us": 85060.476,
+    "pack_unpack_policy": "all measured packing and unpacking is per invocation; none is included in one-time setup",
+    "passes_10_percent_bar": false,
+    "verdict": "reject"
+  },
+  "large_region": {
+    "requested_identity": "fp16 [896,896] @ [896,896] with two runtime operands",
+    "requested_compiler_result": "refused: outside the decoded H13 geometry envelope",
+    "measured_identity": "Qwen layer projection fp16 [1,896] @ constant [4864,896].T -> [1,4864]",
+    "compiled_programs": 96,
+    "correctness": {
+      "ane_against_compiler_oracle": "pass: 23 of 23 at atol=0.02 and rtol=0.02; max_abs=0.00048828125",
+      "mlx_vulkan_against_compiler_oracle": "fail: max_abs=35.5498046875 at atol=0.02 and rtol=0.02"
+    },
+    "gpu_latency_only_median_us": 2829.6675,
+    "ane_full_median_us": 204248.659,
+    "ane_to_gpu_latency_ratio": 72.1811516724138,
+    "per_call_us": {
+      "input_copy": 4.0835,
+      "request_ipc": 33.562,
+      "pack_and_slice_compose": 192367.546,
+      "device_input": 222.5015,
+      "ane_execution": 2225.0135,
+      "device_output": 7837.7675,
+      "final_unpack": 1274.4465,
+      "response_ipc": 89.355,
+      "output_copy": 17.3755
+    },
+    "one_time_us": {
+      "worker_setup": 42584.786,
+      "prepared_96_programs": 32510.879,
+      "constant_pack": 0.0
+    },
+    "passes_10_percent_bar": false,
+    "verdict": "reject; the GPU correctness failure also prevents a valid backend-selection comparison"
+  },
+  "conclusion": {
+    "crossover_observed": false,
+    "source_integration_allowed": false,
+    "selection": "keep ANE graph dispatch disabled",
+    "required_before_reconsideration": [
+      "layout-native or zero-copy tensor exchange",
+      "materially fewer compiled slices",
+      "a larger-region Vulkan result that passes the same numerical oracle"
+    ]
+  },
+  "receipts": [
+    "verdict.json",
+    "large-region.json",
+    "matmul-896-compile-refusal.log",
+    "m1-run-naive.log",
+    "m1-run.log",
+    "m1-state-pre.txt",
+    "m1-state-loaded.txt",
+    "m1-state-post.txt",
+    "mlx-provenance.json"
+  ]
+}

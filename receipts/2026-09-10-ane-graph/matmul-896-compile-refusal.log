@@ -1,0 +1,12 @@
+Command:
+.work/mil-hwx-compiler/build/mil_hwx_compile \
+  receipts/2026-09-10-ane-graph/matmul-896.mil \
+  -o receipts/2026-09-10-ane-graph/package-matmul-896 \
+  --target H13 --program-name matmul896 \
+  --source-commit 5271ab0b2bc1d9c28b1eb9d3bcfef9773902b57c \
+  --compiler-binary-sha256 ceaf24c3bf38f7375b6c2e4caa7e978b0eb5c6d5459aaafbbb758eefdeb0b1ac
+
+Exit status: 65
+
+Output:
+receipts/2026-09-10-ane-graph/matmul-896.mil:7:5: error [h13.matmul-outside-envelope]: H13 matmul with two runtime operands needs a decoded geometry; this compiler accepts only constant-weight matmul inside its verified envelope

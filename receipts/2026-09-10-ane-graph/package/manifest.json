@@ -1,0 +1,200 @@
+{
+  "artifactFormat": "anec",
+  "bytes": 20992,
+  "constantBytes": 16384,
+  "constantInputs": {
+  },
+  "constantOffset": 512,
+  "dispatchPlan": [
+    0
+  ],
+  "encoder": "h13-oracle-parity",
+  "file": "program-0.anec",
+  "inputs": [
+    {
+      "allocationBytes": 32768,
+      "dtype": "float16",
+      "index": 5,
+      "logicalBytes": 1024,
+      "name": "x",
+      "nchw": [
+        1,
+        512,
+        1,
+        1,
+        64,
+        64
+      ],
+      "shape": [
+        1,
+        512,
+        1,
+        1
+      ]
+    },
+    {
+      "allocationBytes": 32768,
+      "dtype": "float16",
+      "index": 6,
+      "logicalBytes": 1024,
+      "name": "y",
+      "nchw": [
+        1,
+        512,
+        1,
+        1,
+        64,
+        64
+      ],
+      "shape": [
+        1,
+        512,
+        1,
+        1
+      ]
+    }
+  ],
+  "intermediates": [
+  ],
+  "operation": "add",
+  "outputs": [
+    {
+      "allocationBytes": 32768,
+      "dtype": "float16",
+      "index": 4,
+      "logicalBytes": 1024,
+      "name": "z",
+      "nchw": [
+        1,
+        512,
+        1,
+        1,
+        64,
+        64
+      ],
+      "shape": [
+        1,
+        512,
+        1,
+        1
+      ]
+    }
+  ],
+  "programs": [
+    {
+      "bytes": 20992,
+      "constantBytes": 16384,
+      "constantInputs": {
+      },
+      "constantOffset": 512,
+      "encoder": "h13-oracle-parity",
+      "file": "program-0.anec",
+      "inputs": [
+        {
+          "allocationBytes": 32768,
+          "dtype": "float16",
+          "index": 5,
+          "logicalBytes": 1024,
+          "name": "x",
+          "nchw": [
+            1,
+            512,
+            1,
+            1,
+            64,
+            64
+          ],
+          "shape": [
+            1,
+            512,
+            1,
+            1
+          ]
+        },
+        {
+          "allocationBytes": 32768,
+          "dtype": "float16",
+          "index": 6,
+          "logicalBytes": 1024,
+          "name": "y",
+          "nchw": [
+            1,
+            512,
+            1,
+            1,
+            64,
+            64
+          ],
+          "shape": [
+            1,
+            512,
+            1,
+            1
+          ]
+        }
+      ],
+      "operation": "add",
+      "outputs": [
+        {
+          "allocationBytes": 32768,
+          "dtype": "float16",
+          "index": 4,
+          "logicalBytes": 1024,
+          "name": "z",
+          "nchw": [
+            1,
+            512,
+            1,
+            1,
+            64,
+            64
+          ],
+          "shape": [
+            1,
+            512,
+            1,
+            1
+          ]
+        }
+      ],
+      "scratchBytes": 0,
+      "taskDescriptors": 1
+    }
+  ],
+  "schema": "mil-hwxc.h13-anec-package.v1",
+  "scratchBytes": 0,
+  "target": "H13",
+  "taskDescriptors": 1,
+  "tensors": {
+    "x": {
+      "logicalBytes": 1024,
+      "role": "input",
+      "shape": [
+        1,
+        512,
+        1,
+        1
+      ]
+    },
+    "y": {
+      "logicalBytes": 1024,
+      "role": "input",
+      "shape": [
+        1,
+        512,
+        1,
+        1
+      ]
+    },
+    "z": {
+      "logicalBytes": 1024,
+      "role": "output",
+      "shape": [
+        1,
+        512,
+        1,
+        1
+      ]
+    }
+  }
+}
