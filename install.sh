@@ -10,7 +10,7 @@
 set -euo pipefail
 
 REPO=joshuaswarren/mlx-omarchy
-VERSION="${MLX_OMARCHY_VERSION:-v0.4.1}"
+VERSION="${MLX_OMARCHY_VERSION:-v0.4.2}"
 PREFIX="${MLX_OMARCHY_HOME:-$HOME/.local/share/mlx-omarchy}"
 VENV="$PREFIX/venv"
 BIN="$HOME/.local/bin"
