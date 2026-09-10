@@ -23,9 +23,9 @@
 #include <string>
 #include <tuple>
 #include <vector>
-
 #include "mlx/backend/gpu/device_info.h"
 #include "mlx/backend/omarchy/encoder.h"
+#include "mlx/backend/omarchy/trace.h"
 #include "mlx/fast.h"
 #include "mlx/fast_primitives.h"
 #include "mlx/ops.h"
@@ -752,6 +752,51 @@ TEST_CASE("CrossEntropyVJP accepts strided inputs and a broadcast cotangent") {
       host_cross_entropy_vjp({1, 2, 3, 4, 5, 6}, {0, 2}, {0.5, 0.5}, 2, 3),
       1e-5,
       "strided cross entropy vjp host math");
+}
+
+TEST_CASE("decode SDPA fuses score softmax and value projection") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  constexpr int heads = 4;
+  constexpr int kv_heads = 2;
+  constexpr int keys = 263;
+  constexpr int width = 64;
+  const float scale = 1.0f / std::sqrt(float(width));
+  auto q_values = pattern(heads * width, 401);
+  array q = astype(
+      array(q_values.begin(), Shape{1, heads, 1, width}, float32),
+      float16,
+      stream);
+  auto k_values = pattern(kv_heads * keys * width, 409);
+  auto v_values = pattern(kv_heads * keys * width, 419);
+  array k = astype(
+      array(k_values.begin(), Shape{1, kv_heads, keys, width}, float32),
+      float16,
+      stream);
+  array v = astype(
+      array(v_values.begin(), Shape{1, kv_heads, keys, width}, float32),
+      float16,
+      stream);
+  eval({q, k, v});
+  omarchy::get_command_encoder(stream).synchronize();
+
+  setenv("MLX_OMARCHY_SDPA_DECODE", "0", 1);
+  array baseline = fast::scaled_dot_product_attention(
+      q, k, v, scale, "", {}, std::nullopt, false, stream);
+  baseline.eval();
+  omarchy::get_command_encoder(stream).synchronize();
+
+  setenv("MLX_OMARCHY_SDPA_DECODE", "1", 1);
+  uint64_t before = omarchy::trace::counters().vk_compute_dispatches.load();
+  array candidate = fast::scaled_dot_product_attention(
+      q, k, v, scale, "", {}, std::nullopt, false, stream);
+  candidate.eval();
+  omarchy::get_command_encoder(stream).synchronize();
+  CHECK_EQ(
+      omarchy::trace::counters().vk_compute_dispatches.load() - before, 1);
+  CHECK_EQ(flat(baseline, stream), flat(candidate, stream));
 }
 
 TEST_CASE("scaled_dot_product_attention backward matches finite differences") {
