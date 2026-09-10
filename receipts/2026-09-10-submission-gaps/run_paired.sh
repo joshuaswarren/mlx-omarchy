@@ -4,7 +4,7 @@ set -euo pipefail
 root=/home/joshuawarren/src/mlx-SubmissionGaps
 out=${1:-/tmp/submission-gaps-paired-fork}
 icd=${2-}
-base_wheel=$(printf '%s\n' "$root"/.baseline-main/dist/*.whl)
+base_wheel=$(printf '%s\n' "$root"/.baseline-current/dist/*.whl)
 cand_wheel=$(printf '%s\n' "$root"/dist/*.whl)
 mkdir -p "$out"
 exec timeout 1800 flock -w 1800 /tmp/m1-gpu.lock /bin/bash -c '
@@ -25,12 +25,12 @@ exec timeout 1800 flock -w 1800 /tmp/m1-gpu.lock /bin/bash -c '
       --select longctx-1024-decode-32 --timeout 600 \
       --out "'$out'/$pair-$side.json" > "'$out'/$pair-$side.log" 2>&1
   }
-  run_matrix base warmup "'$root'/.venv-baseline/bin/python" "'$base_wheel'"
+  run_matrix base warmup "'$root'/.venv-current-main/bin/python" "'$base_wheel'"
   run_matrix cand warmup "'$root'/.venv-candidate/bin/python" "'$cand_wheel'"
-  run_matrix base pair-1 "'$root'/.venv-baseline/bin/python" "'$base_wheel'"
+  run_matrix base pair-1 "'$root'/.venv-current-main/bin/python" "'$base_wheel'"
   run_matrix cand pair-1 "'$root'/.venv-candidate/bin/python" "'$cand_wheel'"
   run_matrix cand pair-2 "'$root'/.venv-candidate/bin/python" "'$cand_wheel'"
-  run_matrix base pair-2 "'$root'/.venv-baseline/bin/python" "'$base_wheel'"
-  run_matrix base pair-3 "'$root'/.venv-baseline/bin/python" "'$base_wheel'"
+  run_matrix base pair-2 "'$root'/.venv-current-main/bin/python" "'$base_wheel'"
+  run_matrix base pair-3 "'$root'/.venv-current-main/bin/python" "'$base_wheel'"
   run_matrix cand pair-3 "'$root'/.venv-candidate/bin/python" "'$cand_wheel'"
 '
