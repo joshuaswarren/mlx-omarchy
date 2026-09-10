@@ -1112,6 +1112,38 @@ TEST_CASE("scaled_dot_product_attention broadcasts additive masks through GQA") 
   check(bfloat16, 5e-2, "sdpa additive mask broadcast gqa bf16 fast");
 }
 
+TEST_CASE("scaled_dot_product_attention chunks descriptor-range-sized scores") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  const int H = 64, qL = 1025, kL = 1024;
+  std::vector<float> q_data(H * qL, 0.0f);
+  std::vector<float> k_data(kL, 0.0f);
+  std::vector<float> v_data(kL, -1.0f);
+  std::vector<float> mask_data(kL, -1.0e4f);
+  std::fill(v_data.end() - 128, v_data.end(), 0.25f);
+  std::fill(mask_data.end() - 128, mask_data.end(), 0.0f);
+  array q = astype(
+      array(q_data.begin(), Shape{1, H, qL, 1}, float32), float16, stream);
+  array k = astype(
+      array(k_data.begin(), Shape{1, 1, kL, 1}, float32), float16, stream);
+  array v = astype(
+      array(v_data.begin(), Shape{1, 1, kL, 1}, float32), float16, stream);
+  array mask = astype(
+      array(mask_data.begin(), Shape{1, 1, 1, kL}, float32),
+      float16,
+      stream);
+  auto got = flat(
+      fast::scaled_dot_product_attention(
+          q, k, v, 1.0f, "", mask, std::nullopt, false, stream),
+      stream);
+  REQUIRE_EQ(got.size(), static_cast<size_t>(H * qL));
+  for (float value : got) {
+    CHECK(value == doctest::Approx(0.25f).epsilon(1e-3));
+  }
+}
+
 TEST_CASE("scaled_dot_product_attention causal offset keeps kL below qL") {
   if (!compute_available()) {
     return;

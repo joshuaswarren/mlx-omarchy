@@ -1955,6 +1955,26 @@ TEST_CASE("gather qmm gathers experts with scales and biases") {
     REQUIRE_EQ(nt_out.shape(), Shape{1, 2, 64});
     std::vector<float> nt_expected(2 * 64, 64.0f * 0.25f * 0.5f);
     expect_close_tol(readback_f32(stream, nt_out), nt_expected, 1e-5, 1e-4);
+    std::vector<float> x_tail_values(65, 0.25f);
+    array x_tail(x_tail_values.begin(), Shape{1, 65}, float32);
+    std::vector<uint32_t> w_tail(2 * 65 * 8, 0u);
+    std::fill(w_tail.begin() + 65 * 8, w_tail.end(), 0x11111111u);
+    array w_tail_words(w_tail.begin(), Shape{2, 65, 8}, uint32);
+    std::vector<float> tail_scales(2 * 65 * 2, 1.0f);
+    std::vector<float> tail_biases(2 * 65 * 2, 0.0f);
+    array scales_tail(tail_scales.begin(), Shape{2, 65, 2}, float32);
+    array biases_tail(tail_biases.begin(), Shape{2, 65, 2}, float32);
+    std::vector<uint32_t> expert_one{1u};
+    array rhs_one(expert_one.begin(), Shape{1}, uint32);
+    array nt_tail_out = gather_qmm(
+        x_tail, w_tail_words, scales_tail, biases_tail, lhs0, rhs_one,
+        false, 32, 4, "affine", false, stream);
+    REQUIRE(evaluation_error(nt_tail_out).empty());
+    expect_close_tol(
+        readback_f32(stream, nt_tail_out),
+        std::vector<float>(64, 65.0f * 0.25f),
+        1e-5,
+        1e-4);
 
     // bits=2: packed width and scales must agree through the op layer
     // equality, so k = 8*32/2 = 128 with one scale per 128 columns.

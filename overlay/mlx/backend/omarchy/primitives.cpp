@@ -1433,7 +1433,7 @@ void dispatch_sort(
   std::optional<array> dense_temp;
   const array& src = ensure_dense(
       input,
-      input.flags().row_contiguous,
+      input.flags().row_contiguous && input.data_size() == input.size(),
       dense_temp,
       encoder,
       s);
@@ -10202,6 +10202,148 @@ void ScaledDotProductAttention::eval_gpu(
         params.matrix_m);
     return;
   }
+  // Vulkan storage descriptors cannot exceed maxStorageBufferRange. Chunk long
+  // masked f16 attention by KV head and query rows; transfer copies stage
+  // oversized inputs, and each sync releases the window's intermediates.
+  const bool has_array_mask =
+      (inputs.size() == 5) || (inputs.size() == 4 && !has_sinks_);
+  auto backing_bytes = [](const array& value) {
+    auto* buffer =
+        static_cast<const omarchy::VulkanBuffer*>(value.buffer().ptr());
+    return buffer == nullptr ? VkDeviceSize{0} : VkDeviceSize{buffer->size};
+  };
+  const auto max_range = decode_caps.max_storage_buffer_range;
+  const uint64_t score_bytes = static_cast<uint64_t>(batch) * heads * q_len *
+      k_len * q.itemsize();
+  bool broadcast_k_mask = false;
+  if (has_array_mask) {
+    const array& mask = inputs.at(3);
+    broadcast_k_mask = mask.ndim() > 0 && mask.shape(-1) == k_len;
+    for (int axis = 0; broadcast_k_mask && axis + 1 < mask.ndim(); ++axis) {
+      broadcast_k_mask = mask.shape(axis) == 1 || mask.strides()[axis] == 0;
+    }
+  }
+  const bool needs_storage_chunk = max_range > 0 &&
+      (score_bytes > max_range || backing_bytes(q) > max_range ||
+       backing_bytes(k) > max_range || backing_bytes(v) > max_range);
+  if (needs_storage_chunk && q.dtype() == float16 &&
+      k.dtype() == float16 && v.dtype() == float16 && batch == 1 &&
+      !do_causal_ && !has_sinks_ && has_array_mask && broadcast_k_mask &&
+      inputs.at(3).dtype() == float16 && q.strides()[2] == head_dim &&
+      k.strides()[2] == head_dim && v.strides()[2] == v_dim &&
+      q.strides()[3] == 1 && k.strides()[3] == 1 &&
+      v.strides()[3] == 1) {
+    out.set_data(allocate_omarchy(out.nbytes()));
+    const array& mask = inputs.at(3);
+    const size_t score_row_bytes =
+        static_cast<size_t>(repeats) * k_len * q.itemsize();
+    size_t q_chunk = std::max<size_t>(1, max_range / score_row_bytes);
+    q_chunk = std::min<size_t>(q_chunk, q_len);
+    while (q_chunk > 1 &&
+           omarchy::round_size(q_chunk * score_row_bytes) > max_range) {
+      --q_chunk;
+    }
+
+    auto dense_view = [&](const array& base, Shape shape) {
+      array view(std::move(shape), base.dtype(), nullptr, {});
+      view.copy_shared_buffer(base, make_contiguous_strides(view.shape()), base.flags(), base.data_size());
+      encoder.add_temporary(view);
+      return view;
+    };
+
+    for (int kv_head = 0; kv_head < kv_heads; ++kv_head) {
+      array k_part(Shape{1, 1, k_len, head_dim}, float16, nullptr, {});
+      array v_part(Shape{1, 1, k_len, v_dim}, float16, nullptr, {});
+      k_part.set_data(allocate_omarchy(k_part.nbytes()));
+      v_part.set_data(allocate_omarchy(v_part.nbytes()));
+      encoder.add_temporary(k_part);
+      encoder.add_temporary(v_part);
+      encoder.copy_buffer(
+          binding(k).buffer,
+          binding(k_part).buffer,
+          k_part.nbytes(),
+          k.offset() + static_cast<VkDeviceSize>(kv_head) *
+              k.strides()[1] * k.itemsize(),
+          0);
+      encoder.copy_buffer(
+          binding(v).buffer,
+          binding(v_part).buffer,
+          v_part.nbytes(),
+          v.offset() + static_cast<VkDeviceSize>(kv_head) *
+              v.strides()[1] * v.itemsize(),
+          0);
+
+      for (int q_start = 0; q_start < q_len;
+           q_start += static_cast<int>(q_chunk)) {
+        const int part_q =
+            std::min<int>(static_cast<int>(q_chunk), q_len - q_start);
+        array q_part(
+            Shape{1, repeats, part_q, head_dim}, float16, nullptr, {});
+        q_part.set_data(allocate_omarchy(q_part.nbytes()));
+        encoder.add_temporary(q_part);
+        const VkDeviceSize q_row_bytes =
+            static_cast<VkDeviceSize>(part_q) * head_dim * q.itemsize();
+        for (int repeat = 0; repeat < repeats; ++repeat) {
+          const int head = kv_head * repeats + repeat;
+          encoder.copy_buffer(
+              binding(q).buffer,
+              binding(q_part).buffer,
+              q_row_bytes,
+              q.offset() +
+                  (static_cast<VkDeviceSize>(head) * q.strides()[1] +
+                   static_cast<VkDeviceSize>(q_start) * q.strides()[2]) *
+                      q.itemsize(),
+              static_cast<VkDeviceSize>(repeat) * q_row_bytes);
+        }
+
+        array qs = dense_view(
+            q_part, Shape{1, 1, repeats, part_q, head_dim});
+        array ks = dense_view(k_part, Shape{1, 1, 1, k_len, head_dim});
+        array vs = dense_view(v_part, Shape{1, 1, 1, k_len, v_dim});
+        array keys_t = swapaxes_in_eval(ks, -1, -2);
+        encoder.add_temporary(keys_t);
+        Shape score_shape = qs.shape();
+        score_shape.back() = k_len;
+        array scores(score_shape, float16, nullptr, {});
+        dispatch_matmul(
+            tag, {qs, keys_t}, scores, scale_, 0.0f, false, s);
+        encoder.add_temporary(scores);
+        array mask_view = make_mask_view(
+            mask, scores.shape(), Strides{0, 0, 0, 0, mask.strides().back()});
+        array logits(scores.shape(), float16, nullptr, {});
+        dispatch_elementwise(tag, AddOperation, {scores, mask_view}, logits, s);
+        encoder.add_temporary(logits);
+        array probs(logits.shape(), float16, nullptr, {});
+        dispatch_softmax(tag, logits, probs, s, nullptr, part_q, -1);
+        encoder.add_temporary(probs);
+        Shape result_shape = probs.shape();
+        result_shape.back() = v_dim;
+        array result(result_shape, float16, nullptr, {});
+        dispatch_matmul(
+            tag, {probs, vs}, result, 1.0f, 0.0f, false, s);
+        encoder.add_temporary(result);
+
+        const VkDeviceSize out_row_bytes =
+            static_cast<VkDeviceSize>(part_q) * v_dim * out.itemsize();
+        for (int repeat = 0; repeat < repeats; ++repeat) {
+          const int head = kv_head * repeats + repeat;
+          encoder.copy_buffer(
+              binding(result).buffer,
+              binding(out).buffer,
+              out_row_bytes,
+              static_cast<VkDeviceSize>(repeat) * out_row_bytes,
+              out.offset() +
+                  (static_cast<VkDeviceSize>(head) * out.strides()[1] +
+                   static_cast<VkDeviceSize>(q_start) * out.strides()[2]) *
+                      out.itemsize());
+        }
+        encoder.synchronize();
+      }
+    }
+    return;
+  }
+
+
   if (q.dtype() == float16 || bf16_fast) {
     const bool bf16 = q.dtype() == bfloat16;
     const Dtype storage_dtype = bf16 ? bfloat16 : float16;
