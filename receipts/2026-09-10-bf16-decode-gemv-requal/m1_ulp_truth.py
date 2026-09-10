@@ -32,7 +32,8 @@ def truth_for(name, model):
     x = capture_tensor(f"{phase}.{proj}.input")
     native = capture_tensor(f"{phase}.{proj}.output").reshape(-1)
     lin = getattr(layer.self_attn, proj)
-    acc = to_f64(x).reshape(x.shape[0], -1) @ to_f64(
+    k = lin.weight.shape[1]
+    acc = to_f64(x).reshape(-1, k) @ to_f64(
         np.asarray(lin.weight.view(mx.uint16), dtype=np.uint16)).T
     if getattr(lin, "bias", None) is not None:
         acc = acc + to_f64(np.asarray(
