@@ -3733,3 +3733,150 @@ TEST_CASE("qmm coopmat prefill matches host reference at Qwen shapes") {
     }
   }
 }
+
+// The compensated decode GEMV (MatmulVecBF16Decode, 2026-09-10) replaces
+// the sequential 16x16 tile for small-N dense bf16 projections at M=1.
+// Those projections are RNE(f64)-exact under the sequential kernel
+// (receipts/2026-09-10-bf16-rootcause: bias cancellation amplifies any
+// accumulation slack into visible bit flips), so the replacement is
+// gated on full bit equality against the f64 reference — including a
+// crafted deep-cancellation row (partials ~40, exact sum ~1e-4) where
+// any uncompensated reordering flips bf16 bits. Shapes mirror the
+// Qwen2.5-0.5B decode GEMVs.
+TEST_CASE("decode bf16 gemv is bit-exact against the f64 reference") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  const auto& caps = omarchy::device(0).capabilities();
+  const uint32_t subgroup = caps.subgroup_size;
+  const bool decode_kernel_active = subgroup >= 4u && subgroup <= 32u &&
+      (subgroup & (subgroup - 1u)) == 0u &&
+      (caps.subgroup_operations & VK_SUBGROUP_FEATURE_SHUFFLE_RELATIVE_BIT) !=
+          0u;
+  std::cout << "[matmul-bf16-decode] subgroup_size=" << subgroup
+            << " decode_kernel_active=" << decode_kernel_active << "\n";
+  if (!decode_kernel_active) {
+    printf("Skipping: decode GEMV subgroup gate inactive on this device\n");
+    return;
+  }
+
+  std::mt19937 rng(20260910);
+  std::uniform_real_distribution<float> frac(-2.0f, 2.0f);
+  auto grid = [&](size_t count) {
+    std::vector<float> values(count);
+    for (auto& v : values) {
+      v = host_bf16_round(frac(rng));
+    }
+    return values;
+  };
+  auto bf16_operand = [&](const std::vector<float>& values,
+                          int batch,
+                          int rows,
+                          int cols,
+                          bool transposed) {
+    if (!transposed) {
+      return astype(
+          array(values.begin(), Shape{batch, rows, cols}, float32),
+          bfloat16,
+          stream);
+    }
+    std::vector<float> swapped(values.size());
+    for (int bt = 0; bt < batch; ++bt) {
+      for (int r = 0; r < rows; ++r) {
+        for (int c = 0; c < cols; ++c) {
+          swapped[(static_cast<size_t>(bt) * cols + c) * rows + r] =
+              values[(static_cast<size_t>(bt) * rows + r) * cols + c];
+        }
+      }
+    }
+    return transpose(
+        astype(
+            array(swapped.begin(), Shape{batch, cols, rows}, float32),
+            bfloat16,
+            stream),
+        {0, 2, 1},
+        stream);
+  };
+  auto check_bits = [&](const char* label,
+                        const std::vector<float>& a_values,
+                        const std::vector<float>& b_values,
+                        int batch,
+                        int k,
+                        int n) {
+    auto sums =
+        host_matmul_bf16_reference(a_values, b_values, batch, 1, k, n);
+    std::vector<float> expected(sums.size());
+    for (size_t i = 0; i < sums.size(); ++i) {
+      expected[i] = host_bf16_round(sums[i]);
+    }
+    std::vector<float> got = readback_f32(
+        stream,
+        matmul(
+            bf16_operand(a_values, batch, 1, k, false),
+            bf16_operand(b_values, batch, k, n, true),
+            stream));
+    REQUIRE_EQ(got.size(), expected.size());
+    size_t mismatches = 0;
+    size_t worst = 0;
+    for (size_t i = 0; i < expected.size(); ++i) {
+      REQUIRE(std::isfinite(got[i]));
+      if (got[i] != expected[i]) {
+        ++mismatches;
+        worst = i;
+      }
+    }
+    std::cout << "[matmul-bf16-decode] " << label << " mismatches="
+              << mismatches << "/" << expected.size() << "\n";
+    if (mismatches != 0) {
+      std::cout << "[matmul-bf16-decode] first mismatch index=" << worst
+                << " got=" << got[worst] << " want=" << expected[worst]
+                << "\n";
+    }
+    CHECK_EQ(mismatches, size_t{0});
+  };
+
+  // Model shapes: q/o 896x896, k/v 896x128, down 4864x896. Weights are
+  // stored (n, k) row-major, so b rides the transposed flag exactly as
+  // nn.Linear presents it.
+  for (auto [k, n] :
+       {std::pair<int, int>{896, 896}, {896, 128}, {4864, 896}}) {
+    auto a_values = grid(static_cast<size_t>(k));
+    auto b_values = grid(static_cast<size_t>(k) * n);
+    check_bits("random", a_values, b_values, 1, k, n);
+  }
+
+  // Deep cancellation: drive the exact sum to ~1e-4 against partials
+  // around 40 by appending bf16 correction columns (x=1), the decode
+  // v_proj bias-cancellation regime.
+  {
+    const int k = 896, n = 8;
+    auto a_values = grid(k);
+    auto b_values = grid(static_cast<size_t>(k) * n);
+    for (int c = 0; c < n; ++c) {
+      double sum = 0.0;
+      for (int i = 0; i < k - 2; ++i) {
+        sum += static_cast<double>(a_values[i]) *
+            static_cast<double>(
+                   b_values[static_cast<size_t>(i) * n + c]);
+      }
+      a_values[k - 2] = 1.0f;
+      b_values[static_cast<size_t>(k - 2) * n + c] =
+          host_bf16_round(static_cast<float>(-sum));
+      double partial =
+          sum + static_cast<double>(b_values[(k - 2) * n + c]);
+      a_values[k - 1] = 1.0f;
+      b_values[static_cast<size_t>(k - 1) * n + c] =
+          host_bf16_round(static_cast<float>(-partial));
+    }
+    check_bits("cancellation", a_values, b_values, 1, k, n);
+  }
+
+  // Batch transport: the decode kernel batches through workgroup z.
+  {
+    const int k = 896, n = 128, batch = 3;
+    auto a_values = grid(static_cast<size_t>(batch) * k);
+    auto b_values = grid(static_cast<size_t>(batch) * k * n);
+    check_bits("batch3", a_values, b_values, batch, k, n);
+  }
+}
