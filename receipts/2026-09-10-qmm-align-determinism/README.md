@@ -33,8 +33,8 @@ that the f873dc2b load-window flip (receipts/2026-09-10-qmm-splitk-parity,
 
 The tile fallback is bit-identical to coopmat on the installed fork.
 The f873dc2b flip under concurrent GPU load is real but unattributed;
-this ticket's blocker note records what was excluded and what a
-follow-up needs (contention-window repro with kernel profiling).
+verdict.json records what was excluded and what a follow-up needs
+(contention-window repro with kernel profiling).
 
 ## The change (landed as assigned hardening)
 
@@ -61,13 +61,17 @@ See verdict.json and `m1/`. Summary:
   alignment" (forces the unaligned view directly): green on llvmpipe and
   the M1 fork, on fix backend and pre-fix backend alike - it pins the
   offset-independence contract, which today holds on both routes.
-- Six canonical digests on a quiet M1 fork with the fix wheel: all pass
-  (with retry-on-mismatch), plus pre-fix-wheel paired legs for noise.
-- Stock Mesa matrix: stock pins unchanged.
+- Six canonical digests on a quiet M1 fork with the fix wheel: 3/3 runs
+  DIGESTS_OK (with retry-on-mismatch); pre-fix wheel baseline 2/2 runs
+  DIGESTS_OK. Prefill medians: fix q4 333.3-337.1 / 959.7-974.0 /
+  1109.6-1119.0 tok/s vs pre-fix 333.3 / 959.7 / 1109.6 - within noise.
+- Stock Mesa matrix with the fix wheel: DIGESTS_OK (stock pins incl.
+  bf16_long c5be9207833d2a26).
 - omarchy_matmul_family_tests + omarchy_runtime_tests: green on
-  llvmpipe and on the M1 (fork and stock).
-- Staging cost probe: one dense copy on the odd path only; per-shape
-  deltas in `m1/staging-cost.log`.
+  llvmpipe (20/20, 20,810,294 assertions; 41/41, 22,691) and on the M1
+  fork and stock (20/20 and 41/41 on both drivers).
+- Staging cost probe: odd-view arm vs aligned arm across the 8 Qwen
+  shapes: delta -0.097 to +0.074 ms (noise); outputs bit-identical.
 
 ## Reproduce
 

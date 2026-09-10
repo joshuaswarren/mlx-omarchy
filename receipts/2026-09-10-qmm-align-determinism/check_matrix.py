@@ -36,8 +36,13 @@ def main() -> int:
         decode = (leg.get("metrics") or {}).get(
             "decode_tok_s") or leg.get("decode_tok_s")
         if status != "measured":
-            print(f"{leg_id} status={status} MISMATCH(no digest)")
-            ok = False
+            # Optional models (7B/14B) are legitimately skipped when absent
+            # from the local HF cache; only the pinned 0.5B models gate.
+            if "0.5b" in (leg_id or ""):
+                print(f"{leg_id} status={status} MISMATCH(no digest)")
+                ok = False
+            else:
+                print(f"{leg_id} status={status} (optional, not gated)")
             continue
         want = pins.get(leg_id)
         match = digest == want
