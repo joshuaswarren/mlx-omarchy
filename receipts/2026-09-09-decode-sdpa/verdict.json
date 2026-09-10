@@ -1,0 +1,59 @@
+{
+  "schema": "mlx-omarchy/decode-sdpa-verdict/1",
+  "branch": "wave/decode-sdpa",
+  "baseline": {
+    "source_commit": "6b9813bb2b9620a4c70dce9414f7e30dfa819f49",
+    "wheel_sha256": "987b1eeaa9deaf64a3df3ae7da0194b7c05bae2760780ac1c17d18e76c2eb1fd"
+  },
+  "measured_candidate": {
+    "source_commit": "b6157aaf",
+    "paired_wheel_sha256": "8d491f8c2c124d44b1adfb48835fa8d37508570bfdb641d587ace0e291719a30",
+    "profile_wheel_sha256": "5c13c68533367f519cdaa5ece5a5bdca3ae03be0f559e9219a60f5d26fbd3787",
+    "dispatches_per_token": {
+      "baseline": 345,
+      "candidate": 297
+    },
+    "token_10": {
+      "baseline_gpu_busy_us": 20765,
+      "candidate_gpu_busy_us": 20395,
+      "baseline_span_us": 28081,
+      "candidate_span_us": 27679,
+      "candidate_sdpa_decode_f16_dispatches": 24
+    }
+  },
+  "paired_decode_tok_s_medians": {
+    "q4_short": {"baseline": 94.57, "candidate": 98.42},
+    "q4_long": {"baseline": 76.28, "candidate": 75.83},
+    "q4_longctx": {"baseline": 50.81, "candidate": 47.24},
+    "bf16_short": {"baseline": 11.75, "candidate": 11.74},
+    "bf16_long": {"baseline": 11.29, "candidate": 11.30},
+    "bf16_longctx": {"baseline": 10.26, "candidate": 10.27}
+  },
+  "candidate_identity_failure": {
+    "leg": "qwen25-0.5b-4bit:long-decode-128",
+    "required": "4cc08910089477fd",
+    "observed": "55215e22d7f1b864",
+    "randomized_probe": "5 mismatches at seed 1, key length 263 on source 5ba0e354; packed-half variants also failed"
+  },
+  "final_safe_source": {
+    "source_commit": "3afb073111b6c9a4c45f5603e58254135ecb1a03",
+    "wheel_sha256": "171490d56e0b2b31588e85742f97c2a1e71672a37694cd57eaa87a8f9c063d1b",
+    "action": "Removed the non-exact fused path; owned SDPA source matches main and routes through the composed path.",
+    "dispatches_per_token": 345,
+    "random_exactness": {"cases": 800, "failures": 0}
+  },
+  "final_ids": {
+    "q4_short": "7fd25a869ff21678",
+    "q4_long": "4cc08910089477fd",
+    "q4_longctx": "7da83f06ec9f001d",
+    "bf16_short": "f26175202f3dabe9",
+    "bf16_long": "ad964232ee67fecd",
+    "bf16_longctx": "ff502900d2a179a5"
+  },
+  "models": {
+    "q4": "mlx-community/Qwen2.5-0.5B-Instruct-4bit@a5339a4131f135d0fdc6a5c8b5bbed2753bbe0f3",
+    "bf16": "mlx-community/Qwen2.5-0.5B-Instruct-bf16@56d07e766edd7159fbe12ed12d9cf114bf38bf1e"
+  },
+  "decision": "reject",
+  "reason": "The one-dispatch fused kernel changed generated IDs and failed valid-input randomized bit-exactness. The measured speedup was limited to the short Q4 leg and regressed Q4 long-context decode."
+}
