@@ -1,0 +1,21 @@
+{
+  "source_base": "ac2eea96",
+  "commands": {
+    "build": "./scripts/prepare-mlx.sh && cmake --build .work/build-chain3 --parallel 8",
+    "matmul": "MLX_OMARCHY_ALLOW_NON_APPLE=1 LP_NUM_THREADS=4 timeout 600 .work/build-chain3/tests/omarchy/omarchy_matmul_family_tests -tc=\"dense bf16 matmul matches host on every row across coopmat shapes\"",
+    "fast_ops": "MLX_OMARCHY_ALLOW_NON_APPLE=1 LP_NUM_THREADS=4 timeout 300 .work/build-chain3/tests/omarchy/omarchy_fast_ops_tests -tc=\"BF16 RMSNorm and sigmoid use native rounding order\"",
+    "swiglu": "MLX_OMARCHY_ALLOW_NON_APPLE=1 LP_NUM_THREADS=4 timeout 300 .work/build-chain3/tests/omarchy/omarchy_fused_chain_tests -tc=\"*bf16*swiglu*\""
+  },
+  "results": {
+    "build": "completed",
+    "matmul": {"test_cases_passed": 1, "assertions_passed": 143109, "split2_shapes": 4, "max_abs_err": 0},
+    "fast_ops": {"test_cases_passed": 1, "assertions_passed": 7},
+    "swiglu": {"test_cases_passed": 2, "assertions_passed": 1028}
+  },
+  "logs": [
+    "/tmp/bf16chain3-build.log",
+    "/tmp/bf16chain3-llvmpipe-matmul.log",
+    "/tmp/bf16chain3-llvmpipe-fast.log",
+    "/tmp/bf16chain3-llvmpipe-swiglu.log"
+  ]
+}

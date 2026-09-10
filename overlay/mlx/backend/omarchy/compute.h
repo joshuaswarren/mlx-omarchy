@@ -596,6 +596,10 @@ enum class ComputeKernel : uint16_t {
   // Native-order single-query attention; append-only profile ids.
   SdpaDecodeNativeF16,
   SdpaDecodeNativeBF16,
+  // Native Metal uses two float32 K partitions for the model-scale BF16
+  // prefill shapes selected by dispatch_matmul. Append-only profile ids.
+  MatmulBF16Split2,
+  MatmulBF16CoopmatSplit2,
   Count,
 };
 

@@ -1,0 +1,21 @@
+branch=wave/Bf16Chain3
+pre_rebase_base=ee530132
+pre_rebase_head=00d9f900
+post_rebase_base=94d9d475
+post_rebase_head=ac2eea96
+
+pre_rebase_patch_ids:
+e8c2e976 3ada1c632e1233c023dc42bf82a196924fb0320d
+50832c4e 2734ab9b5aa7ef06c64e3728aa72a990f5714b27
+825580c3 bb8ac8ad3b0e6b31f9d7e4bb2fb77c7dd3efa67a
+271e49f3 1a759bb8927f435b1ef02fc5ff616a309cc797b6
+00d9f900 cbb9407b43c55016a966fa32e03c18bb9f7f4b9c
+
+post_rebase_patch_ids:
+a0ef5abc 3ada1c632e1233c023dc42bf82a196924fb0320d
+1fc1a66b 2734ab9b5aa7ef06c64e3728aa72a990f5714b27
+8af4125e bb8ac8ad3b0e6b31f9d7e4bb2fb77c7dd3efa67a
+47ce9c72 1a759bb8927f435b1ef02fc5ff616a309cc797b6
+ac2eea96 cbb9407b43c55016a966fa32e03c18bb9f7f4b9c
+
+result=all five implementation patch IDs unchanged

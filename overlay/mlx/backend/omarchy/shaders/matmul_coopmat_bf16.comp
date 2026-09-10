@@ -126,10 +126,18 @@ void main() {
 
       coopmat<float, gl_ScopeSubgroup, MAT, MAT, gl_MatrixUseAccumulator>
           acc[4][4];
+#ifdef SPLIT_K
+      coopmat<float, gl_ScopeSubgroup, MAT, MAT, gl_MatrixUseAccumulator>
+          second_acc[4][4];
+#endif
       for (uint rb = 0u; rb < 4u; ++rb) {
         for (uint cb = 0u; cb < 4u; ++cb) {
           acc[rb][cb] = coopmat<float, gl_ScopeSubgroup, MAT, MAT,
               gl_MatrixUseAccumulator>(0.0);
+#ifdef SPLIT_K
+          second_acc[rb][cb] = coopmat<float, gl_ScopeSubgroup, MAT, MAT,
+              gl_MatrixUseAccumulator>(0.0);
+#endif
         }
       }
 
@@ -179,12 +187,27 @@ void main() {
         }
         for (uint rb = 0u; rb < 4u; ++rb) {
           for (uint cb = 0u; cb < 4u; ++cb) {
-            acc[rb][cb] =
-                coopMatMulAdd(mat_a[rb], mat_b[cb], acc[rb][cb]);
+#ifdef SPLIT_K
+            if (step >= k_steps / 2u) {
+              second_acc[rb][cb] = coopMatMulAdd(
+                  mat_a[rb], mat_b[cb], second_acc[rb][cb]);
+            } else
+#endif
+            {
+              acc[rb][cb] =
+                  coopMatMulAdd(mat_a[rb], mat_b[cb], acc[rb][cb]);
+            }
           }
         }
         barrier();
       }
+#ifdef SPLIT_K
+      for (uint rb = 0u; rb < 4u; ++rb) {
+        for (uint cb = 0u; cb < 4u; ++cb) {
+          acc[rb][cb] += second_acc[rb][cb];
+        }
+      }
+#endif
 
       // Drain one 8-row block at a time through a_s; even lanes pack
       // bf16 pairs into words, tails masked.
