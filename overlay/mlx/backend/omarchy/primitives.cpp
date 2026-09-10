@@ -6923,6 +6923,118 @@ bool dispatch_quantized_gemv_group(
   return true;
 }
 
+bool dispatch_slice_update_pair(
+    std::array<array, 2>& nodes,
+    const Stream& stream) {
+  auto& encoder = get_command_encoder(stream);
+  const auto& caps = encoder.device().capabilities();
+  if (encoder.device().compute().binding_limit() < 4 ||
+      !caps.shader_float16 || !caps.storage_buffer_16bit_access) {
+    return false;
+  }
+
+  const auto& first_primitive =
+      static_cast<const SliceUpdate&>(nodes[0].primitive());
+  const auto first_state = first_primitive.state();
+  const auto& starts = std::get<1>(first_state);
+  const auto& slice_strides = std::get<3>(first_state);
+  if (std::get<0>(first_state) != SliceUpdate::None || nodes[0].inputs().size() != 2 ||
+      nodes[1].inputs().size() != 2 ||
+      static_cast<const SliceUpdate&>(nodes[1].primitive()).state() !=
+          first_primitive.state()) {
+    return false;
+  }
+
+  const array& first_update = nodes[0].inputs()[1];
+  if (nodes[0].dtype() != float16 || nodes[1].dtype() != float16 ||
+      nodes[0].shape() != nodes[1].shape() || first_update.size() == 0 ||
+      first_update.ndim() == 0 || first_update.ndim() > 4 ||
+      first_update.ndim() != nodes[0].ndim() ||
+      first_update.size() > std::numeric_limits<uint32_t>::max()) {
+    return false;
+  }
+
+  auto [output_offset, output_strides] =
+      prepare_slice(nodes[0], starts, slice_strides);
+  auto [second_output_offset, second_output_strides] =
+      prepare_slice(nodes[1], starts, slice_strides);
+  if (output_offset != second_output_offset ||
+      output_strides != second_output_strides) {
+    return false;
+  }
+
+  ComputeParams params;
+  params.dims = static_cast<uint32_t>(first_update.ndim());
+  params.count = static_cast<uint32_t>(first_update.size());
+  params.output_offset = static_cast<uint32_t>(output_offset);
+  uint64_t input_span = 0;
+  uint64_t output_span = output_offset;
+  for (int axis = 0; axis < first_update.ndim(); ++axis) {
+    if (first_update.shape(axis) <= 0 || first_update.strides()[axis] < 0 ||
+        output_strides[axis] < 0 ||
+        static_cast<uint64_t>(first_update.shape(axis)) >
+            std::numeric_limits<uint32_t>::max() ||
+        static_cast<uint64_t>(first_update.strides()[axis]) >
+            std::numeric_limits<uint32_t>::max() ||
+        static_cast<uint64_t>(output_strides[axis]) >
+            std::numeric_limits<uint32_t>::max()) {
+      return false;
+    }
+    params.shape[axis] = static_cast<uint32_t>(first_update.shape(axis));
+    params.in_strides[axis] =
+        static_cast<uint32_t>(first_update.strides()[axis]);
+    params.out_strides[axis] = static_cast<uint32_t>(output_strides[axis]);
+    uint64_t distance = static_cast<uint64_t>(first_update.shape(axis) - 1);
+    input_span += distance * params.in_strides[axis];
+    output_span += distance * params.out_strides[axis];
+  }
+  if (output_offset > std::numeric_limits<uint32_t>::max() ||
+      output_span >= nodes[0].size()) {
+    return false;
+  }
+
+  for (size_t i = 0; i < nodes.size(); ++i) {
+    const array& base = nodes[i].inputs()[0];
+    const array& update = nodes[i].inputs()[1];
+    if (nodes[i].primitive().stream() != stream ||
+        base.dtype() != float16 || update.dtype() != float16 ||
+        base.shape() != nodes[i].shape() ||
+        update.shape() != first_update.shape() ||
+        update.strides() != first_update.strides() ||
+        !base.flags().row_contiguous || base.size() != base.data_size() ||
+        !input_ready(base, stream) || !input_ready(update, stream) ||
+        base.data_shared_ptr() == nullptr || update.data_shared_ptr() == nullptr ||
+        update.offset() % update.itemsize() != 0) {
+      return false;
+    }
+    uint64_t offset = update.offset() / update.itemsize();
+    if (offset > std::numeric_limits<uint32_t>::max() ||
+        input_span > std::numeric_limits<uint32_t>::max() - offset) {
+      return false;
+    }
+    if (i == 0) {
+      params.lhs_offset = static_cast<uint32_t>(offset);
+    } else {
+      params.rhs_offset = static_cast<uint32_t>(offset);
+    }
+  }
+
+  for (auto& node : nodes) {
+    copy_gpu(node.inputs()[0], node, CopyType::Vector, stream);
+  }
+  std::array<ComputeBinding, 4> bindings{
+      binding(nodes[0].inputs()[1]),
+      binding(nodes[1].inputs()[1]),
+      binding(nodes[0]),
+      binding(nodes[1])};
+  encoder.dispatch_compute(
+      ComputeKernel::SliceUpdatePairF16,
+      bindings,
+      params,
+      compute_dispatch_group_count(params.count));
+  return true;
+}
+
 } // namespace omarchy
 
 void RandomBits::eval_gpu(const std::vector<array>& inputs, array& out) {
