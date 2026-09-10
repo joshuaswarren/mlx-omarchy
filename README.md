@@ -18,7 +18,7 @@ One-command install on an M1 running Omarchy, the first model download, the stre
 
 Supported today: Apple M1 running [Omarchy](https://github.com/omarchy-mac/omarchy-mac) (Asahi-based) with Mesa Honeykrisp. Later Apple Silicon generations follow once the M1 path is complete.
 
-## Install (v0.4.1)
+## Install (v0.4.2)
 
 On an M1 running Omarchy, one command installs the release wheel into a private
 venv under `~/.local/share/mlx-omarchy`, adds `mlx-omarchy` and
@@ -38,7 +38,7 @@ Manual install, or any other Linux box:
 ```bash
 # Apple Silicon (M1, Honeykrisp) - Python 3.14; any Linux box (x86_64, software Vulkan, development only) - Python 3.11
 python3 -m venv ~/.venvs/mlx
-~/.venvs/mlx/bin/pip install <wheel URL for your platform from https://github.com/joshuaswarren/mlx-omarchy/releases/tag/v0.4.1>
+~/.venvs/mlx/bin/pip install <wheel URL for your platform from https://github.com/joshuaswarren/mlx-omarchy/releases/tag/v0.4.2>
 ```
 
 Wheel filenames carry the build commit, so the exact URLs and SHA256 sums are in the release notes and the `SHA256SUMS` asset, not here.
