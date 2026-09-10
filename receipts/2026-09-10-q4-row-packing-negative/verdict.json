@@ -1,0 +1,68 @@
+{
+  "schema": "mlx-omarchy/q4-row-packing-negative/1",
+  "topic": "Packing independent rows in the 96-dispatch Q4 decode GEMV chain to reduce intra-submission gaps",
+  "question": "Can any same-input (independent-row) Q4 decode GEMV dispatches still be packed into fewer dispatches, repeatably and bit-correctly, to cut the intra-submission gap bucket (7.25-8.09 ms/token on current main)?",
+  "source_commit": "b6d662a88290dd9bd61eabc8366a55250b1555cb",
+  "source_note": "Worktree main-release HEAD; contains GitHub main 12bf647c plus receipt-only commits. No shared-main mutation; receipt branch wave/Q4RowPackingNegative only.",
+  "model": {
+    "repo": "mlx-community/Qwen2.5-0.5B-Instruct-4bit",
+    "revision": "a5339a4131f135d0fdc6a5c8b5bbed2753bbe0f3",
+    "quantization": "affine 4-bit group-64"
+  },
+  "host": {
+    "name": "jwm1-linux",
+    "device_name": "Apple M1 (G13G B1)",
+    "fork_driver": "Honeykrisp (cooperative_matrix_f32_8=1)",
+    "stock_driver_file": "/home/joshuawarren/stock-mesa/stock-icd.json (cooperative_matrix_f32_8=0)",
+    "lock": "flock -w 2400 /tmp/m1-gpu.lock, bounded timeout 1800"
+  },
+  "wheel": {
+    "file": "mlx_omarchy-0.32.2.dev202609101916+b6d662a-cp314-cp314-linux_aarch64.whl",
+    "sha256": "98821134f4bcf306ab1d64d6885ddf3d3e8e932311283bbd11f97aecf6a8e439",
+    "provenance_verified": "match (bench_matrix binary_provenance, all arms)"
+  },
+  "structural_findings": {
+    "mechanism_on_main": "EagerFusionScope (overlay/mlx/backend/omarchy/fused_chain.cpp:727-827) plans decode GEMV groups: affine transposed 4-bit/group-64 QuantizedMatmul nodes sharing one single-row x form groups of up to kQmmVecMultiWeights=3 (compute.h:36) in tape order, dispatched as ONE QmmVecQ4MultiSubgroupF16; a single-member group is planned only when it carries an Add epilogue (fused_chain.cpp:813), which folds the residual add into the GEMV store.",
+    "live_census_94d9d47": "receipts/2026-09-10-decode-bound-3 baseline profile: 273 dispatches/token, 2 submissions/token; QmmVecQ4MultiSubgroupF16 = 96 = 24 layers x 4 groups {qkv: q+k+v = 3 members, o: 1 member + residual epilogue, gate/up: 2 members, down: 1 member + residual epilogue}, plus 1 lm-head QmmVecQ4WordSubgroupF16. Layer-1 workgroup counts in the token table (144=qkv 1152 rows, 112=o 896 rows, 1216=gateup 9728 rows, 112=down 896 rows) confirm the membership.",
+    "code_identity_since_census": "git diff 94d9d47..b6d662a8 -- overlay/ touches only the custom-kernel surface (custom_kernel.cpp added, compute.cpp/h registrations, encoder.cpp/h, CustomKernel::eval_gpu relocation out of primitives.cpp, test_fast_ops.cpp). The quantized GEMV group path, fused_chain.cpp and qmm_vec shaders are byte-identical, so the 94d9d47 dispatch census describes b6d662a8; the fresh digest runs below confirm behavior at b6d662a8.",
+    "exhaustion": "The four per-layer groups have pairwise distinct inputs chained by non-GEMV dependencies: ln1(x) -> qkv -> (k-rope, KV slice-update pair, q-rope, SDPA) -> o with residual add -> ln2 -> gate/up -> SwiGLU -> down with residual add -> next layer's ln1. No two remaining groups share an x, so no legal packing pair exists anywhere in the chain; raising kQmmVecMultiWeights to 4 would find no fourth same-x member (attention has exactly 3 same-x projections, MLP exactly 2). Within-dispatch packing of independent rows is therefore already maximal on main.",
+    "rounding_audit": "Every further dispatch-count cut inside the chain requires folding a non-GEMV dependency into a GEMV dispatch: q/k RoPE into the qkv store, ln1/ln2 prologues, or SwiGLU into the down prologue. The landed chain rounds each stage to f16 in memory (RoPE reads stored f16 q/k; the norms read stored f16 residual h; SwiGLU reads stored f16 gate/up), while a folded kernel would consume the GEMV's pre-rounding f32 accumulator or produce pre-rounded f32 into the next stage. Bits differ, so every such candidate fails the exact-six-digest identity gate by construction and was not screened on hardware."
+  },
+  "do_not_repeat": [
+    {"idea": "MLX_OMARCHY_GATED_BARRIERS dependency-gated barriers", "receipt": "receipts/2026-09-10-decode-bound-3/verdict.json (median paired change -1.32%/+0.30%/-1.20%, no repeatable gain)"},
+    {"idea": "skip all pipeline barriers (HK_PERFTEST=nobarrier)", "receipt": "receipts/2026-09-09-native-nobarrier-verified (under 0.3%)"},
+    {"idea": "4-accumulator rows sharing one x load inside qmm_vec", "receipt": "receipts/2026-09-09-gemv-four-row-screen/verdict.json (BF16 decode -9.8..-13.8%)"},
+    {"idea": "packing q/k/v and gate/up into one dispatch each with residual/bias epilogues", "receipt": "receipts/2026-09-09-decode-fusion/verdict.json - ALREADY LANDED on main (+7.7/+4.9/+7.2% Q4 decode)"}
+  ],
+  "fresh_paired_evidence": {
+    "raw": "out/summary.json",
+    "protocol": "six legs = fork/stock x {short 30-prompt/32-token, long 262/128, longctx 1053/32}, greedy temp 0 seed 0, EOS suppressed, MLX_DISABLE_COMPILE=1, HF_HUB_OFFLINE=1, one lock window; plus an unpacked positive-control screen (fork driver, MLX_OMARCHY_FUSED_GEMV=0, short workload).",
+    "digests": {
+      "fork": {"30": "7fd25a869ff21678", "262": "4cc08910089477fd", "1053": "7da83f06ec9f001d"},
+      "stock": {"30": "7fd25a869ff21678", "262": "4cc08910089477fd", "1053": "7da83f06ec9f001d"},
+      "unpacked_short_30": "7fd25a869ff21678"
+    },
+    "decode_tok_s": {
+      "fork": {"30": 112.78, "262": 108.93, "1053": 98.25},
+      "stock": {"30": 103.33, "262": 81.62, "1053": 53.16},
+      "unpacked_30": 102.41
+    },
+    "unpacked_screen": {
+      "what": "MLX_OMARCHY_FUSED_GEMV=0 disables the same-x group planner: q/k/v and gate/up go back to one dispatch each (+72 dispatches/token predicted at 24 layers), o/down keep their solo epilogue dispatches.",
+      "result": "decode 112.78 -> 102.41 tok/s at 30 tokens (-9.19%), digest unchanged (7fd25a869ff21678). Per-row arithmetic is identical, so identity holds; the tok/s drop at ~40 us wall per one-workgroup dispatch is consistent with the re-inflated dispatch count.",
+      "reading": "Positive control: the landed independent-row packing is live at b6d662a8 and is worth ~9% of short decode; unpacking is the only direction that changes dispatch count while preserving digests, and it is a regression."
+    }
+  },
+  "policy_ok": true,
+  "commands": [
+    "rsync receipts/2026-09-10-q4-row-packing-negative/{six_legs.py,bench_decode_identity.py} jwm1:~/src/mlx-main-b6d662a8/... (+ identity script into scripts/)",
+    "jwm1: /usr/bin/python3 -m venv --system-site-packages .work/venv-q4row; pip install dist/mlx_omarchy-0.32.2.dev202609101916+b6d662a-...whl; pip install --no-deps mlx-lm==0.31.3 transformers==5.17.0 tokenizers==0.23.2 safetensors==0.8.0 huggingface_hub==1.31.0",
+    "jwm1: flock -w 2400 /tmp/m1-gpu.lock timeout 1800 .work/venv-q4row/bin/python receipts/2026-09-10-q4-row-packing-negative/six_legs.py --root . --python .work/venv-q4row/bin/python --wheel dist/mlx_omarchy-0.32.2.dev202609101916+b6d662a-cp314-cp314-linux_aarch64.whl --out receipts/2026-09-10-q4-row-packing-negative/out"
+  ],
+  "decision": "receipt_only_negative_no_qualifying_row_packing_remains",
+  "decision_note": "No source change lands. The 96-dispatch chain's independent rows are already maximally packed on main (landed DecodeFusion); the remaining groups are separated by data dependencies, and every conceivable further fold breaks f16 rounding and the exact six digests. Gated barriers remain rejected and were not re-screened.",
+  "next": {
+    "lever": "Dispatch-count reductions beyond this point need either a wider cross-eager-scope planner boundary (decode-bound-3 next.lever) or identity-preserving f16-rounding formulations of norm/rope/swiglu folds, which do not exist today.",
+    "out_of_scope_note": "QmmSplitKParity owns the m>1 prefill qmm path; no shared file was modified."
+  }
+}
