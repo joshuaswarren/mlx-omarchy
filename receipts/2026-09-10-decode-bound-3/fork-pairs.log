@@ -1,0 +1,8 @@
+pair1-default ok
+pair1-gated ok
+pair2-gated ok
+pair2-default ok
+pair3-default ok
+pair3-gated ok
+{"default": {"long-decode-128": 109.02, "longctx-1024-decode-32": 97.04, "short-decode-32": 112.59}, "gated": {"long-decode-128": 109.25, "longctx-1024-decode-32": 72.31, "short-decode-32": 106.62}}
+{"long-decode-128": 0.211, "longctx-1024-decode-32": -25.4843, "short-decode-32": -5.3024}

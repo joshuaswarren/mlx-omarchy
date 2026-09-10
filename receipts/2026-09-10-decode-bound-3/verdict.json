@@ -1,0 +1,237 @@
+{
+  "schema": "mlx-omarchy/decode-bound-3/1",
+  "branch": "wave/DecodeBound3",
+  "source_commit": "94d9d4755786cd8b6af34b6bfb214542237f7bba",
+  "actual_model": {
+    "repo": "mlx-community/Qwen2.5-0.5B-Instruct-4bit",
+    "revision": "a5339a4131f135d0fdc6a5c8b5bbed2753bbe0f3",
+    "quantization": "affine 4-bit group-64"
+  },
+  "host": {
+    "system": "Linux aarch64",
+    "os": "Omarchy",
+    "kernel": "7.1.6-1-1-ARCH",
+    "device_name": "Apple M1 (G13G B1)",
+    "fork_driver": "Honeykrisp",
+    "stock_driver_file": "/home/joshuawarren/stock-mesa/stock-icd.json"
+  },
+  "wheels": {
+    "diagnostics": {
+      "name": "mlx_omarchy-0.32.2.dev202609101805+diag.94d9d47-cp314-cp314-linux_aarch64.whl",
+      "sha256": "8b04f2066f0ec1ff8efa204fb1d0f18b8afa78c2cd48ccb15d18a7866d4be259",
+      "source_commit": "94d9d4755786cd8b6af34b6bfb214542237f7bba"
+    },
+    "release": {
+      "name": "mlx_omarchy-0.32.2.dev202609101812+94d9d47-cp314-cp314-linux_aarch64.whl",
+      "sha256": "6b9c1418f56091312e640ad03e4f6babbc95a531ee8c9d563595183884093952",
+      "source_commit": "94d9d4755786cd8b6af34b6bfb214542237f7bba"
+    }
+  },
+  "profile_method": {
+    "token_window": 8,
+    "note": "Each diagnostics dispatch writes timestamps around the dispatch and therefore inflates absolute dispatch and gap time. Dispatch identity, order, shape, submission boundaries, and relative ranking remain valid. Release-wheel pairs decide throughput.",
+    "device_identity": {
+      "cooperative_matrix_f32_8": 1,
+      "device_name": "Apple M1 (G13G B1)",
+      "mlx_version": "0.32.2.dev202609101805+diag.94d9d47",
+      "VK_DRIVER_FILES": null
+    },
+    "identity_logs": [
+      "baseline/short.generate.log",
+      "baseline/ctx1024.generate.log"
+    ]
+  },
+  "profile": {
+    "short_30": {
+      "prompt_tokens": 30,
+      "dispatches_per_token": 273,
+      "submissions_per_token": 2,
+      "wall_ms": 22.848176,
+      "gpu_busy": {
+        "ms": 15.161547,
+        "fraction_of_wall": 0.663578,
+        "fraction_of_gpu_span": 0.66549458
+      },
+      "wall_split_ms": {
+        "gpu_busy": 15.161547,
+        "intra_submission_gaps": 7.252536,
+        "inter_submission_gaps": 0.368292,
+        "non_gpu_host_time": 0.065801
+      },
+      "ranked_kernels": [
+        {"item": "QmmVecQ4MultiSubgroupF16", "kind": "kernel", "dispatches": 96, "ms": 7.931796},
+        {"item": "intra_submission_gaps", "kind": "gap", "ms": 7.252536},
+        {"item": "QmmVecQ4WordSubgroupF16", "kind": "kernel", "dispatches": 1, "ms": 1.659541},
+        {"item": "FastRopeF16", "kind": "kernel", "dispatches": 48, "ms": 1.475333},
+        {"item": "FastRmsNormF16", "kind": "kernel", "dispatches": 49, "ms": 1.437794},
+        {"item": "SdpaDecodeNativeF16", "kind": "kernel", "dispatches": 24, "ms": 0.903044},
+        {"item": "SliceUpdatePairF16", "kind": "kernel", "dispatches": 24, "ms": 0.569914},
+        {"item": "SwigluF16", "kind": "kernel", "dispatches": 24, "ms": 0.44325},
+        {"item": "inter_submission_gaps", "kind": "gap", "ms": 0.368292},
+        {"item": "LogSumExpF16", "kind": "kernel", "dispatches": 1, "ms": 0.253208},
+        {"item": "ElementwiseF16", "kind": "kernel", "dispatches": 1, "ms": 0.178834},
+        {"item": "ArgReduceF16", "kind": "kernel", "dispatches": 1, "ms": 0.135625},
+        {"item": "TakeF16", "kind": "kernel", "dispatches": 2, "ms": 0.085125},
+        {"item": "non_gpu_host_time", "kind": "host", "ms": 0.065801},
+        {"item": "TakeU32", "kind": "kernel", "dispatches": 1, "ms": 0.045708},
+        {"item": "DequantF16", "kind": "kernel", "dispatches": 1, "ms": 0.042375}
+      ],
+      "q4_multi_shape_breakdown": [
+        {"dispatches": 24, "count": 1216, "total_ms": 3.980295, "mean_us": 165.846},
+        {"dispatches": 24, "count": 112, "input_bytes": 12288, "total_ms": 1.932836, "mean_us": 80.535},
+        {"dispatches": 24, "count": 112, "input_bytes": 4096, "total_ms": 1.111749, "mean_us": 46.323},
+        {"dispatches": 24, "count": 144, "total_ms": 0.906916, "mean_us": 37.788}
+      ],
+      "fixed_floor": {"one_workgroup_dispatches": 103, "gpu_p50_us": 25.292, "intra_gap_p50_us": 15.375},
+      "full_table": "baseline/short.token.json",
+      "raw_profile": "baseline/short.profile.jsonl",
+      "markers": "baseline/short.markers.jsonl"
+    },
+    "long_1053": {
+      "prompt_tokens": 1053,
+      "dispatches_per_token": 273,
+      "submissions_per_token": 2,
+      "wall_ms": 23.74356,
+      "gpu_busy": {
+        "ms": 15.15508,
+        "fraction_of_wall": 0.63828171,
+        "fraction_of_gpu_span": 0.64551048
+      },
+      "wall_split_ms": {
+        "gpu_busy": 15.15508,
+        "intra_submission_gaps": 8.089337,
+        "inter_submission_gaps": 0.23325,
+        "non_gpu_host_time": 0.265893
+      },
+      "ranked_kernels": [
+        {"item": "intra_submission_gaps", "kind": "gap", "ms": 8.089337},
+        {"item": "QmmVecQ4MultiSubgroupF16", "kind": "kernel", "dispatches": 96, "ms": 7.054708},
+        {"item": "SdpaDecodeNativeF16", "kind": "kernel", "dispatches": 24, "ms": 1.681458},
+        {"item": "FastRopeF16", "kind": "kernel", "dispatches": 48, "ms": 1.618205},
+        {"item": "QmmVecQ4WordSubgroupF16", "kind": "kernel", "dispatches": 1, "ms": 1.597084},
+        {"item": "FastRmsNormF16", "kind": "kernel", "dispatches": 49, "ms": 1.481294},
+        {"item": "SliceUpdatePairF16", "kind": "kernel", "dispatches": 24, "ms": 0.500833},
+        {"item": "SwigluF16", "kind": "kernel", "dispatches": 24, "ms": 0.455707},
+        {"item": "LogSumExpF16", "kind": "kernel", "dispatches": 1, "ms": 0.266875},
+        {"item": "non_gpu_host_time", "kind": "host", "ms": 0.265893},
+        {"item": "inter_submission_gaps", "kind": "gap", "ms": 0.23325},
+        {"item": "ElementwiseF16", "kind": "kernel", "dispatches": 1, "ms": 0.182916},
+        {"item": "ArgReduceF16", "kind": "kernel", "dispatches": 1, "ms": 0.13775},
+        {"item": "TakeF16", "kind": "kernel", "dispatches": 2, "ms": 0.084208},
+        {"item": "DequantF16", "kind": "kernel", "dispatches": 1, "ms": 0.050125},
+        {"item": "TakeU32", "kind": "kernel", "dispatches": 1, "ms": 0.043917}
+      ],
+      "q4_multi_shape_breakdown": [
+        {"dispatches": 24, "count": 1216, "total_ms": 3.482168, "mean_us": 145.09},
+        {"dispatches": 24, "count": 112, "input_bytes": 12288, "total_ms": 1.699917, "mean_us": 70.83},
+        {"dispatches": 24, "count": 144, "total_ms": 0.970332, "mean_us": 40.431},
+        {"dispatches": 24, "count": 112, "input_bytes": 4096, "total_ms": 0.902291, "mean_us": 37.595}
+      ],
+      "fixed_floor": {"one_workgroup_dispatches": 103, "gpu_p50_us": 24.75, "intra_gap_p50_us": 16.167},
+      "full_table": "baseline/ctx1024.token.json",
+      "raw_profile": "baseline/ctx1024.profile.jsonl",
+      "markers": "baseline/ctx1024.markers.jsonl"
+    }
+  },
+  "stale_comparison": {
+    "source": "receipts/2026-09-09-decode-tail/profile-base/token10-table.json",
+    "source_commit": "9d83072ddd4634b2786b5f85f3f35b9ca0f77cf2",
+    "dispatches_per_token": 345,
+    "submissions_per_token": 2,
+    "gpu_busy_ms": 20.765,
+    "gap_ms": 7.317,
+    "current_dispatches_per_token": 273,
+    "dispatches_removed": 72,
+    "dispatch_reduction_pct": 20.8696,
+    "removed_shape": {
+      "old_attention": {"MatmulF16": 48, "SoftmaxF16": 24},
+      "new_attention": {"SdpaDecodeNativeF16": 24},
+      "old_kv_append": {"CopyGeneralF16": 48},
+      "new_kv_append": {"SliceUpdatePairF16": 24}
+    },
+    "unchanged_leaders": {
+      "QmmVecQ4MultiSubgroupF16": 96,
+      "FastRopeF16": 48,
+      "FastRmsNormF16": 49
+    }
+  },
+  "change": {
+    "what": "none",
+    "why_from_profile": "The short-token leader is the already-native 96-dispatch Q4 GEMV chain. It consists of four dependency-ordered projections per layer, and prior row-sharing was rejected. The long-token leader is diagnostics-inflated intra-submission launch/drain time. Dependency-gated barriers were the remaining safe scheduling screen; they did not produce a repeatable release gain.",
+    "screened_not_landed": "Enable the existing MLX_OMARCHY_GATED_BARRIERS path.",
+    "screen_profile": {
+      "short_wall_ms": {"default": 22.848176, "gated": 22.726711, "change_pct": -0.532},
+      "long_wall_ms": {"default": 23.74356, "gated": 23.579755, "change_pct": -0.69},
+      "dispatches_per_token": 273,
+      "submissions_per_token": 2,
+      "tables": ["gated/short.token.json", "gated/ctx1024.token.json"]
+    }
+  },
+  "paired_fork": {
+    "protocol": "Three alternating default/gated pairs in order AB, BA, AB on the same exact-main release wheel.",
+    "raw": "fork-pairs/summary.json",
+    "default_median_tok_s": {"30": 112.59, "262": 109.02, "1053": 97.04},
+    "gated_median_tok_s": {"30": 106.62, "262": 109.25, "1053": 72.31},
+    "paired_change_pct_by_pair": {
+      "30": [-1.3235, -7.3203, -0.9592],
+      "262": [12.2137, -0.1189, 0.3027],
+      "1053": [-1.2024, -25.9599, 0.1752]
+    },
+    "median_paired_change_pct": {"30": -1.3235, "262": 0.3027, "1053": -1.2024},
+    "interpretation": "Cold/order outliers affected both arms: the first default 262/1053 legs were 69.43/73.19, and the pair-2 first gated 1053 leg was 71.93, while later steady legs were about 109/97. The order-aware median pair changes show no repeatable gain."
+  },
+  "stock_check": {
+    "raw": "stock-check/summary.json",
+    "default_tok_s": {"30": 103.47, "262": 81.74, "1053": 52.83},
+    "gated_tok_s": {"30": 104.04, "262": 82.07, "1053": 53.35},
+    "change_pct": {"30": 0.5509, "262": 0.4037, "1053": 0.9843},
+    "cooperative_matrix_f32_8": 0,
+    "VK_DRIVER_FILES": "/home/joshuawarren/stock-mesa/stock-icd.json"
+  },
+  "digests": {
+    "fork": {
+      "default": {"30": "7fd25a869ff21678", "262": "4cc08910089477fd", "1053": "7da83f06ec9f001d"},
+      "gated": {"30": "7fd25a869ff21678", "262": "4cc08910089477fd", "1053": "7da83f06ec9f001d"}
+    },
+    "stock": {
+      "default": {"30": "7fd25a869ff21678", "262": "4cc08910089477fd", "1053": "7da83f06ec9f001d"},
+      "gated": {"30": "7fd25a869ff21678", "262": "4cc08910089477fd", "1053": "7da83f06ec9f001d"}
+    }
+  },
+  "policy_ok": true,
+  "tests": {
+    "llvmpipe": {
+      "command": "MLX_OMARCHY_ALLOW_NON_APPLE=1 [default and MLX_OMARCHY_GATED_BARRIERS=1] omarchy_runtime_tests --test-case='dependency-gated barriers keep hazard chains correct'",
+      "result": "1/1 case and 22/22 assertions passed in each mode",
+      "logs": ["tests/llvmpipe-default.log", "tests/llvmpipe-gated.log"]
+    },
+    "m1_fork": {
+      "result": "1/1 case and 22/22 assertions passed in default and gated modes",
+      "cooperative_matrix_f32_8": 1,
+      "log": "tests/m1-fork.log"
+    },
+    "m1_stock": {
+      "result": "1/1 case and 22/22 assertions passed in default and gated modes",
+      "cooperative_matrix_f32_8": 0,
+      "VK_DRIVER_FILES": "/home/joshuawarren/stock-mesa/stock-icd.json",
+      "log": "tests/m1-stock.log"
+    }
+  },
+  "commands": [
+    "DEV_RELEASE=1 CMAKE_BUILD_PARALLEL_LEVEL=4 scripts/build-wheel.sh --diagnostics",
+    "capture_profiles.py --root . --python .work/venv-profile/bin/python --wheel <diagnostics-wheel> --out <baseline|gated> --label <label> [--gated-barriers]",
+    "analyze_token.py <profile> <markers> --compute-h overlay/mlx/backend/omarchy/compute.h --token-window 8 --out <token.json>",
+    "paired_barriers.py --root . --python .work/venv-release/bin/python --wheel <release-wheel> --out <fork-pairs> --pairs 3 --driver fork",
+    "paired_barriers.py --root . --python .work/venv-release/bin/python --wheel <release-wheel> --out <stock-check> --pairs 1 --driver stock",
+    "timeout 1800 flock -w 1800 /tmp/m1-gpu.lock receipts/2026-09-10-decode-bound-3/run_m1_tests.sh"
+  ],
+  "decision": "reject_dependency_gated_barriers_and_land_no_source_change",
+  "next": {
+    "lever": "Cross-eager-scope dispatch fusion, not another per-kernel arithmetic variant.",
+    "measured_cost": {
+      "FastRopeF16_48_dispatches_ms": {"30": 1.475333, "1053": 1.618205},
+      "one_workgroup_dispatch_plus_intra_gap_p50_us": {"30": 40.667, "1053": 40.917}
+    },
+    "constraint": "Q and K RoPE execute in separate eager scopes, so the existing pair planner cannot remove these dispatches. A wider graph/tape boundary is required. The 1.60-1.66 ms vocabulary GEMV cannot be reduced without new native-equivalent arithmetic or a parity-ID policy change."
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "source_commit": "94d9d4755786cd8b6af34b6bfb214542237f7bba",
+  "wheel": "mlx_omarchy-0.32.2.dev202609101805+diag.94d9d47-cp314-cp314-linux_aarch64.whl",
+  "wheel_sha256": "8b04f2066f0ec1ff8efa204fb1d0f18b8afa78c2cd48ccb15d18a7866d4be259",
+  "model_repo": "mlx-community/Qwen2.5-0.5B-Instruct-4bit",
+  "model_revision": "a5339a4131f135d0fdc6a5c8b5bbed2753bbe0f3",
+  "python": "/home/joshuawarren/src/mlx-DecodeBound3/.work/venv-profile/bin/python"
+}
