@@ -1,0 +1,64 @@
+{
+  "topic": "fast::CustomKernel bounded MSL-to-SPIR-V execution",
+  "verdict": "pass",
+  "timestamp_utc": "2026-09-10T18:30:59Z",
+  "branch": "wave/CustomKernelMsl",
+  "base_commit": "ee530132b7e63061b3c374a30c5479564f25098c",
+  "implementation_commit": "940cb6b1f837e6856165c91cc4d7aadeef16f0f3",
+  "agent_model": "openai-codex/gpt-5.6-sol",
+  "coverage": {
+    "cases": 8,
+    "supported": [
+      "array and scalar buffers",
+      "template parameters",
+      "float16 and bfloat16",
+      "multiple outputs",
+      "non-contiguous shape, stride, and ndim metadata",
+      "header helpers",
+      "thread and grid attributes",
+      "threadgroup memory and barriers",
+      "subgroup operations",
+      "float atomic add",
+      "precise and fast math modes"
+    ],
+    "named_refusals": [
+      "textures",
+      "precompiled Metal libraries",
+      "dynamically sized threadgroup memory",
+      "serialized scalar inputs"
+    ]
+  },
+  "local": {
+    "environment": "x86_64 llvmpipe",
+    "mlx_version": "0.32.2.dev202609101813+ee53013",
+    "device_name": "llvmpipe (LLVM 15.0.6, 256 bits)",
+    "cooperative_matrix_f32_8": 0,
+    "compiler": "glslangValidator Glslang Version: 11:16.5.0",
+    "wheel": "dist/mlx_omarchy-0.32.2.dev202609101813+ee53013-cp311-cp311-linux_x86_64.whl",
+    "wheel_sha256": "b5e66d475504d6b57234405dc5ecb9c79f0ff1af354c5fd50b0567b92078f6b7",
+    "test_command": "PATH=/tmp/glslang-install/bin:$PATH MLX_OMARCHY_ALLOW_NON_APPLE=1 .venv-custom-kernel/bin/python tests/custom_kernel_smoke.py",
+    "result": "Ran 8 tests in 6.700s; OK"
+  },
+  "m1": {
+    "host": "joshuawarren@100.84.184.102",
+    "hostname": "jwm1-linux",
+    "checkout": "~/src/mlx-CustomKernelMsl",
+    "source_commit": "940cb6b1f837e6856165c91cc4d7aadeef16f0f3",
+    "mlx_version": "0.32.2.dev202609101826+940cb6b",
+    "device_name": "Apple M1 (G13G B1)",
+    "cooperative_matrix_f32_8": 1,
+    "compiler": "/usr/bin/glslc 2026.3, SPIR-V 1.0 target",
+    "build_command": "PATH=/tmp/glslang-install/bin:$PATH DEV_RELEASE=1 CMAKE_BUILD_PARALLEL_LEVEL=4 scripts/build-wheel.sh",
+    "wheel": "dist/mlx_omarchy-0.32.2.dev202609101826+940cb6b-cp314-cp314-linux_aarch64.whl",
+    "wheel_size_bytes": 7555176,
+    "wheel_sha256": "65a0a47164676108e62a2cd5cf4a957eb1eda79847e4cf10a8989b0242adf0d7",
+    "test_command": ".venv-custom-kernel/bin/python tests/custom_kernel_smoke.py",
+    "result": "Ran 8 tests in 2.567s; OK",
+    "lock": "/tmp/m1-gpu.lock",
+    "bounded_execution": "timeout 1750 flock -w 2400"
+  },
+  "generator_check": {
+    "command": "python3 -m py_compile tools/gen-compat-matrix.py && python3 tools/gen-compat-matrix.py --json-out /tmp/customkernel-coverage.json > /tmp/customkernel-compatibility-matrix.md",
+    "result": "exit 0; fast::CustomKernel classified partial with named refusal boundaries and no refusal-only test anchor"
+  }
+}

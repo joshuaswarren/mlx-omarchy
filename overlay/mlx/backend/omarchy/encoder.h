@@ -10,6 +10,7 @@
 #include <functional>
 #include <memory>
 #include <span>
+#include <string>
 #include <unordered_map>
 #include <utility>
 #include <vector>
@@ -162,6 +163,14 @@ class MLX_API CommandEncoder {
       uint32_t group_count_x,
       uint32_t group_count_y = 1,
       uint32_t group_count_z = 1);
+  void dispatch_compute(
+      const std::string& cache_key,
+      std::span<const uint32_t> spirv,
+      std::span<const ComputeBinding> bindings,
+      const ComputeParams& params,
+      uint32_t group_count_x,
+      uint32_t group_count_y = 1,
+      uint32_t group_count_z = 1);
 
   // Record a four-byte-word fill. Size and offset must be multiples of 4.
   void fill_buffer(
@@ -252,6 +261,14 @@ class MLX_API CommandEncoder {
   // every submission whose batches allocated from it (timeline order).
   static constexpr uint32_t kDescriptorSetsPerPool = 2048;
   VkDescriptorSet acquire_descriptor_set(ComputeRuntime& compute);
+  void dispatch_compute_pipeline(
+      VkPipeline pipeline,
+      ComputeKernel profile_kernel,
+      std::span<const ComputeBinding> bindings,
+      const ComputeParams& params,
+      uint32_t group_count_x,
+      uint32_t group_count_y,
+      uint32_t group_count_z);
 
   // Pick a completed ring slot (joining the oldest only when all are in
   // flight) and begin recording into it.

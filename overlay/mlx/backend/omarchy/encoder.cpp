@@ -368,6 +368,47 @@ void CommandEncoder::dispatch_compute(
     return;
   }
   auto& compute = device_.compute();
+  dispatch_compute_pipeline(
+      compute.pipeline(kernel),
+      kernel,
+      bindings,
+      params,
+      group_count_x,
+      group_count_y,
+      group_count_z);
+}
+
+void CommandEncoder::dispatch_compute(
+    const std::string& cache_key,
+    std::span<const uint32_t> spirv,
+    std::span<const ComputeBinding> bindings,
+    const ComputeParams& params,
+    uint32_t group_count_x,
+    uint32_t group_count_y,
+    uint32_t group_count_z) {
+  if (group_count_x == 0 || group_count_y == 0 || group_count_z == 0) {
+    return;
+  }
+  auto& compute = device_.compute();
+  dispatch_compute_pipeline(
+      compute.pipeline(cache_key, spirv),
+      ComputeKernel::Custom,
+      bindings,
+      params,
+      group_count_x,
+      group_count_y,
+      group_count_z);
+}
+
+void CommandEncoder::dispatch_compute_pipeline(
+    VkPipeline pipeline,
+    ComputeKernel profile_kernel,
+    std::span<const ComputeBinding> bindings,
+    const ComputeParams& params,
+    uint32_t group_count_x,
+    uint32_t group_count_y,
+    uint32_t group_count_z) {
+  auto& compute = device_.compute();
   uint32_t binding_limit = compute.binding_limit();
   if (bindings.empty() || bindings.size() > binding_limit) {
     throw std::invalid_argument(
@@ -384,8 +425,6 @@ void CommandEncoder::dispatch_compute(
   group_count_z = std::min(group_count_z, kMaxComputeGroupCountX);
 
   auto& dt = vk::device_table();
-  VkPipeline pipeline = compute.pipeline(kernel);
-
   VkDescriptorSet descriptor_set = acquire_descriptor_set(compute);
 
   std::array<VkDescriptorBufferInfo, kComputeBindingBudget> buffer_info{};
@@ -499,7 +538,7 @@ void CommandEncoder::dispatch_compute(
       this,
       current_slot_,
       cmd_,
-      kernel,
+      profile_kernel,
       params,
       bindings,
       group_count_x,

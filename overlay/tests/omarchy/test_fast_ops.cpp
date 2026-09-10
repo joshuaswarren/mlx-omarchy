@@ -1535,30 +1535,6 @@ TEST_CASE("norm kernels normalize non-contiguous inputs exactly") {
   CHECK(gate_message.find("[omarchy]") != std::string::npos);
 }
 
-TEST_CASE("CustomKernel reports the Metal-source incompatibility") {
-  if (!compute_available()) {
-    return;
-  }
-  Stream stream = gpu_stream();
-  array input = arange(0, 8, float32, stream);
-  auto primitive = std::make_shared<fast::CustomKernel>(
-      stream,
-      "custom_kernel_probe",
-      std::string("kernel void custom_kernel_probe() {}"),
-      std::tuple<int, int, int>{1, 1, 1},
-      std::tuple<int, int, int>{1, 1, 1},
-      std::vector<std::tuple<bool, bool, bool>>{},
-      false,
-      std::nullopt,
-      std::vector<fast::ScalarArg>{},
-      false,
-      0);
-  array out(Shape{8}, float32, primitive, {input});
-  auto message = caught_message([&] { out.eval(); });
-  CHECK(message.find("fast::CustomKernel") != std::string::npos);
-  CHECK(message.find("Metal") != std::string::npos);
-  CHECK(message.find("no silent CPU fallback") != std::string::npos);
-}
 
 // ---- fused RoPE ----
 

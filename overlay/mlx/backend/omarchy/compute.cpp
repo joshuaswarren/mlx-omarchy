@@ -1285,6 +1285,7 @@ ShaderBytes shader_bytes(ComputeKernel kernel) {
       return {gather_qmm_nb_fp_hgs_bf16, gather_qmm_nb_fp_hgs_bf16_size};
     case ComputeKernel::MatmulComplex64:
       return {matmul_complex64, matmul_complex64_size};
+    case ComputeKernel::Custom:
     case ComputeKernel::Count:
       break;
   }
@@ -1340,6 +1341,9 @@ ComputeRuntime::~ComputeRuntime() {
       dt.DestroyPipeline(device_, pipeline, nullptr);
     }
   }
+  for (const auto& [_, pipeline] : dynamic_pipelines_) {
+    dt.DestroyPipeline(device_, pipeline, nullptr);
+  }
   if (pipeline_layout_ != VK_NULL_HANDLE) {
     dt.DestroyPipelineLayout(device_, pipeline_layout_, nullptr);
   }
@@ -1360,17 +1364,40 @@ VkPipeline ComputeRuntime::pipeline(ComputeKernel kernel) {
   return pipelines_[index];
 }
 
+VkPipeline ComputeRuntime::pipeline(
+    const std::string& cache_key,
+    std::span<const uint32_t> spirv) {
+  std::lock_guard<std::mutex> lock(mutex_);
+  auto [entry, inserted] = dynamic_pipelines_.try_emplace(cache_key);
+  if (inserted) {
+    try {
+      entry->second = create_pipeline(spirv);
+    } catch (...) {
+      dynamic_pipelines_.erase(entry);
+      throw;
+    }
+  }
+  return entry->second;
+}
+
 VkPipeline ComputeRuntime::create_pipeline(ComputeKernel kernel) {
-  auto& dt = vk::device_table();
   auto [bytes, size] = shader_bytes(kernel);
   if (size == 0 || size % sizeof(uint32_t) != 0) {
     throw std::runtime_error("[omarchy] embedded SPIR-V has an invalid size.");
   }
+  return create_pipeline(std::span<const uint32_t>{
+      reinterpret_cast<const uint32_t*>(bytes), size / sizeof(uint32_t)});
+}
 
+VkPipeline ComputeRuntime::create_pipeline(std::span<const uint32_t> spirv) {
+  if (spirv.empty() || spirv.front() != 0x07230203u) {
+    throw std::runtime_error("[omarchy] custom SPIR-V is invalid.");
+  }
+  auto& dt = vk::device_table();
   VkShaderModuleCreateInfo shader_info{
       VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO};
-  shader_info.codeSize = size;
-  shader_info.pCode = reinterpret_cast<const uint32_t*>(bytes);
+  shader_info.codeSize = spirv.size_bytes();
+  shader_info.pCode = spirv.data();
   VkShaderModule shader{VK_NULL_HANDLE};
   VKX_CHECK(dt.CreateShaderModule(device_, &shader_info, nullptr, &shader));
 

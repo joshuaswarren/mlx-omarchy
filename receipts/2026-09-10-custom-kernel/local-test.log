@@ -1,0 +1,8 @@
+mlx_version=0.32.2.dev202609101813+ee53013
+device_name=llvmpipe (LLVM 15.0.6, 256 bits)
+cooperative_matrix_f32_8=0
+........
+----------------------------------------------------------------------
+Ran 8 tests in 6.700s
+
+OK
