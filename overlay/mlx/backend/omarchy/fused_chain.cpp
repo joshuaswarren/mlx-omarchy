@@ -11,6 +11,7 @@
 #include <memory>
 #include <optional>
 #include <typeinfo>
+#include <stdexcept>
 #include <unordered_map>
 #include <unordered_set>
 #include <utility>
@@ -603,11 +604,22 @@ struct GemvGroup {
   enum class State : uint8_t { pending, done, failed } state{State::pending};
 };
 
+struct SliceUpdatePair {
+  explicit SliceUpdatePair(const array& first, const array& second)
+      : nodes{first, second} {}
+
+  std::array<array, 2> nodes;
+  enum class State : uint8_t { pending, deferred, done, failed } state{
+      State::pending};
+};
+
 struct EagerFusionState {
   std::unordered_map<std::uintptr_t, EagerRole> roles;
   std::unordered_map<std::uintptr_t, FusedChain> chains;
   std::unordered_map<std::uintptr_t, size_t> gemv_roles;
   std::vector<GemvGroup> gemv_groups;
+  std::unordered_map<std::uintptr_t, size_t> slice_update_roles;
+  std::vector<SliceUpdatePair> slice_update_pairs;
 };
 
 thread_local EagerFusionState* eager_state = nullptr;
@@ -681,6 +693,33 @@ EagerFusionScope::EagerFusionScope(const std::deque<array>& tape)
     claimed.insert(inner->id());
     claimed.insert(tail.id());
   }
+  for (size_t i = 1; i < tape.size(); ++i) {
+    const array& first = tape[i - 1];
+    const array& second = tape[i];
+    if (!is_op(&first, typeid(SliceUpdate)) ||
+        !is_op(&second, typeid(SliceUpdate)) ||
+        first.inputs().size() != 2 || second.inputs().size() != 2 ||
+        first.dtype() != float16 || second.dtype() != float16 ||
+        first.shape() != second.shape() ||
+        first.inputs()[0].shape() != second.inputs()[0].shape() ||
+        first.inputs()[1].shape() != second.inputs()[1].shape() ||
+        first.primitive().stream() != second.primitive().stream() ||
+        static_cast<const SliceUpdate&>(first.primitive()).state() !=
+            static_cast<const SliceUpdate&>(second.primitive()).state() ||
+        std::get<0>(static_cast<const SliceUpdate&>(first.primitive()).state()) !=
+            SliceUpdate::None ||
+        claimed.count(first.id()) || claimed.count(second.id())) {
+      continue;
+    }
+    size_t index = state->slice_update_pairs.size();
+    state->slice_update_roles.emplace(first.id(), index);
+    state->slice_update_roles.emplace(second.id(), index);
+    state->slice_update_pairs.emplace_back(first, second);
+    claimed.insert(first.id());
+    claimed.insert(second.id());
+    ++i;
+  }
+
   if (!fused_gemv_enabled()) {
     return;
   }
@@ -801,6 +840,32 @@ bool fused_gemv_enabled() {
 
 bool try_eval_eager_fusion(array& node, const Stream& stream) {
   if (!eager_state) {
+    return false;
+  }
+  if (auto update = eager_state->slice_update_roles.find(node.id());
+      update != eager_state->slice_update_roles.end()) {
+    auto& pair = eager_state->slice_update_pairs[update->second];
+    if (pair.state == SliceUpdatePair::State::done) {
+      return true;
+    }
+    if (pair.state == SliceUpdatePair::State::failed) {
+      return false;
+    }
+    auto result = dispatch_slice_update_pair(pair.nodes, stream);
+    if (result == SliceUpdatePairDispatch::done) {
+      pair.state = SliceUpdatePair::State::done;
+      return true;
+    }
+    if (pair.state == SliceUpdatePair::State::deferred) {
+      throw std::runtime_error(
+          "[mlx-omarchy] deferred SliceUpdate pair did not become ready");
+    }
+    if (result == SliceUpdatePairDispatch::not_ready &&
+        node.id() == pair.nodes[0].id()) {
+      pair.state = SliceUpdatePair::State::deferred;
+      return true;
+    }
+    pair.state = SliceUpdatePair::State::failed;
     return false;
   }
   if (auto gemv = eager_state->gemv_roles.find(node.id());
