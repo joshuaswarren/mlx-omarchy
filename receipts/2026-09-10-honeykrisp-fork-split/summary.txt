@@ -1,0 +1,47 @@
+== runs ingested ==
+  /tmp/forksplit/matrix-coop-0.json  label=jwm1-b6d662a-fork-coop-0  started=2026-09-10T19:45:40Z
+  /tmp/forksplit/matrix-coop-1.json  label=jwm1-b6d662a-fork-coop-1  started=2026-09-10T19:51:13Z
+  /tmp/forksplit/matrix-coop-2.json  label=jwm1-b6d662a-fork-coop-2  started=2026-09-10T19:55:38Z
+  /tmp/forksplit/matrix-tile-0.json  label=jwm1-b6d662a-fork-tile-0  started=2026-09-10T19:50:22Z
+  /tmp/forksplit/matrix-tile-1.json  label=jwm1-b6d662a-fork-tile-1  started=2026-09-10T19:54:47Z
+  /tmp/forksplit/matrix-tile-2.json  label=jwm1-b6d662a-fork-tile-2  started=2026-09-10T19:56:20Z
+== provenance ==
+  mlx-omarchy 0.32.2.dev202609101916+b6d662a mx=0.32.2.dev202609101916+b6d662a verified=match harness=b6d662a-dirty core.cpython-314-aarch64-linux-gnu.so=sha256:4ad850da16c300ea libmlx.so=sha256:9bdfaca562639796
+
+== per-leg metrics ==
+leg                                    cfg    n prefill median samples
+q4_short                               coop   3          333.3 333.3, 250.0, 333.3
+q4_short                               tile   3          172.4 172.4, 173.4, 172.4
+q4_long                                coop   3          942.4 942.4, 912.9, 949.3
+q4_long                                tile   3          310.8 310.8, 310.4, 311.2
+q4_longctx                             coop   3         1119.0 1119.0, 1075.6, 1177.9
+q4_longctx                             tile   3          364.5 364.5, 364.1, 367.3
+bf16_short                             coop   3           86.5 83.6, 87.5, 86.5
+bf16_short                             tile   3           83.6 83.8, 83.1, 83.6
+bf16_long                              coop   3          318.3 318.3, 322.3, 318.0
+bf16_long                              tile   3          207.9 207.8, 207.9, 208.1
+bf16_longctx                           coop   3          357.9 357.9, 273.3, 359.0
+bf16_longctx                           tile   3          211.6 211.1, 212.8, 211.6
+
+== paired tile/coop ratios (per index, then median) ==
+q4_short                               n=3  prefill tile/coop median=0.517  [0.517, 0.694, 0.517]
+                                              decode  tile/coop median=1.007  [1.007, 1.217, 0.969]
+q4_long                                n=3  prefill tile/coop median=0.330  [0.330, 0.340, 0.328]
+                                              decode  tile/coop median=0.997  [0.993, 1.621, 0.997]
+q4_longctx                             n=3  prefill tile/coop median=0.326  [0.326, 0.339, 0.312]
+                                              decode  tile/coop median=1.019  [0.997, 2.169, 1.019]
+bf16_short                             n=3  prefill tile/coop median=0.967  [1.003, 0.950, 0.967]
+                                              decode  tile/coop median=1.001  [1.001, 0.994, 1.003]
+bf16_long                              n=3  prefill tile/coop median=0.653  [0.653, 0.645, 0.654]
+                                              decode  tile/coop median=0.999  [0.998, 1.133, 0.999]
+bf16_longctx                           n=3  prefill tile/coop median=0.590  [0.590, 0.779, 0.589]
+                                              decode  tile/coop median=1.002  [0.967, 1.371, 1.002]
+
+== digests ==
+leg                                    required           coop digests                   tile digests                  
+q4_short                               7fd25a869ff21678   OK   7fd25a869ff21678               OK   7fd25a869ff21678
+q4_long                                4cc08910089477fd   OK   4cc08910089477fd               OK   4cc08910089477fd
+q4_longctx                             7da83f06ec9f001d   OK   7da83f06ec9f001d               OK   7da83f06ec9f001d
+bf16_short                             f26175202f3dabe9   OK   f26175202f3dabe9               OK   f26175202f3dabe9
+bf16_long                              ad964232ee67fecd   OK   ad964232ee67fecd               OK   ad964232ee67fecd
+bf16_longctx                           ff502900d2a179a5   OK   ff502900d2a179a5               OK   ff502900d2a179a5

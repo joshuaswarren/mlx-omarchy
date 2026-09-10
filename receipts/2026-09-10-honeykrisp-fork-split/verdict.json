@@ -1,0 +1,128 @@
+{
+  "schema": "honeykrisp-fork-split/1",
+  "date_utc": "2026-09-10",
+  "classification": "negative result; no source change",
+  "question": "Can a runtime capability/build gate, driver workaround, or kernel scheduling choice make the installed Honeykrisp fork (coopmat_f32_8=1) use the stable non-coopmat path without regressing decode or exact digests?",
+  "answer": "No. The premise behind the question is inverted on current main: the fork's coopmat path is 1.95-3.09x FASTER than stock Mesa 26.1.7 on Q4 prefill, both paths produce identical (all six required) generated-token digests on the installed fork, and decode dispatches no coopmat kernel at all. Flipping the fork to the tile path is a measured 1.5-3.1x prefill regression with zero digest benefit on the installed driver, would additionally surrender the capability-gated native SDPA decode win (fork 96.0 vs stock 52.9 tok/s at 1053-token context), and would still not make bf16 outputs driver-portable: the tile path itself yields bf16_long c5be9207833d2a26 on stock but ad964232ee67fecd on the fork.",
+  "source": {
+    "branch": "main",
+    "commit": "b6d662a8",
+    "change": "none; measurement only"
+  },
+  "wheel": {
+    "version": "0.32.2.dev202609101916+b6d662a",
+    "source_commit": "b6d662a8",
+    "sha256": "98821134f4bcf306ab1d64d6885ddf3d3e8e932311283bbd11f97aecf6a8e439",
+    "provenance_line": "mlx-omarchy 0.32.2.dev202609101916+b6d662a mx=0.32.2.dev202609101916+b6d662a verified=match harness=b6d662a-dirty core.cpython-314-aarch64-linux-gnu.so=sha256:4ad850da16c300ea libmlx.so=sha256:9bdfaca562639796",
+    "note": "same wheel as receipts/2026-09-10-main-parity-12-matrix (commit f055acc2); 'harness=b6d662a-dirty' reflects untracked receipt/script files in the checkout, not library content; libmlx verified=match on every run"
+  },
+  "drivers": {
+    "installed_fork": {
+      "selection": "no VK_DRIVER_FILES/VK_ICD_FILENAMES override; system ICD /usr/share/vulkan/icd.d/asahi_icd.aarch64.json",
+      "identity": "Mesa 26.3.0-devel (git-6f6afc8968), Honeykrisp, package mesa-honeykrisp-omarchy 26.3.0.devel.hk6f6afc8-1",
+      "cooperative_matrix_f32_8": 1
+    },
+    "stock_2617": {
+      "selection": "VK_DRIVER_FILES=/home/joshuawarren/stock-mesa/stock-icd.json",
+      "cooperative_matrix_f32_8": 0,
+      "cited_from": "receipts/2026-09-10-main-parity-12-matrix (commit f055acc2, branch receipts/main-parity-12-matrix)"
+    }
+  },
+  "paired_matrix_fork_coop_vs_tile": {
+    "protocol": "Three alternating process pairs (coop: no MLX env; tile: MLX_OMARCHY_NO_COOPMAT=1) of the full bench_matrix run (2 pinned models x 3 README workloads, MLX_DISABLE_COMPILE=1, greedy temp 0 seed 0, 4 warmup tokens, --wheel provenance gate) on the installed fork, same wheel and venv throughout; 1-minute load < 1.5 before every run; AC power; /tmp/m1-gpu.lock serialization.",
+    "models": {
+      "qwen25-0.5b-4bit": "mlx-community/Qwen2.5-0.5B-Instruct-4bit a5339a4131f135d0fdc6a5c8b5bbed2753bbe0f3",
+      "qwen25-0.5b-bf16": "mlx-community/Qwen2.5-0.5B-Instruct-bf16 56d07e766edd7159fbe12ed12d9cf114bf38bf1e"
+    },
+    "prefill_tok_s_medians": {
+      "q4_short": {"coop": 333.3, "tile": 172.4, "tile_per_coop": 0.517},
+      "q4_long": {"coop": 942.4, "tile": 310.8, "tile_per_coop": 0.330},
+      "q4_longctx": {"coop": 1119.0, "tile": 364.5, "tile_per_coop": 0.326},
+      "bf16_short": {"coop": 86.5, "tile": 83.6, "tile_per_coop": 0.967},
+      "bf16_long": {"coop": 318.3, "tile": 207.9, "tile_per_coop": 0.653},
+      "bf16_longctx": {"coop": 357.9, "tile": 211.6, "tile_per_coop": 0.590}
+    },
+    "prefill_samples": {
+      "coop": {"q4_short": [333.3, 250.0, 333.3], "q4_long": [942.4, 912.9, 949.3], "q4_longctx": [1119.0, 1075.6, 1177.9], "bf16_short": [83.6, 87.5, 86.5], "bf16_long": [318.3, 322.3, 318.0], "bf16_longctx": [357.9, 273.3, 359.0]},
+      "tile": {"q4_short": [172.4, 173.4, 172.4], "q4_long": [310.8, 310.4, 311.2], "q4_longctx": [364.5, 364.1, 367.3], "bf16_short": [83.8, 83.1, 83.6], "bf16_long": [207.8, 207.9, 208.1], "bf16_longctx": [211.1, 212.8, 211.6]}
+    },
+    "decode_tok_s_tile_per_coop_paired": {
+      "q4_short": [1.007, 1.217, 0.969],
+      "q4_long": [0.993, 1.621, 0.997],
+      "q4_longctx": [0.997, 2.169, 1.019],
+      "bf16_short": [1.001, 0.994, 1.003],
+      "bf16_long": [0.998, 1.133, 0.999],
+      "bf16_longctx": [0.967, 1.371, 1.002],
+      "note": "per-pair medians are 0.97-1.02 on every leg; the three >1.1 values are pair-index-1 decode samples of one alternating cycle and have no structural mechanism (no coopmat kernel dispatches at matrix_m == 1); they are published unfiltered rather than dropped"
+    },
+    "digests": {
+      "q4_short": {"required": "7fd25a869ff21678", "coop": "7fd25a869ff21678", "tile": "7fd25a869ff21678"},
+      "q4_long": {"required": "4cc08910089477fd", "coop": "4cc08910089477fd", "tile": "4cc08910089477fd"},
+      "q4_longctx": {"required": "7da83f06ec9f001d", "coop": "7da83f06ec9f001d", "tile": "7da83f06ec9f001d"},
+      "bf16_short": {"required": "f26175202f3dabe9", "coop": "f26175202f3dabe9", "tile": "f26175202f3dabe9"},
+      "bf16_long": {"required": "ad964232ee67fecd", "coop": "ad964232ee67fecd", "tile": "ad964232ee67fecd"},
+      "bf16_longctx": {"required": "ff502900d2a179a5", "coop": "ff502900d2a179a5", "tile": "ff502900d2a179a5"},
+      "required_source": "origin/main receipts/2026-09-10-main-native-decode-smoke/matrix.json (source 3c91946)"
+    }
+  },
+  "kernel_microbench": {
+    "method": "direct worker (/tmp/qmm_worker.py, environment passed straight through): mx.quantized_matmul(f16 x [m,k], uint32-packed affine 4-bit/group-64 w, transpose=True) at the eight Qwen projection shapes, rng seed 17, 8 warmup + 16 timed evals, wall ms per eval; coop arm and MLX_OMARCHY_NO_COOPMAT=1 tile arm under /tmp/m1-gpu.lock",
+    "wall_ms_per_eval": {
+      "m262_k896_n896": {"coop": 0.814, "tile": 1.928},
+      "m262_k896_n4864": {"coop": 2.612, "tile": 10.936},
+      "m262_k4864_n896": {"coop": 2.627, "tile": 9.644},
+      "m262_k896_n128": {"coop": 0.249, "tile": 0.449},
+      "m1053_k896_n896": {"coop": 1.990, "tile": 6.844},
+      "m1053_k896_n4864": {"coop": 9.889, "tile": 35.314},
+      "m1053_k4864_n896": {"coop": 9.320, "tile": 36.066},
+      "m1053_k896_n128": {"coop": 0.469, "tile": 1.257}
+    },
+    "outputs_npz_sha256": {
+      "coop": "72dacb1912e1d720664e9603f0891468cf21e9a2c407c88b802fc7a81ba422ec",
+      "tile": "8edf84e353fd68f6235b75532ae5dfa5b475791432a327192d8090eaeb8d33cd",
+      "interpretation": "the two qmm paths are not bitwise equal at kernel level (different intra-dot accumulation order, both inside the qmm host-reference bound of receipts/2026-09-08-qmm-prefill-coopmat.json), yet the full-model generated-token digests are identical on every leg"
+    },
+    "invalid_first_attempt": "a first profile attempt (profile-coop/, profile-tile/) was invalid and is excluded: its python wrapper stripped MLX_* before spawning the worker, so both arms ran the coopmat kernel (identical npz sha, no timing separation). The rerun passes the environment straight to the worker."
+  },
+  "cross_driver_context_cited": {
+    "receipt": "receipts/2026-09-10-main-parity-12-matrix/verdict.json (branch receipts/main-parity-12-matrix, commit f055acc243f8aa00f88f8de84de6bce16c1122b3, same wheel)",
+    "stock_12rep_medians": {
+      "q4_prefill_tok_s": {"short": 170.9, "long": 310.1, "longctx": 361.7},
+      "q4_decode_tok_s": {"short": 102.5, "long": 81.9, "longctx": 52.9},
+      "bf16_prefill_tok_s": {"short": 83.8, "long": 210.8, "longctx": 220.1},
+      "bf16_decode_tok_s": {"short": 11.73, "long": 11.29, "longctx": 10.12}
+    },
+    "stock_digests": {
+      "q4_short": "7fd25a869ff21678",
+      "q4_long": "4cc08910089477fd",
+      "q4_longctx": "7da83f06ec9f001d",
+      "bf16_short": "f26175202f3dabe9",
+      "bf16_long": "c5be9207833d2a26",
+      "bf16_longctx": "ff502900d2a179a5",
+      "note": "bf16_long is the only cross-driver digest divergence and it persists on the TILE path (coopmat=0 on stock), so the tile path is not driver-portable for bf16_long either; consistent with stock 26.1.7's unfixed sin/cos range-reduction and one-ulp division gaps in docs/known-defects.md"
+    },
+    "fork_vs_stock_premise_check": {
+      "q4_prefill_fork_per_stock": {"short": 1.95, "long": 3.04, "longctx": 3.09},
+      "q4_prefill_consistency": "parity-12 fork 1K prefill median 1112.5 vs this receipt's coop legs 1119.0/1075.6/1177.9",
+      "conclusion": "the reported 'Q4 prefill much slower on the fork than stock' does not reproduce on main b6d662a8; the fork is the faster driver for Q4 prefill by 2-3x"
+    }
+  },
+  "findings": [
+    "Premise inverted: on main b6d662a8 the installed fork's coopmat Q4 prefill (QmmPrefillCoopmatF16) is 1.95-3.09x faster than stock 26.1.7's tile path. There is no prefill regression on the fork to repair.",
+    "Both the coopmat and tile paths produce all six required generated-token digests on the installed fork; switching paths buys no digest change on the release driver.",
+    "The tile flip is a measured regression: 0.326-0.517 tile/coop prefill ratios on the Q4 model, 0.590-0.967 on bf16, and 3.4-3.6x slower qmm at large m in the kernel microbench.",
+    "Decode is structurally coopmat-free (qmm decode dispatches vec/subgroup kernels at matrix_m == 1; the native SDPA decode gate reads the capability bit, not the coopmat env); paired decode medians are 0.97-1.02 tile/coop. A capability-blind flip would also lose the fork's native SDPA decode (96.0 vs stock 52.9 tok/s at longctx).",
+    "The open cross-build portability defect (receipts/2026-09-10-prefill-qmm-isa/driver-portability-defect.json) is unaffected by this result: no scheduling choice measured here changes it, and its recorded candidate fix (on-device lowering probe at device creation with fallback to the composed path) remains the direction. Constraint added by this receipt for that work: the fallback (tile) path preserves the required Q4 digests on the installed driver, and the probe must keep the installed fork on the coopmat path."
+  ],
+  "decision": "no_source_change_receipt_only_negative_result",
+  "policy": {
+    "gpu_serialization": "every M1 GPU command under flock -w 2400 /tmp/m1-gpu.lock with hard timeouts",
+    "runners": "matrix: /tmp/run_forksplit_matrix.sh (scripts/bench_matrix.py --mode run --wheel <wheel> --host-label ...); microbench: /tmp/run_qmm_pair.sh (direct /tmp/qmm_worker.py); both left in /tmp on jwm1-linux"
+  },
+  "limitations": [
+    "3 alternating pairs per leg vs the canonical 12-rep protocol; the 12-rep fork-vs-stock baseline is cited from receipts/2026-09-10-main-parity-12-matrix instead of re-measured, and my coop legs agree with its fork medians.",
+    "Kernel identity per arm rests on the MLX_OMARCHY_NO_COOPMAT gate (the only difference between arms), the 3.4-3.6x kernel-level timing separation, and the targeted-capability logs in receipts/2026-09-10-prefill-qmm-isa; MLX_OMARCHY_GPU_PROFILE NDJSON is only emitted by --diagnostics wheel builds, so no GPU-timestamp stream exists for the release wheel.",
+    "Three single-cycle decode outliers (max 2.169) are published unfiltered with their structural explanation rather than dropped.",
+    "one q4_short coop sample (250.0 of 333.3/250.0/333.3) is a low outlier retained in the medians and samples above."
+  ]
+}
