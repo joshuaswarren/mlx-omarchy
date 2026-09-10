@@ -6694,9 +6694,13 @@ void QuantizedMatmul::eval_gpu(const std::vector<array>& inputs, array& out) {
       uint32_t m_groups = (params.matrix_m + 31u) / 32u;
       uint32_t n_groups = coopmat ? (params.matrix_n + 31u) / 32u
                                   : (params.matrix_n + 15u) / 16u;
+      omarchy::ComputeKernel qmm_kernel = coopmat
+          ? omarchy::ComputeKernel::QmmPrefillCoopmatF16
+          : params.matrix_m >= 1024u
+          ? omarchy::ComputeKernel::QmmTileRbPreciseF16
+          : omarchy::ComputeKernel::QmmTileRbF16;
       encoder.dispatch_compute(
-          coopmat ? omarchy::ComputeKernel::QmmPrefillCoopmatF16
-                  : omarchy::ComputeKernel::QmmTileRbF16,
+          qmm_kernel,
           bindings,
           params,
           std::min(n_groups, omarchy::kMaxComputeGroupCountX),

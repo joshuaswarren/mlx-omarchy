@@ -3181,6 +3181,49 @@ TEST_CASE("qmm_vec packed-word candidate matches baseline and host reference") {
   CHECK_EQ(gated_v, base_v);
 }
 
+TEST_CASE("qmm tile covers the large-prefill arithmetic path") {
+  if (!compute_available() || !float16_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  constexpr int m = 1024;
+  constexpr int n = 17;
+  constexpr int k = 64;
+  std::vector<float> x_values(static_cast<size_t>(m) * k);
+  for (int row = 0; row < m; ++row) {
+    for (int inner = 0; inner < k; ++inner) {
+      x_values[row * k + inner] =
+          static_cast<float>((row * 3 + inner * 5) % 17 - 8) * 0.03125f;
+    }
+  }
+  HostQuantizedWeights weights;
+  weights.words.resize(static_cast<size_t>(n) * (k / 8));
+  weights.scales.assign(n, 0.03125f);
+  weights.biases.assign(n, -0.25f);
+  for (int column = 0; column < n; ++column) {
+    for (int pack = 0; pack < k / 8; ++pack) {
+      uint32_t word = 0;
+      for (int lane = 0; lane < 8; ++lane) {
+        word |= static_cast<uint32_t>((column + pack + lane * 3) & 15)
+            << (lane * 4);
+      }
+      weights.words[column * (k / 8) + pack] = word;
+    }
+  }
+  std::vector<float> x_rounded = round_trip(stream, x_values, float16);
+  std::vector<float> expected =
+      host_quantized_matmul(weights, x_rounded, m, n, k, 64, 4);
+  array x(x_rounded.begin(), Shape{m, k}, float16);
+  array w(weights.words.begin(), Shape{n, k / 8}, uint32);
+  array scales(weights.scales.begin(), Shape{n, 1}, float16);
+  array biases(weights.biases.begin(), Shape{n, 1}, float16);
+  QmmTileGate gate(true, true);
+  array out = quantized_matmul(
+      x, w, scales, biases, true, 64, 4, "affine", stream);
+  REQUIRE(evaluation_error(out).empty());
+  expect_close_tol(readback_f32(stream, out), expected, 1e-3, 1e-3);
+}
+
 // PrefillQmmTile equivalence: the env-gated m-tiled kernel must match
 // the general qmm.comp kernel it stands in for at matrix_m > 1. Both
 // sides run on device through the public dispatch - the gate selects
