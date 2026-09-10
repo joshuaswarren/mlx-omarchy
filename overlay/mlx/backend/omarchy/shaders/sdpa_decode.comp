@@ -46,6 +46,7 @@ layout(push_constant) uniform Params {
 } params;
 
 shared float block_values[256];
+shared float16_t score_values[4096];
 
 float rounded_score(uint head, uint key) {
   uint repeats = params.matrix_m / params.matrix_n;
@@ -71,6 +72,7 @@ void main() {
   float local_max = uintBitsToFloat(0xff800000u);
   for (uint key = thread; key < key_count; key += 256u) {
     float next = rounded_score(head, key);
+    score_values[key] = float16_t(next);
     if (isnan(next) || next > local_max) {
       local_max = next;
     }
@@ -89,7 +91,7 @@ void main() {
 
   float local_sum = 0.0;
   for (uint key = thread; key < key_count; key += 256u) {
-    local_sum += exp(rounded_score(head, key) - row_max);
+    local_sum += exp(float(score_values[key]) - row_max);
   }
   block_values[thread] = local_sum;
   barrier();
@@ -102,13 +104,18 @@ void main() {
   float normalizer = 1.0 / block_values[0];
   barrier();
 
+  for (uint key = thread; key < key_count; key += 256u) {
+    score_values[key] = float16_t(
+        exp(float(score_values[key]) - row_max) * normalizer);
+  }
+  barrier();
+
   if (thread < params.dims) {
     uint repeats = params.matrix_m / params.matrix_n;
     uint kv_head = head / repeats;
     float result = 0.0;
     for (uint key = 0u; key < key_count; ++key) {
-      float probability = float(float16_t(
-          exp(rounded_score(head, key) - row_max) * normalizer));
+      float probability = float(score_values[key]);
       uint value_index = params.aux_offset + kv_head * params.shape[2] +
           key * params.shape[3] + thread * params.in_strides[0];
       result = fma(
