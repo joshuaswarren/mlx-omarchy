@@ -290,15 +290,23 @@ def main():
         prompt = tokenizer.apply_chat_template(
             [{"role": "user", "content": args.prompt}],
             add_generation_prompt=True)
-
-    # Suppress EOS so the run produces exactly --tokens tokens. The
-    # mlx-lm TokenizerWrapper supports assigning eos_token_ids.
-    saved_eos = getattr(tokenizer, "eos_token_ids", None)
+    # Build the 150k-entry streaming detokenizer and tokenize once, outside the
+    # measured window. stream_generate otherwise repeats both for warmup and
+    # measurement even though this benchmark only records token IDs.
+    if isinstance(prompt, str):
+        add_special_tokens = (getattr(tokenizer, "bos_token", None) is None or
+                              not prompt.startswith(tokenizer.bos_token))
+        prompt = tokenizer.encode(
+            prompt, add_special_tokens=add_special_tokens)
+    prompt_ids = mx.array(prompt)
     tokenizer.eos_token_ids = set()
+    detokenizer = tokenizer.detokenizer
+    tokenizer._detokenizer_class = lambda _: detokenizer
 
     def generate(n):
+        detokenizer.reset()
         return stream_generate(
-            model, tokenizer, prompt, max_tokens=n, sampler=sampler)
+            model, tokenizer, prompt_ids, max_tokens=n, sampler=sampler)
 
     if args.warmup_tokens:
         for _ in generate(args.warmup_tokens):
@@ -306,14 +314,10 @@ def main():
 
     t0 = time.monotonic_ns()
     generated_ids = []
-    run_stats = {}
+    run_stats = {"prompt_tokens": int(prompt_ids.size)}
     times, n = run_generation(generate(args.tokens), generated_ids,
                               run_stats)
     prefill_ns = times[0] - t0 if times else 0
-
-    if saved_eos is not None:
-        tokenizer.eos_token_ids = saved_eos
-
     report(prefill_ns, times, args.tokens, generated_ids,
            prompt_tokens=run_stats.get("prompt_tokens"), device=device)
 
