@@ -8,6 +8,35 @@ The backend must refuse unsupported operations by name rather than return a wron
 
 Two of the worst v0.3.0 defects never appeared on a Linux development box. They are real-M1-only, and the full dev-box battery - 24 binaries, 407 cases, 828,139 assertions - was green the whole night they shipped. A Vulkan capability query, a shader miscompile, and a submit-thread ordering are all per-driver questions: llvmpipe, lavapipe, and Honeykrisp answer them differently. **A green run on a software driver is not proof about the Apple GPU, and this ledger now records where every defect was observed.** Anyone contributing: your llvmpipe battery passing is the start of verification on this project, not the end of it.
 
+## Open portability gaps
+
+### Cooperative-matrix prefill output depends on which Mesa build provides the extension
+
+Observed on the M1 on 2026-09-10. The Q4 prefill cooperative-matrix
+kernel produces different token streams on two different
+coopmat-capable Mesa builds, with the same wheel, the same kernel
+selected, and `cooperative_matrix_f32_8 = 1` in both cases:
+
+| driver | 1053-token Q4 digest |
+|---|---|
+| installed `mesa-honeykrisp-omarchy` 26.3.0-devel (`git-6f6afc8968`), no ICD override | `7da83f06ec9f001d` (required; matches native macOS) |
+| a `mesa-coopmat` build (`git-5bb2b28c95`) via a private ICD with `AGX_SIMDMAT=1` | `31267e7ed4c6d0dc` |
+
+So the matrix unit's arithmetic, as lowered by the driver, is not fixed
+across Mesa builds that advertise `VK_KHR_cooperative_matrix`. Releases
+are measured and digest-checked on the installed driver, which produces
+the required values; a user on a different coopmat-capable build may see
+a different stream on prefill-heavy prompts. The capability bit alone is
+therefore not a sufficient gate for reproducible output. Evidence, with
+both `vulkaninfo` identities, both `device_info` dumps, the selected
+kernel and all six digests per configuration:
+[`receipts/2026-09-10-prefill-qmm-isa/driver-portability-defect.json`](../receipts/2026-09-10-prefill-qmm-isa/driver-portability-defect.json).
+
+Not yet fixed. The candidate fix is to pin the arithmetic the kernel
+depends on rather than the extension's presence: assert the lowering we
+need with an on-device probe at device creation and fall back to the
+composed path when it does not match.
+
 ## Open native precision gaps
 
 ### Float32 log differs from the host by one ULP
