@@ -1,0 +1,21 @@
+{
+ "method": "Kernel-isolated quantized_matmul probe, f16 scales/biases (mx.quantize on f32 weights, scales/biases cast to f16 to match the model qmm path), 3 warmup + 30 timed evals, median wall ms, dispatch counter delta, f16 output sha256. Run on jwm1 fork driver under /tmp/m1-gpu.lock; wheel 1323dc80; inputs seeded rng(20260910). The earlier probe-f32scales-misconfigured/ runs quantized with f32 scales, which promoted the whole call to QmmTileF32 and never reached the f16 coopmat branch - kept only as the method-error record.",
+ "results": [
+  {"arm": "default", "shape": "1053x896x128", "dispatch_delta": 1, "median_ms": 0.811, "f16_digest": "bffbe02190af"},
+  {"arm": "default", "shape": "1053x896x896", "dispatch_delta": 1, "median_ms": 2.077, "f16_digest": "34d26ab6ae96"},
+  {"arm": "default", "shape": "1053x896x9728", "dispatch_delta": 1, "median_ms": 19.428, "f16_digest": "432aac265a26"},
+  {"arm": "default", "shape": "1053x4864x896", "dispatch_delta": 1, "median_ms": 9.804, "f16_digest": "f4e16a2ffc45"},
+  {"arm": "splitauto", "shape": "1053x896x128", "dispatch_delta": 2, "median_ms": 0.686, "f16_digest": "b8a7bb0ae2ba"},
+  {"arm": "splitauto", "shape": "1053x896x896", "dispatch_delta": 1, "median_ms": 1.795, "f16_digest": "34d26ab6ae96"},
+  {"arm": "splitauto", "shape": "1053x896x9728", "dispatch_delta": 1, "median_ms": 19.73, "f16_digest": "432aac265a26"},
+  {"arm": "splitauto", "shape": "1053x4864x896", "dispatch_delta": 1, "median_ms": 9.723, "f16_digest": "f4e16a2ffc45"},
+  {"arm": "tile128", "shape": "1053x896x128", "dispatch_delta": 1, "median_ms": 1.198, "f16_digest": "81edacf0f516"},
+  {"arm": "tile128", "shape": "1053x896x896", "dispatch_delta": 1, "median_ms": 2.125, "f16_digest": "34d26ab6ae96"},
+  {"arm": "tile128", "shape": "1053x896x9728", "dispatch_delta": 1, "median_ms": 19.303, "f16_digest": "432aac265a26"},
+  {"arm": "tile128", "shape": "1053x4864x896", "dispatch_delta": 1, "median_ms": 9.937, "f16_digest": "f4e16a2ffc45"},
+  {"arm": "split8", "shape": "1053x896x128", "dispatch_delta": 2, "median_ms": 0.804, "f16_digest": "41f018537cd3"},
+  {"arm": "split8", "shape": "1053x896x896", "dispatch_delta": 2, "median_ms": 2.984, "f16_digest": "ad1dcd29c1b3"},
+  {"arm": "split8", "shape": "1053x896x9728", "dispatch_delta": 2, "median_ms": 30.422, "f16_digest": "c64bdf3e932a"},
+  {"arm": "split8", "shape": "1053x4864x896", "dispatch_delta": 2, "median_ms": 11.385, "f16_digest": "f80c82738d3b"}
+ ]
+}

@@ -1,0 +1,107 @@
+{
+ "schema": "mlx-omarchy/qmm-splitk-parity/1",
+ "purpose": "Investigate split-K and QMM scheduling to improve Q4 1K-token prefill on the M1 (jwm1-linux); paired alternating screen on both drivers with exact digests; qualify source only if repeatable and correct, otherwise receipt-only negative.",
+ "question": "Does split-K scheduling or a small-n tile reroute of the Q4 prefill qmm path improve longctx-1024 prefill throughput without breaking pinned generated-id digests?",
+ "source": {
+  "branch": "wave/QmmSplitKParity",
+  "source_commit": "1323dc80",
+  "parent": "b2182912 (receipts) on 6d2a904f = origin/main",
+  "change": "Two default-off scheduling screens behind env knobs, plus their kernels/tests/docs: MLX_OMARCHY_QMM_SMALLN_TILE=<n> routes matrix_n<=n qmm prefill dispatches to the register-blocked tile kernel; MLX_OMARCHY_QMM_SPLITK=<auto|2-8> splits the coopmat k-walk across CHUNK_K-aligned workgroup planes into f32 partials (shaders/qmm_coopmat_splitk.comp) reduced once (shaders/qmm_splitk_reduce.comp); auto targets ~512 threadgroups like native qmm_splitk. Profile ids appended after SdpaDecodeNativeF16 (QmmPrefillCoopmatSplitKF16, QmmSplitkReduceF16).",
+  "default_path_unchanged": "With neither knob set the qmm dispatch takes the identical coopmat/tile route; the default arm reproduced all three canonical pins in every clean-window rotation."
+ },
+ "wheels": {
+  "release": {
+   "name": "mlx_omarchy-0.32.2.dev202609102001+1323dc80-cp314-cp314-linux_aarch64.whl",
+   "sha256": "1cb36626699e0a8484ddc0cbfc683c7dd186f033e1dc1b6ae7f786923930f364",
+   "source_commit": "1323dc80"
+  },
+  "diagnostics": {
+   "name": "mlx_omarchy-0.32.2.dev202609101950+diag.1323dc8-cp314-cp314-linux_aarch64.whl",
+   "sha256": "6b8ebddc74198bf78911e802e4564aadb1ef444679330a9a77a5054f46bd2366",
+   "source_commit": "1323dc8"
+  }
+ },
+ "hardware": {
+  "host": "jwm1-linux, Apple M1 (G13G B1), kernel 7.1.6-1-1-ARCH, AC power, /tmp/m1-gpu.lock held per window, bench_matrix clean-check + wheel RECORD vs loaded-lib gate on every leg",
+  "fork_driver": "Honeykrisp, cooperative_matrix_f32_8=1",
+  "stock_driver": "stock Mesa ICD /home/joshuawarren/stock-mesa/stock-icd.json, cooperative_matrix_f32_8=0"
+ },
+ "kernel_probe": {
+  "raw": "probe-f16-scales.json",
+  "summary": "f16-scale quantized_matmul, m=1053: split-K auto splits only the concurrency-starved k/v shape (1053x896x128, 132 tiles -> s=4) and cuts it 0.811 -> 0.686 ms (-15.4%, dispatch delta 2 = split kernel + reduce) while leaving every full-grid shape untouched (delta 1, identical f16 digest). Tile reroute is 47.7% SLOWER than coopmat on that shape (1.198 ms). Forced split-8 regresses the big shapes catastrophically (1053x896x9728: 19.4 -> 30.4 ms).",
+  "correction_record": "An earlier probe pass (probe-f32scales-misconfigured/) used f32 scales, which promoted the whole call to QmmTileF32 and measured nothing relevant; kept as the method-error record. All conclusions above come from the corrected f16-scale probe."
+ },
+ "paired_screen": {
+  "protocol": "Three arms on one exact release wheel (default / MLX_OMARCHY_QMM_SMALLN_TILE=128 / MLX_OMARCHY_QMM_SPLITK=auto), three rotations with rotated arm order (AB, BA, AB generalized), alternating under one lock window; every leg asserts bench_matrix clean-check, wheel RECORD match, and the canonical Q4 generated-id pins; arm-vs-pin failure on default retries (fragmentation guard), knob arms record-and-continue.",
+  "raw": {"fork": "fork/summary.json", "stock": "stock/summary.json"},
+  "fork_digests": {"default": "pass x3", "tile128": "pass x3", "splitauto": "FAIL x3 (deterministic)"},
+  "fork_prefill_medians_tok_s": {
+   "default": {"short-decode-32": 333.333, "long-decode-128": 966.79, "longctx-1024-decode-32": 1113.108},
+   "tile128": {"short-decode-32": 312.5, "long-decode-128": 942.446, "longctx-1024-decode-32": 1077.789},
+   "splitauto": {"short-decode-32": 447.761, "long-decode-128": 922.535, "longctx-1024-decode-32": 1114.286}
+  },
+  "fork_median_paired_change_pct": {
+   "tile128/short-decode-32": -6.2499,
+   "tile128/long-decode-128": -2.1661,
+   "tile128/longctx-1024-decode-32": -3.173,
+   "splitauto/short-decode-32": 34.3284,
+   "splitauto/long-decode-128": -4.2403,
+   "splitauto/longctx-1024-decode-32": 0.1058
+  },
+  "stock": {
+   "rotations": 1,
+   "knobs_inert": "cooperative_matrix_f32_8=0 keeps both knob routes unreachable; all three arms pass the pins; tile128 and splitauto short medians are bit-identical (193.548), as expected for identical computations.",
+   "prefill_medians_tok_s": {
+    "default": {"short-decode-32": 169.492, "long-decode-128": 316.043, "longctx-1024-decode-32": 362.728},
+    "tile128": {"short-decode-32": 193.548, "long-decode-128": 310.795, "longctx-1024-decode-32": 362.853},
+    "splitauto": {"short-decode-32": 193.548, "long-decode-128": 309.693, "longctx-1024-decode-32": 364.991}
+   }
+  }
+ },
+ "correctness_gate": {
+  "pins": {
+   "short-decode-32": "7fd25a869ff21678",
+   "long-decode-128": "4cc08910089477fd",
+   "longctx-1024-decode-32": "7da83f06ec9f001d"
+  },
+  "digest_findings": {
+   "splitauto": "DETERMINISTIC generated-id change: long-decode-128 -> f873dc2bdd34c0fe and longctx-1024-decode-32 -> 31267e7ed4c6d0dc on every attempt in every rotation; short unchanged. K-splitting reassociates the per-output f32 accumulation (contiguous CHUNK_K-aligned partials summed in ascending split order), so this is inherent to split-K, not a bug. The repo landing bar is digest equality, so split-K cannot qualify as source for these prompts.",
+   "tile128": "Pins hold across all rotations: routing n<=128 to the tile kernel preserves generated ids (tile and coopmat kernels share the per-output accumulation order), although raw f16 outputs differ between the kernels (probe digests).",
+   "forced_split8": "All shapes split; digests change on every workload."
+  },
+  "tests": {
+   "suite": "omarchy_matmul_family_tests (20 cases), built on jwm1 from .work/mlx at 1323dc80",
+   "fork_default": "20/20 passed (tests-fork-default.log)",
+   "fork_tile128": "20/20 passed (tests-fork-tile128.log)",
+   "fork_splitauto": "20/20 passed (tests-fork-splitauto.log); the scheduling-knob case additionally asserts the split route via dispatch deltas (2 for splitk+reduce on the starved shape, 1 elsewhere) and host-oracle bounds",
+   "stock_default": "20/20 passed (tests-stock-default.log); knob modes are unreachable without cooperative matrix support (caps=0 keeps the knob code behind the coopmat gate) and the stock paired arms pass identical pins"
+  },
+  "fragmentation_hazard_found": {
+   "observation": "Under concurrent GPU load the DEFAULT arm itself flipped long-decode-128 to f873dc2bdd34c0fe twice (2026-09-10 ~15:04-15:15 window); on a quiet machine the pins reproduced in every later run, and CanonicalParity12's independent 12-rep canonical matrix on b6d662a8 never saw the flip.",
+   "mechanism": "The qmm coopmat gate falls back to the tile kernel when lhs/output buffer element offsets are odd; allocator pressure under load changes sub-allocation offsets. The tile fallback is not digest-neutral, so heavy contention silently changes generated ids.",
+   "consequence": "Digest gates must run on a quiet machine; a pin mismatch that vanishes on retry is environmental, not a regression. The bench_decode_identity wrapper (device_info() before model load) triggers the same class of flip and is not digest-safe as a harness engine. Worth a dedicated hardening ticket."
+  }
+ },
+ "commands": [
+  "ssh jwm1: git clone -b wave/QmmSplitKParity https://github.com/joshuaswarren/mlx-omarchy.git ~/src/mlx-QmmSplitK && bash scripts/prepare-mlx.sh",
+  "DEV_RELEASE=1 scripts/build-wheel.sh  (release wheel, sha256 1cb36626...)",
+  "scripts/build-wheel.sh --diagnostics  (diag wheel for kernel-name profiles)",
+  "flock -w 600 /tmp/m1-gpu.lock timeout 420 .work/probe2.sh  (f16 kernel probe, 4 arms)",
+  "flock -w 1800 /tmp/m1-gpu.lock timeout 2700 .work/fork_screen.sh  (paired_scheduling.py --rotations 3 --driver fork)",
+  "flock ... .work/window3.sh  (stock paired rotation via paired_scheduling.py --driver stock)",
+  "flock ... .work/window3b.sh + stock rerun  (omarchy_matmul_family_tests, fork+stock x modes)",
+  "local llvmpipe: MLX_OMARCHY_ALLOW_NON_APPLE=1 omarchy_matmul_family_tests, qmm cases pass (18,384,704 assertions on the coopmat case)"
+ ],
+ "thermal_and_timing_procedure": "All legs through scripts/bench_matrix.py (pinned model revision a5339a4131f135d0fdc6a5c8b5bbed2753bbe0f3, temp 0, seed 0, fixed warmup, clean-process check, no contended runs accepted, AC power). Paired medians over 3 order-rotated legs per arm per workload; prefill_tok_s is prompt-phase throughput for the exact recorded prompt token counts (30/262/1053).",
+ "decision": "reject_splitk_and_smalln_tile_for_q4_1k_prefill__receipt_only_negative",
+ "rationale": [
+  "Split-K (auto and forced): deterministic generated-id change on long and ctx1024 - fails the repo's digest-equality correctness bar - and its 1K prefill effect is nil (+0.11% median, kv shapes are too small a share of 1K qmm time).",
+  "Small-n tile reroute: digest-safe but regresses 1K prefill -3.2% (median paired), and the kernel probe shows the coopmat kernel is 47.7% faster than the tile kernel on the target shape at current main; the 2026-09-09 receipt's tile advantage does not reproduce on current code.",
+  "Nothing qualifies for landing; no source merges to main. The screens stay on this branch, default-off, as the reproducible instrument behind this receipt."
+ ],
+ "side_finding": "Split-K lifts SHORT (30-token) prefill dramatically on the fork (333.3 -> 447.8 tok/s median, +34.3%, pins intact on short) because the k/v grids there are nearly empty (4 tiles). Out of scope here (assignment is 1K prefill) and recorded only with its caveat: the same knob breaks long/ctx1024 digests, so any future short-prefill use needs a digest-preserving split policy (e.g., splitting only shapes whose partial sums provably round identically), which does not exist today.",
+ "next": {
+  "lever": "For 1K prefill the remaining gap to native is not qmm scheduling: the qmm kernels are issue/barrier-bound per receipts 2026-09-09-prefill-qmm, the starved k/v shapes are worth only ~6 ms of ~946 ms, and both scheduling screens here are negative or digest-breaking. Cross-eager-scope dispatch fusion (fewer FastRope/RmsNorm/elementwise dispatches) remains the recorded next lever from receipts/2026-09-10-decode-bound-3.",
+  "hardening": "File the contention-driven tile-fallback digest flip (and the bench_decode_identity wrapper hazard) as a known fragility of digest-gated benchmarking; quiet-machine requirement is currently implicit."
+ }
+}
