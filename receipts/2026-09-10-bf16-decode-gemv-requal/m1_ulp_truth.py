@@ -78,9 +78,12 @@ def main():
     w_emb = np.asarray(model.model.embed_tokens.weight.view(mx.uint16), dtype=np.uint16).ravel()
 
     truths = {}
+    native_out = {}
     for phase in ("decode", "prefill"):
         for proj in ("q_proj", "k_proj", "v_proj", "o_proj"):
-            truths[f"{phase}.{proj}"] = truth_for(f"{phase}.{proj}", model)
+            t = truth_for(f"{phase}.{proj}", model)
+            truths[f"{phase}.{proj}"] = t[:2]
+            native_out[f"{phase}.{proj}"] = t[2]
     for trial in range(8):
         x896 = patterned_bits(896, 11 + trial * 101)
         x4864 = patterned_bits(4864, 11 + trial * 101)
@@ -103,10 +106,22 @@ def main():
             if not f.exists():
                 continue
             bits = np.load(f)["result"]
-            report[cell][name] = stats(bits, truth, truth_f)
+            rec = {"vs_rne_f64": stats(bits, truth, truth_f)}
+            if name in native_out:
+                nat = native_out[name]
+                rec["vs_native_mismatches"] = int(
+                    (bits.reshape(-1).astype(np.int64) != nat.astype(np.int64)).sum())
+                rec["vs_native_max_distance"] = int(np.abs(
+                    bits.reshape(-1).astype(np.int64) - nat.astype(np.int64)).max())
+            report[cell][name] = rec
 
     # v_proj worst element, for the receipt narrative
     truth, truth_f = truths["decode.v_proj"]
+    print("native mismatch counts (root-cause reference: q106 k13 v46 o0):")
+    for name, nat in native_out.items():
+        if name.startswith("decode"):
+            row = {c: report[c][name]["vs_native_mismatches"] for c in report}
+            print(" ", name, row)
     worst = {}
     if "cand_fork" in cells:
         b = np.load(Path(cells["cand_fork"]) / "decode.v_proj.npz")["result"].reshape(-1).astype(np.int64)
