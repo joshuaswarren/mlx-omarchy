@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include <array>
 #include <cstdint>
 #include <deque>
 #include <memory>
@@ -140,6 +141,10 @@ struct GemvFusionMember {
 // primitives.cpp beside QuantizedMatmul::eval_gpu.
 bool dispatch_quantized_gemv_group(
     std::vector<GemvFusionMember>& members,
+    const Stream& stream);
+
+bool dispatch_slice_update_pair(
+    std::array<array, 2>& nodes,
     const Stream& stream);
 
 // MLX_OMARCHY_FUSED_GEMV=0 keeps every QuantizedMatmul and Add on the
