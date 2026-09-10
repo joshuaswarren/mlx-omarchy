@@ -107,18 +107,47 @@ void main() {
 #endif
 
     float local_sq = 0.0;
+#if defined(USE_BF16) && !defined(LAYER_NORM)
+    for (uint base = thread * 4u; base < row_length; base += threads * 4u) {
+      for (uint item = 0u; item < 4u && base + item < row_length; ++item) {
+        float value = LOAD_VALUE(input_data.values[start + base + item]);
+        local_sq += value * value;
+      }
+    }
+#else
     for (uint index = thread; index < row_length; index += threads) {
       float value = LOAD_VALUE(input_data.values[start + index]);
       local_sq += value * value;
     }
+#endif
     block_values[thread] = local_sq;
     barrier();
+#if defined(USE_BF16) && !defined(LAYER_NORM)
+    uint lane = thread % 32u;
+    for (uint stride = 1u; stride < 32u; stride <<= 1u) {
+      if (lane % (2u * stride) == 0u) {
+        block_values[thread] += block_values[thread + stride];
+      }
+      barrier();
+    }
+    float group_sum = thread < 8u ? block_values[thread * 32u] : 0.0;
+    barrier();
+    block_values[thread] = group_sum;
+    barrier();
+    for (uint stride = 1u; stride < 8u; stride <<= 1u) {
+      if (thread < 8u && thread % (2u * stride) == 0u) {
+        block_values[thread] += block_values[thread + stride];
+      }
+      barrier();
+    }
+#else
     for (uint stride = 128u; stride > 0u; stride >>= 1u) {
       if (thread < stride) {
         block_values[thread] += block_values[thread + stride];
       }
       barrier();
     }
+#endif
     float mean_square = block_values[0] / float(row_length);
     barrier();
 #ifdef LAYER_NORM
@@ -127,6 +156,15 @@ void main() {
     float variance = mean_square;
 #endif
     float norm = inversesqrt(variance + eps);
+#if defined(USE_BF16) && !defined(LAYER_NORM)
+    if (norm > 0.0 && !isinf(norm)) {
+      float denominator = variance + eps;
+      precise float root = denominator * norm;
+      float residual = fma(-norm, root, 1.0);
+      float product_error = fma(-denominator, norm, root);
+      norm = fma(0.5 * norm, fma(norm, product_error, residual), norm);
+    }
+#endif
 
     for (uint index = thread; index < row_length; index += threads) {
       float value = LOAD_VALUE(input_data.values[start + index]);
