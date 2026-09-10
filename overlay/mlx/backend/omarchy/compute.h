@@ -590,7 +590,6 @@ enum class ComputeKernel : uint16_t {
   QmmVecQ4MultiSubgroupF32,
   QmmVecQ4MultiSubgroupF16,
   QmmVecQ4MultiSubgroupBF16,
-  SdpaDecodeF16,
   Count,
 };
 

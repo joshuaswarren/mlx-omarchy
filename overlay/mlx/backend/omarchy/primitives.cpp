@@ -10003,38 +10003,6 @@ void ScaledDotProductAttention::eval_gpu(
       bf16_fast = true;
     }
   }
-  bool decode_fused = std::getenv("MLX_OMARCHY_SDPA_DECODE") == nullptr ||
-      omarchy::env_flag("MLX_OMARCHY_SDPA_DECODE");
-  if (decode_fused && q.dtype() == float16 && inputs.size() == 3 &&
-      !has_sinks_ && !output_logsumexp_ && batch == 1 && q_len == 1 &&
-      k_len > 0 && v_dim == head_dim && head_dim <= 256 &&
-      k.strides() == v.strides()) {
-    out.set_data(allocate_omarchy(out.nbytes()));
-    omarchy::ComputeParams params;
-    params.count = checked_u32(out.size(), tag, out);
-    params.matrix_m = checked_u32(heads, tag, out);
-    params.matrix_n = checked_u32(kv_heads, tag, out);
-    params.matrix_k = checked_u32(k_len, tag, out);
-    params.dims = checked_u32(head_dim, tag, out);
-    params.alpha = scale_;
-    params.lhs_offset = checked_item_offset(q, q.size(), tag, out);
-    params.rhs_offset = checked_item_offset(k, k.size(), tag, out);
-    params.aux_offset = checked_item_offset(v, v.size(), tag, out);
-    params.output_offset = checked_item_offset(out, out.size(), tag, out);
-    params.shape[0] = checked_u32(q.strides()[1], tag, out);
-    params.shape[1] = checked_u32(q.strides()[3], tag, out);
-    params.shape[2] = checked_u32(k.strides()[1], tag, out);
-    params.shape[3] = checked_u32(k.strides()[2], tag, out);
-    params.in_strides[0] = checked_u32(k.strides()[3], tag, out);
-    std::array<omarchy::ComputeBinding, 4> bindings{
-        binding(q), binding(k), binding(v), binding(out)};
-    encoder.dispatch_compute(
-        omarchy::ComputeKernel::SdpaDecodeF16,
-        bindings,
-        params,
-        params.matrix_m);
-    return;
-  }
   if (q.dtype() == float16 || bf16_fast) {
     const bool bf16 = q.dtype() == bfloat16;
     const Dtype storage_dtype = bf16 ? bfloat16 : float16;
