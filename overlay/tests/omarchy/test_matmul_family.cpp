@@ -3764,8 +3764,8 @@ TEST_CASE("qmm coopmat output is bit-identical across x offset alignment") {
   constexpr int group_size = 64;
   constexpr int bits = 4;
   constexpr int m = 64;
-  constexpr int k = 256;
-  constexpr int n = 192;
+  constexpr int k = 896;
+  constexpr int n = 896;
   const int words_per_row = k / (32 / bits);
   const int groups_per_row = k / group_size;
   std::mt19937 gen(410u);
