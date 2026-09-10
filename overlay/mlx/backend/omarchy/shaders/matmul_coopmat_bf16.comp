@@ -201,13 +201,6 @@ void main() {
         }
         barrier();
       }
-#ifdef SPLIT_K
-      for (uint rb = 0u; rb < 4u; ++rb) {
-        for (uint cb = 0u; cb < 4u; ++cb) {
-          acc[rb][cb] += second_acc[rb][cb];
-        }
-      }
-#endif
 
       // Drain one 8-row block at a time through a_s; even lanes pack
       // bf16 pairs into words, tails masked.
@@ -216,6 +209,11 @@ void main() {
           coopMatStore(
               acc[rb][cb], a_s, cb * MAT * MAT, MAT,
               gl_CooperativeMatrixLayoutRowMajor);
+#ifdef SPLIT_K
+          coopMatStore(
+              second_acc[rb][cb], b_s, cb * MAT * MAT, MAT,
+              gl_CooperativeMatrixLayoutRowMajor);
+#endif
         }
         barrier();
         uint pair = lane % 16u;
@@ -230,6 +228,10 @@ void main() {
           if (row < params.matrix_m && col + 1u < params.matrix_n) {
             float v0 = a_s[cb * MAT * MAT + r * MAT + cc];
             float v1 = a_s[cb * MAT * MAT + r * MAT + cc + 1u];
+#ifdef SPLIT_K
+            v0 += b_s[cb * MAT * MAT + r * MAT + cc];
+            v1 += b_s[cb * MAT * MAT + r * MAT + cc + 1u];
+#endif
             output_data.values[out_slice +
                                (row * params.matrix_n + col) / 2u] =
                 bf16_store(v0) | (bf16_store(v1) << 16u);
