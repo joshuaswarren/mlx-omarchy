@@ -1,0 +1,464 @@
+[
+  {
+    "call": 0,
+    "projection": "q_proj",
+    "m": 261,
+    "k": 896,
+    "n": 896,
+    "dtype": "mlx.core.float16",
+    "group_size": 64,
+    "bits": 4,
+    "different": 24906,
+    "max_error": 0.0625,
+    "first_mismatches": [
+      {
+        "index": 1,
+        "device": -0.1748046875,
+        "native": -0.1749267578125
+      },
+      {
+        "index": 31,
+        "device": 2.396484375,
+        "native": 2.39453125
+      },
+      {
+        "index": 35,
+        "device": -0.646484375,
+        "native": -0.64697265625
+      },
+      {
+        "index": 73,
+        "device": -0.6083984375,
+        "native": -0.609375
+      },
+      {
+        "index": 81,
+        "device": -0.09130859375,
+        "native": -0.091796875
+      },
+      {
+        "index": 84,
+        "device": 8.203125,
+        "native": 8.2109375
+      },
+      {
+        "index": 85,
+        "device": -0.14453125,
+        "native": -0.1484375
+      },
+      {
+        "index": 86,
+        "device": 2.8203125,
+        "native": 2.8125
+      }
+    ]
+  },
+  {
+    "call": 35,
+    "projection": "q_proj",
+    "m": 1,
+    "k": 896,
+    "n": 896,
+    "dtype": "mlx.core.float16",
+    "group_size": 64,
+    "bits": 4,
+    "different": 0,
+    "max_error": 0.0
+  },
+  {
+    "call": 0,
+    "projection": "k_proj",
+    "m": 261,
+    "k": 896,
+    "n": 128,
+    "dtype": "mlx.core.float16",
+    "group_size": 64,
+    "bits": 4,
+    "different": 4234,
+    "max_error": 0.0625,
+    "first_mismatches": [
+      {
+        "index": 9,
+        "device": -0.15869140625,
+        "native": -0.1585693359375
+      },
+      {
+        "index": 11,
+        "device": 0.0638427734375,
+        "native": 0.06390380859375
+      },
+      {
+        "index": 36,
+        "device": 0.0760498046875,
+        "native": 0.076171875
+      },
+      {
+        "index": 45,
+        "device": -0.04217529296875,
+        "native": -0.042236328125
+      },
+      {
+        "index": 49,
+        "device": 0.1566162109375,
+        "native": 0.156494140625
+      },
+      {
+        "index": 58,
+        "device": 11.5625,
+        "native": 11.5703125
+      },
+      {
+        "index": 67,
+        "device": 5.54296875,
+        "native": 5.5390625
+      },
+      {
+        "index": 71,
+        "device": -2.95703125,
+        "native": -2.955078125
+      }
+    ]
+  },
+  {
+    "call": 35,
+    "projection": "k_proj",
+    "m": 1,
+    "k": 896,
+    "n": 128,
+    "dtype": "mlx.core.float16",
+    "group_size": 64,
+    "bits": 4,
+    "different": 0,
+    "max_error": 0.0
+  },
+  {
+    "call": 0,
+    "projection": "v_proj",
+    "m": 261,
+    "k": 896,
+    "n": 128,
+    "dtype": "mlx.core.float16",
+    "group_size": 64,
+    "bits": 4,
+    "different": 20759,
+    "max_error": 0.000244140625,
+    "first_mismatches": [
+      {
+        "index": 0,
+        "device": 0.0142364501953125,
+        "native": 0.0142059326171875
+      },
+      {
+        "index": 1,
+        "device": -0.0457763671875,
+        "native": -0.04571533203125
+      },
+      {
+        "index": 2,
+        "device": -0.0233612060546875,
+        "native": -0.02337646484375
+      },
+      {
+        "index": 6,
+        "device": 0.018768310546875,
+        "native": 0.0187530517578125
+      },
+      {
+        "index": 8,
+        "device": 0.02618408203125,
+        "native": 0.026153564453125
+      },
+      {
+        "index": 9,
+        "device": 0.0345458984375,
+        "native": 0.034515380859375
+      },
+      {
+        "index": 10,
+        "device": -0.00960540771484375,
+        "native": -0.00959014892578125
+      },
+      {
+        "index": 11,
+        "device": 0.050567626953125,
+        "native": 0.050537109375
+      }
+    ]
+  },
+  {
+    "call": 35,
+    "projection": "v_proj",
+    "m": 1,
+    "k": 896,
+    "n": 128,
+    "dtype": "mlx.core.float16",
+    "group_size": 64,
+    "bits": 4,
+    "different": 0,
+    "max_error": 0.0
+  },
+  {
+    "call": 0,
+    "projection": "o_proj",
+    "m": 261,
+    "k": 896,
+    "n": 896,
+    "dtype": "mlx.core.float16",
+    "group_size": 64,
+    "bits": 4,
+    "different": 100546,
+    "max_error": 0.00048828125,
+    "first_mismatches": [
+      {
+        "index": 4,
+        "device": -0.0006856918334960938,
+        "native": -0.0006866455078125
+      },
+      {
+        "index": 12,
+        "device": 0.0229949951171875,
+        "native": 0.022979736328125
+      },
+      {
+        "index": 15,
+        "device": -0.007061004638671875,
+        "native": -0.00705718994140625
+      },
+      {
+        "index": 16,
+        "device": -0.016021728515625,
+        "native": -0.0160064697265625
+      },
+      {
+        "index": 17,
+        "device": -0.001987457275390625,
+        "native": -0.00199127197265625
+      },
+      {
+        "index": 18,
+        "device": 0.0011663436889648438,
+        "native": 0.00116729736328125
+      },
+      {
+        "index": 21,
+        "device": 0.00525665283203125,
+        "native": 0.005260467529296875
+      },
+      {
+        "index": 24,
+        "device": 0.004886627197265625,
+        "native": 0.0048828125
+      }
+    ]
+  },
+  {
+    "call": 35,
+    "projection": "o_proj",
+    "m": 1,
+    "k": 896,
+    "n": 896,
+    "dtype": "mlx.core.float16",
+    "group_size": 64,
+    "bits": 4,
+    "different": 0,
+    "max_error": 0.0
+  },
+  {
+    "call": 0,
+    "projection": "gate_proj",
+    "m": 261,
+    "k": 896,
+    "n": 4864,
+    "dtype": "mlx.core.float16",
+    "group_size": 64,
+    "bits": 4,
+    "different": 311031,
+    "max_error": 0.00390625,
+    "first_mismatches": [
+      {
+        "index": 1,
+        "device": 0.79052734375,
+        "native": 0.7900390625
+      },
+      {
+        "index": 5,
+        "device": 0.501953125,
+        "native": 0.50146484375
+      },
+      {
+        "index": 7,
+        "device": -0.0994873046875,
+        "native": -0.09942626953125
+      },
+      {
+        "index": 17,
+        "device": 0.86474609375,
+        "native": 0.8642578125
+      },
+      {
+        "index": 38,
+        "device": -1.060546875,
+        "native": -1.0615234375
+      },
+      {
+        "index": 44,
+        "device": 0.6611328125,
+        "native": 0.66064453125
+      },
+      {
+        "index": 52,
+        "device": -0.0227508544921875,
+        "native": -0.0226898193359375
+      },
+      {
+        "index": 54,
+        "device": -0.032257080078125,
+        "native": -0.032196044921875
+      }
+    ]
+  },
+  {
+    "call": 35,
+    "projection": "gate_proj",
+    "m": 1,
+    "k": 896,
+    "n": 4864,
+    "dtype": "mlx.core.float16",
+    "group_size": 64,
+    "bits": 4,
+    "different": 0,
+    "max_error": 0.0
+  },
+  {
+    "call": 0,
+    "projection": "up_proj",
+    "m": 261,
+    "k": 896,
+    "n": 4864,
+    "dtype": "mlx.core.float16",
+    "group_size": 64,
+    "bits": 4,
+    "different": 383152,
+    "max_error": 0.001953125,
+    "first_mismatches": [
+      {
+        "index": 3,
+        "device": -0.283447265625,
+        "native": -0.283203125
+      },
+      {
+        "index": 4,
+        "device": 0.1002197265625,
+        "native": 0.10015869140625
+      },
+      {
+        "index": 7,
+        "device": 0.091064453125,
+        "native": 0.09112548828125
+      },
+      {
+        "index": 15,
+        "device": 0.1849365234375,
+        "native": 0.18505859375
+      },
+      {
+        "index": 16,
+        "device": -0.05328369140625,
+        "native": -0.05322265625
+      },
+      {
+        "index": 20,
+        "device": 0.031341552734375,
+        "native": 0.0313720703125
+      },
+      {
+        "index": 23,
+        "device": -0.030426025390625,
+        "native": -0.030364990234375
+      },
+      {
+        "index": 24,
+        "device": -0.09490966796875,
+        "native": -0.0948486328125
+      }
+    ]
+  },
+  {
+    "call": 35,
+    "projection": "up_proj",
+    "m": 1,
+    "k": 896,
+    "n": 4864,
+    "dtype": "mlx.core.float16",
+    "group_size": 64,
+    "bits": 4,
+    "different": 0,
+    "max_error": 0.0
+  },
+  {
+    "call": 0,
+    "projection": "down_proj",
+    "m": 261,
+    "k": 4864,
+    "n": 896,
+    "dtype": "mlx.core.float16",
+    "group_size": 64,
+    "bits": 4,
+    "different": 96017,
+    "max_error": 0.001953125,
+    "first_mismatches": [
+      {
+        "index": 0,
+        "device": 0.374267578125,
+        "native": 0.3740234375
+      },
+      {
+        "index": 2,
+        "device": -0.422119140625,
+        "native": -0.42236328125
+      },
+      {
+        "index": 12,
+        "device": 0.288818359375,
+        "native": 0.28857421875
+      },
+      {
+        "index": 14,
+        "device": -0.57470703125,
+        "native": -0.5751953125
+      },
+      {
+        "index": 15,
+        "device": -0.0216217041015625,
+        "native": -0.02154541015625
+      },
+      {
+        "index": 20,
+        "device": 0.045440673828125,
+        "native": 0.04547119140625
+      },
+      {
+        "index": 21,
+        "device": 0.00373077392578125,
+        "native": 0.0037841796875
+      },
+      {
+        "index": 27,
+        "device": -0.53662109375,
+        "native": -0.5361328125
+      }
+    ]
+  },
+  {
+    "call": 35,
+    "projection": "down_proj",
+    "m": 1,
+    "k": 4864,
+    "n": 896,
+    "dtype": "mlx.core.float16",
+    "group_size": 64,
+    "bits": 4,
+    "different": 0,
+    "max_error": 0.0
+  }
+]

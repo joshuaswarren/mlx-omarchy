@@ -1,0 +1,55 @@
+{
+  "method": "Final Honeykrisp AGX assembly block16 ending at block13 for K=896 f16 Q4 GEMV; includes loop/control/address/load/wait/datapath instructions.",
+  "before": {
+    "issued_instructions_per_loop": 69,
+    "elements_per_loop": 8,
+    "issued_instructions_per_element": 8.625,
+    "opcodes": {
+      "1": 2,
+      "and": 2,
+      "bfeil": 7,
+      "convert": 8,
+      "device_load": 11,
+      "fadd": 3,
+      "ffma": 7,
+      "fmul": 3,
+      "hadd": 6,
+      "iadd": 12,
+      "jmp_exec_any": 1,
+      "mov1": 1,
+      "wait": 6
+    },
+    "static_shader": {
+      "instructions": 246,
+      "alu": 173,
+      "fscib": 173,
+      "ic": 108
+    }
+  },
+  "after": {
+    "issued_instructions_per_loop": 54,
+    "elements_per_loop": 8,
+    "issued_instructions_per_element": 6.75,
+    "opcodes": {
+      "1": 2,
+      "and": 2,
+      "bfeil": 8,
+      "convert": 8,
+      "device_load": 4,
+      "fadd": 3,
+      "ffma": 7,
+      "fmul": 3,
+      "hadd": 6,
+      "iadd": 5,
+      "jmp_exec_any": 1,
+      "mov1": 1,
+      "wait": 4
+    },
+    "static_shader": {
+      "instructions": 200,
+      "alu": 155,
+      "fscib": 155,
+      "ic": 120
+    }
+  }
+}

@@ -1,0 +1,374 @@
+{
+  "schema": 1,
+  "host": {
+    "name": "jwm1-linux",
+    "gpu": "Apple M1 / Honeykrisp Vulkan",
+    "vendor_id": "0x10005"
+  },
+  "base_commit": "21e20a433fbb7222290cca762e92f9054d6230c0",
+  "source_commit": "28cc299e8e399cc29c0febf6e9fc6dd3006e9619",
+  "decision": "ship",
+  "change": "Pack eight contiguous f16 Q4 GEMV activations into one uvec4 load; materialize only misaligned row-contiguous views at dispatch.",
+  "instructions": {
+    "method": "Final Honeykrisp AGX assembly block16 ending at block13 for K=896 f16 Q4 GEMV; includes loop/control/address/load/wait/datapath instructions.",
+    "before": {
+      "issued_instructions_per_loop": 69,
+      "elements_per_loop": 8,
+      "issued_instructions_per_element": 8.625,
+      "opcodes": {
+        "1": 2,
+        "and": 2,
+        "bfeil": 7,
+        "convert": 8,
+        "device_load": 11,
+        "fadd": 3,
+        "ffma": 7,
+        "fmul": 3,
+        "hadd": 6,
+        "iadd": 12,
+        "jmp_exec_any": 1,
+        "mov1": 1,
+        "wait": 6
+      },
+      "static_shader": {
+        "instructions": 246,
+        "alu": 173,
+        "fscib": 173,
+        "ic": 108
+      }
+    },
+    "after": {
+      "issued_instructions_per_loop": 54,
+      "elements_per_loop": 8,
+      "issued_instructions_per_element": 6.75,
+      "opcodes": {
+        "1": 2,
+        "and": 2,
+        "bfeil": 8,
+        "convert": 8,
+        "device_load": 4,
+        "fadd": 3,
+        "ffma": 7,
+        "fmul": 3,
+        "hadd": 6,
+        "iadd": 5,
+        "jmp_exec_any": 1,
+        "mov1": 1,
+        "wait": 4
+      },
+      "static_shader": {
+        "instructions": 200,
+        "alu": 155,
+        "fscib": 155,
+        "ic": 120
+      }
+    }
+  },
+  "bandwidth": {
+    "q4_896x896": {
+      "before_us": 62.708,
+      "after_us": 56.542,
+      "before_gbps": 7.229954710722715,
+      "after_gbps": 8.018393406671148,
+      "speedup": 1.1090516783983586
+    },
+    "q4_896x128": {
+      "before_us": 35.25,
+      "after_us": 31.083,
+      "before_gbps": 1.8809645390070922,
+      "after_gbps": 2.1331274330019623,
+      "speedup": 1.1340604188784866
+    },
+    "q4_896x4864": {
+      "before_us": 214.709,
+      "after_us": 191.417,
+      "before_gbps": 11.425920664713635,
+      "after_gbps": 12.816249340445205,
+      "speedup": 1.1216819822690776
+    },
+    "q4_4864x896": {
+      "before_us": 183.0,
+      "after_us": 149.583,
+      "before_gbps": 13.449092896174863,
+      "after_gbps": 16.453634437068384,
+      "speedup": 1.223401054932713
+    },
+    "q4_896x151936": {
+      "before_us": 3728.708,
+      "after_us": 3325.646,
+      "before_gbps": 20.537284228209877,
+      "after_gbps": 23.026364201120625,
+      "speedup": 1.1211981070745352
+    },
+    "ceiling_cast_76mb": {
+      "before_us": 3354.271,
+      "after_us": 3369.771,
+      "before_gbps": 60.87820095633298,
+      "after_gbps": 60.59817833318644,
+      "speedup": 0.9954002809092962
+    },
+    "floor_cast_4k": {
+      "before_us": 20.104,
+      "after_us": 21.1045,
+      "before_gbps": 1.2224432948666932,
+      "after_gbps": 1.1644909853348813,
+      "speedup": 0.9525930488758321
+    }
+  },
+  "fixed_input_exactness": {
+    "decode_mismatches": 0,
+    "decode_projections": {
+      "q_proj": 0,
+      "k_proj": 0,
+      "v_proj": 0,
+      "o_proj": 0,
+      "gate_proj": 0,
+      "up_proj": 0,
+      "down_proj": 0
+    },
+    "prefill_mismatches_out_of_scope_unchanged_path": 940645,
+    "stage_native_model_mismatches": {
+      "1024-f32": {
+        "full": 0
+      },
+      "4864-f32": {
+        "full": 0
+      },
+      "512-f32": {
+        "full": 0
+      },
+      "896-f16": {
+        "reduce": 0,
+        "onenibble": 0,
+        "inputsum": 0,
+        "dotonly": 0,
+        "scaleonly": 0,
+        "dot": 0,
+        "full": 0
+      },
+      "896-f32": {
+        "reduce": 0,
+        "onenibble": 0,
+        "inputsum": 0,
+        "dotonly": 0,
+        "scaleonly": 0,
+        "dot": 0,
+        "full": 0
+      }
+    },
+    "before_after_kernel_outputs": "ALL_IDENTICAL (9/9 shapes)"
+  },
+  "paired": {
+    "repetitions": 3,
+    "legs": {
+      "qwen25-0.5b-4bit:long-decode-128": {
+        "baseline_tok_s": 75.41,
+        "candidate_tok_s": 79.63,
+        "ratio": 1.0559607479114175,
+        "baseline_samples": [
+          76.17,
+          75.41,
+          75.26
+        ],
+        "candidate_samples": [
+          79.63,
+          79.76,
+          79.39
+        ]
+      },
+      "qwen25-0.5b-4bit:longctx-1024-decode-32": {
+        "baseline_tok_s": 50.73,
+        "candidate_tok_s": 51.96,
+        "ratio": 1.024246008279125,
+        "baseline_samples": [
+          50.9,
+          50.37,
+          50.73
+        ],
+        "candidate_samples": [
+          51.96,
+          50.87,
+          52.45
+        ]
+      },
+      "qwen25-0.5b-4bit:short-decode-32": {
+        "baseline_tok_s": 93.08,
+        "candidate_tok_s": 99.6,
+        "ratio": 1.0700472711645896,
+        "baseline_samples": [
+          92.76,
+          93.53,
+          93.08
+        ],
+        "candidate_samples": [
+          100.55,
+          99.6,
+          99.05
+        ]
+      },
+      "qwen25-0.5b-bf16:long-decode-128": {
+        "baseline_tok_s": 11.22,
+        "candidate_tok_s": 11.29,
+        "ratio": 1.0062388591800355,
+        "baseline_samples": [
+          11.19,
+          11.29,
+          11.22
+        ],
+        "candidate_samples": [
+          11.29,
+          11.29,
+          11.24
+        ]
+      },
+      "qwen25-0.5b-bf16:longctx-1024-decode-32": {
+        "baseline_tok_s": 10.26,
+        "candidate_tok_s": 10.25,
+        "ratio": 0.9990253411306043,
+        "baseline_samples": [
+          10.15,
+          10.26,
+          10.26
+        ],
+        "candidate_samples": [
+          10.15,
+          10.27,
+          10.25
+        ]
+      },
+      "qwen25-0.5b-bf16:short-decode-32": {
+        "baseline_tok_s": 11.7,
+        "candidate_tok_s": 11.71,
+        "ratio": 1.000854700854701,
+        "baseline_samples": [
+          11.7,
+          11.73,
+          11.68
+        ],
+        "candidate_samples": [
+          11.71,
+          11.71,
+          11.71
+        ]
+      }
+    }
+  },
+  "digests": {
+    "qwen25-0.5b-4bit:long-decode-128": {
+      "before": "4cc08910089477fd",
+      "after": "4cc08910089477fd",
+      "native": "254d73fd93164b98",
+      "unchanged": true,
+      "native_match_after": false
+    },
+    "qwen25-0.5b-4bit:longctx-1024-decode-32": {
+      "before": "7da83f06ec9f001d",
+      "after": "7da83f06ec9f001d",
+      "native": "7da83f06ec9f001d",
+      "unchanged": true,
+      "native_match_after": true
+    },
+    "qwen25-0.5b-4bit:short-decode-32": {
+      "before": "7fd25a869ff21678",
+      "after": "7fd25a869ff21678",
+      "native": "7fd25a869ff21678",
+      "unchanged": true,
+      "native_match_after": true
+    },
+    "qwen25-0.5b-bf16:long-decode-128": {
+      "before": "ad964232ee67fecd",
+      "after": "ad964232ee67fecd",
+      "native": "407b7624ed1b3b29",
+      "unchanged": true,
+      "native_match_after": false
+    },
+    "qwen25-0.5b-bf16:longctx-1024-decode-32": {
+      "before": "ff502900d2a179a5",
+      "after": "ff502900d2a179a5",
+      "native": "ff502900d2a179a5",
+      "unchanged": true,
+      "native_match_after": true
+    },
+    "qwen25-0.5b-bf16:short-decode-32": {
+      "before": "f26175202f3dabe9",
+      "after": "f26175202f3dabe9",
+      "native": "7fc0f968789b1882",
+      "unchanged": true,
+      "native_match_after": false
+    }
+  },
+  "policy_ok": true,
+  "policy_note": "No generation digest moved; every already-native leg remained native. Legacy non-native whole-model digests are unchanged and outside this arithmetic-preserving GEMV load-form change; fixed decode projections and every native stage model are bit exact.",
+  "tests": {
+    "llvmpipe_matmul_family": {
+      "cases_passed": 1,
+      "assertions_passed": 122,
+      "status": "SUCCESS"
+    },
+    "m1_matmul_family": {
+      "cases_passed": 1,
+      "assertions_passed": 122,
+      "status": "SUCCESS"
+    },
+    "shader_variants_compiled": [
+      "Q4 f32",
+      "Q4 f16",
+      "Q4 bf16",
+      "Q4 subgroup f16",
+      "Q4 multi subgroup f16",
+      "Q4 multi f32"
+    ]
+  },
+  "wheels": {
+    "baseline_diagnostics": {
+      "version": "0.32.2.dev202609101132+diag.21e20a4",
+      "sha256": "b48372ddff118ff693495a665d222b6f701eb8e5ae1f983ba95132ad3426d2bd"
+    },
+    "candidate_diagnostics": {
+      "version": "0.32.2.dev202609101146+diag.28cc299",
+      "sha256": "20bf4181d849fb27a41619606a010455f287a2d3a9ccf841662233f846908afb"
+    },
+    "candidate_release": {
+      "version": "0.32.2.dev202609101231+28cc299",
+      "sha256": "d2210ac4a910bc9df31ba76ebe868700596c441c07e41931e8ed1c82795d73d4",
+      "remote_path": "/home/joshuawarren/src/mlx-GemvNativeForm/dist/mlx_omarchy-0.32.2.dev202609101231+28cc299-cp314-cp314-linux_aarch64.whl"
+    }
+  },
+  "models": [
+    {
+      "id": "qwen25-0.5b-4bit",
+      "repo": "mlx-community/Qwen2.5-0.5B-Instruct-4bit",
+      "revision": "a5339a4131f135d0fdc6a5c8b5bbed2753bbe0f3",
+      "revision_source": "pinned; local HF cache snapshot dir, matches receipts 2026-09-01-macos-native-mlx-baseline.md and 2026-09-01-m1-same-chip-parity.md",
+      "optional": false
+    },
+    {
+      "id": "qwen25-0.5b-bf16",
+      "repo": "mlx-community/Qwen2.5-0.5B-Instruct-bf16",
+      "revision": "56d07e766edd7159fbe12ed12d9cf114bf38bf1e",
+      "revision_source": "pinned; local HF cache snapshot dir, matches receipts 2026-09-01-macos-native-mlx-baseline.md and 2026-09-01-m1-same-chip-parity.md",
+      "optional": false
+    }
+  ],
+  "receipts": [
+    "instruction-counts.json",
+    "shader-before.txt",
+    "shader-after.txt",
+    "disassembly-before-full.txt",
+    "disassembly-after-full.txt",
+    "bandwidth-before/bandwidth.json",
+    "bandwidth-after/bandwidth.json",
+    "bandwidth-output-compare.log",
+    "fixed-projection/results.json",
+    "probe-512-f32.json",
+    "probe-896-f32.json",
+    "probe-896-f16.json",
+    "probe-1024-f32.json",
+    "probe-4864-f32.json",
+    "paired/paired-summary.json",
+    "llvmpipe-matmul.log",
+    "m1-matmul-family.log",
+    "release-wheel.sha256"
+  ],
+  "next": "Merge source commit 28cc299e; use the commit-stamped release wheel. No further GEMV arithmetic changes needed."
+}

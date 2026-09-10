@@ -1,0 +1,333 @@
+{
+  "repetitions": 3,
+  "sides": {
+    "base": {
+      "python": "/home/joshuawarren/src/mlx-GemvNativeForm-base/.venv-accept/bin/python",
+      "wheel": "/home/joshuawarren/src/mlx-GemvNativeForm-base/dist/mlx_omarchy-0.32.2.dev202609101132+diag.21e20a4-cp314-cp314-linux_aarch64.whl",
+      "stamp": "diag.21e20a4",
+      "version": "0.32.2.dev202609101132+diag.21e20a4",
+      "sha256": "b48372ddff118ff693495a665d222b6f701eb8e5ae1f983ba95132ad3426d2bd"
+    },
+    "candidate": {
+      "python": "/home/joshuawarren/src/mlx-GemvNativeForm/.venv-accept/bin/python",
+      "wheel": "/home/joshuawarren/src/mlx-GemvNativeForm/dist/mlx_omarchy-0.32.2.dev202609101146+diag.28cc299-cp314-cp314-linux_aarch64.whl",
+      "stamp": "diag.28cc299",
+      "version": "0.32.2.dev202609101146+diag.28cc299",
+      "sha256": "20bf4181d849fb27a41619606a010455f287a2d3a9ccf841662233f846908afb"
+    }
+  },
+  "results": [
+    {
+      "leg_id": "qwen25-0.5b-4bit:long-decode-128",
+      "native_digest": "254d73fd93164b98",
+      "sides": {
+        "base": {
+          "digests": [
+            "4cc08910089477fd"
+          ],
+          "native_match": false,
+          "decode_tok_s": {
+            "samples": [
+              76.17,
+              75.41,
+              75.26
+            ],
+            "median": 75.41
+          },
+          "prefill_tok_s": {
+            "samples": [
+              766.082,
+              763.848,
+              770.588
+            ],
+            "median": 766.082
+          }
+        },
+        "candidate": {
+          "digests": [
+            "4cc08910089477fd"
+          ],
+          "native_match": false,
+          "decode_tok_s": {
+            "samples": [
+              79.63,
+              79.76,
+              79.39
+            ],
+            "median": 79.63
+          },
+          "prefill_tok_s": {
+            "samples": [
+              768.328,
+              766.082,
+              784.431
+            ],
+            "median": 768.328
+          },
+          "decode_over_base": 1.0559607479114175,
+          "prefill_over_base": 1.002931801034354
+        }
+      }
+    },
+    {
+      "leg_id": "qwen25-0.5b-4bit:longctx-1024-decode-32",
+      "native_digest": "7da83f06ec9f001d",
+      "sides": {
+        "base": {
+          "digests": [
+            "7da83f06ec9f001d"
+          ],
+          "native_match": true,
+          "decode_tok_s": {
+            "samples": [
+              50.9,
+              50.37,
+              50.73
+            ],
+            "median": 50.73
+          },
+          "prefill_tok_s": {
+            "samples": [
+              1050.898,
+              1036.417,
+              1047.761
+            ],
+            "median": 1047.761
+          }
+        },
+        "candidate": {
+          "digests": [
+            "7da83f06ec9f001d"
+          ],
+          "native_match": true,
+          "decode_tok_s": {
+            "samples": [
+              51.96,
+              50.87,
+              52.45
+            ],
+            "median": 51.96
+          },
+          "prefill_tok_s": {
+            "samples": [
+              1047.761,
+              1023.324,
+              1045.68
+            ],
+            "median": 1045.68
+          },
+          "decode_over_base": 1.024246008279125,
+          "prefill_over_base": 0.9980138600310567
+        }
+      }
+    },
+    {
+      "leg_id": "qwen25-0.5b-4bit:short-decode-32",
+      "native_digest": "7fd25a869ff21678",
+      "sides": {
+        "base": {
+          "digests": [
+            "7fd25a869ff21678"
+          ],
+          "native_match": true,
+          "decode_tok_s": {
+            "samples": [
+              92.76,
+              93.53,
+              93.08
+            ],
+            "median": 93.08
+          },
+          "prefill_tok_s": {
+            "samples": [
+              204.082,
+              201.342,
+              201.342
+            ],
+            "median": 201.342
+          }
+        },
+        "candidate": {
+          "digests": [
+            "7fd25a869ff21678"
+          ],
+          "native_match": true,
+          "decode_tok_s": {
+            "samples": [
+              100.55,
+              99.6,
+              99.05
+            ],
+            "median": 99.6
+          },
+          "prefill_tok_s": {
+            "samples": [
+              204.082,
+              206.897,
+              211.268
+            ],
+            "median": 206.897
+          },
+          "decode_over_base": 1.0700472711645896,
+          "prefill_over_base": 1.027589871959154
+        }
+      }
+    },
+    {
+      "leg_id": "qwen25-0.5b-bf16:long-decode-128",
+      "native_digest": "407b7624ed1b3b29",
+      "sides": {
+        "base": {
+          "digests": [
+            "ad964232ee67fecd"
+          ],
+          "native_match": false,
+          "decode_tok_s": {
+            "samples": [
+              11.19,
+              11.29,
+              11.22
+            ],
+            "median": 11.22
+          },
+          "prefill_tok_s": {
+            "samples": [
+              300.459,
+              300.459,
+              300.459
+            ],
+            "median": 300.459
+          }
+        },
+        "candidate": {
+          "digests": [
+            "ad964232ee67fecd"
+          ],
+          "native_match": false,
+          "decode_tok_s": {
+            "samples": [
+              11.29,
+              11.29,
+              11.24
+            ],
+            "median": 11.29
+          },
+          "prefill_tok_s": {
+            "samples": [
+              300.804,
+              297.052,
+              299.429
+            ],
+            "median": 299.429
+          },
+          "decode_over_base": 1.0062388591800355,
+          "prefill_over_base": 0.9965719116418545
+        }
+      }
+    },
+    {
+      "leg_id": "qwen25-0.5b-bf16:longctx-1024-decode-32",
+      "native_digest": "ff502900d2a179a5",
+      "sides": {
+        "base": {
+          "digests": [
+            "ff502900d2a179a5"
+          ],
+          "native_match": true,
+          "decode_tok_s": {
+            "samples": [
+              10.15,
+              10.26,
+              10.26
+            ],
+            "median": 10.26
+          },
+          "prefill_tok_s": {
+            "samples": [
+              340.116,
+              342.328,
+              339.458
+            ],
+            "median": 340.116
+          }
+        },
+        "candidate": {
+          "digests": [
+            "ff502900d2a179a5"
+          ],
+          "native_match": true,
+          "decode_tok_s": {
+            "samples": [
+              10.15,
+              10.27,
+              10.25
+            ],
+            "median": 10.25
+          },
+          "prefill_tok_s": {
+            "samples": [
+              342.997,
+              352.056,
+              350.766
+            ],
+            "median": 350.766
+          },
+          "decode_over_base": 0.9990253411306043,
+          "prefill_over_base": 1.0313128462054124
+        }
+      }
+    },
+    {
+      "leg_id": "qwen25-0.5b-bf16:short-decode-32",
+      "native_digest": "7fc0f968789b1882",
+      "sides": {
+        "base": {
+          "digests": [
+            "f26175202f3dabe9"
+          ],
+          "native_match": false,
+          "decode_tok_s": {
+            "samples": [
+              11.7,
+              11.73,
+              11.68
+            ],
+            "median": 11.7
+          },
+          "prefill_tok_s": {
+            "samples": [
+              80.645,
+              81.081,
+              80.214
+            ],
+            "median": 80.645
+          }
+        },
+        "candidate": {
+          "digests": [
+            "f26175202f3dabe9"
+          ],
+          "native_match": false,
+          "decode_tok_s": {
+            "samples": [
+              11.71,
+              11.71,
+              11.71
+            ],
+            "median": 11.71
+          },
+          "prefill_tok_s": {
+            "samples": [
+              81.081,
+              81.081,
+              80.863
+            ],
+            "median": 81.081
+          },
+          "decode_over_base": 1.000854700854701,
+          "prefill_over_base": 1.0054064108128218
+        }
+      }
+    }
+  ]
+}

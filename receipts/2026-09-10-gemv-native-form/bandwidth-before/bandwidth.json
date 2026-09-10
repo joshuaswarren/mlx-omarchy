@@ -1,0 +1,103 @@
+{
+  "python": ".venv-accept/bin/python",
+  "version": "0.32.2.dev202609101132+diag.21e20a4",
+  "reps": 4,
+  "variants": {
+    "default": {
+      "wall_s": {
+        "stream_s": 0.06381032301578671,
+        "dispatches": 400
+      },
+      "q4_896x896": {
+        "kernel": [
+          "QmmVecQ4WordSubgroupF16"
+        ],
+        "workgroups": [
+          112
+        ],
+        "dispatches": 1,
+        "bytes": 453376,
+        "p50_us": 62.708,
+        "min_us": 62.708,
+        "gbps_p50": 7.229954710722715,
+        "gbps_min_time": 7.229954710722715
+      },
+      "q4_896x128": {
+        "kernel": [
+          "QmmVecQ4WordSubgroupF16"
+        ],
+        "workgroups": [
+          16
+        ],
+        "dispatches": 1,
+        "bytes": 66304,
+        "p50_us": 35.25,
+        "min_us": 35.25,
+        "gbps_p50": 1.8809645390070922,
+        "gbps_min_time": 1.8809645390070922
+      },
+      "q4_896x4864": {
+        "kernel": [
+          "QmmVecQ4WordSubgroupF16"
+        ],
+        "workgroups": [
+          608
+        ],
+        "dispatches": 1,
+        "bytes": 2453248,
+        "p50_us": 214.709,
+        "min_us": 214.709,
+        "gbps_p50": 11.425920664713635,
+        "gbps_min_time": 11.425920664713635
+      },
+      "q4_4864x896": {
+        "kernel": [
+          "QmmVecQ4WordSubgroupF16"
+        ],
+        "workgroups": [
+          112
+        ],
+        "dispatches": 1,
+        "bytes": 2461184,
+        "p50_us": 183.0,
+        "min_us": 183.0,
+        "gbps_p50": 13.449092896174863,
+        "gbps_min_time": 13.449092896174863
+      },
+      "q4_896x151936": {
+        "kernel": [
+          "QmmVecQ4WordSubgroupF16"
+        ],
+        "workgroups": [
+          18992
+        ],
+        "dispatches": 2,
+        "bytes": 76577536,
+        "p50_us": 3728.708,
+        "min_us": 1775.0,
+        "gbps_p50": 20.537284228209877,
+        "gbps_min_time": 43.1422738028169
+      },
+      "ceiling_cast_76mb": {
+        "kernel": "CastF32F16",
+        "elements": 34033664,
+        "dispatches": 4,
+        "bytes_traffic": 204201984,
+        "p50_us": 3354.271,
+        "min_us": 3327.625,
+        "gbps_p50": 60.87820095633298,
+        "gbps_min_time": 61.36568393373653
+      },
+      "floor_cast_4k": {
+        "kernel": "CastF32F16",
+        "elements": 4096,
+        "dispatches": 4,
+        "bytes_traffic": 24576,
+        "p50_us": 20.104,
+        "min_us": 17.875,
+        "gbps_p50": 1.2224432948666932,
+        "gbps_min_time": 1.374881118881119
+      }
+    }
+  }
+}

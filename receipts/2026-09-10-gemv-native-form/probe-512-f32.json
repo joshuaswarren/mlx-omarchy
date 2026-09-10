@@ -1,0 +1,32 @@
+{
+  "k": 512,
+  "n": 64,
+  "trials": 8,
+  "dtype": "float32",
+  "device": "Device(gpu, 0)",
+  "stages": {
+    "full": {
+      "outputs": 512,
+      "mismatches": {
+        "quads:fma_scale:xor_up": 0,
+        "quads:fma_scale:xor_down": 331,
+        "quads:fma_scale:sequential": 365,
+        "quads:fma_bias:xor_up": 266,
+        "quads:fma_bias:xor_down": 348,
+        "quads:fma_bias:sequential": 367,
+        "quads:nofma:xor_up": 266,
+        "quads:nofma:xor_down": 351,
+        "quads:nofma:sequential": 373,
+        "sequential:fma_scale:xor_up": 116,
+        "sequential:fma_scale:xor_down": 331,
+        "sequential:fma_scale:sequential": 367,
+        "sequential:fma_bias:xor_up": 281,
+        "sequential:fma_bias:xor_down": 356,
+        "sequential:fma_bias:sequential": 377,
+        "sequential:nofma:xor_up": 279,
+        "sequential:nofma:xor_down": 358,
+        "sequential:nofma:sequential": 383
+      }
+    }
+  }
+}
