@@ -23,6 +23,7 @@
 #include "mlx/backend/omarchy/trace.h"
 #include "mlx/device.h"
 #include "mlx/ops.h"
+#include "mlx/transforms.h"
 #include "mlx/stream.h"
 
 using namespace mlx::core;
