@@ -204,6 +204,17 @@
       }
     }
   },
+  "shape_conditional_dispatch": {
+    "available": true,
+    "shape": "m=1053, k=896, n=128",
+    "baseline_ms": 0.672146,
+    "candidate_v1_ms": 0.4784995,
+    "candidate_v2_ms": 0.550937,
+    "candidate_v3_ms": 0.4361875,
+    "best_speed_ratio": 1.5409565840378279,
+    "estimated_model_impact": "about 1%; not implemented because it needs a second local-size/pipeline variant and does not close the wide-projection bound"
+  },
+  "conclusion": "On Honeykrisp, main's 32x32 tile with two 16x32 fragment assignments beats every native-like alternative on all three wide projection shapes. The 1113 versus 1838 tok/s gap at 1053 tokens is not the tile schedule.",
   "paired_fork": {
     "run": false,
     "reason": "No candidate met the required 1.10 kernel speed ratio across the eight screened shapes."
@@ -223,6 +234,6 @@
     "local_shader_compile": "Unavailable: local glslangValidator 12.0.0 rejects GL_KHR_cooperative_matrix; M1 builds used the pinned glslang toolchain.",
     "targeted_cpp": "Not retained because no candidate survived the mandatory kernel screen; a partially started rejected-candidate run was stopped and removed."
   },
-  "decision": "reject all three native-schedule candidates and keep main runtime sources",
-  "next": "The remaining gap is not closed by native threadgroup geometry, BK32 barrier amortization, or native shared layout. The next credible lever requires a Honeykrisp cooperative-matrix path that accepts f16 shared operands (matching native 5 KiB staging) or a compiler/driver change; source-only emulation with f32 shared memory regressed the large projections."
+  "decision": "reject all three native-schedule candidates, preserve the measured narrow-KV option, and keep main runtime sources",
+  "next": "Test native MLX's other axis, qmm_splitk, in the separately assigned wave. Do not re-measure the native tile schedules or the 896x128 shape-conditional opportunity recorded here."
 }
