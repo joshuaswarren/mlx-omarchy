@@ -1,0 +1,41 @@
+== prepare upstream tree ==
+patching file CMakeLists.txt
+patching file mlx/CMakeLists.txt
+patching file tests/CMakeLists.txt
+patching file mlx/transforms.cpp
+patching file setup.py
+patching file mlx/io/safetensors.cpp
+patching file mlx/io/load.cpp
+patching file mlx/export.cpp
+patching file mlx/linalg.cpp
+patching file python/src/buffer.h
+patching file mlx/ops.cpp
+Hunk #2 succeeded at 5051 (offset 1 line).
+patching file mlx/backend/cpu/distributed.cpp
+patching file mlx/fast.cpp
+patching file setup.py
+/home/joshuawarren/src/mlx-PrefillClose/.work/mlx
+== build venv (/home/joshuawarren/src/mlx-PrefillClose/.work/venv-build) ==
+== wheel build ==
+Processing ./.work/mlx
+  Preparing metadata (pyproject.toml): started
+  Preparing metadata (pyproject.toml): finished with status 'done'
+Building wheels for collected packages: mlx-omarchy
+  Building wheel for mlx-omarchy (pyproject.toml): started
+  Building wheel for mlx-omarchy (pyproject.toml): still running...
+  Building wheel for mlx-omarchy (pyproject.toml): still running...
+  Building wheel for mlx-omarchy (pyproject.toml): finished with status 'done'
+  Created wheel for mlx-omarchy: filename=mlx_omarchy-0.32.2.dev202609101309+94457bc-cp314-cp314-linux_aarch64.whl size=7446040 sha256=09b0fdf95325b35f32f2835aa2236eca64fdd73da748aabde3d86ea9b424187d
+  Stored in directory: /tmp/pip-ephem-wheel-cache-76qdw_n2/wheels/a2/06/4b/d444d32ec5ebc185040b4497e3166c84682657e1bdd3d9f2d9
+Successfully built mlx-omarchy
+== receipt ==
+[receipt] wheel: /home/joshuawarren/src/mlx-PrefillClose/dist/mlx_omarchy-0.32.2.dev202609101309+94457bc-cp314-cp314-linux_aarch64.whl
+[receipt] size: 7446040 bytes
+[receipt] sha256: 09b0fdf95325b35f32f2835aa2236eca64fdd73da748aabde3d86ea9b424187d
+[receipt] source commit: 94457bc
+[receipt] NEXT STEP - do not skip: after you upload this wheel to a
+[receipt] release, verify the UPLOADED asset with
+[receipt]   python3 scripts/verify-release-assets.py <tag>
+[receipt] It must print VERIFIED before the release is announced as
+[receipt] usable. See docs/release.md. A local build check does not
+[receipt] verify what users download.

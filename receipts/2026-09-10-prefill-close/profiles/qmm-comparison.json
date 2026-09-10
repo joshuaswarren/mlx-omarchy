@@ -1,0 +1,79 @@
+{
+  "baseline": {
+    "source_commit": "d861fa8e08c313f6b79f3e18cdf9f779b238a9da",
+    "wheel_sha256": "590055f6fcd1550bf774fe5bc498b3fd3a69ba6dfe823daf8a5d8b6ace49a631"
+  },
+  "candidate": {
+    "source_commit": "cf8f17e4ca1922d114f8446ed5b2f2cd17cf5bde",
+    "wheel_sha256": "1046ae8479f476ed57ca53a15c1519ca015c7f5a3c8633e54d615b5d644dc058"
+  },
+  "driver": "stock Mesa via /home/joshuawarren/stock-mesa/stock-icd.json",
+  "shapes": {
+    "qmm-hidden-hidden-m1053": {
+      "baseline_ms": 6.254436999999999,
+      "candidate_ms": 7.112146,
+      "speed_ratio": 0.8794022226202892,
+      "improvement_percent": -12.059777737971078,
+      "kernel_baseline": "QmmTileRbPreciseF16",
+      "kernel_candidate": "QmmTileRbPreciseF16"
+    },
+    "qmm-hidden-hidden-m262": {
+      "baseline_ms": 1.811896,
+      "candidate_ms": 2.0573335,
+      "speed_ratio": 0.8807011600209689,
+      "improvement_percent": -11.929883997903111,
+      "kernel_baseline": "QmmTileRbF16",
+      "kernel_candidate": "QmmTileRbF16"
+    },
+    "qmm-hidden-intermediate-m1053": {
+      "baseline_ms": 33.0095,
+      "candidate_ms": 37.305729,
+      "speed_ratio": 0.8848372859836087,
+      "improvement_percent": -11.516271401639134,
+      "kernel_baseline": "QmmTileRbPreciseF16",
+      "kernel_candidate": "QmmTileRbPreciseF16"
+    },
+    "qmm-hidden-intermediate-m262": {
+      "baseline_ms": 8.989396,
+      "candidate_ms": 10.215458,
+      "speed_ratio": 0.8799797326757155,
+      "improvement_percent": -12.002026732428451,
+      "kernel_baseline": "QmmTileRbF16",
+      "kernel_candidate": "QmmTileRbF16"
+    },
+    "qmm-hidden-kv-m1053": {
+      "baseline_ms": 1.0980625000000002,
+      "candidate_ms": 1.240125,
+      "speed_ratio": 0.8854450156234253,
+      "improvement_percent": -11.455498437657475,
+      "kernel_baseline": "QmmTileRbPreciseF16",
+      "kernel_candidate": "QmmTileRbPreciseF16"
+    },
+    "qmm-hidden-kv-m262": {
+      "baseline_ms": 0.6992704999999999,
+      "candidate_ms": 0.5692705,
+      "speed_ratio": 1.228362439297311,
+      "improvement_percent": 22.836243929731094,
+      "kernel_baseline": "QmmTileRbF16",
+      "kernel_candidate": "QmmTileRbF16"
+    },
+    "qmm-intermediate-hidden-m1053": {
+      "baseline_ms": 33.798458499999995,
+      "candidate_ms": 38.954125,
+      "speed_ratio": 0.8676477394884367,
+      "improvement_percent": -13.235226051156335,
+      "kernel_baseline": "QmmTileRbPreciseF16",
+      "kernel_candidate": "QmmTileRbPreciseF16"
+    },
+    "qmm-intermediate-hidden-m262": {
+      "baseline_ms": 9.7095835,
+      "candidate_ms": 11.2792085,
+      "speed_ratio": 0.8608390828133021,
+      "improvement_percent": -13.916091718669787,
+      "kernel_baseline": "QmmTileRbF16",
+      "kernel_candidate": "QmmTileRbF16"
+    }
+  },
+  "threshold_met": false,
+  "decision": "reject; seven of eight shapes regressed and the model-wide >=10% kernel gate failed"
+}

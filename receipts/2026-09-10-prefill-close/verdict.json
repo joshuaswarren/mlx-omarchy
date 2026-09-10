@@ -1,0 +1,85 @@
+{
+  "schema": "mlx-omarchy-prefill-close/1",
+  "branch": "wave/PrefillClose",
+  "source_commit": "ab703917d0452d32763cb1dfaf2aff1a4c438599",
+  "source_tree": "identical to origin/main 21e20a433fbb7222290cca762e92f9054d6230c0 for every assigned runtime source path; all batching and QMM candidates were reverted",
+  "host": {
+    "label": "jwm1-linux",
+    "device": "Apple M1 (G13G B1)",
+    "fork_driver": "Mesa Honeykrisp",
+    "stock_driver": "/home/joshuawarren/stock-mesa/stock-icd.json"
+  },
+  "wheels": {
+    "main": {"source_commit": "21e20a433fbb7222290cca762e92f9054d6230c0", "sha256": "24c79bed85f7f433e0bb0ceeeff00cd6fa6aa161757f8de2bad976951c9aead9"},
+    "batch_384": {"source_commit": "915a3902be1df7d7acbe5e97e0b44fdfbe4c7895", "sha256": "0596546dca73a7c31977b7f1b0e155848ba0059f795cf70da74838879f84543e"},
+    "latched_ungated": {"source_commit": "d861fa8e08c313f6b79f3e18cdf9f779b238a9da", "sha256": "4784973901f2380452779b929bc5d7b501176f920b18d9ad850fb4975881e45b"},
+    "latched_capability_gated": {"source_commit": "94457bc348b4fe7474b8a755aa7bb7ba595622df", "sha256": "09b0fdf95325b35f32f2835aa2236eca64fdd73da748aabde3d86ea9b424187d"},
+    "qmm_baseline_diagnostics": {"source_commit": "d861fa8e08c313f6b79f3e18cdf9f779b238a9da", "sha256": "590055f6fcd1550bf774fe5bc498b3fd3a69ba6dfe823daf8a5d8b6ace49a631"},
+    "qmm_k32_diagnostics": {"source_commit": "cf8f17e4ca1922d114f8446ed5b2f2cd17cf5bde", "sha256": "1046ae8479f476ed57ca53a15c1519ca015c7f5a3c8633e54d615b5d644dc058"}
+  },
+  "paired_fork": {
+    "candidate": "latched_capability_gated",
+    "pairs": 3,
+    "policy_ok": false,
+    "qwen25-0.5b-4bit:short-decode-32": {"baseline_prefill": 212.766, "candidate_prefill": 205.479, "prefill_ratio": 0.9657511068497787, "baseline_decode": 93.85, "candidate_decode": 92.67, "decode_ratio": 0.9874267448055408},
+    "qwen25-0.5b-4bit:long-decode-128": {"baseline_prefill": 775.148, "candidate_prefill": 766.082, "prefill_ratio": 0.988304169010305, "baseline_decode": 75.52, "candidate_decode": 75.59, "decode_ratio": 1.0009269067796611},
+    "qwen25-0.5b-4bit:longctx-1024-decode-32": {"baseline_prefill": 1055.11, "candidate_prefill": 1048.805, "prefill_ratio": 0.9940243197391743, "baseline_decode": 50.57, "candidate_decode": 50.71, "decode_ratio": 1.0027684397864347},
+    "qwen25-0.5b-bf16:short-decode-32": {"baseline_prefill": 81.081, "candidate_prefill": 81.081, "prefill_ratio": 1.0, "baseline_decode": 11.7, "candidate_decode": 11.72, "decode_ratio": 1.001709401709402},
+    "qwen25-0.5b-bf16:long-decode-128": {"baseline_prefill": 300.115, "candidate_prefill": 299.429, "prefill_ratio": 0.9977142095530046, "baseline_decode": 11.29, "candidate_decode": 11.29, "decode_ratio": 1.0},
+    "qwen25-0.5b-bf16:longctx-1024-decode-32": {"baseline_prefill": 342.885, "candidate_prefill": 345.472, "prefill_ratio": 1.00754480365137, "baseline_decode": 10.26, "candidate_decode": 10.25, "decode_ratio": 0.9990253411306043}
+  },
+  "paired_stock": {
+    "candidate": "latched_capability_gated",
+    "pairs": 3,
+    "policy_ok": true,
+    "qwen25-0.5b-4bit:short-decode-32": {"baseline_prefill": 134.529, "candidate_prefill": 134.529, "prefill_ratio": 1.0, "baseline_decode": 94.26, "candidate_decode": 94.38, "decode_ratio": 1.0012730744748566},
+    "qwen25-0.5b-4bit:long-decode-128": {"baseline_prefill": 297.727, "candidate_prefill": 298.746, "prefill_ratio": 1.0034225985550522, "baseline_decode": 76.35, "candidate_decode": 76.66, "decode_ratio": 1.004060248853962},
+    "qwen25-0.5b-4bit:longctx-1024-decode-32": {"baseline_prefill": 346.838, "candidate_prefill": 345.813, "prefill_ratio": 0.9970447298162254, "baseline_decode": 50.88, "candidate_decode": 50.88, "decode_ratio": 1.0},
+    "qwen25-0.5b-bf16:short-decode-32": {"baseline_prefill": 81.522, "candidate_prefill": 81.522, "prefill_ratio": 1.0, "baseline_decode": 11.74, "candidate_decode": 11.75, "decode_ratio": 1.0008517887563884},
+    "qwen25-0.5b-bf16:long-decode-128": {"baseline_prefill": 202.943, "candidate_prefill": 202.786, "prefill_ratio": 0.9992263837629285, "baseline_decode": 11.31, "candidate_decode": 11.32, "decode_ratio": 1.0008841732979663},
+    "qwen25-0.5b-bf16:longctx-1024-decode-32": {"baseline_prefill": 210.811, "candidate_prefill": 210.811, "prefill_ratio": 1.0, "baseline_decode": 10.29, "candidate_decode": 10.3, "decode_ratio": 1.0009718172983482}
+  },
+  "digests": {
+    "fork": {"q4_short": "7fd25a869ff21678", "q4_long": "4cc08910089477fd", "q4_longctx": "7da83f06ec9f001d", "bf16_short": "f26175202f3dabe9", "bf16_long": "ad964232ee67fecd", "bf16_longctx": "ff502900d2a179a5"},
+    "stock": {"q4_short": "7fd25a869ff21678", "q4_long": "4cc08910089477fd", "q4_longctx": "7da83f06ec9f001d", "bf16_short": "f26175202f3dabe9", "bf16_long": "c5be9207833d2a26", "bf16_longctx": "ff502900d2a179a5"},
+    "all_candidate_ids_match_baseline": true
+  },
+  "qmm_stock_profile": {
+    "candidate": "two K blocks staged per barrier in qmm_tile.comp",
+    "model_identity": "Qwen2.5-0.5B Q4/group-64 projection shapes on Apple M1",
+    "threshold": "candidate kernel speed ratio >= 1.10 across the eight screened Qwen shapes before paired model runs",
+    "threshold_met": false,
+    "result": "seven of eight shapes regressed; hidden-to-KV m262 improved, baseline/candidate 0.6992705/0.5692705 ms (1.228362 speed ratio)",
+    "decision": "rejected and reverted before model-level paired runs",
+    "receipt": "profiles/qmm-comparison.json"
+  },
+  "bimodal_characterization": {
+    "source": "unmodified main wheel",
+    "samples_per_leg": 12,
+    "matrix_legs": 6,
+    "fork_driver": true,
+    "q4_short_prefill_tok_s": {"median": 205.479, "min": 202.703, "max": 212.766},
+    "q4_long_prefill_tok_s": {"median": 768.328, "min": 757.225, "max": 779.762},
+    "factors_tested": ["30-second idle versus immediate preceding run", "normal versus reversed workload order", "first versus later leg position", "fresh scratch-home shader/pipeline cache", "thermal and hwmon temperatures"],
+    "observed_platform_temperature_c": {"min": 35.918, "max": 43.114},
+    "gpu_frequency_signal": "not exposed under /sys/class/devfreq on this host",
+    "conclusion": "Neither the approximately 300 tok/s short mode nor the approximately 967 tok/s long mode reappeared. Idle/warm state, order, position, fresh cache, and observed temperature did not separate the narrow distributions. The earlier fast cluster is an uncontrolled transient and is invalid parity evidence until its trigger is reproducible.",
+    "canonical_parity_protocol": {
+      "warmup": "Run and discard one complete bench_matrix matrix per platform, driver, and wheel before measurement; retain bench_decode's four warmup tokens on every measured leg.",
+      "repetitions": 12,
+      "process_isolation": "Each repetition is a fresh bench_matrix process with the same pinned models, fixed manifest order, power source, and contention gate.",
+      "estimator": "Use the per-leg median of all 12 repetitions for Linux/native ratios. Never select the minimum, maximum, or best cluster.",
+      "reported_dispersion": "Publish every sample plus the median, interquartile range, and full range; invalidate a verdict if a second cluster comparable to 300/967 tok/s appears without a reproduced cause."
+    },
+    "receipt": "bimodal-main-fork/distribution-summary.json"
+  },
+  "tests": {
+    "llvmpipe_runtime": {"command": "MLX_OMARCHY_ALLOW_NON_APPLE=1 LP_NUM_THREADS=4 omarchy_runtime_tests --test-case=<three batching cases>", "result": "3 test cases passed; 16469 assertions passed", "source_commit": "94457bc348b4fe7474b8a755aa7bb7ba595622df", "receipt": "llvmpipe-runtime.log"},
+    "m1_runtime_fork": {"result": "3 test cases passed; 16469 assertions passed", "source_commit": "94457bc348b4fe7474b8a755aa7bb7ba595622df", "receipt": "m1-runtime-fork.log"},
+    "m1_runtime_stock": {"result": "3 test cases passed; 16469 assertions passed", "source_commit": "94457bc348b4fe7474b8a755aa7bb7ba595622df", "receipt": "m1-runtime-stock.log"},
+    "llvmpipe_qmm_note": "Broad QMM prefill tests made forward progress with zero assertion failures but exceeded bounded llvmpipe timeouts; they are not claimed as passing. The QMM candidate was measured on M1 and reverted."
+  },
+  "policy_ok": false,
+  "decision": "reject both candidates; ship no runtime source change",
+  "next": "Treat the fast prefill mode as a benchmark defect until a reproducible trigger is found. For stock QMM, inspect AGX ISA and occupancy before another source-level tile candidate."
+}
