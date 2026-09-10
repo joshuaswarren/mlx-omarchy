@@ -144,5 +144,47 @@
     }
   },
   "digests": "baseline and candidate generated-ID digests are equal on all six legs under both drivers",
-  "next": "Target m262 inter-submission gaps/host scheduling before another QMM ISA change; retain QMM and MatmulRbF16 distributions as ranking evidence."
+  "next": "Target m262 inter-submission gaps/host scheduling before another QMM ISA change; retain QMM and MatmulRbF16 distributions as ranking evidence.",
+  "baseline_provenance": {
+    "branch_base": "df7d036e",
+    "source_commit": "28cc299e",
+    "required_origin_main": "2da780a6",
+    "qmm_source_equal_to_main": true,
+    "qualification": "A/B isolates the QMM change, but the absolute baseline is not the required origin/main checkout; this independently fails landing policy."
+  },
+  "digest_detail": {
+    "fork_q4": {
+      "short": "7fd25a869ff21678",
+      "long": "4cc08910089477fd",
+      "longctx": "31267e7ed4c6d0dc"
+    },
+    "required_fork_q4": {
+      "short": "7fd25a869ff21678",
+      "long": "4cc08910089477fd",
+      "longctx": "7da83f06ec9f001d"
+    },
+    "required_match": false,
+    "candidate_vs_baseline_all_six": true,
+    "installed_system_driver_six": {
+      "q4_short": "7fd25a869ff21678",
+      "q4_long": "4cc08910089477fd",
+      "q4_longctx": "7da83f06ec9f001d",
+      "bf16_short": "f26175202f3dabe9",
+      "bf16_long": "ad964232ee67fecd",
+      "bf16_longctx": "ff502900d2a179a5"
+    },
+    "temporary_coopmat_driver_six": {
+      "q4_short": "7fd25a869ff21678",
+      "q4_long": "4cc08910089477fd",
+      "q4_longctx": "31267e7ed4c6d0dc",
+      "bf16_short": "f26175202f3dabe9",
+      "bf16_long": "c5be9207833d2a26",
+      "bf16_longctx": "ff502900d2a179a5"
+    }
+  },
+  "fork_environment_fault": {
+    "resolved_as": "driver-dependent arithmetic portability defect",
+    "receipt": "driver-portability-defect.json",
+    "summary": "Both Mesa builds expose cooperative_matrix_f32_8=1 and select QmmPrefillCoopmatF16, yet Q4 longctx and BF16 long produce different generated-token digests. Main on the installed git-6f6afc8968 driver produces all required digests. The temporary git-5bb2b28c95 driver result must not be labeled a main-branch digest or a fallback-path result."
+  }
 }

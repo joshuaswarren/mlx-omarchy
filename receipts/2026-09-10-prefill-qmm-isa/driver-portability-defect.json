@@ -1,0 +1,79 @@
+{
+  "classification": "driver-dependent arithmetic portability defect; not a main-branch regression",
+  "device": "Apple M1 (G13G B1)",
+  "vendor_id": "0x10005",
+  "installed_system_driver": {
+    "icd_selection": "no VK_DRIVER_FILES or VK_ICD_FILENAMES override; system ICD /usr/share/vulkan/icd.d/asahi_icd.aarch64.json",
+    "library": "/usr/lib/libvulkan_asahi.so",
+    "agx_simdmat": "unset",
+    "vulkaninfo": {
+      "driverName": "Honeykrisp",
+      "driverVersion": "26.2.99",
+      "driverInfo": "Mesa 26.3.0-devel (git-6f6afc8968)",
+      "driverUUID": "1ea6de0a-755f-6b67-2ae6-5d68a5167ce8"
+    },
+    "device_info": {
+      "cooperative_matrix_f32_8": 1
+    },
+    "test_report": {
+      "subgroup_size": 32,
+      "prefill_kernel": "QmmPrefillCoopmatF16",
+      "evidence": "targeted-installed-capability.log"
+    },
+    "six_digests": {
+      "q4_short": "7fd25a869ff21678",
+      "q4_long": "4cc08910089477fd",
+      "q4_longctx": "7da83f06ec9f001d",
+      "bf16_short": "f26175202f3dabe9",
+      "bf16_long": "ad964232ee67fecd",
+      "bf16_longctx": "ff502900d2a179a5"
+    },
+    "digest_source": "origin/main receipts/2026-09-10-main-native-decode-smoke/matrix.json (source 3c91946); these are the required main digests"
+  },
+  "temporary_coopmat_driver": {
+    "icd_selection": "VK_ICD_FILENAMES=/tmp/asahi_coopmat_icd.json",
+    "library": "/home/joshuawarren/src/mesa-coopmat/build/src/asahi/vulkan/libvulkan_asahi.so",
+    "agx_simdmat": "1",
+    "vulkaninfo": {
+      "driverName": "Honeykrisp",
+      "driverVersion": "26.2.99",
+      "driverInfo": "Mesa 26.3.0-devel (git-5bb2b28c95)",
+      "driverUUID": "671688d5-1a56-ddb1-c44e-257a73fd34f8"
+    },
+    "device_info": {
+      "cooperative_matrix_f32_8": 1
+    },
+    "test_report": {
+      "subgroup_size": 32,
+      "prefill_kernel": "QmmPrefillCoopmatF16",
+      "evidence": "targeted-coop-capability.log"
+    },
+    "six_digests": {
+      "q4_short": "7fd25a869ff21678",
+      "q4_long": "4cc08910089477fd",
+      "q4_longctx": "31267e7ed4c6d0dc",
+      "bf16_short": "f26175202f3dabe9",
+      "bf16_long": "c5be9207833d2a26",
+      "bf16_longctx": "ff502900d2a179a5"
+    },
+    "digest_source": "paired-coop/paired-summary.json; baseline 28cc299 and candidate ec61b29 agreed in all three repetitions"
+  },
+  "differing_digests": {
+    "q4_longctx": {
+      "installed_system_driver": "7da83f06ec9f001d",
+      "temporary_coopmat_driver": "31267e7ed4c6d0dc"
+    },
+    "bf16_long": {
+      "installed_system_driver": "ad964232ee67fecd",
+      "temporary_coopmat_driver": "c5be9207833d2a26"
+    }
+  },
+  "conclusion": "Both Mesa builds expose cooperative_matrix_f32_8=1 and select QmmPrefillCoopmatF16, yet Q4 longctx and BF16 long produce different generated-token digests. Main on the installed git-6f6afc8968 driver produces all required digests. The temporary git-5bb2b28c95 driver result must not be labeled a main-branch digest or a fallback-path result.",
+  "raw_evidence": [
+    "driver-comparison-vulkaninfo.txt",
+    "driver-comparison-device-info.txt",
+    "targeted-installed-capability.log",
+    "targeted-coop-capability.log",
+    "paired-coop/paired-summary.json"
+  ]
+}
