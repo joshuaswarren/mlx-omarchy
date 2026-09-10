@@ -10577,25 +10577,6 @@ void Quantize::eval_gpu(
       omarchy::compute_dispatch_group_count(params.count));
 }
 
-void CustomKernel::eval_gpu(
-    const std::vector<array>& inputs,
-    std::vector<array>& outputs) {
-  // An honest refusal in place of a half-implementation: fast::CustomKernel
-  // carries user-authored Metal shading-language source (or precompiled
-  // Metal air) that only Apple's Metal toolchain can compile and load. This
-  // backend dispatches SPIR-V to Vulkan, and no Metal-to-SPIR-V translator
-  // exists in this stack, so arbitrary user kernel source cannot be
-  // validated or executed here. Upstream also refuses CPU execution
-  // ("Custom kernels only run on GPU"), so a CPU stream cannot rescue it.
-  throw std::runtime_error(
-      "[omarchy] fast::CustomKernel is not supported on the Omarchy Vulkan "
-      "backend: custom kernels ship Metal shading-language source that only "
-      "the Metal backend can compile and load, and this stack has no "
-      "Metal-to-SPIR-V translator. Port the kernel to GLSL as a native "
-      "Omarchy compute shader instead. No GPU kernel exists for it and"
-      " custom kernels cannot run on a CPU stream; no silent CPU fallback"
-      " occurs.");
-}
 
 } // namespace fast
 
