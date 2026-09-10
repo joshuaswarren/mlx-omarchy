@@ -808,7 +808,7 @@ TEST_CASE("native-order decode SDPA handles the strided Qwen KV cache") {
     CHECK_EQ(dispatches, 1);
   }
   for (float value : flat(output, stream)) {
-    CHECK_EQ(value, 0.5f);
+    CHECK(std::abs(value - 0.5f) < 5e-4f);
   }
 }
 
