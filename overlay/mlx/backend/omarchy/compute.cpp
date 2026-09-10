@@ -271,7 +271,6 @@
 #include "qmm_vec_q4_multi_subgroup_bf16.h"
 #include "qmm_vec_q4_multi_subgroup_f16.h"
 #include "qmm_vec_q4_multi_subgroup_f32.h"
-#include "sdpa_decode_f16.h"
 #include "qmm_tile_bf16.h"
 #include "qmm_tile_f16.h"
 #include "qmm_tile_rb_f16.h"
@@ -1229,9 +1228,7 @@ ShaderBytes shader_bytes(ComputeKernel kernel) {
       return {
           qmm_vec_q4_multi_subgroup_bf16,
           qmm_vec_q4_multi_subgroup_bf16_size};
-  case ComputeKernel::SdpaDecodeF16:
-    return {sdpa_decode_f16, sdpa_decode_f16_size};
-  case ComputeKernel::QuantizeFpF16:
+    case ComputeKernel::QuantizeFpF16:
       return {quantize_fp_f16, quantize_fp_f16_size};
     case ComputeKernel::QuantizeFpBF16:
       return {quantize_fp_bf16, quantize_fp_bf16_size};
