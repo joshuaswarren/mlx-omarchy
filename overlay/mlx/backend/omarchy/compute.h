@@ -119,6 +119,7 @@ enum class ComputeKernel : uint16_t {
   CompareBool,
   CopyGeneralF32,
   CopyGeneralF16,
+  SliceUpdatePairF16,
   CopyGeneralBF16,
   CopyGeneralU32,
   CopyGeneralBool,
