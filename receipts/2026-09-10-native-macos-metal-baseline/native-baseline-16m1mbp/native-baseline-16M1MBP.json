@@ -1,0 +1,3702 @@
+{
+ "host": {
+  "arch": "arm64",
+  "chip": "Apple M1 Max",
+  "cpu_cores": "10",
+  "eff_cores": "2",
+  "gpu_identity_lines": [
+   "Chipset Model: Apple M1 Max",
+   "Total Number of Cores: 32",
+   "Metal Support: Metal 4"
+  ],
+  "hostname": "16M1MBP.local",
+  "macos": "26.6.2",
+  "macos_build": "25G83",
+  "mem_bytes": "68719476736",
+  "perf_cores": "8"
+ },
+ "legs": {
+  "bf16_long": {
+   "all_rows": [
+    {
+     "decode_tps": 213.8572,
+     "device": "Apple M1 Max",
+     "engine": "bench_decode",
+     "generated": 128,
+     "ids_first": [
+      13060,
+      498,
+      369
+     ],
+     "ids_last": [
+      429,
+      279,
+      1614
+     ],
+     "ids_sha256_16": "407b7624ed1b3b29",
+     "model": "bf16",
+     "prefill_s": 0.051951,
+     "prefill_tps": 5043.2461,
+     "prompt_id": "long",
+     "prompt_tokens": 262,
+     "prompt_tokens_asserted": 262,
+     "watch_pid_cpu_delta_s": 0.01
+    },
+    {
+     "decode_tps": 214.7261,
+     "device": "Apple M1 Max",
+     "engine": "bench_decode",
+     "generated": 128,
+     "ids_first": [
+      13060,
+      498,
+      369
+     ],
+     "ids_last": [
+      429,
+      279,
+      1614
+     ],
+     "ids_sha256_16": "407b7624ed1b3b29",
+     "model": "bf16",
+     "prefill_s": 0.049518,
+     "prefill_tps": 5291.0231,
+     "prompt_id": "long",
+     "prompt_tokens": 262,
+     "prompt_tokens_asserted": 262,
+     "watch_pid_cpu_delta_s": 0.01
+    },
+    {
+     "decode_tps": 214.7151,
+     "device": "Apple M1 Max",
+     "engine": "bench_decode",
+     "generated": 128,
+     "ids_first": [
+      13060,
+      498,
+      369
+     ],
+     "ids_last": [
+      429,
+      279,
+      1614
+     ],
+     "ids_sha256_16": "407b7624ed1b3b29",
+     "model": "bf16",
+     "prefill_s": 0.049157,
+     "prefill_tps": 5329.8118,
+     "prompt_id": "long",
+     "prompt_tokens": 262,
+     "prompt_tokens_asserted": 262,
+     "watch_pid_cpu_delta_s": 0.01
+    },
+    {
+     "decode_tps": 216.6864,
+     "device": "Apple M1 Max",
+     "engine": "bench_decode",
+     "generated": 128,
+     "ids_first": [
+      13060,
+      498,
+      369
+     ],
+     "ids_last": [
+      429,
+      279,
+      1614
+     ],
+     "ids_sha256_16": "407b7624ed1b3b29",
+     "model": "bf16",
+     "prefill_s": 0.050076,
+     "prefill_tps": 5232.0298,
+     "prompt_id": "long",
+     "prompt_tokens": 262,
+     "prompt_tokens_asserted": 262,
+     "watch_pid_cpu_delta_s": 0.01
+    },
+    {
+     "decode_tps": 210.8262,
+     "device": "Apple M1 Max",
+     "engine": "bench_decode",
+     "generated": 128,
+     "ids_first": [
+      13060,
+      498,
+      369
+     ],
+     "ids_last": [
+      429,
+      279,
+      1614
+     ],
+     "ids_sha256_16": "407b7624ed1b3b29",
+     "model": "bf16",
+     "prefill_s": 0.050949,
+     "prefill_tps": 5142.3637,
+     "prompt_id": "long",
+     "prompt_tokens": 262,
+     "prompt_tokens_asserted": 262,
+     "watch_pid_cpu_delta_s": 0.01
+    },
+    {
+     "decode_tps": 215.1263,
+     "device": "Apple M1 Max",
+     "engine": "bench_decode",
+     "generated": 128,
+     "ids_first": [
+      13060,
+      498,
+      369
+     ],
+     "ids_last": [
+      429,
+      279,
+      1614
+     ],
+     "ids_sha256_16": "407b7624ed1b3b29",
+     "model": "bf16",
+     "prefill_s": 0.04949,
+     "prefill_tps": 5294.03,
+     "prompt_id": "long",
+     "prompt_tokens": 262,
+     "prompt_tokens_asserted": 262,
+     "watch_pid_cpu_delta_s": 0.01
+    },
+    {
+     "decode_tps": 214.9529,
+     "device": "Apple M1 Max",
+     "engine": "bench_decode",
+     "generated": 128,
+     "ids_first": [
+      13060,
+      498,
+      369
+     ],
+     "ids_last": [
+      429,
+      279,
+      1614
+     ],
+     "ids_sha256_16": "407b7624ed1b3b29",
+     "model": "bf16",
+     "prefill_s": 0.049644,
+     "prefill_tps": 5277.6207,
+     "prompt_id": "long",
+     "prompt_tokens": 262,
+     "prompt_tokens_asserted": 262,
+     "watch_pid_cpu_delta_s": 0.01
+    },
+    {
+     "decode_tps": 212.0838,
+     "device": "Apple M1 Max",
+     "engine": "bench_decode",
+     "generated": 128,
+     "ids_first": [
+      13060,
+      498,
+      369
+     ],
+     "ids_last": [
+      429,
+      279,
+      1614
+     ],
+     "ids_sha256_16": "407b7624ed1b3b29",
+     "model": "bf16",
+     "prefill_s": 0.052469,
+     "prefill_tps": 4993.3851,
+     "prompt_id": "long",
+     "prompt_tokens": 262,
+     "prompt_tokens_asserted": 262,
+     "watch_pid_cpu_delta_s": 0.01
+    },
+    {
+     "decode_tps": 214.4061,
+     "device": "Apple M1 Max",
+     "engine": "bench_decode",
+     "generated": 128,
+     "ids_first": [
+      13060,
+      498,
+      369
+     ],
+     "ids_last": [
+      429,
+      279,
+      1614
+     ],
+     "ids_sha256_16": "407b7624ed1b3b29",
+     "model": "bf16",
+     "prefill_s": 0.049611,
+     "prefill_tps": 5281.1224,
+     "prompt_id": "long",
+     "prompt_tokens": 262,
+     "prompt_tokens_asserted": 262,
+     "watch_pid_cpu_delta_s": 0.01
+    },
+    {
+     "decode_tps": 214.6263,
+     "device": "Apple M1 Max",
+     "engine": "bench_decode",
+     "generated": 128,
+     "ids_first": [
+      13060,
+      498,
+      369
+     ],
+     "ids_last": [
+      429,
+      279,
+      1614
+     ],
+     "ids_sha256_16": "407b7624ed1b3b29",
+     "model": "bf16",
+     "prefill_s": 0.049208,
+     "prefill_tps": 5324.3871,
+     "prompt_id": "long",
+     "prompt_tokens": 262,
+     "prompt_tokens_asserted": 262,
+     "watch_pid_cpu_delta_s": 0.01
+    },
+    {
+     "decode_tps": 216.7632,
+     "device": "Apple M1 Max",
+     "engine": "bench_decode",
+     "generated": 128,
+     "ids_first": [
+      13060,
+      498,
+      369
+     ],
+     "ids_last": [
+      429,
+      279,
+      1614
+     ],
+     "ids_sha256_16": "407b7624ed1b3b29",
+     "model": "bf16",
+     "prefill_s": 0.04912,
+     "prefill_tps": 5333.8988,
+     "prompt_id": "long",
+     "prompt_tokens": 262,
+     "prompt_tokens_asserted": 262,
+     "watch_pid_cpu_delta_s": 0.01
+    },
+    {
+     "decode_tps": 88.6045,
+     "device": "Apple M1 Max",
+     "engine": "bench_decode",
+     "generated": 128,
+     "ids_first": [
+      13060,
+      498,
+      369
+     ],
+     "ids_last": [
+      429,
+      279,
+      1614
+     ],
+     "ids_sha256_16": "407b7624ed1b3b29",
+     "model": "bf16",
+     "prefill_s": 0.099919,
+     "prefill_tps": 2622.1174,
+     "prompt_id": "long",
+     "prompt_tokens": 262,
+     "prompt_tokens_asserted": 262,
+     "watch_pid_cpu_delta_s": 1.7
+    }
+   ],
+   "clean_reps": 11,
+   "contended_reps_excluded": [
+    12
+   ],
+   "decode_tok_s": {
+    "max": 216.763,
+    "median": 214.715,
+    "min": 210.826
+   },
+   "digest": "407b7624ed1b3b29",
+   "digest_matches_reference_native": true,
+   "generated_tokens": 128,
+   "model": "bf16",
+   "prefill_tok_s": {
+    "max": 5333.899,
+    "median": 5281.122,
+    "min": 4993.385
+   },
+   "prompt_id": "long",
+   "prompt_tokens": 262,
+   "reps": 12
+  },
+  "bf16_longctx": {
+   "all_rows": [
+    {
+     "decode_tps": 205.0462,
+     "device": "Apple M1 Max",
+     "engine": "bench_decode",
+     "generated": 32,
+     "ids_first": [
+      28715,
+      389,
+      279
+     ],
+     "ids_last": [
+      4977,
+      311,
+      12322
+     ],
+     "ids_sha256_16": "ff502900d2a179a5",
+     "model": "bf16",
+     "prefill_s": 0.13481,
+     "prefill_tps": 7811.0077,
+     "prompt_id": "ctx1024",
+     "prompt_tokens": 1053,
+     "prompt_tokens_asserted": 1053,
+     "watch_pid_cpu_delta_s": 0.01
+    },
+    {
+     "decode_tps": 209.9892,
+     "device": "Apple M1 Max",
+     "engine": "bench_decode",
+     "generated": 32,
+     "ids_first": [
+      28715,
+      389,
+      279
+     ],
+     "ids_last": [
+      4977,
+      311,
+      12322
+     ],
+     "ids_sha256_16": "ff502900d2a179a5",
+     "model": "bf16",
+     "prefill_s": 0.144747,
+     "prefill_tps": 7274.7789,
+     "prompt_id": "ctx1024",
+     "prompt_tokens": 1053,
+     "prompt_tokens_asserted": 1053,
+     "watch_pid_cpu_delta_s": 0.01
+    },
+    {
+     "decode_tps": 208.0155,
+     "device": "Apple M1 Max",
+     "engine": "bench_decode",
+     "generated": 32,
+     "ids_first": [
+      28715,
+      389,
+      279
+     ],
+     "ids_last": [
+      4977,
+      311,
+      12322
+     ],
+     "ids_sha256_16": "ff502900d2a179a5",
+     "model": "bf16",
+     "prefill_s": 0.135224,
+     "prefill_tps": 7787.0672,
+     "prompt_id": "ctx1024",
+     "prompt_tokens": 1053,
+     "prompt_tokens_asserted": 1053,
+     "watch_pid_cpu_delta_s": 0.01
+    },
+    {
+     "decode_tps": 207.0077,
+     "device": "Apple M1 Max",
+     "engine": "bench_decode",
+     "generated": 32,
+     "ids_first": [
+      28715,
+      389,
+      279
+     ],
+     "ids_last": [
+      4977,
+      311,
+      12322
+     ],
+     "ids_sha256_16": "ff502900d2a179a5",
+     "model": "bf16",
+     "prefill_s": 0.133385,
+     "prefill_tps": 7894.4163,
+     "prompt_id": "ctx1024",
+     "prompt_tokens": 1053,
+     "prompt_tokens_asserted": 1053,
+     "watch_pid_cpu_delta_s": 0.01
+    },
+    {
+     "decode_tps": 210.1911,
+     "device": "Apple M1 Max",
+     "engine": "bench_decode",
+     "generated": 32,
+     "ids_first": [
+      28715,
+      389,
+      279
+     ],
+     "ids_last": [
+      4977,
+      311,
+      12322
+     ],
+     "ids_sha256_16": "ff502900d2a179a5",
+     "model": "bf16",
+     "prefill_s": 0.137357,
+     "prefill_tps": 7666.1476,
+     "prompt_id": "ctx1024",
+     "prompt_tokens": 1053,
+     "prompt_tokens_asserted": 1053,
+     "watch_pid_cpu_delta_s": 0.01
+    },
+    {
+     "decode_tps": 206.5291,
+     "device": "Apple M1 Max",
+     "engine": "bench_decode",
+     "generated": 32,
+     "ids_first": [
+      28715,
+      389,
+      279
+     ],
+     "ids_last": [
+      4977,
+      311,
+      12322
+     ],
+     "ids_sha256_16": "ff502900d2a179a5",
+     "model": "bf16",
+     "prefill_s": 0.140863,
+     "prefill_tps": 7475.3373,
+     "prompt_id": "ctx1024",
+     "prompt_tokens": 1053,
+     "prompt_tokens_asserted": 1053,
+     "watch_pid_cpu_delta_s": 0.01
+    },
+    {
+     "decode_tps": 209.5088,
+     "device": "Apple M1 Max",
+     "engine": "bench_decode",
+     "generated": 32,
+     "ids_first": [
+      28715,
+      389,
+      279
+     ],
+     "ids_last": [
+      4977,
+      311,
+      12322
+     ],
+     "ids_sha256_16": "ff502900d2a179a5",
+     "model": "bf16",
+     "prefill_s": 0.135864,
+     "prefill_tps": 7750.4188,
+     "prompt_id": "ctx1024",
+     "prompt_tokens": 1053,
+     "prompt_tokens_asserted": 1053,
+     "watch_pid_cpu_delta_s": 0.01
+    },
+    {
+     "decode_tps": 201.0861,
+     "device": "Apple M1 Max",
+     "engine": "bench_decode",
+     "generated": 32,
+     "ids_first": [
+      28715,
+      389,
+      279
+     ],
+     "ids_last": [
+      4977,
+      311,
+      12322
+     ],
+     "ids_sha256_16": "ff502900d2a179a5",
+     "model": "bf16",
+     "prefill_s": 0.133235,
+     "prefill_tps": 7903.3435,
+     "prompt_id": "ctx1024",
+     "prompt_tokens": 1053,
+     "prompt_tokens_asserted": 1053,
+     "watch_pid_cpu_delta_s": 0.02
+    },
+    {
+     "decode_tps": 207.892,
+     "device": "Apple M1 Max",
+     "engine": "bench_decode",
+     "generated": 32,
+     "ids_first": [
+      28715,
+      389,
+      279
+     ],
+     "ids_last": [
+      4977,
+      311,
+      12322
+     ],
+     "ids_sha256_16": "ff502900d2a179a5",
+     "model": "bf16",
+     "prefill_s": 0.135831,
+     "prefill_tps": 7752.2828,
+     "prompt_id": "ctx1024",
+     "prompt_tokens": 1053,
+     "prompt_tokens_asserted": 1053,
+     "watch_pid_cpu_delta_s": 0.01
+    },
+    {
+     "decode_tps": 210.7282,
+     "device": "Apple M1 Max",
+     "engine": "bench_decode",
+     "generated": 32,
+     "ids_first": [
+      28715,
+      389,
+      279
+     ],
+     "ids_last": [
+      4977,
+      311,
+      12322
+     ],
+     "ids_sha256_16": "ff502900d2a179a5",
+     "model": "bf16",
+     "prefill_s": 0.13907,
+     "prefill_tps": 7571.7242,
+     "prompt_id": "ctx1024",
+     "prompt_tokens": 1053,
+     "prompt_tokens_asserted": 1053,
+     "watch_pid_cpu_delta_s": 0.01
+    },
+    {
+     "decode_tps": 14.1246,
+     "device": "Apple M1 Max",
+     "engine": "bench_decode",
+     "generated": 32,
+     "ids_first": [
+      28715,
+      389,
+      279
+     ],
+     "ids_last": [
+      4977,
+      311,
+      12322
+     ],
+     "ids_sha256_16": "ff502900d2a179a5",
+     "model": "bf16",
+     "prefill_s": 0.47782,
+     "prefill_tps": 2203.7589,
+     "prompt_id": "ctx1024",
+     "prompt_tokens": 1053,
+     "prompt_tokens_asserted": 1053,
+     "watch_pid_cpu_delta_s": 0.33
+    },
+    {
+     "decode_tps": 106.7383,
+     "device": "Apple M1 Max",
+     "engine": "bench_decode",
+     "generated": 32,
+     "ids_first": [
+      28715,
+      389,
+      279
+     ],
+     "ids_last": [
+      4977,
+      311,
+      12322
+     ],
+     "ids_sha256_16": "ff502900d2a179a5",
+     "model": "bf16",
+     "prefill_s": 0.225809,
+     "prefill_tps": 4663.2322,
+     "prompt_id": "ctx1024",
+     "prompt_tokens": 1053,
+     "prompt_tokens_asserted": 1053,
+     "watch_pid_cpu_delta_s": 1.29
+    }
+   ],
+   "clean_reps": 10,
+   "contended_reps_excluded": [
+    11,
+    12
+   ],
+   "decode_tok_s": {
+    "max": 210.728,
+    "median": 207.954,
+    "min": 201.086
+   },
+   "digest": "ff502900d2a179a5",
+   "digest_matches_reference_native": true,
+   "generated_tokens": 32,
+   "model": "bf16",
+   "prefill_tok_s": {
+    "max": 7903.343,
+    "median": 7751.351,
+    "min": 7274.779
+   },
+   "prompt_id": "ctx1024",
+   "prompt_tokens": 1053,
+   "reps": 12
+  },
+  "bf16_short": {
+   "all_rows": [
+    {
+     "decode_tps": 217.8822,
+     "device": "Apple M1 Max",
+     "engine": "bench_decode",
+     "generated": 32,
+     "ids_first": [
+      9707,
+      0,
+      2585
+     ],
+     "ids_last": [
+      151644,
+      872,
+      198
+     ],
+     "ids_sha256_16": "7fc0f968789b1882",
+     "model": "bf16",
+     "prefill_s": 0.022224,
+     "prefill_tps": 1349.8667,
+     "prompt_id": "short",
+     "prompt_tokens": 30,
+     "prompt_tokens_asserted": 30,
+     "watch_pid_cpu_delta_s": 0.01
+    },
+    {
+     "decode_tps": 216.7574,
+     "device": "Apple M1 Max",
+     "engine": "bench_decode",
+     "generated": 32,
+     "ids_first": [
+      9707,
+      0,
+      2585
+     ],
+     "ids_last": [
+      151644,
+      872,
+      198
+     ],
+     "ids_sha256_16": "7fc0f968789b1882",
+     "model": "bf16",
+     "prefill_s": 0.025421,
+     "prefill_tps": 1180.1325,
+     "prompt_id": "short",
+     "prompt_tokens": 30,
+     "prompt_tokens_asserted": 30,
+     "watch_pid_cpu_delta_s": 0.01
+    },
+    {
+     "decode_tps": 220.3423,
+     "device": "Apple M1 Max",
+     "engine": "bench_decode",
+     "generated": 32,
+     "ids_first": [
+      9707,
+      0,
+      2585
+     ],
+     "ids_last": [
+      151644,
+      872,
+      198
+     ],
+     "ids_sha256_16": "7fc0f968789b1882",
+     "model": "bf16",
+     "prefill_s": 0.021243,
+     "prefill_tps": 1412.252,
+     "prompt_id": "short",
+     "prompt_tokens": 30,
+     "prompt_tokens_asserted": 30,
+     "watch_pid_cpu_delta_s": 0.01
+    },
+    {
+     "decode_tps": 218.1092,
+     "device": "Apple M1 Max",
+     "engine": "bench_decode",
+     "generated": 32,
+     "ids_first": [
+      9707,
+      0,
+      2585
+     ],
+     "ids_last": [
+      151644,
+      872,
+      198
+     ],
+     "ids_sha256_16": "7fc0f968789b1882",
+     "model": "bf16",
+     "prefill_s": 0.020774,
+     "prefill_tps": 1444.1041,
+     "prompt_id": "short",
+     "prompt_tokens": 30,
+     "prompt_tokens_asserted": 30,
+     "watch_pid_cpu_delta_s": 0.01
+    },
+    {
+     "decode_tps": 220.6298,
+     "device": "Apple M1 Max",
+     "engine": "bench_decode",
+     "generated": 32,
+     "ids_first": [
+      9707,
+      0,
+      2585
+     ],
+     "ids_last": [
+      151644,
+      872,
+      198
+     ],
+     "ids_sha256_16": "7fc0f968789b1882",
+     "model": "bf16",
+     "prefill_s": 0.024096,
+     "prefill_tps": 1245.0048,
+     "prompt_id": "short",
+     "prompt_tokens": 30,
+     "prompt_tokens_asserted": 30,
+     "watch_pid_cpu_delta_s": 0.01
+    },
+    {
+     "decode_tps": 216.4759,
+     "device": "Apple M1 Max",
+     "engine": "bench_decode",
+     "generated": 32,
+     "ids_first": [
+      9707,
+      0,
+      2585
+     ],
+     "ids_last": [
+      151644,
+      872,
+      198
+     ],
+     "ids_sha256_16": "7fc0f968789b1882",
+     "model": "bf16",
+     "prefill_s": 0.025152,
+     "prefill_tps": 1192.7382,
+     "prompt_id": "short",
+     "prompt_tokens": 30,
+     "prompt_tokens_asserted": 30,
+     "watch_pid_cpu_delta_s": 0.01
+    },
+    {
+     "decode_tps": 217.4545,
+     "device": "Apple M1 Max",
+     "engine": "bench_decode",
+     "generated": 32,
+     "ids_first": [
+      9707,
+      0,
+      2585
+     ],
+     "ids_last": [
+      151644,
+      872,
+      198
+     ],
+     "ids_sha256_16": "7fc0f968789b1882",
+     "model": "bf16",
+     "prefill_s": 0.025436,
+     "prefill_tps": 1179.4153,
+     "prompt_id": "short",
+     "prompt_tokens": 30,
+     "prompt_tokens_asserted": 30,
+     "watch_pid_cpu_delta_s": 0.01
+    },
+    {
+     "decode_tps": 215.946,
+     "device": "Apple M1 Max",
+     "engine": "bench_decode",
+     "generated": 32,
+     "ids_first": [
+      9707,
+      0,
+      2585
+     ],
+     "ids_last": [
+      151644,
+      872,
+      198
+     ],
+     "ids_sha256_16": "7fc0f968789b1882",
+     "model": "bf16",
+     "prefill_s": 0.026463,
+     "prefill_tps": 1133.6601,
+     "prompt_id": "short",
+     "prompt_tokens": 30,
+     "prompt_tokens_asserted": 30,
+     "watch_pid_cpu_delta_s": 0.01
+    },
+    {
+     "decode_tps": 218.9844,
+     "device": "Apple M1 Max",
+     "engine": "bench_decode",
+     "generated": 32,
+     "ids_first": [
+      9707,
+      0,
+      2585
+     ],
+     "ids_last": [
+      151644,
+      872,
+      198
+     ],
+     "ids_sha256_16": "7fc0f968789b1882",
+     "model": "bf16",
+     "prefill_s": 0.021904,
+     "prefill_tps": 1369.6415,
+     "prompt_id": "short",
+     "prompt_tokens": 30,
+     "prompt_tokens_asserted": 30,
+     "watch_pid_cpu_delta_s": 0.01
+    },
+    {
+     "decode_tps": 217.0278,
+     "device": "Apple M1 Max",
+     "engine": "bench_decode",
+     "generated": 32,
+     "ids_first": [
+      9707,
+      0,
+      2585
+     ],
+     "ids_last": [
+      151644,
+      872,
+      198
+     ],
+     "ids_sha256_16": "7fc0f968789b1882",
+     "model": "bf16",
+     "prefill_s": 0.025365,
+     "prefill_tps": 1182.7205,
+     "prompt_id": "short",
+     "prompt_tokens": 30,
+     "prompt_tokens_asserted": 30,
+     "watch_pid_cpu_delta_s": 0.01
+    },
+    {
+     "decode_tps": 218.2438,
+     "device": "Apple M1 Max",
+     "engine": "bench_decode",
+     "generated": 32,
+     "ids_first": [
+      9707,
+      0,
+      2585
+     ],
+     "ids_last": [
+      151644,
+      872,
+      198
+     ],
+     "ids_sha256_16": "7fc0f968789b1882",
+     "model": "bf16",
+     "prefill_s": 0.02585,
+     "prefill_tps": 1160.5191,
+     "prompt_id": "short",
+     "prompt_tokens": 30,
+     "prompt_tokens_asserted": 30,
+     "watch_pid_cpu_delta_s": 0.01
+    },
+    {
+     "decode_tps": 15.6619,
+     "device": "Apple M1 Max",
+     "engine": "bench_decode",
+     "generated": 32,
+     "ids_first": [
+      9707,
+      0,
+      2585
+     ],
+     "ids_last": [
+      151644,
+      872,
+      198
+     ],
+     "ids_sha256_16": "7fc0f968789b1882",
+     "model": "bf16",
+     "prefill_s": 0.214374,
+     "prefill_tps": 139.9425,
+     "prompt_id": "short",
+     "prompt_tokens": 30,
+     "prompt_tokens_asserted": 30,
+     "watch_pid_cpu_delta_s": 0.04
+    }
+   ],
+   "clean_reps": 11,
+   "contended_reps_excluded": [
+    12
+   ],
+   "decode_tok_s": {
+    "max": 220.63,
+    "median": 217.882,
+    "min": 215.946
+   },
+   "digest": "7fc0f968789b1882",
+   "digest_matches_reference_native": true,
+   "generated_tokens": 32,
+   "model": "bf16",
+   "prefill_tok_s": {
+    "max": 1444.104,
+    "median": 1192.738,
+    "min": 1133.66
+   },
+   "prompt_id": "short",
+   "prompt_tokens": 30,
+   "reps": 12
+  },
+  "q4_long": {
+   "all_rows": [
+    {
+     "decode_tps": 88.9118,
+     "device": "Apple M1 Max",
+     "engine": "bench_decode",
+     "generated": 128,
+     "ids_first": [
+      13060,
+      498,
+      369
+     ],
+     "ids_last": [
+      279,
+      990,
+      315
+     ],
+     "ids_sha256_16": "254d73fd93164b98",
+     "model": "q4",
+     "prefill_s": 0.196066,
+     "prefill_tps": 1336.2873,
+     "prompt_id": "long",
+     "prompt_tokens": 262,
+     "prompt_tokens_asserted": 262,
+     "watch_pid_cpu_delta_s": 0.63
+    },
+    {
+     "decode_tps": 297.5811,
+     "device": "Apple M1 Max",
+     "engine": "bench_decode",
+     "generated": 128,
+     "ids_first": [
+      13060,
+      498,
+      369
+     ],
+     "ids_last": [
+      279,
+      990,
+      315
+     ],
+     "ids_sha256_16": "254d73fd93164b98",
+     "model": "q4",
+     "prefill_s": 0.043728,
+     "prefill_tps": 5991.5958,
+     "prompt_id": "long",
+     "prompt_tokens": 262,
+     "prompt_tokens_asserted": 262,
+     "watch_pid_cpu_delta_s": 0.01
+    },
+    {
+     "decode_tps": 294.9195,
+     "device": "Apple M1 Max",
+     "engine": "bench_decode",
+     "generated": 128,
+     "ids_first": [
+      13060,
+      498,
+      369
+     ],
+     "ids_last": [
+      279,
+      990,
+      315
+     ],
+     "ids_sha256_16": "254d73fd93164b98",
+     "model": "q4",
+     "prefill_s": 0.043707,
+     "prefill_tps": 5994.4288,
+     "prompt_id": "long",
+     "prompt_tokens": 262,
+     "prompt_tokens_asserted": 262,
+     "watch_pid_cpu_delta_s": 0.0
+    },
+    {
+     "decode_tps": 296.2281,
+     "device": "Apple M1 Max",
+     "engine": "bench_decode",
+     "generated": 128,
+     "ids_first": [
+      13060,
+      498,
+      369
+     ],
+     "ids_last": [
+      279,
+      990,
+      315
+     ],
+     "ids_sha256_16": "254d73fd93164b98",
+     "model": "q4",
+     "prefill_s": 0.044122,
+     "prefill_tps": 5938.1257,
+     "prompt_id": "long",
+     "prompt_tokens": 262,
+     "prompt_tokens_asserted": 262,
+     "watch_pid_cpu_delta_s": 0.01
+    },
+    {
+     "decode_tps": 298.3268,
+     "device": "Apple M1 Max",
+     "engine": "bench_decode",
+     "generated": 128,
+     "ids_first": [
+      13060,
+      498,
+      369
+     ],
+     "ids_last": [
+      279,
+      990,
+      315
+     ],
+     "ids_sha256_16": "254d73fd93164b98",
+     "model": "q4",
+     "prefill_s": 0.044908,
+     "prefill_tps": 5834.1281,
+     "prompt_id": "long",
+     "prompt_tokens": 262,
+     "prompt_tokens_asserted": 262,
+     "watch_pid_cpu_delta_s": 0.01
+    },
+    {
+     "decode_tps": 296.4927,
+     "device": "Apple M1 Max",
+     "engine": "bench_decode",
+     "generated": 128,
+     "ids_first": [
+      13060,
+      498,
+      369
+     ],
+     "ids_last": [
+      279,
+      990,
+      315
+     ],
+     "ids_sha256_16": "254d73fd93164b98",
+     "model": "q4",
+     "prefill_s": 0.045678,
+     "prefill_tps": 5735.8185,
+     "prompt_id": "long",
+     "prompt_tokens": 262,
+     "prompt_tokens_asserted": 262,
+     "watch_pid_cpu_delta_s": 0.01
+    },
+    {
+     "decode_tps": 294.9705,
+     "device": "Apple M1 Max",
+     "engine": "bench_decode",
+     "generated": 128,
+     "ids_first": [
+      13060,
+      498,
+      369
+     ],
+     "ids_last": [
+      279,
+      990,
+      315
+     ],
+     "ids_sha256_16": "254d73fd93164b98",
+     "model": "q4",
+     "prefill_s": 0.044325,
+     "prefill_tps": 5910.8632,
+     "prompt_id": "long",
+     "prompt_tokens": 262,
+     "prompt_tokens_asserted": 262,
+     "watch_pid_cpu_delta_s": 0.01
+    },
+    {
+     "decode_tps": 300.425,
+     "device": "Apple M1 Max",
+     "engine": "bench_decode",
+     "generated": 128,
+     "ids_first": [
+      13060,
+      498,
+      369
+     ],
+     "ids_last": [
+      279,
+      990,
+      315
+     ],
+     "ids_sha256_16": "254d73fd93164b98",
+     "model": "q4",
+     "prefill_s": 0.044007,
+     "prefill_tps": 5953.5926,
+     "prompt_id": "long",
+     "prompt_tokens": 262,
+     "prompt_tokens_asserted": 262,
+     "watch_pid_cpu_delta_s": 0.01
+    },
+    {
+     "decode_tps": 296.2781,
+     "device": "Apple M1 Max",
+     "engine": "bench_decode",
+     "generated": 128,
+     "ids_first": [
+      13060,
+      498,
+      369
+     ],
+     "ids_last": [
+      279,
+      990,
+      315
+     ],
+     "ids_sha256_16": "254d73fd93164b98",
+     "model": "q4",
+     "prefill_s": 0.044125,
+     "prefill_tps": 5937.6882,
+     "prompt_id": "long",
+     "prompt_tokens": 262,
+     "prompt_tokens_asserted": 262,
+     "watch_pid_cpu_delta_s": 0.01
+    },
+    {
+     "decode_tps": 294.7873,
+     "device": "Apple M1 Max",
+     "engine": "bench_decode",
+     "generated": 128,
+     "ids_first": [
+      13060,
+      498,
+      369
+     ],
+     "ids_last": [
+      279,
+      990,
+      315
+     ],
+     "ids_sha256_16": "254d73fd93164b98",
+     "model": "q4",
+     "prefill_s": 0.04426,
+     "prefill_tps": 5919.5384,
+     "prompt_id": "long",
+     "prompt_tokens": 262,
+     "prompt_tokens_asserted": 262,
+     "watch_pid_cpu_delta_s": 0.01
+    },
+    {
+     "decode_tps": 294.5107,
+     "device": "Apple M1 Max",
+     "engine": "bench_decode",
+     "generated": 128,
+     "ids_first": [
+      13060,
+      498,
+      369
+     ],
+     "ids_last": [
+      279,
+      990,
+      315
+     ],
+     "ids_sha256_16": "254d73fd93164b98",
+     "model": "q4",
+     "prefill_s": 0.043962,
+     "prefill_tps": 5959.6925,
+     "prompt_id": "long",
+     "prompt_tokens": 262,
+     "prompt_tokens_asserted": 262,
+     "watch_pid_cpu_delta_s": 0.01
+    },
+    {
+     "decode_tps": 13.9772,
+     "device": "Apple M1 Max",
+     "engine": "bench_decode",
+     "generated": 128,
+     "ids_first": [
+      13060,
+      498,
+      369
+     ],
+     "ids_last": [
+      279,
+      990,
+      315
+     ],
+     "ids_sha256_16": "254d73fd93164b98",
+     "model": "q4",
+     "prefill_s": 0.279732,
+     "prefill_tps": 936.6123,
+     "prompt_id": "long",
+     "prompt_tokens": 262,
+     "prompt_tokens_asserted": 262,
+     "watch_pid_cpu_delta_s": 0.09
+    }
+   ],
+   "clean_reps": 10,
+   "contended_reps_excluded": [
+    1,
+    12
+   ],
+   "decode_tok_s": {
+    "max": 300.425,
+    "median": 296.253,
+    "min": 294.511
+   },
+   "digest": "254d73fd93164b98",
+   "digest_matches_reference_native": true,
+   "generated_tokens": 128,
+   "model": "q4",
+   "prefill_tok_s": {
+    "max": 5994.429,
+    "median": 5937.907,
+    "min": 5735.819
+   },
+   "prompt_id": "long",
+   "prompt_tokens": 262,
+   "reps": 12
+  },
+  "q4_longctx": {
+   "all_rows": [
+    {
+     "decode_tps": 284.5786,
+     "device": "Apple M1 Max",
+     "engine": "bench_decode",
+     "generated": 32,
+     "ids_first": [
+      13060,
+      498,
+      369
+     ],
+     "ids_last": [
+      3897,
+      553,
+      279
+     ],
+     "ids_sha256_16": "7da83f06ec9f001d",
+     "model": "q4",
+     "prefill_s": 0.125754,
+     "prefill_tps": 8373.5077,
+     "prompt_id": "ctx1024",
+     "prompt_tokens": 1053,
+     "prompt_tokens_asserted": 1053,
+     "watch_pid_cpu_delta_s": 0.3
+    },
+    {
+     "decode_tps": 283.6287,
+     "device": "Apple M1 Max",
+     "engine": "bench_decode",
+     "generated": 32,
+     "ids_first": [
+      13060,
+      498,
+      369
+     ],
+     "ids_last": [
+      3897,
+      553,
+      279
+     ],
+     "ids_sha256_16": "7da83f06ec9f001d",
+     "model": "q4",
+     "prefill_s": 0.131712,
+     "prefill_tps": 7994.6981,
+     "prompt_id": "ctx1024",
+     "prompt_tokens": 1053,
+     "prompt_tokens_asserted": 1053,
+     "watch_pid_cpu_delta_s": 0.01
+    },
+    {
+     "decode_tps": 284.0075,
+     "device": "Apple M1 Max",
+     "engine": "bench_decode",
+     "generated": 32,
+     "ids_first": [
+      13060,
+      498,
+      369
+     ],
+     "ids_last": [
+      3897,
+      553,
+      279
+     ],
+     "ids_sha256_16": "7da83f06ec9f001d",
+     "model": "q4",
+     "prefill_s": 0.129966,
+     "prefill_tps": 8102.145,
+     "prompt_id": "ctx1024",
+     "prompt_tokens": 1053,
+     "prompt_tokens_asserted": 1053,
+     "watch_pid_cpu_delta_s": 0.01
+    },
+    {
+     "decode_tps": 283.8022,
+     "device": "Apple M1 Max",
+     "engine": "bench_decode",
+     "generated": 32,
+     "ids_first": [
+      13060,
+      498,
+      369
+     ],
+     "ids_last": [
+      3897,
+      553,
+      279
+     ],
+     "ids_sha256_16": "7da83f06ec9f001d",
+     "model": "q4",
+     "prefill_s": 0.13256,
+     "prefill_tps": 7943.5852,
+     "prompt_id": "ctx1024",
+     "prompt_tokens": 1053,
+     "prompt_tokens_asserted": 1053,
+     "watch_pid_cpu_delta_s": 0.0
+    },
+    {
+     "decode_tps": 285.5777,
+     "device": "Apple M1 Max",
+     "engine": "bench_decode",
+     "generated": 32,
+     "ids_first": [
+      13060,
+      498,
+      369
+     ],
+     "ids_last": [
+      3897,
+      553,
+      279
+     ],
+     "ids_sha256_16": "7da83f06ec9f001d",
+     "model": "q4",
+     "prefill_s": 0.129955,
+     "prefill_tps": 8102.8101,
+     "prompt_id": "ctx1024",
+     "prompt_tokens": 1053,
+     "prompt_tokens_asserted": 1053,
+     "watch_pid_cpu_delta_s": 0.01
+    },
+    {
+     "decode_tps": 283.7853,
+     "device": "Apple M1 Max",
+     "engine": "bench_decode",
+     "generated": 32,
+     "ids_first": [
+      13060,
+      498,
+      369
+     ],
+     "ids_last": [
+      3897,
+      553,
+      279
+     ],
+     "ids_sha256_16": "7da83f06ec9f001d",
+     "model": "q4",
+     "prefill_s": 0.132393,
+     "prefill_tps": 7953.5702,
+     "prompt_id": "ctx1024",
+     "prompt_tokens": 1053,
+     "prompt_tokens_asserted": 1053,
+     "watch_pid_cpu_delta_s": 0.01
+    },
+    {
+     "decode_tps": 283.7451,
+     "device": "Apple M1 Max",
+     "engine": "bench_decode",
+     "generated": 32,
+     "ids_first": [
+      13060,
+      498,
+      369
+     ],
+     "ids_last": [
+      3897,
+      553,
+      279
+     ],
+     "ids_sha256_16": "7da83f06ec9f001d",
+     "model": "q4",
+     "prefill_s": 0.129249,
+     "prefill_tps": 8147.0913,
+     "prompt_id": "ctx1024",
+     "prompt_tokens": 1053,
+     "prompt_tokens_asserted": 1053,
+     "watch_pid_cpu_delta_s": 0.0
+    },
+    {
+     "decode_tps": 284.5363,
+     "device": "Apple M1 Max",
+     "engine": "bench_decode",
+     "generated": 32,
+     "ids_first": [
+      13060,
+      498,
+      369
+     ],
+     "ids_last": [
+      3897,
+      553,
+      279
+     ],
+     "ids_sha256_16": "7da83f06ec9f001d",
+     "model": "q4",
+     "prefill_s": 0.125651,
+     "prefill_tps": 8380.3551,
+     "prompt_id": "ctx1024",
+     "prompt_tokens": 1053,
+     "prompt_tokens_asserted": 1053,
+     "watch_pid_cpu_delta_s": 0.0
+    },
+    {
+     "decode_tps": 283.5703,
+     "device": "Apple M1 Max",
+     "engine": "bench_decode",
+     "generated": 32,
+     "ids_first": [
+      13060,
+      498,
+      369
+     ],
+     "ids_last": [
+      3897,
+      553,
+      279
+     ],
+     "ids_sha256_16": "7da83f06ec9f001d",
+     "model": "q4",
+     "prefill_s": 0.132487,
+     "prefill_tps": 7947.9346,
+     "prompt_id": "ctx1024",
+     "prompt_tokens": 1053,
+     "prompt_tokens_asserted": 1053,
+     "watch_pid_cpu_delta_s": 0.01
+    },
+    {
+     "decode_tps": 284.6008,
+     "device": "Apple M1 Max",
+     "engine": "bench_decode",
+     "generated": 32,
+     "ids_first": [
+      13060,
+      498,
+      369
+     ],
+     "ids_last": [
+      3897,
+      553,
+      279
+     ],
+     "ids_sha256_16": "7da83f06ec9f001d",
+     "model": "q4",
+     "prefill_s": 0.132545,
+     "prefill_tps": 7944.4692,
+     "prompt_id": "ctx1024",
+     "prompt_tokens": 1053,
+     "prompt_tokens_asserted": 1053,
+     "watch_pid_cpu_delta_s": 0.01
+    },
+    {
+     "decode_tps": 283.2549,
+     "device": "Apple M1 Max",
+     "engine": "bench_decode",
+     "generated": 32,
+     "ids_first": [
+      13060,
+      498,
+      369
+     ],
+     "ids_last": [
+      3897,
+      553,
+      279
+     ],
+     "ids_sha256_16": "7da83f06ec9f001d",
+     "model": "q4",
+     "prefill_s": 0.129851,
+     "prefill_tps": 8109.3179,
+     "prompt_id": "ctx1024",
+     "prompt_tokens": 1053,
+     "prompt_tokens_asserted": 1053,
+     "watch_pid_cpu_delta_s": 0.01
+    },
+    {
+     "decode_tps": 151.5977,
+     "device": "Apple M1 Max",
+     "engine": "bench_decode",
+     "generated": 32,
+     "ids_first": [
+      13060,
+      498,
+      369
+     ],
+     "ids_last": [
+      3897,
+      553,
+      279
+     ],
+     "ids_sha256_16": "7da83f06ec9f001d",
+     "model": "q4",
+     "prefill_s": 0.258086,
+     "prefill_tps": 4080.0301,
+     "prompt_id": "ctx1024",
+     "prompt_tokens": 1053,
+     "prompt_tokens_asserted": 1053,
+     "watch_pid_cpu_delta_s": 0.02
+    }
+   ],
+   "clean_reps": 10,
+   "contended_reps_excluded": [
+    1,
+    12
+   ],
+   "decode_tok_s": {
+    "max": 285.578,
+    "median": 283.794,
+    "min": 283.255
+   },
+   "digest": "7da83f06ec9f001d",
+   "digest_matches_reference_native": true,
+   "generated_tokens": 32,
+   "model": "q4",
+   "prefill_tok_s": {
+    "max": 8380.355,
+    "median": 8048.422,
+    "min": 7943.585
+   },
+   "prompt_id": "ctx1024",
+   "prompt_tokens": 1053,
+   "reps": 12
+  },
+  "q4_short": {
+   "all_rows": [
+    {
+     "decode_tps": 282.9544,
+     "device": "Apple M1 Max",
+     "engine": "bench_decode",
+     "generated": 32,
+     "ids_first": [
+      9707,
+      0,
+      2585
+     ],
+     "ids_last": [
+      646,
+      387,
+      7881
+     ],
+     "ids_sha256_16": "7fd25a869ff21678",
+     "model": "q4",
+     "prefill_s": 0.019744,
+     "prefill_tps": 1519.4521,
+     "prompt_id": "short",
+     "prompt_tokens": 30,
+     "prompt_tokens_asserted": 30,
+     "watch_pid_cpu_delta_s": 0.01
+    },
+    {
+     "decode_tps": 286.9614,
+     "device": "Apple M1 Max",
+     "engine": "bench_decode",
+     "generated": 32,
+     "ids_first": [
+      9707,
+      0,
+      2585
+     ],
+     "ids_last": [
+      646,
+      387,
+      7881
+     ],
+     "ids_sha256_16": "7fd25a869ff21678",
+     "model": "q4",
+     "prefill_s": 0.020819,
+     "prefill_tps": 1440.9972,
+     "prompt_id": "short",
+     "prompt_tokens": 30,
+     "prompt_tokens_asserted": 30,
+     "watch_pid_cpu_delta_s": 0.0
+    },
+    {
+     "decode_tps": 298.7863,
+     "device": "Apple M1 Max",
+     "engine": "bench_decode",
+     "generated": 32,
+     "ids_first": [
+      9707,
+      0,
+      2585
+     ],
+     "ids_last": [
+      646,
+      387,
+      7881
+     ],
+     "ids_sha256_16": "7fd25a869ff21678",
+     "model": "q4",
+     "prefill_s": 0.016746,
+     "prefill_tps": 1791.486,
+     "prompt_id": "short",
+     "prompt_tokens": 30,
+     "prompt_tokens_asserted": 30,
+     "watch_pid_cpu_delta_s": 0.01
+    },
+    {
+     "decode_tps": 298.5238,
+     "device": "Apple M1 Max",
+     "engine": "bench_decode",
+     "generated": 32,
+     "ids_first": [
+      9707,
+      0,
+      2585
+     ],
+     "ids_last": [
+      646,
+      387,
+      7881
+     ],
+     "ids_sha256_16": "7fd25a869ff21678",
+     "model": "q4",
+     "prefill_s": 0.0182,
+     "prefill_tps": 1648.3177,
+     "prompt_id": "short",
+     "prompt_tokens": 30,
+     "prompt_tokens_asserted": 30,
+     "watch_pid_cpu_delta_s": 0.01
+    },
+    {
+     "decode_tps": 287.7954,
+     "device": "Apple M1 Max",
+     "engine": "bench_decode",
+     "generated": 32,
+     "ids_first": [
+      9707,
+      0,
+      2585
+     ],
+     "ids_last": [
+      646,
+      387,
+      7881
+     ],
+     "ids_sha256_16": "7fd25a869ff21678",
+     "model": "q4",
+     "prefill_s": 0.021017,
+     "prefill_tps": 1427.4357,
+     "prompt_id": "short",
+     "prompt_tokens": 30,
+     "prompt_tokens_asserted": 30,
+     "watch_pid_cpu_delta_s": 0.01
+    },
+    {
+     "decode_tps": 297.2443,
+     "device": "Apple M1 Max",
+     "engine": "bench_decode",
+     "generated": 32,
+     "ids_first": [
+      9707,
+      0,
+      2585
+     ],
+     "ids_last": [
+      646,
+      387,
+      7881
+     ],
+     "ids_sha256_16": "7fd25a869ff21678",
+     "model": "q4",
+     "prefill_s": 0.018195,
+     "prefill_tps": 1648.7706,
+     "prompt_id": "short",
+     "prompt_tokens": 30,
+     "prompt_tokens_asserted": 30,
+     "watch_pid_cpu_delta_s": 0.0
+    },
+    {
+     "decode_tps": 284.413,
+     "device": "Apple M1 Max",
+     "engine": "bench_decode",
+     "generated": 32,
+     "ids_first": [
+      9707,
+      0,
+      2585
+     ],
+     "ids_last": [
+      646,
+      387,
+      7881
+     ],
+     "ids_sha256_16": "7fd25a869ff21678",
+     "model": "q4",
+     "prefill_s": 0.019769,
+     "prefill_tps": 1517.553,
+     "prompt_id": "short",
+     "prompt_tokens": 30,
+     "prompt_tokens_asserted": 30,
+     "watch_pid_cpu_delta_s": 0.01
+    },
+    {
+     "decode_tps": 284.041,
+     "device": "Apple M1 Max",
+     "engine": "bench_decode",
+     "generated": 32,
+     "ids_first": [
+      9707,
+      0,
+      2585
+     ],
+     "ids_last": [
+      646,
+      387,
+      7881
+     ],
+     "ids_sha256_16": "7fd25a869ff21678",
+     "model": "q4",
+     "prefill_s": 0.020449,
+     "prefill_tps": 1467.0973,
+     "prompt_id": "short",
+     "prompt_tokens": 30,
+     "prompt_tokens_asserted": 30,
+     "watch_pid_cpu_delta_s": 0.01
+    },
+    {
+     "decode_tps": 300.4848,
+     "device": "Apple M1 Max",
+     "engine": "bench_decode",
+     "generated": 32,
+     "ids_first": [
+      9707,
+      0,
+      2585
+     ],
+     "ids_last": [
+      646,
+      387,
+      7881
+     ],
+     "ids_sha256_16": "7fd25a869ff21678",
+     "model": "q4",
+     "prefill_s": 0.01944,
+     "prefill_tps": 1543.1702,
+     "prompt_id": "short",
+     "prompt_tokens": 30,
+     "prompt_tokens_asserted": 30,
+     "watch_pid_cpu_delta_s": 0.0
+    },
+    {
+     "decode_tps": 283.0787,
+     "device": "Apple M1 Max",
+     "engine": "bench_decode",
+     "generated": 32,
+     "ids_first": [
+      9707,
+      0,
+      2585
+     ],
+     "ids_last": [
+      646,
+      387,
+      7881
+     ],
+     "ids_sha256_16": "7fd25a869ff21678",
+     "model": "q4",
+     "prefill_s": 0.019827,
+     "prefill_tps": 1513.085,
+     "prompt_id": "short",
+     "prompt_tokens": 30,
+     "prompt_tokens_asserted": 30,
+     "watch_pid_cpu_delta_s": 0.0
+    },
+    {
+     "decode_tps": 283.4146,
+     "device": "Apple M1 Max",
+     "engine": "bench_decode",
+     "generated": 32,
+     "ids_first": [
+      9707,
+      0,
+      2585
+     ],
+     "ids_last": [
+      646,
+      387,
+      7881
+     ],
+     "ids_sha256_16": "7fd25a869ff21678",
+     "model": "q4",
+     "prefill_s": 0.019891,
+     "prefill_tps": 1508.1945,
+     "prompt_id": "short",
+     "prompt_tokens": 30,
+     "prompt_tokens_asserted": 30,
+     "watch_pid_cpu_delta_s": 0.0
+    },
+    {
+     "decode_tps": 195.3704,
+     "device": "Apple M1 Max",
+     "engine": "bench_decode",
+     "generated": 32,
+     "ids_first": [
+      9707,
+      0,
+      2585
+     ],
+     "ids_last": [
+      646,
+      387,
+      7881
+     ],
+     "ids_sha256_16": "7fd25a869ff21678",
+     "model": "q4",
+     "prefill_s": 0.031177,
+     "prefill_tps": 962.2594,
+     "prompt_id": "short",
+     "prompt_tokens": 30,
+     "prompt_tokens_asserted": 30,
+     "watch_pid_cpu_delta_s": 0.01
+    }
+   ],
+   "clean_reps": 11,
+   "contended_reps_excluded": [
+    12
+   ],
+   "decode_tok_s": {
+    "max": 300.485,
+    "median": 286.961,
+    "min": 282.954
+   },
+   "digest": "7fd25a869ff21678",
+   "digest_matches_reference_native": true,
+   "generated_tokens": 32,
+   "model": "q4",
+   "prefill_tok_s": {
+    "max": 1791.486,
+    "median": 1517.553,
+    "min": 1427.436
+   },
+   "prompt_id": "short",
+   "prompt_tokens": 30,
+   "reps": 12
+  }
+ },
+ "models": {
+  "bf16": {
+   "repo": "mlx-community/Qwen2.5-0.5B-Instruct-bf16",
+   "revision": "56d07e766edd7159fbe12ed12d9cf114bf38bf1e"
+  },
+  "q4": {
+   "repo": "mlx-community/Qwen2.5-0.5B-Instruct-4bit",
+   "revision": "a5339a4131f135d0fdc6a5c8b5bbed2753bbe0f3"
+  }
+ },
+ "protocol": {
+  "contention": "WATCH_PID cumulative-CPU watch per leg-run; deltas >= 0.10s contended and excluded from medians; >= 3 clean reps required; 0.01s heartbeat ticks measured throughput-neutral",
+  "engine": "scripts/bench_decode.py (fresh process per leg-run)",
+  "env": "MLX_DISABLE_COMPILE=1",
+  "gate": {
+   "gpu_holding_processes": "none",
+   "note": "resident services idle: no ollama models loaded; docling-serve is a CPU layout service; resident omlx-server router leg is CPU-watched per leg-run",
+   "power": "Now drawing from 'AC Power'\n -InternalBattery-0 (id=40042595)\t100%; charged; 0:00 remaining present: true",
+   "resident_idle_services_recorded": [
+    "1549   0.1 /Users/joshuawarren/.local/share/uv/tools/docling-serve/bin/python /Users/joshuawarren/.local/share/uv/tools/docling-serve/bin/docling-serve run --host 0.0.0.0 --port 5001",
+    "2956   0.0 /Users/joshuawarren/.local/share/uv/tools/docling-serve/bin/python -c from multiprocessing.resource_tracker import main;main(15)",
+    "69678   0.0 /opt/homebrew/bin/ollama serve"
+   ],
+   "router_watch_pid": "48655",
+   "standalone_servers": "none (persistence-scanned)"
+  },
+  "generation": "greedy temp 0 seed 0, EOS suppressed, pinned generated counts 32/128/32, 4 warmup tokens per leg",
+  "reps": 12,
+  "warmup": "full 6-leg matrix discarded"
+ },
+ "reference_native_digests": {
+  "bf16_long": "407b7624ed1b3b29",
+  "bf16_longctx": "ff502900d2a179a5",
+  "bf16_short": "7fc0f968789b1882",
+  "q4_long": "254d73fd93164b98",
+  "q4_longctx": "7da83f06ec9f001d",
+  "q4_short": "7fd25a869ff21678"
+ },
+ "runs": {
+  "bf16_long": [
+   {
+    "decode_tps": 213.8572,
+    "device": "Apple M1 Max",
+    "engine": "bench_decode",
+    "generated": 128,
+    "ids_first": [
+     13060,
+     498,
+     369
+    ],
+    "ids_last": [
+     429,
+     279,
+     1614
+    ],
+    "ids_sha256_16": "407b7624ed1b3b29",
+    "model": "bf16",
+    "prefill_s": 0.051951,
+    "prefill_tps": 5043.2461,
+    "prompt_id": "long",
+    "prompt_tokens": 262,
+    "prompt_tokens_asserted": 262,
+    "watch_pid_cpu_delta_s": 0.01
+   },
+   {
+    "decode_tps": 214.7261,
+    "device": "Apple M1 Max",
+    "engine": "bench_decode",
+    "generated": 128,
+    "ids_first": [
+     13060,
+     498,
+     369
+    ],
+    "ids_last": [
+     429,
+     279,
+     1614
+    ],
+    "ids_sha256_16": "407b7624ed1b3b29",
+    "model": "bf16",
+    "prefill_s": 0.049518,
+    "prefill_tps": 5291.0231,
+    "prompt_id": "long",
+    "prompt_tokens": 262,
+    "prompt_tokens_asserted": 262,
+    "watch_pid_cpu_delta_s": 0.01
+   },
+   {
+    "decode_tps": 214.7151,
+    "device": "Apple M1 Max",
+    "engine": "bench_decode",
+    "generated": 128,
+    "ids_first": [
+     13060,
+     498,
+     369
+    ],
+    "ids_last": [
+     429,
+     279,
+     1614
+    ],
+    "ids_sha256_16": "407b7624ed1b3b29",
+    "model": "bf16",
+    "prefill_s": 0.049157,
+    "prefill_tps": 5329.8118,
+    "prompt_id": "long",
+    "prompt_tokens": 262,
+    "prompt_tokens_asserted": 262,
+    "watch_pid_cpu_delta_s": 0.01
+   },
+   {
+    "decode_tps": 216.6864,
+    "device": "Apple M1 Max",
+    "engine": "bench_decode",
+    "generated": 128,
+    "ids_first": [
+     13060,
+     498,
+     369
+    ],
+    "ids_last": [
+     429,
+     279,
+     1614
+    ],
+    "ids_sha256_16": "407b7624ed1b3b29",
+    "model": "bf16",
+    "prefill_s": 0.050076,
+    "prefill_tps": 5232.0298,
+    "prompt_id": "long",
+    "prompt_tokens": 262,
+    "prompt_tokens_asserted": 262,
+    "watch_pid_cpu_delta_s": 0.01
+   },
+   {
+    "decode_tps": 210.8262,
+    "device": "Apple M1 Max",
+    "engine": "bench_decode",
+    "generated": 128,
+    "ids_first": [
+     13060,
+     498,
+     369
+    ],
+    "ids_last": [
+     429,
+     279,
+     1614
+    ],
+    "ids_sha256_16": "407b7624ed1b3b29",
+    "model": "bf16",
+    "prefill_s": 0.050949,
+    "prefill_tps": 5142.3637,
+    "prompt_id": "long",
+    "prompt_tokens": 262,
+    "prompt_tokens_asserted": 262,
+    "watch_pid_cpu_delta_s": 0.01
+   },
+   {
+    "decode_tps": 215.1263,
+    "device": "Apple M1 Max",
+    "engine": "bench_decode",
+    "generated": 128,
+    "ids_first": [
+     13060,
+     498,
+     369
+    ],
+    "ids_last": [
+     429,
+     279,
+     1614
+    ],
+    "ids_sha256_16": "407b7624ed1b3b29",
+    "model": "bf16",
+    "prefill_s": 0.04949,
+    "prefill_tps": 5294.03,
+    "prompt_id": "long",
+    "prompt_tokens": 262,
+    "prompt_tokens_asserted": 262,
+    "watch_pid_cpu_delta_s": 0.01
+   },
+   {
+    "decode_tps": 214.9529,
+    "device": "Apple M1 Max",
+    "engine": "bench_decode",
+    "generated": 128,
+    "ids_first": [
+     13060,
+     498,
+     369
+    ],
+    "ids_last": [
+     429,
+     279,
+     1614
+    ],
+    "ids_sha256_16": "407b7624ed1b3b29",
+    "model": "bf16",
+    "prefill_s": 0.049644,
+    "prefill_tps": 5277.6207,
+    "prompt_id": "long",
+    "prompt_tokens": 262,
+    "prompt_tokens_asserted": 262,
+    "watch_pid_cpu_delta_s": 0.01
+   },
+   {
+    "decode_tps": 212.0838,
+    "device": "Apple M1 Max",
+    "engine": "bench_decode",
+    "generated": 128,
+    "ids_first": [
+     13060,
+     498,
+     369
+    ],
+    "ids_last": [
+     429,
+     279,
+     1614
+    ],
+    "ids_sha256_16": "407b7624ed1b3b29",
+    "model": "bf16",
+    "prefill_s": 0.052469,
+    "prefill_tps": 4993.3851,
+    "prompt_id": "long",
+    "prompt_tokens": 262,
+    "prompt_tokens_asserted": 262,
+    "watch_pid_cpu_delta_s": 0.01
+   },
+   {
+    "decode_tps": 214.4061,
+    "device": "Apple M1 Max",
+    "engine": "bench_decode",
+    "generated": 128,
+    "ids_first": [
+     13060,
+     498,
+     369
+    ],
+    "ids_last": [
+     429,
+     279,
+     1614
+    ],
+    "ids_sha256_16": "407b7624ed1b3b29",
+    "model": "bf16",
+    "prefill_s": 0.049611,
+    "prefill_tps": 5281.1224,
+    "prompt_id": "long",
+    "prompt_tokens": 262,
+    "prompt_tokens_asserted": 262,
+    "watch_pid_cpu_delta_s": 0.01
+   },
+   {
+    "decode_tps": 214.6263,
+    "device": "Apple M1 Max",
+    "engine": "bench_decode",
+    "generated": 128,
+    "ids_first": [
+     13060,
+     498,
+     369
+    ],
+    "ids_last": [
+     429,
+     279,
+     1614
+    ],
+    "ids_sha256_16": "407b7624ed1b3b29",
+    "model": "bf16",
+    "prefill_s": 0.049208,
+    "prefill_tps": 5324.3871,
+    "prompt_id": "long",
+    "prompt_tokens": 262,
+    "prompt_tokens_asserted": 262,
+    "watch_pid_cpu_delta_s": 0.01
+   },
+   {
+    "decode_tps": 216.7632,
+    "device": "Apple M1 Max",
+    "engine": "bench_decode",
+    "generated": 128,
+    "ids_first": [
+     13060,
+     498,
+     369
+    ],
+    "ids_last": [
+     429,
+     279,
+     1614
+    ],
+    "ids_sha256_16": "407b7624ed1b3b29",
+    "model": "bf16",
+    "prefill_s": 0.04912,
+    "prefill_tps": 5333.8988,
+    "prompt_id": "long",
+    "prompt_tokens": 262,
+    "prompt_tokens_asserted": 262,
+    "watch_pid_cpu_delta_s": 0.01
+   },
+   {
+    "decode_tps": 88.6045,
+    "device": "Apple M1 Max",
+    "engine": "bench_decode",
+    "generated": 128,
+    "ids_first": [
+     13060,
+     498,
+     369
+    ],
+    "ids_last": [
+     429,
+     279,
+     1614
+    ],
+    "ids_sha256_16": "407b7624ed1b3b29",
+    "model": "bf16",
+    "prefill_s": 0.099919,
+    "prefill_tps": 2622.1174,
+    "prompt_id": "long",
+    "prompt_tokens": 262,
+    "prompt_tokens_asserted": 262,
+    "watch_pid_cpu_delta_s": 1.7
+   }
+  ],
+  "bf16_longctx": [
+   {
+    "decode_tps": 205.0462,
+    "device": "Apple M1 Max",
+    "engine": "bench_decode",
+    "generated": 32,
+    "ids_first": [
+     28715,
+     389,
+     279
+    ],
+    "ids_last": [
+     4977,
+     311,
+     12322
+    ],
+    "ids_sha256_16": "ff502900d2a179a5",
+    "model": "bf16",
+    "prefill_s": 0.13481,
+    "prefill_tps": 7811.0077,
+    "prompt_id": "ctx1024",
+    "prompt_tokens": 1053,
+    "prompt_tokens_asserted": 1053,
+    "watch_pid_cpu_delta_s": 0.01
+   },
+   {
+    "decode_tps": 209.9892,
+    "device": "Apple M1 Max",
+    "engine": "bench_decode",
+    "generated": 32,
+    "ids_first": [
+     28715,
+     389,
+     279
+    ],
+    "ids_last": [
+     4977,
+     311,
+     12322
+    ],
+    "ids_sha256_16": "ff502900d2a179a5",
+    "model": "bf16",
+    "prefill_s": 0.144747,
+    "prefill_tps": 7274.7789,
+    "prompt_id": "ctx1024",
+    "prompt_tokens": 1053,
+    "prompt_tokens_asserted": 1053,
+    "watch_pid_cpu_delta_s": 0.01
+   },
+   {
+    "decode_tps": 208.0155,
+    "device": "Apple M1 Max",
+    "engine": "bench_decode",
+    "generated": 32,
+    "ids_first": [
+     28715,
+     389,
+     279
+    ],
+    "ids_last": [
+     4977,
+     311,
+     12322
+    ],
+    "ids_sha256_16": "ff502900d2a179a5",
+    "model": "bf16",
+    "prefill_s": 0.135224,
+    "prefill_tps": 7787.0672,
+    "prompt_id": "ctx1024",
+    "prompt_tokens": 1053,
+    "prompt_tokens_asserted": 1053,
+    "watch_pid_cpu_delta_s": 0.01
+   },
+   {
+    "decode_tps": 207.0077,
+    "device": "Apple M1 Max",
+    "engine": "bench_decode",
+    "generated": 32,
+    "ids_first": [
+     28715,
+     389,
+     279
+    ],
+    "ids_last": [
+     4977,
+     311,
+     12322
+    ],
+    "ids_sha256_16": "ff502900d2a179a5",
+    "model": "bf16",
+    "prefill_s": 0.133385,
+    "prefill_tps": 7894.4163,
+    "prompt_id": "ctx1024",
+    "prompt_tokens": 1053,
+    "prompt_tokens_asserted": 1053,
+    "watch_pid_cpu_delta_s": 0.01
+   },
+   {
+    "decode_tps": 210.1911,
+    "device": "Apple M1 Max",
+    "engine": "bench_decode",
+    "generated": 32,
+    "ids_first": [
+     28715,
+     389,
+     279
+    ],
+    "ids_last": [
+     4977,
+     311,
+     12322
+    ],
+    "ids_sha256_16": "ff502900d2a179a5",
+    "model": "bf16",
+    "prefill_s": 0.137357,
+    "prefill_tps": 7666.1476,
+    "prompt_id": "ctx1024",
+    "prompt_tokens": 1053,
+    "prompt_tokens_asserted": 1053,
+    "watch_pid_cpu_delta_s": 0.01
+   },
+   {
+    "decode_tps": 206.5291,
+    "device": "Apple M1 Max",
+    "engine": "bench_decode",
+    "generated": 32,
+    "ids_first": [
+     28715,
+     389,
+     279
+    ],
+    "ids_last": [
+     4977,
+     311,
+     12322
+    ],
+    "ids_sha256_16": "ff502900d2a179a5",
+    "model": "bf16",
+    "prefill_s": 0.140863,
+    "prefill_tps": 7475.3373,
+    "prompt_id": "ctx1024",
+    "prompt_tokens": 1053,
+    "prompt_tokens_asserted": 1053,
+    "watch_pid_cpu_delta_s": 0.01
+   },
+   {
+    "decode_tps": 209.5088,
+    "device": "Apple M1 Max",
+    "engine": "bench_decode",
+    "generated": 32,
+    "ids_first": [
+     28715,
+     389,
+     279
+    ],
+    "ids_last": [
+     4977,
+     311,
+     12322
+    ],
+    "ids_sha256_16": "ff502900d2a179a5",
+    "model": "bf16",
+    "prefill_s": 0.135864,
+    "prefill_tps": 7750.4188,
+    "prompt_id": "ctx1024",
+    "prompt_tokens": 1053,
+    "prompt_tokens_asserted": 1053,
+    "watch_pid_cpu_delta_s": 0.01
+   },
+   {
+    "decode_tps": 201.0861,
+    "device": "Apple M1 Max",
+    "engine": "bench_decode",
+    "generated": 32,
+    "ids_first": [
+     28715,
+     389,
+     279
+    ],
+    "ids_last": [
+     4977,
+     311,
+     12322
+    ],
+    "ids_sha256_16": "ff502900d2a179a5",
+    "model": "bf16",
+    "prefill_s": 0.133235,
+    "prefill_tps": 7903.3435,
+    "prompt_id": "ctx1024",
+    "prompt_tokens": 1053,
+    "prompt_tokens_asserted": 1053,
+    "watch_pid_cpu_delta_s": 0.02
+   },
+   {
+    "decode_tps": 207.892,
+    "device": "Apple M1 Max",
+    "engine": "bench_decode",
+    "generated": 32,
+    "ids_first": [
+     28715,
+     389,
+     279
+    ],
+    "ids_last": [
+     4977,
+     311,
+     12322
+    ],
+    "ids_sha256_16": "ff502900d2a179a5",
+    "model": "bf16",
+    "prefill_s": 0.135831,
+    "prefill_tps": 7752.2828,
+    "prompt_id": "ctx1024",
+    "prompt_tokens": 1053,
+    "prompt_tokens_asserted": 1053,
+    "watch_pid_cpu_delta_s": 0.01
+   },
+   {
+    "decode_tps": 210.7282,
+    "device": "Apple M1 Max",
+    "engine": "bench_decode",
+    "generated": 32,
+    "ids_first": [
+     28715,
+     389,
+     279
+    ],
+    "ids_last": [
+     4977,
+     311,
+     12322
+    ],
+    "ids_sha256_16": "ff502900d2a179a5",
+    "model": "bf16",
+    "prefill_s": 0.13907,
+    "prefill_tps": 7571.7242,
+    "prompt_id": "ctx1024",
+    "prompt_tokens": 1053,
+    "prompt_tokens_asserted": 1053,
+    "watch_pid_cpu_delta_s": 0.01
+   },
+   {
+    "decode_tps": 14.1246,
+    "device": "Apple M1 Max",
+    "engine": "bench_decode",
+    "generated": 32,
+    "ids_first": [
+     28715,
+     389,
+     279
+    ],
+    "ids_last": [
+     4977,
+     311,
+     12322
+    ],
+    "ids_sha256_16": "ff502900d2a179a5",
+    "model": "bf16",
+    "prefill_s": 0.47782,
+    "prefill_tps": 2203.7589,
+    "prompt_id": "ctx1024",
+    "prompt_tokens": 1053,
+    "prompt_tokens_asserted": 1053,
+    "watch_pid_cpu_delta_s": 0.33
+   },
+   {
+    "decode_tps": 106.7383,
+    "device": "Apple M1 Max",
+    "engine": "bench_decode",
+    "generated": 32,
+    "ids_first": [
+     28715,
+     389,
+     279
+    ],
+    "ids_last": [
+     4977,
+     311,
+     12322
+    ],
+    "ids_sha256_16": "ff502900d2a179a5",
+    "model": "bf16",
+    "prefill_s": 0.225809,
+    "prefill_tps": 4663.2322,
+    "prompt_id": "ctx1024",
+    "prompt_tokens": 1053,
+    "prompt_tokens_asserted": 1053,
+    "watch_pid_cpu_delta_s": 1.29
+   }
+  ],
+  "bf16_short": [
+   {
+    "decode_tps": 217.8822,
+    "device": "Apple M1 Max",
+    "engine": "bench_decode",
+    "generated": 32,
+    "ids_first": [
+     9707,
+     0,
+     2585
+    ],
+    "ids_last": [
+     151644,
+     872,
+     198
+    ],
+    "ids_sha256_16": "7fc0f968789b1882",
+    "model": "bf16",
+    "prefill_s": 0.022224,
+    "prefill_tps": 1349.8667,
+    "prompt_id": "short",
+    "prompt_tokens": 30,
+    "prompt_tokens_asserted": 30,
+    "watch_pid_cpu_delta_s": 0.01
+   },
+   {
+    "decode_tps": 216.7574,
+    "device": "Apple M1 Max",
+    "engine": "bench_decode",
+    "generated": 32,
+    "ids_first": [
+     9707,
+     0,
+     2585
+    ],
+    "ids_last": [
+     151644,
+     872,
+     198
+    ],
+    "ids_sha256_16": "7fc0f968789b1882",
+    "model": "bf16",
+    "prefill_s": 0.025421,
+    "prefill_tps": 1180.1325,
+    "prompt_id": "short",
+    "prompt_tokens": 30,
+    "prompt_tokens_asserted": 30,
+    "watch_pid_cpu_delta_s": 0.01
+   },
+   {
+    "decode_tps": 220.3423,
+    "device": "Apple M1 Max",
+    "engine": "bench_decode",
+    "generated": 32,
+    "ids_first": [
+     9707,
+     0,
+     2585
+    ],
+    "ids_last": [
+     151644,
+     872,
+     198
+    ],
+    "ids_sha256_16": "7fc0f968789b1882",
+    "model": "bf16",
+    "prefill_s": 0.021243,
+    "prefill_tps": 1412.252,
+    "prompt_id": "short",
+    "prompt_tokens": 30,
+    "prompt_tokens_asserted": 30,
+    "watch_pid_cpu_delta_s": 0.01
+   },
+   {
+    "decode_tps": 218.1092,
+    "device": "Apple M1 Max",
+    "engine": "bench_decode",
+    "generated": 32,
+    "ids_first": [
+     9707,
+     0,
+     2585
+    ],
+    "ids_last": [
+     151644,
+     872,
+     198
+    ],
+    "ids_sha256_16": "7fc0f968789b1882",
+    "model": "bf16",
+    "prefill_s": 0.020774,
+    "prefill_tps": 1444.1041,
+    "prompt_id": "short",
+    "prompt_tokens": 30,
+    "prompt_tokens_asserted": 30,
+    "watch_pid_cpu_delta_s": 0.01
+   },
+   {
+    "decode_tps": 220.6298,
+    "device": "Apple M1 Max",
+    "engine": "bench_decode",
+    "generated": 32,
+    "ids_first": [
+     9707,
+     0,
+     2585
+    ],
+    "ids_last": [
+     151644,
+     872,
+     198
+    ],
+    "ids_sha256_16": "7fc0f968789b1882",
+    "model": "bf16",
+    "prefill_s": 0.024096,
+    "prefill_tps": 1245.0048,
+    "prompt_id": "short",
+    "prompt_tokens": 30,
+    "prompt_tokens_asserted": 30,
+    "watch_pid_cpu_delta_s": 0.01
+   },
+   {
+    "decode_tps": 216.4759,
+    "device": "Apple M1 Max",
+    "engine": "bench_decode",
+    "generated": 32,
+    "ids_first": [
+     9707,
+     0,
+     2585
+    ],
+    "ids_last": [
+     151644,
+     872,
+     198
+    ],
+    "ids_sha256_16": "7fc0f968789b1882",
+    "model": "bf16",
+    "prefill_s": 0.025152,
+    "prefill_tps": 1192.7382,
+    "prompt_id": "short",
+    "prompt_tokens": 30,
+    "prompt_tokens_asserted": 30,
+    "watch_pid_cpu_delta_s": 0.01
+   },
+   {
+    "decode_tps": 217.4545,
+    "device": "Apple M1 Max",
+    "engine": "bench_decode",
+    "generated": 32,
+    "ids_first": [
+     9707,
+     0,
+     2585
+    ],
+    "ids_last": [
+     151644,
+     872,
+     198
+    ],
+    "ids_sha256_16": "7fc0f968789b1882",
+    "model": "bf16",
+    "prefill_s": 0.025436,
+    "prefill_tps": 1179.4153,
+    "prompt_id": "short",
+    "prompt_tokens": 30,
+    "prompt_tokens_asserted": 30,
+    "watch_pid_cpu_delta_s": 0.01
+   },
+   {
+    "decode_tps": 215.946,
+    "device": "Apple M1 Max",
+    "engine": "bench_decode",
+    "generated": 32,
+    "ids_first": [
+     9707,
+     0,
+     2585
+    ],
+    "ids_last": [
+     151644,
+     872,
+     198
+    ],
+    "ids_sha256_16": "7fc0f968789b1882",
+    "model": "bf16",
+    "prefill_s": 0.026463,
+    "prefill_tps": 1133.6601,
+    "prompt_id": "short",
+    "prompt_tokens": 30,
+    "prompt_tokens_asserted": 30,
+    "watch_pid_cpu_delta_s": 0.01
+   },
+   {
+    "decode_tps": 218.9844,
+    "device": "Apple M1 Max",
+    "engine": "bench_decode",
+    "generated": 32,
+    "ids_first": [
+     9707,
+     0,
+     2585
+    ],
+    "ids_last": [
+     151644,
+     872,
+     198
+    ],
+    "ids_sha256_16": "7fc0f968789b1882",
+    "model": "bf16",
+    "prefill_s": 0.021904,
+    "prefill_tps": 1369.6415,
+    "prompt_id": "short",
+    "prompt_tokens": 30,
+    "prompt_tokens_asserted": 30,
+    "watch_pid_cpu_delta_s": 0.01
+   },
+   {
+    "decode_tps": 217.0278,
+    "device": "Apple M1 Max",
+    "engine": "bench_decode",
+    "generated": 32,
+    "ids_first": [
+     9707,
+     0,
+     2585
+    ],
+    "ids_last": [
+     151644,
+     872,
+     198
+    ],
+    "ids_sha256_16": "7fc0f968789b1882",
+    "model": "bf16",
+    "prefill_s": 0.025365,
+    "prefill_tps": 1182.7205,
+    "prompt_id": "short",
+    "prompt_tokens": 30,
+    "prompt_tokens_asserted": 30,
+    "watch_pid_cpu_delta_s": 0.01
+   },
+   {
+    "decode_tps": 218.2438,
+    "device": "Apple M1 Max",
+    "engine": "bench_decode",
+    "generated": 32,
+    "ids_first": [
+     9707,
+     0,
+     2585
+    ],
+    "ids_last": [
+     151644,
+     872,
+     198
+    ],
+    "ids_sha256_16": "7fc0f968789b1882",
+    "model": "bf16",
+    "prefill_s": 0.02585,
+    "prefill_tps": 1160.5191,
+    "prompt_id": "short",
+    "prompt_tokens": 30,
+    "prompt_tokens_asserted": 30,
+    "watch_pid_cpu_delta_s": 0.01
+   },
+   {
+    "decode_tps": 15.6619,
+    "device": "Apple M1 Max",
+    "engine": "bench_decode",
+    "generated": 32,
+    "ids_first": [
+     9707,
+     0,
+     2585
+    ],
+    "ids_last": [
+     151644,
+     872,
+     198
+    ],
+    "ids_sha256_16": "7fc0f968789b1882",
+    "model": "bf16",
+    "prefill_s": 0.214374,
+    "prefill_tps": 139.9425,
+    "prompt_id": "short",
+    "prompt_tokens": 30,
+    "prompt_tokens_asserted": 30,
+    "watch_pid_cpu_delta_s": 0.04
+   }
+  ],
+  "q4_long": [
+   {
+    "decode_tps": 88.9118,
+    "device": "Apple M1 Max",
+    "engine": "bench_decode",
+    "generated": 128,
+    "ids_first": [
+     13060,
+     498,
+     369
+    ],
+    "ids_last": [
+     279,
+     990,
+     315
+    ],
+    "ids_sha256_16": "254d73fd93164b98",
+    "model": "q4",
+    "prefill_s": 0.196066,
+    "prefill_tps": 1336.2873,
+    "prompt_id": "long",
+    "prompt_tokens": 262,
+    "prompt_tokens_asserted": 262,
+    "watch_pid_cpu_delta_s": 0.63
+   },
+   {
+    "decode_tps": 297.5811,
+    "device": "Apple M1 Max",
+    "engine": "bench_decode",
+    "generated": 128,
+    "ids_first": [
+     13060,
+     498,
+     369
+    ],
+    "ids_last": [
+     279,
+     990,
+     315
+    ],
+    "ids_sha256_16": "254d73fd93164b98",
+    "model": "q4",
+    "prefill_s": 0.043728,
+    "prefill_tps": 5991.5958,
+    "prompt_id": "long",
+    "prompt_tokens": 262,
+    "prompt_tokens_asserted": 262,
+    "watch_pid_cpu_delta_s": 0.01
+   },
+   {
+    "decode_tps": 294.9195,
+    "device": "Apple M1 Max",
+    "engine": "bench_decode",
+    "generated": 128,
+    "ids_first": [
+     13060,
+     498,
+     369
+    ],
+    "ids_last": [
+     279,
+     990,
+     315
+    ],
+    "ids_sha256_16": "254d73fd93164b98",
+    "model": "q4",
+    "prefill_s": 0.043707,
+    "prefill_tps": 5994.4288,
+    "prompt_id": "long",
+    "prompt_tokens": 262,
+    "prompt_tokens_asserted": 262,
+    "watch_pid_cpu_delta_s": 0.0
+   },
+   {
+    "decode_tps": 296.2281,
+    "device": "Apple M1 Max",
+    "engine": "bench_decode",
+    "generated": 128,
+    "ids_first": [
+     13060,
+     498,
+     369
+    ],
+    "ids_last": [
+     279,
+     990,
+     315
+    ],
+    "ids_sha256_16": "254d73fd93164b98",
+    "model": "q4",
+    "prefill_s": 0.044122,
+    "prefill_tps": 5938.1257,
+    "prompt_id": "long",
+    "prompt_tokens": 262,
+    "prompt_tokens_asserted": 262,
+    "watch_pid_cpu_delta_s": 0.01
+   },
+   {
+    "decode_tps": 298.3268,
+    "device": "Apple M1 Max",
+    "engine": "bench_decode",
+    "generated": 128,
+    "ids_first": [
+     13060,
+     498,
+     369
+    ],
+    "ids_last": [
+     279,
+     990,
+     315
+    ],
+    "ids_sha256_16": "254d73fd93164b98",
+    "model": "q4",
+    "prefill_s": 0.044908,
+    "prefill_tps": 5834.1281,
+    "prompt_id": "long",
+    "prompt_tokens": 262,
+    "prompt_tokens_asserted": 262,
+    "watch_pid_cpu_delta_s": 0.01
+   },
+   {
+    "decode_tps": 296.4927,
+    "device": "Apple M1 Max",
+    "engine": "bench_decode",
+    "generated": 128,
+    "ids_first": [
+     13060,
+     498,
+     369
+    ],
+    "ids_last": [
+     279,
+     990,
+     315
+    ],
+    "ids_sha256_16": "254d73fd93164b98",
+    "model": "q4",
+    "prefill_s": 0.045678,
+    "prefill_tps": 5735.8185,
+    "prompt_id": "long",
+    "prompt_tokens": 262,
+    "prompt_tokens_asserted": 262,
+    "watch_pid_cpu_delta_s": 0.01
+   },
+   {
+    "decode_tps": 294.9705,
+    "device": "Apple M1 Max",
+    "engine": "bench_decode",
+    "generated": 128,
+    "ids_first": [
+     13060,
+     498,
+     369
+    ],
+    "ids_last": [
+     279,
+     990,
+     315
+    ],
+    "ids_sha256_16": "254d73fd93164b98",
+    "model": "q4",
+    "prefill_s": 0.044325,
+    "prefill_tps": 5910.8632,
+    "prompt_id": "long",
+    "prompt_tokens": 262,
+    "prompt_tokens_asserted": 262,
+    "watch_pid_cpu_delta_s": 0.01
+   },
+   {
+    "decode_tps": 300.425,
+    "device": "Apple M1 Max",
+    "engine": "bench_decode",
+    "generated": 128,
+    "ids_first": [
+     13060,
+     498,
+     369
+    ],
+    "ids_last": [
+     279,
+     990,
+     315
+    ],
+    "ids_sha256_16": "254d73fd93164b98",
+    "model": "q4",
+    "prefill_s": 0.044007,
+    "prefill_tps": 5953.5926,
+    "prompt_id": "long",
+    "prompt_tokens": 262,
+    "prompt_tokens_asserted": 262,
+    "watch_pid_cpu_delta_s": 0.01
+   },
+   {
+    "decode_tps": 296.2781,
+    "device": "Apple M1 Max",
+    "engine": "bench_decode",
+    "generated": 128,
+    "ids_first": [
+     13060,
+     498,
+     369
+    ],
+    "ids_last": [
+     279,
+     990,
+     315
+    ],
+    "ids_sha256_16": "254d73fd93164b98",
+    "model": "q4",
+    "prefill_s": 0.044125,
+    "prefill_tps": 5937.6882,
+    "prompt_id": "long",
+    "prompt_tokens": 262,
+    "prompt_tokens_asserted": 262,
+    "watch_pid_cpu_delta_s": 0.01
+   },
+   {
+    "decode_tps": 294.7873,
+    "device": "Apple M1 Max",
+    "engine": "bench_decode",
+    "generated": 128,
+    "ids_first": [
+     13060,
+     498,
+     369
+    ],
+    "ids_last": [
+     279,
+     990,
+     315
+    ],
+    "ids_sha256_16": "254d73fd93164b98",
+    "model": "q4",
+    "prefill_s": 0.04426,
+    "prefill_tps": 5919.5384,
+    "prompt_id": "long",
+    "prompt_tokens": 262,
+    "prompt_tokens_asserted": 262,
+    "watch_pid_cpu_delta_s": 0.01
+   },
+   {
+    "decode_tps": 294.5107,
+    "device": "Apple M1 Max",
+    "engine": "bench_decode",
+    "generated": 128,
+    "ids_first": [
+     13060,
+     498,
+     369
+    ],
+    "ids_last": [
+     279,
+     990,
+     315
+    ],
+    "ids_sha256_16": "254d73fd93164b98",
+    "model": "q4",
+    "prefill_s": 0.043962,
+    "prefill_tps": 5959.6925,
+    "prompt_id": "long",
+    "prompt_tokens": 262,
+    "prompt_tokens_asserted": 262,
+    "watch_pid_cpu_delta_s": 0.01
+   },
+   {
+    "decode_tps": 13.9772,
+    "device": "Apple M1 Max",
+    "engine": "bench_decode",
+    "generated": 128,
+    "ids_first": [
+     13060,
+     498,
+     369
+    ],
+    "ids_last": [
+     279,
+     990,
+     315
+    ],
+    "ids_sha256_16": "254d73fd93164b98",
+    "model": "q4",
+    "prefill_s": 0.279732,
+    "prefill_tps": 936.6123,
+    "prompt_id": "long",
+    "prompt_tokens": 262,
+    "prompt_tokens_asserted": 262,
+    "watch_pid_cpu_delta_s": 0.09
+   }
+  ],
+  "q4_longctx": [
+   {
+    "decode_tps": 284.5786,
+    "device": "Apple M1 Max",
+    "engine": "bench_decode",
+    "generated": 32,
+    "ids_first": [
+     13060,
+     498,
+     369
+    ],
+    "ids_last": [
+     3897,
+     553,
+     279
+    ],
+    "ids_sha256_16": "7da83f06ec9f001d",
+    "model": "q4",
+    "prefill_s": 0.125754,
+    "prefill_tps": 8373.5077,
+    "prompt_id": "ctx1024",
+    "prompt_tokens": 1053,
+    "prompt_tokens_asserted": 1053,
+    "watch_pid_cpu_delta_s": 0.3
+   },
+   {
+    "decode_tps": 283.6287,
+    "device": "Apple M1 Max",
+    "engine": "bench_decode",
+    "generated": 32,
+    "ids_first": [
+     13060,
+     498,
+     369
+    ],
+    "ids_last": [
+     3897,
+     553,
+     279
+    ],
+    "ids_sha256_16": "7da83f06ec9f001d",
+    "model": "q4",
+    "prefill_s": 0.131712,
+    "prefill_tps": 7994.6981,
+    "prompt_id": "ctx1024",
+    "prompt_tokens": 1053,
+    "prompt_tokens_asserted": 1053,
+    "watch_pid_cpu_delta_s": 0.01
+   },
+   {
+    "decode_tps": 284.0075,
+    "device": "Apple M1 Max",
+    "engine": "bench_decode",
+    "generated": 32,
+    "ids_first": [
+     13060,
+     498,
+     369
+    ],
+    "ids_last": [
+     3897,
+     553,
+     279
+    ],
+    "ids_sha256_16": "7da83f06ec9f001d",
+    "model": "q4",
+    "prefill_s": 0.129966,
+    "prefill_tps": 8102.145,
+    "prompt_id": "ctx1024",
+    "prompt_tokens": 1053,
+    "prompt_tokens_asserted": 1053,
+    "watch_pid_cpu_delta_s": 0.01
+   },
+   {
+    "decode_tps": 283.8022,
+    "device": "Apple M1 Max",
+    "engine": "bench_decode",
+    "generated": 32,
+    "ids_first": [
+     13060,
+     498,
+     369
+    ],
+    "ids_last": [
+     3897,
+     553,
+     279
+    ],
+    "ids_sha256_16": "7da83f06ec9f001d",
+    "model": "q4",
+    "prefill_s": 0.13256,
+    "prefill_tps": 7943.5852,
+    "prompt_id": "ctx1024",
+    "prompt_tokens": 1053,
+    "prompt_tokens_asserted": 1053,
+    "watch_pid_cpu_delta_s": 0.0
+   },
+   {
+    "decode_tps": 285.5777,
+    "device": "Apple M1 Max",
+    "engine": "bench_decode",
+    "generated": 32,
+    "ids_first": [
+     13060,
+     498,
+     369
+    ],
+    "ids_last": [
+     3897,
+     553,
+     279
+    ],
+    "ids_sha256_16": "7da83f06ec9f001d",
+    "model": "q4",
+    "prefill_s": 0.129955,
+    "prefill_tps": 8102.8101,
+    "prompt_id": "ctx1024",
+    "prompt_tokens": 1053,
+    "prompt_tokens_asserted": 1053,
+    "watch_pid_cpu_delta_s": 0.01
+   },
+   {
+    "decode_tps": 283.7853,
+    "device": "Apple M1 Max",
+    "engine": "bench_decode",
+    "generated": 32,
+    "ids_first": [
+     13060,
+     498,
+     369
+    ],
+    "ids_last": [
+     3897,
+     553,
+     279
+    ],
+    "ids_sha256_16": "7da83f06ec9f001d",
+    "model": "q4",
+    "prefill_s": 0.132393,
+    "prefill_tps": 7953.5702,
+    "prompt_id": "ctx1024",
+    "prompt_tokens": 1053,
+    "prompt_tokens_asserted": 1053,
+    "watch_pid_cpu_delta_s": 0.01
+   },
+   {
+    "decode_tps": 283.7451,
+    "device": "Apple M1 Max",
+    "engine": "bench_decode",
+    "generated": 32,
+    "ids_first": [
+     13060,
+     498,
+     369
+    ],
+    "ids_last": [
+     3897,
+     553,
+     279
+    ],
+    "ids_sha256_16": "7da83f06ec9f001d",
+    "model": "q4",
+    "prefill_s": 0.129249,
+    "prefill_tps": 8147.0913,
+    "prompt_id": "ctx1024",
+    "prompt_tokens": 1053,
+    "prompt_tokens_asserted": 1053,
+    "watch_pid_cpu_delta_s": 0.0
+   },
+   {
+    "decode_tps": 284.5363,
+    "device": "Apple M1 Max",
+    "engine": "bench_decode",
+    "generated": 32,
+    "ids_first": [
+     13060,
+     498,
+     369
+    ],
+    "ids_last": [
+     3897,
+     553,
+     279
+    ],
+    "ids_sha256_16": "7da83f06ec9f001d",
+    "model": "q4",
+    "prefill_s": 0.125651,
+    "prefill_tps": 8380.3551,
+    "prompt_id": "ctx1024",
+    "prompt_tokens": 1053,
+    "prompt_tokens_asserted": 1053,
+    "watch_pid_cpu_delta_s": 0.0
+   },
+   {
+    "decode_tps": 283.5703,
+    "device": "Apple M1 Max",
+    "engine": "bench_decode",
+    "generated": 32,
+    "ids_first": [
+     13060,
+     498,
+     369
+    ],
+    "ids_last": [
+     3897,
+     553,
+     279
+    ],
+    "ids_sha256_16": "7da83f06ec9f001d",
+    "model": "q4",
+    "prefill_s": 0.132487,
+    "prefill_tps": 7947.9346,
+    "prompt_id": "ctx1024",
+    "prompt_tokens": 1053,
+    "prompt_tokens_asserted": 1053,
+    "watch_pid_cpu_delta_s": 0.01
+   },
+   {
+    "decode_tps": 284.6008,
+    "device": "Apple M1 Max",
+    "engine": "bench_decode",
+    "generated": 32,
+    "ids_first": [
+     13060,
+     498,
+     369
+    ],
+    "ids_last": [
+     3897,
+     553,
+     279
+    ],
+    "ids_sha256_16": "7da83f06ec9f001d",
+    "model": "q4",
+    "prefill_s": 0.132545,
+    "prefill_tps": 7944.4692,
+    "prompt_id": "ctx1024",
+    "prompt_tokens": 1053,
+    "prompt_tokens_asserted": 1053,
+    "watch_pid_cpu_delta_s": 0.01
+   },
+   {
+    "decode_tps": 283.2549,
+    "device": "Apple M1 Max",
+    "engine": "bench_decode",
+    "generated": 32,
+    "ids_first": [
+     13060,
+     498,
+     369
+    ],
+    "ids_last": [
+     3897,
+     553,
+     279
+    ],
+    "ids_sha256_16": "7da83f06ec9f001d",
+    "model": "q4",
+    "prefill_s": 0.129851,
+    "prefill_tps": 8109.3179,
+    "prompt_id": "ctx1024",
+    "prompt_tokens": 1053,
+    "prompt_tokens_asserted": 1053,
+    "watch_pid_cpu_delta_s": 0.01
+   },
+   {
+    "decode_tps": 151.5977,
+    "device": "Apple M1 Max",
+    "engine": "bench_decode",
+    "generated": 32,
+    "ids_first": [
+     13060,
+     498,
+     369
+    ],
+    "ids_last": [
+     3897,
+     553,
+     279
+    ],
+    "ids_sha256_16": "7da83f06ec9f001d",
+    "model": "q4",
+    "prefill_s": 0.258086,
+    "prefill_tps": 4080.0301,
+    "prompt_id": "ctx1024",
+    "prompt_tokens": 1053,
+    "prompt_tokens_asserted": 1053,
+    "watch_pid_cpu_delta_s": 0.02
+   }
+  ],
+  "q4_short": [
+   {
+    "decode_tps": 282.9544,
+    "device": "Apple M1 Max",
+    "engine": "bench_decode",
+    "generated": 32,
+    "ids_first": [
+     9707,
+     0,
+     2585
+    ],
+    "ids_last": [
+     646,
+     387,
+     7881
+    ],
+    "ids_sha256_16": "7fd25a869ff21678",
+    "model": "q4",
+    "prefill_s": 0.019744,
+    "prefill_tps": 1519.4521,
+    "prompt_id": "short",
+    "prompt_tokens": 30,
+    "prompt_tokens_asserted": 30,
+    "watch_pid_cpu_delta_s": 0.01
+   },
+   {
+    "decode_tps": 286.9614,
+    "device": "Apple M1 Max",
+    "engine": "bench_decode",
+    "generated": 32,
+    "ids_first": [
+     9707,
+     0,
+     2585
+    ],
+    "ids_last": [
+     646,
+     387,
+     7881
+    ],
+    "ids_sha256_16": "7fd25a869ff21678",
+    "model": "q4",
+    "prefill_s": 0.020819,
+    "prefill_tps": 1440.9972,
+    "prompt_id": "short",
+    "prompt_tokens": 30,
+    "prompt_tokens_asserted": 30,
+    "watch_pid_cpu_delta_s": 0.0
+   },
+   {
+    "decode_tps": 298.7863,
+    "device": "Apple M1 Max",
+    "engine": "bench_decode",
+    "generated": 32,
+    "ids_first": [
+     9707,
+     0,
+     2585
+    ],
+    "ids_last": [
+     646,
+     387,
+     7881
+    ],
+    "ids_sha256_16": "7fd25a869ff21678",
+    "model": "q4",
+    "prefill_s": 0.016746,
+    "prefill_tps": 1791.486,
+    "prompt_id": "short",
+    "prompt_tokens": 30,
+    "prompt_tokens_asserted": 30,
+    "watch_pid_cpu_delta_s": 0.01
+   },
+   {
+    "decode_tps": 298.5238,
+    "device": "Apple M1 Max",
+    "engine": "bench_decode",
+    "generated": 32,
+    "ids_first": [
+     9707,
+     0,
+     2585
+    ],
+    "ids_last": [
+     646,
+     387,
+     7881
+    ],
+    "ids_sha256_16": "7fd25a869ff21678",
+    "model": "q4",
+    "prefill_s": 0.0182,
+    "prefill_tps": 1648.3177,
+    "prompt_id": "short",
+    "prompt_tokens": 30,
+    "prompt_tokens_asserted": 30,
+    "watch_pid_cpu_delta_s": 0.01
+   },
+   {
+    "decode_tps": 287.7954,
+    "device": "Apple M1 Max",
+    "engine": "bench_decode",
+    "generated": 32,
+    "ids_first": [
+     9707,
+     0,
+     2585
+    ],
+    "ids_last": [
+     646,
+     387,
+     7881
+    ],
+    "ids_sha256_16": "7fd25a869ff21678",
+    "model": "q4",
+    "prefill_s": 0.021017,
+    "prefill_tps": 1427.4357,
+    "prompt_id": "short",
+    "prompt_tokens": 30,
+    "prompt_tokens_asserted": 30,
+    "watch_pid_cpu_delta_s": 0.01
+   },
+   {
+    "decode_tps": 297.2443,
+    "device": "Apple M1 Max",
+    "engine": "bench_decode",
+    "generated": 32,
+    "ids_first": [
+     9707,
+     0,
+     2585
+    ],
+    "ids_last": [
+     646,
+     387,
+     7881
+    ],
+    "ids_sha256_16": "7fd25a869ff21678",
+    "model": "q4",
+    "prefill_s": 0.018195,
+    "prefill_tps": 1648.7706,
+    "prompt_id": "short",
+    "prompt_tokens": 30,
+    "prompt_tokens_asserted": 30,
+    "watch_pid_cpu_delta_s": 0.0
+   },
+   {
+    "decode_tps": 284.413,
+    "device": "Apple M1 Max",
+    "engine": "bench_decode",
+    "generated": 32,
+    "ids_first": [
+     9707,
+     0,
+     2585
+    ],
+    "ids_last": [
+     646,
+     387,
+     7881
+    ],
+    "ids_sha256_16": "7fd25a869ff21678",
+    "model": "q4",
+    "prefill_s": 0.019769,
+    "prefill_tps": 1517.553,
+    "prompt_id": "short",
+    "prompt_tokens": 30,
+    "prompt_tokens_asserted": 30,
+    "watch_pid_cpu_delta_s": 0.01
+   },
+   {
+    "decode_tps": 284.041,
+    "device": "Apple M1 Max",
+    "engine": "bench_decode",
+    "generated": 32,
+    "ids_first": [
+     9707,
+     0,
+     2585
+    ],
+    "ids_last": [
+     646,
+     387,
+     7881
+    ],
+    "ids_sha256_16": "7fd25a869ff21678",
+    "model": "q4",
+    "prefill_s": 0.020449,
+    "prefill_tps": 1467.0973,
+    "prompt_id": "short",
+    "prompt_tokens": 30,
+    "prompt_tokens_asserted": 30,
+    "watch_pid_cpu_delta_s": 0.01
+   },
+   {
+    "decode_tps": 300.4848,
+    "device": "Apple M1 Max",
+    "engine": "bench_decode",
+    "generated": 32,
+    "ids_first": [
+     9707,
+     0,
+     2585
+    ],
+    "ids_last": [
+     646,
+     387,
+     7881
+    ],
+    "ids_sha256_16": "7fd25a869ff21678",
+    "model": "q4",
+    "prefill_s": 0.01944,
+    "prefill_tps": 1543.1702,
+    "prompt_id": "short",
+    "prompt_tokens": 30,
+    "prompt_tokens_asserted": 30,
+    "watch_pid_cpu_delta_s": 0.0
+   },
+   {
+    "decode_tps": 283.0787,
+    "device": "Apple M1 Max",
+    "engine": "bench_decode",
+    "generated": 32,
+    "ids_first": [
+     9707,
+     0,
+     2585
+    ],
+    "ids_last": [
+     646,
+     387,
+     7881
+    ],
+    "ids_sha256_16": "7fd25a869ff21678",
+    "model": "q4",
+    "prefill_s": 0.019827,
+    "prefill_tps": 1513.085,
+    "prompt_id": "short",
+    "prompt_tokens": 30,
+    "prompt_tokens_asserted": 30,
+    "watch_pid_cpu_delta_s": 0.0
+   },
+   {
+    "decode_tps": 283.4146,
+    "device": "Apple M1 Max",
+    "engine": "bench_decode",
+    "generated": 32,
+    "ids_first": [
+     9707,
+     0,
+     2585
+    ],
+    "ids_last": [
+     646,
+     387,
+     7881
+    ],
+    "ids_sha256_16": "7fd25a869ff21678",
+    "model": "q4",
+    "prefill_s": 0.019891,
+    "prefill_tps": 1508.1945,
+    "prompt_id": "short",
+    "prompt_tokens": 30,
+    "prompt_tokens_asserted": 30,
+    "watch_pid_cpu_delta_s": 0.0
+   },
+   {
+    "decode_tps": 195.3704,
+    "device": "Apple M1 Max",
+    "engine": "bench_decode",
+    "generated": 32,
+    "ids_first": [
+     9707,
+     0,
+     2585
+    ],
+    "ids_last": [
+     646,
+     387,
+     7881
+    ],
+    "ids_sha256_16": "7fd25a869ff21678",
+    "model": "q4",
+    "prefill_s": 0.031177,
+    "prefill_tps": 962.2594,
+    "prompt_id": "short",
+    "prompt_tokens": 30,
+    "prompt_tokens_asserted": 30,
+    "watch_pid_cpu_delta_s": 0.01
+   }
+  ]
+ },
+ "schema": "native-macos-metal-baseline/1",
+ "snapshots": {
+  "bf16": "/Users/joshuawarren/.cache/huggingface/hub/models--mlx-community--Qwen2.5-0.5B-Instruct-bf16/snapshots/56d07e766edd7159fbe12ed12d9cf114bf38bf1e",
+  "q4": "/Users/joshuawarren/.cache/huggingface/hub/models--mlx-community--Qwen2.5-0.5B-Instruct-4bit/snapshots/a5339a4131f135d0fdc6a5c8b5bbed2753bbe0f3"
+ },
+ "summary_method": "resummarize.py over untouched runs/rep*/*.json raw reps; clean = watch delta < 0.10s AND decode_tps >= 70% of best-band median (identical classifier to the committed run_native_matrix.py)",
+ "versions": {
+  "metal": {
+   "architecture": "applegpu_g13s",
+   "device_name": "Apple M1 Max",
+   "max_buffer_length": 41747087360,
+   "max_recommended_working_set_size": 55662788608,
+   "memory_size": 68719476736,
+   "resource_limit": 499000
+  },
+  "mlx": "0.32.2",
+  "mlx_lm": "0.31.3",
+  "numpy": "2.5.2",
+  "python": "3.12.9",
+  "transformers": "5.16.1"
+ }
+}

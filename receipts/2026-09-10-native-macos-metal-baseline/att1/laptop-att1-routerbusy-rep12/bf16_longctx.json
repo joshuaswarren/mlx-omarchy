@@ -1,0 +1,24 @@
+{
+ "decode_tps": 68.0783,
+ "device": "Apple M2 Max",
+ "engine": "bench_decode",
+ "generated": 32,
+ "ids_first": [
+  28715,
+  389,
+  279
+ ],
+ "ids_last": [
+  4977,
+  311,
+  12322
+ ],
+ "ids_sha256_16": "ff502900d2a179a5",
+ "model": "bf16",
+ "prefill_s": 0.253721,
+ "prefill_tps": 4150.2335,
+ "prompt_id": "ctx1024",
+ "prompt_tokens": 1053,
+ "prompt_tokens_asserted": 1053,
+ "watch_pid_cpu_delta_s": 1.17
+}

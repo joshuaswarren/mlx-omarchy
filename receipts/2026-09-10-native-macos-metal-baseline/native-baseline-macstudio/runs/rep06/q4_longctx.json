@@ -1,0 +1,24 @@
+{
+ "decode_tps": 284.7252,
+ "device": "Apple M1 Ultra",
+ "engine": "bench_decode",
+ "generated": 32,
+ "ids_first": [
+  13060,
+  498,
+  369
+ ],
+ "ids_last": [
+  3897,
+  553,
+  279
+ ],
+ "ids_sha256_16": "7da83f06ec9f001d",
+ "model": "q4",
+ "prefill_s": 0.09169,
+ "prefill_tps": 11484.3025,
+ "prompt_id": "ctx1024",
+ "prompt_tokens": 1053,
+ "prompt_tokens_asserted": 1053,
+ "watch_pid_cpu_delta_s": null
+}

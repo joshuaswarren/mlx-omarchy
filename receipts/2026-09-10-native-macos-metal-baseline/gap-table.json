@@ -1,0 +1,371 @@
+{
+ "chip_equivalence": {
+  "linux_host_chip": "Apple M1 (G13G B1) (base M1, T8103, 8-core GPU)",
+  "statement": "None of the measured macOS hosts is a base M1. M1 Max / M1 Ultra / M2 Max have different GPU core counts and memory bandwidth (roughly 2x-4x). A non-base-M1 chip is NOT a valid same-chip denominator for jwm1-linux; native ratios below are cross-chip context, never a parity divisor. Per-chip numbers are reported unnormalized."
+ },
+ "legs": [
+  {
+   "generated_tokens": 32,
+   "leg": "q4_short",
+   "linux_fork": {
+    "chip": "Apple M1 (G13G B1)",
+    "decode_med": 112.195,
+    "prefill_med": 331.502
+   },
+   "linux_stock": {
+    "chip": "Apple M1 (G13G B1)",
+    "decode_med": 102.525,
+    "prefill_med": 170.942
+   },
+   "native": [
+    {
+     "chip": "Apple M1 Max",
+     "decode_med": 286.961,
+     "decode_range": [
+      282.954,
+      300.485
+     ],
+     "digest": "7fd25a869ff21678",
+     "digest_matches_reference_native": true,
+     "host": "16M1MBP",
+     "prefill_med": 1517.553,
+     "prefill_range": [
+      1427.436,
+      1791.486
+     ],
+     "ratio_decode_vs_fork": 2.558,
+     "ratio_decode_vs_stock": 2.799,
+     "ratio_prefill_vs_fork": 4.578,
+     "ratio_prefill_vs_stock": 8.878
+    },
+    {
+     "chip": "Apple M1 Ultra",
+     "decode_med": 299.192,
+     "decode_range": [
+      285.779,
+      304.541
+     ],
+     "digest": "7fd25a869ff21678",
+     "digest_matches_reference_native": true,
+     "host": "MacStudio",
+     "prefill_med": 1410.553,
+     "prefill_range": [
+      1129.874,
+      1507.392
+     ],
+     "ratio_decode_vs_fork": 2.667,
+     "ratio_decode_vs_stock": 2.918,
+     "ratio_prefill_vs_fork": 4.255,
+     "ratio_prefill_vs_stock": 8.252
+    }
+   ],
+   "prompt_tokens": 30
+  },
+  {
+   "generated_tokens": 128,
+   "leg": "q4_long",
+   "linux_fork": {
+    "chip": "Apple M1 (G13G B1)",
+    "decode_med": 108.945,
+    "prefill_med": 970.37
+   },
+   "linux_stock": {
+    "chip": "Apple M1 (G13G B1)",
+    "decode_med": 81.875,
+    "prefill_med": 310.06
+   },
+   "native": [
+    {
+     "chip": "Apple M1 Max",
+     "decode_med": 296.253,
+     "decode_range": [
+      294.511,
+      300.425
+     ],
+     "digest": "254d73fd93164b98",
+     "digest_matches_reference_native": true,
+     "host": "16M1MBP",
+     "prefill_med": 5937.907,
+     "prefill_range": [
+      5735.819,
+      5994.429
+     ],
+     "ratio_decode_vs_fork": 2.719,
+     "ratio_decode_vs_stock": 3.618,
+     "ratio_prefill_vs_fork": 6.119,
+     "ratio_prefill_vs_stock": 19.151
+    },
+    {
+     "chip": "Apple M1 Ultra",
+     "decode_med": 287.093,
+     "decode_range": [
+      281.958,
+      290.614
+     ],
+     "digest": "254d73fd93164b98",
+     "digest_matches_reference_native": true,
+     "host": "MacStudio",
+     "prefill_med": 6754.282,
+     "prefill_range": [
+      6092.722,
+      7460.376
+     ],
+     "ratio_decode_vs_fork": 2.635,
+     "ratio_decode_vs_stock": 3.506,
+     "ratio_prefill_vs_fork": 6.961,
+     "ratio_prefill_vs_stock": 21.784
+    }
+   ],
+   "prompt_tokens": 262
+  },
+  {
+   "generated_tokens": 32,
+   "leg": "q4_longctx",
+   "linux_fork": {
+    "chip": "Apple M1 (G13G B1)",
+    "decode_med": 96.125,
+    "prefill_med": 1112.52
+   },
+   "linux_stock": {
+    "chip": "Apple M1 (G13G B1)",
+    "decode_med": 52.91,
+    "prefill_med": 361.671
+   },
+   "native": [
+    {
+     "chip": "Apple M1 Max",
+     "decode_med": 283.794,
+     "decode_range": [
+      283.255,
+      285.578
+     ],
+     "digest": "7da83f06ec9f001d",
+     "digest_matches_reference_native": true,
+     "host": "16M1MBP",
+     "prefill_med": 8048.422,
+     "prefill_range": [
+      7943.585,
+      8380.355
+     ],
+     "ratio_decode_vs_fork": 2.952,
+     "ratio_decode_vs_stock": 5.364,
+     "ratio_prefill_vs_fork": 7.234,
+     "ratio_prefill_vs_stock": 22.253
+    },
+    {
+     "chip": "Apple M1 Ultra",
+     "decode_med": 282.982,
+     "decode_range": [
+      243.017,
+      289.601
+     ],
+     "digest": "7da83f06ec9f001d",
+     "digest_matches_reference_native": true,
+     "host": "MacStudio",
+     "prefill_med": 11040.136,
+     "prefill_range": [
+      3796.071,
+      11484.302
+     ],
+     "ratio_decode_vs_fork": 2.944,
+     "ratio_decode_vs_stock": 5.348,
+     "ratio_prefill_vs_fork": 9.924,
+     "ratio_prefill_vs_stock": 30.525
+    }
+   ],
+   "prompt_tokens": 1053
+  },
+  {
+   "generated_tokens": 32,
+   "leg": "bf16_short",
+   "linux_fork": {
+    "chip": "Apple M1 (G13G B1)",
+    "decode_med": 11.7,
+    "prefill_med": 85.96
+   },
+   "linux_stock": {
+    "chip": "Apple M1 (G13G B1)",
+    "decode_med": 11.735,
+    "prefill_med": 83.799
+   },
+   "native": [
+    {
+     "chip": "Apple M1 Max",
+     "decode_med": 217.882,
+     "decode_range": [
+      215.946,
+      220.63
+     ],
+     "digest": "7fc0f968789b1882",
+     "digest_matches_reference_native": true,
+     "host": "16M1MBP",
+     "prefill_med": 1192.738,
+     "prefill_range": [
+      1133.66,
+      1444.104
+     ],
+     "ratio_decode_vs_fork": 18.622,
+     "ratio_decode_vs_stock": 18.567,
+     "ratio_prefill_vs_fork": 13.876,
+     "ratio_prefill_vs_stock": 14.233
+    },
+    {
+     "chip": "Apple M1 Ultra",
+     "decode_med": 257.078,
+     "decode_range": [
+      250.772,
+      259.213
+     ],
+     "digest": "7fc0f968789b1882",
+     "digest_matches_reference_native": true,
+     "host": "MacStudio",
+     "prefill_med": 1111.172,
+     "prefill_range": [
+      1004.333,
+      1425.779
+     ],
+     "ratio_decode_vs_fork": 21.972,
+     "ratio_decode_vs_stock": 21.907,
+     "ratio_prefill_vs_fork": 12.927,
+     "ratio_prefill_vs_stock": 13.26
+    }
+   ],
+   "prompt_tokens": 30
+  },
+  {
+   "generated_tokens": 128,
+   "leg": "bf16_long",
+   "linux_fork": {
+    "chip": "Apple M1 (G13G B1)",
+    "decode_med": 11.255,
+    "prefill_med": 317.769
+   },
+   "linux_stock": {
+    "chip": "Apple M1 (G13G B1)",
+    "decode_med": 11.29,
+    "prefill_med": 210.78
+   },
+   "native": [
+    {
+     "chip": "Apple M1 Max",
+     "decode_med": 214.715,
+     "decode_range": [
+      210.826,
+      216.763
+     ],
+     "digest": "407b7624ed1b3b29",
+     "digest_matches_reference_native": true,
+     "host": "16M1MBP",
+     "prefill_med": 5281.122,
+     "prefill_range": [
+      4993.385,
+      5333.899
+     ],
+     "ratio_decode_vs_fork": 19.077,
+     "ratio_decode_vs_stock": 19.018,
+     "ratio_prefill_vs_fork": 16.619,
+     "ratio_prefill_vs_stock": 25.055
+    },
+    {
+     "chip": "Apple M1 Ultra",
+     "decode_med": 252.921,
+     "decode_range": [
+      251.759,
+      254.286
+     ],
+     "digest": "407b7624ed1b3b29",
+     "digest_matches_reference_native": true,
+     "host": "MacStudio",
+     "prefill_med": 6265.091,
+     "prefill_range": [
+      6189.738,
+      6399.231
+     ],
+     "ratio_decode_vs_fork": 22.472,
+     "ratio_decode_vs_stock": 22.402,
+     "ratio_prefill_vs_fork": 19.716,
+     "ratio_prefill_vs_stock": 29.723
+    }
+   ],
+   "prompt_tokens": 262
+  },
+  {
+   "generated_tokens": 32,
+   "leg": "bf16_longctx",
+   "linux_fork": {
+    "chip": "Apple M1 (G13G B1)",
+    "decode_med": 10.03,
+    "prefill_med": 364.802
+   },
+   "linux_stock": {
+    "chip": "Apple M1 (G13G B1)",
+    "decode_med": 10.125,
+    "prefill_med": 220.132
+   },
+   "native": [
+    {
+     "chip": "Apple M1 Max",
+     "decode_med": 207.954,
+     "decode_range": [
+      201.086,
+      210.728
+     ],
+     "digest": "ff502900d2a179a5",
+     "digest_matches_reference_native": true,
+     "host": "16M1MBP",
+     "prefill_med": 7751.351,
+     "prefill_range": [
+      7274.779,
+      7903.343
+     ],
+     "ratio_decode_vs_fork": 20.733,
+     "ratio_decode_vs_stock": 20.539,
+     "ratio_prefill_vs_fork": 21.248,
+     "ratio_prefill_vs_stock": 35.212
+    },
+    {
+     "chip": "Apple M1 Ultra",
+     "decode_med": 243.385,
+     "decode_range": [
+      241.965,
+      244.779
+     ],
+     "digest": "ff502900d2a179a5",
+     "digest_matches_reference_native": true,
+     "host": "MacStudio",
+     "prefill_med": 9932.535,
+     "prefill_range": [
+      9777.261,
+      10321.236
+     ],
+     "ratio_decode_vs_fork": 24.266,
+     "ratio_decode_vs_stock": 24.038,
+     "ratio_prefill_vs_fork": 27.227,
+     "ratio_prefill_vs_stock": 45.121
+    }
+   ],
+   "prompt_tokens": 1053
+  }
+ ],
+ "linux_verdict": {
+  "commit": "b6d662a8",
+  "host": {
+   "arch": "aarch64",
+   "device": "Apple M1 (G13G B1)",
+   "kernel": "7.1.6-1-1-ARCH",
+   "label": "jwm1-linux",
+   "mem_bytes": 16228417536,
+   "mlx_packages": {
+    "mlx-lm": "0.31.3",
+    "mlx-omarchy": "0.32.2.dev202609101916+b6d662a",
+    "numpy": "2.5.3",
+    "transformers": "5.16.1"
+   },
+   "os": "Omarchy",
+   "python": "3.14.7"
+  },
+  "note": "fork/stock are Linux Vulkan legs ON the base-M1 host itself; they are the same-chip Linux reference, not the macOS denominator",
+  "path": "verdict-linux-canonical.json"
+ },
+ "schema": "native-metal-gap-table/1"
+}
