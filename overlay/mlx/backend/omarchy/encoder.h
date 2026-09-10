@@ -52,7 +52,9 @@ namespace mlx::core::omarchy {
 // timeline, so ordering with prior queue work is preserved.
 // Caps recorded work and pinned buffers per submission. Larger batches reduce
 // submit overhead but extend buffer lifetimes and watchdog exposure.
-inline constexpr int kBatchNodeBudget = 384;
+inline constexpr int kBatchNodeBudget = 256;
+inline constexpr int kPrefillBatchNodeBudget = 512;
+inline constexpr size_t kPrefillOutputElementFloor = 4096;
 // Byte budget for the same batch: freed intermediates stay pinned in the
 // allocator quarantine until their batch submits and drains, so the open
 // batch may hold at most 1/16 of the allocator memory limit in such bytes
@@ -122,11 +124,26 @@ class MLX_API CommandEncoder {
   // encoder, so a plain bool is safe.
   bool in_tape_recording{false};
 
-  // Nodes recorded in the open batch. The evaluator flushes the batch at
-  // kBatchNodeBudget so a long graph cannot pin unbounded temporaries
-  // behind one open command buffer.
+  // The first GPU output fixes one graph's node budget. Small decode outputs
+  // keep the shipped bound; prefill outputs may use the larger screened bound.
+  void latch_graph_node_budget(size_t output_elements) {
+    if (graph_node_budget_ == 0) {
+      graph_node_budget_ = output_elements >= kPrefillOutputElementFloor
+          ? kPrefillBatchNodeBudget
+          : kBatchNodeBudget;
+    }
+  }
+
   int nodes() const {
     return node_count_;
+  }
+
+  int graph_node_budget() const {
+    return graph_node_budget_ == 0 ? kBatchNodeBudget : graph_node_budget_;
+  }
+
+  void reset_graph_node_budget() {
+    graph_node_budget_ = 0;
   }
 
   // True when nothing is recorded, nothing is queued for submission, and
@@ -295,6 +312,7 @@ class MLX_API CommandEncoder {
   VkCommandBuffer cmd_{VK_NULL_HANDLE};
   bool recording_{false};
   int node_count_{0};
+  int graph_node_budget_{0};
   uint64_t last_completion_{0};
   VkDescriptorPool desc_pool_{VK_NULL_HANDLE};
   uint32_t desc_pool_remaining_{0};
