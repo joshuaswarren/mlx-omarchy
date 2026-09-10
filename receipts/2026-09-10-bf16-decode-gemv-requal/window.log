@@ -1,0 +1,401 @@
+== phase 0: capture smoke (fails fast, seconds) ==
+decode.q_proj (1, 1, 896)
+decode.k_proj (1, 1, 128)
+decode.v_proj (1, 1, 128)
+decode.o_proj (1, 1, 896)
+prefill.q_proj (1, 262, 896)
+prefill.k_proj (1, 262, 128)
+prefill.v_proj (1, 262, 128)
+prefill.o_proj (1, 262, 896)
+gate_t0 (4864,)
+down_t0 (896,)
+lmhead_t0 (151936,)
+gate_t1 (4864,)
+down_t1 (896,)
+lmhead_t1 (151936,)
+gate_t2 (4864,)
+down_t2 (896,)
+lmhead_t2 (151936,)
+gate_t3 (4864,)
+down_t3 (896,)
+lmhead_t3 (151936,)
+gate_t4 (4864,)
+down_t4 (896,)
+lmhead_t4 (151936,)
+gate_t5 (4864,)
+down_t5 (896,)
+lmhead_t5 (151936,)
+gate_t6 (4864,)
+down_t6 (896,)
+lmhead_t6 (151936,)
+gate_t7 (4864,)
+down_t7 (896,)
+lmhead_t7 (151936,)
+cancel896x128 (128,)
+Traceback (most recent call last):
+  File "/home/joshuawarren/src/mlx-requal/receipts/2026-09-10-bf16-decode-gemv-requal/m1_ulp_capture.py", line 90, in <module>
+    main()
+    ~~~~^^
+  File "/home/joshuawarren/src/mlx-requal/receipts/2026-09-10-bf16-decode-gemv-requal/m1_ulp_capture.py", line 82, in main
+    xb, wb, _ = synthetic_cancel(k, n, salt)
+                ~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+  File "/home/joshuawarren/src/mlx-requal/receipts/2026-09-10-bf16-decode-gemv-requal/ulp_common.py", line 75, in synthetic_cancel
+    w[:, head:] = np.outer(v, -partial * 1e-6)
+    ~^^^^^^^^^^
+ValueError: could not broadcast input array from shape (128,896) into shape (896,128)
+SMOKE-CAPTURE-FAILED
+== phase 1: matrix ==
+warmup: verified=match x7
+r1-fork-base: verified=match x7
+r1-fork-cand: verified=match x7
+r1-stock-base: verified=match x7
+r1-stock-cand: verified=match x7
+r2-fork-base: verified=match x7
+r2-fork-cand: verified=match x7
+r2-stock-base: verified=match x7
+r2-stock-cand: verified=match x7
+r3-fork-base: verified=match x7
+r3-fork-cand: verified=match x7
+r3-stock-base: verified=match x7
+r3-stock-cand: verified=match x7
+MATRIX-OK
+== phase 2: suites + full ulp ==
+== omarchy_matmul_family_tests (M1 fork) ==
+[provenance] cooperative_matrix_f32_8=1 subgroup_size=32 -> gated shapes run MatmulF32Coopmat
+[matmul-f32] cube8 1x8x8x8 a b path=coopmat max_abs_err=0
+[matmul-f32] cube8 1x8x8x8 a bT path=coopmat max_abs_err=0
+[matmul-f32] cube8 1x8x8x8 aT b path=coopmat max_abs_err=0
+[matmul-f32] cube8 1x8x8x8 aT bT path=coopmat max_abs_err=0
+[matmul-f32] cube64 1x64x64x64 a b path=coopmat max_abs_err=0
+[matmul-f32] cube64 1x64x64x64 a bT path=coopmat max_abs_err=0
+[matmul-f32] cube64 1x64x64x64 aT b path=coopmat max_abs_err=0
+[matmul-f32] cube64 1x64x64x64 aT bT path=coopmat max_abs_err=0
+[matmul-f32] cube128 1x128x128x128 a b path=coopmat max_abs_err=0
+[matmul-f32] cube128 1x128x128x128 a bT path=coopmat max_abs_err=0
+[matmul-f32] cube128 1x128x128x128 aT b path=coopmat max_abs_err=0
+[matmul-f32] cube128 1x128x128x128 aT bT path=coopmat max_abs_err=0
+[matmul-f32] batched4x32 4x32x32x32 a b path=coopmat max_abs_err=0
+[matmul-f32] batched4x32 4x32x32x32 a bT path=coopmat max_abs_err=0
+[matmul-f32] batched4x32 4x32x32x32 aT b path=coopmat max_abs_err=0
+[matmul-f32] batched4x32 4x32x32x32 aT bT path=coopmat max_abs_err=0
+[matmul-f32] odd17x23x19 1x17x23x19 a b path=tiled max_abs_err=0
+[matmul-f32] odd17x23x19 1x17x23x19 a bT path=tiled max_abs_err=0
+[matmul-f32] odd17x23x19 1x17x23x19 aT b path=tiled max_abs_err=0
+[matmul-f32] odd17x23x19 1x17x23x19 aT bT path=tiled max_abs_err=0
+[matmul-f32] slice col4 32x40x24 path=coopmat max_abs_err=0
+[matmul-f32] slice col5 32x40x24 path=tiled max_abs_err=0
+[provenance] cooperative_matrix_f32_8=1 subgroup_size=32
+[matmul-bf16] tail-m8 1x8x8x8 a b max_abs_err=0
+[matmul-bf16] tail-m8 1x8x8x8 a bT max_abs_err=0
+[matmul-bf16] tail-m8 1x8x8x8 aT b max_abs_err=0
+[matmul-bf16] tail-m8 1x8x8x8 aT bT max_abs_err=0
+[matmul-bf16] tail-m9 1x9x8x8 a b max_abs_err=0
+[matmul-bf16] tail-m9 1x9x8x8 a bT max_abs_err=0
+[matmul-bf16] tail-m9 1x9x8x8 aT b max_abs_err=0
+[matmul-bf16] tail-m9 1x9x8x8 aT bT max_abs_err=0
+[matmul-bf16] tail-m33-n40 1x33x8x40 a b max_abs_err=0
+[matmul-bf16] tail-m33-n40 1x33x8x40 a bT max_abs_err=0
+[matmul-bf16] tail-m33-n40 1x33x8x40 aT b max_abs_err=0
+[matmul-bf16] tail-m33-n40 1x33x8x40 aT bT max_abs_err=0
+[matmul-bf16] tile32 1x32x32x32 a b max_abs_err=0
+[matmul-bf16] tile32 1x32x32x32 a bT max_abs_err=0
+[matmul-bf16] tile32 1x32x32x32 aT b max_abs_err=0
+[matmul-bf16] tile32 1x32x32x32 aT bT max_abs_err=0
+[matmul-bf16] tail-m17-k24-n34 1x17x24x34 a b max_abs_err=0
+[matmul-bf16] tail-m17-k24-n34 1x17x24x34 a bT max_abs_err=0
+[matmul-bf16] tail-m17-k24-n34 1x17x24x34 aT b max_abs_err=0
+[matmul-bf16] tail-m17-k24-n34 1x17x24x34 aT bT max_abs_err=0
+[matmul-bf16] batch2 2x40x8x40 a b max_abs_err=0
+[matmul-bf16] batch2 2x40x8x40 a bT max_abs_err=0
+[matmul-bf16] batch2 2x40x8x40 aT b max_abs_err=0
+[matmul-bf16] batch2 2x40x8x40 aT bT max_abs_err=0
+[matmul-bf16] single-row 1x1x8x8 a b max_abs_err=0
+[matmul-bf16] single-row 1x1x8x8 a bT max_abs_err=0
+[matmul-bf16] single-row 1x1x8x8 aT b max_abs_err=0
+[matmul-bf16] single-row 1x1x8x8 aT bT max_abs_err=0
+[matmul-bf16] k12 1x17x12x34 a b max_abs_err=0
+[matmul-bf16] k12 1x17x12x34 a bT max_abs_err=0
+[matmul-bf16] k12 1x17x12x34 aT b max_abs_err=0
+[matmul-bf16] k12 1x17x12x34 aT bT max_abs_err=0
+[matmul-bf16] odd-n 1x17x8x17 a b max_abs_err=0
+[matmul-bf16] odd-n 1x17x8x17 a bT max_abs_err=0
+[matmul-bf16] odd-n 1x17x8x17 aT b max_abs_err=0
+[matmul-bf16] odd-n 1x17x8x17 aT bT max_abs_err=0
+[matmul-bf16] model 1x30x896x896 a b max_abs_err=0
+[matmul-bf16] model 1x30x896x896 a bT max_abs_err=0
+[matmul-bf16] model 1x30x896x896 aT b max_abs_err=0
+[matmul-bf16] model 1x30x896x896 aT bT max_abs_err=0
+[matmul-bf16] model 1x30x896x4864 a b max_abs_err=0
+[matmul-bf16] model 1x30x896x4864 a bT max_abs_err=0
+[matmul-bf16] model 1x30x896x4864 aT b max_abs_err=0
+[matmul-bf16] model 1x30x896x4864 aT bT max_abs_err=0
+[matmul-bf16] model 1x30x4864x896 a b max_abs_err=0
+[matmul-bf16] model 1x30x4864x896 a bT max_abs_err=0
+[matmul-bf16] model 1x30x4864x896 aT b max_abs_err=0
+[matmul-bf16] model 1x30x4864x896 aT bT max_abs_err=0
+[matmul-bf16] model 1x30x4864x4864 a b max_abs_err=0
+[matmul-bf16] model 1x30x4864x4864 a bT max_abs_err=0
+[matmul-bf16] model 1x30x4864x4864 aT b max_abs_err=0
+[matmul-bf16] model 1x30x4864x4864 aT bT max_abs_err=0
+[matmul-bf16] model 1x262x896x896 a b max_abs_err=0
+[matmul-bf16] model 1x262x896x896 a bT max_abs_err=0
+[matmul-bf16] model 1x262x896x896 aT b max_abs_err=0
+[matmul-bf16] model 1x262x896x896 aT bT max_abs_err=0
+[matmul-bf16] model 1x262x896x4864 a b max_abs_err=0
+[matmul-bf16] model 1x262x896x4864 a bT max_abs_err=0
+[matmul-bf16] model 1x262x896x4864 aT b max_abs_err=0
+[matmul-bf16] model 1x262x896x4864 aT bT max_abs_err=0
+[matmul-bf16] model 1x262x4864x896 a b max_abs_err=0
+[matmul-bf16] model 1x262x4864x896 a bT max_abs_err=0
+[matmul-bf16] model 1x262x4864x896 aT b max_abs_err=0
+[matmul-bf16] model 1x262x4864x896 aT bT max_abs_err=0
+[matmul-bf16] model 1x262x4864x4864 a b max_abs_err=0
+[matmul-bf16] model 1x262x4864x4864 a bT max_abs_err=0
+[matmul-bf16] model 1x262x4864x4864 aT b max_abs_err=0
+[matmul-bf16] model 1x262x4864x4864 aT bT max_abs_err=0
+[matmul-bf16] model 1x1053x896x896 a b max_abs_err=0
+[matmul-bf16] model 1x1053x896x896 a bT max_abs_err=0
+[matmul-bf16] model 1x1053x896x896 aT b max_abs_err=0
+[matmul-bf16] model 1x1053x896x896 aT bT max_abs_err=0
+[matmul-bf16] model 1x1053x896x4864 a b max_abs_err=0
+[matmul-bf16] model 1x1053x896x4864 a bT max_abs_err=0
+[matmul-bf16] model 1x1053x896x4864 aT b max_abs_err=0
+[matmul-bf16] model 1x1053x896x4864 aT bT max_abs_err=0
+[matmul-bf16] model 1x1053x4864x896 a b max_abs_err=0
+[matmul-bf16] model 1x1053x4864x896 a bT max_abs_err=0
+[matmul-bf16] model 1x1053x4864x896 aT b max_abs_err=0
+[matmul-bf16] model 1x1053x4864x896 aT bT max_abs_err=0
+[matmul-bf16] model 1x1053x4864x4864 a b max_abs_err=0
+[matmul-bf16] model 1x1053x4864x4864 a bT max_abs_err=0
+[matmul-bf16] model 1x1053x4864x4864 aT b max_abs_err=0
+[matmul-bf16] model 1x1053x4864x4864 aT bT max_abs_err=0
+[matmul-bf16] slice col4 32x40x24 max_abs_err=0
+[matmul-bf16] slice col5 32x40x24 max_abs_err=0
+[matmul-bf16] fractional 33x24x40 bound=0.17928 max_abs_err=0 partial_max=21.9433
+[qmm-rb-word] m=2 n=7 k=64 candidate_vs_baseline_max=0 candidate_vs_host_max=0.00719643 baseline_vs_host_max=0.00719643 bound=0.025325
+[qmm-rb-word] m=15 n=17 k=192 candidate_vs_baseline_max=0 candidate_vs_host_max=0.0147629 baseline_vs_host_max=0.0147629 bound=0.0594667
+[qmm-rb-word] m=32 n=32 k=128 candidate_vs_baseline_max=0 candidate_vs_host_max=0.0153732 baseline_vs_host_max=0.0153732 bound=0.0515481
+[qmm-rb-word] m=33 n=17 k=64 candidate_vs_baseline_max=0 candidate_vs_host_max=0.0130997 baseline_vs_host_max=0.0130997 bound=0.0350047
+[provenance] cooperative_matrix_f32_8=1 subgroup_size=32 -> f16 q4/g64 prefill runs QmmPrefillCoopmatF16
+[qmm-coopmat] kernel=QmmPrefillCoopmatF16 m=8 n=896 k=896 max_abs_err=0.0602875 rel_err=0.000368129 bound=0.264921
+[qmm-coopmat] kernel=QmmPrefillCoopmatF16 m=32 n=896 k=896 max_abs_err=0.0607452 rel_err=0.000382647 bound=0.256805
+[qmm-coopmat] kernel=QmmPrefillCoopmatF16 m=262 n=896 k=896 max_abs_err=0.0624542 rel_err=0.000311881 bound=0.323938
+[qmm-coopmat] kernel=QmmPrefillCoopmatF16 m=1053 n=896 k=896 max_abs_err=0.0623932 rel_err=0.000318943 bound=0.316457
+[qmm-coopmat] kernel=QmmPrefillCoopmatF16 m=8 n=4864 k=896 max_abs_err=0.0622406 rel_err=0.000378296 bound=0.266153
+[qmm-coopmat] kernel=QmmPrefillCoopmatF16 m=32 n=4864 k=896 max_abs_err=0.0623932 rel_err=0.000331438 bound=0.304526
+[qmm-coopmat] kernel=QmmPrefillCoopmatF16 m=262 n=4864 k=896 max_abs_err=0.0623932 rel_err=0.000287526 bound=0.351034
+[qmm-coopmat] kernel=QmmPrefillCoopmatF16 m=1053 n=4864 k=896 max_abs_err=0.062561 rel_err=0.000315917 bound=0.320348
+[qmm-coopmat] kernel=QmmPrefillCoopmatF16 m=8 n=896 k=4864 max_abs_err=0.121582 rel_err=0.000334246 bound=1.6208
+[qmm-coopmat] kernel=QmmPrefillCoopmatF16 m=32 n=896 k=4864 max_abs_err=0.124359 rel_err=0.000322766 bound=1.71678
+[qmm-coopmat] kernel=QmmPrefillCoopmatF16 m=262 n=896 k=4864 max_abs_err=0.125031 rel_err=0.000303792 bound=1.83386
+[qmm-coopmat] kernel=QmmPrefillCoopmatF16 m=1053 n=896 k=4864 max_abs_err=0.125458 rel_err=0.000273925 bound=2.04076
+[qmm-coopmat] kernel=QmmPrefillCoopmatF16 m=8 n=128 k=896 max_abs_err=0.0312576 rel_err=0.000225845 bound=0.22389
+[qmm-coopmat] kernel=QmmPrefillCoopmatF16 m=32 n=128 k=896 max_abs_err=0.0474854 rel_err=0.00032322 bound=0.237658
+[qmm-coopmat] kernel=QmmPrefillCoopmatF16 m=262 n=128 k=896 max_abs_err=0.0619354 rel_err=0.000350882 bound=0.285541
+[qmm-coopmat] kernel=QmmPrefillCoopmatF16 m=1053 n=128 k=896 max_abs_err=0.0617523 rel_err=0.000331307 bound=0.301518
+matmul_family_rc=0
+== omarchy_runtime_tests (M1 fork) ==
+[child/reopen] fresh process device reopen ok
+[child/reused_slot_blocked_dependency] [omarchy] Vulkan timeline counter failed to advance for 200 ms (last observed=8, target=9). The device may be hung; no CPU fallback is available.
+[child/unrelated_work_event_wait] [omarchy] Vulkan timeline counter failed to advance for 100 ms (last observed=0, target=1). The device may be hung; no CPU fallback is available.
+[child/completed_marker_behind_handler] [omarchy] Vulkan timeline counter failed to advance for 100 ms (last observed=2, target=3). The device may be hung; no CPU fallback is available.
+[child/long_matmul_progress] valid matmul completed
+[child/watchdog_teardown] submit completed before the watchdog fired; teardown is the assertion
+Skipping: a qualifying GPU is present; the refusal path is exercised by the classification tests and this test is meaningless there.
+[receipt] compute queue families expose 1 queue(s)
+Skipping: requires a development build with the CPU backend enabled.
+Skipping: requires a development build with the CPU backend enabled.
+Skipping: requires a development build with the CPU backend enabled.
+Skipping: requires a development build with the CPU backend enabled.
+[receipt] device exposes 1 queue(s); measuring overlap on one VkQueue
+[receipt] iters=400 serialized_median=0.370914s concurrent_median=0.318575s ratio=1.16429
+Skipping: GPU and CPU devices are required.
+runtime_rc=0
+tail: option used in invalid context -- 4
+== ULP capture: 4 cells ==
+decode.q_proj (1, 1, 896)
+decode.k_proj (1, 1, 128)
+decode.v_proj (1, 1, 128)
+decode.o_proj (1, 1, 896)
+prefill.q_proj (1, 262, 896)
+prefill.k_proj (1, 262, 128)
+prefill.v_proj (1, 262, 128)
+prefill.o_proj (1, 262, 896)
+gate_t0 (4864,)
+down_t0 (896,)
+lmhead_t0 (151936,)
+gate_t1 (4864,)
+down_t1 (896,)
+lmhead_t1 (151936,)
+gate_t2 (4864,)
+down_t2 (896,)
+lmhead_t2 (151936,)
+gate_t3 (4864,)
+down_t3 (896,)
+lmhead_t3 (151936,)
+gate_t4 (4864,)
+down_t4 (896,)
+lmhead_t4 (151936,)
+gate_t5 (4864,)
+down_t5 (896,)
+lmhead_t5 (151936,)
+gate_t6 (4864,)
+down_t6 (896,)
+lmhead_t6 (151936,)
+gate_t7 (4864,)
+down_t7 (896,)
+lmhead_t7 (151936,)
+cancel896x128 (128,)
+Traceback (most recent call last):
+  File "/home/joshuawarren/src/mlx-requal/receipts/2026-09-10-bf16-decode-gemv-requal/m1_ulp_capture.py", line 90, in <module>
+    main()
+    ~~~~^^
+  File "/home/joshuawarren/src/mlx-requal/receipts/2026-09-10-bf16-decode-gemv-requal/m1_ulp_capture.py", line 82, in main
+    xb, wb, _ = synthetic_cancel(k, n, salt)
+                ~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+  File "/home/joshuawarren/src/mlx-requal/receipts/2026-09-10-bf16-decode-gemv-requal/ulp_common.py", line 75, in synthetic_cancel
+    w[:, head:] = np.outer(v, -partial * 1e-6)
+    ~^^^^^^^^^^
+ValueError: could not broadcast input array from shape (128,896) into shape (896,128)
+decode.q_proj (1, 1, 896)
+decode.k_proj (1, 1, 128)
+decode.v_proj (1, 1, 128)
+decode.o_proj (1, 1, 896)
+prefill.q_proj (1, 262, 896)
+prefill.k_proj (1, 262, 128)
+prefill.v_proj (1, 262, 128)
+prefill.o_proj (1, 262, 896)
+gate_t0 (4864,)
+down_t0 (896,)
+lmhead_t0 (151936,)
+gate_t1 (4864,)
+down_t1 (896,)
+lmhead_t1 (151936,)
+gate_t2 (4864,)
+down_t2 (896,)
+lmhead_t2 (151936,)
+gate_t3 (4864,)
+down_t3 (896,)
+lmhead_t3 (151936,)
+gate_t4 (4864,)
+down_t4 (896,)
+lmhead_t4 (151936,)
+gate_t5 (4864,)
+down_t5 (896,)
+lmhead_t5 (151936,)
+gate_t6 (4864,)
+down_t6 (896,)
+lmhead_t6 (151936,)
+gate_t7 (4864,)
+down_t7 (896,)
+lmhead_t7 (151936,)
+cancel896x128 (128,)
+Traceback (most recent call last):
+  File "/home/joshuawarren/src/mlx-requal/receipts/2026-09-10-bf16-decode-gemv-requal/m1_ulp_capture.py", line 90, in <module>
+    main()
+    ~~~~^^
+  File "/home/joshuawarren/src/mlx-requal/receipts/2026-09-10-bf16-decode-gemv-requal/m1_ulp_capture.py", line 82, in main
+    xb, wb, _ = synthetic_cancel(k, n, salt)
+                ~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+  File "/home/joshuawarren/src/mlx-requal/receipts/2026-09-10-bf16-decode-gemv-requal/ulp_common.py", line 75, in synthetic_cancel
+    w[:, head:] = np.outer(v, -partial * 1e-6)
+    ~^^^^^^^^^^
+ValueError: could not broadcast input array from shape (128,896) into shape (896,128)
+decode.q_proj (1, 1, 896)
+decode.k_proj (1, 1, 128)
+decode.v_proj (1, 1, 128)
+decode.o_proj (1, 1, 896)
+prefill.q_proj (1, 262, 896)
+prefill.k_proj (1, 262, 128)
+prefill.v_proj (1, 262, 128)
+prefill.o_proj (1, 262, 896)
+gate_t0 (4864,)
+down_t0 (896,)
+lmhead_t0 (151936,)
+gate_t1 (4864,)
+down_t1 (896,)
+lmhead_t1 (151936,)
+gate_t2 (4864,)
+down_t2 (896,)
+lmhead_t2 (151936,)
+gate_t3 (4864,)
+down_t3 (896,)
+lmhead_t3 (151936,)
+gate_t4 (4864,)
+down_t4 (896,)
+lmhead_t4 (151936,)
+gate_t5 (4864,)
+down_t5 (896,)
+lmhead_t5 (151936,)
+gate_t6 (4864,)
+down_t6 (896,)
+lmhead_t6 (151936,)
+gate_t7 (4864,)
+down_t7 (896,)
+lmhead_t7 (151936,)
+cancel896x128 (128,)
+Traceback (most recent call last):
+  File "/home/joshuawarren/src/mlx-requal/receipts/2026-09-10-bf16-decode-gemv-requal/m1_ulp_capture.py", line 90, in <module>
+    main()
+    ~~~~^^
+  File "/home/joshuawarren/src/mlx-requal/receipts/2026-09-10-bf16-decode-gemv-requal/m1_ulp_capture.py", line 82, in main
+    xb, wb, _ = synthetic_cancel(k, n, salt)
+                ~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+  File "/home/joshuawarren/src/mlx-requal/receipts/2026-09-10-bf16-decode-gemv-requal/ulp_common.py", line 75, in synthetic_cancel
+    w[:, head:] = np.outer(v, -partial * 1e-6)
+    ~^^^^^^^^^^
+ValueError: could not broadcast input array from shape (128,896) into shape (896,128)
+decode.q_proj (1, 1, 896)
+decode.k_proj (1, 1, 128)
+decode.v_proj (1, 1, 128)
+decode.o_proj (1, 1, 896)
+prefill.q_proj (1, 262, 896)
+prefill.k_proj (1, 262, 128)
+prefill.v_proj (1, 262, 128)
+prefill.o_proj (1, 262, 896)
+gate_t0 (4864,)
+down_t0 (896,)
+lmhead_t0 (151936,)
+gate_t1 (4864,)
+down_t1 (896,)
+lmhead_t1 (151936,)
+gate_t2 (4864,)
+down_t2 (896,)
+lmhead_t2 (151936,)
+gate_t3 (4864,)
+down_t3 (896,)
+lmhead_t3 (151936,)
+gate_t4 (4864,)
+down_t4 (896,)
+lmhead_t4 (151936,)
+gate_t5 (4864,)
+down_t5 (896,)
+lmhead_t5 (151936,)
+gate_t6 (4864,)
+down_t6 (896,)
+lmhead_t6 (151936,)
+gate_t7 (4864,)
+down_t7 (896,)
+lmhead_t7 (151936,)
+cancel896x128 (128,)
+Traceback (most recent call last):
+  File "/home/joshuawarren/src/mlx-requal/receipts/2026-09-10-bf16-decode-gemv-requal/m1_ulp_capture.py", line 90, in <module>
+    main()
+    ~~~~^^
+  File "/home/joshuawarren/src/mlx-requal/receipts/2026-09-10-bf16-decode-gemv-requal/m1_ulp_capture.py", line 82, in main
+    xb, wb, _ = synthetic_cancel(k, n, salt)
+                ~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+  File "/home/joshuawarren/src/mlx-requal/receipts/2026-09-10-bf16-decode-gemv-requal/ulp_common.py", line 75, in synthetic_cancel
+    w[:, head:] = np.outer(v, -partial * 1e-6)
+    ~^^^^^^^^^^
+ValueError: could not broadcast input array from shape (128,896) into shape (896,128)
+== ULP truth (CPU f64) ==
+Traceback (most recent call last):
+  File "/home/joshuawarren/src/mlx-requal/receipts/2026-09-10-bf16-decode-gemv-requal/m1_ulp_truth.py", line 139, in <module>
+    main()
+    ~~~~^^
+  File "/home/joshuawarren/src/mlx-requal/receipts/2026-09-10-bf16-decode-gemv-requal/m1_ulp_truth.py", line 86, in main
+    native_out[f"{phase}.{proj}"] = t[2]
+                                    ~^^^
+IndexError: tuple index out of range
+SUITES-ULP-OK

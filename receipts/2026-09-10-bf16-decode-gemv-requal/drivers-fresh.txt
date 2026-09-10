@@ -1,0 +1,17 @@
+== fork ==
+	apiVersion         = 1.4.359
+	driverVersion      = 26.2.99
+	deviceName         = Apple M1 (G13G B1)
+	driverName         = Honeykrisp
+	conformanceVersion = 1.4.0.0
+	apiVersion         = 1.4.359
+	driverVersion      = 26.2.99
+	deviceName         = llvmpipe (LLVM 22.1.8, 128 bits)
+== stock ==
+	apiVersion         = 1.4.354
+	driverVersion      = 26.1.7
+	deviceName         = Apple M1 (G13G B1)
+	driverName         = Honeykrisp
+	conformanceVersion = 1.4.0.0
+== kernel ==
+7.1.6-1-1-ARCH
