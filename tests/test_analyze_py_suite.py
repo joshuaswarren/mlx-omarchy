@@ -60,15 +60,27 @@ class AnalyzePySuiteTests(unittest.TestCase):
 
         self.assertNotEqual(result.returncode, 0)
 
-    def test_report_without_executed_cases_fails(self):
+    def test_all_skipped_report_succeeds_with_warning(self):
         skipped = "<testcase classname='test_ops' name='test_skipped'><skipped/></testcase>"
         with tempfile.TemporaryDirectory() as td:
-            Path(td, "test_ops.py.xml").write_text(
+            Path(td, "test_conv_transpose.py.xml").write_text(
                 junit_xml(skipped, skipped=1), encoding="utf-8"
             )
             result = run_analyzer(td)
 
-        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("all skipped", result.stderr)
+
+    def test_mixed_skipped_and_executed_report_succeeds(self):
+        skipped = "<testcase classname='test_ops' name='test_skipped'><skipped/></testcase>"
+        with tempfile.TemporaryDirectory() as td:
+            Path(td, "test_ops.py.xml").write_text(
+                junit_xml(PASS_CASE + skipped, tests=2, skipped=1),
+                encoding="utf-8",
+            )
+            result = run_analyzer(td)
+
+        self.assertEqual(result.returncode, 0, result.stderr)
 
     def test_failure_is_classified_without_becoming_analyzer_failure(self):
         failed = (
@@ -90,6 +102,27 @@ class AnalyzePySuiteTests(unittest.TestCase):
         self.assertEqual(len(rows), 1)
         self.assertEqual(rows[0]["kind"], "named")
         self.assertEqual(rows[0]["detail"], "FFT")
+
+    def test_refused_gap_is_named(self):
+        failed = (
+            "<testcase classname='test_compile' name='test_inf_constant'>"
+            "<failure message='RuntimeError: [omarchy] Compiled tape bfloat16 is refused: bf12 fragments'/>"
+            "</testcase>"
+        )
+        with tempfile.TemporaryDirectory() as td:
+            report_dir = Path(td)
+            report_dir.joinpath("test_compile.py.xml").write_text(
+                junit_xml(failed, failures=1), encoding="utf-8"
+            )
+            csv_path = report_dir / "classification.csv"
+            result = run_analyzer(report_dir, "--csv", csv_path)
+            with csv_path.open(newline="", encoding="utf-8") as stream:
+                rows = list(csv.DictReader(stream))
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["kind"], "named")
+        self.assertEqual(rows[0]["detail"], "Compiled tape bfloat16")
 
 
 if __name__ == "__main__":

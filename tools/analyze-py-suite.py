@@ -3,6 +3,7 @@
 
 Buckets mirror receipts/2026-09-01-upstream-suite-coverage.md:
   named    RuntimeError: [omarchy] ... is not implemented ...
+           RuntimeError: [omarchy] ... is refused ...
   cpucpu   IndexError: vector::_M_range_check (cpu stream table)
   ncpuimpl RuntimeError: ... has no CPU implementation
   assert   AssertionError (wrong-value candidates; each verified by hand)
@@ -16,7 +17,7 @@ import re
 import sys
 import xml.etree.ElementTree as ET
 
-NAMED = re.compile(r"RuntimeError: \[omarchy\] (.+?) is not implemented")
+NAMED = re.compile(r"RuntimeError: \[omarchy\] (.+?) is (?:not implemented|refused)")
 FIRST_LINE = lambda s: (s or "").strip().split("\n")[0]
 
 
@@ -73,9 +74,11 @@ def main():
             return 2
         cases = tree.findall(".//testcase")
         if not any(tc.find("skipped") is None for tc in cases):
-            print(f"ERROR: XML report has no executed test cases: {xf}",
+            # Fully-skipped files (e.g. conv_transpose on this backend)
+            # are legitimate: nothing executed, nothing to classify.
+            print(f"WARNING: no executed test cases (all skipped): {xf}",
                   file=sys.stderr)
-            return 2
+            continue
         for tc in cases:
             for fail in list(tc.findall("failure")) + list(tc.findall("error")):
                 msg = fail.get("message") or (fail.text or "")

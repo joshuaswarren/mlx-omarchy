@@ -298,6 +298,39 @@ TEST_CASE("chain with offset (sliced) leaf matches eager") {
       0.0);
 }
 
+TEST_CASE("chain with column-contiguous (transposed) leaf matches eager") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  enable_fusion();
+  // A transpose is column-contiguous: still `contiguous`, but its storage
+  // order is not its logical order. The fused leaf shader reads
+  // row-major, so it must refuse this leaf and run the per-node path.
+  // Admitting it fuses storage order and returns permuted values
+  // (upstream test_compile_dynamic_dims).
+  array base = random::normal(Shape{8, 64}, float32);
+  base.eval();
+  sync_stream(stream);
+  array gate = transpose(base, {1, 0}, stream);
+  array up = random::normal(Shape{64, 8}, float32);
+  gate.eval();
+  up.eval();
+  sync_stream(stream);
+  CHECK(gate.flags().contiguous);
+  CHECK(!gate.flags().row_contiguous);
+  check_compiled_matches_eager(
+      [](const std::vector<array>& in) {
+        array gate = in[0];
+        array up = in[1];
+        return std::vector<array>{gate * sigmoid(gate) * up};
+      },
+      std::vector<array>{gate, up},
+      float32,
+      stream,
+      0.0);
+}
+
 TEST_CASE("special values carry through the chain bit-exactly") {
   if (!compute_available()) {
     return;
