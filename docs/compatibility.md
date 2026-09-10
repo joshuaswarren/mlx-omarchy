@@ -556,20 +556,22 @@ memory and `coopMatLoad`s both from there. Dequantized weights stay f32
 inside the dot, as in every qmm kernel. The register-block gate routes
 to it when `cooperative_matrix_f32_8` holds with subgroup size 32;
 `MLX_OMARCHY_NO_COOPMAT=1` and every other device keep `QmmTileRbF16`.
-Decode (`matrix_m == 1`) is untouched.
 
-The route is allocation-independent: the coopmat kernel reads x as
+The route is allocation-independent. The coopmat kernel reads x as
 32-bit word pairs, so a row-contiguous x view at an odd f16-element
 offset (the shape allocator pressure or an early `device_info()`
-allocation can produce) used to fall back to the tile kernel, whose
-different accumulation order silently changed generated tokens under
-memory pressure. The dispatch now materializes such a view into an
-aligned buffer before dispatch, so the same model, driver, and inputs
-produce bit-identical output regardless of where the activation landed.
-The fast path pays a few integer ops; the copy fires only on the rare
-unaligned view. Regression coverage: "qmm coopmat output is
-bit-identical across x offset alignment" (`omarchy_matmul_family_tests`).
-Receipt: `receipts/2026-09-10-qmm-align-determinism/verdict.json`.
+allocation can produce) used to reroute to the tile kernel. The tile
+route is bit-identical to coopmat on current drivers (probed at
+m=64/262/1053 over the Qwen prefill shapes, and full-model pins hold
+with `MLX_OMARCHY_NO_COOPMAT=1`), but the reroute silently depended on
+where the allocator placed the activation. The dispatch now
+materializes such a view into an aligned buffer before dispatch, so the
+route depends only on capability and env, and a post-staging alignment
+violation refuses by name instead of rerouting. The fast path pays a
+few integer ops; the copy fires only on the rare unaligned view.
+Regression coverage: "qmm coopmat output is bit-identical across x
+offset alignment" (`omarchy_matmul_family_tests`). Receipt:
+`receipts/2026-09-10-qmm-align-determinism/verdict.json`.
 
 Shared memory bounds occupancy on AGX: a first cut staging a 64-wide
 chunk (20 KiB per subgroup) ran at 0.55x the tile. At 2 KiB the M1 on

@@ -1,0 +1,42 @@
+{
+ "status": "source_change_and_test_landed_on_branch; m1_six_digest_gate_pending_contention",
+ "gate_status": {
+  "llvmpipe_family_suite": "PASS 20/20 cases, 20,810,294 assertions (final binary; two earlier runs on an intermediate binary had one non-assertion failure each, not reproduced)",
+  "llvmpipe_runtime_suite": "PASS 41/41 cases, 22,691 assertions",
+  "m1_proof_legs": "PASS as recorded in reproduction_attempts",
+  "m1_six_digest_quiet_machine_gate": "NOT COMPLETED AT RECORDING TIME - window C script (5 paired matrix runs with per-run retry-on-mismatch, receipts/2026-09-10-qmm-align-determinism/check_matrix.py protocol) launched on jwm1 but queued behind Bf16DecodeGemvClose's overrunning /tmp/m1-gpu.lock chain; window D (stock matrix, M1 fork+stock suites, staging cost probe) also queued",
+  "blocker": "M1 GPU lock contention: peer chain (receipt-gemvclose full_chain.sh + bench_paired.sh) held /tmp/m1-gpu.lock for 2.5+ h past its announced window; my scripted gate is live on jwm1 (/tmp/m1_align_window_c.sh, /tmp/m1_align_window_d.sh) and writes results to receipts/2026-09-10-qmm-align-determinism/m1/ when it acquires the lock; rerun with `sh /tmp/m1_align_window_c.sh && sh /tmp/m1_align_window_d.sh`"
+ },
+ "schema": "mlx-omarchy/qmm-align-determinism/1",
+ "date_utc": "2026-09-10",
+ "question": "Does the qmm coopmat gate's odd-offset tile fallback change generated-token digests, and can the route be made allocation-independent without cost?",
+ "defect_as_assigned": "The quantized matmul cooperative-matrix gate silently falls back to the register-blocked tile kernel when a buffer offset is odd, and that fallback was reported not digest-neutral: under memory pressure the pinned long-decode-128 digest flips 4cc08910 -> f873dc2b, reportedly also triggered by a device_info() call before model load (receipts/2026-09-10-qmm-splitk-parity, fragmentation_hazard_found).",
+ "gate_location": [
+  "overlay/mlx/backend/omarchy/primitives.cpp, QuantizedMatmul::eval_gpu, the rb_enabled && float16 && transpose && bits==4 && group_size==64 dispatch branch",
+  "pre-fix condition: caps.cooperative_matrix_f32_8 && caps.subgroup_size==32 && !MLX_OMARCHY_NO_COOPMAT && shared-memory ok && (lhs_offset % 2)==0 && (output_offset % 2)==0; a false offset test silently dispatched QmmTileRbF16/QmmTileRbPreciseF16 instead of QmmPrefillCoopmatF16",
+  "shaders/qmm_coopmat.comp reads x as 32-bit word pairs (x_slice = lhs_offset / 2), hence the even-offset requirement"
+ ],
+ "fix": "commit e7ccc255 on wave/QmmAlignDeterminism: coopmat eligibility is resolved before operand normalization; a row-contiguous x view at an odd f16-element offset is materialized via the existing ensure_dense/contiguous_copy_gpu engine into a fresh aligned buffer before dispatch. Output is always a fresh offset-0 allocation. Route now depends only on capability and env; a post-staging alignment violation refuses by name (coopmat operand alignment) instead of silently rerouting.",
+ "reproduction_attempts": {
+  "forced_unaligned_cpp_test": {
+   "instrument": "omarchy_matmul_family_tests, 'qmm coopmat output is bit-identical across x offset alignment': same q4/g64/f16 weights and x values as (1) whole buffer and (2) row-contiguous view at f16 element offset 1 (byte offset 2), exact bit comparison of outputs, plus host-reference bound",
+   "shapes": ["m=64 k=896 n=896 (QmmTileRbF16 fallback route)", "k=256 n=192 variant also run during instrument bring-up"],
+   "result_old_backend_250b9014": "PASS - 0 bit mismatches at every shape; the tile fallback is bit-identical to coopmat on the installed fork",
+   "result_fix_backend": "PASS - identical"
+  },
+  "forced_unaligned_python_repro": {
+   "instrument": "receipts/2026-09-10-qmm-align-determinism/repro_offset_parity.py",
+   "shapes": ["m=64 k=896 n=896", "m=262 k=896 n=4864", "m=1053 k=896 n=896 (QmmTileRbPreciseF16 fallback route)"],
+   "result_old_installed_wheel_b6d662a8": "IDENTICAL at all three shapes (0/57344, 0/1274368, 0/943488 mismatches)",
+   "result_fix_wheel": "IDENTICAL at all three shapes"
+  },
+  "device_info_before_load_ab": {
+   "instrument": "bench_decode long-decode-128, pinned model a5339a41, temp 0 seed 0 warmup 4, quiet machine, old wheel b6d662a8: plain vs mx.metal.device_info() before load, 2 reps each",
+   "result": "plain 4cc08910089477fd x2, device_info-first 4cc08910089477fd x2 - no flip on a quiet machine"
+  },
+  "corroboration_from_committed_receipts": "receipts/2026-09-10-honeykrisp-fork-split ran the full bench_matrix with MLX_OMARCHY_NO_COOPMAT=1 (every qmm on the tile route) and all six required digests held; receipts/2026-09-10-qmm-splitk-parity tile128 arm also held the pins"
+ },
+ "premise_correction": "The assigned premise - that the qmm gate's odd-offset fallback is not digest-neutral - does not reproduce. On the installed Honeykrisp fork the register-blocked tile route (QmmTileRbF16 and QmmTileRbPreciseF16) is bit-identical to the coopmat route at kernel level for q4/group-64/f16, at every shape probed, and full-model digests hold on the pure-tile route. The f873dc2b flip recorded under concurrent GPU load is real but is NOT attributable to this gate: forcing this gate's fallback both directly (odd offsets) and globally (NO_COOPMAT) keeps every digest pinned.",
+ "open_blocker": "The mechanism of the load-window flip (f873dc2b under 2026-09-10 ~15:04-15:15 contention) remains unattributed. It does not reproduce on a quiet machine, with device_info-before-load, or through any forced qmm-gate reroute. Attribution needs a contention-window repro with per-dispatch kernel profiling (diagnostics wheel + MLX_OMARCHY_GPU_PROFILE) while the contention is live.",
+ "change_decision": "Land the fix anyway as the assigned hardening: the qmm route becomes allocation-independent by construction (the stated goal), the fast path pays only the eligibility arithmetic already computed plus one modulo, the staging copy fires only on the rare unaligned view, stock Mesa (cooperative_matrix_f32_8=0) is structurally unchanged, and a broken staging contract now refuses loudly instead of silently rerouting. Digest safety of the change is proven by the six-digest gate below."
+}

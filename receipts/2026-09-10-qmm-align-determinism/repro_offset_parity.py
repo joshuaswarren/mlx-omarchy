@@ -22,27 +22,33 @@
 # On stock Mesa (coopmat_f32_8=0) both arms take the tile route and match
 # on either wheel - the repro is only discriminating where the gate lives.
 
-m, k, n = 64, 256, 192  # matrix_m > 1, k multiple of group_size 64
+import mlx.core as mx
+SHAPES = [(64, 896, 896), (262, 896, 4864), (1053, 896, 896)]
+# m < 1024 routes the tile fallback to QmmTileRbF16, m >= 1024 to
+# QmmTileRbPreciseF16; both are compared against the coopmat route.
 
-w = mx.random.normal((n, k), key=mx.random.key(17))
-wq, scales, biases = mx.quantize(w, group_size=64, bits=4)
+for m, k, n in SHAPES:
+    w = mx.random.normal((n, k), key=mx.random.key(17))
+    wq, scales, biases = mx.quantize(w, group_size=64, bits=4)
 
-x = mx.random.normal((m * k + 1,), key=mx.random.key(410)).astype(mx.float16)
-x_odd = x[1:].reshape(m, k)  # row-contiguous view, f16 element offset 1
-assert x_odd.shape == (m, k)
-x_whole = mx.contiguous(x[1:]).reshape(m, k)  # same values, fresh buffer
+    x = mx.random.normal((m * k + 1,), key=mx.random.key(410)).astype(
+        mx.float16)
+    x_odd = x[1:].reshape(m, k)  # row-contiguous view, f16 element offset 1
+    assert x_odd.shape == (m, k)
+    x_whole = mx.contiguous(x[1:]).reshape(m, k)  # same values, fresh buffer
 
-out_aligned = mx.quantized_matmul(
-    x_whole, wq, scales, biases, transpose=True, group_size=64, bits=4
-)
-out_odd = mx.quantized_matmul(
-    x_odd, wq, scales, biases, transpose=True, group_size=64, bits=4
-)
-mx.eval(out_aligned, out_odd)
+    out_aligned = mx.quantized_matmul(
+        x_whole, wq, scales, biases, transpose=True, group_size=64, bits=4
+    )
+    out_odd = mx.quantized_matmul(
+        x_odd, wq, scales, biases, transpose=True, group_size=64, bits=4
+    )
+    mx.eval(out_aligned, out_odd)
 
-mismatched = int((out_aligned != out_odd).sum())
-print(f"mismatches={mismatched}/{out_aligned.size}")
-if mismatched == 0:
-    print("IDENTICAL - offset parity does not change output bits")
-else:
-    print("MISMATCH - odd-offset view silently rerouted kernels (old gate)")
+    mismatched = int((out_aligned != out_odd).sum())
+    print(f"m={m} k={k} n={n} mismatches={mismatched}/{out_aligned.size}")
+    if mismatched != 0:
+        print("MISMATCH - odd-offset view silently rerouted kernels (old gate)")
+    else:
+        print("IDENTICAL")
+
