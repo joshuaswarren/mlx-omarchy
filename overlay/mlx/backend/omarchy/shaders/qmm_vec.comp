@@ -108,8 +108,11 @@ layout(set = 0, binding = 0, std430) readonly buffer InputX {
 // rounding). Workgroups are laid out weight after weight; shape[i]
 // carries weight i's N, dims the weight count, flags bit 8+i the
 // epilogue for weight i. Every weight, scale, bias, output, and addend
-// starts at element 0 of its buffer (the host refuses otherwise), so
-// no per-weight offsets ride in the push constants.
+// starts at element 0 of its buffer (the host refuses otherwise), so no
+// per-weight offsets ride in the push constants — except a weight's sum
+// store under the direct-KV flag (bit 12+i), which the host may aim at
+// one token row of a KV cache copy: out_strides[i] base element,
+// in_strides[i] the row gap, matrix_m the head dim.
 #define QMM_VEC_MULTI_WEIGHT(I, B) \
 layout(set = 0, binding = B, std430) readonly buffer InputW##I { \
   uint values[]; \
@@ -382,7 +385,13 @@ uint q6_at(uint e, uint c0, uint c1, uint c2) {
 #define Q4_MULTI_STORE(I, rounded) { \
   output##I.values[column] = STORE_VALUE(rounded); \
   if ((params.flags & (256u << I)) != 0u) { \
-    sum##I.values[column] = STORE_VALUE( \
+    uint sum_column = column; \
+    if ((params.flags & (4096u << I)) != 0u) { \
+      sum_column = params.out_strides[I] + \
+          (column / params.matrix_m) * params.in_strides[I] + \
+          (column % params.matrix_m); \
+    } \
+    sum##I.values[sum_column] = STORE_VALUE( \
         (rounded) + LOAD_VALUE(addend##I.values[column])); \
   } \
 }

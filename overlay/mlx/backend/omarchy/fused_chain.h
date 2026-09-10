@@ -122,6 +122,26 @@ class EagerFusionScope {
 // by the active eager-fusion scope; false keeps the ordinary eval_gpu path.
 bool try_eval_eager_fusion(array& node, const Stream& stream);
 
+// Producer-direct KV cache write window. When a SliceUpdate pair's new
+// rows can be stored by the row's PRODUCER (the RoPE kernel for keys,
+// the fused GEMV Add epilogue for values), the merged pair dispatch is
+// deleted: the producer writes the updated cache copy's window directly
+// and the copy of the bytes never happens. The window is the paste
+// region of the SliceUpdate output |node| (a fresh copy of |base|, the
+// cache), addressed in elements relative to the node buffer start.
+struct KvDirectWindow {
+  array node;
+  array base;
+  uint32_t offset{0};
+  uint32_t strides[4]{};
+  uint32_t ndim{0};
+  // GEMV sum-store column map only: column c of the epilogue sum lands
+  // at offset + (c / head_dim) * row_gap + (c % head_dim). Single-batch
+  // decode only.
+  uint32_t row_gap{0};
+  uint32_t head_dim{0};
+};
+
 // DecodeFusion: one fused decode GEMV group. Up to kQmmVecMultiWeights
 // affine transposed 4-bit/group-64 QuantizedMatmul nodes that read one
 // single-row x, each optionally followed by the Add that is its only
@@ -132,7 +152,11 @@ struct GemvFusionMember {
   array node;
   std::optional<array> epilogue;
   std::optional<array> addend;
+  // Planned producer-direct write of the epilogue sum into the values
+  // cache copy; empty keeps the sum in its own buffer.
+  std::optional<KvDirectWindow> sum_window;
 };
+
 
 // Validates the group against the kernel contract, allocates every
 // output, and records the dispatch. Returns false having allocated
@@ -147,6 +171,25 @@ enum class SliceUpdatePairDispatch : uint8_t { done, not_ready, unsupported };
 SliceUpdatePairDispatch dispatch_slice_update_pair(
     std::array<array, 2>& nodes,
     const Stream& stream);
+
+// Producer-direct KV write hooks for the planner's two producers.
+// find_rope_kv_redirect returns the planned window for this RoPE output
+// while its pair is still pending; commit marks the pair done (both
+// producers wrote their windows, the merged pair dispatch is skipped);
+// abort un-plans the direct write so the pair falls back to the ordinary
+// merged SliceUpdatePair dispatch.
+KvDirectWindow* find_rope_kv_redirect(const array& out);
+void commit_rope_kv_redirect(const array& out);
+void abort_kv_direct();
+// Marks the values side of the direct write as stored: the GEMV group
+// wrote the sum into the planned window. The keys side requires this
+// before it will fire, and the reshaped sum view aliases the window
+// once it is set.
+void commit_values_kv_write(const array& sum_node);
+
+// MLX_OMARCHY_KV_DIRECT=0 keeps both cache writes on the merged pair
+// dispatch (the MLX_OMARCHY_FUSED_CHAIN gate also covers it).
+bool kv_direct_enabled();
 
 // MLX_OMARCHY_FUSED_GEMV=0 keeps every QuantizedMatmul and Add on the
 // per-node path (the MLX_OMARCHY_FUSED_CHAIN gate also covers it).
