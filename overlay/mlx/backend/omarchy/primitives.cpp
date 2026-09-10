@@ -6901,6 +6901,31 @@ bool dispatch_quantized_gemv_group(
   params.lhs_offset = static_cast<uint32_t>(x_offset);
   params.count = static_cast<uint32_t>(total_groups);
 
+  // Producer-direct KV windows: a member's Add epilogue may store its
+  // sum straight into an updated cache copy (see fused_chain.h), which
+  // deletes the merged SliceUpdatePair dispatch for that layer. The
+  // base copy of the cache is enqueued here so the rows land in order.
+  bool any_kv_window = false;
+  for (auto& member : members) {
+    if (!member.sum_window) {
+      continue;
+    }
+    auto& window = *member.sum_window;
+    if (!member.epilogue || window.node.data_shared_ptr() != nullptr ||
+        window.base.data_shared_ptr() == nullptr ||
+        window.base.dtype() != float16 ||
+        !window.base.flags().row_contiguous ||
+        window.base.size() != window.base.data_size() ||
+        window.base.offset() % window.base.itemsize() != 0 ||
+        !input_ready(window.base, stream)) {
+      // The direct write cannot fire: keep the sum in its own buffer
+      // and unwind the pair plan to the merged pair dispatch.
+      abort_kv_direct();
+      member.sum_window.reset();
+      continue;
+    }
+    any_kv_window = true;
+  }
   // Contract satisfied: allocate every output, then bind. Unused
   // weight slots bind the first member's output so every binding the
   // shader declares is a valid buffer.
@@ -6908,6 +6933,31 @@ bool dispatch_quantized_gemv_group(
     member.node.set_data(allocator().malloc(member.node.nbytes()));
     if (member.epilogue) {
       member.epilogue->set_data(allocator().malloc(member.epilogue->nbytes()));
+    }
+    if (member.sum_window) {
+      auto& window = *member.sum_window;
+      window.node.set_data(allocator().malloc(window.node.nbytes()));
+      copy_gpu(
+          window.base,
+          window.node,
+          window.base.flags().contiguous ? CopyType::Vector
+                                         : CopyType::General,
+          stream);
+      encoder.add_temporary(window.node);
+      commit_values_kv_write(window.node);
+      encoder.add_temporary(window.base);
+    }
+  }
+  if (any_kv_window) {
+    for (size_t i = 0; i < members.size(); ++i) {
+      if (!members[i].sum_window) {
+        continue;
+      }
+      const auto& window = *members[i].sum_window;
+      params.in_strides[i] = window.row_gap;
+      params.out_strides[i] = window.offset;
+      params.flags |= 4096u << i;
+      params.matrix_m = window.head_dim;
     }
   }
   std::array<ComputeBinding, kQmmVecMultiBindings> bindings{};
@@ -6923,8 +6973,10 @@ bool dispatch_quantized_gemv_group(
       bindings[base + 3] = binding(member.node);
       bindings[base + 4] =
           member.addend ? binding(*member.addend) : binding(member.node);
-      bindings[base + 5] =
-          member.epilogue ? binding(*member.epilogue) : binding(member.node);
+      bindings[base + 5] = member.sum_window
+          ? binding(member.sum_window->node)
+          : (member.epilogue ? binding(*member.epilogue)
+                             : binding(member.node));
     } else {
       for (uint32_t j = 0; j < kQmmVecMultiBindingsPerWeight; ++j) {
         bindings[base + j] = filler;
@@ -9877,6 +9929,45 @@ void RoPE::eval_gpu(
       scale_,
       out);
 
+
+  // Producer-direct KV write: when the eager planner claimed this
+  // RoPE output as a SliceUpdate pair member, the rotated rows below
+  // store straight into the updated cache copy's window and the merged
+  // pair dispatch disappears. Aborts unwind to that dispatch.
+  omarchy::KvDirectWindow* kv_window =
+      (out.size() > 0 && out.dtype() == float16 && inputs.size() == 2)
+      ? omarchy::find_rope_kv_redirect(out)
+      : nullptr;
+  if (kv_window) {
+    omarchy::KvDirectWindow& window = *kv_window;
+    if (window.node.data_shared_ptr() != nullptr ||
+        window.base.data_shared_ptr() == nullptr ||
+        window.base.dtype() != float16 ||
+        !window.base.flags().row_contiguous ||
+        window.base.size() != window.base.data_size() ||
+        window.base.offset() % window.base.itemsize() != 0 ||
+        !omarchy::input_ready(window.base, s) ||
+        !omarchy::input_ready(in, s) ||
+        !omarchy::input_ready(offset, s)) {
+      // The values side already stored its rows (find_rope_kv_redirect
+      // only fires after that commit), so unwinding to the merged pair
+      // dispatch is impossible: the redirected sum buffer never
+      // materializes. Fail loudly instead of corrupting the cache.
+      throw std::runtime_error(
+          "[mlx-omarchy] direct KV write committed values but the keys "
+          "window is not dispatchable");
+    }
+    window.node.set_data(allocate_omarchy(window.node.nbytes()));
+    copy_gpu(
+        window.base,
+        window.node,
+        window.base.flags().contiguous ? CopyType::Vector
+                                       : CopyType::General,
+        s);
+    encoder.add_temporary(window.node);
+    encoder.add_temporary(window.base);
+  }
+  bool kv_direct = kv_window != nullptr;
   // The kernel never rotates in place: the input binding is readonly, the
   // output binding writeonly, and they never alias (an aliased
   // readonly/writeonly pair drops stores on llvmpipe - observed
@@ -9980,6 +10071,12 @@ void RoPE::eval_gpu(
   params.out_strides[0] = checked_u32(mat_size, tag, out);
   params.out_strides[1] = checked_u32(D, tag, out);
   params.out_strides[2] = 1u;
+  if (kv_direct) {
+    params.output_offset = kv_window->offset;
+    params.out_strides[0] = kv_window->strides[0];
+    params.out_strides[1] = kv_window->strides[1];
+    params.out_strides[2] = kv_window->strides[2];
+  }
   if (with_freqs) {
     params.aux_offset =
         checked_item_offset(inputs.at(2), inputs.at(2).size(), tag, out);
@@ -9990,8 +10087,6 @@ void RoPE::eval_gpu(
   // proven constant-shift form, commit cf68e7d) and write float32; a
   // uint16_t-typed block compiled from that source returned recycled
   // memory on llvmpipe, and per-element half-word stores of a shared
-  // 32-bit word race between adjacent lanes, so the in-kernel bf16
-  // store stays unbuilt.
   array rope_output = out;
   std::optional<array> f32_to_bf16;
   if (out.dtype() == bfloat16) {
@@ -9999,6 +10094,8 @@ void RoPE::eval_gpu(
     f32_to_bf16->set_data(allocate_omarchy(f32_to_bf16->nbytes()));
     encoder.add_temporary(*f32_to_bf16);
     rope_output = *f32_to_bf16;
+  } else if (kv_direct) {
+    rope_output = kv_window->node;
   } else {
     out.set_data(allocate_omarchy(out.nbytes()));
   }
@@ -10030,6 +10127,9 @@ void RoPE::eval_gpu(
       bindings,
       params,
       omarchy::compute_dispatch_group_count(params.count));
+  if (kv_direct) {
+    omarchy::commit_rope_kv_redirect(out);
+  }
   if (f32_to_bf16) {
     copy_gpu(*f32_to_bf16, out, CopyType::Vector, s);
   }

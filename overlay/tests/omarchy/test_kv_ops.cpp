@@ -195,6 +195,156 @@ TEST_CASE("paired fp16 KV slice updates wait for a lazy second update") {
       1e-3);
 }
 
+
+// Producer-direct KV write: the decode-shaped SliceUpdate pair whose
+// keys rows come from a forward RoPE and whose values rows come from a
+// fused GEMV Add epilogue. With MLX_OMARCHY_KV_DIRECT on, both
+// producers store their rows straight into the updated cache copies and
+// the merged pair dispatch is deleted (one fewer compute dispatch);
+// the produced caches must be bit-identical to the merged-dispatch run.
+TEST_CASE("producer-direct KV write is bit-exact against the merged pair") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  const auto& capabilities = omarchy::device(0).capabilities();
+  if (!capabilities.shader_float16 ||
+      !capabilities.storage_buffer_16bit_access) {
+    skip("Vulkan device lacks required FP16 shader and storage features.");
+    return;
+  }
+
+  // Caches [1, 2, 8, 4]: two kv heads, eight slots, head dim 4. Rows
+  // 0-2 hold distinct f16-exact values; the append targets row 3.
+  std::vector<float> base(64);
+  for (int index = 0; index < 64; ++index) {
+    base[index] = static_cast<float>(index);
+  }
+  array keys_cache =
+      astype(array(base.data(), {1, 2, 8, 4}, float32), float16, stream);
+  array values_cache =
+      astype(array(base.data(), {1, 2, 8, 4}, float32), float16, stream);
+
+  // Two 4-bit/group-64 transposed projections (k = 64, n = 8) against
+  // one shared x row, each with an f16 bias epilogue. Weights, scales,
+  // biases, and x are evaluated first: the GEMV group contract requires
+  // them ready when the group dispatches.
+  std::vector<uint32_t> words(64, 0xA5A5A5A5u);
+  array kw(words.data(), {8, 8}, uint32);
+  array vw(words.data(), {8, 8}, uint32);
+  std::vector<float> scales_float(8, 0.25f);
+  std::vector<float> biases_float(8, -0.5f);
+  std::vector<float> x_float(64, 0.125f);
+  array kscales =
+      astype(array(scales_float.data(), {8, 1}, float32), float16, stream);
+  array kbiases =
+      astype(array(biases_float.data(), {8, 1}, float32), float16, stream);
+  array vscales =
+      astype(array(scales_float.data(), {8, 1}, float32), float16, stream);
+  array vbiases =
+      astype(array(biases_float.data(), {8, 1}, float32), float16, stream);
+  array x = astype(array(x_float.data(), {1, 64}, float32), float16, stream);
+  std::vector<float> kadd_float(8, 0.5f);
+  std::vector<float> vadd_float(8, -0.25f);
+  array kadd = astype(array(kadd_float.data(), {8}, float32), float16, stream);
+  array vadd = astype(array(vadd_float.data(), {8}, float32), float16, stream);
+  eval({keys_cache,
+        values_cache,
+        kw,
+        vw,
+        kscales,
+        kbiases,
+        vscales,
+        vbiases,
+        x,
+        kadd,
+        vadd});
+  omarchy::get_command_encoder(stream).synchronize();
+
+  auto build_and_eval = [&]() {
+    array kproj = quantized_matmul(
+        x,
+        kw,
+        kscales,
+        kbiases,
+        /*transpose=*/true,
+        /*group_size=*/64,
+        /*bits=*/4,
+        "affine",
+        stream);
+    array vproj = quantized_matmul(
+        x,
+        vw,
+        vscales,
+        vbiases,
+        /*transpose=*/true,
+        /*group_size=*/64,
+        /*bits=*/4,
+        "affine",
+        stream);
+    array ksum = add(kproj, kadd, stream);
+    array vsum = add(vproj, vadd, stream);
+    array krow = reshape(ksum, Shape{1, 2, 1, 4}, stream);
+    array vrow = reshape(vsum, Shape{1, 2, 1, 4}, stream);
+    array krot =
+        fast::rope(krow, 4, false, 10000.0f, 1.0f, 3, std::nullopt, stream);
+    array updated_keys = slice_update(
+        keys_cache, krot, Shape{0, 0, 3, 0}, Shape{1, 2, 4, 4}, stream);
+    array updated_values = slice_update(
+        values_cache, vrow, Shape{0, 0, 3, 0}, Shape{1, 2, 4, 4}, stream);
+    uint64_t before = omarchy::trace::counters().vk_compute_dispatches.load();
+    eval({updated_keys, updated_values});
+    omarchy::get_command_encoder(stream).synchronize();
+    uint64_t dispatches =
+        omarchy::trace::counters().vk_compute_dispatches.load() - before;
+    return std::make_tuple(
+        std::move(updated_keys), std::move(updated_values), dispatches);
+  };
+
+  auto bit_pattern = [](const array& value) {
+    return std::vector<uint16_t>(
+        value.data<uint16_t>(), value.data<uint16_t>() + value.size());
+  };
+
+  setenv("MLX_OMARCHY_KV_DIRECT", "0", 1);
+  auto [keys_off, values_off, dispatches_off] = build_and_eval();
+  setenv("MLX_OMARCHY_KV_DIRECT", "1", 1);
+  auto [keys_on, values_on, dispatches_on] = build_and_eval();
+  unsetenv("MLX_OMARCHY_KV_DIRECT");
+
+  // Bit-exact: the direct write stores the same bytes the merged pair
+  // dispatch stores, in the same positions.
+  REQUIRE_EQ(bit_pattern(keys_on), bit_pattern(keys_off));
+  REQUIRE_EQ(bit_pattern(values_on), bit_pattern(values_off));
+
+  // The direct write deletes exactly the merged pair dispatch; both
+  // arms paste two window rows over full-cache copies.
+  CHECK_EQ(dispatches_off - dispatches_on, 1);
+
+  // Window isolation: everything outside the appended row 3 keeps the
+  // cache's bits, and the appended rows actually changed.
+  auto keys_bits = bit_pattern(keys_on);
+  auto values_bits = bit_pattern(values_on);
+  auto base_bits = bit_pattern(astype(keys_cache, float16, stream));
+  int key_changes = 0;
+  int value_changes = 0;
+  for (int index = 0; index < 64; ++index) {
+    // [1, 2, 8, 4]: head block of 32, four elements per slot; the
+    // appended row is slot 3 of each head.
+    bool window = (index % 32) / 4 == 3;
+    if (window) {
+      key_changes += keys_bits[index] != base_bits[index] ? 1 : 0;
+      value_changes += values_bits[index] != base_bits[index] ? 1 : 0;
+    } else {
+      REQUIRE_EQ(keys_bits[index], base_bits[index]);
+      REQUIRE_EQ(values_bits[index], base_bits[index]);
+    }
+  }
+  // Two kv heads x four elements: every appended element moved.
+  CHECK_EQ(key_changes, 8);
+  CHECK_EQ(value_changes, 8);
+}
+
 TEST_CASE("SliceUpdate row window keeps surrounding data") {
   if (!compute_available()) {
     return;

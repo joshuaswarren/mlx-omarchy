@@ -17,6 +17,8 @@
 #include <utility>
 #include <vector>
 
+#include "mlx/backend/common/slicing.h"
+#include "mlx/fast_primitives.h"
 #include "mlx/backend/omarchy/allocator.h"
 #include "mlx/backend/omarchy/compute.h"
 #include "mlx/backend/omarchy/device.h"
@@ -611,6 +613,17 @@ struct SliceUpdatePair {
   std::array<array, 2> nodes;
   enum class State : uint8_t { pending, deferred, done, failed } state{
       State::pending};
+  // Producer-direct plan: windows[0] is the RoPE (keys) target,
+  // windows[1] the GEMV Add-epilogue (values) target. When both
+  // producers commit their stores the merged pair dispatch is skipped;
+  // any abort unwinds to that dispatch unchanged.
+  bool direct{false};
+  std::array<std::optional<KvDirectWindow>, 2> windows;
+  // Set when the GEMV group stored the values sum into windows[1]:
+  // windows[1].node holds the rows, its sum buffer never materializes,
+  // and the keys side must now commit too (it runs later by data
+  // dependency).
+  bool values_committed{false};
 };
 
 struct EagerFusionState {
@@ -620,12 +633,183 @@ struct EagerFusionState {
   std::vector<GemvGroup> gemv_groups;
   std::unordered_map<std::uintptr_t, size_t> slice_update_roles;
   std::vector<SliceUpdatePair> slice_update_pairs;
+  std::unordered_map<std::uintptr_t, size_t> rope_redirect_roles;
+  std::unordered_map<std::uintptr_t, size_t> reshape_redirect_roles;
 };
 
 thread_local EagerFusionState* eager_state = nullptr;
 
 bool is_op(const array* node, const std::type_info& op) {
   return node && node->has_primitive() && typeid(node->primitive()) == op;
+}
+
+// Producer-direct KV write planning. Classification of one SliceUpdate
+// pair member's update producer: the keys member's producer is a RoPE
+// node, the values member's producer is a fused GEMV Add epilogue read
+// through the member's single Reshape consumer.
+enum class DirectKind : uint8_t { none, keys_rope, values_sum };
+
+struct DirectPlan {
+  std::optional<KvDirectWindow> window;
+  DirectKind kind{DirectKind::none};
+  size_t group_index{0};
+  size_t member_index{0};
+};
+
+// Element geometry of a paste window inside a SliceUpdate output:
+// element offset and per-update-axis strides, plus the span the window
+// covers. Arrays are attached later by aggregate init (KvDirectWindow
+// holds arrays and is not default-constructible).
+struct DirectGeometry {
+  uint32_t offset{0};
+  uint32_t strides[4]{};
+  uint32_t ndim{0};
+};
+
+// Shared layout contract of a direct-write window: |member| is a full
+// row-contiguous f16 copy of the cache, and the paste window (from the
+// member's own SliceUpdate geometry) fits inside it.
+std::optional<DirectGeometry> direct_window_geometry(const array& member) {
+  const auto& base = member.inputs()[0];
+  const auto& upd = member.inputs()[1];
+  if (member.dtype() != float16 || base.dtype() != float16 ||
+      upd.dtype() != float16 || !base.flags().row_contiguous ||
+      base.size() != base.data_size() ||
+      base.offset() % base.itemsize() != 0 || upd.size() == 0 ||
+      upd.ndim() == 0 || upd.ndim() > 4) {
+    return std::nullopt;
+  }
+  const auto& primitive_state =
+      static_cast<const SliceUpdate&>(member.primitive()).state();
+  auto [offset, strides] = prepare_slice(
+      member,
+      std::get<1>(primitive_state),
+      std::get<3>(primitive_state));
+  uint64_t span = 0;
+  DirectGeometry geometry;
+  geometry.ndim = static_cast<uint32_t>(upd.ndim());
+  for (int axis = 0; axis < upd.ndim(); ++axis) {
+    if (upd.shape(axis) <= 0 || strides[axis] < 0 ||
+        static_cast<uint64_t>(upd.shape(axis)) >
+            std::numeric_limits<uint32_t>::max() ||
+        static_cast<uint64_t>(strides[axis]) >
+            std::numeric_limits<uint32_t>::max() ||
+        (axis == upd.ndim() - 1 && strides[axis] != 1)) {
+      return std::nullopt;
+    }
+    span += static_cast<uint64_t>(upd.shape(axis) - 1) * strides[axis];
+    geometry.strides[axis] = static_cast<uint32_t>(strides[axis]);
+  }
+  if (offset > std::numeric_limits<uint32_t>::max() ||
+      span > std::numeric_limits<uint32_t>::max() - offset ||
+      offset + span >= member.size()) {
+    return std::nullopt;
+  }
+  geometry.offset = static_cast<uint32_t>(offset);
+  return geometry;
+}
+
+// Keys: the RoPE kernel writes (matrix, time, feature) output strides,
+// so the window's (batch, kv-head) axes must form one regular matrix
+// axis. The RoPE fence (forward, scalar offset, fused-path conditions)
+// is re-checked at dispatch; aborting there unwinds to the merged pair
+// dispatch.
+DirectPlan plan_keys_window(const array& member, const array* update) {
+  DirectPlan plan;
+  if (!is_op(update, typeid(fast::RoPE)) || update->inputs().size() != 2) {
+    return plan;
+  }
+  auto geometry = direct_window_geometry(member);
+  if (!geometry) {
+    return plan;
+  }
+  const auto& upd = member.inputs()[1];
+  uint32_t matrix_stride;
+  if (upd.ndim() == 4) {
+    uint64_t heads = static_cast<uint64_t>(upd.shape(1));
+    if (heads == 0 ||
+        static_cast<uint64_t>(geometry->strides[0]) !=
+            heads * static_cast<uint64_t>(geometry->strides[1])) {
+      return plan;
+    }
+    matrix_stride = geometry->strides[1];
+  } else {
+    matrix_stride = geometry->strides[0];
+  }
+  plan.window = KvDirectWindow{
+      member,
+      member.inputs()[0],
+      geometry->offset,
+      {matrix_stride, geometry->strides[upd.ndim() - 2], 1, 0},
+      geometry->ndim,
+      /*row_gap=*/0,
+      /*head_dim=*/0};
+  plan.kind = DirectKind::keys_rope;
+  return plan;
+}
+
+// Values: the epilogue sum is one flat row of n_kv * head_dim columns;
+// its store maps column c to offset + (c / head_dim) * row_gap +
+// (c % head_dim), which needs a single batch and a window whose inner
+// axis is contiguous.
+DirectPlan plan_values_window(
+    const array& member,
+    const array* update,
+    const std::unordered_map<std::uintptr_t, size_t>& uses,
+    const std::vector<GemvGroup>& groups) {
+  DirectPlan plan;
+  auto use_count = [&](const array& value) {
+    auto it = uses.find(value.id());
+    return it == uses.end() ? size_t{0} : it->second;
+  };
+  if (!is_op(update, typeid(Reshape)) || use_count(*update) != 1) {
+    return plan;
+  }
+  const array* sum = &update->inputs()[0];
+  if (!is_op(sum, typeid(Add)) || use_count(*sum) != 1) {
+    return plan;
+  }
+  bool found = false;
+  for (size_t gi = 0; gi < groups.size() && !found; ++gi) {
+    for (size_t mi = 0; mi < groups[gi].members.size(); ++mi) {
+      const auto& candidate = groups[gi].members[mi].epilogue;
+      if (candidate && candidate->id() == sum->id()) {
+        plan.group_index = gi;
+        plan.member_index = mi;
+        found = true;
+      }
+    }
+  }
+  if (!found) {
+    return plan;
+  }
+  const auto& base = member.inputs()[0];
+  const auto& upd = member.inputs()[1];
+  if (upd.ndim() != 4 || upd.shape(0) != 1 || base.shape(0) != 1 ||
+      static_cast<size_t>(upd.shape(1)) * upd.shape(3) != sum->size()) {
+    return plan;
+  }
+  auto geometry = direct_window_geometry(member);
+  if (!geometry) {
+    return plan;
+  }
+  uint32_t head_dim = static_cast<uint32_t>(upd.shape(3));
+  if (head_dim == 0) {
+    return plan;
+  }
+  plan.window = KvDirectWindow{
+      member,
+      base,
+      geometry->offset,
+      {geometry->strides[0],
+       geometry->strides[1],
+       geometry->strides[2],
+       geometry->strides[3]},
+      geometry->ndim,
+      /*row_gap=*/geometry->strides[1],
+      /*head_dim=*/head_dim};
+  plan.kind = DirectKind::values_sum;
+  return plan;
 }
 
 } // namespace
@@ -825,6 +1009,55 @@ EagerFusionScope::EagerFusionScope(const std::deque<array>& tape)
       state->gemv_groups.push_back(std::move(group));
     }
   }
+  // Producer-direct KV cache writes: when one pair member's new rows
+  // come from a RoPE node (keys) and the other's from a fused GEMV Add
+  // epilogue through its single Reshape (values), both producers store
+  // their rows straight into the updated cache copies and the merged
+  // pair dispatch is deleted. Any structural mismatch keeps the
+  // ordinary plan; runtime aborts unwind to it as well.
+  if (kv_direct_enabled()) {
+    for (size_t index = 0; index < state->slice_update_pairs.size();
+         ++index) {
+      auto& pair = state->slice_update_pairs[index];
+      DirectPlan plans[2];
+      bool classifiable = true;
+      for (int side = 0; side < 2 && classifiable; ++side) {
+        const array* update = lookup(pair.nodes[side].inputs()[1]);
+        auto use_it =
+            update ? uses.find(update->id()) : uses.end();
+        if (!update || use_it == uses.end() || use_it->second != 1) {
+          classifiable = false;
+          break;
+        }
+        plans[side] = plan_keys_window(pair.nodes[side], update);
+        if (plans[side].kind == DirectKind::none) {
+          plans[side] = plan_values_window(
+              pair.nodes[side], update, uses, state->gemv_groups);
+        }
+      }
+      if (!classifiable || plans[0].kind == DirectKind::none ||
+          plans[1].kind == DirectKind::none ||
+          plans[0].kind == plans[1].kind) {
+        continue;
+      }
+      int rope_side = plans[0].kind == DirectKind::keys_rope ? 0 : 1;
+      int sum_side = 1 - rope_side;
+      DirectPlan& sum_plan = plans[sum_side];
+      // Copy the values window into its GEMV member BEFORE the pair
+      // moves it: an optional move leaves the source empty, and the
+      // member's window must carry the arrays themselves.
+      state->gemv_groups[sum_plan.group_index]
+          .members[sum_plan.member_index]
+          .sum_window = sum_plan.window;
+      pair.windows[0] = std::move(plans[rope_side].window);
+      pair.windows[1] = std::move(sum_plan.window);
+      state->rope_redirect_roles.emplace(
+          pair.nodes[rope_side].inputs()[1].id(), index);
+      state->reshape_redirect_roles.emplace(
+          pair.nodes[sum_side].inputs()[1].id(), index);
+      pair.direct = true;
+    }
+  }
 }
 
 EagerFusionScope::~EagerFusionScope() {
@@ -838,6 +1071,65 @@ bool fused_gemv_enabled() {
        env_flag("MLX_OMARCHY_FUSED_GEMV"));
 }
 
+bool kv_direct_enabled() {
+  return fused_chain_enabled() &&
+      (std::getenv("MLX_OMARCHY_KV_DIRECT") == nullptr ||
+       env_flag("MLX_OMARCHY_KV_DIRECT"));
+}
+
+KvDirectWindow* find_rope_kv_redirect(const array& out) {
+  if (!eager_state) {
+    return nullptr;
+  }
+  auto it = eager_state->rope_redirect_roles.find(out.id());
+  if (it == eager_state->rope_redirect_roles.end()) {
+    return nullptr;
+  }
+  auto& pair = eager_state->slice_update_pairs[it->second];
+  if (!pair.direct || pair.state != SliceUpdatePair::State::pending ||
+      !pair.values_committed) {
+    return nullptr;
+  }
+  return &pair.windows[0].value();
+}
+
+void commit_rope_kv_redirect(const array& out) {
+  if (!eager_state) {
+    return;
+  }
+  auto it = eager_state->rope_redirect_roles.find(out.id());
+  if (it == eager_state->rope_redirect_roles.end()) {
+    return;
+  }
+  auto& pair = eager_state->slice_update_pairs[it->second];
+  if (pair.direct && pair.state == SliceUpdatePair::State::pending) {
+    pair.state = SliceUpdatePair::State::done;
+  }
+}
+
+void abort_kv_direct() {
+  if (!eager_state) {
+    return;
+  }
+  for (auto& pair : eager_state->slice_update_pairs) {
+    if (pair.direct && pair.state == SliceUpdatePair::State::pending) {
+      pair.state = SliceUpdatePair::State::failed;
+    }
+  }
+}
+
+void commit_values_kv_write(const array& sum_node) {
+  if (!eager_state) {
+    return;
+  }
+  for (auto& pair : eager_state->slice_update_pairs) {
+    if (pair.direct && pair.windows[1]->node.id() == sum_node.id()) {
+      pair.values_committed = true;
+      return;
+    }
+  }
+}
+
 bool try_eval_eager_fusion(array& node, const Stream& stream) {
   if (!eager_state) {
     return false;
@@ -845,6 +1137,15 @@ bool try_eval_eager_fusion(array& node, const Stream& stream) {
   if (auto update = eager_state->slice_update_roles.find(node.id());
       update != eager_state->slice_update_roles.end()) {
     auto& pair = eager_state->slice_update_pairs[update->second];
+    if (pair.direct) {
+      if (pair.state == SliceUpdatePair::State::done) {
+        return true;
+      }
+      // The producers did not commit (abort or fence): un-plan the
+      // direct write and run the ordinary merged pair dispatch below.
+      pair.direct = false;
+      pair.state = SliceUpdatePair::State::pending;
+    }
     if (pair.state == SliceUpdatePair::State::done) {
       return true;
     }
@@ -867,6 +1168,22 @@ bool try_eval_eager_fusion(array& node, const Stream& stream) {
     }
     pair.state = SliceUpdatePair::State::failed;
     return false;
+  }
+  if (auto reshape = eager_state->reshape_redirect_roles.find(node.id());
+      reshape != eager_state->reshape_redirect_roles.end()) {
+    auto& pair = eager_state->slice_update_pairs[reshape->second];
+    if (!pair.values_committed) {
+      return false;
+    }
+    const auto& window = *pair.windows[1];
+    Strides view_strides(window.strides, window.strides + window.ndim);
+    array::Flags flags;
+    flags.contiguous = false;
+    flags.row_contiguous = false;
+    flags.col_contiguous = false;
+    node.copy_shared_buffer(
+        window.base, view_strides, flags, node.data_size(), window.offset);
+    return true;
   }
   if (auto gemv = eager_state->gemv_roles.find(node.id());
       gemv != eager_state->gemv_roles.end()) {
