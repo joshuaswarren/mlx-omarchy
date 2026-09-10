@@ -1,0 +1,178 @@
+{
+  "schema": "decode-sdpa-native/1",
+  "source_commit": "da63329aaea2f373a79a3b338c224c99cbf19ecf",
+  "base_commit": "21e20a433fbb7222290cca762e92f9054d6230c0",
+  "release_wheel": {
+    "name": "mlx_omarchy-0.32.2.dev202609101223+da63329-cp314-cp314-linux_aarch64.whl",
+    "sha256": "6cb337dcb0b8a6cf1d51964488e437aa21be90f0c8748f77a828d39f01f0f898",
+    "source_commit": "da63329aaea2f373a79a3b338c224c99cbf19ecf"
+  },
+  "diagnostics_wheel": {
+    "name": "mlx_omarchy-0.32.2.dev202609101234+diag.da63329-cp314-cp314-linux_aarch64.whl",
+    "sha256": "0d6e137f25961ec8acec44841e29f58ea0812eecbe79cd22548f383b162de84b",
+    "source_commit": "da63329aaea2f373a79a3b338c224c99cbf19ecf"
+  },
+  "native_oracle": {
+    "mlx_version": "0.32.2",
+    "host": "16M1MBP.local",
+    "device": "Apple M1 Max",
+    "input_sha256": "3f688d5a5fe02197028408944a71402d56b9f6f875194b7a7d11982f22138c14",
+    "capture_sha256": "004f4e9bfbba3256b0d31c7a42081cc745f07ffe5cca8fc506063f0c64e16d5b"
+  },
+  "fixed_input_exactness": {
+    "wheel_sha256": "6cb337dcb0b8a6cf1d51964488e437aa21be90f0c8748f77a828d39f01f0f898",
+    "source_commit": "da63329aaea2f373a79a3b338c224c99cbf19ecf",
+    "inputs_identical": true,
+    "lengths": {
+      "30": {
+        "elements": 896,
+        "mismatches": 0,
+        "max_error": 0.0
+      },
+      "62": {
+        "elements": 896,
+        "mismatches": 0,
+        "max_error": 0.0
+      },
+      "127": {
+        "elements": 896,
+        "mismatches": 0,
+        "max_error": 0.0
+      },
+      "263": {
+        "elements": 896,
+        "mismatches": 0,
+        "max_error": 0.0
+      },
+      "1053": {
+        "elements": 896,
+        "mismatches": 0,
+        "max_error": 0.0
+      }
+    },
+    "mismatches": 0
+  },
+  "randomized_exactness": {
+    "wheel_sha256": "6cb337dcb0b8a6cf1d51964488e437aa21be90f0c8748f77a828d39f01f0f898",
+    "source_commit": "da63329aaea2f373a79a3b338c224c99cbf19ecf",
+    "cases": 800,
+    "element_comparisons": 716800,
+    "mismatches": 0,
+    "first_failure": null
+  },
+  "dispatch_profile": {
+    "wheel_sha256": "0d6e137f25961ec8acec44841e29f58ea0812eecbe79cd22548f383b162de84b",
+    "source_commit": "da63329aaea2f373a79a3b338c224c99cbf19ecf",
+    "driver": "Mesa Honeykrisp / fork ICD",
+    "before": {
+      "dispatches_per_decode_interval": 345.0,
+      "sdpa_decode_native": null
+    },
+    "after": {
+      "dispatches_per_decode_interval": 297.0,
+      "sdpa_decode_native": {
+        "count": 792,
+        "total_ms": 31.381,
+        "mean_us": 39.6,
+        "p50_us": 36.5
+      }
+    },
+    "decode_attention_dispatches_per_layer": {
+      "before": 3,
+      "after": 1
+    }
+  },
+  "paired": {
+    "wheel_sha256": "6cb337dcb0b8a6cf1d51964488e437aa21be90f0c8748f77a828d39f01f0f898",
+    "source_commit": "da63329aaea2f373a79a3b338c224c99cbf19ecf",
+    "repetitions": 3,
+    "measured_legs": 36,
+    "policy_ok": true,
+    "results": [
+      {
+        "leg_id": "qwen25-0.5b-4bit:long-decode-128",
+        "baseline_decode_tok_s": 75.43,
+        "candidate_decode_tok_s": 99.71,
+        "ratio": 1.3218878430332757,
+        "before_digest": "4cc08910089477fd",
+        "after_digest": "4cc08910089477fd",
+        "native_digest": "254d73fd93164b98"
+      },
+      {
+        "leg_id": "qwen25-0.5b-4bit:longctx-1024-decode-32",
+        "baseline_decode_tok_s": 50.19,
+        "candidate_decode_tok_s": 91.19,
+        "ratio": 1.8168957959752938,
+        "before_digest": "7da83f06ec9f001d",
+        "after_digest": "7da83f06ec9f001d",
+        "native_digest": "7da83f06ec9f001d"
+      },
+      {
+        "leg_id": "qwen25-0.5b-4bit:short-decode-32",
+        "baseline_decode_tok_s": 93.14,
+        "candidate_decode_tok_s": 103.1,
+        "ratio": 1.1069357955765513,
+        "before_digest": "7fd25a869ff21678",
+        "after_digest": "7fd25a869ff21678",
+        "native_digest": "7fd25a869ff21678"
+      },
+      {
+        "leg_id": "qwen25-0.5b-bf16:long-decode-128",
+        "baseline_decode_tok_s": 11.29,
+        "candidate_decode_tok_s": 11.29,
+        "ratio": 1.0,
+        "before_digest": "ad964232ee67fecd",
+        "after_digest": "ad964232ee67fecd",
+        "native_digest": "407b7624ed1b3b29"
+      },
+      {
+        "leg_id": "qwen25-0.5b-bf16:longctx-1024-decode-32",
+        "baseline_decode_tok_s": 10.25,
+        "candidate_decode_tok_s": 10.26,
+        "ratio": 1.0009756097560976,
+        "before_digest": "ff502900d2a179a5",
+        "after_digest": "ff502900d2a179a5",
+        "native_digest": "ff502900d2a179a5"
+      },
+      {
+        "leg_id": "qwen25-0.5b-bf16:short-decode-32",
+        "baseline_decode_tok_s": 11.74,
+        "candidate_decode_tok_s": 11.71,
+        "ratio": 0.9974446337308348,
+        "before_digest": "f26175202f3dabe9",
+        "after_digest": "f26175202f3dabe9",
+        "native_digest": "7fc0f968789b1882"
+      }
+    ]
+  },
+  "tests": {
+    "shader_spirv_val": "pass",
+    "llvmpipe_targeted": {
+      "cases": 1,
+      "assertions": 896,
+      "status": "pass"
+    },
+    "m1_targeted": {
+      "cases": 1,
+      "assertions": 897,
+      "status": "pass"
+    }
+  },
+  "decision": "NEEDS_HARDWARE_REVALIDATION",
+  "reason": "da63329 passes fork exactness, dispatch, paired performance, and fork digest policy; stock exposed non-policy digests, fixed at fe8a897, but the budget ended before rebuilding and revalidating fe8a897 on M1",
+  "implementation_source_commit": "fe8a897fa58c5586594513396fc1d811279df08f",
+  "evidence_source_commit": "da63329aaea2f373a79a3b338c224c99cbf19ecf",
+  "stock_driver_cross_check": {
+    "diagnostics_wheel_sha256": "0d6e137f25961ec8acec44841e29f58ea0812eecbe79cd22548f383b162de84b",
+    "fixed_mismatches": 0,
+    "random_mismatches": 19,
+    "random_element_comparisons": 716800,
+    "model_policy_ok": false,
+    "failing_candidate_digests": {
+      "q4_long": "f873dc2bdd34c0fe",
+      "q4_longctx": "31267e7ed4c6d0dc"
+    },
+    "root_cause_fix": "fe8a897 gates the native kernel on cooperative_matrix_f32_8, false on stock Mesa and true on the fork; stock therefore falls back to its unchanged composed path",
+    "fix_revalidated_on_hardware": false
+  }
+}

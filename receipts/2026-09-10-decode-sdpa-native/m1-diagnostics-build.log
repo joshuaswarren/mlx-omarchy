@@ -25,13 +25,16 @@ Building wheels for collected packages: mlx-omarchy
   Building wheel for mlx-omarchy (pyproject.toml): still running...
   Building wheel for mlx-omarchy (pyproject.toml): still running...
   Building wheel for mlx-omarchy (pyproject.toml): finished with status 'done'
-  Created wheel for mlx-omarchy: filename=mlx_omarchy-0.32.2.dev202609101223+da63329-cp314-cp314-linux_aarch64.whl size=7449481 sha256=6cb337dcb0b8a6cf1d51964488e437aa21be90f0c8748f77a828d39f01f0f898
-  Stored in directory: /tmp/pip-ephem-wheel-cache-8s5aqxj5/wheels/09/27/65/f3750bda242f591df69910175c3d4f2b36575558b68269aea9
+  Created wheel for mlx-omarchy: filename=mlx_omarchy-0.32.2.dev202609101234+diag.da63329-cp314-cp314-linux_aarch64.whl size=7455833 sha256=0d6e137f25961ec8acec44841e29f58ea0812eecbe79cd22548f383b162de84b
+  Stored in directory: /tmp/pip-ephem-wheel-cache-rp2bruqb/wheels/09/27/65/f3750bda242f591df69910175c3d4f2b36575558b68269aea9
 Successfully built mlx-omarchy
+== diagnostics staging ==
+[receipt] profiling harness: compiled IN (MLX_OMARCHY_GPU_PROFILE literal found in wheel)
+[receipt] staged tool: /home/joshuawarren/src/mlx-DecodeSdpaNative/dist/mlx-omarchy-info
 == receipt ==
-[receipt] wheel: /home/joshuawarren/src/mlx-DecodeSdpaNative/dist/mlx_omarchy-0.32.2.dev202609101223+da63329-cp314-cp314-linux_aarch64.whl
-[receipt] size: 7449481 bytes
-[receipt] sha256: 6cb337dcb0b8a6cf1d51964488e437aa21be90f0c8748f77a828d39f01f0f898
+[receipt] wheel: /home/joshuawarren/src/mlx-DecodeSdpaNative/dist/mlx_omarchy-0.32.2.dev202609101234+diag.da63329-cp314-cp314-linux_aarch64.whl
+[receipt] size: 7455833 bytes
+[receipt] sha256: 0d6e137f25961ec8acec44841e29f58ea0812eecbe79cd22548f383b162de84b
 [receipt] source commit: da63329
 [receipt] NEXT STEP - do not skip: after you upload this wheel to a
 [receipt] release, verify the UPLOADED asset with

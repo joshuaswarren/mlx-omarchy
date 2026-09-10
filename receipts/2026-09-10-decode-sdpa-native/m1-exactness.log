@@ -1,6 +1,6 @@
 {
   "candidate": {
-    "mlx_version": "0.32.2.dev202609101157+21e20a4",
+    "mlx_version": "0.32.2.dev202609101223+da63329",
     "host": "jwm1-linux",
     "platform": "Linux-7.1.6-1-1-ARCH-aarch64-with-glibc2.43",
     "machine": "aarch64",

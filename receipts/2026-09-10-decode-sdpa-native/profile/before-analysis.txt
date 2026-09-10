@@ -1,0 +1,53 @@
+== profile receipts/2026-09-10-decode-sdpa-native/profile/before.jsonl
+   device=Apple M1 (G13G B1) period=1.0ns valid_bits=64
+   dispatches=11926 submissions=115 joins=49
+   phases=['load_start', 'load_done', 'prefill_start', 'prefill_done', 'decode_start', 'tok', 'decode_done']
+
+== GPU busy fraction: 62.58% (busy 751.667ms / span 1201.108ms)
+   gaps intra-submission: n=11811 total=291.851ms p50=15.8us p90=63.6us p99=98.3us max=314.1us
+   gaps inter-submission: n=114 total=157.590ms p50=291.6us p90=505.5us p99=30.632ms max=59.273ms
+   gap histogram (ns decade: count): {'1e4': 364, '1e5': 11344, '1e6': 211, '1e7': 2, '1e8': 4}
+
+== top kernels by cumulative GPU time
+   QmmVecQ4MultiSubgroupF16   n=3168   total=272.086ms  share= 36.2% mean=85.9us    p50=69.5us
+   MatmulF16                  n=1584   total=85.956ms   share= 11.4% mean=54.3us    p50=48.0us
+   QmmPrefillCoopmatF16       n=163    total=79.881ms   share= 10.6% mean=490.1us   p50=267.2us
+   QmmVecQ4WordSubgroupF16    n=33     total=59.522ms   share=  7.9% mean=1.804ms   p50=1.774ms
+   FastRmsNormF16             n=1664   total=57.231ms   share=  7.6% mean=34.4us    p50=31.2us
+   FastRopeF16                n=1631   total=57.160ms   share=  7.6% mean=35.0us    p50=32.7us
+   CopyGeneralF16             n=1655   total=55.726ms   share=  7.4% mean=33.7us    p50=28.6us
+   SoftmaxF16                 n=815    total=32.940ms   share=  4.4% mean=40.4us    p50=34.1us
+   SwigluF16                  n=815    total=17.416ms   share=  2.3% mean=21.4us    p50=18.2us
+   LogSumExpF16               n=33     total=9.102ms    share=  1.2% mean=275.8us   p50=278.0us
+   ElementwiseF16             n=33     total=6.012ms    share=  0.8% mean=182.2us   p50=182.1us
+   TakeF16                    n=68     total=5.096ms    share=  0.7% mean=74.9us    p50=74.2us
+   ArgReduceF16               n=33     total=4.524ms    share=  0.6% mean=137.1us   p50=137.0us
+   MatmulRbF16                n=46     total=3.114ms    share=  0.4% mean=67.7us    p50=61.6us
+   BinaryVecF16               n=117    total=2.581ms    share=  0.3% mean=22.1us    p50=21.7us
+   dependency proxy [decode]: 4464/10694 consecutive pairs fully disjoint (41.7% - compute-binding disjointness only; transfer/fill/alias deps invisible, not a barrier-correctness bound)
+   dependency proxy [all]: 4919/11925 consecutive pairs fully disjoint (41.2% - compute-binding disjointness only; transfer/fill/alias deps invisible, not a barrier-correctness bound)
+
+== host-side costs (instrumented)
+   join wait    n=49 total=107.568ms p50=390.3us p90=4.178ms max=10.433ms
+   join inval   n=49 total=5.3us p50=83ns max=583ns
+   submit()     n=115 total=243.444ms p50=2.146ms max=6.377ms
+   dispatch record (host) n=11926 total=45.068ms p50=1.2us mean=3.8us
+
+== dispatches per submission (in submit order)
+   [11, 1, 22, 1, 22, 1, 22, 1, 22, 1, 22, 1, 22, 1, 22, 1, 22, 1, 22, 1, 22, 1, 22, 1, 22, 1, 22, 1, 22, 1, 22, 1, 22, 1, 22, 1, 22, 1, 22, 1, 22, 1, 22, 1, 22, 1, 20, 1, 2, 224, 121, 224, 121, 224, 121, 224, 121, 224, 121, 224, 121, 224, 121, 224, 121, 224, 121, 224, 121, 224, 121, 224, 121, 224, 121, 224, 121, 224, 121, 224, 121, 224, 121, 224, 121, 224, 121, 224, 121, 224, 121, 224, 121, 224, 121, 224, 121, 224, 121, 224, 121, 224, 121, 224, 121, 224, 121, 224, 121, 224, 121, 224, 121, 224, 121]
+
+== dependency-barrier decisions (MLX_OMARCHY_GATED_BARRIERS)
+   dispatch barriers: emitted=11926 skipped=0 (0.0% skipped)
+   all nodes incl. transfer/fill: emitted=23852 skipped=0
+
+== per host-marker window (a dispatch sits in its submission's
+   window; records flush late at joins; windows are NOT
+   semantic phases - an async pipeline can submit the next
+   decode step before the first token yields, so boundary
+   work lands in the earlier window)
+   decode: dispatches=10695 gpu_busy=612.696ms joins=0 join_wait_total=0ns
+   prefill: dispatches=1231 gpu_busy=138.971ms joins=48 join_wait_total=107.556ms
+   dispatches/decode-interval: 345.0 (10695 over 31 inter-token intervals; the first decode submit may sit in the prefill window)
+   submissions/decode-interval: 2.0 (62 over 31 intervals)
+   join wait per decode-interval: 0ns
+   dispatch barriers/decode-interval: 345.0 (10695 emitted over 31 intervals)
