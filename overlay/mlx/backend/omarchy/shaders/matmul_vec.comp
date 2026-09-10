@@ -1,6 +1,12 @@
 #version 460
+#if defined(USE_BF16) && defined(DECODE_GEMV)
+#extension GL_KHR_shader_subgroup_basic : require
+#extension GL_KHR_shader_subgroup_shuffle_relative : require
+#endif
 
 // One lane per output preserves the tiled kernel's sequential K accumulation.
+// DECODE_GEMV (BF16, M=1) instead maps one subgroup to four output columns
+// with compensated accumulation: see the variant main() below.
 
 #ifdef USE_FP16
 #extension GL_EXT_shader_16bit_storage : require
@@ -30,12 +36,21 @@ uint16_t bf16_store(float value) {
 const uint COLUMNS_PER_GROUP = 32u;
 layout(local_size_x = 32) in;
 
+#if defined(USE_BF16) && defined(DECODE_GEMV)
+layout(set = 0, binding = 0, std430) readonly buffer InputA {
+  uvec2 values[];
+} input_a;
+layout(set = 0, binding = 1, std430) readonly buffer InputB {
+  uvec2 values[];
+} input_b;
+#else
 layout(set = 0, binding = 0, std430) readonly buffer InputA {
   STORAGE_TYPE values[];
 } input_a;
 layout(set = 0, binding = 1, std430) readonly buffer InputB {
   STORAGE_TYPE values[];
 } input_b;
+#endif
 layout(set = 0, binding = 2, std430) readonly buffer InputC {
   STORAGE_TYPE values[];
 } input_c;
@@ -68,7 +83,144 @@ layout(push_constant) uniform Params {
   uint lhs_gap;
   uint rhs_gap;
 } params;
+#if defined(USE_BF16) && defined(DECODE_GEMV)
 
+vec4 unpack_bf16x4(uvec2 packed) {
+  return vec4(
+      uintBitsToFloat((packed.x & 0xffffu) << 16u),
+      uintBitsToFloat(packed.x & 0xffff0000u),
+      uintBitsToFloat((packed.y & 0xffffu) << 16u),
+      uintBitsToFloat(packed.y & 0xffff0000u));
+}
+
+// Kahan step: one rounding per add, the lost low bits carried in comp.
+// precise blocks fma contraction, which would break the error recovery.
+void kahan_add(
+    precise vec4 product,
+    inout precise vec4 sum,
+    inout vec4 comp) {
+  precise vec4 patched = product - comp;
+  precise vec4 total = sum + patched;
+  comp = (total - sum) - patched;
+  sum = total;
+}
+
+// Dense M=1 decode GEMV: one subgroup per four output columns, wide
+// uvec2 loads, per-lane Kahan accumulation, compensated shuffle-down
+// reduction. Every addition carries an error term, so the result tracks
+// round-to-nearest-even of the exact f64 sum regardless of traversal
+// order. That is the load-bearing property for decode q/k/v: the
+// sequential tiled path is already RNE(f64)-exact there, and bias
+// cancellation amplifies any accumulation slack into visible bit flips
+// (receipts/2026-09-10-bf16-rootcause). The dispatch side guards
+// 4-aligned offsets/strides and matrix_k % (4*subgroupSize) == 0, which
+// keeps every uvec2 index exact.
+void main() {
+  uint batch_index = gl_WorkGroupID.z;
+  uint remaining = batch_index;
+  uint a_batch = 0u;
+  uint b_batch = 0u;
+  for (uint axis = params.dims; axis > 0u; --axis) {
+    uint coord = remaining % params.shape[axis - 1u];
+    remaining /= params.shape[axis - 1u];
+    a_batch += coord * params.in_strides[axis - 1u];
+    b_batch += coord * params.out_strides[axis - 1u];
+  }
+  uint a_base = params.lhs_offset + a_batch;
+  uint b_base = params.rhs_offset + b_batch;
+  uint row_groups = params.matrix_n / 4u;
+  uint lane_k = gl_SubgroupInvocationID * 4u;
+  uint lane_stride = gl_SubgroupSize * 4u;
+  for (uint row_group = gl_WorkGroupID.x; row_group < row_groups;
+       row_group += gl_NumWorkGroups.x) {
+    uint row = row_group * 4u;
+    precise vec4 sum0 = vec4(0.0);
+    precise vec4 sum1 = vec4(0.0);
+    precise vec4 sum2 = vec4(0.0);
+    precise vec4 sum3 = vec4(0.0);
+    vec4 comp0 = vec4(0.0);
+    vec4 comp1 = vec4(0.0);
+    vec4 comp2 = vec4(0.0);
+    vec4 comp3 = vec4(0.0);
+    for (uint k = lane_k; k < params.matrix_k; k += lane_stride) {
+      vec4 x = unpack_bf16x4(input_a.values[(a_base + k) / 4u]);
+      vec4 weight0 = unpack_bf16x4(
+          input_b.values[(b_base + row * params.rhs_gap + k) / 4u]);
+      vec4 weight1 = unpack_bf16x4(
+          input_b.values[(b_base + (row + 1u) * params.rhs_gap + k) / 4u]);
+      vec4 weight2 = unpack_bf16x4(
+          input_b.values[(b_base + (row + 2u) * params.rhs_gap + k) / 4u]);
+      vec4 weight3 = unpack_bf16x4(
+          input_b.values[(b_base + (row + 3u) * params.rhs_gap + k) / 4u]);
+      kahan_add(weight0 * x, sum0, comp0);
+      kahan_add(weight1 * x, sum1, comp1);
+      kahan_add(weight2 * x, sum2, comp2);
+      kahan_add(weight3 * x, sum3, comp3);
+    }
+    // Fold each compensated vec4 pair into a scalar compensated pair:
+    // two-sum chain over the four positions, every rounding error kept.
+    vec4 wide0 = sum0 + comp0;
+    vec4 wide1 = sum1 + comp1;
+    vec4 wide2 = sum2 + comp2;
+    vec4 wide3 = sum3 + comp3;
+    float value0 = wide0.x + wide0.y;
+    float value1 = wide1.x + wide1.y;
+    float value2 = wide2.x + wide2.y;
+    float value3 = wide3.x + wide3.y;
+    float carry0 = (wide0.x - value0) + wide0.y;
+    float carry1 = (wide1.x - value1) + wide1.y;
+    float carry2 = (wide2.x - value2) + wide2.y;
+    float carry3 = (wide3.x - value3) + wide3.y;
+    float total0 = value0 + wide0.z;
+    float total1 = value1 + wide1.z;
+    float total2 = value2 + wide2.z;
+    float total3 = value3 + wide3.z;
+    carry0 += (value0 - total0) + wide0.z;
+    carry1 += (value1 - total1) + wide1.z;
+    carry2 += (value2 - total2) + wide2.z;
+    carry3 += (value3 - total3) + wide3.z;
+    float sum00 = total0 + wide0.w;
+    float sum01 = total1 + wide1.w;
+    float sum02 = total2 + wide2.w;
+    float sum03 = total3 + wide3.w;
+    carry0 += (total0 - sum00) + wide0.w;
+    carry1 += (total1 - sum01) + wide1.w;
+    carry2 += (total2 - sum02) + wide2.w;
+    carry3 += (total3 - sum03) + wide3.w;
+    // Compensated subgroup reduction of the four row pairs.
+    for (uint offset = gl_SubgroupSize >> 1u; offset > 0u; offset >>= 1u) {
+      float other0 = subgroupShuffleDown(sum00, offset);
+      float other1 = subgroupShuffleDown(sum01, offset);
+      float other2 = subgroupShuffleDown(sum02, offset);
+      float other3 = subgroupShuffleDown(sum03, offset);
+      float fold0 = sum00 + other0;
+      float fold1 = sum01 + other1;
+      float fold2 = sum02 + other2;
+      float fold3 = sum03 + other3;
+      carry0 += ((sum00 - fold0) + other0) + subgroupShuffleDown(carry0, offset);
+      carry1 += ((sum01 - fold1) + other1) + subgroupShuffleDown(carry1, offset);
+      carry2 += ((sum02 - fold2) + other2) + subgroupShuffleDown(carry2, offset);
+      carry3 += ((sum03 - fold3) + other3) + subgroupShuffleDown(carry3, offset);
+      sum00 = fold0;
+      sum01 = fold1;
+      sum02 = fold2;
+      sum03 = fold3;
+    }
+    if (gl_SubgroupInvocationID == 0u) {
+      uint output_index = batch_index * params.matrix_n + row;
+      output_data.values[params.output_offset + output_index] =
+          bf16_store(sum00 + carry0);
+      output_data.values[params.output_offset + output_index + 1u] =
+          bf16_store(sum01 + carry1);
+      output_data.values[params.output_offset + output_index + 2u] =
+          bf16_store(sum02 + carry2);
+      output_data.values[params.output_offset + output_index + 3u] =
+          bf16_store(sum03 + carry3);
+    }
+  }
+}
+
+#else
 void main() {
   uint batch_index = gl_WorkGroupID.z;
   uint remaining = batch_index;
@@ -109,3 +261,6 @@ void main() {
     output_data.values[params.output_offset + output_index] = STORE_VALUE(value);
   }
 }
+
+
+#endif

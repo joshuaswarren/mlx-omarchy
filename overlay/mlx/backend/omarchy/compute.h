@@ -95,6 +95,8 @@ enum class ComputeKernel : uint16_t {
   MatmulVecF32,
   MatmulVecF16,
   MatmulVecBF16,
+  // Compensated small-N decode GEMV; same shader, DECODE_GEMV variant.
+  MatmulVecBF16Decode,
   FillF32,
   FillF16,
   FillBF16,

@@ -148,6 +148,7 @@
 #include "matmul_f32_coopmat.h"
 #include "matmul_complex64.h"
 #include "matmul_vec_bf16.h"
+#include "matmul_vec_bf16_decode.h"
 #include "matmul_vec_f16.h"
 #include "matmul_vec_f32.h"
 #include "select_bf16.h"
@@ -536,6 +537,8 @@ ShaderBytes shader_bytes(ComputeKernel kernel) {
       return {matmul_vec_f16, matmul_vec_f16_size};
     case ComputeKernel::MatmulVecBF16:
       return {matmul_vec_bf16, matmul_vec_bf16_size};
+    case ComputeKernel::MatmulVecBF16Decode:
+      return {matmul_vec_bf16_decode, matmul_vec_bf16_decode_size};
     case ComputeKernel::SoftmaxF32:
       return {softmax_f32, softmax_f32_size};
     case ComputeKernel::SoftmaxF16:

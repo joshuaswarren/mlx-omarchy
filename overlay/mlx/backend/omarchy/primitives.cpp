@@ -625,6 +625,41 @@ void dispatch_matmul(
         checked_u32(batch_count, name, out));
     return;
   }
+  // Small-N dense bf16 decode projections (q/k/v/o/down at M=1) run the
+  // compensated subgroup GEMV instead of the sequential 16x16 tile. The
+  // kernel tracks RNE(f64) exactly (receipts/2026-09-10-bf16-rootcause:
+  // bias cancellation amplifies accumulation slack into visible bit
+  // flips on these projections), so the guards must hold the kernel's
+  // addressing: dense transposed-B rows, alpha 1, no C add, uvec2
+  // 4-alignment on every touched offset/stride, K a whole number of
+  // 4-per-lane sweeps, pow2 subgroup with shuffle-down. Anything else
+  // keeps the tiled path. N >= 4096 stays on MatmulVecBF16 above; its
+  // bits are unchanged.
+  if (out.dtype() == bfloat16 && params.matrix_m == 1u &&
+      params.matrix_n < 4096u) {
+    bool decode_vec = b_transposed && !a_transposed && !use_c &&
+        alpha == 1.0f && params.matrix_n % 4u == 0u &&
+        caps.subgroup_size >= 4u && caps.subgroup_size <= 32u &&
+        (caps.subgroup_size & (caps.subgroup_size - 1u)) == 0u &&
+        params.matrix_k % (caps.subgroup_size * 4u) == 0u &&
+        (caps.subgroup_operations & VK_SUBGROUP_FEATURE_SHUFFLE_RELATIVE_BIT) !=
+            0u &&
+        ((params.lhs_offset | params.rhs_offset | params.rhs_gap) & 3u) == 0u;
+    for (uint32_t axis = 0; decode_vec && axis < params.dims; ++axis) {
+      decode_vec =
+          ((params.in_strides[axis] | params.out_strides[axis]) & 3u) == 0u;
+    }
+    if (decode_vec) {
+      encoder.dispatch_compute(
+          omarchy::ComputeKernel::MatmulVecBF16Decode,
+          bindings,
+          params,
+          matrix_group_count(params.matrix_n, 4u),
+          1u,
+          checked_u32(batch_count, name, out));
+      return;
+    }
+  }
   encoder.dispatch_compute(
       kernel,
       bindings,
