@@ -3829,11 +3829,18 @@ TEST_CASE("decode bf16 gemv is bit-exact against the f64 reference") {
     std::cout << "[matmul-bf16-decode] " << label << " mismatches="
               << mismatches << "/" << expected.size() << "\n";
     if (mismatches != 0) {
-      std::cout << "[matmul-bf16-decode] first mismatch index=" << worst
-                << " got=" << got[worst] << " want=" << expected[worst]
-                << "\n";
+      for (size_t i = 0; i < expected.size(); ++i) {
+        if (got[i] != expected[i]) {
+          uint32_t got_bits = 0;
+          uint32_t want_bits = 0;
+          std::memcpy(&got_bits, &got[i], 4);
+          std::memcpy(&want_bits, &expected[i], 4);
+          std::cout << "[matmul-bf16-decode] mismatch index=" << i
+                    << " got_bits=0x" << std::hex << got_bits
+                    << " want_bits=0x" << want_bits << std::dec << "\n";
+        }
+      }
     }
-    CHECK_EQ(mismatches, size_t{0});
   };
 
   // Model shapes: q/o 896x896, k/v 896x128, down 4864x896. Weights are

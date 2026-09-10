@@ -83,6 +83,7 @@ layout(push_constant) uniform Params {
   uint lhs_gap;
   uint rhs_gap;
 } params;
+
 #if defined(USE_BF16) && defined(DECODE_GEMV)
 
 vec4 unpack_bf16x4(uvec2 packed) {
@@ -93,28 +94,39 @@ vec4 unpack_bf16x4(uvec2 packed) {
       uintBitsToFloat(packed.y & 0xffff0000u));
 }
 
-// Kahan step: one rounding per add, the lost low bits carried in comp.
-// precise blocks fma contraction, which would break the error recovery.
-void kahan_add(
-    precise vec4 product,
-    inout precise vec4 sum,
-    inout vec4 comp) {
-  precise vec4 patched = product - comp;
-  precise vec4 total = sum + patched;
-  comp = (total - sum) - patched;
+// Double-single step: Knuth's two-sum keeps the exact rounding error of
+// sum + product in err; comp accumulates the errors. precise blocks fma
+// contraction, which would break the error recovery. The cheaper 3-op
+// fast variant ((a - s) + b) is NOT exact for mixed-sign operands and
+// silently drops corrections; only the full two-sum survives the deep
+// cancellation these decode projections hit.
+void dd_add(vec4 product, inout precise vec4 sum, inout vec4 comp) {
+  precise vec4 total = sum + product;
+  precise vec4 bb = total - sum;
+  precise vec4 as = total - bb;
+  vec4 err = (product - bb) + (sum - as);
+  comp = comp + err;
   sum = total;
 }
 
+// Unconditional two-sum of two scalars; err = (a + b) - s exactly.
+void two_sum(float a, float b, out float s, out float err) {
+  s = a + b;
+  float bb = s - a;
+  float as = s - bb;
+  err = (a - as) + (b - bb);
+}
+
 // Dense M=1 decode GEMV: one subgroup per four output columns, wide
-// uvec2 loads, per-lane Kahan accumulation, compensated shuffle-down
-// reduction. Every addition carries an error term, so the result tracks
-// round-to-nearest-even of the exact f64 sum regardless of traversal
-// order. That is the load-bearing property for decode q/k/v: the
-// sequential tiled path is already RNE(f64)-exact there, and bias
-// cancellation amplifies any accumulation slack into visible bit flips
-// (receipts/2026-09-10-bf16-rootcause). The dispatch side guards
-// 4-aligned offsets/strides and matrix_k % (4*subgroupSize) == 0, which
-// keeps every uvec2 index exact.
+// uvec2 loads, per-lane double-single accumulation, compensated
+// shuffle-down reduction. Every addition carries its exact rounding
+// error, so the result tracks round-to-nearest-even of the exact f64
+// sum regardless of traversal order. That is the load-bearing property
+// for decode q/k/v: the sequential tiled path is already RNE(f64)-exact
+// there, and bias cancellation amplifies any accumulation slack into
+// visible bit flips (receipts/2026-09-10-bf16-rootcause). The dispatch
+// side guards 4-aligned offsets/strides and matrix_k %
+// (4*subgroupSize) == 0, which keeps every uvec2 index exact.
 void main() {
   uint batch_index = gl_WorkGroupID.z;
   uint remaining = batch_index;
@@ -152,55 +164,55 @@ void main() {
           input_b.values[(b_base + (row + 2u) * params.rhs_gap + k) / 4u]);
       vec4 weight3 = unpack_bf16x4(
           input_b.values[(b_base + (row + 3u) * params.rhs_gap + k) / 4u]);
-      kahan_add(weight0 * x, sum0, comp0);
-      kahan_add(weight1 * x, sum1, comp1);
-      kahan_add(weight2 * x, sum2, comp2);
-      kahan_add(weight3 * x, sum3, comp3);
+      dd_add(weight0 * x, sum0, comp0);
+      dd_add(weight1 * x, sum1, comp1);
+      dd_add(weight2 * x, sum2, comp2);
+      dd_add(weight3 * x, sum3, comp3);
     }
-    // Fold each compensated vec4 pair into a scalar compensated pair:
-    // two-sum chain over the four positions, every rounding error kept.
-    vec4 wide0 = sum0 + comp0;
-    vec4 wide1 = sum1 + comp1;
-    vec4 wide2 = sum2 + comp2;
-    vec4 wide3 = sum3 + comp3;
-    float value0 = wide0.x + wide0.y;
-    float value1 = wide1.x + wide1.y;
-    float value2 = wide2.x + wide2.y;
-    float value3 = wide3.x + wide3.y;
-    float carry0 = (wide0.x - value0) + wide0.y;
-    float carry1 = (wide1.x - value1) + wide1.y;
-    float carry2 = (wide2.x - value2) + wide2.y;
-    float carry3 = (wide3.x - value3) + wide3.y;
-    float total0 = value0 + wide0.z;
-    float total1 = value1 + wide1.z;
-    float total2 = value2 + wide2.z;
-    float total3 = value3 + wide3.z;
-    carry0 += (value0 - total0) + wide0.z;
-    carry1 += (value1 - total1) + wide1.z;
-    carry2 += (value2 - total2) + wide2.z;
-    carry3 += (value3 - total3) + wide3.z;
-    float sum00 = total0 + wide0.w;
-    float sum01 = total1 + wide1.w;
-    float sum02 = total2 + wide2.w;
-    float sum03 = total3 + wide3.w;
-    carry0 += (total0 - sum00) + wide0.w;
-    carry1 += (total1 - sum01) + wide1.w;
-    carry2 += (total2 - sum02) + wide2.w;
-    carry3 += (total3 - sum03) + wide3.w;
+    // Fold the four positions of each (sum, comp) pair into one scalar
+    // pair. The compensation must NOT be merged into the sum here: lane
+    // partials sit at pre-cancellation scale, and one early f32 merge
+    // would leak eps*|partial| into a near-zero total — the exact
+    // failure the compensation exists to prevent. Two-sum every merge,
+    // keep the errors in the carry.
+    float s01; float e01; two_sum(sum0.x, sum0.y, s01, e01);
+    float s11; float e11; two_sum(sum1.x, sum1.y, s11, e11);
+    float s21; float e21; two_sum(sum2.x, sum2.y, s21, e21);
+    float s31; float e31; two_sum(sum3.x, sum3.y, s31, e31);
+    float carry0 = (e01 + comp0.x) + comp0.y;
+    float carry1 = (e11 + comp1.x) + comp1.y;
+    float carry2 = (e21 + comp2.x) + comp2.y;
+    float carry3 = (e31 + comp3.x) + comp3.y;
+    float s02; float e02; two_sum(s01, sum0.z, s02, e02);
+    float s12; float e12; two_sum(s11, sum1.z, s12, e12);
+    float s22; float e22; two_sum(s21, sum2.z, s22, e22);
+    float s32; float e32; two_sum(s31, sum3.z, s32, e32);
+    carry0 += e02 + comp0.z;
+    carry1 += e12 + comp1.z;
+    carry2 += e22 + comp2.z;
+    carry3 += e32 + comp3.z;
+    float sum00; float e03; two_sum(s02, sum0.w, sum00, e03);
+    float sum01; float e13; two_sum(s12, sum1.w, sum01, e13);
+    float sum02; float e23; two_sum(s22, sum2.w, sum02, e23);
+    float sum03; float e33; two_sum(s32, sum3.w, sum03, e33);
+    carry0 += e03 + comp0.w;
+    carry1 += e13 + comp1.w;
+    carry2 += e23 + comp2.w;
+    carry3 += e33 + comp3.w;
     // Compensated subgroup reduction of the four row pairs.
     for (uint offset = gl_SubgroupSize >> 1u; offset > 0u; offset >>= 1u) {
       float other0 = subgroupShuffleDown(sum00, offset);
       float other1 = subgroupShuffleDown(sum01, offset);
       float other2 = subgroupShuffleDown(sum02, offset);
       float other3 = subgroupShuffleDown(sum03, offset);
-      float fold0 = sum00 + other0;
-      float fold1 = sum01 + other1;
-      float fold2 = sum02 + other2;
-      float fold3 = sum03 + other3;
-      carry0 += ((sum00 - fold0) + other0) + subgroupShuffleDown(carry0, offset);
-      carry1 += ((sum01 - fold1) + other1) + subgroupShuffleDown(carry1, offset);
-      carry2 += ((sum02 - fold2) + other2) + subgroupShuffleDown(carry2, offset);
-      carry3 += ((sum03 - fold3) + other3) + subgroupShuffleDown(carry3, offset);
+      float fold0; float err0; two_sum(sum00, other0, fold0, err0);
+      float fold1; float err1; two_sum(sum01, other1, fold1, err1);
+      float fold2; float err2; two_sum(sum02, other2, fold2, err2);
+      float fold3; float err3; two_sum(sum03, other3, fold3, err3);
+      carry0 += err0 + subgroupShuffleDown(carry0, offset);
+      carry1 += err1 + subgroupShuffleDown(carry1, offset);
+      carry2 += err2 + subgroupShuffleDown(carry2, offset);
+      carry3 += err3 + subgroupShuffleDown(carry3, offset);
       sum00 = fold0;
       sum01 = fold1;
       sum02 = fold2;
@@ -221,6 +233,7 @@ void main() {
 }
 
 #else
+
 void main() {
   uint batch_index = gl_WorkGroupID.z;
   uint remaining = batch_index;
@@ -261,6 +274,5 @@ void main() {
     output_data.values[params.output_offset + output_index] = STORE_VALUE(value);
   }
 }
-
 
 #endif
