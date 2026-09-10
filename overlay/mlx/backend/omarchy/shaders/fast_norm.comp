@@ -4,7 +4,7 @@
 // Fused RMSNorm (-DRMS default) or LayerNorm (-DLAYER_NORM=1) forward over the
 // last axis, matching mlx::core::fast fallback math in mlx/fast.cpp. One
 // workgroup handles one row with shared-memory reductions and a grid-stride
-// row loop; every arithmetic step runs in float32 for all storage dtypes.
+// row loop. RMSNorm rounds the normalized value before applying the weight.
 //
 //   RMS:   n = rsqrt(mean(x^2) + eps);            y = x * n * w
 //   Layer: mu = mean(x); var = mean(x^2) - mu^2;
@@ -141,7 +141,13 @@ void main() {
               : LOAD_VALUE(bias_data.values[params.aux_offset + index]);
       float result = (value - mu) * norm * weight + bias;
 #else
-      float result = value * norm * weight;
+#ifdef USE_FP16
+      float normalized =
+          unpackHalf2x16(packHalf2x16(vec2(value * norm, 0.0))).x;
+#else
+      float normalized = LOAD_VALUE(STORE_VALUE(value * norm));
+#endif
+      float result = normalized * weight;
 #endif
       output_data.values[params.output_offset + row * row_length + index] =
           STORE_VALUE(result);

@@ -1,0 +1,22 @@
+[doctest] doctest version is "2.4.12"
+[doctest] run with "--help" for options
+===============================================================================
+/home/joshuawarren/.config/superpowers/worktrees/mlx-omarchy/Bf16NativeChain/.work/mlx/tests/omarchy/test_fused_chain.cpp:581:
+TEST CASE:  eager bf16 swiglu matches native intermediate rounding
+
+/home/joshuawarren/.config/superpowers/worktrees/mlx-omarchy/Bf16NativeChain/.work/mlx/tests/omarchy/test_fused_chain.cpp:603: ERROR: CHECK_EQ( counters().vk_compute_dispatches.load() - before, 2 ) is NOT correct!
+  values: CHECK_EQ( 4, 2 )
+
+/home/joshuawarren/.config/superpowers/worktrees/mlx-omarchy/Bf16NativeChain/.work/mlx/tests/omarchy/test_fused_chain.cpp:609: ERROR: CHECK_EQ( output32.data<float>()[i], expected[i] ) is NOT correct!
+  values: CHECK_EQ( 0.00732422, 0.00726318 )
+
+/home/joshuawarren/.config/superpowers/worktrees/mlx-omarchy/Bf16NativeChain/.work/mlx/tests/omarchy/test_fused_chain.cpp:609: ERROR: CHECK_EQ( output32.data<float>()[i], expected[i] ) is NOT correct!
+  values: CHECK_EQ( -0.476562, -0.478516 )
+
+/home/joshuawarren/.config/superpowers/worktrees/mlx-omarchy/Bf16NativeChain/.work/mlx/tests/omarchy/test_fused_chain.cpp:609: ERROR: CHECK_EQ( output32.data<float>()[i], expected[i] ) is NOT correct!
+  values: CHECK_EQ( -0.621094, -0.625 )
+
+===============================================================================
+[doctest] test cases:  1 | 0 passed | 1 failed | 28 skipped
+[doctest] assertions: 10 | 6 passed | 4 failed |
+[doctest] Status: FAILURE!

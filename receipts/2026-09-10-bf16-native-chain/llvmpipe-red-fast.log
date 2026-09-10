@@ -1,0 +1,30 @@
+[doctest] doctest version is "2.4.12"
+[doctest] run with "--help" for options
+===============================================================================
+/home/joshuawarren/.config/superpowers/worktrees/mlx-omarchy/Bf16NativeChain/.work/mlx/tests/omarchy/test_fast_ops.cpp:337:
+TEST CASE:  low-precision RMSNorm and sigmoid match native rounding
+
+/home/joshuawarren/.config/superpowers/worktrees/mlx-omarchy/Bf16NativeChain/.work/mlx/tests/omarchy/test_fast_ops.cpp:77: ERROR: CHECK( diff <= tolerance ) is NOT correct!
+  values: CHECK( 0.000244141 <= 0 )
+  logged: RMSNorm intermediate rounding element 1: got 0.371094 want 0.37085
+
+/home/joshuawarren/.config/superpowers/worktrees/mlx-omarchy/Bf16NativeChain/.work/mlx/tests/omarchy/test_fast_ops.cpp:77: ERROR: CHECK( diff <= tolerance ) is NOT correct!
+  values: CHECK( 0.000488281 <= 0 )
+  logged: RMSNorm intermediate rounding element 0: got 0.0795898 want 0.0800781
+
+/home/joshuawarren/.config/superpowers/worktrees/mlx-omarchy/Bf16NativeChain/.work/mlx/tests/omarchy/test_fast_ops.cpp:77: ERROR: CHECK( diff <= tolerance ) is NOT correct!
+  values: CHECK( 7.62939e-06 <= 0 )
+  logged: native bfloat16 sigmoid rounding element 1: got 0.00106812 want 0.00106049
+
+/home/joshuawarren/.config/superpowers/worktrees/mlx-omarchy/Bf16NativeChain/.work/mlx/tests/omarchy/test_fast_ops.cpp:77: ERROR: CHECK( diff <= tolerance ) is NOT correct!
+  values: CHECK( 0.000488281 <= 0 )
+  logged: native bfloat16 sigmoid rounding element 2: got 0.119141 want 0.119629
+
+/home/joshuawarren/.config/superpowers/worktrees/mlx-omarchy/Bf16NativeChain/.work/mlx/tests/omarchy/test_fast_ops.cpp:77: ERROR: CHECK( diff <= tolerance ) is NOT correct!
+  values: CHECK( 0.00390625 <= 0 )
+  logged: native bfloat16 sigmoid rounding element 5: got 0.621094 want 0.625
+
+===============================================================================
+[doctest] test cases:  1 |  0 passed | 1 failed | 34 skipped
+[doctest] assertions: 20 | 15 passed | 5 failed |
+[doctest] Status: FAILURE!
