@@ -1,0 +1,21 @@
+# All M1 GPU commands were serialized with this lock (never unlinked):
+flock -w 2400 /tmp/m1-gpu.lock timeout ...
+
+# Cooperative driver:
+VK_ICD_FILENAMES=/tmp/asahi_coopmat_icd.json AGX_SIMDMAT=1
+
+# Stock driver:
+VK_DRIVER_FILES=/home/joshuawarren/stock-mesa/stock-icd.json
+
+# llvmpipe targeted fallback test:
+VK_DRIVER_FILES=/usr/share/vulkan/icd.d/lvp_icd.aarch64.json MLX_OMARCHY_ALLOW_NON_APPLE=1 .work/build-prefill-tests/tests/omarchy/omarchy_matmul_family_tests --test-case="qmm coopmat prefill matches host reference at Qwen shapes"
+
+# Full AGX shaderdb + disassembly:
+MESA_SHADER_CACHE_DISABLE=true AGX_MESA_DEBUG=shaders,shaderdb .venv-accept/bin/python /tmp/qmm_dump_candidate.py
+
+# Kernel profile:
+./run_m1_profiles.sh
+
+# Candidate prompt-length distributions:
+./run_prefill_distribution.sh
+python3 scripts/profile_analyze.py profile.jsonl --markers markers.jsonl --compute-h overlay/mlx/backend/omarchy/compute.h

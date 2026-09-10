@@ -1,0 +1,305 @@
+== Native Metal qmm_t_impl ==
+  1200	METAL_FUNC void qmm_t_impl(
+  1201	    const device uint32_t* w,
+  1202	    const device T* scales,
+  1203	    const device T* biases,
+  1204	    const device T* x,
+  1205	    device T* y,
+  1206	    threadgroup T* Xs,
+  1207	    threadgroup T* Ws,
+  1208	    const constant int& K,
+  1209	    const constant int& N,
+  1210	    const constant int& M,
+  1211	    const constant int& K_eff,
+  1212	    uint3 tid [[threadgroup_position_in_grid]],
+  1213	    uint lid [[thread_index_in_threadgroup]],
+  1214	    uint simd_gid [[simdgroup_index_in_threadgroup]],
+  1215	    uint simd_lid [[thread_index_in_simdgroup]]) {
+  1216	  static_assert(BK >= SIMD_SIZE, "BK should be larger than SIMD_SIZE");
+  1217	  static_assert(BK % SIMD_SIZE == 0, "BK should be divisible by SIMD_SIZE");
+  1218	
+  1219	  (void)lid;
+  1220	
+  1221	  constexpr int WM = 2;
+  1222	  constexpr int WN = 2;
+  1223	  constexpr int pack_factor = get_pack_factor<bits, 8>();
+  1224	  constexpr int bytes_per_pack = get_bytes_per_pack<bits>();
+  1225	
+  1226	  constexpr int BK_padded = (BK + 16 / sizeof(T));
+  1227	
+  1228	  // Instantiate the appropriate BlockMMA and Loader
+  1229	  using mma_t = mlx::steel::
+  1230	      BlockMMA<T, T, BM, BN, BK, WM, WN, false, true, BK_padded, BK_padded>;
+  1231	  using loader_x_t =
+  1232	      mlx::steel::BlockLoader<T, BM, BK, BK_padded, 1, WM * WN * SIMD_SIZE>;
+  1233	  using loader_w_t = QuantizedBlockLoader<
+  1234	      T,
+  1235	      BN,
+  1236	      BK,
+  1237	      BK_padded,
+  1238	      1,
+  1239	      WM * WN * SIMD_SIZE,
+  1240	      group_size,
+  1241	      bits>;
+  1242	
+  1243	  // Set the block
+  1244	  const int K_w = K * bytes_per_pack / pack_factor;
+  1245	  const int K_g = K / group_size;
+  1246	  const int y_row = tid.y * BM;
+  1247	  const int y_col = tid.x * BN;
+  1248	
+  1249	  auto wl = (const device uint8_t*)w;
+  1250	
+  1251	  x += y_row * static_cast<int64_t>(K);
+  1252	  wl += y_col * K_w;
+  1253	  scales += y_col * K_g;
+  1254	  biases += y_col * K_g;
+  1255	  y += y_row * static_cast<int64_t>(N) + y_col;
+  1256	
+  1257	  // Make the x loader and mma operation
+  1258	  const short num_els = min(BM, M - y_row);
+  1259	  const short num_outs = min(BN, N - y_col);
+  1260	  loader_x_t loader_x(x, K, Xs, simd_gid, simd_lid);
+  1261	  loader_w_t loader_w(wl, scales, biases, K, Ws, simd_gid, simd_lid);
+  1262	  mma_t mma_op(simd_gid, simd_lid);
+  1263	
+  1264	  if (num_els < BM) {
+  1265	    if (!aligned_N && num_outs < BN) {
+  1266	      for (int k = 0; k < K_eff; k += BK) {
+  1267	        threadgroup_barrier(mem_flags::mem_threadgroup);
+  1268	        loader_x.load_safe(short2(BK, num_els));
+  1269	        loader_w.load_safe(short2(BK, num_outs));
+  1270	        threadgroup_barrier(mem_flags::mem_threadgroup);
+  1271	        mma_op.mma(Xs, Ws);
+  1272	        loader_x.next();
+  1273	        loader_w.next();
+  1274	      }
+  1275	    } else {
+  1276	      for (int k = 0; k < K_eff; k += BK) {
+  1277	        threadgroup_barrier(mem_flags::mem_threadgroup);
+  1278	        loader_x.load_safe(short2(BK, num_els));
+  1279	        loader_w.load_unsafe();
+  1280	        threadgroup_barrier(mem_flags::mem_threadgroup);
+  1281	        mma_op.mma(Xs, Ws);
+  1282	        loader_x.next();
+  1283	        loader_w.next();
+  1284	      }
+  1285	    }
+  1286	  } else {
+  1287	    if (!aligned_N && num_outs < BN) {
+  1288	      for (int k = 0; k < K_eff; k += BK) {
+  1289	        threadgroup_barrier(mem_flags::mem_threadgroup);
+  1290	        loader_x.load_unsafe();
+  1291	        loader_w.load_safe(short2(BK, num_outs));
+  1292	        threadgroup_barrier(mem_flags::mem_threadgroup);
+  1293	        mma_op.mma(Xs, Ws);
+  1294	        loader_x.next();
+  1295	        loader_w.next();
+  1296	      }
+  1297	    } else {
+  1298	      for (int k = 0; k < K_eff; k += BK) {
+  1299	        threadgroup_barrier(mem_flags::mem_threadgroup);
+  1300	        loader_x.load_unsafe();
+  1301	        loader_w.load_unsafe();
+  1302	        threadgroup_barrier(mem_flags::mem_threadgroup);
+  1303	
+  1304	        mma_op.mma(Xs, Ws);
+  1305	        loader_x.next();
+  1306	        loader_w.next();
+  1307	      }
+  1308	    }
+  1309	  }
+  1310	
+  1311	  // Store results to device memory
+  1312	  threadgroup_barrier(mem_flags::mem_threadgroup);
+  1313	  if (num_els < BM || num_outs < BN) {
+  1314	    mma_op.store_result_safe(y, N, short2(num_outs, num_els));
+  1315	  } else {
+  1316	    mma_op.store_result(y, N);
+  1317	  }
+  1318	}
+  1319	
+  1320	template <
+
+== Native Metal QuantizedBlockLoader ==
+   580	struct QuantizedBlockLoader {
+   581	  static_assert(
+   582	      BCOLS <= group_size,
+   583	      "The group size should be larger than the columns");
+   584	  static_assert(
+   585	      group_size % BCOLS == 0,
+   586	      "The group size should be divisible by the columns");
+   587	  static_assert(
+   588	      bits == 2 || bits == 3 || bits == 4 || bits == 5 || bits == 6 ||
+   589	          bits == 8,
+   590	      "Template undefined for bits not in {2, 3, 4, 5, 6, 8}");
+   591	
+   592	  MLX_MTL_CONST short pack_factor = get_pack_factor<bits, 8>();
+   593	  MLX_MTL_CONST short bytes_per_pack = get_bytes_per_pack<bits>();
+   594	  MLX_MTL_CONST short BCOLS_PACKED = BCOLS / pack_factor;
+   595	  MLX_MTL_CONST short n_reads =
+   596	      (BCOLS_PACKED * BROWS < tgp_size) ? 1 : (BCOLS_PACKED * BROWS) / tgp_size;
+   597	  MLX_MTL_CONST short group_steps = group_size / BCOLS;
+   598	
+   599	  const int src_ld;
+   600	  const int tile_stride;
+   601	  short group_step_cnt;
+   602	  const int group_stride;
+   603	
+   604	  const short thread_idx;
+   605	  const short bi;
+   606	  const short bj;
+   607	
+   608	  threadgroup T* dst;
+   609	  const device uint8_t* src;
+   610	  const device T* scales;
+   611	  const device T* biases;
+   612	
+   613	  QuantizedBlockLoader(
+   614	      const device uint8_t* src_,
+   615	      const device T* scales_,
+   616	      const device T* biases_,
+   617	      const int src_ld_,
+   618	      threadgroup T* dst_,
+   619	      ushort simd_group_id [[simdgroup_index_in_threadgroup]],
+   620	      ushort simd_lane_id [[thread_index_in_simdgroup]]) thread
+   621	      : src_ld(src_ld_),
+   622	        tile_stride(
+   623	            reduction_dim ? BCOLS_PACKED* bytes_per_pack
+   624	                          : BROWS * src_ld * bytes_per_pack / pack_factor),
+   625	        group_step_cnt(0),
+   626	        group_stride(BROWS* src_ld / group_size),
+   627	        thread_idx(simd_group_id * 32 + simd_lane_id),
+   628	        bi(n_reads* thread_idx / BCOLS_PACKED),
+   629	        bj((n_reads * thread_idx) % BCOLS_PACKED),
+   630	        dst(dst_ + bi * dst_ld + bj * pack_factor),
+   631	        src(src_ + bi * src_ld * bytes_per_pack / pack_factor +
+   632	            bj * bytes_per_pack),
+   633	        scales(scales_ + bi * src_ld / group_size),
+   634	        biases(biases_ + bi * src_ld / group_size) {}
+   635	
+   636	  void load_unsafe() const thread {
+   637	    if (BCOLS_PACKED * BROWS < tgp_size && bi >= BROWS) {
+   638	      return;
+   639	    }
+   640	
+   641	    T scale = *scales;
+   642	    T bias = *biases;
+   643	    for (int i = 0; i < n_reads; i++) {
+   644	      dequantize<T, pack_factor, bits>(
+   645	          src + i * bytes_per_pack, scale, bias, dst + i * pack_factor);
+   646	    }
+   647	  }
+   648	
+   649	  void load_safe(short2 src_tile_dim) const thread {
+   650	    if (BCOLS_PACKED * BROWS < tgp_size && bi >= BROWS) {
+   651	      return;
+   652	    }
+   653	
+   654	    if (reduction_dim == 1 && bi >= src_tile_dim.x) {
+   655	      for (int i = 0; i < n_reads * pack_factor; i++) {
+   656	        dst[i] = T(0);
+   657	      }
+   658	      return;
+   659	    }
+   660	
+   661	    if (reduction_dim == 0 && bi >= src_tile_dim.y) {
+   662	      for (int i = 0; i < n_reads * pack_factor; i++) {
+   663	        dst[i] = T(0);
+   664	      }
+   665	      return;
+   666	    }
+   667	
+   668	    T scale = *scales;
+   669	    T bias = *biases;
+   670	    for (int i = 0; i < n_reads; i++) {
+
+== Native Metal BlockMMA ==
+   453	struct BlockMMA {
+   454	  // MMAFrag size
+   455	  STEEL_CONST short kFragSize = 8;
+   456	  using MMAFrag_acc_t = BaseMMAFrag<AccumType, kFragSize, kFragSize>;
+   457	
+   458	  // Warp tile simdgroup matrix strides along M
+   459	  STEEL_CONST short TM_stride = kFragSize * WM;
+   460	  // Warp tile simdgroup matrix strides along M
+   461	  STEEL_CONST short TN_stride = kFragSize * WN;
+   462	
+   463	  // Warp tile size along M
+   464	  STEEL_CONST short TM = BM / (kFragSize * WM);
+   465	  // Warp tile size along N
+   466	  STEEL_CONST short TN = BN / (kFragSize * WN);
+   467	
+   468	  // Threadgroup A strides
+   469	  STEEL_CONST short A_str_m = transpose_a ? 1 : lda_tgp; // M
+   470	  STEEL_CONST short A_str_k = transpose_a ? lda_tgp : 1; // K
+   471	
+   472	  // Threadgroup B strides
+   473	  STEEL_CONST short B_str_k = transpose_b ? 1 : ldb_tgp; // K
+   474	  STEEL_CONST short B_str_n = transpose_b ? ldb_tgp : 1; // N
+   475	
+   476	  // Threadgroup strides along K
+   477	  STEEL_CONST short tile_stride_a = kFragSize * A_str_k;
+   478	  STEEL_CONST short tile_stride_b = kFragSize * B_str_k;
+   479	
+   480	  // Simdgroup matrices
+   481	  MMATile<AccumType, TM, 1, MMAFrag_acc_t> Atile;
+   482	  MMATile<AccumType, 1, TN, MMAFrag_acc_t> Btile;
+   483	  MMATile<AccumType, TM, TN, MMAFrag_acc_t> Ctile;
+   484	
+   485	  // Offsets within threadgroup
+   486	  short sm;
+   487	  short sn;
+   488	
+   489	  short As_offset;
+   490	  short Bs_offset;
+   491	
+   492	  /* Constructor */
+   493	  METAL_FUNC BlockMMA(
+   494	      ushort simd_group_id [[simdgroup_index_in_threadgroup]],
+   495	      ushort simd_lane_id [[thread_index_in_simdgroup]]) thread {
+   496	    // Determine thread position in simdgroup matrix
+   497	    short tm = kFragSize * (simd_group_id / WN);
+   498	    short tn = kFragSize * (simd_group_id % WN);
+   499	
+   500	    short2 simd_coord = MMAFrag_acc_t::get_coord(simd_lane_id);
+   501	    sm = simd_coord.y;
+   502	    sn = simd_coord.x;
+   503	
+   504	    // Determine thread and simdgroup offset
+   505	    As_offset = (tm + sm) * A_str_m + (sn)*A_str_k; // M, K
+   506	    Bs_offset = (sm)*B_str_k + (tn + sn) * B_str_n; // K, N
+   507	
+   508	    sm += tm;
+   509	    sn += tn;
+   510	  }
+   511	
+   512	  /* (BM, BK) X (BK, BN) multiply accumulate function */
+   513	  METAL_FUNC void mma(const threadgroup T* As, const threadgroup T* Bs) thread {
+   514	    // Adjust for simdgroup and thread location
+   515	    As += As_offset;
+   516	    Bs += Bs_offset;
+   517	
+   518	    // Iterate over BK in blocks of kFragSize
+   519	    STEEL_PRAGMA_UNROLL
+   520	    for (short kk = 0; kk < BK; kk += kFragSize) {
+   521	      simdgroup_barrier(mem_flags::mem_none);
+   522	
+   523	      Atile.template load<T, WM, 1, A_str_m, A_str_k>(As);
+   524	
+   525	      simdgroup_barrier(mem_flags::mem_none);
+   526	
+   527	      Btile.template load<T, 1, WN, B_str_k, B_str_n>(Bs);
+   528	
+   529	      simdgroup_barrier(mem_flags::mem_none);
+   530	
+   531	      tile_matmad(Ctile, Atile, Btile, Ctile);
+   532	
+   533	      // Progress to next simdgroup tile
+   534	      As += tile_stride_a;
+   535	      Bs += tile_stride_b;
+   536	    }
+   537	  }
+   538	
+   539	  /* Store results from simdgroup_matrix results into device memory */
+   540	  METAL_FUNC void store_result(device U* D, const int ldd) thread {
