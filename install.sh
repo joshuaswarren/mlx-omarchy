@@ -39,11 +39,13 @@ python3 -c 'import sys; sys.exit(sys.version_info[:2] != (3, 14))' \
 
 # 2. Runtime packages. omarchy-pkg-add is Omarchy's own helper; plain pacman
 #    is the fallback on any other Asahi Arch install.
-say "Installing runtime packages (lapack, blas)"
+# openblas provides libopenblas.so.0, which the wheel's BLAS calls resolve
+# against at import time. Without it `import mlx.core` fails on a fresh install.
+say "Installing runtime packages (lapack, blas, openblas)"
 if command -v omarchy-pkg-add >/dev/null; then
-  omarchy-pkg-add lapack blas
+  omarchy-pkg-add lapack blas openblas
 else
-  sudo pacman -S --needed --noconfirm lapack blas
+  sudo pacman -S --needed --noconfirm lapack blas openblas
 fi
 
 # 3. Download the release wheel and verify it against the SHA256SUMS asset.
