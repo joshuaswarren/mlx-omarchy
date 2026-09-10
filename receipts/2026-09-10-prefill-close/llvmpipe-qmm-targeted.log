@@ -1,0 +1,13 @@
+[provenance] llvmpipe detected: raising submit no-progress window to 900 s for jumbo prefill-shape dispatches
+[doctest] doctest version is "2.4.12"
+[doctest] run with "--help" for options
+===============================================================================
+/home/joshuawarren/.config/superpowers/worktrees/mlx-omarchy/PrefillClose/.work/mlx/tests/omarchy/test_matmul_family.cpp:3265:
+TEST CASE:  qmm tile matches host reference and qmm.comp across prefill shapes
+
+/home/joshuawarren/.config/superpowers/worktrees/mlx-omarchy/PrefillClose/.work/mlx/tests/omarchy/test_matmul_family.cpp:3265: FATAL ERROR: test case CRASHED: SIGTERM - Termination request signal
+
+===============================================================================
+[doctest] test cases:     3 |     2 passed | 1 failed | 16 skipped
+[doctest] assertions: 17779 | 17779 passed | 0 failed |
+[doctest] Status: FAILURE!
