@@ -1,0 +1,70 @@
+{
+  "schema": "mlx-omarchy/dispatch-floor/1",
+  "date_utc": "2026-09-10",
+  "decision": "receipt_only_floor_is_hardware_cdm_launch_cadence_instrumentation_explains_28_30us_keep_driver_default",
+  "topic": "Honeykrisp ~28-30 us per-dispatch floor on the M1: attribution via a minimal Vulkan microbenchmark, a per-launch CDM-barrier driver patch, and digest-gated correctness",
+  "host": "jwm1-linux, Apple M1 (G13G B1), linux-asahi 7.1.6, glslc; dev box for prep only",
+  "baseline_question": "receipts/2026-09-09-decode-fusion/floor.json reported ~29.9 us GPU + ~20.5 us gap per one-workgroup dispatch (~50 us wall) as the Q4 decode floor, with barriers, host descriptor cost, and submission count already ruled out.",
+  "instrument": {
+    "what": "tools/dispatch-floor-bench (this branch): minimal Vulkan compute microbenchmark; empty vs trivial vs no-side-effect kernels; sweeps dispatch count (64-4096), workgroup size (32-512), Vulkan barriers, descriptor rebinding, push-constant updates, pipeline switching, per-dispatch timestamp brackets, and one-dispatch-per-submit round trips; NDJSON out; host CLOCK_MONOTONIC is the absolute scale (device timestamp periods are not trustworthy, see receipts/2026-09-10-q4-gemv-bandwidth/verdict.json).",
+    "artifacts": "receipts/2026-09-10-dispatch-floor/bench/dfb-*.ndjson",
+    "note": "empty shaders are skipped by hk dispatch() (agx_is_shader_empty), so empty cases measure host recording only; nop (always-false store) is the true zero-work launch."
+  },
+  "floor_verdict": {
+    "per_dispatch_wall_us_pipelined_chain": {
+      "nop_1wg": 4.54,
+      "trivial_1wg": 4.52,
+      "trivialpc_1wg": 4.91,
+      "barrier_trivial_1wg": 4.63,
+      "rebind_trivial_1wg": 4.53,
+      "pushconst_trivial_1wg": 4.96,
+      "pipeswitch_trivial_1wg": 4.57,
+      "empty_4096wg_launch_only": 3.95,
+      "empty_shader_skipped_host_only": 0.5
+    },
+    "comparison_stock_mesa_26_1_7": "every case within noise of the fork (trivial 4.52 vs 4.52; table in artifacts dfb-6f6afc8-*.ndjson)",
+    "reading": "The real per-dispatch floor through Honeykrisp on this M1 is ~4.5 us in a tightly pre-recorded chain: ~2.5 us device CDM launch-to-launch cadence (nop == trivial: independent of memory writes) plus ~2 us host record. Vulkan memory barriers, descriptor rebinding, push-constant updates, and pipeline switching are all free inside a chain.",
+    "28_30us_floor_explained": {
+      "timestamp_bracket_cost_us_median": 23.17,
+      "timestamp_bracket_cost_us_min": 21.17,
+      "tsper_case_per_dispatch_wall_us": 73.8,
+      "reading": "Bracketing every dispatch with timestamps costs ~21-23 us per bracket pair on both fork and stock - matching the 25.3/29.9 us one-workgroup GPU times in receipts/2026-09-10-decode-bound-3 and floor.json almost exactly. The previously reported per-dispatch floor was the profiling instrument, not the driver or the hardware. Any future profile must anchor brackets hundreds of dispatches apart, not per dispatch."
+    }
+  },
+  "driver_patch": {
+    "branch": "hk/cdm-barrier-floor (joshuaswarren/mesa, based on honeykrisp-omarchy 6f6afc8 = installed pkg mesa-honeykrisp-omarchy 26.3.0.devel.hk6f6afc8)",
+    "change": "HK_PERFTEST=nocdmbarrier (omit the per-launch kitchen-sink CDM_BARRIER), HK_PERFTEST=usccdmbarrier (reduce it to usc_cache_inval); new agx_cdm_barrier_usc in libagx; default emission byte-identical to before.",
+    "why_not_default_change": "The kitchen-sink per-launch barrier is a measured no-op for throughput (nocdmbarrier leaves every microbenchmark case unchanged), so there is nothing to win - but it is load-bearing for correctness: under HK_PERFTEST=nocdmbarrier the omarchy runtime suite fails 4/41 cases with 6254 failed assertions (query/GPU-CPU coherency paths depend on it). Keeping the default is the only correct choice.",
+    "measured_no_op_evidence": "dfb-6f6afc8-DEFAULT vs dfb-6f6afc8-NOCDMBARRIER: trivial_1wg 4.52 us both; all cases within noise."
+  },
+  "digest_gate": {
+    "status": "FAILED for worktree-built drivers; canonical digests reproduce only under the installed package",
+    "canonical": {"short-decode-32": "7fd25a869ff21678", "long-decode-128": "4cc08910089477fd", "longctx-1024-decode-32": "7da83f06ec9f001d"},
+    "evidence": {
+      "mesa_tip_5bb2b28_build": "short-decode-32 digest flipped to 41e4dbedb4ff6e99 (legs/tip-r1-wt-default.*)",
+      "rebased_6f6afc8_worktree_meson_build": "short-decode-32 digest flipped to 4f69248fb27ec6cf (legs/r1-wt-default.log)",
+      "installed_pkg_same_commit": "QmmAlignDeterminism window C on the same host reproduced all six canonical pins during this run (their receipt)"
+    },
+    "implication": "Driver A/B at digest level requires the package build recipe (PKGBUILD flags), not an ad-hoc meson config: shader/kernel selection or codegen is build-sensitive. This is a standalone finding: never gate digests on ad-hoc driver builds. My patch's default mode is byte-identical CS emission, so it cannot change arithmetic by construction; but the honest gate statement is 'not reproducible under worktree builds', not 'digests verified'."
+  },
+  "decode_implication": {
+    "reading": "With the true floor at ~4.5 us and 273 dispatches per token, launch overhead is ~1.2 ms of an ~8.9 ms release-wheel token (paired-barriers receipt), and the real levers remain the q4 kernel chain time and the ~7.3 ms of host-paced intra-submission gaps in the diagnostics view - not a driver dispatch floor. The Q4 parity blocker is not Honeykrisp dispatch overhead."
+  },
+  "ml_repo_hygiene": "No mlx-omarchy main merge: bench + receipt live on branch wave/DispatchFloor; driver patch on hk/cdm-barrier-floor.",
+  "artifacts": [
+    "tools/dispatch-floor-bench/bench.cpp",
+    "tools/dispatch-floor-bench/run-m1.sh",
+    "scripts/bench_decode_identity.py",
+    "receipts/2026-09-10-dispatch-floor/run_driver_legs.py",
+    "receipts/2026-09-10-dispatch-floor/analyze_bench.py",
+    "receipts/2026-09-10-dispatch-floor/final_window.sh",
+    "receipts/2026-09-10-dispatch-floor/bench/",
+    "receipts/2026-09-10-dispatch-floor/legs/",
+    "receipts/2026-09-10-dispatch-floor/tests-6f6afc8-*.log"
+  ],
+  "commands": [
+    "g++ -std=c++17 -O2 -o /tmp/dfb tools/dispatch-floor-bench/bench.cpp",
+    "flock -w 1500 /tmp/m1-gpu.lock env VK_DRIVER_FILES=~/src/mesa-wt-dispatchfloor/dispatchfloor-icd.json /tmp/dfb",
+    "python3 receipts/2026-09-10-dispatch-floor/run_driver_legs.py --python ~/src/mlx-main-b6d662a8/.work/venv-run/bin/python --wheel ~/src/mlx-main-b6d662a8/dist/mlx_omarchy-0.32.2.dev202609101916+b6d662a-cp314-cp314-linux_aarch64.whl --out receipts/2026-09-10-dispatch-floor/legs"
+  ]
+}
