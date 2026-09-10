@@ -202,6 +202,10 @@ TEST_CASE("paired fp16 KV slice updates wait for a lazy second update") {
 // producers store their rows straight into the updated cache copies and
 // the merged pair dispatch is deleted (one fewer compute dispatch);
 // the produced caches must be bit-identical to the merged-dispatch run.
+// The values side is exercised three ways: the planner's original
+// single Reshape, the model's reshape-then-transpose pair, and the
+// model chain with a second consumer on the view, which must refuse
+// the direct write and keep the merged dispatch.
 TEST_CASE("producer-direct KV write is bit-exact against the merged pair") {
   if (!compute_available()) {
     return;
@@ -261,7 +265,8 @@ TEST_CASE("producer-direct KV write is bit-exact against the merged pair") {
         vadd});
   omarchy::get_command_encoder(stream).synchronize();
 
-  auto build_and_eval = [&]() {
+  std::optional<array> extra_probe;
+  auto build_and_eval = [&](int chain) {
     array kproj = quantized_matmul(
         x,
         kw,
@@ -285,15 +290,24 @@ TEST_CASE("producer-direct KV write is bit-exact against the merged pair") {
     array ksum = add(kproj, kadd, stream);
     array vsum = add(vproj, vadd, stream);
     array krow = reshape(ksum, Shape{1, 2, 1, 4}, stream);
-    array vrow = reshape(vsum, Shape{1, 2, 1, 4}, stream);
+    array vrow = chain == 0
+        ? reshape(vsum, Shape{1, 2, 1, 4}, stream)
+        : transpose(
+              reshape(vsum, Shape{1, 1, 2, 4}, stream), {0, 2, 1, 3}, stream);
     array krot =
         fast::rope(krow, 4, false, 10000.0f, 1.0f, 3, std::nullopt, stream);
     array updated_keys = slice_update(
         keys_cache, krot, Shape{0, 0, 3, 0}, Shape{1, 2, 4, 4}, stream);
     array updated_values = slice_update(
         values_cache, vrow, Shape{0, 0, 3, 0}, Shape{1, 2, 4, 4}, stream);
+    std::vector<array> outputs = {updated_keys, updated_values};
+    extra_probe.reset();
+    if (chain == 2) {
+      extra_probe = astype(vrow, float32, stream);
+      outputs.push_back(*extra_probe);
+    }
     uint64_t before = omarchy::trace::counters().vk_compute_dispatches.load();
-    eval({updated_keys, updated_values});
+    eval(outputs);
     omarchy::get_command_encoder(stream).synchronize();
     uint64_t dispatches =
         omarchy::trace::counters().vk_compute_dispatches.load() - before;
@@ -305,11 +319,41 @@ TEST_CASE("producer-direct KV write is bit-exact against the merged pair") {
     return std::vector<uint16_t>(
         value.data<uint16_t>(), value.data<uint16_t>() + value.size());
   };
+  auto bit_pattern32 = [](const array& value) {
+    return std::vector<uint32_t>(
+        value.data<uint32_t>(), value.data<uint32_t>() + value.size());
+  };
 
+  auto check_isolation = [&](const array& keys_on, const array& values_on) {
+    // Window isolation: everything outside the appended row 3 keeps the
+    // cache's bits, and the appended rows actually changed.
+    auto keys_bits = bit_pattern(keys_on);
+    auto values_bits = bit_pattern(values_on);
+    auto base_bits = bit_pattern(astype(keys_cache, float16, stream));
+    int key_changes = 0;
+    int value_changes = 0;
+    for (int index = 0; index < 64; ++index) {
+      // [1, 2, 8, 4]: head block of 32, four elements per slot; the
+      // appended row is slot 3 of each head.
+      bool window = (index % 32) / 4 == 3;
+      if (window) {
+        key_changes += keys_bits[index] != base_bits[index] ? 1 : 0;
+        value_changes += values_bits[index] != base_bits[index] ? 1 : 0;
+      } else {
+        REQUIRE_EQ(keys_bits[index], base_bits[index]);
+        REQUIRE_EQ(values_bits[index], base_bits[index]);
+      }
+    }
+    // Two kv heads x four elements: every appended element moved.
+    CHECK_EQ(key_changes, 8);
+    CHECK_EQ(value_changes, 8);
+  };
+
+  // chain 0: single Reshape (the planner's original form).
   setenv("MLX_OMARCHY_KV_DIRECT", "0", 1);
-  auto [keys_off, values_off, dispatches_off] = build_and_eval();
+  auto [keys_off, values_off, dispatches_off] = build_and_eval(0);
   setenv("MLX_OMARCHY_KV_DIRECT", "1", 1);
-  auto [keys_on, values_on, dispatches_on] = build_and_eval();
+  auto [keys_on, values_on, dispatches_on] = build_and_eval(0);
   unsetenv("MLX_OMARCHY_KV_DIRECT");
 
   // Bit-exact: the direct write stores the same bytes the merged pair
@@ -320,29 +364,37 @@ TEST_CASE("producer-direct KV write is bit-exact against the merged pair") {
   // The direct write deletes exactly the merged pair dispatch; both
   // arms paste two window rows over full-cache copies.
   CHECK_EQ(dispatches_off - dispatches_on, 1);
+  check_isolation(keys_on, values_on);
 
-  // Window isolation: everything outside the appended row 3 keeps the
-  // cache's bits, and the appended rows actually changed.
-  auto keys_bits = bit_pattern(keys_on);
-  auto values_bits = bit_pattern(values_on);
-  auto base_bits = bit_pattern(astype(keys_cache, float16, stream));
-  int key_changes = 0;
-  int value_changes = 0;
-  for (int index = 0; index < 64; ++index) {
-    // [1, 2, 8, 4]: head block of 32, four elements per slot; the
-    // appended row is slot 3 of each head.
-    bool window = (index % 32) / 4 == 3;
-    if (window) {
-      key_changes += keys_bits[index] != base_bits[index] ? 1 : 0;
-      value_changes += values_bits[index] != base_bits[index] ? 1 : 0;
-    } else {
-      REQUIRE_EQ(keys_bits[index], base_bits[index]);
-      REQUIRE_EQ(values_bits[index], base_bits[index]);
-    }
-  }
-  // Two kv heads x four elements: every appended element moved.
-  CHECK_EQ(key_changes, 8);
-  CHECK_EQ(value_changes, 8);
+  // chain 1: the model's reshape-then-transpose view pair.
+  setenv("MLX_OMARCHY_KV_DIRECT", "0", 1);
+  auto [tkeys_off, tvalues_off, tdispatches_off] = build_and_eval(1);
+  setenv("MLX_OMARCHY_KV_DIRECT", "1", 1);
+  auto [tkeys_on, tvalues_on, tdispatches_on] = build_and_eval(1);
+  unsetenv("MLX_OMARCHY_KV_DIRECT");
+
+  REQUIRE_EQ(bit_pattern(tkeys_on), bit_pattern(tkeys_off));
+  REQUIRE_EQ(bit_pattern(tvalues_on), bit_pattern(tvalues_off));
+  CHECK_EQ(tdispatches_off - tdispatches_on, 1);
+  check_isolation(tkeys_on, tvalues_on);
+
+  // chain 2: a second consumer on the view must refuse the direct
+  // write: the merged pair stays (no dispatch delta), the pair outputs
+  // and the second consumer keep the merged-run bits, and both arms
+  // agree on the probe.
+  setenv("MLX_OMARCHY_KV_DIRECT", "0", 1);
+  auto [pkeys_off, pvalues_off, pdispatches_off] = build_and_eval(2);
+  auto probe_off = bit_pattern32(*extra_probe);
+  setenv("MLX_OMARCHY_KV_DIRECT", "1", 1);
+  auto [pkeys_on, pvalues_on, pdispatches_on] = build_and_eval(2);
+  auto probe_on = bit_pattern32(*extra_probe);
+  unsetenv("MLX_OMARCHY_KV_DIRECT");
+
+  REQUIRE_EQ(bit_pattern(pkeys_on), bit_pattern(pkeys_off));
+  REQUIRE_EQ(bit_pattern(pvalues_on), bit_pattern(pvalues_off));
+  REQUIRE_EQ(probe_on, probe_off);
+  CHECK_EQ(pdispatches_off, pdispatches_on);
+  check_isolation(pkeys_on, pvalues_on);
 }
 
 TEST_CASE("SliceUpdate row window keeps surrounding data") {

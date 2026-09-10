@@ -646,7 +646,7 @@ bool is_op(const array* node, const std::type_info& op) {
 // Producer-direct KV write planning. Classification of one SliceUpdate
 // pair member's update producer: the keys member's producer is a RoPE
 // node, the values member's producer is a fused GEMV Add epilogue read
-// through the member's single Reshape consumer.
+// through a provable chain of view-only ops (Transpose/Reshape).
 enum class DirectKind : uint8_t { none, keys_rope, values_sum };
 
 struct DirectPlan {
@@ -654,6 +654,9 @@ struct DirectPlan {
   DirectKind kind{DirectKind::none};
   size_t group_index{0};
   size_t member_index{0};
+  // View-only ops (Transpose/Reshape) between the pair's update input
+  // and the Add sum, update first. All become window aliases.
+  std::vector<array> view_chain;
 };
 
 // Element geometry of a paste window inside a SliceUpdate output:
@@ -762,13 +765,23 @@ DirectPlan plan_values_window(
     auto it = uses.find(value.id());
     return it == uses.end() ? size_t{0} : it->second;
   };
-  if (!is_op(update, typeid(Reshape)) || use_count(*update) != 1) {
+  // Walk the chain of view-only ops (Transpose/Reshape) from the
+  // pair's update input down to the Add sum. Every view must have
+  // exactly one consumer: the direct plan leaves no evaluated copy
+  // behind that could serve a second one.
+  std::vector<const array*> chain;
+  const array* node = update;
+  while (is_op(node, typeid(Reshape)) || is_op(node, typeid(Transpose))) {
+    if (use_count(*node) != 1) {
+      return plan;
+    }
+    chain.push_back(node);
+    node = &node->inputs()[0];
+  }
+  if (!is_op(node, typeid(Add)) || use_count(*node) != 1) {
     return plan;
   }
-  const array* sum = &update->inputs()[0];
-  if (!is_op(sum, typeid(Add)) || use_count(*sum) != 1) {
-    return plan;
-  }
+  const array* sum = node;
   bool found = false;
   for (size_t gi = 0; gi < groups.size() && !found; ++gi) {
     for (size_t mi = 0; mi < groups[gi].members.size(); ++mi) {
@@ -796,6 +809,58 @@ DirectPlan plan_values_window(
   uint32_t head_dim = static_cast<uint32_t>(upd.shape(3));
   if (head_dim == 0) {
     return plan;
+  }
+  // Prove the chain re-indexes the sum without moving bytes and in
+  // the store order the GEMV writes: element (head, dim) of the
+  // update must read the sum buffer at head * head_dim + dim.
+  // Compose the map from the freshly written row-contiguous sum
+  // forward through the chain. Reshape composes only from a
+  // contiguous map (a reshape of anything else materializes);
+  // Transpose always composes.
+  auto contiguous_strides = [](const Shape& shape) {
+    Strides strides(shape.size(), 0);
+    strides.back() = 1;
+    for (int ax = static_cast<int>(shape.size()) - 2; ax >= 0; --ax) {
+      strides[ax] = strides[ax + 1] * shape[ax + 1];
+    }
+    return strides;
+  };
+  Shape map_shape(sum->shape());
+  Strides map_strides = contiguous_strides(map_shape);
+  for (auto it = chain.rbegin(); it != chain.rend(); ++it) {
+    const array& view = **it;
+    if (is_op(&view, typeid(Transpose))) {
+      const auto& axes =
+          static_cast<const Transpose&>(view.primitive()).state();
+      if (axes.size() != map_shape.size()) {
+        return plan;
+      }
+      Shape next_shape(map_shape.size());
+      Strides next_strides(map_shape.size());
+      for (size_t ax = 0; ax < axes.size(); ++ax) {
+        if (axes[ax] < 0 ||
+            static_cast<size_t>(axes[ax]) >= map_shape.size()) {
+          return plan;
+        }
+        next_shape[ax] = map_shape[axes[ax]];
+        next_strides[ax] = map_strides[axes[ax]];
+      }
+      map_shape = std::move(next_shape);
+      map_strides = std::move(next_strides);
+    } else {
+      if (map_strides != contiguous_strides(map_shape)) {
+        return plan;
+      }
+      map_shape = view.shape();
+      map_strides = contiguous_strides(map_shape);
+    }
+  }
+  if (map_shape != upd.shape() || map_strides[3] != 1 ||
+      map_strides[1] != static_cast<ptrdiff_t>(head_dim)) {
+    return plan;
+  }
+  for (const array* view : chain) {
+    plan.view_chain.push_back(*view);
   }
   plan.window = KvDirectWindow{
       member,
@@ -1010,11 +1075,12 @@ EagerFusionScope::EagerFusionScope(const std::deque<array>& tape)
     }
   }
   // Producer-direct KV cache writes: when one pair member's new rows
-  // come from a RoPE node (keys) and the other's from a fused GEMV Add
-  // epilogue through its single Reshape (values), both producers store
-  // their rows straight into the updated cache copies and the merged
-  // pair dispatch is deleted. Any structural mismatch keeps the
-  // ordinary plan; runtime aborts unwind to it as well.
+  // come from a RoPE node (keys) and the other's from a fused GEMV
+  // Add epilogue through a provable chain of view-only ops (values),
+  // both producers store their rows straight into the updated cache
+  // copies and the merged pair dispatch is deleted. Any structural
+  // mismatch keeps the ordinary plan; runtime aborts unwind to it as
+  // well.
   if (kv_direct_enabled()) {
     for (size_t index = 0; index < state->slice_update_pairs.size();
          ++index) {
@@ -1053,8 +1119,9 @@ EagerFusionScope::EagerFusionScope(const std::deque<array>& tape)
       pair.windows[1] = std::move(sum_plan.window);
       state->rope_redirect_roles.emplace(
           pair.nodes[rope_side].inputs()[1].id(), index);
-      state->reshape_redirect_roles.emplace(
-          pair.nodes[sum_side].inputs()[1].id(), index);
+      for (const auto& view : sum_plan.view_chain) {
+        state->reshape_redirect_roles.emplace(view.id(), index);
+      }
       pair.direct = true;
     }
   }
