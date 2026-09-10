@@ -1,0 +1,10 @@
+provenance: mlx-omarchy None mx=0.32.2 verified=no-metadata harness=unknown files=unresolved
+decode 214.72 tok/s over 127 tokens (128 requested, EOS suppressed)
+prefill 0.049s (reported separately, excluded from decode)
+prompt_tokens 262
+decode mean per-token 4.7 ms
+generated_ids sha256:407b7624ed1b3b29 n=128 first=13060,498,369 last=429,279,1614
+{"decode_tps": 214.7151, "device": "Apple M1 Max", "engine": "bench_decode", "generated": 128, "ids_first": [13060, 498, 369], "ids_last": [429, 279, 1614], "ids_sha256_16": "407b7624ed1b3b29", "prefill_s": 0.049157, "prefill_tps": 5329.8118, "prompt_tokens": 262}
+
+--stderr--
+mx.metal.device_info is deprecated and will be removed in a future version. Use mx.device_info instead.

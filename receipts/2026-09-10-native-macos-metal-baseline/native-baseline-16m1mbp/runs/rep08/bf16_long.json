@@ -1,0 +1,24 @@
+{
+ "decode_tps": 212.0838,
+ "device": "Apple M1 Max",
+ "engine": "bench_decode",
+ "generated": 128,
+ "ids_first": [
+  13060,
+  498,
+  369
+ ],
+ "ids_last": [
+  429,
+  279,
+  1614
+ ],
+ "ids_sha256_16": "407b7624ed1b3b29",
+ "model": "bf16",
+ "prefill_s": 0.052469,
+ "prefill_tps": 4993.3851,
+ "prompt_id": "long",
+ "prompt_tokens": 262,
+ "prompt_tokens_asserted": 262,
+ "watch_pid_cpu_delta_s": 0.01
+}

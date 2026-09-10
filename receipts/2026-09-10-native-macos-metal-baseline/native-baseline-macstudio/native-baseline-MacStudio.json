@@ -1,0 +1,2260 @@
+{
+ "host": {
+  "arch": "arm64",
+  "chip": "Apple M1 Ultra",
+  "cpu_cores": "20",
+  "eff_cores": "4",
+  "gpu_identity_lines": [
+   "Chipset Model: Apple M1 Ultra",
+   "Total Number of Cores: 48",
+   "Metal Support: Metal 4"
+  ],
+  "hostname": "MacStudio.local",
+  "macos": "26.6.2",
+  "macos_build": "25G83",
+  "mem_bytes": "137438953472",
+  "perf_cores": "16"
+ },
+ "legs": {
+  "bf16_long": {
+   "all_rows": [
+    {
+     "decode_tps": 144.858,
+     "device": "Apple M1 Ultra",
+     "engine": "bench_decode",
+     "generated": 128,
+     "ids_first": [
+      13060,
+      498,
+      369
+     ],
+     "ids_last": [
+      429,
+      279,
+      1614
+     ],
+     "ids_sha256_16": "407b7624ed1b3b29",
+     "model": "bf16",
+     "prefill_s": 0.058321,
+     "prefill_tps": 4492.3624,
+     "prompt_id": "long",
+     "prompt_tokens": 262,
+     "prompt_tokens_asserted": 262,
+     "watch_pid_cpu_delta_s": 94.8
+    },
+    {
+     "decode_tps": 254.2856,
+     "device": "Apple M1 Ultra",
+     "engine": "bench_decode",
+     "generated": 128,
+     "ids_first": [
+      13060,
+      498,
+      369
+     ],
+     "ids_last": [
+      429,
+      279,
+      1614
+     ],
+     "ids_sha256_16": "407b7624ed1b3b29",
+     "model": "bf16",
+     "prefill_s": 0.041622,
+     "prefill_tps": 6294.7229,
+     "prompt_id": "long",
+     "prompt_tokens": 262,
+     "prompt_tokens_asserted": 262,
+     "watch_pid_cpu_delta_s": null
+    },
+    {
+     "decode_tps": 252.898,
+     "device": "Apple M1 Ultra",
+     "engine": "bench_decode",
+     "generated": 128,
+     "ids_first": [
+      13060,
+      498,
+      369
+     ],
+     "ids_last": [
+      429,
+      279,
+      1614
+     ],
+     "ids_sha256_16": "407b7624ed1b3b29",
+     "model": "bf16",
+     "prefill_s": 0.042328,
+     "prefill_tps": 6189.7379,
+     "prompt_id": "long",
+     "prompt_tokens": 262,
+     "prompt_tokens_asserted": 262,
+     "watch_pid_cpu_delta_s": null
+    },
+    {
+     "decode_tps": 254.276,
+     "device": "Apple M1 Ultra",
+     "engine": "bench_decode",
+     "generated": 128,
+     "ids_first": [
+      13060,
+      498,
+      369
+     ],
+     "ids_last": [
+      429,
+      279,
+      1614
+     ],
+     "ids_sha256_16": "407b7624ed1b3b29",
+     "model": "bf16",
+     "prefill_s": 0.042018,
+     "prefill_tps": 6235.46,
+     "prompt_id": "long",
+     "prompt_tokens": 262,
+     "prompt_tokens_asserted": 262,
+     "watch_pid_cpu_delta_s": null
+    },
+    {
+     "decode_tps": 252.4482,
+     "device": "Apple M1 Ultra",
+     "engine": "bench_decode",
+     "generated": 128,
+     "ids_first": [
+      13060,
+      498,
+      369
+     ],
+     "ids_last": [
+      429,
+      279,
+      1614
+     ],
+     "ids_sha256_16": "407b7624ed1b3b29",
+     "model": "bf16",
+     "prefill_s": 0.040942,
+     "prefill_tps": 6399.2315,
+     "prompt_id": "long",
+     "prompt_tokens": 262,
+     "prompt_tokens_asserted": 262,
+     "watch_pid_cpu_delta_s": null
+    },
+    {
+     "decode_tps": 251.7586,
+     "device": "Apple M1 Ultra",
+     "engine": "bench_decode",
+     "generated": 128,
+     "ids_first": [
+      13060,
+      498,
+      369
+     ],
+     "ids_last": [
+      429,
+      279,
+      1614
+     ],
+     "ids_sha256_16": "407b7624ed1b3b29",
+     "model": "bf16",
+     "prefill_s": 0.042092,
+     "prefill_tps": 6224.4669,
+     "prompt_id": "long",
+     "prompt_tokens": 262,
+     "prompt_tokens_asserted": 262,
+     "watch_pid_cpu_delta_s": null
+    },
+    {
+     "decode_tps": 252.9434,
+     "device": "Apple M1 Ultra",
+     "engine": "bench_decode",
+     "generated": 128,
+     "ids_first": [
+      13060,
+      498,
+      369
+     ],
+     "ids_last": [
+      429,
+      279,
+      1614
+     ],
+     "ids_sha256_16": "407b7624ed1b3b29",
+     "model": "bf16",
+     "prefill_s": 0.041006,
+     "prefill_tps": 6389.3542,
+     "prompt_id": "long",
+     "prompt_tokens": 262,
+     "prompt_tokens_asserted": 262,
+     "watch_pid_cpu_delta_s": null
+    }
+   ],
+   "clean_reps": 6,
+   "contended_reps_excluded": [
+    1
+   ],
+   "decode_tok_s": {
+    "max": 254.286,
+    "median": 252.921,
+    "min": 251.759
+   },
+   "digest": "407b7624ed1b3b29",
+   "digest_matches_reference_native": true,
+   "generated_tokens": 128,
+   "model": "bf16",
+   "prefill_tok_s": {
+    "max": 6399.231,
+    "median": 6265.091,
+    "min": 6189.738
+   },
+   "prompt_id": "long",
+   "prompt_tokens": 262,
+   "reps": 7
+  },
+  "bf16_longctx": {
+   "all_rows": [
+    {
+     "decode_tps": 96.399,
+     "device": "Apple M1 Ultra",
+     "engine": "bench_decode",
+     "generated": 32,
+     "ids_first": [
+      28715,
+      389,
+      279
+     ],
+     "ids_last": [
+      4977,
+      311,
+      12322
+     ],
+     "ids_sha256_16": "ff502900d2a179a5",
+     "model": "bf16",
+     "prefill_s": 0.226546,
+     "prefill_tps": 4648.0609,
+     "prompt_id": "ctx1024",
+     "prompt_tokens": 1053,
+     "prompt_tokens_asserted": 1053,
+     "watch_pid_cpu_delta_s": 88.2
+    },
+    {
+     "decode_tps": 241.965,
+     "device": "Apple M1 Ultra",
+     "engine": "bench_decode",
+     "generated": 32,
+     "ids_first": [
+      28715,
+      389,
+      279
+     ],
+     "ids_last": [
+      4977,
+      311,
+      12322
+     ],
+     "ids_sha256_16": "ff502900d2a179a5",
+     "model": "bf16",
+     "prefill_s": 0.102023,
+     "prefill_tps": 10321.2358,
+     "prompt_id": "ctx1024",
+     "prompt_tokens": 1053,
+     "prompt_tokens_asserted": 1053,
+     "watch_pid_cpu_delta_s": null
+    },
+    {
+     "decode_tps": 244.0732,
+     "device": "Apple M1 Ultra",
+     "engine": "bench_decode",
+     "generated": 32,
+     "ids_first": [
+      28715,
+      389,
+      279
+     ],
+     "ids_last": [
+      4977,
+      311,
+      12322
+     ],
+     "ids_sha256_16": "ff502900d2a179a5",
+     "model": "bf16",
+     "prefill_s": 0.106062,
+     "prefill_tps": 9928.1592,
+     "prompt_id": "ctx1024",
+     "prompt_tokens": 1053,
+     "prompt_tokens_asserted": 1053,
+     "watch_pid_cpu_delta_s": null
+    },
+    {
+     "decode_tps": 242.6542,
+     "device": "Apple M1 Ultra",
+     "engine": "bench_decode",
+     "generated": 32,
+     "ids_first": [
+      28715,
+      389,
+      279
+     ],
+     "ids_last": [
+      4977,
+      311,
+      12322
+     ],
+     "ids_sha256_16": "ff502900d2a179a5",
+     "model": "bf16",
+     "prefill_s": 0.105969,
+     "prefill_tps": 9936.9114,
+     "prompt_id": "ctx1024",
+     "prompt_tokens": 1053,
+     "prompt_tokens_asserted": 1053,
+     "watch_pid_cpu_delta_s": null
+    },
+    {
+     "decode_tps": 244.7786,
+     "device": "Apple M1 Ultra",
+     "engine": "bench_decode",
+     "generated": 32,
+     "ids_first": [
+      28715,
+      389,
+      279
+     ],
+     "ids_last": [
+      4977,
+      311,
+      12322
+     ],
+     "ids_sha256_16": "ff502900d2a179a5",
+     "model": "bf16",
+     "prefill_s": 0.106829,
+     "prefill_tps": 9856.8702,
+     "prompt_id": "ctx1024",
+     "prompt_tokens": 1053,
+     "prompt_tokens_asserted": 1053,
+     "watch_pid_cpu_delta_s": null
+    },
+    {
+     "decode_tps": 242.6962,
+     "device": "Apple M1 Ultra",
+     "engine": "bench_decode",
+     "generated": 32,
+     "ids_first": [
+      28715,
+      389,
+      279
+     ],
+     "ids_last": [
+      4977,
+      311,
+      12322
+     ],
+     "ids_sha256_16": "ff502900d2a179a5",
+     "model": "bf16",
+     "prefill_s": 0.103083,
+     "prefill_tps": 10215.0653,
+     "prompt_id": "ctx1024",
+     "prompt_tokens": 1053,
+     "prompt_tokens_asserted": 1053,
+     "watch_pid_cpu_delta_s": null
+    },
+    {
+     "decode_tps": 244.0955,
+     "device": "Apple M1 Ultra",
+     "engine": "bench_decode",
+     "generated": 32,
+     "ids_first": [
+      28715,
+      389,
+      279
+     ],
+     "ids_last": [
+      4977,
+      311,
+      12322
+     ],
+     "ids_sha256_16": "ff502900d2a179a5",
+     "model": "bf16",
+     "prefill_s": 0.107699,
+     "prefill_tps": 9777.2609,
+     "prompt_id": "ctx1024",
+     "prompt_tokens": 1053,
+     "prompt_tokens_asserted": 1053,
+     "watch_pid_cpu_delta_s": null
+    }
+   ],
+   "clean_reps": 6,
+   "contended_reps_excluded": [
+    1
+   ],
+   "decode_tok_s": {
+    "max": 244.779,
+    "median": 243.385,
+    "min": 241.965
+   },
+   "digest": "ff502900d2a179a5",
+   "digest_matches_reference_native": true,
+   "generated_tokens": 32,
+   "model": "bf16",
+   "prefill_tok_s": {
+    "max": 10321.236,
+    "median": 9932.535,
+    "min": 9777.261
+   },
+   "prompt_id": "ctx1024",
+   "prompt_tokens": 1053,
+   "reps": 7
+  },
+  "bf16_short": {
+   "all_rows": [
+    {
+     "decode_tps": 95.627,
+     "device": "Apple M1 Ultra",
+     "engine": "bench_decode",
+     "generated": 32,
+     "ids_first": [
+      9707,
+      0,
+      2585
+     ],
+     "ids_last": [
+      151644,
+      872,
+      198
+     ],
+     "ids_sha256_16": "7fc0f968789b1882",
+     "model": "bf16",
+     "prefill_s": 0.043441,
+     "prefill_tps": 690.5846,
+     "prompt_id": "short",
+     "prompt_tokens": 30,
+     "prompt_tokens_asserted": 30,
+     "watch_pid_cpu_delta_s": 75.0
+    },
+    {
+     "decode_tps": 258.0376,
+     "device": "Apple M1 Ultra",
+     "engine": "bench_decode",
+     "generated": 32,
+     "ids_first": [
+      9707,
+      0,
+      2585
+     ],
+     "ids_last": [
+      151644,
+      872,
+      198
+     ],
+     "ids_sha256_16": "7fc0f968789b1882",
+     "model": "bf16",
+     "prefill_s": 0.021289,
+     "prefill_tps": 1409.1812,
+     "prompt_id": "short",
+     "prompt_tokens": 30,
+     "prompt_tokens_asserted": 30,
+     "watch_pid_cpu_delta_s": null
+    },
+    {
+     "decode_tps": 250.7724,
+     "device": "Apple M1 Ultra",
+     "engine": "bench_decode",
+     "generated": 32,
+     "ids_first": [
+      9707,
+      0,
+      2585
+     ],
+     "ids_last": [
+      151644,
+      872,
+      198
+     ],
+     "ids_sha256_16": "7fc0f968789b1882",
+     "model": "bf16",
+     "prefill_s": 0.026893,
+     "prefill_tps": 1115.5371,
+     "prompt_id": "short",
+     "prompt_tokens": 30,
+     "prompt_tokens_asserted": 30,
+     "watch_pid_cpu_delta_s": null
+    },
+    {
+     "decode_tps": 259.2132,
+     "device": "Apple M1 Ultra",
+     "engine": "bench_decode",
+     "generated": 32,
+     "ids_first": [
+      9707,
+      0,
+      2585
+     ],
+     "ids_last": [
+      151644,
+      872,
+      198
+     ],
+     "ids_sha256_16": "7fc0f968789b1882",
+     "model": "bf16",
+     "prefill_s": 0.021041,
+     "prefill_tps": 1425.7793,
+     "prompt_id": "short",
+     "prompt_tokens": 30,
+     "prompt_tokens_asserted": 30,
+     "watch_pid_cpu_delta_s": null
+    },
+    {
+     "decode_tps": 259.02,
+     "device": "Apple M1 Ultra",
+     "engine": "bench_decode",
+     "generated": 32,
+     "ids_first": [
+      9707,
+      0,
+      2585
+     ],
+     "ids_last": [
+      151644,
+      872,
+      198
+     ],
+     "ids_sha256_16": "7fc0f968789b1882",
+     "model": "bf16",
+     "prefill_s": 0.027105,
+     "prefill_tps": 1106.8069,
+     "prompt_id": "short",
+     "prompt_tokens": 30,
+     "prompt_tokens_asserted": 30,
+     "watch_pid_cpu_delta_s": null
+    },
+    {
+     "decode_tps": 256.1191,
+     "device": "Apple M1 Ultra",
+     "engine": "bench_decode",
+     "generated": 32,
+     "ids_first": [
+      9707,
+      0,
+      2585
+     ],
+     "ids_last": [
+      151644,
+      872,
+      198
+     ],
+     "ids_sha256_16": "7fc0f968789b1882",
+     "model": "bf16",
+     "prefill_s": 0.029871,
+     "prefill_tps": 1004.3326,
+     "prompt_id": "short",
+     "prompt_tokens": 30,
+     "prompt_tokens_asserted": 30,
+     "watch_pid_cpu_delta_s": null
+    },
+    {
+     "decode_tps": 251.925,
+     "device": "Apple M1 Ultra",
+     "engine": "bench_decode",
+     "generated": 32,
+     "ids_first": [
+      9707,
+      0,
+      2585
+     ],
+     "ids_last": [
+      151644,
+      872,
+      198
+     ],
+     "ids_sha256_16": "7fc0f968789b1882",
+     "model": "bf16",
+     "prefill_s": 0.027242,
+     "prefill_tps": 1101.2491,
+     "prompt_id": "short",
+     "prompt_tokens": 30,
+     "prompt_tokens_asserted": 30,
+     "watch_pid_cpu_delta_s": null
+    }
+   ],
+   "clean_reps": 6,
+   "contended_reps_excluded": [
+    1
+   ],
+   "decode_tok_s": {
+    "max": 259.213,
+    "median": 257.078,
+    "min": 250.772
+   },
+   "digest": "7fc0f968789b1882",
+   "digest_matches_reference_native": true,
+   "generated_tokens": 32,
+   "model": "bf16",
+   "prefill_tok_s": {
+    "max": 1425.779,
+    "median": 1111.172,
+    "min": 1004.333
+   },
+   "prompt_id": "short",
+   "prompt_tokens": 30,
+   "reps": 7
+  },
+  "q4_long": {
+   "all_rows": [
+    {
+     "decode_tps": 100.5626,
+     "device": "Apple M1 Ultra",
+     "engine": "bench_decode",
+     "generated": 128,
+     "ids_first": [
+      13060,
+      498,
+      369
+     ],
+     "ids_last": [
+      279,
+      990,
+      315
+     ],
+     "ids_sha256_16": "254d73fd93164b98",
+     "model": "q4",
+     "prefill_s": 0.067444,
+     "prefill_tps": 3884.6948,
+     "prompt_id": "long",
+     "prompt_tokens": 262,
+     "prompt_tokens_asserted": 262,
+     "watch_pid_cpu_delta_s": 109.2
+    },
+    {
+     "decode_tps": 108.6607,
+     "device": "Apple M1 Ultra",
+     "engine": "bench_decode",
+     "generated": 128,
+     "ids_first": [
+      13060,
+      498,
+      369
+     ],
+     "ids_last": [
+      279,
+      990,
+      315
+     ],
+     "ids_sha256_16": "254d73fd93164b98",
+     "model": "q4",
+     "prefill_s": 0.058723,
+     "prefill_tps": 4461.6218,
+     "prompt_id": "long",
+     "prompt_tokens": 262,
+     "prompt_tokens_asserted": 262,
+     "watch_pid_cpu_delta_s": 104.4
+    },
+    {
+     "decode_tps": 290.6143,
+     "device": "Apple M1 Ultra",
+     "engine": "bench_decode",
+     "generated": 128,
+     "ids_first": [
+      13060,
+      498,
+      369
+     ],
+     "ids_last": [
+      279,
+      990,
+      315
+     ],
+     "ids_sha256_16": "254d73fd93164b98",
+     "model": "q4",
+     "prefill_s": 0.03879,
+     "prefill_tps": 6754.2819,
+     "prompt_id": "long",
+     "prompt_tokens": 262,
+     "prompt_tokens_asserted": 262,
+     "watch_pid_cpu_delta_s": null
+    },
+    {
+     "decode_tps": 282.4104,
+     "device": "Apple M1 Ultra",
+     "engine": "bench_decode",
+     "generated": 128,
+     "ids_first": [
+      13060,
+      498,
+      369
+     ],
+     "ids_last": [
+      279,
+      990,
+      315
+     ],
+     "ids_sha256_16": "254d73fd93164b98",
+     "model": "q4",
+     "prefill_s": 0.035119,
+     "prefill_tps": 7460.3757,
+     "prompt_id": "long",
+     "prompt_tokens": 262,
+     "prompt_tokens_asserted": 262,
+     "watch_pid_cpu_delta_s": null
+    },
+    {
+     "decode_tps": 281.9583,
+     "device": "Apple M1 Ultra",
+     "engine": "bench_decode",
+     "generated": 128,
+     "ids_first": [
+      13060,
+      498,
+      369
+     ],
+     "ids_last": [
+      279,
+      990,
+      315
+     ],
+     "ids_sha256_16": "254d73fd93164b98",
+     "model": "q4",
+     "prefill_s": 0.042195,
+     "prefill_tps": 6209.2971,
+     "prompt_id": "long",
+     "prompt_tokens": 262,
+     "prompt_tokens_asserted": 262,
+     "watch_pid_cpu_delta_s": null
+    },
+    {
+     "decode_tps": 287.5459,
+     "device": "Apple M1 Ultra",
+     "engine": "bench_decode",
+     "generated": 128,
+     "ids_first": [
+      13060,
+      498,
+      369
+     ],
+     "ids_last": [
+      279,
+      990,
+      315
+     ],
+     "ids_sha256_16": "254d73fd93164b98",
+     "model": "q4",
+     "prefill_s": 0.043002,
+     "prefill_tps": 6092.7222,
+     "prompt_id": "long",
+     "prompt_tokens": 262,
+     "prompt_tokens_asserted": 262,
+     "watch_pid_cpu_delta_s": null
+    },
+    {
+     "decode_tps": 287.0928,
+     "device": "Apple M1 Ultra",
+     "engine": "bench_decode",
+     "generated": 128,
+     "ids_first": [
+      13060,
+      498,
+      369
+     ],
+     "ids_last": [
+      279,
+      990,
+      315
+     ],
+     "ids_sha256_16": "254d73fd93164b98",
+     "model": "q4",
+     "prefill_s": 0.03593,
+     "prefill_tps": 7292.041,
+     "prompt_id": "long",
+     "prompt_tokens": 262,
+     "prompt_tokens_asserted": 262,
+     "watch_pid_cpu_delta_s": null
+    }
+   ],
+   "clean_reps": 5,
+   "contended_reps_excluded": [
+    1,
+    2
+   ],
+   "decode_tok_s": {
+    "max": 290.614,
+    "median": 287.093,
+    "min": 281.958
+   },
+   "digest": "254d73fd93164b98",
+   "digest_matches_reference_native": true,
+   "generated_tokens": 128,
+   "model": "q4",
+   "prefill_tok_s": {
+    "max": 7460.376,
+    "median": 6754.282,
+    "min": 6092.722
+   },
+   "prompt_id": "long",
+   "prompt_tokens": 262,
+   "reps": 7
+  },
+  "q4_longctx": {
+   "all_rows": [
+    {
+     "decode_tps": 147.2372,
+     "device": "Apple M1 Ultra",
+     "engine": "bench_decode",
+     "generated": 32,
+     "ids_first": [
+      13060,
+      498,
+      369
+     ],
+     "ids_last": [
+      3897,
+      553,
+      279
+     ],
+     "ids_sha256_16": "7da83f06ec9f001d",
+     "model": "q4",
+     "prefill_s": 0.133111,
+     "prefill_tps": 7910.6639,
+     "prompt_id": "ctx1024",
+     "prompt_tokens": 1053,
+     "prompt_tokens_asserted": 1053,
+     "watch_pid_cpu_delta_s": 77.4
+    },
+    {
+     "decode_tps": 258.5923,
+     "device": "Apple M1 Ultra",
+     "engine": "bench_decode",
+     "generated": 32,
+     "ids_first": [
+      13060,
+      498,
+      369
+     ],
+     "ids_last": [
+      3897,
+      553,
+      279
+     ],
+     "ids_sha256_16": "7da83f06ec9f001d",
+     "model": "q4",
+     "prefill_s": 0.277392,
+     "prefill_tps": 3796.0714,
+     "prompt_id": "ctx1024",
+     "prompt_tokens": 1053,
+     "prompt_tokens_asserted": 1053,
+     "watch_pid_cpu_delta_s": null
+    },
+    {
+     "decode_tps": 289.6005,
+     "device": "Apple M1 Ultra",
+     "engine": "bench_decode",
+     "generated": 32,
+     "ids_first": [
+      13060,
+      498,
+      369
+     ],
+     "ids_last": [
+      3897,
+      553,
+      279
+     ],
+     "ids_sha256_16": "7da83f06ec9f001d",
+     "model": "q4",
+     "prefill_s": 0.101673,
+     "prefill_tps": 10356.7403,
+     "prompt_id": "ctx1024",
+     "prompt_tokens": 1053,
+     "prompt_tokens_asserted": 1053,
+     "watch_pid_cpu_delta_s": null
+    },
+    {
+     "decode_tps": 281.7309,
+     "device": "Apple M1 Ultra",
+     "engine": "bench_decode",
+     "generated": 32,
+     "ids_first": [
+      13060,
+      498,
+      369
+     ],
+     "ids_last": [
+      3897,
+      553,
+      279
+     ],
+     "ids_sha256_16": "7da83f06ec9f001d",
+     "model": "q4",
+     "prefill_s": 0.094357,
+     "prefill_tps": 11159.7394,
+     "prompt_id": "ctx1024",
+     "prompt_tokens": 1053,
+     "prompt_tokens_asserted": 1053,
+     "watch_pid_cpu_delta_s": null
+    },
+    {
+     "decode_tps": 284.2328,
+     "device": "Apple M1 Ultra",
+     "engine": "bench_decode",
+     "generated": 32,
+     "ids_first": [
+      13060,
+      498,
+      369
+     ],
+     "ids_last": [
+      3897,
+      553,
+      279
+     ],
+     "ids_sha256_16": "7da83f06ec9f001d",
+     "model": "q4",
+     "prefill_s": 0.093501,
+     "prefill_tps": 11261.9619,
+     "prompt_id": "ctx1024",
+     "prompt_tokens": 1053,
+     "prompt_tokens_asserted": 1053,
+     "watch_pid_cpu_delta_s": null
+    },
+    {
+     "decode_tps": 284.7252,
+     "device": "Apple M1 Ultra",
+     "engine": "bench_decode",
+     "generated": 32,
+     "ids_first": [
+      13060,
+      498,
+      369
+     ],
+     "ids_last": [
+      3897,
+      553,
+      279
+     ],
+     "ids_sha256_16": "7da83f06ec9f001d",
+     "model": "q4",
+     "prefill_s": 0.09169,
+     "prefill_tps": 11484.3025,
+     "prompt_id": "ctx1024",
+     "prompt_tokens": 1053,
+     "prompt_tokens_asserted": 1053,
+     "watch_pid_cpu_delta_s": null
+    },
+    {
+     "decode_tps": 243.0166,
+     "device": "Apple M1 Ultra",
+     "engine": "bench_decode",
+     "generated": 32,
+     "ids_first": [
+      13060,
+      498,
+      369
+     ],
+     "ids_last": [
+      3897,
+      553,
+      279
+     ],
+     "ids_sha256_16": "7da83f06ec9f001d",
+     "model": "q4",
+     "prefill_s": 0.096424,
+     "prefill_tps": 10920.5319,
+     "prompt_id": "ctx1024",
+     "prompt_tokens": 1053,
+     "prompt_tokens_asserted": 1053,
+     "watch_pid_cpu_delta_s": null
+    }
+   ],
+   "clean_reps": 6,
+   "contended_reps_excluded": [
+    1
+   ],
+   "decode_tok_s": {
+    "max": 289.601,
+    "median": 282.982,
+    "min": 243.017
+   },
+   "digest": "7da83f06ec9f001d",
+   "digest_matches_reference_native": true,
+   "generated_tokens": 32,
+   "model": "q4",
+   "prefill_tok_s": {
+    "max": 11484.302,
+    "median": 11040.136,
+    "min": 3796.071
+   },
+   "prompt_id": "ctx1024",
+   "prompt_tokens": 1053,
+   "reps": 7
+  },
+  "q4_short": {
+   "all_rows": [
+    {
+     "decode_tps": 162.0239,
+     "device": "Apple M1 Ultra",
+     "engine": "bench_decode",
+     "generated": 32,
+     "ids_first": [
+      9707,
+      0,
+      2585
+     ],
+     "ids_last": [
+      646,
+      387,
+      7881
+     ],
+     "ids_sha256_16": "7fd25a869ff21678",
+     "model": "q4",
+     "prefill_s": 0.024583,
+     "prefill_tps": 1220.3804,
+     "prompt_id": "short",
+     "prompt_tokens": 30,
+     "prompt_tokens_asserted": 30,
+     "watch_pid_cpu_delta_s": 66.6
+    },
+    {
+     "decode_tps": 166.3535,
+     "device": "Apple M1 Ultra",
+     "engine": "bench_decode",
+     "generated": 32,
+     "ids_first": [
+      9707,
+      0,
+      2585
+     ],
+     "ids_last": [
+      646,
+      387,
+      7881
+     ],
+     "ids_sha256_16": "7fd25a869ff21678",
+     "model": "q4",
+     "prefill_s": 0.024764,
+     "prefill_tps": 1211.4115,
+     "prompt_id": "short",
+     "prompt_tokens": 30,
+     "prompt_tokens_asserted": 30,
+     "watch_pid_cpu_delta_s": 66.0
+    },
+    {
+     "decode_tps": 301.6163,
+     "device": "Apple M1 Ultra",
+     "engine": "bench_decode",
+     "generated": 32,
+     "ids_first": [
+      9707,
+      0,
+      2585
+     ],
+     "ids_last": [
+      646,
+      387,
+      7881
+     ],
+     "ids_sha256_16": "7fd25a869ff21678",
+     "model": "q4",
+     "prefill_s": 0.020841,
+     "prefill_tps": 1439.4674,
+     "prompt_id": "short",
+     "prompt_tokens": 30,
+     "prompt_tokens_asserted": 30,
+     "watch_pid_cpu_delta_s": null
+    },
+    {
+     "decode_tps": 299.1915,
+     "device": "Apple M1 Ultra",
+     "engine": "bench_decode",
+     "generated": 32,
+     "ids_first": [
+      9707,
+      0,
+      2585
+     ],
+     "ids_last": [
+      646,
+      387,
+      7881
+     ],
+     "ids_sha256_16": "7fd25a869ff21678",
+     "model": "q4",
+     "prefill_s": 0.019902,
+     "prefill_tps": 1507.3925,
+     "prompt_id": "short",
+     "prompt_tokens": 30,
+     "prompt_tokens_asserted": 30,
+     "watch_pid_cpu_delta_s": null
+    },
+    {
+     "decode_tps": 286.4649,
+     "device": "Apple M1 Ultra",
+     "engine": "bench_decode",
+     "generated": 32,
+     "ids_first": [
+      9707,
+      0,
+      2585
+     ],
+     "ids_last": [
+      646,
+      387,
+      7881
+     ],
+     "ids_sha256_16": "7fd25a869ff21678",
+     "model": "q4",
+     "prefill_s": 0.026552,
+     "prefill_tps": 1129.8743,
+     "prompt_id": "short",
+     "prompt_tokens": 30,
+     "prompt_tokens_asserted": 30,
+     "watch_pid_cpu_delta_s": null
+    },
+    {
+     "decode_tps": 285.7795,
+     "device": "Apple M1 Ultra",
+     "engine": "bench_decode",
+     "generated": 32,
+     "ids_first": [
+      9707,
+      0,
+      2585
+     ],
+     "ids_last": [
+      646,
+      387,
+      7881
+     ],
+     "ids_sha256_16": "7fd25a869ff21678",
+     "model": "q4",
+     "prefill_s": 0.025512,
+     "prefill_tps": 1175.9364,
+     "prompt_id": "short",
+     "prompt_tokens": 30,
+     "prompt_tokens_asserted": 30,
+     "watch_pid_cpu_delta_s": null
+    },
+    {
+     "decode_tps": 304.5408,
+     "device": "Apple M1 Ultra",
+     "engine": "bench_decode",
+     "generated": 32,
+     "ids_first": [
+      9707,
+      0,
+      2585
+     ],
+     "ids_last": [
+      646,
+      387,
+      7881
+     ],
+     "ids_sha256_16": "7fd25a869ff21678",
+     "model": "q4",
+     "prefill_s": 0.021268,
+     "prefill_tps": 1410.5533,
+     "prompt_id": "short",
+     "prompt_tokens": 30,
+     "prompt_tokens_asserted": 30,
+     "watch_pid_cpu_delta_s": null
+    }
+   ],
+   "clean_reps": 5,
+   "contended_reps_excluded": [
+    1,
+    2
+   ],
+   "decode_tok_s": {
+    "max": 304.541,
+    "median": 299.192,
+    "min": 285.779
+   },
+   "digest": "7fd25a869ff21678",
+   "digest_matches_reference_native": true,
+   "generated_tokens": 32,
+   "model": "q4",
+   "prefill_tok_s": {
+    "max": 1507.392,
+    "median": 1410.553,
+    "min": 1129.874
+   },
+   "prompt_id": "short",
+   "prompt_tokens": 30,
+   "reps": 7
+  }
+ },
+ "models": {
+  "bf16": {
+   "repo": "mlx-community/Qwen2.5-0.5B-Instruct-bf16",
+   "revision": "56d07e766edd7159fbe12ed12d9cf114bf38bf1e"
+  },
+  "q4": {
+   "repo": "mlx-community/Qwen2.5-0.5B-Instruct-4bit",
+   "revision": "a5339a4131f135d0fdc6a5c8b5bbed2753bbe0f3"
+  }
+ },
+ "protocol": {
+  "engine": "scripts/bench_decode.py (fresh process per leg-run)",
+  "env": "MLX_DISABLE_COMPILE=1",
+  "gate": {
+   "gpu_holding_processes": "none",
+   "note": "resident services idle: no ollama models loaded; docling-serve is a CPU layout service",
+   "power": "Now drawing from 'AC Power'",
+   "resident_idle_services_recorded": [
+    "2165   0.1 /Users/joshuawarren/.local/share/uv/tools/docling-serve/bin/python /Users/joshuawarren/.local/share/uv/tools/docling-serve/bin/docling-serve run --host 0.0.0.0 --port 5001",
+    "4422   0.0 /Applications/Ollama.app/Contents/MacOS/Ollama",
+    "4477   0.0 /Applications/Ollama.app/Contents/Resources/ollama serve",
+    "17851   0.0 /Users/joshuawarren/.local/share/uv/tools/docling-serve/bin/python -c from multiprocessing.resource_tracker import main;main(19)"
+   ],
+   "standalone_servers": "none"
+  },
+  "generation": "greedy temp 0 seed 0, EOS suppressed, pinned generated counts 32/128/32, 4 warmup tokens per leg",
+  "reps": 7,
+  "warmup": "full 6-leg matrix discarded"
+ },
+ "reference_native_digests": {
+  "bf16_long": "407b7624ed1b3b29",
+  "bf16_longctx": "ff502900d2a179a5",
+  "bf16_short": "7fc0f968789b1882",
+  "q4_long": "254d73fd93164b98",
+  "q4_longctx": "7da83f06ec9f001d",
+  "q4_short": "7fd25a869ff21678"
+ },
+ "runs": {
+  "bf16_long": [
+   {
+    "decode_tps": 144.858,
+    "device": "Apple M1 Ultra",
+    "engine": "bench_decode",
+    "generated": 128,
+    "ids_first": [
+     13060,
+     498,
+     369
+    ],
+    "ids_last": [
+     429,
+     279,
+     1614
+    ],
+    "ids_sha256_16": "407b7624ed1b3b29",
+    "model": "bf16",
+    "prefill_s": 0.058321,
+    "prefill_tps": 4492.3624,
+    "prompt_id": "long",
+    "prompt_tokens": 262,
+    "prompt_tokens_asserted": 262,
+    "watch_pid_cpu_delta_s": 94.8
+   },
+   {
+    "decode_tps": 254.2856,
+    "device": "Apple M1 Ultra",
+    "engine": "bench_decode",
+    "generated": 128,
+    "ids_first": [
+     13060,
+     498,
+     369
+    ],
+    "ids_last": [
+     429,
+     279,
+     1614
+    ],
+    "ids_sha256_16": "407b7624ed1b3b29",
+    "model": "bf16",
+    "prefill_s": 0.041622,
+    "prefill_tps": 6294.7229,
+    "prompt_id": "long",
+    "prompt_tokens": 262,
+    "prompt_tokens_asserted": 262,
+    "watch_pid_cpu_delta_s": null
+   },
+   {
+    "decode_tps": 252.898,
+    "device": "Apple M1 Ultra",
+    "engine": "bench_decode",
+    "generated": 128,
+    "ids_first": [
+     13060,
+     498,
+     369
+    ],
+    "ids_last": [
+     429,
+     279,
+     1614
+    ],
+    "ids_sha256_16": "407b7624ed1b3b29",
+    "model": "bf16",
+    "prefill_s": 0.042328,
+    "prefill_tps": 6189.7379,
+    "prompt_id": "long",
+    "prompt_tokens": 262,
+    "prompt_tokens_asserted": 262,
+    "watch_pid_cpu_delta_s": null
+   },
+   {
+    "decode_tps": 254.276,
+    "device": "Apple M1 Ultra",
+    "engine": "bench_decode",
+    "generated": 128,
+    "ids_first": [
+     13060,
+     498,
+     369
+    ],
+    "ids_last": [
+     429,
+     279,
+     1614
+    ],
+    "ids_sha256_16": "407b7624ed1b3b29",
+    "model": "bf16",
+    "prefill_s": 0.042018,
+    "prefill_tps": 6235.46,
+    "prompt_id": "long",
+    "prompt_tokens": 262,
+    "prompt_tokens_asserted": 262,
+    "watch_pid_cpu_delta_s": null
+   },
+   {
+    "decode_tps": 252.4482,
+    "device": "Apple M1 Ultra",
+    "engine": "bench_decode",
+    "generated": 128,
+    "ids_first": [
+     13060,
+     498,
+     369
+    ],
+    "ids_last": [
+     429,
+     279,
+     1614
+    ],
+    "ids_sha256_16": "407b7624ed1b3b29",
+    "model": "bf16",
+    "prefill_s": 0.040942,
+    "prefill_tps": 6399.2315,
+    "prompt_id": "long",
+    "prompt_tokens": 262,
+    "prompt_tokens_asserted": 262,
+    "watch_pid_cpu_delta_s": null
+   },
+   {
+    "decode_tps": 251.7586,
+    "device": "Apple M1 Ultra",
+    "engine": "bench_decode",
+    "generated": 128,
+    "ids_first": [
+     13060,
+     498,
+     369
+    ],
+    "ids_last": [
+     429,
+     279,
+     1614
+    ],
+    "ids_sha256_16": "407b7624ed1b3b29",
+    "model": "bf16",
+    "prefill_s": 0.042092,
+    "prefill_tps": 6224.4669,
+    "prompt_id": "long",
+    "prompt_tokens": 262,
+    "prompt_tokens_asserted": 262,
+    "watch_pid_cpu_delta_s": null
+   },
+   {
+    "decode_tps": 252.9434,
+    "device": "Apple M1 Ultra",
+    "engine": "bench_decode",
+    "generated": 128,
+    "ids_first": [
+     13060,
+     498,
+     369
+    ],
+    "ids_last": [
+     429,
+     279,
+     1614
+    ],
+    "ids_sha256_16": "407b7624ed1b3b29",
+    "model": "bf16",
+    "prefill_s": 0.041006,
+    "prefill_tps": 6389.3542,
+    "prompt_id": "long",
+    "prompt_tokens": 262,
+    "prompt_tokens_asserted": 262,
+    "watch_pid_cpu_delta_s": null
+   }
+  ],
+  "bf16_longctx": [
+   {
+    "decode_tps": 96.399,
+    "device": "Apple M1 Ultra",
+    "engine": "bench_decode",
+    "generated": 32,
+    "ids_first": [
+     28715,
+     389,
+     279
+    ],
+    "ids_last": [
+     4977,
+     311,
+     12322
+    ],
+    "ids_sha256_16": "ff502900d2a179a5",
+    "model": "bf16",
+    "prefill_s": 0.226546,
+    "prefill_tps": 4648.0609,
+    "prompt_id": "ctx1024",
+    "prompt_tokens": 1053,
+    "prompt_tokens_asserted": 1053,
+    "watch_pid_cpu_delta_s": 88.2
+   },
+   {
+    "decode_tps": 241.965,
+    "device": "Apple M1 Ultra",
+    "engine": "bench_decode",
+    "generated": 32,
+    "ids_first": [
+     28715,
+     389,
+     279
+    ],
+    "ids_last": [
+     4977,
+     311,
+     12322
+    ],
+    "ids_sha256_16": "ff502900d2a179a5",
+    "model": "bf16",
+    "prefill_s": 0.102023,
+    "prefill_tps": 10321.2358,
+    "prompt_id": "ctx1024",
+    "prompt_tokens": 1053,
+    "prompt_tokens_asserted": 1053,
+    "watch_pid_cpu_delta_s": null
+   },
+   {
+    "decode_tps": 244.0732,
+    "device": "Apple M1 Ultra",
+    "engine": "bench_decode",
+    "generated": 32,
+    "ids_first": [
+     28715,
+     389,
+     279
+    ],
+    "ids_last": [
+     4977,
+     311,
+     12322
+    ],
+    "ids_sha256_16": "ff502900d2a179a5",
+    "model": "bf16",
+    "prefill_s": 0.106062,
+    "prefill_tps": 9928.1592,
+    "prompt_id": "ctx1024",
+    "prompt_tokens": 1053,
+    "prompt_tokens_asserted": 1053,
+    "watch_pid_cpu_delta_s": null
+   },
+   {
+    "decode_tps": 242.6542,
+    "device": "Apple M1 Ultra",
+    "engine": "bench_decode",
+    "generated": 32,
+    "ids_first": [
+     28715,
+     389,
+     279
+    ],
+    "ids_last": [
+     4977,
+     311,
+     12322
+    ],
+    "ids_sha256_16": "ff502900d2a179a5",
+    "model": "bf16",
+    "prefill_s": 0.105969,
+    "prefill_tps": 9936.9114,
+    "prompt_id": "ctx1024",
+    "prompt_tokens": 1053,
+    "prompt_tokens_asserted": 1053,
+    "watch_pid_cpu_delta_s": null
+   },
+   {
+    "decode_tps": 244.7786,
+    "device": "Apple M1 Ultra",
+    "engine": "bench_decode",
+    "generated": 32,
+    "ids_first": [
+     28715,
+     389,
+     279
+    ],
+    "ids_last": [
+     4977,
+     311,
+     12322
+    ],
+    "ids_sha256_16": "ff502900d2a179a5",
+    "model": "bf16",
+    "prefill_s": 0.106829,
+    "prefill_tps": 9856.8702,
+    "prompt_id": "ctx1024",
+    "prompt_tokens": 1053,
+    "prompt_tokens_asserted": 1053,
+    "watch_pid_cpu_delta_s": null
+   },
+   {
+    "decode_tps": 242.6962,
+    "device": "Apple M1 Ultra",
+    "engine": "bench_decode",
+    "generated": 32,
+    "ids_first": [
+     28715,
+     389,
+     279
+    ],
+    "ids_last": [
+     4977,
+     311,
+     12322
+    ],
+    "ids_sha256_16": "ff502900d2a179a5",
+    "model": "bf16",
+    "prefill_s": 0.103083,
+    "prefill_tps": 10215.0653,
+    "prompt_id": "ctx1024",
+    "prompt_tokens": 1053,
+    "prompt_tokens_asserted": 1053,
+    "watch_pid_cpu_delta_s": null
+   },
+   {
+    "decode_tps": 244.0955,
+    "device": "Apple M1 Ultra",
+    "engine": "bench_decode",
+    "generated": 32,
+    "ids_first": [
+     28715,
+     389,
+     279
+    ],
+    "ids_last": [
+     4977,
+     311,
+     12322
+    ],
+    "ids_sha256_16": "ff502900d2a179a5",
+    "model": "bf16",
+    "prefill_s": 0.107699,
+    "prefill_tps": 9777.2609,
+    "prompt_id": "ctx1024",
+    "prompt_tokens": 1053,
+    "prompt_tokens_asserted": 1053,
+    "watch_pid_cpu_delta_s": null
+   }
+  ],
+  "bf16_short": [
+   {
+    "decode_tps": 95.627,
+    "device": "Apple M1 Ultra",
+    "engine": "bench_decode",
+    "generated": 32,
+    "ids_first": [
+     9707,
+     0,
+     2585
+    ],
+    "ids_last": [
+     151644,
+     872,
+     198
+    ],
+    "ids_sha256_16": "7fc0f968789b1882",
+    "model": "bf16",
+    "prefill_s": 0.043441,
+    "prefill_tps": 690.5846,
+    "prompt_id": "short",
+    "prompt_tokens": 30,
+    "prompt_tokens_asserted": 30,
+    "watch_pid_cpu_delta_s": 75.0
+   },
+   {
+    "decode_tps": 258.0376,
+    "device": "Apple M1 Ultra",
+    "engine": "bench_decode",
+    "generated": 32,
+    "ids_first": [
+     9707,
+     0,
+     2585
+    ],
+    "ids_last": [
+     151644,
+     872,
+     198
+    ],
+    "ids_sha256_16": "7fc0f968789b1882",
+    "model": "bf16",
+    "prefill_s": 0.021289,
+    "prefill_tps": 1409.1812,
+    "prompt_id": "short",
+    "prompt_tokens": 30,
+    "prompt_tokens_asserted": 30,
+    "watch_pid_cpu_delta_s": null
+   },
+   {
+    "decode_tps": 250.7724,
+    "device": "Apple M1 Ultra",
+    "engine": "bench_decode",
+    "generated": 32,
+    "ids_first": [
+     9707,
+     0,
+     2585
+    ],
+    "ids_last": [
+     151644,
+     872,
+     198
+    ],
+    "ids_sha256_16": "7fc0f968789b1882",
+    "model": "bf16",
+    "prefill_s": 0.026893,
+    "prefill_tps": 1115.5371,
+    "prompt_id": "short",
+    "prompt_tokens": 30,
+    "prompt_tokens_asserted": 30,
+    "watch_pid_cpu_delta_s": null
+   },
+   {
+    "decode_tps": 259.2132,
+    "device": "Apple M1 Ultra",
+    "engine": "bench_decode",
+    "generated": 32,
+    "ids_first": [
+     9707,
+     0,
+     2585
+    ],
+    "ids_last": [
+     151644,
+     872,
+     198
+    ],
+    "ids_sha256_16": "7fc0f968789b1882",
+    "model": "bf16",
+    "prefill_s": 0.021041,
+    "prefill_tps": 1425.7793,
+    "prompt_id": "short",
+    "prompt_tokens": 30,
+    "prompt_tokens_asserted": 30,
+    "watch_pid_cpu_delta_s": null
+   },
+   {
+    "decode_tps": 259.02,
+    "device": "Apple M1 Ultra",
+    "engine": "bench_decode",
+    "generated": 32,
+    "ids_first": [
+     9707,
+     0,
+     2585
+    ],
+    "ids_last": [
+     151644,
+     872,
+     198
+    ],
+    "ids_sha256_16": "7fc0f968789b1882",
+    "model": "bf16",
+    "prefill_s": 0.027105,
+    "prefill_tps": 1106.8069,
+    "prompt_id": "short",
+    "prompt_tokens": 30,
+    "prompt_tokens_asserted": 30,
+    "watch_pid_cpu_delta_s": null
+   },
+   {
+    "decode_tps": 256.1191,
+    "device": "Apple M1 Ultra",
+    "engine": "bench_decode",
+    "generated": 32,
+    "ids_first": [
+     9707,
+     0,
+     2585
+    ],
+    "ids_last": [
+     151644,
+     872,
+     198
+    ],
+    "ids_sha256_16": "7fc0f968789b1882",
+    "model": "bf16",
+    "prefill_s": 0.029871,
+    "prefill_tps": 1004.3326,
+    "prompt_id": "short",
+    "prompt_tokens": 30,
+    "prompt_tokens_asserted": 30,
+    "watch_pid_cpu_delta_s": null
+   },
+   {
+    "decode_tps": 251.925,
+    "device": "Apple M1 Ultra",
+    "engine": "bench_decode",
+    "generated": 32,
+    "ids_first": [
+     9707,
+     0,
+     2585
+    ],
+    "ids_last": [
+     151644,
+     872,
+     198
+    ],
+    "ids_sha256_16": "7fc0f968789b1882",
+    "model": "bf16",
+    "prefill_s": 0.027242,
+    "prefill_tps": 1101.2491,
+    "prompt_id": "short",
+    "prompt_tokens": 30,
+    "prompt_tokens_asserted": 30,
+    "watch_pid_cpu_delta_s": null
+   }
+  ],
+  "q4_long": [
+   {
+    "decode_tps": 100.5626,
+    "device": "Apple M1 Ultra",
+    "engine": "bench_decode",
+    "generated": 128,
+    "ids_first": [
+     13060,
+     498,
+     369
+    ],
+    "ids_last": [
+     279,
+     990,
+     315
+    ],
+    "ids_sha256_16": "254d73fd93164b98",
+    "model": "q4",
+    "prefill_s": 0.067444,
+    "prefill_tps": 3884.6948,
+    "prompt_id": "long",
+    "prompt_tokens": 262,
+    "prompt_tokens_asserted": 262,
+    "watch_pid_cpu_delta_s": 109.2
+   },
+   {
+    "decode_tps": 108.6607,
+    "device": "Apple M1 Ultra",
+    "engine": "bench_decode",
+    "generated": 128,
+    "ids_first": [
+     13060,
+     498,
+     369
+    ],
+    "ids_last": [
+     279,
+     990,
+     315
+    ],
+    "ids_sha256_16": "254d73fd93164b98",
+    "model": "q4",
+    "prefill_s": 0.058723,
+    "prefill_tps": 4461.6218,
+    "prompt_id": "long",
+    "prompt_tokens": 262,
+    "prompt_tokens_asserted": 262,
+    "watch_pid_cpu_delta_s": 104.4
+   },
+   {
+    "decode_tps": 290.6143,
+    "device": "Apple M1 Ultra",
+    "engine": "bench_decode",
+    "generated": 128,
+    "ids_first": [
+     13060,
+     498,
+     369
+    ],
+    "ids_last": [
+     279,
+     990,
+     315
+    ],
+    "ids_sha256_16": "254d73fd93164b98",
+    "model": "q4",
+    "prefill_s": 0.03879,
+    "prefill_tps": 6754.2819,
+    "prompt_id": "long",
+    "prompt_tokens": 262,
+    "prompt_tokens_asserted": 262,
+    "watch_pid_cpu_delta_s": null
+   },
+   {
+    "decode_tps": 282.4104,
+    "device": "Apple M1 Ultra",
+    "engine": "bench_decode",
+    "generated": 128,
+    "ids_first": [
+     13060,
+     498,
+     369
+    ],
+    "ids_last": [
+     279,
+     990,
+     315
+    ],
+    "ids_sha256_16": "254d73fd93164b98",
+    "model": "q4",
+    "prefill_s": 0.035119,
+    "prefill_tps": 7460.3757,
+    "prompt_id": "long",
+    "prompt_tokens": 262,
+    "prompt_tokens_asserted": 262,
+    "watch_pid_cpu_delta_s": null
+   },
+   {
+    "decode_tps": 281.9583,
+    "device": "Apple M1 Ultra",
+    "engine": "bench_decode",
+    "generated": 128,
+    "ids_first": [
+     13060,
+     498,
+     369
+    ],
+    "ids_last": [
+     279,
+     990,
+     315
+    ],
+    "ids_sha256_16": "254d73fd93164b98",
+    "model": "q4",
+    "prefill_s": 0.042195,
+    "prefill_tps": 6209.2971,
+    "prompt_id": "long",
+    "prompt_tokens": 262,
+    "prompt_tokens_asserted": 262,
+    "watch_pid_cpu_delta_s": null
+   },
+   {
+    "decode_tps": 287.5459,
+    "device": "Apple M1 Ultra",
+    "engine": "bench_decode",
+    "generated": 128,
+    "ids_first": [
+     13060,
+     498,
+     369
+    ],
+    "ids_last": [
+     279,
+     990,
+     315
+    ],
+    "ids_sha256_16": "254d73fd93164b98",
+    "model": "q4",
+    "prefill_s": 0.043002,
+    "prefill_tps": 6092.7222,
+    "prompt_id": "long",
+    "prompt_tokens": 262,
+    "prompt_tokens_asserted": 262,
+    "watch_pid_cpu_delta_s": null
+   },
+   {
+    "decode_tps": 287.0928,
+    "device": "Apple M1 Ultra",
+    "engine": "bench_decode",
+    "generated": 128,
+    "ids_first": [
+     13060,
+     498,
+     369
+    ],
+    "ids_last": [
+     279,
+     990,
+     315
+    ],
+    "ids_sha256_16": "254d73fd93164b98",
+    "model": "q4",
+    "prefill_s": 0.03593,
+    "prefill_tps": 7292.041,
+    "prompt_id": "long",
+    "prompt_tokens": 262,
+    "prompt_tokens_asserted": 262,
+    "watch_pid_cpu_delta_s": null
+   }
+  ],
+  "q4_longctx": [
+   {
+    "decode_tps": 147.2372,
+    "device": "Apple M1 Ultra",
+    "engine": "bench_decode",
+    "generated": 32,
+    "ids_first": [
+     13060,
+     498,
+     369
+    ],
+    "ids_last": [
+     3897,
+     553,
+     279
+    ],
+    "ids_sha256_16": "7da83f06ec9f001d",
+    "model": "q4",
+    "prefill_s": 0.133111,
+    "prefill_tps": 7910.6639,
+    "prompt_id": "ctx1024",
+    "prompt_tokens": 1053,
+    "prompt_tokens_asserted": 1053,
+    "watch_pid_cpu_delta_s": 77.4
+   },
+   {
+    "decode_tps": 258.5923,
+    "device": "Apple M1 Ultra",
+    "engine": "bench_decode",
+    "generated": 32,
+    "ids_first": [
+     13060,
+     498,
+     369
+    ],
+    "ids_last": [
+     3897,
+     553,
+     279
+    ],
+    "ids_sha256_16": "7da83f06ec9f001d",
+    "model": "q4",
+    "prefill_s": 0.277392,
+    "prefill_tps": 3796.0714,
+    "prompt_id": "ctx1024",
+    "prompt_tokens": 1053,
+    "prompt_tokens_asserted": 1053,
+    "watch_pid_cpu_delta_s": null
+   },
+   {
+    "decode_tps": 289.6005,
+    "device": "Apple M1 Ultra",
+    "engine": "bench_decode",
+    "generated": 32,
+    "ids_first": [
+     13060,
+     498,
+     369
+    ],
+    "ids_last": [
+     3897,
+     553,
+     279
+    ],
+    "ids_sha256_16": "7da83f06ec9f001d",
+    "model": "q4",
+    "prefill_s": 0.101673,
+    "prefill_tps": 10356.7403,
+    "prompt_id": "ctx1024",
+    "prompt_tokens": 1053,
+    "prompt_tokens_asserted": 1053,
+    "watch_pid_cpu_delta_s": null
+   },
+   {
+    "decode_tps": 281.7309,
+    "device": "Apple M1 Ultra",
+    "engine": "bench_decode",
+    "generated": 32,
+    "ids_first": [
+     13060,
+     498,
+     369
+    ],
+    "ids_last": [
+     3897,
+     553,
+     279
+    ],
+    "ids_sha256_16": "7da83f06ec9f001d",
+    "model": "q4",
+    "prefill_s": 0.094357,
+    "prefill_tps": 11159.7394,
+    "prompt_id": "ctx1024",
+    "prompt_tokens": 1053,
+    "prompt_tokens_asserted": 1053,
+    "watch_pid_cpu_delta_s": null
+   },
+   {
+    "decode_tps": 284.2328,
+    "device": "Apple M1 Ultra",
+    "engine": "bench_decode",
+    "generated": 32,
+    "ids_first": [
+     13060,
+     498,
+     369
+    ],
+    "ids_last": [
+     3897,
+     553,
+     279
+    ],
+    "ids_sha256_16": "7da83f06ec9f001d",
+    "model": "q4",
+    "prefill_s": 0.093501,
+    "prefill_tps": 11261.9619,
+    "prompt_id": "ctx1024",
+    "prompt_tokens": 1053,
+    "prompt_tokens_asserted": 1053,
+    "watch_pid_cpu_delta_s": null
+   },
+   {
+    "decode_tps": 284.7252,
+    "device": "Apple M1 Ultra",
+    "engine": "bench_decode",
+    "generated": 32,
+    "ids_first": [
+     13060,
+     498,
+     369
+    ],
+    "ids_last": [
+     3897,
+     553,
+     279
+    ],
+    "ids_sha256_16": "7da83f06ec9f001d",
+    "model": "q4",
+    "prefill_s": 0.09169,
+    "prefill_tps": 11484.3025,
+    "prompt_id": "ctx1024",
+    "prompt_tokens": 1053,
+    "prompt_tokens_asserted": 1053,
+    "watch_pid_cpu_delta_s": null
+   },
+   {
+    "decode_tps": 243.0166,
+    "device": "Apple M1 Ultra",
+    "engine": "bench_decode",
+    "generated": 32,
+    "ids_first": [
+     13060,
+     498,
+     369
+    ],
+    "ids_last": [
+     3897,
+     553,
+     279
+    ],
+    "ids_sha256_16": "7da83f06ec9f001d",
+    "model": "q4",
+    "prefill_s": 0.096424,
+    "prefill_tps": 10920.5319,
+    "prompt_id": "ctx1024",
+    "prompt_tokens": 1053,
+    "prompt_tokens_asserted": 1053,
+    "watch_pid_cpu_delta_s": null
+   }
+  ],
+  "q4_short": [
+   {
+    "decode_tps": 162.0239,
+    "device": "Apple M1 Ultra",
+    "engine": "bench_decode",
+    "generated": 32,
+    "ids_first": [
+     9707,
+     0,
+     2585
+    ],
+    "ids_last": [
+     646,
+     387,
+     7881
+    ],
+    "ids_sha256_16": "7fd25a869ff21678",
+    "model": "q4",
+    "prefill_s": 0.024583,
+    "prefill_tps": 1220.3804,
+    "prompt_id": "short",
+    "prompt_tokens": 30,
+    "prompt_tokens_asserted": 30,
+    "watch_pid_cpu_delta_s": 66.6
+   },
+   {
+    "decode_tps": 166.3535,
+    "device": "Apple M1 Ultra",
+    "engine": "bench_decode",
+    "generated": 32,
+    "ids_first": [
+     9707,
+     0,
+     2585
+    ],
+    "ids_last": [
+     646,
+     387,
+     7881
+    ],
+    "ids_sha256_16": "7fd25a869ff21678",
+    "model": "q4",
+    "prefill_s": 0.024764,
+    "prefill_tps": 1211.4115,
+    "prompt_id": "short",
+    "prompt_tokens": 30,
+    "prompt_tokens_asserted": 30,
+    "watch_pid_cpu_delta_s": 66.0
+   },
+   {
+    "decode_tps": 301.6163,
+    "device": "Apple M1 Ultra",
+    "engine": "bench_decode",
+    "generated": 32,
+    "ids_first": [
+     9707,
+     0,
+     2585
+    ],
+    "ids_last": [
+     646,
+     387,
+     7881
+    ],
+    "ids_sha256_16": "7fd25a869ff21678",
+    "model": "q4",
+    "prefill_s": 0.020841,
+    "prefill_tps": 1439.4674,
+    "prompt_id": "short",
+    "prompt_tokens": 30,
+    "prompt_tokens_asserted": 30,
+    "watch_pid_cpu_delta_s": null
+   },
+   {
+    "decode_tps": 299.1915,
+    "device": "Apple M1 Ultra",
+    "engine": "bench_decode",
+    "generated": 32,
+    "ids_first": [
+     9707,
+     0,
+     2585
+    ],
+    "ids_last": [
+     646,
+     387,
+     7881
+    ],
+    "ids_sha256_16": "7fd25a869ff21678",
+    "model": "q4",
+    "prefill_s": 0.019902,
+    "prefill_tps": 1507.3925,
+    "prompt_id": "short",
+    "prompt_tokens": 30,
+    "prompt_tokens_asserted": 30,
+    "watch_pid_cpu_delta_s": null
+   },
+   {
+    "decode_tps": 286.4649,
+    "device": "Apple M1 Ultra",
+    "engine": "bench_decode",
+    "generated": 32,
+    "ids_first": [
+     9707,
+     0,
+     2585
+    ],
+    "ids_last": [
+     646,
+     387,
+     7881
+    ],
+    "ids_sha256_16": "7fd25a869ff21678",
+    "model": "q4",
+    "prefill_s": 0.026552,
+    "prefill_tps": 1129.8743,
+    "prompt_id": "short",
+    "prompt_tokens": 30,
+    "prompt_tokens_asserted": 30,
+    "watch_pid_cpu_delta_s": null
+   },
+   {
+    "decode_tps": 285.7795,
+    "device": "Apple M1 Ultra",
+    "engine": "bench_decode",
+    "generated": 32,
+    "ids_first": [
+     9707,
+     0,
+     2585
+    ],
+    "ids_last": [
+     646,
+     387,
+     7881
+    ],
+    "ids_sha256_16": "7fd25a869ff21678",
+    "model": "q4",
+    "prefill_s": 0.025512,
+    "prefill_tps": 1175.9364,
+    "prompt_id": "short",
+    "prompt_tokens": 30,
+    "prompt_tokens_asserted": 30,
+    "watch_pid_cpu_delta_s": null
+   },
+   {
+    "decode_tps": 304.5408,
+    "device": "Apple M1 Ultra",
+    "engine": "bench_decode",
+    "generated": 32,
+    "ids_first": [
+     9707,
+     0,
+     2585
+    ],
+    "ids_last": [
+     646,
+     387,
+     7881
+    ],
+    "ids_sha256_16": "7fd25a869ff21678",
+    "model": "q4",
+    "prefill_s": 0.021268,
+    "prefill_tps": 1410.5533,
+    "prompt_id": "short",
+    "prompt_tokens": 30,
+    "prompt_tokens_asserted": 30,
+    "watch_pid_cpu_delta_s": null
+   }
+  ]
+ },
+ "schema": "native-macos-metal-baseline/1",
+ "snapshots": {
+  "bf16": "/Users/joshuawarren/.cache/huggingface/hub/models--mlx-community--Qwen2.5-0.5B-Instruct-bf16/snapshots/56d07e766edd7159fbe12ed12d9cf114bf38bf1e",
+  "q4": "/Users/joshuawarren/.cache/huggingface/hub/models--mlx-community--Qwen2.5-0.5B-Instruct-4bit/snapshots/a5339a4131f135d0fdc6a5c8b5bbed2753bbe0f3"
+ },
+ "summary_method": "resummarize.py over untouched runs/rep*/*.json raw reps; clean = watch delta < 0.10s AND decode_tps >= 70% of best-band median (identical classifier to the committed run_native_matrix.py)",
+ "versions": {
+  "metal": {
+   "architecture": "applegpu_g13d",
+   "device_name": "Apple M1 Ultra",
+   "max_buffer_length": 86586540032,
+   "max_recommended_working_set_size": 115448725504,
+   "memory_size": 137438953472,
+   "resource_limit": 499000
+  },
+  "mlx": "0.32.2",
+  "mlx_lm": "0.31.3",
+  "numpy": "2.5.2",
+  "python": "3.13.15",
+  "transformers": "5.16.1"
+ }
+}
