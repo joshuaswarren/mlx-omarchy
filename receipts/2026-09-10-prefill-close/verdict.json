@@ -64,6 +64,13 @@
     "observed_platform_temperature_c": {"min": 35.918, "max": 43.114},
     "gpu_frequency_signal": "not exposed under /sys/class/devfreq on this host",
     "conclusion": "Neither the approximately 300 tok/s short mode nor the approximately 967 tok/s long mode reappeared. Idle/warm state, order, position, fresh cache, and observed temperature did not separate the narrow distributions. The earlier fast cluster is an uncontrolled transient and is invalid parity evidence until its trigger is reproducible.",
+    "canonical_parity_protocol": {
+      "warmup": "Run and discard one complete bench_matrix matrix per platform, driver, and wheel before measurement; retain bench_decode's four warmup tokens on every measured leg.",
+      "repetitions": 12,
+      "process_isolation": "Each repetition is a fresh bench_matrix process with the same pinned models, fixed manifest order, power source, and contention gate.",
+      "estimator": "Use the per-leg median of all 12 repetitions for Linux/native ratios. Never select the minimum, maximum, or best cluster.",
+      "reported_dispersion": "Publish every sample plus the median, interquartile range, and full range; invalidate a verdict if a second cluster comparable to 300/967 tok/s appears without a reproduced cause."
+    },
     "receipt": "bimodal-main-fork/distribution-summary.json"
   },
   "tests": {
