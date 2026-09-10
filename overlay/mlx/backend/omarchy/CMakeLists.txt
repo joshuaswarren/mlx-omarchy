@@ -264,6 +264,7 @@ omarchy_shader(qmm_vec_q4_multi_subgroup_bf16 shaders/qmm_vec.comp -DUSE_BF16=1 
 omarchy_shader(qmm_tile_f32 shaders/qmm_tile.comp)
 omarchy_shader(qmm_tile_f16 shaders/qmm_tile.comp -DUSE_FP16=1)
 omarchy_shader(qmm_tile_rb_f16 shaders/qmm_tile.comp -DUSE_FP16=1 -DREGISTER_BLOCK=1)
+omarchy_shader(qmm_tile_rb_precise_f16 shaders/qmm_tile.comp -DUSE_FP16=1 -DREGISTER_BLOCK=1 -DPRECISE_ACCUM=1)
 # QmmPrefillCoopmat: the same f16 affine 4-bit/group-64 transposed
 # prefill on the 8x8x8 fp32 subgroup cooperative matrix; gated on the
 # device capability in primitives.cpp, MLX_OMARCHY_NO_COOPMAT=1 forces

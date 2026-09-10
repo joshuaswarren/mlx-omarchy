@@ -590,6 +590,8 @@ enum class ComputeKernel : uint16_t {
   QmmVecQ4MultiSubgroupF32,
   QmmVecQ4MultiSubgroupF16,
   QmmVecQ4MultiSubgroupBF16,
+  // Non-contracted large-prefill fallback; appended to preserve profile ids.
+  QmmTileRbPreciseF16,
   Count,
 };
 

@@ -13,9 +13,9 @@
 // workgroup owns an m-tile x 16-column n-tile of the output and
 // dequantizes each 16 x 16 weight block ONCE into shared float before
 // every row-thread consumes it, amortizing the unpack across the m-tile.
-// MAC count and per-output accumulation order are unchanged: each
-// output element is still one thread summing x[r][k] * (scale*q + bias)
-// over ascending k in a single f32 accumulator.
+// Each output is one ascending-k f32 reduction. PRECISE_ACCUM uses explicit
+// multiply/adds so drivers cannot contract the large-prefill fallback
+// differently; the established kernel retains its fused expression.
 // Shared tiles are float, not the storage dtype: the per-element kernel
 // keeps scale*q+bias at f32 precision inside the dot, and rounding the
 // dequantized weight to the storage dtype here would change results.
@@ -432,7 +432,12 @@ void main() {
           float weight = tile_w[index][lx];
           for (uint row_part = 0u; row_part < ROWS_PER_THREAD; ++row_part) {
             uint local_row = ly * ROWS_PER_THREAD + row_part;
+#ifdef PRECISE_ACCUM
+            precise float product = tile_x[local_row][index] * weight;
+            accumulators[row_part] += product;
+#else
             accumulators[row_part] += tile_x[local_row][index] * weight;
+#endif
           }
         }
         barrier();
