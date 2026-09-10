@@ -1,11 +1,14 @@
 {
- "status": "source_change_and_test_landed_on_branch; m1_six_digest_gate_pending_contention",
+ "status": "complete - source change, test, receipt landed on branch; all gates green",
  "gate_status": {
   "llvmpipe_family_suite": "PASS 20/20 cases, 20,810,294 assertions (final binary; two earlier runs on an intermediate binary had one non-assertion failure each, not reproduced)",
   "llvmpipe_runtime_suite": "PASS 41/41 cases, 22,691 assertions",
-  "m1_proof_legs": "PASS as recorded in reproduction_attempts",
-  "m1_six_digest_quiet_machine_gate": "NOT COMPLETED AT RECORDING TIME - window C script (5 paired matrix runs with per-run retry-on-mismatch, receipts/2026-09-10-qmm-align-determinism/check_matrix.py protocol) launched on jwm1 but queued behind Bf16DecodeGemvClose's overrunning /tmp/m1-gpu.lock chain; window D (stock matrix, M1 fork+stock suites, staging cost probe) also queued",
-  "blocker": "M1 GPU lock contention: peer chain (receipt-gemvclose full_chain.sh + bench_paired.sh) held /tmp/m1-gpu.lock for 2.5+ h past its announced window; my scripted gate is live on jwm1 (/tmp/m1_align_window_c.sh, /tmp/m1_align_window_d.sh) and writes results to receipts/2026-09-10-qmm-align-determinism/m1/ when it acquires the lock; rerun with `sh /tmp/m1_align_window_c.sh && sh /tmp/m1_align_window_d.sh`"
+  "m1_fork_suites": "family 20/20 PASS; runtime 41/41 PASS",
+  "m1_stock_suites": "family 20/20 PASS; runtime 41/41 PASS",
+  "m1_six_digest_quiet_machine_gate": "PASS - 3 fix-wheel runs (align-new-1b/2/3) and 2 pre-fix-wheel runs (align-old-1-retry/2) all DIGESTS_OK against the six canonical pins; one spurious retry and one invalidated first attempt were instrument artifacts (missing checker file, venv missing mlx-lm), not run failures",
+  "stock_mesa_matrix": "DIGESTS_OK - stock pins incl. bf16_long c5be9207833d2a26; fix wheel on stock Mesa is structurally unchanged (coopmat_reachable false)",
+  "prefill_noise": "fix-wheel q4 prefill medians 333.3-337.1 / 959.7-974.0 / 1109.6-1119.0 tok/s vs pre-fix 333.3 / 959.7 / 1109.6 - within noise; bf16 likewise (86.0-86.2 / 317.9-318.7 / 364.7-365.0 vs 87.0 / 318.7 / 365.0)",
+  "staging_cost": "staging probe on fix wheel, fork: odd-view arm delta vs aligned arm across the 8 Qwen shapes is -0.097 to +0.074 ms (within run-to-run noise; outputs bit-identical, mismatches=0) - see m1/staging-cost.log"
  },
  "schema": "mlx-omarchy/qmm-align-determinism/1",
  "date_utc": "2026-09-10",

@@ -1,0 +1,13 @@
+qwen25-0.5b-4bit:short-decode-32 digest=7fd25a869ff21678 pin=7fd25a869ff21678 OK prefill=337.079 decode=112.46
+qwen25-0.5b-4bit:long-decode-128 digest=4cc08910089477fd pin=4cc08910089477fd OK prefill=970.37 decode=109.73
+qwen25-0.5b-4bit:longctx-1024-decode-32 digest=7da83f06ec9f001d pin=7da83f06ec9f001d OK prefill=1113.108 decode=97.03
+qwen25-0.5b-bf16:short-decode-32 digest=f26175202f3dabe9 pin=f26175202f3dabe9 OK prefill=86.207 decode=11.71
+qwen25-0.5b-bf16:long-decode-128 digest=ad964232ee67fecd pin=ad964232ee67fecd OK prefill=318.348 decode=11.27
+qwen25-0.5b-bf16:longctx-1024-decode-32 digest=ff502900d2a179a5 pin=ff502900d2a179a5 OK prefill=364.991 decode=10.04
+qwen25-7b-4bit:short-decode-32 status=skipped (optional, not gated)
+qwen25-7b-4bit:long-decode-128 status=skipped (optional, not gated)
+qwen25-7b-4bit:longctx-1024-decode-32 status=skipped (optional, not gated)
+qwen25-14b-4bit:short-decode-32 status=skipped (optional, not gated)
+qwen25-14b-4bit:long-decode-128 status=skipped (optional, not gated)
+qwen25-14b-4bit:longctx-1024-decode-32 status=skipped (optional, not gated)
+DIGESTS_OK

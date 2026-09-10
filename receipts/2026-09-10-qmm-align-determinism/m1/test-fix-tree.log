@@ -1,0 +1,8 @@
+[doctest] doctest version is "2.4.12"
+[doctest] run with "--help" for options
+[provenance] cooperative_matrix_f32_8=1 subgroup_size=32 -> offset-parity repro compares coopmat vs staged coopmat
+[qmm-offset-parity] coopmat_device=1 m=64 n=192 k=256 mismatches=0 aligned_diff=0.0283432 odd_diff=0.0283432 bound=0.101283
+===============================================================================
+[doctest] test cases:     1 |     1 passed | 0 failed | 19 skipped
+[doctest] assertions: 24583 | 24583 passed | 0 failed |
+[doctest] Status: SUCCESS!

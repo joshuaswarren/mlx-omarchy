@@ -1,0 +1,8 @@
+m=262 k=896 n=896 aligned=3.209ms odd_view=3.283ms staging_delta=+0.074ms mismatches=0
+m=262 k=896 n=4864 aligned=16.086ms odd_view=16.084ms staging_delta=-0.002ms mismatches=0
+m=262 k=4864 n=896 aligned=16.992ms odd_view=16.988ms staging_delta=-0.004ms mismatches=0
+m=262 k=896 n=128 aligned=0.862ms odd_view=0.872ms staging_delta=+0.009ms mismatches=0
+m=1053 k=896 n=896 aligned=11.803ms odd_view=11.789ms staging_delta=-0.014ms mismatches=0
+m=1053 k=896 n=4864 aligned=61.030ms odd_view=61.037ms staging_delta=+0.007ms mismatches=0
+m=1053 k=4864 n=896 aligned=62.529ms odd_view=62.432ms staging_delta=-0.097ms mismatches=0
+m=1053 k=896 n=128 aligned=2.185ms odd_view=2.171ms staging_delta=-0.014ms mismatches=0
