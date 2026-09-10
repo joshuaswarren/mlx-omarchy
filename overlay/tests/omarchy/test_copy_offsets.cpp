@@ -20,6 +20,7 @@
 #include "mlx/backend/gpu/copy.h"
 #include "mlx/backend/gpu/device_info.h"
 #include "mlx/backend/omarchy/encoder.h"
+#include "mlx/backend/omarchy/trace.h"
 #include "mlx/device.h"
 #include "mlx/ops.h"
 #include "mlx/stream.h"
@@ -151,6 +152,35 @@ TEST_CASE("vector copy honors explicit item offsets on both sides") {
   CHECK(values_equal(parent2, {9, 13, 14, 15}));
 }
 
+TEST_CASE("back-to-back scalar fills stay ordered in one submission") {
+  if (!gpu::is_available()) {
+    skip("no qualifying Vulkan device.");
+    return;
+  }
+  Stream s = gpu_stream();
+  auto& encoder = omarchy::get_command_encoder(s);
+  array out = zeros({4}, int32, s);
+  out.eval();
+  encoder.synchronize();
+
+  uint64_t submissions = omarchy::trace::counters().vk_submissions.load();
+  array seven(7, int32);
+  array eleven(11, int32);
+  copy_gpu_inplace(
+      seven, out, out.shape(), out.strides(), out.strides(), 0, 0,
+      CopyType::Scalar, s);
+  copy_gpu_inplace(
+      eleven, out, out.shape(), out.strides(), out.strides(), 0, 0,
+      CopyType::Scalar, s);
+  array doubled = add(out, out, s);
+  array squared = multiply(out, out, s);
+  eval({doubled, squared});
+  encoder.synchronize();
+
+  CHECK(omarchy::trace::counters().vk_submissions.load() == submissions + 1);
+  CHECK(values_equal(doubled, {22, 22, 22, 22}));
+  CHECK(values_equal(squared, {121, 121, 121, 121}));
+}
 TEST_CASE("zero fill honors a slice view offset") {
   if (!gpu::is_available()) {
     skip("no qualifying Vulkan device.");
