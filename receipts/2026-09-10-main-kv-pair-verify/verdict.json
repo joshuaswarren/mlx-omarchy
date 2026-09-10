@@ -1,0 +1,22 @@
+{
+  "purpose": "Main's verification of the paired fp16 KV cache-append dispatch (48 CopyGeneralF16 -> 24 SliceUpdatePairF16) after its worker was budget-stopped mid-benchmark",
+  "source_commit": "b9f5917",
+  "implementation_commit": "05c833b1e3bfc2e82434057432583df0900abb20",
+  "implementation_identical_after_rebase": "patch-id 428ea3cc0381eb40439454afe000a69819cfd300 matches the original 4939e9a3",
+  "dispatches_per_token": {"before": 297, "after": 273},
+  "fork": {
+    "cooperative_matrix_f32_8": 1,
+    "decode_tok_s": {"q4_short": 109.67, "q4_long": 109.33, "q4_longctx": 97.21, "bf16_short": 11.72, "bf16_long": 11.26, "bf16_longctx": 10.00},
+    "prefill_tok_s": {"q4_short": 329.7, "q4_long": 959.7, "q4_longctx": 1111.9},
+    "digests_required": true
+  },
+  "stock": {
+    "cooperative_matrix_f32_8": 0,
+    "decode_tok_s": {"q4_short": 102.39, "q4_long": 81.88, "q4_longctx": 53.05, "bf16_short": 11.72, "bf16_long": 11.30, "bf16_longctx": 10.07},
+    "prefill_tok_s": {"q4_short": 169.5, "q4_long": 309.3, "q4_longctx": 360.6},
+    "digests_required": true
+  },
+  "decode_before_fork": {"q4_short": 108.58, "q4_long": 107.99, "q4_longctx": 96.34},
+  "tests_from_worker": {"kv_ops": "429/429 both drivers", "runtime": "22694 both", "fast_ops": "1103843 fork / 1103842 stock", "fast_regression": "16/16 both"},
+  "worker_receipt": "receipts/2026-09-10-kv-pair-qualify/"
+}
