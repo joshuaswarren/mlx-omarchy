@@ -10,7 +10,9 @@
 #include <cstdint>
 #include <limits>
 #include <mutex>
-
+#include <span>
+#include <string>
+#include <unordered_map>
 namespace mlx::core::omarchy {
 
 inline constexpr uint32_t kComputeThreadsPerGroup = 256;
@@ -594,6 +596,7 @@ enum class ComputeKernel : uint16_t {
   QmmTileRbPreciseF16,
   // Native-order single-query f16 attention; append-only profile id.
   SdpaDecodeNativeF16,
+  Custom,
   Count,
 };
 
@@ -660,6 +663,9 @@ class ComputeRuntime {
   ComputeRuntime& operator=(const ComputeRuntime&) = delete;
 
   VkPipeline pipeline(ComputeKernel kernel);
+  VkPipeline pipeline(
+      const std::string& cache_key,
+      std::span<const uint32_t> spirv);
   VkPipelineLayout pipeline_layout() const {
     return pipeline_layout_;
   }
@@ -676,6 +682,7 @@ class ComputeRuntime {
 
  private:
   VkPipeline create_pipeline(ComputeKernel kernel);
+  VkPipeline create_pipeline(std::span<const uint32_t> spirv);
 
   uint32_t binding_limit_{0};
 
@@ -683,6 +690,7 @@ class ComputeRuntime {
   VkDescriptorSetLayout descriptor_layout_{VK_NULL_HANDLE};
   VkPipelineLayout pipeline_layout_{VK_NULL_HANDLE};
   std::array<VkPipeline, static_cast<size_t>(ComputeKernel::Count)> pipelines_{};
+  std::unordered_map<std::string, VkPipeline> dynamic_pipelines_;
   std::mutex mutex_;
 };
 

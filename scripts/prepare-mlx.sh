@@ -63,6 +63,8 @@ patch --directory="$STAGING_DIR" --strip=1 --forward --fuzz=0 \
 patch --directory="$STAGING_DIR" --strip=1 --forward --fuzz=0 \
   < "$ROOT/patches/mlx-fast-bool-mask-floor.patch"
 patch --directory="$STAGING_DIR" --strip=1 --forward --fuzz=0 \
+  < "$ROOT/patches/mlx-omarchy-metal-kernel.patch"
+patch --directory="$STAGING_DIR" --strip=1 --forward --fuzz=0 \
   < "$ROOT/patches/mlx-version-time.patch"
 
 rm -rf "$SOURCE_DIR"
