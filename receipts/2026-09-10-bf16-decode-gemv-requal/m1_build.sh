@@ -6,10 +6,12 @@ cd ~/src/mlx-requal
 mkdir -p receipt-requal/wheels receipt-requal/logs
 git rev-parse HEAD > receipt-requal/commit.txt
 
-# 1. candidate wheel (diagnostics stamp, matching the original candidate run)
+# 1. candidate wheel — plain stamped release wheel (DEV_RELEASE=1 stamps the
+# commit; NO --diagnostics: the canonical baseline wheel b6d662a8 is a
+# non-diagnostics build and the paired cells must share build mode)
 nice -n 10 env DEV_RELEASE=1 CMAKE_BUILD_PARALLEL_LEVEL=4 \
-  scripts/build-wheel.sh --diagnostics 2>&1 | tee receipt-requal/logs/build-wheel.log
-cand_wheel=$(ls -t dist/mlx_omarchy-*+diag.*.whl | head -1)
+  scripts/build-wheel.sh 2>&1 | tee receipt-requal/logs/build-wheel.log
+cand_wheel=$(ls -t dist/mlx_omarchy-*.whl | head -1)
 cp "$cand_wheel" receipt-requal/wheels/candidate/
 sha256sum "$cand_wheel" | tee receipt-requal/logs/candidate-wheel.sha256
 
