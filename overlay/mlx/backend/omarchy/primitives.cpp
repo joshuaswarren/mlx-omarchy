@@ -10007,7 +10007,7 @@ void ScaledDotProductAttention::eval_gpu(
       omarchy::env_flag("MLX_OMARCHY_SDPA_DECODE");
   if (decode_fused && q.dtype() == float16 && inputs.size() == 3 &&
       !has_sinks_ && !output_logsumexp_ && batch == 1 && q_len == 1 &&
-      k_len > 0 && k_len <= 4096 && v_dim == head_dim &&
+      k_len > 0 && k_len <= 512 && v_dim == head_dim &&
       head_dim <= 256 &&
       k.strides() == v.strides()) {
     out.set_data(allocate_omarchy(out.nbytes()));

@@ -46,7 +46,7 @@ layout(push_constant) uniform Params {
 } params;
 
 shared float block_values[256];
-shared float16_t score_values[4096];
+shared float16_t score_values[512];
 
 float rounded_score(uint head, uint key) {
   uint repeats = params.matrix_m / params.matrix_n;
