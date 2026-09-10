@@ -109,6 +109,7 @@ void dd_add(vec4 product, inout precise vec4 sum, inout vec4 comp) {
   sum = total;
 }
 
+
 // Unconditional two-sum of two scalars; err = (a + b) - s exactly.
 void two_sum(float a, float b, out float s, out float err) {
   s = a + b;
