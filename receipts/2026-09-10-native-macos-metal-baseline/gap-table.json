@@ -19,6 +19,26 @@
    },
    "native": [
     {
+     "chip": "Apple M1 (8 GPU cores)",
+     "decode_med": 150.57,
+     "decode_range": [
+      150.56,
+      151.1
+     ],
+     "digest": "7fd25a869ff21678",
+     "digest_matches_reference_native": true,
+     "host": "(base M1 Mac, committed receipt)",
+     "prefill_med": 294.1,
+     "prefill_range": [
+      294.118,
+      297.03
+     ],
+     "ratio_decode_vs_fork": 1.342,
+     "ratio_decode_vs_stock": 1.469,
+     "ratio_prefill_vs_fork": 0.887,
+     "ratio_prefill_vs_stock": 1.72
+    },
+    {
      "chip": "Apple M1 Max",
      "decode_med": 286.961,
      "decode_range": [
@@ -75,6 +95,26 @@
     "prefill_med": 310.06
    },
    "native": [
+    {
+     "chip": "Apple M1 (8 GPU cores)",
+     "decode_med": 146.77,
+     "decode_range": [
+      146.34,
+      147.03
+     ],
+     "digest": "254d73fd93164b98",
+     "digest_matches_reference_native": true,
+     "host": "(base M1 Mac, committed receipt)",
+     "prefill_med": 1213.0,
+     "prefill_range": [
+      1201.835,
+      1218.605
+     ],
+     "ratio_decode_vs_fork": 1.347,
+     "ratio_decode_vs_stock": 1.793,
+     "ratio_prefill_vs_fork": 1.25,
+     "ratio_prefill_vs_stock": 3.912
+    },
     {
      "chip": "Apple M1 Max",
      "decode_med": 296.253,
@@ -133,6 +173,26 @@
    },
    "native": [
     {
+     "chip": "Apple M1 (8 GPU cores)",
+     "decode_med": 140.38,
+     "decode_range": [
+      140.07,
+      141.2
+     ],
+     "digest": "7da83f06ec9f001d",
+     "digest_matches_reference_native": true,
+     "host": "(base M1 Mac, committed receipt)",
+     "prefill_med": 1840.9,
+     "prefill_range": [
+      1834.495,
+      1847.368
+     ],
+     "ratio_decode_vs_fork": 1.46,
+     "ratio_decode_vs_stock": 2.653,
+     "ratio_prefill_vs_fork": 1.655,
+     "ratio_prefill_vs_stock": 5.09
+    },
+    {
      "chip": "Apple M1 Max",
      "decode_med": 283.794,
      "decode_range": [
@@ -189,6 +249,26 @@
     "prefill_med": 83.799
    },
    "native": [
+    {
+     "chip": "Apple M1 (8 GPU cores)",
+     "decode_med": 56.43,
+     "decode_range": [
+      56.27,
+      56.57
+     ],
+     "digest": "7fc0f968789b1882",
+     "digest_matches_reference_native": true,
+     "host": "(base M1 Mac, committed receipt)",
+     "prefill_med": 232.6,
+     "prefill_range": [
+      230.769,
+      234.375
+     ],
+     "ratio_decode_vs_fork": 4.823,
+     "ratio_decode_vs_stock": 4.809,
+     "ratio_prefill_vs_fork": 2.706,
+     "ratio_prefill_vs_stock": 2.776
+    },
     {
      "chip": "Apple M1 Max",
      "decode_med": 217.882,
@@ -247,6 +327,26 @@
    },
    "native": [
     {
+     "chip": "Apple M1 (8 GPU cores)",
+     "decode_med": 55.72,
+     "decode_range": [
+      55.46,
+      55.81
+     ],
+     "digest": "407b7624ed1b3b29",
+     "digest_matches_reference_native": true,
+     "host": "(base M1 Mac, committed receipt)",
+     "prefill_med": 1007.7,
+     "prefill_range": [
+      1000.0,
+      1015.504
+     ],
+     "ratio_decode_vs_fork": 4.951,
+     "ratio_decode_vs_stock": 4.935,
+     "ratio_prefill_vs_fork": 3.171,
+     "ratio_prefill_vs_stock": 4.781
+    },
+    {
      "chip": "Apple M1 Max",
      "decode_med": 214.715,
      "decode_range": [
@@ -303,6 +403,26 @@
     "prefill_med": 220.132
    },
    "native": [
+    {
+     "chip": "Apple M1 (8 GPU cores)",
+     "decode_med": 54.55,
+     "decode_range": [
+      54.34,
+      54.62
+     ],
+     "digest": "ff502900d2a179a5",
+     "digest_matches_reference_native": true,
+     "host": "(base M1 Mac, committed receipt)",
+     "prefill_med": 1655.7,
+     "prefill_range": [
+      1647.887,
+      1658.268
+     ],
+     "ratio_decode_vs_fork": 5.439,
+     "ratio_decode_vs_stock": 5.388,
+     "ratio_prefill_vs_fork": 4.539,
+     "ratio_prefill_vs_stock": 7.521
+    },
     {
      "chip": "Apple M1 Max",
      "decode_med": 207.954,

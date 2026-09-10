@@ -1,0 +1,129 @@
+{
+ "host": {
+  "chip": "Apple M1 (8 GPU cores)",
+  "cpu_cores": "8",
+  "gpu_identity_lines": [
+   "Chipset Model: Apple M1",
+   "Total Number of Cores: 8",
+   "Metal 3"
+  ],
+  "hostname": "(base M1 Mac, committed receipt)",
+  "macos": "14.8.9 (23J631)",
+  "mem_bytes": "17179869184"
+ },
+ "legs": {
+  "bf16_long": {
+   "clean_reps": 5,
+   "decode_tok_s": {
+    "max": 55.81,
+    "median": 55.72,
+    "min": 55.46
+   },
+   "digest": "407b7624ed1b3b29",
+   "digest_matches_reference_native": true,
+   "generated_tokens": 128,
+   "prefill_tok_s": {
+    "max": 1015.504,
+    "median": 1007.7,
+    "min": 1000.0
+   },
+   "prompt_tokens": 262,
+   "reps": 5
+  },
+  "bf16_longctx": {
+   "clean_reps": 5,
+   "decode_tok_s": {
+    "max": 54.62,
+    "median": 54.55,
+    "min": 54.34
+   },
+   "digest": "ff502900d2a179a5",
+   "digest_matches_reference_native": true,
+   "generated_tokens": 32,
+   "prefill_tok_s": {
+    "max": 1658.268,
+    "median": 1655.7,
+    "min": 1647.887
+   },
+   "prompt_tokens": 1053,
+   "reps": 5
+  },
+  "bf16_short": {
+   "clean_reps": 5,
+   "decode_tok_s": {
+    "max": 56.57,
+    "median": 56.43,
+    "min": 56.27
+   },
+   "digest": "7fc0f968789b1882",
+   "digest_matches_reference_native": true,
+   "generated_tokens": 32,
+   "prefill_tok_s": {
+    "max": 234.375,
+    "median": 232.6,
+    "min": 230.769
+   },
+   "prompt_tokens": 30,
+   "reps": 5
+  },
+  "q4_long": {
+   "clean_reps": 5,
+   "decode_tok_s": {
+    "max": 147.03,
+    "median": 146.77,
+    "min": 146.34
+   },
+   "digest": "254d73fd93164b98",
+   "digest_matches_reference_native": true,
+   "generated_tokens": 128,
+   "prefill_tok_s": {
+    "max": 1218.605,
+    "median": 1213.0,
+    "min": 1201.835
+   },
+   "prompt_tokens": 262,
+   "reps": 5
+  },
+  "q4_longctx": {
+   "clean_reps": 5,
+   "decode_tok_s": {
+    "max": 141.2,
+    "median": 140.38,
+    "min": 140.07
+   },
+   "digest": "7da83f06ec9f001d",
+   "digest_matches_reference_native": true,
+   "generated_tokens": 32,
+   "prefill_tok_s": {
+    "max": 1847.368,
+    "median": 1840.9,
+    "min": 1834.495
+   },
+   "prompt_tokens": 1053,
+   "reps": 5
+  },
+  "q4_short": {
+   "clean_reps": 5,
+   "decode_tok_s": {
+    "max": 151.1,
+    "median": 150.57,
+    "min": 150.56
+   },
+   "digest": "7fd25a869ff21678",
+   "digest_matches_reference_native": true,
+   "generated_tokens": 32,
+   "prefill_tok_s": {
+    "max": 297.03,
+    "median": 294.1,
+    "min": 294.118
+   },
+   "prompt_tokens": 30,
+   "reps": 5
+  }
+ },
+ "provenance": "commit ea09eefa receipts/native-baseline-2026-09-06/native-2026-09-06-summary.json (+ native-mlx0.32.2.json identity), published 2026-09-06",
+ "schema": "native-macos-metal-baseline/1 (converted from committed ea09eefa summary)",
+ "versions": {
+  "mlx": "0.32.2"
+ }
+}

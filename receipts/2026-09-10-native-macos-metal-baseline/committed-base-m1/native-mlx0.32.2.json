@@ -1,0 +1,73 @@
+{
+  "schema": "bench-matrix/1",
+  "mode": "metadata",
+  "started_utc": "2026-09-06T07:36:53Z",
+  "host_label": null,
+  "manifest": "~/mlx-bench/scripts/bench_matrix.json",
+  "host": {
+    "system": "Darwin",
+    "machine": "arm64",
+    "python": "3.11.16",
+    "chip": "Apple M1",
+    "cores": "8",
+    "memsize_bytes": 17179869184,
+    "os": "macOS 14.8.9 (23J631)",
+    "gpu": {
+      "chipset": "Apple M1",
+      "gpu_cores": "8",
+      "metal": "Metal 3"
+    }
+  },
+  "packages": {
+    "mlx": "0.32.2",
+    "mlx-omarchy": null,
+    "mlx-lm": null,
+    "transformers": null,
+    "numpy": null
+  },
+  "binary_provenance": {
+    "omarchy": {
+      "dist": "mlx-omarchy",
+      "verified": "no-metadata",
+      "mismatch": "no mlx-omarchy distribution metadata: mlx appears to be a source install, so installed-binary provenance cannot be checked here. Record the source commit instead.",
+      "files": [],
+      "dist_version": null,
+      "mx_version": "0.32.2",
+      "version_match": null
+    },
+    "upstream_mlx": {
+      "dist": "mlx",
+      "verified": "match",
+      "mismatch": null,
+      "files": [
+        {
+          "path": "mlx/core.cpython-311-darwin.so",
+          "label": "mlx.core extension",
+          "sha256": "32a9f068ef30e66aa3f18aedef18cad199c40555e507bad1560296ca3327c76f",
+          "record_sha256": "32a9f068ef30e66aa3f18aedef18cad199c40555e507bad1560296ca3327c76f",
+          "match": true
+        }
+      ],
+      "dist_version": "0.32.2",
+      "mx_version": "0.32.2",
+      "version_match": true
+    },
+    "harness_commit": "unknown",
+    "line_omarchy": "provenance: mlx-omarchy None mx=0.32.2 verified=no-metadata harness=unknown files=unresolved"
+  },
+  "power": {
+    "raw": "Now drawing from 'AC Power' -InternalBattery-0 (id=115933283) 100%; charged; 0:00 remaining present: true",
+    "source": "AC Power",
+    "percent": 100,
+    "charging": false
+  },
+  "clean_check": {
+    "status": "clean",
+    "matched": [],
+    "scanned": 307
+  },
+  "source": {
+    "harness_commit": "unknown",
+    "note": "commit captured by scripts/mlx_provenance.py"
+  }
+}
