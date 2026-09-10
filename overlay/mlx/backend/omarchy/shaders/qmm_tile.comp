@@ -11,9 +11,8 @@
 // per matmul - at m=1023 that dominates prefill
 // (receipts/2026-09-04-prefill-census.md lever 1). Here one
 // workgroup owns an m-tile x 16-column n-tile of the output and
-// dequantizes each K-tile x 16 weight block once into shared float before
-// every row-thread consumes it. Register-blocked Q4 stages 32 K values per
-// barrier and reuses them across 32 rows.
+// dequantizes each 16 x 16 weight block ONCE into shared float before
+// every row-thread consumes it, amortizing the unpack across the m-tile.
 // Each output is one ascending-k f32 reduction. PRECISE_ACCUM uses explicit
 // multiply/adds so drivers cannot contract the large-prefill fallback
 // differently; the established kernel retains its fused expression.
@@ -24,10 +23,10 @@
 // bits, reduce_size the group size, flags bit 0 the non-transposed
 // layout; affine bindings 2/3 the separate scale/bias streams with
 // aux_offset/aux_size their base items, FP_MODE binding 2 the
-// scale-byte stream). matrix_k is always a multiple of group_size
-// (16, 32, 64, or 128, checked in dispatch); the register-blocked Q4 path
-// has group size 64 and 32-wide K tiles. Only non-transposed affine layouts
-// can leave a partial K tile, which bound-checks.
+// scale-byte stream). matrix_k is always a multiple of
+// group_size (16, 32, 64, or 128, checked in dispatch), hence of the
+// 16-wide k-tile in the transposed layouts; only the non-transposed
+// affine layouts can leave a partial k-tile, which bound-checks.
 
 #ifdef USE_FP16
 #extension GL_EXT_shader_16bit_storage : require
@@ -54,16 +53,14 @@ uint16_t bf16_store(float value) {
 #define STORE_VALUE(f) STORAGE_TYPE(f)
 #endif
 
-const uint TILE_N = 16u;
+const uint TILE = 16u;
 #ifdef REGISTER_BLOCK
 const uint TILE_M = 32u;
-const uint TILE_K = 32u;
 const uint ROWS_PER_THREAD = 4u;
-const uint W_ROWS_PER_THREAD = 4u;
+const uint W_ROWS_PER_THREAD = 2u;
 layout(local_size_x = 16, local_size_y = 8) in;
 #else
 const uint TILE_M = 16u;
-const uint TILE_K = 16u;
 const uint ROWS_PER_THREAD = 1u;
 const uint W_ROWS_PER_THREAD = 1u;
 layout(local_size_x = 16, local_size_y = 16) in;
@@ -181,8 +178,8 @@ uint q6_at(uint e, uint c0, uint c1, uint c2) {
 }
 #endif
 
-shared float tile_x[TILE_M][TILE_K];
-shared float tile_w[TILE_K][TILE_N];
+shared float tile_x[TILE_M][16];
+shared float tile_w[16][16];
 
 // Weight layout routing mirrors qmm.comp: flags bit 0 set means
 // non-transposed weights ([batch, Kp, N], scales [batch, K/group_size,
@@ -208,13 +205,14 @@ void main() {
   uint x_batch_rows = params.matrix_m * params.matrix_k;
   uint m_tiles = params.matrix_m / TILE_M +
       uint(params.matrix_m % TILE_M != 0u);
-  uint n_tiles = params.matrix_n / TILE_N +
-      uint(params.matrix_n % TILE_N != 0u);
+  uint n_tiles = params.matrix_n / TILE +
+      uint(params.matrix_n % TILE != 0u);
   // Transposed: groups run along K, so K is a multiple of group_size
-  // (and hence TILE_K). Non-transposed: groups run along N, and the last
+  // (16/32/64/128) and of the 16-wide k-tile: no k tail. Non-transposed:
+  // groups run along N and K only needs pack alignment, so the final
   // k-tile can be partial and must bound-check.
-  uint k_tiles = params.matrix_k / TILE_K +
-      uint(non_transposed && (params.matrix_k % TILE_K != 0u));
+  uint k_tiles = params.matrix_k / TILE +
+      uint(non_transposed && (params.matrix_k % TILE != 0u));
   // Grid-stride over both tile axes keeps the kernel correct under any
   // dispatch clamping, the same contract matmul.comp uses.
   for (uint b = 0u; b < batch; ++b) {
@@ -222,7 +220,7 @@ void main() {
        tile_row += gl_NumWorkGroups.y) {
     for (uint tile_col = gl_WorkGroupID.x; tile_col < n_tiles;
          tile_col += gl_NumWorkGroups.x) {
-      uint column = tile_col * TILE_N + lx;
+      uint column = tile_col * TILE + lx;
       // Non-transposed: w batch slice [K, Np], groups along N, scale
       // [k][n / gs], fixed lane per thread. Transposed: [N, Kp],
       // groups along K, scale [n][k / gs].
@@ -233,21 +231,19 @@ void main() {
         accumulators[row_part] = 0.0;
       }
       for (uint tile = 0u; tile < k_tiles; ++tile) {
-        uint k_base = tile * TILE_K;
-        for (uint k_part = 0u; k_part < TILE_K / 16u; ++k_part) {
-          uint x_k = k_base + k_part * 16u + lx;
-          for (uint row_part = 0u; row_part < ROWS_PER_THREAD; ++row_part) {
-            uint local_row = ly * ROWS_PER_THREAD + row_part;
-            uint row = tile_row * TILE_M + local_row;
-            tile_x[local_row][k_part * 16u + lx] =
-                row < params.matrix_m && x_k < params.matrix_k
-                ? LOAD_VALUE(input_x.values[params.lhs_offset +
-                      b * x_batch_rows + row * params.matrix_k + x_k])
-                : 0.0;
-          }
+        uint k_base = tile * TILE;
+        uint x_k = k_base + lx;
+        for (uint row_part = 0u; row_part < ROWS_PER_THREAD; ++row_part) {
+          uint local_row = ly * ROWS_PER_THREAD + row_part;
+          uint row = tile_row * TILE_M + local_row;
+          tile_x[local_row][lx] =
+              row < params.matrix_m && x_k < params.matrix_k
+              ? LOAD_VALUE(input_x.values[params.lhs_offset +
+                    b * x_batch_rows + row * params.matrix_k + x_k])
+              : 0.0;
         }
 #ifdef REGISTER_BLOCK
-        if (ly < TILE_K / 8u) {
+        if (ly < 2u) {
           uint local_k = ly * 8u;
           uint k = k_base + local_k;
           uint words_per_row = params.matrix_k / 8u;
@@ -432,7 +428,7 @@ void main() {
 #endif
         barrier();
 
-        for (uint index = 0u; index < TILE_K; ++index) {
+        for (uint index = 0u; index < TILE; ++index) {
           float weight = tile_w[index][lx];
           for (uint row_part = 0u; row_part < ROWS_PER_THREAD; ++row_part) {
             uint local_row = ly * ROWS_PER_THREAD + row_part;
