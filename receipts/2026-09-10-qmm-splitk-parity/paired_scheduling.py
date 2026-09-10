@@ -154,8 +154,8 @@ def main():
         for (arm, workload), values in sorted(paired.items())
     }
     summary["median_paired_change_pct"] = {
-        key: round(statistics.median(values), 4)
-        for key, values in sorted(paired.items())
+        f"{arm}/{workload}": round(statistics.median(values), 4)
+        for (arm, workload), values in sorted(paired.items())
     }
     (args.out / "summary.json").write_text(json.dumps(summary, indent=2) + "\n")
     print(json.dumps(summary["prefill_medians"], sort_keys=True), flush=True)
