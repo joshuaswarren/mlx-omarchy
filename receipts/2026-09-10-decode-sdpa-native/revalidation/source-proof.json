@@ -1,0 +1,28 @@
+{
+  "baseline_commit": "df7d036e5f5cdcd0e66a99e0047f488c1d431394",
+  "rebased_source_commit": "6c263b325215ef2555bf525ebb83b1da22ca63de",
+  "original_source_commit": "fe8a897fa58c5586594513396fc1d811279df08f",
+  "original_patch_id": "68d30cbdcebcfbeabba5a4c5199c258a98f26a68",
+  "rebased_patch_id": "68d30cbdcebcfbeabba5a4c5199c258a98f26a68",
+  "implementation_unchanged": true,
+  "guard": {
+    "path": "overlay/mlx/backend/omarchy/primitives.cpp",
+    "line": 10028,
+    "condition": "decode_caps.cooperative_matrix_f32_8 && decode_caps.subgroup_size == 32u && ..."
+  },
+  "capability_discovery": {
+    "path": "overlay/mlx/backend/omarchy/device.cpp",
+    "default_false_line": 249,
+    "validated_true_lines": [283, 294],
+    "requirements": [
+      "VK_KHR_cooperative_matrix extension",
+      "cooperativeMatrix feature",
+      "subgroup-scoped 8x8x8 float32 cooperative matrix property without saturating accumulation"
+    ]
+  },
+  "device_info_exposure": {
+    "path": "overlay/mlx/backend/omarchy/device_info.cpp",
+    "lines": [64, 65]
+  },
+  "guard_reads_environment": false
+}

@@ -1,0 +1,302 @@
+{
+  "baseline_commit": "df7d036e5f5cdcd0e66a99e0047f488c1d431394",
+  "candidate_commit": "6c263b325215ef2555bf525ebb83b1da22ca63de",
+  "versions": {
+    "baseline": "0.32.2.dev202609101312+df7d036",
+    "candidate": "0.32.2.dev202609101302+6c263b3"
+  },
+  "paired_repetitions": 3,
+  "measured_legs": 36,
+  "order": "alternating baseline/candidate; candidate/baseline",
+  "all_digests_equal": true,
+  "results": [
+    {
+      "leg_id": "qwen25-0.5b-4bit:long-decode-128",
+      "sides": {
+        "baseline": {
+          "decode_tok_s": {
+            "samples": [
+              79.75,
+              80.31,
+              79.87
+            ],
+            "median": 79.87
+          },
+          "prefill_tok_s": {
+            "samples": [
+              777.448,
+              777.448,
+              777.448
+            ],
+            "median": 777.448
+          },
+          "digests": [
+            "4cc08910089477fd"
+          ]
+        },
+        "candidate": {
+          "decode_tok_s": {
+            "samples": [
+              107.76,
+              107.46,
+              107.83
+            ],
+            "median": 107.76
+          },
+          "prefill_tok_s": {
+            "samples": [
+              791.541,
+              786.787,
+              789.157
+            ],
+            "median": 789.157
+          },
+          "digests": [
+            "4cc08910089477fd"
+          ]
+        }
+      },
+      "candidate_over_baseline": 1.3491924377112807
+    },
+    {
+      "leg_id": "qwen25-0.5b-4bit:longctx-1024-decode-32",
+      "sides": {
+        "baseline": {
+          "decode_tok_s": {
+            "samples": [
+              52.41,
+              52.4,
+              52.11
+            ],
+            "median": 52.4
+          },
+          "prefill_tok_s": {
+            "samples": [
+              1031.342,
+              1055.11,
+              1048.805
+            ],
+            "median": 1048.805
+          },
+          "digests": [
+            "7da83f06ec9f001d"
+          ]
+        },
+        "candidate": {
+          "decode_tok_s": {
+            "samples": [
+              96.5,
+              98.3,
+              97.1
+            ],
+            "median": 97.1
+          },
+          "prefill_tok_s": {
+            "samples": [
+              1063.636,
+              1070.122,
+              1066.869
+            ],
+            "median": 1066.869
+          },
+          "digests": [
+            "7da83f06ec9f001d"
+          ]
+        }
+      },
+      "candidate_over_baseline": 1.8530534351145038
+    },
+    {
+      "leg_id": "qwen25-0.5b-4bit:short-decode-32",
+      "sides": {
+        "baseline": {
+          "decode_tok_s": {
+            "samples": [
+              101.45,
+              99.97,
+              101.05
+            ],
+            "median": 101.05
+          },
+          "prefill_tok_s": {
+            "samples": [
+              238.095,
+              222.222,
+              222.222
+            ],
+            "median": 222.222
+          },
+          "digests": [
+            "7fd25a869ff21678"
+          ]
+        },
+        "candidate": {
+          "decode_tok_s": {
+            "samples": [
+              110.64,
+              112.04,
+              106.6
+            ],
+            "median": 110.64
+          },
+          "prefill_tok_s": {
+            "samples": [
+              225.564,
+              240.0,
+              223.881
+            ],
+            "median": 225.564
+          },
+          "digests": [
+            "7fd25a869ff21678"
+          ]
+        }
+      },
+      "candidate_over_baseline": 1.0949035131123206
+    },
+    {
+      "leg_id": "qwen25-0.5b-bf16:long-decode-128",
+      "sides": {
+        "baseline": {
+          "decode_tok_s": {
+            "samples": [
+              11.21,
+              11.3,
+              11.29
+            ],
+            "median": 11.29
+          },
+          "prefill_tok_s": {
+            "samples": [
+              297.052,
+              308.962,
+              300.804
+            ],
+            "median": 300.804
+          },
+          "digests": [
+            "ad964232ee67fecd"
+          ]
+        },
+        "candidate": {
+          "decode_tok_s": {
+            "samples": [
+              11.27,
+              11.29,
+              11.28
+            ],
+            "median": 11.28
+          },
+          "prefill_tok_s": {
+            "samples": [
+              299.771,
+              298.746,
+              300.459
+            ],
+            "median": 299.771
+          },
+          "digests": [
+            "ad964232ee67fecd"
+          ]
+        }
+      },
+      "candidate_over_baseline": 0.9991142604074402
+    },
+    {
+      "leg_id": "qwen25-0.5b-bf16:longctx-1024-decode-32",
+      "sides": {
+        "baseline": {
+          "decode_tok_s": {
+            "samples": [
+              10.26,
+              10.24,
+              10.25
+            ],
+            "median": 10.25
+          },
+          "prefill_tok_s": {
+            "samples": [
+              339.349,
+              336.637,
+              343.893
+            ],
+            "median": 339.349
+          },
+          "digests": [
+            "ff502900d2a179a5"
+          ]
+        },
+        "candidate": {
+          "decode_tok_s": {
+            "samples": [
+              10.24,
+              10.26,
+              10.27
+            ],
+            "median": 10.26
+          },
+          "prefill_tok_s": {
+            "samples": [
+              343.781,
+              340.226,
+              339.458
+            ],
+            "median": 340.226
+          },
+          "digests": [
+            "ff502900d2a179a5"
+          ]
+        }
+      },
+      "candidate_over_baseline": 1.0009756097560976
+    },
+    {
+      "leg_id": "qwen25-0.5b-bf16:short-decode-32",
+      "sides": {
+        "baseline": {
+          "decode_tok_s": {
+            "samples": [
+              11.69,
+              11.71,
+              11.72
+            ],
+            "median": 11.71
+          },
+          "prefill_tok_s": {
+            "samples": [
+              81.522,
+              82.645,
+              81.081
+            ],
+            "median": 81.522
+          },
+          "digests": [
+            "f26175202f3dabe9"
+          ]
+        },
+        "candidate": {
+          "decode_tok_s": {
+            "samples": [
+              11.74,
+              11.71,
+              11.7
+            ],
+            "median": 11.71
+          },
+          "prefill_tok_s": {
+            "samples": [
+              81.081,
+              81.522,
+              80.214
+            ],
+            "median": 81.081
+          },
+          "digests": [
+            "f26175202f3dabe9"
+          ]
+        }
+      },
+      "candidate_over_baseline": 1.0
+    }
+  ]
+}

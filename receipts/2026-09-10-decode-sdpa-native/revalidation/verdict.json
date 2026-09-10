@@ -1,0 +1,218 @@
+{
+  "branch": "agents/sdpa-guard-revalidate",
+  "remote_ref": "refs/heads/wave/decode-sdpa-native",
+  "baseline_commit": "df7d036e5f5cdcd0e66a99e0047f488c1d431394",
+  "source_commit": "6c263b325215ef2555bf525ebb83b1da22ca63de",
+  "implementation_commit": "6c263b325215ef2555bf525ebb83b1da22ca63de",
+  "original_implementation_commit": "fe8a897fa58c5586594513396fc1d811279df08f",
+  "implementation_patch_id": "68d30cbdcebcfbeabba5a4c5199c258a98f26a68",
+  "implementation_unchanged_after_rebase": true,
+  "host": {
+    "ssh": "joshuawarren@100.84.184.102",
+    "hostname": "jwm1-linux",
+    "kernel": "Linux 7.1.6-1-1-ARCH",
+    "architecture": "aarch64",
+    "gpu": "Apple M1 (G13G B1)",
+    "lock": "flock -w 1800 /tmp/m1-gpu.lock",
+    "stock_icd": "/home/joshuawarren/stock-mesa/stock-icd.json",
+    "stock_icd_sha256": "97bda66cb6dcd7c96479a835746535dbd96563c647d65251da569773ba230a4e"
+  },
+  "models": [
+    {
+      "id": "qwen25-0.5b-4bit",
+      "repo": "mlx-community/Qwen2.5-0.5B-Instruct-4bit",
+      "revision": "a5339a4131f135d0fdc6a5c8b5bbed2753bbe0f3"
+    },
+    {
+      "id": "qwen25-0.5b-bf16",
+      "repo": "mlx-community/Qwen2.5-0.5B-Instruct-bf16",
+      "revision": "56d07e766edd7159fbe12ed12d9cf114bf38bf1e"
+    }
+  ],
+  "wheels": [
+    {
+      "kind": "release",
+      "filename": "mlx_omarchy-0.32.2.dev202609101302+6c263b3-cp314-cp314-linux_aarch64.whl",
+      "version": "0.32.2.dev202609101302+6c263b3",
+      "sha256": "c2a2e8568681870fcfed3983aa5c24e9ec7d98968ff45e5b270746dc23b18b21",
+      "build": "DEV_RELEASE=1 CMAKE_BUILD_PARALLEL_LEVEL=4 scripts/build-wheel.sh"
+    },
+    {
+      "kind": "diagnostics",
+      "filename": "mlx_omarchy-0.32.2.dev202609101305+diag.6c263b3-cp314-cp314-linux_aarch64.whl",
+      "version": "0.32.2.dev202609101305+diag.6c263b3",
+      "sha256": "6a4089f4d49ab8031eda52e37b79a9b8a06beec9c6eedcea4284229aedd92891",
+      "build": "DEV_RELEASE=1 CMAKE_BUILD_PARALLEL_LEVEL=4 scripts/build-wheel.sh --diagnostics"
+    }
+  ],
+  "baseline_wheel": {
+    "filename": "mlx_omarchy-0.32.2.dev202609101312+df7d036-cp314-cp314-linux_aarch64.whl",
+    "version": "0.32.2.dev202609101312+df7d036",
+    "sha256": "c62339a90a658fefd0f48affa901ce84f2c0f7f769bf17a7661739c8646486bb"
+  },
+  "fork": {
+    "driver": "Mesa Honeykrisp 26.3.0-devel git-6f6afc8968",
+    "api_version": "1.4.359",
+    "driver_version": 109060195,
+    "cooperative_matrix_f32_8": true,
+    "exactness_oracle": "captured macOS native intermediates",
+    "fixed_key_lengths": [30, 62, 127, 263, 1053],
+    "fixed_elements_per_length": 896,
+    "fixed_mismatches": 0,
+    "randomized_cases": 800,
+    "randomized_element_comparisons": 716800,
+    "randomized_mismatches": 0,
+    "input_sha256": "3f688d5a5fe02197028408944a71402d56b9f6f875194b7a7d11982f22138c14",
+    "attention_dispatches_per_layer": 1,
+    "dispatches_per_decode_interval_before": 345.0,
+    "dispatches_per_decode_interval_after": 297.0,
+    "native_decode_dispatches_before": 0,
+    "native_decode_dispatches_after": 792,
+    "paired_repetitions": 3,
+    "paired_measured_legs": 36,
+    "paired_order": "alternating baseline/candidate; candidate/baseline",
+    "all_paired_digests_equal": true,
+    "paired": [
+      {
+        "leg": "qwen25-0.5b-4bit:short-decode-32",
+        "baseline_decode_tok_s_samples": [101.45, 99.97, 101.05],
+        "baseline_decode_tok_s_median": 101.05,
+        "candidate_decode_tok_s_samples": [110.64, 112.04, 106.6],
+        "candidate_decode_tok_s_median": 110.64,
+        "candidate_over_baseline": 1.0949035131123206,
+        "digest": "7fd25a869ff21678"
+      },
+      {
+        "leg": "qwen25-0.5b-4bit:long-decode-128",
+        "baseline_decode_tok_s_samples": [79.75, 80.31, 79.87],
+        "baseline_decode_tok_s_median": 79.87,
+        "candidate_decode_tok_s_samples": [107.76, 107.46, 107.83],
+        "candidate_decode_tok_s_median": 107.76,
+        "candidate_over_baseline": 1.3491924377112807,
+        "digest": "4cc08910089477fd"
+      },
+      {
+        "leg": "qwen25-0.5b-4bit:longctx-1024-decode-32",
+        "baseline_decode_tok_s_samples": [52.41, 52.4, 52.11],
+        "baseline_decode_tok_s_median": 52.4,
+        "candidate_decode_tok_s_samples": [96.5, 98.3, 97.1],
+        "candidate_decode_tok_s_median": 97.1,
+        "candidate_over_baseline": 1.8530534351145038,
+        "digest": "7da83f06ec9f001d"
+      }
+    ],
+    "bf16_control": [
+      {
+        "leg": "short-decode-32",
+        "baseline_decode_tok_s_median": 11.71,
+        "candidate_decode_tok_s_median": 11.71,
+        "candidate_over_baseline": 1.0,
+        "digest": "f26175202f3dabe9"
+      },
+      {
+        "leg": "long-decode-128",
+        "baseline_decode_tok_s_median": 11.29,
+        "candidate_decode_tok_s_median": 11.28,
+        "candidate_over_baseline": 0.9991142604074402,
+        "digest": "ad964232ee67fecd"
+      },
+      {
+        "leg": "longctx-1024-decode-32",
+        "baseline_decode_tok_s_median": 10.25,
+        "candidate_decode_tok_s_median": 10.26,
+        "candidate_over_baseline": 1.0009756097560976,
+        "digest": "ff502900d2a179a5"
+      }
+    ],
+    "digests": [
+      "7fd25a869ff21678",
+      "4cc08910089477fd",
+      "7da83f06ec9f001d",
+      "f26175202f3dabe9",
+      "ad964232ee67fecd",
+      "ff502900d2a179a5"
+    ]
+  },
+  "stock": {
+    "driver": "Mesa Honeykrisp 26.1.7",
+    "api_version": "1.4.354",
+    "driver_version": 109056007,
+    "cooperative_matrix_f32_8": false,
+    "exactness_oracle": "origin/main composed fallback on the stock ICD",
+    "fixed_key_lengths": [30, 62, 127, 263, 1053],
+    "fixed_elements_per_length": 896,
+    "fixed_mismatches": 0,
+    "randomized_cases": 800,
+    "randomized_element_comparisons": 716800,
+    "randomized_mismatches": 0,
+    "input_sha256": "3f688d5a5fe02197028408944a71402d56b9f6f875194b7a7d11982f22138c14",
+    "native_oracle_control": {
+      "purpose": "prove the guarded stock path remains composed rather than silently entering the native kernel",
+      "fixed_mismatches": 2021,
+      "randomized_cases": 800,
+      "randomized_element_comparisons": 716800,
+      "randomized_mismatches": 280553
+    },
+    "attention_dispatches_per_layer": 3,
+    "dispatches_per_decode_interval_before": 345.0,
+    "dispatches_per_decode_interval_after": 345.0,
+    "native_decode_dispatches_before": 0,
+    "native_decode_dispatches_after": 0,
+    "digests": [
+      "7fd25a869ff21678",
+      "4cc08910089477fd",
+      "7da83f06ec9f001d",
+      "f26175202f3dabe9",
+      "c5be9207833d2a26",
+      "ff502900d2a179a5"
+    ],
+    "digests_match_v0_4_2": true,
+    "paired": null,
+    "digest_run_decode_tok_s": {
+      "qwen25-0.5b-4bit:short-decode-32": 100.33,
+      "qwen25-0.5b-4bit:long-decode-128": 80.53,
+      "qwen25-0.5b-4bit:longctx-1024-decode-32": 52.96,
+      "qwen25-0.5b-bf16:short-decode-32": 11.76,
+      "qwen25-0.5b-bf16:long-decode-128": 11.3,
+      "qwen25-0.5b-bf16:longctx-1024-decode-32": 10.3
+    }
+  },
+  "tests": {
+    "llvmpipe": {
+      "binary": ".work/build-revalidation/tests/omarchy/omarchy_fast_ops_tests",
+      "cases": 34,
+      "passed": 34,
+      "failures": 0,
+      "skipped": 0,
+      "assertions": 1115789
+    },
+    "m1_fork": {
+      "binary": ".work/build-revalidation-tests/tests/omarchy/omarchy_fast_ops_tests",
+      "cases": 34,
+      "passed": 34,
+      "failures": 0,
+      "skipped": 0,
+      "assertions": 1103843
+    },
+    "m1_stock": {
+      "binary": ".work/build-revalidation-tests/tests/omarchy/omarchy_fast_ops_tests",
+      "cases": 34,
+      "passed": 34,
+      "failures": 0,
+      "skipped": 0,
+      "assertions": 1103842
+    }
+  },
+  "commands": {
+    "release_build": "flock -w 1800 /tmp/m1-gpu.lock timeout 1800 bash -lc 'DEV_RELEASE=1 CMAKE_BUILD_PARALLEL_LEVEL=4 scripts/build-wheel.sh'",
+    "diagnostics_build": "flock -w 1800 /tmp/m1-gpu.lock timeout 1800 bash -lc 'DEV_RELEASE=1 CMAKE_BUILD_PARALLEL_LEVEL=4 scripts/build-wheel.sh --diagnostics'",
+    "stock_driver_prefix": "VK_DRIVER_FILES=/home/joshuawarren/stock-mesa/stock-icd.json",
+    "exactness": "receipts/2026-09-10-decode-sdpa-native/exactness.py capture|verify",
+    "paired": "revalidation/paired_builds.py",
+    "stock_digests": "revalidation/stock_matrix.py",
+    "targeted_test": "tests/omarchy/omarchy_fast_ops_tests"
+  },
+  "policy": "docs/parity-id-policy.md",
+  "policy_ok": true,
+  "decision": "LANDABLE"
+}

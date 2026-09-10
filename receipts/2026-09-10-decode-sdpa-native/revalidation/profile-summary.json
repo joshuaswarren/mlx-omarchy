@@ -1,0 +1,34 @@
+{
+  "fork": {
+    "cooperative_matrix_f32_8": true,
+    "before": {
+      "dispatches_per_decode_interval": 345.0,
+      "attention_dispatches_per_layer": 3,
+      "native_decode_dispatches": 0
+    },
+    "after": {
+      "dispatches_per_decode_interval": 297.0,
+      "attention_dispatches_per_layer": 1,
+      "native_decode_dispatches": 792
+    }
+  },
+  "stock": {
+    "cooperative_matrix_f32_8": false,
+    "before": {
+      "dispatches_per_decode_interval": 345.0,
+      "attention_dispatches_per_layer": 3,
+      "native_decode_dispatches": 0
+    },
+    "after": {
+      "dispatches_per_decode_interval": 345.0,
+      "attention_dispatches_per_layer": 3,
+      "native_decode_dispatches": 0
+    }
+  },
+  "evidence": {
+    "fork_before": "fork-profile/before-analysis.txt",
+    "fork_after": "fork-profile/after-analysis.txt",
+    "stock_before": "stock-profile/before-analysis.txt",
+    "stock_after": "stock-profile/after-analysis.txt"
+  }
+}

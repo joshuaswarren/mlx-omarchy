@@ -1,0 +1,94 @@
+{
+  "candidate": {
+    "mlx_version": "0.32.2.dev202609101302+6c263b3",
+    "host": "jwm1-linux",
+    "platform": "Linux-7.1.6-1-1-ARCH-aarch64-with-glibc2.43",
+    "machine": "aarch64",
+    "device": {
+      "max_storage_buffer_range": "2147483647",
+      "max_compute_work_group_size_x": "1024",
+      "max_compute_work_group_invocations": "1024",
+      "storage_buffer_16bit_access": "1",
+      "max_compute_shared_memory_size": "32768",
+      "device_name": "Apple M1 (G13G B1)",
+      "architecture": "honeykrisp",
+      "unified_memory": "1",
+      "timestamp_period_ns": "1",
+      "api_version": "1.4.354",
+      "driver": "Mesa Honeykrisp",
+      "vendor_id": "65541",
+      "cooperative_matrix_f32_8": "0",
+      "shader_int64": "1",
+      "device_id": "0",
+      "shader_int16": "1",
+      "driver_version": "109056007",
+      "total_memory": "8113881088",
+      "host_visible_coherent": "1",
+      "shader_float16": "1"
+    },
+    "shapes": {
+      "q_heads": 14,
+      "kv_heads": 2,
+      "head_dim": 64
+    },
+    "fixed_key_lengths": [
+      30,
+      62,
+      127,
+      263,
+      1053
+    ],
+    "random_key_lengths": [
+      1,
+      30,
+      31,
+      32,
+      62,
+      127,
+      263,
+      1053
+    ],
+    "random_seeds_per_length": 100,
+    "random_cases": 800,
+    "input_sha256": "3f688d5a5fe02197028408944a71402d56b9f6f875194b7a7d11982f22138c14"
+  },
+  "capture_input_sha256": "3f688d5a5fe02197028408944a71402d56b9f6f875194b7a7d11982f22138c14",
+  "inputs_identical": true,
+  "fixed": {
+    "30": {
+      "elements": 896,
+      "mismatches": 359,
+      "max_error": 0.0001220703125
+    },
+    "62": {
+      "elements": 896,
+      "mismatches": 411,
+      "max_error": 0.0001220703125
+    },
+    "127": {
+      "elements": 896,
+      "mismatches": 388,
+      "max_error": 0.0001220703125
+    },
+    "263": {
+      "elements": 896,
+      "mismatches": 386,
+      "max_error": 6.103515625e-05
+    },
+    "1053": {
+      "elements": 896,
+      "mismatches": 477,
+      "max_error": 3.0517578125e-05
+    }
+  },
+  "fixed_mismatches": 2021,
+  "random_cases": 800,
+  "random_element_comparisons": 716800,
+  "random_mismatches": 280553,
+  "first_failure": {
+    "key_length": 30,
+    "seed": 0,
+    "mismatches": 369,
+    "max_error": 0.0001220703125
+  }
+}

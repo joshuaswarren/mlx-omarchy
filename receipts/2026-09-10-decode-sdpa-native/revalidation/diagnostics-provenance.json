@@ -1,0 +1,25 @@
+{
+  "dist": "mlx-omarchy",
+  "verified": "match",
+  "mismatch": null,
+  "files": [
+    {
+      "path": "mlx/core.cpython-314-aarch64-linux-gnu.so",
+      "label": "mlx.core extension",
+      "sha256": "4ad850da16c300ea9f60aa7247f034f358aa16d7ba2fd146979a01c867e3cfa5",
+      "record_sha256": "4ad850da16c300ea9f60aa7247f034f358aa16d7ba2fd146979a01c867e3cfa5",
+      "match": true
+    },
+    {
+      "path": "mlx/lib/libmlx.so",
+      "label": "mlx/lib/libmlx.so",
+      "sha256": "3ca53b441799a0906ac29c8f37992a58719c0889ca23437b524160a846e10604",
+      "record_sha256": "3ca53b441799a0906ac29c8f37992a58719c0889ca23437b524160a846e10604",
+      "match": true
+    }
+  ],
+  "dist_version": "0.32.2.dev202609101305+diag.6c263b3",
+  "mx_version": "0.32.2.dev202609101305+diag.6c263b3",
+  "version_match": true,
+  "expected_wheel": "/tmp/mlx-SdpaGuardValidate-revalidation-20260910/wheels/diagnostics/mlx_omarchy-0.32.2.dev202609101305+diag.6c263b3-cp314-cp314-linux_aarch64.whl"
+}
