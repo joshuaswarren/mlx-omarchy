@@ -1,0 +1,6780 @@
+{
+ "token_interval": 10,
+ "dispatches": 345,
+ "submissions": [
+  72,
+  73
+ ],
+ "gpu_busy_us": 22082,
+ "gap_us": 5903,
+ "span_us": 27983,
+ "by_kernel": {
+  "TakeF16": {
+   "n": 2,
+   "gpu_us": 180,
+   "gap_us": 42
+  },
+  "TakeU32": {
+   "n": 1,
+   "gpu_us": 59,
+   "gap_us": 41
+  },
+  "DequantF16": {
+   "n": 1,
+   "gpu_us": 80,
+   "gap_us": 71
+  },
+  "FastRmsNormF16": {
+   "n": 49,
+   "gpu_us": 1982,
+   "gap_us": 884
+  },
+  "QmmVecQ4MultiSubgroupF16": {
+   "n": 96,
+   "gpu_us": 8791,
+   "gap_us": 1450
+  },
+  "FastRopeF16": {
+   "n": 48,
+   "gpu_us": 1806,
+   "gap_us": 797
+  },
+  "CopyGeneralF16": {
+   "n": 48,
+   "gpu_us": 2144,
+   "gap_us": 1040
+  },
+  "MatmulF16": {
+   "n": 48,
+   "gpu_us": 2956,
+   "gap_us": 817
+  },
+  "SoftmaxF16": {
+   "n": 24,
+   "gpu_us": 1252,
+   "gap_us": 274
+  },
+  "SwigluF16": {
+   "n": 24,
+   "gpu_us": 463,
+   "gap_us": 370
+  },
+  "QmmVecQ4WordSubgroupF16": {
+   "n": 1,
+   "gpu_us": 1775,
+   "gap_us": 12
+  },
+  "LogSumExpF16": {
+   "n": 1,
+   "gpu_us": 274,
+   "gap_us": 46
+  },
+  "ElementwiseF16": {
+   "n": 1,
+   "gpu_us": 182,
+   "gap_us": 30
+  },
+  "ArgReduceF16": {
+   "n": 1,
+   "gpu_us": 136,
+   "gap_us": 30
+  }
+ },
+ "rows": [
+  {
+   "layer": 0,
+   "kernel": "TakeF16",
+   "n": 14,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 56.0,
+   "gap_us": 0.0,
+   "submission": 72,
+   "bindings_bytes": [
+    4255744,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 0,
+   "kernel": "TakeF16",
+   "n": 14,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 124.5,
+   "gap_us": 42.5,
+   "submission": 72,
+   "bindings_bytes": [
+    4255744,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 0,
+   "kernel": "TakeU32",
+   "n": 112,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 59.0,
+   "gap_us": 40.9,
+   "submission": 72,
+   "bindings_bytes": [
+    68067328,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 0,
+   "kernel": "DequantF16",
+   "n": 112,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 80.5,
+   "gap_us": 70.7,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 1,
+   "kernel": "FastRmsNormF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 96.5,
+   "gap_us": 55.5,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 1,
+   "kernel": "QmmVecQ4MultiSubgroupF16",
+   "n": 144,
+   "groups": [
+    144,
+    1,
+    1
+   ],
+   "gpu_us": 47.4,
+   "gap_us": 20.7,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    401408,
+    28672,
+    28672,
+    4096
+   ]
+  },
+  {
+   "layer": 1,
+   "kernel": "FastRopeF16",
+   "n": 64,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 25.1,
+   "gap_us": 10.4,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 1,
+   "kernel": "CopyGeneralF16",
+   "n": 128,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 65.1,
+   "gap_us": 25.8,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    4096,
+    65536,
+    65536
+   ]
+  },
+  {
+   "layer": 1,
+   "kernel": "CopyGeneralF16",
+   "n": 128,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 26.7,
+   "gap_us": 25.1,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    4096,
+    65536,
+    65536
+   ]
+  },
+  {
+   "layer": 1,
+   "kernel": "FastRopeF16",
+   "n": 448,
+   "groups": [
+    2,
+    1,
+    1
+   ],
+   "gpu_us": 33.6,
+   "gap_us": 21.0,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 1,
+   "kernel": "MatmulF16",
+   "n": 784,
+   "groups": [
+    4,
+    1,
+    14
+   ],
+   "gpu_us": 85.5,
+   "gap_us": 10.5,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    65536,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 1,
+   "kernel": "SoftmaxF16",
+   "n": 784,
+   "groups": [
+    14,
+    1,
+    1
+   ],
+   "gpu_us": 33.2,
+   "gap_us": 11.4,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 1,
+   "kernel": "MatmulF16",
+   "n": 896,
+   "groups": [
+    4,
+    1,
+    14
+   ],
+   "gpu_us": 48.3,
+   "gap_us": 10.5,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    65536,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 1,
+   "kernel": "QmmVecQ4MultiSubgroupF16",
+   "n": 112,
+   "groups": [
+    112,
+    1,
+    1
+   ],
+   "gpu_us": 91.3,
+   "gap_us": 10.6,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    401408,
+    28672,
+    28672,
+    4096
+   ]
+  },
+  {
+   "layer": 1,
+   "kernel": "FastRmsNormF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 32.5,
+   "gap_us": 10.6,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 1,
+   "kernel": "QmmVecQ4MultiSubgroupF16",
+   "n": 1216,
+   "groups": [
+    1216,
+    1,
+    1
+   ],
+   "gpu_us": 153.6,
+   "gap_us": 18.3,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    2179072,
+    139264,
+    139264,
+    12288
+   ]
+  },
+  {
+   "layer": 1,
+   "kernel": "SwigluF16",
+   "n": 4864,
+   "groups": [
+    5,
+    1,
+    1
+   ],
+   "gpu_us": 17.2,
+   "gap_us": 13.2,
+   "submission": 72,
+   "bindings_bytes": [
+    12288,
+    12288,
+    12288,
+    12288,
+    12288
+   ]
+  },
+  {
+   "layer": 1,
+   "kernel": "QmmVecQ4MultiSubgroupF16",
+   "n": 112,
+   "groups": [
+    112,
+    1,
+    1
+   ],
+   "gpu_us": 72.2,
+   "gap_us": 10.4,
+   "submission": 72,
+   "bindings_bytes": [
+    12288,
+    2179072,
+    139264,
+    139264,
+    4096
+   ]
+  },
+  {
+   "layer": 2,
+   "kernel": "FastRmsNormF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 22.6,
+   "gap_us": 14.5,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 2,
+   "kernel": "QmmVecQ4MultiSubgroupF16",
+   "n": 144,
+   "groups": [
+    144,
+    1,
+    1
+   ],
+   "gpu_us": 35.0,
+   "gap_us": 11.7,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    401408,
+    28672,
+    28672,
+    4096
+   ]
+  },
+  {
+   "layer": 2,
+   "kernel": "FastRopeF16",
+   "n": 64,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 23.2,
+   "gap_us": 10.7,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 2,
+   "kernel": "CopyGeneralF16",
+   "n": 128,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 18.2,
+   "gap_us": 15.0,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    4096,
+    65536,
+    65536
+   ]
+  },
+  {
+   "layer": 2,
+   "kernel": "CopyGeneralF16",
+   "n": 128,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 97.0,
+   "gap_us": 26.1,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    4096,
+    65536,
+    65536
+   ]
+  },
+  {
+   "layer": 2,
+   "kernel": "FastRopeF16",
+   "n": 448,
+   "groups": [
+    2,
+    1,
+    1
+   ],
+   "gpu_us": 34.0,
+   "gap_us": 23.3,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 2,
+   "kernel": "MatmulF16",
+   "n": 784,
+   "groups": [
+    4,
+    1,
+    14
+   ],
+   "gpu_us": 45.8,
+   "gap_us": 20.1,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    65536,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 2,
+   "kernel": "SoftmaxF16",
+   "n": 784,
+   "groups": [
+    14,
+    1,
+    1
+   ],
+   "gpu_us": 69.0,
+   "gap_us": 11.3,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 2,
+   "kernel": "MatmulF16",
+   "n": 896,
+   "groups": [
+    4,
+    1,
+    14
+   ],
+   "gpu_us": 44.9,
+   "gap_us": 18.1,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    65536,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 2,
+   "kernel": "QmmVecQ4MultiSubgroupF16",
+   "n": 112,
+   "groups": [
+    112,
+    1,
+    1
+   ],
+   "gpu_us": 41.5,
+   "gap_us": 11.0,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    401408,
+    28672,
+    28672,
+    4096
+   ]
+  },
+  {
+   "layer": 2,
+   "kernel": "FastRmsNormF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 69.6,
+   "gap_us": 10.5,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 2,
+   "kernel": "QmmVecQ4MultiSubgroupF16",
+   "n": 1216,
+   "groups": [
+    1216,
+    1,
+    1
+   ],
+   "gpu_us": 148.8,
+   "gap_us": 20.8,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    2179072,
+    139264,
+    139264,
+    12288
+   ]
+  },
+  {
+   "layer": 2,
+   "kernel": "SwigluF16",
+   "n": 4864,
+   "groups": [
+    5,
+    1,
+    1
+   ],
+   "gpu_us": 18.4,
+   "gap_us": 12.4,
+   "submission": 72,
+   "bindings_bytes": [
+    12288,
+    12288,
+    12288,
+    12288,
+    12288
+   ]
+  },
+  {
+   "layer": 2,
+   "kernel": "QmmVecQ4MultiSubgroupF16",
+   "n": 112,
+   "groups": [
+    112,
+    1,
+    1
+   ],
+   "gpu_us": 70.2,
+   "gap_us": 11.1,
+   "submission": 72,
+   "bindings_bytes": [
+    12288,
+    2179072,
+    139264,
+    139264,
+    4096
+   ]
+  },
+  {
+   "layer": 3,
+   "kernel": "FastRmsNormF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 22.4,
+   "gap_us": 13.7,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 3,
+   "kernel": "QmmVecQ4MultiSubgroupF16",
+   "n": 144,
+   "groups": [
+    144,
+    1,
+    1
+   ],
+   "gpu_us": 33.9,
+   "gap_us": 10.5,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    401408,
+    28672,
+    28672,
+    4096
+   ]
+  },
+  {
+   "layer": 3,
+   "kernel": "FastRopeF16",
+   "n": 64,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 30.6,
+   "gap_us": 11.1,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 3,
+   "kernel": "CopyGeneralF16",
+   "n": 128,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 29.4,
+   "gap_us": 14.8,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    4096,
+    65536,
+    65536
+   ]
+  },
+  {
+   "layer": 3,
+   "kernel": "CopyGeneralF16",
+   "n": 128,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 28.6,
+   "gap_us": 25.1,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    4096,
+    65536,
+    65536
+   ]
+  },
+  {
+   "layer": 3,
+   "kernel": "FastRopeF16",
+   "n": 448,
+   "groups": [
+    2,
+    1,
+    1
+   ],
+   "gpu_us": 79.8,
+   "gap_us": 20.7,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 3,
+   "kernel": "MatmulF16",
+   "n": 784,
+   "groups": [
+    4,
+    1,
+    14
+   ],
+   "gpu_us": 44.5,
+   "gap_us": 20.8,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    65536,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 3,
+   "kernel": "SoftmaxF16",
+   "n": 784,
+   "groups": [
+    14,
+    1,
+    1
+   ],
+   "gpu_us": 31.6,
+   "gap_us": 11.4,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 3,
+   "kernel": "MatmulF16",
+   "n": 896,
+   "groups": [
+    4,
+    1,
+    14
+   ],
+   "gpu_us": 109.8,
+   "gap_us": 18.0,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    65536,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 3,
+   "kernel": "QmmVecQ4MultiSubgroupF16",
+   "n": 112,
+   "groups": [
+    112,
+    1,
+    1
+   ],
+   "gpu_us": 63.6,
+   "gap_us": 11.8,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    401408,
+    28672,
+    28672,
+    4096
+   ]
+  },
+  {
+   "layer": 3,
+   "kernel": "FastRmsNormF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 59.1,
+   "gap_us": 41.8,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 3,
+   "kernel": "QmmVecQ4MultiSubgroupF16",
+   "n": 1216,
+   "groups": [
+    1216,
+    1,
+    1
+   ],
+   "gpu_us": 252.1,
+   "gap_us": 45.4,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    2179072,
+    139264,
+    139264,
+    12288
+   ]
+  },
+  {
+   "layer": 3,
+   "kernel": "SwigluF16",
+   "n": 4864,
+   "groups": [
+    5,
+    1,
+    1
+   ],
+   "gpu_us": 17.8,
+   "gap_us": 13.9,
+   "submission": 72,
+   "bindings_bytes": [
+    12288,
+    12288,
+    12288,
+    12288,
+    12288
+   ]
+  },
+  {
+   "layer": 3,
+   "kernel": "QmmVecQ4MultiSubgroupF16",
+   "n": 112,
+   "groups": [
+    112,
+    1,
+    1
+   ],
+   "gpu_us": 71.7,
+   "gap_us": 10.7,
+   "submission": 72,
+   "bindings_bytes": [
+    12288,
+    2179072,
+    139264,
+    139264,
+    4096
+   ]
+  },
+  {
+   "layer": 4,
+   "kernel": "FastRmsNormF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 23.9,
+   "gap_us": 12.7,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 4,
+   "kernel": "QmmVecQ4MultiSubgroupF16",
+   "n": 144,
+   "groups": [
+    144,
+    1,
+    1
+   ],
+   "gpu_us": 35.1,
+   "gap_us": 10.4,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    401408,
+    28672,
+    28672,
+    4096
+   ]
+  },
+  {
+   "layer": 4,
+   "kernel": "FastRopeF16",
+   "n": 64,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 23.8,
+   "gap_us": 10.5,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 4,
+   "kernel": "CopyGeneralF16",
+   "n": 128,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 93.5,
+   "gap_us": 15.0,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    4096,
+    65536,
+    65536
+   ]
+  },
+  {
+   "layer": 4,
+   "kernel": "CopyGeneralF16",
+   "n": 128,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 28.0,
+   "gap_us": 27.4,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    4096,
+    65536,
+    65536
+   ]
+  },
+  {
+   "layer": 4,
+   "kernel": "FastRopeF16",
+   "n": 448,
+   "groups": [
+    2,
+    1,
+    1
+   ],
+   "gpu_us": 35.2,
+   "gap_us": 21.8,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 4,
+   "kernel": "MatmulF16",
+   "n": 784,
+   "groups": [
+    4,
+    1,
+    14
+   ],
+   "gpu_us": 83.6,
+   "gap_us": 18.4,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    65536,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 4,
+   "kernel": "SoftmaxF16",
+   "n": 784,
+   "groups": [
+    14,
+    1,
+    1
+   ],
+   "gpu_us": 33.7,
+   "gap_us": 12.7,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 4,
+   "kernel": "MatmulF16",
+   "n": 896,
+   "groups": [
+    4,
+    1,
+    14
+   ],
+   "gpu_us": 50.3,
+   "gap_us": 11.2,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    65536,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 4,
+   "kernel": "QmmVecQ4MultiSubgroupF16",
+   "n": 112,
+   "groups": [
+    112,
+    1,
+    1
+   ],
+   "gpu_us": 91.4,
+   "gap_us": 12.1,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    401408,
+    28672,
+    28672,
+    4096
+   ]
+  },
+  {
+   "layer": 4,
+   "kernel": "FastRmsNormF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 37.4,
+   "gap_us": 11.0,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 4,
+   "kernel": "QmmVecQ4MultiSubgroupF16",
+   "n": 1216,
+   "groups": [
+    1216,
+    1,
+    1
+   ],
+   "gpu_us": 153.8,
+   "gap_us": 14.1,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    2179072,
+    139264,
+    139264,
+    12288
+   ]
+  },
+  {
+   "layer": 4,
+   "kernel": "SwigluF16",
+   "n": 4864,
+   "groups": [
+    5,
+    1,
+    1
+   ],
+   "gpu_us": 17.8,
+   "gap_us": 13.1,
+   "submission": 72,
+   "bindings_bytes": [
+    12288,
+    12288,
+    12288,
+    12288,
+    12288
+   ]
+  },
+  {
+   "layer": 4,
+   "kernel": "QmmVecQ4MultiSubgroupF16",
+   "n": 112,
+   "groups": [
+    112,
+    1,
+    1
+   ],
+   "gpu_us": 69.0,
+   "gap_us": 10.3,
+   "submission": 72,
+   "bindings_bytes": [
+    12288,
+    2179072,
+    139264,
+    139264,
+    4096
+   ]
+  },
+  {
+   "layer": 5,
+   "kernel": "FastRmsNormF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 22.9,
+   "gap_us": 12.3,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 5,
+   "kernel": "QmmVecQ4MultiSubgroupF16",
+   "n": 144,
+   "groups": [
+    144,
+    1,
+    1
+   ],
+   "gpu_us": 34.8,
+   "gap_us": 11.3,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    401408,
+    28672,
+    28672,
+    4096
+   ]
+  },
+  {
+   "layer": 5,
+   "kernel": "FastRopeF16",
+   "n": 64,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 37.1,
+   "gap_us": 11.8,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 5,
+   "kernel": "CopyGeneralF16",
+   "n": 128,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 32.9,
+   "gap_us": 16.7,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    4096,
+    65536,
+    65536
+   ]
+  },
+  {
+   "layer": 5,
+   "kernel": "CopyGeneralF16",
+   "n": 128,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 69.9,
+   "gap_us": 25.1,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    4096,
+    65536,
+    65536
+   ]
+  },
+  {
+   "layer": 5,
+   "kernel": "FastRopeF16",
+   "n": 448,
+   "groups": [
+    2,
+    1,
+    1
+   ],
+   "gpu_us": 35.4,
+   "gap_us": 21.6,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 5,
+   "kernel": "MatmulF16",
+   "n": 784,
+   "groups": [
+    4,
+    1,
+    14
+   ],
+   "gpu_us": 46.8,
+   "gap_us": 17.5,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    65536,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 5,
+   "kernel": "SoftmaxF16",
+   "n": 784,
+   "groups": [
+    14,
+    1,
+    1
+   ],
+   "gpu_us": 101.9,
+   "gap_us": 11.3,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 5,
+   "kernel": "MatmulF16",
+   "n": 896,
+   "groups": [
+    4,
+    1,
+    14
+   ],
+   "gpu_us": 45.5,
+   "gap_us": 20.1,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    65536,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 5,
+   "kernel": "QmmVecQ4MultiSubgroupF16",
+   "n": 112,
+   "groups": [
+    112,
+    1,
+    1
+   ],
+   "gpu_us": 42.2,
+   "gap_us": 13.8,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    401408,
+    28672,
+    28672,
+    4096
+   ]
+  },
+  {
+   "layer": 5,
+   "kernel": "FastRmsNormF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 70.9,
+   "gap_us": 10.8,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 5,
+   "kernel": "QmmVecQ4MultiSubgroupF16",
+   "n": 1216,
+   "groups": [
+    1216,
+    1,
+    1
+   ],
+   "gpu_us": 148.6,
+   "gap_us": 20.4,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    2179072,
+    139264,
+    139264,
+    12288
+   ]
+  },
+  {
+   "layer": 5,
+   "kernel": "SwigluF16",
+   "n": 4864,
+   "groups": [
+    5,
+    1,
+    1
+   ],
+   "gpu_us": 17.9,
+   "gap_us": 14.7,
+   "submission": 72,
+   "bindings_bytes": [
+    12288,
+    12288,
+    12288,
+    12288,
+    12288
+   ]
+  },
+  {
+   "layer": 5,
+   "kernel": "QmmVecQ4MultiSubgroupF16",
+   "n": 112,
+   "groups": [
+    112,
+    1,
+    1
+   ],
+   "gpu_us": 72.5,
+   "gap_us": 11.2,
+   "submission": 72,
+   "bindings_bytes": [
+    12288,
+    2179072,
+    139264,
+    139264,
+    4096
+   ]
+  },
+  {
+   "layer": 6,
+   "kernel": "FastRmsNormF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 22.2,
+   "gap_us": 17.8,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 6,
+   "kernel": "QmmVecQ4MultiSubgroupF16",
+   "n": 144,
+   "groups": [
+    144,
+    1,
+    1
+   ],
+   "gpu_us": 35.2,
+   "gap_us": 10.8,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    401408,
+    28672,
+    28672,
+    4096
+   ]
+  },
+  {
+   "layer": 6,
+   "kernel": "FastRopeF16",
+   "n": 64,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 43.0,
+   "gap_us": 11.2,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 6,
+   "kernel": "CopyGeneralF16",
+   "n": 128,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 32.6,
+   "gap_us": 15.2,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    4096,
+    65536,
+    65536
+   ]
+  },
+  {
+   "layer": 6,
+   "kernel": "CopyGeneralF16",
+   "n": 128,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 28.7,
+   "gap_us": 26.2,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    4096,
+    65536,
+    65536
+   ]
+  },
+  {
+   "layer": 6,
+   "kernel": "FastRopeF16",
+   "n": 448,
+   "groups": [
+    2,
+    1,
+    1
+   ],
+   "gpu_us": 77.1,
+   "gap_us": 22.0,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 6,
+   "kernel": "MatmulF16",
+   "n": 784,
+   "groups": [
+    4,
+    1,
+    14
+   ],
+   "gpu_us": 44.9,
+   "gap_us": 20.3,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    65536,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 6,
+   "kernel": "SoftmaxF16",
+   "n": 784,
+   "groups": [
+    14,
+    1,
+    1
+   ],
+   "gpu_us": 33.0,
+   "gap_us": 11.2,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 6,
+   "kernel": "MatmulF16",
+   "n": 896,
+   "groups": [
+    4,
+    1,
+    14
+   ],
+   "gpu_us": 94.2,
+   "gap_us": 10.8,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    65536,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 6,
+   "kernel": "QmmVecQ4MultiSubgroupF16",
+   "n": 112,
+   "groups": [
+    112,
+    1,
+    1
+   ],
+   "gpu_us": 41.1,
+   "gap_us": 11.3,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    401408,
+    28672,
+    28672,
+    4096
+   ]
+  },
+  {
+   "layer": 6,
+   "kernel": "FastRmsNormF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 55.3,
+   "gap_us": 22.0,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 6,
+   "kernel": "QmmVecQ4MultiSubgroupF16",
+   "n": 1216,
+   "groups": [
+    1216,
+    1,
+    1
+   ],
+   "gpu_us": 270.9,
+   "gap_us": 49.4,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    2179072,
+    139264,
+    139264,
+    12288
+   ]
+  },
+  {
+   "layer": 6,
+   "kernel": "SwigluF16",
+   "n": 4864,
+   "groups": [
+    5,
+    1,
+    1
+   ],
+   "gpu_us": 17.1,
+   "gap_us": 24.5,
+   "submission": 72,
+   "bindings_bytes": [
+    12288,
+    12288,
+    12288,
+    12288,
+    12288
+   ]
+  },
+  {
+   "layer": 6,
+   "kernel": "QmmVecQ4MultiSubgroupF16",
+   "n": 112,
+   "groups": [
+    112,
+    1,
+    1
+   ],
+   "gpu_us": 72.0,
+   "gap_us": 11.0,
+   "submission": 72,
+   "bindings_bytes": [
+    12288,
+    2179072,
+    139264,
+    139264,
+    4096
+   ]
+  },
+  {
+   "layer": 7,
+   "kernel": "FastRmsNormF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 25.8,
+   "gap_us": 12.0,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 7,
+   "kernel": "QmmVecQ4MultiSubgroupF16",
+   "n": 144,
+   "groups": [
+    144,
+    1,
+    1
+   ],
+   "gpu_us": 47.3,
+   "gap_us": 23.0,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    401408,
+    28672,
+    28672,
+    4096
+   ]
+  },
+  {
+   "layer": 7,
+   "kernel": "FastRopeF16",
+   "n": 64,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 25.3,
+   "gap_us": 10.7,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 7,
+   "kernel": "CopyGeneralF16",
+   "n": 128,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 68.1,
+   "gap_us": 25.0,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    4096,
+    65536,
+    65536
+   ]
+  },
+  {
+   "layer": 7,
+   "kernel": "CopyGeneralF16",
+   "n": 128,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 27.1,
+   "gap_us": 26.2,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    4096,
+    65536,
+    65536
+   ]
+  },
+  {
+   "layer": 7,
+   "kernel": "FastRopeF16",
+   "n": 448,
+   "groups": [
+    2,
+    1,
+    1
+   ],
+   "gpu_us": 33.1,
+   "gap_us": 21.1,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 7,
+   "kernel": "MatmulF16",
+   "n": 784,
+   "groups": [
+    4,
+    1,
+    14
+   ],
+   "gpu_us": 102.6,
+   "gap_us": 18.0,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    65536,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 7,
+   "kernel": "SoftmaxF16",
+   "n": 784,
+   "groups": [
+    14,
+    1,
+    1
+   ],
+   "gpu_us": 31.7,
+   "gap_us": 11.5,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 7,
+   "kernel": "MatmulF16",
+   "n": 896,
+   "groups": [
+    4,
+    1,
+    14
+   ],
+   "gpu_us": 44.2,
+   "gap_us": 17.4,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    65536,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 7,
+   "kernel": "QmmVecQ4MultiSubgroupF16",
+   "n": 112,
+   "groups": [
+    112,
+    1,
+    1
+   ],
+   "gpu_us": 88.9,
+   "gap_us": 10.8,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    401408,
+    28672,
+    28672,
+    4096
+   ]
+  },
+  {
+   "layer": 7,
+   "kernel": "FastRmsNormF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 33.1,
+   "gap_us": 11.9,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 7,
+   "kernel": "QmmVecQ4MultiSubgroupF16",
+   "n": 1216,
+   "groups": [
+    1216,
+    1,
+    1
+   ],
+   "gpu_us": 149.4,
+   "gap_us": 17.7,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    2179072,
+    139264,
+    139264,
+    12288
+   ]
+  },
+  {
+   "layer": 7,
+   "kernel": "SwigluF16",
+   "n": 4864,
+   "groups": [
+    5,
+    1,
+    1
+   ],
+   "gpu_us": 17.7,
+   "gap_us": 15.2,
+   "submission": 72,
+   "bindings_bytes": [
+    12288,
+    12288,
+    12288,
+    12288,
+    12288
+   ]
+  },
+  {
+   "layer": 7,
+   "kernel": "QmmVecQ4MultiSubgroupF16",
+   "n": 112,
+   "groups": [
+    112,
+    1,
+    1
+   ],
+   "gpu_us": 70.3,
+   "gap_us": 11.4,
+   "submission": 72,
+   "bindings_bytes": [
+    12288,
+    2179072,
+    139264,
+    139264,
+    4096
+   ]
+  },
+  {
+   "layer": 8,
+   "kernel": "FastRmsNormF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 27.4,
+   "gap_us": 28.5,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 8,
+   "kernel": "QmmVecQ4MultiSubgroupF16",
+   "n": 144,
+   "groups": [
+    144,
+    1,
+    1
+   ],
+   "gpu_us": 139.4,
+   "gap_us": 12.3,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    401408,
+    28672,
+    28672,
+    4096
+   ]
+  },
+  {
+   "layer": 8,
+   "kernel": "FastRopeF16",
+   "n": 64,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 33.2,
+   "gap_us": 15.6,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 8,
+   "kernel": "CopyGeneralF16",
+   "n": 128,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 26.8,
+   "gap_us": 21.1,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    4096,
+    65536,
+    65536
+   ]
+  },
+  {
+   "layer": 8,
+   "kernel": "CopyGeneralF16",
+   "n": 128,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 91.9,
+   "gap_us": 26.0,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    4096,
+    65536,
+    65536
+   ]
+  },
+  {
+   "layer": 8,
+   "kernel": "FastRopeF16",
+   "n": 448,
+   "groups": [
+    2,
+    1,
+    1
+   ],
+   "gpu_us": 33.4,
+   "gap_us": 24.6,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 8,
+   "kernel": "MatmulF16",
+   "n": 784,
+   "groups": [
+    4,
+    1,
+    14
+   ],
+   "gpu_us": 44.2,
+   "gap_us": 18.4,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    65536,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 8,
+   "kernel": "SoftmaxF16",
+   "n": 784,
+   "groups": [
+    14,
+    1,
+    1
+   ],
+   "gpu_us": 79.5,
+   "gap_us": 10.5,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 8,
+   "kernel": "MatmulF16",
+   "n": 896,
+   "groups": [
+    4,
+    1,
+    14
+   ],
+   "gpu_us": 45.1,
+   "gap_us": 18.8,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    65536,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 8,
+   "kernel": "QmmVecQ4MultiSubgroupF16",
+   "n": 112,
+   "groups": [
+    112,
+    1,
+    1
+   ],
+   "gpu_us": 41.0,
+   "gap_us": 10.8,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    401408,
+    28672,
+    28672,
+    4096
+   ]
+  },
+  {
+   "layer": 8,
+   "kernel": "FastRmsNormF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 97.1,
+   "gap_us": 10.5,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 8,
+   "kernel": "QmmVecQ4MultiSubgroupF16",
+   "n": 1216,
+   "groups": [
+    1216,
+    1,
+    1
+   ],
+   "gpu_us": 147.3,
+   "gap_us": 18.3,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    2179072,
+    139264,
+    139264,
+    12288
+   ]
+  },
+  {
+   "layer": 8,
+   "kernel": "SwigluF16",
+   "n": 4864,
+   "groups": [
+    5,
+    1,
+    1
+   ],
+   "gpu_us": 16.9,
+   "gap_us": 14.0,
+   "submission": 72,
+   "bindings_bytes": [
+    12288,
+    12288,
+    12288,
+    12288,
+    12288
+   ]
+  },
+  {
+   "layer": 8,
+   "kernel": "QmmVecQ4MultiSubgroupF16",
+   "n": 112,
+   "groups": [
+    112,
+    1,
+    1
+   ],
+   "gpu_us": 74.0,
+   "gap_us": 12.1,
+   "submission": 72,
+   "bindings_bytes": [
+    12288,
+    2179072,
+    139264,
+    139264,
+    4096
+   ]
+  },
+  {
+   "layer": 9,
+   "kernel": "FastRmsNormF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 22.6,
+   "gap_us": 12.2,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 9,
+   "kernel": "QmmVecQ4MultiSubgroupF16",
+   "n": 144,
+   "groups": [
+    144,
+    1,
+    1
+   ],
+   "gpu_us": 34.5,
+   "gap_us": 10.4,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    401408,
+    28672,
+    28672,
+    4096
+   ]
+  },
+  {
+   "layer": 9,
+   "kernel": "FastRopeF16",
+   "n": 64,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 26.0,
+   "gap_us": 10.7,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 9,
+   "kernel": "CopyGeneralF16",
+   "n": 128,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 28.5,
+   "gap_us": 13.5,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    4096,
+    65536,
+    65536
+   ]
+  },
+  {
+   "layer": 9,
+   "kernel": "CopyGeneralF16",
+   "n": 128,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 27.2,
+   "gap_us": 24.2,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    4096,
+    65536,
+    65536
+   ]
+  },
+  {
+   "layer": 9,
+   "kernel": "FastRopeF16",
+   "n": 448,
+   "groups": [
+    2,
+    1,
+    1
+   ],
+   "gpu_us": 80.0,
+   "gap_us": 21.2,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 9,
+   "kernel": "MatmulF16",
+   "n": 784,
+   "groups": [
+    4,
+    1,
+    14
+   ],
+   "gpu_us": 45.3,
+   "gap_us": 19.2,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    65536,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 9,
+   "kernel": "SoftmaxF16",
+   "n": 784,
+   "groups": [
+    14,
+    1,
+    1
+   ],
+   "gpu_us": 30.9,
+   "gap_us": 10.8,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 9,
+   "kernel": "MatmulF16",
+   "n": 896,
+   "groups": [
+    4,
+    1,
+    14
+   ],
+   "gpu_us": 91.2,
+   "gap_us": 16.8,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    65536,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 9,
+   "kernel": "QmmVecQ4MultiSubgroupF16",
+   "n": 112,
+   "groups": [
+    112,
+    1,
+    1
+   ],
+   "gpu_us": 41.3,
+   "gap_us": 11.3,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    401408,
+    28672,
+    28672,
+    4096
+   ]
+  },
+  {
+   "layer": 9,
+   "kernel": "FastRmsNormF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 59.6,
+   "gap_us": 10.7,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 9,
+   "kernel": "QmmVecQ4MultiSubgroupF16",
+   "n": 1216,
+   "groups": [
+    1216,
+    1,
+    1
+   ],
+   "gpu_us": 252.7,
+   "gap_us": 39.9,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    2179072,
+    139264,
+    139264,
+    12288
+   ]
+  },
+  {
+   "layer": 9,
+   "kernel": "SwigluF16",
+   "n": 4864,
+   "groups": [
+    5,
+    1,
+    1
+   ],
+   "gpu_us": 22.7,
+   "gap_us": 21.4,
+   "submission": 72,
+   "bindings_bytes": [
+    12288,
+    12288,
+    12288,
+    12288,
+    12288
+   ]
+  },
+  {
+   "layer": 9,
+   "kernel": "QmmVecQ4MultiSubgroupF16",
+   "n": 112,
+   "groups": [
+    112,
+    1,
+    1
+   ],
+   "gpu_us": 89.5,
+   "gap_us": 26.2,
+   "submission": 72,
+   "bindings_bytes": [
+    12288,
+    2179072,
+    139264,
+    139264,
+    4096
+   ]
+  },
+  {
+   "layer": 10,
+   "kernel": "FastRmsNormF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 23.5,
+   "gap_us": 15.5,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 10,
+   "kernel": "QmmVecQ4MultiSubgroupF16",
+   "n": 144,
+   "groups": [
+    144,
+    1,
+    1
+   ],
+   "gpu_us": 52.2,
+   "gap_us": 10.5,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    401408,
+    28672,
+    28672,
+    4096
+   ]
+  },
+  {
+   "layer": 10,
+   "kernel": "FastRopeF16",
+   "n": 64,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 25.1,
+   "gap_us": 10.3,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 10,
+   "kernel": "CopyGeneralF16",
+   "n": 128,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 72.8,
+   "gap_us": 27.3,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    4096,
+    65536,
+    65536
+   ]
+  },
+  {
+   "layer": 10,
+   "kernel": "CopyGeneralF16",
+   "n": 128,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 26.5,
+   "gap_us": 27.1,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    4096,
+    65536,
+    65536
+   ]
+  },
+  {
+   "layer": 10,
+   "kernel": "FastRopeF16",
+   "n": 448,
+   "groups": [
+    2,
+    1,
+    1
+   ],
+   "gpu_us": 34.0,
+   "gap_us": 20.9,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 10,
+   "kernel": "MatmulF16",
+   "n": 784,
+   "groups": [
+    4,
+    1,
+    14
+   ],
+   "gpu_us": 81.8,
+   "gap_us": 17.4,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    65536,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 10,
+   "kernel": "SoftmaxF16",
+   "n": 784,
+   "groups": [
+    14,
+    1,
+    1
+   ],
+   "gpu_us": 30.8,
+   "gap_us": 10.8,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 10,
+   "kernel": "MatmulF16",
+   "n": 896,
+   "groups": [
+    4,
+    1,
+    14
+   ],
+   "gpu_us": 50.7,
+   "gap_us": 12.5,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    65536,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 10,
+   "kernel": "QmmVecQ4MultiSubgroupF16",
+   "n": 112,
+   "groups": [
+    112,
+    1,
+    1
+   ],
+   "gpu_us": 106.8,
+   "gap_us": 10.7,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    401408,
+    28672,
+    28672,
+    4096
+   ]
+  },
+  {
+   "layer": 10,
+   "kernel": "FastRmsNormF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 31.8,
+   "gap_us": 11.4,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 10,
+   "kernel": "QmmVecQ4MultiSubgroupF16",
+   "n": 1216,
+   "groups": [
+    1216,
+    1,
+    1
+   ],
+   "gpu_us": 174.7,
+   "gap_us": 20.5,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    2179072,
+    139264,
+    139264,
+    12288
+   ]
+  },
+  {
+   "layer": 10,
+   "kernel": "SwigluF16",
+   "n": 4864,
+   "groups": [
+    5,
+    1,
+    1
+   ],
+   "gpu_us": 17.8,
+   "gap_us": 13.1,
+   "submission": 72,
+   "bindings_bytes": [
+    12288,
+    12288,
+    12288,
+    12288,
+    12288
+   ]
+  },
+  {
+   "layer": 10,
+   "kernel": "QmmVecQ4MultiSubgroupF16",
+   "n": 112,
+   "groups": [
+    112,
+    1,
+    1
+   ],
+   "gpu_us": 78.4,
+   "gap_us": 10.9,
+   "submission": 72,
+   "bindings_bytes": [
+    12288,
+    2179072,
+    139264,
+    139264,
+    4096
+   ]
+  },
+  {
+   "layer": 11,
+   "kernel": "FastRmsNormF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 23.0,
+   "gap_us": 12.0,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 11,
+   "kernel": "QmmVecQ4MultiSubgroupF16",
+   "n": 144,
+   "groups": [
+    144,
+    1,
+    1
+   ],
+   "gpu_us": 34.8,
+   "gap_us": 11.4,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    401408,
+    28672,
+    28672,
+    4096
+   ]
+  },
+  {
+   "layer": 11,
+   "kernel": "FastRopeF16",
+   "n": 64,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 22.5,
+   "gap_us": 10.5,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 11,
+   "kernel": "CopyGeneralF16",
+   "n": 128,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 17.0,
+   "gap_us": 14.2,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    4096,
+    65536,
+    65536
+   ]
+  },
+  {
+   "layer": 11,
+   "kernel": "CopyGeneralF16",
+   "n": 128,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 80.2,
+   "gap_us": 13.9,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    4096,
+    65536,
+    65536
+   ]
+  },
+  {
+   "layer": 11,
+   "kernel": "FastRopeF16",
+   "n": 448,
+   "groups": [
+    2,
+    1,
+    1
+   ],
+   "gpu_us": 32.8,
+   "gap_us": 23.3,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 11,
+   "kernel": "MatmulF16",
+   "n": 784,
+   "groups": [
+    4,
+    1,
+    14
+   ],
+   "gpu_us": 43.7,
+   "gap_us": 17.9,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    65536,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 11,
+   "kernel": "SoftmaxF16",
+   "n": 784,
+   "groups": [
+    14,
+    1,
+    1
+   ],
+   "gpu_us": 78.7,
+   "gap_us": 10.9,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 11,
+   "kernel": "MatmulF16",
+   "n": 896,
+   "groups": [
+    4,
+    1,
+    14
+   ],
+   "gpu_us": 46.7,
+   "gap_us": 17.2,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    65536,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 11,
+   "kernel": "QmmVecQ4MultiSubgroupF16",
+   "n": 112,
+   "groups": [
+    112,
+    1,
+    1
+   ],
+   "gpu_us": 42.3,
+   "gap_us": 11.3,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    401408,
+    28672,
+    28672,
+    4096
+   ]
+  },
+  {
+   "layer": 11,
+   "kernel": "FastRmsNormF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 70.1,
+   "gap_us": 11.1,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 11,
+   "kernel": "QmmVecQ4MultiSubgroupF16",
+   "n": 1216,
+   "groups": [
+    1216,
+    1,
+    1
+   ],
+   "gpu_us": 167.5,
+   "gap_us": 18.6,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    2179072,
+    139264,
+    139264,
+    12288
+   ]
+  },
+  {
+   "layer": 11,
+   "kernel": "SwigluF16",
+   "n": 4864,
+   "groups": [
+    5,
+    1,
+    1
+   ],
+   "gpu_us": 19.7,
+   "gap_us": 13.0,
+   "submission": 72,
+   "bindings_bytes": [
+    12288,
+    12288,
+    12288,
+    12288,
+    12288
+   ]
+  },
+  {
+   "layer": 11,
+   "kernel": "QmmVecQ4MultiSubgroupF16",
+   "n": 112,
+   "groups": [
+    112,
+    1,
+    1
+   ],
+   "gpu_us": 81.0,
+   "gap_us": 10.5,
+   "submission": 72,
+   "bindings_bytes": [
+    12288,
+    2179072,
+    139264,
+    139264,
+    4096
+   ]
+  },
+  {
+   "layer": 12,
+   "kernel": "FastRmsNormF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 21.7,
+   "gap_us": 11.5,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 12,
+   "kernel": "QmmVecQ4MultiSubgroupF16",
+   "n": 144,
+   "groups": [
+    144,
+    1,
+    1
+   ],
+   "gpu_us": 35.3,
+   "gap_us": 10.2,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    401408,
+    28672,
+    28672,
+    4096
+   ]
+  },
+  {
+   "layer": 12,
+   "kernel": "FastRopeF16",
+   "n": 64,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 23.2,
+   "gap_us": 10.3,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 12,
+   "kernel": "CopyGeneralF16",
+   "n": 128,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 26.5,
+   "gap_us": 14.6,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    4096,
+    65536,
+    65536
+   ]
+  },
+  {
+   "layer": 12,
+   "kernel": "CopyGeneralF16",
+   "n": 128,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 26.8,
+   "gap_us": 25.3,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    4096,
+    65536,
+    65536
+   ]
+  },
+  {
+   "layer": 12,
+   "kernel": "FastRopeF16",
+   "n": 448,
+   "groups": [
+    2,
+    1,
+    1
+   ],
+   "gpu_us": 77.4,
+   "gap_us": 21.2,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 12,
+   "kernel": "MatmulF16",
+   "n": 784,
+   "groups": [
+    4,
+    1,
+    14
+   ],
+   "gpu_us": 44.3,
+   "gap_us": 19.1,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    65536,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 12,
+   "kernel": "SoftmaxF16",
+   "n": 784,
+   "groups": [
+    14,
+    1,
+    1
+   ],
+   "gpu_us": 32.8,
+   "gap_us": 11.2,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 12,
+   "kernel": "MatmulF16",
+   "n": 896,
+   "groups": [
+    4,
+    1,
+    14
+   ],
+   "gpu_us": 93.8,
+   "gap_us": 17.2,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    65536,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 12,
+   "kernel": "QmmVecQ4MultiSubgroupF16",
+   "n": 112,
+   "groups": [
+    112,
+    1,
+    1
+   ],
+   "gpu_us": 44.3,
+   "gap_us": 13.2,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    401408,
+    28672,
+    28672,
+    4096
+   ]
+  },
+  {
+   "layer": 12,
+   "kernel": "FastRmsNormF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 59.0,
+   "gap_us": 22.8,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 12,
+   "kernel": "QmmVecQ4MultiSubgroupF16",
+   "n": 1216,
+   "groups": [
+    1216,
+    1,
+    1
+   ],
+   "gpu_us": 263.7,
+   "gap_us": 41.1,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    2179072,
+    139264,
+    139264,
+    12288
+   ]
+  },
+  {
+   "layer": 12,
+   "kernel": "SwigluF16",
+   "n": 4864,
+   "groups": [
+    5,
+    1,
+    1
+   ],
+   "gpu_us": 17.6,
+   "gap_us": 16.4,
+   "submission": 72,
+   "bindings_bytes": [
+    12288,
+    12288,
+    12288,
+    12288,
+    12288
+   ]
+  },
+  {
+   "layer": 12,
+   "kernel": "QmmVecQ4MultiSubgroupF16",
+   "n": 112,
+   "groups": [
+    112,
+    1,
+    1
+   ],
+   "gpu_us": 78.2,
+   "gap_us": 11.0,
+   "submission": 72,
+   "bindings_bytes": [
+    12288,
+    2179072,
+    139264,
+    139264,
+    4096
+   ]
+  },
+  {
+   "layer": 13,
+   "kernel": "FastRmsNormF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 23.0,
+   "gap_us": 11.0,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 13,
+   "kernel": "QmmVecQ4MultiSubgroupF16",
+   "n": 144,
+   "groups": [
+    144,
+    1,
+    1
+   ],
+   "gpu_us": 37.8,
+   "gap_us": 10.6,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    401408,
+    28672,
+    28672,
+    4096
+   ]
+  },
+  {
+   "layer": 13,
+   "kernel": "FastRopeF16",
+   "n": 64,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 26.3,
+   "gap_us": 11.0,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 13,
+   "kernel": "CopyGeneralF16",
+   "n": 128,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 101.2,
+   "gap_us": 14.7,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    4096,
+    65536,
+    65536
+   ]
+  },
+  {
+   "layer": 13,
+   "kernel": "CopyGeneralF16",
+   "n": 128,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 27.2,
+   "gap_us": 27.7,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    4096,
+    65536,
+    65536
+   ]
+  },
+  {
+   "layer": 13,
+   "kernel": "FastRopeF16",
+   "n": 448,
+   "groups": [
+    2,
+    1,
+    1
+   ],
+   "gpu_us": 34.0,
+   "gap_us": 21.8,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 13,
+   "kernel": "MatmulF16",
+   "n": 784,
+   "groups": [
+    4,
+    1,
+    14
+   ],
+   "gpu_us": 83.5,
+   "gap_us": 18.2,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    65536,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 13,
+   "kernel": "SoftmaxF16",
+   "n": 784,
+   "groups": [
+    14,
+    1,
+    1
+   ],
+   "gpu_us": 33.5,
+   "gap_us": 11.2,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 13,
+   "kernel": "MatmulF16",
+   "n": 896,
+   "groups": [
+    4,
+    1,
+    14
+   ],
+   "gpu_us": 44.6,
+   "gap_us": 18.0,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    65536,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 13,
+   "kernel": "QmmVecQ4MultiSubgroupF16",
+   "n": 112,
+   "groups": [
+    112,
+    1,
+    1
+   ],
+   "gpu_us": 88.9,
+   "gap_us": 11.5,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    401408,
+    28672,
+    28672,
+    4096
+   ]
+  },
+  {
+   "layer": 13,
+   "kernel": "FastRmsNormF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 31.5,
+   "gap_us": 10.6,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 13,
+   "kernel": "QmmVecQ4MultiSubgroupF16",
+   "n": 1216,
+   "groups": [
+    1216,
+    1,
+    1
+   ],
+   "gpu_us": 168.3,
+   "gap_us": 18.0,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    2179072,
+    139264,
+    139264,
+    12288
+   ]
+  },
+  {
+   "layer": 13,
+   "kernel": "SwigluF16",
+   "n": 4864,
+   "groups": [
+    5,
+    1,
+    1
+   ],
+   "gpu_us": 17.3,
+   "gap_us": 13.1,
+   "submission": 72,
+   "bindings_bytes": [
+    12288,
+    12288,
+    12288,
+    12288,
+    12288
+   ]
+  },
+  {
+   "layer": 13,
+   "kernel": "QmmVecQ4MultiSubgroupF16",
+   "n": 112,
+   "groups": [
+    112,
+    1,
+    1
+   ],
+   "gpu_us": 78.5,
+   "gap_us": 10.3,
+   "submission": 72,
+   "bindings_bytes": [
+    12288,
+    2179072,
+    139264,
+    139264,
+    4096
+   ]
+  },
+  {
+   "layer": 14,
+   "kernel": "FastRmsNormF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 21.7,
+   "gap_us": 11.1,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 14,
+   "kernel": "QmmVecQ4MultiSubgroupF16",
+   "n": 144,
+   "groups": [
+    144,
+    1,
+    1
+   ],
+   "gpu_us": 35.2,
+   "gap_us": 9.1,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    401408,
+    28672,
+    28672,
+    4096
+   ]
+  },
+  {
+   "layer": 14,
+   "kernel": "FastRopeF16",
+   "n": 64,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 22.5,
+   "gap_us": 10.8,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 14,
+   "kernel": "CopyGeneralF16",
+   "n": 128,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 17.7,
+   "gap_us": 16.5,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    4096,
+    65536,
+    65536
+   ]
+  },
+  {
+   "layer": 14,
+   "kernel": "CopyGeneralF16",
+   "n": 128,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 76.7,
+   "gap_us": 25.3,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    4096,
+    65536,
+    65536
+   ]
+  },
+  {
+   "layer": 14,
+   "kernel": "FastRopeF16",
+   "n": 448,
+   "groups": [
+    2,
+    1,
+    1
+   ],
+   "gpu_us": 33.8,
+   "gap_us": 21.2,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 14,
+   "kernel": "MatmulF16",
+   "n": 784,
+   "groups": [
+    4,
+    1,
+    14
+   ],
+   "gpu_us": 46.3,
+   "gap_us": 17.7,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    65536,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 14,
+   "kernel": "SoftmaxF16",
+   "n": 784,
+   "groups": [
+    14,
+    1,
+    1
+   ],
+   "gpu_us": 84.9,
+   "gap_us": 11.4,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 14,
+   "kernel": "MatmulF16",
+   "n": 896,
+   "groups": [
+    4,
+    1,
+    14
+   ],
+   "gpu_us": 44.8,
+   "gap_us": 17.9,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    65536,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 14,
+   "kernel": "QmmVecQ4MultiSubgroupF16",
+   "n": 112,
+   "groups": [
+    112,
+    1,
+    1
+   ],
+   "gpu_us": 40.4,
+   "gap_us": 10.9,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    401408,
+    28672,
+    28672,
+    4096
+   ]
+  },
+  {
+   "layer": 14,
+   "kernel": "FastRmsNormF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 68.6,
+   "gap_us": 10.5,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 14,
+   "kernel": "QmmVecQ4MultiSubgroupF16",
+   "n": 1216,
+   "groups": [
+    1216,
+    1,
+    1
+   ],
+   "gpu_us": 151.6,
+   "gap_us": 19.3,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    2179072,
+    139264,
+    139264,
+    12288
+   ]
+  },
+  {
+   "layer": 14,
+   "kernel": "SwigluF16",
+   "n": 4864,
+   "groups": [
+    5,
+    1,
+    1
+   ],
+   "gpu_us": 20.6,
+   "gap_us": 11.3,
+   "submission": 72,
+   "bindings_bytes": [
+    12288,
+    12288,
+    12288,
+    12288,
+    12288
+   ]
+  },
+  {
+   "layer": 14,
+   "kernel": "QmmVecQ4MultiSubgroupF16",
+   "n": 112,
+   "groups": [
+    112,
+    1,
+    1
+   ],
+   "gpu_us": 71.2,
+   "gap_us": 9.9,
+   "submission": 72,
+   "bindings_bytes": [
+    12288,
+    2179072,
+    139264,
+    139264,
+    4096
+   ]
+  },
+  {
+   "layer": 15,
+   "kernel": "FastRmsNormF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 22.5,
+   "gap_us": 13.9,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 15,
+   "kernel": "QmmVecQ4MultiSubgroupF16",
+   "n": 144,
+   "groups": [
+    144,
+    1,
+    1
+   ],
+   "gpu_us": 34.7,
+   "gap_us": 10.2,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    401408,
+    28672,
+    28672,
+    4096
+   ]
+  },
+  {
+   "layer": 15,
+   "kernel": "FastRopeF16",
+   "n": 64,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 33.2,
+   "gap_us": 10.5,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 15,
+   "kernel": "CopyGeneralF16",
+   "n": 128,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 29.2,
+   "gap_us": 21.5,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    4096,
+    65536,
+    65536
+   ]
+  },
+  {
+   "layer": 15,
+   "kernel": "CopyGeneralF16",
+   "n": 128,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 27.5,
+   "gap_us": 24.3,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    4096,
+    65536,
+    65536
+   ]
+  },
+  {
+   "layer": 15,
+   "kernel": "FastRopeF16",
+   "n": 448,
+   "groups": [
+    2,
+    1,
+    1
+   ],
+   "gpu_us": 75.9,
+   "gap_us": 21.9,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 15,
+   "kernel": "MatmulF16",
+   "n": 784,
+   "groups": [
+    4,
+    1,
+    14
+   ],
+   "gpu_us": 45.8,
+   "gap_us": 20.8,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    65536,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 15,
+   "kernel": "SoftmaxF16",
+   "n": 784,
+   "groups": [
+    14,
+    1,
+    1
+   ],
+   "gpu_us": 33.8,
+   "gap_us": 13.4,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 15,
+   "kernel": "MatmulF16",
+   "n": 896,
+   "groups": [
+    4,
+    1,
+    14
+   ],
+   "gpu_us": 92.7,
+   "gap_us": 17.8,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    65536,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 15,
+   "kernel": "QmmVecQ4MultiSubgroupF16",
+   "n": 112,
+   "groups": [
+    112,
+    1,
+    1
+   ],
+   "gpu_us": 41.5,
+   "gap_us": 12.2,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    401408,
+    28672,
+    28672,
+    4096
+   ]
+  },
+  {
+   "layer": 15,
+   "kernel": "FastRmsNormF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 32.0,
+   "gap_us": 10.5,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 15,
+   "kernel": "QmmVecQ4MultiSubgroupF16",
+   "n": 1216,
+   "groups": [
+    1216,
+    1,
+    1
+   ],
+   "gpu_us": 203.6,
+   "gap_us": 18.1,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    2179072,
+    139264,
+    139264,
+    12288
+   ]
+  },
+  {
+   "layer": 15,
+   "kernel": "SwigluF16",
+   "n": 4864,
+   "groups": [
+    5,
+    1,
+    1
+   ],
+   "gpu_us": 17.2,
+   "gap_us": 13.9,
+   "submission": 72,
+   "bindings_bytes": [
+    12288,
+    12288,
+    12288,
+    12288,
+    12288
+   ]
+  },
+  {
+   "layer": 15,
+   "kernel": "QmmVecQ4MultiSubgroupF16",
+   "n": 112,
+   "groups": [
+    112,
+    1,
+    1
+   ],
+   "gpu_us": 75.6,
+   "gap_us": 11.6,
+   "submission": 72,
+   "bindings_bytes": [
+    12288,
+    2179072,
+    139264,
+    139264,
+    4096
+   ]
+  },
+  {
+   "layer": 16,
+   "kernel": "FastRmsNormF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 22.4,
+   "gap_us": 13.3,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 16,
+   "kernel": "QmmVecQ4MultiSubgroupF16",
+   "n": 144,
+   "groups": [
+    144,
+    1,
+    1
+   ],
+   "gpu_us": 36.1,
+   "gap_us": 10.8,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    401408,
+    28672,
+    28672,
+    4096
+   ]
+  },
+  {
+   "layer": 16,
+   "kernel": "FastRopeF16",
+   "n": 64,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 33.2,
+   "gap_us": 11.1,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 16,
+   "kernel": "CopyGeneralF16",
+   "n": 128,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 81.9,
+   "gap_us": 14.9,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    4096,
+    65536,
+    65536
+   ]
+  },
+  {
+   "layer": 16,
+   "kernel": "CopyGeneralF16",
+   "n": 128,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 26.3,
+   "gap_us": 26.0,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    4096,
+    65536,
+    65536
+   ]
+  },
+  {
+   "layer": 16,
+   "kernel": "FastRopeF16",
+   "n": 448,
+   "groups": [
+    2,
+    1,
+    1
+   ],
+   "gpu_us": 33.0,
+   "gap_us": 20.9,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 16,
+   "kernel": "MatmulF16",
+   "n": 784,
+   "groups": [
+    4,
+    1,
+    14
+   ],
+   "gpu_us": 85.7,
+   "gap_us": 17.1,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    65536,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 16,
+   "kernel": "SoftmaxF16",
+   "n": 784,
+   "groups": [
+    14,
+    1,
+    1
+   ],
+   "gpu_us": 31.2,
+   "gap_us": 12.0,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 16,
+   "kernel": "MatmulF16",
+   "n": 896,
+   "groups": [
+    4,
+    1,
+    14
+   ],
+   "gpu_us": 45.6,
+   "gap_us": 16.7,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    65536,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 16,
+   "kernel": "QmmVecQ4MultiSubgroupF16",
+   "n": 112,
+   "groups": [
+    112,
+    1,
+    1
+   ],
+   "gpu_us": 89.4,
+   "gap_us": 11.0,
+   "submission": 72,
+   "bindings_bytes": [
+    4096,
+    401408,
+    28672,
+    28672,
+    4096
+   ]
+  },
+  {
+   "layer": 16,
+   "kernel": "FastRmsNormF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 58.5,
+   "gap_us": 163.7,
+   "submission": 73,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 16,
+   "kernel": "QmmVecQ4MultiSubgroupF16",
+   "n": 1216,
+   "groups": [
+    1216,
+    1,
+    1
+   ],
+   "gpu_us": 309.9,
+   "gap_us": 42.8,
+   "submission": 73,
+   "bindings_bytes": [
+    4096,
+    2179072,
+    139264,
+    139264,
+    12288
+   ]
+  },
+  {
+   "layer": 16,
+   "kernel": "SwigluF16",
+   "n": 4864,
+   "groups": [
+    5,
+    1,
+    1
+   ],
+   "gpu_us": 36.1,
+   "gap_us": 28.5,
+   "submission": 73,
+   "bindings_bytes": [
+    12288,
+    12288,
+    12288,
+    12288,
+    12288
+   ]
+  },
+  {
+   "layer": 16,
+   "kernel": "QmmVecQ4MultiSubgroupF16",
+   "n": 112,
+   "groups": [
+    112,
+    1,
+    1
+   ],
+   "gpu_us": 79.2,
+   "gap_us": 14.8,
+   "submission": 73,
+   "bindings_bytes": [
+    12288,
+    2179072,
+    139264,
+    139264,
+    4096
+   ]
+  },
+  {
+   "layer": 17,
+   "kernel": "FastRmsNormF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 21.5,
+   "gap_us": 14.0,
+   "submission": 73,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 17,
+   "kernel": "QmmVecQ4MultiSubgroupF16",
+   "n": 144,
+   "groups": [
+    144,
+    1,
+    1
+   ],
+   "gpu_us": 50.2,
+   "gap_us": 9.8,
+   "submission": 73,
+   "bindings_bytes": [
+    4096,
+    401408,
+    28672,
+    28672,
+    4096
+   ]
+  },
+  {
+   "layer": 17,
+   "kernel": "FastRopeF16",
+   "n": 64,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 25.2,
+   "gap_us": 10.6,
+   "submission": 73,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 17,
+   "kernel": "CopyGeneralF16",
+   "n": 128,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 67.2,
+   "gap_us": 27.8,
+   "submission": 73,
+   "bindings_bytes": [
+    4096,
+    4096,
+    65536,
+    65536
+   ]
+  },
+  {
+   "layer": 17,
+   "kernel": "CopyGeneralF16",
+   "n": 128,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 26.7,
+   "gap_us": 25.5,
+   "submission": 73,
+   "bindings_bytes": [
+    4096,
+    4096,
+    65536,
+    65536
+   ]
+  },
+  {
+   "layer": 17,
+   "kernel": "FastRopeF16",
+   "n": 448,
+   "groups": [
+    2,
+    1,
+    1
+   ],
+   "gpu_us": 32.8,
+   "gap_us": 20.9,
+   "submission": 73,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 17,
+   "kernel": "MatmulF16",
+   "n": 784,
+   "groups": [
+    4,
+    1,
+    14
+   ],
+   "gpu_us": 100.4,
+   "gap_us": 18.2,
+   "submission": 73,
+   "bindings_bytes": [
+    4096,
+    65536,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 17,
+   "kernel": "SoftmaxF16",
+   "n": 784,
+   "groups": [
+    14,
+    1,
+    1
+   ],
+   "gpu_us": 31.2,
+   "gap_us": 11.4,
+   "submission": 73,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 17,
+   "kernel": "MatmulF16",
+   "n": 896,
+   "groups": [
+    4,
+    1,
+    14
+   ],
+   "gpu_us": 43.3,
+   "gap_us": 17.4,
+   "submission": 73,
+   "bindings_bytes": [
+    4096,
+    65536,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 17,
+   "kernel": "QmmVecQ4MultiSubgroupF16",
+   "n": 112,
+   "groups": [
+    112,
+    1,
+    1
+   ],
+   "gpu_us": 78.1,
+   "gap_us": 10.5,
+   "submission": 73,
+   "bindings_bytes": [
+    4096,
+    401408,
+    28672,
+    28672,
+    4096
+   ]
+  },
+  {
+   "layer": 17,
+   "kernel": "FastRmsNormF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 34.0,
+   "gap_us": 10.8,
+   "submission": 73,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 17,
+   "kernel": "QmmVecQ4MultiSubgroupF16",
+   "n": 1216,
+   "groups": [
+    1216,
+    1,
+    1
+   ],
+   "gpu_us": 167.7,
+   "gap_us": 18.1,
+   "submission": 73,
+   "bindings_bytes": [
+    4096,
+    2179072,
+    139264,
+    139264,
+    12288
+   ]
+  },
+  {
+   "layer": 17,
+   "kernel": "SwigluF16",
+   "n": 4864,
+   "groups": [
+    5,
+    1,
+    1
+   ],
+   "gpu_us": 16.8,
+   "gap_us": 12.3,
+   "submission": 73,
+   "bindings_bytes": [
+    12288,
+    12288,
+    12288,
+    12288,
+    12288
+   ]
+  },
+  {
+   "layer": 17,
+   "kernel": "QmmVecQ4MultiSubgroupF16",
+   "n": 112,
+   "groups": [
+    112,
+    1,
+    1
+   ],
+   "gpu_us": 78.8,
+   "gap_us": 10.5,
+   "submission": 73,
+   "bindings_bytes": [
+    12288,
+    2179072,
+    139264,
+    139264,
+    4096
+   ]
+  },
+  {
+   "layer": 18,
+   "kernel": "FastRmsNormF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 22.2,
+   "gap_us": 11.5,
+   "submission": 73,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 18,
+   "kernel": "QmmVecQ4MultiSubgroupF16",
+   "n": 144,
+   "groups": [
+    144,
+    1,
+    1
+   ],
+   "gpu_us": 36.2,
+   "gap_us": 9.8,
+   "submission": 73,
+   "bindings_bytes": [
+    4096,
+    401408,
+    28672,
+    28672,
+    4096
+   ]
+  },
+  {
+   "layer": 18,
+   "kernel": "FastRopeF16",
+   "n": 64,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 21.5,
+   "gap_us": 11.0,
+   "submission": 73,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 18,
+   "kernel": "CopyGeneralF16",
+   "n": 128,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 17.1,
+   "gap_us": 14.0,
+   "submission": 73,
+   "bindings_bytes": [
+    4096,
+    4096,
+    65536,
+    65536
+   ]
+  },
+  {
+   "layer": 18,
+   "kernel": "CopyGeneralF16",
+   "n": 128,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 79.1,
+   "gap_us": 16.5,
+   "submission": 73,
+   "bindings_bytes": [
+    4096,
+    4096,
+    65536,
+    65536
+   ]
+  },
+  {
+   "layer": 18,
+   "kernel": "FastRopeF16",
+   "n": 448,
+   "groups": [
+    2,
+    1,
+    1
+   ],
+   "gpu_us": 33.7,
+   "gap_us": 22.5,
+   "submission": 73,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 18,
+   "kernel": "MatmulF16",
+   "n": 784,
+   "groups": [
+    4,
+    1,
+    14
+   ],
+   "gpu_us": 45.1,
+   "gap_us": 18.3,
+   "submission": 73,
+   "bindings_bytes": [
+    4096,
+    65536,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 18,
+   "kernel": "SoftmaxF16",
+   "n": 784,
+   "groups": [
+    14,
+    1,
+    1
+   ],
+   "gpu_us": 79.5,
+   "gap_us": 10.9,
+   "submission": 73,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 18,
+   "kernel": "MatmulF16",
+   "n": 896,
+   "groups": [
+    4,
+    1,
+    14
+   ],
+   "gpu_us": 48.9,
+   "gap_us": 11.0,
+   "submission": 73,
+   "bindings_bytes": [
+    4096,
+    65536,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 18,
+   "kernel": "QmmVecQ4MultiSubgroupF16",
+   "n": 112,
+   "groups": [
+    112,
+    1,
+    1
+   ],
+   "gpu_us": 42.8,
+   "gap_us": 11.9,
+   "submission": 73,
+   "bindings_bytes": [
+    4096,
+    401408,
+    28672,
+    28672,
+    4096
+   ]
+  },
+  {
+   "layer": 18,
+   "kernel": "FastRmsNormF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 90.7,
+   "gap_us": 10.4,
+   "submission": 73,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 18,
+   "kernel": "QmmVecQ4MultiSubgroupF16",
+   "n": 1216,
+   "groups": [
+    1216,
+    1,
+    1
+   ],
+   "gpu_us": 156.3,
+   "gap_us": 14.2,
+   "submission": 73,
+   "bindings_bytes": [
+    4096,
+    2179072,
+    139264,
+    139264,
+    12288
+   ]
+  },
+  {
+   "layer": 18,
+   "kernel": "SwigluF16",
+   "n": 4864,
+   "groups": [
+    5,
+    1,
+    1
+   ],
+   "gpu_us": 19.0,
+   "gap_us": 12.5,
+   "submission": 73,
+   "bindings_bytes": [
+    12288,
+    12288,
+    12288,
+    12288,
+    12288
+   ]
+  },
+  {
+   "layer": 18,
+   "kernel": "QmmVecQ4MultiSubgroupF16",
+   "n": 112,
+   "groups": [
+    112,
+    1,
+    1
+   ],
+   "gpu_us": 74.2,
+   "gap_us": 10.4,
+   "submission": 73,
+   "bindings_bytes": [
+    12288,
+    2179072,
+    139264,
+    139264,
+    4096
+   ]
+  },
+  {
+   "layer": 19,
+   "kernel": "FastRmsNormF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 23.5,
+   "gap_us": 12.1,
+   "submission": 73,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 19,
+   "kernel": "QmmVecQ4MultiSubgroupF16",
+   "n": 144,
+   "groups": [
+    144,
+    1,
+    1
+   ],
+   "gpu_us": 38.2,
+   "gap_us": 10.4,
+   "submission": 73,
+   "bindings_bytes": [
+    4096,
+    401408,
+    28672,
+    28672,
+    4096
+   ]
+  },
+  {
+   "layer": 19,
+   "kernel": "FastRopeF16",
+   "n": 64,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 23.9,
+   "gap_us": 11.2,
+   "submission": 73,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 19,
+   "kernel": "CopyGeneralF16",
+   "n": 128,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 31.8,
+   "gap_us": 15.7,
+   "submission": 73,
+   "bindings_bytes": [
+    4096,
+    4096,
+    65536,
+    65536
+   ]
+  },
+  {
+   "layer": 19,
+   "kernel": "CopyGeneralF16",
+   "n": 128,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 31.0,
+   "gap_us": 25.2,
+   "submission": 73,
+   "bindings_bytes": [
+    4096,
+    4096,
+    65536,
+    65536
+   ]
+  },
+  {
+   "layer": 19,
+   "kernel": "FastRopeF16",
+   "n": 448,
+   "groups": [
+    2,
+    1,
+    1
+   ],
+   "gpu_us": 98.5,
+   "gap_us": 21.6,
+   "submission": 73,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 19,
+   "kernel": "MatmulF16",
+   "n": 784,
+   "groups": [
+    4,
+    1,
+    14
+   ],
+   "gpu_us": 45.8,
+   "gap_us": 20.0,
+   "submission": 73,
+   "bindings_bytes": [
+    4096,
+    65536,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 19,
+   "kernel": "SoftmaxF16",
+   "n": 784,
+   "groups": [
+    14,
+    1,
+    1
+   ],
+   "gpu_us": 30.6,
+   "gap_us": 10.7,
+   "submission": 73,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 19,
+   "kernel": "MatmulF16",
+   "n": 896,
+   "groups": [
+    4,
+    1,
+    14
+   ],
+   "gpu_us": 90.8,
+   "gap_us": 18.6,
+   "submission": 73,
+   "bindings_bytes": [
+    4096,
+    65536,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 19,
+   "kernel": "QmmVecQ4MultiSubgroupF16",
+   "n": 112,
+   "groups": [
+    112,
+    1,
+    1
+   ],
+   "gpu_us": 41.4,
+   "gap_us": 10.9,
+   "submission": 73,
+   "bindings_bytes": [
+    4096,
+    401408,
+    28672,
+    28672,
+    4096
+   ]
+  },
+  {
+   "layer": 19,
+   "kernel": "FastRmsNormF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 66.4,
+   "gap_us": 19.3,
+   "submission": 73,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 19,
+   "kernel": "QmmVecQ4MultiSubgroupF16",
+   "n": 1216,
+   "groups": [
+    1216,
+    1,
+    1
+   ],
+   "gpu_us": 244.7,
+   "gap_us": 37.1,
+   "submission": 73,
+   "bindings_bytes": [
+    4096,
+    2179072,
+    139264,
+    139264,
+    12288
+   ]
+  },
+  {
+   "layer": 19,
+   "kernel": "SwigluF16",
+   "n": 4864,
+   "groups": [
+    5,
+    1,
+    1
+   ],
+   "gpu_us": 27.6,
+   "gap_us": 20.5,
+   "submission": 73,
+   "bindings_bytes": [
+    12288,
+    12288,
+    12288,
+    12288,
+    12288
+   ]
+  },
+  {
+   "layer": 19,
+   "kernel": "QmmVecQ4MultiSubgroupF16",
+   "n": 112,
+   "groups": [
+    112,
+    1,
+    1
+   ],
+   "gpu_us": 70.2,
+   "gap_us": 16.0,
+   "submission": 73,
+   "bindings_bytes": [
+    12288,
+    2179072,
+    139264,
+    139264,
+    4096
+   ]
+  },
+  {
+   "layer": 20,
+   "kernel": "FastRmsNormF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 23.3,
+   "gap_us": 14.2,
+   "submission": 73,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 20,
+   "kernel": "QmmVecQ4MultiSubgroupF16",
+   "n": 144,
+   "groups": [
+    144,
+    1,
+    1
+   ],
+   "gpu_us": 50.2,
+   "gap_us": 22.6,
+   "submission": 73,
+   "bindings_bytes": [
+    4096,
+    401408,
+    28672,
+    28672,
+    4096
+   ]
+  },
+  {
+   "layer": 20,
+   "kernel": "FastRopeF16",
+   "n": 64,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 32.8,
+   "gap_us": 12.8,
+   "submission": 73,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 20,
+   "kernel": "CopyGeneralF16",
+   "n": 128,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 71.4,
+   "gap_us": 17.7,
+   "submission": 73,
+   "bindings_bytes": [
+    4096,
+    4096,
+    65536,
+    65536
+   ]
+  },
+  {
+   "layer": 20,
+   "kernel": "CopyGeneralF16",
+   "n": 128,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 27.7,
+   "gap_us": 26.1,
+   "submission": 73,
+   "bindings_bytes": [
+    4096,
+    4096,
+    65536,
+    65536
+   ]
+  },
+  {
+   "layer": 20,
+   "kernel": "FastRopeF16",
+   "n": 448,
+   "groups": [
+    2,
+    1,
+    1
+   ],
+   "gpu_us": 33.9,
+   "gap_us": 20.0,
+   "submission": 73,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 20,
+   "kernel": "MatmulF16",
+   "n": 784,
+   "groups": [
+    4,
+    1,
+    14
+   ],
+   "gpu_us": 83.1,
+   "gap_us": 16.8,
+   "submission": 73,
+   "bindings_bytes": [
+    4096,
+    65536,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 20,
+   "kernel": "SoftmaxF16",
+   "n": 784,
+   "groups": [
+    14,
+    1,
+    1
+   ],
+   "gpu_us": 32.8,
+   "gap_us": 12.0,
+   "submission": 73,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 20,
+   "kernel": "MatmulF16",
+   "n": 896,
+   "groups": [
+    4,
+    1,
+    14
+   ],
+   "gpu_us": 44.8,
+   "gap_us": 16.4,
+   "submission": 73,
+   "bindings_bytes": [
+    4096,
+    65536,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 20,
+   "kernel": "QmmVecQ4MultiSubgroupF16",
+   "n": 112,
+   "groups": [
+    112,
+    1,
+    1
+   ],
+   "gpu_us": 114.1,
+   "gap_us": 11.2,
+   "submission": 73,
+   "bindings_bytes": [
+    4096,
+    401408,
+    28672,
+    28672,
+    4096
+   ]
+  },
+  {
+   "layer": 20,
+   "kernel": "FastRmsNormF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 33.1,
+   "gap_us": 12.6,
+   "submission": 73,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 20,
+   "kernel": "QmmVecQ4MultiSubgroupF16",
+   "n": 1216,
+   "groups": [
+    1216,
+    1,
+    1
+   ],
+   "gpu_us": 147.1,
+   "gap_us": 17.0,
+   "submission": 73,
+   "bindings_bytes": [
+    4096,
+    2179072,
+    139264,
+    139264,
+    12288
+   ]
+  },
+  {
+   "layer": 20,
+   "kernel": "SwigluF16",
+   "n": 4864,
+   "groups": [
+    5,
+    1,
+    1
+   ],
+   "gpu_us": 18.3,
+   "gap_us": 12.9,
+   "submission": 73,
+   "bindings_bytes": [
+    12288,
+    12288,
+    12288,
+    12288,
+    12288
+   ]
+  },
+  {
+   "layer": 20,
+   "kernel": "QmmVecQ4MultiSubgroupF16",
+   "n": 112,
+   "groups": [
+    112,
+    1,
+    1
+   ],
+   "gpu_us": 68.8,
+   "gap_us": 10.3,
+   "submission": 73,
+   "bindings_bytes": [
+    12288,
+    2179072,
+    139264,
+    139264,
+    4096
+   ]
+  },
+  {
+   "layer": 21,
+   "kernel": "FastRmsNormF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 25.3,
+   "gap_us": 11.7,
+   "submission": 73,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 21,
+   "kernel": "QmmVecQ4MultiSubgroupF16",
+   "n": 144,
+   "groups": [
+    144,
+    1,
+    1
+   ],
+   "gpu_us": 35.5,
+   "gap_us": 11.8,
+   "submission": 73,
+   "bindings_bytes": [
+    4096,
+    401408,
+    28672,
+    28672,
+    4096
+   ]
+  },
+  {
+   "layer": 21,
+   "kernel": "FastRopeF16",
+   "n": 64,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 25.8,
+   "gap_us": 11.8,
+   "submission": 73,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 21,
+   "kernel": "CopyGeneralF16",
+   "n": 128,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 28.7,
+   "gap_us": 16.1,
+   "submission": 73,
+   "bindings_bytes": [
+    4096,
+    4096,
+    65536,
+    65536
+   ]
+  },
+  {
+   "layer": 21,
+   "kernel": "CopyGeneralF16",
+   "n": 128,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 95.5,
+   "gap_us": 24.7,
+   "submission": 73,
+   "bindings_bytes": [
+    4096,
+    4096,
+    65536,
+    65536
+   ]
+  },
+  {
+   "layer": 21,
+   "kernel": "FastRopeF16",
+   "n": 448,
+   "groups": [
+    2,
+    1,
+    1
+   ],
+   "gpu_us": 36.3,
+   "gap_us": 26.3,
+   "submission": 73,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 21,
+   "kernel": "MatmulF16",
+   "n": 784,
+   "groups": [
+    4,
+    1,
+    14
+   ],
+   "gpu_us": 48.2,
+   "gap_us": 13.5,
+   "submission": 73,
+   "bindings_bytes": [
+    4096,
+    65536,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 21,
+   "kernel": "SoftmaxF16",
+   "n": 784,
+   "groups": [
+    14,
+    1,
+    1
+   ],
+   "gpu_us": 81.7,
+   "gap_us": 10.7,
+   "submission": 73,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 21,
+   "kernel": "MatmulF16",
+   "n": 896,
+   "groups": [
+    4,
+    1,
+    14
+   ],
+   "gpu_us": 49.6,
+   "gap_us": 11.5,
+   "submission": 73,
+   "bindings_bytes": [
+    4096,
+    65536,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 21,
+   "kernel": "QmmVecQ4MultiSubgroupF16",
+   "n": 112,
+   "groups": [
+    112,
+    1,
+    1
+   ],
+   "gpu_us": 42.0,
+   "gap_us": 11.5,
+   "submission": 73,
+   "bindings_bytes": [
+    4096,
+    401408,
+    28672,
+    28672,
+    4096
+   ]
+  },
+  {
+   "layer": 21,
+   "kernel": "FastRmsNormF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 72.5,
+   "gap_us": 11.2,
+   "submission": 73,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 21,
+   "kernel": "QmmVecQ4MultiSubgroupF16",
+   "n": 1216,
+   "groups": [
+    1216,
+    1,
+    1
+   ],
+   "gpu_us": 152.3,
+   "gap_us": 10.8,
+   "submission": 73,
+   "bindings_bytes": [
+    4096,
+    2179072,
+    139264,
+    139264,
+    12288
+   ]
+  },
+  {
+   "layer": 21,
+   "kernel": "SwigluF16",
+   "n": 4864,
+   "groups": [
+    5,
+    1,
+    1
+   ],
+   "gpu_us": 17.6,
+   "gap_us": 18.0,
+   "submission": 73,
+   "bindings_bytes": [
+    12288,
+    12288,
+    12288,
+    12288,
+    12288
+   ]
+  },
+  {
+   "layer": 21,
+   "kernel": "QmmVecQ4MultiSubgroupF16",
+   "n": 112,
+   "groups": [
+    112,
+    1,
+    1
+   ],
+   "gpu_us": 70.6,
+   "gap_us": 10.5,
+   "submission": 73,
+   "bindings_bytes": [
+    12288,
+    2179072,
+    139264,
+    139264,
+    4096
+   ]
+  },
+  {
+   "layer": 22,
+   "kernel": "FastRmsNormF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 24.4,
+   "gap_us": 14.0,
+   "submission": 73,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 22,
+   "kernel": "QmmVecQ4MultiSubgroupF16",
+   "n": 144,
+   "groups": [
+    144,
+    1,
+    1
+   ],
+   "gpu_us": 36.0,
+   "gap_us": 11.0,
+   "submission": 73,
+   "bindings_bytes": [
+    4096,
+    401408,
+    28672,
+    28672,
+    4096
+   ]
+  },
+  {
+   "layer": 22,
+   "kernel": "FastRopeF16",
+   "n": 64,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 25.3,
+   "gap_us": 15.0,
+   "submission": 73,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 22,
+   "kernel": "CopyGeneralF16",
+   "n": 128,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 28.8,
+   "gap_us": 22.5,
+   "submission": 73,
+   "bindings_bytes": [
+    4096,
+    4096,
+    65536,
+    65536
+   ]
+  },
+  {
+   "layer": 22,
+   "kernel": "CopyGeneralF16",
+   "n": 128,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 29.6,
+   "gap_us": 25.7,
+   "submission": 73,
+   "bindings_bytes": [
+    4096,
+    4096,
+    65536,
+    65536
+   ]
+  },
+  {
+   "layer": 22,
+   "kernel": "FastRopeF16",
+   "n": 448,
+   "groups": [
+    2,
+    1,
+    1
+   ],
+   "gpu_us": 80.5,
+   "gap_us": 22.5,
+   "submission": 73,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 22,
+   "kernel": "MatmulF16",
+   "n": 784,
+   "groups": [
+    4,
+    1,
+    14
+   ],
+   "gpu_us": 45.1,
+   "gap_us": 19.2,
+   "submission": 73,
+   "bindings_bytes": [
+    4096,
+    65536,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 22,
+   "kernel": "SoftmaxF16",
+   "n": 784,
+   "groups": [
+    14,
+    1,
+    1
+   ],
+   "gpu_us": 33.4,
+   "gap_us": 11.1,
+   "submission": 73,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 22,
+   "kernel": "MatmulF16",
+   "n": 896,
+   "groups": [
+    4,
+    1,
+    14
+   ],
+   "gpu_us": 113.7,
+   "gap_us": 9.8,
+   "submission": 73,
+   "bindings_bytes": [
+    4096,
+    65536,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 22,
+   "kernel": "QmmVecQ4MultiSubgroupF16",
+   "n": 112,
+   "groups": [
+    112,
+    1,
+    1
+   ],
+   "gpu_us": 56.7,
+   "gap_us": 12.5,
+   "submission": 73,
+   "bindings_bytes": [
+    4096,
+    401408,
+    28672,
+    28672,
+    4096
+   ]
+  },
+  {
+   "layer": 22,
+   "kernel": "FastRmsNormF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 50.3,
+   "gap_us": 33.7,
+   "submission": 73,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 22,
+   "kernel": "QmmVecQ4MultiSubgroupF16",
+   "n": 1216,
+   "groups": [
+    1216,
+    1,
+    1
+   ],
+   "gpu_us": 197.0,
+   "gap_us": 40.3,
+   "submission": 73,
+   "bindings_bytes": [
+    4096,
+    2179072,
+    139264,
+    139264,
+    12288
+   ]
+  },
+  {
+   "layer": 22,
+   "kernel": "SwigluF16",
+   "n": 4864,
+   "groups": [
+    5,
+    1,
+    1
+   ],
+   "gpu_us": 18.2,
+   "gap_us": 12.3,
+   "submission": 73,
+   "bindings_bytes": [
+    12288,
+    12288,
+    12288,
+    12288,
+    12288
+   ]
+  },
+  {
+   "layer": 22,
+   "kernel": "QmmVecQ4MultiSubgroupF16",
+   "n": 112,
+   "groups": [
+    112,
+    1,
+    1
+   ],
+   "gpu_us": 71.6,
+   "gap_us": 10.8,
+   "submission": 73,
+   "bindings_bytes": [
+    12288,
+    2179072,
+    139264,
+    139264,
+    4096
+   ]
+  },
+  {
+   "layer": 23,
+   "kernel": "FastRmsNormF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 27.4,
+   "gap_us": 12.3,
+   "submission": 73,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 23,
+   "kernel": "QmmVecQ4MultiSubgroupF16",
+   "n": 144,
+   "groups": [
+    144,
+    1,
+    1
+   ],
+   "gpu_us": 35.8,
+   "gap_us": 10.9,
+   "submission": 73,
+   "bindings_bytes": [
+    4096,
+    401408,
+    28672,
+    28672,
+    4096
+   ]
+  },
+  {
+   "layer": 23,
+   "kernel": "FastRopeF16",
+   "n": 64,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 24.2,
+   "gap_us": 11.5,
+   "submission": 73,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 23,
+   "kernel": "CopyGeneralF16",
+   "n": 128,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 18.2,
+   "gap_us": 14.5,
+   "submission": 73,
+   "bindings_bytes": [
+    4096,
+    4096,
+    65536,
+    65536
+   ]
+  },
+  {
+   "layer": 23,
+   "kernel": "CopyGeneralF16",
+   "n": 128,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 31.9,
+   "gap_us": 30.6,
+   "submission": 73,
+   "bindings_bytes": [
+    4096,
+    4096,
+    65536,
+    65536
+   ]
+  },
+  {
+   "layer": 23,
+   "kernel": "FastRopeF16",
+   "n": 448,
+   "groups": [
+    2,
+    1,
+    1
+   ],
+   "gpu_us": 34.3,
+   "gap_us": 21.1,
+   "submission": 73,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 23,
+   "kernel": "MatmulF16",
+   "n": 784,
+   "groups": [
+    4,
+    1,
+    14
+   ],
+   "gpu_us": 92.6,
+   "gap_us": 17.7,
+   "submission": 73,
+   "bindings_bytes": [
+    4096,
+    65536,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 23,
+   "kernel": "SoftmaxF16",
+   "n": 784,
+   "groups": [
+    14,
+    1,
+    1
+   ],
+   "gpu_us": 91.4,
+   "gap_us": 12.0,
+   "submission": 73,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 23,
+   "kernel": "MatmulF16",
+   "n": 896,
+   "groups": [
+    4,
+    1,
+    14
+   ],
+   "gpu_us": 47.3,
+   "gap_us": 21.6,
+   "submission": 73,
+   "bindings_bytes": [
+    4096,
+    65536,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 23,
+   "kernel": "QmmVecQ4MultiSubgroupF16",
+   "n": 112,
+   "groups": [
+    112,
+    1,
+    1
+   ],
+   "gpu_us": 86.5,
+   "gap_us": 12.3,
+   "submission": 73,
+   "bindings_bytes": [
+    4096,
+    401408,
+    28672,
+    28672,
+    4096
+   ]
+  },
+  {
+   "layer": 23,
+   "kernel": "FastRmsNormF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 35.2,
+   "gap_us": 11.7,
+   "submission": 73,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 23,
+   "kernel": "QmmVecQ4MultiSubgroupF16",
+   "n": 1216,
+   "groups": [
+    1216,
+    1,
+    1
+   ],
+   "gpu_us": 147.8,
+   "gap_us": 17.2,
+   "submission": 73,
+   "bindings_bytes": [
+    4096,
+    2179072,
+    139264,
+    139264,
+    12288
+   ]
+  },
+  {
+   "layer": 23,
+   "kernel": "SwigluF16",
+   "n": 4864,
+   "groups": [
+    5,
+    1,
+    1
+   ],
+   "gpu_us": 18.2,
+   "gap_us": 17.0,
+   "submission": 73,
+   "bindings_bytes": [
+    12288,
+    12288,
+    12288,
+    12288,
+    12288
+   ]
+  },
+  {
+   "layer": 23,
+   "kernel": "QmmVecQ4MultiSubgroupF16",
+   "n": 112,
+   "groups": [
+    112,
+    1,
+    1
+   ],
+   "gpu_us": 69.2,
+   "gap_us": 11.5,
+   "submission": 73,
+   "bindings_bytes": [
+    12288,
+    2179072,
+    139264,
+    139264,
+    4096
+   ]
+  },
+  {
+   "layer": 24,
+   "kernel": "FastRmsNormF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 25.1,
+   "gap_us": 12.4,
+   "submission": 73,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 24,
+   "kernel": "QmmVecQ4MultiSubgroupF16",
+   "n": 144,
+   "groups": [
+    144,
+    1,
+    1
+   ],
+   "gpu_us": 47.8,
+   "gap_us": 13.6,
+   "submission": 73,
+   "bindings_bytes": [
+    4096,
+    401408,
+    28672,
+    28672,
+    4096
+   ]
+  },
+  {
+   "layer": 24,
+   "kernel": "FastRopeF16",
+   "n": 64,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 28.0,
+   "gap_us": 10.0,
+   "submission": 73,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 24,
+   "kernel": "CopyGeneralF16",
+   "n": 128,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 29.4,
+   "gap_us": 25.1,
+   "submission": 73,
+   "bindings_bytes": [
+    4096,
+    4096,
+    65536,
+    65536
+   ]
+  },
+  {
+   "layer": 24,
+   "kernel": "CopyGeneralF16",
+   "n": 128,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 72.5,
+   "gap_us": 25.4,
+   "submission": 73,
+   "bindings_bytes": [
+    4096,
+    4096,
+    65536,
+    65536
+   ]
+  },
+  {
+   "layer": 24,
+   "kernel": "FastRopeF16",
+   "n": 448,
+   "groups": [
+    2,
+    1,
+    1
+   ],
+   "gpu_us": 33.7,
+   "gap_us": 22.3,
+   "submission": 73,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 24,
+   "kernel": "MatmulF16",
+   "n": 784,
+   "groups": [
+    4,
+    1,
+    14
+   ],
+   "gpu_us": 45.8,
+   "gap_us": 17.2,
+   "submission": 73,
+   "bindings_bytes": [
+    4096,
+    65536,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 24,
+   "kernel": "SoftmaxF16",
+   "n": 784,
+   "groups": [
+    14,
+    1,
+    1
+   ],
+   "gpu_us": 101.1,
+   "gap_us": 12.0,
+   "submission": 73,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 24,
+   "kernel": "MatmulF16",
+   "n": 896,
+   "groups": [
+    4,
+    1,
+    14
+   ],
+   "gpu_us": 45.2,
+   "gap_us": 19.4,
+   "submission": 73,
+   "bindings_bytes": [
+    4096,
+    65536,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 24,
+   "kernel": "QmmVecQ4MultiSubgroupF16",
+   "n": 112,
+   "groups": [
+    112,
+    1,
+    1
+   ],
+   "gpu_us": 41.8,
+   "gap_us": 11.4,
+   "submission": 73,
+   "bindings_bytes": [
+    4096,
+    401408,
+    28672,
+    28672,
+    4096
+   ]
+  },
+  {
+   "layer": 24,
+   "kernel": "FastRmsNormF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 72.5,
+   "gap_us": 11.8,
+   "submission": 73,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 24,
+   "kernel": "QmmVecQ4MultiSubgroupF16",
+   "n": 1216,
+   "groups": [
+    1216,
+    1,
+    1
+   ],
+   "gpu_us": 148.1,
+   "gap_us": 18.7,
+   "submission": 73,
+   "bindings_bytes": [
+    4096,
+    2179072,
+    139264,
+    139264,
+    12288
+   ]
+  },
+  {
+   "layer": 24,
+   "kernel": "SwigluF16",
+   "n": 4864,
+   "groups": [
+    5,
+    1,
+    1
+   ],
+   "gpu_us": 17.4,
+   "gap_us": 12.5,
+   "submission": 73,
+   "bindings_bytes": [
+    12288,
+    12288,
+    12288,
+    12288,
+    12288
+   ]
+  },
+  {
+   "layer": 24,
+   "kernel": "QmmVecQ4MultiSubgroupF16",
+   "n": 112,
+   "groups": [
+    112,
+    1,
+    1
+   ],
+   "gpu_us": 68.6,
+   "gap_us": 10.0,
+   "submission": 73,
+   "bindings_bytes": [
+    12288,
+    2179072,
+    139264,
+    139264,
+    4096
+   ]
+  },
+  {
+   "layer": 25,
+   "kernel": "FastRmsNormF16",
+   "n": 896,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 24.3,
+   "gap_us": 12.7,
+   "submission": 73,
+   "bindings_bytes": [
+    4096,
+    4096,
+    4096,
+    4096
+   ]
+  },
+  {
+   "layer": 25,
+   "kernel": "QmmVecQ4WordSubgroupF16",
+   "n": 151936,
+   "groups": [
+    18992,
+    1,
+    1
+   ],
+   "gpu_us": 1774.8,
+   "gap_us": 12.4,
+   "submission": 73,
+   "bindings_bytes": [
+    4096,
+    68067328,
+    4255744,
+    4255744,
+    307200
+   ]
+  },
+  {
+   "layer": 25,
+   "kernel": "LogSumExpF16",
+   "n": 1,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 274.2,
+   "gap_us": 45.6,
+   "submission": 73,
+   "bindings_bytes": [
+    307200,
+    307200,
+    4096
+   ]
+  },
+  {
+   "layer": 25,
+   "kernel": "ElementwiseF16",
+   "n": 151936,
+   "groups": [
+    594,
+    1,
+    1
+   ],
+   "gpu_us": 181.6,
+   "gap_us": 29.9,
+   "submission": 73,
+   "bindings_bytes": [
+    307200,
+    4096,
+    307200,
+    307200
+   ]
+  },
+  {
+   "layer": 25,
+   "kernel": "ArgReduceF16",
+   "n": 1,
+   "groups": [
+    1,
+    1,
+    1
+   ],
+   "gpu_us": 136.5,
+   "gap_us": 30.1,
+   "submission": 73,
+   "bindings_bytes": [
+    307200,
+    307200,
+    4096
+   ]
+  }
+ ]
+}
