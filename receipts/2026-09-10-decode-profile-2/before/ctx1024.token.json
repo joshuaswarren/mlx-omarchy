@@ -1,0 +1,7361 @@
+{
+  "profile": "ctx1024.profile.jsonl",
+  "device": "Apple M1 (G13G B1)",
+  "token_window": {
+    "zero_based": 8,
+    "from_marker_ns": 300045283746570,
+    "to_marker_ns": 300045312114889,
+    "wall_ms": 28.368319
+  },
+  "dispatches_per_token": 297,
+  "submissions_per_token": 2,
+  "gpu_busy_fraction_of_wall": 0.56065497,
+  "gpu_busy_fraction_of_gpu_span": 0.6561955,
+  "wall_clock_split_ms": {
+    "gpu_busy": 15.904839,
+    "intra_submission_gaps": 8.067786,
+    "inter_submission_gaps": 0.265333,
+    "non_gpu_host_time": 4.130361
+  },
+  "ranked_costs": [
+    {
+      "item": "intra_submission_gaps",
+      "kind": "gap",
+      "ms": 8.067786
+    },
+    {
+      "item": "QmmVecQ4MultiSubgroupF16",
+      "kind": "kernel",
+      "dispatches": 96,
+      "ms": 7.292585
+    },
+    {
+      "item": "non_gpu_host_time",
+      "kind": "host",
+      "ms": 4.130361
+    },
+    {
+      "item": "SdpaDecodeNativeF16",
+      "kind": "kernel",
+      "dispatches": 24,
+      "ms": 1.735042
+    },
+    {
+      "item": "QmmVecQ4WordSubgroupF16",
+      "kind": "kernel",
+      "dispatches": 1,
+      "ms": 1.587375
+    },
+    {
+      "item": "FastRopeF16",
+      "kind": "kernel",
+      "dispatches": 48,
+      "ms": 1.563209
+    },
+    {
+      "item": "FastRmsNormF16",
+      "kind": "kernel",
+      "dispatches": 49,
+      "ms": 1.516919
+    },
+    {
+      "item": "CopyGeneralF16",
+      "kind": "kernel",
+      "dispatches": 48,
+      "ms": 0.908668
+    },
+    {
+      "item": "SwigluF16",
+      "kind": "kernel",
+      "dispatches": 24,
+      "ms": 0.45625
+    },
+    {
+      "item": "LogSumExpF16",
+      "kind": "kernel",
+      "dispatches": 1,
+      "ms": 0.269833
+    },
+    {
+      "item": "inter_submission_gaps",
+      "kind": "gap",
+      "ms": 0.265333
+    },
+    {
+      "item": "ElementwiseF16",
+      "kind": "kernel",
+      "dispatches": 1,
+      "ms": 0.18175
+    },
+    {
+      "item": "ArgReduceF16",
+      "kind": "kernel",
+      "dispatches": 1,
+      "ms": 0.13675
+    },
+    {
+      "item": "TakeF16",
+      "kind": "kernel",
+      "dispatches": 2,
+      "ms": 0.124583
+    },
+    {
+      "item": "TakeU32",
+      "kind": "kernel",
+      "dispatches": 1,
+      "ms": 0.099833
+    },
+    {
+      "item": "DequantF16",
+      "kind": "kernel",
+      "dispatches": 1,
+      "ms": 0.032042
+    }
+  ],
+  "dispatch_table": [
+    {
+      "sequence": 1,
+      "submission": 70,
+      "kernel": "TakeF16",
+      "shape": {
+        "count": 14,
+        "grid": [
+          1,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4255744,
+          4096,
+          4096
+        ]
+      },
+      "gpu_us": 83.708,
+      "preceding_gap_us": 363.167,
+      "preceding_gap_class": "inter-submission",
+      "operation": 1,
+      "tape": false
+    },
+    {
+      "sequence": 2,
+      "submission": 70,
+      "kernel": "TakeF16",
+      "shape": {
+        "count": 14,
+        "grid": [
+          1,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4255744,
+          4096,
+          4096
+        ]
+      },
+      "gpu_us": 40.875,
+      "preceding_gap_us": 62.583,
+      "preceding_gap_class": "intra-submission",
+      "operation": 1,
+      "tape": false
+    },
+    {
+      "sequence": 3,
+      "submission": 70,
+      "kernel": "TakeU32",
+      "shape": {
+        "count": 112,
+        "grid": [
+          1,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          68067328,
+          4096,
+          4096
+        ]
+      },
+      "gpu_us": 99.833,
+      "preceding_gap_us": 114.084,
+      "preceding_gap_class": "intra-submission",
+      "operation": 1,
+      "tape": false
+    },
+    {
+      "sequence": 4,
+      "submission": 70,
+      "kernel": "DequantF16",
+      "shape": {
+        "count": 112,
+        "grid": [
+          1,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          4096,
+          4096,
+          4096
+        ]
+      },
+      "gpu_us": 32.042,
+      "preceding_gap_us": 43.75,
+      "preceding_gap_class": "intra-submission",
+      "operation": 4,
+      "tape": false
+    },
+    {
+      "sequence": 5,
+      "submission": 70,
+      "kernel": "FastRmsNormF16",
+      "shape": {
+        "count": 896,
+        "grid": [
+          1,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          4096,
+          4096,
+          4096
+        ]
+      },
+      "gpu_us": 33.667,
+      "preceding_gap_us": 20.166,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 6,
+      "submission": 70,
+      "kernel": "QmmVecQ4MultiSubgroupF16",
+      "shape": {
+        "count": 144,
+        "grid": [
+          144,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          401408,
+          28672,
+          28672,
+          4096
+        ]
+      },
+      "gpu_us": 46.583,
+      "preceding_gap_us": 88.625,
+      "preceding_gap_class": "intra-submission",
+      "operation": 4,
+      "tape": false
+    },
+    {
+      "sequence": 7,
+      "submission": 70,
+      "kernel": "FastRopeF16",
+      "shape": {
+        "count": 64,
+        "grid": [
+          1,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          4096,
+          4096,
+          4096
+        ]
+      },
+      "gpu_us": 31.292,
+      "preceding_gap_us": 13.25,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 8,
+      "submission": 70,
+      "kernel": "CopyGeneralF16",
+      "shape": {
+        "count": 128,
+        "grid": [
+          1,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          4096,
+          327680,
+          327680
+        ]
+      },
+      "gpu_us": 16.375,
+      "preceding_gap_us": 29.875,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 9,
+      "submission": 70,
+      "kernel": "CopyGeneralF16",
+      "shape": {
+        "count": 128,
+        "grid": [
+          1,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          4096,
+          327680,
+          327680
+        ]
+      },
+      "gpu_us": 22.958,
+      "preceding_gap_us": 73.5,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 10,
+      "submission": 70,
+      "kernel": "FastRopeF16",
+      "shape": {
+        "count": 448,
+        "grid": [
+          2,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          4096,
+          4096,
+          4096
+        ]
+      },
+      "gpu_us": 32.458,
+      "preceding_gap_us": 21.042,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 11,
+      "submission": 70,
+      "kernel": "SdpaDecodeNativeF16",
+      "shape": {
+        "count": 896,
+        "grid": [
+          14,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          327680,
+          327680,
+          4096
+        ]
+      },
+      "gpu_us": 66.167,
+      "preceding_gap_us": 19.5,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 12,
+      "submission": 70,
+      "kernel": "QmmVecQ4MultiSubgroupF16",
+      "shape": {
+        "count": 112,
+        "grid": [
+          112,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          401408,
+          28672,
+          28672,
+          4096
+        ]
+      },
+      "gpu_us": 46.917,
+      "preceding_gap_us": 12.458,
+      "preceding_gap_class": "intra-submission",
+      "operation": 4,
+      "tape": false
+    },
+    {
+      "sequence": 13,
+      "submission": 70,
+      "kernel": "FastRmsNormF16",
+      "shape": {
+        "count": 896,
+        "grid": [
+          1,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          4096,
+          4096,
+          4096
+        ]
+      },
+      "gpu_us": 34.083,
+      "preceding_gap_us": 11.667,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 14,
+      "submission": 70,
+      "kernel": "QmmVecQ4MultiSubgroupF16",
+      "shape": {
+        "count": 1216,
+        "grid": [
+          1216,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          2179072,
+          139264,
+          139264,
+          12288
+        ]
+      },
+      "gpu_us": 155.333,
+      "preceding_gap_us": 19.917,
+      "preceding_gap_class": "intra-submission",
+      "operation": 4,
+      "tape": false
+    },
+    {
+      "sequence": 15,
+      "submission": 70,
+      "kernel": "SwigluF16",
+      "shape": {
+        "count": 4864,
+        "grid": [
+          5,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          12288,
+          12288,
+          12288,
+          12288,
+          12288
+        ]
+      },
+      "gpu_us": 17.541,
+      "preceding_gap_us": 15.792,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 16,
+      "submission": 70,
+      "kernel": "QmmVecQ4MultiSubgroupF16",
+      "shape": {
+        "count": 112,
+        "grid": [
+          112,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          12288,
+          2179072,
+          139264,
+          139264,
+          4096
+        ]
+      },
+      "gpu_us": 67.5,
+      "preceding_gap_us": 10.125,
+      "preceding_gap_class": "intra-submission",
+      "operation": 4,
+      "tape": false
+    },
+    {
+      "sequence": 17,
+      "submission": 70,
+      "kernel": "FastRmsNormF16",
+      "shape": {
+        "count": 896,
+        "grid": [
+          1,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          4096,
+          4096,
+          4096
+        ]
+      },
+      "gpu_us": 22.208,
+      "preceding_gap_us": 12.584,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 18,
+      "submission": 70,
+      "kernel": "QmmVecQ4MultiSubgroupF16",
+      "shape": {
+        "count": 144,
+        "grid": [
+          144,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          401408,
+          28672,
+          28672,
+          4096
+        ]
+      },
+      "gpu_us": 46.334,
+      "preceding_gap_us": 10.458,
+      "preceding_gap_class": "intra-submission",
+      "operation": 4,
+      "tape": false
+    },
+    {
+      "sequence": 19,
+      "submission": 70,
+      "kernel": "FastRopeF16",
+      "shape": {
+        "count": 64,
+        "grid": [
+          1,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          4096,
+          4096,
+          4096
+        ]
+      },
+      "gpu_us": 30.75,
+      "preceding_gap_us": 11.958,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 20,
+      "submission": 70,
+      "kernel": "CopyGeneralF16",
+      "shape": {
+        "count": 128,
+        "grid": [
+          1,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          4096,
+          327680,
+          327680
+        ]
+      },
+      "gpu_us": 15.875,
+      "preceding_gap_us": 29.958,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 21,
+      "submission": 70,
+      "kernel": "CopyGeneralF16",
+      "shape": {
+        "count": 128,
+        "grid": [
+          1,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          4096,
+          327680,
+          327680
+        ]
+      },
+      "gpu_us": 17.833,
+      "preceding_gap_us": 76.834,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 22,
+      "submission": 70,
+      "kernel": "FastRopeF16",
+      "shape": {
+        "count": 448,
+        "grid": [
+          2,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          4096,
+          4096,
+          4096
+        ]
+      },
+      "gpu_us": 33.125,
+      "preceding_gap_us": 25.083,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 23,
+      "submission": 70,
+      "kernel": "SdpaDecodeNativeF16",
+      "shape": {
+        "count": 896,
+        "grid": [
+          14,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          327680,
+          327680,
+          4096
+        ]
+      },
+      "gpu_us": 65.542,
+      "preceding_gap_us": 19.167,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 24,
+      "submission": 70,
+      "kernel": "QmmVecQ4MultiSubgroupF16",
+      "shape": {
+        "count": 112,
+        "grid": [
+          112,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          401408,
+          28672,
+          28672,
+          4096
+        ]
+      },
+      "gpu_us": 46.416,
+      "preceding_gap_us": 12.375,
+      "preceding_gap_class": "intra-submission",
+      "operation": 4,
+      "tape": false
+    },
+    {
+      "sequence": 25,
+      "submission": 70,
+      "kernel": "FastRmsNormF16",
+      "shape": {
+        "count": 896,
+        "grid": [
+          1,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          4096,
+          4096,
+          4096
+        ]
+      },
+      "gpu_us": 34.083,
+      "preceding_gap_us": 10.667,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 26,
+      "submission": 70,
+      "kernel": "QmmVecQ4MultiSubgroupF16",
+      "shape": {
+        "count": 1216,
+        "grid": [
+          1216,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          2179072,
+          139264,
+          139264,
+          12288
+        ]
+      },
+      "gpu_us": 132.833,
+      "preceding_gap_us": 17.042,
+      "preceding_gap_class": "intra-submission",
+      "operation": 4,
+      "tape": false
+    },
+    {
+      "sequence": 27,
+      "submission": 70,
+      "kernel": "SwigluF16",
+      "shape": {
+        "count": 4864,
+        "grid": [
+          5,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          12288,
+          12288,
+          12288,
+          12288,
+          12288
+        ]
+      },
+      "gpu_us": 17.292,
+      "preceding_gap_us": 12.125,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 28,
+      "submission": 70,
+      "kernel": "QmmVecQ4MultiSubgroupF16",
+      "shape": {
+        "count": 112,
+        "grid": [
+          112,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          12288,
+          2179072,
+          139264,
+          139264,
+          4096
+        ]
+      },
+      "gpu_us": 66.75,
+      "preceding_gap_us": 10.167,
+      "preceding_gap_class": "intra-submission",
+      "operation": 4,
+      "tape": false
+    },
+    {
+      "sequence": 29,
+      "submission": 70,
+      "kernel": "FastRmsNormF16",
+      "shape": {
+        "count": 896,
+        "grid": [
+          1,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          4096,
+          4096,
+          4096
+        ]
+      },
+      "gpu_us": 21.25,
+      "preceding_gap_us": 12.75,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 30,
+      "submission": 70,
+      "kernel": "QmmVecQ4MultiSubgroupF16",
+      "shape": {
+        "count": 144,
+        "grid": [
+          144,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          401408,
+          28672,
+          28672,
+          4096
+        ]
+      },
+      "gpu_us": 45.875,
+      "preceding_gap_us": 10.416,
+      "preceding_gap_class": "intra-submission",
+      "operation": 4,
+      "tape": false
+    },
+    {
+      "sequence": 31,
+      "submission": 70,
+      "kernel": "FastRopeF16",
+      "shape": {
+        "count": 64,
+        "grid": [
+          1,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          4096,
+          4096,
+          4096
+        ]
+      },
+      "gpu_us": 31.834,
+      "preceding_gap_us": 10.5,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 32,
+      "submission": 70,
+      "kernel": "CopyGeneralF16",
+      "shape": {
+        "count": 128,
+        "grid": [
+          1,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          4096,
+          327680,
+          327680
+        ]
+      },
+      "gpu_us": 16.958,
+      "preceding_gap_us": 29.625,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 33,
+      "submission": 70,
+      "kernel": "CopyGeneralF16",
+      "shape": {
+        "count": 128,
+        "grid": [
+          1,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          4096,
+          327680,
+          327680
+        ]
+      },
+      "gpu_us": 23.125,
+      "preceding_gap_us": 96.208,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 34,
+      "submission": 70,
+      "kernel": "FastRopeF16",
+      "shape": {
+        "count": 448,
+        "grid": [
+          2,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          4096,
+          4096,
+          4096
+        ]
+      },
+      "gpu_us": 32.208,
+      "preceding_gap_us": 21.167,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 35,
+      "submission": 70,
+      "kernel": "SdpaDecodeNativeF16",
+      "shape": {
+        "count": 896,
+        "grid": [
+          14,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          327680,
+          327680,
+          4096
+        ]
+      },
+      "gpu_us": 67.792,
+      "preceding_gap_us": 20.625,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 36,
+      "submission": 70,
+      "kernel": "QmmVecQ4MultiSubgroupF16",
+      "shape": {
+        "count": 112,
+        "grid": [
+          112,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          401408,
+          28672,
+          28672,
+          4096
+        ]
+      },
+      "gpu_us": 42.333,
+      "preceding_gap_us": 15.125,
+      "preceding_gap_class": "intra-submission",
+      "operation": 4,
+      "tape": false
+    },
+    {
+      "sequence": 37,
+      "submission": 70,
+      "kernel": "FastRmsNormF16",
+      "shape": {
+        "count": 896,
+        "grid": [
+          1,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          4096,
+          4096,
+          4096
+        ]
+      },
+      "gpu_us": 34.959,
+      "preceding_gap_us": 10.75,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 38,
+      "submission": 70,
+      "kernel": "QmmVecQ4MultiSubgroupF16",
+      "shape": {
+        "count": 1216,
+        "grid": [
+          1216,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          2179072,
+          139264,
+          139264,
+          12288
+        ]
+      },
+      "gpu_us": 134.167,
+      "preceding_gap_us": 18.208,
+      "preceding_gap_class": "intra-submission",
+      "operation": 4,
+      "tape": false
+    },
+    {
+      "sequence": 39,
+      "submission": 70,
+      "kernel": "SwigluF16",
+      "shape": {
+        "count": 4864,
+        "grid": [
+          5,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          12288,
+          12288,
+          12288,
+          12288,
+          12288
+        ]
+      },
+      "gpu_us": 17.833,
+      "preceding_gap_us": 11.875,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 40,
+      "submission": 70,
+      "kernel": "QmmVecQ4MultiSubgroupF16",
+      "shape": {
+        "count": 112,
+        "grid": [
+          112,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          12288,
+          2179072,
+          139264,
+          139264,
+          4096
+        ]
+      },
+      "gpu_us": 65.084,
+      "preceding_gap_us": 9.833,
+      "preceding_gap_class": "intra-submission",
+      "operation": 4,
+      "tape": false
+    },
+    {
+      "sequence": 41,
+      "submission": 70,
+      "kernel": "FastRmsNormF16",
+      "shape": {
+        "count": 896,
+        "grid": [
+          1,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          4096,
+          4096,
+          4096
+        ]
+      },
+      "gpu_us": 22.542,
+      "preceding_gap_us": 11.208,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 42,
+      "submission": 70,
+      "kernel": "QmmVecQ4MultiSubgroupF16",
+      "shape": {
+        "count": 144,
+        "grid": [
+          144,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          401408,
+          28672,
+          28672,
+          4096
+        ]
+      },
+      "gpu_us": 44.5,
+      "preceding_gap_us": 10.541,
+      "preceding_gap_class": "intra-submission",
+      "operation": 4,
+      "tape": false
+    },
+    {
+      "sequence": 43,
+      "submission": 70,
+      "kernel": "FastRopeF16",
+      "shape": {
+        "count": 64,
+        "grid": [
+          1,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          4096,
+          4096,
+          4096
+        ]
+      },
+      "gpu_us": 30.666,
+      "preceding_gap_us": 10.709,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 44,
+      "submission": 70,
+      "kernel": "CopyGeneralF16",
+      "shape": {
+        "count": 128,
+        "grid": [
+          1,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          4096,
+          327680,
+          327680
+        ]
+      },
+      "gpu_us": 14.833,
+      "preceding_gap_us": 29.334,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 45,
+      "submission": 70,
+      "kernel": "CopyGeneralF16",
+      "shape": {
+        "count": 128,
+        "grid": [
+          1,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          4096,
+          327680,
+          327680
+        ]
+      },
+      "gpu_us": 23.583,
+      "preceding_gap_us": 87.167,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 46,
+      "submission": 70,
+      "kernel": "FastRopeF16",
+      "shape": {
+        "count": 448,
+        "grid": [
+          2,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          4096,
+          4096,
+          4096
+        ]
+      },
+      "gpu_us": 57.542,
+      "preceding_gap_us": 20.333,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 47,
+      "submission": 70,
+      "kernel": "SdpaDecodeNativeF16",
+      "shape": {
+        "count": 896,
+        "grid": [
+          14,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          327680,
+          327680,
+          4096
+        ]
+      },
+      "gpu_us": 97.542,
+      "preceding_gap_us": 48.333,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 48,
+      "submission": 70,
+      "kernel": "QmmVecQ4MultiSubgroupF16",
+      "shape": {
+        "count": 112,
+        "grid": [
+          112,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          401408,
+          28672,
+          28672,
+          4096
+        ]
+      },
+      "gpu_us": 70.791,
+      "preceding_gap_us": 125.042,
+      "preceding_gap_class": "intra-submission",
+      "operation": 4,
+      "tape": false
+    },
+    {
+      "sequence": 49,
+      "submission": 70,
+      "kernel": "FastRmsNormF16",
+      "shape": {
+        "count": 896,
+        "grid": [
+          1,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          4096,
+          4096,
+          4096
+        ]
+      },
+      "gpu_us": 34.5,
+      "preceding_gap_us": 34.959,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 50,
+      "submission": 70,
+      "kernel": "QmmVecQ4MultiSubgroupF16",
+      "shape": {
+        "count": 1216,
+        "grid": [
+          1216,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          2179072,
+          139264,
+          139264,
+          12288
+        ]
+      },
+      "gpu_us": 135.792,
+      "preceding_gap_us": 18.458,
+      "preceding_gap_class": "intra-submission",
+      "operation": 4,
+      "tape": false
+    },
+    {
+      "sequence": 51,
+      "submission": 70,
+      "kernel": "SwigluF16",
+      "shape": {
+        "count": 4864,
+        "grid": [
+          5,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          12288,
+          12288,
+          12288,
+          12288,
+          12288
+        ]
+      },
+      "gpu_us": 17.625,
+      "preceding_gap_us": 14.041,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 52,
+      "submission": 70,
+      "kernel": "QmmVecQ4MultiSubgroupF16",
+      "shape": {
+        "count": 112,
+        "grid": [
+          112,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          12288,
+          2179072,
+          139264,
+          139264,
+          4096
+        ]
+      },
+      "gpu_us": 68.167,
+      "preceding_gap_us": 10.375,
+      "preceding_gap_class": "intra-submission",
+      "operation": 4,
+      "tape": false
+    },
+    {
+      "sequence": 53,
+      "submission": 70,
+      "kernel": "FastRmsNormF16",
+      "shape": {
+        "count": 896,
+        "grid": [
+          1,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          4096,
+          4096,
+          4096
+        ]
+      },
+      "gpu_us": 22.625,
+      "preceding_gap_us": 12.333,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 54,
+      "submission": 70,
+      "kernel": "QmmVecQ4MultiSubgroupF16",
+      "shape": {
+        "count": 144,
+        "grid": [
+          144,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          401408,
+          28672,
+          28672,
+          4096
+        ]
+      },
+      "gpu_us": 47.0,
+      "preceding_gap_us": 22.417,
+      "preceding_gap_class": "intra-submission",
+      "operation": 4,
+      "tape": false
+    },
+    {
+      "sequence": 55,
+      "submission": 70,
+      "kernel": "FastRopeF16",
+      "shape": {
+        "count": 64,
+        "grid": [
+          1,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          4096,
+          4096,
+          4096
+        ]
+      },
+      "gpu_us": 33.417,
+      "preceding_gap_us": 11.0,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 56,
+      "submission": 70,
+      "kernel": "CopyGeneralF16",
+      "shape": {
+        "count": 128,
+        "grid": [
+          1,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          4096,
+          327680,
+          327680
+        ]
+      },
+      "gpu_us": 16.792,
+      "preceding_gap_us": 32.041,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 57,
+      "submission": 70,
+      "kernel": "CopyGeneralF16",
+      "shape": {
+        "count": 128,
+        "grid": [
+          1,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          4096,
+          327680,
+          327680
+        ]
+      },
+      "gpu_us": 19.291,
+      "preceding_gap_us": 78.042,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 58,
+      "submission": 70,
+      "kernel": "FastRopeF16",
+      "shape": {
+        "count": 448,
+        "grid": [
+          2,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          4096,
+          4096,
+          4096
+        ]
+      },
+      "gpu_us": 32.959,
+      "preceding_gap_us": 26.875,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 59,
+      "submission": 70,
+      "kernel": "SdpaDecodeNativeF16",
+      "shape": {
+        "count": 896,
+        "grid": [
+          14,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          327680,
+          327680,
+          4096
+        ]
+      },
+      "gpu_us": 68.125,
+      "preceding_gap_us": 20.416,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 60,
+      "submission": 70,
+      "kernel": "QmmVecQ4MultiSubgroupF16",
+      "shape": {
+        "count": 112,
+        "grid": [
+          112,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          401408,
+          28672,
+          28672,
+          4096
+        ]
+      },
+      "gpu_us": 96.459,
+      "preceding_gap_us": 40.25,
+      "preceding_gap_class": "intra-submission",
+      "operation": 4,
+      "tape": false
+    },
+    {
+      "sequence": 61,
+      "submission": 70,
+      "kernel": "FastRmsNormF16",
+      "shape": {
+        "count": 896,
+        "grid": [
+          1,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          4096,
+          4096,
+          4096
+        ]
+      },
+      "gpu_us": 36.292,
+      "preceding_gap_us": 12.416,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 62,
+      "submission": 70,
+      "kernel": "QmmVecQ4MultiSubgroupF16",
+      "shape": {
+        "count": 1216,
+        "grid": [
+          1216,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          2179072,
+          139264,
+          139264,
+          12288
+        ]
+      },
+      "gpu_us": 133.917,
+      "preceding_gap_us": 18.375,
+      "preceding_gap_class": "intra-submission",
+      "operation": 4,
+      "tape": false
+    },
+    {
+      "sequence": 63,
+      "submission": 70,
+      "kernel": "SwigluF16",
+      "shape": {
+        "count": 4864,
+        "grid": [
+          5,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          12288,
+          12288,
+          12288,
+          12288,
+          12288
+        ]
+      },
+      "gpu_us": 17.708,
+      "preceding_gap_us": 15.458,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 64,
+      "submission": 70,
+      "kernel": "QmmVecQ4MultiSubgroupF16",
+      "shape": {
+        "count": 112,
+        "grid": [
+          112,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          12288,
+          2179072,
+          139264,
+          139264,
+          4096
+        ]
+      },
+      "gpu_us": 66.584,
+      "preceding_gap_us": 10.25,
+      "preceding_gap_class": "intra-submission",
+      "operation": 4,
+      "tape": false
+    },
+    {
+      "sequence": 65,
+      "submission": 70,
+      "kernel": "FastRmsNormF16",
+      "shape": {
+        "count": 896,
+        "grid": [
+          1,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          4096,
+          4096,
+          4096
+        ]
+      },
+      "gpu_us": 22.875,
+      "preceding_gap_us": 13.333,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 66,
+      "submission": 70,
+      "kernel": "QmmVecQ4MultiSubgroupF16",
+      "shape": {
+        "count": 144,
+        "grid": [
+          144,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          401408,
+          28672,
+          28672,
+          4096
+        ]
+      },
+      "gpu_us": 46.75,
+      "preceding_gap_us": 11.083,
+      "preceding_gap_class": "intra-submission",
+      "operation": 4,
+      "tape": false
+    },
+    {
+      "sequence": 67,
+      "submission": 70,
+      "kernel": "FastRopeF16",
+      "shape": {
+        "count": 64,
+        "grid": [
+          1,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          4096,
+          4096,
+          4096
+        ]
+      },
+      "gpu_us": 31.5,
+      "preceding_gap_us": 11.209,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 68,
+      "submission": 70,
+      "kernel": "CopyGeneralF16",
+      "shape": {
+        "count": 128,
+        "grid": [
+          1,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          4096,
+          327680,
+          327680
+        ]
+      },
+      "gpu_us": 15.459,
+      "preceding_gap_us": 30.291,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 69,
+      "submission": 70,
+      "kernel": "CopyGeneralF16",
+      "shape": {
+        "count": 128,
+        "grid": [
+          1,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          4096,
+          327680,
+          327680
+        ]
+      },
+      "gpu_us": 22.583,
+      "preceding_gap_us": 84.833,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 70,
+      "submission": 70,
+      "kernel": "FastRopeF16",
+      "shape": {
+        "count": 448,
+        "grid": [
+          2,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          4096,
+          4096,
+          4096
+        ]
+      },
+      "gpu_us": 34.541,
+      "preceding_gap_us": 21.584,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 71,
+      "submission": 70,
+      "kernel": "SdpaDecodeNativeF16",
+      "shape": {
+        "count": 896,
+        "grid": [
+          14,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          327680,
+          327680,
+          4096
+        ]
+      },
+      "gpu_us": 66.917,
+      "preceding_gap_us": 19.167,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 72,
+      "submission": 70,
+      "kernel": "QmmVecQ4MultiSubgroupF16",
+      "shape": {
+        "count": 112,
+        "grid": [
+          112,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          401408,
+          28672,
+          28672,
+          4096
+        ]
+      },
+      "gpu_us": 42.709,
+      "preceding_gap_us": 15.541,
+      "preceding_gap_class": "intra-submission",
+      "operation": 4,
+      "tape": false
+    },
+    {
+      "sequence": 73,
+      "submission": 70,
+      "kernel": "FastRmsNormF16",
+      "shape": {
+        "count": 896,
+        "grid": [
+          1,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          4096,
+          4096,
+          4096
+        ]
+      },
+      "gpu_us": 39.458,
+      "preceding_gap_us": 11.458,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 74,
+      "submission": 70,
+      "kernel": "QmmVecQ4MultiSubgroupF16",
+      "shape": {
+        "count": 1216,
+        "grid": [
+          1216,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          2179072,
+          139264,
+          139264,
+          12288
+        ]
+      },
+      "gpu_us": 139.375,
+      "preceding_gap_us": 10.667,
+      "preceding_gap_class": "intra-submission",
+      "operation": 4,
+      "tape": false
+    },
+    {
+      "sequence": 75,
+      "submission": 70,
+      "kernel": "SwigluF16",
+      "shape": {
+        "count": 4864,
+        "grid": [
+          5,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          12288,
+          12288,
+          12288,
+          12288,
+          12288
+        ]
+      },
+      "gpu_us": 19.25,
+      "preceding_gap_us": 12.083,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 76,
+      "submission": 70,
+      "kernel": "QmmVecQ4MultiSubgroupF16",
+      "shape": {
+        "count": 112,
+        "grid": [
+          112,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          12288,
+          2179072,
+          139264,
+          139264,
+          4096
+        ]
+      },
+      "gpu_us": 66.917,
+      "preceding_gap_us": 10.375,
+      "preceding_gap_class": "intra-submission",
+      "operation": 4,
+      "tape": false
+    },
+    {
+      "sequence": 77,
+      "submission": 70,
+      "kernel": "FastRmsNormF16",
+      "shape": {
+        "count": 896,
+        "grid": [
+          1,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          4096,
+          4096,
+          4096
+        ]
+      },
+      "gpu_us": 24.167,
+      "preceding_gap_us": 16.083,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 78,
+      "submission": 70,
+      "kernel": "QmmVecQ4MultiSubgroupF16",
+      "shape": {
+        "count": 144,
+        "grid": [
+          144,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          401408,
+          28672,
+          28672,
+          4096
+        ]
+      },
+      "gpu_us": 45.083,
+      "preceding_gap_us": 26.792,
+      "preceding_gap_class": "intra-submission",
+      "operation": 4,
+      "tape": false
+    },
+    {
+      "sequence": 79,
+      "submission": 70,
+      "kernel": "FastRopeF16",
+      "shape": {
+        "count": 64,
+        "grid": [
+          1,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          4096,
+          4096,
+          4096
+        ]
+      },
+      "gpu_us": 31.959,
+      "preceding_gap_us": 10.708,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 80,
+      "submission": 70,
+      "kernel": "CopyGeneralF16",
+      "shape": {
+        "count": 128,
+        "grid": [
+          1,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          4096,
+          327680,
+          327680
+        ]
+      },
+      "gpu_us": 14.5,
+      "preceding_gap_us": 29.708,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 81,
+      "submission": 70,
+      "kernel": "CopyGeneralF16",
+      "shape": {
+        "count": 128,
+        "grid": [
+          1,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          4096,
+          327680,
+          327680
+        ]
+      },
+      "gpu_us": 23.625,
+      "preceding_gap_us": 74.875,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 82,
+      "submission": 70,
+      "kernel": "FastRopeF16",
+      "shape": {
+        "count": 448,
+        "grid": [
+          2,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          4096,
+          4096,
+          4096
+        ]
+      },
+      "gpu_us": 33.375,
+      "preceding_gap_us": 22.75,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 83,
+      "submission": 70,
+      "kernel": "SdpaDecodeNativeF16",
+      "shape": {
+        "count": 896,
+        "grid": [
+          14,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          327680,
+          327680,
+          4096
+        ]
+      },
+      "gpu_us": 66.583,
+      "preceding_gap_us": 20.75,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 84,
+      "submission": 70,
+      "kernel": "QmmVecQ4MultiSubgroupF16",
+      "shape": {
+        "count": 112,
+        "grid": [
+          112,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          401408,
+          28672,
+          28672,
+          4096
+        ]
+      },
+      "gpu_us": 42.291,
+      "preceding_gap_us": 15.959,
+      "preceding_gap_class": "intra-submission",
+      "operation": 4,
+      "tape": false
+    },
+    {
+      "sequence": 85,
+      "submission": 70,
+      "kernel": "FastRmsNormF16",
+      "shape": {
+        "count": 896,
+        "grid": [
+          1,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          4096,
+          4096,
+          4096
+        ]
+      },
+      "gpu_us": 34.166,
+      "preceding_gap_us": 10.334,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 86,
+      "submission": 70,
+      "kernel": "QmmVecQ4MultiSubgroupF16",
+      "shape": {
+        "count": 1216,
+        "grid": [
+          1216,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          2179072,
+          139264,
+          139264,
+          12288
+        ]
+      },
+      "gpu_us": 134.708,
+      "preceding_gap_us": 18.584,
+      "preceding_gap_class": "intra-submission",
+      "operation": 4,
+      "tape": false
+    },
+    {
+      "sequence": 87,
+      "submission": 70,
+      "kernel": "SwigluF16",
+      "shape": {
+        "count": 4864,
+        "grid": [
+          5,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          12288,
+          12288,
+          12288,
+          12288,
+          12288
+        ]
+      },
+      "gpu_us": 30.125,
+      "preceding_gap_us": 24.917,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 88,
+      "submission": 70,
+      "kernel": "QmmVecQ4MultiSubgroupF16",
+      "shape": {
+        "count": 112,
+        "grid": [
+          112,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          12288,
+          2179072,
+          139264,
+          139264,
+          4096
+        ]
+      },
+      "gpu_us": 82.959,
+      "preceding_gap_us": 28.291,
+      "preceding_gap_class": "intra-submission",
+      "operation": 4,
+      "tape": false
+    },
+    {
+      "sequence": 89,
+      "submission": 70,
+      "kernel": "FastRmsNormF16",
+      "shape": {
+        "count": 896,
+        "grid": [
+          1,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          4096,
+          4096,
+          4096
+        ]
+      },
+      "gpu_us": 34.583,
+      "preceding_gap_us": 27.583,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 90,
+      "submission": 70,
+      "kernel": "QmmVecQ4MultiSubgroupF16",
+      "shape": {
+        "count": 144,
+        "grid": [
+          144,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          401408,
+          28672,
+          28672,
+          4096
+        ]
+      },
+      "gpu_us": 73.334,
+      "preceding_gap_us": 139.75,
+      "preceding_gap_class": "intra-submission",
+      "operation": 4,
+      "tape": false
+    },
+    {
+      "sequence": 91,
+      "submission": 70,
+      "kernel": "FastRopeF16",
+      "shape": {
+        "count": 64,
+        "grid": [
+          1,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          4096,
+          4096,
+          4096
+        ]
+      },
+      "gpu_us": 31.625,
+      "preceding_gap_us": 10.958,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 92,
+      "submission": 70,
+      "kernel": "CopyGeneralF16",
+      "shape": {
+        "count": 128,
+        "grid": [
+          1,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          4096,
+          327680,
+          327680
+        ]
+      },
+      "gpu_us": 15.292,
+      "preceding_gap_us": 30.708,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 93,
+      "submission": 70,
+      "kernel": "CopyGeneralF16",
+      "shape": {
+        "count": 128,
+        "grid": [
+          1,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          4096,
+          327680,
+          327680
+        ]
+      },
+      "gpu_us": 22.167,
+      "preceding_gap_us": 72.708,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 94,
+      "submission": 70,
+      "kernel": "FastRopeF16",
+      "shape": {
+        "count": 448,
+        "grid": [
+          2,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          4096,
+          4096,
+          4096
+        ]
+      },
+      "gpu_us": 32.791,
+      "preceding_gap_us": 21.417,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 95,
+      "submission": 70,
+      "kernel": "SdpaDecodeNativeF16",
+      "shape": {
+        "count": 896,
+        "grid": [
+          14,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          327680,
+          327680,
+          4096
+        ]
+      },
+      "gpu_us": 66.083,
+      "preceding_gap_us": 18.959,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 96,
+      "submission": 70,
+      "kernel": "QmmVecQ4MultiSubgroupF16",
+      "shape": {
+        "count": 112,
+        "grid": [
+          112,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          401408,
+          28672,
+          28672,
+          4096
+        ]
+      },
+      "gpu_us": 40.709,
+      "preceding_gap_us": 18.958,
+      "preceding_gap_class": "intra-submission",
+      "operation": 4,
+      "tape": false
+    },
+    {
+      "sequence": 97,
+      "submission": 70,
+      "kernel": "FastRmsNormF16",
+      "shape": {
+        "count": 896,
+        "grid": [
+          1,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          4096,
+          4096,
+          4096
+        ]
+      },
+      "gpu_us": 35.209,
+      "preceding_gap_us": 11.041,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 98,
+      "submission": 70,
+      "kernel": "QmmVecQ4MultiSubgroupF16",
+      "shape": {
+        "count": 1216,
+        "grid": [
+          1216,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          2179072,
+          139264,
+          139264,
+          12288
+        ]
+      },
+      "gpu_us": 136.666,
+      "preceding_gap_us": 16.875,
+      "preceding_gap_class": "intra-submission",
+      "operation": 4,
+      "tape": false
+    },
+    {
+      "sequence": 99,
+      "submission": 70,
+      "kernel": "SwigluF16",
+      "shape": {
+        "count": 4864,
+        "grid": [
+          5,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          12288,
+          12288,
+          12288,
+          12288,
+          12288
+        ]
+      },
+      "gpu_us": 17.583,
+      "preceding_gap_us": 11.917,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 100,
+      "submission": 70,
+      "kernel": "QmmVecQ4MultiSubgroupF16",
+      "shape": {
+        "count": 112,
+        "grid": [
+          112,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          12288,
+          2179072,
+          139264,
+          139264,
+          4096
+        ]
+      },
+      "gpu_us": 67.333,
+      "preceding_gap_us": 11.042,
+      "preceding_gap_class": "intra-submission",
+      "operation": 4,
+      "tape": false
+    },
+    {
+      "sequence": 101,
+      "submission": 70,
+      "kernel": "FastRmsNormF16",
+      "shape": {
+        "count": 896,
+        "grid": [
+          1,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          4096,
+          4096,
+          4096
+        ]
+      },
+      "gpu_us": 21.583,
+      "preceding_gap_us": 11.084,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 102,
+      "submission": 70,
+      "kernel": "QmmVecQ4MultiSubgroupF16",
+      "shape": {
+        "count": 144,
+        "grid": [
+          144,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          401408,
+          28672,
+          28672,
+          4096
+        ]
+      },
+      "gpu_us": 34.042,
+      "preceding_gap_us": 9.833,
+      "preceding_gap_class": "intra-submission",
+      "operation": 4,
+      "tape": false
+    },
+    {
+      "sequence": 103,
+      "submission": 70,
+      "kernel": "FastRopeF16",
+      "shape": {
+        "count": 64,
+        "grid": [
+          1,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          4096,
+          4096,
+          4096
+        ]
+      },
+      "gpu_us": 21.334,
+      "preceding_gap_us": 10.958,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 104,
+      "submission": 70,
+      "kernel": "CopyGeneralF16",
+      "shape": {
+        "count": 128,
+        "grid": [
+          1,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          4096,
+          327680,
+          327680
+        ]
+      },
+      "gpu_us": 28.625,
+      "preceding_gap_us": 32.5,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 105,
+      "submission": 70,
+      "kernel": "CopyGeneralF16",
+      "shape": {
+        "count": 128,
+        "grid": [
+          1,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          4096,
+          327680,
+          327680
+        ]
+      },
+      "gpu_us": 36.834,
+      "preceding_gap_us": 159.916,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 106,
+      "submission": 70,
+      "kernel": "FastRopeF16",
+      "shape": {
+        "count": 448,
+        "grid": [
+          2,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          4096,
+          4096,
+          4096
+        ]
+      },
+      "gpu_us": 33.833,
+      "preceding_gap_us": 22.25,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 107,
+      "submission": 70,
+      "kernel": "SdpaDecodeNativeF16",
+      "shape": {
+        "count": 896,
+        "grid": [
+          14,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          327680,
+          327680,
+          4096
+        ]
+      },
+      "gpu_us": 65.958,
+      "preceding_gap_us": 18.875,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 108,
+      "submission": 70,
+      "kernel": "QmmVecQ4MultiSubgroupF16",
+      "shape": {
+        "count": 112,
+        "grid": [
+          112,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          401408,
+          28672,
+          28672,
+          4096
+        ]
+      },
+      "gpu_us": 40.875,
+      "preceding_gap_us": 23.0,
+      "preceding_gap_class": "intra-submission",
+      "operation": 4,
+      "tape": false
+    },
+    {
+      "sequence": 109,
+      "submission": 70,
+      "kernel": "FastRmsNormF16",
+      "shape": {
+        "count": 896,
+        "grid": [
+          1,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          4096,
+          4096,
+          4096
+        ]
+      },
+      "gpu_us": 34.041,
+      "preceding_gap_us": 11.084,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 110,
+      "submission": 70,
+      "kernel": "QmmVecQ4MultiSubgroupF16",
+      "shape": {
+        "count": 1216,
+        "grid": [
+          1216,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          2179072,
+          139264,
+          139264,
+          12288
+        ]
+      },
+      "gpu_us": 135.458,
+      "preceding_gap_us": 22.459,
+      "preceding_gap_class": "intra-submission",
+      "operation": 4,
+      "tape": false
+    },
+    {
+      "sequence": 111,
+      "submission": 70,
+      "kernel": "SwigluF16",
+      "shape": {
+        "count": 4864,
+        "grid": [
+          5,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          12288,
+          12288,
+          12288,
+          12288,
+          12288
+        ]
+      },
+      "gpu_us": 17.292,
+      "preceding_gap_us": 12.083,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 112,
+      "submission": 70,
+      "kernel": "QmmVecQ4MultiSubgroupF16",
+      "shape": {
+        "count": 112,
+        "grid": [
+          112,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          12288,
+          2179072,
+          139264,
+          139264,
+          4096
+        ]
+      },
+      "gpu_us": 69.333,
+      "preceding_gap_us": 10.75,
+      "preceding_gap_class": "intra-submission",
+      "operation": 4,
+      "tape": false
+    },
+    {
+      "sequence": 113,
+      "submission": 70,
+      "kernel": "FastRmsNormF16",
+      "shape": {
+        "count": 896,
+        "grid": [
+          1,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          4096,
+          4096,
+          4096
+        ]
+      },
+      "gpu_us": 22.75,
+      "preceding_gap_us": 12.125,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 114,
+      "submission": 70,
+      "kernel": "QmmVecQ4MultiSubgroupF16",
+      "shape": {
+        "count": 144,
+        "grid": [
+          144,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          401408,
+          28672,
+          28672,
+          4096
+        ]
+      },
+      "gpu_us": 46.166,
+      "preceding_gap_us": 10.209,
+      "preceding_gap_class": "intra-submission",
+      "operation": 4,
+      "tape": false
+    },
+    {
+      "sequence": 115,
+      "submission": 70,
+      "kernel": "FastRopeF16",
+      "shape": {
+        "count": 64,
+        "grid": [
+          1,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          4096,
+          4096,
+          4096
+        ]
+      },
+      "gpu_us": 31.042,
+      "preceding_gap_us": 11.167,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 116,
+      "submission": 70,
+      "kernel": "CopyGeneralF16",
+      "shape": {
+        "count": 128,
+        "grid": [
+          1,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          4096,
+          327680,
+          327680
+        ]
+      },
+      "gpu_us": 17.25,
+      "preceding_gap_us": 30.791,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 117,
+      "submission": 70,
+      "kernel": "CopyGeneralF16",
+      "shape": {
+        "count": 128,
+        "grid": [
+          1,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          4096,
+          327680,
+          327680
+        ]
+      },
+      "gpu_us": 22.875,
+      "preceding_gap_us": 80.042,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 118,
+      "submission": 70,
+      "kernel": "FastRopeF16",
+      "shape": {
+        "count": 448,
+        "grid": [
+          2,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          4096,
+          4096,
+          4096
+        ]
+      },
+      "gpu_us": 32.75,
+      "preceding_gap_us": 19.667,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 119,
+      "submission": 70,
+      "kernel": "SdpaDecodeNativeF16",
+      "shape": {
+        "count": 896,
+        "grid": [
+          14,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          327680,
+          327680,
+          4096
+        ]
+      },
+      "gpu_us": 65.792,
+      "preceding_gap_us": 19.583,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 120,
+      "submission": 70,
+      "kernel": "QmmVecQ4MultiSubgroupF16",
+      "shape": {
+        "count": 112,
+        "grid": [
+          112,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          401408,
+          28672,
+          28672,
+          4096
+        ]
+      },
+      "gpu_us": 41.708,
+      "preceding_gap_us": 15.5,
+      "preceding_gap_class": "intra-submission",
+      "operation": 4,
+      "tape": false
+    },
+    {
+      "sequence": 121,
+      "submission": 70,
+      "kernel": "FastRmsNormF16",
+      "shape": {
+        "count": 896,
+        "grid": [
+          1,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          4096,
+          4096,
+          4096
+        ]
+      },
+      "gpu_us": 34.542,
+      "preceding_gap_us": 10.625,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 122,
+      "submission": 70,
+      "kernel": "QmmVecQ4MultiSubgroupF16",
+      "shape": {
+        "count": 1216,
+        "grid": [
+          1216,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          2179072,
+          139264,
+          139264,
+          12288
+        ]
+      },
+      "gpu_us": 133.75,
+      "preceding_gap_us": 17.541,
+      "preceding_gap_class": "intra-submission",
+      "operation": 4,
+      "tape": false
+    },
+    {
+      "sequence": 123,
+      "submission": 70,
+      "kernel": "SwigluF16",
+      "shape": {
+        "count": 4864,
+        "grid": [
+          5,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          12288,
+          12288,
+          12288,
+          12288,
+          12288
+        ]
+      },
+      "gpu_us": 16.334,
+      "preceding_gap_us": 11.125,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 124,
+      "submission": 70,
+      "kernel": "QmmVecQ4MultiSubgroupF16",
+      "shape": {
+        "count": 112,
+        "grid": [
+          112,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          12288,
+          2179072,
+          139264,
+          139264,
+          4096
+        ]
+      },
+      "gpu_us": 68.917,
+      "preceding_gap_us": 10.666,
+      "preceding_gap_class": "intra-submission",
+      "operation": 4,
+      "tape": false
+    },
+    {
+      "sequence": 125,
+      "submission": 70,
+      "kernel": "FastRmsNormF16",
+      "shape": {
+        "count": 896,
+        "grid": [
+          1,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          4096,
+          4096,
+          4096
+        ]
+      },
+      "gpu_us": 21.958,
+      "preceding_gap_us": 12.292,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 126,
+      "submission": 70,
+      "kernel": "QmmVecQ4MultiSubgroupF16",
+      "shape": {
+        "count": 144,
+        "grid": [
+          144,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          401408,
+          28672,
+          28672,
+          4096
+        ]
+      },
+      "gpu_us": 44.625,
+      "preceding_gap_us": 10.333,
+      "preceding_gap_class": "intra-submission",
+      "operation": 4,
+      "tape": false
+    },
+    {
+      "sequence": 127,
+      "submission": 70,
+      "kernel": "FastRopeF16",
+      "shape": {
+        "count": 64,
+        "grid": [
+          1,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          4096,
+          4096,
+          4096
+        ]
+      },
+      "gpu_us": 30.333,
+      "preceding_gap_us": 11.167,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 128,
+      "submission": 70,
+      "kernel": "CopyGeneralF16",
+      "shape": {
+        "count": 128,
+        "grid": [
+          1,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          4096,
+          327680,
+          327680
+        ]
+      },
+      "gpu_us": 15.166,
+      "preceding_gap_us": 30.709,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 129,
+      "submission": 70,
+      "kernel": "CopyGeneralF16",
+      "shape": {
+        "count": 128,
+        "grid": [
+          1,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          4096,
+          327680,
+          327680
+        ]
+      },
+      "gpu_us": 24.458,
+      "preceding_gap_us": 84.292,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 130,
+      "submission": 70,
+      "kernel": "FastRopeF16",
+      "shape": {
+        "count": 448,
+        "grid": [
+          2,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          4096,
+          4096,
+          4096
+        ]
+      },
+      "gpu_us": 32.458,
+      "preceding_gap_us": 21.084,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 131,
+      "submission": 70,
+      "kernel": "SdpaDecodeNativeF16",
+      "shape": {
+        "count": 896,
+        "grid": [
+          14,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          327680,
+          327680,
+          4096
+        ]
+      },
+      "gpu_us": 87.958,
+      "preceding_gap_us": 35.875,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 132,
+      "submission": 70,
+      "kernel": "QmmVecQ4MultiSubgroupF16",
+      "shape": {
+        "count": 112,
+        "grid": [
+          112,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          401408,
+          28672,
+          28672,
+          4096
+        ]
+      },
+      "gpu_us": 66.334,
+      "preceding_gap_us": 138.75,
+      "preceding_gap_class": "intra-submission",
+      "operation": 4,
+      "tape": false
+    },
+    {
+      "sequence": 133,
+      "submission": 70,
+      "kernel": "FastRmsNormF16",
+      "shape": {
+        "count": 896,
+        "grid": [
+          1,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          4096,
+          4096,
+          4096
+        ]
+      },
+      "gpu_us": 55.25,
+      "preceding_gap_us": 32.458,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 134,
+      "submission": 70,
+      "kernel": "QmmVecQ4MultiSubgroupF16",
+      "shape": {
+        "count": 1216,
+        "grid": [
+          1216,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          2179072,
+          139264,
+          139264,
+          12288
+        ]
+      },
+      "gpu_us": 168.5,
+      "preceding_gap_us": 44.5,
+      "preceding_gap_class": "intra-submission",
+      "operation": 4,
+      "tape": false
+    },
+    {
+      "sequence": 135,
+      "submission": 70,
+      "kernel": "SwigluF16",
+      "shape": {
+        "count": 4864,
+        "grid": [
+          5,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          12288,
+          12288,
+          12288,
+          12288,
+          12288
+        ]
+      },
+      "gpu_us": 20.709,
+      "preceding_gap_us": 12.583,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 136,
+      "submission": 70,
+      "kernel": "QmmVecQ4MultiSubgroupF16",
+      "shape": {
+        "count": 112,
+        "grid": [
+          112,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          12288,
+          2179072,
+          139264,
+          139264,
+          4096
+        ]
+      },
+      "gpu_us": 77.333,
+      "preceding_gap_us": 11.625,
+      "preceding_gap_class": "intra-submission",
+      "operation": 4,
+      "tape": false
+    },
+    {
+      "sequence": 137,
+      "submission": 70,
+      "kernel": "FastRmsNormF16",
+      "shape": {
+        "count": 896,
+        "grid": [
+          1,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          4096,
+          4096,
+          4096
+        ]
+      },
+      "gpu_us": 22.125,
+      "preceding_gap_us": 11.583,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 138,
+      "submission": 70,
+      "kernel": "QmmVecQ4MultiSubgroupF16",
+      "shape": {
+        "count": 144,
+        "grid": [
+          144,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          401408,
+          28672,
+          28672,
+          4096
+        ]
+      },
+      "gpu_us": 34.125,
+      "preceding_gap_us": 10.542,
+      "preceding_gap_class": "intra-submission",
+      "operation": 4,
+      "tape": false
+    },
+    {
+      "sequence": 139,
+      "submission": 70,
+      "kernel": "FastRopeF16",
+      "shape": {
+        "count": 64,
+        "grid": [
+          1,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          4096,
+          4096,
+          4096
+        ]
+      },
+      "gpu_us": 21.083,
+      "preceding_gap_us": 10.5,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 140,
+      "submission": 70,
+      "kernel": "CopyGeneralF16",
+      "shape": {
+        "count": 128,
+        "grid": [
+          1,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          4096,
+          327680,
+          327680
+        ]
+      },
+      "gpu_us": 16.667,
+      "preceding_gap_us": 22.5,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 141,
+      "submission": 70,
+      "kernel": "CopyGeneralF16",
+      "shape": {
+        "count": 128,
+        "grid": [
+          1,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          4096,
+          327680,
+          327680
+        ]
+      },
+      "gpu_us": 19.25,
+      "preceding_gap_us": 106.25,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 142,
+      "submission": 70,
+      "kernel": "FastRopeF16",
+      "shape": {
+        "count": 448,
+        "grid": [
+          2,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          4096,
+          4096,
+          4096
+        ]
+      },
+      "gpu_us": 33.0,
+      "preceding_gap_us": 22.25,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 143,
+      "submission": 70,
+      "kernel": "SdpaDecodeNativeF16",
+      "shape": {
+        "count": 896,
+        "grid": [
+          14,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          327680,
+          327680,
+          4096
+        ]
+      },
+      "gpu_us": 66.083,
+      "preceding_gap_us": 19.292,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 144,
+      "submission": 70,
+      "kernel": "QmmVecQ4MultiSubgroupF16",
+      "shape": {
+        "count": 112,
+        "grid": [
+          112,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          401408,
+          28672,
+          28672,
+          4096
+        ]
+      },
+      "gpu_us": 49.0,
+      "preceding_gap_us": 11.583,
+      "preceding_gap_class": "intra-submission",
+      "operation": 4,
+      "tape": false
+    },
+    {
+      "sequence": 145,
+      "submission": 70,
+      "kernel": "FastRmsNormF16",
+      "shape": {
+        "count": 896,
+        "grid": [
+          1,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          4096,
+          4096,
+          4096
+        ]
+      },
+      "gpu_us": 31.458,
+      "preceding_gap_us": 11.084,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 146,
+      "submission": 70,
+      "kernel": "QmmVecQ4MultiSubgroupF16",
+      "shape": {
+        "count": 1216,
+        "grid": [
+          1216,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          2179072,
+          139264,
+          139264,
+          12288
+        ]
+      },
+      "gpu_us": 161.0,
+      "preceding_gap_us": 18.917,
+      "preceding_gap_class": "intra-submission",
+      "operation": 4,
+      "tape": false
+    },
+    {
+      "sequence": 147,
+      "submission": 70,
+      "kernel": "SwigluF16",
+      "shape": {
+        "count": 4864,
+        "grid": [
+          5,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          12288,
+          12288,
+          12288,
+          12288,
+          12288
+        ]
+      },
+      "gpu_us": 17.625,
+      "preceding_gap_us": 13.416,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 148,
+      "submission": 70,
+      "kernel": "QmmVecQ4MultiSubgroupF16",
+      "shape": {
+        "count": 112,
+        "grid": [
+          112,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          12288,
+          2179072,
+          139264,
+          139264,
+          4096
+        ]
+      },
+      "gpu_us": 77.167,
+      "preceding_gap_us": 10.917,
+      "preceding_gap_class": "intra-submission",
+      "operation": 4,
+      "tape": false
+    },
+    {
+      "sequence": 149,
+      "submission": 70,
+      "kernel": "FastRmsNormF16",
+      "shape": {
+        "count": 896,
+        "grid": [
+          1,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          4096,
+          4096,
+          4096
+        ]
+      },
+      "gpu_us": 21.875,
+      "preceding_gap_us": 11.083,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 150,
+      "submission": 70,
+      "kernel": "QmmVecQ4MultiSubgroupF16",
+      "shape": {
+        "count": 144,
+        "grid": [
+          144,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          401408,
+          28672,
+          28672,
+          4096
+        ]
+      },
+      "gpu_us": 35.5,
+      "preceding_gap_us": 11.083,
+      "preceding_gap_class": "intra-submission",
+      "operation": 4,
+      "tape": false
+    },
+    {
+      "sequence": 151,
+      "submission": 70,
+      "kernel": "FastRopeF16",
+      "shape": {
+        "count": 64,
+        "grid": [
+          1,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          4096,
+          4096,
+          4096
+        ]
+      },
+      "gpu_us": 22.208,
+      "preceding_gap_us": 11.084,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 152,
+      "submission": 70,
+      "kernel": "CopyGeneralF16",
+      "shape": {
+        "count": 128,
+        "grid": [
+          1,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          4096,
+          327680,
+          327680
+        ]
+      },
+      "gpu_us": 15.958,
+      "preceding_gap_us": 22.125,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 153,
+      "submission": 70,
+      "kernel": "CopyGeneralF16",
+      "shape": {
+        "count": 128,
+        "grid": [
+          1,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          4096,
+          327680,
+          327680
+        ]
+      },
+      "gpu_us": 15.292,
+      "preceding_gap_us": 80.75,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 154,
+      "submission": 70,
+      "kernel": "FastRopeF16",
+      "shape": {
+        "count": 448,
+        "grid": [
+          2,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          4096,
+          4096,
+          4096
+        ]
+      },
+      "gpu_us": 32.875,
+      "preceding_gap_us": 23.667,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 155,
+      "submission": 70,
+      "kernel": "SdpaDecodeNativeF16",
+      "shape": {
+        "count": 896,
+        "grid": [
+          14,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          327680,
+          327680,
+          4096
+        ]
+      },
+      "gpu_us": 66.709,
+      "preceding_gap_us": 20.416,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 156,
+      "submission": 70,
+      "kernel": "QmmVecQ4MultiSubgroupF16",
+      "shape": {
+        "count": 112,
+        "grid": [
+          112,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          401408,
+          28672,
+          28672,
+          4096
+        ]
+      },
+      "gpu_us": 44.834,
+      "preceding_gap_us": 15.291,
+      "preceding_gap_class": "intra-submission",
+      "operation": 4,
+      "tape": false
+    },
+    {
+      "sequence": 157,
+      "submission": 70,
+      "kernel": "FastRmsNormF16",
+      "shape": {
+        "count": 896,
+        "grid": [
+          1,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          4096,
+          4096,
+          4096
+        ]
+      },
+      "gpu_us": 34.917,
+      "preceding_gap_us": 11.458,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 158,
+      "submission": 70,
+      "kernel": "QmmVecQ4MultiSubgroupF16",
+      "shape": {
+        "count": 1216,
+        "grid": [
+          1216,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          2179072,
+          139264,
+          139264,
+          12288
+        ]
+      },
+      "gpu_us": 156.084,
+      "preceding_gap_us": 18.166,
+      "preceding_gap_class": "intra-submission",
+      "operation": 4,
+      "tape": false
+    },
+    {
+      "sequence": 159,
+      "submission": 70,
+      "kernel": "SwigluF16",
+      "shape": {
+        "count": 4864,
+        "grid": [
+          5,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          12288,
+          12288,
+          12288,
+          12288,
+          12288
+        ]
+      },
+      "gpu_us": 17.625,
+      "preceding_gap_us": 14.5,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 160,
+      "submission": 70,
+      "kernel": "QmmVecQ4MultiSubgroupF16",
+      "shape": {
+        "count": 112,
+        "grid": [
+          112,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          12288,
+          2179072,
+          139264,
+          139264,
+          4096
+        ]
+      },
+      "gpu_us": 77.375,
+      "preceding_gap_us": 10.833,
+      "preceding_gap_class": "intra-submission",
+      "operation": 4,
+      "tape": false
+    },
+    {
+      "sequence": 161,
+      "submission": 70,
+      "kernel": "FastRmsNormF16",
+      "shape": {
+        "count": 896,
+        "grid": [
+          1,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          4096,
+          4096,
+          4096
+        ]
+      },
+      "gpu_us": 22.416,
+      "preceding_gap_us": 11.417,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 162,
+      "submission": 70,
+      "kernel": "QmmVecQ4MultiSubgroupF16",
+      "shape": {
+        "count": 144,
+        "grid": [
+          144,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          401408,
+          28672,
+          28672,
+          4096
+        ]
+      },
+      "gpu_us": 34.5,
+      "preceding_gap_us": 10.25,
+      "preceding_gap_class": "intra-submission",
+      "operation": 4,
+      "tape": false
+    },
+    {
+      "sequence": 163,
+      "submission": 70,
+      "kernel": "FastRopeF16",
+      "shape": {
+        "count": 64,
+        "grid": [
+          1,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          4096,
+          4096,
+          4096
+        ]
+      },
+      "gpu_us": 21.667,
+      "preceding_gap_us": 11.292,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 164,
+      "submission": 70,
+      "kernel": "CopyGeneralF16",
+      "shape": {
+        "count": 128,
+        "grid": [
+          1,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          4096,
+          327680,
+          327680
+        ]
+      },
+      "gpu_us": 18.667,
+      "preceding_gap_us": 35.666,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 165,
+      "submission": 70,
+      "kernel": "CopyGeneralF16",
+      "shape": {
+        "count": 128,
+        "grid": [
+          1,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          4096,
+          327680,
+          327680
+        ]
+      },
+      "gpu_us": 20.5,
+      "preceding_gap_us": 82.542,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 166,
+      "submission": 70,
+      "kernel": "FastRopeF16",
+      "shape": {
+        "count": 448,
+        "grid": [
+          2,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          4096,
+          4096,
+          4096
+        ]
+      },
+      "gpu_us": 33.583,
+      "preceding_gap_us": 23.5,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 167,
+      "submission": 70,
+      "kernel": "SdpaDecodeNativeF16",
+      "shape": {
+        "count": 896,
+        "grid": [
+          14,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          327680,
+          327680,
+          4096
+        ]
+      },
+      "gpu_us": 66.834,
+      "preceding_gap_us": 19.208,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 168,
+      "submission": 70,
+      "kernel": "QmmVecQ4MultiSubgroupF16",
+      "shape": {
+        "count": 112,
+        "grid": [
+          112,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          401408,
+          28672,
+          28672,
+          4096
+        ]
+      },
+      "gpu_us": 42.5,
+      "preceding_gap_us": 36.791,
+      "preceding_gap_class": "intra-submission",
+      "operation": 4,
+      "tape": false
+    },
+    {
+      "sequence": 169,
+      "submission": 70,
+      "kernel": "FastRmsNormF16",
+      "shape": {
+        "count": 896,
+        "grid": [
+          1,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          4096,
+          4096,
+          4096
+        ]
+      },
+      "gpu_us": 34.334,
+      "preceding_gap_us": 11.125,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 170,
+      "submission": 70,
+      "kernel": "QmmVecQ4MultiSubgroupF16",
+      "shape": {
+        "count": 1216,
+        "grid": [
+          1216,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          2179072,
+          139264,
+          139264,
+          12288
+        ]
+      },
+      "gpu_us": 158.625,
+      "preceding_gap_us": 18.166,
+      "preceding_gap_class": "intra-submission",
+      "operation": 4,
+      "tape": false
+    },
+    {
+      "sequence": 171,
+      "submission": 70,
+      "kernel": "SwigluF16",
+      "shape": {
+        "count": 4864,
+        "grid": [
+          5,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          12288,
+          12288,
+          12288,
+          12288,
+          12288
+        ]
+      },
+      "gpu_us": 32.042,
+      "preceding_gap_us": 30.375,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 172,
+      "submission": 70,
+      "kernel": "QmmVecQ4MultiSubgroupF16",
+      "shape": {
+        "count": 112,
+        "grid": [
+          112,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          12288,
+          2179072,
+          139264,
+          139264,
+          4096
+        ]
+      },
+      "gpu_us": 111.334,
+      "preceding_gap_us": 63.958,
+      "preceding_gap_class": "intra-submission",
+      "operation": 4,
+      "tape": false
+    },
+    {
+      "sequence": 173,
+      "submission": 70,
+      "kernel": "FastRmsNormF16",
+      "shape": {
+        "count": 896,
+        "grid": [
+          1,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          4096,
+          4096,
+          4096
+        ]
+      },
+      "gpu_us": 37.334,
+      "preceding_gap_us": 25.166,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 174,
+      "submission": 70,
+      "kernel": "QmmVecQ4MultiSubgroupF16",
+      "shape": {
+        "count": 144,
+        "grid": [
+          144,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          401408,
+          28672,
+          28672,
+          4096
+        ]
+      },
+      "gpu_us": 49.417,
+      "preceding_gap_us": 75.208,
+      "preceding_gap_class": "intra-submission",
+      "operation": 4,
+      "tape": false
+    },
+    {
+      "sequence": 175,
+      "submission": 70,
+      "kernel": "FastRopeF16",
+      "shape": {
+        "count": 64,
+        "grid": [
+          1,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          4096,
+          4096,
+          4096
+        ]
+      },
+      "gpu_us": 29.959,
+      "preceding_gap_us": 11.416,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 176,
+      "submission": 70,
+      "kernel": "CopyGeneralF16",
+      "shape": {
+        "count": 128,
+        "grid": [
+          1,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          4096,
+          327680,
+          327680
+        ]
+      },
+      "gpu_us": 15.833,
+      "preceding_gap_us": 32.5,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 177,
+      "submission": 70,
+      "kernel": "CopyGeneralF16",
+      "shape": {
+        "count": 128,
+        "grid": [
+          1,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          4096,
+          327680,
+          327680
+        ]
+      },
+      "gpu_us": 15.042,
+      "preceding_gap_us": 97.083,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 178,
+      "submission": 70,
+      "kernel": "FastRopeF16",
+      "shape": {
+        "count": 448,
+        "grid": [
+          2,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          4096,
+          4096,
+          4096
+        ]
+      },
+      "gpu_us": 34.0,
+      "preceding_gap_us": 23.708,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 179,
+      "submission": 70,
+      "kernel": "SdpaDecodeNativeF16",
+      "shape": {
+        "count": 896,
+        "grid": [
+          14,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          327680,
+          327680,
+          4096
+        ]
+      },
+      "gpu_us": 67.042,
+      "preceding_gap_us": 18.792,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 180,
+      "submission": 70,
+      "kernel": "QmmVecQ4MultiSubgroupF16",
+      "shape": {
+        "count": 112,
+        "grid": [
+          112,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          401408,
+          28672,
+          28672,
+          4096
+        ]
+      },
+      "gpu_us": 44.208,
+      "preceding_gap_us": 14.5,
+      "preceding_gap_class": "intra-submission",
+      "operation": 4,
+      "tape": false
+    },
+    {
+      "sequence": 181,
+      "submission": 70,
+      "kernel": "FastRmsNormF16",
+      "shape": {
+        "count": 896,
+        "grid": [
+          1,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          4096,
+          4096,
+          4096
+        ]
+      },
+      "gpu_us": 31.875,
+      "preceding_gap_us": 11.0,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 182,
+      "submission": 70,
+      "kernel": "QmmVecQ4MultiSubgroupF16",
+      "shape": {
+        "count": 1216,
+        "grid": [
+          1216,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          2179072,
+          139264,
+          139264,
+          12288
+        ]
+      },
+      "gpu_us": 163.083,
+      "preceding_gap_us": 19.167,
+      "preceding_gap_class": "intra-submission",
+      "operation": 4,
+      "tape": false
+    },
+    {
+      "sequence": 183,
+      "submission": 70,
+      "kernel": "SwigluF16",
+      "shape": {
+        "count": 4864,
+        "grid": [
+          5,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          12288,
+          12288,
+          12288,
+          12288,
+          12288
+        ]
+      },
+      "gpu_us": 17.75,
+      "preceding_gap_us": 12.667,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 184,
+      "submission": 70,
+      "kernel": "QmmVecQ4MultiSubgroupF16",
+      "shape": {
+        "count": 112,
+        "grid": [
+          112,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          12288,
+          2179072,
+          139264,
+          139264,
+          4096
+        ]
+      },
+      "gpu_us": 78.541,
+      "preceding_gap_us": 10.5,
+      "preceding_gap_class": "intra-submission",
+      "operation": 4,
+      "tape": false
+    },
+    {
+      "sequence": 185,
+      "submission": 70,
+      "kernel": "FastRmsNormF16",
+      "shape": {
+        "count": 896,
+        "grid": [
+          1,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          4096,
+          4096,
+          4096
+        ]
+      },
+      "gpu_us": 21.917,
+      "preceding_gap_us": 13.042,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 186,
+      "submission": 70,
+      "kernel": "QmmVecQ4MultiSubgroupF16",
+      "shape": {
+        "count": 144,
+        "grid": [
+          144,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          401408,
+          28672,
+          28672,
+          4096
+        ]
+      },
+      "gpu_us": 32.666,
+      "preceding_gap_us": 11.25,
+      "preceding_gap_class": "intra-submission",
+      "operation": 4,
+      "tape": false
+    },
+    {
+      "sequence": 187,
+      "submission": 70,
+      "kernel": "FastRopeF16",
+      "shape": {
+        "count": 64,
+        "grid": [
+          1,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          4096,
+          4096,
+          4096
+        ]
+      },
+      "gpu_us": 21.5,
+      "preceding_gap_us": 11.125,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 188,
+      "submission": 70,
+      "kernel": "CopyGeneralF16",
+      "shape": {
+        "count": 128,
+        "grid": [
+          1,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          4096,
+          327680,
+          327680
+        ]
+      },
+      "gpu_us": 16.5,
+      "preceding_gap_us": 22.542,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 189,
+      "submission": 70,
+      "kernel": "CopyGeneralF16",
+      "shape": {
+        "count": 128,
+        "grid": [
+          1,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          4096,
+          327680,
+          327680
+        ]
+      },
+      "gpu_us": 17.5,
+      "preceding_gap_us": 78.042,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 190,
+      "submission": 70,
+      "kernel": "FastRopeF16",
+      "shape": {
+        "count": 448,
+        "grid": [
+          2,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          4096,
+          4096,
+          4096
+        ]
+      },
+      "gpu_us": 33.625,
+      "preceding_gap_us": 23.75,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 191,
+      "submission": 70,
+      "kernel": "SdpaDecodeNativeF16",
+      "shape": {
+        "count": 896,
+        "grid": [
+          14,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          327680,
+          327680,
+          4096
+        ]
+      },
+      "gpu_us": 66.292,
+      "preceding_gap_us": 19.791,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 192,
+      "submission": 70,
+      "kernel": "QmmVecQ4MultiSubgroupF16",
+      "shape": {
+        "count": 112,
+        "grid": [
+          112,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          401408,
+          28672,
+          28672,
+          4096
+        ]
+      },
+      "gpu_us": 42.167,
+      "preceding_gap_us": 20.125,
+      "preceding_gap_class": "intra-submission",
+      "operation": 4,
+      "tape": false
+    },
+    {
+      "sequence": 193,
+      "submission": 70,
+      "kernel": "FastRmsNormF16",
+      "shape": {
+        "count": 896,
+        "grid": [
+          1,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          4096,
+          4096,
+          4096
+        ]
+      },
+      "gpu_us": 32.5,
+      "preceding_gap_us": 10.75,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 194,
+      "submission": 70,
+      "kernel": "QmmVecQ4MultiSubgroupF16",
+      "shape": {
+        "count": 1216,
+        "grid": [
+          1216,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          2179072,
+          139264,
+          139264,
+          12288
+        ]
+      },
+      "gpu_us": 141.667,
+      "preceding_gap_us": 18.708,
+      "preceding_gap_class": "intra-submission",
+      "operation": 4,
+      "tape": false
+    },
+    {
+      "sequence": 195,
+      "submission": 70,
+      "kernel": "SwigluF16",
+      "shape": {
+        "count": 4864,
+        "grid": [
+          5,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          12288,
+          12288,
+          12288,
+          12288,
+          12288
+        ]
+      },
+      "gpu_us": 18.959,
+      "preceding_gap_us": 13.166,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 196,
+      "submission": 70,
+      "kernel": "QmmVecQ4MultiSubgroupF16",
+      "shape": {
+        "count": 112,
+        "grid": [
+          112,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          12288,
+          2179072,
+          139264,
+          139264,
+          4096
+        ]
+      },
+      "gpu_us": 68.459,
+      "preceding_gap_us": 11.166,
+      "preceding_gap_class": "intra-submission",
+      "operation": 4,
+      "tape": false
+    },
+    {
+      "sequence": 197,
+      "submission": 70,
+      "kernel": "FastRmsNormF16",
+      "shape": {
+        "count": 896,
+        "grid": [
+          1,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          4096,
+          4096,
+          4096
+        ]
+      },
+      "gpu_us": 21.25,
+      "preceding_gap_us": 11.5,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 198,
+      "submission": 70,
+      "kernel": "QmmVecQ4MultiSubgroupF16",
+      "shape": {
+        "count": 144,
+        "grid": [
+          144,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          401408,
+          28672,
+          28672,
+          4096
+        ]
+      },
+      "gpu_us": 42.791,
+      "preceding_gap_us": 8.875,
+      "preceding_gap_class": "intra-submission",
+      "operation": 4,
+      "tape": false
+    },
+    {
+      "sequence": 199,
+      "submission": 70,
+      "kernel": "FastRopeF16",
+      "shape": {
+        "count": 64,
+        "grid": [
+          1,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          4096,
+          4096,
+          4096
+        ]
+      },
+      "gpu_us": 29.25,
+      "preceding_gap_us": 10.417,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 200,
+      "submission": 70,
+      "kernel": "CopyGeneralF16",
+      "shape": {
+        "count": 128,
+        "grid": [
+          1,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          4096,
+          327680,
+          327680
+        ]
+      },
+      "gpu_us": 15.416,
+      "preceding_gap_us": 29.167,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 201,
+      "submission": 70,
+      "kernel": "CopyGeneralF16",
+      "shape": {
+        "count": 128,
+        "grid": [
+          1,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          4096,
+          327680,
+          327680
+        ]
+      },
+      "gpu_us": 23.417,
+      "preceding_gap_us": 76.25,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 202,
+      "submission": 70,
+      "kernel": "FastRopeF16",
+      "shape": {
+        "count": 448,
+        "grid": [
+          2,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          4096,
+          4096,
+          4096
+        ]
+      },
+      "gpu_us": 32.541,
+      "preceding_gap_us": 21.042,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 203,
+      "submission": 70,
+      "kernel": "SdpaDecodeNativeF16",
+      "shape": {
+        "count": 896,
+        "grid": [
+          14,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          327680,
+          327680,
+          4096
+        ]
+      },
+      "gpu_us": 65.791,
+      "preceding_gap_us": 18.709,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 204,
+      "submission": 70,
+      "kernel": "QmmVecQ4MultiSubgroupF16",
+      "shape": {
+        "count": 112,
+        "grid": [
+          112,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          401408,
+          28672,
+          28672,
+          4096
+        ]
+      },
+      "gpu_us": 44.125,
+      "preceding_gap_us": 11.875,
+      "preceding_gap_class": "intra-submission",
+      "operation": 4,
+      "tape": false
+    },
+    {
+      "sequence": 205,
+      "submission": 70,
+      "kernel": "FastRmsNormF16",
+      "shape": {
+        "count": 896,
+        "grid": [
+          1,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          4096,
+          4096,
+          4096
+        ]
+      },
+      "gpu_us": 37.833,
+      "preceding_gap_us": 10.459,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 206,
+      "submission": 70,
+      "kernel": "QmmVecQ4MultiSubgroupF16",
+      "shape": {
+        "count": 1216,
+        "grid": [
+          1216,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          2179072,
+          139264,
+          139264,
+          12288
+        ]
+      },
+      "gpu_us": 137.75,
+      "preceding_gap_us": 17.333,
+      "preceding_gap_class": "intra-submission",
+      "operation": 4,
+      "tape": false
+    },
+    {
+      "sequence": 207,
+      "submission": 70,
+      "kernel": "SwigluF16",
+      "shape": {
+        "count": 4864,
+        "grid": [
+          5,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          12288,
+          12288,
+          12288,
+          12288,
+          12288
+        ]
+      },
+      "gpu_us": 17.041,
+      "preceding_gap_us": 12.834,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 208,
+      "submission": 70,
+      "kernel": "QmmVecQ4MultiSubgroupF16",
+      "shape": {
+        "count": 112,
+        "grid": [
+          112,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          12288,
+          2179072,
+          139264,
+          139264,
+          4096
+        ]
+      },
+      "gpu_us": 74.083,
+      "preceding_gap_us": 10.792,
+      "preceding_gap_class": "intra-submission",
+      "operation": 4,
+      "tape": false
+    },
+    {
+      "sequence": 209,
+      "submission": 70,
+      "kernel": "FastRmsNormF16",
+      "shape": {
+        "count": 896,
+        "grid": [
+          1,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          4096,
+          4096,
+          4096
+        ]
+      },
+      "gpu_us": 22.209,
+      "preceding_gap_us": 11.25,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 210,
+      "submission": 70,
+      "kernel": "QmmVecQ4MultiSubgroupF16",
+      "shape": {
+        "count": 144,
+        "grid": [
+          144,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          401408,
+          28672,
+          28672,
+          4096
+        ]
+      },
+      "gpu_us": 32.458,
+      "preceding_gap_us": 10.333,
+      "preceding_gap_class": "intra-submission",
+      "operation": 4,
+      "tape": false
+    },
+    {
+      "sequence": 211,
+      "submission": 70,
+      "kernel": "FastRopeF16",
+      "shape": {
+        "count": 64,
+        "grid": [
+          1,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          4096,
+          4096,
+          4096
+        ]
+      },
+      "gpu_us": 21.834,
+      "preceding_gap_us": 10.125,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 212,
+      "submission": 70,
+      "kernel": "CopyGeneralF16",
+      "shape": {
+        "count": 128,
+        "grid": [
+          1,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          4096,
+          327680,
+          327680
+        ]
+      },
+      "gpu_us": 15.459,
+      "preceding_gap_us": 31.291,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 213,
+      "submission": 70,
+      "kernel": "CopyGeneralF16",
+      "shape": {
+        "count": 128,
+        "grid": [
+          1,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          4096,
+          327680,
+          327680
+        ]
+      },
+      "gpu_us": 24.084,
+      "preceding_gap_us": 106.916,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 214,
+      "submission": 70,
+      "kernel": "FastRopeF16",
+      "shape": {
+        "count": 448,
+        "grid": [
+          2,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          4096,
+          4096,
+          4096
+        ]
+      },
+      "gpu_us": 32.834,
+      "preceding_gap_us": 21.291,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 215,
+      "submission": 70,
+      "kernel": "SdpaDecodeNativeF16",
+      "shape": {
+        "count": 896,
+        "grid": [
+          14,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          327680,
+          327680,
+          4096
+        ]
+      },
+      "gpu_us": 65.75,
+      "preceding_gap_us": 19.291,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 216,
+      "submission": 70,
+      "kernel": "QmmVecQ4MultiSubgroupF16",
+      "shape": {
+        "count": 112,
+        "grid": [
+          112,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          401408,
+          28672,
+          28672,
+          4096
+        ]
+      },
+      "gpu_us": 47.25,
+      "preceding_gap_us": 11.5,
+      "preceding_gap_class": "intra-submission",
+      "operation": 4,
+      "tape": false
+    },
+    {
+      "sequence": 217,
+      "submission": 70,
+      "kernel": "FastRmsNormF16",
+      "shape": {
+        "count": 896,
+        "grid": [
+          1,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          4096,
+          4096,
+          4096
+        ]
+      },
+      "gpu_us": 32.167,
+      "preceding_gap_us": 10.792,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 218,
+      "submission": 70,
+      "kernel": "QmmVecQ4MultiSubgroupF16",
+      "shape": {
+        "count": 1216,
+        "grid": [
+          1216,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          2179072,
+          139264,
+          139264,
+          12288
+        ]
+      },
+      "gpu_us": 153.125,
+      "preceding_gap_us": 17.25,
+      "preceding_gap_class": "intra-submission",
+      "operation": 4,
+      "tape": false
+    },
+    {
+      "sequence": 219,
+      "submission": 70,
+      "kernel": "SwigluF16",
+      "shape": {
+        "count": 4864,
+        "grid": [
+          5,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          12288,
+          12288,
+          12288,
+          12288,
+          12288
+        ]
+      },
+      "gpu_us": 18.541,
+      "preceding_gap_us": 20.625,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 220,
+      "submission": 70,
+      "kernel": "QmmVecQ4MultiSubgroupF16",
+      "shape": {
+        "count": 112,
+        "grid": [
+          112,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          12288,
+          2179072,
+          139264,
+          139264,
+          4096
+        ]
+      },
+      "gpu_us": 74.5,
+      "preceding_gap_us": 10.917,
+      "preceding_gap_class": "intra-submission",
+      "operation": 4,
+      "tape": false
+    },
+    {
+      "sequence": 221,
+      "submission": 71,
+      "kernel": "FastRmsNormF16",
+      "shape": {
+        "count": 896,
+        "grid": [
+          1,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          4096,
+          4096,
+          4096
+        ]
+      },
+      "gpu_us": 72.459,
+      "preceding_gap_us": 265.333,
+      "preceding_gap_class": "inter-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 222,
+      "submission": 71,
+      "kernel": "QmmVecQ4MultiSubgroupF16",
+      "shape": {
+        "count": 144,
+        "grid": [
+          144,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          401408,
+          28672,
+          28672,
+          4096
+        ]
+      },
+      "gpu_us": 75.0,
+      "preceding_gap_us": 51.166,
+      "preceding_gap_class": "intra-submission",
+      "operation": 4,
+      "tape": false
+    },
+    {
+      "sequence": 223,
+      "submission": 71,
+      "kernel": "FastRopeF16",
+      "shape": {
+        "count": 64,
+        "grid": [
+          1,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          4096,
+          4096,
+          4096
+        ]
+      },
+      "gpu_us": 53.875,
+      "preceding_gap_us": 161.875,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 224,
+      "submission": 71,
+      "kernel": "CopyGeneralF16",
+      "shape": {
+        "count": 128,
+        "grid": [
+          1,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          4096,
+          327680,
+          327680
+        ]
+      },
+      "gpu_us": 18.084,
+      "preceding_gap_us": 32.0,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 225,
+      "submission": 71,
+      "kernel": "CopyGeneralF16",
+      "shape": {
+        "count": 128,
+        "grid": [
+          1,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          4096,
+          327680,
+          327680
+        ]
+      },
+      "gpu_us": 16.209,
+      "preceding_gap_us": 34.916,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 226,
+      "submission": 71,
+      "kernel": "FastRopeF16",
+      "shape": {
+        "count": 448,
+        "grid": [
+          2,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          4096,
+          4096,
+          4096
+        ]
+      },
+      "gpu_us": 33.084,
+      "preceding_gap_us": 68.541,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 227,
+      "submission": 71,
+      "kernel": "SdpaDecodeNativeF16",
+      "shape": {
+        "count": 896,
+        "grid": [
+          14,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          327680,
+          327680,
+          4096
+        ]
+      },
+      "gpu_us": 66.333,
+      "preceding_gap_us": 18.875,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 228,
+      "submission": 71,
+      "kernel": "QmmVecQ4MultiSubgroupF16",
+      "shape": {
+        "count": 112,
+        "grid": [
+          112,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          401408,
+          28672,
+          28672,
+          4096
+        ]
+      },
+      "gpu_us": 32.25,
+      "preceding_gap_us": 12.125,
+      "preceding_gap_class": "intra-submission",
+      "operation": 4,
+      "tape": false
+    },
+    {
+      "sequence": 229,
+      "submission": 71,
+      "kernel": "FastRmsNormF16",
+      "shape": {
+        "count": 896,
+        "grid": [
+          1,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          4096,
+          4096,
+          4096
+        ]
+      },
+      "gpu_us": 35.792,
+      "preceding_gap_us": 64.0,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 230,
+      "submission": 71,
+      "kernel": "QmmVecQ4MultiSubgroupF16",
+      "shape": {
+        "count": 1216,
+        "grid": [
+          1216,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          2179072,
+          139264,
+          139264,
+          12288
+        ]
+      },
+      "gpu_us": 164.708,
+      "preceding_gap_us": 17.458,
+      "preceding_gap_class": "intra-submission",
+      "operation": 4,
+      "tape": false
+    },
+    {
+      "sequence": 231,
+      "submission": 71,
+      "kernel": "SwigluF16",
+      "shape": {
+        "count": 4864,
+        "grid": [
+          5,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          12288,
+          12288,
+          12288,
+          12288,
+          12288
+        ]
+      },
+      "gpu_us": 16.958,
+      "preceding_gap_us": 11.167,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 232,
+      "submission": 71,
+      "kernel": "QmmVecQ4MultiSubgroupF16",
+      "shape": {
+        "count": 112,
+        "grid": [
+          112,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          12288,
+          2179072,
+          139264,
+          139264,
+          4096
+        ]
+      },
+      "gpu_us": 73.042,
+      "preceding_gap_us": 10.542,
+      "preceding_gap_class": "intra-submission",
+      "operation": 4,
+      "tape": false
+    },
+    {
+      "sequence": 233,
+      "submission": 71,
+      "kernel": "FastRmsNormF16",
+      "shape": {
+        "count": 896,
+        "grid": [
+          1,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          4096,
+          4096,
+          4096
+        ]
+      },
+      "gpu_us": 23.917,
+      "preceding_gap_us": 13.541,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 234,
+      "submission": 71,
+      "kernel": "QmmVecQ4MultiSubgroupF16",
+      "shape": {
+        "count": 144,
+        "grid": [
+          144,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          401408,
+          28672,
+          28672,
+          4096
+        ]
+      },
+      "gpu_us": 35.625,
+      "preceding_gap_us": 13.708,
+      "preceding_gap_class": "intra-submission",
+      "operation": 4,
+      "tape": false
+    },
+    {
+      "sequence": 235,
+      "submission": 71,
+      "kernel": "FastRopeF16",
+      "shape": {
+        "count": 64,
+        "grid": [
+          1,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          4096,
+          4096,
+          4096
+        ]
+      },
+      "gpu_us": 22.583,
+      "preceding_gap_us": 11.709,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 236,
+      "submission": 71,
+      "kernel": "CopyGeneralF16",
+      "shape": {
+        "count": 128,
+        "grid": [
+          1,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          4096,
+          327680,
+          327680
+        ]
+      },
+      "gpu_us": 18.25,
+      "preceding_gap_us": 22.0,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 237,
+      "submission": 71,
+      "kernel": "CopyGeneralF16",
+      "shape": {
+        "count": 128,
+        "grid": [
+          1,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          4096,
+          327680,
+          327680
+        ]
+      },
+      "gpu_us": 16.083,
+      "preceding_gap_us": 33.0,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 238,
+      "submission": 71,
+      "kernel": "FastRopeF16",
+      "shape": {
+        "count": 448,
+        "grid": [
+          2,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          4096,
+          4096,
+          4096
+        ]
+      },
+      "gpu_us": 35.583,
+      "preceding_gap_us": 73.042,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 239,
+      "submission": 71,
+      "kernel": "SdpaDecodeNativeF16",
+      "shape": {
+        "count": 896,
+        "grid": [
+          14,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          327680,
+          327680,
+          4096
+        ]
+      },
+      "gpu_us": 68.042,
+      "preceding_gap_us": 20.375,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 240,
+      "submission": 71,
+      "kernel": "QmmVecQ4MultiSubgroupF16",
+      "shape": {
+        "count": 112,
+        "grid": [
+          112,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          401408,
+          28672,
+          28672,
+          4096
+        ]
+      },
+      "gpu_us": 32.541,
+      "preceding_gap_us": 11.292,
+      "preceding_gap_class": "intra-submission",
+      "operation": 4,
+      "tape": false
+    },
+    {
+      "sequence": 241,
+      "submission": 71,
+      "kernel": "FastRmsNormF16",
+      "shape": {
+        "count": 896,
+        "grid": [
+          1,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          4096,
+          4096,
+          4096
+        ]
+      },
+      "gpu_us": 37.625,
+      "preceding_gap_us": 57.417,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 242,
+      "submission": 71,
+      "kernel": "QmmVecQ4MultiSubgroupF16",
+      "shape": {
+        "count": 1216,
+        "grid": [
+          1216,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          2179072,
+          139264,
+          139264,
+          12288
+        ]
+      },
+      "gpu_us": 135.167,
+      "preceding_gap_us": 12.0,
+      "preceding_gap_class": "intra-submission",
+      "operation": 4,
+      "tape": false
+    },
+    {
+      "sequence": 243,
+      "submission": 71,
+      "kernel": "SwigluF16",
+      "shape": {
+        "count": 4864,
+        "grid": [
+          5,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          12288,
+          12288,
+          12288,
+          12288,
+          12288
+        ]
+      },
+      "gpu_us": 18.833,
+      "preceding_gap_us": 16.5,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 244,
+      "submission": 71,
+      "kernel": "QmmVecQ4MultiSubgroupF16",
+      "shape": {
+        "count": 112,
+        "grid": [
+          112,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          12288,
+          2179072,
+          139264,
+          139264,
+          4096
+        ]
+      },
+      "gpu_us": 66.625,
+      "preceding_gap_us": 10.5,
+      "preceding_gap_class": "intra-submission",
+      "operation": 4,
+      "tape": false
+    },
+    {
+      "sequence": 245,
+      "submission": 71,
+      "kernel": "FastRmsNormF16",
+      "shape": {
+        "count": 896,
+        "grid": [
+          1,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          4096,
+          4096,
+          4096
+        ]
+      },
+      "gpu_us": 24.375,
+      "preceding_gap_us": 12.0,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 246,
+      "submission": 71,
+      "kernel": "QmmVecQ4MultiSubgroupF16",
+      "shape": {
+        "count": 144,
+        "grid": [
+          144,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          401408,
+          28672,
+          28672,
+          4096
+        ]
+      },
+      "gpu_us": 35.375,
+      "preceding_gap_us": 10.833,
+      "preceding_gap_class": "intra-submission",
+      "operation": 4,
+      "tape": false
+    },
+    {
+      "sequence": 247,
+      "submission": 71,
+      "kernel": "FastRopeF16",
+      "shape": {
+        "count": 64,
+        "grid": [
+          1,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          4096,
+          4096,
+          4096
+        ]
+      },
+      "gpu_us": 35.708,
+      "preceding_gap_us": 59.042,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 248,
+      "submission": 71,
+      "kernel": "CopyGeneralF16",
+      "shape": {
+        "count": 128,
+        "grid": [
+          1,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          4096,
+          327680,
+          327680
+        ]
+      },
+      "gpu_us": 16.542,
+      "preceding_gap_us": 30.125,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 249,
+      "submission": 71,
+      "kernel": "CopyGeneralF16",
+      "shape": {
+        "count": 128,
+        "grid": [
+          1,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          4096,
+          327680,
+          327680
+        ]
+      },
+      "gpu_us": 16.667,
+      "preceding_gap_us": 36.208,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 250,
+      "submission": 71,
+      "kernel": "FastRopeF16",
+      "shape": {
+        "count": 448,
+        "grid": [
+          2,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          4096,
+          4096,
+          4096
+        ]
+      },
+      "gpu_us": 33.667,
+      "preceding_gap_us": 59.458,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 251,
+      "submission": 71,
+      "kernel": "SdpaDecodeNativeF16",
+      "shape": {
+        "count": 896,
+        "grid": [
+          14,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          327680,
+          327680,
+          4096
+        ]
+      },
+      "gpu_us": 67.041,
+      "preceding_gap_us": 18.667,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 252,
+      "submission": 71,
+      "kernel": "QmmVecQ4MultiSubgroupF16",
+      "shape": {
+        "count": 112,
+        "grid": [
+          112,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          401408,
+          28672,
+          28672,
+          4096
+        ]
+      },
+      "gpu_us": 31.334,
+      "preceding_gap_us": 11.5,
+      "preceding_gap_class": "intra-submission",
+      "operation": 4,
+      "tape": false
+    },
+    {
+      "sequence": 253,
+      "submission": 71,
+      "kernel": "FastRmsNormF16",
+      "shape": {
+        "count": 896,
+        "grid": [
+          1,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          4096,
+          4096,
+          4096
+        ]
+      },
+      "gpu_us": 35.542,
+      "preceding_gap_us": 64.583,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 254,
+      "submission": 71,
+      "kernel": "QmmVecQ4MultiSubgroupF16",
+      "shape": {
+        "count": 1216,
+        "grid": [
+          1216,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          2179072,
+          139264,
+          139264,
+          12288
+        ]
+      },
+      "gpu_us": 134.708,
+      "preceding_gap_us": 17.375,
+      "preceding_gap_class": "intra-submission",
+      "operation": 4,
+      "tape": false
+    },
+    {
+      "sequence": 255,
+      "submission": 71,
+      "kernel": "SwigluF16",
+      "shape": {
+        "count": 4864,
+        "grid": [
+          5,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          12288,
+          12288,
+          12288,
+          12288,
+          12288
+        ]
+      },
+      "gpu_us": 18.083,
+      "preceding_gap_us": 13.625,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 256,
+      "submission": 71,
+      "kernel": "QmmVecQ4MultiSubgroupF16",
+      "shape": {
+        "count": 112,
+        "grid": [
+          112,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          12288,
+          2179072,
+          139264,
+          139264,
+          4096
+        ]
+      },
+      "gpu_us": 64.125,
+      "preceding_gap_us": 11.959,
+      "preceding_gap_class": "intra-submission",
+      "operation": 4,
+      "tape": false
+    },
+    {
+      "sequence": 257,
+      "submission": 71,
+      "kernel": "FastRmsNormF16",
+      "shape": {
+        "count": 896,
+        "grid": [
+          1,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          4096,
+          4096,
+          4096
+        ]
+      },
+      "gpu_us": 23.833,
+      "preceding_gap_us": 12.0,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 258,
+      "submission": 71,
+      "kernel": "QmmVecQ4MultiSubgroupF16",
+      "shape": {
+        "count": 144,
+        "grid": [
+          144,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          401408,
+          28672,
+          28672,
+          4096
+        ]
+      },
+      "gpu_us": 33.25,
+      "preceding_gap_us": 11.333,
+      "preceding_gap_class": "intra-submission",
+      "operation": 4,
+      "tape": false
+    },
+    {
+      "sequence": 259,
+      "submission": 71,
+      "kernel": "FastRopeF16",
+      "shape": {
+        "count": 64,
+        "grid": [
+          1,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          4096,
+          4096,
+          4096
+        ]
+      },
+      "gpu_us": 36.667,
+      "preceding_gap_us": 23.167,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 260,
+      "submission": 71,
+      "kernel": "CopyGeneralF16",
+      "shape": {
+        "count": 128,
+        "grid": [
+          1,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          4096,
+          327680,
+          327680
+        ]
+      },
+      "gpu_us": 15.959,
+      "preceding_gap_us": 29.791,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 261,
+      "submission": 71,
+      "kernel": "CopyGeneralF16",
+      "shape": {
+        "count": 128,
+        "grid": [
+          1,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          4096,
+          327680,
+          327680
+        ]
+      },
+      "gpu_us": 15.75,
+      "preceding_gap_us": 34.833,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 262,
+      "submission": 71,
+      "kernel": "FastRopeF16",
+      "shape": {
+        "count": 448,
+        "grid": [
+          2,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          4096,
+          4096,
+          4096
+        ]
+      },
+      "gpu_us": 47.417,
+      "preceding_gap_us": 95.833,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 263,
+      "submission": 71,
+      "kernel": "SdpaDecodeNativeF16",
+      "shape": {
+        "count": 896,
+        "grid": [
+          14,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          327680,
+          327680,
+          4096
+        ]
+      },
+      "gpu_us": 87.083,
+      "preceding_gap_us": 44.917,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 264,
+      "submission": 71,
+      "kernel": "QmmVecQ4MultiSubgroupF16",
+      "shape": {
+        "count": 112,
+        "grid": [
+          112,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          401408,
+          28672,
+          28672,
+          4096
+        ]
+      },
+      "gpu_us": 29.333,
+      "preceding_gap_us": 11.0,
+      "preceding_gap_class": "intra-submission",
+      "operation": 4,
+      "tape": false
+    },
+    {
+      "sequence": 265,
+      "submission": 71,
+      "kernel": "FastRmsNormF16",
+      "shape": {
+        "count": 896,
+        "grid": [
+          1,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          4096,
+          4096,
+          4096
+        ]
+      },
+      "gpu_us": 37.708,
+      "preceding_gap_us": 69.084,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 266,
+      "submission": 71,
+      "kernel": "QmmVecQ4MultiSubgroupF16",
+      "shape": {
+        "count": 1216,
+        "grid": [
+          1216,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          2179072,
+          139264,
+          139264,
+          12288
+        ]
+      },
+      "gpu_us": 138.0,
+      "preceding_gap_us": 10.75,
+      "preceding_gap_class": "intra-submission",
+      "operation": 4,
+      "tape": false
+    },
+    {
+      "sequence": 267,
+      "submission": 71,
+      "kernel": "SwigluF16",
+      "shape": {
+        "count": 4864,
+        "grid": [
+          5,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          12288,
+          12288,
+          12288,
+          12288,
+          12288
+        ]
+      },
+      "gpu_us": 18.459,
+      "preceding_gap_us": 12.833,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 268,
+      "submission": 71,
+      "kernel": "QmmVecQ4MultiSubgroupF16",
+      "shape": {
+        "count": 112,
+        "grid": [
+          112,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          12288,
+          2179072,
+          139264,
+          139264,
+          4096
+        ]
+      },
+      "gpu_us": 65.291,
+      "preceding_gap_us": 10.5,
+      "preceding_gap_class": "intra-submission",
+      "operation": 4,
+      "tape": false
+    },
+    {
+      "sequence": 269,
+      "submission": 71,
+      "kernel": "FastRmsNormF16",
+      "shape": {
+        "count": 896,
+        "grid": [
+          1,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          4096,
+          4096,
+          4096
+        ]
+      },
+      "gpu_us": 22.542,
+      "preceding_gap_us": 15.125,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 270,
+      "submission": 71,
+      "kernel": "QmmVecQ4MultiSubgroupF16",
+      "shape": {
+        "count": 144,
+        "grid": [
+          144,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          401408,
+          28672,
+          28672,
+          4096
+        ]
+      },
+      "gpu_us": 33.25,
+      "preceding_gap_us": 10.042,
+      "preceding_gap_class": "intra-submission",
+      "operation": 4,
+      "tape": false
+    },
+    {
+      "sequence": 271,
+      "submission": 71,
+      "kernel": "FastRopeF16",
+      "shape": {
+        "count": 64,
+        "grid": [
+          1,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          4096,
+          4096,
+          4096
+        ]
+      },
+      "gpu_us": 36.958,
+      "preceding_gap_us": 24.958,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 272,
+      "submission": 71,
+      "kernel": "CopyGeneralF16",
+      "shape": {
+        "count": 128,
+        "grid": [
+          1,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          4096,
+          327680,
+          327680
+        ]
+      },
+      "gpu_us": 16.791,
+      "preceding_gap_us": 31.209,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 273,
+      "submission": 71,
+      "kernel": "CopyGeneralF16",
+      "shape": {
+        "count": 128,
+        "grid": [
+          1,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          4096,
+          327680,
+          327680
+        ]
+      },
+      "gpu_us": 16.583,
+      "preceding_gap_us": 36.334,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 274,
+      "submission": 71,
+      "kernel": "FastRopeF16",
+      "shape": {
+        "count": 448,
+        "grid": [
+          2,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          4096,
+          4096,
+          4096
+        ]
+      },
+      "gpu_us": 34.625,
+      "preceding_gap_us": 68.542,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 275,
+      "submission": 71,
+      "kernel": "SdpaDecodeNativeF16",
+      "shape": {
+        "count": 896,
+        "grid": [
+          14,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          327680,
+          327680,
+          4096
+        ]
+      },
+      "gpu_us": 130.333,
+      "preceding_gap_us": 19.333,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 276,
+      "submission": 71,
+      "kernel": "QmmVecQ4MultiSubgroupF16",
+      "shape": {
+        "count": 112,
+        "grid": [
+          112,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          401408,
+          28672,
+          28672,
+          4096
+        ]
+      },
+      "gpu_us": 31.042,
+      "preceding_gap_us": 14.792,
+      "preceding_gap_class": "intra-submission",
+      "operation": 4,
+      "tape": false
+    },
+    {
+      "sequence": 277,
+      "submission": 71,
+      "kernel": "FastRmsNormF16",
+      "shape": {
+        "count": 896,
+        "grid": [
+          1,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          4096,
+          4096,
+          4096
+        ]
+      },
+      "gpu_us": 35.709,
+      "preceding_gap_us": 57.416,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 278,
+      "submission": 71,
+      "kernel": "QmmVecQ4MultiSubgroupF16",
+      "shape": {
+        "count": 1216,
+        "grid": [
+          1216,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          2179072,
+          139264,
+          139264,
+          12288
+        ]
+      },
+      "gpu_us": 134.667,
+      "preceding_gap_us": 17.208,
+      "preceding_gap_class": "intra-submission",
+      "operation": 4,
+      "tape": false
+    },
+    {
+      "sequence": 279,
+      "submission": 71,
+      "kernel": "SwigluF16",
+      "shape": {
+        "count": 4864,
+        "grid": [
+          5,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          12288,
+          12288,
+          12288,
+          12288,
+          12288
+        ]
+      },
+      "gpu_us": 18.042,
+      "preceding_gap_us": 15.541,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 280,
+      "submission": 71,
+      "kernel": "QmmVecQ4MultiSubgroupF16",
+      "shape": {
+        "count": 112,
+        "grid": [
+          112,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          12288,
+          2179072,
+          139264,
+          139264,
+          4096
+        ]
+      },
+      "gpu_us": 66.792,
+      "preceding_gap_us": 11.0,
+      "preceding_gap_class": "intra-submission",
+      "operation": 4,
+      "tape": false
+    },
+    {
+      "sequence": 281,
+      "submission": 71,
+      "kernel": "FastRmsNormF16",
+      "shape": {
+        "count": 896,
+        "grid": [
+          1,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          4096,
+          4096,
+          4096
+        ]
+      },
+      "gpu_us": 24.167,
+      "preceding_gap_us": 12.041,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 282,
+      "submission": 71,
+      "kernel": "QmmVecQ4MultiSubgroupF16",
+      "shape": {
+        "count": 144,
+        "grid": [
+          144,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          401408,
+          28672,
+          28672,
+          4096
+        ]
+      },
+      "gpu_us": 33.125,
+      "preceding_gap_us": 10.583,
+      "preceding_gap_class": "intra-submission",
+      "operation": 4,
+      "tape": false
+    },
+    {
+      "sequence": 283,
+      "submission": 71,
+      "kernel": "FastRopeF16",
+      "shape": {
+        "count": 64,
+        "grid": [
+          1,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          4096,
+          4096,
+          4096
+        ]
+      },
+      "gpu_us": 36.958,
+      "preceding_gap_us": 66.292,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 284,
+      "submission": 71,
+      "kernel": "CopyGeneralF16",
+      "shape": {
+        "count": 128,
+        "grid": [
+          1,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          4096,
+          327680,
+          327680
+        ]
+      },
+      "gpu_us": 23.167,
+      "preceding_gap_us": 29.5,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 285,
+      "submission": 71,
+      "kernel": "CopyGeneralF16",
+      "shape": {
+        "count": 128,
+        "grid": [
+          1,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          4096,
+          327680,
+          327680
+        ]
+      },
+      "gpu_us": 22.541,
+      "preceding_gap_us": 33.417,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 286,
+      "submission": 71,
+      "kernel": "FastRopeF16",
+      "shape": {
+        "count": 448,
+        "grid": [
+          2,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          4096,
+          4096,
+          4096
+        ]
+      },
+      "gpu_us": 32.333,
+      "preceding_gap_us": 60.459,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 287,
+      "submission": 71,
+      "kernel": "SdpaDecodeNativeF16",
+      "shape": {
+        "count": 896,
+        "grid": [
+          14,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          327680,
+          327680,
+          4096
+        ]
+      },
+      "gpu_us": 67.25,
+      "preceding_gap_us": 20.625,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 288,
+      "submission": 71,
+      "kernel": "QmmVecQ4MultiSubgroupF16",
+      "shape": {
+        "count": 112,
+        "grid": [
+          112,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          401408,
+          28672,
+          28672,
+          4096
+        ]
+      },
+      "gpu_us": 30.792,
+      "preceding_gap_us": 11.375,
+      "preceding_gap_class": "intra-submission",
+      "operation": 4,
+      "tape": false
+    },
+    {
+      "sequence": 289,
+      "submission": 71,
+      "kernel": "FastRmsNormF16",
+      "shape": {
+        "count": 896,
+        "grid": [
+          1,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          4096,
+          4096,
+          4096
+        ]
+      },
+      "gpu_us": 37.458,
+      "preceding_gap_us": 79.625,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 290,
+      "submission": 71,
+      "kernel": "QmmVecQ4MultiSubgroupF16",
+      "shape": {
+        "count": 1216,
+        "grid": [
+          1216,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          2179072,
+          139264,
+          139264,
+          12288
+        ]
+      },
+      "gpu_us": 137.208,
+      "preceding_gap_us": 11.125,
+      "preceding_gap_class": "intra-submission",
+      "operation": 4,
+      "tape": false
+    },
+    {
+      "sequence": 291,
+      "submission": 71,
+      "kernel": "SwigluF16",
+      "shape": {
+        "count": 4864,
+        "grid": [
+          5,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          12288,
+          12288,
+          12288,
+          12288,
+          12288
+        ]
+      },
+      "gpu_us": 17.0,
+      "preceding_gap_us": 13.334,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 292,
+      "submission": 71,
+      "kernel": "QmmVecQ4MultiSubgroupF16",
+      "shape": {
+        "count": 112,
+        "grid": [
+          112,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          12288,
+          2179072,
+          139264,
+          139264,
+          4096
+        ]
+      },
+      "gpu_us": 65.791,
+      "preceding_gap_us": 11.125,
+      "preceding_gap_class": "intra-submission",
+      "operation": 4,
+      "tape": false
+    },
+    {
+      "sequence": 293,
+      "submission": 71,
+      "kernel": "FastRmsNormF16",
+      "shape": {
+        "count": 896,
+        "grid": [
+          1,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          4096,
+          4096,
+          4096
+        ]
+      },
+      "gpu_us": 24.791,
+      "preceding_gap_us": 13.459,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 294,
+      "submission": 71,
+      "kernel": "QmmVecQ4WordSubgroupF16",
+      "shape": {
+        "count": 151936,
+        "grid": [
+          18992,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          4096,
+          68067328,
+          4255744,
+          4255744,
+          307200
+        ]
+      },
+      "gpu_us": 1587.375,
+      "preceding_gap_us": 10.917,
+      "preceding_gap_class": "intra-submission",
+      "operation": 4,
+      "tape": false
+    },
+    {
+      "sequence": 295,
+      "submission": 71,
+      "kernel": "LogSumExpF16",
+      "shape": {
+        "count": 1,
+        "grid": [
+          1,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          307200,
+          307200,
+          4096
+        ]
+      },
+      "gpu_us": 269.833,
+      "preceding_gap_us": 42.625,
+      "preceding_gap_class": "intra-submission",
+      "operation": 0,
+      "tape": false
+    },
+    {
+      "sequence": 296,
+      "submission": 71,
+      "kernel": "ElementwiseF16",
+      "shape": {
+        "count": 151936,
+        "grid": [
+          594,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          307200,
+          4096,
+          307200,
+          307200
+        ]
+      },
+      "gpu_us": 181.75,
+      "preceding_gap_us": 28.5,
+      "preceding_gap_class": "intra-submission",
+      "operation": 9,
+      "tape": false
+    },
+    {
+      "sequence": 297,
+      "submission": 71,
+      "kernel": "ArgReduceF16",
+      "shape": {
+        "count": 1,
+        "grid": [
+          1,
+          1,
+          1
+        ],
+        "binding_ranges_bytes": [
+          307200,
+          307200,
+          4096
+        ]
+      },
+      "gpu_us": 136.75,
+      "preceding_gap_us": 27.542,
+      "preceding_gap_class": "intra-submission",
+      "operation": 1,
+      "tape": false
+    }
+  ]
+}

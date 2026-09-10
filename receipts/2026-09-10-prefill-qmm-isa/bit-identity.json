@@ -1,0 +1,54 @@
+{
+  "all_exact": true,
+  "comparison": "raw f16 output bit patterns (uint16 view)",
+  "arrays": {
+    "m262_k896_n896": {
+      "baseline_sha256": "0b7620fbef3b31da4b054655d84460864e5de35b4c92168807d961a6ccd52bda",
+      "candidate_sha256": "0b7620fbef3b31da4b054655d84460864e5de35b4c92168807d961a6ccd52bda",
+      "exact": true,
+      "elements": 234752
+    },
+    "m262_k896_n4864": {
+      "baseline_sha256": "0527917b2f58207ed46e94e0aab63316e340a41721a7016d428b66afe8881ccd",
+      "candidate_sha256": "0527917b2f58207ed46e94e0aab63316e340a41721a7016d428b66afe8881ccd",
+      "exact": true,
+      "elements": 1274368
+    },
+    "m262_k4864_n896": {
+      "baseline_sha256": "162e7d4ce2e22e0d03a66dd0e63f98bf5ab4a47db5e4fa7cf7674d20a2d44ce2",
+      "candidate_sha256": "162e7d4ce2e22e0d03a66dd0e63f98bf5ab4a47db5e4fa7cf7674d20a2d44ce2",
+      "exact": true,
+      "elements": 234752
+    },
+    "m262_k896_n128": {
+      "baseline_sha256": "4fa20f330166ab0ea79b9196d7ba9c15b0e3f6dd05f239d5926165708a52b562",
+      "candidate_sha256": "4fa20f330166ab0ea79b9196d7ba9c15b0e3f6dd05f239d5926165708a52b562",
+      "exact": true,
+      "elements": 33536
+    },
+    "m1053_k896_n896": {
+      "baseline_sha256": "ad0b7aa953b73c07b1a92bb8d467da5d7a489b433fac4e9a07d7da46e1640f25",
+      "candidate_sha256": "ad0b7aa953b73c07b1a92bb8d467da5d7a489b433fac4e9a07d7da46e1640f25",
+      "exact": true,
+      "elements": 943488
+    },
+    "m1053_k896_n4864": {
+      "baseline_sha256": "53e66ce6ec5b5ff44a5b54ee358e29146207f9e71df1b5bfb771af0dbe1a7f73",
+      "candidate_sha256": "53e66ce6ec5b5ff44a5b54ee358e29146207f9e71df1b5bfb771af0dbe1a7f73",
+      "exact": true,
+      "elements": 5121792
+    },
+    "m1053_k4864_n896": {
+      "baseline_sha256": "c7e5c81498eb2008375bd2bcadbfa8a8ac67e217969582b3956e50fb9c4b71ad",
+      "candidate_sha256": "c7e5c81498eb2008375bd2bcadbfa8a8ac67e217969582b3956e50fb9c4b71ad",
+      "exact": true,
+      "elements": 943488
+    },
+    "m1053_k896_n128": {
+      "baseline_sha256": "562137ddb6bfa8b2125cd4ce225e9d5234ab6edf0c579be24585db8dbcf47017",
+      "candidate_sha256": "562137ddb6bfa8b2125cd4ce225e9d5234ab6edf0c579be24585db8dbcf47017",
+      "exact": true,
+      "elements": 134784
+    }
+  }
+}

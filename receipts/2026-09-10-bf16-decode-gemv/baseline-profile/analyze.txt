@@ -1,0 +1,53 @@
+== profile receipt-bf16/baseline-profile/profile.jsonl
+   device=Apple M1 (G13G B1) period=1.0ns valid_bits=64
+   dispatches=7326 submissions=85 joins=49
+   phases=['load_start', 'load_done', 'prefill_start', 'prefill_done', 'decode_start', 'tok', 'decode_done']
+
+== GPU busy fraction: 80.83% (busy 1040.851ms / span 1287.755ms)
+   gaps intra-submission: n=7241 total=142.632ms p50=14.2us p90=34.8us p99=76.8us max=536.7us
+   gaps inter-submission: n=84 total=104.272ms p50=427.0us p90=873.6us p99=2.656ms max=61.724ms
+   gap histogram (ns decade: count): {'1e4': 184, '1e5': 7032, '1e6': 106, '1e7': 2, '1e8': 1}
+
+== top kernels by cumulative GPU time
+   MatmulVecBF16              n=441    total=451.140ms  share= 43.3% mean=1.023ms   p50=642.5us
+   MatmulBF16                 n=1243   total=433.012ms  share= 41.6% mean=348.4us   p50=160.3us
+   CastBF16F32                n=1196   total=28.453ms   share=  2.7% mean=23.8us    p50=20.6us
+   CopyGeneralBF16            n=1028   total=25.471ms   share=  2.4% mean=24.8us    p50=21.2us
+   MatmulF32                  n=455    total=17.428ms   share=  1.7% mean=38.3us    p50=36.6us
+   CastF32BF16                n=718    total=15.410ms   share=  1.5% mean=21.5us    p50=17.8us
+   FastRmsNormBF16            n=488    total=14.210ms   share=  1.4% mean=29.1us    p50=26.2us
+   FastRopeF32                n=479    total=13.770ms   share=  1.3% mean=28.7us    p50=27.0us
+   BinaryVecBF16              n=478    total=10.613ms   share=  1.0% mean=22.2us    p50=20.5us
+   ElementwiseF32             n=262    total=10.476ms   share=  1.0% mean=40.0us    p50=36.6us
+   SoftmaxF32                 n=239    total=7.003ms    share=  0.7% mean=29.3us    p50=24.8us
+   SwigluBF16                 n=239    total=5.724ms    share=  0.5% mean=23.9us    p50=21.9us
+   LogSumExpBF16              n=9      total=2.488ms    share=  0.2% mean=276.5us   p50=281.6us
+   MatmulF32Coopmat           n=23     total=2.164ms    share=  0.2% mean=94.1us    p50=85.2us
+   ElementwiseBF16            n=9      total=1.646ms    share=  0.2% mean=182.8us   p50=182.7us
+   dependency proxy [decode]: 1176/5081 consecutive pairs fully disjoint (23.1% - compute-binding disjointness only; transfer/fill/alias deps invisible, not a barrier-correctness bound)
+   dependency proxy [all]: 1677/7325 consecutive pairs fully disjoint (22.9% - compute-binding disjointness only; transfer/fill/alias deps invisible, not a barrier-correctness bound)
+
+== host-side costs (instrumented)
+   join wait    n=49 total=175.838ms p50=808.0us p90=7.087ms max=16.381ms
+   join inval   n=49 total=6.8us p50=125ns max=250ns
+   submit()     n=85 total=215.460ms p50=576.5us max=10.584ms
+   dispatch record (host) n=7326 total=70.342ms p50=2.0us mean=9.6us
+
+== dispatches per submission (in submit order)
+   [5, 4, 30, 4, 30, 4, 30, 4, 30, 4, 30, 4, 30, 4, 30, 4, 30, 4, 30, 4, 30, 4, 30, 4, 30, 4, 30, 4, 30, 4, 30, 4, 30, 4, 30, 4, 30, 4, 30, 4, 30, 4, 30, 4, 30, 4, 29, 4, 2, 240, 240, 240, 6, 240, 240, 240, 6, 240, 240, 240, 6, 240, 240, 240, 6, 240, 240, 240, 6, 240, 240, 240, 6, 240, 240, 240, 6, 240, 240, 240, 6, 240, 240, 240, 6]
+
+== dependency-barrier decisions (MLX_OMARCHY_GATED_BARRIERS)
+   dispatch barriers: emitted=7326 skipped=0 (0.0% skipped)
+   all nodes incl. transfer/fill: emitted=14652 skipped=0
+
+== per host-marker window (a dispatch sits in its submission's
+   window; records flush late at joins; windows are NOT
+   semantic phases - an async pipeline can submit the next
+   decode step before the first token yields, so boundary
+   work lands in the earlier window)
+   decode: dispatches=5082 gpu_busy=675.952ms joins=0 join_wait_total=0ns
+   prefill: dispatches=2244 gpu_busy=364.899ms joins=48 join_wait_total=175.030ms
+   dispatches/decode-interval: 726.0 (5082 over 7 inter-token intervals; the first decode submit may sit in the prefill window)
+   submissions/decode-interval: 4.0 (28 over 7 intervals)
+   join wait per decode-interval: 0ns
+   dispatch barriers/decode-interval: 726.0 (5082 emitted over 7 intervals)

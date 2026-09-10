@@ -1,0 +1,148 @@
+{
+  "decision": "reject",
+  "candidate_commit": "ec61b299",
+  "reason": "The one-shot kernel screen cleared 10% on two m=262 wide shapes, but three alternating paired six-leg inference repetitions did not move end-to-end prefill. The candidate also increased static ISA and did not raise issue occupancy.",
+  "prominent_prefill_distribution": {
+    "m262": {
+      "host_prefill_ms": 651.124434,
+      "gpu_span_ms": 538.898542,
+      "gpu_busy_ms": 287.502436,
+      "gpu_busy_fraction": 0.5335001184694242,
+      "intra_submission_gap_ms": 27.467648,
+      "inter_submission_gap_ms": 223.928458,
+      "qmm_ms": 206.137546,
+      "qmm_share": 0.7169940848779456,
+      "second_kernel": "MatmulRbF16",
+      "second_ms": 13.07596,
+      "second_share": 0.04548121463569096
+    },
+    "m1053": {
+      "host_prefill_ms": 1321.838644,
+      "gpu_span_ms": 1210.941708,
+      "gpu_busy_ms": 943.089041,
+      "gpu_busy_fraction": 0.7788063081563296,
+      "intra_submission_gap_ms": 27.859462,
+      "inter_submission_gap_ms": 239.993205,
+      "qmm_ms": 702.476299,
+      "qmm_share": 0.7448674180914375,
+      "second_kernel": "MatmulRbF16",
+      "second_ms": 109.418831,
+      "second_share": 0.11602173945736688
+    }
+  },
+  "ranking_conclusion": "QmmPrefillCoopmatF16 remains the top measured prefill GPU consumer (71.70% / 74.49%); MatmulRbF16 is second (4.55% / 11.60%). At m262, the 223.9 ms inter-submission gap budget is larger than every non-QMM kernel combined. The isolated >=10% micro-screen did not reproduce in paired inference and is treated as noise/non-generalizable, not a landing signal.",
+  "paired_cooperative": {
+    "qwen25-0.5b-4bit:long-decode-128": {
+      "prefill_before": 782.09,
+      "prefill_after": 772.861,
+      "prefill_ratio": 0.9881995678246749,
+      "decode_before": 80.44,
+      "decode_after": 80.71,
+      "decode_ratio": 1.0033565390353059,
+      "digest_equal": true
+    },
+    "qwen25-0.5b-4bit:longctx-1024-decode-32": {
+      "prefill_before": 1047.761,
+      "prefill_after": 1049.85,
+      "prefill_ratio": 1.0019937752979926,
+      "decode_before": 52.94,
+      "decode_after": 52.95,
+      "decode_ratio": 1.000188893086513,
+      "digest_equal": true
+    },
+    "qwen25-0.5b-4bit:short-decode-32": {
+      "prefill_before": 220.588,
+      "prefill_after": 220.588,
+      "prefill_ratio": 1.0,
+      "decode_before": 101.96,
+      "decode_after": 102.51,
+      "decode_ratio": 1.0053942722636329,
+      "digest_equal": true
+    },
+    "qwen25-0.5b-bf16:long-decode-128": {
+      "prefill_before": 306.792,
+      "prefill_after": 306.792,
+      "prefill_ratio": 1.0,
+      "decode_before": 11.33,
+      "decode_after": 11.32,
+      "decode_ratio": 0.999117387466902,
+      "digest_equal": true
+    },
+    "qwen25-0.5b-bf16:longctx-1024-decode-32": {
+      "prefill_before": 369.863,
+      "prefill_after": 363.731,
+      "prefill_ratio": 0.9834208882748477,
+      "decode_before": 10.29,
+      "decode_after": 10.3,
+      "decode_ratio": 1.0009718172983482,
+      "digest_equal": true
+    },
+    "qwen25-0.5b-bf16:short-decode-32": {
+      "prefill_before": 81.301,
+      "prefill_after": 81.301,
+      "prefill_ratio": 1.0,
+      "decode_before": 11.75,
+      "decode_after": 11.75,
+      "decode_ratio": 1.0,
+      "digest_equal": true
+    }
+  },
+  "paired_stock": {
+    "qwen25-0.5b-4bit:long-decode-128": {
+      "prefill_before": 299.429,
+      "prefill_after": 298.746,
+      "prefill_ratio": 0.9977189918144201,
+      "decode_before": 80.87,
+      "decode_after": 80.59,
+      "decode_ratio": 0.9965376530233708,
+      "digest_equal": true
+    },
+    "qwen25-0.5b-4bit:longctx-1024-decode-32": {
+      "prefill_before": 347.639,
+      "prefill_after": 358.285,
+      "prefill_ratio": 1.030623721734328,
+      "decode_before": 52.92,
+      "decode_after": 52.72,
+      "decode_ratio": 0.9962207105064247,
+      "digest_equal": true
+    },
+    "qwen25-0.5b-4bit:short-decode-32": {
+      "prefill_before": 135.747,
+      "prefill_after": 135.135,
+      "prefill_ratio": 0.9954916130743219,
+      "decode_before": 100.31,
+      "decode_after": 100.56,
+      "decode_ratio": 1.0024922739507527,
+      "digest_equal": true
+    },
+    "qwen25-0.5b-bf16:long-decode-128": {
+      "prefill_before": 202.63,
+      "prefill_after": 202.786,
+      "prefill_ratio": 1.000769876128905,
+      "decode_before": 11.3,
+      "decode_after": 11.32,
+      "decode_ratio": 1.0017699115044247,
+      "digest_equal": true
+    },
+    "qwen25-0.5b-bf16:longctx-1024-decode-32": {
+      "prefill_before": 210.811,
+      "prefill_after": 210.811,
+      "prefill_ratio": 1.0,
+      "decode_before": 10.31,
+      "decode_after": 10.3,
+      "decode_ratio": 0.9990300678952474,
+      "digest_equal": true
+    },
+    "qwen25-0.5b-bf16:short-decode-32": {
+      "prefill_before": 81.301,
+      "prefill_after": 81.744,
+      "prefill_ratio": 1.005448887467559,
+      "decode_before": 11.75,
+      "decode_after": 11.77,
+      "decode_ratio": 1.0017021276595743,
+      "digest_equal": true
+    }
+  },
+  "digests": "baseline and candidate generated-ID digests are equal on all six legs under both drivers",
+  "next": "Target m262 inter-submission gaps/host scheduling before another QMM ISA change; retain QMM and MatmulRbF16 distributions as ranking evidence."
+}

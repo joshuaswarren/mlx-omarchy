@@ -1,0 +1,23 @@
+{
+  "comparison": "raw BF16 result bits",
+  "candidate_source_commit": "6f1612c2baa814865b3735bd49f34d421e2e1568",
+  "candidate_wheel_sha256": "9aabf74da9002dabc34e788da9b63a582204e96909b8a57a8f4e90990cbb0767",
+  "oracle_signal_valid": true,
+  "all_native_exact": true,
+  "drivers": {
+    "fork": {
+      "bf16_4864x896": {"mismatches": 0, "elements": 7168},
+      "bf16_896x128": {"mismatches": 0, "elements": 1024},
+      "bf16_896x151936": {"mismatches": 0, "elements": 1215488},
+      "bf16_896x4864": {"mismatches": 0, "elements": 38912},
+      "bf16_896x896": {"mismatches": 0, "elements": 7168}
+    },
+    "stock": {
+      "bf16_4864x896": {"mismatches": 0, "elements": 7168},
+      "bf16_896x128": {"mismatches": 0, "elements": 1024},
+      "bf16_896x151936": {"mismatches": 0, "elements": 1215488},
+      "bf16_896x4864": {"mismatches": 0, "elements": 38912},
+      "bf16_896x896": {"mismatches": 0, "elements": 7168}
+    }
+  }
+}

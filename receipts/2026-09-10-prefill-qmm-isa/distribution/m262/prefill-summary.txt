@@ -1,0 +1,136 @@
+{
+  "prompt": "m262",
+  "host_prefill_ms": 651.124434,
+  "gpu": {
+    "dispatches": 1231,
+    "submissions": 53,
+    "busy_ms": 287.502436,
+    "span_ms": 538.898542,
+    "busy_fraction": 0.5335001184694242,
+    "intra_submission_gaps": {
+      "count": 1178,
+      "total_ms": 27.467648,
+      "p50_us": 16.25,
+      "p90_us": 35.792,
+      "p99_us": 96.167,
+      "max_us": 159.583
+    },
+    "inter_submission_gaps": {
+      "count": 52,
+      "total_ms": 223.928458,
+      "p50_us": 627.334,
+      "p90_us": 3542.25,
+      "p99_us": 36824.458,
+      "max_us": 109807.0
+    }
+  },
+  "host_instrumented": {
+    "join_wait_ms": 250.756818,
+    "submit_ms": 33.491378,
+    "dispatch_record_ms": 31.617143
+  },
+  "kernels": [
+    {
+      "name": "QmmPrefillCoopmatF16",
+      "dispatches": 163,
+      "gpu_ms": 206.1375460000001,
+      "share_gpu_busy": 0.7169940848779456
+    },
+    {
+      "name": "QmmVecQ4MultiSubgroupF16",
+      "dispatches": 192,
+      "gpu_ms": 17.481169,
+      "share_gpu_busy": 0.060803550895826154
+    },
+    {
+      "name": "MatmulRbF16",
+      "dispatches": 46,
+      "gpu_ms": 13.075960000000002,
+      "share_gpu_busy": 0.04548121463569096
+    },
+    {
+      "name": "MatmulF16",
+      "dispatches": 96,
+      "gpu_ms": 9.687918999999997,
+      "share_gpu_busy": 0.033696824050562124
+    },
+    {
+      "name": "CopyGeneralF16",
+      "dispatches": 167,
+      "gpu_ms": 8.136633000000002,
+      "share_gpu_busy": 0.028301092377526853
+    },
+    {
+      "name": "SoftmaxF16",
+      "dispatches": 71,
+      "gpu_ms": 7.309335000000003,
+      "share_gpu_busy": 0.025423558498126962
+    },
+    {
+      "name": "SwigluF16",
+      "dispatches": 71,
+      "gpu_ms": 6.287209,
+      "share_gpu_busy": 0.0218683677518475
+    },
+    {
+      "name": "FastRopeF16",
+      "dispatches": 143,
+      "gpu_ms": 5.634049000000001,
+      "share_gpu_busy": 0.01959652613169511
+    },
+    {
+      "name": "FastRmsNormF16",
+      "dispatches": 145,
+      "gpu_ms": 5.116829000000001,
+      "share_gpu_busy": 0.017797515287835686
+    },
+    {
+      "name": "BinaryVecF16",
+      "dispatches": 117,
+      "gpu_ms": 3.781413000000001,
+      "share_gpu_busy": 0.013152629426764236
+    },
+    {
+      "name": "QmmVecQ4WordSubgroupF16",
+      "dispatches": 2,
+      "gpu_ms": 3.269667,
+      "share_gpu_busy": 0.011372658421579427
+    },
+    {
+      "name": "LogSumExpF16",
+      "dispatches": 2,
+      "gpu_ms": 0.531083,
+      "share_gpu_busy": 0.0018472295657348794
+    },
+    {
+      "name": "ArgReduceF16",
+      "dispatches": 2,
+      "gpu_ms": 0.273125,
+      "share_gpu_busy": 0.000949991950676898
+    },
+    {
+      "name": "TakeF16",
+      "dispatches": 6,
+      "gpu_ms": 0.247541,
+      "share_gpu_busy": 0.0008610048785812724
+    },
+    {
+      "name": "ElementwiseF16",
+      "dispatches": 2,
+      "gpu_ms": 0.197166,
+      "share_gpu_busy": 0.0006857889718889199
+    },
+    {
+      "name": "DequantF16",
+      "dispatches": 3,
+      "gpu_ms": 0.16949999999999998,
+      "share_gpu_busy": 0.0005895602220219101
+    },
+    {
+      "name": "TakeU32",
+      "dispatches": 3,
+      "gpu_ms": 0.166292,
+      "share_gpu_busy": 0.0005784020556959733
+    }
+  ]
+}

@@ -1,0 +1,2 @@
+Thank you for providing the measurement protocol for the small language-model benchmark. I will
+[profile_generate] tokens=16 median_inter_token_ms=25.74 mean_inter_token_ms=25.13

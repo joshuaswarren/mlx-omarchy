@@ -1,0 +1,91 @@
+{
+  "definition": "Source-expanded scheduled operations per one 32x32 output tile at K=896. This is an auditable source schedule, not an unavailable AGX hardware dynamic-instruction counter.",
+  "before": {
+    "total_counted_ops": 108232,
+    "counted_ops_per_output": 105.6953125,
+    "shader_static_instructions": 699,
+    "alu": 445,
+    "fscib": 445,
+    "ic": 404,
+    "gprs": 99,
+    "resident_threads": 1024,
+    "dual_pipeline_balance": 0.9539325842696629
+  },
+  "after": {
+    "total_counted_ops": 108226,
+    "counted_ops_per_output": 105.689453125,
+    "shader_static_instructions": 903,
+    "alu": 527,
+    "fscib": 527,
+    "ic": 424,
+    "gprs": 101,
+    "resident_threads": 1024,
+    "dual_pipeline_balance": 0.9022770398481973
+  },
+  "per_tile_k896_classes": {
+    "cooperative_mma": {
+      "before": 1792,
+      "after": 1792
+    },
+    "dequant_affine": {
+      "before": 28672,
+      "after": 28672
+    },
+    "global_u32_load": {
+      "before": 17920,
+      "after": 17920,
+      "detail": "14336 activation + 3584 packed-weight"
+    },
+    "shared_scalar_store_k_loop": {
+      "before": 57344,
+      "after": 57344
+    },
+    "cooperative_shared_load": {
+      "before": 1344,
+      "after": 1344
+    },
+    "k_loop_workgroup_barrier": {
+      "before": 112,
+      "after": 112
+    },
+    "drain_cooperative_store": {
+      "before": 16,
+      "after": 16
+    },
+    "drain_global_f16_store": {
+      "before": 1024,
+      "after": 1024
+    },
+    "drain_workgroup_barrier": {
+      "before": 8,
+      "after": 2
+    },
+    "address_control": {
+      "before_static_ic": 404,
+      "after_static_ic": 424,
+      "note": "whole emitted shader; dynamic path count unavailable"
+    }
+  },
+  "native_metal_bk32_source_schedule": {
+    "tile": "32x32",
+    "threads": 128,
+    "subgroups": 4,
+    "shared_bytes": 5120,
+    "cooperative_mma": 64,
+    "dequant_outputs": 1024,
+    "workgroup_barriers": 2,
+    "simdgroup_barriers": 48,
+    "source": "native-metal-schedule.txt"
+  },
+  "omarchy_bk32_source_schedule": {
+    "tile": "32x32",
+    "threads": 64,
+    "subgroups": 2,
+    "shared_bytes": 4096,
+    "cooperative_mma": 64,
+    "dequant_outputs": 1024,
+    "workgroup_barriers": 4,
+    "cooperative_shared_loads": 48
+  },
+  "verdict": "candidate reduces six drain barriers but increases emitted static ISA 29.2%, leaves max resident threads unchanged, and worsens compiler dual-pipeline balance; requested ISA/occupancy acceptance not met"
+}

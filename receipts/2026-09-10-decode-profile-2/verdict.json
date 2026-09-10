@@ -1,0 +1,107 @@
+{
+  "schema": "mlx-omarchy/decode-profile-2/1",
+  "status": "incomplete_due_to_requested_wrap_up",
+  "source": {
+    "baseline_commit": "3b3370923af4ec1b96a57799eff895af44641720",
+    "candidate_implementation_commit": "4939e9a36af011d1b09c60198260f7f48651a1ac",
+    "branch": "wave/decode-profile-2"
+  },
+  "actual_model": {
+    "q4_repo": "mlx-community/Qwen2.5-0.5B-Instruct-4bit",
+    "q4_revision": "a5339a4131f135d0fdc6a5c8b5bbed2753bbe0f3",
+    "bf16_repo": "mlx-community/Qwen2.5-0.5B-Instruct-bf16",
+    "bf16_revision": "56d07e766edd7159fbe12ed12d9cf114bf38bf1e"
+  },
+  "wheels": {
+    "baseline_diagnostics": {
+      "name": "mlx_omarchy-0.32.2.dev202609101404+diag.3b33709-cp314-cp314-linux_aarch64.whl",
+      "sha256": "f1902bc803f1155effcf2767de6ec075e9d0a6bf65f1bd38b1b54d2f46aba790",
+      "source_commit": "3b3370923af4ec1b96a57799eff895af44641720"
+    },
+    "baseline_release": {
+      "name": "mlx_omarchy-0.32.2.dev202609101503+3b33709-cp314-cp314-linux_aarch64.whl",
+      "sha256": "22141a37f5c049d253ad8954c7e4086dbf3f863047a2160bac8306fdfbc7e11d",
+      "source_commit": "3b3370923af4ec1b96a57799eff895af44641720"
+    },
+    "candidate_diagnostics": null,
+    "candidate_release": null
+  },
+  "baseline_profile": {
+    "method": "Diagnostics timestamps for inter-token window 8. The dispatch tables record every dispatch in order with submission, kernel, count/grid/binding ranges, GPU duration, preceding gap and gap class. Diagnostics places a timestamp barrier around each dispatch, so absolute gap time is profiling-inflated while dispatch identity and order remain valid.",
+    "short_30_token_prompt": {
+      "wall_ms": 24.224023,
+      "dispatches": 297,
+      "submissions": 2,
+      "gpu_busy_fraction_wall": 0.72011317,
+      "gpu_busy_fraction_gpu_span": 0.73094778,
+      "split_ms": {
+        "gpu_busy": 17.444038,
+        "intra_submission_gaps": 5.983129,
+        "inter_submission_gaps": 0.437791,
+        "non_gpu_host": 0.359065
+      },
+      "top_ranked": [
+        {"item": "QmmVecQ4MultiSubgroupF16", "dispatches": 96, "ms": 8.352663},
+        {"item": "intra_submission_gaps", "ms": 5.983129},
+        {"item": "CopyGeneralF16", "dispatches": 48, "ms": 2.351124},
+        {"item": "QmmVecQ4WordSubgroupF16", "dispatches": 1, "ms": 1.607375}
+      ],
+      "full_table": "before/short.token.json"
+    },
+    "ctx1024_1053_token_prompt": {
+      "wall_ms": 28.368319,
+      "dispatches": 297,
+      "submissions": 2,
+      "gpu_busy_fraction_wall": 0.56065497,
+      "gpu_busy_fraction_gpu_span": 0.6561955,
+      "split_ms": {
+        "gpu_busy": 15.904839,
+        "intra_submission_gaps": 8.067786,
+        "inter_submission_gaps": 0.265333,
+        "non_gpu_host": 4.130361
+      },
+      "top_ranked": [
+        {"item": "intra_submission_gaps", "ms": 8.067786},
+        {"item": "QmmVecQ4MultiSubgroupF16", "dispatches": 96, "ms": 7.292585},
+        {"item": "non_gpu_host", "ms": 4.130361},
+        {"item": "SdpaDecodeNativeF16", "dispatches": 24, "ms": 1.735042},
+        {"item": "QmmVecQ4WordSubgroupF16", "dispatches": 1, "ms": 1.587375}
+      ],
+      "full_table": "before/ctx1024.token.json"
+    },
+    "measured_target": "48 adjacent CopyGeneralF16 dispatches: two 128-element fp16 SliceUpdate operations per transformer layer, one for each K/V cache. Eager tape census found 24 adjacent SliceUpdate pairs with cache input 32768 elements and update input 128 elements."
+  },
+  "candidate": {
+    "mechanism": "Fuse each compatible adjacent fp16 K/V SliceUpdate pair into one four-binding compute dispatch while retaining separate full-cache buffer transfers. The shader performs independent fp16 loads and stores with the existing strided index calculation and introduces no arithmetic.",
+    "files": [
+      "CMakeLists.txt",
+      "overlay/mlx/backend/omarchy/compute.cpp",
+      "overlay/mlx/backend/omarchy/compute.h",
+      "overlay/mlx/backend/omarchy/fused_chain.cpp",
+      "overlay/mlx/backend/omarchy/fused_chain.h",
+      "overlay/mlx/backend/omarchy/primitives.cpp",
+      "overlay/mlx/backend/omarchy/shaders/slice_update_pair.comp",
+      "overlay/tests/omarchy/test_kv_ops.cpp"
+    ],
+    "local_llvmpipe_targeted_test": {
+      "binary": "omarchy_kv_ops_tests",
+      "test_cases": 15,
+      "passed": 15,
+      "failed": 0,
+      "assertions": 429,
+      "assertions_passed": 429
+    },
+    "standalone_shader_compile": "glslangValidator -V -Os --target-env vulkan1.3 overlay/mlx/backend/omarchy/shaders/slice_update_pair.comp"
+  },
+  "qualification": {
+    "candidate_m1_fork_test": null,
+    "candidate_m1_stock_test": null,
+    "candidate_after_profile": null,
+    "paired_fork_three_pairs_six_legs": null,
+    "stock_six_leg_digest_check": null,
+    "kernel_bandwidth": null,
+    "digest_policy": "not_evaluated_for_candidate"
+  },
+  "decision": "do_not_land_unqualified",
+  "next": "Build the candidate diagnostics and release wheels at 4939e9a, run the targeted KV test on Honeykrisp and stock Mesa, capture the two after profiles, then run three alternating fork pairs over the six default matrix legs and a stock digest check. Land only if every Q4 digest remains native-identical and the paired decode medians improve."
+}

@@ -1,0 +1,13 @@
+{
+  "source_commit": "3b3370923af4ec1b96a57799eff895af44641720",
+  "wheel_sha256": "e33dbd0b3eaed890a015abd54676827871db02f10c15ca8919d2242d0c73df6d",
+  "profile": "baseline-profile/profile.jsonl",
+  "model_forwards": 9,
+  "shapes": {
+    "896x896": {"kernel": "MatmulBF16", "dispatches": 432, "dispatches_per_forward": 48, "p50_us": 161.2705, "effective_GBps": 9.967},
+    "896x128": {"kernel": "MatmulBF16", "dispatches": 432, "dispatches_per_forward": 48, "p50_us": 130.75, "effective_GBps": 1.768},
+    "896x4864": {"kernel": "MatmulVecBF16", "dispatches": 432, "dispatches_per_forward": 48, "p50_us": 642.292, "effective_GBps": 13.573},
+    "4864x896": {"kernel": "MatmulBF16", "dispatches": 216, "dispatches_per_forward": 24, "p50_us": 765.6455, "effective_GBps": 11.397},
+    "896x151936": {"kernel": "MatmulVecBF16", "dispatches": 9, "dispatches_per_forward": 1, "p50_us": 18901.125, "effective_GBps": 14.405}
+  }
+}

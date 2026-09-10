@@ -1,0 +1,57 @@
+{
+  "branch": "wave/Bf16DecodeGemv",
+  "remote_ref": "origin/wave/Bf16DecodeGemv",
+  "commit": "6f1612c2baa814865b3735bd49f34d421e2e1568",
+  "receipts": [
+    "receipts/2026-09-10-bf16-decode-gemv/baseline-profile/model-shapes.json",
+    "receipts/2026-09-10-bf16-decode-gemv/bandwidth-before/bandwidth.json",
+    "receipts/2026-09-10-bf16-decode-gemv/bandwidth-after/bandwidth.json",
+    "receipts/2026-09-10-bf16-decode-gemv/fixed-before/comparison.json",
+    "receipts/2026-09-10-bf16-decode-gemv/fixed-after-comparison.json",
+    "receipts/2026-09-10-bf16-decode-gemv/paired-fork/summary.json",
+    "receipts/2026-09-10-bf16-decode-gemv/llvmpipe-bf16.log",
+    "receipts/2026-09-10-bf16-decode-gemv/m1-bf16-fork.log",
+    "receipts/2026-09-10-bf16-decode-gemv/m1-bf16-stock.log",
+    "receipts/2026-09-10-bf16-decode-gemv/native/provenance.json",
+    "receipts/2026-09-10-bf16-decode-gemv/candidate-wheel.json",
+    "receipts/2026-09-10-bf16-decode-gemv/matmul_vec_bf16.spvasm"
+  ],
+  "kernel_bandwidth": {
+    "896x896": {"before_GBps": 9.866520989215367, "after_GBps": 30.788844621513945, "ceiling_GBps": 34.72395580182107},
+    "896x128": {"before_GBps": 1.7229998658378427, "after_GBps": 8.293022421524663, "ceiling_GBps": 8.919550873943743},
+    "896x4864": {"before_GBps": 13.596336914074683, "after_GBps": 52.04823880597015, "ceiling_GBps": 53.933187335288224},
+    "4864x896": {"before_GBps": 11.405319422860003, "after_GBps": 51.191589717115065, "ceiling_GBps": 53.20741463414634},
+    "896x151936": {"before_GBps": 14.412678404938458, "after_GBps": 61.55279712888914, "ceiling_GBps": 60.696051830075376}
+  },
+  "paired_fork": {
+    "q4_short": {"baseline": {"decode_tok_s": 110.06, "prefill_tok_s": 217.391}, "candidate": {"decode_tok_s": 107.56, "prefill_tok_s": 215.827}},
+    "q4_262": {"baseline": {"decode_tok_s": 106.85, "prefill_tok_s": 782.09}, "candidate": {"decode_tok_s": 106.56, "prefill_tok_s": 789.157}},
+    "q4_1k": {"baseline": {"decode_tok_s": 97.07, "prefill_tok_s": 1063.636}, "candidate": {"decode_tok_s": 97.48, "prefill_tok_s": 1066.869}},
+    "bf16_short": {"baseline": {"decode_tok_s": 11.7, "prefill_tok_s": 80.645}, "candidate": {"decode_tok_s": 32.04, "prefill_tok_s": 117.188}},
+    "bf16_262": {"baseline": {"decode_tok_s": 11.27, "prefill_tok_s": 300.115}, "candidate": {"decode_tok_s": 28.37, "prefill_tok_s": 342.484}},
+    "bf16_1k": {"baseline": {"decode_tok_s": 10.15, "prefill_tok_s": 346.382}, "candidate": {"decode_tok_s": 22.64, "prefill_tok_s": 351.703}}
+  },
+  "paired_stock": {
+    "status": "not_completed",
+    "reason": "The stock paired run was stopped after the completed fork gate showed a forbidden BF16 262-token digest. Both stock fixed-input parity and the focused stock test completed before that stop."
+  },
+  "digests": {
+    "q4_short": {"before": "7fd25a869ff21678", "after": "7fd25a869ff21678", "native": "7fd25a869ff21678"},
+    "q4_262": {"before": "4cc08910089477fd", "after": "4cc08910089477fd", "native": "4cc08910089477fd"},
+    "q4_1k": {"before": "7da83f06ec9f001d", "after": "7da83f06ec9f001d", "native": "7da83f06ec9f001d"},
+    "bf16_short": {"before": "f26175202f3dabe9", "after": "f26175202f3dabe9", "native": "7fc0f968789b1882"},
+    "bf16_262": {"before": "ad964232ee67fecd", "after": "8690dc83246b39f8", "native": "407b7624ed1b3b29"},
+    "bf16_1k": {"before": "ff502900d2a179a5", "after": "ff502900d2a179a5", "native": "ff502900d2a179a5"}
+  },
+  "policy_ok": false,
+  "tests": {
+    "llvmpipe_bf16": {"status": "pass", "cases": 1, "assertions": 139004},
+    "m1_fork_bf16": {"status": "pass", "cases": 1, "assertions": 62009183},
+    "m1_stock_bf16": {"status": "pass", "cases": 1, "assertions": 139004},
+    "fixed_native_fork": {"status": "pass", "mismatches": 0, "elements": 1269760},
+    "fixed_native_stock": {"status": "pass", "mismatches": 0, "elements": 1269760},
+    "compiled_shader": {"status": "pass", "wide_load": "OpLoad %v2uint", "reduction": "OpGroupNonUniformShuffleDown 16,8,4,2,1", "multiply_add": "GLSL.std.450 Fma"}
+  },
+  "decision": "reject: the kernel is native-exact on fixed inputs and closes most of the throughput gap, but the fork BF16 262-token stream changes to 8690dc83246b39f8 instead of native 407b7624ed1b3b29",
+  "next": "Isolate the optimized projection subset that leaves the BF16 262-token digest unchanged or identify and correct the next non-GEMV native-order divergence before landing this kernel."
+}
