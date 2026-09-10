@@ -3,7 +3,7 @@
 # overlap a GPU-bound neighbor block (niced, -j4).
 set -euo pipefail
 cd ~/src/mlx-requal
-mkdir -p receipt-requal/wheels receipt-requal/logs
+mkdir -p receipt-requal/wheels/candidate receipt-requal/logs
 git rev-parse HEAD > receipt-requal/commit.txt
 
 # 1. candidate wheel — plain stamped release wheel (DEV_RELEASE=1 stamps the
