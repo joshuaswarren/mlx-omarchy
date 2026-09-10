@@ -1,0 +1,792 @@
+[kvd] values: not reshape(prim=RoPE) or use=1
+[kvd] values: not reshape(prim=Transpose) or use=1
+[kvd] pair 0 classifiable=1 kinds=0/0
+[kvd] values: not reshape(prim=RoPE) or use=1
+[kvd] values: not reshape(prim=Transpose) or use=1
+[kvd] pair 1 classifiable=1 kinds=0/0
+[kvd] values: not reshape(prim=RoPE) or use=1
+[kvd] values: not reshape(prim=Transpose) or use=1
+[kvd] pair 2 classifiable=1 kinds=0/0
+[kvd] values: not reshape(prim=RoPE) or use=1
+[kvd] values: not reshape(prim=Transpose) or use=1
+[kvd] pair 3 classifiable=1 kinds=0/0
+[kvd] values: not reshape(prim=RoPE) or use=1
+[kvd] values: not reshape(prim=Transpose) or use=1
+[kvd] pair 4 classifiable=1 kinds=0/0
+[kvd] values: not reshape(prim=RoPE) or use=1
+[kvd] values: not reshape(prim=Transpose) or use=1
+[kvd] pair 5 classifiable=1 kinds=0/0
+[kvd] values: not reshape(prim=RoPE) or use=1
+[kvd] values: not reshape(prim=Transpose) or use=1
+[kvd] pair 6 classifiable=1 kinds=0/0
+[kvd] values: not reshape(prim=RoPE) or use=1
+[kvd] values: not reshape(prim=Transpose) or use=1
+[kvd] pair 7 classifiable=1 kinds=0/0
+[kvd] values: not reshape(prim=RoPE) or use=1
+[kvd] values: not reshape(prim=Transpose) or use=1
+[kvd] pair 8 classifiable=1 kinds=0/0
+[kvd] values: not reshape(prim=RoPE) or use=1
+[kvd] values: not reshape(prim=Transpose) or use=1
+[kvd] pair 9 classifiable=1 kinds=0/0
+[kvd] values: not reshape(prim=RoPE) or use=1
+[kvd] values: not reshape(prim=Transpose) or use=1
+[kvd] pair 10 classifiable=1 kinds=0/0
+[kvd] values: not reshape(prim=RoPE) or use=1
+[kvd] values: not reshape(prim=Transpose) or use=1
+[kvd] pair 11 classifiable=1 kinds=0/0
+[kvd] values: not reshape(prim=RoPE) or use=1
+[kvd] values: not reshape(prim=Transpose) or use=1
+[kvd] pair 12 classifiable=1 kinds=0/0
+[kvd] values: not reshape(prim=RoPE) or use=1
+[kvd] values: not reshape(prim=Transpose) or use=1
+[kvd] pair 13 classifiable=1 kinds=0/0
+[kvd] values: not reshape(prim=RoPE) or use=1
+[kvd] values: not reshape(prim=Transpose) or use=1
+[kvd] pair 14 classifiable=1 kinds=0/0
+[kvd] values: not reshape(prim=RoPE) or use=1
+[kvd] values: not reshape(prim=Transpose) or use=1
+[kvd] pair 15 classifiable=1 kinds=0/0
+[kvd] values: not reshape(prim=RoPE) or use=1
+[kvd] values: not reshape(prim=Transpose) or use=1
+[kvd] pair 16 classifiable=1 kinds=0/0
+[kvd] values: not reshape(prim=RoPE) or use=1
+[kvd] values: not reshape(prim=Transpose) or use=1
+[kvd] pair 17 classifiable=1 kinds=0/0
+[kvd] values: not reshape(prim=RoPE) or use=1
+[kvd] values: not reshape(prim=Transpose) or use=1
+[kvd] pair 18 classifiable=1 kinds=0/0
+[kvd] values: not reshape(prim=RoPE) or use=1
+[kvd] values: not reshape(prim=Transpose) or use=1
+[kvd] pair 19 classifiable=1 kinds=0/0
+[kvd] values: not reshape(prim=RoPE) or use=1
+[kvd] values: not reshape(prim=Transpose) or use=1
+[kvd] pair 20 classifiable=1 kinds=0/0
+[kvd] values: not reshape(prim=RoPE) or use=1
+[kvd] values: not reshape(prim=Transpose) or use=1
+[kvd] pair 21 classifiable=1 kinds=0/0
+[kvd] values: not reshape(prim=RoPE) or use=1
+[kvd] values: not reshape(prim=Transpose) or use=1
+[kvd] pair 22 classifiable=1 kinds=0/0
+[kvd] values: not reshape(prim=RoPE) or use=1
+[kvd] values: not reshape(prim=Transpose) or use=1
+[kvd] pair 23 classifiable=1 kinds=0/0
+[kvd] values: not reshape(prim=Transpose) or use=1
+[kvd] pair 0 classifiable=1 kinds=1/0
+[kvd] values: not reshape(prim=Transpose) or use=1
+[kvd] pair 1 classifiable=1 kinds=1/0
+[kvd] values: not reshape(prim=Transpose) or use=1
+[kvd] pair 2 classifiable=1 kinds=1/0
+[kvd] values: not reshape(prim=Transpose) or use=1
+[kvd] pair 3 classifiable=1 kinds=1/0
+[kvd] values: not reshape(prim=Transpose) or use=1
+[kvd] pair 4 classifiable=1 kinds=1/0
+[kvd] values: not reshape(prim=Transpose) or use=1
+[kvd] pair 5 classifiable=1 kinds=1/0
+[kvd] values: not reshape(prim=Transpose) or use=1
+[kvd] pair 6 classifiable=1 kinds=1/0
+[kvd] values: not reshape(prim=Transpose) or use=1
+[kvd] pair 7 classifiable=1 kinds=1/0
+[kvd] values: not reshape(prim=Transpose) or use=1
+[kvd] pair 8 classifiable=1 kinds=1/0
+[kvd] values: not reshape(prim=Transpose) or use=1
+[kvd] pair 9 classifiable=1 kinds=1/0
+[kvd] values: not reshape(prim=Transpose) or use=1
+[kvd] pair 10 classifiable=1 kinds=1/0
+[kvd] values: not reshape(prim=Transpose) or use=1
+[kvd] pair 11 classifiable=1 kinds=1/0
+[kvd] values: not reshape(prim=Transpose) or use=1
+[kvd] pair 12 classifiable=1 kinds=1/0
+[kvd] values: not reshape(prim=Transpose) or use=1
+[kvd] pair 13 classifiable=1 kinds=1/0
+[kvd] values: not reshape(prim=Transpose) or use=1
+[kvd] pair 14 classifiable=1 kinds=1/0
+[kvd] values: not reshape(prim=Transpose) or use=1
+[kvd] pair 15 classifiable=1 kinds=1/0
+[kvd] values: not reshape(prim=Transpose) or use=1
+[kvd] pair 16 classifiable=1 kinds=1/0
+[kvd] values: not reshape(prim=Transpose) or use=1
+[kvd] pair 17 classifiable=1 kinds=1/0
+[kvd] values: not reshape(prim=Transpose) or use=1
+[kvd] pair 18 classifiable=1 kinds=1/0
+[kvd] values: not reshape(prim=Transpose) or use=1
+[kvd] pair 19 classifiable=1 kinds=1/0
+[kvd] values: not reshape(prim=Transpose) or use=1
+[kvd] pair 20 classifiable=1 kinds=1/0
+[kvd] values: not reshape(prim=Transpose) or use=1
+[kvd] pair 21 classifiable=1 kinds=1/0
+[kvd] values: not reshape(prim=Transpose) or use=1
+[kvd] pair 22 classifiable=1 kinds=1/0
+[kvd] values: not reshape(prim=Transpose) or use=1
+[kvd] pair 23 classifiable=1 kinds=1/0
+[kvd] gemv eval: members=3 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=2 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=3 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=2 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=3 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=2 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=3 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=2 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=3 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=2 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=3 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=2 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=3 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=2 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=3 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=2 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=3 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=2 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=3 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=2 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=3 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=2 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=3 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=2 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=3 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=2 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=3 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=2 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=3 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=2 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=3 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=2 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=3 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=2 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=3 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=2 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=3 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=2 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=3 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=2 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=3 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=2 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=3 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=2 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=3 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=2 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=3 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=2 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] values: not reshape(prim=Transpose) or use=1
+[kvd] pair 0 classifiable=1 kinds=1/0
+[kvd] values: not reshape(prim=Transpose) or use=1
+[kvd] pair 1 classifiable=1 kinds=1/0
+[kvd] values: not reshape(prim=Transpose) or use=1
+[kvd] pair 2 classifiable=1 kinds=1/0
+[kvd] values: not reshape(prim=Transpose) or use=1
+[kvd] pair 3 classifiable=1 kinds=1/0
+[kvd] values: not reshape(prim=Transpose) or use=1
+[kvd] pair 4 classifiable=1 kinds=1/0
+[kvd] values: not reshape(prim=Transpose) or use=1
+[kvd] pair 5 classifiable=1 kinds=1/0
+[kvd] values: not reshape(prim=Transpose) or use=1
+[kvd] pair 6 classifiable=1 kinds=1/0
+[kvd] values: not reshape(prim=Transpose) or use=1
+[kvd] pair 7 classifiable=1 kinds=1/0
+[kvd] values: not reshape(prim=Transpose) or use=1
+[kvd] pair 8 classifiable=1 kinds=1/0
+[kvd] values: not reshape(prim=Transpose) or use=1
+[kvd] pair 9 classifiable=1 kinds=1/0
+[kvd] values: not reshape(prim=Transpose) or use=1
+[kvd] pair 10 classifiable=1 kinds=1/0
+[kvd] values: not reshape(prim=Transpose) or use=1
+[kvd] pair 11 classifiable=1 kinds=1/0
+[kvd] values: not reshape(prim=Transpose) or use=1
+[kvd] pair 12 classifiable=1 kinds=1/0
+[kvd] values: not reshape(prim=Transpose) or use=1
+[kvd] pair 13 classifiable=1 kinds=1/0
+[kvd] values: not reshape(prim=Transpose) or use=1
+[kvd] pair 14 classifiable=1 kinds=1/0
+[kvd] values: not reshape(prim=Transpose) or use=1
+[kvd] pair 15 classifiable=1 kinds=1/0
+[kvd] values: not reshape(prim=Transpose) or use=1
+[kvd] pair 16 classifiable=1 kinds=1/0
+[kvd] values: not reshape(prim=Transpose) or use=1
+[kvd] pair 17 classifiable=1 kinds=1/0
+[kvd] values: not reshape(prim=Transpose) or use=1
+[kvd] pair 18 classifiable=1 kinds=1/0
+[kvd] values: not reshape(prim=Transpose) or use=1
+[kvd] pair 19 classifiable=1 kinds=1/0
+[kvd] values: not reshape(prim=Transpose) or use=1
+[kvd] pair 20 classifiable=1 kinds=1/0
+[kvd] values: not reshape(prim=Transpose) or use=1
+[kvd] pair 21 classifiable=1 kinds=1/0
+[kvd] values: not reshape(prim=Transpose) or use=1
+[kvd] pair 22 classifiable=1 kinds=1/0
+[kvd] values: not reshape(prim=Transpose) or use=1
+[kvd] pair 23 classifiable=1 kinds=1/0
+[kvd] gemv eval: members=3 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=2 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=3 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=2 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=3 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=2 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=3 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=2 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=3 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=2 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=3 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=2 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=3 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=2 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=3 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=2 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=3 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=2 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=3 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=2 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=3 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=2 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=3 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=2 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=3 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=2 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=3 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=2 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=3 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=2 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=3 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=2 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=3 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=2 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=3 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=2 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=3 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=2 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=3 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=2 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=3 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=2 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=3 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=2 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=3 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=2 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=3 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=2 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] values: not reshape(prim=Transpose) or use=1
+[kvd] pair 0 classifiable=1 kinds=1/0
+[kvd] values: not reshape(prim=Transpose) or use=1
+[kvd] pair 1 classifiable=1 kinds=1/0
+[kvd] values: not reshape(prim=Transpose) or use=1
+[kvd] pair 2 classifiable=1 kinds=1/0
+[kvd] values: not reshape(prim=Transpose) or use=1
+[kvd] pair 3 classifiable=1 kinds=1/0
+[kvd] values: not reshape(prim=Transpose) or use=1
+[kvd] pair 4 classifiable=1 kinds=1/0
+[kvd] values: not reshape(prim=Transpose) or use=1
+[kvd] pair 5 classifiable=1 kinds=1/0
+[kvd] values: not reshape(prim=Transpose) or use=1
+[kvd] pair 6 classifiable=1 kinds=1/0
+[kvd] values: not reshape(prim=Transpose) or use=1
+[kvd] pair 7 classifiable=1 kinds=1/0
+[kvd] values: not reshape(prim=Transpose) or use=1
+[kvd] pair 8 classifiable=1 kinds=1/0
+[kvd] values: not reshape(prim=Transpose) or use=1
+[kvd] pair 9 classifiable=1 kinds=1/0
+[kvd] values: not reshape(prim=Transpose) or use=1
+[kvd] pair 10 classifiable=1 kinds=1/0
+[kvd] values: not reshape(prim=Transpose) or use=1
+[kvd] pair 11 classifiable=1 kinds=1/0
+[kvd] values: not reshape(prim=Transpose) or use=1
+[kvd] pair 12 classifiable=1 kinds=1/0
+[kvd] values: not reshape(prim=Transpose) or use=1
+[kvd] pair 13 classifiable=1 kinds=1/0
+[kvd] values: not reshape(prim=Transpose) or use=1
+[kvd] pair 14 classifiable=1 kinds=1/0
+[kvd] values: not reshape(prim=Transpose) or use=1
+[kvd] pair 15 classifiable=1 kinds=1/0
+[kvd] values: not reshape(prim=Transpose) or use=1
+[kvd] pair 16 classifiable=1 kinds=1/0
+[kvd] values: not reshape(prim=Transpose) or use=1
+[kvd] pair 17 classifiable=1 kinds=1/0
+[kvd] values: not reshape(prim=Transpose) or use=1
+[kvd] pair 18 classifiable=1 kinds=1/0
+[kvd] values: not reshape(prim=Transpose) or use=1
+[kvd] pair 19 classifiable=1 kinds=1/0
+[kvd] values: not reshape(prim=Transpose) or use=1
+[kvd] pair 20 classifiable=1 kinds=1/0
+[kvd] values: not reshape(prim=Transpose) or use=1
+[kvd] pair 21 classifiable=1 kinds=1/0
+[kvd] values: not reshape(prim=Transpose) or use=1
+[kvd] pair 22 classifiable=1 kinds=1/0
+[kvd] values: not reshape(prim=Transpose) or use=1
+[kvd] pair 23 classifiable=1 kinds=1/0
+[kvd] gemv eval: members=3 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=2 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=3 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=2 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=3 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=2 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=3 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=2 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=3 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=2 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=3 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=2 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=3 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=2 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=3 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=2 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=3 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=2 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=3 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=2 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=3 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=2 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=3 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=2 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=3 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=2 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=3 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=2 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=3 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=2 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=3 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=2 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=3 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=2 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=3 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=2 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=3 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=2 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=3 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=2 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=3 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=2 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=3 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=2 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=3 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=2 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=3 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=2 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] values: not reshape(prim=Transpose) or use=1
+[kvd] pair 0 classifiable=1 kinds=1/0
+[kvd] values: not reshape(prim=Transpose) or use=1
+[kvd] pair 1 classifiable=1 kinds=1/0
+[kvd] values: not reshape(prim=Transpose) or use=1
+[kvd] pair 2 classifiable=1 kinds=1/0
+[kvd] values: not reshape(prim=Transpose) or use=1
+[kvd] pair 3 classifiable=1 kinds=1/0
+[kvd] values: not reshape(prim=Transpose) or use=1
+[kvd] pair 4 classifiable=1 kinds=1/0
+[kvd] values: not reshape(prim=Transpose) or use=1
+[kvd] pair 5 classifiable=1 kinds=1/0
+[kvd] values: not reshape(prim=Transpose) or use=1
+[kvd] pair 6 classifiable=1 kinds=1/0
+[kvd] values: not reshape(prim=Transpose) or use=1
+[kvd] pair 7 classifiable=1 kinds=1/0
+[kvd] values: not reshape(prim=Transpose) or use=1
+[kvd] pair 8 classifiable=1 kinds=1/0
+[kvd] values: not reshape(prim=Transpose) or use=1
+[kvd] pair 9 classifiable=1 kinds=1/0
+[kvd] values: not reshape(prim=Transpose) or use=1
+[kvd] pair 10 classifiable=1 kinds=1/0
+[kvd] values: not reshape(prim=Transpose) or use=1
+[kvd] pair 11 classifiable=1 kinds=1/0
+[kvd] values: not reshape(prim=Transpose) or use=1
+[kvd] pair 12 classifiable=1 kinds=1/0
+[kvd] values: not reshape(prim=Transpose) or use=1
+[kvd] pair 13 classifiable=1 kinds=1/0
+[kvd] values: not reshape(prim=Transpose) or use=1
+[kvd] pair 14 classifiable=1 kinds=1/0
+[kvd] values: not reshape(prim=Transpose) or use=1
+[kvd] pair 15 classifiable=1 kinds=1/0
+[kvd] values: not reshape(prim=Transpose) or use=1
+[kvd] pair 16 classifiable=1 kinds=1/0
+[kvd] values: not reshape(prim=Transpose) or use=1
+[kvd] pair 17 classifiable=1 kinds=1/0
+[kvd] values: not reshape(prim=Transpose) or use=1
+[kvd] pair 18 classifiable=1 kinds=1/0
+[kvd] values: not reshape(prim=Transpose) or use=1
+[kvd] pair 19 classifiable=1 kinds=1/0
+[kvd] values: not reshape(prim=Transpose) or use=1
+[kvd] pair 20 classifiable=1 kinds=1/0
+[kvd] values: not reshape(prim=Transpose) or use=1
+[kvd] pair 21 classifiable=1 kinds=1/0
+[kvd] values: not reshape(prim=Transpose) or use=1
+[kvd] pair 22 classifiable=1 kinds=1/0
+[kvd] values: not reshape(prim=Transpose) or use=1
+[kvd] pair 23 classifiable=1 kinds=1/0
+[kvd] gemv eval: members=3 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=2 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=3 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=2 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=3 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=2 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=3 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=2 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=3 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=2 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=3 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=2 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=3 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=2 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=3 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=2 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=3 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=2 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=3 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=2 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=3 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=2 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=3 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=2 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=3 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=2 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=3 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=2 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=3 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=2 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=3 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=2 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=3 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=2 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=3 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=2 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=3 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=2 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=3 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=2 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=3 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=2 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=3 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=2 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=3 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=2 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=3 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=2 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] values: not reshape(prim=Transpose) or use=1
+[kvd] pair 0 classifiable=1 kinds=1/0
+[kvd] values: not reshape(prim=Transpose) or use=1
+[kvd] pair 1 classifiable=1 kinds=1/0
+[kvd] values: not reshape(prim=Transpose) or use=1
+[kvd] pair 2 classifiable=1 kinds=1/0
+[kvd] values: not reshape(prim=Transpose) or use=1
+[kvd] pair 3 classifiable=1 kinds=1/0
+[kvd] values: not reshape(prim=Transpose) or use=1
+[kvd] pair 4 classifiable=1 kinds=1/0
+[kvd] values: not reshape(prim=Transpose) or use=1
+[kvd] pair 5 classifiable=1 kinds=1/0
+[kvd] values: not reshape(prim=Transpose) or use=1
+[kvd] pair 6 classifiable=1 kinds=1/0
+[kvd] values: not reshape(prim=Transpose) or use=1
+[kvd] pair 7 classifiable=1 kinds=1/0
+[kvd] values: not reshape(prim=Transpose) or use=1
+[kvd] pair 8 classifiable=1 kinds=1/0
+[kvd] values: not reshape(prim=Transpose) or use=1
+[kvd] pair 9 classifiable=1 kinds=1/0
+[kvd] values: not reshape(prim=Transpose) or use=1
+[kvd] pair 10 classifiable=1 kinds=1/0
+[kvd] values: not reshape(prim=Transpose) or use=1
+[kvd] pair 11 classifiable=1 kinds=1/0
+[kvd] values: not reshape(prim=Transpose) or use=1
+[kvd] pair 12 classifiable=1 kinds=1/0
+[kvd] values: not reshape(prim=Transpose) or use=1
+[kvd] pair 13 classifiable=1 kinds=1/0
+[kvd] values: not reshape(prim=Transpose) or use=1
+[kvd] pair 14 classifiable=1 kinds=1/0
+[kvd] values: not reshape(prim=Transpose) or use=1
+[kvd] pair 15 classifiable=1 kinds=1/0
+[kvd] values: not reshape(prim=Transpose) or use=1
+[kvd] pair 16 classifiable=1 kinds=1/0
+[kvd] values: not reshape(prim=Transpose) or use=1
+[kvd] pair 17 classifiable=1 kinds=1/0
+[kvd] values: not reshape(prim=Transpose) or use=1
+[kvd] pair 18 classifiable=1 kinds=1/0
+[kvd] values: not reshape(prim=Transpose) or use=1
+[kvd] pair 19 classifiable=1 kinds=1/0
+[kvd] values: not reshape(prim=Transpose) or use=1
+[kvd] pair 20 classifiable=1 kinds=1/0
+[kvd] values: not reshape(prim=Transpose) or use=1
+[kvd] pair 21 classifiable=1 kinds=1/0
+[kvd] values: not reshape(prim=Transpose) or use=1
+[kvd] pair 22 classifiable=1 kinds=1/0
+[kvd] values: not reshape(prim=Transpose) or use=1
+[kvd] pair 23 classifiable=1 kinds=1/0
+[kvd] gemv eval: members=3 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=2 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=3 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=2 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=3 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=2 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=3 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=2 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=3 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=2 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=3 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=2 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=3 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=2 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=3 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=2 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=3 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=2 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=3 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=2 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=3 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=2 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=3 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=2 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=3 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=2 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=3 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=2 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=3 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=2 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=3 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=2 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=3 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=2 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=3 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=2 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=3 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=2 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=3 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=2 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=3 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=2 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=3 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=2 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=3 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=2 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=3 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0
+[kvd] gemv eval: members=2 any_kv_window=0
+[kvd] gemv eval: members=1 any_kv_window=0

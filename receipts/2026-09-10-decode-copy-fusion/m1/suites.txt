@@ -1,0 +1,5 @@
+SUITE_PASS=omarchy_kv_ops_tests
+SUITE_PASS=omarchy_runtime_tests
+SUITE_PASS=omarchy_fast_ops_tests
+SUITE_PASS=omarchy_fast_regression_tests
+SUITE_PASS=omarchy_fused_chain_tests

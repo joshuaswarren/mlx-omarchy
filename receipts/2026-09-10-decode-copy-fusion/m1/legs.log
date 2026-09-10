@@ -1,0 +1,21 @@
+pair1-fork-short-decode-32 ok 112.37 tok/s retries=0
+pair1-fork-long-decode-128 ok 108.45 tok/s retries=0
+pair1-fork-longctx-1024-decode-32 ok 96.59 tok/s retries=0
+pair1-stock-short-decode-32 ok 107.25 tok/s retries=0
+pair1-stock-long-decode-128 ok 106.37 tok/s retries=0
+pair1-stock-longctx-1024-decode-32 ok 92.85 tok/s retries=0
+pair2-stock-short-decode-32 ok 110.38 tok/s retries=0
+pair2-stock-long-decode-128 ok 106.08 tok/s retries=0
+pair2-stock-longctx-1024-decode-32 ok 94.3 tok/s retries=0
+pair2-fork-short-decode-32 ok 109.46 tok/s retries=0
+pair2-fork-long-decode-128 ok 107.94 tok/s retries=0
+pair2-fork-longctx-1024-decode-32 ok 97.07 tok/s retries=0
+pair3-fork-short-decode-32 ok 111.25 tok/s retries=0
+pair3-fork-long-decode-128 ok 108.84 tok/s retries=0
+pair3-fork-longctx-1024-decode-32 ok 96.01 tok/s retries=0
+pair3-stock-short-decode-32 ok 108.96 tok/s retries=0
+pair3-stock-long-decode-128 ok 107.34 tok/s retries=0
+pair3-stock-longctx-1024-decode-32 ok 95.32 tok/s retries=0
+{"fork": {"long-decode-128": 108.45, "longctx-1024-decode-32": 96.59, "short-decode-32": 111.25}, "stock": {"long-decode-128": 106.37, "longctx-1024-decode-32": 94.3, "short-decode-32": 108.96}}
+{"long-decode-128": 1.9554, "longctx-1024-decode-32": 2.4284, "short-decode-32": 2.1017}
+PAIRED_DONE

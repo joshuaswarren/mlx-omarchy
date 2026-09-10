@@ -1,0 +1,695 @@
+dispatch events parsed: 3406
+decode tokens: 7
+dispatches/token: min=321 median=321 max=321
+
+== whole-run by kernel ==
+  QmmVecQ4MultiF16                 864   25.4%
+  FastRmsNormF16                   488   14.3%
+  FastRopeF16                      479   14.1%
+  MatmulF16                        432   12.7%
+  SliceUpdatePairF16               240    7.0%
+  SoftmaxF16                       239    7.0%
+  SwigluF16                        239    7.0%
+  QmmTileRbF16                     163    4.8%
+  BinaryVecF16                     117    3.4%
+  MatmulRbF16                       46    1.4%
+  CopyGeneralF16                    23    0.7%
+  TakeF16                           20    0.6%
+  TakeU32                           10    0.3%
+  DequantF16                        10    0.3%
+  QmmVecQ4WordF16                    9    0.3%
+  LogSumExpF16                       9    0.3%
+  ElementwiseF16                     9    0.3%
+  ArgReduceF16                       9    0.3%
+
+== whole-run TAPE-path by kernel ==
+
+== median decode token: kernel composition ==
+(token 4: 321 dispatches, 0 tape-path)
+
+-- all paths --
+  QmmVecQ4MultiF16                  96   29.9%
+  FastRmsNormF16                    49   15.3%
+  FastRopeF16                       48   15.0%
+  MatmulF16                         48   15.0%
+  SliceUpdatePairF16                24    7.5%
+  SoftmaxF16                        24    7.5%
+  SwigluF16                         24    7.5%
+  TakeF16                            2    0.6%
+  TakeU32                            1    0.3%
+  DequantF16                         1    0.3%
+  QmmVecQ4WordF16                    1    0.3%
+  LogSumExpF16                       1    0.3%
+  ElementwiseF16                     1    0.3%
+  ArgReduceF16                       1    0.3%
+
+-- tape path --
+
+== chain census, decode tokens, all paths ==
+chains>=2: 0, dispatches inside chains: 0
+
+== token 1 dispatch sequence ==
+  e TakeF16                  op=  1 n=    14
+  e TakeF16                  op=  1 n=    14
+  e TakeU32                  op=  1 n=   112
+  e DequantF16               op=  4 n=   112
+  e FastRmsNormF16           op=  0 n=   896
+  e QmmVecQ4MultiF16         op=  4 n=   144
+  e FastRopeF16              op=  0 n=    64
+  e SliceUpdatePairF16       op=128 n=   128
+  e FastRopeF16              op=  0 n=   448
+  e MatmulF16                op=  0 n=   532
+  e SoftmaxF16               op=  0 n=   532
+  e MatmulF16                op=  0 n=   896
+  e QmmVecQ4MultiF16         op=  4 n=   112
+  e FastRmsNormF16           op=  0 n=   896
+  e QmmVecQ4MultiF16         op=  4 n=  1216
+  e SwigluF16                op=  0 n=  4864
+  e QmmVecQ4MultiF16         op=  4 n=   112
+  e FastRmsNormF16           op=  0 n=   896
+  e QmmVecQ4MultiF16         op=  4 n=   144
+  e FastRopeF16              op=  0 n=    64
+  e SliceUpdatePairF16       op=128 n=   128
+  e FastRopeF16              op=  0 n=   448
+  e MatmulF16                op=  0 n=   532
+  e SoftmaxF16               op=  0 n=   532
+  e MatmulF16                op=  0 n=   896
+  e QmmVecQ4MultiF16         op=  4 n=   112
+  e FastRmsNormF16           op=  0 n=   896
+  e QmmVecQ4MultiF16         op=  4 n=  1216
+  e SwigluF16                op=  0 n=  4864
+  e QmmVecQ4MultiF16         op=  4 n=   112
+  e FastRmsNormF16           op=  0 n=   896
+  e QmmVecQ4MultiF16         op=  4 n=   144
+  e FastRopeF16              op=  0 n=    64
+  e SliceUpdatePairF16       op=128 n=   128
+  e FastRopeF16              op=  0 n=   448
+  e MatmulF16                op=  0 n=   532
+  e SoftmaxF16               op=  0 n=   532
+  e MatmulF16                op=  0 n=   896
+  e QmmVecQ4MultiF16         op=  4 n=   112
+  e FastRmsNormF16           op=  0 n=   896
+  e QmmVecQ4MultiF16         op=  4 n=  1216
+  e SwigluF16                op=  0 n=  4864
+  e QmmVecQ4MultiF16         op=  4 n=   112
+  e FastRmsNormF16           op=  0 n=   896
+  e QmmVecQ4MultiF16         op=  4 n=   144
+  e FastRopeF16              op=  0 n=    64
+  e SliceUpdatePairF16       op=128 n=   128
+  e FastRopeF16              op=  0 n=   448
+  e MatmulF16                op=  0 n=   532
+  e SoftmaxF16               op=  0 n=   532
+  e MatmulF16                op=  0 n=   896
+  e QmmVecQ4MultiF16         op=  4 n=   112
+  e FastRmsNormF16           op=  0 n=   896
+  e QmmVecQ4MultiF16         op=  4 n=  1216
+  e SwigluF16                op=  0 n=  4864
+  e QmmVecQ4MultiF16         op=  4 n=   112
+  e FastRmsNormF16           op=  0 n=   896
+  e QmmVecQ4MultiF16         op=  4 n=   144
+  e FastRopeF16              op=  0 n=    64
+  e SliceUpdatePairF16       op=128 n=   128
+  e FastRopeF16              op=  0 n=   448
+  e MatmulF16                op=  0 n=   532
+  e SoftmaxF16               op=  0 n=   532
+  e MatmulF16                op=  0 n=   896
+  e QmmVecQ4MultiF16         op=  4 n=   112
+  e FastRmsNormF16           op=  0 n=   896
+  e QmmVecQ4MultiF16         op=  4 n=  1216
+  e SwigluF16                op=  0 n=  4864
+  e QmmVecQ4MultiF16         op=  4 n=   112
+  e FastRmsNormF16           op=  0 n=   896
+  e QmmVecQ4MultiF16         op=  4 n=   144
+  e FastRopeF16              op=  0 n=    64
+  e SliceUpdatePairF16       op=128 n=   128
+  e FastRopeF16              op=  0 n=   448
+  e MatmulF16                op=  0 n=   532
+  e SoftmaxF16               op=  0 n=   532
+  e MatmulF16                op=  0 n=   896
+  e QmmVecQ4MultiF16         op=  4 n=   112
+  e FastRmsNormF16           op=  0 n=   896
+  e QmmVecQ4MultiF16         op=  4 n=  1216
+  e SwigluF16                op=  0 n=  4864
+  e QmmVecQ4MultiF16         op=  4 n=   112
+  e FastRmsNormF16           op=  0 n=   896
+  e QmmVecQ4MultiF16         op=  4 n=   144
+  e FastRopeF16              op=  0 n=    64
+  e SliceUpdatePairF16       op=128 n=   128
+  e FastRopeF16              op=  0 n=   448
+  e MatmulF16                op=  0 n=   532
+  e SoftmaxF16               op=  0 n=   532
+  e MatmulF16                op=  0 n=   896
+  e QmmVecQ4MultiF16         op=  4 n=   112
+  e FastRmsNormF16           op=  0 n=   896
+  e QmmVecQ4MultiF16         op=  4 n=  1216
+  e SwigluF16                op=  0 n=  4864
+  e QmmVecQ4MultiF16         op=  4 n=   112
+  e FastRmsNormF16           op=  0 n=   896
+  e QmmVecQ4MultiF16         op=  4 n=   144
+  e FastRopeF16              op=  0 n=    64
+  e SliceUpdatePairF16       op=128 n=   128
+  e FastRopeF16              op=  0 n=   448
+  e MatmulF16                op=  0 n=   532
+  e SoftmaxF16               op=  0 n=   532
+  e MatmulF16                op=  0 n=   896
+  e QmmVecQ4MultiF16         op=  4 n=   112
+  e FastRmsNormF16           op=  0 n=   896
+  e QmmVecQ4MultiF16         op=  4 n=  1216
+  e SwigluF16                op=  0 n=  4864
+  e QmmVecQ4MultiF16         op=  4 n=   112
+  e FastRmsNormF16           op=  0 n=   896
+  e QmmVecQ4MultiF16         op=  4 n=   144
+  e FastRopeF16              op=  0 n=    64
+  e SliceUpdatePairF16       op=128 n=   128
+  e FastRopeF16              op=  0 n=   448
+  e MatmulF16                op=  0 n=   532
+  e SoftmaxF16               op=  0 n=   532
+  e MatmulF16                op=  0 n=   896
+  e QmmVecQ4MultiF16         op=  4 n=   112
+  e FastRmsNormF16           op=  0 n=   896
+  e QmmVecQ4MultiF16         op=  4 n=  1216
+  e SwigluF16                op=  0 n=  4864
+  e QmmVecQ4MultiF16         op=  4 n=   112
+  e FastRmsNormF16           op=  0 n=   896
+  e QmmVecQ4MultiF16         op=  4 n=   144
+  e FastRopeF16              op=  0 n=    64
+  e SliceUpdatePairF16       op=128 n=   128
+  e FastRopeF16              op=  0 n=   448
+  e MatmulF16                op=  0 n=   532
+  e SoftmaxF16               op=  0 n=   532
+  e MatmulF16                op=  0 n=   896
+  e QmmVecQ4MultiF16         op=  4 n=   112
+  e FastRmsNormF16           op=  0 n=   896
+  e QmmVecQ4MultiF16         op=  4 n=  1216
+  e SwigluF16                op=  0 n=  4864
+  e QmmVecQ4MultiF16         op=  4 n=   112
+  e FastRmsNormF16           op=  0 n=   896
+  e QmmVecQ4MultiF16         op=  4 n=   144
+  e FastRopeF16              op=  0 n=    64
+  e SliceUpdatePairF16       op=128 n=   128
+  e FastRopeF16              op=  0 n=   448
+  e MatmulF16                op=  0 n=   532
+  e SoftmaxF16               op=  0 n=   532
+  e MatmulF16                op=  0 n=   896
+  e QmmVecQ4MultiF16         op=  4 n=   112
+  e FastRmsNormF16           op=  0 n=   896
+  e QmmVecQ4MultiF16         op=  4 n=  1216
+  e SwigluF16                op=  0 n=  4864
+  e QmmVecQ4MultiF16         op=  4 n=   112
+  e FastRmsNormF16           op=  0 n=   896
+  e QmmVecQ4MultiF16         op=  4 n=   144
+  e FastRopeF16              op=  0 n=    64
+  e SliceUpdatePairF16       op=128 n=   128
+  e FastRopeF16              op=  0 n=   448
+  e MatmulF16                op=  0 n=   532
+  e SoftmaxF16               op=  0 n=   532
+  e MatmulF16                op=  0 n=   896
+  e QmmVecQ4MultiF16         op=  4 n=   112
+  e FastRmsNormF16           op=  0 n=   896
+  e QmmVecQ4MultiF16         op=  4 n=  1216
+  e SwigluF16                op=  0 n=  4864
+  e QmmVecQ4MultiF16         op=  4 n=   112
+  e FastRmsNormF16           op=  0 n=   896
+  e QmmVecQ4MultiF16         op=  4 n=   144
+  e FastRopeF16              op=  0 n=    64
+  e SliceUpdatePairF16       op=128 n=   128
+  e FastRopeF16              op=  0 n=   448
+  e MatmulF16                op=  0 n=   532
+  e SoftmaxF16               op=  0 n=   532
+  e MatmulF16                op=  0 n=   896
+  e QmmVecQ4MultiF16         op=  4 n=   112
+  e FastRmsNormF16           op=  0 n=   896
+  e QmmVecQ4MultiF16         op=  4 n=  1216
+  e SwigluF16                op=  0 n=  4864
+  e QmmVecQ4MultiF16         op=  4 n=   112
+  e FastRmsNormF16           op=  0 n=   896
+  e QmmVecQ4MultiF16         op=  4 n=   144
+  e FastRopeF16              op=  0 n=    64
+  e SliceUpdatePairF16       op=128 n=   128
+  e FastRopeF16              op=  0 n=   448
+  e MatmulF16                op=  0 n=   532
+  e SoftmaxF16               op=  0 n=   532
+  e MatmulF16                op=  0 n=   896
+  e QmmVecQ4MultiF16         op=  4 n=   112
+  e FastRmsNormF16           op=  0 n=   896
+  e QmmVecQ4MultiF16         op=  4 n=  1216
+  e SwigluF16                op=  0 n=  4864
+  e QmmVecQ4MultiF16         op=  4 n=   112
+  e FastRmsNormF16           op=  0 n=   896
+  e QmmVecQ4MultiF16         op=  4 n=   144
+  e FastRopeF16              op=  0 n=    64
+  e SliceUpdatePairF16       op=128 n=   128
+  e FastRopeF16              op=  0 n=   448
+  e MatmulF16                op=  0 n=   532
+  e SoftmaxF16               op=  0 n=   532
+  e MatmulF16                op=  0 n=   896
+  e QmmVecQ4MultiF16         op=  4 n=   112
+  e FastRmsNormF16           op=  0 n=   896
+  e QmmVecQ4MultiF16         op=  4 n=  1216
+  e SwigluF16                op=  0 n=  4864
+  e QmmVecQ4MultiF16         op=  4 n=   112
+  e FastRmsNormF16           op=  0 n=   896
+  e QmmVecQ4MultiF16         op=  4 n=   144
+  e FastRopeF16              op=  0 n=    64
+  e SliceUpdatePairF16       op=128 n=   128
+  e FastRopeF16              op=  0 n=   448
+  e MatmulF16                op=  0 n=   532
+  e SoftmaxF16               op=  0 n=   532
+  e MatmulF16                op=  0 n=   896
+  e QmmVecQ4MultiF16         op=  4 n=   112
+  e FastRmsNormF16           op=  0 n=   896
+  e QmmVecQ4MultiF16         op=  4 n=  1216
+  e SwigluF16                op=  0 n=  4864
+  e QmmVecQ4MultiF16         op=  4 n=   112
+  e FastRmsNormF16           op=  0 n=   896
+  e QmmVecQ4MultiF16         op=  4 n=   144
+  e FastRopeF16              op=  0 n=    64
+  e SliceUpdatePairF16       op=128 n=   128
+  e FastRopeF16              op=  0 n=   448
+  e MatmulF16                op=  0 n=   532
+  e SoftmaxF16               op=  0 n=   532
+  e MatmulF16                op=  0 n=   896
+  e QmmVecQ4MultiF16         op=  4 n=   112
+  e FastRmsNormF16           op=  0 n=   896
+  e QmmVecQ4MultiF16         op=  4 n=  1216
+  e SwigluF16                op=  0 n=  4864
+  e QmmVecQ4MultiF16         op=  4 n=   112
+  e FastRmsNormF16           op=  0 n=   896
+  e QmmVecQ4MultiF16         op=  4 n=   144
+  e FastRopeF16              op=  0 n=    64
+  e SliceUpdatePairF16       op=128 n=   128
+  e FastRopeF16              op=  0 n=   448
+  e MatmulF16                op=  0 n=   532
+  e SoftmaxF16               op=  0 n=   532
+  e MatmulF16                op=  0 n=   896
+  e QmmVecQ4MultiF16         op=  4 n=   112
+  e FastRmsNormF16           op=  0 n=   896
+  e QmmVecQ4MultiF16         op=  4 n=  1216
+  e SwigluF16                op=  0 n=  4864
+  e QmmVecQ4MultiF16         op=  4 n=   112
+  e FastRmsNormF16           op=  0 n=   896
+  e QmmVecQ4MultiF16         op=  4 n=   144
+  e FastRopeF16              op=  0 n=    64
+  e SliceUpdatePairF16       op=128 n=   128
+  e FastRopeF16              op=  0 n=   448
+  e MatmulF16                op=  0 n=   532
+  e SoftmaxF16               op=  0 n=   532
+  e MatmulF16                op=  0 n=   896
+  e QmmVecQ4MultiF16         op=  4 n=   112
+  e FastRmsNormF16           op=  0 n=   896
+  e QmmVecQ4MultiF16         op=  4 n=  1216
+  e SwigluF16                op=  0 n=  4864
+  e QmmVecQ4MultiF16         op=  4 n=   112
+  e FastRmsNormF16           op=  0 n=   896
+  e QmmVecQ4MultiF16         op=  4 n=   144
+  e FastRopeF16              op=  0 n=    64
+  e SliceUpdatePairF16       op=128 n=   128
+  e FastRopeF16              op=  0 n=   448
+  e MatmulF16                op=  0 n=   532
+  e SoftmaxF16               op=  0 n=   532
+  e MatmulF16                op=  0 n=   896
+  e QmmVecQ4MultiF16         op=  4 n=   112
+  e FastRmsNormF16           op=  0 n=   896
+  e QmmVecQ4MultiF16         op=  4 n=  1216
+  e SwigluF16                op=  0 n=  4864
+  e QmmVecQ4MultiF16         op=  4 n=   112
+  e FastRmsNormF16           op=  0 n=   896
+  e QmmVecQ4MultiF16         op=  4 n=   144
+  e FastRopeF16              op=  0 n=    64
+  e SliceUpdatePairF16       op=128 n=   128
+  e FastRopeF16              op=  0 n=   448
+  e MatmulF16                op=  0 n=   532
+  e SoftmaxF16               op=  0 n=   532
+  e MatmulF16                op=  0 n=   896
+  e QmmVecQ4MultiF16         op=  4 n=   112
+  e FastRmsNormF16           op=  0 n=   896
+  e QmmVecQ4MultiF16         op=  4 n=  1216
+  e SwigluF16                op=  0 n=  4864
+  e QmmVecQ4MultiF16         op=  4 n=   112
+  e FastRmsNormF16           op=  0 n=   896
+  e QmmVecQ4MultiF16         op=  4 n=   144
+  e FastRopeF16              op=  0 n=    64
+  e SliceUpdatePairF16       op=128 n=   128
+  e FastRopeF16              op=  0 n=   448
+  e MatmulF16                op=  0 n=   532
+  e SoftmaxF16               op=  0 n=   532
+  e MatmulF16                op=  0 n=   896
+  e QmmVecQ4MultiF16         op=  4 n=   112
+  e FastRmsNormF16           op=  0 n=   896
+  e QmmVecQ4MultiF16         op=  4 n=  1216
+  e SwigluF16                op=  0 n=  4864
+  e QmmVecQ4MultiF16         op=  4 n=   112
+  e FastRmsNormF16           op=  0 n=   896
+  e QmmVecQ4MultiF16         op=  4 n=   144
+  e FastRopeF16              op=  0 n=    64
+  e SliceUpdatePairF16       op=128 n=   128
+  e FastRopeF16              op=  0 n=   448
+  e MatmulF16                op=  0 n=   532
+  e SoftmaxF16               op=  0 n=   532
+  e MatmulF16                op=  0 n=   896
+  e QmmVecQ4MultiF16         op=  4 n=   112
+  e FastRmsNormF16           op=  0 n=   896
+  e QmmVecQ4MultiF16         op=  4 n=  1216
+  e SwigluF16                op=  0 n=  4864
+  e QmmVecQ4MultiF16         op=  4 n=   112
+  e FastRmsNormF16           op=  0 n=   896
+  e QmmVecQ4MultiF16         op=  4 n=   144
+  e FastRopeF16              op=  0 n=    64
+  e SliceUpdatePairF16       op=128 n=   128
+  e FastRopeF16              op=  0 n=   448
+  e MatmulF16                op=  0 n=   532
+  e SoftmaxF16               op=  0 n=   532
+  e MatmulF16                op=  0 n=   896
+  e QmmVecQ4MultiF16         op=  4 n=   112
+  e FastRmsNormF16           op=  0 n=   896
+  e QmmVecQ4MultiF16         op=  4 n=  1216
+  e SwigluF16                op=  0 n=  4864
+  e QmmVecQ4MultiF16         op=  4 n=   112
+  e FastRmsNormF16           op=  0 n=   896
+  e QmmVecQ4WordF16          op=  4 n=151936
+  e LogSumExpF16             op=  0 n=     1
+  e ElementwiseF16           op=  9 n=151936
+  e ArgReduceF16             op=  1 n=     1
+
+== token 2 dispatch sequence ==
+  e TakeF16                  op=  1 n=    14
+  e TakeF16                  op=  1 n=    14
+  e TakeU32                  op=  1 n=   112
+  e DequantF16               op=  4 n=   112
+  e FastRmsNormF16           op=  0 n=   896
+  e QmmVecQ4MultiF16         op=  4 n=   144
+  e FastRopeF16              op=  0 n=    64
+  e SliceUpdatePairF16       op=128 n=   128
+  e FastRopeF16              op=  0 n=   448
+  e MatmulF16                op=  0 n=   546
+  e SoftmaxF16               op=  0 n=   546
+  e MatmulF16                op=  0 n=   896
+  e QmmVecQ4MultiF16         op=  4 n=   112
+  e FastRmsNormF16           op=  0 n=   896
+  e QmmVecQ4MultiF16         op=  4 n=  1216
+  e SwigluF16                op=  0 n=  4864
+  e QmmVecQ4MultiF16         op=  4 n=   112
+  e FastRmsNormF16           op=  0 n=   896
+  e QmmVecQ4MultiF16         op=  4 n=   144
+  e FastRopeF16              op=  0 n=    64
+  e SliceUpdatePairF16       op=128 n=   128
+  e FastRopeF16              op=  0 n=   448
+  e MatmulF16                op=  0 n=   546
+  e SoftmaxF16               op=  0 n=   546
+  e MatmulF16                op=  0 n=   896
+  e QmmVecQ4MultiF16         op=  4 n=   112
+  e FastRmsNormF16           op=  0 n=   896
+  e QmmVecQ4MultiF16         op=  4 n=  1216
+  e SwigluF16                op=  0 n=  4864
+  e QmmVecQ4MultiF16         op=  4 n=   112
+  e FastRmsNormF16           op=  0 n=   896
+  e QmmVecQ4MultiF16         op=  4 n=   144
+  e FastRopeF16              op=  0 n=    64
+  e SliceUpdatePairF16       op=128 n=   128
+  e FastRopeF16              op=  0 n=   448
+  e MatmulF16                op=  0 n=   546
+  e SoftmaxF16               op=  0 n=   546
+  e MatmulF16                op=  0 n=   896
+  e QmmVecQ4MultiF16         op=  4 n=   112
+  e FastRmsNormF16           op=  0 n=   896
+  e QmmVecQ4MultiF16         op=  4 n=  1216
+  e SwigluF16                op=  0 n=  4864
+  e QmmVecQ4MultiF16         op=  4 n=   112
+  e FastRmsNormF16           op=  0 n=   896
+  e QmmVecQ4MultiF16         op=  4 n=   144
+  e FastRopeF16              op=  0 n=    64
+  e SliceUpdatePairF16       op=128 n=   128
+  e FastRopeF16              op=  0 n=   448
+  e MatmulF16                op=  0 n=   546
+  e SoftmaxF16               op=  0 n=   546
+  e MatmulF16                op=  0 n=   896
+  e QmmVecQ4MultiF16         op=  4 n=   112
+  e FastRmsNormF16           op=  0 n=   896
+  e QmmVecQ4MultiF16         op=  4 n=  1216
+  e SwigluF16                op=  0 n=  4864
+  e QmmVecQ4MultiF16         op=  4 n=   112
+  e FastRmsNormF16           op=  0 n=   896
+  e QmmVecQ4MultiF16         op=  4 n=   144
+  e FastRopeF16              op=  0 n=    64
+  e SliceUpdatePairF16       op=128 n=   128
+  e FastRopeF16              op=  0 n=   448
+  e MatmulF16                op=  0 n=   546
+  e SoftmaxF16               op=  0 n=   546
+  e MatmulF16                op=  0 n=   896
+  e QmmVecQ4MultiF16         op=  4 n=   112
+  e FastRmsNormF16           op=  0 n=   896
+  e QmmVecQ4MultiF16         op=  4 n=  1216
+  e SwigluF16                op=  0 n=  4864
+  e QmmVecQ4MultiF16         op=  4 n=   112
+  e FastRmsNormF16           op=  0 n=   896
+  e QmmVecQ4MultiF16         op=  4 n=   144
+  e FastRopeF16              op=  0 n=    64
+  e SliceUpdatePairF16       op=128 n=   128
+  e FastRopeF16              op=  0 n=   448
+  e MatmulF16                op=  0 n=   546
+  e SoftmaxF16               op=  0 n=   546
+  e MatmulF16                op=  0 n=   896
+  e QmmVecQ4MultiF16         op=  4 n=   112
+  e FastRmsNormF16           op=  0 n=   896
+  e QmmVecQ4MultiF16         op=  4 n=  1216
+  e SwigluF16                op=  0 n=  4864
+  e QmmVecQ4MultiF16         op=  4 n=   112
+  e FastRmsNormF16           op=  0 n=   896
+  e QmmVecQ4MultiF16         op=  4 n=   144
+  e FastRopeF16              op=  0 n=    64
+  e SliceUpdatePairF16       op=128 n=   128
+  e FastRopeF16              op=  0 n=   448
+  e MatmulF16                op=  0 n=   546
+  e SoftmaxF16               op=  0 n=   546
+  e MatmulF16                op=  0 n=   896
+  e QmmVecQ4MultiF16         op=  4 n=   112
+  e FastRmsNormF16           op=  0 n=   896
+  e QmmVecQ4MultiF16         op=  4 n=  1216
+  e SwigluF16                op=  0 n=  4864
+  e QmmVecQ4MultiF16         op=  4 n=   112
+  e FastRmsNormF16           op=  0 n=   896
+  e QmmVecQ4MultiF16         op=  4 n=   144
+  e FastRopeF16              op=  0 n=    64
+  e SliceUpdatePairF16       op=128 n=   128
+  e FastRopeF16              op=  0 n=   448
+  e MatmulF16                op=  0 n=   546
+  e SoftmaxF16               op=  0 n=   546
+  e MatmulF16                op=  0 n=   896
+  e QmmVecQ4MultiF16         op=  4 n=   112
+  e FastRmsNormF16           op=  0 n=   896
+  e QmmVecQ4MultiF16         op=  4 n=  1216
+  e SwigluF16                op=  0 n=  4864
+  e QmmVecQ4MultiF16         op=  4 n=   112
+  e FastRmsNormF16           op=  0 n=   896
+  e QmmVecQ4MultiF16         op=  4 n=   144
+  e FastRopeF16              op=  0 n=    64
+  e SliceUpdatePairF16       op=128 n=   128
+  e FastRopeF16              op=  0 n=   448
+  e MatmulF16                op=  0 n=   546
+  e SoftmaxF16               op=  0 n=   546
+  e MatmulF16                op=  0 n=   896
+  e QmmVecQ4MultiF16         op=  4 n=   112
+  e FastRmsNormF16           op=  0 n=   896
+  e QmmVecQ4MultiF16         op=  4 n=  1216
+  e SwigluF16                op=  0 n=  4864
+  e QmmVecQ4MultiF16         op=  4 n=   112
+  e FastRmsNormF16           op=  0 n=   896
+  e QmmVecQ4MultiF16         op=  4 n=   144
+  e FastRopeF16              op=  0 n=    64
+  e SliceUpdatePairF16       op=128 n=   128
+  e FastRopeF16              op=  0 n=   448
+  e MatmulF16                op=  0 n=   546
+  e SoftmaxF16               op=  0 n=   546
+  e MatmulF16                op=  0 n=   896
+  e QmmVecQ4MultiF16         op=  4 n=   112
+  e FastRmsNormF16           op=  0 n=   896
+  e QmmVecQ4MultiF16         op=  4 n=  1216
+  e SwigluF16                op=  0 n=  4864
+  e QmmVecQ4MultiF16         op=  4 n=   112
+  e FastRmsNormF16           op=  0 n=   896
+  e QmmVecQ4MultiF16         op=  4 n=   144
+  e FastRopeF16              op=  0 n=    64
+  e SliceUpdatePairF16       op=128 n=   128
+  e FastRopeF16              op=  0 n=   448
+  e MatmulF16                op=  0 n=   546
+  e SoftmaxF16               op=  0 n=   546
+  e MatmulF16                op=  0 n=   896
+  e QmmVecQ4MultiF16         op=  4 n=   112
+  e FastRmsNormF16           op=  0 n=   896
+  e QmmVecQ4MultiF16         op=  4 n=  1216
+  e SwigluF16                op=  0 n=  4864
+  e QmmVecQ4MultiF16         op=  4 n=   112
+  e FastRmsNormF16           op=  0 n=   896
+  e QmmVecQ4MultiF16         op=  4 n=   144
+  e FastRopeF16              op=  0 n=    64
+  e SliceUpdatePairF16       op=128 n=   128
+  e FastRopeF16              op=  0 n=   448
+  e MatmulF16                op=  0 n=   546
+  e SoftmaxF16               op=  0 n=   546
+  e MatmulF16                op=  0 n=   896
+  e QmmVecQ4MultiF16         op=  4 n=   112
+  e FastRmsNormF16           op=  0 n=   896
+  e QmmVecQ4MultiF16         op=  4 n=  1216
+  e SwigluF16                op=  0 n=  4864
+  e QmmVecQ4MultiF16         op=  4 n=   112
+  e FastRmsNormF16           op=  0 n=   896
+  e QmmVecQ4MultiF16         op=  4 n=   144
+  e FastRopeF16              op=  0 n=    64
+  e SliceUpdatePairF16       op=128 n=   128
+  e FastRopeF16              op=  0 n=   448
+  e MatmulF16                op=  0 n=   546
+  e SoftmaxF16               op=  0 n=   546
+  e MatmulF16                op=  0 n=   896
+  e QmmVecQ4MultiF16         op=  4 n=   112
+  e FastRmsNormF16           op=  0 n=   896
+  e QmmVecQ4MultiF16         op=  4 n=  1216
+  e SwigluF16                op=  0 n=  4864
+  e QmmVecQ4MultiF16         op=  4 n=   112
+  e FastRmsNormF16           op=  0 n=   896
+  e QmmVecQ4MultiF16         op=  4 n=   144
+  e FastRopeF16              op=  0 n=    64
+  e SliceUpdatePairF16       op=128 n=   128
+  e FastRopeF16              op=  0 n=   448
+  e MatmulF16                op=  0 n=   546
+  e SoftmaxF16               op=  0 n=   546
+  e MatmulF16                op=  0 n=   896
+  e QmmVecQ4MultiF16         op=  4 n=   112
+  e FastRmsNormF16           op=  0 n=   896
+  e QmmVecQ4MultiF16         op=  4 n=  1216
+  e SwigluF16                op=  0 n=  4864
+  e QmmVecQ4MultiF16         op=  4 n=   112
+  e FastRmsNormF16           op=  0 n=   896
+  e QmmVecQ4MultiF16         op=  4 n=   144
+  e FastRopeF16              op=  0 n=    64
+  e SliceUpdatePairF16       op=128 n=   128
+  e FastRopeF16              op=  0 n=   448
+  e MatmulF16                op=  0 n=   546
+  e SoftmaxF16               op=  0 n=   546
+  e MatmulF16                op=  0 n=   896
+  e QmmVecQ4MultiF16         op=  4 n=   112
+  e FastRmsNormF16           op=  0 n=   896
+  e QmmVecQ4MultiF16         op=  4 n=  1216
+  e SwigluF16                op=  0 n=  4864
+  e QmmVecQ4MultiF16         op=  4 n=   112
+  e FastRmsNormF16           op=  0 n=   896
+  e QmmVecQ4MultiF16         op=  4 n=   144
+  e FastRopeF16              op=  0 n=    64
+  e SliceUpdatePairF16       op=128 n=   128
+  e FastRopeF16              op=  0 n=   448
+  e MatmulF16                op=  0 n=   546
+  e SoftmaxF16               op=  0 n=   546
+  e MatmulF16                op=  0 n=   896
+  e QmmVecQ4MultiF16         op=  4 n=   112
+  e FastRmsNormF16           op=  0 n=   896
+  e QmmVecQ4MultiF16         op=  4 n=  1216
+  e SwigluF16                op=  0 n=  4864
+  e QmmVecQ4MultiF16         op=  4 n=   112
+  e FastRmsNormF16           op=  0 n=   896
+  e QmmVecQ4MultiF16         op=  4 n=   144
+  e FastRopeF16              op=  0 n=    64
+  e SliceUpdatePairF16       op=128 n=   128
+  e FastRopeF16              op=  0 n=   448
+  e MatmulF16                op=  0 n=   546
+  e SoftmaxF16               op=  0 n=   546
+  e MatmulF16                op=  0 n=   896
+  e QmmVecQ4MultiF16         op=  4 n=   112
+  e FastRmsNormF16           op=  0 n=   896
+  e QmmVecQ4MultiF16         op=  4 n=  1216
+  e SwigluF16                op=  0 n=  4864
+  e QmmVecQ4MultiF16         op=  4 n=   112
+  e FastRmsNormF16           op=  0 n=   896
+  e QmmVecQ4MultiF16         op=  4 n=   144
+  e FastRopeF16              op=  0 n=    64
+  e SliceUpdatePairF16       op=128 n=   128
+  e FastRopeF16              op=  0 n=   448
+  e MatmulF16                op=  0 n=   546
+  e SoftmaxF16               op=  0 n=   546
+  e MatmulF16                op=  0 n=   896
+  e QmmVecQ4MultiF16         op=  4 n=   112
+  e FastRmsNormF16           op=  0 n=   896
+  e QmmVecQ4MultiF16         op=  4 n=  1216
+  e SwigluF16                op=  0 n=  4864
+  e QmmVecQ4MultiF16         op=  4 n=   112
+  e FastRmsNormF16           op=  0 n=   896
+  e QmmVecQ4MultiF16         op=  4 n=   144
+  e FastRopeF16              op=  0 n=    64
+  e SliceUpdatePairF16       op=128 n=   128
+  e FastRopeF16              op=  0 n=   448
+  e MatmulF16                op=  0 n=   546
+  e SoftmaxF16               op=  0 n=   546
+  e MatmulF16                op=  0 n=   896
+  e QmmVecQ4MultiF16         op=  4 n=   112
+  e FastRmsNormF16           op=  0 n=   896
+  e QmmVecQ4MultiF16         op=  4 n=  1216
+  e SwigluF16                op=  0 n=  4864
+  e QmmVecQ4MultiF16         op=  4 n=   112
+  e FastRmsNormF16           op=  0 n=   896
+  e QmmVecQ4MultiF16         op=  4 n=   144
+  e FastRopeF16              op=  0 n=    64
+  e SliceUpdatePairF16       op=128 n=   128
+  e FastRopeF16              op=  0 n=   448
+  e MatmulF16                op=  0 n=   546
+  e SoftmaxF16               op=  0 n=   546
+  e MatmulF16                op=  0 n=   896
+  e QmmVecQ4MultiF16         op=  4 n=   112
+  e FastRmsNormF16           op=  0 n=   896
+  e QmmVecQ4MultiF16         op=  4 n=  1216
+  e SwigluF16                op=  0 n=  4864
+  e QmmVecQ4MultiF16         op=  4 n=   112
+  e FastRmsNormF16           op=  0 n=   896
+  e QmmVecQ4MultiF16         op=  4 n=   144
+  e FastRopeF16              op=  0 n=    64
+  e SliceUpdatePairF16       op=128 n=   128
+  e FastRopeF16              op=  0 n=   448
+  e MatmulF16                op=  0 n=   546
+  e SoftmaxF16               op=  0 n=   546
+  e MatmulF16                op=  0 n=   896
+  e QmmVecQ4MultiF16         op=  4 n=   112
+  e FastRmsNormF16           op=  0 n=   896
+  e QmmVecQ4MultiF16         op=  4 n=  1216
+  e SwigluF16                op=  0 n=  4864
+  e QmmVecQ4MultiF16         op=  4 n=   112
+  e FastRmsNormF16           op=  0 n=   896
+  e QmmVecQ4MultiF16         op=  4 n=   144
+  e FastRopeF16              op=  0 n=    64
+  e SliceUpdatePairF16       op=128 n=   128
+  e FastRopeF16              op=  0 n=   448
+  e MatmulF16                op=  0 n=   546
+  e SoftmaxF16               op=  0 n=   546
+  e MatmulF16                op=  0 n=   896
+  e QmmVecQ4MultiF16         op=  4 n=   112
+  e FastRmsNormF16           op=  0 n=   896
+  e QmmVecQ4MultiF16         op=  4 n=  1216
+  e SwigluF16                op=  0 n=  4864
+  e QmmVecQ4MultiF16         op=  4 n=   112
+  e FastRmsNormF16           op=  0 n=   896
+  e QmmVecQ4MultiF16         op=  4 n=   144
+  e FastRopeF16              op=  0 n=    64
+  e SliceUpdatePairF16       op=128 n=   128
+  e FastRopeF16              op=  0 n=   448
+  e MatmulF16                op=  0 n=   546
+  e SoftmaxF16               op=  0 n=   546
+  e MatmulF16                op=  0 n=   896
+  e QmmVecQ4MultiF16         op=  4 n=   112
+  e FastRmsNormF16           op=  0 n=   896
+  e QmmVecQ4MultiF16         op=  4 n=  1216
+  e SwigluF16                op=  0 n=  4864
+  e QmmVecQ4MultiF16         op=  4 n=   112
+  e FastRmsNormF16           op=  0 n=   896
+  e QmmVecQ4MultiF16         op=  4 n=   144
+  e FastRopeF16              op=  0 n=    64
+  e SliceUpdatePairF16       op=128 n=   128
+  e FastRopeF16              op=  0 n=   448
+  e MatmulF16                op=  0 n=   546
+  e SoftmaxF16               op=  0 n=   546
+  e MatmulF16                op=  0 n=   896
+  e QmmVecQ4MultiF16         op=  4 n=   112
+  e FastRmsNormF16           op=  0 n=   896
+  e QmmVecQ4MultiF16         op=  4 n=  1216
+  e SwigluF16                op=  0 n=  4864
+  e QmmVecQ4MultiF16         op=  4 n=   112
+  e FastRmsNormF16           op=  0 n=   896
+  e QmmVecQ4WordF16          op=  4 n=151936
+  e LogSumExpF16             op=  0 n=     1
+  e ElementwiseF16           op=  9 n=151936
+  e ArgReduceF16             op=  1 n=     1

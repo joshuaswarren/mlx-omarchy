@@ -1,0 +1,115 @@
+{
+  "topic": "Producer-direct KV cache writes (wave/DecodeCopyFusion): extend the values planner to the model's real view chain, then decide on the full llvmpipe + M1 gate",
+  "source_commit": "1f2009408b1407d2c620026f78a4dc76deaf12d8",
+  "base_commit": "68e3bc7613ef88ba064606995e18855482086a11",
+  "history": "68e3bc76 added the producer-direct KV writes gated by MLX_OMARCHY_KV_DIRECT (default on). First llvmpipe model census (2026-09-10) showed the feature INERT: both env arms 321 dispatches/token with the merged pair present, because plan_values_window required a single Reshape while mlx-lm delivers the values rows as Reshape([1,1,n_kv,hd]) + Transpose({0,2,1,3}). Debug instrumentation (receipts/llvmpipe/kvd-dbg2-stderr.log) proved every pair classified keys_rope/none. 1f200940 extends the planner to walk the bounded view-only chain (Transpose/Reshape) and prove the layout: composed element strides from the row-contiguous sum must re-index without moving bytes and satisfy sum[head*head_dim + dim] for update element (head, dim) -- exactly the GEMV store order. Every chain view must have one consumer and becomes a window alias; any mismatch keeps the ordinary plan; the runtime abort unwind is unchanged.",
+  "host": "dev box: llvmpipe (MLX_OMARCHY_ALLOW_NON_APPLE=1), Mesa software Vulkan, x86_64 EPYC; device: jwm1-linux, Apple M1 (G13G B1), Honeykrisp fork driver (installed package, no ad-hoc driver build), glslc 2026.3, linux-asahi",
+  "wheels": {
+    "m1_release": {
+      "stamp": "1f20094",
+      "version": "0.32.2.dev202609102319+1f20094",
+      "sha256": "ca2467aa265c70477d2d159f9e094091d9c90ed3ad2923d3370aba60c9ceabdb"
+    },
+    "m1_diagnostics": {
+      "stamp": "diag.1f20094",
+      "version": "0.32.2.dev202609102316+diag.1f20094",
+      "sha256": "1471dc2a4465f4446691fbefd0d0460a64de2aba7c4e5943ad2cba09027da2e4"
+    },
+    "llvmpipe_extension_census": {
+      "version": "0.32.2.dev202609102311+diag.68e3bc7",
+      "sha256": "84de07ed0dffe63145e04990d0dcfbefc8c34c88bb658b4aa31d7e2f6ec0fbe2",
+      "note": "stamped diag.68e3bc7 because the extension was still uncommitted; tree content is exactly 1f200940's fused_chain.cpp + test"
+    },
+    "llvmpipe_baseline_census": {
+      "version": "0.32.2.dev202609102253+diag.68e3bc7",
+      "sha256": "ad8497b1cd049207888e5df84188e8bcc2e475530aa7b50f24d4e88bb834cb45",
+      "note": "clean 68e3bc76 tree, pre-extension; used for the inert-feature census and as the 321 baseline"
+    }
+  },
+  "census": {
+    "method": "scripts/profile_generate.py + scripts/chain_census.py on llvmpipe (median decode token over the pinned prompt, 32 max tokens, temp 0, seed 0, MLX_DISABLE_COMPILE=1); scripts/profile_generate.py + scripts/profile_analyze.py on jwm1 (dispatches over 7 inter-token intervals of the same pinned prompt)",
+    "model": "mlx-community/Qwen2.5-0.5B-Instruct-4bit snapshot a5339a4131f135d0fdc6a5c8b5bbed2753bbe0f3",
+    "m1": {
+      "stock_kv_direct_0": {
+        "dispatches_per_decode_interval": 273.0,
+        "raw": "1911 dispatches over 7 inter-token intervals",
+        "slice_update_pair_f16_whole_run": 240,
+        "median_inter_token_ms": 23.48
+      },
+      "fork_kv_direct_1": {
+        "dispatches_per_decode_interval": 249.0,
+        "raw": "1743 dispatches over 7 inter-token intervals",
+        "slice_update_pair_f16_whole_run": 0,
+        "median_inter_token_ms": 21.86
+      },
+      "files": ["m1/census-stock-analysis.txt", "m1/census-fork-analysis.txt"]
+    },
+    "llvmpipe": {
+      "kv_direct_0": {
+        "dispatches_per_token_median": 321,
+        "slice_update_pair_f16_per_token": 24,
+        "greedy_text": "The capital of France is Paris."
+      },
+      "kv_direct_1": {
+        "dispatches_per_token_median": 297,
+        "slice_update_pair_f16_per_token": 0,
+        "greedy_text": "The capital of France is Paris."
+      },
+      "delta_per_token": -24,
+      "note": "absolute baseline differs from the 273->249 projection because that projection was computed, never measured; the projection's own instrument (the M1 inter-token interval accounting) reproduces 273.0 -> 249.0 exactly",
+      "files": ["llvmpipe/census-ext-0.txt", "llvmpipe/census-ext-1.txt", "llvmpipe/gen-ext-0.log", "llvmpipe/gen-ext-1.log", "llvmpipe/kvd-dbg2-stderr.log"]
+    }
+  },
+  "tests": {
+    "llvmpipe": {
+      "omarchy_kv_ops_tests": {"cases": 16, "assertions": 781, "failed": 0},
+      "omarchy_runtime_tests": {"cases": 41, "assertions": 22694, "failed": 0},
+      "omarchy_fast_ops_tests": {"cases": 33, "assertions": 1103840, "failed": 0},
+      "omarchy_fast_regression_tests": {"cases": 2, "assertions": 16, "failed": 0},
+      "omarchy_fused_chain_tests": {"cases": 28, "assertions": 26550, "failed": 0}
+    },
+    "m1": {
+      "omarchy_kv_ops_tests": {"cases": 16, "assertions": 781, "failed": 0},
+      "omarchy_runtime_tests": {"cases": 41, "assertions": 22694, "failed": 0},
+      "omarchy_fast_ops_tests": {"cases": 33, "assertions": 1103840, "failed": 0},
+      "omarchy_fast_regression_tests": {"cases": 2, "assertions": 16, "failed": 0},
+      "omarchy_fused_chain_tests": {"cases": 28, "assertions": 26550, "failed": 0}
+    },
+    "kv_ops_coverage": "test_kv_ops.cpp producer-direct case runs three values chains A/B against the merged pair as oracle: the single-Reshape form, the model's reshape+transpose chain (both must be bit-exact f16 with exactly one fewer compute dispatch and window isolation), and the model chain with a second consumer on the view (must refuse the direct write: no dispatch delta, merged-run bits, probe agrees across arms)"
+  },
+  "paired_legs": {
+    "protocol": "paired_barriers (receipts/2026-09-10-decode-bound-3): 3 repetitions, arm order alternating per pair (fork/stock, stock/fork, fork/stock), same release wheel both sides, per-leg canonical-digest hard gate with one retry on mismatch, contended-machine refusal",
+    "arms": {
+      "fork": "default env = producer-direct KV writes (MLX_OMARCHY_KV_DIRECT unset)",
+      "stock": "MLX_OMARCHY_KV_DIRECT=0 = merged SliceUpdatePair dispatch"
+    },
+    "repetitions": 3,
+    "legs_covered": ["short-decode-32 (30 prompt tokens)", "long-decode-128 (262)", "longctx-1024-decode-32 (1053)"],
+    "digest_checks": {"expected": 18, "canonical": 18, "retries_used": 0},
+    "canonical_digests": {
+      "short-decode-32": "7fd25a869ff21678",
+      "long-decode-128": "4cc08910089477fd",
+      "longctx-1024-decode-32": "7da83f06ec9f001d"
+    },
+    "decode_tok_s_samples": {
+      "fork": {
+        "short-decode-32": [112.37, 109.46, 111.25],
+        "long-decode-128": [108.45, 107.94, 108.84],
+        "longctx-1024-decode-32": [96.59, 97.07, 96.01]
+      },
+      "stock": {
+        "short-decode-32": [107.25, 110.38, 108.96],
+        "long-decode-128": [106.37, 106.08, 107.34],
+        "longctx-1024-decode-32": [92.85, 94.3, 95.32]
+      }
+    },
+    "decode_tok_s_medians": {
+      "fork": {"short-decode-32": 111.25, "long-decode-128": 108.45, "longctx-1024-decode-32": 96.59},
+      "stock": {"short-decode-32": 108.96, "long-decode-128": 106.37, "longctx-1024-decode-32": 94.3}
+    },
+    "fork_over_stock_pct": {"short-decode-32": 2.1017, "long-decode-128": 1.9554, "longctx-1024-decode-32": 2.4284},
+    "fork_faster_in": "9 of 9 paired arm-samples per leg comparisons (fork median above stock median on every leg; every fork sample above every stock sample on long and longctx; on short, fork min 109.46 > stock median 108.96)",
+    "files": ["m1/legs/paired-summary.json", "m1/legs.log", "m1/legs/"]
+  },
+  "decision": "land on wave/DecodeCopyFusion: dispatches per decode token fall (273.0 -> 249.0 on the M1 instrument, 321 -> 297 on the llvmpipe chain census, SliceUpdatePairF16 24 -> 0 per decode token), decode improves repeatably (+1.96%/+2.10%/+2.43% medians, fork ahead in every pair), all 18 digest checks canonical, five test batteries green on llvmpipe and M1. Branch stays on wave/DecodeCopyFusion; merging to main is Main's call, not this receipt's."
+}
