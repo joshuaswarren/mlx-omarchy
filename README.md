@@ -82,19 +82,33 @@ Published v0.4.0 aarch64 wheel, installed by `install.sh`, on an Apple M1 with t
 | 262 / 128 | 64.79 | 255.9 |
 | 1053 / 32 | 44.95 | 272.9 |
 
-The BF16 model decodes at about 11 tok/s on the stock driver and about 40 on the optional [Honeykrisp fork build](docs/install-omarchy.md#honeykrisp-driver-with-the-fork-fixes).
+Since that wheel, main carries the paired-verified performance work, with every generated token unchanged on every measured leg: the exact SwiGLU chain fused into one dispatch by default ([receipt](receipts/2026-09-09-fused-chain-default/verdict.json)), the Q4 GEMV rewritten to native Metal's arithmetic order ([receipt](receipts/2026-09-09-q4-gemv-order/verdict.json)), the prefill wave of four-wide 16-bit binary kernels, a register-blocked f16 attention matmul, causal softmax without a materialized mask, and a straight-line SwiGLU kernel ([receipt](receipts/2026-09-09-prefill-speed/verdict.json)), the prefill quantized matmul retiled toward native `qmm_t` ([receipt](receipts/2026-09-09-prefill-qmm/verdict.json)), grouped Q4 decode GEMVs ([receipt](receipts/2026-09-09-decode-fusion/verdict.json)), native-order decode attention, paired KV cache updates, and the scalar-drain removal.
 
-Since that wheel, main carries six paired-verified changes with every generated token unchanged on every measured leg: the exact SwiGLU chain fused into one dispatch by default ([receipt](receipts/2026-09-09-fused-chain-default/verdict.json)), the Q4 GEMV rewritten to native Metal's arithmetic order ([receipt](receipts/2026-09-09-q4-gemv-order/verdict.json)), and the prefill wave: four-wide 16-bit binary kernels, a register-blocked f16 attention matmul, causal softmax without a materialized mask, and a straight-line SwiGLU kernel ([receipt](receipts/2026-09-09-prefill-speed/verdict.json), Q4 prefill +21% at 262 tokens and +81% at 1053), then the prefill quantized matmul retiled toward native `qmm_t` ([receipt](receipts/2026-09-09-prefill-qmm/verdict.json), a further +17% and +13%), and grouped Q4 decode GEMVs (q/k/v and gate/up in one dispatch each; [receipt](receipts/2026-09-09-decode-fusion/verdict.json), 537 to 345 dispatches per token). Main on the M1 with the Honeykrisp fork driver ([smoke](receipts/2026-09-09-main-prefill-qmm-smoke/verdict.json); the stock asahi-alarm Mesa lacks the cooperative matrix, so prefill falls back and measures lower — the [v0.4.1 receipt](receipts/2026-09-10-v0.4.1-release.md) carries both columns):
+Current main at `b6d662a8`, measured by the canonical 12-leg matrix: two drivers, both models, three workloads, 12 repetitions per driver after a discarded warmup, alternating drivers, AC power, every generated-id digest and token count checked, 144 of 144 legs valid ([receipt](receipts/2026-09-10-main-parity-12-matrix/verdict.md)). `fork` is the optional [Honeykrisp fork build](docs/install-omarchy.md#honeykrisp-driver-with-the-fork-fixes) with the cooperative matrix; `stock` is Omarchy's Mesa 26.1.7, which has no cooperative matrix and therefore falls back on prefill.
 
-| Prompt / generated tokens | Decode tok/s | Prefill tok/s |
-|---|---:|---:|
-| 30 / 32 | 95.53 | 136.4 |
-| 262 / 128 | 76.41 | 634.4 |
-| 1053 / 32 | 50.94 | 980.4 |
+| Model | Prompt / generated tokens | Decode tok/s (fork / stock) | Prefill tok/s (fork / stock) |
+|---|---|---:|---:|
+| Q4 | 30 / 32 | 112.2 / 102.5 | 331.5 / 170.9 |
+| Q4 | 262 / 128 | 108.9 / 81.9 | 970.4 / 310.1 |
+| Q4 | 1053 / 32 | 96.1 / 52.9 | 1112.5 / 361.7 |
+| BF16 | 30 / 32 | 11.70 / 11.73 | 86.0 / 83.8 |
+| BF16 | 262 / 128 | 11.25 / 11.29 | 317.8 / 210.8 |
+| BF16 | 1053 / 32 | 10.03 / 10.12 | 364.8 / 220.1 |
 
 `MLX_OMARCHY_FUSED_CHAIN=0`, `MLX_OMARCHY_QMM_VEC_Q4_WORD=0`, and `MLX_OMARCHY_QMM_TILE_RB=0` disable the fused chain, the decode kernel, and the prefill kernel for comparison.
 
-Performance parity is still open. Historical macOS MLX 0.32.2 medians on this M1 were 150.8 / 146.6 / 140.3 decode tok/s and 294 / 1213 / 1838 prefill tok/s for the same three workloads. The historical short and 1024-context token-ID hashes match Linux, but the long-prompt hashes differ: native `254d73fd93164b98`, Linux `4cc08910089477fd`. These cross-OS timings do not establish numerical parity. [macOS receipts](receipts/native-baseline-2026-09-06).
+Performance parity is still open, and the remaining distance is now specific. The denominator is the committed macOS MLX 0.32.2 baseline on an Apple M1, five repetitions with stable digests ([receipt](receipts/native-baseline-2026-09-06/native-2026-09-06-summary.json)): Q4 decode 150.57 / 146.77 / 140.38 tok/s and prefill 294.1 / 1213.0 / 1840.9; BF16 decode 56.43 / 55.72 / 54.55 and prefill 232.6 / 1007.7 / 1655.7. The fork build reaches these fractions of native:
+
+| Model | Prompt / generated tokens | Decode vs native | Prefill vs native |
+|---|---|---:|---:|
+| Q4 | 30 / 32 | 0.75 | 1.13 |
+| Q4 | 262 / 128 | 0.74 | 0.80 |
+| Q4 | 1053 / 32 | 0.68 | 0.60 |
+| BF16 | 30 / 32 | 0.21 | 0.37 |
+| BF16 | 262 / 128 | 0.20 | 0.32 |
+| BF16 | 1053 / 32 | 0.18 | 0.22 |
+
+Short-prompt Q4 prefill is the one leg already past native. Dense BF16 decode is the largest remaining hole: those single-token projections still run the sequential dense matmul kernel instead of a vector kernel. Cross-OS timings do not establish numerical parity: the Q4 short and 1024-context token-ID digests match native, while the Q4 long-prompt digest differs (native `254d73fd93164b98`, Linux `4cc08910089477fd`). The BF16 mismatch at the 262-token leg was root-caused to macOS-side rounding, with the Linux result bit-exact to a float64 round-to-nearest-even reference ([receipt](receipts/2026-09-10-bf16-rootcause/README.md)).
 
 To reproduce a leg, use the fixed-length runner, which suppresses EOS:
 
