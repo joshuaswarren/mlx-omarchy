@@ -867,6 +867,9 @@ bool try_eval_eager_fusion(array& node, const Stream& stream) {
     }
     pair.state = SliceUpdatePair::State::failed;
     return false;
+  }
+  if (auto gemv = eager_state->gemv_roles.find(node.id());
+      gemv != eager_state->gemv_roles.end()) {
     auto& group = eager_state->gemv_groups[gemv->second];
     if (group.state == GemvGroup::State::pending) {
       group.state = dispatch_quantized_gemv_group(group.members, stream)
