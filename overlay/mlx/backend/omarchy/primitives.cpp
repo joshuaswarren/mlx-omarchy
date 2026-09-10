@@ -7,6 +7,7 @@
 #include <array>
 #include <cmath>
 #include <cstdint>
+#include <cstdlib>
 #include <cstdio>
 #include <cstring>
 #include <initializer_list>
@@ -6930,6 +6931,7 @@ SliceUpdatePairDispatch dispatch_slice_update_pair(
   const auto& caps = encoder.device().capabilities();
   if (encoder.device().compute().binding_limit() < 4 ||
       !caps.shader_float16 || !caps.storage_buffer_16bit_access) {
+    if (std::getenv("MLX_OMARCHY_KV_PAIR_DEBUG")) { std::fprintf(stderr, "kv-pair reject unsupported line=6933\n"); }
     return SliceUpdatePairDispatch::unsupported;
   }
 
@@ -6942,6 +6944,7 @@ SliceUpdatePairDispatch dispatch_slice_update_pair(
       nodes[0].inputs().size() != 2 || nodes[1].inputs().size() != 2 ||
       static_cast<const SliceUpdate&>(nodes[1].primitive()).state() !=
           first_primitive.state()) {
+    if (std::getenv("MLX_OMARCHY_KV_PAIR_DEBUG")) { std::fprintf(stderr, "kv-pair reject unsupported line=6945\n"); }
     return SliceUpdatePairDispatch::unsupported;
   }
 
@@ -6951,6 +6954,7 @@ SliceUpdatePairDispatch dispatch_slice_update_pair(
       first_update.ndim() == 0 || first_update.ndim() > 4 ||
       first_update.ndim() != nodes[0].ndim() ||
       first_update.size() > std::numeric_limits<uint32_t>::max()) {
+    if (std::getenv("MLX_OMARCHY_KV_PAIR_DEBUG")) { std::fprintf(stderr, "kv-pair reject unsupported line=6954\n"); }
     return SliceUpdatePairDispatch::unsupported;
   }
 
@@ -6960,6 +6964,7 @@ SliceUpdatePairDispatch dispatch_slice_update_pair(
       prepare_slice(nodes[1], starts, slice_strides);
   if (output_offset != second_output_offset ||
       output_strides != second_output_strides) {
+    if (std::getenv("MLX_OMARCHY_KV_PAIR_DEBUG")) { std::fprintf(stderr, "kv-pair reject unsupported line=6963\n"); }
     return SliceUpdatePairDispatch::unsupported;
   }
 
@@ -6978,7 +6983,8 @@ SliceUpdatePairDispatch dispatch_slice_update_pair(
             std::numeric_limits<uint32_t>::max() ||
         static_cast<uint64_t>(output_strides[axis]) >
             std::numeric_limits<uint32_t>::max()) {
-      return SliceUpdatePairDispatch::unsupported;
+    if (std::getenv("MLX_OMARCHY_KV_PAIR_DEBUG")) { std::fprintf(stderr, "kv-pair reject unsupported line=6981\n"); }
+    return SliceUpdatePairDispatch::unsupported;
     }
     params.shape[axis] = static_cast<uint32_t>(first_update.shape(axis));
     params.in_strides[axis] =
@@ -6990,6 +6996,7 @@ SliceUpdatePairDispatch dispatch_slice_update_pair(
   }
   if (output_offset > std::numeric_limits<uint32_t>::max() ||
       output_span >= nodes[0].size()) {
+    if (std::getenv("MLX_OMARCHY_KV_PAIR_DEBUG")) { std::fprintf(stderr, "kv-pair reject unsupported line=6993\n"); }
     return SliceUpdatePairDispatch::unsupported;
   }
 
@@ -7003,18 +7010,22 @@ SliceUpdatePairDispatch dispatch_slice_update_pair(
         update.strides() != first_update.strides() ||
         !base.flags().row_contiguous || base.size() != base.data_size() ||
         update.offset() % update.itemsize() != 0) {
-      return SliceUpdatePairDispatch::unsupported;
+    if (std::getenv("MLX_OMARCHY_KV_PAIR_DEBUG")) { std::fprintf(stderr, "kv-pair reject unsupported line=7006\n"); }
+    return SliceUpdatePairDispatch::unsupported;
     }
     if (!input_ready(base, stream) || !input_ready(update, stream)) {
+      if (std::getenv("MLX_OMARCHY_KV_PAIR_DEBUG")) { std::fprintf(stderr, "kv-pair reject not_ready line=7009\n"); }
       return SliceUpdatePairDispatch::not_ready;
     }
     if (base.data_shared_ptr() == nullptr || update.data_shared_ptr() == nullptr) {
-      return SliceUpdatePairDispatch::unsupported;
+    if (std::getenv("MLX_OMARCHY_KV_PAIR_DEBUG")) { std::fprintf(stderr, "kv-pair reject unsupported line=7012\n"); }
+    return SliceUpdatePairDispatch::unsupported;
     }
     uint64_t offset = update.offset() / update.itemsize();
     if (offset > std::numeric_limits<uint32_t>::max() ||
         input_span > std::numeric_limits<uint32_t>::max() - offset) {
-      return SliceUpdatePairDispatch::unsupported;
+    if (std::getenv("MLX_OMARCHY_KV_PAIR_DEBUG")) { std::fprintf(stderr, "kv-pair reject unsupported line=7017\n"); }
+    return SliceUpdatePairDispatch::unsupported;
     }
     if (i == 0) {
       params.lhs_offset = static_cast<uint32_t>(offset);
