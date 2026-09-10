@@ -3,16 +3,21 @@ set -euo pipefail
 
 root=/home/joshuawarren/src/mlx-SubmissionGaps
 out=${1:-/tmp/submission-gaps-paired-fork}
-icd=${2:-/tmp/asahi_coopmat_icd.json}
+icd=${2-}
 base_wheel=$(printf '%s\n' "$root"/.baseline-main/dist/*.whl)
 cand_wheel=$(printf '%s\n' "$root"/dist/*.whl)
 mkdir -p "$out"
-exec timeout 2400 flock -w 2400 /tmp/m1-gpu.lock /bin/bash -c '
+exec timeout 1800 flock -w 1800 /tmp/m1-gpu.lock /bin/bash -c '
   set -euo pipefail
   run_matrix() {
     local side=$1 pair=$2 python=$3 wheel=$4
+    if [[ -n "'$icd'" ]]; then
+      export VK_DRIVER_FILES="'$icd'"
+    else
+      unset VK_DRIVER_FILES
+    fi
     env HOME=/home/joshuawarren HF_HUB_OFFLINE=1 MLX_DISABLE_COMPILE=1 \
-      MESA_SHADER_CACHE_DISABLE=true AGX_SIMDMAT=1 VK_DRIVER_FILES="'$icd'" \
+      MESA_SHADER_CACHE_DISABLE=true AGX_SIMDMAT=1 \
       timeout 900 "$python" "'$root'/scripts/bench_matrix.py" \
       --mode run --python "$python" --host-label jwm1-linux --wheel "$wheel" \
       --select short-decode-32 --select long-decode-128 \
