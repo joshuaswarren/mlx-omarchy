@@ -266,9 +266,10 @@ void CommandEncoder::fill_buffer(
       prof::get().on_barrier(false);
     }
     tracked_writes_.push_back(write);
-  } else if (!full_barrier) {
-    // Host-scalar fills can now share a command buffer. Preserve WAW order
-    // between consecutive fills instead of obtaining it from a host drain.
+  } else if (!full_barrier && node_count_ > 0) {
+    // A fill that opens a command buffer has no in-buffer predecessor.
+    // Later host-scalar fills need this barrier now that they can share a
+    // command buffer instead of obtaining WAW order from a host drain.
     record_dependency_barrier();
     trace::counters().barriers_emitted++;
     prof::get().on_barrier(true);
