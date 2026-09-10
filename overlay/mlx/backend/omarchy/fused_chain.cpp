@@ -5,7 +5,6 @@
 
 #include <array>
 #include <cstdint>
-#include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <limits>
@@ -721,9 +720,6 @@ EagerFusionScope::EagerFusionScope(const std::deque<array>& tape)
     ++i;
   }
 
-  if (std::getenv("MLX_OMARCHY_KV_PAIR_DEBUG")) {
-    std::fprintf(stderr, "kv-pair planned=%zu tape=%zu\n", state->slice_update_pairs.size(), tape.size());
-  }
   if (!fused_gemv_enabled()) {
     return;
   }
@@ -856,9 +852,6 @@ bool try_eval_eager_fusion(array& node, const Stream& stream) {
       return false;
     }
     auto result = dispatch_slice_update_pair(pair.nodes, stream);
-    if (std::getenv("MLX_OMARCHY_KV_PAIR_DEBUG")) {
-      std::fprintf(stderr, "kv-pair try first=%d state=%u result=%u\n", node.id() == pair.nodes[0].id(), static_cast<unsigned>(pair.state), static_cast<unsigned>(result));
-    }
     if (result == SliceUpdatePairDispatch::done) {
       pair.state = SliceUpdatePair::State::done;
       return true;
