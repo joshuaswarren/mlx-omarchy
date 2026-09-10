@@ -47,16 +47,21 @@ void main() {
   uint stride = gl_NumWorkGroups.x * gl_WorkGroupSize.x;
   while (index < params.count) {
     uint rem = index;
-    uint in_index = 0u;
+    uint in_index_a = 0u;
+    uint in_index_b = 0u;
     uint out_index = params.output_offset;
     for (int dim = int(params.dims) - 1; dim >= 0; --dim) {
       uint coord = rem % params.shape[dim];
       rem /= params.shape[dim];
-      in_index += coord * params.in_strides[dim];
+      uint in_stride_b = dim == 0 ? params.operation :
+          (dim == 1 ? params.lhs_size :
+           (dim == 2 ? params.rhs_size : params.reduce_size));
+      in_index_a += coord * params.in_strides[dim];
+      in_index_b += coord * in_stride_b;
       out_index += coord * params.out_strides[dim];
     }
-    output_a.values[out_index] = input_a.values[params.lhs_offset + in_index];
-    output_b.values[out_index] = input_b.values[params.rhs_offset + in_index];
+    output_a.values[out_index] = input_a.values[params.lhs_offset + in_index_a];
+    output_b.values[out_index] = input_b.values[params.rhs_offset + in_index_b];
     if (params.count - index <= stride) {
       break;
     }

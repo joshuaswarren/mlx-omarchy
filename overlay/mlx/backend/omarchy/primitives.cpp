@@ -7000,7 +7000,6 @@ SliceUpdatePairDispatch dispatch_slice_update_pair(
         base.dtype() != float16 || update.dtype() != float16 ||
         base.shape() != nodes[i].shape() ||
         update.shape() != first_update.shape() ||
-        update.strides() != first_update.strides() ||
         !base.flags().row_contiguous || base.size() != base.data_size() ||
         update.offset() % update.itemsize() != 0) {
       return SliceUpdatePairDispatch::unsupported;
@@ -7011,9 +7010,28 @@ SliceUpdatePairDispatch dispatch_slice_update_pair(
     if (base.data_shared_ptr() == nullptr || update.data_shared_ptr() == nullptr) {
       return SliceUpdatePairDispatch::unsupported;
     }
+    uint64_t span = input_span;
+    if (i == 1) {
+      span = 0;
+      for (int axis = 0; axis < update.ndim(); ++axis) {
+        if (update.strides()[axis] < 0 ||
+            static_cast<uint64_t>(update.strides()[axis]) >
+                std::numeric_limits<uint32_t>::max()) {
+          return SliceUpdatePairDispatch::unsupported;
+        }
+        uint32_t stride = static_cast<uint32_t>(update.strides()[axis]);
+        span += static_cast<uint64_t>(update.shape(axis) - 1) * stride;
+        switch (axis) {
+          case 0: params.operation = stride; break;
+          case 1: params.lhs_size = stride; break;
+          case 2: params.rhs_size = stride; break;
+          case 3: params.reduce_size = stride; break;
+        }
+      }
+    }
     uint64_t offset = update.offset() / update.itemsize();
     if (offset > std::numeric_limits<uint32_t>::max() ||
-        input_span > std::numeric_limits<uint32_t>::max() - offset) {
+        span > std::numeric_limits<uint32_t>::max() - offset) {
       return SliceUpdatePairDispatch::unsupported;
     }
     if (i == 0) {
