@@ -296,11 +296,17 @@ bool FusedChain::try_add(
   }
 
   auto encode_leaf = [&](const array& in) -> std::optional<uint32_t> {
-    if (!in.flags().contiguous) {
-      return std::nullopt;
-    }
     const auto mode = leaf_mode_for(in, count, last_dim);
     if (!mode) {
+      return std::nullopt;
+    }
+    // The leaf shader addresses direct, mod-last, and div-last leaves
+    // as row-major linear buffers. A column-contiguous (e.g. transposed)
+    // leaf is also `contiguous`, but its storage order is not its logical
+    // order, so reading it direct returns permuted values. Refuse those
+    // leaves and let the per-node path preserve the layout. Scalar
+    // leaves read only index 0 and are layout-independent.
+    if (mode.value() != kLeafScalar && !in.flags().row_contiguous) {
       return std::nullopt;
     }
     const size_t item_offset = in.offset() / in.itemsize();
