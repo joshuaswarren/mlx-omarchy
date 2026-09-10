@@ -20,8 +20,6 @@ const uint TILE_N = 32u;
 const uint CHUNK_K = 64u;
 const uint STEP_K = 16u;
 const uint MAT = 8u;
-const uint X_STRIDE = 20u;
-const uint W_STRIDE = 20u;
 
 layout(local_size_x = 64) in;
 
@@ -65,9 +63,9 @@ layout(push_constant) uniform Params {
   uint out_strides[4];
 } params;
 
-// 5 KiB shared: pad both rows to the native kernel's 80-byte stride.
-shared float x_s[TILE_M * X_STRIDE];
-shared float w_s[TILE_N * W_STRIDE];
+// 4 KiB shared: one 32x16 x tile and one 16x32 f32 weight tile.
+shared float x_s[TILE_M * STEP_K];
+shared float w_s[STEP_K * TILE_N];
 
 void main() {
   uint lid = gl_LocalInvocationID.x;
@@ -138,27 +136,27 @@ void main() {
             uint i = lid + 64u * j;
             uint local_row = i / 8u;
             vec2 pair = unpackHalf2x16(x_words[j]);
-            x_s[local_row * X_STRIDE + 2u * (i % 8u)] = pair.x;
-            x_s[local_row * X_STRIDE + 2u * (i % 8u) + 1u] = pair.y;
+            x_s[local_row * STEP_K + 2u * (i % 8u)] = pair.x;
+            x_s[local_row * STEP_K + 2u * (i % 8u) + 1u] = pair.y;
           }
           // One packed word per lane covers the 16x32 weight tile.
           uint packed = column_ok
               ? input_w.values[w_row + k_base / 8u + w_part] : 0u;
-          uint w_base = w_column_local * W_STRIDE + 8u * w_part;
-          w_s[w_base + 0u] = scale * float(packed & 0xFu) + bias;
-          w_s[w_base + 1u] =
+          uint w_base = 8u * w_part * TILE_N + w_column_local;
+          w_s[w_base + 0u * TILE_N] = scale * float(packed & 0xFu) + bias;
+          w_s[w_base + 1u * TILE_N] =
               scale * float((packed >> 4u) & 0xFu) + bias;
-          w_s[w_base + 2u] =
+          w_s[w_base + 2u * TILE_N] =
               scale * float((packed >> 8u) & 0xFu) + bias;
-          w_s[w_base + 3u] =
+          w_s[w_base + 3u * TILE_N] =
               scale * float((packed >> 12u) & 0xFu) + bias;
-          w_s[w_base + 4u] =
+          w_s[w_base + 4u * TILE_N] =
               scale * float((packed >> 16u) & 0xFu) + bias;
-          w_s[w_base + 5u] =
+          w_s[w_base + 5u * TILE_N] =
               scale * float((packed >> 20u) & 0xFu) + bias;
-          w_s[w_base + 6u] =
+          w_s[w_base + 6u * TILE_N] =
               scale * float((packed >> 24u) & 0xFu) + bias;
-          w_s[w_base + 7u] = scale * float(packed >> 28u) + bias;
+          w_s[w_base + 7u * TILE_N] = scale * float(packed >> 28u) + bias;
           barrier();
 
           for (uint ks = 0u; ks < STEP_K / MAT; ++ks) {
@@ -167,13 +165,13 @@ void main() {
             for (uint rb = 0u; rb < 2u; ++rb) {
               coopMatLoad(
                   mat_a[rb], x_s,
-                  (sub_rb + rb) * MAT * X_STRIDE + ks * MAT, X_STRIDE,
+                  (sub_rb + rb) * MAT * STEP_K + ks * MAT, STEP_K,
                   gl_CooperativeMatrixLayoutRowMajor);
             }
             for (uint cb = 0u; cb < 4u; ++cb) {
               coopMatLoad(
-                  mat_b[cb], w_s, cb * MAT * W_STRIDE + ks * MAT, W_STRIDE,
-                  gl_CooperativeMatrixLayoutColumnMajor);
+                  mat_b[cb], w_s, ks * MAT * TILE_N + cb * MAT, TILE_N,
+                  gl_CooperativeMatrixLayoutRowMajor);
             }
             for (uint rb = 0u; rb < 2u; ++rb) {
               for (uint cb = 0u; cb < 4u; ++cb) {
