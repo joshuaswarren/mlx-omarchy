@@ -81,8 +81,15 @@ def main():
                 f"jwm1-qmm-splitk-parity-{args.driver}-{stem}", "--timeout", "600",
                 "--out", str(out_json),
             ]
+            # The default arm retries: a digest mismatch there means a
+            # fragmented-heap window flipped dispatches to the tile
+            # fallback (environmental, not deterministic). A knob arm
+            # gets one attempt: a deviation is the arm's own routing
+            # changing generated ids, which is the finding itself.
             attempts = []
-            for attempt in range(1, 4):
+            max_attempts = 3 if arm == "default" else 1
+            digests = {}
+            for attempt in range(1, max_attempts + 1):
                 with log_path.open("w") as log:
                     subprocess.run(cmd, cwd=root, env=env, stdout=log,
                                    stderr=subprocess.STDOUT, check=True,
@@ -96,18 +103,20 @@ def main():
                            for leg in legs}
                 if all(digests[w] == EXPECTED[w] for w in EXPECTED):
                     break
-                # A mismatch under no MLX_* knobs means the run landed in
-                # a fragmented-heap window: some qmm dispatches fell back
-                # to the tile kernel, which is not digest-neutral. Record
-                # and retry while the lock is held; only clean runs count.
-            assert all(digests[w] == EXPECTED[w] for w in EXPECTED), (stem, digests)
+                if arm != "default":
+                    break
+                attempts.append({"attempt": attempt, "digests": digests})
+                print(f"{stem} digest retry {attempt}: {digests}", flush=True)
+            digest_ok = all(digests[w] == EXPECTED[w] for w in EXPECTED)
+            assert digest_ok or arm != "default", (stem, digests)
             run = {"rotation": rotation, "arm": arm, "legs": [],
+                   "digest_ok": digest_ok,
+                   "digests": digests,
                    "digest_retries": len(attempts)}
             for leg in legs:
                 workload = leg["workload_id"]
                 metrics = leg["metrics"]
                 digest = metrics["generated_ids_sha256_16"]
-                assert digest == EXPECTED[workload], (workload, digest)
                 run["legs"].append({
                     "workload": workload,
                     "prompt_tokens": metrics["prompt_tokens"],
@@ -117,7 +126,7 @@ def main():
                 })
                 grouped[(arm, workload)].append(metrics["prefill_tok_s"])
             summary["runs"].append(run)
-            print(f"{stem} ok", flush=True)
+            print(f"{stem} ok digest_ok={digest_ok}", flush=True)
 
     workloads = list(EXPECTED)
     summary["prefill_medians"] = {
