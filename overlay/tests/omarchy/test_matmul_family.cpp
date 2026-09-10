@@ -3733,3 +3733,139 @@ TEST_CASE("qmm coopmat prefill matches host reference at Qwen shapes") {
     }
   }
 }
+
+// The coopmat gate used to reroute a row-contiguous x view at an odd
+// f16-element offset to the register-blocked tile kernel, whose different
+// accumulation order silently changes generated tokens under allocator
+// pressure (receipts/2026-09-10-qmm-splitk-parity: long-decode-128
+// flipped 4cc08910 -> f873dc2b under concurrent GPU load, and a
+// device_info() call before model load triggered the same flip). The
+// dispatch now stages an unaligned view into an aligned buffer, so the
+// same data must produce bit-identical output regardless of the view's
+// offset parity. On a device without cooperative-matrix support both
+// arms take the tile route and the check is inert; on the M1 fork it
+// fails on pre-fix code because the odd arm lands on the tile kernel.
+TEST_CASE("qmm coopmat output is bit-identical across x offset alignment") {
+  if (!compute_available() || !float16_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  const auto& caps = omarchy::device(0).capabilities();
+  const bool coopmat_device =
+      caps.cooperative_matrix_f32_8 && caps.subgroup_size == 32;
+  std::cout << "[provenance] cooperative_matrix_f32_8="
+            << (caps.cooperative_matrix_f32_8 ? 1 : 0)
+            << " subgroup_size=" << caps.subgroup_size
+            << " -> offset-parity repro "
+            << (coopmat_device ? "compares coopmat vs staged coopmat"
+                               : "is inert without coopmat support")
+            << "\n";
+
+  constexpr int group_size = 64;
+  constexpr int bits = 4;
+  constexpr int m = 64;
+  constexpr int k = 256;
+  constexpr int n = 192;
+  const int words_per_row = k / (32 / bits);
+  const int groups_per_row = k / group_size;
+  std::mt19937 gen(410u);
+  std::uniform_real_distribution<float> dist(-2.0f, 2.0f);
+  std::vector<float> matrix(static_cast<size_t>(n) * k);
+  for (auto& value : matrix) {
+    value = dist(gen);
+  }
+  HostQuantizedWeights weights =
+      host_affine_quantize(matrix, n, k, group_size, bits);
+  weights.scales = round_trip(stream, weights.scales, float16);
+  weights.biases = round_trip(stream, weights.biases, float16);
+  array w_words(weights.words.begin(), Shape{n, words_per_row}, uint32);
+  array scales(weights.scales.begin(), Shape{n, groups_per_row}, float16);
+  array biases(weights.biases.begin(), Shape{n, groups_per_row}, float16);
+
+  std::vector<float> x_values(static_cast<size_t>(m) * k);
+  for (auto& value : x_values) {
+    value = dist(gen);
+  }
+  x_values = round_trip(stream, x_values, float16);
+  const std::vector<float> expected =
+      host_quantized_matmul(weights, x_values, m, n, k, group_size, bits);
+
+  // Aligned arm: a whole buffer, element offset 0.
+  array x_aligned(x_values.begin(), Shape{m, k}, float16);
+
+  // Unaligned arm: the same values as a row-contiguous view whose first
+  // element sits at f16 element offset 1 (byte offset 2) inside a parent
+  // buffer - the shape memory pressure produces.
+  std::vector<float> parent_values(static_cast<size_t>(m) * k + 1, 123.0f);
+  std::copy(x_values.begin(), x_values.end(), parent_values.begin() + 1);
+  array parent(parent_values.begin(), Shape{m * k + 1}, float16);
+  parent.eval();
+  array x_odd = reshape(slice(parent, {1}, {m * k + 1}, stream), {m, k});
+  // Slice and reshape are graph nodes; the shared-buffer view with its
+  // nonzero offset materializes when the node evaluates.
+  x_odd.eval();
+  REQUIRE_EQ(x_odd.offset(), size_t{2});
+  REQUIRE(x_odd.flags().row_contiguous);
+
+  QmmTileGate gate(true, true);
+  array out_aligned = quantized_matmul(
+      x_aligned, w_words, scales, biases, true, group_size, bits, "affine",
+      stream);
+  array out_odd = quantized_matmul(
+      x_odd, w_words, scales, biases, true, group_size, bits, "affine",
+      stream);
+
+  // Determinism contract: offset parity must not change one bit of the
+  // generated activations (exact f32 widenings of the f16 outputs;
+  // f16 -> f32 is exact, and finite data rules out signed-zero noise).
+  const auto aligned = readback_f32(stream, out_aligned);
+  const auto odd = readback_f32(stream, out_odd);
+  REQUIRE_EQ(aligned.size(), expected.size());
+  REQUIRE_EQ(odd.size(), expected.size());
+  size_t mismatched = 0;
+  size_t worst = 0;
+  for (size_t index = 0; index < aligned.size(); ++index) {
+    if (aligned[index] != odd[index]) {
+      ++mismatched;
+      worst = index;
+    }
+  }
+  INFO("offset-parity mismatches=" << mismatched << " worst=" << worst
+       << " aligned=" << aligned[worst] << " odd=" << odd[worst]
+       << (coopmat_device ? " (old code reroutes the odd arm to the tile"
+                          : ""));
+  CHECK_EQ(mismatched, size_t{0});
+
+  // Both arms also hold the coopmat host-reference bound, so the staged
+  // arm is not merely self-consistent but correct.
+  double max_abs = 1.0;
+  for (size_t index = 0; index < expected.size(); ++index) {
+    REQUIRE(std::isfinite(aligned[index]));
+    REQUIRE(std::isfinite(odd[index]));
+    max_abs = std::max({
+        max_abs,
+        std::fabs(static_cast<double>(aligned[index])),
+        std::fabs(static_cast<double>(odd[index])),
+        std::fabs(static_cast<double>(expected[index]))});
+  }
+  const double bound =
+      (3.0 * k + 1.0) * (2.0 * max_abs) * std::ldexp(1.0, -23) +
+      (2.0 * max_abs) * std::ldexp(1.0, -11);
+  double aligned_diff = 0.0;
+  double odd_diff = 0.0;
+  for (size_t index = 0; index < expected.size(); ++index) {
+    aligned_diff = std::max(aligned_diff, std::fabs(
+        static_cast<double>(aligned[index]) - expected[index]));
+    odd_diff = std::max(odd_diff, std::fabs(
+        static_cast<double>(odd[index]) - expected[index]));
+  }
+  INFO("aligned_diff=" << aligned_diff << " odd_diff=" << odd_diff
+       << " bound=" << bound);
+  CHECK(aligned_diff <= bound);
+  CHECK(odd_diff <= bound);
+  std::cout << "[qmm-offset-parity] coopmat_device=" << coopmat_device
+            << " m=" << m << " n=" << n << " k=" << k
+            << " mismatches=" << mismatched
+            << " aligned_diff=" << aligned_diff
+            << " odd_diff=" << odd_diff << " bound=" << bound << "\n";
+}
