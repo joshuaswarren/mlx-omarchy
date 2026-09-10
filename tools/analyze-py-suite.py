@@ -2,8 +2,7 @@
 """Classify junit failure messages from the py phase of run-upstream-suite.sh.
 
 Buckets mirror receipts/2026-09-01-upstream-suite-coverage.md:
-  named    RuntimeError: [omarchy] ... is not implemented ...
-           RuntimeError: [omarchy] ... is refused ...
+  named    any [omarchy] error except a submission watchdog timeout
   cpucpu   IndexError: vector::_M_range_check (cpu stream table)
   ncpuimpl RuntimeError: ... has no CPU implementation
   assert   AssertionError (wrong-value candidates; each verified by hand)
@@ -17,15 +16,22 @@ import re
 import sys
 import xml.etree.ElementTree as ET
 
-NAMED = re.compile(r"RuntimeError: \[omarchy\] (.+?) is (?:not implemented|refused)")
+OMARCHY_ERROR = re.compile(r"^[A-Za-z]+Error: \[omarchy\] (.+)")
+NAMED_OPERATION = re.compile(
+    r"RuntimeError: \[omarchy\] (.+?) is (?:not implemented|refused)")
+WATCHDOG_ERRORS = (
+    "Vulkan timeline counter failed to advance",
+    "Vulkan dispatcher drain did not catch up",
+)
 FIRST_LINE = lambda s: (s or "").strip().split("\n")[0]
 
 
 def kind_of(msg):
     first = FIRST_LINE(msg)
-    m = NAMED.match(first)
-    if m:
-        return "named", m.group(1)
+    omarchy = OMARCHY_ERROR.match(first)
+    if omarchy and not any(text in omarchy.group(1) for text in WATCHDOG_ERRORS):
+        operation = NAMED_OPERATION.match(first)
+        return "named", (operation.group(1) if operation else omarchy.group(1)[:90])
     if "vector::_M_range_check" in first:
         return "cpucpu", "IndexError cpu stream table"
     if "has no CPU implementation" in first:
