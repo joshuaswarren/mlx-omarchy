@@ -270,7 +270,7 @@ def main():
               file=sys.stderr)
         sys.exit(2)
     from mlx_lm.utils import load
-    from mlx_lm.generate import generate_step, generation_stream, wired_limit
+    from mlx_lm.generate import stream_generate
 
     model, tokenizer = load(args.model)
     import mlx.core as mx
@@ -290,23 +290,23 @@ def main():
         prompt = tokenizer.apply_chat_template(
             [{"role": "user", "content": args.prompt}],
             add_generation_prompt=True)
-    # bench_decode records token IDs, not text. stream_generate constructs a
-    # 150k-entry streaming detokenizer for every warmup and measured call;
-    # that fixed cost is unrelated to prefill and dominates short prompts.
+    # Build the 150k-entry streaming detokenizer and tokenize once, outside the
+    # measured window. stream_generate otherwise repeats both for warmup and
+    # measurement even though this benchmark only records token IDs.
     if isinstance(prompt, str):
         add_special_tokens = (getattr(tokenizer, "bos_token", None) is None or
                               not prompt.startswith(tokenizer.bos_token))
         prompt = tokenizer.encode(
             prompt, add_special_tokens=add_special_tokens)
     prompt_ids = mx.array(prompt)
+    tokenizer.eos_token_ids = set()
+    detokenizer = tokenizer.detokenizer
+    tokenizer._detokenizer_class = lambda _: detokenizer
 
     def generate(n):
-        def ids():
-            with wired_limit(model, [generation_stream]):
-                for token, _ in generate_step(
-                        prompt_ids, model, max_tokens=n, sampler=sampler):
-                    yield token
-        return ids()
+        detokenizer.reset()
+        return stream_generate(
+            model, tokenizer, prompt_ids, max_tokens=n, sampler=sampler)
 
     if args.warmup_tokens:
         for _ in generate(args.warmup_tokens):

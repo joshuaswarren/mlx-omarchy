@@ -1,0 +1,56 @@
+{
+  "qwen25-0.5b-4bit:short-decode-32": {
+    "old_prefill": 133.929,
+    "cached_prefill": 205.479,
+    "prefill_ratio": 1.5342,
+    "old_decode": 94.81,
+    "cached_decode": 93.06,
+    "decode_ratio": 0.9815,
+    "ids_same": true
+  },
+  "qwen25-0.5b-4bit:long-decode-128": {
+    "old_prefill": 619.385,
+    "cached_prefill": 766.082,
+    "prefill_ratio": 1.2368,
+    "old_decode": 76.28,
+    "cached_decode": 74.36,
+    "decode_ratio": 0.9748,
+    "ids_same": true
+  },
+  "qwen25-0.5b-4bit:longctx-1024-decode-32": {
+    "old_prefill": 969.613,
+    "cached_prefill": 1033.366,
+    "prefill_ratio": 1.0658,
+    "old_decode": 50.49,
+    "cached_decode": 50.4,
+    "decode_ratio": 0.9982,
+    "ids_same": true
+  },
+  "qwen25-0.5b-bf16:short-decode-32": {
+    "old_prefill": 69.124,
+    "cached_prefill": 82.192,
+    "prefill_ratio": 1.1891,
+    "old_decode": 11.74,
+    "cached_decode": 11.71,
+    "decode_ratio": 0.9974,
+    "ids_same": true
+  },
+  "qwen25-0.5b-bf16:long-decode-128": {
+    "old_prefill": 282.024,
+    "cached_prefill": 299.429,
+    "prefill_ratio": 1.0617,
+    "old_decode": 11.3,
+    "cached_decode": 11.24,
+    "decode_ratio": 0.9947,
+    "ids_same": true
+  },
+  "qwen25-0.5b-bf16:longctx-1024-decode-32": {
+    "old_prefill": 344.568,
+    "cached_prefill": 337.392,
+    "prefill_ratio": 0.9792,
+    "old_decode": 10.25,
+    "cached_decode": 10.26,
+    "decode_ratio": 1.001,
+    "ids_same": true
+  }
+}

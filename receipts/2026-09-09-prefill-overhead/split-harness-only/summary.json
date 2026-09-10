@@ -1,0 +1,56 @@
+{
+  "qwen25-0.5b-4bit:short-decode-32": {
+    "old_prefill": 136.364,
+    "new_prefill": 234.375,
+    "prefill_ratio": 1.7187,
+    "old_decode": 94.98,
+    "new_decode": 92.01,
+    "decode_ratio": 0.9687,
+    "ids_same": true
+  },
+  "qwen25-0.5b-4bit:long-decode-128": {
+    "old_prefill": 616.471,
+    "new_prefill": 784.431,
+    "prefill_ratio": 1.2725,
+    "old_decode": 76.16,
+    "new_decode": 71.86,
+    "decode_ratio": 0.9435,
+    "ids_same": true
+  },
+  "qwen25-0.5b-4bit:longctx-1024-decode-32": {
+    "old_prefill": 965.17,
+    "new_prefill": 1057.229,
+    "prefill_ratio": 1.0954,
+    "old_decode": 51.02,
+    "new_decode": 49.36,
+    "decode_ratio": 0.9675,
+    "ids_same": true
+  },
+  "qwen25-0.5b-bf16:short-decode-32": {
+    "old_prefill": 70.423,
+    "new_prefill": 81.301,
+    "prefill_ratio": 1.1545,
+    "old_decode": 11.74,
+    "new_decode": 11.72,
+    "decode_ratio": 0.9983,
+    "ids_same": true
+  },
+  "qwen25-0.5b-bf16:long-decode-128": {
+    "old_prefill": 282.937,
+    "new_prefill": 300.115,
+    "prefill_ratio": 1.0607,
+    "old_decode": 11.3,
+    "new_decode": 11.26,
+    "decode_ratio": 0.9965,
+    "ids_same": true
+  },
+  "qwen25-0.5b-bf16:longctx-1024-decode-32": {
+    "old_prefill": 337.392,
+    "new_prefill": 349.95,
+    "prefill_ratio": 1.0372,
+    "old_decode": 10.16,
+    "new_decode": 10.26,
+    "decode_ratio": 1.0098,
+    "ids_same": true
+  }
+}
