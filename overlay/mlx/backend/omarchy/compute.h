@@ -593,8 +593,9 @@ enum class ComputeKernel : uint16_t {
   QmmVecQ4MultiSubgroupBF16,
   // Non-contracted large-prefill fallback; appended to preserve profile ids.
   QmmTileRbPreciseF16,
-  // Native-order single-query f16 attention; append-only profile id.
+  // Native-order single-query attention; append-only profile ids.
   SdpaDecodeNativeF16,
+  SdpaDecodeNativeBF16,
   Count,
 };
 

@@ -10174,9 +10174,10 @@ void ScaledDotProductAttention::eval_gpu(
       (decode_caps.subgroup_operations & kDecodeSubgroupFeatures) ==
           kDecodeSubgroupFeatures;
   if ((decode_env == nullptr || std::strcmp(decode_env, "0") != 0) &&
-      decode_subgroup_ready && q.dtype() == float16 && inputs.size() == 3 &&
-      !has_sinks_ && !output_logsumexp_ && batch == 1 && q_len == 1 &&
-      head_dim == 64 && v_dim == 64 && k_len > 0 &&
+      decode_subgroup_ready &&
+      (q.dtype() == float16 || q.dtype() == bfloat16) &&
+      inputs.size() == 3 && !has_sinks_ && !output_logsumexp_ && batch == 1 &&
+      q_len == 1 && head_dim == 64 && v_dim == 64 && k_len > 0 &&
       q.strides()[3] == 1 && k.strides()[3] == 1 && v.strides()[3] == 1) {
     out.set_data(allocate_omarchy(out.nbytes()));
     omarchy::ComputeParams params;
@@ -10203,7 +10204,9 @@ void ScaledDotProductAttention::eval_gpu(
     std::array<omarchy::ComputeBinding, 4> bindings{
         binding(q), binding(k), binding(v), binding(out)};
     encoder.dispatch_compute(
-        omarchy::ComputeKernel::SdpaDecodeNativeF16,
+        q.dtype() == bfloat16
+            ? omarchy::ComputeKernel::SdpaDecodeNativeBF16
+            : omarchy::ComputeKernel::SdpaDecodeNativeF16,
         bindings,
         params,
         params.matrix_m);
