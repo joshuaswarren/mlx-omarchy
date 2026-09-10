@@ -1,0 +1,3 @@
+{"k":"meta","dev":"Apple M1 (G13G B1)","ts_period_ns":1.000,"vk_driver_files":"/home/joshuawarren/src/mesa-wt-dispatchfloor/dispatchfloor-icd.json","hk_perftest":""}
+dfb: ../src/vulkan/runtime/vk_pipeline.c:290: vk_pipeline_hash_shader_stage: Assertion `iinfo' failed.
+timeout: the monitored command dumped core
