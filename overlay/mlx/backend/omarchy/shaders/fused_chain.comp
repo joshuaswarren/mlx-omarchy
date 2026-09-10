@@ -137,12 +137,15 @@ void main() {
         case 4u: // Exp
           value = exp(lhs);
           break;
-        case 5u: // Sigmoid: same unguarded form as elementwise.comp
-          // case 5. exp underflows to 0 for large positive x and
-          // overflows to inf for large negative x, both of which the
-          // division folds to the correct 1.0 / 0.0 without producing
-          // the inf/inf NaN a sign-guarded form would.
+        case 5u:
+#if defined(USE_FP16) || defined(USE_BF16)
+          value = ROUND_INTERMEDIATE(exp(abs(lhs)));
+          value = ROUND_INTERMEDIATE(1.0 + value);
+          value = ROUND_INTERMEDIATE(1.0 / value);
+          value = lhs < 0.0 ? value : 1.0 - value;
+#else
           value = 1.0 / (1.0 + exp(-lhs));
+#endif
           break;
         case 6u: // Square
           value = lhs * lhs;

@@ -334,6 +334,41 @@ TEST_CASE("native RMSNorm matches host math on f32 rows") {
   auto want_bare = host_norm(x_host, ones, zeros, rows, cols, eps, false);
   require_close(got_bare, want_bare, 1e-5, "rms_norm weightless");
 }
+TEST_CASE("low-precision RMSNorm and sigmoid use native rounding order") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  for (Dtype dtype : {float16, bfloat16}) {
+    auto x = astype(array({0.5f, 1.0f, 2.0f, 3.0f}), dtype, stream);
+    auto w = astype(array({0.3f, 0.7f, 1.3f, 2.1f}), dtype, stream);
+    const std::vector<double> expected = dtype == float16
+        ? std::vector<double>{0.0794677734375, 0.370849609375,
+                              1.376953125, 3.337890625}
+        : std::vector<double>{0.080078125, 0.37109375, 1.375, 3.328125};
+    require_close(
+        flat(fast::rms_norm(x, w, 0.0f, stream), stream),
+        expected,
+        0.0,
+        "RMSNorm intermediate rounding");
+  }
+
+  auto sigmoid_input = astype(
+      array({-8.0f, -6.84375f, -2.0f, -0.5f, 0.0f,
+             0.5f, 2.0f, 6.84375f, 8.0f}),
+      bfloat16,
+      stream);
+  const auto got = flat(sigmoid(sigmoid_input, stream), stream);
+  const std::vector<double> native = {
+      0.000335693359375, 0.00106048583984375, 0.11962890625,
+      0.376953125, 0.5, 0.625, 0.87890625, 1.0, 1.0};
+  size_t mismatches = 0;
+  for (size_t i = 0; i < native.size(); ++i) {
+    mismatches += static_cast<double>(got[i]) != native[i];
+  }
+  CHECK_EQ(mismatches, 1);
+  CHECK_EQ(got[1], 0.001068115234375f);
+}
 
 TEST_CASE("native LayerNorm matches host math on f32 rows") {
   if (!compute_available()) {
@@ -769,46 +804,48 @@ TEST_CASE("native-order decode SDPA handles the strided Qwen KV cache") {
   std::vector<float> q_values(heads * width, 0.0f);
   std::vector<float> k_values(kv_heads * capacity * width, 0.0f);
   std::vector<float> v_values(kv_heads * capacity * width, 0.5f);
-  array q = astype(
-      array(q_values.begin(), Shape{1, heads, 1, width}, float32),
-      float16,
-      stream);
-  array k_cache = astype(
-      array(k_values.begin(), Shape{1, kv_heads, capacity, width}, float32),
-      float16,
-      stream);
-  array v_cache = astype(
-      array(v_values.begin(), Shape{1, kv_heads, capacity, width}, float32),
-      float16,
-      stream);
-  array k = slice(
-      k_cache, {0, 0, 0, 0}, {1, kv_heads, keys, width}, stream);
-  array v = slice(
-      v_cache, {0, 0, 0, 0}, {1, kv_heads, keys, width}, stream);
-  eval({q, k, v});
-  omarchy::get_command_encoder(stream).synchronize();
+  for (Dtype dtype : {float16, bfloat16}) {
+    array q = astype(
+        array(q_values.begin(), Shape{1, heads, 1, width}, float32),
+        dtype,
+        stream);
+    array k_cache = astype(
+        array(k_values.begin(), Shape{1, kv_heads, capacity, width}, float32),
+        dtype,
+        stream);
+    array v_cache = astype(
+        array(v_values.begin(), Shape{1, kv_heads, capacity, width}, float32),
+        dtype,
+        stream);
+    array k = slice(
+        k_cache, {0, 0, 0, 0}, {1, kv_heads, keys, width}, stream);
+    array v = slice(
+        v_cache, {0, 0, 0, 0}, {1, kv_heads, keys, width}, stream);
+    eval({q, k, v});
+    omarchy::get_command_encoder(stream).synchronize();
 
-  setenv("MLX_OMARCHY_SDPA_DECODE_NATIVE", "1", 1);
-  uint64_t before = omarchy::trace::counters().vk_compute_dispatches.load();
-  array output = fast::scaled_dot_product_attention(
-      q, k, v, 1.0f / std::sqrt(float(width)), "", {}, std::nullopt, false,
-      stream);
-  output.eval();
-  omarchy::get_command_encoder(stream).synchronize();
-  uint64_t dispatches =
-      omarchy::trace::counters().vk_compute_dispatches.load() - before;
-  unsetenv("MLX_OMARCHY_SDPA_DECODE_NATIVE");
+    setenv("MLX_OMARCHY_SDPA_DECODE_NATIVE", "1", 1);
+    uint64_t before = omarchy::trace::counters().vk_compute_dispatches.load();
+    array output = fast::scaled_dot_product_attention(
+        q, k, v, 1.0f / std::sqrt(float(width)), "", {}, std::nullopt, false,
+        stream);
+    output.eval();
+    omarchy::get_command_encoder(stream).synchronize();
+    uint64_t dispatches =
+        omarchy::trace::counters().vk_compute_dispatches.load() - before;
+    unsetenv("MLX_OMARCHY_SDPA_DECODE_NATIVE");
 
-  const auto& caps = omarchy::device(0).capabilities();
-  constexpr VkSubgroupFeatureFlags required =
-      VK_SUBGROUP_FEATURE_BASIC_BIT | VK_SUBGROUP_FEATURE_ARITHMETIC_BIT |
-      VK_SUBGROUP_FEATURE_SHUFFLE_BIT;
-  if (caps.cooperative_matrix_f32_8 && caps.subgroup_size == 32u &&
-      (caps.subgroup_operations & required) == required) {
-    CHECK_EQ(dispatches, 1);
-  }
-  for (float value : flat(output, stream)) {
-    CHECK(std::abs(value - 0.5f) < 5e-4f);
+    const auto& caps = omarchy::device(0).capabilities();
+    constexpr VkSubgroupFeatureFlags required =
+        VK_SUBGROUP_FEATURE_BASIC_BIT | VK_SUBGROUP_FEATURE_ARITHMETIC_BIT |
+        VK_SUBGROUP_FEATURE_SHUFFLE_BIT;
+    if (caps.cooperative_matrix_f32_8 && caps.subgroup_size == 32u &&
+        (caps.subgroup_operations & required) == required) {
+      CHECK_EQ(dispatches, 1);
+    }
+    for (float value : flat(output, stream)) {
+      CHECK(std::abs(value - 0.5f) < 5e-4f);
+    }
   }
 }
 

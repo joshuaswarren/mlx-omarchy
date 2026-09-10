@@ -1,11 +1,11 @@
 // Copyright © 2026 Joshua Warren / mlx-omarchy contributors.
 // SPDX-License-Identifier: MIT
 //
-// Single-query f16 SDPA in native Metal's decode arithmetic order
+// Single-query low-precision SDPA in native Metal's decode arithmetic order
 // (mlx/backend/metal/kernels/sdpa_vector.h). One 1024-thread workgroup owns
 // one query head. Short decode reproduces sdpa_vector's 32 interleaved online
 // streams and final SIMD reduction. At native's long-context crossover it
-// reproduces the 64/128-block two-pass algorithm, including f16 partial
+// reproduces the 64/128-block two-pass algorithm, including typed partial
 // storage, inside the same workgroup and dispatch.
 
 #version 460
@@ -13,22 +13,54 @@
 #extension GL_KHR_shader_subgroup_basic : require
 #extension GL_KHR_shader_subgroup_arithmetic : require
 #extension GL_KHR_shader_subgroup_shuffle : require
+#ifdef USE_FP16
 #extension GL_EXT_shader_16bit_storage : require
 #extension GL_EXT_shader_explicit_arithmetic_types_float16 : require
+#define STORAGE_TYPE float16_t
+#define LOAD_VALUE(x) float(x)
+#define STORE_VALUE(x) float16_t(x)
+uint pack_storage_pair(vec2 value) {
+  return packHalf2x16(value);
+}
+vec2 unpack_storage_pair(uint value) {
+  return unpackHalf2x16(value);
+}
+#elif defined(USE_BF16)
+#extension GL_EXT_shader_16bit_storage : require
+#extension GL_EXT_shader_explicit_arithmetic_types_int16 : require
+#define STORAGE_TYPE uint16_t
+#define LOAD_VALUE(x) uintBitsToFloat(uint(x) << 16u)
+uint16_t bf16_store(float value) {
+  uint bits = floatBitsToUint(value);
+  if (isnan(value)) {
+    return uint16_t((bits >> 16u) | 0x40u);
+  }
+  return uint16_t((bits + 0x7fffu + ((bits >> 16u) & 1u)) >> 16u);
+}
+#define STORE_VALUE(x) bf16_store(x)
+uint pack_storage_pair(vec2 value) {
+  return uint(STORE_VALUE(value.x)) | (uint(STORE_VALUE(value.y)) << 16u);
+}
+vec2 unpack_storage_pair(uint value) {
+  return vec2(
+      uintBitsToFloat((value & 0xffffu) << 16u),
+      uintBitsToFloat(value & 0xffff0000u));
+}
+#endif
 
 layout(local_size_x = 1024, local_size_y = 1, local_size_z = 1) in;
 
 layout(set = 0, binding = 0, std430) readonly buffer Query {
-  float16_t values[];
+  STORAGE_TYPE values[];
 } query_data;
 layout(set = 0, binding = 1, std430) readonly buffer Key {
-  float16_t values[];
+  STORAGE_TYPE values[];
 } key_data;
 layout(set = 0, binding = 2, std430) readonly buffer Value {
-  float16_t values[];
+  STORAGE_TYPE values[];
 } value_data;
 layout(set = 0, binding = 3, std430) writeonly buffer Output {
-  float16_t values[];
+  STORAGE_TYPE values[];
 } output_data;
 
 layout(push_constant) uniform Params {
@@ -63,8 +95,8 @@ const float FINITE_MIN = -3.4028234663852886e38;
 shared float s_outputs[SIMD * SIMD];
 shared float s_max[MAX_BLOCKS];
 shared float s_sum[MAX_BLOCKS];
-// Native two-pass stores every 64-element partial through f16. Each word is
-// one adjacent output pair.
+// Native two-pass stores every 64-element partial through the input dtype.
+// Each word is one adjacent output pair.
 shared uint s_partial_words[MAX_BLOCKS * SIMD];
 
 float native_exp(float x) {
@@ -75,8 +107,8 @@ void store_pair(uint head, uint lane, float x, float y, float denominator) {
   if (lane == 0u) {
     uint out_base = params.output_offset + head * DIM +
         2u * gl_SubgroupID;
-    output_data.values[out_base] = float16_t(x / denominator);
-    output_data.values[out_base + 1u] = float16_t(y / denominator);
+    output_data.values[out_base] = STORE_VALUE(x / denominator);
+    output_data.values[out_base + 1u] = STORE_VALUE(y / denominator);
   }
 }
 
@@ -89,9 +121,9 @@ void main() {
   uint q_base = params.lhs_offset + head * params.shape[0];
   uint q_dim = 2u * lane;
   float q0 = params.alpha *
-      float(query_data.values[q_base + q_dim * params.shape[3]]);
-  float q1 = params.alpha *
-      float(query_data.values[q_base + (q_dim + 1u) * params.shape[3]]);
+      LOAD_VALUE(query_data.values[q_base + q_dim * params.shape[3]]);
+  float q1 = params.alpha * LOAD_VALUE(
+      query_data.values[q_base + (q_dim + 1u) * params.shape[3]]);
   uint blocks = params.flags;
 
   if (blocks == 0u) {
@@ -104,10 +136,10 @@ void main() {
     for (uint key = sgid; key < params.matrix_k; key += SIMD) {
       uint k_base = params.rhs_offset + kv_head * params.shape[1] +
           key * params.shape[2] + q_dim * params.in_strides[0];
-      float score = fma(q0, float(key_data.values[k_base]), 0.0);
+      float score = fma(q0, LOAD_VALUE(key_data.values[k_base]), 0.0);
       score = fma(
           q1,
-          float(key_data.values[k_base + params.in_strides[0]]),
+          LOAD_VALUE(key_data.values[k_base + params.in_strides[0]]),
           score);
       score = subgroupAdd(score);
       float new_max = max(max_score, score);
@@ -120,12 +152,12 @@ void main() {
       o0 = fma(
           o0,
           factor,
-          exp_score * float(value_data.values[v_base]));
+          exp_score * LOAD_VALUE(value_data.values[v_base]));
       o1 = fma(
           o1,
           factor,
           exp_score *
-              float(value_data.values[v_base + params.in_strides[3]]));
+              LOAD_VALUE(value_data.values[v_base + params.in_strides[3]]));
     }
 
     if (lane == 0u) {
@@ -151,7 +183,7 @@ void main() {
 
   // Native sdpa_vector_2pass_1. A physical subgroup computes four logical
   // native blocks sequentially; logical blocks remain independent and land
-  // in the exact f16/f32 intermediate formats consumed by pass 2.
+  // in the exact typed/f32 intermediate formats consumed by pass 2.
   for (uint block = sgid; block < blocks; block += SIMD) {
     float max_score = FINITE_MIN;
     float sum_exp_score = 0.0;
@@ -160,10 +192,10 @@ void main() {
     for (uint key = block; key < params.matrix_k; key += blocks) {
       uint k_base = params.rhs_offset + kv_head * params.shape[1] +
           key * params.shape[2] + q_dim * params.in_strides[0];
-      float score = fma(q0, float(key_data.values[k_base]), 0.0);
+      float score = fma(q0, LOAD_VALUE(key_data.values[k_base]), 0.0);
       score = fma(
           q1,
-          float(key_data.values[k_base + params.in_strides[0]]),
+          LOAD_VALUE(key_data.values[k_base + params.in_strides[0]]),
           score);
       score = subgroupAdd(score);
       float new_max = max(max_score, score);
@@ -176,18 +208,18 @@ void main() {
       o0 = fma(
           o0,
           factor,
-          exp_score * float(value_data.values[v_base]));
+          exp_score * LOAD_VALUE(value_data.values[v_base]));
       o1 = fma(
           o1,
           factor,
           exp_score *
-              float(value_data.values[v_base + params.in_strides[3]]));
+              LOAD_VALUE(value_data.values[v_base + params.in_strides[3]]));
     }
     if (lane == 0u) {
       s_max[block] = max_score;
       s_sum[block] = sum_exp_score;
     }
-    s_partial_words[block * SIMD + lane] = packHalf2x16(vec2(o0, o1));
+    s_partial_words[block * SIMD + lane] = pack_storage_pair(vec2(o0, o1));
   }
   barrier();
 
@@ -212,7 +244,7 @@ void main() {
   float o1 = 0.0;
   for (uint block = sgid; block < blocks; block += SIMD) {
     float factor = native_exp(s_max[block] - merged_max);
-    vec2 partial = unpackHalf2x16(s_partial_words[block * SIMD + lane]);
+    vec2 partial = unpack_storage_pair(s_partial_words[block * SIMD + lane]);
     o0 = fma(factor, partial.x, o0);
     o1 = fma(factor, partial.y, o1);
   }
