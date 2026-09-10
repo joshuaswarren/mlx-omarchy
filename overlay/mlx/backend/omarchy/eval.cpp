@@ -40,7 +40,6 @@ void eval(array& arr) {
   // Open-batch state BEFORE this op records: a batch spans every op
   // recorded between commits.
   bool batch_open = encoder.needs_commit();
-  encoder.latch_graph_node_budget(arr.size());
   {
     // If the array is a tracer hold a reference
     std::vector<array> inputs;
@@ -90,7 +89,7 @@ void eval(array& arr) {
     // recycle before it submits, reach their share of the memory limit
     // (kBatchByteBudgetDivisor).
     auto& alloc = omarchy::allocator();
-    if (encoder.nodes() >= encoder.graph_node_budget() ||
+    if (encoder.nodes() >= omarchy::kBatchNodeBudget ||
         alloc.pending_quarantine_bytes() >=
             alloc.get_memory_limit() / omarchy::kBatchByteBudgetDivisor) {
       encoder.commit();
@@ -105,9 +104,7 @@ void finalize(Stream s) {
   // open batch must reach the queue here or those waits never complete.
   // Batching still happens: every dispatch recorded between finalizes
   // (one whole graph evaluation) shares one open command buffer.
-  auto& encoder = omarchy::get_command_encoder(s);
-  encoder.commit();
-  encoder.reset_graph_node_budget();
+  omarchy::get_command_encoder(s).commit();
 }
 
 
