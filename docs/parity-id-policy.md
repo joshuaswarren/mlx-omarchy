@@ -36,3 +36,29 @@ to anything else.
 - Kernels kept only to preserve Linux-specific rounding, once native's
   order is implemented and proven, are deleted rather than retained behind
   a flag.
+
+## Amendment 2026-09-10: the BF16 short and 262-token pins moved with the dense decode GEMV
+
+The owner re-pinned the BF16 short (30/32) and 262-token (262/128)
+generated-id digests when landing the native-order dense BF16 decode GEMV
+(`receipts/2026-09-10-bf16-decode-gemv-land`; qualification evidence in
+`receipts/2026-09-10-bf16-decode-gemv-requal`). The pins are per-driver
+values, measured fresh on the installed fork and on stock Mesa. Rule 1's
+"only native's digest" carve-out was waived for exactly these legs, on
+measured grounds:
+
+1. The old sequential kernel and the new subgroup kernel are float64
+   round-to-nearest exact on every captured real decode projection,
+   including the bias-cancellation elements where macOS Metal deviates. The
+   moved digests carried no parity content: nothing on macOS ever produced
+   them.
+2. On synthetic large-N samples the new accumulation order is closer to
+   float64 than the old one, never farther.
+3. The BF16 legs already diverged from macOS before this change - that is
+   why they sat in rule 1's "may move" list - and the 262-token leg already
+   split across drivers before this change. Holding those streams frozen
+   protected an f32 accumulation artifact, not parity.
+
+The native-matching legs keep rule 2's full strength: BF16 1K context and
+the Q4 short and Q4 1K-context digests must still equal native after any
+change, and the landing receipt re-proves all six canonical Q4 digests

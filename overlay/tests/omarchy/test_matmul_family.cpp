@@ -1145,6 +1145,145 @@ TEST_CASE("dense bf16 matmul matches host on every row across coopmat shapes") {
   }
 }
 
+// The dense BF16 decode GEMV (packed 4-wide bf16 loads, 128-wide k stripes
+// per subgroup, five shuffle-down reduction levels) changed the f32
+// accumulation order of every single-row projection, so the generated-token
+// digests moved to new per-driver pins (recorded in
+// receipts/2026-09-10-bf16-decode-gemv-land). This case pins the accuracy
+// the digests no longer carry: the device result must stay inside the
+// documented f32 accumulation bound against the float64 host reference on
+// every Qwen2.5-0.5B decode projection shape that selects the kernel
+// (m=1, k % 128 == 0, n % 4 == 0, transposed weight), on the deep-
+// cancellation regime the projections are known to hit, and on the
+// fallback shapes that must keep the general tile kernel. The bound is the
+// existing fractional-case anchor recomputed for the wider step count
+// (k/8 tile steps vs k/32 lane steps + 5 tree levels, so the tile count
+// stays the conservative envelope on every device); it is never tuned to
+// pass. No digest appears here on purpose.
+TEST_CASE("single-row bf16 decode matmul stays inside the f64 bound") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  const auto& caps = omarchy::device(0).capabilities();
+  const bool subgroup_kernel =
+      caps.subgroup_size == 32u &&
+      (caps.subgroup_operations & VK_SUBGROUP_FEATURE_SHUFFLE_RELATIVE_BIT) != 0;
+  std::cout << "[provenance] subgroup_size=" << caps.subgroup_size
+            << " decode_gemv_path="
+            << (subgroup_kernel ? "subgroup-shuffle" : "tile-fallback")
+            << "\n";
+
+  std::mt19937 rng(20260910);
+  std::uniform_real_distribution<float> frac(-2.0f, 2.0f);
+  // Operands pre-quantized to the bf16 grid so host and device widen
+  // identical values; the float64 reference then sums exact products.
+  auto grid = [&](size_t count) {
+    std::vector<float> values(count);
+    for (auto& v : values) {
+      v = host_bf16_round(frac(rng));
+    }
+    return values;
+  };
+  // One check per shape. Weights live in the real [n, k] transposed-operand
+  // layout (no host-side swap copy, lm_head included); the f64 reference
+  // reads the same flat buffer in [k, n] order. Records the measured error
+  // so the receipt can quote it as evidence.
+  auto check = [&](const char* label,
+                   int k,
+                   int n,
+                   const std::vector<float>& a_values,
+                   const std::vector<float>& w_nt) {
+    std::vector<float> sums(n, 0.0f);
+    float partial_max = 0.0f;
+    for (int c = 0; c < n; ++c) {
+      double acc = 0.0;
+      for (int r = 0; r < k; ++r) {
+        acc += static_cast<double>(a_values[r]) *
+            w_nt[(static_cast<size_t>(c) * k) + r];
+      }
+      sums[c] = static_cast<float>(acc);
+      partial_max = std::max(partial_max, std::fabs(sums[c]));
+    }
+    // fma rounding envelope (4.5 * 2^-23 per step) over the larger of the
+    // two shipped step counts (k/8 tile steps vs k/32 lane steps + 5 tree
+    // levels), plus one bf16 ulp pair for the kernel's final
+    // round-to-nearest-even store and one outside for readback.
+    const float steps = static_cast<float>(k / 8 + 5);
+    const float bound = partial_max *
+            (steps * 4.5f * 0x1p-23f + 2.0f / 256.0f) +
+        2.0f / 256.0f;
+    array a = astype(
+        array(a_values.begin(), Shape{1, k}, float32), bfloat16, stream);
+    array b = transpose(
+        astype(
+            array(w_nt.begin(), Shape{n, k}, float32),
+            bfloat16,
+            stream),
+        {1, 0},
+        stream);
+    std::vector<float> got = readback_f32(stream, matmul(a, b, stream));
+    REQUIRE_EQ(got.size(), sums.size());
+    float max_abs_err = 0.0f;
+    for (size_t i = 0; i < sums.size(); ++i) {
+      REQUIRE(std::isfinite(got[i]));
+      max_abs_err = std::max(max_abs_err, std::fabs(got[i] - sums[i]));
+    }
+    std::cout << "[matmul-bf16-decode] " << label << " 1x" << k << "x" << n
+              << " bT bound=" << bound
+              << " max_abs_err_vs_f64=" << max_abs_err
+              << " partial_max=" << partial_max << "\n";
+    CHECK(max_abs_err <= bound);
+  };
+
+  // Every real decode projection selects the new kernel on a subgroup-32
+  // device (k and n all satisfy the gate) and the tile kernel on
+  // llvmpipe; the bound must hold under either order.
+  const struct {
+    const char* label;
+    int k, n;
+  } projections[] = {
+      {"q_proj", 896, 896},
+      {"k_proj", 896, 128},
+      {"v_proj", 896, 128},
+      {"o_proj", 896, 896},
+      {"gate_proj", 896, 4864},
+      {"down_proj", 4864, 896},
+      {"lm_head", 896, 151936},
+  };
+  for (const auto& p : projections) {
+    check(
+        p.label,
+        p.k,
+        p.n,
+        grid(p.k),
+        grid(static_cast<size_t>(p.k) * p.n));
+  }
+
+  // Deep cancellation: weight columns alternate sign so partial sums grow
+  // to k * c^2 while the exact result stays near zero - the regime where
+  // macOS Metal rounds real projection elements to zero and this backend
+  // stays RNE(f64)-exact (receipts/2026-09-10-bf16-decode-gemv-requal).
+  {
+    const int k = 896, n = 128;
+    std::vector<float> a_values = grid(k);
+    std::vector<float> w_nt(static_cast<size_t>(k) * n);
+    for (int c = 0; c < n; ++c) {
+      for (int r = 0; r < k; ++r) {
+        w_nt[(static_cast<size_t>(c) * k) + r] =
+            (r % 2 == 0 ? 1.0f : -1.0f) * a_values[r];
+      }
+    }
+    check("cancel896x128", k, n, a_values, w_nt);
+  }
+
+  // Gate refusals must keep the general tile kernel everywhere: k not a
+  // multiple of 128, n not a multiple of 4. Fractional operands keep the
+  // f64 anchor honest on the fallback path too.
+  check("fallback-k832", 832, 896, grid(832), grid(832 * 896));
+  check("fallback-n897", 896, 897, grid(896), grid(896 * 897));
+}
+
 TEST_CASE("block masked mm zeroes and scales blocks") {
   if (!compute_available()) {
     return;
