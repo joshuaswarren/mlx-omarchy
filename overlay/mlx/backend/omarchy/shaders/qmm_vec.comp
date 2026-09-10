@@ -86,9 +86,17 @@ const uint LANES = 32u;
 
 layout(local_size_x = 256) in;
 
+#if defined(USE_FP16) && defined(QMM_VEC_Q4_WORD)
+// Decode x rows are 16-byte aligned by dispatch. Reading eight packed halves
+// at once keeps native's half arithmetic while avoiding eight scalar loads.
+layout(set = 0, binding = 0, std430) readonly buffer InputX {
+  uvec4 values[];
+} input_x;
+#else
 layout(set = 0, binding = 0, std430) readonly buffer InputX {
   STORAGE_TYPE values[];
 } input_x;
+#endif
 #ifdef QMM_VEC_MULTI
 #ifndef QMM_VEC_Q4_WORD
 #error "QMM_VEC_MULTI builds on QMM_VEC_Q4_WORD"
@@ -254,12 +262,16 @@ uint q6_at(uint e, uint c0, uint c1, uint c2) {
 // nibble), so each fma rounds exactly the sum native qdot rounds, and
 // nibble i times x equals native's (x / 16^i) * (word & mask_i).
 #ifdef USE_FP16
-// Native load_vector adds the four T=half values in half.
-#define Q4_QUAD_LOAD(base) \
-  float16_t h0 = input_x.values[base]; \
-  float16_t h1 = input_x.values[(base) + 1u]; \
-  float16_t h2 = input_x.values[(base) + 2u]; \
-  float16_t h3 = input_x.values[(base) + 3u]; \
+// Native load_vector adds the four T=half values in half. unpackFloat2x16 is
+// an f16vec2 bitcast, not a widening conversion. Q4_WORD supplies one uvec4
+// load for all eight x values.
+#define Q4_QUAD_LOAD(lo, hi) \
+  f16vec2 h01 = unpackFloat2x16(lo); \
+  f16vec2 h23 = unpackFloat2x16(hi); \
+  float16_t h0 = h01.x; \
+  float16_t h1 = h01.y; \
+  float16_t h2 = h23.x; \
+  float16_t h3 = h23.y; \
   input_sum += float(((h0 + h1) + h2) + h3); \
   float x0 = float(h0); \
   float x1 = float(h1); \
@@ -268,28 +280,37 @@ uint q6_at(uint e, uint c0, uint c1, uint c2) {
 #else
 // f32 x has nothing to round; the bf16 native quad sum is uncaptured,
 // so bf16 keeps the float chain.
-#define Q4_QUAD_LOAD(base) \
+#define Q4_QUAD_LOAD(base, unused) \
   float x0 = LOAD_VALUE(input_x.values[base]); \
   float x1 = LOAD_VALUE(input_x.values[(base) + 1u]); \
   float x2 = LOAD_VALUE(input_x.values[(base) + 2u]); \
   float x3 = LOAD_VALUE(input_x.values[(base) + 3u]); \
   input_sum += ((x0 + x1) + x2) + x3;
 #endif
-#define Q4_QUAD(packed, base) { \
-  Q4_QUAD_LOAD(base) \
+#define Q4_QUAD(packed, a, b) { \
+  Q4_QUAD_LOAD(a, b) \
   uint p = (packed); \
   dot += fma(x3, float((p >> 12u) & 0xfu), \
       fma(x2, float((p >> 8u) & 0xfu), \
           fma(x1, float((p >> 4u) & 0xfu), \
               x0 * float(p & 0xfu)))); \
 }
-// One packed word: eight x values from x_base.
+// One packed weight word and its eight x values.
+#ifdef USE_FP16
+#define Q4_WORD(word, x_base) { \
+  uint word_value = (word); \
+  uvec4 x_words = input_x.values[(x_base) / 8u]; \
+  Q4_QUAD(word_value, x_words.x, x_words.y) \
+  Q4_QUAD(word_value >> 16u, x_words.z, x_words.w) \
+}
+#else
 #define Q4_WORD(word, x_base) { \
   uint word_value = (word); \
   uint quad_base = (x_base); \
-  Q4_QUAD(word_value, quad_base) \
-  Q4_QUAD(word_value >> 16u, quad_base + 4u) \
+  Q4_QUAD(word_value, quad_base, 0u) \
+  Q4_QUAD(word_value >> 16u, quad_base + 4u, 0u) \
 }
+#endif
 // Block epilogue: result += fma(scale, dot, sum * bias) with the group
 // of word w (every word of a lane's block sits in one group). S and B
 // name the scale and bias buffers so the multi-weight variant can

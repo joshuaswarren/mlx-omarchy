@@ -3163,6 +3163,46 @@ TEST_CASE("qmm_vec packed-word candidate matches baseline and host reference") {
     }
   }
 
+  // A row-contiguous f16 slice can start between 16-byte boundaries. The
+  // packed activation view must materialize it before its uvec4 loads.
+  if (float16_available()) {
+    constexpr int view_k = 64;
+    constexpr int view_n = 9;
+    std::vector<float> matrix(static_cast<size_t>(view_n) * view_k);
+    std::vector<float> x_values(view_k);
+    for (size_t i = 0; i < matrix.size(); ++i) {
+      matrix[i] = static_cast<float>(static_cast<int>(i % 29) - 14) * 0.03125f;
+    }
+    for (int i = 0; i < view_k; ++i) {
+      x_values[i] = static_cast<float>((i * 7) % 23 - 11) * 0.0625f;
+    }
+    HostQuantizedWeights weights =
+        host_affine_quantize(matrix, view_n, view_k, 64, 4);
+    weights.scales = round_trip(stream, weights.scales, float16);
+    weights.biases = round_trip(stream, weights.biases, float16);
+    x_values = round_trip(stream, x_values, float16);
+    std::vector<float> parent_values(view_k + 1, 123.0f);
+    std::copy(x_values.begin(), x_values.end(), parent_values.begin() + 1);
+    array parent = astype(
+        array(parent_values.begin(), Shape{1, view_k + 1}, float32),
+        float16,
+        stream);
+    array x_view = slice(parent, {0, 1}, {1, view_k + 1}, stream);
+    array x_aligned(x_values.begin(), Shape{1, view_k}, float16);
+    array w(
+        weights.words.begin(), Shape{view_n, view_k / 8}, uint32);
+    array scales(
+        weights.scales.begin(), Shape{view_n, view_k / 64}, float16);
+    array biases(
+        weights.biases.begin(), Shape{view_n, view_k / 64}, float16);
+    QmmVecQ4WordGate gate(true);
+    auto aligned = readback_f32(stream, quantized_matmul(
+        x_aligned, w, scales, biases, true, 64, 4, "affine", stream));
+    auto unaligned = readback_f32(stream, quantized_matmul(
+        x_view, w, scales, biases, true, 64, 4, "affine", stream));
+    CHECK_EQ(unaligned, aligned);
+  }
+
   const int k = 64;
   const int n = 9;
   std::vector<float> matrix(static_cast<size_t>(n) * k, 0.25f);

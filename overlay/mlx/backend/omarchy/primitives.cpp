@@ -6541,12 +6541,22 @@ void QuantizedMatmul::eval_gpu(const std::vector<array>& inputs, array& out) {
   if (scales.ndim() != w.ndim() || scales.shape() != biases.shape()) {
     omarchy::unsupported(tag + " scales shape", out);
   }
+  const char* q4_word_env = std::getenv("MLX_OMARCHY_QMM_VEC_Q4_WORD");
+  bool use_q4_word =
+      (q4_word_env == nullptr || std::strcmp(q4_word_env, "1") == 0) &&
+      transpose_ && bits_ == 4 && group_size_ == 64;
+  // The f16 Q4 shader reads eight halves as one uvec4. Materialize only the
+  // rare row-contiguous view whose element offset is not 16-byte aligned.
+  bool packed_q4_x = use_q4_word && out.dtype() == float16 && x.ndim() >= 2 &&
+      x.shape(-2) == 1;
+  bool x_dense = x.flags().row_contiguous &&
+      (!packed_q4_x || x.offset() % (8 * x.itemsize()) == 0);
   std::optional<array> x_temp;
   std::optional<array> w_temp;
   std::optional<array> scales_temp;
   std::optional<array> biases_temp;
-  const array& x_d =
-      ensure_dense(x, x.flags().row_contiguous, x_temp, encoder, stream());
+  const array& x_d = ensure_dense(x, x_dense, x_temp, encoder, stream());
+
   const array& w_d =
       ensure_dense(w, w.flags().row_contiguous, w_temp, encoder, stream());
   const array& scales_d = ensure_dense(
@@ -6636,11 +6646,8 @@ void QuantizedMatmul::eval_gpu(const std::vector<array>& inputs, array& out) {
     bool subgroup_ready =
         caps.subgroup_size == 32u &&
         (caps.subgroup_operations & VK_SUBGROUP_FEATURE_ARITHMETIC_BIT) != 0;
-    const char* q4_word_env =
-        std::getenv("MLX_OMARCHY_QMM_VEC_Q4_WORD");
-    bool use_q4_word =
-        (q4_word_env == nullptr || std::strcmp(q4_word_env, "1") == 0) &&
-        transpose_ && bits_ == 4 && group_size_ == 64;
+    // Eligibility was computed before dense normalization because the packed
+    // f16 input view also requires a 16-byte-aligned x row.
     auto vec_kernel = subgroup_ready
         ? select_float_kernel(
               out.dtype(),
