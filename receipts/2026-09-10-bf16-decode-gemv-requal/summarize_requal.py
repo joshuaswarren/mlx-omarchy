@@ -88,6 +88,8 @@ def main(d):
         cell = cells.setdefault(label, {})
         for leg in run["legs"]:
             lid = leg["leg_id"]
+            if lid not in LEG_IDS:
+                continue
             if leg["status"] != "measured":
                 failures.append(f"{label} {lid}: status {leg['status']}")
                 continue

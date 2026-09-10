@@ -26,16 +26,18 @@ from ulp_common import (capture_tensor, patterned_bits, rne_bf16, synthetic_canc
 
 
 def truth_for(name, model):
+    """f64 RNE truth (bits, acc) plus the native Metal output bits."""
     layer = model.model.layers[0]
     phase, proj = name.split(".")
     x = capture_tensor(f"{phase}.{proj}.input")
+    native = capture_tensor(f"{phase}.{proj}.output").reshape(-1)
     lin = getattr(layer.self_attn, proj)
     acc = to_f64(x).reshape(x.shape[0], -1) @ to_f64(
         np.asarray(lin.weight.view(mx.uint16), dtype=np.uint16)).T
     if getattr(lin, "bias", None) is not None:
         acc = acc + to_f64(np.asarray(
             lin.bias.astype(mx.bfloat16).view(mx.uint16), dtype=np.uint16))
-    return rne_bf16(acc).reshape(-1), acc.reshape(-1)
+    return rne_bf16(acc).reshape(-1), acc.reshape(-1), native
 
 
 def gemv_truth(x_bits, w_bits, w_view):

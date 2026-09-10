@@ -72,7 +72,7 @@ def synthetic_cancel(k, n, salt, tail=128):
     partial = w[:, :head] @ x[:head]
     v = x[head:]
     v = v / (v @ v)
-    w[:, head:] = np.outer(v, -partial * 1e-6)
+    w[:, head:] = np.outer(-partial * 1e-6, v)
     xb = np.asarray(patterned_bits(k, 11))
     wb = f64_to_bf16_bits(w)
     return xb, wb, partial
