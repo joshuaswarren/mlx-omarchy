@@ -130,6 +130,9 @@ void main() {
          tile_column += gl_NumWorkGroups.x) {
       uint column = tile_column * TILE_SIZE + local_x;
       ACCUM_TYPE accumulator = ZERO_VALUE;
+#ifdef SPLIT_K
+      ACCUM_TYPE second_accumulator = ZERO_VALUE;
+#endif
 
       for (uint tile = 0; tile < k_tiles; ++tile) {
         uint a_column = tile * TILE_SIZE + local_x;
@@ -153,8 +156,20 @@ void main() {
         barrier();
 
         for (uint index = 0; index < TILE_SIZE; ++index) {
-          ACCUMULATE(
-              accumulator, tile_a[local_y][index], tile_b[index][local_x]);
+#ifdef SPLIT_K
+          if (tile >= k_tiles / 2u) {
+            ACCUMULATE(
+                second_accumulator,
+                tile_a[local_y][index],
+                tile_b[index][local_x]);
+          } else
+#endif
+          {
+            ACCUMULATE(
+                accumulator,
+                tile_a[local_y][index],
+                tile_b[index][local_x]);
+          }
         }
         barrier();
       }
@@ -162,6 +177,9 @@ void main() {
       if (row < params.matrix_m && column < params.matrix_n) {
         uint output_index = batch_index * out_matrix +
             row * params.matrix_n + column;
+#ifdef SPLIT_K
+        accumulator += second_accumulator;
+#endif
         ACCUM_TYPE value = params.alpha * accumulator;
         if ((params.flags & 2u) != 0u) {
           uint c_index = params.aux_size == 1u

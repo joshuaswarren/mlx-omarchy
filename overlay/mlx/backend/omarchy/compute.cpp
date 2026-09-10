@@ -132,6 +132,7 @@
 #include "fill_f16.h"
 #include "fill_f32.h"
 #include "matmul_bf16.h"
+#include "matmul_bf16_split2.h"
 #include "compare_bf16.h"
 #include "compare_f16.h"
 #include "compare_f32.h"
@@ -285,6 +286,7 @@
 #include "swiglu_f16.h"
 #include "swiglu_bf16.h"
 #include "matmul_f32_coopmat_bf16.h"
+#include "matmul_f32_coopmat_bf16_split2.h"
 #include "qmm_tile_f32.h"
 #include "dequant_f32.h"
 #include "dequant_f16.h"
@@ -1200,6 +1202,12 @@ ShaderBytes shader_bytes(ComputeKernel kernel) {
       return {qmm_coopmat_f16, qmm_coopmat_f16_size};
     case ComputeKernel::MatmulBF16Coopmat:
       return {matmul_f32_coopmat_bf16, matmul_f32_coopmat_bf16_size};
+    case ComputeKernel::MatmulBF16CoopmatSplit2:
+      return {
+          matmul_f32_coopmat_bf16_split2,
+          matmul_f32_coopmat_bf16_split2_size};
+    case ComputeKernel::MatmulBF16Split2:
+      return {matmul_bf16_split2, matmul_bf16_split2_size};
     case ComputeKernel::QmmTileBF16:
       return {qmm_tile_bf16, qmm_tile_bf16_size};
     case ComputeKernel::FusedChainF32:

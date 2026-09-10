@@ -516,6 +516,14 @@ void dispatch_matmul(
   params.beta = beta;
   params.flags = (b_transposed ? 1u : 0u) | (use_c ? 2u : 0u) |
       (a_transposed ? 4u : 0u);
+  const uint32_t split_tm = (params.matrix_m + 15u) / 16u;
+  const uint32_t split_tn = (params.matrix_n + 15u) / 16u;
+  const bool bf16_native_split2 = out.dtype() == bfloat16 &&
+      batch_count == 1u && alpha == 1.0f && !use_c &&
+      params.matrix_m >= 32u && (params.matrix_k % 32u) == 0u &&
+      params.matrix_k / 16u >= 8u &&
+      params.matrix_k >= std::max(params.matrix_m, params.matrix_n) &&
+      split_tm * split_tn <= 1024u;
   params.lhs_gap = a_gap;
   params.rhs_gap = b_gap;
   params.dims = static_cast<uint32_t>(batch_shape.size());
@@ -572,9 +580,15 @@ void dispatch_matmul(
        (kernel == omarchy::ComputeKernel::MatmulBF16 && bf16_aligned &&
         params.matrix_m >= 32u));
   if (coopmat) {
-    kernel = kernel == omarchy::ComputeKernel::MatmulF32
-        ? omarchy::ComputeKernel::MatmulF32Coopmat
-        : omarchy::ComputeKernel::MatmulBF16Coopmat;
+    if (kernel == omarchy::ComputeKernel::MatmulF32) {
+      kernel = omarchy::ComputeKernel::MatmulF32Coopmat;
+    } else {
+      kernel = bf16_native_split2
+          ? omarchy::ComputeKernel::MatmulBF16CoopmatSplit2
+          : omarchy::ComputeKernel::MatmulBF16Coopmat;
+    }
+  } else if (bf16_native_split2) {
+    kernel = omarchy::ComputeKernel::MatmulBF16Split2;
   }
   // Register-blocked f16 tile for prefill-sized matrices (the
   // attention scores and probs matmuls): same per-output arithmetic as

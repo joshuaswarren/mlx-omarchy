@@ -993,6 +993,7 @@ TEST_CASE("dense bf16 matmul matches host on every row across coopmat shapes") {
       {"tail-m9", 1, 9, 8, 8},
       {"tail-m33-n40", 1, 33, 8, 40},
       {"tile32", 1, 32, 32, 32},
+      {"split2", 1, 32, 128, 32},
       {"tail-m17-k24-n34", 1, 17, 24, 34},
       {"batch2", 2, 40, 8, 40},
   };
