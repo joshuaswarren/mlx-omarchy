@@ -1,0 +1,226 @@
+[
+  {
+    "op": "prefill.input_norm",
+    "mismatches": 0,
+    "elements": 234752,
+    "inputs": "native-injected",
+    "max_raw_delta": 0.0
+  },
+  {
+    "op": "prefill.q_proj",
+    "mismatches": 34,
+    "elements": 234752,
+    "inputs": "native-injected",
+    "max_raw_delta": 1.0
+  },
+  {
+    "op": "prefill.k_proj",
+    "mismatches": 0,
+    "elements": 33536,
+    "inputs": "native-injected",
+    "max_raw_delta": 0.0
+  },
+  {
+    "op": "prefill.v_proj",
+    "mismatches": 3,
+    "elements": 33536,
+    "inputs": "native-injected",
+    "max_raw_delta": 2.0
+  },
+  {
+    "op": "prefill.rope_q",
+    "mismatches": 107,
+    "elements": 234752,
+    "inputs": "native-injected",
+    "max_raw_delta": 5.0
+  },
+  {
+    "op": "prefill.rope_k",
+    "mismatches": 16,
+    "elements": 33536,
+    "inputs": "native-injected",
+    "max_raw_delta": 1.0
+  },
+  {
+    "op": "prefill.attention",
+    "mismatches": 36,
+    "elements": 234752,
+    "inputs": "native-injected",
+    "max_raw_delta": 21.0
+  },
+  {
+    "op": "prefill.o_proj",
+    "mismatches": 0,
+    "elements": 234752,
+    "inputs": "native-injected",
+    "max_raw_delta": 0.0
+  },
+  {
+    "op": "prefill.post_attention_norm",
+    "mismatches": 0,
+    "elements": 234752,
+    "inputs": "native-injected",
+    "max_raw_delta": 0.0
+  },
+  {
+    "op": "prefill.gate_proj",
+    "mismatches": 0,
+    "elements": 1274368,
+    "inputs": "native-injected",
+    "max_raw_delta": 0.0
+  },
+  {
+    "op": "prefill.up_proj",
+    "mismatches": 0,
+    "elements": 1274368,
+    "inputs": "native-injected",
+    "max_raw_delta": 0.0
+  },
+  {
+    "op": "prefill.sigmoid",
+    "mismatches": 5,
+    "elements": 1274368,
+    "inputs": "native-injected",
+    "max_raw_delta": 1.0
+  },
+  {
+    "op": "prefill.swiglu",
+    "mismatches": 5,
+    "elements": 1274368,
+    "inputs": "native-injected",
+    "max_raw_delta": 2.0
+  },
+  {
+    "op": "prefill.down_proj",
+    "mismatches": 0,
+    "elements": 234752,
+    "inputs": "native-injected",
+    "max_raw_delta": 0.0
+  },
+  {
+    "op": "prefill.final_norm",
+    "mismatches": 0,
+    "elements": 234752,
+    "inputs": "native-injected",
+    "max_raw_delta": 0.0
+  },
+  {
+    "op": "prefill.lm_head",
+    "mismatches": 0,
+    "elements": 39807232,
+    "inputs": "native-injected",
+    "max_raw_delta": 0.0
+  },
+  {
+    "op": "decode.input_norm",
+    "mismatches": 0,
+    "elements": 896,
+    "inputs": "native-injected",
+    "max_raw_delta": 0.0
+  },
+  {
+    "op": "decode.q_proj",
+    "mismatches": 106,
+    "elements": 896,
+    "inputs": "native-injected",
+    "max_raw_delta": 20.0
+  },
+  {
+    "op": "decode.k_proj",
+    "mismatches": 13,
+    "elements": 128,
+    "inputs": "native-injected",
+    "max_raw_delta": 7.0
+  },
+  {
+    "op": "decode.v_proj",
+    "mismatches": 46,
+    "elements": 128,
+    "inputs": "native-injected",
+    "max_raw_delta": 14328.0
+  },
+  {
+    "op": "decode.rope_q",
+    "mismatches": 1,
+    "elements": 896,
+    "inputs": "native-injected",
+    "max_raw_delta": 1.0
+  },
+  {
+    "op": "decode.rope_k",
+    "mismatches": 0,
+    "elements": 128,
+    "inputs": "native-injected",
+    "max_raw_delta": 0.0
+  },
+  {
+    "op": "decode.attention",
+    "mismatches": 0,
+    "elements": 896,
+    "inputs": "native-injected",
+    "max_raw_delta": 0.0
+  },
+  {
+    "op": "decode.o_proj",
+    "mismatches": 0,
+    "elements": 896,
+    "inputs": "native-injected",
+    "max_raw_delta": 0.0
+  },
+  {
+    "op": "decode.post_attention_norm",
+    "mismatches": 0,
+    "elements": 896,
+    "inputs": "native-injected",
+    "max_raw_delta": 0.0
+  },
+  {
+    "op": "decode.gate_proj",
+    "mismatches": 0,
+    "elements": 4864,
+    "inputs": "native-injected",
+    "max_raw_delta": 0.0
+  },
+  {
+    "op": "decode.up_proj",
+    "mismatches": 0,
+    "elements": 4864,
+    "inputs": "native-injected",
+    "max_raw_delta": 0.0
+  },
+  {
+    "op": "decode.sigmoid",
+    "mismatches": 0,
+    "elements": 4864,
+    "inputs": "native-injected",
+    "max_raw_delta": 0.0
+  },
+  {
+    "op": "decode.swiglu",
+    "mismatches": 0,
+    "elements": 4864,
+    "inputs": "native-injected",
+    "max_raw_delta": 0.0
+  },
+  {
+    "op": "decode.down_proj",
+    "mismatches": 0,
+    "elements": 896,
+    "inputs": "native-injected",
+    "max_raw_delta": 0.0
+  },
+  {
+    "op": "decode.final_norm",
+    "mismatches": 0,
+    "elements": 896,
+    "inputs": "native-injected",
+    "max_raw_delta": 0.0
+  },
+  {
+    "op": "decode.lm_head",
+    "mismatches": 0,
+    "elements": 151936,
+    "inputs": "native-injected",
+    "max_raw_delta": 0.0
+  }
+]
