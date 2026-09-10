@@ -198,7 +198,9 @@ void main() {
 #else
   uint param_bytes = PARAM_BYTES;
 #endif
-  uint w_row_words = params.matrix_n * words_per_row;
+  uint w_row_words = non_transposed
+      ? params.matrix_k * (params.matrix_n / pack_factor)
+      : params.matrix_n * words_per_row;
   uint scale_row_words = non_transposed
       ? params.matrix_k * (params.matrix_n / group_size)
       : params.matrix_n * groups_per_row;

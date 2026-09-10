@@ -3966,6 +3966,24 @@ TEST_CASE("sort and argsort order last-axis rows through Vulkan compute") {
   check_indices(argsort(flat, 0, stream), {1, 3, 0, 2}, stream);
 }
 
+TEST_CASE("sort materializes zero-stride broadcast rows") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  std::vector<float> row{1, 0, 2, 1, 3, 0, 4, 0};
+  array input = broadcast_to(
+      array(row.begin(), Shape{1, 8}, float32), Shape{16, 8}, stream);
+  std::vector<float> axis0;
+  std::vector<float> axis1;
+  for (int i = 0; i < 16; ++i) {
+    axis0.insert(axis0.end(), row.begin(), row.end());
+    axis1.insert(axis1.end(), {0, 0, 0, 1, 1, 2, 3, 4});
+  }
+  check_values(sort(input, 0, stream), axis0, stream);
+  check_values(sort(input, 1, stream), axis1, stream);
+}
+
 TEST_CASE("sort places NaN after every number through Vulkan compute") {
   if (!compute_available()) {
     return;

@@ -376,7 +376,14 @@ void CommandEncoder::dispatch_compute(
         " storage-buffer bindings; this device allows " +
         std::to_string(binding_limit) + ".");
   }
+  const auto max_range = device_.capabilities().max_storage_buffer_range;
   for (const auto& item : bindings) {
+    if (max_range > 0 && item.range > max_range) {
+      throw std::invalid_argument(
+          "[omarchy] compute storage-buffer descriptor range " +
+          std::to_string(item.range) + " exceeds this device's " +
+          "maxStorageBufferRange of " + std::to_string(max_range) + ".");
+    }
     note_binding_owner(item.owner);
   }
   group_count_x = std::min(group_count_x, kMaxComputeGroupCountX);
