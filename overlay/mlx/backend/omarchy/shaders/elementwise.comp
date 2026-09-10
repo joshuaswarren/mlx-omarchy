@@ -595,7 +595,19 @@ void main() {
         value = exp(lhs);
         break;
       case 5:
+#ifdef USE_BF16
+        value = LOAD_VALUE(STORE_VALUE(exp(abs(lhs))));
+        value = LOAD_VALUE(STORE_VALUE(1.0 + value));
+        value = LOAD_VALUE(STORE_VALUE(1.0 / value));
+        value = lhs < 0.0 ? value : 1.0 - value;
+#elif defined(USE_FP16)
+        value = unpackHalf2x16(packHalf2x16(vec2(exp(abs(lhs)), 0.0))).x;
+        value = unpackHalf2x16(packHalf2x16(vec2(1.0 + value, 0.0))).x;
+        value = unpackHalf2x16(packHalf2x16(vec2(1.0 / value, 0.0))).x;
+        value = lhs < 0.0 ? value : 1.0 - value;
+#else
         value = 1.0 / (1.0 + exp(-lhs));
+#endif
         break;
       case 6:
         value = lhs * lhs;
