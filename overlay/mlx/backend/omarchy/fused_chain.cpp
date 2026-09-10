@@ -302,13 +302,19 @@ bool FusedChain::try_add(
     if (!mode) {
       return std::nullopt;
     }
-    // The leaf shader addresses direct, mod-last, and div-last leaves
-    // as row-major linear buffers. A column-contiguous (e.g. transposed)
-    // leaf is also `contiguous`, but its storage order is not its logical
-    // order, so reading it direct returns permuted values. Refuse those
-    // leaves and let the per-node path preserve the layout. Scalar
-    // leaves read only index 0 and are layout-independent.
-    if (mode.value() != kLeafScalar && !in.flags().row_contiguous) {
+    // Direct leaves are read as linear row-major buffers, so storage
+    // order must equal logical order: a column-contiguous (e.g.
+    // transposed) leaf is `contiguous` but would fuse in storage order
+    // and return permuted values (upstream test_compile_dynamic_dims).
+    // Refuse those and let the per-node path preserve the layout.
+    // Tiled (mod-last/div-last) leaves read a smaller shared buffer a
+    // broadcast produced in logical order, so any contiguous source
+    // works. Scalar leaves read only index 0 and are layout-independent.
+    if (mode.value() == kLeafDirect) {
+      if (!in.flags().row_contiguous) {
+        return std::nullopt;
+      }
+    } else if (mode.value() != kLeafScalar && !in.flags().contiguous) {
       return std::nullopt;
     }
     const size_t item_offset = in.offset() / in.itemsize();
