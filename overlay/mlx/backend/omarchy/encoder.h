@@ -202,7 +202,7 @@ class MLX_API CommandEncoder {
   void commit();
 
   // Submit pending work and block (bounded) until it completes.
-  void synchronize();
+  void synchronize(const char* reason = "explicit");
 
   // True when every submission queued through this encoder has completed
   // and its handlers have run, and no batch is open with un-submitted
@@ -261,7 +261,7 @@ class MLX_API CommandEncoder {
   // CompletionDispatcher, clear last_completion_, and invalidate
   // noncoherent host mappings. Guarantees the newest command buffer has
   // left the pending state.
-  void join_last_completion();
+  void join_last_completion(const char* reason);
   void submit();
 
   // Dependency-gated barrier state (MLX_OMARCHY_GATED_BARRIERS, default

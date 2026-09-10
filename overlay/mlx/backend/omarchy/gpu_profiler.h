@@ -26,8 +26,10 @@
 //                     0 when gated tracking skipped it)
 //   {"k":"s",...}     per submission: host cost of submit() and the host
 //                     clock at submit end
+//   {"k":"q",...}     per submission: command-buffer close and queue-submit
+//                     entry/return host clocks
 //   {"k":"j",...}     per join: host cost of the completion-timeline wait
-//                     and of the noncoherent invalidate
+//                     and of the noncoherent invalidate, plus the caller reason
 //   {"k":"end",...}   at exit: totals incl. barrier decisions ("barriers",
 //                     "barriers_skipped"; transfer/fill decisions included)
 //
@@ -260,6 +262,23 @@ class GpuProfiler {
           host_ns());
   }
 
+  void on_submit_boundary(
+      uint64_t sub,
+      uint64_t close_t,
+      uint64_t queue_t0,
+      uint64_t queue_t1) {
+    if (out_ == nullptr || sub == 0) {
+      return;
+    }
+    emitf("{\"k\":\"q\",\"s\":%" PRIu64
+          ",\"close\":%" PRIu64 ",\"queue_t0\":%" PRIu64
+          ",\"queue_t1\":%" PRIu64 "}\n",
+          sub,
+          close_t,
+          queue_t0,
+          queue_t1);
+  }
+
   // Called from join_last_completion after the wait and the noncoherent
   // invalidate. The join completed the newest submission, which is every
   // submission this encoder has outstanding, so all ring slots' unread
@@ -269,17 +288,20 @@ class GpuProfiler {
       uint64_t sub,
       uint64_t join_t0,
       uint64_t wait_t1,
-      uint64_t inval_t2) {
+      uint64_t inval_t2,
+      const char* reason) {
     if (out_ == nullptr) {
       return;
     }
     joins_++;
     emitf("{\"k\":\"j\",\"s\":%" PRIu64 ",\"wait\":%" PRIu64
-          ",\"inval\":%" PRIu64 ",\"t\":%" PRIu64 "}\n",
+          ",\"inval\":%" PRIu64 ",\"t\":%" PRIu64
+          ",\"reason\":\"%s\"}\n",
           sub,
           wait_t1 - join_t0,
           inval_t2 - wait_t1,
-          join_t0);
+          join_t0,
+          reason);
     Ctx* ctx = find(owner);
     if (ctx == nullptr) {
       return;
@@ -528,7 +550,9 @@ class GpuProfiler {
       uint64_t,
       uint32_t) {}
   void on_submit_end(const void*, uint64_t, uint64_t, int) {}
-  void on_join(const void*, uint64_t, uint64_t, uint64_t, uint64_t) {}
+  void on_submit_boundary(uint64_t, uint64_t, uint64_t, uint64_t) {}
+  void on_join(
+      const void*, uint64_t, uint64_t, uint64_t, uint64_t, const char*) {}
 };
 
 // Namespace-level accessor used by encoder.cpp call sites.
