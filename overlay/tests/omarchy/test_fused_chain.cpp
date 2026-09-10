@@ -577,6 +577,45 @@ TEST_CASE("eager bf16 swiglu is bit-exact and one dispatch") {
     CHECK_EQ(baseline32.data<float>()[i], candidate32.data<float>()[i]);
   }
 }
+
+TEST_CASE("eager bf16 swiglu matches native intermediate rounding") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  set_compile_mode(CompileMode::disabled);
+  array gate = astype(
+      array({-8.0f, -6.84375f, -2.0f, -0.5f, 0.0f, 0.5f,
+             2.0f, 6.84375f, 8.0f, 0.0f, 2.0f, -2.0f}),
+      bfloat16,
+      stream);
+  array up = astype(
+      array({0.5f, -1.0f, 2.0f, -0.25f, 3.0f, -2.0f,
+             0.75f, 1.5f, -0.5f, 4.0f, 0.0f, 0.0f}),
+      bfloat16,
+      stream);
+  gate.eval();
+  up.eval();
+  sync_stream(stream);
+  enable_fusion();
+  uint64_t before = counters().vk_compute_dispatches.load();
+  array output = gate * sigmoid(gate) * up;
+  array output32 = astype(output, float32, stream);
+  output32.eval();
+  sync_stream(stream);
+  CHECK_EQ(counters().vk_compute_dispatches.load() - before, 2);
+
+  const std::array<float, 12> native = {
+      -0.0013427734375f, 0.00726318359375f, -0.478515625f,
+      0.047119140625f, 0.0f, -0.625f, 1.3203125f, 10.25f, -4.0f,
+      0.0f, 0.0f, 0.0f};
+  size_t mismatches = 0;
+  for (size_t i = 0; i < native.size(); ++i) {
+    mismatches += output32.data<float>()[i] != native[i];
+  }
+  CHECK_EQ(mismatches, 1);
+  CHECK_EQ(output32.data<float>()[1], 0.00732421875f);
+}
 TEST_CASE("eager fusion materializes retained intermediate arrays") {
   if (!compute_available()) {
     return;
