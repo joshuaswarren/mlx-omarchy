@@ -1,0 +1,9 @@
+program(1.3)
+[buildInfo = dict<string, string>({})]
+{
+  func main<ios18>(tensor<fp16, [1, 896, 896]> x, tensor<fp16, [1, 896, 896]> w) {
+    bool tx = const()[name = string("tx"), val = bool(false)];
+    bool ty = const()[name = string("ty"), val = bool(false)];
+    tensor<fp16, [1, 896, 896]> y = matmul(transpose_x = tx, transpose_y = ty, x = x, y = w)[name = string("y")];
+  } -> (y);
+}

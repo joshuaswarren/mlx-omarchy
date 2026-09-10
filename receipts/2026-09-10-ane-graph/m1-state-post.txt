@@ -1,0 +1,16 @@
+phase=post
+timestamp=2026-09-10T13:52:03-05:00
+hostname=jwm1-linux
+kernel=7.1.6-1-1-ARCH
+machine=aarch64
+boot_id=0faefd51-fa93-4b26-aae6-e37c1e193b72
+module_present=false
+device_present=false
+driver_sha256=83819510cae37e5c748ff7586bf009d038866e5bfb657372646533a07b0ce0f0
+libane_sha256=8795e4c8d2b7b4440217ee5bebf342dc6795e909719e78bacbfc02e973231aa9
+compiler_commit=5271ab0b2bc1d9c28b1eb9d3bcfef9773902b57c
+compiler_binary_sha256=ceaf24c3bf38f7375b6c2e4caa7e978b0eb5c6d5459aaafbbb758eefdeb0b1ac
+wheel_sha256=9d620b2ed61a51d396fda5d94dcaca8fa08f950df0be56a66ca1c2aa72475e1f
+firmware_compatible[/sys/firmware/devicetree/base/soc/dsi@228600000/panel@0/compatible]=apple,j293-summit,apple,summit,
+firmware_compatible[/sys/firmware/devicetree/base/soc/dcp@231c00000/panel/compatible]=apple,panel-j293,apple,panel,
+firmware_compatible[/sys/firmware/devicetree/base/soc/ane@26bc04000/compatible]=apple,t8103-ane,

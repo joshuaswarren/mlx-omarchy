@@ -1,0 +1,79 @@
+phase=pre
+timestamp=2026-09-10T13:15:40-05:00
+hostname=jwm1-linux
+kernel=7.1.6-1-1-ARCH
+machine=aarch64
+boot_id=0faefd51-fa93-4b26-aae6-e37c1e193b72
+module_present=false
+device_present=false
+driver_sha256=83819510cae37e5c748ff7586bf009d038866e5bfb657372646533a07b0ce0f0
+libane_sha256=8795e4c8d2b7b4440217ee5bebf342dc6795e909719e78bacbfc02e973231aa9
+compiler_commit=5271ab0b2bc1d9c28b1eb9d3bcfef9773902b57c
+compiler_binary_sha256=ceaf24c3bf38f7375b6c2e4caa7e978b0eb5c6d5459aaafbbb758eefdeb0b1ac
+wheel_sha256=9d620b2ed61a51d396fda5d94dcaca8fa08f950df0be56a66ca1c2aa72475e1f
+firmware_compatible[/sys/firmware/devicetree/base/soc/dsi@228600000/panel@0/compatible]=apple,j293-summit,apple,summit,
+firmware_compatible[/sys/firmware/devicetree/base/soc/dcp@231c00000/panel/compatible]=apple,panel-j293,apple,panel,
+firmware_compatible[/sys/firmware/devicetree/base/soc/ane@26bc04000/compatible]=apple,t8103-ane,
+phase=loaded
+timestamp=2026-09-10T13:15:40-05:00
+hostname=jwm1-linux
+kernel=7.1.6-1-1-ARCH
+machine=aarch64
+boot_id=0faefd51-fa93-4b26-aae6-e37c1e193b72
+module_present=true
+device_present=true
+module_version=f2a3e5e+lifecycle6
+driver_sha256=83819510cae37e5c748ff7586bf009d038866e5bfb657372646533a07b0ce0f0
+libane_sha256=8795e4c8d2b7b4440217ee5bebf342dc6795e909719e78bacbfc02e973231aa9
+compiler_commit=5271ab0b2bc1d9c28b1eb9d3bcfef9773902b57c
+compiler_binary_sha256=ceaf24c3bf38f7375b6c2e4caa7e978b0eb5c6d5459aaafbbb758eefdeb0b1ac
+wheel_sha256=9d620b2ed61a51d396fda5d94dcaca8fa08f950df0be56a66ca1c2aa72475e1f
+firmware_compatible[/sys/firmware/devicetree/base/soc/dsi@228600000/panel@0/compatible]=apple,j293-summit,apple,summit,
+firmware_compatible[/sys/firmware/devicetree/base/soc/dcp@231c00000/panel/compatible]=apple,panel-j293,apple,panel,
+firmware_compatible[/sys/firmware/devicetree/base/soc/ane@26bc04000/compatible]=apple,t8103-ane,
+mlx_provenance_command=/home/joshuawarren/src/mlx-AneGraphIntegration/.work/venv-ane/bin/python scripts/mlx_provenance.py --expect-wheel /home/joshuawarren/src/mlx-AneGraphIntegration/dist/mlx_omarchy-0.32.2.dev202609101742+786553-cp314-cp314-linux_aarch64.whl
+{
+  "dist": "mlx-omarchy",
+  "verified": "match",
+  "mismatch": null,
+  "files": [
+    {
+      "path": "mlx/core.cpython-314-aarch64-linux-gnu.so",
+      "label": "mlx.core extension",
+      "sha256": "4ad850da16c300ea9f60aa7247f034f358aa16d7ba2fd146979a01c867e3cfa5",
+      "record_sha256": "4ad850da16c300ea9f60aa7247f034f358aa16d7ba2fd146979a01c867e3cfa5",
+      "match": true
+    },
+    {
+      "path": "mlx/lib/libmlx.so",
+      "label": "mlx/lib/libmlx.so",
+      "sha256": "c436baf9e9317a2ecbd02e2fa4aaabe1b51f87bdc0faad1f0334427f1e7d16c4",
+      "record_sha256": "c436baf9e9317a2ecbd02e2fa4aaabe1b51f87bdc0faad1f0334427f1e7d16c4",
+      "match": true
+    }
+  ],
+  "dist_version": "0.32.2.dev202609101742+786553",
+  "mx_version": "0.32.2.dev202609101742+786553",
+  "version_match": true,
+  "expected_wheel": "/home/joshuawarren/src/mlx-AneGraphIntegration/dist/mlx_omarchy-0.32.2.dev202609101742+786553-cp314-cp314-linux_aarch64.whl"
+}
+qualifier_command=MLX_OMARCHY_ANE_REGION=1 /home/joshuawarren/src/mlx-AneGraphIntegration/.work/venv-ane/bin/python scripts/qualify_ane_graph.py [arguments recorded in verdict.json]
+{"benchmark_identity": {"cooperative_matrix_f32_8": 1, "device_info": {"api_version": "1.4.359", "architecture": "honeykrisp", "cooperative_matrix_f32_8": 1, "device_id": 0, "device_name": "Apple M1 (G13G B1)", "driver": "Mesa Honeykrisp", "driver_version": 109060195, "host_visible_coherent": 1, "max_compute_shared_memory_size": 32768, "max_compute_work_group_invocations": 1024, "max_compute_work_group_size_x": 1024, "max_storage_buffer_range": 2147483647, "shader_float16": 1, "shader_int16": 1, "shader_int64": 1, "storage_buffer_16bit_access": 1, "timestamp_period_ns": 1, "total_memory": 8113881088, "unified_memory": 1, "vendor_id": 65541}, "mlx_version": "0.32.2.dev202609101742+786553"}}
+{"ane_total_median_us": 1225.1995000000002, "cooperative_matrix_f32_8": 1, "gpu_median_us": 185.06400000000002, "improvement_percent": -562.0409696105131, "mlx_version": "0.32.2.dev202609101742+786553", "numerical_passed": true, "passes_10_percent_bar": false, "verdict": "reject"}
+phase=post
+timestamp=2026-09-10T13:15:40-05:00
+hostname=jwm1-linux
+kernel=7.1.6-1-1-ARCH
+machine=aarch64
+boot_id=0faefd51-fa93-4b26-aae6-e37c1e193b72
+module_present=false
+device_present=false
+driver_sha256=83819510cae37e5c748ff7586bf009d038866e5bfb657372646533a07b0ce0f0
+libane_sha256=8795e4c8d2b7b4440217ee5bebf342dc6795e909719e78bacbfc02e973231aa9
+compiler_commit=5271ab0b2bc1d9c28b1eb9d3bcfef9773902b57c
+compiler_binary_sha256=ceaf24c3bf38f7375b6c2e4caa7e978b0eb5c6d5459aaafbbb758eefdeb0b1ac
+wheel_sha256=9d620b2ed61a51d396fda5d94dcaca8fa08f950df0be56a66ca1c2aa72475e1f
+firmware_compatible[/sys/firmware/devicetree/base/soc/dsi@228600000/panel@0/compatible]=apple,j293-summit,apple,summit,
+firmware_compatible[/sys/firmware/devicetree/base/soc/dcp@231c00000/panel/compatible]=apple,panel-j293,apple,panel,
+firmware_compatible[/sys/firmware/devicetree/base/soc/ane@26bc04000/compatible]=apple,t8103-ane,
+lock_hold_seconds=0
