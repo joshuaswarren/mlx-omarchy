@@ -11,9 +11,11 @@
 // dequantizes each 16x32 weight tile once into shared f32, and reuses it
 // across all 32 rows. The two ascending 8-wide coopmat updates preserve
 // the previous kernel's per-output accumulation order and output ids.
-// The dispatch gate requires cooperative_matrix_f32_8, subgroup size 32,
-// f16 output, transposed affine 4-bit/group-64, even x/output offsets,
-// enough shared memory, and !MLX_OMARCHY_NO_COOPMAT.
+// dispatch gate requires cooperative_matrix_f32_8, subgroup size 32,
+// f16 output, transposed affine 4-bit/group-64, even x/output offsets
+// (the host stages an odd-offset x view into an aligned buffer instead
+// of rerouting to the tile kernel), enough shared memory, and
+// !MLX_OMARCHY_NO_COOPMAT.
 
 const uint TILE_M = 32u;
 const uint TILE_N = 32u;
