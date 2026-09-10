@@ -1,0 +1,56 @@
+{
+  "source_main": "9d83072ddd4634b2786b5f85f3f35b9ca0f77cf2",
+  "model": {
+    "q4": "mlx-community/Qwen2.5-0.5B-Instruct-4bit",
+    "q4_revision": "a5339a4131f135d0fdc6a5c8b5bbed2753bbe0f3",
+    "bf16": "mlx-community/Qwen2.5-0.5B-Instruct-bf16",
+    "bf16_revision": "56d07e766edd7159fbe12ed12d9cf114bf38bf1e"
+  },
+  "baseline": {
+    "commit": "9d83072ddd4634b2786b5f85f3f35b9ca0f77cf2",
+    "diagnostics_wheel_sha256": "c741244720607dfb2e9aed9b4b34a624d86794e9fdf70b65c993276e7c70d714",
+    "dispatches_per_token": 345,
+    "submissions_per_token": 2,
+    "token_10_gpu_busy_us": 20765,
+    "token_10_gap_us": 7317,
+    "profile": "profile-base/"
+  },
+  "candidates": [
+    {
+      "name": "paired_qk_rope",
+      "commit": "b8c605167218ef2c5b10f47286595fc369c380fd",
+      "diagnostics_wheel_sha256": "92d579effd6d9099fdabcfc40141f7cb4a2aa482b3ef7cc40a70662a2f01ae63",
+      "dispatches_per_token": 345,
+      "submissions_per_token": 2,
+      "token_10_gpu_busy_us": 22082,
+      "token_10_gap_us": 5903,
+      "fast_rope_dispatches_per_token": 48,
+      "median_inter_token_ms": 28.52,
+      "decision": "reject",
+      "reason": "The actual model showed no dispatch reduction. Q and K RoPE execute in separate eager evaluation scopes, so the per-scope pair planner cannot combine them.",
+      "profile": "profile-rope/"
+    },
+    {
+      "name": "single_token_sdpa",
+      "commit": "717a821e59b9b2d588ace050ffdf38e2db8153ab",
+    "release_wheel_sha256": "f762d8af74c695fc671f0626f4d95f3881bf6911d153591bfd4112ad5355ce4e",
+    "diagnostics_wheel_sha256": "b604be22c427f2c1e0e6665f2b2b3199f1023b4e416787b46613162c742e2e79",
+      "llvmpipe": {
+        "command": "MLX_OMARCHY_ALLOW_NON_APPLE=1 .work/build-decode-tail/tests/omarchy/omarchy_fast_ops_tests",
+        "result": "34 test cases passed; 1114895 assertions passed",
+        "log": "sdpa-llvmpipe-test.log"
+      },
+      "m1": {
+        "command": "flock -w 1800 /tmp/m1-gpu.lock timeout 1100 /tmp/decode-tail-sdpa-test.sh",
+        "result": "33 of 34 test cases passed; 1102947 of 1102948 assertions passed",
+        "failure": "test_fast_ops.cpp:799 exact baseline/candidate vector equality failed"
+      },
+      "decision": "reject_unless_reworked",
+      "reason": "The valid-input M1 test found a numerical mismatch that llvmpipe did not reproduce. No model profile or six-leg benchmark was run after the correctness gate failed."
+    }
+  ],
+  "paired": {},
+  "ids": "not_run_for_rejected_candidates",
+  "decision": "No decode-tail candidate qualifies. Paired RoPE has no model dispatch payoff; fused SDPA fails exact numerical parity on M1.",
+  "next": "Repair the SDPA shader arithmetic against the M1 mismatch before any model profile. The next independent dispatch lever is the logits tail: QmmVecQ4WordSubgroupF16, LogSumExpF16, ElementwiseF16, and ArgReduceF16 account for four serial dispatches, but fusion must preserve both normalized logits and argmax observables."
+}
