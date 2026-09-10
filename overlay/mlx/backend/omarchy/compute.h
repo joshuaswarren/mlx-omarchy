@@ -597,6 +597,12 @@ enum class ComputeKernel : uint16_t {
   QmmTileRbPreciseF16,
   // Native-order single-query f16 attention; append-only profile id.
   SdpaDecodeNativeF16,
+  // Q4 prefill split-K screen: the coopmat kernel writing CHUNK_K-aligned
+  // f32 partial planes (shaders/qmm_coopmat_splitk.comp) plus the partial
+  // reduce (shaders/qmm_splitk_reduce.comp). Env-gated via
+  // MLX_OMARCHY_QMM_SPLITK; appended to preserve profile ids.
+  QmmPrefillCoopmatSplitKF16,
+  QmmSplitkReduceF16,
   Custom,
   Count,
 };
