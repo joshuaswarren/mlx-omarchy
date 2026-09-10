@@ -1,0 +1,7 @@
+{
+  "source_commit": "3b3370923af4ec1b96a57799eff895af44641720",
+  "wheel": "mlx_omarchy-0.32.2.dev202609101404+diag.3b33709-cp314-cp314-linux_aarch64.whl",
+  "wheel_sha256": "f1902bc803f1155effcf2767de6ec075e9d0a6bf65f1bd38b1b54d2f46aba790",
+  "model_revision": "a5339a4131f135d0fdc6a5c8b5bbed2753bbe0f3",
+  "python": ".work/venv-profile/bin/python"
+}
