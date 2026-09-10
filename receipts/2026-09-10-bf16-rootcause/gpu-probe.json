@@ -1,0 +1,98 @@
+[
+  {
+    "op": "decode.q_proj",
+    "gpu_vs_native_mismatch": 106,
+    "gpu_vs_native_max_bit_delta": 20,
+    "gpu_vs_truth_mismatch": 0,
+    "gpu_vs_truth_max_bit_delta": 0,
+    "gpu_vs_cpu_mismatch": 106,
+    "gpu_vs_cpu_max_bit_delta": 20,
+    "cpu_vs_truth_mismatch": 106,
+    "native_vs_truth_max_bit_delta": 20,
+    "elements": 896
+  },
+  {
+    "op": "decode.k_proj",
+    "gpu_vs_native_mismatch": 13,
+    "gpu_vs_native_max_bit_delta": 7,
+    "gpu_vs_truth_mismatch": 0,
+    "gpu_vs_truth_max_bit_delta": 0,
+    "gpu_vs_cpu_mismatch": 13,
+    "gpu_vs_cpu_max_bit_delta": 7,
+    "cpu_vs_truth_mismatch": 13,
+    "native_vs_truth_max_bit_delta": 7,
+    "elements": 128
+  },
+  {
+    "op": "decode.v_proj",
+    "gpu_vs_native_mismatch": 46,
+    "gpu_vs_native_max_bit_delta": 14328,
+    "gpu_vs_truth_mismatch": 0,
+    "gpu_vs_truth_max_bit_delta": 0,
+    "gpu_vs_cpu_mismatch": 46,
+    "gpu_vs_cpu_max_bit_delta": 14328,
+    "cpu_vs_truth_mismatch": 46,
+    "native_vs_truth_max_bit_delta": 14328,
+    "elements": 128
+  },
+  {
+    "op": "decode.o_proj",
+    "gpu_vs_native_mismatch": 0,
+    "gpu_vs_native_max_bit_delta": 0,
+    "gpu_vs_truth_mismatch": 0,
+    "gpu_vs_truth_max_bit_delta": 0,
+    "gpu_vs_cpu_mismatch": 0,
+    "gpu_vs_cpu_max_bit_delta": 0,
+    "cpu_vs_truth_mismatch": 0,
+    "native_vs_truth_max_bit_delta": 0,
+    "elements": 896
+  },
+  {
+    "op": "prefill.q_proj",
+    "gpu_vs_native_mismatch": 34,
+    "gpu_vs_native_max_bit_delta": 1,
+    "gpu_vs_truth_mismatch": 31,
+    "gpu_vs_truth_max_bit_delta": 1,
+    "gpu_vs_cpu_mismatch": 36615,
+    "gpu_vs_cpu_max_bit_delta": 48162,
+    "cpu_vs_truth_mismatch": 36609,
+    "native_vs_truth_max_bit_delta": 1,
+    "elements": 234752
+  },
+  {
+    "op": "prefill.k_proj",
+    "gpu_vs_native_mismatch": 0,
+    "gpu_vs_native_max_bit_delta": 0,
+    "gpu_vs_truth_mismatch": 0,
+    "gpu_vs_truth_max_bit_delta": 0,
+    "gpu_vs_cpu_mismatch": 3784,
+    "gpu_vs_cpu_max_bit_delta": 47801,
+    "cpu_vs_truth_mismatch": 3784,
+    "native_vs_truth_max_bit_delta": 0,
+    "elements": 33536
+  },
+  {
+    "op": "prefill.v_proj",
+    "gpu_vs_native_mismatch": 3,
+    "gpu_vs_native_max_bit_delta": 2,
+    "gpu_vs_truth_mismatch": 4,
+    "gpu_vs_truth_max_bit_delta": 2,
+    "gpu_vs_cpu_mismatch": 12045,
+    "gpu_vs_cpu_max_bit_delta": 47216,
+    "cpu_vs_truth_mismatch": 12045,
+    "native_vs_truth_max_bit_delta": 4,
+    "elements": 33536
+  },
+  {
+    "op": "prefill.o_proj",
+    "gpu_vs_native_mismatch": 0,
+    "gpu_vs_native_max_bit_delta": 0,
+    "gpu_vs_truth_mismatch": 35,
+    "gpu_vs_truth_max_bit_delta": 13,
+    "gpu_vs_cpu_mismatch": 46,
+    "gpu_vs_cpu_max_bit_delta": 14,
+    "cpu_vs_truth_mismatch": 49,
+    "native_vs_truth_max_bit_delta": 13,
+    "elements": 234752
+  }
+]
