@@ -83,6 +83,7 @@ void main() {
   uint x_words_per_row = params.matrix_k / 2u;
   uint w_column_local = lid % 32u;
   uint w_part = lid / 32u;
+  uint w_base = 8u * w_part * TILE_N + w_column_local;
 
   for (uint b = 0u; b < batch; ++b) {
   uint w_slice = params.rhs_offset + b * w_batch_words;
@@ -94,6 +95,17 @@ void main() {
   for (uint tile_row = gl_WorkGroupID.y; tile_row < m_tiles;
        tile_row += gl_NumWorkGroups.y) {
     uint row_base = tile_row * TILE_M;
+    uint x_lane = lid & 7u;
+    uint x_local_row = lid >> 3u;
+    uint x_row0 = row_base + x_local_row;
+    uint x_row1 = x_row0 + 8u;
+    uint x_row2 = x_row0 + 16u;
+    uint x_row3 = x_row0 + 24u;
+    uint x_address0 = x_slice + x_row0 * x_words_per_row + x_lane;
+    uint x_address1 = x_slice + x_row1 * x_words_per_row + x_lane;
+    uint x_address2 = x_slice + x_row2 * x_words_per_row + x_lane;
+    uint x_address3 = x_slice + x_row3 * x_words_per_row + x_lane;
+    uint x_local0 = x_local_row * STEP_K + 2u * x_lane;
     for (uint tile_col = gl_WorkGroupID.x; tile_col < n_tiles;
          tile_col += gl_NumWorkGroups.x) {
       uint column = tile_col * TILE_N + w_column_local;
@@ -120,29 +132,31 @@ void main() {
         }
         for (uint step = 0u; step < CHUNK_K / STEP_K; ++step) {
           uint k_base = chunk * CHUNK_K + step * STEP_K;
+          uint x_k_word = k_base / 2u;
           // Four half2 loads per lane cover the 32x16 x tile.
-          uint x_words[4];
-          for (uint j = 0u; j < 4u; ++j) {
-            uint i = lid + 64u * j;
-            uint local_row = i / 8u;
-            uint row = row_base + local_row;
-            x_words[j] = row < params.matrix_m
-                ? input_x.values[
-                      x_slice + row * x_words_per_row + k_base / 2u +
-                      (i % 8u)]
-                : 0u;
-          }
-          for (uint j = 0u; j < 4u; ++j) {
-            uint i = lid + 64u * j;
-            uint local_row = i / 8u;
-            vec2 pair = unpackHalf2x16(x_words[j]);
-            x_s[local_row * STEP_K + 2u * (i % 8u)] = pair.x;
-            x_s[local_row * STEP_K + 2u * (i % 8u) + 1u] = pair.y;
-          }
+          uint x_word0 = x_row0 < params.matrix_m
+              ? input_x.values[x_address0 + x_k_word] : 0u;
+          uint x_word1 = x_row1 < params.matrix_m
+              ? input_x.values[x_address1 + x_k_word] : 0u;
+          uint x_word2 = x_row2 < params.matrix_m
+              ? input_x.values[x_address2 + x_k_word] : 0u;
+          uint x_word3 = x_row3 < params.matrix_m
+              ? input_x.values[x_address3 + x_k_word] : 0u;
+          vec2 pair0 = unpackHalf2x16(x_word0);
+          vec2 pair1 = unpackHalf2x16(x_word1);
+          vec2 pair2 = unpackHalf2x16(x_word2);
+          vec2 pair3 = unpackHalf2x16(x_word3);
+          x_s[x_local0] = pair0.x;
+          x_s[x_local0 + 1u] = pair0.y;
+          x_s[x_local0 + 8u * STEP_K] = pair1.x;
+          x_s[x_local0 + 8u * STEP_K + 1u] = pair1.y;
+          x_s[x_local0 + 16u * STEP_K] = pair2.x;
+          x_s[x_local0 + 16u * STEP_K + 1u] = pair2.y;
+          x_s[x_local0 + 24u * STEP_K] = pair3.x;
+          x_s[x_local0 + 24u * STEP_K + 1u] = pair3.y;
           // One packed word per lane covers the 16x32 weight tile.
           uint packed = column_ok
               ? input_w.values[w_row + k_base / 8u + w_part] : 0u;
-          uint w_base = 8u * w_part * TILE_N + w_column_local;
           w_s[w_base + 0u * TILE_N] = scale * float(packed & 0xFu) + bias;
           w_s[w_base + 1u * TILE_N] =
               scale * float((packed >> 4u) & 0xFu) + bias;
