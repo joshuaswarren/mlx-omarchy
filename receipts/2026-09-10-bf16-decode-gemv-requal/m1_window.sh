@@ -12,9 +12,11 @@ flock 9
 echo "$(date -Is) lock acquired"
 
 {
+  echo "== phase 0: capture smoke (fails fast, seconds) =="
+  bash "$R/m1_suites.sh" --smoke-only
   echo "== phase 1: matrix =="
   bash "$R/m1_matrix.sh"
-  echo "== phase 2: suites + ulp =="
+  echo "== phase 2: suites + full ulp =="
   bash "$R/m1_suites.sh"
 } > receipt-requal/window.log 2>&1
 rc=$?
