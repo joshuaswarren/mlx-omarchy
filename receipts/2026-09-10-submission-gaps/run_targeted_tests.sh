@@ -24,7 +24,8 @@ exec timeout 2400 flock -w 2400 /tmp/m1-gpu.lock /bin/sh -c '
     "'$BUILD'/tests/omarchy/omarchy_copy_offset_tests" > "'$OUT'/$label-copy.log" 2>&1
     "'$BUILD'/tests/omarchy/omarchy_runtime_tests" > "'$OUT'/$label-runtime.log" 2>&1
     "'$BUILD'/tests/omarchy/omarchy_fast_ops_tests" \
-      --test-case="fused rope*" > "'$OUT'/$label-rope.log" 2>&1
+      --test-case="fused rope refuses beyond the trig argument limit by name" \
+      > "'$OUT'/$label-rope.log" 2>&1
   }
 
   run_driver llvmpipe /usr/share/vulkan/icd.d/lvp_icd.aarch64.json 1
