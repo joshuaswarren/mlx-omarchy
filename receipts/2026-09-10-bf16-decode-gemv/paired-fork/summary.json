@@ -1,0 +1,269 @@
+{
+  "alternation": [
+    "baseline",
+    "candidate",
+    "baseline",
+    "candidate",
+    "baseline",
+    "candidate"
+  ],
+  "driver": "fork",
+  "legs": {
+    "qwen25-0.5b-4bit:long-decode-128": {
+      "baseline": {
+        "decode_samples": [
+          106.85,
+          106.12,
+          106.97
+        ],
+        "decode_tok_s": 106.85,
+        "digests": [
+          "4cc08910089477fd"
+        ],
+        "prefill_samples": [
+          782.09,
+          772.861,
+          782.09
+        ],
+        "prefill_tok_s": 782.09
+      },
+      "candidate": {
+        "decode_samples": [
+          108.24,
+          106.56,
+          100.97
+        ],
+        "decode_tok_s": 106.56,
+        "digests": [
+          "4cc08910089477fd"
+        ],
+        "prefill_samples": [
+          789.157,
+          775.148,
+          789.157
+        ],
+        "prefill_tok_s": 789.157
+      },
+      "candidate_native_digest": true,
+      "decode_change_pct": -0.27140851661207055,
+      "prefill_change_pct": 0.9036044445012825
+    },
+    "qwen25-0.5b-4bit:longctx-1024-decode-32": {
+      "baseline": {
+        "decode_samples": [
+          96.96,
+          97.07,
+          98.48
+        ],
+        "decode_tok_s": 97.07,
+        "digests": [
+          "7da83f06ec9f001d"
+        ],
+        "prefill_samples": [
+          1063.636,
+          1066.869,
+          1060.423
+        ],
+        "prefill_tok_s": 1063.636
+      },
+      "candidate": {
+        "decode_samples": [
+          97.48,
+          98.24,
+          93.5
+        ],
+        "decode_tok_s": 97.48,
+        "digests": [
+          "7da83f06ec9f001d"
+        ],
+        "prefill_samples": [
+          1064.712,
+          1066.869,
+          1100.313
+        ],
+        "prefill_tok_s": 1066.869
+      },
+      "candidate_native_digest": true,
+      "decode_change_pct": 0.4223756052333494,
+      "prefill_change_pct": 0.3039573688743191
+    },
+    "qwen25-0.5b-4bit:short-decode-32": {
+      "baseline": {
+        "decode_samples": [
+          110.18,
+          109.94,
+          110.06
+        ],
+        "decode_tok_s": 110.06,
+        "digests": [
+          "7fd25a869ff21678"
+        ],
+        "prefill_samples": [
+          217.391,
+          214.286,
+          220.588
+        ],
+        "prefill_tok_s": 217.391
+      },
+      "candidate": {
+        "decode_samples": [
+          107.87,
+          107.56,
+          102.65
+        ],
+        "decode_tok_s": 107.56,
+        "digests": [
+          "7fd25a869ff21678"
+        ],
+        "prefill_samples": [
+          205.479,
+          215.827,
+          217.391
+        ],
+        "prefill_tok_s": 215.827
+      },
+      "candidate_native_digest": true,
+      "decode_change_pct": -2.2714882791204816,
+      "prefill_change_pct": -0.7194410072174029
+    },
+    "qwen25-0.5b-bf16:long-decode-128": {
+      "baseline": {
+        "decode_samples": [
+          11.27,
+          11.29,
+          11.23
+        ],
+        "decode_tok_s": 11.27,
+        "digests": [
+          "ad964232ee67fecd"
+        ],
+        "prefill_samples": [
+          300.115,
+          300.115,
+          302.89
+        ],
+        "prefill_tok_s": 300.115
+      },
+      "candidate": {
+        "decode_samples": [
+          28.37,
+          28.47,
+          26.26
+        ],
+        "decode_tok_s": 28.37,
+        "digests": [
+          "8690dc83246b39f8"
+        ],
+        "prefill_samples": [
+          334.61,
+          342.484,
+          343.381
+        ],
+        "prefill_tok_s": 342.484
+      },
+      "candidate_native_digest": false,
+      "decode_change_pct": 151.73025732031945,
+      "prefill_change_pct": 14.117588257834491
+    },
+    "qwen25-0.5b-bf16:longctx-1024-decode-32": {
+      "baseline": {
+        "decode_samples": [
+          10.15,
+          10.24,
+          10.1
+        ],
+        "decode_tok_s": 10.15,
+        "digests": [
+          "ff502900d2a179a5"
+        ],
+        "prefill_samples": [
+          339.458,
+          350.533,
+          346.382
+        ],
+        "prefill_tok_s": 346.382
+      },
+      "candidate": {
+        "decode_samples": [
+          22.64,
+          22.99,
+          21.16
+        ],
+        "decode_tok_s": 22.64,
+        "digests": [
+          "ff502900d2a179a5"
+        ],
+        "prefill_samples": [
+          351.703,
+          352.292,
+          328.549
+        ],
+        "prefill_tok_s": 351.703
+      },
+      "candidate_native_digest": true,
+      "decode_change_pct": 123.0541871921182,
+      "prefill_change_pct": 1.5361652741770593
+    },
+    "qwen25-0.5b-bf16:short-decode-32": {
+      "baseline": {
+        "decode_samples": [
+          11.67,
+          11.71,
+          11.7
+        ],
+        "decode_tok_s": 11.7,
+        "digests": [
+          "f26175202f3dabe9"
+        ],
+        "prefill_samples": [
+          82.192,
+          80.429,
+          80.645
+        ],
+        "prefill_tok_s": 80.645
+      },
+      "candidate": {
+        "decode_samples": [
+          32.2,
+          32.04,
+          29.64
+        ],
+        "decode_tok_s": 32.04,
+        "digests": [
+          "f26175202f3dabe9"
+        ],
+        "prefill_samples": [
+          114.068,
+          117.188,
+          119.522
+        ],
+        "prefill_tok_s": 117.188
+      },
+      "candidate_native_digest": false,
+      "decode_change_pct": 173.84615384615384,
+      "prefill_change_pct": 45.31341062682126
+    }
+  },
+  "packages": {
+    "baseline": {
+      "mlx": null,
+      "mlx-lm": "0.31.3",
+      "mlx-omarchy": "0.32.2.dev202609101409+diag.3b33709",
+      "numpy": "2.5.3",
+      "transformers": "5.16.1"
+    },
+    "candidate": {
+      "mlx": null,
+      "mlx-lm": "0.31.3",
+      "mlx-omarchy": "0.32.2.dev202609101453+diag.6f1612c",
+      "numpy": "2.5.3",
+      "transformers": "5.16.1"
+    }
+  },
+  "pairs": 3,
+  "policy_ok": false,
+  "wheel_sha256": {
+    "baseline": "e33dbd0b3eaed890a015abd54676827871db02f10c15ca8919d2242d0c73df6d",
+    "candidate": "9aabf74da9002dabc34e788da9b63a582204e96909b8a57a8f4e90990cbb0767"
+  }
+}

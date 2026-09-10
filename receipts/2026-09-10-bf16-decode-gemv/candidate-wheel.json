@@ -1,0 +1,10 @@
+{
+  "source_commit": "6f1612c2baa814865b3735bd49f34d421e2e1568",
+  "wheel": "mlx_omarchy-0.32.2.dev202609101453+diag.6f1612c-cp314-cp314-linux_aarch64.whl",
+  "wheel_sha256": "9aabf74da9002dabc34e788da9b63a582204e96909b8a57a8f4e90990cbb0767",
+  "wheel_size_bytes": 7456460,
+  "mlx_version": "0.32.2.dev202609101453+diag.6f1612c",
+  "diagnostics": true,
+  "build_command": "DEV_RELEASE=1 CMAKE_BUILD_PARALLEL_LEVEL=4 scripts/build-wheel.sh --diagnostics",
+  "gpu_lock": "/tmp/m1-gpu.lock"
+}

@@ -1,0 +1,133 @@
+{
+  "python": ".venv-base/bin/python",
+  "version": "0.32.2.dev202609101409+diag.3b33709",
+  "wheel_sha256": "e33dbd0b3eaed890a015abd54676827871db02f10c15ca8919d2242d0c73df6d",
+  "reps": 4,
+  "wall": {
+    "version": "0.32.2.dev202609101409+diag.3b33709",
+    "stream_s": 0.32622149103553966,
+    "dispatches": 408
+  },
+  "shapes": {
+    "bf16_896x896": {
+      "kernel": [
+        "MatmulBF16"
+      ],
+      "workgroups": [
+        56
+      ],
+      "dispatches": 97,
+      "bytes": 1607424,
+      "p50_us": 162.917,
+      "min_us": 158.458,
+      "gbps_p50": 9.866520989215367,
+      "gbps_min_time": 10.14416438425324
+    },
+    "ceiling_896x896": {
+      "kernel": "CastF32BF16",
+      "elements": 267904,
+      "dispatches": 4,
+      "bytes": 1607424,
+      "p50_us": 42.604,
+      "min_us": 41.0,
+      "gbps_p50": 37.72941507839639,
+      "gbps_min_time": 39.205463414634146
+    },
+    "bf16_896x128": {
+      "kernel": [
+        "MatmulBF16"
+      ],
+      "workgroups": [
+        8
+      ],
+      "dispatches": 97,
+      "bytes": 231168,
+      "p50_us": 134.166,
+      "min_us": 129.208,
+      "gbps_p50": 1.7229998658378427,
+      "gbps_min_time": 1.7891152250634637
+    },
+    "ceiling_896x128": {
+      "kernel": "CastF32BF16",
+      "elements": 38528,
+      "dispatches": 4,
+      "bytes": 231168,
+      "p50_us": 29.021,
+      "min_us": 25.167,
+      "gbps_p50": 7.965542193583956,
+      "gbps_min_time": 9.185361783287638
+    },
+    "bf16_896x4864": {
+      "kernel": [
+        "MatmulVecBF16"
+      ],
+      "workgroups": [
+        152
+      ],
+      "dispatches": 97,
+      "bytes": 8718080,
+      "p50_us": 641.208,
+      "min_us": 622.917,
+      "gbps_p50": 13.596336914074683,
+      "gbps_min_time": 13.995572443840834
+    },
+    "ceiling_896x4864": {
+      "kernel": "CastF32BF16",
+      "elements": 1453014,
+      "dispatches": 4,
+      "bytes": 8718084,
+      "p50_us": 160.417,
+      "min_us": 158.959,
+      "gbps_p50": 54.34638473478497,
+      "gbps_min_time": 54.844859366251676
+    },
+    "bf16_4864x896": {
+      "kernel": [
+        "MatmulBF16"
+      ],
+      "workgroups": [
+        56
+      ],
+      "dispatches": 97,
+      "bytes": 8726016,
+      "p50_us": 765.083,
+      "min_us": 761.0,
+      "gbps_p50": 11.405319422860003,
+      "gbps_min_time": 11.466512483574244
+    },
+    "ceiling_4864x896": {
+      "kernel": "CastF32BF16",
+      "elements": 1454336,
+      "dispatches": 4,
+      "bytes": 8726016,
+      "p50_us": 163.75,
+      "min_us": 162.75,
+      "gbps_p50": 53.288647328244274,
+      "gbps_min_time": 53.616073732718895
+    },
+    "bf16_896x151936": {
+      "kernel": [
+        "MatmulVecBF16"
+      ],
+      "workgroups": [
+        4748
+      ],
+      "dispatches": 25,
+      "bytes": 272271104,
+      "p50_us": 18891.083,
+      "min_us": 18764.667,
+      "gbps_p50": 14.412678404938458,
+      "gbps_min_time": 14.509775419942171
+    },
+    "ceiling_896x151936": {
+      "kernel": "CastF32BF16",
+      "elements": 45378518,
+      "dispatches": 4,
+      "bytes": 272271108,
+      "p50_us": 4450.8545,
+      "min_us": 4447.0,
+      "gbps_p50": 61.17277210477224,
+      "gbps_min_time": 61.225794468180794
+    }
+  }
+}

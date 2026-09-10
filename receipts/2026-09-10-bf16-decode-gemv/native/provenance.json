@@ -1,0 +1,13 @@
+{
+  "native_host": "16m1mbp",
+  "native_platform": "macOS-26.6.2-arm64-arm-64bit",
+  "native_python": "/Users/joshuawarren/src/mlx-bench-20260901/venv/bin/python",
+  "native_mlx_version": "0.32.2",
+  "upstream_mlx_commit": "1f8e74e3f12f31365464a6867c6579f0e9b29d85",
+  "upstream_archive_sha256": "cb988a5bdc38c798918d042b9b1c6edda3ccc5f23a2155138d3aa5c1b2acc301",
+  "source_sha256": {
+    "mlx/backend/metal/kernels/gemv.h": "296ef622ea3c67d7485aa7cdf102bbfcb582e07bd3207793179a9d1e65ee5a65",
+    "mlx/backend/metal/kernels/gemv.metal": "0bd8bde0c867a17c345a3651f9f0a6c2909e0c74e76ea2a08f373fe4dcafaeda",
+    "mlx/backend/metal/matmul.cpp": "84d49f069d2538bf727b6af32df812a76bfff142c132d2a70f6abc7475d904fb"
+  }
+}
