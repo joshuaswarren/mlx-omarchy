@@ -63,6 +63,29 @@ matches the host. `test_complex_ops` probes the builtin at that point
 and skips the single pin by name on drivers that return 0. Receipt:
 [`receipts/2026-09-08-m1-complex-ops.json`](../receipts/2026-09-08-m1-complex-ops.json).
 
+### BF16 projection deltas against macOS are macOS-side rounding, not a backend defect
+
+Observed on the M1 on 2026-09-10, on both the stock Honeykrisp driver and
+the cooperative-matrix fork. A fixed-input comparison of the eager BF16
+chain against a macOS capture mismatched on a few elements of the query
+and value projections while every surrounding operation and the whole
+downstream chain matched exactly: prefill q 34 of 234,752 and v 3 of
+33,536, decode q 106 of 896, k 13 of 128, v 46 of 128. Given the same
+captured inputs, the Linux GPU result equals the float64 round-to-nearest
+result of `x @ W.T + b` bit-for-bit on every decode element, so the macOS
+capture is the deviating side on exactly those elements. The mechanism is
+cancellation: mlx-lm builds the Qwen q, k, and v projections with a bias,
+and `decode.v_proj[50]` accumulates -0.012727 against a bias of +0.012756,
+whose true sum 2.956e-5 is bf16 `0x37f8`, while the macOS accumulation
+order lands at zero. The prefill residues are one-to-two-bit ties flipped
+by accumulation order. No kernel change is warranted: matching those bits
+would mean emulating a reduced-precision accumulation order, so the BF16
+parity oracle is the float64 round-to-nearest reference, not the macOS
+capture. Note that the quantized matmul kernels are not on this path at
+all; decode projections dispatch the dense matmul and prefill dispatches
+the cooperative-matrix kernel. Receipt:
+[`receipts/2026-09-10-bf16-rootcause/README.md`](../receipts/2026-09-10-bf16-rootcause/README.md).
+
 ## Fixed in development
 
 ### Bool logical ops and broadcast `where` conditions went unwritten past 16,776,960 elements
