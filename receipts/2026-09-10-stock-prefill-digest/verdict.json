@@ -1,0 +1,77 @@
+{
+  "schema": "stock-prefill-digest-verdict/1",
+  "date_utc": "2026-09-10",
+  "decision": "accept",
+  "source": {
+    "branch": "wave/stockprefillfix",
+    "commit": "7897aac05e6a9b356736ff2f85359efeed33569a"
+  },
+  "wheels": {
+    "v0.4.1": {
+      "version": "0.32.2.dev202609100158+fef0de0",
+      "source_commit": "fef0de0",
+      "sha256": "e2e01d910bd002b1dbbc7a419e5da4b9957fb02c3cd71957f1adb8762744269f"
+    },
+    "candidate": {
+      "version": "0.32.2.dev202609100336+7897aac",
+      "source_commit": "7897aac05e6a9b356736ff2f85359efeed33569a",
+      "sha256": "a4d90445ecd64f8e8a04a198b81c633f7792cfba96b3b617f6273fc8fb35d252"
+    }
+  },
+  "models": {
+    "qwen25-0.5b-4bit": {
+      "repo": "mlx-community/Qwen2.5-0.5B-Instruct-4bit",
+      "revision": "a5339a4131f135d0fdc6a5c8b5bbed2753bbe0f3"
+    },
+    "qwen25-0.5b-bf16": {
+      "repo": "mlx-community/Qwen2.5-0.5B-Instruct-bf16",
+      "revision": "56d07e766edd7159fbe12ed12d9cf114bf38bf1e"
+    }
+  },
+  "stock_paired": {
+    "protocol": "Three v0.4.1/candidate pairs in separate venvs on Apple M1 with VK_DRIVER_FILES=/home/joshuawarren/stock-mesa/stock-icd.json; median of three prefill_tok_s values.",
+    "q4_short": {"v041": [134.529, 132.743, 135.747], "candidate": [135.747, 134.529, 133.929], "v041_median": 134.529, "candidate_median": 134.529, "delta_pct": 0.0},
+    "q4_long": {"v041": [297.389, 298.746, 297.389], "candidate": [299.429, 297.052, 298.405], "v041_median": 297.389, "candidate_median": 298.405, "delta_pct": 0.342},
+    "q4_longctx": {"v041": [363.103, 352.646, 352.292], "candidate": [346.724, 346.952, 346.04], "v041_median": 352.646, "candidate_median": 346.724, "delta_pct": -1.679},
+    "bf16_short": {"v041": [81.967, 80.429, 81.744], "candidate": [81.301, 81.744, 82.192], "v041_median": 81.744, "candidate_median": 81.744, "delta_pct": 0.0},
+    "bf16_long": {"v041": [203.101, 202.943, 202.943], "candidate": [202.943, 202.63, 202.786], "v041_median": 202.943, "candidate_median": 202.786, "delta_pct": -0.077},
+    "bf16_longctx": {"v041": [211.488, 211.276, 211.022], "candidate": [211.064, 210.938, 210.558], "v041_median": 211.276, "candidate_median": 210.938, "delta_pct": -0.16}
+  },
+  "stock_digests": {
+    "q4_short": "7fd25a869ff21678",
+    "q4_long": "4cc08910089477fd",
+    "q4_longctx": "7da83f06ec9f001d",
+    "bf16_short": "f26175202f3dabe9",
+    "bf16_long": "c5be9207833d2a26",
+    "bf16_longctx": "ff502900d2a179a5"
+  },
+  "fork_digests": {
+    "q4_short": "7fd25a869ff21678",
+    "q4_long": "4cc08910089477fd",
+    "q4_longctx": "7da83f06ec9f001d",
+    "bf16_short": "f26175202f3dabe9",
+    "bf16_long": "ad964232ee67fecd",
+    "bf16_longctx": "ff502900d2a179a5"
+  },
+  "ids_ok": true,
+  "performance_ok": true,
+  "tests": {
+    "m1_stock_targeted": {
+      "source_commit": "7897aac05e6a9b356736ff2f85359efeed33569a",
+      "command": "flock -w 1800 /tmp/m1-gpu.lock timeout 180 env MLX_OMARCHY_ALLOW_NON_APPLE=1 VK_DRIVER_FILES=/home/joshuawarren/stock-mesa/stock-icd.json .work/build-stockprefill-test/tests/omarchy/omarchy_matmul_family_tests --test-case=*large-prefill*",
+      "result": "1 test case passed; 17410 assertions passed"
+    },
+    "wheel_build": {
+      "source_commit": "7897aac05e6a9b356736ff2f85359efeed33569a",
+      "command": "flock -w 1800 /tmp/m1-gpu.lock timeout 900 env DEV_RELEASE=1 CMAKE_BUILD_PARALLEL_LEVEL=4 scripts/build-wheel.sh",
+      "result": "wheel built; sha256 a4d90445ecd64f8e8a04a198b81c633f7792cfba96b3b617f6273fc8fb35d252"
+    }
+  },
+  "implementation": "The ordinary non-cooperative qmm_tile kernel remains unchanged. A separate PRECISE_ACCUM variant uses explicit precise multiply then add and is dispatched only for non-cooperative prefill with matrix_m >= 1024, avoiding the runtime shader branch that regressed shorter legs.",
+  "raw_receipts": [
+    "pair1-v041.json", "pair1-candidate.json",
+    "pair2-v041.json", "pair2-candidate.json",
+    "pair3-v041.json", "pair3-candidate.json",
+    "fork-candidate.json"
+  ]
+}
