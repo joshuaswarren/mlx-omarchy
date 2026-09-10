@@ -1,0 +1,15 @@
+source_commit=940cb6b1f837e6856165c91cc4d7aadeef16f0f3
+compiler_path=/usr/bin/glslc
+2026.3
+1:1.4.357.0
+1:1.4.357.0
+Target: SPIR-V 1.0
+wheel=dist/mlx_omarchy-0.32.2.dev202609101826+940cb6b-cp314-cp314-linux_aarch64.whl
+65a0a47164676108e62a2cd5cf4a957eb1eda79847e4cf10a8989b0242adf0d7  dist/mlx_omarchy-0.32.2.dev202609101826+940cb6b-cp314-cp314-linux_aarch64.whl
+mlx_version=0.32.2.dev202609101826+940cb6b
+device_name=Apple M1 (G13G B1)
+cooperative_matrix_f32_8=1
+........
+----------------------------------------------------------------------
+Ran 8 tests in 2.567s
+OK

@@ -4,7 +4,7 @@
 """Generate the omarchy primitive compatibility matrix.
 
 Reads the backend sources and the test suite, derives one row per
-primitive entry in overlay/mlx/backend/omarchy/primitives.cpp, and
+primitive implementation entry, and
 writes a markdown document to stdout. Redirect into
 docs/compatibility-matrix.md. `--json-out PATH` also writes the
 coverage badge data in shields.io endpoint format (docs/coverage.json).
@@ -16,7 +16,7 @@ carry a loud SKIP marker do not anchor coverage. See parse_test_cases
 and build_row.
 
 Sources (read-only):
-  overlay/mlx/backend/omarchy/primitives.cpp  primitive entries and gates
+  overlay/mlx/backend/omarchy/{primitives,custom_kernel}.cpp  entries and gates
   overlay/mlx/backend/omarchy/compute.h       ComputeKernel variants
   overlay/mlx/backend/omarchy/copy.cpp        engine kernels behind copies
   overlay/tests/omarchy/**/*.cpp              TEST_CASE bodies (anchor evidence)
@@ -40,6 +40,7 @@ import sys
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 
 PRIMITIVES = ROOT / "overlay/mlx/backend/omarchy/primitives.cpp"
+CUSTOM_KERNEL = ROOT / "overlay/mlx/backend/omarchy/custom_kernel.cpp"
 COMPUTE_H = ROOT / "overlay/mlx/backend/omarchy/compute.h"
 COPY_CPP = ROOT / "overlay/mlx/backend/omarchy/copy.cpp"
 TEST_GLOB = "overlay/tests/omarchy/**/*.cpp"
@@ -126,12 +127,7 @@ UPSTREAM_GPU_PRIMITIVES = ROOT / ".work/mlx/mlx/backend/gpu/primitives.cpp"
 METAL_BACKEND = ROOT / ".work/mlx/mlx/backend/metal"
 CPU_BACKEND = ROOT / ".work/mlx/mlx/backend/cpu"
 COMMON_BACKEND = ROOT / ".work/mlx/mlx/backend/common"
-
-# A primitive Metal implements only by compiling user-supplied Metal
-# shading-language source. No Metal-to-SPIR-V translator exists in this
-# stack, so even perfect parity cannot close it. This bounds the
-# achievable Mac-parity ceiling below 100 percent.
-UNCLOSABLE_ON_VULKAN = {"CustomKernel"}
+UNCLOSABLE_ON_VULKAN = set()
 
 QUALIFIED_EVAL = re.compile(r"void (?:[\w:]+::)?(\w+)::eval_(gpu|cpu)\s*\(")
 
@@ -1034,46 +1030,53 @@ def helper_dtypes(helper, dtypes, called, seen=None):
 
 def parse_primitives():
     """Parse primitive entries in source order."""
-    text = PRIMITIVES.read_text()
-    lines = text.splitlines()
+    texts = []
     entries = []
     index_of = {}
-    namespace = ""
-    for number, line in enumerate(lines):
-        if re.match(r"^namespace (fast|distributed) \{", line):
-            namespace = re.match(r"^namespace (\w+) \{", line).group(1)
-        elif re.match(r"^\} // namespace (fast|distributed)\s*$", line):
-            namespace = ""
-        macro = re.match(
-            r"^OMARCHY_(UNSUPPORTED|UNSUPPORTED_MULTI|USE_FALLBACK|BINARY|"
-            r"UNARY)\((\w+)", line)
-        impl = re.match(r"^void (\w+)::eval_gpu\(", line)
-        fallback = re.match(r"^bool (\w+)::use_fallback\(", line)
-        if macro:
-            kind, name = macro.group(1), macro.group(2)
-            key = (namespace, name)
-            entry = index_of.setdefault(
-                key, {"ns": namespace, "name": name, "kinds": [],
-                      "order": len(index_of), "line": number + 1})
-            entry["kinds"].append(kind)
-        elif impl:
-            name = impl.group(1)
-            key = (namespace, name)
-            entry = index_of.setdefault(
-                key, {"ns": namespace, "name": name, "kinds": [],
-                      "order": len(index_of), "line": number + 1})
-            entry["impl_body"] = function_body(lines, number)
-            entry["impl_line"] = number + 1
-        elif fallback:
-            name = fallback.group(1)
-            key = (namespace, name)
-            entry = index_of.setdefault(
-                key, {"ns": namespace, "name": name, "kinds": [],
-                      "order": len(index_of), "line": number + 1})
-            entry["fallback_true"] = "return true" in function_body(
-                lines, number)
+    for path in (PRIMITIVES, CUSTOM_KERNEL):
+        text = path.read_text()
+        texts.append(text)
+        lines = text.splitlines()
+        namespace = ""
+        for number, line in enumerate(lines):
+            match = re.match(
+                r"^namespace (?:mlx::core::)?(fast|distributed) \{", line)
+            if match:
+                namespace = match.group(1)
+            elif re.match(
+                    r"^\} // namespace (?:mlx::core::)?(fast|distributed)\s*$",
+                    line):
+                namespace = ""
+            macro = re.match(
+                r"^OMARCHY_(UNSUPPORTED|UNSUPPORTED_MULTI|USE_FALLBACK|BINARY|"
+                r"UNARY)\((\w+)", line)
+            impl = re.match(r"^void (\w+)::eval_gpu\(", line)
+            fallback = re.match(r"^bool (\w+)::use_fallback\(", line)
+            if macro:
+                kind, name = macro.group(1), macro.group(2)
+                key = (namespace, name)
+                entry = index_of.setdefault(
+                    key, {"ns": namespace, "name": name, "kinds": [],
+                          "order": len(index_of), "line": number + 1})
+                entry["kinds"].append(kind)
+            elif impl:
+                name = impl.group(1)
+                key = (namespace, name)
+                entry = index_of.setdefault(
+                    key, {"ns": namespace, "name": name, "kinds": [],
+                          "order": len(index_of), "line": number + 1})
+                entry["impl_body"] = function_body(lines, number)
+                entry["impl_line"] = number + 1
+            elif fallback:
+                name = fallback.group(1)
+                key = (namespace, name)
+                entry = index_of.setdefault(
+                    key, {"ns": namespace, "name": name, "kinds": [],
+                          "order": len(index_of), "line": number + 1})
+                entry["fallback_true"] = "return true" in function_body(
+                    lines, number)
     entries = sorted(index_of.values(), key=lambda entry: entry["order"])
-    return text, entries
+    return "\n".join(texts), entries
 
 
 def parse_upstream_primitives():
@@ -1732,16 +1735,14 @@ def main():
                 f"| {display} | Metal `eval_gpu` throws and no CPU "
                 f"`eval_cpu` exists | `{mac_excluded[key]}` |")
     out.append("")
-    out.append(
-        "The achievable ceiling: "
-        + ", ".join(f"`fast::{name}`" for name in mac_unclosable)
-        + " compiles user-supplied Metal shading-language source "
-        f"(`{mac_impl_cite.get(next(iter(mac_unclosable)), '')}`), and "
-        "no Metal-to-SPIR-V translator exists in this stack. This "
-        "backend can never implement it. Perfect achievable Mac "
-        f"parity is therefore {mac_ceiling_count}/{mac_total} = "
-        f"{mac_ceiling_count / mac_total * 100:.1f}%.")
-    out.append("")
+    if mac_unclosable:
+        out.append(
+            "The achievable ceiling: "
+            + ", ".join(f"`fast::{name}`" for name in mac_unclosable)
+            + " is not implementable on Vulkan. Perfect achievable Mac "
+            f"parity is therefore {mac_ceiling_count}/{mac_total} = "
+            f"{mac_ceiling_count / mac_total * 100:.1f}%.")
+        out.append("")
     out.append("| Bucket | Count | Share of upstream | Share of Mac-usable |")
     out.append("|---|---|---|---|")
     for label, count in buckets:
@@ -1823,8 +1824,8 @@ def main():
     out.append("## Primitives")
     out.append("")
     out.append(
-        "One row per primitive entry in "
-        "`overlay/mlx/backend/omarchy/primitives.cpp`, in source order.")
+        "One row per primitive entry in the Omarchy backend sources, "
+        "in source order.")
     out.append("")
     out.append(
         "| Primitive | Status | Kernels | Dtypes | Named-error "
@@ -1855,7 +1856,7 @@ def main():
     out.append("")
     out.append(
         "Upstream MLX defines these primitives, but "
-        "`overlay/mlx/backend/omarchy/primitives.cpp` has no entry for "
+        "the Omarchy backend sources have no entry for "
         "them. They count in both denominators unless marked not "
         "Mac-usable.")
     out.append("")

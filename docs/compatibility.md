@@ -113,6 +113,16 @@ Matched kernel speed is verified through `v0.2.0`.
 The gate covers matched prefill, decode, and attention operations against pinned `llama.cpp` Vulkan operations.
 See the [v0.2.0 M1 kernel receipt](https://github.com/joshuaswarren/mlx-omarchy/releases/download/v0.2.0/mlx-omarchy-v0.2.0-m1-kernel.json).
 
+Custom Metal kernels are in progress. The Omarchy backend translates the
+MLX-generated signature and a bounded MSL subset to GLSL, compiles it to
+SPIR-V, caches a Vulkan pipeline, and dispatches it on the GPU. Targeted
+qualification covers scalar and array arguments, templates, bfloat16,
+non-contiguous metadata, header helpers, threadgroup memory, subgroup
+operations, atomics, multiple outputs, and math modes. The same eight cases
+pass on llvmpipe and Apple M1. Textures, precompiled libraries, dynamic
+threadgroup memory, and serialized scalar inputs remain named refusals. See
+`receipts/2026-09-10-custom-kernel/verdict.json`.
+
 Primitive operations are in progress.
 The development gate covers FP32 and FP16 elementwise work, suffix Sum and Max, offsets, and grid-stride dispatch.
 General reductions now accept higher-rank inputs. The local valid-input suite

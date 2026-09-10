@@ -4,22 +4,27 @@ Date: 2026-09-09. mlx-omarchy commit `8eb24c4` (MLX 0.32.2, pin `1f8e74e`).
 Upstream sources scanned: mlx-lm `2184db2`, mlx-examples `796f5b5`,
 mlx-vlm `8f5dc3d`, mlx-audio `17001a6` (all 2026-09-07..09).
 
-## What the gap is, exactly
+## Current implementation
 
-`mx.fast.metal_kernel(...)` construction is backend-agnostic: it builds a C++
-lambda (`mlx/backend/common/metal_kernel.cpp:222`) and never touches a device.
-On mlx-omarchy the failure happens at **call time**, in `resolve_metal_kernel_stream`,
-because `metal::is_available()` is `false` (`no_metal.cpp:11`): the call raises
-`RuntimeError: [metal_kernel] No Metal back-end.` before any primitive is built.
-The overlay's `CustomKernel::eval_gpu` refusal message
-(`overlay/mlx/backend/omarchy/primitives.cpp:10331`) only fires on the C++
-construction path (or export/import); Python users see the front-end error.
+As of 2026-09-10, mlx-omarchy routes `mx.fast.metal_kernel(...)` calls to
+the Omarchy GPU backend while keeping `mx.metal.is_available()` false. The
+backend translates the MLX-generated signature and a bounded MSL kernel subset
+to GLSL, compiles it to SPIR-V with the installed shader compiler, caches the
+Vulkan pipeline, and dispatches it without a CPU fallback.
 
-Consequence: every call site that checks `mx.metal.is_available()` (or
-`can_run_metal()`) already takes a pure-MLX fallback on mlx-omarchy today.
-The real gap is only the call sites with **no gate** (hard fail) plus the
-performance gap on the fallback paths. `mx.metal.is_available()` exists and
-returns `False` on this backend, so gates work.
+The supported subset covers the signatures and language features exercised by
+the targeted qualification suite: array and scalar buffers, templates, shape,
+stride and dimension metadata, header helpers, thread and grid attributes,
+threadgroup memory and barriers, subgroup operations, atomics, multiple
+outputs, and MLX math modes. Textures, precompiled libraries, dynamically sized
+threadgroup memory, and serialized scalar inputs stop with named errors.
+
+## Inventory baseline
+
+Before this path existed, `mx.fast.metal_kernel(...)` failed at call time in
+`resolve_metal_kernel_stream` because `metal::is_available()` was false.
+The inventory below records the user impact and kernel corpus measured on
+2026-09-09; its compiler recommendation is superseded by the implementation.
 
 ## Inventory method
 
@@ -114,17 +119,9 @@ not a kernel. This is the shape of the long tail a translator would serve.
   physically runs (Darling experiments), the license forbids it. The
   constraint file already records: never commit Apple SDK contents anywhere.
 
-## Recommendation
+## Implementation decision
 
-**Hand-port the bounded set; do not build a compiler.** Practical parity for
-real users needs 12 in-repo kernels (items 1–12: bitlinear, 2× bonsai, 5×
-inkling, llguidance mask, depthwise-conv, qk_relu_squared, phonon unpack) plus
-3 upstream one-line gate fixes (inkling `language.py` device-only gates,
-mossformer `depthwise_conv1d` missing gate) that turn hard failures into
-working slow paths. Everything else in the four repos — ~90 kernels including
-all 27 turboquant and all 13 quantized_verifier kernels — already runs via
-pure-MLX fallbacks. The only kernel that genuinely wants a translator is the
-steel-header BM32 GEMM (gated, nobody broken). Third-party exotics (CBQ family,
-one HF repo) port individually against their own references. Suggested order:
-bitlinear first (unblocks a whole model family), then the llguidance mask and
-phonon unpack (XS), then inkling gate fixes upstream, then bonsai.
+Use the bounded runtime translator for MLX custom kernels. Keep its refusal
+boundary explicit rather than importing a general C++ or MSL frontend. Port a
+kernel only when it falls outside that boundary and has a maintained reference
+implementation.

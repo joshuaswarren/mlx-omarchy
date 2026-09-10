@@ -1,0 +1,6 @@
+Command:
+python3 -m py_compile tools/gen-compat-matrix.py && python3 tools/gen-compat-matrix.py --json-out /tmp/customkernel-coverage.json > /tmp/customkernel-compatibility-matrix.md
+
+Result: exit 0
+Generated row:
+| fast::CustomKernel | partial | — | — | `fast::CustomKernel MSL subset: precompiled Metal libraries`; `fast::CustomKernel MSL subset: serialized scalar arguments`; `fast::CustomKernel MSL subset: dynamic threadgroup memory`; `fast::CustomKernel MSL subset:`; `fast::CustomKernel MSL subset: nonzero input buffer offsets with ensure_row_contiguous=False`; `fast::CustomKernel MSL subset: generated binding count mismatch` | — | yes |
