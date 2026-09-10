@@ -164,10 +164,12 @@ TEST_CASE("paired fp16 KV slice updates wait for a lazy second update") {
       array({100.0f, 101.0f, 102.0f, 103.0f}, {1, 1, 4}, float32),
       float16,
       stream);
-  array value = astype(
-      array({200.0f, 201.0f, 202.0f, 203.0f}, {1, 1, 4}, float32),
-      float16,
-      stream);
+  array value = transpose(
+      astype(
+          array({200.0f, 201.0f, 202.0f, 203.0f}, {1, 4, 1}, float32),
+          float16,
+          stream),
+      {0, 2, 1});
   eval({key_cache, value_cache, key});
   omarchy::get_command_encoder(stream).synchronize();
 
