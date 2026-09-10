@@ -1,0 +1,55 @@
+== prepare upstream tree ==
+  % Total    % Received % Xferd  Average Speed  Time    Time    Time   Current
+                                 Dload  Upload  Total   Spent   Left   Speed
+  0      0   0      0   0      0      0      0                              0  0      0   0      0   0      0      0      0                              0  0      0   0      0   0      0      0      0                              0
+  0      0   0      0   0      0      0      0                              0100  4.20M   0  4.20M   0      0  3.29M      0           00:01              0100  4.20M   0  4.20M   0      0  3.29M      0           00:01              0100  4.20M   0  4.20M   0      0  3.29M      0           00:01              0
+patching file CMakeLists.txt
+patching file mlx/CMakeLists.txt
+patching file tests/CMakeLists.txt
+patching file mlx/transforms.cpp
+patching file setup.py
+patching file mlx/io/safetensors.cpp
+patching file mlx/io/load.cpp
+patching file mlx/export.cpp
+patching file mlx/linalg.cpp
+patching file python/src/buffer.h
+patching file mlx/ops.cpp
+Hunk #2 succeeded at 5051 (offset 1 line).
+patching file mlx/backend/cpu/distributed.cpp
+patching file mlx/fast.cpp
+patching file mlx/backend/common/metal_kernel.cpp
+patching file setup.py
+/home/joshuawarren/src/mlx-main-b6d662a8/.work/mlx
+== build venv (/home/joshuawarren/src/mlx-main-b6d662a8/.work/venv-build) ==
+Traceback (most recent call last):
+  File "<stdin>", line 1, in <module>
+ModuleNotFoundError: No module named 'setuptools'
+Collecting setuptools>=80
+  Using cached setuptools-84.0.0-py3-none-any.whl.metadata (6.6 kB)
+Requirement already satisfied: typing_extensions in /usr/lib/python3.14/site-packages (4.16.0)
+Using cached setuptools-84.0.0-py3-none-any.whl (818 kB)
+Installing collected packages: setuptools
+Successfully installed setuptools-84.0.0
+== wheel build ==
+Processing ./.work/mlx
+  Preparing metadata (pyproject.toml): started
+  Preparing metadata (pyproject.toml): finished with status 'done'
+Building wheels for collected packages: mlx-omarchy
+  Building wheel for mlx-omarchy (pyproject.toml): started
+  Building wheel for mlx-omarchy (pyproject.toml): still running...
+  Building wheel for mlx-omarchy (pyproject.toml): still running...
+  Building wheel for mlx-omarchy (pyproject.toml): finished with status 'done'
+  Created wheel for mlx-omarchy: filename=mlx_omarchy-0.32.2.dev202609101916+b6d662a-cp314-cp314-linux_aarch64.whl size=7561883 sha256=98821134f4bcf306ab1d64d6885ddf3d3e8e932311283bbd11f97aecf6a8e439
+  Stored in directory: /tmp/pip-ephem-wheel-cache-7qn7475i/wheels/1e/b7/97/e3d4145639dd49f9a20d01bc94f7f8afd39d2284f77575e140
+Successfully built mlx-omarchy
+== receipt ==
+[receipt] wheel: /home/joshuawarren/src/mlx-main-b6d662a8/dist/mlx_omarchy-0.32.2.dev202609101916+b6d662a-cp314-cp314-linux_aarch64.whl
+[receipt] size: 7561883 bytes
+[receipt] sha256: 98821134f4bcf306ab1d64d6885ddf3d3e8e932311283bbd11f97aecf6a8e439
+[receipt] source commit: b6d662a
+[receipt] NEXT STEP - do not skip: after you upload this wheel to a
+[receipt] release, verify the UPLOADED asset with
+[receipt]   python3 scripts/verify-release-assets.py <tag>
+[receipt] It must print VERIFIED before the release is announced as
+[receipt] usable. See docs/release.md. A local build check does not
+[receipt] verify what users download.

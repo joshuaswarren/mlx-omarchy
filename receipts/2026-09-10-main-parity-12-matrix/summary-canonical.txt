@@ -1,0 +1,42 @@
+== digests (all reps identical to canonical) ==
+fork  qwen25-0.5b-4bit:long-decode-128              n=12 ['4cc08910089477fd'] OK
+fork  qwen25-0.5b-4bit:longctx-1024-decode-32       n=12 ['7da83f06ec9f001d'] OK
+fork  qwen25-0.5b-4bit:short-decode-32              n=12 ['7fd25a869ff21678'] OK
+fork  qwen25-0.5b-bf16:long-decode-128              n=12 ['ad964232ee67fecd'] OK
+fork  qwen25-0.5b-bf16:longctx-1024-decode-32       n=12 ['ff502900d2a179a5'] OK
+fork  qwen25-0.5b-bf16:short-decode-32              n=12 ['f26175202f3dabe9'] OK
+stock qwen25-0.5b-4bit:long-decode-128              n=12 ['4cc08910089477fd'] OK
+stock qwen25-0.5b-4bit:longctx-1024-decode-32       n=12 ['7da83f06ec9f001d'] OK
+stock qwen25-0.5b-4bit:short-decode-32              n=12 ['7fd25a869ff21678'] OK
+stock qwen25-0.5b-bf16:long-decode-128              n=12 ['c5be9207833d2a26'] OK
+stock qwen25-0.5b-bf16:longctx-1024-decode-32       n=12 ['ff502900d2a179a5'] OK
+stock qwen25-0.5b-bf16:short-decode-32              n=12 ['f26175202f3dabe9'] OK
+
+== per-leg min / median / max (decode tok/s, prefill tok/s) ==
+qwen25-0.5b-4bit:long-decode-128
+  fork  decode 62.59/108.94/109.25  prefill 761.6/970.4/1035.6
+  stock decode 63.32/81.88/82.03  prefill 246.7/310.1/331.6
+  paired delta (median fork vs stock): decode +33.1%  prefill +213.0%
+qwen25-0.5b-4bit:longctx-1024-decode-32
+  fork  decode 64.29/96.12/99.84  prefill 845.8/1112.5/1181.8
+  stock decode 37.84/52.91/53.47  prefill 256.7/361.7/364.7
+  paired delta (median fork vs stock): decode +81.7%  prefill +207.6%
+qwen25-0.5b-4bit:short-decode-32
+  fork  decode 96.51/112.19/112.88  prefill 265.5/331.5/337.1
+  stock decode 92.76/102.53/104.26  prefill 166.7/170.9/193.5
+  paired delta (median fork vs stock): decode +9.4%  prefill +93.9%
+qwen25-0.5b-bf16:long-decode-128
+  fork  decode 10.02/11.25/11.30  prefill 300.1/317.8/332.9
+  stock decode 10.67/11.29/11.35  prefill 178.7/210.8/210.9
+  paired delta (median fork vs stock): decode -0.3%  prefill +50.8%
+qwen25-0.5b-bf16:longctx-1024-decode-32
+  fork  decode 7.61/10.03/10.22  prefill 250.5/364.8/365.4
+  stock decode 8.39/10.12/10.28  prefill 166.1/220.1/220.5
+  paired delta (median fork vs stock): decode -0.9%  prefill +65.7%
+qwen25-0.5b-bf16:short-decode-32
+  fork  decode 9.95/11.70/11.74  prefill 76.1/86.0/97.1
+  stock decode 10.65/11.73/11.77  prefill 79.6/83.8/94.0
+  paired delta (median fork vs stock): decode -0.3%  prefill +2.6%
+
+== validation: 0 problem(s) ==
+ALL_OK: 12 reps x 2 drivers x 6 legs = 144 legs, every digest equals the canonical per-driver value and every token count matches

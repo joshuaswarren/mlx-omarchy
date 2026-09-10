@@ -1,0 +1,42 @@
+{
+  "schema": "driver-identity/1",
+  "date_utc": "2026-09-10",
+  "host": {
+    "label": "jwm1-linux",
+    "os": "Omarchy",
+    "kernel": "7.1.6-1-1-ARCH",
+    "arch": "aarch64",
+    "device_tree_compatible": "apple,t8103",
+    "vulkaninfo_instance_version": "1.4.357",
+    "package": "mesa-honeykrisp-omarchy 26.3.0.devel.hk6f6afc8-1"
+  },
+  "cooperative_matrix_fork": {
+    "selection": "default environment, no VK_DRIVER_FILES override",
+    "device_name": "Apple M1 (G13G B1)",
+    "driver_name": "Honeykrisp",
+    "driver_info": "Mesa 26.3.0-devel (git-6f6afc8968)",
+    "driver_version": "26.2.99 (109060195)",
+    "api_version": "1.4.359 (4211047)",
+    "VK_KHR_cooperative_matrix": "advertised (present in vulkaninfo device extensions)",
+    "second_device_enumerated": "llvmpipe (LLVM 22.1.8, 128 bits), Mesa 26.3.0-devel (git-6f6afc8968) (LLVM 22.1.8); mlx-omarchy selects the Apple M1 device (bench host.gpu records Apple M1 (G13G B1) / Honeykrisp)"
+  },
+  "stock_mesa": {
+    "selection": "VK_DRIVER_FILES=/home/joshuawarren/stock-mesa/stock-icd.json",
+    "icd_files": "/home/joshuawarren/stock-mesa/stock-icd.json (+ /home/joshuawarren/stock-mesa/usr tree)",
+    "device_name": "Apple M1 (G13G B1)",
+    "driver_name": "Honeykrisp",
+    "driver_id": "DRIVER_ID_MESA_HONEYKRISP",
+    "driver_info": "Mesa 26.1.7",
+    "driver_version": "26.1.7 (109056007)",
+    "api_version": "1.4.354 (4211042)",
+    "VK_KHR_cooperative_matrix": "absent (0 matches in vulkaninfo)"
+  },
+  "capture_commands": [
+    "vulkaninfo --summary",
+    "vulkaninfo | grep -E 'deviceName|driverName|driverInfo|apiVersion |VK_KHR_cooperative_matrix'",
+    "VK_DRIVER_FILES=/home/joshuawarren/stock-mesa/stock-icd.json vulkaninfo --summary",
+    "VK_DRIVER_FILES=/home/joshuawarren/stock-mesa/stock-icd.json vulkaninfo | grep -c VK_KHR_cooperative_matrix  # -> 0",
+    "vulkaninfo | grep -c VK_KHR_cooperative_matrix  # -> 2",
+    "pacman -Q | grep -i mesa"
+  ]
+}
