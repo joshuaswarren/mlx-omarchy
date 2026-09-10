@@ -763,7 +763,7 @@ TEST_CASE("decode SDPA fuses score softmax and value projection") {
   constexpr int kv_heads = 2;
   constexpr int keys = 263;
   constexpr int width = 64;
-  constexpr int cache_keys = 320;
+  constexpr int cache_keys = 513;
   const float scale = 1.0f / std::sqrt(float(width));
   auto q_values = pattern(heads * width, 401);
   array q = astype(
@@ -808,6 +808,18 @@ TEST_CASE("decode SDPA fuses score softmax and value projection") {
     CAPTURE(i);
     CHECK_EQ(candidate_values[i], baseline_values[i]);
   }
+
+  array long_k = slice(
+      k_cache, {0, 0, 0, 0}, {1, kv_heads, cache_keys, width}, stream);
+  array long_v = slice(
+      v_cache, {0, 0, 0, 0}, {1, kv_heads, cache_keys, width}, stream);
+  before = omarchy::trace::counters().vk_compute_dispatches.load();
+  array fallback = fast::scaled_dot_product_attention(
+      q, long_k, long_v, scale, "", {}, std::nullopt, false, stream);
+  fallback.eval();
+  omarchy::get_command_encoder(stream).synchronize();
+  CHECK_EQ(
+      omarchy::trace::counters().vk_compute_dispatches.load() - before, 3);
 }
 
 TEST_CASE("scaled_dot_product_attention backward matches finite differences") {
