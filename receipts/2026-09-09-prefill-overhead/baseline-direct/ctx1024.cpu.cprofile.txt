@@ -1,0 +1,53 @@
+         4044 function calls (4043 primitive calls) in 1.007 seconds
+
+   Ordered by: cumulative time
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+      2/1    0.000    0.000    1.007    1.007 {built-in method builtins.next}
+        1    0.000    0.000    1.006    1.006 prefill_probe.py:85(ids)
+        1    0.000    0.000    1.006    1.006 prefill_probe.py:87(<genexpr>)
+        1    0.000    0.000    1.006    1.006 generate.py:307(generate_step)
+        6    0.986    0.164    0.987    0.164 prefill_probe.py:102(timed)
+        3    0.000    0.000    0.019    0.006 generate.py:388(_model_call)
+        3    0.000    0.000    0.019    0.006 qwen2.py:167(__call__)
+        3    0.000    0.000    0.019    0.006 qwen2.py:137(__call__)
+       72    0.001    0.000    0.019    0.000 qwen2.py:111(__call__)
+        2    0.000    0.000    0.018    0.009 generate.py:396(_step)
+       72    0.003    0.000    0.013    0.000 qwen2.py:57(__call__)
+      144    0.004    0.000    0.004    0.000 positional_encoding.py:46(__call__)
+       72    0.003    0.000    0.003    0.000 cache.py:333(update_and_fetch)
+       72    0.001    0.000    0.003    0.000 qwen2.py:94(__call__)
+      504    0.003    0.000    0.003    0.000 quantized.py:270(__call__)
+      957    0.001    0.000    0.002    0.000 base.py:99(__getattr__)
+     1467    0.001    0.000    0.001    0.000 {method 'get' of 'dict' objects}
+       72    0.001    0.000    0.001    0.000 activations.py:9(swiglu)
+      147    0.001    0.000    0.001    0.000 normalization.py:163(__call__)
+       12    0.000    0.000    0.000    0.000 prefill_probe.py:36(read)
+       72    0.000    0.000    0.000    0.000 base.py:108(scaled_dot_product_attention)
+       72    0.000    0.000    0.000    0.000 activations.py:138(silu)
+       24    0.000    0.000    0.000    0.000 cache.py:360(state)
+        3    0.000    0.000    0.000    0.000 quantized.py:149(__call__)
+       97    0.000    0.000    0.000    0.000 {built-in method builtins.getattr}
+       76    0.000    0.000    0.000    0.000 {built-in method builtins.hasattr}
+        1    0.000    0.000    0.000    0.000 {method 'disable' of '_lsprof.Profiler' objects}
+        3    0.000    0.000    0.000    0.000 base.py:45(create_attention_mask)
+        1    0.000    0.000    0.000    0.000 cache.py:15(make_prompt_cache)
+       14    0.000    0.000    0.000    0.000 {built-in method time.monotonic_ns}
+        2    0.000    0.000    0.000    0.000 sample_utils.py:47(<lambda>)
+        3    0.000    0.000    0.000    0.000 cache.py:393(make_mask)
+       12    0.000    0.000    0.000    0.000 {built-in method _ctypes.byref}
+        3    0.000    0.000    0.000    0.000 quantized.py:160(as_linear)
+        6    0.000    0.000    0.000    0.000 {method 'append' of 'list' objects}
+        1    0.000    0.000    0.000    0.000 contextlib.py:136(__enter__)
+        1    0.000    0.000    0.000    0.000 contextlib.py:303(helper)
+        1    0.000    0.000    0.000    0.000 contextlib.py:108(__init__)
+       24    0.000    0.000    0.000    0.000 cache.py:328(__init__)
+        1    0.000    0.000    0.000    0.000 qwen2.py:219(layers)
+        3    0.000    0.000    0.000    0.000 {built-in method builtins.len}
+        1    0.000    0.000    0.000    0.000 generate.py:229(wired_limit)
+        3    0.000    0.000    0.000    0.000 cache.py:114(create_attention_mask)
+        3    0.000    0.000    0.000    0.000 generate.py:377(<lambda>)
+        3    0.000    0.000    0.000    0.000 generate.py:299(maybe_quantize_kv_cache)
+        1    0.000    0.000    0.000    0.000 {built-in method builtins.min}
+
+

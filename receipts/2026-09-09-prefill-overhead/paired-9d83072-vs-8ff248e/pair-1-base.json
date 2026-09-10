@@ -1,0 +1,372 @@
+{
+  "schema": "bench-matrix/1",
+  "mode": "run",
+  "started_utc": "2026-09-10T00:03:20Z",
+  "host_label": "jwm1-PrefillOverhead-paired-base",
+  "manifest": "~/src/mlx-PrefillOverhead2/scripts/bench_matrix.json",
+  "models_resolved": [
+    {
+      "model_id": "qwen25-0.5b-4bit",
+      "repo": "mlx-community/Qwen2.5-0.5B-Instruct-4bit",
+      "revision": "a5339a4131f135d0fdc6a5c8b5bbed2753bbe0f3",
+      "status": "ready",
+      "revision_class": "pinned",
+      "path": "~/.cache/huggingface/hub/models--mlx-community--Qwen2.5-0.5B-Instruct-4bit/snapshots/a5339a4131f135d0fdc6a5c8b5bbed2753bbe0f3",
+      "detail": "pinned revision found in cache"
+    },
+    {
+      "model_id": "qwen25-0.5b-bf16",
+      "repo": "mlx-community/Qwen2.5-0.5B-Instruct-bf16",
+      "revision": "56d07e766edd7159fbe12ed12d9cf114bf38bf1e",
+      "status": "ready",
+      "revision_class": "pinned",
+      "path": "~/.cache/huggingface/hub/models--mlx-community--Qwen2.5-0.5B-Instruct-bf16/snapshots/56d07e766edd7159fbe12ed12d9cf114bf38bf1e",
+      "detail": "pinned revision found in cache"
+    },
+    {
+      "model_id": "qwen25-7b-4bit",
+      "repo": "mlx-community/Qwen2.5-7B-Instruct-4bit",
+      "revision": null,
+      "status": "skipped",
+      "revision_class": null,
+      "path": null,
+      "detail": "mlx-community/Qwen2.5-7B-Instruct-4bit not present in local HF cache (~/.cache/huggingface/hub/models--mlx-community--Qwen2.5-7B-Instruct-4bit); offline: not fetched"
+    },
+    {
+      "model_id": "qwen25-14b-4bit",
+      "repo": "mlx-community/Qwen2.5-14B-Instruct-4bit",
+      "revision": null,
+      "status": "skipped",
+      "revision_class": null,
+      "path": null,
+      "detail": "mlx-community/Qwen2.5-14B-Instruct-4bit not present in local HF cache (~/.cache/huggingface/hub/models--mlx-community--Qwen2.5-14B-Instruct-4bit); offline: not fetched"
+    }
+  ],
+  "pins": {
+    "qwen25-0.5b-4bit": {
+      "revision": "a5339a4131f135d0fdc6a5c8b5bbed2753bbe0f3",
+      "class": "pinned"
+    },
+    "qwen25-0.5b-bf16": {
+      "revision": "56d07e766edd7159fbe12ed12d9cf114bf38bf1e",
+      "class": "pinned"
+    }
+  },
+  "notes": [
+    "explicit-selection workloads not selected, no legs built: longctx-4096-decode-32 (use --select longctx-4096-decode-32 or --select all)"
+  ],
+  "host": {
+    "system": "Linux",
+    "machine": "aarch64",
+    "python": "3.14.7",
+    "os": "Omarchy",
+    "kernel": "7.1.6-1-1-ARCH",
+    "memsize_bytes": 16228417536,
+    "gpu": {
+      "device": "Apple M1 (G13G B1)",
+      "vulkan_driver": "Honeykrisp"
+    }
+  },
+  "packages": {
+    "mlx": null,
+    "mlx-omarchy": "0.32.2.dev202609092354+9d83072",
+    "mlx-lm": "0.31.3",
+    "transformers": "5.17.0",
+    "numpy": "2.5.3"
+  },
+  "binary_provenance": {
+    "omarchy": {
+      "dist": "mlx-omarchy",
+      "verified": "match",
+      "mismatch": null,
+      "files": [
+        {
+          "path": "mlx/core.cpython-314-aarch64-linux-gnu.so",
+          "label": "mlx.core extension",
+          "sha256": "4ad850da16c300ea9f60aa7247f034f358aa16d7ba2fd146979a01c867e3cfa5",
+          "record_sha256": "4ad850da16c300ea9f60aa7247f034f358aa16d7ba2fd146979a01c867e3cfa5",
+          "match": true
+        },
+        {
+          "path": "mlx/lib/libmlx.so",
+          "label": "mlx/lib/libmlx.so",
+          "sha256": "b25f2020ca61a0e8a0887cd926fd327aad2bb4034aab4021093e3febbbce153a",
+          "record_sha256": "b25f2020ca61a0e8a0887cd926fd327aad2bb4034aab4021093e3febbbce153a",
+          "match": true
+        }
+      ],
+      "dist_version": "0.32.2.dev202609092354+9d83072",
+      "mx_version": "0.32.2.dev202609092354+9d83072",
+      "version_match": true
+    },
+    "upstream_mlx": {
+      "dist": "mlx",
+      "verified": "no-metadata",
+      "mismatch": "no mlx distribution metadata: mlx appears to be a source install, so installed-binary provenance cannot be checked here. Record the source commit instead.",
+      "files": [],
+      "dist_version": null,
+      "mx_version": "0.32.2.dev202609092354+9d83072",
+      "version_match": null
+    },
+    "harness_commit": "8ff248e-dirty",
+    "line_omarchy": "provenance: mlx-omarchy 0.32.2.dev202609092354+9d83072 mx=0.32.2.dev202609092354+9d83072 verified=match harness=8ff248e-dirty core.cpython-314-aarch64-linux-gnu.so=sha256:4ad850da16c300ea libmlx.so=sha256:b25f2020ca61a0e8"
+  },
+  "power": {
+    "raw": "macsmc-ac: online",
+    "source": "AC",
+    "percent": null,
+    "charging": true
+  },
+  "clean_check": {
+    "status": "clean",
+    "matched": [],
+    "scanned": 287
+  },
+  "source": {
+    "harness_commit": "8ff248e-dirty",
+    "note": "commit captured by scripts/mlx_provenance.py"
+  },
+  "legs": [
+    {
+      "leg_id": "qwen25-0.5b-4bit:short-decode-32",
+      "model_id": "qwen25-0.5b-4bit",
+      "revision": "a5339a4131f135d0fdc6a5c8b5bbed2753bbe0f3",
+      "workload_id": "short-decode-32",
+      "prompt_id": "short",
+      "tokens": 32,
+      "status": "measured",
+      "measured": true,
+      "model_path": "~/.cache/huggingface/hub/models--mlx-community--Qwen2.5-0.5B-Instruct-4bit/snapshots/a5339a4131f135d0fdc6a5c8b5bbed2753bbe0f3",
+      "contended": false,
+      "cmd": ".venv-base/bin/python ~/src/mlx-PrefillOverhead2/scripts/bench_decode.py --model ~/.cache/huggingface/hub/models--mlx-community--Qwen2.5-0.5B-Instruct-4bit/snapshots/a5339a4131f135d0fdc6a5c8b5bbed2753bbe0f3 --prompt Hi --tokens 32 --temp 0.0 --seed 0 --warmup-tokens 4 --wheel ~/prefill-overhead-wheels/mlx_omarchy-0.32.2.dev202609092354+9d83072-cp314-cp314-linux_aarch64.whl",
+      "duration_s": 2.05,
+      "exit_code": 0,
+      "prompt_tokens": 30,
+      "metrics": {
+        "decode_tok_s": 93.56,
+        "decode_tokens": 31,
+        "requested_tokens": 32,
+        "prefill_s": 0.149,
+        "decode_mean_per_token_ms": 10.7,
+        "provenance_line": "mlx-omarchy 0.32.2.dev202609092354+9d83072 mx=0.32.2.dev202609092354+9d83072 verified=match harness=8ff248e-dirty core.cpython-314-aarch64-linux-gnu.so=sha256:4ad850da16c300ea libmlx.so=sha256:b25f2020ca61a0e8",
+        "generated_ids_sha256_16": "7fd25a869ff21678",
+        "generated_ids_n": 32,
+        "prompt_tokens": 30,
+        "prefill_tok_s": 201.342,
+        "prefill_tok_s_basis": "bench_decode prompt_tokens / prefill seconds"
+      }
+    },
+    {
+      "leg_id": "qwen25-0.5b-4bit:long-decode-128",
+      "model_id": "qwen25-0.5b-4bit",
+      "revision": "a5339a4131f135d0fdc6a5c8b5bbed2753bbe0f3",
+      "workload_id": "long-decode-128",
+      "prompt_id": "long",
+      "tokens": 128,
+      "status": "measured",
+      "measured": true,
+      "model_path": "~/.cache/huggingface/hub/models--mlx-community--Qwen2.5-0.5B-Instruct-4bit/snapshots/a5339a4131f135d0fdc6a5c8b5bbed2753bbe0f3",
+      "contended": false,
+      "cmd": ".venv-base/bin/python ~/src/mlx-PrefillOverhead2/scripts/bench_decode.py --model ~/.cache/huggingface/hub/models--mlx-community--Qwen2.5-0.5B-Instruct-4bit/snapshots/a5339a4131f135d0fdc6a5c8b5bbed2753bbe0f3 --prompt You are reviewing a measurement protocol for a small language-model benchmark. The benchmark runs the same workload matrix on two operating systems and compares prefill and decode throughput. Each leg loads one pinned model snapshot, applies the model chat template to the prompt, runs greedy decoding with a fixed random seed, and records the prompt phase, the per-token phase, the generated token count, a hash of the generated token ids, and peak memory. A leg is valid only when the model snapshot revision matches the manifest pin, the power state is recorded, and no other model-serving process is holding the accelerator. The runner never downloads models on an offline host; a missing snapshot is reported as skipped, never as a pass. Provenance for each run captures the chip, core count, memory, operating system version and build, Python version, MLX and mlx-lm versions, the GPU driver identity where available, the exact source commit, and whether the source tree was dirty. Hostnames, user names, and serial numbers are deliberately excluded from the recorded output. Timing on a machine that is also serving other model processes is labeled contended and is not compared against clean numbers. --tokens 128 --temp 0.0 --seed 0 --warmup-tokens 4 --wheel ~/prefill-overhead-wheels/mlx_omarchy-0.32.2.dev202609092354+9d83072-cp314-cp314-linux_aarch64.whl",
+      "duration_s": 3.82,
+      "exit_code": 0,
+      "prompt_tokens": 262,
+      "metrics": {
+        "decode_tok_s": 75.72,
+        "decode_tokens": 127,
+        "requested_tokens": 128,
+        "prefill_s": 0.341,
+        "decode_mean_per_token_ms": 13.2,
+        "provenance_line": "mlx-omarchy 0.32.2.dev202609092354+9d83072 mx=0.32.2.dev202609092354+9d83072 verified=match harness=8ff248e-dirty core.cpython-314-aarch64-linux-gnu.so=sha256:4ad850da16c300ea libmlx.so=sha256:b25f2020ca61a0e8",
+        "generated_ids_sha256_16": "4cc08910089477fd",
+        "generated_ids_n": 128,
+        "prompt_tokens": 262,
+        "prefill_tok_s": 768.328,
+        "prefill_tok_s_basis": "bench_decode prompt_tokens / prefill seconds"
+      }
+    },
+    {
+      "leg_id": "qwen25-0.5b-4bit:longctx-1024-decode-32",
+      "model_id": "qwen25-0.5b-4bit",
+      "revision": "a5339a4131f135d0fdc6a5c8b5bbed2753bbe0f3",
+      "workload_id": "longctx-1024-decode-32",
+      "prompt_id": "ctx1024",
+      "tokens": 32,
+      "status": "measured",
+      "measured": true,
+      "model_path": "~/.cache/huggingface/hub/models--mlx-community--Qwen2.5-0.5B-Instruct-4bit/snapshots/a5339a4131f135d0fdc6a5c8b5bbed2753bbe0f3",
+      "contended": false,
+      "cmd": ".venv-base/bin/python ~/src/mlx-PrefillOverhead2/scripts/bench_decode.py --model ~/.cache/huggingface/hub/models--mlx-community--Qwen2.5-0.5B-Instruct-4bit/snapshots/a5339a4131f135d0fdc6a5c8b5bbed2753bbe0f3 --prompt You are reviewing a measurement protocol for a small language-model benchmark. The benchmark runs the same workload matrix on two operating systems and compares prefill and decode throughput. Each leg loads one pinned model snapshot, applies the model chat template to the prompt, runs greedy decoding with a fixed random seed, and records the prompt phase, the per-token phase, the generated token count, a hash of the generated token ids, and peak memory. A leg is valid only when the model snapshot revision matches the manifest pin, the power state is recorded, and no other model-serving process is holding the accelerator. The runner never downloads models on an offline host; a missing snapshot is reported as skipped, never as a pass. Provenance for each run captures the chip, core count, memory, operating system version and build, Python version, MLX and mlx-lm versions, the GPU driver identity where available, the exact source commit, and whether the source tree was dirty. Hostnames, user names, and serial numbers are deliberately excluded from the recorded output. Timing on a machine that is also serving other model processes is labeled contended and is not compared against clean numbers. Checkpoint: the runner records the prefill duration, the pinned decode length, the generated token identity, and the peak memory before the next workload starts. Entry 1 of 20. Checkpoint: the runner records the prefill duration, the pinned decode length, the generated token identity, and the peak memory before the next workload starts. Entry 2 of 20. Checkpoint: the runner records the prefill duration, the pinned decode length, the generated token identity, and the peak memory before the next workload starts. Entry 3 of 20. Checkpoint: the runner records the prefill duration, the pinned decode length, the generated token identity, and the peak memory before the next workload starts. Entry 4 of 20. Checkpoint: the runner records the prefill duration, the pinned decode length, the generated token identity, and the peak memory before the next workload starts. Entry 5 of 20. Checkpoint: the runner records the prefill duration, the pinned decode length, the generated token identity, and the peak memory before the next workload starts. Entry 6 of 20. Checkpoint: the runner records the prefill duration, the pinned decode length, the generated token identity, and the peak memory before the next workload starts. Entry 7 of 20. Checkpoint: the runner records the prefill duration, the pinned decode length, the generated token identity, and the peak memory before the next workload starts. Entry 8 of 20. Checkpoint: the runner records the prefill duration, the pinned decode length, the generated token identity, and the peak memory before the next workload starts. Entry 9 of 20. Checkpoint: the runner records the prefill duration, the pinned decode length, the generated token identity, and the peak memory before the next workload starts. Entry 10 of 20. Checkpoint: the runner records the prefill duration, the pinned decode length, the generated token identity, and the peak memory before the next workload starts. Entry 11 of 20. Checkpoint: the runner records the prefill duration, the pinned decode length, the generated token identity, and the peak memory before the next workload starts. Entry 12 of 20. Checkpoint: the runner records the prefill duration, the pinned decode length, the generated token identity, and the peak memory before the next workload starts. Entry 13 of 20. Checkpoint: the runner records the prefill duration, the pinned decode length, the generated token identity, and the peak memory before the next workload starts. Entry 14 of 20. Checkpoint: the runner records the prefill duration, the pinned decode length, the generated token identity, and the peak memory before the next workload starts. Entry 15 of 20. Checkpoint: the runner records the prefill duration, the pinned decode length, the generated token identity, and the peak memory before the next workload starts. Entry 16 of 20. Checkpoint: the runner records the prefill duration, the pinned decode length, the generated token identity, and the peak memory before the next workload starts. Entry 17 of 20. Checkpoint: the runner records the prefill duration, the pinned decode length, the generated token identity, and the peak memory before the next workload starts. Entry 18 of 20. Checkpoint: the runner records the prefill duration, the pinned decode length, the generated token identity, and the peak memory before the next workload starts. Entry 19 of 20. Checkpoint: the runner records the prefill duration, the pinned decode length, the generated token identity, and the peak memory before the next workload starts. Entry 20 of 20. --tokens 32 --temp 0.0 --seed 0 --warmup-tokens 4 --wheel ~/prefill-overhead-wheels/mlx_omarchy-0.32.2.dev202609092354+9d83072-cp314-cp314-linux_aarch64.whl",
+      "duration_s": 4.13,
+      "exit_code": 0,
+      "prompt_tokens": 1053,
+      "metrics": {
+        "decode_tok_s": 50.15,
+        "decode_tokens": 31,
+        "requested_tokens": 32,
+        "prefill_s": 0.993,
+        "decode_mean_per_token_ms": 19.9,
+        "provenance_line": "mlx-omarchy 0.32.2.dev202609092354+9d83072 mx=0.32.2.dev202609092354+9d83072 verified=match harness=8ff248e-dirty core.cpython-314-aarch64-linux-gnu.so=sha256:4ad850da16c300ea libmlx.so=sha256:b25f2020ca61a0e8",
+        "generated_ids_sha256_16": "7da83f06ec9f001d",
+        "generated_ids_n": 32,
+        "prompt_tokens": 1053,
+        "prefill_tok_s": 1060.423,
+        "prefill_tok_s_basis": "bench_decode prompt_tokens / prefill seconds"
+      }
+    },
+    {
+      "leg_id": "qwen25-0.5b-bf16:short-decode-32",
+      "model_id": "qwen25-0.5b-bf16",
+      "revision": "56d07e766edd7159fbe12ed12d9cf114bf38bf1e",
+      "workload_id": "short-decode-32",
+      "prompt_id": "short",
+      "tokens": 32,
+      "status": "measured",
+      "measured": true,
+      "model_path": "~/.cache/huggingface/hub/models--mlx-community--Qwen2.5-0.5B-Instruct-bf16/snapshots/56d07e766edd7159fbe12ed12d9cf114bf38bf1e",
+      "contended": false,
+      "cmd": ".venv-base/bin/python ~/src/mlx-PrefillOverhead2/scripts/bench_decode.py --model ~/.cache/huggingface/hub/models--mlx-community--Qwen2.5-0.5B-Instruct-bf16/snapshots/56d07e766edd7159fbe12ed12d9cf114bf38bf1e --prompt Hi --tokens 32 --temp 0.0 --seed 0 --warmup-tokens 4 --wheel ~/prefill-overhead-wheels/mlx_omarchy-0.32.2.dev202609092354+9d83072-cp314-cp314-linux_aarch64.whl",
+      "duration_s": 5.23,
+      "exit_code": 0,
+      "prompt_tokens": 30,
+      "metrics": {
+        "decode_tok_s": 11.62,
+        "decode_tokens": 31,
+        "requested_tokens": 32,
+        "prefill_s": 0.369,
+        "decode_mean_per_token_ms": 86.0,
+        "provenance_line": "mlx-omarchy 0.32.2.dev202609092354+9d83072 mx=0.32.2.dev202609092354+9d83072 verified=match harness=8ff248e-dirty core.cpython-314-aarch64-linux-gnu.so=sha256:4ad850da16c300ea libmlx.so=sha256:b25f2020ca61a0e8",
+        "generated_ids_sha256_16": "f26175202f3dabe9",
+        "generated_ids_n": 32,
+        "prompt_tokens": 30,
+        "prefill_tok_s": 81.301,
+        "prefill_tok_s_basis": "bench_decode prompt_tokens / prefill seconds"
+      }
+    },
+    {
+      "leg_id": "qwen25-0.5b-bf16:long-decode-128",
+      "model_id": "qwen25-0.5b-bf16",
+      "revision": "56d07e766edd7159fbe12ed12d9cf114bf38bf1e",
+      "workload_id": "long-decode-128",
+      "prompt_id": "long",
+      "tokens": 128,
+      "status": "measured",
+      "measured": true,
+      "model_path": "~/.cache/huggingface/hub/models--mlx-community--Qwen2.5-0.5B-Instruct-bf16/snapshots/56d07e766edd7159fbe12ed12d9cf114bf38bf1e",
+      "contended": false,
+      "cmd": ".venv-base/bin/python ~/src/mlx-PrefillOverhead2/scripts/bench_decode.py --model ~/.cache/huggingface/hub/models--mlx-community--Qwen2.5-0.5B-Instruct-bf16/snapshots/56d07e766edd7159fbe12ed12d9cf114bf38bf1e --prompt You are reviewing a measurement protocol for a small language-model benchmark. The benchmark runs the same workload matrix on two operating systems and compares prefill and decode throughput. Each leg loads one pinned model snapshot, applies the model chat template to the prompt, runs greedy decoding with a fixed random seed, and records the prompt phase, the per-token phase, the generated token count, a hash of the generated token ids, and peak memory. A leg is valid only when the model snapshot revision matches the manifest pin, the power state is recorded, and no other model-serving process is holding the accelerator. The runner never downloads models on an offline host; a missing snapshot is reported as skipped, never as a pass. Provenance for each run captures the chip, core count, memory, operating system version and build, Python version, MLX and mlx-lm versions, the GPU driver identity where available, the exact source commit, and whether the source tree was dirty. Hostnames, user names, and serial numbers are deliberately excluded from the recorded output. Timing on a machine that is also serving other model processes is labeled contended and is not compared against clean numbers. --tokens 128 --temp 0.0 --seed 0 --warmup-tokens 4 --wheel ~/prefill-overhead-wheels/mlx_omarchy-0.32.2.dev202609092354+9d83072-cp314-cp314-linux_aarch64.whl",
+      "duration_s": 14.9,
+      "exit_code": 0,
+      "prompt_tokens": 262,
+      "metrics": {
+        "decode_tok_s": 11.24,
+        "decode_tokens": 127,
+        "requested_tokens": 128,
+        "prefill_s": 0.881,
+        "decode_mean_per_token_ms": 89.0,
+        "provenance_line": "mlx-omarchy 0.32.2.dev202609092354+9d83072 mx=0.32.2.dev202609092354+9d83072 verified=match harness=8ff248e-dirty core.cpython-314-aarch64-linux-gnu.so=sha256:4ad850da16c300ea libmlx.so=sha256:b25f2020ca61a0e8",
+        "generated_ids_sha256_16": "ad964232ee67fecd",
+        "generated_ids_n": 128,
+        "prompt_tokens": 262,
+        "prefill_tok_s": 297.389,
+        "prefill_tok_s_basis": "bench_decode prompt_tokens / prefill seconds"
+      }
+    },
+    {
+      "leg_id": "qwen25-0.5b-bf16:longctx-1024-decode-32",
+      "model_id": "qwen25-0.5b-bf16",
+      "revision": "56d07e766edd7159fbe12ed12d9cf114bf38bf1e",
+      "workload_id": "longctx-1024-decode-32",
+      "prompt_id": "ctx1024",
+      "tokens": 32,
+      "status": "measured",
+      "measured": true,
+      "model_path": "~/.cache/huggingface/hub/models--mlx-community--Qwen2.5-0.5B-Instruct-bf16/snapshots/56d07e766edd7159fbe12ed12d9cf114bf38bf1e",
+      "contended": false,
+      "cmd": ".venv-base/bin/python ~/src/mlx-PrefillOverhead2/scripts/bench_decode.py --model ~/.cache/huggingface/hub/models--mlx-community--Qwen2.5-0.5B-Instruct-bf16/snapshots/56d07e766edd7159fbe12ed12d9cf114bf38bf1e --prompt You are reviewing a measurement protocol for a small language-model benchmark. The benchmark runs the same workload matrix on two operating systems and compares prefill and decode throughput. Each leg loads one pinned model snapshot, applies the model chat template to the prompt, runs greedy decoding with a fixed random seed, and records the prompt phase, the per-token phase, the generated token count, a hash of the generated token ids, and peak memory. A leg is valid only when the model snapshot revision matches the manifest pin, the power state is recorded, and no other model-serving process is holding the accelerator. The runner never downloads models on an offline host; a missing snapshot is reported as skipped, never as a pass. Provenance for each run captures the chip, core count, memory, operating system version and build, Python version, MLX and mlx-lm versions, the GPU driver identity where available, the exact source commit, and whether the source tree was dirty. Hostnames, user names, and serial numbers are deliberately excluded from the recorded output. Timing on a machine that is also serving other model processes is labeled contended and is not compared against clean numbers. Checkpoint: the runner records the prefill duration, the pinned decode length, the generated token identity, and the peak memory before the next workload starts. Entry 1 of 20. Checkpoint: the runner records the prefill duration, the pinned decode length, the generated token identity, and the peak memory before the next workload starts. Entry 2 of 20. Checkpoint: the runner records the prefill duration, the pinned decode length, the generated token identity, and the peak memory before the next workload starts. Entry 3 of 20. Checkpoint: the runner records the prefill duration, the pinned decode length, the generated token identity, and the peak memory before the next workload starts. Entry 4 of 20. Checkpoint: the runner records the prefill duration, the pinned decode length, the generated token identity, and the peak memory before the next workload starts. Entry 5 of 20. Checkpoint: the runner records the prefill duration, the pinned decode length, the generated token identity, and the peak memory before the next workload starts. Entry 6 of 20. Checkpoint: the runner records the prefill duration, the pinned decode length, the generated token identity, and the peak memory before the next workload starts. Entry 7 of 20. Checkpoint: the runner records the prefill duration, the pinned decode length, the generated token identity, and the peak memory before the next workload starts. Entry 8 of 20. Checkpoint: the runner records the prefill duration, the pinned decode length, the generated token identity, and the peak memory before the next workload starts. Entry 9 of 20. Checkpoint: the runner records the prefill duration, the pinned decode length, the generated token identity, and the peak memory before the next workload starts. Entry 10 of 20. Checkpoint: the runner records the prefill duration, the pinned decode length, the generated token identity, and the peak memory before the next workload starts. Entry 11 of 20. Checkpoint: the runner records the prefill duration, the pinned decode length, the generated token identity, and the peak memory before the next workload starts. Entry 12 of 20. Checkpoint: the runner records the prefill duration, the pinned decode length, the generated token identity, and the peak memory before the next workload starts. Entry 13 of 20. Checkpoint: the runner records the prefill duration, the pinned decode length, the generated token identity, and the peak memory before the next workload starts. Entry 14 of 20. Checkpoint: the runner records the prefill duration, the pinned decode length, the generated token identity, and the peak memory before the next workload starts. Entry 15 of 20. Checkpoint: the runner records the prefill duration, the pinned decode length, the generated token identity, and the peak memory before the next workload starts. Entry 16 of 20. Checkpoint: the runner records the prefill duration, the pinned decode length, the generated token identity, and the peak memory before the next workload starts. Entry 17 of 20. Checkpoint: the runner records the prefill duration, the pinned decode length, the generated token identity, and the peak memory before the next workload starts. Entry 18 of 20. Checkpoint: the runner records the prefill duration, the pinned decode length, the generated token identity, and the peak memory before the next workload starts. Entry 19 of 20. Checkpoint: the runner records the prefill duration, the pinned decode length, the generated token identity, and the peak memory before the next workload starts. Entry 20 of 20. --tokens 32 --temp 0.0 --seed 0 --warmup-tokens 4 --wheel ~/prefill-overhead-wheels/mlx_omarchy-0.32.2.dev202609092354+9d83072-cp314-cp314-linux_aarch64.whl",
+      "duration_s": 11.01,
+      "exit_code": 0,
+      "prompt_tokens": 1053,
+      "metrics": {
+        "decode_tok_s": 10.17,
+        "decode_tokens": 31,
+        "requested_tokens": 32,
+        "prefill_s": 3.101,
+        "decode_mean_per_token_ms": 98.3,
+        "provenance_line": "mlx-omarchy 0.32.2.dev202609092354+9d83072 mx=0.32.2.dev202609092354+9d83072 verified=match harness=8ff248e-dirty core.cpython-314-aarch64-linux-gnu.so=sha256:4ad850da16c300ea libmlx.so=sha256:b25f2020ca61a0e8",
+        "generated_ids_sha256_16": "ff502900d2a179a5",
+        "generated_ids_n": 32,
+        "prompt_tokens": 1053,
+        "prefill_tok_s": 339.568,
+        "prefill_tok_s_basis": "bench_decode prompt_tokens / prefill seconds"
+      }
+    },
+    {
+      "leg_id": "qwen25-7b-4bit:short-decode-32",
+      "model_id": "qwen25-7b-4bit",
+      "revision": null,
+      "workload_id": "short-decode-32",
+      "prompt_id": "short",
+      "tokens": 32,
+      "status": "skipped",
+      "measured": false,
+      "skip_reason": "mlx-community/Qwen2.5-7B-Instruct-4bit not present in local HF cache (~/.cache/huggingface/hub/models--mlx-community--Qwen2.5-7B-Instruct-4bit); offline: not fetched"
+    },
+    {
+      "leg_id": "qwen25-7b-4bit:long-decode-128",
+      "model_id": "qwen25-7b-4bit",
+      "revision": null,
+      "workload_id": "long-decode-128",
+      "prompt_id": "long",
+      "tokens": 128,
+      "status": "skipped",
+      "measured": false,
+      "skip_reason": "mlx-community/Qwen2.5-7B-Instruct-4bit not present in local HF cache (~/.cache/huggingface/hub/models--mlx-community--Qwen2.5-7B-Instruct-4bit); offline: not fetched"
+    },
+    {
+      "leg_id": "qwen25-7b-4bit:longctx-1024-decode-32",
+      "model_id": "qwen25-7b-4bit",
+      "revision": null,
+      "workload_id": "longctx-1024-decode-32",
+      "prompt_id": "ctx1024",
+      "tokens": 32,
+      "status": "skipped",
+      "measured": false,
+      "skip_reason": "mlx-community/Qwen2.5-7B-Instruct-4bit not present in local HF cache (~/.cache/huggingface/hub/models--mlx-community--Qwen2.5-7B-Instruct-4bit); offline: not fetched"
+    },
+    {
+      "leg_id": "qwen25-14b-4bit:short-decode-32",
+      "model_id": "qwen25-14b-4bit",
+      "revision": null,
+      "workload_id": "short-decode-32",
+      "prompt_id": "short",
+      "tokens": 32,
+      "status": "skipped",
+      "measured": false,
+      "skip_reason": "mlx-community/Qwen2.5-14B-Instruct-4bit not present in local HF cache (~/.cache/huggingface/hub/models--mlx-community--Qwen2.5-14B-Instruct-4bit); offline: not fetched"
+    },
+    {
+      "leg_id": "qwen25-14b-4bit:long-decode-128",
+      "model_id": "qwen25-14b-4bit",
+      "revision": null,
+      "workload_id": "long-decode-128",
+      "prompt_id": "long",
+      "tokens": 128,
+      "status": "skipped",
+      "measured": false,
+      "skip_reason": "mlx-community/Qwen2.5-14B-Instruct-4bit not present in local HF cache (~/.cache/huggingface/hub/models--mlx-community--Qwen2.5-14B-Instruct-4bit); offline: not fetched"
+    },
+    {
+      "leg_id": "qwen25-14b-4bit:longctx-1024-decode-32",
+      "model_id": "qwen25-14b-4bit",
+      "revision": null,
+      "workload_id": "longctx-1024-decode-32",
+      "prompt_id": "ctx1024",
+      "tokens": 32,
+      "status": "skipped",
+      "measured": false,
+      "skip_reason": "mlx-community/Qwen2.5-14B-Instruct-4bit not present in local HF cache (~/.cache/huggingface/hub/models--mlx-community--Qwen2.5-14B-Instruct-4bit); offline: not fetched"
+    }
+  ],
+  "measured_legs": 6
+}

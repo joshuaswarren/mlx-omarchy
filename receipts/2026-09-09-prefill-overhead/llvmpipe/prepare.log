@@ -1,0 +1,20 @@
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0
+  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0100 4311k    0 4311k    0     0  4130k      0 --:--:--  0:00:01 --:--:-- 6186k
+patching file CMakeLists.txt
+patching file mlx/CMakeLists.txt
+patching file tests/CMakeLists.txt
+patching file mlx/transforms.cpp
+patching file setup.py
+patching file mlx/io/safetensors.cpp
+patching file mlx/io/load.cpp
+patching file mlx/export.cpp
+patching file mlx/linalg.cpp
+patching file python/src/buffer.h
+patching file mlx/ops.cpp
+Hunk #2 succeeded at 5051 (offset 1 line).
+patching file mlx/backend/cpu/distributed.cpp
+patching file mlx/fast.cpp
+patching file setup.py
+/home/joshuawarren/.config/superpowers/worktrees/mlx-omarchy/PrefillOverhead/.work/mlx
