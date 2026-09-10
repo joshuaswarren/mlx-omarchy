@@ -11,6 +11,7 @@
 #include <memory>
 #include <optional>
 #include <typeinfo>
+#include <stdexcept>
 #include <unordered_map>
 #include <unordered_set>
 #include <utility>
@@ -608,7 +609,8 @@ struct SliceUpdatePair {
       : nodes{first, second} {}
 
   std::array<array, 2> nodes;
-  enum class State : uint8_t { pending, done, failed } state{State::pending};
+  enum class State : uint8_t { pending, deferred, done, failed } state{
+      State::pending};
 };
 
 struct EagerFusionState {
@@ -843,15 +845,28 @@ bool try_eval_eager_fusion(array& node, const Stream& stream) {
   if (auto update = eager_state->slice_update_roles.find(node.id());
       update != eager_state->slice_update_roles.end()) {
     auto& pair = eager_state->slice_update_pairs[update->second];
-    if (pair.state == SliceUpdatePair::State::pending) {
-      pair.state = dispatch_slice_update_pair(pair.nodes, stream)
-          ? SliceUpdatePair::State::done
-          : SliceUpdatePair::State::failed;
+    if (pair.state == SliceUpdatePair::State::done) {
+      return true;
     }
-    return pair.state == SliceUpdatePair::State::done;
-  }
-  if (auto gemv = eager_state->gemv_roles.find(node.id());
-      gemv != eager_state->gemv_roles.end()) {
+    if (pair.state == SliceUpdatePair::State::failed) {
+      return false;
+    }
+    auto result = dispatch_slice_update_pair(pair.nodes, stream);
+    if (result == SliceUpdatePairDispatch::done) {
+      pair.state = SliceUpdatePair::State::done;
+      return true;
+    }
+    if (pair.state == SliceUpdatePair::State::deferred) {
+      throw std::runtime_error(
+          "[mlx-omarchy] deferred SliceUpdate pair did not become ready");
+    }
+    if (result == SliceUpdatePairDispatch::not_ready &&
+        node.id() == pair.nodes[0].id()) {
+      pair.state = SliceUpdatePair::State::deferred;
+      return true;
+    }
+    pair.state = SliceUpdatePair::State::failed;
+    return false;
     auto& group = eager_state->gemv_groups[gemv->second];
     if (group.state == GemvGroup::State::pending) {
       group.state = dispatch_quantized_gemv_group(group.members, stream)

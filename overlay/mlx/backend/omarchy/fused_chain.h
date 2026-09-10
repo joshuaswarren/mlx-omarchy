@@ -143,7 +143,8 @@ bool dispatch_quantized_gemv_group(
     std::vector<GemvFusionMember>& members,
     const Stream& stream);
 
-bool dispatch_slice_update_pair(
+enum class SliceUpdatePairDispatch : uint8_t { done, not_ready, unsupported };
+SliceUpdatePairDispatch dispatch_slice_update_pair(
     std::array<array, 2>& nodes,
     const Stream& stream);
 

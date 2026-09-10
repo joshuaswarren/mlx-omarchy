@@ -6923,14 +6923,14 @@ bool dispatch_quantized_gemv_group(
   return true;
 }
 
-bool dispatch_slice_update_pair(
+SliceUpdatePairDispatch dispatch_slice_update_pair(
     std::array<array, 2>& nodes,
     const Stream& stream) {
   auto& encoder = get_command_encoder(stream);
   const auto& caps = encoder.device().capabilities();
   if (encoder.device().compute().binding_limit() < 4 ||
       !caps.shader_float16 || !caps.storage_buffer_16bit_access) {
-    return false;
+    return SliceUpdatePairDispatch::unsupported;
   }
 
   const auto& first_primitive =
@@ -6938,11 +6938,11 @@ bool dispatch_slice_update_pair(
   const auto first_state = first_primitive.state();
   const auto& starts = std::get<1>(first_state);
   const auto& slice_strides = std::get<3>(first_state);
-  if (std::get<0>(first_state) != SliceUpdate::None || nodes[0].inputs().size() != 2 ||
-      nodes[1].inputs().size() != 2 ||
+  if (std::get<0>(first_state) != SliceUpdate::None ||
+      nodes[0].inputs().size() != 2 || nodes[1].inputs().size() != 2 ||
       static_cast<const SliceUpdate&>(nodes[1].primitive()).state() !=
           first_primitive.state()) {
-    return false;
+    return SliceUpdatePairDispatch::unsupported;
   }
 
   const array& first_update = nodes[0].inputs()[1];
@@ -6951,7 +6951,7 @@ bool dispatch_slice_update_pair(
       first_update.ndim() == 0 || first_update.ndim() > 4 ||
       first_update.ndim() != nodes[0].ndim() ||
       first_update.size() > std::numeric_limits<uint32_t>::max()) {
-    return false;
+    return SliceUpdatePairDispatch::unsupported;
   }
 
   auto [output_offset, output_strides] =
@@ -6960,7 +6960,7 @@ bool dispatch_slice_update_pair(
       prepare_slice(nodes[1], starts, slice_strides);
   if (output_offset != second_output_offset ||
       output_strides != second_output_strides) {
-    return false;
+    return SliceUpdatePairDispatch::unsupported;
   }
 
   ComputeParams params;
@@ -6978,7 +6978,7 @@ bool dispatch_slice_update_pair(
             std::numeric_limits<uint32_t>::max() ||
         static_cast<uint64_t>(output_strides[axis]) >
             std::numeric_limits<uint32_t>::max()) {
-      return false;
+      return SliceUpdatePairDispatch::unsupported;
     }
     params.shape[axis] = static_cast<uint32_t>(first_update.shape(axis));
     params.in_strides[axis] =
@@ -6990,7 +6990,7 @@ bool dispatch_slice_update_pair(
   }
   if (output_offset > std::numeric_limits<uint32_t>::max() ||
       output_span >= nodes[0].size()) {
-    return false;
+    return SliceUpdatePairDispatch::unsupported;
   }
 
   for (size_t i = 0; i < nodes.size(); ++i) {
@@ -7002,15 +7002,19 @@ bool dispatch_slice_update_pair(
         update.shape() != first_update.shape() ||
         update.strides() != first_update.strides() ||
         !base.flags().row_contiguous || base.size() != base.data_size() ||
-        !input_ready(base, stream) || !input_ready(update, stream) ||
-        base.data_shared_ptr() == nullptr || update.data_shared_ptr() == nullptr ||
         update.offset() % update.itemsize() != 0) {
-      return false;
+      return SliceUpdatePairDispatch::unsupported;
+    }
+    if (!input_ready(base, stream) || !input_ready(update, stream)) {
+      return SliceUpdatePairDispatch::not_ready;
+    }
+    if (base.data_shared_ptr() == nullptr || update.data_shared_ptr() == nullptr) {
+      return SliceUpdatePairDispatch::unsupported;
     }
     uint64_t offset = update.offset() / update.itemsize();
     if (offset > std::numeric_limits<uint32_t>::max() ||
         input_span > std::numeric_limits<uint32_t>::max() - offset) {
-      return false;
+      return SliceUpdatePairDispatch::unsupported;
     }
     if (i == 0) {
       params.lhs_offset = static_cast<uint32_t>(offset);
@@ -7032,7 +7036,7 @@ bool dispatch_slice_update_pair(
       bindings,
       params,
       compute_dispatch_group_count(params.count));
-  return true;
+  return SliceUpdatePairDispatch::done;
 }
 
 } // namespace omarchy

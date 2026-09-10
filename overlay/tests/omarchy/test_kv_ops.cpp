@@ -136,7 +136,7 @@ TEST_CASE("Concatenate fp16 KV blocks") {
 }
 
 
-TEST_CASE("paired fp16 KV slice updates use one compute dispatch") {
+TEST_CASE("paired fp16 KV slice updates wait for a lazy second update") {
   if (!compute_available()) {
     return;
   }
@@ -168,7 +168,7 @@ TEST_CASE("paired fp16 KV slice updates use one compute dispatch") {
       array({200.0f, 201.0f, 202.0f, 203.0f}, {1, 1, 4}, float32),
       float16,
       stream);
-  eval({key_cache, value_cache, key, value});
+  eval({key_cache, value_cache, key});
   omarchy::get_command_encoder(stream).synchronize();
 
   array updated_key = slice_update(
@@ -179,7 +179,7 @@ TEST_CASE("paired fp16 KV slice updates use one compute dispatch") {
   eval({updated_key, updated_value});
   omarchy::get_command_encoder(stream).synchronize();
   CHECK_EQ(
-      omarchy::trace::counters().vk_compute_dispatches.load() - before, 1);
+      omarchy::trace::counters().vk_compute_dispatches.load() - before, 2);
 
   check_values(
       astype(updated_key, float32, stream),
