@@ -1,0 +1,13 @@
+{
+  "purpose": "One-rep M1 smoke of main after landing the native-order Q4 GEMV form and the guarded native-order fused decode attention",
+  "source_commit": "3c91946",
+  "hardware": "jwm1-linux Apple M1, installed Honeykrisp fork driver, AC power",
+  "decode_tok_s": {"q4_short": 110.25, "q4_long": 107.30, "q4_longctx": 98.19, "bf16_short": 11.68, "bf16_long": 11.29, "bf16_longctx": 10.16},
+  "prefill_tok_s": {"q4_short": 214.3, "q4_long": 784.4, "q4_longctx": 1060.4, "bf16_short": 82.0, "bf16_long": 298.7, "bf16_longctx": 344.9},
+  "native_reference_decode": {"q4_short": 150.85, "q4_long": 146.6, "q4_longctx": 140.3, "bf16_short": 56.57, "bf16_long": 55.82, "bf16_longctx": 54.42},
+  "native_reference_prefill": {"q4_short": 297.0, "q4_long": 1218.6, "q4_longctx": 1837.7},
+  "parity_ratio_decode": {"q4_short": 0.731, "q4_long": 0.732, "q4_longctx": 0.700, "bf16_short": 0.207, "bf16_long": 0.202, "bf16_longctx": 0.187},
+  "digests_equal_to_v0.4.2_fork": true,
+  "paired_evidence": ["receipts/2026-09-10-gemv-native-form/verdict.json", "receipts/2026-09-10-decode-sdpa-native/revalidation/verdict.json"],
+  "note": "Q4 prefill sampled the fast mode of a bimodal distribution under study in receipts/2026-09-10-prefill-close. BF16 decode is now the worst parity ratio in the matrix: native sits near memory bandwidth for the ~1 GB bf16 model while Linux uses a sequential GEMV."
+}
