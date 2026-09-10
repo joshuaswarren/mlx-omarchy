@@ -1,0 +1,79 @@
+=== bias_check.py (bias-corrected three-way, CPU vs Metal capture vs RNE(f64)) ===
+op                       |native-f64|      |cpu-f64|   native==rne(f64)  cpu==rne(f64)  native==cpu
+decode.q_proj          max=    20 n>1=    13 max=     0 n>1=     0 eq=   790 eq=   896 max=    20
+decode.k_proj          max=     7 n>1=     2 max=     0 n>1=     0 eq=   115 eq=   128 max=     7
+decode.v_proj          max= 14328 n>1=     6 max=     0 n>1=     0 eq=    82 eq=   128 max= 14328
+decode.o_proj          max=     0 n>1=     0 max=     0 n>1=     0 eq=   896 eq=   896 max=     0
+prefill.q_proj         max=     1 n>1=     0 max=     1 n>1=     0 eq=234745 eq=234721 max=     1
+prefill.k_proj         max=     0 n>1=     0 max=     0 n>1=     0 eq= 33536 eq= 33536 max=     0
+prefill.v_proj         max=     4 n>1=     1 max=     2 n>1=     1 eq= 33532 eq= 33532 max=     2
+prefill.o_proj         max=    13 n>1=     3 max=    27 n>1=     2 eq=234717 eq=234703 max=    14
+
+=== worst_element.py (decode.v_proj[50] mechanism) ===
+element 50:
+  f64 acc (no bias) = -0.01272678387
+  f64 bias          = 0.01275634766
+  f64 truth         = 2.956378739e-05 -> bf16 0x37f8
+  metal bits        = 0x0000 = 0
+  bit distance      = 14328
+  [50] acc=-0.0127268 bias=+0.0127563 truth=0x37f8 metal=0x0000(+0) d=14328
+  [26] acc=+0.0210792 bias=-0.0180664 truth=0x3b45 metal=0x3b48(+0.00305176) d=3
+  [33] acc=-0.0199745 bias=+0.0178223 truth=0xbb0d metal=0xbb10(-0.00219727) d=3
+  [18] acc=-0.0215911 bias=+0.0201416 truth=0xbabe metal=0xbac0(-0.00146484) d=2
+  [121] acc=+0.0238399 bias=-0.02771 truth=0xbb7e metal=0xbb80(-0.00390625) d=2
+elements with |truth|<1e-3: 4, mismatched among them: 4
+total mismatched: 46; |truth|<0.005 among mismatched: 12
+
+=== deviation_scale.py (Metal error vs partial-sum scale) ===
+
+decode.v_proj: worst Metal deviations vs f64 truth
+  [32] truth=+0.104818 metal=+0.104492 |acc|=0.04305 sum|terms|=0.2641 maxterm=0.009607 dev=0.0003255 dev/sum|terms|=0.00123
+  [95] truth=-0.0753959 metal=-0.0756836 |acc|=0.08577 sum|terms|=0.5814 maxterm=0.01801 dev=0.0002876 dev/sum|terms|=0.000495
+  [63] truth=-0.0397632 metal=-0.0395508 |acc|=0.04626 sum|terms|=0.4397 maxterm=0.009252 dev=0.0002124 dev/sum|terms|=0.000483
+  [30] truth=-0.0221478 metal=-0.0219727 |acc|=0.1203 sum|terms|=0.5291 maxterm=0.02059 dev=0.0001752 dev/sum|terms|=0.000331
+  [92] truth=+0.0593978 metal=+0.0595703 |acc|=0.06489 sum|terms|=0.5189 maxterm=0.01518 dev=0.0001726 dev/sum|terms|=0.000333
+  [76] truth=+0.0318251 metal=+0.0319824 |acc|=0.0353 sum|terms|=0.5636 maxterm=0.009913 dev=0.0001573 dev/sum|terms|=0.000279
+
+decode.k_proj: worst Metal deviations vs f64 truth
+  [63] truth=+69.778 metal=+70 |acc|=0.778 sum|terms|=4.867 maxterm=0.3613 dev=0.222 dev/sum|terms|=0.0456
+  [127] truth=-123.687 metal=-123.5 |acc|=0.6865 sum|terms|=5.432 maxterm=0.252 dev=0.1865 dev/sum|terms|=0.0343
+  [93] truth=+89.6617 metal=+89.5 |acc|=0.6617 sum|terms|=7.426 maxterm=0.4531 dev=0.1617 dev/sum|terms|=0.0218
+  [126] truth=+112.855 metal=+113 |acc|=0.6445 sum|terms|=5.637 maxterm=0.1135 dev=0.1445 dev/sum|terms|=0.0256
+  [94] truth=-85.8633 metal=-86 |acc|=0.3633 sum|terms|=10.69 maxterm=0.7422 dev=0.1367 dev/sum|terms|=0.0128
+  [96] truth=-52.881 metal=-53 |acc|=0.381 sum|terms|=11 maxterm=0.5159 dev=0.119 dev/sum|terms|=0.0108
+
+decode.q_proj: worst Metal deviations vs f64 truth
+  [559] truth=-78.7162 metal=-78.5 |acc|=0.2838 sum|terms|=1.736 maxterm=0.1326 dev=0.2162 dev/sum|terms|=0.124
+  [756] truth=+33.1322 metal=+33.25 |acc|=0.6178 sum|terms|=2.715 maxterm=0.1291 dev=0.1178 dev/sum|terms|=0.0434
+  [568] truth=+43.3617 metal=+43.25 |acc|=0.1383 sum|terms|=1.211 maxterm=0.06975 dev=0.1117 dev/sum|terms|=0.0923
+  [791] truth=-40.3897 metal=-40.5 |acc|=0.8603 sum|terms|=2.812 maxterm=0.1885 dev=0.1103 dev/sum|terms|=0.0392
+  [884] truth=+39.8561 metal=+39.75 |acc|=0.3939 sum|terms|=1.779 maxterm=0.1152 dev=0.1061 dev/sum|terms|=0.0596
+  [565] truth=-32.6019 metal=-32.5 |acc|=0.3981 sum|terms|=1.722 maxterm=0.1054 dev=0.1019 dev/sum|terms|=0.0592
+
+=== weight_identity.py (mlx_lm weight bits == safetensors bits) ===
+q_proj: raw=7af566022f07 held=7af566022f07 equal=True raw_dtype=mlx.core.bfloat16 held_dtype=mlx.core.bfloat16 raw_shape=(896, 896)
+k_proj: raw=e26298921de4 held=e26298921de4 equal=True raw_dtype=mlx.core.bfloat16 held_dtype=mlx.core.bfloat16 raw_shape=(128, 896)
+v_proj: raw=e91cd9873694 held=e91cd9873694 equal=True raw_dtype=mlx.core.bfloat16 held_dtype=mlx.core.bfloat16 raw_shape=(128, 896)
+o_proj: raw=550df0b76880 held=550df0b76880 equal=True raw_dtype=mlx.core.bfloat16 held_dtype=mlx.core.bfloat16 raw_shape=(896, 896)
+model q_proj(captured input) CPU vs native capture: mismatch=106/896 max_bit_delta=20
+
+=== resolve.py (model Linear vs bare Linear vs x@W.T on CPU) ===
+input:
+  sha[x] = a486d1c8f6a1 dtype=mlx.core.bfloat16 shape=(1, 1, 896)
+model weights:
+  sha[model_q] = 7af566022f07 dtype=mlx.core.bfloat16 shape=(896, 896)
+  sha[model_result] = ad4ad90147c5 dtype=mlx.core.bfloat16 shape=(1, 1, 896)
+  model q_proj vs native: 106/896
+raw weights:
+  sha[raw_q] = 7af566022f07 dtype=mlx.core.bfloat16 shape=(896, 896)
+  weights identical: True
+  sha[bare_linear_result] = 34f845acddd7 dtype=mlx.core.bfloat16 shape=(1, 1, 896)
+  bare nn.Linear vs native: 896/896
+  model result == bare result: False
+  sha[x@W.T] = 34f845acddd7 dtype=mlx.core.bfloat16 shape=(1, 1, 896)
+  x@W.T vs native: 896/896
+Traceback (most recent call last):
+  File "/tmp/bf16-rootcause/resolve.py", line 72, in <module>
+    ref = to_bf16 = ((w64 @ x64[0]))
+                      ~~~~^~~~~~~~
+ValueError: matmul: Input operand 1 has a mismatch in its core dimension 0, with gufunc signature (n?,k),(k,m?)->(n?,m?) (size 1 is different from 896)
