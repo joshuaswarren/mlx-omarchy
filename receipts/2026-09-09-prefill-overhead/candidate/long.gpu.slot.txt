@@ -1,0 +1,46 @@
+== prefill: wall 499.3 ms, 1231 dispatches, 51 submissions, 48 joins
+   slot total 317.0 ms (63.5% of wall), reported t1-t0 total 291.2 ms, join wait 251.7 ms, submit host 37.1 ms
+   kernel                           n   slot ms  share  mean us   rep ms
+   QmmPrefillCoopmatF16           163    212.18  66.9%   1301.7   207.05
+   QmmVecQ4MultiSubgroupF16       192     22.39   7.1%    116.6    18.97
+   MatmulRbF16                     46     13.91   4.4%    302.5    13.01
+   CopyGeneralF16                 167     13.16   4.1%     78.8     8.17
+   MatmulF16                       96     11.24   3.5%    117.1     9.81
+   FastRopeF16                    143      8.98   2.8%     62.8     6.06
+   SoftmaxF16                      71      8.68   2.7%    122.3     7.40
+   FastRmsNormF16                 145      7.88   2.5%     54.3     5.28
+   SwigluF16                       71      7.64   2.4%    107.6     6.28
+   BinaryVecF16                   117      5.08   1.6%     43.4     3.85
+   QmmVecQ4WordSubgroupF16          2      3.65   1.2%   1825.8     3.57
+   LogSumExpF16                     2      0.57   0.2%    284.5     0.51
+   ElementwiseF16                   2      0.41   0.1%    207.2     0.36
+   TakeF16                          6      0.37   0.1%     62.4     0.26
+   TakeU32                          3      0.37   0.1%    123.9     0.17
+   ArgReduceF16                     2      0.27   0.1%    135.8     0.27
+   DequantF16                       3      0.22   0.1%     73.4     0.16
+   top signatures (kernel, count, gx, gy, gz):
+   QmmPrefillCoopmatF16         count=1269504   g=(152,9,1) n=  46 slot=  117.54 ms mean=  2555.2 us
+   QmmPrefillCoopmatF16         count=233856    g=(28,9,1) n=  69 slot=   83.33 ms mean=  1207.7 us
+   QmmPrefillCoopmatF16         count=33408     g=(4,9,1) n=  48 slot=   11.31 ms mean=   235.7 us
+   QmmVecQ4MultiSubgroupF16     count=1216      g=(1216,1,1) n=  48 slot=   10.87 ms mean=   226.5 us
+   QmmVecQ4MultiSubgroupF16     count=112       g=(112,1,1) n=  96 slot=    8.03 ms mean=    83.6 us
+   MatmulRbF16                  count=953694    g=(5,5,14) n=  23 slot=    7.15 ms mean=   310.7 us
+   MatmulRbF16                  count=233856    g=(1,5,14) n=  23 slot=    6.77 ms mean=   294.2 us
+   SoftmaxF16                   count=953694    g=(3654,1,1) n=  23 slot=    6.48 ms mean=   281.8 us
+   SwigluF16                    count=1269504   g=(1240,1,1) n=  23 slot=    6.10 ms mean=   265.0 us
+   CopyGeneralF16               count=128       g=(1,1,1) n=  96 slot=    5.76 ms mean=    60.0 us
+   FastRmsNormF16               count=896       g=(1,1,1) n=  98 slot=    5.08 ms mean=    51.8 us
+   MatmulF16                    count=896       g=(4,1,14) n=  48 slot=    4.88 ms mean=   101.6 us
+   CopyGeneralF16               count=33408     g=(131,1,1) n=  48 slot=    4.25 ms mean=    88.5 us
+   MatmulF16                    count=3668      g=(17,1,14) n=  24 slot=    3.85 ms mean=   160.3 us
+   QmmVecQ4WordSubgroupF16      count=151936    g=(18992,1,1) n=   2 slot=    3.65 ms mean=  1825.8 us
+   QmmVecQ4MultiSubgroupF16     count=144       g=(144,1,1) n=  48 slot=    3.49 ms mean=    72.8 us
+   BinaryVecF16                 count=233856    g=(229,1,1) n=  69 slot=    3.37 ms mean=    48.9 us
+   FastRopeF16                  count=448       g=(2,1,1) n=  48 slot=    3.35 ms mean=    69.8 us
+   CopyGeneralF16               count=233856    g=(914,1,1) n=  23 slot=    3.15 ms mean=   136.9 us
+   FastRmsNormF16               count=233856    g=(261,1,1) n=  47 slot=    2.80 ms mean=    59.6 us
+   MatmulF16                    count=3682      g=(17,1,14) n=  24 slot=    2.51 ms mean=   104.7 us
+   FastRopeF16                  count=64        g=(1,1,1) n=  48 slot=    2.41 ms mean=    50.2 us
+   FastRopeF16                  count=116928    g=(457,1,1) n=  23 slot=    2.33 ms mean=   101.4 us
+   BinaryVecF16                 count=33408     g=(33,1,1) n=  48 slot=    1.70 ms mean=    35.5 us
+   SwigluF16                    count=4864      g=(5,1,1) n=  48 slot=    1.55 ms mean=    32.2 us

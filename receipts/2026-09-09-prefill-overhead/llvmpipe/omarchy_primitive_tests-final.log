@@ -1,0 +1,6 @@
+  logged: m := 1
+
+===============================================================================
+[doctest] test cases:     100 |      99 passed | 1 failed | 0 skipped
+[doctest] assertions: 2699401 | 2699400 passed | 1 failed |
+[doctest] Status: FAILURE!

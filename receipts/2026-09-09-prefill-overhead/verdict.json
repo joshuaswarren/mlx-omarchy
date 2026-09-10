@@ -1,0 +1,397 @@
+{
+  "schema": "prefill-overhead-split/1",
+  "baseline_commit": "9d83072",
+  "harness_only": {
+    "direct_generate_step": {
+      "decision": "reject: changes decode timing semantics; stream_generate final response creates a near-zero terminal gap while direct generate_step times the final GPU token",
+      "paired": {
+        "qwen25-0.5b-4bit:short-decode-32": {
+          "old_prefill": 136.364,
+          "new_prefill": 234.375,
+          "prefill_ratio": 1.7187,
+          "old_decode": 94.98,
+          "new_decode": 92.01,
+          "decode_ratio": 0.9687,
+          "ids_same": true
+        },
+        "qwen25-0.5b-4bit:long-decode-128": {
+          "old_prefill": 616.471,
+          "new_prefill": 784.431,
+          "prefill_ratio": 1.2725,
+          "old_decode": 76.16,
+          "new_decode": 71.86,
+          "decode_ratio": 0.9435,
+          "ids_same": true
+        },
+        "qwen25-0.5b-4bit:longctx-1024-decode-32": {
+          "old_prefill": 965.17,
+          "new_prefill": 1057.229,
+          "prefill_ratio": 1.0954,
+          "old_decode": 51.02,
+          "new_decode": 49.36,
+          "decode_ratio": 0.9675,
+          "ids_same": true
+        },
+        "qwen25-0.5b-bf16:short-decode-32": {
+          "old_prefill": 70.423,
+          "new_prefill": 81.301,
+          "prefill_ratio": 1.1545,
+          "old_decode": 11.74,
+          "new_decode": 11.72,
+          "decode_ratio": 0.9983,
+          "ids_same": true
+        },
+        "qwen25-0.5b-bf16:long-decode-128": {
+          "old_prefill": 282.937,
+          "new_prefill": 300.115,
+          "prefill_ratio": 1.0607,
+          "old_decode": 11.3,
+          "new_decode": 11.26,
+          "decode_ratio": 0.9965,
+          "ids_same": true
+        },
+        "qwen25-0.5b-bf16:longctx-1024-decode-32": {
+          "old_prefill": 337.392,
+          "new_prefill": 349.95,
+          "prefill_ratio": 1.0372,
+          "old_decode": 10.16,
+          "new_decode": 10.26,
+          "decode_ratio": 1.0098,
+          "ids_same": true
+        }
+      }
+    },
+    "cached_stream_generate": {
+      "decision": "retain candidate: removes tokenizer/detokenizer setup without changing stream_generate semantics; rerun before merge because Q4 short/long decode and BF16 ctx prefill medians crossed the 0.99 noise gate",
+      "paired": {
+        "qwen25-0.5b-4bit:short-decode-32": {
+          "old_prefill": 133.929,
+          "cached_prefill": 205.479,
+          "prefill_ratio": 1.5342,
+          "old_decode": 94.81,
+          "cached_decode": 93.06,
+          "decode_ratio": 0.9815,
+          "ids_same": true
+        },
+        "qwen25-0.5b-4bit:long-decode-128": {
+          "old_prefill": 619.385,
+          "cached_prefill": 766.082,
+          "prefill_ratio": 1.2368,
+          "old_decode": 76.28,
+          "cached_decode": 74.36,
+          "decode_ratio": 0.9748,
+          "ids_same": true
+        },
+        "qwen25-0.5b-4bit:longctx-1024-decode-32": {
+          "old_prefill": 969.613,
+          "cached_prefill": 1033.366,
+          "prefill_ratio": 1.0658,
+          "old_decode": 50.49,
+          "cached_decode": 50.4,
+          "decode_ratio": 0.9982,
+          "ids_same": true
+        },
+        "qwen25-0.5b-bf16:short-decode-32": {
+          "old_prefill": 69.124,
+          "cached_prefill": 82.192,
+          "prefill_ratio": 1.1891,
+          "old_decode": 11.74,
+          "cached_decode": 11.71,
+          "decode_ratio": 0.9974,
+          "ids_same": true
+        },
+        "qwen25-0.5b-bf16:long-decode-128": {
+          "old_prefill": 282.024,
+          "cached_prefill": 299.429,
+          "prefill_ratio": 1.0617,
+          "old_decode": 11.3,
+          "cached_decode": 11.24,
+          "decode_ratio": 0.9947,
+          "ids_same": true
+        },
+        "qwen25-0.5b-bf16:longctx-1024-decode-32": {
+          "old_prefill": 344.568,
+          "cached_prefill": 337.392,
+          "prefill_ratio": 0.9792,
+          "old_decode": 10.25,
+          "cached_decode": 10.26,
+          "decode_ratio": 1.001,
+          "ids_same": true
+        }
+      }
+    }
+  },
+  "batch_only_512": {
+    "decision": "reject",
+    "note": "This existing 3-pair comparison already isolated the wheel change: both baseline and candidate were driven by the same direct-generate benchmark script. Q4 long and BF16 short/long regressed.",
+    "paired": {
+      "qwen25-0.5b-4bit:short-decode-32": {
+        "baseline_prefill": 202.703,
+        "candidate_prefill": 220.588,
+        "baseline_decode": 93.56,
+        "candidate_decode": 95.26,
+        "prefill_ratio": 1.0882325372589452,
+        "decode_ratio": 1.0181701581872595,
+        "base_ids": [
+          "7fd25a869ff21678"
+        ],
+        "cand_ids": [
+          "7fd25a869ff21678"
+        ],
+        "samples": {
+          "base": [
+            [
+              201.342,
+              93.56
+            ],
+            [
+              206.897,
+              93.98
+            ],
+            [
+              202.703,
+              93.03
+            ]
+          ],
+          "cand": [
+            [
+              220.588,
+              95.26
+            ],
+            [
+              214.286,
+              94.41
+            ],
+            [
+              223.881,
+              96.19
+            ]
+          ]
+        }
+      },
+      "qwen25-0.5b-4bit:long-decode-128": {
+        "baseline_prefill": 768.328,
+        "candidate_prefill": 757.225,
+        "baseline_decode": 75.39,
+        "candidate_decode": 76.16,
+        "prefill_ratio": 0.9855491404712571,
+        "decode_ratio": 1.0102135561745589,
+        "base_ids": [
+          "4cc08910089477fd"
+        ],
+        "cand_ids": [
+          "4cc08910089477fd"
+        ],
+        "samples": {
+          "base": [
+            [
+              768.328,
+              75.72
+            ],
+            [
+              768.328,
+              75.37
+            ],
+            [
+              798.78,
+              75.39
+            ]
+          ],
+          "cand": [
+            [
+              757.225,
+              76.13
+            ],
+            [
+              757.225,
+              76.32
+            ],
+            [
+              748.571,
+              76.16
+            ]
+          ]
+        }
+      },
+      "qwen25-0.5b-4bit:longctx-1024-decode-32": {
+        "baseline_prefill": 1050.898,
+        "candidate_prefill": 1047.761,
+        "baseline_decode": 50.25,
+        "candidate_decode": 50.77,
+        "prefill_ratio": 0.9970149338946311,
+        "decode_ratio": 1.0103482587064678,
+        "base_ids": [
+          "7da83f06ec9f001d"
+        ],
+        "cand_ids": [
+          "7da83f06ec9f001d"
+        ],
+        "samples": {
+          "base": [
+            [
+              1060.423,
+              50.15
+            ],
+            [
+              1049.85,
+              50.29
+            ],
+            [
+              1050.898,
+              50.25
+            ]
+          ],
+          "cand": [
+            [
+              1047.761,
+              50.38
+            ],
+            [
+              1027.317,
+              50.87
+            ],
+            [
+              1051.948,
+              50.77
+            ]
+          ]
+        }
+      },
+      "qwen25-0.5b-bf16:short-decode-32": {
+        "baseline_prefill": 81.081,
+        "candidate_prefill": 76.336,
+        "baseline_decode": 11.68,
+        "candidate_decode": 11.77,
+        "prefill_ratio": 0.9414782748116081,
+        "decode_ratio": 1.0077054794520548,
+        "base_ids": [
+          "f26175202f3dabe9"
+        ],
+        "cand_ids": [
+          "f26175202f3dabe9"
+        ],
+        "samples": {
+          "base": [
+            [
+              81.301,
+              11.62
+            ],
+            [
+              80.645,
+              11.68
+            ],
+            [
+              81.081,
+              11.72
+            ]
+          ],
+          "cand": [
+            [
+              76.336,
+              11.76
+            ],
+            [
+              76.336,
+              11.77
+            ],
+            [
+              76.336,
+              11.8
+            ]
+          ]
+        }
+      },
+      "qwen25-0.5b-bf16:long-decode-128": {
+        "baseline_prefill": 302.54,
+        "candidate_prefill": 294.382,
+        "baseline_decode": 11.3,
+        "candidate_decode": 11.26,
+        "prefill_ratio": 0.9730349705824023,
+        "decode_ratio": 0.9964601769911504,
+        "base_ids": [
+          "ad964232ee67fecd"
+        ],
+        "cand_ids": [
+          "ad964232ee67fecd"
+        ],
+        "samples": {
+          "base": [
+            [
+              297.389,
+              11.24
+            ],
+            [
+              302.54,
+              11.3
+            ],
+            [
+              302.54,
+              11.3
+            ]
+          ],
+          "cand": [
+            [
+              291.759,
+              11.34
+            ],
+            [
+              294.382,
+              11.26
+            ],
+            [
+              294.382,
+              11.22
+            ]
+          ]
+        }
+      },
+      "qwen25-0.5b-bf16:longctx-1024-decode-32": {
+        "baseline_prefill": 340.226,
+        "candidate_prefill": 338.694,
+        "baseline_decode": 10.17,
+        "candidate_decode": 10.3,
+        "prefill_ratio": 0.9954971107440349,
+        "decode_ratio": 1.0127826941986235,
+        "base_ids": [
+          "ff502900d2a179a5"
+        ],
+        "cand_ids": [
+          "ff502900d2a179a5"
+        ],
+        "samples": {
+          "base": [
+            [
+              339.568,
+              10.17
+            ],
+            [
+              340.226,
+              10.25
+            ],
+            [
+              342.885,
+              10.16
+            ]
+          ],
+          "cand": [
+            [
+              338.694,
+              10.3
+            ],
+            [
+              350.066,
+              10.31
+            ],
+            [
+              332.491,
+              10.25
+            ]
+          ]
+        }
+      }
+    }
+  },
+  "ids": "identical in every measured split leg",
+  "current_tree": "batch budget restored to main 256; cached stream_generate harness only",
+  "next": "Screen node budget 384 and a latched graph-shape policy (large output => 512, otherwise 256), then require every six-leg ratio >=0.99 before proposing either."
+}

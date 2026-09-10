@@ -1,0 +1,32 @@
+[  0%] Built target cpu_compiled_preamble
+[  1%] Built target gguflib
+[  1%] Built target mlx_version
+[ 89%] Built target omarchy_shaders
+[100%] Built target mlx
+[100%] Building CXX object tests/omarchy/CMakeFiles/omarchy_primitive_tests.dir/test_primitives.cpp.o
+[100%] Linking CXX executable omarchy_primitive_tests
+[100%] Built target omarchy_primitive_tests
+[  0%] Built target cpu_compiled_preamble
+[  0%] Built target mlx_version
+[  1%] Built target gguflib
+[ 88%] Built target omarchy_shaders
+[ 98%] Built target mlx
+[100%] Building CXX object tests/omarchy/CMakeFiles/omarchy_matmul_family_tests.dir/test_matmul_family.cpp.o
+[100%] Linking CXX executable omarchy_matmul_family_tests
+[100%] Built target omarchy_matmul_family_tests
+[  0%] Built target cpu_compiled_preamble
+[  1%] Built target gguflib
+[  1%] Built target mlx_version
+[ 89%] Built target omarchy_shaders
+[100%] Built target mlx
+[100%] Building CXX object tests/omarchy/CMakeFiles/omarchy_fused_chain_tests.dir/test_fused_chain.cpp.o
+[100%] Linking CXX executable omarchy_fused_chain_tests
+[100%] Built target omarchy_fused_chain_tests
+[  1%] Built target gguflib
+[  1%] Built target cpu_compiled_preamble
+[  1%] Built target mlx_version
+[ 89%] Built target omarchy_shaders
+[100%] Built target mlx
+[100%] Building CXX object tests/omarchy/CMakeFiles/omarchy_fast_ops_tests.dir/test_fast_ops.cpp.o
+[100%] Linking CXX executable omarchy_fast_ops_tests
+[100%] Built target omarchy_fast_ops_tests

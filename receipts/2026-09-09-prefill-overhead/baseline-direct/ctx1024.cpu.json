@@ -1,0 +1,107 @@
+{
+  "wall_ms": 1006.505274,
+  "prompt_tokens": 1053,
+  "first_token": 13060,
+  "counters": {
+    "gpu_primitive_dispatches": 2690,
+    "vk_submissions": 53,
+    "vk_buffer_copies": 144,
+    "vk_buffer_fills": 48,
+    "vk_compute_dispatches": 1231,
+    "omarchy_finalize_calls": 3,
+    "commit_calls_with_work": 53,
+    "commit_calls_noop": 3
+  },
+  "boundary_events": [
+    {
+      "name": "eval",
+      "start_ns": 247685860630615,
+      "wall_ms": 937.189367,
+      "counters": {
+        "gpu_primitive_dispatches": 973,
+        "vk_submissions": 49,
+        "vk_buffer_copies": 48,
+        "vk_buffer_fills": 48,
+        "vk_compute_dispatches": 541,
+        "omarchy_finalize_calls": 1,
+        "commit_calls_with_work": 49,
+        "commit_calls_noop": 1
+      }
+    },
+    {
+      "name": "clear_cache",
+      "start_ns": 247686798169688,
+      "wall_ms": 12.429715,
+      "counters": {
+        "gpu_primitive_dispatches": 0,
+        "vk_submissions": 0,
+        "vk_buffer_copies": 0,
+        "vk_buffer_fills": 0,
+        "vk_compute_dispatches": 0,
+        "omarchy_finalize_calls": 0,
+        "commit_calls_with_work": 0,
+        "commit_calls_noop": 0
+      }
+    },
+    {
+      "name": "async_eval",
+      "start_ns": 247686822287707,
+      "wall_ms": 21.657325,
+      "counters": {
+        "gpu_primitive_dispatches": 859,
+        "vk_submissions": 2,
+        "vk_buffer_copies": 48,
+        "vk_buffer_fills": 0,
+        "vk_compute_dispatches": 345,
+        "omarchy_finalize_calls": 1,
+        "commit_calls_with_work": 2,
+        "commit_calls_noop": 1
+      }
+    },
+    {
+      "name": "async_eval",
+      "start_ns": 247686850199618,
+      "wall_ms": 14.9402,
+      "counters": {
+        "gpu_primitive_dispatches": 858,
+        "vk_submissions": 2,
+        "vk_buffer_copies": 48,
+        "vk_buffer_fills": 0,
+        "vk_compute_dispatches": 345,
+        "omarchy_finalize_calls": 1,
+        "commit_calls_with_work": 2,
+        "commit_calls_noop": 1
+      }
+    },
+    {
+      "name": "eval",
+      "start_ns": 247686865227943,
+      "wall_ms": 0.010041,
+      "counters": {
+        "gpu_primitive_dispatches": 0,
+        "vk_submissions": 0,
+        "vk_buffer_copies": 0,
+        "vk_buffer_fills": 0,
+        "vk_compute_dispatches": 0,
+        "omarchy_finalize_calls": 0,
+        "commit_calls_with_work": 0,
+        "commit_calls_noop": 0
+      }
+    },
+    {
+      "name": "item",
+      "start_ns": 247686865270484,
+      "wall_ms": 0.006042,
+      "counters": {
+        "gpu_primitive_dispatches": 0,
+        "vk_submissions": 0,
+        "vk_buffer_copies": 0,
+        "vk_buffer_fills": 0,
+        "vk_compute_dispatches": 0,
+        "omarchy_finalize_calls": 0,
+        "commit_calls_with_work": 0,
+        "commit_calls_noop": 0
+      }
+    }
+  ]
+}
