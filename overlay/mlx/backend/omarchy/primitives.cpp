@@ -6542,15 +6542,43 @@ void QuantizedMatmul::eval_gpu(const std::vector<array>& inputs, array& out) {
     omarchy::unsupported(tag + " scales shape", out);
   }
   const char* q4_word_env = std::getenv("MLX_OMARCHY_QMM_VEC_Q4_WORD");
+  bool q4_g64_transpose = transpose_ && bits_ == 4 && group_size_ == 64;
   bool use_q4_word =
       (q4_word_env == nullptr || std::strcmp(q4_word_env, "1") == 0) &&
-      transpose_ && bits_ == 4 && group_size_ == 64;
+      q4_g64_transpose;
+  // Prefill coopmat eligibility, resolved before operand normalization so
+  // a row-contiguous x view at an odd f16-element offset is materialized
+  // into an aligned buffer instead of silently rerouting to the tile
+  // kernel: the coopmat shader reads x as 32-bit word pairs
+  // (x_slice = lhs_offset / 2), and the tile kernel's different
+  // accumulation order changes generated tokens, so the route must not
+  // depend on where the allocator placed the activation. Costs a few
+  // integer ops on the aligned fast path; the copy fires only on the rare
+  // unaligned view.
+  static const bool coopmat_disabled =
+      omarchy::env_flag("MLX_OMARCHY_NO_COOPMAT");
+  const char* tile_env = std::getenv("MLX_OMARCHY_QMM_TILE");
+  bool tile_path = tile_env == nullptr || std::strcmp(tile_env, "0") != 0;
+  const char* rb_env = std::getenv("MLX_OMARCHY_QMM_TILE_RB");
+  bool rb_enabled = rb_env == nullptr || std::strcmp(rb_env, "0") != 0;
+  constexpr uint32_t kQmmCoopmatSharedBytes =
+      (32u * 16u + 16u * 32u) * sizeof(float);
+  const auto& coopmat_caps = encoder.device().capabilities();
+  bool coopmat_reachable =
+      tile_path && rb_enabled && q4_g64_transpose &&
+      out.dtype() == float16 && x.ndim() >= 2 && x.shape(-2) > 1 &&
+      coopmat_caps.cooperative_matrix_f32_8 &&
+      coopmat_caps.subgroup_size == 32u && !coopmat_disabled &&
+      kQmmCoopmatSharedBytes <= coopmat_caps.max_compute_shared_memory_size;
   // The f16 Q4 shader reads eight halves as one uvec4. Materialize only the
-  // rare row-contiguous view whose element offset is not 16-byte aligned.
+  // rare row-contiguous view whose element offset is not 16-byte aligned;
+  // the coopmat word-pair reader extends the same rule to a 2-byte
+  // alignment (an even f16 element offset).
   bool packed_q4_x = use_q4_word && out.dtype() == float16 && x.ndim() >= 2 &&
       x.shape(-2) == 1;
   bool x_dense = x.flags().row_contiguous &&
-      (!packed_q4_x || x.offset() % (8 * x.itemsize()) == 0);
+      (!packed_q4_x || x.offset() % (8 * x.itemsize()) == 0) &&
+      (!coopmat_reachable || x.offset() % (2 * x.itemsize()) == 0);
   std::optional<array> x_temp;
   std::optional<array> w_temp;
   std::optional<array> scales_temp;
@@ -6677,27 +6705,24 @@ void QuantizedMatmul::eval_gpu(const std::vector<array>& inputs, array& out) {
         1u);
     return;
   }
-  if (const char* tile_env = std::getenv("MLX_OMARCHY_QMM_TILE");
-      tile_env == nullptr || std::strcmp(tile_env, "0") != 0) {
-    const char* rb_env = std::getenv("MLX_OMARCHY_QMM_TILE_RB");
-    bool rb_enabled = rb_env == nullptr || std::strcmp(rb_env, "0") != 0;
+  if (tile_path) {
     if (rb_enabled && out.dtype() == float16 && transpose_ && bits_ == 4 &&
         group_size_ == 64) {
       // Same layout on the 8x8x8 fp32 cooperative matrix when the
       // device advertises it (shaders/qmm_coopmat.comp: 32x32 output
-      // tile per two-subgroup workgroup, 4 KiB shared staging, x and out
-      // written as 32-bit word pairs so their element offsets must be
-      // even). MLX_OMARCHY_NO_COOPMAT=1 forces the register-blocked tile.
-      static const bool coopmat_disabled =
-          omarchy::env_flag("MLX_OMARCHY_NO_COOPMAT");
-      const auto& caps = encoder.device().capabilities();
-      constexpr uint32_t kQmmCoopmatSharedBytes =
-          (32u * 16u + 16u * 32u) * sizeof(float);
-      bool coopmat = caps.cooperative_matrix_f32_8 &&
-          caps.subgroup_size == 32u && !coopmat_disabled &&
-          kQmmCoopmatSharedBytes <= caps.max_compute_shared_memory_size &&
-          (params.lhs_offset % 2u) == 0u &&
-          (params.output_offset % 2u) == 0u;
+      // tile per two-subgroup workgroup, 4 KiB shared staging; x is
+      // read as 32-bit word pairs). The materialization above stages any
+      // odd-offset x view and out is a fresh offset-0 allocation, so
+      // operand alignment holds by construction and coopmat_reachable
+      // alone decides the route. If that contract ever broke, refusing
+      // by name beats silently rerouting to the tile kernel, whose
+      // different accumulation order shifts generated ids.
+      // MLX_OMARCHY_NO_COOPMAT=1 forces the register-blocked tile.
+      bool coopmat = coopmat_reachable;
+      if (coopmat &&
+          ((params.lhs_offset | params.output_offset) & 1u) != 0u) {
+        omarchy::unsupported(tag + " coopmat operand alignment", out);
+      }
       uint32_t m_groups = (params.matrix_m + 31u) / 32u;
       uint32_t n_groups = coopmat ? (params.matrix_n + 31u) / 32u
                                   : (params.matrix_n + 15u) / 16u;
