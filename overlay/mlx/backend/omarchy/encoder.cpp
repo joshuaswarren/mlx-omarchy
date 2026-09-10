@@ -152,7 +152,7 @@ CommandEncoder::~CommandEncoder() {
 // has left the pending state (the completion timeline is strictly
 // ordered), so they can legally be begun again, and host reads see the
 // submissions' final bytes.
-void CommandEncoder::join_last_completion() {
+void CommandEncoder::join_last_completion(const char* reason) {
   if (last_completion_ == 0) {
     return;
   }
@@ -163,7 +163,7 @@ void CommandEncoder::join_last_completion() {
   last_completion_ = 0;
   omarchy::allocator().invalidate_noncoherent(device_.handle());
   uint64_t inval_t2 = prof::get().profiling() ? prof::host_ns() : 0;
-  prof::get().on_join(this, value, join_t0, wait_t1, inval_t2);
+  prof::get().on_join(this, value, join_t0, wait_t1, inval_t2, reason);
 }
 
 void CommandEncoder::ensure_recording() {
@@ -251,7 +251,8 @@ void CommandEncoder::fill_buffer(
     VkDeviceSize size,
     VkDeviceSize offset) {
   ensure_recording();
-  if (tape_full_barriers()) {
+  bool full_barrier = tape_full_barriers();
+  if (full_barrier) {
     record_dependency_barrier();
   }
   if (gated_barriers()) {
@@ -265,6 +266,12 @@ void CommandEncoder::fill_buffer(
       prof::get().on_barrier(false);
     }
     tracked_writes_.push_back(write);
+  } else if (!full_barrier) {
+    // Host-scalar fills can now share a command buffer. Preserve WAW order
+    // between consecutive fills instead of obtaining it from a host drain.
+    record_dependency_barrier();
+    trace::counters().barriers_emitted++;
+    prof::get().on_barrier(true);
   }
   vk::device_table().CmdFillBuffer(cmd_, dst, offset, size, value);
   node_count_++;
@@ -545,15 +552,18 @@ void CommandEncoder::commit() {
   submit();
 }
 
-void CommandEncoder::synchronize() {
+void CommandEncoder::synchronize(const char* reason) {
   commit();
-  join_last_completion();
+  join_last_completion(reason);
 }
 
 void CommandEncoder::submit() {
   auto& dt = vk::device_table();
   bool was_recording = recording_;
   uint64_t submit_t0 = prof::get().profiling() ? prof::host_ns() : 0;
+  uint64_t close_t = 0;
+  uint64_t queue_t0 = 0;
+  uint64_t queue_t1 = 0;
   uint64_t submitted = 0;
 
   if (recording_) {
@@ -569,6 +579,7 @@ void CommandEncoder::submit() {
       prof::get().on_barrier(true);
     }
     VKX_CHECK(dt.EndCommandBuffer(cmd_));
+    close_t = prof::get().profiling() ? prof::host_ns() : 0;
   }
 
   std::vector<VkSemaphore> wait_sems;
@@ -663,7 +674,9 @@ void CommandEncoder::submit() {
     si.signalSemaphoreCount = static_cast<uint32_t>(signal_sems.size());
     si.pSignalSemaphores = signal_sems.data();
     try {
+      queue_t0 = prof::get().profiling() ? prof::host_ns() : 0;
       VKX_CHECK(dt.QueueSubmit(device_.queue(), 1, &si, VK_NULL_HANDLE));
+      queue_t1 = prof::get().profiling() ? prof::host_ns() : 0;
     } catch (...) {
       // The submission never reached the driver: the ended command buffer
       // and the pending semaphore lists are dead (their keepalives have
@@ -705,6 +718,7 @@ void CommandEncoder::submit() {
   // cross-submission dependency, so the open batch's unsynced ranges
   // die here either way.
   reset_dependency_tracking();
+  prof::get().on_submit_boundary(submitted, close_t, queue_t0, queue_t1);
   prof::get().on_submit_end(
       this,
       submitted,

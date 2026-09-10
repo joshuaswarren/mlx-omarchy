@@ -1,0 +1,100 @@
+{
+  "prompt": "m262",
+  "host_prefill_ms": 546.753384,
+  "dispatches": 1135,
+  "submissions": 7,
+  "gpu_busy_ms": 273.694491,
+  "gpu_span_ms": 380.55625,
+  "gpu_busy_fraction": 0.7191958902264777,
+  "intra_submission_gaps": {
+    "count": 1128,
+    "total_ms": 29.000716,
+    "p50_us": 19.333,
+    "p90_us": 40.333,
+    "p99_us": 92.75,
+    "max_us": 185.334
+  },
+  "inter_submission_gaps": {
+    "count": 6,
+    "total_ms": 77.861043,
+    "p50_us": 300.292,
+    "p90_us": 36668.25,
+    "p99_us": 39895.125,
+    "max_us": 39895.125
+  },
+  "join_reasons": {},
+  "largest_inter_submission_gaps": [
+    {
+      "previous_submission": 3,
+      "next_submission": 4,
+      "gpu_gap_ms": 39.895125,
+      "previous_close_host_ns": 307865738279451,
+      "previous_queue_return_host_ns": 307865739572085,
+      "fence_observed_host_ns": null,
+      "next_close_host_ns": 307865993816035,
+      "next_queue_submit_host_ns": 307865993820243,
+      "join_wait_ms": 0.0,
+      "cause": "no explicit host join"
+    },
+    {
+      "previous_submission": 4,
+      "next_submission": 5,
+      "gpu_gap_ms": 36.66825,
+      "previous_close_host_ns": 307865993816035,
+      "previous_queue_return_host_ns": 307865997090392,
+      "fence_observed_host_ns": null,
+      "next_close_host_ns": 307866047980174,
+      "next_queue_submit_host_ns": 307866047988257,
+      "join_wait_ms": 0.0,
+      "cause": "no explicit host join"
+    },
+    {
+      "previous_submission": 5,
+      "next_submission": 6,
+      "gpu_gap_ms": 0.519875,
+      "previous_close_host_ns": 307866047980174,
+      "previous_queue_return_host_ns": 307866048913305,
+      "fence_observed_host_ns": null,
+      "next_close_host_ns": 307866055050599,
+      "next_queue_submit_host_ns": 307866055056516,
+      "join_wait_ms": 0.0,
+      "cause": "no explicit host join"
+    },
+    {
+      "previous_submission": 1,
+      "next_submission": 2,
+      "gpu_gap_ms": 0.300292,
+      "previous_close_host_ns": 307865700377554,
+      "previous_queue_return_host_ns": 307865703693286,
+      "fence_observed_host_ns": null,
+      "next_close_host_ns": 307865725184315,
+      "next_queue_submit_host_ns": 307865725188607,
+      "join_wait_ms": 0.0,
+      "cause": "no explicit host join"
+    },
+    {
+      "previous_submission": 2,
+      "next_submission": 3,
+      "gpu_gap_ms": 0.271209,
+      "previous_close_host_ns": 307865725184315,
+      "previous_queue_return_host_ns": 307865727746042,
+      "fence_observed_host_ns": null,
+      "next_close_host_ns": 307865738279451,
+      "next_queue_submit_host_ns": 307865738282867,
+      "join_wait_ms": 0.0,
+      "cause": "no explicit host join"
+    },
+    {
+      "previous_submission": 6,
+      "next_submission": 7,
+      "gpu_gap_ms": 0.206292,
+      "previous_close_host_ns": 307866055050599,
+      "previous_queue_return_host_ns": 307866057787494,
+      "fence_observed_host_ns": null,
+      "next_close_host_ns": 307866061894232,
+      "next_queue_submit_host_ns": 307866061898898,
+      "join_wait_ms": 0.0,
+      "cause": "no explicit host join"
+    }
+  ]
+}

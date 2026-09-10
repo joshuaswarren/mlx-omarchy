@@ -4155,7 +4155,7 @@ void trig_argument_gate(
   // generation (observed 2026-09-03, first hardware run of the compiled
   // path; llvmpipe executes synchronously and masked it). Same pattern
   // as the reduce host checks: host reads behind a synchronize.
-  omarchy::get_command_encoder(stream).synchronize();
+  omarchy::get_command_encoder(stream).synchronize("trig_argument_gate");
   float worst = magnitude.item<float>();
   if (worst > kTrigArgumentLimit) {
     throw std::runtime_error(
@@ -9641,21 +9641,21 @@ void rope_trig_gate(
     bool host_constant = offset.status() == array::Status::available &&
         !offset.has_primitive();
     if (!host_constant) {
-      omarchy::get_command_encoder(stream).synchronize();
+      omarchy::get_command_encoder(stream).synchronize("rope_offset_scalar");
     }
     worst_offset = std::abs(static_cast<float>(offset.item<int>()));
   } else {
     array offset_worst =
         astype(max(abs(offset, stream), stream), float32, stream);
     offset_worst.eval();
-    omarchy::get_command_encoder(stream).synchronize();
+    omarchy::get_command_encoder(stream).synchronize("rope_offset_vector");
     worst_offset = offset_worst.item<float>();
   }
   float inv_freq_bound;
   if (freqs != nullptr) {
     array freqs_min = min(abs(*freqs, stream), stream);
     freqs_min.eval();
-    omarchy::get_command_encoder(stream).synchronize();
+    omarchy::get_command_encoder(stream).synchronize("rope_freqs_bound");
     inv_freq_bound = 1.0f / freqs_min.item<float>();
   } else {
     float beta = static_cast<float>(std::log(base) / (dims / 2));
@@ -9697,7 +9697,7 @@ void RoPE::eval_gpu(
   if (!forward_ || offset.size() > 1) {
     auto result = fallback_(inputs);
     result[0].eval();
-    encoder.synchronize();
+    encoder.synchronize("rope_fallback");
     out.copy_shared_buffer(result[0]);
     return;
   }
