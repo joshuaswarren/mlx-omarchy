@@ -1,0 +1,78 @@
+{
+  "topic": "Q4 decode GEMV kernel efficiency on the M1: achieved bandwidth vs peak, and digest-preserving kernel-internal candidates (load scheduling, workgroup sizing)",
+  "date": "2026-09-10",
+  "outcome": "receipt-only NEGATIVE: no candidate repeated a gain, so no source change, no test change, and no digest legs. The production kernel is unchanged at main 4b760947.",
+  "host": "jwm1-linux, Apple M1 (G13G B1), Honeykrisp, linux-asahi 7.1.6, glslc 2026.3; dev box llvmpipe (LLVM 15.0.6 lvp) for the correctness screen",
+  "production_baseline": {
+    "kernel": "QmmVecQ4MultiSubgroupF16",
+    "dispatches_per_token": 96,
+    "gpu_us_per_token_short_ctx": [7804, 8439, 8541, 8791],
+    "source": "receipts/2026-09-09-decode-fusion/profile-cand and m1-raw per-size profiles, 32-token runs of pinned Qwen2.5-0.5B-Instruct-4bit, quiet machine",
+    "per_layer_dispatches": [
+      {"name": "qkv", "dims": 3, "n": [896, 128, 128], "k": 896, "grid": 144},
+      {"name": "o", "dims": 1, "n": [896], "k": 896, "grid": 112},
+      {"name": "gate_up", "dims": 2, "n": [4864, 4864], "k": 896, "grid": 1216},
+      {"name": "down", "dims": 1, "n": [896], "k": 4864, "grid": 112}
+    ]
+  },
+  "bandwidth": {
+    "q4_traffic_bytes_per_token": 9360176,
+    "traffic_note": "weights 0.5 B/el + scale+bias 8 B per 64-el group = 0.625 B/el over 14,909,440 weight elements, plus x rows and outputs (~34 KB)",
+    "achieved_gb_s_production": "9.36 MB / 7.804 ms = 1.20 GB/s (best profile); 1.09-1.20 GB/s across the four profiles",
+    "m1_dram_peak_theoretical": 68.25,
+    "headroom": "~57x nominal; the kernel chain runs at ~1.8% of LPDDR4X peak, so DRAM bandwidth is not the binding constraint at short context",
+    "floor_note": "receipts/2026-09-09-decode-fusion/floor.json: ~28-30 us GPU floor per dispatch through the encoder; 96 x ~28 us = 2.7 ms of the 7.8 ms is floor. The non-floor remainder (~5.1 ms) still runs at only ~1.8 GB/s.",
+    "bench_isolated_kernel_ticks": {
+      "note": "raw dispatches, quiet machine, warm 9.3 MB working set (SLC-resident), device timestamp units at reported period 1.0 ns. Absolute ticks are unit-caveat: the same runs' 512 MB copy probe reads 49125 ticks = '10.9 TB/s', which is physical nonsense, so honeykrisp timestamp periods must not be trusted for absolute bandwidth; same-run ratios are valid. Production numbers above anchor the absolute scale.",
+      "qkv_us": [16.3, 16.0],
+      "o_us": [16.1, 15.9],
+      "gate_up_us": [34.6, 35.5],
+      "down_us": [30.6, 30.1],
+      "reading": "A 144-workgroup dispatch costs ~16 us raw even when its 585 KB fit in cache; gate_up's 4.9 MB in ~34.6 us is ~1.1 us/100KB against a floor that is already half its runtime. Load-issue latency is not the limiter; the launch/drain floor and latency-boundedness are."
+    }
+  },
+  "candidates": {
+    "constraint": "the lane->word map, fma pairing, and precise markers are pinned bit-for-bit to native qmv by receipts/2026-09-09-q4-gemv-order, so every candidate had to keep the exact per-lane word sequence and arithmetic order; only instruction scheduling and workgroup mapping could vary",
+    "unroll_paired_two_words": {
+      "form": "the plain qmv tile walks two words per iteration in the same lane order (w then w+LANES, general tail loop), letting the second half's weight/x loads issue while the first half's math is in flight",
+      "llvmpipe_screen": "bit-exact 7/7 outputs (tree variant); 4-18% slower on the software renderer (expected, not decision-bearing)",
+      "m1_ratio_vs_base": [0.992, 1.026, 1.013, 0.995, 1.014, 0.995, 0.995, 0.999],
+      "verdict": "flat within noise; no gain"
+    },
+    "loadfirst_explicit": {
+      "form": "both words, both x quads, and all four scale/bias values of a pair iteration load before any math (six outstanding loads)",
+      "llvmpipe_screen": "bit-exact 7/7 outputs (tree variant)",
+      "m1_ratio_vs_base": [0.998, 0.990, 1.808, 1.680, 0.996, 1.008, 0.991, 1.012],
+      "verdict": "flat on three shapes and REGRESSES the o shape by 68-81% in both legs (a real, repeated pathology, not noise); rejected outright"
+    },
+    "wg128_four_columns": {
+      "form": "local_size_x 256->128, COLUMNS_PER_GROUP 8->4, grid doubles; pure scheduling-granularity change, no arithmetic change (subgroup path has no workgroup barriers)",
+      "llvmpipe_screen": "bit-exact 7/7 outputs (tree variant)",
+      "m1_ratio_vs_base": [1.028, 1.026, 1.003, 1.008, 1.000, 0.978, 0.992, 1.012],
+      "verdict": "flat within noise; no repeatable gain. Note: production adoption would also require a new kernel id and a primitives.cpp dispatch change, so the bar was 'clear repeatable win'; it did not clear it"
+    },
+    "rejected_without_measurement": {
+      "wider_word_loads": "a lane's next word is w+32 (LANES stride), so a uvec2 load would change which words a lane owns - that changes the reduction's rounding and the digests; forbidden by the order receipt",
+      "scale_bias_hoisting": "each lane's words land in distinct groups (stride 32 words = 4 groups), so per-lane scale/bias loads are already once per group; the 8x cross-lane reuse is same-address and cache-served",
+      "qmv_fast_tile": "requires k % 512 == 0; the model's k values are 896 and 4864, both ≡ 384 mod 512, so native Metal itself uses the plain tile on this model",
+      "x_staging_in_shared_memory": "needs a workgroup barrier on a path that dropped barriers to win; the x row is ~2-10 KB and cache-resident"
+    }
+  },
+  "correctness_instrument": {
+    "what": "tools/q4-bw-bench (branch q4-gemv-bandwidth, commit fa4fe987 + bench refactor): compiles the frozen production shader (sha256 7e57b15d..., byte-identical to overlay/mlx/backend/omarchy/shaders/qmm_vec.comp at 4b760947, asserted by run-m1.sh diff gate) and each candidate from identical input buffers on the exact four per-layer dispatch shapes with the production push-constant/binding contract of dispatch_quantized_gemv_group",
+    "bit_exactness": "0 bit mismatches in every compare: 4 M1 legs (subgroup path, subgroupSize 32 + ARITHMETIC) x 21 compares (3 sides x 7 dim outputs) and llvmpipe tree-path screens",
+    "digest_gate_status": "not exercised: no source change is being landed, so the six canonical Q4 digests (short 7fd25a869ff21678, long 4cc08910089477fd, longctx 7da83f06ec9f001d, on both sides of any pair) have nothing new to gate; any future candidate from this file must gate them on a quiet machine with retry-on-mismatch (contention flips qmm dispatches to the tile fallback, which is NOT digest-neutral - see receipts/2026-09-10-qmm-splitk-parity/verdict.json)"
+  },
+  "conclusion": "The Q4 decode kernel has no repeatable digest-preserving kernel-internal gain left at short context: load scheduling and workgroup mapping are measured flat (one variant regresses), and the binding constraints are the per-dispatch launch/drain floor plus encoder/driver overhead, which are outside this assignment. Achieved bandwidth is ~1.1-1.2 GB/s against a 68 GB/s part, quantifying the headroom that dispatch-count and driver-side work (already-owned levers) would have to reclaim.",
+  "artifacts": [
+    "tools/q4-bw-bench/bench.cpp",
+    "tools/q4-bw-bench/shaders/ (base frozen copy + unroll + loadfirst + wg128 + peak probes)",
+    "tools/q4-bw-bench/run-m1.sh",
+    "tools/q4-bw-bench/out/bench-unroll-20260910T203252Z.ndjson",
+    "tools/q4-bw-bench/out/bench-loadfirst-20260910T203252Z.ndjson",
+    "tools/q4-bw-bench/out/bench-a-20260910T203829Z.ndjson",
+    "tools/q4-bw-bench/out/bench-b-20260910T203829Z.ndjson",
+    "tools/q4-bw-bench/out/session-20260910T203252Z.txt",
+    "tools/q4-bw-bench/out/session-20260910T203829Z.txt"
+  ]
+}
