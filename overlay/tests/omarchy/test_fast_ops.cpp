@@ -759,26 +759,31 @@ TEST_CASE("decode SDPA fuses score softmax and value projection") {
     return;
   }
   Stream stream = gpu_stream();
-  constexpr int heads = 4;
+  constexpr int heads = 14;
   constexpr int kv_heads = 2;
   constexpr int keys = 263;
   constexpr int width = 64;
+  constexpr int cache_keys = 320;
   const float scale = 1.0f / std::sqrt(float(width));
   auto q_values = pattern(heads * width, 401);
   array q = astype(
       array(q_values.begin(), Shape{1, heads, 1, width}, float32),
       float16,
       stream);
-  auto k_values = pattern(kv_heads * keys * width, 409);
-  auto v_values = pattern(kv_heads * keys * width, 419);
-  array k = astype(
-      array(k_values.begin(), Shape{1, kv_heads, keys, width}, float32),
+  auto k_values = pattern(kv_heads * cache_keys * width, 409);
+  auto v_values = pattern(kv_heads * cache_keys * width, 419);
+  array k_cache = astype(
+      array(k_values.begin(), Shape{1, kv_heads, cache_keys, width}, float32),
       float16,
       stream);
-  array v = astype(
-      array(v_values.begin(), Shape{1, kv_heads, keys, width}, float32),
+  array v_cache = astype(
+      array(v_values.begin(), Shape{1, kv_heads, cache_keys, width}, float32),
       float16,
       stream);
+  array k = slice(
+      k_cache, {0, 0, 0, 0}, {1, kv_heads, keys, width}, stream);
+  array v = slice(
+      v_cache, {0, 0, 0, 0}, {1, kv_heads, keys, width}, stream);
   eval({q, k, v});
   omarchy::get_command_encoder(stream).synchronize();
 
