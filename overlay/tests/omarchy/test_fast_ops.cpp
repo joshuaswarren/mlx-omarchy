@@ -803,7 +803,7 @@ TEST_CASE("native-order decode SDPA handles the strided Qwen KV cache") {
   constexpr VkSubgroupFeatureFlags required =
       VK_SUBGROUP_FEATURE_BASIC_BIT | VK_SUBGROUP_FEATURE_ARITHMETIC_BIT |
       VK_SUBGROUP_FEATURE_SHUFFLE_BIT;
-  if (caps.subgroup_size == 32u &&
+  if (caps.cooperative_matrix_f32_8 && caps.subgroup_size == 32u &&
       (caps.subgroup_operations & required) == required) {
     CHECK_EQ(dispatches, 1);
   }

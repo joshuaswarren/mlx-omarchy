@@ -10025,7 +10025,8 @@ void ScaledDotProductAttention::eval_gpu(
       VK_SUBGROUP_FEATURE_SHUFFLE_BIT;
   constexpr uint32_t kDecodeSharedBytes =
       (32u * 32u + 2u * 128u + 128u * 32u) * sizeof(float);
-  const bool decode_subgroup_ready = decode_caps.subgroup_size == 32u &&
+  const bool decode_subgroup_ready = decode_caps.cooperative_matrix_f32_8 &&
+      decode_caps.subgroup_size == 32u &&
       decode_caps.max_compute_work_group_invocations >= 1024u &&
       decode_caps.max_compute_work_group_size[0] >= 1024u &&
       decode_caps.max_compute_shared_memory_size >= kDecodeSharedBytes &&
