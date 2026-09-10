@@ -610,17 +610,24 @@ void dispatch_matmul(
           params.rhs_offset, b_span + b_inner)) {
     omarchy::unsupported(name + " index span", out);
   }
-  if (out.dtype() == bfloat16 && params.matrix_m == 1u && params.matrix_n >= 4096u) {
-    auto vec_kernel = select_float_kernel(
-        out.dtype(),
-        omarchy::ComputeKernel::MatmulVecF32,
-        omarchy::ComputeKernel::MatmulVecF16,
-        omarchy::ComputeKernel::MatmulVecBF16);
+  bool bf16_vec_aligned = ((params.lhs_offset | params.rhs_offset |
+      params.rhs_gap) & 3u) == 0u;
+  for (uint32_t axis = 0; bf16_vec_aligned && axis < params.dims; ++axis) {
+    bf16_vec_aligned = ((params.in_strides[axis] |
+        params.out_strides[axis]) & 3u) == 0u;
+  }
+  const bool bf16_vec = out.dtype() == bfloat16 && params.matrix_m == 1u &&
+      b_transposed && !a_transposed && !use_c && alpha == 1.0f &&
+      (params.matrix_k % 128u) == 0u && (params.matrix_n % 4u) == 0u &&
+      caps.subgroup_size == 32u &&
+      (caps.subgroup_operations & VK_SUBGROUP_FEATURE_SHUFFLE_RELATIVE_BIT) != 0 &&
+      bf16_vec_aligned;
+  if (bf16_vec) {
     encoder.dispatch_compute(
-        vec_kernel,
+        omarchy::ComputeKernel::MatmulVecBF16,
         bindings,
         params,
-        matrix_group_count(params.matrix_n, 32u),
+        matrix_group_count(params.matrix_n, 4u),
         1u,
         checked_u32(batch_count, name, out));
     return;
