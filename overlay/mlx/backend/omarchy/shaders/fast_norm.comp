@@ -141,13 +141,12 @@ void main() {
               : LOAD_VALUE(bias_data.values[params.aux_offset + index]);
       float result = (value - mu) * norm * weight + bias;
 #else
-#ifdef USE_FP16
-      float normalized =
-          unpackHalf2x16(packHalf2x16(vec2(value * norm, 0.0))).x;
-#else
+#ifdef USE_BF16
       float normalized = LOAD_VALUE(STORE_VALUE(value * norm));
-#endif
       float result = normalized * weight;
+#else
+      float result = value * norm * weight;
+#endif
 #endif
       output_data.values[params.output_offset + row * row_length + index] =
           STORE_VALUE(result);

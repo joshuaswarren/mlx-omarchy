@@ -138,7 +138,7 @@ void main() {
           value = exp(lhs);
           break;
         case 5u:
-#if defined(USE_FP16) || defined(USE_BF16)
+#ifdef USE_BF16
           value = ROUND_INTERMEDIATE(exp(abs(lhs)));
           value = ROUND_INTERMEDIATE(1.0 + value);
           value = ROUND_INTERMEDIATE(1.0 / value);

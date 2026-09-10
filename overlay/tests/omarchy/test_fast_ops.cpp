@@ -334,24 +334,20 @@ TEST_CASE("native RMSNorm matches host math on f32 rows") {
   auto want_bare = host_norm(x_host, ones, zeros, rows, cols, eps, false);
   require_close(got_bare, want_bare, 1e-5, "rms_norm weightless");
 }
-TEST_CASE("low-precision RMSNorm and sigmoid use native rounding order") {
+TEST_CASE("BF16 RMSNorm and sigmoid use native rounding order") {
   if (!compute_available()) {
     return;
   }
   Stream stream = gpu_stream();
-  for (Dtype dtype : {float16, bfloat16}) {
-    auto x = astype(array({0.5f, 1.0f, 2.0f, 3.0f}), dtype, stream);
-    auto w = astype(array({0.3f, 0.7f, 1.3f, 2.1f}), dtype, stream);
-    const std::vector<double> expected = dtype == float16
-        ? std::vector<double>{0.0794677734375, 0.370849609375,
-                              1.376953125, 3.337890625}
-        : std::vector<double>{0.080078125, 0.37109375, 1.375, 3.328125};
-    require_close(
-        flat(fast::rms_norm(x, w, 0.0f, stream), stream),
-        expected,
-        0.0,
-        "RMSNorm intermediate rounding");
-  }
+  auto x = astype(
+      array({0.5f, 1.0f, 2.0f, 3.0f}), bfloat16, stream);
+  auto w = astype(
+      array({0.3f, 0.7f, 1.3f, 2.1f}), bfloat16, stream);
+  require_close(
+      flat(fast::rms_norm(x, w, 0.0f, stream), stream),
+      {0.080078125, 0.37109375, 1.375, 3.328125},
+      0.0,
+      "BF16 RMSNorm intermediate rounding");
 
   auto sigmoid_input = astype(
       array({-8.0f, -6.84375f, -2.0f, -0.5f, 0.0f,
