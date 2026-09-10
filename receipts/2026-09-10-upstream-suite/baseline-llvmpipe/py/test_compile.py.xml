@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="4" skipped="0" tests="67" time="2.902" timestamp="2026-09-10T12:17:33.643003-05:00" hostname="omp-studio-local"><testcase classname="python.tests.test_compile.TestCompile" name="test_compile_abs_unsigned" time="0.399" /><testcase classname="python.tests.test_compile.TestCompile" name="test_compile_broadcast_only" time="0.009" /><testcase classname="python.tests.test_compile.TestCompile" name="test_compile_capture" time="0.009" /><testcase classname="python.tests.test_compile.TestCompile" name="test_compile_changing_outputs" time="0.019" /><testcase classname="python.tests.test_compile.TestCompile" name="test_compile_changing_outputs_with_state" time="0.001" /><testcase classname="python.tests.test_compile.TestCompile" name="test_compile_create_list" time="0.001" /><testcase classname="python.tests.test_compile.TestCompile" name="test_compile_different_log_bases" time="0.004" /><testcase classname="python.tests.test_compile.TestCompile" name="test_compile_donates_input_buffer" time="0.557" /><testcase classname="python.tests.test_compile.TestCompile" name="test_compile_dynamic_dims" time="0.014"><failure message="AssertionError: array(False, dtype=bool) is not true">self = &lt;test_compile.TestCompile testMethod=test_compile_dynamic_dims&gt;
+
+    def test_compile_dynamic_dims(self):
+        a = mx.random.uniform(shape=(2,) * 10)
+        b = mx.random.uniform(shape=(2,) * 10)
+        a = a.T
+        mx.eval(a, b)
+    
+        def fn(a, b):
+            return mx.abs(a + b)
+    
+        out = mx.compile(fn)(a, b)
+        expected = fn(a, b)
+&gt;       self.assertTrue(mx.allclose(out, expected))
+E       AssertionError: array(False, dtype=bool) is not true
+
+.work/mlx/python/tests/test_compile.py:1032: AssertionError</failure></testcase><testcase classname="python.tests.test_compile.TestCompile" name="test_compile_equal_nan" time="0.004" /><testcase classname="python.tests.test_compile.TestCompile" name="test_compile_grad" time="0.011" /><testcase classname="python.tests.test_compile.TestCompile" name="test_compile_inf" time="0.001" /><testcase classname="python.tests.test_compile.TestCompile" name="test_compile_inputs_with_primitives" time="0.005" /><testcase classname="python.tests.test_compile.TestCompile" name="test_compile_kwargs" time="0.001" /><testcase classname="python.tests.test_compile.TestCompile" name="test_compile_large_graph_with_broadcasts" time="0.017" /><testcase classname="python.tests.test_compile.TestCompile" name="test_compile_many_inputs" time="0.048" /><testcase classname="python.tests.test_compile.TestCompile" name="test_compile_many_outputs" time="0.006" /><testcase classname="python.tests.test_compile.TestCompile" name="test_compile_multi_output" time="0.001" /><testcase classname="python.tests.test_compile.TestCompile" name="test_compile_negative_strides" time="0.005" /><testcase classname="python.tests.test_compile.TestCompile" name="test_compile_nonfinite_constants" time="0.015"><failure message="RuntimeError: [omarchy] Compiled tape bfloat16 is refused: bf16 fragments corrupt nondeterministically on Honeykrisp. Re-run with MLX_DISABLE_COMPILE=1. No GPU kernel exists for it; no silent CPU fallback occurs.">self = &lt;test_compile.TestCompile testMethod=test_compile_nonfinite_constants&gt;
+
+    def test_compile_nonfinite_constants(self):
+        # Regression test: a non-finite scalar constant (NaN / infinity) baked
+        # into a fused compiled kernel used to stream a bare token (e.g. `nan`)
+        # into the generated kernel source, which is not a valid identifier and
+        # broke compilation (notably on the Metal backend).
+        x = mx.array([1.0, -1.0])
+    
+        for dtype in (mx.float32, mx.float16, mx.bfloat16):
+            xd = x.astype(dtype)
+    
+            nan_fn = mx.compile(
+                lambda a: mx.where(a &gt; 0, a, mx.array(float("nan"), dtype=a.dtype))
+            )
+            out = nan_fn(xd)
+&gt;           mx.eval(out)
+E           RuntimeError: [omarchy] Compiled tape bfloat16 is refused: bf16 fragments corrupt nondeterministically on Honeykrisp. Re-run with MLX_DISABLE_COMPILE=1. No GPU kernel exists for it; no silent CPU fallback occurs.
+
+.work/mlx/python/tests/test_compile.py:62: RuntimeError</failure></testcase><testcase classname="python.tests.test_compile.TestCompile" name="test_compile_output_with_siblings" time="0.019" /><testcase classname="python.tests.test_compile.TestCompile" name="test_compile_release_on_another_thread" time="0.007" /><testcase classname="python.tests.test_compile.TestCompile" name="test_compile_rng" time="0.003" /><testcase classname="python.tests.test_compile.TestCompile" name="test_compile_rng_across_threads" time="0.538" /><testcase classname="python.tests.test_compile.TestCompile" name="test_compile_shapeless_with_broadcast" time="0.001" /><testcase classname="python.tests.test_compile.TestCompile" name="test_compile_state_capture_with_rng_updates_in_place" time="0.001" /><testcase classname="python.tests.test_compile.TestCompile" name="test_compile_tuple_output_in_thread" time="0.017" /><testcase classname="python.tests.test_compile.TestCompile" name="test_compile_two_input_grad" time="0.004" /><testcase classname="python.tests.test_compile.TestCompile" name="test_compile_types" time="0.002" /><testcase classname="python.tests.test_compile.TestCompile" name="test_compile_vjp" time="0.017" /><testcase classname="python.tests.test_compile.TestCompile" name="test_compile_with_closure" time="0.002" /><testcase classname="python.tests.test_compile.TestCompile" name="test_compile_with_constant" time="0.004" /><testcase classname="python.tests.test_compile.TestCompile" name="test_compile_with_long_name" time="0.002" /><testcase classname="python.tests.test_compile.TestCompile" name="test_compile_with_none" time="0.001" /><testcase classname="python.tests.test_compile.TestCompile" name="test_compile_without_captured_inputs" time="0.000" /><testcase classname="python.tests.test_compile.TestCompile" name="test_compiled_preserves_attributes" time="0.000" /><testcase classname="python.tests.test_compile.TestCompile" name="test_compiled_subnormal_bool_cast" time="0.007"><failure message="RuntimeError: [omarchy] Compiled tape bfloat16 is refused: bf16 fragments corrupt nondeterministically on Honeykrisp. Re-run with MLX_DISABLE_COMPILE=1. No GPU kernel exists for it; no silent CPU fallback occurs.">self = &lt;test_compile.TestCompile testMethod=test_compiled_subnormal_bool_cast&gt;
+
+    def test_compiled_subnormal_bool_cast(self):
+        f32_sub = mx.array(np.array([0x00000001] * 4, dtype=np.uint32)).view(mx.float32)
+        f16_sub = mx.array(np.array([0x0001] * 4, dtype=np.uint16)).view(mx.float16)
+        bf16_sub = mx.array(np.array([0x0001] * 4, dtype=np.uint16)).view(mx.bfloat16)
+    
+        # A single-op compile does not fuse; the fused path needs &gt;= 2 ops.
+        fn = mx.compile(lambda x: mx.broadcast_to(x, (2, 4)).astype(mx.bool_))
+        for sub in (f32_sub, f16_sub, bf16_sub):
+&gt;           self.assertTrue(mx.all(fn(sub)).item())
+                            ^^^^^^^^^^^^^^^^^^^^^^
+E           RuntimeError: [omarchy] Compiled tape bfloat16 is refused: bf16 fragments corrupt nondeterministically on Honeykrisp. Re-run with MLX_DISABLE_COMPILE=1. No GPU kernel exists for it; no silent CPU fallback occurs.
+
+.work/mlx/python/tests/test_compile.py:1634: RuntimeError</failure></testcase><testcase classname="python.tests.test_compile.TestCompile" name="test_double_constant" time="0.575" /><testcase classname="python.tests.test_compile.TestCompile" name="test_dtypes" time="0.091" /><testcase classname="python.tests.test_compile.TestCompile" name="test_enable_disable" time="0.001" /><testcase classname="python.tests.test_compile.TestCompile" name="test_function_creates_array" time="0.001" /><testcase classname="python.tests.test_compile.TestCompile" name="test_inf_constant" time="0.007"><failure message="RuntimeError: [omarchy] Compiled tape bfloat16 is refused: bf16 fragments corrupt nondeterministically on Honeykrisp. Re-run with MLX_DISABLE_COMPILE=1. No GPU kernel exists for it; no silent CPU fallback occurs.">self = &lt;test_compile.TestCompile testMethod=test_inf_constant&gt;
+
+    def test_inf_constant(self):
+        def fn(x):
+            return mx.where(mx.isinf(x), 0, 1)
+    
+        x = mx.array([0, float("inf"), 1], dtype=mx.bfloat16)
+&gt;       self.assertTrue(mx.array_equal(mx.compile(fn)(x), fn(x)))
+E       RuntimeError: [omarchy] Compiled tape bfloat16 is refused: bf16 fragments corrupt nondeterministically on Honeykrisp. Re-run with MLX_DISABLE_COMPILE=1. No GPU kernel exists for it; no silent CPU fallback occurs.
+
+.work/mlx/python/tests/test_compile.py:968: RuntimeError</failure></testcase><testcase classname="python.tests.test_compile.TestCompile" name="test_leaks" time="0.026" /><testcase classname="python.tests.test_compile.TestCompile" name="test_max_into_equal" time="0.002" /><testcase classname="python.tests.test_compile.TestCompile" name="test_multiple_compile_same_capture" time="0.005" /><testcase classname="python.tests.test_compile.TestCompile" name="test_outputs_changing" time="0.001" /><testcase classname="python.tests.test_compile.TestCompile" name="test_shapeless_compile" time="0.002" /><testcase classname="python.tests.test_compile.TestCompile" name="test_shapeless_compile_addmm" time="0.008" /><testcase classname="python.tests.test_compile.TestCompile" name="test_shapeless_compile_full_like" time="0.000" /><testcase classname="python.tests.test_compile.TestCompile" name="test_shapeless_compile_gather" time="0.000" /><testcase classname="python.tests.test_compile.TestCompile" name="test_shapeless_compile_gather_mm" time="0.002" /><testcase classname="python.tests.test_compile.TestCompile" name="test_shapeless_compile_gather_qmm" time="0.007" /><testcase classname="python.tests.test_compile.TestCompile" name="test_shapeless_compile_matmul" time="0.004" /><testcase classname="python.tests.test_compile.TestCompile" name="test_shapeless_compile_reduce_after_gather" time="0.047" /><testcase classname="python.tests.test_compile.TestCompile" name="test_shapeless_compile_slice_update" time="0.008" /><testcase classname="python.tests.test_compile.TestCompile" name="test_shapeless_compile_unflatten" time="0.000" /><testcase classname="python.tests.test_compile.TestCompile" name="test_shapeless_compile_with_broadcasts" time="0.005" /><testcase classname="python.tests.test_compile.TestCompile" name="test_shapeless_compile_with_reduction" time="0.008" /><testcase classname="python.tests.test_compile.TestCompile" name="test_shapeless_compile_with_reshape" time="0.001" /><testcase classname="python.tests.test_compile.TestCompile" name="test_shapeless_mean" time="0.010" /><testcase classname="python.tests.test_compile.TestCompile" name="test_shared_broadcast" time="0.007" /><testcase classname="python.tests.test_compile.TestCompile" name="test_simple_compile" time="0.002" /><testcase classname="python.tests.test_compile.TestCompile" name="test_transform_over_eval_compiled" time="0.003" /><testcase classname="python.tests.test_compile.TestCompile" name="test_unsupported_input_types" time="0.000" /><testcase classname="python.tests.test_compile.TestCompile" name="test_vjp_vjp_compiled" time="0.022" /><testcase classname="python.tests.test_compile.TestCompile" name="test_vmap_compiled" time="0.017" /><testcase classname="python.tests.test_compile.TestCompile" name="test_wrap_compiled" time="0.000" /></testsuite></testsuites>

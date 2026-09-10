@@ -1,0 +1,17 @@
+============================= test session starts ==============================
+collecting ... collected 7 items
+
+.work/mlx/python/tests/test_bf16.py::TestBF16::test_arg_reduction_ops PASSED [ 14%]
+.work/mlx/python/tests/test_bf16.py::TestBF16::test_binary_ops 
+.work/mlx/python/tests/test_bf16.py::TestBF16::test_binary_ops PASSED    [ 28%]
+.work/mlx/python/tests/test_bf16.py::TestBF16::test_blas_ops 
+.work/mlx/python/tests/test_bf16.py::TestBF16::test_blas_ops PASSED      [ 42%]
+.work/mlx/python/tests/test_bf16.py::TestBF16::test_conversion SKIPPED   [ 57%]
+.work/mlx/python/tests/test_bf16.py::TestBF16::test_conversion_ml_dtypes SKIPPED [ 71%]
+.work/mlx/python/tests/test_bf16.py::TestBF16::test_reduction_ops 
+.work/mlx/python/tests/test_bf16.py::TestBF16::test_reduction_ops PASSED [ 85%]
+.work/mlx/python/tests/test_bf16.py::TestBF16::test_unary_ops 
+.work/mlx/python/tests/test_bf16.py::TestBF16::test_unary_ops PASSED     [100%]
+
+- generated xml file: /home/joshuawarren/.config/superpowers/worktrees/mlx-omarchy/UpstreamSuiteFix/receipts/2026-09-10-upstream-suite/baseline-llvmpipe/py/test_bf16.py.xml -
+=============== 5 passed, 2 skipped, 72 subtests passed in 0.48s ===============

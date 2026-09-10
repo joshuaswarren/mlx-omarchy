@@ -1,0 +1,11 @@
+failure kinds:
+  other      6
+  named      3
+  assert     1
+
+named-gap histogram:
+       3  Compiled tape bfloat16
+
+AssertionError cases (1):
+  test_conv.py::test_numpy_conv
+      AssertionError: False is not true

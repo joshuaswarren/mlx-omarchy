@@ -1,0 +1,156 @@
+cooperative_matrix_f32_8= 0
+device_name= llvmpipe (LLVM 15.0.6, 256 bits)
+mx.__version__= 0.32.2.dev202609101812+59a1236
+VK_DRIVER_FILES= None
+============================= test session starts ==============================
+platform linux -- Python 3.11.2, pytest-9.1.1, pluggy-1.6.0 -- /home/joshuawarren/.config/superpowers/worktrees/mlx-omarchy/UpstreamSuite2/.work/venv-us2/bin/python
+cachedir: .pytest_cache
+rootdir: /home/joshuawarren/.config/superpowers/worktrees/mlx-omarchy/UpstreamSuite2/.work/mlx
+configfile: pyproject.toml
+collecting ... collected 3 items
+
+.work/mlx/python/tests/test_compile.py::TestCompile::test_compile_dynamic_dims PASSED
+.work/mlx/python/tests/test_optimizers.py::TestOptimizers::test_compiled_optimizer PASSED
+.work/mlx/python/tests/test_quantized.py::TestQuantized::test_gather_qmm_sorted SUBPASSED(L=32, K=512, D=512, E=4, I=2, transpose=True, mode='affine')
+.work/mlx/python/tests/test_quantized.py::TestQuantized::test_gather_qmm_sorted SUBPASSED(L=32, K=512, D=544, E=4, I=2, transpose=True, mode='mxfp4')
+.work/mlx/python/tests/test_quantized.py::TestQuantized::test_gather_qmm_sorted SUBPASSED(L=32, K=512, D=544, E=4, I=2, transpose=True, mode='nvfp4')
+.work/mlx/python/tests/test_quantized.py::TestQuantized::test_gather_qmm_sorted SUBPASSED(L=32, K=512, D=544, E=4, I=2, transpose=True, mode='mxfp8')
+.work/mlx/python/tests/test_quantized.py::TestQuantized::test_gather_qmm_sorted SUBPASSED(L=39, K=512, D=512, E=4, I=2, transpose=True, mode='affine')
+.work/mlx/python/tests/test_quantized.py::TestQuantized::test_gather_qmm_sorted SUBPASSED(L=128, K=512, D=512, E=4, I=2, transpose=True, mode='affine')
+.work/mlx/python/tests/test_quantized.py::TestQuantized::test_gather_qmm_sorted SUBPASSED(L=133, K=512, D=512, E=4, I=2, transpose=True, mode='affine')
+.work/mlx/python/tests/test_quantized.py::TestQuantized::test_gather_qmm_sorted SUBPASSED(L=133, K=512, D=555, E=4, I=2, transpose=True, mode='affine')
+.work/mlx/python/tests/test_quantized.py::TestQuantized::test_gather_qmm_sorted SUBPASSED(L=133, K=512, D=512, E=4, I=2, transpose=True, mode='affine')
+.work/mlx/python/tests/test_quantized.py::TestQuantized::test_gather_qmm_sorted SUBPASSED(L=64, K=512, D=512, E=4, I=2, transpose=False, mode='affine')
+.work/mlx/python/tests/test_quantized.py::TestQuantized::test_gather_qmm_sorted SUBPASSED(L=64, K=512, D=544, E=4, I=2, transpose=False, mode='mxfp4')
+.work/mlx/python/tests/test_quantized.py::TestQuantized::test_gather_qmm_sorted SUBPASSED(L=64, K=512, D=544, E=4, I=2, transpose=False, mode='nvfp4')
+.work/mlx/python/tests/test_quantized.py::TestQuantized::test_gather_qmm_sorted SUBPASSED(L=64, K=512, D=544, E=4, I=2, transpose=False, mode='mxfp8')
+.work/mlx/python/tests/test_quantized.py::TestQuantized::test_gather_qmm_sorted SUBPASSED(L=133, K=512, D=512, E=4, I=2, transpose=False, mode='affine')
+.work/mlx/python/tests/test_quantized.py::TestQuantized::test_gather_qmm_sorted SUBPASSED(L=133, K=512, D=544, E=4, I=2, transpose=False, mode='affine')
+.work/mlx/python/tests/test_quantized.py::TestQuantized::test_gather_qmm_sorted SUBFAILED(L=133, K=512, D=555, E=4, I=2, transpose=False, mode='affine')
+.work/mlx/python/tests/test_quantized.py::TestQuantized::test_gather_qmm_sorted SUBPASSED(L=64, K=512, D=512, E=4, I=2, transpose=False, mode='affine')
+.work/mlx/python/tests/test_quantized.py::TestQuantized::test_gather_qmm_sorted PASSED
+
+=================================== FAILURES ===================================
+_ TestQuantized.test_gather_qmm_sorted (L=133, K=512, D=555, E=4, I=2, transpose=False, mode='affine') _
+
+self = <test_quantized.TestQuantized testMethod=test_gather_qmm_sorted>
+
+    @unittest.skipIf(
+        is_m1_mac() and not mx.metal.is_available(),
+        "Accelerate bug https://github.com/ml-explore/mlx/pull/3563",
+    )
+    def test_gather_qmm_sorted(self):
+        def quantize(w, transpose=True, group_size=None, mode="affine"):
+            if mode == "affine":
+                qw, s, b = mx.quantize(w, group_size=group_size, mode=mode)
+            else:
+                qw, s = mx.quantize(w, mode=mode)
+                b = None
+    
+            w_hat = mx.dequantize(qw, s, b, group_size=group_size, mode=mode)
+            if transpose:
+                w_hat = w_hat.swapaxes(-1, -2)
+            return w_hat, qw, s, b
+    
+        def gather_sort(x, indices):
+            N, M = indices.shape
+            indices = indices.flatten()
+            order = mx.argsort(indices)
+            inv_order = mx.argsort(order)
+            return x.flatten(0, -3)[order // M], indices[order], inv_order
+    
+        def scatter_unsort(x, inv_order, shape=None):
+            x = x[inv_order]
+            if shape is not None:
+                x = mx.unflatten(x, 0, shape)
+            return x
+    
+        parameters = [
+            # L, K, D, E, I, transpose
+            (32, 512, 512, 4, 2, True, "affine"),
+            (32, 512, 544, 4, 2, True, "mxfp4"),
+            (32, 512, 544, 4, 2, True, "nvfp4"),
+            (32, 512, 544, 4, 2, True, "mxfp8"),
+            (39, 512, 512, 4, 2, True, "affine"),
+            (128, 512, 512, 4, 2, True, "affine"),
+            (133, 512, 512, 4, 2, True, "affine"),
+            (133, 512, 555, 4, 2, True, "affine"),
+            (133, 512, 512, 4, 2, True, "affine"),
+            (64, 512, 512, 4, 2, False, "affine"),
+            (64, 512, 544, 4, 2, False, "mxfp4"),
+            (64, 512, 544, 4, 2, False, "nvfp4"),
+            (64, 512, 544, 4, 2, False, "mxfp8"),
+            (133, 512, 512, 4, 2, False, "affine"),
+            (133, 512, 544, 4, 2, False, "affine"),
+            (133, 512, 555, 4, 2, False, "affine"),
+            (64, 512, 512, 4, 2, False, "affine"),
+        ]
+    
+        key = mx.random.key(0)
+        k1, k2, k3 = mx.random.split(key, 3)
+        dtype = mx.float16 if (mx.default_device() == mx.gpu) else mx.float32
+    
+        for L, K, D, E, I, transpose, mode in parameters:
+            with self.subTest(L=L, K=K, D=D, E=E, I=I, transpose=transpose, mode=mode):
+                if mode != "affine":
+                    group_size = None
+                    dtype = (
+                        mx.bfloat16 if (mx.default_device() == mx.gpu) else mx.float32
+                    )
+                else:
+                    group_size = 64
+                    dtype = (
+                        mx.float16 if (mx.default_device() == mx.gpu) else mx.float32
+                    )
+    
+                K, D = (K, D) if transpose else (D, K)
+                ishape = (L, I)
+                xshape = (L, 1, 1, K)
+                wshape = (E, D, K) if transpose else (E, K, D)
+    
+                indices = (mx.random.uniform(shape=ishape, key=k1) * E).astype(
+                    mx.uint32
+                )
+                x = mx.random.normal(xshape, key=k2) / K**0.5
+                w = mx.random.normal(wshape, key=k3) / K**0.5
+    
+                x = x.astype(dtype)
+                w = w.astype(dtype)
+    
+                w, *wq = quantize(
+                    w, group_size=group_size, mode=mode, transpose=transpose
+                )
+    
+                y1 = mx.gather_mm(x, w, rhs_indices=indices)
+                y2 = mx.gather_qmm(
+                    x,
+                    *wq,
+                    group_size=group_size,
+                    mode=mode,
+                    transpose=transpose,
+                    rhs_indices=indices,
+                )
+                xs, idx, inv_order = gather_sort(x, indices)
+                y3 = mx.gather_mm(xs, w, rhs_indices=idx, sorted_indices=True)
+    
+                y4 = mx.gather_qmm(
+                    xs,
+                    *wq,
+                    group_size=group_size,
+                    mode=mode,
+                    rhs_indices=idx,
+                    transpose=transpose,
+                    sorted_indices=True,
+                )
+                y3 = scatter_unsort(y3, inv_order, indices.shape)
+                y4 = scatter_unsort(y4, inv_order, indices.shape)
+    
+                tol = 1.5e-5 if (dtype == mx.float32) else 1e-3
+    
+>               self.assertLess((y1 - y2).abs().max(), tol)
+E               AssertionError: array(0.29248, dtype=float16) not less than 0.001
+
+.work/mlx/python/tests/test_quantized.py:1594: AssertionError
+=========================== short test summary info ============================
+SUBFAILED(L=133, K=512, D=555, E=4, I=2, transpose=False, mode='affine') .work/mlx/python/tests/test_quantized.py::TestQuantized::test_gather_qmm_sorted - AssertionError: array(0.29248, dtype=float16) not less than 0.001
+=============== 1 failed, 3 passed, 16 subtests passed in 40.86s ===============

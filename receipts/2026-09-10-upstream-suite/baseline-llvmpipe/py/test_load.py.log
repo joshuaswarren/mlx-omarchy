@@ -1,0 +1,29 @@
+============================= test session starts ==============================
+collecting ... collected 16 items
+
+.work/mlx/python/tests/test_load.py::TestLoad::test_async_load_npy_read_error_across_streams PASSED [  6%]
+.work/mlx/python/tests/test_load.py::TestLoad::test_load_donation PASSED [ 12%]
+.work/mlx/python/tests/test_load.py::TestLoad::test_load_f8_e4m3 PASSED  [ 18%]
+.work/mlx/python/tests/test_load.py::TestLoad::test_load_gguf_quantized 
+.work/mlx/python/tests/test_load.py::TestLoad::test_load_gguf_quantized PASSED [ 25%]
+.work/mlx/python/tests/test_load.py::TestLoad::test_load_npy_dtype PASSED [ 31%]
+.work/mlx/python/tests/test_load.py::TestLoad::test_load_npy_read_error PASSED [ 37%]
+.work/mlx/python/tests/test_load.py::TestLoad::test_non_contiguous PASSED [ 43%]
+.work/mlx/python/tests/test_load.py::TestLoad::test_save_and_load 
+.work/mlx/python/tests/test_load.py::TestLoad::test_save_and_load PASSED [ 50%]
+.work/mlx/python/tests/test_load.py::TestLoad::test_save_and_load_empty 
+.work/mlx/python/tests/test_load.py::TestLoad::test_save_and_load_empty PASSED [ 56%]
+.work/mlx/python/tests/test_load.py::TestLoad::test_save_and_load_fs 
+.work/mlx/python/tests/test_load.py::TestLoad::test_save_and_load_fs PASSED [ 62%]
+.work/mlx/python/tests/test_load.py::TestLoad::test_save_and_load_gguf 
+.work/mlx/python/tests/test_load.py::TestLoad::test_save_and_load_gguf PASSED [ 68%]
+.work/mlx/python/tests/test_load.py::TestLoad::test_save_and_load_gguf_metadata_arrays PASSED [ 75%]
+.work/mlx/python/tests/test_load.py::TestLoad::test_save_and_load_gguf_metadata_basic PASSED [ 81%]
+.work/mlx/python/tests/test_load.py::TestLoad::test_save_and_load_gguf_metadata_mixed PASSED [ 87%]
+.work/mlx/python/tests/test_load.py::TestLoad::test_save_and_load_safetensors 
+.work/mlx/python/tests/test_load.py::TestLoad::test_save_and_load_safetensors PASSED [ 93%]
+.work/mlx/python/tests/test_load.py::TestLoad::test_savez_and_loadz 
+.work/mlx/python/tests/test_load.py::TestLoad::test_savez_and_loadz PASSED [100%]
+
+- generated xml file: /home/joshuawarren/.config/superpowers/worktrees/mlx-omarchy/UpstreamSuiteFix/receipts/2026-09-10-upstream-suite/baseline-llvmpipe/py/test_load.py.xml -
+=================== 16 passed, 213 subtests passed in 3.94s ====================

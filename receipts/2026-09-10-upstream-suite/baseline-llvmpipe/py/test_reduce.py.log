@@ -1,0 +1,26 @@
+============================= test session starts ==============================
+collecting ... collected 13 items
+
+.work/mlx/python/tests/test_reduce.py::TestReduce::test_and_or_negative_zero 
+.work/mlx/python/tests/test_reduce.py::TestReduce::test_and_or_negative_zero PASSED [  7%]
+.work/mlx/python/tests/test_reduce.py::TestReduce::test_arg_reduce 
+.work/mlx/python/tests/test_reduce.py::TestReduce::test_arg_reduce PASSED [ 15%]
+.work/mlx/python/tests/test_reduce.py::TestReduce::test_axis_permutation_sums 
+.work/mlx/python/tests/test_reduce.py::TestReduce::test_axis_permutation_sums PASSED [ 23%]
+.work/mlx/python/tests/test_reduce.py::TestReduce::test_dtypes 
+.work/mlx/python/tests/test_reduce.py::TestReduce::test_dtypes PASSED    [ 30%]
+.work/mlx/python/tests/test_reduce.py::TestReduce::test_edge_case PASSED [ 38%]
+.work/mlx/python/tests/test_reduce.py::TestReduce::test_expand_sums 
+.work/mlx/python/tests/test_reduce.py::TestReduce::test_expand_sums PASSED [ 46%]
+.work/mlx/python/tests/test_reduce.py::TestReduce::test_long_column PASSED [ 53%]
+.work/mlx/python/tests/test_reduce.py::TestReduce::test_many_reduction_axes PASSED [ 61%]
+.work/mlx/python/tests/test_reduce.py::TestReduce::test_nan_propagation 
+.work/mlx/python/tests/test_reduce.py::TestReduce::test_nan_propagation PASSED [ 69%]
+.work/mlx/python/tests/test_reduce.py::TestReduce::test_nan_propagation_complex64 PASSED [ 76%]
+.work/mlx/python/tests/test_reduce.py::TestReduce::test_row_reduce_negative_stride 
+.work/mlx/python/tests/test_reduce.py::TestReduce::test_row_reduce_negative_stride PASSED [ 84%]
+.work/mlx/python/tests/test_reduce.py::TestReduce::test_sum_bool PASSED  [ 92%]
+.work/mlx/python/tests/test_reduce.py::TestReduce::test_zero_size PASSED [100%]
+
+- generated xml file: /home/joshuawarren/.config/superpowers/worktrees/mlx-omarchy/UpstreamSuiteFix/receipts/2026-09-10-upstream-suite/baseline-llvmpipe/py/test_reduce.py.xml -
+=================== 13 passed, 5070 subtests passed in 7.48s ===================

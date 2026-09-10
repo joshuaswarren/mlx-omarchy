@@ -1,0 +1,58 @@
+============================= test session starts ==============================
+collecting ... collected 23 items
+
+.work/mlx/python/tests/test_fast_sdpa.py::TestFastSDPA::test_sdpa 
+.work/mlx/python/tests/test_fast_sdpa.py::TestFastSDPA::test_sdpa PASSED [  4%]
+.work/mlx/python/tests/test_fast_sdpa.py::TestFastSDPA::test_sdpa_attention_sinks 
+.work/mlx/python/tests/test_fast_sdpa.py::TestFastSDPA::test_sdpa_attention_sinks PASSED [  8%]
+.work/mlx/python/tests/test_fast_sdpa.py::TestFastSDPA::test_sdpa_blocks_env_override PASSED [ 13%]
+.work/mlx/python/tests/test_fast_sdpa.py::TestFastSDPA::test_sdpa_broadcast_mask PASSED [ 17%]
+.work/mlx/python/tests/test_fast_sdpa.py::TestFastSDPA::test_sdpa_few_query PASSED [ 21%]
+.work/mlx/python/tests/test_fast_sdpa.py::TestFastSDPA::test_sdpa_force_fused_cuda SKIPPED [ 26%]
+.work/mlx/python/tests/test_fast_sdpa.py::TestFastSDPA::test_sdpa_force_fused_metal SKIPPED [ 30%]
+.work/mlx/python/tests/test_fast_sdpa.py::TestFastSDPA::test_sdpa_full_head_dim_256 
+.work/mlx/python/tests/test_fast_sdpa.py::TestFastSDPA::test_sdpa_full_head_dim_256 PASSED [ 34%]
+.work/mlx/python/tests/test_fast_sdpa.py::TestFastSDPA::test_sdpa_fully_masked PASSED [ 39%]
+.work/mlx/python/tests/test_fast_sdpa.py::TestFastSDPA::test_sdpa_grad PASSED [ 43%]
+.work/mlx/python/tests/test_fast_sdpa.py::TestFastSDPA::test_sdpa_head_dim_72 
+.work/mlx/python/tests/test_fast_sdpa.py::TestFastSDPA::test_sdpa_head_dim_72 PASSED [ 47%]
+.work/mlx/python/tests/test_fast_sdpa.py::TestFastSDPA::test_sdpa_head_dim_96 
+.work/mlx/python/tests/test_fast_sdpa.py::TestFastSDPA::test_sdpa_head_dim_96 PASSED [ 52%]
+.work/mlx/python/tests/test_fast_sdpa.py::TestFastSDPA::test_sdpa_inf_score PASSED [ 56%]
+.work/mlx/python/tests/test_fast_sdpa.py::TestFastSDPA::test_sdpa_long_masked_sequence Fatal Python error: Segmentation fault
+
+Thread 0x000073e36bf96040 (most recent call first):
+  File "/home/joshuawarren/.config/superpowers/worktrees/mlx-omarchy/UpstreamSuiteFix/.work/mlx/python/tests/test_fast_sdpa.py", line 632 in test_sdpa_long_masked_sequence
+  File "/usr/lib/python3.11/unittest/case.py", line 579 in _callTestMethod
+  File "/usr/lib/python3.11/unittest/case.py", line 623 in run
+  File "/usr/lib/python3.11/unittest/case.py", line 678 in __call__
+  File "/home/joshuawarren/.config/superpowers/worktrees/mlx-omarchy/UpstreamSuiteFix/.work/venv-upstream-suite/lib/python3.11/site-packages/_pytest/unittest.py", line 410 in runtest
+  File "/home/joshuawarren/.config/superpowers/worktrees/mlx-omarchy/UpstreamSuiteFix/.work/venv-upstream-suite/lib/python3.11/site-packages/_pytest/runner.py", line 184 in pytest_runtest_call
+  File "/home/joshuawarren/.config/superpowers/worktrees/mlx-omarchy/UpstreamSuiteFix/.work/venv-upstream-suite/lib/python3.11/site-packages/pluggy/_callers.py", line 121 in _multicall
+  File "/home/joshuawarren/.config/superpowers/worktrees/mlx-omarchy/UpstreamSuiteFix/.work/venv-upstream-suite/lib/python3.11/site-packages/pluggy/_manager.py", line 120 in _hookexec
+  File "/home/joshuawarren/.config/superpowers/worktrees/mlx-omarchy/UpstreamSuiteFix/.work/venv-upstream-suite/lib/python3.11/site-packages/pluggy/_hooks.py", line 512 in __call__
+  File "/home/joshuawarren/.config/superpowers/worktrees/mlx-omarchy/UpstreamSuiteFix/.work/venv-upstream-suite/lib/python3.11/site-packages/_pytest/runner.py", line 250 in <lambda>
+  File "/home/joshuawarren/.config/superpowers/worktrees/mlx-omarchy/UpstreamSuiteFix/.work/venv-upstream-suite/lib/python3.11/site-packages/_pytest/runner.py", line 361 in from_call
+  File "/home/joshuawarren/.config/superpowers/worktrees/mlx-omarchy/UpstreamSuiteFix/.work/venv-upstream-suite/lib/python3.11/site-packages/_pytest/runner.py", line 249 in call_and_report
+  File "/home/joshuawarren/.config/superpowers/worktrees/mlx-omarchy/UpstreamSuiteFix/.work/venv-upstream-suite/lib/python3.11/site-packages/_pytest/runner.py", line 139 in runtestprotocol
+  File "/home/joshuawarren/.config/superpowers/worktrees/mlx-omarchy/UpstreamSuiteFix/.work/venv-upstream-suite/lib/python3.11/site-packages/_pytest/runner.py", line 118 in pytest_runtest_protocol
+  File "/home/joshuawarren/.config/superpowers/worktrees/mlx-omarchy/UpstreamSuiteFix/.work/venv-upstream-suite/lib/python3.11/site-packages/pluggy/_callers.py", line 121 in _multicall
+  File "/home/joshuawarren/.config/superpowers/worktrees/mlx-omarchy/UpstreamSuiteFix/.work/venv-upstream-suite/lib/python3.11/site-packages/pluggy/_manager.py", line 120 in _hookexec
+  File "/home/joshuawarren/.config/superpowers/worktrees/mlx-omarchy/UpstreamSuiteFix/.work/venv-upstream-suite/lib/python3.11/site-packages/pluggy/_hooks.py", line 512 in __call__
+  File "/home/joshuawarren/.config/superpowers/worktrees/mlx-omarchy/UpstreamSuiteFix/.work/venv-upstream-suite/lib/python3.11/site-packages/_pytest/main.py", line 408 in pytest_runtestloop
+  File "/home/joshuawarren/.config/superpowers/worktrees/mlx-omarchy/UpstreamSuiteFix/.work/venv-upstream-suite/lib/python3.11/site-packages/pluggy/_callers.py", line 121 in _multicall
+  File "/home/joshuawarren/.config/superpowers/worktrees/mlx-omarchy/UpstreamSuiteFix/.work/venv-upstream-suite/lib/python3.11/site-packages/pluggy/_manager.py", line 120 in _hookexec
+  File "/home/joshuawarren/.config/superpowers/worktrees/mlx-omarchy/UpstreamSuiteFix/.work/venv-upstream-suite/lib/python3.11/site-packages/pluggy/_hooks.py", line 512 in __call__
+  File "/home/joshuawarren/.config/superpowers/worktrees/mlx-omarchy/UpstreamSuiteFix/.work/venv-upstream-suite/lib/python3.11/site-packages/_pytest/main.py", line 384 in _main
+  File "/home/joshuawarren/.config/superpowers/worktrees/mlx-omarchy/UpstreamSuiteFix/.work/venv-upstream-suite/lib/python3.11/site-packages/_pytest/main.py", line 330 in wrap_session
+  File "/home/joshuawarren/.config/superpowers/worktrees/mlx-omarchy/UpstreamSuiteFix/.work/venv-upstream-suite/lib/python3.11/site-packages/_pytest/main.py", line 377 in pytest_cmdline_main
+  File "/home/joshuawarren/.config/superpowers/worktrees/mlx-omarchy/UpstreamSuiteFix/.work/venv-upstream-suite/lib/python3.11/site-packages/pluggy/_callers.py", line 121 in _multicall
+  File "/home/joshuawarren/.config/superpowers/worktrees/mlx-omarchy/UpstreamSuiteFix/.work/venv-upstream-suite/lib/python3.11/site-packages/pluggy/_manager.py", line 120 in _hookexec
+  File "/home/joshuawarren/.config/superpowers/worktrees/mlx-omarchy/UpstreamSuiteFix/.work/venv-upstream-suite/lib/python3.11/site-packages/pluggy/_hooks.py", line 512 in __call__
+  File "/home/joshuawarren/.config/superpowers/worktrees/mlx-omarchy/UpstreamSuiteFix/.work/venv-upstream-suite/lib/python3.11/site-packages/_pytest/config/__init__.py", line 229 in _main
+  File "/home/joshuawarren/.config/superpowers/worktrees/mlx-omarchy/UpstreamSuiteFix/.work/venv-upstream-suite/lib/python3.11/site-packages/_pytest/config/__init__.py", line 253 in _console_main
+  File "/home/joshuawarren/.config/superpowers/worktrees/mlx-omarchy/UpstreamSuiteFix/.work/venv-upstream-suite/lib/python3.11/site-packages/pytest/__main__.py", line 9 in <module>
+  File "<frozen runpy>", line 88 in _run_code
+  File "<frozen runpy>", line 198 in _run_module_as_main
+
+Extension modules: numpy._core._multiarray_umath, numpy.linalg._umath_linalg (total: 2)

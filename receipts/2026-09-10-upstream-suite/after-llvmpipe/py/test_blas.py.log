@@ -1,0 +1,50 @@
+============================= test session starts ==============================
+collecting ... collected 29 items
+
+.work/mlx/python/tests/test_blas.py::TestBlas::test_addmm PASSED         [  3%]
+.work/mlx/python/tests/test_blas.py::TestBlas::test_addmm_grad PASSED    [  6%]
+.work/mlx/python/tests/test_blas.py::TestBlas::test_block_masked_matmul 
+.work/mlx/python/tests/test_blas.py::TestBlas::test_block_masked_matmul PASSED [ 10%]
+.work/mlx/python/tests/test_blas.py::TestBlas::test_complex_gemm PASSED  [ 13%]
+.work/mlx/python/tests/test_blas.py::TestBlas::test_complex_gemv PASSED  [ 17%]
+.work/mlx/python/tests/test_blas.py::TestBlas::test_dot_product 
+.work/mlx/python/tests/test_blas.py::TestBlas::test_dot_product PASSED   [ 20%]
+.work/mlx/python/tests/test_blas.py::TestBlas::test_empty_matmul 
+.work/mlx/python/tests/test_blas.py::TestBlas::test_empty_matmul PASSED  [ 24%]
+.work/mlx/python/tests/test_blas.py::TestBlas::test_gather_matmul 
+.work/mlx/python/tests/test_blas.py::TestBlas::test_gather_matmul PASSED [ 27%]
+.work/mlx/python/tests/test_blas.py::TestBlas::test_gather_matmul_grad PASSED [ 31%]
+.work/mlx/python/tests/test_blas.py::TestBlas::test_gather_matmul_index_vjp_requires_stop_gradient PASSED [ 34%]
+.work/mlx/python/tests/test_blas.py::TestBlas::test_gather_mm_blocks 
+.work/mlx/python/tests/test_blas.py::TestBlas::test_gather_mm_blocks PASSED [ 37%]
+.work/mlx/python/tests/test_blas.py::TestBlas::test_gather_mm_sorted 
+.work/mlx/python/tests/test_blas.py::TestBlas::test_gather_mm_sorted PASSED [ 41%]
+.work/mlx/python/tests/test_blas.py::TestBlas::test_gather_mm_sorted_vjp PASSED [ 44%]
+.work/mlx/python/tests/test_blas.py::TestBlas::test_gemv_gemm_same_precision PASSED [ 48%]
+.work/mlx/python/tests/test_blas.py::TestBlas::test_matmul PASSED        [ 51%]
+.work/mlx/python/tests/test_blas.py::TestBlas::test_matmul_batched PASSED [ 55%]
+.work/mlx/python/tests/test_blas.py::TestBlas::test_matmul_dtypes PASSED [ 58%]
+.work/mlx/python/tests/test_blas.py::TestBlas::test_matmul_shapes 
+.work/mlx/python/tests/test_blas.py::TestBlas::test_matmul_shapes PASSED [ 62%]
+.work/mlx/python/tests/test_blas.py::TestBlas::test_matmul_unaligned 
+.work/mlx/python/tests/test_blas.py::TestBlas::test_matmul_unaligned PASSED [ 65%]
+.work/mlx/python/tests/test_blas.py::TestBlas::test_matrix_vector 
+.work/mlx/python/tests/test_blas.py::TestBlas::test_matrix_vector PASSED [ 68%]
+.work/mlx/python/tests/test_blas.py::TestBlas::test_matrix_vector_attn 
+.work/mlx/python/tests/test_blas.py::TestBlas::test_matrix_vector_attn PASSED [ 72%]
+.work/mlx/python/tests/test_blas.py::TestBlas::test_matrix_vector_batched 
+.work/mlx/python/tests/test_blas.py::TestBlas::test_matrix_vector_batched PASSED [ 75%]
+.work/mlx/python/tests/test_blas.py::TestBlas::test_matrix_vector_broadcast 
+.work/mlx/python/tests/test_blas.py::TestBlas::test_matrix_vector_broadcast PASSED [ 79%]
+.work/mlx/python/tests/test_blas.py::TestBlas::test_matrix_vector_edgecases 
+.work/mlx/python/tests/test_blas.py::TestBlas::test_matrix_vector_edgecases PASSED [ 82%]
+.work/mlx/python/tests/test_blas.py::TestBlas::test_matvec_unaligned PASSED [ 86%]
+.work/mlx/python/tests/test_blas.py::TestBlas::test_mismatch_stride_mm PASSED [ 89%]
+.work/mlx/python/tests/test_blas.py::TestBlas::test_segmented_mm PASSED  [ 93%]
+.work/mlx/python/tests/test_blas.py::TestBlas::test_wide_addmm 
+.work/mlx/python/tests/test_blas.py::TestBlas::test_wide_addmm PASSED    [ 96%]
+.work/mlx/python/tests/test_blas.py::TestBlas::test_wide_matmul 
+.work/mlx/python/tests/test_blas.py::TestBlas::test_wide_matmul PASSED   [100%]
+
+- generated xml file: /home/joshuawarren/.config/superpowers/worktrees/mlx-omarchy/UpstreamSuite2/receipts/2026-09-10-upstream-suite/after-llvmpipe/py/test_blas.py.xml -
+============= 29 passed, 1020 subtests passed in 136.97s (0:02:16) =============

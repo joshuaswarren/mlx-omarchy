@@ -1,0 +1,27 @@
+============================= test session starts ==============================
+collecting ... collected 20 items
+
+.work/mlx/python/tests/test_conv.py::TestConv::test_asymmetric_padding SKIPPED [  5%]
+.work/mlx/python/tests/test_conv.py::TestConv::test_basic_grad_shapes PASSED [ 10%]
+.work/mlx/python/tests/test_conv.py::TestConv::test_conv2d_large_filter_small_channels PASSED [ 15%]
+.work/mlx/python/tests/test_conv.py::TestConv::test_conv2d_unaligned_channels PASSED [ 20%]
+.work/mlx/python/tests/test_conv.py::TestConv::test_conv2d_winograd_batch_tiling SKIPPED [ 25%]
+.work/mlx/python/tests/test_conv.py::TestConv::test_conv_1d_groups_flipped PASSED [ 30%]
+.work/mlx/python/tests/test_conv.py::TestConv::test_conv_1d_with_2d PASSED [ 35%]
+.work/mlx/python/tests/test_conv.py::TestConv::test_conv_3D_small_kd_decomposition PASSED [ 40%]
+.work/mlx/python/tests/test_conv.py::TestConv::test_conv_general_flip_grad PASSED [ 45%]
+.work/mlx/python/tests/test_conv.py::TestConv::test_conv_groups_grad PASSED [ 50%]
+.work/mlx/python/tests/test_conv.py::TestConv::test_numpy_conv 
+.work/mlx/python/tests/test_conv.py::TestConv::test_numpy_conv PASSED    [ 55%]
+.work/mlx/python/tests/test_conv.py::TestConv::test_repeated_conv PASSED [ 60%]
+.work/mlx/python/tests/test_conv.py::TestConv::test_torch_conv_1D SKIPPED [ 65%]
+.work/mlx/python/tests/test_conv.py::TestConv::test_torch_conv_1D_grad SKIPPED [ 70%]
+.work/mlx/python/tests/test_conv.py::TestConv::test_torch_conv_2D SKIPPED [ 75%]
+.work/mlx/python/tests/test_conv.py::TestConv::test_torch_conv_2D_grad SKIPPED [ 80%]
+.work/mlx/python/tests/test_conv.py::TestConv::test_torch_conv_3D SKIPPED [ 85%]
+.work/mlx/python/tests/test_conv.py::TestConv::test_torch_conv_3D_grad SKIPPED [ 90%]
+.work/mlx/python/tests/test_conv.py::TestConv::test_torch_conv_depthwise SKIPPED [ 95%]
+.work/mlx/python/tests/test_conv.py::TestConv::test_torch_conv_general SKIPPED [100%]
+
+- generated xml file: /home/joshuawarren/.config/superpowers/worktrees/mlx-omarchy/UpstreamSuiteFix/receipts/2026-09-10-upstream-suite/baseline-llvmpipe/py/test_conv.py.xml -
+============== 10 passed, 10 skipped, 16 subtests passed in 1.42s ==============

@@ -1,0 +1,181 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="5" skipped="6" tests="31" time="8.337" timestamp="2026-09-10T13:38:31.916165-05:00" hostname="omp-studio-local"><testcase classname="python.tests.test_fast.TestFast" name="test_cross_entropy" time="0.262" /><testcase classname="python.tests.test_fast.TestFast" name="test_cross_entropy_grad" time="0.055" /><testcase classname="python.tests.test_fast.TestFast" name="test_cross_entropy_shape_checks" time="0.001" /><testcase classname="python.tests.test_fast.TestFast" name="test_cuda_kernel_same_name_different_source" time="0.001"><skipped type="pytest.skip" message="CUDA is not available">/home/joshuawarren/.config/superpowers/worktrees/mlx-omarchy/UpstreamSuite2/.work/mlx/python/tests/test_fast.py:1122: CUDA is not available</skipped></testcase><testcase classname="python.tests.test_fast.TestFast" name="test_custom_kernel_args" time="0.001"><failure message="UnboundLocalError: cannot access local variable 'custom_kernel' where it is not associated with a value">self = &lt;test_fast.TestFast testMethod=test_custom_kernel_args&gt;
+
+    @unittest.skipIf(not mx.is_available(mx.gpu), "No GPU available")
+    def test_custom_kernel_args(self):
+        if mx.metal.is_available():
+            source = """
+                uint elem = thread_position_in_grid.x;
+                T tmp = a[0];
+                if (e) {
+                    out1[elem] = a[1] + b[2] + c[3] + d + f;
+                } else {
+                    out1[elem] = 1;
+                }
+                out2[elem] = a[1] + b[2] + c[1] - d;
+            """
+            custom_kernel = mx.fast.metal_kernel
+        elif mx.cuda.is_available():
+            source = """
+                auto elem = cooperative_groups::this_grid().thread_rank();
+                T tmp = a[0];
+                if (e) {
+                    out1[elem] = a[1] + b[2] + static_cast&lt;float&gt;(c[3]) + d[0] + f;
+                } else {
+                    out1[elem] = 1;
+                }
+                out2[elem] = a[1] + b[2] + static_cast&lt;float&gt;(c[1]) - d[0];
+            """
+            custom_kernel = mx.fast.cuda_kernel
+    
+        mx.random.seed(7)
+        a = mx.random.normal(shape=(3, 6))
+        c = mx.random.normal(shape=(2, 2)).astype(mx.bfloat16)
+    
+&gt;       kernel = custom_kernel(
+                 ^^^^^^^^^^^^^
+            name="arg_test",
+            input_names=["a", "b", "c", "d"],
+            output_names=["out1", "out2"],
+            source=source,
+        )
+E       UnboundLocalError: cannot access local variable 'custom_kernel' where it is not associated with a value
+
+.work/mlx/python/tests/test_fast.py:901: UnboundLocalError</failure></testcase><testcase classname="python.tests.test_fast.TestFast" name="test_custom_kernel_attributes" time="0.001"><failure message="UnboundLocalError: cannot access local variable 'custom_kernel' where it is not associated with a value">self = &lt;test_fast.TestFast testMethod=test_custom_kernel_attributes&gt;
+
+    @unittest.skipIf(not mx.is_available(mx.gpu), "No GPU available")
+    def test_custom_kernel_attributes(self):
+        if mx.metal.is_available():
+            source = "out[0] = threads_per_threadgroup.x;"
+            custom_kernel = mx.fast.metal_kernel
+        elif mx.cuda.is_available():
+            source = "out[0] = blockDim.x;"
+            custom_kernel = mx.fast.cuda_kernel
+    
+        a = mx.zeros(shape=(1, 1))
+&gt;       kernel = custom_kernel(
+                 ^^^^^^^^^^^^^
+            name="test_fun",
+            input_names=["a"],
+            output_names=["out"],
+            source=source,
+        )
+E       UnboundLocalError: cannot access local variable 'custom_kernel' where it is not associated with a value
+
+.work/mlx/python/tests/test_fast.py:1039: UnboundLocalError</failure></testcase><testcase classname="python.tests.test_fast.TestFast" name="test_custom_kernel_basic" time="0.001"><failure message="UnboundLocalError: cannot access local variable 'custom_kernel' where it is not associated with a value">self = &lt;test_fast.TestFast testMethod=test_custom_kernel_basic&gt;
+
+    @unittest.skipIf(not mx.is_available(mx.gpu), "No GPU available")
+    def test_custom_kernel_basic(self):
+        if mx.metal.is_available():
+            source = """
+                uint elem = thread_position_in_grid.x;
+                out1[elem] = a[elem];
+            """
+            custom_kernel = mx.fast.metal_kernel
+        elif mx.cuda.is_available():
+            source = """
+                auto elem = cooperative_groups::this_grid().thread_rank();
+                out1[elem] = a[elem];
+            """
+            custom_kernel = mx.fast.cuda_kernel
+    
+        mx.random.seed(7)
+        a = mx.random.normal(shape=(2, 2))
+&gt;       kernel = custom_kernel(
+                 ^^^^^^^^^^^^^
+            name="basic",
+            input_names=["a"],
+            output_names=["out1"],
+            source=source,
+        )
+E       UnboundLocalError: cannot access local variable 'custom_kernel' where it is not associated with a value
+
+.work/mlx/python/tests/test_fast.py:854: UnboundLocalError</failure></testcase><testcase classname="python.tests.test_fast.TestFast" name="test_custom_kernel_caching" time="0.001"><skipped type="pytest.skip" message="Metal is not available">/home/joshuawarren/.config/superpowers/worktrees/mlx-omarchy/UpstreamSuite2/.work/mlx/python/tests/test_fast.py:1055: Metal is not available</skipped></testcase><testcase classname="python.tests.test_fast.TestFast" name="test_custom_kernel_helper" time="0.001"><failure message="UnboundLocalError: cannot access local variable 'custom_kernel' where it is not associated with a value">self = &lt;test_fast.TestFast testMethod=test_custom_kernel_helper&gt;
+
+    @unittest.skipIf(not mx.is_available(mx.gpu), "No GPU available")
+    def test_custom_kernel_helper(self):
+        if mx.metal.is_available():
+            header = """
+            template &lt;typename T&gt;
+            T do_exp(T x) {
+                return metal::precise::exp(x);
+            }
+            """
+            source = """
+                uint elem = thread_position_in_grid.x;
+                out1[elem] = do_exp(a[elem]);
+            """
+            custom_kernel = mx.fast.metal_kernel
+        elif mx.cuda.is_available():
+            header = """
+            template &lt;typename T&gt;
+            __device__ T do_exp(T x) {
+                return exp(x);
+            }
+            """
+            source = """
+                auto elem = cooperative_groups::this_grid().thread_rank();
+                out1[elem] = do_exp(a[elem]);
+            """
+            custom_kernel = mx.fast.cuda_kernel
+    
+        mx.random.seed(7)
+        a = mx.random.normal(shape=(2, 2))
+&gt;       kernel = custom_kernel(
+                 ^^^^^^^^^^^^^
+            name="helper",
+            input_names=["a"],
+            output_names=["out1"],
+            header=header,
+            source=source,
+        )
+E       UnboundLocalError: cannot access local variable 'custom_kernel' where it is not associated with a value
+
+.work/mlx/python/tests/test_fast.py:1012: UnboundLocalError</failure></testcase><testcase classname="python.tests.test_fast.TestFast" name="test_custom_kernel_mixed_dtypes" time="0.001"><skipped type="pytest.skip" message="Metal is not available">/home/joshuawarren/.config/superpowers/worktrees/mlx-omarchy/UpstreamSuite2/.work/mlx/python/tests/test_fast.py:1212: Metal is not available</skipped></testcase><testcase classname="python.tests.test_fast.TestFast" name="test_custom_kernel_same_name_different_source_one_eval" time="0.000"><skipped type="pytest.skip" message="Metal is not available">/home/joshuawarren/.config/superpowers/worktrees/mlx-omarchy/UpstreamSuite2/.work/mlx/python/tests/test_fast.py:1090: Metal is not available</skipped></testcase><testcase classname="python.tests.test_fast.TestFast" name="test_custom_kernel_strides" time="0.001"><failure message="UnboundLocalError: cannot access local variable 'custom_kernel' where it is not associated with a value">self = &lt;test_fast.TestFast testMethod=test_custom_kernel_strides&gt;
+
+    @unittest.skipIf(not mx.is_available(mx.gpu), "No GPU available")
+    def test_custom_kernel_strides(self):
+        if mx.metal.is_available():
+            source = """
+                uint elem = thread_position_in_grid.x;
+                uint loc = elem_to_loc(elem, inp_shape, inp_strides, inp_ndim);
+                T tmp = inp[loc];
+                out[elem] = metal::precise::exp(tmp) * threads_per_simdgroup;
+            """
+            source_contig = """
+                uint elem = thread_position_in_grid.x;
+                T tmp = inp[elem];
+                out[elem] = metal::precise::exp(tmp) * threads_per_simdgroup;
+            """
+            custom_kernel = mx.fast.metal_kernel
+        elif mx.cuda.is_available():
+            source = """
+                auto elem = cooperative_groups::this_grid().thread_rank();
+                auto loc = elem_to_loc(elem, inp_shape.data(), inp_strides.data(), inp_ndim);
+                T tmp = inp[loc];
+                out[elem] = exp(tmp) * WARP_SIZE;
+            """
+            source_contig = """
+                auto elem = cooperative_groups::this_grid().thread_rank();
+                T tmp = inp[elem];
+                out[elem] = exp(tmp) * WARP_SIZE;
+            """
+            custom_kernel = mx.fast.cuda_kernel
+    
+        mx.random.seed(7)
+        a = mx.random.normal(shape=(3, 6))
+    
+        # non contiguous
+        a = mx.tile(a[::2], [4, 1])
+    
+        for contig in [True, False]:
+&gt;           kernel = custom_kernel(
+                     ^^^^^^^^^^^^^
+                name="myexp" + str(contig),
+                input_names=["inp"],
+                output_names=["out"],
+                source=source_contig if contig else source,
+                ensure_row_contiguous=contig,
+            )
+E           UnboundLocalError: cannot access local variable 'custom_kernel' where it is not associated with a value
+
+.work/mlx/python/tests/test_fast.py:965: UnboundLocalError</failure></testcase><testcase classname="python.tests.test_fast.TestFast" name="test_custom_metal_kernel_math_mode" time="0.001"><skipped type="pytest.skip" message="Metal is not available">/home/joshuawarren/.config/superpowers/worktrees/mlx-omarchy/UpstreamSuite2/.work/mlx/python/tests/test_fast.py:1151: Metal is not available</skipped></testcase><testcase classname="python.tests.test_fast.TestFast" name="test_fast_transforms" time="0.044" /><testcase classname="python.tests.test_fast.TestFast" name="test_layer_norm" time="0.153" /><testcase classname="python.tests.test_fast.TestFast" name="test_layer_norm_dim_check" time="0.001" /><testcase classname="python.tests.test_fast.TestFast" name="test_layer_norm_grad" time="6.836" /><testcase classname="python.tests.test_fast.TestFast" name="test_layer_norm_grad_no_bias" time="0.016" /><testcase classname="python.tests.test_fast.TestFast" name="test_layer_norm_grad_no_params" time="0.005" /><testcase classname="python.tests.test_fast.TestFast" name="test_layer_norm_grad_params" time="0.004" /><testcase classname="python.tests.test_fast.TestFast" name="test_rms_norm" time="0.045" /><testcase classname="python.tests.test_fast.TestFast" name="test_rms_norm_grad" time="0.231" /><testcase classname="python.tests.test_fast.TestFast" name="test_rope" time="0.094" /><testcase classname="python.tests.test_fast.TestFast" name="test_rope_batch" time="0.069" /><testcase classname="python.tests.test_fast.TestFast" name="test_rope_dims_validation" time="0.001" /><testcase classname="python.tests.test_fast.TestFast" name="test_rope_grad" time="0.030" /><testcase classname="python.tests.test_fast.TestFast" name="test_rope_large_input" time="0.000"><skipped type="pytest.skip" message="Allocates too much memory for CI">/home/joshuawarren/.config/superpowers/worktrees/mlx-omarchy/UpstreamSuite2/.work/mlx/python/tests/test_fast.py:173: Allocates too much memory for CI</skipped></testcase><testcase classname="python.tests.test_fast.TestFast" name="test_rope_single_batch" time="0.126" /><testcase classname="python.tests.test_fast.TestFast" name="test_rope_with_freqs" time="0.007" /><testcase classname="python.tests.test_fast.TestFast" name="test_rope_with_large_offset" time="0.007" /><testcase classname="python.tests.test_fast.TestFast" name="test_slice_into_layer_norm" time="0.010" /></testsuite></testsuites>

@@ -1,0 +1,7 @@
+cooperative_matrix_f32_8= 0
+device_name= llvmpipe (LLVM 15.0.6, 256 bits)
+mx.__version__= 0.32.2.dev202609101826+9c9c4a7
+VK_DRIVER_FILES= None
+Traceback (most recent call last):
+  File "<stdin>", line 12, in <module>
+RuntimeError: [omarchy] Sort dtype is not implemented for the Omarchy Vulkan backend (dtype=int64, shape=[16,8]). No GPU kernel exists for it; no silent CPU fallback occurs. Run it on an explicit CPU stream to use the CPU implementation.

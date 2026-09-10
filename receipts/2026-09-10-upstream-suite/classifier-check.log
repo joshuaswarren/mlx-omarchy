@@ -1,0 +1,4 @@
+refusal ('named', 'Foo')
+sin ('named', 'Sin argument magnitude exceeds range')
+timeline ('other', 'RuntimeError: [omarchy] Vulkan timeline counter failed to advance for 10000 ms')
+drain ('other', 'RuntimeError: [omarchy] Vulkan dispatcher drain did not catch up within 10000 ms')

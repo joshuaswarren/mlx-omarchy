@@ -1,0 +1,43 @@
+Requirement already satisfied: numpy in ./.work/venv-us2/lib/python3.11/site-packages (2.4.6)
+Requirement already satisfied: pytest in ./.work/venv-us2/lib/python3.11/site-packages (9.1.1)
+Requirement already satisfied: iniconfig>=1.0.1 in ./.work/venv-us2/lib/python3.11/site-packages (from pytest) (2.3.0)
+Requirement already satisfied: packaging>=22 in ./.work/venv-us2/lib/python3.11/site-packages (from pytest) (26.3)
+Requirement already satisfied: pluggy<2,>=1.5 in ./.work/venv-us2/lib/python3.11/site-packages (from pytest) (1.6.0)
+Requirement already satisfied: pygments>=2.7.2 in ./.work/venv-us2/lib/python3.11/site-packages (from pytest) (2.21.0)
+Processing ./dist/mlx_omarchy-0.32.2.dev202609101826+9c9c4a7-cp311-cp311-linux_x86_64.whl
+Installing collected packages: mlx-omarchy
+  Attempting uninstall: mlx-omarchy
+    Found existing installation: mlx-omarchy 0.32.2.dev202609101826+9c9c4a7
+    Uninstalling mlx-omarchy-0.32.2.dev202609101826+9c9c4a7:
+      Successfully uninstalled mlx-omarchy-0.32.2.dev202609101826+9c9c4a7
+Successfully installed mlx-omarchy-0.32.2.dev202609101826+9c9c4a7
+SOURCE-VERIFIED 9c9c4a702f17ff6e7cd37bc99f7bf8ecfb66333f wheel=0.32.2.dev202609101826+9c9c4a7
+== [py] test_array.py ==
+test_array.py	0	executed=208 passed=208 failed=0 skipped=19
+== [py] test_autograd.py ==
+test_autograd.py	0	executed=53 passed=53 failed=0 skipped=1
+== [py] test_bf16.py ==
+test_bf16.py	0	executed=77 passed=77 failed=0 skipped=2
+== [py] test_blas.py ==
+test_blas.py	0	executed=1049 passed=1049 failed=0 skipped=0
+== [py] test_compile.py ==
+test_compile.py	1	executed=67 passed=64 failed=3 skipped=0
+== [py] test_constants.py ==
+test_constants.py	0	executed=3 passed=3 failed=0 skipped=0
+== [py] test_conv.py ==
+test_conv.py	1	executed=26 passed=25 failed=1 skipped=10
+== [py] test_conv_transpose.py ==
+test_conv_transpose.py	0	executed=0 passed=0 failed=0 skipped=10
+== [py] test_device.py ==
+test_device.py	0	executed=10 passed=10 failed=0 skipped=0
+== [py] test_double.py ==
+test_double.py	0	executed=11 passed=11 failed=0 skipped=0
+== [py] test_einsum.py ==
+test_einsum.py	0	executed=12 passed=12 failed=0 skipped=0
+== [py] test_eval.py ==
+test_eval.py	0	executed=14 passed=14 failed=0 skipped=1
+== [py] test_export_import.py ==
+test_export_import.py	1	executed=34 passed=33 failed=1 skipped=0
+== [py] test_fast.py ==
+test_fast.py	1	executed=25 passed=20 failed=5 skipped=6
+== [py] test_fast_sdpa.py ==

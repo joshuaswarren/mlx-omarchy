@@ -1,0 +1,13 @@
+============================= test session starts ==============================
+collecting ... collected 23 items
+
+.work/mlx/python/tests/test_fast_sdpa.py::TestFastSDPA::test_sdpa 
+.work/mlx/python/tests/test_fast_sdpa.py::TestFastSDPA::test_sdpa PASSED [  4%]
+.work/mlx/python/tests/test_fast_sdpa.py::TestFastSDPA::test_sdpa_attention_sinks 
+.work/mlx/python/tests/test_fast_sdpa.py::TestFastSDPA::test_sdpa_attention_sinks PASSED [  8%]
+.work/mlx/python/tests/test_fast_sdpa.py::TestFastSDPA::test_sdpa_blocks_env_override PASSED [ 13%]
+.work/mlx/python/tests/test_fast_sdpa.py::TestFastSDPA::test_sdpa_broadcast_mask PASSED [ 17%]
+.work/mlx/python/tests/test_fast_sdpa.py::TestFastSDPA::test_sdpa_few_query PASSED [ 21%]
+.work/mlx/python/tests/test_fast_sdpa.py::TestFastSDPA::test_sdpa_force_fused_cuda SKIPPED [ 26%]
+.work/mlx/python/tests/test_fast_sdpa.py::TestFastSDPA::test_sdpa_force_fused_metal SKIPPED [ 30%]
+.work/mlx/python/tests/test_fast_sdpa.py::TestFastSDPA::test_sdpa_full_head_dim_256 

@@ -1,0 +1,16 @@
+============================= test session starts ==============================
+collecting ... collected 10 items
+
+.work/mlx/python/tests/test_device.py::TestDefaultDevice::test_mlx_default_device PASSED [ 10%]
+.work/mlx/python/tests/test_device.py::TestDevice::test_device PASSED    [ 20%]
+.work/mlx/python/tests/test_device.py::TestDevice::test_device_context PASSED [ 30%]
+.work/mlx/python/tests/test_device.py::TestDevice::test_op_on_device PASSED [ 40%]
+.work/mlx/python/tests/test_device.py::TestStream::test_op_on_stream PASSED [ 50%]
+.work/mlx/python/tests/test_device.py::TestStream::test_stream PASSED    [ 60%]
+.work/mlx/python/tests/test_device.py::TestDeviceInfo::test_device_count PASSED [ 70%]
+.work/mlx/python/tests/test_device.py::TestDeviceInfo::test_device_info_cpu PASSED [ 80%]
+.work/mlx/python/tests/test_device.py::TestDeviceInfo::test_device_info_default PASSED [ 90%]
+.work/mlx/python/tests/test_device.py::TestDeviceInfo::test_device_info_gpu PASSED [100%]
+
+- generated xml file: /home/joshuawarren/.config/superpowers/worktrees/mlx-omarchy/UpstreamSuiteFix/receipts/2026-09-10-upstream-suite/baseline-llvmpipe/py/test_device.py.xml -
+============================== 10 passed in 0.16s ==============================

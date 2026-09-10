@@ -1,0 +1,27 @@
+============================= test session starts ==============================
+collecting ... collected 18 items
+
+.work/mlx/python/tests/test_linalg.py::TestLinalg::test_cholesky PASSED  [  5%]
+.work/mlx/python/tests/test_linalg.py::TestLinalg::test_cholesky_inv PASSED [ 11%]
+.work/mlx/python/tests/test_linalg.py::TestLinalg::test_complex_norm 
+.work/mlx/python/tests/test_linalg.py::TestLinalg::test_complex_norm PASSED [ 16%]
+.work/mlx/python/tests/test_linalg.py::TestLinalg::test_cross_product PASSED [ 22%]
+.work/mlx/python/tests/test_linalg.py::TestLinalg::test_det PASSED       [ 27%]
+.work/mlx/python/tests/test_linalg.py::TestLinalg::test_eig PASSED       [ 33%]
+.work/mlx/python/tests/test_linalg.py::TestLinalg::test_eigh PASSED      [ 38%]
+.work/mlx/python/tests/test_linalg.py::TestLinalg::test_inverse PASSED   [ 44%]
+.work/mlx/python/tests/test_linalg.py::TestLinalg::test_lu PASSED        [ 50%]
+.work/mlx/python/tests/test_linalg.py::TestLinalg::test_lu_factor PASSED [ 55%]
+.work/mlx/python/tests/test_linalg.py::TestLinalg::test_norm 
+.work/mlx/python/tests/test_linalg.py::TestLinalg::test_norm PASSED      [ 61%]
+.work/mlx/python/tests/test_linalg.py::TestLinalg::test_pseudo_inverse PASSED [ 66%]
+.work/mlx/python/tests/test_linalg.py::TestLinalg::test_qr_factorization PASSED [ 72%]
+.work/mlx/python/tests/test_linalg.py::TestLinalg::test_slogdet 
+.work/mlx/python/tests/test_linalg.py::TestLinalg::test_slogdet PASSED   [ 77%]
+.work/mlx/python/tests/test_linalg.py::TestLinalg::test_solve PASSED     [ 83%]
+.work/mlx/python/tests/test_linalg.py::TestLinalg::test_solve_triangular PASSED [ 88%]
+.work/mlx/python/tests/test_linalg.py::TestLinalg::test_svd_decomposition PASSED [ 94%]
+.work/mlx/python/tests/test_linalg.py::TestLinalg::test_tri_inverse PASSED [100%]
+
+- generated xml file: /home/joshuawarren/.config/superpowers/worktrees/mlx-omarchy/UpstreamSuiteFix/receipts/2026-09-10-upstream-suite/baseline-llvmpipe/py/test_linalg.py.xml -
+=================== 18 passed, 266 subtests passed in 2.77s ====================

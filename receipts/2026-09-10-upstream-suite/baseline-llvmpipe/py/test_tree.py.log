@@ -1,0 +1,12 @@
+============================= test session starts ==============================
+collecting ... collected 6 items
+
+.work/mlx/python/tests/test_tree.py::TestTreeUtils::test_empty_subtree_merge PASSED [ 16%]
+.work/mlx/python/tests/test_tree.py::TestTreeUtils::test_merge PASSED    [ 33%]
+.work/mlx/python/tests/test_tree.py::TestTreeUtils::test_supported_trees PASSED [ 50%]
+.work/mlx/python/tests/test_tree.py::TestTreeUtils::test_tree_flatten PASSED [ 66%]
+.work/mlx/python/tests/test_tree.py::TestTreeUtils::test_tree_map PASSED [ 83%]
+.work/mlx/python/tests/test_tree.py::TestTreeUtils::test_tree_unflatten_integer_key_collision PASSED [100%]
+
+- generated xml file: /home/joshuawarren/.config/superpowers/worktrees/mlx-omarchy/UpstreamSuiteFix/receipts/2026-09-10-upstream-suite/baseline-llvmpipe/py/test_tree.py.xml -
+============================== 6 passed in 0.18s ===============================

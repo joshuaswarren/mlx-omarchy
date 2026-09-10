@@ -1,0 +1,21 @@
+failure kinds:
+  named      264
+  other      6
+  assert     4
+
+named-gap histogram:
+     258  QuantizedMatmul weight layout
+       3  Compiled tape bfloat16
+       1  Sin argument magnitude 1000000015047466219876688855040.000000 exceeds the built-in accurac
+       1  Quantize input dtype
+       1  QuantizedMatmul rank
+
+AssertionError cases (4):
+  test_compile.py::test_compile_dynamic_dims
+      AssertionError: array(False, dtype=bool) is not true
+  test_ops.py::test_sort
+      AssertionError: False is not true
+  test_optimizers.py::test_compiled_optimizer
+      AssertionError: array(False, dtype=bool) is not true
+  test_quantized.py::test_gather_qmm_sorted
+      AssertionError: array(0.29248, dtype=float16) not less than 0.001

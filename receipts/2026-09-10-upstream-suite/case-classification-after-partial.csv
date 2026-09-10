@@ -1,0 +1,11 @@
+file,case,kind,detail
+test_compile.py,test_compile_nonfinite_constants,named,Compiled tape bfloat16
+test_compile.py,test_compiled_subnormal_bool_cast,named,Compiled tape bfloat16
+test_compile.py,test_inf_constant,named,Compiled tape bfloat16
+test_conv.py,test_numpy_conv,assert,
+test_export_import.py,test_export_import_custom_kernel,other,UnboundLocalError custom_kernel (upstream harness artifact)
+test_fast.py,test_custom_kernel_args,other,UnboundLocalError custom_kernel (upstream harness artifact)
+test_fast.py,test_custom_kernel_attributes,other,UnboundLocalError custom_kernel (upstream harness artifact)
+test_fast.py,test_custom_kernel_basic,other,UnboundLocalError custom_kernel (upstream harness artifact)
+test_fast.py,test_custom_kernel_helper,other,UnboundLocalError custom_kernel (upstream harness artifact)
+test_fast.py,test_custom_kernel_strides,other,UnboundLocalError custom_kernel (upstream harness artifact)

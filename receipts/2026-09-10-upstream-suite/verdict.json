@@ -1,1 +1,64 @@
-{"after_commit":null,"after_counts":null,"base_source_commit":"ee530132b7e63061b3c374a30c5479564f25098c","base_wheel_llvmpipe":{"sha256":"c5de3774b476c45f30529d78e3217f897ef164d238ae6393134f104358995c4e"},"base_wheel_m1":{"filename":"mlx_omarchy-0.32.2.dev202609101733+ee53013-cp314-cp314-linux_aarch64.whl","sha256":"ee639b79ca1eab8ebc8bdeaad49346ad32d8a038dc6c158e77c950a8d7af5f98"},"before_counts":{"assert":4,"files_completed_with_xml":31,"files_total":32,"named":263,"other":7},"branch":"wave/UpstreamSuiteFix","branch_head":"8f717d568213acdf00ff03cbefcbdd42460fcfc2","fix_commits":["c807794b","8f717d56"],"fixed_and_verified":["test_compile_dynamic_dims"],"m1_device":{"cooperative_matrix_f32_8":1,"device_name":"Apple M1 (G13G B1)","driver":"Mesa Honeykrisp"},"open_groups":["test_sort (sort kernel; failing subtest dtype/axis/strided unknown, likely shares argsort path with gather_qmm_sorted)","test_compiled_optimizer (compiled SGD; fusion on/off bisection not yet run)","test_gather_qmm_sorted (f16 err 0.29, uses argsort x2)","test_sdpa_long_masked_sequence SIGSEGV at line 632 (kL 8k-66k; M1 bisection not yet run)","remaining test_fast_sdpa tests after crash point never ran (no XML)"],"status":"incomplete-handoff-budget"}
+{
+  "schema": "upstream-suite-correctness/1",
+  "branch": "wave/UpstreamSuite2",
+  "source_commit": "9c9c4a702f17ff6e7cd37bc99f7bf8ecfb66333f",
+  "implementation_commit": "8a8e56ce",
+  "wheel": {
+    "path": "dist/mlx_omarchy-0.32.2.dev202609101826+9c9c4a7-cp311-cp311-linux_x86_64.whl",
+    "sha256": "adcd6e6e5122d907c577c74791503eab08a0d29147f7089de4004c429d77c33f",
+    "m1_sha256": "29c8327d52cf1671cff7c696c0a34b3cae9163831c5f15e7f023459ae7e82c6c"
+  },
+  "patch_id": {
+    "original_commit": "8f717d568213acdf00ff03cbefcbdd42460fcfc2",
+    "rebased_commit": "036c0c29999d97711d482217a1e20c2ba20babde",
+    "stable_patch_id": "40ea914d5d1873bf7f957acc620cda12a933a512",
+    "unchanged": true
+  },
+  "segfault": {
+    "cause": "binding(array) exposed a legal Vulkan allocation as one storage descriptor larger than maxStorageBufferRange; llvmpipe crashed on submission",
+    "fix": "reject every oversized compute binding before submission and chunk supported masked f16 SDPA by KV head and query window using transfer copies",
+    "verified_on": {
+      "llvmpipe": "descriptor-sized C++ SDPA regression passed 65,601 assertions; the upstream long-sequence case produced four named ValueErrors and no signal",
+      "honeykrisp_fork": "kL 8192, 36864, and 49152 passed; kL 66048 stopped safely when the upstream reference requested a 2,164,260,864-byte descriptor above the device limit"
+    }
+  },
+  "fixed": [
+    "test_compile_dynamic_dims",
+    "test_compiled_optimizer",
+    "test_gather_qmm_sorted",
+    "non-transposed GatherQMM expert stride when K is not pack-aligned",
+    "driver crash on oversized compute storage descriptors",
+    "supported descriptor-bound masked f16 SDPA"
+  ],
+  "open": [
+    "test_sort still asserts in the upstream zero-stride int64 case; the new materialization guard fixes supported int32/float32 broadcast views but int64 Sort remains unsupported",
+    "a partial after-suite found test_numpy_conv float32 M=24 N=4 mode=same asserting; baseline had classified conv green",
+    "the full after-suite was stopped after 14 files by the run budget, so final counts and the whole fast_sdpa tail are unavailable",
+    "stock-driver M1 verification and both-driver generation digests were blocked by the shared M1 GPU lock",
+    "custom_kernel harness failures remain owned by CustomKernelMsl"
+  ],
+  "counts": {
+    "before": {"named": 263, "assert": 4, "other": 7, "complete": true},
+    "after": {"named": 3, "assert": 1, "other": 6, "complete": false, "completed_files": 14},
+    "named": null,
+    "assert": null,
+    "other": null
+  },
+  "digests_ok": false,
+  "digests": {
+    "status": "not run",
+    "actual_model_identity": null,
+    "reason": "shared M1 GPU lock remained busy during the remaining run budget"
+  },
+  "tests": {
+    "cpp_sort_broadcast": "1 case, 258 assertions passed on llvmpipe",
+    "cpp_sdpa_descriptor_chunk": "1 case, 65,601 assertions passed on llvmpipe",
+    "cpp_gather_qmm_tail": "1 case, 3,381 assertions passed on llvmpipe",
+    "python_assertion_set": "dynamic dims, compiled optimizer, and gather_qmm_sorted passed; sort failed",
+    "python_long_sdpa_llvmpipe": "four named descriptor-limit failures, no signal",
+    "python_long_sdpa_m1_fork": "three subtests passed; final reference descriptor stopped safely",
+    "full_after_suite": "stopped after 14 completed files; partial classification only"
+  },
+  "decision": "NO_GO: source fixes are useful and crash-safe, but the assigned qualification is incomplete and test_sort remains an assertion failure",
+  "next": "Add complete int64 Sort/ArgSort support or otherwise fix the upstream int64 zero-stride value path, rerun the full Python suite, then run stock/fork M1 qualification and all six locked generation digests."
+}

@@ -1,0 +1,12 @@
+============================= test session starts ==============================
+collecting ... collected 6 items
+
+.work/mlx/python/tests/test_zero_copy.py::TestZeroCopy::test_adopt_in_loop_not_recycled SKIPPED [ 16%]
+.work/mlx/python/tests/test_zero_copy.py::TestZeroCopy::test_copy_false PASSED [ 33%]
+.work/mlx/python/tests/test_zero_copy.py::TestZeroCopy::test_copy_false_dtype_conversion_raises PASSED [ 50%]
+.work/mlx/python/tests/test_zero_copy.py::TestZeroCopy::test_copy_true_copies PASSED [ 66%]
+.work/mlx/python/tests/test_zero_copy.py::TestZeroCopy::test_default_shares_or_copies PASSED [ 83%]
+.work/mlx/python/tests/test_zero_copy.py::TestZeroCopy::test_source_lifetime SKIPPED [100%]
+
+- generated xml file: /home/joshuawarren/.config/superpowers/worktrees/mlx-omarchy/UpstreamSuiteFix/receipts/2026-09-10-upstream-suite/baseline-llvmpipe/py/test_zero_copy.py.xml -
+========================= 4 passed, 2 skipped in 0.13s =========================

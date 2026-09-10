@@ -1,0 +1,16 @@
+patching file CMakeLists.txt
+patching file mlx/CMakeLists.txt
+patching file tests/CMakeLists.txt
+patching file mlx/transforms.cpp
+patching file setup.py
+patching file mlx/io/safetensors.cpp
+patching file mlx/io/load.cpp
+patching file mlx/export.cpp
+patching file mlx/linalg.cpp
+patching file python/src/buffer.h
+patching file mlx/ops.cpp
+Hunk #2 succeeded at 5051 (offset 1 line).
+patching file mlx/backend/cpu/distributed.cpp
+patching file mlx/fast.cpp
+patching file setup.py
+/home/joshuawarren/.config/superpowers/worktrees/mlx-omarchy/UpstreamSuite2/.work/mlx

@@ -1,0 +1,8 @@
+============================= test session starts ==============================
+collecting ... collected 2 items
+
+.work/mlx/python/tests/test_threads.py::TestThreads::test_concurrent_transforms PASSED [ 50%]
+.work/mlx/python/tests/test_threads.py::TestThreads::test_threadlocal_stream PASSED [100%]
+
+- generated xml file: /home/joshuawarren/.config/superpowers/worktrees/mlx-omarchy/UpstreamSuiteFix/receipts/2026-09-10-upstream-suite/baseline-llvmpipe/py/test_threads.py.xml -
+============================== 2 passed in 2.93s ===============================
