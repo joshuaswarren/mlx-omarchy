@@ -10014,6 +10014,59 @@ void ScaledDotProductAttention::eval_gpu(
       bf16_fast = true;
     }
   }
+
+  // Decode uses native Metal's 32-key online-softmax order directly over
+  // Q and the strided KV cache. This replaces both attention matmuls, both
+  // layout copies, and softmax with one dispatch per layer.
+  const char* decode_env = std::getenv("MLX_OMARCHY_SDPA_DECODE_NATIVE");
+  const auto& decode_caps = encoder.device().capabilities();
+  constexpr VkSubgroupFeatureFlags kDecodeSubgroupFeatures =
+      VK_SUBGROUP_FEATURE_BASIC_BIT | VK_SUBGROUP_FEATURE_ARITHMETIC_BIT |
+      VK_SUBGROUP_FEATURE_SHUFFLE_BIT;
+  constexpr uint32_t kDecodeSharedBytes =
+      (32u * 32u + 2u * 128u + 128u * 32u) * sizeof(float);
+  const bool decode_subgroup_ready = decode_caps.subgroup_size == 32u &&
+      decode_caps.max_compute_work_group_invocations >= 1024u &&
+      decode_caps.max_compute_work_group_size[0] >= 1024u &&
+      decode_caps.max_compute_shared_memory_size >= kDecodeSharedBytes &&
+      (decode_caps.subgroup_operations & kDecodeSubgroupFeatures) ==
+          kDecodeSubgroupFeatures;
+  if ((decode_env == nullptr || std::strcmp(decode_env, "0") != 0) &&
+      decode_subgroup_ready && q.dtype() == float16 && inputs.size() == 3 &&
+      !has_sinks_ && !output_logsumexp_ && batch == 1 && q_len == 1 &&
+      head_dim == 64 && v_dim == 64 && k_len > 0 &&
+      q.strides()[3] == 1 && k.strides()[3] == 1 && v.strides()[3] == 1) {
+    out.set_data(allocate_omarchy(out.nbytes()));
+    omarchy::ComputeParams params;
+    params.count = checked_u32(out.size(), tag, out);
+    params.matrix_m = checked_u32(heads, tag, out);
+    params.matrix_n = checked_u32(kv_heads, tag, out);
+    params.matrix_k = checked_u32(k_len, tag, out);
+    params.alpha = scale_;
+    // Native M1 Max switches to 64 two-pass blocks at 1024 keys and 128
+    // above it; zero selects the one-pass 32-SIMD decode kernel.
+    params.flags = k_len > 1024 ? 128u : (k_len == 1024 ? 64u : 0u);
+    params.lhs_offset = checked_item_offset(q, q.size(), tag, out);
+    params.rhs_offset = checked_item_offset(k, k.size(), tag, out);
+    params.aux_offset = checked_item_offset(v, v.size(), tag, out);
+    params.output_offset = checked_item_offset(out, out.size(), tag, out);
+    params.shape[0] = checked_u32(q.strides()[1], tag, out);
+    params.shape[1] = checked_u32(k.strides()[1], tag, out);
+    params.shape[2] = checked_u32(k.strides()[2], tag, out);
+    params.shape[3] = checked_u32(q.strides()[3], tag, out);
+    params.in_strides[0] = checked_u32(k.strides()[3], tag, out);
+    params.in_strides[1] = checked_u32(v.strides()[1], tag, out);
+    params.in_strides[2] = checked_u32(v.strides()[2], tag, out);
+    params.in_strides[3] = checked_u32(v.strides()[3], tag, out);
+    std::array<omarchy::ComputeBinding, 4> bindings{
+        binding(q), binding(k), binding(v), binding(out)};
+    encoder.dispatch_compute(
+        omarchy::ComputeKernel::SdpaDecodeNativeF16,
+        bindings,
+        params,
+        params.matrix_m);
+    return;
+  }
   if (q.dtype() == float16 || bf16_fast) {
     const bool bf16 = q.dtype() == bfloat16;
     const Dtype storage_dtype = bf16 ? bfloat16 : float16;
