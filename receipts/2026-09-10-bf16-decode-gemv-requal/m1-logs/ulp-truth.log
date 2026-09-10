@@ -1,0 +1,6 @@
+native mismatch counts (root-cause reference: q106 k13 v46 o0):
+  decode.q_proj {'base_fork': 106, 'base_stock': 106, 'cand_fork': 106, 'cand_stock': 106}
+  decode.k_proj {'base_fork': 13, 'base_stock': 13, 'cand_fork': 13, 'cand_stock': 13}
+  decode.v_proj {'base_fork': 46, 'base_stock': 46, 'cand_fork': 46, 'cand_stock': 46}
+  decode.o_proj {'base_fork': 0, 'base_stock': 0, 'cand_fork': 0, 'cand_stock': 0}
+DONE receipt-requal/ulp/truth.json

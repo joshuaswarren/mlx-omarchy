@@ -1,0 +1,1931 @@
+{
+  "cells": {
+    "base_fork": {
+      "decode.q_proj": {
+        "vs_rne_f64": {
+          "elements": 896,
+          "mismatches": 0,
+          "max_bit_distance": 0,
+          "mismatch_median_distance": 0.0,
+          "mismatch_mean_distance": 0.0,
+          "sign_flips": 0,
+          "cancel_elements_lt1e-3": 2,
+          "cancel_mismatches": 0,
+          "cancel_max_bit_distance": 0,
+          "cancel_median_distance": 0.0
+        },
+        "vs_native_mismatches": 106,
+        "vs_native_max_distance": 20
+      },
+      "decode.k_proj": {
+        "vs_rne_f64": {
+          "elements": 128,
+          "mismatches": 0,
+          "max_bit_distance": 0,
+          "mismatch_median_distance": 0.0,
+          "mismatch_mean_distance": 0.0,
+          "sign_flips": 0,
+          "cancel_elements_lt1e-3": 0,
+          "cancel_mismatches": 0,
+          "cancel_max_bit_distance": 0,
+          "cancel_median_distance": 0.0
+        },
+        "vs_native_mismatches": 13,
+        "vs_native_max_distance": 7
+      },
+      "decode.v_proj": {
+        "vs_rne_f64": {
+          "elements": 128,
+          "mismatches": 0,
+          "max_bit_distance": 0,
+          "mismatch_median_distance": 0.0,
+          "mismatch_mean_distance": 0.0,
+          "sign_flips": 0,
+          "cancel_elements_lt1e-3": 4,
+          "cancel_mismatches": 0,
+          "cancel_max_bit_distance": 0,
+          "cancel_median_distance": 0.0
+        },
+        "vs_native_mismatches": 46,
+        "vs_native_max_distance": 14328
+      },
+      "decode.o_proj": {
+        "vs_rne_f64": {
+          "elements": 896,
+          "mismatches": 0,
+          "max_bit_distance": 0,
+          "mismatch_median_distance": 0.0,
+          "mismatch_mean_distance": 0.0,
+          "sign_flips": 0,
+          "cancel_elements_lt1e-3": 148,
+          "cancel_mismatches": 0,
+          "cancel_max_bit_distance": 0,
+          "cancel_median_distance": 0.0
+        },
+        "vs_native_mismatches": 0,
+        "vs_native_max_distance": 0
+      },
+      "prefill.q_proj": {
+        "vs_rne_f64": {
+          "elements": 234752,
+          "mismatches": 31,
+          "max_bit_distance": 1,
+          "mismatch_median_distance": 1.0,
+          "mismatch_mean_distance": 1.0,
+          "sign_flips": 0,
+          "cancel_elements_lt1e-3": 343,
+          "cancel_mismatches": 2,
+          "cancel_max_bit_distance": 1,
+          "cancel_median_distance": 1.0
+        },
+        "vs_native_mismatches": 34,
+        "vs_native_max_distance": 1
+      },
+      "prefill.k_proj": {
+        "vs_rne_f64": {
+          "elements": 33536,
+          "mismatches": 0,
+          "max_bit_distance": 0,
+          "mismatch_median_distance": 0.0,
+          "mismatch_mean_distance": 0.0,
+          "sign_flips": 0,
+          "cancel_elements_lt1e-3": 31,
+          "cancel_mismatches": 0,
+          "cancel_max_bit_distance": 0,
+          "cancel_median_distance": 0.0
+        },
+        "vs_native_mismatches": 0,
+        "vs_native_max_distance": 0
+      },
+      "prefill.v_proj": {
+        "vs_rne_f64": {
+          "elements": 33536,
+          "mismatches": 4,
+          "max_bit_distance": 2,
+          "mismatch_median_distance": 1.0,
+          "mismatch_mean_distance": 1.25,
+          "sign_flips": 0,
+          "cancel_elements_lt1e-3": 1547,
+          "cancel_mismatches": 4,
+          "cancel_max_bit_distance": 2,
+          "cancel_median_distance": 1.0
+        },
+        "vs_native_mismatches": 3,
+        "vs_native_max_distance": 2
+      },
+      "prefill.o_proj": {
+        "vs_rne_f64": {
+          "elements": 234752,
+          "mismatches": 49,
+          "max_bit_distance": 27,
+          "mismatch_median_distance": 1.0,
+          "mismatch_mean_distance": 1.6326530612244898,
+          "sign_flips": 0,
+          "cancel_elements_lt1e-3": 33300,
+          "cancel_mismatches": 41,
+          "cancel_max_bit_distance": 27,
+          "cancel_median_distance": 1.0
+        },
+        "vs_native_mismatches": 46,
+        "vs_native_max_distance": 14
+      },
+      "gate_t0": {
+        "vs_rne_f64": {
+          "elements": 4864,
+          "mismatches": 1,
+          "max_bit_distance": 1,
+          "mismatch_median_distance": 1.0,
+          "mismatch_mean_distance": 1.0,
+          "sign_flips": 0,
+          "cancel_elements_lt1e-3": 5,
+          "cancel_mismatches": 0,
+          "cancel_max_bit_distance": 0,
+          "cancel_median_distance": 0.0
+        }
+      },
+      "down_t0": {
+        "vs_rne_f64": {
+          "elements": 896,
+          "mismatches": 1,
+          "max_bit_distance": 1,
+          "mismatch_median_distance": 1.0,
+          "mismatch_mean_distance": 1.0,
+          "sign_flips": 0,
+          "cancel_elements_lt1e-3": 2,
+          "cancel_mismatches": 1,
+          "cancel_max_bit_distance": 1,
+          "cancel_median_distance": 1.0
+        }
+      },
+      "lmhead_t0": {
+        "vs_rne_f64": {
+          "elements": 151936,
+          "mismatches": 25,
+          "max_bit_distance": 11,
+          "mismatch_median_distance": 1.0,
+          "mismatch_mean_distance": 1.4,
+          "sign_flips": 0,
+          "cancel_elements_lt1e-3": 336,
+          "cancel_mismatches": 9,
+          "cancel_max_bit_distance": 11,
+          "cancel_median_distance": 1.0
+        }
+      },
+      "gate_t1": {
+        "vs_rne_f64": {
+          "elements": 4864,
+          "mismatches": 2,
+          "max_bit_distance": 2,
+          "mismatch_median_distance": 1.5,
+          "mismatch_mean_distance": 1.5,
+          "sign_flips": 0,
+          "cancel_elements_lt1e-3": 18,
+          "cancel_mismatches": 2,
+          "cancel_max_bit_distance": 2,
+          "cancel_median_distance": 1.5
+        }
+      },
+      "down_t1": {
+        "vs_rne_f64": {
+          "elements": 896,
+          "mismatches": 1,
+          "max_bit_distance": 1,
+          "mismatch_median_distance": 1.0,
+          "mismatch_mean_distance": 1.0,
+          "sign_flips": 0,
+          "cancel_elements_lt1e-3": 1,
+          "cancel_mismatches": 1,
+          "cancel_max_bit_distance": 1,
+          "cancel_median_distance": 1.0
+        }
+      },
+      "lmhead_t1": {
+        "vs_rne_f64": {
+          "elements": 151936,
+          "mismatches": 24,
+          "max_bit_distance": 1,
+          "mismatch_median_distance": 1.0,
+          "mismatch_mean_distance": 1.0,
+          "sign_flips": 0,
+          "cancel_elements_lt1e-3": 444,
+          "cancel_mismatches": 11,
+          "cancel_max_bit_distance": 1,
+          "cancel_median_distance": 1.0
+        }
+      },
+      "gate_t2": {
+        "vs_rne_f64": {
+          "elements": 4864,
+          "mismatches": 0,
+          "max_bit_distance": 0,
+          "mismatch_median_distance": 0.0,
+          "mismatch_mean_distance": 0.0,
+          "sign_flips": 0,
+          "cancel_elements_lt1e-3": 9,
+          "cancel_mismatches": 0,
+          "cancel_max_bit_distance": 0,
+          "cancel_median_distance": 0.0
+        }
+      },
+      "down_t2": {
+        "vs_rne_f64": {
+          "elements": 896,
+          "mismatches": 0,
+          "max_bit_distance": 0,
+          "mismatch_median_distance": 0.0,
+          "mismatch_mean_distance": 0.0,
+          "sign_flips": 0,
+          "cancel_elements_lt1e-3": 0,
+          "cancel_mismatches": 0,
+          "cancel_max_bit_distance": 0,
+          "cancel_median_distance": 0.0
+        }
+      },
+      "lmhead_t2": {
+        "vs_rne_f64": {
+          "elements": 151936,
+          "mismatches": 44,
+          "max_bit_distance": 51,
+          "mismatch_median_distance": 1.0,
+          "mismatch_mean_distance": 2.340909090909091,
+          "sign_flips": 0,
+          "cancel_elements_lt1e-3": 432,
+          "cancel_mismatches": 19,
+          "cancel_max_bit_distance": 51,
+          "cancel_median_distance": 1.0
+        }
+      },
+      "gate_t3": {
+        "vs_rne_f64": {
+          "elements": 4864,
+          "mismatches": 2,
+          "max_bit_distance": 1,
+          "mismatch_median_distance": 1.0,
+          "mismatch_mean_distance": 1.0,
+          "sign_flips": 0,
+          "cancel_elements_lt1e-3": 10,
+          "cancel_mismatches": 1,
+          "cancel_max_bit_distance": 1,
+          "cancel_median_distance": 1.0
+        }
+      },
+      "down_t3": {
+        "vs_rne_f64": {
+          "elements": 896,
+          "mismatches": 1,
+          "max_bit_distance": 1,
+          "mismatch_median_distance": 1.0,
+          "mismatch_mean_distance": 1.0,
+          "sign_flips": 0,
+          "cancel_elements_lt1e-3": 1,
+          "cancel_mismatches": 1,
+          "cancel_max_bit_distance": 1,
+          "cancel_median_distance": 1.0
+        }
+      },
+      "lmhead_t3": {
+        "vs_rne_f64": {
+          "elements": 151936,
+          "mismatches": 45,
+          "max_bit_distance": 3,
+          "mismatch_median_distance": 1.0,
+          "mismatch_mean_distance": 1.0444444444444445,
+          "sign_flips": 0,
+          "cancel_elements_lt1e-3": 480,
+          "cancel_mismatches": 16,
+          "cancel_max_bit_distance": 3,
+          "cancel_median_distance": 1.0
+        }
+      },
+      "gate_t4": {
+        "vs_rne_f64": {
+          "elements": 4864,
+          "mismatches": 0,
+          "max_bit_distance": 0,
+          "mismatch_median_distance": 0.0,
+          "mismatch_mean_distance": 0.0,
+          "sign_flips": 0,
+          "cancel_elements_lt1e-3": 7,
+          "cancel_mismatches": 0,
+          "cancel_max_bit_distance": 0,
+          "cancel_median_distance": 0.0
+        }
+      },
+      "down_t4": {
+        "vs_rne_f64": {
+          "elements": 896,
+          "mismatches": 0,
+          "max_bit_distance": 0,
+          "mismatch_median_distance": 0.0,
+          "mismatch_mean_distance": 0.0,
+          "sign_flips": 0,
+          "cancel_elements_lt1e-3": 2,
+          "cancel_mismatches": 0,
+          "cancel_max_bit_distance": 0,
+          "cancel_median_distance": 0.0
+        }
+      },
+      "lmhead_t4": {
+        "vs_rne_f64": {
+          "elements": 151936,
+          "mismatches": 28,
+          "max_bit_distance": 4,
+          "mismatch_median_distance": 1.0,
+          "mismatch_mean_distance": 1.1428571428571428,
+          "sign_flips": 0,
+          "cancel_elements_lt1e-3": 419,
+          "cancel_mismatches": 11,
+          "cancel_max_bit_distance": 4,
+          "cancel_median_distance": 1.0
+        }
+      },
+      "gate_t5": {
+        "vs_rne_f64": {
+          "elements": 4864,
+          "mismatches": 0,
+          "max_bit_distance": 0,
+          "mismatch_median_distance": 0.0,
+          "mismatch_mean_distance": 0.0,
+          "sign_flips": 0,
+          "cancel_elements_lt1e-3": 8,
+          "cancel_mismatches": 0,
+          "cancel_max_bit_distance": 0,
+          "cancel_median_distance": 0.0
+        }
+      },
+      "down_t5": {
+        "vs_rne_f64": {
+          "elements": 896,
+          "mismatches": 1,
+          "max_bit_distance": 1,
+          "mismatch_median_distance": 1.0,
+          "mismatch_mean_distance": 1.0,
+          "sign_flips": 0,
+          "cancel_elements_lt1e-3": 0,
+          "cancel_mismatches": 0,
+          "cancel_max_bit_distance": 0,
+          "cancel_median_distance": 0.0
+        }
+      },
+      "lmhead_t5": {
+        "vs_rne_f64": {
+          "elements": 151936,
+          "mismatches": 32,
+          "max_bit_distance": 3,
+          "mismatch_median_distance": 1.0,
+          "mismatch_mean_distance": 1.09375,
+          "sign_flips": 0,
+          "cancel_elements_lt1e-3": 383,
+          "cancel_mismatches": 15,
+          "cancel_max_bit_distance": 3,
+          "cancel_median_distance": 1.0
+        }
+      },
+      "gate_t6": {
+        "vs_rne_f64": {
+          "elements": 4864,
+          "mismatches": 0,
+          "max_bit_distance": 0,
+          "mismatch_median_distance": 0.0,
+          "mismatch_mean_distance": 0.0,
+          "sign_flips": 0,
+          "cancel_elements_lt1e-3": 9,
+          "cancel_mismatches": 0,
+          "cancel_max_bit_distance": 0,
+          "cancel_median_distance": 0.0
+        }
+      },
+      "down_t6": {
+        "vs_rne_f64": {
+          "elements": 896,
+          "mismatches": 0,
+          "max_bit_distance": 0,
+          "mismatch_median_distance": 0.0,
+          "mismatch_mean_distance": 0.0,
+          "sign_flips": 0,
+          "cancel_elements_lt1e-3": 1,
+          "cancel_mismatches": 0,
+          "cancel_max_bit_distance": 0,
+          "cancel_median_distance": 0.0
+        }
+      },
+      "lmhead_t6": {
+        "vs_rne_f64": {
+          "elements": 151936,
+          "mismatches": 23,
+          "max_bit_distance": 1,
+          "mismatch_median_distance": 1.0,
+          "mismatch_mean_distance": 1.0,
+          "sign_flips": 0,
+          "cancel_elements_lt1e-3": 390,
+          "cancel_mismatches": 8,
+          "cancel_max_bit_distance": 1,
+          "cancel_median_distance": 1.0
+        }
+      },
+      "gate_t7": {
+        "vs_rne_f64": {
+          "elements": 4864,
+          "mismatches": 2,
+          "max_bit_distance": 1,
+          "mismatch_median_distance": 1.0,
+          "mismatch_mean_distance": 1.0,
+          "sign_flips": 0,
+          "cancel_elements_lt1e-3": 7,
+          "cancel_mismatches": 0,
+          "cancel_max_bit_distance": 0,
+          "cancel_median_distance": 0.0
+        }
+      },
+      "down_t7": {
+        "vs_rne_f64": {
+          "elements": 896,
+          "mismatches": 0,
+          "max_bit_distance": 0,
+          "mismatch_median_distance": 0.0,
+          "mismatch_mean_distance": 0.0,
+          "sign_flips": 0,
+          "cancel_elements_lt1e-3": 0,
+          "cancel_mismatches": 0,
+          "cancel_max_bit_distance": 0,
+          "cancel_median_distance": 0.0
+        }
+      },
+      "lmhead_t7": {
+        "vs_rne_f64": {
+          "elements": 151936,
+          "mismatches": 38,
+          "max_bit_distance": 3,
+          "mismatch_median_distance": 1.0,
+          "mismatch_mean_distance": 1.0526315789473684,
+          "sign_flips": 0,
+          "cancel_elements_lt1e-3": 521,
+          "cancel_mismatches": 16,
+          "cancel_max_bit_distance": 3,
+          "cancel_median_distance": 1.0
+        }
+      },
+      "cancel896x128": {
+        "vs_rne_f64": {
+          "elements": 128,
+          "mismatches": 2,
+          "max_bit_distance": 1,
+          "mismatch_median_distance": 1.0,
+          "mismatch_mean_distance": 1.0,
+          "sign_flips": 0,
+          "cancel_elements_lt1e-3": 0,
+          "cancel_mismatches": 0,
+          "cancel_max_bit_distance": 0,
+          "cancel_median_distance": 0.0
+        }
+      }
+    },
+    "base_stock": {
+      "decode.q_proj": {
+        "vs_rne_f64": {
+          "elements": 896,
+          "mismatches": 0,
+          "max_bit_distance": 0,
+          "mismatch_median_distance": 0.0,
+          "mismatch_mean_distance": 0.0,
+          "sign_flips": 0,
+          "cancel_elements_lt1e-3": 2,
+          "cancel_mismatches": 0,
+          "cancel_max_bit_distance": 0,
+          "cancel_median_distance": 0.0
+        },
+        "vs_native_mismatches": 106,
+        "vs_native_max_distance": 20
+      },
+      "decode.k_proj": {
+        "vs_rne_f64": {
+          "elements": 128,
+          "mismatches": 0,
+          "max_bit_distance": 0,
+          "mismatch_median_distance": 0.0,
+          "mismatch_mean_distance": 0.0,
+          "sign_flips": 0,
+          "cancel_elements_lt1e-3": 0,
+          "cancel_mismatches": 0,
+          "cancel_max_bit_distance": 0,
+          "cancel_median_distance": 0.0
+        },
+        "vs_native_mismatches": 13,
+        "vs_native_max_distance": 7
+      },
+      "decode.v_proj": {
+        "vs_rne_f64": {
+          "elements": 128,
+          "mismatches": 0,
+          "max_bit_distance": 0,
+          "mismatch_median_distance": 0.0,
+          "mismatch_mean_distance": 0.0,
+          "sign_flips": 0,
+          "cancel_elements_lt1e-3": 4,
+          "cancel_mismatches": 0,
+          "cancel_max_bit_distance": 0,
+          "cancel_median_distance": 0.0
+        },
+        "vs_native_mismatches": 46,
+        "vs_native_max_distance": 14328
+      },
+      "decode.o_proj": {
+        "vs_rne_f64": {
+          "elements": 896,
+          "mismatches": 0,
+          "max_bit_distance": 0,
+          "mismatch_median_distance": 0.0,
+          "mismatch_mean_distance": 0.0,
+          "sign_flips": 0,
+          "cancel_elements_lt1e-3": 148,
+          "cancel_mismatches": 0,
+          "cancel_max_bit_distance": 0,
+          "cancel_median_distance": 0.0
+        },
+        "vs_native_mismatches": 0,
+        "vs_native_max_distance": 0
+      },
+      "prefill.q_proj": {
+        "vs_rne_f64": {
+          "elements": 234752,
+          "mismatches": 31,
+          "max_bit_distance": 1,
+          "mismatch_median_distance": 1.0,
+          "mismatch_mean_distance": 1.0,
+          "sign_flips": 0,
+          "cancel_elements_lt1e-3": 343,
+          "cancel_mismatches": 2,
+          "cancel_max_bit_distance": 1,
+          "cancel_median_distance": 1.0
+        },
+        "vs_native_mismatches": 34,
+        "vs_native_max_distance": 1
+      },
+      "prefill.k_proj": {
+        "vs_rne_f64": {
+          "elements": 33536,
+          "mismatches": 0,
+          "max_bit_distance": 0,
+          "mismatch_median_distance": 0.0,
+          "mismatch_mean_distance": 0.0,
+          "sign_flips": 0,
+          "cancel_elements_lt1e-3": 31,
+          "cancel_mismatches": 0,
+          "cancel_max_bit_distance": 0,
+          "cancel_median_distance": 0.0
+        },
+        "vs_native_mismatches": 0,
+        "vs_native_max_distance": 0
+      },
+      "prefill.v_proj": {
+        "vs_rne_f64": {
+          "elements": 33536,
+          "mismatches": 4,
+          "max_bit_distance": 2,
+          "mismatch_median_distance": 1.0,
+          "mismatch_mean_distance": 1.25,
+          "sign_flips": 0,
+          "cancel_elements_lt1e-3": 1547,
+          "cancel_mismatches": 4,
+          "cancel_max_bit_distance": 2,
+          "cancel_median_distance": 1.0
+        },
+        "vs_native_mismatches": 3,
+        "vs_native_max_distance": 2
+      },
+      "prefill.o_proj": {
+        "vs_rne_f64": {
+          "elements": 234752,
+          "mismatches": 49,
+          "max_bit_distance": 27,
+          "mismatch_median_distance": 1.0,
+          "mismatch_mean_distance": 1.6326530612244898,
+          "sign_flips": 0,
+          "cancel_elements_lt1e-3": 33300,
+          "cancel_mismatches": 41,
+          "cancel_max_bit_distance": 27,
+          "cancel_median_distance": 1.0
+        },
+        "vs_native_mismatches": 46,
+        "vs_native_max_distance": 14
+      },
+      "gate_t0": {
+        "vs_rne_f64": {
+          "elements": 4864,
+          "mismatches": 1,
+          "max_bit_distance": 1,
+          "mismatch_median_distance": 1.0,
+          "mismatch_mean_distance": 1.0,
+          "sign_flips": 0,
+          "cancel_elements_lt1e-3": 5,
+          "cancel_mismatches": 0,
+          "cancel_max_bit_distance": 0,
+          "cancel_median_distance": 0.0
+        }
+      },
+      "down_t0": {
+        "vs_rne_f64": {
+          "elements": 896,
+          "mismatches": 1,
+          "max_bit_distance": 1,
+          "mismatch_median_distance": 1.0,
+          "mismatch_mean_distance": 1.0,
+          "sign_flips": 0,
+          "cancel_elements_lt1e-3": 2,
+          "cancel_mismatches": 1,
+          "cancel_max_bit_distance": 1,
+          "cancel_median_distance": 1.0
+        }
+      },
+      "lmhead_t0": {
+        "vs_rne_f64": {
+          "elements": 151936,
+          "mismatches": 25,
+          "max_bit_distance": 11,
+          "mismatch_median_distance": 1.0,
+          "mismatch_mean_distance": 1.4,
+          "sign_flips": 0,
+          "cancel_elements_lt1e-3": 336,
+          "cancel_mismatches": 9,
+          "cancel_max_bit_distance": 11,
+          "cancel_median_distance": 1.0
+        }
+      },
+      "gate_t1": {
+        "vs_rne_f64": {
+          "elements": 4864,
+          "mismatches": 2,
+          "max_bit_distance": 2,
+          "mismatch_median_distance": 1.5,
+          "mismatch_mean_distance": 1.5,
+          "sign_flips": 0,
+          "cancel_elements_lt1e-3": 18,
+          "cancel_mismatches": 2,
+          "cancel_max_bit_distance": 2,
+          "cancel_median_distance": 1.5
+        }
+      },
+      "down_t1": {
+        "vs_rne_f64": {
+          "elements": 896,
+          "mismatches": 1,
+          "max_bit_distance": 1,
+          "mismatch_median_distance": 1.0,
+          "mismatch_mean_distance": 1.0,
+          "sign_flips": 0,
+          "cancel_elements_lt1e-3": 1,
+          "cancel_mismatches": 1,
+          "cancel_max_bit_distance": 1,
+          "cancel_median_distance": 1.0
+        }
+      },
+      "lmhead_t1": {
+        "vs_rne_f64": {
+          "elements": 151936,
+          "mismatches": 24,
+          "max_bit_distance": 1,
+          "mismatch_median_distance": 1.0,
+          "mismatch_mean_distance": 1.0,
+          "sign_flips": 0,
+          "cancel_elements_lt1e-3": 444,
+          "cancel_mismatches": 11,
+          "cancel_max_bit_distance": 1,
+          "cancel_median_distance": 1.0
+        }
+      },
+      "gate_t2": {
+        "vs_rne_f64": {
+          "elements": 4864,
+          "mismatches": 0,
+          "max_bit_distance": 0,
+          "mismatch_median_distance": 0.0,
+          "mismatch_mean_distance": 0.0,
+          "sign_flips": 0,
+          "cancel_elements_lt1e-3": 9,
+          "cancel_mismatches": 0,
+          "cancel_max_bit_distance": 0,
+          "cancel_median_distance": 0.0
+        }
+      },
+      "down_t2": {
+        "vs_rne_f64": {
+          "elements": 896,
+          "mismatches": 0,
+          "max_bit_distance": 0,
+          "mismatch_median_distance": 0.0,
+          "mismatch_mean_distance": 0.0,
+          "sign_flips": 0,
+          "cancel_elements_lt1e-3": 0,
+          "cancel_mismatches": 0,
+          "cancel_max_bit_distance": 0,
+          "cancel_median_distance": 0.0
+        }
+      },
+      "lmhead_t2": {
+        "vs_rne_f64": {
+          "elements": 151936,
+          "mismatches": 44,
+          "max_bit_distance": 51,
+          "mismatch_median_distance": 1.0,
+          "mismatch_mean_distance": 2.340909090909091,
+          "sign_flips": 0,
+          "cancel_elements_lt1e-3": 432,
+          "cancel_mismatches": 19,
+          "cancel_max_bit_distance": 51,
+          "cancel_median_distance": 1.0
+        }
+      },
+      "gate_t3": {
+        "vs_rne_f64": {
+          "elements": 4864,
+          "mismatches": 2,
+          "max_bit_distance": 1,
+          "mismatch_median_distance": 1.0,
+          "mismatch_mean_distance": 1.0,
+          "sign_flips": 0,
+          "cancel_elements_lt1e-3": 10,
+          "cancel_mismatches": 1,
+          "cancel_max_bit_distance": 1,
+          "cancel_median_distance": 1.0
+        }
+      },
+      "down_t3": {
+        "vs_rne_f64": {
+          "elements": 896,
+          "mismatches": 1,
+          "max_bit_distance": 1,
+          "mismatch_median_distance": 1.0,
+          "mismatch_mean_distance": 1.0,
+          "sign_flips": 0,
+          "cancel_elements_lt1e-3": 1,
+          "cancel_mismatches": 1,
+          "cancel_max_bit_distance": 1,
+          "cancel_median_distance": 1.0
+        }
+      },
+      "lmhead_t3": {
+        "vs_rne_f64": {
+          "elements": 151936,
+          "mismatches": 45,
+          "max_bit_distance": 3,
+          "mismatch_median_distance": 1.0,
+          "mismatch_mean_distance": 1.0444444444444445,
+          "sign_flips": 0,
+          "cancel_elements_lt1e-3": 480,
+          "cancel_mismatches": 16,
+          "cancel_max_bit_distance": 3,
+          "cancel_median_distance": 1.0
+        }
+      },
+      "gate_t4": {
+        "vs_rne_f64": {
+          "elements": 4864,
+          "mismatches": 0,
+          "max_bit_distance": 0,
+          "mismatch_median_distance": 0.0,
+          "mismatch_mean_distance": 0.0,
+          "sign_flips": 0,
+          "cancel_elements_lt1e-3": 7,
+          "cancel_mismatches": 0,
+          "cancel_max_bit_distance": 0,
+          "cancel_median_distance": 0.0
+        }
+      },
+      "down_t4": {
+        "vs_rne_f64": {
+          "elements": 896,
+          "mismatches": 0,
+          "max_bit_distance": 0,
+          "mismatch_median_distance": 0.0,
+          "mismatch_mean_distance": 0.0,
+          "sign_flips": 0,
+          "cancel_elements_lt1e-3": 2,
+          "cancel_mismatches": 0,
+          "cancel_max_bit_distance": 0,
+          "cancel_median_distance": 0.0
+        }
+      },
+      "lmhead_t4": {
+        "vs_rne_f64": {
+          "elements": 151936,
+          "mismatches": 28,
+          "max_bit_distance": 4,
+          "mismatch_median_distance": 1.0,
+          "mismatch_mean_distance": 1.1428571428571428,
+          "sign_flips": 0,
+          "cancel_elements_lt1e-3": 419,
+          "cancel_mismatches": 11,
+          "cancel_max_bit_distance": 4,
+          "cancel_median_distance": 1.0
+        }
+      },
+      "gate_t5": {
+        "vs_rne_f64": {
+          "elements": 4864,
+          "mismatches": 0,
+          "max_bit_distance": 0,
+          "mismatch_median_distance": 0.0,
+          "mismatch_mean_distance": 0.0,
+          "sign_flips": 0,
+          "cancel_elements_lt1e-3": 8,
+          "cancel_mismatches": 0,
+          "cancel_max_bit_distance": 0,
+          "cancel_median_distance": 0.0
+        }
+      },
+      "down_t5": {
+        "vs_rne_f64": {
+          "elements": 896,
+          "mismatches": 1,
+          "max_bit_distance": 1,
+          "mismatch_median_distance": 1.0,
+          "mismatch_mean_distance": 1.0,
+          "sign_flips": 0,
+          "cancel_elements_lt1e-3": 0,
+          "cancel_mismatches": 0,
+          "cancel_max_bit_distance": 0,
+          "cancel_median_distance": 0.0
+        }
+      },
+      "lmhead_t5": {
+        "vs_rne_f64": {
+          "elements": 151936,
+          "mismatches": 32,
+          "max_bit_distance": 3,
+          "mismatch_median_distance": 1.0,
+          "mismatch_mean_distance": 1.09375,
+          "sign_flips": 0,
+          "cancel_elements_lt1e-3": 383,
+          "cancel_mismatches": 15,
+          "cancel_max_bit_distance": 3,
+          "cancel_median_distance": 1.0
+        }
+      },
+      "gate_t6": {
+        "vs_rne_f64": {
+          "elements": 4864,
+          "mismatches": 0,
+          "max_bit_distance": 0,
+          "mismatch_median_distance": 0.0,
+          "mismatch_mean_distance": 0.0,
+          "sign_flips": 0,
+          "cancel_elements_lt1e-3": 9,
+          "cancel_mismatches": 0,
+          "cancel_max_bit_distance": 0,
+          "cancel_median_distance": 0.0
+        }
+      },
+      "down_t6": {
+        "vs_rne_f64": {
+          "elements": 896,
+          "mismatches": 0,
+          "max_bit_distance": 0,
+          "mismatch_median_distance": 0.0,
+          "mismatch_mean_distance": 0.0,
+          "sign_flips": 0,
+          "cancel_elements_lt1e-3": 1,
+          "cancel_mismatches": 0,
+          "cancel_max_bit_distance": 0,
+          "cancel_median_distance": 0.0
+        }
+      },
+      "lmhead_t6": {
+        "vs_rne_f64": {
+          "elements": 151936,
+          "mismatches": 23,
+          "max_bit_distance": 1,
+          "mismatch_median_distance": 1.0,
+          "mismatch_mean_distance": 1.0,
+          "sign_flips": 0,
+          "cancel_elements_lt1e-3": 390,
+          "cancel_mismatches": 8,
+          "cancel_max_bit_distance": 1,
+          "cancel_median_distance": 1.0
+        }
+      },
+      "gate_t7": {
+        "vs_rne_f64": {
+          "elements": 4864,
+          "mismatches": 2,
+          "max_bit_distance": 1,
+          "mismatch_median_distance": 1.0,
+          "mismatch_mean_distance": 1.0,
+          "sign_flips": 0,
+          "cancel_elements_lt1e-3": 7,
+          "cancel_mismatches": 0,
+          "cancel_max_bit_distance": 0,
+          "cancel_median_distance": 0.0
+        }
+      },
+      "down_t7": {
+        "vs_rne_f64": {
+          "elements": 896,
+          "mismatches": 0,
+          "max_bit_distance": 0,
+          "mismatch_median_distance": 0.0,
+          "mismatch_mean_distance": 0.0,
+          "sign_flips": 0,
+          "cancel_elements_lt1e-3": 0,
+          "cancel_mismatches": 0,
+          "cancel_max_bit_distance": 0,
+          "cancel_median_distance": 0.0
+        }
+      },
+      "lmhead_t7": {
+        "vs_rne_f64": {
+          "elements": 151936,
+          "mismatches": 38,
+          "max_bit_distance": 3,
+          "mismatch_median_distance": 1.0,
+          "mismatch_mean_distance": 1.0526315789473684,
+          "sign_flips": 0,
+          "cancel_elements_lt1e-3": 521,
+          "cancel_mismatches": 16,
+          "cancel_max_bit_distance": 3,
+          "cancel_median_distance": 1.0
+        }
+      },
+      "cancel896x128": {
+        "vs_rne_f64": {
+          "elements": 128,
+          "mismatches": 2,
+          "max_bit_distance": 1,
+          "mismatch_median_distance": 1.0,
+          "mismatch_mean_distance": 1.0,
+          "sign_flips": 0,
+          "cancel_elements_lt1e-3": 0,
+          "cancel_mismatches": 0,
+          "cancel_max_bit_distance": 0,
+          "cancel_median_distance": 0.0
+        }
+      }
+    },
+    "cand_fork": {
+      "decode.q_proj": {
+        "vs_rne_f64": {
+          "elements": 896,
+          "mismatches": 0,
+          "max_bit_distance": 0,
+          "mismatch_median_distance": 0.0,
+          "mismatch_mean_distance": 0.0,
+          "sign_flips": 0,
+          "cancel_elements_lt1e-3": 2,
+          "cancel_mismatches": 0,
+          "cancel_max_bit_distance": 0,
+          "cancel_median_distance": 0.0
+        },
+        "vs_native_mismatches": 106,
+        "vs_native_max_distance": 20
+      },
+      "decode.k_proj": {
+        "vs_rne_f64": {
+          "elements": 128,
+          "mismatches": 0,
+          "max_bit_distance": 0,
+          "mismatch_median_distance": 0.0,
+          "mismatch_mean_distance": 0.0,
+          "sign_flips": 0,
+          "cancel_elements_lt1e-3": 0,
+          "cancel_mismatches": 0,
+          "cancel_max_bit_distance": 0,
+          "cancel_median_distance": 0.0
+        },
+        "vs_native_mismatches": 13,
+        "vs_native_max_distance": 7
+      },
+      "decode.v_proj": {
+        "vs_rne_f64": {
+          "elements": 128,
+          "mismatches": 0,
+          "max_bit_distance": 0,
+          "mismatch_median_distance": 0.0,
+          "mismatch_mean_distance": 0.0,
+          "sign_flips": 0,
+          "cancel_elements_lt1e-3": 4,
+          "cancel_mismatches": 0,
+          "cancel_max_bit_distance": 0,
+          "cancel_median_distance": 0.0
+        },
+        "vs_native_mismatches": 46,
+        "vs_native_max_distance": 14328
+      },
+      "decode.o_proj": {
+        "vs_rne_f64": {
+          "elements": 896,
+          "mismatches": 0,
+          "max_bit_distance": 0,
+          "mismatch_median_distance": 0.0,
+          "mismatch_mean_distance": 0.0,
+          "sign_flips": 0,
+          "cancel_elements_lt1e-3": 148,
+          "cancel_mismatches": 0,
+          "cancel_max_bit_distance": 0,
+          "cancel_median_distance": 0.0
+        },
+        "vs_native_mismatches": 0,
+        "vs_native_max_distance": 0
+      },
+      "prefill.q_proj": {
+        "vs_rne_f64": {
+          "elements": 234752,
+          "mismatches": 31,
+          "max_bit_distance": 1,
+          "mismatch_median_distance": 1.0,
+          "mismatch_mean_distance": 1.0,
+          "sign_flips": 0,
+          "cancel_elements_lt1e-3": 343,
+          "cancel_mismatches": 2,
+          "cancel_max_bit_distance": 1,
+          "cancel_median_distance": 1.0
+        },
+        "vs_native_mismatches": 34,
+        "vs_native_max_distance": 1
+      },
+      "prefill.k_proj": {
+        "vs_rne_f64": {
+          "elements": 33536,
+          "mismatches": 0,
+          "max_bit_distance": 0,
+          "mismatch_median_distance": 0.0,
+          "mismatch_mean_distance": 0.0,
+          "sign_flips": 0,
+          "cancel_elements_lt1e-3": 31,
+          "cancel_mismatches": 0,
+          "cancel_max_bit_distance": 0,
+          "cancel_median_distance": 0.0
+        },
+        "vs_native_mismatches": 0,
+        "vs_native_max_distance": 0
+      },
+      "prefill.v_proj": {
+        "vs_rne_f64": {
+          "elements": 33536,
+          "mismatches": 4,
+          "max_bit_distance": 2,
+          "mismatch_median_distance": 1.0,
+          "mismatch_mean_distance": 1.25,
+          "sign_flips": 0,
+          "cancel_elements_lt1e-3": 1547,
+          "cancel_mismatches": 4,
+          "cancel_max_bit_distance": 2,
+          "cancel_median_distance": 1.0
+        },
+        "vs_native_mismatches": 3,
+        "vs_native_max_distance": 2
+      },
+      "prefill.o_proj": {
+        "vs_rne_f64": {
+          "elements": 234752,
+          "mismatches": 49,
+          "max_bit_distance": 27,
+          "mismatch_median_distance": 1.0,
+          "mismatch_mean_distance": 1.6326530612244898,
+          "sign_flips": 0,
+          "cancel_elements_lt1e-3": 33300,
+          "cancel_mismatches": 41,
+          "cancel_max_bit_distance": 27,
+          "cancel_median_distance": 1.0
+        },
+        "vs_native_mismatches": 46,
+        "vs_native_max_distance": 14
+      },
+      "gate_t0": {
+        "vs_rne_f64": {
+          "elements": 4864,
+          "mismatches": 0,
+          "max_bit_distance": 0,
+          "mismatch_median_distance": 0.0,
+          "mismatch_mean_distance": 0.0,
+          "sign_flips": 0,
+          "cancel_elements_lt1e-3": 5,
+          "cancel_mismatches": 0,
+          "cancel_max_bit_distance": 0,
+          "cancel_median_distance": 0.0
+        }
+      },
+      "down_t0": {
+        "vs_rne_f64": {
+          "elements": 896,
+          "mismatches": 0,
+          "max_bit_distance": 0,
+          "mismatch_median_distance": 0.0,
+          "mismatch_mean_distance": 0.0,
+          "sign_flips": 0,
+          "cancel_elements_lt1e-3": 2,
+          "cancel_mismatches": 0,
+          "cancel_max_bit_distance": 0,
+          "cancel_median_distance": 0.0
+        }
+      },
+      "lmhead_t0": {
+        "vs_rne_f64": {
+          "elements": 151936,
+          "mismatches": 7,
+          "max_bit_distance": 1,
+          "mismatch_median_distance": 1.0,
+          "mismatch_mean_distance": 1.0,
+          "sign_flips": 0,
+          "cancel_elements_lt1e-3": 336,
+          "cancel_mismatches": 4,
+          "cancel_max_bit_distance": 1,
+          "cancel_median_distance": 1.0
+        }
+      },
+      "gate_t1": {
+        "vs_rne_f64": {
+          "elements": 4864,
+          "mismatches": 2,
+          "max_bit_distance": 1,
+          "mismatch_median_distance": 1.0,
+          "mismatch_mean_distance": 1.0,
+          "sign_flips": 0,
+          "cancel_elements_lt1e-3": 18,
+          "cancel_mismatches": 2,
+          "cancel_max_bit_distance": 1,
+          "cancel_median_distance": 1.0
+        }
+      },
+      "down_t1": {
+        "vs_rne_f64": {
+          "elements": 896,
+          "mismatches": 0,
+          "max_bit_distance": 0,
+          "mismatch_median_distance": 0.0,
+          "mismatch_mean_distance": 0.0,
+          "sign_flips": 0,
+          "cancel_elements_lt1e-3": 1,
+          "cancel_mismatches": 0,
+          "cancel_max_bit_distance": 0,
+          "cancel_median_distance": 0.0
+        }
+      },
+      "lmhead_t1": {
+        "vs_rne_f64": {
+          "elements": 151936,
+          "mismatches": 11,
+          "max_bit_distance": 1,
+          "mismatch_median_distance": 1.0,
+          "mismatch_mean_distance": 1.0,
+          "sign_flips": 0,
+          "cancel_elements_lt1e-3": 444,
+          "cancel_mismatches": 5,
+          "cancel_max_bit_distance": 1,
+          "cancel_median_distance": 1.0
+        }
+      },
+      "gate_t2": {
+        "vs_rne_f64": {
+          "elements": 4864,
+          "mismatches": 0,
+          "max_bit_distance": 0,
+          "mismatch_median_distance": 0.0,
+          "mismatch_mean_distance": 0.0,
+          "sign_flips": 0,
+          "cancel_elements_lt1e-3": 9,
+          "cancel_mismatches": 0,
+          "cancel_max_bit_distance": 0,
+          "cancel_median_distance": 0.0
+        }
+      },
+      "down_t2": {
+        "vs_rne_f64": {
+          "elements": 896,
+          "mismatches": 0,
+          "max_bit_distance": 0,
+          "mismatch_median_distance": 0.0,
+          "mismatch_mean_distance": 0.0,
+          "sign_flips": 0,
+          "cancel_elements_lt1e-3": 0,
+          "cancel_mismatches": 0,
+          "cancel_max_bit_distance": 0,
+          "cancel_median_distance": 0.0
+        }
+      },
+      "lmhead_t2": {
+        "vs_rne_f64": {
+          "elements": 151936,
+          "mismatches": 14,
+          "max_bit_distance": 2,
+          "mismatch_median_distance": 1.0,
+          "mismatch_mean_distance": 1.1428571428571428,
+          "sign_flips": 0,
+          "cancel_elements_lt1e-3": 432,
+          "cancel_mismatches": 7,
+          "cancel_max_bit_distance": 2,
+          "cancel_median_distance": 1.0
+        }
+      },
+      "gate_t3": {
+        "vs_rne_f64": {
+          "elements": 4864,
+          "mismatches": 0,
+          "max_bit_distance": 0,
+          "mismatch_median_distance": 0.0,
+          "mismatch_mean_distance": 0.0,
+          "sign_flips": 0,
+          "cancel_elements_lt1e-3": 10,
+          "cancel_mismatches": 0,
+          "cancel_max_bit_distance": 0,
+          "cancel_median_distance": 0.0
+        }
+      },
+      "down_t3": {
+        "vs_rne_f64": {
+          "elements": 896,
+          "mismatches": 0,
+          "max_bit_distance": 0,
+          "mismatch_median_distance": 0.0,
+          "mismatch_mean_distance": 0.0,
+          "sign_flips": 0,
+          "cancel_elements_lt1e-3": 1,
+          "cancel_mismatches": 0,
+          "cancel_max_bit_distance": 0,
+          "cancel_median_distance": 0.0
+        }
+      },
+      "lmhead_t3": {
+        "vs_rne_f64": {
+          "elements": 151936,
+          "mismatches": 20,
+          "max_bit_distance": 3,
+          "mismatch_median_distance": 1.0,
+          "mismatch_mean_distance": 1.15,
+          "sign_flips": 0,
+          "cancel_elements_lt1e-3": 480,
+          "cancel_mismatches": 11,
+          "cancel_max_bit_distance": 3,
+          "cancel_median_distance": 1.0
+        }
+      },
+      "gate_t4": {
+        "vs_rne_f64": {
+          "elements": 4864,
+          "mismatches": 0,
+          "max_bit_distance": 0,
+          "mismatch_median_distance": 0.0,
+          "mismatch_mean_distance": 0.0,
+          "sign_flips": 0,
+          "cancel_elements_lt1e-3": 7,
+          "cancel_mismatches": 0,
+          "cancel_max_bit_distance": 0,
+          "cancel_median_distance": 0.0
+        }
+      },
+      "down_t4": {
+        "vs_rne_f64": {
+          "elements": 896,
+          "mismatches": 0,
+          "max_bit_distance": 0,
+          "mismatch_median_distance": 0.0,
+          "mismatch_mean_distance": 0.0,
+          "sign_flips": 0,
+          "cancel_elements_lt1e-3": 2,
+          "cancel_mismatches": 0,
+          "cancel_max_bit_distance": 0,
+          "cancel_median_distance": 0.0
+        }
+      },
+      "lmhead_t4": {
+        "vs_rne_f64": {
+          "elements": 151936,
+          "mismatches": 11,
+          "max_bit_distance": 2,
+          "mismatch_median_distance": 1.0,
+          "mismatch_mean_distance": 1.0909090909090908,
+          "sign_flips": 0,
+          "cancel_elements_lt1e-3": 419,
+          "cancel_mismatches": 7,
+          "cancel_max_bit_distance": 2,
+          "cancel_median_distance": 1.0
+        }
+      },
+      "gate_t5": {
+        "vs_rne_f64": {
+          "elements": 4864,
+          "mismatches": 0,
+          "max_bit_distance": 0,
+          "mismatch_median_distance": 0.0,
+          "mismatch_mean_distance": 0.0,
+          "sign_flips": 0,
+          "cancel_elements_lt1e-3": 8,
+          "cancel_mismatches": 0,
+          "cancel_max_bit_distance": 0,
+          "cancel_median_distance": 0.0
+        }
+      },
+      "down_t5": {
+        "vs_rne_f64": {
+          "elements": 896,
+          "mismatches": 0,
+          "max_bit_distance": 0,
+          "mismatch_median_distance": 0.0,
+          "mismatch_mean_distance": 0.0,
+          "sign_flips": 0,
+          "cancel_elements_lt1e-3": 0,
+          "cancel_mismatches": 0,
+          "cancel_max_bit_distance": 0,
+          "cancel_median_distance": 0.0
+        }
+      },
+      "lmhead_t5": {
+        "vs_rne_f64": {
+          "elements": 151936,
+          "mismatches": 6,
+          "max_bit_distance": 1,
+          "mismatch_median_distance": 1.0,
+          "mismatch_mean_distance": 1.0,
+          "sign_flips": 0,
+          "cancel_elements_lt1e-3": 383,
+          "cancel_mismatches": 2,
+          "cancel_max_bit_distance": 1,
+          "cancel_median_distance": 1.0
+        }
+      },
+      "gate_t6": {
+        "vs_rne_f64": {
+          "elements": 4864,
+          "mismatches": 2,
+          "max_bit_distance": 1,
+          "mismatch_median_distance": 1.0,
+          "mismatch_mean_distance": 1.0,
+          "sign_flips": 0,
+          "cancel_elements_lt1e-3": 9,
+          "cancel_mismatches": 0,
+          "cancel_max_bit_distance": 0,
+          "cancel_median_distance": 0.0
+        }
+      },
+      "down_t6": {
+        "vs_rne_f64": {
+          "elements": 896,
+          "mismatches": 0,
+          "max_bit_distance": 0,
+          "mismatch_median_distance": 0.0,
+          "mismatch_mean_distance": 0.0,
+          "sign_flips": 0,
+          "cancel_elements_lt1e-3": 1,
+          "cancel_mismatches": 0,
+          "cancel_max_bit_distance": 0,
+          "cancel_median_distance": 0.0
+        }
+      },
+      "lmhead_t6": {
+        "vs_rne_f64": {
+          "elements": 151936,
+          "mismatches": 11,
+          "max_bit_distance": 1,
+          "mismatch_median_distance": 1.0,
+          "mismatch_mean_distance": 1.0,
+          "sign_flips": 0,
+          "cancel_elements_lt1e-3": 390,
+          "cancel_mismatches": 5,
+          "cancel_max_bit_distance": 1,
+          "cancel_median_distance": 1.0
+        }
+      },
+      "gate_t7": {
+        "vs_rne_f64": {
+          "elements": 4864,
+          "mismatches": 0,
+          "max_bit_distance": 0,
+          "mismatch_median_distance": 0.0,
+          "mismatch_mean_distance": 0.0,
+          "sign_flips": 0,
+          "cancel_elements_lt1e-3": 7,
+          "cancel_mismatches": 0,
+          "cancel_max_bit_distance": 0,
+          "cancel_median_distance": 0.0
+        }
+      },
+      "down_t7": {
+        "vs_rne_f64": {
+          "elements": 896,
+          "mismatches": 0,
+          "max_bit_distance": 0,
+          "mismatch_median_distance": 0.0,
+          "mismatch_mean_distance": 0.0,
+          "sign_flips": 0,
+          "cancel_elements_lt1e-3": 0,
+          "cancel_mismatches": 0,
+          "cancel_max_bit_distance": 0,
+          "cancel_median_distance": 0.0
+        }
+      },
+      "lmhead_t7": {
+        "vs_rne_f64": {
+          "elements": 151936,
+          "mismatches": 22,
+          "max_bit_distance": 8,
+          "mismatch_median_distance": 1.0,
+          "mismatch_mean_distance": 1.5,
+          "sign_flips": 0,
+          "cancel_elements_lt1e-3": 521,
+          "cancel_mismatches": 14,
+          "cancel_max_bit_distance": 8,
+          "cancel_median_distance": 1.0
+        }
+      },
+      "cancel896x128": {
+        "vs_rne_f64": {
+          "elements": 128,
+          "mismatches": 2,
+          "max_bit_distance": 1,
+          "mismatch_median_distance": 1.0,
+          "mismatch_mean_distance": 1.0,
+          "sign_flips": 0,
+          "cancel_elements_lt1e-3": 0,
+          "cancel_mismatches": 0,
+          "cancel_max_bit_distance": 0,
+          "cancel_median_distance": 0.0
+        }
+      }
+    },
+    "cand_stock": {
+      "decode.q_proj": {
+        "vs_rne_f64": {
+          "elements": 896,
+          "mismatches": 0,
+          "max_bit_distance": 0,
+          "mismatch_median_distance": 0.0,
+          "mismatch_mean_distance": 0.0,
+          "sign_flips": 0,
+          "cancel_elements_lt1e-3": 2,
+          "cancel_mismatches": 0,
+          "cancel_max_bit_distance": 0,
+          "cancel_median_distance": 0.0
+        },
+        "vs_native_mismatches": 106,
+        "vs_native_max_distance": 20
+      },
+      "decode.k_proj": {
+        "vs_rne_f64": {
+          "elements": 128,
+          "mismatches": 0,
+          "max_bit_distance": 0,
+          "mismatch_median_distance": 0.0,
+          "mismatch_mean_distance": 0.0,
+          "sign_flips": 0,
+          "cancel_elements_lt1e-3": 0,
+          "cancel_mismatches": 0,
+          "cancel_max_bit_distance": 0,
+          "cancel_median_distance": 0.0
+        },
+        "vs_native_mismatches": 13,
+        "vs_native_max_distance": 7
+      },
+      "decode.v_proj": {
+        "vs_rne_f64": {
+          "elements": 128,
+          "mismatches": 0,
+          "max_bit_distance": 0,
+          "mismatch_median_distance": 0.0,
+          "mismatch_mean_distance": 0.0,
+          "sign_flips": 0,
+          "cancel_elements_lt1e-3": 4,
+          "cancel_mismatches": 0,
+          "cancel_max_bit_distance": 0,
+          "cancel_median_distance": 0.0
+        },
+        "vs_native_mismatches": 46,
+        "vs_native_max_distance": 14328
+      },
+      "decode.o_proj": {
+        "vs_rne_f64": {
+          "elements": 896,
+          "mismatches": 0,
+          "max_bit_distance": 0,
+          "mismatch_median_distance": 0.0,
+          "mismatch_mean_distance": 0.0,
+          "sign_flips": 0,
+          "cancel_elements_lt1e-3": 148,
+          "cancel_mismatches": 0,
+          "cancel_max_bit_distance": 0,
+          "cancel_median_distance": 0.0
+        },
+        "vs_native_mismatches": 0,
+        "vs_native_max_distance": 0
+      },
+      "prefill.q_proj": {
+        "vs_rne_f64": {
+          "elements": 234752,
+          "mismatches": 31,
+          "max_bit_distance": 1,
+          "mismatch_median_distance": 1.0,
+          "mismatch_mean_distance": 1.0,
+          "sign_flips": 0,
+          "cancel_elements_lt1e-3": 343,
+          "cancel_mismatches": 2,
+          "cancel_max_bit_distance": 1,
+          "cancel_median_distance": 1.0
+        },
+        "vs_native_mismatches": 34,
+        "vs_native_max_distance": 1
+      },
+      "prefill.k_proj": {
+        "vs_rne_f64": {
+          "elements": 33536,
+          "mismatches": 0,
+          "max_bit_distance": 0,
+          "mismatch_median_distance": 0.0,
+          "mismatch_mean_distance": 0.0,
+          "sign_flips": 0,
+          "cancel_elements_lt1e-3": 31,
+          "cancel_mismatches": 0,
+          "cancel_max_bit_distance": 0,
+          "cancel_median_distance": 0.0
+        },
+        "vs_native_mismatches": 0,
+        "vs_native_max_distance": 0
+      },
+      "prefill.v_proj": {
+        "vs_rne_f64": {
+          "elements": 33536,
+          "mismatches": 4,
+          "max_bit_distance": 2,
+          "mismatch_median_distance": 1.0,
+          "mismatch_mean_distance": 1.25,
+          "sign_flips": 0,
+          "cancel_elements_lt1e-3": 1547,
+          "cancel_mismatches": 4,
+          "cancel_max_bit_distance": 2,
+          "cancel_median_distance": 1.0
+        },
+        "vs_native_mismatches": 3,
+        "vs_native_max_distance": 2
+      },
+      "prefill.o_proj": {
+        "vs_rne_f64": {
+          "elements": 234752,
+          "mismatches": 49,
+          "max_bit_distance": 27,
+          "mismatch_median_distance": 1.0,
+          "mismatch_mean_distance": 1.6326530612244898,
+          "sign_flips": 0,
+          "cancel_elements_lt1e-3": 33300,
+          "cancel_mismatches": 41,
+          "cancel_max_bit_distance": 27,
+          "cancel_median_distance": 1.0
+        },
+        "vs_native_mismatches": 46,
+        "vs_native_max_distance": 14
+      },
+      "gate_t0": {
+        "vs_rne_f64": {
+          "elements": 4864,
+          "mismatches": 0,
+          "max_bit_distance": 0,
+          "mismatch_median_distance": 0.0,
+          "mismatch_mean_distance": 0.0,
+          "sign_flips": 0,
+          "cancel_elements_lt1e-3": 5,
+          "cancel_mismatches": 0,
+          "cancel_max_bit_distance": 0,
+          "cancel_median_distance": 0.0
+        }
+      },
+      "down_t0": {
+        "vs_rne_f64": {
+          "elements": 896,
+          "mismatches": 0,
+          "max_bit_distance": 0,
+          "mismatch_median_distance": 0.0,
+          "mismatch_mean_distance": 0.0,
+          "sign_flips": 0,
+          "cancel_elements_lt1e-3": 2,
+          "cancel_mismatches": 0,
+          "cancel_max_bit_distance": 0,
+          "cancel_median_distance": 0.0
+        }
+      },
+      "lmhead_t0": {
+        "vs_rne_f64": {
+          "elements": 151936,
+          "mismatches": 7,
+          "max_bit_distance": 1,
+          "mismatch_median_distance": 1.0,
+          "mismatch_mean_distance": 1.0,
+          "sign_flips": 0,
+          "cancel_elements_lt1e-3": 336,
+          "cancel_mismatches": 4,
+          "cancel_max_bit_distance": 1,
+          "cancel_median_distance": 1.0
+        }
+      },
+      "gate_t1": {
+        "vs_rne_f64": {
+          "elements": 4864,
+          "mismatches": 2,
+          "max_bit_distance": 1,
+          "mismatch_median_distance": 1.0,
+          "mismatch_mean_distance": 1.0,
+          "sign_flips": 0,
+          "cancel_elements_lt1e-3": 18,
+          "cancel_mismatches": 2,
+          "cancel_max_bit_distance": 1,
+          "cancel_median_distance": 1.0
+        }
+      },
+      "down_t1": {
+        "vs_rne_f64": {
+          "elements": 896,
+          "mismatches": 0,
+          "max_bit_distance": 0,
+          "mismatch_median_distance": 0.0,
+          "mismatch_mean_distance": 0.0,
+          "sign_flips": 0,
+          "cancel_elements_lt1e-3": 1,
+          "cancel_mismatches": 0,
+          "cancel_max_bit_distance": 0,
+          "cancel_median_distance": 0.0
+        }
+      },
+      "lmhead_t1": {
+        "vs_rne_f64": {
+          "elements": 151936,
+          "mismatches": 11,
+          "max_bit_distance": 1,
+          "mismatch_median_distance": 1.0,
+          "mismatch_mean_distance": 1.0,
+          "sign_flips": 0,
+          "cancel_elements_lt1e-3": 444,
+          "cancel_mismatches": 5,
+          "cancel_max_bit_distance": 1,
+          "cancel_median_distance": 1.0
+        }
+      },
+      "gate_t2": {
+        "vs_rne_f64": {
+          "elements": 4864,
+          "mismatches": 0,
+          "max_bit_distance": 0,
+          "mismatch_median_distance": 0.0,
+          "mismatch_mean_distance": 0.0,
+          "sign_flips": 0,
+          "cancel_elements_lt1e-3": 9,
+          "cancel_mismatches": 0,
+          "cancel_max_bit_distance": 0,
+          "cancel_median_distance": 0.0
+        }
+      },
+      "down_t2": {
+        "vs_rne_f64": {
+          "elements": 896,
+          "mismatches": 0,
+          "max_bit_distance": 0,
+          "mismatch_median_distance": 0.0,
+          "mismatch_mean_distance": 0.0,
+          "sign_flips": 0,
+          "cancel_elements_lt1e-3": 0,
+          "cancel_mismatches": 0,
+          "cancel_max_bit_distance": 0,
+          "cancel_median_distance": 0.0
+        }
+      },
+      "lmhead_t2": {
+        "vs_rne_f64": {
+          "elements": 151936,
+          "mismatches": 14,
+          "max_bit_distance": 2,
+          "mismatch_median_distance": 1.0,
+          "mismatch_mean_distance": 1.1428571428571428,
+          "sign_flips": 0,
+          "cancel_elements_lt1e-3": 432,
+          "cancel_mismatches": 7,
+          "cancel_max_bit_distance": 2,
+          "cancel_median_distance": 1.0
+        }
+      },
+      "gate_t3": {
+        "vs_rne_f64": {
+          "elements": 4864,
+          "mismatches": 0,
+          "max_bit_distance": 0,
+          "mismatch_median_distance": 0.0,
+          "mismatch_mean_distance": 0.0,
+          "sign_flips": 0,
+          "cancel_elements_lt1e-3": 10,
+          "cancel_mismatches": 0,
+          "cancel_max_bit_distance": 0,
+          "cancel_median_distance": 0.0
+        }
+      },
+      "down_t3": {
+        "vs_rne_f64": {
+          "elements": 896,
+          "mismatches": 0,
+          "max_bit_distance": 0,
+          "mismatch_median_distance": 0.0,
+          "mismatch_mean_distance": 0.0,
+          "sign_flips": 0,
+          "cancel_elements_lt1e-3": 1,
+          "cancel_mismatches": 0,
+          "cancel_max_bit_distance": 0,
+          "cancel_median_distance": 0.0
+        }
+      },
+      "lmhead_t3": {
+        "vs_rne_f64": {
+          "elements": 151936,
+          "mismatches": 20,
+          "max_bit_distance": 3,
+          "mismatch_median_distance": 1.0,
+          "mismatch_mean_distance": 1.15,
+          "sign_flips": 0,
+          "cancel_elements_lt1e-3": 480,
+          "cancel_mismatches": 11,
+          "cancel_max_bit_distance": 3,
+          "cancel_median_distance": 1.0
+        }
+      },
+      "gate_t4": {
+        "vs_rne_f64": {
+          "elements": 4864,
+          "mismatches": 0,
+          "max_bit_distance": 0,
+          "mismatch_median_distance": 0.0,
+          "mismatch_mean_distance": 0.0,
+          "sign_flips": 0,
+          "cancel_elements_lt1e-3": 7,
+          "cancel_mismatches": 0,
+          "cancel_max_bit_distance": 0,
+          "cancel_median_distance": 0.0
+        }
+      },
+      "down_t4": {
+        "vs_rne_f64": {
+          "elements": 896,
+          "mismatches": 0,
+          "max_bit_distance": 0,
+          "mismatch_median_distance": 0.0,
+          "mismatch_mean_distance": 0.0,
+          "sign_flips": 0,
+          "cancel_elements_lt1e-3": 2,
+          "cancel_mismatches": 0,
+          "cancel_max_bit_distance": 0,
+          "cancel_median_distance": 0.0
+        }
+      },
+      "lmhead_t4": {
+        "vs_rne_f64": {
+          "elements": 151936,
+          "mismatches": 11,
+          "max_bit_distance": 2,
+          "mismatch_median_distance": 1.0,
+          "mismatch_mean_distance": 1.0909090909090908,
+          "sign_flips": 0,
+          "cancel_elements_lt1e-3": 419,
+          "cancel_mismatches": 7,
+          "cancel_max_bit_distance": 2,
+          "cancel_median_distance": 1.0
+        }
+      },
+      "gate_t5": {
+        "vs_rne_f64": {
+          "elements": 4864,
+          "mismatches": 0,
+          "max_bit_distance": 0,
+          "mismatch_median_distance": 0.0,
+          "mismatch_mean_distance": 0.0,
+          "sign_flips": 0,
+          "cancel_elements_lt1e-3": 8,
+          "cancel_mismatches": 0,
+          "cancel_max_bit_distance": 0,
+          "cancel_median_distance": 0.0
+        }
+      },
+      "down_t5": {
+        "vs_rne_f64": {
+          "elements": 896,
+          "mismatches": 0,
+          "max_bit_distance": 0,
+          "mismatch_median_distance": 0.0,
+          "mismatch_mean_distance": 0.0,
+          "sign_flips": 0,
+          "cancel_elements_lt1e-3": 0,
+          "cancel_mismatches": 0,
+          "cancel_max_bit_distance": 0,
+          "cancel_median_distance": 0.0
+        }
+      },
+      "lmhead_t5": {
+        "vs_rne_f64": {
+          "elements": 151936,
+          "mismatches": 6,
+          "max_bit_distance": 1,
+          "mismatch_median_distance": 1.0,
+          "mismatch_mean_distance": 1.0,
+          "sign_flips": 0,
+          "cancel_elements_lt1e-3": 383,
+          "cancel_mismatches": 2,
+          "cancel_max_bit_distance": 1,
+          "cancel_median_distance": 1.0
+        }
+      },
+      "gate_t6": {
+        "vs_rne_f64": {
+          "elements": 4864,
+          "mismatches": 2,
+          "max_bit_distance": 1,
+          "mismatch_median_distance": 1.0,
+          "mismatch_mean_distance": 1.0,
+          "sign_flips": 0,
+          "cancel_elements_lt1e-3": 9,
+          "cancel_mismatches": 0,
+          "cancel_max_bit_distance": 0,
+          "cancel_median_distance": 0.0
+        }
+      },
+      "down_t6": {
+        "vs_rne_f64": {
+          "elements": 896,
+          "mismatches": 0,
+          "max_bit_distance": 0,
+          "mismatch_median_distance": 0.0,
+          "mismatch_mean_distance": 0.0,
+          "sign_flips": 0,
+          "cancel_elements_lt1e-3": 1,
+          "cancel_mismatches": 0,
+          "cancel_max_bit_distance": 0,
+          "cancel_median_distance": 0.0
+        }
+      },
+      "lmhead_t6": {
+        "vs_rne_f64": {
+          "elements": 151936,
+          "mismatches": 11,
+          "max_bit_distance": 1,
+          "mismatch_median_distance": 1.0,
+          "mismatch_mean_distance": 1.0,
+          "sign_flips": 0,
+          "cancel_elements_lt1e-3": 390,
+          "cancel_mismatches": 5,
+          "cancel_max_bit_distance": 1,
+          "cancel_median_distance": 1.0
+        }
+      },
+      "gate_t7": {
+        "vs_rne_f64": {
+          "elements": 4864,
+          "mismatches": 0,
+          "max_bit_distance": 0,
+          "mismatch_median_distance": 0.0,
+          "mismatch_mean_distance": 0.0,
+          "sign_flips": 0,
+          "cancel_elements_lt1e-3": 7,
+          "cancel_mismatches": 0,
+          "cancel_max_bit_distance": 0,
+          "cancel_median_distance": 0.0
+        }
+      },
+      "down_t7": {
+        "vs_rne_f64": {
+          "elements": 896,
+          "mismatches": 0,
+          "max_bit_distance": 0,
+          "mismatch_median_distance": 0.0,
+          "mismatch_mean_distance": 0.0,
+          "sign_flips": 0,
+          "cancel_elements_lt1e-3": 0,
+          "cancel_mismatches": 0,
+          "cancel_max_bit_distance": 0,
+          "cancel_median_distance": 0.0
+        }
+      },
+      "lmhead_t7": {
+        "vs_rne_f64": {
+          "elements": 151936,
+          "mismatches": 22,
+          "max_bit_distance": 8,
+          "mismatch_median_distance": 1.0,
+          "mismatch_mean_distance": 1.5,
+          "sign_flips": 0,
+          "cancel_elements_lt1e-3": 521,
+          "cancel_mismatches": 14,
+          "cancel_max_bit_distance": 8,
+          "cancel_median_distance": 1.0
+        }
+      },
+      "cancel896x128": {
+        "vs_rne_f64": {
+          "elements": 128,
+          "mismatches": 2,
+          "max_bit_distance": 1,
+          "mismatch_median_distance": 1.0,
+          "mismatch_mean_distance": 1.0,
+          "sign_flips": 0,
+          "cancel_elements_lt1e-3": 0,
+          "cancel_mismatches": 0,
+          "cancel_max_bit_distance": 0,
+          "cancel_median_distance": 0.0
+        }
+      }
+    }
+  },
+  "decode_v_proj_worst_cand_fork": {
+    "index": 0,
+    "truth_f": -0.00815862875606399,
+    "truth_bits": 48134,
+    "cand_bits": 48134,
+    "distance": 0
+  }
+}
