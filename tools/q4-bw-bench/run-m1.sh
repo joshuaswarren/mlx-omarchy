@@ -6,7 +6,7 @@ set -euo pipefail
 cd "$(dirname "$0")/../.."
 mkdir -p tools/q4-bw-bench/out
 stamp="$(date -u +%Y%m%dT%H%M%SZ)"
-commit="$(git rev-parse --short=7 HEAD)"
+commit="$(git rev-parse --short=7 HEAD 2>/dev/null || echo not-git)"
 host="$(hostname)"
 
 echo "host=$host commit=$commit stamp=$stamp" | tee "tools/q4-bw-bench/out/session-$stamp.txt"
@@ -24,14 +24,10 @@ diff -q tools/q4-bw-bench/shaders/qmm_vec_base.comp \
 
 g++ -std=c++17 -O2 -o /tmp/q4-bw-bench tools/q4-bw-bench/bench.cpp
 
-# Leg 1: candidate = paired two-word unroll (qmm_vec_cand.comp holds it).
-/tmp/q4-bw-bench 2>&1 | tee "tools/q4-bw-bench/out/bench-unroll-$stamp.ndjson"
-
-# Leg 2: candidate = load-first form.
-cp tools/q4-bw-bench/shaders/qmm_vec_cand_loadfirst.comp \
-   tools/q4-bw-bench/shaders/qmm_vec_cand.comp
-/tmp/q4-bw-bench 2>&1 | tee "tools/q4-bw-bench/out/bench-loadfirst-$stamp.ndjson"
-cp tools/q4-bw-bench/shaders/qmm_vec_cand_unroll.comp \
-   tools/q4-bw-bench/shaders/qmm_vec_cand.comp
+# Two independent legs for repeatability; each leg times base, unroll,
+# loadfirst, and wg128 on identical input buffers with bit-exactness
+# compares against the base.
+/tmp/q4-bw-bench 2>&1 | tee "tools/q4-bw-bench/out/bench-a-$stamp.ndjson"
+/tmp/q4-bw-bench 2>&1 | tee "tools/q4-bw-bench/out/bench-b-$stamp.ndjson"
 
 echo "RUN_M1_DONE" | tee -a "tools/q4-bw-bench/out/session-$stamp.txt"

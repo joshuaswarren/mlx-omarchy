@@ -243,30 +243,27 @@ static bool have_tool(const char* tool) {
 // subgroup extensions).
 static int compile_shader(const char* src, const char* defines,
     const char* out_spv) {
-  std::string cmd;
-  if (have_tool("glslc")) {
-    cmd = "glslc -fshader-stage=compute --target-env=vulkan1.3 ";
-  } else if (have_tool("glslangValidator")) {
-    cmd = "glslangValidator -V --target-env vulkan1.3 ";
-  } else {
-    die("neither glslc nor glslangValidator found in PATH");
-  }
-  cmd += defines;
-  cmd += " ";
-  cmd += src;
-  cmd += " -o ";
-  cmd += out_spv;
-  cmd += " 2>&1";
-  if (system(cmd.c_str()) != 0) {
+  // glslc preferred (repo rule where present), but a broken glslc shim
+  // must not kill the bench: fall back to glslangValidator.
+  const char* front = have_tool("glslc")
+      ? "glslc -fshader-stage=compute --target-env=vulkan1.3 "
+      : "glslangValidator -V --target-env vulkan1.3 ";
+  for (const char* front_try : {front,
+           "glslangValidator -V --target-env vulkan1.3 "}) {
+    std::string cmd = front_try;
+    cmd += defines;
+    cmd += " ";
+    cmd += src;
+    cmd += " -o ";
+    cmd += out_spv;
+    cmd += " 2>&1";
+    if (system(cmd.c_str()) == 0) {
+      struct stat st;
+      if (stat(out_spv, &st) == 0 && st.st_size != 0) return 0;
+    }
     std::fprintf(stderr, "shader compile failed: %s\n", cmd.c_str());
-    return -1;
   }
-  struct stat st;
-  if (stat(out_spv, &st) != 0 || st.st_size == 0) {
-    std::fprintf(stderr, "shader compile produced no SPIR-V: %s\n", out_spv);
-    return -1;
-  }
-  return 0;
+  return -1;
 }
 
 struct Buf {
@@ -372,14 +369,6 @@ static const Shape kShapes[] = {
 };
 static constexpr uint32_t kNumShapes = 4;
 
-static uint32_t shape_groups(const Shape& s) {
-  uint32_t total = 0;
-  for (uint32_t i = 0; i < s.dims; ++i) {
-    total += (s.n[i] + 7u) / 8u;
-  }
-  return total;
-}
-
 // Bytes one dispatch touches: weight words + scales + biases + x row +
 // outputs (flags are 0 in the bench, so no addend reads / sum writes).
 static uint64_t shape_bytes(const Shape& s) {
@@ -390,6 +379,14 @@ static uint64_t shape_bytes(const Shape& s) {
     outs += s.n[i] * 2u;
   }
   return words + params + (uint64_t)s.k * 2u + outs;
+}
+
+static uint32_t shape_groups(const Shape& s, uint32_t columns) {
+  uint32_t total = 0;
+  for (uint32_t i = 0; i < s.dims; ++i) {
+    total += (s.n[i] + columns - 1u) / columns;
+  }
+  return total;
 }
 
 struct DeviceCtx {
@@ -685,36 +682,6 @@ static uint64_t dispatch_isolated(const DeviceCtx& ctx, const Side& side,
   return (uint64_t)((double)(ticks[1] - ticks[0]) * ctx.timestampPeriod);
 }
 
-// The four-dispatch layer chain in ONE command buffer, timestamped
-// before the first dispatch and after each dispatch.
-static uint64_t dispatch_chain(const DeviceCtx& ctx, const Side& side,
-    CmdRes& r, VkDescriptorSet sets[kNumShapes], const Params params[kNumShapes],
-    const uint32_t groups[kNumShapes], uint64_t per_dispatch_ns[kNumShapes]) {
-  begin(r);
-  g_vk.CmdWriteTimestamp(r.cmd, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, r.qpool, 0);
-  for (uint32_t i = 0; i < kNumShapes; ++i) {
-    g_vk.CmdBindPipeline(r.cmd, VK_PIPELINE_BIND_POINT_COMPUTE, side.pipe);
-    g_vk.CmdBindDescriptorSets(r.cmd, VK_PIPELINE_BIND_POINT_COMPUTE,
-        side.layout, 0, 1, &sets[i], 0, nullptr);
-    g_vk.CmdPushConstants(r.cmd, side.layout, VK_SHADER_STAGE_COMPUTE_BIT, 0,
-        sizeof(Params), &params[i]);
-    g_vk.CmdDispatch(r.cmd, groups[i], 1, 1);
-    g_vk.CmdWriteTimestamp(
-        r.cmd, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, r.qpool, 1 + i);
-  }
-  g_vk.EndCommandBuffer(r.cmd);
-  submit_and_wait(ctx, r.cmd);
-  uint64_t ticks[8] = {};
-  read_ticks(ctx, r, 5, ticks);
-  double period = ctx.timestampPeriod;
-  // Timestamps: q[0] before the first dispatch, q[1+i] after dispatch
-  // i; dispatch i's in-chain time is q[1+i] - q[i].
-  for (uint32_t i = 0; i < kNumShapes; ++i) {
-    per_dispatch_ns[i] =
-        (uint64_t)((double)(ticks[1 + i] - ticks[i]) * period);
-  }
-  return (uint64_t)((double)(ticks[4] - ticks[0]) * period);
-}
 
 static uint64_t median(std::vector<uint64_t> v) {
   std::sort(v.begin(), v.end());
@@ -867,12 +834,27 @@ int main(int argc, char** argv) {
       ? q4_defines
       : "-DUSE_FP16=1 -DUSE_SUBGROUP=1 -DQMM_VEC_Q4_WORD=1 "
         "-DQMM_VEC_MULTI=1";
-  if (compile_shader("tools/q4-bw-bench/shaders/qmm_vec_base.comp",
-          variant_defines, "/tmp/q4base.spv") != 0)
-    die("compile base");
-  if (compile_shader("tools/q4-bw-bench/shaders/qmm_vec_cand.comp",
-          variant_defines, "/tmp/q4cand.spv") != 0)
-    die("compile cand");
+  struct SideSpec {
+    const char* tag;
+    const char* src;
+    const char* spv;
+    uint32_t columns;
+  };
+  const SideSpec specs[] = {
+      {"base", "tools/q4-bw-bench/shaders/qmm_vec_base.comp",
+          "/tmp/q4base.spv", 8u},
+      {"unroll", "tools/q4-bw-bench/shaders/qmm_vec_cand_unroll.comp",
+          "/tmp/q4cand_u.spv", 8u},
+      {"loadfirst", "tools/q4-bw-bench/shaders/qmm_vec_cand_loadfirst.comp",
+          "/tmp/q4cand_l.spv", 8u},
+      {"wg128", "tools/q4-bw-bench/shaders/qmm_vec_cand_wg128.comp",
+          "/tmp/q4cand_w.spv", 4u},
+  };
+  const int num_sides = 4;
+  for (int i = 0; i < num_sides; ++i) {
+    if (compile_shader(specs[i].src, variant_defines, specs[i].spv) != 0)
+      die("compile %s", specs[i].tag);
+  }
 
   if (vk_init() != 0) return 1;
   DeviceCtx ctx = setup_device();
@@ -880,20 +862,19 @@ int main(int argc, char** argv) {
       "{\"k\":\"mode\",\"variant\":\"%s\",\"reps\":%d}\n",
       tree_mode ? "tree" : "subgroup", reps);
 
-  Side base, cand;
-  base.tag = "base";
-  cand.tag = "cand";
-  base.mod = make_module(read_file("/tmp/q4base.spv"));
-  cand.mod = make_module(read_file("/tmp/q4cand.spv"));
-  make_pipeline(base);
-  make_pipeline(cand);
+  std::vector<Side> sides(num_sides);
+  for (int i = 0; i < num_sides; ++i) {
+    sides[i].tag = specs[i].tag;
+    sides[i].mod = make_module(read_file(specs[i].spv));
+    make_pipeline(sides[i]);
+  }
 
-  // Input buffers shared by both sides; output buffers distinct so the
-  // bit-exactness compare sees each side's own writes.
+  // Input buffers shared by all sides; output buffers distinct per side
+  // so the bit-exactness compare sees each side's own writes.
   SetBufs inputs[kNumShapes];
-  SetBufs out_base[kNumShapes], out_cand[kNumShapes];
+  SetBufs outs[kNumShapes][num_sides];
   Params shape_params[kNumShapes];
-  uint32_t shape_groups_v[kNumShapes];
+  uint32_t groups_v[kNumShapes][num_sides];
   for (uint32_t s = 0; s < kNumShapes; ++s) {
     const Shape& sh = kShapes[s];
     inputs[s].x = make_buf(g_vk.dev, ctx.mp, (uint64_t)sh.k * 2u, false);
@@ -905,145 +886,106 @@ int main(int argc, char** argv) {
       inputs[s].biases[d] = make_buf(g_vk.dev, ctx.mp,
           (uint64_t)sh.n[d] * (sh.k / 64u) * 2u, false);
     }
-    for (uint32_t d = 0; d < kMaxDims; ++d) {
-      uint32_t n = d < sh.dims ? sh.n[d] : sh.n[0];
-      out_base[s].out[d] =
-          make_buf(g_vk.dev, ctx.mp, (uint64_t)n * 2u, true);
-      out_cand[s].out[d] =
-          make_buf(g_vk.dev, ctx.mp, (uint64_t)n * 2u, true);
+    for (int i = 0; i < num_sides; ++i) {
+      for (uint32_t d = 0; d < kMaxDims; ++d) {
+        uint32_t n = d < sh.dims ? sh.n[d] : sh.n[0];
+        outs[s][i].out[d] =
+            make_buf(g_vk.dev, ctx.mp, (uint64_t)n * 2u, true);
+      }
+      groups_v[s][i] = shape_groups(sh, specs[i].columns);
     }
-    shape_groups_v[s] = shape_groups(sh);
-    fill_params(shape_params[s], sh, shape_groups_v[s]);
+    fill_params(shape_params[s], sh, groups_v[s][0]);
   }
 
   VkDescriptorPoolSize ps{};
   ps.type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-  ps.descriptorCount = kBindings * kNumShapes * 2;
+  ps.descriptorCount = kBindings * kNumShapes * num_sides;
   VkDescriptorPoolCreateInfo dpci{};
   dpci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-  dpci.maxSets = kNumShapes * 2;
+  dpci.maxSets = kNumShapes * num_sides;
   dpci.poolSizeCount = 1;
   dpci.pPoolSizes = &ps;
   VkDescriptorPool pool;
   if (g_vk.CreateDescriptorPool(g_vk.dev, &dpci, nullptr, &pool) !=
       VK_SUCCESS)
     die("CreateDescriptorPool");
-  VkDescriptorSet sets_base[kNumShapes], sets_cand[kNumShapes];
+  VkDescriptorSet sets[kNumShapes][num_sides];
   for (uint32_t s = 0; s < kNumShapes; ++s) {
-    SetBufs combined_base = inputs[s], combined_cand = inputs[s];
-    for (uint32_t d = 0; d < kMaxDims; ++d) {
-      combined_base.out[d] = out_base[s].out[d];
-      combined_cand.out[d] = out_cand[s].out[d];
+    for (int i = 0; i < num_sides; ++i) {
+      SetBufs combined = inputs[s];
+      for (uint32_t d = 0; d < kMaxDims; ++d) {
+        combined.out[d] = outs[s][i].out[d];
+      }
+      sets[s][i] =
+          make_set(pool, sides[i].dsl, combined, kShapes[s].dims);
     }
-    sets_base[s] =
-        make_set(pool, base.dsl, combined_base, kShapes[s].dims);
-    sets_cand[s] =
-        make_set(pool, cand.dsl, combined_cand, kShapes[s].dims);
   }
 
   CmdRes iso_cmd = make_cmd(ctx, 2);
-  CmdRes chain_cmd = make_cmd(ctx, 8);
 
   run_peak(ctx, "tools/q4-bw-bench/shaders/peak_copy.comp",
       "/tmp/peak_copy.spv", "copy", 1u << 24u, quick);
   run_peak(ctx, "tools/q4-bw-bench/shaders/peak_read.comp",
       "/tmp/peak_read.spv", "read", 1u << 24u, quick);
 
-  // ---- Bit-exactness: identical inputs through base and cand ----
+  // ---- Bit-exactness: identical inputs through base and each side ----
   for (uint32_t s = 0; s < kNumShapes; ++s) {
     const Shape& sh = kShapes[s];
-    dispatch_isolated(ctx, base, iso_cmd, sets_base[s], shape_params[s],
-        shape_groups_v[s]);
+    for (int i = 0; i < num_sides; ++i) {
+      dispatch_isolated(ctx, sides[i], iso_cmd, sets[s][i],
+          shape_params[s], groups_v[s][i]);
+    }
+    // Side 0 is the base; every other side must reproduce its bits.
     for (uint32_t d = 0; d < sh.dims; ++d) {
       void* p;
-      g_vk.MapMemory(g_vk.dev, out_base[s].out[d].mem, 0,
-          out_base[s].out[d].size, 0, &p);
-      // keep mapped until cand run done; snapshot instead
-      std::vector<uint16_t> snap(out_base[s].out[d].size / 2);
-      std::memcpy(snap.data(), p, out_base[s].out[d].size);
-      g_vk.UnmapMemory(g_vk.dev, out_base[s].out[d].mem);
-
-      dispatch_isolated(ctx, cand, iso_cmd, sets_cand[s], shape_params[s],
-          shape_groups_v[s]);
-      g_vk.MapMemory(g_vk.dev, out_cand[s].out[d].mem, 0,
-          out_cand[s].out[d].size, 0, &p);
-      uint32_t mismatches = 0;
-      uint16_t* got = (uint16_t*)p;
-      for (size_t i = 0; i < snap.size(); ++i) {
-        if (got[i] != snap[i]) ++mismatches;
+      g_vk.MapMemory(g_vk.dev, outs[s][0].out[d].mem, 0,
+          outs[s][0].out[d].size, 0, &p);
+      std::vector<uint16_t> snap(outs[s][0].out[d].size / 2);
+      std::memcpy(snap.data(), p, outs[s][0].out[d].size);
+      g_vk.UnmapMemory(g_vk.dev, outs[s][0].out[d].mem);
+      for (int i = 1; i < num_sides; ++i) {
+        g_vk.MapMemory(g_vk.dev, outs[s][i].out[d].mem, 0,
+            outs[s][i].out[d].size, 0, &p);
+        uint32_t mismatches = 0;
+        uint16_t* got = (uint16_t*)p;
+        for (size_t e = 0; e < snap.size(); ++e) {
+          if (got[e] != snap[e]) ++mismatches;
+        }
+        g_vk.UnmapMemory(g_vk.dev, outs[s][i].out[d].mem);
+        std::printf(
+            "{\"k\":\"eq\",\"shape\":\"%s\",\"dim\":%u,\"side\":\"%s\","
+            "\"elements\":%zu,\"bit_mismatches\":%u}\n",
+            sh.name, d, specs[i].tag, snap.size(), mismatches);
       }
-      g_vk.UnmapMemory(g_vk.dev, out_cand[s].out[d].mem);
-      std::printf(
-          "{\"k\":\"eq\",\"shape\":\"%s\",\"dim\":%u,\"elements\":%zu,"
-          "\"bit_mismatches\":%u}\n",
-          sh.name, d, snap.size(), mismatches);
     }
   }
 
-  // ---- Isolated per-shape timings, base and cand alternating ----
+  // ---- Isolated per-shape timings, sides interleaved per rep ----
   for (uint32_t s = 0; s < kNumShapes; ++s) {
     const Shape& sh = kShapes[s];
-    std::vector<uint64_t> bs, cs;
+    std::vector<uint64_t> med(num_sides), minv(num_sides);
+    std::vector<std::vector<uint64_t>> samples(num_sides);
     for (int rep = 0; rep < reps; ++rep) {
-      bs.push_back(dispatch_isolated(ctx, base, iso_cmd, sets_base[s],
-          shape_params[s], shape_groups_v[s]));
-      cs.push_back(dispatch_isolated(ctx, cand, iso_cmd, sets_cand[s],
-          shape_params[s], shape_groups_v[s]));
+      for (int i = 0; i < num_sides; ++i) {
+        samples[i].push_back(dispatch_isolated(ctx, sides[i], iso_cmd,
+            sets[s][i], shape_params[s], groups_v[s][i]));
+      }
     }
-    uint64_t mb = median(bs), mc = median(cs);
     uint64_t bytes = shape_bytes(sh);
-    std::printf(
-        "{\"k\":\"shape\",\"name\":\"%s\",\"grid\":%u,\"bytes\":%llu,"
-        "\"base_med_ns\":%llu,\"cand_med_ns\":%llu,"
-        "\"base_min_ns\":%llu,\"cand_min_ns\":%llu,"
-        "\"base_gb_s\":%.2f,\"cand_gb_s\":%.2f,\"ratio\":%.4f}\n",
-        sh.name, shape_groups_v[s], (unsigned long long)bytes,
-        (unsigned long long)mb, (unsigned long long)mc,
-        (unsigned long long)min_of(bs), (unsigned long long)min_of(cs),
-        (double)bytes / (double)mb, (double)bytes / (double)mc,
-        (double)mc / (double)mb);
-  }
-
-  // ---- Chain timings, two interleaved rounds ----
-  for (int round = 0; round < 2; ++round) {
-    std::vector<uint64_t> bs, cs;
-    std::vector<std::array<uint64_t, kNumShapes>> bd, cd;
-    for (int rep = 0; rep < reps; ++rep) {
-      uint64_t pd[kNumShapes];
-      bs.push_back(dispatch_chain(ctx, base, chain_cmd, sets_base,
-          shape_params, shape_groups_v, pd));
-      bd.push_back({pd[0], pd[1], pd[2], pd[3]});
-      cs.push_back(dispatch_chain(ctx, cand, chain_cmd, sets_cand,
-          shape_params, shape_groups_v, pd));
-      cd.push_back({pd[0], pd[1], pd[2], pd[3]});
+    for (int i = 0; i < num_sides; ++i) {
+      med[i] = median(samples[i]);
+      minv[i] = min_of(samples[i]);
     }
-    uint64_t mb = median(bs), mc = median(cs);
-    uint64_t bytes = 0;
-    for (uint32_t s = 0; s < kNumShapes; ++s) bytes += shape_bytes(kShapes[s]);
-    std::printf(
-        "{\"k\":\"chain\",\"round\":%d,\"bytes\":%llu,"
-        "\"base_med_ns\":%llu,\"cand_med_ns\":%llu,"
-        "\"base_min_ns\":%llu,\"cand_min_ns\":%llu,"
-        "\"base_gb_s\":%.2f,\"cand_gb_s\":%.2f,\"ratio\":%.4f}\n",
-        round, (unsigned long long)bytes, (unsigned long long)mb,
-        (unsigned long long)mc, (unsigned long long)min_of(bs),
-        (unsigned long long)min_of(cs), (double)bytes / (double)mb,
-        (double)bytes / (double)mc, (double)mc / (double)mb);
-    if (round == 0) {
-      std::printf("{\"k\":\"chain_dispatch\",\"base\":[");
-      for (uint32_t s = 0; s < kNumShapes; ++s) {
-        std::vector<uint64_t> col;
-        for (auto& row : bd) col.push_back(row[s]);
-        std::printf("%s%llu", s ? "," : "", (unsigned long long)median(col));
-      }
-      std::printf("],\"cand\":[");
-      for (uint32_t s = 0; s < kNumShapes; ++s) {
-        std::vector<uint64_t> col;
-        for (auto& row : cd) col.push_back(row[s]);
-        std::printf("%s%llu", s ? "," : "", (unsigned long long)median(col));
-      }
-      std::printf("]}\n");
+    std::printf("{\"k\":\"shape\",\"name\":\"%s\",\"bytes\":%llu",
+        sh.name, (unsigned long long)bytes);
+    for (int i = 0; i < num_sides; ++i) {
+      std::printf(
+          ",\"%s\":{\"grid\":%u,\"med_ns\":%llu,\"min_ns\":%llu,"
+          "\"ratio_vs_base\":%.4f}",
+          specs[i].tag, groups_v[s][i], (unsigned long long)med[i],
+          (unsigned long long)minv[i], (double)med[i] / (double)med[0]);
     }
+    std::printf("}\n");
   }
 
   std::printf("{\"k\":\"done\"}\n");
