@@ -1,0 +1,15 @@
+ninja: Entering directory `.work/build-shader'
+[1/1] Generating shaders/qmm_coopmat_f16.spv
+FAILED: [code=2] mlx/backend/omarchy/shaders/qmm_coopmat_f16.spv /home/joshuawarren/.config/superpowers/worktrees/mlx-omarchy/prefill-qmm-native/.work/build-shader/mlx/backend/omarchy/shaders/qmm_coopmat_f16.spv 
+cd /home/joshuawarren/.config/superpowers/worktrees/mlx-omarchy/prefill-qmm-native/.work/build-shader/mlx/backend/omarchy && /usr/bin/cmake -E make_directory /home/joshuawarren/.config/superpowers/worktrees/mlx-omarchy/prefill-qmm-native/.work/build-shader/mlx/backend/omarchy/shaders && /usr/bin/glslangValidator -V -Os --target-env vulkan1.3 /home/joshuawarren/.config/superpowers/worktrees/mlx-omarchy/prefill-qmm-native/.work/mlx/mlx/backend/omarchy/shaders/qmm_coopmat.comp -o /home/joshuawarren/.config/superpowers/worktrees/mlx-omarchy/prefill-qmm-native/.work/build-shader/mlx/backend/omarchy/shaders/qmm_coopmat_f16.spv
+/home/joshuawarren/.config/superpowers/worktrees/mlx-omarchy/prefill-qmm-native/.work/mlx/mlx/backend/omarchy/shaders/qmm_coopmat.comp
+ERROR: /home/joshuawarren/.config/superpowers/worktrees/mlx-omarchy/prefill-qmm-native/.work/mlx/mlx/backend/omarchy/shaders/qmm_coopmat.comp:2: '#extension' : extension not supported: GL_KHR_cooperative_matrix
+ERROR: /home/joshuawarren/.config/superpowers/worktrees/mlx-omarchy/prefill-qmm-native/.work/mlx/mlx/backend/omarchy/shaders/qmm_coopmat.comp:2: '#extension' : extra tokens -- expected newline 
+ERROR: /home/joshuawarren/.config/superpowers/worktrees/mlx-omarchy/prefill-qmm-native/.work/mlx/mlx/backend/omarchy/shaders/qmm_coopmat.comp:2: '' : compilation terminated 
+ERROR: 3 compilation errors.  No code generated.
+
+
+ERROR: Linking compute stage: Missing entry point: Each stage requires one entry point
+
+SPIR-V is not generated for failed compile or link
+ninja: build stopped: subcommand failed.

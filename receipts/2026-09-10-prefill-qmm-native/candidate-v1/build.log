@@ -1,0 +1,44 @@
+== prepare upstream tree ==
+patching file CMakeLists.txt
+patching file mlx/CMakeLists.txt
+patching file tests/CMakeLists.txt
+patching file mlx/transforms.cpp
+patching file setup.py
+patching file mlx/io/safetensors.cpp
+patching file mlx/io/load.cpp
+patching file mlx/export.cpp
+patching file mlx/linalg.cpp
+patching file python/src/buffer.h
+patching file mlx/ops.cpp
+Hunk #2 succeeded at 5051 (offset 1 line).
+patching file mlx/backend/cpu/distributed.cpp
+patching file mlx/fast.cpp
+patching file setup.py
+/home/joshuawarren/src/mlx-prefill-qmm-native/.work/mlx
+== build venv (/home/joshuawarren/src/mlx-prefill-qmm-native/.work/venv-build) ==
+== wheel build ==
+Processing ./.work/mlx
+  Preparing metadata (pyproject.toml): started
+  Preparing metadata (pyproject.toml): finished with status 'done'
+Building wheels for collected packages: mlx-omarchy
+  Building wheel for mlx-omarchy (pyproject.toml): started
+  Building wheel for mlx-omarchy (pyproject.toml): still running...
+  Building wheel for mlx-omarchy (pyproject.toml): still running...
+  Building wheel for mlx-omarchy (pyproject.toml): finished with status 'done'
+  Created wheel for mlx-omarchy: filename=mlx_omarchy-0.32.2.dev202609101751+diag.eb553b3-cp314-cp314-linux_aarch64.whl size=7455665 sha256=fddda5d2e538670e3032190c5e25a1f7e6ea8567575863c1867d31a475183b90
+  Stored in directory: /tmp/pip-ephem-wheel-cache-6n8r7fir/wheels/5d/cb/4b/c71c791eafcd939ad155207d5b9921e0046f7f7d47c4fdec1a
+Successfully built mlx-omarchy
+== diagnostics staging ==
+[receipt] profiling harness: compiled IN (MLX_OMARCHY_GPU_PROFILE literal found in wheel)
+[receipt] staged tool: /home/joshuawarren/src/mlx-prefill-qmm-native/dist/mlx-omarchy-info
+== receipt ==
+[receipt] wheel: /home/joshuawarren/src/mlx-prefill-qmm-native/dist/mlx_omarchy-0.32.2.dev202609101751+diag.eb553b3-cp314-cp314-linux_aarch64.whl
+[receipt] size: 7455665 bytes
+[receipt] sha256: fddda5d2e538670e3032190c5e25a1f7e6ea8567575863c1867d31a475183b90
+[receipt] source commit: eb553b3
+[receipt] NEXT STEP - do not skip: after you upload this wheel to a
+[receipt] release, verify the UPLOADED asset with
+[receipt]   python3 scripts/verify-release-assets.py <tag>
+[receipt] It must print VERIFIED before the release is announced as
+[receipt] usable. See docs/release.md. A local build check does not
+[receipt] verify what users download.

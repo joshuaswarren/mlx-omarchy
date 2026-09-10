@@ -1,0 +1,228 @@
+{
+  "schema": "mlx-omarchy-prefill-qmm-native-verdict/1",
+  "schedule_comparison": {
+    "native_macos_mlx": {
+      "source": ".work/mlx/mlx/backend/metal/kernels/quantized.h qmm_t_impl",
+      "tile": "BM32/BK32/BN32",
+      "threads": 128,
+      "subgroups": 4,
+      "subgroup_output": "16x16",
+      "accumulator_fragments_per_subgroup": 4,
+      "shared": "f16 X and W, BK padded from 32 to 40 (5120 bytes total)",
+      "inner_schedule": "load two A and two B 8x8 fragments, then four back-to-back MMAs for each of four ascending k slices",
+      "barriers": "two threadgroup barriers per BK32 plus BlockMMA simdgroup memory-none barriers"
+    },
+    "main_a4118f8": {
+      "tile": "32x32/BK16",
+      "threads": 64,
+      "subgroups": 2,
+      "subgroup_output": "16x32",
+      "accumulator_fragments_per_subgroup": 8,
+      "shared": "f32 X and W, unpadded 4096 bytes",
+      "inner_schedule": "two ascending k slices with eight MMAs each",
+      "isa": "699 static instructions, 445 ALU/fscib, 404 IC, 99 GPRs, 1024 resident threads, dual-pipeline balance 0.9539",
+      "isa_receipt": "../2026-09-10-prefill-qmm-isa/isa-accounting.json"
+    },
+    "differences_exercised": [
+      "candidate-v1 copied native four-subgroup/BK32 geometry while retaining f32 shared operands required by cooperative_matrix_f32_8",
+      "candidate-v2 isolated four-subgroup accumulator ownership at BK16 and restored the 4 KiB shared footprint",
+      "candidate-v3 retained the main two-subgroup schedule but copied native 80-byte padding and transposed/column-major weight staging"
+    ],
+    "double_buffering": {
+      "implemented": false,
+      "reason": "Native qmm_t_impl is single-buffered. Honeykrisp exposes no async shared copy here, so the same lanes cannot overlap the next global load/dequantization with current MMA work; double buffering would only double f32 shared residency."
+    }
+  },
+  "branch": "wave/prefill-qmm-native",
+  "baseline_commit": "a4118f8744dc48f8f12634985d3d3548c032cc44",
+  "final_source_commit": "86a870e714b82fbc53495f271b98513b1c9d871e",
+  "final_runtime_tree": "identical to a4118f8744dc48f8f12634985d3d3548c032cc44 for primitives.cpp, qmm_coopmat.comp, and qmm_tile.comp",
+  "host": {
+    "name": "jwm1-linux",
+    "ssh": "joshuawarren@100.84.184.102",
+    "device": "Apple M1 (G13G B1)",
+    "driver": "Mesa Honeykrisp",
+    "cooperative_matrix_f32_8": 1
+  },
+  "model_identity": "Qwen2.5-0.5B-Instruct Q4/group-64 projection shapes",
+  "screen": {
+    "warmups_discarded": 8,
+    "samples": 16,
+    "estimator": "median profiler dispatch-to-next-dispatch milliseconds",
+    "required_speed_ratio": 1.1
+  },
+  "baseline": {
+    "commit": "a4118f8744dc48f8f12634985d3d3548c032cc44",
+    "wheel_sha256": "3f8f1babad5684a168d2b5f15e24cb1d20dd772c8ef6b52d02ef83c5eeb373db"
+  },
+  "variants": {
+    "candidate-v1": {
+      "commit": "eb553b339dd33358009dc94dd8be177a2fcd3682",
+      "design": "four subgroups, BK32, 8 KiB shared",
+      "wheel_sha256": "fddda5d2e538670e3032190c5e25a1f7e6ea8567575863c1867d31a475183b90",
+      "threshold_met": false,
+      "decision": "reject",
+      "medians": {
+        "hidden-hidden-m262": {
+          "before_ms": 0.6265415,
+          "after_ms": 0.7465005,
+          "speed_ratio": 0.8393048631581626
+        },
+        "hidden-hidden-m1053": {
+          "before_ms": 1.7367915,
+          "after_ms": 2.4743125,
+          "speed_ratio": 0.7019289196493976
+        },
+        "hidden-kv-m262": {
+          "before_ms": 0.444229,
+          "after_ms": 0.316896,
+          "speed_ratio": 1.4018132131677268
+        },
+        "hidden-kv-m1053": {
+          "before_ms": 0.672146,
+          "after_ms": 0.4784995,
+          "speed_ratio": 1.4046953027119151
+        },
+        "hidden-intermediate-m262": {
+          "before_ms": 2.463396,
+          "after_ms": 3.6295415,
+          "speed_ratio": 0.6787072141205713
+        },
+        "hidden-intermediate-m1053": {
+          "before_ms": 8.7091255,
+          "after_ms": 12.874479,
+          "speed_ratio": 0.676464305856571
+        },
+        "intermediate-hidden-m262": {
+          "before_ms": 2.45275,
+          "after_ms": 3.9430625,
+          "speed_ratio": 0.6220418773478736
+        },
+        "intermediate-hidden-m1053": {
+          "before_ms": 9.145542,
+          "after_ms": 13.482583,
+          "speed_ratio": 0.6783226923209003
+        }
+      }
+    },
+    "candidate-v2": {
+      "commit": "6f413004fcf0c35840d955ea9101a0dbe0503db6",
+      "design": "four subgroups, BK16, 4 KiB shared",
+      "wheel_sha256": "638ba087c7d5da3aef8930ddf1e7198f8882d6291043385b10abeddaf9f9c50d",
+      "threshold_met": false,
+      "decision": "reject",
+      "medians": {
+        "hidden-hidden-m262": {
+          "before_ms": 0.6265415,
+          "after_ms": 0.6668955,
+          "speed_ratio": 0.9394897701364007
+        },
+        "hidden-hidden-m1053": {
+          "before_ms": 1.7367915,
+          "after_ms": 2.1631665,
+          "speed_ratio": 0.8028931198777348
+        },
+        "hidden-kv-m262": {
+          "before_ms": 0.444229,
+          "after_ms": 0.415062,
+          "speed_ratio": 1.0702714293286304
+        },
+        "hidden-kv-m1053": {
+          "before_ms": 0.672146,
+          "after_ms": 0.550937,
+          "speed_ratio": 1.2200051911561576
+        },
+        "hidden-intermediate-m262": {
+          "before_ms": 2.463396,
+          "after_ms": 3.154438,
+          "speed_ratio": 0.7809302322632431
+        },
+        "hidden-intermediate-m1053": {
+          "before_ms": 8.7091255,
+          "after_ms": 11.1523125,
+          "speed_ratio": 0.7809255255356232
+        },
+        "intermediate-hidden-m262": {
+          "before_ms": 2.45275,
+          "after_ms": 3.4226875,
+          "speed_ratio": 0.7166152329127331
+        },
+        "intermediate-hidden-m1053": {
+          "before_ms": 9.145542,
+          "after_ms": 11.500896,
+          "speed_ratio": 0.7952025650871029
+        }
+      }
+    },
+    "candidate-v3": {
+      "commit": "ae299304960ece75d1cd84d4eefd722fc4d2a525",
+      "design": "two subgroups, BK16, native 80-byte padded and column-major weight staging",
+      "wheel_sha256": "2040a85f541cb46ce42a158d71bef2bb022069be674ad4e3856f03a891bf35e2",
+      "threshold_met": false,
+      "decision": "reject",
+      "medians": {
+        "hidden-hidden-m262": {
+          "before_ms": 0.6265415,
+          "after_ms": 0.725458,
+          "speed_ratio": 0.8636495841247873
+        },
+        "hidden-hidden-m1053": {
+          "before_ms": 1.7367915,
+          "after_ms": 2.20075,
+          "speed_ratio": 0.7891816426218334
+        },
+        "hidden-kv-m262": {
+          "before_ms": 0.444229,
+          "after_ms": 0.5522915,
+          "speed_ratio": 0.804337926620272
+        },
+        "hidden-kv-m1053": {
+          "before_ms": 0.672146,
+          "after_ms": 0.4361875,
+          "speed_ratio": 1.5409565840378279
+        },
+        "hidden-intermediate-m262": {
+          "before_ms": 2.463396,
+          "after_ms": 3.11075,
+          "speed_ratio": 0.7918977738487503
+        },
+        "hidden-intermediate-m1053": {
+          "before_ms": 8.7091255,
+          "after_ms": 10.765104,
+          "speed_ratio": 0.8090145250802966
+        },
+        "intermediate-hidden-m262": {
+          "before_ms": 2.45275,
+          "after_ms": 3.7255205,
+          "speed_ratio": 0.6583643815676226
+        },
+        "intermediate-hidden-m1053": {
+          "before_ms": 9.145542,
+          "after_ms": 11.776625,
+          "speed_ratio": 0.7765842930381158
+        }
+      }
+    }
+  },
+  "paired_fork": {
+    "run": false,
+    "reason": "No candidate met the required 1.10 kernel speed ratio across the eight screened shapes."
+  },
+  "paired_stock": {
+    "run": false,
+    "reason": "Paired six-leg runs are prohibited before a candidate clears the kernel screen."
+  },
+  "digests": {
+    "measured": false,
+    "reason": "No candidate advanced to paired model qualification; final runtime sources were reverted byte-for-byte to a4118f8."
+  },
+  "policy_ok": false,
+  "tests": {
+    "m1_candidate_builds": "All three diagnostic wheels compiled and loaded with cooperative_matrix_f32_8=1; see candidate-v*/build.log and identity.log.",
+    "kernel_profiles": "Each variant ran 8 discarded warmups and 16 recorded valid-input samples for all four Qwen projection shapes at m=262 and m=1053.",
+    "local_shader_compile": "Unavailable: local glslangValidator 12.0.0 rejects GL_KHR_cooperative_matrix; M1 builds used the pinned glslang toolchain.",
+    "targeted_cpp": "Not retained because no candidate survived the mandatory kernel screen; a partially started rejected-candidate run was stopped and removed."
+  },
+  "decision": "reject all three native-schedule candidates and keep main runtime sources",
+  "next": "The remaining gap is not closed by native threadgroup geometry, BK32 barrier amortization, or native shared layout. The next credible lever requires a Honeykrisp cooperative-matrix path that accepts f16 shared operands (matching native 5 KiB staging) or a compiler/driver change; source-only emulation with f32 shared memory regressed the large projections."
+}

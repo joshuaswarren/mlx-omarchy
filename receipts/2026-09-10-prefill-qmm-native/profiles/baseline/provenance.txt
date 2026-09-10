@@ -1,0 +1,6 @@
+jwm1-linux
+a4118f8744dc48f8f12634985d3d3548c032cc44
+3f8f1babad5684a168d2b5f15e24cb1d20dd772c8ef6b52d02ef83c5eeb373db  dist/mlx_omarchy-0.32.2.dev202609101736+diag.a4118f8-cp314-cp314-linux_aarch64.whl
+mlx_version=0.32.2.dev202609101736+diag.a4118f8
+cooperative_matrix_f32_8=1
+{'max_storage_buffer_range': 2147483647, 'max_compute_work_group_size_x': 1024, 'max_compute_work_group_invocations': 1024, 'storage_buffer_16bit_access': 1, 'max_compute_shared_memory_size': 32768, 'device_name': 'Apple M1 (G13G B1)', 'architecture': 'honeykrisp', 'unified_memory': 1, 'timestamp_period_ns': 1, 'api_version': '1.4.359', 'driver': 'Mesa Honeykrisp', 'vendor_id': 65541, 'cooperative_matrix_f32_8': 1, 'shader_int64': 1, 'device_id': 0, 'shader_int16': 1, 'driver_version': 109060195, 'total_memory': 8113881088, 'host_visible_coherent': 1, 'shader_float16': 1}
