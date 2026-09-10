@@ -1938,7 +1938,7 @@ TEST_CASE("one graph evaluation flushes when freed intermediates reach the byte 
   synchronize(s);
   uint64_t subs = counters.vk_submissions.load() - subs0;
   alloc.set_memory_limit(limit0);
-  // Node budget alone gives at most ceil(585 / 512) + 1 submissions; the
+  // Node budget alone gives at most ceil(585 / 256) + 1 submissions; the
   // byte budget (16 frees per MiB) forces roughly one every 16 adds.
   CHECK(subs > 4);
   CHECK(subs <= static_cast<uint64_t>(kAdds));

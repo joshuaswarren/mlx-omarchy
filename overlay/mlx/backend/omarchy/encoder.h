@@ -52,7 +52,7 @@ namespace mlx::core::omarchy {
 // timeline, so ordering with prior queue work is preserved.
 // Caps recorded work and pinned buffers per submission. Larger batches reduce
 // submit overhead but extend buffer lifetimes and watchdog exposure.
-inline constexpr int kBatchNodeBudget = 512;
+inline constexpr int kBatchNodeBudget = 256;
 // Byte budget for the same batch: freed intermediates stay pinned in the
 // allocator quarantine until their batch submits and drains, so the open
 // batch may hold at most 1/16 of the allocator memory limit in such bytes
