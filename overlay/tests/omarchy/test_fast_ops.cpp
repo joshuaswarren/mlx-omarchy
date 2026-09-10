@@ -796,7 +796,13 @@ TEST_CASE("decode SDPA fuses score softmax and value projection") {
   omarchy::get_command_encoder(stream).synchronize();
   CHECK_EQ(
       omarchy::trace::counters().vk_compute_dispatches.load() - before, 1);
-  CHECK_EQ(flat(baseline, stream), flat(candidate, stream));
+  auto baseline_values = flat(baseline, stream);
+  auto candidate_values = flat(candidate, stream);
+  REQUIRE_EQ(candidate_values.size(), baseline_values.size());
+  for (size_t i = 0; i < baseline_values.size(); ++i) {
+    CAPTURE(i);
+    CHECK_EQ(candidate_values[i], baseline_values[i]);
+  }
 }
 
 TEST_CASE("scaled_dot_product_attention backward matches finite differences") {
