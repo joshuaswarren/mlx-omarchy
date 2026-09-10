@@ -1,0 +1,24 @@
+{
+  "purpose": "Main's independent verification of wave/SubmissionGaps (removal of 48 per-prefill host drains from the scalar auto-copy path) on both drivers before landing",
+  "source_commit": "61913bb",
+  "why_independent": "The worker's own fork-labelled table reported BF16 262 = c5be9207833d2a26, which is the stock value, so that run was not on the fork driver and its digest conclusions could not be trusted. Main rebuilt and reran both drivers.",
+  "fork": {
+    "cooperative_matrix_f32_8": 1,
+    "decode_tok_s": {"q4_short": 108.58, "q4_long": 107.99, "q4_longctx": 96.34, "bf16_short": 11.72, "bf16_long": 11.23, "bf16_longctx": 10.02},
+    "prefill_tok_s": {"q4_short": 329.7, "q4_long": 959.7, "q4_longctx": 1113.1, "bf16_short": 86.2, "bf16_long": 318.0, "bf16_longctx": 364.9},
+    "digests": ["7fd25a869ff21678", "4cc08910089477fd", "7da83f06ec9f001d", "f26175202f3dabe9", "ad964232ee67fecd", "ff502900d2a179a5"],
+    "digests_required": true
+  },
+  "stock": {
+    "cooperative_matrix_f32_8": 0,
+    "decode_tok_s": {"q4_short": 102.25, "q4_long": 81.03, "q4_longctx": 51.93, "bf16_short": 11.73, "bf16_long": 11.30, "bf16_longctx": 10.12},
+    "prefill_tok_s": {"q4_short": 170.5, "q4_long": 309.0, "q4_longctx": 360.1, "bf16_short": 83.6, "bf16_long": 210.8, "bf16_longctx": 219.4},
+    "digests": ["7fd25a869ff21678", "4cc08910089477fd", "7da83f06ec9f001d", "f26175202f3dabe9", "c5be9207833d2a26", "ff502900d2a179a5"],
+    "digests_required": true
+  },
+  "prefill_before_fork": {"q4_short": 214.3, "q4_long": 784.4, "q4_longctx": 1060.4},
+  "prefill_before_stock": {"q4_short": 135.1, "q4_long": 298.4, "q4_longctx": 351.4},
+  "native_prefill": {"q4_short": 297.0, "q4_long": 1218.6, "q4_longctx": 1837.7},
+  "mechanism": "48 CopyType::Scalar host drains per prefill (a synchronize before publishing a Python int offset) removed; submissions per prefill 53 -> 7 at 262 tokens and 53 -> 10 at 1053, inter-submission gaps 249 -> 78 ms and 252 -> 125 ms, GPU busy 50.9% -> 71.9% and 76.6% -> 85.5%",
+  "paired_evidence": "receipts/2026-09-10-submission-gaps/verdict.json"
+}
