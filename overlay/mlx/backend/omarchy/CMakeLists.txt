@@ -514,6 +514,7 @@ target_sources(
   PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/allocator.cpp
           ${CMAKE_CURRENT_SOURCE_DIR}/compiled.cpp
           ${CMAKE_CURRENT_SOURCE_DIR}/compute.cpp
+          ${CMAKE_CURRENT_SOURCE_DIR}/custom_kernel.cpp
           ${CMAKE_CURRENT_SOURCE_DIR}/device.cpp
           ${CMAKE_CURRENT_SOURCE_DIR}/device_info.cpp
           ${CMAKE_CURRENT_SOURCE_DIR}/encoder.cpp
