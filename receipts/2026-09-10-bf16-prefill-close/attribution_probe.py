@@ -48,11 +48,14 @@ def main():
 
     model, tokenizer = load("mlx-community/Qwen2.5-0.5B-Instruct-bf16")
     model.eval()
+    out = open(args.out, "w")
     rows = []
 
     def emit(row):
         rows.append(row)
         print(json.dumps(row), flush=True)
+        out.write(json.dumps(row) + "\n")
+        out.flush()
 
     prompts = {
         "short": "Hi",
@@ -119,7 +122,8 @@ def main():
         t = mx.random.normal((1, m, h)).astype(mx.bfloat16)
         us = timed(
             lambda: (mx.eval(mx.fast.rope(
-                t, 64, traditional=False, base=10000.0, scale=1.0)),
+                t, 64, traditional=False, base=10000.0, scale=1.0,
+                offset=0)),
                 mx.synchronize()),
             reps=args.reps)
         emit({"k": "rope", "m": m, "us_median": round(us, 1)})
@@ -130,9 +134,7 @@ def main():
             reps=args.reps)
         emit({"k": "rms_norm", "m": m, "us_median": round(us, 1)})
 
-    with open(args.out, "w") as f:
-        for row in rows:
-            f.write(json.dumps(row) + "\n")
+    out.close()
 
 
 if __name__ == "__main__":
