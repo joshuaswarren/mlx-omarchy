@@ -1,13 +1,23 @@
 # M1 Max bring-up plan — 2026-09-11
 
 Bring the owner's 16-inch MacBook Pro (ssh alias `16m1mbp`, Apple M1 Max,
-32 GPU cores, 10 CPU cores) into mlx-omarchy qualification as a **dual-boot**
-machine, without disturbing its current job: one of three nodes in the local
-macOS AI inference fleet. This plan is written to be followed in an evening
-of work without further design decisions. It applies the procedure in
-[`docs/new-chip-bringup.md`](../new-chip-bringup.md) to this specific die and
-states the acceptance bar from
+32 GPU cores, 10 CPU cores) into mlx-omarchy qualification. This plan applies
+the procedure in [`docs/new-chip-bringup.md`](../new-chip-bringup.md) to this
+specific die and states the acceptance bar from
 [`docs/chip-portability.md`](../chip-portability.md) section 4.
+
+**Unverified premise, flagged 2026-09-11.** The dual-boot shape and the whole
+of section 3's fleet protocol rest on an assumption the author did not verify:
+that this machine currently serves a leg in the local inference fleet and
+therefore cannot be converted. The attempt to read the router pool config
+failed with a host-key error and the assumption was carried anyway. The owner
+has since said the conclusions about converting this machine were mostly
+wrong. Treat every fleet-side statement below as a question for the owner, not
+a finding: whether this machine serves any alias, whether Omarchy on it could
+serve that role instead, and whether full-time conversion is actually blocked.
+The hardware facts in section 1 are measured (`sysctl`, `system_profiler`) and
+stand; the Asahi per-generation support statements are sourced from upstream
+and stand; everything about the fleet is unverified.
 
 Everything here is documentation and planning. The base M1 (`jwm1-linux`,
 `/tmp/m1-gpu.lock`) is untouched by this work.
@@ -33,11 +43,13 @@ Three consequences drive the whole plan:
 2. **The performance envelope moves ~6x on paper.** Every GB/s number and
    every occupancy verdict measured against 8 cores sits on a 68 GB/s
    latency-bound part. Section 6 names the verdicts that do not transfer.
-3. **The machine cannot be converted.** The fleet standing order requires
-   every critical model alias to keep at least two physical hosts. The Mac
-   serves one of three legs. Dual-boot — macOS keeps serving; Omarchy is
-   booted only for development and qualification windows — is the only
-   shape available this week, and full-time Omarchy is gated on section 8.
+3. **Conversion is an open question, not a settled constraint.** The author
+   asserted that a fleet standing order blocked conversion; that assertion was
+   not verified and the owner says it was largely wrong. Dual-boot is still a
+   safe way to get qualification evidence without committing the machine, but
+   it is one option rather than the only shape available. Section 8's
+   conditions are written from the unverified premise and need the owner's
+   correction before they mean anything.
 
 ## 2. What dual-booting means for this machine
 
