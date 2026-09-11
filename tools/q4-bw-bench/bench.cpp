@@ -1325,13 +1325,14 @@ static void run_gap_mode(const DeviceCtx& ctx, bool quick) {
       uint32_t columns;
     };
     const CandSpec cands[] = {
-        {"unroll", "tools/q4-bw-bench/shaders/qmm_vec_cand_unroll.comp",
-            "/tmp/q4gap_cand_u.spv", 8u},
-        {"loadfirst",
-            "tools/q4-bw-bench/shaders/qmm_vec_cand_loadfirst.comp",
-            "/tmp/q4gap_cand_l.spv", 8u},
         {"wg128", "tools/q4-bw-bench/shaders/qmm_vec_cand_wg128.comp",
             "/tmp/q4gap_cand_w.spv", 4u},
+        {"pf2", "tools/q4-bw-bench/shaders/qmm_vec_cand_pf2.comp",
+            "/tmp/q4gap_cand_pf2.spv", 8u},
+        {"pf4", "tools/q4-bw-bench/shaders/qmm_vec_cand_pf4.comp",
+            "/tmp/q4gap_cand_pf4.spv", 8u},
+        {"pf8", "tools/q4-bw-bench/shaders/qmm_vec_cand_pf8.comp",
+            "/tmp/q4gap_cand_pf8.spv", 8u},
     };
     for (const CandSpec& c : cands) {
       if (compile_shader(c.src, q4_defines, c.spv) != 0)
@@ -1682,7 +1683,6 @@ static void run_roof_mode(const DeviceCtx& ctx, bool quick,
         bytes, (unsigned long long)med, bytes / (double)med,
         (double)med / 1000.0, 24.0 * (double)med / 1e6,
         1000.0 / (24.0 * (double)med / 1e9));
-    fflush(stdout);
   }
 }
 
@@ -1720,8 +1720,14 @@ int main(int argc, char** argv) {
           "/tmp/q4cand_l.spv", 8u},
       {"wg128", "tools/q4-bw-bench/shaders/qmm_vec_cand_wg128.comp",
           "/tmp/q4cand_w.spv", 4u},
+      {"pf2", "tools/q4-bw-bench/shaders/qmm_vec_cand_pf2.comp",
+          "/tmp/q4cand_pf2.spv", 8u},
+      {"pf4", "tools/q4-bw-bench/shaders/qmm_vec_cand_pf4.comp",
+          "/tmp/q4cand_pf4.spv", 8u},
+      {"pf8", "tools/q4-bw-bench/shaders/qmm_vec_cand_pf8.comp",
+          "/tmp/q4cand_pf8.spv", 8u},
   };
-  const int num_sides = 4;
+  const int num_sides = 7;
   for (int i = 0; i < num_sides; ++i) {
     if (compile_shader(specs[i].src, variant_defines, specs[i].spv) != 0)
       die("compile %s", specs[i].tag);
