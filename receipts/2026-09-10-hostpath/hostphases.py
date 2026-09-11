@@ -71,10 +71,14 @@ def main():
         prompt = tokenizer.apply_chat_template(
             [{"role": "user", "content": args.prompt}],
             add_generation_prompt=True)
-    add_special = (getattr(tokenizer, "bos_token", None) is None or
-                   not prompt.startswith(tokenizer.bos_token))
-    prompt_ids = mx.array(tokenizer.encode(
-        prompt, add_special_tokens=add_special))
+    if isinstance(prompt, str):
+        add_special = (getattr(tokenizer, "bos_token", None) is None or
+                       not prompt.startswith(tokenizer.bos_token))
+        prompt_ids = mx.array(tokenizer.encode(
+            prompt, add_special_tokens=add_special))
+    else:
+        # apply_chat_template already returned token ids
+        prompt_ids = mx.array(prompt)
     tokenizer.eos_token_ids = set()
     mx.random.seed(0)
     sampler = make_sampler(temp=0.0)

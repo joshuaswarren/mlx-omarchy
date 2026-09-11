@@ -19,7 +19,7 @@ ROOT=~/src/mlx-HostPathOverhead
 VENV=$ROOT/.work/venv-hpo/bin/python
 REL_VENV=~/src/mlx-main-b6d662a8/.work/venv-run/bin/python
 MODEL=~/.cache/huggingface/hub/models--mlx-community--Qwen2.5-0.5B-Instruct-4bit/snapshots/a5339a4131f135d0fdc6a5c8b5bbed2753bbe0f3
-PIN=a5339a4131f135d0fdc6a5c8b5bbed2753bbe0f3
+export PIN=a5339a4131f135d0fdc6a5c8b5bbed2753bbe0f3
 WHEEL=$(ls $ROOT/dist/mlx_omarchy-*-cp314-cp314-linux_aarch64.whl | head -1)
 OUT=$ROOT/receipts/2026-09-10-hostpath/legs
 mkdir -p "$OUT"
@@ -70,7 +70,7 @@ bench_arm () {  # tag workload replay(0|1)
       --manifest $R/manifest-q4.json \
       --python $VENV --wheel "$WHEEL" \
       --select \$wl \
-      --expect-pins qwen25-0.5b-4bit=\$PIN \
+      --expect-pins qwen25-0.5b-4bit=$PIN \
       --host-label jwm1-hostpath-\$tag --timeout 600 \
       --out "$OUT/\$tag.json" > "$OUT/\$tag.log" 2>&1
   echo "\$tag rc=\$?"

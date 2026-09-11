@@ -39,6 +39,7 @@ def main():
         "num_attention_heads": 4,
         "num_key_value_heads": 2,
         "head_dim": 16,
+        "intermediate_size": 256,
     })
     args_ns = qwen2.ModelArgs.from_dict(cfg)
     model = qwen2.Model(args_ns)
