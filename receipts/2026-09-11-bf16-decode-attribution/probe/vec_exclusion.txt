@@ -1,0 +1,16 @@
+case order: q,k(bias),v(bias),o,gate,up,down,lmhead x {real x7 then contiguous x7}
+0 MatmulVecBF16
+1 MatmulVecBF16
+2 MatmulVecBF16
+3 MatmulVecBF16
+4 MatmulVecBF16
+5 MatmulVecBF16
+6 MatmulVecBF16
+7 MatmulVecBF16
+8 MatmulVecBF16
+9 MatmulVecBF16
+10 MatmulVecBF16
+11 MatmulVecBF16
+12 MatmulVecBF16
+13 MatmulVecBF16
+14 MatmulVecBF16
