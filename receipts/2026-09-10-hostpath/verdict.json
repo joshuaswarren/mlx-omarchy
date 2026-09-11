@@ -49,5 +49,11 @@
     "hostphases.py, tiny_model.py, window.sh, analyze.py, manifest-q4.json",
     "branch wave/HostPathOverhead: host_trace.h instrument + replay prototype + harness"
   ],
-  "status": "PARTIAL - host split measured by two working instruments (trace + prior microbench/cadence), replay prototype complete with bit-identity verdict and a decisive negative performance result, tiny-model GPU floor leg not completed"
+  "correction": {
+    "by": "receipts/2026-09-10-decode-bound-resolve (agent DecodeBoundResolve, 2026-09-11, direct discriminating measurement)",
+    "what_does_not_survive": "the headline reading 'decode on this stack is HOST-paced, not GPU-paced' and 'the dominant host term is Python eager graph construction (6.4 of 8.95 ms)'. python_outside_eval was wall-region occupancy, not CPU-busy time: in the pipelined mlx-lm 0.31.3 loop (async_eval + per-token y.item() sync) the completion wait - including its user-space busy-poll CPU - lands outside mx.eval and was booked as Python graph construction.",
+    "measured": "thread-CPU/wall per token: true host cost is the ablation skeleton, 2.26-2.4 ms/token at 95% CPU, not 8.95; +4 ms/token of pure host spin moves the wall +0.15 ms (slope ~0.04); +23 to +254 ms/token of GPU-only dummy chains move the wall 1.04-1.21x their measured GPU cost; compiled-tape mode (Python term measurably reduced) changes decode -2.0% to +0.6%. The token is GPU-paced at the per-token sync.",
+    "what_stands": "the C++ phase counters (record/descriptor <=0.76 ms/token, 2.2 submissions/token, 281.7 dispatches/token at d1dfaf2b), the replay prototype's bit-identity and negative performance result, and the observation that only whole-token capture removes host work - with the corrected ceiling of ~2.4 ms/token, not 6.4."
+  },
+  "status": "PARTIAL - host split measured by two working instruments (trace + prior microbench/cadence), replay prototype complete with bit-identity verdict and a decisive negative performance result, tiny-model GPU floor leg not completed; HEADLINE READING CORRECTED 2026-09-11, see correction block and receipts/2026-09-10-decode-bound-resolve"
 }
