@@ -8,14 +8,13 @@
 // reproduces the 64/128-block two-pass algorithm, including f16 partial
 // storage, inside the same workgroup and dispatch.
 //
-// The same structure serves bf16 (-DBF16_IO): loads widen exactly, stores
-// round-to-nearest-even (cast.comp pair), and every intermediate - scores,
-// exp, running max, running sum, accumulator - stays float32, matching
-// upstream's `typedef float U` arithmetic (sdpa_vector.h:50). The bf16 host
-// side always selects the one-pass 32-stream arm: the f32 partial array the
-// two-pass needs cannot fit the workgroup store at the 128-block crossover,
-// and the bf16 parity contract is the f32-score composition, not native's
-// two-pass partial format.
+// The bf16 compile (-DBF16_IO) does not ride that structure. Its parity
+// contract is the f32-score composition, so it reproduces the composition's
+// observable arithmetic exactly - matmul.comp's per-dot accumulation order,
+// softmax_suffix.comp's max/exp/sum/normalize sequence over stored f32
+// scores, one f32 q*scale, and a single RNE bf16 output store - making the
+// route bit-identical to the ten-dispatch path it replaces. See the comment
+// above main().
 
 #version 460
 
@@ -89,12 +88,25 @@ const uint DIM = 64u;
 const uint MAX_BLOCKS = 128u;
 const float FINITE_MIN = -3.4028234663852886e38;
 
+#ifndef BF16_IO
 shared float s_outputs[SIMD * SIMD];
 shared float s_max[MAX_BLOCKS];
 shared float s_sum[MAX_BLOCKS];
 // Native two-pass stores every 64-element partial through f16. Each word is
 // one adjacent output pair.
 shared uint s_partial_words[MAX_BLOCKS * SIMD];
+#else
+// The composition-exact arm replaces the online-softmax structure with the
+// f32-score composition's observable arithmetic. Scores and probs share one
+// f32 stream (probs overwrite scores in place; the normalize pass reads and
+// writes only its own strided slots). The kStreamKeys bound is enforced by
+// the host guard; larger contexts fall through to the composition, which
+// this arm reproduces bit for bit.
+const uint kStreamKeys = 2048u;
+shared float s_qrow[64];
+shared float s_stream[kStreamKeys];
+shared float s_tree[256];
+#endif
 
 float native_exp(float x) {
   return exp(x);
@@ -132,6 +144,133 @@ void store_pair(uint head, uint lane, float x, float y, float denominator) {
 }
 
 void main() {
+#ifdef BF16_IO
+  // ------------------------------------------------------------------
+  // The composition-exact bf16 arm. Every operation below reproduces the
+  // f32-score composition's observable arithmetic in the same order, so
+  // the route is bit-identical to the ten-dispatch path it replaces and
+  // no generated token can move:
+  //   1. q*scale once in f32 (the composition's elementwise multiply;
+  //      the matmul alpha is 1.0 and its drain multiplies by it),
+  //   2. scores = per-dot ascending-d `acc += a * b` accumulation over
+  //      16-wide tiles with exact-zero tail padding, drained by 1.0f,
+  //      stored f32 (matmul.comp),
+  //   3. softmax: 256-lane strided max scan + binary max tree, strided
+  //      sequential exp-sum per lane + binary sum tree, normalizer
+  //      1.0/sum, probs = exp(score - max) * normalizer recomputed from
+  //      the stored f32 scores (softmax_suffix.comp),
+  //   4. output = ascending-key `acc += a * b` over 16-wide tiles with
+  //      exact-zero tail padding, drained by 1.0f (matmul.comp), stored
+  //      through the cast.comp RNE bf16 pair.
+  // Threads 256..1023 share every barrier but do no phase work; the
+  // reduction trees only involve lanes 0..255, exactly as the 256-thread
+  // softmax kernel computes them.
+  // ------------------------------------------------------------------
+  uint thread = gl_LocalInvocationID.x;
+  uint head = gl_WorkGroupID.x;
+  uint repeats = params.matrix_m / params.matrix_n;
+  uint kv_head = head / repeats;
+  uint k_len = params.matrix_k;
+
+  if (thread < 64u) {
+    s_qrow[thread] = params.alpha * bf16_load(
+        query_data.values[params.lhs_offset +
+            head * params.shape[0] + thread * params.shape[3]]);
+  }
+  barrier();
+
+  // Scores over every key: ascending-d accumulation, matmul.comp order.
+  for (uint key = thread; key < k_len; key += 1024u) {
+    uint k_base = params.rhs_offset + kv_head * params.shape[1] +
+        key * params.shape[2];
+    float accumulator = 0.0;
+    for (uint d = 0u; d < 64u; ++d) {
+      accumulator += s_qrow[d] *
+          bf16_load(key_data.values[k_base + d * params.in_strides[0]]);
+    }
+    s_stream[key] = 1.0 * accumulator;
+  }
+  barrier();
+
+  // Row max: strided scan then the 256-lane binary tree.
+  if (thread < 256u) {
+    float local_max = uintBitsToFloat(0xff800000u);
+    for (uint index = thread; index < k_len; index += 256u) {
+      float next = s_stream[index];
+      if (isnan(next) || next > local_max) {
+        local_max = next;
+      }
+    }
+    s_tree[thread] = local_max;
+  }
+  barrier();
+  for (uint stride = 128u; stride > 0u; stride >>= 1u) {
+    if (thread < stride) {
+      s_tree[thread] = max(s_tree[thread], s_tree[thread + stride]);
+    }
+    barrier();
+  }
+  float row_max = s_tree[0];
+  barrier();
+
+  // Denominator: strided sequential exp-sum per lane, then the tree.
+  if (thread < 256u) {
+    float local_sum = 0.0;
+    for (uint index = thread; index < k_len; index += 256u) {
+      local_sum += exp(s_stream[index] - row_max);
+    }
+    s_tree[thread] = local_sum;
+  }
+  barrier();
+  for (uint stride = 128u; stride > 0u; stride >>= 1u) {
+    if (thread < stride) {
+      s_tree[thread] += s_tree[thread + stride];
+    }
+    barrier();
+  }
+  float normalizer = 1.0 / s_tree[0];
+  barrier();
+
+  // Probs in place: exp recomputed from the stored f32 scores, exactly
+  // as the normalize pass of softmax_suffix.comp does.
+  if (thread < 256u) {
+    for (uint index = thread; index < k_len; index += 256u) {
+      s_stream[index] = exp(s_stream[index] - row_max) * normalizer;
+    }
+  }
+  barrier();
+
+  // Output dim d: ascending-key accumulation over 16-wide tiles with
+  // exact-zero tail padding, drained by 1.0f, stored RNE bf16.
+  if (thread < 64u) {
+    uint d = thread;
+    float accumulator = 0.0;
+    uint key = 0u;
+    for (uint tile = 0u; tile < k_len / 16u; ++tile) {
+      for (uint index = 0u; index < 16u; ++index) {
+        accumulator += s_stream[key] * bf16_load(
+            value_data.values[params.aux_offset +
+                kv_head * params.in_strides[1] +
+                key * params.in_strides[2] +
+                d * params.in_strides[3]]);
+        ++key;
+      }
+    }
+    for (uint index = 0u; index < 16u; ++index) {
+      float prob = key < k_len ? s_stream[key] : 0.0;
+      float value16 = key < k_len ? bf16_load(
+          value_data.values[params.aux_offset +
+              kv_head * params.in_strides[1] +
+              key * params.in_strides[2] +
+              d * params.in_strides[3]]) : 0.0;
+      accumulator += prob * value16;
+      ++key;
+    }
+    output_data.values[params.output_offset + head * DIM + d] =
+        bf16_store(1.0 * accumulator);
+  }
+  return;
+#else
   uint lane = gl_SubgroupInvocationID;
   uint sgid = gl_SubgroupID;
   uint head = gl_WorkGroupID.x;
@@ -275,4 +414,5 @@ void main() {
   barrier();
   float merged1 = subgroupAdd(s_outputs[sgid * SIMD + lane]);
   store_pair(head, lane, merged0, merged1, denominator);
+#endif
 }
