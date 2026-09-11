@@ -1,0 +1,20 @@
+[cfA] source at 1aa2999b
+[cfA] staged
+[cfA] tests built
+[doctest] test cases:        1 |        1 passed | 0 failed | 20 skipped
+[doctest] Status: SUCCESS!
+[doctest] test cases:        1 |        1 passed | 0 failed | 20 skipped
+[doctest] Status: SUCCESS!
+[doctest] test cases:        1 |        1 passed | 0 failed | 20 skipped
+[doctest] Status: SUCCESS!
+[doctest] test cases:      1 |      1 passed | 0 failed | 20 skipped
+[doctest] Status: SUCCESS!
+[cfA] functional gates done; building wheel
+[receipt] It must print VERIFIED before the release is announced as
+[receipt] usable. See docs/release.md. A local build check does not
+[receipt] verify what users download.
+sha256sum: /home/joshuawarren/venv-qmmcoop/lib/python3.14/site-packages/mlx/lib/libmlx.so: No such file or directory
+[gate] wheel=mlx_omarchy-0.32.2.dev202609110629+1aa2999b-cp314-cp314-linux_aarch64.whl
+[gate] member=c33fcd1e1775f4f8366018273f89dde0d1e3eef85d29c6dbdc1a4cc9ca944079
+[gate] loaded=
+FATAL payload mismatch
