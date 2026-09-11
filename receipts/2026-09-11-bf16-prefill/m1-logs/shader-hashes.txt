@@ -1,0 +1,3 @@
+c000cce9113e594dc2cc61094c7dbedfefa401ccb22683b29f160dddddd61a41  tools/bf16-prefill-bench/shaders/mm_bf16_base.comp
+ebfa7ca361a2948910bbee2533f049cbfc4ca806d823bce7d3c9c8263359f27f  tools/bf16-prefill-bench/shaders/mm_bf16_cand.comp
+88122595bd070760256244b142ccac8ad9b6be08991b753b3ac425d25f1208ed  tools/bf16-prefill-bench/shaders/mm_tile_base.comp

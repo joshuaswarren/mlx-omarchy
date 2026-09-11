@@ -1,0 +1,85 @@
+[doctest] doctest version is "2.4.12"
+[doctest] run with "--help" for options
+===============================================================================
+/home/joshuawarren/src/mlx-Bf16PrefillClose/.work/mlx/tests/omarchy/test_matmul_family.cpp:864:
+TEST CASE:  dense bf16 matmul matches host on every row across coopmat shapes
+
+/home/joshuawarren/src/mlx-Bf16PrefillClose/.work/mlx/tests/omarchy/test_matmul_family.cpp:977: ERROR: CHECK_EQ( max_abs_err, 0.0f ) is NOT correct!
+  values: CHECK_EQ( 120, 0 )
+
+/home/joshuawarren/src/mlx-Bf16PrefillClose/.work/mlx/tests/omarchy/test_matmul_family.cpp:977: ERROR: CHECK_EQ( max_abs_err, 0.0f ) is NOT correct!
+  values: CHECK_EQ( 145, 0 )
+
+/home/joshuawarren/src/mlx-Bf16PrefillClose/.work/mlx/tests/omarchy/test_matmul_family.cpp:977: ERROR: CHECK_EQ( max_abs_err, 0.0f ) is NOT correct!
+  values: CHECK_EQ( 144, 0 )
+
+/home/joshuawarren/src/mlx-Bf16PrefillClose/.work/mlx/tests/omarchy/test_matmul_family.cpp:977: ERROR: CHECK_EQ( max_abs_err, 0.0f ) is NOT correct!
+  values: CHECK_EQ( 118, 0 )
+
+/home/joshuawarren/src/mlx-Bf16PrefillClose/.work/mlx/tests/omarchy/test_matmul_family.cpp:977: ERROR: CHECK_EQ( max_abs_err, 0.0f ) is NOT correct!
+  values: CHECK_EQ( 89, 0 )
+
+/home/joshuawarren/src/mlx-Bf16PrefillClose/.work/mlx/tests/omarchy/test_matmul_family.cpp:977: ERROR: CHECK_EQ( max_abs_err, 0.0f ) is NOT correct!
+  values: CHECK_EQ( 98, 0 )
+
+/home/joshuawarren/src/mlx-Bf16PrefillClose/.work/mlx/tests/omarchy/test_matmul_family.cpp:977: ERROR: CHECK_EQ( max_abs_err, 0.0f ) is NOT correct!
+  values: CHECK_EQ( 149, 0 )
+
+/home/joshuawarren/src/mlx-Bf16PrefillClose/.work/mlx/tests/omarchy/test_matmul_family.cpp:977: ERROR: CHECK_EQ( max_abs_err, 0.0f ) is NOT correct!
+  values: CHECK_EQ( 1432, 0 )
+
+/home/joshuawarren/src/mlx-Bf16PrefillClose/.work/mlx/tests/omarchy/test_matmul_family.cpp:977: ERROR: CHECK_EQ( max_abs_err, 0.0f ) is NOT correct!
+  values: CHECK_EQ( 6624, 0 )
+
+/home/joshuawarren/src/mlx-Bf16PrefillClose/.work/mlx/tests/omarchy/test_matmul_family.cpp:977: ERROR: CHECK_EQ( max_abs_err, 0.0f ) is NOT correct!
+  values: CHECK_EQ( 1384, 0 )
+
+/home/joshuawarren/src/mlx-Bf16PrefillClose/.work/mlx/tests/omarchy/test_matmul_family.cpp:977: ERROR: CHECK_EQ( max_abs_err, 0.0f ) is NOT correct!
+  values: CHECK_EQ( 1400, 0 )
+
+/home/joshuawarren/src/mlx-Bf16PrefillClose/.work/mlx/tests/omarchy/test_matmul_family.cpp:977: ERROR: CHECK_EQ( max_abs_err, 0.0f ) is NOT correct!
+  values: CHECK_EQ( 7406, 0 )
+
+/home/joshuawarren/src/mlx-Bf16PrefillClose/.work/mlx/tests/omarchy/test_matmul_family.cpp:977: ERROR: CHECK_EQ( max_abs_err, 0.0f ) is NOT correct!
+  values: CHECK_EQ( 1396, 0 )
+
+/home/joshuawarren/src/mlx-Bf16PrefillClose/.work/mlx/tests/omarchy/test_matmul_family.cpp:977: ERROR: CHECK_EQ( max_abs_err, 0.0f ) is NOT correct!
+  values: CHECK_EQ( 3176, 0 )
+
+/home/joshuawarren/src/mlx-Bf16PrefillClose/.work/mlx/tests/omarchy/test_matmul_family.cpp:977: ERROR: CHECK_EQ( max_abs_err, 0.0f ) is NOT correct!
+  values: CHECK_EQ( 37297, 0 )
+
+/home/joshuawarren/src/mlx-Bf16PrefillClose/.work/mlx/tests/omarchy/test_matmul_family.cpp:977: ERROR: CHECK_EQ( max_abs_err, 0.0f ) is NOT correct!
+  values: CHECK_EQ( 2874, 0 )
+
+/home/joshuawarren/src/mlx-Bf16PrefillClose/.work/mlx/tests/omarchy/test_matmul_family.cpp:977: ERROR: CHECK_EQ( max_abs_err, 0.0f ) is NOT correct!
+  values: CHECK_EQ( 3360, 0 )
+
+/home/joshuawarren/src/mlx-Bf16PrefillClose/.work/mlx/tests/omarchy/test_matmul_family.cpp:977: ERROR: CHECK_EQ( max_abs_err, 0.0f ) is NOT correct!
+  values: CHECK_EQ( 45172, 0 )
+
+/home/joshuawarren/src/mlx-Bf16PrefillClose/.work/mlx/tests/omarchy/test_matmul_family.cpp:977: ERROR: CHECK_EQ( max_abs_err, 0.0f ) is NOT correct!
+  values: CHECK_EQ( 3208, 0 )
+
+/home/joshuawarren/src/mlx-Bf16PrefillClose/.work/mlx/tests/omarchy/test_matmul_family.cpp:977: ERROR: CHECK_EQ( max_abs_err, 0.0f ) is NOT correct!
+  values: CHECK_EQ( 1416, 0 )
+
+/home/joshuawarren/src/mlx-Bf16PrefillClose/.work/mlx/tests/omarchy/test_matmul_family.cpp:977: ERROR: CHECK_EQ( max_abs_err, 0.0f ) is NOT correct!
+  values: CHECK_EQ( 1432, 0 )
+
+/home/joshuawarren/src/mlx-Bf16PrefillClose/.work/mlx/tests/omarchy/test_matmul_family.cpp:977: ERROR: CHECK_EQ( max_abs_err, 0.0f ) is NOT correct!
+  values: CHECK_EQ( 4120, 0 )
+
+/home/joshuawarren/src/mlx-Bf16PrefillClose/.work/mlx/tests/omarchy/test_matmul_family.cpp:977: ERROR: CHECK_EQ( max_abs_err, 0.0f ) is NOT correct!
+  values: CHECK_EQ( 3492, 0 )
+
+/home/joshuawarren/src/mlx-Bf16PrefillClose/.work/mlx/tests/omarchy/test_matmul_family.cpp:1102: ERROR: CHECK_EQ( max_abs_err, 0.0f ) is NOT correct!
+  values: CHECK_EQ( 158, 0 )
+
+/home/joshuawarren/src/mlx-Bf16PrefillClose/.work/mlx/tests/omarchy/test_matmul_family.cpp:1150: ERROR: CHECK( max_abs_err <= bound ) is NOT correct!
+  values: CHECK( 16.2812 <= 0.186038 )
+
+===============================================================================
+[doctest] test cases:       21 |       20 passed |  1 failed | 0 skipped
+[doctest] assertions: 82940459 | 82940434 passed | 25 failed |
+[doctest] Status: FAILURE!

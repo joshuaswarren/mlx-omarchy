@@ -1,0 +1,150 @@
+== digest classification per cell ==
+  r1-fork-base           qwen25-0.5b-4bit:long-decode-128           4cc08910089477fd canonical-base
+  r1-fork-base           qwen25-0.5b-4bit:longctx-1024-decode-32    7da83f06ec9f001d canonical-base
+  r1-fork-base           qwen25-0.5b-4bit:short-decode-32           7fd25a869ff21678 canonical-base
+  r1-fork-base           qwen25-0.5b-bf16:long-decode-128           ad964232ee67fecd canonical-base
+  r1-fork-base           qwen25-0.5b-bf16:longctx-1024-decode-32    ff502900d2a179a5 canonical-base
+  r1-fork-base           qwen25-0.5b-bf16:short-decode-32           f26175202f3dabe9 canonical-base
+  r1-fork-cand           qwen25-0.5b-4bit:long-decode-128           4cc08910089477fd re-pinned
+  r1-fork-cand           qwen25-0.5b-4bit:longctx-1024-decode-32    7da83f06ec9f001d NATIVE
+  r1-fork-cand           qwen25-0.5b-4bit:short-decode-32           7fd25a869ff21678 NATIVE
+  r1-fork-cand           qwen25-0.5b-bf16:long-decode-128           8690dc83246b39f8 re-pinned
+  r1-fork-cand           qwen25-0.5b-bf16:longctx-1024-decode-32    ff502900d2a179a5 NATIVE
+  r1-fork-cand           qwen25-0.5b-bf16:short-decode-32           f26175202f3dabe9 unchanged-linux
+  r1-stock-base          qwen25-0.5b-4bit:long-decode-128           4cc08910089477fd canonical-base
+  r1-stock-base          qwen25-0.5b-4bit:longctx-1024-decode-32    7da83f06ec9f001d canonical-base
+  r1-stock-base          qwen25-0.5b-4bit:short-decode-32           7fd25a869ff21678 canonical-base
+  r1-stock-base          qwen25-0.5b-bf16:long-decode-128           c5be9207833d2a26 canonical-base
+  r1-stock-base          qwen25-0.5b-bf16:longctx-1024-decode-32    ff502900d2a179a5 canonical-base
+  r1-stock-base          qwen25-0.5b-bf16:short-decode-32           f26175202f3dabe9 canonical-base
+  r1-stock-cand          qwen25-0.5b-4bit:long-decode-128           4cc08910089477fd re-pinned
+  r1-stock-cand          qwen25-0.5b-4bit:longctx-1024-decode-32    7da83f06ec9f001d NATIVE
+  r1-stock-cand          qwen25-0.5b-4bit:short-decode-32           7fd25a869ff21678 NATIVE
+  r1-stock-cand          qwen25-0.5b-bf16:long-decode-128           46108ad71157cb4d re-pinned
+  r1-stock-cand          qwen25-0.5b-bf16:longctx-1024-decode-32    ff502900d2a179a5 NATIVE
+  r1-stock-cand          qwen25-0.5b-bf16:short-decode-32           7fc0f968789b1882 NATIVE
+  r2-fork-base           qwen25-0.5b-4bit:long-decode-128           4cc08910089477fd canonical-base
+  r2-fork-base           qwen25-0.5b-4bit:longctx-1024-decode-32    7da83f06ec9f001d canonical-base
+  r2-fork-base           qwen25-0.5b-4bit:short-decode-32           7fd25a869ff21678 canonical-base
+  r2-fork-base           qwen25-0.5b-bf16:long-decode-128           ad964232ee67fecd canonical-base
+  r2-fork-base           qwen25-0.5b-bf16:longctx-1024-decode-32    ff502900d2a179a5 canonical-base
+  r2-fork-base           qwen25-0.5b-bf16:short-decode-32           f26175202f3dabe9 canonical-base
+  r2-fork-cand           qwen25-0.5b-4bit:long-decode-128           4cc08910089477fd re-pinned
+  r2-fork-cand           qwen25-0.5b-4bit:longctx-1024-decode-32    7da83f06ec9f001d NATIVE
+  r2-fork-cand           qwen25-0.5b-4bit:short-decode-32           7fd25a869ff21678 NATIVE
+  r2-fork-cand           qwen25-0.5b-bf16:long-decode-128           8690dc83246b39f8 re-pinned
+  r2-fork-cand           qwen25-0.5b-bf16:longctx-1024-decode-32    ff502900d2a179a5 NATIVE
+  r2-fork-cand           qwen25-0.5b-bf16:short-decode-32           f26175202f3dabe9 unchanged-linux
+  r2-stock-base          qwen25-0.5b-4bit:long-decode-128           4cc08910089477fd canonical-base
+  r2-stock-base          qwen25-0.5b-4bit:longctx-1024-decode-32    7da83f06ec9f001d canonical-base
+  r2-stock-base          qwen25-0.5b-4bit:short-decode-32           7fd25a869ff21678 canonical-base
+  r2-stock-base          qwen25-0.5b-bf16:long-decode-128           c5be9207833d2a26 canonical-base
+  r2-stock-base          qwen25-0.5b-bf16:longctx-1024-decode-32    ff502900d2a179a5 canonical-base
+  r2-stock-base          qwen25-0.5b-bf16:short-decode-32           f26175202f3dabe9 canonical-base
+  r2-stock-cand          qwen25-0.5b-4bit:long-decode-128           4cc08910089477fd re-pinned
+  r2-stock-cand          qwen25-0.5b-4bit:longctx-1024-decode-32    7da83f06ec9f001d NATIVE
+  r2-stock-cand          qwen25-0.5b-4bit:short-decode-32           7fd25a869ff21678 NATIVE
+  r2-stock-cand          qwen25-0.5b-bf16:long-decode-128           46108ad71157cb4d re-pinned
+  r2-stock-cand          qwen25-0.5b-bf16:longctx-1024-decode-32    ff502900d2a179a5 NATIVE
+  r2-stock-cand          qwen25-0.5b-bf16:short-decode-32           7fc0f968789b1882 NATIVE
+  r3-fork-base           qwen25-0.5b-4bit:long-decode-128           4cc08910089477fd canonical-base
+  r3-fork-base           qwen25-0.5b-4bit:longctx-1024-decode-32    7da83f06ec9f001d canonical-base
+  r3-fork-base           qwen25-0.5b-4bit:short-decode-32           7fd25a869ff21678 canonical-base
+  r3-fork-base           qwen25-0.5b-bf16:long-decode-128           ad964232ee67fecd canonical-base
+  r3-fork-base           qwen25-0.5b-bf16:longctx-1024-decode-32    ff502900d2a179a5 canonical-base
+  r3-fork-base           qwen25-0.5b-bf16:short-decode-32           f26175202f3dabe9 canonical-base
+  r3-fork-cand           qwen25-0.5b-4bit:long-decode-128           4cc08910089477fd re-pinned
+  r3-fork-cand           qwen25-0.5b-4bit:longctx-1024-decode-32    7da83f06ec9f001d NATIVE
+  r3-fork-cand           qwen25-0.5b-4bit:short-decode-32           7fd25a869ff21678 NATIVE
+  r3-fork-cand           qwen25-0.5b-bf16:long-decode-128           8690dc83246b39f8 re-pinned
+  r3-fork-cand           qwen25-0.5b-bf16:longctx-1024-decode-32    ff502900d2a179a5 NATIVE
+  r3-fork-cand           qwen25-0.5b-bf16:short-decode-32           f26175202f3dabe9 unchanged-linux
+  r3-stock-base          qwen25-0.5b-4bit:long-decode-128           4cc08910089477fd canonical-base
+  r3-stock-base          qwen25-0.5b-4bit:longctx-1024-decode-32    7da83f06ec9f001d canonical-base
+  r3-stock-base          qwen25-0.5b-4bit:short-decode-32           7fd25a869ff21678 canonical-base
+  r3-stock-base          qwen25-0.5b-bf16:long-decode-128           c5be9207833d2a26 canonical-base
+  r3-stock-base          qwen25-0.5b-bf16:longctx-1024-decode-32    ff502900d2a179a5 canonical-base
+  r3-stock-base          qwen25-0.5b-bf16:short-decode-32           f26175202f3dabe9 canonical-base
+  r3-stock-cand          qwen25-0.5b-4bit:long-decode-128           4cc08910089477fd re-pinned
+  r3-stock-cand          qwen25-0.5b-4bit:longctx-1024-decode-32    7da83f06ec9f001d NATIVE
+  r3-stock-cand          qwen25-0.5b-4bit:short-decode-32           7fd25a869ff21678 NATIVE
+  r3-stock-cand          qwen25-0.5b-bf16:long-decode-128           46108ad71157cb4d re-pinned
+  r3-stock-cand          qwen25-0.5b-bf16:longctx-1024-decode-32    ff502900d2a179a5 NATIVE
+  r3-stock-cand          qwen25-0.5b-bf16:short-decode-32           7fc0f968789b1882 NATIVE
+
+== paired medians and fraction of committed base-M1 native ==
+  cell                   leg                                  dec_med  x-native   pre_med  x-native
+  r1-fork-base           qwen25-0.5b-4bit:short-decode-32             113.27     0.752    337.1     1.146
+  r1-fork-base           qwen25-0.5b-4bit:long-decode-128             109.61     0.747    974.0     0.803
+  r1-fork-base           qwen25-0.5b-4bit:longctx-1024-decode-32       97.53     0.695   1120.2     0.609
+  r1-fork-base           qwen25-0.5b-bf16:short-decode-32              11.73     0.208     86.0     0.370
+  r1-fork-base           qwen25-0.5b-bf16:long-decode-128              11.27     0.202    318.0     0.316
+  r1-fork-base           qwen25-0.5b-bf16:longctx-1024-decode-32       10.03     0.184    364.4     0.220
+  r1-fork-cand           qwen25-0.5b-4bit:short-decode-32             111.47     0.740    333.3     1.133
+  r1-fork-cand           qwen25-0.5b-4bit:long-decode-128             107.83     0.735    963.2     0.794
+  r1-fork-cand           qwen25-0.5b-4bit:longctx-1024-decode-32       96.19     0.685   1113.1     0.605
+  r1-fork-cand           qwen25-0.5b-bf16:short-decode-32              31.72     0.562    130.4     0.561
+  r1-fork-cand           qwen25-0.5b-bf16:long-decode-128              28.83     0.517    451.7     0.448
+  r1-fork-cand           qwen25-0.5b-bf16:longctx-1024-decode-32       22.84     0.419    453.3     0.274
+  r1-stock-base          qwen25-0.5b-4bit:short-decode-32             101.51     0.674    171.4     0.583
+  r1-stock-base          qwen25-0.5b-4bit:long-decode-128              81.93     0.558    315.7     0.260
+  r1-stock-base          qwen25-0.5b-4bit:longctx-1024-decode-32       53.09     0.378    364.7     0.198
+  r1-stock-base          qwen25-0.5b-bf16:short-decode-32              11.75     0.208     84.0     0.361
+  r1-stock-base          qwen25-0.5b-bf16:long-decode-128              11.30     0.203    210.6     0.209
+  r1-stock-base          qwen25-0.5b-bf16:longctx-1024-decode-32       10.07     0.185    220.4     0.133
+  r1-stock-cand          qwen25-0.5b-4bit:short-decode-32             101.10     0.671    163.9     0.557
+  r1-stock-cand          qwen25-0.5b-4bit:long-decode-128              81.34     0.554    308.6     0.254
+  r1-stock-cand          qwen25-0.5b-4bit:longctx-1024-decode-32       52.38     0.373    360.1     0.196
+  r1-stock-cand          qwen25-0.5b-bf16:short-decode-32              32.01     0.567    132.2     0.568
+  r1-stock-cand          qwen25-0.5b-bf16:long-decode-128              29.19     0.524    230.4     0.229
+  r1-stock-cand          qwen25-0.5b-bf16:longctx-1024-decode-32       23.20     0.425    224.3     0.135
+  r2-fork-base           qwen25-0.5b-4bit:short-decode-32             111.53     0.741    333.3     1.133
+  r2-fork-base           qwen25-0.5b-4bit:long-decode-128             108.89     0.742    970.4     0.800
+  r2-fork-base           qwen25-0.5b-4bit:longctx-1024-decode-32       97.25     0.693   1111.9     0.604
+  r2-fork-base           qwen25-0.5b-bf16:short-decode-32              11.69     0.207     86.2     0.371
+  r2-fork-base           qwen25-0.5b-bf16:long-decode-128              11.26     0.202    318.3     0.316
+  r2-fork-base           qwen25-0.5b-bf16:longctx-1024-decode-32       10.01     0.184    365.1     0.221
+  r2-fork-cand           qwen25-0.5b-4bit:short-decode-32             111.74     0.742    333.3     1.133
+  r2-fork-cand           qwen25-0.5b-4bit:long-decode-128             108.38     0.738    966.8     0.797
+  r2-fork-cand           qwen25-0.5b-4bit:longctx-1024-decode-32       96.47     0.687   1119.0     0.608
+  r2-fork-cand           qwen25-0.5b-bf16:short-decode-32              31.80     0.564    131.6     0.566
+  r2-fork-cand           qwen25-0.5b-bf16:long-decode-128              28.91     0.519    447.9     0.444
+  r2-fork-cand           qwen25-0.5b-bf16:longctx-1024-decode-32       22.63     0.415    450.8     0.272
+  r2-stock-base          qwen25-0.5b-4bit:short-decode-32             102.85     0.683    169.5     0.576
+  r2-stock-base          qwen25-0.5b-4bit:long-decode-128              81.89     0.558    311.2     0.257
+  r2-stock-base          qwen25-0.5b-4bit:longctx-1024-decode-32       52.84     0.376    362.6     0.197
+  r2-stock-base          qwen25-0.5b-bf16:short-decode-32              11.72     0.208     83.8     0.360
+  r2-stock-base          qwen25-0.5b-bf16:long-decode-128              11.29     0.203    210.9     0.209
+  r2-stock-base          qwen25-0.5b-bf16:longctx-1024-decode-32       10.07     0.185    220.1     0.133
+  r2-stock-cand          qwen25-0.5b-4bit:short-decode-32             101.70     0.675    167.6     0.570
+  r2-stock-cand          qwen25-0.5b-4bit:long-decode-128              81.17     0.553    320.3     0.264
+  r2-stock-cand          qwen25-0.5b-4bit:longctx-1024-decode-32       52.76     0.376    360.4     0.196
+  r2-stock-cand          qwen25-0.5b-bf16:short-decode-32              32.17     0.570    133.3     0.573
+  r2-stock-cand          qwen25-0.5b-bf16:long-decode-128              29.21     0.524    229.0     0.227
+  r2-stock-cand          qwen25-0.5b-bf16:longctx-1024-decode-32       22.86     0.419    224.5     0.136
+  r3-fork-base           qwen25-0.5b-4bit:short-decode-32             112.45     0.747    333.3     1.133
+  r3-fork-base           qwen25-0.5b-4bit:long-decode-128             108.87     0.742    952.7     0.785
+  r3-fork-base           qwen25-0.5b-4bit:longctx-1024-decode-32       97.14     0.692   1113.1     0.605
+  r3-fork-base           qwen25-0.5b-bf16:short-decode-32              11.71     0.208     83.8     0.360
+  r3-fork-base           qwen25-0.5b-bf16:long-decode-128              11.26     0.202    318.0     0.316
+  r3-fork-base           qwen25-0.5b-bf16:longctx-1024-decode-32       10.04     0.184    364.4     0.220
+  r3-fork-cand           qwen25-0.5b-4bit:short-decode-32             111.63     0.741    333.3     1.133
+  r3-fork-cand           qwen25-0.5b-4bit:long-decode-128             107.80     0.734    952.7     0.785
+  r3-fork-cand           qwen25-0.5b-4bit:longctx-1024-decode-32       96.53     0.688   1115.5     0.606
+  r3-fork-cand           qwen25-0.5b-bf16:short-decode-32              31.60     0.560    131.6     0.566
+  r3-fork-cand           qwen25-0.5b-bf16:long-decode-128              28.97     0.520    447.1     0.444
+  r3-fork-cand           qwen25-0.5b-bf16:longctx-1024-decode-32       23.15     0.424    456.2     0.276
+  r3-stock-base          qwen25-0.5b-4bit:short-decode-32             101.20     0.672    169.5     0.576
+  r3-stock-base          qwen25-0.5b-4bit:long-decode-128              81.88     0.558    310.4     0.256
+  r3-stock-base          qwen25-0.5b-4bit:longctx-1024-decode-32       53.35     0.380    362.2     0.197
+  r3-stock-base          qwen25-0.5b-bf16:short-decode-32              11.73     0.208     83.6     0.359
+  r3-stock-base          qwen25-0.5b-bf16:long-decode-128              11.30     0.203    210.8     0.209
+  r3-stock-base          qwen25-0.5b-bf16:longctx-1024-decode-32       10.05     0.184    220.4     0.133
+  r3-stock-cand          qwen25-0.5b-4bit:short-decode-32             101.79     0.676    169.5     0.576
+  r3-stock-cand          qwen25-0.5b-4bit:long-decode-128              81.20     0.553    310.8     0.256
+  r3-stock-cand          qwen25-0.5b-4bit:longctx-1024-decode-32       52.90     0.377    363.0     0.197
+  r3-stock-cand          qwen25-0.5b-bf16:short-decode-32              32.23     0.571    132.2     0.568
+  r3-stock-cand          qwen25-0.5b-bf16:long-decode-128              29.14     0.523    230.0     0.228
+  r3-stock-cand          qwen25-0.5b-bf16:longctx-1024-decode-32       23.28     0.427    223.9     0.135
+
+== validation: 0 problem(s) -> matrix/summary.json

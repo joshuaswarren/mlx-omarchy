@@ -1,0 +1,823 @@
+{
+  "digests": {
+    "r1-fork-base|qwen25-0.5b-4bit:long-decode-128": [
+      "4cc08910089477fd",
+      "canonical-base"
+    ],
+    "r1-fork-base|qwen25-0.5b-4bit:longctx-1024-decode-32": [
+      "7da83f06ec9f001d",
+      "canonical-base"
+    ],
+    "r1-fork-base|qwen25-0.5b-4bit:short-decode-32": [
+      "7fd25a869ff21678",
+      "canonical-base"
+    ],
+    "r1-fork-base|qwen25-0.5b-bf16:long-decode-128": [
+      "ad964232ee67fecd",
+      "canonical-base"
+    ],
+    "r1-fork-base|qwen25-0.5b-bf16:longctx-1024-decode-32": [
+      "ff502900d2a179a5",
+      "canonical-base"
+    ],
+    "r1-fork-base|qwen25-0.5b-bf16:short-decode-32": [
+      "f26175202f3dabe9",
+      "canonical-base"
+    ],
+    "r1-fork-cand|qwen25-0.5b-4bit:long-decode-128": [
+      "4cc08910089477fd",
+      "re-pinned"
+    ],
+    "r1-fork-cand|qwen25-0.5b-4bit:longctx-1024-decode-32": [
+      "7da83f06ec9f001d",
+      "NATIVE"
+    ],
+    "r1-fork-cand|qwen25-0.5b-4bit:short-decode-32": [
+      "7fd25a869ff21678",
+      "NATIVE"
+    ],
+    "r1-fork-cand|qwen25-0.5b-bf16:long-decode-128": [
+      "8690dc83246b39f8",
+      "re-pinned"
+    ],
+    "r1-fork-cand|qwen25-0.5b-bf16:longctx-1024-decode-32": [
+      "ff502900d2a179a5",
+      "NATIVE"
+    ],
+    "r1-fork-cand|qwen25-0.5b-bf16:short-decode-32": [
+      "f26175202f3dabe9",
+      "unchanged-linux"
+    ],
+    "r1-stock-base|qwen25-0.5b-4bit:long-decode-128": [
+      "4cc08910089477fd",
+      "canonical-base"
+    ],
+    "r1-stock-base|qwen25-0.5b-4bit:longctx-1024-decode-32": [
+      "7da83f06ec9f001d",
+      "canonical-base"
+    ],
+    "r1-stock-base|qwen25-0.5b-4bit:short-decode-32": [
+      "7fd25a869ff21678",
+      "canonical-base"
+    ],
+    "r1-stock-base|qwen25-0.5b-bf16:long-decode-128": [
+      "c5be9207833d2a26",
+      "canonical-base"
+    ],
+    "r1-stock-base|qwen25-0.5b-bf16:longctx-1024-decode-32": [
+      "ff502900d2a179a5",
+      "canonical-base"
+    ],
+    "r1-stock-base|qwen25-0.5b-bf16:short-decode-32": [
+      "f26175202f3dabe9",
+      "canonical-base"
+    ],
+    "r1-stock-cand|qwen25-0.5b-4bit:long-decode-128": [
+      "4cc08910089477fd",
+      "re-pinned"
+    ],
+    "r1-stock-cand|qwen25-0.5b-4bit:longctx-1024-decode-32": [
+      "7da83f06ec9f001d",
+      "NATIVE"
+    ],
+    "r1-stock-cand|qwen25-0.5b-4bit:short-decode-32": [
+      "7fd25a869ff21678",
+      "NATIVE"
+    ],
+    "r1-stock-cand|qwen25-0.5b-bf16:long-decode-128": [
+      "46108ad71157cb4d",
+      "re-pinned"
+    ],
+    "r1-stock-cand|qwen25-0.5b-bf16:longctx-1024-decode-32": [
+      "ff502900d2a179a5",
+      "NATIVE"
+    ],
+    "r1-stock-cand|qwen25-0.5b-bf16:short-decode-32": [
+      "7fc0f968789b1882",
+      "NATIVE"
+    ],
+    "r2-fork-base|qwen25-0.5b-4bit:long-decode-128": [
+      "4cc08910089477fd",
+      "canonical-base"
+    ],
+    "r2-fork-base|qwen25-0.5b-4bit:longctx-1024-decode-32": [
+      "7da83f06ec9f001d",
+      "canonical-base"
+    ],
+    "r2-fork-base|qwen25-0.5b-4bit:short-decode-32": [
+      "7fd25a869ff21678",
+      "canonical-base"
+    ],
+    "r2-fork-base|qwen25-0.5b-bf16:long-decode-128": [
+      "ad964232ee67fecd",
+      "canonical-base"
+    ],
+    "r2-fork-base|qwen25-0.5b-bf16:longctx-1024-decode-32": [
+      "ff502900d2a179a5",
+      "canonical-base"
+    ],
+    "r2-fork-base|qwen25-0.5b-bf16:short-decode-32": [
+      "f26175202f3dabe9",
+      "canonical-base"
+    ],
+    "r2-fork-cand|qwen25-0.5b-4bit:long-decode-128": [
+      "4cc08910089477fd",
+      "re-pinned"
+    ],
+    "r2-fork-cand|qwen25-0.5b-4bit:longctx-1024-decode-32": [
+      "7da83f06ec9f001d",
+      "NATIVE"
+    ],
+    "r2-fork-cand|qwen25-0.5b-4bit:short-decode-32": [
+      "7fd25a869ff21678",
+      "NATIVE"
+    ],
+    "r2-fork-cand|qwen25-0.5b-bf16:long-decode-128": [
+      "8690dc83246b39f8",
+      "re-pinned"
+    ],
+    "r2-fork-cand|qwen25-0.5b-bf16:longctx-1024-decode-32": [
+      "ff502900d2a179a5",
+      "NATIVE"
+    ],
+    "r2-fork-cand|qwen25-0.5b-bf16:short-decode-32": [
+      "f26175202f3dabe9",
+      "unchanged-linux"
+    ],
+    "r2-stock-base|qwen25-0.5b-4bit:long-decode-128": [
+      "4cc08910089477fd",
+      "canonical-base"
+    ],
+    "r2-stock-base|qwen25-0.5b-4bit:longctx-1024-decode-32": [
+      "7da83f06ec9f001d",
+      "canonical-base"
+    ],
+    "r2-stock-base|qwen25-0.5b-4bit:short-decode-32": [
+      "7fd25a869ff21678",
+      "canonical-base"
+    ],
+    "r2-stock-base|qwen25-0.5b-bf16:long-decode-128": [
+      "c5be9207833d2a26",
+      "canonical-base"
+    ],
+    "r2-stock-base|qwen25-0.5b-bf16:longctx-1024-decode-32": [
+      "ff502900d2a179a5",
+      "canonical-base"
+    ],
+    "r2-stock-base|qwen25-0.5b-bf16:short-decode-32": [
+      "f26175202f3dabe9",
+      "canonical-base"
+    ],
+    "r2-stock-cand|qwen25-0.5b-4bit:long-decode-128": [
+      "4cc08910089477fd",
+      "re-pinned"
+    ],
+    "r2-stock-cand|qwen25-0.5b-4bit:longctx-1024-decode-32": [
+      "7da83f06ec9f001d",
+      "NATIVE"
+    ],
+    "r2-stock-cand|qwen25-0.5b-4bit:short-decode-32": [
+      "7fd25a869ff21678",
+      "NATIVE"
+    ],
+    "r2-stock-cand|qwen25-0.5b-bf16:long-decode-128": [
+      "46108ad71157cb4d",
+      "re-pinned"
+    ],
+    "r2-stock-cand|qwen25-0.5b-bf16:longctx-1024-decode-32": [
+      "ff502900d2a179a5",
+      "NATIVE"
+    ],
+    "r2-stock-cand|qwen25-0.5b-bf16:short-decode-32": [
+      "7fc0f968789b1882",
+      "NATIVE"
+    ],
+    "r3-fork-base|qwen25-0.5b-4bit:long-decode-128": [
+      "4cc08910089477fd",
+      "canonical-base"
+    ],
+    "r3-fork-base|qwen25-0.5b-4bit:longctx-1024-decode-32": [
+      "7da83f06ec9f001d",
+      "canonical-base"
+    ],
+    "r3-fork-base|qwen25-0.5b-4bit:short-decode-32": [
+      "7fd25a869ff21678",
+      "canonical-base"
+    ],
+    "r3-fork-base|qwen25-0.5b-bf16:long-decode-128": [
+      "ad964232ee67fecd",
+      "canonical-base"
+    ],
+    "r3-fork-base|qwen25-0.5b-bf16:longctx-1024-decode-32": [
+      "ff502900d2a179a5",
+      "canonical-base"
+    ],
+    "r3-fork-base|qwen25-0.5b-bf16:short-decode-32": [
+      "f26175202f3dabe9",
+      "canonical-base"
+    ],
+    "r3-fork-cand|qwen25-0.5b-4bit:long-decode-128": [
+      "4cc08910089477fd",
+      "re-pinned"
+    ],
+    "r3-fork-cand|qwen25-0.5b-4bit:longctx-1024-decode-32": [
+      "7da83f06ec9f001d",
+      "NATIVE"
+    ],
+    "r3-fork-cand|qwen25-0.5b-4bit:short-decode-32": [
+      "7fd25a869ff21678",
+      "NATIVE"
+    ],
+    "r3-fork-cand|qwen25-0.5b-bf16:long-decode-128": [
+      "8690dc83246b39f8",
+      "re-pinned"
+    ],
+    "r3-fork-cand|qwen25-0.5b-bf16:longctx-1024-decode-32": [
+      "ff502900d2a179a5",
+      "NATIVE"
+    ],
+    "r3-fork-cand|qwen25-0.5b-bf16:short-decode-32": [
+      "f26175202f3dabe9",
+      "unchanged-linux"
+    ],
+    "r3-stock-base|qwen25-0.5b-4bit:long-decode-128": [
+      "4cc08910089477fd",
+      "canonical-base"
+    ],
+    "r3-stock-base|qwen25-0.5b-4bit:longctx-1024-decode-32": [
+      "7da83f06ec9f001d",
+      "canonical-base"
+    ],
+    "r3-stock-base|qwen25-0.5b-4bit:short-decode-32": [
+      "7fd25a869ff21678",
+      "canonical-base"
+    ],
+    "r3-stock-base|qwen25-0.5b-bf16:long-decode-128": [
+      "c5be9207833d2a26",
+      "canonical-base"
+    ],
+    "r3-stock-base|qwen25-0.5b-bf16:longctx-1024-decode-32": [
+      "ff502900d2a179a5",
+      "canonical-base"
+    ],
+    "r3-stock-base|qwen25-0.5b-bf16:short-decode-32": [
+      "f26175202f3dabe9",
+      "canonical-base"
+    ],
+    "r3-stock-cand|qwen25-0.5b-4bit:long-decode-128": [
+      "4cc08910089477fd",
+      "re-pinned"
+    ],
+    "r3-stock-cand|qwen25-0.5b-4bit:longctx-1024-decode-32": [
+      "7da83f06ec9f001d",
+      "NATIVE"
+    ],
+    "r3-stock-cand|qwen25-0.5b-4bit:short-decode-32": [
+      "7fd25a869ff21678",
+      "NATIVE"
+    ],
+    "r3-stock-cand|qwen25-0.5b-bf16:long-decode-128": [
+      "46108ad71157cb4d",
+      "re-pinned"
+    ],
+    "r3-stock-cand|qwen25-0.5b-bf16:longctx-1024-decode-32": [
+      "ff502900d2a179a5",
+      "NATIVE"
+    ],
+    "r3-stock-cand|qwen25-0.5b-bf16:short-decode-32": [
+      "7fc0f968789b1882",
+      "NATIVE"
+    ]
+  },
+  "rates": {
+    "r1-fork-base": {
+      "qwen25-0.5b-4bit:short-decode-32": {
+        "decode_median": 113.27,
+        "prefill_median": 337.079,
+        "fraction_of_native_decode": 0.7523,
+        "fraction_of_native_prefill": 1.1461,
+        "reps": 1
+      },
+      "qwen25-0.5b-4bit:long-decode-128": {
+        "decode_median": 109.61,
+        "prefill_median": 973.978,
+        "fraction_of_native_decode": 0.7468,
+        "fraction_of_native_prefill": 0.8029,
+        "reps": 1
+      },
+      "qwen25-0.5b-4bit:longctx-1024-decode-32": {
+        "decode_median": 97.53,
+        "prefill_median": 1120.213,
+        "fraction_of_native_decode": 0.6948,
+        "fraction_of_native_prefill": 0.6085,
+        "reps": 1
+      },
+      "qwen25-0.5b-bf16:short-decode-32": {
+        "decode_median": 11.73,
+        "prefill_median": 85.96,
+        "fraction_of_native_decode": 0.2079,
+        "fraction_of_native_prefill": 0.3696,
+        "reps": 1
+      },
+      "qwen25-0.5b-bf16:long-decode-128": {
+        "decode_median": 11.27,
+        "prefill_median": 317.961,
+        "fraction_of_native_decode": 0.2023,
+        "fraction_of_native_prefill": 0.3155,
+        "reps": 1
+      },
+      "qwen25-0.5b-bf16:longctx-1024-decode-32": {
+        "decode_median": 10.03,
+        "prefill_median": 364.36,
+        "fraction_of_native_decode": 0.1839,
+        "fraction_of_native_prefill": 0.2201,
+        "reps": 1
+      }
+    },
+    "r1-fork-cand": {
+      "qwen25-0.5b-4bit:short-decode-32": {
+        "decode_median": 111.47,
+        "prefill_median": 333.333,
+        "fraction_of_native_decode": 0.7403,
+        "fraction_of_native_prefill": 1.1334,
+        "reps": 1
+      },
+      "qwen25-0.5b-4bit:long-decode-128": {
+        "decode_median": 107.83,
+        "prefill_median": 963.235,
+        "fraction_of_native_decode": 0.7347,
+        "fraction_of_native_prefill": 0.7941,
+        "reps": 1
+      },
+      "qwen25-0.5b-4bit:longctx-1024-decode-32": {
+        "decode_median": 96.19,
+        "prefill_median": 1113.108,
+        "fraction_of_native_decode": 0.6852,
+        "fraction_of_native_prefill": 0.6047,
+        "reps": 1
+      },
+      "qwen25-0.5b-bf16:short-decode-32": {
+        "decode_median": 31.72,
+        "prefill_median": 130.435,
+        "fraction_of_native_decode": 0.5621,
+        "fraction_of_native_prefill": 0.5608,
+        "reps": 1
+      },
+      "qwen25-0.5b-bf16:long-decode-128": {
+        "decode_median": 28.83,
+        "prefill_median": 451.724,
+        "fraction_of_native_decode": 0.5174,
+        "fraction_of_native_prefill": 0.4483,
+        "reps": 1
+      },
+      "qwen25-0.5b-bf16:longctx-1024-decode-32": {
+        "decode_median": 22.84,
+        "prefill_median": 453.293,
+        "fraction_of_native_decode": 0.4187,
+        "fraction_of_native_prefill": 0.2738,
+        "reps": 1
+      }
+    },
+    "r1-stock-base": {
+      "qwen25-0.5b-4bit:short-decode-32": {
+        "decode_median": 101.51,
+        "prefill_median": 171.429,
+        "fraction_of_native_decode": 0.6742,
+        "fraction_of_native_prefill": 0.5829,
+        "reps": 1
+      },
+      "qwen25-0.5b-4bit:long-decode-128": {
+        "decode_median": 81.93,
+        "prefill_median": 315.663,
+        "fraction_of_native_decode": 0.5582,
+        "fraction_of_native_prefill": 0.2602,
+        "reps": 1
+      },
+      "qwen25-0.5b-4bit:longctx-1024-decode-32": {
+        "decode_median": 53.09,
+        "prefill_median": 364.738,
+        "fraction_of_native_decode": 0.3782,
+        "fraction_of_native_prefill": 0.1981,
+        "reps": 1
+      },
+      "qwen25-0.5b-bf16:short-decode-32": {
+        "decode_median": 11.75,
+        "prefill_median": 84.034,
+        "fraction_of_native_decode": 0.2082,
+        "fraction_of_native_prefill": 0.3613,
+        "reps": 1
+      },
+      "qwen25-0.5b-bf16:long-decode-128": {
+        "decode_median": 11.3,
+        "prefill_median": 210.611,
+        "fraction_of_native_decode": 0.2028,
+        "fraction_of_native_prefill": 0.209,
+        "reps": 1
+      },
+      "qwen25-0.5b-bf16:longctx-1024-decode-32": {
+        "decode_median": 10.07,
+        "prefill_median": 220.385,
+        "fraction_of_native_decode": 0.1846,
+        "fraction_of_native_prefill": 0.1331,
+        "reps": 1
+      }
+    },
+    "r1-stock-cand": {
+      "qwen25-0.5b-4bit:short-decode-32": {
+        "decode_median": 101.1,
+        "prefill_median": 163.934,
+        "fraction_of_native_decode": 0.6714,
+        "fraction_of_native_prefill": 0.5574,
+        "reps": 1
+      },
+      "qwen25-0.5b-4bit:long-decode-128": {
+        "decode_median": 81.34,
+        "prefill_median": 308.598,
+        "fraction_of_native_decode": 0.5542,
+        "fraction_of_native_prefill": 0.2544,
+        "reps": 1
+      },
+      "qwen25-0.5b-4bit:longctx-1024-decode-32": {
+        "decode_median": 52.38,
+        "prefill_median": 360.123,
+        "fraction_of_native_decode": 0.3731,
+        "fraction_of_native_prefill": 0.1956,
+        "reps": 1
+      },
+      "qwen25-0.5b-bf16:short-decode-32": {
+        "decode_median": 32.01,
+        "prefill_median": 132.159,
+        "fraction_of_native_decode": 0.5673,
+        "fraction_of_native_prefill": 0.5682,
+        "reps": 1
+      },
+      "qwen25-0.5b-bf16:long-decode-128": {
+        "decode_median": 29.19,
+        "prefill_median": 230.431,
+        "fraction_of_native_decode": 0.5239,
+        "fraction_of_native_prefill": 0.2287,
+        "reps": 1
+      },
+      "qwen25-0.5b-bf16:longctx-1024-decode-32": {
+        "decode_median": 23.2,
+        "prefill_median": 224.281,
+        "fraction_of_native_decode": 0.4253,
+        "fraction_of_native_prefill": 0.1355,
+        "reps": 1
+      }
+    },
+    "r2-fork-base": {
+      "qwen25-0.5b-4bit:short-decode-32": {
+        "decode_median": 111.53,
+        "prefill_median": 333.333,
+        "fraction_of_native_decode": 0.7407,
+        "fraction_of_native_prefill": 1.1334,
+        "reps": 1
+      },
+      "qwen25-0.5b-4bit:long-decode-128": {
+        "decode_median": 108.89,
+        "prefill_median": 970.37,
+        "fraction_of_native_decode": 0.7419,
+        "fraction_of_native_prefill": 0.8,
+        "reps": 1
+      },
+      "qwen25-0.5b-4bit:longctx-1024-decode-32": {
+        "decode_median": 97.25,
+        "prefill_median": 1111.932,
+        "fraction_of_native_decode": 0.6928,
+        "fraction_of_native_prefill": 0.604,
+        "reps": 1
+      },
+      "qwen25-0.5b-bf16:short-decode-32": {
+        "decode_median": 11.69,
+        "prefill_median": 86.207,
+        "fraction_of_native_decode": 0.2072,
+        "fraction_of_native_prefill": 0.3706,
+        "reps": 1
+      },
+      "qwen25-0.5b-bf16:long-decode-128": {
+        "decode_median": 11.26,
+        "prefill_median": 318.348,
+        "fraction_of_native_decode": 0.2021,
+        "fraction_of_native_prefill": 0.3159,
+        "reps": 1
+      },
+      "qwen25-0.5b-bf16:longctx-1024-decode-32": {
+        "decode_median": 10.01,
+        "prefill_median": 365.118,
+        "fraction_of_native_decode": 0.1835,
+        "fraction_of_native_prefill": 0.2205,
+        "reps": 1
+      }
+    },
+    "r2-fork-cand": {
+      "qwen25-0.5b-4bit:short-decode-32": {
+        "decode_median": 111.74,
+        "prefill_median": 333.333,
+        "fraction_of_native_decode": 0.7421,
+        "fraction_of_native_prefill": 1.1334,
+        "reps": 1
+      },
+      "qwen25-0.5b-4bit:long-decode-128": {
+        "decode_median": 108.38,
+        "prefill_median": 966.79,
+        "fraction_of_native_decode": 0.7384,
+        "fraction_of_native_prefill": 0.797,
+        "reps": 1
+      },
+      "qwen25-0.5b-4bit:longctx-1024-decode-32": {
+        "decode_median": 96.47,
+        "prefill_median": 1119.022,
+        "fraction_of_native_decode": 0.6872,
+        "fraction_of_native_prefill": 0.6079,
+        "reps": 1
+      },
+      "qwen25-0.5b-bf16:short-decode-32": {
+        "decode_median": 31.8,
+        "prefill_median": 131.579,
+        "fraction_of_native_decode": 0.5635,
+        "fraction_of_native_prefill": 0.5657,
+        "reps": 1
+      },
+      "qwen25-0.5b-bf16:long-decode-128": {
+        "decode_median": 28.91,
+        "prefill_median": 447.863,
+        "fraction_of_native_decode": 0.5188,
+        "fraction_of_native_prefill": 0.4444,
+        "reps": 1
+      },
+      "qwen25-0.5b-bf16:longctx-1024-decode-32": {
+        "decode_median": 22.63,
+        "prefill_median": 450.771,
+        "fraction_of_native_decode": 0.4148,
+        "fraction_of_native_prefill": 0.2723,
+        "reps": 1
+      }
+    },
+    "r2-stock-base": {
+      "qwen25-0.5b-4bit:short-decode-32": {
+        "decode_median": 102.85,
+        "prefill_median": 169.492,
+        "fraction_of_native_decode": 0.6831,
+        "fraction_of_native_prefill": 0.5763,
+        "reps": 1
+      },
+      "qwen25-0.5b-4bit:long-decode-128": {
+        "decode_median": 81.89,
+        "prefill_median": 311.164,
+        "fraction_of_native_decode": 0.5579,
+        "fraction_of_native_prefill": 0.2565,
+        "reps": 1
+      },
+      "qwen25-0.5b-4bit:longctx-1024-decode-32": {
+        "decode_median": 52.84,
+        "prefill_median": 362.603,
+        "fraction_of_native_decode": 0.3764,
+        "fraction_of_native_prefill": 0.197,
+        "reps": 1
+      },
+      "qwen25-0.5b-bf16:short-decode-32": {
+        "decode_median": 11.72,
+        "prefill_median": 83.799,
+        "fraction_of_native_decode": 0.2077,
+        "fraction_of_native_prefill": 0.3603,
+        "reps": 1
+      },
+      "qwen25-0.5b-bf16:long-decode-128": {
+        "decode_median": 11.29,
+        "prefill_median": 210.95,
+        "fraction_of_native_decode": 0.2026,
+        "fraction_of_native_prefill": 0.2093,
+        "reps": 1
+      },
+      "qwen25-0.5b-bf16:longctx-1024-decode-32": {
+        "decode_median": 10.07,
+        "prefill_median": 220.063,
+        "fraction_of_native_decode": 0.1846,
+        "fraction_of_native_prefill": 0.1329,
+        "reps": 1
+      }
+    },
+    "r2-stock-cand": {
+      "qwen25-0.5b-4bit:short-decode-32": {
+        "decode_median": 101.7,
+        "prefill_median": 167.598,
+        "fraction_of_native_decode": 0.6754,
+        "fraction_of_native_prefill": 0.5699,
+        "reps": 1
+      },
+      "qwen25-0.5b-4bit:long-decode-128": {
+        "decode_median": 81.17,
+        "prefill_median": 320.293,
+        "fraction_of_native_decode": 0.553,
+        "fraction_of_native_prefill": 0.2641,
+        "reps": 1
+      },
+      "qwen25-0.5b-4bit:longctx-1024-decode-32": {
+        "decode_median": 52.76,
+        "prefill_median": 360.37,
+        "fraction_of_native_decode": 0.3758,
+        "fraction_of_native_prefill": 0.1958,
+        "reps": 1
+      },
+      "qwen25-0.5b-bf16:short-decode-32": {
+        "decode_median": 32.17,
+        "prefill_median": 133.333,
+        "fraction_of_native_decode": 0.5701,
+        "fraction_of_native_prefill": 0.5732,
+        "reps": 1
+      },
+      "qwen25-0.5b-bf16:long-decode-128": {
+        "decode_median": 29.21,
+        "prefill_median": 229.021,
+        "fraction_of_native_decode": 0.5242,
+        "fraction_of_native_prefill": 0.2273,
+        "reps": 1
+      },
+      "qwen25-0.5b-bf16:longctx-1024-decode-32": {
+        "decode_median": 22.86,
+        "prefill_median": 224.52,
+        "fraction_of_native_decode": 0.4191,
+        "fraction_of_native_prefill": 0.1356,
+        "reps": 1
+      }
+    },
+    "r3-fork-base": {
+      "qwen25-0.5b-4bit:short-decode-32": {
+        "decode_median": 112.45,
+        "prefill_median": 333.333,
+        "fraction_of_native_decode": 0.7468,
+        "fraction_of_native_prefill": 1.1334,
+        "reps": 1
+      },
+      "qwen25-0.5b-4bit:long-decode-128": {
+        "decode_median": 108.87,
+        "prefill_median": 952.727,
+        "fraction_of_native_decode": 0.7418,
+        "fraction_of_native_prefill": 0.7854,
+        "reps": 1
+      },
+      "qwen25-0.5b-4bit:longctx-1024-decode-32": {
+        "decode_median": 97.14,
+        "prefill_median": 1113.108,
+        "fraction_of_native_decode": 0.692,
+        "fraction_of_native_prefill": 0.6047,
+        "reps": 1
+      },
+      "qwen25-0.5b-bf16:short-decode-32": {
+        "decode_median": 11.71,
+        "prefill_median": 83.799,
+        "fraction_of_native_decode": 0.2075,
+        "fraction_of_native_prefill": 0.3603,
+        "reps": 1
+      },
+      "qwen25-0.5b-bf16:long-decode-128": {
+        "decode_median": 11.26,
+        "prefill_median": 317.961,
+        "fraction_of_native_decode": 0.2021,
+        "fraction_of_native_prefill": 0.3155,
+        "reps": 1
+      },
+      "qwen25-0.5b-bf16:longctx-1024-decode-32": {
+        "decode_median": 10.04,
+        "prefill_median": 364.36,
+        "fraction_of_native_decode": 0.1841,
+        "fraction_of_native_prefill": 0.2201,
+        "reps": 1
+      }
+    },
+    "r3-fork-cand": {
+      "qwen25-0.5b-4bit:short-decode-32": {
+        "decode_median": 111.63,
+        "prefill_median": 333.333,
+        "fraction_of_native_decode": 0.7414,
+        "fraction_of_native_prefill": 1.1334,
+        "reps": 1
+      },
+      "qwen25-0.5b-4bit:long-decode-128": {
+        "decode_median": 107.8,
+        "prefill_median": 952.727,
+        "fraction_of_native_decode": 0.7345,
+        "fraction_of_native_prefill": 0.7854,
+        "reps": 1
+      },
+      "qwen25-0.5b-4bit:longctx-1024-decode-32": {
+        "decode_median": 96.53,
+        "prefill_median": 1115.466,
+        "fraction_of_native_decode": 0.6876,
+        "fraction_of_native_prefill": 0.6059,
+        "reps": 1
+      },
+      "qwen25-0.5b-bf16:short-decode-32": {
+        "decode_median": 31.6,
+        "prefill_median": 131.579,
+        "fraction_of_native_decode": 0.56,
+        "fraction_of_native_prefill": 0.5657,
+        "reps": 1
+      },
+      "qwen25-0.5b-bf16:long-decode-128": {
+        "decode_median": 28.97,
+        "prefill_median": 447.099,
+        "fraction_of_native_decode": 0.5199,
+        "fraction_of_native_prefill": 0.4437,
+        "reps": 1
+      },
+      "qwen25-0.5b-bf16:longctx-1024-decode-32": {
+        "decode_median": 23.15,
+        "prefill_median": 456.239,
+        "fraction_of_native_decode": 0.4244,
+        "fraction_of_native_prefill": 0.2756,
+        "reps": 1
+      }
+    },
+    "r3-stock-base": {
+      "qwen25-0.5b-4bit:short-decode-32": {
+        "decode_median": 101.2,
+        "prefill_median": 169.492,
+        "fraction_of_native_decode": 0.6721,
+        "fraction_of_native_prefill": 0.5763,
+        "reps": 1
+      },
+      "qwen25-0.5b-4bit:long-decode-128": {
+        "decode_median": 81.88,
+        "prefill_median": 310.427,
+        "fraction_of_native_decode": 0.5579,
+        "fraction_of_native_prefill": 0.2559,
+        "reps": 1
+      },
+      "qwen25-0.5b-4bit:longctx-1024-decode-32": {
+        "decode_median": 53.35,
+        "prefill_median": 362.229,
+        "fraction_of_native_decode": 0.38,
+        "fraction_of_native_prefill": 0.1968,
+        "reps": 1
+      },
+      "qwen25-0.5b-bf16:short-decode-32": {
+        "decode_median": 11.73,
+        "prefill_median": 83.565,
+        "fraction_of_native_decode": 0.2079,
+        "fraction_of_native_prefill": 0.3593,
+        "reps": 1
+      },
+      "qwen25-0.5b-bf16:long-decode-128": {
+        "decode_median": 11.3,
+        "prefill_median": 210.78,
+        "fraction_of_native_decode": 0.2028,
+        "fraction_of_native_prefill": 0.2092,
+        "reps": 1
+      },
+      "qwen25-0.5b-bf16:longctx-1024-decode-32": {
+        "decode_median": 10.05,
+        "prefill_median": 220.431,
+        "fraction_of_native_decode": 0.1842,
+        "fraction_of_native_prefill": 0.1331,
+        "reps": 1
+      }
+    },
+    "r3-stock-cand": {
+      "qwen25-0.5b-4bit:short-decode-32": {
+        "decode_median": 101.79,
+        "prefill_median": 169.492,
+        "fraction_of_native_decode": 0.676,
+        "fraction_of_native_prefill": 0.5763,
+        "reps": 1
+      },
+      "qwen25-0.5b-4bit:long-decode-128": {
+        "decode_median": 81.2,
+        "prefill_median": 310.795,
+        "fraction_of_native_decode": 0.5532,
+        "fraction_of_native_prefill": 0.2562,
+        "reps": 1
+      },
+      "qwen25-0.5b-4bit:longctx-1024-decode-32": {
+        "decode_median": 52.9,
+        "prefill_median": 362.978,
+        "fraction_of_native_decode": 0.3768,
+        "fraction_of_native_prefill": 0.1972,
+        "reps": 1
+      },
+      "qwen25-0.5b-bf16:short-decode-32": {
+        "decode_median": 32.23,
+        "prefill_median": 132.159,
+        "fraction_of_native_decode": 0.5712,
+        "fraction_of_native_prefill": 0.5682,
+        "reps": 1
+      },
+      "qwen25-0.5b-bf16:long-decode-128": {
+        "decode_median": 29.14,
+        "prefill_median": 230.026,
+        "fraction_of_native_decode": 0.523,
+        "fraction_of_native_prefill": 0.2283,
+        "reps": 1
+      },
+      "qwen25-0.5b-bf16:longctx-1024-decode-32": {
+        "decode_median": 23.28,
+        "prefill_median": 223.947,
+        "fraction_of_native_decode": 0.4268,
+        "fraction_of_native_prefill": 0.1353,
+        "reps": 1
+      }
+    }
+  },
+  "failures": []
+}

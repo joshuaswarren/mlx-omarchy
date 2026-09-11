@@ -1,0 +1,51 @@
+{
+  "schema": "bf16-prefill-close/1",
+  "branch": "wave/Bf16PrefillClose",
+  "base_of_branch": "origin/main lineage at b6d662a8 era; branch never merged",
+  "commits": {
+    "fix_pack_pair_k_base": "1918135e",
+    "probe_revert_to_production_flags": "1f53de21",
+    "tail_k_test_rows_and_probe_fix": "79e161c3",
+    "production_shader_restructure_superseded_by_fix": "93581a93"
+  },
+  "candidate_shader": {
+    "path": "overlay/mlx/backend/omarchy/shaders/matmul_coopmat_bf16.comp",
+    "sha256_on_jwm1": "4efae1425d9ea6c8164c397d655de4f7e189f357a3bc187ce770c7a418a8121c",
+    "structure": "64-lane workgroup, two 16x32 subgroup halves, 16-wide k steps, word-pair bf16 loads, 8 accumulators per lane, k%16==8 tail; scalar orientations stage via pack_pair with (k_base + 2*pair) global-k addressing"
+  },
+  "base_shader": {
+    "source": "~/src/mlx-main-b6d662a8 (frozen main-era tree)",
+    "sha256": "c000cce9113e594dc2cc61094c7dbedfefa401ccb22683b29f160dddddd61a41"
+  },
+  "wheels": {
+    "base": {
+      "path": "~/src/mlx-main-b6d662a8/dist/mlx_omarchy-0.32.2.dev202609101916+b6d662a-cp314-cp314-linux_aarch64.whl",
+      "sha256": "98821134f4bcf306ab1d64d6885ddf3d3e8e932311283bbd11f97aecf6a8e439"
+    },
+    "candidate": {
+      "version": "mlx_omarchy-0.32.2.dev202609110526+1918135e-cp314-cp314-linux_aarch64",
+      "sha256": "cf77de417bbba1916418de7cfa68c3db0454f39b676416bbc3817bb92211665e"
+    }
+  },
+  "suite_binaries": {
+    "family_base": "2726473600c4c60aaabf58af8727bdde25925382f71972586de4ebc81d5a3fee",
+    "family_cand": "210ef34545a83c1e66fd9c05aac3ee23df39c2c444b1f4aab75663adfed56f52",
+    "runtime_base": "a6d6f06bc5adb8a2f9b4c8b4d954ffa0f5b504691a5286faf898d8f0d3bb183b",
+    "runtime_cand": "063c9c8430e06e78b1ead3ff4770de164b3c6a01dca9228185cbb2cd4f206afe",
+    "note": "built separately by swapping the bf16 shader in .work/mlx; binaries differ by construction and hash"
+  },
+  "host": "jwm1-linux (100.84.184.102), Apple M1 (G13G B1), subgroupSize 32, cooperative matrix true",
+  "driver": "fork mesa-honeykrisp-omarchy (default ICD); stock via /home/joshuawarren/stock-mesa/stock-icd.json",
+  "lock_discipline": {
+    "rule": "single top-level flock /tmp/m1-gpu.lock; builds outside the lock per Main's 2026-09-11 re-sequencing; capped waits only",
+    "windows": {
+      "window_B_attempt1_killed": "2026-09-10 23:38-23:55, candidate wheel broken (pack_pair missing k_base), aborted before matrix; evidence window-b-broken-run1.log",
+      "stage1_wheel_venvs_suites_build": "2026-09-11 00:22-00:30 outside lock",
+      "stage1b_probe_gate": "2026-09-11 00:51-00:52, flock held 41 s, 36/36 bit-identical",
+      "stage2_suites_attribution_matrix": "2026-09-11 01:41-~02:05, flock held end to end, MATRIX-OK",
+      "stage2b_attribution_rerun": "2026-09-11 02:09, MLX_DISABLE_COMPILE=1 correction"
+    }
+  },
+  "peer_coordination": "queue order agreed with Q4GemvWindowRun, PythonHostParity (pyenv-parity, done @ 4e138d4e), CoopmatTflopClose (window A/A6, negative @ wave/CoopmatTflopClose); a Q4Gemv bf16-long digest scare was traced to a stale pre-re-pin expectation in their packaged harness, not to environment or candidate",
+  "digest_gate_basis": "../2026-09-10-bf16-prefill-close/summarize_prefill.py LINUX_CANONICAL: six canonical Q4 digests on both drivers, BF16 fork f26175202f3dabe9 / 8690dc83246b39f8, stock 7fc0f968789b1882 / 46108ad71157cb4d, 1K ff502900d2a179a5 on both, base cells against pre-landing canon"
+}

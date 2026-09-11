@@ -1,0 +1,25 @@
+Fetching 9 files:   0%|          | 0/9 [00:00<?, ?it/s]Fetching 9 files: 100%|██████████| 9/9 [00:00<00:00, 1433.90it/s]
+{"k": "whole_prefill", "leg": "short", "tokens": 30, "us_median": 198491.1, "tok_s": 151.1}
+{"k": "whole_prefill", "leg": "long", "tokens": 147, "us_median": 474799.7, "tok_s": 309.6}
+{"k": "whole_prefill", "leg": "ctx1024", "tokens": 1053, "us_median": 3444349.7, "tok_s": 305.7}
+{"k": "matmul_bf16", "m": 30, "kn": "896x896", "tag": "q_o", "us_median": 838.4, "tflops": 0.057}
+{"k": "matmul_bf16", "m": 30, "kn": "896x128", "tag": "kv", "us_median": 496.8, "tflops": 0.014}
+{"k": "matmul_bf16", "m": 30, "kn": "896x4864", "tag": "gate_up", "us_median": 1782.0, "tflops": 0.147}
+{"k": "matmul_bf16", "m": 30, "kn": "4864x896", "tag": "down", "us_median": 1993.7, "tflops": 0.131}
+{"k": "sdpa", "m": 30, "us_median": 539.3}
+{"k": "rope", "m": 30, "us_median": 312.9}
+{"k": "rms_norm", "m": 30, "us_median": 311.6}
+{"k": "matmul_bf16", "m": 262, "kn": "896x896", "tag": "q_o", "us_median": 1640.7, "tflops": 0.256}
+{"k": "matmul_bf16", "m": 262, "kn": "896x128", "tag": "kv", "us_median": 896.9, "tflops": 0.067}
+{"k": "matmul_bf16", "m": 262, "kn": "896x4864", "tag": "gate_up", "us_median": 6385.0, "tflops": 0.358}
+{"k": "matmul_bf16", "m": 262, "kn": "4864x896", "tag": "down", "us_median": 7668.4, "tflops": 0.298}
+{"k": "sdpa", "m": 262, "us_median": 2431.9}
+{"k": "rope", "m": 262, "us_median": 537.6}
+{"k": "rms_norm", "m": 262, "us_median": 401.6}
+{"k": "matmul_bf16", "m": 1053, "kn": "896x896", "tag": "q_o", "us_median": 4448.8, "tflops": 0.38}
+{"k": "matmul_bf16", "m": 1053, "kn": "896x128", "tag": "kv", "us_median": 1045.9, "tflops": 0.231}
+{"k": "matmul_bf16", "m": 1053, "kn": "896x4864", "tag": "gate_up", "us_median": 21663.6, "tflops": 0.424}
+{"k": "matmul_bf16", "m": 1053, "kn": "4864x896", "tag": "down", "us_median": 22802.2, "tflops": 0.403}
+{"k": "sdpa", "m": 1053, "us_median": 18861.3}
+{"k": "rope", "m": 1053, "us_median": 925.9}
+{"k": "rms_norm", "m": 1053, "us_median": 483.8}
