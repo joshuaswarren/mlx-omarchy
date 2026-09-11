@@ -1,0 +1,19 @@
+== window start 2026-09-11T11:37:54Z ==
+loadavg before window: 0.25
+flock acquired 11:37:54Z
+mesa-honeykrisp-omarchy 26.3.0.devel.hk6f6afc8-1
+linux-asahi 7.1.6.asahi1-1
+9a0e0b15c58276dc4af080597e4385ff6cd25d54cf32167f53e388a9ebea75da  /home/joshuawarren/src/mlx-pairmap-m1/dist/mlx_omarchy-0.32.2.dev202609111121+ef49fbc5-cp314-cp314-linux_aarch64.whl
+== engagement smoke: single-weight qmm under both maps ==
+base arm written to /home/joshuawarren/src/mlx-pairmap-m1/receipts-workdata/accuracy
+pair arm written to /home/joshuawarren/src/mlx-pairmap-m1/receipts-workdata/accuracy
+== f64 comparison (CPU, inside window for convenience) ==
+Traceback (most recent call last):
+  File "/home/joshuawarren/src/mlx-pairmap-m1/receipts-workdata/compare_accuracy.py", line 91, in <module>
+    main()
+    ~~~~^^
+  File "/home/joshuawarren/src/mlx-pairmap-m1/receipts-workdata/compare_accuracy.py", line 57, in main
+    refs["refA"] = (x64 @ base["deq"].astype(np.float64)).astype(
+                    ~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ValueError: matmul: Input operand 1 has a mismatch in its core dimension 0, with gufunc signature (n?,k),(k,m?)->(n?,m?) (size 128 is different from 896)
+WINDOW_EXIT=1

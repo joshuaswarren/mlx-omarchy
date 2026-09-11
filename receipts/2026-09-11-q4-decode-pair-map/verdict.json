@@ -1,0 +1,589 @@
+{
+  "native_baseline_tok_s": {
+    "short-decode-32": 150.57,
+    "long-decode-128": 146.77,
+    "longctx-1024-decode-32": 140.38
+  },
+  "native_digests": {
+    "short-decode-32": "7fd25a869ff21678",
+    "long-decode-128": "254d73fd93164b98",
+    "longctx-1024-decode-32": "7da83f06ec9f001d"
+  },
+  "linux_base_digests": {
+    "short-decode-32": "7fd25a869ff21678",
+    "long-decode-128": "4cc08910089477fd",
+    "longctx-1024-decode-32": "7da83f06ec9f001d"
+  },
+  "performance": [
+    {
+      "driver": "fork",
+      "leg": "short-decode-32",
+      "reps": 3,
+      "base_median_tok_s": 111.27,
+      "pair_median_tok_s": 109.84,
+      "paired_ratio_pair_over_base": 0.9871,
+      "base_fraction_of_native": 0.739,
+      "pair_fraction_of_native": 0.7295,
+      "base_all_tok_s": [
+        111.78,
+        111.27,
+        106.42
+      ],
+      "pair_all_tok_s": [
+        110.02,
+        109.84,
+        109.62
+      ]
+    },
+    {
+      "driver": "fork",
+      "leg": "long-decode-128",
+      "reps": 3,
+      "base_median_tok_s": 108.21,
+      "pair_median_tok_s": 105.91,
+      "paired_ratio_pair_over_base": 0.9787,
+      "base_fraction_of_native": 0.7373,
+      "pair_fraction_of_native": 0.7216,
+      "base_all_tok_s": [
+        108.55,
+        107.67,
+        108.21
+      ],
+      "pair_all_tok_s": [
+        106.33,
+        105.86,
+        105.91
+      ]
+    },
+    {
+      "driver": "fork",
+      "leg": "longctx-1024-decode-32",
+      "reps": 3,
+      "base_median_tok_s": 96.52,
+      "pair_median_tok_s": 95.14,
+      "paired_ratio_pair_over_base": 0.9857,
+      "base_fraction_of_native": 0.6876,
+      "pair_fraction_of_native": 0.6777,
+      "base_all_tok_s": [
+        96.54,
+        96.52,
+        96.1
+      ],
+      "pair_all_tok_s": [
+        94.95,
+        95.32,
+        95.14
+      ]
+    },
+    {
+      "driver": "stock",
+      "leg": "short-decode-32",
+      "reps": 3,
+      "base_median_tok_s": 102.97,
+      "pair_median_tok_s": 100.25,
+      "paired_ratio_pair_over_base": 0.9736,
+      "base_fraction_of_native": 0.6839,
+      "pair_fraction_of_native": 0.6658,
+      "base_all_tok_s": [
+        101.89,
+        102.97,
+        103.39
+      ],
+      "pair_all_tok_s": [
+        100.32,
+        100.25,
+        99.78
+      ]
+    },
+    {
+      "driver": "stock",
+      "leg": "long-decode-128",
+      "reps": 3,
+      "base_median_tok_s": 81.3,
+      "pair_median_tok_s": 80.38,
+      "paired_ratio_pair_over_base": 0.9887,
+      "base_fraction_of_native": 0.5539,
+      "pair_fraction_of_native": 0.5477,
+      "base_all_tok_s": [
+        81.3,
+        81.37,
+        81.27
+      ],
+      "pair_all_tok_s": [
+        80.38,
+        80.32,
+        80.45
+      ]
+    },
+    {
+      "driver": "stock",
+      "leg": "longctx-1024-decode-32",
+      "reps": 3,
+      "base_median_tok_s": 52.55,
+      "pair_median_tok_s": 52.4,
+      "paired_ratio_pair_over_base": 0.9971,
+      "base_fraction_of_native": 0.3743,
+      "pair_fraction_of_native": 0.3733,
+      "base_all_tok_s": [
+        52.53,
+        52.55,
+        52.66
+      ],
+      "pair_all_tok_s": [
+        49.66,
+        52.67,
+        52.4
+      ]
+    }
+  ],
+  "digests": [
+    {
+      "driver": "fork",
+      "leg": "short-decode-32",
+      "prompt_tokens": 30,
+      "base_digest": "7fd25a869ff21678",
+      "base_digest_stable": true,
+      "pair_digest": "7fd25a869ff21678",
+      "pair_digest_stable": true,
+      "pair_equals_native": true,
+      "pair_equals_linux_base": true,
+      "pair_digest_class": "native"
+    },
+    {
+      "driver": "fork",
+      "leg": "long-decode-128",
+      "prompt_tokens": 262,
+      "base_digest": "4cc08910089477fd",
+      "base_digest_stable": true,
+      "pair_digest": "55215e22d7f1b864",
+      "pair_digest_stable": true,
+      "pair_equals_native": false,
+      "pair_equals_linux_base": false,
+      "pair_digest_class": "other"
+    },
+    {
+      "driver": "fork",
+      "leg": "longctx-1024-decode-32",
+      "prompt_tokens": 1053,
+      "base_digest": "7da83f06ec9f001d",
+      "base_digest_stable": true,
+      "pair_digest": "31267e7ed4c6d0dc",
+      "pair_digest_stable": true,
+      "pair_equals_native": false,
+      "pair_equals_linux_base": false,
+      "pair_digest_class": "other"
+    },
+    {
+      "driver": "stock",
+      "leg": "short-decode-32",
+      "prompt_tokens": 30,
+      "base_digest": "7fd25a869ff21678",
+      "base_digest_stable": true,
+      "pair_digest": "7fd25a869ff21678",
+      "pair_digest_stable": true,
+      "pair_equals_native": true,
+      "pair_equals_linux_base": true,
+      "pair_digest_class": "native"
+    },
+    {
+      "driver": "stock",
+      "leg": "long-decode-128",
+      "prompt_tokens": 262,
+      "base_digest": "4cc08910089477fd",
+      "base_digest_stable": true,
+      "pair_digest": "f873dc2bdd34c0fe",
+      "pair_digest_stable": true,
+      "pair_equals_native": false,
+      "pair_equals_linux_base": false,
+      "pair_digest_class": "other"
+    },
+    {
+      "driver": "stock",
+      "leg": "longctx-1024-decode-32",
+      "prompt_tokens": 1053,
+      "base_digest": "7da83f06ec9f001d",
+      "base_digest_stable": true,
+      "pair_digest": "7da83f06ec9f001d",
+      "pair_digest_stable": true,
+      "pair_equals_native": true,
+      "pair_equals_linux_base": true,
+      "pair_digest_class": "native"
+    }
+  ],
+  "prefill": [
+    {
+      "driver": "fork",
+      "leg": "short-decode-32",
+      "base_median_prefill_s": 0.09,
+      "pair_median_prefill_s": 0.09,
+      "ratio_pair_over_base": 1.0,
+      "base_all_prefill_s": [
+        0.091,
+        0.09,
+        0.09
+      ],
+      "pair_all_prefill_s": [
+        0.093,
+        0.09,
+        0.09
+      ]
+    },
+    {
+      "driver": "fork",
+      "leg": "long-decode-128",
+      "base_median_prefill_s": 0.271,
+      "pair_median_prefill_s": 0.278,
+      "ratio_pair_over_base": 1.0258,
+      "base_all_prefill_s": [
+        0.271,
+        0.272,
+        0.27
+      ],
+      "pair_all_prefill_s": [
+        0.269,
+        0.278,
+        0.279
+      ]
+    },
+    {
+      "driver": "fork",
+      "leg": "longctx-1024-decode-32",
+      "base_median_prefill_s": 0.945,
+      "pair_median_prefill_s": 0.945,
+      "ratio_pair_over_base": 1.0,
+      "base_all_prefill_s": [
+        0.944,
+        0.945,
+        0.945
+      ],
+      "pair_all_prefill_s": [
+        0.945,
+        0.948,
+        0.943
+      ]
+    },
+    {
+      "driver": "stock",
+      "leg": "short-decode-32",
+      "base_median_prefill_s": 0.158,
+      "pair_median_prefill_s": 0.178,
+      "ratio_pair_over_base": 1.1266,
+      "base_all_prefill_s": [
+        0.177,
+        0.158,
+        0.158
+      ],
+      "pair_all_prefill_s": [
+        0.178,
+        0.177,
+        0.183
+      ]
+    },
+    {
+      "driver": "stock",
+      "leg": "long-decode-128",
+      "base_median_prefill_s": 0.848,
+      "pair_median_prefill_s": 0.845,
+      "ratio_pair_over_base": 0.9965,
+      "base_all_prefill_s": [
+        0.848,
+        0.842,
+        0.849
+      ],
+      "pair_all_prefill_s": [
+        0.832,
+        0.849,
+        0.845
+      ]
+    },
+    {
+      "driver": "stock",
+      "leg": "longctx-1024-decode-32",
+      "base_median_prefill_s": 2.921,
+      "pair_median_prefill_s": 2.918,
+      "ratio_pair_over_base": 0.999,
+      "base_all_prefill_s": [
+        2.925,
+        2.903,
+        2.921
+      ],
+      "pair_all_prefill_s": [
+        2.926,
+        2.887,
+        2.918
+      ]
+    }
+  ],
+  "accuracy": {
+    "q_proj": {
+      "k": 896,
+      "n": 896,
+      "base": {
+        "refA": {
+          "differing": 658,
+          "of": 896,
+          "max_abs_err": 0.000732421875,
+          "max_ulp16": 509
+        },
+        "refB": {
+          "differing": 653,
+          "of": 896,
+          "max_abs_err": 0.000732421875,
+          "max_ulp16": 353
+        }
+      },
+      "pair": {
+        "refA": {
+          "differing": 658,
+          "of": 896,
+          "max_abs_err": 0.000732421875,
+          "max_ulp16": 509
+        },
+        "refB": {
+          "differing": 653,
+          "of": 896,
+          "max_abs_err": 0.000732421875,
+          "max_ulp16": 353
+        }
+      },
+      "pair_vs_base_differing": 0
+    },
+    "k_proj": {
+      "k": 896,
+      "n": 128,
+      "base": {
+        "refA": {
+          "differing": 107,
+          "of": 128,
+          "max_abs_err": 0.001220703125,
+          "max_ulp16": 274
+        },
+        "refB": {
+          "differing": 110,
+          "of": 128,
+          "max_abs_err": 0.001220703125,
+          "max_ulp16": 289
+        }
+      },
+      "pair": {
+        "refA": {
+          "differing": 107,
+          "of": 128,
+          "max_abs_err": 0.001220703125,
+          "max_ulp16": 274
+        },
+        "refB": {
+          "differing": 110,
+          "of": 128,
+          "max_abs_err": 0.001220703125,
+          "max_ulp16": 289
+        }
+      },
+      "pair_vs_base_differing": 0
+    },
+    "v_proj": {
+      "k": 896,
+      "n": 128,
+      "base": {
+        "refA": {
+          "differing": 106,
+          "of": 128,
+          "max_abs_err": 0.000732421875,
+          "max_ulp16": 454
+        },
+        "refB": {
+          "differing": 104,
+          "of": 128,
+          "max_abs_err": 0.00054931640625,
+          "max_ulp16": 340
+        }
+      },
+      "pair": {
+        "refA": {
+          "differing": 106,
+          "of": 128,
+          "max_abs_err": 0.000732421875,
+          "max_ulp16": 454
+        },
+        "refB": {
+          "differing": 104,
+          "of": 128,
+          "max_abs_err": 0.00054931640625,
+          "max_ulp16": 340
+        }
+      },
+      "pair_vs_base_differing": 0
+    },
+    "o_proj": {
+      "k": 896,
+      "n": 896,
+      "base": {
+        "refA": {
+          "differing": 671,
+          "of": 896,
+          "max_abs_err": 0.0009765625,
+          "max_ulp16": 1702
+        },
+        "refB": {
+          "differing": 673,
+          "of": 896,
+          "max_abs_err": 0.0009765625,
+          "max_ulp16": 1250
+        }
+      },
+      "pair": {
+        "refA": {
+          "differing": 671,
+          "of": 896,
+          "max_abs_err": 0.0009765625,
+          "max_ulp16": 1702
+        },
+        "refB": {
+          "differing": 673,
+          "of": 896,
+          "max_abs_err": 0.0009765625,
+          "max_ulp16": 1250
+        }
+      },
+      "pair_vs_base_differing": 1
+    },
+    "gate_proj": {
+      "k": 896,
+      "n": 4864,
+      "base": {
+        "refA": {
+          "differing": 3944,
+          "of": 4864,
+          "max_abs_err": 0.0010833740234375,
+          "max_ulp16": 5267
+        },
+        "refB": {
+          "differing": 3910,
+          "of": 4864,
+          "max_abs_err": 0.001007080078125,
+          "max_ulp16": 5723
+        }
+      },
+      "pair": {
+        "refA": {
+          "differing": 3944,
+          "of": 4864,
+          "max_abs_err": 0.0010833740234375,
+          "max_ulp16": 5267
+        },
+        "refB": {
+          "differing": 3910,
+          "of": 4864,
+          "max_abs_err": 0.001007080078125,
+          "max_ulp16": 5723
+        }
+      },
+      "pair_vs_base_differing": 4
+    },
+    "up_proj": {
+      "k": 896,
+      "n": 4864,
+      "base": {
+        "refA": {
+          "differing": 3897,
+          "of": 4864,
+          "max_abs_err": 0.0009765625,
+          "max_ulp16": 7046
+        },
+        "refB": {
+          "differing": 3876,
+          "of": 4864,
+          "max_abs_err": 0.0009765625,
+          "max_ulp16": 6239
+        }
+      },
+      "pair": {
+        "refA": {
+          "differing": 3897,
+          "of": 4864,
+          "max_abs_err": 0.0009765625,
+          "max_ulp16": 7046
+        },
+        "refB": {
+          "differing": 3876,
+          "of": 4864,
+          "max_abs_err": 0.0009765625,
+          "max_ulp16": 6239
+        }
+      },
+      "pair_vs_base_differing": 3
+    },
+    "down_proj": {
+      "k": 4864,
+      "n": 896,
+      "base": {
+        "refA": {
+          "differing": 668,
+          "of": 896,
+          "max_abs_err": 0.001953125,
+          "max_ulp16": 536
+        },
+        "refB": {
+          "differing": 665,
+          "of": 896,
+          "max_abs_err": 0.001953125,
+          "max_ulp16": 556
+        }
+      },
+      "pair": {
+        "refA": {
+          "differing": 668,
+          "of": 896,
+          "max_abs_err": 0.001953125,
+          "max_ulp16": 536
+        },
+        "refB": {
+          "differing": 665,
+          "of": 896,
+          "max_abs_err": 0.001953125,
+          "max_ulp16": 556
+        }
+      },
+      "pair_vs_base_differing": 2
+    }
+  },
+  "decision_candidate": {
+    "current_native_matches": [
+      "short-decode-32",
+      "longctx-1024-decode-32"
+    ],
+    "pair_native_matches": {
+      "fork": [
+        "short-decode-32"
+      ],
+      "stock": [
+        "short-decode-32",
+        "longctx-1024-decode-32"
+      ]
+    }
+  },
+  "decision": {
+    "outcome": "REJECT for pin and for landing (receipt-only branch)",
+    "performance": "pair map is 1.0-2.6% SLOWER than base on every driver x leg cell (median tok/s, 3 reps); the +13% pattern-level gain does not survive at model level",
+    "digests": "pair map matches native on at most the same legs as the current kernel (stock 2/3, fork 1/3) and moves the long leg to a third value on both drivers; the pin question does not invert",
+    "accuracy": "max abs error vs the f64 RNE reference is identical between the maps on all seven shapes; the reorder changes at most 4 of 4864 outputs per projection at the last f16 rounding",
+    "prefill": "prefill unchanged within noise on 5 of 6 cells (first decode step is inside prefill timing); stock-short +12.7% median is first-rep warmup ambiguous"
+  },
+  "provenance": {
+    "branch": "wave/Q4DecodePairMap",
+    "commits": [
+      "c6a28841",
+      "71ee79d4",
+      "ef49fbc5"
+    ],
+    "wheel": "mlx_omarchy-0.32.2.dev202609111121+ef49fbc5-cp314-cp314-linux_aarch64.whl",
+    "wheel_sha256": "9a0e0b15c58276dc4af080597e4385ff6cd25d54cf32167f53e388a9ebea75da",
+    "host": "jwm1-linux (100.84.184.102), Apple M1 (G13G B1)",
+    "driver_fork": "mesa-honeykrisp-omarchy 26.3.0.devel.hk6f6afc8-1 (verified in-window via pacman -Q)",
+    "driver_stock": "stock Mesa via /home/joshuawarren/stock-mesa/stock-icd.json (VK_DRIVER_FILES)",
+    "kernel": "linux-asahi 7.1.6.asahi1-1",
+    "reps": 3,
+    "lock": "one top-level flock /tmp/m1-gpu.lock per window; accuracy window 11:37:54-11:40:51Z (with qmm smoke), legs window 11:40:51-11:47:04Z; quiet gate loadavg 0.02-0.25",
+    "timing": "wall-clock via bench_decode (device timestamps unused; known ~2.07x undercount on this driver)"
+  }
+}
