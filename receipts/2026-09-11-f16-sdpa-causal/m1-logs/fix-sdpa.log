@@ -1,0 +1,36 @@
+============================= test session starts ==============================
+collecting ... collected 23 items
+
+.work/mlx/python/tests/test_fast_sdpa.py::TestFastSDPA::test_sdpa 
+.work/mlx/python/tests/test_fast_sdpa.py::TestFastSDPA::test_sdpa PASSED [  4%]
+.work/mlx/python/tests/test_fast_sdpa.py::TestFastSDPA::test_sdpa_attention_sinks 
+.work/mlx/python/tests/test_fast_sdpa.py::TestFastSDPA::test_sdpa_attention_sinks PASSED [  8%]
+.work/mlx/python/tests/test_fast_sdpa.py::TestFastSDPA::test_sdpa_blocks_env_override PASSED [ 13%]
+.work/mlx/python/tests/test_fast_sdpa.py::TestFastSDPA::test_sdpa_broadcast_mask PASSED [ 17%]
+.work/mlx/python/tests/test_fast_sdpa.py::TestFastSDPA::test_sdpa_few_query PASSED [ 21%]
+.work/mlx/python/tests/test_fast_sdpa.py::TestFastSDPA::test_sdpa_force_fused_cuda SKIPPED [ 26%]
+.work/mlx/python/tests/test_fast_sdpa.py::TestFastSDPA::test_sdpa_force_fused_metal SKIPPED [ 30%]
+.work/mlx/python/tests/test_fast_sdpa.py::TestFastSDPA::test_sdpa_full_head_dim_256 
+.work/mlx/python/tests/test_fast_sdpa.py::TestFastSDPA::test_sdpa_full_head_dim_256 PASSED [ 34%]
+.work/mlx/python/tests/test_fast_sdpa.py::TestFastSDPA::test_sdpa_fully_masked PASSED [ 39%]
+.work/mlx/python/tests/test_fast_sdpa.py::TestFastSDPA::test_sdpa_grad PASSED [ 43%]
+.work/mlx/python/tests/test_fast_sdpa.py::TestFastSDPA::test_sdpa_head_dim_72 
+.work/mlx/python/tests/test_fast_sdpa.py::TestFastSDPA::test_sdpa_head_dim_72 PASSED [ 47%]
+.work/mlx/python/tests/test_fast_sdpa.py::TestFastSDPA::test_sdpa_head_dim_96 
+.work/mlx/python/tests/test_fast_sdpa.py::TestFastSDPA::test_sdpa_head_dim_96 PASSED [ 52%]
+.work/mlx/python/tests/test_fast_sdpa.py::TestFastSDPA::test_sdpa_inf_score PASSED [ 56%]
+.work/mlx/python/tests/test_fast_sdpa.py::TestFastSDPA::test_sdpa_long_masked_sequence 
+.work/mlx/python/tests/test_fast_sdpa.py::TestFastSDPA::test_sdpa_long_masked_sequence PASSED [ 60%]
+.work/mlx/python/tests/test_fast_sdpa.py::TestFastSDPA::test_sdpa_nan_bug PASSED [ 65%]
+.work/mlx/python/tests/test_fast_sdpa.py::TestFastSDPA::test_sdpa_noncontiguous_inputs PASSED [ 69%]
+.work/mlx/python/tests/test_fast_sdpa.py::TestFastSDPA::test_sdpa_promote_mask PASSED [ 73%]
+.work/mlx/python/tests/test_fast_sdpa.py::TestFastSDPA::test_sdpa_sliced 
+.work/mlx/python/tests/test_fast_sdpa.py::TestFastSDPA::test_sdpa_sliced PASSED [ 78%]
+.work/mlx/python/tests/test_fast_sdpa.py::TestFastSDPA::test_sdpa_vector PASSED [ 82%]
+.work/mlx/python/tests/test_fast_sdpa.py::TestFastSDPA::test_sdpa_vector_batched PASSED [ 86%]
+.work/mlx/python/tests/test_fast_sdpa.py::TestFastSDPA::test_sdpa_vector_gqa_long PASSED [ 91%]
+.work/mlx/python/tests/test_fast_sdpa.py::TestFastSDPA::test_sdpa_vector_kv_transposed_head_seq PASSED [ 95%]
+.work/mlx/python/tests/test_fast_sdpa.py::TestFastSDPA::test_sdpa_vector_value_dims SKIPPED [100%]
+
+- generated xml file: ~/src/sdpa-causal-m1/receipts/2026-09-11-f16-sdpa-causal/sdpa-fixed.xml -
+============= 20 passed, 3 skipped, 466 subtests passed in 22.84s ==============
