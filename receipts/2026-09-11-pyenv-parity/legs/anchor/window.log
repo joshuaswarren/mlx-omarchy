@@ -1,0 +1,79 @@
+=== window anchor start 2026-09-11T04:18:41Z pid 2128043 configs: anchor-main=/home/joshuawarren/src/mlx-main-b6d662a8/.work/venv-run/bin/python:/home/joshuawarren/src/mlx-main-b6d662a8/dist/mlx_omarchy-0.32.2.dev202609101916+b6d662a-cp314-cp314-linux_aarch64.whl:0 cp314hpo=/home/joshuawarren/src/mlx-HostPathOverhead/.work/venv-hpo/bin/python:/home/joshuawarren/src/mlx-HostPathOverhead/dist/mlx_omarchy-0.32.2.dev202609110320+12012beb-cp314-cp314-linux_aarch64.whl:1
+flock: bad file descriptor: '/tmp/m1-gpu.lock'
+[lock] FAILED to acquire
+=== window anchor start 2026-09-11T04:23:52Z pid 2137811 configs: anchor-main=/home/joshuawarren/src/mlx-main-b6d662a8/.work/venv-run/bin/python:/home/joshuawarren/src/mlx-main-b6d662a8/dist/mlx_omarchy-0.32.2.dev202609101916+b6d662a-cp314-cp314-linux_aarch64.whl:0 cp314hpo=/home/joshuawarren/src/mlx-HostPathOverhead/.work/venv-hpo/bin/python:/home/joshuawarren/src/mlx-HostPathOverhead/dist/mlx_omarchy-0.32.2.dev202609110320+12012beb-cp314-cp314-linux_aarch64.whl:1
+flock: bad file descriptor: '/tmp/m1-gpu.lock'
+[lock] FAILED to acquire
+=== window anchor start 2026-09-11T04:33:56Z pid 2149340 configs: anchor-main=/home/joshuawarren/src/mlx-main-b6d662a8/.work/venv-run/bin/python:/home/joshuawarren/src/mlx-main-b6d662a8/dist/mlx_omarchy-0.32.2.dev202609101916+b6d662a-cp314-cp314-linux_aarch64.whl:0 cp314hpo=/home/joshuawarren/src/mlx-HostPathOverhead/.work/venv-hpo/bin/python:/home/joshuawarren/src/mlx-HostPathOverhead/dist/mlx_omarchy-0.32.2.dev202609110320+12012beb-cp314-cp314-linux_aarch64.whl:1
+/home/joshuawarren/src/mlx-HostPathOverhead/receipts/2026-09-11-pyenv-parity/run_window.sh: line 76: honeykrisp: command not found
+/home/joshuawarren/src/mlx-HostPathOverhead/receipts/2026-09-11-pyenv-parity/run_window.sh: line 76: asahi-linux": command not found
+[lock] acquired 2026-09-11T04:33:56Z driver: 
+[gate] loadavg=1.83, waiting (1)
+[gate] loadavg=1.88, waiting (2)
+[gate] loadavg=1.91, waiting (3)
+[gate] loadavg=1.94, waiting (4)
+[gate] loadavg=2.17, waiting (5)
+[gate] loadavg=2.57, waiting (6)
+[gate] loadavg=2.35, waiting (7)
+[gate] loadavg=2.17, waiting (8)
+[gate] loadavg=4.63, waiting (9)
+[gate] loadavg=5.09, waiting (10)
+[gate] loadavg=4.44, waiting (11)
+[gate] loadavg=3.53, waiting (12)
+[gate] loadavg=2.88, waiting (13)
+[gate] loadavg=2.43, waiting (14)
+[gate] loadavg=2.31, waiting (15)
+[gate] loadavg=2.22, waiting (16)
+[gate] loadavg=2.16, waiting (17)
+[gate] loadavg=2.55, waiting (18)
+[gate] loadavg=1.90, waiting (19)
+[gate] loadavg=1.43, waiting (20)
+[gate] loadavg=1.02, waiting (21)
+[gate] quiet at loadavg=0.73 2026-09-11T04:40:56Z
+[leg] anchor-main-r1-short-decode-32 rc=0 2026-09-11T04:41:07Z
+[DIGEST] ok short-decode-32 7fd25a869ff21678
+[leg] anchor-main-r1-long-decode-128 rc=0 2026-09-11T04:41:17Z
+[DIGEST] FAIL long-decode-128 got=7fd25a869ff21678 want=4cc08910089477fd (/home/joshuawarren/src/mlx-HostPathOverhead/receipts/2026-09-11-pyenv-parity/legs/anchor/anchor-main-r1-long-decode-128.json)
+[leg] anchor-main-r1-longctx-1024-decode-32 rc=0 2026-09-11T04:41:27Z
+[DIGEST] FAIL longctx-1024-decode-32 got=7fd25a869ff21678 want=7da83f06ec9f001d (/home/joshuawarren/src/mlx-HostPathOverhead/receipts/2026-09-11-pyenv-parity/legs/anchor/anchor-main-r1-longctx-1024-decode-32.json)
+[split] split-anchor-main-r1 rc=0 2026-09-11T04:41:29Z
+=== window anchor start 2026-09-11T04:41:29Z pid 2157814 configs: anchor-main=/home/joshuawarren/src/mlx-main-b6d662a8/.work/venv-run/bin/python:/home/joshuawarren/src/mlx-main-b6d662a8/dist/mlx_omarchy-0.32.2.dev202609101916+b6d662a-cp314-cp314-linux_aarch64.whl:0 cp314hpo=/home/joshuawarren/src/mlx-HostPathOverhead/.work/venv-hpo/bin/python:/home/joshuawarren/src/mlx-HostPathOverhead/dist/mlx_omarchy-0.32.2.dev202609110320+12012beb-cp314-cp314-linux_aarch64.whl:1
+[leg] cp314hpo-r1-short-decode-32 rc=0 2026-09-11T04:41:39Z
+[DIGEST] ok short-decode-32 7fd25a869ff21678
+[leg] cp314hpo-r1-long-decode-128 rc=0 2026-09-11T04:41:49Z
+[DIGEST] FAIL long-decode-128 got=7fd25a869ff21678 want=4cc08910089477fd (/home/joshuawarren/src/mlx-HostPathOverhead/receipts/2026-09-11-pyenv-parity/legs/anchor/cp314hpo-r1-long-decode-128.json)
+[leg] cp314hpo-r1-longctx-1024-decode-32 rc=0 2026-09-11T04:41:59Z
+[DIGEST] FAIL longctx-1024-decode-32 got=7fd25a869ff21678 want=7da83f06ec9f001d (/home/joshuawarren/src/mlx-HostPathOverhead/receipts/2026-09-11-pyenv-parity/legs/anchor/cp314hpo-r1-longctx-1024-decode-32.json)
+[split] split-cp314hpo-r1 rc=0 2026-09-11T04:42:01Z
+[leg] anchor-main-r2-short-decode-32 rc=0 2026-09-11T04:42:11Z
+[DIGEST] ok short-decode-32 7fd25a869ff21678
+[leg] anchor-main-r2-long-decode-128 rc=0 2026-09-11T04:42:21Z
+[DIGEST] FAIL long-decode-128 got=7fd25a869ff21678 want=4cc08910089477fd (/home/joshuawarren/src/mlx-HostPathOverhead/receipts/2026-09-11-pyenv-parity/legs/anchor/anchor-main-r2-long-decode-128.json)
+[leg] anchor-main-r2-longctx-1024-decode-32 rc=0 2026-09-11T04:42:31Z
+[DIGEST] FAIL longctx-1024-decode-32 got=7fd25a869ff21678 want=7da83f06ec9f001d (/home/joshuawarren/src/mlx-HostPathOverhead/receipts/2026-09-11-pyenv-parity/legs/anchor/anchor-main-r2-longctx-1024-decode-32.json)
+[split] split-anchor-main-r2 rc=0 2026-09-11T04:42:33Z
+[leg] cp314hpo-r2-short-decode-32 rc=0 2026-09-11T04:42:44Z
+[DIGEST] ok short-decode-32 7fd25a869ff21678
+[leg] cp314hpo-r2-long-decode-128 rc=0 2026-09-11T04:42:54Z
+[DIGEST] FAIL long-decode-128 got=7fd25a869ff21678 want=4cc08910089477fd (/home/joshuawarren/src/mlx-HostPathOverhead/receipts/2026-09-11-pyenv-parity/legs/anchor/cp314hpo-r2-long-decode-128.json)
+[leg] cp314hpo-r2-longctx-1024-decode-32 rc=0 2026-09-11T04:43:04Z
+[DIGEST] FAIL longctx-1024-decode-32 got=7fd25a869ff21678 want=7da83f06ec9f001d (/home/joshuawarren/src/mlx-HostPathOverhead/receipts/2026-09-11-pyenv-parity/legs/anchor/cp314hpo-r2-longctx-1024-decode-32.json)
+[split] split-cp314hpo-r2 rc=0 2026-09-11T04:43:06Z
+[leg] anchor-main-r3-short-decode-32 rc=0 2026-09-11T04:43:16Z
+[DIGEST] ok short-decode-32 7fd25a869ff21678
+[leg] anchor-main-r3-long-decode-128 rc=0 2026-09-11T04:43:26Z
+[DIGEST] FAIL long-decode-128 got=7fd25a869ff21678 want=4cc08910089477fd (/home/joshuawarren/src/mlx-HostPathOverhead/receipts/2026-09-11-pyenv-parity/legs/anchor/anchor-main-r3-long-decode-128.json)
+[leg] anchor-main-r3-longctx-1024-decode-32 rc=0 2026-09-11T04:43:36Z
+[DIGEST] FAIL longctx-1024-decode-32 got=7fd25a869ff21678 want=7da83f06ec9f001d (/home/joshuawarren/src/mlx-HostPathOverhead/receipts/2026-09-11-pyenv-parity/legs/anchor/anchor-main-r3-longctx-1024-decode-32.json)
+[split] split-anchor-main-r3 rc=0 2026-09-11T04:43:38Z
+[leg] cp314hpo-r3-short-decode-32 rc=0 2026-09-11T04:43:48Z
+[DIGEST] ok short-decode-32 7fd25a869ff21678
+[leg] cp314hpo-r3-long-decode-128 rc=0 2026-09-11T04:43:59Z
+[DIGEST] FAIL long-decode-128 got=7fd25a869ff21678 want=4cc08910089477fd (/home/joshuawarren/src/mlx-HostPathOverhead/receipts/2026-09-11-pyenv-parity/legs/anchor/cp314hpo-r3-long-decode-128.json)
+[leg] cp314hpo-r3-longctx-1024-decode-32 rc=0 2026-09-11T04:44:09Z
+[DIGEST] FAIL longctx-1024-decode-32 got=7fd25a869ff21678 want=7da83f06ec9f001d (/home/joshuawarren/src/mlx-HostPathOverhead/receipts/2026-09-11-pyenv-parity/legs/anchor/cp314hpo-r3-longctx-1024-decode-32.json)
+[split] split-cp314hpo-r3 rc=0 2026-09-11T04:44:11Z
+/home/joshuawarren/src/mlx-HostPathOverhead/receipts/2026-09-11-pyenv-parity/run_window.sh: line 91: syntax error near unexpected token `do'
+/home/joshuawarren/src/mlx-HostPathOverhead/receipts/2026-09-11-pyenv-parity/run_window.sh: line 91: `-32; do'
+Terminated                 flock -w 14400 9
+[forensic] TERM at 2026-09-11T05:00:14Z

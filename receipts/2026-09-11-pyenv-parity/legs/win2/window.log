@@ -1,0 +1,83 @@
+=== window win2 start 2026-09-11T05:12:15Z pid 2180261 configs: cp314hpo=/home/joshuawarren/src/mlx-HostPathOverhead/.work/venv-hpo/bin/python:/home/joshuawarren/src/mlx-HostPathOverhead/receipts/2026-09-11-pyenv-parity/wheels/mlx_omarchy-0.32.2.dev202609110320+12012beb-cp314-cp314-linux_aarch64.whl:1 cp312base=/home/joshuawarren/src/mlx-HostPathOverhead/receipts/2026-09-11-pyenv-parity/venv-cp312base/bin/python:/home/joshuawarren/src/mlx-HostPathOverhead/receipts/2026-09-11-pyenv-parity/wheels/mlx_omarchy-0.32.2.dev202609110509+3dd1b88-cp312-cp312-linux_aarch64.whl:1 cp314pgo=/home/joshuawarren/src/mlx-HostPathOverhead/receipts/2026-09-11-pyenv-parity/venv-cp314pgo/bin/python:/home/joshuawarren/src/mlx-HostPathOverhead/receipts/2026-09-11-pyenv-parity/wheels/mlx_omarchy-0.32.2.dev202609110320+12012beb-cp314-cp314-linux_aarch64.whl:1
+[lock] acquired 2026-09-11T05:12:15Z
+[gate] quiet at loadavg=0.78 2026-09-11T05:13:35Z
+[matrix] cp314hpo-r1 rc=0 2026-09-11T05:13:45Z
+[DIGEST] ok short-decode-32 7fd25a869ff21678
+[DIGEST] ok long-decode-128 4cc08910089477fd
+[DIGEST] ok longctx-1024-decode-32 7da83f06ec9f001d
+[split] split-cp314hpo-r1 rc=0 2026-09-11T05:13:47Z
+[matrix] cp312base-r1 rc=0 2026-09-11T05:13:58Z
+[DIGEST] ok short-decode-32 7fd25a869ff21678
+[DIGEST] ok long-decode-128 4cc08910089477fd
+[DIGEST] ok longctx-1024-decode-32 7da83f06ec9f001d
+[split] split-cp312base-r1 rc=0 2026-09-11T05:14:00Z
+[matrix] cp314pgo-r1 rc=0 2026-09-11T05:14:09Z
+[DIGEST] ok short-decode-32 7fd25a869ff21678
+[DIGEST] ok long-decode-128 4cc08910089477fd
+[DIGEST] ok longctx-1024-decode-32 7da83f06ec9f001d
+[split] split-cp314pgo-r1 rc=0 2026-09-11T05:14:11Z
+[matrix] cp314hpo-r2 rc=0 2026-09-11T05:14:21Z
+[DIGEST] ok short-decode-32 7fd25a869ff21678
+[DIGEST] ok long-decode-128 4cc08910089477fd
+[DIGEST] ok longctx-1024-decode-32 7da83f06ec9f001d
+[split] split-cp314hpo-r2 rc=0 2026-09-11T05:14:23Z
+[matrix] cp312base-r2 rc=0 2026-09-11T05:14:34Z
+[DIGEST] ok short-decode-32 7fd25a869ff21678
+[DIGEST] ok long-decode-128 4cc08910089477fd
+[DIGEST] ok longctx-1024-decode-32 7da83f06ec9f001d
+[split] split-cp312base-r2 rc=0 2026-09-11T05:14:36Z
+[matrix] cp314pgo-r2 rc=0 2026-09-11T05:14:46Z
+[DIGEST] ok short-decode-32 7fd25a869ff21678
+[DIGEST] ok long-decode-128 4cc08910089477fd
+[DIGEST] ok longctx-1024-decode-32 7da83f06ec9f001d
+[split] split-cp314pgo-r2 rc=0 2026-09-11T05:14:48Z
+[matrix] cp314hpo-r3 rc=0 2026-09-11T05:14:58Z
+[DIGEST] ok short-decode-32 7fd25a869ff21678
+[DIGEST] ok long-decode-128 4cc08910089477fd
+[DIGEST] ok longctx-1024-decode-32 7da83f06ec9f001d
+[split] split-cp314hpo-r3 rc=0 2026-09-11T05:15:00Z
+[matrix] cp312base-r3 rc=0 2026-09-11T05:15:10Z
+[DIGEST] ok short-decode-32 7fd25a869ff21678
+[DIGEST] ok long-decode-128 4cc08910089477fd
+[DIGEST] ok longctx-1024-decode-32 7da83f06ec9f001d
+[split] split-cp312base-r3 rc=0 2026-09-11T05:15:12Z
+[matrix] cp314pgo-r3 rc=0 2026-09-11T05:15:22Z
+[DIGEST] ok short-decode-32 7fd25a869ff21678
+[DIGEST] ok long-decode-128 4cc08910089477fd
+[DIGEST] ok longctx-1024-decode-32 7da83f06ec9f001d
+[split] split-cp314pgo-r3 rc=0 2026-09-11T05:15:24Z
+[matrix] cp314hpo-r4 rc=0 2026-09-11T05:15:34Z
+[DIGEST] ok short-decode-32 7fd25a869ff21678
+[DIGEST] ok long-decode-128 4cc08910089477fd
+[DIGEST] ok longctx-1024-decode-32 7da83f06ec9f001d
+[split] split-cp314hpo-r4 rc=0 2026-09-11T05:15:36Z
+[matrix] cp312base-r4 rc=0 2026-09-11T05:15:46Z
+[DIGEST] ok short-decode-32 7fd25a869ff21678
+[DIGEST] ok long-decode-128 4cc08910089477fd
+[DIGEST] ok longctx-1024-decode-32 7da83f06ec9f001d
+[split] split-cp312base-r4 rc=0 2026-09-11T05:15:48Z
+[matrix] cp314pgo-r4 rc=0 2026-09-11T05:15:58Z
+[DIGEST] ok short-decode-32 7fd25a869ff21678
+[DIGEST] ok long-decode-128 4cc08910089477fd
+[DIGEST] ok longctx-1024-decode-32 7da83f06ec9f001d
+[split] split-cp314pgo-r4 rc=0 2026-09-11T05:16:00Z
+[matrix] cp314hpo-r5 rc=0 2026-09-11T05:16:10Z
+[DIGEST] ok short-decode-32 7fd25a869ff21678
+[DIGEST] ok long-decode-128 4cc08910089477fd
+[DIGEST] ok longctx-1024-decode-32 7da83f06ec9f001d
+[split] split-cp314hpo-r5 rc=0 2026-09-11T05:16:12Z
+[matrix] cp312base-r5 rc=0 2026-09-11T05:16:23Z
+[DIGEST] ok short-decode-32 7fd25a869ff21678
+[DIGEST] ok long-decode-128 4cc08910089477fd
+[DIGEST] ok longctx-1024-decode-32 7da83f06ec9f001d
+[split] split-cp312base-r5 rc=0 2026-09-11T05:16:25Z
+[matrix] cp314pgo-r5 rc=0 2026-09-11T05:16:35Z
+[DIGEST] ok short-decode-32 7fd25a869ff21678
+[DIGEST] ok long-decode-128 4cc08910089477fd
+[DIGEST] ok longctx-1024-decode-32 7da83f06ec9f001d
+[split] split-cp314pgo-r5 rc=0 2026-09-11T05:16:37Z
+[micro] binding microbench per config
+[micro] cp314hpo rc=0
+[micro] cp312base rc=0
+[micro] cp314pgo rc=0
+=== window win2 end 2026-09-11T05:16:37Z load=1.00

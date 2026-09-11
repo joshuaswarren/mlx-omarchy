@@ -1,0 +1,122 @@
+{
+  "schema": "bench-matrix/1",
+  "mode": "run",
+  "started_utc": "2026-09-11T05:49:18Z",
+  "host_label": "jwm1-pyhp-cp314mcpu-r5",
+  "manifest": "~/src/mlx-HostPathOverhead/receipts/2026-09-10-hostpath/manifest-q4.json",
+  "models_resolved": [
+    {
+      "model_id": "qwen25-0.5b-4bit",
+      "repo": "mlx-community/Qwen2.5-0.5B-Instruct-4bit",
+      "revision": "a5339a4131f135d0fdc6a5c8b5bbed2753bbe0f3",
+      "status": "ready",
+      "revision_class": "pinned",
+      "path": "~/.cache/huggingface/hub/models--mlx-community--Qwen2.5-0.5B-Instruct-4bit/snapshots/a5339a4131f135d0fdc6a5c8b5bbed2753bbe0f3",
+      "detail": "pinned revision found in cache"
+    }
+  ],
+  "pins": {
+    "qwen25-0.5b-4bit": {
+      "revision": "a5339a4131f135d0fdc6a5c8b5bbed2753bbe0f3",
+      "class": "pinned"
+    }
+  },
+  "notes": [
+    "explicit-selection workloads not selected, no legs built: longctx-4096-decode-32 (use --select longctx-4096-decode-32 or --select all)"
+  ],
+  "host": {
+    "system": "Linux",
+    "machine": "aarch64",
+    "python": "3.14.7",
+    "os": "Omarchy",
+    "kernel": "7.1.6-1-1-ARCH",
+    "memsize_bytes": 16228417536,
+    "gpu": {
+      "device": "Apple M1 (G13G B1)",
+      "vulkan_driver": "Honeykrisp"
+    }
+  },
+  "packages": {
+    "mlx": null,
+    "mlx-omarchy": null,
+    "mlx-lm": "0.31.3",
+    "transformers": "5.17.0",
+    "numpy": "2.5.3"
+  },
+  "binary_provenance": {
+    "omarchy": {
+      "dist": "mlx-omarchy",
+      "verified": "no-mlx",
+      "mismatch": "mlx is not importable: ModuleNotFoundError: No module named 'mlx'",
+      "files": [],
+      "dist_version": null,
+      "mx_version": null,
+      "version_match": null
+    },
+    "upstream_mlx": {
+      "dist": "mlx",
+      "verified": "no-mlx",
+      "mismatch": "mlx is not importable: ModuleNotFoundError: No module named 'mlx'",
+      "files": [],
+      "dist_version": null,
+      "mx_version": null,
+      "version_match": null
+    },
+    "harness_commit": "3dd1b880-dirty",
+    "line_omarchy": "provenance: mlx-omarchy None mx=None verified=no-mlx harness=3dd1b880-dirty files=unresolved"
+  },
+  "power": {
+    "raw": "macsmc-ac: online",
+    "source": "AC",
+    "percent": null,
+    "charging": true
+  },
+  "clean_check": {
+    "status": "clean",
+    "matched": [],
+    "scanned": 303
+  },
+  "source": {
+    "harness_commit": "3dd1b880-dirty",
+    "note": "commit captured by scripts/mlx_provenance.py"
+  },
+  "legs": [
+    {
+      "leg_id": "qwen25-0.5b-4bit:short-decode-32",
+      "model_id": "qwen25-0.5b-4bit",
+      "revision": "a5339a4131f135d0fdc6a5c8b5bbed2753bbe0f3",
+      "workload_id": "short-decode-32",
+      "prompt_id": "short",
+      "tokens": 32,
+      "status": "skipped",
+      "measured": false,
+      "model_path": "~/.cache/huggingface/hub/models--mlx-community--Qwen2.5-0.5B-Instruct-4bit/snapshots/a5339a4131f135d0fdc6a5c8b5bbed2753bbe0f3",
+      "skip_reason": "mlx_lm not importable in ~/src/mlx-HostPathOverhead/receipts/2026-09-11-pyenv-parity/venv-cp314mcpu/bin/python; environment incomplete, nothing executed"
+    },
+    {
+      "leg_id": "qwen25-0.5b-4bit:long-decode-128",
+      "model_id": "qwen25-0.5b-4bit",
+      "revision": "a5339a4131f135d0fdc6a5c8b5bbed2753bbe0f3",
+      "workload_id": "long-decode-128",
+      "prompt_id": "long",
+      "tokens": 128,
+      "status": "skipped",
+      "measured": false,
+      "model_path": "~/.cache/huggingface/hub/models--mlx-community--Qwen2.5-0.5B-Instruct-4bit/snapshots/a5339a4131f135d0fdc6a5c8b5bbed2753bbe0f3",
+      "skip_reason": "mlx_lm not importable in ~/src/mlx-HostPathOverhead/receipts/2026-09-11-pyenv-parity/venv-cp314mcpu/bin/python; environment incomplete, nothing executed"
+    },
+    {
+      "leg_id": "qwen25-0.5b-4bit:longctx-1024-decode-32",
+      "model_id": "qwen25-0.5b-4bit",
+      "revision": "a5339a4131f135d0fdc6a5c8b5bbed2753bbe0f3",
+      "workload_id": "longctx-1024-decode-32",
+      "prompt_id": "ctx1024",
+      "tokens": 32,
+      "status": "skipped",
+      "measured": false,
+      "model_path": "~/.cache/huggingface/hub/models--mlx-community--Qwen2.5-0.5B-Instruct-4bit/snapshots/a5339a4131f135d0fdc6a5c8b5bbed2753bbe0f3",
+      "skip_reason": "mlx_lm not importable in ~/src/mlx-HostPathOverhead/receipts/2026-09-11-pyenv-parity/venv-cp314mcpu/bin/python; environment incomplete, nothing executed"
+    }
+  ],
+  "measured_legs": 0
+}

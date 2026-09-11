@@ -1,0 +1,13 @@
+{
+ "schema": "mlx-omarchy/hostpath-leg/1",
+ "model": "/home/joshuawarren/.cache/huggingface/hub/models--mlx-community--Qwen2.5-0.5B-Instruct-4bit/snapshots/a5339a4131f135d0fdc6a5c8b5bbed2753bbe0f3",
+ "prompt_tokens": 30,
+ "n_tokens": 32,
+ "digest": "7fd25a869ff21678",
+ "decode_tok_s": 113.45461582967842,
+ "decode_ms_per_token": 8.814097096774194,
+ "eval_call_ns_total": 77573647,
+ "eval_calls": 2,
+ "trace_dump_rc": null,
+ "trace": null
+}

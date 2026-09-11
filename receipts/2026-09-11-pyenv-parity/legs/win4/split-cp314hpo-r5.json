@@ -1,0 +1,83 @@
+{
+ "schema": "mlx-omarchy/hostpath-leg/1",
+ "model": "/home/joshuawarren/.cache/huggingface/hub/models--mlx-community--Qwen2.5-0.5B-Instruct-4bit/snapshots/a5339a4131f135d0fdc6a5c8b5bbed2753bbe0f3",
+ "prompt_tokens": 30,
+ "n_tokens": 32,
+ "digest": "7fd25a869ff21678",
+ "decode_tok_s": 111.78955148138735,
+ "decode_ms_per_token": 8.945379838709679,
+ "eval_call_ns_total": 78090175,
+ "eval_calls": 2,
+ "trace_dump_rc": 0,
+ "trace": {
+  "schema": "mlx-omarchy/host-trace/1",
+  "eval_node_total": {
+   "ns": 69415960,
+   "hits": 29288
+  },
+  "backend_eval": {
+   "ns": 56599928,
+   "hits": 29288
+  },
+  "eval_bookkeeping": {
+   "ns": 7703749,
+   "hits": 29219
+  },
+  "disp_total": {
+   "ns": 23115032,
+   "hits": 8734
+  },
+  "desc_setup": {
+   "ns": 22417603,
+   "hits": 8734
+  },
+  "barriers": {
+   "ns": 12093803,
+   "hits": 17468
+  },
+  "vkcmd": {
+   "ns": 9692970,
+   "hits": 8734
+  },
+  "ensure_recording": {
+   "ns": 2403654,
+   "hits": 8734
+  },
+  "submit_total": {
+   "ns": 3486664,
+   "hits": 69
+  },
+  "join_wait": {
+   "ns": 0,
+   "hits": 0
+  },
+  "completion_work": {
+   "ns": 5884811,
+   "hits": 35
+  },
+  "alloc": {
+   "ns": 17391606,
+   "hits": 20678
+  },
+  "free": {
+   "ns": 1969341,
+   "hits": 20677
+  },
+  "finalize": {
+   "ns": 2958,
+   "hits": 34
+  },
+  "synchronize": {
+   "ns": 0,
+   "hits": 0
+  },
+  "replay_hits": {
+   "ns": 0,
+   "hits": 0
+  },
+  "replay_records": {
+   "ns": 0,
+   "hits": 0
+  }
+ }
+}

@@ -1,0 +1,16 @@
+[pipeline 2026-09-11T04:11:58Z] pipeline start pid 2103219
+[pipeline 2026-09-11T04:11:58Z] start py312-base
+[build_python] start 3.12.14-base 2026-09-11T04:11:58Z pid 2103228
+Python 3.12.14 (main, Sep 10 2026, 23:13:04) [GCC 16.1.1 20260430]
+[build_python] done 3.12.14-base 2026-09-11T04:13:17Z
+[pipeline 2026-09-11T04:13:17Z] OK py312-base
+[pipeline 2026-09-11T04:14:47Z] start py314-pgo
+[build_python] start 3.14.7-pgo 2026-09-11T04:14:47Z pid 2115809
+Python 3.14.7 (main, Sep 10 2026, 23:20:10) [GCC 16.1.1 20260430]
+[build_python] done 3.14.7-pgo 2026-09-11T04:21:29Z
+[pipeline 2026-09-11T04:21:29Z] OK py314-pgo
+[pipeline 2026-09-11T04:28:14Z] start py312-pgo
+[build_python] start 3.12.14-pgo 2026-09-11T04:28:14Z pid 2139587
+Python 3.12.14 (main, Sep 10 2026, 23:36:53) [GCC 16.1.1 20260430]
+[build_python] done 3.12.14-pgo 2026-09-11T04:39:33Z
+[pipeline 2026-09-11T04:39:33Z] OK py312-pgo
