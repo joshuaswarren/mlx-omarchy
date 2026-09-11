@@ -366,8 +366,14 @@ static const Shape kShapes[] = {
     {"o", 896, 1, {896, 0, 0}},
     {"gate_up", 896, 2, {4864, 4864, 0}},
     {"down", 4864, 1, {896, 0, 0}},
+    // Coverage beyond the production shapes: K % 512 == 0 exercises the
+    // qmv_fast two-word tile, N % 8 != 0 exercises the ragged column
+    // guards. Timing rows for these are not production anchors; the
+    // bit-exactness compares are the point.
+    {"fasttile", 1024, 1, {512, 0, 0}},
+    {"oddn", 896, 1, {12, 0, 0}},
 };
-static constexpr uint32_t kNumShapes = 4;
+static constexpr uint32_t kNumShapes = 6;
 
 // Bytes one dispatch touches: weight words + scales + biases + x row +
 // outputs (flags are 0 in the bench, so no addend reads / sum writes).
@@ -822,9 +828,11 @@ static void run_peak(const DeviceCtx& ctx, const char* src_path,
 int main(int argc, char** argv) {
   bool tree_mode = false;
   bool quick = false;
+  bool occ_mode = false;
   for (int i = 1; i < argc; ++i) {
     if (std::string(argv[i]) == "--tree") tree_mode = true;
     if (std::string(argv[i]) == "--quick") quick = true;
+    if (std::string(argv[i]) == "--occ") occ_mode = true;
   }
   const int reps = quick ? 7 : 21;
 
@@ -839,20 +847,30 @@ int main(int argc, char** argv) {
     const char* src;
     const char* spv;
     uint32_t columns;
+    const char* extra_defines;
   };
   const SideSpec specs[] = {
+      // Frozen PRE-change production shader (commit ccc25c0f,
+      // sha256 56aff1d36697331982b88eedbf1bcce74fee2a2e3e683c1a7edb12b14abc2a65):
+      // 256-thread workgroups, one column per 32-lane slot.
       {"base", "tools/q4-bw-bench/shaders/qmm_vec_base.comp",
-          "/tmp/q4base.spv", 8u},
-      {"unroll", "tools/q4-bw-bench/shaders/qmm_vec_cand_unroll.comp",
-          "/tmp/q4cand_u.spv", 8u},
-      {"loadfirst", "tools/q4-bw-bench/shaders/qmm_vec_cand_loadfirst.comp",
-          "/tmp/q4cand_l.spv", 8u},
-      {"wg128", "tools/q4-bw-bench/shaders/qmm_vec_cand_wg128.comp",
-          "/tmp/q4cand_w.spv", 4u},
+          "/tmp/q4base.spv", 8u, ""},
+      // Native qmv thread mapping: 64-thread workgroups, four columns
+      // per 32-lane slot, grid unchanged. Must equal the production
+      // shader (run-m1.sh gates the diff).
+      {"nativemap", "tools/q4-bw-bench/shaders/qmm_vec_cand_nativemap.comp",
+          "/tmp/q4nm.spv", 8u, ""},
+      // Same mapping packed four tiles per 256-thread workgroup (32
+      // columns per workgroup, grid /4). Requires a host dispatch
+      // change to ship; measured for the occupancy axis.
+      {"nm32", "tools/q4-bw-bench/shaders/qmm_vec_cand_nativemap.comp",
+          "/tmp/q4nm32.spv", 32u, " -DQ4_MULTI_32=1"},
   };
-  const int num_sides = 4;
+  const int num_sides = 3;
   for (int i = 0; i < num_sides; ++i) {
-    if (compile_shader(specs[i].src, variant_defines, specs[i].spv) != 0)
+    std::string defines =
+        std::string(variant_defines) + specs[i].extra_defines;
+    if (compile_shader(specs[i].src, defines.c_str(), specs[i].spv) != 0)
       die("compile %s", specs[i].tag);
   }
 
@@ -986,6 +1004,99 @@ int main(int argc, char** argv) {
           (unsigned long long)minv[i], (double)med[i] / (double)med[0]);
     }
     std::printf("}\n");
+  }
+
+  // ---- Occupancy sweep (--occ): scale the workgroup count over the
+  // production grid with per-workgroup work held fixed. Workgroups past
+  // the model's grid read padded garbage weight rows and write padded
+  // output rows (buffers sized for the largest multiplier), so every
+  // multiplier runs the identical per-workgroup job. med_ns/m flat in
+  // m says the machine already saturates at the production grid
+  // (instruction/L1 bound); decreasing med_ns/m says extra workgroups
+  // still buy latency hiding (starved). This is the starvation test,
+  // measured, not assumed.
+  if (occ_mode) {
+    const uint32_t kMults[] = {1u, 2u, 4u, 8u, 16u};
+    const uint32_t kNumMults = 5u;
+    const uint32_t kMaxMult = kMults[kNumMults - 1u];
+    const int occ_reps = quick ? 5 : 9;
+    VkDescriptorPoolSize ops{};
+    ops.type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    ops.descriptorCount = kBindings * kNumShapes * num_sides;
+    VkDescriptorPoolCreateInfo odpci{};
+    odpci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+    odpci.maxSets = kNumShapes * num_sides;
+    odpci.poolSizeCount = 1;
+    odpci.pPoolSizes = &ops;
+    VkDescriptorPool occ_pool;
+    if (g_vk.CreateDescriptorPool(g_vk.dev, &odpci, nullptr, &occ_pool) !=
+        VK_SUCCESS)
+      die("CreateDescriptorPool occ");
+    for (uint32_t s = 0; s < kNumShapes; ++s) {
+      const Shape& sh = kShapes[s];
+      std::vector<SetBufs> padded(num_sides);
+      std::vector<VkDescriptorSet> occ_sets(num_sides);
+      for (int i = 0; i < num_sides; ++i) {
+        padded[i].x = inputs[s].x;
+        for (uint32_t d = 0; d < kMaxDims; ++d) {
+          uint32_t n = d < sh.dims ? sh.n[d] : sh.n[0];
+          // Padded row count: every workgroup of every multiplier, plus
+          // slack for column-rounding tails.
+          uint32_t rows =
+              (groups_v[s][i] * kMaxMult + 2u) * specs[i].columns;
+          padded[i].w[d] = make_buf(g_vk.dev, ctx.mp,
+              (uint64_t)rows * (sh.k / 8u) * 4u, false);
+          padded[i].scales[d] = make_buf(g_vk.dev, ctx.mp,
+              (uint64_t)rows * (sh.k / 64u) * 2u, false);
+          padded[i].biases[d] = make_buf(g_vk.dev, ctx.mp,
+              (uint64_t)rows * (sh.k / 64u) * 2u, false);
+          padded[i].out[d] =
+              make_buf(g_vk.dev, ctx.mp, (uint64_t)rows * 2u, true);
+        }
+        SetBufs combined = padded[i];
+        occ_sets[i] =
+            make_set(occ_pool, sides[i].dsl, combined, sh.dims);
+      }
+      std::vector<std::vector<std::vector<uint64_t>>> occ_samples(
+          num_sides, std::vector<std::vector<uint64_t>>(kNumMults));
+      for (uint32_t mi = 0; mi < kNumMults; ++mi) {
+        for (int rep = 0; rep < occ_reps; ++rep) {
+          for (int i = 0; i < num_sides; ++i) {
+            Params p = shape_params[s];
+            uint32_t g = groups_v[s][i] * kMults[mi];
+            p.count = g;
+            occ_samples[i][mi].push_back(dispatch_isolated(ctx, sides[i],
+                iso_cmd, occ_sets[i], p, g));
+          }
+        }
+      }
+      for (int i = 0; i < num_sides; ++i) {
+        for (uint32_t mi = 0; mi < kNumMults; ++mi) {
+          uint64_t med = median(occ_samples[i][mi]);
+          std::printf(
+              "{\"k\":\"occ\",\"shape\":\"%s\",\"side\":\"%s\","
+              "\"mult\":%u,\"grid\":%u,\"med_ns\":%llu,\"min_ns\":%llu,"
+              "\"ns_per_base_grid\":%.1f}\n",
+              sh.name, specs[i].tag, kMults[mi],
+              groups_v[s][i] * kMults[mi], (unsigned long long)med,
+              (unsigned long long)min_of(occ_samples[i][mi]),
+              (double)med / (double)kMults[mi]);
+        }
+      }
+      for (int i = 0; i < num_sides; ++i) {
+        for (uint32_t d = 0; d < kMaxDims; ++d) {
+          g_vk.DestroyBuffer(g_vk.dev, padded[i].w[d].buf, nullptr);
+          g_vk.FreeMemory(g_vk.dev, padded[i].w[d].mem, nullptr);
+          g_vk.DestroyBuffer(g_vk.dev, padded[i].scales[d].buf, nullptr);
+          g_vk.FreeMemory(g_vk.dev, padded[i].scales[d].mem, nullptr);
+          g_vk.DestroyBuffer(g_vk.dev, padded[i].biases[d].buf, nullptr);
+          g_vk.FreeMemory(g_vk.dev, padded[i].biases[d].mem, nullptr);
+          g_vk.DestroyBuffer(g_vk.dev, padded[i].out[d].buf, nullptr);
+          g_vk.FreeMemory(g_vk.dev, padded[i].out[d].mem, nullptr);
+        }
+      }
+    }
+    g_vk.DestroyDescriptorPool(g_vk.dev, occ_pool, nullptr);
   }
 
   std::printf("{\"k\":\"done\"}\n");
