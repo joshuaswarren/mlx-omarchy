@@ -21,11 +21,11 @@ CAP = 4096
 
 
 def build_chain(k_len, delta):
-    rs = mx.random.state(7)
+    rs = mx.random.key(7)
     q = mx.random.normal((1, HEADS, 1, HD), key=rs).astype(mx.float16)
-    rs = mx.random.state(8)
+    rs = mx.random.key(8)
     k_cache = mx.random.normal((1, KVH, CAP, HD), key=rs).astype(mx.float16)
-    rs = mx.random.state(9)
+    rs = mx.random.key(9)
     v_cache = mx.random.normal((1, KVH, CAP, HD), key=rs).astype(mx.float16)
     k = k_cache[:, :, :k_len, :]
     v = v_cache[:, :, :k_len, :]
@@ -51,7 +51,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", default="chain.json")
     ap.add_argument("--reps", type=int, default=20)
-    ap.add_argument("--k-lens", default="30,262,1053")
+    ap.add_argument("--k-lens", default="30,262,511,1023,1053,1084")
     args = ap.parse_args()
 
     rows = []
