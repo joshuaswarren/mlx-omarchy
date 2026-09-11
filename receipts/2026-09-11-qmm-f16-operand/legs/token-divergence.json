@@ -1,0 +1,128 @@
+[
+ {
+  "rep": 1,
+  "prompt_tokens": 30,
+  "generated": 32,
+  "flips_cand_vs_base": 0,
+  "first_divergence_index": null
+ },
+ {
+  "rep": 1,
+  "prompt_tokens": 262,
+  "generated": 128,
+  "flips_cand_vs_base": 35,
+  "first_divergence_index": 93
+ },
+ {
+  "rep": 1,
+  "prompt_tokens": 1053,
+  "generated": 32,
+  "flips_cand_vs_base": 4,
+  "first_divergence_index": 28
+ },
+ {
+  "rep": 1,
+  "prompt_tokens": 30,
+  "generated": 32,
+  "flips_cand_vs_base": 0,
+  "first_divergence_index": null
+ },
+ {
+  "rep": 1,
+  "prompt_tokens": 262,
+  "generated": 128,
+  "flips_cand_vs_base": 0,
+  "first_divergence_index": null
+ },
+ {
+  "rep": 1,
+  "prompt_tokens": 1053,
+  "generated": 32,
+  "flips_cand_vs_base": 0,
+  "first_divergence_index": null
+ },
+ {
+  "rep": 2,
+  "prompt_tokens": 30,
+  "generated": 32,
+  "flips_cand_vs_base": 0,
+  "first_divergence_index": null
+ },
+ {
+  "rep": 2,
+  "prompt_tokens": 262,
+  "generated": 128,
+  "flips_cand_vs_base": 35,
+  "first_divergence_index": 93
+ },
+ {
+  "rep": 2,
+  "prompt_tokens": 1053,
+  "generated": 32,
+  "flips_cand_vs_base": 4,
+  "first_divergence_index": 28
+ },
+ {
+  "rep": 2,
+  "prompt_tokens": 30,
+  "generated": 32,
+  "flips_cand_vs_base": 0,
+  "first_divergence_index": null
+ },
+ {
+  "rep": 2,
+  "prompt_tokens": 262,
+  "generated": 128,
+  "flips_cand_vs_base": 0,
+  "first_divergence_index": null
+ },
+ {
+  "rep": 2,
+  "prompt_tokens": 1053,
+  "generated": 32,
+  "flips_cand_vs_base": 0,
+  "first_divergence_index": null
+ },
+ {
+  "rep": 3,
+  "prompt_tokens": 30,
+  "generated": 32,
+  "flips_cand_vs_base": 0,
+  "first_divergence_index": null
+ },
+ {
+  "rep": 3,
+  "prompt_tokens": 262,
+  "generated": 128,
+  "flips_cand_vs_base": 35,
+  "first_divergence_index": 93
+ },
+ {
+  "rep": 3,
+  "prompt_tokens": 1053,
+  "generated": 32,
+  "flips_cand_vs_base": 4,
+  "first_divergence_index": 28
+ },
+ {
+  "rep": 3,
+  "prompt_tokens": 30,
+  "generated": 32,
+  "flips_cand_vs_base": 0,
+  "first_divergence_index": null
+ },
+ {
+  "rep": 3,
+  "prompt_tokens": 262,
+  "generated": 128,
+  "flips_cand_vs_base": 0,
+  "first_divergence_index": null
+ },
+ {
+  "rep": 3,
+  "prompt_tokens": 1053,
+  "generated": 32,
+  "flips_cand_vs_base": 0,
+  "first_divergence_index": null
+ }
+]

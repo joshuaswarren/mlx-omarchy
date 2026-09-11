@@ -1,0 +1,333 @@
+{
+  "repetitions": 3,
+  "sides": {
+    "base": {
+      "python": "/home/joshuawarren/src/mlx-F16OperandBase/.venv-accept/bin/python",
+      "wheel": "/home/joshuawarren/src/mlx-F16OperandBase/dist/mlx_omarchy-0.32.2.dev202609111016+01cbac2-cp314-cp314-linux_aarch64.whl",
+      "stamp": "01cbac2",
+      "version": "0.32.2.dev202609111016+01cbac2",
+      "sha256": "f50348decd55c71d89f5da6d40aaa0c6bac8379c28ffdadf08177ca2603cf92e"
+    },
+    "cand": {
+      "python": "/home/joshuawarren/src/mlx-QmmF16Operand/.venv-accept/bin/python",
+      "wheel": "/home/joshuawarren/src/mlx-QmmF16Operand/dist/mlx_omarchy-0.32.2.dev202609111013+2cd86ff-cp314-cp314-linux_aarch64.whl",
+      "stamp": "2cd86ff",
+      "version": "0.32.2.dev202609111013+2cd86ff",
+      "sha256": "6ca093d12e3ffc04ba19a10357cbcdaf4114f126fe179598fcce46bde64d8142"
+    }
+  },
+  "results": [
+    {
+      "leg_id": "qwen25-0.5b-4bit:long-decode-128",
+      "native_digest": "254d73fd93164b98",
+      "sides": {
+        "base": {
+          "digests": [
+            "4cc08910089477fd"
+          ],
+          "native_match": false,
+          "decode_tok_s": {
+            "samples": [
+              108.19,
+              107.74,
+              108.08
+            ],
+            "median": 108.08
+          },
+          "prefill_tok_s": {
+            "samples": [
+              1035.573,
+              1035.573,
+              1035.573
+            ],
+            "median": 1035.573
+          }
+        },
+        "cand": {
+          "digests": [
+            "b3692313ef82b28a"
+          ],
+          "native_match": false,
+          "decode_tok_s": {
+            "samples": [
+              106.51,
+              109.13,
+              107.98
+            ],
+            "median": 107.98
+          },
+          "prefill_tok_s": {
+            "samples": [
+              1073.77,
+              1069.388,
+              1073.77
+            ],
+            "median": 1073.77
+          },
+          "decode_over_base": 0.9990747594374538,
+          "prefill_over_base": 1.0368848936772201
+        }
+      }
+    },
+    {
+      "leg_id": "qwen25-0.5b-4bit:longctx-1024-decode-32",
+      "native_digest": "7da83f06ec9f001d",
+      "sides": {
+        "base": {
+          "digests": [
+            "7da83f06ec9f001d"
+          ],
+          "native_match": true,
+          "decode_tok_s": {
+            "samples": [
+              96.95,
+              95.65,
+              95.62
+            ],
+            "median": 95.65
+          },
+          "prefill_tok_s": {
+            "samples": [
+              1110.759,
+              1111.932,
+              1114.286
+            ],
+            "median": 1111.932
+          }
+        },
+        "cand": {
+          "digests": [
+            "31267e7ed4c6d0dc"
+          ],
+          "native_match": false,
+          "decode_tok_s": {
+            "samples": [
+              96.44,
+              96.69,
+              96.56
+            ],
+            "median": 96.56
+          },
+          "prefill_tok_s": {
+            "samples": [
+              1155.873,
+              1160.97,
+              1159.692
+            ],
+            "median": 1159.692
+          },
+          "decode_over_base": 1.0095138525875589,
+          "prefill_over_base": 1.04295226686524
+        }
+      }
+    },
+    {
+      "leg_id": "qwen25-0.5b-4bit:short-decode-32",
+      "native_digest": "7fd25a869ff21678",
+      "sides": {
+        "base": {
+          "digests": [
+            "7fd25a869ff21678"
+          ],
+          "native_match": true,
+          "decode_tok_s": {
+            "samples": [
+              110.99,
+              111.59,
+              112.4
+            ],
+            "median": 111.59
+          },
+          "prefill_tok_s": {
+            "samples": [
+              337.079,
+              337.079,
+              337.079
+            ],
+            "median": 337.079
+          }
+        },
+        "cand": {
+          "digests": [
+            "7fd25a869ff21678"
+          ],
+          "native_match": true,
+          "decode_tok_s": {
+            "samples": [
+              111.8,
+              111.78,
+              112.13
+            ],
+            "median": 111.8
+          },
+          "prefill_tok_s": {
+            "samples": [
+              348.837,
+              348.837,
+              348.837
+            ],
+            "median": 348.837
+          },
+          "decode_over_base": 1.0018818890581593,
+          "prefill_over_base": 1.0348820306219015
+        }
+      }
+    },
+    {
+      "leg_id": "qwen25-0.5b-bf16:long-decode-128",
+      "native_digest": "407b7624ed1b3b29",
+      "sides": {
+        "base": {
+          "digests": [
+            "8690dc83246b39f8"
+          ],
+          "native_match": false,
+          "decode_tok_s": {
+            "samples": [
+              28.78,
+              28.87,
+              28.91
+            ],
+            "median": 28.87
+          },
+          "prefill_tok_s": {
+            "samples": [
+              444.822,
+              443.316,
+              446.337
+            ],
+            "median": 444.822
+          }
+        },
+        "cand": {
+          "digests": [
+            "8690dc83246b39f8"
+          ],
+          "native_match": false,
+          "decode_tok_s": {
+            "samples": [
+              28.99,
+              28.94,
+              28.87
+            ],
+            "median": 28.94
+          },
+          "prefill_tok_s": {
+            "samples": [
+              444.822,
+              446.337,
+              444.068
+            ],
+            "median": 444.822
+          },
+          "decode_over_base": 1.0024246622791826,
+          "prefill_over_base": 1.0
+        }
+      }
+    },
+    {
+      "leg_id": "qwen25-0.5b-bf16:longctx-1024-decode-32",
+      "native_digest": "ff502900d2a179a5",
+      "sides": {
+        "base": {
+          "digests": [
+            "ff502900d2a179a5"
+          ],
+          "native_match": true,
+          "decode_tok_s": {
+            "samples": [
+              23.05,
+              21.78,
+              23.08
+            ],
+            "median": 23.05
+          },
+          "prefill_tok_s": {
+            "samples": [
+              448.849,
+              449.424,
+              455.844
+            ],
+            "median": 449.424
+          }
+        },
+        "cand": {
+          "digests": [
+            "ff502900d2a179a5"
+          ],
+          "native_match": true,
+          "decode_tok_s": {
+            "samples": [
+              23.1,
+              23.15,
+              23.14
+            ],
+            "median": 23.14
+          },
+          "prefill_tok_s": {
+            "samples": [
+              456.437,
+              456.239,
+              456.042
+            ],
+            "median": 456.239
+          },
+          "decode_over_base": 1.0039045553145336,
+          "prefill_over_base": 1.015163854177792
+        }
+      }
+    },
+    {
+      "leg_id": "qwen25-0.5b-bf16:short-decode-32",
+      "native_digest": "7fc0f968789b1882",
+      "sides": {
+        "base": {
+          "digests": [
+            "f26175202f3dabe9"
+          ],
+          "native_match": false,
+          "decode_tok_s": {
+            "samples": [
+              32.0,
+              32.0,
+              31.88
+            ],
+            "median": 32.0
+          },
+          "prefill_tok_s": {
+            "samples": [
+              136.364,
+              135.747,
+              136.986
+            ],
+            "median": 136.364
+          }
+        },
+        "cand": {
+          "digests": [
+            "f26175202f3dabe9"
+          ],
+          "native_match": false,
+          "decode_tok_s": {
+            "samples": [
+              32.03,
+              32.2,
+              32.07
+            ],
+            "median": 32.07
+          },
+          "prefill_tok_s": {
+            "samples": [
+              136.364,
+              136.986,
+              136.364
+            ],
+            "median": 136.364
+          },
+          "decode_over_base": 1.0021875,
+          "prefill_over_base": 1.0
+        }
+      }
+    }
+  ]
+}
