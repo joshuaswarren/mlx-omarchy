@@ -1,0 +1,53 @@
+{
+  "schema": "mlx-omarchy/hostpath/1",
+  "date_utc": "2026-09-11",
+  "topic": "Host-side per-operation overhead in q4 decode: direct host-phase measurement (no per-dispatch GPU timestamps), cross-checked, plus a recorded-command-replay prototype",
+  "host": "jwm1-linux, Apple M1 (G13G B1), Honeykrisp, linux-asahi 7.1.6",
+  "base": "d1dfaf2b (main-integrate) + wave/HostPathOverhead measurement wheel 12012beb (NEVER MERGED); venv mlx-lm pinned 0.31.3",
+  "instruments": {
+    "A_host_phase_trace": {
+      "what": "MLX_OMARCHY_HOST_TRACE: CLOCK_MONOTONIC phase counters in gpu::eval (backend_eval, bookkeeping), dispatch_compute_pipeline (desc_setup/barriers/vkcmd/ensure_recording), submit, completion drain, allocator; plus a monkeypatched mx.eval timer and per-token wall gaps in receipts/2026-09-10-hostpath/hostphases.py. Zero GPU timestamps anywhere.",
+      "digest_gate": "gates-off legs reproduce all three canonical digests 9/9 (7fd25a869ff21678 / 4cc08910089477fd / 7da83f06ec9f001d) and 111.67/108.06/96.93 tok/s (-0.8/-1.1/-0.4% vs b6d662a canonical): the instrument is inert when off."
+    },
+    "C_replay_prototype": {
+      "what": "MLX_OMARCHY_REPLAY=1: per-dispatch cached command buffers, byte-identical compare of pipeline+bindings+push constants+groups, up to 4 binding-address variants per sequence position (async decode ping-pongs two allocator address sets), chained descriptor pools, one multi-buffer submission per token.",
+      "bit_identity": "PASS - all 9 replay legs x 3 workloads reproduce the canonical digests exactly.",
+      "performance": "FAIL - 42.64 tok/s vs 111.67 baseline short (23.45 ms vs 8.955 ms per token, +162%): per-dispatch command-buffer submission fan-out (~282 buffers per token through one vkQueueSubmit) costs far more on Honeykrisp than the host record work it removes. Rejected as a structural fix in this form."
+    },
+    "B_tiny_model_floor": {
+      "status": "NOT COMPLETED - tiny build hit mx.save_safetensors std::bad_cast then Module.save_weights path ran out of window; fix path known (cast parameter tree before save). fdinfo GPU accounting does not exist on asahi (verified), so the GPU-busy floor was not directly measured this session."
+    }
+  },
+  "measured_split_per_token_short_32": {
+    "wall_ms": 8.947,
+    "python_outside_eval_ms": 6.365,
+    "cpp_inside_eval_calls_ms": 2.582,
+    "cpp_phases_ms": {
+      "backend_eval_primitive_plus_record": 1.905,
+      "eval_bookkeeping_temporaries_budget": 0.255,
+      "submit_total": 0.126,
+      "completion_thread_work": 0.181,
+      "alloc": 0.594,
+      "free": 0.067,
+      "note": "finest-grain scopes (desc/barriers/vkcmd/ensure) sum to ~2x their container, i.e. steady_clock reads on this kernel cost ~0.4-0.5us each; coarse numbers above are the trustworthy ones. Per-dispatch coarse: C++ Vulkan record+descriptor path is <=0.76 ms/token of an 8.95 ms token (8.5%)."
+    },
+    "nodes_and_dispatches": "944.8 eval nodes and 281.7 compute dispatches per token; 2.2 submissions per token",
+    "reading": "The host thread is busy essentially the whole token wall: ~6.4 ms Python graph construction + ~2.6 ms C++ eval/submit work; the GPU overlaps inside that. Combined with the prior cross-check microbench on main (eager tiny-add chain 40-58 us/op vs 4.5 us pre-recorded floor) and the dispatch-floor receipt (GPU launch cadence 4.5 us x 282 = 1.27 ms/token), decode on this stack is HOST-paced, not GPU-paced."
+  },
+  "hypothesis_verdict": {
+    "host_share": "CONFIRMED in direction: the host owns the token wall; the GPU is not the limiter.",
+    "location_correction": "The dominant host term is Python eager graph construction (6.4 of 8.95 ms), NOT the Vulkan descriptor/record path (<=0.76 ms measured). The 28-58us/op eager cadence seen per-op in Python loops amortizes to ~9.5us/node when one eval batches ~945 nodes.",
+    "replay_conclusion": "Command-buffer replay alone is bounded by the record+descriptor share (~1.5-1.9 ms/token best case) and the naive per-dispatch implementation loses 2.6x to submission fan-out. The structural fix implied by the measurement is whole-graph capture on the decode step (mx.compile-style capture/replay with buffer rebinding, or a C++ cached decode loop) to remove the Python term first; command-buffer reuse is only worth it AFTER the graph is captured once and resubmitted as few large buffers."
+  },
+  "policy": {
+    "never_merged": "wave/HostPathOverhead measurement wheel only; tip 12012beb+ (post-wheel fix commits) on jwm1 clone ~/src/mlx-HostPathOverhead and origin",
+    "digest_gates": "canonical digests asserted on every A and C leg (bench_matrix --expect-pins)",
+    "windows": "single top-level /tmp/m1-gpu.lock flock per window, quiet-gated, loadavg-sampled; builds announced and reniced after the 2026-09-10 build-pollution incident"
+  },
+  "artifacts": [
+    "legs/ (A 9x baseline digest-gated, C 9x replay digest-gated, B 3x host-trace, D 2x replay+trace)",
+    "hostphases.py, tiny_model.py, window.sh, analyze.py, manifest-q4.json",
+    "branch wave/HostPathOverhead: host_trace.h instrument + replay prototype + harness"
+  ],
+  "status": "PARTIAL - host split measured by two working instruments (trace + prior microbench/cadence), replay prototype complete with bit-identity verdict and a decisive negative performance result, tiny-model GPU floor leg not completed"
+}
