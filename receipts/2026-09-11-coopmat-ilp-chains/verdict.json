@@ -1,0 +1,67 @@
+{
+  "schema": "mlx-omarchy/coopmat-ilp-chains/1",
+  "date": "2026-09-11",
+  "agent": "CoopmatIlpChains",
+  "decision": "RECEIPT-ONLY NEGATIVE: land no default-kernel source change. The shipped QmmPrefillCoopmatF16 kernel beats every bit-preserving ILP schedule variant measured. Bench arms (4-12), the in-process bit-identity regression test, and this receipt live only on wave/CoopmatIlpChains. Never merged.",
+  "question": "The 2026-09-11-fma-ceiling receipt showed the 8x8x8 f32 cooperative-matrix multiply sustains 2148 GFLOP/s (93% of scalar FMA ceiling) with 4 independent accumulator chains, while the shipped quantized prefill kernel runs 1032-1043 GFLOP/s at the dominant gate_up shape. Can the kernel's ILP be raised - without changing any output's per-output accumulation order - by interleaving MulAdd issue across independent accumulator fragments and removing whatever serialises them, to close the ~2x headroom?",
+  "base": "wave/CoopmatIlpChains off wave/CoopmatTflopClose cb6510a6; measurement commits 8c527182 (arms 5-10), ce14a392 (arms 9/10 stride fix), 48ea34dd (arms 11/12). No default-dispatch change on the branch: arm 0 always means the shipped shaders/qmm_coopmat.comp; MLX_OMARCHY_QMM_COOP_BENCH selects bench arms only and is re-read per dispatch.",
+  "instrument": {
+    "what": "Chains-in-flight ladder inside the bench shader skeleton at the real dispatch shapes: pure-MulAdd k loop (operands loaded once) with 1/2/4/8 independent accumulator chains per lane (arms 5/6/7/4), every rung issuing exactly 64 MulAdds per lane per 64-k chunk so GFLOP/s compares directly. Zero operand traffic; 16 KiB shared skeleton on every rung (occupancy identical across rungs).",
+    "reference": "Hand-written SPIR-V ladder in receipts/2026-09-11-fma-ceiling (flat dispatch, no shared, 128 lanes): 1/2/4 chains = 1690/2003/2148 GFLOP/s. This receipt's ladder is the same measurement inside the real kernel's dispatch geometry (64-lane workgroups, tile loop, 16 KiB shared).",
+    "result_gate_up_1053x896x9728": {"1_chain": 1013.9, "2_chains": 1359.9, "4_chains": 1359.6, "8_chains": 1458.7, "shipped_kernel": 1043.0},
+    "verdict": "The dispatch geometry sustains up to ~1459 GFLOP/s with 8 chains. The shipped kernel's 1043 GFLOP/s matches the ONE-chain rung (1014): although the source issues 8 independent fragment updates per burst (AGX confirms 8 simd_matrix_fmadd32 with dependency spacing 8 per half-step, dumps/arm0.agx.txt.gz), the phase structure between bursts means time-averaged chains in flight ~ 1. Effective chains, not source chains, are the deficit."
+  },
+  "schedule_arms": {
+    "principle": "All candidates preserve every output's ascending-k MulAdd sequence exactly (issue order across independent fragments and memory timing do not enter the arithmetic), proven bitwise against arm 0 on hardware BEFORE timing: in-process env-flip test (5 arms x 2 shapes, exact f32 widenings of f16 outputs) plus per-arm host-reference-bound runs through the full dispatch stack, plus probe f16 digest equality on all 8 cells. Gate: PASS for every arm whose timings are quoted here.",
+    "arm8_double_buffer": "Stage next 16-k step during current step's MulAdd burst; 1 barrier per step instead of 2; 8 KiB shared. Bit-identical (window A, all 8 cells). RESULT: -43% at large m (gate_up 1053: 589 vs 1043 GFLOP/s), but +27% at 262x896x128 (128 vs 87) - an occupancy signature, not a schedule win. The 8 KiB halves resident workgroups; the 16 KiB chunk arms (prior receipt, -70%) confirm the same wall.",
+    "arm9_load_hoist": "All 12 shared operand loads of a step hoisted above the 16 MulAdds; shipped staging and barrier cadence; 4 KiB shared. Bit-identical after stride fix (window A2). RESULT: 3.0x SLOWER (gate_up 1053: 349 vs 1043). Regrouping loads away from their uses destroys the rate; the first window A run timed an unpatched arm 9/10 (wrong stride, digest FAIL caught by the gate) - those rows are superseded by A2 and unused.",
+    "arm10_paired_order": "Arm 9's hoisted loads with each fragment's two updates adjacent (2-deep chains). Bit-identical (A2). RESULT: 349 vs 1043, indistinguishable from arm 9 - issue order does not matter once loads are hoisted.",
+    "arm11_register_prefetch": "Next step's global loads (x words, w word, scale, bias) issue after the MulAdd bursts and before the end-of-step barrier; unpack/dequant/shared stores stay after it; shipped 4 KiB shared. Bit-identical (A3). RESULT: 3.6x SLOWER (gate_up 1053: 291 vs 1043).",
+    "arm12_prefetch_plus_hoist": "Arms 11+12 combined. Bit-identical (A3). RESULT: 3.2x SLOWER (324 vs 1043)."
+  },
+  "gflop_s_per_arm": {
+    "units": "GFLOP/s, median wall-anchored (time.perf_counter around mx.eval, 4 warmups + 30 timed, honeykrisp device timestamps never used)",
+    "base_arm0": {
+      "262x896x128": 86.5, "1053x896x128": 431.7,
+      "262x896x896": 569.1, "1053x896x896": 857.4,
+      "262x4864x896": 676.4, "1053x4864x896": 977.7,
+      "262x896x9728": 902.7, "1053x896x9728": 1043.0
+    },
+    "ladder_zero_traffic": {
+      "1053x896x9728": {"arm5_1chain": 1013.9, "arm6_2chains": 1359.9, "arm7_4chains": 1359.6, "arm4_8chains": 1458.7},
+      "1053x4864x896": {"arm5_1chain": 1170.3, "arm6_2chains": 1931.4, "arm7_4chains": 1934.8, "arm4_8chains": 2014.0},
+      "1053x896x896": {"arm5_1chain": 917.2, "arm6_2chains": 1210.5, "arm7_4chains": 1194.0, "arm4_8chains": 1167.6},
+      "262x896x9728": {"arm5_1chain": 875.5, "arm6_2chains": 1192.9, "arm7_4chains": 1172.7, "arm4_8chains": 1231.2}
+    },
+    "candidates": {
+      "1053x896x9728": {"arm8": 590.0, "arm9": 348.8, "arm10": 348.6, "arm11": 290.8, "arm12": 324.3},
+      "1053x4864x896": {"arm8": 583.4, "arm9": 339.7, "arm10": 338.8, "arm11": 291.4, "arm12": 324.6},
+      "1053x896x896": {"arm8": 537.5, "arm9": 319.1, "arm10": 324.8, "arm11": 266.9, "arm12": 299.6},
+      "262x896x9728": {"arm8": 519.8, "arm9": 309.7, "arm10": 307.3, "arm11": 255.3, "arm12": 288.6},
+      "262x896x128": {"arm8": 128.2, "arm9": 100.7, "arm10": 82.6, "arm11": 102.1, "arm12": 79.7}
+    }
+  },
+  "findings": [
+    "1. The shipped kernel has ~1 effective chain in flight: its 1043 GFLOP/s at gate_up matches the 1-chain zero-traffic rung (1014), while the same dispatch sustains 1360/1360/1459 with 2/4/8 chains. The headroom named in the fma-ceiling receipt is real but sits behind the kernel's phase structure, not behind MulAdd issue order. [measured]",
+    "2. The AGX loop is already ILP-shaped inside a burst: 8 simd_matrix_fmadd32 per half-step with dependency spacing 8, 16 per step, no interleave loss in NIR. The deficit is entirely BETWEEN bursts: barrier, 16 loop-carried accumulator MOVs (RA aligned-pair copies), and the next phase's memory segment. [dumps/arm0.agx.txt.gz]",
+    "3. The ACQ|REL WORKGROUP barrier drains each lane's outstanding memory before it can arrive, so memory issued before a barrier cannot hide under other warps' math - it lengthens every lane's barrier path (arms 11/12, 3.2-3.6x slower). The shipped kernel's cadence (global-load/dequant/store phase, barrier, shared-load+MulAdd phase, barrier) lets warps stagger phases: one warp's memory latency hides under another warp's MMA burst. That stagger IS the kernel's latency-hiding mechanism, and it is load-bearing. [measured + dumps]",
+    "4. Every way to widen the bursts loses to the occupancy wall it forces: double-buffering (arm 8, 8 KiB) -43% at large m; chunk staging at 16 KiB (prior receipt) -70%. At 4 KiB the schedule space collapses back to the shipped cadence; regrouping loads within it (arms 9/10) is 3.0x slower because loads must stay adjacent to the bursts that consume them.",
+    "5. Arm 8 wins +27% at 262x896x128 (128 vs 86.5 GFLOP/s): at small work counts the GPU is work-starved, not shared-memory-starved, so overlap beats residency. Not exploitable for the target shapes (262/1053 prefill at n >= 896), where it loses 40%+. [measured]",
+    "6. What precisely prevents more chains, named: (a) raising shared memory above 4 KiB for double-buffering collapses occupancy - measured at both 8 and 16 KiB; (b) at 4 KiB, single-buffered staging forbids moving memory across the step barrier (arms 8/11/12 lose) and forbids separating loads from their bursts (arms 9/10 lose); (c) the 16 per-step loop-carried MOVs are driver RA overhead (aligned-pair phi copies, same as the fma-ceiling finding) but are not the binding constraint - they are present in every variant including the shipped kernel; (d) the only routes to the 1360+ GFLOP/s band are outside a bit-preserving shader change: an f16-operand cooperative-matrix lowering (changes arithmetic and digests) or driver RA work that removes the per-iteration accumulator copies."
+  ],
+  "digest_safety": {
+    "kernel_digests": "Every bit-identical arm reproduces arm 0's f16 digests exactly on all 8 cells, and arm 0's large-shape digests reproduce the prior receipts: 3e79733f76ed9d37 (1053x4864x896), 4e29e2dbdf33b57b (262x896x9728), 5179630cd4a7c3f9 (1053x896x9728).",
+    "six_digest_gate": "The model-level paired fork/stock prefill matrix with the six canonical Q4 digests (short 7fd25a869ff21678, long 4cc08910089477fd, 1K 7da83f06ec9f001d x fork/stock) was NOT run: no candidate survived window A, so nothing qualified to pair. No digest could have moved anyway - no default dispatch changed and every arm's kernel-level output is bit-identical."
+  },
+  "regression_test_landed": "tests/omarchy/test_matmul_family.cpp: 'qmm coopmat ILP schedule arms reproduce the shipped kernel bitwise' - in-process env flip (arm 0 vs arms 8..12), two shapes (m=262 k=896, m=1053 k=4864), exact bitwise comparison of f16 outputs plus the coopmat host-reference bound; passes on the M1 (windows A/A2/A3), inert on non-coopmat devices. Protects the digest-preserving property of the bench arms permanently.",
+  "policy": "No source change to any default dispatch; shaders/qmm_coopmat.comp untouched. Bench arms, plumbing, test, window scripts, and this receipt are on wave/CoopmatIlpChains only; never merged. llvmpipe and stock Mesa never reach the bench route (arm selector + coopmat capability gate unchanged).",
+  "hardware": "jwm1-linux, Apple M1 (G13G B1), kernel 7.1.6-1-1-ARCH aarch64; installed fork driver mesa-honeykrisp-omarchy 26.3.0.devel.hk6f6afc8-1 verified with pacman -Q before every digest-relevant leg; AGX_SIMDMAT=1; every GPU access under one top-level flock /tmp/m1-gpu.lock (windows A/A2/A3, quiet-gate and starts announced in hub); timing wall-anchored only.",
+  "wheel_provenance": {
+    "window_a_wheel": "mlx_omarchy-0.32.2.dev202609110857+8c527182-cp314-cp314-linux_aarch64.whl",
+    "window_a2_wheel": "mlx_omarchy-0.32.2.dev202609110913+82db5ab2-cp314-cp314-linux_aarch64.whl",
+    "window_a3_wheel": "mlx_omarchy-0.32.2.dev202609110924+48ea34dd-cp314-cp314-linux_aarch64.whl",
+    "member_loaded_match": true,
+    "member_sha256_a3": "2e2877021cc0e8f460628a95fdcd89fa5f81e9187b28b282049389e6ca989220"
+  },
+  "logs": "logs/ (per-window bench verdicts, window logs, gate logs, probes); dumps/ (AGX NIR+packed disassembly of arm 0, arm 8, arm 9; gzip)"
+}
