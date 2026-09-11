@@ -182,6 +182,7 @@ void CommandEncoder::join_last_completion(const char* reason) {
     htrace::Scoped _wait(htrace::join_wait);
     device_.completions().wait(value);
   }
+  uint64_t wait_t1 = prof::get().profiling() ? prof::host_ns() : 0;
   last_completion_ = 0;
   omarchy::allocator().invalidate_noncoherent(device_.handle());
   uint64_t inval_t2 = prof::get().profiling() ? prof::host_ns() : 0;
@@ -658,8 +659,6 @@ bool CommandEncoder::replay_dispatch(
   return true;
 }
 
-void CommandEncoder::ensure_recording() {
-}
 
 void CommandEncoder::dispatch_compute(
     ComputeKernel kernel,
