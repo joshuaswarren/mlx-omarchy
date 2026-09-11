@@ -1,0 +1,918 @@
+{
+  "schema": "mlx-omarchy/q4-decode-splitk/1",
+  "date": "2026-09-11",
+  "agent": "Q4DecodeSplitK",
+  "question": "Does splitting the k range of each Q4 decode GEMV output across multiple workgroups (the GEMV analogue of split-K) with a separate reduction pass raise achieved bandwidth toward the 60 GB/s layout roof, and is the model-level gain worth the accumulation-order change?",
+  "decision": "RECEIPT-ONLY NEGATIVE: land no source change. Split-K lowers the in-model decode chain from 40.9 GB/s to 27.4 / 24.2 / 15.5 GB/s at S=2/4/8 (+52.9% / +77.4% / +190% layer time), and every split count loses on every shape in isolation. The reduction pass alone costs 33-65 us wall per dispatch. Model-level legs were NOT run: the isolated result fails the bar by a wide margin (a >50% per-layer regression cannot become a >=3% model-level gain), so a wheel build and legs matrix would measure nothing not already decided, and the split deliberately changes the accumulation order, which would move the pinned canonical digests with zero performance upside. The env-gated variant stays on this branch as instrumentation only. Never merged.",
+  "host": "jwm1-linux (100.84.184.102), Apple M1 (G13G B1), linux-asahi 7.1.6.asahi1-1, installed fork driver mesa-honeykrisp-omarchy 26.3.0.devel.hk6f6afc8-1 (verified in-window by pacman -Q per window)",
+  "timing_instrument": "host CLOCK_MONOTONIC around whole submits only (window scripts and bench both wall-anchored); no device-timestamp number is used anywhere (known ~2.07x undercount on this driver)",
+  "work_branch": "wave/Q4DecodeSplitK @ 73bb1e4 (implementation; receipt lands in the next commit on the same branch)",
+  "roof_anchors_wall_gb_s": {
+    "copy_256MB": [
+      58.26,
+      57.9
+    ],
+    "read_256MB": [
+      59.68,
+      60.09
+    ],
+    "q4_pattern_production_roof": "60.1-60.2 (receipts/2026-09-11-q4-memory-roof)"
+  },
+  "chain_results_gap_mode_pass2": {
+    "instrument": "four-dispatch per-layer chain (qkv dims=3 n=(896,128,128) k=896 grid=144; o dims=1 n=(896) k=896 grid=112; gate_up dims=2 n=(4864,4864) k=896 grid=1216; down dims=1 n=(896) k=4864 grid=112), RAW-chained x like the model; split arms record split+reduce per shape (eight dispatches per layer) in the same chained environment",
+    "base_widedep": {
+      "layer_ns": 205876.5,
+      "bytes": 8427008,
+      "gb_s": 40.93
+    },
+    "widedep_splitk2": {
+      "layer_ns": 314851.5,
+      "bytes": 8629760,
+      "gb_s": 27.41,
+      "time_ratio_vs_base": 1.529
+    },
+    "widedep_splitk4": {
+      "layer_ns": 365248.5,
+      "bytes": 8832512,
+      "gb_s": 24.18,
+      "time_ratio_vs_base": 1.774
+    },
+    "widedep_splitk8": {
+      "layer_ns": 597255.0,
+      "bytes": 9238016,
+      "gb_s": 15.47,
+      "time_ratio_vs_base": 2.901
+    },
+    "note": "bytes for split arms include the full partial round trip (2 x 12672 cols x S x 4 B); even crediting split-K with all of its extra traffic, throughput falls with every added split",
+    "instrument_health": "the wg128 candidate arm measured -4.4%/-5.2% vs base in this window (195.2/196.9 us vs 205.9), independently reproducing the Q4RowsPerLane receipt's -4.25%/-4.42% same-day gap finding; base widedep reproduces the 41 GB/s kernel figure"
+  },
+  "iso_per_shape": "see tables.iso_per_shape_wall_ns (wall med ns per shape, base vs splitk2/4/8, two independent legs; both legs agree on direction and S-monotonicity)",
+  "iso_summary_wall_ratio_vs_base": {
+    "qkv (grid 144)": {
+      "splitk2": "0.99-1.08",
+      "splitk4": "1.02-1.12",
+      "splitk8": "1.19-1.40"
+    },
+    "o (grid 112)": {
+      "splitk2": "0.98-0.99",
+      "splitk4": "0.99-1.03",
+      "splitk8": "1.14-1.37"
+    },
+    "gate_up (1216)": {
+      "splitk2": "1.11-1.16",
+      "splitk4": "1.40-1.46",
+      "splitk8": "2.15-2.47"
+    },
+    "down (grid 112)": {
+      "splitk2": "1.01-1.05",
+      "splitk4": "1.07-1.10",
+      "splitk8": "1.17-1.24"
+    }
+  },
+  "reduce_pass_cost_wall_med_ns": {
+    "qkv": 61100,
+    "o": 64100,
+    "gate_up": 65000,
+    "down": 37400,
+    "note": "reduce recorded alone (sgroups=0) per shape, split kernel dispatch removed; wall includes the ~21-23 us submit bracket; two or more dispatches of fixed cost per layer at every split count"
+  },
+  "engagement_proof": {
+    "bit_compare_vs_production_kernel": "f16 outputs of split+reduce vs the production single-pass kernel: qkv/o/gate_up bit-identical at every S; down differs on exactly 1 of 896 outputs, max 1 f16 ulp, identical at S=2/4/8 (the reorder is absorbed by the f16 rounding on three shapes and flips one output on K=4864)",
+    "timing_scaling": "split kernel wall scales with S (gate_up 2.15-2.47x at S=8); a non-engaged variant would time and compare identical to base",
+    "spirv_gate": "all 24 default qmm_vec variants compile to byte-identical SPIR-V from the variant source (glslc -O --target-env=vulkan1.3, old vs new sha256-compared); the split and reduce variants compile new code paths only under -DQMM_VEC_Q4_SPLITK",
+    "why_bit_identity_here_is_not_a_contradiction": "split-K changes the accumulation ORDER by design; on these shapes the reordered f32 sums round to the same f16 bits almost everywhere, which is why the accuracy impact is measured at <=1 ulp instead of assumed"
+  },
+  "accuracy_statement": "Measured precision change vs the current production kernel: max 1 f16 ulp on 1 of 12672 layer-chain outputs (down), 0 elsewhere, at every split count. The f64-RNE model-level reference comparison from the original assignment was NOT run (needs the wheel; cut with the model-level legs by the receipt-only redirect). The isolated bit/ulp compare against the current kernel is the measured precision evidence; the current kernel's own distance to the f64 reference is documented in receipts/2026-09-11-q4-decode-pair-map.",
+  "model_level_not_run": {
+    "what": "no wheel build, no bench_decode legs, no generated-id digests at the 30/262/1053 legs",
+    "why": "parent redirect on the isolated result: +52.9% chain time at the BEST split count already fails the >=3% gain bar by orders of magnitude, and any split count moves the pinned digests by construction (order change), so the digest outcome could not compensate",
+    "harness_ready": "run_splitk_legs.py / run_accuracy_arm.py / compare_accuracy.py / window_legs.sh are committed on this branch for a future run if the isolated picture ever changes"
+  },
+  "provenance": {
+    "windows": "two single top-level flocks on /tmp/m1-gpu.lock: 13:15:23Z window (aborted after 3 s - bench segfault, see below) and 13:19:06-13:20:19Z window (complete, both default and gap modes, legs A/B each); loadavg 0.00 before each; announced on hub before both",
+    "aborted_window_note": "the 13:15:23 abort was a bench-harness loader bug introduced by this receipt's own edit (LOAD_DEV(ResetDescriptorPool) had replaced LOAD_DEV(CreateDescriptorPool)); fixed by restoring the entry, then the window reran clean; the crashed partial log was removed",
+    "shader_copies_sha256": {
+      "qmm_vec_base.comp": "2b9b521a6c79b4a6563f2f87c4245948fcae41ac672b3980c1959e8ee7feaaf1",
+      "qmm_vec_splitk.comp": "2b9b521a6c79b4a6563f2f87c4245948fcae41ac672b3980c1959e8ee7feaaf1",
+      "qmm_vec_splitk_reduce.comp": "0760653634b8522b7f2a2878de345dab6d6e3777d791260f521c8a4a542b441c"
+    },
+    "wheel": "none built (redirect)",
+    "logs": "m1-logs/iso-{a,b}-20260911T131906Z.ndjson, m1-logs/gap-{a,b}-20260911T131906Z.ndjson"
+  },
+  "tables": {
+    "iso_per_shape_wall_ns": {
+      "qkv": {
+        "base_a": 186497,
+        "unroll": {
+          "base_ref_a": 1.0071,
+          "base_ref_b": 1.0206
+        },
+        "loadfirst": {
+          "base_ref_a": 0.992,
+          "base_ref_b": 1.0085
+        },
+        "wg128": {
+          "base_ref_a": 0.9906,
+          "base_ref_b": 0.9938
+        },
+        "base_b": 200496,
+        "splitk2": {
+          "a": {
+            "wall_med_ns": 182080,
+            "wall_ratio_vs_base": 0.9894,
+            "reduce_only_med_ns": 61083,
+            "payload_wall_gb_s": 3.21,
+            "incl_partials_wall_gb_s": 3.31
+          },
+          "b": {
+            "wall_med_ns": 211788,
+            "wall_ratio_vs_base": 1.0769,
+            "reduce_only_med_ns": 64833,
+            "payload_wall_gb_s": 2.76,
+            "incl_partials_wall_gb_s": 2.85
+          }
+        },
+        "splitk4": {
+          "a": {
+            "wall_med_ns": 188372,
+            "wall_ratio_vs_base": 1.0235,
+            "reduce_only_med_ns": 64042,
+            "payload_wall_gb_s": 3.1,
+            "incl_partials_wall_gb_s": 3.3
+          },
+          "b": {
+            "wall_med_ns": 220538,
+            "wall_ratio_vs_base": 1.1214,
+            "reduce_only_med_ns": 64959,
+            "payload_wall_gb_s": 2.65,
+            "incl_partials_wall_gb_s": 2.82
+          }
+        },
+        "splitk8": {
+          "a": {
+            "wall_med_ns": 218162,
+            "wall_ratio_vs_base": 1.1854,
+            "reduce_only_med_ns": 63500,
+            "payload_wall_gb_s": 2.68,
+            "incl_partials_wall_gb_s": 3.02
+          },
+          "b": {
+            "wall_med_ns": 275662,
+            "wall_ratio_vs_base": 1.4017,
+            "reduce_only_med_ns": 40041,
+            "payload_wall_gb_s": 2.12,
+            "incl_partials_wall_gb_s": 2.39
+          }
+        }
+      },
+      "o": {
+        "base_a": 152705,
+        "unroll": {
+          "base_ref_a": 0.895,
+          "base_ref_b": 0.9997
+        },
+        "loadfirst": {
+          "base_ref_a": 0.8835,
+          "base_ref_b": 0.9997
+        },
+        "wg128": {
+          "base_ref_a": 0.8993,
+          "base_ref_b": 0.9931
+        },
+        "base_b": 138289,
+        "splitk2": {
+          "a": {
+            "wall_med_ns": 191872,
+            "wall_ratio_vs_base": 0.9804,
+            "reduce_only_med_ns": 64125,
+            "payload_wall_gb_s": 2.37,
+            "incl_partials_wall_gb_s": 2.45
+          },
+          "b": {
+            "wall_med_ns": 243037,
+            "wall_ratio_vs_base": 0.9944,
+            "reduce_only_med_ns": 40875,
+            "payload_wall_gb_s": 1.87,
+            "incl_partials_wall_gb_s": 1.93
+          }
+        },
+        "splitk4": {
+          "a": {
+            "wall_med_ns": 193496,
+            "wall_ratio_vs_base": 0.9887,
+            "reduce_only_med_ns": 62750,
+            "payload_wall_gb_s": 2.35,
+            "incl_partials_wall_gb_s": 2.5
+          },
+          "b": {
+            "wall_med_ns": 252329,
+            "wall_ratio_vs_base": 1.0324,
+            "reduce_only_med_ns": 40833,
+            "payload_wall_gb_s": 1.8,
+            "incl_partials_wall_gb_s": 1.92
+          }
+        },
+        "splitk8": {
+          "a": {
+            "wall_med_ns": 222621,
+            "wall_ratio_vs_base": 1.1375,
+            "reduce_only_med_ns": 62417,
+            "payload_wall_gb_s": 2.04,
+            "incl_partials_wall_gb_s": 2.3
+          },
+          "b": {
+            "wall_med_ns": 334160,
+            "wall_ratio_vs_base": 1.3672,
+            "reduce_only_med_ns": 37625,
+            "payload_wall_gb_s": 1.36,
+            "incl_partials_wall_gb_s": 1.53
+          }
+        }
+      },
+      "gate_up": {
+        "base_a": 289578,
+        "unroll": {
+          "base_ref_a": 1.0324,
+          "base_ref_b": 1.0407
+        },
+        "loadfirst": {
+          "base_ref_a": 1.0285,
+          "base_ref_b": 1.0379
+        },
+        "wg128": {
+          "base_ref_a": 0.9947,
+          "base_ref_b": 0.9759
+        },
+        "base_b": 342202,
+        "splitk2": {
+          "a": {
+            "wall_med_ns": 486157,
+            "wall_ratio_vs_base": 1.1135,
+            "reduce_only_med_ns": 64959,
+            "payload_wall_gb_s": 10.13,
+            "incl_partials_wall_gb_s": 10.45
+          },
+          "b": {
+            "wall_med_ns": 708403,
+            "wall_ratio_vs_base": 1.1568,
+            "reduce_only_med_ns": 37791,
+            "payload_wall_gb_s": 6.95,
+            "incl_partials_wall_gb_s": 7.17
+          }
+        },
+        "splitk4": {
+          "a": {
+            "wall_med_ns": 609655,
+            "wall_ratio_vs_base": 1.3963,
+            "reduce_only_med_ns": 64833,
+            "payload_wall_gb_s": 8.08,
+            "incl_partials_wall_gb_s": 8.59
+          },
+          "b": {
+            "wall_med_ns": 896358,
+            "wall_ratio_vs_base": 1.4637,
+            "reduce_only_med_ns": 37375,
+            "payload_wall_gb_s": 5.49,
+            "incl_partials_wall_gb_s": 5.84
+          }
+        },
+        "splitk8": {
+          "a": {
+            "wall_med_ns": 940316,
+            "wall_ratio_vs_base": 2.1536,
+            "reduce_only_med_ns": 37458,
+            "payload_wall_gb_s": 5.24,
+            "incl_partials_wall_gb_s": 5.9
+          },
+          "b": {
+            "wall_med_ns": 1513763,
+            "wall_ratio_vs_base": 2.4718,
+            "reduce_only_med_ns": 33000,
+            "payload_wall_gb_s": 3.25,
+            "incl_partials_wall_gb_s": 3.66
+          }
+        }
+      },
+      "down": {
+        "base_a": 165621,
+        "unroll": {
+          "base_ref_a": 1.0118,
+          "base_ref_b": 0.9996
+        },
+        "loadfirst": {
+          "base_ref_a": 1.0181,
+          "base_ref_b": 0.9755
+        },
+        "wg128": {
+          "base_ref_a": 1.0848,
+          "base_ref_b": 0.9836
+        },
+        "base_b": 226370,
+        "splitk2": {
+          "a": {
+            "wall_med_ns": 345160,
+            "wall_ratio_vs_base": 1.0046,
+            "reduce_only_med_ns": 37417,
+            "payload_wall_gb_s": 7.14,
+            "incl_partials_wall_gb_s": 7.18
+          },
+          "b": {
+            "wall_med_ns": 385118,
+            "wall_ratio_vs_base": 1.0461,
+            "reduce_only_med_ns": 42917,
+            "payload_wall_gb_s": 6.4,
+            "incl_partials_wall_gb_s": 6.43
+          }
+        },
+        "splitk4": {
+          "a": {
+            "wall_med_ns": 367034,
+            "wall_ratio_vs_base": 1.0683,
+            "reduce_only_med_ns": 37167,
+            "payload_wall_gb_s": 6.71,
+            "incl_partials_wall_gb_s": 6.79
+          },
+          "b": {
+            "wall_med_ns": 406201,
+            "wall_ratio_vs_base": 1.1033,
+            "reduce_only_med_ns": 42583,
+            "payload_wall_gb_s": 6.06,
+            "incl_partials_wall_gb_s": 6.13
+          }
+        },
+        "splitk8": {
+          "a": {
+            "wall_med_ns": 401367,
+            "wall_ratio_vs_base": 1.1682,
+            "reduce_only_med_ns": 33958,
+            "payload_wall_gb_s": 6.14,
+            "incl_partials_wall_gb_s": 6.28
+          },
+          "b": {
+            "wall_med_ns": 458158,
+            "wall_ratio_vs_base": 1.2445,
+            "reduce_only_med_ns": 36542,
+            "payload_wall_gb_s": 5.38,
+            "incl_partials_wall_gb_s": 5.5
+          }
+        }
+      }
+    },
+    "eq_split_engagement": [
+      {
+        "k": "eq_split",
+        "shape": "qkv",
+        "dim": 0,
+        "splits": 2,
+        "elements": 896,
+        "bit_mismatches": 0,
+        "max_f16_ulp": 0,
+        "_leg": "a"
+      },
+      {
+        "k": "eq_split",
+        "shape": "qkv",
+        "dim": 0,
+        "splits": 4,
+        "elements": 896,
+        "bit_mismatches": 0,
+        "max_f16_ulp": 0,
+        "_leg": "a"
+      },
+      {
+        "k": "eq_split",
+        "shape": "qkv",
+        "dim": 0,
+        "splits": 8,
+        "elements": 896,
+        "bit_mismatches": 0,
+        "max_f16_ulp": 0,
+        "_leg": "a"
+      },
+      {
+        "k": "eq_split",
+        "shape": "qkv",
+        "dim": 1,
+        "splits": 2,
+        "elements": 128,
+        "bit_mismatches": 0,
+        "max_f16_ulp": 0,
+        "_leg": "a"
+      },
+      {
+        "k": "eq_split",
+        "shape": "qkv",
+        "dim": 1,
+        "splits": 4,
+        "elements": 128,
+        "bit_mismatches": 0,
+        "max_f16_ulp": 0,
+        "_leg": "a"
+      },
+      {
+        "k": "eq_split",
+        "shape": "qkv",
+        "dim": 1,
+        "splits": 8,
+        "elements": 128,
+        "bit_mismatches": 0,
+        "max_f16_ulp": 0,
+        "_leg": "a"
+      },
+      {
+        "k": "eq_split",
+        "shape": "qkv",
+        "dim": 2,
+        "splits": 2,
+        "elements": 128,
+        "bit_mismatches": 0,
+        "max_f16_ulp": 0,
+        "_leg": "a"
+      },
+      {
+        "k": "eq_split",
+        "shape": "qkv",
+        "dim": 2,
+        "splits": 4,
+        "elements": 128,
+        "bit_mismatches": 0,
+        "max_f16_ulp": 0,
+        "_leg": "a"
+      },
+      {
+        "k": "eq_split",
+        "shape": "qkv",
+        "dim": 2,
+        "splits": 8,
+        "elements": 128,
+        "bit_mismatches": 0,
+        "max_f16_ulp": 0,
+        "_leg": "a"
+      },
+      {
+        "k": "eq_split",
+        "shape": "o",
+        "dim": 0,
+        "splits": 2,
+        "elements": 896,
+        "bit_mismatches": 0,
+        "max_f16_ulp": 0,
+        "_leg": "a"
+      },
+      {
+        "k": "eq_split",
+        "shape": "o",
+        "dim": 0,
+        "splits": 4,
+        "elements": 896,
+        "bit_mismatches": 0,
+        "max_f16_ulp": 0,
+        "_leg": "a"
+      },
+      {
+        "k": "eq_split",
+        "shape": "o",
+        "dim": 0,
+        "splits": 8,
+        "elements": 896,
+        "bit_mismatches": 0,
+        "max_f16_ulp": 0,
+        "_leg": "a"
+      },
+      {
+        "k": "eq_split",
+        "shape": "gate_up",
+        "dim": 0,
+        "splits": 2,
+        "elements": 4864,
+        "bit_mismatches": 0,
+        "max_f16_ulp": 0,
+        "_leg": "a"
+      },
+      {
+        "k": "eq_split",
+        "shape": "gate_up",
+        "dim": 0,
+        "splits": 4,
+        "elements": 4864,
+        "bit_mismatches": 0,
+        "max_f16_ulp": 0,
+        "_leg": "a"
+      },
+      {
+        "k": "eq_split",
+        "shape": "gate_up",
+        "dim": 0,
+        "splits": 8,
+        "elements": 4864,
+        "bit_mismatches": 0,
+        "max_f16_ulp": 0,
+        "_leg": "a"
+      },
+      {
+        "k": "eq_split",
+        "shape": "gate_up",
+        "dim": 1,
+        "splits": 2,
+        "elements": 4864,
+        "bit_mismatches": 0,
+        "max_f16_ulp": 0,
+        "_leg": "a"
+      },
+      {
+        "k": "eq_split",
+        "shape": "gate_up",
+        "dim": 1,
+        "splits": 4,
+        "elements": 4864,
+        "bit_mismatches": 0,
+        "max_f16_ulp": 0,
+        "_leg": "a"
+      },
+      {
+        "k": "eq_split",
+        "shape": "gate_up",
+        "dim": 1,
+        "splits": 8,
+        "elements": 4864,
+        "bit_mismatches": 0,
+        "max_f16_ulp": 0,
+        "_leg": "a"
+      },
+      {
+        "k": "eq_split",
+        "shape": "down",
+        "dim": 0,
+        "splits": 2,
+        "elements": 896,
+        "bit_mismatches": 1,
+        "max_f16_ulp": 1,
+        "_leg": "a"
+      },
+      {
+        "k": "eq_split",
+        "shape": "down",
+        "dim": 0,
+        "splits": 4,
+        "elements": 896,
+        "bit_mismatches": 1,
+        "max_f16_ulp": 1,
+        "_leg": "a"
+      },
+      {
+        "k": "eq_split",
+        "shape": "down",
+        "dim": 0,
+        "splits": 8,
+        "elements": 896,
+        "bit_mismatches": 1,
+        "max_f16_ulp": 1,
+        "_leg": "a"
+      },
+      {
+        "k": "eq_split",
+        "shape": "qkv",
+        "dim": 0,
+        "splits": 2,
+        "elements": 896,
+        "bit_mismatches": 0,
+        "max_f16_ulp": 0,
+        "_leg": "b"
+      },
+      {
+        "k": "eq_split",
+        "shape": "qkv",
+        "dim": 0,
+        "splits": 4,
+        "elements": 896,
+        "bit_mismatches": 0,
+        "max_f16_ulp": 0,
+        "_leg": "b"
+      },
+      {
+        "k": "eq_split",
+        "shape": "qkv",
+        "dim": 0,
+        "splits": 8,
+        "elements": 896,
+        "bit_mismatches": 0,
+        "max_f16_ulp": 0,
+        "_leg": "b"
+      },
+      {
+        "k": "eq_split",
+        "shape": "qkv",
+        "dim": 1,
+        "splits": 2,
+        "elements": 128,
+        "bit_mismatches": 0,
+        "max_f16_ulp": 0,
+        "_leg": "b"
+      },
+      {
+        "k": "eq_split",
+        "shape": "qkv",
+        "dim": 1,
+        "splits": 4,
+        "elements": 128,
+        "bit_mismatches": 0,
+        "max_f16_ulp": 0,
+        "_leg": "b"
+      },
+      {
+        "k": "eq_split",
+        "shape": "qkv",
+        "dim": 1,
+        "splits": 8,
+        "elements": 128,
+        "bit_mismatches": 0,
+        "max_f16_ulp": 0,
+        "_leg": "b"
+      },
+      {
+        "k": "eq_split",
+        "shape": "qkv",
+        "dim": 2,
+        "splits": 2,
+        "elements": 128,
+        "bit_mismatches": 0,
+        "max_f16_ulp": 0,
+        "_leg": "b"
+      },
+      {
+        "k": "eq_split",
+        "shape": "qkv",
+        "dim": 2,
+        "splits": 4,
+        "elements": 128,
+        "bit_mismatches": 0,
+        "max_f16_ulp": 0,
+        "_leg": "b"
+      },
+      {
+        "k": "eq_split",
+        "shape": "qkv",
+        "dim": 2,
+        "splits": 8,
+        "elements": 128,
+        "bit_mismatches": 0,
+        "max_f16_ulp": 0,
+        "_leg": "b"
+      },
+      {
+        "k": "eq_split",
+        "shape": "o",
+        "dim": 0,
+        "splits": 2,
+        "elements": 896,
+        "bit_mismatches": 0,
+        "max_f16_ulp": 0,
+        "_leg": "b"
+      },
+      {
+        "k": "eq_split",
+        "shape": "o",
+        "dim": 0,
+        "splits": 4,
+        "elements": 896,
+        "bit_mismatches": 0,
+        "max_f16_ulp": 0,
+        "_leg": "b"
+      },
+      {
+        "k": "eq_split",
+        "shape": "o",
+        "dim": 0,
+        "splits": 8,
+        "elements": 896,
+        "bit_mismatches": 0,
+        "max_f16_ulp": 0,
+        "_leg": "b"
+      },
+      {
+        "k": "eq_split",
+        "shape": "gate_up",
+        "dim": 0,
+        "splits": 2,
+        "elements": 4864,
+        "bit_mismatches": 0,
+        "max_f16_ulp": 0,
+        "_leg": "b"
+      },
+      {
+        "k": "eq_split",
+        "shape": "gate_up",
+        "dim": 0,
+        "splits": 4,
+        "elements": 4864,
+        "bit_mismatches": 0,
+        "max_f16_ulp": 0,
+        "_leg": "b"
+      },
+      {
+        "k": "eq_split",
+        "shape": "gate_up",
+        "dim": 0,
+        "splits": 8,
+        "elements": 4864,
+        "bit_mismatches": 0,
+        "max_f16_ulp": 0,
+        "_leg": "b"
+      },
+      {
+        "k": "eq_split",
+        "shape": "gate_up",
+        "dim": 1,
+        "splits": 2,
+        "elements": 4864,
+        "bit_mismatches": 0,
+        "max_f16_ulp": 0,
+        "_leg": "b"
+      },
+      {
+        "k": "eq_split",
+        "shape": "gate_up",
+        "dim": 1,
+        "splits": 4,
+        "elements": 4864,
+        "bit_mismatches": 0,
+        "max_f16_ulp": 0,
+        "_leg": "b"
+      },
+      {
+        "k": "eq_split",
+        "shape": "gate_up",
+        "dim": 1,
+        "splits": 8,
+        "elements": 4864,
+        "bit_mismatches": 0,
+        "max_f16_ulp": 0,
+        "_leg": "b"
+      },
+      {
+        "k": "eq_split",
+        "shape": "down",
+        "dim": 0,
+        "splits": 2,
+        "elements": 896,
+        "bit_mismatches": 1,
+        "max_f16_ulp": 1,
+        "_leg": "b"
+      },
+      {
+        "k": "eq_split",
+        "shape": "down",
+        "dim": 0,
+        "splits": 4,
+        "elements": 896,
+        "bit_mismatches": 1,
+        "max_f16_ulp": 1,
+        "_leg": "b"
+      },
+      {
+        "k": "eq_split",
+        "shape": "down",
+        "dim": 0,
+        "splits": 8,
+        "elements": 896,
+        "bit_mismatches": 1,
+        "max_f16_ulp": 1,
+        "_leg": "b"
+      }
+    ],
+    "gap_chain_pass2": {
+      "iso4": {
+        "layer_ns_med_both_legs": 204224.0,
+        "bytes": 8427008,
+        "gb_s": 41.26,
+        "time_ratio_vs_base_widedep": 0.992
+      },
+      "iso4dep": {
+        "layer_ns_med_both_legs": 203585.5,
+        "bytes": 8427008,
+        "gb_s": 41.39,
+        "time_ratio_vs_base_widedep": 0.989
+      },
+      "fill2": {
+        "layer_ns_med_both_legs": 251982.0,
+        "bytes": 8427008,
+        "gb_s": 33.44,
+        "time_ratio_vs_base_widedep": 1.224
+      },
+      "fill24": {
+        "layer_ns_med_both_legs": 653818.0,
+        "bytes": 8427008,
+        "gb_s": 12.89,
+        "time_ratio_vs_base_widedep": 3.176
+      },
+      "churn": {
+        "layer_ns_med_both_legs": 203471.0,
+        "bytes": 8427008,
+        "gb_s": 41.42,
+        "time_ratio_vs_base_widedep": 0.988
+      },
+      "sweep": {
+        "layer_ns_med_both_legs": 205658.5,
+        "bytes": 8427008,
+        "gb_s": 40.98,
+        "time_ratio_vs_base_widedep": 0.999
+      },
+      "wideind": {
+        "layer_ns_med_both_legs": 205592.0,
+        "bytes": 8427008,
+        "gb_s": 40.99,
+        "time_ratio_vs_base_widedep": 0.999
+      },
+      "widedep": {
+        "layer_ns_med_both_legs": 205876.5,
+        "bytes": 8427008,
+        "gb_s": 40.93,
+        "time_ratio_vs_base_widedep": 1.0
+      },
+      "sub2async": {
+        "layer_ns_med_both_legs": 219654.5,
+        "bytes": 8427008,
+        "gb_s": 38.36,
+        "time_ratio_vs_base_widedep": 1.067
+      },
+      "sub2sync": {
+        "layer_ns_med_both_legs": 230200.0,
+        "bytes": 8427008,
+        "gb_s": 36.61,
+        "time_ratio_vs_base_widedep": 1.118
+      },
+      "iso4_unroll": {
+        "layer_ns_med_both_legs": 216232.5,
+        "bytes": 8427008,
+        "gb_s": 38.97,
+        "time_ratio_vs_base_widedep": 1.05
+      },
+      "widedep_unroll": {
+        "layer_ns_med_both_legs": 220284.5,
+        "bytes": 8427008,
+        "gb_s": 38.26,
+        "time_ratio_vs_base_widedep": 1.07
+      },
+      "iso4_loadfirst": {
+        "layer_ns_med_both_legs": 215325.5,
+        "bytes": 8427008,
+        "gb_s": 39.14,
+        "time_ratio_vs_base_widedep": 1.046
+      },
+      "widedep_loadfirst": {
+        "layer_ns_med_both_legs": 215518.0,
+        "bytes": 8427008,
+        "gb_s": 39.1,
+        "time_ratio_vs_base_widedep": 1.047
+      },
+      "iso4_wg128": {
+        "layer_ns_med_both_legs": 195162.5,
+        "bytes": 8427008,
+        "gb_s": 43.18,
+        "time_ratio_vs_base_widedep": 0.948
+      },
+      "widedep_wg128": {
+        "layer_ns_med_both_legs": 196872.0,
+        "bytes": 8427008,
+        "gb_s": 42.8,
+        "time_ratio_vs_base_widedep": 0.956
+      },
+      "iso4_splitk2": {
+        "layer_ns_med_both_legs": 313769.0,
+        "bytes": 8427008,
+        "gb_s": 26.86,
+        "time_ratio_vs_base_widedep": 1.524
+      },
+      "widedep_splitk2": {
+        "layer_ns_med_both_legs": 314851.5,
+        "bytes": 8629760,
+        "gb_s": 27.41,
+        "time_ratio_vs_base_widedep": 1.529
+      },
+      "iso4_splitk4": {
+        "layer_ns_med_both_legs": 365177.0,
+        "bytes": 8427008,
+        "gb_s": 23.08,
+        "time_ratio_vs_base_widedep": 1.774
+      },
+      "widedep_splitk4": {
+        "layer_ns_med_both_legs": 365248.5,
+        "bytes": 8832512,
+        "gb_s": 24.18,
+        "time_ratio_vs_base_widedep": 1.774
+      },
+      "iso4_splitk8": {
+        "layer_ns_med_both_legs": 597777.5,
+        "bytes": 8427008,
+        "gb_s": 14.1,
+        "time_ratio_vs_base_widedep": 2.904
+      },
+      "widedep_splitk8": {
+        "layer_ns_med_both_legs": 597255.0,
+        "bytes": 9238016,
+        "gb_s": 15.47,
+        "time_ratio_vs_base_widedep": 2.901
+      }
+    }
+  }
+}
