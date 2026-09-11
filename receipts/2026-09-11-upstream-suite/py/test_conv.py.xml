@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="10" tests="36" time="0.607" timestamp="2026-09-11T16:35:05.490476-05:00" hostname="jwm1-linux"><testcase classname="python.tests.test_conv.TestConv" name="test_asymmetric_padding" time="0.000"><skipped type="pytest.skip" message="requires Torch">/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/python/tests/test_conv.py:1107: requires Torch</skipped></testcase><testcase classname="python.tests.test_conv.TestConv" name="test_basic_grad_shapes" time="0.006" /><testcase classname="python.tests.test_conv.TestConv" name="test_conv2d_large_filter_small_channels" time="0.013" /><testcase classname="python.tests.test_conv.TestConv" name="test_conv2d_unaligned_channels" time="0.053" /><testcase classname="python.tests.test_conv.TestConv" name="test_conv2d_winograd_batch_tiling" time="0.000"><skipped type="pytest.skip" message="requires Metal">/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/python/tests/test_conv.py:1218: requires Metal</skipped></testcase><testcase classname="python.tests.test_conv.TestConv" name="test_conv_1d_groups_flipped" time="0.005" /><testcase classname="python.tests.test_conv.TestConv" name="test_conv_1d_with_2d" time="0.005" /><testcase classname="python.tests.test_conv.TestConv" name="test_conv_3D_small_kd_decomposition" time="0.174" /><testcase classname="python.tests.test_conv.TestConv" name="test_conv_general_flip_grad" time="0.023" /><testcase classname="python.tests.test_conv.TestConv" name="test_conv_groups_grad" time="0.026" /><testcase classname="python.tests.test_conv.TestConv" name="test_numpy_conv" time="0.093"><failure message="AssertionError: False is not true">self = &lt;test_conv.TestConv testMethod=test_numpy_conv&gt;
+
+    def test_numpy_conv(self):
+        for dtype in (
+            "float16",
+            "float32",
+        ):
+            np_dtype = getattr(np, dtype)
+            for M, N, mode in (
+                (1, 1, "full"),
+                (25, 5, "full"),
+                (24, 5, "same"),
+                (24, 4, "same"),
+                (24, 4, "valid"),
+                (4, 24, "full"),
+                (5, 25, "same"),
+                (4, 25, "valid"),
+            ):
+                with self.subTest(dtype=dtype, M=M, N=N, mode=mode):
+                    atol = 1e-6 if dtype == "float32" else 1e-5
+                    a_np = np.random.rand(M).astype(np_dtype)
+                    v_np = np.random.rand(N).astype(np_dtype)
+                    a_mx = mx.array(a_np)
+                    v_mx = mx.array(v_np)
+    
+                    c_np = np.convolve(a_np, v_np, mode=mode)
+                    c_mx = mx.convolve(a_mx, v_mx, mode=mode)
+    
+                    self.assertEqual(c_mx.shape, c_np.shape)
+&gt;                   self.assertTrue(np.allclose(c_mx, c_np, atol=atol))
+E                   AssertionError: False is not true
+
+.work/mlx/python/tests/test_conv.py:49: AssertionError</failure></testcase><testcase classname="python.tests.test_conv.TestConv" name="test_repeated_conv" time="0.061" /><testcase classname="python.tests.test_conv.TestConv" name="test_torch_conv_1D" time="0.000"><skipped type="pytest.skip" message="requires Torch">/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/python/tests/test_conv.py:58: requires Torch</skipped></testcase><testcase classname="python.tests.test_conv.TestConv" name="test_torch_conv_1D_grad" time="0.000"><skipped type="pytest.skip" message="requires Torch">/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/python/tests/test_conv.py:167: requires Torch</skipped></testcase><testcase classname="python.tests.test_conv.TestConv" name="test_torch_conv_2D" time="0.000"><skipped type="pytest.skip" message="requires Torch">/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/python/tests/test_conv.py:273: requires Torch</skipped></testcase><testcase classname="python.tests.test_conv.TestConv" name="test_torch_conv_2D_grad" time="0.000"><skipped type="pytest.skip" message="requires Torch">/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/python/tests/test_conv.py:375: requires Torch</skipped></testcase><testcase classname="python.tests.test_conv.TestConv" name="test_torch_conv_3D" time="0.000"><skipped type="pytest.skip" message="requires Torch">/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/python/tests/test_conv.py:500: requires Torch</skipped></testcase><testcase classname="python.tests.test_conv.TestConv" name="test_torch_conv_3D_grad" time="0.000"><skipped type="pytest.skip" message="requires Torch">/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/python/tests/test_conv.py:584: requires Torch</skipped></testcase><testcase classname="python.tests.test_conv.TestConv" name="test_torch_conv_depthwise" time="0.000"><skipped type="pytest.skip" message="requires Torch">/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/python/tests/test_conv.py:1072: requires Torch</skipped></testcase><testcase classname="python.tests.test_conv.TestConv" name="test_torch_conv_general" time="0.000"><skipped type="pytest.skip" message="requires Torch">/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/python/tests/test_conv.py:810: requires Torch</skipped></testcase></testsuite></testsuites>

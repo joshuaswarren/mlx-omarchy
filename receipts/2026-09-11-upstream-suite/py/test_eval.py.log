@@ -1,0 +1,21 @@
+============================= test session starts ==============================
+collecting ... collected 15 items
+
+.work/mlx/python/tests/test_eval.py::TestEval::test_async_eval PASSED    [  6%]
+.work/mlx/python/tests/test_eval.py::TestEval::test_async_eval_error_in_synchronize PASSED [ 13%]
+.work/mlx/python/tests/test_eval.py::TestEval::test_async_eval_in_trace PASSED [ 20%]
+.work/mlx/python/tests/test_eval.py::TestEval::test_async_eval_into_eval PASSED [ 26%]
+.work/mlx/python/tests/test_eval.py::TestEval::test_async_eval_into_eval_diff_stream PASSED [ 33%]
+.work/mlx/python/tests/test_eval.py::TestEval::test_async_eval_twice PASSED [ 40%]
+.work/mlx/python/tests/test_eval.py::TestEval::test_async_eval_with_multiple_streams PASSED [ 46%]
+.work/mlx/python/tests/test_eval.py::TestEval::test_donation_for_noops PASSED [ 53%]
+.work/mlx/python/tests/test_eval.py::TestEval::test_eval PASSED          [ 60%]
+.work/mlx/python/tests/test_eval.py::TestEval::test_eval_exception_does_not_corrupt_state SKIPPED [ 66%]
+.work/mlx/python/tests/test_eval.py::TestEval::test_eval_mixed PASSED    [ 73%]
+.work/mlx/python/tests/test_eval.py::TestEval::test_eval_slow_fast_multi_stream PASSED [ 80%]
+.work/mlx/python/tests/test_eval.py::TestEval::test_multi_output_eval_during_transform PASSED [ 86%]
+.work/mlx/python/tests/test_eval.py::TestEval::test_multistream_deadlock PASSED [ 93%]
+.work/mlx/python/tests/test_eval.py::TestEval::test_retain_graph PASSED  [100%]
+
+- generated xml file: /home/joshuawarren/src/mlx-omarchy-requal-20260911/receipts/.requal-py-stage/py/test_eval.py.xml -
+======================== 14 passed, 1 skipped in 9.56s =========================

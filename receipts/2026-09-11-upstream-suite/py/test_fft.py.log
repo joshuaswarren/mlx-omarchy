@@ -1,0 +1,26 @@
+============================= test session starts ==============================
+collecting ... collected 20 items
+
+.work/mlx/python/tests/test_fft.py::TestFFT::test_batched_bluestein_twiddle_table SKIPPED [  5%]
+.work/mlx/python/tests/test_fft.py::TestFFT::test_fft PASSED             [ 10%]
+.work/mlx/python/tests/test_fft.py::TestFFT::test_fft_big_powers_of_two PASSED [ 15%]
+.work/mlx/python/tests/test_fft.py::TestFFT::test_fft_contiguity PASSED  [ 20%]
+.work/mlx/python/tests/test_fft.py::TestFFT::test_fft_exhaustive SKIPPED [ 25%]
+.work/mlx/python/tests/test_fft.py::TestFFT::test_fft_grads SKIPPED      [ 30%]
+.work/mlx/python/tests/test_fft.py::TestFFT::test_fft_into_ifft PASSED   [ 35%]
+.work/mlx/python/tests/test_fft.py::TestFFT::test_fft_jvp PASSED         [ 40%]
+.work/mlx/python/tests/test_fft.py::TestFFT::test_fft_large_numbers PASSED [ 45%]
+.work/mlx/python/tests/test_fft.py::TestFFT::test_fft_norm PASSED        [ 50%]
+.work/mlx/python/tests/test_fft.py::TestFFT::test_fft_shared_mem PASSED  [ 55%]
+.work/mlx/python/tests/test_fft.py::TestFFT::test_fft_throws PASSED      [ 60%]
+.work/mlx/python/tests/test_fft.py::TestFFT::test_fft_too_large SKIPPED  [ 65%]
+.work/mlx/python/tests/test_fft.py::TestFFT::test_fft_vmap PASSED        [ 70%]
+.work/mlx/python/tests/test_fft.py::TestFFT::test_fftfreq PASSED         [ 75%]
+.work/mlx/python/tests/test_fft.py::TestFFT::test_fftn PASSED            [ 80%]
+.work/mlx/python/tests/test_fft.py::TestFFT::test_fftshift PASSED        [ 85%]
+.work/mlx/python/tests/test_fft.py::TestFFT::test_fftshift_errors PASSED [ 90%]
+.work/mlx/python/tests/test_fft.py::TestFFT::test_ifftshift PASSED       [ 95%]
+.work/mlx/python/tests/test_fft.py::TestFFT::test_rfftfreq PASSED        [100%]
+
+- generated xml file: /home/joshuawarren/src/mlx-omarchy-requal-20260911/receipts/.requal-py-stage/py/test_fft.py.xml -
+======================== 16 passed, 4 skipped in 13.08s ========================

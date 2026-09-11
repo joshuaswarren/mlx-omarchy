@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="2" skipped="0" tests="34" time="0.321" timestamp="2026-09-11T16:35:19.164445-05:00" hostname="jwm1-linux"><testcase classname="python.tests.test_export_import.TestExportImport" name="test_basic_export_import" time="0.016" /><testcase classname="python.tests.test_export_import.TestExportImport" name="test_export_control_flow" time="0.011" /><testcase classname="python.tests.test_export_import.TestExportImport" name="test_export_conv" time="0.022" /><testcase classname="python.tests.test_export_import.TestExportImport" name="test_export_conv_shapeless" time="0.018" /><testcase classname="python.tests.test_export_import.TestExportImport" name="test_export_custom_metal_kernel_with_math_mode" time="0.000" /><testcase classname="python.tests.test_export_import.TestExportImport" name="test_export_custom_metal_kernel_without_evaluation" time="0.001"><failure message="AssertionError: RuntimeError not raised">self = &lt;test_export_import.TestExportImport testMethod=test_export_custom_metal_kernel_without_evaluation&gt;
+
+    def test_export_custom_metal_kernel_without_evaluation(self):
+        source = """
+            uint elem = thread_position_in_grid.x;
+            out[elem] = a[elem];
+        """
+        kernel = mx.fast.metal_kernel(
+            name="export_only",
+            input_names=["a"],
+            output_names=["out"],
+            source=source,
+        )
+    
+        def call(a):
+            return kernel(
+                inputs=[a],
+                grid=(a.size, 1, 1),
+                threadgroup=(min(a.size, 256), 1, 1),
+                output_shapes=[a.shape],
+                output_dtypes=[a.dtype],
+                stream=mx.gpu,
+            )[0]
+    
+        a = mx.zeros((2, 2))
+        for shapeless in (False, True):
+            path = os.path.join(
+                self.test_dir,
+                f"metal_kernel_export_only_{shapeless}.mlxfn",
+            )
+            mx.export_function(path, call, a, shapeless=shapeless)
+            self.assertTrue(os.path.exists(path))
+    
+            # A shapeless import can't be called since CustomKernel does
+            # not support shape inference
+            if mx.metal.is_available() and not shapeless:
+                imported = mx.import_function(path)
+                self.assertTrue(mx.array_equal(imported(a)[0], call(a)))
+    
+        def call_cpu(a):
+            return kernel(
+                inputs=[a],
+                grid=(a.size, 1, 1),
+                threadgroup=(min(a.size, 256), 1, 1),
+                output_shapes=[a.shape],
+                output_dtypes=[a.dtype],
+                stream=mx.cpu,
+            )[0]
+    
+        path = os.path.join(self.test_dir, "metal_kernel_export_cpu.mlxfn")
+        with self.assertRaisesRegex(ValueError, "Only supports the GPU"):
+            mx.export_function(path, call_cpu, a)
+    
+        if not mx.metal.is_available():
+&gt;           with self.assertRaisesRegex(RuntimeError, "No Metal back-end"):
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           AssertionError: RuntimeError not raised
+
+.work/mlx/python/tests/test_export_import.py:655: AssertionError</failure></testcase><testcase classname="python.tests.test_export_import.TestExportImport" name="test_export_import_custom_kernel" time="0.000"><failure message="UnboundLocalError: cannot access local variable 'custom_kernel' where it is not associated with a value">self = &lt;test_export_import.TestExportImport testMethod=test_export_import_custom_kernel&gt;
+
+    @unittest.skipIf(not mx.is_available(mx.gpu), "No GPU available")
+    def test_export_import_custom_kernel(self):
+        if mx.metal.is_available():
+            source = """
+                uint elem = thread_position_in_grid.x;
+                out1[elem] = a[elem];
+            """
+            custom_kernel = mx.fast.metal_kernel
+        elif mx.cuda.is_available():
+            source = """
+                auto elem = cooperative_groups::this_grid().thread_rank();
+                out1[elem] = a[elem];
+            """
+            custom_kernel = mx.fast.cuda_kernel
+    
+&gt;       kernel = custom_kernel(
+                 ^^^^^^^^^^^^^
+            name="basic",
+            input_names=["a"],
+            output_names=["out1"],
+            source=source,
+        )
+E       UnboundLocalError: cannot access local variable 'custom_kernel' where it is not associated with a value
+
+.work/mlx/python/tests/test_export_import.py:574: UnboundLocalError</failure></testcase><testcase classname="python.tests.test_export_import.TestExportImport" name="test_export_import_metadata" time="0.002" /><testcase classname="python.tests.test_export_import.TestExportImport" name="test_export_import_multi_with_constants" time="0.004" /><testcase classname="python.tests.test_export_import.TestExportImport" name="test_export_import_scatter_sum" time="0.001" /><testcase classname="python.tests.test_export_import.TestExportImport" name="test_export_import_shapeless" time="0.001" /><testcase classname="python.tests.test_export_import.TestExportImport" name="test_export_kwarg_ordering" time="0.001" /><testcase classname="python.tests.test_export_import.TestExportImport" name="test_export_matmul_shapeless_batch_and_mid_dim" time="0.004" /><testcase classname="python.tests.test_export_import.TestExportImport" name="test_export_matmul_shapeless_mid_dim" time="0.007" /><testcase classname="python.tests.test_export_import.TestExportImport" name="test_export_quantized_model" time="0.070" /><testcase classname="python.tests.test_export_import.TestExportImport" name="test_export_random_sample" time="0.001" /><testcase classname="python.tests.test_export_import.TestExportImport" name="test_export_scatter_gather" time="0.001" /><testcase classname="python.tests.test_export_import.TestExportImport" name="test_export_searchsorted" time="0.001" /><testcase classname="python.tests.test_export_import.TestExportImport" name="test_export_variable_inputs" time="0.002" /><testcase classname="python.tests.test_export_import.TestExportImport" name="test_export_with_callback" time="0.000" /><testcase classname="python.tests.test_export_import.TestExportImport" name="test_export_with_kwargs" time="0.002" /><testcase classname="python.tests.test_export_import.TestExportImport" name="test_leaks" time="0.039" /></testsuite></testsuites>

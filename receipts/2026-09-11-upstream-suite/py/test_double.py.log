@@ -1,0 +1,17 @@
+============================= test session starts ==============================
+collecting ... collected 11 items
+
+.work/mlx/python/tests/test_double.py::TestDouble::test_binary_ops PASSED [  9%]
+.work/mlx/python/tests/test_double.py::TestDouble::test_conversion PASSED [ 18%]
+.work/mlx/python/tests/test_double.py::TestDouble::test_gemm PASSED      [ 27%]
+.work/mlx/python/tests/test_double.py::TestDouble::test_get_and_set_item PASSED [ 36%]
+.work/mlx/python/tests/test_double.py::TestDouble::test_lapack PASSED    [ 45%]
+.work/mlx/python/tests/test_double.py::TestDouble::test_linspace PASSED  [ 54%]
+.work/mlx/python/tests/test_double.py::TestDouble::test_python_float_keeps_double_precision PASSED [ 63%]
+.work/mlx/python/tests/test_double.py::TestDouble::test_reductions PASSED [ 72%]
+.work/mlx/python/tests/test_double.py::TestDouble::test_type_promotion PASSED [ 81%]
+.work/mlx/python/tests/test_double.py::TestDouble::test_unary_ops PASSED [ 90%]
+.work/mlx/python/tests/test_double.py::TestDouble::test_where PASSED     [100%]
+
+- generated xml file: /home/joshuawarren/src/mlx-omarchy-requal-20260911/receipts/.requal-py-stage/py/test_double.py.xml -
+============================== 11 passed in 0.20s ==============================

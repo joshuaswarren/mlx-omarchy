@@ -1,0 +1,398 @@
+============================= test session starts ==============================
+collecting ... collected 23 items
+
+.work/mlx/python/tests/test_fast_sdpa.py::TestFastSDPA::test_sdpa 
+.work/mlx/python/tests/test_fast_sdpa.py::TestFastSDPA::test_sdpa PASSED [  4%]
+.work/mlx/python/tests/test_fast_sdpa.py::TestFastSDPA::test_sdpa_attention_sinks 
+.work/mlx/python/tests/test_fast_sdpa.py::TestFastSDPA::test_sdpa_attention_sinks PASSED [  8%]
+.work/mlx/python/tests/test_fast_sdpa.py::TestFastSDPA::test_sdpa_blocks_env_override PASSED [ 13%]
+.work/mlx/python/tests/test_fast_sdpa.py::TestFastSDPA::test_sdpa_broadcast_mask PASSED [ 17%]
+.work/mlx/python/tests/test_fast_sdpa.py::TestFastSDPA::test_sdpa_few_query PASSED [ 21%]
+.work/mlx/python/tests/test_fast_sdpa.py::TestFastSDPA::test_sdpa_force_fused_cuda SKIPPED [ 26%]
+.work/mlx/python/tests/test_fast_sdpa.py::TestFastSDPA::test_sdpa_force_fused_metal SKIPPED [ 30%]
+.work/mlx/python/tests/test_fast_sdpa.py::TestFastSDPA::test_sdpa_full_head_dim_256 
+.work/mlx/python/tests/test_fast_sdpa.py::TestFastSDPA::test_sdpa_full_head_dim_256 PASSED [ 34%]
+.work/mlx/python/tests/test_fast_sdpa.py::TestFastSDPA::test_sdpa_fully_masked PASSED [ 39%]
+.work/mlx/python/tests/test_fast_sdpa.py::TestFastSDPA::test_sdpa_grad PASSED [ 43%]
+.work/mlx/python/tests/test_fast_sdpa.py::TestFastSDPA::test_sdpa_head_dim_72 
+.work/mlx/python/tests/test_fast_sdpa.py::TestFastSDPA::test_sdpa_head_dim_72 PASSED [ 47%]
+.work/mlx/python/tests/test_fast_sdpa.py::TestFastSDPA::test_sdpa_head_dim_96 
+.work/mlx/python/tests/test_fast_sdpa.py::TestFastSDPA::test_sdpa_head_dim_96 PASSED [ 52%]
+.work/mlx/python/tests/test_fast_sdpa.py::TestFastSDPA::test_sdpa_inf_score PASSED [ 56%]
+.work/mlx/python/tests/test_fast_sdpa.py::TestFastSDPA::test_sdpa_long_masked_sequence 
+.work/mlx/python/tests/test_fast_sdpa.py::TestFastSDPA::test_sdpa_long_masked_sequence PASSED [ 60%]
+.work/mlx/python/tests/test_fast_sdpa.py::TestFastSDPA::test_sdpa_nan_bug PASSED [ 65%]
+.work/mlx/python/tests/test_fast_sdpa.py::TestFastSDPA::test_sdpa_noncontiguous_inputs PASSED [ 69%]
+.work/mlx/python/tests/test_fast_sdpa.py::TestFastSDPA::test_sdpa_promote_mask PASSED [ 73%]
+.work/mlx/python/tests/test_fast_sdpa.py::TestFastSDPA::test_sdpa_sliced 
+.work/mlx/python/tests/test_fast_sdpa.py::TestFastSDPA::test_sdpa_sliced PASSED [ 78%]
+.work/mlx/python/tests/test_fast_sdpa.py::TestFastSDPA::test_sdpa_vector PASSED [ 82%]
+.work/mlx/python/tests/test_fast_sdpa.py::TestFastSDPA::test_sdpa_vector_batched PASSED [ 86%]
+.work/mlx/python/tests/test_fast_sdpa.py::TestFastSDPA::test_sdpa_vector_gqa_long PASSED [ 91%]
+.work/mlx/python/tests/test_fast_sdpa.py::TestFastSDPA::test_sdpa_vector_kv_transposed_head_seq PASSED [ 95%]
+.work/mlx/python/tests/test_fast_sdpa.py::TestFastSDPA::test_sdpa_vector_value_dims SKIPPED [100%]
+
+=================================== FAILURES ===================================
+_ TestFastSDPA.test_sdpa (B=1, qsl=127, ksl=65, head_dim=64, n_q_heads=32, n_kv_heads=8, mask='causal', transpose=False, dtype=mlx.core.float16) _
+
+self = <test_fast_sdpa.TestFastSDPA testMethod=test_sdpa>
+
+    @unittest.skipIf(not mx.is_available(mx.gpu), "too slow on CPU")
+    def test_sdpa(self):
+        # fmt: off
+        shapes_64 = [
+            # (  B,   qsl,   ksl, head_dim, n_qh, n_kvh)
+            (  1,    20,    20,       64,    3,     3),
+            (  1,    63,    63,       64,   24,    24),
+            (  1,   129,   129,       64,   24,    24),
+            (  1,   400,   400,       64,   24,    24),
+            (  1,   128,   128,       64,   32,    32),
+            (  1,    64,   128,       64,   32,    32),
+            (  1,    65,   128,       64,   32,     8),
+            (  1,    64,   127,       64,   32,     8),
+            (  1,    65,   127,       64,   32,     8),
+            (  1,   127,    65,       64,   32,     8),
+        ]
+        shapes_128 = [
+            # (  B,   qsl,   ksl, head_dim, n_qh, n_kvh)
+            (  1,   128,   128,      128,   32,     8),
+            (  1,    64,   128,      128,   32,     8),
+            (  1,    65,   127,      128,   32,     8),
+            (  1,   127,    65,      128,   32,     8),
+        ]
+        for ksl in [7, 9, 32, 63, 67, 129, 400, 2000]:
+            shapes_128.append((1, 1, ksl, 128, 32, 32))
+            shapes_128.append((1, 1, ksl, 128, 32, 8))
+        # fmt: on
+    
+        shapes = shapes_64 + shapes_128
+        dtypes = [mx.float16]
+        if mx.metal.is_available():
+            dtypes.append(mx.float32)
+        masks = [None, "additive", "bool", "causal"]
+        transposes = (False, True)
+    
+        for dtype, t, mask_str, (B, qL, kL, D, qH, kH) in product(
+            dtypes, transposes, masks, shapes
+        ):
+            with self.subTest(
+                B=B,
+                qsl=qL,
+                ksl=kL,
+                head_dim=D,
+                n_q_heads=qH,
+                n_kv_heads=kH,
+                mask=mask_str,
+                transpose=t,
+                dtype=dtype,
+            ):
+                q, k, v, scale, mask = prepare_inputs(
+                    B, qL, kL, D, qH, kH, mask_str, t, dtype
+                )
+    
+                out_ref = do_attention(mlx_ref_attn, q, k, v, scale, mask, t)
+    
+                out_fst = do_attention(
+                    mx.fast.scaled_dot_product_attention,
+                    q,
+                    k,
+                    v,
+                    scale,
+                    mask,
+                    t,
+                )
+    
+                # For causal mask when qL > kL, first qL-kL rows are undefined
+                # Compare only the valid portion
+                if mask_str == "causal" and qL > kL:
+                    offset = qL - kL
+                    if t:  # transpose=True: shape is (B, qL, qH, D)
+                        out_ref = out_ref[:, offset:, :, :]
+                        out_fst = out_fst[:, offset:, :, :]
+                    else:  # transpose=False: shape is (B, qH, qL, D)
+                        out_ref = out_ref[:, :, offset:, :]
+                        out_fst = out_fst[:, :, offset:, :]
+    
+                atol = 2e-5 if dtype == mx.float32 else 3e-4
+    
+                self.assertListEqual(list(out_ref.shape), list(out_fst.shape))
+    
+                diff = mx.abs(out_fst - out_ref) - atol * mx.abs(out_ref)
+>               self.assertLessEqual(mx.max(diff).item(), atol)
+E               AssertionError: 0.12469482421875 not less than or equal to 0.0003
+
+.work/mlx/python/tests/test_fast_sdpa.py:597: AssertionError
+_ TestFastSDPA.test_sdpa (B=1, qsl=127, ksl=65, head_dim=128, n_q_heads=32, n_kv_heads=8, mask='causal', transpose=False, dtype=mlx.core.float16) _
+
+self = <test_fast_sdpa.TestFastSDPA testMethod=test_sdpa>
+
+    @unittest.skipIf(not mx.is_available(mx.gpu), "too slow on CPU")
+    def test_sdpa(self):
+        # fmt: off
+        shapes_64 = [
+            # (  B,   qsl,   ksl, head_dim, n_qh, n_kvh)
+            (  1,    20,    20,       64,    3,     3),
+            (  1,    63,    63,       64,   24,    24),
+            (  1,   129,   129,       64,   24,    24),
+            (  1,   400,   400,       64,   24,    24),
+            (  1,   128,   128,       64,   32,    32),
+            (  1,    64,   128,       64,   32,    32),
+            (  1,    65,   128,       64,   32,     8),
+            (  1,    64,   127,       64,   32,     8),
+            (  1,    65,   127,       64,   32,     8),
+            (  1,   127,    65,       64,   32,     8),
+        ]
+        shapes_128 = [
+            # (  B,   qsl,   ksl, head_dim, n_qh, n_kvh)
+            (  1,   128,   128,      128,   32,     8),
+            (  1,    64,   128,      128,   32,     8),
+            (  1,    65,   127,      128,   32,     8),
+            (  1,   127,    65,      128,   32,     8),
+        ]
+        for ksl in [7, 9, 32, 63, 67, 129, 400, 2000]:
+            shapes_128.append((1, 1, ksl, 128, 32, 32))
+            shapes_128.append((1, 1, ksl, 128, 32, 8))
+        # fmt: on
+    
+        shapes = shapes_64 + shapes_128
+        dtypes = [mx.float16]
+        if mx.metal.is_available():
+            dtypes.append(mx.float32)
+        masks = [None, "additive", "bool", "causal"]
+        transposes = (False, True)
+    
+        for dtype, t, mask_str, (B, qL, kL, D, qH, kH) in product(
+            dtypes, transposes, masks, shapes
+        ):
+            with self.subTest(
+                B=B,
+                qsl=qL,
+                ksl=kL,
+                head_dim=D,
+                n_q_heads=qH,
+                n_kv_heads=kH,
+                mask=mask_str,
+                transpose=t,
+                dtype=dtype,
+            ):
+                q, k, v, scale, mask = prepare_inputs(
+                    B, qL, kL, D, qH, kH, mask_str, t, dtype
+                )
+    
+                out_ref = do_attention(mlx_ref_attn, q, k, v, scale, mask, t)
+    
+                out_fst = do_attention(
+                    mx.fast.scaled_dot_product_attention,
+                    q,
+                    k,
+                    v,
+                    scale,
+                    mask,
+                    t,
+                )
+    
+                # For causal mask when qL > kL, first qL-kL rows are undefined
+                # Compare only the valid portion
+                if mask_str == "causal" and qL > kL:
+                    offset = qL - kL
+                    if t:  # transpose=True: shape is (B, qL, qH, D)
+                        out_ref = out_ref[:, offset:, :, :]
+                        out_fst = out_fst[:, offset:, :, :]
+                    else:  # transpose=False: shape is (B, qH, qL, D)
+                        out_ref = out_ref[:, :, offset:, :]
+                        out_fst = out_fst[:, :, offset:, :]
+    
+                atol = 2e-5 if dtype == mx.float32 else 3e-4
+    
+                self.assertListEqual(list(out_ref.shape), list(out_fst.shape))
+    
+                diff = mx.abs(out_fst - out_ref) - atol * mx.abs(out_ref)
+>               self.assertLessEqual(mx.max(diff).item(), atol)
+E               AssertionError: 0.0770263671875 not less than or equal to 0.0003
+
+.work/mlx/python/tests/test_fast_sdpa.py:597: AssertionError
+_ TestFastSDPA.test_sdpa (B=1, qsl=127, ksl=65, head_dim=64, n_q_heads=32, n_kv_heads=8, mask='causal', transpose=True, dtype=mlx.core.float16) _
+
+self = <test_fast_sdpa.TestFastSDPA testMethod=test_sdpa>
+
+    @unittest.skipIf(not mx.is_available(mx.gpu), "too slow on CPU")
+    def test_sdpa(self):
+        # fmt: off
+        shapes_64 = [
+            # (  B,   qsl,   ksl, head_dim, n_qh, n_kvh)
+            (  1,    20,    20,       64,    3,     3),
+            (  1,    63,    63,       64,   24,    24),
+            (  1,   129,   129,       64,   24,    24),
+            (  1,   400,   400,       64,   24,    24),
+            (  1,   128,   128,       64,   32,    32),
+            (  1,    64,   128,       64,   32,    32),
+            (  1,    65,   128,       64,   32,     8),
+            (  1,    64,   127,       64,   32,     8),
+            (  1,    65,   127,       64,   32,     8),
+            (  1,   127,    65,       64,   32,     8),
+        ]
+        shapes_128 = [
+            # (  B,   qsl,   ksl, head_dim, n_qh, n_kvh)
+            (  1,   128,   128,      128,   32,     8),
+            (  1,    64,   128,      128,   32,     8),
+            (  1,    65,   127,      128,   32,     8),
+            (  1,   127,    65,      128,   32,     8),
+        ]
+        for ksl in [7, 9, 32, 63, 67, 129, 400, 2000]:
+            shapes_128.append((1, 1, ksl, 128, 32, 32))
+            shapes_128.append((1, 1, ksl, 128, 32, 8))
+        # fmt: on
+    
+        shapes = shapes_64 + shapes_128
+        dtypes = [mx.float16]
+        if mx.metal.is_available():
+            dtypes.append(mx.float32)
+        masks = [None, "additive", "bool", "causal"]
+        transposes = (False, True)
+    
+        for dtype, t, mask_str, (B, qL, kL, D, qH, kH) in product(
+            dtypes, transposes, masks, shapes
+        ):
+            with self.subTest(
+                B=B,
+                qsl=qL,
+                ksl=kL,
+                head_dim=D,
+                n_q_heads=qH,
+                n_kv_heads=kH,
+                mask=mask_str,
+                transpose=t,
+                dtype=dtype,
+            ):
+                q, k, v, scale, mask = prepare_inputs(
+                    B, qL, kL, D, qH, kH, mask_str, t, dtype
+                )
+    
+                out_ref = do_attention(mlx_ref_attn, q, k, v, scale, mask, t)
+    
+                out_fst = do_attention(
+                    mx.fast.scaled_dot_product_attention,
+                    q,
+                    k,
+                    v,
+                    scale,
+                    mask,
+                    t,
+                )
+    
+                # For causal mask when qL > kL, first qL-kL rows are undefined
+                # Compare only the valid portion
+                if mask_str == "causal" and qL > kL:
+                    offset = qL - kL
+                    if t:  # transpose=True: shape is (B, qL, qH, D)
+                        out_ref = out_ref[:, offset:, :, :]
+                        out_fst = out_fst[:, offset:, :, :]
+                    else:  # transpose=False: shape is (B, qH, qL, D)
+                        out_ref = out_ref[:, :, offset:, :]
+                        out_fst = out_fst[:, :, offset:, :]
+    
+                atol = 2e-5 if dtype == mx.float32 else 3e-4
+    
+                self.assertListEqual(list(out_ref.shape), list(out_fst.shape))
+    
+                diff = mx.abs(out_fst - out_ref) - atol * mx.abs(out_ref)
+>               self.assertLessEqual(mx.max(diff).item(), atol)
+E               AssertionError: nan not less than or equal to 0.0003
+
+.work/mlx/python/tests/test_fast_sdpa.py:597: AssertionError
+_ TestFastSDPA.test_sdpa (B=1, qsl=127, ksl=65, head_dim=128, n_q_heads=32, n_kv_heads=8, mask='causal', transpose=True, dtype=mlx.core.float16) _
+
+self = <test_fast_sdpa.TestFastSDPA testMethod=test_sdpa>
+
+    @unittest.skipIf(not mx.is_available(mx.gpu), "too slow on CPU")
+    def test_sdpa(self):
+        # fmt: off
+        shapes_64 = [
+            # (  B,   qsl,   ksl, head_dim, n_qh, n_kvh)
+            (  1,    20,    20,       64,    3,     3),
+            (  1,    63,    63,       64,   24,    24),
+            (  1,   129,   129,       64,   24,    24),
+            (  1,   400,   400,       64,   24,    24),
+            (  1,   128,   128,       64,   32,    32),
+            (  1,    64,   128,       64,   32,    32),
+            (  1,    65,   128,       64,   32,     8),
+            (  1,    64,   127,       64,   32,     8),
+            (  1,    65,   127,       64,   32,     8),
+            (  1,   127,    65,       64,   32,     8),
+        ]
+        shapes_128 = [
+            # (  B,   qsl,   ksl, head_dim, n_qh, n_kvh)
+            (  1,   128,   128,      128,   32,     8),
+            (  1,    64,   128,      128,   32,     8),
+            (  1,    65,   127,      128,   32,     8),
+            (  1,   127,    65,      128,   32,     8),
+        ]
+        for ksl in [7, 9, 32, 63, 67, 129, 400, 2000]:
+            shapes_128.append((1, 1, ksl, 128, 32, 32))
+            shapes_128.append((1, 1, ksl, 128, 32, 8))
+        # fmt: on
+    
+        shapes = shapes_64 + shapes_128
+        dtypes = [mx.float16]
+        if mx.metal.is_available():
+            dtypes.append(mx.float32)
+        masks = [None, "additive", "bool", "causal"]
+        transposes = (False, True)
+    
+        for dtype, t, mask_str, (B, qL, kL, D, qH, kH) in product(
+            dtypes, transposes, masks, shapes
+        ):
+            with self.subTest(
+                B=B,
+                qsl=qL,
+                ksl=kL,
+                head_dim=D,
+                n_q_heads=qH,
+                n_kv_heads=kH,
+                mask=mask_str,
+                transpose=t,
+                dtype=dtype,
+            ):
+                q, k, v, scale, mask = prepare_inputs(
+                    B, qL, kL, D, qH, kH, mask_str, t, dtype
+                )
+    
+                out_ref = do_attention(mlx_ref_attn, q, k, v, scale, mask, t)
+    
+                out_fst = do_attention(
+                    mx.fast.scaled_dot_product_attention,
+                    q,
+                    k,
+                    v,
+                    scale,
+                    mask,
+                    t,
+                )
+    
+                # For causal mask when qL > kL, first qL-kL rows are undefined
+                # Compare only the valid portion
+                if mask_str == "causal" and qL > kL:
+                    offset = qL - kL
+                    if t:  # transpose=True: shape is (B, qL, qH, D)
+                        out_ref = out_ref[:, offset:, :, :]
+                        out_fst = out_fst[:, offset:, :, :]
+                    else:  # transpose=False: shape is (B, qH, qL, D)
+                        out_ref = out_ref[:, :, offset:, :]
+                        out_fst = out_fst[:, :, offset:, :]
+    
+                atol = 2e-5 if dtype == mx.float32 else 3e-4
+    
+                self.assertListEqual(list(out_ref.shape), list(out_fst.shape))
+    
+                diff = mx.abs(out_fst - out_ref) - atol * mx.abs(out_ref)
+>               self.assertLessEqual(mx.max(diff).item(), atol)
+E               AssertionError: 0.0787353515625 not less than or equal to 0.0003
+
+.work/mlx/python/tests/test_fast_sdpa.py:597: AssertionError
+- generated xml file: /home/joshuawarren/src/mlx-omarchy-requal-20260911/receipts/.requal-py-stage/py/test_fast_sdpa.py.xml -
+=========================== short test summary info ============================
+SUBFAILED(B=1, qsl=127, ksl=65, head_dim=64, n_q_heads=32, n_kv_heads=8, mask='causal', transpose=False, dtype=mlx.core.float16) .work/mlx/python/tests/test_fast_sdpa.py::TestFastSDPA::test_sdpa
+SUBFAILED(B=1, qsl=127, ksl=65, head_dim=128, n_q_heads=32, n_kv_heads=8, mask='causal', transpose=False, dtype=mlx.core.float16) .work/mlx/python/tests/test_fast_sdpa.py::TestFastSDPA::test_sdpa
+SUBFAILED(B=1, qsl=127, ksl=65, head_dim=64, n_q_heads=32, n_kv_heads=8, mask='causal', transpose=True, dtype=mlx.core.float16) .work/mlx/python/tests/test_fast_sdpa.py::TestFastSDPA::test_sdpa
+SUBFAILED(B=1, qsl=127, ksl=65, head_dim=128, n_q_heads=32, n_kv_heads=8, mask='causal', transpose=True, dtype=mlx.core.float16) .work/mlx/python/tests/test_fast_sdpa.py::TestFastSDPA::test_sdpa
+======== 4 failed, 20 passed, 3 skipped, 462 subtests passed in 23.67s =========

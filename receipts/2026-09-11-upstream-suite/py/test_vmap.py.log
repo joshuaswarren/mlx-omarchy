@@ -1,0 +1,38 @@
+============================= test session starts ==============================
+collecting ... collected 30 items
+
+.work/mlx/python/tests/test_vmap.py::TestVmap::test_basics PASSED        [  3%]
+.work/mlx/python/tests/test_vmap.py::TestVmap::test_binary 
+.work/mlx/python/tests/test_vmap.py::TestVmap::test_binary PASSED        [  6%]
+.work/mlx/python/tests/test_vmap.py::TestVmap::test_broadcast_axes_vmap PASSED [ 10%]
+.work/mlx/python/tests/test_vmap.py::TestVmap::test_leaks PASSED         [ 13%]
+.work/mlx/python/tests/test_vmap.py::TestVmap::test_mismatch_input_sizes PASSED [ 16%]
+.work/mlx/python/tests/test_vmap.py::TestVmap::test_tree PASSED          [ 20%]
+.work/mlx/python/tests/test_vmap.py::TestVmap::test_unary 
+.work/mlx/python/tests/test_vmap.py::TestVmap::test_unary PASSED         [ 23%]
+.work/mlx/python/tests/test_vmap.py::TestVmap::test_vmap_argreduce PASSED [ 26%]
+.work/mlx/python/tests/test_vmap.py::TestVmap::test_vmap_argsort PASSED  [ 30%]
+.work/mlx/python/tests/test_vmap.py::TestVmap::test_vmap_concatenate PASSED [ 33%]
+.work/mlx/python/tests/test_vmap.py::TestVmap::test_vmap_const_func PASSED [ 36%]
+.work/mlx/python/tests/test_vmap.py::TestVmap::test_vmap_conv PASSED     [ 40%]
+.work/mlx/python/tests/test_vmap.py::TestVmap::test_vmap_flatten PASSED  [ 43%]
+.work/mlx/python/tests/test_vmap.py::TestVmap::test_vmap_gather PASSED   [ 46%]
+.work/mlx/python/tests/test_vmap.py::TestVmap::test_vmap_indexing PASSED [ 50%]
+.work/mlx/python/tests/test_vmap.py::TestVmap::test_vmap_inverse PASSED  [ 53%]
+.work/mlx/python/tests/test_vmap.py::TestVmap::test_vmap_masked_scatter PASSED [ 56%]
+.work/mlx/python/tests/test_vmap.py::TestVmap::test_vmap_matmul PASSED   [ 60%]
+.work/mlx/python/tests/test_vmap.py::TestVmap::test_vmap_mean PASSED     [ 63%]
+.work/mlx/python/tests/test_vmap.py::TestVmap::test_vmap_pad PASSED      [ 66%]
+.work/mlx/python/tests/test_vmap.py::TestVmap::test_vmap_partition PASSED [ 70%]
+.work/mlx/python/tests/test_vmap.py::TestVmap::test_vmap_put_along_axis PASSED [ 73%]
+.work/mlx/python/tests/test_vmap.py::TestVmap::test_vmap_reduce PASSED   [ 76%]
+.work/mlx/python/tests/test_vmap.py::TestVmap::test_vmap_scatter PASSED  [ 80%]
+.work/mlx/python/tests/test_vmap.py::TestVmap::test_vmap_sort PASSED     [ 83%]
+.work/mlx/python/tests/test_vmap.py::TestVmap::test_vmap_split_vmap PASSED [ 86%]
+.work/mlx/python/tests/test_vmap.py::TestVmap::test_vmap_svd PASSED      [ 90%]
+.work/mlx/python/tests/test_vmap.py::TestVmap::test_vmap_take_along_axis PASSED [ 93%]
+.work/mlx/python/tests/test_vmap.py::TestVmap::test_vmap_topk PASSED     [ 96%]
+.work/mlx/python/tests/test_vmap.py::TestVmap::test_vmap_types PASSED    [100%]
+
+- generated xml file: /home/joshuawarren/src/mlx-omarchy-requal-20260911/receipts/.requal-py-stage/py/test_vmap.py.xml -
+==================== 30 passed, 35 subtests passed in 0.37s ====================

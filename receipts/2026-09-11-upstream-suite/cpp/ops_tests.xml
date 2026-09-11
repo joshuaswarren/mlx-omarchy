@@ -1,0 +1,435 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<doctest binary="/home/joshuawarren/src/mlx-omarchy-requal-20260911/receipts/2026-09-11-upstream-suite/build-cpp/tests/tests" version="2.4.12">
+  <Options order_by="file" rand_seed="0" first="0" last="4294967295" abort_after="0" subcase_filter_levels="2147483647" case_sensitive="false" no_throw="false" no_skip="false"/>
+  <TestSuite>
+    <TestCase name="test simple allocations" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/allocator_tests.cpp" line="19" skipped="true"/>
+    <TestCase name="test large allocations" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/allocator_tests.cpp" line="43" skipped="true"/>
+    <TestCase name="test cached allocation keeps capacity" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/allocator_tests.cpp" line="51" skipped="true"/>
+    <TestCase name="test clear cache synchronizes cpu streams" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/allocator_tests.cpp" line="69" skipped="true"/>
+    <TestCase name="test arg reduce small" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/arg_reduce_tests.cpp" line="47" skipped="true"/>
+    <TestCase name="test arg reduce against cpu" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/arg_reduce_tests.cpp" line="104" skipped="true"/>
+    <TestCase name="test arg reduce bool" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/arg_reduce_tests.cpp" line="146" skipped="true"/>
+    <TestCase name="test arg reduce edge cases" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/arg_reduce_tests.cpp" line="181" skipped="true"/>
+    <TestCase name="test arg reduce irregular strides" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/arg_reduce_tests.cpp" line="190" skipped="true"/>
+    <TestCase name="test array basics" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/array_tests.cpp" line="13" skipped="true"/>
+    <TestCase name="test array types" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/array_tests.cpp" line="120" skipped="true"/>
+    <TestCase name="test array metadata" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/array_tests.cpp" line="274" skipped="true"/>
+    <TestCase name="test array iteration" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/array_tests.cpp" line="558" skipped="true"/>
+    <TestCase name="test array shared buffer" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/array_tests.cpp" line="580" skipped="true"/>
+    <TestCase name="test make empty array" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/array_tests.cpp" line="606" skipped="true"/>
+    <TestCase name="test make array from user buffer" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/array_tests.cpp" line="624" skipped="true"/>
+    <TestCase name="test negative indexing for shape/strides" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/array_tests.cpp" line="650" skipped="true"/>
+    <TestCase name="test siblings circular references without eval" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/array_tests.cpp" line="676" skipped="true"/>
+    <TestCase name="test stop gradient" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/autograd_tests.cpp" line="38" skipped="true"/>
+    <TestCase name="test jvp" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/autograd_tests.cpp" line="109" skipped="true"/>
+    <TestCase name="test vjp" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/autograd_tests.cpp" line="174" skipped="true"/>
+    <TestCase name="test grad" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/autograd_tests.cpp" line="239" skipped="true"/>
+    <TestCase name="test transform container reuse does not accumulate stale wrappers" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/autograd_tests.cpp" line="349" skipped="true"/>
+    <TestCase name="test creation grads" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/autograd_tests.cpp" line="385" skipped="true"/>
+    <TestCase name="test op vjps" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/autograd_tests.cpp" line="411" skipped="true"/>
+    <TestCase name="test gather and take grads" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/autograd_tests.cpp" line="749" skipped="true"/>
+    <TestCase name="test slice grads" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/autograd_tests.cpp" line="802" skipped="true"/>
+    <TestCase name="test slice update jvp with one tangent" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/autograd_tests.cpp" line="852" skipped="true"/>
+    <TestCase name="test min and max vjp" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/autograd_tests.cpp" line="876" skipped="true"/>
+    <TestCase name="test reshape and transpose grads" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/autograd_tests.cpp" line="942" skipped="true"/>
+    <TestCase name="test copy grads" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/autograd_tests.cpp" line="966" skipped="true"/>
+    <TestCase name="test matmul vjp" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/autograd_tests.cpp" line="978" skipped="true"/>
+    <TestCase name="test concatenate grads" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/autograd_tests.cpp" line="1005" skipped="true"/>
+    <TestCase name="test split grads" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/autograd_tests.cpp" line="1027" skipped="true"/>
+    <TestCase name="test comparison grads" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/autograd_tests.cpp" line="1056" skipped="true"/>
+    <TestCase name="test as_strided grads" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/autograd_tests.cpp" line="1082" skipped="true"/>
+    <TestCase name="test jvp from vjp" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/autograd_tests.cpp" line="1116" skipped="true"/>
+    <TestCase name="test complex gradients" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/autograd_tests.cpp" line="1213" skipped="true"/>
+    <TestCase name="test scan grads" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/autograd_tests.cpp" line="1280" skipped="true"/>
+    <TestCase name="test update state" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/autograd_tests.cpp" line="1436" skipped="true"/>
+    <TestCase name="test grad types" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/autograd_tests.cpp" line="1452" skipped="true"/>
+    <TestCase name="test grad dynamic slices" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/autograd_tests.cpp" line="1478" skipped="true"/>
+    <TestCase name="test masked_scatter autograd" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/autograd_tests.cpp" line="1499" skipped="true"/>
+    <TestCase name="test matmul" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/blas_tests.cpp" line="11" skipped="true"/>
+    <TestCase name="test simple compile" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/compile_tests.cpp" line="20" skipped="true"/>
+    <TestCase name="test compile with grad" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/compile_tests.cpp" line="48" skipped="true"/>
+    <TestCase name="test compile inputs with primitive" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/compile_tests.cpp" line="57" skipped="true"/>
+    <TestCase name="test compile with created array" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/compile_tests.cpp" line="77" skipped="true"/>
+    <TestCase name="test nested compile" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/compile_tests.cpp" line="97" skipped="true"/>
+    <TestCase name="test enable and disable compile" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/compile_tests.cpp" line="107" skipped="true"/>
+    <TestCase name="test compile with non-finite constants" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/compile_tests.cpp" line="125" skipped="true"/>
+    <TestCase name="test simplify scalars" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/compile_tests.cpp" line="157" skipped="true"/>
+    <TestCase name="test simplify" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/compile_tests.cpp" line="183" skipped="true"/>
+    <TestCase name="test simplify noops" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/compile_tests.cpp" line="191" skipped="true"/>
+    <TestCase name="test no simplify" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/compile_tests.cpp" line="207" skipped="true"/>
+    <TestCase name="test simplify multi output" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/compile_tests.cpp" line="240" skipped="true"/>
+    <TestCase name="test compile unary fused" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/compile_tests.cpp" line="297" skipped="true"/>
+    <TestCase name="test compile binary fused" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/compile_tests.cpp" line="384" skipped="true"/>
+    <TestCase name="test compile gelu" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/compile_tests.cpp" line="446" skipped="true"/>
+    <TestCase name="test compile tape with outside parents" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/compile_tests.cpp" line="495" skipped="true"/>
+    <TestCase name="test compile across streams" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/compile_tests.cpp" line="549" skipped="true"/>
+    <TestCase name="test compile internal output" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/compile_tests.cpp" line="576" skipped="true"/>
+    <TestCase name="test compile deep graph" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/compile_tests.cpp" line="614" skipped="true"/>
+    <TestCase name="test compile repeat input" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/compile_tests.cpp" line="628" skipped="true"/>
+    <TestCase name="test compile compiled function" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/compile_tests.cpp" line="646" skipped="true"/>
+    <TestCase name="test transform compiled function" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/compile_tests.cpp" line="661" skipped="true"/>
+    <TestCase name="test fusion kernel reuse" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/compile_tests.cpp" line="672" skipped="true"/>
+    <TestCase name="test fusion types" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/compile_tests.cpp" line="697" skipped="true"/>
+    <TestCase name="test shapeless compile" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/compile_tests.cpp" line="726" skipped="true"/>
+    <TestCase name="test compile strides" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/compile_tests.cpp" line="758" skipped="true"/>
+    <TestCase name="test compile change streams" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/compile_tests.cpp" line="768" skipped="true"/>
+    <TestCase name="test compile lambda" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/compile_tests.cpp" line="779" skipped="true"/>
+    <TestCase name="test compile with no-ops" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/compile_tests.cpp" line="829" skipped="true"/>
+    <TestCase name="test compile random bits" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/compile_tests.cpp" line="838" skipped="true"/>
+    <TestCase name="test compile throwing first trace does not poison cache" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/compile_tests.cpp" line="851" skipped="true"/>
+    <TestCase name="test arange" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/creations_tests.cpp" line="9" skipped="true"/>
+    <TestCase name="test astype" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/creations_tests.cpp" line="126" skipped="true"/>
+    <TestCase name="test full" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/creations_tests.cpp" line="145" skipped="true"/>
+    <TestCase name="test simple custom vjp" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/custom_vjp_tests.cpp" line="9" skipped="true"/>
+    <TestCase name="test checkpointing" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/custom_vjp_tests.cpp" line="36" skipped="true"/>
+    <TestCase name="test device and stream ordering" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/device_tests.cpp" line="38" skipped="true"/>
+    <TestCase name="test device placement" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/device_tests.cpp" line="56" skipped="true"/>
+    <TestCase name="test einsum path" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/einsum_tests.cpp" line="17" skipped="true"/>
+    <TestCase name="test einsum" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/einsum_tests.cpp" line="62" skipped="true"/>
+    <TestCase name="test eval" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/eval_tests.cpp" line="9" skipped="true"/>
+    <TestCase name="test eval multiple" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/eval_tests.cpp" line="27" skipped="true"/>
+    <TestCase name="test eval with tracer when not tracing" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/eval_tests.cpp" line="51" skipped="true"/>
+    <TestCase name="test eval graph retention when not tracing" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/eval_tests.cpp" line="68" skipped="true"/>
+    <TestCase name="test export basic functions" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/export_import_tests.cpp" line="20" skipped="true"/>
+    <TestCase name="test export function with no inputs" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/export_import_tests.cpp" line="46" skipped="true"/>
+    <TestCase name="test export multi output primitives" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/export_import_tests.cpp" line="62" skipped="true"/>
+    <TestCase name="test export primitives with state" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/export_import_tests.cpp" line="80" skipped="true"/>
+    <TestCase name="test export functions with kwargs" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/export_import_tests.cpp" line="97" skipped="true"/>
+    <TestCase name="test export function with variable inputs" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/export_import_tests.cpp" line="123" skipped="true"/>
+    <TestCase name="test export function on different stream" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/export_import_tests.cpp" line="152" skipped="true"/>
+    <TestCase name="test export import with metadata" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/export_import_tests.cpp" line="165" skipped="true"/>
+    <TestCase name="test fft basics" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/fft_tests.cpp" line="9" skipped="true"/>
+    <TestCase name="test real ffts" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/fft_tests.cpp" line="108" skipped="true"/>
+    <TestCase name="test fftn" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/fft_tests.cpp" line="134" skipped="true"/>
+    <TestCase name="test fft with provided shape" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/fft_tests.cpp" line="227" skipped="true"/>
+    <TestCase name="test fft vmap" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/fft_tests.cpp" line="252" skipped="true"/>
+    <TestCase name="test fft grads" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/fft_tests.cpp" line="270" skipped="true"/>
+    <TestCase name="test fftshift and ifftshift" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/fft_tests.cpp" line="339" skipped="true"/>
+    <TestCase name="[mlx.core.linalg.norm] no ord" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/linalg_tests.cpp" line="14" skipped="true"/>
+    <TestCase name="[mlx.core.linalg.norm] double ord" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/linalg_tests.cpp" line="78" skipped="true"/>
+    <TestCase name="[mlx.core.linalg.norm] string ord" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/linalg_tests.cpp" line="303" skipped="true"/>
+    <TestCase name="test QR factorization" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/linalg_tests.cpp" line="359" skipped="true"/>
+    <TestCase name="test SVD factorization" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/linalg_tests.cpp" line="378" skipped="true"/>
+    <TestCase name="test matrix inversion" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/linalg_tests.cpp" line="419" skipped="true"/>
+    <TestCase name="test matrix cholesky" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/linalg_tests.cpp" line="441" skipped="true"/>
+    <TestCase name="test matrix pseudo-inverse" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/linalg_tests.cpp" line="469" skipped="true"/>
+    <TestCase name="test cross product" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/linalg_tests.cpp" line="517" skipped="true"/>
+    <TestCase name="test matrix eigh" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/linalg_tests.cpp" line="562" skipped="true"/>
+    <TestCase name="test lu" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/linalg_tests.cpp" line="600" skipped="true"/>
+    <TestCase name="test solve" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/linalg_tests.cpp" line="623" skipped="true"/>
+    <TestCase name="test solve_triangluar" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/linalg_tests.cpp" line="673" skipped="true"/>
+    <TestCase name="test det" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/linalg_tests.cpp" line="692" skipped="true"/>
+    <TestCase name="test slogdet" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/linalg_tests.cpp" line="730" skipped="true"/>
+    <TestCase name="test save_safetensors" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/load_tests.cpp" line="18" skipped="true"/>
+    <TestCase name="test safetensors file boundary validation" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/load_tests.cpp" line="56" skipped="true"/>
+    <TestCase name="test gguf" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/load_tests.cpp" line="117" skipped="true"/>
+    <TestCase name="test gguf tensor data offset validation" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/load_tests.cpp" line="202" skipped="true"/>
+    <TestCase name="test gguf metadata value validation" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/load_tests.cpp" line="282" skipped="true"/>
+    <TestCase name="test gguf metadata" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/load_tests.cpp" line="374" skipped="true"/>
+    <TestCase name="test single array serialization" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/load_tests.cpp" line="492" skipped="true"/>
+    <TestCase name="test copy" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/ops_tests.cpp" line="15">
+      <OverallResultsAsserts successes="7" failures="0" test_case_success="true" duration="0.002837"/>
+    </TestCase>
+    <TestCase name="test reshape" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/ops_tests.cpp" line="30">
+      <OverallResultsAsserts successes="54" failures="0" test_case_success="true" duration="0.00114"/>
+    </TestCase>
+    <TestCase name="test flatten" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/ops_tests.cpp" line="139">
+      <OverallResultsAsserts successes="13" failures="0" test_case_success="true" duration="4.5e-05"/>
+    </TestCase>
+    <TestCase name="test unflatten" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/ops_tests.cpp" line="166">
+      <OverallResultsAsserts successes="7" failures="0" test_case_success="true" duration="4.4e-05"/>
+    </TestCase>
+    <TestCase name="test squeeze and expand" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/ops_tests.cpp" line="183">
+      <OverallResultsAsserts successes="27" failures="0" test_case_success="true" duration="0.000159"/>
+    </TestCase>
+    <TestCase name="test slice" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/ops_tests.cpp" line="229">
+      <OverallResultsAsserts successes="42" failures="0" test_case_success="true" duration="0.003655"/>
+    </TestCase>
+    <TestCase name="test slice update" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/ops_tests.cpp" line="363">
+      <OverallResultsAsserts successes="4" failures="0" test_case_success="true" duration="0.00148"/>
+    </TestCase>
+    <TestCase name="test slice update add" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/ops_tests.cpp" line="388">
+      <OverallResultsAsserts successes="8" failures="0" test_case_success="true" duration="0.003664"/>
+    </TestCase>
+    <TestCase name="test dynamic slice" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/ops_tests.cpp" line="486">
+      <OverallResultsAsserts successes="8" failures="0" test_case_success="true" duration="0.00089"/>
+    </TestCase>
+    <TestCase name="test dynamic slice update" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/ops_tests.cpp" line="505">
+      <OverallResultsAsserts successes="9" failures="0" test_case_success="true" duration="0.001153"/>
+    </TestCase>
+    <TestCase name="test split" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/ops_tests.cpp" line="530">
+      <OverallResultsAsserts successes="47" failures="0" test_case_success="true" duration="0.002845"/>
+    </TestCase>
+    <TestCase name="test flip" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/ops_tests.cpp" line="611">
+      <OverallResultsAsserts successes="7" failures="0" test_case_success="true" duration="0.002002"/>
+    </TestCase>
+    <TestCase name="test unstack" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/ops_tests.cpp" line="631">
+      <OverallResultsAsserts successes="10" failures="0" test_case_success="true" duration="0.002062"/>
+    </TestCase>
+    <TestCase name="test swap and move axes" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/ops_tests.cpp" line="651">
+      <OverallResultsAsserts successes="24" failures="0" test_case_success="true" duration="0.000238"/>
+    </TestCase>
+    <TestCase name="test transpose" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/ops_tests.cpp" line="691">
+      <OverallResultsAsserts successes="36" failures="0" test_case_success="true" duration="0.003085"/>
+    </TestCase>
+    <TestCase name="test comparison ops" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/ops_tests.cpp" line="773">
+      <OverallResultsAsserts successes="45" failures="0" test_case_success="true" duration="0.011308"/>
+    </TestCase>
+    <TestCase name="test is nan" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/ops_tests.cpp" line="899">
+      <OverallResultsAsserts successes="8" failures="0" test_case_success="true" duration="0.002981"/>
+    </TestCase>
+    <TestCase name="test is inf" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/ops_tests.cpp" line="925">
+      <OverallResultsAsserts successes="9" failures="0" test_case_success="true" duration="0.004169"/>
+    </TestCase>
+    <TestCase name="test all close" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/ops_tests.cpp" line="956">
+      <OverallResultsAsserts successes="5" failures="0" test_case_success="true" duration="0.006955"/>
+    </TestCase>
+    <TestCase name="test is close" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/ops_tests.cpp" line="968">
+      <OverallResultsAsserts successes="5" failures="0" test_case_success="true" duration="0.007253"/>
+    </TestCase>
+    <TestCase name="test reduction ops" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/ops_tests.cpp" line="998">
+      <OverallResultsAsserts successes="158" failures="0" test_case_success="true" duration="0.074752"/>
+    </TestCase>
+    <TestCase name="test irregular binary ops" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/ops_tests.cpp" line="1328">
+      <OverallResultsAsserts successes="4" failures="0" test_case_success="true" duration="0.004498"/>
+    </TestCase>
+    <TestCase name="test arithmetic unary ops" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/ops_tests.cpp" line="1349">
+      <OverallResultsAsserts successes="123" failures="0" test_case_success="true" duration="0.057003"/>
+    </TestCase>
+    <TestCase name="test error functions" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/ops_tests.cpp" line="1805">
+      <OverallResultsAsserts successes="30" failures="0" test_case_success="true" duration="0.013203"/>
+    </TestCase>
+    <TestCase name="test arithmetic binary ops" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/ops_tests.cpp" line="1894">
+      <OverallResultsAsserts successes="42" failures="0" test_case_success="true" duration="0.01507"/>
+    </TestCase>
+    <TestCase name="test broadcast" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/ops_tests.cpp" line="2050">
+      <OverallResultsAsserts successes="45" failures="0" test_case_success="true" duration="0.002649"/>
+    </TestCase>
+    <TestCase name="test gather" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/ops_tests.cpp" line="2161">
+      <OverallResultsAsserts successes="25" failures="0" test_case_success="true" duration="0.004817"/>
+    </TestCase>
+    <TestCase name="test take" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/ops_tests.cpp" line="2239">
+      <OverallResultsAsserts successes="28" failures="0" test_case_success="true" duration="0.008869"/>
+    </TestCase>
+    <TestCase name="test gather contiguity" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/ops_tests.cpp" line="2325">
+      <OverallResultsAsserts successes="4" failures="0" test_case_success="true" duration="0.001664"/>
+    </TestCase>
+    <TestCase name="test take along axis" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/ops_tests.cpp" line="2377">
+      <OverallResultsAsserts successes="18" failures="0" test_case_success="true" duration="0.005661"/>
+    </TestCase>
+    <TestCase name="test put along axis" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/ops_tests.cpp" line="2443">
+      <OverallResultsAsserts successes="10" failures="0" test_case_success="true" duration="0.002854"/>
+    </TestCase>
+    <TestCase name="test scatter" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/ops_tests.cpp" line="2485">
+      <OverallResultsAsserts successes="28" failures="0" test_case_success="true" duration="0.012357"/>
+    </TestCase>
+    <TestCase name="test masked_scatter" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/ops_tests.cpp" line="2651">
+      <OverallResultsAsserts successes="5" failures="0" test_case_success="true" duration="0.002478"/>
+    </TestCase>
+    <TestCase name="test is positive infinity" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/ops_tests.cpp" line="2689">
+      <OverallResultsAsserts successes="7" failures="0" test_case_success="true" duration="0.002586"/>
+    </TestCase>
+    <TestCase name="test is negative infinity" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/ops_tests.cpp" line="2712">
+      <OverallResultsAsserts successes="7" failures="0" test_case_success="true" duration="0.002534"/>
+    </TestCase>
+    <TestCase name="test scatter types" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/ops_tests.cpp" line="2735">
+      <OverallResultsAsserts successes="7" failures="0" test_case_success="true" duration="0.011159"/>
+    </TestCase>
+    <TestCase name="test complex ops" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/ops_tests.cpp" line="2757">
+      <OverallResultsAsserts successes="12" failures="0" test_case_success="true" duration="0.009461"/>
+    </TestCase>
+    <TestCase name="test as_strided op" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/ops_tests.cpp" line="2846">
+      <OverallResultsAsserts successes="16" failures="0" test_case_success="true" duration="0.00382"/>
+    </TestCase>
+    <TestCase name="test scan op" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/ops_tests.cpp" line="2893">
+      <OverallResultsAsserts successes="12" failures="0" test_case_success="true" duration="0.006256"/>
+    </TestCase>
+    <TestCase name="test pad" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/ops_tests.cpp" line="2954">
+      <OverallResultsAsserts successes="9" failures="0" test_case_success="true" duration="0.004841"/>
+    </TestCase>
+    <TestCase name="test power" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/ops_tests.cpp" line="3026">
+      <OverallResultsAsserts successes="14" failures="0" test_case_success="true" duration="0.0036"/>
+    </TestCase>
+    <TestCase name="test where" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/ops_tests.cpp" line="3059">
+      <OverallResultsAsserts successes="14" failures="0" test_case_success="true" duration="0.007771"/>
+    </TestCase>
+    <TestCase name="test stack" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/ops_tests.cpp" line="3138">
+      <OverallResultsAsserts successes="12" failures="0" test_case_success="true" duration="0.000418"/>
+    </TestCase>
+    <TestCase name="test full_like" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/ops_tests.cpp" line="3167">
+      <OverallResultsAsserts successes="8" failures="0" test_case_success="true" duration="0.002224"/>
+    </TestCase>
+    <TestCase name="test eye" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/ops_tests.cpp" line="3193">
+      <OverallResultsAsserts successes="7" failures="0" test_case_success="true" duration="0.001535"/>
+    </TestCase>
+    <TestCase name="test tri" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/ops_tests.cpp" line="3211">
+      <OverallResultsAsserts successes="2" failures="0" test_case_success="true" duration="0.000712"/>
+    </TestCase>
+    <TestCase name="test tril" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/ops_tests.cpp" line="3235">
+      <OverallResultsAsserts successes="2" failures="0" test_case_success="true" duration="0.000854"/>
+    </TestCase>
+    <TestCase name="test triu" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/ops_tests.cpp" line="3259">
+      <OverallResultsAsserts successes="2" failures="0" test_case_success="true" duration="0.000876"/>
+    </TestCase>
+    <TestCase name="test identity" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/ops_tests.cpp" line="3283">
+      <OverallResultsAsserts successes="2" failures="0" test_case_success="true" duration="0.000737"/>
+    </TestCase>
+    <TestCase name="test eye with positive k offset" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/ops_tests.cpp" line="3307">
+      <OverallResultsAsserts successes="2" failures="0" test_case_success="true" duration="0.000757"/>
+    </TestCase>
+    <TestCase name="test eye with negative k offset" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/ops_tests.cpp" line="3316">
+      <OverallResultsAsserts successes="2" failures="0" test_case_success="true" duration="0.000734"/>
+    </TestCase>
+    <TestCase name="test basic clipping" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/ops_tests.cpp" line="3325">
+      <OverallResultsAsserts successes="1" failures="0" test_case_success="true" duration="0.000625"/>
+    </TestCase>
+    <TestCase name="test clipping with only min" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/ops_tests.cpp" line="3332">
+      <OverallResultsAsserts successes="1" failures="0" test_case_success="true" duration="0.000537"/>
+    </TestCase>
+    <TestCase name="test clipping with only max" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/ops_tests.cpp" line="3339">
+      <OverallResultsAsserts successes="1" failures="0" test_case_success="true" duration="0.000528"/>
+    </TestCase>
+    <TestCase name="test linspace" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/ops_tests.cpp" line="3346">
+      <OverallResultsAsserts successes="7" failures="0" test_case_success="true" duration="0.005306"/>
+    </TestCase>
+    <TestCase name="test quantize dequantize" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/ops_tests.cpp" line="3376">
+      <OverallResultsAsserts successes="12" failures="0" test_case_success="true" duration="0.00984"/>
+    </TestCase>
+    <TestCase name="test repeat" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/ops_tests.cpp" line="3397">
+      <OverallResultsAsserts successes="8" failures="0" test_case_success="true" duration="0.003504"/>
+    </TestCase>
+    <TestCase name="tile" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/ops_tests.cpp" line="3446">
+      <OverallResultsAsserts successes="5" failures="0" test_case_success="true" duration="0.002647"/>
+    </TestCase>
+    <TestCase name="tensordot" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/ops_tests.cpp" line="3472">
+      <OverallResultsAsserts successes="3" failures="0" test_case_success="true" duration="0.001842"/>
+    </TestCase>
+    <TestCase name="outer" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/ops_tests.cpp" line="3508">
+      <OverallResultsAsserts successes="2" failures="0" test_case_success="true" duration="0.001797"/>
+    </TestCase>
+    <TestCase name="inner" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/ops_tests.cpp" line="3526">
+      <OverallResultsAsserts successes="5" failures="0" test_case_success="true" duration="0.002673"/>
+    </TestCase>
+    <TestCase name="test divmod" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/ops_tests.cpp" line="3552">
+      <OverallResultsAsserts successes="14" failures="0" test_case_success="true" duration="0.004393"/>
+    </TestCase>
+    <TestCase name="test diagonal" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/ops_tests.cpp" line="3611">
+      <OverallResultsAsserts successes="12" failures="0" test_case_success="true" duration="0.004957"/>
+    </TestCase>
+    <TestCase name="test diag" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/ops_tests.cpp" line="3651">
+      <OverallResultsAsserts successes="8" failures="0" test_case_success="true" duration="0.004128"/>
+    </TestCase>
+    <TestCase name="test issubdtype" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/ops_tests.cpp" line="3694">
+      <OverallResultsAsserts successes="397" failures="0" test_case_success="true" duration="0.000224"/>
+    </TestCase>
+    <TestCase name="test atleast_1d" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/ops_tests.cpp" line="3880">
+      <OverallResultsAsserts successes="6" failures="0" test_case_success="true" duration="6.1e-05"/>
+    </TestCase>
+    <TestCase name="test atleast_1d vector" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/ops_tests.cpp" line="3897">
+      <OverallResultsAsserts successes="7" failures="0" test_case_success="true" duration="4.9e-05"/>
+    </TestCase>
+    <TestCase name="test atleast_2d" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/ops_tests.cpp" line="3910">
+      <OverallResultsAsserts successes="6" failures="0" test_case_success="true" duration="5.9e-05"/>
+    </TestCase>
+    <TestCase name="test atleast_2d vector" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/ops_tests.cpp" line="3927">
+      <OverallResultsAsserts successes="7" failures="0" test_case_success="true" duration="5.7e-05"/>
+    </TestCase>
+    <TestCase name="test atleast_3d" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/ops_tests.cpp" line="3940">
+      <OverallResultsAsserts successes="6" failures="0" test_case_success="true" duration="6.5e-05"/>
+    </TestCase>
+    <TestCase name="test atleast_3d vector" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/ops_tests.cpp" line="3957">
+      <OverallResultsAsserts successes="7" failures="0" test_case_success="true" duration="6.5e-05"/>
+    </TestCase>
+    <TestCase name="test topk" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/ops_tests.cpp" line="3970">
+      <OverallResultsAsserts successes="3" failures="0" test_case_success="true" duration="0.00183"/>
+    </TestCase>
+    <TestCase name="test meshgrid" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/ops_tests.cpp" line="3989">
+      <OverallResultsAsserts successes="5" failures="0" test_case_success="true" duration="0.002309"/>
+    </TestCase>
+    <TestCase name="test conv1d" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/ops_tests.cpp" line="4014">
+      <OverallResultsAsserts successes="2" failures="0" test_case_success="true" duration="0.004606"/>
+    </TestCase>
+    <TestCase name="test conv2d" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/ops_tests.cpp" line="4112">
+      <OverallResultsAsserts successes="3" failures="0" test_case_success="true" duration="0.005422"/>
+    </TestCase>
+    <TestCase name="test trace" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/ops_tests.cpp" line="4240">
+      <OverallResultsAsserts successes="4" failures="0" test_case_success="true" duration="0.00339"/>
+    </TestCase>
+    <TestCase name="test view" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/ops_tests.cpp" line="4257">
+      <OverallResultsAsserts successes="3" failures="0" test_case_success="true" duration="0.000535"/>
+    </TestCase>
+    <TestCase name="test roll" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/ops_tests.cpp" line="4269">
+      <OverallResultsAsserts successes="8" failures="0" test_case_success="true" duration="0.0047"/>
+    </TestCase>
+    <TestCase name="test contiguous" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/ops_tests.cpp" line="4304">
+      <OverallResultsAsserts successes="4" failures="0" test_case_success="true" duration="0.000423"/>
+    </TestCase>
+    <TestCase name="test bitwise shift operations" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/ops_tests.cpp" line="4318">
+      <OverallResultsAsserts successes="38" failures="0" test_case_success="true" duration="0.013305"/>
+    </TestCase>
+    <TestCase name="test conv_transpose1d with output_padding" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/ops_tests.cpp" line="4356">
+      <OverallResultsAsserts successes="1" failures="0" test_case_success="true" duration="0.000523"/>
+    </TestCase>
+    <TestCase name="test conv_transpose2d with output_padding" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/ops_tests.cpp" line="4371">
+      <OverallResultsAsserts successes="1" failures="0" test_case_success="true" duration="0.000539"/>
+    </TestCase>
+    <TestCase name="test conv_transpose3d with output_padding" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/ops_tests.cpp" line="4403">
+      <OverallResultsAsserts successes="1" failures="0" test_case_success="true" duration="0.000561"/>
+    </TestCase>
+    <TestCase name="test conv shape overflow" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/ops_tests.cpp" line="4422">
+      <OverallResultsAsserts successes="11" failures="0" test_case_success="true" duration="0.000773"/>
+    </TestCase>
+    <TestCase name="test pad shape overflow" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/ops_tests.cpp" line="4494">
+      <OverallResultsAsserts successes="1" failures="0" test_case_success="true" duration="7.5e-05"/>
+    </TestCase>
+    <TestCase name="test fp8 conversion" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/ops_tests.cpp" line="4502">
+      <OverallResultsAsserts successes="5" failures="0" test_case_success="true" duration="0.003595"/>
+    </TestCase>
+    <TestCase name="test max min with nan" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/ops_tests.cpp" line="4525">
+      <OverallResultsAsserts successes="4" failures="0" test_case_success="true" duration="0.00192"/>
+    </TestCase>
+    <TestCase name="roll and tile shape overflow" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/ops_tests.cpp" line="4546">
+      <OverallResultsAsserts successes="4" failures="0" test_case_success="true" duration="0.000636"/>
+    </TestCase>
+    <TestCase name="test random key" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/random_tests.cpp" line="11" skipped="true"/>
+    <TestCase name="test global rng" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/random_tests.cpp" line="26" skipped="true"/>
+    <TestCase name="test random split" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/random_tests.cpp" line="39" skipped="true"/>
+    <TestCase name="test random bits" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/random_tests.cpp" line="56" skipped="true"/>
+    <TestCase name="test random uniform" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/random_tests.cpp" line="244" skipped="true"/>
+    <TestCase name="test random normal" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/random_tests.cpp" line="372" skipped="true"/>
+    <TestCase name="test random multivariate_normal" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/random_tests.cpp" line="423" skipped="true"/>
+    <TestCase name="test random randint" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/random_tests.cpp" line="483" skipped="true"/>
+    <TestCase name="test random bernoulli" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/random_tests.cpp" line="521" skipped="true"/>
+    <TestCase name="Test truncated normal" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/random_tests.cpp" line="566" skipped="true"/>
+    <TestCase name="test categorical" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/random_tests.cpp" line="607" skipped="true"/>
+    <TestCase name="test laplace" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/random_tests.cpp" line="660" skipped="true"/>
+    <TestCase name="test stream management" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/scheduler_tests.cpp" line="10" skipped="true"/>
+    <TestCase name="test default stream in threads" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/scheduler_tests.cpp" line="39" skipped="true"/>
+    <TestCase name="test access stream in other thread" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/scheduler_tests.cpp" line="71" skipped="true"/>
+    <TestCase name="test new stream in threads" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/scheduler_tests.cpp" line="89" skipped="true"/>
+    <TestCase name="test thread unsafe stream" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/scheduler_tests.cpp" line="103" skipped="true"/>
+    <TestCase name="test thread local stream" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/scheduler_tests.cpp" line="117" skipped="true"/>
+    <TestCase name="test get streams" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/scheduler_tests.cpp" line="139" skipped="true"/>
+    <TestCase name="test asynchronous launch" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/scheduler_tests.cpp" line="169" skipped="true"/>
+    <TestCase name="test stream placement" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/scheduler_tests.cpp" line="199" skipped="true"/>
+    <TestCase name="test scheduler races" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/scheduler_tests.cpp" line="240" skipped="true"/>
+    <TestCase name="test type promotion" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/utils_tests.cpp" line="9" skipped="true"/>
+    <TestCase name="test normalize axis" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/utils_tests.cpp" line="29" skipped="true"/>
+    <TestCase name="test finfo" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/utils_tests.cpp" line="47" skipped="true"/>
+    <TestCase name="test iinfo" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/utils_tests.cpp" line="59" skipped="true"/>
+    <TestCase name="test simple vmap" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/vmap_tests.cpp" line="9" skipped="true"/>
+    <TestCase name="test vmap with eval" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/vmap_tests.cpp" line="209" skipped="true"/>
+    <TestCase name="test vmap comparison ops" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/vmap_tests.cpp" line="240" skipped="true"/>
+    <TestCase name="test vmap creation ops" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/vmap_tests.cpp" line="267" skipped="true"/>
+    <TestCase name="test vmap slice" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/vmap_tests.cpp" line="298" skipped="true"/>
+    <TestCase name="test vmap concatenate" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/vmap_tests.cpp" line="316" skipped="true"/>
+    <TestCase name="test vmap gather" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/vmap_tests.cpp" line="333" skipped="true"/>
+    <TestCase name="test vmap take_along_axis with unmapped input and mapped index" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/vmap_tests.cpp" line="395" skipped="true"/>
+    <TestCase name="test vmap scatter" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/vmap_tests.cpp" line="407" skipped="true"/>
+    <TestCase name="test vmap SVD" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/vmap_tests.cpp" line="480" skipped="true"/>
+    <TestCase name="test vmap dynamic slices" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/vmap_tests.cpp" line="531" skipped="true"/>
+    <TestCase name="test vmap floor_divide integer" filename="/home/joshuawarren/src/mlx-omarchy-requal-20260911/.work/mlx/tests/vmap_tests.cpp" line="561" skipped="true"/>
+  </TestSuite>
+  <OverallResultsAsserts successes="1645" failures="0"/>
+  <OverallResultsTestCases successes="88" failures="0" skipped="163"/>
+</doctest>

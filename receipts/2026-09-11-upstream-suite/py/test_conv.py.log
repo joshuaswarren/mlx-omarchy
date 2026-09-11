@@ -1,0 +1,65 @@
+============================= test session starts ==============================
+collecting ... collected 20 items
+
+.work/mlx/python/tests/test_conv.py::TestConv::test_asymmetric_padding SKIPPED [  5%]
+.work/mlx/python/tests/test_conv.py::TestConv::test_basic_grad_shapes PASSED [ 10%]
+.work/mlx/python/tests/test_conv.py::TestConv::test_conv2d_large_filter_small_channels PASSED [ 15%]
+.work/mlx/python/tests/test_conv.py::TestConv::test_conv2d_unaligned_channels PASSED [ 20%]
+.work/mlx/python/tests/test_conv.py::TestConv::test_conv2d_winograd_batch_tiling SKIPPED [ 25%]
+.work/mlx/python/tests/test_conv.py::TestConv::test_conv_1d_groups_flipped PASSED [ 30%]
+.work/mlx/python/tests/test_conv.py::TestConv::test_conv_1d_with_2d PASSED [ 35%]
+.work/mlx/python/tests/test_conv.py::TestConv::test_conv_3D_small_kd_decomposition PASSED [ 40%]
+.work/mlx/python/tests/test_conv.py::TestConv::test_conv_general_flip_grad PASSED [ 45%]
+.work/mlx/python/tests/test_conv.py::TestConv::test_conv_groups_grad PASSED [ 50%]
+.work/mlx/python/tests/test_conv.py::TestConv::test_numpy_conv 
+.work/mlx/python/tests/test_conv.py::TestConv::test_numpy_conv PASSED    [ 55%]
+.work/mlx/python/tests/test_conv.py::TestConv::test_repeated_conv PASSED [ 60%]
+.work/mlx/python/tests/test_conv.py::TestConv::test_torch_conv_1D SKIPPED [ 65%]
+.work/mlx/python/tests/test_conv.py::TestConv::test_torch_conv_1D_grad SKIPPED [ 70%]
+.work/mlx/python/tests/test_conv.py::TestConv::test_torch_conv_2D SKIPPED [ 75%]
+.work/mlx/python/tests/test_conv.py::TestConv::test_torch_conv_2D_grad SKIPPED [ 80%]
+.work/mlx/python/tests/test_conv.py::TestConv::test_torch_conv_3D SKIPPED [ 85%]
+.work/mlx/python/tests/test_conv.py::TestConv::test_torch_conv_3D_grad SKIPPED [ 90%]
+.work/mlx/python/tests/test_conv.py::TestConv::test_torch_conv_depthwise SKIPPED [ 95%]
+.work/mlx/python/tests/test_conv.py::TestConv::test_torch_conv_general SKIPPED [100%]
+
+=================================== FAILURES ===================================
+______ TestConv.test_numpy_conv (dtype='float32', M=24, N=4, mode='same') ______
+
+self = <test_conv.TestConv testMethod=test_numpy_conv>
+
+    def test_numpy_conv(self):
+        for dtype in (
+            "float16",
+            "float32",
+        ):
+            np_dtype = getattr(np, dtype)
+            for M, N, mode in (
+                (1, 1, "full"),
+                (25, 5, "full"),
+                (24, 5, "same"),
+                (24, 4, "same"),
+                (24, 4, "valid"),
+                (4, 24, "full"),
+                (5, 25, "same"),
+                (4, 25, "valid"),
+            ):
+                with self.subTest(dtype=dtype, M=M, N=N, mode=mode):
+                    atol = 1e-6 if dtype == "float32" else 1e-5
+                    a_np = np.random.rand(M).astype(np_dtype)
+                    v_np = np.random.rand(N).astype(np_dtype)
+                    a_mx = mx.array(a_np)
+                    v_mx = mx.array(v_np)
+    
+                    c_np = np.convolve(a_np, v_np, mode=mode)
+                    c_mx = mx.convolve(a_mx, v_mx, mode=mode)
+    
+                    self.assertEqual(c_mx.shape, c_np.shape)
+>                   self.assertTrue(np.allclose(c_mx, c_np, atol=atol))
+E                   AssertionError: False is not true
+
+.work/mlx/python/tests/test_conv.py:49: AssertionError
+- generated xml file: /home/joshuawarren/src/mlx-omarchy-requal-20260911/receipts/.requal-py-stage/py/test_conv.py.xml -
+=========================== short test summary info ============================
+SUBFAILED(dtype='float32', M=24, N=4, mode='same') .work/mlx/python/tests/test_conv.py::TestConv::test_numpy_conv
+========= 1 failed, 10 passed, 10 skipped, 15 subtests passed in 0.61s =========

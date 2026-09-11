@@ -1,0 +1,18 @@
+============================= test session starts ==============================
+collecting ... collected 12 items
+
+.work/mlx/python/tests/test_einsum.py::TestEinsum::test_attention PASSED [  8%]
+.work/mlx/python/tests/test_einsum.py::TestEinsum::test_broadcasting PASSED [ 16%]
+.work/mlx/python/tests/test_einsum.py::TestEinsum::test_ellipses PASSED  [ 25%]
+.work/mlx/python/tests/test_einsum.py::TestEinsum::test_ellipses_broadcast PASSED [ 33%]
+.work/mlx/python/tests/test_einsum.py::TestEinsum::test_longer_paths PASSED [ 41%]
+.work/mlx/python/tests/test_einsum.py::TestEinsum::test_multi_input_einsum PASSED [ 50%]
+.work/mlx/python/tests/test_einsum.py::TestEinsum::test_opt_einsum_test_cases PASSED [ 58%]
+.work/mlx/python/tests/test_einsum.py::TestEinsum::test_scalar_operands PASSED [ 66%]
+.work/mlx/python/tests/test_einsum.py::TestEinsum::test_simple_einsum PASSED [ 75%]
+.work/mlx/python/tests/test_einsum.py::TestEinsum::test_simple_path PASSED [ 83%]
+.work/mlx/python/tests/test_einsum.py::TestEinsum::test_sum_first PASSED [ 91%]
+.work/mlx/python/tests/test_einsum.py::TestEinsum::test_two_input_einsum PASSED [100%]
+
+- generated xml file: /home/joshuawarren/src/mlx-omarchy-requal-20260911/receipts/.requal-py-stage/py/test_einsum.py.xml -
+============================== 12 passed in 0.55s ==============================

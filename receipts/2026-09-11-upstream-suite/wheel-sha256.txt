@@ -1,0 +1,7 @@
+wheel: mlx_omarchy-0.32.2.dev202609112117+2a9add42-cp314-cp314-linux_aarch64.whl
+sha256: 9dc042d383b8453e055636bea9fc39b521da3a3f82438cfa2d1816a0471b8ef8
+size: 7587088 bytes
+source commit: 2a9add427cba2474e2c41b35105e5c7bf4402885
+pinned upstream MLX: 0.32.2 (1f8e74e3f12f31365464a6867c6579f0e9b29d85, archive sha256 cb988a5bdc38c798918d042b9b1c6edda3ccc5f23a2155138d3aa5c1b2acc301)
+python: cp314
+provenance check: SOURCE-VERIFIED (scripts/mlx_provenance.py, match)
