@@ -1245,10 +1245,10 @@ std::unordered_map<int, CommandEncoder>& get_global_command_encoders() {
 
 extern "C" __attribute__((visibility("default"))) void
 mlx_omarchy_host_trace_reset(void) {
-  htrace::reset();
+  mlx::core::omarchy::htrace::reset();
 }
 
 extern "C" __attribute__((visibility("default"))) int
 mlx_omarchy_host_trace_dump(const char* path) {
-  return htrace::dump(path) ? 0 : 1;
+  return mlx::core::omarchy::htrace::dump(path) ? 0 : 1;
 }
