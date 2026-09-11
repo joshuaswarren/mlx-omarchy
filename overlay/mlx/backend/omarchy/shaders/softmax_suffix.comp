@@ -12,7 +12,11 @@
 // exact zero. This is what the additive f16 / bf16 causal mask produced
 // - a masked score plus the storage floor exponentiates to exactly zero
 // and never wins the max - without the mask add pass, so attention's
-// scores matmul may leave masked columns unwritten.
+// scores matmul may leave masked columns unwritten. aux_offset rides the
+// u32 two's complement and is negative when the query outgrew the key:
+// rows before the first admissible key then have zero valid columns and
+// store an exact-zero row, so a fully masked row never reaches the 1/0
+// normalization as a NaN.
 
 #version 460
 
@@ -81,9 +85,16 @@ void main() {
   for (uint row = gl_WorkGroupID.x; row < params.output_size;
        row += gl_NumWorkGroups.x) {
     uint start = params.lhs_offset + row * row_length;
-    uint valid = causal
-        ? min(row_length, params.aux_offset + (row % params.aux_size) + 1u)
-        : row_length;
+    // Signed on purpose: aux_offset is negative when the query outgrew
+    // the key, and a row before the first admissible key must clamp to
+    // zero valid columns - in u32 the wrap would read the whole row and
+    // drive the 1/0 normalization to NaN.
+    uint valid = row_length;
+    if (causal) {
+      int admissible =
+          int(params.aux_offset) + int(row % params.aux_size) + 1;
+      valid = uint(clamp(admissible, 0, int(row_length)));
+    }
     float sink_value = 0.0;
     if (has_sink) {
       uint head = params.matrix_m == 0u

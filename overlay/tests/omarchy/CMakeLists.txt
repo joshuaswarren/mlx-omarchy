@@ -238,6 +238,20 @@ target_link_options(omarchy_fast_regression_tests
 doctest_discover_tests(omarchy_fast_regression_tests)
 add_test(NAME omarchy_fast_regression_tests COMMAND omarchy_fast_regression_tests)
 
+# F16 causal ragged SDPA: the 2026-09-11 upstream wrong values and NaN at
+# qsl=127 ksl=65 (receipts/2026-09-11-f16-sdpa-causal).
+add_executable(omarchy_sdpa_causal_ragged_tests
+               ${CMAKE_CURRENT_SOURCE_DIR}/test_sdpa_causal_ragged.cpp)
+target_link_libraries(omarchy_sdpa_causal_ragged_tests PRIVATE mlx doctest)
+target_compile_options(omarchy_sdpa_causal_ragged_tests
+                       PRIVATE ${SANITIZER_COMPILE_FLAGS})
+target_link_options(omarchy_sdpa_causal_ragged_tests
+                    PRIVATE ${SANITIZER_LINK_FLAGS})
+
+doctest_discover_tests(omarchy_sdpa_causal_ragged_tests)
+add_test(NAME omarchy_sdpa_causal_ragged_tests
+         COMMAND omarchy_sdpa_causal_ragged_tests)
+
 # ScatterDeterminism: float scatter reductions (hardware fp32 atomicAdd
 # for Sum, CAS fp32 multiply for Prod, fp32 scratch for half types),
 # bool Scatter (packed-byte deterministic RMW), and non-dense layout
