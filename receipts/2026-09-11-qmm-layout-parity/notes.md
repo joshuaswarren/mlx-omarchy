@@ -125,9 +125,15 @@ controls (still compute, max diff 9.8e-4 / 4.9e-4); the hardware
 confirmation is below. Root-causing the tile accumulation order is the
 follow-up that reopens these 10 cases.
 
-Final accounting at branch HEAD: 342 named refusals -> **10 named**
-(the bf16-tile zone) + 1 unchanged wrong value (gather_qmm_sorted,
-sibling's cluster); 331 of the 342 closed, 332 total failures closed.
+Final accounting at branch HEAD (`68e4f10d`): 342 named refusals ->
+**10 named** (the bf16-tile zone: bits 4/8, K in {64,128}, M in
+{8,33,65} plus the (33000,128,64) row) + 1 unchanged wrong value
+(gather_qmm_sorted, sibling's cluster); 332 of the 342 closed, 332
+total failures closed (364 -> 32). Upstream bits-2 subtests in the
+same shapes pass on hardware and stay served: an intermediate refusal
+draft without the bits-2 exemption briefly named them on hardware,
+and `68e4f10d` exempts bits 2 (llvmpipe-verified: bits-2 M=8 K=64
+computes with max diff 0.0).
 
 ## M1 verification
 
@@ -170,17 +176,22 @@ Pins from receipts/2026-09-11-main-parity-12-matrix; measured values in
 - Full `omarchy_primitive_tests` on this branch: 102/103 cases,
   2,700,946/2,700,947 assertions; the single failure (`quantized
   matmul binds affine streams at storage offsets`) reproduces
-  identically on UNMODIFIED bddc061f (163/164, same bound) - a
-  pre-existing software-driver deviation outside this change, and the
-  M1 runs that case green.
-- bf16-tile refusal repro: all twelve failing signatures raise the
-  named error; K=256/K=512 controls compute (9.8e-4 / 4.9e-4 max).
+  identically on UNMODIFIED bddc061f (163/164 asserts, same bound) -
+  a pre-existing software-driver deviation outside this change; the
+  M1 runs that case green (103/103 above).
+### Hardware confirmation of the named refusal
 
-### Hardware confirmation of the named refusal (final commit)
-
-A post-refusal wheel (`26e0a249`) reran `test_quantized.py` on the M1
-inside one short window; the ten K<=128 bf16 subtests report
+A post-refusal wheel (`26e0a249`, sha256
+c7f15054dc2cd375cd620bbcf7d9497f37dcc61dd3d52a7dffc7dad4690660d0)
+reran `test_quantized.py` on the M1 inside one short window (23:38Z):
+the K<=128 bf16 tile subtests raise
 `RuntimeError: [omarchy] QuantizedMatmul bf16 non-transposed tile ...`
 (named refusal) instead of assertion failures - see
-`m1-results/test_quantized-final.log`. RESULT INSERTED BELOW WHEN THE
-WINDOW LANDED.
+`m1-results/test_quantized-final.log`. That wheel refused the bits-2
+subtests too (over-broad); `68e4f10d` exempts bits 2, verified on
+llvmpipe (bits-2 computes, max diff 0.0; bits 4/8 still refuse; K=256
+and K=512 controls compute at 9.8e-4 / 4.9e-4). The refusal is
+host-side dispatch logic, so that llvmpipe run plus the hardware run
+of its immediate predecessor pins the final behavior; the final-commit
+hardware rerun of test_quantized.py is queued behind the landing
+queue's windows as a formality.
