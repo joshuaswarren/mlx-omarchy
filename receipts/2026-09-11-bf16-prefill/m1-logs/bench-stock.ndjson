@@ -1,0 +1,24 @@
+probing Apple M1 (G13G B1) api=1.4
+tools/bf16-prefill-bench/shaders/mm_bf16_base.comp
+tools/bf16-prefill-bench/shaders/mm_bf16_cand.comp
+tools/bf16-prefill-bench/shaders/mm_tile_base.comp
+{"k":"dev","name":"Apple M1 (G13G B1)","subgroupSize":32,"coopmat":false}
+{"k":"correct","m":30,"shape":"q_o_896x896","mode":0,"note":"no coopmat device - tile leg only","dead_rows":0}
+{"k":"correct","m":30,"shape":"q_o_896x896","mode":1,"note":"no coopmat device - tile leg only","dead_rows":0}
+{"k":"time","m":30,"shape":"q_o_896x896","tile_us":966.6,"tile_tflops":0.050}
+{"k":"correct","m":30,"shape":"q_o_896x896","mode":2,"note":"no coopmat device - tile leg only","dead_rows":0}
+{"k":"correct","m":30,"shape":"kv_896x128","mode":0,"note":"no coopmat device - tile leg only","dead_rows":0}
+{"k":"correct","m":30,"shape":"kv_896x128","mode":1,"note":"no coopmat device - tile leg only","dead_rows":0}
+{"k":"time","m":30,"shape":"kv_896x128","tile_us":224.2,"tile_tflops":0.031}
+{"k":"correct","m":30,"shape":"kv_896x128","mode":2,"note":"no coopmat device - tile leg only","dead_rows":0}
+{"k":"correct","m":30,"shape":"gate_up_896x4864","mode":0,"note":"no coopmat device - tile leg only","dead_rows":0}
+{"k":"correct","m":30,"shape":"gate_up_896x4864","mode":1,"note":"no coopmat device - tile leg only","dead_rows":0}
+{"k":"time","m":30,"shape":"gate_up_896x4864","tile_us":2096.0,"tile_tflops":0.125}
+{"k":"correct","m":30,"shape":"gate_up_896x4864","mode":2,"note":"no coopmat device - tile leg only","dead_rows":0}
+{"k":"correct","m":30,"shape":"down_4864x896","mode":0,"note":"no coopmat device - tile leg only","dead_rows":0}
+{"k":"correct","m":30,"shape":"down_4864x896","mode":1,"note":"no coopmat device - tile leg only","dead_rows":0}
+{"k":"time","m":30,"shape":"down_4864x896","tile_us":1813.6,"tile_tflops":0.144}
+{"k":"correct","m":30,"shape":"down_4864x896","mode":2,"note":"no coopmat device - tile leg only","dead_rows":0}
+{"k":"skip","m":262,"note":"software device - jumbo tile legs are a hardware leg"}
+{"k":"skip","m":1053,"note":"software device - jumbo tile legs are a hardware leg"}
+{"k":"done"}

@@ -1,0 +1,7 @@
+{"k":"dev","name":"Apple M1 (G13G B1)","subgroupSize":32,"coopmat":true}
+== stage1 phase E: probe flags sweep gate (144 cells) ==
+BAD {'k': 'correct', 'm': 30, 'shape': 'down_4864x896', 'flags': 0, 'mode': 0, 'cand_vs_base_mismatch': 20353, 'base_vs_tile_mismatch': 20218, 'dead_rows': 0, 'first_bad': 0, 'diag_r': 0, 'diag_c': 0, 'got': 2.29291829272898e+37, 'base': 3.9876839873547476e+36, 'exp': -187.0}
+BAD {'k': 'correct', 'm': 30, 'shape': 'down_4864x896', 'flags': 0, 'mode': 2, 'cand_vs_base_mismatch': 19950, 'base_vs_tile_mismatch': 19950, 'dead_rows': 0, 'first_bad': 4, 'diag_r': 0, 'diag_c': 4, 'got': -2.4065554363707793e+30, 'base': -1.634080851856702e+29, 'exp': 4864.0}
+BAD {'k': 'correct', 'm': 30, 'shape': 'down_4864x896', 'flags': 5, 'mode': 0, 'cand_vs_base_mismatch': 18808, 'base_vs_tile_mismatch': 17653, 'dead_rows': 0, 'first_bad': 3584, 'diag_r': 4, 'diag_c': 0, 'got': 4.969190352894659e+32, 'base': 2.0155644543628847e+32, 'exp': -137.0}
+probe cells=84 flags=[0, 1, 4, 5] bad=3
+FATAL: probe flags sweep failed

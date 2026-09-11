@@ -1,0 +1,4 @@
+{"k":"dev","name":"Apple M1 (G13G B1)","subgroupSize":32,"coopmat":true}
+== stage1b: probe gate (36 cells, flags=1) ==
+probe cells=36 bad=0
+STAGE1-OK

@@ -1,0 +1,1 @@
+{"k":"dev","name":"Apple M1 (G13G B1)","subgroupSize":32,"coopmat":true}

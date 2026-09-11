@@ -1,0 +1,25 @@
+{
+  "all_pass": true,
+  "detail": {
+    "family_base": {
+      "rc": 0,
+      "row_mismatch_count": 0,
+      "log": "m1-logs/m1-fork-family-base.log"
+    },
+    "family_cand": {
+      "rc": 0,
+      "row_mismatch_count": 0,
+      "log": "m1-logs/m1-fork-family-cand.log",
+      "note": "candidate shader passes tile32 all four orientations and every tail-k row"
+    },
+    "runtime_base": {
+      "rc": 0,
+      "log": "m1-logs/m1-fork-runtime-base.log"
+    },
+    "runtime_cand": {
+      "rc": 0,
+      "log": "m1-logs/m1-fork-runtime-cand.log"
+    }
+  },
+  "gap": "decode_gemv_path provenance line goes to suite stdout, which the stage-2 pipeline reduced to tail -2; decode path is instead evidenced by the bf16-long fork digest 8690dc83246b39f8 (a silent GEMV fallback deterministically produces the pre-landing ad964232)"
+}
