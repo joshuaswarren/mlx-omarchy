@@ -4035,7 +4035,7 @@ TEST_CASE("qmm coopmat ILP schedule arms reproduce the shipped kernel bitwise") 
 
   constexpr int group_size = 64;
   constexpr int bits = 4;
-  const int arm_cases[3][2] = {{896, 262}, {4864, 1053}};
+  const int arm_cases[2][2] = {{896, 262}, {4864, 1053}};
   unsigned seed = 470u;
   for (auto [k, m] : arm_cases) {
     const int n = 896;
