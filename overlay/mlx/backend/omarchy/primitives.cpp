@@ -6710,9 +6710,10 @@ void QuantizedMatmul::eval_gpu(const std::vector<array>& inputs, array& out) {
   // matmul reference by one output ULP (2^-9 at the relevant magnitude;
   // upstream tolerance 1.5e-3) on the upstream sweep's K <= 128 shapes
   // (up to two 64-wide reduction blocks; K = 256 and K >= 512 pass, as
-  // does the m == 1 vec route). Named refusal until the bf16 tile
+  // do the m == 1 vec route and bits 2). Named refusal until the bf16 tile
   // accumulation matches the matmul reference - never a wrong answer.
-  if (out.dtype() == bfloat16 && !transpose_ && m > 1 && k <= 128) {
+  if (out.dtype() == bfloat16 && !transpose_ && m > 1 && bits_ != 2 &&
+      k <= 128) {
     omarchy::unsupported(tag + " bf16 non-transposed tile", out);
   }
 
