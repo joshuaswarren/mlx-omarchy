@@ -597,6 +597,22 @@ enum class ComputeKernel : uint16_t {
   QmmTileRbPreciseF16,
   // Native-order single-query f16 attention; append-only profile id.
   SdpaDecodeNativeF16,
+  // Q4 pair map (MLX_OMARCHY_QMM_VEC_Q4_PAIR=1 measurement variant):
+  // the qmv_fast two-consecutive-words-per-lane map on every shape.
+  // Changes accumulation order, so it is env-gated and never default.
+  // Appended to keep profile kernel ids stable.
+  QmmVecQ4PairF32,
+  QmmVecQ4PairF16,
+  QmmVecQ4PairBF16,
+  QmmVecQ4PairSubgroupF32,
+  QmmVecQ4PairSubgroupF16,
+  QmmVecQ4PairSubgroupBF16,
+  QmmVecQ4MultiPairF32,
+  QmmVecQ4MultiPairF16,
+  QmmVecQ4MultiPairBF16,
+  QmmVecQ4MultiPairSubgroupF32,
+  QmmVecQ4MultiPairSubgroupF16,
+  QmmVecQ4MultiPairSubgroupBF16,
   Custom,
   Count,
 };

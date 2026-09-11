@@ -255,6 +255,22 @@ omarchy_shader(qmm_vec_q4_multi_bf16 shaders/qmm_vec.comp -DUSE_BF16=1 -DQMM_VEC
 omarchy_shader(qmm_vec_q4_multi_subgroup_f32 shaders/qmm_vec.comp -DUSE_SUBGROUP=1 -DQMM_VEC_Q4_WORD=1 -DQMM_VEC_MULTI=1)
 omarchy_shader(qmm_vec_q4_multi_subgroup_f16 shaders/qmm_vec.comp -DUSE_FP16=1 -DUSE_SUBGROUP=1 -DQMM_VEC_Q4_WORD=1 -DQMM_VEC_MULTI=1)
 omarchy_shader(qmm_vec_q4_multi_subgroup_bf16 shaders/qmm_vec.comp -DUSE_BF16=1 -DUSE_SUBGROUP=1 -DQMM_VEC_Q4_WORD=1 -DQMM_VEC_MULTI=1)
+# Q4 pair map (measurement-gated): the qmv_fast two-consecutive-words
+# map on every shape, selected only via MLX_OMARCHY_QMM_VEC_Q4_PAIR=1 at
+# dispatch; the default binaries and the generated digests are
+# unchanged when the env is unset.
+omarchy_shader(qmm_vec_q4_pair_f32 shaders/qmm_vec.comp -DQMM_VEC_Q4_WORD=1 -DQMM_VEC_Q4_PAIR=1)
+omarchy_shader(qmm_vec_q4_pair_f16 shaders/qmm_vec.comp -DUSE_FP16=1 -DQMM_VEC_Q4_WORD=1 -DQMM_VEC_Q4_PAIR=1)
+omarchy_shader(qmm_vec_q4_pair_bf16 shaders/qmm_vec.comp -DUSE_BF16=1 -DQMM_VEC_Q4_WORD=1 -DQMM_VEC_Q4_PAIR=1)
+omarchy_shader(qmm_vec_q4_pair_subgroup_f32 shaders/qmm_vec.comp -DUSE_SUBGROUP=1 -DQMM_VEC_Q4_WORD=1 -DQMM_VEC_Q4_PAIR=1)
+omarchy_shader(qmm_vec_q4_pair_subgroup_f16 shaders/qmm_vec.comp -DUSE_FP16=1 -DUSE_SUBGROUP=1 -DQMM_VEC_Q4_WORD=1 -DQMM_VEC_Q4_PAIR=1)
+omarchy_shader(qmm_vec_q4_pair_subgroup_bf16 shaders/qmm_vec.comp -DUSE_BF16=1 -DUSE_SUBGROUP=1 -DQMM_VEC_Q4_WORD=1 -DQMM_VEC_Q4_PAIR=1)
+omarchy_shader(qmm_vec_q4_multi_pair_f32 shaders/qmm_vec.comp -DQMM_VEC_Q4_WORD=1 -DQMM_VEC_MULTI=1 -DQMM_VEC_Q4_PAIR=1)
+omarchy_shader(qmm_vec_q4_multi_pair_f16 shaders/qmm_vec.comp -DUSE_FP16=1 -DQMM_VEC_Q4_WORD=1 -DQMM_VEC_MULTI=1 -DQMM_VEC_Q4_PAIR=1)
+omarchy_shader(qmm_vec_q4_multi_pair_bf16 shaders/qmm_vec.comp -DUSE_BF16=1 -DQMM_VEC_Q4_WORD=1 -DQMM_VEC_MULTI=1 -DQMM_VEC_Q4_PAIR=1)
+omarchy_shader(qmm_vec_q4_multi_pair_subgroup_f32 shaders/qmm_vec.comp -DUSE_SUBGROUP=1 -DQMM_VEC_Q4_WORD=1 -DQMM_VEC_MULTI=1 -DQMM_VEC_Q4_PAIR=1)
+omarchy_shader(qmm_vec_q4_multi_pair_subgroup_f16 shaders/qmm_vec.comp -DUSE_FP16=1 -DUSE_SUBGROUP=1 -DQMM_VEC_Q4_WORD=1 -DQMM_VEC_MULTI=1 -DQMM_VEC_Q4_PAIR=1)
+omarchy_shader(qmm_vec_q4_multi_pair_subgroup_bf16 shaders/qmm_vec.comp -DUSE_BF16=1 -DUSE_SUBGROUP=1 -DQMM_VEC_Q4_WORD=1 -DQMM_VEC_MULTI=1 -DQMM_VEC_Q4_PAIR=1)
 omarchy_shader(sdpa_decode_native_f16 shaders/sdpa_decode_native.comp)
 # PrefillQmmTile: m-tiled quantized matmul for prefill (matrix_m > 1);
 # one workgroup dequantizes each 16 x 16 weight block into shared f32

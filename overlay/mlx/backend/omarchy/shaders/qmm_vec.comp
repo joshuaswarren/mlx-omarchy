@@ -80,6 +80,11 @@ uint16_t bf16_store(float value) {
 #if defined(FP_MODE) && defined(QMM_VEC_Q4_WORD)
 #error "QMM_VEC_Q4_WORD applies to affine quantization only"
 #endif
+#ifdef QMM_VEC_Q4_PAIR
+#ifndef QMM_VEC_Q4_WORD
+#error "QMM_VEC_Q4_PAIR builds on QMM_VEC_Q4_WORD"
+#endif
+#endif
 
 const uint COLUMNS_PER_GROUP = 8u;
 const uint LANES = 32u;
@@ -320,11 +325,28 @@ uint q6_at(uint e, uint c0, uint c1, uint c2) {
 // instantiate the same chain per weight.
 #define Q4_BLOCK_FINISH(w, S, B) { \
   uint group = (w) / 8u; \
-  float scale = LOAD_VALUE(S.values[scale_base + group]); \
-  float bias = LOAD_VALUE(B.values[bias_base + group]); \
-  precise float bias_term = input_sum * bias; \
-  accumulator += fma(scale, dot, bias_term); \
-}
+#ifdef QMM_VEC_Q4_PAIR
+// Measurement-gated pair map (MLX_OMARCHY_QMM_VEC_Q4_PAIR=1): the qmv_fast
+// two-consecutive-words-per-lane map on every shape, not only
+// K % 512 == 0. A lane's word sequence becomes 2L + 64i / 2L + 1 + 64i,
+// so the per-lane accumulation order changes and the canonical digests
+// move with it - this variant is never the default. words_per_row is
+// even on this gated path (transposed 4-bit group-64: the host checks
+// K % 64 == 0, so words_per_row = K / 8 is a multiple of 8), and each
+// even/odd pair sits in one group, so the Q4_BLOCK_FINISH(w) epilogue
+// applies one scale and bias per pair, exactly as the qmv_fast tile
+// above does.
+#define Q4_ROW(W, S, B) { \
+    for (uint w = lane_in_slot * 2u; w < words_per_row; \
+         w += LANES * 2u) { \
+      precise float dot = 0.0; \
+      precise float input_sum = 0.0; \
+      Q4_WORD(W.values[w_base + w], x_row + w * 8u) \
+      Q4_WORD(W.values[w_base + w + 1u], x_row + w * 8u + 8u) \
+      Q4_BLOCK_FINISH(w, S, B) \
+    } \
+  }
+#else
 // One output column of one transposed 4-bit/group-64 weight, native qmv
 // arithmetic (metal/kernels/quantized.h qmv_impl / qmv_fast_impl +
 // load_vector + qdot, T=half, U=float): a lane owns one word (two when
@@ -360,6 +382,7 @@ uint q6_at(uint e, uint c0, uint c1, uint c2) {
     } \
   } \
 }
+#endif
 #endif
 
 #ifdef QMM_VEC_MULTI

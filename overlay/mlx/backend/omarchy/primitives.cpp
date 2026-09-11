@@ -6559,6 +6559,13 @@ void QuantizedMatmul::eval_gpu(const std::vector<array>& inputs, array& out) {
   bool use_q4_word =
       (q4_word_env == nullptr || std::strcmp(q4_word_env, "1") == 0) &&
       q4_g64_transpose;
+  // Measurement-gated pair map: the qmv_fast two-consecutive-words map
+  // on every shape. Changes the accumulation order and with it the
+  // generated digests, so it ships off by default and is enabled only
+  // via MLX_OMARCHY_QMM_VEC_Q4_PAIR=1 for measurement.
+  const char* q4_pair_env = std::getenv("MLX_OMARCHY_QMM_VEC_Q4_PAIR");
+  bool use_q4_pair = use_q4_word && q4_pair_env != nullptr &&
+      std::strcmp(q4_pair_env, "1") == 0;
   // Prefill coopmat eligibility, resolved before operand normalization so
   // a row-contiguous x view at an odd f16-element offset is materialized
   // into an aligned buffer instead of silently rerouting to the tile
@@ -6692,23 +6699,29 @@ void QuantizedMatmul::eval_gpu(const std::vector<array>& inputs, array& out) {
     auto vec_kernel = subgroup_ready
         ? select_float_kernel(
               out.dtype(),
-              use_q4_word
+              use_q4_pair ? omarchy::ComputeKernel::QmmVecQ4PairSubgroupF32
+                  : use_q4_word
                   ? omarchy::ComputeKernel::QmmVecQ4WordSubgroupF32
                   : omarchy::ComputeKernel::QmmVecSubgroupF32,
-              use_q4_word
+              use_q4_pair ? omarchy::ComputeKernel::QmmVecQ4PairSubgroupF16
+                  : use_q4_word
                   ? omarchy::ComputeKernel::QmmVecQ4WordSubgroupF16
                   : omarchy::ComputeKernel::QmmVecSubgroupF16,
-              use_q4_word
+              use_q4_pair ? omarchy::ComputeKernel::QmmVecQ4PairSubgroupBF16
+                  : use_q4_word
                   ? omarchy::ComputeKernel::QmmVecQ4WordSubgroupBF16
                   : omarchy::ComputeKernel::QmmVecSubgroupBF16)
         : select_float_kernel(
               out.dtype(),
-              use_q4_word ? omarchy::ComputeKernel::QmmVecQ4WordF32
-                          : omarchy::ComputeKernel::QmmVecF32,
-              use_q4_word ? omarchy::ComputeKernel::QmmVecQ4WordF16
-                          : omarchy::ComputeKernel::QmmVecF16,
-              use_q4_word ? omarchy::ComputeKernel::QmmVecQ4WordBF16
-                          : omarchy::ComputeKernel::QmmVecBF16);
+              use_q4_pair ? omarchy::ComputeKernel::QmmVecQ4PairF32
+                  : use_q4_word ? omarchy::ComputeKernel::QmmVecQ4WordF32
+                                : omarchy::ComputeKernel::QmmVecF32,
+              use_q4_pair ? omarchy::ComputeKernel::QmmVecQ4PairF16
+                  : use_q4_word ? omarchy::ComputeKernel::QmmVecQ4WordF16
+                                : omarchy::ComputeKernel::QmmVecF16,
+              use_q4_pair ? omarchy::ComputeKernel::QmmVecQ4PairBF16
+                  : use_q4_word ? omarchy::ComputeKernel::QmmVecQ4WordBF16
+                                : omarchy::ComputeKernel::QmmVecBF16);
     encoder.dispatch_compute(
         vec_kernel,
         bindings,
@@ -6790,6 +6803,13 @@ namespace {
 bool q4_word_enabled() {
   const char* env = std::getenv("MLX_OMARCHY_QMM_VEC_Q4_WORD");
   return env == nullptr || std::strcmp(env, "1") == 0;
+}
+
+// The measurement-gated pair map (qmv_fast two-consecutive-words map on
+// every shape); digests move, so it is opt-in only.
+bool q4_pair_enabled() {
+  const char* env = std::getenv("MLX_OMARCHY_QMM_VEC_Q4_PAIR");
+  return env != nullptr && std::strcmp(env, "1") == 0;
 }
 
 bool float_dtype_supported(Dtype dtype, const CapabilityReport& caps) {
@@ -6998,17 +7018,24 @@ bool dispatch_quantized_gemv_group(
   }
   bool subgroup_ready = caps.subgroup_size == 32u &&
       (caps.subgroup_operations & VK_SUBGROUP_FEATURE_ARITHMETIC_BIT) != 0;
+  bool use_pair = q4_pair_enabled();
   auto kernel = subgroup_ready
       ? select_float_kernel(
             dtype,
-            ComputeKernel::QmmVecQ4MultiSubgroupF32,
-            ComputeKernel::QmmVecQ4MultiSubgroupF16,
-            ComputeKernel::QmmVecQ4MultiSubgroupBF16)
+            use_pair ? ComputeKernel::QmmVecQ4MultiPairSubgroupF32
+                     : ComputeKernel::QmmVecQ4MultiSubgroupF32,
+            use_pair ? ComputeKernel::QmmVecQ4MultiPairSubgroupF16
+                     : ComputeKernel::QmmVecQ4MultiSubgroupF16,
+            use_pair ? ComputeKernel::QmmVecQ4MultiPairSubgroupBF16
+                     : ComputeKernel::QmmVecQ4MultiSubgroupBF16)
       : select_float_kernel(
             dtype,
-            ComputeKernel::QmmVecQ4MultiF32,
-            ComputeKernel::QmmVecQ4MultiF16,
-            ComputeKernel::QmmVecQ4MultiBF16);
+            use_pair ? ComputeKernel::QmmVecQ4MultiPairF32
+                     : ComputeKernel::QmmVecQ4MultiF32,
+            use_pair ? ComputeKernel::QmmVecQ4MultiPairF16
+                     : ComputeKernel::QmmVecQ4MultiF16,
+            use_pair ? ComputeKernel::QmmVecQ4MultiPairBF16
+                     : ComputeKernel::QmmVecQ4MultiBF16);
   encoder.dispatch_compute(kernel, bindings, params, total_groups, 1u, 1u);
   return true;
 }

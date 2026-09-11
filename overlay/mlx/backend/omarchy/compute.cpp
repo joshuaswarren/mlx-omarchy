@@ -1235,6 +1235,36 @@ ShaderBytes shader_bytes(ComputeKernel kernel) {
       return {
           qmm_vec_q4_multi_subgroup_bf16,
           qmm_vec_q4_multi_subgroup_bf16_size};
+    case ComputeKernel::QmmVecQ4PairF32:
+      return {qmm_vec_q4_pair_f32, qmm_vec_q4_pair_f32_size};
+    case ComputeKernel::QmmVecQ4PairF16:
+      return {qmm_vec_q4_pair_f16, qmm_vec_q4_pair_f16_size};
+    case ComputeKernel::QmmVecQ4PairBF16:
+      return {qmm_vec_q4_pair_bf16, qmm_vec_q4_pair_bf16_size};
+    case ComputeKernel::QmmVecQ4PairSubgroupF32:
+      return {qmm_vec_q4_pair_subgroup_f32, qmm_vec_q4_pair_subgroup_f32_size};
+    case ComputeKernel::QmmVecQ4PairSubgroupF16:
+      return {qmm_vec_q4_pair_subgroup_f16, qmm_vec_q4_pair_subgroup_f16_size};
+    case ComputeKernel::QmmVecQ4PairSubgroupBF16:
+      return {qmm_vec_q4_pair_subgroup_bf16, qmm_vec_q4_pair_subgroup_bf16_size};
+    case ComputeKernel::QmmVecQ4MultiPairF32:
+      return {qmm_vec_q4_multi_pair_f32, qmm_vec_q4_multi_pair_f32_size};
+    case ComputeKernel::QmmVecQ4MultiPairF16:
+      return {qmm_vec_q4_multi_pair_f16, qmm_vec_q4_multi_pair_f16_size};
+    case ComputeKernel::QmmVecQ4MultiPairBF16:
+      return {qmm_vec_q4_multi_pair_bf16, qmm_vec_q4_multi_pair_bf16_size};
+    case ComputeKernel::QmmVecQ4MultiPairSubgroupF32:
+      return {
+          qmm_vec_q4_multi_pair_subgroup_f32,
+          qmm_vec_q4_multi_pair_subgroup_f32_size};
+    case ComputeKernel::QmmVecQ4MultiPairSubgroupF16:
+      return {
+          qmm_vec_q4_multi_pair_subgroup_f16,
+          qmm_vec_q4_multi_pair_subgroup_f16_size};
+    case ComputeKernel::QmmVecQ4MultiPairSubgroupBF16:
+      return {
+          qmm_vec_q4_multi_pair_subgroup_bf16,
+          qmm_vec_q4_multi_pair_subgroup_bf16_size};
     case ComputeKernel::SdpaDecodeNativeF16:
       return {sdpa_decode_native_f16, sdpa_decode_native_f16_size};
     case ComputeKernel::QuantizeFpF16:
