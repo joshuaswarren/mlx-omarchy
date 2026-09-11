@@ -57,7 +57,7 @@ trap 'kill \$SAMPLER 2>/dev/null' EXIT
 
 if [ ! -x "$VENV" ]; then
   python3 -m venv $ROOT/.work/venv-hpo
-  $ROOT/.work/venv-hpo/bin/pip install -q "$WHEEL" mlx-lm
+  $ROOT/.work/venv-hpo/bin/pip install -q "$WHEEL" "mlx-lm==0.31.3"
 fi
 
 bench_arm () {  # tag workload replay(0|1)
