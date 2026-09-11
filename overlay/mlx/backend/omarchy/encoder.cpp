@@ -1,7 +1,8 @@
 // Copyright © 2026 Joshua Warren / mlx-omarchy contributors.
 // SPDX-License-Identifier: MIT
 
-#include "mlx/backend/omarchy/encoder.h"
+
+#include "mlx/backend/omarchy/host_trace.h"
 #include <stdexcept>
 
 #include "mlx/backend/omarchy/allocator.h"
@@ -37,6 +38,24 @@ bool CommandEncoder::gated_barriers() {
   // shapes recorded commands, so flipping it mid-batch would desync the
   // tracker from the command buffer.
   static const bool on = env_flag("MLX_OMARCHY_GATED_BARRIERS");
+  return on;
+}
+
+bool CommandEncoder::replay_enabled() {
+  // MLX_OMARCHY_REPLAY=1 arms the recorded-sequence replay prototype.
+  // It reuses recorded command buffers across batches and therefore
+  // assumes the default unconditional barrier scheme and the standard
+  // descriptor pool; the diagnostic barrier/pool modes change what gets
+  // recorded, so replay stays off under them. Read once per process.
+  static const bool on = [] {
+    if (!env_flag("MLX_OMARCHY_REPLAY")) {
+      return false;
+    }
+    if (gated_barriers() || tape_full_barriers() || tape_no_reuse()) {
+      return false;
+    }
+    return true;
+  }();
   return on;
 }
 
@@ -158,11 +177,20 @@ void CommandEncoder::join_last_completion(const char* reason) {
   }
   uint64_t value = last_completion_;
   uint64_t join_t0 = prof::get().profiling() ? prof::host_ns() : 0;
-  device_.completions().wait(value);
-  uint64_t wait_t1 = prof::get().profiling() ? prof::host_ns() : 0;
+  {
+    htrace::Scoped _wait(htrace::join_wait);
+    device_.completions().wait(value);
+  }
   last_completion_ = 0;
   omarchy::allocator().invalidate_noncoherent(device_.handle());
   uint64_t inval_t2 = prof::get().profiling() ? prof::host_ns() : 0;
+  // Replay prototype: replaced command buffers may reset now that every
+  // submission through this encoder drained.
+  for (auto cmd : replay_retiring_) {
+    vk::device_table().ResetCommandBuffer(cmd, 0);
+    replay_scratch_.push_back(cmd);
+  }
+  replay_retiring_.clear();
   prof::get().on_join(this, value, join_t0, wait_t1, inval_t2, reason);
 }
 
@@ -216,6 +244,11 @@ void CommandEncoder::copy_buffer(
     VkDeviceSize size,
     VkDeviceSize src_offset,
     VkDeviceSize dst_offset) {
+  if (replay_enabled()) {
+    replay_record_transfer(
+        true, src, dst, size, src_offset, dst_offset, 0);
+    return;
+  }
   ensure_recording();
   // The tape-full diagnostic forces the heaviest dependency around the
   // copy and restarts tracking either way.
@@ -250,6 +283,10 @@ void CommandEncoder::fill_buffer(
     uint32_t value,
     VkDeviceSize size,
     VkDeviceSize offset) {
+  if (replay_enabled()) {
+    replay_record_transfer(false, dst, VK_NULL_HANDLE, size, offset, 0, value);
+    return;
+  }
   ensure_recording();
   bool full_barrier = tape_full_barriers();
   if (full_barrier) {
@@ -357,6 +394,264 @@ VkDescriptorSet CommandEncoder::acquire_descriptor_set(
   return descriptor_set;
 }
 
+// Allocate one descriptor set from the replay prototype's dedicated pool.
+// The pool is never retired, so cached sets outlive any single submission
+// for the life of the encoder; a genuinely-rotating binding orphans its
+// old set here instead of recycling it (noted prototype ceiling).
+VkDescriptorSet CommandEncoder::acquire_replay_descriptor_set(
+    ComputeRuntime& compute) {
+  auto& dt = vk::device_table();
+  if (replay_desc_pool_ == VK_NULL_HANDLE) {
+    VkDescriptorPoolSize pool_size{};
+    pool_size.type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    pool_size.descriptorCount = 8192 * compute.binding_limit();
+    VkDescriptorPoolCreateInfo pool_info{
+        VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO};
+    pool_info.maxSets = 8192;
+    pool_info.poolSizeCount = 1;
+    pool_info.pPoolSizes = &pool_size;
+    VKX_CHECK(dt.CreateDescriptorPool(
+        device_.handle(), &pool_info, nullptr, &replay_desc_pool_));
+    replay_desc_remaining_ = 8192;
+  }
+  if (replay_desc_remaining_ == 0) {
+    throw std::runtime_error(
+        "[omarchy] replay prototype exhausted its descriptor pool");
+  }
+  VkDescriptorSetLayout descriptor_layout = compute.descriptor_layout();
+  VkDescriptorSetAllocateInfo allocate_info{
+      VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO};
+  allocate_info.descriptorPool = replay_desc_pool_;
+  allocate_info.descriptorSetCount = 1;
+  allocate_info.pSetLayouts = &descriptor_layout;
+  VkDescriptorSet descriptor_set{VK_NULL_HANDLE};
+  VKX_CHECK(dt.AllocateDescriptorSets(
+      device_.handle(), &allocate_info, &descriptor_set));
+  replay_desc_remaining_--;
+  return descriptor_set;
+}
+
+// Allocate a replay command buffer: drained scratch first, else a fresh
+// 64-buffer chunk from the replay pool. Handles are never individually
+// freed (command-buffer lifetime is pool-scoped); retired ones reset back
+// into the scratch list once their last execution drained.
+VkCommandBuffer CommandEncoder::acquire_replay_cmd() {
+  auto& dt = vk::device_table();
+  if (replay_pool_ == VK_NULL_HANDLE) {
+    VkCommandPoolCreateInfo pci{VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO};
+    pci.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+    pci.queueFamilyIndex = device_.queue_family();
+    VKX_CHECK(dt.CreateCommandPool(device_.handle(), &pci, nullptr, &replay_pool_));
+  }
+  if (replay_scratch_.empty()) {
+    std::array<VkCommandBuffer, 64> buffers{};
+    VkCommandBufferAllocateInfo ai{
+        VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO};
+    ai.commandPool = replay_pool_;
+    ai.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+    ai.commandBufferCount = buffers.size();
+    VKX_CHECK(dt.AllocateCommandBuffers(device_.handle(), &ai, buffers.data()));
+    replay_scratch_.assign(buffers.begin(), buffers.end());
+  }
+  VkCommandBuffer cmd = replay_scratch_.back();
+  replay_scratch_.pop_back();
+  return cmd;
+}
+// Copy/fill ops under replay: every op records fresh into its own
+// command buffer (rare in decode; no replayable metadata is tracked for
+// them). The pre/post barrier structure matches the ring path's
+// neighbors, so the dependency chain is the one the dispatches already
+// establish.
+void CommandEncoder::replay_record_transfer(
+    bool copy,
+    VkBuffer a,
+    VkBuffer b,
+    VkDeviceSize size,
+    VkDeviceSize a_offset,
+    VkDeviceSize b_offset,
+    uint32_t value) {
+  auto& dt = vk::device_table();
+  VkCommandBuffer cmd = acquire_replay_cmd();
+  VkCommandBufferBeginInfo bi{VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
+  VKX_CHECK(dt.BeginCommandBuffer(cmd, &bi));
+  if (copy) {
+    VkBufferCopy region{};
+    region.srcOffset = a_offset;
+    region.dstOffset = b_offset;
+    region.size = size;
+    dt.CmdCopyBuffer(cmd, a, b, 1, &region);
+    trace::counters().vk_buffer_copies++;
+  } else {
+    dt.CmdFillBuffer(cmd, a, a_offset, size, value);
+    trace::counters().vk_buffer_fills++;
+  }
+  VKX_CHECK(dt.EndCommandBuffer(cmd));
+  replay_order_.push_back(cmd);
+  node_count_++;
+}
+
+bool CommandEncoder::replay_dispatch(
+    VkPipeline pipeline,
+    ComputeKernel profile_kernel,
+    std::span<const ComputeBinding> bindings,
+    const ComputeParams& params,
+    uint32_t group_count_x,
+    uint32_t group_count_y,
+    uint32_t group_count_z) {
+  auto& compute = device_.compute();
+  auto& dt = vk::device_table();
+  ReplayEntry* entry =
+      replay_cursor_ < replay_entries_.size()
+          ? &replay_entries_[replay_cursor_]
+          : nullptr;
+  bool hit = entry != nullptr && entry->pipeline == pipeline &&
+      entry->binding_count == bindings.size() &&
+      entry->gx == group_count_x && entry->gy == group_count_y &&
+      entry->gz == group_count_z &&
+      std::memcmp(&entry->params, &params, sizeof(ComputeParams)) == 0;
+  for (uint32_t i = 0; hit && i < bindings.size(); ++i) {
+    hit = entry->buffers[i] == bindings[i].buffer &&
+        entry->offsets[i] == bindings[i].offset &&
+        entry->ranges[i] == bindings[i].range;
+  }
+  if (hit) {
+    // Replay: resubmit the cached command buffer, pin the bound buffers
+    // for the incoming submission exactly like a fresh record would.
+    for (const auto& item : bindings) {
+      note_binding_owner(item.owner);
+    }
+    htrace::add(htrace::replay_hits, 1);
+    replay_cursor_++;
+    return true;
+  }
+
+  // Record fresh into a per-dispatch replay command buffer.
+  VkCommandBuffer cmd = acquire_replay_cmd();
+  VkDescriptorSet descriptor_set = VK_NULL_HANDLE;
+  bool bindings_match = entry != nullptr;
+  for (uint32_t i = 0; bindings_match && entry && i < bindings.size(); ++i) {
+    bindings_match = entry->binding_count == bindings.size() &&
+        entry->buffers[i] == bindings[i].buffer &&
+        entry->offsets[i] == bindings[i].offset &&
+        entry->ranges[i] == bindings[i].range;
+  }
+  if (entry != nullptr && bindings_match) {
+    // Same addresses as last batch: the cached set already holds the
+    // correct buffer+offset+range bindings.
+    descriptor_set = entry->descriptor_set;
+  } else {
+    descriptor_set = acquire_replay_descriptor_set(compute);
+    std::array<VkDescriptorBufferInfo, kComputeBindingBudget> buffer_info{};
+    std::array<VkWriteDescriptorSet, kComputeBindingBudget> writes{};
+    for (uint32_t index = 0; index < bindings.size(); ++index) {
+      buffer_info[index] = {bindings[index].buffer,
+                            bindings[index].offset,
+                            bindings[index].range};
+      writes[index].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+      writes[index].dstSet = descriptor_set;
+      writes[index].dstBinding = index;
+      writes[index].descriptorCount = 1;
+      writes[index].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+      writes[index].pBufferInfo = &buffer_info[index];
+    }
+    dt.UpdateDescriptorSets(
+        device_.handle(),
+        static_cast<uint32_t>(bindings.size()),
+        writes.data(),
+        0,
+        nullptr);
+    trace::counters().vk_descriptor_update_writes += bindings.size();
+  }
+
+  VkCommandBufferBeginInfo bi{VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
+  VKX_CHECK(dt.BeginCommandBuffer(cmd, &bi));
+  VkMemoryBarrier before{VK_STRUCTURE_TYPE_MEMORY_BARRIER};
+  before.srcAccessMask =
+      VK_ACCESS_HOST_WRITE_BIT | VK_ACCESS_TRANSFER_WRITE_BIT |
+      VK_ACCESS_SHADER_WRITE_BIT;
+  before.dstAccessMask =
+      VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT;
+  dt.CmdPipelineBarrier(
+      cmd,
+      VK_PIPELINE_STAGE_HOST_BIT | VK_PIPELINE_STAGE_TRANSFER_BIT |
+          VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+      VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+      0,
+      1,
+      &before,
+      0,
+      nullptr,
+      0,
+      nullptr);
+  VkPipelineLayout pipeline_layout = compute.pipeline_layout();
+  dt.CmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline);
+  dt.CmdBindDescriptorSets(
+      cmd,
+      VK_PIPELINE_BIND_POINT_COMPUTE,
+      pipeline_layout,
+      0,
+      1,
+      &descriptor_set,
+      0,
+      nullptr);
+  dt.CmdPushConstants(
+      cmd, pipeline_layout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(params), &params);
+  dt.CmdDispatch(
+      cmd,
+      std::min(group_count_x, kMaxComputeGroupCountX),
+      std::min(group_count_y, kMaxComputeGroupCountX),
+      std::min(group_count_z, kMaxComputeGroupCountX));
+  VkMemoryBarrier after{VK_STRUCTURE_TYPE_MEMORY_BARRIER};
+  after.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
+  after.dstAccessMask =
+      VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_TRANSFER_READ_BIT |
+      VK_ACCESS_HOST_READ_BIT;
+  dt.CmdPipelineBarrier(
+      cmd,
+      VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+      VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_TRANSFER_BIT |
+          VK_PIPELINE_STAGE_HOST_BIT,
+      0,
+      1,
+      &after,
+      0,
+      nullptr,
+      0,
+      nullptr);
+  VKX_CHECK(dt.EndCommandBuffer(cmd));
+
+  if (entry == nullptr) {
+    replay_entries_.emplace_back();
+    entry = &replay_entries_.back();
+  }
+  if (entry->cmd != VK_NULL_HANDLE && entry->cmd != cmd) {
+    // Retire the replaced buffer: reset only after its execution drained.
+    replay_retiring_.push_back(entry->cmd);
+  }
+  entry->pipeline = pipeline;
+  entry->binding_count = static_cast<uint32_t>(bindings.size());
+  for (uint32_t i = 0; i < bindings.size(); ++i) {
+    entry->buffers[i] = bindings[i].buffer;
+    entry->offsets[i] = bindings[i].offset;
+    entry->ranges[i] = bindings[i].range;
+  }
+  entry->params = params;
+  entry->gx = group_count_x;
+  entry->gy = group_count_y;
+  entry->gz = group_count_z;
+  entry->descriptor_set = descriptor_set;
+  entry->cmd = cmd;
+  for (const auto& item : bindings) {
+    note_binding_owner(item.owner);
+  }
+  htrace::add(htrace::replay_records, 1);
+  replay_cursor_++;
+  return true;
+}
+
+void CommandEncoder::ensure_recording() {
+}
+
 void CommandEncoder::dispatch_compute(
     ComputeKernel kernel,
     std::span<const ComputeBinding> bindings,
@@ -408,6 +703,20 @@ void CommandEncoder::dispatch_compute_pipeline(
     uint32_t group_count_x,
     uint32_t group_count_y,
     uint32_t group_count_z) {
+  htrace::Scoped _disp(htrace::disp_total);
+  if (replay_enabled() &&
+      replay_dispatch(
+          pipeline,
+          profile_kernel,
+          bindings,
+          params,
+          group_count_x,
+          group_count_y,
+          group_count_z)) {
+    node_count_++;
+    trace::counters().vk_compute_dispatches++;
+    return;
+  }
   auto& compute = device_.compute();
   uint32_t binding_limit = compute.binding_limit();
   if (bindings.empty() || bindings.size() > binding_limit) {
@@ -417,6 +726,7 @@ void CommandEncoder::dispatch_compute_pipeline(
         " storage-buffer bindings; this device allows " +
         std::to_string(binding_limit) + ".");
   }
+  htrace::Scoped _desc(htrace::desc_setup);
   for (const auto& item : bindings) {
     note_binding_owner(item.owner);
   }
@@ -447,7 +757,10 @@ void CommandEncoder::dispatch_compute_pipeline(
       nullptr);
   trace::counters().vk_descriptor_update_writes += bindings.size();
 
-  ensure_recording();
+  {
+    htrace::Scoped _ensure(htrace::ensure_recording_ns);
+    ensure_recording();
+  }
   uint64_t host_t0 = prof::get().profiling() ? prof::host_ns() : 0;
   // MLX_OMARCHY_TAPE_FULL_BARRIERS (diagnostic, docs/install-omarchy.md):
   // the heaviest correct dependency - all commands, all memory access,
@@ -467,6 +780,7 @@ void CommandEncoder::dispatch_compute_pipeline(
   // read/write split, so each binding is tracked as both read and
   // write - the tracker may barrier a read-read pair, never skip a
   // real hazard.
+  htrace::Scoped _bar(htrace::barriers);
   bool barrier_recorded = false;
   if (gated_barriers()) {
     std::array<TrackedRange, kComputeBindingBudget> ranges{};
@@ -513,27 +827,28 @@ void CommandEncoder::dispatch_compute_pipeline(
     prof::get().on_barrier(true);
     barrier_recorded = true;
   }
-  prof::get().before_dispatch(this, current_slot_, cmd_, barrier_recorded);
-
-  VkPipelineLayout pipeline_layout = compute.pipeline_layout();
-  dt.CmdBindPipeline(cmd_, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline);
-  dt.CmdBindDescriptorSets(
-      cmd_,
-      VK_PIPELINE_BIND_POINT_COMPUTE,
-      pipeline_layout,
-      0,
-      1,
-      &descriptor_set,
-      0,
-      nullptr);
-  dt.CmdPushConstants(
-      cmd_,
-      pipeline_layout,
-      VK_SHADER_STAGE_COMPUTE_BIT,
-      0,
-      sizeof(params),
-      &params);
-  dt.CmdDispatch(cmd_, group_count_x, group_count_y, group_count_z);
+  {
+    htrace::Scoped _vkcmd(htrace::vkcmd);
+    VkPipelineLayout pipeline_layout = compute.pipeline_layout();
+    dt.CmdBindPipeline(cmd_, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline);
+    dt.CmdBindDescriptorSets(
+        cmd_,
+        VK_PIPELINE_BIND_POINT_COMPUTE,
+        pipeline_layout,
+        0,
+        1,
+        &descriptor_set,
+        0,
+        nullptr);
+    dt.CmdPushConstants(
+        cmd_,
+        pipeline_layout,
+        VK_SHADER_STAGE_COMPUTE_BIT,
+        0,
+        sizeof(params),
+        &params);
+    dt.CmdDispatch(cmd_, group_count_x, group_count_y, group_count_z);
+  }
   prof::get().after_dispatch(
       this,
       current_slot_,
@@ -549,7 +864,9 @@ void CommandEncoder::dispatch_compute_pipeline(
 
   // Gated mode tracks this dispatch's writes instead of recording a
   // post barrier; the next node's overlap test consumes the tracking.
-  if (!gated_barriers()) {
+  {
+    htrace::Scoped _bar2(htrace::barriers);
+    if (!gated_barriers()) {
     VkMemoryBarrier after{VK_STRUCTURE_TYPE_MEMORY_BARRIER};
     after.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
     after.dstAccessMask =
@@ -566,9 +883,10 @@ void CommandEncoder::dispatch_compute_pipeline(
         0,
         nullptr,
         0,
-        nullptr);
+    nullptr);
     trace::counters().barriers_emitted++;
     prof::get().on_barrier(true);
+    }
   }
   if (tape_full_barriers()) {
     // Diagnostic: matching full barrier out of this dispatch, so every
@@ -582,7 +900,8 @@ void CommandEncoder::dispatch_compute_pipeline(
 }
 
 void CommandEncoder::commit() {
-  if (!recording_ && wait_semaphores_.empty() && signal_semaphores_.empty() &&
+  if (!recording_ && replay_order_.empty() &&
+      wait_semaphores_.empty() && signal_semaphores_.empty() &&
       completed_handlers_.empty()) {
     trace::counters().commit_calls_noop++;
     return;
@@ -592,11 +911,13 @@ void CommandEncoder::commit() {
 }
 
 void CommandEncoder::synchronize(const char* reason) {
+  htrace::Scoped _sync(htrace::sync_total);
   commit();
   join_last_completion(reason);
 }
 
 void CommandEncoder::submit() {
+  htrace::Scoped _submit(htrace::submit_total);
   auto& dt = vk::device_table();
   bool was_recording = recording_;
   uint64_t submit_t0 = prof::get().profiling() ? prof::host_ns() : 0;
@@ -653,10 +974,13 @@ void CommandEncoder::submit() {
   VkSubmitInfo si{VK_STRUCTURE_TYPE_SUBMIT_INFO};
   si.pNext = &timeline;
   si.waitSemaphoreCount = static_cast<uint32_t>(wait_sems.size());
-  si.pWaitSemaphores = wait_sems.data();
-  si.pWaitDstStageMask = wait_stages.data();
-  si.commandBufferCount = recording_ ? 1u : 0u;
-  si.pCommandBuffers = recording_ ? &cmd_ : nullptr;
+  const bool replay_submit = !replay_order_.empty();
+  si.commandBufferCount = recording_
+      ? 1u
+      : static_cast<uint32_t>(replay_order_.size());
+  si.pCommandBuffers = recording_
+      ? &cmd_
+      : (replay_submit ? replay_order_.data() : nullptr);
 
   // Every submission also signals the device completion timeline; user
   // (event) signals ride along in the same submission, in order.
@@ -753,6 +1077,12 @@ void CommandEncoder::submit() {
   wait_semaphores_.clear();
   signal_semaphores_.clear();
   completed_handlers_.clear();
+  // Replay batch bookkeeping: the cursor restarts for the next batch and
+  // the ordered array is consumed. Replaced command buffers wait for
+  // their drain in replay_retiring_ (join_last_completion recycles them);
+  // submitted-and-cached ones stay executable for the next batch.
+  replay_cursor_ = 0;
+  replay_order_.clear();
   // The submission's in-order wait (last_completion_) provides the
   // cross-submission dependency, so the open batch's unsynced ranges
   // die here either way.

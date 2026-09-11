@@ -305,7 +305,67 @@ class MLX_API CommandEncoder {
   std::vector<TrackedRange> tracked_writes_;
   bool head_synced_{false};
 
-  Device& device_;
+  // ---- Recorded-sequence replay prototype (MLX_OMARCHY_REPLAY=1). ----
+  // Measurement wheel (branch wave/HostPathOverhead), never merged. Decode
+  // re-executes the same dispatch sequence every token; a dispatch whose
+  // pipeline, bindings, push constants and groups are byte-identical to
+  // the previous batch's entry at the same sequence position replays a
+  // cached command buffer instead of re-recording (no descriptor
+  // alloc/update, no vkCmd* recording). Everything else records fresh
+  // into a per-dispatch command buffer; one submission carries the whole
+  // ordered array. Dependency structure is unchanged: the default
+  // unconditional pre/post barriers around every dispatch have
+  // submission-order scope, and cached buffers are only resubmitted after
+  // their previous execution drained (decode joins every token at the
+  // sampler read). Cacheable descriptor sets live in a dedicated
+  // never-retired pool (8192 sets; genuinely-rotating bindings allocate
+  // again and the stale set is orphaned until teardown - a noted
+  // prototype ceiling).
+  struct ReplayEntry {
+    VkPipeline pipeline{VK_NULL_HANDLE};
+    uint32_t binding_count{0};
+    std::array<VkBuffer, kComputeBindingBudget> buffers{};
+    std::array<VkDeviceSize, kComputeBindingBudget> offsets{};
+    std::array<VkDeviceSize, kComputeBindingBudget> ranges{};
+    ComputeParams params{};
+    uint32_t gx{0};
+    uint32_t gy{0};
+    uint32_t gz{0};
+    VkDescriptorSet descriptor_set{VK_NULL_HANDLE};
+    VkCommandBuffer cmd{VK_NULL_HANDLE};
+  };
+  static bool replay_enabled();
+  VkDescriptorSet acquire_replay_descriptor_set(ComputeRuntime& compute);
+  VkCommandBuffer acquire_replay_cmd();
+  // Replays the dispatch when the cached entry at the cursor matches, else
+  // records it fresh into a replay command buffer (creating or replacing
+  // the entry). Pushes the executing command buffer onto replay_order_ in
+  // both cases and stamps the bound buffers into the batch. Returns false
+  // when the batch decided replay is off entirely.
+  bool replay_dispatch(
+      VkPipeline pipeline,
+      ComputeKernel profile_kernel,
+      std::span<const ComputeBinding> bindings,
+      const ComputeParams& params,
+      uint32_t group_count_x,
+      uint32_t group_count_y,
+      uint32_t group_count_z);
+  void replay_record_transfer(
+      bool copy,
+      VkBuffer a,
+      VkBuffer b,
+      VkDeviceSize size,
+      VkDeviceSize a_offset,
+      VkDeviceSize b_offset,
+      uint32_t value);
+  size_t replay_cursor_{0};
+  std::vector<VkCommandBuffer> replay_order_;
+  std::vector<VkCommandBuffer> replay_scratch_;  // drained, reusable
+  std::vector<VkCommandBuffer> replay_retiring_; // await drain, then scratch
+  VkCommandPool replay_pool_{VK_NULL_HANDLE};
+  VkDescriptorPool replay_desc_pool_{VK_NULL_HANDLE};
+  uint32_t replay_desc_remaining_{0};
+
   VkCommandPool pool_{VK_NULL_HANDLE};
   std::array<Slot, kInFlightCommandBuffers> slots_{};
   int current_slot_{0};
