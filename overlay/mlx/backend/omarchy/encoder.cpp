@@ -975,6 +975,8 @@ void CommandEncoder::submit() {
   VkSubmitInfo si{VK_STRUCTURE_TYPE_SUBMIT_INFO};
   si.pNext = &timeline;
   si.waitSemaphoreCount = static_cast<uint32_t>(wait_sems.size());
+  si.pWaitSemaphores = wait_sems.data();
+  si.pWaitDstStageMask = wait_stages.data();
   const bool replay_submit = !replay_order_.empty();
   si.commandBufferCount = recording_
       ? 1u

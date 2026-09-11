@@ -1,4 +1,6 @@
 // Copyright © 2026 Joshua Warren / mlx-omarchy contributors.
+// SPDX-License-Identifier: MIT
+
 #include "mlx/backend/omarchy/host_trace.h"
 
 #include "mlx/backend/omarchy/allocator.h"
