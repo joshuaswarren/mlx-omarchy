@@ -10450,15 +10450,28 @@ void ScaledDotProductAttention::eval_gpu(
       decode_caps.max_compute_shared_memory_size >= kDecodeSharedBytes &&
       (decode_caps.subgroup_operations & kDecodeSubgroupFeatures) ==
           kDecodeSubgroupFeatures;
+  // The composition-exact bf16 arm uses no subgroup operations at all - its
+  // per-thread work and barriers need only the 1024-thread workgroup and the
+  // 9,472 bytes of static shared the arm declares - so it gates on those
+  // alone and engages on any device that meets them, including software
+  // drivers, where its bit-identity against the composition is testable.
+  constexpr uint32_t kDecodeBf16SharedBytes =
+      (64u + 2048u + 256u) * sizeof(float);
+  const bool decode_bf16_ready =
+      decode_caps.max_compute_work_group_invocations >= 1024u &&
+      decode_caps.max_compute_work_group_size[0] >= 1024u &&
+      decode_caps.max_compute_shared_memory_size >= kDecodeBf16SharedBytes;
+  const bool decode_bf16_probe = q.dtype() == bfloat16;
+  const bool decode_route_ready =
+      decode_bf16_probe ? decode_bf16_ready : decode_subgroup_ready;
   if ((decode_env == nullptr || std::strcmp(decode_env, "0") != 0) &&
-      decode_subgroup_ready && inputs.size() == 3 && !has_sinks_ &&
+      decode_route_ready && inputs.size() == 3 && !has_sinks_ &&
       !output_logsumexp_ && batch == 1 && q_len == 1 &&
       (q.dtype() == float16 || q.dtype() == bfloat16) &&
       head_dim == 64 && v_dim == 64 && k_len > 0 &&
-      (q.dtype() != bfloat16 ||
-          k_len <= uint32_t{2048}) &&
+      (q.dtype() != bfloat16 || k_len <= uint32_t{2048}) &&
       q.strides()[3] == 1 && k.strides()[3] == 1 && v.strides()[3] == 1) {
-    const bool decode_bf16 = q.dtype() == bfloat16;
+    const bool decode_bf16 = decode_bf16_probe;
     out.set_data(allocate_omarchy(out.nbytes()));
     omarchy::ComputeParams params;
     params.count = checked_u32(out.size(), tag, out);
