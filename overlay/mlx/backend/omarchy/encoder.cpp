@@ -403,22 +403,23 @@ VkDescriptorSet CommandEncoder::acquire_descriptor_set(
 VkDescriptorSet CommandEncoder::acquire_replay_descriptor_set(
     ComputeRuntime& compute) {
   auto& dt = vk::device_table();
-  if (replay_desc_pool_ == VK_NULL_HANDLE) {
+  if (replay_desc_pool_ == VK_NULL_HANDLE || replay_desc_remaining_ == 0) {
+    // Chain a fresh pool when the current one runs dry; retired pools stay
+    // alive for the encoder's lifetime so cached sets keep their pools.
+    if (replay_desc_pool_ != VK_NULL_HANDLE) {
+      replay_desc_pools_.push_back(replay_desc_pool_);
+    }
     VkDescriptorPoolSize pool_size{};
     pool_size.type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-    pool_size.descriptorCount = 8192 * compute.binding_limit();
+    pool_size.descriptorCount = kReplayPoolSets * compute.binding_limit();
     VkDescriptorPoolCreateInfo pool_info{
         VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO};
-    pool_info.maxSets = 8192;
+    pool_info.maxSets = kReplayPoolSets;
     pool_info.poolSizeCount = 1;
     pool_info.pPoolSizes = &pool_size;
     VKX_CHECK(dt.CreateDescriptorPool(
         device_.handle(), &pool_info, nullptr, &replay_desc_pool_));
-    replay_desc_remaining_ = 8192;
-  }
-  if (replay_desc_remaining_ == 0) {
-    throw std::runtime_error(
-        "[omarchy] replay prototype exhausted its descriptor pool");
+    replay_desc_remaining_ = kReplayPoolSets;
   }
   VkDescriptorSetLayout descriptor_layout = compute.descriptor_layout();
   VkDescriptorSetAllocateInfo allocate_info{
@@ -443,7 +444,8 @@ VkCommandBuffer CommandEncoder::acquire_replay_cmd() {
     VkCommandPoolCreateInfo pci{VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO};
     pci.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
     pci.queueFamilyIndex = device_.queue_family();
-    VKX_CHECK(dt.CreateCommandPool(device_.handle(), &pci, nullptr, &replay_pool_));
+    VKX_CHECK(dt.CreateCommandPool(
+        device_.handle(), &pci, nullptr, &replay_pool_));
   }
   if (replay_scratch_.empty()) {
     std::array<VkCommandBuffer, 64> buffers{};
@@ -459,11 +461,9 @@ VkCommandBuffer CommandEncoder::acquire_replay_cmd() {
   replay_scratch_.pop_back();
   return cmd;
 }
+
 // Copy/fill ops under replay: every op records fresh into its own
-// command buffer (rare in decode; no replayable metadata is tracked for
-// them). The pre/post barrier structure matches the ring path's
-// neighbors, so the dependency chain is the one the dispatches already
-// establish.
+// command buffer (rare in decode; no replayable metadata is kept).
 void CommandEncoder::replay_record_transfer(
     bool copy,
     VkBuffer a,
@@ -492,7 +492,93 @@ void CommandEncoder::replay_record_transfer(
   node_count_++;
 }
 
+namespace {
+
+inline bool variant_matches(
+    const CommandEncoder::ReplayVariant& v,
+    std::span<const ComputeBinding> bindings) {
+  if (bindings.size() == 0) {
+    return false;
+  }
+  for (uint32_t i = 0; i < bindings.size(); ++i) {
+    if (v.buffers[i] != bindings[i].buffer ||
+        v.offsets[i] != bindings[i].offset ||
+        v.ranges[i] != bindings[i].range) {
+      return false;
+    }
+  }
+  return true;
+}
+
+}  // namespace
+
+void CommandEncoder::record_dispatch_locked(
+    VkCommandBuffer cmd,
+    VkDescriptorSet descriptor_set,
+    VkPipeline pipeline,
+    VkPipelineLayout pipeline_layout,
+    const ComputeParams& params,
+    uint32_t group_count_x,
+    uint32_t group_count_y,
+    uint32_t group_count_z) {
+  auto& dt = vk::device_table();
+  VkMemoryBarrier before{VK_STRUCTURE_TYPE_MEMORY_BARRIER};
+  before.srcAccessMask =
+      VK_ACCESS_HOST_WRITE_BIT | VK_ACCESS_TRANSFER_WRITE_BIT |
+      VK_ACCESS_SHADER_WRITE_BIT;
+  before.dstAccessMask =
+      VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT;
+  dt.CmdPipelineBarrier(
+      cmd,
+      VK_PIPELINE_STAGE_HOST_BIT | VK_PIPELINE_STAGE_TRANSFER_BIT |
+          VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+      VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+      0,
+      1,
+      &before,
+      0,
+      nullptr,
+      0,
+      nullptr);
+  dt.CmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline);
+  dt.CmdBindDescriptorSets(
+      cmd,
+      VK_PIPELINE_BIND_POINT_COMPUTE,
+      pipeline_layout,
+      0,
+      1,
+      &descriptor_set,
+      0,
+      nullptr);
+  dt.CmdPushConstants(
+      cmd,
+      pipeline_layout,
+      VK_SHADER_STAGE_COMPUTE_BIT,
+      0,
+      sizeof(params),
+      &params);
+  dt.CmdDispatch(cmd, group_count_x, group_count_y, group_count_z);
+  VkMemoryBarrier after{VK_STRUCTURE_TYPE_MEMORY_BARRIER};
+  after.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
+  after.dstAccessMask =
+      VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_TRANSFER_READ_BIT |
+      VK_ACCESS_HOST_READ_BIT;
+  dt.CmdPipelineBarrier(
+      cmd,
+      VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+      VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_TRANSFER_BIT |
+          VK_PIPELINE_STAGE_HOST_BIT,
+      0,
+      1,
+      &after,
+      0,
+      nullptr,
+      0,
+      nullptr);
+}
+
 bool CommandEncoder::replay_dispatch(
+
     VkPipeline pipeline,
     ComputeKernel profile_kernel,
     std::span<const ComputeBinding> bindings,
@@ -513,56 +599,104 @@ bool CommandEncoder::replay_dispatch(
       replay_cursor_ < replay_entries_.size()
           ? &replay_entries_[replay_cursor_]
           : nullptr;
-  bool hit = entry != nullptr && entry->pipeline == pipeline &&
-      entry->binding_count == bindings.size() &&
+  bool stable = entry != nullptr && entry->pipeline == pipeline &&
       entry->gx == group_count_x && entry->gy == group_count_y &&
       entry->gz == group_count_z &&
       std::memcmp(&entry->params, &params, sizeof(ComputeParams)) == 0;
-  for (uint32_t i = 0; hit && i < bindings.size(); ++i) {
-    hit = entry->buffers[i] == bindings[i].buffer &&
-        entry->offsets[i] == bindings[i].offset &&
-        entry->ranges[i] == bindings[i].range;
-  }
-  if (hit) {
-    // Replay: resubmit the cached command buffer, pin the bound buffers
-    // for the incoming submission exactly like a fresh record would.
-    for (const auto& item : bindings) {
-      note_binding_owner(item.owner);
+  if (stable) {
+    // Pipeline, push constants and groups all repeat: look for a binding
+    // variant recorded earlier (async decode ping-pongs between two
+    // allocator address sets, so up to kReplayMaxVariants are kept).
+    for (auto& v : entry->variants) {
+      if (variant_matches(v, bindings)) {
+        for (const auto& item : bindings) {
+          note_binding_owner(item.owner);
+        }
+        replay_order_.push_back(v.cmd);
+        htrace::add(htrace::replay_hits, 1);
+        replay_cursor_++;
+        return true;
+      }
     }
-    replay_order_.push_back(entry->cmd);
-    htrace::add(htrace::replay_hits, 1);
-    replay_cursor_++;
-    return true;
+    if (entry->variants.size() < kReplayMaxVariants) {
+      // New address set for a stable dispatch: cache it as one more
+      // variant (fresh descriptor set + command buffer, recorded once).
+      ReplayVariant v;
+      v.descriptor_set = acquire_replay_descriptor_set(compute);
+      std::array<VkDescriptorBufferInfo, kComputeBindingBudget> info{};
+      std::array<VkWriteDescriptorSet, kComputeBindingBudget> writes{};
+      for (uint32_t i = 0; i < bindings.size(); ++i) {
+        info[i] = {bindings[i].buffer, bindings[i].offset, bindings[i].range};
+        writes[i].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        writes[i].dstSet = v.descriptor_set;
+        writes[i].dstBinding = i;
+        writes[i].descriptorCount = 1;
+        writes[i].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+        writes[i].pBufferInfo = &info[i];
+      }
+      dt.UpdateDescriptorSets(
+          device_.handle(),
+          static_cast<uint32_t>(bindings.size()),
+          writes.data(),
+          0,
+          nullptr);
+      trace::counters().vk_descriptor_update_writes += bindings.size();
+      v.cmd = acquire_replay_cmd();
+      VkCommandBufferBeginInfo bi{
+          VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
+      VKX_CHECK(dt.BeginCommandBuffer(v.cmd, &bi));
+      record_dispatch_locked(
+          v.cmd, v.descriptor_set, pipeline, compute.pipeline_layout(),
+          params,
+          std::min(group_count_x, kMaxComputeGroupCountX),
+          std::min(group_count_y, kMaxComputeGroupCountX),
+          std::min(group_count_z, kMaxComputeGroupCountX));
+      VKX_CHECK(dt.EndCommandBuffer(v.cmd));
+      for (uint32_t i = 0; i < bindings.size(); ++i) {
+        v.buffers[i] = bindings[i].buffer;
+        v.offsets[i] = bindings[i].offset;
+        v.ranges[i] = bindings[i].range;
+      }
+      entry->variants.push_back(v);
+      for (const auto& item : bindings) {
+        note_binding_owner(item.owner);
+      }
+      replay_order_.push_back(v.cmd);
+      htrace::add(htrace::replay_records, 1);
+      replay_cursor_++;
+      return true;
+    }
+    // Variant set full and none matches: fall through to fresh record
+    // with a throwaway set (rare; pool chaining absorbs the churn).
   }
 
-  // Record fresh into a per-dispatch replay command buffer.
-  VkCommandBuffer cmd = acquire_replay_cmd();
-  VkDescriptorSet descriptor_set = VK_NULL_HANDLE;
-  bool bindings_match = entry != nullptr;
-  for (uint32_t i = 0; bindings_match && entry && i < bindings.size(); ++i) {
-    bindings_match = entry->binding_count == bindings.size() &&
-        entry->buffers[i] == bindings[i].buffer &&
-        entry->offsets[i] == bindings[i].offset &&
-        entry->ranges[i] == bindings[i].range;
+  // Fresh record: params differ (rope/KV/attention progress) or the
+  // sequence position is new or structurally different.
+  ReplayVariant fresh;
+  bool reuse_set = false;
+  if (entry != nullptr && !entry->variants.empty()) {
+    // A params-changing dispatch keeps ONE variant; when the buffers are
+    // the same as its recorded set, only the push constants differ, so
+    // re-record into a new command buffer against the same set.
+    ReplayVariant& last = entry->variants.back();
+    reuse_set = entry->variants.size() == 1 &&
+        variant_matches(last, bindings);
+    if (reuse_set) {
+      fresh.descriptor_set = last.descriptor_set;
+    }
   }
-  if (entry != nullptr && bindings_match) {
-    // Same addresses as last batch: the cached set already holds the
-    // correct buffer+offset+range bindings.
-    descriptor_set = entry->descriptor_set;
-  } else {
-    descriptor_set = acquire_replay_descriptor_set(compute);
-    std::array<VkDescriptorBufferInfo, kComputeBindingBudget> buffer_info{};
+  if (!reuse_set) {
+    fresh.descriptor_set = acquire_replay_descriptor_set(compute);
+    std::array<VkDescriptorBufferInfo, kComputeBindingBudget> info{};
     std::array<VkWriteDescriptorSet, kComputeBindingBudget> writes{};
-    for (uint32_t index = 0; index < bindings.size(); ++index) {
-      buffer_info[index] = {bindings[index].buffer,
-                            bindings[index].offset,
-                            bindings[index].range};
-      writes[index].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-      writes[index].dstSet = descriptor_set;
-      writes[index].dstBinding = index;
-      writes[index].descriptorCount = 1;
-      writes[index].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-      writes[index].pBufferInfo = &buffer_info[index];
+    for (uint32_t i = 0; i < bindings.size(); ++i) {
+      info[i] = {bindings[i].buffer, bindings[i].offset, bindings[i].range};
+      writes[i].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+      writes[i].dstSet = fresh.descriptor_set;
+      writes[i].dstBinding = i;
+      writes[i].descriptorCount = 1;
+      writes[i].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+      writes[i].pBufferInfo = &info[i];
     }
     dt.UpdateDescriptorSets(
         device_.handle(),
@@ -572,93 +706,63 @@ bool CommandEncoder::replay_dispatch(
         nullptr);
     trace::counters().vk_descriptor_update_writes += bindings.size();
   }
-
+  fresh.cmd = acquire_replay_cmd();
   VkCommandBufferBeginInfo bi{VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
-  VKX_CHECK(dt.BeginCommandBuffer(cmd, &bi));
-  VkMemoryBarrier before{VK_STRUCTURE_TYPE_MEMORY_BARRIER};
-  before.srcAccessMask =
-      VK_ACCESS_HOST_WRITE_BIT | VK_ACCESS_TRANSFER_WRITE_BIT |
-      VK_ACCESS_SHADER_WRITE_BIT;
-  before.dstAccessMask =
-      VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT;
-  dt.CmdPipelineBarrier(
-      cmd,
-      VK_PIPELINE_STAGE_HOST_BIT | VK_PIPELINE_STAGE_TRANSFER_BIT |
-          VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
-      VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
-      0,
-      1,
-      &before,
-      0,
-      nullptr,
-      0,
-      nullptr);
-  VkPipelineLayout pipeline_layout = compute.pipeline_layout();
-  dt.CmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline);
-  dt.CmdBindDescriptorSets(
-      cmd,
-      VK_PIPELINE_BIND_POINT_COMPUTE,
-      pipeline_layout,
-      0,
-      1,
-      &descriptor_set,
-      0,
-      nullptr);
-  dt.CmdPushConstants(
-      cmd, pipeline_layout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(params), &params);
-  dt.CmdDispatch(
-      cmd,
+  VKX_CHECK(dt.BeginCommandBuffer(fresh.cmd, &bi));
+  record_dispatch_locked(
+      fresh.cmd, fresh.descriptor_set, pipeline, compute.pipeline_layout(),
+      params,
       std::min(group_count_x, kMaxComputeGroupCountX),
       std::min(group_count_y, kMaxComputeGroupCountX),
       std::min(group_count_z, kMaxComputeGroupCountX));
-  VkMemoryBarrier after{VK_STRUCTURE_TYPE_MEMORY_BARRIER};
-  after.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
-  after.dstAccessMask =
-      VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_TRANSFER_READ_BIT |
-      VK_ACCESS_HOST_READ_BIT;
-  dt.CmdPipelineBarrier(
-      cmd,
-      VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
-      VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_TRANSFER_BIT |
-          VK_PIPELINE_STAGE_HOST_BIT,
-      0,
-      1,
-      &after,
-      0,
-      nullptr,
-      0,
-      nullptr);
-  VKX_CHECK(dt.EndCommandBuffer(cmd));
+  VKX_CHECK(dt.EndCommandBuffer(fresh.cmd));
 
   if (entry == nullptr) {
     replay_entries_.emplace_back();
     entry = &replay_entries_.back();
+    entry->pipeline = pipeline;
+    entry->params = params;
+    entry->gx = group_count_x;
+    entry->gy = group_count_y;
+    entry->gz = group_count_z;
+  } else if (!stable) {
+    // Sequence moved on (params changed): drop stale variants, keep the
+    // freshly recorded one. The replaced command buffers reset after
+    // their drain; replaced sets are orphaned until teardown.
+    for (auto& v : entry->variants) {
+      if (v.cmd != VK_NULL_HANDLE && v.cmd != fresh.cmd) {
+        replay_retiring_.push_back(v.cmd);
+      }
+    }
+    entry->variants.clear();
+    entry->pipeline = pipeline;
+    entry->params = params;
+    entry->gx = group_count_x;
+    entry->gy = group_count_y;
+    entry->gz = group_count_z;
+  } else if (!reuse_set) {
+    // stable but variants full: keep variants, fresh is throwaway.
   }
-  if (entry->cmd != VK_NULL_HANDLE && entry->cmd != cmd) {
-    // Retire the replaced buffer: reset only after its execution drained.
-    replay_retiring_.push_back(entry->cmd);
+  if (stable || entry->variants.empty()) {
+    if (reuse_set) {
+      entry->variants.back().cmd = fresh.cmd;
+    } else if (entry->variants.size() < kReplayMaxVariants) {
+      for (uint32_t i = 0; i < bindings.size(); ++i) {
+        fresh.buffers[i] = bindings[i].buffer;
+        fresh.offsets[i] = bindings[i].offset;
+        fresh.ranges[i] = bindings[i].range;
+      }
+      entry->variants.push_back(fresh);
+    }
   }
-  entry->pipeline = pipeline;
-  entry->binding_count = static_cast<uint32_t>(bindings.size());
-  for (uint32_t i = 0; i < bindings.size(); ++i) {
-    entry->buffers[i] = bindings[i].buffer;
-    entry->offsets[i] = bindings[i].offset;
-    entry->ranges[i] = bindings[i].range;
-  }
-  entry->params = params;
-  entry->gx = group_count_x;
-  entry->gy = group_count_y;
-  entry->gz = group_count_z;
-  entry->descriptor_set = descriptor_set;
-  entry->cmd = cmd;
   for (const auto& item : bindings) {
     note_binding_owner(item.owner);
   }
+  replay_order_.push_back(fresh.cmd);
   htrace::add(htrace::replay_records, 1);
   replay_cursor_++;
   return true;
 }
-
 
 void CommandEncoder::dispatch_compute(
     ComputeKernel kernel,
