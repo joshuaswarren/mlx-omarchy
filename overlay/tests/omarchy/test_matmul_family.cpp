@@ -4014,3 +4014,93 @@ TEST_CASE("qmm coopmat output is bit-identical across x offset alignment") {
             << " aligned_diff=" << aligned_diff
             << " odd_diff=" << odd_diff << " bound=" << bound << "\n";
 }
+
+// ---------------------------------------------------------------------------
+// The bf16 coopmat alpha == 1 bit-identity pin (2026-09-11 bf16-alpha-fix).
+//
+// The fix made MatmulBF16Coopmat scale its f32 accumulator by alpha at the
+// drain. At alpha == 1 that multiply is exact, so every alpha == 1 dispatch
+// (the projection and residual matmuls that always rode this kernel) must
+// stay bit-identical to the pre-fix kernel, which ignored alpha entirely.
+// The digests below are FNV-1a-64 over the raw bf16 output bits of seeded
+// workloads, captured in the bf16-alpha-fix D2 window on the fork driver
+// (M1-class, subgroup 32), where the pre-fix kernel (fix's relaxed gate,
+// pre-fix shader) and the fixed kernel produced byte-identical dumps for
+// every alpha == 1 leg. A one-bit move in an alpha == 1 output changes the
+// digest and fails the test - bit-identity, not a tolerance. Re-pin only
+// with a named, reviewed mechanism change; never widen to a tolerance.
+
+namespace {
+
+uint64_t alpha1_fnv1a64(const void* data, size_t bytes) {
+  const uint8_t* p = (const uint8_t*)data;
+  uint64_t h = 0xcbf29ce484222325ull;
+  for (size_t i = 0; i < bytes; ++i) {
+    h ^= p[i];
+    h *= 0x100000001b3ull;
+  }
+  return h;
+}
+
+// The D2 instrument's exact input generator (the receipt probe's
+// convention); the pinned digests are only meaningful against these bytes.
+std::vector<float> alpha1_pattern(size_t count, uint32_t seed) {
+  std::vector<float> data(count);
+  uint32_t state = seed;
+  for (size_t i = 0; i < count; ++i) {
+    state = state * 1664525u + 1013904223u;
+    data[i] = ((state >> 8) & 0xFFFF) / 16384.0f - 2.0f;
+  }
+  return data;
+}
+
+}  // namespace
+
+TEST_CASE("MatmulBF16Coopmat alpha==1 stays bit-identical to the pre-fix drain") {
+  if (!compute_available()) {
+    return;
+  }
+  const auto& caps = omarchy::device(0).capabilities();
+  const bool coopmat_device =
+      caps.cooperative_matrix_f32_8 && caps.subgroup_size == 32;
+  if (!coopmat_device || std::getenv("MLX_OMARCHY_NO_COOPMAT") != nullptr) {
+    skip(
+        "alpha==1 bit pin exercises MatmulBF16Coopmat (subgroup 32 +"
+        " cooperative_matrix_f32_8); other devices run the untouched"
+        " non-coopmat kernel.");
+    return;
+  }
+  Stream stream = gpu_stream();
+  struct Pin {
+    int m, k, n;
+    uint64_t digest;
+  };
+  const Pin pins[] = {
+      {32, 16, 32, 0xb2f727a0b237bd3cull},
+      {64, 32, 64, 0x0810652b84898613ull},
+      {96, 64, 96, 0xa0fe9153f643412full},
+      {128, 8, 64, 0x72c6181aaaa64c3full},
+  };
+  for (const auto& pin : pins) {
+    auto a_data = alpha1_pattern((size_t)pin.m * pin.k, 700 + pin.m);
+    auto b_data =
+        alpha1_pattern((size_t)pin.k * pin.n, 700 + pin.m + 101);
+    array a = astype(
+        array(a_data.begin(), Shape{pin.m, pin.k}, float32), bfloat16,
+        stream);
+    array b = astype(
+        array(b_data.begin(), Shape{pin.k, pin.n}, float32), bfloat16,
+        stream);
+    auto out = matmul(a, b, stream);
+    out.eval();
+    synchronize(stream);
+    const uint16_t* bits = out.data<uint16_t>();
+    uint64_t digest = alpha1_fnv1a64(bits, out.size() * 2);
+    if (digest != pin.digest) {
+      std::cout << "  [alpha1-pin] mat " << pin.m << "x" << pin.k << "x"
+                << pin.n << " got=0x" << std::hex << digest << " want=0x"
+                << pin.digest << std::dec << "\n";
+    }
+    CHECK_EQ(digest, pin.digest);
+  }
+}
