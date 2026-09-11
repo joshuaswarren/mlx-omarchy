@@ -1,0 +1,4 @@
+{"part": "stream", "leg": "long", "gate": "f32comp", "positions": 147}
+{"part": "stream", "leg": "long", "gate": "bf16fast", "positions": 147}
+{"part": "stream", "leg": "ctx1024", "gate": "f32comp", "positions": 1053}
+{"part": "stream", "leg": "ctx1024", "gate": "bf16fast", "positions": 1053}

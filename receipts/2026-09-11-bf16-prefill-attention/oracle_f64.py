@@ -70,7 +70,7 @@ def f64_attention_truth(q_f, k_f, v_f, scale):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--out", required=True)
+    ap.add_argument("--seed", type=int, default=20260911)
     args = ap.parse_args()
 
     os.environ.pop("MLX_OMARCHY_SDPA_BF16_FAST", None)
