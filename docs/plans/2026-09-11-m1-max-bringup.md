@@ -27,7 +27,7 @@ Everything here is documentation and planning. The base M1 (`jwm1-linux`,
 | SoC | t8103, `apple,j293`, AGX "G13" generation | t6001-class M1 Max, AGX "G14" generation |
 | GPU cores | 8 | 32 |
 | CPU | 4P+4E | 8P+2E (10 cores) |
-| DRAM part | 68.25 GB/s class (measured roof 58.5 GB/s, `receipts/2026-09-11-q4-memory-roof`) | ~400 GB/s public spec — verify with the copy-roof probe, never assume |
+| DRAM part | 68.25 GB/s class (measured roof 58.5 GB/s, `receipts/2026-09-11-q4-memory-roof`) | measured GPU blit roof 306.26 GB/s median, 64 GB LPDDR5 (`receipts/2026-09-11-m1max-macos-capture`) |
 | System level cache | 8 MB | 48 MB public spec — verify |
 | OS today | Omarchy/Linux (Asahi) | macOS |
 | Driver | `mesa-honeykrisp-omarchy 26.3.0.devel.hk6f6afc8-1` | none yet — the question of section 5 |
@@ -79,14 +79,27 @@ macOS side (do these before touching the installer):
   timestamp. The installer resizes the APFS container; that is the one
   destructive step in this plan, so its precondition is a backup that is
   known-good, not presumed-good.
-- Record the macOS build (`sw_vers`), disk layout, and APFS container sizes
-  (`diskutil apfs list`) so the resize is auditable afterwards.
-- AC power attached; at least ~128 GB free for the Linux side; admin
-  password known.
-- Optional but cheap and worth it: capture the native macOS MLX baseline
-  legs on **this die** now (`receipts/native-baseline-2026-09-06` pattern).
-  The macOS side of this exact machine is the native oracle for the
-  digest-policy rule-1 legs later — no other machine can produce them.
+- Disk layout and container sizes are now captured, not pending:
+  [`receipts/2026-09-11-m1max-macos-capture`](../../receipts/2026-09-11-m1max-macos-capture/README.md)
+  holds the pre-repartition partition table, container GUID, boot setting and
+  snapshot list to compare against afterwards.
+- **Free space is the blocker, measured 2026-09-11.** The 4 TB container is
+  98.6% in use with 57.3 GB not allocated and 53 GiB available, FileVault is
+  on for both the System and Data volumes, and 25 hourly Time Machine local
+  snapshots hold purgeable space that `df` and the installer count
+  differently. Asahi needs room for the Linux side plus its own staging, so
+  the install cannot start from this state: free space first, verify the
+  container's not-allocated figure moved, and only then run the installer.
+  The resize runs against an encrypted, nearly-full container, which is the
+  worst case for it - the backup precondition above is doing real work here,
+  not ceremony.
+- The native macOS baseline on this die is already banked, twice:
+  [`receipts/2026-09-10-native-macos-metal-baseline`](../../receipts/2026-09-10-native-macos-metal-baseline/README.md)
+  and
+  [`receipts/2026-09-11-m1max-native-baseline`](../../receipts/2026-09-11-m1max-native-baseline/README.md),
+  with all six canonical digests reproducing across both sessions. That is the
+  rule-1 oracle and the same-die denominator; no other machine can produce it,
+  and it no longer needs doing before the install.
 - Settle with the owner what this machine currently hosts and how that is
   covered while it is booted into Omarchy. That coordination is outside this
   repository and is not described here.
