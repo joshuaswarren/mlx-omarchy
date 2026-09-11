@@ -224,10 +224,11 @@ void main() {
                 mat_a[2];
             coopmat<float, gl_ScopeSubgroup, MAT, MAT, gl_MatrixUseB>
                 mat_b[4];
-            uint k_off = chunk * CHUNK_K + step * 16u + ks * 8u;
-            uint kk = QMM_COOP_BENCH_PATH >= 3
-                ? (step * 16u + ks * 8u)
-                : k_off;
+            // Shared holds one chunk; the k offset inside it is
+            // chunk-local. The staged values advance with `chunk`,
+            // so the per-output MMA sequence stays the shipped
+            // ascending 8-wide walk over k.
+            uint kk = step * 16u + ks * 8u;
             for (uint rb = 0u; rb < 2u; ++rb) {
               coopMatLoad(
                   mat_a[rb],

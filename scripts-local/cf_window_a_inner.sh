@@ -51,7 +51,7 @@ cp dist/mlx_omarchy-*.whl "$OUT/"
 VENV=$HOME/venv-qmmcoop
 rm -rf "$VENV"
 python3 -m venv "$VENV"
-"$VENV/bin/pip" install -q --no-cache-dir "$OUT"/mlx_omarchy-*.whl
+"$VENV/bin/pip" install -q --no-cache-dir numpy
 "$VENV/bin/pip" install -q --no-cache-dir --no-deps mlx-lm==0.31.3
 WHEEL=$(ls "$OUT"/mlx_omarchy-*.whl)
 MEMBER=$(unzip -p "$WHEEL" mlx/lib/libmlx.so | sha256sum | cut -d' ' -f1)
