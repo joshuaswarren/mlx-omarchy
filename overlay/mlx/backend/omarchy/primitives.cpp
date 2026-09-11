@@ -10325,27 +10325,26 @@ void ScaledDotProductAttention::eval_gpu(
   // runs this pattern. Deletes the three q/k/v upcasts, the scale
   // broadcast and multiply, and the output downcast per call.
   //
-  // bfloat16 rides the same shape by default (MLX_OMARCHY_SDPA_BF16_FAST=0
-  // opts out to the f32 composition): MatmulBF16, SoftmaxBF16, and
-  // ElementwiseBF16 are the proven uint16_t-typed USE_BF16 legs the
-  // projections, the residual adds, and the norm already run - float
-  // accumulation inside the shader, bf16 storage with round-to-nearest-even
-  // stores on both drivers. Scores store bf16 (2^-8 relative rounding per
-  // stored score), and the output stays bf16 end to end. This deletes the
-  // three q/k/v upcasts, the f32 scale multiply, the f32 softmax, and the
-  // output downcast per call, and the scores matmul now runs bf16 operands
-  // through MatmulBF16Coopmat (which scales the f32 accumulator by alpha)
-  // instead of f32 operands at the same shape. The 2026-09-04 rejection of
-  // this path was a bit-identity gate decision, superseded by
-  // docs/parity-id-policy.md; the storage-precision move is justified
-  // against the float64 oracle in
-  // receipts/2026-09-11-bf16-prefill-attention. The causal mask is not
-  // materialized on either storage dtype (see the scores matmul below).
-  bool bf16_fast = true;
+  // bfloat16 rides the same shape under MLX_OMARCHY_SDPA_BF16_FAST
+  // (default off; any value other than "0" enables): MatmulBF16,
+  // SoftmaxBF16, and ElementwiseBF16 are the proven uint16_t-typed
+  // USE_BF16 legs the projections, the residual adds, and the norm
+  // already run - float accumulation inside the shader, bf16 storage
+  // with round-to-nearest-even stores on both drivers. Scores store
+  // bf16 (2^-8 relative rounding per stored score), and the output
+  // stays bf16 end to end. The scores matmul runs bf16 operands through
+  // MatmulBF16Coopmat (which scales the f32 accumulator by alpha).
+  // The default flip was measured and rejected: it moved the BF16 1K
+  // digest off native and put third values on the 262 leg on both
+  // drivers - docs/parity-id-policy.md violations the oracle was never
+  // able to outweigh. See receipts/2026-09-11-bf16-prefill-attention
+  // (the negative verdict). The causal mask is not materialized on
+  // either storage dtype (see the scores matmul below).
+  bool bf16_fast = false;
   if (q.dtype() == bfloat16) {
     if (const char* env = std::getenv("MLX_OMARCHY_SDPA_BF16_FAST");
-        env != nullptr && std::strcmp(env, "0") == 0) {
-      bf16_fast = false;
+        env != nullptr && std::strcmp(env, "0") != 0) {
+      bf16_fast = true;
     }
   }
 

@@ -1107,9 +1107,9 @@ TEST_CASE("scaled_dot_product_attention broadcasts additive masks through GQA") 
   };
   check(float32, 1e-5, "sdpa additive mask broadcast gqa f32");
   check(float16, 2e-2, "sdpa additive mask broadcast gqa f16");
-  check(bfloat16, 5e-2, "sdpa additive mask broadcast gqa bf16 fast default");
-  setenv("MLX_OMARCHY_SDPA_BF16_FAST", "0", 1);
-  check(bfloat16, 5e-2, "sdpa additive mask broadcast gqa bf16 wide opt-out");
+  check(bfloat16, 5e-2, "sdpa additive mask broadcast gqa bf16 wide");
+  setenv("MLX_OMARCHY_SDPA_BF16_FAST", "1", 1);
+  check(bfloat16, 5e-2, "sdpa additive mask broadcast gqa bf16 fast");
 }
 
 TEST_CASE("scaled_dot_product_attention bf16 fast scores scale through MatmulBF16Coopmat") {

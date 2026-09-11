@@ -1,95 +1,207 @@
-# BF16 prefill attention — component attribution and f32-composition re-qualification (2026-09-11)
+# BF16 prefill attention — window 2 complete, default flip REVERTED (2026-09-11)
 
-Agent: `Bf16PrefillAttention`. Branch: `bf16-prefill-attn` (a5b8c4ab + staged
-candidate). **Status: attribution + digest A/B complete; decision data in;
-paired matrix and oracle rerun queued behind the shared GPU (window 2).**
+Agent: `Bf16AlphaFixAndVerdict` (window 2 execution + verdict); interim
+attribution/digest A/B by `Bf16PrefillAttention` (window 1, retained
+below). Branch: `bf16-prefill-attn`.
 
-## Interim verdict (pending window-2 confirmation)
+## Decision
 
-The unconditional default-flip of `MLX_OMARCHY_SDPA_BF16_FAST` is **not
-landable under the current parity contract**, despite a real prefill gain:
+The default flip of `MLX_OMARCHY_SDPA_BF16_FAST` is **reverted** on this
+branch (keep the alpha coopmat fix + its regression test; the same fix
+lands independently on `bf16-prefill-attn`'s sibling branch
+`bf16-alpha-fix`, commit `c6c44674`, cut from origin/main `ee8d26fb`).
+The flip fails on four independent counts:
+
+1. **Rule 2 (native-matching legs) breached.** BF16 1K context matched
+   native `ff502900d2a179a5`; under the flip it produces
+   `5fd2fe812bf2a4ce` (fork) and `0b81e255dc4f68d5` (stock), 3/3 reps
+   consistent on each. Rule 2 holds at full strength for this leg.
+2. **Rule 1 breached.** BF16 262 moves to third values -
+   `9bb3388dbce0b4c8` (fork), `f2accdd262f9707d` (stock) - neither the
+   pinned Linux values nor native. Rule 1 allows a diverged leg to move
+   to native's digest only.
+3. **Re-pinned stock values moved without an owner amendment.** The
+   2026-09-10 amendment pins BF16 short/long per driver. The flip moves
+   stock short `7fc0f968789b1882` -> `f26175202f3dabe9` and stock long
+   `46108ad71157cb4d` -> `f2accdd262f9707d`. (Fork short is unchanged
+   at `f26175202f3dabe9`.)
+4. **The oracle never favoured the candidate - and could not yet.**
+   Status below; per the decision rule the burden is on the flip.
+
+Measured gains exist and are real (see the matrix); they are banked in
+this receipt only.
+
+## Paired prefill matrix (window 2, warmup + 3 reps x {fork, stock} x {base, cand})
+
+Prefill tok/s, 3-rep medians, `bench_matrix` canonical legs, both
+wheels' provenance verified in-run, fork driver =
+mesa-honeykrisp-omarchy 26.3.0.devel.hk6f6afc8-1 (pinned in-window):
+
+| leg | base (fork) | cand (fork) | Δ | base (stock) | cand (stock) | Δ |
+|---|---|---|---|---|---|---|
+| BF16 30/32 | 131.6 | 135.7 | +3.2% | 132.7 | 136.4 | +2.7% |
+| BF16 262/128 | 447.1 | 467.9 | +4.6% | 228.4 | 234.6 | +2.7% |
+| BF16 1053/32 | 455.5 | 556.3 | **+22.1%** | 224.0 | 238.6 | +6.5% |
+
+Q4 legs are gate-invariant (f16 sdpa; the flag never engages) and all
+their digests held on every cell. Base-wheel digests: **all six
+canonical Q4 + all BF16 pins held on both drivers, 3/3 reps**
+(`q4_base_held`, `bf16_pins_held_base` in `verdict.json`). The base
+wheel is a fresh build from a5b8c4ab
+(`mlx_omarchy-0.32.2.dev202609111647+a5b8c4a`, sha256 `0a588e63...`,
+provenance `match`); the original `dist/` wheel was wiped by the cand
+build (`scripts/build-wheel.sh` does `rm -rf dist`), and window 1's
+gate A/B ran on the earlier build of the same commit - its digests
+match, which is itself cross-build digest stability evidence.
+
+Full cell data: `verdict.json` (`paired_prefill`,
+`digest_gates`), `matrix/r{1,2,3}-{fork,stock}-{base,cand}/`.
+
+## Exact digests the flip would have produced (receipt-only record)
+
+| leg | driver | today (pin) | under flip | native | verdict |
+|---|---|---|---|---|---|
+| BF16 30/32 | fork | `f26175202f3dabe9` | `f26175202f3dabe9` | - | unchanged |
+| BF16 30/32 | stock | `7fc0f968789b1882` | `f26175202f3dabe9` | - | re-pinned value moved |
+| BF16 262/128 | fork | `8690dc83246b39f8` | `9bb3388dbce0b4c8` | `407b7624ed1b3b29` | third value |
+| BF16 262/128 | stock | `46108ad71157cb4d` | `f2accdd262f9707d` | `407b7624ed1b3b29` | third value |
+| BF16 1053/32 | fork | `ff502900d2a179a5` | `5fd2fe812bf2a4ce` | `ff502900d2a179a5` | **leaves native** |
+| BF16 1053/32 | stock | `ff502900d2a179a5` | `0b81e255dc4f68d5` | `ff502900d2a179a5` | **leaves native** |
+
+## Oracle status (honest)
+
+The oracle is the only instrument that could have rescued a rule-2
+leg, and it never produced its decision numbers. Three separate defects
+found and fixed while executing it:
+
+1. `--seed`/`--out` argparse bugs (window 1's rc=1; fixed pre-window-2).
+2. `model.config` -> `model.args` (mlx_lm 0.31.3; commit `47294881`).
+3. `sdpa64` passed 2-D head slices into a 3-D einsum helper
+   (`863a6869` + `1dd7031d`).
+
+Window 2b (rerun on both wheels, `m1-logs/oracle-{base,cand}.{ndjson,log}`):
+parts 1 (token streams both compositions) and 3-GPU (synthetic attention
+outputs both gates, inputs saved to `attn-inputs-m{262,1053}.npy`)
+complete; part 2 (numpy f64 truth) then produced a **systematically
+broken truth stream** - `stream_match` 0/147 positions for BOTH
+compositions (`both_wrong: 147`), which indicts the numpy forward
+(RoPE/lm_head convention class of bug), not the GPU sides. Part 3-CPU
+(the per-route attention ULP comparison against f64 truth - the actual
+"equal or closer to truth" measurement on the affected operations) has
+therefore never completed. The candidate-wheel run
+(`--default-is-fast`, so its f32comp rows really are the f32
+composition) is scripted and ready; the truth-forward fix is the one
+remaining blocker. Until that lands, the oracle cannot favour the flip,
+and the digest violations above disqualify it regardless.
+
+## Component attribution (window 2, fixed probe, 9 reps, medians)
+
+Wall-clock, `attribution_components.py` (probe scalar-multiply fix from
+window 1's partial run), base and cand wheels, `--default-is-fast` on
+the cand side so "gate off" is genuinely the f32 composition there:
+
+| component | base wheel | cand wheel |
+|---|---|---|
+| whole 30/32 off | 198054 us (151.5 tok/s) | 198834 us (150.9) |
+| whole 262/128 off | 378036 us (388.9) | 380287 us (386.6) |
+| whole 1053/32 off | 2750714 us (382.8) | 2752585 us (382.5) |
+| whole 262/128 on | 367667 us (399.8) | 366613 us (401.0) |
+| whole 1053/32 on | 2534199 us (415.5) | 2534520 us (415.5) |
+| sdpa m262 off/on | 3016 / 2843 us | 2460 / 1760 us |
+| sdpa m1053 off/on | 18927 / 24620 us | 18971 / 24660 us |
+| lm_head m=262 | 123871 us, 0.576 TFLOP/s | 124046 us, 0.575 |
+| lm_head m=1053 | 458658 us, 0.625 TFLOP/s | 457072 us, 0.627 |
+
+Notes: (a) whole-prefill off-rows agree between wheels within 0.1% -
+the alpha fix leaves the f32 composition untouched, as designed.
+(b) `lm_head` (286 GFLOP at m=1053) is measured for the first time: at
+0.58-0.63 TFLOP/s it is ~33% of the 262 leg and ~17% of the 1K leg -
+larger than the entire attention block and the single biggest
+unexplored prefill lever (it rides MatmulBF16Coopmat at alpha==1).
+(c) the synthetic `sdpa_whole` m=1053 "on" regression (18.9 -> 24.6 ms)
+does not reproduce in the whole-model path (whole 1053 on improves
++8.5%); probe shapes (dense 14 heads, no GQA regroup, no cache) diverge
+from the model path and the probe number is recorded, not trusted.
+
+## Abort-gate finding: 8 f16 sdpa throws on the M1 (pre-existing)
+
+The cand tree's `omarchy_fast_ops_tests` on the M1 throws in 8 sdpa
+cases (`m1-logs/attn-fork-fastops-cand.log`):
+`[omarchy] ScaledDotProductAttention dtype is not implemented
+(dtype=float16, rank-5 mask/GQA shapes)`. The same suite passes 34/34
+on llvmpipe. The f16 path is byte-identical across main, the alpha fix,
+and this candidate (the env flip only reaches bf16), and the suite has
+never been in the M1 battery (prior receipts ran fam + runtime only) -
+so this is a pre-existing main defect surfaced by extending coverage,
+not a regression of either strand. The alpha-tree control run is
+queued in the S1 window (`/tmp/fast-alpha` full-suite log) to prove it
+empirically. Owner decision required; open, not fixed here.
+
+(The window script's phase-A gate missed this on first pass: it grepped
+`FAILED`, and doctest prints `FAILURE!`. The gate now also fails on
+rc!=0 - fixed in this receipt's `m1_window2.sh` for future windows.)
+
+## What a rule-2 amendment would have to claim
+
+If the owner wants to revisit the flip, an amendment in the
+2026-09-10 style would have to claim, with evidence:
+
+1. That the BF16 1K leg's native match carries no parity content, i.e.
+   macOS native and this fork agree on `ff502900d2a179a5` by
+   coincidence of rounding, not by shared arithmetic - and that the
+   f64 oracle (once its truth-forward is fixed) shows the bf16
+   score-storage bits equal or closer to truth than the f32
+   composition on m=262 and m=1053 (attn_ulp rows).
+2. That the 262-leg third values are acceptable as NEW per-driver
+   pins (this is a stronger claim than the 09-10 amendment, which
+   only moved already-diverged legs to f64-nearest arithmetic).
+3. That the stock-driver digest moves (short + long + 1K) are
+   re-pinned deliberately.
+4. Why the +22.1%/+6.5% 1K and +2.7..4.6% short/long prefill gains
+   justify four pin movements when the un-flipped
+   bit-preserving-restructure path (bf16 loads, exact in-shader
+   upcast, alpha at A-stage, f32 score/prob storage; bounded ~2-3% of
+   the leg by the committed-receipt arithmetic) and the newly-measured
+   lm_head lever (~17-33% of leg at 0.6 TFLOP/s) remain unexplored.
+
+## Provenance
+
+- cand wheel: `mlx_omarchy-0.32.2.dev202609111606+b1f9ba6` (overlay =
+  6fa75adf code), sha256 `6c1a2f5c...`, `.venv-attn-cand`, provenance
+  `match`.
+- base wheel: `mlx_omarchy-0.32.2.dev202609111647+a5b8c4a`, sha256
+  `0a588e63...`, `.venv-attn-base`, provenance `match`.
+- suite binaries `/tmp/{fam,fast,rt}-attn`: rebuilt post-brace-fix,
+  sha256 in `m1-logs/suite-binaries-attn.sha256`.
+- Driver pin checked in-window on every lock acquisition (window2.log,
+  window2b.log headers).
+- GPU windows: window 2 11:58-12:23, window 2b (oracle) 12:29+; single
+  top-level `/tmp/m1-gpu.lock` flock, 7200s wait cap, no nesting, no
+  foreign processes touched.
+
+## Remaining work
+
+1. Fix the oracle's numpy f64 truth forward (RoPE convention /
+   tie-embeddings are the suspects); rerun both wheels; fill the
+   attn_ulp decision table (`make_verdict.py` already renders it).
+2. Execute the S1 window for `bf16-alpha-fix`
+   (`/tmp/m1_prep_s1.sh` then `/tmp/m1_window_s1.sh` on jwm1): alpha
+   suites on the M1, trap fail-proof, f64 probe, and the fix wheel's
+   digest gates (all 12 canonical cells must hold).
+3. The 8 f16 sdpa throws - root-cause and fix or file for the owner.
+
+---
+
+# Appendix: window 1 interim receipt (Bf16PrefillAttention, unchanged)
+
+The interim verdict text from before window 2 is retained in git
+history (commit `6ed02096`); its attribution-probe rows crashed on the
+scalar-multiply bug and its digest A/B single runs are superseded by
+the 3-rep paired matrix above. The gate A/B table it reported:
 
 | leg (fork, single run, base wheel) | gate off | gate on | Δ prefill | digest |
 |---|---|---|---|---|
-| Q4 short / long / 1K | pins hold | pins hold | ~0 | unchanged (4-bit models run f16 sdpa; gate never engages) |
+| Q4 short / long / 1K | pins hold | pins hold | ~0 | unchanged |
 | BF16 short (30/32) | `f26175202f3dabe9`, 132.2 tok/s | same digest | +3.2% | unchanged |
-| BF16 long (262/128) | `8690dc83246b39f8`, 448.6 | `9bb3388dbce0b4c8` | +4.7% | **third value** (neither Linux nor native `407b7624ed1b3b29`) |
-| BF16 1K (1053/32) | `ff502900d2a179a5`, 449.2 | `5fd2fe812bf2a4ce` | +11.9% | **leaves native** (rule-2 leg) |
-
-- BF16 1K is native-matching today; `docs/parity-id-policy.md` rule 2 holds
-  at full strength for it. The 2026-09-10 amendment precedent covers only
-  legs already diverged from native.
-- BF16 262 moved to a third value; rule 1's carve-out allows only a move to
-  native's digest. The f64 oracle (rerun queued) is expected to show the
-  bf16-score-storage path farther from truth than the f32 composition,
-  which would also fail the amendment's "equal or closer" standard.
-
-## Component attribution, 1053-token leg (base wheel, gate off, fork driver)
-
-From `m1-logs/attribution-base.ndjson` (wall-clock medians; probe crashed
-after 9 rows on a scalar-multiply bug — fixed, rerun queued in window 2):
-
-- whole prefill: 2,760,173 µs (381.5 tok/s under probe conditions;
-  bench_matrix measured 449.2 tok/s on the same wheel/driver)
-- whole prefill gate-on: 2,532,682 µs (415.8 tok/s) = **+9.0%** from the
-  attention composition alone
-- `sdpa_whole` at m=262 shapes: 2,528.8 → 2,279.0 µs (gate on) = 1.11x
-
-Probe-condition numbers are internally consistent (same conditions both
-gates) but run ~15% below bench_matrix conditions; use the matrix numbers
-for fractions-of-native and the probe for component shares.
-
-Committed-receipt arithmetic for the same leg (52.8 ms/layer projection
-chain, receipts/2026-09-11-bf16-prefill) puts projections+MLP at ~54% of
-the leg and attention f32 compute+traffic at ~15-20%; the gate-on delta
-(+11.9% at 1053 on the matrix run) is consistent with attention being the
-second dominator behind the GEMM rate. `lm_head` (286 GFLOP at m=1053,
-never previously measured) is quantified by the window-2 rerun.
-
-## Staged source changes (branch `bf16-prefill-attn`, commit 6fa75adf)
-
-1. `shaders/matmul_coopmat_bf16.comp`: alpha applied to the f32
-   accumulator at the drain (same point as the 16x16 tile; alpha==1
-   multiplies exactly, so existing projection traffic stays bit-identical).
-   Before this fix the kernel declared alpha and never used it, while the
-   dispatch gate did not check alpha — a silent wrong-arithmetic trap for
-   any alpha!=1 bf16 coopmat dispatch.
-2. `primitives.cpp` `dispatch_matmul`: coopmat alpha==1 gate relaxed for
-   `MatmulBF16` only (`matmul_coopmat.comp` still never reads alpha).
-3. `primitives.cpp` sdpa: `MLX_OMARCHY_SDPA_BF16_FAST` default flipped to
-   on (env `=0` opts out) — **staged, not landed** (see verdict).
-4. `overlay/tests/omarchy/test_fast_ops.cpp`: new regression
-   "sdpa bf16 fast scores scale through MatmulBF16Coopmat" (coopmat-gated
-   shape, alpha=0.25; a missing scale fails by orders of magnitude); GQA
-   mask test relabeled for the new default (fast default + `=0` opt-out).
-5. Docs: `docs/compatibility.md` (bf16 coopmat alpha semantics + sdpa
-   default), `docs/install-omarchy.md` (flag status).
-
-## Remaining (window 2, scripts in this directory)
-
-1. `m1_build_cand.sh` — RUNNING on jwm1 (taskset 0-1, niced, per peer
-   agreement): cand wheel + `.venv-attn-cand` + suite binaries
-   (fam/fast_ops/runtime).
-2. `m1_window2.sh` (flock, capped): suite abort gates, paired matrix
-   warmup + 3 reps x {fork,stock} x {base,cand}, base attribution rerun
-   (probe fixed), oracle rerun (`--seed` fix), cand attribution.
-3. `make_verdict.py` assembles `verdict.json`; decision rules:
-   - If the oracle shows bf16-fast closer to f64 truth on 262 AND the 1K
-     move gets owner-level rule-2 treatment: reconsider default flip.
-   - Otherwise: revert the default-flip commit, keep the shader alpha fix
-     + regression test (correctness fix, zero bit change for alpha==1
-     traffic), land the receipt-only negative with the attribution table.
-   - Bit-preserving restructure (bf16 loads, exact in-shader upcast,
-     alpha at A-stage, f32 score/prob storage) is measured-bounded at
-     ~2-3% of the leg and is documented as a follow-up, not built.
-
-## Files
-
-- `attribution_components.py` — component-isolated wall-clock probe
-- `oracle_f64.py` — f64 oracle: token streams, numpy-f64 full-model truth,
-  attention-block ULP study
-- `m1_window1.sh` / `m1_window2.sh` / `m1_build_cand.sh` — window runners
-- `m1-logs/` — attribution NDJSON (partial, pre-fix), oracle NDJSON
-  (part 1), build logs
-- `matrix/attn-gate-{off,on}-fork/` — digest A/B single runs
-- `make_verdict.py` — verdict assembly
+| BF16 long (262/128) | `8690dc83246b39f8`, 448.6 | `9bb3388dbce0b4c8` | +4.7% | third value |
+| BF16 1K (1053/32) | `ff502900d2a179a5`, 449.2 | `5fd2fe812bf2a4ce` | +11.9% | leaves native |
