@@ -7,6 +7,19 @@
 // streams and final SIMD reduction. At native's long-context crossover it
 // reproduces the 64/128-block two-pass algorithm, including f16 partial
 // storage, inside the same workgroup and dispatch.
+//
+// The arithmetic per key is frozen: the per-key fma chain, the per-subgroup
+// online-softmax update order, and the subgroup-to-key mapping are exactly
+// the legacy order in every regime (the Q4 Q4 short and 1K-context digests
+// are rule-2 pinned to native). What aux_size==1 changes is only WHEN the
+// K/V loads issue: adjacent f16 pairs ride one 32-bit load through the
+// aliasing word views (bindings 4/5/6), and each subgroup batches 8 keys'
+// loads ahead of the dependent math. The primitive only selects aux_size==1
+// when every indexed row base is even, so the packed loads address the same
+// f16 values the scalar loads would. The measured decode deficit grows with
+// context because one subgroup has only ~4 scalar loads in flight against a
+// ~700 ns DRAM latency; the batch raises that to 32 without touching one
+// bit of arithmetic. aux_size==0 keeps the legacy scalar loops verbatim.
 
 #version 460
 
@@ -30,6 +43,18 @@ layout(set = 0, binding = 2, std430) readonly buffer Value {
 layout(set = 0, binding = 3, std430) writeonly buffer Output {
   float16_t values[];
 } output_data;
+// Aliasing 32-bit views of the same three input buffers: one word load
+// replaces the two adjacent f16 scalar loads per lane per stream. Bound by
+// the primitive only when every indexed element offset is even.
+layout(set = 0, binding = 4, std430) readonly buffer QueryWords {
+  uint values[];
+} query_words;
+layout(set = 0, binding = 5, std430) readonly buffer KeyWords {
+  uint values[];
+} key_words;
+layout(set = 0, binding = 6, std430) readonly buffer ValueWords {
+  uint values[];
+} value_words;
 
 layout(push_constant) uniform Params {
   uint count;
@@ -58,6 +83,7 @@ layout(push_constant) uniform Params {
 const uint SIMD = 32u;
 const uint DIM = 64u;
 const uint MAX_BLOCKS = 128u;
+const uint BATCH = 8u;
 const float FINITE_MIN = -3.4028234663852886e38;
 
 shared float s_outputs[SIMD * SIMD];
@@ -80,6 +106,29 @@ void store_pair(uint head, uint lane, float x, float y, float denominator) {
   }
 }
 
+// One online-softmax key step in the frozen legacy arithmetic order, fed
+// from pre-loaded packed pairs.
+void online_step(
+    uint k_word,
+    uint v_word,
+    float q0,
+    float q1,
+    inout float max_score,
+    inout float sum_exp_score,
+    inout float o0,
+    inout float o1) {
+  float score = fma(q0, unpackHalf2x16(k_word).x, 0.0);
+  score = fma(q1, unpackHalf2x16(k_word).y, score);
+  score = subgroupAdd(score);
+  float new_max = max(max_score, score);
+  float factor = native_exp(max_score - new_max);
+  float exp_score = native_exp(score - new_max);
+  max_score = new_max;
+  sum_exp_score = fma(sum_exp_score, factor, exp_score);
+  o0 = fma(o0, factor, exp_score * unpackHalf2x16(v_word).x);
+  o1 = fma(o1, factor, exp_score * unpackHalf2x16(v_word).y);
+}
+
 void main() {
   uint lane = gl_SubgroupInvocationID;
   uint sgid = gl_SubgroupID;
@@ -88,11 +137,98 @@ void main() {
   uint kv_head = head / repeats;
   uint q_base = params.lhs_offset + head * params.shape[0];
   uint q_dim = 2u * lane;
-  float q0 = params.alpha *
-      float(query_data.values[q_base + q_dim * params.shape[3]]);
-  float q1 = params.alpha *
-      float(query_data.values[q_base + (q_dim + 1u) * params.shape[3]]);
   uint blocks = params.flags;
+
+  if (params.aux_size == 1u && blocks == 0u) {
+    float q0 = params.alpha * unpackHalf2x16(query_words.values[(q_base + q_dim) >> 1u]).x;
+    float q1 = params.alpha * unpackHalf2x16(query_words.values[(q_base + q_dim) >> 1u]).y;
+    // Native sdpa_vector: each SIMD owns keys sgid, sgid+32, ... and keeps an
+    // independent online-softmax state before the 32 states are merged. The
+    // per-lane iteration count and key sequence match the legacy loop.
+    float max_score = FINITE_MIN;
+    float sum_exp_score = 0.0;
+    float o0 = 0.0;
+    float o1 = 0.0;
+    uint first = sgid;
+    uint iters = 0u;
+    if (params.matrix_k > first) {
+      iters = (params.matrix_k - first + SIMD - 1u) / SIMD;
+    }
+    uint k_head_base = (params.rhs_offset + kv_head * params.shape[1]) >> 1u;
+    uint v_head_base = (params.aux_offset + kv_head * params.in_strides[1]) >>
+        1u;
+    uint k_row_words = params.shape[2] >> 1u;
+    uint v_row_words = params.in_strides[2] >> 1u;
+    uint t = 0u;
+    while (t + BATCH <= iters) {
+      uint kw[BATCH];
+      uint vw[BATCH];
+      for (uint i = 0u; i < BATCH; ++i) {
+        uint key = first + (t + i) * SIMD;
+        uint k_word = k_head_base + key * k_row_words + lane;
+        kw[i] = key_words.values[k_word];
+        vw[i] = value_words.values[v_head_base + key * v_row_words + lane];
+      }
+      for (uint i = 0u; i < BATCH; ++i) {
+        online_step(
+            kw[i],
+            vw[i],
+            q0,
+            q1,
+            max_score,
+            sum_exp_score,
+            o0,
+            o1);
+      }
+      t += BATCH;
+    }
+    for (; t < iters; ++t) {
+      uint key = first + t * SIMD;
+      uint k_word = k_head_base + key * k_row_words + lane;
+      uint v_word = v_head_base + key * v_row_words + lane;
+      online_step(
+          key_words.values[k_word],
+          value_words.values[v_word],
+          q0,
+          q1,
+          max_score,
+          sum_exp_score,
+          o0,
+          o1);
+    }
+
+    if (lane == 0u) {
+      s_max[sgid] = max_score;
+      s_sum[sgid] = sum_exp_score;
+    }
+    barrier();
+    max_score = s_max[lane];
+    float merged_max = subgroupMax(max_score);
+    float factor = native_exp(max_score - merged_max);
+    float denominator = subgroupAdd(s_sum[lane] * factor);
+
+    s_outputs[lane * SIMD + sgid] = o0;
+    barrier();
+    float merged0 = subgroupAdd(s_outputs[sgid * SIMD + lane] * factor);
+    barrier();
+    s_outputs[lane * SIMD + sgid] = o1;
+    barrier();
+    float merged1 = subgroupAdd(s_outputs[sgid * SIMD + lane] * factor);
+    store_pair(head, lane, merged0, merged1, denominator);
+    return;
+  }
+
+  float q0;
+  float q1;
+  if (params.aux_size == 1u) {
+    q0 = params.alpha * unpackHalf2x16(query_words.values[(q_base + q_dim) >> 1u]).x;
+    q1 = params.alpha * unpackHalf2x16(query_words.values[(q_base + q_dim) >> 1u]).y;
+  } else {
+    q0 = params.alpha *
+        float(query_data.values[q_base + q_dim * params.shape[3]]);
+    q1 = params.alpha *
+        float(query_data.values[q_base + (q_dim + 1u) * params.shape[3]]);
+  }
 
   if (blocks == 0u) {
     // Native sdpa_vector: each SIMD owns keys sgid, sgid+32, ... and keeps an
@@ -149,45 +285,110 @@ void main() {
     return;
   }
 
-  // Native sdpa_vector_2pass_1. A physical subgroup computes four logical
-  // native blocks sequentially; logical blocks remain independent and land
-  // in the exact f16/f32 intermediate formats consumed by pass 2.
-  for (uint block = sgid; block < blocks; block += SIMD) {
-    float max_score = FINITE_MIN;
-    float sum_exp_score = 0.0;
-    float o0 = 0.0;
-    float o1 = 0.0;
-    for (uint key = block; key < params.matrix_k; key += blocks) {
-      uint k_base = params.rhs_offset + kv_head * params.shape[1] +
-          key * params.shape[2] + q_dim * params.in_strides[0];
-      float score = fma(q0, float(key_data.values[k_base]), 0.0);
-      score = fma(
-          q1,
-          float(key_data.values[k_base + params.in_strides[0]]),
-          score);
-      score = subgroupAdd(score);
-      float new_max = max(max_score, score);
-      float factor = native_exp(max_score - new_max);
-      float exp_score = native_exp(score - new_max);
-      max_score = new_max;
-      sum_exp_score = fma(sum_exp_score, factor, exp_score);
-      uint v_base = params.aux_offset + kv_head * params.in_strides[1] +
-          key * params.in_strides[2] + q_dim * params.in_strides[3];
-      o0 = fma(
-          o0,
-          factor,
-          exp_score * float(value_data.values[v_base]));
-      o1 = fma(
-          o1,
-          factor,
-          exp_score *
-              float(value_data.values[v_base + params.in_strides[3]]));
+  if (params.aux_size == 1u) {
+    // Native sdpa_vector_2pass_1, batched loads: a physical subgroup
+    // computes four logical native blocks sequentially; logical blocks
+    // remain independent and land in the exact f16/f32 intermediate formats
+    // consumed by pass 2. Per-key arithmetic is the frozen legacy order.
+    for (uint block = sgid; block < blocks; block += SIMD) {
+      float max_score = FINITE_MIN;
+      float sum_exp_score = 0.0;
+      float o0 = 0.0;
+      float o1 = 0.0;
+      uint iters = 0u;
+      if (params.matrix_k > block) {
+        iters = (params.matrix_k - block + blocks - 1u) / blocks;
+      }
+      uint k_head_base =
+          (params.rhs_offset + kv_head * params.shape[1]) >> 1u;
+      uint v_head_base =
+          (params.aux_offset + kv_head * params.in_strides[1]) >> 1u;
+      uint k_row_words = params.shape[2] >> 1u;
+      uint v_row_words = params.in_strides[2] >> 1u;
+      uint t = 0u;
+      while (t + BATCH <= iters) {
+        uint kw[BATCH];
+        uint vw[BATCH];
+        for (uint i = 0u; i < BATCH; ++i) {
+          uint key = block + (t + i) * blocks;
+          uint k_word = k_head_base + key * k_row_words + lane;
+          kw[i] = key_words.values[k_word];
+          vw[i] = value_words.values[v_head_base + key * v_row_words + lane];
+        }
+        for (uint i = 0u; i < BATCH; ++i) {
+          online_step(
+              kw[i],
+              vw[i],
+              q0,
+              q1,
+              max_score,
+              sum_exp_score,
+              o0,
+              o1);
+        }
+        t += BATCH;
+      }
+      for (; t < iters; ++t) {
+        uint key = block + t * blocks;
+        uint k_word = k_head_base + key * k_row_words + lane;
+        uint v_word = v_head_base + key * v_row_words + lane;
+        online_step(
+            key_words.values[k_word],
+            value_words.values[v_word],
+            q0,
+            q1,
+            max_score,
+            sum_exp_score,
+            o0,
+            o1);
+      }
+      if (lane == 0u) {
+        s_max[block] = max_score;
+        s_sum[block] = sum_exp_score;
+      }
+      s_partial_words[block * SIMD + lane] = packHalf2x16(vec2(o0, o1));
     }
-    if (lane == 0u) {
-      s_max[block] = max_score;
-      s_sum[block] = sum_exp_score;
+  } else {
+    // Native sdpa_vector_2pass_1. A physical subgroup computes four logical
+    // native blocks sequentially; logical blocks remain independent and land
+    // in the exact f16/f32 intermediate formats consumed by pass 2.
+    for (uint block = sgid; block < blocks; block += SIMD) {
+      float max_score = FINITE_MIN;
+      float sum_exp_score = 0.0;
+      float o0 = 0.0;
+      float o1 = 0.0;
+      for (uint key = block; key < params.matrix_k; key += blocks) {
+        uint k_base = params.rhs_offset + kv_head * params.shape[1] +
+            key * params.shape[2] + q_dim * params.in_strides[0];
+        float score = fma(q0, float(key_data.values[k_base]), 0.0);
+        score = fma(
+            q1,
+            float(key_data.values[k_base + params.in_strides[0]]),
+            score);
+        score = subgroupAdd(score);
+        float new_max = max(max_score, score);
+        float factor = native_exp(max_score - new_max);
+        float exp_score = native_exp(score - new_max);
+        max_score = new_max;
+        sum_exp_score = fma(sum_exp_score, factor, exp_score);
+        uint v_base = params.aux_offset + kv_head * params.in_strides[1] +
+            key * params.in_strides[2] + q_dim * params.in_strides[3];
+        o0 = fma(
+            o0,
+            factor,
+            exp_score * float(value_data.values[v_base]));
+        o1 = fma(
+            o1,
+            factor,
+            exp_score *
+                float(value_data.values[v_base + params.in_strides[3]]));
+      }
+      if (lane == 0u) {
+        s_max[block] = max_score;
+        s_sum[block] = sum_exp_score;
+      }
+      s_partial_words[block * SIMD + lane] = packHalf2x16(vec2(o0, o1));
     }
-    s_partial_words[block * SIMD + lane] = packHalf2x16(vec2(o0, o1));
   }
   barrier();
 

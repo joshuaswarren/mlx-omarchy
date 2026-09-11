@@ -10393,8 +10393,30 @@ void ScaledDotProductAttention::eval_gpu(
     params.in_strides[1] = checked_u32(v.strides()[1], tag, out);
     params.in_strides[2] = checked_u32(v.strides()[2], tag, out);
     params.in_strides[3] = checked_u32(v.strides()[3], tag, out);
-    std::array<omarchy::ComputeBinding, 4> bindings{
-        binding(q), binding(k), binding(v), binding(out)};
+    const char* decode_scalar_env =
+        std::getenv("MLX_OMARCHY_SDPA_DECODE_SCALAR");
+    const bool decode_scalar =
+        decode_scalar_env != nullptr && std::strcmp(decode_scalar_env, "0") != 0;
+    // aux_size==1 selects the in-kernel batched path: adjacent f16 pairs
+    // load as one 32-bit word through the aliasing word views. Every word
+    // index is (row base + even q_dim) >> 1, so the packed loads address
+    // the same values iff all row bases and row strides are even; anything
+    // else rides the kernel's scalar loops, which are the frozen legacy
+    // order verbatim. Same values, same arithmetic, only load timing moves.
+    const bool decode_packed_words = !decode_scalar &&
+        params.lhs_offset % 2 == 0 && params.shape[0] % 2 == 0 &&
+        params.rhs_offset % 2 == 0 && params.shape[1] % 2 == 0 &&
+        params.shape[2] % 2 == 0 && params.aux_offset % 2 == 0 &&
+        params.in_strides[1] % 2 == 0 && params.in_strides[2] % 2 == 0;
+    params.aux_size = decode_packed_words ? 1u : 0u;
+    std::array<omarchy::ComputeBinding, 7> bindings{
+        binding(q),
+        binding(k),
+        binding(v),
+        binding(out),
+        binding(q),
+        binding(k),
+        binding(v)};
       omarchy::capsim::require_backed(
           encoder.device(),
           decode_caps,
