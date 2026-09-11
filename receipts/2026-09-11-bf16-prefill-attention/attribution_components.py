@@ -63,10 +63,8 @@ def main():
     model, tokenizer = load("mlx-community/Qwen2.5-0.5B-Instruct-bf16")
     model.eval()
     out = open(args.out, "w")
-    rows = []
 
     def emit(row):
-        rows.append(row)
         out.write(json.dumps(row) + "\n")
         out.flush()
 
@@ -162,17 +160,15 @@ def main():
                              v.astype(mx.float32)), mx.synchronize()),
             reps=args.reps)
         emit({"k": "cast_kv_f32", "leg": f"m{m}", "us_median": round(us, 1)})
-        qs = mx.matmul(q32, scale)
-        mx.eval(qs)
-        mx.synchronize()
-        us = timed(lambda: (mx.eval(mx.matmul(q32, scale)), mx.synchronize()),
+        us = timed(lambda: (mx.eval(q32 * scale), mx.synchronize()),
                    reps=args.reps)
         emit({"k": "scale_mul_f32", "leg": f"m{m}", "us_median": round(us, 1)})
+        qs = q32 * scale
         scores = mx.matmul(qs, k32.swapaxes(-1, -2))
         probs = mx.softmax(scores, axis=-1)
         pv = mx.matmul(probs, v32)
         cast = pv.astype(mx.bfloat16)
-        mx.eval(scores, probs, pv, cast)
+        mx.eval(qs, scores, probs, pv, cast)
         mx.synchronize()
         us = timed(lambda: (mx.eval(
             mx.matmul(qs, k32.swapaxes(-1, -2))), mx.synchronize()),
