@@ -31,7 +31,7 @@ class RedactionStripsPII(unittest.TestCase):
     SAMPLE = (
         "user joshuawarren on host jwm1\n"
         "model path /home/joshuawarren/models/Qwen\n"
-        "gateway 192.168.3.66 link-local fe80::1234:56ff:fe78:9abc\n"
+        "gateway 198.51.100.7 link-local fe80::1234:56ff:fe78:9abc\n"
         "mac f0:18:98:12:34:56\n"
         "uuid 01234567-89ab-cdef-0123-456789abcdef\n"
         "serial-number: C02XYZ123456\n"
@@ -48,7 +48,7 @@ class RedactionStripsPII(unittest.TestCase):
 
     def test_no_pii_survives(self):
         out = self.redactor().apply(self.SAMPLE)
-        for secret in ("joshuawarren", "jwm1", "/home/", "192.168.3.66",
+        for secret in ("joshuawarren", "jwm1", "/home/", "198.51.100.7",
                        "fe80::", "f0:18:98", "01234567-89ab",
                        "C02XYZ123456", "FVFXC02X", "sk-live-", "ghp_ABCDEF",
                        "eyJhbGciOiJI"):
@@ -750,9 +750,9 @@ class VersionQuadSurvivesRedaction(unittest.TestCase):
 
     def test_real_address_is_still_redacted(self):
         red = cc.Redactor()
-        out = red.apply("inet 192.168.3.66 netmask 255.255.254.0")
-        self.assertNotIn("192.168.3.66", out)
-        self.assertNotIn("255.255.254.0", out)
+        out = red.apply("inet 198.51.100.7 netmask 255.255.255.0")
+        self.assertNotIn("198.51.100.7", out)
+        self.assertNotIn("255.255.255.0", out)
         self.assertEqual(red.counts.get("ipv4", 0), 2)
 
     def test_address_on_a_later_line_is_still_redacted(self):

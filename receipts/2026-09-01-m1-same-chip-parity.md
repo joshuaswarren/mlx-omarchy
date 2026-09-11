@@ -230,27 +230,27 @@ evidence that the M1 is "20× faster than" itself.
 
 ```
 # Mac (SSH one quoted command per call)
-ssh -o BatchMode=yes joshuawarren@100.67.134.6 'curl -LsSf https://astral.sh/uv/install.sh | sh'
-ssh -o BatchMode=yes joshuawarren@100.67.134.6 \
+ssh -o BatchMode=yes joshuawarren@<mac-host> 'curl -LsSf https://astral.sh/uv/install.sh | sh'
+ssh -o BatchMode=yes joshuawarren@<mac-host> \
   'export PATH=$HOME/.local/bin:$PATH; uv venv $HOME/src/mlx-bench-samechip --python 3.11'
-ssh -o BatchMode=yes joshuawarren@100.67.134.6 \
+ssh -o BatchMode=yes joshuawarren@<mac-host> \
   'uv pip install --python $HOME/src/mlx-bench-samechip/bin/python mlx==0.29.3 mlx-lm==0.30.2'
 
 # Linux workstation: snapshot the pinned revisions into local dirs, tar, rsync to Mac.
 # (See "Models" section above for the exact hashes and md5 verification.)
 
 # Mac
-ssh -o BatchMode=yes joshuawarren@100.67.134.6 \
+ssh -o BatchMode=yes joshuawarren@<mac-host> \
   'mkdir -p $HOME/src/mlx-bench-samechip/models/{q4,bf16} && \
    tar -C $HOME/src/mlx-bench-samechip/models/q4    -xf /tmp/q4.tar && \
    tar -C $HOME/src/mlx-bench-samechip/models/bf16  -xf /tmp/bf16.tar'
 
 # Mac warm runs
-ssh -o BatchMode=yes joshuawarren@100.67.134.6 \
+ssh -o BatchMode=yes joshuawarren@<mac-host> \
   '$HOME/src/mlx-bench-samechip/bin/python -m mlx_lm generate \
    --model $HOME/src/mlx-bench-samechip/models/bf16 --prompt "Hi" \
    --max-tokens 32 --temp 0 --seed 0'
-ssh -o BatchMode=yes joshuawarren@100.67.134.6 \
+ssh -o BatchMode=yes joshuawarren@<mac-host> \
   '$HOME/src/mlx-bench-samechip/bin/python -m mlx_lm generate \
    --model $HOME/src/mlx-bench-samechip/models/q4 --prompt "What is the capital of France? Answer in one word." \
    --max-tokens 32 --temp 0 --seed 0'

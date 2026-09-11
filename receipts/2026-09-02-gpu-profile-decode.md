@@ -25,7 +25,7 @@ n=20,278, median 17.0 us, mean 22.0 us, p90 30.9 us.
 
 ## Environment
 
-- Host: jwm1 (192.168.3.66), Apple M1 (T8103, 8 GPU cores, 16 GB), Omarchy
+- Host: jwm1 (<m1-lan>), Apple M1 (T8103, 8 GPU cores, 16 GB), Omarchy
   Linux, kernel 7.1.6-1-1-ARCH, single core online (`nproc=1`; m1n1 1.5.2 /
   spin-table mismatch, unchanged since the 2026-09-02 qualification
   receipt). Cold reboot does not fix it; box untouched this session.

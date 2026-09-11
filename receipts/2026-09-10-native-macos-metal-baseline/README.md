@@ -58,7 +58,7 @@ in this receipt.
 - Gates: AC power; no loaded ollama models (`ollama ps` empty); no
   standalone model servers persisting across a ~1 min rescan loop
   (transient `llama-server --version` probes seen and waited out); and a
-  contention watch on the resident `omlx-server` router leg (cumulative
+  contention watch on the resident `<resident-inference-service>` router leg (cumulative
   CPU sampled around every leg-run): a rep is contended when the watched
   delta >= 0.10 s OR its decode_tps lands below 70% of the leg's
   best-band (upper-half median) — the second guard catches unwatched
@@ -89,7 +89,7 @@ the same medians). Every accepted rep's digest matches the reference
 native digest for its leg, and the committed ea09eefa base-M1 receipt
 carries the same six digests.
 
-**laptop (M2 Max): no accepted matrix.** The resident `omlx-server`
+**laptop (M2 Max): no accepted matrix.** The resident `<resident-inference-service>`
 router leg served sustained traffic through every attempt (12/12 reps
 contended twice, per-leg CPU deltas 1–2.2 s, decode collapsed to
 47–68 tok/s); attempts were refused rather than published. Raw evidence:
@@ -129,7 +129,7 @@ reproduce exactly, confirming `docs/parity-id-policy.md` rule 2.
    with its later clean reps, but ungated — kept only as
    `att1/native-baseline-16m1mbp-att1-gateless.json` corroboration, not
    authority.
-2. macstudio attempt 1 was hit mid-run by the resident `omlx-server`
+2. macstudio attempt 1 was hit mid-run by the resident `<resident-inference-service>`
    router leg (58% CPU, ~31 GB resident): decode collapsed 296 -> 11
    tok/s with digests unchanged. Kept as
    `att1/native-baseline-macstudio-att1-omlx-contended.json`; the router
@@ -180,7 +180,7 @@ Per host (example 16m1mbp):
 ```
 ssh 16m1mbp
 cd ~/src/mlx-bench-20260910
-WATCH_PID=$(pgrep -x omlx-server | head -1) \
+WATCH_PID=$(pgrep -x <resident-inference-service> | head -1) \
   ~/src/mlx-bench-20260901/venv/bin/python run_native_matrix.py 12 \
   native-baseline-16m1mbp
 ```

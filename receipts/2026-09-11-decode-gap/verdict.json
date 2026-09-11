@@ -4,7 +4,7 @@
   "agent": "DecodeInModelGap",
   "topic": "The 2.4x gap between in-model (~236 us/layer) and isolated (~98 us/layer) cost of the same Q4 decode GEMV kernels: between-dispatch state candidates tested one at a time in isolation",
   "decision": "RECEIPT-ONLY. The 138 us/layer gap is not a between-dispatch state problem and not recoverable decode time. It is an instrument mismatch: the isolated 98 us/layer was summed from per-dispatch honeykrisp device-timestamp intervals, whose absolute scale is not trustworthy (documented in receipts/2026-09-10-dispatch-floor and receipts/2026-09-10-q4-gemv-bandwidth; re-demonstrated inside this run). Wall-clock-anchored, the SAME four dispatches cost 203 us/layer isolated and the in-model interleaved analog costs 207 us/layer - interleaving costs +1.8%, and the residual difference from the 236 us/layer production number is the lm_head dispatch amortized into the per-layer figure. No source change is supported; the six canonical digests were not exercised (nothing landed).",
-  "host": "jwm1-linux (100.84.184.102), Apple M1 (G13G B1), Honeykrisp installed package mesa-honeykrisp-omarchy 26.3.0.devel.hk6f6afc8-1, linux-asahi 7.1.6, glslc 2026.3",
+  "host": "jwm1-linux (<m1-host>), Apple M1 (G13G B1), Honeykrisp installed package mesa-honeykrisp-omarchy 26.3.0.devel.hk6f6afc8-1, linux-asahi 7.1.6, glslc 2026.3",
   "provenance": {
     "branch": "wave/DecodeInModelGap (off main 26b746e0; never merged)",
     "commits": {

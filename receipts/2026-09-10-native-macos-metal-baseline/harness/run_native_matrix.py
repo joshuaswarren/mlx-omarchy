@@ -8,7 +8,7 @@ scripts/bench_decode.py process (pinned generation length, EOS suppressed,
 greedy temp 0 seed 0, 4 warmup tokens inside bench_decode, prefill timed
 separately, digest over the exact generated ids, MLX_DISABLE_COMPILE=1).
 
-Contention gate: if WATCH_PID is set (e.g. the resident omlx-server
+Contention gate: if WATCH_PID is set (e.g. the resident <resident-inference-service>
 router leg), the watched process's cumulative CPU time is sampled around
 every leg-run window; any delta > 0 marks that rep contended and it is
 excluded from the medians (>= 3 clean reps required per leg).
@@ -121,9 +121,11 @@ def gates():
     if refused:
         sys.exit("REFUSING: standalone model servers persisted:\n"
                  + "\n".join(refused))
-    resident = [ln.strip()[:200] for ln in scan.splitlines()
-                if re.search(r"ollama serve|[Oo]llama\.app|docling-serve",
-                             ln[14:])]
+    # Count only. Command lines carry user paths, ports and service
+    # inventories that must never land in a published receipt.
+    resident = sum(1 for ln in scan.splitlines()
+                   if re.search(r"ollama serve|[Oo]llama\.app|docling-serve",
+                                ln[14:]))
     ops = sh("ollama", "ps")
     loaded = [ln for ln in ops.splitlines()[1:] if ln.strip()]
     if loaded:
@@ -132,11 +134,10 @@ def gates():
     return {"power": power,
             "gpu_holding_processes": loaded or "none",
             "standalone_servers": "none (persistence-scanned)",
-            "resident_idle_services_recorded": resident,
+            "resident_idle_service_count": resident,
             "router_watch_pid": WATCH_PID or None,
-            "note": "resident services idle: no ollama models loaded; "
-                    "docling-serve is a CPU layout service; resident "
-                    "omlx-server router leg is CPU-watched per leg-run"}
+            "note": "resident services idle: no models loaded; any "
+                    "watched resident service is CPU-watched per leg-run"}
 
 
 def versions():

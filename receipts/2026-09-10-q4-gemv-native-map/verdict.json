@@ -9,7 +9,7 @@
       "candidate_under_test": "9a66501585f1fcf84aac4d4af403c41811a36ad1 (perf: port native qmv thread mapping to the Q4 decode GEMV multi kernel; production diff = overlay/mlx/backend/omarchy/shaders/qmm_vec.comp + overlay/tests/omarchy/test_matmul_family.cpp)",
       "harness_fix": "328218c (fix: grade digest legs against per-driver pins, see digest_gate_incident)"
     },
-    "host": "jwm1-linux (100.84.184.102), Apple M1 (G13G B1), kernel 7.1.6-1-ARCH, Omarchy",
+    "host": "jwm1-linux (<m1-host>), Apple M1 (G13G B1), kernel 7.1.6-1-ARCH, Omarchy",
     "wheel": {
       "file": "mlx_omarchy-0.32.2.dev202609110603+9a66501-cp314-cp314-linux_aarch64.whl",
       "sha256": "1277b3bddad99aaa2034d67ec8a900322eced0ce9bef74b3c9073fd680b272c6",

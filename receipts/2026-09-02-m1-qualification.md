@@ -9,7 +9,7 @@ Everything landed 2026-09-02 was verified only on llvmpipe until this run.
 
 | Role | Machine | Device string |
 |---|---|---|
-| Target | jwm1 (192.168.3.66), Asahi Linux, Apple M1 (T8103, 8 GPU cores, 16 GB) | pending on-device capture |
+| Target | jwm1 (<m1-lan>), Asahi Linux, Apple M1 (T8103, 8 GPU cores, 16 GB) | pending on-device capture |
 | Reference | dev box, x86_64, Mesa lavapipe / llvmpipe (software), `MLX_OMARCHY_ALLOW_NON_APPLE=1` | llvmpipe |
 
 **Hardware-state caveat, prominent:** the M1 ran SINGLE-CORE for every number

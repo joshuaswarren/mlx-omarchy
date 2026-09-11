@@ -2,7 +2,7 @@
 
 - schema: mlx-omarchy/q4-decode-pair-map/1 (2026-09-11)
 - agent: Q4PairMapMeasure; branch wave/Q4DecodePairMap (off origin/main bb534004), receipt + env-gated measurement variant only. Never merged; never proposed for merge.
-- host: jwm1-linux (100.84.184.102), Apple M1 (G13G B1), linux-asahi 7.1.6.asahi1-1, installed fork driver mesa-honeykrisp-omarchy 26.3.0.devel.hk6f6afc8-1 verified in-window (`pacman -Q` in m1-logs/); stock arm = same wheel under VK_DRIVER_FILES=/home/joshuawarren/stock-mesa/stock-icd.json
+- host: jwm1-linux (<m1-host>), Apple M1 (G13G B1), linux-asahi 7.1.6.asahi1-1, installed fork driver mesa-honeykrisp-omarchy 26.3.0.devel.hk6f6afc8-1 verified in-window (`pacman -Q` in m1-logs/); stock arm = same wheel under VK_DRIVER_FILES=/home/joshuawarren/stock-mesa/stock-icd.json
 - wheel: mlx_omarchy-0.32.2.dev202609111121+ef49fbc5-cp314-cp314-linux_aarch64.whl, sha256 9a0e0b15c58276dc4af080597e4385ff6cd25d54cf32167f53e388a9ebea75da
 - windows: two ONE-flock windows on /tmp/m1-gpu.lock — accuracy + smoke 11:37:54–11:40:51Z, legs 11:40:51–11:47:04Z. Quiet gate loadavg 0.02–0.25 before windows; per-run loadavg_1m recorded on all 36 legs, all < 1.0.
 - timing: wall-clock only (bench_decode); no device-timestamp number is used (known ~2.07x undercount on this driver).

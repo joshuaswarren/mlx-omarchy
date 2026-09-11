@@ -3,7 +3,7 @@
 Date: 2026-09-10
 Investigator: Bf16QmmRootCause (omp subagent)
 Base: b6d662a8 (`record M1 ANE crossover rejection`), branch `wave/Bf16RootCause`
-M1 Linux host: joshuawarren@100.84.184.102 (Apple M1, G13G B1, Asahi + honeykrisp/coopmat)
+M1 Linux host: joshuawarren@<m1-host> (Apple M1, G13G B1, Asahi + honeykrisp/coopmat)
 Native capture host: macOS 26.6.2, M1 Max, stock MLX 0.32.2 (Metal)
 
 ## Question

@@ -35,7 +35,7 @@ PROVENANCE = {
              "linux_aarch64.whl",
     "wheel_sha256": "9a0e0b15c58276dc4af080597e4385ff6cd25d54cf32167f53e"
                     "388a9ebea75da",
-    "host": "jwm1-linux (100.84.184.102), Apple M1 (G13G B1)",
+    "host": "jwm1-linux (<m1-host>), Apple M1 (G13G B1)",
     "driver_fork": "mesa-honeykrisp-omarchy 26.3.0.devel.hk6f6afc8-1 "
                    "(verified in-window via pacman -Q)",
     "driver_stock": "stock Mesa via /home/joshuawarren/stock-mesa/"

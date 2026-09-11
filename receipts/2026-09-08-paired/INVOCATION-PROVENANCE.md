@@ -13,7 +13,7 @@ runnable references, not the provenance.
 | scripts/ane_window.sh | 82dfdf236e4a4dd3361b2c763dd7979c2a0f47e0f43da4a126c83d92cd91c34e | flock wrapper for ane_timed.sh (the receipted ANE run used this) |
 | scripts/paired_window.sh | 5f43f7cdf9567550f72c55114626ba2604b54a9111c3195432133dec659fe3d4 | flock wrapper for GPU bench + ANE half (the GPU numbers came from this) |
 
-## Exact invocations (host joshuawarren@100.84.184.102, hostname printed by each script)
+## Exact invocations (host joshuawarren@<m1-host>, hostname printed by each script)
 
 1. GPU bench (inside paired_window.sh, under flock on /tmp/m1-gpu.lock):
        /home/joshuawarren/venv-ane-paired-c254/bin/python /tmp/gpu_bench.py --out /tmp/paired-results/gpu-bench-c254-release.json

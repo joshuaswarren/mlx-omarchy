@@ -8,7 +8,7 @@
   "implementation_patch_id": "68d30cbdcebcfbeabba5a4c5199c258a98f26a68",
   "implementation_unchanged_after_rebase": true,
   "host": {
-    "ssh": "joshuawarren@100.84.184.102",
+    "ssh": "joshuawarren@<m1-host>",
     "hostname": "jwm1-linux",
     "kernel": "Linux 7.1.6-1-1-ARCH",
     "architecture": "aarch64",

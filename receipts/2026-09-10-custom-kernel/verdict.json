@@ -40,7 +40,7 @@
     "result": "Ran 8 tests in 6.700s; OK"
   },
   "m1": {
-    "host": "joshuawarren@100.84.184.102",
+    "host": "joshuawarren@<m1-host>",
     "hostname": "jwm1-linux",
     "checkout": "~/src/mlx-CustomKernelMsl",
     "source_commit": "940cb6b1f837e6856165c91cc4d7aadeef16f0f3",

@@ -30,7 +30,7 @@ pre-renamed); it does not affect the wheel contents.
   without telling the caller, so the naive `mx.save(p); mx.load(p)` round-trip trips. Suggest the save
   side either log/warn or the load side resolve the `.npy` sibling.
 
-## aarch64 (jwm1-linux @ 192.168.3.66, Asahi M1, fresh venv, no allow flag — real device)
+## aarch64 (jwm1-linux @ <m1-lan>, Asahi M1, fresh venv, no allow flag — real device)
 
 - default device: `Device(gpu, 0)`
 - value_and_grad: `14.900775909423828 [[39.26576232910156], [54.166542053222656]]` — PASS (within 1e-4 of README)

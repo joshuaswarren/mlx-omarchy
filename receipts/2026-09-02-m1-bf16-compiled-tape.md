@@ -8,7 +8,7 @@ Gate kept with sharper reason. No commits on either machine.
 
 ## Host identity
 
-- Host: `jwm1-linux` (192.168.3.66), Apple M1, Omarchy, Mesa Honeykrisp.
+- Host: `jwm1-linux` (<m1-lan>), Apple M1, Omarchy, Mesa Honeykrisp.
 - Linux 7.1.6-1-1-ARCH (linux-asahi), gcc 16.1.1, Python 3.14.7.
 - **Hardware constraint:** `nproc=1`. All seven secondary cores failed to
   come online at boot, both before and after Main's cold reboot

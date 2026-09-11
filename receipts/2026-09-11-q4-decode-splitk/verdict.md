@@ -2,7 +2,7 @@
 
 - schema: mlx-omarchy/q4-decode-splitk/1 (2026-09-11)
 - agent: Q4DecodeSplitK; branch wave/Q4DecodeSplitK (off origin/main c9881be4), receipt + env-gated measurement variant only. Never merged; main and the integration worktree untouched.
-- host: jwm1-linux (100.84.184.102), Apple M1 (G13G B1), linux-asahi 7.1.6.asahi1-1, installed fork driver mesa-honeykrisp-omarchy 26.3.0.devel.hk6f6afc8-1, verified by `pacman -Q` inside every window.
+- host: jwm1-linux (<m1-host>), Apple M1 (G13G B1), linux-asahi 7.1.6.asahi1-1, installed fork driver mesa-honeykrisp-omarchy 26.3.0.devel.hk6f6afc8-1, verified by `pacman -Q` inside every window.
 - timing: host wall clock around whole submits only. No device-timestamp number is used (known ~2.07x undercount on this driver).
 - windows: two single top-level flocks on /tmp/m1-gpu.lock — 13:15:23Z (aborted after 3 s, bench loader bug from this receipt's own edit, fixed, rerun) and 13:19:06–13:20:19Z (complete). loadavg 0.00 before each; each announced on hub before the flock.
 

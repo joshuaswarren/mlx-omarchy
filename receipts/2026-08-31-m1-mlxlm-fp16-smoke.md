@@ -8,7 +8,7 @@ before any tensor is read.
 
 ## Host identity
 
-- Host: `jwm1-linux` (192.168.3.66), Apple M1, Omarchy, Mesa Honeykrisp
+- Host: `jwm1-linux` (<m1-lan>), Apple M1, Omarchy, Mesa Honeykrisp
 - `uname -a`: `Linux jwm1-linux 7.1.6-1-1-ARCH #1 SMP PREEMPT_DYNAMIC Sat, 08 Aug 2026 17:14:04 +0000 aarch64 GNU/Linux`
 - Python: 3.14.7 (fresh venv `~/src/mlx-omarchy/.work/venv-fp16`)
 

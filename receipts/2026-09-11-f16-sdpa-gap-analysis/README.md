@@ -118,7 +118,7 @@ the recording, not the code.
 
 ## Verification on the real M1
 
-Captured 2026-09-11 13:19:09-05:00 on jwm1 (100.84.184.102), driver
+Captured 2026-09-11 13:19:09-05:00 on jwm1 (<m1-host>), driver
 `mesa-honeykrisp-omarchy 26.3.0.devel.hk6f6afc8-1` (the canonical Honeykrisp
 fork build, pinned). Lock window: top-level flock `/tmp/m1-gpu.lock`,
 cap 7200s, single 43-second hold (capture script `/tmp/f16sdpa_capture.sh`,

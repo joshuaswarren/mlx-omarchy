@@ -3,7 +3,7 @@
 Static comparison, done on the x86 dev box against unzipped wheels. No binary in
 this receipt was executed; aarch64 objects were inspected with `readelf`,
 `strings`, `cmp`, and per-file `sha256`. Compiler flags were read (read-only)
-from the two build trees on jwm1 (Tailscale `100.84.184.102`).
+from the two build trees on jwm1 (Tailscale `<m1-host>`).
 
 ## Wheel inventory and sha256
 

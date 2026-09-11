@@ -107,7 +107,7 @@
     "line_omarchy": "provenance: mlx-omarchy None mx=0.32.2 verified=no-metadata harness=unknown files=unresolved"
   },
   "power": {
-    "raw": "Now drawing from 'AC Power' -InternalBattery-0 (id=115933283) 100%; charged; 0:00 remaining present: true",
+    "raw": "Now drawing from 'AC Power' -InternalBattery-0 (id=<redacted>) 100%; charged; 0:00 remaining present: true",
     "source": "AC Power",
     "percent": 100,
     "charging": false

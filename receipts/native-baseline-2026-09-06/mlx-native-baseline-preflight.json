@@ -3,9 +3,9 @@
   "date": "2026-09-05",
   "scope": {
     "assignment": "Authorized M1 native MLX baseline preparation: persistent macOS boot, Sonoma 14.8.9 upgrade, toolchain preparation, exact pinned source build, and native provenance",
-    "linux_host": "joshuawarren@100.84.184.102",
+    "linux_host": "joshuawarren@<m1-host>",
     "linux_hostname": "jwm1-linux",
-    "macos_lan_identity": "192.168.3.66",
+    "macos_lan_identity": "<m1-lan>",
     "macos_known_hosts_file": "/tmp/jwm1-macos-known_hosts",
     "mutations_performed": ["Copied GPT/ESP/GRUB recovery material to this CT", "Set the one-shot macOS boot target twice", "Rebooted Linux to macOS and back twice", "Started and stopped a bounded Time Machine backup attempt after authentication failed", "Set Macintosh HD as the persistent startup target", "Booted persistently into macOS", "Installed CMake 4.4.2 with Homebrew", "Started signed Sonoma installer transfer over read-only HTTP and rsync paths"],
     "workloads_run": ["PRELIMINARY metadata-only bench matrix on macOS 13.7.8 with mlx 0.29.3; all model legs skipped because pinned Qwen snapshots were absent"],
@@ -81,7 +81,7 @@
     "macos_backup_evidence": "Time Machine backup attempt failed before transfer with authentication error 80 and was stopped cleanly at zero bytes. Joshua explicitly waived Time Machine backup for this experimental/test M1 and authorized the upgrade without backup. Off-host GPT/ESP/GRUB recovery material remains verified on this CT.",
     "backup_requirement": "Waived by owner in the current conversation: experimental/test machine with no data of concern; no Time Machine backup required for this upgrade.",
     "macos_local_snapshots": ["com.apple.TimeMachine.2026-09-05-072225.local", "com.apple.TimeMachine.2026-09-05-082243.local"],
-    "configured_time_machine_destinations": ["TMBackup smb://TimeMachine@192.168.8.2/TMBackup", "13M1TimeMachine local", "TimeMachineBackup afp://192.168.7.141/TimeMachineBackup"],
+    "configured_time_machine_destinations": ["<redacted: backup targets>"],
     "recovery_assets": [
       "Internal macOS APFS container retained",
       "RecoveryOSContainer partition present",
@@ -337,7 +337,7 @@
   "commands": [
     {
       "purpose": "SSH preflight",
-      "command": "ssh -o IdentitiesOnly=yes -o BatchMode=yes -o ConnectTimeout=8 joshuawarren@100.84.184.102 'hostname'",
+      "command": "ssh -o IdentitiesOnly=yes -o BatchMode=yes -o ConnectTimeout=8 joshuawarren@<m1-host> 'hostname'",
       "result": "jwm1-linux"
     },
     {
@@ -403,7 +403,7 @@
     {
       "purpose": "Fresh Time Machine backup attempt",
       "command": "tmutil startbackup --block -d 41417843-9233-4C66-9BD3-8864B0242420",
-      "result": "Failed before data transfer: 0 bytes copied in 206.26 seconds; backupd reported NAConnectToServerSync error 80 (Authentication error) for smb://TimeMachine@192.168.8.2/TMBackup"
+      "result": "Failed before data transfer: 0 bytes copied in 206.26 seconds; backupd reported NAConnectToServerSync error 80 (Authentication error) for smb://<backup-target>"
     },
     {
       "purpose": "Stop failed backup and return to Linux",
@@ -414,7 +414,7 @@
   "time_machine_backup_attempt": {
     "date": "2026-09-05",
     "destination_id": "41417843-9233-4C66-9BD3-8864B0242420",
-    "destination_url": "smb://TimeMachine@192.168.8.2/TMBackup",
+    "destination_url": "<redacted: backup target>",
     "command": "tmutil startbackup --block -d 41417843-9233-4C66-9BD3-8864B0242420",
     "status": "failed_before_transfer",
     "duration_seconds": 206.26,
@@ -423,9 +423,9 @@
     "verified_file_path": null,
     "source_file_sha256": null,
     "restored_file_sha256": null,
-    "exact_error": "NAConnectToServerSync failed with error: 80 (Authentication error) for url: smb://TimeMachine@192.168.8.2/TMBackup",
+    "exact_error": "<redacted>: NAConnectToServerSync failed with authentication error 80 against the backup target",
     "exact_explanation": "Authentication error (80) - the correct user or password info may not exist in the System.keychain or the server may no longer allow access for this user.",
-    "keychain_observation": "A login.keychain network-password item exists for account TimeMachine and server 192.168.8.2, but backupd requires valid credentials in System.keychain or server acceptance; no password was extracted or guessed.",
+    "keychain_observation": "<redacted>: a stored network-password item existed for the backup target but backupd required credentials it could not use; no password was extracted or guessed",
     "cleanup": "tmutil stopbackup returned the session to Running=0",
     "completion_verification": "Not possible: no backup path, backup bytes, or restorable file exists because authentication failed before transfer"
   },

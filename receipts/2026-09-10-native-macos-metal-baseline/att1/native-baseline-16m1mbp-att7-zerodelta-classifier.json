@@ -1968,11 +1968,11 @@
   "env": "MLX_DISABLE_COMPILE=1",
   "gate": {
    "gpu_holding_processes": "none",
-   "note": "resident services idle: no ollama models loaded; docling-serve is a CPU layout service; resident omlx-server router leg is CPU-watched per leg-run",
-   "power": "Now drawing from 'AC Power'\n -InternalBattery-0 (id=40042595)\t100%; charged; 0:00 remaining present: true",
+   "note": "resident services idle: no ollama models loaded; a resident CPU-only service was present; resident <resident-inference-service> router leg is CPU-watched per leg-run",
+   "power": "Now drawing from 'AC Power'\n -InternalBattery-0 (id=<redacted>)\t100%; charged; 0:00 remaining present: true",
    "resident_idle_services_recorded": [
-    "1549   0.1 /Users/joshuawarren/.local/share/uv/tools/docling-serve/bin/python /Users/joshuawarren/.local/share/uv/tools/docling-serve/bin/docling-serve run --host 0.0.0.0 --port 5001",
-    "2956   0.0 /Users/joshuawarren/.local/share/uv/tools/docling-serve/bin/python -c from multiprocessing.resource_tracker import main;main(15)",
+    "1549   0.1 <resident-cpu-service> <resident-cpu-service> run --host 0.0.0.0 --port 5001",
+    "2956   0.0 <resident-cpu-service> -c from multiprocessing.resource_tracker import main;main(15)",
     "69678   0.0 /opt/homebrew/bin/ollama serve"
    ],
    "router_watch_pid": "48655",

@@ -1,6 +1,6 @@
 # M1 protocol: SDPA f16-scores rework (consolidated, one run)
 
-Owner: BenchQueueM1 on jwm1 (100.84.184.102). Requested by SdpaRework.
+Owner: BenchQueueM1 on jwm1 (<m1-host>). Requested by SdpaRework.
 v2, rebased: the BEFORE is now integrated main WITH the fused fast::RoPE
 (commits bbda339..5ac59e8). The earlier 1,953-dispatch baseline was
 pre-RoPE and is retired; both legs below were re-measured on the

@@ -34,7 +34,7 @@
     "runtime_cand": "063c9c8430e06e78b1ead3ff4770de164b3c6a01dca9228185cbb2cd4f206afe",
     "note": "built separately by swapping the bf16 shader in .work/mlx; binaries differ by construction and hash"
   },
-  "host": "jwm1-linux (100.84.184.102), Apple M1 (G13G B1), subgroupSize 32, cooperative matrix true",
+  "host": "jwm1-linux (<m1-host>), Apple M1 (G13G B1), subgroupSize 32, cooperative matrix true",
   "driver": "fork mesa-honeykrisp-omarchy (default ICD); stock via /home/joshuawarren/stock-mesa/stock-icd.json",
   "lock_discipline": {
     "rule": "single top-level flock /tmp/m1-gpu.lock; builds outside the lock per Main's 2026-09-11 re-sequencing; capped waits only",
