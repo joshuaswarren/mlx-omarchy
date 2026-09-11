@@ -36,15 +36,16 @@ def f16_digest(a):
 def quantize_f16(n, k, group=64, bits=4, seed=7):
     w = mx.random.normal((n, k), key=mx.random.key(seed)) * 0.5
     w, scales, biases = mx.quantize(w.astype(mx.float32), group, bits)
-    w = mx.eval(w)
-    scales = mx.eval(scales.astype(mx.float16))
-    biases = mx.eval(biases.astype(mx.float16))
+    scales = scales.astype(mx.float16)
+    biases = biases.astype(mx.float16)
+    mx.eval(w, scales, biases)
     return w, scales, biases
 
 
 def f16_seed(shape, seed):
     x = mx.random.normal(shape, key=mx.random.key(seed)).astype(mx.float16)
-    return mx.eval(x)
+    mx.eval(x)
+    return x
 
 
 def qmm_section(out):
