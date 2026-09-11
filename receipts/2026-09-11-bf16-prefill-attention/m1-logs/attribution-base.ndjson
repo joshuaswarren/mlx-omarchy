@@ -1,0 +1,9 @@
+{"k": "whole_prefill", "leg": "short", "gate": "off", "tokens": 30, "us_median": 198653.0, "tok_s": 151.0}
+{"k": "whole_prefill", "leg": "long", "gate": "off", "tokens": 147, "us_median": 374807.4, "tok_s": 392.2}
+{"k": "whole_prefill", "leg": "ctx1024", "gate": "off", "tokens": 1053, "us_median": 2760173.4, "tok_s": 381.5}
+{"k": "whole_prefill", "leg": "long", "gate": "on", "tokens": 147, "us_median": 366344.4, "tok_s": 401.3}
+{"k": "whole_prefill", "leg": "ctx1024", "gate": "on", "tokens": 1053, "us_median": 2532682.0, "tok_s": 415.8}
+{"k": "sdpa_whole", "leg": "m262", "gate": "off", "us_median": 2528.8}
+{"k": "sdpa_whole", "leg": "m262", "gate": "on", "us_median": 2279.0}
+{"k": "cast_q_f32", "leg": "m262", "us_median": 332.2}
+{"k": "cast_kv_f32", "leg": "m262", "us_median": 431.9}

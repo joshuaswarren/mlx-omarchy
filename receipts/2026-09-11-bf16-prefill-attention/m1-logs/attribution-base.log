@@ -1,0 +1,11 @@
+Fetching 9 files:   0%|          | 0/9 [00:00<?, ?it/s]Fetching 9 files: 100%|██████████| 9/9 [00:00<00:00, 1795.34it/s]
+Traceback (most recent call last):
+  File "/home/joshuawarren/src/mlx-bf16-prefill-attn/receipts/2026-09-11-bf16-prefill-attention/attribution_components.py", line 266, in <module>
+    main()
+    ~~~~^^
+  File "/home/joshuawarren/src/mlx-bf16-prefill-attn/receipts/2026-09-11-bf16-prefill-attention/attribution_components.py", line 165, in main
+    qs = mx.matmul(q32, scale)
+TypeError: matmul(): incompatible function arguments. The following argument types are supported:
+    1. matmul(a: array, b: array, /, *, stream: StreamOrDevice = None) -> array
+
+Invoked with types: mlx.core.array, float

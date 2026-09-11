@@ -1,0 +1,13 @@
+Fetching 9 files:   0%|          | 0/9 [00:00<?, ?it/s]Fetching 9 files: 100%|██████████| 9/9 [00:00<00:00, 1769.25it/s]
+{"part": "stream", "leg": "long", "gate": "f32comp", "positions": 147}
+{"part": "stream", "leg": "long", "gate": "bf16fast", "positions": 147}
+{"part": "stream", "leg": "ctx1024", "gate": "f32comp", "positions": 1053}
+{"part": "stream", "leg": "ctx1024", "gate": "bf16fast", "positions": 1053}
+Traceback (most recent call last):
+  File "/home/joshuawarren/src/mlx-bf16-prefill-attn/receipts/2026-09-11-bf16-prefill-attention/oracle_f64.py", line 302, in <module>
+    main()
+    ~~~~^^
+  File "/home/joshuawarren/src/mlx-bf16-prefill-attn/receipts/2026-09-11-bf16-prefill-attention/oracle_f64.py", line 135, in main
+    rng = mx.random.key(args.seed)
+                        ^^^^^^^^^
+AttributeError: 'Namespace' object has no attribute 'seed'
