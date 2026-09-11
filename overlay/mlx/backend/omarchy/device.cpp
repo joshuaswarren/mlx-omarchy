@@ -1,5 +1,5 @@
 // Copyright © 2026 Joshua Warren / mlx-omarchy contributors.
-// SPDX-License-Identifier: MIT
+#include "mlx/backend/omarchy/host_trace.h"
 
 #include "mlx/backend/omarchy/device.h"
 
@@ -1137,6 +1137,7 @@ void CompletionDispatcher::drain_through(uint64_t max_value) {
   }
   // Completion boundary: make noncoherent host-visible writes from the
   // GPU visible before handlers and later host reads observe results.
+  htrace::Scoped _cwork(htrace::completion_work);
   omarchy::allocator().invalidate_noncoherent(device_);
   uint64_t ready_value = ready.back().value;
   for (auto& completion : ready) {

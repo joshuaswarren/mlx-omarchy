@@ -1,5 +1,5 @@
 // Copyright © 2026 Joshua Warren / mlx-omarchy contributors.
-// SPDX-License-Identifier: MIT
+#include "mlx/backend/omarchy/host_trace.h"
 
 // GPU evaluation entry points (mlx/backend/gpu/eval.h). Mirrors the CUDA
 // backend's flow: run the primitive's eval_gpu, register input buffers as
@@ -30,6 +30,7 @@ void init() {
 }
 
 void eval(array& arr) {
+  htrace::Scoped _node_total(htrace::eval_node_total);
   omarchy::trace::counters().gpu_primitive_dispatches++;
 #ifdef MLX_OMARCHY_GPU_PROFILING
   ++omarchy::trace::prim_counts()[arr.primitive().name()];
@@ -46,6 +47,7 @@ void eval(array& arr) {
     if (arr.is_tracer()) {
       inputs = arr.inputs();
     }
+    htrace::Scoped _backend(htrace::backend_eval);
     if (!omarchy::try_eval_eager_fusion(arr, stream)) {
       arr.primitive().eval_gpu(arr.inputs(), outputs);
     }
@@ -63,6 +65,7 @@ void eval(array& arr) {
   // temporaries of workless evals would accumulate until an unrelated
   // submission flushed them.
   if (encoder.needs_commit()) {
+    htrace::Scoped _book(htrace::eval_bookkeeping);
     if (!batch_open) {
       // One scheduler task and one completion notification per batch,
       // attached when the batch opens so that every close path
@@ -98,6 +101,7 @@ void eval(array& arr) {
 }
 
 void finalize(Stream s) {
+  htrace::Scoped _fin(htrace::finalize_ns);
   omarchy::trace::counters().omarchy_finalize_calls++;
   // Flush contract: the evaluator calls finalize at task-throttle points
   // and at graph end, and then waits on task-completion handlers. The

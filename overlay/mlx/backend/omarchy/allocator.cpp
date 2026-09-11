@@ -1,5 +1,5 @@
 // Copyright © 2026 Joshua Warren / mlx-omarchy contributors.
-// SPDX-License-Identifier: MIT
+#include "mlx/backend/omarchy/host_trace.h"
 
 #include "mlx/backend/omarchy/allocator.h"
 
@@ -87,6 +87,7 @@ VulkanAllocator::VulkanAllocator()
 }
 
 Buffer VulkanAllocator::malloc(size_t size) {
+  htrace::Scoped _alloc(htrace::alloc_ns);
   // The table is empty until the first device exists. A core flow can reach
   // malloc before anything else touches the device, so initialize here; the
   // table field would otherwise be read before the lazy init fills it.
@@ -186,6 +187,7 @@ void VulkanAllocator::destroy_buffer(VulkanBuffer* buf) {
 }
 
 void VulkanAllocator::free(Buffer buffer) {
+  htrace::Scoped _free(htrace::free_ns);
   auto* buf = static_cast<VulkanBuffer*>(buffer.ptr());
   if (!buf) {
     return;
