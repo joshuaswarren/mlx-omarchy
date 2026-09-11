@@ -1,0 +1,37 @@
+{
+ "schema": "mlx-omarchy/q4-memory-roof/1",
+ "date": "2026-09-11",
+ "agent": "Q4DecodeMemoryRoof",
+ "decision": "RECEIPT-ONLY NEGATIVE: land no source change. The Q4 layout itself streams at the copy roof (60.1-60.2 GB/s vs 58.5 GB/s balanced copy) and is innocent; the production kernel runs at 41.0 GB/s in the in-model-style environment (69% of its own layout roof); no bit-preserving arm recovers the gap repeatably - the prefetch-depth ladder is monotonically WORSE (+9.5% us/layer at depth 2 to +24.5% at depth 8, both legs, occupancy tax), wg128 is bimodal (widedep +0.34% leg A / -4.43% leg B, fails the >=3% repeat bar), and the only faster pattern (+13%: two consecutive words per lane) changes the pinned accumulation order and is not landed. Nothing merged; wave/Q4DecodeMemoryRoof carries bench arms and this receipt only.",
+ "question": "Can the Q4 decode GEMV be moved toward its memory roof (sweep load width, alignment, stride, rows per workgroup; identify the inefficiency; fix the access pattern without changing arithmetic order; six canonical digests as hard gate)?",
+ "host": "jwm1-linux, Apple M1 (G13G B1), fork driver mesa-honeykrisp-omarchy 26.3.0.devel.hk6f6afc8-1 (verified per window), linux-asahi 7.1.6.asahi1-1",
+ "timing_instrument": "host CLOCK_MONOTONIC around whole submits only; no device-timestamp numbers used",
+ "roof_wall_gb_s": {
+  "copy_256MB": [58.44, 58.52],
+  "read_256MB": [59.54, 59.65],
+  "pattern_production_w1_r8": [60.24, 60.09],
+  "pattern_line_aligned_pitch512": [59.99, 59.98],
+  "pattern_odd_phase_pitch114": [58.95, 58.56],
+  "pattern_rows_per_wg_1_2_4_8_16": "flat 58.9-59.8 / 58.9-59.4",
+  "pattern_uvec4_load": [60.7, 61.5],
+  "pattern_pair_map_w2_r8_ORDER_CHANGING_NOT_LANDED": [68.32, 67.23]
+ },
+ "inefficiency_identified": "insufficient memory-level parallelism inside the kernel (layout at roof, kernel at 69% of it in-model); per-lane prefetch deepening makes it worse via register-liveness/occupancy loss, and workgroup remapping is bimodal - the gap is measured-unreachable within the pinned arithmetic order",
+ "candidate_screen_widedep_us_per_layer": {
+  "base": [205.5, 206.1],
+  "pf2": [225.0, 225.7],
+  "pf4": [242.3, 242.5],
+  "pf8": [256.3, 256.3],
+  "wg128": [206.2, 196.9]
+ },
+ "candidate_screen_agx_ir_instructions": {"base": 949, "pf2": 993, "pf4": 1029, "pf8": 1101, "note": "final RA register counts not exposed by AGX_MESA_DEBUG shaders/ra; instruction growth +4.6/+8.4/+16% cannot explain the +9.5/+17.8/+24.5% slowdowns - liveness/occupancy is the cost"},
+ "bit_identity_gate": "PASS on llvmpipe tree mode before any timing: 42/42 eq cells zero across unroll/loadfirst/wg128/pf2/pf4/pf8 vs base; M1 subgroup eq rows likewise zero in every default/gap leg",
+ "digest_gate": "six canonical Q4 digests untouched; no digest legs exercised (nothing landed)",
+ "instrument_correction": "the historic 9-13 TB/s copy-peak readings were an invalid dispatch: 1<<24 uvec4 / 256 threads = 65536 workgroups > maxComputeGroupCountX 65535; fixed in run_peak (clamp + real coverage accounting)",
+ "implied_tok_s": "at the pattern roof the q4 layer chain alone (202.25 MB/token) would take 3.4 ms/token; at the forbidden pair map 3.0; production in-model chain ~4.9; native base-M1 whole-token baseline 6.64 ms at 150.57 tok/s = 41.9 GB/s effective",
+ "provenance": {
+  "branch": "wave/Q4DecodeMemoryRoof (22ad3bc, 0013728, 6db0506)",
+  "windows": "three single top-level flocks 2026-09-11 08:43Z / 10:04Z / ~10:20Z, announced on hub before each",
+  "legs": ["roof-a-20260911T084318Z.ndjson", "roof-b-20260911T084318Z.ndjson", "roof-a-20260911T100428Z.ndjson", "roof-b-20260911T100428Z.ndjson", "window2-gap-a-20260911T100428Z.ndjson", "window2-gap-b-20260911T100428Z.ndjson", "window2-agx-ra.log", "roof-session-20260911T084318Z.txt", "roof-session-20260911T100428Z.txt"]
+ }
+}
