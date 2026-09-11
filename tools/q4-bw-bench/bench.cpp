@@ -1323,18 +1323,28 @@ static void run_gap_mode(const DeviceCtx& ctx, bool quick) {
       const char* src;
       const char* spv;
       uint32_t columns;
+      const char* defines;  // null = q4_defines
     };
     const CandSpec cands[] = {
         {"unroll", "tools/q4-bw-bench/shaders/qmm_vec_cand_unroll.comp",
-            "/tmp/q4gap_cand_u.spv", 8u},
+            "/tmp/q4gap_cand_u.spv", 8u, nullptr},
         {"loadfirst",
             "tools/q4-bw-bench/shaders/qmm_vec_cand_loadfirst.comp",
-            "/tmp/q4gap_cand_l.spv", 8u},
+            "/tmp/q4gap_cand_l.spv", 8u, nullptr},
         {"wg128", "tools/q4-bw-bench/shaders/qmm_vec_cand_wg128.comp",
-            "/tmp/q4gap_cand_w.spv", 4u},
+            "/tmp/q4gap_cand_w.spv", 4u, nullptr},
+        {"r2", "tools/q4-bw-bench/shaders/qmm_vec_cand_rpl.comp",
+            "/tmp/q4gap_cand_r2.spv", 16u,
+            "-DUSE_FP16=1 -DQMM_VEC_Q4_WORD=1 -DQMM_VEC_MULTI=1 "
+            "-DROWS_PER_LANE=2"},
+        {"r4", "tools/q4-bw-bench/shaders/qmm_vec_cand_rpl.comp",
+            "/tmp/q4gap_cand_r4.spv", 32u,
+            "-DUSE_FP16=1 -DQMM_VEC_Q4_WORD=1 -DQMM_VEC_MULTI=1 "
+            "-DROWS_PER_LANE=4"},
     };
     for (const CandSpec& c : cands) {
-      if (compile_shader(c.src, q4_defines, c.spv) != 0)
+      if (compile_shader(c.src, c.defines ? c.defines : q4_defines,
+              c.spv) != 0)
         die("compile gap cand %s", c.tag);
       Side cs;
       cs.tag = c.tag;
@@ -1710,20 +1720,34 @@ int main(int argc, char** argv) {
     const char* src;
     const char* spv;
     uint32_t columns;
+    const char* defines;  // null = variant_defines
   };
+  // Rows-per-lane arms inherit the mode's reduction flavor from
+  // variant_defines; hardcoding USE_SUBGROUP here would run the wrong
+  // variant on lavapipe (subgroupSize != 32 there, wrong by design).
+  const std::string rpl_src_str = "tools/q4-bw-bench/shaders/qmm_vec_cand_rpl.comp";
+  const std::string r2_defines =
+      std::string(variant_defines) + " -DROWS_PER_LANE=2";
+  const std::string r4_defines =
+      std::string(variant_defines) + " -DROWS_PER_LANE=4";
+  const char* rpl_src = rpl_src_str.c_str();
   const SideSpec specs[] = {
       {"base", "tools/q4-bw-bench/shaders/qmm_vec_base.comp",
-          "/tmp/q4base.spv", 8u},
+          "/tmp/q4base.spv", 8u, nullptr},
       {"unroll", "tools/q4-bw-bench/shaders/qmm_vec_cand_unroll.comp",
-          "/tmp/q4cand_u.spv", 8u},
+          "/tmp/q4cand_u.spv", 8u, nullptr},
       {"loadfirst", "tools/q4-bw-bench/shaders/qmm_vec_cand_loadfirst.comp",
-          "/tmp/q4cand_l.spv", 8u},
+          "/tmp/q4cand_l.spv", 8u, nullptr},
       {"wg128", "tools/q4-bw-bench/shaders/qmm_vec_cand_wg128.comp",
-          "/tmp/q4cand_w.spv", 4u},
+          "/tmp/q4cand_w.spv", 4u, nullptr},
+      {"r2", rpl_src, "/tmp/q4cand_r2.spv", 16u, r2_defines.c_str()},
+      {"r4", rpl_src, "/tmp/q4cand_r4.spv", 32u, r4_defines.c_str()},
   };
-  const int num_sides = 4;
+  const int num_sides = 6;
   for (int i = 0; i < num_sides; ++i) {
-    if (compile_shader(specs[i].src, variant_defines, specs[i].spv) != 0)
+    if (compile_shader(specs[i].src,
+            specs[i].defines ? specs[i].defines : variant_defines,
+            specs[i].spv) != 0)
       die("compile %s", specs[i].tag);
   }
 

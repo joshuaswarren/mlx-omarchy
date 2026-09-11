@@ -1,0 +1,1051 @@
+#version 460
+
+// Rows-per-lane candidate arm (receipts/2026-09-11-q4-decode-rows-per-lane),
+// derived from qmm_vec_base.comp (= the production shader, diff-guarded in
+// run-m1.sh). Compile with -DROWS_PER_LANE=R (R in 1..4).
+//
+// Each 32-lane slot owns R consecutive output columns instead of one, so a
+// lane holds R independent accumulators and every loop step issues R
+// weight-word loads from R different weight rows (words_per_row*4 bytes
+// apart) against one shared x load. That raises memory-level parallelism
+// per lane without deepening any single row's dependency chain.
+//
+// Order preservation (the load-bearing claim, verified bit-for-bit by the
+// bench before any timing): every individual output still accumulates in
+// exactly the shipped ascending order over its own k. Lane j of a slot
+// takes the same words it always took for that column (w = j, j+32, ...;
+// the qmv_fast tile w = 2j, 2j+1, ...), each dot/input_sum chain and each
+// per-word block finish keep the shipped sequence, and the 32-lane
+// reduction keeps the shipped stride-1-first pairing per column. Only the
+// workgroup -> column map changes (a workgroup now covers
+// COLUMNS_PER_GROUP * R columns), so the dispatch grid shrinks by R.
+
+// The shipped kernel body follows, edited only where marked RPL.
+
+// Fused matrix-vector path for QuantizedMatmul when x is a single row:
+// out[1, n] = x[1, k] @ dequant(w) with w packed uint32 words holding
+// 32/bits affine values along the packed axis in the low bits first
+// (bits 2/4/8) or lane-atomic little-endian byte packs of 8/3, 8/5,
+// or 4/3 bytes (bits 3/5/6), one affine scale and bias per group_size
+// elements; with -DFP_MODE the fp modes instead (fp4 e2m1 / fp8 e4m3
+// element bytes, one scale byte per group, no bias). Decode is this
+// shape on every layer, and the general kernel serializes it: one
+// thread per output column walks the whole row serially, so its
+// 32-lane reads sit words-per-row*4 bytes apart - every lane a
+// separate cache line. Here one of the workgroup's eight 32-lane
+// subgroups owns one weight row and lanes stride single k steps, so
+// consecutive lanes read consecutive x elements, consecutive
+// weight-row words, and one shared cache line of row bytes per step.
+// Dequantization happens in registers inside the dot product - no
+// dequantized intermediate tensor, no extra pass over memory, one
+// dispatch.
+//
+// RPL: a slot owns ROWS_PER_LANE consecutive weight rows; the reduction
+// and store handle one accumulator per row. The USE_SUBGROUP and tree
+// flavors below keep the shipped per-column pairing.
+//
+// QMM_VEC_Q4_WORD compiles the transposed affine 4-bit/group-64 decode
+// path in native qmv arithmetic: one lane owns one packed word per
+// block, loads scale and bias once, and applies all eight nibbles with
+// constant shifts.
+
+#ifdef USE_FP16
+#extension GL_EXT_shader_16bit_storage : require
+#extension GL_EXT_shader_explicit_arithmetic_types_float16 : require
+#define STORAGE_TYPE float16_t
+#define LOAD_VALUE(x) float(x)
+#define STORE_VALUE(f) STORAGE_TYPE(f)
+#elif defined(USE_BF16)
+#extension GL_EXT_shader_16bit_storage : require
+#extension GL_EXT_shader_explicit_arithmetic_types_int16 : require
+#define STORAGE_TYPE uint16_t
+#define LOAD_VALUE(x) uintBitsToFloat(uint(x) << 16u)
+uint16_t bf16_store(float value) {
+  uint bits = floatBitsToUint(value);
+  if (isnan(value)) {
+    return uint16_t((bits >> 16) | 0x40u);
+  }
+  return uint16_t((bits + 0x7fffu + ((bits >> 16) & 1u)) >> 16);
+}
+#define STORE_VALUE(f) bf16_store(f)
+#else
+#define STORAGE_TYPE float
+#define LOAD_VALUE(x) float(x)
+#define STORE_VALUE(f) STORAGE_TYPE(f)
+#endif
+#ifdef USE_SUBGROUP
+// The subgroup reduction variant assumes subgroupSize == 32, gated in
+// dispatch (see QuantizedMatmul::eval_gpu). The kernel does not check
+// this itself because Vulkan does not let compute shaders query
+// subgroupSize at runtime. Compiling this on a device with a different
+// subgroup size produces a wrong sum, so the dispatch gate is the
+// load-bearing part of this codepath.
+#extension GL_KHR_shader_subgroup_basic : require
+#extension GL_KHR_shader_subgroup_arithmetic : require
+#endif
+#if defined(FP_MODE) && defined(QMM_VEC_Q4_WORD)
+#error "QMM_VEC_Q4_WORD applies to affine quantization only"
+#endif
+
+const uint COLUMNS_PER_GROUP = 8u;
+const uint LANES = 32u;
+
+// RPL: rows per lane; a slot covers COLUMNS_PER_WG consecutive columns.
+#ifndef ROWS_PER_LANE
+#define ROWS_PER_LANE 1
+#endif
+#if ROWS_PER_LANE < 1 || ROWS_PER_LANE > 4
+#error "ROWS_PER_LANE must be 1..4"
+#endif
+const uint COLUMNS_PER_WG = COLUMNS_PER_GROUP * uint(ROWS_PER_LANE);
+
+layout(local_size_x = 256) in;
+
+#if defined(USE_FP16) && defined(QMM_VEC_Q4_WORD)
+// Decode x rows are 16-byte aligned by dispatch. Reading eight packed halves
+// at once keeps native's half arithmetic while avoiding eight scalar loads.
+layout(set = 0, binding = 0, std430) readonly buffer InputX {
+  uvec4 values[];
+} input_x;
+#else
+layout(set = 0, binding = 0, std430) readonly buffer InputX {
+  STORAGE_TYPE values[];
+} input_x;
+#endif
+#ifdef QMM_VEC_MULTI
+#ifndef QMM_VEC_Q4_WORD
+#error "QMM_VEC_MULTI builds on QMM_VEC_Q4_WORD"
+#endif
+// Multi-weight decode dispatch: up to three transposed 4-bit/group-64
+// weights against one x row in one dispatch, each with its own
+// scale/bias/output triple and an optional fused Add epilogue
+// (sum = out + addend, the elementwise Add's float add and storage
+// rounding). Workgroups are laid out weight after weight; shape[i]
+// carries weight i's N, dims the weight count, flags bit 8+i the
+// epilogue for weight i. Every weight, scale, bias, output, and addend
+// starts at element 0 of its buffer (the host refuses otherwise), so no
+// per-weight offsets ride in the push constants — except a weight's sum
+// store under the direct-KV flag (bit 12+i), which the host may aim at
+// one token row of a KV cache copy: out_strides[i] base element,
+// in_strides[i] the row gap, matrix_m the head dim.
+#define QMM_VEC_MULTI_WEIGHT(I, B) \
+layout(set = 0, binding = B, std430) readonly buffer InputW##I { \
+  uint values[]; \
+} input_w##I; \
+layout(set = 0, binding = B + 1, std430) readonly buffer Scales##I { \
+  STORAGE_TYPE values[]; \
+} scales##I; \
+layout(set = 0, binding = B + 2, std430) readonly buffer Biases##I { \
+  STORAGE_TYPE values[]; \
+} biases##I; \
+layout(set = 0, binding = B + 3, std430) writeonly buffer Output##I { \
+  STORAGE_TYPE values[]; \
+} output##I; \
+layout(set = 0, binding = B + 4, std430) readonly buffer Addend##I { \
+  STORAGE_TYPE values[]; \
+} addend##I; \
+layout(set = 0, binding = B + 5, std430) writeonly buffer Sum##I { \
+  STORAGE_TYPE values[]; \
+} sum##I;
+QMM_VEC_MULTI_WEIGHT(0, 1)
+QMM_VEC_MULTI_WEIGHT(1, 7)
+QMM_VEC_MULTI_WEIGHT(2, 13)
+#else
+layout(set = 0, binding = 1, std430) readonly buffer InputW {
+  uint values[];
+} input_w;
+#ifdef FP_MODE
+// Scale bytes addressed through the word view; no bias term.
+layout(set = 0, binding = 2, std430) readonly buffer ScaleBias {
+  uint values[];
+} scale_bias;
+layout(set = 0, binding = 3, std430) writeonly buffer Output {
+  STORAGE_TYPE values[];
+} output_data;
+#else
+layout(set = 0, binding = 2, std430) readonly buffer Scales {
+  STORAGE_TYPE values[];
+} scales;
+layout(set = 0, binding = 3, std430) readonly buffer Biases {
+  STORAGE_TYPE values[];
+} biases;
+layout(set = 0, binding = 4, std430) writeonly buffer Output {
+  STORAGE_TYPE values[];
+} output_data;
+#endif
+#endif
+
+layout(push_constant) uniform Params {
+  uint count;
+  uint operation;
+  uint lhs_size;
+  uint rhs_size;
+  uint reduce_size;
+  uint output_size;
+  uint lhs_offset;
+  uint rhs_offset;
+  uint output_offset;
+  uint aux_size;
+  uint aux_offset;
+  uint matrix_m;
+  uint matrix_n;
+  uint matrix_k;
+  uint flags;
+  float alpha;
+  float beta;
+  uint dims;
+  uint shape[4];
+  uint in_strides[4];
+  uint out_strides[4];
+} params;
+
+#ifndef USE_SUBGROUP
+// RPL: one scratch column per row's reduction.
+shared float reduce_scratch0[256];
+#if ROWS_PER_LANE >= 2
+shared float reduce_scratch1[256];
+#endif
+#if ROWS_PER_LANE >= 3
+shared float reduce_scratch2[256];
+#endif
+#if ROWS_PER_LANE >= 4
+shared float reduce_scratch3[256];
+#endif
+#endif
+
+// Push-constant routing: operation carries bits (2, 3, 4, 5, 6, or 8),
+// reduce_size the group size, flags bit 0 the non-transposed layout.
+// Affine bindings 2/3 are the separate scale/bias streams; aux_offset
+// is the scale base item and aux_size the bias base item (storage
+// offsets in elements), shape[2] the per-batch param stride. FP_MODE
+// binding 2 is the scale-byte stream (one byte per group, aux_offset =
+// byte offset into it).
+
+// Constant-shift select chain from scatter.comp: runtime word and lane,
+// constant shift per lane.
+uint byte_at(uint word, uint lane) {
+  return (lane == 0u)
+      ? (word & 0xFFu)
+      : (lane == 1u)
+      ? ((word >> 8u) & 0xFFu)
+      : (lane == 2u)
+      ? ((word >> 16u) & 0xFFu)
+      : ((word >> 24u) & 0xFFu);
+}
+
+#ifdef FP_MODE
+float fp8_decode(uint bits) {
+  float magnitude = unpackHalf2x16((bits & 127u) << 7u).x * 256.0;
+  return ((bits & 128u) != 0u) ? -magnitude : magnitude;
+}
+
+float e8m0_decode(uint bits) {
+  return uintBitsToFloat(bits == 0u ? 0x400000u : bits << 23u);
+}
+
+// FP4 E2M1 decode via the fp16 bit trick from the Metal fp4_e2m1
+// constructor: (bits & 7) << 9 reinterprets the exponent and mantissa
+// as fp16 subnormals, the missing 2^14 lands in the scale factor.
+float fp4_decode(uint code) {
+  float magnitude = unpackHalf2x16((code & 7u) << 9u).x * 16384.0;
+  return ((code & 8u) != 0u) ? -magnitude : magnitude;
+}
+#else
+// Affine byte-pack decode: element e of a pack, upstream extract table
+// (all constant shifts; e routes between constant expressions).
+uint q3_at(uint e, uint c0, uint c1, uint c2) {
+  if (e == 0u) return c0 & 0x7u;
+  if (e == 1u) return (c0 >> 3) & 0x7u;
+  if (e == 2u) return ((c0 >> 6) & 0x3u) + ((c1 & 0x1u) << 2);
+  if (e == 3u) return (c1 >> 1) & 0x7u;
+  if (e == 4u) return (c1 >> 4) & 0x7u;
+  if (e == 5u) return ((c1 >> 7) & 0x1u) + ((c2 & 0x3u) << 1);
+  if (e == 6u) return (c2 >> 2) & 0x7u;
+  return (c2 >> 5) & 0x7u;
+}
+
+uint q5_at(uint e, uint c0, uint c1, uint c2, uint c3, uint c4) {
+  if (e == 0u) return c0 & 0x1fu;
+  if (e == 1u) return ((c0 >> 5) & 0x7u) + ((c1 & 0x3u) << 3);
+  if (e == 2u) return (c1 >> 2) & 0x1fu;
+  if (e == 3u) return ((c1 >> 7) & 0x1u) + ((c2 & 0xfu) << 1);
+  if (e == 4u) return ((c2 >> 4) & 0xfu) + ((c3 & 0x1u) << 4);
+  if (e == 5u) return (c3 >> 1) & 0x1fu;
+  if (e == 6u) return ((c3 >> 6) & 0x3u) + ((c4 & 0x7u) << 2);
+  return (c4 >> 3) & 0x1fu;
+}
+
+uint q6_at(uint e, uint c0, uint c1, uint c2) {
+  if (e == 0u) return c0 & 0x3fu;
+  if (e == 1u) return ((c0 >> 6) & 0x3u) + ((c1 & 0xfu) << 2);
+  if (e == 2u) return ((c1 >> 4) & 0xfu) + ((c2 & 0x3u) << 4);
+  return (c2 >> 2) & 0x3fu;
+}
+#endif
+
+#ifdef QMM_VEC_Q4_WORD
+// One x quad against the low 16 bits of `packed` (nibbles low first).
+// The quad's half chain sum joins input_sum; ((p0 + p1) + p2) + p3 joins
+// dot as an fma chain: every product is exact (11-bit x times a 4-bit
+// nibble), so each fma rounds exactly the sum native qdot rounds, and
+// nibble i times x equals native's (x / 16^i) * (word & mask_i).
+#ifdef USE_FP16
+// Native load_vector adds the four T=half values in half. unpackFloat2x16 is
+// an f16vec2 bitcast, not a widening conversion. Q4_WORD supplies one uvec4
+// load for all eight x values.
+#define Q4_QUAD_LOAD(lo, hi) \
+  f16vec2 h01 = unpackFloat2x16(lo); \
+  f16vec2 h23 = unpackFloat2x16(hi); \
+  float16_t h0 = h01.x; \
+  float16_t h1 = h01.y; \
+  float16_t h2 = h23.x; \
+  float16_t h3 = h23.y; \
+  input_sum += float(((h0 + h1) + h2) + h3); \
+  float x0 = float(h0); \
+  float x1 = float(h1); \
+  float x2 = float(h2); \
+  float x3 = float(h3);
+#else
+// f32 x has nothing to round; the bf16 native quad sum is uncaptured,
+// so bf16 keeps the float chain.
+#define Q4_QUAD_LOAD(base, unused) \
+  float x0 = LOAD_VALUE(input_x.values[base]); \
+  float x1 = LOAD_VALUE(input_x.values[(base) + 1u]); \
+  float x2 = LOAD_VALUE(input_x.values[(base) + 2u]); \
+  float x3 = LOAD_VALUE(input_x.values[(base) + 3u]); \
+  input_sum += ((x0 + x1) + x2) + x3;
+#endif
+#define Q4_QUAD(packed, a, b) { \
+  Q4_QUAD_LOAD(a, b) \
+  uint p = (packed); \
+  dot += fma(x3, float((p >> 12u) & 0xfu), \
+      fma(x2, float((p >> 8u) & 0xfu), \
+          fma(x1, float((p >> 4u) & 0xfu), \
+              x0 * float(p & 0xfu)))); \
+}
+// One packed weight word and its eight x values.
+#ifdef USE_FP16
+#define Q4_WORD(word, x_base) { \
+  uint word_value = (word); \
+  uvec4 x_words = input_x.values[(x_base) / 8u]; \
+  Q4_QUAD(word_value, x_words.x, x_words.y) \
+  Q4_QUAD(word_value >> 16u, x_words.z, x_words.w) \
+}
+#else
+#define Q4_WORD(word, x_base) { \
+  uint word_value = (word); \
+  uint quad_base = (x_base); \
+  Q4_QUAD(word_value, quad_base, 0u) \
+  Q4_QUAD(word_value >> 16u, quad_base + 4u, 0u) \
+}
+#endif
+// Block epilogue: result += fma(scale, dot, sum * bias) with the group
+// of word w (every word of a lane's block sits in one group). S and B
+// name the scale and bias buffers so the multi-weight variant can
+// instantiate the same chain per weight.
+#define Q4_BLOCK_FINISH(w, S, B) { \
+  uint group = (w) / 8u; \
+  float scale = LOAD_VALUE(S.values[scale_base + group]); \
+  float bias = LOAD_VALUE(B.values[bias_base + group]); \
+  precise float bias_term = input_sum * bias; \
+  accumulator += fma(scale, dot, bias_term); \
+}
+// One output column of one transposed 4-bit/group-64 weight, native qmv
+// arithmetic (metal/kernels/quantized.h qmv_impl / qmv_fast_impl +
+// load_vector + qdot, T=half, U=float): a lane owns one packed word (two when
+// K % 512 == 0 and N % 8 == 0, the qmv_fast tile) per 256- or 512-wide
+// block. Per block it forms the half-precision chain sum of each x
+// quad, accumulates those in float, and the dot against the nibbles in
+// source order, then result += fma(scale, dot, sum * bias). Metal
+// compiles with -fno-fast-math: it contracts scale * accum + sum * bias
+// into that fma, leaves sum * bias separate, and keeps every add in
+// source order. Honeykrisp's NIR reassociates add chains into fma
+// ladders unless the ops are exact, so accumulator, dot, and input_sum
+// are precise (receipts/2026-09-09-q4-gemv-order). Straight-line
+// bodies: the qmv_fast tile and the qmv tile each get their own loop so
+// no runtime-count inner loop sits between the loads and the math.
+// Expects w_base, scale_base, bias_base, x_row, words_per_row, n and
+// lane_in_slot in scope and accumulates into `accumulator`.
+#define Q4_ROW(W, S, B) { \
+  if (params.matrix_k % 512u == 0u && n % 8u == 0u) { \
+    for (uint w = lane_in_slot * 2u; w < words_per_row; \
+         w += LANES * 2u) { \
+      precise float dot = 0.0; \
+      precise float input_sum = 0.0; \
+      Q4_WORD(W.values[w_base + w], x_row + w * 8u) \
+      Q4_WORD(W.values[w_base + w + 1u], x_row + w * 8u + 8u) \
+      Q4_BLOCK_FINISH(w, S, B) \
+    } \
+  } else { \
+    for (uint w = lane_in_slot; w < words_per_row; w += LANES) { \
+      precise float dot = 0.0; \
+      precise float input_sum = 0.0; \
+      Q4_WORD(W.values[w_base + w], x_row + w * 8u) \
+      Q4_BLOCK_FINISH(w, S, B) \
+    } \
+  } \
+}
+
+// ---- RPL: rows-per-lane variant of the chains above. ----
+#if ROWS_PER_LANE >= 2
+#define RPL_STEP_2(x) x
+#else
+#define RPL_STEP_2(x)
+#endif
+#if ROWS_PER_LANE >= 3
+#define RPL_STEP_3(x) x
+#else
+#define RPL_STEP_3(x)
+#endif
+#if ROWS_PER_LANE >= 4
+#define RPL_STEP_4(x) x
+#else
+#define RPL_STEP_4(x)
+#endif
+
+// Per-row addressing state. In the multi main, column0/active*/w_base*/
+// scale_base*/bias_base* for every row are declared before the weight
+// selection (the arithmetic is pure and the actives guard every load),
+// so the reduction and store phases after the loops can see them.
+// glslang rejects ## inside nested macro arguments, so the per-row
+// macros below take the full names as parameters instead of pasting.
+#define RPL_ROW_VARS(idx, col, act, wb, sb, bb) \
+  uint col = column0 + (idx); \
+  bool act = col < n; \
+  uint wb = col * words_per_row; \
+  uint sb = col * groups_per_row; \
+  uint bb = sb;
+#define RPL_ROW_VARS0 \
+  bool active0 = column0 < n; \
+  uint w_base0 = column0 * words_per_row; \
+  uint scale_base0 = column0 * groups_per_row; \
+  uint bias_base0 = scale_base0;
+
+// The eight x values of word w, loaded once and shared by every row,
+// with the two quad chain sums the shipped code would have formed.
+// Braceless on purpose: the declarations must stay in the loop body's
+// scope, where the per-row steps below consume them.
+#ifdef USE_FP16
+#define RPL_X_PRELOAD(w) \
+  uvec4 x_words = input_x.values[((x_row) + (w) * 8u) / 8u]; \
+  f16vec2 h01 = unpackFloat2x16(x_words.x); \
+  f16vec2 h23 = unpackFloat2x16(x_words.y); \
+  f16vec2 h45 = unpackFloat2x16(x_words.z); \
+  f16vec2 h67 = unpackFloat2x16(x_words.w); \
+  float x0 = float(h01.x); \
+  float x1 = float(h01.y); \
+  float x2 = float(h23.x); \
+  float x3 = float(h23.y); \
+  float x4 = float(h45.x); \
+  float x5 = float(h45.y); \
+  float x6 = float(h67.x); \
+  float x7 = float(h67.y); \
+  float x_sum_lo = float(((h01.x + h01.y) + h23.x) + h23.y); \
+  float x_sum_hi = float(((h45.x + h45.y) + h67.x) + h67.y);
+#else
+#define RPL_X_PRELOAD(w) \
+  float x0 = LOAD_VALUE(input_x.values[(x_row) + (w) * 8u]); \
+  float x1 = LOAD_VALUE(input_x.values[(x_row) + (w) * 8u + 1u]); \
+  float x2 = LOAD_VALUE(input_x.values[(x_row) + (w) * 8u + 2u]); \
+  float x3 = LOAD_VALUE(input_x.values[(x_row) + (w) * 8u + 3u]); \
+  float x4 = LOAD_VALUE(input_x.values[(x_row) + (w) * 8u + 4u]); \
+  float x5 = LOAD_VALUE(input_x.values[(x_row) + (w) * 8u + 5u]); \
+  float x6 = LOAD_VALUE(input_x.values[(x_row) + (w) * 8u + 6u]); \
+  float x7 = LOAD_VALUE(input_x.values[(x_row) + (w) * 8u + 7u]); \
+  float x_sum_lo = ((x0 + x1) + x2) + x3; \
+  float x_sum_hi = ((x4 + x5) + x6) + x7;
+#endif
+
+// One row's single-word block against the preloaded x, in the shipped
+// Q4_QUAD order: input_sum quad chain first, then the dot fma ladder,
+// low half word before high, then the block finish into this row's
+// accumulator. Call only where active##idx holds.
+#define Q4_ACC_STEP(active, sb_i, bb_i, acc_i, word_value, S, B, w) { \
+  if (active) { \
+    precise float dot = 0.0; \
+    precise float input_sum = 0.0; \
+    input_sum += x_sum_lo; \
+    uint p = (word_value); \
+    dot += fma(x3, float((p >> 12u) & 0xfu), \
+        fma(x2, float((p >> 8u) & 0xfu), \
+            fma(x1, float((p >> 4u) & 0xfu), \
+                x0 * float(p & 0xfu)))); \
+    input_sum += x_sum_hi; \
+    p = (word_value) >> 16u; \
+    dot += fma(x7, float((p >> 12u) & 0xfu), \
+        fma(x6, float((p >> 8u) & 0xfu), \
+            fma(x5, float((p >> 4u) & 0xfu), \
+                x4 * float(p & 0xfu)))); \
+    uint group = (w) / 8u; \
+    float scale = LOAD_VALUE(S.values[sb_i + group]); \
+    float bias = LOAD_VALUE(B.values[bb_i + group]); \
+    precise float bias_term = input_sum * bias; \
+    acc_i += fma(scale, dot, bias_term); \
+  } \
+}
+
+// The qmv_fast tile form: two consecutive words per w against sixteen
+// preloaded x values, one block finish per row (shipped order: word w's
+// two quads, then word w+1's two quads, then the finish).
+#ifdef USE_FP16
+#define RPL_X_PRELOAD_2W(w) \
+  uvec4 x_words = input_x.values[((x_row) + (w) * 8u) / 8u]; \
+  f16vec2 h01 = unpackFloat2x16(x_words.x); \
+  f16vec2 h23 = unpackFloat2x16(x_words.y); \
+  f16vec2 h45 = unpackFloat2x16(x_words.z); \
+  f16vec2 h67 = unpackFloat2x16(x_words.w); \
+  float x0 = float(h01.x); \
+  float x1 = float(h01.y); \
+  float x2 = float(h23.x); \
+  float x3 = float(h23.y); \
+  float x4 = float(h45.x); \
+  float x5 = float(h45.y); \
+  float x6 = float(h67.x); \
+  float x7 = float(h67.y); \
+  float x_sum_a_lo = float(((h01.x + h01.y) + h23.x) + h23.y); \
+  float x_sum_a_hi = float(((h45.x + h45.y) + h67.x) + h67.y); \
+  uvec4 x_words_b = input_x.values[((x_row) + (w) * 8u + 8u) / 8u]; \
+  f16vec2 h89 = unpackFloat2x16(x_words_b.x); \
+  f16vec2 hab = unpackFloat2x16(x_words_b.y); \
+  f16vec2 hcd = unpackFloat2x16(x_words_b.z); \
+  f16vec2 hef = unpackFloat2x16(x_words_b.w); \
+  float x8 = float(h89.x); \
+  float x9 = float(h89.y); \
+  float x10 = float(hab.x); \
+  float x11 = float(hab.y); \
+  float x12 = float(hcd.x); \
+  float x13 = float(hcd.y); \
+  float x14 = float(hef.x); \
+  float x15 = float(hef.y); \
+  float x_sum_b_lo = float(((h89.x + h89.y) + hab.x) + hab.y); \
+  float x_sum_b_hi = float(((hcd.x + hcd.y) + hef.x) + hef.y);
+#else
+#define RPL_X_PRELOAD_2W(w) \
+  float x0 = LOAD_VALUE(input_x.values[(x_row) + (w) * 8u]); \
+  float x1 = LOAD_VALUE(input_x.values[(x_row) + (w) * 8u + 1u]); \
+  float x2 = LOAD_VALUE(input_x.values[(x_row) + (w) * 8u + 2u]); \
+  float x3 = LOAD_VALUE(input_x.values[(x_row) + (w) * 8u + 3u]); \
+  float x4 = LOAD_VALUE(input_x.values[(x_row) + (w) * 8u + 4u]); \
+  float x5 = LOAD_VALUE(input_x.values[(x_row) + (w) * 8u + 5u]); \
+  float x6 = LOAD_VALUE(input_x.values[(x_row) + (w) * 8u + 6u]); \
+  float x7 = LOAD_VALUE(input_x.values[(x_row) + (w) * 8u + 7u]); \
+  float x_sum_a_lo = ((x0 + x1) + x2) + x3; \
+  float x_sum_a_hi = ((x4 + x5) + x6) + x7; \
+  float x8 = LOAD_VALUE(input_x.values[(x_row) + (w) * 8u + 8u]); \
+  float x9 = LOAD_VALUE(input_x.values[(x_row) + (w) * 8u + 9u]); \
+  float x10 = LOAD_VALUE(input_x.values[(x_row) + (w) * 8u + 10u]); \
+  float x11 = LOAD_VALUE(input_x.values[(x_row) + (w) * 8u + 11u]); \
+  float x12 = LOAD_VALUE(input_x.values[(x_row) + (w) * 8u + 12u]); \
+  float x13 = LOAD_VALUE(input_x.values[(x_row) + (w) * 8u + 13u]); \
+  float x14 = LOAD_VALUE(input_x.values[(x_row) + (w) * 8u + 14u]); \
+  float x15 = LOAD_VALUE(input_x.values[(x_row) + (w) * 8u + 15u]); \
+  float x_sum_b_lo = ((x8 + x9) + x10) + x11; \
+  float x_sum_b_hi = ((x12 + x13) + x14) + x15;
+#endif
+#define Q4_ACC_STEP2(active, sb_i, bb_i, acc_i, word_a, word_b, S, B, w) { \
+  if (active) { \
+    precise float dot = 0.0; \
+    precise float input_sum = 0.0; \
+    input_sum += x_sum_a_lo; \
+    uint p = (word_a); \
+    dot += fma(x3, float((p >> 12u) & 0xfu), \
+        fma(x2, float((p >> 8u) & 0xfu), \
+            fma(x1, float((p >> 4u) & 0xfu), \
+                x0 * float(p & 0xfu)))); \
+    input_sum += x_sum_a_hi; \
+    p = (word_a) >> 16u; \
+    dot += fma(x7, float((p >> 12u) & 0xfu), \
+        fma(x6, float((p >> 8u) & 0xfu), \
+            fma(x5, float((p >> 4u) & 0xfu), \
+                x4 * float(p & 0xfu)))); \
+    input_sum += x_sum_b_lo; \
+    p = (word_b); \
+    dot += fma(x11, float((p >> 12u) & 0xfu), \
+        fma(x10, float((p >> 8u) & 0xfu), \
+            fma(x9, float((p >> 4u) & 0xfu), \
+                x8 * float(p & 0xfu)))); \
+    input_sum += x_sum_b_hi; \
+    p = (word_b) >> 16u; \
+    dot += fma(x15, float((p >> 12u) & 0xfu), \
+        fma(x14, float((p >> 8u) & 0xfu), \
+            fma(x13, float((p >> 4u) & 0xfu), \
+                x12 * float(p & 0xfu)))); \
+    uint group = (w) / 8u; \
+    float scale = LOAD_VALUE(S.values[sb_i + group]); \
+    float bias = LOAD_VALUE(B.values[bb_i + group]); \
+    precise float bias_term = input_sum * bias; \
+    acc_i += fma(scale, dot, bias_term); \
+  } \
+}
+
+// The RPL body of Q4_ROW, with per-row state already in scope (see
+// RPL_ROW_VARS) and accumulating into accumulator0..accumulator{R-1}.
+// Load order inside a step: every row's weight words issue back to back
+// before any arithmetic, so the R streams overlap.
+#define Q4_ROW_BODY_RPL(W, S, B) { \
+  if (params.matrix_k % 512u == 0u && n % 8u == 0u) { \
+    for (uint w = lane_in_slot * 2u; w < words_per_row; \
+         w += LANES * 2u) { \
+      RPL_X_PRELOAD_2W(w) \
+      uint word0a = active0 ? W.values[w_base0 + w] : 0u; \
+      uint word0b = active0 ? W.values[w_base0 + w + 1u] : 0u; \
+      RPL_STEP_2(uint word1a = active1 ? W.values[w_base1 + w] : 0u; \
+          uint word1b = active1 ? W.values[w_base1 + w + 1u] : 0u;) \
+      RPL_STEP_3(uint word2a = active2 ? W.values[w_base2 + w] : 0u; \
+          uint word2b = active2 ? W.values[w_base2 + w + 1u] : 0u;) \
+      RPL_STEP_4(uint word3a = active3 ? W.values[w_base3 + w] : 0u; \
+          uint word3b = active3 ? W.values[w_base3 + w + 1u] : 0u;) \
+      Q4_ACC_STEP2(active0, scale_base0, bias_base0, accumulator0, word0a, word0b, S, B, w) \
+      RPL_STEP_2(Q4_ACC_STEP2(active1, scale_base1, bias_base1, accumulator1, word1a, word1b, S, B, w)) \
+      RPL_STEP_3(Q4_ACC_STEP2(active2, scale_base2, bias_base2, accumulator2, word2a, word2b, S, B, w)) \
+      RPL_STEP_4(Q4_ACC_STEP2(active3, scale_base3, bias_base3, accumulator3, word3a, word3b, S, B, w)) \
+    } \
+  } else { \
+    for (uint w = lane_in_slot; w < words_per_row; w += LANES) { \
+      RPL_X_PRELOAD(w) \
+      uint word0 = active0 ? W.values[w_base0 + w] : 0u; \
+      RPL_STEP_2(uint word1 = active1 ? W.values[w_base1 + w] : 0u;) \
+      RPL_STEP_3(uint word2 = active2 ? W.values[w_base2 + w] : 0u;) \
+      RPL_STEP_4(uint word3 = active3 ? W.values[w_base3 + w] : 0u;) \
+      Q4_ACC_STEP(active0, scale_base0, bias_base0, accumulator0, word0, S, B, w) \
+      RPL_STEP_2(Q4_ACC_STEP(active1, scale_base1, bias_base1, accumulator1, word1, S, B, w)) \
+      RPL_STEP_3(Q4_ACC_STEP(active2, scale_base2, bias_base2, accumulator2, word2, S, B, w)) \
+      RPL_STEP_4(Q4_ACC_STEP(active3, scale_base3, bias_base3, accumulator3, word3, S, B, w)) \
+    } \
+  } \
+}
+#endif
+
+#ifdef QMM_VEC_MULTI
+#ifdef USE_FP16
+#define ROUND_STORAGE(f) (unpackHalf2x16(packHalf2x16(vec2(f, 0.0))).x)
+#elif defined(USE_BF16)
+#define ROUND_STORAGE(f) LOAD_VALUE(bf16_store(f))
+#else
+#define ROUND_STORAGE(f) (f)
+#endif
+#define Q4_MULTI_STORE(I, rounded) { \
+  output##I.values[column] = STORE_VALUE(rounded); \
+  if ((params.flags & (256u << I)) != 0u) { \
+    uint sum_column = column; \
+    if ((params.flags & (4096u << I)) != 0u) { \
+      sum_column = params.out_strides[I] + \
+          (column / params.matrix_m) * params.in_strides[I] + \
+          (column % params.matrix_m); \
+    } \
+    sum##I.values[sum_column] = STORE_VALUE( \
+        (rounded) + LOAD_VALUE(addend##I.values[column])); \
+  } \
+}
+void main() {
+  uint lane = gl_LocalInvocationID.x;
+  uint column_slot = lane / LANES;
+  uint lane_in_slot = lane % LANES;
+  uint n0 = params.shape[0];
+  uint n1 = params.shape[1];
+  uint n2 = params.shape[2];
+  uint groups0 = (n0 + COLUMNS_PER_WG - 1u) / COLUMNS_PER_WG;
+  uint groups1 = (n1 + COLUMNS_PER_WG - 1u) / COLUMNS_PER_WG;
+  uint workgroup = gl_WorkGroupID.x;
+  uint which;
+  uint n;
+  if (workgroup < groups0) {
+    which = 0u;
+    n = n0;
+  } else if (workgroup < groups0 + groups1) {
+    which = 1u;
+    workgroup -= groups0;
+    n = n1;
+  } else {
+    which = 2u;
+    workgroup -= groups0 + groups1;
+    n = n2;
+  }
+  uint column0 = workgroup * COLUMNS_PER_WG + column_slot * ROWS_PER_LANE;
+  uint words_per_row = params.matrix_k / 8u;
+  uint groups_per_row = params.matrix_k / 64u;
+  RPL_ROW_VARS0
+  RPL_STEP_2(RPL_ROW_VARS(1u, column1, active1, w_base1, scale_base1, bias_base1))
+  RPL_STEP_3(RPL_ROW_VARS(2u, column2, active2, w_base2, scale_base2, bias_base2))
+  RPL_STEP_4(RPL_ROW_VARS(3u, column3, active3, w_base3, scale_base3, bias_base3))
+  precise float accumulator0 = 0.0;
+  RPL_STEP_2(precise float accumulator1 = 0.0;)
+  RPL_STEP_3(precise float accumulator2 = 0.0;)
+  RPL_STEP_4(precise float accumulator3 = 0.0;)
+  if (column0 < n) {
+    uint x_row = params.lhs_offset;
+    if (which == 0u) {
+      Q4_ROW_BODY_RPL(input_w0, scales0, biases0)
+    } else if (which == 1u) {
+      Q4_ROW_BODY_RPL(input_w1, scales1, biases1)
+    } else {
+      Q4_ROW_BODY_RPL(input_w2, scales2, biases2)
+    }
+  }
+  uint column;
+#ifdef USE_SUBGROUP
+  float total0 = subgroupAdd(accumulator0);
+  RPL_STEP_2(float total1 = subgroupAdd(accumulator1);)
+  RPL_STEP_3(float total2 = subgroupAdd(accumulator2);)
+  RPL_STEP_4(float total3 = subgroupAdd(accumulator3);)
+#else
+  reduce_scratch0[lane] = accumulator0;
+  RPL_STEP_2(reduce_scratch1[lane] = accumulator1;)
+  RPL_STEP_3(reduce_scratch2[lane] = accumulator2;)
+  RPL_STEP_4(reduce_scratch3[lane] = accumulator3;)
+  barrier();
+  for (uint offset = 1u; offset < LANES; offset <<= 1u) {
+    if ((lane_in_slot & (2u * offset - 1u)) == 0u) {
+      reduce_scratch0[lane] += reduce_scratch0[lane + offset];
+      RPL_STEP_2(reduce_scratch1[lane] += reduce_scratch1[lane + offset];)
+      RPL_STEP_3(reduce_scratch2[lane] += reduce_scratch2[lane + offset];)
+      RPL_STEP_4(reduce_scratch3[lane] += reduce_scratch3[lane + offset];)
+    }
+    barrier();
+  }
+  float total0 = reduce_scratch0[lane];
+  RPL_STEP_2(float total1 = reduce_scratch1[lane];)
+  RPL_STEP_3(float total2 = reduce_scratch2[lane];)
+  RPL_STEP_4(float total3 = reduce_scratch3[lane];)
+#endif
+  if (lane_in_slot == 0u) {
+    if (which == 0u) {
+      if (active0) { column = column0; Q4_MULTI_STORE(0, total0) }
+      RPL_STEP_2(if (active1) { column = column1; Q4_MULTI_STORE(0, total1) })
+      RPL_STEP_3(if (active2) { column = column2; Q4_MULTI_STORE(0, total2) })
+      RPL_STEP_4(if (active3) { column = column3; Q4_MULTI_STORE(0, total3) })
+    } else if (which == 1u) {
+      if (active0) { column = column0; Q4_MULTI_STORE(1, total0) }
+      RPL_STEP_2(if (active1) { column = column1; Q4_MULTI_STORE(1, total1) })
+      RPL_STEP_3(if (active2) { column = column2; Q4_MULTI_STORE(1, total2) })
+      RPL_STEP_4(if (active3) { column = column3; Q4_MULTI_STORE(1, total3) })
+    } else {
+      if (active0) { column = column0; Q4_MULTI_STORE(2, total0) }
+      RPL_STEP_2(if (active1) { column = column1; Q4_MULTI_STORE(2, total1) })
+      RPL_STEP_3(if (active2) { column = column2; Q4_MULTI_STORE(2, total2) })
+      RPL_STEP_4(if (active3) { column = column3; Q4_MULTI_STORE(2, total3) })
+    }
+  }
+}
+#else
+// Weight layout routing mirrors qmm.comp. Transposed (flags bit 0
+// clear): w batch slice [N, Kp], groups along K, scale [n][k / gs].
+// Non-transposed (bit 0 set): w batch slice [K, Np], packed N per row,
+// groups along N, scale [k][n / gs]. shape[0] carries the batch count
+// B and the per-slot work runs once per batch slice; each thread's
+// lane nibble and scale column stay fixed for the whole reduction.
+// FP_MODE dispatches only a single x row against a 2D w (batch = 1).
+void main() {
+  uint lane = gl_LocalInvocationID.x;
+  uint column_slot = lane / LANES;
+  uint lane_in_slot = lane % LANES;
+  uint bits = params.operation;
+  uint group_size = params.reduce_size;
+  bool non_transposed = (params.flags & 1u) != 0u;
+#ifdef FP_MODE
+  uint batch = 1u;
+#else
+  uint batch = params.shape[0];
+#endif
+  uint w_batch_words = params.shape[1];
+  uint param_batch = params.shape[2];
+  uint column = gl_WorkGroupID.x * COLUMNS_PER_GROUP + column_slot;
+  bool column_active = column < params.matrix_n;
+#ifdef QMM_VEC_Q4_WORD
+  uint column0 = gl_WorkGroupID.x * COLUMNS_PER_WG + column_slot * ROWS_PER_LANE;
+#endif
+  for (uint b = 0u; b < batch; ++b) {
+#ifdef QMM_VEC_Q4_WORD
+    precise float accumulator0 = 0.0;
+    RPL_STEP_2(precise float accumulator1 = 0.0;)
+    RPL_STEP_3(precise float accumulator2 = 0.0;)
+    RPL_STEP_4(precise float accumulator3 = 0.0;)
+#else
+    precise float accumulator = 0.0;
+#endif
+    if (column_active) {
+      uint w_row = params.rhs_offset + b * w_batch_words;
+      uint p_base = params.aux_offset + b * param_batch;
+      // Runtime trip count and runtime shift/mask: lane-uniform per
+      // step, never unrolled, so the unpack state stays out of
+      // registers.
+#ifdef FP_MODE
+      uint fp_pack_factor = (bits == 8u) ? 1u : 2u;
+      if (non_transposed) {
+        // FP_MODE non-transposed: w [K, Np] with fp bytes packed along
+        // N (2 nibbles per byte little-endian), scale bytes
+        // [k][column / group_size]. Fixed column per lane, walk k.
+        uint n_bytes_per_row = params.matrix_n * bits / 8u;
+        uint col_byte = column / fp_pack_factor;
+        uint col_group = column / group_size;
+        uint nibble = column & 1u;
+        uint groups_per_col_row = params.matrix_n / group_size;
+        for (uint k = lane_in_slot; k < params.matrix_k; k += LANES) {
+          uint scale_addr =
+              p_base + k * groups_per_col_row + col_group;
+          uint scale_byte = byte_at(
+              scale_bias.values[scale_addr >> 2u], scale_addr & 3u);
+          float scale = (group_size == 16u) ? fp8_decode(scale_byte)
+                                            : e8m0_decode(scale_byte);
+          uint byte_addr =
+              w_row * 4u + k * n_bytes_per_row + col_byte;
+          uint packed_byte = byte_at(
+              scale_bias.values[byte_addr >> 2u], byte_addr & 3u);
+          uint code = (bits == 8u)
+              ? packed_byte
+              : ((nibble == 0u) ? (packed_byte & 0xFu)
+                                : (packed_byte >> 4u));
+          float value =
+              (bits == 8u) ? fp8_decode(code) : fp4_decode(code);
+          float x_value = LOAD_VALUE(input_x.values[
+              params.lhs_offset + b * params.matrix_k + k]);
+          accumulator += x_value * (scale * value);
+        }
+      } else {
+        // FP_MODE transposed: w [N, Kp], scale bytes
+        // [column][k / group_size].
+        uint groups_per_row = params.matrix_k / group_size;
+        uint w_base =
+            w_row + column * (params.matrix_k / (fp_pack_factor * 4u));
+        for (uint k = lane_in_slot; k < params.matrix_k; k += LANES) {
+          uint scale_addr = p_base + column * groups_per_row +
+              k / group_size;
+          uint scale_byte = byte_at(
+              scale_bias.values[scale_addr >> 2u], scale_addr & 3u);
+          float scale = (group_size == 16u) ? fp8_decode(scale_byte)
+                                            : e8m0_decode(scale_byte);
+          uint byte_addr = w_base * 4u + k / fp_pack_factor;
+          uint packed_byte = byte_at(
+              scale_bias.values[byte_addr >> 2u], byte_addr & 3u);
+          uint code = (bits == 8u)
+              ? packed_byte
+              : (((k & 1u) == 0u) ? (packed_byte & 0xFu)
+                                  : (packed_byte >> 4u));
+          float value =
+              (bits == 8u) ? fp8_decode(code) : fp4_decode(code);
+          float x_value = LOAD_VALUE(input_x.values[
+              params.lhs_offset + b * params.matrix_k + k]);
+          accumulator += x_value * (scale * value);
+        }
+      }
+#else
+#ifdef QMM_VEC_Q4_WORD
+      // Native qmv arithmetic; see Q4_ROW (RPL: per-row state below).
+      uint words_per_row = params.matrix_k / 8u;
+      uint groups_per_row = params.matrix_k / 64u;
+      bool active0 = column0 < params.matrix_n;
+      uint w_base0 = w_row + column0 * words_per_row;
+      uint scale_base0 = p_base + column0 * groups_per_row;
+      uint bias_base0 =
+          params.aux_size + b * param_batch + column0 * groups_per_row;
+      uint n = params.matrix_n;
+      RPL_STEP_2(bool active1 = column0 + 1u < params.matrix_n;
+          uint w_base1 = w_row + (column0 + 1u) * words_per_row;
+          uint scale_base1 = p_base + (column0 + 1u) * groups_per_row;
+          uint bias_base1 = params.aux_size + b * param_batch +
+              (column0 + 1u) * groups_per_row;)
+      RPL_STEP_3(bool active2 = column0 + 2u < params.matrix_n;
+          uint w_base2 = w_row + (column0 + 2u) * words_per_row;
+          uint scale_base2 = p_base + (column0 + 2u) * groups_per_row;
+          uint bias_base2 = params.aux_size + b * param_batch +
+              (column0 + 2u) * groups_per_row;)
+      RPL_STEP_4(bool active3 = column0 + 3u < params.matrix_n;
+          uint w_base3 = w_row + (column0 + 3u) * words_per_row;
+          uint scale_base3 = p_base + (column0 + 3u) * groups_per_row;
+          uint bias_base3 = params.aux_size + b * param_batch +
+              (column0 + 3u) * groups_per_row;)
+      uint x_row = params.lhs_offset + b * params.matrix_k;
+      Q4_ROW_BODY_RPL(input_w, scales, biases)
+#else
+      bool is_byte_bits =
+          (bits == 3u || bits == 5u || bits == 6u);
+      uint pack_factor = is_byte_bits
+          ? (bits == 6u ? 4u : 8u)
+          : (32u / bits);
+      uint bytes_per_pack = is_byte_bits ? (bits == 5u ? 5u : 3u) : 1u;
+      uint value_mask = (1u << bits) - 1u;
+      if (non_transposed) {
+        // Non-transposed: fixed lane nibble and fixed scale column per
+        // lane, walking the k rows. Byte bits decode the lane from the
+        // byte packs in the w row; word bits keep the fixed lane shift.
+        uint n_bytes_per_row = params.matrix_n * bits / 8u;
+        uint n_words_per_row = params.matrix_n * bits / 32u;
+        uint group_bytes = (group_size / pack_factor) * bytes_per_pack;
+        uint col_byte_off = (column / group_size) * group_bytes +
+            ((column % group_size) / pack_factor) * bytes_per_pack;
+        uint lane_n = column % pack_factor;
+        uint col_word_off = column / pack_factor;
+        uint lane_shift = lane_n * bits;
+        uint param_step = params.matrix_n / group_size;
+        uint param_col = p_base + column / group_size;
+        uint bias_col =
+            params.aux_size + b * param_batch + column / group_size;
+        for (uint k = lane_in_slot; k < params.matrix_k; k += LANES) {
+          uint q;
+          if (is_byte_bits) {
+            uint byte_addr =
+                w_row * 4u + k * n_bytes_per_row + col_byte_off;
+            uint c0 = byte_at(
+                input_w.values[byte_addr >> 2u], byte_addr & 3u);
+            uint c1 = byte_at(
+                input_w.values[(byte_addr + 1u) >> 2u],
+                (byte_addr + 1u) & 3u);
+            uint c2 = byte_at(
+                input_w.values[(byte_addr + 2u) >> 2u],
+                (byte_addr + 2u) & 3u);
+            q = (bits == 3u)
+                ? q3_at(lane_n, c0, c1, c2)
+                : (bits == 5u)
+                ? q5_at(lane_n, c0, c1, c2, byte_at(
+                      input_w.values[(byte_addr + 3u) >> 2u],
+                      (byte_addr + 3u) & 3u), byte_at(
+                      input_w.values[(byte_addr + 4u) >> 2u],
+                      (byte_addr + 4u) & 3u))
+                : q6_at(lane_n, c0, c1, c2);
+          } else {
+            uint word = input_w.values[
+                w_row + k * n_words_per_row + col_word_off];
+            q = (word >> lane_shift) & value_mask;
+          }
+          float x_value = LOAD_VALUE(
+              input_x.values[params.lhs_offset + b * params.matrix_k + k]);
+          accumulator += x_value *
+              (LOAD_VALUE(scales.values[param_col + k * param_step]) *
+                    float(q) +
+                LOAD_VALUE(biases.values[bias_col + k * param_step]));
+        }
+      } else {
+        uint words_per_row = params.matrix_k * bits / 32u;
+        uint groups_per_row = params.matrix_k / group_size;
+        uint w_base = w_row + column * words_per_row;
+        uint scale_base = p_base + column * groups_per_row;
+        uint bias_base =
+            params.aux_size + b * param_batch + column * groups_per_row;
+        for (uint k = lane_in_slot; k < params.matrix_k; k += LANES) {
+          uint group = k / group_size;
+          float x_value = LOAD_VALUE(
+              input_x.values[params.lhs_offset + b * params.matrix_k + k]);
+          float dequant;
+          if (is_byte_bits) {
+            uint byte_addr =
+                w_base * 4u + (k / pack_factor) * bytes_per_pack;
+            uint c0 = byte_at(
+                input_w.values[byte_addr >> 2u], byte_addr & 3u);
+            uint c1 = byte_at(
+                input_w.values[(byte_addr + 1u) >> 2u],
+                (byte_addr + 1u) & 3u);
+            uint c2 = byte_at(
+                input_w.values[(byte_addr + 2u) >> 2u],
+                (byte_addr + 2u) & 3u);
+            uint e = k % pack_factor;
+            uint q = (bits == 3u)
+                ? q3_at(e, c0, c1, c2)
+                : (bits == 5u)
+                ? q5_at(e, c0, c1, c2, byte_at(
+                      input_w.values[(byte_addr + 3u) >> 2u],
+                      (byte_addr + 3u) & 3u), byte_at(
+                      input_w.values[(byte_addr + 4u) >> 2u],
+                      (byte_addr + 4u) & 3u))
+                : q6_at(e, c0, c1, c2);
+            dequant = float(q);
+          } else {
+            uint word = input_w.values[w_base + k / pack_factor];
+            uint q = (word >> ((k % pack_factor) * bits)) & value_mask;
+            dequant = float(q);
+          }
+          accumulator += x_value *
+              (LOAD_VALUE(scales.values[scale_base + group]) *
+                    dequant +
+                  LOAD_VALUE(biases.values[bias_base + group]));
+        }
+      }
+    // Every lane reaches the reduction, including inactive slots
+    // (accumulator 0), so the barriers stay uniform across the
+    // workgroup. RPL: the Q4 path reduces R accumulators per slot with
+    // the shipped per-column pairing; the generic path keeps the
+    // shipped single-accumulator reduction untouched.
+#ifdef QMM_VEC_Q4_WORD
+#ifdef USE_SUBGROUP
+    float total0 = subgroupAdd(accumulator0);
+    RPL_STEP_2(float total1 = subgroupAdd(accumulator1);)
+    RPL_STEP_3(float total2 = subgroupAdd(accumulator2);)
+    RPL_STEP_4(float total3 = subgroupAdd(accumulator3);)
+    if (lane_in_slot == 0u) {
+      if (column0 < params.matrix_n) {
+        output_data.values[params.output_offset + b * params.matrix_n +
+            column0] = STORE_VALUE(total0);
+      }
+      RPL_STEP_2(if (column0 + 1u < params.matrix_n) {
+        output_data.values[params.output_offset + b * params.matrix_n +
+            column0 + 1u] = STORE_VALUE(total1);
+      })
+      RPL_STEP_3(if (column0 + 2u < params.matrix_n) {
+        output_data.values[params.output_offset + b * params.matrix_n +
+            column0 + 2u] = STORE_VALUE(total2);
+      })
+      RPL_STEP_4(if (column0 + 3u < params.matrix_n) {
+        output_data.values[params.output_offset + b * params.matrix_n +
+            column0 + 3u] = STORE_VALUE(total3);
+      })
+    }
+#else
+    reduce_scratch0[lane] = accumulator0;
+    RPL_STEP_2(reduce_scratch1[lane] = accumulator1;)
+    RPL_STEP_3(reduce_scratch2[lane] = accumulator2;)
+    RPL_STEP_4(reduce_scratch3[lane] = accumulator3;)
+    barrier();
+    for (uint offset = 1u; offset < LANES; offset <<= 1u) {
+      if ((lane_in_slot & (2u * offset - 1u)) == 0u) {
+        reduce_scratch0[lane] += reduce_scratch0[lane + offset];
+        RPL_STEP_2(reduce_scratch1[lane] += reduce_scratch1[lane + offset];)
+        RPL_STEP_3(reduce_scratch2[lane] += reduce_scratch2[lane + offset];)
+        RPL_STEP_4(reduce_scratch3[lane] += reduce_scratch3[lane + offset];)
+      }
+      barrier();
+    }
+    if (lane_in_slot == 0u) {
+      if (column0 < params.matrix_n) {
+        output_data.values[params.output_offset + b * params.matrix_n +
+            column0] = STORE_VALUE(reduce_scratch0[lane]);
+      }
+      RPL_STEP_2(if (column0 + 1u < params.matrix_n) {
+        output_data.values[params.output_offset + b * params.matrix_n +
+            column0 + 1u] = STORE_VALUE(reduce_scratch1[lane]);
+      })
+      RPL_STEP_3(if (column0 + 2u < params.matrix_n) {
+        output_data.values[params.output_offset + b * params.matrix_n +
+            column0 + 2u] = STORE_VALUE(reduce_scratch2[lane]);
+      })
+      RPL_STEP_4(if (column0 + 3u < params.matrix_n) {
+        output_data.values[params.output_offset + b * params.matrix_n +
+            column0 + 3u] = STORE_VALUE(reduce_scratch3[lane]);
+      })
+    }
+#endif
+#else
+#ifdef USE_SUBGROUP
+    float total = subgroupAdd(accumulator);
+    if (lane_in_slot == 0u && column_active) {
+      output_data.values[params.output_offset + b * params.matrix_n +
+          column] = STORE_VALUE(total);
+    }
+#else
+    reduce_scratch0[lane] = accumulator;
+    barrier();
+    for (uint offset = 1u; offset < LANES; offset <<= 1u) {
+      if ((lane_in_slot & (2u * offset - 1u)) == 0u) {
+        reduce_scratch0[lane] += reduce_scratch0[lane + offset];
+      }
+      barrier();
+    }
+    if (lane_in_slot == 0u && column_active) {
+      output_data.values[params.output_offset + b * params.matrix_n +
+          column] = STORE_VALUE(reduce_scratch0[lane]);
+    }
+#endif
+#endif
+  }
+}
+#endif
+#endif
+#endif
