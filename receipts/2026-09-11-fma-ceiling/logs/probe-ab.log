@@ -1,0 +1,22 @@
+== installed arm0 (mesa-honeykrisp-omarchy hk6f6afc8-1)
+{"arm": 0, "shape": "1053x4864x896", "median_ms": 9.3745, "f16_digest": "3e79733f76ed9d37", "tflops": 979.1}
+{"arm": 0, "shape": "262x896x9728", "median_ms": 5.1158, "f16_digest": "4e29e2dbdf33b57b", "tflops": 892.8}
+{"arm": 0, "shape": "1053x896x9728", "median_ms": 17.7501, "f16_digest": "5179630cd4a7c3f9", "tflops": 1034.2}
+== devdriver arm0 (6f6afc8 + unroll patch, release)
+{"arm": 0, "shape": "1053x4864x896", "median_ms": 11.7727, "f16_digest": "3e79733f76ed9d37", "tflops": 779.6}
+{"arm": 0, "shape": "262x896x9728", "median_ms": 6.3023, "f16_digest": "4e29e2dbdf33b57b", "tflops": 724.7}
+{"arm": 0, "shape": "1053x896x9728", "median_ms": 22.3713, "f16_digest": "5179630cd4a7c3f9", "tflops": 820.5}
+== installed arm4
+{"arm": 4, "shape": "1053x4864x896", "median_ms": 4.5261, "f16_digest": "7055bf55c8a98245", "tflops": 2027.8}
+{"arm": 4, "shape": "262x896x9728", "median_ms": 3.7304, "f16_digest": "e2ca8f678deca22f", "tflops": 1224.4}
+{"arm": 4, "shape": "1053x896x9728", "median_ms": 12.8081, "f16_digest": "5da380ac014b69c1", "tflops": 1433.2}
+== devdriver arm4
+{"arm": 4, "shape": "1053x4864x896", "median_ms": 4.521, "f16_digest": "7055bf55c8a98245", "tflops": 2030.1}
+{"arm": 4, "shape": "262x896x9728", "median_ms": 3.7173, "f16_digest": "e2ca8f678deca22f", "tflops": 1228.7}
+{"arm": 4, "shape": "1053x896x9728", "median_ms": 12.7948, "f16_digest": "5da380ac014b69c1", "tflops": 1434.7}
+== devdriver arm0, patch stashed (regression attribution)
+{"arm": 0, "shape": "1053x896x9728", "median_ms": 17.7542, "f16_digest": "5179630cd4a7c3f9", "tflops": 1033.9}
+{"arm": 0, "shape": "1053x896x9728", "median_ms": 17.6499, "f16_digest": "5179630cd4a7c3f9", "tflops": 1040.0}
+== devdriver arm0, release rebuild WITH patch
+{"arm": 0, "shape": "262x896x9728", "median_ms": 6.3286, "f16_digest": "4e29e2dbdf33b57b", "tflops": 721.7}
+{"arm": 0, "shape": "1053x896x9728", "median_ms": 22.4644, "f16_digest": "5179630cd4a7c3f9", "tflops": 817.1}

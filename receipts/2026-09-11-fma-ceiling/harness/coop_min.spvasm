@@ -1,0 +1,76 @@
+; Minimal zero-traffic coopMatMulAdd ceiling kernel (8x8x8 f32, Subgroup scope).
+; Per subgroup: load A, B, C once from SSBO; loop issues MulAdd only; store C.
+               OpCapability Shader
+               OpCapability CooperativeMatrixKHR
+               OpExtension "SPV_KHR_cooperative_matrix"
+               OpMemoryModel Logical GLSL450
+               OpEntryPoint GLCompute %main "main" %var_gid %var_pc %var_buf
+               OpExecutionMode %main LocalSize 128 1 1
+               OpSource GLSL 460
+               OpDecorate %f32_arr ArrayStride 4
+               OpDecorate %buf_block Block
+               OpMemberDecorate %buf_block 0 Offset 0
+               OpDecorate %var_buf DescriptorSet 0
+               OpDecorate %var_buf Binding 0
+               OpDecorate %pc_block Block
+               OpMemberDecorate %pc_block 0 Offset 0
+               OpDecorate %var_gid BuiltIn GlobalInvocationId
+       %void = OpTypeVoid
+       %fndecl = OpTypeFunction %void
+        %u32 = OpTypeInt 32 0
+        %f32 = OpTypeFloat 32
+       %v3u32 = OpTypeVector %u32 3
+       %bool = OpTypeBool
+      %u32_0 = OpConstant %u32 0
+      %u32_1 = OpConstant %u32 1
+      %u32_2 = OpConstant %u32 2
+      %u32_3 = OpConstant %u32 3
+      %u32_8 = OpConstant %u32 8
+    %f32_arr = OpTypeRuntimeArray %f32
+   %buf_block = OpTypeStruct %f32_arr
+   %pc_block = OpTypeStruct %u32
+  %ptr_sb_buf = OpTypePointer StorageBuffer %buf_block
+  %ptr_sb_f32 = OpTypePointer StorageBuffer %f32
+  %ptr_pc_blk = OpTypePointer PushConstant %pc_block
+  %ptr_pc_u32 = OpTypePointer PushConstant %u32
+  %ptr_in_v3 = OpTypePointer Input %v3u32
+     %var_gid = OpVariable %ptr_in_v3 Input
+     %var_pc = OpVariable %ptr_pc_blk PushConstant
+     %var_buf = OpVariable %ptr_sb_buf StorageBuffer
+      %scope = OpConstant %u32 3
+      %useA = OpConstant %u32 0
+      %useB = OpConstant %u32 1
+      %useC = OpConstant %u32 2
+     %cmatA = OpTypeCooperativeMatrixKHR %f32 %scope %u32_8 %u32_8 %useA
+     %cmatB = OpTypeCooperativeMatrixKHR %f32 %scope %u32_8 %u32_8 %useB
+     %cmatC = OpTypeCooperativeMatrixKHR %f32 %scope %u32_8 %u32_8 %useC
+ %rowmajor = OpConstant %u32 0
+       %main = OpFunction %void None %fndecl
+      %entry = OpLabel
+        %gid = OpLoad %v3u32 %var_gid
+      %gid_x = OpCompositeExtract %u32 %gid 0
+     %pc_ptr = OpAccessChain %ptr_pc_u32 %var_pc %u32_0
+      %iters = OpLoad %u32 %pc_ptr
+      %a_ptr = OpAccessChain %ptr_sb_f32 %var_buf %u32_0 %gid_x
+      %b_ptr = OpAccessChain %ptr_sb_f32 %var_buf %u32_0 %gid_x
+      %c_ptr = OpAccessChain %ptr_sb_f32 %var_buf %u32_0 %gid_x
+         %a = OpCooperativeMatrixLoadKHR %cmatA %a_ptr %rowmajor %u32_8
+         %b = OpCooperativeMatrixLoadKHR %cmatB %b_ptr %rowmajor %u32_8
+        %c0 = OpCooperativeMatrixLoadKHR %cmatC %c_ptr %rowmajor %u32_8
+               OpBranch %loop_hdr
+   %loop_hdr = OpLabel
+        %mc = OpPhi %cmatC %c0 %entry %mc_next %body
+        %iv = OpPhi %u32 %u32_0 %entry %iv_next %body
+               OpLoopMerge %merge %body None
+               OpBranch %cond
+        %cond = OpLabel
+    %iv_next = OpIAdd %u32 %iv %u32_1
+      %again = OpULessThan %bool %iv %iters
+               OpBranchConditional %again %body %merge
+       %body = OpLabel
+    %mc_next = OpCooperativeMatrixMulAddKHR %cmatC %a %b %mc
+               OpBranch %loop_hdr
+      %merge = OpLabel
+               OpCooperativeMatrixStoreKHR %c_ptr %mc %rowmajor %u32_8
+               OpReturn
+               OpFunctionEnd

@@ -1,0 +1,63 @@
+{
+  "schema": "mlx-omarchy/fma-ceiling/1",
+  "date": "2026-09-11",
+  "agent": "AgxFmaCeiling",
+  "question": "Is the prefill-parity cap on the Apple GPU Vulkan driver a hardware issue limit or driver code generation? Establish the arithmetic ceiling precisely with a dependency-free FMA sweep, read the emitted AGX for best/worst arms, and attempt a real driver-side improvement on a fork branch.",
+  "base": {
+    "driver_installed": "mesa-honeykrisp-omarchy 26.3.0.devel.hk6f6afc8-1 (git-6f6afc8968, cooperative_matrix on by default)",
+    "mesa_fork": "github.com/joshuaswarren/mesa",
+    "work_branch": "origin/hk/fma-ceiling-unroll @ c425187 (NEVER to be merged or installed; see verdict)",
+    "receipt_branch": "origin/wave/AgxFmaCeiling (jwm1 ~/src/mlx-omarchy)"
+  },
+  "method": {
+    "harness": "hand-written Vulkan compute harness (harness/fma_bench.c) + GLSL/SPIR-V arm generator (harness/sweep.py); dependency-free FMA loops, independent accumulator chains, manual unroll, push-constant trip count, median of 9 reps after 3 warmups, ~0.19 ms dispatch overhead floor (cal arm) against 3.6-32 ms kernels",
+    "lock": "every GPU run under one top-level flock /tmp/m1-gpu.lock on jwm1 (jwm1-linux, Apple M1 G13G B1)",
+    "asm": "AGX_MESA_DEBUG=shaders dumps with MESA_SHADER_CACHE_DISABLE=true (cache masking found and worked around)"
+  },
+  "ceiling_results_gflop_s": {
+    "units": "GFLOP/s, median; 262144 invocations, 16384 FMA/thread, 2 flops per FMA",
+    "f32_best": {"name": "f32_a8_u8_w128_p0", "value": 2302.6, "note": "8 independent chains x 8 unroll; WG 32..512 flat; +40 extra live regs flat (no spill cliff)"},
+    "f32_latency_bound": {"a1_u1": 410.0, "a1_u8": 1918.6, "note": "single serial chain is latency-bound; chains hide it"},
+    "f32_no_spill": "p4..p40 extra live registers: 2147-2172 GFLOP/s (flat) -- no spills, occupancy not hurt",
+    "fp16_scalar_best": 2369.8,
+    "fp16_packed_best": {"value": 4735.9, "note": "f16vec2 hfma2 x2 -- 2x fp32 rate as expected"},
+    "i32_best": 2423.5,
+    "coopmat_muladd": {
+      "1_chain": 1690.3,
+      "2_chains": 2002.9,
+      "4_chains": 2148.2,
+      "note": "hand-written SPIR-V (harness/coop_min*.spvasm), zero operand traffic, 8x8x8 f32 coopMatMulAdd under AGX_SIMDMAT=1"
+    }
+  },
+  "verdict_ceiling": "The fp32 scalar FMA ceiling is 2303 GFLOP/s on this device (nominal 2617 GFLOP/s at 1024 lanes x 1.278 GHz; measured value implies ~1.13 GHz sustained). The hardware simd_matrix_fmadd32 path is NOT the limiter: with 4 independent accumulator chains it sustains 2148 GFLOP/s = 93% of the scalar ceiling. The 1440-1690 GFLOP/s ceilings measured by prior single-chain arms are chain-latency artifacts, not a silicon issue-rate limit and not a driver codegen cap.",
+  "codegen_findings": [
+    "1. Scalar FMA stream is clean: the best scalar arm's AGX loop is a tight fmadd sequence at the hardware ceiling -- no missed FMA formation, no spills, no scheduling loss to fix on the scalar path. [measured + dumps/f32_a8_u8_w128_p0.agx]",
+    "2. coopMatMulAdd loop body (dumps/coopmin_a8_u8_w128_p0.agx, final packed AGX): 'mov r8,r4; mov r9,r5; simd_matrix_fmadd32 r6,r8.abs.neg,r8,r6; iadd r3,r3,1; jmp_any' -- 2 loop-invariant aligned-pair MOVs + 3 control slots per ~16-cycle tile, and a single dependent chain exposes the fmadd's multi-cycle latency (~9 cycles/iter unaccounted = latency, matching the 1690 vs 2148+ ILP ladder). [measured]",
+    "3. agx_nir_lower_simdmat's muladd lowering does identity channel shuffles (subblk/nir_vec at nblk=1) and RA resolves loop-carried aligned-pair phis with per-iteration copies. [source read + dump]",
+    "4. nir_opt_loop_unroll REFUSES unknown-trip-count loops even with loop->control=nir_loop_control_unroll (check_unrolling_restrictions short-circuits, but simple/partial unroll both need a known or guessed trip count) -- so a marking pass cannot unroll app loops with runtime trip counts. [source read + measured no-op]"
+  ],
+  "driver_patch_attempt": {
+    "what": "agx_nir_unroll_simdmat_loops(): marks enclosing loops of every simd_matrix_fmadd_agx intrinsic nir_loop_control_unroll, then runs nir_opt_loop_unroll; called from agx_preprocess_nir after nir_lower_vars_to_ssa. Files: agx_nir_lower_simdmat.c (+50), agx_nir.h (+1), agx_compile.c (+5).",
+    "branch": "hk/fma-ceiling-unroll @ c425187, pushed to github.com/joshuaswarren/mesa",
+    "measured": {
+      "coopmin_runtime_trip": "1690 -> 1686-1690 GFLOP/s: NO CHANGE (unknown-trip refusal)",
+      "real_qmm_kernel_arm0_gate_up_1053x896x9728": "1034 -> 817-820 GFLOP/s (-21%) on a release build of this exact commit, f16 digest 5179630cd4a7c3f9 IDENTICAL with and without the patch",
+      "arm4_zero_traffic": "1433 -> 1435 GFLOP/s: no change"
+    },
+    "verdict": "REJECTED. Forces unroll of a const-trip loop in the shipped qmm kernel and loses more to occupancy/code size than it saves. Patch never installed as a package; installed driver untouched (hk6f6afc8-1 remains). Branch kept for the record, never to be merged."
+  },
+  "real_kernel_ab": {
+    "method": "MLX_OMARCHY_QMM_COOP_BENCH probe (benchq/qmm-coop-bench/qmm_coop_bench_probe.py, venv-qmmcoop wheel 1aa2999b) run against the installed package vs a release meson build of the same commit 6f6afc8 with/without the patch (dev ICD, VK_DRIVER_FILES)",
+    "installed_arm0": {"1053x4864x896": 979.1, "262x896x9728": 892.8, "1053x896x9728": 1034.2},
+    "installed_arm4": {"1053x4864x896": 2027.8, "262x896x9728": 1224.4, "1053x896x9728": 1433.2},
+    "digests": "arm0 f16 digests 3e79733f76ed9d37 / 4e29e2dbdf33b57b / 5179630cd4a7c3f9 and arm4 digests reproduce the 2026-09-11-qmm-coop-datapath receipt exactly on both driver builds"
+  },
+  "implication_for_parity": "Prefill headroom is KERNEL-side ILP, not driver codegen: the ceiling with 4 independent chains is 2148 GFLOP/s, and the shipped kernel (1032-1034) plus prior digest-preserving restructures (arms 1/2 regressed; arm 3 shared-load path 746) show the remaining gap is staging/loads and chain scheduling inside the MLX kernel, not fixable in the driver without the f16-operand lowering already named in the qmm-coop-datapath receipt.",
+  "policy": {
+    "never_merged": "driver patch on github.com/joshuaswarren/mesa hk/fma-ceiling-unroll only; receipt on wave/AgxFmaCeiling only; nothing touches mlx main or honeykrisp-omarchy",
+    "installed_driver": "mesa-honeykrisp-omarchy 26.3.0.devel.hk6f6afc8-1 untouched all session (dev builds ran via VK_DRIVER_FILES ICD override); no package was built or installed, so no digest pin moved and no Q4 leg needed re-pinning",
+    "digest_safety": "shipped-kernel f16 digests verified identical on the patched dev build AND the clean rebuild (3e79733f76ed9d37 / 4e29e2dbdf33b57b / 5179630cd4a7c3f9, arm0; 7055bf55c8a98245 / e2ca8f678deca22f / 5da380ac014b69c1, arm4)"
+  },
+  "hardware": "jwm1-linux, Apple M1 (G13G B1), kernel 7.1.6-1-1-ARCH aarch64; every GPU access under one top-level flock /tmp/m1-gpu.lock; windows coordinated with Bf16PrefillGate, Q4GemvWindowRun, DecodeInModelGap, CoopmatTflopClose via hub",
+  "logs": "logs/sweep-results.jsonl (46-arm sweep), logs/vec2-coopmin.jsonl, dumps/ (AGX disassembly for best/worst scalar arms, coopmat 1-chain, unrolled attempt), harness/ (benchmark + shader sources), logs/probe-ab.log (real-kernel A/B)"
+}

@@ -1,0 +1,675 @@
+shader: MESA_SHADER_COMPUTE
+source_blake3: {0x2bd71167, 0xe530d7b5, 0x4c2e6c6b, 0x72e312eb, 0xc3f5d9dd, 0x94172af7, 0x08a4d33f, 0x9f4d2419}
+name: 
+workgroup_size: 128, 1, 1
+num_ssbos: 1
+system_values_read: 0x00000000'00000000'00001000'00000000
+max_subgroup_size: 32
+min_subgroup_size: 32
+bit_sizes_float: 0x20
+bit_sizes_int: 0x61
+flrp_lowered: true
+io_lowered: true
+writes_memory: true
+uniforms: 4
+decl_function main () (entrypoint)
+
+impl main {
+    preamble @preamble
+    block b0:    // preds:
+    32x3    %0 = @load_global_invocation_id
+    32      %1 = @load_preamble (base=8)
+    32      %2 = load_const (0x40a00000 = 5.000000)
+    32      %3 = iadd %0.x, %1
+    32      %4 = u2f32 %3
+    32      %5 = load_const (0x358637bd = 0.000001)
+    32      %6 = ffma %4, %5 (0.000001), %2 (5.000000)
+    32      %7 = load_const (0x40c00000 = 6.000000)
+    32      %8 = ffma %4, %5 (0.000001), %7 (6.000000)
+    32      %9 = load_const (0x40e00001 = 7.000000)
+    32     %10 = ffma %4, %5 (0.000001), %9 (7.000000)
+    32     %11 = load_const (0x00000000)
+    32     %12 = load_const (0x33d6bf95 = 0.000000)
+    32     %13 = ffma %4, %5 (0.000001), %12 (0.000000)
+    32     %14 = load_const (0x3456bf95 = 0.000000)
+    32     %15 = load_const (0x3f800002 = 1.000000)
+    32     %16 = ffma %4, %5 (0.000001), %15 (1.000000)
+    32     %17 = load_const (0x34a10fb0 = 0.000000)
+    32     %18 = load_const (0x40000001 = 2.000000)
+    32     %19 = ffma %4, %5 (0.000001), %18 (2.000000)
+    32     %20 = load_const (0x34d6bf95 = 0.000000)
+    32     %21 = load_const (0x40400002 = 3.000000)
+    32     %22 = ffma %4, %5 (0.000001), %21 (3.000000)
+    32     %23 = load_const (0x350637bd = 0.000000)
+    32     %24 = load_const (0x40800001 = 4.000000)
+    32     %25 = ffma %4, %5 (0.000001), %24 (4.000000)
+                 // succs: b1
+    loop {
+        block b1:    // preds: b0 b4
+        32     %26 = phi b0: %11 (0x0), b4: %59
+        32     %27 = phi b0: %10, b4: %57
+        32     %28 = phi b0: %8, b4: %49
+        32     %29 = phi b0: %6, b4: %107
+        32     %30 = phi b0: %25, b4: %106
+        32     %31 = phi b0: %22, b4: %105
+        32     %32 = phi b0: %19, b4: %104
+        32     %33 = phi b0: %16, b4: %103
+        32     %34 = phi b0: %13, b4: %102
+        32     %35 = @load_preamble (base=10)
+        1      %36 = uge %26, %35
+                     // succs: b2 b3
+        if %36 {
+            block b2:// preds: b1
+            break
+            // succs: b5
+        } else {
+            block b3:  // preds: b1, succs: b4
+        }
+        block b4:    // preds: b3
+        32     %37 = load_const (0x3f800006 = 1.000001)
+        32     %38 = ffma %28, %37 (1.000001), %17 (0.000000)
+        32     %39 = load_const (0x3f800001 = 1.000000)
+        32     %40 = ffma %38, %39 (1.000000), %23 (0.000000)
+        32     %41 = ffma %40, %15 (1.000000), %14 (0.000000)
+        32     %42 = load_const (0x3f800003 = 1.000000)
+        32     %43 = ffma %41, %42 (1.000000), %20 (0.000000)
+        32     %44 = ffma %43, %42 (1.000000), %12 (0.000000)
+        32     %45 = load_const (0x3f800004 = 1.000000)
+        32     %46 = ffma %44, %45 (1.000000), %14 (0.000000)
+        32     %47 = load_const (0x3f800005 = 1.000001)
+        32     %48 = ffma %46, %47 (1.000001), %20 (0.000000)
+        32     %49 = ffma %48, %37 (1.000001), %12 (0.000000)
+        32     %50 = ffma %27, %39 (1.000000), %20 (0.000000)
+        32     %51 = ffma %50, %15 (1.000000), %12 (0.000000)
+        32     %52 = ffma %51, %42 (1.000000), %17 (0.000000)
+        32     %53 = ffma %52, %42 (1.000000), %23 (0.000000)
+        32     %54 = ffma %53, %45 (1.000000), %12 (0.000000)
+        32     %55 = ffma %54, %47 (1.000001), %17 (0.000000)
+        32     %56 = ffma %55, %37 (1.000001), %23 (0.000000)
+        32     %57 = ffma %56, %39 (1.000000), %14 (0.000000)
+        32     %58 = load_const (0x00000001)
+        32     %59 = iadd %26, %58 (0x1)
+        32     %60 = ffma %34, %39 (1.000000), %14 (0.000000)
+        32     %61 = ffma %33, %15 (1.000000), %17 (0.000000)
+        32     %62 = ffma %32, %42 (1.000000), %20 (0.000000)
+        32     %63 = ffma %31, %42 (1.000000), %23 (0.000000)
+        32     %64 = ffma %30, %45 (1.000000), %12 (0.000000)
+        32     %65 = ffma %29, %47 (1.000001), %14 (0.000000)
+        32     %66 = ffma %60, %15 (1.000000), %20 (0.000000)
+        32     %67 = ffma %61, %42 (1.000000), %23 (0.000000)
+        32     %68 = ffma %62, %42 (1.000000), %12 (0.000000)
+        32     %69 = ffma %63, %45 (1.000000), %14 (0.000000)
+        32     %70 = ffma %64, %47 (1.000001), %17 (0.000000)
+        32     %71 = ffma %65, %37 (1.000001), %20 (0.000000)
+        32     %72 = ffma %66, %42 (1.000000), %12 (0.000000)
+        32     %73 = ffma %67, %42 (1.000000), %14 (0.000000)
+        32     %74 = ffma %68, %45 (1.000000), %17 (0.000000)
+        32     %75 = ffma %69, %47 (1.000001), %20 (0.000000)
+        32     %76 = ffma %70, %37 (1.000001), %23 (0.000000)
+        32     %77 = ffma %71, %39 (1.000000), %12 (0.000000)
+        32     %78 = ffma %72, %42 (1.000000), %17 (0.000000)
+        32     %79 = ffma %73, %45 (1.000000), %20 (0.000000)
+        32     %80 = ffma %74, %47 (1.000001), %23 (0.000000)
+        32     %81 = ffma %75, %37 (1.000001), %12 (0.000000)
+        32     %82 = ffma %76, %39 (1.000000), %14 (0.000000)
+        32     %83 = ffma %77, %15 (1.000000), %17 (0.000000)
+        32     %84 = ffma %78, %45 (1.000000), %23 (0.000000)
+        32     %85 = ffma %79, %47 (1.000001), %12 (0.000000)
+        32     %86 = ffma %80, %37 (1.000001), %14 (0.000000)
+        32     %87 = ffma %81, %39 (1.000000), %17 (0.000000)
+        32     %88 = ffma %82, %15 (1.000000), %20 (0.000000)
+        32     %89 = ffma %83, %42 (1.000000), %23 (0.000000)
+        32     %90 = ffma %84, %47 (1.000001), %14 (0.000000)
+        32     %91 = ffma %85, %37 (1.000001), %17 (0.000000)
+        32     %92 = ffma %86, %39 (1.000000), %20 (0.000000)
+        32     %93 = ffma %87, %15 (1.000000), %23 (0.000000)
+        32     %94 = ffma %88, %42 (1.000000), %12 (0.000000)
+        32     %95 = ffma %89, %42 (1.000000), %12 (0.000000)
+        32     %96 = ffma %90, %37 (1.000001), %20 (0.000000)
+        32     %97 = ffma %91, %39 (1.000000), %23 (0.000000)
+        32     %98 = ffma %92, %15 (1.000000), %12 (0.000000)
+        32     %99 = ffma %93, %42 (1.000000), %12 (0.000000)
+        32    %100 = ffma %94, %42 (1.000000), %14 (0.000000)
+        32    %101 = ffma %95, %45 (1.000000), %17 (0.000000)
+        32    %102 = ffma %96, %39 (1.000000), %12 (0.000000)
+        32    %103 = ffma %97, %15 (1.000000), %12 (0.000000)
+        32    %104 = ffma %98, %42 (1.000000), %14 (0.000000)
+        32    %105 = ffma %99, %42 (1.000000), %17 (0.000000)
+        32    %106 = ffma %100, %45 (1.000000), %20 (0.000000)
+        32    %107 = ffma %101, %47 (1.000001), %23 (0.000000)
+                     // succs: b1
+    }
+    block b5:    // preds: b2
+    32    %108 = fadd %34, %33
+    32    %109 = fadd %108, %32
+    32    %110 = fadd %109, %31
+    32    %111 = fadd %110, %30
+    32    %112 = fadd %111, %29
+    32    %113 = fadd %112, %28
+    32    %114 = fadd %113, %27
+    64    %115 = @load_preamble (base=12)
+                 @store_agx (%114, %115, %3) (access=writeonly|speculatable, base=0, format=r32_uint, sign_extend=0)
+                 // succs: b6
+    block b6:
+}
+
+decl_function @preamble ()
+
+impl @preamble {
+    block b0:   // preds:
+    64     %0 = @load_preamble (base=0)
+    32     %1 = load_const (0x00000007)
+    32     %2 = load_const (0x00000005 = 0.000000)
+    32x3   %3 = @load_constant_agx (%0, %2 (0x5)) (access=speculatable, base=2, format=r32_uint, sign_extend=1)
+    32     %4 = ishl %3.x, %1 (0x7)
+                @store_preamble (%4) (base=8)
+    32     %5 = load_const (0x0000003d = 0.000000 = 61)
+    32     %6 = @load_constant_agx (%0, %5 (0x3d)) (access=speculatable, base=1, format=r32_uint, sign_extend=1)
+                @store_preamble (%6) (base=10)
+    64     %7 = @load_preamble (base=4)
+    32     %8 = load_const (0x00000000 = 0.000000)
+    32x4   %9 = @load_constant_agx (%7, %8 (0x0)) (access=speculatable, base=0, format=r32_uint, sign_extend=0)
+    64    %10 = pack_64_2x32_split %9.x, %9.y
+                @store_preamble (%10) (base=12)
+                // succs: b1
+    block b1:
+}
+
+block0 {
+   116 = get_sr #0x50
+   3 = iadd 116, u4, #0x0
+   4 = convert #10, 3, #0x1
+   6 = ffma 4, u19, #5.000000
+   8 = ffma 4, u19, #6.000000
+   10 = ffma 4, u19, u21
+   13 = ffma 4, u19, u9
+   16 = ffma 4, u19, u15
+   19 = ffma 4, u19, u22
+   22 = ffma 4, u19, u20
+   25 = ffma 4, u19, u23
+   begin_cf 
+} -> block1 
+
+block1 {
+   26 = phi #0, 59
+   27 = phi 10, 57
+   28 = phi 8, 49
+   29 = phi 6, 107
+   30 = phi 25, 106
+   31 = phi 22, 105
+   32 = phi 19, 104
+   33 = phi 16, 103
+   34 = phi 13, 102
+   if_icmp 26, u5, #0xaaaae20c4440, n=1, inv
+} -> block2 block3  from block0 block4
+
+block2 {
+   break #0xaaaae2065270, n=2
+} -> block5  from block1
+
+block3 {
+   else_fcmp #0.000000, #0.000000, #0xaaaae20c4440, n=1
+   pop_exec #0x0, n=1
+} -> block4  from block1
+
+block4 {
+   38 = ffma 28, u17, u13
+   40 = ffma 38, u14, u11
+   41 = ffma 40, u15, u12
+   43 = ffma 41, u8, u10
+   44 = ffma 43, u8, u9
+   46 = ffma 44, u16, u12
+   48 = ffma 46, u18, u10
+   49 = ffma 48, u17, u9
+   50 = ffma 27, u14, u10
+   51 = ffma 50, u15, u9
+   52 = ffma 51, u8, u13
+   53 = ffma 52, u8, u11
+   54 = ffma 53, u16, u9
+   55 = ffma 54, u18, u13
+   56 = ffma 55, u17, u11
+   57 = ffma 56, u14, u12
+   59 = iadd 26, #1, #0x0
+   60 = ffma 34, u14, u12
+   61 = ffma 33, u15, u13
+   62 = ffma 32, u8, u10
+   63 = ffma 31, u8, u11
+   64 = ffma 30, u16, u9
+   65 = ffma 29, u18, u12
+   66 = ffma 60, u15, u10
+   67 = ffma 61, u8, u11
+   68 = ffma 62, u8, u9
+   69 = ffma 63, u16, u12
+   70 = ffma 64, u18, u13
+   71 = ffma 65, u17, u10
+   72 = ffma 66, u8, u9
+   73 = ffma 67, u8, u12
+   74 = ffma 68, u16, u13
+   75 = ffma 69, u18, u10
+   76 = ffma 70, u17, u11
+   77 = ffma 71, u14, u9
+   78 = ffma 72, u8, u13
+   79 = ffma 73, u16, u10
+   80 = ffma 74, u18, u11
+   81 = ffma 75, u17, u9
+   82 = ffma 76, u14, u12
+   83 = ffma 77, u15, u13
+   84 = ffma 78, u16, u11
+   85 = ffma 79, u18, u9
+   86 = ffma 80, u17, u12
+   87 = ffma 81, u14, u13
+   88 = ffma 82, u15, u10
+   89 = ffma 83, u8, u11
+   90 = ffma 84, u18, u12
+   91 = ffma 85, u17, u13
+   92 = ffma 86, u14, u10
+   93 = ffma 87, u15, u11
+   94 = ffma 88, u8, u9
+   95 = ffma 89, u8, u9
+   96 = ffma 90, u17, u10
+   97 = ffma 91, u14, u11
+   98 = ffma 92, u15, u9
+   99 = ffma 93, u8, u9
+   100 = ffma 94, u8, u12
+   101 = ffma 95, u16, u13
+   102 = ffma 96, u14, u9
+   103 = ffma 97, u15, u9
+   104 = ffma 98, u8, u12
+   105 = ffma 99, u8, u13
+   106 = ffma 100, u16, u10
+   107 = ffma 101, u18, u11
+   jmp_exec_any #0xaaaae20653b0
+   pop_exec #0x0, n=1
+} -> block1  from block3
+
+block5 {
+   108 = fadd 34, 33
+   109 = fadd 108, 32
+   110 = fadd 109, 31
+   111 = fadd 110, 30
+   112 = fadd 111, 29
+   113 = fadd 112, 28
+   114 = fadd 113, 27
+   device_store 114, u6:u7, 3.abs, x, #0x0, slot 0
+   stop 
+} from block2
+
+block0 {
+   116 = get_sr #0x50
+   3 = iadd 116, u4, #0x0
+   4 = convert #10, 3, #0x1
+   6 = ffma 4, u19, #5.000000
+   8 = ffma 4, u19, #6.000000
+   10 = ffma 4, u19, u21
+   13 = ffma 4, u19, u9
+   16 = ffma 4, u19, u15
+   19 = ffma 4, u19, u22
+   22 = ffma 4, u19, u20
+   25 = ffma 4, u19, u23
+   begin_cf 
+} -> block1 
+
+block1 {
+   26 = phi #0, 59
+   27 = phi 10, 57
+   28 = phi 8, 49
+   29 = phi 6, 107
+   30 = phi 25, 106
+   31 = phi 22, 105
+   32 = phi 19, 104
+   33 = phi 16, 103
+   34 = phi 13, 102
+   if_icmp 26, u5, #0xaaaae20c4440, n=1, inv
+} -> block2 block3  from block0 block4
+
+block2 {
+   break #0xaaaae2065270, n=2
+} -> block5  from block1
+
+block3 {
+   else_fcmp #0.000000, #0.000000, #0xaaaae20c4440, n=1
+   pop_exec #0x0, n=1
+} -> block4  from block1
+
+block4 {
+   38 = ffma 28, u17, u13
+   40 = ffma 38, u14, u11
+   41 = ffma 40, u15, u12
+   43 = ffma 41, u8, u10
+   44 = ffma 43, u8, u9
+   46 = ffma 44, u16, u12
+   48 = ffma 46, u18, u10
+   49 = ffma 48, u17, u9
+   50 = ffma 27, u14, u10
+   51 = ffma 50, u15, u9
+   52 = ffma 51, u8, u13
+   53 = ffma 52, u8, u11
+   54 = ffma 53, u16, u9
+   55 = ffma 54, u18, u13
+   56 = ffma 55, u17, u11
+   57 = ffma 56, u14, u12
+   59 = iadd 26, #1, #0x0
+   60 = ffma 34, u14, u12
+   61 = ffma 33, u15, u13
+   62 = ffma 32, u8, u10
+   63 = ffma 31, u8, u11
+   64 = ffma 30, u16, u9
+   65 = ffma 29, u18, u12
+   66 = ffma 60, u15, u10
+   67 = ffma 61, u8, u11
+   68 = ffma 62, u8, u9
+   69 = ffma 63, u16, u12
+   70 = ffma 64, u18, u13
+   71 = ffma 65, u17, u10
+   72 = ffma 66, u8, u9
+   73 = ffma 67, u8, u12
+   74 = ffma 68, u16, u13
+   75 = ffma 69, u18, u10
+   76 = ffma 70, u17, u11
+   77 = ffma 71, u14, u9
+   78 = ffma 72, u8, u13
+   79 = ffma 73, u16, u10
+   80 = ffma 74, u18, u11
+   81 = ffma 75, u17, u9
+   82 = ffma 76, u14, u12
+   83 = ffma 77, u15, u13
+   84 = ffma 78, u16, u11
+   85 = ffma 79, u18, u9
+   86 = ffma 80, u17, u12
+   87 = ffma 81, u14, u13
+   88 = ffma 82, u15, u10
+   89 = ffma 83, u8, u11
+   90 = ffma 84, u18, u12
+   91 = ffma 85, u17, u13
+   92 = ffma 86, u14, u10
+   93 = ffma 87, u15, u11
+   94 = ffma 88, u8, u9
+   95 = ffma 89, u8, u9
+   96 = ffma 90, u17, u10
+   97 = ffma 91, u14, u11
+   98 = ffma 92, u15, u9
+   99 = ffma 93, u8, u9
+   100 = ffma 94, u8, u12
+   101 = ffma 95, u16, u13
+   102 = ffma 96, u14, u9
+   103 = ffma 97, u15, u9
+   104 = ffma 98, u8, u12
+   105 = ffma 99, u8, u13
+   106 = ffma 100, u16, u10
+   107 = ffma 101, u18, u11
+   jmp_exec_any #0xaaaae20653b0
+   pop_exec #0x0, n=1
+} -> block1  from block3
+
+block5 {
+   108 = fadd 34, 33
+   109 = fadd 108, 32
+   110 = fadd 109, 31
+   111 = fadd 110, 30
+   112 = fadd 111, 29
+   113 = fadd 112, 28
+   114 = fadd 113, 27
+   device_store 114, u6:u7, 3.abs, x, #0x0, slot 0
+   stop 
+} from block2
+
+block0 {
+   $r1 = get_sr #0x50
+   r1 = iadd ^r1, u4, #0x0
+   $r2 = convert #10, r1, #0x1
+   r3 = ffma $r2, u19, #5.000000
+   r4 = ffma $r2, u19, #6.000000
+   r5 = ffma $r2, u19, u21
+   $r6 = ffma $r2, u19, u9
+   r7 = ffma $r2, u19, u15
+   r8 = ffma $r2, u19, u22
+   r9 = ffma $r2, u19, u20
+   $r2 = ffma ^r2, u19, u23
+   r0l = mov_imm #0x0
+   r10 = mov1 ^r6, #0
+   r6 = mov1 ^r2, #0
+   r2 = mov_imm #0x0
+} -> block1 
+
+block1 {
+} -> block2 block3  from block0 block4
+
+block2 {
+} -> block5  from block1
+
+block3 {
+} -> block4  from block1
+
+block4 {
+   while_icmp $r2, u5, #0x0, n=1
+   $r4 = ffma r4, u17, u13
+   $r4 = ffma r4, u14, u11
+   $r4 = ffma r4, u15, u12
+   $r4 = ffma r4, u8, u10
+   $r4 = ffma r4, u8, u9
+   $r4 = ffma r4, u16, u12
+   $r4 = ffma r4, u18, u10
+   r4 = ffma r4, u17, u9
+   $r5 = ffma r5, u14, u10
+   $r5 = ffma r5, u15, u9
+   $r5 = ffma r5, u8, u13
+   $r5 = ffma r5, u8, u11
+   $r5 = ffma r5, u16, u9
+   $r5 = ffma r5, u18, u13
+   $r5 = ffma r5, u17, u11
+   r5 = ffma r5, u14, u12
+   r2 = iadd r2, #1, #0x0
+   $r10 = ffma r10, u14, u12
+   $r7 = ffma r7, u15, u13
+   $r8 = ffma r8, u8, u10
+   $r9 = ffma r9, u8, u11
+   $r6 = ffma r6, u16, u9
+   $r3 = ffma r3, u18, u12
+   $r10 = ffma r10, u15, u10
+   $r7 = ffma r7, u8, u11
+   $r8 = ffma r8, u8, u9
+   $r9 = ffma r9, u16, u12
+   $r6 = ffma r6, u18, u13
+   $r3 = ffma r3, u17, u10
+   $r10 = ffma r10, u8, u9
+   $r7 = ffma r7, u8, u12
+   $r8 = ffma r8, u16, u13
+   $r9 = ffma r9, u18, u10
+   $r6 = ffma r6, u17, u11
+   $r3 = ffma r3, u14, u9
+   $r10 = ffma r10, u8, u13
+   $r7 = ffma r7, u16, u10
+   $r8 = ffma r8, u18, u11
+   $r9 = ffma r9, u17, u9
+   $r6 = ffma r6, u14, u12
+   $r3 = ffma r3, u15, u13
+   $r10 = ffma r10, u16, u11
+   $r7 = ffma r7, u18, u9
+   $r8 = ffma r8, u17, u12
+   $r9 = ffma r9, u14, u13
+   $r6 = ffma r6, u15, u10
+   $r3 = ffma r3, u8, u11
+   $r10 = ffma r10, u18, u12
+   $r7 = ffma r7, u17, u13
+   $r8 = ffma r8, u14, u10
+   $r9 = ffma r9, u15, u11
+   $r6 = ffma r6, u8, u9
+   $r3 = ffma r3, u8, u9
+   $r10 = ffma r10, u17, u10
+   $r7 = ffma r7, u14, u11
+   $r8 = ffma r8, u15, u9
+   $r9 = ffma r9, u8, u9
+   $r6 = ffma r6, u8, u12
+   $r3 = ffma r3, u16, u13
+   r10 = ffma r10, u14, u9
+   r7 = ffma r7, u15, u9
+   r8 = ffma r8, u8, u12
+   r9 = ffma r9, u8, u13
+   r6 = ffma r6, u16, u10
+   r3 = ffma r3, u18, u11
+   jmp_exec_any #0xaaaae20653b0
+   pop_exec #0x0, n=1
+} -> block1  from block3
+
+block5 {
+   $r2 = fadd r10, r7
+   $r2 = fadd r2, r8
+   $r2 = fadd r2, r9
+   $r2 = fadd r2, r6
+   $r2 = fadd r2, r3
+   $r2 = fadd r2, r4
+   r2 = fadd r2, r5
+   device_store r2, u6:u7, r1.abs, x, #0x0, slot 0
+   stop 
+} from block2
+
+   0: f2051004               mov      $r1, thread_in_grid_x
+   4: 0e05c28658000000       iadd     r1, ^r1.sx, u4.sx
+   c: be890a242400           u32_to_f $r2, r1, rte
+  12: 3a8d84621a144000       ffma     r3, $r2, u19, 5.0
+  1a: 3a9184621a184000       ffma     r4, $r2, u19, 6.0
+  22: 3a9584621aaa0100       ffma     r5, $r2, u19, u21
+  2a: ba9984621a920100       ffma     $r6, $r2, u19, u9
+  32: 3a9d84621a9e0100       ffma     r7, $r2, u19, u15
+  3a: 3aa184621aac0100       ffma     r8, $r2, u19, u22
+  42: 3aa584621aa80100       ffma     r9, $r2, u19, u20
+  4a: ba89c4621aae0100       ffma     $r2, ^r2, u19, u23
+  52: 62000000               ldimm    r0l, 0
+  56: 7e29cc0a8000           mov      r10, ^r6
+  5c: 7e19c40a8000           mov      r6, ^r2
+  62: 620900000000           ldimm    r2, 0
+  68: 522c84a21800           while    $r2, u5, 1, ult
+  6e: ba9148221a9a0100       ffma     $r4, r4, u17, u13
+  76: ba9148c219960100       ffma     $r4, r4, u14, u11
+  7e: ba9148e219980100       ffma     $r4, r4, u15, u12
+  86: ba91480219940100       ffma     $r4, r4, u8, u10
+  8e: ba91480219920100       ffma     $r4, r4, u8, u9
+  96: ba9148021a980100       ffma     $r4, r4, u16, u12
+  9e: ba9148421a940100       ffma     $r4, r4, u18, u10
+  a6: 3a9148221a920100       ffma     r4, r4, u17, u9
+  ae: ba954ac219940100       ffma     $r5, r5, u14, u10
+  b6: ba954ae219920100       ffma     $r5, r5, u15, u9
+  be: ba954a02199a0100       ffma     $r5, r5, u8, u13
+  c6: ba954a0219960100       ffma     $r5, r5, u8, u11
+  ce: ba954a021a920100       ffma     $r5, r5, u16, u9
+  d6: ba954a421a9a0100       ffma     $r5, r5, u18, u13
+  de: ba954a221a960100       ffma     $r5, r5, u17, u11
+  e6: 3a954ac219980100       ffma     r5, r5, u14, u12
+  ee: 0e09441600000000       iadd     r2, r2.sx, 1
+  f6: baa954c219980100       ffma     $r10, r10, u14, u12
+  fe: ba9d4ee2199a0100       ffma     $r7, r7, u15, u13
+ 106: baa1500219940100       ffma     $r8, r8, u8, u10
+ 10e: baa5520219960100       ffma     $r9, r9, u8, u11
+ 116: ba994c021a920100       ffma     $r6, r6, u16, u9
+ 11e: ba8d46421a980100       ffma     $r3, r3, u18, u12
+ 126: baa954e219940100       ffma     $r10, r10, u15, u10
+ 12e: ba9d4e0219960100       ffma     $r7, r7, u8, u11
+ 136: baa1500219920100       ffma     $r8, r8, u8, u9
+ 13e: baa552021a980100       ffma     $r9, r9, u16, u12
+ 146: ba994c421a9a0100       ffma     $r6, r6, u18, u13
+ 14e: ba8d46221a940100       ffma     $r3, r3, u17, u10
+ 156: baa9540219920100       ffma     $r10, r10, u8, u9
+ 15e: ba9d4e0219980100       ffma     $r7, r7, u8, u12
+ 166: baa150021a9a0100       ffma     $r8, r8, u16, u13
+ 16e: baa552421a940100       ffma     $r9, r9, u18, u10
+ 176: ba994c221a960100       ffma     $r6, r6, u17, u11
+ 17e: ba8d46c219920100       ffma     $r3, r3, u14, u9
+ 186: baa95402199a0100       ffma     $r10, r10, u8, u13
+ 18e: ba9d4e021a940100       ffma     $r7, r7, u16, u10
+ 196: baa150421a960100       ffma     $r8, r8, u18, u11
+ 19e: baa552221a920100       ffma     $r9, r9, u17, u9
+ 1a6: ba994cc219980100       ffma     $r6, r6, u14, u12
+ 1ae: ba8d46e2199a0100       ffma     $r3, r3, u15, u13
+ 1b6: baa954021a960100       ffma     $r10, r10, u16, u11
+ 1be: ba9d4e421a920100       ffma     $r7, r7, u18, u9
+ 1c6: baa150221a980100       ffma     $r8, r8, u17, u12
+ 1ce: baa552c2199a0100       ffma     $r9, r9, u14, u13
+ 1d6: ba994ce219940100       ffma     $r6, r6, u15, u10
+ 1de: ba8d460219960100       ffma     $r3, r3, u8, u11
+ 1e6: baa954421a980100       ffma     $r10, r10, u18, u12
+ 1ee: ba9d4e221a9a0100       ffma     $r7, r7, u17, u13
+ 1f6: baa150c219940100       ffma     $r8, r8, u14, u10
+ 1fe: baa552e219960100       ffma     $r9, r9, u15, u11
+ 206: ba994c0219920100       ffma     $r6, r6, u8, u9
+ 20e: ba8d460219920100       ffma     $r3, r3, u8, u9
+ 216: baa954221a940100       ffma     $r10, r10, u17, u10
+ 21e: ba9d4ec219960100       ffma     $r7, r7, u14, u11
+ 226: baa150e219920100       ffma     $r8, r8, u15, u9
+ 22e: baa5520219920100       ffma     $r9, r9, u8, u9
+ 236: ba994c0219980100       ffma     $r6, r6, u8, u12
+ 23e: ba8d46021a9a0100       ffma     $r3, r3, u16, u13
+ 246: 3aa954c219920100       ffma     r10, r10, u14, u9
+ 24e: 3a9d4ee219920100       ffma     r7, r7, u15, u9
+ 256: 3aa1500219980100       ffma     r8, r8, u8, u12
+ 25e: 3aa55202199a0100       ffma     r9, r9, u8, u13
+ 266: 3a994c021a940100       ffma     r6, r6, u16, u10
+ 26e: 3a8d46421a960100       ffma     r3, r3, u18, u11
+ 276: 00c0f2fdffff           jmp_any  -526
+ 27c: 520e00000000           pop_exec 1
+ 282: aa8954e22400           fadd     $r2, r10, r7
+ 288: aa8944022500           fadd     $r2, r2, r8
+ 28e: aa8944222500           fadd     $r2, r2, r9
+ 294: aa8944c22400           fadd     $r2, r2, r6
+ 29a: aa8944622400           fadd     $r2, r2, r3
+ 2a0: aa8944822400           fadd     $r2, r2, r4
+ 2a6: 2a8944a22400           fadd     r2, r2, r5
+ 2ac: 45112c0e00c01200       store    r2, du6, r1, i32, x, a
+ 2b4: 8800                   stop
+block0 {
+   3 = device_load u0:u1, #5, xyz, #0x0, slot 0
+   11, _, _ = split 3
+   4 = bfi #0, 11, #7, #0x0
+   uniform_store 4, #8, x, #0x0
+   6 = device_load u0:u1, #61, x, #0x0, slot 0
+   uniform_store 6, #10, x, #0x0
+   9 = device_load u2:u3, #0, xyzw, #0x0, slot 0
+   17, 18, _, _ = split 9
+   10d = collect 17, 18
+   21d = mov 10d
+   uniform_store 21d, #12, x, #0x0
+   stop 
+}
+
+block0 {
+   3 = device_load u0:u1, #5, xyz, #0x0, slot 0
+   11, _, _ = split 3
+   4 = bfi #0, 11, #7, #0x0
+   uniform_store 4, #8, x, #0x0
+   6 = device_load u0:u1, #61, x, #0x0, slot 0
+   uniform_store 6, #10, x, #0x0
+   9 = device_load u2:u3, #0, xyzw, #0x0, slot 0
+   17, 18, _, _ = split 9
+   10d = collect 17, 18
+   21d = mov 10d
+   uniform_store 21d, #12, x, #0x0
+   stop 
+}
+
+block0 {
+   $r0...r2 = device_load u0:u1, #5, xyz, #0x0, slot 0
+   wait #0x0, slot 0
+   r0 = bfi #0, ^r0, #7, #0x0
+   uniform_store ^r0, #8, x, #0x0
+   r0 = device_load u0:u1, #61, x, #0x0, slot 0
+   wait #0x0, slot 0
+   uniform_store ^r0, #10, x, #0x0
+   r0...r3 = device_load u2:u3, #0, xyzw, #0x0, slot 0
+   wait #0x0, slot 0
+   uniform_store ^r0:r1, #12, x, #0x0
+   stop 
+}
+
+   0: 0501500d00c87200       load     r0_r1_r2, du0, 5, lsl 2, i32, xyz, a
+   8: 3800                   wait     a
+   a: 2e0100002c070000       shl      r0, ^r0, 7
+  12: c500803d00803000       mov      u4, r0
+  1a: 0501d00d03c41200       load     r0, du0, 61, lsl 1, i32, x, a
+  22: 3800                   wait     a
+  24: c500a03d00803000       mov      u5, r0
+  2c: 0501040d00c0f200       load     r0_r1_r2_r3, du2, 0, i32, xyzw, a
+  34: 3800                   wait     a
+  36: c500c03d0080f000       mov      du6, dr0
+  3e: 8800                   stop
+{"spv":"/tmp/fma-ceiling/out3/f32_a8_u8_w128_p0.spv","device":"Apple M1 (G13G B1)","ms_med":3.720,"ms_min":3.709,"gflops_med":-268.8,"gflops_min":-269.6,"checksum":289869438512410}
+
+===== stderr =====

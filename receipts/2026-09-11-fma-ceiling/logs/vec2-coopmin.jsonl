@@ -1,0 +1,1 @@
+{"spv": "/tmp/fma-ceiling/out4/coop_min.spv", "device": "Apple M1 (G13G B1)", "ms_med": 10.186, "ms_min": 10.128, "gflops_med": 1686.6, "gflops_min": 1696.2, "checksum": 0, "name": "coopmin_a8_u8_w128_p0", "typ": "coopmin", "nacc": 8, "unroll": 8, "wgx": 128, "press": 0, "iters": 2048, "gflop_total": 17.179869184}
