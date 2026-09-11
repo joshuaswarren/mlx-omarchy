@@ -995,6 +995,12 @@ TEST_CASE("dense bf16 matmul matches host on every row across coopmat shapes") {
       {"tile32", 1, 32, 32, 32},
       {"tail-m17-k24-n34", 1, 17, 24, 34},
       {"batch2", 2, 40, 8, 40},
+      // m >= 32 with a k % 16 == 8 tail and k < 16: on coopmat devices
+      // these route to MatmulBF16Coopmat and so exercise its 16-wide
+      // staging's final 8-wide step and its k / 16 == 0 degenerate loop.
+      {"tail-m32-k24-n34", 1, 32, 24, 34},
+      {"tail-m33-k40-n18", 1, 33, 40, 18},
+      {"tail-m48-k8-n16", 1, 48, 8, 16},
   };
   for (const auto& t : tails) {
     run(

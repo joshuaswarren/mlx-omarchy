@@ -22,6 +22,15 @@ flock 9
 echo "$(date -Is) lock acquired"
 
 {
+  echo "== phase 0: driver capability gate =="
+  g++ -std=c++17 -O2 -o /tmp/bf16-prefill-bench tools/bf16-prefill-bench/bench.cpp
+  /tmp/bf16-prefill-bench --tiny 2>&1 | grep '\"k\":\"dev\"' \
+    | tee "$R/m1-logs/driver-gate-b.txt"
+  grep -q '\"coopmat\":true' "$R/m1-logs/driver-gate-b.txt" || {
+    echo "FATAL: default driver lacks cooperative matrix; bailing."
+    exit 3
+  }
+
   if [[ "${SKIP_BUILD:-0}" != 1 ]]; then
     echo "== phase 1: candidate wheel build (niced, -j4) =="
     nice -n 10 env DEV_RELEASE=1 CMAKE_BUILD_PARALLEL_LEVEL=4 \
