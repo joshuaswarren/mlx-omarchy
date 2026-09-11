@@ -117,6 +117,21 @@ alpha!=1 scores never reach the coopmat kernel.)
 
 ## Discovered pre-existing defect (not this branch's)
 
+Mechanism note (added after a peer suggested the throws might be
+capability-simulation refusals): they are not. The window-2 phase-A
+environment carries no MLX_OMARCHY_CAPS_SIM (no shell/env.d hits, clean
+process environ), require_backed returns silently whenever
+caps.simulated is false (capability_sim.cpp:206), and its refusal text
+("[omarchy] capability simulation '...' dispatches ...") differs from
+the logged text ("[omarchy] ScaledDotProductAttention dtype is not
+implemented ..."), which is require_float_dtype's unsupported() contract
+- i.e. on the real M1 fork driver the f16 sdpa path reaches a dtype
+guard with an out whose dtype does not match q. A caps-sim run on
+llvmpipe reproduces the same test set through a DIFFERENT mechanism
+(plus the decode-native case 759, which passes on real hardware);
+the real-hardware mechanism remains to be root-caused in the S1
+control run.
+
 `omarchy_fast_ops_tests` on the M1 throws in 8 sdpa cases -
 `[omarchy] ScaledDotProductAttention dtype is not implemented
 (dtype=float16, rank-5 mask/GQA shapes)`. The f16 path is byte-identical
