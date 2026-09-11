@@ -107,6 +107,7 @@ Buffer VulkanAllocator::malloc(size_t size) {
   if (!tape_no_reuse() && !buffer_cache_disabled()) {
     if (void* cached = buffer_cache_.reuse_from_cache(size)) {
       auto* buf = static_cast<VulkanBuffer*>(cached);
+      buf->recycled = true;
       active_memory_ += buf->size;
       peak_memory_ = std::max(active_memory_, peak_memory_);
       lk.unlock();

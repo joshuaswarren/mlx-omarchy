@@ -36,6 +36,13 @@ struct VulkanBuffer {
   // open (not yet submitted) batch. Written by the encoder (add_temporary
   // and submit), consumed by the allocator quarantine (see free()).
   uint64_t completion{0};
+  // True from the moment the reuse cache hands this block out until a
+  // scalar fill drains it: a fill whose destination is freshly recycled
+  // storage must drain prior work first, because its write provably
+  // loses to the in-flight writes of the block's previous occupant
+  // (convolve/pool boundary garbage, receipts/2026-09-11-wrong-value-
+  // sweep). Fresh device-memory allocations are never recycled.
+  bool recycled{false};
 };
 
 // Stamp written by add_temporary for buffers recorded into an open

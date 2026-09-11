@@ -168,6 +168,15 @@ void fill_pattern(
     int64_t o_offset,
     uint8_t byte) {
   auto& encoder = omarchy::get_command_encoder(s);
+  auto* vulkan_buffer =
+      static_cast<omarchy::VulkanBuffer*>(out.buffer().ptr());
+  // A fill into freshly recycled storage is the one case where the write
+  // provably loses to the recycled block's in-flight previous writes
+  // (convolve/pool boundary garbage, 2026-09-11-wrong-value-sweep): the
+  // barrier before the fill does not re-establish what a drain provides,
+  // so recycled targets drain first. Fills into fresh allocations - and
+  // any fill after this buffer's first - skip the drain.
+  const bool needs_drain = vulkan_buffer->recycled;
   size_t start = byte_offset(out, o_offset);
   size_t nbytes = out.nbytes();
   // vkCmdFillBuffer requires a 4-byte-aligned offset and size.
@@ -184,10 +193,14 @@ void fill_pattern(
     std::memset(base + start + lead + words_bytes, byte, tail);
   }
   if (words_bytes > 0) {
+    if (needs_drain) {
+      encoder.synchronize();
+    }
     encoder.add_temporary(out);
     encoder.fill_buffer(
         buffer_handle(out), 0x01010101u * byte, words_bytes, start + lead);
   }
+  vulkan_buffer->recycled = false;
 }
 
 omarchy::ComputeKernel fill_kernel(Dtype dtype) {
