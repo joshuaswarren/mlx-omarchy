@@ -1,0 +1,428 @@
+{
+ "label": "short-30-32",
+ "n_calls": 792,
+ "comp_control_bit_identical": true,
+ "control_mismatch_calls": [],
+ "ulp_tables": {
+  "fused": {
+   "O-f64": {
+    "n": 709632,
+    "exact_frac": 0.999642,
+    "mean_ulp": 0.0008,
+    "max_ulp": 261
+   },
+   "O-comp": {
+    "n": 709632,
+    "exact_frac": 0.999617,
+    "mean_ulp": 0.0007,
+    "max_ulp": 182
+   },
+   "O-fast": {
+    "n": 709632,
+    "exact_frac": 0.410518,
+    "mean_ulp": 120.5502,
+    "max_ulp": 35014
+   }
+  },
+  "comp": {
+   "O-f64": {
+    "n": 709632,
+    "exact_frac": 0.999517,
+    "mean_ulp": 0.0013,
+    "max_ulp": 453
+   },
+   "O-comp": {
+    "n": 709632,
+    "exact_frac": 0.999494,
+    "mean_ulp": 0.0007,
+    "max_ulp": 23
+   },
+   "O-fast": {
+    "n": 709632,
+    "exact_frac": 0.410517,
+    "mean_ulp": 120.5499,
+    "max_ulp": 34822
+   }
+  },
+  "fast": {
+   "O-f64": {
+    "n": 709632,
+    "exact_frac": 0.410549,
+    "mean_ulp": 120.5504,
+    "max_ulp": 35275
+   },
+   "O-comp": {
+    "n": 709632,
+    "exact_frac": 0.410549,
+    "mean_ulp": 120.5499,
+    "max_ulp": 34832
+   },
+   "O-fast": {
+    "n": 709632,
+    "exact_frac": 0.999834,
+    "mean_ulp": 0.0003,
+    "max_ulp": 20
+   }
+  }
+ },
+ "never_farther_O-f64": {
+  "count_fused_farther_than_comp": 152,
+  "admissible": false,
+  "elements": [
+   {
+    "call": 0,
+    "head": 7,
+    "dim": 9,
+    "d_fused": 1,
+    "d_comp": 0
+   },
+   {
+    "call": 0,
+    "head": 10,
+    "dim": 15,
+    "d_fused": 2,
+    "d_comp": 1
+   },
+   {
+    "call": 1,
+    "head": 7,
+    "dim": 37,
+    "d_fused": 1,
+    "d_comp": 0
+   },
+   {
+    "call": 1,
+    "head": 10,
+    "dim": 31,
+    "d_fused": 1,
+    "d_comp": 0
+   },
+   {
+    "call": 17,
+    "head": 7,
+    "dim": 30,
+    "d_fused": 1,
+    "d_comp": 0
+   },
+   {
+    "call": 18,
+    "head": 2,
+    "dim": 6,
+    "d_fused": 1,
+    "d_comp": 0
+   },
+   {
+    "call": 21,
+    "head": 1,
+    "dim": 32,
+    "d_fused": 1,
+    "d_comp": 0
+   },
+   {
+    "call": 24,
+    "head": 10,
+    "dim": 21,
+    "d_fused": 1,
+    "d_comp": 0
+   },
+   {
+    "call": 25,
+    "head": 7,
+    "dim": 4,
+    "d_fused": 1,
+    "d_comp": 0
+   },
+   {
+    "call": 26,
+    "head": 0,
+    "dim": 14,
+    "d_fused": 1,
+    "d_comp": 0
+   },
+   {
+    "call": 26,
+    "head": 7,
+    "dim": 14,
+    "d_fused": 1,
+    "d_comp": 0
+   },
+   {
+    "call": 48,
+    "head": 8,
+    "dim": 3,
+    "d_fused": 1,
+    "d_comp": 0
+   },
+   {
+    "call": 48,
+    "head": 8,
+    "dim": 53,
+    "d_fused": 1,
+    "d_comp": 0
+   },
+   {
+    "call": 48,
+    "head": 11,
+    "dim": 25,
+    "d_fused": 1,
+    "d_comp": 0
+   },
+   {
+    "call": 51,
+    "head": 0,
+    "dim": 36,
+    "d_fused": 2,
+    "d_comp": 1
+   },
+   {
+    "call": 55,
+    "head": 13,
+    "dim": 31,
+    "d_fused": 1,
+    "d_comp": 0
+   },
+   {
+    "call": 56,
+    "head": 13,
+    "dim": 59,
+    "d_fused": 1,
+    "d_comp": 0
+   },
+   {
+    "call": 57,
+    "head": 11,
+    "dim": 29,
+    "d_fused": 1,
+    "d_comp": 0
+   },
+   {
+    "call": 57,
+    "head": 13,
+    "dim": 30,
+    "d_fused": 1,
+    "d_comp": 0
+   },
+   {
+    "call": 72,
+    "head": 11,
+    "dim": 37,
+    "d_fused": 1,
+    "d_comp": 0
+   },
+   {
+    "call": 72,
+    "head": 11,
+    "dim": 60,
+    "d_fused": 1,
+    "d_comp": 0
+   },
+   {
+    "call": 73,
+    "head": 10,
+    "dim": 22,
+    "d_fused": 1,
+    "d_comp": 0
+   },
+   {
+    "call": 76,
+    "head": 10,
+    "dim": 55,
+    "d_fused": 1,
+    "d_comp": 0
+   },
+   {
+    "call": 92,
+    "head": 13,
+    "dim": 2,
+    "d_fused": 1,
+    "d_comp": 0
+   },
+   {
+    "call": 106,
+    "head": 2,
+    "dim": 23,
+    "d_fused": 1,
+    "d_comp": 0
+   },
+   {
+    "call": 106,
+    "head": 10,
+    "dim": 39,
+    "d_fused": 1,
+    "d_comp": 0
+   },
+   {
+    "call": 120,
+    "head": 6,
+    "dim": 26,
+    "d_fused": 1,
+    "d_comp": 0
+   },
+   {
+    "call": 120,
+    "head": 8,
+    "dim": 54,
+    "d_fused": 1,
+    "d_comp": 0
+   },
+   {
+    "call": 122,
+    "head": 9,
+    "dim": 1,
+    "d_fused": 1,
+    "d_comp": 0
+   },
+   {
+    "call": 122,
+    "head": 12,
+    "dim": 5,
+    "d_fused": 1,
+    "d_comp": 0
+   },
+   {
+    "call": 138,
+    "head": 4,
+    "dim": 44,
+    "d_fused": 1,
+    "d_comp": 0
+   },
+   {
+    "call": 143,
+    "head": 2,
+    "dim": 53,
+    "d_fused": 1,
+    "d_comp": 0
+   },
+   {
+    "call": 144,
+    "head": 0,
+    "dim": 42,
+    "d_fused": 1,
+    "d_comp": 0
+   },
+   {
+    "call": 144,
+    "head": 0,
+    "dim": 44,
+    "d_fused": 1,
+    "d_comp": 0
+   },
+   {
+    "call": 144,
+    "head": 7,
+    "dim": 36,
+    "d_fused": 1,
+    "d_comp": 0
+   },
+   {
+    "call": 144,
+    "head": 8,
+    "dim": 4,
+    "d_fused": 1,
+    "d_comp": 0
+   },
+   {
+    "call": 144,
+    "head": 8,
+    "dim": 20,
+    "d_fused": 1,
+    "d_comp": 0
+   },
+   {
+    "call": 144,
+    "head": 10,
+    "dim": 24,
+    "d_fused": 1,
+    "d_comp": 0
+   },
+   {
+    "call": 146,
+    "head": 7,
+    "dim": 39,
+    "d_fused": 1,
+    "d_comp": 0
+   },
+   {
+    "call": 156,
+    "head": 4,
+    "dim": 45,
+    "d_fused": 1,
+    "d_comp": 0
+   },
+   {
+    "call": 171,
+    "head": 12,
+    "dim": 12,
+    "d_fused": 1,
+    "d_comp": 0
+   },
+   {
+    "call": 173,
+    "head": 11,
+    "dim": 40,
+    "d_fused": 3,
+    "d_comp": 1
+   },
+   {
+    "call": 176,
+    "head": 6,
+    "dim": 16,
+    "d_fused": 1,
+    "d_comp": 0
+   },
+   {
+    "call": 189,
+    "head": 2,
+    "dim": 59,
+    "d_fused": 1,
+    "d_comp": 0
+   },
+   {
+    "call": 193,
+    "head": 6,
+    "dim": 45,
+    "d_fused": 1,
+    "d_comp": 0
+   },
+   {
+    "call": 193,
+    "head": 7,
+    "dim": 46,
+    "d_fused": 1,
+    "d_comp": 0
+   },
+   {
+    "call": 199,
+    "head": 3,
+    "dim": 52,
+    "d_fused": 1,
+    "d_comp": 0
+   },
+   {
+    "call": 221,
+    "head": 10,
+    "dim": 25,
+    "d_fused": 2,
+    "d_comp": 1
+   },
+   {
+    "call": 238,
+    "head": 1,
+    "dim": 35,
+    "d_fused": 1,
+    "d_comp": 0
+   },
+   {
+    "call": 240,
+    "head": 3,
+    "dim": 5,
+    "d_fused": 2,
+    "d_comp": 1
+   }
+  ]
+ },
+ "never_farther_O-comp": {
+  "count_fused_farther_than_comp": 151,
+  "elements": []
+ }
+}

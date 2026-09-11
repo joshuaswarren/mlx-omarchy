@@ -1,12 +1,21 @@
 // Copyright © 2026 Joshua Warren / mlx-omarchy contributors.
 // SPDX-License-Identifier: MIT
 //
-// Single-query f16 SDPA in native Metal's decode arithmetic order
+// Single-query SDPA in native Metal's decode arithmetic order
 // (mlx/backend/metal/kernels/sdpa_vector.h). One 1024-thread workgroup owns
 // one query head. Short decode reproduces sdpa_vector's 32 interleaved online
 // streams and final SIMD reduction. At native's long-context crossover it
 // reproduces the 64/128-block two-pass algorithm, including f16 partial
 // storage, inside the same workgroup and dispatch.
+//
+// The same structure serves bf16 (-DBF16_IO): loads widen exactly, stores
+// round-to-nearest-even (cast.comp pair), and every intermediate - scores,
+// exp, running max, running sum, accumulator - stays float32, matching
+// upstream's `typedef float U` arithmetic (sdpa_vector.h:50). The bf16 host
+// side always selects the one-pass 32-stream arm: the f32 partial array the
+// two-pass needs cannot fit the workgroup store at the 128-block crossover,
+// and the bf16 parity contract is the f32-score composition, not native's
+// two-pass partial format.
 
 #version 460
 
@@ -15,9 +24,28 @@
 #extension GL_KHR_shader_subgroup_shuffle : require
 #extension GL_EXT_shader_16bit_storage : require
 #extension GL_EXT_shader_explicit_arithmetic_types_float16 : require
+#ifdef BF16_IO
+#extension GL_EXT_shader_explicit_arithmetic_types_int16 : require
+#endif
 
 layout(local_size_x = 1024, local_size_y = 1, local_size_z = 1) in;
-
+#ifdef BF16_IO
+// bf16 storage rides a uint16 word view: loads widen exactly (the bf16
+// bits are the f32 top half), stores round-to-nearest-even like every
+// other USE_BF16 leg (cast.comp).
+layout(set = 0, binding = 0, std430) readonly buffer Query {
+  uint16_t values[];
+} query_data;
+layout(set = 0, binding = 1, std430) readonly buffer Key {
+  uint16_t values[];
+} key_data;
+layout(set = 0, binding = 2, std430) readonly buffer Value {
+  uint16_t values[];
+} value_data;
+layout(set = 0, binding = 3, std430) writeonly buffer Output {
+  uint16_t values[];
+} output_data;
+#else
 layout(set = 0, binding = 0, std430) readonly buffer Query {
   float16_t values[];
 } query_data;
@@ -30,6 +58,7 @@ layout(set = 0, binding = 2, std430) readonly buffer Value {
 layout(set = 0, binding = 3, std430) writeonly buffer Output {
   float16_t values[];
 } output_data;
+#endif
 
 layout(push_constant) uniform Params {
   uint count;
@@ -71,12 +100,34 @@ float native_exp(float x) {
   return exp(x);
 }
 
+#ifdef BF16_IO
+// The cast.comp conversion pair, verbatim: exact widening in, RNE out.
+float bf16_load(uint16_t bits) {
+  return uintBitsToFloat(uint(bits) << 16u);
+}
+uint16_t bf16_store(float value) {
+  uint bits = floatBitsToUint(value);
+  if (isnan(value)) {
+    return uint16_t((bits >> 16) | 0x40u);
+  }
+  return uint16_t((bits + 0x7fffu + ((bits >> 16) & 1u)) >> 16);
+}
+#define LD16(x) bf16_load(x)
+#else
+#define LD16(x) float(x)
+#endif
+
 void store_pair(uint head, uint lane, float x, float y, float denominator) {
   if (lane == 0u) {
     uint out_base = params.output_offset + head * DIM +
         2u * gl_SubgroupID;
+#ifdef BF16_IO
+    output_data.values[out_base] = bf16_store(x / denominator);
+    output_data.values[out_base + 1u] = bf16_store(y / denominator);
+#else
     output_data.values[out_base] = float16_t(x / denominator);
     output_data.values[out_base + 1u] = float16_t(y / denominator);
+#endif
   }
 }
 
@@ -89,9 +140,9 @@ void main() {
   uint q_base = params.lhs_offset + head * params.shape[0];
   uint q_dim = 2u * lane;
   float q0 = params.alpha *
-      float(query_data.values[q_base + q_dim * params.shape[3]]);
+      LD16(query_data.values[q_base + q_dim * params.shape[3]]);
   float q1 = params.alpha *
-      float(query_data.values[q_base + (q_dim + 1u) * params.shape[3]]);
+      LD16(query_data.values[q_base + (q_dim + 1u) * params.shape[3]]);
   uint blocks = params.flags;
 
   if (blocks == 0u) {
@@ -104,10 +155,10 @@ void main() {
     for (uint key = sgid; key < params.matrix_k; key += SIMD) {
       uint k_base = params.rhs_offset + kv_head * params.shape[1] +
           key * params.shape[2] + q_dim * params.in_strides[0];
-      float score = fma(q0, float(key_data.values[k_base]), 0.0);
+      float score = fma(q0, LD16(key_data.values[k_base]), 0.0);
       score = fma(
           q1,
-          float(key_data.values[k_base + params.in_strides[0]]),
+          LD16(key_data.values[k_base + params.in_strides[0]]),
           score);
       score = subgroupAdd(score);
       float new_max = max(max_score, score);
@@ -120,12 +171,12 @@ void main() {
       o0 = fma(
           o0,
           factor,
-          exp_score * float(value_data.values[v_base]));
+          exp_score * LD16(value_data.values[v_base]));
       o1 = fma(
           o1,
           factor,
           exp_score *
-              float(value_data.values[v_base + params.in_strides[3]]));
+              LD16(value_data.values[v_base + params.in_strides[3]]));
     }
 
     if (lane == 0u) {
@@ -160,10 +211,10 @@ void main() {
     for (uint key = block; key < params.matrix_k; key += blocks) {
       uint k_base = params.rhs_offset + kv_head * params.shape[1] +
           key * params.shape[2] + q_dim * params.in_strides[0];
-      float score = fma(q0, float(key_data.values[k_base]), 0.0);
+      float score = fma(q0, LD16(key_data.values[k_base]), 0.0);
       score = fma(
           q1,
-          float(key_data.values[k_base + params.in_strides[0]]),
+          LD16(key_data.values[k_base + params.in_strides[0]]),
           score);
       score = subgroupAdd(score);
       float new_max = max(max_score, score);
@@ -176,12 +227,12 @@ void main() {
       o0 = fma(
           o0,
           factor,
-          exp_score * float(value_data.values[v_base]));
+          exp_score * LD16(value_data.values[v_base]));
       o1 = fma(
           o1,
           factor,
           exp_score *
-              float(value_data.values[v_base + params.in_strides[3]]));
+              LD16(value_data.values[v_base + params.in_strides[3]]));
     }
     if (lane == 0u) {
       s_max[block] = max_score;
