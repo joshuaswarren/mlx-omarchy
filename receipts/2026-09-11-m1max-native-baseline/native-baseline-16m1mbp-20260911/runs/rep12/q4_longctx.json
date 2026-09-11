@@ -1,0 +1,31 @@
+{
+ "decode_tps": 285.3298,
+ "device": "Apple M1 Max",
+ "engine": "bench_decode",
+ "generated": 32,
+ "ids_first": [
+  13060,
+  498,
+  369
+ ],
+ "ids_last": [
+  3897,
+  553,
+  279
+ ],
+ "ids_sha256_16": "7da83f06ec9f001d",
+ "model": "q4",
+ "prefill_s": 0.132204,
+ "prefill_tps": 7964.9858,
+ "prompt_id": "ctx1024",
+ "prompt_tokens": 1053,
+ "prompt_tokens_asserted": 1053,
+ "watch_all_cpu_delta_s": {
+  "w1": 0.01,
+  "w2": 0.0,
+  "w3": 0.0,
+  "w4": 0.0,
+  "w5": 0.39
+ },
+ "watch_pid_cpu_delta_s": 0.39
+}

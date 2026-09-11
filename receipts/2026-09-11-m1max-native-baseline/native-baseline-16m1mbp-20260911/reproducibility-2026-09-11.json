@@ -1,0 +1,206 @@
+{
+ "compares": {
+  "base_m1_denominator": "receipts/native-baseline-2026-09-06/native-2026-09-06-summary.json",
+  "previous_session": "receipts/2026-09-10-native-macos-metal-baseline/native-baseline-16m1mbp/native-baseline-16M1MBP.json",
+  "this_session": "native-baseline-16M1MBP.json"
+ },
+ "date": "2026-09-11",
+ "digest_oracle_verdict": {
+  "all_legs_reproducible": true,
+  "all_legs_stable_across_sessions": true
+ },
+ "legs": {
+  "bf16_long": {
+   "base_m1_native_decode_median": 55.72,
+   "base_m1_native_prefill_median": 1007.7,
+   "clean_reps_2026_09_10": 11,
+   "clean_reps_2026_09_11": 11,
+   "contended_reps_2026_09_10": [
+    12
+   ],
+   "contended_reps_2026_09_11": [
+    12
+   ],
+   "decode_median_2026_09_10": 214.715,
+   "decode_median_2026_09_11": 214.225,
+   "decode_median_drift_pct": -0.23,
+   "die_decode_ratio_max_vs_base_m1": 3.845,
+   "die_prefill_ratio_vs_base_m1": 5.257,
+   "digest_stable_across_sessions": true,
+   "digest_stable_within_2026_09_10": true,
+   "digest_stable_within_2026_09_11": true,
+   "digests_2026_09_10": [
+    "407b7624ed1b3b29"
+   ],
+   "digests_2026_09_11": [
+    "407b7624ed1b3b29"
+   ],
+   "prefill_median_2026_09_10": 5281.122,
+   "prefill_median_2026_09_11": 5297.83,
+   "prefill_median_drift_pct": 0.32,
+   "reference_native_digest": "407b7624ed1b3b29",
+   "reproducible_digest_oracle": true
+  },
+  "bf16_longctx": {
+   "base_m1_native_decode_median": 54.55,
+   "base_m1_native_prefill_median": 1655.7,
+   "clean_reps_2026_09_10": 10,
+   "clean_reps_2026_09_11": 11,
+   "contended_reps_2026_09_10": [
+    11,
+    12
+   ],
+   "contended_reps_2026_09_11": [
+    12
+   ],
+   "decode_median_2026_09_10": 207.954,
+   "decode_median_2026_09_11": 207.866,
+   "decode_median_drift_pct": -0.04,
+   "die_decode_ratio_max_vs_base_m1": 3.811,
+   "die_prefill_ratio_vs_base_m1": 4.681,
+   "digest_stable_across_sessions": true,
+   "digest_stable_within_2026_09_10": true,
+   "digest_stable_within_2026_09_11": true,
+   "digests_2026_09_10": [
+    "ff502900d2a179a5"
+   ],
+   "digests_2026_09_11": [
+    "ff502900d2a179a5"
+   ],
+   "prefill_median_2026_09_10": 7751.351,
+   "prefill_median_2026_09_11": 7750.828,
+   "prefill_median_drift_pct": -0.01,
+   "reference_native_digest": "ff502900d2a179a5",
+   "reproducible_digest_oracle": true
+  },
+  "bf16_short": {
+   "base_m1_native_decode_median": 56.43,
+   "base_m1_native_prefill_median": 232.6,
+   "clean_reps_2026_09_10": 11,
+   "clean_reps_2026_09_11": 11,
+   "contended_reps_2026_09_10": [
+    12
+   ],
+   "contended_reps_2026_09_11": [
+    12
+   ],
+   "decode_median_2026_09_10": 217.882,
+   "decode_median_2026_09_11": 218.466,
+   "decode_median_drift_pct": 0.27,
+   "die_decode_ratio_max_vs_base_m1": 3.871,
+   "die_prefill_ratio_vs_base_m1": 5.445,
+   "digest_stable_across_sessions": true,
+   "digest_stable_within_2026_09_10": true,
+   "digest_stable_within_2026_09_11": true,
+   "digests_2026_09_10": [
+    "7fc0f968789b1882"
+   ],
+   "digests_2026_09_11": [
+    "7fc0f968789b1882"
+   ],
+   "prefill_median_2026_09_10": 1192.738,
+   "prefill_median_2026_09_11": 1266.538,
+   "prefill_median_drift_pct": 6.19,
+   "reference_native_digest": "7fc0f968789b1882",
+   "reproducible_digest_oracle": true
+  },
+  "q4_long": {
+   "base_m1_native_decode_median": 146.77,
+   "base_m1_native_prefill_median": 1213.0,
+   "clean_reps_2026_09_10": 10,
+   "clean_reps_2026_09_11": 12,
+   "contended_reps_2026_09_10": [
+    1,
+    12
+   ],
+   "contended_reps_2026_09_11": [],
+   "decode_median_2026_09_10": 296.253,
+   "decode_median_2026_09_11": 296.093,
+   "decode_median_drift_pct": -0.05,
+   "die_decode_ratio_max_vs_base_m1": 2.017,
+   "die_prefill_ratio_vs_base_m1": 4.866,
+   "digest_stable_across_sessions": true,
+   "digest_stable_within_2026_09_10": true,
+   "digest_stable_within_2026_09_11": true,
+   "digests_2026_09_10": [
+    "254d73fd93164b98"
+   ],
+   "digests_2026_09_11": [
+    "254d73fd93164b98"
+   ],
+   "prefill_median_2026_09_10": 5937.907,
+   "prefill_median_2026_09_11": 5902.561,
+   "prefill_median_drift_pct": -0.6,
+   "reference_native_digest": "254d73fd93164b98",
+   "reproducible_digest_oracle": true
+  },
+  "q4_longctx": {
+   "base_m1_native_decode_median": 140.38,
+   "base_m1_native_prefill_median": 1840.9,
+   "clean_reps_2026_09_10": 10,
+   "clean_reps_2026_09_11": 11,
+   "contended_reps_2026_09_10": [
+    1,
+    12
+   ],
+   "contended_reps_2026_09_11": [
+    12
+   ],
+   "decode_median_2026_09_10": 283.794,
+   "decode_median_2026_09_11": 284.068,
+   "decode_median_drift_pct": 0.1,
+   "die_decode_ratio_max_vs_base_m1": 2.024,
+   "die_prefill_ratio_vs_base_m1": 4.385,
+   "digest_stable_across_sessions": true,
+   "digest_stable_within_2026_09_10": true,
+   "digest_stable_within_2026_09_11": true,
+   "digests_2026_09_10": [
+    "7da83f06ec9f001d"
+   ],
+   "digests_2026_09_11": [
+    "7da83f06ec9f001d"
+   ],
+   "prefill_median_2026_09_10": 8048.422,
+   "prefill_median_2026_09_11": 8072.515,
+   "prefill_median_drift_pct": 0.3,
+   "reference_native_digest": "7da83f06ec9f001d",
+   "reproducible_digest_oracle": true
+  },
+  "q4_short": {
+   "base_m1_native_decode_median": 150.57,
+   "base_m1_native_prefill_median": 294.1,
+   "clean_reps_2026_09_10": 11,
+   "clean_reps_2026_09_11": 12,
+   "contended_reps_2026_09_10": [
+    12
+   ],
+   "contended_reps_2026_09_11": [],
+   "decode_median_2026_09_10": 286.961,
+   "decode_median_2026_09_11": 291.548,
+   "decode_median_drift_pct": 1.6,
+   "die_decode_ratio_max_vs_base_m1": 1.936,
+   "die_prefill_ratio_vs_base_m1": 5.158,
+   "digest_stable_across_sessions": true,
+   "digest_stable_within_2026_09_10": true,
+   "digest_stable_within_2026_09_11": true,
+   "digests_2026_09_10": [
+    "7fd25a869ff21678"
+   ],
+   "digests_2026_09_11": [
+    "7fd25a869ff21678"
+   ],
+   "prefill_median_2026_09_10": 1517.553,
+   "prefill_median_2026_09_11": 1517.06,
+   "prefill_median_drift_pct": -0.03,
+   "reference_native_digest": "7fd25a869ff21678",
+   "reproducible_digest_oracle": true
+  }
+ },
+ "schema": "native-macos-cross-session-delta/1",
+ "versions_2026_09_11": {
+  "macos": "26.6.2",
+  "macos_build": "25G83",
+  "mlx": "0.32.2",
+  "mlx_lm": "0.31.3"
+ }
+}
