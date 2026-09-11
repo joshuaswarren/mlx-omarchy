@@ -1,0 +1,48 @@
+[cfic3] source at 48ea34dd
+[cfic3] staged
+[cfic3] tests built
+[doctest] test cases:       1 |       1 passed | 0 failed | 21 skipped
+[doctest] Status: SUCCESS!
+[doctest] test cases:        1 |        1 passed | 0 failed | 21 skipped
+[doctest] Status: SUCCESS!
+[doctest] test cases:        1 |        1 passed | 0 failed | 21 skipped
+[doctest] Status: SUCCESS!
+[qmm-ilp-arms] arm=8 m=262 k=896 n=896 mismatches=0 shipped_diff=0.0624084 cand_diff=0.0624084 bound=0.307964
+[qmm-ilp-arms] arm=9 m=262 k=896 n=896 mismatches=0 shipped_diff=0.0624084 cand_diff=0.0624084 bound=0.307964
+[qmm-ilp-arms] arm=10 m=262 k=896 n=896 mismatches=0 shipped_diff=0.0624084 cand_diff=0.0624084 bound=0.307964
+[qmm-ilp-arms] arm=11 m=262 k=896 n=896 mismatches=0 shipped_diff=0.0624084 cand_diff=0.0624084 bound=0.307964
+[qmm-ilp-arms] arm=12 m=262 k=896 n=896 mismatches=0 shipped_diff=0.0624084 cand_diff=0.0624084 bound=0.307964
+[qmm-ilp-arms] arm=8 m=1053 k=4864 n=896 mismatches=0 shipped_diff=0.125 cand_diff=0.125 bound=2.03296
+[qmm-ilp-arms] arm=9 m=1053 k=4864 n=896 mismatches=0 shipped_diff=0.125 cand_diff=0.125 bound=2.03296
+[qmm-ilp-arms] arm=10 m=1053 k=4864 n=896 mismatches=0 shipped_diff=0.125 cand_diff=0.125 bound=2.03296
+[qmm-ilp-arms] arm=11 m=1053 k=4864 n=896 mismatches=0 shipped_diff=0.125 cand_diff=0.125 bound=2.03296
+[qmm-ilp-arms] arm=12 m=1053 k=4864 n=896 mismatches=0 shipped_diff=0.125 cand_diff=0.125 bound=2.03296
+[cfic3] functional gates done; building wheel
+[receipt] It must print VERIFIED before the release is announced as
+[receipt] usable. See docs/release.md. A local build check does not
+[receipt] verify what users download.
+[gate] wheel=mlx_omarchy-0.32.2.dev202609110924+48ea34dd-cp314-cp314-linux_aarch64.whl
+[gate] member=2e2877021cc0e8f460628a95fdcd89fa5f81e9187b28b282049389e6ca989220
+[gate] loaded=2e2877021cc0e8f460628a95fdcd89fa5f81e9187b28b282049389e6ca989220
+[cfic3] arm probes (0, 11, 12), 4 warmups + 30 timed evals each
+PROBE-DONE
+PROBE-DONE
+PROBE-DONE
+A3-BENCH-GATE PASS
+arm11:262x896x128 102.1 vs 108.7 ident
+arm11:1053x896x128 206.3 vs 415.0 ident
+arm11:262x896x896 201.2 vs 553.3 ident
+arm11:1053x896x896 266.9 vs 886.7 ident
+arm11:262x4864x896 237.8 vs 844.3 ident
+arm11:1053x4864x896 291.4 vs 976.8 ident
+arm11:262x896x9728 255.3 vs 902.6 ident
+arm11:1053x896x9728 290.8 vs 1043.4 ident
+arm12:262x896x128 79.7 vs 108.7 ident
+arm12:1053x896x128 224.0 vs 415.0 ident
+arm12:262x896x896 220.7 vs 553.3 ident
+arm12:1053x896x896 299.6 vs 886.7 ident
+arm12:262x4864x896 260.4 vs 844.3 ident
+arm12:1053x4864x896 324.6 vs 976.8 ident
+arm12:262x896x9728 288.6 vs 902.6 ident
+arm12:1053x896x9728 324.3 vs 1043.4 ident
+[cfic3] DONE

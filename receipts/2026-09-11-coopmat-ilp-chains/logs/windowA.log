@@ -1,0 +1,475 @@
+[cfic] source at 8c527182
+[cfic] staged
+[cfic] tests built
+[cfic] WARN ilp-arms nonzero
+[cfic] WARN arm9 host-reference nonzero
+[cfic] WARN arm10 host-reference nonzero
+[doctest] test cases:        1 |        1 passed | 0 failed | 21 skipped
+[doctest] Status: SUCCESS!
+[doctest] test cases:        1 |        1 passed | 0 failed | 21 skipped
+[doctest] Status: SUCCESS!
+[doctest] test cases:        1 |        0 passed |  1 failed | 21 skipped
+[doctest] Status: FAILURE!
+[doctest] test cases:        1 |        0 passed |  1 failed | 21 skipped
+[doctest] Status: FAILURE!
+[doctest] test cases:       1 |       0 passed | 1 failed | 21 skipped
+[doctest] Status: FAILURE!
+[doctest] test cases:      1 |      1 passed | 0 failed | 21 skipped
+[doctest] Status: SUCCESS!
+[qmm-ilp-arms] arm=8 m=262 k=896 n=896 mismatches=0 shipped_diff=0.0624084 cand_diff=0.0624084 bound=0.307964
+[qmm-ilp-arms] arm=9 m=262 k=896 n=896 mismatches=234749 shipped_diff=0.0624084 cand_diff=42752.8 bound=0.307964
+[qmm-ilp-arms] arm=10 m=262 k=896 n=896 mismatches=234749 shipped_diff=0.0624084 cand_diff=42752.8 bound=0.307964
+[qmm-ilp-arms] arm=8 m=1053 k=4864 n=896 mismatches=0 shipped_diff=0.125 cand_diff=0.125 bound=2.03296
+[qmm-ilp-arms] arm=9 m=1053 k=4864 n=896 mismatches=943459 shipped_diff=0.125 cand_diff=inf bound=2.03296
+[qmm-ilp-arms] arm=10 m=1053 k=4864 n=896 mismatches=943459 shipped_diff=0.125 cand_diff=inf bound=2.03296
+[qmm-ilp-arms] arm=8 m=0 k=0 n=896 mismatches=0 shipped_diff=0 cand_diff=0 bound=0.000976801
+[qmm-ilp-arms] arm=9 m=0 k=0 n=896 mismatches=0 shipped_diff=0 cand_diff=0 bound=0.000976801
+[qmm-ilp-arms] arm=10 m=0 k=0 n=896 mismatches=0 shipped_diff=0 cand_diff=0 bound=0.000976801
+[cfic] functional gates done; building wheel
+[receipt] It must print VERIFIED before the release is announced as
+[receipt] usable. See docs/release.md. A local build check does not
+[receipt] verify what users download.
+[gate] wheel=mlx_omarchy-0.32.2.dev202609110857+8c527182-cp314-cp314-linux_aarch64.whl
+[gate] member=e9f79abc86948b940cc3a6e8bd65d324aea2dcd0b8d45f0172f0bfcb2aa5da91
+[gate] loaded=e9f79abc86948b940cc3a6e8bd65d324aea2dcd0b8d45f0172f0bfcb2aa5da91
+[gate] mx.__version__ 0.32.2.dev202609110857+8c527182
+[cfic] arm probes (0..10), 4 warmups + 30 timed evals each
+PROBE-DONE
+PROBE-DONE
+PROBE-DONE
+PROBE-DONE
+PROBE-DONE
+PROBE-DONE
+PROBE-DONE
+PROBE-DONE
+PROBE-DONE
+PROBE-DONE
+PROBE-DONE
+ 204: 8800                   stop
+ 250: 8800                   stop
+ 218: 8800                   stop
+ 172: 8800                   stop
+BENCH-GATE FAIL
+{
+ "262x896x128": {
+  "median_ms": 0.6947,
+  "tflops": 86.5,
+  "digest": "6a31dc466db80a40"
+ },
+ "1053x896x128": {
+  "median_ms": 0.5595,
+  "tflops": 431.7,
+  "digest": "e9218e07c9c13e5e"
+ },
+ "262x896x896": {
+  "median_ms": 0.7392,
+  "tflops": 569.1,
+  "digest": "5c42552b5320472e"
+ },
+ "1053x896x896": {
+  "median_ms": 1.9718,
+  "tflops": 857.4,
+  "digest": "2df9480de6e511ec"
+ },
+ "262x4864x896": {
+  "median_ms": 3.3761,
+  "tflops": 676.4,
+  "digest": "ecd08c8841ecd105"
+ },
+ "1053x4864x896": {
+  "median_ms": 9.3879,
+  "tflops": 977.7,
+  "digest": "3e79733f76ed9d37"
+ },
+ "262x896x9728": {
+  "median_ms": 5.0594,
+  "tflops": 902.7,
+  "digest": "4e29e2dbdf33b57b"
+ },
+ "1053x896x9728": {
+  "median_ms": 17.5996,
+  "tflops": 1043.0,
+  "digest": "5179630cd4a7c3f9"
+ }
+}
+{
+ "arm3:262x896x128": {
+  "median_ms": 0.6918,
+  "tflops": 86.9
+ },
+ "arm3:1053x896x128": {
+  "median_ms": 0.7272,
+  "tflops": 332.1
+ },
+ "arm3:262x896x896": {
+  "median_ms": 0.92,
+  "tflops": 457.3
+ },
+ "arm3:1053x896x896": {
+  "median_ms": 2.6271,
+  "tflops": 643.6
+ },
+ "arm3:262x4864x896": {
+  "median_ms": 3.5986,
+  "tflops": 634.6
+ },
+ "arm3:1053x4864x896": {
+  "median_ms": 11.1552,
+  "tflops": 822.8
+ },
+ "arm3:262x896x9728": {
+  "median_ms": 7.0393,
+  "tflops": 648.8
+ },
+ "arm3:1053x896x9728": {
+  "median_ms": 24.5421,
+  "tflops": 748.0
+ },
+ "arm4:262x896x128": {
+  "median_ms": 0.3439,
+  "tflops": 174.8
+ },
+ "arm4:1053x896x128": {
+  "median_ms": 0.4025,
+  "tflops": 600.2
+ },
+ "arm4:262x896x896": {
+  "median_ms": 0.4892,
+  "tflops": 860.0
+ },
+ "arm4:1053x896x896": {
+  "median_ms": 1.4481,
+  "tflops": 1167.6
+ },
+ "arm4:262x4864x896": {
+  "median_ms": 1.5175,
+  "tflops": 1504.9
+ },
+ "arm4:1053x4864x896": {
+  "median_ms": 4.5573,
+  "tflops": 2014.0
+ },
+ "arm4:262x896x9728": {
+  "median_ms": 3.7096,
+  "tflops": 1231.2
+ },
+ "arm4:1053x896x9728": {
+  "median_ms": 12.5844,
+  "tflops": 1458.7
+ },
+ "arm5:262x896x128": {
+  "median_ms": 0.505,
+  "tflops": 119.0
+ },
+ "arm5:1053x896x128": {
+  "median_ms": 0.4389,
+  "tflops": 550.3
+ },
+ "arm5:262x896x896": {
+  "median_ms": 0.6132,
+  "tflops": 686.1
+ },
+ "arm5:1053x896x896": {
+  "median_ms": 1.8433,
+  "tflops": 917.2
+ },
+ "arm5:262x4864x896": {
+  "median_ms": 2.3862,
+  "tflops": 957.0
+ },
+ "arm5:1053x4864x896": {
+  "median_ms": 7.8424,
+  "tflops": 1170.3
+ },
+ "arm5:262x896x9728": {
+  "median_ms": 5.2167,
+  "tflops": 875.5
+ },
+ "arm5:1053x896x9728": {
+  "median_ms": 18.1041,
+  "tflops": 1013.9
+ },
+ "arm6:262x896x128": {
+  "median_ms": 0.3476,
+  "tflops": 172.9
+ },
+ "arm6:1053x896x128": {
+  "median_ms": 0.402,
+  "tflops": 600.8
+ },
+ "arm6:262x896x896": {
+  "median_ms": 0.4941,
+  "tflops": 851.4
+ },
+ "arm6:1053x896x896": {
+  "median_ms": 1.3967,
+  "tflops": 1210.5
+ },
+ "arm6:262x4864x896": {
+  "median_ms": 1.5589,
+  "tflops": 1464.9
+ },
+ "arm6:1053x4864x896": {
+  "median_ms": 4.7522,
+  "tflops": 1931.4
+ },
+ "arm6:262x896x9728": {
+  "median_ms": 3.8286,
+  "tflops": 1192.9
+ },
+ "arm6:1053x896x9728": {
+  "median_ms": 13.4981,
+  "tflops": 1359.9
+ },
+ "arm7:262x896x128": {
+  "median_ms": 0.3265,
+  "tflops": 184.1
+ },
+ "arm7:1053x896x128": {
+  "median_ms": 0.4624,
+  "tflops": 522.3
+ },
+ "arm7:262x896x896": {
+  "median_ms": 0.5441,
+  "tflops": 773.2
+ },
+ "arm7:1053x896x896": {
+  "median_ms": 1.4161,
+  "tflops": 1194.0
+ },
+ "arm7:262x4864x896": {
+  "median_ms": 1.5415,
+  "tflops": 1481.5
+ },
+ "arm7:1053x4864x896": {
+  "median_ms": 4.7439,
+  "tflops": 1934.8
+ },
+ "arm7:262x896x9728": {
+  "median_ms": 3.8948,
+  "tflops": 1172.7
+ },
+ "arm7:1053x896x9728": {
+  "median_ms": 13.501,
+  "tflops": 1359.6
+ }
+}
+{
+ "arm8:262x896x128": {
+  "bit_identical": true,
+  "digest": "6a31dc466db80a40",
+  "base_digest": "6a31dc466db80a40",
+  "median_ms": 0.4686,
+  "base_ms": 0.6947,
+  "tflops": 128.2,
+  "base_tflops": 86.5
+ },
+ "arm8:1053x896x128": {
+  "bit_identical": true,
+  "digest": "e9218e07c9c13e5e",
+  "base_digest": "e9218e07c9c13e5e",
+  "median_ms": 0.6942,
+  "base_ms": 0.5595,
+  "tflops": 347.9,
+  "base_tflops": 431.7
+ },
+ "arm8:262x896x896": {
+  "bit_identical": true,
+  "digest": "5c42552b5320472e",
+  "base_digest": "5c42552b5320472e",
+  "median_ms": 1.122,
+  "base_ms": 0.7392,
+  "tflops": 374.9,
+  "base_tflops": 569.1
+ },
+ "arm8:1053x896x896": {
+  "bit_identical": true,
+  "digest": "2df9480de6e511ec",
+  "base_digest": "2df9480de6e511ec",
+  "median_ms": 3.1453,
+  "base_ms": 1.9718,
+  "tflops": 537.5,
+  "base_tflops": 857.4
+ },
+ "arm8:262x4864x896": {
+  "bit_identical": true,
+  "digest": "ecd08c8841ecd105",
+  "base_digest": "ecd08c8841ecd105",
+  "median_ms": 4.5055,
+  "base_ms": 3.3761,
+  "tflops": 506.9,
+  "base_tflops": 676.4
+ },
+ "arm8:1053x4864x896": {
+  "bit_identical": true,
+  "digest": "3e79733f76ed9d37",
+  "base_digest": "3e79733f76ed9d37",
+  "median_ms": 15.7326,
+  "base_ms": 9.3879,
+  "tflops": 583.4,
+  "base_tflops": 977.7
+ },
+ "arm8:262x896x9728": {
+  "bit_identical": true,
+  "digest": "4e29e2dbdf33b57b",
+  "base_digest": "4e29e2dbdf33b57b",
+  "median_ms": 8.786,
+  "base_ms": 5.0594,
+  "tflops": 519.8,
+  "base_tflops": 902.7
+ },
+ "arm8:1053x896x9728": {
+  "bit_identical": true,
+  "digest": "5179630cd4a7c3f9",
+  "base_digest": "5179630cd4a7c3f9",
+  "median_ms": 31.1118,
+  "base_ms": 17.5996,
+  "tflops": 590.0,
+  "base_tflops": 1043.0
+ },
+ "arm9:262x896x128": {
+  "bit_identical": false,
+  "digest": "befcfbe4d6795a8c",
+  "base_digest": "6a31dc466db80a40",
+  "median_ms": 0.6141,
+  "base_ms": 0.6947,
+  "tflops": 97.9,
+  "base_tflops": 86.5
+ },
+ "arm9:1053x896x128": {
+  "bit_identical": false,
+  "digest": "911b0eec76403b56",
+  "base_digest": "e9218e07c9c13e5e",
+  "median_ms": 1.0282,
+  "base_ms": 0.5595,
+  "tflops": 234.9,
+  "base_tflops": 431.7
+ },
+ "arm9:262x896x896": {
+  "bit_identical": false,
+  "digest": "55a54eda245fd362",
+  "base_digest": "5c42552b5320472e",
+  "median_ms": 1.727,
+  "base_ms": 0.7392,
+  "tflops": 243.6,
+  "base_tflops": 569.1
+ },
+ "arm9:1053x896x896": {
+  "bit_identical": false,
+  "digest": "e8e64d7818ae22ef",
+  "base_digest": "2df9480de6e511ec",
+  "median_ms": 5.3998,
+  "base_ms": 1.9718,
+  "tflops": 313.1,
+  "base_tflops": 857.4
+ },
+ "arm9:262x4864x896": {
+  "bit_identical": false,
+  "digest": "2c10016e15189396",
+  "base_digest": "ecd08c8841ecd105",
+  "median_ms": 8.6123,
+  "base_ms": 3.3761,
+  "tflops": 265.2,
+  "base_tflops": 676.4
+ },
+ "arm9:1053x4864x896": {
+  "bit_identical": false,
+  "digest": "249da1f5a5299e8b",
+  "base_digest": "3e79733f76ed9d37",
+  "median_ms": 27.9413,
+  "base_ms": 9.3879,
+  "tflops": 328.5,
+  "base_tflops": 977.7
+ },
+ "arm9:262x896x9728": {
+  "bit_identical": false,
+  "digest": "ce42d6761d524261",
+  "base_digest": "4e29e2dbdf33b57b",
+  "median_ms": 15.1137,
+  "base_ms": 5.0594,
+  "tflops": 302.2,
+  "base_tflops": 902.7
+ },
+ "arm9:1053x896x9728": {
+  "bit_identical": false,
+  "digest": "8424ba84705e704f",
+  "base_digest": "5179630cd4a7c3f9",
+  "median_ms": 53.9286,
+  "base_ms": 17.5996,
+  "tflops": 340.4,
+  "base_tflops": 1043.0
+ },
+ "arm10:262x896x128": {
+  "bit_identical": false,
+  "digest": "befcfbe4d6795a8c",
+  "base_digest": "6a31dc466db80a40",
+  "median_ms": 0.6254,
+  "base_ms": 0.6947,
+  "tflops": 96.1,
+  "base_tflops": 86.5
+ },
+ "arm10:1053x896x128": {
+  "bit_identical": false,
+  "digest": "911b0eec76403b56",
+  "base_digest": "e9218e07c9c13e5e",
+  "median_ms": 1.0178,
+  "base_ms": 0.5595,
+  "tflops": 237.3,
+  "base_tflops": 431.7
+ },
+ "arm10:262x896x896": {
+  "bit_identical": false,
+  "digest": "55a54eda245fd362",
+  "base_digest": "5c42552b5320472e",
+  "median_ms": 1.8297,
+  "base_ms": 0.7392,
+  "tflops": 229.9,
+  "base_tflops": 569.1
+ },
+ "arm10:1053x896x896": {
+  "bit_identical": false,
+  "digest": "e8e64d7818ae22ef",
+  "base_digest": "2df9480de6e511ec",
+  "median_ms": 5.4137,
+  "base_ms": 1.9718,
+  "tflops": 312.3,
+  "base_tflops": 857.4
+ },
+ "arm10:262x4864x896": {
+  "bit_identical": false,
+  "digest": "2c10016e15189396",
+  "base_digest": "ecd08c8841ecd105",
+  "median_ms": 8.4999,
+  "base_ms": 3.3761,
+  "tflops": 268.7,
+  "base_tflops": 676.4
+ },
+ "arm10:1053x4864x896": {
+  "bit_identical": false,
+  "digest": "249da1f5a5299e8b",
+  "base_digest": "3e79733f76ed9d37",
+  "median_ms": 27.7735,
+  "base_ms": 9.3879,
+  "tflops": 330.5,
+  "base_tflops": 977.7
+ },
+ "arm10:262x896x9728": {
+  "bit_identical": false,
+  "digest": "ce42d6761d524261",
+  "base_digest": "4e29e2dbdf33b57b",
+  "median_ms": 15.1334,
+  "base_ms": 5.0594,
+  "tflops": 301.8,
+  "base_tflops": 902.7
+ },
+ "arm10:1053x896x9728": {
+  "bit_identical": false,
+  "digest": "8424ba84705e704f",
+  "base_digest": "5179630cd4a7c3f9",
+  "median_ms": 54.0521,
+  "base_ms": 17.5996,
+  "tflops": 339.6,
+  "base_tflops": 1043.0
+ }
+}
+[cfic] DONE

@@ -1,0 +1,54 @@
+[cfic2] source at 82db5ab2
+[cfic2] staged
+[cfic2] tests built
+[doctest] test cases:       1 |       1 passed | 0 failed | 21 skipped
+[doctest] Status: SUCCESS!
+[doctest] test cases:        1 |        1 passed | 0 failed | 21 skipped
+[doctest] Status: SUCCESS!
+[doctest] test cases:        1 |        1 passed | 0 failed | 21 skipped
+[doctest] Status: SUCCESS!
+[qmm-ilp-arms] arm=8 m=262 k=896 n=896 mismatches=0 shipped_diff=0.0624084 cand_diff=0.0624084 bound=0.307964
+[qmm-ilp-arms] arm=9 m=262 k=896 n=896 mismatches=0 shipped_diff=0.0624084 cand_diff=0.0624084 bound=0.307964
+[qmm-ilp-arms] arm=10 m=262 k=896 n=896 mismatches=0 shipped_diff=0.0624084 cand_diff=0.0624084 bound=0.307964
+[qmm-ilp-arms] arm=8 m=1053 k=4864 n=896 mismatches=0 shipped_diff=0.125 cand_diff=0.125 bound=2.03296
+[qmm-ilp-arms] arm=9 m=1053 k=4864 n=896 mismatches=0 shipped_diff=0.125 cand_diff=0.125 bound=2.03296
+[qmm-ilp-arms] arm=10 m=1053 k=4864 n=896 mismatches=0 shipped_diff=0.125 cand_diff=0.125 bound=2.03296
+[cfic2] functional gates done; building wheel
+[receipt] It must print VERIFIED before the release is announced as
+[receipt] usable. See docs/release.md. A local build check does not
+[receipt] verify what users download.
+[gate] wheel=mlx_omarchy-0.32.2.dev202609110913+82db5ab2-cp314-cp314-linux_aarch64.whl
+[gate] member=2ab0fd87e0fac49dcf4bfd5c8ae1ba97fe8378a404724e87bf1a4460750c7284
+[gate] loaded=2ab0fd87e0fac49dcf4bfd5c8ae1ba97fe8378a404724e87bf1a4460750c7284
+[cfic2] arm probes (0, 8, 9, 10), 4 warmups + 30 timed evals each
+PROBE-DONE
+PROBE-DONE
+PROBE-DONE
+PROBE-DONE
+ 218: 8800                   stop
+A2-BENCH-GATE PASS
+arm8:262x896x128 134.0 vs 105.5 ident
+arm8:1053x896x128 347.1 vs 386.4 ident
+arm8:262x896x896 365.1 vs 539.5 ident
+arm8:1053x896x896 537.0 vs 849.6 ident
+arm8:262x4864x896 508.0 vs 677.3 ident
+arm8:1053x4864x896 586.7 vs 977.4 ident
+arm8:262x896x9728 521.5 vs 902.7 ident
+arm8:1053x896x9728 588.8 vs 1042.2 ident
+arm9:262x896x128 100.7 vs 105.5 ident
+arm9:1053x896x128 236.2 vs 386.4 ident
+arm9:262x896x896 243.3 vs 539.5 ident
+arm9:1053x896x896 319.1 vs 849.6 ident
+arm9:262x4864x896 275.0 vs 677.3 ident
+arm9:1053x4864x896 339.7 vs 977.4 ident
+arm9:262x896x9728 309.7 vs 902.7 ident
+arm9:1053x896x9728 348.8 vs 1042.2 ident
+arm10:262x896x128 82.6 vs 105.5 ident
+arm10:1053x896x128 234.3 vs 386.4 ident
+arm10:262x896x896 235.4 vs 539.5 ident
+arm10:1053x896x896 324.8 vs 849.6 ident
+arm10:262x4864x896 272.5 vs 677.3 ident
+arm10:1053x4864x896 338.8 vs 977.4 ident
+arm10:262x896x9728 307.3 vs 902.7 ident
+arm10:1053x896x9728 348.6 vs 1042.2 ident
+[cfic2] DONE
