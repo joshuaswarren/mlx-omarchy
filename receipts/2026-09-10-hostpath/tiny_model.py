@@ -42,6 +42,7 @@ def main():
         "intermediate_size": 256,
     })
     args_ns = qwen2.ModelArgs.from_dict(cfg)
+    model = qwen2.Model(args_ns)
     mx.eval(model.parameters())
     # Same quantization recipe as the pinned model: affine 4-bit group-64.
     nn.quantize(model, group_size=64, bits=4)
