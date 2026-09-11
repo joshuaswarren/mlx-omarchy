@@ -160,7 +160,8 @@ void main() {
           a_words[j] = row < params.matrix_m && 2u * pair < width
               ? (a_colmaj
                     ? pack_pair(
-                        0u, a_slice * 2u + 2u * pair * params.lhs_gap + row,
+                        0u,
+                        a_slice * 2u + (k_base + 2u * pair) * params.lhs_gap + row,
                         params.lhs_gap)
                     : input_a.values[a_slice +
                                      row * (params.lhs_gap / 2u) +
@@ -188,7 +189,8 @@ void main() {
                                      col * (params.rhs_gap / 2u) +
                                      k_base / 2u + pair]
                     : pack_pair(
-                        1u, b_slice * 2u + col + 2u * pair * params.rhs_gap,
+                        1u,
+                        b_slice * 2u + col + (k_base + 2u * pair) * params.rhs_gap,
                         params.rhs_gap))
               : 0u;
         }

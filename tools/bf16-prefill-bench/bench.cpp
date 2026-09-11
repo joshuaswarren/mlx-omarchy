@@ -859,7 +859,12 @@ int main(int argc, char** argv) {
       size_t out_bytes = (size_t)m * n * 2;
       if (out_bytes % 4) die("odd output bytes");
 
-      for (uint32_t mode = 0; mode < 3; ++mode) {
+      // flags sweep: 1 is the production word-x-word path; 0 (B row),
+      // 5 (A col) and 4 (A col + B row) drive the pack_pair staging.
+      // Regression net for the missing-k_base staging bug class: every
+      // staging path must be screened at multi-step k.
+      for (uint32_t pflags : {1u, 0u, 5u, 4u})
+        for (uint32_t mode = 0; mode < 3; ++mode) {
         SetBufs bufs{make_buf(g_vk.dev, c.mp, a_bytes),
             make_buf(g_vk.dev, c.mp, b_bytes), make_buf(g_vk.dev, c.mp, 16),
             make_buf(g_vk.dev, c.mp, out_bytes)};
@@ -884,9 +889,8 @@ int main(int argc, char** argv) {
         p.matrix_m = m;
         p.matrix_n = n;
         p.matrix_k = k;
-        p.flags = 1;  // transposed weights
+        p.flags = pflags;
         p.alpha = 1.0f;
-        p.beta = 0.0f;
         p.lhs_gap = k;
         p.rhs_gap = k;
 
@@ -975,12 +979,13 @@ int main(int argc, char** argv) {
           }
 
           std::printf(
-              "{\"k\":\"correct\",\"m\":%u,\"shape\":\"%s\",\"mode\":%u,"
+              "{\"k\":\"correct\",\"m\":%u,\"shape\":\"%s\",\"flags\":%u,"
+              "\"mode\":%u,"
               "\"cand_vs_base_mismatch\":%" PRIu64
               ",\"base_vs_tile_mismatch\":%" PRIu64
               ",\"dead_rows\":%u,\"first_bad\":%zu",
-              m, shape.name, mode, mismatches_bc, mismatches_bt, dead_rows,
-              first_bad == SIZE_MAX ? (size_t)-1 : first_bad);
+              m, shape.name, pflags, mode, mismatches_bc, mismatches_bt,
+              dead_rows, first_bad == SIZE_MAX ? (size_t)-1 : first_bad);
           if (mode != 1 && mismatches_bc && first_bad != SIZE_MAX) {
             size_t i = first_bad;
             uint32_t r = (uint32_t)(i / n), c = (uint32_t)(i % n);
@@ -1088,7 +1093,7 @@ int main(int argc, char** argv) {
           return samples[samples.size() / 2];
         };
 
-        if (c.coopmat && mode == 1) {
+        if (c.coopmat && mode == 1 && pflags == 1u) {
           double base_us = time_kernel(base, base_set, 32);
           double cand_us = time_kernel(cand, cand_set, 32);
           double tile_us = time_kernel(tile, tile_set, 16);
@@ -1101,7 +1106,7 @@ int main(int argc, char** argv) {
               m, shape.name, base_us, cand_us, tile_us,
               flops / (base_us * 1e6), flops / (cand_us * 1e6),
               flops / (tile_us * 1e6));
-        } else if (mode == 1) {
+        } else if (mode == 1 && pflags == 1u) {
           double tile_us = time_kernel(tile, tile_set, 16);
           double flops = 2.0 * m * k * n;
           std::printf(
