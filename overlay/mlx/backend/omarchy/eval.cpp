@@ -23,6 +23,8 @@
 #include "mlx/backend/omarchy/fused_chain.h"
 #include "mlx/scheduler.h"
 
+namespace htrace = mlx::core::omarchy::htrace;
+
 namespace mlx::core::gpu {
 
 void init() {
