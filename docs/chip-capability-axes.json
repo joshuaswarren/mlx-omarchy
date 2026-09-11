@@ -1,0 +1,166 @@
+{
+  "$comment": "Chip capability axes for the Omarchy backend, agreed 2026-09-11 between the chip-portability audit and the capability-simulation harness. Names are the contract; both deliverables and the harness profiles use them verbatim. Axis values are what the backend actually queries (device.cpp collect_capabilities) or derives; gate line references are origin/main 21710dfb.",
+  "contract_version": 1,
+  "axes": [
+    {
+      "name": "driver_variant",
+      "type": "enum",
+      "values": [
+        "honeykrisp_installed",
+        "honeykrisp_fork",
+        "stock_mesa_honeykrisp",
+        "llvmpipe",
+        "lavapipe",
+        "other"
+      ],
+      "source": "driverID + driver name + driverInfo string (VK_PHYSICAL_DEVICE_DRIVER_PROPERTIES); CapabilityReport.driver_name/driver_version",
+      "meaning": "Which Vulkan driver build serves the chip. Gates nothing by itself but selects the arithmetic contract and the digest pin set: digests are pinned per driver BUILD, not per chip (F-01).",
+      "m1_g13_reference": "honeykrisp_installed (Mesa 26.3.0-devel git-6f6afc8968, driverID 26)",
+      "m2_known": "expected honeykrisp family (Asahi G14 GPU acceleration is upstream); build identity unmeasured",
+      "m2_unknown": [],
+      "future_silicon_unknown": true
+    },
+    {
+      "name": "cooperative_matrix_fp32_8x8x8",
+      "type": "bool",
+      "source": "VK_KHR_cooperative_matrix listed AND cooperativeMatrix feature AND an enumerated 8x8x8 all-FLOAT32 subgroup-scope non-saturating shape (device.cpp:274-297)",
+      "meaning": "Gates QmmPrefillCoopmatF16, MatmulF32Coopmat, MatmulBF16Coopmat, SdpaDecodeNative. Absent = routes fall to tile/scalar kernels with different accumulation order.",
+      "m1_g13_reference": true,
+      "m2_known": null,
+      "m2_unknown": ["presence under the M2 driver build", "lowering equivalence across driver builds (F-01: bit alone did not fix digests on the M1)"],
+      "future_silicon_unknown": true
+    },
+    {
+      "name": "subgroup_size",
+      "type": "uint32",
+      "source": "VkPhysicalDeviceSubgroupProperties.subgroupSize (device.cpp:166)",
+      "meaning": "All subgroup gates test == 32 exactly, never divisibility. Shader kernels hard-code 32-lane slots; a shader compiled for a wrong size sums wrongly, so the host gate is the only guard (qmm_vec.comp:70-79).",
+      "m1_g13_reference": 32,
+      "m2_known": null,
+      "m2_unknown": ["reported size under the M2 driver"],
+      "future_silicon_unknown": true
+    },
+    {
+      "name": "subgroup_ops_mask",
+      "type": "bitmask",
+      "bits_consumed": {
+        "ARITHMETIC": "qmm_vec subgroup + Q4-word + multi-weight decode GEMV (primitives.cpp:6687-6689, 6999-7000, 6466-6468)",
+        "SHUFFLE_RELATIVE": "dense BF16 decode GEMV, matmul_vec.comp USE_BF16 (primitives.cpp:629)",
+        "BASIC|ARITHMETIC|SHUFFLE": "SdpaDecodeNative (primitives.cpp:10295-10306)"
+      },
+      "source": "VkPhysicalDeviceSubgroupProperties.supportedOperations (device.cpp:167)",
+      "m1_g13_reference": "BASIC|ARITHMETIC|SHUFFLE|SHUFFLE_RELATIVE proven present (all four consumed by enabled routes); full mask not dumped in-repo",
+      "m2_known": null,
+      "m2_unknown": ["full supportedOperations mask"],
+      "future_silicon_unknown": true
+    },
+    {
+      "name": "shared_memory_limit_bytes",
+      "type": "uint32",
+      "source": "limits.maxComputeSharedMemorySize (device.cpp:223)",
+      "meaning": "Consumers: 4096 (qmm_coopmat.comp, matmul_coopmat_bf16.comp), 21504 (sdpa_decode_native.comp). fft_c2c.comp uses exactly 16384 = the Vulkan spec floor; linalg/sort/reduce shaders stay at or under it. The historical 'cliff above 4 KiB' is now queried, not assumed (primitives.cpp:570-579, 6577-6585).",
+      "m1_g13_reference": ">= 21504 (gate-proven floor: SdpaDecodeNative enabled on the reference driver); exact limit not dumped in-repo",
+      "m2_known": null,
+      "m2_unknown": ["exact limit"],
+      "future_silicon_unknown": true
+    },
+    {
+      "name": "workgroup_limits",
+      "type": "object",
+      "fields": ["invocations", "size_x", "size_y", "size_z"],
+      "source": "limits.maxComputeWorkGroupInvocations, limits.maxComputeWorkGroupSize (device.cpp:221-226)",
+      "meaning": "sdpa_decode_native (local_size 1024) is gated on >= 1024/1024 (primitives.cpp:10302-10303). Every other kernel hard-codes local_size 256 (64 coopmat, 32 matmul_vec) with NO runtime check (F-03); Vulkan spec floor is 128 invocations.",
+      "m1_g13_reference": ">= 1024 invocations and >= 1024 size_x (gate-proven floor); exact values not dumped in-repo",
+      "m2_known": null,
+      "m2_unknown": ["all four fields"],
+      "future_silicon_unknown": true
+    },
+    {
+      "name": "atomic_float_add",
+      "type": "bool",
+      "source": "VK_EXT_shader_atomic_float listed AND shaderBufferFloat32AtomicAdd (device.cpp:248-262)",
+      "meaning": "Selects ScatterFAdd (hardware atomicAdd) vs ScatterFCas (compare-exchange add, exact-arithmetic twin). M1 Honeykrisp does not advertise the extension; llvmpipe does. The model capability-keyed route.",
+      "m1_g13_reference": false,
+      "m2_known": null,
+      "m2_unknown": ["extension presence under the M2 driver build"],
+      "future_silicon_unknown": true
+    },
+    {
+      "name": "memory_model",
+      "type": "enum",
+      "values": ["uma_coherent", "host_visible_incoherent", "discrete"],
+      "source": "memory heap/type walk: host-visible+coherent type inside a device-local heap (device.cpp:184-205); allocator falls back to HOST_VISIBLE with explicit flush/invalidate (allocator.h:20-24)",
+      "m1_g13_reference": "uma_coherent",
+      "m2_known": "uma_coherent (Apple UMA is an architecture fact, not a driver measurement)",
+      "m2_unknown": [],
+      "future_silicon_unknown": false
+    },
+    {
+      "name": "digest_policy",
+      "type": "enum",
+      "values": ["per_driver_build"],
+      "source": "policy, not a device property. docs/parity-id-policy.md amendment 2026-09-10 + receipts/2026-09-10-prefill-qmm-isa/driver-portability-defect.json",
+      "meaning": "Generated-id digests are pinned per driver build (driverInfo git hash), never per chip. A new chip means a new driver build means fresh pins; native-matching legs (Q4 short, Q4 1K-context, BF16 1K-context) must still equal native.",
+      "m1_g13_reference": {
+        "installed_build": {
+          "q4_short": "7fd25a869ff21678",
+          "q4_long": "4cc08910089477fd",
+          "q4_longctx": "7da83f06ec9f001d",
+          "bf16_short": "f26175202f3dabe9",
+          "bf16_long": "ad964232ee67fecd",
+          "bf16_longctx": "ff502900d2a179a5"
+        },
+        "coopmat_fork_build_git_5bb2b28c95": {
+          "q4_short": "7fd25a869ff21678",
+          "q4_long": "4cc08910089477fd",
+          "q4_longctx": "31267e7ed4c6d0dc",
+          "bf16_short": "f26175202f3dabe9",
+          "bf16_long": "c5be9207833d2a26",
+          "bf16_longctx": "ff502900d2a179a5"
+        },
+        "note": "Same chip, same capability bits, different driver builds: q4_longctx and bf16_long differ. Proof that pins ride the driver build."
+      },
+      "m2_known": null,
+      "m2_unknown": ["all six pins until measured on the M2's driver build"],
+      "future_silicon_unknown": true
+    }
+  ],
+  "measured_reference_rows": {
+    "$comment": "Second fully measured row beyond the M1; values dumped live on the dev box, 2026-09-11, by the capability-simulation harness.",
+    "llvmpipe_devbox": {
+      "driver_variant": "llvmpipe",
+      "driver_build": "Mesa 26.x, LLVM 15.0.6, api 1.3.230",
+      "vendor_id": "0x10005",
+      "cooperative_matrix_fp32_8x8x8": false,
+      "subgroup_size": 8,
+      "subgroup_ops_mask": "0xbf (BASIC|VOTE|ARITHMETIC|BALLOT|SHUFFLE|SHUFFLE_RELATIVE|CLUSTERED)",
+      "shared_memory_limit_bytes": 32768,
+      "workgroup_limits": { "invocations": 1024, "size_x": 1024 },
+      "atomic_float_add": true,
+      "memory_model": "discrete",
+      "note": "Every == 32 subgroup gate and both coopmat gates flip off; tree/scalar routes run. The 8-lane subgroupSize is the concrete F-03/F-04 hazard: a 32-lane claim over this host would silently sum quarter-slots, so the sim layer refuses it by name."
+    }
+  },
+  "per_chip_expectations": {
+    "m1_g13": "reference row; every value measured or gate-proven on jwm1-linux",
+    "m2_max": "target once Omarchy lands on it: memory_model known (uma_coherent); driver_variant, coopmat, subgroup, shared, workgroup, atomic_float_add, and all six digests must be measured at qualification time",
+    "m3": "Asahi has installer support but software rendering only: no Honeykrisp GPU driver -> backend refuses at device discovery unless run under a software driver via MLX_OMARCHY_ALLOW_NON_APPLE=1 (development only)",
+    "m4": "GPU support TBA upstream: everything unknown",
+    "m5_m6": "arrive ~2026-10: everything unknown; all axes must come from runtime discovery, never from a chip-name table"
+  },
+  "gate_map": {
+    "$comment": "file:line on origin/main 21710dfb; expressions the harness must reproduce",
+    "dense_matmul_coopmat": "primitives.cpp:556-584",
+    "dense_bf16_decode_gemv": "primitives.cpp:619-630",
+    "qmm_prefill_coopmat": "primitives.cpp:6577-6594, 6721-6754",
+    "qmm_vec_subgroup": "primitives.cpp:6685-6719",
+    "qmm_vec_q4_multi_subgroup": "primitives.cpp:6998-7001",
+    "qmm_vec_fp_subgroup": "primitives.cpp:6465-6469",
+    "sdpa_decode_native": "primitives.cpp:10292-10311",
+    "scatter_atomic_add": "primitives.cpp:8256-8257, 7724-7728",
+    "fused_chain_16bit": "fused_chain.cpp:291-297",
+    "device_acceptance": "device.cpp:555-605",
+    "timeline_semaphore_refusal": "device.cpp:442-448",
+    "binding_budget": "device.cpp:815-821 + encoder.cpp:413-421 + compute.h:34"
+  }
+}
