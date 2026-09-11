@@ -44,11 +44,24 @@ def sha256_file(p):
             h.update(chunk)
     return h.hexdigest()
 
+def regression_lines(path, driver=None):
+    text = Path(path).read_text()
+    if driver:
+        # M1 suites ran under doctest --out, so the cout proof lines live
+        # in window.log between the per-driver suite banners.
+        marker = f"== omarchy_matmul_family_tests (M1 {driver}) =="
+        start = text.index(marker)
+        rest = text[start + len(marker):]
+        end = rest.find("== omarchy_")
+        text = rest[:end] if end != -1 else rest
+    return [line.strip() for line in text.splitlines()
+            if "[matmul-bf16-decode]" in line or "decode_gemv_path=" in line]
+
 
 def suite_result(path):
     text = Path(path).read_text()
-    cases = re.search(r"test cases:\s*(\d+) \| (\d+) passed \| (\d+) failed", text)
-    asserts = re.search(r"assertions:\s*(\d+) \| (\d+) passed \| (\d+) failed", text)
+    cases = re.search(r"test cases:\s*(\d+)\s*\|\s*(\d+) passed\s*\|\s*(\d+) failed", text)
+    asserts = re.search(r"assertions:\s*(\d+)\s*\|\s*(\d+) passed\s*\|\s*(\d+) failed", text)
     status = "PASS" if "Status: SUCCESS!" in text else "FAILURE"
     return {
         "status": status,
@@ -58,28 +71,17 @@ def suite_result(path):
     }
 
 
-def regression_lines(path):
-    out = []
-    for line in Path(path).read_text().splitlines():
-        if "[matmul-bf16-decode]" in line or "decode_gemv_path=" in line:
-            out.append(line.strip())
-    return out
-
-
 def main():
     summary = json.loads((R / "matrix" / "summary.json").read_text())
     commit = (R / "commit.txt").read_text().strip()
-    cand_sha = (R / "m1-logs" / "candidate-wheel.sha256").read_text().split()[0]
-    cand_wheel = sorted((R / "wheels" / "candidate").glob("*.whl"))[0].name
+    both_sha = (R / "m1-logs" / "both-wheels.sha256").read_text().splitlines()
+    cand_line = next(l for l in both_sha if "/candidate/" in l)
+    base_line = next(l for l in both_sha if "/base/" in l)
+    cand_sha, cand_wheel = cand_line.split()[0], Path(cand_line.split()[1]).name
+    base_sha, base_wheel = base_line.split()[0], Path(base_line.split()[1]).name
     window = (R / "window.log").read_text()
-    import subprocess
-    kernel_pick = subprocess.run(
-        ["git", "-C", str(R.parents[2]), "log", "--format=%H", "-1",
-         "--grep=match native BF16 decode GEMV order"],
-        capture_output=True, text=True).stdout.strip()
-    main_base = subprocess.run(
-        ["git", "-C", str(R.parents[2]), "merge-base", "origin/main", "HEAD"],
-        capture_output=True, text=True).stdout.strip()[:7]
+    kernel_pick = "480a1ef426e0"
+    main_base = "9737c36e"
 
     rates = summary["rates"]
     paired = {}
@@ -109,20 +111,26 @@ def main():
         for d in leg_d.values():
             d["decode_speedup"] = round(d["decode_cand_median"] / d["decode_base_median"], 3)
 
-    digest_changes = []
+    digest_changes = {}
     q4_unchanged = {}
-    for (label, lid), (dig, cls) in summary["digests"].items():
+    for key, val in summary["digests"].items():
+        label, lid = key.split("|")
+        dig, cls = val
         rep, driver, cell = label.split("-", 2)
         if cell != "cand":
             continue
         entry = {"leg": LEG_SHORT[lid], "driver": driver,
                  "before": PRIOR[lid][driver] if lid in BF16_LEGS else None,
                  "after": dig, "classification": cls,
-                 "native": NATIVE[lid]}
+                 "native": NATIVE.get(lid)}
         if lid in BF16_LEGS:
-            digest_changes.append(entry)
+            k = (lid, driver)
+            if k in digest_changes:
+                assert digest_changes[k]["after"] == dig, f"digest varied: {k}"
+            digest_changes[k] = entry
         else:
             q4_unchanged[f"{lid}|{driver}"] = dig
+    digest_changes = list(digest_changes.values())
 
     verdict = {
         "schema": "bf16-decode-gemv-land/1",
@@ -136,7 +144,6 @@ def main():
             "six Q4 digests unchanged. NOT merged; never merge from here."),
         "provenance": {
             "branch": "wave/Bf16DecodeGemvLand",
-            "main_base": "6a4edcf7",
             "kernel_commit": {
                 "original": "a70ed0dc89112e4f43b2394611b4994984d01405",
                 "note": "cherry-picked onto origin/main 9737c36e (post KV-direct)",
@@ -147,9 +154,19 @@ def main():
             "candidate_wheel": {"file": cand_wheel, "sha256": cand_sha,
                                  "build": "DEV_RELEASE=1 plain stamped release, no diagnostics"},
             "baseline_wheel": {
-                "file": "mlx_omarchy-0.32.2.dev202609101916+b6d662a-cp314-cp314-linux_aarch64.whl",
-                "sha256": "98821134f4bcf306ab1d64d6885ddf3d3e8e932311283bbd11f97aecf6a8e439",
-                "sha_verified": "sha256sum -c passed in prep"},
+                "file": base_wheel, "sha256": base_sha,
+                "built_from": "origin/main 9737c36e worktree - same source base "
+                "as the candidate, so the paired cells carry the landed "
+                "KV-direct decode gain on both sides",
+                "build": "DEV_RELEASE=1 plain stamped release, no diagnostics",
+                "prior_canonical_wheel_b6d662a8_sha256":
+                    "98821134f4bcf306ab1d64d6885ddf3d3e8e932311283bbd11f97aecf6a8e439"},
+            "pairing_note": (
+                "base wheel = 9737c36e (main with KV-direct), candidate wheel = "
+                "branch tip; per Main's instruction the paired numbers are not "
+                "contaminated by the KV-direct gain. Committed base-M1 native "
+                "fractions still use the ea09eefa native denominators."),
+            "matrix_window_log": "matrix-window.log",
             "host": "jwm1-linux, Apple M1 (G13G B1), kernel 7.1.6-1-ARCH",
             "lock": "single top-level flock /tmp/m1-gpu.lock for matrix+suites; CPU prep outside",
             "window_log": "window.log",
@@ -172,8 +189,8 @@ def main():
             "name": "single-row bf16 decode matmul stays inside the f64 bound",
             "file": "overlay/tests/omarchy/test_matmul_family.cpp",
             "llvmpipe_lines": regression_lines(R / "suites" / "llvmpipe-matmul-family.log"),
-            "m1_fork_lines": regression_lines(R / "m1-suites" / "m1-fork-matmul-family.log"),
-            "m1_stock_lines": regression_lines(R / "m1-suites" / "m1-stock-matmul-family.log"),
+            "m1_fork_lines": regression_lines(R / "window.log", "fork"),
+            "m1_stock_lines": regression_lines(R / "window.log", "stock"),
             "note": ("pins the new decode path against a float64 host reference "
                      "inside the documented f32 anchor bound on every Qwen decode "
                      "projection shape, the deep-cancellation regime, and the "

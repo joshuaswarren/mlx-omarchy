@@ -1,0 +1,17 @@
+2026-09-10T19:27:20-05:00 waiting for /tmp/m1-gpu.lock
+2026-09-10T19:27:20-05:00 lock acquired
+warmup: verified=match x7
+r1-fork-base: verified=match x7
+r1-fork-cand: verified=match x7
+r1-stock-base: verified=match x7
+r1-stock-cand: verified=match x7
+r2-fork-base: verified=match x7
+r2-fork-cand: verified=match x7
+r2-stock-base: verified=match x7
+r2-stock-cand: verified=match x7
+r3-fork-base: verified=match x7
+r3-fork-cand: verified=match x7
+r3-stock-base: verified=match x7
+r3-stock-cand: verified=match x7
+MATRIX-OK
+2026-09-10T19:37:21-05:00 matrix window complete rc=0

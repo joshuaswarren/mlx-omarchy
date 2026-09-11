@@ -1,0 +1,341 @@
+{
+  "schema": "bf16-decode-gemv-land/1",
+  "date": "2026-09-10",
+  "agent": "Bf16DecodeGemvLand",
+  "decision": "LANDED on wave/Bf16DecodeGemvLand per owner decision: the dense BF16 decode GEMV (native-order subgroup kernel, M=1 only) is qualified and the BF16 short/262 generated-id digests are re-pinned to the measured per-driver values. BF16 1K ctx and all six Q4 digests unchanged. NOT merged; never merge from here.",
+  "provenance": {
+    "branch": "wave/Bf16DecodeGemvLand",
+    "kernel_commit": {
+      "original": "a70ed0dc89112e4f43b2394611b4994984d01405",
+      "note": "cherry-picked onto origin/main 9737c36e (post KV-direct)",
+      "cherry_pick": "480a1ef426e0",
+      "main_base": "9737c36e"
+    },
+    "commit_under_test": "6eabbc3662ba8c6b4ae9650c44befe313d1e501d",
+    "candidate_wheel": {
+      "file": "mlx_omarchy-0.32.2.dev202609102345+6eabbc3-cp314-cp314-linux_aarch64.whl",
+      "sha256": "d8adbf0182c1a5e77946767f447fef693cfb0ec640c060dbd98b6604953c57ab",
+      "build": "DEV_RELEASE=1 plain stamped release, no diagnostics"
+    },
+    "baseline_wheel": {
+      "file": "mlx_omarchy-0.32.2.dev202609102342+9737c36-cp314-cp314-linux_aarch64.whl",
+      "sha256": "f6d22f8a65ad34953f95b0c469df64bf783ee328de421bebe08f23021ab77b40",
+      "built_from": "origin/main 9737c36e worktree - same source base as the candidate, so the paired cells carry the landed KV-direct decode gain on both sides",
+      "build": "DEV_RELEASE=1 plain stamped release, no diagnostics",
+      "prior_canonical_wheel_b6d662a8_sha256": "98821134f4bcf306ab1d64d6885ddf3d3e8e932311283bbd11f97aecf6a8e439"
+    },
+    "pairing_note": "base wheel = 9737c36e (main with KV-direct), candidate wheel = branch tip; per Main's instruction the paired numbers are not contaminated by the KV-direct gain. Committed base-M1 native fractions still use the ea09eefa native denominators.",
+    "matrix_window_log": "matrix-window.log",
+    "host": "jwm1-linux, Apple M1 (G13G B1), kernel 7.1.6-1-ARCH",
+    "lock": "single top-level flock /tmp/m1-gpu.lock for matrix+suites; CPU prep outside",
+    "window_log": "window.log",
+    "drivers": {
+      "fork": "m1-logs/drivers-fork.txt",
+      "stock": "m1-logs/drivers-stock.txt"
+    },
+    "digest_gate": "summary.json failures must be empty (all cells verified=match, clean, AC)",
+    "summary_failures": []
+  },
+  "numbers": {
+    "BF16 short (30/32)": {
+      "fork": {
+        "decode_base_median": 11.14,
+        "decode_cand_median": 31.42,
+        "prefill_base_median": 90.909,
+        "prefill_cand_median": 147.059,
+        "decode_fraction_of_native_base": 0.2073,
+        "decode_fraction_of_native_cand": 0.4583,
+        "prefill_fraction_of_native_base": 0.4082,
+        "prefill_fraction_of_native_cand": 0.5419,
+        "reps": 3,
+        "decode_speedup": 2.82
+      },
+      "stock": {
+        "decode_base_median": 11.79,
+        "decode_cand_median": 27.29,
+        "prefill_base_median": 97.72,
+        "prefill_cand_median": 137.615,
+        "decode_fraction_of_native_base": 0.2089,
+        "decode_fraction_of_native_cand": 0.4228,
+        "prefill_fraction_of_native_base": 0.4201,
+        "prefill_fraction_of_native_cand": 0.5682,
+        "reps": 3,
+        "decode_speedup": 2.315
+      }
+    },
+    "BF16 long (262/128)": {
+      "fork": {
+        "decode_base_median": 10.21,
+        "decode_cand_median": 28.18,
+        "prefill_base_median": 306.433,
+        "prefill_cand_median": 383.602,
+        "decode_fraction_of_native_base": 0.1931,
+        "decode_fraction_of_native_cand": 0.4849,
+        "prefill_fraction_of_native_base": 0.321,
+        "prefill_fraction_of_native_cand": 0.3385,
+        "reps": 3,
+        "decode_speedup": 2.76
+      },
+      "stock": {
+        "decode_base_median": 11.31,
+        "decode_cand_median": 24.62,
+        "prefill_base_median": 216.887,
+        "prefill_cand_median": 229.825,
+        "decode_fraction_of_native_base": 0.2039,
+        "decode_fraction_of_native_cand": 0.4327,
+        "prefill_fraction_of_native_base": 0.2152,
+        "prefill_fraction_of_native_cand": 0.2281,
+        "reps": 3,
+        "decode_speedup": 2.177
+      }
+    },
+    "BF16 1K ctx (1053/32)": {
+      "fork": {
+        "decode_base_median": 9.14,
+        "decode_cand_median": 22.81,
+        "prefill_base_median": 302.412,
+        "prefill_cand_median": 380.282,
+        "decode_fraction_of_native_base": 0.1465,
+        "decode_fraction_of_native_cand": 0.4181,
+        "prefill_fraction_of_native_base": 0.1609,
+        "prefill_fraction_of_native_cand": 0.1987,
+        "reps": 3,
+        "decode_speedup": 2.496
+      },
+      "stock": {
+        "decode_base_median": 10.18,
+        "decode_cand_median": 17.91,
+        "prefill_base_median": 220.431,
+        "prefill_cand_median": 168.561,
+        "decode_fraction_of_native_base": 0.1866,
+        "decode_fraction_of_native_cand": 0.3655,
+        "prefill_fraction_of_native_base": 0.133,
+        "prefill_fraction_of_native_cand": 0.1315,
+        "reps": 3,
+        "decode_speedup": 1.759
+      }
+    },
+    "Q4 short (30/32)": {
+      "fork": {
+        "decode_base_median": 89.47,
+        "decode_cand_median": 96.32,
+        "prefill_base_median": 275.229,
+        "prefill_cand_median": 340.909,
+        "decode_fraction_of_native_base": 0.5105,
+        "decode_fraction_of_native_cand": 0.6397,
+        "prefill_fraction_of_native_base": 0.9358,
+        "prefill_fraction_of_native_cand": 0.9623,
+        "reps": 3,
+        "decode_speedup": 1.077
+      },
+      "stock": {
+        "decode_base_median": 101.82,
+        "decode_cand_median": 101.73,
+        "prefill_base_median": 197.368,
+        "prefill_cand_median": 172.414,
+        "decode_fraction_of_native_base": 0.6762,
+        "decode_fraction_of_native_cand": 0.6756,
+        "prefill_fraction_of_native_base": 0.6711,
+        "prefill_fraction_of_native_cand": 0.5731,
+        "reps": 3,
+        "decode_speedup": 0.999
+      }
+    },
+    "Q4 long (262/128)": {
+      "fork": {
+        "decode_base_median": 65.1,
+        "decode_cand_median": 106.79,
+        "prefill_base_median": 882.155,
+        "prefill_cand_median": 1035.573,
+        "decode_fraction_of_native_base": 0.5282,
+        "decode_fraction_of_native_cand": 0.4123,
+        "prefill_fraction_of_native_base": 0.7474,
+        "prefill_fraction_of_native_cand": 0.6545,
+        "reps": 3,
+        "decode_speedup": 1.64
+      },
+      "stock": {
+        "decode_base_median": 81.33,
+        "decode_cand_median": 51.17,
+        "prefill_base_median": 332.066,
+        "prefill_cand_median": 312.277,
+        "decode_fraction_of_native_base": 0.5541,
+        "decode_fraction_of_native_cand": 0.5504,
+        "prefill_fraction_of_native_base": 0.2738,
+        "prefill_fraction_of_native_cand": 0.2574,
+        "reps": 3,
+        "decode_speedup": 0.629
+      }
+    },
+    "Q4 1K ctx (1053/32)": {
+      "fork": {
+        "decode_base_median": 66.0,
+        "decode_cand_median": 65.25,
+        "prefill_base_median": 1047.761,
+        "prefill_cand_median": 1177.852,
+        "decode_fraction_of_native_base": 0.4341,
+        "decode_fraction_of_native_cand": 0.4648,
+        "prefill_fraction_of_native_base": 0.6164,
+        "prefill_fraction_of_native_cand": 0.5479,
+        "reps": 3,
+        "decode_speedup": 0.989
+      },
+      "stock": {
+        "decode_base_median": 52.83,
+        "decode_cand_median": 47.72,
+        "prefill_base_median": 370.383,
+        "prefill_cand_median": 361.607,
+        "decode_fraction_of_native_base": 0.3763,
+        "decode_fraction_of_native_cand": 0.3399,
+        "prefill_fraction_of_native_base": 0.2012,
+        "prefill_fraction_of_native_cand": 0.1964,
+        "reps": 3,
+        "decode_speedup": 0.903
+      }
+    }
+  },
+  "digest_changes": [
+    {
+      "leg": "BF16 long (262/128)",
+      "driver": "fork",
+      "before": "ad964232ee67fecd",
+      "after": "8690dc83246b39f8",
+      "classification": "re-pinned",
+      "native": "407b7624ed1b3b29"
+    },
+    {
+      "leg": "BF16 1K ctx (1053/32)",
+      "driver": "fork",
+      "before": "ff502900d2a179a5",
+      "after": "ff502900d2a179a5",
+      "classification": "NATIVE",
+      "native": "ff502900d2a179a5"
+    },
+    {
+      "leg": "BF16 short (30/32)",
+      "driver": "fork",
+      "before": "f26175202f3dabe9",
+      "after": "f26175202f3dabe9",
+      "classification": "unchanged-linux",
+      "native": "7fc0f968789b1882"
+    },
+    {
+      "leg": "BF16 long (262/128)",
+      "driver": "stock",
+      "before": "c5be9207833d2a26",
+      "after": "46108ad71157cb4d",
+      "classification": "re-pinned",
+      "native": "407b7624ed1b3b29"
+    },
+    {
+      "leg": "BF16 1K ctx (1053/32)",
+      "driver": "stock",
+      "before": "ff502900d2a179a5",
+      "after": "ff502900d2a179a5",
+      "classification": "NATIVE",
+      "native": "ff502900d2a179a5"
+    },
+    {
+      "leg": "BF16 short (30/32)",
+      "driver": "stock",
+      "before": "f26175202f3dabe9",
+      "after": "7fc0f968789b1882",
+      "classification": "NATIVE",
+      "native": "7fc0f968789b1882"
+    }
+  ],
+  "q4_unchanged": {
+    "qwen25-0.5b-4bit:long-decode-128|fork": "4cc08910089477fd",
+    "qwen25-0.5b-4bit:longctx-1024-decode-32|fork": "7da83f06ec9f001d",
+    "qwen25-0.5b-4bit:short-decode-32|fork": "7fd25a869ff21678",
+    "qwen25-0.5b-4bit:long-decode-128|stock": "4cc08910089477fd",
+    "qwen25-0.5b-4bit:longctx-1024-decode-32|stock": "7da83f06ec9f001d",
+    "qwen25-0.5b-4bit:short-decode-32|stock": "7fd25a869ff21678"
+  },
+  "suites": {
+    "llvmpipe_matmul_family": {
+      "status": "PASS",
+      "cases": "21/21",
+      "assertions": 21062091,
+      "log": "suites/llvmpipe-matmul-family.log"
+    },
+    "llvmpipe_runtime": {
+      "status": "PASS",
+      "cases": "41/41",
+      "assertions": 22678,
+      "log": "suites/llvmpipe-runtime.log"
+    },
+    "m1_fork_matmul_family": {
+      "status": "PASS",
+      "cases": "21/21",
+      "assertions": 82930632,
+      "log": "m1-suites/m1-fork-matmul-family.log"
+    },
+    "m1_fork_runtime": {
+      "status": "PASS",
+      "cases": "41/41",
+      "assertions": 22681,
+      "log": "m1-suites/m1-fork-runtime.log"
+    },
+    "m1_stock_matmul_family": {
+      "status": "PASS",
+      "cases": "21/21",
+      "assertions": 21062307,
+      "log": "m1-suites/m1-stock-matmul-family.log"
+    },
+    "m1_stock_runtime": {
+      "status": "PASS",
+      "cases": "41/41",
+      "assertions": 22681,
+      "log": "m1-suites/m1-stock-runtime.log"
+    }
+  },
+  "regression_test": {
+    "name": "single-row bf16 decode matmul stays inside the f64 bound",
+    "file": "overlay/tests/omarchy/test_matmul_family.cpp",
+    "llvmpipe_lines": [
+      "[provenance] subgroup_size=8 decode_gemv_path=tile-fallback",
+      "[matmul-bf16-decode] q_proj 1x896x896 bT bound=0.951154 max_abs_err_vs_f64=0.249916 partial_max=119.785",
+      "[matmul-bf16-decode] k_proj 1x896x128 bT bound=0.971454 max_abs_err_vs_f64=0.238678 partial_max=122.363",
+      "[matmul-bf16-decode] v_proj 1x896x128 bT bound=0.944806 max_abs_err_vs_f64=0.235962 partial_max=118.979",
+      "[matmul-bf16-decode] o_proj 1x896x896 bT bound=1.21412 max_abs_err_vs_f64=0.249832 partial_max=153.177",
+      "[matmul-bf16-decode] gate_proj 1x896x4864 bT bound=1.16581 max_abs_err_vs_f64=0.444153 partial_max=147.043",
+      "[matmul-bf16-decode] down_proj 1x4864x896 bT bound=2.7885 max_abs_err_vs_f64=0.88681 partial_max=341.552",
+      "[matmul-bf16-decode] lm_head 1x896x151936 bT bound=1.47104 max_abs_err_vs_f64=0.498627 partial_max=185.8",
+      "[matmul-bf16-decode] cancel896x128 1x896x128 bT bound=0.0383173 max_abs_err_vs_f64=0.00150871 partial_max=3.87349",
+      "[matmul-bf16-decode] fallback-k832 1x832x896 bT bound=1.0286 max_abs_err_vs_f64=0.310394 partial_max=129.69",
+      "[matmul-bf16-decode] fallback-n897 1x896x897 bT bound=1.00833 max_abs_err_vs_f64=0.247955 partial_max=127.045"
+    ],
+    "m1_fork_lines": [
+      "[provenance] subgroup_size=32 decode_gemv_path=subgroup-shuffle",
+      "[matmul-bf16-decode] q_proj 1x896x896 bT bound=0.96725 max_abs_err_vs_f64=0.245659 partial_max=121.829",
+      "[matmul-bf16-decode] k_proj 1x896x128 bT bound=0.868865 max_abs_err_vs_f64=0.23188 partial_max=109.336",
+      "[matmul-bf16-decode] v_proj 1x896x128 bT bound=0.981082 max_abs_err_vs_f64=0.228569 partial_max=123.586",
+      "[matmul-bf16-decode] o_proj 1x896x896 bT bound=1.1124 max_abs_err_vs_f64=0.259842 partial_max=140.26",
+      "[matmul-bf16-decode] gate_proj 1x896x4864 bT bound=1.24652 max_abs_err_vs_f64=0.402222 partial_max=157.291",
+      "[matmul-bf16-decode] down_proj 1x4864x896 bT bound=2.70929 max_abs_err_vs_f64=0.852173 partial_max=331.822",
+      "[matmul-bf16-decode] lm_head 1x896x151936 bT bound=1.49138 max_abs_err_vs_f64=0.493546 partial_max=188.384",
+      "[matmul-bf16-decode] cancel896x128 1x896x128 bT bound=0.0247205 max_abs_err_vs_f64=0.0063467 partial_max=2.14697",
+      "[matmul-bf16-decode] fallback-k832 1x832x896 bT bound=0.935554 max_abs_err_vs_f64=0.239456 partial_max=117.869",
+      "[matmul-bf16-decode] fallback-n897 1x896x897 bT bound=1.02737 max_abs_err_vs_f64=0.462921 partial_max=129.463"
+    ],
+    "m1_stock_lines": [
+      "[provenance] subgroup_size=32 decode_gemv_path=subgroup-shuffle",
+      "[matmul-bf16-decode] q_proj 1x896x896 bT bound=0.96725 max_abs_err_vs_f64=0.245659 partial_max=121.829",
+      "[matmul-bf16-decode] k_proj 1x896x128 bT bound=0.868865 max_abs_err_vs_f64=0.23188 partial_max=109.336",
+      "[matmul-bf16-decode] v_proj 1x896x128 bT bound=0.981082 max_abs_err_vs_f64=0.228569 partial_max=123.586",
+      "[matmul-bf16-decode] o_proj 1x896x896 bT bound=1.1124 max_abs_err_vs_f64=0.259842 partial_max=140.26",
+      "[matmul-bf16-decode] gate_proj 1x896x4864 bT bound=1.24652 max_abs_err_vs_f64=0.402222 partial_max=157.291",
+      "[matmul-bf16-decode] down_proj 1x4864x896 bT bound=2.70929 max_abs_err_vs_f64=0.852173 partial_max=331.822",
+      "[matmul-bf16-decode] lm_head 1x896x151936 bT bound=1.49138 max_abs_err_vs_f64=0.493546 partial_max=188.384",
+      "[matmul-bf16-decode] cancel896x128 1x896x128 bT bound=0.0247205 max_abs_err_vs_f64=0.0063467 partial_max=2.14697",
+      "[matmul-bf16-decode] fallback-k832 1x832x896 bT bound=0.935554 max_abs_err_vs_f64=0.239456 partial_max=117.869",
+      "[matmul-bf16-decode] fallback-n897 1x896x897 bT bound=1.02737 max_abs_err_vs_f64=0.462921 partial_max=129.463"
+    ],
+    "note": "pins the new decode path against a float64 host reference inside the documented f32 anchor bound on every Qwen decode projection shape, the deep-cancellation regime, and the gate-refusal fallback shapes; no digest appears in the test"
+  },
+  "accuracy_basis": {
+    "f64": "both kernels are RNE(f64)-exact on every captured decode projection incl. bias-cancellation elements; new order closer to f64 on large-N samples - receipts/2026-09-10-bf16-decode-gemv-requal section 4",
+    "policy": "docs/parity-id-policy.md amendment 2026-09-10"
+  }
+}
