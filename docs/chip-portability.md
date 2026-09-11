@@ -23,12 +23,12 @@ the dangerous class; every member is marked.
 
 | # | Location | Assumed property | How it is detected today | When it is false | Class |
 |---|---|---|---|---|---|
-| F-01 | `known-defects.md` "Open portability gaps"; `receipts/2026-09-10-prefill-qmm-isa/driver-portability-defect.json`; policy in `parity-id-policy.md` | `cooperative_matrix_f32_8` pins the matrix-unit arithmetic | Post-hoc digest comparison in release receipts; nothing at runtime | Two coopmat-capable Mesa builds on the SAME M1 produced different Q4-longctx (`7da83f06…` vs `31267e7e…`) and BF16-long digests with the same capability bits and the same kernel (`QmmPrefillCoopmatF16`) | **SILENT** |
+| F-01 | policy in `parity-id-policy.md` | Nothing. A capability bit selects a route, it does not pin arithmetic | Digests are pinned per driver build, which is the policy, not a workaround | Two coopmat-capable Mesa builds on the same M1 produced different Q4-longctx and BF16-long digests. Expected: different driver builds compile the kernel differently, so the generated ids differ. Not a defect, and not something to gate on | Expected |
 | F-02 | `primitives.cpp:619-630` gate; `shaders/matmul_vec.comp:105-151` | Subgroup size exactly 32 + `SHUFFLE_RELATIVE`, 4-byte-aligned offsets/gaps/strides, `k%128==0`, `n%4==0` mean the shuffle-down reduce produces the pinned dense BF16 decode stream | Capability query (subgroup properties) + host-side alignment arithmetic | A driver build that reports the same bits but lowers shuffles differently routes decode projections through a different accumulation order than the pinned one; no refusal fires | **SILENT** |
 | F-03 | `compute.h:18` (`kComputeThreadsPerGroup = 256`); all `.comp` `local_size_x`; only exception `primitives.cpp:10299-10306` | `maxComputeWorkGroupInvocations >= 256` and `maxComputeWorkGroupSize[0] >= 256` | Never checked; the SDPA-native gate checks its own 1024 requirement, nothing checks the rest | Vulkan's spec floor is 128 invocations / 128×128×64 size. A conformant device reporting 128 makes every dispatch undefined — likely silent corruption, loud only under validation layers | **SILENT** (UB class) |
 | F-04 | `primitives.cpp:6687-6689, 6999-7000, 6466-6468`; `shaders/qmm_vec.comp:70-79, 21-39` | `subgroupAdd` pairs bit-identically to the five-round shared tree ("measured that pairing bit for bit" — on Honeykrisp only) | Capability gate `subgroup_size == 32 && ARITHMETIC`; the bit-equality claim is a measurement, not a gate | On another driver build the two flavors may pair differently; the capability gate then silently picks the flavor whose bits differ from the pins. The shader's own comment says the dispatch gate is load-bearing because shaders cannot query subgroup size | **SILENT** |
-| F-05 | `primitives.cpp:6577-6594, 6721-6754`; `shaders/qmm_coopmat.comp` | Coopmat presence + subgroup 32 + 4 KiB shared + even x/output offsets ⇒ Q4 prefill runs the coopmat tile; stock driver (no extension) runs `QmmTileRbF16` with a different accumulation order | Capability-keyed gate, queried every dispatch; alignment contract break refuses loudly (`6734-6738`) | Stock-vs-fork route split is real and already produces different pinned digests per driver (held to the policy). A third coopmat build reintroduces F-01. If the alignment contract ever broke silently, the code's own comment says refuse-by-name beats rerouting — that guard is present | **SILENT** (route split; pinned per driver) |
-| F-06 | `primitives.cpp:556-584`; `shaders/matmul_coopmat_bf16.comp:6-18, 103-105` | The staged BF16 coopmat tile stores identical bits to the eager-order kernel for the same tile values (ascending-k 8-wide MMA chain), needs 2-byte-aligned operands, `m>=32`, 4 KiB shared | Capability + alignment + shared-memory gate, queried every dispatch | On a driver build whose coopmat lowering reassociates, stored bits deviate with no refusal (same defect class as F-01); the equality claim has never been proven on a second driver build | **SILENT** (claimed result-preserving by construction, unproven elsewhere) |
+| F-05 | `primitives.cpp:6577-6594, 6721-6754`; `shaders/qmm_coopmat.comp` | Coopmat presence + subgroup 32 + 4 KiB shared + even x/output offsets ⇒ Q4 prefill runs the coopmat tile; stock driver (no extension) runs `QmmTileRbF16` with a different accumulation order | Capability-keyed gate, queried every dispatch; alignment contract break refuses loudly (`6734-6738`) | Stock-vs-fork route split is real and already produces different pinned digests per driver (held to the policy). A third coopmat build gets its own pins, per the policy. If the alignment contract ever broke silently, the code's own comment says refuse-by-name beats rerouting — that guard is present | **SILENT** (route split; pinned per driver) |
+| F-06 | `primitives.cpp:556-584`; `shaders/matmul_coopmat_bf16.comp:6-18, 103-105` | The staged BF16 coopmat tile stores identical bits to the eager-order kernel for the same tile values (ascending-k 8-wide MMA chain), needs 2-byte-aligned operands, `m>=32`, 4 KiB shared | Capability + alignment + shared-memory gate, queried every dispatch | On a driver build whose coopmat lowering reassociates, stored bits deviate with no refusal ; the equality claim has never been proven on a second driver build | **SILENT** (claimed result-preserving by construction, unproven elsewhere) |
 | F-07 | `device_info.cpp:51-54` | `architecture` = "honeykrisp" iff `driver_name` contains the substring `Honeykrisp` | Name-keyed string match | A driver rename or a differently spelled `driver_name` mislabels the architecture as "vulkan". Cosmetic (info surface only, no arithmetic), but name-keyed where the driver id it should key on (`kMesaHoneykrispDriverId`, already collected) sits unused one field away | Loud (label only) |
 | F-08 | `device.cpp:555-605` | Acceptance = Vulkan 1.3 + (driverID 26 ∨ vendor 0x106b ∨ name contains "honeykrisp") | Identity-keyed by design; M1 is accepted via driverID (it reports vendor `0x10005`, not 0x106b) | An M2 under Honeykrisp is accepted the same way — correct. But acceptance performs no capability floor check (see F-03): a device can be accepted and then dispatch UB. Inverse risk: a future Apple GPU on a non-Honeykrisp driver is refused loudly (safe) | Loud (acceptance side) / **SILENT** (via F-03) |
 | F-09 | `compiled.cpp:37-58` | BF16 compiled tapes corrupt nondeterministically on Honeykrisp | Keyed on dtype, not on device: refused on every device, loudly | Over-refuses on drivers where the defect does not reproduce (llvmpipe is already proven correct). Safe direction — no wrong numbers — but the refusal message hard-codes a driver-empirical defect with no root cause pinned | Loud |
@@ -50,13 +50,10 @@ non-coherent fallback does explicit flush/invalidate (`allocator.h:20-24`);
 
 ## 2. The smallest capability-keyed change for each finding
 
-- **F-01**: implement the on-device probe `known-defects.md` already names as
-  the candidate fix: at device creation, run a known-answer coopmat vector and
-  compare against the required lowering; mismatch → retire the coopmat routes
-  (fall back to the composed path) and record the driver build. Key the digest
-  registry on driver build identity — `driver_version` +
-  `pipeline_cache_uuid` are already collected in `CapabilityReport` but unused
-  for pin lookup.
+- **F-01**: no code change. The pin policy already keys digests to the driver
+  build. The one useful piece of plumbing: key the pin lookup on driver build
+  identity, since `driver_version` and `pipeline_cache_uuid` are already
+  collected in `CapabilityReport` and unused for it.
 - **F-02**: keep the capability gate; before enabling the shuffle route, run a
   one-time known-answer probe (small fixed K on both routes, compare bits).
   Cheaper minimum: make "route + driverInfo git hash" a required field of
@@ -70,8 +67,8 @@ non-coherent fallback does explicit flush/invalidate (`allocator.h:20-24`);
   32-element `subgroupAdd` vs shared-tree comparison at device creation; or
   document in `parity-id-policy.md` that the bit-equality claim is per driver
   build and must be re-proven (the qualification contract below requires it).
-- **F-05**: nothing beyond F-01 — the gate is already capability-keyed and the
-  alignment break already refuses loudly.
+- **F-05**: nothing. The gate is already capability-keyed and the alignment
+  break already refuses loudly.
 - **F-06**: add a required qualification leg that proves tile-vs-coopmat bit
   equality on the target driver build (one fixed matmul, both routes via
   `MLX_OMARCHY_NO_COOPMAT`).
@@ -102,14 +99,13 @@ gate-proven from the receipts; M2 values are unknown until the chip runs
 Omarchy; M3 has no GPU driver (software rendering only); M4/M5/M6 are unknown
 end to end. **Every axis for future silicon must come from runtime discovery
 (`collect_capabilities`), never from a chip-name table.** The current code
-already derives all of these at runtime; the audit's complaint (F-01/F-03) is
-that some gates trust bits that do not pin arithmetic, and one class of limits
-is never checked at all.
+already derives all of these at runtime; the audit's complaint (F-03) is that
+one class of limits is never checked at all.
 
 | Axis | M1 G13 (reference row) | M2 Max | M5/M6 |
 |---|---|---|---|
 | `driver_variant` | `honeykrisp_installed`, Mesa 26.3.0-devel git-6f6afc8968, driverID 26 | expected honeykrisp family (Asahi G14 acceleration is upstream); build unmeasured | unknown |
-| `cooperative_matrix_fp32_8x8x8` | true (installed build) | unknown — and F-01 says the bit alone does not pin arithmetic | unknown |
+| `cooperative_matrix_fp32_8x8x8` | true (installed build) | unknown | unknown |
 | `subgroup_size` | 32 (measured) | unknown; presumed 32 because it is an AGX-wide warp — presumption is not a measurement | unknown |
 | `subgroup_ops_mask` | BASIC, ARITHMETIC, SHUFFLE, SHUFFLE_RELATIVE proven present (consumed by enabled routes); full mask not dumped | unknown | unknown |
 | `shared_memory_limit_bytes` | ≥ 21504 (gate-proven: SDPA-native enabled); exact value not dumped in-repo | unknown | unknown |
@@ -150,8 +146,7 @@ git hash + driverUUID + `mlx-omarchy-info` full dump), never on the chip name.
    **per driver build**. The native-matching legs (Q4 short, Q4 1K-ctx, BF16
    1K-ctx) must equal the native macOS digests; the others may take native's
    values or their own new per-driver-build values, per
-   `parity-id-policy.md`. The F-01 probe (coopmat known-answer) must pass, or
-   the coopmat routes stay retired on this chip.
+   `parity-id-policy.md`.
 6. **Benchmark legs**: the decode legs (subgroup vs tree GEMV, GB/s) and the
    prefill legs (coopmat vs register-blocked tile, TFLOP/s) run on their own
    capability-determined route; cross-route legs use the route-forcing env
@@ -169,6 +164,5 @@ git hash + driverUUID + `mlx-omarchy-info` full dump), never on the chip name.
 Until items 1–5 exist for a chip, the honest claim is: "runs on Apple silicon
 whose driver build passes the M1 contract; unverified on this chip." The
 runtime is already built to make that statement checkable — every gate it
-needs is a capability query away; the two real holes are that a capability bit
-is not an arithmetic guarantee (F-01) and that the workgroup floor is assumed
-rather than checked (F-03).
+needs is a capability query away; the real hole is that the workgroup floor is
+assumed rather than checked (F-03).

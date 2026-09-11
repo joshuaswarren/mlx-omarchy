@@ -14,7 +14,7 @@
         "other"
       ],
       "source": "driverID + driver name + driverInfo string (VK_PHYSICAL_DEVICE_DRIVER_PROPERTIES); CapabilityReport.driver_name/driver_version",
-      "meaning": "Which Vulkan driver build serves the chip. Gates nothing by itself but selects the arithmetic contract and the digest pin set: digests are pinned per driver BUILD, not per chip (F-01).",
+      "meaning": "Which Vulkan driver build serves the chip. Gates nothing by itself but selects the arithmetic contract and the digest pin set: digests are pinned per driver BUILD, not per chip.",
       "m1_g13_reference": "honeykrisp_installed (Mesa 26.3.0-devel git-6f6afc8968, driverID 26)",
       "m2_known": "expected honeykrisp family (Asahi G14 GPU acceleration is upstream); build identity unmeasured",
       "m2_unknown": [],
@@ -27,7 +27,7 @@
       "meaning": "Gates QmmPrefillCoopmatF16, MatmulF32Coopmat, MatmulBF16Coopmat, SdpaDecodeNative. Absent = routes fall to tile/scalar kernels with different accumulation order.",
       "m1_g13_reference": true,
       "m2_known": null,
-      "m2_unknown": ["presence under the M2 driver build", "lowering equivalence across driver builds (F-01: bit alone did not fix digests on the M1)"],
+      "m2_unknown": ["presence under the M2 driver build", "lowering equivalence across driver builds"],
       "future_silicon_unknown": true
     },
     {
