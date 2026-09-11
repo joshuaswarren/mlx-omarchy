@@ -324,7 +324,12 @@ array composition_reference_len(
   array scores = matmul(qs, kt, stream);
   array probs = softmax(scores, std::vector<int>{-1}, false, stream);
   array result = matmul(probs, vs, stream);
-  return reshape(result, Shape{1, kHeads, q_len, kWidth}, stream);
+  // The real composition narrows to the output dtype through the RNE cast;
+  // without this the reference carries f32 tails no bf16 route could store.
+  return astype(
+      reshape(result, Shape{1, kHeads, q_len, kWidth}, stream),
+      bfloat16,
+      stream);
 }
 
 CacheInputs make_cache_len(
@@ -402,6 +407,7 @@ TEST_CASE("fused bf16 decode is bit-identical to the f32 composition") {
     if (bf16_route_ready(stream)) {
       uint64_t dispatches = dispatches_for(
           [&] { return sdpa_call(in, stream); }, stream);
+      MESSAGE("keys ", keys, " dispatches ", dispatches);
       CHECK_EQ(dispatches, 1);
     }
     require_bit_identical(
