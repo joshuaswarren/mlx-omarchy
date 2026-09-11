@@ -1,0 +1,129 @@
+{
+  "schema": "mlx-omarchy/qmm-prefill-tile/1",
+  "purpose": "Attribute the Q4 1K-token prefill deficit on the M1 (jwm1-linux) without per-dispatch timestamp instrumentation, then screen the smallest digest-preserving schedule changes to the cooperative-matrix quantized matmul (tile geometry, k-step width, workgroup shape) at the real 1053-token Qwen2.5-0.5B shapes. Qualify source only if a repeatable digest-preserving gain exists; otherwise land a receipt-only negative.",
+  "question": "Where does the 1K prefill token time go, and can the qmm coopmat schedule recover any of the 1113 vs 1840.9 tok/s deficit at the 1053-token leg?",
+  "source": {
+    "branch": "wave/Q4PrefillLongCtx",
+    "screen_commits": [
+      "06d1ee52",
+      "1ec51ed9",
+      "0c53b4ed"
+    ],
+    "base": "origin/main 1242cb32",
+    "change": "Diagnostics-only: qmm_coopmat.comp parametrized over TILE_M {32,64} x STEP_K {16,32} and compiled four ways (three new CMake shader variants + append-only kernel enums QmmPrefillCoopmatM64F16/K32F16/M64K32F16 + MLX_OMARCHY_QMM_COOP_TILE selector, default 0). Default variant 0 SPIR-V is identical to the released kernel modulo ids (spirv-dis diff clean). Per-output k-accumulation order is preserved by construction in every variant: ascending 8-wide coopmat updates over k. The scaffolding is NOT landed; origin/main is untouched.",
+    "wheel": {
+      "name": "mlx_omarchy-0.32.2.dev202609110353+1ec51ed-cp314-cp314-linux_aarch64.whl",
+      "sha256_libmlx_member": "5ecccbcbe163bf10d769fd013bcb06d207c03e4ec0eb6023dde6226fdc55b68b",
+      "gate": "wheel member sha256 == installed venv libmlx.so sha256 (window1.log [gate] lines)"
+    }
+  },
+  "hardware": {
+    "host": "jwm1-linux, Apple M1 (G13G B1), fork driver Mesa Honeykrisp AGX_SIMDMAT=1, /tmp/m1-gpu.lock held for every measurement window, quiet-gate announced in hub",
+    "llvmpipe_screen": "qmm coopmat host-reference test (18,384,704 assertions) passes on llvmpipe x86 before the M1 window; on llvmpipe the case runs the tile fallback (f32_8 unsupported there), matching receipts/2026-09-10-prefill-qmm-isa/targeted-llvmpipe.log"
+  },
+  "fork_functional_tests": {
+    "host_reference": "qmm coopmat prefill matches host reference at Qwen shapes: 1 case passed on the M1 fork driver with the parametrized shader (m in {8,32,262,1053} x 4 Qwen projections)",
+    "offset_parity": "qmm coopmat output is bit-identical across x offset alignment: 1 case passed",
+    "receipts": [
+      "m1-qmm-coopmat-test.log",
+      "m1-qmm-offset-parity.log"
+    ]
+  },
+  "attribution": {
+    "method": "No per-dispatch timestamps. Component-isolated wall-time probes (median of 30 after 4 warmups) at the real shapes on the fork driver, reconciled against the whole-leg wall and the committed GPU-busy profile in receipts/2026-09-10-prefill-qmm-isa/conclusion.json.",
+    "qmm_per_layer_m1053_ms": {
+      "k_proj (1053x896x128)": 0.5347,
+      "v_proj (1053x896x128)": 0.5347,
+      "q_proj (1053x896x896)": 1.895,
+      "down_proj (1053x4864x896)": 9.423,
+      "gate_up (1053x896x9728)": 17.85
+    },
+    "qmm_per_model_m1053_ms": 725.7,
+    "qmm_share_of_946ms_leg": "76.7%",
+    "attention_composite_sdpa": {
+      "per_layer_L1053_ms": 6.247,
+      "per_layer_L262_ms": 0.88,
+      "per_layer_L30_ms": 0.3838,
+      "per_model_L1053_ms": 149.9,
+      "note": "mx.fast.scaled_dot_product_attention composite (2x MatmulRbF16 + softmax + mask), 14 q heads / 2 kv heads / head_dim 64; its matmul kernels alone measured 109.4 ms in receipts/2026-09-10-prefill-qmm-isa"
+    },
+    "norms": "rms_norm [1053,896] f16 = 0.387 ms per call; 48 model calls \u2248 18.6 ms",
+    "lm_head": "full 1053x151936 logits would cost 267.6 ms and cannot fit the 946 ms leg together with the measured qmm; mlx_lm pays only the last-token slice (m=1 probe: 1.98 ms)",
+    "reconciliation": "726 (qmm) + 110 (attention matmuls) + softmax/rope/norms/elementwise \u2248 943 ms = the committed gpu_busy_ms at m1053; the remainder of the ~1004 ms span is submission/host overhead. The reconciliation matches receipts/2026-09-10-prefill-qmm-isa without any new instrumentation."
+  },
+  "why_deficit_grows_with_context": {
+    "walls_ms": {
+      "leg_tokens": [
+        30,
+        262,
+        1053
+      ],
+      "fork": [
+        90.6,
+        270,
+        946
+      ],
+      "native": [
+        102,
+        216,
+        572
+      ]
+    },
+    "mechanism": "At m=30 the leg is latency/host-dominated for both platforms (fork qmm \u2248 40-45 ms of 90.6) and the fork is already past native. As context grows the leg becomes qmm-compute-bound, and there the fork's cooperative-matrix kernel saturates at ~1.03 TFLOP/s (40% of G13G f32 peak; 1028 GFLOP/s on gate_up, 974 on down_proj, 893 on q_proj at m=1053) while native Metal qmm sustains an implied ~1.7 TFLOP/s (whole native leg 572 ms minus attention/norms leaves ~430 ms for the 713 GFLOP of qmm work). The absolute deficit therefore grows from -12 ms at m=30 to +54 ms at m=262 to +374 ms at m=1053, tracking the qmm share, not the attention share (attention is quadratic but only 16% of the fork leg)."
+  },
+  "screen": {
+    "method": "Kernel-isolated quantized_matmul probe, f16 scales/biases (mx.quantize on f32, scales/biases cast f16), fixed seeds per shape, 4 warmups + 30 timed evals, median wall ms, f16 output sha256 per shape. Arms selected by MLX_OMARCHY_QMM_COOP_TILE. Repetition pass reran arms 0 and 1 twice more in alternating order under the same lock window.",
+    "digest_gate": "Every arm-0/arm-1 sample reproduced identical f16 output digests per shape across all repetitions (digest-preserving as designed). The committed probe-f16-scales digests are not comparable across probe scripts (different seeded inputs); arm-to-arm equality is the gate.",
+    "results_m1053_median_ms": {
+      "1053x896x9728": {
+        "base": 17.85,
+        "m64": 18.35,
+        "k32": 27.2,
+        "m64_k32": 28.15
+      },
+      "1053x4864x896": {
+        "base": 9.423,
+        "m64": 9.43,
+        "k32": 15.19,
+        "m64_k32": 15.04
+      },
+      "1053x896x896": {
+        "base": 1.895,
+        "m64": 1.904,
+        "k32": 2.855,
+        "m64_k32": 2.717
+      },
+      "1053x896x128": {
+        "base": 0.535,
+        "m64": 0.632,
+        "k32": 0.812,
+        "m64_k32": 0.649
+      }
+    },
+    "repetition": "Arms 0/1 rerun twice in alternation: base gate_up 17.83/17.85/17.90 ms (\u00b10.2%), m64 gate_up 18.28/18.35/18.45 ms. The m64 regression on the dominant shape repeats in every sample.",
+    "verdicts": {
+      "m64 (TILE_M 64, 128-lane 4-subgroup workgroup)": "Digest-preserving, but -2.7% on gate_up (the shape that dominates the leg), neutral on down_proj and q_proj, not-better on the starved 128-wide shape. Rejected: halves per-workgroup weight re-reads and dequant work as designed, yet the 128-thread workgroup reduces independent workgroups and does not raise the kernel's ~1.03 TFLOP/s ceiling.",
+      "k32 (STEP_K 32)": "-40 to -50% on every shape AND it changed the f16 output digest, which the source-level schedule analysis forbids (per-output k order is identical). Both facts disqualify it; the digest change is recorded as an empirical Honeykrisp cooperative-matrix anomaly worth remembering (wider k staging changed results that only reorder identically-ordered updates), not as an arithmetic improvement.",
+      "m64_k32": "Slow as k32 on the big shapes; digest matched base while k32 alone did not, an internally inconsistent driver-level result. Rejected."
+    }
+  },
+  "decision": "reject all three schedule variants; land no runtime source change",
+  "policy_ok": "trivially: no source change, no digest movement, both drivers untouched",
+  "next": "The remaining deficit is inside the coopmat kernel's achieved FLOP/s (Honeykrisp 8x8x8 emulation + the f32 shared-memory round trip for dequantized weights). On a quiet run the 946 ms leg is almost entirely GPU busy (wall \u2248 the committed 943 ms gpu_busy), so host pacing is not the m1053 lever. Tile geometry and k-step width are exhausted by this screen; a future candidate must restructure the kernel's data path the way native Metal does (simdgroup dequant without the f32 shared round trip) - a new design, not a schedule tweak.",
+  "receipts": {
+    "screen_logs": [
+      "probe-qmm-arm0.log",
+      "probe-qmm-arm1.log",
+      "probe-qmm-arm2.log",
+      "probe-qmm-arm3.log",
+      "probe-rep-arm0-000845.log",
+      "probe-rep-arm0-000849.log",
+      "probe-rep-arm1-000847.log",
+      "probe-rep-arm1-000850.log"
+    ],
+    "attribution_log": "probe-attrib.log",
+    "window_log": "window1.log",
+    "probe_script": "q4_prefill_probe.py",
+    "summarizer": "summarize_screen.py"
+  }
+}

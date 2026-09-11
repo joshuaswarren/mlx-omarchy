@@ -1,0 +1,57 @@
+[window1] source at 1ec51ed
+[window1] staged
+[window1] tests built
+/home/joshuawarren/benchq/q4prefill-window1/m1-qmm-coopmat-test.log:[doctest] test cases:        1 |        1 passed | 0 failed | 20 skipped
+/home/joshuawarren/benchq/q4prefill-window1/m1-qmm-coopmat-test.log:[doctest] Status: SUCCESS!
+/home/joshuawarren/benchq/q4prefill-window1/m1-qmm-offset-parity.log:[doctest] test cases:      1 |      1 passed | 0 failed | 20 skipped
+/home/joshuawarren/benchq/q4prefill-window1/m1-qmm-offset-parity.log:[doctest] Status: SUCCESS!
+[window1] coopmat tests done; building wheel
+[receipt] release, verify the UPLOADED asset with
+[receipt]   python3 scripts/verify-release-assets.py <tag>
+[receipt] It must print VERIFIED before the release is announced as
+[receipt] usable. See docs/release.md. A local build check does not
+[receipt] verify what users download.
+[gate] wheel=mlx_omarchy-0.32.2.dev202609110353+1ec51ed-cp314-cp314-linux_aarch64.whl
+[gate] member=5ecccbcbe163bf10d769fd013bcb06d207c03e4ec0eb6023dde6226fdc55b68b
+[gate] loaded=5ecccbcbe163bf10d769fd013bcb06d207c03e4ec0eb6023dde6226fdc55b68b
+[gate] mx.__version__ 0.32.2.dev202609110353+1ec51ed
+[window1] qmm schedule screen (arms 0..3)
+[window1b] Thu Sep 10 23:01:47 CDT 2026 resume probes; wheel + venv from window 1
+[window1b] Thu Sep 10 23:11:54 CDT 2026 resume probes; wheel + venv from window 1
+[window1b] Thu Sep 10 23:24:45 CDT 2026 resume probes; wheel + venv from window 1
+Terminated                 flock -w 2700 /tmp/m1-gpu.lock sh "$HOME/benchq/q4_window1b_inner.sh"
+[window1b] Fri Sep 11 00:00:51 CDT 2026 resume probes; wheel + venv from window 1
+[window1b] arm 0:
+{"shape": "1053x896x128", "median_ms": 0.5206, "f16_digest": "e9218e07c9c13e5e", "gflops": 463.9}
+{"shape": "1053x896x896", "median_ms": 1.883, "f16_digest": "2df9480de6e511ec", "gflops": 897.9}
+{"shape": "1053x4864x896", "median_ms": 9.4231, "f16_digest": "3e79733f76ed9d37", "gflops": 974.0}
+{"shape": "1053x896x9728", "median_ms": 17.8293, "f16_digest": "5179630cd4a7c3f9", "gflops": 1029.6}
+{"shape": "30x896x9728", "median_ms": 1.4819, "f16_digest": "bb9f6a622f6211b6", "gflops": 352.9}
+[window1b] arm 1:
+{"shape": "1053x896x128", "median_ms": 0.6461, "f16_digest": "e9218e07c9c13e5e", "gflops": 373.8}
+{"shape": "1053x896x896", "median_ms": 1.9129, "f16_digest": "2df9480de6e511ec", "gflops": 883.9}
+{"shape": "1053x4864x896", "median_ms": 9.43, "f16_digest": "3e79733f76ed9d37", "gflops": 973.3}
+{"shape": "1053x896x9728", "median_ms": 18.3548, "f16_digest": "5179630cd4a7c3f9", "gflops": 1000.1}
+{"shape": "30x896x9728", "median_ms": 1.6665, "f16_digest": "bb9f6a622f6211b6", "gflops": 313.8}
+[window1b] arm 2:
+{"shape": "1053x896x128", "median_ms": 0.8121, "f16_digest": "f55bbad7220e0405", "gflops": 297.4}
+{"shape": "1053x896x896", "median_ms": 2.8554, "f16_digest": "20f04e4fc9035108", "gflops": 592.1}
+{"shape": "1053x4864x896", "median_ms": 15.1921, "f16_digest": "61491f40fec959c8", "gflops": 604.1}
+{"shape": "1053x896x9728", "median_ms": 27.1962, "f16_digest": "8db8f9ca60f6c27b", "gflops": 675.0}
+{"shape": "30x896x9728", "median_ms": 1.6568, "f16_digest": "c1818d0609321e4c", "gflops": 315.6}
+[window1b] arm 3:
+{"shape": "1053x896x128", "median_ms": 0.6492, "f16_digest": "e9218e07c9c13e5e", "gflops": 372.1}
+{"shape": "1053x896x896", "median_ms": 2.7173, "f16_digest": "2df9480de6e511ec", "gflops": 622.2}
+{"shape": "1053x4864x896", "median_ms": 15.0365, "f16_digest": "3e79733f76ed9d37", "gflops": 610.4}
+{"shape": "1053x896x9728", "median_ms": 28.1454, "f16_digest": "5179630cd4a7c3f9", "gflops": 652.2}
+{"shape": "30x896x9728", "median_ms": 1.8447, "f16_digest": "bb9f6a622f6211b6", "gflops": 283.5}
+[window1b] attribution probes (attn, norms, lmhead)
+{"shape": "L=30", "median_ms": 0.3838, "gflops": 8.4, "f16_digest": "d15883a0cdb9f457"}
+{"shape": "L=262", "median_ms": 0.88, "gflops": 279.6, "f16_digest": "752d42f9e059c786"}
+{"shape": "L=1053", "median_ms": 6.2467, "gflops": 636.2, "f16_digest": "b382aa193eef1953"}
+{"shape": "1053x896", "median_ms": 0.3872}
+{"shape": "1053x896x151936", "median_ms": 267.5844, "gflops": 1071.4}
+{"shape": "1x896x151936", "median_ms": 1.9795, "gflops": 137.5}
+[window1b] DONE
+[window1c] Fri Sep 11 00:08:45 CDT 2026 repetition pass arms 0,1
+[window1c] DONE

@@ -1,0 +1,7 @@
+arm: 2
+{"shape": "1053x896x128", "median_ms": 0.8121, "f16_digest": "f55bbad7220e0405", "gflops": 297.4}
+{"shape": "1053x896x896", "median_ms": 2.8554, "f16_digest": "20f04e4fc9035108", "gflops": 592.1}
+{"shape": "1053x4864x896", "median_ms": 15.1921, "f16_digest": "61491f40fec959c8", "gflops": 604.1}
+{"shape": "1053x896x9728", "median_ms": 27.1962, "f16_digest": "8db8f9ca60f6c27b", "gflops": 675.0}
+{"shape": "30x896x9728", "median_ms": 1.6568, "f16_digest": "c1818d0609321e4c", "gflops": 315.6}
+SUMMARY {"arm": "2", "qmm": [{"shape": "1053x896x128", "median_ms": 0.8121, "f16_digest": "f55bbad7220e0405", "gflops": 297.4}, {"shape": "1053x896x896", "median_ms": 2.8554, "f16_digest": "20f04e4fc9035108", "gflops": 592.1}, {"shape": "1053x4864x896", "median_ms": 15.1921, "f16_digest": "61491f40fec959c8", "gflops": 604.1}, {"shape": "1053x896x9728", "median_ms": 27.1962, "f16_digest": "8db8f9ca60f6c27b", "gflops": 675.0}, {"shape": "30x896x9728", "median_ms": 1.6568, "f16_digest": "c1818d0609321e4c", "gflops": 315.6}]}
