@@ -1,0 +1,119 @@
+== driver identity ==
+mesa-honeykrisp-omarchy 26.3.0.devel.hk6f6afc8-1
+== cmshape f16 probes (installed driver) ==
+{"device":"Apple M1 (G13G B1)","driver":"Mesa 26.3.0-devel (git-6f6afc8968)","shape":"8x8x8 f16 f16 f32 f32 row randint","advertised":["8x8x8 A1 B1 C1 R1 sc3","8x8x8 A0 B0 C1 R1 sc3","8x8x8 A0 B0 C0 R0 sc3","16x16x16 A1 B1 C1 R1 sc3","16x16x16 A0 B0 C1 R1 sc3","16x16x16 A0 B0 C0 R0 sc3"],"elements":64,"mismatches":0,"maxerr":0,"result":"PASS"}
+{"device":"Apple M1 (G13G B1)","driver":"Mesa 26.3.0-devel (git-6f6afc8968)","shape":"8x8x8 f16 f16 f16 f16 row randint","advertised":["8x8x8 A1 B1 C1 R1 sc3","8x8x8 A0 B0 C1 R1 sc3","8x8x8 A0 B0 C0 R0 sc3","16x16x16 A1 B1 C1 R1 sc3","16x16x16 A0 B0 C1 R1 sc3","16x16x16 A0 B0 C0 R0 sc3"],"elements":64,"mismatches":0,"maxerr":0,"result":"PASS"}
+== build cand wheel (wave/QmmF16Operand) ==
+BUILT release 2cd86ff 173s 6ca093d12e3ffc04ba19a10357cbcdaf4114f126fe179598fcce46bde64d8142  dist/mlx_omarchy-0.32.2.dev202609111013+2cd86ff-cp314-cp314-linux_aarch64.whl
+== install cand wheel + provenance ==
+{
+  "dist": "mlx-omarchy",
+  "verified": "match",
+  "mismatch": null,
+  "files": [
+    {
+      "path": "mlx/core.cpython-314-aarch64-linux-gnu.so",
+      "label": "mlx.core extension",
+      "sha256": "4ad850da16c300ea9f60aa7247f034f358aa16d7ba2fd146979a01c867e3cfa5",
+      "record_sha256": "4ad850da16c300ea9f60aa7247f034f358aa16d7ba2fd146979a01c867e3cfa5",
+      "match": true
+    },
+    {
+      "path": "mlx/lib/libmlx.so",
+      "label": "mlx/lib/libmlx.so",
+      "sha256": "0f4eb2407f260aa0eafeb897a8b66be5f66f5fa731fa2d6fab813a44f7183bd1",
+      "record_sha256": "0f4eb2407f260aa0eafeb897a8b66be5f66f5fa731fa2d6fab813a44f7183bd1",
+      "match": true
+    }
+  ],
+  "dist_version": "0.32.2.dev202609111013+2cd86ff",
+  "mx_version": "0.32.2.dev202609111013+2cd86ff",
+  "version_match": true,
+  "expected_wheel": "/home/joshuawarren/src/mlx-QmmF16Operand/dist/mlx_omarchy-0.32.2.dev202609111013+2cd86ff-cp314-cp314-linux_aarch64.whl"
+}
+== accuracy harness on cand (f16-staged kernel) ==
+Traceback (most recent call last):
+  File "/tmp/qmm_f16_accuracy.py", line 32, in <module>
+    SNAP = glob.glob(Path.home() / ".cache/huggingface/hub/"
+                     "models--mlx-community--Qwen2.5-0.5B-Instruct-4bit/"
+                     "snapshots/*")
+  File "/usr/lib/python3.14/glob.py", line 43, in glob
+    return list(iglob(pathname, root_dir=root_dir, dir_fd=dir_fd, recursive=recursive,
+                ~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                      include_hidden=include_hidden))
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/glob.py", line 78, in iglob
+    root_dir = pathname[:0]
+               ~~~~~~~~^^^^
+TypeError: 'PosixPath' object is not subscriptable
+== shapes bench on cand (coopmat route) ==
+{"m": 262, "k": 896, "n": 128, "median_ms": 0.0002919696271419525, "gflop_s": 205831.38249096615, "digest": "1c37a4f0fe232b2e"}
+{"m": 262, "k": 896, "n": 896, "median_ms": 0.0002500019036233425, "gflop_s": 1682689.523171782, "digest": "e38a9ea5719a4fd0"}
+{"m": 262, "k": 4864, "n": 896, "median_ms": 0.0002500019036233425, "gflop_s": 9134600.268646816, "digest": "47e62a0dd04667ba"}
+{"m": 262, "k": 896, "n": 9728, "median_ms": 0.0002500019036233425, "gflop_s": 18269200.53729363, "digest": "ed821227d9b54917"}
+{"m": 1053, "k": 896, "n": 128, "median_ms": 0.0002915039658546448, "gflop_s": 828575.1011718232, "digest": "974bfdd5f50a88ae"}
+{"m": 1053, "k": 896, "n": 896, "median_ms": 0.0002500019036233425, "gflop_s": 6762870.488167505, "digest": "d831ffff29d15509"}
+{"m": 1053, "k": 4864, "n": 896, "median_ms": 0.0002500019036233425, "gflop_s": 36712725.50719503, "digest": "ba78147c754e7c5c"}
+{"m": 1053, "k": 896, "n": 9728, "median_ms": 0.00037497375160455704, "gflop_s": 48954099.98553327, "digest": "e92ac15482d35556"}
+== shapes bench on cand (NO_COOPMAT cross-check) ==
+{"m": 262, "k": 896, "n": 128, "median_ms": 0.0004169996827840805, "gflop_s": 144116.445362184, "digest": "702854d2ec7eae1c"}
+{"m": 262, "k": 896, "n": 896, "median_ms": 0.0002919696271419525, "gflop_s": 1440819.677436763, "digest": "640324f2e816f8ba"}
+{"m": 262, "k": 4864, "n": 896, "median_ms": 0.000459025613963604, "gflop_s": 4975032.735713679, "digest": "0f18d44c925e7d69"}
+{"m": 262, "k": 896, "n": 9728, "median_ms": 0.0002500019036233425, "gflop_s": 18269200.53729363, "digest": "740492f71c7ff366"}
+{"m": 1053, "k": 896, "n": 128, "median_ms": 0.0002919696271419525, "gflop_s": 827253.6097823945, "digest": "7b0f53edbe368108"}
+{"m": 1053, "k": 896, "n": 896, "median_ms": 0.0003124878276139498, "gflop_s": 5410548.336905921, "digest": "b941a0357416149a"}
+{"m": 1053, "k": 4864, "n": 896, "median_ms": 0.0002500019036233425, "gflop_s": 36712725.50719503, "digest": "653b69d420d5d7ba"}
+{"m": 1053, "k": 896, "n": 9728, "median_ms": 0.0002500019036233425, "gflop_s": 73425451.01439007, "digest": "94f0d6548ee0c402"}
+== build base wheel (origin/main) ==
+BUILT release 01cbac2 174s f50348decd55c71d89f5da6d40aaa0c6bac8379c28ffdadf08177ca2603cf92e  dist/mlx_omarchy-0.32.2.dev202609111016+01cbac2-cp314-cp314-linux_aarch64.whl
+== install base wheel + provenance ==
+{
+  "dist": "mlx-omarchy",
+  "verified": "match",
+  "mismatch": null,
+  "files": [
+    {
+      "path": "mlx/core.cpython-314-aarch64-linux-gnu.so",
+      "label": "mlx.core extension",
+      "sha256": "4ad850da16c300ea9f60aa7247f034f358aa16d7ba2fd146979a01c867e3cfa5",
+      "record_sha256": "4ad850da16c300ea9f60aa7247f034f358aa16d7ba2fd146979a01c867e3cfa5",
+      "match": true
+    },
+    {
+      "path": "mlx/lib/libmlx.so",
+      "label": "mlx/lib/libmlx.so",
+      "sha256": "4266bd7c50a56c466aa6bd1b852458ccf683feaa3ed7068a3a0d0bf50892b9ba",
+      "record_sha256": "4266bd7c50a56c466aa6bd1b852458ccf683feaa3ed7068a3a0d0bf50892b9ba",
+      "match": true
+    }
+  ],
+  "dist_version": "0.32.2.dev202609111016+01cbac2",
+  "mx_version": "0.32.2.dev202609111016+01cbac2",
+  "version_match": true,
+  "expected_wheel": "/home/joshuawarren/src/mlx-F16OperandBase/dist/mlx_omarchy-0.32.2.dev202609111016+01cbac2-cp314-cp314-linux_aarch64.whl"
+}
+== accuracy harness on base (f32-staged kernel) ==
+Traceback (most recent call last):
+  File "/tmp/qmm_f16_accuracy.py", line 32, in <module>
+    SNAP = glob.glob(Path.home() / ".cache/huggingface/hub/"
+                     "models--mlx-community--Qwen2.5-0.5B-Instruct-4bit/"
+                     "snapshots/*")
+  File "/usr/lib/python3.14/glob.py", line 43, in glob
+    return list(iglob(pathname, root_dir=root_dir, dir_fd=dir_fd, recursive=recursive,
+                ~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                      include_hidden=include_hidden))
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/glob.py", line 78, in iglob
+    root_dir = pathname[:0]
+               ~~~~~~~~^^^^
+TypeError: 'PosixPath' object is not subscriptable
+== shapes bench on base (f32-staged coopmat) ==
+{"m": 262, "k": 896, "n": 128, "median_ms": 0.0002500019036233425, "gflop_s": 240384.21759596883, "digest": "702854d2ec7eae1c"}
+{"m": 262, "k": 896, "n": 896, "median_ms": 0.0002500019036233425, "gflop_s": 1682689.523171782, "digest": "640324f2e816f8ba"}
+{"m": 262, "k": 4864, "n": 896, "median_ms": 0.0002500019036233425, "gflop_s": 9134600.268646816, "digest": "0f18d44c925e7d69"}
+{"m": 262, "k": 896, "n": 9728, "median_ms": 0.0002500019036233425, "gflop_s": 18269200.53729363, "digest": "740492f71c7ff366"}
+{"m": 1053, "k": 896, "n": 128, "median_ms": 0.0002500019036233425, "gflop_s": 966124.3554525007, "digest": "396531bfc68b59c8"}
+{"m": 1053, "k": 896, "n": 896, "median_ms": 0.0002500019036233425, "gflop_s": 6762870.488167505, "digest": "4f2d4ca0aad1cab1"}
+{"m": 1053, "k": 4864, "n": 896, "median_ms": 0.0002500019036233425, "gflop_s": 36712725.50719503, "digest": "9f46cfe5e224aba3"}
+{"m": 1053, "k": 896, "n": 9728, "median_ms": 0.0002500019036233425, "gflop_s": 73425451.01439007, "digest": "702f39f78cff959a"}
+WINDOW_A_DONE
