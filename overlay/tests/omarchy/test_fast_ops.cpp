@@ -1104,6 +1104,7 @@ TEST_CASE("scaled_dot_product_attention broadcasts additive masks through GQA") 
             1),
         tolerance,
         label);
+  };
   check(float32, 1e-5, "sdpa additive mask broadcast gqa f32");
   check(float16, 2e-2, "sdpa additive mask broadcast gqa f16");
   check(bfloat16, 5e-2, "sdpa additive mask broadcast gqa bf16 fast default");
