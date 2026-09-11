@@ -95,6 +95,23 @@ Current main at `b6d662a8`, measured by the canonical 12-leg matrix: two drivers
 | BF16 | 262 / 128 | 11.25 / 11.29 | 317.8 / 210.8 |
 | BF16 | 1053 / 32 | 10.03 / 10.12 | 364.8 / 220.1 |
 
+With the dense BF16 decode GEMV landed at `9737c36e` + `480a1ef4`, the same
+matrix measured fresh with paired wheels built from that one source base
+(3 reps per driver after a discarded warmup, AC, clean, provenance gates
+green, all six canonical Q4 digests unchanged) ([receipt](receipts/2026-09-10-bf16-decode-gemv-land/verdict.json)):
+
+| Model | Prompt / generated tokens | Decode tok/s (fork / stock) | Prefill tok/s (fork / stock) |
+|---|---|---:|---:|
+| BF16 | 30 / 32 | 31.4 / 27.3 | 147.1 / 137.6 |
+| BF16 | 262 / 128 | 28.2 / 24.6 | 383.6 / 229.8 |
+| BF16 | 1053 / 32 | 22.8 / 17.9 | 380.3 / 168.6 |
+
+Decode medians are the new per-leg values; the BF16 short and 262-token
+generated-id digests were re-pinned to the measured per-driver values under
+the [2026-09-10 policy amendment](docs/parity-id-policy.md), and the accuracy
+contract moved into a regression test that values every decode projection
+shape against a float64 reference.
+
 `MLX_OMARCHY_FUSED_CHAIN=0`, `MLX_OMARCHY_QMM_VEC_Q4_WORD=0`, and `MLX_OMARCHY_QMM_TILE_RB=0` disable the fused chain, the decode kernel, and the prefill kernel for comparison.
 
 Performance parity is still open, and the remaining distance is now specific. The denominator is the committed macOS MLX 0.32.2 baseline on an Apple M1, five repetitions with stable digests ([receipt](receipts/native-baseline-2026-09-06/native-2026-09-06-summary.json)): Q4 decode 150.57 / 146.77 / 140.38 tok/s and prefill 294.1 / 1213.0 / 1840.9; BF16 decode 56.43 / 55.72 / 54.55 and prefill 232.6 / 1007.7 / 1655.7. The fork build reaches these fractions of native:
@@ -104,11 +121,11 @@ Performance parity is still open, and the remaining distance is now specific. Th
 | Q4 | 30 / 32 | 0.75 | 1.13 |
 | Q4 | 262 / 128 | 0.74 | 0.80 |
 | Q4 | 1053 / 32 | 0.68 | 0.60 |
-| BF16 | 30 / 32 | 0.21 | 0.37 |
-| BF16 | 262 / 128 | 0.20 | 0.32 |
-| BF16 | 1053 / 32 | 0.18 | 0.22 |
+| BF16 | 30 / 32 | 0.46 | 0.54 |
+| BF16 | 262 / 128 | 0.49 | 0.34 |
+| BF16 | 1053 / 32 | 0.42 | 0.20 |
 
-Short-prompt Q4 prefill is the one leg already past native. Dense BF16 decode is the largest remaining hole: those single-token projections still run the sequential dense matmul kernel instead of a vector kernel. Cross-OS timings do not establish numerical parity: the Q4 short and 1024-context token-ID digests match native, while the Q4 long-prompt digest differs (native `254d73fd93164b98`, Linux `4cc08910089477fd`). The BF16 mismatch at the 262-token leg was root-caused to macOS-side rounding, with the Linux result bit-exact to a float64 round-to-nearest-even reference ([receipt](receipts/2026-09-10-bf16-rootcause/README.md)).
+Short-prompt Q4 prefill is the one leg already past native. Dense BF16 decode now runs a native-order vector kernel (2.2-2.8x decode, no float64-accuracy cost: both kernels are RNE(f64)-exact on the captured decode projections), and its remaining distance is measured against the committed native baseline above. Cross-OS timings do not establish numerical parity: the Q4 short and 1024-context token-ID digests match native, while the Q4 long-prompt digest differs (native `254d73fd93164b98`, Linux `4cc08910089477fd`). The BF16 262-token mismatch was root-caused to macOS-side rounding, with the Linux result bit-exact to a float64 round-to-nearest-even reference ([receipt](receipts/2026-09-10-bf16-rootcause/README.md)), and the BF16 short/262 pins now carry the measured per-driver Linux values under the [policy amendment](docs/parity-id-policy.md).
 
 To reproduce a leg, use the fixed-length runner, which suppresses EOS:
 
