@@ -13,8 +13,11 @@
 // per load, so the MMA is fed instead of the load unit.
 //
 // Tails in m and n are masked at staging and at the drain, so no M or
-// N alignment is required. K must be a multiple of 8 (dispatch gate).
-// All A/B/output access is scalar, so the 16-byte coopMatLoad
+// N alignment is required. A trailing k fragment (k % 8 != 0) stages
+// its valid columns and zeroes the rest of the shared patch, so the
+// appended products are exactly +0.0 and no f32 accumulator bit
+// moves; any k >= 1 is therefore legal. K must be nonzero (dispatch
+// gate). All A/B/output access is scalar, so the 16-byte coopMatLoad
 // alignment constraints of the old kernel no longer apply. Dispatch
 // only when dtype is float32, alpha is 1, there is no bias C, and the
 // device advertises the 8x8x8 fp32 shape; the 16x16 scalar tile
@@ -94,6 +97,7 @@ void main() {
   uint m_tiles = (params.matrix_m + TILE_M - 1u) / TILE_M;
   uint n_tiles = (params.matrix_n + TILE_N - 1u) / TILE_N;
   uint k_steps = params.matrix_k / MAT;
+  uint k_tail = params.matrix_k % MAT;
   bool a_colmaj = (params.flags & 4u) != 0u;
   bool b_colmaj = (params.flags & 1u) != 0u;
 
@@ -113,7 +117,8 @@ void main() {
         }
       }
 
-      for (uint step = 0u; step < k_steps; ++step) {
+      for (uint step = 0u; step < k_steps + (k_tail > 0u ? 1u : 0u);
+           ++step) {
         uint k_base = step * MAT;
         // Stage A (32 rows x 8 k): word i = lane + 32 j covers row
         // i / 8, k offset i % 8.
@@ -123,7 +128,7 @@ void main() {
           uint row = row_base + row_local;
           uint k = k_base + (i % MAT);
           float v = 0.0;
-          if (row < params.matrix_m) {
+          if (row < params.matrix_m && k < params.matrix_k) {
             v = a_colmaj
                 ? input_a.values[a_slice + k * params.lhs_gap + row]
                 : input_a.values[a_slice + row * params.lhs_gap + k];
@@ -137,7 +142,7 @@ void main() {
           uint col = col_base + col_local;
           uint k = k_base + (i % MAT);
           float v = 0.0;
-          if (col < params.matrix_n) {
+          if (col < params.matrix_n && k < params.matrix_k) {
             v = b_colmaj
                 ? input_b.values[b_slice + col * params.rhs_gap + k]
                 : input_b.values[b_slice + k * params.rhs_gap + col];
