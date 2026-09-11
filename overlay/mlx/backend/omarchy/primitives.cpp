@@ -10399,7 +10399,9 @@ void ScaledDotProductAttention::eval_gpu(
   // score), and the output stays bf16 end to end. Deletes the three
   // q/k/v upcasts, the f32 scale multiply, the f32 softmax, and the
   // output downcast per call. The causal mask is not materialized on
-  // either storage dtype (see the scores matmul below).
+  // either storage dtype (see the scores matmul below). Single-query
+  // decode never reaches this route: the fused kernel above returns
+  // first, so this arm is prefill-shaped traffic only.
   bool bf16_fast = false;
   if (q.dtype() == bfloat16) {
     if (const char* env = std::getenv("MLX_OMARCHY_SDPA_BF16_FAST");
@@ -10410,7 +10412,15 @@ void ScaledDotProductAttention::eval_gpu(
 
   // Decode uses native Metal's 32-key online-softmax order directly over
   // Q and the strided KV cache. This replaces both attention matmuls, both
-  // layout copies, and softmax with one dispatch per layer.
+  // layout copies, softmax, and the q/k/v upcasts with one dispatch per
+  // layer. float16 rides the proven SdpaDecodeNativeF16 arm. bfloat16
+  // rides the same structure through the -DBF16_IO blob: exact widening
+  // in, RNE stores, every intermediate in float32 (upstream Metal keeps
+  // every attention intermediate in float32, sdpa_vector.h:50), and the
+  // one-pass 32-stream merge at every context length - the f32 partial
+  // array the two-pass needs cannot fit the workgroup store at the
+  // 128-block crossover, and the bf16 parity contract is the f32-score
+  // composition below, not native's two-pass partial format.
   const char* decode_env = std::getenv("MLX_OMARCHY_SDPA_DECODE_NATIVE");
   const auto& decode_caps = encoder.device().capabilities();
   constexpr VkSubgroupFeatureFlags kDecodeSubgroupFeatures =
@@ -10426,10 +10436,12 @@ void ScaledDotProductAttention::eval_gpu(
       (decode_caps.subgroup_operations & kDecodeSubgroupFeatures) ==
           kDecodeSubgroupFeatures;
   if ((decode_env == nullptr || std::strcmp(decode_env, "0") != 0) &&
-      decode_subgroup_ready && q.dtype() == float16 && inputs.size() == 3 &&
-      !has_sinks_ && !output_logsumexp_ && batch == 1 && q_len == 1 &&
+      decode_subgroup_ready && inputs.size() == 3 && !has_sinks_ &&
+      !output_logsumexp_ && batch == 1 && q_len == 1 &&
+      (q.dtype() == float16 || q.dtype() == bfloat16) &&
       head_dim == 64 && v_dim == 64 && k_len > 0 &&
       q.strides()[3] == 1 && k.strides()[3] == 1 && v.strides()[3] == 1) {
+    const bool decode_bf16 = q.dtype() == bfloat16;
     out.set_data(allocate_omarchy(out.nbytes()));
     omarchy::ComputeParams params;
     params.count = checked_u32(out.size(), tag, out);
@@ -10438,8 +10450,11 @@ void ScaledDotProductAttention::eval_gpu(
     params.matrix_k = checked_u32(k_len, tag, out);
     params.alpha = scale_;
     // Native M1 Max switches to 64 two-pass blocks at 1024 keys and 128
-    // above it; zero selects the one-pass 32-SIMD decode kernel.
-    params.flags = k_len > 1024 ? 128u : (k_len == 1024 ? 64u : 0u);
+    // above it; zero selects the one-pass 32-SIMD decode kernel. bf16
+    // always runs one-pass (see above).
+    params.flags = decode_bf16
+        ? 0u
+        : (k_len > 1024 ? 128u : (k_len == 1024 ? 64u : 0u));
     params.lhs_offset = checked_item_offset(q, q.size(), tag, out);
     params.rhs_offset = checked_item_offset(k, k.size(), tag, out);
     params.aux_offset = checked_item_offset(v, v.size(), tag, out);
@@ -10458,12 +10473,13 @@ void ScaledDotProductAttention::eval_gpu(
           encoder.device(),
           decode_caps,
           decode_subgroup_ready,
-          "SdpaDecodeNativeF16",
+          decode_bf16 ? "SdpaDecodeNativeBF16" : "SdpaDecodeNativeF16",
           "cooperative_matrix_fp32_8x8x8+workgroup_limits+"
           "shared_memory_limit_bytes",
           encoder.device().hardware_capabilities().cooperative_matrix_f32_8);
     encoder.dispatch_compute(
-        omarchy::ComputeKernel::SdpaDecodeNativeF16,
+        decode_bf16 ? omarchy::ComputeKernel::SdpaDecodeNativeBF16
+                    : omarchy::ComputeKernel::SdpaDecodeNativeF16,
         bindings,
         params,
         params.matrix_m);

@@ -1,0 +1,87 @@
+{
+ "label": "synthetic",
+ "n_calls": 18,
+ "comp_control_bit_identical": true,
+ "control_mismatch_calls": [],
+ "ulp_tables": {
+  "fused": {
+   "O-f64": {
+    "n": 16128,
+    "exact_frac": 0.999752,
+    "mean_ulp": 0.0002,
+    "max_ulp": 1
+   },
+   "O-comp": {
+    "n": 16128,
+    "exact_frac": 0.999938,
+    "mean_ulp": 0.0001,
+    "max_ulp": 1
+   },
+   "O-fast": {
+    "n": 16128,
+    "exact_frac": 0.334511,
+    "mean_ulp": 64.4515,
+    "max_ulp": 33587
+   }
+  },
+  "comp": {
+   "O-f64": {
+    "n": 16128,
+    "exact_frac": 0.999566,
+    "mean_ulp": 0.0004,
+    "max_ulp": 1
+   },
+   "O-comp": {
+    "n": 16128,
+    "exact_frac": 0.999752,
+    "mean_ulp": 0.0002,
+    "max_ulp": 1
+   },
+   "O-fast": {
+    "n": 16128,
+    "exact_frac": 0.334449,
+    "mean_ulp": 64.4516,
+    "max_ulp": 33587
+   }
+  },
+  "fast": {
+   "O-f64": {
+    "n": 16128,
+    "exact_frac": 0.334511,
+    "mean_ulp": 64.4515,
+    "max_ulp": 33587
+   },
+   "O-comp": {
+    "n": 16128,
+    "exact_frac": 0.334511,
+    "mean_ulp": 64.4516,
+    "max_ulp": 33587
+   },
+   "O-fast": {
+    "n": 16128,
+    "exact_frac": 0.999938,
+    "mean_ulp": 0.0001,
+    "max_ulp": 1
+   }
+  }
+ },
+ "never_farther_O-f64": {
+  "count_fused_farther_than_comp": 1,
+  "count_fused_closer_than_comp": 4,
+  "admissible": false,
+  "elements": [
+   {
+    "call": 7,
+    "head": 7,
+    "dim": 44,
+    "d_fused": 1,
+    "d_comp": 0
+   }
+  ]
+ },
+ "never_farther_O-comp": {
+  "count_fused_farther_than_comp": 1,
+  "count_fused_closer_than_comp": 4,
+  "elements": []
+ }
+}
