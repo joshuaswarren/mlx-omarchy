@@ -129,7 +129,7 @@ def main():
         emit({"k": "rope", "m": m, "us_median": round(us, 1)})
         us = timed(
             lambda: (mx.eval(mx.fast.rms_norm(
-                t, 1e-6, mx.ones((h,)).astype(mx.bfloat16))),
+                t, mx.ones((h,)).astype(mx.bfloat16), 1e-6)),
                 mx.synchronize()),
             reps=args.reps)
         emit({"k": "rms_norm", "m": m, "us_median": round(us, 1)})
