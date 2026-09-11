@@ -597,6 +597,9 @@ enum class ComputeKernel : uint16_t {
   QmmTileRbPreciseF16,
   // Native-order single-query f16 attention; append-only profile id.
   SdpaDecodeNativeF16,
+  // Affine quantize/dequantize bfloat16; append-only profile id.
+  QuantizeBF16,
+  DequantBF16,
   Custom,
   Count,
 };

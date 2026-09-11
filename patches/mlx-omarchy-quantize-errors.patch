@@ -10,7 +10,7 @@ diff --git a/mlx/ops.cpp b/mlx/ops.cpp
  #include "mlx/fast_primitives.h"
  #include "mlx/ops.h"
  #include "mlx/primitives.h"
-@@ -5048,6 +5050,24 @@ affine_quantize(const array& w, int group_size, int bits, StreamOrDevice s_) {
+@@ -5048,6 +5050,25 @@ affine_quantize(const array& w, int group_size, int bits, StreamOrDevice s_) {
      throw std::invalid_argument(msg.str());
    }
  
@@ -26,7 +26,8 @@ diff --git a/mlx/ops.cpp b/mlx/ops.cpp
 +        omarchy::is_available()) {
 +      omarchy::unsupported("Quantize group size", uint32, out_shape);
 +    }
-+    if ((w.dtype() != float16 && w.dtype() != float32) &&
++    if ((w.dtype() != float16 && w.dtype() != bfloat16 &&
++         w.dtype() != float32) &&
 +        omarchy::is_available()) {
 +      omarchy::unsupported("Quantize input dtype", uint32, out_shape);
 +    }
@@ -35,7 +36,7 @@ diff --git a/mlx/ops.cpp b/mlx/ops.cpp
    auto fallback = [group_size, bits, s](
                        const std::vector<array>& inputs) -> std::vector<array> {
      auto& w = inputs[0];
-@@ -5288,6 +5308,24 @@ array affine_dequantize(
+@@ -5288,6 +5308,25 @@ array affine_dequantize(
  
    auto s = to_stream(s_);
  
@@ -51,7 +52,8 @@ diff --git a/mlx/ops.cpp b/mlx/ops.cpp
 +        omarchy::is_available()) {
 +      omarchy::unsupported("Quantize group size", scales.dtype(), out_shape);
 +    }
-+    if ((scales.dtype() != float16 && scales.dtype() != float32) &&
++    if ((scales.dtype() != float16 && scales.dtype() != bfloat16 &&
++         scales.dtype() != float32) &&
 +        omarchy::is_available()) {
 +      omarchy::unsupported("Quantize scales dtype", scales.dtype(), out_shape);
 +    }
