@@ -1104,12 +1104,61 @@ TEST_CASE("scaled_dot_product_attention broadcasts additive masks through GQA") 
             1),
         tolerance,
         label);
-  };
   check(float32, 1e-5, "sdpa additive mask broadcast gqa f32");
   check(float16, 2e-2, "sdpa additive mask broadcast gqa f16");
-  check(bfloat16, 5e-2, "sdpa additive mask broadcast gqa bf16 wide");
-  setenv("MLX_OMARCHY_SDPA_BF16_FAST", "1", 1);
-  check(bfloat16, 5e-2, "sdpa additive mask broadcast gqa bf16 fast");
+  check(bfloat16, 5e-2, "sdpa additive mask broadcast gqa bf16 fast default");
+  setenv("MLX_OMARCHY_SDPA_BF16_FAST", "0", 1);
+  check(bfloat16, 5e-2, "sdpa additive mask broadcast gqa bf16 wide opt-out");
+}
+
+TEST_CASE("scaled_dot_product_attention bf16 fast scores scale through MatmulBF16Coopmat") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  // qL >= 32 with k = D = 8 puts the alpha-scaled scores matmul inside
+  // the MatmulBF16Coopmat gate (dispatch_matmul relaxes the coopmat
+  // alpha == 1 requirement for bf16). The kernel must scale its f32
+  // accumulator by alpha at the drain: a missing scale feeds the
+  // softmax unscaled scores and fails this comparison by orders of
+  // magnitude, not by a rounding margin.
+  struct Bf16FastGuard {
+    Bf16FastGuard() {
+      if (const char* value = std::getenv("MLX_OMARCHY_SDPA_BF16_FAST")) {
+        original = value;
+      }
+      setenv("MLX_OMARCHY_SDPA_BF16_FAST", "1", 1);
+    }
+    ~Bf16FastGuard() {
+      if (original.empty()) {
+        unsetenv("MLX_OMARCHY_SDPA_BF16_FAST");
+      } else {
+        setenv("MLX_OMARCHY_SDPA_BF16_FAST", original.c_str(), 1);
+      }
+    }
+    std::string original;
+  } bf16_guard;
+  const int B = 1, H = 2, KV = 1, qL = 32, kL = 40, D = 8;
+  const float scale = 0.25f;
+  auto q_data = pattern(B * H * qL * D, 257);
+  auto k_data = pattern(B * KV * kL * D, 263);
+  auto v_data = pattern(B * KV * kL * D, 269);
+  array q = astype(
+      array(q_data.begin(), Shape{B, H, qL, D}, float32), bfloat16, stream);
+  array k = astype(
+      array(k_data.begin(), Shape{B, KV, kL, D}, float32), bfloat16, stream);
+  array v = astype(
+      array(v_data.begin(), Shape{B, KV, kL, D}, float32), bfloat16, stream);
+  auto q_ref = flat(q, stream);
+  auto k_ref = flat(k, stream);
+  auto v_ref = flat(v, stream);
+  auto out = fast::scaled_dot_product_attention(
+      q, k, v, scale, "", {}, std::nullopt, false, stream);
+  require_close(
+      flat(out, stream),
+      host_sdpa(q_ref, k_ref, v_ref, B, H, KV, qL, kL, D, scale, false),
+      5e-2,
+      "sdpa bf16 fast coopmat scores alpha");
 }
 
 TEST_CASE("scaled_dot_product_attention causal offset keeps kL below qL") {

@@ -162,7 +162,8 @@ float32, including grouped-query attention (`n_q_heads != n_kv_heads`,
 which emits rank-5 matmuls over stride-0 broadcast batch views), causal
 masks, and cache offsets (`k_len > q_len`). Sinks, the training logsumexp
 output, and `force_fused=True` stay named rejections or the composed
-fallback. float16 inputs (and bfloat16 under `MLX_OMARCHY_SDPA_BF16_FAST`)
+fallback. float16 inputs (and bfloat16 by default; `MLX_OMARCHY_SDPA_BF16_FAST=0`
+opts out to the f32 composition)
 keep the scores, probabilities, and result in the storage dtype with float
 accumulation inside the shaders, and never materialize the causal mask:
 the softmax runs in causal mode (keys past `k_len - q_len + position` are
@@ -543,6 +544,16 @@ matmul median moved from 0.0935/0.1680/0.1906 to 0.1251/0.2535/0.2816
 TFLOP/s at 256/512/1024 with max_abs_err 0.0 against a host reference
 on every gated shape; receipt
 `receipts/2026-09-08-coopmat-dense.json`.
+
+The bf16 sibling `MatmulBF16Coopmat`
+(`shaders/matmul_coopmat_bf16.comp`, bf16 operands, f32 accumulators,
+word-packed RNE stores) takes the same gate with even-alignment instead
+of 4-float alignment and `matrix_m >= 32`, and it scales the f32
+accumulator by alpha at the drain - the only coopmat kernel that does,
+which is why the bf16 attention scores (alpha = 1/sqrt(head_dim)) route
+to it while `MatmulF32Coopmat` stays gated on alpha == 1. Regression:
+"scaled_dot_product_attention bf16 fast scores scale through
+MatmulBF16Coopmat" (`omarchy_fast_ops`).
 
 ### Q4 prefill on the G13 matrix unit
 

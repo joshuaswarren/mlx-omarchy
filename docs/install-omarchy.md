@@ -26,9 +26,15 @@ still disables compilation because upstream checks its presence.
 Development builds use tiled quantized prefill by default. Set
 `MLX_OMARCHY_QMM_TILE=0` to compare with the untiled path; single-row
 decode still uses GEMV. This change is not in the v0.3.5 wheels.
-The experimental `MLX_OMARCHY_ROPE_BF16_DIRECT` and
-`MLX_OMARCHY_SDPA_BF16_FAST` flags remain off: both changed generated
-token IDs on M1. See the [hardware gate receipt](../receipts/2026-09-04-m1-performance-gates.md).
+`MLX_OMARCHY_ROPE_BF16_DIRECT` stays off: it changed generated token IDs
+on M1 (see the [hardware gate
+receipt](../receipts/2026-09-04-m1-performance-gates.md)). bf16 attention
+now rides the bf16-storage composition by default; `MLX_OMARCHY_SDPA_BF16_FAST=0`
+opts out to the f32 composition. The 2026-09-04 rejection of the bf16 flag
+was a bit-identity gate decision, superseded by
+[docs/parity-id-policy.md](parity-id-policy.md); the re-qualification with
+the float64 oracle lives in
+[receipts/2026-09-11-bf16-prefill-attention](../receipts/2026-09-11-bf16-prefill-attention).
 
 Compiled-tape elementwise chains and exact eager SwiGLU graphs
 ([0m[0m`gate * sigmoid(gate) * up`) fuse into one dispatch by default. The eager
