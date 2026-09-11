@@ -47,8 +47,7 @@ def main():
     # Same quantization recipe as the pinned model: affine 4-bit group-64.
     nn.quantize(model, group_size=64, bits=4)
     cfg["quantization"] = {"group_size": 64, "bits": 4}
-    weights = dict(model.parameters())
-    mx.save_safetensors(str(out / "model.safetensors"), weights)
+    model.save_weights(str(out / "model.safetensors"))
     (out / "config.json").write_text(json.dumps(cfg, indent=1) + "\n")
     for name in ["tokenizer.json", "tokenizer_config.json",
                  "vocab.json", "merges.txt", "special_tokens_map.json",
