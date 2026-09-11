@@ -2,19 +2,36 @@
 #extension GL_KHR_cooperative_matrix : require
 #extension GL_KHR_memory_scope_semantics : require
 
-// Dense f32 matmul on the G13 hardware 8x8x8 matrix unit
-// (VK_KHR_cooperative_matrix, subgroup scope). One workgroup is one
-// subgroup (32 lanes) and owns one 8x8 output tile. Dispatch only when
-// M, N, K are multiples of 8, dtype is float32, alpha is 1, and there
-// is no bias C; the 16x16 scalar tile remains the fallback.
+// Dense f32 matmul on the G13 hardware 8x8x8 matrix unit (VK_KHR_
+// cooperative_matrix, subgroup scope), STAGED: one 32-lane workgroup
+// owns a 32x32 output tile as a 4x4 grid of 8x8 accumulators. Per
+// 8-wide k step the lanes stage an A 32x8 patch and a B 8x32 patch
+// into 2 KiB of shared memory (honouring the transpose flags and the
+// row gaps), then issue 16 coopMatMulAdd from shared. The previous
+// 8x8-tile kernel coopMatLoad'ed both operands straight from global
+// with no reuse and ran ~0.28 TFLOP/s; staging gives 4x operand reuse
+// per load, so the MMA is fed instead of the load unit.
+//
+// Tails in m and n are masked at staging and at the drain, so no M or
+// N alignment is required. A trailing k fragment (k % 8 != 0) stages
+// its valid columns and zeroes the rest of the shared patch, so the
+// appended products are exactly +0.0 and no f32 accumulator bit
+// moves; any k >= 1 is therefore legal. K must be nonzero (dispatch
+// gate). All A/B/output access is scalar, so the 16-byte coopMatLoad
+// alignment constraints of the old kernel no longer apply. Dispatch
+// only when dtype is float32, alpha is 1, there is no bias C, and the
+// device advertises the 8x8x8 fp32 shape; the 16x16 scalar tile
+// remains the fallback for everything else.
 //
 // Push-constant layout matches matmul.comp. Transpose flags: 1 = rhs
 // column-major, 4 = lhs column-major (2 = bias C, never set here).
-// Layout arguments to coopMatLoad must be compile-time constants
-// (glslang 16.4.0 asserts on a runtime layout). Batch unravel matches
-// matmul.comp (workgroup z over shape[]).
+// Layout arguments to coopMatLoad are compile-time constants (glslang
+// asserts on a runtime layout). Batch unravel matches matmul.comp
+// (workgroup z over shape[]).
 
-const uint TILE = 8u;
+const uint TILE_M = 32u;
+const uint TILE_N = 32u;
+const uint MAT = 8u;
 
 layout(local_size_x = 32) in;
 
@@ -57,36 +74,12 @@ layout(push_constant) uniform Params {
   uint rhs_gap;
 } params;
 
-void load_muladd(
-    uint a_element,
-    uint b_element,
-    bool a_colmaj,
-    bool b_colmaj,
-    inout coopmat<float, gl_ScopeSubgroup, 8, 8, gl_MatrixUseAccumulator> acc) {
-  coopmat<float, gl_ScopeSubgroup, 8, 8, gl_MatrixUseA> mat_a;
-  coopmat<float, gl_ScopeSubgroup, 8, 8, gl_MatrixUseB> mat_b;
-  if (a_colmaj) {
-    coopMatLoad(
-        mat_a, input_a.values, a_element, params.lhs_gap,
-        gl_CooperativeMatrixLayoutColumnMajor);
-  } else {
-    coopMatLoad(
-        mat_a, input_a.values, a_element, params.lhs_gap,
-        gl_CooperativeMatrixLayoutRowMajor);
-  }
-  if (b_colmaj) {
-    coopMatLoad(
-        mat_b, input_b.values, b_element, params.rhs_gap,
-        gl_CooperativeMatrixLayoutColumnMajor);
-  } else {
-    coopMatLoad(
-        mat_b, input_b.values, b_element, params.rhs_gap,
-        gl_CooperativeMatrixLayoutRowMajor);
-  }
-  acc = coopMatMulAdd(mat_a, mat_b, acc);
-}
+// 2 KiB per 32-lane workgroup: one 32x8 A step and one 8x32 B step.
+shared float a_s[TILE_M * MAT];
+shared float b_s[MAT * TILE_N];
 
 void main() {
+  uint lane = gl_LocalInvocationID.x;
   uint batch_index = gl_WorkGroupID.z;
   uint remaining = batch_index;
   uint a_batch = 0u;
@@ -97,36 +90,109 @@ void main() {
     a_batch += coord * params.in_strides[axis - 1u];
     b_batch += coord * params.out_strides[axis - 1u];
   }
+  uint a_slice = params.lhs_offset + a_batch;
+  uint b_slice = params.rhs_offset + b_batch;
   uint out_matrix = params.matrix_m * params.matrix_n;
-  uint tile_rows = params.matrix_m / TILE;
-  uint tile_columns = params.matrix_n / TILE;
-  uint k_tiles = params.matrix_k / TILE;
+  uint out_slice = params.output_offset + batch_index * out_matrix;
+  uint m_tiles = (params.matrix_m + TILE_M - 1u) / TILE_M;
+  uint n_tiles = (params.matrix_n + TILE_N - 1u) / TILE_N;
+  uint k_steps = params.matrix_k / MAT;
+  uint k_tail = params.matrix_k % MAT;
   bool a_colmaj = (params.flags & 4u) != 0u;
   bool b_colmaj = (params.flags & 1u) != 0u;
 
-  for (uint tile_row = gl_WorkGroupID.y; tile_row < tile_rows;
+  for (uint tile_row = gl_WorkGroupID.y; tile_row < m_tiles;
        tile_row += gl_NumWorkGroups.y) {
-    uint row = tile_row * TILE;
-    for (uint tile_column = gl_WorkGroupID.x; tile_column < tile_columns;
-         tile_column += gl_NumWorkGroups.x) {
-      uint column = tile_column * TILE;
-      coopmat<float, gl_ScopeSubgroup, 8, 8, gl_MatrixUseAccumulator> acc =
-          coopmat<float, gl_ScopeSubgroup, 8, 8, gl_MatrixUseAccumulator>(0.0);
-      for (uint tile = 0u; tile < k_tiles; ++tile) {
-        uint k_base = tile * TILE;
-        uint a_element = params.lhs_offset + a_batch +
-            (a_colmaj ? k_base * params.lhs_gap + row
-                      : row * params.lhs_gap + k_base);
-        uint b_element = params.rhs_offset + b_batch +
-            (b_colmaj ? column * params.rhs_gap + k_base
-                      : k_base * params.rhs_gap + column);
-        load_muladd(a_element, b_element, a_colmaj, b_colmaj, acc);
+    uint row_base = tile_row * TILE_M;
+    for (uint tile_col = gl_WorkGroupID.x; tile_col < n_tiles;
+         tile_col += gl_NumWorkGroups.x) {
+      uint col_base = tile_col * TILE_N;
+
+      coopmat<float, gl_ScopeSubgroup, MAT, MAT, gl_MatrixUseAccumulator>
+          acc[4][4];
+      for (uint rb = 0u; rb < 4u; ++rb) {
+        for (uint cb = 0u; cb < 4u; ++cb) {
+          acc[rb][cb] = coopmat<float, gl_ScopeSubgroup, MAT, MAT,
+              gl_MatrixUseAccumulator>(0.0);
+        }
       }
-      uint out_element = params.output_offset + batch_index * out_matrix +
-          row * params.matrix_n + column;
-      coopMatStore(
-          acc, output_data.values, out_element, params.matrix_n,
-          gl_CooperativeMatrixLayoutRowMajor);
+
+      for (uint step = 0u; step < k_steps + (k_tail > 0u ? 1u : 0u);
+           ++step) {
+        uint k_base = step * MAT;
+        // Stage A (32 rows x 8 k): word i = lane + 32 j covers row
+        // i / 8, k offset i % 8.
+        for (uint j = 0u; j < 8u; ++j) {
+          uint i = lane + 32u * j;
+          uint row_local = i / MAT;
+          uint row = row_base + row_local;
+          uint k = k_base + (i % MAT);
+          float v = 0.0;
+          if (row < params.matrix_m && k < params.matrix_k) {
+            v = a_colmaj
+                ? input_a.values[a_slice + k * params.lhs_gap + row]
+                : input_a.values[a_slice + row * params.lhs_gap + k];
+          }
+          a_s[row_local * MAT + (i % MAT)] = v;
+        }
+        // Stage B (8 k x 32 columns): i covers column i / 8.
+        for (uint j = 0u; j < 8u; ++j) {
+          uint i = lane + 32u * j;
+          uint col_local = i / MAT;
+          uint col = col_base + col_local;
+          uint k = k_base + (i % MAT);
+          float v = 0.0;
+          if (col < params.matrix_n && k < params.matrix_k) {
+            v = b_colmaj
+                ? input_b.values[b_slice + col * params.rhs_gap + k]
+                : input_b.values[b_slice + k * params.rhs_gap + col];
+          }
+          b_s[(i % MAT) * TILE_N + col_local] = v;
+        }
+        barrier();
+
+        coopmat<float, gl_ScopeSubgroup, MAT, MAT, gl_MatrixUseA> mat_a[4];
+        coopmat<float, gl_ScopeSubgroup, MAT, MAT, gl_MatrixUseB> mat_b[4];
+        for (uint rb = 0u; rb < 4u; ++rb) {
+          coopMatLoad(
+              mat_a[rb], a_s, rb * MAT * MAT, MAT,
+              gl_CooperativeMatrixLayoutRowMajor);
+        }
+        for (uint cb = 0u; cb < 4u; ++cb) {
+          coopMatLoad(
+              mat_b[cb], b_s, cb * MAT, TILE_N,
+              gl_CooperativeMatrixLayoutRowMajor);
+        }
+        for (uint rb = 0u; rb < 4u; ++rb) {
+          for (uint cb = 0u; cb < 4u; ++cb) {
+            acc[rb][cb] =
+                coopMatMulAdd(mat_a[rb], mat_b[cb], acc[rb][cb]);
+          }
+        }
+        barrier();
+      }
+
+      // Drain one 8-row block at a time through a_s, tails masked.
+      for (uint rb = 0u; rb < 4u; ++rb) {
+        for (uint cb = 0u; cb < 4u; ++cb) {
+          coopMatStore(
+              acc[rb][cb], a_s, cb * MAT * MAT, MAT,
+              gl_CooperativeMatrixLayoutRowMajor);
+        }
+        barrier();
+        uint column = col_base + lane;
+        if (column < params.matrix_n) {
+          for (uint r = 0u; r < MAT; ++r) {
+            uint row = row_base + rb * MAT + r;
+            if (row < params.matrix_m) {
+              output_data.values[out_slice + row * params.matrix_n +
+                                 column] = a_s[(lane / MAT) * MAT * MAT +
+                                               r * MAT + (lane % MAT)];
+            }
+          }
+        }
+        barrier();
+      }
     }
   }
 }
