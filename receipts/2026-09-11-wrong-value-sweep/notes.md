@@ -14,6 +14,15 @@ window queue — see "Pending M1 work").
 Commit **`2a198ea1`** (revert of `5facd59a` "batch host scalar GPU fills",
 which is inside the regression window).
 
+`5facd59a` was a real defect shipped by that commit: it removed the
+pre-fill `encoder.synchronize()` that the scalar-fill path's correctness
+rested on, with nothing in the commit re-establishing the guarantee (the
+in-buffer barrier it added does not cover the lost write; measured). What
+it broke: every `CopyType::Scalar` zero fill into recycled storage —
+first seen as `mx.convolve` same-mode boundary garbage, and through the
+same door `MaxPool1d` padded pooling. Second same-day instance of a
+landed change silently breaking a path nobody re-ran.
+
 Mechanism: `mx.convolve(mode='same')` with an even kernel pads `(N/2, N/2-1)`
 → the pad's zero fill is a host scalar fill. `5facd59a` removed the
 `encoder.synchronize()` that preceded every scalar fill and replaced the
@@ -64,22 +73,26 @@ tiled addressing for broadcast mod-last/div-last leaves.
 ### (a) subnormal f32/bf16 `astype(bool)` — FIXED in `edf4807f`, M1 gate pending.
 
 Cause: the cast shader computed `static_cast<bool>(x)` as a float compare
-(`x != 0.0`). Vulkan grants denorm preservation only opt-in
-(`DenormPreserve`); the Honeykrisp **fork** (Mesa 26.3.0-devel.hk6f6afc8,
-installed on the M1 between the snapshots per
-`receipts/2026-09-08-honeykrisp-package.json`; the 2026-09-06 snapshot ran
-stock Mesa 26.1.7 per `receipts/m1-qual-2026-09-06/summary.json`) flushes
-subnormal operands, so f32 subnormals — and bf16 subnormals, which ride the
-same f32 subnormal encoding — compared `!= 0.0` as zero → False. The f16
-path survives because f16 subnormals decode to *normal* f32 values. The
-latent hazard sat in both the old cast blob and the completed conversion
-matrix; **the driver upgrade is what exposed it**, which is why no overlay
-bisect can produce a commit. Author's miss (across both casts reworks):
-relying on IEEE denorm behavior Vulkan does not promise.
+(`x != 0.0`). That is wrong in our code: Vulkan grants denorm preservation
+only opt-in (`DenormPreserve`), so a float compare may flush subnormal
+operands and read them as zero — the compare can never be the
+decision-maker for a `bool` cast. The fix is driver-independent: decide
+from the encoded bits.
 
-Fix (`edf4807f`): truth from encoded bits — nonzero mantissa/exponent bits
-means true; covers subnormals of any width, NaN stays true, both zeros
-stay false. Verified on llvmpipe: subnormals True, ±0 False, NaN True,
+Fix (`edf4807f`, explanation of record): truth comes from the encoded
+bits — a nonzero mantissa/exponent field means true
+(`(lo & 0x7FFF.../0x7FFFFFFF) != 0` per source width). Covers subnormals
+of any width, NaN stays true, both zeros stay false; the driver cannot
+decide the answer.
+
+Driver context, not the explanation of record: the M1's Mesa was upgraded
+26.1.7 (stock, what the 2026-09-06 snapshot ran, per
+`receipts/m1-qual-2026-09-06/summary.json`) to the 26.3.0-devel fork
+(per `receipts/2026-09-08-honeykrisp-package.json`) between the two
+snapshots, and the fork flushes subnormals — which is when the latent
+float-compare hazard surfaced as the receipt's regression. The f16 path
+surviving is the tell that a bit-level answer was always reachable: f16
+subnormals decode to *normal* f32 values, so they never hit the flush. Verified on llvmpipe: subnormals True, ±0 False, NaN True,
 ±inf True (edge probe in `cast_int.comp` build, plus the new C++ test).
 LLVMPIPE LIMITATION: llvmpipe preserves denorms, so llvmpipe cannot show
 the pre-fix failure — the fails-before evidence is the 2026-09-11 M1
