@@ -304,7 +304,9 @@ void main() {
           qmm_stage_step(
               b, tile_row, tile_col, chunk * CHUNK_K + step * 16u, 0u);
           barrier();
-          uint kk = step * 16u;
+          // The step staging uses the shipped layout: x rows pitch 16,
+          // w rows pitch TILE_N, so both 8-k halves live in the first
+          // 512 floats of each buffer (kk is step-local here).
           coopmat<float, gl_ScopeSubgroup, MAT, MAT, gl_MatrixUseA>
               mat_a0[2];
           coopmat<float, gl_ScopeSubgroup, MAT, MAT, gl_MatrixUseA>
@@ -315,20 +317,19 @@ void main() {
               mat_b1[4];
           for (uint rb = 0u; rb < 2u; ++rb) {
             coopMatLoad(
-                mat_a0[rb], x_s, (sub_rb + rb) * MAT * XSTRIDE + kk,
-                XSTRIDE, gl_CooperativeMatrixLayoutRowMajor);
+                mat_a0[rb], x_s, (sub_rb + rb) * MAT * 16u, 16u,
+                gl_CooperativeMatrixLayoutRowMajor);
             coopMatLoad(
-                mat_a1[rb], x_s,
-                (sub_rb + rb) * MAT * XSTRIDE + kk + MAT, XSTRIDE,
+                mat_a1[rb], x_s, (sub_rb + rb) * MAT * 16u + MAT, 16u,
                 gl_CooperativeMatrixLayoutRowMajor);
           }
           for (uint cb = 0u; cb < 4u; ++cb) {
             coopMatLoad(
-                mat_b0[cb], w_s, kk * WSTRIDE + cb * MAT, WSTRIDE,
+                mat_b0[cb], w_s, cb * MAT, TILE_N,
                 gl_CooperativeMatrixLayoutRowMajor);
             coopMatLoad(
-                mat_b1[cb], w_s, (kk + MAT) * WSTRIDE + cb * MAT,
-                WSTRIDE, gl_CooperativeMatrixLayoutRowMajor);
+                mat_b1[cb], w_s, MAT * TILE_N + cb * MAT, TILE_N,
+                gl_CooperativeMatrixLayoutRowMajor);
           }
 #if QMM_COOP_BENCH_PATH == 10
           for (uint rb = 0u; rb < 2u; ++rb) {
