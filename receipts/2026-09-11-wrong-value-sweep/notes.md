@@ -109,7 +109,24 @@ documented standing bf16 compiled-tape refusal (same bucket as
 
 ## Explicitly declined this window (evidence attached)
 
-### (c) `mx.sort` wrong order on 0-strided broadcast input — NOT FIXED; cause narrowed.
+### (c) `mx.sort` wrong order on 0-strided broadcast input — NOT FIXED; evidence provenance caveat.
+
+**Artifact-provenance caveat (added post-review):** the llvmpipe
+"in-suite it ran int64" observations came from a dev venv whose
+`mlx/core.so` passed through several failed intermediate builds (a
+`cp` after a filtered `ninja` can ship a stale blob), so those runs do
+not meet the artifact bar. The final ordered capture (unbuffered, known
+current binary) shows the guard firing correctly:
+`[rsd] Sort in.val=8` → `[rsd-throw] would refuse Sort val=8` → REFUSED,
+twice, test failing by refusal — matching the source read
+(`require_sort_dtype` at primitives.cpp:1403 excludes int64
+unconditionally; `omarchy::unsupported` is `[[noreturn]]`; no second
+definition). The M1 receipt's AssertionError stands as a real wrong-value
+observation on a **proven** artifact (wheel sha `9dc042d3…`,
+SOURCE-VERIFIED), so the defect is real on the M1 — but a clean
+reproduction (proven wheel, no mixed builds) is required before calling
+it an order-dependent guard. Framing: guard-integrity question on the
+M1 artifact, not a sort-kernel bug; bisect only after clean repro.
 
 Facts established this session:
 - The upstream failing subtest is the 0-strides block
