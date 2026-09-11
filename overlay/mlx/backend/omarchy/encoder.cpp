@@ -5,7 +5,6 @@
 #include <stdexcept>
 
 #include "mlx/backend/omarchy/host_trace.h"
-#include <stdexcept>
 
 #include "mlx/backend/omarchy/allocator.h"
 #include "mlx/backend/omarchy/device.h"
