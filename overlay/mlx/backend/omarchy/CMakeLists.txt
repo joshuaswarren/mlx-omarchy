@@ -282,6 +282,8 @@ omarchy_shader(dequant_f32 shaders/dequant.comp)
 omarchy_shader(dequant_f16 shaders/dequant.comp -DUSE_FP16=1)
 omarchy_shader(quantize_f32 shaders/quantize.comp)
 omarchy_shader(quantize_f16 shaders/quantize.comp -DUSE_FP16=1)
+omarchy_shader(quantize_bf16 shaders/quantize.comp -DUSE_BF16=1)
+omarchy_shader(dequant_bf16 shaders/dequant.comp -DUSE_BF16=1)
 # QuantizeMode: the non-affine quantization modes (mxfp4 / nvfp4 /
 # mxfp8) reuse the affine shaders compiled with FP_MODE=1 - byte-packed
 # fp4/fp8 element codes, byte scales through a uint word view, no bias.

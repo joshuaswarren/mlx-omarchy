@@ -5924,10 +5924,6 @@ TEST_CASE("quantize and dequantize pin named errors outside the affine gate") {
           quantize(x12, 12, 4, "affine", std::nullopt, stream);
         }).find("The requested group size 12 is not supported") !=
         std::string::npos);
-  array bf16_input(matrix.begin(), Shape{4, 128}, bfloat16);
-  CHECK(construction_error([&] {
-          quantize(bf16_input, 32, 4, "affine", std::nullopt, stream);
-        }).find("Quantize input dtype") != std::string::npos);
 
   std::vector<uint32_t> words4(4 * 16, 0x33221100u);
   std::vector<uint8_t> scales_u8(4 * 4, 100);
@@ -5970,21 +5966,308 @@ TEST_CASE("quantize and dequantize pin named errors outside the affine gate") {
               std::nullopt,
               stream);
         }).find("Quantize group size") != std::string::npos);
-  array sb_bf16(params4.begin(), Shape{4, 4}, bfloat16);
-  CHECK(construction_error([&] {
-          dequantize(
-              w4,
-              sb_bf16,
-              sb_bf16,
-              32,
-              4,
-              "affine",
-              std::nullopt,
-              std::nullopt,
-              stream);
-        }).find("Quantize scales dtype") != std::string::npos);
 }
 
+TEST_CASE("fp qmm serves batched weight layouts against hand-packed oracles") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  // Hand-packed fp-mode weights. The fp4 e2m1 decode the kernels use is
+  // codes 0..7 -> {0, 0.5, 1, 1.5, 2, 3, 4, 6} and the fp8 e4m3 byte
+  // 0x38 decodes to 1.0; byte b of a packed word holds elements 2b (low
+  // nibble) and 2b+1, so 0x11111111 is eight 0.5 elements (word sum 4.0)
+  // and 0x38383838 is four 1.0 elements (word sum 4.0). Scales are one
+  // byte per group: e8m0 for mxfp4/mxfp8 (0x7F = 1.0, 0x80 = 2.0) and
+  // e4m3 for nvfp4 (0x38 = 1.0, 0x40 = 2.0, 0x30 = 0.5). Per-slice
+  // scales give every batch slice its own weight result, so a
+  // shared-weight bug cannot pass, and x rows carry (row + 1) so a
+  // pairing bug that reuses slice zero's activation cannot pass either.
+  constexpr uint32_t fp4_word = 0x11111111u;
+  constexpr uint32_t fp8_word = 0x38383838u;
+
+  auto run_batched = [&](bool transposed,
+                         int bits,
+                         int group_size,
+                         int k,
+                         int n,
+                         const std::vector<uint8_t>& scale_codes,
+                         const std::vector<float>& scale_values,
+                         int x_rows_per_slice,
+                         uint32_t word,
+                         float element_value,
+                         double epsilon) {
+    CAPTURE(transposed);
+    CAPTURE(bits);
+    CAPTURE(group_size);
+    CAPTURE(k);
+    CAPTURE(n);
+    CAPTURE(x_rows_per_slice);
+    int batch = static_cast<int>(scale_values.size());
+    int groups = k / group_size;
+    int packed_outer = k * bits / 32;
+    int weight_outer = transposed ? n : k;
+    Shape w_shape{batch, weight_outer, transposed ? packed_outer : n * bits / 32};
+    std::vector<uint32_t> words(
+        static_cast<size_t>(batch) * weight_outer *
+            (transposed ? packed_outer : n * bits / 32),
+        word);
+    std::vector<uint8_t> scale_bytes(
+        static_cast<size_t>(batch) * weight_outer * groups);
+    for (int b = 0; b < batch; ++b) {
+      std::fill(
+          scale_bytes.begin() + static_cast<size_t>(b) * weight_outer * groups,
+          scale_bytes.begin() + static_cast<size_t>(b + 1) * weight_outer *
+              groups,
+          scale_codes[b]);
+    }
+    array w(words.begin(), w_shape, uint32);
+    array sb(
+        scale_bytes.begin(),
+        Shape{batch, weight_outer, groups},
+        uint8);
+
+    // One row per slice rides the vec kernel; three rows ride the tile
+    // kernel. x value (b + 1) forces the paired dispatch to advance x.
+    std::vector<float> x_values(
+        static_cast<size_t>(batch) * x_rows_per_slice * k);
+    for (int b = 0; b < batch; ++b) {
+      std::fill(
+          x_values.begin() + static_cast<size_t>(b) * x_rows_per_slice * k,
+          x_values.begin() + static_cast<size_t>(b + 1) * x_rows_per_slice * k,
+          static_cast<float>(b + 1));
+    }
+    array x(x_values.begin(), Shape{batch, x_rows_per_slice, k}, float32);
+
+    // Transposed: one output column sums every packed element of its
+    // weight row. Non-transposed: column n reads element n % (32/bits)
+    // from every k row; the uniform word makes every column agree.
+    std::vector<float> expected;
+    for (int b = 0; b < batch; ++b) {
+      float slice_value = transposed
+          ? static_cast<float>(packed_outer) * (element_value * (32 / bits)) *
+              scale_values[b]
+          : static_cast<float>(k) * element_value * scale_values[b];
+      for (int r = 0; r < x_rows_per_slice; ++r) {
+        for (int c = 0; c < n; ++c) {
+          expected.push_back(slice_value * static_cast<float>(b + 1));
+        }
+      }
+    }
+    const char* mode = bits == 8 ? "mxfp8"
+        : group_size == 16       ? "nvfp4"
+                                 : "mxfp4";
+    array y = quantized_matmul(
+        x,
+        w,
+        sb,
+        std::nullopt,
+        transposed,
+        group_size,
+        bits,
+        mode,
+        stream);
+    CHECK_EQ(y.shape(), Shape{batch, x_rows_per_slice, n});
+    check_values(std::move(y), expected, stream, epsilon);
+  };
+
+  // Decode route (one row per slice): mxfp4, mxfp8, non-transposed
+  // mxfp4, and nvfp4 with three differently-scaled slices.
+  run_batched(
+      true, 4, 32, 32, 2, {0x7F, 0x80}, {1.0f, 2.0f}, 1, fp4_word, 0.5f, 1e-6);
+  run_batched(
+      true, 8, 32, 32, 2, {0x7F, 0x80}, {1.0f, 2.0f}, 1, fp8_word, 1.0f, 1e-6);
+  run_batched(
+      false, 4, 32, 32, 32, {0x7F, 0x80}, {1.0f, 2.0f}, 1, fp4_word, 0.5f, 1e-6);
+  run_batched(
+      true,
+      4,
+      16,
+      16,
+      2,
+      {0x38, 0x40, 0x30},
+      {1.0f, 2.0f, 0.5f},
+      1,
+      fp4_word,
+      0.5f,
+      1e-6);
+  // Prefill tile route (three rows per slice).
+  run_batched(
+      true, 4, 32, 32, 2, {0x7F, 0x80}, {1.0f, 2.0f}, 3, fp4_word, 0.5f, 1e-6);
+  // General-kernel route with the tile engine disabled.
+  setenv("MLX_OMARCHY_QMM_TILE", "0", 1);
+  run_batched(
+      true, 4, 32, 32, 2, {0x7F, 0x80}, {1.0f, 2.0f}, 1, fp4_word, 0.5f, 1e-6);
+  unsetenv("MLX_OMARCHY_QMM_TILE");
+}
+
+TEST_CASE("affine quantize bfloat16 matches the f32-math bf16-store oracle") {
+  if (!compute_available()) {
+    return;
+  }
+  const auto& capabilities = omarchy::device(0).capabilities();
+  if (!capabilities.storage_buffer_16bit_access ||
+      !capabilities.shader_int16) {
+    skip("Vulkan device lacks required BF16 storage features.");
+    return;
+  }
+  Stream stream = gpu_stream();
+  constexpr int rows = 4;
+  constexpr int columns = 128;
+
+  // bf16 round-to-nearest-even on the f32 bit pattern, the same
+  // rounding STORE_VALUE performs in the USE_BF16 shader variant.
+  auto bf16_round = [](float value) {
+    uint32_t bits;
+    std::memcpy(&bits, &value, sizeof(bits));
+    if ((bits & 0x7fffffffu) > 0x7f800000u) {
+      return static_cast<uint16_t>((bits >> 16) | 0x40u);
+    }
+    return static_cast<uint16_t>(
+        (bits + 0x7fffu + ((bits >> 16) & 1u)) >> 16);
+  };
+
+  // Inputs must be exactly representable in bf16 so the host oracle
+  // and the device read identical values; dyadic mantissas guarantee
+  // that regardless of the conversion rounding on the way in.
+  std::mt19937 gen(31);
+  std::uniform_real_distribution<float> dist(-8.0f, 8.0f);
+  std::vector<float> matrix(static_cast<size_t>(rows) * columns);
+  for (auto& value : matrix) {
+    uint32_t bits;
+    float raw = dist(gen);
+    std::memcpy(&bits, &raw, sizeof(bits));
+    bits = (static_cast<uint32_t>(bf16_round(raw)) << 16);
+    std::memcpy(&value, &bits, sizeof(value));
+  }
+  // Force the interesting group shapes: min-dominant, all-equal, and
+  // a group whose range is small enough to exercise the 1e-7 floor.
+  for (int i = 0; i < 32; ++i) {
+    matrix[i] = -static_cast<float>(i) * 0.25f;
+    matrix[columns + i] = 1.0f;
+  }
+
+  for (auto [bits_int, group_size] : {std::pair<int, int>{4, 32}, {8, 64}}) {
+    CAPTURE(bits_int);
+    CAPTURE(group_size);
+    // The device chain: bf16 quantize -> bf16 dequantize -> bf16 qmm.
+    array input(matrix.begin(), Shape{rows, columns}, bfloat16);
+    auto outputs = quantize(
+        input, group_size, bits_int, "affine", std::nullopt, stream);
+    REQUIRE_EQ(outputs.size(), 3);
+    REQUIRE_EQ(outputs[0].dtype(), uint32);
+    REQUIRE_EQ(outputs[1].dtype(), bfloat16);
+    REQUIRE_EQ(outputs[2].dtype(), bfloat16);
+
+    // Words pack from the unrounded f32 parameters, so the words must
+    // equal the f32 oracle bit for bit.
+    HostQuantizedWeights oracle = host_affine_quantize(
+        matrix, rows, columns, group_size, bits_int);
+    outputs[0].eval();
+    omarchy::get_command_encoder(stream).synchronize();
+    const uint32_t* words = outputs[0].data<uint32_t>();
+    for (size_t index = 0; index < oracle.words.size(); ++index) {
+      CHECK_EQ(words[index], oracle.words[index]);
+    }
+    // Stored parameters are bf16 roundings of the f32 oracle values.
+    std::vector<float> device_scales = readback_f32(stream, outputs[1]);
+    std::vector<float> device_biases = readback_f32(stream, outputs[2]);
+    REQUIRE_EQ(device_scales.size(), oracle.scales.size());
+    for (size_t index = 0; index < oracle.scales.size(); ++index) {
+      uint32_t scale_bits = static_cast<uint32_t>(
+          bf16_round(oracle.scales[index])) << 16;
+      uint32_t bias_bits =
+          static_cast<uint32_t>(bf16_round(oracle.biases[index])) << 16;
+      float oracle_scale;
+      float oracle_bias;
+      std::memcpy(&oracle_scale, &scale_bits, sizeof(oracle_scale));
+      std::memcpy(&oracle_bias, &bias_bits, sizeof(oracle_bias));
+      CHECK_EQ(device_scales[index], oracle_scale);
+      CHECK_EQ(device_biases[index], oracle_bias);
+    }
+
+    // Dequantize inverts through the stored bf16 parameters.
+    array reconstructed = dequantize(
+        outputs[0],
+        outputs[1],
+        outputs[2],
+        group_size,
+        bits_int,
+        "affine",
+        std::nullopt,
+        std::nullopt,
+        stream);
+    std::vector<float> dequantized = readback_f32(stream, reconstructed);
+    REQUIRE_EQ(dequantized.size(), matrix.size());
+    const int groups = columns / group_size;
+    for (size_t index = 0; index < dequantized.size(); ++index) {
+      size_t group =
+          (index / columns) * groups + (index % columns) / group_size;
+      // Codes are chosen against the unrounded f32 scale; dequantize
+      // reads the bf16 rounding, so the bound is half an f32 step plus
+      // the worst bf16 parameter drift over the full code range.
+      CHECK(std::abs(dequantized[index] - matrix[index]) <=
+            std::abs(oracle.scales[group]) * 1.6f + 1e-3);
+    }
+
+    // The bf16 quantized matmul consumes the bf16 parameters: the
+    // quantized rows are N (transpose=true), x is one constant row per
+    // weight row, and the reference sums the dequantized weights.
+    std::vector<float> x_values(static_cast<size_t>(rows) * columns, 0.25f);
+    array x(x_values.begin(), Shape{rows, columns}, bfloat16);
+    array y = quantized_matmul(
+        x,
+        outputs[0],
+        outputs[1],
+        outputs[2],
+        true,
+        group_size,
+        bits_int,
+        "affine",
+        stream);
+    REQUIRE_EQ(y.dtype(), bfloat16);
+    REQUIRE_EQ(y.shape(), Shape{rows, rows});
+    std::vector<float> y_values = readback_f32(stream, y);
+    for (int m = 0; m < rows; ++m) {
+      for (int n = 0; n < rows; ++n) {
+        float reference = 0.0f;
+        for (int kk = 0; kk < columns; ++kk) {
+          reference += 0.25f *
+              dequantized[static_cast<size_t>(n) * columns + kk];
+        }
+        CHECK(std::abs(y_values[static_cast<size_t>(m) * rows + n] -
+                       reference) <=
+              4e-2 * std::abs(reference) + 1e-2);
+      }
+    }
+  }
+}
+
+TEST_CASE("rank-1 quantized mat-vec matches the rank-2 oracle") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  // Same hand-packed construction as the rank-2 non-transposed oracle:
+  // word 0x33221100 holds LSB-first codes {0,0,1,1,2,2,3,3} per group
+  // of eight elements, scale and bias 0.03125, x = 0.5 over K = 128,
+  // so output column n is 0.5 * 128 * 0.03125 * (code + 1) =
+  // 2 * (code + 1) with the byte code pattern {0,0,1,1,2,2,3,3}.
+  std::vector<uint32_t> words(128 * 16, 0x33221100u);
+  std::vector<float> params(128, 0.03125f);
+  array w(words.begin(), Shape{128, 16}, uint32);
+  array sb(params.begin(), Shape{128, 1}, float32);
+  std::vector<float> x_values(128, 0.5f);
+  array x(x_values.begin(), Shape{128}, float32);
+  array y = quantized_matmul(x, w, sb, sb, false, 128, 4, "affine", stream);
+  CHECK_EQ(y.shape(), Shape{128});
+  constexpr int codes[8] = {0, 0, 1, 1, 2, 2, 3, 3};
+  std::vector<float> expected;
+  for (int c = 0; c < 128; ++c) {
+    expected.push_back(2.0f * (codes[c % 8] + 1));
+  }
+  check_values(std::move(y), expected, stream, 1e-6);
+}
 // Non-affine quantization-mode conversions, pinned to the Metal
 // fp4.h / fp8.h helpers bit for bit: the PyTorch round-to-nearest-even
 // e4m3 encode with saturation to 448, the round-up e8m0 scale encode,
