@@ -5,12 +5,23 @@
 #extension GL_EXT_shader_16bit_storage : require
 #extension GL_EXT_shader_explicit_arithmetic_types_float16 : require
 
-// Prefill Q4/group-64 f16 matmul on the G13 8x8x8 fp32 subgroup
-// cooperative matrix. A 64-lane workgroup owns a 32x32 output tile;
-// each subgroup owns a 16x32 half. It stages 16 k values at a time,
-// dequantizes each 16x32 weight tile once into shared f32, and reuses it
-// across all 32 rows. The two ascending 8-wide coopmat updates preserve
-// the previous kernel's per-output accumulation order and output ids.
+// Prefill Q4/group-64 f16 matmul on the G13 8x8x8 subgroup cooperative
+// matrix, staged the way upstream Metal stages it (mlx/backend/metal/
+// kernels/quantized.h qmm_t_impl): both operands live in threadgroup
+// memory as f16 with the leading dimension padded by 8 f16 elements
+// against bank aliasing (the weight tile keeps upstream's 32 -> 40
+// pad), and the packed weight words are dequantized straight into the
+// f16 tile with upstream's f32 scale*q+bias arithmetic and a single f16
+// rounding at the tile store - no f32 staging round trip. x never
+// rounds: the f16 input halves are stored bit-exact. The cooperative
+// multiply takes f16 A/B with an f32 accumulator, so the per-output
+// ascending-k accumulation order is unchanged and the only arithmetic
+// difference to the previous f32-staged kernel is that one f16 weight
+// rounding, which is also what the native Metal kernel applies
+// (generated ids may move; the 2026-09-11-qmm-f16-operand receipt
+// measures where). 2.75 KiB shared staging plus a 1 KiB f32 drain
+// scratch stays under the shipped 4 KiB cadence and far below the >=8
+// KiB occupancy cliff measured on the double-buffer and chunk arms.
 // dispatch gate requires cooperative_matrix_f32_8, subgroup size 32,
 // f16 output, transposed affine 4-bit/group-64, even x/output offsets
 // (the host stages an odd-offset x view into an aligned buffer instead
@@ -22,6 +33,8 @@ const uint TILE_N = 32u;
 const uint CHUNK_K = 64u;
 const uint STEP_K = 16u;
 const uint MAT = 8u;
+const uint X_PITCH = STEP_K + 8u;  // 24 f16 = 48 B row pitch
+const uint W_PITCH = TILE_N + 8u;  // 40 f16 = upstream 32 -> 40 pad
 
 layout(local_size_x = 64) in;
 
@@ -65,9 +78,12 @@ layout(push_constant) uniform Params {
   uint out_strides[4];
 } params;
 
-// 4 KiB shared: one 32x16 x tile and one 16x32 f32 weight tile.
-shared float x_s[TILE_M * STEP_K];
-shared float w_s[STEP_K * TILE_N];
+// 2.75 KiB f16 operand staging plus a 1 KiB f32 accumulator drain
+// scratch (the old x tile no longer doubles as the drain buffer: f16
+// fragments need an f32 landing pad).
+shared float16_t x_s[TILE_M * X_PITCH];
+shared float16_t w_s[STEP_K * W_PITCH];
+shared float acc_s[4u * MAT * MAT];
 
 void main() {
   uint lid = gl_LocalInvocationID.x;
@@ -122,7 +138,9 @@ void main() {
         }
         for (uint step = 0u; step < CHUNK_K / STEP_K; ++step) {
           uint k_base = chunk * CHUNK_K + step * STEP_K;
-          // Four half2 loads per lane cover the 32x16 x tile.
+          // Four half2 loads per lane cover the 32x16 x tile; the f16
+          // halves are stored bit-exact (unpack + cast never rounds an
+          // exactly representable f16 value).
           uint x_words[4];
           for (uint j = 0u; j < 4u; ++j) {
             uint i = lid + 64u * j;
@@ -138,41 +156,46 @@ void main() {
             uint i = lid + 64u * j;
             uint local_row = i / 8u;
             vec2 pair = unpackHalf2x16(x_words[j]);
-            x_s[local_row * STEP_K + 2u * (i % 8u)] = pair.x;
-            x_s[local_row * STEP_K + 2u * (i % 8u) + 1u] = pair.y;
+            uint col = 2u * (i % 8u);
+            x_s[local_row * X_PITCH + col] = float16_t(pair.x);
+            x_s[local_row * X_PITCH + col + 1u] = float16_t(pair.y);
           }
-          // One packed word per lane covers the 16x32 weight tile.
+          // One packed word per lane covers the 16x32 weight tile;
+          // dequantize straight into the f16 staging tile the way
+          // upstream Metal's QuantizedBlockLoader does (f32 s*q+bias,
+          // one f16 rounding at the store).
           uint packed = column_ok
               ? input_w.values[w_row + k_base / 8u + w_part] : 0u;
-          uint w_base = 8u * w_part * TILE_N + w_column_local;
-          w_s[w_base + 0u * TILE_N] = scale * float(packed & 0xFu) + bias;
-          w_s[w_base + 1u * TILE_N] =
-              scale * float((packed >> 4u) & 0xFu) + bias;
-          w_s[w_base + 2u * TILE_N] =
-              scale * float((packed >> 8u) & 0xFu) + bias;
-          w_s[w_base + 3u * TILE_N] =
-              scale * float((packed >> 12u) & 0xFu) + bias;
-          w_s[w_base + 4u * TILE_N] =
-              scale * float((packed >> 16u) & 0xFu) + bias;
-          w_s[w_base + 5u * TILE_N] =
-              scale * float((packed >> 20u) & 0xFu) + bias;
-          w_s[w_base + 6u * TILE_N] =
-              scale * float((packed >> 24u) & 0xFu) + bias;
-          w_s[w_base + 7u * TILE_N] = scale * float(packed >> 28u) + bias;
+          uint w_base = 8u * w_part * W_PITCH + w_column_local;
+          w_s[w_base + 0u * W_PITCH] = float16_t(scale * float(packed & 0xFu) + bias);
+          w_s[w_base + 1u * W_PITCH] =
+              float16_t(scale * float((packed >> 4u) & 0xFu) + bias);
+          w_s[w_base + 2u * W_PITCH] =
+              float16_t(scale * float((packed >> 8u) & 0xFu) + bias);
+          w_s[w_base + 3u * W_PITCH] =
+              float16_t(scale * float((packed >> 12u) & 0xFu) + bias);
+          w_s[w_base + 4u * W_PITCH] =
+              float16_t(scale * float((packed >> 16u) & 0xFu) + bias);
+          w_s[w_base + 5u * W_PITCH] =
+              float16_t(scale * float((packed >> 20u) & 0xFu) + bias);
+          w_s[w_base + 6u * W_PITCH] =
+              float16_t(scale * float((packed >> 24u) & 0xFu) + bias);
+          w_s[w_base + 7u * W_PITCH] =
+              float16_t(scale * float(packed >> 28u) + bias);
           barrier();
 
           for (uint ks = 0u; ks < STEP_K / MAT; ++ks) {
-            coopmat<float, gl_ScopeSubgroup, MAT, MAT, gl_MatrixUseA> mat_a[2];
-            coopmat<float, gl_ScopeSubgroup, MAT, MAT, gl_MatrixUseB> mat_b[4];
+            coopmat<float16_t, gl_ScopeSubgroup, MAT, MAT, gl_MatrixUseA> mat_a[2];
+            coopmat<float16_t, gl_ScopeSubgroup, MAT, MAT, gl_MatrixUseB> mat_b[4];
             for (uint rb = 0u; rb < 2u; ++rb) {
               coopMatLoad(
                   mat_a[rb], x_s,
-                  (sub_rb + rb) * MAT * STEP_K + ks * MAT, STEP_K,
+                  (sub_rb + rb) * MAT * X_PITCH + ks * MAT, X_PITCH,
                   gl_CooperativeMatrixLayoutRowMajor);
             }
             for (uint cb = 0u; cb < 4u; ++cb) {
               coopMatLoad(
-                  mat_b[cb], w_s, ks * MAT * TILE_N + cb * MAT, TILE_N,
+                  mat_b[cb], w_s, ks * MAT * W_PITCH + cb * MAT, W_PITCH,
                   gl_CooperativeMatrixLayoutRowMajor);
             }
             for (uint rb = 0u; rb < 2u; ++rb) {
@@ -192,7 +215,7 @@ void main() {
         if (sub_rb == (rb & ~1u)) {
           for (uint cb = 0u; cb < 4u; ++cb) {
             coopMatStore(
-                acc[rb & 1u][cb], x_s, cb * MAT * MAT, MAT,
+                acc[rb & 1u][cb], acc_s, cb * MAT * MAT, MAT,
                 gl_CooperativeMatrixLayoutRowMajor);
           }
         }
@@ -203,8 +226,8 @@ void main() {
             uint row = row_base + rb * MAT + r;
             if (row < params.matrix_m) {
               output_data.values[out_slice + row * params.matrix_n + column] =
-                  float16_t(x_s[(w_column_local / 8u) * MAT * MAT +
-                                r * MAT + (w_column_local % 8u)]);
+                  float16_t(acc_s[(w_column_local / 8u) * MAT * MAT +
+                                  r * MAT + (w_column_local % 8u)]);
             }
           }
         }
