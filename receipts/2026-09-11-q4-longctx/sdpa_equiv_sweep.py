@@ -31,6 +31,8 @@ def run_one(seed, k_len):
         (1, KVH, CAP, HD), key=mx.random.key(seed + 1)).astype(mx.float16)
     v_cache = mx.random.normal(
         (1, KVH, CAP, HD), key=mx.random.key(seed + 2)).astype(mx.float16)
+    k = k_cache[:, :, :k_len, :]
+    v = v_cache[:, :, :k_len, :]
     out = mx.fast.scaled_dot_product_attention(
         q, k, v, scale=1.0 / (HD ** 0.5))
     out.eval()
