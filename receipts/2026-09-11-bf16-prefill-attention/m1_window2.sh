@@ -72,7 +72,19 @@ echo "$(date -Is) lock acquired"
   done
   echo MATRIX-OK
 
-  echo "== phase D: cand attribution =="
+  echo "== phase D: rerun base attribution (probe fixed) =="
+  timeout 1500 $PYB "$R/attribution_components.py" --reps 9 \
+    --out "$R/m1-logs/attribution-base.ndjson" \
+    > "$R/m1-logs/attribution-base.log" 2>&1
+  echo "attribution_base rc=$?"
+
+  echo "== phase E: rerun oracle (seed arg fixed) =="
+  timeout 3600 $PYB "$R/oracle_f64.py" \
+    --out "$R/m1-logs/oracle.ndjson" \
+    > "$R/m1-logs/oracle.log" 2>&1
+  echo "oracle rc=$?"
+
+  echo "== phase F: cand attribution =="
   timeout 1500 $PYC "$R/attribution_components.py" --reps 9 \
     --out "$R/m1-logs/attribution-cand.ndjson" \
     > "$R/m1-logs/attribution-cand.log" 2>&1
