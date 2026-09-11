@@ -1,0 +1,123 @@
+lock held 07:15:23Z
+1277b3bddad99aaa2034d67ec8a900322eced0ce9bef74b3c9073fd680b272c6  dist/mlx_omarchy-0.32.2.dev202609110603+9a66501-cp314-cp314-linux_aarch64.whl
+quiet gate: [0.13, 0.12, 0.12]
+leg   1 qwen25-0.5b-4bit     short-decode-32          r1 decode=107.09 digest=7fd25a869ff21678 canon=True la=0.12 2.0s
+leg   2 qwen25-0.5b-4bit     short-decode-32          r2 decode=107.64 digest=7fd25a869ff21678 canon=True la=0.19 2.0s
+leg   3 qwen25-0.5b-4bit     short-decode-32          r3 decode=107.43 digest=7fd25a869ff21678 canon=True la=0.19 2.0s
+leg   4 qwen25-0.5b-4bit     long-decode-128          r1 decode=103.79 digest=4cc08910089477fd canon=True la=0.25 3.3s
+leg   5 qwen25-0.5b-4bit     long-decode-128          r2 decode=103.92 digest=4cc08910089477fd canon=True la=0.25 3.3s
+leg   6 qwen25-0.5b-4bit     long-decode-128          r3 decode=103.53 digest=4cc08910089477fd canon=True la=0.23 3.3s
+leg   7 qwen25-0.5b-4bit     longctx-1024-decode-32   r1 decode=93.93 digest=7da83f06ec9f001d canon=True la=0.23 3.8s
+leg   8 qwen25-0.5b-4bit     longctx-1024-decode-32   r2 decode=91.78 digest=7da83f06ec9f001d canon=True la=0.29 3.9s
+leg   9 qwen25-0.5b-4bit     longctx-1024-decode-32   r3 decode=93.14 digest=7da83f06ec9f001d canon=True la=0.35 3.8s
+leg  10 qwen25-0.5b-bf16     short-decode-32          r1 decode=31.92 digest=f26175202f3dabe9 canon=True la=0.32 3.2s
+leg  11 qwen25-0.5b-bf16     short-decode-32          r2 decode=31.9 digest=f26175202f3dabe9 canon=True la=0.32 3.2s
+leg  12 qwen25-0.5b-bf16     short-decode-32          r3 decode=31.9 digest=f26175202f3dabe9 canon=True la=0.38 3.3s
+leg  13 qwen25-0.5b-bf16     long-decode-128          r1 decode=28.82 digest=8690dc83246b39f8 canon=True la=0.43 7.6s
+leg  14 qwen25-0.5b-bf16     long-decode-128          r2 decode=28.69 digest=8690dc83246b39f8 canon=True la=0.47 7.6s
+leg  15 qwen25-0.5b-bf16     long-decode-128          r3 decode=28.85 digest=8690dc83246b39f8 canon=True la=0.56 7.6s
+leg  16 qwen25-0.5b-bf16     longctx-1024-decode-32   r1 decode=23.24 digest=ff502900d2a179a5 canon=True la=0.67 8.9s
+leg  17 qwen25-0.5b-bf16     longctx-1024-decode-32   r2 decode=23.17 digest=ff502900d2a179a5 canon=True la=0.64 8.8s
+leg  18 qwen25-0.5b-bf16     longctx-1024-decode-32   r3 decode=23.16 digest=ff502900d2a179a5 canon=True la=0.54 8.8s
+
+summary (medians)
+qwen25-0.5b-4bit     short-decode-32          n=3 decode=107.430 tok/s digest_canonical=3/3
+qwen25-0.5b-4bit     long-decode-128          n=3 decode=103.790 tok/s digest_canonical=3/3
+qwen25-0.5b-4bit     longctx-1024-decode-32   n=3 decode=93.140 tok/s digest_canonical=3/3
+qwen25-0.5b-bf16     short-decode-32          n=3 decode=31.900 tok/s digest_canonical=3/3
+qwen25-0.5b-bf16     long-decode-128          n=3 decode=28.820 tok/s digest_canonical=3/3
+qwen25-0.5b-bf16     longctx-1024-decode-32   n=3 decode=23.170 tok/s digest_canonical=3/3
+done: 18 legs
+== installing stock driver ==
+
+Packages (1) mesa-honeykrisp-omarchy-26.3.0.devel.hk6f6afc8-1
+
+Total Removed Size:  72.49 MiB
+
+:: Do you want to remove these packages? [Y/n] 
+:: Processing package changes...
+removing mesa-honeykrisp-omarchy...
+:: Running post-transaction hooks...
+(1/1) Arming ConditionNeedsUpdate...
+loading packages...
+resolving dependencies...
+looking for conflicting packages...
+
+Packages (1) mesa-26.1.7-1
+
+Total Installed Size:  68.27 MiB
+
+:: Proceed with installation? [Y/n] 
+checking keyring...
+checking package integrity...
+loading package files...
+checking for file conflicts...
+checking available disk space...
+:: Processing package changes...
+installing mesa...
+Optional dependencies for mesa
+    vulkan-mesa-layers: additional vulkan layers
+:: Running post-transaction hooks...
+(1/1) Arming ConditionNeedsUpdate...
+	driverInfo         = Mesa 26.1.7
+quiet gate: [0.46, 0.42, 0.42]
+leg   1 qwen25-0.5b-4bit     short-decode-32          r1 decode=96.07 digest=7fd25a869ff21678 canon=True la=0.42 2.2s
+leg   2 qwen25-0.5b-4bit     short-decode-32          r2 decode=98.34 digest=7fd25a869ff21678 canon=True la=0.47 2.2s
+leg   3 qwen25-0.5b-4bit     short-decode-32          r3 decode=98.21 digest=7fd25a869ff21678 canon=True la=0.47 2.1s
+leg   4 qwen25-0.5b-4bit     long-decode-128          r1 decode=79.02 digest=4cc08910089477fd canon=True la=0.51 4.8s
+leg   5 qwen25-0.5b-4bit     long-decode-128          r2 decode=78.97 digest=4cc08910089477fd canon=True la=0.55 4.8s
+leg   6 qwen25-0.5b-4bit     long-decode-128          r3 decode=78.79 digest=4cc08910089477fd canon=True la=0.51 4.8s
+leg   7 qwen25-0.5b-4bit     longctx-1024-decode-32   r1 decode=51.69 digest=7da83f06ec9f001d canon=True la=0.47 8.0s
+leg   8 qwen25-0.5b-4bit     longctx-1024-decode-32   r2 decode=49.68 digest=7da83f06ec9f001d canon=True la=0.51 8.1s
+leg   9 qwen25-0.5b-4bit     longctx-1024-decode-32   r3 decode=51.95 digest=7da83f06ec9f001d canon=True la=0.5 8.0s
+leg  10 qwen25-0.5b-bf16     short-decode-32          r1 decode=32.12 digest=7fc0f968789b1882 canon=True la=0.51 3.2s
+leg  11 qwen25-0.5b-bf16     short-decode-32          r2 decode=32.03 digest=7fc0f968789b1882 canon=True la=0.51 3.2s
+leg  12 qwen25-0.5b-bf16     short-decode-32          r3 decode=32.26 digest=7fc0f968789b1882 canon=True la=0.47 3.2s
+leg  13 qwen25-0.5b-bf16     long-decode-128          r1 decode=29.2 digest=46108ad71157cb4d canon=True la=0.47 8.4s
+leg  14 qwen25-0.5b-bf16     long-decode-128          r2 decode=29.2 digest=46108ad71157cb4d canon=True la=0.47 8.4s
+leg  15 qwen25-0.5b-bf16     long-decode-128          r3 decode=29.05 digest=46108ad71157cb4d canon=True la=0.48 8.4s
+leg  16 qwen25-0.5b-bf16     longctx-1024-decode-32   r1 decode=23.21 digest=ff502900d2a179a5 canon=True la=0.44 12.6s
+leg  17 qwen25-0.5b-bf16     longctx-1024-decode-32   r2 decode=23.04 digest=ff502900d2a179a5 canon=True la=0.41 12.6s
+leg  18 qwen25-0.5b-bf16     longctx-1024-decode-32   r3 decode=22.72 digest=ff502900d2a179a5 canon=True la=0.4 12.6s
+
+summary (medians)
+qwen25-0.5b-4bit     short-decode-32          n=3 decode=98.210 tok/s digest_canonical=3/3
+qwen25-0.5b-4bit     long-decode-128          n=3 decode=78.970 tok/s digest_canonical=3/3
+qwen25-0.5b-4bit     longctx-1024-decode-32   n=3 decode=51.690 tok/s digest_canonical=3/3
+qwen25-0.5b-bf16     short-decode-32          n=3 decode=32.120 tok/s digest_canonical=3/3
+qwen25-0.5b-bf16     long-decode-128          n=3 decode=29.200 tok/s digest_canonical=3/3
+qwen25-0.5b-bf16     longctx-1024-decode-32   n=3 decode=23.040 tok/s digest_canonical=3/3
+done: 18 legs
+== restoring fork driver ==
+
+Packages (1) mesa-26.1.7-1
+
+Total Removed Size:  68.27 MiB
+
+:: Do you want to remove these packages? [Y/n] 
+:: Processing package changes...
+removing mesa...
+:: Running post-transaction hooks...
+(1/1) Arming ConditionNeedsUpdate...
+loading packages...
+resolving dependencies...
+looking for conflicting packages...
+
+Packages (1) mesa-honeykrisp-omarchy-26.3.0.devel.hk6f6afc8-1
+
+Total Installed Size:  72.49 MiB
+
+:: Proceed with installation? [Y/n] 
+checking keyring...
+checking package integrity...
+loading package files...
+checking for file conflicts...
+checking available disk space...
+:: Processing package changes...
+installing mesa-honeykrisp-omarchy...
+Optional dependencies for mesa-honeykrisp-omarchy
+    vulkan-mesa-layers: additional vulkan layers
+:: Running post-transaction hooks...
+(1/1) Arming ConditionNeedsUpdate...
+	driverInfo         = Mesa 26.3.0-devel (git-6f6afc8968)
+CONTINUATION-DONE

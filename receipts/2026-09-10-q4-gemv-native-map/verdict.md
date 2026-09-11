@@ -1,6 +1,6 @@
 # Q4 decode GEMV native thread-mapping port — analysis and window plan
 
-- schema: mlx-omarchy/q4-gemv-native-map/1 (in progress; verdict follows the M1 window)
+- schema: mlx-omarchy/q4-gemv-native-map/1 (CLOSED 2026-09-11: receipt-only negative - see verdict.json)
 - branch: wave/Q4GemvNativeMapping (off origin/main ccc25c0f)
 - llvmpipe bit-identity: DONE (see below); M1 window: pending (window.sh)
 
@@ -76,7 +76,14 @@ N % 8 == 0), bits=4, group_size=64, T=half, U=float:
   per-node single-weight kernels, 3 dtypes x 6 shapes, Add epilogues,
   host f64-reference sanity under the documented bound family —
   **224/224 assertions pass**.
-- M1 window (window.sh): bench eq + isolated timing + occupancy sweep,
-  then six canonical digest legs x 3 reps on fork and stock drivers.
-  Fraction of the committed base-M1 native baseline (150.57 / 146.77 /
-  140.38 tok/s) reported in the verdict after the window.
+- M1 window RESULT (2026-09-11, verdict.json): bit-identity HOLDS - M1
+  bench eq 18/18 (0 mismatches), 36/36 canonical digest legs across fork
+  and stock under the corrected per-driver pins (commit 328218c; run1
+  gate failure was the stale pre-re-pin BF16 262/128 fork value in the
+  packaged driver, not the candidate). Speed does NOT improve: isolated
+  per-dispatch ratios 0.98-1.05x vs base on all four production shapes,
+  occupancy sweep flat x1->x16 at a ~30 us dispatch floor. Candidate
+  fork medians 107.43 / 103.79 / 93.14 tok/s = 0.713 / 0.707 / 0.663 of
+  the committed base baseline (shortfall is end-to-end environment, not
+  the mapping: clean and loaded runs agree within 1.5%). RECEIPT-ONLY
+  NEGATIVE: do not land; the kernel is latency-bound, not mapping-bound.
