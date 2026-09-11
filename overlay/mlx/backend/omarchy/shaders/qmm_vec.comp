@@ -325,6 +325,11 @@ uint q6_at(uint e, uint c0, uint c1, uint c2) {
 // instantiate the same chain per weight.
 #define Q4_BLOCK_FINISH(w, S, B) { \
   uint group = (w) / 8u; \
+  float scale = LOAD_VALUE(S.values[scale_base + group]); \
+  float bias = LOAD_VALUE(B.values[bias_base + group]); \
+  precise float bias_term = input_sum * bias; \
+  accumulator += fma(scale, dot, bias_term); \
+}
 #ifdef QMM_VEC_Q4_PAIR
 // Measurement-gated pair map (MLX_OMARCHY_QMM_VEC_Q4_PAIR=1): the qmv_fast
 // two-consecutive-words-per-lane map on every shape, not only
