@@ -282,6 +282,12 @@
 #include "qmm_coop_bench_chunk_pad_f16.h"
 #include "qmm_coop_bench_load_ceil_f16.h"
 #include "qmm_coop_bench_muladd_ceil_f16.h"
+#include "qmm_coop_bench_ilp1_f16.h"
+#include "qmm_coop_bench_ilp2_f16.h"
+#include "qmm_coop_bench_ilp4_f16.h"
+#include "qmm_coop_bench_double_buf_f16.h"
+#include "qmm_coop_bench_load_hoist_f16.h"
+#include "qmm_coop_bench_pair_order_f16.h"
 #include "binary_vec_f16.h"
 #include "binary_vec_bf16.h"
 #include "matmul_rb_f16.h"
@@ -1211,6 +1217,24 @@ ShaderBytes shader_bytes(ComputeKernel kernel) {
       return {
           qmm_coop_bench_muladd_ceil_f16,
           qmm_coop_bench_muladd_ceil_f16_size};
+    case ComputeKernel::QmmCoopBenchIlp1F16:
+      return {qmm_coop_bench_ilp1_f16, qmm_coop_bench_ilp1_f16_size};
+    case ComputeKernel::QmmCoopBenchIlp2F16:
+      return {qmm_coop_bench_ilp2_f16, qmm_coop_bench_ilp2_f16_size};
+    case ComputeKernel::QmmCoopBenchIlp4F16:
+      return {qmm_coop_bench_ilp4_f16, qmm_coop_bench_ilp4_f16_size};
+    case ComputeKernel::QmmCoopBenchDoubleBufF16:
+      return {
+          qmm_coop_bench_double_buf_f16,
+          qmm_coop_bench_double_buf_f16_size};
+    case ComputeKernel::QmmCoopBenchLoadHoistF16:
+      return {
+          qmm_coop_bench_load_hoist_f16,
+          qmm_coop_bench_load_hoist_f16_size};
+    case ComputeKernel::QmmCoopBenchPairOrderF16:
+      return {
+          qmm_coop_bench_pair_order_f16,
+          qmm_coop_bench_pair_order_f16_size};
     case ComputeKernel::QmmTileRbPreciseF16:
       return {qmm_tile_rb_precise_f16, qmm_tile_rb_precise_f16_size};
     case ComputeKernel::QmmPrefillCoopmatF16:

@@ -6570,17 +6570,18 @@ void QuantizedMatmul::eval_gpu(const std::vector<array>& inputs, array& out) {
   bool rb_enabled = rb_env == nullptr || std::strcmp(rb_env, "0") != 0;
   constexpr uint32_t kQmmCoopmatSharedBytes =
       (32u * 16u + 16u * 32u) * sizeof(float);
-  // Bench arms: MLX_OMARCHY_QMM_COOP_BENCH=1..4 reroutes the qmm
+  // Bench arms: MLX_OMARCHY_QMM_COOP_BENCH=1..10 reroutes the qmm
   // cooperative-matrix prefill to a shaders/qmm_coopmat_bench.comp
-  // arm for data-path measurement at the prefill shapes. 0/unset keeps
-  // the shipped kernel; nothing here changes any default dispatch.
+  // arm for data-path and chains-in-flight measurement at the prefill
+  // shapes. 0/unset keeps the shipped kernel; nothing here changes
+  // any default dispatch.
   // The variable is re-read per dispatch (bench-only cost) so tests
   // can flip arms inside one process.
   int qmm_coop_bench_arm = 0;
   {
     const char* arm = std::getenv("MLX_OMARCHY_QMM_COOP_BENCH");
     long value = arm == nullptr ? 0L : std::strtol(arm, nullptr, 10);
-    if (value >= 0 && value <= 4) {
+    if (value >= 0 && value <= 10) {
       qmm_coop_bench_arm = static_cast<int>(value);
     }
   }
@@ -6588,6 +6589,10 @@ void QuantizedMatmul::eval_gpu(const std::vector<array>& inputs, array& out) {
       ? kQmmCoopmatSharedBytes
       : qmm_coop_bench_arm == 2
       ? (32u * 66u + 64u * 34u) * sizeof(float)
+      : qmm_coop_bench_arm == 8
+      ? (2u * 32u * 16u + 2u * 16u * 32u) * sizeof(float)
+      : qmm_coop_bench_arm == 9 || qmm_coop_bench_arm == 10
+      ? kQmmCoopmatSharedBytes
       : (32u * 64u + 64u * 32u) * sizeof(float);
   const auto& coopmat_caps = encoder.device().capabilities();
   bool coopmat_reachable =
@@ -6764,6 +6769,18 @@ void QuantizedMatmul::eval_gpu(const std::vector<array>& inputs, array& out) {
           ? omarchy::ComputeKernel::QmmCoopBenchLoadCeilF16
           : qmm_coop_bench_arm == 4
           ? omarchy::ComputeKernel::QmmCoopBenchMuladdCeilF16
+          : qmm_coop_bench_arm == 5
+          ? omarchy::ComputeKernel::QmmCoopBenchIlp1F16
+          : qmm_coop_bench_arm == 6
+          ? omarchy::ComputeKernel::QmmCoopBenchIlp2F16
+          : qmm_coop_bench_arm == 7
+          ? omarchy::ComputeKernel::QmmCoopBenchIlp4F16
+          : qmm_coop_bench_arm == 8
+          ? omarchy::ComputeKernel::QmmCoopBenchDoubleBufF16
+          : qmm_coop_bench_arm == 9
+          ? omarchy::ComputeKernel::QmmCoopBenchLoadHoistF16
+          : qmm_coop_bench_arm == 10
+          ? omarchy::ComputeKernel::QmmCoopBenchPairOrderF16
           : omarchy::ComputeKernel::QmmPrefillCoopmatF16;
       encoder.dispatch_compute(
           qmm_kernel,
