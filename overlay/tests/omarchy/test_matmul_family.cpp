@@ -4008,3 +4008,262 @@ TEST_CASE("qmm coopmat output is bit-identical across x offset alignment") {
             << " aligned_diff=" << aligned_diff
             << " odd_diff=" << odd_diff << " bound=" << bound << "\n";
 }
+
+namespace {
+
+// Local mirror of the per-file helper the other omarchy suites define.
+void sync_stream(const Stream& stream) {
+  omarchy::get_command_encoder(stream).synchronize();
+}
+
+// RAII for the decode GEMV group-fusion switch. Fused off, every member
+// dispatches the single-weight QmmVecQ4Word kernel (256 threads, one
+// column per 32-lane slot); fused on, the members share one
+// QmmVecQ4Multi dispatch (the native qmv mapping). Same per-column
+// arithmetic, different thread mapping.
+struct FusedGemvGate {
+  explicit FusedGemvGate(bool on) {
+    set(on);
+  }
+  ~FusedGemvGate() {
+    unsetenv("MLX_OMARCHY_FUSED_GEMV");
+  }
+  void set(bool on) {
+    setenv("MLX_OMARCHY_FUSED_GEMV", on ? "1" : "0", 1);
+  }
+};
+
+// Raw storage bits of an evaluated 16-bit array: the decode digest
+// contract is bit equality, not tolerance.
+std::vector<uint16_t> readback_bits16(const Stream& stream, array value) {
+  value.eval();
+  omarchy::get_command_encoder(stream).synchronize();
+  REQUIRE_EQ(value.itemsize(), 2);
+  const uint16_t* data = value.data<uint16_t>();
+  return std::vector<uint16_t>(data, data + value.size());
+}
+
+struct FusedGemvLeg {
+  uint64_t dispatches = 0;
+  std::vector<std::vector<uint16_t>> bits;
+  std::vector<std::vector<float>> values;
+};
+
+} // namespace
+
+TEST_CASE("q4 decode gemv fused multi dispatch matches per-node bits") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  std::vector<Dtype> dtypes{float32};
+  if (float16_available()) {
+    dtypes.push_back(float16);
+  }
+  dtypes.push_back(bfloat16);
+
+  struct GemvShape {
+    const char* name;
+    int k;
+    std::vector<int> ns;
+  };
+  // The four Qwen2.5-0.5B decode dispatches plus tile coverage: k % 512
+  // == 0 exercises the qmv_fast two-word tile, n % 8 != 0 the ragged
+  // column guards. Even members carry an Add epilogue (residual/bias
+  // shape), odd ones none.
+  const std::vector<GemvShape> shapes{
+      {"qkv", 896, {896, 128, 128}},
+      {"o", 896, {896}},
+      {"gate_up", 896, {4864, 4864}},
+      {"down", 4864, {896}},
+      {"fasttile", 1024, {512, 384}},
+      {"oddn", 896, {12, 7}},
+  };
+  for (auto dtype : dtypes) {
+    for (const auto& sh : shapes) {
+      INFO("dtype=" << dtype << " shape=" << sh.name);
+      std::mt19937 gen(static_cast<unsigned>(0x0404u +
+          sh.k + sh.ns.size() * 1013u));
+      std::uniform_real_distribution<float> dist(-2.0f, 2.0f);
+
+      std::vector<float> x_host(static_cast<size_t>(sh.k));
+      for (auto& v : x_host) {
+        v = dist(gen);
+      }
+      std::vector<float> x_rt = round_trip(stream, x_host, dtype);
+      array x(x_rt.begin(), Shape{1, sh.k}, dtype);
+
+      const size_t members = sh.ns.size();
+      std::vector<HostQuantizedWeights> rounded;
+      rounded.reserve(members);
+      std::vector<array> w_arr, s_arr, b_arr, add_arr;
+      w_arr.reserve(members);
+      s_arr.reserve(members);
+      b_arr.reserve(members);
+      add_arr.reserve(members);
+      std::vector<bool> has_add(members);
+      std::vector<std::vector<float>> add_rt;
+      add_rt.reserve(members);
+      std::vector<std::vector<float>> expected(members);
+      for (size_t m = 0; m < members; ++m) {
+        const int n = sh.ns[m];
+        std::vector<float> matrix(static_cast<size_t>(n) * sh.k);
+        for (auto& v : matrix) {
+          v = dist(gen);
+        }
+        HostQuantizedWeights host =
+            host_affine_quantize(matrix, n, sh.k, 64, 4);
+        host.scales = round_trip(stream, host.scales, dtype);
+        host.biases = round_trip(stream, host.biases, dtype);
+        expected[m] =
+            host_quantized_matmul(host, x_rt, 1, n, sh.k, 64, 4);
+        if (m % 2u == 0u) {
+          // Even members carry the Add epilogue; fold the same addend
+          // into the host expectation.
+          std::vector<float> add_host(static_cast<size_t>(n));
+          for (auto& v : add_host) {
+            v = dist(gen);
+          }
+          add_host = round_trip(stream, add_host, dtype);
+          add_rt.push_back(add_host);
+          for (size_t i = 0; i < expected[m].size(); ++i) {
+            expected[m][i] += add_host[i];
+          }
+        } else {
+          add_rt.emplace_back();
+        }
+        w_arr.push_back(
+            array(host.words.begin(), Shape{n, sh.k / 8}, uint32));
+        s_arr.push_back(
+            array(host.scales.begin(), Shape{n, sh.k / 64}, dtype));
+        b_arr.push_back(
+            array(host.biases.begin(), Shape{n, sh.k / 64}, dtype));
+        has_add[m] = m % 2u == 0u;
+        if (has_add[m]) {
+          add_arr.push_back(
+              array(add_rt.back().begin(), Shape{n}, dtype));
+        }
+
+        rounded.push_back(std::move(host));
+      }
+      std::vector<array> inputs;
+      inputs.push_back(x);
+      size_t added = 0;
+      for (size_t m = 0; m < members; ++m) {
+        inputs.push_back(w_arr[m]);
+        inputs.push_back(s_arr[m]);
+        inputs.push_back(b_arr[m]);
+        if (has_add[m]) {
+          inputs.push_back(add_arr[added++]);
+        }
+      }
+      x.eval();
+      sync_stream(stream);
+      size_t ai = 0;
+      for (size_t m = 0; m < members; ++m) {
+        w_arr[m].eval();
+        s_arr[m].eval();
+        b_arr[m].eval();
+        if (has_add[m]) {
+          add_arr[ai++].eval();
+        }
+        sync_stream(stream);
+      }
+
+      auto run_leg = [&](bool fused) {
+        FusedGemvGate gate(fused);
+        uint64_t before =
+            mlx::core::omarchy::trace::counters()
+                .vk_compute_dispatches.load();
+        std::vector<array> outs;
+        size_t ai = 0;
+        for (size_t m = 0; m < members; ++m) {
+          array node = quantized_matmul(
+              x, w_arr[m], s_arr[m], b_arr[m], true, 64, 4, "affine",
+              stream);
+          outs.push_back(
+              has_add[m] ? node + add_arr[ai++] : node);
+        }
+        eval(outs);
+        sync_stream(stream);
+        FusedGemvLeg leg;
+        leg.dispatches =
+            mlx::core::omarchy::trace::counters()
+                    .vk_compute_dispatches.load() -
+            before;
+        for (auto& out : outs) {
+          leg.values.push_back(readback_f32(stream, out));
+          if (dtype == float32) {
+            // f32 words fold into 16-bit lanes without loss.
+            const uint32_t* words = out.data<uint32_t>();
+            std::vector<uint16_t> bits;
+            bits.reserve(out.size() * 2);
+            for (int i = 0; i < out.size(); ++i) {
+              bits.push_back(static_cast<uint16_t>(words[i] & 0xffffu));
+              bits.push_back(static_cast<uint16_t>(words[i] >> 16u));
+            }
+            leg.bits.push_back(std::move(bits));
+          } else {
+            leg.bits.push_back(readback_bits16(stream, out));
+          }
+        }
+        return leg;
+      };
+
+      FusedGemvLeg fused = run_leg(true);
+      FusedGemvLeg per_node = run_leg(false);
+      REQUIRE_EQ(fused.bits.size(), members);
+      REQUIRE_EQ(per_node.bits.size(), members);
+      // The group fusion may decline a single-member group; the multi
+      // kernel is proven by the members >= 2 shapes, where fusing must
+      // strictly reduce the dispatch count.
+      if (members >= 2u) {
+        CHECK(fused.dispatches < per_node.dispatches);
+      }
+      for (size_t m = 0; m < members; ++m) {
+        REQUIRE_EQ(fused.bits[m].size(), per_node.bits[m].size());
+        REQUIRE_EQ(fused.bits[m].size(), expected[m].size() *
+                (dtype == float32 ? 2u : 1u));
+        size_t mismatches = 0;
+        for (size_t i = 0; i < fused.bits[m].size(); ++i) {
+          if (fused.bits[m][i] != per_node.bits[m][i]) {
+            ++mismatches;
+          }
+        }
+        INFO("member " << m << " n=" << sh.ns[m]
+                       << " bit_mismatches=" << mismatches
+                       << " fused_dispatches=" << fused.dispatches
+                       << " per_node_dispatches=" << per_node.dispatches);
+        CHECK_EQ(mismatches, 0u);
+        // (the same bound family as the packed-word case): both legs
+        // must still be computing the right dot products, not the same
+        // wrong one.
+        const int n = sh.ns[m];
+        float magnitude = 1.0f;
+        for (float v : expected[m]) {
+          magnitude = std::max(magnitude, std::fabs(v));
+        }
+        double bound =
+            (3.0 * sh.k / 32.0 + 32.0) * magnitude * std::ldexp(1.0, -23) +
+            magnitude * std::ldexp(1.0, -11);
+        if (dtype == bfloat16) {
+          bound += magnitude * std::ldexp(1.0, -8);
+        } else if (dtype == float16) {
+          bound += magnitude * std::ldexp(1.0, -11);
+        }
+        // The fused/epilogue store rounds once more after the add, so
+        // the addend path contributes one extra storage rounding.
+        int storage_mantissa = dtype == float32 ? 23
+            : (dtype == float16 ? 10 : 7);
+        bound += magnitude * std::ldexp(1.0, -(storage_mantissa + 1));
+        double fused_diff = 0.0;
+        for (size_t i = 0; i < expected[m].size(); ++i) {
+          fused_diff = std::max(fused_diff, std::fabs(
+              static_cast<double>(fused.values[m][i]) - expected[m][i]));
+        }
+        INFO("fused_host_diff=" << fused_diff << " bound=" << bound);
+        CHECK(fused_diff <= bound);
+      }
+    }
+  }
+}
