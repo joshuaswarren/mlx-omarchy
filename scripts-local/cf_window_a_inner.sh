@@ -44,11 +44,10 @@ AGX_SIMDMAT=1 timeout 900 .work/build-cf/tests/omarchy/omarchy_matmul_family_tes
 grep -hE "test cases:|Status:" "$OUT"/m1-qmm-coopmat*-test.log "$OUT/m1-qmm-offset-parity.log" || true
 echo "[cfA] functional gates done; building wheel"
 
+rm -f "$OUT"/mlx_omarchy-*.whl
 sh scripts/build-wheel.sh > "$OUT/wheel-build.log" 2>&1
 grep -E "receipt" "$OUT/wheel-build.log" | tail -3
 cp dist/mlx_omarchy-*.whl "$OUT/"
-
-VENV=$HOME/venv-qmmcoop
 rm -rf "$VENV"
 python3 -m venv "$VENV"
 "$VENV/bin/pip" install -q --no-cache-dir numpy
