@@ -25,14 +25,12 @@ CAP = 4096
 
 def run_one(seed, k_len):
     """Return output uint16 words for the CURRENT process env."""
-    rs = mx.random.state(seed)
-    q = mx.random.normal((1, HEADS, 1, HD), key=rs).astype(mx.float16)
-    rs = mx.random.state(seed + 1)
-    k_cache = mx.random.normal((1, KVH, CAP, HD), key=rs).astype(mx.float16)
-    rs = mx.random.state(seed + 2)
-    v_cache = mx.random.normal((1, KVH, CAP, HD), key=rs).astype(mx.float16)
-    k = k_cache[:, :, :k_len, :]
-    v = v_cache[:, :, :k_len, :]
+    rs = mx.random.key(seed)
+    q = mx.random.normal((1, HEADS, 1, 64), key=rs).astype(mx.float16)
+    k_cache = mx.random.normal(
+        (1, KVH, CAP, HD), key=mx.random.key(seed + 1)).astype(mx.float16)
+    v_cache = mx.random.normal(
+        (1, KVH, CAP, HD), key=mx.random.key(seed + 2)).astype(mx.float16)
     out = mx.fast.scaled_dot_product_attention(
         q, k, v, scale=1.0 / (HD ** 0.5))
     out.eval()
