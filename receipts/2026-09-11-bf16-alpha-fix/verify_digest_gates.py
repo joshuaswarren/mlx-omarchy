@@ -36,6 +36,13 @@ def main(d):
         run = json.loads(mj.read_text())
         cell = {}
         for leg in run["legs"]:
+            if leg["status"] == "skipped":
+                # Models outside this matrix's scope (7b/14b): skipped
+                # in the reference matrices too, not part of the
+                # canonical gate. A canonical leg that fails to be
+                # measured still fails the coverage check below.
+                cell[leg["leg_id"]] = {"status": leg["status"]}
+                continue
             if leg["status"] != "measured":
                 cell[leg["leg_id"]] = {"status": leg["status"]}
                 report["all_held"] = False
@@ -49,6 +56,10 @@ def main(d):
                 "digest": got, "expected": want, "held": held}
             report["all_held"] &= held
         report["cells"][label] = cell
+        missing = [leg for leg in CANONICAL if leg not in cell]
+        if missing:
+            report["all_held"] = False
+            cell["_missing_canonical_legs"] = missing
     out = d / "digest-gates.json"
     out.write_text(json.dumps(report, indent=1))
     print(json.dumps({"all_held": report["all_held"],

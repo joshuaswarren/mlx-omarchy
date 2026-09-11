@@ -1,9 +1,17 @@
 # BF16 coopmat alpha fix — strand 1 of the bf16-prefill-attention split (2026-09-11)
 
-Agent: `Bf16AlphaFixAndVerdict`. Branch: `bf16-alpha-fix`
-(EE8D26FB = origin/main at split time + one fix commit, no performance
-flip). Carrier commit: `c6c44674`. The performance-flip strand and its
-verdict live in `receipts/2026-09-11-bf16-prefill-attention` on branch
+Agent: `Bf16AlphaFixAndVerdict`, qualified by `Bf16AlphaQualify`. Branch:
+`bf16-alpha-fix` (origin/main at split time + one fix commit, no
+performance flip). Carrier commit: `c6c44674` at split time; the branch
+was rebased onto origin/main `b4271903` before the M1 window - rebased
+carrier `08cdfc49`, receipt `d0507d56`, probe fix `3da2b3ee`. The rebase
+delta touches only `receipts/2026-09-11-bf16-prefill-attention` files,
+so the library source the llvmpipe proofs ran (at `c6c44674`) is
+byte-identical to the rebased tree. All M1 artifacts were rebuilt from
+the rebased tip `3da2b3ee` before the window (wheel
+`0.32.2.dev202609111816+3da2b3e`, sha256 `b5ed4a4f...` in
+`m1-logs/s1-build/`). The performance-flip strand and its verdict live
+in `receipts/2026-09-11-bf16-prefill-attention` on branch
 `bf16-prefill-attn`; the two strands share no commit.
 
 ## The defect
@@ -70,22 +78,62 @@ Two legs:
   six canonical Q4 digests and all BF16 pins must hold with the
   fix wheel. The projections, residual adds, and norms - every
   alpha==1 MatmulBF16Coopmat consumer in the model - ride those
-  digests. RESULTS: see `matrix/` + `digest-gates.json` (populated by
-  the S1 window; verifier: `verify_digest_gates.py`).
+  digests. RESULT (S1 window): HELD. 36/36 measured cells across
+  fork+stock x r1-r3 match the canonical pins - the three Q4 digests
+  `7fd25a869ff21678` / `4cc08910089477fd` / `7da83f06ec9f001d`
+  (driver-independent) and the BF16 pins (short fork `f26175202f3dabe9`
+  / stock `7fc0f968789b1882`, long fork `8690dc83246b39f8` / stock
+  `46108ad71157cb4d`, longctx `ff502900d2a179a5`). Verifier
+  `verify_digest_gates.py`: all_held=true, rc=0
+  (`digest-gates.json`; runs in `matrix/r{1,2,3}-{fork,stock}-alpha/`,
+  warmup run discarded). The verifier as staged counted the
+  out-of-scope skipped 7b/14b legs as violations; it was fixed to skip
+  them and to fail on any missing canonical leg instead.
+  Wall-anchored: matrix runs 19:05:28Z-19:08:14Z+run on 2026-09-11,
+  machine quiet behind the pinned lock, driver verified in-window.
 
 ## Proof 2: the scaled bf16 matmul computes correct values (f64 RNE)
 
 `matmul_alpha_f64_probe.cpp` (receipt tooling, not shipped): at a
 coopmat-gated sdpa shape (qL=64, k=D=8, scale=0.25), GPU output vs a
 float64 round-to-nearest attention truth computed from bf16-lifted
-inputs, per-route ULP statistics:
+inputs, per-route ULP statistics for the bf16 fast route (fixed coopmat
+kernel, drain scale) and the f32 composition route. Pre-registered
+bounds: fast mean_ulp <= 4.0 and fast max_ulp <= 32.
 
-- bf16 fast route (fixed coopmat kernel, drain scale)
-- f32 composition route
+RESULT (S1 window, valid rerun): **GATE FAILED AS PRE-REGISTERED**.
+`fast={"exact_frac":0.408203,"mean_ulp":2.6123,"max_ulp":242}`,
+`f32comp={"exact_frac":1.000000,"mean_ulp":0.0000,"max_ulp":0}`
+(`m1-logs/probe.log`, run 2026-09-11 ~14:14-05:00 under its own lock,
+driver verified). mean_ulp 2.6123 passes the <=4.0 bound;
+max_ulp 242 fails the <=32 bound, so the probe's CHECKs exit nonzero.
 
-Run: `m1-logs/probe.log` (populated by the S1 window). Pre-fix, the
-fast route would show every score displaced by the full alpha factor;
-post-fix both routes sit within a few bf16 ULP of truth.
+Attribution (recorded evidence, not a re-bound): the outliers are the
+fast route's documented bf16 storage of scores and probs
+("Scores store bf16 (2^-8 relative rounding per stored score)..." in
+the sdpa primitive) amplified by sharp softmax at kL=128 - not the
+alpha mechanism. A float64 simulation of the probe's exact seeded
+inputs with bf16-rounded scores and probs reproduces the measurement:
+sim mean 2.6953 / max 242 / exact_frac 0.358 vs measured 2.6123 / 242 /
+0.408 (f64-vs-f32 softmax arithmetic accounts for the residual). The
+storage cost exists identically with or without this fix; the fix's
+own contribution is clean (mean 2.6 ULP; the trap-shader control at
+the same shape measured mean 9668 - see the incident note).
+Re-bounding the probe and re-qualifying is an owner decision; per the
+standing instruction the failed gate stops the landing.
+
+Incident (recorded): the first S1 probe run used an INVALID binary -
+the rebuild script compiled the probe against `libmlx.a` while the
+trap build still had the PRE-FIX shader embedded (restore-without-
+rebuild ordering bug). It measured the trap at this shape
+(`mean_ulp 9668, max_ulp 34046`, `m1-logs/probe-invalid-trapshader.log`
+- which doubles as trap evidence at (m=128, n=128, k=8)) and was
+disclosed in the window report. The rebuild script was fixed to rebuild
+after the shader restore (`scripts-s1/m1_rebuild_rebased.sh`), libmlx.a
+was rebuilt with the fixed shader, and the probe was relinked as
+`/tmp/probe-alpha-fixed` (sha256 `30e2db7b...`, distinct from the
+invalid `64bf23af...`; both in `m1-logs/s1-build/`) before the valid
+rerun above.
 
 ## Proof 3: the regression test fails pre-fix and passes post-fix
 
@@ -102,6 +150,12 @@ test guards exactly the shader change, not the gate or the test
 harness. (Without the gate relaxation the test passes trivially: the
 alpha!=1 scores never reach the coopmat kernel.)
 
+RESULT (S1 window): PASS. trap FAILED the case (rc=1, CHECK
+tolerance errors at test_fast_ops.cpp:77) and fast-alpha PASSED it
+(rc=0) on the M1 coopmat route - the trap failing also proves the
+case really routes through MatmulBF16Coopmat on the M1, so the pass
+is not a fallback artifact.
+
 ## Suites
 
 - llvmpipe (dev box, `VK_DRIVER_FILES=lvp_icd.x86_64.json`,
@@ -112,6 +166,13 @@ alpha!=1 scores never reach the coopmat kernel.)
     (log: `llvmpipe-fastops.log`; the alpha test exercises the
     non-coopmat route here - llvmpipe reports
     cooperative_matrix_f32_8=0)
+  RESULT (S1 window, rebased tree, rebuilt binaries):
+  - `omarchy_matmul_family_tests`: PASS 21/21 cases, 82,940,459
+    assertions (`m1-fork-family-alpha.log`)
+  - `omarchy_runtime_tests`: PASS 41/41 cases, 22,681 assertions
+    (`m1-fork-runtime-alpha.log`)
+  - `omarchy_fast_ops_tests`: PASS 34/34 cases, 1,104,353 assertions,
+    0 failed / 0 skipped (`m1-fork-fastops-alpha.log`)
 - M1 (fork driver, S1 window): same three suites from the alpha tree;
   logs `m1-fork-*.log`.
 
@@ -141,10 +202,63 @@ batteries ran fam + runtime only; llvmpipe passes 34/34). See
 `m1-fork-fastops-alpha.log` and the strand-2 receipt for the candidate
 tree's identical failure. Owner decision required; not fixed here.
 
+UPDATE (S1 window, 2026-09-11): the throws DID NOT REPRODUCE. The full
+`omarchy_fast_ops_tests` passed 34/34 with 0 failed / 0 skipped on the
+M1 with the rebased tree's rebuilt binaries, and the pre-rebuild
+binaries passed 34/34 as well when run the same evening. Whatever
+produced the 8 throws in the original staging run (stale build state
+or environment contamination - the prepare-mlx mtime lesson is a known
+stale-build mechanism), it is not present in a clean rebuild on the
+pinned driver. No owner decision is pending on a live defect; the
+observation stands as not-reproduced.
+
 ## Files
 
 - `matmul_alpha_f64_probe.cpp` - f64 RNE probe (standalone)
 - `verify_digest_gates.py` - post-hoc canonical digest gate
 - `m1_window_s1.sh` - the GPU window runner (copied to /tmp on jwm1)
-- `m1-logs/`, `matrix/` - S1 outputs
+- `m1-logs/`, `matrix/` - S1 outputs (`window_s1.log`,
+  `digest-gates.json`, suite/probe/fail-proof logs, per-run matrix.json
+  + logs; `m1-logs/s1-build/` - rebuilt-artifact receipts)
+- `scripts-s1/m1_rebuild_rebased.sh`, `scripts-s1/m1_window_s1.sh`,
+  `scripts-s1/m1_probe_rerun.sh` - the exact rebuild, window, and
+  probe-rerun procedures (the staged window runner and its corrected
+  rebuild script)
 - `llvmpipe-*.log` - dev-box suite logs
+
+## S1 window verdict (2026-09-11)
+
+Window: one flock acquisition on /tmp/m1-gpu.lock (13:59:25-05:00),
+driver `mesa-honeykrisp-omarchy 26.3.0.devel.hk6f6afc8-1` verified
+in-window; probe, fail-proof pair, three suites, then digest matrix
+with a discarded fork warmup and fork+stock x r1-r3 (matrix runs
+19:05:28Z-19:08:14Z, each 30-60 s, machine otherwise quiet). The probe
+rerun took a second short flock at 14:14:41-05:00.
+
+| Gate | Result |
+|---|---|
+| Fail-proof pair (trap fails, fixed passes) | PASS |
+| f64 RNE probe, fast mean <= 4.0 | PASS (2.6123) |
+| f64 RNE probe, fast max <= 32 | **FAIL (242)** |
+| matmul-family suite (M1) | PASS 21/21 |
+| fast-ops suite (M1) | PASS 34/34, 0 skipped |
+| runtime suite (M1) | PASS 41/41 |
+| Six canonical Q4 digests + BF16 pins, fork+stock x 3 reps | PASS 36/36, verifier rc=0 |
+
+**Verdict: not landable under the pre-registered gates as written** -
+the probe's fast max_ulp bound failed. The recorded attribution
+(Proof 2) shows the outliers come from the fast route's bf16
+score/prob storage rounding, not from the alpha mechanism; the fix
+itself measures mean 2.6 ULP against the trap's 9668. Re-bounding the
+probe (receipt tooling, not shipped code) and re-qualifying is an
+owner decision; nothing in the branch was changed to chase the gate.
+
+Incidents, disclosed (also messaged to the peers at the time): two
+full fast-ops suite runs (~45 s each) executed on the M1 GPU outside a
+window during the CPU rebuild - the rebuild script's
+`--list-test-matching` smoke check executes tests on this doctest
+build instead of listing them - once overlapping the peer's arms
+window (~13:45); digest arithmetic is deterministic so no gate was
+affected, but wall-clock arm metrics in those seconds may be
+perturbed. And the first probe run used the invalid trap-shader
+binary (Proof 2 incident note); the invalid log is preserved.

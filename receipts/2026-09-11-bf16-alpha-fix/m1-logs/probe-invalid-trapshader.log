@@ -1,0 +1,17 @@
+[doctest] doctest version is "2.4.12"
+[doctest] run with "--help" for options
+PROBE coopmat_device=1 fast={"n":1024,"exact_frac":0.000000,"mean_ulp":9668.6377,"max_ulp":34046} f32comp={"n":1024,"exact_frac":1.000000,"mean_ulp":0.0000,"max_ulp":0}
+===============================================================================
+/home/joshuawarren/src/mlx-omarchy-alpha-m1/receipts/2026-09-11-bf16-alpha-fix/matmul_alpha_f64_probe.cpp:139:
+TEST CASE:  scaled bf16 sdpa matches f64 RNE reference on both routes
+
+/home/joshuawarren/src/mlx-omarchy-alpha-m1/receipts/2026-09-11-bf16-alpha-fix/matmul_alpha_f64_probe.cpp:221: ERROR: CHECK_LE( fast_mean, 4.0 ) is NOT correct!
+  values: CHECK_LE( 9668.64, 4 )
+
+/home/joshuawarren/src/mlx-omarchy-alpha-m1/receipts/2026-09-11-bf16-alpha-fix/matmul_alpha_f64_probe.cpp:222: ERROR: CHECK_LE( fast_max, 32 ) is NOT correct!
+  values: CHECK_LE( 34046, 32 )
+
+===============================================================================
+[doctest] test cases: 1 | 0 passed | 1 failed | 0 skipped
+[doctest] assertions: 2 | 0 passed | 2 failed |
+[doctest] Status: FAILURE!

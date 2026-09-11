@@ -1,0 +1,36 @@
+In file included from /home/joshuawarren/src/mlx-omarchy-alpha-m1/.work/mlx/mlx/event.h:8,
+                 from /home/joshuawarren/src/mlx-omarchy-alpha-m1/.work/mlx/mlx/array.h:13,
+                 from /home/joshuawarren/src/mlx-omarchy-alpha-m1/.work/mlx/mlx/utils.h:13,
+                 from /home/joshuawarren/src/mlx-omarchy-alpha-m1/.work/mlx/mlx/fast.h:10,
+                 from /home/joshuawarren/src/mlx-omarchy-alpha-m1/receipts/2026-09-11-bf16-alpha-fix/matmul_alpha_f64_probe.cpp:27:
+/home/joshuawarren/src/mlx-omarchy-alpha-m1/.work/mlx/mlx/error.h: In member function 'void mlx::core::Error::set_message(Message)':
+/home/joshuawarren/src/mlx-omarchy-alpha-m1/.work/mlx/mlx/error.h:17:22: warning: 'void std::atomic_store(shared_ptr<_Tp>*, shared_ptr<_Tp>) [with _Tp = __cxx11::basic_string<char>]' is deprecated: use 'std::atomic<std::shared_ptr<T>>' instead [-Wdeprecated-declarations]
+   17 |     std::atomic_store(&message_, std::move(msg));
+      |     ~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~
+In file included from /usr/include/c++/16.1.1/memory:83,
+                 from /home/joshuawarren/src/mlx-omarchy-alpha-m1/.work/mlx/mlx/backend/omarchy/device.h:13,
+                 from /home/joshuawarren/src/mlx-omarchy-alpha-m1/receipts/2026-09-11-bf16-alpha-fix/matmul_alpha_f64_probe.cpp:26:
+/usr/include/c++/16.1.1/bits/shared_ptr_atomic.h:183:5: note: declared here
+  183 |     atomic_store(shared_ptr<_Tp>* __p, shared_ptr<_Tp> __r)
+      |     ^~~~~~~~~~~~
+/home/joshuawarren/src/mlx-omarchy-alpha-m1/.work/mlx/mlx/error.h: In member function 'bool mlx::core::Error::valid() const':
+/home/joshuawarren/src/mlx-omarchy-alpha-m1/.work/mlx/mlx/error.h:21:32: warning: 'std::shared_ptr<_Tp> std::atomic_load(const shared_ptr<_Tp>*) [with _Tp = __cxx11::basic_string<char>]' is deprecated: use 'std::atomic<std::shared_ptr<T>>' instead [-Wdeprecated-declarations]
+   21 |     auto msg = std::atomic_load(&message_);
+      |                ~~~~~~~~~~~~~~~~^~~~~~~~~~~
+/usr/include/c++/16.1.1/bits/shared_ptr_atomic.h:142:5: note: declared here
+  142 |     atomic_load(const shared_ptr<_Tp>* __p)
+      |     ^~~~~~~~~~~
+/home/joshuawarren/src/mlx-omarchy-alpha-m1/.work/mlx/mlx/error.h: In member function 'bool mlx::core::Error::store_if_valid(const mlx::core::Error*)':
+/home/joshuawarren/src/mlx-omarchy-alpha-m1/.work/mlx/mlx/error.h:28:37: warning: 'std::shared_ptr<_Tp> std::atomic_load(const shared_ptr<_Tp>*) [with _Tp = __cxx11::basic_string<char>]' is deprecated: use 'std::atomic<std::shared_ptr<T>>' instead [-Wdeprecated-declarations]
+   28 |       Message msg = std::atomic_load(&ptr->message_);
+      |                     ~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~
+/usr/include/c++/16.1.1/bits/shared_ptr_atomic.h:142:5: note: declared here
+  142 |     atomic_load(const shared_ptr<_Tp>* __p)
+      |     ^~~~~~~~~~~
+/home/joshuawarren/src/mlx-omarchy-alpha-m1/.work/mlx/mlx/error.h: In member function 'void mlx::core::Error::check()':
+/home/joshuawarren/src/mlx-omarchy-alpha-m1/.work/mlx/mlx/error.h:39:36: warning: 'std::shared_ptr<_Tp> std::atomic_exchange(shared_ptr<_Tp>*, shared_ptr<_Tp>) [with _Tp = __cxx11::basic_string<char>]' is deprecated: use 'std::atomic<std::shared_ptr<T>>' instead [-Wdeprecated-declarations]
+   39 |     auto msg = std::atomic_exchange(&message_, {});
+      |                ~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~
+/usr/include/c++/16.1.1/bits/shared_ptr_atomic.h:225:5: note: declared here
+  225 |     atomic_exchange(shared_ptr<_Tp>* __p, shared_ptr<_Tp> __r)
+      |     ^~~~~~~~~~~~~~~

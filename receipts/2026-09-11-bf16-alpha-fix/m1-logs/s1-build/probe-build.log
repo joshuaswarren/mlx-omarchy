@@ -1,0 +1,8 @@
+receipts/2026-09-11-bf16-alpha-fix/matmul_alpha_f64_probe.cpp:14:10: fatal error: doctest/doctest.h: No such file or directory
+   14 | #include "doctest/doctest.h"
+      |          ^~~~~~~~~~~~~~~~~~~
+compilation terminated.
+receipts/2026-09-11-bf16-alpha-fix/matmul_alpha_f64_probe.cpp:14:10: fatal error: doctest/doctest.h: No such file or directory
+   14 | #include "doctest/doctest.h"
+      |          ^~~~~~~~~~~~~~~~~~~
+compilation terminated.
