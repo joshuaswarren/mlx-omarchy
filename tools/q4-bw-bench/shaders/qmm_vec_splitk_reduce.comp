@@ -1,0 +1,110 @@
+#version 460
+// Split-K reduction pass for the Q4 decode GEMV (QMM_VEC_Q4_SPLITK build
+// only; see qmm_vec.comp). The split kernel wrote one raw f32 total per
+// (split, output column) into the partials buffer; this pass sums the
+// SPLIT segments per column in split order, applies the output rounding
+// once, and mirrors Q4_MULTI_STORE: output = STORE(rounded), and under
+// the fused Add epilogue (flags bit 8+i) sum = STORE(rounded +
+// addend). Direct-KV sum windows (flags bit 12+i) are refused by the
+// host for the gated path, so no window routing here. One invocation
+// per output column, 64 columns per workgroup. Never the default path:
+// the split changes the accumulation order by design.
+#extension GL_EXT_shader_16bit_storage : require
+#extension GL_EXT_shader_explicit_arithmetic_types_float16 : require
+#define STORAGE_TYPE float16_t
+#define LOAD_VALUE(x) float(x)
+#define STORE_VALUE(f) STORAGE_TYPE(f)
+#define ROUND_STORAGE(f) (unpackHalf2x16(packHalf2x16(vec2(f, 0.0))).x)
+#if QMM_VEC_Q4_SPLITK < 2
+#error "QMM_VEC_Q4_SPLITK must be 2 or more"
+#endif
+layout(local_size_x = 64) in;
+layout(push_constant) uniform Params {
+  uint count;
+  uint operation;
+  uint lhs_size;
+  uint rhs_size;
+  uint reduce_size;
+  uint output_size;
+  uint lhs_offset;
+  uint rhs_offset;
+  uint output_offset;
+  uint aux_size;
+  uint aux_offset;
+  uint matrix_m;
+  uint matrix_n;
+  uint matrix_k;
+  uint flags;
+  float alpha;
+  float beta;
+  uint dims;
+  uint shape[4];
+  uint in_strides[4];
+  uint out_strides[4];
+} params;
+layout(set = 0, binding = 0, std430) readonly buffer Partials {
+  float values[];
+} partials;
+layout(set = 0, binding = 1, std430) writeonly buffer Output0 {
+  STORAGE_TYPE values[];
+} output0;
+layout(set = 0, binding = 2, std430) writeonly buffer Output1 {
+  STORAGE_TYPE values[];
+} output1;
+layout(set = 0, binding = 3, std430) writeonly buffer Output2 {
+  STORAGE_TYPE values[];
+} output2;
+layout(set = 0, binding = 4, std430) writeonly buffer Sum0 {
+  STORAGE_TYPE values[];
+} sum0;
+layout(set = 0, binding = 5, std430) writeonly buffer Sum1 {
+  STORAGE_TYPE values[];
+} sum1;
+layout(set = 0, binding = 6, std430) writeonly buffer Sum2 {
+  STORAGE_TYPE values[];
+} sum2;
+layout(set = 0, binding = 7, std430) readonly buffer Addend0 {
+  STORAGE_TYPE values[];
+} addend0;
+layout(set = 0, binding = 8, std430) readonly buffer Addend1 {
+  STORAGE_TYPE values[];
+} addend1;
+layout(set = 0, binding = 9, std430) readonly buffer Addend2 {
+  STORAGE_TYPE values[];
+} addend2;
+void main() {
+  uint column = gl_WorkGroupID.x * 64u + gl_LocalInvocationID.x;
+  uint n0 = params.shape[0];
+  uint n1 = params.shape[1];
+  uint n2 = params.shape[2];
+  uint total = n0 + n1 + n2;
+  if (column >= total) {
+    return;
+  }
+  precise float total_sum = 0.0;
+  for (uint s = 0u; s < QMM_VEC_Q4_SPLITK; ++s) {
+    total_sum += partials.values[s * total + column];
+  }
+  float rounded = ROUND_STORAGE(total_sum);
+  if (column < n0) {
+    output0.values[column] = STORE_VALUE(rounded);
+    if ((params.flags & 256u) != 0u) {
+      sum0.values[column] =
+          STORE_VALUE(rounded + LOAD_VALUE(addend0.values[column]));
+    }
+  } else if (column < n0 + n1) {
+    uint c = column - n0;
+    output1.values[c] = STORE_VALUE(rounded);
+    if ((params.flags & 512u) != 0u) {
+      sum1.values[c] =
+          STORE_VALUE(rounded + LOAD_VALUE(addend1.values[c]));
+    }
+  } else {
+    uint c = column - n0 - n1;
+    output2.values[c] = STORE_VALUE(rounded);
+    if ((params.flags & 1024u) != 0u) {
+      sum2.values[c] =
+          STORE_VALUE(rounded + LOAD_VALUE(addend2.values[c]));
+    }
+  }
+}
