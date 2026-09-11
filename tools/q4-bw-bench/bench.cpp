@@ -91,7 +91,6 @@ struct VkTable {
   VK_FN(CreateDescriptorPool);
   VK_FN(AllocateDescriptorSets);
   VK_FN(UpdateDescriptorSets);
-  VK_FN(ResetDescriptorPool);
   VK_FN(CreateCommandPool);
   VK_FN(AllocateCommandBuffers);
   VK_FN(BeginCommandBuffer);
@@ -185,7 +184,7 @@ static void vk_load_device() {
   LOAD_DEV(CreateComputePipelines);
   LOAD_DEV(CreatePipelineLayout);
   LOAD_DEV(CreateDescriptorSetLayout);
-  LOAD_DEV(ResetDescriptorPool);
+  LOAD_DEV(CreateDescriptorPool);
   LOAD_DEV(AllocateDescriptorSets);
   LOAD_DEV(UpdateDescriptorSets);
   LOAD_DEV(CreateCommandPool);
