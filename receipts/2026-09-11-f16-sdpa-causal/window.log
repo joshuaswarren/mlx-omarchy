@@ -1,0 +1,38 @@
+driver: mesa-honeykrisp-omarchy 26.3.0.devel.hk6f6afc8-1
+2026-09-11T17:39:35-05:00 waiting for /tmp/m1-gpu.lock (cap 7200s)
+2026-09-11T17:39:35-05:00 lock acquired
+== phase 1: pre-fix repro (2a9add42 wheel) ==
+_ TestFastSDPA.test_sdpa (B=1, qsl=127, ksl=65, head_dim=64, n_q_heads=32, n_kv_heads=8, mask='causal', transpose=False, dtype=mlx.core.float16) _
+_ TestFastSDPA.test_sdpa (B=1, qsl=127, ksl=65, head_dim=128, n_q_heads=32, n_kv_heads=8, mask='causal', transpose=False, dtype=mlx.core.float16) _
+_ TestFastSDPA.test_sdpa (B=1, qsl=127, ksl=65, head_dim=64, n_q_heads=32, n_kv_heads=8, mask='causal', transpose=True, dtype=mlx.core.float16) _
+_ TestFastSDPA.test_sdpa (B=1, qsl=127, ksl=65, head_dim=128, n_q_heads=32, n_kv_heads=8, mask='causal', transpose=True, dtype=mlx.core.float16) _
+prefix assert failures: 8
+== phase 2: fixed-wheel venv ==
+provenance: 0.32.2.dev202609112233+a7a6d94f stamp: a7a6d94f
+== phase 3: upstream test_fast_sdpa with fixed wheel ==
+- generated xml file: ~/src/sdpa-causal-m1/receipts/2026-09-11-f16-sdpa-causal/sdpa-fixed.xml -
+============= 20 passed, 3 skipped, 466 subtests passed in 22.84s ==============
+fixed failures: 0
+== phase 4: C++ regression tests ==
+cpp ragged rc=0
+[doctest] assertions: 20 | 20 passed | 0 failed |
+[doctest] Status: SUCCESS!
+cpp sdpa-norm rc=0
+[doctest] assertions: 16 | 16 passed | 0 failed |
+[doctest] Status: SUCCESS!
+== phase 5: canonical digest gates (fork driver) ==
+warmup: measured=0
+0
+r1: measured=0
+0
+r2: measured=0
+0
+DIGESTS: VIOLATION
+2026-09-11T17:40:28-05:00 window complete (lock released)
+2026-09-11T17:43:43-05:00 waiting for /tmp/m1-gpu.lock (cap 7200s)
+2026-09-11T17:43:43-05:00 lock acquired
+warmup: measured=6
+r1: measured=6
+r2: measured=6
+DIGESTS: ALL-HELD
+2026-09-11T17:45:10-05:00 digest window complete (lock released)
