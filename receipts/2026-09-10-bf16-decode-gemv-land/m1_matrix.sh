@@ -7,7 +7,7 @@ R=receipts/2026-09-10-bf16-decode-gemv-land
 out="$R/matrix"
 mkdir -p "$out"
 base_wheel=$(ls "$R"/wheels/base/*.whl)
-
+cand_wheel=$(ls "$R"/wheels/candidate/*.whl)
 run_matrix() {  # driver cell wheel label
   local driver=$1 cell=$2 wheel=$3 label=$4
   local run="$out/$label"
