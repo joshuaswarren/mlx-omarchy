@@ -1,0 +1,22 @@
+{"k":"dev","name":"Apple M1 (G13G B1)","subgroupSize":32,"arith":true,"ts_period_ns":1.000}
+{"k":"mode","variant":"subgroup","reps":21}
+{"k":"peak","tag":"copy","bytes":536870912,"med_gpu_ns":51334,"min_gpu_ns":48542,"med_gb_s":10458.39,"min_gb_s":11059.93,"wall_med_ns":9204358,"wall_med_gb_s":58.33}
+{"k":"peak","tag":"read","bytes":268435456,"med_gpu_ns":48500,"min_gpu_ns":39458,"med_gb_s":5534.75,"min_gb_s":6803.07,"wall_med_ns":4490286,"wall_med_gb_s":59.78}
+{"k":"pat","arm":"pat_w1_r8","rows":524288,"pitch":112,"rows_per_wg":8,"bytes":266340096,"med_wall_ns":4506118,"med_gb_s":59.11,"min_gb_s":60.24}
+{"k":"pat","arm":"pat_w1_r8_l128","rows":524288,"pitch":128,"rows_per_wg":8,"bytes":266340096,"med_wall_ns":4440453,"med_gb_s":59.98,"min_gb_s":60.59}
+{"k":"pat","arm":"pat_w1_r8_p114","rows":524288,"pitch":114,"rows_per_wg":8,"bytes":266340096,"med_wall_ns":4548493,"med_gb_s":58.56,"min_gb_s":58.98}
+{"k":"pat","arm":"pat_w2_r8","rows":524288,"pitch":112,"rows_per_wg":8,"bytes":266340096,"med_wall_ns":4016420,"med_gb_s":66.31,"min_gb_s":66.82}
+{"k":"pat","arm":"pat_v2_r8","rows":524288,"pitch":112,"rows_per_wg":8,"bytes":266340096,"med_wall_ns":5056733,"med_gb_s":52.67,"min_gb_s":60.77}
+{"k":"pat","arm":"pat_v4_r8","rows":524288,"pitch":112,"rows_per_wg":8,"bytes":266340096,"med_wall_ns":4358413,"med_gb_s":61.11,"min_gb_s":61.84}
+{"k":"pat","arm":"pat_w1_r1","rows":524288,"pitch":112,"rows_per_wg":1,"bytes":266340096,"med_wall_ns":4501535,"med_gb_s":59.17,"min_gb_s":59.66}
+{"k":"pat","arm":"pat_w1_r2","rows":524288,"pitch":112,"rows_per_wg":2,"bytes":266340096,"med_wall_ns":4519827,"med_gb_s":58.93,"min_gb_s":59.44}
+{"k":"pat","arm":"pat_w1_r4","rows":524288,"pitch":112,"rows_per_wg":4,"bytes":266340096,"med_wall_ns":4513077,"med_gb_s":59.02,"min_gb_s":59.40}
+{"k":"pat","arm":"pat_w1_r16","rows":524288,"pitch":112,"rows_per_wg":16,"bytes":266340096,"med_wall_ns":4485744,"med_gb_s":59.37,"min_gb_s":59.61}
+{"k":"pat","arm":"pat_v4_r16","rows":524288,"pitch":112,"rows_per_wg":16,"bytes":266340096,"med_wall_ns":4367788,"med_gb_s":60.98,"min_gb_s":61.17}
+{"k":"pat","arm":"pat_v2_r16","rows":524288,"pitch":112,"rows_per_wg":16,"bytes":266340096,"med_wall_ns":4377871,"med_gb_s":60.84,"min_gb_s":61.31}
+{"k":"q4wall","shape":"qkv","grid":144,"k_repeat":8,"bytes":584704,"med_wall_ns":80586,"med_gb_s":7.26,"min_gb_s":7.35}
+{"k":"q4wall","shape":"o","grid":112,"k_repeat":8,"bytes":455168,"med_wall_ns":74108,"med_gb_s":6.14,"min_gb_s":6.29}
+{"k":"q4wall","shape":"gate_up","grid":1216,"k_repeat":8,"bytes":4924160,"med_wall_ns":289338,"med_gb_s":17.02,"min_gb_s":26.93}
+{"k":"q4wall","shape":"down","grid":112,"k_repeat":8,"bytes":2462976,"med_wall_ns":147403,"med_gb_s":16.71,"min_gb_s":16.86}
+{"k":"q4layer","bytes":8427008,"med_wall_ns":496865,"med_gb_s":16.96,"us_per_layer":496.9,"ms_per_token_24":11.92,"tok_s_q4only":83859.1}
+{"k":"done"}
