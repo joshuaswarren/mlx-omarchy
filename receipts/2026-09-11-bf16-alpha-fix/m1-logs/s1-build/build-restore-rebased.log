@@ -1,0 +1,5 @@
+[1/5] Generating shaders/matmul_f32_coopmat_bf16.spv
+[2/5] Generating shaders/matmul_f32_coopmat_bf16.h
+[3/5] Building CXX object CMakeFiles/mlx.dir/mlx/backend/omarchy/compute.cpp.o
+[4/5] Linking CXX static library libmlx.a
+[5/5] Linking CXX executable tests/omarchy/omarchy_fast_ops_tests
