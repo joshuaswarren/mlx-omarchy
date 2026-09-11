@@ -245,13 +245,17 @@ rerun took a second short flock at 14:14:41-05:00.
 | runtime suite (M1) | PASS 41/41 |
 | Six canonical Q4 digests + BF16 pins, fork+stock x 3 reps | PASS 36/36, verifier rc=0 |
 
-**Verdict: not landable under the pre-registered gates as written** -
-the probe's fast max_ulp bound failed. The recorded attribution
-(Proof 2) shows the outliers come from the fast route's bf16
-score/prob storage rounding, not from the alpha mechanism; the fix
-itself measures mean 2.6 ULP against the trap's 9668. Re-bounding the
-probe (receipt tooling, not shipped code) and re-qualifying is an
-owner decision; nothing in the branch was changed to chase the gate.
+**Verdict: the alpha fix is BLOCKED on an owner decision** - not
+landable under the pre-registered gates as written. The probe's fast
+max_ulp bound failed, and naming a pre-registered gate the fix did not
+clear is the deliverable; re-bounding it to pass is exactly what the
+standing rule forbids. The owner decision: whether the fast route's
+documented bf16 score/prob storage rounding is in scope for this
+probe's max bound. The recorded attribution (Proof 2) shows the
+outliers come from that storage rounding, not from the alpha
+mechanism; the fix itself measures mean 2.6 ULP against the trap's
+9668. Nothing in the branch was changed to chase the gate, and no
+further windows were taken.
 
 Incidents, disclosed (also messaged to the peers at the time): two
 full fast-ops suite runs (~45 s each) executed on the M1 GPU outside a
