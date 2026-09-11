@@ -16,7 +16,13 @@ echo "=== wrapper start $(date -u +%FT%TZ) pid $$"
 
 R=~/src/mlx-HostPathOverhead/receipts/2026-09-10-hostpath
 ROOT=~/src/mlx-HostPathOverhead
+VENV=$ROOT/.work/venv-hpo/bin/python
+REL_VENV=~/src/mlx-main-b6d662a8/.work/venv-run/bin/python
+MODEL=~/.cache/huggingface/hub/models--mlx-community--Qwen2.5-0.5B-Instruct-4bit/snapshots/a5339a4131f135d0fdc6a5c8b5bbed2753bbe0f3
+PIN=a5339a4131f135d0fdc6a5c8b5bbed2753bbe0f3
 WHEEL=$(ls $ROOT/dist/mlx_omarchy-*-cp314-cp314-linux_aarch64.whl | head -1)
+OUT=$ROOT/receipts/2026-09-10-hostpath/legs
+mkdir -p "$OUT"
 
 # q4-only manifest, same filter run_arms.py applies
 python3 - "$ROOT/scripts/bench_matrix.json" "$ROOT/receipts/2026-09-10-hostpath/manifest-q4.json" <<'PYMAN'
@@ -26,12 +32,6 @@ m["models"] = [x for x in m["models"] if x["id"] == "qwen25-0.5b-4bit"]
 m["generation"]["engine_script"] = "bench_decode_identity.py"
 open(sys.argv[2], "w").write(json.dumps(m, indent=2) + "\n")
 PYMAN
-REL_VENV=~/src/mlx-main-b6d662a8/.work/venv-run/bin/python
-MODEL=~/.cache/huggingface/hub/models--mlx-community--Qwen2.5-0.5B-Instruct-4bit/snapshots/a5339a4131f135d0fdc6a5c8b5bbed2753bbe0f3
-PIN=a5339a4131f135d0fdc6a5c8b5bbed2753bbe0f3
-WHEEL=$(ls $ROOT/dist/mlx_omarchy-*-cp314-cp314-linux_aarch64.whl | head -1)
-OUT=$ROOT/receipts/2026-09-10-hostpath/legs
-mkdir -p "$OUT"
 
 timeout 14400 flock -w 14300 /tmp/m1-gpu.lock bash -s <<INNER
 echo "=== lock held \$(date -u +%FT%TZ) by \$$"
@@ -60,11 +60,12 @@ if [ ! -x "$VENV" ]; then
   $ROOT/.work/venv-hpo/bin/pip install -q "$WHEEL" mlx-lm
 fi
 
-run_leg () {  # tag workload; bench_matrix --select for one leg
+bench_arm () {  # tag workload replay(0|1)
   tag=\$1; wl=\$2
+  if [ "\$3" = 1 ]; then export MLX_OMARCHY_REPLAY=1; else unset MLX_OMARCHY_REPLAY || true; fi
+  unset MLX_OMARCHY_HOST_TRACE || true
   if [ -f "$OUT/\$tag.json" ]; then echo "\$tag cached"; return; fi
-  env -u MLX_OMARCHY_REPLAY -u MLX_OMARCHY_HOST_TRACE HF_HUB_OFFLINE=1 \
-    MLX_DISABLE_COMPILE=1 \
+  HF_HUB_OFFLINE=1 MLX_DISABLE_COMPILE=1 \
     $VENV scripts/bench_matrix.py --mode run \
       --manifest $R/manifest-q4.json \
       --python $VENV --wheel "$WHEEL" \
@@ -78,23 +79,22 @@ run_leg () {  # tag workload; bench_matrix --select for one leg
 # A: baseline parity of the instrumented wheel, gates OFF (3 reps)
 for rep in 1 2 3; do
   for wl in short-decode-32 long-decode-128 longctx-1024-decode-32; do
-    run_leg a\$rep-baseline-\$wl \$wl
+    bench_arm a\$rep-baseline-\$wl \$wl 0
   done
 done
 
 # C: replay prototype, digests must stay canonical (3 reps)
 for rep in 1 2 3; do
   for wl in short-decode-32 long-decode-128 longctx-1024-decode-32; do
-    if [ -f "$OUT/c\$rep-replay-\$wl.json" ]; then echo cached; else
-      MLX_OMARCHY_REPLAY=1 run_leg c\$rep-replay-\$wl \$wl
-    fi
+    bench_arm c\$rep-replay-\$wl \$wl 1
   done
 done
 
 # B: host-trace legs (trace on), short workload
+unset MLX_OMARCHY_REPLAY || true
 for rep in 1 2 3; do
   if [ ! -f "$OUT/b\$rep-trace.json" ]; then
-    env -u MLX_OMARCHY_REPLAY HF_HUB_OFFLINE=1 MLX_DISABLE_COMPILE=1 \
+    HF_HUB_OFFLINE=1 MLX_DISABLE_COMPILE=1 \
       MLX_OMARCHY_HOST_TRACE=$OUT/b\$rep-trace-trace.json \
       $VENV $R/hostphases.py --model $MODEL --prompt "Hi" --tokens 32 \
       --trace-out $OUT/b\$rep-trace-trace.json \
@@ -120,9 +120,10 @@ if [ ! -f /tmp/tiny-qwen/model.safetensors ]; then
   $VENV $R/tiny_model.py --real $MODEL --out /tmp/tiny-qwen \
     > $OUT/tiny-build.log 2>&1 || echo "tiny build FAILED rc=\$?"
 fi
+unset MLX_OMARCHY_REPLAY || true
 for rep in 1 2 3; do
   if [ ! -f "$OUT/e\$rep-tiny.json" ]; then
-    env -u MLX_OMARCHY_REPLAY HF_HUB_OFFLINE=1 MLX_DISABLE_COMPILE=1 \
+    HF_HUB_OFFLINE=1 MLX_DISABLE_COMPILE=1 \
       MLX_OMARCHY_HOST_TRACE=$OUT/e\$rep-tiny-trace.json \
       $VENV $R/hostphases.py --model /tmp/tiny-qwen --prompt "Hi" \
       --tokens 32 --trace-out $OUT/e\$rep-tiny-trace.json \
